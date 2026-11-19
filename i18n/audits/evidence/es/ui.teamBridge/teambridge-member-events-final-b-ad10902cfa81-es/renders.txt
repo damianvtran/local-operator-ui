@@ -1,0 +1,72 @@
+RENDERS (executed 2026-10-30; intl-messageformat 12.1.3, locale es; names joined by Intl.ListFormat 'long'/'conjunction' exactly as team-bridge-member-events.tsx does)
+
+-- the corrected value, both target counts
+owner_added_agent 1: Dana añadió a su agente: Ada
+owner_added_agent 3: Dana añadió a su agente: Ada, Bo y Cy
+declined_self 1:     Dana rechazó la invitación
+declined 1:          Dana rechazó la invitación para Ada
+declined 3:          Dana rechazó la invitación para Ada, Bo y Cy
+
+-- events.others at the counts the brief names
+count= 1: 1 más
+count= 2: 2 más
+count= 3: 3 más
+count= 5: 5 más
+count=11: 11 más
+count=21: 21 más
+
+-- every event sentence as the truncated row actually builds it (2 names shown + N others, then the locale's own conjunction)
+N=1  list = "Ada, Bo y 1 más"
+   invited            Dana invitó a Ada, Bo y 1 más
+   joined             Entrada en la conversación: Ada, Bo y 1 más
+   owner_added_agent  Dana añadió a su agente: Ada, Bo y 1 más
+   left               Salida de la conversación: Ada, Bo y 1 más
+   removed            Dana eliminó a Ada, Bo y 1 más
+   consented          Dana autorizó la entrada de Ada, Bo y 1 más
+   declined           Dana rechazó la invitación para Ada, Bo y 1 más
+   withdrawn          Dana retiró la invitación para Ada, Bo y 1 más
+N=2  list = "Ada, Bo y 2 más"
+   invited            Dana invitó a Ada, Bo y 2 más
+   joined             Entrada en la conversación: Ada, Bo y 2 más
+   owner_added_agent  Dana añadió a su agente: Ada, Bo y 2 más
+   left               Salida de la conversación: Ada, Bo y 2 más
+   removed            Dana eliminó a Ada, Bo y 2 más
+   consented          Dana autorizó la entrada de Ada, Bo y 2 más
+   declined           Dana rechazó la invitación para Ada, Bo y 2 más
+   withdrawn          Dana retiró la invitación para Ada, Bo y 2 más
+N=3  list = "Ada, Bo y 3 más"
+   invited            Dana invitó a Ada, Bo y 3 más
+   joined             Entrada en la conversación: Ada, Bo y 3 más
+   owner_added_agent  Dana añadió a su agente: Ada, Bo y 3 más
+   left               Salida de la conversación: Ada, Bo y 3 más
+   removed            Dana eliminó a Ada, Bo y 3 más
+   consented          Dana autorizó la entrada de Ada, Bo y 3 más
+   declined           Dana rechazó la invitación para Ada, Bo y 3 más
+   withdrawn          Dana retiró la invitación para Ada, Bo y 3 más
+N=5  list = "Ada, Bo y 5 más"
+   invited            Dana invitó a Ada, Bo y 5 más
+   joined             Entrada en la conversación: Ada, Bo y 5 más
+   owner_added_agent  Dana añadió a su agente: Ada, Bo y 5 más
+   left               Salida de la conversación: Ada, Bo y 5 más
+   removed            Dana eliminó a Ada, Bo y 5 más
+   consented          Dana autorizó la entrada de Ada, Bo y 5 más
+   declined           Dana rechazó la invitación para Ada, Bo y 5 más
+   withdrawn          Dana retiró la invitación para Ada, Bo y 5 más
+N=11  list = "Ada, Bo y 11 más"
+   invited            Dana invitó a Ada, Bo y 11 más
+   joined             Entrada en la conversación: Ada, Bo y 11 más
+   owner_added_agent  Dana añadió a su agente: Ada, Bo y 11 más
+   left               Salida de la conversación: Ada, Bo y 11 más
+   removed            Dana eliminó a Ada, Bo y 11 más
+   consented          Dana autorizó la entrada de Ada, Bo y 11 más
+   declined           Dana rechazó la invitación para Ada, Bo y 11 más
+   withdrawn          Dana retiró la invitación para Ada, Bo y 11 más
+N=21  list = "Ada, Bo y 21 más"
+   invited            Dana invitó a Ada, Bo y 21 más
+   joined             Entrada en la conversación: Ada, Bo y 21 más
+   owner_added_agent  Dana añadió a su agente: Ada, Bo y 21 más
+   left               Salida de la conversación: Ada, Bo y 21 más
+   removed            Dana eliminó a Ada, Bo y 21 más
+   consented          Dana autorizó la entrada de Ada, Bo y 21 más
+   declined           Dana rechazó la invitación para Ada, Bo y 21 más
+   withdrawn          Dana retiró la invitación para Ada, Bo y 21 más

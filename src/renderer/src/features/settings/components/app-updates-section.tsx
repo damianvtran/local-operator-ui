@@ -6,6 +6,7 @@ import { Tooltip } from "@shared/components/ui";
 import { apiConfig } from "@shared/config";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
+import { versionDisplay } from "@shared/utils/update-install-copy";
 import { Download, Info } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
@@ -53,25 +54,6 @@ const daemonAddress = (url: string | null): string | null => {
  * version" are indistinguishable to someone reading a support request back to
  * us — the tooltip is what tells them which number to quote.
  */
-// Version reads are cached across language changes. Translate only their
-// known presentation states at render time; actual versions and daemon URLs stay verbatim.
-function versionDisplay(value: string): string {
-	switch (value) {
-		case "Loading...":
-			return t("ui.settings.updates.app_updates_section.state_loading");
-		case "Not connected":
-			return t("ui.settings.updates.app_updates_section.state_not_connected");
-		case "Not attached":
-			return t("ui.settings.updates.app_updates_section.state_not_attached");
-		case "Version unknown":
-			return t("ui.settings.updates.app_updates_section.state_version_unknown");
-		case "Unavailable":
-			return t("ui.settings.updates.app_updates_section.state_unavailable");
-		default:
-			return value;
-	}
-}
-
 export const AppUpdatesSection: FC = () => {
 	useI18nLocale();
 	/*

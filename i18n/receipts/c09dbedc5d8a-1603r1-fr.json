@@ -1,0 +1,372 @@
+{
+  "schema": 1,
+  "instance": "c09dbedc5d8a-1603r1-fr",
+  "locale": "fr",
+  "pr": "damianvtran/local-operator-ui#1603",
+  "branch": "feat/i18n-uncounted-props",
+  "head": "011c0f4f4caaf5a388a67ba2eda3f615ac676d3c",
+  "date": "2026-11-02",
+  "status": "passed",
+  "model": "anthropic/claude-sonnet-5-5",
+  "audit_kind": "round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca",
+  "author": "Written by coder session 92f609a7042a (lopdev team, PR #1603 receipts slice) on the auditors' behalf, transcribed from each auditor session's final report (the auditors wrote no receipt and no ledger row). Hashes were re-derived by the coder from git objects (git show <rev>:<path> | sha256) and every full hash an auditor reported was matched against them; the writer re-derives them again from disk. The coder did not translate or remediate any string and is not the auditor.",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "c09dbedc5d8a",
+    "model": "anthropic/claude-sonnet-5-5",
+    "model_note": "Model name is the auditor session's own header/usage record (anthropic/claude-sonnet-5-5, provider anthropic on every turn of the session transcript); the auditor reports it cannot verify the runtime provider and claims no fallback. No fallback was verified or ruled out.",
+    "independent_from_translator": true,
+    "role": "round-1 full auditor"
+  },
+  "sessions": {
+    "round1_auditor": "c09dbedc5d8a"
+  },
+  "independence": "The auditor(s) are separate i18n-auditor sessions from the translator (session 7bf560d5dcc5, job f3024578bae5) and from the remediation translator (session 3945da4d65a0, job f67ec92231e4); neither auditor translated, edited or remediated any string, and neither wrote a receipt or ledger row. The translator, remediator and auditors share one model (anthropic/claude-sonnet-5-5), so independence is by agent and session, not by model family; a shared blind spot is possible (the hi round-1 auditor states this explicitly). Independence is attested by the auditors' own reports and the session transcripts; it is not provable from this file alone. Job-to-session mapping for round 2 (job -> auditor session) was read from the parent transcript, where each delta report follows its launching job id; round-1 jobs are identified by session id only.",
+  "locale_level_round1_verdict": {
+    "verdict": "changes_requested",
+    "pin": "ab45351362a",
+    "majors": [
+      "A-1 (ui.chat)"
+    ],
+    "note": "Locale-level verdict covered all 17 namespaces of the locale. Each namespace block below carries its own status derived from its own findings."
+  },
+  "round2_delta": {
+    "pin": "011c0f4f4ca",
+    "verdict": "passed",
+    "blocker": 0,
+    "major": 0,
+    "job": "c7c39038db89",
+    "session": "35a459c32034",
+    "range": "5af81c6b78a..011c0f4f4ca"
+  },
+  "reported_hash_check": "Every full sha256 the round-2 delta auditor reported for this locale matched the git-object hash recomputed by the coder; round-1 auditors reported 16-hex prefixes that matched at ab45351362a.",
+  "finding_attribution": "Findings are split per namespace and key so each ledger row counts its own; one auditor finding spanning several namespaces is counted once per namespace it touches, so the sum can exceed the auditor's headline totals. Only OPEN findings (unapplied at 011c0f4f4ca, or raised by the round-2 auditor on the new text) are counted; fixed ones are listed under resolved_findings.",
+  "namespaces": {
+    "ui.agents.detail": {
+      "ledger_scope": "Round-1 full review (c09dbedc5d8a) at ab45351362a of the 16 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.chat)), fixed at 011c0f4f4ca and passed by round-2 delta 35a459c32034. Counts are open findings.",
+      "status": "passed",
+      "audit_kind": "round-1 full review at ab45351362a; namespace bytes unchanged at 011c0f4f4ca",
+      "scope": "Round-1 full review (session c09dbedc5d8a) at ab45351362a of the 16 keys PR #1603 added to fr/ui.agents.detail; the committed bytes are IDENTICAL at 011c0f4f4ca (sha256 equal at both revisions), so this audit covers exactly the bytes on disk. Pre-existing keys of the namespace were not re-reviewed (their earlier audits are in superseded). This namespace has no BLOCKER or MAJOR of its own. The auditor's locale-level verdict was changes_requested only because of MAJOR(s) in other namespace(s): A-1 (ui.chat); those were fixed in 011c0f4f4ca and passed the round-2 delta (35a459c32034), neither of which touches this file.",
+      "keys_added_by_pr": 16,
+      "sha256": {
+        "en": "4daf2f93b8fbeedd1df1b26350b6c748f5f2d5a4eb236b2c40049585cecce648",
+        "fr": "4ca39e0f21afc752ee7f821016a7f819b45e17017dae2c338e561ab34b77bbd9"
+      },
+      "context_sha256": "490a11824373fafb57d2d9b765bd4273c6066cce19e416043cd5eb16d0cf6ea3",
+      "bytes_checked_at": "ab45351362a and 011c0f4f4ca (identical)",
+      "findings": [
+        {
+          "id": "A-6b",
+          "severity": "NIT",
+          "keys": [
+            "ui.agents.detail.field.effort_inherit_hint"
+          ],
+          "round": 1,
+          "text": "\"Utiliser l'effort propre à la session\" differs slightly from the sibling \"niveau d'effort de la session\" (original A-6 item 2)."
+        },
+        {
+          "id": "A-6d",
+          "severity": "NIT",
+          "keys": [
+            "ui.agents.detail.field.instructions_hint"
+          ],
+          "round": 1,
+          "text": "\"Ce que l'agent doit faire\" loses the sense of being instructed; acceptable as is (original A-6 item 4)."
+        }
+      ],
+      "resolved_findings": []
+    },
+    "ui.agents.detail.read_state": {
+      "ledger_scope": "Round-1 full review (c09dbedc5d8a) at ab45351362a of the 3 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.chat)), fixed at 011c0f4f4ca and passed by round-2 delta 35a459c32034. Counts are open findings.",
+      "status": "passed",
+      "audit_kind": "round-1 full review at ab45351362a; namespace bytes unchanged at 011c0f4f4ca",
+      "scope": "Round-1 full review (session c09dbedc5d8a) at ab45351362a of the 3 keys PR #1603 added to fr/ui.agents.detail.read_state; the committed bytes are IDENTICAL at 011c0f4f4ca (sha256 equal at both revisions), so this audit covers exactly the bytes on disk. Pre-existing keys of the namespace were not re-reviewed (their earlier audits are in superseded). This namespace has no BLOCKER or MAJOR of its own. The auditor's locale-level verdict was changes_requested only because of MAJOR(s) in other namespace(s): A-1 (ui.chat); those were fixed in 011c0f4f4ca and passed the round-2 delta (35a459c32034), neither of which touches this file.",
+      "keys_added_by_pr": 3,
+      "sha256": {
+        "en": "2229080139fca0bf00fe99ecf1f08f9aa710d1afa06527386558caa34fca35b7",
+        "fr": "fbbe8aff9370065a55daa3a3029f94a47da6bea3fd5d4eaa5d5b44dcaaea1508"
+      },
+      "context_sha256": "847a2d63f12a43637e553091513ba2bc39cb34b6a06ebe10cbeb57001fd330ab",
+      "bytes_checked_at": "ab45351362a and 011c0f4f4ca (identical)",
+      "findings": [],
+      "resolved_findings": []
+    },
+    "ui.agents.pages": {
+      "ledger_scope": "Round-1 full review (c09dbedc5d8a) at ab45351362a of the 1 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.chat)), fixed at 011c0f4f4ca and passed by round-2 delta 35a459c32034. Counts are open findings.",
+      "status": "passed",
+      "audit_kind": "round-1 full review at ab45351362a; namespace bytes unchanged at 011c0f4f4ca",
+      "scope": "Round-1 full review (session c09dbedc5d8a) at ab45351362a of the 1 keys PR #1603 added to fr/ui.agents.pages; the committed bytes are IDENTICAL at 011c0f4f4ca (sha256 equal at both revisions), so this audit covers exactly the bytes on disk. Pre-existing keys of the namespace were not re-reviewed (their earlier audits are in superseded). This namespace has no BLOCKER or MAJOR of its own. The auditor's locale-level verdict was changes_requested only because of MAJOR(s) in other namespace(s): A-1 (ui.chat); those were fixed in 011c0f4f4ca and passed the round-2 delta (35a459c32034), neither of which touches this file.",
+      "keys_added_by_pr": 1,
+      "sha256": {
+        "en": "36a02ca7d7c07fd37580370033052055310d0811ce30faf987b90c551a94f095",
+        "fr": "1ce0b736917fb671dfcef584795459d0de41eecec18f65fc63c47e0a71e96c0f"
+      },
+      "context_sha256": "f47e8cd635fccfa4190d03a910789c6788d69fa470d269a2a6663023be335ee0",
+      "bytes_checked_at": "ab45351362a and 011c0f4f4ca (identical)",
+      "findings": [],
+      "resolved_findings": []
+    },
+    "ui.agents.teams": {
+      "ledger_scope": "Round-1 full review (c09dbedc5d8a) at ab45351362a of the 17 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.chat)), fixed at 011c0f4f4ca and passed by round-2 delta 35a459c32034. Counts are open findings.",
+      "status": "passed",
+      "audit_kind": "round-1 full review at ab45351362a; namespace bytes unchanged at 011c0f4f4ca",
+      "scope": "Round-1 full review (session c09dbedc5d8a) at ab45351362a of the 17 keys PR #1603 added to fr/ui.agents.teams; the committed bytes are IDENTICAL at 011c0f4f4ca (sha256 equal at both revisions), so this audit covers exactly the bytes on disk. Pre-existing keys of the namespace were not re-reviewed (their earlier audits are in superseded). This namespace has no BLOCKER or MAJOR of its own. The auditor's locale-level verdict was changes_requested only because of MAJOR(s) in other namespace(s): A-1 (ui.chat); those were fixed in 011c0f4f4ca and passed the round-2 delta (35a459c32034), neither of which touches this file.",
+      "keys_added_by_pr": 17,
+      "sha256": {
+        "en": "6a05f539a9a7f3157fe42b5ed9bc5ec89f9a94f86df64b3c752a1bc115335220",
+        "fr": "7f10977a68c97af5fe459d9cacaac83314c4b061277f5e65c3b26f393f26aac3"
+      },
+      "context_sha256": "cc6a3a4797479595fe6aceea348b88b79e6aaa62d8169097cc833efd6c9918e0",
+      "bytes_checked_at": "ab45351362a and 011c0f4f4ca (identical)",
+      "findings": [
+        {
+          "id": "A-2",
+          "severity": "MINOR",
+          "keys": [
+            "ui.agents.teams.field.count_aria"
+          ],
+          "round": 1,
+          "text": "\"Nombre de {role}\" lacks elision before a vowel-initial role name."
+        },
+        {
+          "id": "A-3",
+          "severity": "MINOR",
+          "keys": [
+            "ui.agents.teams.action.fewer_aria",
+            "ui.agents.teams.action.more_aria"
+          ],
+          "round": 1,
+          "text": "\"Un {role} de moins/plus\" fixes masculine gender and the \"de {role}\" elision caveat; auditor: acceptable as is, preference."
+        },
+        {
+          "id": "A-4",
+          "severity": "MINOR",
+          "keys": [
+            "ui.agents.teams.field.name_hint"
+          ],
+          "round": 1,
+          "text": "\"Comment vous et vos conversations désignerez cette équipe\" is a calque with shaky verb agreement."
+        },
+        {
+          "id": "A-5",
+          "severity": "MINOR",
+          "keys": [
+            "ui.agents.teams.section.members_hint"
+          ],
+          "round": 1,
+          "text": "The three coordinated items are grammatically uneven versus the English who/how many/which model."
+        }
+      ],
+      "resolved_findings": []
+    },
+    "ui.agents.upload": {
+      "ledger_scope": "Round-1 full review (c09dbedc5d8a) at ab45351362a of the 2 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.chat)), fixed at 011c0f4f4ca and passed by round-2 delta 35a459c32034. Counts are open findings.",
+      "status": "passed",
+      "audit_kind": "round-1 full review at ab45351362a; namespace bytes unchanged at 011c0f4f4ca",
+      "scope": "Round-1 full review (session c09dbedc5d8a) at ab45351362a of the 2 keys PR #1603 added to fr/ui.agents.upload; the committed bytes are IDENTICAL at 011c0f4f4ca (sha256 equal at both revisions), so this audit covers exactly the bytes on disk. Pre-existing keys of the namespace were not re-reviewed (their earlier audits are in superseded). This namespace has no BLOCKER or MAJOR of its own. The auditor's locale-level verdict was changes_requested only because of MAJOR(s) in other namespace(s): A-1 (ui.chat); those were fixed in 011c0f4f4ca and passed the round-2 delta (35a459c32034), neither of which touches this file.",
+      "keys_added_by_pr": 2,
+      "sha256": {
+        "en": "45760232c7ac18c922119c361494d03c1e8bf2d5d0e9704c6d4f776e58a76a88",
+        "fr": "54c6b08c1dcdd9df5e91dc2c8c1448e3461c051bce64da070ba61344640ea096"
+      },
+      "context_sha256": "040555d2198605d9c3da89ffb4f2b42f5a1c64be6f67c80d626dc42c83c357ab",
+      "bytes_checked_at": "ab45351362a and 011c0f4f4ca (identical)",
+      "findings": [],
+      "resolved_findings": []
+    },
+    "ui.browser": {
+      "ledger_scope": "Round-1 full review (c09dbedc5d8a) at ab45351362a of the 1 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.chat)), fixed at 011c0f4f4ca and passed by round-2 delta 35a459c32034. Counts are open findings.",
+      "status": "passed",
+      "audit_kind": "round-1 full review at ab45351362a; namespace bytes unchanged at 011c0f4f4ca",
+      "scope": "Round-1 full review (session c09dbedc5d8a) at ab45351362a of the 1 keys PR #1603 added to fr/ui.browser; the committed bytes are IDENTICAL at 011c0f4f4ca (sha256 equal at both revisions), so this audit covers exactly the bytes on disk. Pre-existing keys of the namespace were not re-reviewed (their earlier audits are in superseded). This namespace has no BLOCKER or MAJOR of its own. The auditor's locale-level verdict was changes_requested only because of MAJOR(s) in other namespace(s): A-1 (ui.chat); those were fixed in 011c0f4f4ca and passed the round-2 delta (35a459c32034), neither of which touches this file.",
+      "keys_added_by_pr": 1,
+      "sha256": {
+        "en": "5d6537754129730e4e973e1a5aa475b893bcb34971b13aa212359b9efa18ed28",
+        "fr": "891a149f28c96e380c63a8fb8a3454df9b80abc019f1bd8e85a13c4cb356a5f6"
+      },
+      "context_sha256": "4e62a93d90ae5b159fa9a010729654d42460364118992fd4fc6dcde6e1154781",
+      "bytes_checked_at": "ab45351362a and 011c0f4f4ca (identical)",
+      "findings": [],
+      "resolved_findings": []
+    },
+    "ui.chat.asks": {
+      "ledger_scope": "Round-1 full review (c09dbedc5d8a) at ab45351362a of the 3 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.chat)), fixed at 011c0f4f4ca and passed by round-2 delta 35a459c32034. Counts are open findings.",
+      "status": "passed",
+      "audit_kind": "round-1 full review at ab45351362a; namespace bytes unchanged at 011c0f4f4ca",
+      "scope": "Round-1 full review (session c09dbedc5d8a) at ab45351362a of the 3 keys PR #1603 added to fr/ui.chat.asks; the committed bytes are IDENTICAL at 011c0f4f4ca (sha256 equal at both revisions), so this audit covers exactly the bytes on disk. Pre-existing keys of the namespace were not re-reviewed (their earlier audits are in superseded). This namespace has no BLOCKER or MAJOR of its own. The auditor's locale-level verdict was changes_requested only because of MAJOR(s) in other namespace(s): A-1 (ui.chat); those were fixed in 011c0f4f4ca and passed the round-2 delta (35a459c32034), neither of which touches this file.",
+      "keys_added_by_pr": 3,
+      "sha256": {
+        "en": "e90c900ed4f7908f7e14ae634217d5ee52fee6ed960628f8dd4396168d7bc1ef",
+        "fr": "195fd647e3275119e2b4ea3ca67b853829d6e0c02c82e815456333089ebbc895"
+      },
+      "context_sha256": "3d31528868c080170aef5aa92217e402aa623ebfc881996b0926651606524c1f",
+      "bytes_checked_at": "ab45351362a and 011c0f4f4ca (identical)",
+      "findings": [],
+      "resolved_findings": []
+    },
+    "ui.chat.attachments": {
+      "ledger_scope": "Round-1 full review (c09dbedc5d8a) at ab45351362a of the 5 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.chat)), fixed at 011c0f4f4ca and passed by round-2 delta 35a459c32034. Counts are open findings.",
+      "status": "passed",
+      "audit_kind": "round-1 full review at ab45351362a; namespace bytes unchanged at 011c0f4f4ca",
+      "scope": "Round-1 full review (session c09dbedc5d8a) at ab45351362a of the 5 keys PR #1603 added to fr/ui.chat.attachments; the committed bytes are IDENTICAL at 011c0f4f4ca (sha256 equal at both revisions), so this audit covers exactly the bytes on disk. Pre-existing keys of the namespace were not re-reviewed (their earlier audits are in superseded). This namespace has no BLOCKER or MAJOR of its own. The auditor's locale-level verdict was changes_requested only because of MAJOR(s) in other namespace(s): A-1 (ui.chat); those were fixed in 011c0f4f4ca and passed the round-2 delta (35a459c32034), neither of which touches this file.",
+      "keys_added_by_pr": 5,
+      "sha256": {
+        "en": "4927bb91ea69c1abda5254b4da9bd7dc8b1ced003f2662537e796534f5988453",
+        "fr": "c6d26aa72beba3ce710f1ac0af64bcb6e5693a015123f15a4bca7c085ed04e54"
+      },
+      "context_sha256": "0fb664c2e9ad61ac506b0cfcae6b68cd2d6526a6906fe0200174e92b092f3890",
+      "bytes_checked_at": "ab45351362a and 011c0f4f4ca (identical)",
+      "findings": [],
+      "resolved_findings": []
+    },
+    "ui.chat.canonical": {
+      "ledger_scope": "Round-1 full review (c09dbedc5d8a) at ab45351362a of the 10 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.chat)), fixed at 011c0f4f4ca and passed by round-2 delta 35a459c32034. Counts are open findings.",
+      "status": "passed",
+      "audit_kind": "round-1 full review at ab45351362a; namespace bytes unchanged at 011c0f4f4ca",
+      "scope": "Round-1 full review (session c09dbedc5d8a) at ab45351362a of the 10 keys PR #1603 added to fr/ui.chat.canonical; the committed bytes are IDENTICAL at 011c0f4f4ca (sha256 equal at both revisions), so this audit covers exactly the bytes on disk. Pre-existing keys of the namespace were not re-reviewed (their earlier audits are in superseded). This namespace has no BLOCKER or MAJOR of its own. The auditor's locale-level verdict was changes_requested only because of MAJOR(s) in other namespace(s): A-1 (ui.chat); those were fixed in 011c0f4f4ca and passed the round-2 delta (35a459c32034), neither of which touches this file.",
+      "keys_added_by_pr": 10,
+      "sha256": {
+        "en": "4f3fec6ec3ff88dc503687ecfe802f18369cbb0e67b34f5c1223eee61383891e",
+        "fr": "81707a60592f524671cdfab0476ec97dbfb5d8781b467faae94aab8d06fcc931"
+      },
+      "context_sha256": "f8fe8eda8334c6b137b50fbba9103ddea3a6ac9e2c0f35d94c4d1fd2b4573356",
+      "bytes_checked_at": "ab45351362a and 011c0f4f4ca (identical)",
+      "findings": [
+        {
+          "id": "A-6a",
+          "severity": "NIT",
+          "keys": [
+            "ui.chat.canonical.image_gen.control.stop_hint_running"
+          ],
+          "round": 1,
+          "text": "\"le fournisseur peut quand même terminer\" uses intransitive \"terminer\" (original A-6 item 1)."
+        },
+        {
+          "id": "A-6c2",
+          "severity": "NIT",
+          "keys": [
+            "ui.chat.canonical.transcript.hub_from"
+          ],
+          "round": 1,
+          "text": "Same elision hazard; within existing precedent (original A-6 item 3, canonical half)."
+        }
+      ],
+      "resolved_findings": []
+    },
+    "ui.chat.header": {
+      "ledger_scope": "Round-1 full review (c09dbedc5d8a) at ab45351362a of the 2 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.chat)), fixed at 011c0f4f4ca and passed by round-2 delta 35a459c32034. Counts are open findings.",
+      "status": "passed",
+      "audit_kind": "round-1 full review at ab45351362a; namespace bytes unchanged at 011c0f4f4ca",
+      "scope": "Round-1 full review (session c09dbedc5d8a) at ab45351362a of the 2 keys PR #1603 added to fr/ui.chat.header; the committed bytes are IDENTICAL at 011c0f4f4ca (sha256 equal at both revisions), so this audit covers exactly the bytes on disk. Pre-existing keys of the namespace were not re-reviewed (their earlier audits are in superseded). This namespace has no BLOCKER or MAJOR of its own. The auditor's locale-level verdict was changes_requested only because of MAJOR(s) in other namespace(s): A-1 (ui.chat); those were fixed in 011c0f4f4ca and passed the round-2 delta (35a459c32034), neither of which touches this file.",
+      "keys_added_by_pr": 2,
+      "sha256": {
+        "en": "266e76785f50f3ef65c1e2ec67d233cc1b00fdfabca4648c1d7cdceff517bc3b",
+        "fr": "c3eae8c15c53806fc23f9be469b5b56628392ec16361315d410d04f4bcbff85e"
+      },
+      "context_sha256": "68ff6f24e7d6fba30856f79bf975f341b83a68c4884573aa0388c5cbfa8c9e4a",
+      "bytes_checked_at": "ab45351362a and 011c0f4f4ca (identical)",
+      "findings": [],
+      "resolved_findings": []
+    },
+    "ui.chat.pickers": {
+      "ledger_scope": "Round-1 full review (c09dbedc5d8a) at ab45351362a of the 2 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.chat)), fixed at 011c0f4f4ca and passed by round-2 delta 35a459c32034. Counts are open findings.",
+      "status": "passed",
+      "audit_kind": "round-1 full review at ab45351362a; namespace bytes unchanged at 011c0f4f4ca",
+      "scope": "Round-1 full review (session c09dbedc5d8a) at ab45351362a of the 2 keys PR #1603 added to fr/ui.chat.pickers; the committed bytes are IDENTICAL at 011c0f4f4ca (sha256 equal at both revisions), so this audit covers exactly the bytes on disk. Pre-existing keys of the namespace were not re-reviewed (their earlier audits are in superseded). This namespace has no BLOCKER or MAJOR of its own. The auditor's locale-level verdict was changes_requested only because of MAJOR(s) in other namespace(s): A-1 (ui.chat); those were fixed in 011c0f4f4ca and passed the round-2 delta (35a459c32034), neither of which touches this file.",
+      "keys_added_by_pr": 2,
+      "sha256": {
+        "en": "88d81780ea0cf598689a73b5b0206da020ccfe1b847631214f87f40791b684c7",
+        "fr": "fd8c9ada83e80f0e5aa540eb8dec1bf74494002d9f8eefb11a406034deea7faa"
+      },
+      "context_sha256": "f2fa6a5ad0fcf63e06016d2038daf782ff6ef878308ce6379cb67d84b2a9eee1",
+      "bytes_checked_at": "ab45351362a and 011c0f4f4ca (identical)",
+      "findings": [],
+      "resolved_findings": []
+    },
+    "ui.chat.run_details": {
+      "ledger_scope": "Round-1 full review (c09dbedc5d8a) at ab45351362a of the 5 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.chat)), fixed at 011c0f4f4ca and passed by round-2 delta 35a459c32034. Counts are open findings.",
+      "status": "passed",
+      "audit_kind": "round-1 full review at ab45351362a; namespace bytes unchanged at 011c0f4f4ca",
+      "scope": "Round-1 full review (session c09dbedc5d8a) at ab45351362a of the 5 keys PR #1603 added to fr/ui.chat.run_details; the committed bytes are IDENTICAL at 011c0f4f4ca (sha256 equal at both revisions), so this audit covers exactly the bytes on disk. Pre-existing keys of the namespace were not re-reviewed (their earlier audits are in superseded). This namespace has no BLOCKER or MAJOR of its own. The auditor's locale-level verdict was changes_requested only because of MAJOR(s) in other namespace(s): A-1 (ui.chat); those were fixed in 011c0f4f4ca and passed the round-2 delta (35a459c32034), neither of which touches this file.",
+      "keys_added_by_pr": 5,
+      "sha256": {
+        "en": "398b9c516c0ac40f2e2275b8e2a73fc92647899cb1dc082c38ef6e47e6018713",
+        "fr": "8616945efd77218480f26dd75e8387615aea9547802aba41e1b5109effbb3e86"
+      },
+      "context_sha256": "2a70d834b13fdfa2ebaa3f937b74c2ae87ce74d775cf88e0c31f0ee04ecda3ce",
+      "bytes_checked_at": "ab45351362a and 011c0f4f4ca (identical)",
+      "findings": [
+        {
+          "id": "A-6c1",
+          "severity": "NIT",
+          "keys": [
+            "ui.chat.run_details.subagents_of_aria"
+          ],
+          "round": 1,
+          "text": "Elision hazard for vowel-initial names; within existing precedent (original A-6 item 3, run_details half)."
+        }
+      ],
+      "resolved_findings": []
+    },
+    "ui.chat.sidebar": {
+      "ledger_scope": "Round-1 full review (c09dbedc5d8a) at ab45351362a of the 3 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.chat)), fixed at 011c0f4f4ca and passed by round-2 delta 35a459c32034. Counts are open findings.",
+      "status": "passed",
+      "audit_kind": "round-1 full review at ab45351362a; namespace bytes unchanged at 011c0f4f4ca",
+      "scope": "Round-1 full review (session c09dbedc5d8a) at ab45351362a of the 3 keys PR #1603 added to fr/ui.chat.sidebar; the committed bytes are IDENTICAL at 011c0f4f4ca (sha256 equal at both revisions), so this audit covers exactly the bytes on disk. Pre-existing keys of the namespace were not re-reviewed (their earlier audits are in superseded). This namespace has no BLOCKER or MAJOR of its own. The auditor's locale-level verdict was changes_requested only because of MAJOR(s) in other namespace(s): A-1 (ui.chat); those were fixed in 011c0f4f4ca and passed the round-2 delta (35a459c32034), neither of which touches this file.",
+      "keys_added_by_pr": 3,
+      "sha256": {
+        "en": "ed780c88aea2a4df69dc9c29fb3cdcaa4abe6046ad980079fad057aa1fa5e343",
+        "fr": "b156939a065876457466ac7024bb85c5fde2650093cd816c55fb97f1b81e2de7"
+      },
+      "context_sha256": "7d63f5685a3d99e65d564c1e2ff442eed478618a4612fd7a3cbbf2d70dc424cb",
+      "bytes_checked_at": "ab45351362a and 011c0f4f4ca (identical)",
+      "findings": [],
+      "resolved_findings": []
+    },
+    "ui.chat.status": {
+      "ledger_scope": "Round-1 full review (c09dbedc5d8a) at ab45351362a of the 1 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.chat)), fixed at 011c0f4f4ca and passed by round-2 delta 35a459c32034. Counts are open findings.",
+      "status": "passed",
+      "audit_kind": "round-1 full review at ab45351362a; namespace bytes unchanged at 011c0f4f4ca",
+      "scope": "Round-1 full review (session c09dbedc5d8a) at ab45351362a of the 1 keys PR #1603 added to fr/ui.chat.status; the committed bytes are IDENTICAL at 011c0f4f4ca (sha256 equal at both revisions), so this audit covers exactly the bytes on disk. Pre-existing keys of the namespace were not re-reviewed (their earlier audits are in superseded). This namespace has no BLOCKER or MAJOR of its own. The auditor's locale-level verdict was changes_requested only because of MAJOR(s) in other namespace(s): A-1 (ui.chat); those were fixed in 011c0f4f4ca and passed the round-2 delta (35a459c32034), neither of which touches this file.",
+      "keys_added_by_pr": 1,
+      "sha256": {
+        "en": "a98f414f6cac5ce0ae73adacc66a966dc50ec0fc22a1558906e600425a6412af",
+        "fr": "d73b8e4883010b77df1aa2a39d5fcd11160bbdf3171112b35930ace8cef199bc"
+      },
+      "context_sha256": "1e809549e8d4eefe429b534f07f8125def14bc9893df938c1568b6ee0eb5dbf5",
+      "bytes_checked_at": "ab45351362a and 011c0f4f4ca (identical)",
+      "findings": [],
+      "resolved_findings": []
+    },
+    "ui.common.layout": {
+      "ledger_scope": "Round-1 full review (c09dbedc5d8a) at ab45351362a of the 5 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.chat)), fixed at 011c0f4f4ca and passed by round-2 delta 35a459c32034. Counts are open findings.",
+      "status": "passed",
+      "audit_kind": "round-1 full review at ab45351362a; namespace bytes unchanged at 011c0f4f4ca",
+      "scope": "Round-1 full review (session c09dbedc5d8a) at ab45351362a of the 5 keys PR #1603 added to fr/ui.common.layout; the committed bytes are IDENTICAL at 011c0f4f4ca (sha256 equal at both revisions), so this audit covers exactly the bytes on disk. Pre-existing keys of the namespace were not re-reviewed (their earlier audits are in superseded). This namespace has no BLOCKER or MAJOR of its own. The auditor's locale-level verdict was changes_requested only because of MAJOR(s) in other namespace(s): A-1 (ui.chat); those were fixed in 011c0f4f4ca and passed the round-2 delta (35a459c32034), neither of which touches this file.",
+      "keys_added_by_pr": 5,
+      "sha256": {
+        "en": "5ee5ed0fe580ce6b2e1e7bde71a3d19da3c84f26422e9ae37666a55fb13dd961",
+        "fr": "7ee55cc8559390c2874c8c7d5b1a49fa99a27c47d9a09c4891d78f56b7ca9f74"
+      },
+      "context_sha256": "2ad8219724003301b14109eb76ee586941ced9a7c948ee9f890e78372d8cdcda",
+      "bytes_checked_at": "ab45351362a and 011c0f4f4ca (identical)",
+      "findings": [],
+      "resolved_findings": []
+    },
+    "ui.providers": {
+      "ledger_scope": "Round-1 full review (c09dbedc5d8a) at ab45351362a of the 1 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.chat)), fixed at 011c0f4f4ca and passed by round-2 delta 35a459c32034. Counts are open findings.",
+      "status": "passed",
+      "audit_kind": "round-1 full review at ab45351362a; namespace bytes unchanged at 011c0f4f4ca",
+      "scope": "Round-1 full review (session c09dbedc5d8a) at ab45351362a of the 1 keys PR #1603 added to fr/ui.providers; the committed bytes are IDENTICAL at 011c0f4f4ca (sha256 equal at both revisions), so this audit covers exactly the bytes on disk. Pre-existing keys of the namespace were not re-reviewed (their earlier audits are in superseded). This namespace has no BLOCKER or MAJOR of its own. The auditor's locale-level verdict was changes_requested only because of MAJOR(s) in other namespace(s): A-1 (ui.chat); those were fixed in 011c0f4f4ca and passed the round-2 delta (35a459c32034), neither of which touches this file.",
+      "keys_added_by_pr": 1,
+      "sha256": {
+        "en": "126a999fb9b26d8f3e2e17231b5d5d5b430d55cd2d468c8b3323d3a041a86632",
+        "fr": "e789a8cee5fb96553043394b80ce5d4f8dcc3fd83aac7568991cc19214a93583"
+      },
+      "context_sha256": "6cf69140b0b4e3a4260ee9d38fe0f6ad1034ca06e931705604a3da953798c510",
+      "bytes_checked_at": "ab45351362a and 011c0f4f4ca (identical)",
+      "findings": [],
+      "resolved_findings": []
+    }
+  }
+}

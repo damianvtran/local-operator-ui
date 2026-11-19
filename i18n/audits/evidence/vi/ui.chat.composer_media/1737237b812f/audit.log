@@ -1,0 +1,240 @@
+AUDIT LOG — vi / ds / instance 1737237b812f
+============================================
+Task          : s12-aud-vi-ds — independent translation audit, Vietnamese
+PR            : damianvtran/local-operator-ui #1842
+Frozen head   : e5fb4310dab638f9cf428779d62539ec039a8990 (verified, see E1)
+Worktree      : ~/local-operator-ui/.worktrees/i18n-s8 (read-only; clean at that head)
+Auditor       : i18n-auditor, session/instance 1737237b812f
+Served model  : deepseek/deepseek-flash (per this session's header; no other
+                model identity was supplied to the session)
+Translator    : i18n-translator / anthropic/claude-sonnet-5-5, vi session f573f85d7297
+                 (supplied by delegation; this auditor did not translate and has
+                 no access to that session's directory)
+Independence  : fresh session, no participation in translation, no shared state
+                with the translator session.
+
+This file separates EXECUTED commands (with their real output) from material
+READ only. Nothing here is a production render, an ICU runtime result or a
+screen-reader observation; those are listed under NOT EXECUTED.
+
+
+1. WHAT WAS FROZEN AND VERIFIED (executed)
+------------------------------------------
+E1  git rev-parse HEAD                      -> e5fb4310dab638f9cf428779d62539ec039a8990
+    git status --porcelain                  -> empty (clean tree at that head)
+E2  shasum -a 256 on the nine input files   -> all nine identical to
+    ~/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/expected-hashes.json
+      en/ui.chat.json                   ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15
+      en/ui.chat.composer_media.json    79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae
+      en/ui.common.actions.json         0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b
+      vi/ui.chat.json                   28aefec39d49f6c7cbaa05f15e40383a8e6f38761369f0068d90434dc9511445
+      vi/ui.chat.composer_media.json    8b458ffc96e9b6605c0924b2fdee952998ceed1d27fbd9ab23a6f5a5389445a6
+      vi/ui.common.actions.json         d89b7dacc9c49f715685e2e6fa0cf04ebd75dee37eb5496c21f73bb00124d4ad
+      en/ui.chat.context.json           84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf
+      en/ui.chat.composer_media.context.json  a0fbc1552ef6f27999f3cff365750025627a284faa106d767e22a24d131ae77b
+      en/ui.common.actions.context.json 24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d
+    => hash binding: PASS, zero mismatches.
+E3  Manager-directed glossary byte-copy:
+      shasum -a 256 _s12-audits/<head>/glossary.md -> 0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8
+      wc -l -> 173
+      diff -q against ~/local-operator/i18n/glossary.md -> byte-identical
+    Glossary conformance for vi (below, §5) was checked against THIS copy.
+E4  shasum -a 256 ~/local-operator/i18n/style-guides/vi.md
+      -> e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888
+
+2. MECHANICAL LAYER (executed)
+------------------------------
+E5  node scripts/i18n/check-duplicates.mjs
+    -> "check-duplicates: ok — 1400 file(s) scanned, 0 duplicate key(s)"  (exit 0)
+E6  node scripts/i18n/context-parity.mjs
+    -> "context-parity: ok — every English key is covered, apart from 131
+        allowed gap(s) in 4 namespace(s) (shrink-only; see
+        i18n/context-allowance.json)."  (exit 0)
+E7  node scripts/i18n/generate.mjs --check
+    -> "src/i18n/keys.gen.ts is byte-identical to a fresh generation."  (exit 0)
+E8  python3 vi-ds-1737237b812f-checks.py (own script; output in
+    vi-ds-1737237b812f-checks.out). Result, verbatim from that output:
+      ui.chat: en=208 vi=208 missing_in_vi=0 extra_in_vi=0
+      ui.chat.composer_media: en=9 vi=9 missing_in_vi=0 extra_in_vi=0
+      ui.common.actions: en=54 vi=54 missing_in_vi=0 extra_in_vi=0
+      per key: placeholders match ([] vs [], ["label"] vs ["label"],
+      ["name"] vs ["name"]), braces balanced, no ICU marker absent from source,
+      invisible/bidi characters: none, NFC precomposed: True, no stray
+      leading/trailing space, no trailing punctuation:
+        pasted_image        "Ảnh đã dán"                 10 chars
+        image_actions.actions "Thao tác với ảnh"         16 chars
+        audio.position_label "Vị trí phát của {label}"   23 chars
+        actions_for_name    "Thao tác với {name}"        19 chars
+      "mechanical failures counted by this script: 0"
+E9  git diff --unified=0 origin/main HEAD -- <3 en files + 3 vi files>
+    -> for both en and vi, exactly one trailing comma added per changed line
+       plus the new keys; no key removed, renamed or edited. Additions only:
+       en +4 keys, vi +4 keys (1 composer_media, 2 ui.chat, 1 common.actions).
+E10 grep searches over src/i18n/catalogues/vi for the neighbouring values quoted
+    in §4/§5 (scoped to the catalogue directory; one unscoped recursive grep was
+    refused by a guardrail and re-run against the scoped path).
+
+E11 node scripts/i18n/ledger-check.mjs  -> exit 1:
+    "FAILED — 64 finding(s) across 1085 ledger entr(ies)".
+    ACTUAL class of all 64: for every shipped locale and all three namespaces,
+    "stale source_sha256 … the English source moved since translation",
+    "stale target_sha256 … the translated file changed since it was audited",
+    and "the receipt does not name the English source bytes on disk".
+    This is the ordinary pre-evidence state for this PR (the English source and
+    every target file moved, and the ledger rows still carry the previous
+    audit's bytes); it is NOT a defect in the four vi values and it is the same
+    for the other six locales. The three vi rows (ui.chat,
+    ui.chat.composer_media, ui.common.actions) still need the ledger update that
+    the audit evidence commit performs. No ledger write was performed here.
+    After this command `git status --porcelain` was still empty: nothing written.
+
+3. WHAT WAS READ (not executed)
+-------------------------------
+- ~/local-operator/i18n/style-guides/vi.md (binding, full).
+- ~/local-operator/i18n/glossary.md and the manager byte-copy (full).
+- en/ui.chat.json, en/ui.chat.composer_media.json, en/ui.common.actions.json and
+  their .context.json sidecars; the same three files in vi/.
+- Code read to test the call-site and context sentences:
+  src/renderer/src/features/chat/utils/get-file-name.ts,
+  .../utils/attachment-encode.ts,
+  .../components/image-actions-menu.tsx,
+  .../components/message-item/file-attachment.tsx,
+  .../canonical/sound-player.tsx,
+  .../canonical/supplement-file-actions.tsx,
+  .../canonical/canonical-audio.tsx (label provenance).
+
+4. PER-KEY JUDGEMENT (vi)
+-------------------------
+4.1 ui.chat.composer_media.pasted_image = "Ảnh đã dán"  ("Pasted image")
+    Fallback filename/caption for an image data URI with no usable encoded name.
+    - Parallel to the existing pasted_file "Tệp đã dán" and pasted_type
+      "Đã dán {mimeType}": same participial shape, no extension, no MIME prose,
+      which the sidecar requires ("No file extension, MIME identifier or
+      placeholder is part of this message.").
+    - Short form "Ảnh" is the catalogue's compact-attachment register:
+      ui.canvas.files.attachmentImage "Ảnh đính kèm", ui.agents.avatar
+      "Ảnh đại diện", ui.common.viewer.image_progress "Ảnh {index} / {count}".
+      "Hình ảnh" exists too, but as the category/noun label
+      (ui.canvas.files.images "Hình ảnh", ui.chat.canonical.image_label
+      "Hình ảnh") and would be longer and less parallel here. No finding.
+    - NFC: Ả is U+1EA2 precomposed (E8). Style guide NFC rule satisfied.
+
+4.2 ui.chat.image_actions.actions = "Thao tác với ảnh"  ("Image actions")
+    Default tooltip + unnamed-image accessible-name fallback.
+    - Byte-identical to two existing values for the same concept:
+      ui.canvas.files.imageActions "Thao tác với ảnh" and
+      ui.canvas.finder_files_view.ui_canvas_files_imageactions "Thao tác với ảnh";
+      and it parallels ui.common.actions.file_actions_menu.file_actions
+      "Thao tác với tệp" and ui.canvas.files.fileActions "Thao tác với tệp".
+    - The code confirms the shape is right: ImageActionsMenu's unnamed fallback
+      (image-actions-menu.tsx) now resolves to this key while the named path
+      resolves to actions_for_name, so "Thao tác với ảnh" / "Thao tác với tệp" /
+      "Thao tác với <tên>" form one paradigm. No finding.
+
+4.3 ui.chat.audio.position_label = "Vị trí phát của {label}"  ("{label} position")
+    Accessible name of the clip's seek slider (sound-player.tsx line 455,
+    aria-label on the slider).
+    - Term: "Vị trí phát" is the catalogue's established rendering of playback
+      position — ui.chat.attachments.playback_position "Vị trí phát". Reusing it
+      is required consistency, not a choice.
+    - "của" is grammatically necessary: "Vị trí phát {label}" would read as a
+      mis-ordered compound. Neighbouring audio keys are verb-first
+      ("Phát {label}", "Tạm dừng {label}") and correctly have no "của" because a
+      verb governs its object directly; a noun phrase needs the possessive. This
+      is agreement with the key's own grammar, not a divergence from the
+      play/pause labels.
+    - Arbitrary inserted text: no case/gender/number agreement exists in
+      Vietnamese, so any file name, Latin title, CJK title, quoted name or name
+      ending in punctuation stays grammatical after "của". The sidecar explicitly
+      allows the word order used ("Word order may change around {label}").
+    - Rejected candidate for a NIT: if a future label itself contained a
+      "… của X" phrase the sentence would read "…của … của …". Not raised: labels
+      here are media display titles/filenames (canonical-audio.tsx and
+      supplement-row.tsx pass the clip label straight through), the English has
+      the same dependency on the inserted string, and any alternative
+      ("Vị trí phát: {label}", "{label} — vị trí phát") trades this improbable
+      clumsiness for a real ambiguity about whether the string names the slider
+      or its value. Nothing in the catalogue or the style guide backs a change.
+
+4.4 ui.common.actions.actions_for_name = "Thao tác với {name}"  ("Actions for {name}")
+    Shared file/image overflow-menu accessible name for a named asset.
+    - Byte-identical to the existing value of the same shape:
+      ui.chat.canonical.link_toolkit.actions_for "Thao tác với {name}".
+    - The catalogue also carries "Thao tác cho {name}" in four legacy keys
+      (ui.projects.project_board.actions_for_displayname, ui.shell
+      .sidebar_navigation.row_actions, ui.library.menu.asset_actions_label,
+      ui.settings.appearance.editor.more). Both prepositions are grammatical;
+      the translator chose the variant that already exists verbatim for the same
+      English pattern, which is the stronger consistency call. A change to "cho"
+      would break exact parity with link_toolkit.actions_for. No finding; the
+      legacy split is a pre-existing inconsistency outside this delta.
+    - Placeholder: {name} byte-exact, plain, single, no ICU. Verbatim insertion
+      of a user file name keeps the sentence grammatical; the code inserts the
+      label/name unchanged (supplement-file-actions.tsx, image-actions-menu.tsx)
+      and the unnamed file path correctly falls back to "Thao tác với tệp".
+
+5. GLOSSARY + STYLE-GUIDE CONFORMANCE (vi), against the manager byte-copy
+------------------------------------------------------------------------
+- Placeholders: "preserved byte-exactly; never rename or reorder" (glossary §3)
+  — satisfied: {label}/{name} unchanged, single occurrence, surrounding word
+  order changed only (which both new sidecars explicitly permit).
+- Formality: guide records "bạn"; none of the four strings addresses the user,
+  and the guide forbids sprinkling the pronoun — correct as-is.
+- Sentence case, no "!", no trailing punctuation, no "Vui lòng": satisfied.
+- Product names / kept-English: none present in these four values (nothing to
+  keep Latin; "{name}"/"{label}" receive user data verbatim).
+- Orthography: only Ả/á/ã/đ/ị/í/ủ/ớ/ả, all NFC precomposed (E8) and all tone
+  marks placed per the guide's oa/uy rule where applicable.
+- Punctuation: no quotes, dashes or ellipses used; no NBSP/narrow NBSP needed
+  for vi and none present.
+- Preferred-vocabulary rows: none of §2's terms occur in these values. The
+  guide's "tệp (file)" preference is honoured in the surrounding namespace and
+  in the translation's own parallel key ("Tệp đã dán"), and "ảnh" is the
+  catalogue's established image word.
+
+6. CONTEXT-METADATA ACCURACY (English, in scope)
+------------------------------------------------
+Checked the broadened ui.chat.composer_media.pasted_file note sentence:
+"Fallback for non-image data URIs with no usable name, including invalid percent
+encoding, whether or not a MIME type is present. Also used as synthetic upload
+metadata; valid names and attachment bytes stay unchanged."
+Against get-file-name.ts: `data:image/` branch returns pasted_image (missing
+name= or a throwing decodeURIComponent), the later `data:` branch returns
+pasted_file for everything else with the same name/decode test — so "non-image
+data URIs", "no usable name", "invalid percent encoding" and "whether or not a
+MIME type is present" are all accurate. Against attachment-encode.ts: the value
+becomes the upload source's `name` (`{ kind: "dataUrl", dataUrl, name }`) and the
+wire file entry's name (`stored.name ?? name`), while the original dataUrl is
+passed untouched — so "Also used as synthetic upload metadata" and "valid names
+and attachment bytes stay unchanged" are accurate too. A pedantic residue exists
+(a data URI written with an upper-case scheme/`DATA:IMAGE/` would fall through to
+pasted_file) but that behaviour pre-dates this PR, is unchanged by it, and does
+not falsify the sentence's intent. No finding.
+The new pasted_image note was checked the same way and matches the code.
+The two new accessor notes (image_actions.actions, actions_for_name) match their
+call sites exactly, including "a named image instead uses
+ui.common.actions.actions_for_name" and the caller-override reservation.
+
+7. VERDICT
+----------
+Findings: none. Result "clean"; status "passed"; severity counts all zero.
+The four vi values preserve meaning, placeholders and register, reuse existing
+vi terminology verbatim, and are NFC-clean with no invisible characters.
+
+
+8. NOT EXECUTED / NOT CLAIMED
+-----------------------------
+- No translation, MT or back-translation service was used to compare or
+  back-translate anything; every judgement above is reasoning over the quoted
+  values, the sidecars, the style guide and the read call sites.
+- No ICU/Intl runtime formatting, no Node execution of the message formatter,
+  no production build, install or server. The validators in §2 were run, but
+  MessageFormat rendering of {label}/{name} at runtime was not exercised.
+- No browser, no rendered frame, no screen-reader pass, no width measurement:
+  no pixel or AT proof is claimed. (These strings carry no maxCells; the only
+  width claims are character counts in E8.)
+- No ledger write, no tracked evidence file, no PR comment, no commit. The
+  receipt and record in this directory are scratch handoff only; the ledger
+  rows for vi remain stale until the evidence commit lands (§2, E11).
+- The translator's session was not readable from here, by design; independence
+  rests on this being a fresh session that never took part in translation.

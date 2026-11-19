@@ -1,0 +1,164 @@
+{
+ "schema": 1,
+ "receipt_kind": "locale-audit (PR delta audit)",
+ "date": "2026-11-04",
+ "auditor": "translation-auditor",
+ "agent": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "model_provenance": "Served model as announced by the harness preamble for session f96f8d39d33d (anthropic/claude-opus-5-5); no fallback announced or observed.",
+ "model_fallback": {
+  "announced": false,
+  "observed": false
+ },
+ "status": "passed",
+ "result": "clean-with-findings",
+ "namespace": "ui.teamBridge",
+ "locale": "ru",
+ "audit_id": "tb1681-f96f8d39d33d-ru",
+ "instance": "f96f8d39d33d-pr1681-ru",
+ "session": "f96f8d39d33d",
+ "integration": {
+  "pr": 1681,
+  "repo": "damianvtran/local-operator-ui",
+  "branch": "feat/team-bridge-conversation-menu",
+  "base": "7345dcbf238d334e56f102eb994b15eb5c1776f0",
+  "audited_head": "1ec423538c464ba5b17ffe94d3d80b44f15623dd",
+  "auditor_fix_commit": "the commit that adds this record"
+ },
+ "independence": "Independent auditor: lopdev team translation-auditor, session f96f8d39d33d. Did not translate the 23 conversation_menu values (they arrived in the implementer's commit 1ec423538c46 on PR #1681), wrote no English copy or code in the PR, and is not any prior ui.teamBridge auditor (7c739a6246b4-pr1670, bf2ddf2b6fb3-pr1670-r2). It applied only the corrections listed in findings. Same model family as the team coder (anthropic/claude-opus-5-5), separate agent instance; disclosed. No MT service used. Row written by ledger-assemble.mjs.",
+ "sha256": {
+  "ru": "71f8e41b65b05f7e47e137522b6aa8ecfbb6df08354f26e4408c0f65474b9fd7",
+  "en": "75280fb2e0efe7dc7064094064b9d88ab056856082a8224acfe5cb5fd21c3e7a"
+ },
+ "context_sha256": "71cbc1181a137ff9f5d3fa1a1389adb0571c5d1a6c6b750284aa7bdf90a1ab9b",
+ "style_guide": {
+  "path": "~/local-operator i18n/style-guides/ru.md",
+  "sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5",
+  "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "core_commit": "b42471d3935"
+ },
+ "scope": {
+  "delta_kind": "Delta audit of PR #1681 (7345dcb..1ec423538c46): the 23 new ui.teamBridge.conversation_menu.* values read against en, the en context sidecar, the renderer call sites (team-bridge-conversation-menu.tsx, team-bridge-page.tsx), the glossary, the ru style guide and the #1670 receipts, composed with real arguments; existing ui.teamBridge copy read for glossary consistency. The only pre-existing line the PR touched is members_panel.note.dm (trailing comma; value byte-identical, verified). No rendered fit or native RTL rendering claimed.",
+  "keys_added": [
+   "ui.teamBridge.conversation_menu.view_members",
+   "ui.teamBridge.conversation_menu.join",
+   "ui.teamBridge.conversation_menu.remove_agent",
+   "ui.teamBridge.conversation_menu.add_agent",
+   "ui.teamBridge.conversation_menu.leave_channel",
+   "ui.teamBridge.conversation_menu.leave_group",
+   "ui.teamBridge.conversation_menu.reason.org_wide",
+   "ui.teamBridge.conversation_menu.reason.agents_builtin",
+   "ui.teamBridge.conversation_menu.reason.general_not_member_yet",
+   "ui.teamBridge.conversation_menu.reason.agent_not_permitted",
+   "ui.teamBridge.conversation_menu.confirm.leave_channel_title",
+   "ui.teamBridge.conversation_menu.confirm.leave_group_title",
+   "ui.teamBridge.conversation_menu.confirm.leave_body",
+   "ui.teamBridge.conversation_menu.confirm.remove_agent_title",
+   "ui.teamBridge.conversation_menu.confirm.remove_agent_body",
+   "ui.teamBridge.conversation_menu.confirm.add_agent_title",
+   "ui.teamBridge.conversation_menu.confirm.add_agent_body",
+   "ui.teamBridge.conversation_menu.confirm.add_agent",
+   "ui.teamBridge.conversation_menu.error.generic",
+   "ui.teamBridge.conversation_menu.error.not_in_general",
+   "ui.teamBridge.conversation_menu.partial_leave.body",
+   "ui.teamBridge.conversation_menu.partial_leave.retry_failed",
+   "ui.teamBridge.conversation_menu.partial_leave.retry"
+  ],
+  "keys_changed_by_auditor": [
+   "ui.teamBridge.conversation_menu.join",
+   "ui.teamBridge.conversation_menu.remove_agent",
+   "ui.teamBridge.conversation_menu.reason.org_wide",
+   "ui.teamBridge.conversation_menu.reason.agent_not_permitted",
+   "ui.teamBridge.conversation_menu.confirm.leave_body",
+   "ui.teamBridge.conversation_menu.confirm.remove_agent_title",
+   "ui.teamBridge.conversation_menu.confirm.remove_agent_body",
+   "ui.teamBridge.conversation_menu.confirm.add_agent_body",
+   "ui.teamBridge.conversation_menu.error.not_in_general",
+   "ui.teamBridge.conversation_menu.partial_leave.body",
+   "ui.teamBridge.conversation_menu.partial_leave.retry_failed",
+   "ui.teamBridge.conversation_menu.partial_leave.retry"
+  ]
+ },
+ "findings": [
+  {
+   "id": "RU-M1",
+   "severity": "minor",
+   "keys": [
+    "ui.teamBridge.conversation_menu.confirm.leave_body"
+   ],
+   "summary": "'её сообщения' has no feminine antecedent in the dialog (title 'Покинуть {conversation}?'); English 'its' is the conversation's — 'сообщения из этого разговора' as members_panel.confirm.leave_body says.",
+   "disposition": "fixed by auditor in this commit",
+   "current": "Вы перестанете получать её сообщения, и ваш агент уйдёт вместе с вами. Чтобы вернуться, присоединитесь снова из списка каналов или попросите участника пригласить вас.",
+   "proposed": "Вы перестанете получать сообщения из этого разговора, и ваш агент уйдёт вместе с вами. Чтобы вернуться, присоединитесь снова из списка каналов или попросите участника пригласить вас."
+  },
+  {
+   "id": "RU-M2",
+   "severity": "minor",
+   "keys": [
+    "ui.teamBridge.conversation_menu.reason.agent_not_permitted",
+    "ui.teamBridge.conversation_menu.confirm.remove_agent_body",
+    "ui.teamBridge.conversation_menu.partial_leave.body"
+   ],
+   "summary": "Glossary drift: 'беседа' for conversation, while all 43 other ui.teamBridge values use 'разговор'.",
+   "disposition": "fixed by auditor in this commit"
+  },
+  {
+   "id": "RU-M3",
+   "severity": "minor",
+   "keys": [
+    "ui.teamBridge.conversation_menu.remove_agent",
+    "ui.teamBridge.conversation_menu.confirm.remove_agent_title",
+    "ui.teamBridge.conversation_menu.error.not_in_general",
+    "ui.teamBridge.conversation_menu.partial_leave.retry_failed",
+    "ui.teamBridge.conversation_menu.partial_leave.retry"
+   ],
+   "summary": "Remove drift inside one dialog: title 'Убрать' beside the confirm button 'Удалить' (members_panel.confirm.remove); members.remove/remove_title use 'Удалить', 'Убрать' is compose-chip copy.",
+   "disposition": "fixed by auditor in this commit"
+  },
+  {
+   "id": "RU-N1",
+   "severity": "nit",
+   "keys": [
+    "ui.teamBridge.conversation_menu.reason.org_wide"
+   ],
+   "summary": "'отключите уведомления' vs the catalogue's mute 'выключить звук' (menu.mute, members_panel.note.general; #1670 RU-N1 aligned the same).",
+   "disposition": "fixed by auditor in this commit",
+   "current": "В нём состоят все в организации — лучше отключите уведомления",
+   "proposed": "В нём состоят все в организации — лучше выключите звук"
+  },
+  {
+   "id": "RU-N2",
+   "severity": "nit",
+   "keys": [
+    "ui.teamBridge.conversation_menu.join"
+   ],
+   "summary": "'Присоединиться к каналу' (23 chars vs 12) drifts from the established channel-join verb 'Вступить' (preview.join, preview.join_error) and is the longest label in a w-64 menu; 'Вступить в канал'.",
+   "disposition": "fixed by auditor in this commit",
+   "current": "Присоединиться к каналу",
+   "proposed": "Вступить в канал"
+  },
+  {
+   "id": "RU-N3",
+   "severity": "nit",
+   "keys": [
+    "ui.teamBridge.conversation_menu.confirm.add_agent_body"
+   ],
+   "summary": "'на @-упоминания' vs the catalogue's 'при упоминании через @'.",
+   "disposition": "fixed by auditor in this commit",
+   "current": "{name} присоединится сразу. Агент читает здесь каждое сообщение, сам решает, отвечать ли, и отвечает на @-упоминания.",
+   "proposed": "{name} присоединится сразу. Агент читает здесь каждое сообщение, сам решает, отвечать ли, и отвечает при упоминании через @."
+  }
+ ],
+ "evidence": {
+  "record": "i18n/audits/evidence/ru/ui.teamBridge/tb1681-f96f8d39d33d-ru/record.json",
+  "record_sha256": "a719b767ca9d26024a7edcbf4e90334646684c16dd6948c4a103a6124449ac41"
+ },
+ "checks": {
+  "icu_command": "node scripts/verify.mjs (worktree root; @formatjs/icu-messageformat-parser) — all 389 values parse; argument names equal en on every key; the only kind difference is the pre-existing vi/zh-CN {count, number} in attachmentCard.list/fileCard.list (byte-identical on base 7345dcb; those locales have no plural categories)",
+  "compose_command": "node scripts/compose.mjs (intl-messageformat; {name}=Aida, {conversation}=qa-coordination, {channel}=isolateLtr('#general'/'#agents') as the renderer passes it)",
+  "unicode": "All values NFC; no bidi controls (U+200E/F, U+061C, U+202A-E, U+2066-9); no stray U+202F outside fr; fr high punctuation on delta keys uses U+202F; zh-CN no CJK/Latin space on delta keys.",
+  "key_set": "389 keys, equal to English, same order.",
+  "execution_log": "i18n/audits/evidence/ru/ui.teamBridge/tb1681-f96f8d39d33d-ru/audit.log"
+ },
+ "terminal": true
+}

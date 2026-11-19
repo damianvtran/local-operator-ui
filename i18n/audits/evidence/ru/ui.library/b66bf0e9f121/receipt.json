@@ -1,0 +1,197 @@
+{
+  "locale": "ru",
+  "mode": "delta",
+  "scope": "PR #1851 remediation 8a9ce1f808c266ebe9a0e924094344cea60c2c23..f04035bc3cb6a03644f8776a799e3daad93c7e58: 20 new ui.library keys carried; only ui.library.tag_category.custom fully re-audited; other 19 retained without wording re-audit after raw-byte identity proof. All 159 legacy values preserved vs 0e12072d2b3; legacy translation not certified.",
+  "head_sha": "f04035bc3cb6a03644f8776a799e3daad93c7e58",
+  "base_sha": "0e12072d2b3",
+  "audit_date": "2026-11-10",
+  "key_count": 20,
+  "fully_audited_key_count": 1,
+  "consistency_only_key_count": 19,
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "session": "not supplied",
+    "source": "Manager delegation and new-head ru-rev.json supply actual revision model; translator session not supplied. I did not translate or previously audit this value; no translation/MT service used. Independence is role/work separation, not a session-ID comparison."
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "b66bf0e9f121",
+    "session": "b66bf0e9f121",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "Actual served session header states openai/gpt-6.1-sol. No model switch or fallback used.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "policy_sources": {
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/ru.md",
+      "sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+    },
+    "glossary": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/_s14-audits/f04035bc3cb6a03644f8776a799e3daad93c7e58/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "note": "Manager-supplied glossary copy. No custom term binding; context-specific adjective permitted."
+    },
+    "expected_hashes": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/_s14-audits/f04035bc3cb6a03644f8776a799e3daad93c7e58/expected-hashes.json"
+    }
+  },
+  "status": "passed",
+  "result": "clean",
+  "verdict": "PASSED: revised custom fully audited; 19 remaining new-key verdicts carried by byte identity, not re-audited; key parity and legacy preservation pass; 3/3 expected hashes match. No new findings or unresolved BLOCKER/MAJOR. Prior type/sort nit retained as round1 background.",
+  "findings": [],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "concern_verdicts": {
+    "a_fidelity": "PASS: Произвольные = free-form/unconstrained, an idiomatic adjectival ellipsis for произвольные теги. Fits current note: user or agent creates tags freely, no fixed taxonomy, empty-category fallback; not random selection or a permission action.",
+    "b_terminology_consistency": "PASS: existing Теги anchors plural. No glossary entry requires translating Custom uniformly across ownership, themes and free-form taxonomies. Resolved width; terminology rationale accepted, not a blanket same-English-word requirement: existing ui.agents.pages.scope.custom = Свои and ui.settings.appearance.editor.custom_group = Свои темы describe ownership/custom themes, while ui.agents.skills.scope.local = Свои already labels Local. Current context expressly covers freely created tags by user OR agent and empty-category fallback. Произвольные describes unconstrained taxonomy, not ownership; Свои would be less precise here. No unresolved terminology defect.",
+    "c_retained_tokens": "PASS: no command, identifier, flag, path, markup or kept-English token in revised English Custom or Russian value.",
+    "d_standalone_sentence": "N/A: rail adjective heading, not sentence; neutral sentence case and no politeness padding, matching style guide Terse; ... sentence case. Never Title Case.",
+    "e_fit": "PASS: 12 code points/12 display cells; exact approximate 12-character hint, no combining/wide glyphs; no rendered pixel-width claim.",
+    "f_invisible_bidi": "PASS: precomposed Cyrillic letters only, NFC, no Cc/Cf, combining marks, bidi controls, markup or placeholders.",
+    "g_key_set": "PASS: en/ru 179 identical keys; 159 legacy values unchanged vs base, 20 new; raw file differs from round1 by exactly one value line.",
+    "h_context_sidecar": "PASS current custom and other notes explicitly read; Resolved current metadata: adjective heading over a group of tags (inflect as the target language requires); no longer prescribes a singular noun. Resolved current kind.other context says badge only and unsupported_generic has no kind slot; read corrected note, not a re-audit of unchanged Russian Другое.",
+    "i_hash_binding": "PASS: shasum -a 256 run on en, ru and context; all 3 equal new-head expected-hashes.json.",
+    "rail_collision": "PASS: Произвольные distinct from Формат, Статус, Источник, Проект, Тема, Тип. Existing filter.tags Теги supplies implied noun; sort.kind Тип and filter groups do not collide with this heading."
+  },
+  "namespaces": {
+    "ui.library": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71",
+      "target_sha256": "49af1bd7b725040e8fc821fbe38fca35d8e82410020a0bc40f216ed7650fa8ae",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.library.json",
+          "sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71"
+        },
+        "ru": {
+          "path": "src/i18n/catalogues/ru/ui.library.json",
+          "sha256": "49af1bd7b725040e8fc821fbe38fca35d8e82410020a0bc40f216ed7650fa8ae"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.library.context.json",
+          "sha256": "f799fe911107aa1f7b83b0c026ee277d5c21ee5eba297e3ae13c2da51135cc8e"
+        }
+      },
+      "fully_audited_keys": [
+        "ui.library.tag_category.custom"
+      ],
+      "findings": []
+    }
+  },
+  "per_key_checks": [
+    {
+      "key": "ui.library.tag_category.custom",
+      "source": "Custom",
+      "current_text": "Произвольные",
+      "findings": [],
+      "assessment": "PASS: Произвольные = free-form/unconstrained, an idiomatic adjectival ellipsis for произвольные теги. Fits current note: user or agent creates tags freely, no fixed taxonomy, empty-category fallback; not random selection or a permission action.",
+      "retention_judgment": "Russian adjective, no English token retained.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "length_chars": 12,
+      "length_source_chars": 6
+    }
+  ],
+  "consistency_only_notes": {
+    "round1_sources": [
+      "/Users/damian/local-operator-ui/.worktrees/_s14-audits/8a9ce1f808c266ebe9a0e924094344cea60c2c23/round1/ru-sol-5d9d00eabe50.json",
+      "/Users/damian/local-operator-ui/.worktrees/_s14-audits/8a9ce1f808c266ebe9a0e924094344cea60c2c23/round1/ru-ds-54847aeaaf30.json"
+    ],
+    "retained_keys": [
+      "ui.library.kind.audio",
+      "ui.library.kind.code",
+      "ui.library.kind.docx",
+      "ui.library.kind.html",
+      "ui.library.kind.image",
+      "ui.library.kind.markdown",
+      "ui.library.kind.other",
+      "ui.library.kind.pdf",
+      "ui.library.kind.pptx",
+      "ui.library.kind.spreadsheet",
+      "ui.library.kind.text",
+      "ui.library.kind.video",
+      "ui.library.preview.unsupported_generic",
+      "ui.library.tag_category.format",
+      "ui.library.tag_category.project",
+      "ui.library.tag_category.source",
+      "ui.library.tag_category.status",
+      "ui.library.tag_category.topic",
+      "ui.library.tag_category.type"
+    ],
+    "scope": "The other 19 new values remain raw-byte-identical; both round1 statuses passed, so their judgments carry. I did NOT re-audit their wording. 159 legacy keys checked only for no-removal/no-change.",
+    "prior_findings_disposition": {
+      "ru-sol R1": "Resolved: Пользовательские -> Произвольные shortens 16 to 12 cells; plural adjective naturally agrees with existing ui.library.filter.tags = Теги. Matches the optional wording suggested in that receipt.",
+      "ru-ds M1": "Resolved width; terminology rationale accepted, not a blanket same-English-word requirement: existing ui.agents.pages.scope.custom = Свои and ui.settings.appearance.editor.custom_group = Свои темы describe ownership/custom themes, while ui.agents.skills.scope.local = Свои already labels Local. Current context expressly covers freely created tags by user OR agent and empty-category fallback. Произвольные describes unconstrained taxonomy, not ownership; Свои would be less precise here. No unresolved terminology defect.",
+      "ru-ds N2": "Resolved current metadata: adjective heading over a group of tags (inflect as the target language requires); no longer prescribes a singular noun.",
+      "ru-sol R2": "Resolved current kind.other context says badge only and unsupported_generic has no kind slot; read corrected note, not a re-audit of unchanged Russian Другое.",
+      "ru-ds N1": "Carried unchanged nit, not re-audited: tag_category.type and sort.kind both Тип. Distinct tag-group and sort contexts were accepted in round 1; no new finding against this revision."
+    }
+  },
+  "mechanical": {
+    "validator_commands_run": [
+      "Repository check-duplicates.mjs exported findDuplicates on exactly en/ru/context input files (no selfTest/test tree)",
+      "python JSON parse/assertions",
+      "git rev-parse, diff, show",
+      "shasum -a 256 (3 files)"
+    ],
+    "json_valid": true,
+    "key_sets_identical_to_english": true,
+    "keys_added_or_removed_in_this_delta": [],
+    "placeholder_parity": "Revised value and source contain no placeholders",
+    "icu_plural_select_needed_for_new_keys": "Revised key N/A; 19 keys carried, not re-audited",
+    "invisible_or_bidi_characters_in_new_values": "Revised value none; 19 values carried",
+    "hash_binding": {
+      "status": "passed",
+      "computed": {
+        "en": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71",
+        "ru": "49af1bd7b725040e8fc821fbe38fca35d8e82410020a0bc40f216ed7650fa8ae",
+        "context": "f799fe911107aa1f7b83b0c026ee277d5c21ee5eba297e3ae13c2da51135cc8e"
+      }
+    }
+  },
+  "unverified": [
+    "No rendering, screenshots, pixel geometry, build, server, install, full test suite or runtime formatter. This is read-only copy audit; fit derives from character/cell count.",
+    "Translator revision session not supplied; independence from translator is truthful role separation, not verified distinct IDs.",
+    "No repository write, tracked retention, ledger append, PR comment or commit; manager must retain these scratch artifacts."
+  ],
+  "receipt_contract_review": "Top-level field set matches supplied fr-ds round1 receipt. mode delta; key_count 20 carried, fully_audited_key_count 1, consistency_only_key_count 19; namespace exactly ui.library with current hashes. Read matching round1 record as provenance schema. JSON re-parsed after write.",
+  "audit_notes_not_execution_log": true,
+  "execution_log": "ru-delta-sol-b66bf0e9f121.audit.log",
+  "artifacts": [
+    {
+      "path": "ru-delta-sol-b66bf0e9f121.audit.log",
+      "sha256": "33ae957a646cd867a276fbb64e652195b9866258f7f791951a388ece41275642",
+      "kind": "actual_execution_log",
+      "record_reference": "ru-delta-sol-b66bf0e9f121.record.json"
+    },
+    {
+      "path": "ru-delta-sol-b66bf0e9f121-check.py",
+      "sha256": "7baabee29c6a95c77b3a013f5a89c7a625a1d200db59b8861576f206e68978fa",
+      "kind": "executed_check_source",
+      "record_reference": "ru-delta-sol-b66bf0e9f121.record.json"
+    },
+    {
+      "path": "ru-delta-sol-b66bf0e9f121-check-result.json",
+      "sha256": "7df3998842c937cd919214ffbb8d10845c70a66a2f6eace2c67a513bd8e72d58",
+      "kind": "actual_execution_output",
+      "record_reference": "ru-delta-sol-b66bf0e9f121.record.json"
+    }
+  ],
+  "retention": {
+    "state": "scratch_handoff_only_per_explicit_read_only_task",
+    "intended_tracked_directory": "i18n/audits/evidence/ru/ui.library/p2d-sol-b66bf0e9f121",
+    "manager_action_required": "Retain receipt/record/log in canonical tracked evidence root and append ledger row. This auditor wrote only own scratchpad, no ledger or repository write.",
+    "proposed_note": "passed; custom re-audited, 19 unchanged keys carried; record i18n/audits/evidence/ru/ui.library/p2d-sol-b66bf0e9f121/record.json"
+  }
+}

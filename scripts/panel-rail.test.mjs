@@ -55,9 +55,11 @@ const bundle = await build({
 			export { ChatHeader } from "./src/renderer/src/features/chat/components/chat-header";
 			export { AskDrawer } from "./src/renderer/src/features/chat/components/asks/ask-drawer";
 			export { Tooltip, TooltipProvider } from "./src/renderer/src/shared/components/ui/tooltip";
+			export { BrowserSafeTooltip } from "./src/renderer/src/shared/components/ui/browser-safe-tooltip";
 			export { ChatLayout } from "./src/renderer/src/shared/components/common/chat-layout";
 			export { InPanelRailHost, PanelRailHostContext } from "./${NAV}/panel-rail-host";
-			export { askRailLabels, browserRailLabels, canvasRailLabels, codeRailLabels, consoleRailLabels, PANEL_RAIL_ORDER } from "./${NAV}/panel-rail-model";
+			export { askRailLabels, browserRailLabels, canvasRailLabels, codeRailLabels, consoleRailLabels, projectsRailLabels, PANEL_RAIL_ORDER } from "./${NAV}/panel-rail-model";
+			export { useCanvasStore } from "./src/renderer/src/shared/store/canvas-store";
 			export { askRailToggleLabel, askScopeSubject, ASK_RAIL_ITEM_SELECTOR } from "./src/renderer/src/features/chat/ask-queue";
 			export { captureRefusal } from "./src/renderer/src/shared/keymap/keymap-chord";
 			export { useUiPreferencesStore, resolveDrawnRightSlotPane } from "./src/renderer/src/shared/store/ui-preferences-store";
@@ -66,7 +68,7 @@ const bundle = await build({
 			export { useKeymapShortcuts } from "./src/renderer/src/shared/keymap/use-keymap-shortcuts";
 			export { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
 			export { FLEET_ASKS_UNAVAILABLE_FRONTEND } from "./src/renderer/src/features/chat/fleet-asks";
-			export { runPaneNotice, codeReviewPaneNotice, RUN_NOTICE_DRAFT, RUN_NOTICE_READING, RUN_NOTICE_UNREADABLE, RUN_NOTICE_MISSING, CODE_NOTICE_DRAFT, CODE_NOTICE_BELOW_VERSION, CODE_NOTICE_CHECKING, CODE_NOTICE_LOAD_LEAD, SLOT_NOTICE_PROGRESS_DELAY_MS } from "./src/renderer/src/features/chat/right-slot-notices";
+			export { runPaneNotice, codeReviewPaneNotice, RUN_NOTICE_DRAFT, RUN_NOTICE_READING, RUN_NOTICE_UNREADABLE, RUN_NOTICE_MISSING, CODE_NOTICE_DRAFT, CODE_NOTICE_BELOW_VERSION, CODE_NOTICE_CHECKING, codeNoticeLoadLead, SLOT_NOTICE_PROGRESS_DELAY_MS } from "./src/renderer/src/features/chat/right-slot-notices";
 			export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";
 			export { BACKEND_PAIRING_SENTENCE } from "./src/renderer/src/shared/api/local-operator/backend-error";
 			export * as fixtures from "./${RUN}/run-details.fixtures";
@@ -121,6 +123,7 @@ const {
 	overlapsBrowserView,
 	Tooltip,
 	TooltipProvider,
+	BrowserSafeTooltip,
 	ChatHeader,
 	AskDrawer,
 	ChatLayout,
@@ -151,15 +154,30 @@ const {
 	CODE_NOTICE_DRAFT,
 	CODE_NOTICE_BELOW_VERSION,
 	CODE_NOTICE_CHECKING,
-	CODE_NOTICE_LOAD_LEAD,
+	codeNoticeLoadLead,
 	SLOT_NOTICE_PROGRESS_DELAY_MS,
 	DesktopControlError,
 	BACKEND_PAIRING_SENTENCE,
 	QueryClient,
 	QueryClientProvider,
+	projectsRailLabels,
+	useCanvasStore,
 } = await import(pathToFileURL(bundlePath).href);
 
 const read = (path) => readFileSync(join(ROOT, path), "utf8");
+
+/*
+ * The `...` menu's rows are KEYED since #1761 (the i18n keying): the toggle
+ * sentences these pins used to find as literals in `chat-header.tsx` now live in
+ * the English catalogue, and the header holds `t("ui.chat.header_menu.…")`. The
+ * whitespace-tolerant forms follow the run-details row below, and for the same
+ * reason - the ternary's SHAPE is the pin, not the indentation Biome leaves it
+ * at.
+ */
+const RE_ASKS_TOGGLE =
+	/\{asksOpen\s*\?\s*t\("ui\.chat\.header_menu\.close_asks"\)\s*:\s*t\("ui\.chat\.header_menu\.open_asks"\)\}/;
+const RE_BROWSER_TOGGLE =
+	/\{isBrowserPaneOpen\s*\?\s*t\("ui\.chat\.header_menu\.close_browser"\)\s*:\s*t\("ui\.chat\.header_menu\.open_browser"\)\}/;
 
 // An arbitrary ACTIVE binding, not a browser-owned gesture. A future reserved
 // set expansion must fail at this guard instead of as a misleading tooltip diff.
@@ -353,6 +371,9 @@ const NO_PANES = {
 	isAskDrawerOpen: false,
 	askDrawerScope: "session",
 	askDrawerEvictedPane: null,
+	/* The liveness projection the pane publishes: a reset must not leave one cell's
+	   running terminal lighting the next cell's item. */
+	consoleLiveSurface: null,
 };
 const details = () => deriveRunDetails(fixtures.settled());
 
@@ -404,6 +425,8 @@ test("the rail is ONE vertical toolbar with a name, in the fixed order", async (
 			"console",
 			"canvas",
 			"code",
+			/* Appended after code (operator, 2026-11-15): it moves nothing above it. */
+			"projects",
 		]);
 
 		assert.deepEqual(api.ids(), [...PANEL_RAIL_ORDER]);
@@ -428,7 +451,7 @@ test("one tab stop: exactly one item is tabbable, and it follows focus", async (
 		assert.equal(
 			api.items().filter((item) => item.getAttribute("tabindex") === "-1")
 				.length,
-			5,
+			6,
 		);
 		/* Focus entering on another item (a click, a pointer) moves the stop with it. */
 		act(() => api.item("console").focus());
@@ -453,10 +476,13 @@ test("ArrowUp/ArrowDown walk the items, Home/End take the ends, and the walk is 
 		await api.key(api.item("console"), "ArrowUp");
 		assert.equal(active(), "browser");
 		await api.key(api.item("browser"), "End");
-		assert.equal(active(), "code", "the sixth item is the last");
+		assert.equal(active(), "projects", "the seventh item is the last");
+		await api.key(api.item("projects"), "ArrowUp");
+		assert.equal(active(), "code", "code sits directly above projects");
 		await api.key(api.item("code"), "ArrowDown");
-		assert.equal(active(), "code", "bounded at the end, not wrapping");
-		await api.key(api.item("code"), "Home");
+		await api.key(api.item("projects"), "ArrowDown");
+		assert.equal(active(), "projects", "bounded at the end, not wrapping");
+		await api.key(api.item("projects"), "Home");
 		assert.equal(active(), "run");
 		await api.key(api.item("run"), "ArrowUp");
 		assert.equal(active(), "run", "bounded at the start, not wrapping");
@@ -476,6 +502,186 @@ test("ArrowUp/ArrowDown walk the items, Home/End take the ends, and the walk is 
 	});
 });
 
+/*
+ * THE LINKED-PROJECTS DOOR (operator, 2026-11-15): a seventh item that opens the
+ * CANVAS on its Projects view rather than a pane of its own. The canvas slot
+ * therefore has two doors, and these cases pin the contract between them:
+ * exactly one is lit for any canvas view, each press does what its label says,
+ * and the projects door never strands the canvas door in a state it cannot
+ * explain.
+ */
+const CANVAS_KEY = "agent-1";
+const canvasView = () =>
+	useCanvasStore.getState().conversations[CANVAS_KEY]?.viewMode;
+
+test("projects door: opens the canvas on Projects, lights alone, and closes it", async () => {
+	await mount(async (api) => {
+		reset(api);
+		useCanvasStore.getState().setViewMode(CANVAS_KEY, "documents");
+		await api.render(
+			rail({ canvasConversationId: CANVAS_KEY, linkedProjectCount: 2 }),
+		);
+		assert.deepEqual(api.pressed(), []);
+		await api.click(api.item("projects"));
+		assert.equal(useUiPreferencesStore.getState().isCanvasOpen, true);
+		assert.equal(canvasView(), "projects", "the press picks the view first");
+		assert.deepEqual(
+			api.pressed(),
+			["projects"],
+			"the canvas slot lights ONE door: projects, not canvas",
+		);
+		await api.click(api.item("projects"));
+		assert.equal(
+			useUiPreferencesStore.getState().isCanvasOpen,
+			false,
+			"a press on the lit door closes the pane it opened",
+		);
+	});
+});
+
+test("projects door: canvas on another view lights canvas; the projects press switches the view and keeps the pane", async () => {
+	await mount(async (api) => {
+		reset(api);
+		useCanvasStore.getState().setViewMode(CANVAS_KEY, "files");
+		api.store({ isCanvasOpen: true });
+		await api.render(rail({ canvasConversationId: CANVAS_KEY }));
+		assert.deepEqual(api.pressed(), ["canvas"]);
+		await api.click(api.item("projects"));
+		assert.equal(useUiPreferencesStore.getState().isCanvasOpen, true);
+		assert.equal(canvasView(), "projects");
+		assert.deepEqual(api.pressed(), ["projects"]);
+		/* The canvas door is unlit and reads "Open canvas": its press opens the
+		   canvas's own views rather than closing a pane it did not open. */
+		await api.click(api.item("canvas"));
+		assert.equal(useUiPreferencesStore.getState().isCanvasOpen, true);
+		assert.equal(
+			canvasView(),
+			"files",
+			"back to the view the user came from (round-1 U6), not a fixed documents",
+		);
+		assert.deepEqual(api.pressed(), ["canvas"]);
+	});
+});
+
+/*
+ * ROUND-1 R1-1 / U1 / Q-1: the Projects door's close leaves the stored view at
+ * `projects`, and the Canvas door used to plain-toggle the pane back open onto
+ * it - unlit, two presses from the files the user wanted. The canvas door opens
+ * the LAST non-projects view whether the pane is drawn or closed (U6: not a
+ * fixed `documents`), and the pane's own close (a bare `setCanvasOpen(false)`,
+ * the header X) leaves the same state behind, so it is pinned too.
+ */
+test("canvas door after the projects door closed the pane: opens lit, on the last canvas view", async () => {
+	await mount(async (api) => {
+		reset(api);
+		useCanvasStore.getState().setViewMode(CANVAS_KEY, "files");
+		await api.render(rail({ canvasConversationId: CANVAS_KEY }));
+		await api.click(api.item("projects"));
+		assert.deepEqual(api.pressed(), ["projects"]);
+		await api.click(api.item("projects"));
+		assert.equal(useUiPreferencesStore.getState().isCanvasOpen, false);
+		assert.deepEqual(api.pressed(), []);
+		await api.click(api.item("canvas"));
+		assert.equal(useUiPreferencesStore.getState().isCanvasOpen, true);
+		assert.equal(canvasView(), "files", "the view the user left, not Projects");
+		assert.deepEqual(api.pressed(), ["canvas"], "ONE press lights canvas");
+		await api.click(api.item("canvas"));
+		assert.equal(
+			useUiPreferencesStore.getState().isCanvasOpen,
+			false,
+			"and the lit canvas door is a plain toggle again",
+		);
+	});
+});
+
+test("canvas door after the pane's own close on Projects: still opens the canvas's view", async () => {
+	await mount(async (api) => {
+		reset(api);
+		useCanvasStore.getState().setViewMode(CANVAS_KEY, "goals");
+		useCanvasStore.getState().setViewMode(CANVAS_KEY, "projects");
+		api.store({ isCanvasOpen: true });
+		await api.render(rail({ canvasConversationId: CANVAS_KEY }));
+		assert.deepEqual(api.pressed(), ["projects"]);
+		act(() => useUiPreferencesStore.getState().setCanvasOpen(false));
+		await api.click(api.item("canvas"));
+		assert.equal(canvasView(), "goals");
+		assert.deepEqual(api.pressed(), ["canvas"]);
+	});
+});
+
+test("canvas door with no remembered canvas view defaults to documents", async () => {
+	await mount(async (api) => {
+		reset(api);
+		/* A persisted state from before `lastCanvasView` existed. */
+		useCanvasStore.setState((state) => ({
+			conversations: {
+				...state.conversations,
+				[CANVAS_KEY]: {
+					...state.conversations[CANVAS_KEY],
+					viewMode: "projects",
+					lastCanvasView: undefined,
+				},
+			},
+		}));
+		await api.render(rail({ canvasConversationId: CANVAS_KEY }));
+		await api.click(api.item("canvas"));
+		assert.equal(canvasView(), "documents");
+		assert.deepEqual(api.pressed(), ["canvas"]);
+	});
+});
+
+test("projects door: swaps another pane out of the slot", async () => {
+	await mount(async (api) => {
+		reset(api);
+		useCanvasStore.getState().setViewMode(CANVAS_KEY, "documents");
+		api.store({ isBrowserPaneOpen: true });
+		await api.render(rail({ canvasConversationId: CANVAS_KEY }));
+		assert.deepEqual(api.pressed(), ["browser"]);
+		await api.click(api.item("projects"));
+		const state = useUiPreferencesStore.getState();
+		assert.equal(state.isBrowserPaneOpen, false);
+		assert.equal(resolveDrawnRightSlotPane(state), "canvas");
+		assert.deepEqual(api.pressed(), ["projects"]);
+	});
+});
+
+test("projects door: names carry the linked total; the quiet mark shows only for a non-zero total", async () => {
+	await mount(async (api) => {
+		reset(api);
+		await api.render(
+			rail({ canvasConversationId: CANVAS_KEY, linkedProjectCount: 0 }),
+		);
+		const item = () => api.item("projects");
+		assert.equal(item().getAttribute("aria-label"), "Linked projects");
+		assert.equal(item().querySelector("[data-linked-projects-mark]"), null);
+		await api.render(
+			rail({ canvasConversationId: CANVAS_KEY, linkedProjectCount: 3 }),
+		);
+		assert.equal(
+			item().getAttribute("aria-label"),
+			"Linked projects, 3 projects",
+		);
+		assert.ok(item().querySelector("[data-linked-projects-mark]"));
+	});
+	assert.deepEqual(projectsRailLabels(false, 1), {
+		tooltip: "Open linked projects — 1 project",
+		aria: "Linked projects, 1 project",
+	});
+	assert.deepEqual(projectsRailLabels(true, 0), {
+		tooltip: "Close linked projects",
+		aria: "Linked projects",
+	});
+});
+
+test("projects door: with no canvas key the press does nothing rather than open a blank view", async () => {
+	await mount(async (api) => {
+		reset(api);
+		await api.render(rail());
+		await api.click(api.item("projects"));
+		assert.equal(useUiPreferencesStore.getState().isCanvasOpen, false);
+	});
+});
+
 test("aria-pressed follows each of the six store flags, one at a time", async () => {
 	await mount(async (api) => {
 		for (const [flag, id] of [
@@ -489,7 +695,10 @@ test("aria-pressed follows each of the six store flags, one at a time", async ()
 			["isCodeReviewPaneOpen", "code"],
 		]) {
 			reset(api);
-			await api.render(rail());
+			/* The console item's lit state follows LIVENESS, not the pane flag
+			   (operator report, 2026-10-21), so the cell that opens it must say a
+			   process is running - the prop chat-content derives from the pane. */
+			await api.render(rail(id === "console" ? { consoleLiveCount: 1 } : {}));
 			assert.deepEqual(api.pressed(), [], "nothing is lit with the slot empty");
 			api.store({ [flag]: true });
 			assert.deepEqual(api.pressed(), [id], `${flag} lights ${id} and only it`);
@@ -500,6 +709,78 @@ test("aria-pressed follows each of the six store flags, one at a time", async ()
 				);
 			}
 		}
+	});
+});
+
+test("the console item follows liveness, and an open history pane still toggles closed (U5)", async () => {
+	/*
+	 * THE OPERATOR'S REPORT (2026-10-21) AND ITS UX ROUND-1 CORRECTION (U5).
+	 *
+	 * Open on restored history: the item must NOT look active ("0 live"), and the
+	 * press is the pane's TOGGLE - it closes the pane the user is reading, because a
+	 * rail item is a door. The create-on-open rule belongs to the CLOSED state: a
+	 * press that opens an empty/history pane files `requestConsoleOpen`, and the pane
+	 * creates. A live console keeps the lit paint and the same close.
+	 */
+	await mount(async (api) => {
+		reset(api);
+		api.store({ isConsolePaneOpen: true, consoleLiveSurface: null });
+		await api.render(rail({ consoleLiveCount: 0 }));
+		assert.deepEqual(
+			api.pressed(),
+			[],
+			"an open pane with no running surface is not the active console",
+		);
+		/*
+		 * S5: the rail no longer carries a tooltip. A label opened LEFT would land on
+		 * the native browser page, and a tooltip may not take the page away (the
+		 * kind table), so the rail's accessible name is the channel. What this test
+		 * still owns is the PRESS: an unlit item on an open history pane closes it.
+		 */
+		await api.click(api.item("console"));
+		let state = useUiPreferencesStore.getState();
+		assert.equal(
+			state.isConsolePaneOpen,
+			false,
+			"the unlit item on an open history pane is the toggle that closes it",
+		);
+		assert.equal(
+			state.consoleOpenIntent,
+			null,
+			"closing is not a request for a new terminal",
+		);
+
+		// A CLOSED pane's press is the open that may create.
+		reset(api);
+		api.store({ isConsolePaneOpen: false, consoleLiveSurface: null });
+		await api.render(rail({ consoleLiveCount: 0 }));
+		await api.click(api.item("console"));
+		state = useUiPreferencesStore.getState();
+		assert.equal(state.isConsolePaneOpen, true, "a closed item opens the pane");
+		assert.equal(
+			state.consoleOpenIntent,
+			"session-1",
+			"and asks the pane for a terminal",
+		);
+
+		// And the live case is the lit toggle it always was.
+		reset(api);
+		api.store({
+			isConsolePaneOpen: true,
+			consoleLiveSurface: { sessionId: "session-1", count: 1 },
+		});
+		await api.render(rail({ consoleLiveCount: 1 }));
+		assert.deepEqual(
+			api.pressed(),
+			["console"],
+			"a running console is the active one",
+		);
+		await api.click(api.item("console"));
+		assert.equal(
+			useUiPreferencesStore.getState().isConsolePaneOpen,
+			false,
+			"the lit item is still the way to put a live console away",
+		);
 	});
 });
 
@@ -518,6 +799,9 @@ test("pressing an item claims the slot: the others are cleared, and a second pre
 			[],
 			"the lit item is also the way to close",
 		);
+		// The console's active treatment is liveness, so this door is judged in the
+		// state it is meant to be lit in: an open pane with a running surface.
+		await api.render(rail({ consoleLiveCount: 1 }));
 		await api.click(api.item("console"));
 		assert.deepEqual(api.pressed(), ["console"]);
 		assert.equal(
@@ -653,7 +937,6 @@ test("a claimed pane the route cannot draw lights NOTHING (the drawable-aware se
 		for (const [flag, id] of [
 			["isRunPanelOpen", "run"],
 			["isBrowserPaneOpen", "browser"],
-			["isConsolePaneOpen", "console"],
 			["isCanvasOpen", "canvas"],
 			["isCodeReviewPaneOpen", "code"],
 		]) {
@@ -662,6 +945,20 @@ test("a claimed pane the route cannot draw lights NOTHING (the drawable-aware se
 			await api.render(rail({ runDetails: null, sessionId: null }));
 			assert.deepEqual(api.pressed(), [id], `${flag} on a mounted draft`);
 		}
+		/*
+		 * THE CONSOLE IS THE EXCEPTION HERE, and it follows its own rule: the item is
+		 * active only while a terminal is RUNNING (operator report, 2026-10-21), and a
+		 * draft has no conversation to run one in. The pane still draws its notice; the
+		 * door just does not claim a live console.
+		 */
+		reset(api, DRAFT);
+		api.store({ isConsolePaneOpen: true });
+		await api.render(rail({ runDetails: null, sessionId: null }));
+		assert.deepEqual(
+			api.pressed(),
+			[],
+			"a draft has no live console, so the console door is not the active one",
+		);
 		reset(api, DRAFT);
 		api.store({ isAskDrawerOpen: true, askDrawerScope: "session" });
 		await api.render(rail({ runDetails: null, sessionId: null }));
@@ -716,7 +1013,11 @@ test("a door pressed on a draft opens its pane, and the console files no open re
 			null,
 			"no conversation, so no console is requested",
 		);
-		assert.deepEqual(api.pressed(), ["console"]);
+		assert.deepEqual(
+			api.pressed(),
+			[],
+			"a draft has no live terminal, so the console item is not the active one",
+		);
 		for (const [id, flag] of [
 			["run", "isRunPanelOpen"],
 			["code", "isCodeReviewPaneOpen"],
@@ -817,7 +1118,7 @@ test("each pane that cannot act picks the notice for its reason (D1/D3)", () => 
 	}).notice;
 	assert.equal(outdated.kind, "code-unreadable");
 	assert.equal(outdated.tone, "unavailable");
-	assert.equal(outdated.title, CODE_NOTICE_LOAD_LEAD);
+	assert.equal(outdated.title, codeNoticeLoadLead());
 	assert.equal(
 		outdated.detail,
 		"The Local Operator server is older than this app expects. Update the server and try again.",
@@ -826,7 +1127,7 @@ test("each pane that cannot act picks the notice for its reason (D1/D3)", () => 
 		state: "unknown",
 		loadError: new DesktopControlError(null, "no answer"),
 	}).notice;
-	assert.equal(unreachable.title, CODE_NOTICE_LOAD_LEAD);
+	assert.equal(unreachable.title, codeNoticeLoadLead());
 	assert.equal(
 		unreachable.detail,
 		"The Local Operator server is not answering.",
@@ -837,7 +1138,7 @@ test("each pane that cannot act picks the notice for its reason (D1/D3)", () => 
 	}).notice;
 	assert.equal(unpaired.kind, "code-unpaired");
 	assert.equal(unpaired.tone, "unavailable");
-	assert.equal(unpaired.title, CODE_NOTICE_LOAD_LEAD);
+	assert.equal(unpaired.title, codeNoticeLoadLead());
 	assert.equal(unpaired.detail, BACKEND_PAIRING_SENTENCE["credential-refused"]);
 
 	const every = [
@@ -1052,27 +1353,26 @@ test("the asks item is always present, and its labels carry the scope and the co
  * own keyboard path), because that is the string a reader actually gets - the
  * accessible name deliberately carries no verb (U2).
  */
-test("the asks item's tooltip verb follows its SCOPE while aria-pressed follows the slot (N1)", async () => {
+test("the asks item's NAME follows its SCOPE while aria-pressed follows the slot (N1)", async () => {
 	await mount(async (api) => {
 		reset(api);
 		await api.render(rail({ askCount: 2, askScope: "session" }));
-		const tooltip = () => api.$('[role="tooltip"]')?.textContent ?? null;
+		// S5: the visible tooltip is gone (it would open over the page), so the
+		// scope the verb used to state lives in the accessible name.
+		const name = () => api.item("ask").getAttribute("aria-label") ?? "";
 		act(() => api.item("ask").focus());
 		await frames(30);
-		assert.equal(
-			tooltip(),
-			"Open asks — This conversation, 2 waiting",
-			"closed: the item offers the open",
-		);
+		assert.match(name(), /This conversation/);
+		assert.match(name(), /2 waiting/);
 		assert.equal(api.item("ask").getAttribute("aria-pressed"), "false");
 
 		/* The carried cross-scope state: a fleet drawer is up over this conversation. */
 		api.store({ isAskDrawerOpen: true, askDrawerScope: "fleet" });
 		await frames(2);
-		assert.equal(
-			tooltip(),
-			"Open asks — This conversation, 2 waiting",
-			"cross-scope: the press re-scopes, so the verb stays the action it will take",
+		assert.match(
+			name(),
+			/This conversation/,
+			"cross-scope: the name states the scope the press will act on",
 		);
 		assert.equal(
 			api.item("ask").getAttribute("aria-pressed"),
@@ -1083,17 +1383,17 @@ test("the asks item's tooltip verb follows its SCOPE while aria-pressed follows 
 		/* Same scope: the press closes this scope's drawer. */
 		api.store({ isAskDrawerOpen: true, askDrawerScope: "session" });
 		await frames(2);
-		assert.equal(
-			tooltip(),
-			"Close asks — This conversation, 2 waiting",
-			"same-scope: the press closes, and now the verb says so",
+		assert.match(
+			name(),
+			/This conversation, 2 waiting/,
+			"same-scope: the name still states the scope",
 		);
 		assert.equal(api.item("ask").getAttribute("aria-pressed"), "true");
 
 		/* Closed again. */
 		api.store({ isAskDrawerOpen: false });
 		await frames(2);
-		assert.equal(tooltip(), "Open asks — This conversation, 2 waiting");
+		assert.match(name(), /This conversation, 2 waiting/);
 		assert.equal(api.item("ask").getAttribute("aria-pressed"), "false");
 		/*
 		 * ...and the bound cap rides the tooltip too (#928, review round 1's
@@ -1102,9 +1402,10 @@ test("the asks item's tooltip verb follows its SCOPE while aria-pressed follows 
 		 */
 		api.store({ shortcutBindings: { "panel.ask": ASK_SAMPLE_CHORD } });
 		await frames(2);
-		assert.equal(
-			tooltip(),
-			"Open asks (Ctrl+Shift+U) — This conversation, 2 waiting",
+		assert.match(
+			name(),
+			/\(Ctrl\+Shift\+U\)/,
+			"the bound cap rides the accessible name too",
 		);
 		api.store({ shortcutBindings: {} });
 		act(() => api.item("ask").blur());
@@ -1167,6 +1468,18 @@ test("the tooltips are the header's verbatim; the accessible names are stable no
 		tooltip: "Close asks — All conversations, 2 waiting",
 		aria: "Asks, All conversations, 2 waiting",
 	});
+	/*
+	 * NOTIFICATIONS (decisions D9): the door's badge adds this conversation's
+	 * unread updates, so the name says both; zero updates is today's name.
+	 */
+	assert.equal(
+		askRailLabels(false, "session", 1, null, 2).aria,
+		"Asks, This conversation, 1 waiting, 2 unread updates",
+	);
+	assert.equal(
+		askRailLabels(false, "session", 1, null, 0).aria,
+		"Asks, This conversation, 1 waiting",
+	);
 	assert.deepEqual(askRailLabels(false, "session", 0, null), {
 		tooltip: "Open asks — This conversation",
 		aria: "Asks, This conversation",
@@ -1724,19 +2037,44 @@ test("the header no longer renders the five triggers or their shed ladder", () =
 		railSource.includes('data-tour-tag="ask-pane-trigger"'),
 		"the asks item's tag must live on the rail item: it is the drawer's anchor",
 	);
-	for (const label of [
-		't("ui.chat.header.open_run_details")',
-		"Close asks",
-		"Open browser",
-		"Open console",
-		"Open canvas",
+	for (const [key, sentence] of [
+		["ui.chat.header.open_run_details", "Open run details"],
+		["ui.chat.header_menu.open_asks", "Open asks"],
+		["ui.chat.header_menu.open_browser", "Open browser"],
+		["ui.chat.header_menu.open_console", "Open console"],
+		["ui.chat.header_menu.open_canvas", "Open canvas"],
 	]) {
-		assert.ok(header.includes(label), `the ... menu lost its "${label}" entry`);
+		assert.ok(
+			header.includes(`t("${key}")`),
+			`the ... menu lost its "${sentence}" entry (${key})`,
+		);
+	}
+	/*
+	 * And the four menu rows still SAY their sentences: the binding alone would
+	 * pass over a catalogue whose value was emptied, which is a menu entry a
+	 * reader cannot read. The run-details pair is pinned the same way at the top
+	 * of this case, against `ui.chat.header.json`.
+	 */
+	const menuCopy = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.chat.header_menu.json", "utf8"),
+	);
+	for (const [key, sentence] of [
+		["ui.chat.header_menu.open_asks", "Open asks"],
+		["ui.chat.header_menu.open_browser", "Open browser"],
+		["ui.chat.header_menu.open_console", "Open console"],
+		["ui.chat.header_menu.open_canvas", "Open canvas"],
+	]) {
+		assert.equal(
+			menuCopy[key],
+			sentence,
+			`${key} must still read "${sentence}": the row is bound, its copy is what the entry says`,
+		);
 	}
 	/* The asks row's label is the sibling toggle spelling, and its PLACEMENT mirrors
 	   the rail's order (between Run details and Open browser). */
-	assert.ok(
-		header.includes('{asksOpen ? "Close asks" : "Open asks"}'),
+	assert.match(
+		header,
+		RE_ASKS_TOGGLE,
 		"the asks row must be the same toggle sentence as the browser row's",
 	);
 	/* The run row's label is keyed now (close/open) and its ternary can wrap:
@@ -1745,10 +2083,8 @@ test("the header no longer renders the five triggers or their shed ladder", () =
 	const runAt = header.search(
 		/\{isRunPanelOpen\s*\?\s*t\("ui\.chat\.header\.close_run_details"\)\s*:\s*t\("ui\.chat\.header\.open_run_details"\)\}/,
 	);
-	const asksAt = header.indexOf('{asksOpen ? "Close asks" : "Open asks"}');
-	const browserAt = header.indexOf(
-		'{isBrowserPaneOpen ? "Close browser" : "Open browser"}',
-	);
+	const asksAt = header.search(RE_ASKS_TOGGLE);
+	const browserAt = header.search(RE_BROWSER_TOGGLE);
 	assert.ok(
 		runAt >= 0 && asksAt > runAt && browserAt > asksAt,
 		"the asks row sits between Run details and Open browser, mirroring the rail (#896)",
@@ -1887,183 +2223,51 @@ test("the host stays 44 across React StrictMode's double-mounted effects", async
  * PREDICATE, not a layout.
  */
 const VIEW = { x: 740, y: 150, width: 496, height: 750 };
-const ours = () =>
-	suppressedOverlayIds().filter((id) => id.startsWith("panel-rail-tooltip"));
 const frames = (n = 14) =>
 	act(async () => {
 		await new Promise((resolve) => setTimeout(resolve, n * 20));
 	});
 
-/** Open the item's tooltip by keyboard focus, with its panel reported at `rect`. */
-async function openTooltipAt(api, id, rect) {
-	const proto = api.window.HTMLElement.prototype;
-	const original = proto.getBoundingClientRect;
-	proto.getBoundingClientRect = function () {
-		if (this.getAttribute?.("role") === "tooltip") {
-			return {
-				left: rect.x,
-				top: rect.y,
-				right: rect.x + rect.width,
-				bottom: rect.y + rect.height,
-				x: rect.x,
-				y: rect.y,
-				width: rect.width,
-				height: rect.height,
-			};
-		}
-		return original.call(this);
-	};
-	act(() => api.item(id).focus());
-	await frames();
-	return () => {
-		proto.getBoundingClientRect = original;
-	};
-}
-
-test("a rail tooltip that REACHES the view suppresses it for exactly as long as it is open", async () => {
+test("the rail label is mounted only when no browser view can clip it (S5 D2)", async () => {
 	await mount(async (api) => {
 		reset(api);
-		api.store({ isBrowserPaneOpen: true });
 		const release = registerBrowserViewRect(() => VIEW);
 		await api.render(rail());
-		assert.deepEqual(ours(), [], "nothing is suppressed at rest");
-		/* Canvas: y=150..178, inside the view by 23px of its 27 (design's measurement). */
-		const restore = await openTooltipAt(api, "canvas", {
-			x: 1000,
-			y: 150,
-			width: 120,
-			height: 28,
-		});
-		assert.equal(ours().length, 1, "a tooltip over the view registers once");
-		act(() => api.item("canvas").blur());
-		await frames(4);
-		assert.deepEqual(ours(), [], "closing it releases the suppression");
-		restore();
-		release();
-	});
-	assert.deepEqual(ours(), [], "and unmounting leaves nothing behind");
-});
-
-test("a rail tooltip that does NOT reach the view buys nothing: the page stays drawn (D11)", async () => {
-	await mount(async (api) => {
-		reset(api);
-		api.store({ isBrowserPaneOpen: true });
-		const release = registerBrowserViewRect(() => VIEW);
-		await api.render(rail());
-		/* Console's: y=114..142, ENDS above the view's top (150). */
-		const restore = await openTooltipAt(api, "console", {
-			x: 1000,
-			y: 114,
-			width: 120,
-			height: 28,
-		});
-		assert.deepEqual(ours(), [], "a tooltip above the view must not blank it");
-		restore();
-		release();
-	});
-});
-
-test("with no browser surface mounted there is no view to occlude, so nothing registers", async () => {
-	await mount(async (api) => {
-		reset(api, DRAFT);
-		await api.render(rail());
-		const restore = await openTooltipAt(api, "canvas", {
-			x: 1000,
-			y: 150,
-			width: 120,
-			height: 28,
-		});
-		assert.deepEqual(ours(), []);
-		restore();
-	});
-});
-
-test("the view's rect moving (a consent banner pushes the page down) changes the answer with no constant to update", async () => {
-	await mount(async (api) => {
-		reset(api);
-		api.store({ isBrowserPaneOpen: true });
-		let view = VIEW;
-		const release = registerBrowserViewRect(() => view);
-		await api.render(rail());
-		/* The page is pushed below Canvas's tooltip (y=150..178): it no longer reaches it. */
-		view = { ...VIEW, y: 200, height: 700 };
-		const restore = await openTooltipAt(api, "canvas", {
-			x: 1000,
-			y: 150,
-			width: 120,
-			height: 28,
-		});
-		assert.deepEqual(
-			ours(),
-			[],
-			"Canvas stops suppressing once the page is below it",
-		);
-		restore();
-		release();
-	});
-});
-
-test("a tooltip left open by an exit through the window edge does not hold the page blank (R6/Q5)", async () => {
-	await mount(async (api) => {
-		reset(api);
-		api.store({ isBrowserPaneOpen: true });
-		const release = registerBrowserViewRect(() => VIEW);
-		await api.render(rail());
-		const restore = await openTooltipAt(api, "canvas", {
-			x: 1000,
-			y: 150,
-			width: 120,
-			height: 28,
-		});
-		assert.equal(ours().length, 1);
-		/* Radix does not close on this (it waits for a later document pointermove),
-		   which is the point: the registration must not depend on it. */
-		act(() => {
-			api.document.documentElement.dispatchEvent(
-				new api.window.Event("pointerleave"),
-			);
-		});
-		await act(async () => {});
-		assert.deepEqual(ours(), [], "pointer left the document: released");
-		act(() => {
-			api.document.dispatchEvent(
-				new api.window.Event("pointermove", { bubbles: true }),
-			);
-		});
-		await act(async () => {});
+		const node = api.item("canvas");
+		act(() => api.item("canvas").focus());
+		await frames(30);
 		assert.equal(
-			ours().length,
-			1,
-			"and re-armed while the tooltip is still open",
+			api.$('[role="tooltip"]'),
+			null,
+			"with a view mounted the label would be clipped, so it is not mounted",
 		);
-		act(() => api.window.dispatchEvent(new api.window.Event("blur")));
-		await act(async () => {});
-		assert.deepEqual(ours(), [], "window blur: released");
-		restore();
+		assert.ok(
+			api.item("canvas").getAttribute("aria-label"),
+			"the accessible name still carries it",
+		);
+		assert.deepEqual(suppressedOverlayIds(), [], "focus never pauses");
 		release();
-	});
-});
 
-test("keyboard focus takes the SAME measured path as hover (D14)", async () => {
-	await mount(async (api) => {
-		reset(api);
-		api.store({ isBrowserPaneOpen: true });
-		const release = registerBrowserViewRect(() => VIEW);
-		await api.render(rail());
-		/* Browser's tooltip sits in the pane's bar, above the view. Focus rests on it. */
-		const restore = await openTooltipAt(api, "browser", {
-			x: 1000,
-			y: 60,
-			width: 120,
-			height: 28,
-		});
-		assert.deepEqual(
-			ours(),
-			[],
-			"a focused item whose tooltip is above the view holds nothing blank",
+		/* No surface: the same rail, the same focus, the label is back. This is the
+		   regression the round-1 review found — the removal was global, but the
+		   conflict exists only on the browser route. */
+		await frames(2);
+		assert.equal(
+			api.item("canvas"),
+			node,
+			"the trigger node survives the view appearing and disappearing (U8)",
 		);
-		restore();
-		release();
+		assert.equal(
+			document.activeElement,
+			node,
+			"and focus does not fall to body while it happens",
+		);
+		act(() => api.item("canvas").blur());
+		await frames(2);
+		act(() => api.item("canvas").focus());
+		await frames(30);
+		assert.ok(api.$('[role="tooltip"]'), "a tooltip is mounted with no view");
+		assert.deepEqual(suppressedOverlayIds(), [], "and it still never pauses");
 	});
 });
 
@@ -2095,7 +2299,107 @@ test("Tooltip's onOpenChange follows what is SHOWN, so suppressed cannot leave a
 			"forced shut by `suppressed`: the report follows, it is not left at true",
 		);
 		await api.render(el(false));
-		assert.equal(seen.at(-1), true, "and back when the override lifts");
+		assert.equal(
+			seen.at(-1),
+			true,
+			"the DEFAULT resumes: suppression is not a discard (round-4 reviewer MAJOR-1)",
+		);
+		assert.ok(
+			api.$('[role="tooltip"]'),
+			"the panel returns when the override lifts",
+		);
+	});
+});
+
+test("discard opt-in stays closed on lift, and BrowserSafeTooltip opts in by default (U14)", async () => {
+	await mount(async (api) => {
+		const warns = [];
+		const original = console.error;
+		console.error = (...args) => warns.push(args.join(" "));
+		try {
+			// A caller's own `suppressed` is not a view discard (U29): with no
+			// browser view, suppress then lift and a FRESH focus opens the label.
+			const caller = (suppressed) =>
+				React.createElement(
+					BrowserSafeTooltip,
+					{ content: "caller", suppressed },
+					React.createElement(
+						"button",
+						{ id: "tooltip-caller", type: "button" },
+						"c",
+					),
+				);
+			await api.render(caller(true));
+			await frames(2);
+			act(() => api.$("#tooltip-caller").focus());
+			await frames(20);
+			assert.equal(api.$('[role="tooltip"]'), null, "caller suppression hides");
+			await api.render(caller(false));
+			await frames(2);
+			act(() => api.$("#tooltip-caller").blur());
+			act(() => api.$("#tooltip-caller").focus());
+			await frames(20);
+			assert.ok(
+				api.$('[role="tooltip"]'),
+				"caller suppression resumes by default",
+			);
+
+			const el = (suppressed) =>
+				React.createElement(
+					TooltipProvider,
+					null,
+					React.createElement(
+						Tooltip,
+						{ content: "hint", suppressed, discardWhileSuppressed: true },
+						React.createElement("button", { id: "d", type: "button" }, "d"),
+					),
+				);
+			await api.render(el(false));
+			act(() => api.$("#d").focus());
+			await frames(20);
+			assert.ok(api.$('[role="tooltip"]'), "open before suppression");
+			await api.render(el(true));
+			assert.equal(api.$('[role="tooltip"]'), null, "suppression hides it");
+			await api.render(el(false));
+			assert.equal(
+				api.$('[role="tooltip"]'),
+				null,
+				"discard is opt-in: lifting must not repaint the closed panel",
+			);
+
+			// BrowserSafeTooltip: focus, view arrives, view leaves; the label must
+			// not repaint, and the root must never flip uncontrolled.
+			const safe = () =>
+				React.createElement(
+					BrowserSafeTooltip,
+					{ content: "safe" },
+					React.createElement("button", { id: "s", type: "button" }, "s"),
+				);
+			await api.render(safe());
+			act(() => api.$("#s").focus());
+			await frames(20);
+			assert.ok(
+				api.$('[role="tooltip"]'),
+				"no view: label is a normal tooltip",
+			);
+			const release = registerBrowserViewRect(() => VIEW);
+			await frames(4);
+			assert.equal(api.$('[role="tooltip"]'), null, "view: panel stands down");
+			release();
+			await frames(6);
+			assert.equal(
+				api.$('[role="tooltip"]'),
+				null,
+				"view gone: a view-based label must not resume",
+			);
+			assert.equal(
+				warns.filter((line) => /uncontrolled to controlled/i.test(line)).length,
+				0,
+				"a boolean suppressed prop cannot flip the Radix root",
+			);
+		} finally {
+			console.error = original;
+		}
 	});
 });
 
@@ -2877,8 +3181,13 @@ test("the lit bar is clear of the focus ring, flush with the rail's leading edge
 		"src/renderer/src/shared/components/navigation/panel-rail-item.tsx",
 	);
 	assert.ok(
-		item.includes("before:-left-[6px]"),
-		"the bar is 6px outside the 32px control - the item is centred in the 44px rail, so the gutter is 6px a side - and its 2px width therefore starts ON the rail's leading edge",
+		item.includes("before:-start-[6px]"),
+		"the bar is 6px outside the 32px control - the item is centred in the 44px rail, so the gutter is 6px a side - and its 2px width therefore starts ON the rail's leading (inline-start) edge in either writing direction",
+	);
+	assert.ok(
+		!item.includes("before:-left-[6px]") &&
+			!item.includes("before:-right-[6px]"),
+		"the bar must be anchored to the rail's inline-start edge, not a physical side: in RTL the rail stands at the window's left and the content boundary is its right edge",
 	);
 	assert.ok(
 		!item.includes("before:-left-[6.5px]"),
@@ -2894,7 +3203,7 @@ test("the count badge is the small mark anchored to the corner (D4)", () => {
 	const rail = read(
 		"src/renderer/src/shared/components/navigation/panel-rail.tsx",
 	);
-	assert.match(rail, /absolute -top-0\.5 -right-0\.5 flex/);
+	assert.match(rail, /absolute -top-0\.5 -end-0\.5 flex/);
 	assert.ok(
 		rail.includes("text-meta-sm"),
 		"the type token, not a literal size",

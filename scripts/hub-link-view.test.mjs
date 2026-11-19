@@ -7,7 +7,7 @@ import { build } from "esbuild";
 const bundled = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/shared/api/local-operator/hub-publication"; export * from "./src/renderer/src/features/agents/definition-editor-identity"; export * from "./src/renderer/src/features/agents/hub-link-view"; export * from "./src/renderer/src/features/agents/hub-preview-binding"; export * from "./src/renderer/src/features/agents/hub-link-adapter"; export * from "./src/renderer/src/shared/api/local-operator/hub-links"; export {desktopRequestSchema,desktopEndpoint} from "./src/shared/desktop-contract";',
+			'export * from "./src/renderer/src/shared/api/local-operator/hub-publication"; export * from "./src/renderer/src/features/agents/definition-editor-identity"; export * from "./src/renderer/src/features/agents/hub-link-view"; export * from "./src/renderer/src/features/agents/hub-preview-binding"; export * from "./src/renderer/src/features/agents/hub-link-adapter"; export * from "./src/renderer/src/shared/api/local-operator/hub-links"; export {desktopRequestSchema,desktopEndpoint,desktopRequestDeadlineMs} from "./src/shared/desktop-contract";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -38,6 +38,7 @@ const {
 	linksForLocalItem,
 	desktopRequestSchema,
 	desktopEndpoint,
+	desktopRequestDeadlineMs,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundled.outputFiles[0].text).toString("base64")}`
 );
@@ -146,6 +147,105 @@ const policy = (over = {}) => ({
 	expectedPolicyRevision: "opaque-r1",
 	subscribe: false,
 	...over,
+});
+test("skill membership ops name their own routes and share the pull's deadline", () => {
+	const requestId = "00000000-0000-4000-8000-000000000001";
+	const pull = desktopRequestSchema.parse({
+		op: "hub.skillPull",
+		requestId,
+		hubId: "skill-release-notes",
+		hubSource: "https://hub.example/v1",
+		visibility: "public",
+		tenantId: null,
+		localAlias: "release-notes",
+	});
+	const subscribe = desktopRequestSchema.parse({
+		op: "hub.skillSubscribe",
+		requestId,
+		hubId: "skill-release-notes",
+		hubSource: "https://hub.example/v1",
+		visibility: "public",
+		tenantId: null,
+		localAlias: "release-notes",
+	});
+	assert.deepEqual(desktopEndpoint(subscribe), {
+		path: "/v1/desktop/hub/skills/subscribe",
+		method: "POST",
+		body: {
+			request_id: requestId,
+			hub_id: "skill-release-notes",
+			hub_source: "https://hub.example/v1",
+			visibility: "public",
+			tenant_id: null,
+			local_alias: "release-notes",
+		},
+	});
+	assert.equal(
+		desktopRequestDeadlineMs(subscribe),
+		desktopRequestDeadlineMs(pull),
+		"linking without content costs the same round trip as a pull",
+	);
+	const unpull = desktopRequestSchema.parse({
+		op: "hub.skillUnpull",
+		requestId,
+		linkId: "link/with space",
+	});
+	assert.deepEqual(desktopEndpoint(unpull), {
+		path: "/v1/desktop/hub/skills/unpull",
+		method: "POST",
+		body: { request_id: requestId, link_id: "link/with space" },
+	});
+	assert.equal(
+		desktopRequestDeadlineMs(unpull),
+		desktopRequestDeadlineMs(pull),
+	);
+});
+test("skill membership refuses a mismatched scope pair before transport", () => {
+	const base = {
+		op: "hub.skillSubscribe",
+		requestId: "00000000-0000-4000-8000-000000000001",
+		hubId: "skill-release-notes",
+		hubSource: "https://hub.example/v1",
+		localAlias: "release-notes",
+	};
+	assert.equal(
+		desktopRequestSchema.safeParse({
+			...base,
+			visibility: "public",
+			tenantId: "org-minerva",
+		}).success,
+		false,
+		"a public subscribe may not name a tenant",
+	);
+	assert.equal(
+		desktopRequestSchema.safeParse({
+			...base,
+			visibility: "org",
+			tenantId: null,
+		}).success,
+		false,
+		"an org subscribe must name its tenant",
+	);
+	assert.equal(
+		desktopRequestSchema.safeParse({
+			...base,
+			visibility: "public",
+			tenantId: null,
+			subscribe: true,
+		}).success,
+		false,
+		"a subscribe carries no install policy: it is subscribe-on by definition",
+	);
+	assert.equal(
+		desktopRequestSchema.safeParse({
+			op: "hub.skillUnpull",
+			requestId: base.requestId,
+			linkId: "link-1",
+			hubId: "skill-release-notes",
+		}).success,
+		false,
+		"unpull addresses the local link only",
+	);
 });
 test("full inventory supports skills without altering legacy pending route", () => {
 	assert.equal(
@@ -295,21 +395,30 @@ test("immutable local ID never falls back to an alias belonging to another copy"
 		["link-2"],
 	);
 });
-test("stable retry names direction and cannot also select another named copy", () => {
+test("retry addresses exactly one item by local id and carries no link or direction", () => {
 	const request = {
 		op: "hub.retry",
 		requestId: "00000000-0000-4000-8000-000000000001",
-		linkId: "synthetic-link",
-		direction: "push",
+		kind: "agent",
+		localId: "synthetic-local-id",
 	};
 	assert.deepEqual(desktopEndpoint(desktopRequestSchema.parse(request)).body, {
 		request_id: request.requestId,
-		link_id: "synthetic-link",
-		direction: "push",
+		kind: "agent",
+		local_id: "synthetic-local-id",
 	});
+	/*
+	 * `link_id` and `direction` are not members of core's `HubRetry`
+	 * (`desktop_hub.py`), whose base forbids extra fields: the released body was
+	 * refused 422. One address only, and an id without its kind is refused
+	 * rather than searched across kinds.
+	 */
 	for (const over of [
-		{ direction: undefined },
-		{ kind: "agent", name: "other-copy" },
+		{ linkId: "synthetic-link" },
+		{ direction: "push" },
+		{ localId: undefined },
+		{ name: "other-copy", localId: "synthetic-local-id" },
+		{ kind: undefined },
 	])
 		assert.equal(
 			desktopRequestSchema.safeParse({ ...request, ...over }).success,
@@ -351,17 +460,24 @@ test("manual publish cannot confirm unseen proposal or treat dry-run as consent"
 	assert.equal(endpoint.path, "/v1/desktop/hub/updates/push");
 });
 
-test("incoming viewed result requires receipt + explicit confirm and cannot share dry-run", () => {
+test("an apply addresses one item and carries no receipt or direction", () => {
 	const base = {
 		op: "hub.apply",
 		requestId: "00000000-0000-4000-8000-000000000001",
-		linkId: "synthetic-link",
-		direction: "pull",
+		kind: "agent",
+		localId: "synthetic-local-id",
 	};
+	/*
+	 * Core's `HubApply` has no `preview_receipt`/`confirm_apply` and no
+	 * `direction`: `extra="forbid"` refused every body that carried them (the
+	 * receipt mechanism belongs to the PUSH route). The preview is `dry_run`,
+	 * and the merge options are `prefer`/`acknowledge_unknown_baseline`.
+	 */
 	for (const over of [
-		{ confirmApply: true },
 		{ previewReceipt: "receipt" },
-		{ previewReceipt: "receipt", confirmApply: true, dryRun: true },
+		{ confirmApply: true },
+		{ direction: "pull" },
+		{ linkId: "synthetic-link" },
 	])
 		assert.equal(
 			desktopRequestSchema.safeParse({ ...base, ...over }).success,
@@ -370,16 +486,20 @@ test("incoming viewed result requires receipt + explicit confirm and cannot shar
 	const endpoint = desktopEndpoint(
 		desktopRequestSchema.parse({
 			...base,
-			previewReceipt: "receipt",
-			confirmApply: true,
+			dryRun: true,
 			prefer: "local",
 			acknowledgeUnknownBaseline: true,
 		}),
 	);
-	assert.equal(endpoint.body.preview_receipt, "receipt");
-	assert.equal(endpoint.body.confirm_apply, true);
-	assert.equal(endpoint.body.prefer, "local");
-	assert.equal(endpoint.body.acknowledge_unknown_baseline, true);
+	assert.deepEqual(endpoint.body, {
+		request_id: base.requestId,
+		kind: "agent",
+		local_id: "synthetic-local-id",
+		prefer: "local",
+		acknowledge_unknown_baseline: true,
+		dry_run: true,
+	});
+	assert.equal(endpoint.path, "/v1/desktop/hub/updates/apply");
 });
 test("inbound old-server nullable revision remains bound to remote hash and source", () => {
 	const incoming = {
@@ -922,4 +1042,60 @@ test("the adapter's canEnableAutoPush is the shared gate, so a public no-grant l
 		).canEnableAutoPush,
 		false,
 	);
+});
+
+/*
+ * Design B6.2.4 / core #3807 review round 1 (m1): after a startup 401 core's
+ * /links keeps `pull.state="failed"` with `no-credential/rejected` until the
+ * next check. A sign-in failure is the ACCOUNT's, stated once by the section's
+ * sign-in line, so it must not draw a failed or review mark on every row.
+ */
+test("a sign-in failure draws no failed or review mark", () => {
+	for (const state of ["failed", "retry-wait"]) {
+		const mark = hubLinkMark(
+			link({ pull: direction({ state, signInNeeded: true }) }),
+		);
+		assert.equal(mark.kind, "healthy", state);
+		assert.equal(mark.action, "policy", state);
+	}
+	// Control: the same non-retryable failure without the sign-in fact still
+	// opens review, so the quieting is keyed on the class, not on the state.
+	assert.equal(
+		hubLinkMark(link({ pull: direction({ state: "failed" }) })).kind,
+		"review",
+	);
+	// A real, retryable failure in the OTHER direction is not hidden by it.
+	assert.equal(
+		hubLinkMark(
+			link({
+				pull: direction({ state: "failed", signInNeeded: true }),
+				push: direction({ state: "retry-wait", retryable: true }),
+				policy: { subscribe: true, autoPush: true, revision: "r" },
+			}),
+		).kind,
+		"failed",
+	);
+});
+
+test("the adapter marks no-credential (with or without a sub-class) as a sign-in failure", () => {
+	const raw = (error_class, error_subclass = null) =>
+		rawLink({
+			pull: {
+				...rawLink().pull,
+				state: "failed",
+				error_class,
+				error_subclass,
+			},
+		});
+	assert.equal(
+		hubLinkView(raw("no-credential", "rejected")).pull.signInNeeded,
+		true,
+	);
+	assert.equal(hubLinkView(raw("no-credential")).pull.signInNeeded, true);
+	assert.equal(hubLinkView(raw("hub-error")).pull.signInNeeded, false);
+	assert.equal(
+		hubLinkMark(hubLinkView(raw("no-credential", "rejected"))).kind,
+		"healthy",
+	);
+	assert.equal(hubLinkMark(hubLinkView(raw("hub-error"))).kind, "failed");
 });

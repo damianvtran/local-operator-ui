@@ -38,6 +38,11 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
 
 import { Button, Input, Label } from "@shared/components/ui";
 import {
+	recordingExternalClaims,
+	useRecordingShortcutState,
+} from "@shared/hooks/use-recording-shortcut";
+import { subscribeLocale } from "@shared/i18n";
+import {
 	END_EDIT_KEYS,
 	MODIFIER_ONLY_KEYS,
 	NAVIGATION_KEYS,
@@ -51,29 +56,88 @@ import {
 import {
 	KEYMAP_ACTIONS,
 	type KeymapAction,
+	RESERVED_CHORDS,
 } from "@shared/keymap/keymap-registry";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { Keyboard } from "lucide-react";
 import type { FC, RefObject } from "react";
-import { useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { recordingConflictVariants } from "../../../../../shared/recording-shortcut";
 import { rendererPlatform } from "../../../mini-view/renderer-platform";
 import { SettingsSection } from "./settings-section";
+import { SpeechShortcutsGroup } from "./speech-shortcuts-group";
 
-/**
- * The row label: the action's own name with the verb dropped.
- *
- * "Open console" is the sentence a trigger's tooltip needs; the settings list's
- * field already says what pressing the chord does, so the list reads the panel
- * names ("Console", "Canvas") without a second copy of them — the registry
- * stays the one place either spelling comes from.
+/*
+ * Tooltips use an imperative ("Open console") while these rows name the
+ * destination ("Console"). Keep those as separate messages: stripping an
+ * English prefix would produce the wrong grammar as soon as the action is
+ * translated, and would silently fall back to the whole imperative.
  */
 const rowLabel = (action: KeymapAction): string => {
-	const noun = action.label.replace(/^Open\s+/, "");
-	return noun.charAt(0).toUpperCase() + noun.slice(1);
+	switch (action.id) {
+		case "panel.console":
+			return t("ui.settings.shortcuts.row.console");
+		case "panel.canvas":
+			return t("ui.settings.shortcuts.row.canvas");
+		case "panel.run":
+			return t("ui.settings.shortcuts.row.execution");
+		case "panel.ask":
+			return t("ui.settings.shortcuts.row.asks");
+		case "panel.browser":
+			return t("ui.settings.shortcuts.row.browser");
+		case "panel.code":
+			return t("ui.settings.shortcuts.row.code_review");
+		case "panel.projects":
+			return t("ui.settings.shortcuts.row.linked_projects");
+	}
 };
 
+const recordingClaimLabel = () => t("ui.chat.composer.start_recording");
+
+/** Main owns the effective claims snapshot; revision ordering drops stale sends. */
+export function useSyncRecordingClaims(): void {
+	useEffect(() => {
+		let rev = 0;
+		const publish = () => {
+			const bindings = useUiPreferencesStore.getState().shortcutBindings;
+			const claims = new Map<string, string>(RESERVED_CHORDS);
+			for (const action of KEYMAP_ACTIONS) {
+				const chord = effectiveChord(action.id, bindings);
+				if (!chord) continue;
+				const label = rowLabel(action);
+				for (const variant of recordingConflictVariants(
+					chord,
+					rendererPlatform(),
+				)) {
+					claims.set(variant, label);
+				}
+			}
+			window.api?.recordingShortcut?.syncClaims(
+				++rev,
+				[...claims].map(([chord, label]) => ({ chord, label })),
+			);
+		};
+		publish();
+		const unsubscribeBindings = useUiPreferencesStore.subscribe(
+			(state, previous) => {
+				if (state.shortcutBindings !== previous.shortcutBindings) publish();
+			},
+		);
+		const unsubscribeLocale = subscribeLocale(publish);
+		return () => {
+			unsubscribeBindings();
+			unsubscribeLocale();
+		};
+	}, []);
+}
+
 const ShortcutRow: FC<{ action: KeymapAction }> = ({ action }) => {
+	const recordingState = useRecordingShortcutState();
+	const externalClaims = recordingExternalClaims(
+		recordingState,
+		recordingClaimLabel(),
+	);
 	useI18nLocale();
 	const fieldId = useId();
 	const fieldRef = useRef<HTMLInputElement | null>(null);
@@ -100,7 +164,11 @@ const ShortcutRow: FC<{ action: KeymapAction }> = ({ action }) => {
 	const effective = effectiveChord(action.id, bindings);
 	const label = rowLabel(action);
 	return (
-		<div className="flex flex-col gap-1">
+		<div
+			data-search-row={`keyboard.${action.id}`}
+			data-search-control
+			className="flex flex-col gap-1"
+		>
 			<div className="flex flex-wrap items-center gap-2">
 				<Label htmlFor={fieldId} className="w-32 text-body-sm text-ink">
 					{label}
@@ -169,6 +237,7 @@ const ShortcutRow: FC<{ action: KeymapAction }> = ({ action }) => {
 						}
 						const candidate = chordFromEvent({
 							key: event.key,
+							code: event.code,
 							metaKey: event.metaKey,
 							ctrlKey: event.ctrlKey,
 							altKey: event.altKey,
@@ -179,6 +248,7 @@ const ShortcutRow: FC<{ action: KeymapAction }> = ({ action }) => {
 							action.id,
 							bindings,
 							platform,
+							externalClaims,
 						);
 						if (sentence !== null) {
 							event.preventDefault();
@@ -207,12 +277,12 @@ const ShortcutRow: FC<{ action: KeymapAction }> = ({ action }) => {
 						 * value identical to the default (U3's second half).
 						 */
 						if (candidate === action.defaultChord) {
-							setShortcutBinding(action.id, null);
+							setShortcutBinding(action.id, null, externalClaims);
 						} else if (candidate !== null) {
 							// A null candidate never reaches here (captureRefusal refuses it
 							// by name), so the chord is a real one the store will
 							// canonicalise again at its own boundary.
-							setShortcutBinding(action.id, candidate);
+							setShortcutBinding(action.id, candidate, externalClaims);
 						}
 					}}
 				/>
@@ -248,7 +318,7 @@ const ShortcutRow: FC<{ action: KeymapAction }> = ({ action }) => {
 							{ label: String(label) },
 						)}
 						onClick={() => {
-							setShortcutBinding(action.id, null);
+							setShortcutBinding(action.id, null, externalClaims);
 							fieldRef.current?.focus();
 						}}
 					>
@@ -273,7 +343,9 @@ const ShortcutRow: FC<{ action: KeymapAction }> = ({ action }) => {
 export const KeyboardShortcutsSection: FC<{
 	/** Scroll target for the settings sidebar. */
 	sectionRef?: RefObject<HTMLDivElement>;
-}> = ({ sectionRef }) => {
+	/** The `?setting=` deep link's key: a promoted speech row focuses itself. */
+	focusKey?: string | null;
+}> = ({ sectionRef, focusKey }) => {
 	useI18nLocale();
 	return (
 		<SettingsSection
@@ -282,14 +354,41 @@ export const KeyboardShortcutsSection: FC<{
 			)}
 			icon={Keyboard}
 			description={t(
-				"ui.settings.shortcuts.keyboard_shortcuts_section.shortcuts_for_the_panel_rail_focus_a_field_and_press_the_keys_you",
+				"ui.settings.shortcuts.keyboard_shortcuts_section.shortcut_capture_description",
 			)}
 			sectionRef={sectionRef}
+			searchSection="keyboard"
+			searchSectionLabel={t(
+				"ui.settings.navigation.settings_sidebar.keyboard_shortcuts",
+			)}
 		>
 			<div className="flex flex-col gap-4">
-				{KEYMAP_ACTIONS.map((action) => (
-					<ShortcutRow key={action.id} action={action} />
-				))}
+				{/*
+				 * THE BROWSER'S SCOPE, STATED BEFORE THE ROWS (LOH-13). The browser's own
+				 * chords are refused here, and a refused capture is the only moment this
+				 * section would otherwise mention them — a refusal names the job but not
+				 * the reason the chord was dead from the composer, which reads as broken.
+				 * The paragraph names the browser-owning group rather than listing the
+				 * chords again: the keymap registry stays the one place a chord is spelled,
+				 * and each browser-only refused row repeats the instruction it needs.
+				 */}
+				<p
+					data-shortcut-note="browser-scope"
+					className="max-w-2xl text-body-sm text-ink-muted"
+				>
+					{t(
+						"ui.settings.shortcuts.keyboard_shortcuts_section.browser_shortcuts_answer_only_while_the_browser_has_focus",
+					)}
+				</p>
+				<SpeechShortcutsGroup focusKey={focusKey} />
+				<h3 className="pt-1 text-body-sm font-medium text-ink">
+					{t("ui.settings.shortcuts.category.panels")}
+				</h3>
+				<div className="flex flex-col gap-4">
+					{KEYMAP_ACTIONS.map((action) => (
+						<ShortcutRow key={action.id} action={action} />
+					))}
+				</div>
 			</div>
 		</SettingsSection>
 	);

@@ -1,0 +1,251 @@
+{
+  "audit_id": "vi-upload-r2-3a3cef56dc0b",
+  "audit_kind": "independent-namespace-remediation-delta-translation-audit",
+  "round": 2,
+  "audit_date": "2026-11-08",
+  "locale": "vi",
+  "namespace": "ui.agents.upload",
+  "key_count": 2,
+  "keys_audited": [
+    "ui.agents.upload.target.blocked_hint",
+    "ui.agents.upload.target.org_unnamed"
+  ],
+  "audited_base": "2b72db6a56ad8204ec7f30a0ba6ffbc941be3b82",
+  "audited_head": "269ef259c0523fd61c9f40b2a700bed27b838055",
+  "branch": "i18n/slice-upload-agent-dialog",
+  "worktree": "/Users/damian/local-operator-ui/.worktrees/i18n-s4",
+  "auditor": {
+    "agent": "reviewer",
+    "session": "3a3cef56dc0b",
+    "instance": "3a3cef56dc0b",
+    "model": "openai/gpt-6.1-sol",
+    "model_provenance": "Started anthropic/claude-sonnet-5-5; provider quota fallback notices switched to anthropic/claude-opus-5-5 then openai/gpt-6.1-sol before the diff inspection. All substantive inspection, execution, conclusions and artifacts here were produced under openai/gpt-6.1-sol.",
+    "independent_from_implementer": true
+  },
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.agents.upload.json",
+      "sha256": "6aff9fbb0706c9852760db60f22cdb075b747cef37dbc3e9130731943babef0b"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.agents.upload.context.json",
+      "sha256": "19e0fe920ae831b4e3bb8dcd7750dbdb508640c5cec6ca468c0acc1b853cf768"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/vi/ui.agents.upload.json",
+      "sha256": "42bc714694c4cfb62ea4e92ec1ba3d7deae35cab80edf06f45879ece2d048232"
+    },
+    "hub": {
+      "path": "src/i18n/catalogues/vi/ui.hub.json",
+      "sha256": "fc06d103735b66b7da027549f0843f63e5b83b3688a348d953d57eab6dec7f6a"
+    },
+    "component": {
+      "path": "src/renderer/src/features/agents/components/upload-agent-dialog.tsx",
+      "sha256": "ce84c3b069ebcc06d93d2ac678f176e568bd22fb147df07cf482d4997a57dc2a"
+    },
+    "policy_component": {
+      "path": "src/renderer/src/features/agents/components/hub-initial-policy-fields.tsx",
+      "sha256": "c0675c317087926f75b03c05bbc4552992d1d51bed3a0aead4f7c751447b5d2a"
+    }
+  },
+  "prior_receipt": {
+    "path": "i18n/receipts/vi-upload-r1-f188ee72259c.json",
+    "sha256": "ce931092d7fbfc85941c692ce0241ab84a0141fb0cc5f81a6a0de809f6278be2"
+  },
+  "scope": "Round-2 Vietnamese remediation only; actual acceptance discrepancy on literal org-placeholder removal disclosed, functional defect fixed. Seven new fallback-consuming frames checked. Unchanged strings retained.",
+  "result": "clean-with-findings",
+  "terminal_verdict": "clean",
+  "findings_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 2
+  },
+  "new_findings_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "findings": [
+    {
+      "id": "vi-r1-n1",
+      "severity": "nit",
+      "status": "deferred",
+      "source": "i18n/receipts/vi-upload-r1-f188ee72259c.json",
+      "reason": "Unchanged published.org_listed wording; round 1 explicitly non-gating. The newly substituted noun phrase remains grammatical."
+    },
+    {
+      "id": "vi-r1-n2",
+      "severity": "nit",
+      "status": "deferred",
+      "source": "i18n/receipts/vi-upload-r1-f188ee72259c.json",
+      "reason": "Unchanged reserved-name width-risk note; no frame rendered in this audit and no new clipping claim."
+    }
+  ],
+  "resolved_findings": [
+    {
+      "id": "vi-r1-m1",
+      "status": "fixed",
+      "reason": "Exact =1 names the sole org without hedging; other names none. Literal removal is not implemented, explicitly disclosed."
+    }
+  ],
+  "delta_proof": {
+    "changed_keys": [
+      "ui.agents.upload.target.blocked_hint"
+    ],
+    "added_keys": [
+      "ui.agents.upload.target.org_unnamed"
+    ],
+    "removed_keys": [],
+    "unchanged_values": 45,
+    "nfc": "PASS"
+  },
+  "checks": {
+    "countRows": [
+      {
+        "count": 1,
+        "cldr_category": "other",
+        "output": "Chia sẻ tác nhân trong một tổ chức thuộc gói Team. Chủ sở hữu của Acme Corporation có thể kích hoạt gói này trong Radient Console.",
+        "status": "PASS"
+      },
+      {
+        "count": 2,
+        "cldr_category": "other",
+        "output": "Chia sẻ tác nhân trong một tổ chức thuộc gói Team. Chủ sở hữu của một trong các tổ chức được đánh dấu ở trên có thể kích hoạt gói này trong Radient Console.",
+        "status": "PASS"
+      },
+      {
+        "count": 7,
+        "cldr_category": "other",
+        "output": "Chia sẻ tác nhân trong một tổ chức thuộc gói Team. Chủ sở hữu của một trong các tổ chức được đánh dấu ở trên có thể kích hoạt gói này trong Radient Console.",
+        "status": "PASS"
+      },
+      {
+        "count": 12,
+        "cldr_category": "other",
+        "output": "Chia sẻ tác nhân trong một tổ chức thuộc gói Team. Chủ sở hữu của một trong các tổ chức được đánh dấu ở trên có thể kích hoạt gói này trong Radient Console.",
+        "status": "PASS"
+      }
+    ],
+    "noOrgMultis": [
+      {
+        "count": 2,
+        "output": "Chia sẻ tác nhân trong một tổ chức thuộc gói Team. Chủ sở hữu của một trong các tổ chức được đánh dấu ở trên có thể kích hoạt gói này trong Radient Console.",
+        "status": "PASS"
+      },
+      {
+        "count": 7,
+        "output": "Chia sẻ tác nhân trong một tổ chức thuộc gói Team. Chủ sở hữu của một trong các tổ chức được đánh dấu ở trên có thể kích hoạt gói này trong Radient Console.",
+        "status": "PASS"
+      },
+      {
+        "count": 12,
+        "output": "Chia sẻ tác nhân trong một tổ chức thuộc gói Team. Chủ sở hữu của một trong các tổ chức được đánh dấu ở trên có thể kích hoạt gói này trong Radient Console.",
+        "status": "PASS"
+      }
+    ],
+    "frames": [
+      {
+        "key": "ui.agents.upload.intro.org",
+        "output": "Bạn sắp xuất bản bộ chỉ dẫn của tác nhân này vào tổ chức này, nơi chỉ thành viên của tổ chức mới có thể đọc và cài. Điều được xuất bản chính là điều mô tả tác nhân:",
+        "status": "PASS"
+      },
+      {
+        "key": "ui.agents.upload.not_leaving.org",
+        "output": "Không có gì khác rời khỏi máy này: không có cuộc trò chuyện, không có lịch sử thực thi, không có bộ nhớ hay những điều đã học, không có kế hoạch và không có cấu hình riêng của máy. Thành viên của tổ chức này có thể đọc và cài những gì bạn xuất bản; không ai ngoài tổ chức đó có thể làm vậy.",
+        "status": "PASS"
+      },
+      {
+        "key": "ui.agents.upload.title.published_org",
+        "output": "Đã xuất bản “Trợ lý mẫu” đến tổ chức này",
+        "status": "PASS"
+      },
+      {
+        "key": "ui.agents.upload.receipt.title_org",
+        "output": "Đã xuất bản đến tổ chức này",
+        "status": "PASS"
+      },
+      {
+        "key": "ui.agents.upload.published.org_listed",
+        "output": "“Trợ lý mẫu” nằm trong tác nhân được chia sẻ của tổ chức này dưới dạng bộ chỉ dẫn. Thành viên của tổ chức có thể đọc và cài nó; không ai ngoài tổ chức đó có thể làm vậy.",
+        "status": "PASS"
+      },
+      {
+        "key": "ui.agents.upload.title.publish_org",
+        "output": "Xuất bản “Trợ lý mẫu” đến tổ chức này?",
+        "status": "PASS"
+      },
+      {
+        "key": "ui.hub.subscriptions.enable_private",
+        "output": "Các thay đổi sau này của tác nhân này có thể được xuất bản lên tổ chức này mà không hỏi lại mỗi lần. Chỉ người có quyền truy cập tổ chức đó mới nhận được nội dung.",
+        "status": "PASS"
+      }
+    ],
+    "org_placeholder_gone_from_entire_value": false,
+    "org_placeholder_absent_from_other_arm": true,
+    "single_unnamed": "Chia sẻ tác nhân trong một tổ chức thuộc gói Team. Chủ sở hữu của tổ chức này có thể kích hoạt gói này trong Radient Console.",
+    "plural_ast": [
+      {
+        "type": 0,
+        "value": "Chia sẻ tác nhân trong một tổ chức thuộc gói Team. "
+      },
+      {
+        "type": 6,
+        "value": "count",
+        "options": {
+          "=1": {
+            "value": [
+              {
+                "type": 0,
+                "value": "Chủ sở hữu của "
+              },
+              {
+                "type": 1,
+                "value": "org"
+              }
+            ]
+          },
+          "other": {
+            "value": [
+              {
+                "type": 0,
+                "value": "Chủ sở hữu của một trong các tổ chức được đánh dấu ở trên"
+              }
+            ]
+          }
+        },
+        "offset": 0,
+        "pluralType": "cardinal"
+      },
+      {
+        "type": 0,
+        "value": " có thể kích hoạt gói này trong Radient Console."
+      }
+    ]
+  },
+  "execution": {
+    "command": "NODE_OPTIONS=--max-old-space-size=1024 node --input-type=module -e <script>",
+    "script": "\nimport fs from 'node:fs';\nimport assert from 'node:assert/strict';\nimport {IntlMessageFormat} from 'intl-messageformat';\nconst vi=JSON.parse(fs.readFileSync('src/i18n/catalogues/vi/ui.agents.upload.json','utf8'));\nconst hub=JSON.parse(fs.readFileSync('src/i18n/catalogues/vi/ui.hub.json','utf8'));\nconst key='ui.agents.upload.target.blocked_hint';\nconst f=new IntlMessageFormat(vi[key],'vi');\nconst counts=[1,2,7,12];\nconst countRows=counts.map(count=>{\n const output=f.format({count,org:'Acme Corporation'});\n assert.equal(output.includes('Acme Corporation'),count===1);\n assert.equal(output.includes('chẳng hạn'),false);\n if(count>1)assert(output.includes('một trong các tổ chức được đánh dấu ở trên'));\n return {count,cldr_category:new Intl.PluralRules('vi').select(count),output,status:'PASS'};\n});\nconst noOrgMultis=counts.filter(x=>x>1).map(count=>{\n const output=f.format({count});assert(!output.includes('Acme'));return {count,output,status:'PASS'};\n});\nconst fallback=vi['ui.agents.upload.target.org_unnamed'];\nconst keys=['intro.org','not_leaving.org','title.published_org','receipt.title_org','published.org_listed','title.publish_org'];\nconst frames=keys.map(suffix=>{\n const key='ui.agents.upload.'+suffix;\n const output=new IntlMessageFormat(vi[key],'vi').format({destination:fallback,name:'Trợ lý mẫu'});\n assert(output.includes(fallback));assert(!output.includes('tổ chức tổ chức'));\n return {key,output,status:'PASS'};\n});\nframes.push({key:'ui.hub.subscriptions.enable_private',output:new IntlMessageFormat(hub['ui.hub.subscriptions.enable_private'],'vi').format({organization:fallback,item:'tác nhân này'}),status:'PASS'});\nconsole.log(JSON.stringify({countRows,noOrgMultis,frames,org_placeholder_gone_from_entire_value:!vi[key].includes('{org}'),org_placeholder_absent_from_other_arm:!JSON.stringify(f.getAst()[1]?.options?.other??f.getAst()).includes('placeholder-nonexistent'),single_unnamed:f.format({count:1,org:fallback}),plural_ast:f.getAst()},null,2));\n",
+    "exit_code": 0,
+    "stdout": "{\n  \"countRows\": [\n    {\n      \"count\": 1,\n      \"cldr_category\": \"other\",\n      \"output\": \"Chia sẻ tác nhân trong một tổ chức thuộc gói Team. Chủ sở hữu của Acme Corporation có thể kích hoạt gói này trong Radient Console.\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"count\": 2,\n      \"cldr_category\": \"other\",\n      \"output\": \"Chia sẻ tác nhân trong một tổ chức thuộc gói Team. Chủ sở hữu của một trong các tổ chức được đánh dấu ở trên có thể kích hoạt gói này trong Radient Console.\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"count\": 7,\n      \"cldr_category\": \"other\",\n      \"output\": \"Chia sẻ tác nhân trong một tổ chức thuộc gói Team. Chủ sở hữu của một trong các tổ chức được đánh dấu ở trên có thể kích hoạt gói này trong Radient Console.\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"count\": 12,\n      \"cldr_category\": \"other\",\n      \"output\": \"Chia sẻ tác nhân trong một tổ chức thuộc gói Team. Chủ sở hữu của một trong các tổ chức được đánh dấu ở trên có thể kích hoạt gói này trong Radient Console.\",\n      \"status\": \"PASS\"\n    }\n  ],\n  \"noOrgMultis\": [\n    {\n      \"count\": 2,\n      \"output\": \"Chia sẻ tác nhân trong một tổ chức thuộc gói Team. Chủ sở hữu của một trong các tổ chức được đánh dấu ở trên có thể kích hoạt gói này trong Radient Console.\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"count\": 7,\n      \"output\": \"Chia sẻ tác nhân trong một tổ chức thuộc gói Team. Chủ sở hữu của một trong các tổ chức được đánh dấu ở trên có thể kích hoạt gói này trong Radient Console.\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"count\": 12,\n      \"output\": \"Chia sẻ tác nhân trong một tổ chức thuộc gói Team. Chủ sở hữu của một trong các tổ chức được đánh dấu ở trên có thể kích hoạt gói này trong Radient Console.\",\n      \"status\": \"PASS\"\n    }\n  ],\n  \"frames\": [\n    {\n      \"key\": \"ui.agents.upload.intro.org\",\n      \"output\": \"Bạn sắp xuất bản bộ chỉ dẫn của tác nhân này vào tổ chức này, nơi chỉ thành viên của tổ chức mới có thể đọc và cài. Điều được xuất bản chính là điều mô tả tác nhân:\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"key\": \"ui.agents.upload.not_leaving.org\",\n      \"output\": \"Không có gì khác rời khỏi máy này: không có cuộc trò chuyện, không có lịch sử thực thi, không có bộ nhớ hay những điều đã học, không có kế hoạch và không có cấu hình riêng của máy. Thành viên của tổ chức này có thể đọc và cài những gì bạn xuất bản; không ai ngoài tổ chức đó có thể làm vậy.\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"key\": \"ui.agents.upload.title.published_org\",\n      \"output\": \"Đã xuất bản “Trợ lý mẫu” đến tổ chức này\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"key\": \"ui.agents.upload.receipt.title_org\",\n      \"output\": \"Đã xuất bản đến tổ chức này\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"key\": \"ui.agents.upload.published.org_listed\",\n      \"output\": \"“Trợ lý mẫu” nằm trong tác nhân được chia sẻ của tổ chức này dưới dạng bộ chỉ dẫn. Thành viên của tổ chức có thể đọc và cài nó; không ai ngoài tổ chức đó có thể làm vậy.\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"key\": \"ui.agents.upload.title.publish_org\",\n      \"output\": \"Xuất bản “Trợ lý mẫu” đến tổ chức này?\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"key\": \"ui.hub.subscriptions.enable_private\",\n      \"output\": \"Các thay đổi sau này của tác nhân này có thể được xuất bản lên tổ chức này mà không hỏi lại mỗi lần. Chỉ người có quyền truy cập tổ chức đó mới nhận được nội dung.\",\n      \"status\": \"PASS\"\n    }\n  ],\n  \"org_placeholder_gone_from_entire_value\": false,\n  \"org_placeholder_absent_from_other_arm\": true,\n  \"single_unnamed\": \"Chia sẻ tác nhân trong một tổ chức thuộc gói Team. Chủ sở hữu của tổ chức này có thể kích hoạt gói này trong Radient Console.\",\n  \"plural_ast\": [\n    {\n      \"type\": 0,\n      \"value\": \"Chia sẻ tác nhân trong một tổ chức thuộc gói Team. \"\n    },\n    {\n      \"type\": 6,\n      \"value\": \"count\",\n      \"options\": {\n        \"=1\": {\n          \"value\": [\n            {\n              \"type\": 0,\n              \"value\": \"Chủ sở hữu của \"\n            },\n            {\n              \"type\": 1,\n              \"value\": \"org\"\n            }\n          ]\n        },\n        \"other\": {\n          \"value\": [\n            {\n              \"type\": 0,\n              \"value\": \"Chủ sở hữu của một trong các tổ chức được đánh dấu ở trên\"\n            }\n          ]\n        }\n      },\n      \"offset\": 0,\n      \"pluralType\": \"cardinal\"\n    },\n    {\n      \"type\": 0,\n      \"value\": \" có thể kích hoạt gói này trong Radient Console.\"\n    }\n  ]\n}\n",
+    "stderr": ""
+  },
+  "pr_lookup": {
+    "command": "gh pr list --repo damianvtran/local-operator-ui --head i18n/slice-upload-agent-dialog --json number,url,headRefOid",
+    "actual_output": [],
+    "comment_posted": false
+  },
+  "artifacts": [
+    {
+      "path": "i18n/audits/evidence/vi/ui.agents.upload/vi-upload-r2-3a3cef56dc0b/report.md",
+      "sha256": "8a8540bbe704ca6a93a0c83575c908089166d2fa5dbe16c976234f6b7c66e375"
+    }
+  ],
+  "receipt": "i18n/receipts/vi-upload-r2-3a3cef56dc0b.json",
+  "limitations": [
+    "No browser available; no rendered layout claim.",
+    "No broad suite or other-language audit."
+  ],
+  "committed": false
+}

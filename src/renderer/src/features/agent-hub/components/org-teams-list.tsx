@@ -3,6 +3,7 @@ import {
 	type PublicationAction,
 	publicationTreatment,
 } from "@features/agents/utils/publication-failure";
+import { subscribeUrlFor } from "@features/team-bridge-trial/team-bridge-trial-model";
 import { backendLoadErrorMessage } from "@shared/api/local-operator/backend-error";
 import { isPublicationError } from "@shared/api/local-operator/publication-errors";
 import type { HubTeam } from "@shared/api/radient/types";
@@ -17,7 +18,10 @@ import {
 } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { TEXT_SURFACE_PROPS } from "@shared/components/ui/text-surface";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
+import { openConsolePage } from "@shared/utils/radient-account-copy";
 import {
 	type KeyboardEvent as ReactKeyboardEvent,
 	type ReactNode,
@@ -65,6 +69,7 @@ const ROSTER_ACTIONS: readonly PublicationAction[] = [
 	"refresh-hub",
 	"retry",
 	"sign-in",
+	"open-console",
 ];
 
 /**
@@ -100,6 +105,7 @@ export const OrgTeamsList: React.FC<{
 	tenantId: string;
 	orgName: string | null;
 }> = ({ tenantId, orgName }) => {
+	const locale = useI18nLocale();
 	const { teams, isLoading, isFetching, isError, error, refetch } =
 		useOrgTeamsQuery({ tenantId });
 	/* The refusal the read is answered with, when it is one (§2.2). */
@@ -170,6 +176,9 @@ export const OrgTeamsList: React.FC<{
 	 * reach — a treatment pinned by a test and rendered by nobody. The name in the
 	 * context is the failed row's, because the sentence is about that document.
 	 */
+	// The treatment (including its unnamed-team context) contains resolved copy;
+	// a parent repaint alone does not invalidate it while the same error is held.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: locale invalidates translations inside the treatment table.
 	const pullTreatment = useMemo(() => {
 		if (!isPublicationError(pull.error)) return null;
 		const failed = teams.find((team) => team.id === failedTeamId);
@@ -181,9 +190,13 @@ export const OrgTeamsList: React.FC<{
 			},
 			// `surface: "pull"`: the table is shared with the publish dialog, and its
 			// verb-bearing bodies must name the act this surface performed (C7).
-			{ name: failed?.name ?? "this team", hubAgentId: null, surface: "pull" },
+			{
+				name: failed?.name ?? t("ui.hub.teams.unnamed_team"),
+				hubAgentId: null,
+				surface: "pull",
+			},
 		);
-	}, [pull.error, failedTeamId, teams]);
+	}, [pull.error, failedTeamId, teams, locale]);
 
 	/*
 	 * One action, one act. `default` renders nothing at all (see ROSTER_ACTIONS):
@@ -200,6 +213,11 @@ export const OrgTeamsList: React.FC<{
 				break;
 			case "sign-in":
 				setReauthenticating(true);
+				break;
+			case "open-console":
+				// A plan refusal while pulling names this roster's organization.
+				// Leave the row intact so the reader can return and retry the pull.
+				openConsolePage(subscribeUrlFor(tenantId));
 				break;
 			default:
 				break;
@@ -230,7 +248,9 @@ export const OrgTeamsList: React.FC<{
 			 * notice's 42rem, because a row carries a summary line as well as a name.
 			 */
 			className="mb-6 max-w-4xl rounded-md bg-surface"
-			aria-label={`Teams shared with ${orgName ?? "this organization"}`}
+			aria-label={t("ui.hub.teams.org.aria", {
+				org: orgName ?? t("ui.hub.pages.scope.org_unnamed"),
+			})}
 			data-testid="org-teams"
 		>
 			{/*
@@ -307,23 +327,33 @@ export const OrgTeamsList: React.FC<{
 				>
 					<AlertTitle>
 						{refusal === "plan"
-							? "That organization needs an active Team plan"
+							? t("ui.hub.teams.org.plan_headline")
 							: refusal === "no_access"
-								? "You do not have access to that organization"
-								: "Teams could not be loaded"}
+								? t("ui.hub.teams.org.no_access_headline")
+								: t("ui.hub.teams.org.load_headline")}
 					</AlertTitle>
 					<AlertDescription>
 						{refusal === "plan"
-							? `Reading an organization's teams is part of the Team plan. An owner of ${orgName ?? "this organization"} can activate it in the Radient console, and then its teams will be listed here.`
+							? t("ui.hub.teams.org.plan_body", {
+									org: orgName ?? t("ui.hub.pages.scope.org_unnamed"),
+								})
 							: refusal === "no_access"
-								? `You are not a member of ${orgName ?? "that organization"}, so its teams are not listed here. An owner can invite you again.`
+								? t("ui.hub.teams.org.no_access_body", {
+										org: orgName ?? t("ui.hub.teams.org.that_organization"),
+									})
 								: backendLoadErrorMessage(
-										"The teams shared with this organization could not be read.",
+										t("ui.hub.teams.org.unreadable"),
 										error,
 									)}
 					</AlertDescription>
+					{/*
+					 * One line, never wrapping: two `sm` buttons fit the narrowest pane
+					 * (the 920px narrow story), and this file's layout contract keeps
+					 * every action row on one line (flex items keep `min-width: auto`,
+					 * so neither label is squeezed below its own width).
+					 */}
 					{refusal !== "no_access" && (
-						<div className="mt-2">
+						<div className="mt-2 flex items-center gap-2">
 							<Button
 								variant="primary"
 								size="sm"
@@ -331,8 +361,27 @@ export const OrgTeamsList: React.FC<{
 								disabled={isFetching}
 								aria-busy={isFetching}
 							>
-								{isFetching ? "Trying…" : "Try again"}
+								{isFetching
+									? t("ui.hub.teams.public.trying")
+									: PUBLICATION_ACTION_LABEL.retry}
 							</Button>
+							{/*
+							 * Only the PLAN refusal: its body sends the reader to the Radient
+							 * console, and a load failure has nothing there to fix. Same
+							 * `secondary`-on-wash reasoning as the agents tab's twin control
+							 * (`agent-hub-page.tsx`), and the same label as every other
+							 * console link.
+							 */}
+							{refusal === "plan" && (
+								<Button
+									variant="secondary"
+									size="sm"
+									data-testid="org-teams-plan-console"
+									onClick={() => openConsolePage(subscribeUrlFor(tenantId))}
+								>
+									{PUBLICATION_ACTION_LABEL["open-console"]}
+								</Button>
+							)}
 						</div>
 					)}
 				</Alert>
@@ -343,7 +392,9 @@ export const OrgTeamsList: React.FC<{
 					className="p-4 text-body-sm text-ink-muted"
 					data-testid="org-teams-empty"
 				>
-					{`Teams shared into ${orgName ?? "this organization"} appear here for its members.`}
+					{t("ui.hub.teams.org.empty", {
+						org: orgName ?? t("ui.hub.pages.scope.org_unnamed"),
+					})}
 				</p>
 			)}
 
@@ -414,7 +465,7 @@ export const OrgTeamsList: React.FC<{
 								 * a four-line row.
 								 */
 								trailing={
-									<div className="-mt-1 ml-3 shrink-0 self-start">
+									<div className="-mt-1 ms-3 shrink-0 self-start">
 										<Button
 											ref={(node) => {
 												if (node) pullButtons.current.set(team.id, node);
@@ -429,9 +480,13 @@ export const OrgTeamsList: React.FC<{
 											 * it paints the derived form like every other one (agent review round 1,
 											 * m4); the node's IDENTITY stays the hub's id.
 											 */
-											aria-label={`Pull team ${hubDisplayName(team.name)}`}
+											aria-label={t("ui.hub.teams.pull_target", {
+												name: hubDisplayName(team.name),
+											})}
 										>
-											{pullingTeamId === team.id ? "Pulling…" : "Pull"}
+											{pullingTeamId === team.id
+												? t("ui.hub.teams.pulling")
+												: t("ui.hub.teams.pull")}
 										</Button>
 									</div>
 								}
@@ -446,20 +501,24 @@ export const OrgTeamsList: React.FC<{
 								 * control — and the transport's own otherwise.
 								 */
 								<div
-									className="mt-1 flex flex-col items-start gap-1 pl-5"
+									className="mt-1 flex flex-col items-start gap-1 ps-5"
 									data-testid="org-team-pull-error"
 								>
 									<output className="text-meta text-danger">
 										{pullTreatment?.body ??
 											pull.error?.message ??
-											`"${hubDisplayName(team.name)}" could not be pulled.`}
+											t("ui.hub.teams.pull_failed", {
+												name: hubDisplayName(team.name),
+											})}
 									</output>
 									{pullTreatment?.actions
 										.filter((action) => ROSTER_ACTIONS.includes(action))
 										.map((action) => (
 											<Button
 												key={action}
-												variant="primary"
+												variant={
+													action === "open-console" ? "secondary" : "primary"
+												}
 												size="sm"
 												onClick={() => runTreatmentAction(action, team)}
 											>
@@ -475,7 +534,7 @@ export const OrgTeamsList: React.FC<{
 										 */
 										<div className="mt-1" data-testid="org-team-pull-reauth">
 											<RadientAuthButtons
-												titleText="Sign in again"
+												titleText={PUBLICATION_ACTION_LABEL["sign-in"]}
 												descriptionText=""
 												onSignInSuccess={() => {
 													setReauthenticating(false);
@@ -534,23 +593,27 @@ const Dot = () => (
  * guessing is worse than showing. Labels are `ink-dim`, values `ink-muted`.
  */
 const TeamComposition = ({ team }: { team: HubTeam }) => {
+	// `t()` reads the active locale per call; this is what repaints the line.
+	useI18nLocale();
 	const manager = team.manager?.trim();
 	const count = memberCount(team);
 	return (
 		<span className="block truncate text-meta">
 			{manager ? (
 				<>
-					<span className="text-ink-dim">Manager:</span>{" "}
+					<span className="text-ink-dim">
+						{t("ui.hub.teams.manager_label")}
+					</span>{" "}
 					<span className="text-ink-muted">{manager}</span>
 				</>
 			) : null}
 			{manager ? <Dot /> : null}
 			{team.members.length === 0 ? (
-				<span className="text-ink-dim">No members</span>
+				<span className="text-ink-dim">{t("ui.hub.teams.no_members")}</span>
 			) : (
 				<>
 					<span className="text-ink-dim">
-						{count} {count === 1 ? "member" : "members"}:
+						{t("ui.hub.teams.member_count", { count })}
 					</span>{" "}
 					<span className="text-ink-muted">{slotList(team)}</span>
 				</>
@@ -564,7 +627,8 @@ const TeamComposition = ({ team }: { team: HubTeam }) => {
  * content. Every segment is omitted when it is missing (never a placeholder, never
  * an email), and a line with nothing left is not rendered at all.
  */
-const TeamProvenance = ({ team }: { team: HubTeam }) => {
+export const TeamProvenance = ({ team }: { team: HubTeam }) => {
+	useI18nLocale();
 	const project = team.project?.trim();
 	const author = teamAuthor(team);
 	const recency: TeamRecency | null = teamRecency(team);
@@ -575,16 +639,22 @@ const TeamProvenance = ({ team }: { team: HubTeam }) => {
 		segments.push({
 			key: "recency",
 			node: (
-				<>
-					{recency.label} {/*
-					 * The exact date is a POINTER-only convenience; the expanded body is
-					 * the keyboard-reachable path to the same fact. `<time>` carries the
-					 * machine value for assistive tech and for a copy.
-					 */}
-					<Tooltip content={recency.exact}>
-						<time dateTime={recency.iso}>{recency.when}</time>
-					</Tooltip>
-				</>
+				/*
+				 * ONE SENTENCE, so a language that puts its verb after the time can. The
+				 * prefix used to be concatenated (`{label} {when}`), which pinned English
+				 * order and shipped `updated il y a 2 jours` / `updated 2 دن پہلے` in seven
+				 * locales. The element is still `<time>`: `dateTime` carries the machine
+				 * value for assistive tech and for a copy, while the visible text is the
+				 * catalogue's whole phrase (there is no way to keep the verb outside the
+				 * element and still let the target language reorder it).
+				 */
+				<Tooltip content={recency.exact}>
+					<time dateTime={recency.iso}>
+						{recency.label === "updated"
+							? t("ui.hub.teams.recency.updated", { when: recency.when })
+							: t("ui.hub.teams.recency.created", { when: recency.when })}
+					</time>
+				</Tooltip>
 			),
 		});
 	}
@@ -628,6 +698,8 @@ const TeamSummary = ({
 	team,
 	expanded,
 }: { team: HubTeam; expanded: boolean }) => {
+	// `t()` is read per render; the subscription repaints on a locale change.
+	useI18nLocale();
 	const description = teamDescription(team);
 	const version = teamVersion(team);
 	return (
@@ -643,7 +715,8 @@ const TeamSummary = ({
 					{hubDisplayName(team.name)}
 				</span>
 				{version ? (
-					<span className="ml-2 shrink-0 text-ink-dim text-meta">
+					<span className="ms-2 shrink-0 text-ink-dim text-meta">
+						{/* i18n: ignore version prefix - "v" + a version number is a technical token, not copy */}
 						v{version}
 					</span>
 				) : null}
@@ -680,7 +753,9 @@ const TeamSummary = ({
 					</span>
 				</>
 			) : (
-				<span className="mt-1 text-body-sm text-ink-dim">No description</span>
+				<span className="mt-1 text-body-sm text-ink-dim">
+					{t("ui.hub.teams.no_description")}
+				</span>
 			)}
 			<span className="mt-1 flex min-w-0 flex-col">
 				<TeamComposition team={team} />
@@ -721,24 +796,31 @@ const TeamSummary = ({
  * rather than a fifth summary line.
  */
 const TeamDetails = ({ team }: { team: HubTeam }) => {
+	useI18nLocale();
 	const manager = team.manager?.trim();
 	const dates = teamDates(team);
 	const dateParts = [
-		dates.created ? `Created ${dates.created}` : null,
-		dates.updated ? `Updated ${dates.updated}` : null,
+		dates.created
+			? t("ui.hub.teams.detail.created", { date: dates.created })
+			: null,
+		dates.updated
+			? t("ui.hub.teams.detail.updated", { date: dates.updated })
+			: null,
 	].filter((part) => part !== null);
 	const hasRoster = Boolean(manager) || team.members.length > 0;
 	return (
 		<div className="mt-1 flex flex-col gap-2">
 			{hasRoster || dateParts.length === 0 ? (
 				<div className="flex flex-col gap-1">
-					<p className="text-ink-dim text-meta">Members</p>
+					<p className="text-ink-dim text-meta">{t("ui.hub.teams.members")}</p>
 					<ul className="flex flex-col gap-0.5">
 						{manager ? (
 							<li className="flex items-baseline gap-1.5">
 								{/* `ink-muted`, not `ink`: a member outshouted the description it belongs to (design round 1, D1). */}
 								<span className="text-body-sm text-ink-muted">{manager}</span>
-								<span className="text-ink-dim text-meta">Manager</span>
+								<span className="text-ink-dim text-meta">
+									{t("ui.hub.teams.manager")}
+								</span>
 							</li>
 						) : null}
 						{team.members.map((slot) => (
@@ -758,7 +840,9 @@ const TeamDetails = ({ team }: { team: HubTeam }) => {
 							</li>
 						))}
 						{!hasRoster ? (
-							<li className="text-ink-dim text-meta">No members</li>
+							<li className="text-ink-dim text-meta">
+								{t("ui.hub.teams.no_members")}
+							</li>
 						) : null}
 					</ul>
 				</div>
@@ -772,13 +856,13 @@ const TeamDetails = ({ team }: { team: HubTeam }) => {
 
 /**
  * One skeleton row, the row above box for box: the same `ROW_BOX`, the chevron
- * gutter (`pl-5`, 14px glyph + 6px gap) and lines whose heights are the settled
+ * gutter (`ps-5`, 14px glyph + 6px gap) and lines whose heights are the settled
  * lines' own (`h-[1lh]` on the same type-size token, so the line box is the real
  * one and not a number kept in step by hand). Description is two bars, the meta
  * line one; the provenance line the settled row also has is the second meta bar.
  */
 const TeamRowSkeleton = () => (
-	<div className={cn(ROW_BOX, "pl-9")} data-testid="org-team-skeleton-row">
+	<div className={cn(ROW_BOX, "ps-9")} data-testid="org-team-skeleton-row">
 		<div className="flex h-[1lh] items-center text-body">
 			<Skeleton className="h-4.5 w-40" />
 		</div>

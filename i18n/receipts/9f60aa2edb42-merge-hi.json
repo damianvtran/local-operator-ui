@@ -1,0 +1,163 @@
+{
+  "locale": "hi",
+  "scope": "ui.hub.pages + ui.common.actions: verification of the #1439 merge resolution",
+  "checkout_head": "fa1a337d6e",
+  "audited_merge_commit": "a422eb06d6",
+  "audit_date": "2026-10-29",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "9f60aa2edb42",
+    "model": "radient/auto (fallback; provider 429)",
+    "first_pass_model": "anthropic/claude-sonnet-5-5",
+    "actual_model_source": "Harness model switch: pass 1 ran anthropic/claude-sonnet-5-5; this pass ran radient/auto after a quota HTTP 429 fallback."
+  },
+  "provenance_correction": "The previous revision of this receipt recorded model 'kimi/k3.1-pro', which was not the serving model. Corrected here to the models actually recorded by the harness; no other provenance field changed.",
+  "instance": "9f60aa2edb42-merge-hi",
+  "input_sha256": {
+    "src/i18n/catalogues/en/ui.hub.pages.json": "f1b0a81c417ad3037e96efb0a6c85ae4588f9d01e9c01a3dbbb357f90dd03d3e",
+    "src/i18n/catalogues/en/ui.common.actions.json": "3f9e9a4b02310980d5ba06a2d4b8f637a8c97a4eebd96a8100d4799f543429ba",
+    "src/i18n/catalogues/hi/ui.hub.pages.json": "6c0de7648e2af86aa22907d646b49108748975182c53896829c68b3c6d700b44",
+    "src/i18n/catalogues/hi/ui.common.actions.json": "28e81bd9af2df9f4622cfccd15908b474bce08cecfb02aa3fe163033219d36a9"
+  },
+  "hash_stability": "The four working-tree files and the blobs at a422eb06d6 hash identically, and git diff a422eb06d6..fa1a337d6e over them is empty, so the sampled reads below are reads of the audited bytes.",
+  "comparison_revisions": {
+    "main": "origin/main (863fa15e07e1fc7f94c254cbebfda708f936cc89)",
+    "pre_merge_tip": "2ba58dd71d5f0c673c301440c64ccd87cf491948"
+  },
+  "observed_diffs": {
+    "src/i18n/catalogues/en/ui.hub.pages.json": {
+      "vs_origin_main": {
+        "added": ["ui.hub.pages.pager.nav_aria", "ui.hub.pages.pager.next", "ui.hub.pages.pager.previous"],
+        "removed": [],
+        "changed": []
+      },
+      "vs_2ba58dd71d": {
+        "added": ["ui.hub.pages.card.get", "ui.hub.pages.card.updated"],
+        "removed": [],
+        "changed": []
+      },
+      "merged_equals_main_plus_branch_additions": true,
+      "main_source_lines_byte_identical": true,
+      "branch_source_lines_byte_identical": true
+    },
+    "src/i18n/catalogues/hi/ui.hub.pages.json": {
+      "vs_origin_main": {
+        "added": ["ui.hub.pages.pager.nav_aria", "ui.hub.pages.pager.next", "ui.hub.pages.pager.previous"],
+        "removed": [],
+        "changed": []
+      },
+      "vs_2ba58dd71d": {
+        "added": ["ui.hub.pages.card.get", "ui.hub.pages.card.updated"],
+        "removed": [],
+        "changed": []
+      },
+      "merged_equals_main_plus_branch_additions": true,
+      "main_source_lines_byte_identical": true,
+      "branch_source_lines_byte_identical": true
+    },
+    "src/i18n/catalogues/en/ui.common.actions.json": {
+      "vs_origin_main": {
+        "added": ["ui.common.actions.dismiss", "ui.common.actions.more_info"],
+        "removed": [],
+        "changed": []
+      },
+      "vs_2ba58dd71d": {
+        "added": ["ui.common.actions.retrying"],
+        "removed": [],
+        "changed": []
+      },
+      "merged_equals_main_plus_branch_additions": true,
+      "main_source_lines_byte_identical": true,
+      "branch_source_lines_byte_identical": true
+    },
+    "src/i18n/catalogues/hi/ui.common.actions.json": {
+      "vs_origin_main": {
+        "added": ["ui.common.actions.dismiss", "ui.common.actions.more_info"],
+        "removed": [],
+        "changed": []
+      },
+      "vs_2ba58dd71d": {
+        "added": ["ui.common.actions.retrying"],
+        "removed": [],
+        "changed": []
+      },
+      "merged_equals_main_plus_branch_additions": true,
+      "main_source_lines_byte_identical": true,
+      "branch_source_lines_byte_identical": true
+    }
+  },
+  "read_public_copy": {
+    "status": "passed",
+    "previous_status": "refused - the four files were uncommitted and differed from HEAD",
+    "whole_file_reads": [
+      "src/i18n/catalogues/hi/ui.hub.pages.json - 40 values returned",
+      "src/i18n/catalogues/hi/ui.common.actions.json - 53 values returned"
+    ],
+    "per_key_reads": [
+      "ui.hub.pages.pager.next => अगला",
+      "ui.hub.pages.pager.previous => पिछला",
+      "ui.hub.pages.pager.nav_aria => एजेंट के पेज",
+      "ui.hub.pages.card.updated => {when} अपडेट किया गया",
+      "ui.hub.pages.card.get => पाएँ",
+      "ui.hub.pages.status.count.agents => {scope} {count, plural, one {# एजेंट} other {# एजेंट}}",
+      "ui.common.actions.dismiss => ख़ारिज करें",
+      "ui.common.actions.more_info => और जानकारी",
+      "ui.common.actions.retrying => कोशिश की जा रही है…",
+      "ui.common.actions.retry => फिर कोशिश करें"
+    ]
+  },
+  "hindi_review": {
+    "values_read_through_public_copy_route": 93,
+    "coherent_voice_observed": true,
+    "english_identical_values": [],
+    "english_leak_in_branch_added_keys": [],
+    "key_parity": true,
+    "placeholder_mismatches": [],
+    "icu_parse_and_format_failures": [],
+    "context_sidecar_parity": "40/40 and 53/53 keys carry a context entry; no orphan context keys",
+    "forbidden_address_or_exclamation": [],
+    "typography_regressions": [],
+    "style_guide": "$HOME/local-operator/i18n/style-guides/hi.md (labelled document)",
+    "voice_note": "The pager, card and retry strings sit in the same आप-register polite imperative the surrounding hub and action copy already uses (अगला/पिछला beside पिछला मिलान and अगला मिलान; ख़ारिज करें beside रद्द करें/बंद करें). Prose keeps दंड and U+2026, curly quotes on the credential string, and Latin product names."
+  },
+  "validator": {
+    "command": "node --test scripts/i18n/locale-parity.test.mjs scripts/i18n/catalogue-locale.test.mjs",
+    "result": "51 passed, 0 failed",
+    "additional_icu_check": "All 93 en/hi messages parsed and formatted with intl-messageformat at counts 0, 1 and 2; zero failures."
+  },
+  "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 0,
+    "NIT": 0
+  },
+  "verdict": "pass",
+  "note": "Blocker cleared at a422eb06d6: read_public_copy now returns both Hindi catalogues and the two namespaces pass.",
+  "namespaces": {
+    "ui.hub.pages": {
+      "status": "passed",
+      "keys_audited": 40,
+      "sha256": {
+        "en": "f1b0a81c417ad3037e96efb0a6c85ae4588f9d01e9c01a3dbbb357f90dd03d3e",
+        "target": "6c0de7648e2af86aa22907d646b49108748975182c53896829c68b3c6d700b44"
+      },
+      "findings": []
+    },
+    "ui.common.actions": {
+      "status": "passed",
+      "keys_audited": 53,
+      "sha256": {
+        "en": "3f9e9a4b02310980d5ba06a2d4b8f637a8c97a4eebd96a8100d4799f543429ba",
+        "target": "28e81bd9af2df9f4622cfccd15908b474bce08cecfb02aa3fe163033219d36a9"
+      },
+      "findings": []
+    }
+  },
+  "resolution_of_prior_finding": {
+    "id": "MERGE-HI-001",
+    "prior_severity": "BLOCKER",
+    "kind": "required_evidence_unavailable",
+    "disposition": "closed",
+    "why": "The merge landed as a422eb06d6; the sanctioned reader returns both Hindi files and every sampled value is Hindi prose in the established voice."
+  }
+}

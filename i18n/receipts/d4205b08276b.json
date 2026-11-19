@@ -1,0 +1,72 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "actual_model_source": "harness session model (system prompt: deepseek/deepseek-flash); no fallback used",
+  "instance": "d4205b08276b",
+  "instance_source": "generated 12-hex audit-run id; the auditor runs as an in-process subagent without a separate session id (parent session 7b57469f74f6)",
+  "independent_from_translator_session": true,
+  "independence_basis": "The task states a different agent translated the 22-key delta. This auditor did not author or edit any catalogue value; the catalogue was only read.",
+  "date": "2026-10-19",
+  "locale": "zh-CN",
+  "namespace": "ui.mesh",
+  "round": 1,
+  "worktree": "~/local-operator-ui/.worktrees/mesh-link-states (branch fix/mesh-link-states, HEAD 4406017d5ffd931fa3f6e4c99cd8de3c5d014dfd + uncommitted working-tree translation as audited)",
+  "scope": "ui.mesh zh-CN: 22 new keys (mesh_drop.reach_refusal, mesh_drop.owner_reach_refusal, mesh_graph.*_count, mesh_reach.*) audited in depth; all 245 values read for whole-file consistency. The catalogue was not edited.",
+  "style_guide": {
+    "path": "~/local-operator/i18n/style-guides/zh-CN.md",
+    "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c",
+    "glossary_path": "~/local-operator/i18n/glossary.md",
+    "glossary_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "note": "The UI checkout has no local i18n/glossary.md or style-guides/; docs/I18N.md points to the core repository's binding glossary and per-locale guide, which were used."
+  },
+  "namespaces": {
+    "ui.mesh": {
+      "status": "passed",
+      "keys_audited": 245,
+      "new_keys_audited": 22,
+      "sha256": {
+        "en": "876ba5b9c176f2ae3070894f90f2da2bff6e707cc85b61fea5f53f3bf74825ad",
+        "zh-CN": "cebfaf04346c840b0830389323f2041e27717edab7b7cbe4d2a10657fb74707e"
+      },
+      "context_sha256": "4ceb0a871d50757e49e8079b0446a91fe7fc4ad571f54479a056632cd1f1d533",
+      "findings": [
+        {
+          "id": "ZH-M1",
+          "severity": "minor",
+          "key": "ui.mesh.mesh_reach.handshake_refused_hint",
+          "current": "请检查此设备是否仍是网络成员、成员版本是否一致；设备被移除或成员版本变化都会使握手被拒绝。",
+          "problem": "请 adds a politeness marker the English does not have; the zh-CN guide restricts 请 to blocking dialogs where the English says please. The closing clause 都会使握手被拒绝 is a causative passive calque of 'refuses the handshake' and reads less naturally than a topic-comment sentence.",
+          "suggestion": "确认此设备仍是网络成员且成员版本一致；设备被移除或成员版本变化时，握手都会被拒绝。",
+          "blocking": false
+        }
+      ]
+    }
+  },
+  "mechanical": {
+    "json": "valid JSON; 245 unique keys; no duplicate members",
+    "parity": "245/245 English keys present; no added or dropped keys",
+    "placeholders": "script-checked every key: {device}, {reach}, {reason}, {count}, {shown}, {total}, {head}, {clauses}, {last}, {transport}, {subject}, {suffix}, {requester}, {role}, {network}, {grant}, {keeper}, {owner}, {source}, {destination}, {conversation}, {fact}, {retirement}, {state}, {age}, {epoch}, {sentence}, {device} names/types identical to EN; no reordering or renaming",
+    "icu": "zh-CN uses other-only plurals as CLDR requires; the English one arm is correctly omitted; =0 preserved in mesh_list.conversation_count; every ::group-off skeleton preserved byte-for-byte",
+    "markup": "no markup, backtick code, commands or paths in this namespace; role tokens read/drive/admin kept as Latin runs",
+    "script_and_typography": "0 occurrences of 您; 0 non-NFC values; full-width , 。 ： ； 、 “ ” everywhere; no ASCII punctuation adjacent to CJK; no space inserted between CJK and Latin/digit runs; ellipsis is …… only; no straight quotes",
+    "terminology": "relay=中继, handshake=握手, epoch=成员版本, device=设备, network=网络, member=成员, address=地址 are consistent with the existing zh-CN ui.mesh rows and the core glossary. endpoint occurs only in key identifiers; the visible English is 'no address to dial', rendered 无地址可拨, which matches address=地址 rather than inventing an endpoint term.",
+    "fit": "no maxCells/maxChars hints exist in ui.mesh.context.json; the longest new value is the 44-character hint, which the sidecar says sits in the device panel with room. No button/tab/status-line candidate overflows its English footprint."
+  },
+  "out_of_delta_observations": [
+    {
+      "key": "ui.mesh.mesh_approvals.watch_a_session_there",
+      "observation": "Pre-existing (not part of this delta): 'watch a session there' and 'see its sessions' are both rendered 查看..., so the live-watch nuance is flattened. Read-only permission scope is unaffected.",
+      "severity": "minor",
+      "counted_in_findings": false
+    }
+  ],
+  "validators": {
+    "pnpm check-i18n": "exit 1 at the first step: generate.mjs --check reports keys.gen.ts stale because the shared worktree contains an untracked src/i18n/catalogues/ur/ directory from another in-flight locale; this is not a zh-CN defect. The remaining checks were run individually.",
+    "node scripts/i18n/check-strings.mjs": "exit 0 - 1260 files scanned, 762 literals at or below baseline, 16 advisory-only findings",
+    "node scripts/i18n/context-parity.mjs": "exit 0 - every English key covered, apart from allowed gaps",
+    "node scripts/i18n/ledger-check.mjs": "exit 1 - expected in-flight state: all six uncommitted ui.mesh translations are stale versus their ledger hashes and ur has no ledger row; zh-CN/ui.mesh source and target are stale until this audit is assembled",
+    "node --test scripts/i18n/locale-parity.test.mjs": "43 tests, 43 pass, 0 fail - includes zh-CN key parity, ICU placeholder preservation and no-English-stub checks",
+    "own mechanical script": "executed in the session; results recorded under mechanical above"
+  },
+  "notes": "Findings are only those that remain after a second read of the 22 new values against the English source and context sidecar. No BLOCKER or MAJOR. The single MINOR is a register/idiom point on the recovery hint; it does not change meaning. The catalogue was not edited by this auditor."
+}

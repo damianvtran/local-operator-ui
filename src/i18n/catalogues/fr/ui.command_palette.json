@@ -73,5 +73,6 @@
 	"ui.command_palette.use_palette_sources.settings": "Paramètres",
 	"ui.command_palette.use_palette_sources.start": "Démarrer",
 	"ui.command_palette.use_palette_sources.team_chat": "Conversation d’équipe",
-	"ui.command_palette.use_palette_sources.usage_over_time": "Utilisation dans le temps"
+	"ui.command_palette.use_palette_sources.usage_over_time": "Utilisation dans le temps",
+	"ui.command_palette.new_temporary_chat": "Nouvelle conversation temporaire"
 }

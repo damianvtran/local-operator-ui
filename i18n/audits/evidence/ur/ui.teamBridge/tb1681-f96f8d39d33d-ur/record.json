@@ -1,0 +1,229 @@
+{
+	"schema": 1,
+	"record_kind": "locale-audit evidence record (PR delta audit)",
+	"audit_id": "tb1681-f96f8d39d33d-ur",
+	"locale": "ur",
+	"namespace": "ui.teamBridge",
+	"audit_date": "2026-11-04",
+	"key_count": 389,
+	"auditor": {
+		"agent": "translation-auditor",
+		"team": "lopdev",
+		"session": "f96f8d39d33d",
+		"instance": "f96f8d39d33d-pr1681-ur",
+		"model": "anthropic/claude-opus-5-5",
+		"independent_from_translator_session": true,
+		"actual_model_source": "Served model as announced by the harness preamble for session f96f8d39d33d (anthropic/claude-opus-5-5); no fallback announced or observed.",
+		"model_fallback": {
+			"announced": false,
+			"observed": false
+		},
+		"findings": {
+			"blocker": 0,
+			"major": 0,
+			"minor": 1,
+			"nit": 1
+		}
+	},
+	"independence": "Independent auditor: lopdev team translation-auditor, session f96f8d39d33d. Did not translate the 23 conversation_menu values (they arrived in the implementer's commit 1ec423538c46 on PR #1681), wrote no English copy or code in the PR, and is not any prior ui.teamBridge auditor (7c739a6246b4-pr1670, bf2ddf2b6fb3-pr1670-r2). It applied only the corrections listed in findings. Same model family as the team coder (anthropic/claude-opus-5-5), separate agent instance; disclosed. No MT service used. Row written by ledger-assemble.mjs.",
+	"input_hashes": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "75280fb2e0efe7dc7064094064b9d88ab056856082a8224acfe5cb5fd21c3e7a"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "71cbc1181a137ff9f5d3fa1a1389adb0571c5d1a6c6b750284aa7bdf90a1ab9b"
+		},
+		"ur": {
+			"path": "src/i18n/catalogues/ur/ui.teamBridge.json",
+			"sha256": "c914f5bc5764782360aafda9a108690a33de5ef0944fa2cc05a44a4c9f77076d",
+			"pr_head_sha256_before_auditor_fixes": "c4355dad258edf388d6f9ae975059951e4df0837286232647a3a98a88748e0ae"
+		}
+	},
+	"style_guide": {
+		"path": "~/local-operator i18n/style-guides/ur.md",
+		"sha256": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60",
+		"glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+		"core_commit": "b42471d3935"
+	},
+	"integration": {
+		"pr": 1681,
+		"repo": "damianvtran/local-operator-ui",
+		"branch": "feat/team-bridge-conversation-menu",
+		"base": "7345dcbf238d334e56f102eb994b15eb5c1776f0",
+		"audited_head": "1ec423538c464ba5b17ffe94d3d80b44f15623dd",
+		"auditor_fix_commit": "the commit that adds this record"
+	},
+	"scope": {
+		"delta_kind": "Delta audit of PR #1681 (7345dcb..1ec423538c46): the 23 new ui.teamBridge.conversation_menu.* values read against en, the en context sidecar, the renderer call sites (team-bridge-conversation-menu.tsx, team-bridge-page.tsx), the glossary, the ur style guide and the #1670 receipts, composed with real arguments; existing ui.teamBridge copy read for glossary consistency. The only pre-existing line the PR touched is members_panel.note.dm (trailing comma; value byte-identical, verified). No rendered fit or native RTL rendering claimed.",
+		"keys_added": [
+			"ui.teamBridge.conversation_menu.view_members",
+			"ui.teamBridge.conversation_menu.join",
+			"ui.teamBridge.conversation_menu.remove_agent",
+			"ui.teamBridge.conversation_menu.add_agent",
+			"ui.teamBridge.conversation_menu.leave_channel",
+			"ui.teamBridge.conversation_menu.leave_group",
+			"ui.teamBridge.conversation_menu.reason.org_wide",
+			"ui.teamBridge.conversation_menu.reason.agents_builtin",
+			"ui.teamBridge.conversation_menu.reason.general_not_member_yet",
+			"ui.teamBridge.conversation_menu.reason.agent_not_permitted",
+			"ui.teamBridge.conversation_menu.confirm.leave_channel_title",
+			"ui.teamBridge.conversation_menu.confirm.leave_group_title",
+			"ui.teamBridge.conversation_menu.confirm.leave_body",
+			"ui.teamBridge.conversation_menu.confirm.remove_agent_title",
+			"ui.teamBridge.conversation_menu.confirm.remove_agent_body",
+			"ui.teamBridge.conversation_menu.confirm.add_agent_title",
+			"ui.teamBridge.conversation_menu.confirm.add_agent_body",
+			"ui.teamBridge.conversation_menu.confirm.add_agent",
+			"ui.teamBridge.conversation_menu.error.generic",
+			"ui.teamBridge.conversation_menu.error.not_in_general",
+			"ui.teamBridge.conversation_menu.partial_leave.body",
+			"ui.teamBridge.conversation_menu.partial_leave.retry_failed",
+			"ui.teamBridge.conversation_menu.partial_leave.retry"
+		],
+		"keys_changed_by_auditor": [
+			"ui.teamBridge.conversation_menu.view_members",
+			"ui.teamBridge.conversation_menu.confirm.add_agent_body"
+		]
+	},
+	"audited": {
+		"ui.teamBridge.conversation_menu.view_members": {
+			"en": "View members",
+			"translation": "ارکان دیکھیں"
+		},
+		"ui.teamBridge.conversation_menu.join": {
+			"en": "Join channel",
+			"translation": "چینل میں شامل ہوں"
+		},
+		"ui.teamBridge.conversation_menu.remove_agent": {
+			"en": "Remove {name}",
+			"translation": "{name} کو ہٹائیں"
+		},
+		"ui.teamBridge.conversation_menu.add_agent": {
+			"en": "Add {name}",
+			"translation": "{name} کو شامل کریں"
+		},
+		"ui.teamBridge.conversation_menu.leave_channel": {
+			"en": "Leave channel",
+			"translation": "چینل چھوڑیں"
+		},
+		"ui.teamBridge.conversation_menu.leave_group": {
+			"en": "Leave group",
+			"translation": "گروپ چھوڑیں"
+		},
+		"ui.teamBridge.conversation_menu.reason.org_wide": {
+			"en": "Everyone in the organization is a member — mute it instead",
+			"translation": "تنظیم کا ہر فرد اس کا رکن ہے — اس کے بجائے اسے خاموش کریں"
+		},
+		"ui.teamBridge.conversation_menu.reason.agents_builtin": {
+			"en": "Pause your agent to take it out of {channel}",
+			"translation": "{channel} سے نکالنے کے لیے اپنے ایجنٹ کو موقوف کریں"
+		},
+		"ui.teamBridge.conversation_menu.reason.general_not_member_yet": {
+			"en": "Your agent isn’t in {channel} yet",
+			"translation": "آپ کا ایجنٹ ابھی {channel} میں نہیں ہے"
+		},
+		"ui.teamBridge.conversation_menu.reason.agent_not_permitted": {
+			"en": "Agents aren’t allowed in this conversation",
+			"translation": "اس گفتگو میں ایجنٹس کی اجازت نہیں ہے"
+		},
+		"ui.teamBridge.conversation_menu.confirm.leave_channel_title": {
+			"en": "Leave {conversation}?",
+			"translation": "{conversation} چھوڑیں؟"
+		},
+		"ui.teamBridge.conversation_menu.confirm.leave_group_title": {
+			"en": "Leave the group {conversation}?",
+			"translation": "گروپ {conversation} چھوڑیں؟"
+		},
+		"ui.teamBridge.conversation_menu.confirm.leave_body": {
+			"en": "You’ll stop getting its messages, and your agent leaves with you. To come back, rejoin from the channel list or ask a member to invite you.",
+			"translation": "آپ کو اس کے پیغامات ملنا بند ہو جائیں گے، اور آپ کا ایجنٹ بھی آپ کے ساتھ چلا جائے گا۔ واپس آنے کے لیے چینل کی فہرست سے دوبارہ شامل ہوں یا کسی رکن سے کہیں کہ آپ کو مدعو کرے۔"
+		},
+		"ui.teamBridge.conversation_menu.confirm.remove_agent_title": {
+			"en": "Remove {name} from {conversation}?",
+			"translation": "{name} کو {conversation} سے ہٹائیں؟"
+		},
+		"ui.teamBridge.conversation_menu.confirm.remove_agent_body": {
+			"en": "{name} stops receiving messages here, under every persona it uses. You stay in the conversation, and you can add {name} again later.",
+			"translation": "{name} کو یہاں پیغامات ملنا بند ہو جائیں گے، اس کی ہر پرسونا میں۔ آپ گفتگو میں رہیں گے، اور {name} کو بعد میں دوبارہ شامل کر سکتے ہیں۔"
+		},
+		"ui.teamBridge.conversation_menu.confirm.add_agent_title": {
+			"en": "Add {name} to {conversation}?",
+			"translation": "{name} کو {conversation} میں شامل کریں؟"
+		},
+		"ui.teamBridge.conversation_menu.confirm.add_agent_body": {
+			"en": "{name} joins right away. It reads every message here and decides whether to reply, and replies when @-mentioned.",
+			"translation": "{name} فوراً شامل ہو جائے گا۔ یہ یہاں ہر پیغام پڑھتا ہے، فیصلہ کرتا ہے کہ جواب دینا ہے یا نہیں، اور @ کے ساتھ ذکر ہونے پر جواب دیتا ہے۔"
+		},
+		"ui.teamBridge.conversation_menu.confirm.add_agent": {
+			"en": "Add",
+			"translation": "شامل کریں"
+		},
+		"ui.teamBridge.conversation_menu.error.generic": {
+			"en": "That change wasn’t saved. Try again.",
+			"translation": "یہ تبدیلی محفوظ نہیں ہوئی۔ دوبارہ کوشش کریں۔"
+		},
+		"ui.teamBridge.conversation_menu.error.not_in_general": {
+			"en": "Your agent isn’t in {channel} yet, so there’s nothing to remove.",
+			"translation": "آپ کا ایجنٹ ابھی {channel} میں نہیں ہے، اس لیے ہٹانے کو کچھ نہیں۔"
+		},
+		"ui.teamBridge.conversation_menu.partial_leave.body": {
+			"en": "You left {conversation}. Your agent is still in this conversation.",
+			"translation": "آپ نے {conversation} چھوڑ دیا۔ آپ کا ایجنٹ ابھی بھی اس گفتگو میں ہے۔"
+		},
+		"ui.teamBridge.conversation_menu.partial_leave.retry_failed": {
+			"en": "You left {conversation}, but your agent still couldn’t be removed. Try again.",
+			"translation": "آپ نے {conversation} چھوڑ دیا، لیکن آپ کا ایجنٹ اب بھی ہٹایا نہیں جا سکا۔ دوبارہ کوشش کریں۔"
+		},
+		"ui.teamBridge.conversation_menu.partial_leave.retry": {
+			"en": "Remove my agent",
+			"translation": "میرا ایجنٹ ہٹائیں"
+		}
+	},
+	"findings": [
+		{
+			"id": "UR-M1",
+			"severity": "minor",
+			"keys": [
+				"ui.teamBridge.conversation_menu.view_members"
+			],
+			"summary": "Glossary drift: 'اراکین' while every other ui.teamBridge value (14) uses 'ارکان', including the members panel title this item opens.",
+			"disposition": "fixed by auditor in this commit",
+			"values": {
+				"ui.teamBridge.conversation_menu.view_members": {
+					"before": "اراکین دیکھیں",
+					"after": "ارکان دیکھیں"
+				}
+			}
+		},
+		{
+			"id": "UR-N1",
+			"severity": "nit",
+			"keys": [
+				"ui.teamBridge.conversation_menu.confirm.add_agent_body"
+			],
+			"summary": "'@-ذکر' (hyphenated calque) vs the catalogue's '@ کے ساتھ ذکر' (members.invitation_note_v2/_v3, builtin.general_topic).",
+			"disposition": "fixed by auditor in this commit",
+			"values": {
+				"ui.teamBridge.conversation_menu.confirm.add_agent_body": {
+					"before": "{name} فوراً شامل ہو جائے گا۔ یہ یہاں ہر پیغام پڑھتا ہے، فیصلہ کرتا ہے کہ جواب دینا ہے یا نہیں، اور @-ذکر ہونے پر جواب دیتا ہے۔",
+					"after": "{name} فوراً شامل ہو جائے گا۔ یہ یہاں ہر پیغام پڑھتا ہے، فیصلہ کرتا ہے کہ جواب دینا ہے یا نہیں، اور @ کے ساتھ ذکر ہونے پر جواب دیتا ہے۔"
+				}
+			}
+		}
+	],
+	"checks": {
+		"icu_command": "node scripts/verify.mjs (worktree root; @formatjs/icu-messageformat-parser) — all 389 values parse; argument names equal en on every key; the only kind difference is the pre-existing vi/zh-CN {count, number} in attachmentCard.list/fileCard.list (byte-identical on base 7345dcb; those locales have no plural categories)",
+		"compose_command": "node scripts/compose.mjs (intl-messageformat; {name}=Aida, {conversation}=qa-coordination, {channel}=isolateLtr('#general'/'#agents') as the renderer passes it)",
+		"unicode": "All values NFC; no bidi controls (U+200E/F, U+061C, U+202A-E, U+2066-9); no stray U+202F outside fr; fr high punctuation on delta keys uses U+202F; zh-CN no CJK/Latin space on delta keys.",
+		"key_set": "389 keys, equal to English, same order.",
+		"execution_log": "i18n/audits/evidence/ur/ui.teamBridge/tb1681-f96f8d39d33d-ur/audit.log"
+	},
+	"not_claimed": "No rendered width fit (Storybook unavailable under the host memory guard; overflow nits flagged for the design rendered check) and no native RTL rendering ({channel} arrives isolateLtr-wrapped; {conversation}/{name} are plain strings, same as the #1670 members-panel titles).",
+	"artifacts": {
+		"audit.log": "3db25517cf1903223bfe22c82d6aac125b9a5faa614a74d7c080583f7ce3d9bd",
+		"scripts/verify.mjs": "f36688b9696bdf678b76ee473ee6517cac549ac2ca303a67301978fa4508d7f3",
+		"scripts/compose.mjs": "804bfdeddca8db0dbb8ca64490cd544a3bdda4851d0c192a2520285055796379"
+	}
+}

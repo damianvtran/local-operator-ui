@@ -1,0 +1,125 @@
+{
+ "locale": "ru",
+ "namespaces": {
+  "ui.library": {
+   "status": "passed",
+   "result": "clean-with-findings",
+   "fully_audited_key_count": 1,
+   "carried_key_count": 19,
+   "consistency_only_key_count": 159,
+   "fully_audited_keys": [
+    "ui.library.tag_category.custom"
+   ],
+   "carried_keys_byte_identical": true,
+   "finding_ids": [
+    "F1"
+   ],
+   "source_sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71",
+   "target_sha256": "49af1bd7b725040e8fc821fbe38fca35d8e82410020a0bc40f216ed7650fa8ae",
+   "input_hashes": {
+    "en": {
+     "path": "src/i18n/catalogues/en/ui.library.json",
+     "sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71"
+    },
+    "context": {
+     "path": "src/i18n/catalogues/en/ui.library.context.json",
+     "sha256": "f799fe911107aa1f7b83b0c026ee277d5c21ee5eba297e3ae13c2da51135cc8e"
+    },
+    "ru": {
+     "path": "src/i18n/catalogues/ru/ui.library.json",
+     "sha256": "49af1bd7b725040e8fc821fbe38fca35d8e82410020a0bc40f216ed7650fa8ae"
+    }
+   },
+   "english_context_changed_since_round1": "en/ui.library.context.json 2fe63e83…(round 1) -> f799fe91…(this head): the kind.other and tag_category.custom notes were corrected by the remediation; judged as current notes, not back-audited."
+  }
+ },
+ "audit_date": "2026-11-10",
+ "key_count": 20,
+ "fully_audited_key_count": 1,
+ "consistency_only_key_count": 19,
+ "scope": "PR damianvtran/local-operator-ui #1851, DELTA round 2: remediation head f04035bc3cb6a03644f8776a799e3daad93c7e58 vs previous audited head 8a9ce1f808c266ebe9a0e924094344cea60c2c23, origin base 0e12072d2b3. One value of ui.library was revised by a fresh translator (ui.library.tag_category.custom: «Пользовательские» 16 cells -> «Произвольные» 12 cells); it was audited in full against the English source, the CURRENT context sidecar, the ru catalogue corpus, the ru style guide and the glossary. The other 19 new keys were verified byte-identical to the round-1 audited bytes and are carried without re-auditing their wording. The 159 legacy values were checked only for key-set parity, zero change vs base, JSON validity and hash binding.",
+ "head_sha": "f04035bc3cb6a03644f8776a799e3daad93c7e58",
+ "previous_head_sha": "8a9ce1f808c266ebe9a0e924094344cea60c2c23",
+ "base_sha": "0e12072d2b3",
+ "auditor": {
+  "agent": "i18n-auditor",
+  "instance": "40ab4bc4bb7e",
+  "session": "40ab4bc4bb7e",
+  "model": "deepseek/deepseek-flash",
+  "actual_model_source": "Served session header for this session (40ab4bc4bb7e) states deepseek/deepseek-flash; no model switch, role-pin override or provider fallback occurred in this session. A role-level pin cannot be read from inside the session.",
+  "fallback_used": false,
+  "independent_from_translator_session": true
+ },
+ "translator": {
+  "agent": "i18n-translator",
+  "model": "anthropic/claude-sonnet-5-5",
+  "session": "not supplied",
+  "source": "Revision identity supplied by the delegation brief (a fresh translator, anthropic/claude-sonnet-5-5, revised this one value after audit findings); the revision session id was not supplied. Verified independently from the worktree: the ru guide note in _s14-audits/f04035bc.../ru-rev.json records model anthropic/claude-sonnet-5-5 and the single value that landed. This auditor translated nothing, cannot reach that session, never read another session's directory, and used no translation engine, API or MT service to compare or back-translate."
+ },
+ "policy_inputs": {
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/ru.md",
+   "sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+  },
+  "glossary": {
+   "path": "~/local-operator-ui/.worktrees/_s14-audits/f04035bc3cb6a03644f8776a799e3daad93c7e58/glossary.md",
+   "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+   "note": "Manager-owned copy; a separate shasum run in this session confirmed it is byte-identical to ~/local-operator/i18n/glossary.md. No custom/tag/category row exists in it."
+  },
+  "expected_hashes": {
+   "path": "~/local-operator-ui/.worktrees/_s14-audits/f04035bc3cb6a03644f8776a799e3daad93c7e58/expected-hashes.json"
+  }
+ },
+ "artifacts": [
+  {
+   "path": "ru-delta-ds-40ab4bc4bb7e.json",
+   "sha256": "af17beddba6d6cb8d0d3176192ef542b9a6da602f8be5e7c287d7f2368eab005",
+   "kind": "audit_report",
+   "record_reference": "record.json"
+  },
+  {
+   "path": "ru-delta-ds-40ab4bc4bb7e.audit.log",
+   "sha256": "77574a263b0776fe5e056a29544532e8d38118251f1cdd725cfbede479b150ad",
+   "kind": "actual_execution_log",
+   "record_reference": "record.json"
+  },
+  {
+   "path": "ru-delta-ds-40ab4bc4bb7e-check.py",
+   "sha256": "2d3f1d9fa1e3f5dc41df6ee8cee5bfa4b7394c5a9d5a2e26fc9ceba558849e39",
+   "kind": "executed_check_source",
+   "record_reference": "record.json"
+  },
+  {
+   "path": "ru-delta-ds-40ab4bc4bb7e-check.out",
+   "sha256": "ae40a66cc93c0e2de6e9191a07b8108d834ff45cf47be5fe370429edb79b759a",
+   "kind": "actual_execution_output",
+   "record_reference": "record.json"
+  }
+ ],
+ "current_report_verdict": {
+  "status": "passed",
+  "unresolved_blocker_major_count": 0,
+  "finding_ids": [
+   "F1"
+  ]
+ },
+ "finding_report": "ru-delta-ds-40ab4bc4bb7e.json",
+ "audit_notes_not_execution_log": false,
+ "execution_log": "ru-delta-ds-40ab4bc4bb7e.audit.log",
+ "audit_notes_not_execution_log_detail": "The receipt JSON holds judgment and quoted evidence, not command transcripts; every command's actual output is in the .audit.log and the check script's .out, both retained. Nothing was reconstructed from memory.",
+ "retention": {
+  "state": "scratch_handoff_only_per_explicit_read_only_task",
+  "intended_tracked_directory": "i18n/audits/evidence/ru/ui.library/ru-delta-ds-40ab4bc4bb7e",
+  "manager_action_required": "Retain this record plus the receipt / audit.log / check.py / check.out companions under the canonical evidence root, then record the ledger row with the repo's audit-ledger command — round 1 named `node scripts/i18n/ledger-assemble.mjs --locale ru --file src/i18n/catalogues/ru/ui.library.json`. No ledger command was run by this auditor (read-only task); ledger-check.mjs therefore still reports ru/ui.library's stale source/target hashes until that write lands.",
+  "proposed_note": "passed; R2 delta ru/ui.library: tag_category.custom «Произвольные» (12 cells) fully re-audited, 19 keys carried byte-identical; 1 minor (unrecorded 'Custom' split Свои/Произвольные); ru 49af1bd7b725; record i18n/audits/evidence/ru/ui.library/ru-delta-ds-40ab4bc4bb7e/record.json",
+  "note_length": 278
+ },
+ "unverified": [
+  "No rendered frame, no Electron/React run, no screenshot and no measured pixel fit: this brief forbids builds, servers and test trees. The fit judgment is the sidecar's 12-cell hint against measured cell widths (12 exactly), not rendered geometry.",
+  "No production ICU formatter run and no runtime locale switch: the revised value has no ICU syntax, so this is N/A for it.",
+  "The 19 carried keys were NOT re-audited for wording; only byte-identity to the round-1 audited bytes was proven. Their round-1 verdicts (including ru-ds N1 on 'Тип') carry unchanged.",
+  "The 159 legacy values of ui.library were not recertified; only JSON validity, key-set parity, zero change vs base and hash binding were verified.",
+  "ledger-check.mjs currently FAILS on ru/ui.library (and on the other seven locales) because the ledger row for this round has not been written. That is a manager step, not a translation defect; no ledger command was run by this auditor.",
+  "No PR comment, commit or tracked-evidence write: writes were limited to this session's scratchpad (read-only task)."
+ ]
+}

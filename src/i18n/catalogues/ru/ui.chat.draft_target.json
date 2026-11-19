@@ -1,0 +1,5 @@
+{
+	"ui.chat.draft_target.aria_label": "Чат начнётся с: {target}. Выберите агента или команду",
+	"ui.chat.draft_target.default_agent": "Агент по умолчанию",
+	"ui.chat.draft_target.menu_heading": "С кем начать этот чат"
+}

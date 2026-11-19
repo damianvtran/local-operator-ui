@@ -6,6 +6,7 @@ import {
 	DropdownMenuTrigger,
 	Tooltip,
 } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import {
@@ -21,7 +22,11 @@ import {
 	Maximize2,
 } from "lucide-react";
 import { t } from "../../../../../i18n";
-import { AttachmentGoneError } from "../canonical/use-attachment-url";
+import { remoteUnreachableText } from "../canonical/remote-files";
+import {
+	AttachmentGoneError,
+	AttachmentOwnerUnreachableError,
+} from "../canonical/use-attachment-url";
 import {
 	type ImageAction,
 	type ImageActionId,
@@ -140,10 +145,57 @@ const ACTION_ICONS: Record<ImageActionId, React.ReactNode> = {
  * from a loss (UX U3). Everything else keeps the established fixed copy: the
  * specific sentence reaches the log, as before.
  */
-const failureSentence = (fallback: string, error: unknown): string =>
+const failureSentence = (
+	fallback: string,
+	gone: string,
+	error: unknown,
+): string =>
 	error instanceof AttachmentGoneError
-		? `${fallback}: it is no longer in the session`
-		: fallback;
+		? gone
+		: // A peer-held digest whose owner did not answer (504): say so, since a
+			// retry later can succeed where the generic sentence implies it cannot.
+			error instanceof AttachmentOwnerUnreachableError
+			? remoteUnreachableText("")
+			: fallback;
+
+/**
+ * The entries `ImageActionsMenu` would render for these props - the one
+ * definition, exported so a caller that must know whether the menu is EMPTY
+ * (Finder's Shift+F10 on a refused row, QA R6 Q4) asks the menu itself
+ * rather than re-deriving its filters.
+ */
+export function imageMenuActions({
+	file,
+	src,
+	resolvePath,
+	missing,
+	onShowInCanvas,
+	mediaKind,
+	onExpand,
+	saveName,
+}: Pick<
+	ImageActionsMenuProps,
+	| "file"
+	| "src"
+	| "resolvePath"
+	| "missing"
+	| "onShowInCanvas"
+	| "mediaKind"
+	| "onExpand"
+	| "saveName"
+>) {
+	return imageActions(classifyAttachmentSource(file), {
+		canShowInCanvas: Boolean(onShowInCanvas),
+		source: src ?? file,
+		mediaKind,
+		artifactPathActions: Boolean(resolvePath),
+		canExpand: Boolean(onExpand),
+	}).filter(
+		(action) =>
+			(action.id !== "save-as" || Boolean(saveName)) &&
+			(!missing || action.id === "copy-file-path"),
+	);
+}
 
 export const ImageActionsMenu = ({
 	file,
@@ -160,21 +212,24 @@ export const ImageActionsMenu = ({
 	onExpand,
 	saveName,
 	resolveBytes,
-	tooltip = "Image actions",
+	tooltip = t("ui.chat.image_actions.actions"),
 	"aria-label": ariaLabel,
 }: ImageActionsMenuProps) => {
+	// Memoized markdown keeps its JSX when props are unchanged. Translated
+	// getters read the locale, but do not invalidate that JSX: subscribe at the
+	// small per-image menu, not at the expensive transcript/markdown parser.
+	useI18nLocale();
 	const kind = classifyAttachmentSource(file);
-	const actions = imageActions(kind, {
-		canShowInCanvas: Boolean(onShowInCanvas),
-		source: src ?? file,
+	const actions = imageMenuActions({
+		file,
+		src,
+		resolvePath,
+		missing,
+		onShowInCanvas,
 		mediaKind,
-		artifactPathActions: Boolean(resolvePath),
-		canExpand: Boolean(onExpand),
-	}).filter(
-		(action) =>
-			(action.id !== "save-as" || Boolean(saveName)) &&
-			(!missing || action.id === "copy-file-path"),
-	);
+		onExpand,
+		saveName,
+	});
 	if (actions.length === 0) return null;
 
 	/**
@@ -224,10 +279,16 @@ export const ImageActionsMenu = ({
 				: await resolveCopyableImage(kind, file, src);
 			const png = await pngForClipboard(bytes);
 			await navigator.clipboard.write([new ClipboardItem({ [png.type]: png })]);
-			showSuccessToast("Image copied to clipboard");
+			showSuccessToast(t("ui.notices.files.image_copied"));
 		} catch (error) {
 			console.error("Failed to copy image: ", error);
-			showErrorToast(failureSentence("Failed to copy image", error));
+			showErrorToast(
+				failureSentence(
+					t("ui.notices.files.image_copy_failed"),
+					t("ui.notices.files.image_copy_failed_gone"),
+					error,
+				),
+			);
 		}
 	};
 
@@ -244,7 +305,13 @@ export const ImageActionsMenu = ({
 			downloadBlob(bytes, saveName ?? "download");
 		} catch (error) {
 			console.error("Failed to save file: ", error);
-			showErrorToast(failureSentence("Failed to save file", error));
+			showErrorToast(
+				failureSentence(
+					t("ui.notices.files.save_failed"),
+					t("ui.notices.files.save_failed_gone"),
+					error,
+				),
+			);
 		}
 	};
 
@@ -303,7 +370,11 @@ export const ImageActionsMenu = ({
 		}
 	};
 
-	const resolvedAriaLabel = ariaLabel ?? `Actions for ${label ?? "this image"}`;
+	const resolvedAriaLabel =
+		ariaLabel ??
+		(label != null
+			? t("ui.common.actions.actions_for_name", { name: label })
+			: t("ui.chat.image_actions.actions"));
 
 	return (
 		<DropdownMenu open={open} onOpenChange={onOpenChange}>

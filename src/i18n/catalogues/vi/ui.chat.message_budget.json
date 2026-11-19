@@ -1,0 +1,12 @@
+{
+	"ui.chat.message_budget.bytes": "{count, plural, other {# byte}}",
+	"ui.chat.message_budget.command_chars": "Lệnh này dài {count, plural, other {# ký tự}}, vượt quá giới hạn {limit} của một lệnh. Hãy rút gọn, hoặc đưa nội dung vào một tin nhắn.",
+	"ui.chat.message_budget.command_size": "Lệnh này có dung lượng {size}, vượt quá giới hạn {limit} của một lệnh. Hãy rút gọn, hoặc đưa nội dung vào một tin nhắn.",
+	"ui.chat.message_budget.fork_chars": "Tin nhắn đầu tiên này dài {count, plural, other {# ký tự}}, vượt quá giới hạn {limit} của một tin nhắn. Hãy rút gọn, hoặc gửi nó trong cuộc trò chuyện mới.",
+	"ui.chat.message_budget.fork_size": "Tin nhắn đầu tiên này có dung lượng {size}, vượt quá giới hạn {limit} của một tin nhắn. Hãy rút gọn, hoặc gửi nó trong cuộc trò chuyện mới.",
+	"ui.chat.message_budget.images_size": "Các hình ảnh này có tổng dung lượng {size}, vượt quá giới hạn {limit} của một tin nhắn. Hãy gỡ bớt một hình ảnh, hoặc gửi chúng trong tin nhắn thứ hai.",
+	"ui.chat.message_budget.message_chars": "Tin nhắn này dài {count, plural, other {# ký tự}}, vượt quá giới hạn {limit} của một tin nhắn. Hãy chia thành hai tin nhắn.",
+	"ui.chat.message_budget.prompt_chars": "System prompt này dài {count, plural, other {# ký tự}}, vượt quá giới hạn {limit} của một tác nhân. Hãy rút gọn.",
+	"ui.chat.message_budget.prompt_size": "System prompt này có dung lượng {size}, vượt quá giới hạn {limit} của một tác nhân. Hãy rút gọn.",
+	"ui.chat.message_budget.text_size": "Phần văn bản của tin nhắn này có dung lượng {size}, vượt quá giới hạn {limit} của một tin nhắn. Hãy chia thành hai tin nhắn."
+}

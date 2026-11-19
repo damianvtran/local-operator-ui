@@ -120,6 +120,24 @@ test("R-1 a renderer that missed the drop converges on main's inactive state", a
 		"the first paint carries the alphas",
 	);
 
+	/* Contrast/accent compositions must not veto the native capability. A theme
+	 * name is not a material measurement (and custom palettes need no prefix). */
+	for (const id of [
+		"lo-soft",
+		"lo-gentle",
+		"lo-strong",
+		"lo-high",
+		"custom-palette",
+	]) {
+		root.dataset.theme = id;
+		mod.syncGlassScheme();
+		assert.equal(
+			root.dataset.glass,
+			"sidebar canvas pane",
+			`${id} keeps glass`,
+		);
+	}
+
 	const off = mod.subscribeGlassPaint();
 	/* Two macrotasks let both promises (reportRenderer, get) settle. */
 	await new Promise((r) => setTimeout(r, 20));

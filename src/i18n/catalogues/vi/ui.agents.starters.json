@@ -1,0 +1,18 @@
+{
+	"ui.agents.starters.server_unanswered": "Máy chủ không phản hồi.",
+	"ui.agents.starters.summary.installed": "{count, plural, other {đã cài {count}}}",
+	"ui.agents.starters.summary.already_present": "{count, plural, other {{count} đã có sẵn}}",
+	"ui.agents.starters.summary.skipped": "{count, plural, other {đã bỏ qua {count}}}",
+	"ui.agents.starters.summary.failed": "{count, plural, other {{count} thất bại}}",
+	"ui.agents.starters.summary.empty": "Không có gì để cài đặt",
+	"ui.agents.starters.summary.sentence": "{parts}.",
+	"ui.agents.starters.summary.separator": ", ",
+	"ui.agents.starters.summary.collisions": "{count, plural, other {Đã bỏ qua {count}: bạn đã có tác nhân tên {names}.}}",
+	"ui.agents.starters.action.all_builtins": "Cài tất cả tác nhân tích hợp",
+	"ui.agents.starters.available": "{count, plural, other {Có {count} tác nhân tích hợp}}",
+	"ui.agents.starters.action.all_count": "{count, plural, other {Cài tất cả {count}}}",
+	"ui.agents.starters.progress.accessible": "Đang cài tác nhân tích hợp, {step} trên {total}",
+	"ui.agents.starters.progress.named": "Đang cài {step} trên {total} — {name}…",
+	"ui.agents.starters.progress.count": "Đang cài {done} trên {total}…",
+	"ui.agents.starters.action.done": "Xong"
+}

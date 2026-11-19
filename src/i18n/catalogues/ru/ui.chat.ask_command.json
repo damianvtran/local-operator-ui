@@ -1,0 +1,20 @@
+{
+	"ui.chat.ask_command.copy": "Копировать",
+	"ui.chat.ask_command.dialog_caution": "Команды агента могут быть ошибочными или небезопасными. Прочитайте эту команду перед запуском.",
+	"ui.chat.ask_command.dialog_closed": "Этот запрос закрыт, поэтому команду из него выполнить нельзя.",
+	"ui.chat.ask_command.dialog_confirm": "Выполнить в терминале",
+	"ui.chat.ask_command.dialog_device_local": "Она выполнится в новом терминале на этом компьютере, в вашей домашней папке.",
+	"ui.chat.ask_command.dialog_device_remote": "Она выполнится в новом терминале на этом компьютере, в вашей домашней папке, а не на {device}, где работает агент.",
+	"ui.chat.ask_command.dialog_device_remote_unnamed": "Она выполнится в новом терминале на этом компьютере, в вашей домашней папке, а не на устройстве, где работает агент.",
+	"ui.chat.ask_command.dialog_refused": "Эту команду больше нельзя выполнить отсюда. Ничего не было выполнено.",
+	"ui.chat.ask_command.dialog_title": "Выполнить эту команду?",
+	"ui.chat.ask_command.insert": "Открыть в терминале",
+	"ui.chat.ask_command.insert_hint": "Ввести её в новом терминале, не запуская",
+	"ui.chat.ask_command.label": "Предлагаемая команда",
+	"ui.chat.ask_command.notice_elsewhere": "Агент работает на {device}. Команда выполнится здесь, а не там.",
+	"ui.chat.ask_command.notice_elsewhere_unnamed": "Агент работает на другом устройстве. Команда выполнится здесь, а не там.",
+	"ui.chat.ask_command.notice_target_unknown": "В запросе не указано, где выполнять команду, поэтому отсюда её выполнить нельзя.",
+	"ui.chat.ask_command.notice_unplaced": "Не удалось подтвердить, что агент работает на этом компьютере, поэтому отсюда команду выполнить нельзя.",
+	"ui.chat.ask_command.run": "Выполнить…",
+	"ui.chat.ask_command.run_hint": "Ввести её в новом терминале и выполнить — после вашего подтверждения"
+}

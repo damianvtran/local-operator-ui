@@ -1,0 +1,15 @@
+AUDITOR A — conditions, caveats and divergence (notes, distinct from the execution logs beside them)
+
+Locale: hi   Namespace: ui.teamBridge   Auditor: translation-auditor   Session: 955e54c57ace   Model: radient/auto
+(harness fallbacks experienced mid-session: anthropic/claude-opus-5-5 -> openai/gpt-6-astra -> kimi/k3.1-pro -> radient/auto; verdicts were formed and written under radient/auto)
+
+1. Reachability condition attached to the owner_added_agent finding
+   HI-A1 (major) manifests when one timeline group carries TWO OR MORE agent names. The group key is request_id + kind + ownerAddedAgent + actor (team-bridge-member-events-model.ts:127-168), and both the model and the English context note ('their' = the actor's own agent(s)) allow several. memberCandidates (team-bridge-members-model.ts:144-170) keeps the reader's own agent as a tickable row and the dialog invites the whole ticked set in one request, so a multi-name group is reachable as far as this worktree's code shows; the roster rule is one chief per person, so the common render is a single name where the current wording is correct.
+   If the product guarantees exactly one agent per actor per request, this finding reduces to a wording nit; the fix (a colon before {targets}) is one line either way.
+
+2. Divergence with the independent Audit B (session 502568f2aefe, radient/radient-research/radient-ultra)
+   Audit A formed its verdicts from the catalogues, the English context sidecar, the glossary and the style guides; Audit B's receipts were read only after A's receipts and records were written and assembled.
+   B recorded no major findings on this delta and graded events.joined minor in fr/es/ru; A graded events.joined minor in fr and nit in hi/ur, and raised no joined finding in es, zh-CN, ru or vi. Both verdicts stand on the ledger row; neither audit edited a catalogue.
+
+3. What this audit does NOT claim
+   Catalogue-level judgement only: no rendered-frame, font-fallback, geometry or activation evidence, and no release approval. The fr events.joined/events.left and every locale's events.left exceed the English length and need a rendered width check on the one-line timeline row.

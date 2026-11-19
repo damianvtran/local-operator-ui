@@ -1,0 +1,41 @@
+{
+ "auditor": "i18n-auditor",
+ "model": "radient/auto",
+ "instance": "tb1482r2-vi-168d2d",
+ "status": "passed",
+ "namespace": "ui.ownerAudit",
+ "sha256": {
+  "vi": "2c1973082305830137de0577d4704c6549ee6943a6b5d3f204a3d52042e686b4",
+  "en": "147de29a88573f22b144c09b6f94c8c5310e2e1d773d597a3ff44b2a2214efe1"
+ },
+ "findings": [
+  {
+   "severity": "NIT",
+   "key": "ui.ownerAudit.viewers_label",
+   "resolved": false,
+   "detail": "'Cũng được đọc bởi' is four tokens against the sidecar's 'three words at most', and bare 'được đọc' can read as habitual passive ('is also read by') rather than the permission sense of 'Also readable by'. Left as written: it is a correct label, keeps the required 'also', carries no colon, placeholder or sentence, and no shorter form carries 'also' plus the readable sense in Vietnamese ('Cũng có thể đọc bởi' is no shorter)."
+  },
+  {
+   "severity": "NIT",
+   "key": "ui.ownerAudit.removed",
+   "resolved": false,
+   "detail": "'bị xóa khỏi' for membership removal; this repo's own vi usage reserves 'xóa' for deleting data from disk (ui.agents.dialogs.json clear.warning) and uses 'gỡ khỏi' for removal from a container/membership (ui.mesh.json:246 'thiết bị đã bị gỡ khỏi mạng'). 'bị xóa khỏi cuộc trò chuyện' is nevertheless idiomatic Vietnamese chat UI and correctly passive/blameless, so this is a preference, not a defect; not changed."
+  }
+ ],
+ "scope": "Round 2: the six changed keys only; earlier round out of scope.",
+ "resolved_findings": [
+  {
+   "severity": "MINOR",
+   "key": "ui.ownerAudit.left",
+   "resolved": true,
+   "detail": "Second sentence ended with the pronoun 'trong đó', whose nearest antecedent is 'cuộc trò chuyện này' (the conversation), not the audit; a reader could take it as 'later messages are not in this conversation', which is false and edges toward the archived/deleted reading the context note forbids. Named the audit explicitly: 'nên các tin nhắn sau đó không nằm trong lịch sử kiểm tra này.'"
+  },
+  {
+   "severity": "MINOR",
+   "key": "ui.ownerAudit.removed",
+   "resolved": true,
+   "detail": "Same ambiguous 'trong đó' referent as ui.ownerAudit.left, and the context note requires the two keys to share that half's wording. Same fix applied so the pair stays identical: 'nên các tin nhắn sau đó không nằm trong lịch sử kiểm tra này.'"
+  }
+ ],
+ "artifact_note": "findings/resolved_findings split applied at assembly: the auditor's own `resolved: true` entries were moved from `findings` to `resolved_findings` unchanged (severity, key, detail and the flag kept). No judgement was altered."
+}

@@ -1,0 +1,134 @@
+{
+  "auditor": "i18n-auditor",
+  "team": "lopdev",
+  "session": "3eb6db5381df",
+  "model": "deepseek/deepseek-flash",
+  "actual_model_source": "harness session header line 'Model: deepseek/deepseek-flash' for session 3eb6db5381df; no fallback observed, no role or model pin applied",
+  "instance": "3eb6db5381df-l1-ur-a2",
+  "date": "2026-11-11",
+  "round": 2,
+  "audit_kind": "independent-translation-audit (delta)",
+  "status": "changes_requested",
+  "namespace": "ui.chat.canonical",
+  "locale": "ur",
+  "key_count": 182,
+  "keys_changed_in_delta": 76,
+  "independent_from_translator_session": true,
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "openai/gpt-6.1-sol",
+    "session": "63cfb8a4238a"
+  },
+  "sha256": {
+    "ur": "c71f5e40612dca85cee0d05ddfe4d833d3a68d05fb7c96a3e1519dbed1f904e0",
+    "en": "a385671b988e5f03df6f650beb4a06f73c9efaead2316dfa9ab15bf043798765",
+    "en_context": "2e755f12e46bb6dded6dbf950eda6402b0a7bcb05e9489fa17f7369543f3ac7f",
+    "en_keys_prep": "b3f3bfe3688d1461a061009e98a58802171eb181343fdb8fcfd0af07652ca419",
+    "prev_pass_target": "7525521c04130f6b8182ba941850d0cbe76f0b08bd997aa8a9fe153d05dfb5fd"
+  },
+  "audited_bytes": {
+    "target": ".worktrees/_l1-prep/ur.v2.json (translator's round-2 file, not yet in src/i18n/catalogues/ur/)",
+    "source": "src/i18n/catalogues/en/ui.chat.canonical.json + .worktrees/_l1-prep/keys.json (en value, context.role, notes, width per key)",
+    "consistency_reference": "src/i18n/catalogues/ur/*.json (shipped ur, read-only corpus for the disposition-table counts)"
+  },
+  "findings": [
+    {
+      "id": "F-01",
+      "severity": "MAJOR",
+      "key": "ui.chat.canonical.tool_row.verb.listed_network_peers.settled",
+      "current": "نیٹ ورک ڈیوائسز دکھائیں",
+      "suggested": "نیٹ ورک ڈیوائسز دکھائے",
+      "summary": "2nd-person imperative (آپ-form) in a past-status column, introduced by this round's own fix for UR-A9; the running sibling is a 3rd-person progressive, so the pair is the only unparallel one in the file. Suggest the past form دکھائے (22 cells, 4 words); the فہرست family alternative measures 30/32 cells."
+    },
+    {
+      "id": "F-02",
+      "severity": "MINOR",
+      "keys": [
+        "ui.chat.canonical.tool_row.verb.sent_keys.settled",
+        "ui.chat.canonical.tool_row.verb.sent_keys.running"
+      ],
+      "current": "کلیدیں بھیجی گئیں / کلیدیں بھیجی جا رہیں",
+      "suggested": "کلیدیں ارسال کیں / کلیدیں ارسال کر رہا",
+      "summary": "Passive fixes the imperative homograph but is the only passive in an otherwise active column; the active ارسال forms keep the fix and the register."
+    },
+    {
+      "id": "F-03",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.tool_row.verb.searched_the_web.running",
+      "current": "ویب پر تلاش جاری",
+      "suggested": "ویب پر تلاش کر رہا (later wave)",
+      "summary": "Unchanged key contradicted by 27 changed neighbours: it is now the only running value that is not a progressive (90/91 end رہا/رہیں). Non-gating: shipped generic_verb.running is کال جاری and six shipped search indicators use تلاش جاری ہے…"
+    },
+    {
+      "id": "F-04",
+      "severity": "MINOR",
+      "keys": ["glossary/style-guide recording, not a value"],
+      "summary": "The wave introduces/endorses job→جاب/جابز, peer→ڈیوائس, reset→ری سیٹ (vs بحال), update→اپ ڈیٹ (vs تازہ) but records none of them in i18n/style-guides/ur.md; glossary §4 and footnote 6 require the wave to record them before the namespace ships."
+    },
+    {
+      "id": "F-05",
+      "severity": "MINOR",
+      "keys": ["width, whole slice"],
+      "summary": "45/182 labels exceed the en sidecar's 'one to four words'; max 29 cells (en max 23), none over 32, and a shipped 31-cell precedent exists. Accepted with measurements; QA/design to confirm the widest label plus a long path in a rendered row."
+    },
+    {
+      "id": "F-06",
+      "severity": "NIT",
+      "keys": [
+        "ui.chat.canonical.tool_row.verb.listed_networks.settled",
+        "ui.chat.canonical.tool_row.verb.listed_networks.running"
+      ],
+      "summary": "نیٹ ورکس is the first -س plural of نیٹ ورک in the shipped ur catalogue (0 occurrences); the pattern is legitimate (پروجیکٹس 13, ڈیوائسز 8, جابز 8)."
+    },
+    {
+      "id": "F-07",
+      "severity": "NIT",
+      "summary": "UR-A5/m1 cites 'as does glob already'; no glob row using فہرست exists in the shipped ur catalogue (glob has no key in this namespace)."
+    },
+    {
+      "id": "F-08",
+      "severity": "NIT",
+      "summary": "The n3 decline's evidence ('علامتوں, already used for symbols') is wrong: علامت has 0 shipped occurrences. The decision to keep the native term still stands on native grounds."
+    },
+    {
+      "id": "F-09",
+      "severity": "NIT",
+      "summary": "Disposition-table drift: UR-A10 refers to 'the revised جابز کا انتظار جاری', but waited_for_jobs.running in v2 is جابز کا انتظار کر رہا."
+    }
+  ],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 1,
+    "minor": 4,
+    "nit": 4
+  },
+  "verdict": "blocked",
+  "unresolved_blocker_major_count": 1,
+  "declined_findings_adjudication": {
+    "UR-A5": "upheld (uniformity + width verified; the register defect it left is F-01)",
+    "UR-A10": "upheld (کال جاری 1 and تلاش جاری 6 shipped strings verified)",
+    "UR-A11": "upheld (browser action surface verified)",
+    "UR-A12": "upheld (9 shipped سیشن شروع strings verified)",
+    "m1": "upheld (duplicate of UR-A5)",
+    "n1": "upheld (تعریف 9 shipped strings)",
+    "n2": "upheld (کلیدیں 18 shipped strings)",
+    "n3": "decision upheld, cited evidence overturned (علامت 0 shipped)",
+    "n4": "upheld (no shipped precedent claimed; consistent with every other translated op verb)"
+  },
+  "findings_addressed_to": "the L1 tool-row verbs landing PR (ur), via manager",
+  "ledger": {
+    "command_attempted": "node scripts/i18n/ledger-assemble.mjs --locale ur --file src/i18n/catalogues/ur/ui.chat.canonical.json --auditor-instance 3eb6db5381df-l1-ur-a2 --auditor-model deepseek/deepseek-flash --result changes_requested --receipt i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-a2-3eb6db5381df/receipt.json",
+    "result": "refused, exit 2",
+    "output": "ur/ui.chat.canonical is not key-complete against English (182 missing, 0 extra) - an incomplete locale cannot be recorded",
+    "why": "the 182 keys are audited in the prep file; the shipped ur catalogue does not carry them yet, so no ledger row can be assembled for these bytes",
+    "next_step": "the landing PR assembles the row against the landed catalogue, with this receipt as the audit it records"
+  },
+  "method_limits": {
+    "no_mt_service": true,
+    "no_translation_api_or_sdk": true,
+    "no_backtranslation": true,
+    "edited_any_translation": false,
+    "read_other_auditor_reports": false,
+    "rendered_evidence": "none taken; width is measured with rich.cells.cell_len, not rendered"
+  }
+}

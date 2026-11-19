@@ -1,0 +1,137 @@
+{
+  "locale": "fr",
+  "mode": "Independent delta audit of ONE revised value in ONE namespace against frozen head b8f0fc3aa922b99c6fad9c32edd36515fbd24e5a; read-only worktree ~/local-operator-ui/.worktrees/i18n-s8. The revision is a fresh translator pass over a prior-round audit finding (prior round fr-ds-e3c562b03258, finding F1, MAJOR: 'Actions sur {name}' -> 'Actions pour {name}'). The revision was judged on its merits, not inherited: meaning, grammar with arbitrary inserted strings, register, typography, fit and corpus terminology were re-derived from the English source, its context sidecar, the fr style guide, the glossary and targeted greps of the shipped fr catalogue. Fully audited keys: 1. The remaining 53 namespace keys were read only for JSON validity, key-set parity equal to English, no key removal, and cross-file term consistency; they are NOT certified here, and the namespace's other new keys certified in the prior round live in ui.chat / ui.chat.composer_media, which this delta does not touch.",
+  "scope": "PR damianvtran/local-operator-ui #1842 @ b8f0fc3aa922b99c6fad9c32edd36515fbd24e5a: exactly one changed value, ui.common.actions.actions_for_name ('Actions sur {name}' -> 'Actions pour {name}'), verified as the only change in the file by git diff e5fb4310dab638f9cf428779d62539ec039a8990..HEAD. English catalogue and context sidecar byte-unchanged since the prior head. No full namespace certification; no re-audit of prior-round keys outside this delta.",
+  "head_sha": "b8f0fc3aa922b99c6fad9c32edd36515fbd24e5a",
+  "prior_round_head_sha": "e5fb4310dab638f9cf428779d62539ec039a8990",
+  "audit_date": "2026-11-10",
+  "key_count": 54,
+  "fully_audited_key_count": 1,
+  "consistency_only_key_count": 53,
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "Translator identity supplied by delegation: i18n-translator / anthropic/claude-sonnet-5-5, a new translation session for this revision (the prior-round translator session was 2ddc9a08181b). This auditor did not translate, proposed the wording only as an audit recommendation last round, and has no access to the translator's session."
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "491f3795f0ee",
+    "session": "491f3795f0ee",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "Served session header for session 491f3795f0ee states deepseek/deepseek-flash; no model switch or fallback occurred in this session.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "policy_sources": {
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/fr.md",
+      "sha256": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226"
+    },
+    "glossary": {
+      "path": "~/local-operator-ui/.worktrees/_s12-audits/b8f0fc3aa922b99c6fad9c32edd36515fbd24e5a/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "note": "Manager-owned byte-copy; recomputed identical to ~/local-operator/i18n/glossary.md by sha256 (both 0eb34437a8c3d6f5..., 173 lines). Glossary conformance was checked against this copy. The glossary has no row for 'actions'; its binding part here is the § intro invariant 'the SAME rendered word in every locale'."
+    },
+    "expected_hashes": {
+      "path": "~/local-operator-ui/.worktrees/_s12-audits/b8f0fc3aa922b99c6fad9c32edd36515fbd24e5a/expected-hashes.json"
+    }
+  },
+  "status": "passed",
+  "result": "clean",
+  "verdict": "clean",
+  "findings": [],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "namespaces": {
+    "ui.common.actions": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b",
+      "target_sha256": "65357603eec7fb7afabd5d55c786735dc05e89cb36d19ccd4116bdb5bdbc2907",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.json",
+          "sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b"
+        },
+        "fr": {
+          "path": "src/i18n/catalogues/fr/ui.common.actions.json",
+          "sha256": "65357603eec7fb7afabd5d55c786735dc05e89cb36d19ccd4116bdb5bdbc2907"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.context.json",
+          "sha256": "24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d"
+        }
+      },
+      "fully_audited_keys": [
+        "ui.common.actions.actions_for_name"
+      ],
+      "findings": []
+    }
+  },
+  "per_key_checks": [
+    {
+      "key": "ui.common.actions.actions_for_name",
+      "source": "Actions for {name}",
+      "current_text": "Actions pour {name}",
+      "previous_text": "Actions sur {name}",
+      "prior_round_finding": "E3C562B03258 F1 (major, terminology/consistency): asked for 'Actions pour {name}'",
+      "findings": [],
+      "assessment": "Meaning preserved and now on the corpus's settled form. English 'Actions for {name}' is a neutral noun phrase naming the asset whose actions menu opens (it is an aria-label on the overflow trigger's Button in supplement-file-actions.tsx:181 and image-actions-menu.tsx:365, not a command to act on the name). 'Actions pour <name>' states exactly that 'for <asset>' relation. Verified independently that the same English string ships as 'Actions pour {name}' in ui.chat.canonical.link_toolkit.actions_for, ui.library.menu.asset_actions_label, ui.settings.appearance.editor.more and ui.shell.sidebar_navigation.row_actions — 5/5 renderings unanimous after this change, with the old 'sur' value the only outlier — and that 'sur' is used in this corpus only with a determiner-bearing generic noun ('Actions sur le fichier' x4, 'Actions sur l’image' x3, 'Actions sur l’élément', 'Actions sur le message'), with zero 'Actions sur <placeholder>' values in the entire fr catalogue. Grammar is stable for ANY inserted string: 'pour' needs no article, no gender agreement and no elision, so a name starting with a vowel ('Ébauche finale.png') or carrying quotes, punctuation, CJK or emoji slots in unchanged; no reordering of {name} is needed. Register: sentence case, capital 'Actions', no trailing punctuation, pure ASCII, no invisible or bidi characters, straight spaces; the fr guide's «…»-quoting rule is not triggered because neither the English nor any sibling {name} value quotes the inserted name. Fit: no maxCells hint in the sidecar (grep -c maxCells = 0 for the whole file), the string is an accessible name rather than a truncating container, and 19 characters is one more than the replaced value and shorter than the shipped generic neighbour 'Actions sur le fichier' (22). Note, not a finding: the same trigger's visible tooltip stays the generic 'Actions sur le fichier' / 'Actions sur l’image' in the other locale files of the pair, so users see 'sur' and screen readers hear 'pour'; that is the named/unnamed split the context sidecar prescribes and it is unchanged by this delta.",
+      "placeholder_integrity": {
+        "arguments": [
+          [
+            "name",
+            "string"
+          ]
+        ],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    }
+  ],
+  "consistency_only_notes": {
+    "keys_checked": 53,
+    "checks": "file parses as JSON; fr key set equals the en key set (54/54, no key removed or added in this delta); cross-file term consistency for the same English sentence as above",
+    "not_certified": "The 53 non-delta values of this namespace remain uncertified by this audit; only their structural parity was verified.",
+    "no_inconsistency_introduced": "The changed value does not contradict the keys certified in the prior round (ui.chat.image_actions.actions = 'Actions sur l’image', ui.chat.composer_media.pasted_image = 'Image collée', ui.chat.audio.position_label = 'Position de {label}'): those keep their own article-bearing or placeholder-independent forms, and the generic/named split this change aligns with is exactly what their context notes prescribe. The prior round's single nit (ui.chat.audio.position_label) sits in a namespace this delta does not touch and was not re-audited."
+  },
+  "prior_round_citation": {
+    "receipt": "~/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/fr-ds-e3c562b03258.json",
+    "status": "changes_requested",
+    "finding_remediated": "F1 (major) on this key; the prior round's N1 (nit, ui.chat.audio.position_label) is outside this delta and unchanged",
+    "this_round_relation": "Revisions are audited on merits; this auditor reached the same conclusion by independent derivation (corpus sweep, placeholder/grammar analysis, typography and fit checks) and did not rely on the prior receipt's reasoning or wording."
+  },
+  "mechanical": {
+    "validator_commands_run": [
+      "node scripts/i18n/generate.mjs --check -> src/i18n/keys.gen.ts is byte-identical to a fresh generation. exit 0",
+      "node scripts/i18n/check-duplicates.mjs -> ok — 1400 file(s) scanned, 0 duplicate key(s). exit 0",
+      "node scripts/i18n/check-strings.mjs -> ok — 1649 file(s) scanned, 0 literal(s) at or below the baseline; 40 literal(s) in the data shapes, all in i18n/literal-allowance.json (shrink-only). exit 0",
+      "node scripts/i18n/context-parity.mjs -> ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only). exit 0",
+      "node scripts/i18n/ledger-check.mjs -> FAILED — 64 finding(s) across 1085 ledger entr(ies). exit 1. Nine concern fr, including three for fr/ui.common.actions: stale source_sha256 (ledger 3f9e9a4b0231…, file 0218bb5b748c…), stale target_sha256 (ledger 8672c8f71fba…, file 65357603eec7…) and 'auditor 1: the receipt does not name the English source bytes on disk'. Expected pre-audit state of this PR's delta: the row still binds the pre-PR source and the pre-revision target and no ledger write was run by this auditor.",
+      "python3 fr-ds-491f3795f0ee-check.py -> all mechanical checks passed. exit 0 (output captured in fr-ds-491f3795f0ee-check.out)"
+    ],
+    "json_valid": true,
+    "key_sets_identical_to_english": true,
+    "keys_added_or_removed_in_this_delta": "none added, none removed; exactly one value replaced (git diff e5fb4310ab..HEAD --unified=0 shows one '-' and one '+' line)",
+    "english_source_unchanged_since_prior_head": true,
+    "placeholder_parity": true,
+    "icu_plural_select_needed": false,
+    "invisible_or_bidi_characters_in_value": "none (value is pure ASCII; no Cf/Cc, U+200E/200F, U+202A-202E, U+2066-2069, U+00A0 or U+202F)",
+    "hash_binding": "3/3 sha256 entries for this locale and namespace match expected-hashes.json (en/ui.common.actions, fr/ui.common.actions, en/ui.common.actions.context); 0 mismatches. The fr target hash moved from 1f375db06df6 (prior round) to 65357603eec7 exactly because the audited value changed."
+  },
+  "unverified": [
+    "No production ICU parser/formatter, Electron/React run, screen-reader session or rendered-frame check: read-only, no-build, no-server constraint. Grammar and register judgments are native-reader reasoning over the catalogue, its context sidecar and its call sites, not measured runtime output.",
+    "No ledger write, tracked evidence retention, PR comment or commit: writes were limited to this session's scratchpad. Retaining these deliverables under i18n/audits/evidence/fr/ui.common.actions/<audit-id>/ and recording the ledger row with the repo's audit-ledger command is the manager's step.",
+    "The 53 non-delta keys of ui.common.actions were not certified; only JSON validity, key-set parity, no-removal and cross-file term consistency were checked for them.",
+    "No separate second auditor/session pass was available or requested for this one-key delta; a deliberate second re-read of this key and its neighbours by this auditor is recorded in the audit log in its place.",
+    "The ledger-check failure count (64 across 1085 entries) was read from the command's own output; the other locales' rows were not investigated as they belong to their own auditors."
+  ],
+  "receipt_contract_review": "Field sets mirror the model receipt ~/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/fr-ds-e3c562b03258.json: root fields plus a `namespaces` object with exactly ONE block (status, result, source_sha256, target_sha256, input_hashes, fully_audited_keys, findings). Extra fields used here (prior_round_head_sha, consistency_only_notes, prior_round_citation) are additive and carry no verdict. Every JSON file was re-parsed with python json.load after writing. No repo schema validator was run, as the brief forbids touching repository files.",
+  "audit_notes_not_execution_log": false,
+  "execution_log": "fr-ds-491f3795f0ee.audit.log"
+}

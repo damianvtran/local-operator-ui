@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent-namespace-delta-translation-audit",
+  "date": "2026-11-08",
+  "round": 2,
+  "locale": "fr",
+  "namespace": "ui.agents.upload",
+  "branch": "i18n/slice-upload-agent-dialog",
+  "head": "269ef259c0523fd61c9f40b2a700bed27b838055",
+  "base": "2b72db6a56ad8204ec7f30a0ba6ffbc941be3b82",
+  "instance": "fdf2eeb5ba4c",
+  "agent": "reviewer",
+  "model": "openai/gpt-6.1-sol",
+  "auditor": {
+    "agent": "reviewer (r2-fr)",
+    "session": "fdf2eeb5ba4c",
+    "instance": "fdf2eeb5ba4c",
+    "model": "openai/gpt-6.1-sol",
+    "fallback": true,
+    "model_source": "Started anthropic/claude-sonnet-5-5; quota fallback notices named anthropic/claude-opus-5-5 then openai/gpt-6.1-sol. All substantive diff reads, renders and verdict used openai/gpt-6.1-sol.",
+    "independent_from_translator_session": true,
+    "independence": "independent reviewer, session fdf2eeb5ba4c"
+  },
+  "status": "clean",
+  "result": "clean",
+  "source_sha256": "6aff9fbb0706c9852760db60f22cdb075b747cef37dbc3e9130731943babef0b",
+  "target_sha256": "f24de528122dd459f1c3897af0e41a9817b22f2184c5490013bb6aaa757f837b",
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [],
+    "nit": []
+  },
+  "evidence": [
+    "i18n/audits/evidence/fr/ui.agents.upload/fr-upload-r2-fdf2eeb5ba4c/record.json",
+    "i18n/audits/evidence/fr/ui.agents.upload/fr-upload-r2-fdf2eeb5ba4c/report.md"
+  ],
+  "model_provenance": "Started anthropic/claude-sonnet-5-5; quota fallback notices named anthropic/claude-opus-5-5 then openai/gpt-6.1-sol. All substantive diff reads, renders and verdict used openai/gpt-6.1-sol.",
+  "sha256": {
+    "en": "6aff9fbb0706c9852760db60f22cdb075b747cef37dbc3e9130731943babef0b",
+    "fr": "f24de528122dd459f1c3897af0e41a9817b22f2184c5490013bb6aaa757f837b"
+  },
+  "verdict": "clean",
+  "remediation": {
+    "M1": "fixed: Hub public des agents; adjective immediately follows Hub, while des agents preserves product identity from ui.hub.pages.header.title = Hub des agents",
+    "N1": "retained/deferred from round 1; unchanged blocked_hint elision nit; not a new finding or a gate"
+  },
+  "original_auditor": "independent reviewer, session fdf2eeb5ba4c",
+  "normalised_from": {
+    "path": "i18n/receipts/raw/fr-upload-r2-fdf2eeb5ba4c.raw.json",
+    "sha256": "cdf9672250596418d871ff3e800a577d2392c729505f478aa0babe1c82633eff"
+  }
+}

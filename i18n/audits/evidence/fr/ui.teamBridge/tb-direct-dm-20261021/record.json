@@ -1,0 +1,80 @@
+{
+  "date": "2026-10-21",
+  "locale": "fr",
+  "namespace": "ui.teamBridge",
+  "audit_id": "tb-direct-dm-20261021",
+  "source_commit": "7bf957741a",
+  "status": "audited",
+  "translator": {
+    "agent": "translator",
+    "model": "anthropic/claude-opus-5-5",
+    "date": "2026-10-21",
+    "session": "d3285bf04767",
+    "remediation_job": "4ecadc4327d8"
+  },
+  "auditors": [
+    {
+      "agent": "translation-auditor",
+      "model": "anthropic/claude-opus-5-5",
+      "date": "2026-10-21",
+      "result": "clean",
+      "instance": "tbd-r3-fr",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "receipt": "i18n/receipts/tbd-r3-fr.json",
+      "receipt_sha256": "fe0341dd78a19bfe03e02625f56ec08e77aab77f27123a57b00e3cd4a045fbcd",
+      "scope": "Team Bridge rail and compose; frozen 109-key source, independent full audit plus remediation delta",
+      "note": "Catalogue audit only; no rendered-fit or activation claim. Earlier rounds retained under i18n/receipts/."
+    }
+  ],
+  "independence": "Auditor subagent is separate from translator and coordinator; no auditor modified catalogues.",
+  "files": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+      "sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/fr/ui.teamBridge.json",
+      "sha256": "b28cfcd21792bd85822daffe240797f932dbf2c6fa9e11b1917c1c20759438fb"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+      "sha256": "17b7e1450dc7fa529d8e2e684bb8653fcc4f6cf220bf8261631d078d26545de5"
+    }
+  },
+  "references": {
+    "core_revision": "24dbccbb784bd1c9b690ce4601f489791ceacb09",
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/fr.md",
+      "sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+    }
+  },
+  "retained_rounds": [
+    {
+      "path": "i18n/receipts/tbd-r2-fr.json",
+      "sha256": "1166ae248ede12a85c9526e8ac4ac2ff65df4b870619da96c30c820cf7e256fe",
+      "instance": "tbd-r2-fr",
+      "model": "anthropic/claude-opus-5-5",
+      "session": "6bec71b1ea82"
+    },
+    {
+      "path": "i18n/receipts/tbd-r3-fr.json",
+      "sha256": "fe0341dd78a19bfe03e02625f56ec08e77aab77f27123a57b00e3cd4a045fbcd",
+      "instance": "tbd-r3-fr",
+      "model": "anthropic/claude-opus-5-5",
+      "session": "6bec71b1ea82"
+    }
+  ],
+  "limitations": [
+    "Catalogue semantics, ICU and source/target/context hashes verified; no rendered-fit, screenshot, pseudo-localization or runtime activation evidence is claimed.",
+    "Earlier full audits bind the exact prior bytes; final remediation receipts inherit unchanged semantic coverage and verify the changed keys and direct regression surfaces."
+  ]
+}

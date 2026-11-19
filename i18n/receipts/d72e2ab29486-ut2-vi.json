@@ -1,0 +1,59 @@
+{
+ "schema": 1,
+ "auditor": {
+  "agent": "translation-auditor",
+  "instance": "d72e2ab29486-ut2-vi",
+  "model": "anthropic/claude-sonnet-5-5",
+  "model_note": "Model identity taken from this session header (anthropic/claude-sonnet-5-5); no fallback model was reported or used.",
+  "independence": "Separate lopdev session (d72e2ab29486) from the PR coder, the vi translator, the bare-verb remediation author and the earlier vi audits (including c5c351187aed-ut-vi, which flagged the colon form MAJOR); I wrote none of these bytes. The verdict was rebuilt from the English source, its context sidecar, the formatter real output and shipped vi precedent, not from any prior claim.",
+  "description": "translation-auditor (lopdev session d72e2ab29486, final independent ui.chat.user_turn audit, vi)"
+ },
+ "agent": "translation-auditor",
+ "model": "anthropic/claude-sonnet-5-5",
+ "model_provenance": "Model identity taken from this session header (anthropic/claude-sonnet-5-5); no fallback model was reported or used.",
+ "fallback": "none reported",
+ "instance": "d72e2ab29486-ut2-vi",
+ "session": "d72e2ab29486",
+ "session_id_provenance": "read from LOCAL_OPERATOR_SESSION_ID in the audit session environment",
+ "locale": "vi",
+ "branch": "i18n/key-census-literals",
+ "head": "90ebc747456ea18976615a2b84d89f09c57ecd80",
+ "pr": "damianvtran/local-operator-ui#1753",
+ "date": "2026-11-08",
+ "status": "passed",
+ "result": "clean",
+ "scope": "Whole namespace ui.chat.user_turn (5 keys) of the UNCOMMITTED working-tree vi catalogue (bare-verb stamp keys: Đã gửi / Đã trả lời / Đã chạy {date}) against English and the .context.json sidecar; worktree HEAD 90ebc747. Sha256 values are over the exact working-tree files.",
+ "inputs_sha256": {
+  "en_context (ui.chat.user_turn.context.json)": "83dc1782e60b76208d1baacc6bbfbcc49acb8ea10421ae17ff7acd5f44c9637f"
+ },
+ "verified": [
+  "formatter output reproduced in node v24.22.1: Intl.DateTimeFormat(\"vi\",{year:\"numeric\",month:\"long\",day:\"numeric\",hour:\"numeric\",minute:\"2-digit\"}) for 2026-11-08 15:44 = \"lúc 15:44 8 tháng 11, 2026\" (own connector); formatCalendarDateTime (date-utils.ts) passes exactly these options; the three stamp keys render \"Đã gửi lúc 15:44 8 tháng 11, 2026\", \"Đã trả lời lúc …\", \"Đã chạy lúc …\" - one connector, no doubling, no colon before lúc",
+  "meaning: Sent/Answered/Ran map to Đã gửi / Đã trả lời / Đã chạy (past-tense verb phrase + date, no trailing punctuation) as the sidecar tone asks; show_more/show_less map to Hiện thêm / Hiện bớt, an imperative pair",
+  "precedent for the bare past-verb + {date} form in shipped vi: ui.settings.imports.json:ui.settings.imports.session_updated \"Cập nhật {date}\" (import-settings-view.tsx passes formatCalendarDateTime, i.e. the same lúc-bearing formatter), ui.hub.teams.json:ui.hub.teams.detail.created \"Đã tạo {date}\" and :ui.hub.teams.detail.updated \"Đã cập nhật {date}\", ui.teamBridge.archive.json:ui.teamBridge.archive.list.meta_on \"Đã lưu trữ {date}\"; Hiện thêm is the shipped show-more verb (ui.chat.sidebar.json:ui.chat.sidebar.catalogue.show_more, ui.schedules.json:ui.schedules.count.hidden)",
+  "ICU: @formatjs/icu-messageformat-parser from the worktree - key sets identical to English, argument set of every key equals English ({date} on the three stamp keys, none on the two buttons), no plural/select in the namespace",
+  "bytes: NFC true on all five values, no Cf characters, no edge or doubled spaces",
+  "node scripts/i18n/check-coverage.mjs: ok - 7 gated language(s) over 129 namespace(s); 0 allowed key(s) remain"
+ ],
+ "observations": [
+  "show_less Hiện bớt pairs with show_more Hiện thêm; shipped vi renders other show-less controls as Hiện ít hơn (ui.agents.skills.json:ui.agents.skills.detail.show_less, ui.chat.canonical.json:ui.chat.canonical.supplement.show_fewer, ui.schedules.json) and Thu gọn (ui.agents.detail.json:ui.agents.detail.read.show_less). Those are count/list or collapse controls with their own sources; Hiện bớt is idiomatic Vietnamese for trimming back an expanded excerpt. Recorded, not a finding; no change recommended.",
+  "ui.hub.detail.json:ui.hub.detail.created uses a colon form (Đã tạo: {ago} trước ({date})) because its value is an ago-phrase, not a bare formatter date; not a contradiction of the stamp form."
+ ],
+ "namespaces": {
+  "ui.chat.user_turn": {
+   "namespace": "ui.chat.user_turn",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 5,
+   "sha256": {
+    "vi": "f44e94f820f3620065d7a979a28b347a257e20cb09347dca942a6b9903b6027e",
+    "en": "5447e7d6963609e2769747e31b64beec7b7957e1f2c92126d281b21f5dbf78e8"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.user_turn.json",
+    "target": "src/i18n/catalogues/vi/ui.chat.user_turn.json",
+    "context": "src/i18n/catalogues/en/ui.chat.user_turn.context.json"
+   },
+   "findings": []
+  }
+ }
+}

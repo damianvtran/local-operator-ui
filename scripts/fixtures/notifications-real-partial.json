@@ -1,0 +1,136 @@
+{
+	"provenance": "Independent QA session 759843e631c5, actual isolated core HTTP receipts from 2026-10-28; replay fixture, not a new native execution. Source http-receipts.json; PR1471 QA round1 comment6477592748.",
+	"facts": {
+		"items": [
+			{
+				"id": "n_4n75x3kjg3hrxwol",
+				"source": "notify",
+				"priority": "normal",
+				"title": "QA other session",
+				"excerpt": "untouched",
+				"created_at": 1793212741291,
+				"updated_at": 1793212741291,
+				"seq": 3,
+				"revision": 1,
+				"read": false,
+				"read_via": null,
+				"read_surface": null,
+				"dismissed": false,
+				"repeat_count": 1,
+				"key": "other",
+				"anchor_id": "",
+				"session": {
+					"id": "bbbbbbbbbbb2",
+					"title": "",
+					"agent_id": "",
+					"live": false,
+					"live_state": ""
+				},
+				"projects": [],
+				"ask": null,
+				"actions": {
+					"dismiss": true,
+					"answer": false,
+					"read": true
+				}
+			},
+			{
+				"id": "n_pzmepk6bo3cromeo",
+				"source": "notify",
+				"priority": "normal",
+				"title": "QA accepted item",
+				"excerpt": "version one",
+				"created_at": 1793212741289,
+				"updated_at": 1793212741289,
+				"seq": 2,
+				"revision": 1,
+				"read": false,
+				"read_via": null,
+				"read_surface": null,
+				"dismissed": false,
+				"repeat_count": 1,
+				"key": "accepted",
+				"anchor_id": "",
+				"session": {
+					"id": "aaaaaaaaaaa1",
+					"title": "",
+					"agent_id": "",
+					"live": false,
+					"live_state": ""
+				},
+				"projects": [],
+				"ask": null,
+				"actions": {
+					"dismiss": true,
+					"answer": false,
+					"read": true
+				}
+			},
+			{
+				"id": "n_a7xzuj4mudlstbmr",
+				"source": "notify",
+				"priority": "normal",
+				"title": "QA stale revision",
+				"excerpt": "version one",
+				"created_at": 1793212741283,
+				"updated_at": 1793212741283,
+				"seq": 1,
+				"revision": 1,
+				"read": false,
+				"read_via": null,
+				"read_surface": null,
+				"dismissed": false,
+				"repeat_count": 1,
+				"key": "stale",
+				"anchor_id": "",
+				"session": {
+					"id": "aaaaaaaaaaa1",
+					"title": "",
+					"agent_id": "",
+					"live": false,
+					"live_state": ""
+				},
+				"projects": [],
+				"ask": null,
+				"actions": {
+					"dismiss": true,
+					"answer": false,
+					"read": true
+				}
+			}
+		],
+		"next_cursor": null,
+		"unread_count": 3,
+		"waiting_count": 0,
+		"waiting_unread_count": 0,
+		"high_water": 3,
+		"waiting": [],
+		"observed": [
+			{
+				"id": "n_4n75x3kjg3hrxwol",
+				"revision": 1
+			},
+			{
+				"id": "n_pzmepk6bo3cromeo",
+				"revision": 1
+			},
+			{
+				"id": "n_a7xzuj4mudlstbmr",
+				"revision": 1
+			}
+		]
+	},
+	"receipt": {
+		"unread_count": 2,
+		"waiting_count": 0,
+		"waiting_unread_count": 0,
+		"high_water": 5,
+		"changed": ["n_pzmepk6bo3cromeo"],
+		"skipped": [
+			{
+				"id": "n_a7xzuj4mudlstbmr",
+				"reason": "stale_revision"
+			}
+		]
+	}
+}

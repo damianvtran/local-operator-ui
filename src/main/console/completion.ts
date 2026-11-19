@@ -42,6 +42,9 @@ export interface ConsoleCompletionNotice {
 	surfaceName: string;
 	/** The process's exit code, or null for a command mark with no status. */
 	exitCode: number | null;
+	/** The signal that ended the process, when one did (Q-3). The notifier's
+	 * sentence uses it instead of reporting node-pty's code 0 as success. */
+	exitSignal?: string | null;
 	/** Whether main believes a pane is showing THIS surface (the host's own
 	 * `displayed_surface`, never the renderer's opinion of itself). */
 	displayed: boolean;
@@ -151,6 +154,7 @@ export function consoleCompletionHooks(
 		surface: string,
 		exitCode: number | null,
 		key: string,
+		exitSignal: string | null = null,
 	): ConsoleCompletionNotice | null => {
 		const described = describe(surface);
 		if (!described) return null;
@@ -159,6 +163,7 @@ export function consoleCompletionHooks(
 			surface,
 			surfaceName: described.command,
 			exitCode,
+			exitSignal,
 			displayed: displayed(surface),
 			key,
 		};
@@ -218,9 +223,11 @@ export function consoleCompletionHooks(
 		onExit: ({
 			surface,
 			exitCode,
+			exitSignal,
 		}: {
 			surface: string;
 			exitCode: number;
+			exitSignal?: string | null;
 		}) => {
 			const key = exitKey(surface);
 			const previous = lastBanner.get(surface);
@@ -237,7 +244,7 @@ export function consoleCompletionHooks(
 				);
 				return;
 			}
-			const notice = completionFor(surface, exitCode, key);
+			const notice = completionFor(surface, exitCode, key, exitSignal ?? null);
 			if (notice) announce(notice, "exit");
 		},
 	};

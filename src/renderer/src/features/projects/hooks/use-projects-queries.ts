@@ -39,6 +39,7 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
+import { useCallback, useEffect, useRef } from "react";
 import type {
 	DesktopProject,
 	DesktopProjectDetail,
@@ -53,6 +54,16 @@ import type {
 export const projectKeys = {
 	list: ["desktop", "projects"] as const,
 	detail: (key: string) => ["desktop", "projects", key] as const,
+	/*
+	 * The chat canvas's linked-projects read. NESTED UNDER `list` on purpose
+	 * (the search index's `["desktop", "projects", "search", q]` precedent):
+	 * every project write already invalidates the `list` prefix, so a link,
+	 * unlink, milestone toggle or field save anywhere in the app refreshes the
+	 * canvas's list too, with no second invalidation for a writer to forget.
+	 * Four elements, so it can never equal a three-element detail key.
+	 */
+	forSession: (sessionId: string) =>
+		["desktop", "projects", "session", sessionId] as const,
 };
 
 /** The listing, as the page's gate hands it `enabled`. */
@@ -67,6 +78,92 @@ export function useProjectsList(enabled: boolean) {
 		retry: retryDesktopQuery,
 		staleTime: 10_000,
 	});
+}
+
+/**
+ * The projects ONE conversation is linked to, in the listing's order and row
+ * shape (`GET /v1/desktop/sessions/{id}/projects`).
+ *
+ * `enabled` is the caller's gate, as everywhere in this module: the canvas
+ * passes `projects_by_session` AND a real session id, because a draft has no
+ * id to ask about and an older daemon 404s the route. Same `staleTime` as the
+ * listing so a canvas opened right after the Projects tab reuses its freshness
+ * window rather than reading twice.
+ */
+export function useSessionProjects(
+	sessionId: string | undefined,
+	enabled: boolean,
+) {
+	return useQuery({
+		queryKey: projectKeys.forSession(sessionId ?? ""),
+		enabled: enabled && Boolean(sessionId),
+		queryFn: () =>
+			desktopResult<{ session_id: string; projects: DesktopProject[] }>({
+				op: "projects.for_session",
+				sessionId: sessionId ?? "",
+			}).then((result) => result.projects),
+		retry: retryDesktopQuery,
+		staleTime: 10_000,
+	});
+}
+
+/**
+ * The rail's linked-projects total for one conversation: the read's length,
+ * but 0 WHENEVER the capability is absent (canvas round-1 Q-2). A disabled
+ * query keeps its last data, so a runtime that stopped serving the route
+ * mid-session left the door saying "3 projects" over a pane that says linked
+ * projects aren't available.
+ */
+export function linkedProjectTotal(
+	enabled: boolean,
+	rows: readonly unknown[] | undefined,
+): number {
+	return enabled ? (rows?.length ?? 0) : 0;
+}
+
+/**
+ * Drops every cached project read (the listing, each detail and every
+ * per-session list) — the same prefix invalidation each write does — for a
+ * caller that learns of a change from somewhere other than its own mutation.
+ * The chat canvas calls it when a turn ends, because the agent that just ran
+ * is the most likely author of a project update the operator is looking at.
+ */
+export function useInvalidateProjectReads() {
+	const queryClient = useQueryClient();
+	return useCallback(() => {
+		void queryClient.invalidateQueries({ queryKey: projectKeys.list });
+	}, [queryClient]);
+}
+
+/**
+ * Re-read every project read when a turn of THIS conversation ends.
+ *
+ * WHY AT THE CHAT, NOT THE VIEW (canvas round-1 R1-3/U5): the rail's
+ * linked-projects count and dot read `useSessionProjects` in `ChatContent`,
+ * mounted with or without the canvas, while this refresh used to live in the
+ * canvas's Projects view and so only ran while that view was open. An agent
+ * linking the chat mid-turn left the rail's total stale until some unrelated
+ * refetch. The invalidation is a prefix one, so it refetches only ACTIVE
+ * queries: the rail's total always, the list and an open detail when drawn.
+ *
+ * `turnTerminal` is the chat's count of observed turn completions; only a RISE
+ * acts (the first observed value is the baseline, never a refresh), and
+ * `enabled` is the caller's `projects_by_session` + real-session gate.
+ */
+export function useProjectReadsTurnRefresh(
+	turnTerminal: number | undefined,
+	enabled: boolean,
+) {
+	const invalidateProjects = useInvalidateProjectReads();
+	const turnsSeen = useRef(turnTerminal);
+	useEffect(() => {
+		const previous = turnsSeen.current;
+		turnsSeen.current = turnTerminal;
+		if (previous === undefined || turnTerminal === undefined) return;
+		if (turnTerminal <= previous) return;
+		if (!enabled) return;
+		invalidateProjects();
+	}, [turnTerminal, enabled, invalidateProjects]);
 }
 
 /**

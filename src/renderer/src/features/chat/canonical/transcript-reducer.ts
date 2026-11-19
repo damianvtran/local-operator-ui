@@ -1,3 +1,8 @@
+import {
+	type BridgeReceipt,
+	bridgeReceiptOf,
+} from "../components/trace/bridge-receipt-model";
+
 /**
  * Canonical transcript reducer.
  *
@@ -28,10 +33,24 @@
  */
 
 import {
+	type CanonicalContentBlock,
 	type CanonicalFrontendState,
 	type DesktopHistoryPage,
+	type DesktopStreamCursor,
 	epochMsFromSeconds,
 } from "../../../../../shared/desktop-session-contract";
+import {
+	type BridgeResultFacts,
+	preferBridgeFacts,
+	preferBridgeLabel,
+} from "../components/trace/bridge-row-model";
+import {
+	DIFF_BINDING_CUSTOM_TYPE,
+	type DiffFullDescriptor,
+	isAdmittedDiffBinding,
+	parseDiffBinding,
+	preferDiffFull,
+} from "../components/trace/diff-history-model";
 import {
 	type HubReceipt,
 	type PeerSender,
@@ -42,11 +61,16 @@ import {
 	wakeIsHidden,
 } from "../components/trace/receipt-row-model";
 import {
+	preferToolResultDetails,
+	profileWriteDetails,
+} from "../components/trace/tool-result-details";
+import {
 	type SendDeliveryState,
 	diffFromDetails,
 	preferDeliveryState,
 	preferDiff,
 	preferDiffCounts,
+	preferDiffTruncatedRows,
 	preferProgressDetails,
 } from "../components/trace/tool-row-model";
 import { isHarnessChromeText } from "./harness-chrome";
@@ -59,6 +83,13 @@ import {
 	receiveJournalOrder,
 	rememberJournalCalls,
 } from "./journal-order";
+import { type MusicReceipt, musicReceiptOf } from "./music-receipt-model";
+import { type NoticeCopy, noticeCopyText } from "./notice-copy";
+import {
+	type PendingProfileHistoryReplacement,
+	profileHistoryReplacements,
+	retainAppliedProfileReplacement,
+} from "./profile-history-replacement";
 import { freezeRecordDeep } from "./record-immutability";
 import { type SkillRow, skillOf } from "./skill-row";
 import {
@@ -67,6 +98,7 @@ import {
 	type SupplementFile,
 	type SupplementRowState,
 	type SupplementSound,
+	type SupplementWithheld,
 	mergeSupplement,
 	supplementKeyForEntry,
 	supplementPatchFromEvent,
@@ -116,6 +148,35 @@ export type TranscriptImage = {
 };
 
 /**
+ * One document block of a user message (attachment contract v1 §5).
+ *
+ * Narrower than `TranscriptImage` on purpose: a document is never decoded or
+ * displayed as media, so it carries only what the row has to say - a name, a
+ * type, the origin path and the retained digest. `id` is stable per record and
+ * position among DOCUMENT blocks only, so a text or image block between two
+ * files cannot renumber either.
+ */
+export type TranscriptDocument = {
+	id: string;
+	/** The attachment store's digest, when the row carries one. */
+	attachment: string | null;
+	filename: string;
+	mimeType: string;
+	/** The origin absolute path, display/provenance only. */
+	path: string | null;
+	/**
+	 * The attachment store's absolute path, when the owner's row carries one.
+	 * This is what the missing state copies: the origin path is exactly what is
+	 * gone, so offering it would hand the person a dead string (design round 1,
+	 * D2 follow-up).
+	 */
+	storedPath: string | null;
+	bytes: number;
+	/** How the turn reached the model (historical metadata). */
+	injection?: "native" | "extracted" | "reference";
+};
+
+/**
  * Whether a media ref is a PICTURE: a legacy image block (no `kind`) or an
  * image artifact.
  *
@@ -150,6 +211,13 @@ type TranscriptPayloadRecord =
 			ts: number;
 			text: string;
 			images: TranscriptImage[];
+			/**
+			 * The document blocks this message carried (attachment contract v1 §5),
+			 * mapped by `extractDocuments`. Optional so every story and stored record
+			 * built before documents existed keeps its shape: the row reads an absent
+			 * list as "no files", the same spelling `images` uses on a custom row.
+			 */
+			documents?: TranscriptDocument[];
 			/**
 			 * This row is the app's own optimistic echo, not the owner's record of
 			 * the message - it has not been confirmed by the session yet.
@@ -231,6 +299,35 @@ type TranscriptPayloadRecord =
 			/** Still receiving deltas; the view shows the text without a cursor. */
 			streaming: boolean;
 			/**
+			 * Whether this assistant row carries its OWN `tool_calls` on the wire.
+			 *
+			 * THIS IS THE FINAL-RESPONSE SIGNAL, and it is read from the record rather
+			 * than guessed in the view. The core states the rule in
+			 * `tui/narration.py::is_intermediate_narration`: an assistant message that
+			 * carries `tool_calls` is mid-turn narration/status commentary, and one
+			 * that carries none is a handover to the reader. Position in the turn,
+			 * `closesTurn`, length and text heuristics all disagree with that fact on
+			 * real journals (a wake reply mid-turn is short AND final; a long
+			 * "checking the ledger" paragraph is final-only by accident of length), so
+			 * the wire fact is what `turn-segments.ts::isFinalResponse` reads and the
+			 * one thing the action-bar placement consults.
+			 *
+			 * `stopReason` deliberately does NOT corroborate it on its own: a
+			 * `toolUse` with empty `tool_calls` is reachable (the frozen corpus on
+			 * PR #737 records exactly one such row), and it is a final response.
+			 *
+			 * ABSENT MEANS "no tool calls" here, and that spelling is load-bearing:
+			 * hand-built fixtures and pre-field records have no way to state the
+			 * fact, and treating absence as "maybe" would leave every one of them
+			 * barless. Every SETTLE path states it - `durableRecord` from the journal
+			 * payload, `message_end` from the assembled frame, the id-less settle
+			 * fallback from the frame, and `agent_end`'s abort sweep as `false`
+			 * (an aborted stream never assembled calls) - and `isFinalResponse`
+			 * requires `!streaming`, so the two STREAMING creation paths, which
+			 * cannot know it yet, are never read for it.
+			 */
+			callsTools?: boolean;
+			/**
 			 * Viewer-clock ms when this record SETTLED, or absent while it streams.
 			 *
 			 * WHY THE LIVE ROW NEEDS IT: `ts` on a live assistant record is its stream
@@ -308,12 +405,13 @@ type TranscriptPayloadRecord =
 			 * cursor; the epoch rotates only with a facade rebuild
 			 * (`server/utils/desktop_sessions.py`, the local-operator repo).
 			 *
-			 * A STREAMING-ROW FACT, not a universal one: this field is stamped by a
-			 * live turn's frames only - `message_end` and `applyHistoryPage` build
-			 * their records without it - which is safe today because a settled row
-			 * refuses later deltas (see `message_update`'s settled-row gate). Any
-			 * path that ever re-arms a settled row must restamp or re-earn this
-			 * cursor, or it silently loses the protection.
+			 * STAMPED BY EVERY LIVE FRAME THAT WRITES A ROW, including the settled
+			 * `message_end` one - a settled row is exactly what an older history
+			 * page competes with, so the stamp is what lets
+			 * `pageRowIsOlderThanLiveRow` refuse that page. `applyHistoryPage` does
+			 * NOT stamp (a durable row's position is the journal's, not the wire's),
+			 * so a row that only ever arrived from a page carries no cursor and
+			 * keeps durable-wins-by-id.
 			 *
 			 * Per-EPOCH, because a replaced owner restarts the numbering: the
 			 * comparison is only meaningful within one epoch, and a frame from a
@@ -463,6 +561,37 @@ type TranscriptPayloadRecord =
 			 */
 			diff: string[] | null;
 			/**
+			 * Rendered diff rows the PRODUCER dropped from `diff`, from
+			 * `details.diff_truncated_rows`; 0 when it dropped none (or the core
+			 * predates the key). Those rows were never recorded, so the body states
+			 * the count in a footer instead of offering to reveal them. Guarded by
+			 * `preferDiffTruncatedRows`, the counters' absent-vs-stated rule.
+			 *
+			 * Optional only for hand-built fixtures (stories, tests) that predate
+			 * it: every record this reducer builds states it, so a merge never
+			 * flips the key between present and absent.
+			 */
+			diffTruncatedRows?: number;
+			/**
+			 * The full archived diff's descriptor (`details.diff_full`), parsed by
+			 * `preferDiffFull`; null when there is none (complete preview, or a
+			 * call recorded before the archive existed). It names the artifact
+			 * only to the core: the renderer pages it by call id, so replaying a
+			 * stored transcript reaches the same immutable rows without the
+			 * artifact ever riding the transcript. Optional for the same
+			 * hand-built-fixture reason as `diffTruncatedRows`.
+			 */
+			diffFull?: DiffFullDescriptor | null;
+			/**
+			 * Built ONLY from a host diff binding (`tool_call_diff_binding_v1`,
+			 * see `diff-history-model.ts`): proof the host CAPTURED this nested
+			 * write/edit's full diff, never the executor's completion. The row
+			 * paints as a quiet receipt (no success/failure outcome, no counts) whose
+			 * body is the full-diff pager. A live record for the same call is never
+			 * replaced by one; it only gains the descriptor. Absent = false.
+			 */
+			captureOnly?: boolean;
+			/**
 			 * The call was still running when the turn was aborted, so it never
 			 * reported an outcome of its own.
 			 *
@@ -483,6 +612,25 @@ type TranscriptPayloadRecord =
 			 * stories) need not state it; absent reads exactly as `null`.
 			 */
 			delivery?: SendDeliveryState | null;
+			/**
+			 * A Team Bridge (`bridge`) call's display name for its destination, read
+			 * from the RESULT (`bridgeLabelFromDetails`): the DM receipt's `direct
+			 * message to <label> in bcv_…`, `channel_create`'s returned `name`, or a
+			 * future core's `conversation_label`. Without it the row could only name
+			 * the conversation by its opaque `bcv_` id, the defect the bridge row
+			 * replaces. `null`/absent on every other tool and whenever the result
+			 * names nothing; the row then falls back to the call's own `name`, the
+			 * Team Bridge cache, and finally a kind word.
+			 */
+			bridgeLabel?: string | null;
+			/**
+			 * The `bridge` result's own fields (`ToolResult.details`: the receipt's
+			 * `conversation_id`, `message_id`, `seq`, `destination_type`, `code`,
+			 * `content`, …), which the row's tokens and its expansion read. The
+			 * progress carrier below cannot hold them: it admits only the imagegen
+			 * contract's shape. `null`/absent on every other tool.
+			 */
+			bridge?: BridgeResultFacts | null;
 			/**
 			 * The canonical progress payload the call's frames carried last, raw -
 			 * the imagegen lane's `progress_details` shape on harness PR #2089
@@ -511,6 +659,13 @@ type TranscriptPayloadRecord =
 			id: string;
 			ts: number;
 			text: string;
+			/**
+			 * The renderer-authored sentence as an id plus arguments, re-resolved at
+			 * paint time so a language change reaches a record already in state
+			 * (`notice-copy.ts` says why `text` alone cannot). Absent for sentences
+			 * the backend wrote or that mirror the core byte-for-byte.
+			 */
+			copy?: NoticeCopy;
 			level: "info" | "warning" | "error";
 	  }
 	| {
@@ -520,6 +675,15 @@ type TranscriptPayloadRecord =
 			customType: string;
 			/** Structured hub facts survive replay without becoming a human turn. */
 			receipt?: HubReceipt;
+			/** Display-only Bridge facts; never a model-context admission grant. */
+			bridgeReceipt?: BridgeReceipt;
+			music?: MusicReceipt;
+			/**
+			 * The detached job a `job_result` row settles (`details.job_id`), so an
+			 * in-chat music generating card can find its own settlement by identity
+			 * rather than by order (`music-generating-model.ts`).
+			 */
+			jobId?: string;
 			images?: TranscriptImage[];
 			/** The row's rendered body, as persisted. */
 			text: string;
@@ -632,8 +796,20 @@ type TranscriptPayloadRecord =
 			id: string;
 			ts: number;
 			askId: string;
-			/** `answered` | `late` | `declined`. Read as a string, for the usual skew reason. */
+			/** `answered` | `late` | `declined` | `dismissed`. Read as a string, for the usual skew reason. */
 			status: string;
+			/**
+			 * WHO settled it and WHY, as the row carries them (harness PR #2833).
+			 *
+			 * `by.surface` is the surface the backend recorded (`desktop`, `phone`,
+			 * `terminal`) and `reason` is the operator's word on a dismissal
+			 * (`answered_in_chat` | `moot`). Both are optional because every other status
+			 * omits them and an older backend has never heard of them — the dismissed
+			 * sentence's `askResponseSummary` branch reads absence as "no surface named"
+			 * rather than inventing one.
+			 */
+			by?: { surface?: string; [key: string]: unknown } | null;
+			reason?: string | null;
 			/**
 			 * The ask's questions, as the row carried them.
 			 *
@@ -736,6 +912,14 @@ type TranscriptPayloadRecord =
 			 * when it did).
 			 */
 			sounds: readonly SupplementSound[];
+			/**
+			 * Pinned or answer-named deliverables the core refused (name + reason,
+			 * never a path), plus the count past the core's 10-entry bound. Optional
+			 * because rows and fixtures older than 2026-11-03 carry neither; both
+			 * read as "nothing withheld".
+			 */
+			withheld?: readonly SupplementWithheld[];
+			withheldMore?: number;
 			/** `superseded` renders nothing; a job-level failure renders its line. */
 			error: string;
 			/**
@@ -761,6 +945,8 @@ type TranscriptPayloadRecord =
 export type TranscriptRecord = TranscriptPayloadRecord & JournalPosition;
 
 export type TranscriptState = {
+	/** Non-rendered, bounded profile prunes awaiting their older native target. */
+	profileHistoryPending?: readonly PendingProfileHistoryReplacement[];
 	/** Order revision is independent of turn generation, view epoch and planner facts. */
 	journalMode?: boolean;
 	journalGeneration?: string;
@@ -1045,31 +1231,13 @@ function knownArgs(
 	);
 }
 
-type ContentBlock = {
-	/** Absent on durable rows: the encoder drops pydantic defaults. */
-	type?: string;
-	text?: string;
-	/** Inline base64. Live events always; durable rows only under 1 KiB. */
-	data?: string;
-	/** Attachment-store digest. Durable rows over 1 KiB; on an ARTIFACT block
-	 *  this is a declared field (the local copy), not an encoding detail. */
-	attachment?: string;
-	mime_type?: string;
-	// --- output-artifact fields (AttachmentContent) ---
-	/** "image" | "video" | "audio". REQUIRED on an artifact, so it is always
-	 *  present on durable rows (the encoder drops only defaults). */
-	kind?: string;
-	/** MIME of the cached bytes; the artifact's mime_type equivalent. */
-	content_type?: string;
-	/** Provider URL (provenance / re-fetch fallback). */
-	source_url?: string;
-	size_bytes?: number;
-	width?: number;
-	height?: number;
-	duration_s?: number;
-	/** Short display handle. Never a filesystem path. */
-	name?: string;
-};
+/*
+ * The wire block is the SHARED contract type, not a second local spelling: a
+ * document block added there must reach this reducer without being copied by
+ * hand, or the two shapes drift and a durable row loses a field one side knows
+ * (agent review round 1, manager finding).
+ */
+type ContentBlock = CanonicalContentBlock;
 
 /**
  * Whether a content block is an image, on EITHER wire shape.
@@ -1176,6 +1344,11 @@ function extractImages(
 	const images: TranscriptImage[] = [];
 	for (const block of content as ContentBlock[]) {
 		const kind = artifactKind(block);
+		// A DOCUMENT block is not an image even when it carries a digest: the
+		// externalized form sets `attachment`, which is also `isImageBlock`'s
+		// durable-image signal, so without this the file would render as a broken
+		// picture (contract v1 §2/§5).
+		if (block.type === "document") continue;
 		if (kind === null && !isImageBlock(block)) continue;
 		/*
 		 * PICTURES, VIDEOS AND SOUNDS, TOGETHER (review round 1 F2's rule, walked
@@ -1231,6 +1404,90 @@ function extractImages(
 
 /** One shared empty array, so "no images" is always the same reference. */
 const EMPTY_IMAGES: TranscriptImage[] = [];
+
+/** One shared empty array, so "no files" is always the same reference. */
+const EMPTY_DOCUMENTS: TranscriptDocument[] = [];
+
+/**
+ * The document blocks of one message, as view-ready records.
+ *
+ * Same reference-preservation rule as `extractImages`: this surface repaints per
+ * token and `shallowEqual` compares by reference, so an identical extraction
+ * returns the array the record already holds.
+ *
+ * The legacy shape is admitted too (contract v1 §2): a row written before the
+ * discriminator existed carries `filename` + `mime_type` + an `attachment`
+ * digest and no `type`, which `coerce_content_blocks` routes as a document. The
+ * UI reads the same two spellings so a replayed old row and a live one are one
+ * record shape.
+ */
+/**
+ * Exported for `scripts/attachment-files.test.mjs`: the mapping is a pure
+ * function over a row's content, and testing it through a mounted transcript
+ * would test React rather than the contract.
+ */
+export function extractDocuments(
+	message: Record<string, unknown> | undefined,
+	recordId: string,
+	previous?: TranscriptDocument[],
+): TranscriptDocument[] {
+	const content = message?.content;
+	if (!Array.isArray(content))
+		return previous?.length ? previous : EMPTY_DOCUMENTS;
+	const documents: TranscriptDocument[] = [];
+	for (const block of content as ContentBlock[]) {
+		const legacy =
+			typeof block.filename === "string" &&
+			typeof block.mime_type === "string" &&
+			typeof block.attachment === "string" &&
+			block.type === undefined;
+		if (block.type !== "document" && !legacy) continue;
+		documents.push({
+			id: `${recordId}:doc:${documents.length}`,
+			attachment:
+				typeof block.attachment === "string" && block.attachment
+					? block.attachment
+					: null,
+			filename:
+				typeof block.filename === "string" && block.filename
+					? block.filename
+					: (block.name ?? "Attached file"),
+			mimeType: block.mime_type ?? "application/octet-stream",
+			path: typeof block.path === "string" && block.path ? block.path : null,
+			storedPath:
+				typeof block.stored_path === "string" && block.stored_path
+					? block.stored_path
+					: null,
+			bytes: typeof block.bytes === "number" ? block.bytes : 0,
+			...(block.injection ? { injection: block.injection } : {}),
+		});
+	}
+	if (documents.length === 0)
+		return previous?.length ? previous : EMPTY_DOCUMENTS;
+	if (previous && sameDocuments(previous, documents)) return previous;
+	return documents;
+}
+
+/** Field-by-field equality over the document list, for the reference gate. */
+function sameDocuments(
+	a: readonly TranscriptDocument[],
+	b: readonly TranscriptDocument[],
+): boolean {
+	if (a.length !== b.length) return false;
+	return a.every((entry, index) => {
+		const other = b[index];
+		return (
+			entry.id === other.id &&
+			entry.attachment === other.attachment &&
+			entry.filename === other.filename &&
+			entry.mimeType === other.mimeType &&
+			entry.path === other.path &&
+			entry.storedPath === other.storedPath &&
+			entry.bytes === other.bytes &&
+			entry.injection === other.injection
+		);
+	});
+}
 
 /**
  * How much artifact metadata an array carries — non-null fields, summed.
@@ -1859,6 +2116,10 @@ function upsert(state: TranscriptState, record: TranscriptRecord) {
 					...(current.sourceAdmissionAnchor && !record.sourceAdmissionAnchor
 						? { sourceAdmissionAnchor: current.sourceAdmissionAnchor }
 						: {}),
+					// The continuation stamp is the row's for the same reason.
+					...(current.sourcePrecedes && !record.sourcePrecedes
+						? { sourcePrecedes: current.sourcePrecedes }
+						: {}),
 					...(current.journalGeneration
 						? {
 								journalGeneration:
@@ -1961,6 +2222,7 @@ function supersedesRekey(
 /** Custom transcript rows that are bookkeeping, never conversation. */
 const SILENT_CUSTOM_TYPES = new Set([
 	"frontend_state_checkpoint_v1",
+	"music_job_v1",
 	"session_state",
 	"hub_communication",
 	"wake_schedule",
@@ -1989,6 +2251,7 @@ const SILENT_CUSTOM_TYPES = new Set([
  */
 function compactionOutcome(detail: string): {
 	text: string;
+	copy: NoticeCopy;
 	level: "info" | "warning" | "error";
 } {
 	const sentence = detail.trim() || "compaction did not run";
@@ -1999,8 +2262,10 @@ function compactionOutcome(detail: string): {
 	 * (design round 2, N1). An em dash is the join, because the sentence after it
 	 * is the runtime's and not this renderer's to rewrite.
 	 */
+	const copy: NoticeCopy = { id: "compaction_not_run", sentence };
 	return {
-		text: `Compaction did not run${sentence.includes(":") ? " — " : ": "}${sentence}`,
+		text: noticeCopyText(copy),
+		copy,
 		level: sentence.startsWith("compaction failed") ? "error" : "warning",
 	};
 }
@@ -2943,6 +3208,134 @@ function isSettleOnlyAsk(
 	return queuedEngine === true && String(toolName ?? "") === ASK_TOOL_NAME;
 }
 
+/**
+ * Whether a page row is OLDER than the live frame that last wrote the row on
+ * screen - the one question that decides which of two disagreeing states wins.
+ *
+ * THE OPERATOR'S REPORT, at the merge that decides it (2026-10-26: "the history
+ * jitters back to an earlier state of an agent response, then returns to the
+ * latest"). A `/history` read and a live frame are two sources with two clocks,
+ * and neither content nor timestamps can order them: the page may state an
+ * owner's mid-stream projection (its `_live_history` row for a message still
+ * being written, `session/attached.py::display_history_window`) while the live
+ * stream has already delivered the assembled end - and a genuine CORRECTION is
+ * a page that disagrees with the live text too, which is why "disagrees" can
+ * never be the test.
+ *
+ * So the comparison is between CLOCKS THE CALLER CAN WITNESS. Every record a
+ * live frame writes carries `frame` (its epoch/seq), and every history read is
+ * dispatched with the receipt high-water mark the pane had at that moment. If
+ * the row's stamp is NEWER than the read's dispatch, the page was answered from
+ * a source that had not seen that write, whatever a clock says - so the page
+ * cannot rewrite it. A page dispatched after the write still wins, which is
+ * what keeps a correction (including one that SHORTENS an answer) landing.
+ *
+ * Kept deliberately narrow: no witness (a first hydration), another epoch (an
+ * owner rebuild restarts the numbering), or no stamp (a row no live frame wrote)
+ * all fall through to durable-wins-by-id.
+ */
+function pageRowIsOlderThanLiveRow(
+	current: TranscriptRecord,
+	witness: DesktopStreamCursor | null | undefined,
+): boolean {
+	const stamp = "frame" in current ? current.frame : undefined;
+	if (!stamp || !witness) return false;
+	if (stamp.epoch !== witness.epoch) return false;
+	return stamp.seq > witness.seq;
+}
+
+/**
+ * The one logical record a nested call's diff binding contributes, keyed by
+ * the NESTED call id (`tool:<call_id>`) so the live end event, a replayed page
+ * and a later upsert all land on the same record - one row, one focus key.
+ *
+ * Executor status stays the executor's: when a record already exists for the
+ * call (the live nested end event, or a durable row), it is kept as it is and
+ * only GAINS the descriptor if it had none. A record that exists only because
+ * of the binding claims nothing beyond the capture (`captureOnly`): no output,
+ * no error, no duration, zero counts - a metadata row cannot state `+N/-N`,
+ * and the descriptor's row total is not an added/removed count.
+ */
+function bindingRecord(
+	entry: DesktopHistoryPage["entries"][number],
+	ts: number,
+	previous: TranscriptRecord | undefined,
+): TranscriptRecord | null {
+	const payload = entry.payload;
+	if (!isAdmittedDiffBinding(payload)) return null;
+	const details = (payload as { details?: { session_id?: unknown } }).details;
+	// Admission already checked the view's id; re-parse under the id admission
+	// accepted so the reducer reads the same validated fields, not raw ones.
+	const binding = parseDiffBinding(
+		payload,
+		typeof details?.session_id === "string" ? details.session_id : null,
+	);
+	if (!binding) return null;
+	if (previous?.kind === "tool" && previous.toolCallId === binding.callId) {
+		if (!previous.captureOnly) {
+			return previous.diffFull
+				? previous
+				: { ...previous, diffFull: binding.descriptor };
+		}
+		if (
+			previous.diffFull &&
+			sameDescriptor(previous.diffFull, binding.descriptor)
+		)
+			return previous;
+	}
+	return {
+		kind: "tool",
+		id: `tool:${binding.callId}`,
+		ts,
+		toolCallId: binding.callId,
+		toolName: binding.tool,
+		intent: null,
+		args: null,
+		phase: "done",
+		argumentBytes: 0,
+		notRunReason: null,
+		notRunKind: null,
+		neverSent: false,
+		output: null,
+		isError: false,
+		durationS: null,
+		startedAt: null,
+		endedAt: null,
+		images: EMPTY_IMAGES,
+		added: 0,
+		removed: 0,
+		diff: null,
+		diffTruncatedRows: 0,
+		diffFull: binding.descriptor,
+		captureOnly: true,
+		stopped: false,
+	};
+}
+
+function sameDescriptor(a: DiffFullDescriptor, b: DiffFullDescriptor): boolean {
+	return (
+		a.state === b.state &&
+		(a.state !== "archived" || (b.state === "archived" && a.rows === b.rows))
+	);
+}
+
+/**
+ * The record key an entry upserts under when it is not its own entry id: a
+ * tool row's (or a diff binding's NESTED) call id. One lookup for both history
+ * merges, so a binding replayed on a later page finds the record it made.
+ */
+function entryCallKey(entry: DesktopHistoryPage["entries"][number]): string {
+	const payload = entry.payload as Record<string, unknown> | undefined;
+	if (
+		entry.type === "custom" &&
+		payload?.custom_type === DIFF_BINDING_CUSTOM_TYPE
+	) {
+		const details = payload.details as Record<string, unknown> | undefined;
+		return `tool:${typeof details?.call_id === "string" ? details.call_id : ""}`; // i18n: ignore internal record-index key; never rendered
+	}
+	return `tool:${String(payload?.tool_call_id ?? "")}`; // i18n: ignore internal record-index key; never rendered
+}
+
 function durableRecord(
 	entry: DesktopHistoryPage["entries"][number],
 	/**
@@ -3000,6 +3393,7 @@ function durableRecord(
 			id: entry.id,
 			ts,
 			text: outcome.text,
+			copy: outcome.copy,
 			level: outcome.level,
 		};
 	}
@@ -3039,6 +3433,10 @@ function durableRecord(
 				};
 			}
 			if (details.kind === "error" || details.kind === "interrupted") {
+				const copy: NoticeCopy =
+					details.kind === "error"
+						? { id: "stopped_with_error" }
+						: { id: "interrupted" };
 				// Preserve the marker's durable position. Appending an old failure at
 				// the current retry tail would misrepresent which outcome was viewed.
 				return {
@@ -3046,8 +3444,8 @@ function durableRecord(
 					id: details.anchor,
 					ts,
 					complete: true,
-					text:
-						details.kind === "error" ? "Stopped with an error" : "Interrupted",
+					text: noticeCopyText(copy),
+					copy,
 					level: details.kind === "error" ? "error" : "warning",
 				};
 			}
@@ -3067,11 +3465,26 @@ function durableRecord(
 		const details = (payload.details ?? {}) as Record<string, unknown>;
 		return supplementRecordFromDetails(ts, details, previous);
 	}
+	/*
+	 * A NESTED WRITE/EDIT DIFF BINDING. Painted only when one of the two
+	 * admission doors in `diff-history-model.ts` marked THIS payload object
+	 * (a projected parent page, or a raw child candidate the scoped GET
+	 * confirmed); an unadmitted lookalike - an agent printing the same JSON into
+	 * a raw transcript - is dropped, never painted as a stand-in.
+	 */
+	if (
+		entry.type === "custom" &&
+		payload.custom_type === DIFF_BINDING_CUSTOM_TYPE
+	)
+		return bindingRecord(entry, ts, previous);
 	if (entry.type !== "message") return null;
 	const kind = String(payload.kind ?? "message");
 	if (kind === "custom") {
 		const customType = String(payload.custom_type ?? "");
 		if (SILENT_CUSTOM_TYPES.has(customType)) return null;
+		// A binding in the MESSAGE envelope is no door the core serves one
+		// through; never let the generic custom arm paint its JSON as text.
+		if (customType === DIFF_BINDING_CUSTOM_TYPE) return null;
 		const details = (payload.details ?? {}) as Record<string, unknown>;
 		// The receipts come before the generic branch, which would paint
 		// `details.text` — the model-facing envelope for both of them.
@@ -3179,6 +3592,16 @@ function durableRecord(
 				ts,
 				askId: String(details.ask_id ?? ""),
 				status: String(details.status ?? "answered"),
+				/*
+				 * THE DISMISSAL'S ATTRIBUTION (harness PR #2833). Passed through as the
+				 * row sent it: an object or `null`, never a guessed surface. The receipt's
+				 * sentence is `askResponseSummary`'s, shared with the other statuses.
+				 */
+				by:
+					details.by && typeof details.by === "object"
+						? (details.by as { surface?: string })
+						: null,
+				reason: typeof details.reason === "string" ? details.reason : null,
 				questions,
 				answers,
 				secretLost: details.secret_lost === true,
@@ -3218,12 +3641,27 @@ function durableRecord(
 		// (a row that states nothing but its type name). No producer emits one
 		// today; the gate is here so none can.
 		if (!text.trim()) return null;
+		const music =
+			customType === "job_result" ? musicReceiptOf(details) : undefined;
 		return {
 			kind: "custom",
 			id: entry.id,
 			ts,
 			customType,
 			text,
+			...(music
+				? { music, images: music.tracks.flatMap((track) => track.images) }
+				: {}),
+			...(customType === "job_result" &&
+			typeof details.job_id === "string" &&
+			details.job_id.length > 0
+				? { jobId: details.job_id }
+				: {}),
+			...(customType === "team_bridge_message"
+				? {
+						bridgeReceipt: bridgeReceiptOf(details),
+					}
+				: {}),
 			attribution:
 				(payload.attribution as "user" | "agent" | "system") ?? "system",
 			...customRow(customType, text, details),
@@ -3311,6 +3749,11 @@ function durableRecord(
 		 * makes this reach the sessions written before the row existed.
 		 */
 		const skill = skillOf(text);
+		const documents = extractDocuments(
+			payload,
+			entry.id,
+			previous?.kind === "user" ? previous.documents : undefined,
+		);
 		return {
 			kind: "user",
 			id: entry.id,
@@ -3321,6 +3764,7 @@ function durableRecord(
 				entry.id,
 				previous?.kind === "user" ? previous.images : undefined,
 			),
+			...(documents.length ? { documents } : {}),
 			...(skill ? { skill } : {}),
 		};
 	}
@@ -3340,6 +3784,8 @@ function durableRecord(
 				text: "",
 				streaming: false,
 				stopReason: String(payload.stop_reason ?? "toolUse"),
+				/* Declared as well as implied: this branch IS the tool-call row. */
+				callsTools: true,
 				error: false,
 			};
 		}
@@ -3350,6 +3796,8 @@ function durableRecord(
 			text,
 			complete: true,
 			streaming: false,
+			/* The final-response fact, read from the journal row's own payload. */
+			callsTools: toolCalls.length > 0,
 			stopReason: (payload.stop_reason as string | null) ?? null,
 			error: Boolean(payload.is_error),
 		};
@@ -3465,6 +3913,14 @@ function durableRecord(
 				diffFromDetails(providerPayload.details),
 				previous?.kind === "tool" ? previous.diff : null,
 			),
+			diffTruncatedRows: preferDiffTruncatedRows(
+				providerPayload.details,
+				previous?.kind === "tool" ? (previous.diffTruncatedRows ?? 0) : 0,
+			),
+			diffFull: preferDiffFull(
+				providerPayload.details,
+				previous?.kind === "tool" ? (previous.diffFull ?? null) : null,
+			),
 			// A durable row is the authoritative record of how the call ended - and
 			// when the runtime's own classifier says the end was an INTERRUPT
 			// (`skipped`/`aborted`), "ended" is not "failed": the row wears the
@@ -3479,12 +3935,26 @@ function durableRecord(
 			delivery: preferDeliveryState(
 				providerPayload.details,
 				previous?.kind === "tool" ? previous.delivery : null,
+				String(payload.tool_name ?? ""),
+			),
+			// The bridge pair rides the same absent-vs-stated rule, so a reloaded
+			// transcript names the destination the live row named.
+			bridge: preferBridgeFacts(
+				String(payload.tool_name ?? ""),
+				providerPayload.details,
+				previous?.kind === "tool" ? previous.bridge : null,
+			),
+			bridgeLabel: preferBridgeLabel(
+				String(payload.tool_name ?? ""),
+				providerPayload.details,
+				previous?.kind === "tool" ? previous.bridgeLabel : null,
 			),
 			// The durable half of the same carrier (`preferProgressDetails`): a
 			// reloaded transcript reads the cancelled/conflict/refusal states from
 			// the same payload the live frames painted them from, and a row whose
 			// page carries no details keeps what it held.
-			details: preferProgressDetails(
+			details: preferToolResultDetails(
+				String(payload.tool_name ?? ""),
 				providerPayload.details,
 				previous?.kind === "tool" ? (previous.details ?? null) : null,
 			),
@@ -4113,13 +4583,30 @@ export function applyPeerSourcePayload(
 		for (const entry of entries) {
 			if (typeof entry.id !== "string" || entry.id === "") continue;
 			if (acceptanceSuperseded(entry.id)) continue;
-			const toolKey = `tool:${String(entry.payload?.tool_call_id ?? "")}`;
+			const toolKey = entryCallKey(entry);
 			const position = index.get(entry.id) ?? index.get(toolKey);
 			const current = position === undefined ? undefined : records[position];
 			if (!current) continue;
 			let record = durableRecord(entry, current);
 			if (!record) continue;
-			record = { ...record, sourceEntryId: entry.id };
+			/*
+			 * The continuation stamp is the ROW's, not the read's (the rule
+			 * `applyHistoryPage` keeps for a re-read row): a placed page row that
+			 * lost it here leaves an unanswered page-mate (one the owner's index
+			 * lacks) with nothing of its own page to rank beside, and it drops to
+			 * the boundary of the row the page was loaded in front of (QA round 3
+			 * Q8, `y0 y2 y3 y1 t4 t5`). `durableRecord` never sets one, so the
+			 * carry cannot overwrite a fresher stamp. The arrival anchor is not
+			 * carried here, which is unchanged from v0.44.0 and matches a page
+			 * re-read (`applyHistoryPage` carries only this stamp).
+			 */
+			record = {
+				...record,
+				sourceEntryId: entry.id,
+				...(current.sourcePrecedes
+					? { sourcePrecedes: current.sourcePrecedes }
+					: {}),
+			};
 			if (peerOrdinal(entry.journal_seq)) {
 				record = admitPeerBodyRecord(
 					record,
@@ -4185,6 +4672,17 @@ export function applyHistoryPage(
 		replace?: boolean;
 		keepPaging?: boolean;
 		/**
+		 * The receipt high-water mark the pane had when THIS read was dispatched.
+		 *
+		 * The page carries no cursor of its own, so this is the only witness that
+		 * can order the answer against live frames that landed while it was out:
+		 * a row a NEWER live frame wrote must not be rewritten by an older read
+		 * (see `pageRowIsOlderThanLiveRow`). Absent means "no witness" - a first
+		 * hydration, or a caller that has no stream - and every row then keeps the
+		 * durable-wins-by-id rule.
+		 */
+		readWitness?: DesktopStreamCursor | null;
+		/**
 		 * The caller's ASSERTION that this page was fetched with
 		 * `before_id = pagedBefore`, i.e. it is a CONTINUATION of the reader's
 		 * walk backwards and not a tail-type read (snapshot, reconcile, refresh).
@@ -4230,6 +4728,7 @@ export function applyHistoryPage(
 	let state = initialState;
 	const previousOrder = state;
 	const admittedPeerIds: string[] = [];
+	let pendingProfiles = initialState.profileHistoryPending;
 	/*
 	 * THE MERGE'S OWN FINISH: lane flag, cleared admissions, cleared wave -
 	 * every return below goes through it so no exit can leave a peer page
@@ -4238,7 +4737,9 @@ export function applyHistoryPage(
 	const finish = (result: TranscriptState): TranscriptState =>
 		finalizePeerLane(
 			clearPeerAdmissions(
-				result,
+				result.profileHistoryPending === pendingProfiles
+					? result
+					: { ...result, profileHistoryPending: pendingProfiles },
 				admittedPeerIds,
 				options.peerSource === true && page.journal_order_state === "ready",
 			),
@@ -4302,8 +4803,33 @@ export function applyHistoryPage(
 	 * unchanged.
 	 */
 	const clearedView = options.keepPaging === true && state.viewEpoch > 0;
+	/*
+	 * The row a continuation's new rows are stamped as loaded IN FRONT OF
+	 * (`JournalPosition.sourcePrecedes`): the cursor row the page was read
+	 * before, when it is a record, else the row at the top of the transcript.
+	 * The cursor can be a journal entry that is no record (a silent custom, a
+	 * `tool:<callId>` result - see the cursor rules below). Every row of the
+	 * page is older than either one. When the chain reaches no coordinate, the
+	 * rankers fall back to the oldest placed row, or to the anchor's slot in the
+	 * unplaced suffix (review round 1, R1-m1).
+	 */
+	const continuationTop =
+		options.pagedBefore !== undefined && state.index.has(options.pagedBefore)
+			? options.pagedBefore
+			: state.records[0]?.id;
+	const profileHistory = profileHistoryReplacements(
+		page.entries,
+		state.records,
+		clearedView || previousOrder.journalGeneration !== state.journalGeneration
+			? []
+			: state.profileHistoryPending,
+	);
+	pendingProfiles =
+		!clearedView && profileHistory.pending.length
+			? profileHistory.pending
+			: undefined;
 	const incoming: TranscriptRecord[] = [];
-	for (const entry of page.entries) {
+	for (const entry of profileHistory.entries) {
 		if (clearedView && !isCompactionOutcome(entry, state.clearedAt)) continue;
 		// A tool row keys by call id, not entry id, so the prior record is looked
 		// up under both. A supplement row keys by ANCHOR (`supplementRecordKey`),
@@ -4314,14 +4840,40 @@ export function applyHistoryPage(
 		// a supplement row's version/rank merge see the version it supersedes.
 		const previous =
 			state.records[state.index.get(entry.id) ?? -1] ??
-			state.records[
-				state.index.get(`tool:${String(entry.payload?.tool_call_id ?? "")}`) ??
-					-1
-			] ??
+			state.records[state.index.get(entryCallKey(entry)) ?? -1] ??
 			previousRecordForSupplement(state, entry);
 		let record = durableRecord(entry, previous);
-		if (record && state.journalMode)
+		// A continuation page may contain only the immutable queued original, not
+		// its later prune. Keep the already correlated applied overlay rather than
+		// rolling a signed completion back to a proposal on that partial read.
+		if (retainAppliedProfileReplacement(entry, previous) && previous)
+			record = previous;
+		// Keep the native target id for profile prune continuations arriving on a
+		// later partial page; canonical tool ids alone cannot identify their target.
+		if (
+			record &&
+			(state.journalMode ||
+				(record.kind === "tool" &&
+					profileWriteDetails(record.toolName, record.details)))
+		)
 			record = { ...record, sourceEntryId: entry.id };
+		/*
+		 * A CONTINUATION'S ROWS ARE OLDER THAN EVERYTHING THE READER HOLDS (see
+		 * `JournalPosition.sourcePrecedes`): a new row is stamped as loaded in front
+		 * of the row at the top of the transcript, so a page that arrives without
+		 * coordinates still ranks above the tail instead of being admitted behind
+		 * it. A row this view already holds keeps the stamp it had - a rebuild from
+		 * a later read must not drop it, any more than `upsert` drops an arrival.
+		 */
+		if (record && state.journalMode) {
+			const precedes =
+				previous?.sourcePrecedes ??
+				(options.pagedBefore !== undefined && !previous
+					? continuationTop
+					: undefined);
+			if (precedes !== undefined && record.sourcePrecedes !== precedes)
+				record = { ...record, sourcePrecedes: precedes };
+		}
 		if (record && peerAdmits && peerOrdinal(entry.journal_seq)) {
 			/*
 			 * THE ADMISSION ITSELF: this row's body was read under the accepted
@@ -4350,6 +4902,20 @@ export function applyHistoryPage(
 			 */
 			record = stripPeerAdmission(record);
 		}
+		/*
+		 * DURABLE-WINS-BY-ID HAS ONE EXCEPTION, and it is the reported flicker: a
+		 * page whose READ predates a live write to the same row cannot rewrite it.
+		 * See `pageRowIsOlderThanLiveRow` for the witness, and for why content and
+		 * timestamps can never answer this (a correction also disagrees, and one
+		 * that SHORTENS an answer is indistinguishable from a stale projection). A
+		 * read dispatched after the write still wins, so corrections land.
+		 */
+		if (
+			record &&
+			previous &&
+			pageRowIsOlderThanLiveRow(previous, options.readWitness)
+		)
+			continue;
 		if (record) incoming.push(freezeRecordDeep(record));
 	}
 	// Tool call args live on the assistant row's `tool_calls`; carry the intent
@@ -5001,6 +5567,15 @@ export function applyEvent(
 						...record,
 						streaming: false,
 						settledAt: now,
+						/*
+						 * AN ABORTED STREAM HAS NO ASSEMBLED CALLS, so this row is a final
+						 * response by the wire's own reading - and the type's absence rule must
+						 * not leave it undefined here, because this is the one settle that can
+						 * happen without `message_end` (review round 1, C3). The text on screen
+						 * is the reader's answer; barring it would be the "minor wake update is
+						 * all you see" shape with the handover removed.
+						 */
+						callsTools: false,
 						stopReason: event.aborted ? "aborted" : record.stopReason,
 					});
 				}
@@ -5128,6 +5703,29 @@ export function applyEvent(
 				 */
 				const keepsHold =
 					current?.kind === "user" && current.provisional === true;
+				/*
+				 * THE FILE THE MESSAGE WAS SENT WITH SURVIVES ITS OWN RESTATEMENT.
+				 *
+				 * The press paints the row with the document blocks it already uploaded
+				 * (`appendPendingUser`), and this frame lands SECOND for the same id. An
+				 * upsert replaces the record wholesale, so an arm that rebuilt text and
+				 * images only silently deleted the file: the message on screen read as if
+				 * nothing had been attached while the model had the document (reproduced
+				 * from the operator's own session, 2026-10-24: the echo carried the block,
+				 * this frame dropped it, and only a reload - which reads the durable row
+				 * through `durableRecord` - painted the card again).
+				 *
+				 * `previous` is the echo's own list for a restatement, and the frame's own
+				 * content for a frame replayed onto an empty transcript (a reconnect, or a
+				 * second viewer joining mid-turn): `extractDocuments` prefers the content
+				 * when it has document blocks and falls back to `previous` otherwise, so
+				 * neither case loses the file and a text-only frame invents none.
+				 */
+				const documents = extractDocuments(
+					message,
+					messageId,
+					current?.kind === "user" ? current.documents : undefined,
+				);
 				/* The live half of the `skill` derivation; the durable half is in
 				 * `durableRecord`, and both are needed for the same reason the harness
 				 * suppression above spells out: they are different arms over different
@@ -5147,6 +5745,7 @@ export function applyEvent(
 						messageId,
 						current?.kind === "user" ? current.images : undefined,
 					),
+					...(documents.length ? { documents } : {}),
 					...(keepsHold ? { provisional: true } : {}),
 					...(skill ? { skill } : {}),
 				});
@@ -5451,6 +6050,12 @@ export function applyEvent(
 					...target,
 					streaming: false,
 					settledAt: target.settledAt ?? now,
+					/*
+					 * The same final-response fact the named path records: the frame's own
+					 * `tool_calls` is the one statement settling can make about it, and the
+					 * completion mark above already reads it for the same reason.
+					 */
+					callsTools: frameToolCalls.length > 0,
 					...(target.text || frameToolCalls.length === 0
 						? { complete: true }
 						: {}),
@@ -5496,12 +6101,29 @@ export function applyEvent(
 				text,
 				...(text || toolCalls.length === 0 ? { complete: true } : {}),
 				streaming: false,
+				/**
+				 * THE FINAL-RESPONSE FACT, recorded at the one moment the frame states it
+				 * (`turn-segments.ts::isFinalResponse` is its only reader). A live row
+				 * created by `message_start`/`message_update` cannot know it - the
+				 * producer assembles `tool_calls` at the end of the call - so this settle
+				 * is where the row learns whether it was narration or a handover.
+				 */
+				callsTools: toolCalls.length > 0,
 				settledAt:
 					previous?.kind === "assistant" && previous.settledAt !== undefined
 						? previous.settledAt
 						: now,
 				stopReason: (message.stop_reason as string | null) ?? null,
 				error: Boolean(message.is_error),
+				/*
+				 * THE SETTLED ROW KEEPS ITS WIRE CURSOR, and that is what makes an
+				 * older history read unable to rewrite it (`pageRowIsOlderThanLiveRow`).
+				 * `frame` used to be described as a streaming-row fact, which was safe
+				 * only while a settled row refused later deltas; a settled row is
+				 * exactly the one a stale page competes with, so the stamp belongs on
+				 * it too, for the same reason and from the same frame.
+				 */
+				...(incoming ? { frame: incoming } : {}),
 			};
 			return upsert(state, settled);
 		}
@@ -5812,6 +6434,8 @@ export function applyEvent(
 				// so there is no diff. The guards above return early for any row that
 				// already settled, so this cannot blank one.
 				diff: null,
+				diffTruncatedRows: 0,
+				diffFull: null,
 				stopped: false,
 				notRunReason: notRun,
 				// The kind rides the verdict and nothing else: no verdict, no class.
@@ -5964,6 +6588,9 @@ export function applyEvent(
 				added: 0,
 				removed: 0,
 				diff: current?.kind === "tool" ? current.diff : null,
+				diffTruncatedRows:
+					current?.kind === "tool" ? (current.diffTruncatedRows ?? 0) : 0,
+				diffFull: current?.kind === "tool" ? (current.diffFull ?? null) : null,
 				// The live progress payload survives a replayed/reviving start: the
 				// update frames are self-replacing, but a replay between two of them
 				// must not blank what the row already showed (the same rule the diff
@@ -6041,6 +6668,8 @@ export function applyEvent(
 							added: 0,
 							removed: 0,
 							diff: null,
+							diffTruncatedRows: 0,
+							diffFull: null,
 							stopped: false,
 						};
 			// The row is settled, so this is also the last chance to LEARN the call's
@@ -6235,6 +6864,11 @@ export function applyEvent(
 				// reconnect seed whose `details` were stripped by the live-event
 				// budget must not blank a body the row already showed.
 				diff: preferDiff(diffFromDetails(result.details), base.diff),
+				diffTruncatedRows: preferDiffTruncatedRows(
+					result.details,
+					base.diffTruncatedRows ?? 0,
+				),
+				diffFull: preferDiffFull(result.details, base.diffFull ?? null),
 				// It reported an end, so whatever happened it was not interrupted —
 				// UNLESS THE USER STOPPED IT (UX round 2, U7), or the WIRE's own fault
 				// marker says the end was an interrupt (`interruptedFault`). The leading
@@ -6247,13 +6881,36 @@ export function applyEvent(
 				// Same absent-vs-stated guard as the diff above: a seed end whose
 				// `details` the live-event budget stripped must not blank a state the
 				// durable row already carried.
-				delivery: preferDeliveryState(result.details, base.delivery),
+				delivery: preferDeliveryState(
+					result.details,
+					base.delivery,
+					base.toolName,
+				),
+				// The live half of the bridge pair (the durable half reads the same
+				// helpers): a budget-stripped frame keeps what the row held.
+				bridge: preferBridgeFacts(base.toolName, result.details, base.bridge),
+				bridgeLabel: preferBridgeLabel(
+					base.toolName,
+					result.details,
+					base.bridgeLabel,
+				),
 				// The settling frame's canonical progress payload, under the same
 				// absent-vs-stated rule as `delivery` beside it: the cancel and
 				// unable-to-generate results carry it (the conflict pair included),
 				// a success result carries the last live frame's facts forward, and
 				// a budget-stripped frame keeps what the row held.
-				details: preferProgressDetails(result.details, base.details),
+				/*
+				 * A PROFILE WRITE KEEPS ITS OWN DETAILS. The progress carrier below drops
+				 * everything that is not progress-shaped, which threw away the saved/queued
+				 * receipt an `agent`/`team` result carries - and the card reads that receipt
+				 * (its `output` is prose). Narrow on purpose: the helper accepts only the
+				 * profile tools' bounded shapes, so no other row's details survive here.
+				 */
+				details: preferToolResultDetails(
+					base.toolName,
+					result.details,
+					base.details,
+				),
 			});
 		}
 		case "supplement_progress": {
@@ -6342,6 +6999,7 @@ export function applyEvent(
 					id,
 					ts: now,
 					text,
+					copy: failure.copy,
 					level: failure.level,
 				});
 			/*
@@ -7364,7 +8022,8 @@ export function clearTranscript(
 	state: TranscriptState,
 	at: number = Date.now(),
 ): TranscriptState {
-	if (state.records.length === 0) return state;
+	if (state.records.length === 0 && !state.profileHistoryPending?.length)
+		return state;
 	// `argsByCall` survives for the same reason it survives a `replace`: the
 	// history this clears is still on the backend, and repainting it must not
 	// lose the arguments the durable rows do not carry themselves.
@@ -7503,6 +8162,19 @@ export function appendPendingUser(
 	text: string,
 	images: TranscriptImage[],
 	now = Date.now(),
+	/**
+	 * The document blocks the press already knows about (contract v1 §5). The
+	 * composer uploads before admission, so the echo can paint the sent file card
+	 * from the first frame instead of showing a bubble that grows a file when the
+	 * owner's row coalesces onto it.
+	 *
+	 * LAST, after `now`, because `now` was the fourth positional argument every
+	 * existing caller (and six `.mjs` tests) already passed: putting a new
+	 * parameter in front of it made `Date.now()` the echo's stamp under the
+	 * client's timestamp, silently. A new optional parameter belongs where it
+	 * cannot shift an established one (agent review round 1, M3).
+	 */
+	documents: TranscriptDocument[] = EMPTY_DOCUMENTS,
 ): TranscriptState {
 	// The owner's row wins over a later echo for the same id: re-echoing would
 	// otherwise overwrite reconciled content with the composer's original text.
@@ -7521,6 +8193,7 @@ export function appendPendingUser(
 		ts: monotonicStamp(state, now),
 		text,
 		images,
+		...(documents.length ? { documents } : {}),
 		...(skill ? { skill } : {}),
 		local: true,
 		// Every echo holds its place until the owner states the row: "no rows
@@ -7649,6 +8322,14 @@ export function withRecoveredOutcome(
 	)
 		return state;
 	remembered?.add(anchor);
+	// Only the two outcomes the renderer words itself carry a re-resolvable
+	// `copy`; closed/retired are the core's byte-identical constants.
+	const copy: NoticeCopy | undefined =
+		kind === "error"
+			? { id: "stopped_with_error" }
+			: kind === "interrupted"
+				? { id: "interrupted" }
+				: undefined;
 	return upsert(state, {
 		kind: "notice",
 		id: anchor,
@@ -7661,9 +8342,8 @@ export function withRecoveredOutcome(
 				? CLOSED_OUTCOME_TEXT
 				: kind === "retired"
 					? RETIRED_OUTCOME_TEXT
-					: kind === "error"
-						? "Stopped with an error"
-						: "Interrupted",
+					: noticeCopyText(copy as NoticeCopy),
+		...(copy ? { copy } : {}),
 		level:
 			kind === "closed"
 				? "info"

@@ -1,0 +1,150 @@
+{
+  "schema": 1,
+  "date": "2026-10-22",
+  "instance": "6dd665ed3af2",
+  "auditor": "i18n-auditor (independent translation auditor; not the translation author)",
+  "agent": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "fallback": "none — the configured model deepseek/deepseek-flash was served for the whole audit; no provider fallback was used",
+  "status": "clean-with-findings",
+  "result": "clean-with-findings",
+  "independence": "I did not author, translate, edit or review-to-completion any of the eight ui.browser catalogues, and I hold no write path to them: this receipt is the only file this run wrote — no catalogue, context sidecar, generated key map, ledger row or test was created or modified. Every claim below was derived here: hashes from the files on disk with sha256sum; the delta from git diff between the prior audited bytes and the current head over the eight catalogues and the English sidecar; key-set, placeholder and ICU facts by parsing the eight JSON files with @formatjs/icu-messageformat-parser (0 argument-set or ICU-shape differences across all 235 keys in all eight files); typographic facts by codepoint inventory of each file. Language judgements were checked against the same catalogue's own shipped terminology rather than recollection — each locale's mixed header uses the same noun its address_suggestions_available/unavailable keys already use, and each locale's 'Already open' is a bare state marker with no tab noun — and the context sidecar's claims were checked against the call sites, not accepted as written. I did not observe rendered output and this receipt claims nothing about it.",
+  "locales": [
+    "es",
+    "fr",
+    "hi",
+    "ru",
+    "ur",
+    "vi",
+    "zh-CN"
+  ],
+  "scope": {
+    "base": "main c5503204ed",
+    "base_note": "c5503204ed is the PR's merge-base with main and is an ancestor of head; origin/main has since advanced to b40e62fffd, which does not contain the branch's commits, so c5503204ed is the base these bytes were audited against.",
+    "head": "73a8d2feac",
+    "head_full": "73a8d2feac3c64642f2e40791cf005569abb4582",
+    "branch": "feat/browser-history-search",
+    "prior_audit": "receipt 837ea3f0157c (instance 837ea3f0157c) at head 3e887bb3b40f0b498d40a2141b3d3bd8cb68e3c3, 7 targets, 234 keys",
+    "delta": "4 English ui.browser keys and their English context entries, mirrored into the 7 target catalogues: 2 added (browser_url_bar.address_suggestions_blocked, browser_url_bar.address_suggestions_label_mixed); 2 changed values (browser_url_bar.address_suggestion_open_tab -> 'Already open — {title}', ..._untitled -> 'Already open'); 1 removed key (browser_url_bar.address_required) from all 8 catalogues. en/ui.browser.context.json gains the 2 new entries, drops address_required's entry, and rewrites 3 notes (open_tab, untitled, label). keys.gen.ts gains the 2 keys and loses the removed one, and `node scripts/i18n/generate.mjs --check` reports it byte-identical to a fresh generation.",
+    "note": "The branch was rebased between the prior audit and this head: prior audited head 3e887bb3b4 is no longer reachable. Its ui.browser bytes survive byte-identical at 723a154cbf — `git diff 3e887bb3b4 723a154cbf -- src/i18n/catalogues/*/ui.browser.json src/i18n/catalogues/en/ui.browser.context.json` is empty — and the entire ui.browser delta comes from commit 73a8d2feac ('fix(browser): make the address field show what Enter will commit'). The worktree range also carries ui.chat.tags/* changes in another namespace, brought in by the rebase onto c5503204ed; they are outside this namespace's audit and are not counted here. `node scripts/i18n/context-parity.mjs` passes with ui.browser fully covered, and no source, test or script still names address_required (only historical receipts do)."
+  },
+  "references": {
+    "contract": {
+      "docs/I18N.md": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca",
+      "scripts/i18n/ledger-rules.mjs": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6"
+    },
+    "core": {
+      "local-operator/docs/design/i18n.md": "a597416937a2440de7bf82a8eb7ba110eac5afb03274200648a166b027e70e50 (carried from prior receipt; the core RFC was not re-read byte-for-byte in this run)"
+    },
+    "glossary": "No native per-locale glossary or style guide is present in this worktree (searched; none found at the dated source pin either), so terminology was checked against each catalogue's own shipped strings, as recorded per check and per finding. No glossary revision is claimed."
+  },
+  "checks": {
+    "key_parity": {
+      "result": "pass",
+      "keys": 235,
+      "detail": "235 keys in every one of the 8 ui.browser catalogues; per-locale set difference against en/ui.browser.json is empty in both directions, so nothing is dropped-and-hidden-by-fallback and nothing is extra. address_required is absent from all 8; only the 2 named keys were added and only the 1 named key was removed."
+    },
+    "placeholders": {
+      "result": "pass",
+      "detail": "address_suggestion_open_tab carries exactly {title} in all 8 catalogues; address_suggestions_blocked, address_suggestions_label_mixed and *_untitled carry none; braces balance, no other brace token appears, and no machine token is translated — DuckDuckGo stays verbatim in all 7 targets and no scheme token (javascript:, data:, about:, file:) appears in the copy."
+    },
+    "icu_plural": {
+      "result": "pass",
+      "detail": "parsed all 8 catalogues with @formatjs/icu-messageformat-parser: 0 differences in argument sets or ICU argument/type structure across all 235 keys. address_suggestions_available is byte-identical to the prior audited bytes in all 8, so its CLDR categories are untouched: one/other in en, es, hi, ur; one/many/other in fr; one/few/many/other in ru; other only in vi and zh-CN."
+    },
+    "byte_identity": {
+      "result": "pass",
+      "detail": "of the 235 current keys, 231 are byte-identical to the prior audited bytes; 2 are new and 2 changed value. Per file the raw diff over 3e887bb3b4..73a8d2feac is exactly 4 insertions and 3 deletions — the 2 added keys, the 1 removed key and the 2 replaced values — and touches no other line; no \\u escape, CRLF or BOM was introduced and every file still ends in a newline."
+    },
+    "meaning_and_register": {
+      "result": "pass",
+      "detail": "all 7 targets render 'Already open' as a state without naming a tab (Ya abierto / Déjà ouvert / पहले से खुला / Уже открыто / پہلے سے کھلا / Đã mở / 已打开) — none implies an action on or a switch to that tab, which matches the corrected context note (commit() calls onNavigate(target, tabId)). All 7 mixed headers are the bare noun the catalogue already uses for suggestions (Sugerencias / Suggestions / सुझाव / Подсказки / تجاویز / Gợi ý / 建议), so no new term is introduced. All 7 blocked sentences are impersonal statements of the rule, none an alarm or an imperative; all say 'open', never 'enter', so none contradicts the DuckDuckGo search row. Register matches each catalogue (es tú, fr vous, hi आप, ru вы, ur آپ, vi bạn, zh 你); the blocked sentence is subject-less like the other status lines. The label/empty/no-match strings still claim only local history — no string in this scope claims a session or a tab that the copy cannot support."
+    },
+    "rtl": {
+      "result": "pass",
+      "detail": "ur sentence and word order are correct; the U+2014 separator between the Urdu state marker and the LTR {title} is bidi-neutral and surrounded by spaces, matching the 12 other spaced-em-dash strings the ur catalogue already ships. No bidi control characters, no ASCII-quote or parenthesis hazard in the new ur strings, and the mixed header is a single Urdu word."
+    },
+    "cjk": {
+      "result": "pass-with-finding",
+      "detail": "zh-CN puts no space between Han characters and keeps the full-width 。 and 。-final sentence; its only CJK defect is the separator in address_suggestion_open_tab, filed as F1: the sole spaced single em dash in a catalogue whose six other em-dash strings all use the unspaced double dash '——'. The mixed header 建议 and the blocked sentence carry no Latin text, so no CJK/Latin spacing question arises in them."
+    },
+    "fit": {
+      "result": "pass",
+      "detail": "no measured pixel claim. The blocked sentence is 30-45 characters (fr 45) on the full-width status line, at or below each locale's longest existing address-suggestion notice except ru, which is 1 character longer (40 vs no_match 39); the mixed headers are 2-11 characters (en 11, ru 9, vi 5) against the 16-character 'From your history' label they alternate with; the open-tab markers are 13-22 characters including {title}, on rows that already carry a title line. No string in the delta exceeds a length the catalogue already ships in that row class."
+    },
+    "terminology": {
+      "result": "pass",
+      "detail": "history is named by each locale's existing term (historial / historique / इतिहास / история / سرگزشت / lịch sử / 历史记录) and tab wording is left untouched — the delta removes the former tab noun rather than retranslating it, so no same-product split is introduced. vi no longer uses 'Thẻ' for a tab anywhere (prior M5 resolved). The blocked sentences use each locale's existing address word (direcciones / adresses / पते / адреса / پتے / địa chỉ / 地址)."
+    }
+  },
+  "namespaces": {
+    "ui.browser": {
+      "namespace": "ui.browser",
+      "status": "clean-with-findings",
+      "result": "clean-with-findings",
+      "locales": [
+        "es",
+        "fr",
+        "hi",
+        "ru",
+        "ur",
+        "vi",
+        "zh-CN"
+      ],
+      "keys_checked": 235,
+      "keys_checked_per_catalogue": 235,
+      "keys_unchanged_since_prior_audit": 231,
+      "keys_unchanged_note": "prior receipt 837ea3f0157c covered 234 keys at 3e887bb3b4; of the current 235, 231 are byte-identical to those bytes, 2 are new, 2 changed value, and the 1 removed key is not in the current set.",
+      "prior_findings_disposition": [
+        "M1 (fr address_search_row, minor): key bytes unchanged since the prior audit; not re-filed.",
+        "M2 (fr address_suggestions_empty, minor): key bytes unchanged since the prior audit; not re-filed.",
+        "M3 (zh-CN address_suggestion_open_tab, minor): the value changed but the spaced single em dash remains; re-filed on the current bytes as F1.",
+        "M4 (ur address_search_row, minor): key bytes unchanged since the prior audit; not re-filed.",
+        "M5 (vi open_tab pair, minor): resolved — the new values no longer use 'Thẻ'.",
+        "N1 (es address_search_row, nit) and N2 (vi address_search_row, nit): keys unchanged since the prior audit; not re-filed."
+      ],
+      "sha256": {
+        "en": "73c3a1a3544e3c8a41cb9d7383e22f97bbe4ebb1a2363125600519b21ba333dd",
+        "es": "5998a28e968deaf1e4753c0ff3513e4f02b83a14f1fc449cb07cbd974cc7ca1f",
+        "fr": "255e981d0b73dd2a93ce67f5f30b9cd15a6b9035c920c797b62253968809a263",
+        "hi": "a7c51bba92daf2ea0a6394461053be0c84fa457b823b3ea3c1db902c1ee23562",
+        "ru": "081fa9dc3b82d0b7808460be3b8902f7f0e4dca5a1d794a74baf37c81afc3b9a",
+        "ur": "4c5055b5cf3346b288cd64045a5b3eaf38021bc357606f6aff86e2ffb0967db7",
+        "vi": "eb4ef34548fb920fa1e0a457c746f669d56f97c8fd53ac2c5816d8d9a7be512d",
+        "zh-CN": "deb19169ac123a6b545530909ba4092c7dc1b69d08765b1f859f94c7db2f72f6"
+      },
+      "findings": [
+        {
+          "id": "F1",
+          "severity": "minor",
+          "locale": "zh-CN",
+          "key": "ui.browser.browser_url_bar.address_suggestion_open_tab",
+          "observation": "The 'state — title' separator is a spaced single em dash (U+2014 with U+0020 on both sides). All six other em-dash strings in this catalogue use the Chinese double em dash '——' with no spaces, including the same row pattern in browser_tab_strip.all_tabs_unshown and browser_url_bar.home_destination. A spaced Latin-width dash reads as a gap in Chinese typography on a row that renders on every keystroke.",
+          "evidence": "dash inventory of src/i18n/catalogues/zh-CN/ui.browser.json: 6 strings contain '——' (12 U+2014, all unspaced: download_refused, all_tabs_unshown, home_destination, latest_download, newest_download, site_unverified_certificate); this key contributes the only spaced pair. Prior audit 837ea3f0157c raised the same convention as M3 on the superseded value '已打开的标签页 — {title}': the value changed, the separator did not.",
+          "suggested": "已打开——{title}",
+          "disposition": "fix with the suggested bytes; no meaning change"
+        },
+        {
+          "id": "F2",
+          "severity": "nit",
+          "locale": "zh-CN",
+          "key": "ui.browser.browser_url_bar.address_suggestions_blocked",
+          "observation": "'网页地址' is understandable but '网址' is the standard Simplified-Chinese term for a web address, and it is shorter in a status line. The sentence is truthful either way; this is idiom only, not a mistranslation.",
+          "evidence": "counts over src/i18n/catalogues/zh-CN/ui.browser.json: 网址 = 0 keys, 网页地址 = 1 key (this one), 地址 = 10 keys. The catalogue uses bare 地址 for the address/URL concept (address bar, '此地址无法解析'), so 网页地址 is the only compound of its kind.",
+          "suggested": "此处只能打开网址。",
+          "disposition": "optional; accept as-is if the author prefers the fuller compound"
+        },
+        {
+          "id": "F3",
+          "severity": "nit",
+          "locale": "en",
+          "key": "ui.browser.browser_url_bar.address_suggestions_blocked (context note)",
+          "observation": "The context note enumerates the trigger as 'a blocked scheme (javascript:, data:, about:, an unknown scheme) or a file: URL', which reads as exhaustive, but the same notice is also shown for host-shaped input the classifier refuses as malformed (an out-of-range port or a rejected authority). A translator reading only the note would not know the sentence must also read as a general rule about what this field can open.",
+          "evidence": "browser-url-bar.tsx:436-442 sets refusedInput from suggestions.intent === 'blocked' || FILE_SCHEME.test(raw.trim()); address-autocomplete.ts:278-285 returns 'blocked' for 'an invalid port or a rejected authority'; the note under audit is ui.browser.context.json:1137-1141. The behaviour is correct — only the note's enumeration is narrower than the trigger set.",
+          "suggested": "Extend the note to name the malformed-address case (or prefix the list with 'for example'), e.g. '… a blocked scheme (javascript:, data:, about:, an unknown scheme), a file: URL, or a malformed address the browser cannot parse.' No translation changes needed: all 7 targets already state the general rule.",
+          "disposition": "optional wording fix; no re-translation required"
+        }
+      ]
+    }
+  }
+}

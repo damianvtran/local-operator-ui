@@ -98,10 +98,6 @@ const decorators: Meta<typeof BrowserTabStrip>["decorators"] = [
 	),
 ];
 
-/** Top-level because Biome forbids a regex literal inside a function, and the
- * label is the same string the trigger's `aria-label` is built from. */
-const TAB_ACTIONS_LABEL = /^Tab actions for /;
-
 const meta = {
 	title: "Browser/Tab strip",
 	component: BrowserTabStrip,
@@ -469,91 +465,12 @@ export const Restored: Story = {
 	args: strip([tab(1, "Dashboard"), tab(2, "Inbox", { restored: true })], 1),
 };
 
-/** The tab actions menu, open — a REGISTERED POPOUT since 2026-09-28 (the operator's
- * "the ellipsis menu should be a popout instead of taking up space and shifting
- * down"). It floats over the content area and the strip registers it with the overlay
- * policy, so the live app hides the native page and shows the paused note behind it;
- * in this story the page is not rendered at all, so the frame judges the panel's own
- * grammar. The `play` function presses the same trigger a person presses, so the frame
- * is the product's own state rather than a prop this story could set. */
-/**
- * THE MENU WITH ITS BULK CLOSES (design R5; the popout form is 2026-09-28).
- *
- * The frame is where the items' copy is judged: `Close 2 other tabs`, `Close 1 tab to
- * the right`, `Close all tabs in this conversation` and `Copy URL`. The COUNTS are in
- * the labels because each of these is destructive with no undo — the session file
- * records the current set, not a history — and two of them reach beyond the list a
- * scoped host is showing. There is no confirmation dialog: the count is the disclosure,
- * and a single close has no undo either (open question 4). A tab whose last navigation
- * was refused adds `Close N failed tabs` (2026-09-28) — not in this fixture, whose tabs
- * are all healthy; the `Failed` story carries the marker itself.
- *
- * The conversation item carries a NUMBER TOO (review round 1, U3): the group chip the
- * design relied on is drawn only when the pool holds two or more conversations, and this
- * story's host — and the pane opened from a sidebar mark — is the single-conversation
- * case, so the most destructive item was the one with no count beside it.
- *
- * ONE ITEM PER ROW IS THE MENU'S OWN SHAPE (it was a ruled column while the actions were
- * an in-band band; the popout inherits the same grammar), `Copy URL` last behind the
- * menu's own separator.
- *
- * The second tab's conversation holds two tabs, which is the gate for the group item:
- * closing "all" of a conversation's single tab is `Close "X"` under a longer label.
+/*
+ * THE ACTIONS MENU HAS NO STORY ANY MORE (LOH-13 operator report, 2026-10-25).
+ * It is a NATIVE Electron menu, drawn by the OS above the app's own surface, so
+ * Storybook cannot render it and a `play` function cannot open one. The states
+ * that used to be judged here - the item order, the counted closes, the title
+ * row - are pinned by `buildTabActionsMenuItems` and its test, and the live
+ * popup (with the page still visible behind it) is measured by
+ * `scripts/browser-tab-menu-native-proof.mjs` against the running app.
  */
-export const ActionsExpandedBatch: Story = {
-	args: strip(
-		[
-			tab(1, "Dashboard"),
-			tab(2, "Reports home", {
-				sessionId: "session-reports",
-				url: "https://reports.example.com/",
-			}),
-			tab(3, "Reports detail", {
-				sessionId: "session-reports",
-				url: "https://reports.example.com/detail",
-			}),
-			tab(4, "Invoices", { sessionId: "session-invoices" }),
-		],
-		1,
-		{},
-		SESSIONS,
-	),
-	play: async ({ canvasElement }) => {
-		const canvas = within(canvasElement);
-		// The second row: a tab with a conversation AND a tab to its right, so all four
-		// items are reachable from one press.
-		const rows = await canvas.findAllByRole("tab");
-		const row = rows[1]?.parentElement;
-		if (!row)
-			throw new Error("the batch story needs a second tab's row to hover");
-		await userEvent.hover(row);
-		const triggers = await canvas.findAllByLabelText(TAB_ACTIONS_LABEL);
-		await userEvent.click(triggers[1], { pointerEventsCheck: 0 });
-	},
-};
-
-export const ActionsExpanded: Story = {
-	args: strip([tab(1, "Dashboard"), tab(2, "Reports"), tab(3, "Login")], 1),
-	play: async ({ canvasElement }) => {
-		const canvas = within(canvasElement);
-		/*
-		 * THE TRIGGER IS REVEALED AND THEN CLICKED, WITH THE POINTER-EVENTS CHECK OFF
-		 * (design round 3, D20). An inactive row's controls are `pointer-events-none`
-		 * while the row is not hovered or focused (D13), so a bare `userEvent.click` is
-		 * a click on nothing: the frame it produced showed a CLOSED menu - the band's ink
-		 * at that spot collapsed from 3,831px of strip rule to 849px - and the capture's
-		 * exit code could not say so. The hover is the path a user takes;
-		 * `pointerEventsCheck: 0` is here because the element is invisible to the hit test
-		 * until that hover has applied, which is exactly the state this story documents.
-		 * The harness opens the menu with a dispatched `pointerdown` - what a real press
-		 * sends and what Radix reads - rather than a bare `.click()`, for the same reason.
-		 */
-		const rows = await canvas.findAllByRole("tab");
-		const row = rows[1]?.parentElement;
-		if (!row)
-			throw new Error("the actions story needs a second tab's row to hover");
-		await userEvent.hover(row);
-		const triggers = await canvas.findAllByLabelText(TAB_ACTIONS_LABEL);
-		await userEvent.click(triggers[1], { pointerEventsCheck: 0 });
-	},
-};

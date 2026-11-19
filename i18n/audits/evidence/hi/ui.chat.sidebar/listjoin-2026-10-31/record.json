@@ -1,0 +1,90 @@
+{
+  "locale": "hi",
+  "namespace": "ui.chat.sidebar",
+  "key": "ui.chat.sidebar.agents.list_join",
+  "audit_date": "2026-11-01T01:56:20.149Z",
+  "key_count": 1,
+  "commit": "1e28ba901ab0c1499d317420060162981bdc8708",
+  "auditor": {
+    "agent": "i18n-auditor (hi)",
+    "session": "ecb19e36b835",
+    "model": "openai/gpt-6.1-sol",
+    "independent_from_translator_session": true,
+    "actual_model_source": "Host model-switch notice; temporary provider-quota fallback from anthropic/claude-sonnet-5-5, with an intermediate anthropic/claude-opus-5-5 switch notice before openai/gpt-6.1-sol."
+  },
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+      "sha256": "0928091b1241792f86f7fe2fafb9895d0c9d8f75341f59513f7d720a9acb477b"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.chat.sidebar.context.json",
+      "sha256": "cf078e20bcf1e8e6070e8f5daf8d60c1676bd9f2c9c6671c3bbbc49777676925"
+    },
+    "hi": {
+      "path": "src/i18n/catalogues/hi/ui.chat.sidebar.json",
+      "sha256": "2b9b4a3a34f5dad79a481bf6fcca999150ea1809aa415734018b9a815779ab1d"
+    }
+  },
+  "style_inputs": [
+    {
+      "path": "/Users/damian/local-operator/i18n/style-guides/hi.md",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    },
+    {
+      "path": "/Users/damian/local-operator/i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    }
+  ],
+  "arms": {
+    "pair": "{head} और {tail}",
+    "middle": "{head}, {tail}",
+    "other": "{head} और {tail}"
+  },
+  "outputs": {
+    "pair": "Coder और Reviewer",
+    "middle": "Coder, Reviewer",
+    "other": "Coder, Reviewer और Planner",
+    "unknown_position": "Coder और Reviewer",
+    "devanagari_pair": "लेखक और समीक्षक"
+  },
+  "checks": {
+    "icu_structure": "PASS",
+    "placeholders": "PASS",
+    "each_arm_real_formatter": "PASS",
+    "unknown_position_other_fallback": "PASS",
+    "negative_missing_tail": "PASS: formatter throws",
+    "formatter": "intl-messageformat IntlMessageFormat, the same engine imported by src/i18n/messages.ts",
+    "validators": "validators.log; context parity, generation freshness, duplicate guard and six Hindi catalogue parity tests passed"
+  },
+  "audit_notes_not_execution_log": {
+    "accuracy": "और is the ordinary Hindi coordinating conjunction. Pair needs no comma; comma-space separates earlier names; the final और normally has no serial comma in an ordinary list.",
+    "idiom": "Both Latin agent-name examples and Devanagari examples read naturally; no MT-like phrasing or register issue in this joiner.",
+    "conditional_conjunction": "Hindi और does not undergo the Spanish y/e-style change based on the following name; the position-only select is sufficient for ordinary agent-name enumeration.",
+    "fit": "No numeric maxCells/maxChars in source context. Dynamic name lengths are unbounded by this joiner; ordinary spaces and one Hindi conjunction introduce no unusual width hazard.",
+    "scope": "Only list_join audited, not the entire namespace. No translation service used. No repository edits or ledger writes permitted by this task."
+  },
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": []
+  },
+  "artifacts": [
+    {
+      "path": "findings.jsonl",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "verdict.txt",
+      "sha256": "ba65e3e431e26916a673f5031318e91c09a2f319cf130354e230740747bffc93"
+    },
+    {
+      "path": "formatter.json",
+      "sha256": "713c80f06d05b2ccf102e40de3ebee8e44229d0d069e2ba329426ad1c24149c6"
+    },
+    {
+      "path": "validators.log",
+      "sha256": "399b809429651cac7b6588faa22811eb23635376207a7f29a0f4bece9e2216d0"
+    }
+  ]
+}

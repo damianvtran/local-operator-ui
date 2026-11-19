@@ -1,0 +1,98 @@
+{
+  "audit_id": "es-upload-46b43b7fd549",
+  "audit_kind": "independent-namespace-delta-translation-audit",
+  "audit_date": "2026-11-08",
+  "locale": "es",
+  "namespace": "ui.agents.upload",
+  "key_count": 15,
+  "keys_audited": [
+    "ui.agents.upload.action.publish",
+    "ui.agents.upload.action.publishing",
+    "ui.agents.upload.action.update_listing",
+    "ui.agents.upload.availability.reserved_named",
+    "ui.agents.upload.availability.reserved_unnamed",
+    "ui.agents.upload.intro.org",
+    "ui.agents.upload.intro.public",
+    "ui.agents.upload.not_leaving.org",
+    "ui.agents.upload.not_leaving.public",
+    "ui.agents.upload.published.org_listed",
+    "ui.agents.upload.receipt.title_hub",
+    "ui.agents.upload.receipt.title_org",
+    "ui.agents.upload.receipt.title_updated",
+    "ui.agents.upload.target.blocked_hint",
+    "ui.agents.upload.target.visibility_hint_public"
+  ],
+  "audited_head": "2b72db6a56ad8204ec7f30a0ba6ffbc941be3b82",
+  "base": "3378319980ff898892f316ae3a17cc22c089b7d3",
+  "branch": "i18n/slice-upload-agent-dialog",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "46b43b7fd549",
+    "instance": "46b43b7fd549",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "harness model-switch banner in this delegated run",
+    "fallback": "anthropic/claude-sonnet-5-5 (pin) -> claude-opus-5-5 -> gpt-6.1-sol -> deepseek/deepseek-flash (served)",
+    "independent_from_translator_session": true,
+    "independence_basis": "Did not translate, remediate or author the audited values and read no translator reasoning; wrote only the receipt and these evidence records."
+  },
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.agents.upload.json",
+      "sha256": "3676c1b366cc5159b94be65acdaea925bd193d20c2524ff3f410a8a5ddff514f"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.agents.upload.context.json",
+      "sha256": "76323fe386f9b15d490c3a48feaddbd924f04148f1c893e927c2acde06f11cec"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/es/ui.agents.upload.json",
+      "sha256": "2fd38ed22f19481af887cefc42ab3a10db769c41d3ec81d364af7ecd1ed4569b"
+    }
+  },
+  "artifacts": [
+    {
+      "path": "i18n/receipts/es-upload-r1-46b43b7fd549.json",
+      "sha256": "6f21994c40a95cba26094f35b8d7b90d13313b4e2f7338fd876d2ffab716d647"
+    },
+    {
+      "path": "i18n/audits/evidence/es/ui.agents.upload/es-upload-46b43b7fd549/record.json",
+      "sha256": null,
+      "note": "this record; its own hash is not self-referential"
+    },
+    {
+      "path": "i18n/audits/evidence/es/ui.agents.upload/es-upload-46b43b7fd549/report.md",
+      "sha256": "7f8cbca53e39e1373ea76e424da1de361aeb3919e4fa6dbdb80b7870d4054872"
+    },
+    {
+      "path": "i18n/audits/evidence/es/ui.agents.upload/es-upload-46b43b7fd549/audit.py",
+      "sha256": "85490a4e416a598116c52f7212f63541a6162e07b1c6bbe191b78d078d8dbe8a",
+      "note": "the script that produced audit.log"
+    },
+    {
+      "path": "i18n/audits/evidence/es/ui.agents.upload/es-upload-46b43b7fd549/audit.log",
+      "sha256": "113cf022e034ed55639b559d379e30f8ff9bb4646fa6a281117a72b65b935e48",
+      "note": "actual stdout of audit.py; the machine checks the receipt cites"
+    }
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "result": "clean-with-findings",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [
+      "ES-UPL-1",
+      "ES-UPL-2"
+    ],
+    "findings": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 1,
+      "nit": 1
+    }
+  },
+  "audit_notes_not_execution_log": "This record is provenance, not a log. The executed commands and their actual stdout live in audit.log and the receipt's machine_checks array; no command output is asserted here.",
+  "execution_log": "i18n/audits/evidence/es/ui.agents.upload/es-upload-46b43b7fd549/audit.log",
+  "receipt": "i18n/receipts/es-upload-r1-46b43b7fd549.json",
+  "receipt_sha256": "6f21994c40a95cba26094f35b8d7b90d13313b4e2f7338fd876d2ffab716d647",
+  "scope": "The 15 keys added to src/i18n/catalogues/es/ui.agents.upload.json on i18n/slice-upload-agent-dialog (base 3378319980f..head 2b72db6a56a), bound by sha256 to the committed bytes of the English catalogue, its context sidecar and the es catalogue. The file's 31 pre-existing values were proved byte-identical to the base and not re-audited; the file's unsorted sign_in.title_continue/title_again tail exists identically in English and is out of scope as pre-existing.",
+  "note": "Independent es audit of the 15 new ui.agents.upload keys; record es-upload-46b43b7fd549 references i18n/receipts/es-upload-r1-46b43b7fd549.json."
+}

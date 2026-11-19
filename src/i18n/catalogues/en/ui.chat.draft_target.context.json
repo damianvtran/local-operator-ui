@@ -1,0 +1,23 @@
+{
+	"ui.chat.draft_target.aria_label": {
+		"role": "accessible name and tooltip of the New chat header's agent/team chip",
+		"tone": "plain statement then an imperative, sentence case",
+		"note": "Read by screen readers and shown on hover over the chip in a new, not-yet-sent chat's header. States who will answer the conversation once the first message is sent, then says the chip lets the user change it. 'agent' and 'team' are glossary terms.",
+		"placeholders": {
+			"target": "the chosen agent's name, a team's display label, or the translated 'Default agent' string. Keep verbatim; never translate an agent or team name."
+		}
+	},
+	"ui.chat.draft_target.default_agent": {
+		"role": "chip label and first menu row meaning no specific agent or team is chosen",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "Two words; it sits in the chat header beside the device chip.",
+		"note": "Shown in a new chat's header when the user has not picked an agent or team: the conversation will be answered by the app's default agent. Also the menu row that clears a previous pick. 'agent' is a glossary term.",
+		"maxCells": 20
+	},
+	"ui.chat.draft_target.menu_heading": {
+		"role": "heading at the top of the agent/team menu opened from a new chat's header",
+		"tone": "short heading, sentence case, no trailing punctuation or colon",
+		"note": "Introduces a list whose rows are 'Default agent', then a section of agents and a section of teams. A question form ('Who should this chat start with') is fine where a dangling preposition reads poorly.",
+		"maxCells": 32
+	}
+}

@@ -1,0 +1,33 @@
+[
+  {
+    "name": "header-count__localOperatorDark",
+    "story": "team-bridge-page--channel-selected",
+    "theme": "localOperatorDark",
+    "width": 1440,
+    "frame": "/Users/damian/local-operator-ui/.worktrees/tb-members-panel/docs/pr-evidence/team-bridge-members-panel/header-count__localOperatorDark__before.png",
+    "facts": {
+      "theme": "localOperatorDark",
+      "active": "BODY",
+      "panel": false,
+      "countButton": null,
+      "rows": 0,
+      "dialog": null
+    }
+  },
+  {
+    "name": "header-count-hover__localOperatorDark",
+    "story": "team-bridge-page--channel-selected",
+    "theme": "localOperatorDark",
+    "width": 1440,
+    "action": "hover:h2 ~ span",
+    "frame": "/Users/damian/local-operator-ui/.worktrees/tb-members-panel/docs/pr-evidence/team-bridge-members-panel/header-count-hover__localOperatorDark__before.png",
+    "facts": {
+      "theme": "localOperatorDark",
+      "active": "BODY",
+      "panel": false,
+      "countButton": null,
+      "rows": 0,
+      "dialog": null
+    }
+  }
+]

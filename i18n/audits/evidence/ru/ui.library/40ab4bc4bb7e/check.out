@@ -1,0 +1,68 @@
+== 1. worktree head ==
+git rev-parse HEAD: f04035bc3cb6a03644f8776a799e3daad93c7e58
+
+== 2. delta vs previous audited head 8a9ce1f808c2 ==
+numstat ru/ui.library.json: 1	1	src/i18n/catalogues/ru/ui.library.json
+
+== 3. the one changed line ==
+-	"ui.library.tag_category.custom": "Пользовательские",
++	"ui.library.tag_category.custom": "Произвольные",
+
+== 4. revised value (current bytes) ==
+en  : "Custom"
+ru  : "Произвольные"
+codepoints: U+041F U+0440 U+043E U+0438 U+0437 U+0432 U+043E U+043B U+044C U+043D U+044B U+0435
+len chars: 12 | cells: 12
+hint: "English is 6 source characters. Narrow rail header (about 12 characters); keep the same shape and a comparable width."
+note: "English source: Custom. Tag group for tags the user or an agent created freely, with no fixed taxonomy. It is also the fallback group for a tag with an empty category. Small muted header above that category's tag rows in the Tags section; an adjective heading over a group of tags (inflect as the target language requires), no placeholders. Names the category, not a count. The raw category string is printed as a data fallback for a category a newer backend adds that this catalogue does not know."
+
+== 5. placeholder / markup / code parity ==
+en braces: [] tags: [] backtick: 0 digits: []
+ru braces: [] tags: [] backtick: 0 digits: []
+
+== 6. invisible / bidi characters, revised value and whole ru namespace ==
+revised value: none
+whole ru/ui.library: none
+
+== 7. key-set parity ==
+en keys: 179 ru keys: 179 identical set: True identical order: True
+
+== 8. legacy values vs origin base 0e12072d2b3 ==
+base keys: 159 head keys: 179
+added: 20 | removed: [] | legacy values changed: []
+
+== 9. the other 19 new keys: byte-identity to the round-1 audited head ==
+new keys at previous head: 20
+differing at new head: ['ui.library.tag_category.custom']
+other 19 keys byte-identical: True
+
+== 10. hash binding vs expected-hashes.json ==
+en/ui.library              065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71 MATCH
+en/ui.library.context      f799fe911107aa1f7b83b0c026ee277d5c21ee5eba297e3ae13c2da51135cc8e MATCH
+ru/ui.library              49af1bd7b725040e8fc821fbe38fca35d8e82410020a0bc40f216ed7650fa8ae MATCH
+all three matched: True
+
+== 11. collision scan: the revised heading vs every other ru value in the same rail ==
+ui.library.tag_category.format     Формат         
+ui.library.tag_category.project    Проект         
+ui.library.tag_category.source     Источник       
+ui.library.tag_category.status     Статус         
+ui.library.tag_category.topic      Тема           
+ui.library.tag_category.type       Тип            
+ui.library.sort.kind               Тип            
+ui.library.page.sort               Сортировка     
+ui.library.filter.tags             Теги           
+ui.library.filter.categories       Категории      
+ui.library.filter.source           Источник       
+ui.library.filter.status           Статус         
+other values in ru/ui.library equal to 'Произвольные': none
+'Произвольн' anywhere in ru catalogues: [('ui.library.json', 'ui.library.tag_category.custom', 'Произвольные')]
+
+== 12. corpus rendering of English 'Custom' (consistency evidence) ==
+ui.agents.pages.scope.custom                 en='Custom' ru='Свои'
+ui.agents.skills.scope.local                 en='Local'  ru='Свои'
+ui.agents.skills.source.local                en='Local'  ru='Локальный'
+
+== RESULT ==
+FAILURES: none
+all mechanical checks PASS

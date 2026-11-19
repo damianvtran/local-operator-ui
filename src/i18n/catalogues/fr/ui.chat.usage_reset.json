@@ -1,0 +1,15 @@
+{
+	"ui.chat.usage_reset.chip": "Réinitialiser · {count}",
+	"ui.chat.usage_reset.chip_label": "Réinitialiser les limites de débit de {account}. {count, plural, one {Il reste # crédit de réinitialisation.} many {Il reste # crédits de réinitialisation.} other {Il reste # crédits de réinitialisation.}}",
+	"ui.chat.usage_reset.confirm_title": "Réinitialiser {account} ?",
+	"ui.chat.usage_reset.confirm_cost": "{count, plural, one {Consomme 1 des # crédits de réinitialisation ; efface les fenêtres de limite de débit de ce compte.} many {Consomme 1 des # crédits de réinitialisation ; efface les fenêtres de limite de débit de ce compte.} other {Consomme 1 des # crédits de réinitialisation ; efface les fenêtres de limite de débit de ce compte.}}",
+	"ui.chat.usage_reset.busy": "En attente de la réponse de {account}. Cela peut prendre un moment.",
+	"ui.chat.usage_reset.busy_action": "Réinitialisation…",
+	"ui.chat.usage_reset.outcome_reset": "{count, plural, one {# fenêtre de limite de débit effacée pour {account}.} many {# fenêtres de limite de débit effacées pour {account}.} other {# fenêtres de limite de débit effacées pour {account}.}}",
+	"ui.chat.usage_reset.outcome_already_redeemed": "La réinitialisation de {account} avait déjà été utilisée. Aucun second crédit n'a été consommé.",
+	"ui.chat.usage_reset.outcome_no_credit": "{account} n'a plus de crédit de réinitialisation. Rien n'a été consommé.",
+	"ui.chat.usage_reset.outcome_nothing_to_reset": "Aucune fenêtre de limite de débit de {account} n'avait besoin d'être effacée. Rien n'a été consommé.",
+	"ui.chat.usage_reset.outcome_failed": "La réinitialisation de {account} n'a renvoyé aucun résultat : le sort du crédit est inconnu. Relancer réutilise la même demande, donc aucun second crédit ne sera consommé.",
+	"ui.chat.usage_reset.outcome_refused": "Rien n'a été consommé : la réinitialisation de {account} a été refusée avant d'atteindre le fournisseur.",
+	"ui.chat.usage_reset.outcome_unknown": "La réinitialisation de {account} a renvoyé un résultat que cette application ne reconnaît pas : {outcome}."
+}

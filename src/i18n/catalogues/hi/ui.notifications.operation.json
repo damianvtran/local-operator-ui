@@ -1,0 +1,3 @@
+{
+	"ui.notifications.operation.progress": "{changed, number} में बदलाव हुआ · {skipped, number} को छोड़ा गया · {pending, number} की पुष्टि नहीं"
+}

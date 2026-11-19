@@ -1,0 +1,148 @@
+{
+  "locale": "hi",
+  "scope": "ui.common.actions: verification that the only change since 369bb0113f is the deletion of the unused key check_again",
+  "baseline_commit": "369bb0113f",
+  "checkout_head": "58de30166d",
+  "instance": "eb672e5a6b20-act-hi",
+  "audit_date": "2026-10-29",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "eb672e5a6b20",
+    "instance": "eb672e5a6b20-act-hi",
+    "model": "radient/auto",
+    "model_history": [
+      "anthropic/claude-sonnet-5-5",
+      "openai/gpt-6-astra",
+      "kimi/k3.1-pro",
+      "radient/auto"
+    ],
+    "actual_model_source": "harness model-switch notices in-session; provider failure: quota cascaded to radient/auto before the tool runs",
+    "independent_from_translator_session": true,
+    "requesting_session": "3ef6295a5545",
+    "authored_this_change": false
+  },
+  "input_sha256": {
+    "en": "8dc67dc7c285d2747f4586a5d01a39c23423b10e506f6cfa44c258caed37a412",
+    "target": "e8e5d52e204abb707ceb42a75cb83901d3b34d6cf15f730939e37b037500474d",
+    "en_path": "src/i18n/catalogues/en/ui.common.actions.json",
+    "target_path": "src/i18n/catalogues/hi/ui.common.actions.json",
+    "heads_catalogue_bytes_match_disk": {
+      "en": true,
+      "target": true
+    }
+  },
+  "diff": {
+    "method": "git diff 369bb0113f 58de30166d -- <namespace files>",
+    "numstat": "0\t5\tsrc/i18n/catalogues/en/ui.common.actions.context.json\n0\t1\tsrc/i18n/catalogues/en/ui.common.actions.json\n0\t1\tsrc/i18n/catalogues/hi/ui.common.actions.json",
+    "en_unified": "diff --git a/src/i18n/catalogues/en/ui.common.actions.json b/src/i18n/catalogues/en/ui.common.actions.json\nindex 33fc638f18..949e93c177 100644\n--- a/src/i18n/catalogues/en/ui.common.actions.json\n+++ b/src/i18n/catalogues/en/ui.common.actions.json\n@@ -1,6 +1,5 @@\n {\n \t\"ui.common.actions.cancel\": \"Cancel\",\n-\t\"ui.common.actions.check_again\": \"Check again\",\n \t\"ui.common.actions.close\": \"Close\",\n \t\"ui.common.actions.copied\": \"Copied\",\n \t\"ui.common.actions.copy_failed\": \"Could not copy. Select and copy it manually.\",\n",
+    "target_unified": "diff --git a/src/i18n/catalogues/hi/ui.common.actions.json b/src/i18n/catalogues/hi/ui.common.actions.json\nindex 40422f18e8..fc2a6e6d61 100644\n--- a/src/i18n/catalogues/hi/ui.common.actions.json\n+++ b/src/i18n/catalogues/hi/ui.common.actions.json\n@@ -1,6 +1,5 @@\n {\n \t\"ui.common.actions.cancel\": \"रद्द करें\",\n-\t\"ui.common.actions.check_again\": \"फिर जाँचें\",\n \t\"ui.common.actions.close\": \"बंद करें\",\n \t\"ui.common.actions.copied\": \"कॉपी हुआ\",\n \t\"ui.common.actions.copy_failed\": \"कॉपी नहीं हो सका। इसे चुनकर खुद कॉपी करें।\",\n",
+    "context_sidecar_unified": "diff --git a/src/i18n/catalogues/en/ui.common.actions.context.json b/src/i18n/catalogues/en/ui.common.actions.context.json\nindex d1ab750aee..207ea19103 100644\n--- a/src/i18n/catalogues/en/ui.common.actions.context.json\n+++ b/src/i18n/catalogues/en/ui.common.actions.context.json\n@@ -287,11 +287,6 @@\n \t\t\"length\": \"One compact status line, placeholder, button, or spoken suffix.\",\n \t\t\"note\": \"English source: Clear\"\n \t},\n-\t\"ui.common.actions.check_again\": {\n-\t\t\"role\": \"action\",\n-\t\t\"tone\": \"plain\",\n-\t\t\"note\": \"Re-runs a read that answered with nothing, where nothing failed.\"\n-\t},\n \t\"ui.common.actions.dismiss\": {\n \t\t\"role\": \"action\",\n \t\t\"tone\": \"plain\"\n",
+    "added_lines": {
+      "en": 0,
+      "target": 0
+    },
+    "removed_lines": {
+      "en": 1,
+      "target": 1
+    },
+    "removed_keys": {
+      "en": "ui.common.actions.check_again = \"Check again\"",
+      "target": "ui.common.actions.check_again = \"फिर जाँचें\""
+    },
+    "context_sidecar_note": "en ui.common.actions.context.json drops the 5-line metadata block for the same key (role/tone/note) — the same single deletion's sidecar, no other change. No non-en sidecar exists for this namespace."
+  },
+  "verification": {
+    "byte_identity_after_deletion": {
+      "en": true,
+      "target": true,
+      "how": "old bytes with the check_again line removed == new bytes exactly, both locales (trailing newline included)"
+    },
+    "key_sets_equal_en_vs_target": true,
+    "key_order_equal_en_vs_target": true,
+    "key_order_preserved_vs_bind": true,
+    "keys": {
+      "at_bind": 53,
+      "at_head": 52,
+      "deleted": 1,
+      "added": 0
+    },
+    "placeholder_drift_keys": [],
+    "plural_messages_in_namespace": 0,
+    "duplicate_keys": {
+      "en": [],
+      "target": []
+    },
+    "json_valid": {
+      "en": true,
+      "target": true
+    },
+    "no_consumer_proof": {
+      "ui.common.actions.check_again": "0 code references; absent from i18n/keys.gen.ts; only residue is a historical audit receipt i18n/receipts/d2cc21c7d250-r4-ur.json",
+      "ui.chat.device.check_again": "used at renderer/src/features/chat/device/chat-header-device.tsx:475 — the surviving key the unused one duplicated (same en text, same hi text)"
+    },
+    "repo_gates": {
+      "i18n/generate.mjs --check": "rc=0, i18n/keys.gen.ts byte-identical to a fresh generation",
+      "i18n/context-parity.mjs": "rc=0, every English key covered apart from 131 allowed gaps in 4 namespaces (shrink-only allowance)"
+    },
+    "sample_reads_via_read_public_copy": [
+      {
+        "key": "ui.common.actions.cancel",
+        "en": "Cancel",
+        "hi": "रद्द करें"
+      },
+      {
+        "key": "ui.common.actions.copy_failed",
+        "en": "Could not copy. Select and copy it manually.",
+        "hi": "कॉपी नहीं हो सका। इसे चुनकर खुद कॉपी करें।"
+      },
+      {
+        "key": "ui.common.actions.date_time_picker.choose_date",
+        "en": "Choose {label} date",
+        "hi": "{label} की तारीख़ चुनें"
+      },
+      {
+        "key": "ui.common.actions.find_replace_widget.of",
+        "en": "{currentmatch, number, ::group-off} of {matchcount, number, ::group-off}",
+        "hi": "कुल {matchcount, number, ::group-off} में से {currentmatch, number, ::group-off}"
+      },
+      {
+        "key": "ui.common.actions.credential_updated",
+        "en": "Credential \"{key}\" updated successfully",
+        "hi": "क्रेडेंशियल “{key}” सफलतापूर्वक अपडेट हुआ"
+      }
+    ],
+    "style_guide": "/Users/damian/local-operator/i18n/style-guides/hi.md read as a labelled doc (polite आप register, nukta kept, Latin product names untouched, quotes “ ”, Latin digits)",
+    "style_sample_notes": [
+      "credential_updated keeps glossary term क्रेडेंशियल and Latin {key}; curly “ ” per guide §punctuation while en uses straight quotes — per-guide, not a defect",
+      "find_replace_widget.of reorders count-before-current, correct for Hindi and keeps both number formatters and ::group-off verbatim"
+    ]
+  },
+  "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 0,
+    "NIT": 0
+  },
+  "verdict": "pass",
+  "namespaces": {
+    "ui.common.actions": {
+      "status": "passed",
+      "keys_audited": 52,
+      "keys_at_bind": 53,
+      "sha256": {
+        "en": "8dc67dc7c285d2747f4586a5d01a39c23423b10e506f6cfa44c258caed37a412",
+        "target": "e8e5d52e204abb707ceb42a75cb83901d3b34d6cf15f730939e37b037500474d"
+      },
+      "findings": [],
+      "deletion_verified": "exactly one key removed on both sides, byte-identical otherwise"
+    }
+  },
+  "observations": [
+    "Pre-existing, unchanged, outside this verification: key ui.common.actions.date_time_picker.set_to_current_time369877 carries a digit-suffixed name in both en and hi and is byte-identical to the bind commit — a collision-suffixed key worth a separate cleanup ticket, not a delta from this change."
+  ],
+  "ledger_row": {
+    "written": false,
+    "reason": "task instruction forbids repo edits; no audit-ledger command is named in this task, and i18n/ledger.json already carries uncommitted changes from other sessions that I did not touch"
+  },
+  "repo_edits_made": false
+}

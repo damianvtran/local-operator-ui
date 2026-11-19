@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "locale": "es",
+  "namespace": "ui.notifications",
+  "instance": "nt-es-37d9c9f0df44",
+  "auditor": {
+    "agent": "translation-auditor (lopdev team, audit-es)",
+    "instance": "nt-es-37d9c9f0df44",
+    "session": "37d9c9f0df44",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "Latest session model-switch notice: openai/gpt-6.1-sol after provider quota failures; requested anthropic/claude-opus-5-5 and intermediate anthropic/claude-sonnet-5-5 were not the model performing this audit.",
+    "date": "2026-10-25",
+    "independence": "Independent agent/context; authored none of the English or Spanish catalogues. UI translator tr-es and core L1-core-notify coder are separate agents. No catalogue, code, generated file, git, or ledger was edited."
+  },
+  "en_sha256": "ce0c8d6d9af80980667741dd6d289ab7312d04aaea0e717e5cef4cf55c2b37ae",
+  "target_sha256": "84f43b8293a39ba75d3f736375a3e11251abdcaad11d0cd8a5b4cd4e5b60a9ee",
+  "context_sha256": "3804068c75073ce9663f73539b508cbb46e495488dc47e5dd97aa80fd1a6918e",
+  "sha256": {
+    "en": "ce0c8d6d9af80980667741dd6d289ab7312d04aaea0e717e5cef4cf55c2b37ae",
+    "es": "84f43b8293a39ba75d3f736375a3e11251abdcaad11d0cd8a5b4cd4e5b60a9ee",
+    "context": "3804068c75073ce9663f73539b508cbb46e495488dc47e5dd97aa80fd1a6918e"
+  },
+  "date": "2026-10-25",
+  "key_count": 130,
+  "findings": [],
+  "status": "passed",
+  "result": "clean",
+  "limitations": [
+    "Static semantic/ICU audit only; no rendered-fit, native-speaker, or release-eligibility sign-off. Long-label fit watchlist in the detailed audit report."
+  ]
+}

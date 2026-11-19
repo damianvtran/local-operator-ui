@@ -26,21 +26,11 @@
  * conversation is viewed (the badge goes) - so the rail subscribes to the store
  * the way `useAppWideApprovals` subscribes to the browser projection.
  */
-import {
-	type CanonicalSessionRow,
-	unreadAckableRows,
-	useCanonicalSessionsStore,
-} from "@shared/store/canonical-sessions-store";
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import { aidaMissedMessages } from "../../../../shared/completion-attention";
 
 /** The pure half, so the count's rules are executable in the desktop suite. */
-export const aidaMissedMessages = (
-	sessions: CanonicalSessionRow[],
-	sessionId: string | null | undefined,
-): number =>
-	sessionId
-		? unreadAckableRows(sessions.filter((row) => row.session_id === sessionId))
-				.length
-		: 0;
+export { aidaMissedMessages };
 
 /** Her session's count, kept current as the store moves. */
 export function useAidaMissedMessages(

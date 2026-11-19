@@ -1,0 +1,20 @@
+{
+  "namespace": "ui.agents.upload",
+  "source_sha256": "388f6b2348eb76b3c3f6ac074ce32434fe75a31a9a41aa5eaead59c34caa97ab",
+  "target_sha256": "883a364c941c68a16fb93d0fb7be338806326d66f2bbfca16329089a6a4b88de",
+  "context_sha256": "b2cff9fc8975e5bc6c394a39a9cbd464a53304f6be9657f80446801c0072734f",
+  "keyset_matches": true,
+  "forbidden_bidi_raw": [],
+  "forbidden_bidi_decoded": [],
+  "changed": [
+    {
+      "key": "ui.agents.upload.failure.publish_fallback",
+      "english": "The agent could not be published. Try again.",
+      "urdu": "ایجنٹ شائع نہیں ہو سکا۔ دوبارہ کوشش کریں۔",
+      "english_placeholders": [],
+      "urdu_placeholders": [],
+      "placeholders_match": true,
+      "latin_outside_placeholders": []
+    }
+  ]
+}

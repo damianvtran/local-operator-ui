@@ -1,0 +1,176 @@
+{
+	"audit_id": "lit2-ur-r2-20261026",
+	"date": "2026-10-26",
+	"audit_date": "2026-10-26",
+	"locale": "ur",
+	"namespace": "ui.hub.teams",
+	"round": 2,
+	"key_count": 2,
+	"keys_audited": [
+		"ui.hub.teams.recency.created",
+		"ui.hub.teams.recency.updated"
+	],
+	"namespace_key_count": 49,
+	"source_commit": "29d7805a13e7f240c2d27596cb106635ed83af3c",
+	"source_parent": "a9e536bf892f48ed2a87772658055abfd10caa5e",
+	"source_base": "73af0b6855",
+	"scope": "ur ui.hub.teams: round-2 remediation audit of the delta a9e536bf89..29d7805a13. Five remediated values across three files are re-judged here; this namespace contributes 2 of them. Catalogue audit of accuracy, register, terminology, typography, bidi composition and fit hints; not rendered-frame, activation or release approval.",
+	"status": "passed",
+	"verdict": "passed: 0 findings over 2 remediated key(s)",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "d959bfda62d5",
+		"model": "radient/auto",
+		"actual_model_source": "harness run header (provider radient, model selector auto); the run exposes no resolved upstream model, so none is claimed",
+		"fallback": "none",
+		"independent_from_translator_session": true,
+		"translator_session": "Translator/remediation is commit 29d7805a13 by the branch implementer; this auditor is a different session and performed no translation, remediation or edit of any catalogue, English, sidecar, ledger, generated file or test."
+	},
+	"auditors": [
+		{
+			"agent": "i18n-auditor",
+			"model": "radient/auto",
+			"date": "2026-10-26",
+			"result": "clean",
+			"instance": "d959bfda62d5",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"receipt": "i18n/receipts/ur-agents-literals-audit-r2-d959bfda62d5.json",
+			"receipt_sha256": "e32b5e33f16ff501ba0aea0a4994afc57d5d66fc57655777b8e5fabe7c5b9580",
+			"scope": "round-2 verdict for ui.hub.teams: 0 findings over 2 remediated key(s).",
+			"note": "Record: i18n/audits/evidence/ur/ui.hub.teams/lit2-ur-r2-20261026/."
+		}
+	],
+	"input_hashes": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.hub.teams.json",
+			"sha256": "4121cd4fada8986e1c77682c5909ecf8830f3015677ec99a0a5fb547f9040b06"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.hub.teams.context.json",
+			"sha256": "b062f0ca8aed037084233730702e41c6f3ef09aa39bed405e007466716c711a0"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/ur/ui.hub.teams.json",
+			"sha256": "256bb29b71ef571f7652ae455baa8b5f15f731dd0bdb08ab72e22a5d47daa4a6"
+		}
+	},
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.hub.teams.json",
+			"sha256": "4121cd4fada8986e1c77682c5909ecf8830f3015677ec99a0a5fb547f9040b06"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.hub.teams.context.json",
+			"sha256": "b062f0ca8aed037084233730702e41c6f3ef09aa39bed405e007466716c711a0"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/ur/ui.hub.teams.json",
+			"sha256": "256bb29b71ef571f7652ae455baa8b5f15f731dd0bdb08ab72e22a5d47daa4a6"
+		}
+	},
+	"artifacts": [
+		{
+			"path": "i18n/receipts/ur-agents-literals-audit-r2-d959bfda62d5.json",
+			"sha256": "e32b5e33f16ff501ba0aea0a4994afc57d5d66fc57655777b8e5fabe7c5b9580",
+			"kind": "audit receipt (ledger artifact)"
+		},
+		{
+			"path": "i18n/audits/evidence/ur/ui.hub.pages/lit2-ur-r2-20261026/audit.log",
+			"sha256": "b9efba8447721a0b17386566ce6d25e5f94a1013d3162e59293fc193598082f7",
+			"kind": "execution log (shared by the seven records of this audit id)"
+		},
+		{
+			"path": "i18n/audits/evidence/ur/ui.hub.pages/lit2-ur-r2-20261026/verify-ur-r2.json",
+			"sha256": "053b161719136a9c91af5827fccdb95fbacc572dba729ecd3c887b839426d781",
+			"kind": "machine verification output (raw JSON)"
+		},
+		{
+			"path": "i18n/audits/evidence/ur/ui.hub.pages/lit2-ur-r2-20261026/bidi-ur-r2.log",
+			"sha256": "4f35a7982ed80294d79663c219dc4ffb1ebc72da40cf0557257bf5a396685078",
+			"kind": "GNU FriBidi composition output (raw)"
+		},
+		{
+			"path": "i18n/audits/evidence/ur/ui.hub.pages/lit2-ur-r2-20261026/verify-ur-r2.mjs",
+			"sha256": "8beeea2892ed56e533850065bdc6d2cc7d064976406c419ed2af6a64e49682fb",
+			"kind": "machine verification script"
+		},
+		{
+			"path": "i18n/audits/evidence/ur/ui.hub.pages/lit2-ur-r2-20261026/bidi-ur-r2.py",
+			"sha256": "d859919fbcba813acf127c34b93438a530442fb7de4e7617650ad7e3d55b31fc",
+			"kind": "bidi composition script"
+		},
+		{
+			"path": "i18n/audits/evidence/ur/ui.hub.pages/lit2-ur-r2-20261026/verify-receipt.mjs",
+			"sha256": "4166dd597f3f4434fdfc3af977a024e05d740e6bde4fad3ce514cc6f6b87e8b8",
+			"kind": "receipt verifier (ledger-rules deriveReceiptAudit)"
+		},
+		{
+			"path": "i18n/audits/evidence/ur/ui.hub.pages/lit2-ur-r2-20261026/ledger-check.log",
+			"sha256": "0ff3f26c3c62515ce9a6152d7dc564858e183c70ec0a09ba1a0e3afc88440e7f",
+			"kind": "full output of node scripts/i18n/ledger-check.mjs at this head"
+		}
+	],
+	"current_report_verdict": {
+		"status": "passed",
+		"unresolved_blocker_major_count": 0,
+		"finding_ids": []
+	},
+	"findings": [],
+	"observations": [
+		{
+			"id": "O1",
+			"severity": "observation (not counted)",
+			"topic": "bidi: the age's leading numeral joins the preceding Latin run on the composed card line; reading order stays correct",
+			"record": "i18n/receipts/ur-agents-literals-audit-r2-d959bfda62d5.json#observations"
+		},
+		{
+			"id": "O2",
+			"severity": "observation (not counted)",
+			"topic": "fit: the reorder moves the verb, not the age, to the end a single-line RTL ellipsis cuts",
+			"record": "i18n/receipts/ur-agents-literals-audit-r2-d959bfda62d5.json#observations"
+		},
+		{
+			"id": "O3",
+			"severity": "observation (not counted)",
+			"topic": "clock-skew arm: fronted absolute date without کو, matching the source's clipped form",
+			"record": "i18n/receipts/ur-agents-literals-audit-r2-d959bfda62d5.json#observations"
+		},
+		{
+			"id": "O4",
+			"severity": "observation (not counted)",
+			"topic": "grammar: impersonal masculine passive in the created arm, matching the same row's shipped detail.created",
+			"record": "i18n/receipts/ur-agents-literals-audit-r2-d959bfda62d5.json#observations"
+		}
+	],
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/ur.md",
+			"sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+		},
+		"ui_doc": {
+			"path": "docs/I18N.md",
+			"sha256": "6fc7bea71643c0dcaeaed697ecd792cfdfeb11b7816b5f8d160011e7c7df2abe"
+		},
+		"round1_receipt": {
+			"path": "i18n/receipts/ur-agents-literals-audit-f98cb709d732.json",
+			"sha256": "2c6fd8ef110e0a09b42c70fef0531cc14032258a2451cee3962d2dcffbdbac2a"
+		}
+	},
+	"independence": "Independent auditor: I did not translate or remediate ur and edited no catalogue, English source, context sidecar, ledger, allowance, generated file or test. Every value was read from the worktree at the recorded head; the files this run adds are the receipt, these seven records and the shared companions.",
+	"limitations": [
+		"Catalogue audit only. No rendered frame, screenshot, pseudo-localization, activation or release evidence is claimed.",
+		"Fit is inferred from character counts and the sidecars; none of the five keys carries maxCells.",
+		"The bidi model is the app's RTL base direction (dir=rtl document root). Per-message FSI/PDI is applied at two call sites only; the hub card and teams row do not isolate, which is why O1 measures the merged LTR island.",
+		"ledger-check fails at this head on stale rows for locales whose receipts for this wave are not assembled yet (zh-CN and ur); the full output is retained in the bundle. Assembling rows is the ledger writer's step, not an auditor edit."
+	],
+	"audit_notes_not_execution_log": "This record and the receipt are notes and structured claims; audit.log is the captured command transcript for this audit id, and the verify/bidi companions are its raw outputs. No CLI/validator output is recorded that was not actually run."
+}

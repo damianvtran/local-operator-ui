@@ -1,0 +1,5 @@
+{
+	"ui.schedules.errors.agent_id_required": "创建定时任务需要智能体ID。",
+	"ui.schedules.errors.agent_id_missing": "提交缺少智能体ID。",
+	"ui.schedules.errors.base_url_missing": "未配置Local Operator API的基础URL。"
+}

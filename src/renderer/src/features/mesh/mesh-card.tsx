@@ -1,3 +1,4 @@
+import { conversationCountLabel, conversationsLinkDown } from "./mesh-sessions";
 /**
  * The detail surface: what a device is, what it holds, and what may be done to it.
  *
@@ -43,10 +44,17 @@ import { t } from "../../../../i18n/messages";
 import { resolveDrop } from "./mesh-drop";
 import type { MeshDevice, MeshGraph } from "./mesh-graph";
 import { agoSentence, conversationUnit } from "./mesh-graph";
+import { MeshDeviceIdentity } from "./mesh-identity";
 import { chipFact, chipLabel } from "./mesh-node";
-import { deviceReach, reachWords, suspectWords } from "./mesh-reach";
+import {
+	attemptWords,
+	deviceReach,
+	linkHeadline,
+	reachWords,
+	suspectWords,
+} from "./mesh-reach";
 import type { DeviceSessions } from "./mesh-sessions";
-import type { MeshSessionRow } from "./mesh-types";
+import { type MeshSessionRow, deviceIdentityText } from "./mesh-types";
 
 /**
  * The destinations a conversation can go to, from wherever it is now.
@@ -83,6 +91,7 @@ export function moveDestinations(
 	const owner =
 		session.locality === "local" ? selfDeviceId : session.owner_device;
 	const destinations: MoveDestination[] = [];
+	const deviceIds = devices.map((device) => device.id);
 	for (const device of devices) {
 		if (device.id === owner) continue;
 		if (device.id === selfDeviceId) {
@@ -94,11 +103,12 @@ export function moveDestinations(
 			});
 			continue;
 		}
+		const identity = deviceIdentityText(device, deviceIds, true);
 		destinations.push({
 			deviceId: device.id,
-			label: device.label,
-			verb: t("ui.mesh.mesh_card.move_to", { device: device.label }),
-			keepVerb: t("ui.mesh.mesh_card.copy_to", { device: device.label }),
+			label: identity,
+			verb: t("ui.mesh.mesh_card.move_to", { device: identity }),
+			keepVerb: t("ui.mesh.mesh_card.copy_to", { device: identity }),
 		});
 	}
 	return destinations;
@@ -162,7 +172,13 @@ export function destinationsWithVerdicts(
 			{
 				session,
 				ownerDeviceId,
-				ownerLabel: owner?.label ?? session.owner_device_name,
+				ownerLabel: owner
+					? deviceIdentityText(
+							owner,
+							graph.devices.map((device) => device.id),
+							true,
+						)
+					: session.owner_device_name,
 			},
 			{ kind: "device", deviceId: destination.deviceId },
 			context,
@@ -176,8 +192,11 @@ export function destinationsWithVerdicts(
 			 * for the turn to finish - is only reachable by asking. Disabling it here would take
 			 * that remedy off the accessible path on every destination at once, which is the
 			 * opposite of what the menu is for. A destination that can only refuse FOR ITS OWN
-			 * REASON (`third_device`, `unreachable`, `suspect_device`, `revoked_membership`) is
+			 * REASON (`third_device`, `unreachable`, `suspect_device`) is
 			 * annotated, and the menu renders it disabled with the route's sentence.
+			 * `revoked_membership` used to be listed here; the tombstone change removed the
+			 * code with the nodes it targeted, and a stale revoked id now resolves as
+			 * `unknown_device` like any other identity no membership admits.
 			 */
 			refused:
 				verdict.kind === "refused" && verdict.code !== "busy"
@@ -278,6 +297,8 @@ export const SessionMoveMenu: FC<{
  */
 export const DevicePanel: FC<{
 	device: MeshDevice;
+	/** The graph's ids, needed to keep this compact identity unambiguous. */
+	deviceIds: readonly string[];
 	sessions: DeviceSessions;
 	/** The catalogue's own count, which may exceed the rows in hand. */
 	sessionTotal: number;
@@ -298,6 +319,7 @@ export const DevicePanel: FC<{
 	onRemoveMember: (device: MeshDevice, networkId: string) => void;
 }> = ({
 	device,
+	deviceIds,
 	sessions,
 	sessionTotal,
 	nowSeconds,
@@ -313,6 +335,10 @@ export const DevicePanel: FC<{
 }) => {
 	useI18nLocale();
 	const reach = deviceReach(device);
+	const headline = linkHeadline(device);
+	// `null` is "this backend publishes no attempts", not "it dialled nothing": both
+	// fall back to the older single reason sentence, and only evidence is listed.
+	const attempts = device.reachable ? [] : (device.attempts ?? []);
 	/*
 	 * ESCAPE CLOSES THE PANEL, AND RETURNS FOCUS TO THE NODE THAT OPENED IT (UX review
 	 * round 1, U5). The key was bound and free: the panel had no keyboard exit at all -
@@ -349,10 +375,14 @@ export const DevicePanel: FC<{
 	 * frame): the shipped header read `3 conversations · seen 9m ago`, which printed the
 	 * rotation stamp under a heartbeat's name AND printed it a second time in the section
 	 * below. One fact, one place - so the header carries the member-record fact where there
-	 * is one (a revoked membership, a suspect identity) beside the reach, and the age lives
-	 * in the Status section that labels it.
+	 * is one (a suspect identity) beside the reach, and the age lives in the Status section
+	 * that labels it.
+	 *
+	 * THE REVOKED BRANCH IS GONE WITH THE TOMBSTONE NODES: `meshGraph` builds a device
+	 * from live memberships only, so a panel can no longer be opened on a revoked id and
+	 * every membership this header could read is `active`. The audit fact lives under the
+	 * list's revoked count, where it is read rather than dressed as a device.
 	 */
-	const revoked = device.memberships.every((membership) => !membership.active);
 	const countWords =
 		device.sessionCount === null
 			? conversationUnit(null)
@@ -366,12 +396,7 @@ export const DevicePanel: FC<{
 	 */
 	const headWords = device.suspect
 		? suspectWords()
-		: [
-				revoked ? t("ui.mesh.mesh_card.revoked_membership") : countWords,
-				reachWords(reach),
-			]
-				.filter(Boolean)
-				.join(" · ");
+		: [countWords, reachWords(reach)].filter(Boolean).join(" · ");
 	const shownOf =
 		sessionTotal > sessions.rows.length
 			? t("ui.mesh.mesh_card.shown_of", {
@@ -382,7 +407,7 @@ export const DevicePanel: FC<{
 	return (
 		<aside
 			aria-label={t("ui.mesh.mesh_card.device_details", {
-				device: device.label,
+				device: deviceIdentityText(device),
 			})}
 			data-mesh-panel={device.id}
 			data-glass-block=""
@@ -398,7 +423,14 @@ export const DevicePanel: FC<{
 				>
 					{t("ui.mesh.mesh_actions.close")}
 				</Button>
-				<h2 className="text-body-sm text-ink">{device.label}</h2>
+				<h2 className="text-body-sm text-ink">
+					<MeshDeviceIdentity
+						deviceId={device.id}
+						deviceIds={deviceIds}
+						name={device.name}
+						compact
+					/>
+				</h2>
 				{/*
 				 * THE STATE IS WORDS FIRST and the hue second (WCAG 1.4.1): the same rule the
 				 * node's stripe follows, stated here because a panel has room to name it.
@@ -443,9 +475,8 @@ export const DevicePanel: FC<{
 								{membership.capabilities.length > 0
 									? ` · ${membership.capabilities.join(", ")}`
 									: ""}
-								{membership.active ? "" : t("ui.mesh.mesh_card.revoked")}
 							</span>
-							{canInvite && membership.active && (
+							{canInvite && (
 								<Button
 									size="sm"
 									variant="ghost"
@@ -513,9 +544,19 @@ export const DevicePanel: FC<{
 			<section className="flex shrink-0 flex-col gap-2">
 				<h3 className="text-meta text-ink-dim">
 					{t("ui.mesh.mesh_card.conversations")}
-					<span className="text-ink-disabled">({shownOf})</span>
+					<span className="text-ink-disabled">
+						(
+						{deviceReach(device) !== "self" && deviceReach(device) !== "reached"
+							? conversationCountLabel(null)
+							: shownOf}
+						)
+					</span>
 				</h3>
-				{sessions.rows.length === 0 ? (
+				{conversationsLinkDown(device, nowSeconds) ? (
+					<p className="text-meta text-warning">
+						{conversationsLinkDown(device, nowSeconds)}
+					</p>
+				) : sessions.rows.length === 0 ? (
 					<p className="text-meta text-ink-dim">
 						{device.sessionCount === null
 							? t(
@@ -551,7 +592,11 @@ export const DevicePanel: FC<{
 									{chipLabel(session)}
 								</span>
 								<span className="shrink-0 text-meta text-ink-dim">
-									{chipFact(session, device.label, deviceReach(device))}
+									{chipFact(
+										session,
+										deviceIdentityText(device, deviceIds, true),
+										deviceReach(device),
+									)}
 								</span>
 								{movingSessionId === session.id ? (
 									<span className="shrink-0 text-meta text-ink-muted">
@@ -659,7 +704,70 @@ export const DevicePanel: FC<{
 						</dd>
 					</div>
 				</dl>
-				{device.reason && (
+				{/*
+				 * THE EVIDENCE BEHIND THE VERDICT (mesh link resilience). The wire publishes one
+				 * attempt per dialled address; a refused connection, a timeout and a closed
+				 * handshake are different observations, and the old single sentence collapsed all
+				 * three into `unreachable`. The headline names the observed cause where the wire
+				 * named one; the rows underneath print the addresses and their transport detail.
+				 * When `attempts` is absent (an older backend), the unchanged reason sentence is
+				 * still the fallback - absence is not a claim that nothing was tried.
+				 */}
+				{!device.reachable && (headline !== "" || attempts.length > 0) && (
+					<div className="flex flex-col gap-1">
+						{headline && (
+							<p className="m-0 text-meta text-warning">{headline}</p>
+						)}
+						{device.linkState === "handshake_refused" && (
+							<p className="m-0 text-meta text-ink-dim">
+								{t("ui.mesh.mesh_reach.handshake_refused_hint")}
+							</p>
+						)}
+						{attempts.length > 0 && (
+							<>
+								<span
+									id={`mesh-attempts-label-${device.id}`}
+									className="text-meta text-ink-dim"
+								>
+									{t("ui.mesh.mesh_reach.addresses_tried")}
+								</span>
+								{/*
+								 * `list-none` IS WHY THE ROLE IS EXPLICIT: Safari/VoiceOver drops
+								 * list semantics for a list with no marker, and `aria-labelledby`
+								 * names a list without restoring the role. The native `<ul>` is
+								 * still the element (no `role` on a div); this only states what the
+								 * stylesheet took away.
+								 */}
+								<ul
+									/* biome-ignore lint/a11y/noRedundantRoles: WebKit drops the implicit list role when `list-style: none` is set, so the explicit one is what carries these rows to VoiceOver. */
+									/* biome-ignore lint/a11y/useSemanticElements: the element already IS the one the rule suggests - the explicit role is the WebKit fix above, not a substitute for `ul`. */
+									role="list"
+									aria-labelledby={`mesh-attempts-label-${device.id}`}
+									className="m-0 flex list-none flex-col gap-0.5 p-0"
+								>
+									{attempts.map((attempt, index) => {
+										const words = attemptWords(attempt.detail);
+										return (
+											<li
+												key={`${attempt.endpoint}:${index}`}
+												data-mesh-attempt={attempt.endpoint}
+												className="flex items-baseline justify-between gap-2"
+											>
+												<span className="min-w-0 truncate font-mono text-meta text-ink">
+													{attempt.endpoint}
+												</span>
+												<span className="shrink-0 text-meta text-ink-dim">
+													{words}
+												</span>
+											</li>
+										);
+									})}
+								</ul>
+							</>
+						)}
+					</div>
+				)}
+				{!headline && attempts.length === 0 && device.reason && (
 					<p className="text-meta text-warning">{device.reason}</p>
 				)}
 			</section>

@@ -1,0 +1,13 @@
+{
+	"ui.chat.analytics.filters.top_level_only": "صرف اعلیٰ سطح کے سیشن",
+	"ui.chat.analytics.search.clear": "تلاش صاف کریں",
+	"ui.chat.analytics.search.sessions": "سیشن تلاش کریں",
+	"ui.chat.analytics.sections.by_channel": "چینل کے لحاظ سے",
+	"ui.chat.analytics.sections.by_model": "ماڈل کے لحاظ سے",
+	"ui.chat.analytics.sections.by_provider": "فراہم کنندہ کے لحاظ سے",
+	"ui.chat.analytics.sections.by_session": "سیشن کے لحاظ سے",
+	"ui.chat.analytics.sections.totals": "مجموعے",
+	"ui.chat.analytics.title": "تجزیات",
+	"ui.chat.analytics.toolbar.refreshing": "تازہ کاری جاری ہے",
+	"ui.chat.analytics.toolbar.this_session_only": "صرف یہ سیشن"
+}

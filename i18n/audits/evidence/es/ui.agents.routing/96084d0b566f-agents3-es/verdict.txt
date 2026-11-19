@@ -1,0 +1,1 @@
+PASS - es ui.agents.routing, 12/12 keys, no BLOCKER or MAJOR on the bytes; 3 MINOR and 5 NIT recorded (discoverability calque vs sibling 'descubrimiento', designer's dangling 'para el usuario', qa 'Comprobar' vs 'Probar' search trigger).

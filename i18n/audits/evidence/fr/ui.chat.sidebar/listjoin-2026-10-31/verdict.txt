@@ -1,0 +1,18 @@
+PASS
+BLOCKER=0 MAJOR=0 MINOR=0 NIT=0
+Agent: i18n-auditor (French), session 781549e497e3
+Actual model: openai/gpt-6.1-sol. Provider-quota fallback from anthropic/claude-sonnet-5-5; intermediate switch to anthropic/claude-opus-5-5 was announced. The substantive audit and validation ran under openai/gpt-6.1-sol.
+Scope: ONLY ui.chat.sidebar.agents.list_join; locale fr; head c0e71b2d958ece40ffe2df0b5061107fbf65a6c0.
+Arms inspected:
+pair: {head} et {tail}
+middle: {head}, {tail}
+other: {head} et {tail}
+Two-name formatted result: Coder et Reviewer
+Three-name formatted result: Coder, Reviewer et Designer
+
+French judgement: The pair correctly has no comma before et. Middle items use a comma followed by one ordinary space, without a preceding space. The final conjunction likewise has no serial comma. Ordinary spaces around et are correct; narrow nonbreaking spacing before : ; ! ? does not apply to list commas. No sound-conditioned conjunction alternation equivalent to Spanish y/e is required in French: Coder et Illustrateur is correct. The wording is idiomatic and neutral, with no machine-translation calque. Names are preserved verbatim, consistent with the glossary. The context specifies variable-width names and no fixed width budget; the joiners add four characters for pair/final and two for middle, without additional wide-glyph risk.
+
+Mechanical verification: Actual intl-messageformat runtime parses and formats all three arms. Source and target ASTs contain one position/select with exactly pair/middle/other, each containing head and tail string arguments in order. Namespace key sets match. There is no plural, rich markup, command or code token in this key. Unknown select labels correctly use other; missing-tail negative control throws as expected. See formatter.json.
+Repo validators executed read-only: context-parity exit 0 (131 pre-existing allowed gaps in 4 unrelated namespace groups remain); generate --check exit 0; check-duplicates exit 0 (1031 files, 0 duplicate keys); locale-parity targeted tests exit 0 (44 pass, 0 fail). Full commands and actual outputs are in validation.json. No package manager, rebuild, full suite, translation service, or repo write was used.
+
+Audit scope is one key, not the entire namespace. This is one independent pass, not a claim of two independent high-visibility passes. No ledger write or tracked-evidence commit was made because the task explicitly makes the checkout read-only and requests this external evidence bundle. The manager must retain it under the canonical tracked evidence root and link it in the appropriate delta record; this one-key PASS must not masquerade as a full namespace re-audit. No rendered UI/overflow execution is claimed.

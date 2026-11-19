@@ -59,26 +59,28 @@
  */
 
 import { Textarea } from "@shared/components/ui/textarea";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { type KeyboardEvent, type RefObject, useState } from "react";
 import { ASK_ANSWER_MAX_CHARS } from "../../ask-queue";
 
-/**
- * What the refusal says, in the order the app's voice asks for: what happened, what
- * it means, what to do. The chat is named because it is the one place a file CAN go
- * today - a chat message carries attachments and leaves the ask pending, and the agent
+/*
+ * THE REFUSAL AND THE LIMIT NOTICE ARE KEYED, resolved at render
+ * (`ui.chat.ask_panel.answer.*`), so a language switch re-words a notice that is
+ * already on screen. The refusal is held as a flag, not as the sentence: a stored
+ * sentence would keep the language it was written in.
+ *
+ * The refusal says, in the order the app's voice asks for: what happened, what it
+ * means, what to do. The chat is named because it is the one place a file CAN go today
+ * - a chat message carries attachments and leaves the ask pending, and the agent
  * decides whether the message answers it.
+ *
+ * The limit notice is said when the field has reached the wire's cap on one answer.
+ * The browser stops accepting characters at `maxLength` and a paste that does not fit
+ * is cut to what does - the quiet truncation this field refuses elsewhere - so the
+ * limit is stated the moment it is reached instead of surfacing as a failed Send.
  */
-const ATTACHMENT_REFUSAL =
-	"Files and images can't be attached to an answer yet. Type your answer here, or send the file in the chat.";
-
-/**
- * Said when the field has reached the wire's cap on one answer. The browser stops
- * accepting characters at `maxLength` and a paste that does not fit is cut to what
- * does - which is the quiet truncation this field refuses elsewhere - so the limit is
- * stated the moment it is reached instead of surfacing as a failed Send.
- */
-const LIMIT_NOTICE = `Answers stop at ${ASK_ANSWER_MAX_CHARS.toLocaleString("en-US")} characters; anything past that is not kept.`;
 
 /**
  * The card's Enter-commits key handler, shared by this field and the secret question's
@@ -132,7 +134,8 @@ export const AskAnswerField = ({
 	 * paste that just happened, and a sentence that outlived the user's next keystroke
 	 * would be a stale claim about a box that has moved on.
 	 */
-	const [refusal, setRefusal] = useState<string | null>(null);
+	const [refused, setRefused] = useState(false);
+	useI18nLocale();
 	return (
 		<div className="flex flex-col gap-1">
 			<Textarea
@@ -145,7 +148,7 @@ export const AskAnswerField = ({
 				autoComplete="off"
 				maxLength={ASK_ANSWER_MAX_CHARS}
 				onChange={(event) => {
-					setRefusal(null);
+					setRefused(false);
 					onChange(event.target.value);
 				}}
 				onKeyDown={commitOnEnter(onEnter)}
@@ -170,7 +173,7 @@ export const AskAnswerField = ({
 						text.split("\n").every((line) => names.includes(line.trim()));
 					if (text.trim() !== "" && !justTheFiles) return;
 					event.preventDefault();
-					setRefusal(ATTACHMENT_REFUSAL);
+					setRefused(true);
 				}}
 				onDragOver={(event) => {
 					/*
@@ -189,7 +192,7 @@ export const AskAnswerField = ({
 					// belt to that brace, for any platform that delivers it anyway.
 					if (!event.dataTransfer?.files?.length) return;
 					event.preventDefault();
-					setRefusal(ATTACHMENT_REFUSAL);
+					setRefused(true);
 				}}
 				/*
 				 * Two lines to start, so it reads as a multi-line field, and it grows with
@@ -208,9 +211,13 @@ export const AskAnswerField = ({
 					"field-sizing-content max-h-40 min-h-14 rounded-md px-2 py-1.5 text-sm",
 				)}
 			/>
-			{refusal === null && value.length < ASK_ANSWER_MAX_CHARS ? null : (
+			{!refused && value.length < ASK_ANSWER_MAX_CHARS ? null : (
 				<output className="block text-ink-muted text-xs">
-					{refusal ?? LIMIT_NOTICE}
+					{refused
+						? t("ui.chat.ask_panel.answer.attachment_refusal")
+						: t("ui.chat.ask_panel.answer.limit_notice", {
+								max: ASK_ANSWER_MAX_CHARS,
+							})}
 				</output>
 			)}
 		</div>

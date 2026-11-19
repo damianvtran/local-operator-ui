@@ -1,0 +1,36 @@
+{
+  "auditor": "translation-auditor",
+  "role": "task — independent Russian linguistic auditor",
+  "model": "anthropic/claude-sonnet-5-5",
+  "model_provenance": "Current session-state reports anthropic/claude-sonnet-5-5. No fallback event was observed in the resumed substantive audit or receipt-writing execution. An earlier blocked attempt's final message claimed openai/gpt-6.1-sol fallback; this is reported historical provenance, unverified in this session. That attempt did not inspect the catalogue and its fallback claim is not independently supported by runtime metadata visible here. It is not the basis of this linguistic verdict.",
+  "fallback_disclosure": "No observed fallback during the resumed substantive audit and receipt writing; earlier blocked-attempt provenance claim retained above rather than treated as verified.",
+  "instance": "agent-detail-read-state-ru-a77610536f64-4c975e9f2d29",
+  "session": "a77610536f64",
+  "job": "70d76735d2ff",
+  "receipt_job": "4c975e9f2d29",
+  "audit_job_provenance": "Parent supplied substantive PASS audit job 70d76735d2ff, resumed from blocked job 45f5f83abbd4. The blocked attempt issued no linguistic verdict. Current receipt-writing job 4c975e9f2d29 is independently bound to this session by the runtime lane metadata.",
+  "identity_source": "Session origin.json identifies task role and Audit detail ru label; subagent-lane-4c975e9f2d29.v1.json binds this job to child session a77610536f64.",
+  "date": "2026-11-02",
+  "locale": "ru",
+  "namespace": "ui.agents.detail.read_state",
+  "status": "passed",
+  "keys_audited": 14,
+  "audit_pin": "3553b7ae661a7c92caf04f1d39ed3792ef37ad46",
+  "scope": "All 14 Russian values in ui.agents.detail.read_state, independently compared with English source and role/tone/width/placeholder context. This receipt records the completed linguistic audit; receipt writing re-derived the committed byte hashes without re-auditing unchanged copy.",
+  "sha256": {
+    "en": "0de7ac1bff46dc77b3bbe1f479b60a220361b3e32f673332dbe9eecfb56421f0",
+    "ru": "3f8f8e1f0aa1e99b7e38838bb63ce8cd5ccdc8354cba7465b1f248a3fbcfe221",
+    "context": "e1359d1f5db124d1ca167eb042ca334bc88c1c2895f9442d517d3d9e3efbb9b2"
+  },
+  "findings": [],
+  "validation": {
+    "independence": "I did not write this translation and did not change catalogue, context, ledger or aggregate files. This receipt is my independent audit record.",
+    "hash_derivation": "SHA-256 independently computed with Python hashlib over git show output at the audit pin for English catalogue, English context and Russian catalogue. All three matched the supplied expected values.",
+    "meaning_and_recovery": "The title states a read failure; not-found and failure-explanation text preserve the source distinctions. The retry action and retrying state tell the user how to recover and what is happening, without adding hedging or losing information.",
+    "name_placeholder": "failed_title preserves {name} exactly inside Russian guillemets. The infinitive construction avoids requiring an inflected form of the immutable agent name.",
+    "switch_status": "Включено, Выключено and Переключение… describe status, not commands.",
+    "effort_label": "Использовать уровень усилий сессии explicitly means use the session's effort level and is a natural picker option. The deliberately raw read-view inherit token is outside the translated label and is not a defect.",
+    "terminology": "Compared existing Russian ui.agents.detail.json and ui.agents.teams.json. Session, effort level, subagent, backend, team, manager and member terminology remains consistent; no translated identifier or misleading technical calque found.",
+    "limitations": "This PASS clears the catalogue linguistically only. I did not inspect rendered frames or measure text geometry, wrapping, overflow or control fit, so this receipt does not clear rendered layout or provide visual QA approval. Zero findings at BLOCKER, MAJOR, MINOR and NIT severity."
+  }
+}

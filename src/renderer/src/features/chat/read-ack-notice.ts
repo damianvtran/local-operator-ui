@@ -8,6 +8,8 @@ import {
 	type ReadAckNoticeKind,
 	isStoreWriteRefusal,
 } from "@shared/store/canonical-sessions-store";
+// Relative, not `@shared/i18n`: bundled by node tests without an alias map.
+import { t } from "../../../../i18n/messages";
 import { STORE_BUSY_CODE } from "../../../../shared/desktop-session-contract";
 
 /*
@@ -60,10 +62,11 @@ import { STORE_BUSY_CODE } from "../../../../shared/desktop-session-contract";
  * because the design round's finding `D1` was exactly two instructions for one
  * act.
  */
-const RETRY_REMEDY = "click the chat to try again";
+const retryRemedy = (): string => t("ui.chat.read_ack.retry_remedy");
 
 /** The remedy above as its own sentence, which is how a toast ends. */
-const RETRY_REMEDY_SENTENCE = "Click the chat to try again.";
+const retryRemedySentence = (): string =>
+	t("ui.chat.read_ack.retry_remedy_sentence");
 
 /**
  * The row's clause per state - the FLYOUT's register.
@@ -95,10 +98,19 @@ const RETRY_REMEDY_SENTENCE = "Click the chat to try again.";
  *   `readAckCopy` substitutes the device's name when the row knows one.
  */
 export const READ_ACK_NOTICE_CLAUSE: Record<ReadAckNoticeKind, string> = {
-	pending: "marking read",
-	offscreen: "scroll to the result to mark this chat read",
-	unsettled: RETRY_REMEDY,
-	remote: "lives on another device, and it clears when that device updates",
+	// Getters, read when painted, so the clause follows the language in force.
+	get pending() {
+		return t("ui.chat.read_ack.clause.pending");
+	},
+	get offscreen() {
+		return t("ui.chat.read_ack.clause.offscreen");
+	},
+	get unsettled() {
+		return retryRemedy();
+	},
+	get remote() {
+		return t("ui.chat.read_ack.clause.remote");
+	},
 };
 
 /**
@@ -114,11 +126,20 @@ export const READ_ACK_NOTICE_CLAUSE: Record<ReadAckNoticeKind, string> = {
  * already implied - the rule `SILENT_REMEDY`'s own span states).
  */
 export const READ_ACK_NOTICE_DESCRIPTION: Record<ReadAckNoticeKind, string> = {
-	pending: "Marking this chat read.",
-	offscreen: "Scroll to the result to mark this chat read.",
-	unsettled: `Not marked read. ${RETRY_REMEDY_SENTENCE}`,
-	remote:
-		"The unread mark lives on another device. It clears when that device updates.",
+	get pending() {
+		return t("ui.chat.read_ack.description.pending");
+	},
+	get offscreen() {
+		return t("ui.chat.read_ack.description.offscreen");
+	},
+	get unsettled() {
+		return t("ui.chat.read_ack.description.unsettled", {
+			remedy: retryRemedySentence(),
+		});
+	},
+	get remote() {
+		return t("ui.chat.read_ack.description.remote");
+	},
 };
 
 /**
@@ -138,8 +159,10 @@ const remoteAckCopy = (
 	const name = deviceLabel?.trim();
 	return name
 		? {
-				clause: `lives on ${name}, and it clears when that device updates`,
-				description: `The unread mark lives on ${name}. It clears when that device updates.`,
+				clause: t("ui.chat.read_ack.clause.remote_named", { device: name }),
+				description: t("ui.chat.read_ack.description.remote_named", {
+					device: name,
+				}),
 			}
 		: {
 				clause: READ_ACK_NOTICE_CLAUSE.remote,
@@ -232,7 +255,8 @@ const refusalOf = (reason: unknown): ReadAckRefusal => {
  * `DesktopControlError` gives it a message ("Desktop controls could not reach the
  * backend process.", `desktop-api.ts`), so this is the floor rather than the copy.
  */
-const UNREACHABLE_FALLBACK = "The app could not reach the backend.";
+const unreachableFallback = (): string =>
+	t("ui.chat.read_ack.unreachable_fallback");
 
 /**
  * The sentence per CLASS of refusal.
@@ -249,9 +273,9 @@ const UNREACHABLE_FALLBACK = "The app could not reach the backend.";
  */
 const READ_ACK_SENTENCE: Record<ReadAckRefusal, (reason: unknown) => string> = {
 	busy: () =>
-		`The read state is busy, so the unread mark was not cleared. ${RETRY_REMEDY_SENTENCE}`,
+		t("ui.chat.read_ack.refusal.busy", { remedy: retryRemedySentence() }),
 	refused: () =>
-		`The read state could not be written, so the unread mark was not cleared. ${RETRY_REMEDY_SENTENCE}`,
+		t("ui.chat.read_ack.refusal.refused", { remedy: retryRemedySentence() }),
 	/*
 	 * THE CLASS THAT DOES NOT ANNOUNCE. The loop publishes this class as the
 	 * quiet kind (`remote`), never `unsettled`, so the sidebar's announcement
@@ -262,8 +286,12 @@ const READ_ACK_SENTENCE: Record<ReadAckRefusal, (reason: unknown) => string> = {
 	 */
 	remote: () => READ_ACK_NOTICE_DESCRIPTION.remote,
 	unreachable: (reason) =>
-		`${userFacingMessage(reason, UNREACHABLE_FALLBACK)} The unread mark was not cleared. ${RETRY_REMEDY_SENTENCE}`,
-	unreported: () => `The unread mark was not cleared. ${RETRY_REMEDY_SENTENCE}`,
+		t("ui.chat.read_ack.refusal.unreachable", {
+			reason: userFacingMessage(reason, unreachableFallback()),
+			remedy: retryRemedySentence(),
+		}),
+	unreported: () =>
+		t("ui.chat.read_ack.refusal.unreported", { remedy: retryRemedySentence() }),
 };
 
 /** The sentence the give-up arm is announced with, for the refusal it met. */

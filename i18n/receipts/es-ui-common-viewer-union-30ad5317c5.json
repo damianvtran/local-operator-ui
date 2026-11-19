@@ -1,0 +1,260 @@
+{
+  "schema": 1,
+  "audit_kind": "translation-audit",
+  "auditor": "translation-auditor",
+  "agent": "translation-auditor (lopdev team)",
+  "model": "deepseek/deepseek-flash",
+  "model_fallback": "none",
+  "model_note": "Harness session model tag deepseek/deepseek-flash; no model switch or fallback occurred during this run.",
+  "session": "a816cdf135c7",
+  "instance": "es-ui-common-viewer-union-30ad5317c5",
+  "instance_scope": "Artifact-scoped receipt instance for this locale. All seven receipts were authored in one session (a816cdf135c7); they are not seven independent reviewers.",
+  "date": "2026-10-25",
+  "locale": "es",
+  "namespace": "ui.common.viewer",
+  "head": "30ad5317c5965fb1dfd40cb78b16525977129035",
+  "merge_parents": {
+    "A": "649a09fe302bd422e3db30804b8f278e78f64e24",
+    "B": "ece9ae92191a50950e0a7987b93163a7fba8b288"
+  },
+  "status": "clean-with-findings",
+  "verdict": "PASS — clean-with-findings. Union provenance is exact: all 13 values are byte-identical to one merge parent (8 to both, 4 B-only, 1 A-only), the key set equals English and the parent union, and there are no duplicate keys. Live strings read naturally in neutral Spanish. Findings: the shared structural minor on ui.common.viewer.image_progress (dead copy). 1 minor / 0 nit, 0 blocker/major.",
+  "keys_read": 13,
+  "keys_audited": 13,
+  "sha256": {
+    "en": "abfb7cc367dfbe11730a4ee57f5fbb19b67c67dbff1b919ae4575d72fa0fa537",
+    "es": "1de3ac236c824d7100e434ecd828153eb851b02be981fe29b145d0dbf28f77e3",
+    "context": "e01d781a09d1bf5cc6368e79e3f7f89a8b25d923ac5e8fc93f137198325a5d2d"
+  },
+  "key_set": {
+    "english": 13,
+    "parent_A": 9,
+    "parent_B": 12,
+    "parent_union": 13,
+    "target": 13,
+    "equals_english": true,
+    "equals_parent_union": true,
+    "missing": [],
+    "extra": []
+  },
+  "duplicate_keys": {
+    "decoded_json": [],
+    "decoded_json_parent_A": [],
+    "decoded_json_parent_B": [],
+    "raw_duplicate_lines": [],
+    "note": "Checked with json.loads(object_pairs_hook=...) so last-wins parsing cannot hide a repeated member, and again at the raw line level. None found in any of the eight files."
+  },
+  "union": {
+    "A_only": [
+      "ui.common.viewer.image_progress"
+    ],
+    "B_only": [
+      "ui.common.viewer.close",
+      "ui.common.viewer.next",
+      "ui.common.viewer.position",
+      "ui.common.viewer.previous"
+    ],
+    "both": [
+      "ui.common.viewer.opening",
+      "ui.common.viewer.reset_view",
+      "ui.common.viewer.zoom_in",
+      "ui.common.viewer.zoom_out",
+      "ui.common.viewer.image_lightbox.previous",
+      "ui.common.viewer.image_lightbox.next",
+      "ui.common.viewer.image_lightbox.close",
+      "ui.common.viewer.image_lightbox.asset_of"
+    ],
+    "neither": []
+  },
+  "per_key": [
+    {
+      "key": "ui.common.viewer.close",
+      "source": "B",
+      "present_in_A": false,
+      "present_in_B": true,
+      "byte_identical_to_A": false,
+      "byte_identical_to_B": true,
+      "value": "{kind, select, image {Cerrar imagen} asset {Cerrar recurso} other {Cerrar}}",
+      "raw_value_sha256": "c632e1b97bc03b7922f104aca09474b4f95839e833683a3e6c25e1f50ddab323"
+    },
+    {
+      "key": "ui.common.viewer.next",
+      "source": "B",
+      "present_in_A": false,
+      "present_in_B": true,
+      "byte_identical_to_A": false,
+      "byte_identical_to_B": true,
+      "value": "{kind, select, image {Imagen siguiente} asset {Recurso siguiente} other {Siguiente}}",
+      "raw_value_sha256": "d2a41e58cd36d7b8bd53ba174c36e2ff8717d7bedc516afd24045d24dd26cad7"
+    },
+    {
+      "key": "ui.common.viewer.opening",
+      "source": "A+B",
+      "present_in_A": true,
+      "present_in_B": true,
+      "byte_identical_to_A": true,
+      "byte_identical_to_B": true,
+      "value": "Abriendo…",
+      "raw_value_sha256": "6fe0e9594f0e8adb4c6a177526a0ddd501f14e13deeba97564031339c33aa3b9"
+    },
+    {
+      "key": "ui.common.viewer.position",
+      "source": "B",
+      "present_in_A": false,
+      "present_in_B": true,
+      "byte_identical_to_A": false,
+      "byte_identical_to_B": true,
+      "value": "{kind, select, image {Imagen {index, number, ::group-off} de {count, number, ::group-off}} asset {Recurso {index, number, ::group-off} de {count, number, ::group-off}} other {Imagen {index, number, ::group-off} de {count, number, ::group-off}}}",
+      "raw_value_sha256": "baf568b6249a537b1f4617a4c7a70f3bb029cc83da1417c438ac998879fc11a1"
+    },
+    {
+      "key": "ui.common.viewer.previous",
+      "source": "B",
+      "present_in_A": false,
+      "present_in_B": true,
+      "byte_identical_to_A": false,
+      "byte_identical_to_B": true,
+      "value": "{kind, select, image {Imagen anterior} asset {Recurso anterior} other {Anterior}}",
+      "raw_value_sha256": "f9107a8f82c4a75805977df8ec47819fa587e00819e0bbb1f17db3c9b7e6ced2"
+    },
+    {
+      "key": "ui.common.viewer.reset_view",
+      "source": "A+B",
+      "present_in_A": true,
+      "present_in_B": true,
+      "byte_identical_to_A": true,
+      "byte_identical_to_B": true,
+      "value": "Restablecer vista",
+      "raw_value_sha256": "e518f3b726192b3ebb86f5ec0e657d0c5761c7acfe39cb79b6aa6550567da40b"
+    },
+    {
+      "key": "ui.common.viewer.zoom_in",
+      "source": "A+B",
+      "present_in_A": true,
+      "present_in_B": true,
+      "byte_identical_to_A": true,
+      "byte_identical_to_B": true,
+      "value": "Acercar",
+      "raw_value_sha256": "3aea0d58ec332400eb27eec9d6174203073f0df48772fe2bbfc386ccfaeb0207"
+    },
+    {
+      "key": "ui.common.viewer.zoom_out",
+      "source": "A+B",
+      "present_in_A": true,
+      "present_in_B": true,
+      "byte_identical_to_A": true,
+      "byte_identical_to_B": true,
+      "value": "Alejar",
+      "raw_value_sha256": "846682519026c3150dca7e1fed9c393ecfa9221b0c7647eb4afc9fb313dd6ea7"
+    },
+    {
+      "key": "ui.common.viewer.image_lightbox.previous",
+      "source": "A+B",
+      "present_in_A": true,
+      "present_in_B": true,
+      "byte_identical_to_A": true,
+      "byte_identical_to_B": true,
+      "value": "{medialabel} anterior",
+      "raw_value_sha256": "ac7ae8531f30f5ae5b23ebc2f6093fdfb65c7455a53e2591595754d984ff6b56"
+    },
+    {
+      "key": "ui.common.viewer.image_lightbox.next",
+      "source": "A+B",
+      "present_in_A": true,
+      "present_in_B": true,
+      "byte_identical_to_A": true,
+      "byte_identical_to_B": true,
+      "value": "{medialabel} siguiente",
+      "raw_value_sha256": "1dba5be3d269e04e67bc40b8118f9bc2e9429c76457a544b6cf278c8599e8657"
+    },
+    {
+      "key": "ui.common.viewer.image_lightbox.close",
+      "source": "A+B",
+      "present_in_A": true,
+      "present_in_B": true,
+      "byte_identical_to_A": true,
+      "byte_identical_to_B": true,
+      "value": "Cerrar {medialabel}",
+      "raw_value_sha256": "9948cad12d1955d499d13fe0bd5046b1c871362ddde2859d302d8acf5fa41ff7"
+    },
+    {
+      "key": "ui.common.viewer.image_lightbox.asset_of",
+      "source": "A+B",
+      "present_in_A": true,
+      "present_in_B": true,
+      "byte_identical_to_A": true,
+      "byte_identical_to_B": true,
+      "value": "Recurso {index, number, ::group-off} de {count, number, ::group-off}",
+      "raw_value_sha256": "d5218ed703476ca2aaaf11b3ed89e520a650d14b076c9f2b32e6249965193aba"
+    },
+    {
+      "key": "ui.common.viewer.image_progress",
+      "source": "A",
+      "present_in_A": true,
+      "present_in_B": false,
+      "byte_identical_to_A": true,
+      "byte_identical_to_B": false,
+      "value": "Imagen {index, number, ::group-off} de {count, number, ::group-off}",
+      "raw_value_sha256": "8c6086b033a68e2948fc16eca63c035175d91745acaff6948735ab7488851b77"
+    }
+  ],
+  "icu": {
+    "runtime": "intl-messageformat 12.1.3 on Node 24.22.1",
+    "keys_compiled": 13,
+    "select_messages": 4,
+    "select_arms": 12,
+    "arm_names": [
+      "image",
+      "asset",
+      "other"
+    ],
+    "number_skeletons": {
+      "occurrences": 10,
+      "skeleton": "::group-off",
+      "all_match_english": true
+    },
+    "render_samples": {
+      "position_3_of_5": "Imagen 3 de 5",
+      "position_index_1234_count_1500000": "Imagen 1234 de 1500000",
+      "image_progress_3_of_5": "Imagen 3 de 5"
+    },
+    "errors": []
+  },
+  "image_progress": {
+    "referenced_in_code": false,
+    "evidence": "git grep image_progress at 30ad5317c5 matches only src/i18n/catalogues/**, src/i18n/keys.gen.ts and historical i18n/receipts/**. The current counter call sites are src/renderer/src/shared/lib/image-viewer-model.ts:92 and src/renderer/src/shared/components/common/image-lightbox.tsx:429, both ui.common.viewer.position. The four ui.common.viewer.image_lightbox.* keys are likewise unreferenced in app code.",
+    "superseded_caller": "Parent A's image-viewer-model.ts:92 called image_progress; parent B's identical function calls position with kind: image. The merge resolved the code to B and the catalogue to A ∪ B.",
+    "same_as_position_image_arm": true,
+    "same_as_position_other_arm": false,
+    "recommendation": "remove — dead copy that carries a second counter wording; do not leave it as an unused alternative"
+  },
+  "findings": [
+    {
+      "id": "ES-UNION-01",
+      "severity": "minor",
+      "category": "dead-copy",
+      "key": "ui.common.viewer.image_progress",
+      "current": "Imagen {index, number, ::group-off} de {count, number, ::group-off}",
+      "proposed": "remove ui.common.viewer.image_progress from the English source, its context sidecar and all seven targets, together with the four unreferenced ui.common.viewer.image_lightbox.* keys, in a follow-up extraction change; if a progress counter is needed later, reuse ui.common.viewer.position",
+      "reason": "At 30ad5317c5 the key has no caller: parent A's image-viewer-model.ts:92 used it, parent B's identical function calls ui.common.viewer.position with kind: image, and the merge resolved the code to B while unioning A's key. It restates position's image-counter role without a kind select, so it cannot serve assets, and its sidecar is boilerplate (role \"Hub update \") rather than viewer context. Seven locales now maintain a second source of truth for the same counter.",
+      "locale_detail": "Byte-identical to position's image arm (Imagen {index} de {count}); no visible divergence today, but it is a second copy of the same sentence.",
+      "introduced_by": "merge 30ad5317c5 (A 649a09fe30 + B ece9ae9219)",
+      "disposition": "non-gating minor; recommend removal in a follow-up extraction PR, not in this audit (removal changes key sets, keys.gen.ts and every locale)"
+    }
+  ],
+  "findings_count": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+  },
+  "observations": [
+    "Union was checked at the raw JSON literal level: each value's bytes (escapes included) equal the same key's bytes in A or B; no value was rewritten, re-escaped or round-tripped.",
+    "Key order is parent B's order with A's single unique key (image_progress) appended; no existing line was reordered. Ordering is not semantically required and is not part of this binding.",
+    "No duplicate JSON members and no duplicate raw key lines in any of the eight files (en + seven locales); the silent auto-merge duplicate class seen elsewhere did not occur here.",
+    "Byte hygiene: no BOM, no bidi controls (U+200E/F, U+202A–E, U+2066–9), no ZWSP/ZWNJ/ZWJ, no NBSP/U+202F, no trailing spaces; every value is NFC.",
+    "The four ui.common.viewer.image_lightbox.* keys are also unreferenced at HEAD (and were already unreferenced in both parents); they belong in the same cleanup as image_progress.",
+    "image_progress's English context sidecar says role \"Hub update \" (trailing space) and describes a 'plural selector' although the message uses a number skeleton — evidence it was imported from a bulk wave, not authored for the viewer."
+  ],
+  "limitations": "Read-only audit from the working tree at 30ad5317c5; no catalogue, context, ledger, allowance or generated file was edited, and this receipt is the only file written. No browser or native render was run, so this is a source-copy, ICU and provenance audit; rendered fit remains unproven. Width figures quoted are cell estimates from the ICU render, not measured pixels."
+}

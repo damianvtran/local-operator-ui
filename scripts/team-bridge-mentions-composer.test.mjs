@@ -1,0 +1,1844 @@
+import assert from "node:assert/strict";
+import { after, test } from "node:test";
+import { build } from "esbuild";
+import { JSDOM } from "jsdom";
+
+/*
+ * TEAM BRIDGE @-MENTIONS: THE KEYBOARD FLOW, through the SHIPPED reply composer.
+ *
+ * The thread pane's composer mounts the same `useComposerMentions` /
+ * `MentionField` / `MentionNotice` trio as the channel composer, and needs no
+ * message-input store, so it is the leanest real host: the pane is rendered
+ * under a `MentionSourceContext` exactly as the page provides it, and driven
+ * the way a person drives it - type, arrow, Enter, Esc, Backspace - and the
+ * request the pane's `onSend` receives plus the staged `mentions[]` are read
+ * back. jsdom has no layout, so nothing here claims position or pixels; the
+ * popover's placement is the rendered capture's job.
+ */
+const bundle = await build({
+	stdin: {
+		contents: `
+			export {TeamBridgeThreadPaneView} from './src/renderer/src/features/team-bridge/team-bridge-thread-pane';
+			export {TeamBridgeMessageList} from './src/renderer/src/features/team-bridge/team-bridge-message-list';
+			export {renderToStaticMarkup} from 'react-dom/server';
+			export {MentionSourceContext} from './src/renderer/src/features/team-bridge/mentions/mention-context';
+			export {MentionHighlightOverlay} from './src/renderer/src/features/team-bridge/mentions/mention-highlight-overlay';
+			export {TeamBridgeMentionProvider} from './src/renderer/src/features/team-bridge/mentions/mention-source';
+			export {stagedMentions} from './src/renderer/src/features/team-bridge/mentions/mention-outbox';
+			export {createRoot} from 'react-dom/client';
+			export {QueryClient, QueryClientProvider} from '@tanstack/react-query';
+			export {act, createElement, useContext, useRef} from 'react';
+			export {useMentionAutocomplete} from './src/renderer/src/features/team-bridge/mentions/use-mention-autocomplete';
+		`,
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	platform: "node",
+	format: "esm",
+	write: false,
+	alias: { "@shared": `${process.cwd()}/src/renderer/src/shared` },
+	external: [
+		"react",
+		"react-dom",
+		"react-dom/client",
+		"react-dom/server",
+		"react/jsx-runtime",
+	],
+	packages: "external",
+	jsx: "automatic",
+	loader: { ".css": "empty" },
+});
+const { writeFile, unlink } = await import("node:fs/promises");
+const path = `${process.cwd()}/.mentions-test-${process.pid}.mjs`;
+await writeFile(path, bundle.outputFiles[0].text);
+const dom = new JSDOM('<!doctype html><div id="app"></div>', {
+	url: "http://localhost/",
+	pretendToBeVisual: true,
+});
+for (const key of [
+	"window",
+	"document",
+	"Event",
+	"InputEvent",
+	"MouseEvent",
+	"KeyboardEvent",
+	"HTMLElement",
+	"HTMLTextAreaElement",
+	"HTMLInputElement",
+	"Node",
+	"Element",
+	"NodeFilter",
+	"MutationObserver",
+	"navigator",
+	"getComputedStyle",
+	"localStorage",
+	"CSS",
+]) {
+	Object.defineProperty(globalThis, key, {
+		configurable: true,
+		value: dom.window[key] ?? dom.window,
+	});
+}
+globalThis.CSS ??= { escape: (value) => value };
+globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+globalThis.requestAnimationFrame = (fn) => setTimeout(fn, 0);
+globalThis.cancelAnimationFrame = clearTimeout;
+after(() => dom.window.close());
+let mod;
+try {
+	mod = await import(path);
+} finally {
+	await unlink(path);
+}
+
+/*
+ * The thread pane's mention rows now draw through `TeamBridgeAvatar`, which reads
+ * the private-avatar cache through React Query — the way the real app does, since
+ * `main.tsx` mounts the whole renderer under one `QueryClientProvider`. The host
+ * has to provide one too; without it the plate throws "No QueryClient set".
+ */
+const queryClient = new mod.QueryClient({
+	defaultOptions: { queries: { retry: false } },
+});
+
+test("mention activation preserves the mounted draft subtree through conversation handoff", async () => {
+	const host = document.createElement("div");
+	document.body.append(host);
+	const root = mod.createRoot(host);
+	const conversation = {
+		id: "bcv_handoff",
+		tenant_id: "tnt_1",
+		kind: "dm",
+		members: [],
+	};
+	const render = (value) =>
+		mod.act(async () => {
+			root.render(
+				mod.createElement(
+					mod.TeamBridgeMentionProvider,
+					{
+						conversation: value,
+						people: [],
+						selfAccountId: "acct_self",
+						sendMentions: false,
+					},
+					mod.createElement(
+						"ol",
+						null,
+						mod.createElement("li", null, "Pending message"),
+					),
+				),
+			);
+		});
+	try {
+		await render(null);
+		const atPress = host.querySelector("li");
+		assert.ok(atPress);
+		await render(conversation);
+		// Never pass React-backed DOM objects as assertion operands: on failure
+		// their diagnostic serialization can exhaust the entire worker's memory.
+		assert.equal(host.querySelector("li") === atPress, true);
+		assert.equal(host.querySelectorAll("li").length, 1);
+		await render(null);
+		assert.equal(host.querySelector("li") === atPress, true);
+	} finally {
+		await mod.act(async () => root.unmount());
+		host.remove();
+	}
+});
+
+const CONVERSATION = "bcv_mentions01";
+const MENTION_OTHER = /data-mention="other"[^>]*>@Ben Tran</;
+const MENTION_VIEWER = /data-mention="viewer"[^>]*>@Damian Tran</;
+const MENTION_ANY = /data-mention="/g;
+/* A mentioned row's wash class or the thread-row ring var it used to set. */
+const ROW_MENTION_WASH = /accent-wash|thread-row-host/;
+const NOT_MEMBER_NOTICE =
+	/Sherman Tsui isn’t in this conversation, so they won’t be notified\./;
+const INVITED_NOTICE =
+	/Sherman Tsui has been invited\. They won’t be notified until they join\./;
+const PENDING_NOTICE = /Ivy Chen is invited but hasn’t joined yet/;
+const rootMessage = {
+	id: "bcmsg_root0001",
+	conversation_id: CONVERSATION,
+	seq: 1,
+	sender: { account_id: "acct_a", kind: "human", display_label: "Ada" },
+	body: "Root question",
+	origin: "human",
+	created_at: "2026-10-21T10:00:00Z",
+};
+const candidates = [
+	{
+		kind: "human",
+		accountId: "acct_ben",
+		label: "Ben Tran",
+		member: true,
+		bridgeOff: false,
+	},
+	{
+		kind: "agent",
+		accountId: "acct_ben",
+		endpointId: "bep_aida",
+		label: "Aida (Ben Tran)",
+		aliases: ["Aida", "Ben Tran"],
+		member: true,
+		bridgeOff: false,
+	},
+	{
+		kind: "human",
+		accountId: "acct_sher",
+		label: "Sherman Tsui",
+		member: false,
+		bridgeOff: false,
+	},
+	{
+		kind: "human",
+		accountId: "acct_ivy",
+		label: "Ivy Chen",
+		member: false,
+		invited: true,
+		bridgeOff: false,
+	},
+	{
+		// A participant-only agent row: no endpoint, so it cannot be invited.
+		kind: "agent",
+		accountId: "acct_sher",
+		label: "Sherman Tsui’s chief of staff",
+		member: false,
+		bridgeOff: false,
+	},
+];
+
+const setValue = Object.getOwnPropertyDescriptor(
+	dom.window.HTMLTextAreaElement.prototype,
+	"value",
+).set;
+
+async function mount({
+	sendMentions = true,
+	kind = "group",
+	onInvite,
+	list = candidates,
+} = {}) {
+	const host = document.createElement("div");
+	document.body.append(host);
+	const root = mod.createRoot(host);
+	const sent = [];
+	const invited = [];
+	const invite =
+		onInvite ??
+		(async (row) => {
+			invited.push(row.accountId);
+		});
+	const sourceFor = (rows) => ({
+		conversationId: CONVERSATION,
+		candidates: rows,
+		conversationKind: kind,
+		sendMentions,
+		onInvite: invite,
+		canInvite: (row) =>
+			kind !== "dm" &&
+			!row.invited &&
+			(row.kind === "human" || Boolean(row.endpointId)),
+	});
+	const render = (rows) =>
+		root.render(
+			mod.createElement(
+				mod.QueryClientProvider,
+				{ client: queryClient },
+				mod.createElement(
+					mod.MentionSourceContext.Provider,
+					{ value: rows === null ? null : sourceFor(rows) },
+					mod.createElement(mod.TeamBridgeThreadPaneView, {
+						root: rootMessage,
+						replies: [],
+						state: "ready",
+						accountId: "acct_self",
+						tenantId: "tnt_1",
+						conversationId: CONVERSATION,
+						labelFor: (s) => s.display_label,
+						onClose() {},
+						onRetry() {},
+						onSend: async (...args) => {
+							sent.push({
+								args,
+								mentions: mod.stagedMentions(CONVERSATION, args[0]),
+							});
+						},
+					}),
+				),
+			),
+		);
+	await mod.act(async () => render(list));
+	let field = host.querySelector("textarea");
+	const type = async (value, caret = value.length) => {
+		await mod.act(async () => {
+			field.focus();
+			setValue.call(field, value);
+			field.setSelectionRange(caret, caret);
+			field.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+			field.dispatchEvent(new dom.window.Event("select", { bubbles: true }));
+		});
+	};
+	/* An `input` the way Chromium reports it, with its `inputType`. */
+	const input = async (value, inputType, caret = value.length) => {
+		await mod.act(async () => {
+			field.focus();
+			setValue.call(field, value);
+			field.setSelectionRange(caret, caret);
+			field.dispatchEvent(
+				new dom.window.InputEvent("input", {
+					bubbles: true,
+					inputType,
+					data: null,
+				}),
+			);
+			await new Promise((r) => setTimeout(r, 5));
+		});
+	};
+	const key = async (k, init = {}) => {
+		await mod.act(async () => {
+			field.dispatchEvent(
+				new dom.window.KeyboardEvent("keydown", {
+					key: k,
+					bubbles: true,
+					cancelable: true,
+					...init,
+				}),
+			);
+			await new Promise((r) => setTimeout(r, 5));
+		});
+	};
+	const options = () =>
+		[...document.querySelectorAll('[role="option"]')].map((o) => ({
+			key: o.getAttribute("data-mention-option"),
+			selected: o.getAttribute("aria-selected") === "true",
+		}));
+	const unmount = async () => {
+		await mod.act(async () => root.unmount());
+		host.remove();
+	};
+	const rerender = async (rows) => {
+		await mod.act(async () => render(rows));
+		field = host.querySelector("textarea");
+	};
+	return {
+		host,
+		get field() {
+			return field;
+		},
+		type,
+		input,
+		key,
+		options,
+		sent,
+		invited,
+		unmount,
+		rerender,
+	};
+}
+
+/*
+ * jsdom has no layout, so `MentionField` cannot measure the caret and would
+ * wait for a position. Stub the one geometry read it needs.
+ */
+dom.window.HTMLElement.prototype.getBoundingClientRect = () => ({
+	left: 10,
+	top: 500,
+	right: 400,
+	bottom: 540,
+	width: 390,
+	height: 40,
+});
+
+test("@ opens from cached candidates; members first; arrows wrap; Enter inserts a token", async () => {
+	const ui = await mount();
+	try {
+		await ui.type("hi @");
+		assert.equal(
+			ui.field.getAttribute("aria-expanded"),
+			"true",
+			"the popover opens on @",
+		);
+		assert.deepEqual(
+			ui.options().map((o) => o.key),
+			[
+				"human:acct_ben",
+				"agent:acct_ben",
+				"human:acct_sher",
+				"human:acct_ivy",
+				"agent:acct_sher",
+			],
+			"active members first; invited and non-members are the org sections",
+		);
+		assert.equal(ui.options()[0].selected, true);
+		await ui.key("ArrowUp");
+		assert.equal(
+			ui.options()[4].selected,
+			true,
+			"↑ from the top wraps to the bottom",
+		);
+		await ui.key("ArrowDown");
+		assert.equal(
+			ui.options()[0].selected,
+			true,
+			"↓ from the bottom wraps to the top",
+		);
+		await ui.type("hi @ai");
+		assert.deepEqual(
+			ui.options().map((o) => o.key),
+			["agent:acct_ben"],
+			"typing filters",
+		);
+		await ui.key("Enter");
+		assert.equal(ui.field.value, "hi @Aida (Ben Tran) ");
+		assert.equal(ui.field.getAttribute("aria-expanded"), "false");
+		assert.equal(ui.sent.length, 0, "Enter inserted; it did not send");
+		const pill = ui.host.querySelector('[data-mention-pill="notify"]');
+		assert.equal(
+			pill?.textContent,
+			"@Aida (Ben Tran)",
+			"the token is drawn as a pill",
+		);
+	} finally {
+		await ui.unmount();
+	}
+});
+
+test("Esc closes and keeps the text; a space with zero matches closes; IME never opens", async () => {
+	const ui = await mount();
+	try {
+		await ui.type("@be");
+		assert.equal(ui.field.getAttribute("aria-expanded"), "true");
+		await ui.key("Escape");
+		assert.equal(ui.field.value, "@be", "Esc keeps the text");
+		assert.equal(ui.field.getAttribute("aria-expanded"), "false");
+		await ui.type("@bex ");
+		assert.equal(
+			ui.field.getAttribute("aria-expanded"),
+			"false",
+			"same @ stays dismissed",
+		);
+		await ui.type("x @zzz ");
+		assert.equal(
+			ui.field.getAttribute("aria-expanded"),
+			"false",
+			"space + zero matches closes",
+		);
+		// R1-02: and stays closed for that @ - the next letter is prose.
+		await ui.type("x @zzz t");
+		assert.equal(
+			ui.field.getAttribute("aria-expanded"),
+			"false",
+			"the zero-match space dismissed this @, like Esc",
+		);
+		await mod.act(async () => {
+			ui.field.dispatchEvent(
+				new dom.window.Event("compositionstart", { bubbles: true }),
+			);
+		});
+		await ui.type("y @");
+		assert.equal(
+			ui.field.getAttribute("aria-expanded"),
+			"false",
+			"no popover mid-composition",
+		);
+	} finally {
+		await ui.unmount();
+	}
+});
+
+test("Tab inserts; Backspace removes the pill as one token; send carries deduped mentions[]", async () => {
+	const ui = await mount();
+	try {
+		await ui.type("@ben");
+		await ui.key("Tab");
+		await ui.type(`${ui.field.value}@ben`);
+		await ui.key("Tab");
+		await ui.type(`${ui.field.value}@ai`);
+		await ui.key("Enter");
+		assert.equal(ui.field.value, "@Ben Tran @Ben Tran @Aida (Ben Tran) ");
+		// Backspace at the end of the last pill (after its trailing space is gone).
+		await ui.type("@Ben Tran @Ben Tran @Aida (Ben Tran)", 36);
+		await ui.key("Backspace");
+		assert.equal(
+			ui.field.value,
+			"@Ben Tran @Ben Tran ",
+			"the whole pill went in one key",
+		);
+		await ui.type(`${ui.field.value}@ai`);
+		await ui.key("Enter");
+		await ui.key("Enter");
+		assert.equal(ui.sent.length, 1, "Enter with the popover closed sends");
+		assert.equal(ui.sent[0].args[0], "@Ben Tran @Ben Tran @Aida (Ben Tran)");
+		assert.deepEqual(ui.sent[0].mentions, [
+			{ kind: "human", account_id: "acct_ben" },
+			{ kind: "agent", account_id: "acct_ben", endpoint_id: "bep_aida" },
+		]);
+	} finally {
+		await ui.unmount();
+	}
+});
+
+test("without team_bridge_send_mentions the text is sent and no mentions[] is staged", async () => {
+	const ui = await mount({ sendMentions: false });
+	try {
+		await ui.type("@ben");
+		await ui.key("Enter");
+		await ui.key("Enter");
+		assert.equal(ui.sent.length, 1);
+		assert.equal(ui.sent[0].args[0], "@Ben Tran");
+		assert.equal(ui.sent[0].mentions, undefined);
+	} finally {
+		await ui.unmount();
+	}
+});
+
+test("a non-member pick is quiet text with a notice; every choice keeps it out of mentions[] (R1-01)", async () => {
+	const ui = await mount();
+	const notice = () => ui.host.querySelector("[data-mention-notice]");
+	const button = (label) =>
+		[...(notice()?.querySelectorAll("button") ?? [])].find(
+			(b) => (b.textContent || b.getAttribute("aria-label")) === label,
+		);
+	try {
+		// Mention without notifying.
+		await ui.type("@sher");
+		await ui.key("Enter");
+		assert.match(notice()?.textContent ?? "", NOT_MEMBER_NOTICE);
+		assert.ok(
+			ui.host.querySelector('[data-mention-pill="silent"]'),
+			"a non-member pick starts as quiet text, before any choice",
+		);
+		await mod.act(async () => {
+			button("Mention without notifying").click();
+			await new Promise((r) => setTimeout(r, 5));
+		});
+		assert.equal(notice(), null);
+		assert.equal(
+			document.activeElement,
+			ui.field,
+			"focus is back in the field (D4)",
+		);
+		await ui.key("Enter");
+		assert.equal(
+			ui.sent[0].mentions,
+			undefined,
+			"a silenced mention is not sent",
+		);
+
+		// Dismiss is the same: the hub would refuse a non-member row.
+		await ui.type("@Ben Tran @sher");
+		await ui.key("Enter");
+		await mod.act(async () => {
+			button("Dismiss").click();
+			await new Promise((r) => setTimeout(r, 5));
+		});
+		assert.equal(notice(), null);
+		assert.equal(
+			document.activeElement,
+			ui.field,
+			"focus is back after Dismiss (D4)",
+		);
+		await ui.key("Enter");
+		assert.deepEqual(
+			ui.sent[1].mentions,
+			undefined,
+			"@Ben Tran was typed, not picked, and the dismissed non-member is not sent",
+		);
+
+		// Invite: still non-notifying until the person is ACTIVE.
+		await ui.type("@sher");
+		await ui.key("Enter");
+		await mod.act(async () => {
+			button("Invite them").click();
+			await new Promise((r) => setTimeout(r, 5));
+		});
+		assert.deepEqual(ui.invited, ["acct_sher"]);
+		assert.match(notice()?.textContent ?? "", INVITED_NOTICE);
+		assert.equal(button("Invite them"), undefined, "no second invite");
+		assert.equal(
+			document.activeElement,
+			ui.field,
+			"focus is back after Invite (D4)",
+		);
+		assert.equal(
+			ui.host.querySelector('[data-mention-pill="notify"]'),
+			null,
+			"an invited person is not notifying yet",
+		);
+		// The refetch shows them active: the pill upgrades itself.
+		await ui.rerender(
+			candidates.map((c) =>
+				c.kind === "human" && c.accountId === "acct_sher"
+					? { ...c, member: true }
+					: c,
+			),
+		);
+		assert.ok(
+			ui.host.querySelector('[data-mention-pill="notify"]'),
+			"active now, so the mention notifies",
+		);
+		await ui.key("Enter");
+		assert.deepEqual(ui.sent[2].mentions, [
+			{ kind: "human", account_id: "acct_sher" },
+		]);
+	} finally {
+		await ui.unmount();
+	}
+});
+
+test("an invited member is offered as a non-member and never serialized (R1-01)", async () => {
+	const ui = await mount();
+	try {
+		await ui.type("@ivy");
+		assert.deepEqual(
+			[...document.querySelectorAll('[role="option"]')].map((o) =>
+				o.textContent.includes("Invited"),
+			),
+			[true],
+			"the row carries the Invited tag",
+		);
+		await ui.key("Enter");
+		const notice = ui.host.querySelector("[data-mention-notice]");
+		assert.match(notice?.textContent ?? "", PENDING_NOTICE);
+		assert.equal(
+			[...notice.querySelectorAll("button")].some(
+				(b) => b.textContent === "Invite them",
+			),
+			false,
+			"already invited: no Invite",
+		);
+		await ui.key("Enter");
+		assert.equal(ui.sent[0].mentions, undefined);
+	} finally {
+		await ui.unmount();
+	}
+});
+
+test("an agent with no endpoint is never offered Invite (R1-05)", async () => {
+	const ui = await mount();
+	try {
+		await ui.type("@sherman tsui’s");
+		const option = [...document.querySelectorAll('[role="option"]')].find((o) =>
+			o.getAttribute("data-mention-option")?.startsWith("agent:"),
+		);
+		assert.ok(option);
+		await mod.act(async () => option.click());
+		const labels = [
+			...ui.host.querySelectorAll("[data-mention-notice] button"),
+		].map((b) => b.textContent || b.getAttribute("aria-label"));
+		assert.deepEqual(labels, ["Mention without notifying", "Dismiss"]);
+	} finally {
+		await ui.unmount();
+	}
+});
+
+test("a member who is no longer active at send time is filtered out (R1-01)", async () => {
+	const ui = await mount();
+	try {
+		await ui.type("@ben");
+		await ui.key("Enter");
+		await ui.rerender(
+			candidates.map((c) =>
+				c.kind === "human" && c.accountId === "acct_ben"
+					? { ...c, member: false }
+					: c,
+			),
+		);
+		await ui.key("Enter");
+		assert.equal(ui.sent[0].mentions, undefined);
+	} finally {
+		await ui.unmount();
+	}
+});
+
+test("in a DM the notice offers only 'Mention without notifying'", async () => {
+	const ui = await mount({ kind: "dm" });
+	try {
+		await ui.type("@sher");
+		await ui.key("Enter");
+		const labels = [
+			...ui.host.querySelectorAll("[data-mention-notice] button"),
+		].map((b) => b.textContent || b.getAttribute("aria-label"));
+		assert.deepEqual(labels, ["Mention without notifying", "Dismiss"]);
+	} finally {
+		await ui.unmount();
+	}
+});
+
+test("@ inside an email never opens", async () => {
+	const ui = await mount();
+	try {
+		await ui.type("mail ben@min");
+		assert.equal(ui.field.getAttribute("aria-expanded"), "false");
+	} finally {
+		await ui.unmount();
+	}
+});
+
+test("undo restores the pill itself, not just its text (Q3-1)", async () => {
+	const ui = await mount();
+	try {
+		await ui.type("cc @ben");
+		await ui.key("Enter");
+		const withPill = ui.field.value;
+		assert.equal(withPill, "cc @Ben Tran ");
+		assert.ok(ui.host.querySelector('[data-mention-pill="notify"]'));
+
+		// The browser's own delete, then its own undo. jsdom has no execCommand
+		// and no undo stack, so both are injected exactly as Chromium reports
+		// them: an `input` carrying the resulting text and its `inputType`.
+		await ui.input("cc ", "deleteContentBackward");
+		assert.equal(ui.host.querySelector("[data-mention-pill]"), null);
+		await ui.input(withPill, "historyUndo");
+		assert.ok(
+			ui.host.querySelector('[data-mention-pill="notify"]'),
+			"undo brings the pill back, not plain text",
+		);
+		await ui.key("Enter");
+		assert.deepEqual(
+			ui.sent[0].mentions,
+			[{ kind: "human", account_id: "acct_ben" }],
+			"and the send still carries mentions[]",
+		);
+
+		// Redo puts back the plain text, with no token behind it.
+		await ui.input("cc ", "historyRedo");
+		assert.equal(
+			ui.host.querySelector("[data-mention-pill]"),
+			null,
+			"redo re-applies the delete",
+		);
+		await ui.key("Enter");
+		assert.equal(ui.sent[1].mentions, undefined);
+	} finally {
+		await ui.unmount();
+	}
+});
+
+test("undo past a paste that covered a pill restores the exact token map (Q3-1)", async () => {
+	const ui = await mount();
+	try {
+		await ui.type("@ben");
+		await ui.key("Enter");
+		await ui.type(`${ui.field.value}and @ai`);
+		await ui.key("Enter");
+		const both = ui.field.value;
+		assert.equal(
+			ui.host.querySelectorAll('[data-mention-pill="notify"]').length,
+			2,
+			"two pills",
+		);
+		// A paste over the lot leaves plain text and no tokens.
+		await ui.input("hello ", "insertFromPaste");
+		assert.equal(ui.host.querySelector("[data-mention-pill]"), null);
+		await ui.input(both, "historyUndo");
+		assert.equal(
+			ui.host.querySelectorAll('[data-mention-pill="notify"]').length,
+			2,
+			"undo restores both pills with their own identities",
+		);
+		await ui.key("Enter");
+		assert.deepEqual(ui.sent[0].mentions, [
+			{ kind: "human", account_id: "acct_ben" },
+			{ kind: "agent", account_id: "acct_ben", endpoint_id: "bep_aida" },
+		]);
+	} finally {
+		await ui.unmount();
+	}
+});
+
+/*
+ * The conversation thread, not only the audit: the operator's reproduction
+ * shape (a one-line `[image ...; jpeg ...; sha256 ...]` header followed on the
+ * same line by `data:image/jpeg;base64,<large>`) renders a bounded, inert
+ * receipt in the shared message list. Synthetic ~600 KB payload.
+ */
+test("the operator's single-line receipt + data URI is a bounded receipt in the thread", () => {
+	const header =
+		"[image 1/1: photo.jpg; jpeg 1600x1200; 452118 bytes; sha256 3f1c9a0e5b7d2f4a6c8e0b1d3f5a7c9e1b3d5f7a9c0e2b4d6f8a0c2e4b6d8f0a]";
+	const uri = `data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ${"Qk+/x9Zp".repeat(75000)}AB==`;
+	const html = mod.renderToStaticMarkup(
+		mod.createElement(mod.TeamBridgeMessageList, {
+			messages: [
+				{ ...rootMessage, id: "bcmsg_repro", body: `${header} ${uri}` },
+			],
+			labelFor: (s) => s.display_label,
+		}),
+	);
+	assert.ok(html.includes(header), "header stays readable");
+	assert.ok(
+		/* The count is locale-grouped (design D1); the test renders in en. */
+		html.includes(
+			`Inline image data · image/jpeg · ${new Intl.NumberFormat("en").format(uri.length)} characters`,
+		),
+	);
+	assert.equal(html.includes("Qk+/x9Zp"), false, "no base64 run in markup");
+	assert.equal(html.includes("<img"), false);
+	assert.ok(html.length < 5000, `markup ${html.length} bytes`);
+});
+
+test("mentions on both sides of a legacy image remain highlighted", () => {
+	const html = mod.renderToStaticMarkup(
+		mod.createElement(
+			mod.MentionSourceContext.Provider,
+			{
+				value: {
+					conversationId: CONVERSATION,
+					candidates,
+					conversationKind: "group",
+					sendMentions: true,
+					self: { accountId: "acct_self", label: "Damian Tran" },
+				},
+			},
+			mod.createElement(mod.TeamBridgeMessageList, {
+				messages: [
+					{
+						...rootMessage,
+						id: "bcmsg_inline",
+						body: `@Ben Tran\ndata:image/jpeg;base64,${"A".repeat(5000)}\n@Damian Tran`,
+						/* Highlighting is identity-backed (the wire's `mentions`), so the
+						   fixture carries both accounts: the receipt split must keep each
+						   side's token resolvable against the same list. */
+						mentions: [
+							{ kind: "human", account_id: "acct_ben" },
+							{ kind: "human", account_id: "acct_self" },
+						],
+					},
+				],
+				labelFor: (s) => s.display_label,
+			}),
+		),
+	);
+	assert.match(html, MENTION_OTHER);
+	assert.match(html, MENTION_VIEWER);
+	assert.equal((html.match(MENTION_ANY) ?? []).length, 2);
+	assert.equal(html.includes("A".repeat(100)), false);
+});
+
+test("message bodies highlight mentions; the reader's own is the stronger token", () => {
+	const html = mod.renderToStaticMarkup(
+		mod.createElement(
+			mod.MentionSourceContext.Provider,
+			{
+				value: {
+					conversationId: CONVERSATION,
+					candidates,
+					conversationKind: "group",
+					sendMentions: true,
+					self: { accountId: "acct_self", label: "Damian Tran" },
+				},
+			},
+			mod.createElement(mod.TeamBridgeMessageList, {
+				messages: [
+					{
+						...rootMessage,
+						id: "bcmsg_m1",
+						body: "@Ben Tran and @Damian Tran: `@Ben Tran` in code",
+						mentions: [
+							{ kind: "human", account_id: "acct_ben" },
+							{ kind: "human", account_id: "acct_self" },
+						],
+					},
+				],
+				labelFor: (s) => s.display_label,
+			}),
+		),
+	);
+	assert.match(html, MENTION_OTHER);
+	assert.match(html, MENTION_VIEWER);
+	// Freeze the shipped message classes independently of composer geometry.
+	const rendered = new JSDOM(html);
+	try {
+		assert.equal(
+			rendered.window.document
+				.querySelector('[data-mention="other"]')
+				.getAttribute("class"),
+			"team-bridge-mention rounded-sm px-0.5 font-medium bg-accent-wash text-accent",
+		);
+		assert.equal(
+			rendered.window.document
+				.querySelector('[data-mention="viewer"]')
+				.getAttribute("class"),
+			"team-bridge-mention rounded-sm px-0.5 font-medium bg-warning-wash text-warning",
+		);
+	} finally {
+		rendered.window.close();
+	}
+	assert.equal(
+		(html.match(MENTION_ANY) ?? []).length,
+		2,
+		"inline code is not highlighted",
+	);
+	const bare = mod.renderToStaticMarkup(
+		mod.createElement(mod.TeamBridgeMessageList, {
+			messages: [{ ...rootMessage, id: "bcmsg_m2", body: "@Ben Tran" }],
+			labelFor: (s) => s.display_label,
+		}),
+	);
+	assert.equal(
+		MENTION_ANY.test(bare),
+		false,
+		"no mention source, no highlight",
+	);
+});
+
+/*
+ * THE READER'S MENTION THROUGH THE REAL PROVIDER (operator report 2026-11-03:
+ * "@Damian Tran" in Sherman's message rendered in the "other" accent). The
+ * provider, not a hand-built context value, decides `self`, so these drive
+ * `TeamBridgeMentionProvider` with directory/member shapes the hub returns.
+ */
+const viewerConversation = (members) => ({
+	id: CONVERSATION,
+	tenant_id: "tnt_viewer",
+	kind: "channel",
+	name: "general",
+	members,
+	visibility: "public",
+	agent_capable: false,
+	status: "open",
+	created_by: "acct_sher",
+	latest_seq: 1,
+	last_read_seq: 1,
+	unread_count: 0,
+	muted: false,
+	last_message_at: null,
+});
+const participant = (account_id, display_label) => ({
+	account_id,
+	kind: "human",
+	display_label,
+	role: "member",
+	state: "active",
+});
+const directoryRow = (account_id, display_label) => ({
+	account_id,
+	display_label,
+	email: `${account_id}@example.invalid`,
+	bridge_enabled: true,
+	bridge_state: "active",
+});
+const renderThroughProvider = ({ people, members, message }) => {
+	const html = mod.renderToStaticMarkup(
+		mod.createElement(
+			mod.TeamBridgeMentionProvider,
+			{
+				conversation: viewerConversation(members),
+				people,
+				selfAccountId: "acct_self",
+				sendMentions: true,
+			},
+			mod.createElement(mod.TeamBridgeMessageList, {
+				messages: [
+					{
+						...rootMessage,
+						id: "bcmsg_viewer",
+						sender: {
+							account_id: "acct_sher",
+							kind: "human",
+							display_label: "Sherman Tsui",
+						},
+						...message,
+					},
+				],
+				labelFor: (s) => s.display_label,
+			}),
+		),
+	);
+	const doc = new JSDOM(html).window.document;
+	return Object.fromEntries(
+		[...doc.querySelectorAll("[data-mention]")].map((el) => [
+			el.textContent,
+			{ kind: el.getAttribute("data-mention"), className: el.className },
+		]),
+	);
+};
+const VIEWER_CLASS =
+	"team-bridge-mention rounded-sm px-0.5 font-medium bg-warning-wash text-warning";
+const OTHER_CLASS =
+	"team-bridge-mention rounded-sm px-0.5 font-medium bg-accent-wash text-accent";
+const members = [
+	participant("acct_self", "Damian Tran"),
+	participant("acct_sher", "Sherman Tsui"),
+	participant("acct_ben", "Ben Tran"),
+];
+const directory = [
+	directoryRow("acct_self", "Damian Tran"),
+	directoryRow("acct_sher", "Sherman Tsui"),
+	directoryRow("acct_ben", "Ben Tran"),
+];
+
+test("rendered: wire mentions pin viewer and other even with no self row in the directory", () => {
+	const marks = renderThroughProvider({
+		// The regression's shape: the roster lacks the reader, the account is known.
+		people: directory.filter((row) => row.account_id !== "acct_self"),
+		members,
+		message: {
+			body: "@Damian Tran and @Ben Tran, take a look",
+			mentions: [
+				{ kind: "human", account_id: "acct_self" },
+				{ kind: "human", account_id: "acct_ben" },
+			],
+		},
+	});
+	assert.deepEqual(marks, {
+		"@Damian Tran": { kind: "viewer", className: VIEWER_CLASS },
+		"@Ben Tran": { kind: "other", className: OTHER_CLASS },
+	});
+});
+
+test("rendered: a message without mentions[] marks the reader by their own unique label", () => {
+	// Sherman's real message shape: no `mentions` key at all.
+	const marks = renderThroughProvider({
+		people: directory,
+		members,
+		message: { body: "@Damian Tran Yeah, and @Ben Tran too" },
+	});
+	assert.deepEqual(marks, {
+		"@Damian Tran": { kind: "viewer", className: VIEWER_CLASS },
+		"@Ben Tran": { kind: "other", className: OTHER_CLASS },
+	});
+});
+
+test("rendered: a namesake in the directory or the room keeps the fallback 'other'", () => {
+	for (const [people, room] of [
+		[[...directory, directoryRow("acct_twin", "Damian Tran")], members],
+		[directory, [...members, participant("acct_twin", "Damian Tran")]],
+	]) {
+		const marks = renderThroughProvider({
+			people,
+			members: room,
+			message: { body: "@Damian Tran ping" },
+		});
+		assert.deepEqual(marks, {
+			"@Damian Tran": { kind: "other", className: OTHER_CLASS },
+		});
+	}
+	// The wire still names the reader by account, namesake or not.
+	const wire = renderThroughProvider({
+		people: [...directory, directoryRow("acct_twin", "Damian Tran")],
+		members,
+		message: {
+			body: "@Damian Tran ping",
+			mentions: [{ kind: "human", account_id: "acct_self" }],
+		},
+	});
+	assert.equal(wire["@Damian Tran"].kind, "viewer");
+});
+
+test("rendered: a case- or space-variant twin is still a namesake (review R1 M1)", () => {
+	for (const twin of ["damian tran", "Damian  Tran", " DAMIAN TRAN "]) {
+		for (const [people, room] of [
+			[[...directory, directoryRow("acct_twin", twin)], members],
+			[directory, [...members, participant("acct_twin", twin)]],
+		]) {
+			const marks = renderThroughProvider({
+				people,
+				members: room,
+				message: { body: "@Damian Tran ping" },
+			});
+			assert.deepEqual(
+				marks,
+				{ "@Damian Tran": { kind: "other", className: OTHER_CLASS } },
+				`twin ${JSON.stringify(twin)} keeps the fallback 'other'`,
+			);
+		}
+	}
+});
+
+test("rendered: the reader's own agent row never counts as a namesake (review R1 M2)", () => {
+	// A legacy agent participant stored under the owner's bare name.
+	const marks = renderThroughProvider({
+		people: directory,
+		members: [
+			...members,
+			{ ...participant("acct_self", "Damian Tran"), kind: "agent" },
+		],
+		message: { body: "@Damian Tran and @Ben Tran" },
+	});
+	assert.deepEqual(marks, {
+		"@Damian Tran": { kind: "viewer", className: VIEWER_CLASS },
+		"@Ben Tran": { kind: "other", className: OTHER_CLASS },
+	});
+});
+
+/*
+ * NO ROW HIGHLIGHT FOR THE READER'S MENTION (operator 2026-11-04, removed in
+ * #1679: "keep the yellow tag but we don't need tagged messages to have this
+ * additional highlight"). The row once wore an `accentWash` inset box and a 2px leading
+ * accent bar (`data-mention-bar`). A mentioned row must now be the same box as
+ * an ordinary one - same class string, so the same insets, padding and hover -
+ * with the yellow viewer pill as the only mark. Rendered through the real
+ * provider so `self` is resolved the way the app resolves it.
+ */
+test("rendered: a row that mentions the reader has no bar or wash, only the pill", () => {
+	const html = mod.renderToStaticMarkup(
+		mod.createElement(
+			mod.TeamBridgeMentionProvider,
+			{
+				conversation: viewerConversation(members),
+				people: directory,
+				selfAccountId: "acct_self",
+				sendMentions: true,
+			},
+			mod.createElement(mod.TeamBridgeMessageList, {
+				messages: [
+					{
+						...rootMessage,
+						id: "bcmsg_plain",
+						seq: 1,
+						body: "Morning, all",
+					},
+					{
+						...rootMessage,
+						id: "bcmsg_mentioned",
+						seq: 2,
+						sender: {
+							account_id: "acct_sher",
+							kind: "human",
+							display_label: "Sherman Tsui",
+						},
+						body: "@Damian Tran have a look",
+						mentions: [{ kind: "human", account_id: "acct_self" }],
+					},
+				],
+				labelFor: (s) => s.display_label,
+			}),
+		),
+	);
+	const doc = new JSDOM(html).window.document;
+	const row = (id) => doc.querySelector(`[data-message-id="${id}"]`);
+	const plain = row("bcmsg_plain");
+	const mentioned = row("bcmsg_mentioned");
+	assert.ok(plain && mentioned, "both rows render");
+	assert.equal(doc.querySelector("[data-mention-bar]"), null, "no leading bar");
+	assert.doesNotMatch(mentioned.className, ROW_MENTION_WASH);
+	// Same class string = same px/py insets and the same hover tint, so the
+	// text's x and the row's height cannot differ because of the mention.
+	assert.equal(mentioned.className, plain.className);
+	assert.equal(mentioned.children.length, plain.children.length);
+	const pill = mentioned.querySelector('[data-mention="viewer"]');
+	assert.ok(pill, "the reader's pill still renders");
+	assert.equal(pill.className, VIEWER_CLASS);
+});
+
+/* A first send changes a person draft into an open conversation. Context is
+ * inert again when leaving it, but the provider must not remount the timeline
+ * merely because mention availability changed (the optimistic ninth case). */
+test("mention provider preserves child identity through null-open-null while context changes", async () => {
+	const host = document.createElement("div");
+	document.body.appendChild(host);
+	const root = mod.createRoot(host);
+	let consumer;
+	const Probe = () => {
+		const source = mod.useContext(mod.MentionSourceContext);
+		const fieldRef = mod.useRef(null);
+		consumer = mod.useMentionAutocomplete({
+			draftKey: "provider-continuity",
+			text: "@B",
+			setText: () => {},
+			fieldRef,
+			listboxId: "provider-continuity-list",
+		});
+		return mod.createElement(
+			"div",
+			null,
+			mod.createElement("span", {
+				"data-mention-context": source?.conversationId ?? "inert",
+			}),
+			mod.createElement("textarea", {
+				ref: fieldRef,
+				value: "@B",
+				onChange: () => {},
+				onSelect: consumer.onSelect,
+			}),
+		);
+	};
+	const conversation = {
+		id: "bcv_provider_transition",
+		tenant_id: "org_provider",
+		kind: "dm",
+		name: null,
+		members: [],
+		visibility: "private",
+		agent_capable: false,
+		status: "open",
+		created_by: "acct_self",
+		latest_seq: 0,
+		last_read_seq: 0,
+		unread_count: 0,
+		muted: false,
+		last_message_at: null,
+	};
+	const render = (value) =>
+		mod.act(async () => {
+			root.render(
+				mod.createElement(
+					mod.TeamBridgeMentionProvider,
+					{
+						conversation: value,
+						people: [
+							{
+								account_id: "acct_ben",
+								display_label: "Ben Test",
+								email: "ben@example.invalid",
+							},
+						],
+						selfAccountId: "acct_self",
+						sendMentions: true,
+					},
+					mod.createElement(Probe),
+				),
+			);
+		});
+	try {
+		await render(null);
+		const first = host.querySelector("span");
+		assert.ok(first, "the child exists before the conversation is created");
+		assert.equal(first.getAttribute("data-mention-context"), "inert");
+		assert.equal(consumer.enabled, false);
+		assert.equal(consumer.payload(), undefined);
+		await render(conversation);
+		const opened = host.querySelector("span");
+		assert.ok(opened, "the open-conversation child exists");
+		assert.ok(
+			opened === first,
+			"opening the conversation must not remount its child",
+		);
+		assert.equal(opened.getAttribute("data-mention-context"), conversation.id);
+		const field = host.querySelector("textarea");
+		await mod.act(async () => {
+			field.focus();
+			// main's draft restore (#1590) arms autocomplete only after a real
+			// caret gesture, so a restored draft never pops the list on mount.
+			field.dispatchEvent(
+				new dom.window.KeyboardEvent("keydown", { bubbles: true }),
+			);
+			field.setSelectionRange(2, 2);
+			consumer.onSelect({
+				currentTarget: field,
+				nativeEvent: { isComposing: false },
+			});
+		});
+		assert.equal(consumer.enabled, true);
+		assert.ok(
+			consumer.flat.some((row) => row.accountId === "acct_ben"),
+			"open source offers its candidates",
+		);
+		await render(null);
+		const closed = host.querySelector("span");
+		assert.ok(
+			closed === first,
+			"returning to an inert source must not remount its child",
+		);
+		assert.equal(closed.getAttribute("data-mention-context"), "inert");
+		assert.equal(consumer.enabled, false);
+		assert.equal(
+			consumer.open,
+			false,
+			"clearing the source closes suggestions",
+		);
+		assert.equal(
+			consumer.flat.length,
+			0,
+			"old candidates do not survive a cleared source",
+		);
+		assert.equal(
+			consumer.payload(),
+			undefined,
+			"an inert source cannot stage old mentions",
+		);
+	} finally {
+		await mod.act(async () => root.unmount());
+		host.remove();
+	}
+});
+
+// The source object may refresh within a conversation without cancelling an
+// invitation. Clearing that source is different, even if the same ID reopens.
+const inviteButtonForTest = (host) =>
+	[...host.querySelectorAll("[data-mention-notice] button")].find(
+		(b) => b.textContent === "Invite them",
+	);
+const noticeForTest = (host) => host.querySelector("[data-mention-notice]");
+const pickNonmemberForTest = async (ui) => {
+	await ui.type("@sher");
+	await ui.key("Enter");
+	assert.ok(noticeForTest(ui.host), "a nonmember notice exists");
+};
+
+test("clearing mention source hides a retained nonmember notice without losing draft", async () => {
+	const ui = await mount();
+	try {
+		await pickNonmemberForTest(ui);
+		const draft = ui.field.value;
+		await ui.rerender(null);
+		assert.ok(
+			noticeForTest(ui.host) === null,
+			"null source exposes no previous notice",
+		);
+		assert.equal(
+			ui.field.value,
+			draft,
+			"source invalidation does not erase the draft",
+		);
+		await ui.rerender(candidates);
+		assert.ok(
+			noticeForTest(ui.host) === null,
+			"reopening the same source does not revive its old notice",
+		);
+	} finally {
+		await ui.unmount();
+	}
+});
+
+for (const outcome of ["resolve", "reject"]) {
+	test(`late invite ${outcome} after clear/reopen cannot replace a new request`, async () => {
+		const requests = [];
+		const ui = await mount({
+			onInvite: () =>
+				new Promise((resolve, reject) => requests.push({ resolve, reject })),
+		});
+		try {
+			await pickNonmemberForTest(ui);
+			await mod.act(async () => inviteButtonForTest(ui.host).click());
+			assert.equal(requests.length, 1);
+			await ui.rerender(null);
+			await ui.rerender(candidates);
+			// Pick a new notice and begin another write in the same conversation. An old
+			// result must neither mark this notice invited nor clear its busy/error state.
+			await pickNonmemberForTest(ui);
+			await mod.act(async () => inviteButtonForTest(ui.host).click());
+			assert.equal(
+				requests.length,
+				2,
+				"the reopened source owns a new request",
+			);
+			await mod.act(async () => {
+				if (outcome === "resolve") requests[0].resolve();
+				else requests[0].reject(new Error("synthetic old refusal"));
+				await Promise.resolve();
+			});
+			assert.ok(
+				inviteButtonForTest(ui.host)?.disabled,
+				"old settlement cannot release the new request",
+			);
+			assert.match(
+				noticeForTest(ui.host)?.textContent ?? "",
+				NOT_MEMBER_NOTICE,
+			);
+			await mod.act(async () => {
+				requests[1].resolve();
+				await Promise.resolve();
+			});
+			assert.match(
+				noticeForTest(ui.host)?.textContent ?? "",
+				INVITED_NOTICE,
+				"the new accepted request still applies",
+			);
+		} finally {
+			await ui.unmount();
+		}
+	});
+}
+
+test("same-source refresh retains an in-flight invite and applies its result once", async () => {
+	let resolve;
+	let calls = 0;
+	const ui = await mount({
+		onInvite: () => {
+			calls++;
+			return new Promise((done) => {
+				resolve = done;
+			});
+		},
+	});
+	try {
+		await pickNonmemberForTest(ui);
+		await mod.act(async () => inviteButtonForTest(ui.host).click());
+		await ui.rerender([...candidates]);
+		assert.ok(
+			inviteButtonForTest(ui.host)?.disabled,
+			"ordinary source refresh preserves request ownership",
+		);
+		await mod.act(async () => {
+			resolve();
+			await Promise.resolve();
+		});
+		assert.equal(calls, 1, "no retry or duplicate server write");
+		assert.match(noticeForTest(ui.host)?.textContent ?? "", INVITED_NOTICE);
+	} finally {
+		await ui.unmount();
+	}
+});
+
+// jsdom cannot prove layout; the Storybook play measures each glyph. This guards
+// the borderless class contract and account-based washes on the actual overlay.
+test("emoji: cached aliases, keyboard selection and Enter insert without sending, then normal send resumes", async () => {
+	const ui = await mount();
+	try {
+		await ui.input(":smile", "insertText");
+		assert.ok(document.querySelector("[data-emoji-popover]"));
+		assert.ok(
+			!document.querySelector("[data-mention-popover]"),
+			"mention popup must not compete",
+		);
+		assert.ok(ui.options().length > 0);
+		await ui.key("ArrowDown");
+		assert.equal(ui.options()[1].selected, true);
+		await ui.key("ArrowUp");
+		await ui.key("Enter");
+		assert.equal(ui.field.value, String.fromCodePoint(0x1f604));
+		assert.equal(ui.field.selectionStart, 2);
+		assert.equal(ui.sent.length, 0);
+		assert.ok(
+			!document.querySelector("[data-emoji-popover]"),
+			"emoji popup must be closed",
+		);
+		await ui.key("Enter");
+		assert.equal(ui.sent.length, 1);
+		assert.equal(ui.sent[0].args[0], String.fromCodePoint(0x1f604));
+	} finally {
+		await ui.unmount();
+	}
+});
+
+test("emoji: click keeps focus, UTF-16 suffix and mention identity through undo/redo", async () => {
+	const ui = await mount();
+	try {
+		await ui.type("@Be");
+		await ui.key("Enter");
+		const before = "@Ben Tran :woman_technologist remainder\nsecond line";
+		const caret = before.indexOf(" remainder");
+		await ui.input(before, "insertText", caret);
+		const option = document.querySelector("[data-emoji-index='0']");
+		assert.ok(option);
+		// Commit the click before advancing the frame stub: browser discrete
+		// events commit before rAF, whereas a timer inside async act delays it.
+		await mod.act(() => {
+			option.dispatchEvent(
+				new dom.window.MouseEvent("mousedown", {
+					bubbles: true,
+					cancelable: true,
+				}),
+			);
+			option.dispatchEvent(
+				new dom.window.MouseEvent("click", { bubbles: true }),
+			);
+		});
+		await mod.act(async () => new Promise((resolve) => setTimeout(resolve, 5)));
+		const emoji = String.fromCodePoint(0x1f469, 0x200d, 0x1f4bb);
+		const after = `@Ben Tran ${emoji} remainder\nsecond line`;
+		assert.equal(ui.field.value, after);
+		assert.equal(ui.field.selectionStart, "@Ben Tran ".length + emoji.length);
+		assert.ok(
+			document.activeElement === ui.field,
+			"emoji click must retain textarea focus",
+		);
+		assert.equal(ui.sent.length, 0);
+		await ui.input(before, "historyUndo", caret);
+		assert.ok(
+			!document.querySelector("[data-emoji-popover]"),
+			"emoji popup must be closed",
+		);
+		await ui.input(after, "historyRedo");
+		await ui.key("Enter");
+		assert.equal(ui.sent[0].args[0], after);
+		assert.equal(ui.sent[0].mentions[0].account_id, "acct_ben");
+	} finally {
+		await ui.unmount();
+	}
+});
+
+test("emoji: Escape stays dismissed for the token; a new token reopens; no-results Enter dismisses first (D1)", async () => {
+	const ui = await mount();
+	try {
+		// `:sm`, not `:s`: one character is below the U1 open gate, so there
+		// would be no popup for Escape to dismiss.
+		await ui.input(":sm", "insertText");
+		assert.ok(document.querySelector("[data-emoji-popover]"), "open first");
+		await ui.key("Escape");
+		await ui.input(":smile", "insertText");
+		assert.ok(
+			!document.querySelector("[data-emoji-popover]"),
+			"emoji popup must be closed",
+		);
+		await ui.input(":smile :heart", "insertText");
+		assert.ok(document.querySelector("[data-emoji-popover]"));
+		await ui.input(":no_such_emoji_928372", "insertText");
+		assert.ok(document.querySelector("[data-emoji-popover]"));
+		assert.equal(ui.options().length, 0);
+		assert.ok(
+			document
+				.querySelector("[data-emoji-popover]")
+				.textContent.includes("No emoji found"),
+		);
+		// D1: the first Enter answers the visible "No emoji found" popup and
+		// keeps the draft; it must not send past it.
+		await ui.key("Enter");
+		assert.equal(ui.sent.length, 0, "no-results Enter must not send");
+		assert.equal(ui.field.value, ":no_such_emoji_928372");
+		assert.ok(!document.querySelector("[data-emoji-popover]"), "dismissed");
+		await ui.key("Enter");
+		assert.equal(ui.sent.length, 1);
+		assert.equal(ui.sent[0].args[0], ":no_such_emoji_928372");
+	} finally {
+		await ui.unmount();
+	}
+});
+
+test("emoji: paste, history, replacement, restored text and IME never arm queries", async () => {
+	for (const inputType of [
+		"insertFromPaste",
+		"historyUndo",
+		"historyRedo",
+		"insertReplacementText",
+		"insertFromComposition",
+	]) {
+		const ui = await mount();
+		try {
+			await ui.input(":smile", inputType);
+			assert.ok(!document.querySelector("[data-emoji-popover]"), inputType);
+		} finally {
+			await ui.unmount();
+		}
+	}
+	const ui = await mount();
+	try {
+		await mod.act(async () =>
+			ui.field.dispatchEvent(
+				new dom.window.Event("compositionstart", { bubbles: true }),
+			),
+		);
+		await ui.input(":s", "insertText");
+		assert.ok(
+			!document.querySelector("[data-emoji-popover]"),
+			"emoji popup must be closed",
+		);
+		await ui.key("Enter", { isComposing: true });
+		assert.equal(ui.sent.length, 0);
+		await mod.act(async () =>
+			ui.field.dispatchEvent(
+				new dom.window.Event("compositionend", { bubbles: true }),
+			),
+		);
+		await ui.input(":smile", "insertText");
+		assert.ok(document.querySelector("[data-emoji-popover]"));
+	} finally {
+		await ui.unmount();
+	}
+});
+
+test("emoji R1: compositionstart closes an already-open popup and a later click/Enter cannot replace text", async () => {
+	const ui = await mount();
+	try {
+		await ui.input(":smile", "insertText");
+		assert.ok(document.querySelector("[data-emoji-popover]"), "open first");
+		const stale = document.querySelector("[data-emoji-index='0']");
+		await mod.act(async () =>
+			ui.field.dispatchEvent(
+				new dom.window.Event("compositionstart", { bubbles: true }),
+			),
+		);
+		assert.ok(
+			!document.querySelector("[data-emoji-popover]"),
+			"composition must close the popup",
+		);
+		// A click on the row captured while it was open, then Enter: neither may
+		// replace the draft while the candidate window owns input.
+		await mod.act(() => {
+			stale.dispatchEvent(
+				new dom.window.MouseEvent("mousedown", {
+					bubbles: true,
+					cancelable: true,
+				}),
+			);
+			stale.dispatchEvent(
+				new dom.window.MouseEvent("click", { bubbles: true }),
+			);
+		});
+		await ui.key("Enter", { isComposing: true });
+		assert.equal(ui.field.value, ":smile");
+		assert.equal(ui.sent.length, 0);
+	} finally {
+		await ui.unmount();
+	}
+});
+
+// U7: one-letter aliases (`x`) are prose too and must not bypass the gate.
+for (const text of [
+	":",
+	"list :",
+	":D",
+	":P",
+	":o",
+	"10 :30",
+	"nope :x",
+	"shh :X",
+]) {
+	test(`emoji U1: ${JSON.stringify(text)} never opens and Enter sends it unchanged`, async () => {
+		const ui = await mount();
+		try {
+			await ui.input(text, "insertText");
+			assert.ok(!document.querySelector("[data-emoji-popover]"), "no popup");
+			assert.notEqual(ui.field.getAttribute("aria-expanded"), "true");
+			await ui.key("Enter");
+			assert.equal(ui.sent.length, 1);
+			assert.equal(ui.sent[0].args[0], text);
+		} finally {
+			await ui.unmount();
+		}
+	});
+}
+
+for (const [query, cp] of [
+	[":+1", 0x1f44d],
+	[":-1", 0x1f44e],
+	[":100", 0x1f4af],
+]) {
+	test(`emoji U1/U7: letter-free alias ${query} still opens and inserts`, async () => {
+		const ui = await mount();
+		try {
+			await ui.input(query, "insertText");
+			assert.ok(document.querySelector("[data-emoji-popover]"));
+			await ui.key("Enter");
+			assert.equal(ui.field.value, String.fromCodePoint(cp));
+			assert.equal(ui.sent.length, 0);
+		} finally {
+			await ui.unmount();
+		}
+	});
+}
+
+test("emoji R2-1: Escape stays dismissed for the token across an IME round-trip", async () => {
+	const ui = await mount();
+	const composition = (type) =>
+		mod.act(async () =>
+			ui.field.dispatchEvent(new dom.window.Event(type, { bubbles: true })),
+		);
+	try {
+		await ui.input(":sm", "insertText");
+		assert.ok(document.querySelector("[data-emoji-popover]"), "open first");
+		await ui.key("Escape");
+		await composition("compositionstart");
+		await composition("compositionend");
+		await ui.input(":smi", "insertText");
+		assert.ok(
+			!document.querySelector("[data-emoji-popover]"),
+			"same token must stay dismissed",
+		);
+		// A new token still reopens: dismissal is per token, not permanent.
+		await ui.input(":smi :fi", "insertText");
+		assert.ok(document.querySelector("[data-emoji-popover]"), "new token");
+	} finally {
+		await ui.unmount();
+	}
+});
+
+/*
+ * R3-1 / Q3: rows of the PR #1606 dismissal authority matrix. A dismissal
+ * belongs to one token; sending empties the draft, so the next message's
+ * shortcode at the same start (0) must open again.
+ */
+const sendThenNextShortcode = async (ui) => {
+	await ui.key("Enter");
+	assert.equal(ui.field.value, "", "the draft was sent and cleared");
+	await ui.input(":+1", "insertText");
+	assert.ok(
+		document.querySelector("[data-emoji-popover]"),
+		"next message's shortcode must open",
+	);
+};
+
+test("emoji R3-1: Escape -> send -> next message :+1 opens", async () => {
+	const ui = await mount();
+	try {
+		await ui.input(":smile", "insertText");
+		await ui.key("Escape");
+		assert.ok(!document.querySelector("[data-emoji-popover]"));
+		await sendThenNextShortcode(ui);
+		assert.equal(ui.sent[0].args[0], ":smile");
+	} finally {
+		await ui.unmount();
+	}
+});
+
+test("emoji R3-1: no-results Enter -> send -> next message :+1 opens", async () => {
+	const ui = await mount();
+	try {
+		await ui.input(":no_such_emoji_928372", "insertText");
+		await ui.key("Enter");
+		assert.equal(ui.sent.length, 0, "first Enter only dismisses");
+		await sendThenNextShortcode(ui);
+		assert.equal(ui.sent[0].args[0], ":no_such_emoji_928372");
+	} finally {
+		await ui.unmount();
+	}
+});
+
+test("emoji R3-1: pick -> send -> next message :+1 opens", async () => {
+	const ui = await mount();
+	try {
+		await ui.input(":smile", "insertText");
+		await ui.key("Enter");
+		assert.equal(ui.field.value, String.fromCodePoint(0x1f604));
+		await sendThenNextShortcode(ui);
+		assert.equal(ui.sent[0].args[0], String.fromCodePoint(0x1f604));
+	} finally {
+		await ui.unmount();
+	}
+});
+
+test("emoji matrix: typing more into a dismissed token stays closed; deleting it resets", async () => {
+	const ui = await mount();
+	try {
+		await ui.input("hi :sm", "insertText");
+		await ui.key("Escape");
+		await ui.input("hi :smil", "insertText");
+		assert.ok(!document.querySelector("[data-emoji-popover]"), "same token");
+		// Deleting the token, then retyping it at the same start, is a new token.
+		await ui.input("hi ", "deleteContentBackward");
+		await ui.input("hi :sm", "insertText");
+		assert.ok(document.querySelector("[data-emoji-popover]"), "token was gone");
+	} finally {
+		await ui.unmount();
+	}
+});
+
+for (const [query, cp] of [
+	[":fire", [0x1f525]],
+	[":rocket", [0x1f680]],
+	[":eyes", [0x1f440]],
+	[":joy", [0x1f602]],
+]) {
+	test(`emoji U2: ${query} + Enter inserts the shortcode's emoji`, async () => {
+		const ui = await mount();
+		try {
+			await ui.input(query, "insertText");
+			await ui.key("Enter");
+			assert.equal(ui.field.value, String.fromCodePoint(...cp));
+			assert.equal(ui.sent.length, 0);
+		} finally {
+			await ui.unmount();
+		}
+	});
+}
+
+test("emoji U3/U5: Tab accepts like mentions; options expose set size and position", async () => {
+	const ui = await mount();
+	try {
+		await ui.input("ok :tada", "insertText");
+		const rows = [...document.querySelectorAll("[data-emoji-index]")];
+		assert.ok(rows.length > 0);
+		rows.forEach((row, i) => {
+			assert.equal(row.getAttribute("aria-setsize"), String(rows.length));
+			assert.equal(row.getAttribute("aria-posinset"), String(i + 1));
+		});
+		await ui.key("Tab");
+		assert.equal(ui.field.value, `ok ${String.fromCodePoint(0x1f389)}`);
+		assert.ok(document.activeElement === ui.field, "Tab keeps focus");
+		assert.equal(ui.sent.length, 0);
+	} finally {
+		await ui.unmount();
+	}
+});
+
+test("emoji U4: a closing colon closes the popup and leaves raw text", async () => {
+	const ui = await mount();
+	try {
+		await ui.input(":fire", "insertText");
+		assert.ok(document.querySelector("[data-emoji-popover]"));
+		await ui.input(":fire:", "insertText");
+		assert.ok(!document.querySelector("[data-emoji-popover]"), "closed");
+		assert.equal(ui.field.value, ":fire:", "no auto-replacement");
+		await ui.key("Enter");
+		assert.equal(ui.sent[0].args[0], ":fire:");
+	} finally {
+		await ui.unmount();
+	}
+});
+
+for (const kind of ["dm", "group", "channel"]) {
+	test(`emoji: shared Bridge ${kind} mount opens on a real query, generic/no-source stays inert`, async () => {
+		const ui = await mount({ kind });
+		try {
+			await ui.input(":fi", "insertText");
+			assert.ok(ui.options().length > 0);
+			assert.equal(ui.field.getAttribute("aria-expanded"), "true");
+			await ui.rerender(null);
+			assert.ok(
+				!document.querySelector("[data-emoji-popover]"),
+				"emoji popup must be closed",
+			);
+		} finally {
+			await ui.unmount();
+		}
+	});
+}
+
+test("composer highlights use borderless washes and retain silent underlines", () => {
+	const text = "@Other @Viewer @Agent";
+	const tokens = [
+		{
+			start: 0,
+			end: 6,
+			label: "Other",
+			kind: "human",
+			accountId: "acct_other",
+			notify: true,
+		},
+		{
+			start: 7,
+			end: 14,
+			label: "Viewer",
+			kind: "human",
+			accountId: "acct_self",
+			notify: true,
+		},
+		{
+			start: 15,
+			end: 21,
+			label: "Agent",
+			kind: "agent",
+			accountId: "acct_self",
+			notify: false,
+		},
+	];
+	const html = mod.renderToStaticMarkup(
+		mod.createElement(
+			mod.MentionSourceContext.Provider,
+			{
+				value: {
+					self: { accountId: "acct_self", label: "Not a matching name" },
+				},
+			},
+			mod.createElement(mod.MentionHighlightOverlay, {
+				fieldRef: { current: null },
+				text,
+				tokens,
+			}),
+		),
+	);
+	const document = new JSDOM(html).window.document;
+	const pills = document.querySelectorAll("[data-mention-pill]");
+	assert.equal(pills.length, 3);
+	for (const pill of pills) {
+		assert.ok(pill.classList.contains("px-0.5"));
+		assert.ok(pill.classList.contains("-mx-0.5"));
+		assert.ok(
+			[...pill.classList].every(
+				(name) =>
+					!["border-", "ring-", "outline-", "shadow-"].some((prefix) =>
+						name.startsWith(prefix),
+					),
+			),
+		);
+	}
+	assert.ok(pills[0].classList.contains("bg-accent-wash"));
+	assert.ok(pills[1].classList.contains("bg-warning-wash"));
+	assert.ok(pills[2].classList.contains("bg-warning-wash"));
+	assert.ok(pills[2].classList.contains("decoration-dashed"));
+	document.defaultView.close();
+});

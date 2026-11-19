@@ -1,0 +1,32 @@
+{
+	"auditor": "reviewer",
+	"model": "anthropic/claude-opus-5-5",
+	"instance": "rv34629daf-zh-cn-proposals-r2",
+	"namespace": "ui.agents.proposals",
+	"locale": "zh-CN",
+	"status": "passed",
+	"result": "clean",
+	"sha256": {
+		"en": "b08e639453d88df97944e38615c0fd3d915f9d5b5d55ff31b7d904190fe29815",
+		"zh-CN": "8fee970897063f74adc2d5fc607d9af467a5fd987e86b823d37dcf52cffaf094"
+	},
+	"context_sha256": {
+		"en": "a5900f51a78f140385379185c82267cbc36746685ccae8b73e5a2f117fcb8b60",
+		"zh-CN": "a5900f51a78f140385379185c82267cbc36746685ccae8b73e5a2f117fcb8b60"
+	},
+	"findings": [],
+	"date": "2026-11-09",
+	"scope": "every key of ui.agents.proposals for zh-CN at these bytes (31 keys): round-1 full read on fb545f9 plus round-2 delta (fields, title_create, new_group, new_row, hide_unchanged; plural arms; ur nav term; key-specific contexts) on the frozen uncommitted tree",
+	"checks": "key parity with en; ICU parse of all 352 messages (8 locales x 2 namespaces) with @formatjs/icu-messageformat-parser, argument names equal to en, CLDR plural categories complete (ru one/few/many/other; hi/ur/fr/es one/other); no bidi controls; no value equal to en; ur/hi/others use ui.shell.sidebar_navigation.agents term",
+	"independence": "reviewer agent session 34629dafe61f (lopdev team); not the translator or coder; served model anthropic/claude-opus-5-5, no fallback",
+	"provenance": {
+		"round1_review": "https://github.com/damianvtran/local-operator-ui/pull/1828#issuecomment-6754498321",
+		"resolved_round1_findings": [
+			"I1",
+			"I2",
+			"I3",
+			"I4",
+			"I5"
+		]
+	}
+}

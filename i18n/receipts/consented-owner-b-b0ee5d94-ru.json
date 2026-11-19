@@ -1,0 +1,55 @@
+{
+	"auditor": "translation-auditor",
+	"auditor_model": "radient/auto",
+	"model": "radient/auto",
+	"instance": "consented-owner-b-b0ee5d94-ru",
+	"namespace": "ui.teamBridge",
+	"locale": "ru",
+	"key": "ui.teamBridge.events.consented_owner",
+	"date": "2026-10-30",
+	"session": "8cf6d0aaac7b",
+	"status": "changes_requested",
+	"sha256": {
+		"en": "4042a918bc64406c4c24ad5ea68fe3c3f3aaa7228917bc1678547cfb0c20285c",
+		"ru": "b0ee5d947dfbc0c5bd0f4a57aef63dd6fcd9a63e2d53afa90389842dd3e03c2c"
+	},
+	"findings": [
+		{
+			"severity": "major",
+			"id": "CO-B1",
+			"key": "ui.teamBridge.events.consented_owner",
+			"current": "{actor}: одобрено присоединение собственного агента — {targets}",
+			"proposed": "(this locale's string unchanged) — pin the renderer: teamBridgeEventOwnerConsent returns true only when line.targets.length === 1, so a rolled-up consent keeps ui.teamBridge.events.consented, which reads correctly with a list here",
+			"detail": "A consent roll-up (two records sharing one request_id — the grouping key team-bridge-member-events-model.ts:144-156 groups on) produces one line with two targets, and the owner arm renders the possessive singular over the pair: « Sana Ketabchi: одобрено присоединение собственного агента — Aida (Sana Ketabchi) и Scout (Sana Ketabchi) » — singular genitive « агента » with two names after the dash. English has the same defect (\"their agent A and B\"), so this is not a translation error: the sentence's grammatical number depends on a cardinality nothing enforces, and the en sidecar's \"always exactly one name for this key\" is that unenforced assumption. « собственных агентов » is the plural genitive, but it cannot be selected from a pre-joined string; the cardinality guard is the fix. Reachability: the UI merges these events itself; whether the hub emits two consent records under one request_id is unverified (the server is not deployed and no corpus is readable here)."
+		},
+		{
+			"severity": "minor",
+			"id": "CO-B2",
+			"key": "teamBridgeEventOwnerConsent (src/renderer/src/features/team-bridge/team-bridge-member-events-model.ts:191)",
+			"current": "return line.targets.every((target) => target.kind === \"agent\" && target.account_id === line.actor.account_id);",
+			"proposed": "if (line.actor.kind !== \"human\") return false;  /* before the every() test; the cardinality guard is CO-B1 */",
+			"detail": "The predicate compares account ids but never the actor's kind. An agent party carries its OWNER's account_id (the contract's own statement, restated in the model's docstring), so a consent whose actor is an agent on the same account takes the owner arm and the sentence claims a relation an agent cannot have. Executed: actor = agent \"Aida (Sana Ketabchi)\", target = agent \"Scout (Sana Ketabchi)\" renders Aida (Sana Ketabchi): одобрено присоединение собственного агента — Scout (Sana Ketabchi) — for this locale the self-approval reading the audit was asked about becomes possible only through this hole, never through the wording. Minor: no readable corpus proves the hub records an agent as the consenting actor; the guard costs one line and makes the predicate match its own docstring (\"the actor owns the target\")."
+		},
+		{
+			"severity": "minor",
+			"id": "CO-B3",
+			"key": "ui.teamBridge.events.consented (en sidecar entry, unchanged by this branch)",
+			"current": "role: \"timeline system line: an agent's owner approved the agent joining\"; note: \"The owner gave consent for their agent to join this conversation. Reads 'X approved Y joining'.\"",
+			"proposed": "role: \"timeline system line: a consent the owner arm does not claim (the actor is not the sole owner of every target)\"; note: \"Reads 'X approved Y joining'. Claims no relation between actor and target (design round 1, D1); the owner's own act reads through ui.teamBridge.events.consented_owner.\"",
+			"detail": "The sibling now renders whenever the owner arm's predicate is false — the non-owner case, a mixed group, and (once CO-B1 is fixed) any multi-target group — so its sidecar still tells the next translator the key is the owner's line and invites a possessive into the arm that is designed to claim no relation. This locale's sibling value (Sana Ketabchi: одобрено присоединение — Aida (Sana Ketabchi)) already claims none; only the English context is stale."
+		},
+		{
+			"severity": "nit",
+			"id": "CO-B4",
+			"key": "ui.teamBridge.events.consented_owner",
+			"current": "{actor}: одобрено присоединение собственного агента — {targets}",
+			"proposed": "(unchanged) — flag for a rendered check at the timeline column's narrowest supported width",
+			"detail": "At one target with the shipped fixture labels this is the longest line in the ui.teamBridge.events namespace for this locale: 80 cells against 68 for the previous longest (ui.teamBridge.events.owner_added_agent), i.e. 12 cells over the namespace's previous maximum and 27% over English's 63. The line is rendered in a min-w-0 truncate span (team-bridge-member-events.tsx:143-147), so it ellipsises rather than wraps, and the Tooltip that carries the full list exists only when more than TEAM_BRIDGE_EVENT_NAMES_SHOWN names are truncated — an ellipsised two-name line would hide a name with no affordance. No copy change proposed: every shorter phrasing either drops the \"own agent\" relation the key exists for or breaks the possessive device already audited in ui.teamBridge.events.owner_added_agent."
+		}
+	],
+	"scope": "Auditor B on the one key this branch adds to ui.teamBridge (ui.teamBridge.events.consented_owner) and its en sidecar entry, in ru; the other 297 keys of the namespace are byte-identical to the base (verified: the commit adds one key per file and changes no other value) and are not re-audited here.",
+	"note": "Consented-owner delta audit, auditor B (session 8cf6d0aaac7b, radient/auto). 1 major / 2 minor / 1 nit. Evidence: i18n/audits/evidence/ru/ui.teamBridge/consented-owner-audit-b-20261030-ru/record.json",
+	"branch": "fix/team-bridge-member-events",
+	"head": "9d19fc6d58e9cfe78577316e505a0799b87e5550",
+	"independence": "Auditor B did not author any audited string: the translations were produced by the translator role in a separate session, and auditor B read the catalogue bytes, the English source, the en sidecar, the renderer and the glossary/style guide directly."
+}

@@ -1,0 +1,396 @@
+# audit.log — s16f-au3-ur
+# locale ur · namespace ui.chat.canonical · PR damianvtran/local-operator-ui#1876
+# auditor i18n-auditor · session a870ddd68b99 · model deepseek/deepseek-flash (harness session header; no fallback signalled)
+# date 2026-11-12T10:40:06Z
+# host Darwin 27.2.0 · node v24.22.1 · python Python 3.14.7 · fribidi (GNU FriBidi) 1.0.16
+# worktree /Users/damian/local-operator-ui/.worktrees/i18n-s16a (read-only for this auditor: no edit, commit, checkout or install)
+# NOTE: this is an execution log, not notes. The prose findings live in report.md.
+
+## HEAD and tree state
+$ git rev-parse HEAD
+8180eff1f705eb79d4df5123d6108c539b585b2e
+
+## worktree status (must be empty)
+$ git status --porcelain
+
+## input hashes
+$ shasum -a 256 <en catalogue> <en context> <ur catalogue>
+905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e  src/i18n/catalogues/en/ui.chat.canonical.json
+8f56e0d2b384c6b41add57a64e6c863e565cb61d5a7c0de482d42f380be3acfe  src/i18n/catalogues/en/ui.chat.canonical.context.json
+fd1116ccb5e847eb7f28c4cf5d1084efad95edf52d638d1a6144e065ce7d98a7  src/i18n/catalogues/ur/ui.chat.canonical.json
+
+## repo validator: locale parity over every shipped locale
+$ env -u CMUX_SESSION_ID -u CMUX_TAB_ID node --test scripts/i18n/locale-parity.test.mjs
+✔ the English source is non-empty (the guard would pass vacuously otherwise) (1.084084ms)
+✔ [es] ships at least one message (not an empty claim) (38.093292ms)
+✔ [es] defines each key in at most one namespace file (37.47375ms)
+✔ [es] carries EVERY key of each namespace file it ships (61.709166ms)
+✔ [es] names only keys the English source defines (50.339625ms)
+✔ [es] preserves every ICU placeholder from the English source (152.603292ms)
+✔ [es] is not an English stub (no value identical to the source) (45.7725ms)
+✔ [fr] ships at least one message (not an empty claim) (90.231042ms)
+✔ [fr] defines each key in at most one namespace file (64.487792ms)
+✔ [fr] carries EVERY key of each namespace file it ships (127.058333ms)
+✔ [fr] names only keys the English source defines (46.938125ms)
+✔ [fr] preserves every ICU placeholder from the English source (71.406833ms)
+✔ [fr] is not an English stub (no value identical to the source) (43.063209ms)
+✔ [hi] ships at least one message (not an empty claim) (93.097292ms)
+✔ [hi] defines each key in at most one namespace file (68.270083ms)
+✔ [hi] carries EVERY key of each namespace file it ships (98.770292ms)
+✔ [hi] names only keys the English source defines (38.34425ms)
+✔ [hi] preserves every ICU placeholder from the English source (78.69825ms)
+✔ [hi] is not an English stub (no value identical to the source) (46.931167ms)
+✔ [ru] ships at least one message (not an empty claim) (73.910125ms)
+✔ [ru] defines each key in at most one namespace file (47.940417ms)
+✔ [ru] carries EVERY key of each namespace file it ships (69.092333ms)
+✔ [ru] names only keys the English source defines (27.579166ms)
+✔ [ru] preserves every ICU placeholder from the English source (81.437542ms)
+✔ [ru] is not an English stub (no value identical to the source) (16.9785ms)
+✔ [ur] ships at least one message (not an empty claim) (60.99575ms)
+✔ [ur] defines each key in at most one namespace file (30.276583ms)
+✔ [ur] carries EVERY key of each namespace file it ships (53.694375ms)
+✔ [ur] names only keys the English source defines (22.118542ms)
+✔ [ur] preserves every ICU placeholder from the English source (54.062792ms)
+✔ [ur] is not an English stub (no value identical to the source) (24.580375ms)
+✔ [vi] ships at least one message (not an empty claim) (52.120667ms)
+✔ [vi] defines each key in at most one namespace file (28.969458ms)
+✔ [vi] carries EVERY key of each namespace file it ships (29.771542ms)
+✔ [vi] names only keys the English source defines (12.484167ms)
+✔ [vi] preserves every ICU placeholder from the English source (50.991875ms)
+✔ [vi] is not an English stub (no value identical to the source) (34.00825ms)
+✔ [zh-CN] ships at least one message (not an empty claim) (45.687375ms)
+✔ [zh-CN] defines each key in at most one namespace file (22.413875ms)
+✔ [zh-CN] carries EVERY key of each namespace file it ships (41.54525ms)
+✔ [zh-CN] names only keys the English source defines (17.645916ms)
+✔ [zh-CN] preserves every ICU placeholder from the English source (29.319959ms)
+✔ [zh-CN] is not an English stub (no value identical to the source) (11.041792ms)
+✔ a locale-scoped identical-value exemption does not exempt another locale (0.134375ms)
+ℹ tests 44
+ℹ suites 0
+ℹ pass 44
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2378.603833
+
+## integrity: merged ur file vs origin/main and vs pre-merge 107ff1dd
+$ python3 /Users/damian/.local-operator/scratchpad/s16f-au3-ur/integrity.py
+keys: disk=467 origin/main=457 premerge=466
+union check: 457 (main) + 10 (PR) = 467: True
+only in disk vs main: ['ui.chat.canonical.media.image_label', 'ui.chat.canonical.media.sound_label', 'ui.chat.canonical.sound.batch.item_status', 'ui.chat.canonical.sound.batch.latest_update', 'ui.chat.canonical.sound.batch.summary', 'ui.chat.canonical.sound.cost.batch_unknown', 'ui.chat.canonical.sound.cost.estimated_zero', 'ui.chat.canonical.sound.cost.no_charge', 'ui.chat.canonical.sound.cost.unknown', 'ui.chat.canonical.supplement.sound_fallback_label']
+only in main vs disk: []
+
+keys whose value differs from origin/main: 0
+PR-added keys whose disk value != premerge 107ff1dd: 0 []
+main-added 5 present and equal to origin/main: True
+main's deleted keys absent from disk: True
+PR key set == disk keys not in main: True
+
+unchanged-elsewhere count: 452 keys; all byte-identical to origin/main: True
+sha256 ur: fd1116ccb5e847eb7f28c4cf5d1084efad95edf52d638d1a6144e065ce7d98a7
+sha256 en: 905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e
+sha256 context: 8f56e0d2b384c6b41add57a64e6c863e565cb61d5a7c0de482d42f380be3acfe
+
+## mechanical: ICU AST vs English source (15 keys)
+$ env -u CMUX_SESSION_ID -u CMUX_TAB_ID node /Users/damian/.local-operator/scratchpad/s16f-au3-ur/check-icu.mjs
+ur CLDR plural categories: one,other
+PASS loading.cold args[en=- ur=-] plurals[en=- ur=-] selects[en=- ur=-] branches ur=- badCategories=none otherPresent=true tags[en=- ur=-]
+PASS loading.older args[en=- ur=-] plurals[en=- ur=-] selects[en=- ur=-] branches ur=- badCategories=none otherPresent=true tags[en=- ur=-]
+PASS loading.region_label args[en=- ur=-] plurals[en=- ur=-] selects[en=- ur=-] branches ur=- badCategories=none otherPresent=true tags[en=- ur=-]
+PASS loading.remote args[en=- ur=-] plurals[en=- ur=-] selects[en=- ur=-] branches ur=- badCategories=none otherPresent=true tags[en=- ur=-]
+PASS loading.revalidating args[en=- ur=-] plurals[en=- ur=-] selects[en=- ur=-] branches ur=- badCategories=none otherPresent=true tags[en=- ur=-]
+PASS media.image_label args[en=position:number ur=position:number] plurals[en=count:cardinal ur=count:cardinal] selects[en=- ur=-] branches ur=count=>[=1|other] badCategories=none otherPresent=true tags[en=- ur=-]
+PASS media.sound_label args[en=position:number ur=position:number] plurals[en=count:cardinal ur=count:cardinal] selects[en=- ur=-] branches ur=count=>[=1|other] badCategories=none otherPresent=true tags[en=- ur=-]
+PASS sound.batch.item_status args[en=label:arg,label:arg,label:arg ur=label:arg,label:arg,label:arg] plurals[en=- ur=-] selects[en=status ur=status] branches ur=status=>[failed|cancelled|other] badCategories=none otherPresent=true tags[en=- ur=-]
+PASS sound.batch.latest_update args[en=name:arg,item:number,total:number ur=name:arg,item:number,total:number] plurals[en=- ur=-] selects[en=- ur=-] branches ur=- badCategories=none otherPresent=true tags[en=- ur=-]
+PASS sound.batch.summary args[en=completed:number,completed:number,failed:number,failed:number,cancelled:number,cancelled:number,unknown:number,unknown:number,labels:arg ur=completed:number,completed:number,failed:number,failed:number,cancelled:number,cancelled:number,unknown:number,unknown:number,labels:arg] plurals[en=completed:cardinal,failed:cardinal,cancelled:cardinal,unknown:cardinal ur=completed:cardinal,failed:cardinal,cancelled:cardinal,unknown:cardinal] selects[en=has_attention ur=has_attention] branches ur=completed=>[one|other] failed=>[one|other] cancelled=>[=0|one|other] unknown=>[=0|one|other] has_attention=>[yes|other] badCategories=none otherPresent=true tags[en=- ur=-]
+PASS sound.cost.batch_unknown args[en=- ur=-] plurals[en=- ur=-] selects[en=- ur=-] branches ur=- badCategories=none otherPresent=true tags[en=- ur=-]
+PASS sound.cost.estimated_zero args[en=- ur=-] plurals[en=- ur=-] selects[en=- ur=-] branches ur=- badCategories=none otherPresent=true tags[en=- ur=-]
+PASS sound.cost.no_charge args[en=- ur=-] plurals[en=- ur=-] selects[en=- ur=-] branches ur=- badCategories=none otherPresent=true tags[en=- ur=-]
+PASS sound.cost.unknown args[en=- ur=-] plurals[en=- ur=-] selects[en=- ur=-] branches ur=- badCategories=none otherPresent=true tags[en=- ur=-]
+PASS supplement.sound_fallback_label args[en=- ur=-] plurals[en=- ur=-] selects[en=- ur=-] branches ur=- badCategories=none otherPresent=true tags[en=- ur=-]
+
+15/15 keys structurally identical to source; failures=0
+surface scan: backticks/angle-tags/bidi-controls/arabic-only signs checked for all 15
+
+## negative control: mutants must be flagged, real values must not
+$ env -u CMUX_SESSION_ID -u CMUX_TAB_ID node /Users/damian/.local-operator/scratchpad/s16f-au3-ur/check-mutants.mjs
+FLAGGED latest_update: dropped {total} -> structural=true punctuation=false
+FLAGGED summary: dropped has_attention other arm -> structural=true punctuation=false
+FLAGGED summary: plural arm renamed to `few` (not an ur CLDR category) -> structural=true punctuation=false
+FLAGGED item_status: dropped cancelled branch -> structural=true punctuation=false
+FLAGGED media.image_label: {count} renamed to {n} -> structural=true punctuation=false
+FLAGGED estimated_zero: Hindi danda injected -> structural=false punctuation=true
+FLAGGED no_charge: manual RLM injected -> structural=false punctuation=true
+
+negative control: 7/7 mutants flagged
+unmutated scope keys passing the same rules: 15/15
+
+## typography + width table
+$ python3 /Users/damian/.local-operator/scratchpad/s16f-au3-ur/typography.py
+key                                  en   ur  nfc  danda  bidi  ascii-sentence  latin-period
+loading.cold                         21   20  True  False False []              False
+loading.older                        25   29  True  False False []              False
+loading.region_label                 20   19  True  False False []              False
+loading.remote                       31   41  True  False False []              False
+loading.revalidating                 26   30  True  False False []              False
+media.image_label                    73   73  True  False False []              False
+media.sound_label                    73   71  True  False False []              False
+sound.batch.item_status             106  101  True  False False []              False
+sound.batch.latest_update            89   92  True  False False []              False
+sound.batch.summary                 579  534  True  False False []              False
+sound.cost.batch_unknown             25   28  True  False False []              False
+sound.cost.estimated_zero            46   49  True  False False []              False
+sound.cost.no_charge                 10   15  True  False False []              False
+sound.cost.unknown                   19   21  True  False False []              False
+supplement.sound_fallback_label      15   14  True  False False []              False
+
+punctuation characters used across the 15 values: ((U+0028) )(U+0029) ,(U+002C) -(U+002D) :(U+003A) _(U+005F) {(U+007B) }(U+007D) ·(U+00B7) ؛(U+061B) ۔(U+06D4) …(U+2026)
+
+## RTL evidence — GNU FriBidi 1.0.16 on the runtime's own isolation
+# logical string -> --rtl visual order; --levels is the resolved embedding level
+$ printf '<logical>' | fribidi --rtl --nopad
+
+## estimated_zero
+$ python3 /Users/damian/.local-operator/scratchpad/s16f-au3-ur/bidi-evidence.py
+
+## loading.cold
+logical : 'گفتگو لوڈ ہو رہی ہے…'
+visual  : '…ﮯﮨ ﯽﮨﺭ ﻮﮨ ﮈﻮﻟ ﻮﮕﺘﻔﮔ'
+
+## loading.older
+logical : 'پچھلے پیغامات لوڈ ہو رہے ہیں…'
+visual  : '…ﮟﯿﮨ ﮯﮨﺭ ﻮﮨ ﮈﻮﻟ ﺕﺎﻣﺎﻐﯿﭘ ﮯﻠﮭﭽﭘ'
+
+## loading.region_label
+logical : 'گفتگو لوڈ ہو رہی ہے'
+visual  : 'ﮯﮨ ﯽﮨﺭ ﻮﮨ ﮈﻮﻟ ﻮﮕﺘﻔﮔ'
+
+## loading.remote
+logical : 'آپ کی دوسری ڈیوائس سے ہم آہنگی ہو رہی ہے…'
+visual  : '…ﮯﮨ ﯽﮨﺭ ﻮﮨ ﯽﮕﻨﮨﺁ ﻢﮨ ﮯﺳ ﺲﺋﺍﻮﯾﮈ ﯼﺮﺳﻭﺩ ﯽﮐ ﭖﺁ'
+
+## loading.revalidating
+logical : 'نئے پیغامات کی جانچ ہو رہی ہے…'
+visual  : '…ﮯﮨ ﯽﮨﺭ ﻮﮨ ﭻﻧﺎﺟ ﯽﮐ ﺕﺎﻣﺎﻐﯿﭘ ﮯﺌﻧ'
+
+## media.image_label (lone)
+logical : 'تصویر'
+visual  : 'ﺮﯾﻮﺼﺗ'
+
+## media.image_label (position 2)
+logical : 'تصویر 2'
+visual  : '2 ﺮﯾﻮﺼﺗ'
+
+## media.sound_label (lone)
+logical : 'آواز'
+visual  : 'ﺯﺍﻭﺁ'
+
+## media.sound_label (position 2)
+logical : 'آواز 2'
+visual  : '2 ﺯﺍﻭﺁ'
+
+## sound.batch.item_status [failed]
+logical : '\u2068track_01\u2069 · ناکام'
+visual  : 'ﻡﺎﮐﺎﻧ · \u2069track_01\u2068'
+
+## sound.batch.item_status [cancelled]
+logical : '\u2068track_01\u2069 · منسوخ'
+visual  : 'ﺥﻮﺴﻨﻣ · \u2069track_01\u2068'
+
+## sound.batch.item_status [other]
+logical : '\u2068track_01\u2069 · حالت نامعلوم'
+visual  : 'ﻡﻮﻠﻌﻣﺎﻧ ﺖﻟﺎﺣ · \u2069track_01\u2068'
+
+## sound.batch.latest_update
+logical : 'تازہ ترین اپ ڈیٹ: \u2068track_01\u2069 (آئٹم 3 از 10)۔'
+visual  : '۔(10 ﺯﺍ 3 ﻢﭩﺋﺁ) \u2069track_01\u2068 :ﭧﯾﮈ ﭖﺍ ﻦﯾﺮﺗ ﮦﺯﺎﺗ'
+  order '3' before '10': False (pos 8 / 2)
+
+## sound.batch.summary
+logical : '2 مکمل · 1 ناکام · 1 منسوخ · 1 حالت نامعلوم۔ توجہ درکار: \u2068track_01؛ track_02\u2069'
+visual  : '\u2069track_01؛ track_02\u2068 :ﺭﺎﮐﺭﺩ ﮧﺟﻮﺗ ۔ﻡﻮﻠﻌﻣﺎﻧ ﺖﻟﺎﺣ 1 · ﺥﻮﺴﻨﻣ 1 · ﻡﺎﮐﺎﻧ 1 · ﻞﻤﮑﻣ 2'
+  order 'توجہ' before 'track_01': False (pos -1 / 1)
+
+## sound.cost.batch_unknown
+logical : 'مجموعی لاگت ابھی معلوم نہیں۔'
+visual  : '۔ﮟﯿﮩﻧ ﻡﻮﻠﻌﻣ ﯽﮭﺑﺍ ﺖﮔﻻ\ufeff ﯽﻋﻮﻤﺠﻣ'
+
+## sound.cost.estimated_zero
+logical : 'تخمینہ شدہ لاگت $0؛ حتمی چارج کی تصدیق نہیں ہوئی۔'
+visual  : '۔ﯽﺋﻮﮨ ﮟﯿﮩﻧ ﻖﯾﺪﺼﺗ ﯽﮐ ﺝﺭﺎﭼ ﯽﻤﺘﺣ ؛0$ ﺖﮔﻻ\ufeff ﮦﺪﺷ ﮧﻨﯿﻤﺨﺗ'
+  order '$' before '0': False (pos 32 / 31)
+  order '0' before '؛': False (pos 31 / 30)
+  order '؛' before 'حتمی': False (pos 30 / -1)
+
+## sound.cost.no_charge
+logical : 'کوئی چارج نہیں۔'
+visual  : '۔ﮟﯿﮩﻧ ﺝﺭﺎﭼ ﯽﺋﻮﮐ'
+
+## sound.cost.unknown
+logical : 'لاگت ابھی معلوم نہیں۔'
+visual  : '۔ﮟﯿﮩﻧ ﻡﻮﻠﻌﻣ ﯽﮭﺑﺍ ﺖﮔﻻ\ufeff'
+
+## supplement.sound_fallback_label
+logical : 'تیار کردہ آواز'
+visual  : 'ﺯﺍﻭﺁ ﮦﺩﺮﮐ ﺭﺎﯿﺗ'
+
+## widths (len() = cells for Arabic-script values; no FSI/PDI in catalogue bytes)
+  loading.cold: 20 chars
+  loading.older: 29 chars
+  loading.region_label: 19 chars
+  loading.remote: 41 chars
+  loading.revalidating: 30 chars
+  media.image_label: 73 chars
+  media.sound_label: 71 chars
+  sound.batch.item_status: 101 chars
+  sound.batch.latest_update: 92 chars
+  sound.cost.batch_unknown: 28 chars
+  sound.cost.estimated_zero: 49 chars
+  sound.cost.no_charge: 15 chars
+  sound.cost.unknown: 21 chars
+  supplement.sound_fallback_label: 14 chars
+
+# [appended section follows]
+
+## SUPERSEDED — corrected RTL assertion set (authoritative)
+# The earlier bidi block in this log printed naive "order a before b" lines that were
+# directionally wrong for an RTL line (and carried the mislabel '## estimated_zero').
+# They are kept for the trail and are NOT used as evidence. What follows is the
+# corrected script, run in full: reading order in an RTL line runs right-to-left, so a
+# token read earlier sits at a HIGHER visual index.
+$ python3 /Users/damian/.local-operator/scratchpad/s16f-au3-ur/bidi-evidence.py
+
+## loading.cold
+logical : 'گفتگو لوڈ ہو رہی ہے…'
+visual  : '…ﮯﮨ ﯽﮨﺭ ﻮﮨ ﮈﻮﻟ ﻮﮕﺘﻔﮔ'
+  PASS loading.cold: ellipsis preserved, at the visual left: starts '…'
+  PASS loading.cold has no LTR island: every letter is Arabic-script
+
+## loading.older
+logical : 'پچھلے پیغامات لوڈ ہو رہے ہیں…'
+visual  : '…ﮟﯿﮨ ﮯﮨﺭ ﻮﮨ ﮈﻮﻟ ﺕﺎﻣﺎﻐﯿﭘ ﮯﻠﮭﭽﭘ'
+  PASS loading.older: ellipsis preserved, at the visual left: starts '…'
+  PASS loading.older has no LTR island: every letter is Arabic-script
+
+## loading.region_label
+logical : 'گفتگو لوڈ ہو رہی ہے'
+visual  : 'ﮯﮨ ﯽﮨﺭ ﻮﮨ ﮈﻮﻟ ﻮﮕﺘﻔﮔ'
+  PASS loading.region_label: no ellipsis; visual form starts 'ﮯ'
+  PASS loading.region_label has no LTR island: every letter is Arabic-script
+
+## loading.remote
+logical : 'آپ کی دوسری ڈیوائس سے ہم آہنگی ہو رہی ہے…'
+visual  : '…ﮯﮨ ﯽﮨﺭ ﻮﮨ ﯽﮕﻨﮨﺁ ﻢﮨ ﮯﺳ ﺲﺋﺍﻮﯾﮈ ﯼﺮﺳﻭﺩ ﯽﮐ ﭖﺁ'
+  PASS loading.remote: ellipsis preserved, at the visual left: starts '…'
+  PASS loading.remote has no LTR island: every letter is Arabic-script
+
+## loading.revalidating
+logical : 'نئے پیغامات کی جانچ ہو رہی ہے…'
+visual  : '…ﮯﮨ ﯽﮨﺭ ﻮﮨ ﭻﻧﺎﺟ ﯽﮐ ﺕﺎﻣﺎﻐﯿﭘ ﮯﺌﻧ'
+  PASS loading.revalidating: ellipsis preserved, at the visual left: starts '…'
+  PASS loading.revalidating has no LTR island: every letter is Arabic-script
+
+## media.image_label (count=1)
+logical : 'تصویر'
+visual  : 'ﺮﯾﻮﺼﺗ'
+
+## media.image_label (position 2 of 3)
+logical : 'تصویر 2'
+visual  : '2 ﺮﯾﻮﺼﺗ'
+  PASS media.image_label: the lone form carries no number
+  PASS media.image_label numeral placement: visual form starts with the digit: '2 ' -> reads '<noun> 2'
+
+## media.sound_label (count=1)
+logical : 'آواز'
+visual  : 'ﺯﺍﻭﺁ'
+
+## media.sound_label (position 2 of 3)
+logical : 'آواز 2'
+visual  : '2 ﺯﺍﻭﺁ'
+  PASS media.sound_label: the lone form carries no number
+  PASS media.sound_label numeral placement: visual form starts with the digit: '2 ' -> reads '<noun> 2'
+
+## sound.batch.item_status [failed]
+logical : '\u2068track_01\u2069 · ناکام'
+visual  : 'ﻡﺎﮐﺎﻧ · \u2069track_01\u2068'
+  PASS item_status [failed] name is one LTR island: the name keeps its own order and is not reordered into the state word
+  PASS item_status [failed] name read first: the name sits right of the separator, so it is read before the state
+
+## sound.batch.item_status [cancelled]
+logical : '\u2068track_01\u2069 · منسوخ'
+visual  : 'ﺥﻮﺴﻨﻣ · \u2069track_01\u2068'
+  PASS item_status [cancelled] name is one LTR island: the name keeps its own order and is not reordered into the state word
+  PASS item_status [cancelled] name read first: the name sits right of the separator, so it is read before the state
+
+## sound.batch.item_status [other]
+logical : '\u2068track_01\u2069 · حالت نامعلوم'
+visual  : 'ﻡﻮﻠﻌﻣﺎﻧ ﺖﻟﺎﺣ · \u2069track_01\u2068'
+  PASS item_status [other] name is one LTR island: the name keeps its own order and is not reordered into the state word
+  PASS item_status [other] name read first: the name sits right of the separator, so it is read before the state
+
+## sound.batch.latest_update
+logical : 'تازہ ترین اپ ڈیٹ: \u2068track_01\u2069 (آئٹم 3 از 10)۔'
+visual  : '۔(10 ﺯﺍ 3 ﻢﭩﺋﺁ) \u2069track_01\u2068 :ﭧﯾﮈ ﭖﺍ ﻦﯾﺮﺗ ﮦﺯﺎﺗ'
+  PASS latest_update numbers read item-then-total: visual index 3=8 > 10=2 -> reads '3 از 10'
+  PASS latest_update sentence ends with the Urdu full stop at the visual left: visual form starts '۔'
+  PASS latest_update parentheses mirror correctly: one pair of brackets around the positional clause
+
+## sound.batch.summary
+logical : '2 مکمل · 1 ناکام · 1 منسوخ · 1 حالت نامعلوم۔ توجہ درکار: \u2068track_01؛ track_02\u2069'
+visual  : '\u2069track_01؛ track_02\u2068 :ﺭﺎﮐﺭﺩ ﮧﺟﻮﺗ ۔ﻡﻮﻠﻌﻣﺎﻧ ﺖﻟﺎﺣ 1 · ﺥﻮﺴﻨﻣ 1 · ﻡﺎﮐﺎﻧ 1 · ﻞﻤﮑﻣ 2'
+  PASS summary reads counts first, attention list last: the names are the leftmost run, so they are read after the counts
+  PASS summary: both names inside one island: the joined label list is not split or reordered
+
+## sound.cost.batch_unknown
+logical : 'مجموعی لاگت ابھی معلوم نہیں۔'
+visual  : '۔ﮟﯿﮩﻧ ﻡﻮﻠﻌﻣ ﯽﮭﺑﺍ ﺖﮔﻻ\ufeff ﯽﻋﻮﻤﺠﻣ'
+
+## sound.cost.estimated_zero
+logical : 'تخمینہ شدہ لاگت $0؛ حتمی چارج کی تصدیق نہیں ہوئی۔'
+visual  : '۔ﯽﺋﻮﮨ ﮟﯿﮩﻧ ﻖﯾﺪﺼﺗ ﯽﮐ ﺝﺭﺎﭼ ﯽﻤﺘﺣ ؛0$ ﺖﮔﻻ\ufeff ﮦﺪﺷ ﮧﻨﯿﻤﺨﺗ'
+  PASS estimated_zero: dollar read before the zero: visual index $=32 > 0=31 -> reads '$0'
+  PASS estimated_zero: semicolon read after the amount: visual index 0=31 > ؛=30
+  PASS estimated_zero: resolved embedding levels: '$' level 1, '0' level 2 (UAX#9 W5 would put both at 2; FriBidi 1.0.16 puts the sign at the RTL level - reported as NIT-1, renderer question)
+
+## sound.cost.no_charge
+logical : 'کوئی چارج نہیں۔'
+visual  : '۔ﮟﯿﮩﻧ ﺝﺭﺎﭼ ﯽﺋﻮﮐ'
+
+## sound.cost.unknown
+logical : 'لاگت ابھی معلوم نہیں۔'
+visual  : '۔ﮟﯿﮩﻧ ﻡﻮﻠﻌﻣ ﯽﮭﺑﺍ ﺖﮔﻻ\ufeff'
+
+## supplement.sound_fallback_label
+logical : 'تیار کردہ آواز'
+visual  : 'ﺯﺍﻭﺁ ﮦﺩﺮﮐ ﺭﺎﯿﺗ'
+  PASS supplement label has no punctuation: starts 'ﺯ'
+
+29/29 RTL assertions pass; failures=[]
+
+## receipt self-check against the repo's own rules module
+# ledger-rules.mjs is the code ledger-assemble.mjs uses; this only READS the receipt
+# (no ledger row written, no repo file touched).
+$ node /Users/damian/.local-operator/scratchpad/s16f-au3-ur/validate-receipt.mjs
+derived audit entry: {
+ "agent": "i18n-auditor",
+ "instance": "1d764576d0aa-s16f-au3-ur",
+ "model": "deepseek/deepseek-flash",
+ "result": "clean-with-findings",
+ "findings": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 0,
+  "nit": 1
+ },
+ "source_sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
+ "target_sha256": "fd1116ccb5e847eb7f28c4cf5d1084efad95edf52d638d1a6144e065ce7d98a7",
+ "receipt_sha256": "e8fd11469cda736764fc3c5c2506f9e1251869bebdeee7e5e9399a76ee3850a2"
+}
+countFindings: {"counts":{"blocker":0,"major":0,"minor":0,"nit":1},"errors":[]}
+resultSupportedBy(receipt.status, counts) = clean-with-findings
+
+## worktree untouched by this auditor
+$ git status --porcelain
+(empty output = no change)

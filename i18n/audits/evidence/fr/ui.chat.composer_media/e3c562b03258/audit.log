@@ -1,0 +1,145 @@
+AUDIT LOG — fr, delta tag ds — PR damianvtran/local-operator-ui #1842
+Auditor instance/session: e3c562b03258
+Served model (session header): deepseek/deepseek-flash
+Independent from translator session: yes (fr translator session 2ddc9a08181b, not this one)
+Date: 2026-11-10
+
+SCOPE
+4 new keys, 3 namespaces:
+  ui.chat.composer_media.pasted_image = "Image collée"
+  ui.chat.image_actions.actions = "Actions sur l’image"
+  ui.chat.audio.position_label = "Position de {label}"
+  ui.common.actions.actions_for_name = "Actions sur {name}"
+Plus the English broadened-scope sentence of ui.chat.composer_media.pasted_file's context note.
+Legacy values in the three namespaces (267 non-delta keys) were NOT certified; only JSON
+validity, key-set parity and cross-file term consistency were checked for them.
+
+=== WHAT I ACTUALLY RAN (commands, with their real output) ===
+
+1. Head and cleanliness of the read-only worktree
+   $ cd ~/local-operator-ui/.worktrees/i18n-s8 && git rev-parse HEAD
+   e5fb4310dab638f9cf428779d62539ec039a8990
+   $ git status --porcelain
+   (empty)
+   Head matches the frozen head named in the brief; stopped-condition not triggered.
+
+2. Catalogue hashes, byte-for-byte against the manager's expected-hashes.json
+   $ for ns in ui.chat ui.chat.composer_media ui.common.actions; do for l in en fr; do
+       shasum -a 256 src/i18n/catalogues/$l/$ns.json; done;
+       shasum -a 256 src/i18n/catalogues/en/$ns.context.json; done
+   en/ui.chat              ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15  OK
+   fr/ui.chat              b524ab1132756d282986a666f82c25465a26dae0aa85ff77fe696812d0d08c96  OK
+   en/ui.chat.context      84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf  OK
+   en/ui.chat.composer_media        79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae  OK
+   fr/ui.chat.composer_media        4c2fcaf7d6bf9a3adc63c32126e1834e775e837b426b684a1edf2236621cb198  OK
+   en/ui.chat.composer_media.context a0fbc1552ef6f27999f3cff365750025627a284faa106d767e22a24d131ae77b  OK
+   en/ui.common.actions     0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b  OK
+   fr/ui.common.actions     1f375db06df660163bdf5fa126e9ef0f94ff25ba64ed209be872ab04353f3e42  OK
+   en/ui.common.actions.context 24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d  OK
+   0 mismatches. (The 12 other-locale entries in expected-hashes.json belong to the
+   other s12 auditors; this locale's 9 are the ones verified here.)
+
+3. Policy inputs
+   $ shasum -a 256 ~/local-operator/i18n/style-guides/fr.md
+   ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226
+   $ shasum -a 256 <_s12-audits glossary copy> <~/local-operator/i18n/glossary.md>
+   0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8  (copy)
+   0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8  (original)
+   Identical, 173 lines. Glossary conformance in this audit was checked against the
+   manager-owned copy, as instructed by the manager's note.
+
+4. Repo validators (read-only modes only; no build, no install, no server, no repo file
+   touched — `git status --porcelain` was empty before and after)
+   $ node scripts/i18n/generate.mjs --check
+   src/i18n/keys.gen.ts is byte-identical to a fresh generation.        [exit 0]
+   $ node scripts/i18n/check-duplicates.mjs
+   check-duplicates: ok — 1400 file(s) scanned, 0 duplicate key(s)     [exit 0]
+   $ node scripts/i18n/context-parity.mjs
+   context-parity: ok — every English key is covered, apart from 131 allowed gap(s)
+   in 4 namespace(s) (shrink-only; see i18n/context-allowance.json).   [exit 0]
+   $ node scripts/i18n/ledger-check.mjs
+   FAILED — 64 finding(s) across 1085 ledger entr(ies)                 [exit 1]
+   Of those 64, 9 concern fr and are the expected pre-audit state for this PR's delta:
+     fr/ui.chat: stale source_sha256 (ledger 270fc752791e…, file ee4e2a9eeb84…) —
+       the English source moved since translation
+     fr/ui.chat: stale target_sha256 (ledger a1adfe329c0f…, file b524ab113275…) —
+       the translated file changed since it was audited
+     fr/ui.chat: auditor 1: the receipt does not name the English source bytes on
+       disk - it audited a different file
+     (the same three lines for fr/ui.chat.composer_media and fr/ui.common.actions)
+   I did NOT run any ledger write (no ledger-assemble, no --update): recording is the
+   manager's step. Nothing here is a translation defect; it is the ledger not yet
+   carrying this PR's new hashes.
+   I did NOT run scripts/i18n/check-strings.mjs or check-added-strings.mjs: both read
+   the TypeScript tree and the former can write its baseline (writeFileSync in --init /
+   --update paths); neither tests catalogue translation, and the brief forbids builds.
+
+5. Mechanical checks on the 4 keys (script: fr-ds-e3c562b03258-check.py, output kept as
+   fr-ds-e3c562b03258-check.out; the script writes nothing)
+   $ python3 <scratchpad>/fr-ds-e3c562b03258-check.py
+   worktree dirty: False
+   ui.chat: en=208 fr=208 keyset_equal=True order_equal=True context=202
+   ui.chat.composer_media: en=9 fr=9 keyset_equal=True order_equal=True context=9
+   ui.common.actions: en=54 fr=54 keyset_equal=True order_equal=True context=54
+   placeholders: {label} and {name} present once each in fr, byte-exact, equal to en;
+     no ICU plural/select in any of the four messages, none needed
+   invisible/format characters: none (no NBSP, U+202F, ZW*, bidi control, soft hyphen);
+     the only non-ASCII in the four values are U+00E9 (collée) and U+2019 (l’image),
+     the latter required by the fr guide's apostrophe rule
+   trailing punctuation: none in any of the four, matching the English
+   lengths: 12, 19, 19, 18 characters — no maxCells/maxChars hint is set for any of
+     the four (ctx maxCells = None for all four), and the composer_media sidecar's
+     20-cell budget belongs to pasted_file, not pasted_image
+   delta vs origin/main, all three files, both locales:
+     added = exactly the 4 audited keys; removed = none; changed = none
+     (git diff origin/main HEAD shows only trailing-comma rewrites on the reordered
+      last keys, verified by comparing parsed objects, not by reading the diff)
+
+6. Key-set delta check
+   $ git diff --numstat origin/main HEAD -- src/i18n/catalogues/
+   fr/: ui.chat 3+/1-, ui.chat.composer_media 2+/1-, ui.common.actions 2+/1- —
+   every deletion is the pre-existing last line re-emitted with a comma; no value
+   of an existing key changed in fr.
+
+7. Terminology cross-check (read, not run)
+   $ grep -n 'Actions' src/i18n/catalogues/fr/*.json
+   $ python3 - (locate each related key across the catalogue files and print en+fr)
+   Found the decisive contrast:
+     en "Actions for {name}"  -> fr "Actions pour {name}"  in 4 places
+       (ui.chat.canonical.link_toolkit.actions_for, ui.library.menu.asset_actions_label,
+        ui.settings.appearance.editor.more, ui.shell.sidebar_navigation.row_actions)
+     en "Actions for {displayName}" -> "Actions pour {displayName}"
+     en 'Actions for "{title}"'     -> 'Actions pour "{title}"'
+     en "File actions"  -> "Actions sur le fichier"   (generic, no inserted name)
+     en "Image actions" -> "Actions sur l’image"      (in ui.canvas, and now ui.chat)
+     en "Asset actions" -> "Actions sur l’élément"    (generic)
+   This is finding F1: the new actions_for_name diverges from the corpus's settled
+   rendering of the identical English sentence.
+
+8. English metadata check (read, not run)
+   Read src/renderer/src/features/chat/utils/get-file-name.ts (whole file) and
+   src/renderer/src/features/chat/utils/attachment-encode.ts (the attachment staging
+   loop) and, for context, src/renderer/src/features/chat/components/attachments-preview.tsx
+   (its own getFileName, ~lines 170-200, and the chip memo ~lines 480-510).
+   The broadened pasted_file sentence is accurate against both named files. Observed,
+   outside those two files and reported as an observation rather than a finding: the
+   composer chip strip's own getFileName still returns pasted_type ("Collé : {mimeType}")
+   for a MIME-bearing unnamed non-image data URI, so it is not the only rendering of
+   that input.
+
+=== WHAT I READ BUT DID NOT EXECUTE ===
+- ~/local-operator/i18n/style-guides/fr.md (read in full)
+- the manager-owned glossary copy (read; byte-identical to the original)
+- the three en context sidecars, the three en catalogues, the three fr catalogues
+- src/renderer/src/features/chat/utils/get-file-name.ts,
+  attachment-encode.ts, src/renderer/src/features/chat/components/attachments-preview.tsx
+- the model receipt/record pair _s10-audits/fd09d8f/fr-sol-e23a48ff2216.{json,record.json}
+No translation API, MT service or back-translation was used. No ICU runtime, no
+Electron/React render, no screen-reader session: every grammar/register judgment below
+is native-reader reasoning over the catalogue text, not runtime output.
+
+=== VERDICT ===
+ui.chat                       changes? no  -> passed, clean-with-findings (1 NIT: N1)
+ui.chat.composer_media        changes? no  -> passed, clean
+ui.common.actions             changes? yes -> changes_requested (1 MAJOR: F1)
+Overall: changes_requested (1 MAJOR, 0 BLOCKER, 0 MINOR, 1 NIT). Hashes: 9/9 OK.

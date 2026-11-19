@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 /**
  * Local Operator API - Agents Endpoints
  */
@@ -120,16 +121,13 @@ async function controlRefusal(
 	}
 	return new DesktopControlError(
 		response.status,
-		prose ?? `The request failed (HTTP ${response.status}).`,
+		prose ?? t("ui.common.errors.request_http", { status: response.status }),
 	);
 }
 
 /** The publication arm of `controlRefusal`, with this app's sentence for an old backend. */
 const publicationFailure = (response: Response) =>
-	controlRefusal(
-		response,
-		"This backend cannot publish instruction sets yet. Update the backend and try again.",
-	);
+	controlRefusal(response, t("ui.common.errors.publish_unsupported"));
 
 /**
  * The team arm of `controlRefusal`, with the local server's own remedy sentence.
@@ -141,10 +139,7 @@ const publicationFailure = (response: Response) =>
  * than once.
  */
 const teamFailure = (response: Response) =>
-	controlRefusal(
-		response,
-		"This backend cannot pull organization teams yet. Update the backend and try again.",
-	);
+	controlRefusal(response, t("ui.common.errors.teams_unsupported"));
 
 /**
  * Where a publication is meant to land (design §4.4/§8.4).
@@ -227,7 +222,10 @@ export const AgentsApi = {
 
 		if (!response.ok) {
 			throw new Error(
-				`List agents request failed: ${response.status} ${response.statusText}`,
+				t("ui.common.errors.agents_list", {
+					status: response.status,
+					statusText: response.statusText,
+				}),
 			);
 		}
 
@@ -256,7 +254,10 @@ export const AgentsApi = {
 
 		if (!response.ok) {
 			throw new Error(
-				`Create agent request failed: ${response.status} ${response.statusText}`,
+				t("ui.common.errors.agent_create", {
+					status: response.status,
+					statusText: response.statusText,
+				}),
 			);
 		}
 
@@ -282,7 +283,10 @@ export const AgentsApi = {
 
 		if (!response.ok) {
 			throw new Error(
-				`Get agent request failed: ${response.status} ${response.statusText}`,
+				t("ui.common.errors.agent_get", {
+					status: response.status,
+					statusText: response.statusText,
+				}),
 			);
 		}
 
@@ -311,7 +315,10 @@ export const AgentsApi = {
 
 		if (!response.ok) {
 			throw new Error(
-				`Update agent request failed: ${response.status} ${response.statusText}`,
+				t("ui.common.errors.agent_update_request", {
+					status: response.status,
+					statusText: response.statusText,
+				}),
 			);
 		}
 
@@ -334,7 +341,10 @@ export const AgentsApi = {
 
 		if (!response.ok) {
 			throw new Error(
-				`Delete agent request failed: ${response.status} ${response.statusText}`,
+				t("ui.common.errors.agent_delete_request", {
+					status: response.status,
+					statusText: response.statusText,
+				}),
 			);
 		}
 
@@ -374,7 +384,10 @@ export const AgentsApi = {
 			// it, and that is the fragile pattern this avoids repeating.
 			throw new DesktopControlError(
 				response.status,
-				`Get agent execution history request failed: ${response.status} ${response.statusText}`,
+				t("ui.common.errors.agent_history", {
+					status: response.status,
+					statusText: response.statusText,
+				}),
 			);
 		}
 
@@ -403,7 +416,10 @@ export const AgentsApi = {
 
 		if (!response.ok) {
 			throw new Error(
-				`Clear agent conversation request failed: ${response.status} ${response.statusText}`,
+				t("ui.common.errors.agent_clear", {
+					status: response.status,
+					statusText: response.statusText,
+				}),
 			);
 		}
 
@@ -430,7 +446,10 @@ export const AgentsApi = {
 
 		if (!response.ok) {
 			throw new Error(
-				`Get agent system prompt request failed: ${response.status} ${response.statusText}`,
+				t("ui.common.errors.agent_prompt_get", {
+					status: response.status,
+					statusText: response.statusText,
+				}),
 			);
 		}
 
@@ -460,7 +479,10 @@ export const AgentsApi = {
 
 		if (!response.ok) {
 			throw new Error(
-				`Update agent system prompt request failed: ${response.status} ${response.statusText}`,
+				t("ui.common.errors.agent_prompt_update", {
+					status: response.status,
+					statusText: response.statusText,
+				}),
 			);
 		}
 
@@ -645,12 +667,15 @@ export const AgentsApi = {
 			 * user as "[object Object]" - the same defect the download side's comment
 			 * records, on the upload side.
 			 */
-			let errorDetail = `Upload agent to Radient request failed: ${response.status} ${response.statusText}`;
+			let errorDetail = t("ui.common.errors.agent_upload_request", {
+				status: response.status,
+				statusText: response.statusText,
+			});
 			try {
 				const errorBody = (await response.json()) as { detail?: unknown };
 				const prose = publicationProse({ detail: errorBody?.detail });
 				if (prose) {
-					errorDetail = `Upload agent to Radient failed: ${prose}`;
+					errorDetail = t("ui.common.errors.agent_upload", { prose: prose });
 				}
 			} catch (_) {
 				// Ignore if parsing fails, use the original error message

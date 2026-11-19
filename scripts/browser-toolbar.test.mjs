@@ -216,34 +216,125 @@ test("context menu: copy stays available for a non-openable link, open does not"
 	assert.equal(isOpenableLink("http://example.com"), true);
 });
 
-test("context menu D2: an editable target gets the edit group instead of navigation", () => {
+test("context menu D2/U8: an editable target gets edit history, the edit group, and no navigation", () => {
 	const items = buildPageContextMenuItems({
 		linkUrl: "",
 		pageUrl: "https://example.com/form",
 		canGoBack: true,
 		canGoForward: true,
 		isEditable: true,
-		editFlags: { canCut: true, canCopy: true, canPaste: false },
+		editFlags: {
+			canUndo: false,
+			canRedo: true,
+			canCut: true,
+			canCopy: true,
+			canPaste: false,
+		},
 	});
 	assert.deepEqual(
 		items.map((item) => [item.id, item.enabled]),
 		[
+			["undo", false],
+			["redo", true],
+			["separator", false],
 			["cut", true],
 			["copy", true],
 			["paste", false],
 			["select-all", true],
 		],
+		"undo/redo lead, above the clipboard actions, and follow editFlags",
 	);
-	// Unknown availability enables rather than lies disabled.
+	for (const item of items) {
+		if (item.id !== "separator") assert.ok(item.label.length > 0);
+	}
+	// Unknown availability enables rather than lies disabled. A separator is
+	// never an actionable item, so its own `enabled` stays false.
+	const unknown = buildPageContextMenuItems({
+		linkUrl: "",
+		pageUrl: "https://example.com/form",
+		canGoBack: false,
+		canGoForward: false,
+		isEditable: true,
+	});
+	assert.deepEqual(
+		unknown.map((item) => item.id),
+		["undo", "redo", "separator", "cut", "copy", "paste", "select-all"],
+	);
 	assert.ok(
-		buildPageContextMenuItems({
-			linkUrl: "",
-			pageUrl: "https://example.com/form",
-			canGoBack: false,
-			canGoForward: false,
-			isEditable: true,
-		}).every((item) => item.enabled),
+		unknown
+			.filter((item) => item.id !== "separator")
+			.every((item) => item.enabled),
 	);
+});
+
+test("context menu U8: a page selection offers Copy, without losing its navigation group", () => {
+	const items = buildPageContextMenuItems({
+		linkUrl: "",
+		pageUrl: "https://example.com/page",
+		canGoBack: true,
+		canGoForward: false,
+		isEditable: false,
+		selectionText: "selected words",
+	});
+	assert.deepEqual(
+		items.map((item) => [item.id, item.enabled]),
+		[
+			["back", true],
+			["forward", false],
+			["reload", true],
+			["separator", false],
+			["copy", true],
+			["separator", false],
+			["copy-page", true],
+		],
+		"Copy is the page's own selection action; navigation and Copy page address stay",
+	);
+	// An empty selection is not an item, and editFlags cannot smuggle one in:
+	// Chromium reports selectionText only when the user actually selected text.
+	const none = buildPageContextMenuItems({
+		linkUrl: "",
+		pageUrl: "https://example.com/page",
+		canGoBack: true,
+		canGoForward: false,
+		isEditable: false,
+		selectionText: "",
+		editFlags: { canCopy: true },
+	});
+	assert.equal(
+		none.some((item) => item.id === "copy"),
+		false,
+	);
+});
+
+test("context menu U8: a non-editable page shows no edit items", () => {
+	// editFlags describe a field that is not there; they must not leak an
+	// Undo/Redo/Cut/Paste item onto a page right-click.
+	const items = buildPageContextMenuItems({
+		linkUrl: "",
+		pageUrl: "https://example.com/page",
+		canGoBack: true,
+		canGoForward: false,
+		isEditable: false,
+		editFlags: {
+			canUndo: true,
+			canRedo: true,
+			canCut: true,
+			canCopy: true,
+			canPaste: true,
+			canSelectAll: true,
+		},
+	});
+	const ids = items.map((item) => item.id);
+	assert.deepEqual(ids, [
+		"back",
+		"forward",
+		"reload",
+		"separator",
+		"copy-page",
+	]);
+	for (const id of ["undo", "redo", "cut", "copy", "paste", "select-all"]) {
+		assert.equal(ids.includes(id), false, `${id} needs an editable target`);
+	}
 });
 
 test("wiring pins: Home intent and the native context-menu handler stay connected", async () => {
@@ -267,11 +358,21 @@ test("wiring pins: Home intent and the native context-menu handler stay connecte
 	assert.match(surface, /loadFailure=\{state\?\.navFailure \?\? null\}/);
 	assert.match(urlBar, /siteInfoForUrl\(url, loadFailure\)/);
 	assert.match(urlBar, /siteInfoWarns \? "text-ink" : "text-ink-muted"/);
-	assert.match(urlBar, /tabIndex=\{0\}/);
-	assert.match(urlBar, /home_destination/);
-	// D2/U3: main passes the editable facts and the page address through.
+	assert.doesNotMatch(
+		urlBar,
+		/tabIndex=\{0\}/,
+		"the site mark is described from the field, not a tab stop (U4)",
+	);
+	assert.match(urlBar, /const siteDescId = `\$\{listId\}-site`/);
+	assert.match(urlBar, /browser_url_bar\.home"\)/);
+	// D2/U3/U8: main passes the editable facts and the page address through,
+	// and every edit action the rule can emit has a contents method behind it.
 	assert.match(main, /isEditable: params\.isEditable/);
+	assert.match(main, /selectionText: params\.selectionText/);
+	assert.match(main, /editFlags: params\.editFlags/);
 	assert.match(main, /pageUrl: contents\.getURL\(\)/);
+	assert.match(main, /contents\.undo\(\)/);
+	assert.match(main, /contents\.redo\(\)/);
 	assert.match(main, /contents\.cut\(\)/);
 	assert.match(main, /item\.id === "separator"/);
 	// The start state is the one allowed about: URL, in exactly one place.

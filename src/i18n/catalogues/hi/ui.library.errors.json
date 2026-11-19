@@ -1,0 +1,5 @@
+{
+	"ui.library.errors.preview_load": "यह प्रीव्यू लोड नहीं हो सका।",
+	"ui.library.errors.asset_read": "एसेट की सामग्री नहीं पढ़ी जा सकी।",
+	"ui.library.errors.empty_bytes": "बाइट खाली थे।"
+}

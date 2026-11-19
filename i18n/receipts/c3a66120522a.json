@@ -1,0 +1,261 @@
+{
+  "locale": "ru",
+  "mode": "Fresh independent four-key delta audit; read-only worktree. Allocation: fix (<2h), bounded audit only.",
+  "scope": "PR damianvtran/local-operator-ui #1842 @ e5fb4310dab638f9cf428779d62539ec039a8990; Russian four-key delta across ui.chat, ui.chat.composer_media, ui.common.actions. Existing pasted_file English context scope checked against get-file-name.ts and attachment-encode.ts. Legacy consistency only.",
+  "head_sha": "e5fb4310dab638f9cf428779d62539ec039a8990",
+  "audit_date": "2026-11-10",
+  "key_count": 271,
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "Delegation supplies translator model and Russian translator session 3b22accb1363; auditor did not translate or participate in translation."
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "c3a66120522a",
+    "session": "c3a66120522a",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "Served session header: openai/gpt-6.1-sol; session c3a66120522a. No fallback used.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "status": "passed",
+  "result": "clean",
+  "verdict": "clean",
+  "findings": [],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "namespaces": {
+    "ui.chat": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15",
+      "target_sha256": "52fb9cf75ad675dd672935a02c9c5e820938271af6a1dbae44ee7244055d2a2e",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.json",
+          "sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15"
+        },
+        "ru": {
+          "path": "src/i18n/catalogues/ru/ui.chat.json",
+          "sha256": "52fb9cf75ad675dd672935a02c9c5e820938271af6a1dbae44ee7244055d2a2e"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.context.json",
+          "sha256": "84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf"
+        }
+      },
+      "findings": []
+    },
+    "ui.chat.composer_media": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae",
+      "target_sha256": "ea15ba6e13dd7b263ce92af68a80dfe8169857677df770d3d1abc3e9ef125d55",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.composer_media.json",
+          "sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae"
+        },
+        "ru": {
+          "path": "src/i18n/catalogues/ru/ui.chat.composer_media.json",
+          "sha256": "ea15ba6e13dd7b263ce92af68a80dfe8169857677df770d3d1abc3e9ef125d55"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.composer_media.context.json",
+          "sha256": "a0fbc1552ef6f27999f3cff365750025627a284faa106d767e22a24d131ae77b"
+        }
+      },
+      "findings": []
+    },
+    "ui.common.actions": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b",
+      "target_sha256": "d76c6dc4da5d49007f52d9f69c6e424b81c4d2a180cdd250973f01c2354d4d98",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.json",
+          "sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b"
+        },
+        "ru": {
+          "path": "src/i18n/catalogues/ru/ui.common.actions.json",
+          "sha256": "d76c6dc4da5d49007f52d9f69c6e424b81c4d2a180cdd250973f01c2354d4d98"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.context.json",
+          "sha256": "24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d"
+        }
+      },
+      "findings": []
+    }
+  },
+  "per_key_checks": [
+    {
+      "key": "ui.chat.composer_media.pasted_image",
+      "source": "Pasted image",
+      "current_text": "Вставленное изображение",
+      "findings": [],
+      "placeholder_integrity": {
+        "matches_english": true,
+        "tokens": []
+      },
+      "invisible_characters": [],
+      "assessment": "Accurate synthetic image filename, no extension. Вставленное изображение matches existing Вставленный файл and image_actions.copy_image = Копировать изображение; neuter agreement is internal to fixed phrase, not user data."
+    },
+    {
+      "key": "ui.common.actions.actions_for_name",
+      "source": "Actions for {name}",
+      "current_text": "Действия для «{name}»",
+      "findings": [],
+      "placeholder_integrity": {
+        "matches_english": true,
+        "tokens": [
+          "{name}"
+        ]
+      },
+      "invisible_characters": [],
+      "assessment": "Natural named-asset label. Действия для «{name}» matches ui.browser.browser_tab_strip.actions_for = Действия для «{title}» and ru style guide line 66 «ёлочки». Quotes delimit a verbatim identifier, so no declension or gender/number agreement is imposed. Names with existing quotes remain byte-identical; nested user punctuation is not normalized."
+    },
+    {
+      "key": "ui.chat.image_actions.actions",
+      "source": "Image actions",
+      "current_text": "Действия с изображением",
+      "findings": [],
+      "placeholder_integrity": {
+        "matches_english": true,
+        "tokens": []
+      },
+      "invisible_characters": [],
+      "assessment": "Действия с изображением parallels existing ui.common.actions.file_actions_menu.file_actions = Действия с файлом, and preserves изображение as in Копировать изображение / Развернуть изображение. Neutral sentence-case noun phrase."
+    },
+    {
+      "key": "ui.chat.audio.position_label",
+      "source": "{label} position",
+      "current_text": "Позиция воспроизведения: {label}",
+      "findings": [],
+      "placeholder_integrity": {
+        "matches_english": true,
+        "tokens": [
+          "{label}"
+        ]
+      },
+      "invisible_characters": [],
+      "assessment": "Позиция воспроизведения: {label} retains exact existing ui.chat.attachments.playback_position = Позиция воспроизведения. Colon separates arbitrary user titles from Russian syntax, avoiding genitive declension or agreement. Style-guide lines 67–68 require no space before colon; one ordinary space follows."
+    }
+  ],
+  "remediation_verification": {
+    "status": "No in-scope findings.",
+    "prior_findings": [],
+    "policy_sources": [
+      "/Users/damian/local-operator/i18n/style-guides/ru.md",
+      "/Users/damian/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/glossary.md",
+      "docs/I18N.md"
+    ],
+    "executed_checks": [
+      "node scripts/i18n/context-parity.mjs (exit 0)",
+      "shasum -a 256 on all nine bound inputs; 9/9 match expected-hashes.json",
+      "Python JSON parsing, source/target key parity, legacy origin/main object comparison, placeholder integrity, invisible-character scan",
+      "Read-only git diff, git show, git rev-parse HEAD and git status --short; command output in audit.log"
+    ],
+    "typography_fit": "No NBSP, narrow NBSP, zero-width or bidi-control characters in the four keys. Russian guillemets correct; colon has no preceding space. No trailing punctuation. No hard width constraints in the four sidecars; image caption 22 codepoints, sane; no measured visual fit claimed.",
+    "out_of_scope_pre_existing": [],
+    "glossary_conformance": "Checked against manager-owned byte-copy; SHA-256 0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8. No applicable core-term violation.",
+    "metadata_scope_check": "getFileName handles any non-image data: URI, including no MIME and invalid percent encoding, with pasted_file fallback; valid decoded names remain verbatim. attachment-encode.ts passes getFileName result as synthetic upload name while dataUrl/bytes and stored metadata are retained. Broadened note is accurate.",
+    "consistency_checks": {
+      "ui.chat": {
+        "key_count": 208,
+        "fully_audited_key_count": 2,
+        "same_key_set_as_english": true,
+        "legacy_diff": {
+          "en": {
+            "removed": [],
+            "changed": [],
+            "added": [
+              "ui.chat.audio.position_label",
+              "ui.chat.image_actions.actions"
+            ]
+          },
+          "ru": {
+            "removed": [],
+            "changed": [],
+            "added": [
+              "ui.chat.audio.position_label",
+              "ui.chat.image_actions.actions"
+            ]
+          }
+        }
+      },
+      "ui.chat.composer_media": {
+        "key_count": 9,
+        "fully_audited_key_count": 1,
+        "same_key_set_as_english": true,
+        "legacy_diff": {
+          "en": {
+            "removed": [],
+            "changed": [],
+            "added": [
+              "ui.chat.composer_media.pasted_image"
+            ]
+          },
+          "ru": {
+            "removed": [],
+            "changed": [],
+            "added": [
+              "ui.chat.composer_media.pasted_image"
+            ]
+          }
+        }
+      },
+      "ui.common.actions": {
+        "key_count": 54,
+        "fully_audited_key_count": 1,
+        "same_key_set_as_english": true,
+        "legacy_diff": {
+          "en": {
+            "removed": [],
+            "changed": [],
+            "added": [
+              "ui.common.actions.actions_for_name"
+            ]
+          },
+          "ru": {
+            "removed": [],
+            "changed": [],
+            "added": [
+              "ui.common.actions.actions_for_name"
+            ]
+          }
+        }
+      }
+    },
+    "derived_identifier_samples_not_production_render": {
+      "ui.common.actions.actions_for_name": [
+        "Действия для «report.png»",
+        "Действия для «报告.png»",
+        "Действия для «Иван»",
+        "Действия для ««фото»: \"1\"»",
+        "Действия для «a{b}.png»"
+      ],
+      "ui.chat.audio.position_label": [
+        "Позиция воспроизведения: report.png",
+        "Позиция воспроизведения: 报告.png",
+        "Позиция воспроизведения: Иван",
+        "Позиция воспроизведения: «фото»: \"1\"",
+        "Позиция воспроизведения: a{b}.png"
+      ]
+    }
+  },
+  "unverified": [
+    "No production formatter, screen-reader or rendered UI execution; plain-placeholder integrity and identifier samples checked directly with Python. No plural/select structures in the four new messages.",
+    "Context-parity repository validator ran successfully. No full pnpm check-i18n, build, install, server, translation service or suite run.",
+    "No ledger command, repository writes, PR comment or commit: explicitly read-only audit. Manager must retain scratch receipts in the canonical tracked evidence root and write ledger rows.",
+    "267 legacy values are consistency-only (parse, key parity, unchanged against local origin/main), not semantic certification. origin/main was not fetched; frozen/read-only task."
+  ],
+  "receipt_contract_review": "Root and namespace fields follow supplied model receipt; Python parse-back and field-set check performed. No Node receipt-contract validator executed.",
+  "audit_notes_not_execution_log": true
+}

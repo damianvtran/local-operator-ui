@@ -1,0 +1,135 @@
+{
+ "schema": 1,
+ "auditor": "translation-auditor",
+ "role": "independent translation auditor (team lopdev, audit-ru); did not translate these files; edited only the findings below",
+ "model": "anthropic/claude-opus-5-5",
+ "model_provenance": "session model as configured for this run (anthropic/claude-opus-5-5); no provider fallback observed in this session.",
+ "fallback": false,
+ "instance": "3d249a85d90e-bridge-ru",
+ "locale": "ru",
+ "namespace": "ui.chat.canonical",
+ "date": "2026-10-30",
+ "head": "70b862bdb80df119e1b42351832e1647df79ea18",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "independence": "Translators: round 1 an i18n-translator under radient/auto (provider fallback), delta round 2 under anthropic/claude-opus-5-5 (commits 4aaf713e5d6, 9dcdb765c92, 74c36ebf9f9). This auditor (session 3d249a85d90e) authored none of those catalogues. Same model family as the round-2 translator (disclosed).",
+ "translator": {
+  "agent": "i18n-translator",
+  "model": "round 1 radient/auto (fallback); round 2 anthropic/claude-opus-5-5",
+  "note": "recorded from the task brief and the translation commits, not observed serving by this auditor"
+ },
+ "sha256": {
+  "ru": "63ca0b1dfb97f36e0bfb81e01f605c8d3a9756c9990ccadd1b55f1737e5fdd2e",
+  "en": "67ea94ac8ebbfb34b5ea71fc1c9c6f633994f2e2e0bf06da66137f85a596646a"
+ },
+ "context_sha256": "7ccd1b3894f3a6565186f1ef3f5b24e15699c8ecda6b1ff85a3768f784fb3979",
+ "previous_audited": {
+  "receipt": "i18n/receipts/0f306516ae22-ov2-ru.json",
+  "source_sha256": "da2c87f6caf8f238997861d850f575a3b3d8328c5d46abfffae4728ed41fb892",
+  "target_sha256": "125f15f15b279ccfa0c28b204e42e6be7d420174ca13c50904a5a6daa9169b27",
+  "commit": "9d7c5fd911e7 (merge-base with origin/main; its en/ru bytes hash to the previous audited pair)"
+ },
+ "findings": [
+  {
+   "id": "RU-U1",
+   "severity": "MINOR",
+   "status": "fixed",
+   "key": "ui.chat.canonical.tool_row.bridge.verb.react.settled",
+   "also_affects": [
+    "ui.chat.canonical.tool_row.bridge.verb.react.running (Ставит реакцию в -> Ставит реакцию:)",
+    "ui.chat.canonical.tool_row.bridge.verb.react.failed (Не удалось поставить реакцию в -> Не удалось поставить реакцию:)",
+    "ui.chat.canonical.tool_row.bridge.verb.react_remove.settled (Убрал реакцию в -> Убрал реакцию:)",
+    "ui.chat.canonical.tool_row.bridge.verb.react_remove.running (Убирает реакцию в -> Убирает реакцию:)",
+    "ui.chat.canonical.tool_row.bridge.verb.react_remove.failed (Не удалось убрать реакцию в -> Не удалось убрать реакцию:)"
+   ],
+   "ru_before": "Поставил реакцию в",
+   "ru_after": "Поставил реакцию:",
+   "problem": "'в' + target needs the prepositional, but the target is a nominative #name, a person/DM display name or the accusative fallback 'разговор' ('Поставил реакцию в разговор'), and no preposition fits both a channel and a DM name ('в Дане'). The colon-introduced form is the pattern the translators already chose for dm/send/reply, and it composes with every target."
+  },
+  {
+   "id": "RU-U2",
+   "severity": "MINOR",
+   "status": "fixed",
+   "key": "ui.chat.canonical.tool_row.bridge.verb.channel_thread.settled",
+   "also_affects": [
+    "ui.chat.canonical.tool_row.bridge.verb.channel_thread.running (Читает ветку в -> Читает ветку:)",
+    "ui.chat.canonical.tool_row.bridge.verb.channel_thread.failed (Не удалось прочитать ветку в -> Не удалось прочитать ветку:)"
+   ],
+   "ru_before": "Прочитал ветку в",
+   "ru_after": "Прочитал ветку:",
+   "problem": "With the unlabelled fallback the row read 'Прочитал ветку в разговор' (accusative of motion after a locative 'в'), which is ungrammatical; the colon form keeps 'ветку' and composes with '#name' and 'разговор'."
+  },
+  {
+   "id": "RU-U3",
+   "severity": "MINOR",
+   "status": "fixed",
+   "key": "ui.chat.canonical.tool_row.bridge.verb.take_up.settled",
+   "also_affects": [
+    "ui.chat.canonical.tool_row.bridge.verb.take_up.running (Принимает -> Получает)",
+    "ui.chat.canonical.tool_row.bridge.verb.take_up.failed (Не удалось принять -> Не удалось получить)"
+   ],
+   "ru_before": "Принял",
+   "ru_after": "Получил",
+   "problem": "'принять' is this namespace's word for the owner's acceptance (delivery.awaiting_acceptance.*: 'ждёт принятия', 'должен принять разговор'), so 'Принял сообщение' read as accepting a DM. take_up is a fetch of a received message (core team_bridge/tool.py: 'take_up is a FETCH'); 'Получил сообщение' says that."
+  },
+  {
+   "id": "RU-U4",
+   "severity": "MINOR",
+   "status": "fixed",
+   "key": "ui.chat.canonical.tool_row.bridge.verb.ack_working.settled",
+   "also_affects": [
+    "ui.chat.canonical.tool_row.bridge.verb.ack_working.running (Забирает -> Берёт в работу)",
+    "ui.chat.canonical.tool_row.bridge.verb.ack_working.failed (Не удалось забрать -> Не удалось взять в работу)"
+   ],
+   "ru_before": "Забрал",
+   "ru_after": "Взял в работу",
+   "problem": "'Забрал сообщение' means took away/collected it; the op is an ack with state=working, i.e. claiming the message as being worked on. 'Взял в работу' is the idiomatic work-claim phrase and pairs with ack_done 'Освободил'."
+  },
+  {
+   "id": "RU-U5",
+   "severity": "MINOR",
+   "status": "fixed",
+   "key": "ui.chat.canonical.tool_row.bridge.delivery.inbox_only.short",
+   "also_affects": [
+    "ui.chat.canonical.tool_row.bridge.delivery.unconfirmed.short (не подтверждено -> под вопросом)"
+   ],
+   "ru_before": "не опубликовано",
+   "ru_after": "не в разговоре",
+   "problem": "Both short forms were the tail of the full word and dropped its distinguishing half: 'не опубликовано' beside a success mark loses 'to a conversation' (the message WAS delivered to an inbox), and 'не подтверждено' loses 'delivery'. 'не в разговоре' (14 cells) keeps where it did not land; 'под вопросом' (12) keeps 'may have landed' without saying failed. Both are under the core twin's 14-cell maxCells (the en context asks for ~12 characters)."
+  },
+  {
+   "id": "RU-U6",
+   "severity": "MINOR",
+   "status": "fixed",
+   "key": "ui.chat.canonical.fold.bridge.one",
+   "also_affects": [
+    "ui.chat.canonical.fold.bridge.other (действия -> действия в Team Bridge)",
+    "ui.chat.canonical.fold.bridge_post.one (сообщение -> сообщение в Team Bridge)",
+    "ui.chat.canonical.fold.bridge_post.other (сообщения -> сообщения в Team Bridge)"
+   ],
+   "ru_before": "действие",
+   "ru_after": "действие в Team Bridge",
+   "problem": "The translation dropped 'team': in the collapsed fold line ('4 files · 3 сообщения') a bare 'сообщения' is indistinguishable from the `send` tool's KIND_NOUNS 'message' count and from chat messages, which is the false-claim confusion the split exists to stop. 'командное сообщение' reads as calqued; naming Team Bridge (kept Latin per glossary) mirrors vi. Plural-arm structure untouched: the pre-split fold plural keys are deferred per the brief, so 'other' still serves 2-4 and 5+ ('5 сообщения в Team Bridge' remains the known deferred defect)."
+  },
+  {
+   "id": "RU-N1",
+   "severity": "NIT",
+   "status": "fixed",
+   "key": "ui.chat.canonical.tool_row.bridge.detail.details",
+   "ru_before": "Детали",
+   "ru_after": "Подробности",
+   "problem": "The ru catalogues name a details disclosure 'Подробности' (ui.agents.skills.detail.section.details, ui.chat.run_details.pane_label); 'Детали' is the colloquial outlier. Same fix in the core twin."
+  },
+  {
+   "id": "RU-N2",
+   "severity": "NIT",
+   "status": "fixed",
+   "key": "ui.chat.canonical.tool_row.bridge.delivery.awaiting_acceptance.title",
+   "ru_before": "Опубликовано, но владелец агента должен принять, прежде чем агент проснётся.",
+   "ru_after": "Опубликовано, но владелец агента должен принять разговор, прежде чем агент проснётся.",
+   "problem": "'принять' is transitive and reads incomplete without an object; the sibling .note already says 'принять разговор'."
+  }
+ ],
+ "scope": "ui.chat.canonical for ru at the fixed bytes on top of head 70b862bdb80d: the 88 keys added since the last audited bytes (84 ui.chat.canonical.tool_row.bridge.* + 4 ui.chat.canonical.fold.bridge*) read in full against en, the context sidecar, the composing renderer code (bridge-row-model.ts, tool-row-model.ts, trace-fold-model.ts), i18n/glossary.md (core), the ru style guide and the core wire.tool_rows.bridge ru copy. The other 80 keys were proven byte-identical in en and ru to the bytes bound by 0f306516ae22-ov2-ru (git show 9d7c5fd911e7: 0 changed, 0 removed) and 8 spot-checked, not re-audited.",
+ "notes": "Mechanical layer re-derived by this auditor at the fixed bytes: key set == en (168/168); @formatjs/icu-messageformat-parser accepts every bridge message; argument names match en for all 88; plural arms are ru Intl.PluralRules {one, few, many, other} plus explicit =0 on summary.members/messages; intl-messageformat renders all 116 bridge argument/count combinations at 0/1/2/5/11/21/22/1000000 with no lost sentinel ('1 участник', '2 участника', '5 участников', '21 участник', '1 000 000 сообщений', 'нет участников'); ::group-off skeletons preserved on seq/count; NFC; no Cf/bidi characters. Cross-repo: all 65 shared verb/outcome/fallback/detail concepts are byte-identical to the core ru wire.tool_rows.bridge copy after the shared fixes (core commit 62d8728a9d6). Accepted as is: 'Опубликовал в' + 'разговор' (accusative of direction, idiomatic for posting), 'ветке {target}' (prepositional, composes 'Опубликовал в ветке #general'), 'личное сообщение' for DM, masculine past-tense agent verbs. Deferred per brief: pre-split fold plural keys. NOT verified: native-speaker read, rendered fit in the desktop row."
+}

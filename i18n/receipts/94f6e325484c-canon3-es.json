@@ -1,0 +1,53 @@
+{
+  "auditor": "reviewer",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "94f6e325484c-canon3-es",
+  "date": "2026-11-12",
+  "locale": "es",
+  "namespace": "ui.chat.canonical",
+  "status": "passed",
+  "sha256": {
+    "es": "ff55a933e7bdff8f171a11f678ccd16b12367afca3b26e1b9262c92cddad006f",
+    "en": "ff5c51320c726be67dcee1c6036bdb141fad2231cf717e6856d385602f6b5731"
+  },
+  "context_sha256": {
+    "en": "51f705da9160454ef4f72c5f9c14004a3f31b2bccc46dac6c208a36d18cb53bf"
+  },
+  "repo": "damianvtran/local-operator-ui",
+  "pr": 1874,
+  "head": "fa3c17b63",
+  "independence": "Independent i18n auditor (lopdev reviewer, session 94f6e325484c). Not the translator of any key in this file; did not read or copy any other session's scratchpad. Same model as this PR's translator (lopdev coder, anthropic/claude-opus-5-5): disclosed.",
+  "references": {
+    "glossary": "damianvtran/local-operator@2ba8127d9 i18n/glossary.md sha256:0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "style_guide": "damianvtran/local-operator@2ba8127d9 i18n/style-guides/es.md sha256:4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6"
+  },
+  "scope": "Merged bytes at fa3c17b63 (merge of origin/main 5033f6423, #1876). Read in full against en value, en .context.json, glossary and style guide: #1876's 10 added keys (media.image_label, media.sound_label, sound.batch.item_status/latest_update/summary, sound.cost.batch_unknown/estimated_zero/no_charge/unknown, supplement.sound_fallback_label), and this PR's 4 temporary_deleted.* keys. The other values equal upstream's audited file (row 4d7a5444aa0b, hashes verified at 5033f6423) or this PR's audited file (94f6e325484c-canon2, a3a8ee320).",
+  "mechanical": {
+    "threeway": "per-key three-way check base 9ef579fe1 / PR a3a8ee320 / upstream 5033f6423 / merged fa3c17b63 over en, 7 locales and en context: 0 conflicts, 0 dropped, 0 resurrected, 0 value mismatches (471 keys).",
+    "checks": "15 keys: ICU parse, args vs en, select arms, every branch formatted (counts 0/1/2/5/21/1e6 × status × has_attention), no bidi controls, NFC, locale punctuation. 0 defects. media.*_label carry only =1/other like en (missing one/many is not a defect: the other arm is invariant and =1 wins over one). Negative control caught 22."
+  },
+  "reading": "#1876 keys: Imagen/Sonido labels; Fallida/Detenida/Estado desconocido; 'Coste …' per the es guide (coste); summary one/many/other arms; tú-free impersonal register. Concur with upstream S16F-ES-A3-01..03 (carried).",
+  "findings": [
+    {
+      "id": "4d7a5444aa0b/S16F-ES-A3-01",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.sound.batch.summary",
+      "origin": "i18n/receipts/4d7a5444aa0b.json",
+      "disposition": "carried from the superseded #1876 audit: bytes unchanged at fa3c17b63, still applies, severity concurred; deferred"
+    },
+    {
+      "id": "4d7a5444aa0b/S16F-ES-A3-02",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.media.sound_label",
+      "origin": "i18n/receipts/4d7a5444aa0b.json",
+      "disposition": "carried from the superseded #1876 audit: bytes unchanged at fa3c17b63, still applies, severity concurred; deferred"
+    },
+    {
+      "id": "4d7a5444aa0b/S16F-ES-A3-03",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.sound.cost.no_charge",
+      "origin": "i18n/receipts/4d7a5444aa0b.json",
+      "disposition": "carried from the superseded #1876 audit: bytes unchanged at fa3c17b63, still applies, severity concurred; deferred"
+    }
+  ]
+}

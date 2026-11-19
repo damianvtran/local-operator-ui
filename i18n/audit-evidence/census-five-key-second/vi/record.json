@@ -1,0 +1,137 @@
+{
+  "locale": "vi",
+  "namespace": [
+    "ui.chat",
+    "ui.chat.run_details"
+  ],
+  "audit_date": "2026-11-03",
+  "key_count": 5,
+  "namespace_key_counts": {
+    "ui.chat": 3,
+    "ui.chat.run_details": 2
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "6431174917d4",
+    "instance": "6431174917d4-vi-census-r2",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "Host model-switch notice: openai/gpt-6.1-sol fallback due to provider quota; initial sonnet and intermediate opus notices preceded substantive audit execution.",
+    "fallback": true,
+    "independent_from_translator_session": true,
+    "independence_source": "Manager delegation names this session independent second auditor; translator session ID not supplied; no translator or first-audit findings/receipts read."
+  },
+  "source_commit": "19868532b9cd2bca0eca468dbf22572d8dd78a5b",
+  "input_hashes": {
+    "ui.chat": {
+      "en": {
+        "path": "src/i18n/catalogues/en/ui.chat.json",
+        "sha256": "270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27"
+      },
+      "context": {
+        "path": "src/i18n/catalogues/en/ui.chat.context.json",
+        "sha256": "efcf4d1872974b6fc7456e753a2e10010ab896fffede262ae7c19d96c35ecee1"
+      },
+      "vi": {
+        "path": "src/i18n/catalogues/vi/ui.chat.json",
+        "sha256": "40ba9c3761d9e5fed84b2a1bb5289cfd2baf402984f351559dee348511fe24ea"
+      }
+    },
+    "ui.chat.run_details": {
+      "en": {
+        "path": "src/i18n/catalogues/en/ui.chat.run_details.json",
+        "sha256": "f8184d5f41b359364e47747871988bbb731d79c12bc3b9ec755f3db73e5db6ab"
+      },
+      "context": {
+        "path": "src/i18n/catalogues/en/ui.chat.run_details.context.json",
+        "sha256": "da588f521188a2bcba1d0aeb7a265c3474b16673b8f653a021fa7e9e7075e911"
+      },
+      "vi": {
+        "path": "src/i18n/catalogues/vi/ui.chat.run_details.json",
+        "sha256": "a7ff21ae3033644e02cb029ae6382222a13cc79e7026a4d202e63c55ef0da5c8"
+      }
+    }
+  },
+  "language_authorities": [
+    {
+      "path": "/Users/damian/local-operator/i18n/style-guides/vi.md",
+      "sha256": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888"
+    },
+    {
+      "path": "/Users/damian/local-operator/i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "/Users/damian/.local-operator/sessions/6431174917d4/scratchpad/vi-census-second/receipt.json",
+      "sha256": "ba932cc7196aec0beff8fb2a44438238c0f63cccfe1e083f60e4de5b86c769ff",
+      "kind": "audit_artifact"
+    },
+    {
+      "path": "/Users/damian/.local-operator/sessions/6431174917d4/scratchpad/vi-census-second/audit.log",
+      "sha256": "71871b17fded4411f7d2cf1db1284c36dc8ac2064e4294ac1621b1a0bf073242",
+      "kind": "actual_execution_log"
+    },
+    {
+      "path": "/Users/damian/.local-operator/sessions/6431174917d4/scratchpad/vi-census-second/mechanical.json",
+      "sha256": "71871b17fded4411f7d2cf1db1284c36dc8ac2064e4294ac1621b1a0bf073242",
+      "kind": "audit_artifact"
+    },
+    {
+      "path": "/Users/damian/.local-operator/sessions/6431174917d4/scratchpad/vi-census-second/receipt-validation.log",
+      "sha256": "b9b88255e2c8c3b61e19fe7da3ee4c7133ab29415e0329183d45210f17d715be",
+      "kind": "actual_execution_log"
+    },
+    {
+      "path": "/Users/damian/.local-operator/sessions/6431174917d4/scratchpad/vi-census-second/validation.json",
+      "sha256": "b9b88255e2c8c3b61e19fe7da3ee4c7133ab29415e0329183d45210f17d715be",
+      "kind": "audit_artifact"
+    },
+    {
+      "path": "/Users/damian/.local-operator/sessions/6431174917d4/scratchpad/vi-census-second/check.mjs",
+      "sha256": "d24b93fbcac18d1601cf4cb021ba7e762938f9257c9f81d256b9c6dc4105ca79",
+      "kind": "audit_artifact"
+    },
+    {
+      "path": "/Users/damian/.local-operator/sessions/6431174917d4/scratchpad/vi-census-second/validate-receipt.mjs",
+      "sha256": "1b19fb33ba5af2155eb52b8e7f366ab33936f3ac494b62b2ea249bfecf3a4508",
+      "kind": "audit_artifact"
+    },
+    {
+      "path": "/Users/damian/.local-operator/sessions/6431174917d4/scratchpad/vi-census-second/inputs.json",
+      "sha256": "891a617ffc943879f90047abb4570d9e7d11b700802d8e67628d10ac0d0b3d0e",
+      "kind": "audit_artifact"
+    },
+    {
+      "path": "/Users/damian/.local-operator/sessions/6431174917d4/scratchpad/vi-census-second/ledger-rules.mjs",
+      "sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6",
+      "kind": "audit_artifact"
+    }
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": []
+  },
+  "audit_notes_not_execution_log": [
+    "Thấp / Trung bình / Cao preserve ordinal effort meaning and menu capitalization. Trung bình is naturally two written words; English one-word guidance is not a Vietnamese grammar constraint.",
+    "lịch thức dậy đã đặt preserves the intransitive thức dậy glossary term and names set wake schedules, not deliveries.",
+    "một lần is idiomatic lowercase one-time cadence, including direct schedule sentence consumers.",
+    "Style guide keep-English low/medium/high policy applies to config tokens; source sidecar and code distinguish translated display labels from unchanged raw wire values.",
+    "count selects the plural; count_display is printed ungrouped as required, including 1000 and 1.5.",
+    "No numeric maxCells/maxChars for these keys. Trung bình is 10 Unicode characters; actual pixel fit remains unverified.",
+    "keepRepeatLabel null branch uses its own existing keep_as_once message; non-null branch passes formatWakeCadence. No invented claim that the new once key flows through the null keep label."
+  ],
+  "limitations": [
+    "No native application execution.",
+    "No pseudo-localization or rendered pixels, clipping, geometry or font-fit proof.",
+    "No full-repository validator/scanner, builds, tsc, installs or worktrees; only bounded existing ICU parser/formatter plus pure repository receipt validator.",
+    "Full-file hashes bind inputs; approval covers the five-key delta only."
+  ],
+  "retention_handoff": {
+    "status": "manager_integration_required",
+    "reason": "Task explicitly forbids repo edits, posts, commits and pushes. These are newly created scratch handoff artifacts, not claimed tracked/on main. Preserve until manager tracks them.",
+    "receipt_rule": "Copy receipt.json BYTE-IDENTICALLY to one i18n/receipts/6431174917d4-vi-census-r2.json; reuse that same receipt for both ledger rows.",
+    "canonical_evidence_root": "i18n/audits/evidence/vi/<namespace>/census-r2-6431174917d4/record.json"
+  }
+}

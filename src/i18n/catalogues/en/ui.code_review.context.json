@@ -53,24 +53,22 @@
 	"ui.code_review.age.days": {
 		"role": "relative-time status",
 		"tone": "Short lowercase provenance/status clause; preserve the existing register.",
-		"note": "Whole days since the last update; does not introduce a date-format change. The abbreviated English unit is invariant; full target-locale units may require additional CLDR categories.",
+		"note": "Whole days since the last update; does not introduce a date-format change. The abbreviated English unit is invariant; full target-locale units may require additional CLDR categories. Plural: English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement.",
 		"length": "One compact row tail; omit the clause rather than restating zero.",
 		"placeholders": {
 			"amount": "Whole days cardinal age.",
 			"amountText": "Existing whole-number decimal display, without grouping."
-		},
-		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
+		}
 	},
 	"ui.code_review.age.hours": {
 		"role": "relative-time status",
 		"tone": "Short lowercase provenance/status clause; preserve the existing register.",
-		"note": "Whole hours since last update, under one day; abbreviation is existing English copy. The abbreviated English unit is invariant; full target-locale units may require additional CLDR categories.",
+		"note": "Whole hours since last update, under one day; abbreviation is existing English copy. The abbreviated English unit is invariant; full target-locale units may require additional CLDR categories. Plural: English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement.",
 		"length": "One compact row tail; omit the clause rather than restating zero.",
 		"placeholders": {
 			"amount": "Whole hours cardinal age.",
 			"amountText": "Existing whole-number decimal display, without grouping."
-		},
-		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
+		}
 	},
 	"ui.code_review.age.just_now": {
 		"role": "relative-time status",
@@ -81,13 +79,12 @@
 	"ui.code_review.age.minutes": {
 		"role": "relative-time status",
 		"tone": "Short lowercase provenance/status clause; preserve the existing register.",
-		"note": "Whole minutes since the last forge state update; retain abbreviated minute register. The abbreviated English unit is invariant; full target-locale units may require additional CLDR categories.",
+		"note": "Whole minutes since the last forge state update; retain abbreviated minute register. The abbreviated English unit is invariant; full target-locale units may require additional CLDR categories. Plural: English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement.",
 		"length": "One compact row tail; omit the clause rather than restating zero.",
 		"placeholders": {
 			"amount": "Whole minutes cardinal age.",
 			"amountText": "Existing whole-number decimal display, without grouping."
-		},
-		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
+		}
 	},
 	"ui.code_review.attention.checks": {
 		"role": "attention status",
@@ -104,46 +101,42 @@
 	"ui.code_review.chip.count": {
 		"role": "status",
 		"tone": "Count plus lowercase scope noun.",
-		"note": "Composer code-review chip count: code requests opened or mentioned by this conversation; neither is an agent-review finding count.",
+		"note": "Composer code-review chip count: code requests opened or mentioned by this conversation; neither is an agent-review finding count. Plural: English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement.",
 		"length": "One row; avoid adding an explanatory sentence.",
 		"placeholders": {
 			"count": "Cardinal count of code requests; plural selection when ICU plural is present.",
 			"countText": "Existing decimal request count, without new grouping punctuation."
-		},
-		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
+		}
 	},
 	"ui.code_review.chip.mentioned": {
 		"role": "status",
 		"tone": "Count plus lowercase scope noun.",
-		"note": "Composer code-review chip mentioned: code requests opened or mentioned by this conversation; neither is an agent-review finding count. English status wording is count-invariant; cardinal branches allow native grammatical agreement without changing the English clause.",
+		"note": "Composer code-review chip mentioned: code requests opened or mentioned by this conversation; neither is an agent-review finding count. English status wording is count-invariant; cardinal branches allow native grammatical agreement without changing the English clause. Plural: English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement.",
 		"length": "One row; avoid adding an explanatory sentence.",
 		"placeholders": {
 			"count": "Numeric cardinal count for plural selection.",
 			"countText": "Existing decimal count spelling, with no added English grouping punctuation."
-		},
-		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
+		}
 	},
 	"ui.code_review.chip.opened": {
 		"role": "status",
 		"tone": "Count plus lowercase scope noun.",
-		"note": "Composer code-review chip opened: code requests opened or mentioned by this conversation; neither is an agent-review finding count. English status wording is count-invariant; cardinal branches allow native grammatical agreement without changing the English clause.",
+		"note": "Composer code-review chip opened: code requests opened or mentioned by this conversation; neither is an agent-review finding count. English status wording is count-invariant; cardinal branches allow native grammatical agreement without changing the English clause. Plural: English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement.",
 		"length": "One row; avoid adding an explanatory sentence.",
 		"placeholders": {
 			"count": "Numeric cardinal count for plural selection.",
 			"countText": "Existing decimal count spelling, with no added English grouping punctuation."
-		},
-		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
+		}
 	},
 	"ui.code_review.ci.failing": {
 		"role": "status",
 		"tone": "Compact machine-work status without claiming agent approval.",
-		"note": "Forge CI failing: missing counters are not zero; only report counts the server supplied. English status wording is count-invariant; cardinal branches allow native grammatical agreement without changing the English clause.",
+		"note": "Forge CI failing: missing counters are not zero; only report counts the server supplied. English status wording is count-invariant; cardinal branches allow native grammatical agreement without changing the English clause. Plural: English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement.",
 		"length": "One row; avoid adding an explanatory sentence.",
 		"placeholders": {
 			"count": "Numeric cardinal count for plural selection.",
 			"countText": "Existing decimal count spelling, with no added English grouping punctuation."
-		},
-		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
+		}
 	},
 	"ui.code_review.ci.passed": {
 		"role": "status",
@@ -362,13 +355,12 @@
 	"ui.code_review.comments.count": {
 		"role": "status count",
 		"tone": "Short lowercase provenance/status clause; preserve the existing register.",
-		"note": "Number of forge discussion comments, not agent-review findings. Null/zero counts are omitted before formatting.",
+		"note": "Number of forge discussion comments, not agent-review findings. Null/zero counts are omitted before formatting. Plural: English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement.",
 		"length": "One compact row tail; omit the clause rather than restating zero.",
 		"placeholders": {
 			"count": "Cardinal comment count for plural agreement.",
 			"countText": "Existing decimal count display without added grouping."
-		},
-		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
+		}
 	},
 	"ui.code_review.host.cooling": {
 		"role": "error/status",
@@ -523,13 +515,18 @@
 	"ui.code_review.tool.more": {
 		"role": "disclosure label",
 		"tone": "Count followed by its provenance.",
-		"note": "Additional code-request links found in tool output; a plus sign means the count was capped. English status wording is count-invariant; cardinal branches allow native grammatical agreement without changing the English clause.",
+		"note": "Additional code-request links found in tool output; a plus sign means the count was capped. English status wording is count-invariant; cardinal branches allow native grammatical agreement without changing the English clause. Plural: English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement.",
 		"length": "One row; avoid adding an explanatory sentence.",
 		"placeholders": {
 			"count": "Numeric cardinal count for plural selection.",
 			"capped": "Literal plus sign when the tool-output count is capped, otherwise empty.",
 			"countText": "Existing decimal count spelling, with no added English grouping punctuation."
-		},
-		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
+		}
+	},
+	"ui.code_review.refresh.try_again": {
+		"role": "Product status or action message",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: try again"
 	}
 }

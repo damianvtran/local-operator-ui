@@ -1,0 +1,64 @@
+{
+  "schema": 1,
+  "locale": "hi",
+  "date": "2026-10-24",
+  "status": "passed",
+  "audit_kind": "delta-translation-audit",
+  "scope": "Delta audit: the new failure_consequence_group_survived safety clause plus its direct failure-block neighbors. The preceding full audit of the namespace is superseded; translator amazon-bedrock/us.anthropic.claude-sonnet-5-5.",
+  "auditor": {
+    "agent": "translation-auditor",
+    "instance": "7c3e9a1f4b2d",
+    "model": "amazon-bedrock/us.anthropic.claude-opus-5-5"
+  },
+  "model_provenance": {
+    "actual_audit_model": "amazon-bedrock/us.anthropic.claude-opus-5-5",
+    "fallback_used": false
+  },
+  "independence": {
+    "translator_agent": "i18n-translator",
+    "translator_model": "amazon-bedrock/us.anthropic.claude-sonnet-5-5",
+    "translator_receipt": "none: CLI run, no portable translator receipt"
+  },
+  "reference_files": {
+    "docs/I18N.md": {
+      "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+    },
+    "src/i18n/catalogues/en/ui.common.updates.json": {
+      "sha256": "0529da94c42bf8d544e34a08bfac234012c0fb9a3ebbf5ccb1c99e73673265ac"
+    },
+    "src/i18n/catalogues/en/ui.common.updates.context.json": {
+      "sha256": "d7de4271fa5f439faa850df3bbdcd67ce0bafad8e604ec508cb965695d9262b6"
+    },
+    "scripts/i18n/ledger-rules.mjs": {
+      "sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6"
+    }
+  },
+  "namespaces": {
+    "ui.common.updates": {
+      "status": "passed",
+      "source_sha256": "0529da94c42bf8d544e34a08bfac234012c0fb9a3ebbf5ccb1c99e73673265ac",
+      "target_sha256": "a0b65b9e59e66d7b917e4063cf0606c48cff110f5ce5915036d0299cedf60101",
+      "context_sha256": "d7de4271fa5f439faa850df3bbdcd67ce0bafad8e604ec508cb965695d9262b6",
+      "source_path": "src/i18n/catalogues/en/ui.common.updates.json",
+      "target_path": "src/i18n/catalogues/hi/ui.common.updates.json",
+      "context_path": "src/i18n/catalogues/en/ui.common.updates.context.json",
+      "keys": 159,
+      "semantic_scope": {
+        "mechanical_total": 159,
+        "semantic_mode": "delta audit: new group-survived safety clause and direct failure-block neighbors; unchanged keys covered by the preceding superseded audit."
+      },
+      "findings": [
+        {
+          "severity": "NIT",
+          "key": "ui.common.updates.update_notification.failure_consequence_group_survived",
+          "issue": "\"बदल रहा\" can be read as \"modifying\" as well as \"replacing\". In this context it reads as swapping the install, so the meaning holds; no change required."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.common.updates.update_notification.failure_consequence_group_survived",
+          "issue": "The trailing \"... बदल रहा हो सकता है\" is grammatical, but \"हो सकता है कि वह अब भी इंस्टॉलेशन को बदल रहा हो\" reads a little more naturally. Optional. Terminology (अपडेटर, इंस्टॉलेशन), register and the absence of placeholders all match the neighbors."
+        }
+      ]
+    }
+  }
+}

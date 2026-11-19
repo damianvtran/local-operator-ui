@@ -1,0 +1,44 @@
+{
+	"auditor": "i18n-auditor",
+	"model": "radient/auto",
+	"instance": "i18n-audit-attachments-20261023-ur-r2",
+	"locale": "ur",
+	"date": "2026-10-23",
+	"round": 2,
+	"status": "passed",
+	"namespace": "ui.chat.attachments",
+	"sha256": {
+		"ur": "6506113f6d529102478a5d70ad672018517ab96ba6aa72973ea0a72b898c0c23",
+		"en": "ec4220c2402d678bab8d969d5c8298548d40e2fdfd2fa926190f03c008018a54"
+	},
+	"context_sha256": "8cb3fc33d0e9dcccd1e6085b50534c9a1e2a751367a80a150310ce5f5892de86",
+	"scope": "Round-2 full independent audit of all 11 keys for ur at head e9d3930e14: English meaning and the en context sidecar, core glossary and the locale style guide, structural parity (key set/order, {type}/{size}/{digest}, ICU parse and format), NFC, manual bidi controls, locale punctuation, sibling terminology in the shipped catalogues, and the new recovery/copy/type-fallback sentences.",
+	"model_provenance": "Served model label reported by this session is radient/auto (routed); the underlying provider model is not exposed to the session, so none is invented.",
+	"instance_note": "Round-2 instance, distinct from the round-1 receipt for these bytes.",
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+			"revision": "local-operator 24dbccbb78"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/ur.md",
+			"sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+		},
+		"languages_manifest": {
+			"path": "i18n/languages.json",
+			"sha256": "7fd056b916fc3d56ddf36991a09b29864ea0b0f825d938aead1ed165926f8d63"
+		}
+	},
+	"findings": [
+		{
+			"severity": "MINOR",
+			"key": "ui.chat.attachments.file_missing_recovery",
+			"locale": "ur",
+			"current": "اصل فائل اب اس راستے پر موجود نہیں ہے۔ محفوظ شدہ نقل اب بھی منسلکات اسٹور میں رکھی گئی ہے۔",
+			"proposed": "اصل فائل اب اس راستے پر موجود نہیں ہے۔ محفوظ شدہ نقل اب بھی منسلکات کے ذخیرے میں رکھی گئی ہے۔",
+			"rule": "The same card's retained-copy tooltip (file_retained) says 'منسلکات کے ذخیرے میں محفوظ ہے', and the product renders a data store as ذخیرہ in ui.settings.imports.description/loading_sources/empty_sources/error_sources and ui.settings.integrations.use_integrations.keys_not_saved. اسٹور is a third form for the same store; اسٹوریج exists only as the mass noun for managed storage in ui.console.capacity.resources. Core glossary: one term, one decision.",
+			"note": "Grammar is correct; the defect is the store term drifting from the tooltip the same card shows."
+		}
+	]
+}

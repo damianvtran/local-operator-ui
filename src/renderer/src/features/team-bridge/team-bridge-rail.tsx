@@ -1,0 +1,1008 @@
+import { SIDEBAR_INSET } from "@shared/components/navigation/sidebar-inset";
+import { AttentionBadge } from "@shared/components/ui/attention-badge";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@shared/components/ui/dropdown-menu";
+import { Skeleton } from "@shared/components/ui/skeleton";
+import { formatRelativeTime, t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
+import { cn } from "@shared/lib/utils";
+import {
+	AtSign,
+	BellOff,
+	Eye,
+	Hash,
+	MoreHorizontal,
+	Pencil,
+	Plus,
+	Users,
+} from "lucide-react";
+import type { FC, ReactNode } from "react";
+import { useId, useState } from "react";
+import type {
+	TeamBridgeConversation,
+	TeamBridgeDirectoryMember,
+} from "../../../../shared/team-bridge-contract";
+import { rowCurrent } from "../chat/components/chat-sidebar";
+import {
+	type TeamBridgeChiefOfStaff,
+	type TeamBridgeRecipient,
+	type TeamBridgeTarget,
+	conversationTitle,
+	isPreviewConversation,
+	personDisplayLabel,
+	personRowState,
+	showsMutedGlyph,
+	unreadRegister,
+} from "./team-bridge-model";
+
+import {
+	type TeamBridgeConversationMenuHandlers,
+	TeamBridgeConversationMenuItems,
+} from "./team-bridge-conversation-menu";
+import type { TeamBridgeConversationMenuItem } from "./team-bridge-conversation-menu-model";
+import {
+	TeamBridgeAvatar,
+	TeamBridgeProfileCard,
+} from "./team-bridge-profile-card";
+
+/**
+ * The single-organization rail, Slack's sidebar in Local Operator's chrome.
+ *
+ * FIVE SECTIONS, ALWAYS DRAWN (operator review, 2026-10-21): Channels, Groups,
+ * People, Chiefs of staff. A section with nothing in it keeps its header and
+ * says so in one quiet line, and that line IS the create action ("No channels
+ * yet. Create one"). A missing header would hide where channels live from a
+ * new organization, which is exactly when the reader needs to learn the rail.
+ *
+ * A PERSON'S ROW IS THEIR DM. There is no separate "@ Ben" conversation row
+ * beside Ben's People row: selecting Ben highlights Ben, the thread pane shows
+ * the DM (or an empty draft addressed to him), and his unread count sits on
+ * his row. The same holds for a chief of staff. A DM no directory row can
+ * paint (the person left the organization) is still listed under Direct
+ * messages so its history stays reachable.
+ *
+ * HOVER MENU. Each reachable row reveals a "…" on hover/focus with "Start a
+ * group conversation", which opens the compose bar seeded with that row's
+ * recipient. A right-click is deliberately NOT bound: the desktop shell owns
+ * the native context menu, and a second one would fight it.
+ *
+ * GEOMETRY (visual refresh, 2026-11-04): 32px rows, 20px marks, 14px labels -
+ * Slack's and Discord's sidebar density, one step roomier than the 30/13 the
+ * docked chat sidebar uses, because this column is the page's whole navigation
+ * now that it replaces the app sidebar. Every colour is a token role, so no
+ * section draws its own frame.
+ *
+ * THREE ROW STATES, EACH WITH ITS OWN CHANNEL, so no two read alike:
+ *  - selected: `rowCurrent`'s ground step + the glyph in `text-accent` (C4);
+ *  - unread:   weight (`semibold`) + full `ink`; a count only when it asks for
+ *              attention (`Unread` below);
+ *  - read:     `ink-muted`, regular weight.
+ * Before this, selected and unread were both `font-medium text-ink`, so the only
+ * cue between "I am here" and "something new" was a 4 ΔE00 fill.
+ */
+
+export const RAIL_ROW =
+	"group/row relative flex h-8 w-full items-center gap-2 rounded-md px-2 text-start text-[14px] transition-colors duration-fast ease-out-quart";
+
+/*
+ * THE SELECTED ROW'S GLYPH TURNS ACCENT (contract C4, docs/branding.md § 2).
+ * The Settings navigation's local exception, extended to this rail: the ground
+ * stays `rowCurrent`'s `rowSelected` (the one state vocabulary), and the leading
+ * mark - the kind glyph - takes the accent (`[&>svg:first-child]:text-accent`),
+ * which is what a glance down a 20-row rail finds; avatars carry their own ink.
+ * The three state strings are spelled out at each row rather than shared as
+ * constants, because the row-state sweep (`scripts/chat-sidebar-selection.test.mjs`)
+ * evaluates each row's own class expression and must see the literals.
+ */
+
+/**
+ * THE ORGANIZATION SUBHEADER OF THE UNION RAIL.
+ *
+ * When one account spans several organizations, People, Chiefs of staff and the
+ * chief-of-staff audit group their rows under the organization each row would
+ * act in. The rows themselves carry NO organization caption in that case: the
+ * organization is stated ONCE, at the nearest enclosing level, and a caption
+ * under a header would repeat it and cost 8px of row height. The one invariant
+ * is therefore "caption iff no enclosing group header".
+ *
+ * TWO VOICES, ONE SIZE. The section header is chrome - `text-meta`, medium,
+ * `ink-dim`, tracked. This is a proper noun - `text-xs` (the same 12px),
+ * normal weight, `ink-muted`, untracked - so the eye reads a name inside a
+ * section rather than a second section. It is the treatment the auth/archive
+ * panels already ship for their grouped rows, which is why it is reused rather
+ * than retuned here.
+ *
+ * `ps-2`, not a copied `px-3`: every section that holds a group header pads
+ * its children by SIDEBAR_INSET, so `ps-2` lands the name 16px from the rail
+ * edge, on the section header's axis and every row's leading mark. The old
+ * `bare` variant (`px-3`) served the owner-audit section, which had no inset
+ * of its own; it now carries the shared one, so the variant is gone.
+ *
+ * A GROUP THAT IS NOT FIRST GETS 8px OF AIR ABOVE IT (design round 1, D2).
+ * Measured from the frames, the header sat 29 device px below the previous
+ * group's last line and 30 device px above its own - proximity bound it to
+ * neither - and with the same ink height and a HIGHER contrast than the section
+ * header it read as its near-peer. `mt-2` alone fixes the binding without
+ * touching the type scale, which is the one thing the spec kept: 12px,
+ * `ink-muted`, normal weight, untracked. The first group needs none: it already
+ * answers to the section header directly above it.
+ *
+ * `title` RECOVERS A TRUNCATED NAME (design D3). The header truncates rather
+ * than wrapping, so a long organization name would otherwise be unrecoverable
+ * for a sighted reader; screen readers always get the full text.
+ */
+export const RailGroupHeader: FC<{
+	id: string;
+	name: string;
+	/** The first group in a section sits directly under the section header. */
+	first?: boolean;
+}> = ({ id, name, first = false }) => (
+	<h3
+		id={id}
+		title={name}
+		className={cn(
+			// Truncation, never wrapping: a wrapped name breaks the 4px rhythm.
+			"truncate py-1 ps-2 pe-1 text-xs font-normal text-ink-muted",
+			!first && "mt-2",
+		)}
+	>
+		{name}
+	</h3>
+);
+
+/**
+ * One quiet line inside a group: an empty roster, an organization list that
+ * failed, or a roster failure in the section that merely derives from it.
+ *
+ * ONE PLACE, because the shipped empty-line style is `RailSection.empty`'s
+ * exact string and a per-site copy drifts the moment one of them is retuned.
+ * The style is the section's own quiet line (`ink-dim`, 12px, snug), not the
+ * brighter `ink-muted` a first-person failure uses.
+ */
+export const RailQuietLine: FC<{ children: ReactNode }> = ({ children }) => (
+	<p className="px-2 py-1 text-[12px] text-ink-dim leading-snug">{children}</p>
+);
+
+/**
+ * How a rail row hosts its profile card (operator report 2026-10-26: clicking a
+ * person showed the card instead of opening the conversation). A row's click is
+ * its conversation, so the card never opens on click or focus. A pointer resting
+ * on the row for a deliberate ~1.2 s dwell opens it, which a pass across the rail
+ * on the way to a row never reaches. The avatar opens it at the message list's
+ * usual 400 ms, because pointing at a face is asking about the person.
+ * Keyboard readers use Shift+F10 or the context-menu key; see
+ * `TeamBridgeProfileCard`.
+ */
+const RAIL_CARD = {
+	openDelayMs: 1200,
+	fastOpenDelayMs: 400,
+	toggleOnClick: false,
+	openOnFocus: false,
+} as const;
+
+/**
+ * The unread pill every channel, group, person and chief row shares: the
+ * sidebar's shared accent `AttentionBadge` (operator, 2026-10-28), because an
+ * unread conversation is a request for the reader's attention, not a total.
+ *
+ * A MUTED ROW IS THE EXCEPTION, and which register it wears is a MODEL fact,
+ * not a prop: `unreadRegister` (`team-bridge-model.ts`) answers from the same
+ * predicate that keeps a muted row out of the nav badge. The badge never counts
+ * a muted conversation - a mute means "do not interrupt me" - so drawing the
+ * out-of-badge count in the accent register put the loudest mark on the rail on
+ * the one number the product had been told not to count: two accent pills
+ * beside a nav 0, the disagreement this change set out to end, inverted (design
+ * review round 1, D1). The count stays visible, in the quiet numeral the repo
+ * reserves for totals, beside the bell-off glyph that says why it is quiet.
+ */
+const Unread: FC<{
+	count: number;
+	yieldsToMenu?: boolean;
+	register?: "attention" | "quiet";
+}> = ({ count, yieldsToMenu = false, register = "attention" }) =>
+	count > 0 ? (
+		<AttentionBadge
+			count={count}
+			register={register}
+			/*
+			 * ONE BADGE COLUMN (design round 1, D4). Person and chief rows used to
+			 * reserve `pr-8` for the hover "…", which pushed their counts 24px left
+			 * of every channel's. Now every row ends at the same edge, and on a row
+			 * that has a menu the badge yields that slot while the row is hovered or
+			 * focused, Slack's pattern: the count and the menu never sit side by side.
+			 */
+			className={cn(
+				"shrink-0",
+				yieldsToMenu &&
+					"group-focus-within/row:invisible group-hover/row:invisible",
+			)}
+			aria-label={t("ui.teamBridge.unread.count", { count })}
+		/>
+	) : null;
+
+/**
+ * The quiet bell beside a muted row's count: the reason the numeral is quiet.
+ *
+ * ONE COMPONENT, EVERY ROW KIND (design review round 2, D7). The glyph used to
+ * live inside `ConversationRailRow` alone, so a muted DM - the place a mute is
+ * most often used - drew its quiet numeral with no explanation at all. The
+ * register and the glyph state the same fact ("this count is a total, not a
+ * request"), so they belong on the same row wherever that row can be muted.
+ */
+const MuteGlyph: FC<{ yieldsToMenu?: boolean }> = ({
+	yieldsToMenu = false,
+}) => (
+	<span
+		className={cn(
+			"shrink-0 text-ink-dim",
+			/*
+			 * THE BELL YIELDS THE SLOT TO THE MENU TOO (quality review round 3, Q3).
+			 * On a muted row with no unread the glyph is the row's LAST item, so the
+			 * hover/focus "…" drew over it (bell 424-436 px against menu 414-438 px)
+			 * - one mark painted on another. It yields on the same trigger and to the
+			 * same rule the count already follows, and only on a row that has a menu;
+			 * at rest it is always visible.
+			 */
+			yieldsToMenu &&
+				"group-focus-within/row:invisible group-hover/row:invisible",
+		)}
+		title={t("ui.teamBridge.notify.muted")}
+	>
+		<BellOff size={12} aria-hidden="true" />
+		<span className="sr-only">{t("ui.teamBridge.notify.muted")}</span>
+	</span>
+);
+
+/**
+ * A person or chief row's accessible name: the action, then the two facts the
+ * inner text carries on a conversation row.
+ *
+ * WHY IT IS COMPOSED HERE (design review round 3, D10). These rows override the
+ * button's name with `people.message`, which SUPPRESSES everything inside it - so
+ * a screen reader heard "Message Pat" and lost both the mute state and the count
+ * that the visual row shows (the channel row reads "general Muted 1 unread" from
+ * its own inner text, with no override). The gate is the same: the count is only
+ * named when there is one, exactly like the badge that draws it.
+ */
+function personRowLabel(
+	name: string,
+	dm: TeamBridgeConversation | null,
+): string {
+	const muted = Boolean(dm && showsMutedGlyph(dm));
+	const unread = dm?.unread_count ?? 0;
+	// Joined with spaces to match the channel row's accessible name ("general
+	// Muted 1 unread"), which comes from DOM text rather than a label. A comma
+	// join would read better (design review round 4, D11) but must change both
+	// row kinds together, so it is deliberately left for that one change.
+	return [
+		t("ui.teamBridge.people.message", { name }),
+		muted ? t("ui.teamBridge.notify.muted") : null,
+		unread > 0 ? t("ui.teamBridge.unread.count", { count: unread }) : null,
+	]
+		.filter((part) => part !== null)
+		.join(" ");
+}
+
+export const RailSection: FC<{
+	id: string;
+	title: string;
+	children?: ReactNode;
+	/** One quiet line when the section is empty; omitted when it has rows. */
+	empty?: { text: string; onCreate?: () => void };
+	/**
+	 * A "+" on the header, Slack's "Add channels": the way to create one when
+	 * the section is NOT empty (review round 1, R1-3 — once the built-ins exist
+	 * the empty line is gone, and with it the only route to a new channel).
+	 * Revealed on hover/focus of the header so a resting rail stays quiet.
+	 */
+	add?: { label: string; onAdd: () => void };
+	/**
+	 * The section header's "…" (Slack's channel-section menu). It holds the
+	 * section's secondary destinations, today "Archived channels". Revealed like
+	 * the "+" so a resting rail stays quiet, and it stays visible while open.
+	 */
+	menu?: {
+		label: string;
+		items: ReadonlyArray<{
+			key: string;
+			label: string;
+			icon?: ReactNode;
+			onSelect: () => void;
+		}>;
+	};
+}> = ({ id, title, children, empty, add, menu }) => {
+	useI18nLocale();
+	return (
+		<section aria-labelledby={id} className={cn("pb-1", SIDEBAR_INSET)}>
+			{/* SECTION HEADERS ARE CHROME (visual refresh, §3.2): 12px semibold
+			    `ink-dim`, tracked, with 16px of air above so each section reads as a
+			    group rather than as one long list. */}
+			{/* THE TRAILING LINE (operator, 2026-11-04): `pe-[4.5px]` is arithmetic,
+			    not taste. The section pads 8px (SIDEBAR_INSET) and the 20px button
+			    centres a 13px glyph (3.5px each side), so 8 + 4.5 + 3.5 puts the
+			    "..."/"+" glyph's end 16px from the column edge - the same line every
+			    row's badge and mute bell end on. `pe-1` left it at 15.5px. */}
+			<div className="group/section flex h-7 items-center pt-4 pe-[4.5px] pb-1 ps-2">
+				<h2
+					id={id}
+					className="min-w-0 flex-1 truncate font-semibold text-meta text-ink-dim tracking-wide"
+				>
+					{title}
+				</h2>
+				{menu && (
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<button
+								type="button"
+								aria-label={menu.label}
+								title={menu.label}
+								className="flex size-5 items-center justify-center rounded-sm text-ink-dim opacity-0 transition-opacity duration-fast hover:bg-row-hover hover:text-ink focus-visible:opacity-100 group-hover/section:opacity-100 data-[state=open]:opacity-100"
+							>
+								<MoreHorizontal size={13} aria-hidden="true" />
+							</button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="start" side="right">
+							{menu.items.map((item) => (
+								<DropdownMenuItem key={item.key} onSelect={item.onSelect}>
+									{item.icon}
+									{item.label}
+								</DropdownMenuItem>
+							))}
+						</DropdownMenuContent>
+					</DropdownMenu>
+				)}
+				{add && (
+					<button
+						type="button"
+						onClick={add.onAdd}
+						aria-label={add.label}
+						title={add.label}
+						className="flex size-5 items-center justify-center rounded-sm text-ink-dim opacity-0 transition-opacity duration-fast hover:bg-row-hover hover:text-ink focus-visible:opacity-100 group-hover/section:opacity-100"
+					>
+						<Plus size={13} aria-hidden="true" />
+					</button>
+				)}
+			</div>
+			{empty ? (
+				empty.onCreate ? (
+					<button
+						type="button"
+						onClick={empty.onCreate}
+						title={empty.text}
+						className="w-full truncate rounded-md px-2 py-1 text-start text-meta text-ink-dim leading-snug transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink-muted"
+					>
+						{empty.text}
+					</button>
+				) : (
+					/* One line, truncated with `title` (SPEC §3.2; design round 1, D4):
+					   the wrapped sentence made the empty sections the tallest rows. */
+					<p
+						title={empty.text}
+						className="truncate px-2 py-1 text-meta text-ink-dim leading-snug"
+					>
+						{empty.text}
+					</p>
+				)
+			) : (
+				children
+			)}
+		</section>
+	);
+};
+
+/**
+ * Every conversation list, including read-only owner audit, uses these marks.
+ * Unknown additive kinds stay channels rather than gaining a second visual
+ * vocabulary; the rail's existing conservative fallback already made that call.
+ */
+export const ConversationKindIcon: FC<{ kind: string }> = ({ kind }) => {
+	const Icon = kind === "group" ? Users : kind === "dm" ? AtSign : Hash;
+	return <Icon size={16} aria-hidden="true" className="shrink-0" />;
+};
+
+/** A channel or group row (and an orphaned DM under Direct messages). */
+export const ConversationRailRow: FC<{
+	hasDraft?: boolean;
+	conversation: TeamBridgeConversation;
+	selected: boolean;
+	selfAccountId?: string;
+	title?: string;
+	/**
+	 * The merged "All organizations" view names each row's organization on a
+	 * second line; a single-organization rail passes nothing and stays 30px.
+	 */
+	organizationName?: string;
+	onSelect: () => void;
+	/**
+	 * The reader is about to open this row: pointer over it, pressing it, or
+	 * keyboard focus. The page warms the row's first history page so the click
+	 * paints from cache (bridge-instant-load S3). A hint only — it must never
+	 * select, mark read or change anything the reader can see. `press` (pointer
+	 * down) is the click arriving and always reads; `hover` (pointer enter or
+	 * keyboard focus) is rate-budgeted, because a pointer sweep crosses every row.
+	 */
+	onIntent?: (intent: "hover" | "press") => void;
+	/**
+	 * The conversation menu, the SAME item list the header "…" draws
+	 * (`conversationMenuSections`); absent or empty, the row has no "…" and no
+	 * right-click menu. Archive is one of its items now, offered only with the
+	 * server's `can_administer`.
+	 */
+	menu?: TeamBridgeRowMenu;
+	/** Story/capture seed only: opens the row's menu on mount. */
+	initialMenuOpen?: boolean;
+}> = ({
+	hasDraft = false,
+	conversation,
+	selected,
+	selfAccountId,
+	title,
+	organizationName,
+	onSelect,
+	onIntent,
+	menu,
+	initialMenuOpen = false,
+}) => {
+	const [menuOpen, setMenuOpen] = useState(initialMenuOpen);
+	const hasMenu = (menu?.sections.length ?? 0) > 0;
+	const locale = useI18nLocale();
+	const name =
+		title ??
+		conversationTitle(conversation, selfAccountId) ??
+		t("ui.teamBridge.list.untitled");
+	const preview = isPreviewConversation(conversation);
+	const unread = conversation.unread_count;
+	const lastActive = lastActiveTooltip(conversation.last_message_at, locale);
+	return (
+		<li className="group/row relative">
+			<button
+				type="button"
+				onClick={onSelect}
+				onPointerEnter={onIntent ? () => onIntent("hover") : undefined}
+				onPointerDown={onIntent ? () => onIntent("press") : undefined}
+				onFocus={onIntent ? () => onIntent("hover") : undefined}
+				/* RIGHT-CLICK OPENS THE ROW'S OWN MENU (operator 2026-11-04). This
+				   used to be left to the desktop shell; a Team Bridge row now has a
+				   menu of its own acts, so the gesture every sidebar teaches opens it.
+				   `preventDefault` only when there IS a menu, so a row without one
+				   still gets the platform's menu. */
+				onContextMenu={
+					hasMenu
+						? (event) => {
+								event.preventDefault();
+								setMenuOpen(true);
+							}
+						: undefined
+				}
+				/* The row carries no visible time (it clipped at narrow widths, #1293);
+				   the relative+absolute pair lives in the tooltip and the header. */
+				title={lastActive || undefined}
+				aria-current={selected ? "page" : undefined}
+				data-conversation-id={conversation.id}
+				data-conversation-builtin={conversation.builtin}
+				className={cn(
+					RAIL_ROW,
+					organizationName && "h-auto min-h-[38px] py-1",
+					selected
+						? cn(rowCurrent, "[&>svg:first-child]:text-accent")
+						: unread > 0
+							? "font-semibold text-ink hover:bg-row-hover"
+							: preview
+								? "text-ink-dim hover:bg-row-hover hover:text-ink"
+								: "text-ink-muted hover:bg-row-hover hover:text-ink",
+				)}
+			>
+				<ConversationKindIcon kind={conversation.kind} />
+				<span className="flex min-w-0 flex-1 flex-col">
+					<span className="truncate">{name}</span>
+					{organizationName && (
+						<span className="truncate font-normal text-meta-sm text-ink-dim">
+							{organizationName}
+						</span>
+					)}
+				</span>
+				{preview && (
+					/* A QUIET MARK, NOT A SECOND PILL (visual refresh D5). The chip sat
+					   beside the unread badge - two pills of one size meaning different
+					   things. The name already dims (`text-ink-dim` below) and the
+					   channel header carries the Join action; the eye glyph says why. */
+					<span
+						title={t("ui.teamBridge.preview.chip")}
+						className="shrink-0 text-ink-dim"
+					>
+						<Eye size={14} aria-hidden="true" />
+						<span className="sr-only">{t("ui.teamBridge.preview.chip")}</span>
+					</span>
+				)}
+				{showsMutedGlyph(conversation) && <MuteGlyph yieldsToMenu={hasMenu} />}
+				{hasDraft && (
+					<span
+						title={t("ui.teamBridge.drafts.indicator")}
+						className="shrink-0 text-ink-dim"
+					>
+						<Pencil size={12} aria-hidden="true" />
+						<span className="sr-only">
+							{t("ui.teamBridge.drafts.indicator")}
+						</span>
+					</span>
+				)}
+				<Unread
+					count={unread}
+					yieldsToMenu={hasMenu}
+					register={unreadRegister(conversation)}
+				/>
+			</button>
+			{menu && hasMenu && (
+				<ConversationRowMenu
+					name={name}
+					menu={menu}
+					open={menuOpen}
+					onOpenChange={setMenuOpen}
+				/>
+			)}
+		</li>
+	);
+};
+
+/** What a conversation row's menu draws: the shared sections and their writes. */
+export type TeamBridgeRowMenu = {
+	sections: TeamBridgeConversationMenuItem[][];
+	conversation: { notify?: TeamBridgeConversation["notify"]; muted: boolean };
+	agentNotify?: TeamBridgeConversation["notify"] | null;
+	handlers: TeamBridgeConversationMenuHandlers;
+};
+
+/*
+ * BOTH ROW MENUS SIT AT `end-[3px]` (operator, 2026-11-04): the row spans the
+ * section's content box (8px in from the column edge) and the 24px button
+ * centres a 14px glyph (5px each side), so 8 + 3 + 5 ends the glyph 16px from
+ * the edge - on the line of the badge or mute bell it yields its slot to.
+ * `end-1.5` put it 3px inside that line, so the mark jumped on hover.
+ */
+/**
+ * The class that places a row's "…". Exported so the no-shift claim is pinned
+ * by test: the trigger is ABSOLUTE in the row's trailing slot (it takes no
+ * flow space, so revealing it cannot move the label), and the unread count and
+ * bell yield that slot (`yieldsToMenu`) while the row is hovered or focused.
+ * Same slot, reveal and chrome as the person row's menu, so the rail has one
+ * hover affordance.
+ */
+export const ROW_MENU_TRIGGER =
+	"absolute end-[3px] top-[3px] flex size-6 items-center justify-center rounded-sm text-ink-dim opacity-0 transition-opacity duration-fast hover:bg-row-hover hover:text-ink focus-visible:opacity-100 group-hover/row:opacity-100 group-focus-within/row:opacity-100 data-[state=open]:opacity-100";
+
+/**
+ * A conversation row's "…" and right-click menu. CONTROLLED so the row's
+ * `onContextMenu` can open the same dropdown the trigger opens: one menu, two
+ * gestures, anchored at the trigger either way (Radix returns focus there on
+ * Escape, which is also where a keyboard reader expects it).
+ */
+const ConversationRowMenu: FC<{
+	name: string;
+	menu: TeamBridgeRowMenu;
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+}> = ({ name, menu, open, onOpenChange }) => (
+	<DropdownMenu open={open} onOpenChange={onOpenChange}>
+		<DropdownMenuTrigger asChild>
+			<button
+				type="button"
+				aria-label={t("ui.teamBridge.row.menu", { name })}
+				data-row-menu-trigger=""
+				className={ROW_MENU_TRIGGER}
+			>
+				<MoreHorizontal size={14} aria-hidden="true" />
+			</button>
+		</DropdownMenuTrigger>
+		<DropdownMenuContent
+			align="start"
+			side="right"
+			/* Width only: the primitive owns the borderless chrome and the one shadow
+			 * (branding § 2). A `shadow-*` here would make tailwind-merge drop
+			 * `shadow-overlay` and with it the contact layer and the glass contact. */
+			className="w-64"
+		>
+			<TeamBridgeConversationMenuItems
+				sections={menu.sections}
+				conversation={menu.conversation}
+				agentNotify={menu.agentNotify}
+				handlers={menu.handlers}
+			/>
+		</DropdownMenuContent>
+	</DropdownMenu>
+);
+
+/**
+ * The "…" on a reachable row. It sits in the row's trailing slot, revealed by
+ * hover or keyboard focus within the row, and never shifts the label.
+ */
+const RowMenu: FC<{ label: string; onStartGroup: () => void }> = ({
+	label,
+	onStartGroup,
+}) => (
+	<DropdownMenu>
+		<DropdownMenuTrigger asChild>
+			<button
+				type="button"
+				aria-label={t("ui.teamBridge.row.menu", { name: label })}
+				className="absolute end-[3px] flex size-6 items-center justify-center rounded-sm text-ink-dim opacity-0 transition-opacity duration-fast hover:bg-row-hover hover:text-ink focus-visible:opacity-100 group-hover/row:opacity-100 group-focus-within/row:opacity-100 data-[state=open]:opacity-100"
+			>
+				<MoreHorizontal size={14} aria-hidden="true" />
+			</button>
+		</DropdownMenuTrigger>
+		<DropdownMenuContent align="start" side="right">
+			<DropdownMenuItem onSelect={onStartGroup}>
+				<Users size={14} aria-hidden="true" />
+				{t("ui.teamBridge.row.start_group")}
+			</DropdownMenuItem>
+		</DropdownMenuContent>
+	</DropdownMenu>
+);
+
+/**
+ * One person. Clicking selects the person (their DM, or an empty draft to
+ * them) at once; nothing is created until the first message is sent. The
+ * profile card is a long hover, an avatar hover or Shift+F10 away (`RAIL_CARD`).
+ * Inert rows (self, bridge off, identity loading) select nothing but keep the
+ * same card affordances, so who someone is stays reachable.
+ *
+ * A person whose bridge is off is still drawn, dimmed and `aria-disabled`,
+ * with the reason as its description: the roster says who is potentially
+ * reachable, and the cue says what they need to do.
+ */
+export const PersonRailRow: FC<{
+	hasDraft?: boolean;
+	member: TeamBridgeDirectoryMember;
+	selfAccountId?: string;
+	identityKnown: boolean;
+	selected: boolean;
+	dm: TeamBridgeConversation | null;
+	readOnly: boolean;
+	onSelect: () => void;
+	onStartGroup: (recipient: TeamBridgeRecipient) => void;
+}> = ({
+	hasDraft = false,
+	member,
+	selfAccountId,
+	identityKnown,
+	selected,
+	dm,
+	readOnly,
+	onSelect,
+	onStartGroup,
+}) => {
+	useI18nLocale();
+	const cueId = useId();
+	const label = personDisplayLabel(member);
+	const state = identityKnown
+		? personRowState(member, selfAccountId)
+		: "unknown";
+	const avatar = (
+		<TeamBridgeAvatar
+			member={member}
+			kind="human"
+			label={label}
+			size={20}
+			selected={selected}
+			className="text-[10px]"
+		/>
+	);
+
+	if (state === "self") {
+		return (
+			<li>
+				<TeamBridgeProfileCard
+					member={member}
+					label={label}
+					kind="human"
+					onMessage={onSelect}
+					canMessage={false}
+					{...RAIL_CARD}
+				>
+					<button
+						type="button"
+						className={cn(RAIL_ROW, "cursor-default text-ink-muted")}
+					>
+						{avatar}
+						<span className="min-w-0 flex-1 truncate">
+							{t("ui.teamBridge.people.self_named", { name: label })}
+						</span>
+					</button>
+				</TeamBridgeProfileCard>
+			</li>
+		);
+	}
+
+	/*
+	 * Unreachable rows stay readable, focusable statements. An existing DM with
+	 * someone who later turned the bridge off is still history the reader can
+	 * open, so only a person with NO thread is inert.
+	 */
+	const inertCue =
+		state === "unknown"
+			? t("ui.teamBridge.people.identity_loading")
+			: state === "unavailable" && !dm
+				? t("ui.teamBridge.people.bridge_off")
+				: null;
+	if (inertCue) {
+		return (
+			<li>
+				<TeamBridgeProfileCard
+					member={member}
+					label={label}
+					kind="human"
+					onMessage={onSelect}
+					canMessage={
+						!readOnly && state !== "unavailable" && state !== "unknown"
+					}
+					{...RAIL_CARD}
+				>
+					<button
+						type="button"
+						aria-disabled="true"
+						aria-describedby={cueId}
+						/*
+						 * THE REASON IS ON THE ROW, NOT BEHIND IT (design round 1, D1).
+						 * A sighted reader got only a tooltip, and the dimmed name alone
+						 * read as "broken" rather than "not yet". The cue is a second
+						 * line at `ink-dim` (the muted step that still clears contrast),
+						 * the name keeps `ink-muted`, and `aria-describedby` points at the
+						 * same visible text so both readers get one sentence.
+						 */
+						className={cn(
+							RAIL_ROW,
+							"h-auto min-h-8 cursor-default py-1 text-ink-muted",
+						)}
+					>
+						<span className="opacity-60">{avatar}</span>
+						<span className="flex min-w-0 flex-1 flex-col text-start">
+							<span className="truncate">{label}</span>
+							<span id={cueId} className="truncate text-meta-sm text-ink-dim">
+								{inertCue}
+							</span>
+						</span>
+					</button>
+				</TeamBridgeProfileCard>
+			</li>
+		);
+	}
+
+	const unread = dm?.unread_count ?? 0;
+	const canStartGroup = !readOnly && state !== "unavailable";
+	return (
+		<li className="group/row relative flex items-center">
+			<TeamBridgeProfileCard
+				member={member}
+				label={label}
+				kind="human"
+				onMessage={onSelect}
+				canMessage={
+					(Boolean(dm) || !readOnly) &&
+					state !== "unavailable" &&
+					state !== "unknown"
+				}
+				{...RAIL_CARD}
+			>
+				<button
+					type="button"
+					onClick={onSelect}
+					aria-current={selected ? "page" : undefined}
+					data-team-bridge-person={member.account_id}
+					aria-label={personRowLabel(label, dm)}
+					className={cn(
+						RAIL_ROW,
+						selected
+							? cn(rowCurrent, "[&>svg:first-child]:text-accent")
+							: unread > 0
+								? "font-semibold text-ink hover:bg-row-hover"
+								: "text-ink-muted hover:bg-row-hover hover:text-ink",
+					)}
+				>
+					{avatar}
+					<span className="min-w-0 flex-1 truncate">{label}</span>
+					{state === "paused" && (
+						<span className="shrink-0 text-meta-sm text-ink-dim">
+							{t("ui.teamBridge.people.paused")}
+						</span>
+					)}
+					{hasDraft && (
+						<span
+							title={t("ui.teamBridge.drafts.indicator")}
+							className="shrink-0 text-ink-dim"
+						>
+							<Pencil size={12} aria-hidden="true" />
+							<span className="sr-only">
+								{t("ui.teamBridge.drafts.indicator")}
+							</span>
+						</span>
+					)}
+					{Boolean(dm && showsMutedGlyph(dm)) && (
+						<MuteGlyph yieldsToMenu={canStartGroup} />
+					)}
+					<Unread
+						count={unread}
+						yieldsToMenu
+						register={dm ? unreadRegister(dm) : "attention"}
+					/>
+				</button>
+			</TeamBridgeProfileCard>
+			{canStartGroup && (
+				<RowMenu
+					label={label}
+					onStartGroup={() =>
+						onStartGroup({ kind: "human", accountId: member.account_id, label })
+					}
+				/>
+			)}
+		</li>
+	);
+};
+
+/** One chief of staff: "Aida (Ben)", opening a DM with that person's agent. */
+export const ChiefRailRow: FC<{
+	hasDraft?: boolean;
+	chief: TeamBridgeChiefOfStaff;
+	label: string;
+	selected: boolean;
+	dm: TeamBridgeConversation | null;
+	readOnly: boolean;
+	onSelect: () => void;
+	onStartGroup: (recipient: TeamBridgeRecipient) => void;
+}> = ({
+	hasDraft = false,
+	chief,
+	label,
+	selected,
+	dm,
+	readOnly,
+	onSelect,
+	onStartGroup,
+}) => {
+	useI18nLocale();
+	const unread = dm?.unread_count ?? 0;
+	return (
+		<li className="group/row relative flex items-center">
+			<TeamBridgeProfileCard
+				member={chief.person}
+				label={label}
+				kind="agent"
+				onMessage={onSelect}
+				canMessage={Boolean(dm) || !readOnly}
+				{...RAIL_CARD}
+			>
+				<button
+					type="button"
+					onClick={onSelect}
+					aria-current={selected ? "page" : undefined}
+					data-team-bridge-chief={chief.person.account_id}
+					aria-label={personRowLabel(label, dm)}
+					className={cn(
+						RAIL_ROW,
+						selected
+							? cn(rowCurrent, "[&>svg:first-child]:text-accent")
+							: unread > 0
+								? "font-semibold text-ink hover:bg-row-hover"
+								: "text-ink-muted hover:bg-row-hover hover:text-ink",
+					)}
+				>
+					<TeamBridgeAvatar
+						member={chief.person}
+						kind="agent"
+						endpointId={chief.endpointId}
+						label={label}
+						size={20}
+						selected={selected}
+						className="text-accent"
+					/>
+					<span className="min-w-0 flex-1 truncate">{label}</span>
+					{chief.paused && (
+						<span className="shrink-0 text-meta-sm text-ink-dim">
+							{t("ui.teamBridge.people.paused")}
+						</span>
+					)}
+					{hasDraft && (
+						<span
+							title={t("ui.teamBridge.drafts.indicator")}
+							className="shrink-0 text-ink-dim"
+						>
+							<Pencil size={12} aria-hidden="true" />
+							<span className="sr-only">
+								{t("ui.teamBridge.drafts.indicator")}
+							</span>
+						</span>
+					)}
+					{Boolean(dm && showsMutedGlyph(dm)) && (
+						<MuteGlyph yieldsToMenu={!readOnly} />
+					)}
+					<Unread
+						count={unread}
+						yieldsToMenu
+						register={dm ? unreadRegister(dm) : "attention"}
+					/>
+				</button>
+			</TeamBridgeProfileCard>
+			{!readOnly && (
+				<RowMenu
+					label={label}
+					onStartGroup={() =>
+						onStartGroup({
+							kind: "agent",
+							accountId: chief.person.account_id,
+							endpointId: chief.endpointId,
+							label,
+						})
+					}
+				/>
+			)}
+		</li>
+	);
+};
+
+/**
+ * The rail's loading rows for a section whose read is in flight.
+ *
+ * SKELETON BARS, NOT A SPINNER (visual refresh, §3.2 States). A hollow spinner
+ * per section read as a broken icon in an empty rail; bars at the rows' own
+ * pitch say "rows are coming here" and keep the rail's shape, so nothing jumps
+ * when the read lands. The widths vary so the column does not read as a table.
+ * The label stays as the status a screen reader hears.
+ */
+const SKELETON_WIDTHS = ["72%", "58%", "80%", "64%"] as const;
+export const RailLoading: FC<{ label: string }> = ({ label }) => (
+	<output aria-label={label} className="block">
+		{SKELETON_WIDTHS.map((width) => (
+			<div
+				key={width}
+				aria-hidden="true"
+				className="flex h-8 items-center gap-2 px-2"
+			>
+				<Skeleton className="size-4 shrink-0 rounded-xs" />
+				<Skeleton className="h-3 rounded-xs" style={{ width }} />
+			</div>
+		))}
+	</output>
+);
+
+/** Whether a target names this row (the rail's one selection rule). */
+export function isTargetRow(
+	target: TeamBridgeTarget | null,
+	type: "person" | "chief",
+	accountId: string,
+): boolean {
+	return target?.type === type && target.accountId === accountId;
+}
+
+/**
+ * "10 hours ago · Oct 21, 2026, 1:04 AM" for a row tooltip. Kept here rather
+ * than imported from the page so the rail module has no dependency on the
+ * page (the page imports the rail).
+ */
+function lastActiveTooltip(
+	iso: string | null | undefined,
+	locale: string,
+): string {
+	if (!iso) return "";
+	const then = Date.parse(iso);
+	if (Number.isNaN(then)) return "";
+	const minutes = Math.round((then - Date.now()) / 60_000);
+	const hours = Math.round(minutes / 60);
+	const rel =
+		Math.abs(minutes) < 60
+			? formatRelativeTime(minutes, "minute", { numeric: "auto" }, locale)
+			: Math.abs(hours) < 24
+				? formatRelativeTime(hours, "hour", { numeric: "auto" }, locale)
+				: formatRelativeTime(
+						Math.round(hours / 24),
+						"day",
+						{ numeric: "auto" },
+						locale,
+					);
+	const abs = new Intl.DateTimeFormat(locale, {
+		dateStyle: "medium",
+		timeStyle: "short",
+	}).format(new Date(then));
+	return `${rel} · ${abs}`;
+}

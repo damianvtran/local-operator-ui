@@ -1,0 +1,121 @@
+{
+  "audit_id": "att-attachments-20261021",
+  "date": "2026-10-21",
+  "locale": "ru",
+  "namespace": "ui.teamBridge",
+  "source_commit": "cf1d7c616ca36bd48c0bf160d64a08514b7c2b08",
+  "source_base": "5005cfe8b6",
+  "scope": "23 ui.teamBridge.attachments.* keys translated at 0906d747e5 (git diff 5005cfe8b6..cf1d7c616c of en adds 31 keys: these 23 plus 8 replies.* from #1304, out of scope). The other 138 values are inherited unchanged from the base audit chain; the 8 replies.* values are byte-equal to the threads1304-r2-ru target.",
+  "status": "audited",
+  "translator": {
+    "agent": "coder",
+    "model": "anthropic/claude-opus-5-5",
+    "session": "03594b2dcc02",
+    "job": "bc0c4b952eaa",
+    "date": "2026-10-21"
+  },
+  "auditors": [
+    {
+      "agent": "translation-auditor",
+      "model": "anthropic/claude-opus-5-5",
+      "date": "2026-10-21",
+      "result": "clean-with-findings",
+      "instance": "att-r1-ru",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 1
+      },
+      "receipt": "i18n/receipts/att-r1-ru.json",
+      "receipt_sha256": "8d72369fc69f6033efd26eb0d75d5baf7c087fef8e816839976ecd37fb1a9984",
+      "scope": "Team Bridge image attachments: 23-key attachments.* delta independently audited; base 138 values inherited unchanged from 5005cfe8b6, 8 replies.* inherited from threads1304-r2-ru. Catalogue audit only, not rendered-fit, activation or release approval.",
+      "note": "Independent round-1 delta audit; MINOR expired_staged, NIT error_quota. No rendered-fit claim."
+    }
+  ],
+  "audit_rounds": [
+    {
+      "round": 1,
+      "instance": "att-r1-ru",
+      "session": "562d30c4b655",
+      "job": "b56e1ae2d95e",
+      "model": "anthropic/claude-opus-5-5",
+      "status": "passed",
+      "keys_audited": 23,
+      "target_sha256": "33a931af827ba2d475c46ad82f96e2a851d0686d0e788350db8e1baa99ac0a8d",
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.teamBridge.attachments.expired_staged"
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.teamBridge.attachments.error_quota"
+        }
+      ],
+      "receipt": {
+        "path": "i18n/receipts/att-r1-ru.json",
+        "sha256": "8d72369fc69f6033efd26eb0d75d5baf7c087fef8e816839976ecd37fb1a9984"
+      }
+    }
+  ],
+  "inherited_receipt": {
+    "base": "5005cfe8b6",
+    "path": "i18n/receipts/tbh-r2-ru.json",
+    "sha256": "e685510a0eb4a2f0a2fc4e73381fab14c7627f32570a6973c7c6c07a72360b3f",
+    "keys_inherited": 138,
+    "base_source_sha256": "5f67df6c37f34f1f83e4048ad47aef9bd4020fe2ba74c5e8e548b9c4439dc7ee",
+    "base_target_sha256": "69aea2ec18b548942bb3e2b30c5c7747861b5ddf27aa4eb341bee7b92d126887",
+    "full_coverage_receipt": {
+      "path": "i18n/receipts/tbd-r1-ru.json",
+      "sha256": "b6dbfd1c67fe7909d9099a3adc7eaf46abcc38c90f9a95d7268ae365e7ad1c11"
+    },
+    "unchanged_values_verified": 138
+  },
+  "merged_in_receipt": {
+    "base": "8913528e50",
+    "path": "i18n/receipts/threads1304-r2-ru.json",
+    "sha256": "c79c71db3039c72a00c12d1c3cc66bb45127bb1a80626f8f4de79810b29bdbeb",
+    "keys_inherited": 8,
+    "base_source_sha256": "7de891f2cf03b7563747c440847c853f1c1356aa0a50480ec28eae347e6581e9",
+    "base_target_sha256": "984e7b1feb92af43af29952a1f5839818c8ab4552bc5901fd97ace26b586ab5f",
+    "unchanged_values_verified": 8
+  },
+  "files": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+      "sha256": "de78ff4b0cf8aca9ddb5eda9687ee2a806e11f0bae32f005609579108360848f"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/ru/ui.teamBridge.json",
+      "sha256": "33a931af827ba2d475c46ad82f96e2a851d0686d0e788350db8e1baa99ac0a8d"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+      "sha256": "8a84800e3d2d52aae3c44393b8fe79bcc567f2ca5d8660a2d260f889cc487902"
+    }
+  },
+  "references": {
+    "core_revision": "24dbccbb784bd1c9b690ce4601f489791ceacb09",
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/ru.md",
+      "sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+    }
+  },
+  "independence": "Translator (coder agent, session 03594b2dcc02, job bc0c4b952eaa) and auditor (translation-auditor, session 562d30c4b655, job b56e1ae2d95e) are different agents in different sessions; the auditor never edited catalogues and wrote only this record and its receipt; no ledger-assemble run, no git operation.",
+  "limitations": [
+    "Browser unavailable by task constraint; no rendered-fit, screenshots, glyph metrics, pseudo-localization, native bidi rendering or activation evidence claimed.",
+    "Translator was the implementing coder agent rather than a dedicated translator role; both run the same served model (claude-opus-5-5), so independence rests on separate agent/session, not separate model.",
+    "Round-1 findings (MINOR expired_staged, NIT error_quota) are open; no remediation round audited yet."
+  ],
+  "retained_rounds": [
+    {
+      "path": "i18n/receipts/att-r1-ru.json",
+      "sha256": "8d72369fc69f6033efd26eb0d75d5baf7c087fef8e816839976ecd37fb1a9984"
+    }
+  ]
+}

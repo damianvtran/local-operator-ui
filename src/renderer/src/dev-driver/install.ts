@@ -43,9 +43,14 @@ import {
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
+import { useOnboardingStore } from "@shared/store/onboarding-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { Query } from "@tanstack/react-query";
 import type { QwenVoiceStatus } from "../../../shared/desktop-contract";
+import {
+	armModelAuthorityObserver,
+	readModelAuthorityObserver,
+} from "./model-authority-observer";
 import { soundDriverVerbs } from "./sounds";
 
 /** One animation frame, so a capture sees the paint the action caused. */
@@ -409,6 +414,26 @@ export function installDevDriver(): string[] {
 
 	return bridge.install({
 		...soundDriverVerbs,
+		/** Metadata-only causal witness; available ONLY behind this armed door. */
+		modelAuthority: async (request) => {
+			if (
+				request &&
+				typeof request === "object" &&
+				"start" in request &&
+				request.start === true
+			)
+				armModelAuthorityObserver();
+			const observed = readModelAuthorityObserver();
+			if (!observed.armed || observed.fault)
+				throw new Error("model authority observer unavailable");
+			// The witness already proves consumer completion. Now let its real
+			// state updates/paint settle; frames alone were never that proof.
+			await nextFrame();
+			const settled = await settleCssTransitions();
+			if (settled.timedOut)
+				throw new Error("model authority DOM did not settle");
+			return readModelAuthorityObserver();
+		},
 		/** Where the driver is, right now, in the app's own terms. */
 		hello: () => ({
 			armed: true,
@@ -487,6 +512,16 @@ export function installDevDriver(): string[] {
 							undelivered: draft.undelivered !== undefined,
 							submitted: draft.submittedText !== undefined,
 							admissionAttempted: draft.admissionAttempted === true,
+							/*
+							 * THE SELECTION THE FIRST TURN WILL BE BORN ON, as the pane holds it
+							 * (issue #1265). The booleans beside it say a draft has a row; this
+							 * says what `sessions.create` will carry, which is the only way a
+							 * scene can require that a picker's own sentence and the pane's
+							 * record agree — the silent-drop class where a dialog claims a
+							 * dial the first turn never gets. The wire fields only, never the
+							 * draft's text: that is the user's.
+							 */
+							model: draft.model ?? null,
 						},
 					]),
 				),
@@ -841,6 +876,127 @@ export function installDevDriver(): string[] {
 			const result = pressAt(element);
 			await nextFrame();
 			return { selector, target: describeElement(element), ...result };
+		},
+
+		/**
+		 * Wait for a selector to appear (or, with `gone: true`, to disappear) - the
+		 * readiness half of `press`, without the click.
+		 *
+		 * WHY (S2, mac proof capture). The S1 step runner has no CDP, so "the
+		 * conversation painted" or "the wizard is gone" can only be learned from
+		 * inside the page. A frame is taken only after the `waitFor` before it
+		 * resolved, so a capture cannot photograph a loader under a scene's name.
+		 * Settles CSS transitions before answering for `setTheme`'s reason.
+		 */
+		waitFor: async (payload) => {
+			const request =
+				typeof payload === "string"
+					? { selector: payload }
+					: (payload as {
+							selector: unknown;
+							gone?: unknown;
+							timeoutMs?: unknown;
+						});
+			const selector = requireString(request?.selector, "waitFor selector");
+			const gone = request?.gone === true;
+			const timeoutMs =
+				typeof request?.timeoutMs === "number" ? request.timeoutMs : 10_000;
+			const started = Date.now();
+			for (;;) {
+				const present = document.querySelector(selector) !== null;
+				if (present !== gone) break;
+				if (Date.now() - started > timeoutMs) {
+					throw new Error(
+						gone
+							? `${selector} is still present after ${timeoutMs}ms`
+							: `nothing matches ${selector} after ${timeoutMs}ms of waiting`,
+					);
+				}
+				await new Promise((resolve) => setTimeout(resolve, 100));
+			}
+			await nextFrame();
+			const settled = await settleCssTransitions();
+			return {
+				selector,
+				gone,
+				waitedMs: Date.now() - started,
+				settleTimedOut: settled.timedOut,
+			};
+		},
+
+		/**
+		 * Open (or close) the canvas on the ACTIVE conversation, on one of its own
+		 * views - exactly the store writes the canvas door makes
+		 * (`panel-rail-actions.ts`: `setViewMode` BEFORE `setCanvasOpen`, so the
+		 * first frame is the requested view).
+		 *
+		 * WHY (S2, mac proof capture). The header row that does this is two presses
+		 * through a locale-dependent menu, which is brittle for a stepped run. Unlike
+		 * `openCanvasDocument` this stages NO draft: it is about the conversation
+		 * `--open-session` opened, so with no active conversation it refuses rather
+		 * than photographing a canvas that belongs to nothing.
+		 */
+		openCanvas: async (payload) => {
+			const request = (payload ?? {}) as { view?: unknown; open?: unknown };
+			const open = request.open !== false;
+			const view = request.view ?? "files";
+			if (open && view !== "files" && view !== "documents") {
+				throw new Error(
+					`openCanvas view must be "files" or "documents" (got ${JSON.stringify(view)})`,
+				);
+			}
+			const sessions = useCanonicalSessionsStore.getState();
+			const conversationId = panelIdentityFor(
+				sessions.activeDraftKey,
+				sessions.activeSessionId,
+			);
+			// Closing needs no conversation (the default view may have none);
+			// opening does, because the view mode is stored per conversation.
+			if (open && !conversationId) {
+				throw new Error("openCanvas needs an active conversation");
+			}
+			if (open && conversationId) {
+				useCanvasStore
+					.getState()
+					.setViewMode(conversationId, view as "files" | "documents");
+			}
+			useUiPreferencesStore.getState().setCanvasOpen(open);
+			await nextFrame();
+			const settled = await settleCssTransitions();
+			return {
+				conversationId,
+				open: useUiPreferencesStore.getState().isCanvasOpen,
+				view: open ? view : null,
+				settleTimedOut: settled.timedOut,
+			};
+		},
+
+		/**
+		 * Do what the first-run wizard's own "Skip for now" does
+		 * (`onboarding-modal.tsx` `finish` -> `completeModalOnboarding`), whether or
+		 * not the wizard has opened yet: it opens only once the provider census
+		 * answers, which can be after this step runs, and a completed store is what
+		 * `decideFirstTimeUser` reads to keep it closed (the same state the CDP rigs'
+		 * pre-paint seed writes).
+		 *
+		 * WHY. The CDP rigs seed `onboarding-storage` in localStorage before the
+		 * first paint; the S1 runner has no such channel, and an isolated daemon has
+		 * no provider, so the wizard would cover every frame. The button has no
+		 * stable selector (its label is localised), so the store action is the honest
+		 * equivalent of the press. It completes SETUP, not an approval: no provider,
+		 * credential or consent is touched. It does not navigate (`finish` does): the
+		 * route belongs to the scene.
+		 */
+		skipOnboarding: async () => {
+			const wasVisible = Boolean(
+				document.querySelector("[data-onboarding-modal]"),
+			);
+			useOnboardingStore.getState().completeModalOnboarding();
+			await nextFrame();
+			return {
+				wasVisible,
+				complete: useOnboardingStore.getState().isModalComplete,
+			};
 		},
 
 		/**

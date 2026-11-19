@@ -1,0 +1,381 @@
+{
+	"_provenance": "Shapes captured 2026-11-10 from a real private organization hub (GET /tenants/{id}/skills[/{sid}], the org_skills.list/org_skill.get proxy targets) and the installed backend's links_snapshot/status_snapshot; every string value is synthetic. One DOCUMENT skill (files[]) and one BUNDLE skill (bundle{}, no files) - the bundle form is what crashed the detail dialog.",
+	"orgSkillList": {
+		"skills": [
+			{
+				"content_revision": 1,
+				"revision": "\"revision-v1-0000000000000000000000000000000000000000000000000000000000000000\"",
+				"sync_contract": {
+					"revision_cas": 1,
+					"skills": 1,
+					"skill_bundles": 1
+				},
+				"id": "skill-doc-0001",
+				"tenant_id": "tenant-minerva",
+				"account_id": "account-0001",
+				"account_metadata": {
+					"name": "Fixture Publisher",
+					"email": "publisher@example.invalid"
+				},
+				"name": "doc-skill",
+				"description": "Synthetic description for a private organization skill.",
+				"published_by": {
+					"account_id": "account-0001",
+					"name": "Fixture Publisher"
+				},
+				"document_version": 1,
+				"visibility": "org",
+				"moderation": {
+					"verdict": "allow",
+					"reason": "Synthetic moderation reason.",
+					"model": "fixture-model",
+					"prompt_version": "mod-v2",
+					"decided_at": "2026-11-02T00:00:00Z",
+					"attempts": 1,
+					"latency_ms": 5070,
+					"source": "model",
+					"scope": "org"
+				},
+				"created_date": "2026-11-01T00:00:00Z",
+				"updated_at": "2026-11-02T00:00:00Z"
+			},
+			{
+				"content_revision": 1,
+				"revision": "\"revision-v1-0000000000000000000000000000000000000000000000000000000000000000\"",
+				"sync_contract": {
+					"revision_cas": 1,
+					"skills": 1,
+					"skill_bundles": 1
+				},
+				"id": "skill-bundle-0001",
+				"tenant_id": "tenant-minerva",
+				"account_id": "account-0001",
+				"account_metadata": {
+					"name": "Fixture Publisher",
+					"email": "publisher@example.invalid"
+				},
+				"name": "bundle-skill",
+				"description": "Synthetic description for a private organization skill.",
+				"published_by": {
+					"account_id": "account-0001",
+					"name": "Fixture Publisher"
+				},
+				"document_version": 1,
+				"visibility": "org",
+				"moderation": {
+					"verdict": "allow",
+					"reason": "Synthetic moderation reason.",
+					"model": "fixture-model",
+					"prompt_version": "mod-v2",
+					"decided_at": "2026-11-02T00:00:00Z",
+					"attempts": 17,
+					"latency_ms": 38983,
+					"source": "model",
+					"scope": "org"
+				},
+				"created_date": "2026-11-01T00:00:00Z",
+				"updated_at": "2026-11-02T00:00:00Z",
+				"bundle": {
+					"format": "zip",
+					"hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+					"size": 24773425,
+					"uncompressed_size": 25485405,
+					"file_count": 141,
+					"entrypoint": "SKILL.md",
+					"tree_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+				}
+			}
+		],
+		"sync_contract": {
+			"revision_cas": 1,
+			"skills": 1,
+			"skill_bundles": 1
+		}
+	},
+	"orgSkillDetails": [
+		{
+			"content_revision": 1,
+			"revision": "\"revision-v1-0000000000000000000000000000000000000000000000000000000000000000\"",
+			"sync_contract": {
+				"revision_cas": 1,
+				"skills": 1,
+				"skill_bundles": 1
+			},
+			"id": "skill-doc-0001",
+			"tenant_id": "tenant-minerva",
+			"account_id": "account-0001",
+			"account_metadata": {
+				"name": "Fixture Publisher",
+				"email": "publisher@example.invalid"
+			},
+			"name": "doc-skill",
+			"description": "Synthetic description for a private organization skill.",
+			"files": [
+				{
+					"path": "SKILL.md",
+					"content": "Synthetic content for SKILL.md.\n"
+				},
+				{
+					"path": "references/dataset-kit.md",
+					"content": "Synthetic content for references/dataset-kit.md.\n"
+				},
+				{
+					"path": "references/run-lessons.md",
+					"content": "Synthetic content for references/run-lessons.md.\n"
+				},
+				{
+					"path": "references/seed-adapter.md",
+					"content": "Synthetic content for references/seed-adapter.md.\n"
+				}
+			],
+			"published_by": {
+				"account_id": "account-0001",
+				"name": "Fixture Publisher"
+			},
+			"document_version": 1,
+			"visibility": "org",
+			"moderation": {
+				"verdict": "allow",
+				"reason": "Synthetic moderation reason.",
+				"model": "fixture-model",
+				"prompt_version": "mod-v2",
+				"decided_at": "2026-11-02T00:00:00Z",
+				"attempts": 1,
+				"latency_ms": 5070,
+				"source": "model",
+				"scope": "org"
+			},
+			"created_date": "2026-11-01T00:00:00Z",
+			"updated_at": "2026-11-02T00:00:00Z"
+		},
+		{
+			"content_revision": 1,
+			"revision": "\"revision-v1-0000000000000000000000000000000000000000000000000000000000000000\"",
+			"sync_contract": {
+				"revision_cas": 1,
+				"skills": 1,
+				"skill_bundles": 1
+			},
+			"id": "skill-bundle-0001",
+			"tenant_id": "tenant-minerva",
+			"account_id": "account-0001",
+			"account_metadata": {
+				"name": "Fixture Publisher",
+				"email": "publisher@example.invalid"
+			},
+			"name": "bundle-skill",
+			"description": "Synthetic description for a private organization skill.",
+			"bundle": {
+				"format": "zip",
+				"hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+				"size": 24773425,
+				"uncompressed_size": 25485405,
+				"file_count": 141,
+				"entrypoint": "SKILL.md",
+				"tree_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+			},
+			"published_by": {
+				"account_id": "account-0001",
+				"name": "Fixture Publisher"
+			},
+			"document_version": 1,
+			"visibility": "org",
+			"moderation": {
+				"verdict": "allow",
+				"reason": "Synthetic moderation reason.",
+				"model": "fixture-model",
+				"prompt_version": "mod-v2",
+				"decided_at": "2026-11-02T00:00:00Z",
+				"attempts": 17,
+				"latency_ms": 38983,
+				"source": "model",
+				"scope": "org"
+			},
+			"created_date": "2026-11-01T00:00:00Z",
+			"updated_at": "2026-11-02T00:00:00Z"
+		}
+	],
+	"links": {
+		"generated_at": "2026-11-10T17:57:22Z",
+		"capability": "hub_links:1",
+		"links": [
+			{
+				"bundle_confirmation": null,
+				"link_id": "link-bundle-skill",
+				"kind": "skill",
+				"local_id": "skl-bundle-skill",
+				"name": "bundle-skill",
+				"hub_id": "skill-bundle-0001",
+				"hub_source": "https://api.radienthq.com/v1",
+				"visibility": "org",
+				"tenant_id": "tenant-minerva",
+				"tenant_name": null,
+				"policy": {
+					"subscribe": true,
+					"auto_push": false,
+					"revision": "policy-bundle-skill"
+				},
+				"eligibility": {
+					"can_auto_push": false,
+					"reason": "unsupported-precondition"
+				},
+				"local_path": "/fixture/skills/bundle-skill",
+				"content_state": "present",
+				"form": "bundle",
+				"auto_will_apply": false,
+				"auto_will_push": false,
+				"baseline_state": "publish",
+				"remote_revision": "\"revision-v1-0000000000000000000000000000000000000000000000000000000000000000\"",
+				"pull": {
+					"state": "idle",
+					"classification": null,
+					"enabled": true,
+					"last_checked_at": "2026-11-10T17:56:48Z",
+					"last_success_at": null,
+					"attempts": 0,
+					"next_retry_at": null,
+					"error_class": null,
+					"error_subclass": null,
+					"safe_message": null,
+					"operation_id": null,
+					"model_used": null,
+					"summary": {},
+					"backup_receipt": null
+				},
+				"push": {
+					"state": "idle",
+					"classification": null,
+					"enabled": false,
+					"last_checked_at": "2026-11-10T17:56:48Z",
+					"last_success_at": null,
+					"attempts": 0,
+					"next_retry_at": null,
+					"error_class": null,
+					"error_subclass": null,
+					"safe_message": null,
+					"operation_id": null,
+					"model_used": null,
+					"summary": {},
+					"backup_receipt": null
+				}
+			},
+			{
+				"bundle_confirmation": null,
+				"link_id": "link-doc-skill",
+				"kind": "skill",
+				"local_id": "skl-doc-skill",
+				"name": "doc-skill",
+				"hub_id": "skill-doc-0001",
+				"hub_source": "https://api.radienthq.com/v1",
+				"visibility": "org",
+				"tenant_id": "tenant-minerva",
+				"tenant_name": null,
+				"policy": {
+					"subscribe": true,
+					"auto_push": false,
+					"revision": "policy-doc-skill"
+				},
+				"eligibility": {
+					"can_auto_push": false,
+					"reason": "unsupported-precondition"
+				},
+				"local_path": "/fixture/skills/doc-skill",
+				"content_state": "present",
+				"form": "document",
+				"auto_will_apply": false,
+				"auto_will_push": false,
+				"baseline_state": "pull",
+				"remote_revision": "\"revision-v1-0000000000000000000000000000000000000000000000000000000000000000\"",
+				"pull": {
+					"state": "idle",
+					"classification": null,
+					"enabled": true,
+					"last_checked_at": "2026-11-10T17:56:48Z",
+					"last_success_at": null,
+					"attempts": 0,
+					"next_retry_at": null,
+					"error_class": null,
+					"error_subclass": null,
+					"safe_message": null,
+					"operation_id": null,
+					"model_used": null,
+					"summary": {},
+					"backup_receipt": null
+				},
+				"push": {
+					"state": "idle",
+					"classification": null,
+					"enabled": false,
+					"last_checked_at": "2026-11-10T17:56:48Z",
+					"last_success_at": null,
+					"attempts": 0,
+					"next_retry_at": null,
+					"error_class": null,
+					"error_subclass": null,
+					"safe_message": null,
+					"operation_id": null,
+					"model_used": null,
+					"summary": {},
+					"backup_receipt": null
+				}
+			}
+		],
+		"unresolved": []
+	},
+	"updates": {
+		"generated_at": "2026-11-10T17:57:16Z",
+		"credential": "ok",
+		"settings": {
+			"auto_agents": true,
+			"auto_teams": true,
+			"interval_min": 15
+		},
+		"counts": {
+			"available": 1,
+			"failed": 2,
+			"updating": 0,
+			"up-to-date": 63,
+			"applied": 0
+		},
+		"items": [
+			{
+				"kind": "skill",
+				"name": "bundle-skill",
+				"local_id": "skl-bundle-skill",
+				"hub_id": "skill-bundle-0001",
+				"tenant_id": "tenant-minerva",
+				"state": "up-to-date",
+				"classification": "local-only",
+				"auto_will_apply": false,
+				"remote_fingerprint": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+				"first_seen_available_at": null,
+				"last_checked_at": "2026-11-10T17:56:48Z",
+				"last_applied_at": "2026-11-08T03:01:40Z",
+				"error_class": null,
+				"error_subclass": null,
+				"last_error": null,
+				"next_retry_at": null,
+				"summary": {}
+			},
+			{
+				"kind": "skill",
+				"name": "doc-skill",
+				"local_id": "skl-doc-skill",
+				"hub_id": "skill-doc-0001",
+				"tenant_id": "tenant-minerva",
+				"state": "up-to-date",
+				"classification": "local-only",
+				"auto_will_apply": false,
+				"remote_fingerprint": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+				"first_seen_available_at": null,
+				"last_checked_at": "2026-11-10T17:56:48Z",
+				"last_applied_at": "2026-11-08T03:01:40Z",
+				"error_class": null,
+				"error_subclass": null,
+				"last_error": null,
+				"next_retry_at": null,
+				"summary": {}
+			}
+		]
+	}
+}

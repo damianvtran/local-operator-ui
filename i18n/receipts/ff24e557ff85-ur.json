@@ -1,0 +1,28 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "kimi/k3.1-pro",
+  "instance": "ff24e557ff85-ur",
+  "locale": "ur",
+  "namespace": "ui.settings.shortcuts",
+  "status": "passed",
+  "sha256": {
+    "ur": "a72035b4b8074e389243e84313655810d960f132b45c33abc28d43ddc96c63b0",
+    "en": "cdc8d66af4e558046072d06df97e638feab4b7579b6f3abba097c30949d7835c"
+  },
+  "context_sha256": "7873c3c486821688257a22f7b13d1c28f36017d7865fd3a6a72a7740861f64d9",
+  "scope": "The three keys added for recording shortcuts; pre-existing catalogue bytes checked only for matching control terminology.",
+  "findings": [],
+  "checks": [
+    "Current-byte SHA-256 matches the supplied English, context and Urdu hashes.",
+    "Exact full-catalogue key parity; the diff adds exactly the three scoped keys.",
+    "Placeholder parity (none in scoped keys), JSON validity and NFC normalization.",
+    "Urdu glossary/style, respectful imperative, Urdu vocabulary and punctuation.",
+    "Explicit scan found no manual RLM/LRM/FSI/PDI or other bidi controls; Esc remains a Latin LTR island and logical storage order is intact.",
+    "آواز سے متن denotes speech input conversion, not spoken output; ری سیٹ کریں matches the existing Reset control.",
+    "Immediate save, cue-only clearing and visible last-working fallback are preserved; wrapping/RTL semantic fit reviewed against context."
+  ],
+  "references": {
+    "glossary_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide_sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+  }
+}

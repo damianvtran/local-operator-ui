@@ -30,6 +30,12 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export * from "./src/renderer/src/features/chat/components/run-details/run-detail-model";',
+			// The child's line answers a rung plus arguments now (`WorkingActivity`); this
+			// suite pins its ENGLISH, so it reads the state through the shipped
+			// resolver. The explicit export outranks the `export *` above.
+			'import { deriveChildWorkingLine as rawDeriveChildWorkingLine } from "./src/renderer/src/features/chat/components/run-details/run-detail-model";',
+			'import { englishState } from "./scripts/working-line-english";',
+			"export const deriveChildWorkingLine = (...args) => englishState(rawDeriveChildWorkingLine(...args));",
 			'export * as fixtures from "./src/renderer/src/features/chat/components/run-details/run-details.fixtures";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -37,6 +43,12 @@ const bundle = await build({
 	bundle: true,
 	format: "esm",
 	platform: "node",
+	// esbuild cannot read tsconfig paths, so the renderer's alias is declared by
+	// hand — the same shape `composer-tabs.test.mjs` uses. The model gained an
+	// `@shared/i18n` import when its chip clauses became catalogue copy.
+	alias: {
+		"@shared": "./src/renderer/src/shared",
+	},
 	write: false,
 });
 const {
@@ -81,7 +93,12 @@ const {
 	visibleWakes,
 	MONITOR_ROW_CAP,
 	WAKE_ROW_CAP,
+	launchRecordFrom,
 	reconcileLaunchTurns,
+	recoverClippedBrief,
+	standInLaunchRecord,
+	wantsLaunchRow,
+	withLaunchRecord,
 	retimeChildRow,
 	retimeRunDetails,
 	tallyBudget,
@@ -1602,8 +1619,18 @@ test("the trigger's acknowledgement wiring asks the model's predicate", () => {
 	);
 	assert.match(
 		trigger,
-		/mcpProblems,\s*cap: runCap,\s*\}\)/,
+		/mcpProblems,\s*cap: runCap,\s*\};/,
 		"and the label must be given the problem count it is naming, and (since #928) the action's bound chord",
+	);
+	assert.match(
+		trigger,
+		/runDetailTriggerLabel\(details, seen, \{\s*\.\.\.labelOptions,\s*name: true,\s*\}\)/,
+		"the accessible name asks the model for the pane NAME (keyed), instead of rewriting the English verb phrase",
+	);
+	assert.doesNotMatch(
+		trigger,
+		/\.replace\(\/\^\(Open\|Close\) run details/,
+		"no English regex rewrite of the label survives",
 	);
 	/*
 	 * The deleted pair, asserted as absent rather than assumed gone: `§ 3.4`
@@ -2117,6 +2144,205 @@ test("the launch turn is reconciled, and only the ids the map vouches for", () =
 		}),
 		reconciled,
 	);
+});
+
+/*
+ * The operator's report: a reader opened on a ~3-line bubble ending `…` with no
+ * Show more, because the wire clips `launch_prompts` to 200 characters and the
+ * reconciler painted that clip over a durable row that held the whole brief.
+ * The durable row is `preamble + prompt` (`_effective_prompt` appends the
+ * authored prompt last), so the full brief is recovered from it — lazily, from
+ * the transcript page the reader already fetches — and the user bubble's own
+ * clamp and Show more then apply to the real text.
+ */
+test("a wire-clipped launch prompt is recovered whole from the durable row", () => {
+	const brief = [
+		"Operator request (verbatim core): fix the run details prompt.",
+		"",
+		...Array.from({ length: 20 }, (_, i) => `- step ${i + 1}: do the thing`),
+		"",
+		"Deliver: **a PR** with frames.",
+	].join("\n");
+	const clipped = `${brief.slice(0, 200)}…`;
+	const records = [
+		{
+			kind: "user",
+			id: "subagent-launch:job-1",
+			ts: 1,
+			// The preamble quotes the opening words (37 chars, under the 200-char head).
+			text: `[team: lopdev]\nYou are coder. Operator request (verbatim core): fix\n\n${brief}`,
+			images: [],
+		},
+	];
+	const reconciled = reconcileLaunchTurns(records, {
+		"subagent-launch:job-1": clipped,
+	});
+	assert.equal(reconciled[0].text, brief, "the whole brief, preamble dropped");
+	assert.equal(recoverClippedBrief(clipped, records[0].text), brief);
+	// The brief block must not reappear: `row.brief` is still the clipped copy.
+	assert.equal(briefIsInTranscript(reconciled, clipped), true);
+	// Stable identity once recovered, so the memoised transcript does not repaint.
+	assert.equal(
+		reconcileLaunchTurns(reconciled, { "subagent-launch:job-1": clipped }),
+		reconciled,
+	);
+
+	// Fallbacks keep the concise value exactly as before — never the preamble:
+	// an unclipped value, the bare elided placeholder, a head under the floor,
+	// and a head the row does not contain.
+	assert.equal(
+		recoverClippedBrief("Check the ledger", "P\n\nCheck the ledger and more"),
+		"Check the ledger",
+	);
+	assert.equal(recoverClippedBrief("…", records[0].text), "…");
+	assert.equal(recoverClippedBrief("Operator…", records[0].text), "Operator…");
+	const foreign = `${"Something the row never said ".repeat(3)}…`;
+	assert.equal(recoverClippedBrief(foreign, records[0].text), foreign);
+});
+
+test("a brief that repeats its own opening is recovered from the FIRST match (R2)", () => {
+	// Review round 1, R2: `lastIndexOf` cut this to the restatement (224/486 chars)
+	// and the result no longer ended in `…`, so it looked complete.
+	const opening = `Operator request (verbatim core): ${"keep the brief whole ".repeat(9)}`;
+	const brief = `${opening}\n\nMiddle of the brief.\n\nRestated: ${opening}\nEND`;
+	const clipped = `${brief.slice(0, 200)}…`;
+	const durable = `[team: lopdev]\nYou are coder.\n\n${brief}`;
+	assert.equal(recoverClippedBrief(clipped, durable), brief);
+});
+
+test("a busy child's launch row is point-read and painted first (R1)", () => {
+	const id = "subagent-launch:job-busy";
+	const tail = {
+		hasMore: true,
+		index: new Map([
+			["r1", 0],
+			["r2", 1],
+		]),
+		records: [
+			{ kind: "assistant", id: "r1", ts: 5 },
+			{ kind: "assistant", id: "r2", ts: 6 },
+		],
+	};
+	// Asked only for a partial tail that lacks the row.
+	assert.equal(wantsLaunchRow(tail, id), true);
+	assert.equal(wantsLaunchRow({ ...tail, hasMore: false }, id), false);
+	assert.equal(wantsLaunchRow(tail, ""), false);
+	assert.equal(
+		wantsLaunchRow({ ...tail, index: new Map([[id, 0]]) }, id),
+		false,
+	);
+
+	// An older runtime ignores `entry_id` and answers its newest row: matched by
+	// id, that page yields nothing, so the stand-in stays.
+	assert.equal(
+		launchRecordFrom(
+			[{ kind: "user", id: "r9", ts: 9, text: "x", images: [] }],
+			id,
+		),
+		null,
+	);
+	const brief = `# Brief\n\n${"- a markdown step\n".repeat(40)}TAIL-MARKER`;
+	const launch = {
+		kind: "user",
+		id,
+		ts: 1,
+		text: `You are coder.\n\n${brief}`,
+		images: [],
+	};
+	assert.equal(launchRecordFrom([tail.records[0], launch], id), launch);
+
+	// Placed first with the index rebuilt, then reconciled to the whole brief.
+	const painted = withLaunchRecord(tail, launch);
+	assert.deepEqual(
+		painted.records.map((record) => record.id),
+		[id, "r1", "r2"],
+	);
+	assert.deepEqual(
+		[...painted.index],
+		[
+			[id, 0],
+			["r1", 1],
+			["r2", 2],
+		],
+	);
+	const clipped = `${brief.slice(0, 200)}…`;
+	const reconciled = reconcileLaunchTurns(painted.records, { [id]: clipped });
+	assert.equal(reconciled[0].text, brief, "the whole brief, preamble dropped");
+	assert.equal(briefIsInTranscript(reconciled, clipped), true);
+	// Already loaded (paging reached it): untouched, same identity.
+	assert.equal(withLaunchRecord(painted, launch), painted);
+	assert.equal(withLaunchRecord(tail, null), tail);
+
+	// The stand-in: the roster's longest brief, else nothing.
+	assert.deepEqual(standInLaunchRecord(id, clipped, 3), {
+		kind: "user",
+		id,
+		ts: 3000,
+		text: clipped,
+		images: [],
+	});
+	assert.equal(standInLaunchRecord(id, null, 3), null);
+	assert.equal(standInLaunchRecord("", clipped, 3), null);
+});
+
+test("the stand-in launch turn is stamped in ms, like every transcript record (Q2)", () => {
+	// `startSeconds` is the job's wire `start_time` — epoch SECONDS — while a
+	// transcript record's `ts` is epoch MS (`transcript-reducer.ts` scales
+	// `entry.ts * 1000`). Passing seconds through painted the bubble's stamp as
+	// "Jan 21, 1970". A real launch clock must land in the record's own unit.
+	const startSeconds = 1_762_600_000.25; // 2025-11-08, fractional like the wire
+	const record = standInLaunchRecord("launch-1", "brief", startSeconds);
+	assert.equal(record.ts, Math.round(startSeconds * 1000));
+	assert.equal(new Date(record.ts).getUTCFullYear(), 2025);
+	// No clock at all stays 0, the reducer's own fallback for a missing `ts`.
+	assert.equal(standInLaunchRecord("launch-1", "brief", null).ts, 0);
+});
+
+test("an elided launch_message_id is derived from the job id (R1)", () => {
+	// Measured on the rig: a settled task child's snapshot row carried
+	// `launch_message_id: ""` (the runtime elides it when the job id implies it)
+	// while `launch_prompts` held `subagent-launch:<job id>`. Read as launch-less,
+	// the reader never asked for the launch row.
+	const clip = `${"x".repeat(200)}…`;
+	const row = derive([
+		job({
+			id: "868413d2d7c3",
+			prompt: "short",
+			launch_prompts: { "subagent-launch:868413d2d7c3": clip },
+		}),
+	]).subagents[0];
+	assert.equal(row.launchMessageId, "subagent-launch:868413d2d7c3");
+	assert.equal(row.brief, clip);
+	// No map entry for it: nothing to derive, the old fallback holds.
+	const bare = derive([job({ id: "job-bare", prompt: "Read it" })])
+		.subagents[0];
+	assert.equal(bare.launchMessageId, "");
+	assert.equal(bare.brief, "Read it");
+});
+
+test("against an older runtime the brief degrades to job.prompt's longer preview (R1)", () => {
+	const brief = `Do the thing. ${"word ".repeat(300)}`.trim();
+	const row = derive([
+		job({
+			id: "job-old",
+			prompt: `${brief.slice(0, 1000)}…`,
+			launch_message_id: "subagent-launch:job-old",
+			launch_prompts: { "subagent-launch:job-old": `${brief.slice(0, 200)}…` },
+		}),
+	]).subagents[0];
+	assert.equal(row.brief, `${brief.slice(0, 1000)}…`);
+	// A `prompt` that does not extend the clip keeps the clip.
+	const other = derive([
+		job({
+			id: "job-other",
+			prompt: "Unrelated preamble text only",
+			launch_message_id: "subagent-launch:job-other",
+			launch_prompts: {
+				"subagent-launch:job-other": `${brief.slice(0, 200)}…`,
+			},
+		}),
+	]).subagents[0];
+	assert.equal(other.brief, `${brief.slice(0, 200)}…`);
 });
 
 test("the brief folds to a summary that states what expanding costs", () => {
@@ -3089,11 +3315,14 @@ test("the MCP tally pluralises, and agrees with the trigger's own clause", () =>
 		mcpProblems: 1,
 	});
 	assert.match(label, /1 MCP server needs attention/);
-	// The cold payload has no status to tally at all.
+	// The cold payload has no status to tally at all. `MCP_COLD_LINE` is now the
+	// catalogue KEY; `mcpTally` resolves it, so the assertion pins the English the
+	// key carries (ui.chat.run_details.mcp.cold_label).
 	assert.equal(
 		mcpTally(deriveMcpServers([{ name: "files", status: "cold" }])),
-		MCP_COLD_LINE,
+		"No session is running — server status cannot be checked.",
 	);
+	assert.equal(MCP_COLD_LINE, "ui.chat.run_details.mcp.cold_label");
 });
 
 test("an MCP row's diagnosis is the canonical projection's, and only where it applies", () => {

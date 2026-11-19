@@ -1,0 +1,83 @@
+{
+  "schema": 1,
+  "kind": "translation-audit-evidence",
+  "evidence_classification": {
+    "linguistic_notes": "auditor judgments derived from actual en/hi values and prior hi neighborhood",
+    "checks": "captured execution output, not simulated"
+  },
+  "date": "2026-11-09",
+  "locale": "hi",
+  "namespace": "ui.chat.run_details",
+  "branch": "feat/i18n-s7",
+  "head": "aba5d0310761cedc384c35847498d4197ce4b107",
+  "base": "0ad5542379a349a98e0a8d602dbd992746fd40a2",
+  "auditor": {
+    "agent": "reviewer",
+    "instance": "9368437cbc2e",
+    "session": "9368437cbc2e",
+    "model": "openai/gpt-6.1-sol",
+    "independent_from_translator_session": true,
+    "independence": "Did not author or remediate any catalogue values; wrote only own receipt and evidence."
+  },
+  "model": "openai/gpt-6.1-sol",
+  "instance": "9368437cbc2e",
+  "status": "passed",
+  "result": "clean",
+  "source": {
+    "path": "src/i18n/catalogues/en/ui.chat.run_details.json",
+    "sha256": "02877dbbfba534fb2467008550d55ffd45c928c990b89c3d1a72acbfc76d2d50"
+  },
+  "target": {
+    "path": "src/i18n/catalogues/hi/ui.chat.run_details.json",
+    "sha256": "39e84adf092e58b14f6942f4b4a9fb2751e0008648bf63d6593a240bc45e4350"
+  },
+  "context": {
+    "path": "src/i18n/catalogues/en/ui.chat.run_details.context.json",
+    "sha256": "525753ac3b7aa85ddd4781b7c9752aac4d2ffeaec06ec4898c117cb65549ba74"
+  },
+  "keys_audited": 16,
+  "keys": [
+    "ui.chat.run_details.child.result.preview",
+    "ui.chat.run_details.child.result.title",
+    "ui.chat.run_details.child.result.unavailable_clipped",
+    "ui.chat.run_details.child.result.unavailable",
+    "ui.chat.run_details.child.brief.show_less",
+    "ui.chat.run_details.child.brief.show_more",
+    "ui.chat.run_details.mcp_auth.upgrade",
+    "ui.chat.run_details.mcp_auth.no_references",
+    "ui.chat.run_details.mcp_auth.unknown_method",
+    "ui.chat.run_details.mcp_auth.waiting",
+    "ui.chat.run_details.mcp_auth.status",
+    "ui.chat.run_details.mcp_auth.status_unavailable",
+    "ui.chat.run_details.mcp_failure.cancel_lead",
+    "ui.chat.run_details.mcp_failure.busy",
+    "ui.chat.run_details.mcp_failure.refused",
+    "ui.chat.run_details.mcp_failure.session"
+  ],
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [],
+    "nit": []
+  },
+  "linguistic_notes": [
+    "All sixteen additions inspected against the English source. Result/preview, brief expansion, secure key entry, server auth method/status, serial sign-in, refusal and session restart semantics retained. Technical recovery steps remain explicit.",
+    "unavailable_clipped: यह एक संक्षिप्त प्रति है is correct. यह is direct singular for either noun gender; प्रति is feminine singular and संक्षिप्त is indeclinable. No feminine spelling change to यह or संक्षिप्त is required.",
+    "unavailable_clipped and unavailable: इस उप-एजेंट की बातचीत is correct: इस is singular oblique before the genitive; की agrees with feminine बातचीत. उपलब्ध नहीं है has singular subject बातचीत.",
+    "no_references: यह सर्वर is masculine direct singular; करता agrees with सर्वर. इसमें refers to the same server; इसके MCP एनवायरनमेंट या हेडर uses masculine oblique/plural के for the coordinated environment/headers. Declared references are संदर्भ, masculine plural, hence घोषित नहीं हैं. कोई is valid with the negative plural.",
+    "unknown_method: इस सर्वर के साइन इन का तरीका uses singular oblique इस सर्वर, genitive के before the nested oblique sign-in phrase and का agreeing with masculine तरीका. इसका कनेक्शन also agrees with masculine कनेक्शन.",
+    "busy: इस बातचीत के लिए is feminine singular in an oblique postpositional construction; इस is correct for feminine as well as masculine. Subsequent इसके पूरा होने and इसे refer to the sign-in process, not feminine बातचीत. सर्वर की पंक्ति is feminine agreement. Only one sign-in at a time remains clear.",
+    "session: इस बातचीत का सत्र uses इस with singular oblique बातचीत and masculine का agreeing with सत्र. नहीं चल रहा है and शुरू होता है agree with masculine सत्र. यही अनुरोध and दोहराया जाता है agree with masculine अनुरोध. No missed gender/number mismatch in the full demonstrative/pronominal neighborhood.",
+    "refused: इसे refers to the request; अस्वीकार कर दिया and कोई बदलाव नहीं हुआ preserve refusal/no-mutation semantics.",
+    "show_more: ICU one/other structure and both number skeletons are unchanged. Hindi one includes 0/1: पंक्ति दिखाएँ is appropriate; other uses पंक्तियाँ दिखाएँ. Actual IntlMessageFormat results at 0,1,2,1000 are recorded.",
+    "Terminology aligns with existing subagent_path_label/reader.* (उप-एजेंट, बातचीत, सत्र), mcp_auth.title/no_session and mcp.grant.* (सर्वर, साइन इन), update_backend (बैकएंड), and mcp_key.saved_note (सीक्रेट). Common technical loans एनवायरनमेंट/हेडर/कनेक्शन are consistent with the standard-Hindi style allowance for settled technical loans. MCP, OAuth and NAME are technical identifiers, not English prose residue."
+  ],
+  "checks": {
+    "path": "i18n/audits/evidence/hi/ui.chat.run_details/s7-hi-9368437cbc2e/checks.json",
+    "sha256": "031e7041cf8bf9b09944ea442e0a6eb0185083e7b278271c0b6d9a70e5efb852"
+  },
+  "report": {
+    "path": "i18n/audits/evidence/hi/ui.chat.run_details/s7-hi-9368437cbc2e/report.md",
+    "sha256": "688edf2dfa08415bc295a83fdbff7f29f29c437ac49bd44c668ad4b2fdd55ce0"
+  }
+}

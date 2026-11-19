@@ -56,6 +56,7 @@ import { join } from "node:path";
 // five in their own harness). Imported from `electron` in plain Node it resolves
 // to the binary itself, so the pid we hold is the app's.
 import electronPath from "electron";
+import { withMockKeychain } from "./chrome-keychain.mjs";
 import { withNotificationsOff } from "./notifications-off.mjs";
 import { withTelemetryOff } from "./telemetry-off.mjs";
 
@@ -172,6 +173,14 @@ const PAGE = `<!doctype html>
 <button id="popup-denied" type="button">Denied scheme</button>
 <button id="popup-cap" type="button">Fill the cap</button>
 <button id="popup-cleanup" type="button">Cleanup popup</button>
+<a id="link-blank" href="/link-target?which=anchor" target="_blank">Link blank</a>
+<a id="link-noopener" href="/link-target?which=noopener" target="_blank" rel="noopener">Link noopener</a>
+<button id="open-noopener" type="button">Open with noopener</button>
+<button id="open-iframe-link" type="button">Click iframe link</button>
+<button id="open-opener-link" type="button">Click rel=opener link</button>
+<iframe id="link-frame" title="link frame" width="300" height="40"
+  srcdoc='<a id="in-frame" href="/link-target?which=iframe" target="_blank">frame link</a>'></iframe>
+<a id="link-opener" href="/link-target?which=relopener" target="_blank" rel="opener">Link rel opener</a>
 <p id="result"></p>
 <p id="geo">geolocation: not asked</p>
 <p id="popup">popup: not asked</p>
@@ -268,12 +277,51 @@ const PAGE = `<!doctype html>
     }
     recordPopup("cap=" + results.join(","));
   });
+  // Ordinary links (design 1.1): none of these has an opener, so each must end as
+  // a TAB. window.open with the noopener feature returns null by design, which is
+  // not a refusal; the record says which it was. (No backticks in this comment: it
+  // lives inside a template literal.)
+  document.getElementById("open-noopener").addEventListener("click", () => {
+    const popup = window.open("/link-target?which=winopen-noopener", "_blank", "noopener");
+    recordPopup("noopener=" + (popup ? "got-handle" : "null-by-design"));
+  });
+  document.getElementById("open-iframe-link").addEventListener("click", () => {
+    document.getElementById("link-frame").contentDocument.getElementById("in-frame").click();
+    recordPopup("iframe-link=clicked");
+  });
+  document.getElementById("open-opener-link").addEventListener("click", () => {
+    document.getElementById("link-opener").click();
+    recordPopup("rel-opener=clicked");
+  });
   document.getElementById("popup-cleanup").addEventListener("click", () => {
     const popup = window.open("/popup-target?hold=1&which=cleanup", "cleanuppopup");
     recordPopup("cleanup=" + (popup ? "opened" : "blocked-by-host"));
   });
   setTimeout(() => { throw new Error("proof: uncaught exception"); }, 0);
 </script>
+</body></html>`;
+
+/* The stand-in page for the accessibility snapshot's SELECTED-VALUE projection.
+ *
+ * The repro that prompted it is a vendor settings form (developer.apple.com's
+ * APNs key creation, and Firebase service accounts) behind a login, so the
+ * controls are reproduced here rather than driven live: a native `<select>` whose
+ * current choice mattered and was invisible on the snapshot line, a filled
+ * textbox, and the two slider shapes Chromium treats differently — measured on
+ * Electron 44.3.0: a native `<input type=range>` carries a `valuetext` property
+ * while a `div[role=slider]` with `aria-valuetext` does NOT (Chromium drops it),
+ * so its numeric value is the honest expectation. */
+const VALUES_PAGE = `<!doctype html>
+<html><head><meta charset="utf-8"><title>Snapshot values</title></head><body>
+<label for="env">Environment</label>
+<select id="env"><option value="sandbox">Sandbox</option><option value="production" selected>Production</option></select>
+<label for="app">App name</label>
+<input id="app" type="text" value="release-bot" />
+<label for="vol">Volume</label>
+<input id="vol" type="range" min="0" max="10" value="7" />
+<label for="pw">Password</label>
+<input id="pw" type="password" value="seeded-secret-9182" />
+<div id="quality" role="slider" tabindex="0" aria-label="Quality" aria-valuemin="0" aria-valuemax="10" aria-valuenow="3" aria-valuetext="Medium"></div>
 </body></html>`;
 
 const PAGE2 = `<!doctype html><html><head><meta charset="utf-8"><title>Proof page two</title></head>
@@ -334,6 +382,39 @@ const POPUP_PAGE = `<!doctype html><html><head><meta charset="utf-8"><title>Popu
       status.textContent += " NO-OPENER";
     }
   }
+</script></body></html>`;
+
+/**
+ * The page for the click shapes the host's own `click` cannot make (modifier and
+ * middle clicks, dispatched over CDP at these fixed coordinates) and for the
+ * request-level facts the tab route must preserve: a single fetch per link, the
+ * opener's Referer, a form POST that must not be replayed as a GET, and a link
+ * that is a download. The server records every hit on the target routes, which is
+ * what "fetched exactly once" is read from. (No backticks in comments: this lives
+ * inside a template literal.)
+ */
+const MOD_PAGE = `<!doctype html><html><head><meta charset="utf-8"><title>Link shapes</title></head>
+<body style="margin:0">
+<a id="m-cmd" href="/link-target?which=mod-cmd" target="_blank" style="position:absolute;left:10px;top:10px;width:150px;height:30px;display:block">cmd link</a>
+<a id="m-shift" href="/link-target?which=mod-shift" target="_blank" style="position:absolute;left:10px;top:60px;width:150px;height:30px;display:block">shift link</a>
+<a id="m-middle" href="/link-target?which=mod-middle" target="_blank" style="position:absolute;left:10px;top:110px;width:150px;height:30px;display:block">middle link</a>
+<a id="m-ref" href="/link-target?which=referer" target="_blank" style="position:absolute;left:10px;top:160px;width:150px;height:30px;display:block">Referer link</a>
+<a id="m-dead" href="http://127.0.0.1:1/never" target="_blank" style="position:absolute;left:10px;top:260px;width:150px;height:30px;display:block">Dead link</a>
+<a id="m-slow" href="/slow?link=1" target="_blank" style="position:absolute;left:10px;top:310px;width:150px;height:30px;display:block">Slow link</a>
+<a id="m-dl" href="/download-target" target="_blank" style="position:absolute;left:10px;top:210px;width:150px;height:30px;display:block">Download link</a>
+<form method="post" action="/post-target" target="_blank"><input type="hidden" name="a" value="1"><button id="m-post" type="submit" style="position:absolute;left:200px;top:10px;width:120px;height:30px">Post form</button></form>
+</body></html>`;
+
+/** Every request the target routes received, in order: `{ method, key, referer }`. */
+const siteHits = [];
+const hitsFor = (needle) => siteHits.filter((hit) => hit.key.includes(needle));
+
+/** The page an ordinary link opens: it states whether it was given an opener. */
+const LINK_PAGE = `<!doctype html><html><head><meta charset="utf-8"><title>Link proof target</title></head>
+<body><h1>Link target</h1><p id="link-status">link: pending</p>
+<script>
+  document.getElementById("link-status").textContent =
+    "link: opener=" + (window.opener ? "present" : "null") + " which=" + new URLSearchParams(location.search).get("which");
 </script></body></html>`;
 
 /**
@@ -754,6 +835,35 @@ const held = [];
 function startSite(frameOrigin) {
 	const server = createServer((req, res) => {
 		const url = new URL(req.url ?? "/", "http://127.0.0.1");
+		if (
+			["/link-target", "/post-target", "/download-target"].includes(
+				url.pathname,
+			)
+		) {
+			siteHits.push({
+				method: req.method,
+				key: url.pathname + url.search,
+				referer: req.headers.referer ?? "",
+			});
+		}
+		if (url.pathname === "/mod-page") {
+			res.writeHead(200, { "Content-Type": "text/html" });
+			res.end(MOD_PAGE);
+			return;
+		}
+		if (url.pathname === "/post-target") {
+			res.writeHead(200, { "Content-Type": "text/html" });
+			res.end("<!doctype html><title>post target</title><p>posted</p>");
+			return;
+		}
+		if (url.pathname === "/download-target") {
+			res.writeHead(200, {
+				"Content-Type": "application/octet-stream",
+				"Content-Disposition": "attachment; filename=proof.bin",
+			});
+			res.end("proof");
+			return;
+		}
 		if (url.pathname === "/slow") {
 			// Accepts the connection and never answers — the input QA round 1 used to
 			// find the typed `nav_timeout` unreachable. Headers are sent so the client
@@ -783,6 +893,11 @@ function startSite(frameOrigin) {
 			res.end(
 				"<!doctype html><title>cookie set</title><p id=cookies>cookies set</p>",
 			);
+			return;
+		}
+		if (url.pathname === "/values") {
+			res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+			res.end(VALUES_PAGE);
 			return;
 		}
 		if (url.pathname === "/page2") {
@@ -823,6 +938,13 @@ function startSite(frameOrigin) {
 		if (url.pathname === "/popup-target") {
 			res.writeHead(200, { "Content-Type": "text/html" });
 			res.end(POPUP_PAGE);
+			return;
+		}
+		if (url.pathname === "/link-target") {
+			// What an ordinary link lands on. It reports its own opener so the proof
+			// can read "opener=null" from the page that actually loaded.
+			res.writeHead(200, { "Content-Type": "text/html" });
+			res.end(LINK_PAGE);
 			return;
 		}
 		res.writeHead(200, { "Content-Type": "text/html" });
@@ -887,11 +1009,22 @@ async function launchApp() {
 	DEVTOOLS_PORT = await freeDevtoolsPort();
 	const child = spawn(
 		electronPath,
-		[
+		// THE KEYCHAIN SWITCH, and this app launch is the shape the repo's own keychain
+		// scan cannot see: `chrome-keychain.test.mjs` classifies a launch by whether the
+		// command names "chrome", and this rig boots Electron, so its argv is invisible
+		// to the scan that exists to keep the switch on every launch (the same note
+		// `browser-file-transfer-proof.mjs` carries). It matters here twice: `HOME` is
+		// redirected to a scratch tree with no login keychain, so Chromium asks macOS to
+		// CREATE one — the `Keychain Not Found` dialog on the operator's screen, once per
+		// launch, from a rig they did not start — and with OSCrypt unable to encrypt, this
+		// harness's own persistent-cookie lane would measure nothing. `--password-store=basic`
+		// is the Linux half of the same switch, named so the argv is honest wherever it runs.
+		withMockKeychain([
 			".",
 			`--user-data-dir=${USER_DATA}`,
 			`--remote-debugging-port=${DEVTOOLS_PORT}`,
-		],
+			"--password-store=basic",
+		]),
 		{
 			env,
 			cwd: ROOT,
@@ -1020,8 +1153,14 @@ async function rendererEvaluate(expression, options = {}) {
 	const list = await (
 		await fetch(`http://127.0.0.1:${DEVTOOLS_PORT}/json/list`)
 	).json();
+	// The MAIN window's document, not "the first file: page": the approvals overlay
+	// is a file: page of its own and is listed first, so the old test evaluated in a
+	// document with no preload bridge and `waitForRenderer` timed out.
 	const page = list.find(
-		(target) => target.type === "page" && target.url.startsWith("file:"),
+		(target) =>
+			target.type === "page" &&
+			target.url.startsWith("file:") &&
+			target.url.includes("/renderer/index.html"),
 	);
 	if (!page) throw new Error("no renderer target on the debugging port");
 	const socket = new WebSocket(page.webSocketDebuggerUrl);
@@ -1275,9 +1414,9 @@ async function targetEvaluate(target, expression) {
 /** Click a control in a driven tab by its accessible name, through the host's
  * own `click` action — a real CDP input event, so `window.open` runs with the
  * activation a person's click carries. */
-async function clickControl(state, tab, label) {
+async function clickControl(state, tab, label, role = "button") {
 	const snapshot = await rpcOk(state, "snapshot", { tab });
-	const ref = new RegExp(`- button "${label}" \\[(e\\d+)\\]`).exec(
+	const ref = new RegExp(`- ${role} "${label}" \\[(e\\d+)\\]`).exec(
 		snapshot.snapshot,
 	)?.[1];
 	if (!ref) {
@@ -1464,6 +1603,30 @@ async function measureCaptureLadder(state, tab, fixtureUrl) {
 	say(shipped);
 	record("capture ladder: the shipped screenshot action", shipped);
 	session.close();
+}
+
+/** An ordinary link target's status line (`link: opener=… which=…`), once its
+ * document has run. */
+async function waitForLinkStatus(target, which, timeoutMs = 10_000) {
+	const started = Date.now();
+	for (;;) {
+		const result = await targetEvaluate(
+			target,
+			"document.getElementById('link-status')?.textContent ?? ''",
+		);
+		if (
+			typeof result.value === "string" &&
+			result.value.includes(`which=${which}`)
+		) {
+			return result.value;
+		}
+		if (Date.now() - started > timeoutMs) {
+			throw new Error(
+				`timed out waiting for the ${which} link status (${JSON.stringify(result)})`,
+			);
+		}
+		await sleep(250);
+	}
 }
 
 /** A popup's own status line, once its document has run — polled, because the
@@ -1852,6 +2015,88 @@ async function main() {
 		Boolean(nameRef && goRef),
 		`name=${nameRef} go=${goRef}`,
 	);
+	// --- 2b. a control's VALUE on the snapshotted line ----------------------
+	// The gap this measures: `combobox "Environment" [collapsed]` said nothing
+	// about which environment the form was set to, so the only way to learn a fact
+	// the AX tree already carried was a screenshot. `VALUES_PAGE` is the logged-out
+	// stand-in for the repro (an APNs key form and a Firebase service-account form
+	// are behind a login); the checks read the line the agent would have read.
+	const valuesTab = await rpcOk(state, "open", {
+		url: `${siteOrigin}/values`,
+		requester: "session:proof",
+	});
+	const valuesSnap = await rpcOk(state, "snapshot", { tab: valuesTab.tab });
+	const valueLine = (snapshot, pattern) =>
+		snapshot.split("\n").find((entry) => pattern.test(entry)) ?? "(absent)";
+	// Anchored on the LABEL, not just the role: a page that gains a second
+	// combobox would otherwise silently move these checks onto it.
+	const comboLine = valueLine(valuesSnap.snapshot, /- combobox "Environment"/);
+	const fieldLine = valueLine(valuesSnap.snapshot, /- textbox "App name"/);
+	const rangeLine = valueLine(valuesSnap.snapshot, /- slider "Volume"/);
+	const ariaLine = valueLine(valuesSnap.snapshot, /- slider "Quality"/);
+	const passwordLine = valueLine(valuesSnap.snapshot, /- textbox "Password"/);
+	say(
+		`values snapshot lines:\n  ${comboLine}\n  ${fieldLine}\n  ${rangeLine}\n  ${ariaLine}\n  ${passwordLine}`,
+	);
+	check(
+		"a combobox's selected option rides on the snapshot line",
+		/= "Production"$/.test(comboLine),
+		comboLine,
+	);
+	check(
+		"a filled textbox's text rides on the snapshot line",
+		/= "release-bot"$/.test(fieldLine),
+		fieldLine,
+	);
+	// What this run can discriminate, and no more: the value is on the line. The
+	// design's `valuetext`-PREFERRED rule is not observable here on any surface —
+	// measured on this Chromium, a native range carries `value:"7"` and
+	// `valuetext:"7"` alike, and `aria-valuetext` never reaches the property — so
+	// the preference is pinned by the driver's unit lane in lop, not by this check.
+	check(
+		"a native range's value is on the snapshot line",
+		/= "7"$/.test(rangeLine),
+		rangeLine,
+	);
+	check(
+		"an ARIA slider with aria-valuetext prints its numeric value (the property stays empty)",
+		/= "3"$/.test(ariaLine),
+		ariaLine,
+	);
+	await rpcOk(state, "close", { tab: valuesTab.tab });
+	// --- 2c. a password field, typed into on the real path ----------------
+	// The operator's constraint is that a password's value never reaches a
+	// snapshot. Masking is Chromium's, so the previous assertion on a
+	// hand-written bullet fixture could not fail; this lane types a real secret
+	// into a real `<input type=password>` and reads the line the agent would.
+	// The projection refuses a masked value outright upstream, so the expected
+	// line carries NO value at all — no bullets, and nothing that leaks the
+	// length of what was typed.
+	const secret = "typed-secret-QA-1727-pw";
+	const pwTab = await rpcOk(state, "open", {
+		url: `${siteOrigin}/values`,
+		requester: "session:proof",
+	});
+	const pwFirst = await rpcOk(state, "snapshot", { tab: pwTab.tab });
+	const pwRef = /- textbox "Password" \[(e\d+)\]/.exec(pwFirst.snapshot)?.[1];
+	check(
+		"the password field is reachable by ref",
+		Boolean(pwRef),
+		`ref=${pwRef} first line: ${valueLine(pwFirst.snapshot, /- textbox "Password"/)}`,
+	);
+	await rpcOk(state, "type", { tab: pwTab.tab, ref: pwRef, text: secret });
+	const pwSnap = await rpcOk(state, "snapshot", { tab: pwTab.tab });
+	const pwLine = valueLine(pwSnap.snapshot, /- textbox "Password"/);
+	say(`password snapshot line: ${pwLine}`);
+	check(
+		"a typed password prints no value segment, no bullets and no secret",
+		!pwLine.includes(' = "') &&
+			!pwLine.includes("\u2022") &&
+			!pwSnap.snapshot.includes(secret) &&
+			!pwSnap.snapshot.includes("seeded-secret-9182"),
+		`${pwLine}\n  typed secret in snapshot: ${pwSnap.snapshot.includes(secret)}\n  seeded value in snapshot: ${pwSnap.snapshot.includes("seeded-secret-9182")}`,
+	);
+	await rpcOk(state, "close", { tab: pwTab.tab });
 	const typed = await rpcOk(state, "type", {
 		tab: handle,
 		ref: nameRef,
@@ -1922,6 +2167,336 @@ async function main() {
 		geoText.text.includes("denied"),
 		`geolocation result on the page: ${JSON.stringify(geoText.text)}`,
 	);
+	// --- 5a. ordinary links are tabs, not windows ------------------------------
+	/*
+	 * docs/design/browser-oauth-popups.md 1.1. An operator's Gmail links used to
+	 * open a shown, focused OS window that `tabs` never listed. A page-opened
+	 * navigation WITHOUT an opener (a `target=_blank` anchor, `rel=noopener`,
+	 * `window.open(..., "noopener")`, a link inside an iframe) now becomes a registry
+	 * tab owned by the opener's session; one WITH an opener (`rel=opener`, and the
+	 * sign-in dance below) stays a window. Each row reads the same four facts:
+	 * the tab count moved by one, `tabs` lists the new tab with a full handle for the
+	 * opener's requester, the page that loaded saw `opener=null`, and its CDP target
+	 * is the only page target for its url (no second, destroyed-child window).
+	 * The links are CLICKED through the host's own `click`, so a person's activation
+	 * is what runs them.
+	 */
+	// Electron does not implement `Browser.getWindowForTarget`, so "is this a window
+	// or a tab" is read from two facts that together discriminate: the registry
+	// lists the page (a tab), and the port holds EXACTLY ONE page target for its
+	// url. A shown-but-unlisted popup is one target and NOT listed; a tab that left
+	// its destroyed child behind would be two targets.
+	const targetCountFor = async (needle) =>
+		pageTargetUrls(await targets()).filter((url) => url.includes(needle))
+			.length;
+	const listedTabs = async () =>
+		await rpcOk(state, "tabs", { requester: "session:proof" });
+	const activeBeforeLinks = (await listedTabs()).tabs.find((t) => t.active);
+	const linkBase = (await listedTabs()).tabs.length;
+	const linkRows = [
+		{ which: "anchor", click: ["Link blank", "link"] },
+		{ which: "noopener", click: ["Link noopener", "link"] },
+		{ which: "winopen-noopener", click: ["Open with noopener", "button"] },
+		{ which: "iframe", click: ["Click iframe link", "button"] },
+	];
+	const linkReport = [];
+	let linkOk = true;
+	for (const row of linkRows) {
+		const before = (await listedTabs()).tabs.length;
+		await clickControl(state, handle, row.click[0], row.click[1]);
+		const target = await waitForTarget(
+			(t) => t.url.includes(`which=${row.which}`),
+			`the ${row.which} link target`,
+		);
+		const status = await waitForLinkStatus(target, row.which);
+		const after = await listedTabs();
+		const listed = after.tabs.find((t) => t.url.includes(`which=${row.which}`));
+		const targetCount = await targetCountFor(`which=${row.which}`);
+		const oneTarget = targetCount === 1;
+		const rowHits = hitsFor(`which=${row.which}`);
+		const ok =
+			rowHits.length === 1 &&
+			after.tabs.length === before + 1 &&
+			!!listed &&
+			/^ui:\d+:[A-Za-z0-9_-]{32}$/.test(listed.tab) &&
+			listed.owner === "agent" &&
+			listed.active === false &&
+			status.includes("opener=null") &&
+			oneTarget;
+		linkOk &&= ok;
+		linkReport.push(
+			`${row.which}: tabs ${before}->${after.tabs.length} listed=${listed?.tab ?? "NO"} owner=${listed?.owner} active=${listed?.active} ${status} pageTargets=${targetCount} fetches=${rowHits.length}`,
+		);
+		// Adopt it as the opener's session would, then drive it: `read` must work.
+		if (listed) {
+			const adopted = await rpcOk(state, "open", {
+				tab: listed.tab,
+				requester: "session:proof",
+				owner_proof: "p".repeat(40),
+				owner_generation: "g1",
+				allocation_id: `link-${row.which}`,
+			});
+			const read = await rpcOk(state, "read", {
+				tab: listed.tab,
+				requester: "session:proof",
+				owner_proof: "p".repeat(40),
+				owner_generation: "g1",
+				allocation_id: `link-${row.which}`,
+			});
+			const driven =
+				adopted.tab === listed.tab && read.text.includes("Link target");
+			linkOk &&= driven;
+			linkReport.push(`  adopted+read: ${driven}`);
+			await rpcOk(state, "close", {
+				tab: listed.tab,
+				requester: "session:proof",
+				owner_proof: "p".repeat(40),
+				owner_generation: "g1",
+				allocation_id: `link-${row.which}`,
+			});
+		}
+	}
+	const afterLinks = await listedTabs();
+	const activeAfterLinks = afterLinks.tabs.find((t) => t.active);
+	check(
+		"link rows: anchor/_blank, rel=noopener, window.open noopener and an iframe link each open a tab (+1, listed with a full handle, opener=null, one page target), adoptable and readable",
+		linkOk &&
+			afterLinks.tabs.length === linkBase &&
+			(activeAfterLinks?.url ?? null) === (activeBeforeLinks?.url ?? null),
+		linkReport.join("\n        "),
+	);
+	const openerAfterLinks = afterLinks.tabs.find(
+		(t) => t.url === `${siteOrigin}/`,
+	);
+	check(
+		"link rows: the opener page is unchanged (same url, same handle) and the active tab did not move",
+		!!openerAfterLinks &&
+			openerAfterLinks.tab === handle &&
+			(activeAfterLinks?.url ?? null) === (activeBeforeLinks?.url ?? null) &&
+			(activeAfterLinks?.owner ?? null) === (activeBeforeLinks?.owner ?? null),
+		`opener ${openerAfterLinks?.url} ${openerAfterLinks?.tab}; active before ${JSON.stringify(activeBeforeLinks?.url)}, after ${JSON.stringify(activeAfterLinks?.url)}`,
+	);
+
+	// The negative: a popup that ARRIVES WITH AN OPENER is never a tab. `rel=opener`
+	// is the anchor shape that has one (measured, Electron 44.3.0), so it must open
+	// a real window, leave the tab list alone, and see the opener from the page
+	// that loaded.
+	const beforeRelOpener = (await listedTabs()).tabs.length;
+	await clickControl(state, handle, "Click rel=opener link", "button");
+	const relTarget = await waitForTarget(
+		(t) => t.url.includes("which=relopener"),
+		"the rel=opener popup target",
+	);
+	const relStatus = await waitForLinkStatus(relTarget, "relopener");
+	const relListed = (await listedTabs()).tabs.some((t) =>
+		t.url.includes("which=relopener"),
+	);
+	const relTabs = (await listedTabs()).tabs.length;
+	check(
+		"an opener-bearing popup never becomes a tab: rel=opener keeps its opener, is not listed, and the tab list does not move",
+		relStatus.includes("opener=present") &&
+			!relListed &&
+			relTabs === beforeRelOpener,
+		`${relStatus}; listed as a tab: ${relListed}; tabs ${beforeRelOpener}->${relTabs}`,
+	);
+	// Close it from inside its own document, as a sign-in popup does, so it does not
+	// count against the cap section's live-children arithmetic below.
+	await targetEvaluate(relTarget, "window.close()");
+	await waitForTargetGone(
+		(t) => t.url.includes("which=relopener"),
+		"the rel=opener popup after it closed itself",
+	);
+
+	// --- 5a'. one fetch per link, and the shapes that must not become tabs ------
+	/*
+	 * Remediation round 1 (QA Q1/Q2, review R1-1/R1-3/R1-5). Each row reads the
+	 * server's own hit log, not the page: "fetched exactly once" is a property of
+	 * the REQUESTS. cmd/shift/middle clicks are dispatched over CDP at fixed
+	 * coordinates (the host's `click` makes plain clicks only); they arrive with the
+	 * child already loading, so the tab route would fetch twice and burn a
+	 * single-use link. A form POST must stay a window and POST exactly once.
+	 */
+	const settle = async (predicate, ms = 8000) => {
+		const started = Date.now();
+		while (Date.now() - started < ms) {
+			if (await predicate()) return true;
+			await sleep(250);
+		}
+		return false;
+	};
+	const modTab = await rpcOk(state, "open", {
+		url: `${siteOrigin}/mod-page`,
+		requester: "session:proof",
+	});
+	const modTarget = await waitForTarget(
+		(t) => t.url.endsWith("/mod-page"),
+		"the link-shapes opener page",
+	);
+	const mouse = async (x, y, { button = "left", modifiers = 0 } = {}) => {
+		const base = { x, y, button, clickCount: 1, modifiers };
+		await cdpOnTarget(modTarget, "Input.dispatchMouseEvent", {
+			...base,
+			type: "mousePressed",
+			buttons: button === "middle" ? 4 : 1,
+		});
+		await cdpOnTarget(modTarget, "Input.dispatchMouseEvent", {
+			...base,
+			type: "mouseReleased",
+			buttons: 0,
+		});
+	};
+	// These are real windows (the window route), so each row closes its own over CDP
+	// (`Page.close`): left open they fill the 4-window cap and the rows after them
+	// would be refused for the cap rather than tested.
+	const closeWindowFor = async (needle) => {
+		const target = (await targets()).find(
+			(t) => t.type === "page" && t.url.includes(needle),
+		);
+		if (target) await cdpOnTarget(target, "Page.close");
+		await waitForTargetGone((t) => t.url.includes(needle), `${needle} window`);
+	};
+	const tabsBeforeModifiers = (await listedTabs()).tabs.length;
+	const modifierRows = [
+		{ which: "mod-cmd", y: 25, opts: { modifiers: 4 } },
+		{ which: "mod-shift", y: 75, opts: { modifiers: 8 } },
+		{ which: "mod-middle", y: 125, opts: { button: "middle" } },
+	];
+	const modifierReport = [];
+	let modifierOk = true;
+	for (const row of modifierRows) {
+		await mouse(50, row.y, row.opts);
+		await settle(async () => hitsFor(`which=${row.which}`).length >= 1);
+		await sleep(1500); // a second fetch, if there is one, lands in this window
+		const fetches = hitsFor(`which=${row.which}`).length;
+		const listed = (await listedTabs()).tabs.some((t) =>
+			t.url.includes(`which=${row.which}`),
+		);
+		modifierOk &&= fetches === 1;
+		modifierReport.push(
+			`${row.which}: fetches=${fetches} listedAsTab=${listed}`,
+		);
+		await closeWindowFor(row.which);
+	}
+	check(
+		"cmd-click, shift-click and middle-click on a target=_blank link fetch the URL exactly once (the already-loading child is a window, not a reload)",
+		modifierOk,
+		modifierReport.join("\n        "),
+	);
+	check(
+		"those clicks did not leave a listed tab (the window route; tabs unchanged)",
+		(await listedTabs()).tabs.length === tabsBeforeModifiers,
+		`tabs ${tabsBeforeModifiers} -> ${(await listedTabs()).tabs.length}`,
+	);
+
+	// Q1: a form POST target=_blank stays a window and POSTs exactly once.
+	await clickControl(state, modTab.tab, "Post form", "button");
+	await settle(async () => hitsFor("/post-target").length >= 1);
+	await sleep(1500);
+	const postHits = hitsFor("/post-target");
+	const tabsAfterPost = (await listedTabs()).tabs.length;
+	await closeWindowFor("/post-target");
+	check(
+		"a form POST target=_blank is one POST and zero GETs, in a window and not a tab",
+		postHits.length === 1 &&
+			postHits[0].method === "POST" &&
+			tabsAfterPost === tabsBeforeModifiers,
+		`hits: ${JSON.stringify(postHits)}; tabs ${tabsAfterPost}`,
+	);
+
+	// R1-3: the tab load carries the opener's Referer, once.
+	const tabsBeforeRef = (await listedTabs()).tabs.length;
+	await clickControl(state, modTab.tab, "Referer link", "link");
+	await settle(async () => hitsFor("which=referer").length >= 1);
+	await sleep(1000);
+	const refHits = hitsFor("which=referer");
+	check(
+		"a link tab sends the opener's Referer, in one request",
+		refHits.length === 1 && refHits[0].referer.endsWith("/mod-page"),
+		`hits: ${JSON.stringify(refHits)}`,
+	);
+
+	// R1-5: a link that is a download leaves no blank tab behind.
+	const tabsBeforeDownload = (await listedTabs()).tabs.length;
+	await clickControl(state, modTab.tab, "Download link", "link");
+	await settle(async () => hitsFor("/download-target").length >= 1);
+	await sleep(2000);
+	const downloadTabs = (await listedTabs()).tabs;
+	check(
+		"a link that is a download leaves no blank tab: its tab is closed, the count is back, one request",
+		hitsFor("/download-target").length === 1 &&
+			downloadTabs.length === tabsBeforeDownload &&
+			!downloadTabs.some((t) => t.url.includes("download-target")),
+		`tabs ${tabsBeforeDownload} -> ${downloadTabs.length}; ${JSON.stringify(downloadTabs.map((t) => t.url))}`,
+	);
+
+	// The converse of R1-5: a link that FAILS (nothing listening) commits Chromium's
+	// error page, so its tab stays for the user or agent to read; only a load that
+	// produced no page at all is closed.
+	const tabsBeforeDead = (await listedTabs()).tabs.length;
+	await clickControl(state, modTab.tab, "Dead link", "link");
+	await settle(
+		async () => (await listedTabs()).tabs.length === tabsBeforeDead + 1,
+	);
+	await sleep(1500);
+	const deadTabs = (await listedTabs()).tabs;
+	check(
+		"a link whose load fails (connection refused) keeps its tab, with the error page",
+		deadTabs.length === tabsBeforeDead + 1 &&
+			deadTabs.some((t) => t.url.includes("127.0.0.1:1")),
+		`tabs ${tabsBeforeDead} -> ${deadTabs.length}; ${JSON.stringify(deadTabs.map((t) => t.url))}`,
+	);
+
+	// M-1: a link tab whose first load is SUPERSEDED (here: the agent navigates it
+	// while /slow still holds the response) rejects the first load with ERR_ABORTED
+	// and a blank URL while the replacement is loading. That tab is in use and stays.
+	const tabsBeforeSlow = new Set((await listedTabs()).tabs.map((t) => t.tab));
+	await clickControl(state, modTab.tab, "Slow link", "link");
+	let slowTab = null;
+	for (let i = 0; i < 40 && !slowTab; i += 1) {
+		slowTab =
+			(await listedTabs()).tabs.find((t) => !tabsBeforeSlow.has(t.tab)) ?? null;
+		if (!slowTab) await sleep(250);
+	}
+	let supersededOk = false;
+	let supersededDetail = "no slow link tab appeared";
+	if (slowTab) {
+		await rpcOk(state, "goto", {
+			tab: slowTab.tab,
+			url: `${siteOrigin}/link-target?which=superseded`,
+			requester: "session:proof",
+		});
+		await sleep(2000);
+		const after = (await listedTabs()).tabs;
+		supersededOk = after.some((t) => t.url.includes("which=superseded"));
+		supersededDetail = `tabs ${JSON.stringify(after.map((t) => t.url))}`;
+	}
+	check(
+		"a link tab whose slow first load is superseded keeps its tab (ERR_ABORTED with a blank URL while loading is not 'no page')",
+		supersededOk,
+		supersededDetail,
+	);
+
+	// R1-1: closing the opener closes the link tabs nothing adopted (and its windows).
+	const refTabListed = (await listedTabs()).tabs.some((t) =>
+		t.url.includes("which=referer"),
+	);
+	await rpcOk(state, "close", { tab: modTab.tab });
+	const reclaimed = await settle(async () => {
+		const now = (await listedTabs()).tabs;
+		return !now.some((t) => t.url.includes("which=referer"));
+	});
+	await waitForTargetGone(
+		(t) => t.url.includes("/post-target") || t.url.includes("which=mod-"),
+		"the windows the closed opener had open",
+	);
+	check(
+		"opener closed => its unadopted link tabs are closed (and its windows with it)",
+		refTabListed &&
+			reclaimed &&
+			(await listedTabs()).tabs.length === tabsBeforeRef - 1,
+		`link tab listed before close: ${refTabListed}; reclaimed: ${reclaimed}; tabs now ${(await listedTabs()).tabs.length} (was ${tabsBeforeRef} with the opener)`,
+	);
+
 	// --- 5b. the popup policy, as a dance -------------------------------------
 	/*
 	 * The popup parity dance (docs/design/browser-oauth-popups.md 5.1.3). Before
@@ -3228,6 +3803,29 @@ async function main() {
 					line.includes("(cap)"),
 			),
 		browserLines.filter((line) => line.includes("popup")).join("\n"),
+	);
+	// The routing half of the same log (design 1.1): every ordinary link says it went
+	// to a TAB and never mentions a presentation, and the opener-bearing one says it
+	// stayed a WINDOW. `opener=` is on every line because it is the discriminator.
+	check(
+		"the log names the route: each link row route=tab (opener=no), the rel=opener popup route=window (opener=yes)",
+		["anchor", "noopener", "winopen-noopener", "iframe"].every((which) =>
+			browserLines.some(
+				(line) =>
+					line.includes("opened a popup:") &&
+					line.includes(`which=${which}`) &&
+					line.includes("opener=no") &&
+					line.includes("route=tab") &&
+					!line.includes("presentation="),
+			),
+		) &&
+			browserLines.some(
+				(line) =>
+					line.includes("which=relopener") &&
+					line.includes("opener=yes") &&
+					line.includes("route=window"),
+			),
+		browserLines.filter((line) => line.includes("opened a popup:")).join("\n"),
 	);
 	// The `never` plan's fallback is the one line a hidden window would leave
 	// behind if `show:false` had not been honoured — the falsifier the design

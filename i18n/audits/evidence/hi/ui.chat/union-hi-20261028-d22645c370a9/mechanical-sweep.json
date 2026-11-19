@@ -1,0 +1,238 @@
+{
+ "keys": 142,
+ "problem_count": 10,
+ "problems": [
+  {
+   "key": "ui.chat.composer.status.loop_progress_of_turns",
+   "issue": "ICU structure differs",
+   "en": "N(completed:{\"type\":0,\"tokens\":[{\"stem\":\"group-off\",\"options\":[]}],\"parsedOptions\":{\"useGrouping\":false}})LN(total:{\"type\":0,\"tokens\":[{\"stem\":\"group-off\",\"options\":[]}],\"parsedOptions\":{\"useGrouping\":false}})L",
+   "hi": "N(total:{\"type\":0,\"tokens\":[{\"stem\":\"group-off\",\"options\":[]}],\"parsedOptions\":{\"useGrouping\":false}})LN(completed:{\"type\":0,\"tokens\":[{\"stem\":\"group-off\",\"options\":[]}],\"parsedOptions\":{\"useGrouping\":false}})L"
+  },
+  {
+   "key": "ui.chat.mermaid.unexpected_error",
+   "issue": "en has no terminal stop, hi adds one",
+   "hi": "डायग्राम रेंडर करते समय अप्रत्याशित त्रुटि हुई।"
+  },
+  {
+   "key": "ui.chat.error_block.invalid_key.after",
+   "issue": "hi has leading/trailing whitespace"
+  },
+  {
+   "key": "ui.chat.question_dock.hint.prefix",
+   "issue": "hi has leading/trailing whitespace"
+  },
+  {
+   "key": "ui.chat.session_status.not_signed_in",
+   "issue": "ICU structure differs",
+   "en": "LA(label)",
+   "hi": "A(label)L"
+  },
+  {
+   "key": "ui.chat.checkpoint.jump_agent",
+   "issue": "ICU structure differs",
+   "en": "LN(turn)LN(total)LA(name)",
+   "hi": "LA(name)LN(total)LN(turn)L"
+  },
+  {
+   "key": "ui.chat.checkpoint.jump_agent_unnamed",
+   "issue": "ICU structure differs",
+   "en": "LN(turn)LN(total)",
+   "hi": "N(total)LN(turn)L"
+  },
+  {
+   "key": "ui.chat.checkpoint.jump_user",
+   "issue": "ICU structure differs",
+   "en": "LN(turn)LN(total)LA(clock)",
+   "hi": "N(total)LN(turn)LA(clock)L"
+  },
+  {
+   "key": "ui.chat.checkpoint.jump_user_no_clock",
+   "issue": "ICU structure differs",
+   "en": "LN(turn)LN(total)",
+   "hi": "N(total)LN(turn)L"
+  },
+  {
+   "key": "ui.chat.checkpoint.turn",
+   "issue": "ICU structure differs",
+   "en": "LN(turn)LN(total)",
+   "hi": "N(total)LN(turn)"
+  }
+ ],
+ "renders": 166,
+ "hi_plural_categories": [
+  "one",
+  "other"
+ ],
+ "plurals": {
+  "ui.chat.composer.status.loop_progress_turns": {
+   "options": [
+    "one",
+    "other"
+   ],
+   "offset": 0
+  }
+ },
+ "selects": [
+  {
+   "key": "ui.chat.header_identity.loading",
+   "arg": "kind",
+   "options": [
+    "agents",
+    "teams",
+    "other"
+   ]
+  },
+  {
+   "key": "ui.chat.header_identity.search",
+   "arg": "kind",
+   "options": [
+    "agents",
+    "teams",
+    "other"
+   ]
+  },
+  {
+   "key": "ui.chat.hub_update.update_all_label",
+   "arg": "kind",
+   "options": [
+    "agents",
+    "teams",
+    "skills",
+    "other"
+   ]
+  }
+ ],
+ "identical_to_en": [],
+ "latin_runs_not_in_en": [
+  {
+   "key": "ui.chat.mermaid.copy_text",
+   "token": "Mermaid",
+   "hi": "Mermaid टेक्स्ट कॉपी करें"
+  },
+  {
+   "key": "ui.chat.error_block.unavailable.after",
+   "token": "AI",
+   "hi": "में जाएँ, या सैकड़ों AI मॉडल बिना रेट सीमा के पाने के लिए Radient इस्तेमाल करें"
+  },
+  {
+   "key": "ui.chat.error_block.schema.before",
+   "token": "AI",
+   "hi": "मॉडल ने कोई कार्रवाई करनी चाही, लेकिन ज़रूरी स्कीमा में अपना इरादा नहीं बता सका। ऐसा आम तौर पर इसलिए होता है कि मॉडल एजेंटिक AI के लिए ज़रूरी जटिल निर्देश नहीं निभा पाता।"
+  }
+ ],
+ "terminal_stop_dot": [
+  {
+   "key": "ui.chat.header_identity.no_matches",
+   "hi_stop": "danda"
+  },
+  {
+   "key": "ui.chat.highlights.file_resolution_failed",
+   "hi_stop": "danda"
+  },
+  {
+   "key": "ui.chat.question_dock.secret_note",
+   "hi_stop": "danda"
+  },
+  {
+   "key": "ui.chat.usage.continue",
+   "hi_stop": "danda"
+  },
+  {
+   "key": "ui.chat.usage.family_caps",
+   "hi_stop": "danda"
+  },
+  {
+   "key": "ui.chat.mermaid.error_contained",
+   "hi_stop": "danda"
+  },
+  {
+   "key": "ui.chat.mermaid.loading",
+   "hi_stop": "dot"
+  },
+  {
+   "key": "ui.chat.mermaid.loading",
+   "note": "hi full stop is ASCII '.' in prose"
+  },
+  {
+   "key": "ui.chat.mermaid.render_failed",
+   "hi_stop": "danda"
+  },
+  {
+   "key": "ui.chat.aside.empty",
+   "hi_stop": "danda"
+  },
+  {
+   "key": "ui.chat.error_block.provider.after",
+   "hi_stop": "danda"
+  },
+  {
+   "key": "ui.chat.error_block.model.after",
+   "hi_stop": "danda"
+  },
+  {
+   "key": "ui.chat.error_block.rate_limit.after",
+   "hi_stop": "danda"
+  },
+  {
+   "key": "ui.chat.error_block.rate_limit.all_after",
+   "hi_stop": "danda"
+  },
+  {
+   "key": "ui.chat.error_block.invalid_key.after",
+   "hi_stop": "danda"
+  },
+  {
+   "key": "ui.chat.error_block.schema.before",
+   "hi_stop": "danda"
+  },
+  {
+   "key": "ui.chat.error_block.schema.after",
+   "hi_stop": "danda"
+  },
+  {
+   "key": "ui.chat.approval.reply_required",
+   "hi_stop": "danda"
+  },
+  {
+   "key": "ui.chat.question_dock.hint.approval",
+   "hi_stop": "danda"
+  },
+  {
+   "key": "ui.chat.question_dock.hint.approval_held",
+   "hi_stop": "danda"
+  },
+  {
+   "key": "ui.chat.question_dock.hint.prefix",
+   "hi_stop": "danda"
+  },
+  {
+   "key": "ui.chat.question_dock.hint.type",
+   "hi_stop": "danda"
+  },
+  {
+   "key": "ui.chat.session_status.context_nothing_measured_tooltip",
+   "hi_stop": "danda"
+  },
+  {
+   "key": "ui.chat.session_status.conversation_starting",
+   "hi_stop": "danda"
+  },
+  {
+   "key": "ui.chat.session_status.model_none_resolved_tooltip",
+   "hi_stop": "danda"
+  },
+  {
+   "key": "ui.chat.session_status.not_signed_in_description",
+   "hi_stop": "danda"
+  },
+  {
+   "key": "ui.chat.session_status.nothing_measured_yet",
+   "hi_stop": "danda"
+  },
+  {
+   "key": "ui.chat.session_status.temporarily_unavailable_description",
+   "hi_stop": "danda"
+  }
+ ],
+ "wide_candidates": []
+}

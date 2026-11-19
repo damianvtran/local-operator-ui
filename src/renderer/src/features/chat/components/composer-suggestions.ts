@@ -25,9 +25,14 @@
  *    neighbours (`create a team of agents`, `build a code-review agent`) make
  *    that collision easy to reintroduce.
  *
- * The four together span four different capabilities — MCP, teams, phone
- * access, session insight — so the first screen shows a spread of what the
+ * The four together span four different capabilities — teams, repository
+ * review, schedules, wake-ups — so the first screen shows a spread of what the
  * product does rather than four variations of one job.
+ *
+ * 3. **Every pinned entry works in a first chat.** The head is what a new user
+ *    reads straight after setup, so it holds nothing that needs prior context,
+ *    unexplained vocabulary or a paid add-on (the comment on the array says
+ *    which entries that rule moved to the tail).
  *
  * ## Why the first four are pinned and the rest sampled
  *
@@ -76,27 +81,48 @@
  * the padding should shrink.
  */
 
-export const DEFAULT_MESSAGE_SUGGESTIONS: readonly string[] = [
-	// The pinned opening four: one verb each, four different capabilities.
-	"Set up Linear MCP for me",
-	"Create a team of agents",
+/**
+ * The pool holds MESSAGE KEYS, not sentences.
+ *
+ * A module-scope array of English labels is resolved once, at import, so the
+ * empty chat would keep showing English after a language switch and the labels
+ * would sit outside the catalogue every other sentence of the composer comes
+ * from. Keys are resolved by `t()` where the chips are drawn; the sampler below
+ * only ever permutes keys, so a draw is locale-independent and the same sample
+ * survives a language change.
+ */
+
+import type { WithoutParams } from "@shared/i18n";
+
+export const DEFAULT_MESSAGE_SUGGESTIONS: readonly WithoutParams[] = [
 	/*
-	 * Shortened from the recommended "Turn on phone access for this session".
-	 * Measured at the 550px column floor, the longer wording put the pinned four
-	 * on THREE rows: 249.2px + 246.2px is 495.4px against 494px of usable width
-	 * beside an 8px gap, and two rows at the floor is the pinned head's
-	 * documented ceiling. The tip row carries the session-scoped sentence, so the
-	 * band still says what phone access is for, and the 810px measure is
-	 * unaffected either way.
+	 * The pinned opening four: one verb each, four different capabilities, and
+	 * every one of them works on a FRESH install with any provider connected.
+	 *
+	 * This head is the first screen a new user reads (the first sample of a run
+	 * is the pool's head, see above), so it must not hold a prompt that needs
+	 * something they do not have yet (onboarding audit U5). The three that moved
+	 * to the tail each failed that test: "Set up Linear MCP" assumes the reader
+	 * knows what an MCP server is, "Turn on phone access" starts a paid Radient
+	 * feature without saying so, and "Show me what the agent did last turn" has
+	 * no last turn to show in a first chat. They stay in the pool for later
+	 * draws, where the reader has context.
 	 */
-	"Turn on phone access",
-	"Show me what the agent did last turn",
-	// The tail, sampled after the first draw: still one verb each, still four
-	// different jobs.
-	"Build a code-review agent",
-	"Wake me tomorrow morning with a summary",
-	"Schedule a task that runs every morning",
-	"Review this repo and open a pull request",
+	"ui.chat.composer.suggestion.create_team",
+	"ui.chat.composer.suggestion.review_repo_pr",
+	"ui.chat.composer.suggestion.schedule_mornings",
+	"ui.chat.composer.suggestion.wake_with_summary",
+	// The tail, sampled after the first draw: still one verb each.
+	"ui.chat.composer.suggestion.code_review_agent",
+	"ui.chat.composer.suggestion.linear_mcp",
+	/*
+	 * Kept short ("Turn on phone access", not "... for this session"): the longer
+	 * wording measured 249.2px at the 550px column floor and pushed a four that
+	 * held it onto three rows. It no longer sits in the pinned head, but a later
+	 * draw can still place it beside the long labels, so the budget still holds.
+	 */
+	"ui.chat.composer.suggestion.phone_access",
+	"ui.chat.composer.suggestion.last_turn",
 ];
 
 /**
@@ -115,7 +141,10 @@ export const MAX_SUGGESTIONS = 4;
  * `random` is a parameter rather than `Math.random` inline so the order is
  * reproducible under a seeded source — see the module comment.
  */
-const shuffled = (items: readonly string[], random: () => number): string[] => {
+const shuffled = (
+	items: readonly WithoutParams[],
+	random: () => number,
+): WithoutParams[] => {
 	const copy = [...items];
 	for (let i = copy.length - 1; i > 0; i--) {
 		const j = Math.floor(random() * (i + 1));
@@ -132,10 +161,10 @@ const shuffled = (items: readonly string[], random: () => number): string[] => {
  * the behaviour the seven-chip version had for its short pools.
  */
 export const pickSuggestions = (
-	pool: readonly string[],
+	pool: readonly WithoutParams[],
 	count: number = MAX_SUGGESTIONS,
 	random: () => number = Math.random,
-): string[] => {
+): WithoutParams[] => {
 	if (pool.length <= count) return [...pool];
 	return shuffled(pool, random).slice(0, count);
 };
@@ -175,11 +204,11 @@ export const sessionSuggestionSample: SuggestionSampleState = {
  * a committed frame of this surface reproducible.
  */
 export const sampleSuggestions = (
-	pool: readonly string[],
+	pool: readonly WithoutParams[],
 	count: number = MAX_SUGGESTIONS,
 	random: () => number = Math.random,
 	state: SuggestionSampleState = sessionSuggestionSample,
-): string[] => {
+): WithoutParams[] => {
 	if (pool.length === 0) return [];
 	if (pool.length <= count) return [...pool];
 	if (!state.opening) return pickSuggestions(pool, count, random);

@@ -6,14 +6,41 @@ import {
 import { getFileTypeFromPath } from "@features/chat/utils/file-types";
 import { READ_ENCODING, viewerFor } from "@features/chat/utils/viewer-routing";
 import { desktopRequest } from "@shared/api/local-operator/desktop-api";
+import { useI18nLocale } from "@shared/i18n/use-locale";
+import { isRemoteFilePath } from "@shared/lib/remote-file-path";
 import { useCanvasStore } from "@shared/store/canvas-store";
-import { showErrorToast } from "@shared/utils/toast-manager";
+import { showErrorToast, showInfoToast } from "@shared/utils/toast-manager";
 import type { FC } from "react";
 import { memo, useCallback, useMemo } from "react";
 import { t } from "../../../../../../i18n";
+import {
+	blobToBase64,
+	downloadRemoteFile,
+	fetchRemoteFileBlob,
+	remoteCanvasDocument,
+} from "../../canonical/remote-file-transfer";
+import {
+	remoteFitsWindow,
+	remoteTooLargeText,
+	remoteUnreachableText,
+	remoteUnreadableText,
+	revealableCwd,
+} from "../../canonical/remote-files";
 import { indexedDocument } from "../../canonical/session-files";
+import { AttachmentOwnerUnreachableError } from "../../canonical/use-attachment-url";
 import type { MentionScanHandle } from "../../canonical/use-mentioned-files";
 import type { useSessionFiles } from "../../canonical/use-session-files";
+import { materialiseUserAttachment } from "../../canonical/use-user-attachments";
+import type { UserAttachmentsState } from "../../canonical/use-user-attachments";
+import {
+	attachmentDigests,
+	canMaterialiseAttachment,
+} from "../../canonical/user-attachments";
+import {
+	ATTACHMENT_ID_PREFIX,
+	attachmentFinderItems,
+	withoutAttached,
+} from "./attachment-items";
 import { buildFileRows } from "./file-rows";
 import { FinderFilesView } from "./finder-files-view";
 import type { FinderItem } from "./finder-layout";
@@ -34,6 +61,8 @@ type CanvasFileViewerProps = {
 	 * nothing to say.
 	 */
 	scan?: MentionScanHandle | null;
+	/** The person's attachments (the pinned section); see `useUserAttachments`. */
+	attachments?: UserAttachmentsState | null;
 };
 
 const defaultFiles: CanvasDocument[] = [];
@@ -45,7 +74,9 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 	index,
 	onSwitchToDocumentView,
 	scan = null,
+	attachments = null,
 }) => {
+	const locale = useI18nLocale();
 	// Get files from the canvas store for this conversation
 	const fallbackFiles = useCanvasStore((state): CanvasDocument[] => {
 		const conv = state.conversations[conversationId];
@@ -138,6 +169,13 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 			 */
 			const kind = viewerFor(fileDoc.path, fileDoc.type);
 
+			// A peer-held document arrives as a `remote-file:` identifier
+			// (`remoteCanvasDocument`): open it as is, never probe or read a path.
+			if (fileDoc.remote && isRemoteFilePath(fileDoc.path)) {
+				openDocument(fileDoc);
+				return;
+			}
+
 			/*
 			 * A session artifact opens BY DIGEST, before anything that assumes a
 			 * path. There is nothing to probe (a stat of `artifact:<digest>` can only
@@ -213,12 +251,17 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 				probe?.error === undefined
 			) {
 				showErrorToast(
-					`File no longer exists at ${probe?.resolved ?? normalizedPath}`,
+					t("ui.canvas.file_viewer.file_no_longer_exists_at", {
+						value: probe?.resolved ?? normalizedPath,
+					}),
 					{
 						// What to do next, not only what happened: the path alone leaves
 						// the reader with a three-line wrap and nowhere to go.
-						description:
-							"Copy its path from the row's ⋯ menu to look for it, or check whether the agent wrote it somewhere else.",
+						description: t(
+							fileDoc.id.startsWith(ATTACHMENT_ID_PREFIX)
+								? "ui.canvas.files.attachmentGoneRecovery"
+								: "ui.canvas.file_viewer.copy_its_path_from_the_row_s_menu_to_look_for_it_or_check_whether_the_ag",
+						),
 					},
 				);
 				return;
@@ -272,7 +315,7 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 						? result.error instanceof Error
 							? result.error.message
 							: String(result.error)
-						: "Unknown error reading file";
+						: t("ui.canvas.file_viewer.unknown_error_reading_file");
 					return fallbackAction(errorMessage);
 				}
 				openDocument(
@@ -285,7 +328,9 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 				const message =
 					error instanceof Error
 						? error.message
-						: String(error ?? "Unknown error reading file");
+						: String(
+								error ?? t("ui.canvas.file_viewer.unknown_error_reading_file"),
+							);
 				return fallbackAction(message);
 			}
 		},
@@ -299,7 +344,25 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 		],
 	);
 
-	const finderItems: FinderItem[] = rows.map((row, position) => {
+	// The builder stores translated labels in each item. Subscribe through the
+	// viewer's React.memo AND invalidate this memo, without churning finder item
+	// identities on unrelated renders (or remounting its selection on a switch).
+	// biome-ignore lint/correctness/useExhaustiveDependencies: locale invalidates copy resolved inside the builder.
+	const attachmentItems = useMemo(
+		() => attachmentFinderItems(attachments?.items ?? [], sessionId ?? ""),
+		[attachments?.items, sessionId, locale],
+	);
+	/*
+	 * Attachments OWN what the person attached: the ledger also admits a
+	 * kind-carrying pasted image as a "mentioned" file, so its agent-row copy is
+	 * dropped here by digest (filtered AFTER the row/index pairing below, which
+	 * is positional).
+	 */
+	const ownedDigests = useMemo(
+		() => attachmentDigests({ items: attachments?.items ?? [] }),
+		[attachments?.items],
+	);
+	const pairedItems: FinderItem[] = rows.map((row, position) => {
 		const entry = index.mode === "index" ? index.rows[position] : undefined;
 		return {
 			row,
@@ -314,7 +377,59 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 			mentioned: entry?.first_ts ?? entry?.first_seq ?? position,
 		};
 	});
+	const finderItems = withoutAttached(
+		pairedItems,
+		(item) => item.row.artifact?.digest,
+		ownedDigests,
+	);
+	/*
+	 * The ONE capability bit every attachment action keys off
+	 * (`session_attachments`, read by `useUserAttachments`), the same one the
+	 * transcript's pictures and sent-file card gate on. Absent state (a story, a
+	 * standalone render) is NOT capable: offering an action that 404s is the
+	 * defect round 1's F1 and round 2's R2-1 named.
+	 */
+	const attachmentsCapable = attachments?.capable ?? false;
+	/*
+	 * Attachment rows the backend refused to copy out (`materialisable: false`,
+	 * core PR #3042 QA round 3, Q1), by row id: the open and materialise doors
+	 * below get the same per-row verdict the row's menu does. A row it has not
+	 * judged yet (`"pending"`, QA R6 Q3) is in the set too: unknown is not
+	 * allowed, so it opens only by digest, read-only, like a refused one.
+	 */
+	const refusedIds = useMemo(
+		() =>
+			new Set(
+				attachmentItems
+					.filter(
+						(item) =>
+							item.attachment?.materialisable === false ||
+							item.attachment?.materialisable === "pending",
+					)
+					.map((item) => item.row.document.id),
+			),
+		[attachmentItems],
+	);
+	const canCopyOut = (document: CanvasDocument): boolean =>
+		canMaterialiseAttachment(
+			attachmentsCapable,
+			refusedIds.has(document.id) ? false : null,
+		);
 	const materialise = async (document: CanvasDocument): Promise<string> => {
+		/*
+		 * A USER ATTACHMENT copies out through its own route: the file index does
+		 * not list the person's inputs, so its row id would 404. One routing point
+		 * here serves both the row's path actions and the canvas open below.
+		 */
+		if (document.id.startsWith(ATTACHMENT_ID_PREFIX) && document.artifact) {
+			// Fail closed: no row offers this on an older backend (R2-1) or for a
+			// refused row (Q1), and a caller that slips through must not reach a
+			// route that cannot (or will not) answer.
+			if (!canCopyOut(document))
+				throw new Error("Backend cannot materialise this attachment");
+			if (!sessionId) throw new Error("No session for the attachment");
+			return materialiseUserAttachment(sessionId, document.artifact.digest);
+		}
 		if (!sessionId || index.mode !== "index")
 			throw new Error("No indexed artifact owner");
 		const response = await desktopRequest({
@@ -333,11 +448,93 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 			conversationId={conversationId}
 			index={index.mode === "fallback" ? { ...index, state: "ready" } : index}
 			legacyScan={scan}
-			cwd={index.state === "unsupported" ? undefined : cwd}
+			cwd={
+				index.state === "unsupported"
+					? undefined
+					: revealableCwd(cwd, index.remote)
+			}
 			materialise={materialise}
+			attachments={{
+				items: attachmentItems,
+				complete: (attachments?.complete ?? true) && !attachments?.truncated,
+				state: attachments?.state ?? "ready",
+				capable: attachmentsCapable,
+				retry: attachments?.retry ?? (() => {}),
+			}}
 			onOpen={(document) => {
+				/*
+				 * A PEER-held row (`features.remote_files`) never opens through this
+				 * disk (I3-1): an unreadable one says why, a digest-backed picture,
+				 * clip or sound opens by digest (fetch-on-miss), and anything else
+				 * opens as a `remote-file:` identifier whose viewer reads the bytes
+				 * over the content route (a workbook's are read here, as base64).
+				 */
+				if (document.remote) {
+					const remote = document.remote;
+					if (remote.unreadable) {
+						showInfoToast(remoteUnreadableText(remote));
+						return;
+					}
+					if (
+						document.artifact &&
+						(document.type === "image" ||
+							document.type === "video" ||
+							document.type === "audio")
+					) {
+						void handleFileClick(document);
+						return;
+					}
+					const kind = viewerFor(document.path, document.type);
+					if (kind === null) {
+						// Nothing here can show it; landing it is the honest offer.
+						void downloadRemoteFile(remote, document.title);
+						return;
+					}
+					if (!remoteFitsWindow(remote)) {
+						// The relay refuses above its ceiling; say so before a fetch
+						// that can only fail (review R1-4). Download stays offered.
+						showInfoToast(remoteTooLargeText(remote));
+						return;
+					}
+					const opened = remoteCanvasDocument(document);
+					// A CSV is shown as read-only text (`canvas-content.tsx`), which
+					// fetches its own bytes; only a workbook needs them up front.
+					if (
+						READ_ENCODING[kind] !== "base64" ||
+						opened.path.toLowerCase().endsWith(".csv")
+					) {
+						void handleFileClick(opened);
+						return;
+					}
+					// A workbook's viewer parses `content`, so its bytes are read once
+					// here; it never gets an object URL (review R1-2).
+					void fetchRemoteFileBlob(document)
+						.then(blobToBase64)
+						.then((content) => handleFileClick({ ...opened, content }))
+						.catch((error: unknown) =>
+							showErrorToast(
+								error instanceof AttachmentOwnerUnreachableError
+									? remoteUnreachableText(remote.deviceName)
+									: t("ui.canvas.files.remoteReadFailed"),
+							),
+						);
+					return;
+				}
+				/*
+				 * A refused row with no stored bytes has nothing the app may show:
+				 * its document is the bare name, and a probe or a "no longer exists"
+				 * toast pointing at a menu it does not have would both be wrong
+				 * (review R4-U1). Its tooltip says why. A refused row WITH bytes
+				 * opens them read-only by digest (`ArtifactTextPreview`, U12).
+				 */
+				if (refusedIds.has(document.id) && !document.artifact) return;
 				if (
 					document.artifact &&
+					// An attachment on an older backend (R2-1), or one the backend
+					// refused to copy out (Q1), opens by digest in the artifact-aware
+					// viewer instead.
+					(canCopyOut(document) ||
+						!document.id.startsWith(ATTACHMENT_ID_PREFIX)) &&
 					document.type !== "image" &&
 					document.type !== "video" &&
 					// Audio is digest-backed too: materialising here loses its shared
@@ -353,7 +550,11 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 								}),
 							),
 						)
-						.catch(() => showErrorToast(t("ui.canvas.files.saveError")));
+						.catch(() =>
+							showErrorToast(
+								t("ui.canvas.file_viewer.ui_canvas_files_saveerror"),
+							),
+						);
 				} else void handleFileClick(document);
 			}}
 		/>

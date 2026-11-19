@@ -1,0 +1,27 @@
+{
+  "auditor": "translation-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "b28d4e61-r2",
+  "locale": "es",
+  "round": 2,
+  "namespaces": {
+    "ui.agentMessages.settings": {
+      "status": "passed",
+      "keys_audited": 84,
+      "sha256": {
+        "en": "9f323c46102978c0fa60b8f006e4b380d78c18ab81a7205cd233438d867c5d5d",
+        "es": "3c56bdca74ccddae13622d94b2518165649b34a06df30638da2e13d28666ae04"
+      },
+      "findings": []
+    },
+    "ui.library": {
+      "status": "passed",
+      "keys_audited": 152,
+      "sha256": {
+        "en": "009e864f684e85925001346dc382b5b04724d994f5b099a344f70827a2aa2b2a",
+        "es": "37bf8f3e1d5e8785938444bf346ef1aafb2d00b150d34dd5a48aa70b598a2f86"
+      },
+      "findings": []
+    }
+  }
+}

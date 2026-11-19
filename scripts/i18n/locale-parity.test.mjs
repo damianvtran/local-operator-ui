@@ -42,6 +42,240 @@ const SOURCE_LOCALE = "en";
  */
 const IDENTICAL_OK = new Map([
 	[
+		"ui.phone_pairing.platform.ios",
+		"Product name (Apple's iPhone), kept as the brand in every locale; the phone-pairing card labels the phone type with it (local-operator-ui #1912).",
+	],
+	[
+		"fr:ui.phone_pairing.popup.code_label",
+		"French cognate « Code », the label above the pairing card's six digits; the French word, not an English fallback (local-operator-ui #1912, for the i18n auditor's confirmation).",
+	],
+	[
+		"ui.phone_pairing.platform.android",
+		"Product name (Google's Android), kept as the brand in every locale; the phone-pairing card labels the phone type with it (local-operator-ui #1912).",
+	],
+	[
+		"fr:ui.settings.notifications.section.title",
+		"French cognate « Notifications »; independently audited in D2 r2 (b5bf3a7c1761). This exact French heading is not an English fallback.",
+	],
+	[
+		"fr:ui.settings.notifications.volume.label",
+		"French cognate « Volume »; independently audited in D2 r2 (b5bf3a7c1761). This exact French label is not an English fallback.",
+	],
+	[
+		"hi:ui.settings.notifications.volume.readout",
+		"The percent readout is the locale-formatted ICU token {value, number}%, with no lexical English to translate; independently audited in D2 r2 (b5bf3a7c1761). Scoped to this locale/key only.",
+	],
+	[
+		"ur:ui.settings.notifications.volume.readout",
+		"The percent readout is the locale-formatted ICU token {value, number}%, with no lexical English to translate; independently audited in D2 r2 (b5bf3a7c1761). Scoped to this locale/key only.",
+	],
+	[
+		"vi:ui.settings.notifications.volume.readout",
+		"The percent readout is the locale-formatted ICU token {value, number}%, with no lexical English to translate; independently audited in D2 r2 (b5bf3a7c1761). Scoped to this locale/key only.",
+	],
+	[
+		"zh-CN:ui.settings.notifications.volume.readout",
+		"The percent readout is the locale-formatted ICU token {value, number}%, with no lexical English to translate; independently audited in D2 r2 (b5bf3a7c1761). Scoped to this locale/key only.",
+	],
+	// Mark-all-read tooltip (PR #1836): the joiner between the two translated sentences.
+	[
+		"es:ui.chat.sidebar.mark_all_read.scope_joined",
+		"Pure joiner: two already-translated sentences separated by one space, no lexical English (zh-CN differs because it uses no separator). Each locale's independent auditor is to confirm the space is the right separator; scoped to this locale/key only.",
+	],
+	[
+		"fr:ui.chat.sidebar.mark_all_read.scope_joined",
+		"Pure joiner: two already-translated sentences separated by one space, no lexical English (zh-CN differs because it uses no separator). Each locale's independent auditor is to confirm the space is the right separator; scoped to this locale/key only.",
+	],
+	[
+		"hi:ui.chat.sidebar.mark_all_read.scope_joined",
+		"Pure joiner: two already-translated sentences separated by one space, no lexical English (zh-CN differs because it uses no separator). Each locale's independent auditor is to confirm the space is the right separator; scoped to this locale/key only.",
+	],
+	[
+		"ru:ui.chat.sidebar.mark_all_read.scope_joined",
+		"Pure joiner: two already-translated sentences separated by one space, no lexical English (zh-CN differs because it uses no separator). Each locale's independent auditor is to confirm the space is the right separator; scoped to this locale/key only.",
+	],
+	[
+		"ur:ui.chat.sidebar.mark_all_read.scope_joined",
+		"Pure joiner: two already-translated sentences separated by one space, no lexical English (zh-CN differs because it uses no separator). Each locale's independent auditor is to confirm the space is the right separator; scoped to this locale/key only.",
+	],
+	[
+		"vi:ui.chat.sidebar.mark_all_read.scope_joined",
+		"Pure joiner: two already-translated sentences separated by one space, no lexical English (zh-CN differs because it uses no separator). Each locale's independent auditor is to confirm the space is the right separator; scoped to this locale/key only.",
+	],
+	// Browser extensions manager (PR #1821): proper nouns and French cognates.
+	[
+		"ui.browser.extensions.menu_store",
+		"« Chrome Web Store » is Google's product name, which Chrome shows untranslated in every locale; identical in every locale by design, audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790).",
+	],
+	[
+		"ui.browser.extensions.source_store",
+		"« Chrome Web Store » is Google's product name, which Chrome shows untranslated in every locale; identical in every locale by design, audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790).",
+	],
+	[
+		"ui.browser.extensions.details_id",
+		"« ID » is the extension identifier label, the universal abbreviation Chrome's own extension details use in every shipped locale; identical by design, audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790).",
+	],
+	[
+		"fr:ui.browser.extensions.menu_extensions",
+		"French cognate « Extensions » (Chrome's own French label); audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790). Scoped to French only.",
+	],
+	[
+		"fr:ui.browser.extensions.manage_title",
+		"French cognate « Extensions » (Chrome's own French label); audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790). Scoped to French only.",
+	],
+	[
+		"fr:ui.browser.extensions.page_title",
+		"French cognate « Extensions » (Chrome's own French label); audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790). Scoped to French only.",
+	],
+	[
+		"fr:ui.browser.extensions.action_options",
+		"French cognate « Options » (Chrome's own French label); audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790). Scoped to French only.",
+	],
+	[
+		"fr:ui.browser.extensions.details_description",
+		"French cognate « Description » (Chrome's own French label); audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790). Scoped to French only.",
+	],
+	[
+		"fr:ui.browser.extensions.details_version",
+		"French cognate « Version » (Chrome's own French label); audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790). Scoped to French only.",
+	],
+	[
+		"fr:ui.browser.extensions.details_source",
+		"French cognate « Source » (Chrome's own French label); audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790). Scoped to French only.",
+	],
+
+	[
+		"ui.settings.appearance.editor.copy_name",
+		"Audited custom-editor literal: placeholders/punctuation, standard colour-space acronym, or product name; identical in every locale by design (I18N-C1).",
+	],
+	[
+		"ui.settings.appearance.editor.ratio",
+		"Audited custom-editor literal: placeholders/punctuation, standard colour-space acronym, or product name; identical in every locale by design (I18N-C1).",
+	],
+	[
+		"ui.settings.appearance.editor.picker.rgb",
+		"Audited custom-editor literal: placeholders/punctuation, standard colour-space acronym, or product name; identical in every locale by design (I18N-C1).",
+	],
+	[
+		"ui.settings.appearance.editor.picker.oklch",
+		"Audited custom-editor literal: placeholders/punctuation, standard colour-space acronym, or product name; identical in every locale by design (I18N-C1).",
+	],
+	[
+		"ui.settings.appearance.editor.preview.bridge",
+		"Audited custom-editor literal: placeholders/punctuation, standard colour-space acronym, or product name; identical in every locale by design (I18N-C1).",
+	],
+	[
+		"fr:ui.settings.appearance.editor.floor",
+		"Independently audited French custom-editor terminology/cognate or ratio notation; exact locale/key only, not an English fallback (I18N-C1).",
+	],
+	[
+		"fr:ui.settings.appearance.editor.picker.chroma",
+		"Independently audited French custom-editor terminology/cognate or ratio notation; exact locale/key only, not an English fallback (I18N-C1).",
+	],
+	[
+		"fr:ui.settings.appearance.editor.group.accent",
+		"Independently audited French custom-editor terminology/cognate or ratio notation; exact locale/key only, not an English fallback (I18N-C1).",
+	],
+	[
+		"fr:ui.settings.appearance.editor.role.accent",
+		"Independently audited French custom-editor terminology/cognate or ratio notation; exact locale/key only, not an English fallback (I18N-C1).",
+	],
+	[
+		"fr:ui.settings.appearance.editor.role.accentAlt",
+		"Independently audited French custom-editor terminology/cognate or ratio notation; exact locale/key only, not an English fallback (I18N-C1).",
+	],
+	[
+		"fr:ui.settings.appearance.editor.role.danger",
+		"Independently audited French custom-editor terminology/cognate or ratio notation; exact locale/key only, not an English fallback (I18N-C1).",
+	],
+	[
+		"fr:ui.settings.appearance.editor.preview.sidebar",
+		"Independently audited French custom-editor terminology/cognate or ratio notation; exact locale/key only, not an English fallback (I18N-C1).",
+	],
+	[
+		"es:ui.teamBridge.attachmentCard.bytes",
+		"Spanish standard unit copy is {size, number} bytes; independently audited by f93eb129057e (S3 receipt). Exact locale/key only, not an English fallback.",
+	],
+	[
+		"es:ui.teamBridge.sender.app_badge",
+		"Spanish UI loanword: the sender badge is « App », same spelling as English; independently audited by bcc4b8aad6ff (receipt i18n/receipts/bcc4b8aad6ff-pr1969-r1-es.json). Exact locale/key only, not an English fallback.",
+	],
+	[
+		"fr:ui.chat.thread_search.role.agent",
+		"French cognate: the role name for an agent turn is « Agent », same spelling; scoped to fr so other locales still translate it",
+	],
+	/*
+	 * The slash-argument headings the C1/C4 change added (i18n programme). The
+	 * three French words ARE the French UI nouns - « Effort », « Agents »,
+	 * « Options » - and the fr `ui.chat.pickers` audit passed them as-is
+	 * (instance 116e76eaea2c, whose reviewed_keys name all three; 0 blocker /
+	 * 0 major). The composer merge-delta audit 9a8cf2fffd64-cmpmrg1-fr is a
+	 * different namespace and is not the provenance for these keys. Editing them to differ would only make the gate happy at the
+	 * cost of the audited bytes, so they are named here, fr-scoped, and every other
+	 * locale still has to translate them.
+	 */
+	[
+		"fr:ui.chat.pickers.slash.source.effort",
+		"French UI noun: Effort, same spelling as English; audited as-is (fr pickers, 116e76eaea2c)",
+	],
+	[
+		"fr:ui.chat.pickers.slash.source.agent",
+		"French plural: Agents, same spelling as English; audited as-is (fr pickers, 116e76eaea2c)",
+	],
+	[
+		"fr:ui.chat.pickers.slash.source.title_refresh",
+		"French plural: Options, same spelling as English; audited as-is (fr pickers, 116e76eaea2c)",
+	],
+	// French cognates only: these are the normal French UI nouns, not English
+	// fallbacks. Scope to fr so untranslated nouns in other languages still fail.
+	[
+		"fr:ui.chat.canonical.image_label",
+		"French UI noun: Image, same spelling as English; scoped to fr so other locales still translate it",
+	],
+	[
+		"fr:ui.chat.canonical.media.image_label",
+		"French UI noun: Image, same spelling as English; scoped to fr so other locales still translate it",
+	],
+	["fr:ui.notifications.nav.label", "French UI noun: Notifications"],
+	["fr:ui.notifications.page.title", "French UI noun: Notifications"],
+	[
+		"fr:ui.notifications.filter.group_conversation",
+		"French cognate: Conversation",
+	],
+	[
+		"fr:ui.teamBridge.members.group.agents_v2",
+		"French glossary plural « Agents » — same spelling as English; scoped to fr so other locales still translate it",
+	],
+	[
+		"fr:ui.teamBridge.profile.agent_badge",
+		"French glossary term for agent is « agent » — same spelling as English; scoped to fr so other locales still translate it",
+	],
+	[
+		"fr:ui.community.message.agent_badge",
+		"French glossary term for agent is « Agent » — the community badge mirrors fr:ui.teamBridge.profile.agent_badge (exempted above); scoped to fr so other locales still translate it",
+	],
+	[
+		"fr:ui.teamBridge.invitations.title",
+		"Shared UI term: the French noun is spelled identically (« Invitations »); scoped to fr so other locales still translate it",
+	],
+	[
+		"ui.notifications.row.chip.repeat",
+		// `×{count}`: the repeat chip on a collapsed reel row (notifications design
+		// section 4). A multiplication sign and a placeholder, no words; its context
+		// note requires every locale to keep it identical, so a differing value
+		// would be invented punctuation rather than a translation.
+		"language-neutral counter: only '×' and a placeholder, no words",
+	],
+	[
+		"ui.notifications.filter.chip",
+		// `{label}: {value}`: a filter chip's "Kind: All", two placeholders and a
+		// colon. It is ONE message so a locale owns its punctuation (French puts a
+		// space before the colon, Chinese uses a full-width one), which is why a
+		// locale MAY differ; where the locale's punctuation is the same as
+		// English, identical is the correct translation, not a stub.
+		"format string: two placeholders and a colon, punctuation only",
+	],
+	[
 		"ui.console.pane.label",
 		// A shared UI term, not a copy of untranslated English: French uses
 		// « Console » for this surface verbatim, and the English string IS that same
@@ -58,12 +292,52 @@ const IDENTICAL_OK = new Map([
 		"language-neutral counter: only placeholders and '/', no words to translate",
 	],
 	[
+		"ui.chat.attachments.file_meta",
+		// `{type} · {size}`: placeholders and a middle dot, no words. The type is a
+		// filename-derived token (PDF, PNG) and the size is formatted by the caller;
+		// there is nothing for a locale to translate, and a differing value would
+		// only invent punctuation per language.
+		"language-neutral format string: only placeholders and '·', no words",
+	],
+	[
+		// The screen-reader name of an ineligible invite row: "{name}, {reason}".
+		// Locales whose list comma is "," keep it byte-identical; zh-CN and ur
+		// own their punctuation, which is why this is not a locale-scoped row.
+		"ui.teamBridge.members.ineligible_label",
+		"language-neutral format string: only placeholders and ',', no words",
+	],
+	[
+		"ui.teamBridge.delivery.summary.separator",
+		// " · " joins the one-line delivery summary's segments ("Delivered to 3 ·
+		// 2 screening"). Each segment is its own translated message; the separator
+		// carries no words, and every shipped locale keeps the middle dot, as
+		// ui.chat.attachments.file_meta does. The key exists so a locale CAN own
+		// the separator; identical is the audited translation (PR #1832 i18n audit).
+		"language-neutral separator: a middle dot with spaces, no words",
+	],
+	[
+		"ui.canvas.files.attachmentMeta",
+		// `{size} · {when}`: the Canvas attachment row's note, placeholders and a
+		// middle dot, no words. The size and the date arrive already localised
+		// (`attachmentSizeLabel`, `formatDate`); the message exists only so a locale
+		// CAN own the separator, so identical is the correct translation in every
+		// shipped locale - the same shape as `ui.chat.attachments.file_meta`.
+		"language-neutral format string: only placeholders and '·', no words",
+	],
+	[
 		"ui.settings.account.settings_page.radient_pass",
 		"Product name, preserved verbatim by the programme glossary.",
 	],
 	[
 		"ui.settings.account.settings_page.tokens",
 		"French technical term kept English by the French style guide (token).",
+	],
+	[
+		"ui.browser.browser_url_bar.address_suggestions_label_mixed",
+		// French uses « Suggestions » for this list heading, the same word as the
+		// English source. The other six targets differ; this is a cognate, not a
+		// skipped string. The key is named here so the exemption is reviewable.
+		"French cognate: « Suggestions » has the same spelling",
 	],
 	[
 		"ui.settings.configuration.settings_page.version",
@@ -100,6 +374,24 @@ const IDENTICAL_OK = new Map([
 	[
 		"ui.settings.integrations.integration_model.global",
 		"French scope adjective: « global » has the same spelling.",
+	],
+	[
+		"es:ui.mesh.mesh_approvals.profile_scope_global",
+		"Spanish scope adjective: « global » is the normal spelling for account-wide scope; this audited label is a cognate, not an English stub.",
+	],
+	[
+		"fr:ui.mesh.mesh_approvals.profile_scope_global",
+		"French scope adjective: « global » is the normal masculine label for account-wide scope; this audited label is a cognate, not an English stub.",
+	],
+	[
+		"ui.mesh.pairing.sheet.share_item",
+		// `{label} ({key})`: the pairing sheet's share item, two placeholders and
+		// parentheses, no words. It is ONE message so a locale owns its brackets
+		// (zh-CN uses full-width （）), which is why a locale MAY differ; where the
+		// locale's punctuation matches English, identical is the correct
+		// translation. Audited in local-operator-ui #1984 round 4 (receipts
+		// i18n/receipts/pr1984-r4-*-uimesh-aead7d1d.json).
+		"language-neutral format string: only placeholders and parentheses, no words",
 	],
 	[
 		"ui.settings.model.system_prompt.instructions",
@@ -175,6 +467,14 @@ const IDENTICAL_OK = new Map([
 		"ui.chat.composer.message",
 		"French cognate: « message » has the same spelling.",
 	],
+	// --- ui.chat.tabs. `Chat` is the audited es house voice's established noun
+	// for the conversation, not a skipped string: the rest of the es catalogue
+	// translates around it. Scoped to `es:` because the other six locales must
+	// translate it (fr already does), and a global row would exempt all of them.
+	[
+		"es:ui.chat.tabs.chat",
+		"Spanish loanword, not untranslated English: «chat» is the established noun in the audited es house voice.",
+	],
 	[
 		"ui.agents.navigation.sidebar.title",
 		"French cognate: « agents » has the same spelling.",
@@ -194,6 +494,10 @@ const IDENTICAL_OK = new Map([
 	[
 		"ui.agents.starters.summary.separator",
 		"Language-neutral list separator (comma and space), identical across shipped locales.",
+	],
+	[
+		"ui.chat.canonical.supplement.withheld.reason_separator",
+		"List separator (comma and space) for the withheld reasons; zh-CN and ur carry their own commas, the rest share English's.",
 	],
 	[
 		"ui.agents.settings.chat.top_k",
@@ -254,6 +558,29 @@ const IDENTICAL_OK = new Map([
 	[
 		"ui.providers.provider_grid.row_action",
 		"Language-neutral: {action} and {brand} with a colon.",
+	],
+	/*
+	 * AWS product names in the bedrock connect panel (PR #1987), GLOBAL on
+	 * purpose: the English context sidecars require each of these keys to keep
+	 * AWS's own term verbatim in EVERY language ("Keep AWS product names ...
+	 * untranslated"; "SSO stays as the acronym"; "'AWS SSO' is the AWS product
+	 * term; keep it"), and the remediation-round audit confirmed the 5 tab_* and
+	 * 7 kind_* labels are byte-identical to local-operator PR #4270's TUI
+	 * wire.login.bedrock in all seven locales. A locale-scoped row would leave
+	 * the other six free to ship an untranslated badge, which is the stub this
+	 * guard exists to catch; the brand claim is the same in every locale.
+	 */
+	[
+		"ui.providers.bedrock.kind_login",
+		"AWS brand label, not UI copy: the kind badge names AWS's own sign-in method ('AWS login'), which the key's context sidecar requires untranslated in every locale. Kept verbatim for cross-surface parity with the TUI's bedrock method badge; audited in PR #1987 remediation round (receipts 350ecfa493e1-pr1987-bedrock-*, 0 blocker/major in all seven locales).",
+	],
+	[
+		"ui.providers.bedrock.kind_sso",
+		"AWS acronym, not UI copy: the kind badge names the profile type by AWS's own initialism ('SSO'), which the key's context sidecar requires kept as the acronym in every locale. Kept verbatim for cross-surface parity with the TUI's bedrock method badge; audited in PR #1987 remediation round (receipts 350ecfa493e1-pr1987-bedrock-*, 0 blocker/major in all seven locales).",
+	],
+	[
+		"ui.providers.bedrock.tab_sso",
+		"AWS product term, not UI copy: the segmented-control tab is labelled with AWS's own name for the IAM Identity Center sign-in ('AWS SSO'), which the key's context sidecar requires kept in every locale. Kept verbatim for cross-surface parity with the TUI's bedrock method name; audited in PR #1987 remediation round (receipts 350ecfa493e1-pr1987-bedrock-*, 0 blocker/major in all seven locales).",
 	],
 	[
 		"ui.schedules.scheduled_task_dialog.value1_message",
@@ -350,6 +677,19 @@ const IDENTICAL_OK = new Map([
 	[
 		"ui.settings.appearance.window_glass.material_tabbed",
 		"Microsoft material name (Tabbed Mica), kept verbatim per the en sidecar.",
+	],
+	[
+		"ui.settings.appearance.layers.preview.code",
+		/*
+		 * `pnpm test`: the appearance preview strip's code line, rendered in a
+		 * monospace block beside the agent reply. It is a COMMAND, not copy - the
+		 * English value carries no verb to translate, so any non-identical value
+		 * would be a locale inventing one and printing a command that no longer
+		 * matches what the reader would type. The English side's context note says
+		 * the same, and like the sample URL above this is global: every locale shows
+		 * the literal.
+		 */
+		"sample command: the literal must stay byte-identical in every locale",
 	],
 	[
 		"ui.settings.navigation.settings_sidebar.general",
@@ -574,7 +914,1053 @@ const IDENTICAL_OK = new Map([
 		"Placeholders and a colon only ({surface}: {choice}); no words to translate.",
 	],
 	["ui.canvas.files.code", "French cognate: « code » has the same spelling."],
+	[
+		"ui.projects.project_editors.q4_payments",
+		"Sample tag identifier (q4_payments), not prose; it is rendered verbatim as an example handle.",
+	],
+	[
+		"ui.projects.project_form_dialog.q4_payments",
+		"Sample tag identifier (q4_payments), not prose; it is rendered verbatim as an example handle.",
+	],
+	[
+		"ui.settings.appearance.window_glass.material_window",
+		"System material name kept English: Window is the window-region material in the glass picker.",
+	],
+	[
+		"ui.agents.settings.chat.temperature",
+		"Model sampling parameter name kept English by the vi style guide: it names the API parameter `temperature` verbatim.",
+	],
+	[
+		"ui.agents.settings.chat.seed",
+		"Model sampling parameter name kept English by the vi style guide: it names the API parameter `seed` verbatim.",
+	],
+	[
+		"ui.agents.settings.chat.frequency_penalty",
+		"Model sampling parameter name kept English by the vi style guide: it names the API parameter `frequency_penalty` verbatim.",
+	],
+	[
+		"ui.agents.settings.chat.presence_penalty",
+		"Model sampling parameter name kept English by the vi style guide: it names the API parameter `presence_penalty` verbatim.",
+	],
+	[
+		"ui.settings.account.radient_account_section.email",
+		"Vietnamese uses the standard loanword «Email» for the address field; every diacritic alternative is unidiomatic.",
+	],
+	// --- ui.library category/filter nouns. The es and fr translations of the
+	// file-kind labels are the same words as English because they are cognates or
+	// settled loanwords, not because a translator left the source in place: the
+	// surrounding ui.library prose in both locales is translated. Each entry is a
+	// claim a reviewer can check against the target language, not a silencer.
+	[
+		"ui.library.category.code",
+		"French cognate: « code » has the same spelling.",
+	],
+	[
+		"ui.library.category.documents",
+		"French cognate: « documents » has the same spelling.",
+	],
+	[
+		"ui.library.category.images",
+		"French cognate: « images » has the same spelling.",
+	],
+	[
+		"ui.notices.chat.archive_offered_title",
+		// The value is the locale's quotation marks around a user-data placeholder —
+		// there is no prose to translate. hi, vi, zh-CN and es legitimately use the
+		// same “ ” pair as English; fr uses « » with narrow no-break spaces and ru
+		// « » closed up. An identical value here is the locale's own typography,
+		// not an untranslated string.
+		"quotation marks around an untranslated user-data placeholder",
+	],
+	[
+		"ui.notices.chat.archive_offered_no_name",
+		// Fallback noun used when the archived conversation has to be shown without
+		// its title. French spells it the same way and it is the correct French noun,
+		// so the identical value is the translation rather than an English copy.
+		"French cognate: « Conversation » has the same spelling.",
+	],
+	[
+		"ui.library.category.video",
+		// es writes the unaccented « video » (Latin American usage; Spain accents
+		// « vídeo »). The identical value is the es spelling, not an English copy,
+		// and the accent variant is a regional preference rather than a correction.
+		"es spelling of the noun (Latin American usage; Spain writes « vídeo »).",
+	],
+	[
+		"ui.library.filter.source",
+		"French cognate: « source » has the same spelling.",
+	],
+	[
+		"ui.library.preview.description",
+		"French cognate: « description » has the same spelling.",
+	],
+	// --- ui.teamBridge. The feature name is a product name; the placeholder and
+	// the example account id carry no prose. One entry covers every locale that
+	// keeps the value identical.
+	[
+		"ui.teamBridge.page.title",
+		"Product name (Team Bridge), preserved verbatim by the programme glossary.",
+	],
+	[
+		"ui.teamBridge.nav.label",
+		"Product name (Team Bridge), preserved verbatim by the programme glossary.",
+	],
+	[
+		"ui.teamBridge.approvals.nav_name",
+		"Product name (Team Bridge) plus the inserted, already-translated {label}; the only other character is the list comma. ur and zh-CN use their own comma and differ, the rest are identical by design (ui#1954 i18n audit round 1).",
+	],
+	[
+		"ui.teamBridge.approvals.result.item",
+		"Placeholders and middle-dot separators only ({sender} · {word} · {outcome}); every part is inserted already translated, so no locale has prose to change (ui#1954 i18n audit round 1).",
+	],
+	[
+		"ui.teamBridge.chief.label",
+		"Placeholders and brackets only ({agent} ({person})); both names are inserted verbatim. Locales with full-width brackets (zh-CN) differ, the rest are identical by design.",
+	],
+	[
+		"ui.teamBridge.notify.title",
+		"Placeholders and brackets only ({conversation} ({organization})); the notification title is assembled from already-translated parts.",
+	],
+	[
+		"ui.teamBridge.notify.channel",
+		"Opaque channel name with the conventional # marker; no prose to translate. Independently validated for all seven locales in os1298-r1 receipts.",
+	],
+	[
+		"ui.teamBridge.notify.subtitle",
+		"Language-neutral place and organization composition; both values remain verbatim and place-first order is required for disambiguation. Independently validated in os1298-r1 receipts.",
+	],
+	[
+		"ui.teamBridge.member.agent",
+		"French cognate: « agent » has the same spelling.",
+	],
+	[
+		"ui.teamBridge.create.member_agent",
+		"French cognate: « agent » has the same spelling.",
+	],
+	[
+		"ui.teamBridge.notify.mention",
+		"French cognate: « mentions » has the same spelling.",
+	],
+	[
+		"ui.agentMessages.settings.allowlist.kind_agent",
+		"French cognate: « agent » has the same spelling.",
+	],
+	// --- ui.shell / ui.command_palette. "Agent Hub" is the product surface's
+	// established name; ur keeps the Latin proper name (the programme glossary
+	// already does this for `hub.skills.public_hub`), so the value is correctly
+	// identical to English rather than a stub.
+	[
+		"ui.command_palette.use_palette_sources.agent_hub",
+		"Product name (Agent Hub), preserved verbatim by the programme glossary.",
+	],
+	[
+		"ui.shell.sidebar_navigation.agent_hub",
+		"Product name (Agent Hub), preserved verbatim by the programme glossary.",
+	],
+	// The browse page's own title, same product name as the sidebar entry above.
+	// The ur agents-surfaces audit ruled MAJOR that it must read Latin 'Agent Hub'
+	// so the page title matches the sidebar that opens it (receipt
+	// i18n/receipts/74bd1d94a511.json, finding H1). Scoped to ur: only Urdu uses
+	// the Latin product name here — the other six locales carry their own
+	// rendering of the hub's title and must keep being checked for it.
+	[
+		"ur:ui.hub.pages.header.title",
+		"Product name (Agent Hub); Urdu keeps the Latin name so the page title matches the sidebar that opens it.",
+	],
+	// --- Audit-classified identical values: canvas and surfaces batches --------
+	// Seven independent auditors classified every value below as legitimately
+	// identical to English at canvas head 936e3a48 / surfaces head 7a1fdf20; the
+	// receipts are i18n/receipts/*-canvas*.json and *-surfaces*.json, and none of
+	// these keys was classified as an untranslated stub. One entry serves every
+	// locale that keeps the value byte-identical; the reason names the class that
+	// makes identical the correct translation rather than a skipped string.
+	[
+		"ui.canvas.create_file_dialog.c_c",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.c_cpp",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.c_cs",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.configuration",
+		"French cognate: « configuration » has the same spelling",
+	],
+	[
+		"ui.canvas.create_file_dialog.css_css",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.dockerfile",
+		"file-name token: the conventional file name is not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.env",
+		"file-name token: the dot-file name is not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.general",
+		"same form in Spanish: the word is spelled identically",
+	],
+	[
+		"ui.canvas.create_file_dialog.go_go",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.html_html",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.ini_ini",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.java_java",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.javascript_js",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.json_json",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.jsx_jsx",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.kotlin_kt",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.markdown_md",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.php_php",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.python_py",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.ruby_rb",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.rust_rs",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.scala_scala",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.swift_swift",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.toml_toml",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.tsx_tsx",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.typescript_ts",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.xml_xml",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.yaml_yaml",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.create_file_dialog.yaml_yml",
+		"file-type label: the technology name and its extension are not translated",
+	],
+	[
+		"ui.canvas.file_rows.archives",
+		"French cognate: « archives » has the same spelling",
+	],
+	[
+		"ui.canvas.file_rows.code",
+		"French cognate: « code » has the same spelling",
+	],
+	[
+		"ui.canvas.file_rows.documents",
+		"French cognate: « documents » has the same spelling",
+	],
+	[
+		"ui.canvas.file_rows.images",
+		"French cognate: « images » has the same spelling",
+	],
+	[
+		"ui.canvas.file_rows.video",
+		"Vietnamese loanword: « Video » is the standard media-kind label",
+	],
+	[
+		"ui.canvas.insert_image_dialog.users_eren_documents_image_png",
+		"sample path: a literal filesystem path stays byte-identical",
+	],
+	[
+		"ui.canvas.insert_link_dialog.https_example_com",
+		"sample URL: the literal example must stay byte-identical",
+	],
+	[
+		"ui.canvas.insert_link_dialog.url",
+		"technical abbreviation: URL is not translated",
+	],
+	[
+		"ui.canvas.pdf_preview.pdf",
+		"format acronym plus placeholder: PDF is not translated",
+	],
+	[
+		"ui.canvas.shell.canvas",
+		"product surface name: Canvas is preserved verbatim by the glossary",
+	],
+	[
+		"ui.canvas.shell.documents",
+		"French cognate: « documents » has the same spelling",
+	],
+	[
+		"ui.canvas.shell.variables",
+		"French and Spanish cognate: « variables » has the same spelling in both",
+	],
+	[
+		"ui.canvas.variable_form_dialog.example_key_example_value",
+		"format example: JSON syntax must stay byte-identical",
+	],
+	[
+		"ui.canvas.variable_form_dialog.item1_item2",
+		"format example: JSON array syntax must stay byte-identical",
+	],
+	[
+		"ui.canvas.variable_form_dialog.type",
+		"French cognate: « type » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.analytics_model.tokens",
+		"kept-English technical term: the style guides keep « token » in English",
+	],
+	[
+		"ui.chat.pickers.analytics_panel.session",
+		"French cognate: « session » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.analytics_panel.sessionf7f199",
+		"French cognate: « session » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.analytics_panel.sessions",
+		"French cognate: « sessions » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.analytics_panel.tokens",
+		"kept-English technical term: the style guides keep « token » in English",
+	],
+	[
+		"ui.chat.pickers.analytics_session_state.session",
+		"French cognate: « session » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.analytics_session_state.tokens",
+		"kept-English technical term: the style guides keep « token » in English",
+	],
+	[
+		"ui.chat.pickers.context_model.instructions",
+		"French cognate: « instructions » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.context_model.messages",
+		"French cognate: « messages » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.context_panel.tokens",
+		"kept-English technical term: the style guides keep « token » in English",
+	],
+	[
+		"ui.chat.pickers.context_panel.total",
+		"French and Spanish cognate: « total » has the same spelling in both",
+	],
+	[
+		"ui.chat.pickers.destination_pickers.code",
+		"French cognate: « (code) » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.destination_pickers.completed_only",
+		"language-neutral counter: only a formatted number, no words",
+	],
+	[
+		"ui.chat.pickers.destination_pickers.desktop",
+		"Vietnamese loanword: « desktop » is the established platform label",
+	],
+	[
+		"ui.chat.pickers.destination_pickers.k",
+		"unit suffix: « k » is a compact counter marker, not prose",
+	],
+	[
+		"ui.chat.pickers.destination_pickers.message",
+		"French cognate: « message » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.destination_pickers.messages",
+		"French cognate: « messages » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.destination_pickers.my_api_key",
+		"identifier literal: credential names stay verbatim",
+	],
+	[
+		"ui.chat.pickers.destination_pickers.ports",
+		"French cognate: « ports » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.destination_pickers.skill",
+		"URI scheme token: a machine value, never translated",
+	],
+	[
+		"ui.chat.pickers.info_model.agent",
+		"kept-English term: the French glossary renders « agent » as « agent »",
+	],
+	[
+		"ui.chat.pickers.info_model.colorterm",
+		"environment-variable name: identifiers are never translated",
+	],
+	[
+		"ui.chat.pickers.info_model.conversation",
+		"French cognate: « conversation » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.info_model.count_noun",
+		"language-neutral ICU skeleton: caller-supplied nouns, no prose",
+	],
+	[
+		"ui.chat.pickers.info_model.no",
+		"same form in Spanish: « no » is spelled identically",
+	],
+	[
+		"ui.chat.pickers.info_model.pid",
+		"technical identifier: « pid » is a token; only the number is formatted",
+	],
+	[
+		"ui.chat.pickers.info_model.pid_7837d5",
+		"technical identifier: « pid » is a token; only the number is formatted",
+	],
+	[
+		"ui.chat.pickers.info_model.python",
+		"product name plus placeholder: the language name is kept verbatim",
+	],
+	[
+		"ui.chat.pickers.info_model.runtime",
+		"kept-English technical term: « runtime » stays English by the style guides",
+	],
+	[
+		"ui.chat.pickers.info_model.runtime_trajectories",
+		"language-neutral composition: placeholders and a separator only",
+	],
+	[
+		"ui.chat.pickers.info_model.runtimes",
+		"kept-English technical term: « runtime » stays English by the style guides",
+	],
+	[
+		"ui.chat.pickers.info_model.session",
+		"French cognate: « session » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.info_model.sessionfcbdc4",
+		"French cognate: « session » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.info_model.sessions",
+		"French cognate: « sessions » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.info_model.term",
+		"environment-variable name: identifiers are never translated",
+	],
+	[
+		"ui.chat.pickers.info_panel.session",
+		"French cognate: « session » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.info_panel.version",
+		"French cognate: « version » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.session_panel.ok",
+		"status token / interjection: « ok » is conventional in French and Vietnamese",
+	],
+	[
+		"ui.chat.pickers.session_panel.phase",
+		"French cognate: « phase » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.session_panel.session",
+		"French cognate: « session » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.session_panel.tokens",
+		"kept-English technical term: the style guides keep « token » in English",
+	],
+	[
+		"ui.chat.pickers.session_report_model.conversation",
+		"French cognate: « conversation » has the same spelling",
+	],
+	[
+		"ui.chat.pickers.session_report_model.images_est",
+		"French cognate: « Images » and the « est. » abbreviation are unchanged",
+	],
+	[
+		"ui.chat.pickers.session_report_model.tokens",
+		"kept-English technical term: the style guides keep « token » in English",
+	],
+	[
+		"ui.chat.pickers.usage_view_model.note_with_period",
+		"language-neutral composition: a placeholder and a full stop",
+	],
+	[
+		"ui.chat.pickers.usage_view_model.tokens",
+		"kept-English technical term: the style guides keep « token » in English",
+	],
+	[
+		"ui.settings.shortcuts.row.canvas",
+		"product surface name: Canvas is preserved verbatim by the glossary",
+	],
+	// --- ui.chat.directory folder labels. The working-directory menu offers
+	// conventional folder names beside their own paths. Two kinds are identical
+	// in EVERY locale and are named here once, globally: the bare path segments
+	// (the context sidecar records them as untranslatable) and `ProgramData`,
+	// whose Explorer display name is the same under every UI language. The three
+	// French cognates and the Windows `Program Files` rows are scoped per locale
+	// below instead: hi/zh-CN/ru/ur/vi must translate the cognates, and only a
+	// locale whose Explorer shows `Program Files` in English may claim it
+	// verbatim (fr shows `Programmes`; es translates it).
+	[
+		"ui.chat.directory.folder.etc",
+		"filesystem identifier, not copy: the path segment `/etc` is identical in every locale",
+	],
+	[
+		"ui.chat.directory.folder.media",
+		"filesystem identifier, not copy: the path segment `/media` is identical in every locale",
+	],
+	[
+		"ui.chat.directory.folder.mnt",
+		"filesystem identifier, not copy: the path segment `/mnt` is identical in every locale",
+	],
+	[
+		"ui.chat.directory.folder.opt",
+		"filesystem identifier, not copy: the path segment `/opt` is identical in every locale",
+	],
+	[
+		"ui.chat.directory.folder.srv",
+		"filesystem identifier, not copy: the path segment `/srv` is identical in every locale",
+	],
+	[
+		"ui.chat.directory.folder.usr",
+		"filesystem identifier, not copy: the path segment `/usr` is identical in every locale",
+	],
+	[
+		"ui.chat.directory.folder.var",
+		"filesystem identifier, not copy: the path segment `/var` is identical in every locale",
+	],
+	[
+		"ui.chat.directory.folder.program_data",
+		"Windows system folder name Explorer shows in English under every UI language",
+	],
+	[
+		"fr:ui.chat.directory.folder.applications",
+		"French cognate: « Applications » has the same spelling; scoped to fr so the other locales still translate it",
+	],
+	[
+		"fr:ui.chat.directory.folder.documents",
+		"French cognate: « Documents » has the same spelling; scoped to fr so the other locales still translate it",
+	],
+	[
+		"fr:ui.chat.directory.folder.volumes",
+		"French cognate: « Volumes » has the same spelling; scoped to fr so the other locales still translate it",
+	],
+	[
+		"hi:ui.chat.directory.folder.program_files",
+		"Hindi Windows shows this folder name verbatim; the path beside it is never translated.",
+	],
+	[
+		"hi:ui.chat.directory.folder.program_files_x86",
+		"Hindi Windows shows this folder name verbatim; the path beside it is never translated.",
+	],
+	[
+		"ru:ui.chat.directory.folder.program_files",
+		"Russian Windows shows this folder name verbatim; the path beside it is never translated.",
+	],
+	[
+		"ru:ui.chat.directory.folder.program_files_x86",
+		"Russian Windows shows this folder name verbatim; the path beside it is never translated.",
+	],
+	[
+		"vi:ui.chat.directory.folder.program_files",
+		"Vietnamese Windows shows this folder name verbatim; the path beside it is never translated.",
+	],
+	[
+		"vi:ui.chat.directory.folder.program_files_x86",
+		"Vietnamese Windows shows this folder name verbatim; the path beside it is never translated.",
+	],
+	[
+		"ur:ui.chat.directory.folder.program_files",
+		"Urdu Windows shows this folder name verbatim; the path beside it is never translated.",
+	],
+	[
+		"ur:ui.chat.directory.folder.program_files_x86",
+		"Urdu Windows shows this folder name verbatim; the path beside it is never translated.",
+	],
+	[
+		"zh-CN:ui.chat.directory.folder.program_files",
+		"Chinese Windows shows this folder name verbatim; the path beside it is never translated.",
+	],
+	[
+		"zh-CN:ui.chat.directory.folder.program_files_x86",
+		"Chinese Windows shows this folder name verbatim; the path beside it is never translated.",
+	],
+	// --- The agents/hub surfaces. Eleven French words that ARE the translation,
+	// not skipped copy: each is a French common noun (or the French plural of one)
+	// whose spelling coincides with the English source, so the translated value is
+	// byte-identical without anything being left untranslated. Scoped to `fr` for
+	// the same reason as the folder labels above: hi/zh-CN/ru/ur/vi must translate
+	// these, and a global row would let an English copy pass there. The reasons
+	// name the part of the string that is language-neutral and where it renders.
+	[
+		"fr:ui.agents.detail.origin.source",
+		"French common noun « source » has the same spelling; labels the packaged-seed origin under the « Provenance » heading",
+	],
+	[
+		"fr:ui.agents.detail.section.instructions",
+		"French plural « instructions » has the same spelling; shipped fr already uses « Instructions » in ui.settings.model.system_prompt.instructions",
+	],
+	[
+		"fr:ui.agents.pages.tab.agents",
+		"French plural of « agent » is « agents »; a bare noun beside its live count",
+	],
+	[
+		"fr:ui.agents.publication.invalid.field.description",
+		"French noun « description » has the same spelling, plus the French-attached full stop; the sibling description_with_rule reads « Description : {rule}. »",
+	],
+	[
+		"fr:ui.agents.teams.col.type",
+		"French noun « type » has the same spelling; the column's values are agent vs team, so « Rôle » would misdescribe them",
+	],
+	[
+		"fr:ui.agents.teams.kind.agent",
+		"French noun « agent » has the same spelling; option and Type-column value, paired with the translated « Équipe »",
+	],
+	[
+		"fr:ui.agents.teams.section.description",
+		"French noun « description » has the same spelling; section heading",
+	],
+	// The Skills tab's read-only details (#1443). Each row below is scoped to ONE
+	// locale and cites the shipped, audited value it matches, so none of them
+	// silences a stub in another language.
+	[
+		"es:ui.agents.skills.source.local",
+		"Spanish « Local » has the same spelling; the identical cognate is already shipped in es ui.providers.provider_labels.local (exempted above) and the audit receipts for ui.agents.skills (17d1ca9bf58a-es, aa44e837c157-es) pass it with no finding on this key",
+	],
+	// The Skills roster's short scope segment (#1458, i18n audit fit finding):
+	// the same word as the ur source label exempted beside it, so this row
+	// silences no stub in another language. es needs no row: its delta audit
+	// (32ed16b45687-es) pluralised the segment to « Locales », which differs.
+	[
+		"ur:ui.agents.skills.scope.hub",
+		"Product name (Agent Hub), kept in Latin; byte-identical to ur:ui.agents.skills.source.hub (exempted here) and ur:ui.hub.pages.header.title; the #1458 scope-key delta audit (32ed16b45687-ur) passes it clean",
+	],
+	[
+		"ur:ui.agents.skills.source.hub",
+		"Product name (Agent Hub), kept in Latin like ur:ui.hub.pages.header.title and ui.shell.sidebar_navigation.agent_hub (both exempted); the ur audit receipts (17d1ca9bf58a-ur, aa44e837c157-ur) pass it clean with no finding",
+	],
+	[
+		"fr:ui.agents.config.kind.agent",
+		"French noun « agent » has the same spelling and is the glossary term (agent -> agent); it is the bare kind word of the config composer's About line and summary suffix, and the seven-locale union audit read it in context",
+	],
+	[
+		"fr:ui.hub.pages.search_field.description",
+		"French noun « description » has the same spelling; search option paired with the translated « Nom »",
+	],
+	[
+		"fr:ui.hub.pages.status.agents_scope",
+		"Only the French plural « Agents » plus {scope} is identical; the scope phrases are translated (« dans le hub public »)",
+	],
+	[
+		"fr:ui.hub.pages.tab.agents",
+		"French plural « agents » has the same spelling; the hub tab has the same shape as the agents-page tab",
+	],
+	[
+		"fr:ui.hub.teams.brief.trigger",
+		"French noun « brief » has the same spelling; the namespace's long forms are « Brief de collaboration » / « Brief de projet » and its aria is « Voir le brief de {name} »",
+	],
+	[
+		"fr:ui.chat.pickers.slash.phase.arguments",
+		"French command-line term « Arguments » has the same spelling; it labels the slash command's argument phase",
+	],
+	[
+		"fr:ui.common.layout.toasts.notifications",
+		"French plural « Notifications » has the same spelling; the toast region's own accessible name",
+	],
+	[
+		"ui.chat.attachments.playback_rate_option",
+		// `{rate}x`: a numeral and the letter x, no words to translate. Identical in
+		// every locale is the correct value; a differing one would be invented
+		// punctuation or a translated multiplication sign the format does not use.
+		"language-neutral format: only a {rate} placeholder and 'x', no words",
+	],
+	[
+		"ui.chat.canonical.tool_row.bridge.summary.count",
+		// `({count})`: a number in parentheses, after `Listed conversations`. No
+		// words to translate - the noun lives in the verb phrase - so identical in
+		// every locale is correct, the `playback_rate_option` rule.
+		"language-neutral format: only a {count} placeholder and parentheses, no words",
+	],
+	[
+		"ui.chat.canonical.tool_row.bridge.detail.headline.target",
+		// `{verb} {target}`: the expansion's labelled first line (`Posted in
+		// #release`). Both slots are already-translated phrases; the message
+		// exists so a locale can reorder them (ur does). Verb-then-object is the
+		// natural order in most shipped locales, where identical is correct.
+		"format string: two placeholders and a space, no words",
+	],
+	[
+		"ui.agents.avatar.editor.zoom_value",
+		// `{value}×`: the crop editor's zoom readout (`2.5×`), a numeral and the
+		// multiplication sign, no words. Identical in every locale is correct, the
+		// `playback_rate_option` rule; no catalogue value changed to satisfy this.
+		"language-neutral format: only a {value} placeholder and '×', no words",
+	],
+	[
+		"es:ui.agents.avatar.editor.zoom",
+		"Spanish cognate: « Zoom » is the Spanish noun for the control, same spelling, and the sibling zoom_in/zoom_out values are translated (Acercar/Alejar); scoped to es so the other locales still translate it",
+	],
+	[
+		"fr:ui.agents.avatar.editor.zoom",
+		"French cognate: « Zoom » is the French noun for the control, same spelling, and the sibling zoom_in/zoom_out values are translated; scoped to fr so the other locales still translate it",
+	],
+	[
+		"ui.settings.personal_profile.zoom_value",
+		// The human photo cropper's readout reuses the agent cropper's exact
+		// `{value}×` format through the shared identity-neutral cropper; same
+		// rule as `ui.agents.avatar.editor.zoom_value` above.
+		"language-neutral format: only a {value} placeholder and '×', no words",
+	],
+	[
+		"es:ui.settings.personal_profile.zoom",
+		"Spanish cognate: « Zoom » is the Spanish noun for the control, same spelling, matching the audited agent cropper's es value; zoom_in/zoom_out are translated; scoped to es so the other locales still translate it",
+	],
+	[
+		"fr:ui.settings.personal_profile.zoom",
+		"French cognate: « Zoom » is the French noun for the control, same spelling, matching the audited agent cropper's fr value; zoom_in/zoom_out are translated; scoped to fr so the other locales still translate it",
+	],
+	[
+		"fr:ui.chat.attachments.volume",
+		"French cognate: the French noun for this control is « Volume », same spelling; scoped to fr so other locales still translate it",
+	],
+	[
+		"fr:ui.chat.pickers.slash.action_kind",
+		"French cognate: « Action » is the French noun, same spelling; scoped to fr so other locales still translate it",
+	],
+	[
+		"fr:ui.chat.transcript_copy.role.assistant",
+		"French cognate: the French role name is « Assistant », same spelling; scoped to fr so other locales still translate it",
+	],
+	[
+		"fr:ui.chat.asks.scope_line",
+		"The row joins two keyed phrases with a middle dot; no lexical content, so the correct value equals English. Scoped to this locale/key only.",
+	],
+	[
+		"fr:ui.chat.canonical.fold.count.named",
+		"`{count} {name}` is a number and a tool name with a space; the tool name is a machine token, so there is no wording to translate. Scoped to this locale/key only.",
+	],
+	[
+		"fr:ui.chat.canonical.fold.unit_separator",
+		"The unit separator is a spaced middle dot, punctuation only. Scoped to this locale/key only.",
+	],
+	[
+		"fr:ui.chat.canonical.fold.sentence.join",
+		"The joiner is `{first}, {second}`: an ICU skeleton with a comma, which is also the correct punctuation in this locale. Scoped to this locale/key only.",
+	],
+	[
+		"es:ui.chat.asks.scope_line",
+		"The row joins two keyed phrases with a middle dot; no lexical content, so the correct value equals English. Scoped to this locale/key only.",
+	],
+	[
+		"es:ui.chat.canonical.fold.count.named",
+		"`{count} {name}` is a number and a tool name with a space; the tool name is a machine token, so there is no wording to translate. Scoped to this locale/key only.",
+	],
+	[
+		"es:ui.chat.canonical.fold.unit_separator",
+		"The unit separator is a spaced middle dot, punctuation only. Scoped to this locale/key only.",
+	],
+	[
+		"es:ui.chat.canonical.fold.sentence.join",
+		"The joiner is `{first}, {second}`: an ICU skeleton with a comma, which is also the correct punctuation in this locale. Scoped to this locale/key only.",
+	],
+	[
+		"zh-CN:ui.chat.asks.scope_line",
+		"The row joins two keyed phrases with a middle dot; no lexical content, so the correct value equals English. Scoped to this locale/key only.",
+	],
+	[
+		"zh-CN:ui.chat.canonical.fold.unit_separator",
+		"The unit separator is a spaced middle dot, punctuation only. Scoped to this locale/key only.",
+	],
+	[
+		"ru:ui.chat.asks.scope_line",
+		"The row joins two keyed phrases with a middle dot; no lexical content, so the correct value equals English. Scoped to this locale/key only.",
+	],
+	[
+		"ru:ui.chat.canonical.fold.count.named",
+		"`{count} {name}` is a number and a tool name with a space; the tool name is a machine token, so there is no wording to translate. Scoped to this locale/key only.",
+	],
+	[
+		"ru:ui.chat.canonical.fold.unit_separator",
+		"The unit separator is a spaced middle dot, punctuation only. Scoped to this locale/key only.",
+	],
+	[
+		"ru:ui.chat.canonical.fold.sentence.join",
+		"The joiner is `{first}, {second}`: an ICU skeleton with a comma, which is also the correct punctuation in this locale. Scoped to this locale/key only.",
+	],
+	[
+		"vi:ui.chat.asks.scope_line",
+		"The row joins two keyed phrases with a middle dot; no lexical content, so the correct value equals English. Scoped to this locale/key only.",
+	],
+	[
+		"vi:ui.chat.canonical.fold.count.named",
+		"`{count} {name}` is a number and a tool name with a space; the tool name is a machine token, so there is no wording to translate. Scoped to this locale/key only.",
+	],
+	[
+		"vi:ui.chat.canonical.fold.unit_separator",
+		"The unit separator is a spaced middle dot, punctuation only. Scoped to this locale/key only.",
+	],
+	[
+		"vi:ui.chat.canonical.fold.sentence.join",
+		"The joiner is `{first}, {second}`: an ICU skeleton with a comma, which is also the correct punctuation in this locale. Scoped to this locale/key only.",
+	],
+	[
+		"hi:ui.chat.asks.scope_line",
+		"The row joins two keyed phrases with a middle dot; no lexical content, so the correct value equals English. Scoped to this locale/key only.",
+	],
+	[
+		"hi:ui.chat.canonical.fold.count.named",
+		"`{count} {name}` is a number and a tool name with a space; the tool name is a machine token, so there is no wording to translate. Scoped to this locale/key only.",
+	],
+	[
+		"hi:ui.chat.canonical.fold.unit_separator",
+		"The unit separator is a spaced middle dot, punctuation only. Scoped to this locale/key only.",
+	],
+	[
+		"hi:ui.chat.canonical.fold.sentence.join",
+		"The joiner is `{first}, {second}`: an ICU skeleton with a comma, which is also the correct punctuation in this locale. Scoped to this locale/key only.",
+	],
+	[
+		"ur:ui.chat.asks.scope_line",
+		"The row joins two keyed phrases with a middle dot; no lexical content, so the correct value equals English. Scoped to this locale/key only.",
+	],
+	[
+		"ur:ui.chat.canonical.fold.count.named",
+		"`{count} {name}` is a number and a tool name with a space; the tool name is a machine token, so there is no wording to translate. Scoped to this locale/key only.",
+	],
+	[
+		"ur:ui.chat.canonical.fold.unit_separator",
+		"The unit separator is a spaced middle dot, punctuation only. Scoped to this locale/key only.",
+	],
+	// Composer keying (batch A + B1). Global rows first: placeholder-only
+	// skeletons with no words, like `ui.chat.attachments.file_meta`.
+	[
+		"ui.chat.ask_queue.deadline.with_subject",
+		// `{subject} {deadline}`: two caller-supplied fragments joined by a space; the
+		// words live in the keyed subject and deadline phrases, not here, so a
+		// differing value would only invent punctuation per language.
+		"language-neutral composition: two placeholders and a space, no words",
+	],
+	[
+		"ui.chat.session_spend.summary.basis_amount",
+		// `{label} {amount}`: a keyed basis label plus a formatted currency amount;
+		// nothing in the string itself is translatable.
+		"language-neutral composition: two placeholders and a space, no words",
+	],
+	[
+		"ui.chat.ask_panel.filter.chip",
+		// `{label} · {count, number}`: a keyed filter label, a middle-dot separator
+		// and a locale-formatted count; same shape as `ui.chat.asks.scope_line`.
+		"language-neutral composition: placeholders joined by a middle dot, no words",
+	],
+	[
+		"ui.chat.ask_answer.unconfirmed",
+		// `{lead} {reason}`: two caller-supplied, already-translated fragments joined
+		// by a space; zh-CN differs only because CJK joins with no space (`{lead}{reason}`).
+		"language-neutral composition: two placeholders and a space, no words",
+	],
+	// Locale-scoped rows: genuine words/unit symbols whose spelling coincides with
+	// English in that language only; every other locale must still translate them.
+	[
+		"es:ui.chat.ask_queue.response.surface_terminal",
+		"Spanish « terminal » (the text interface) has the same spelling as English; a common noun, not skipped copy.",
+	],
+	[
+		"fr:ui.chat.ask_queue.response.surface_terminal",
+		"French « terminal » (the text interface) has the same spelling as English; a common noun, not skipped copy.",
+	],
+	[
+		"fr:ui.chat.ask_queue.duration.hours",
+		"`{count, number}h`: « h » is the French symbol for heures, so the unit suffix is the correct French value.",
+	],
+	[
+		"fr:ui.chat.ask_queue.duration.seconds",
+		"`{count, number}s`: « s » is the French symbol for secondes, so the unit suffix is the correct French value.",
+	],
+	[
+		"fr:ui.chat.session_readout.effort.level.auto",
+		"French « Auto » is the ordinary short label for an automatic mode (cf. « auto » in French UIs); same spelling as English, not skipped copy.",
+	],
+	[
+		"fr:ui.chat.session_readout.effort.level.max",
+		"French « Max » is the standard abbreviation of « maximum » used as a level label; same spelling as English.",
+	],
+	[
+		"fr:ui.chat.session_readout.effort.level.minimal",
+		"French adjective « minimal » has the same spelling as English; used as a bare level label beside « Max ».",
+	],
+	[
+		"fr:ui.chat.session_readout.model.router_auto",
+		"French « Auto » is the ordinary short label for an automatically routed choice; same spelling as English.",
+	],
+	[
+		"es:ui.chat.approval.mode.auto",
+		"Spanish « Auto » is the ordinary short label for the automatic approval mode (beside « Preguntar »); same spelling as English, not skipped copy.",
+	],
+	[
+		"fr:ui.chat.approval.mode.auto",
+		"French « Auto » is the ordinary short label for the automatic approval mode (beside « Demander »); same spelling as English, not skipped copy.",
+	],
+	[
+		"es:ui.chat.session_readout.effort.level.auto",
+		"Spanish « Auto » is the ordinary short label for an automatic effort level (beside « Máximo », « Mínimo »); same spelling as English, not skipped copy.",
+	],
+	[
+		"es:ui.chat.session_readout.model.router_auto",
+		"Spanish « Auto » is the ordinary short label for an automatically routed model; same spelling as English, not skipped copy.",
+	],
+	[
+		"fr:ui.chat.session_spend.summary.total",
+		"`Total {total}`: « total » is the French noun/word for a sum, spelled as in English; the amount is a placeholder.",
+	],
+	// Library kind and tag-category labels (PR #1851): format names and cognates.
+	[
+		"ui.library.kind.docx",
+		"File-format acronym/proper name (DOCX, HTML, Markdown, PDF, PPTX) kept Latin in every locale; the existing catalogues already render HTML/PDF/Markdown Latin; judged retained by 14 independent audits of PR #1851.",
+	],
+	[
+		"ui.library.kind.html",
+		"File-format acronym/proper name (DOCX, HTML, Markdown, PDF, PPTX) kept Latin in every locale; the existing catalogues already render HTML/PDF/Markdown Latin; judged retained by 14 independent audits of PR #1851.",
+	],
+	[
+		"ui.library.kind.markdown",
+		"File-format acronym/proper name (DOCX, HTML, Markdown, PDF, PPTX) kept Latin in every locale; the existing catalogues already render HTML/PDF/Markdown Latin; judged retained by 14 independent audits of PR #1851.",
+	],
+	[
+		"ui.library.kind.pdf",
+		"File-format acronym/proper name (DOCX, HTML, Markdown, PDF, PPTX) kept Latin in every locale; the existing catalogues already render HTML/PDF/Markdown Latin; judged retained by 14 independent audits of PR #1851.",
+	],
+	[
+		"ui.library.kind.pptx",
+		"File-format acronym/proper name (DOCX, HTML, Markdown, PDF, PPTX) kept Latin in every locale; the existing catalogues already render HTML/PDF/Markdown Latin; judged retained by 14 independent audits of PR #1851.",
+	],
+	[
+		"es:ui.library.kind.audio",
+		"Spanish: Audio is the ordinary Spanish noun, spelled as in English; judged retained by the independent audits of PR #1851. Scoped to Spanish only.",
+	],
+	[
+		"es:ui.library.kind.video",
+		"Spanish: Video is the ordinary Spanish noun, spelled as in English; judged retained by the independent audits of PR #1851. Scoped to Spanish only.",
+	],
+	[
+		"vi:ui.library.kind.video",
+		"Vietnamese loanword « Video » matches the existing ui.library.category.video; judged retained by the independent audits of PR #1851. Scoped to Vietnamese only.",
+	],
+	[
+		"fr:ui.library.kind.audio",
+		"French: same spelling as English, ordinary French noun; matches the existing category/filter vocabulary; judged retained by the independent audits of PR #1851. Scoped to French only.",
+	],
+	[
+		"fr:ui.library.kind.code",
+		"French: same spelling as English, ordinary French noun; matches the existing category/filter vocabulary; judged retained by the independent audits of PR #1851. Scoped to French only.",
+	],
+	[
+		"fr:ui.library.kind.image",
+		"French: same spelling as English, ordinary French noun; matches the existing category/filter vocabulary; judged retained by the independent audits of PR #1851. Scoped to French only.",
+	],
+	[
+		"fr:ui.library.tag_category.format",
+		"French: same spelling as English, ordinary French noun; matches the existing category/filter vocabulary; judged retained by the independent audits of PR #1851. Scoped to French only.",
+	],
+	[
+		"fr:ui.library.tag_category.source",
+		"French: same spelling as English, ordinary French noun; matches the existing category/filter vocabulary; judged retained by the independent audits of PR #1851. Scoped to French only.",
+	],
+	[
+		"fr:ui.library.tag_category.type",
+		"French: same spelling as English, ordinary French noun; matches the existing category/filter vocabulary; judged retained by the independent audits of PR #1851. Scoped to French only.",
+	],
+	[
+		"es:ui.common.time.date_at",
+		"Spanish long date + clock joined by the same comma as English; pure placeholder pattern, no words",
+	],
+	[
+		"ur:ui.common.time.weekday_at",
+		"pure placeholder join of weekday and clock, same order as English; ICU supplies the Urdu weekday and Latin clock",
+	],
+	// Run panel MCP failure sentence (S17c, PR #1897): the lead/reason joiner.
+	[
+		"es:ui.chat.run_details.mcp_failure.with_reason",
+		"Pure joiner `{lead}. {reason}`: the MCP failure lead and the server's reason are both full, capitalised sentences, so this locale closes the lead with the same full stop and space as English; no lexical English (zh-CN, hi and ur differ because they use their own sentence terminators). Independently audited with the S17c drafts (PR #1897). Scoped to this locale/key only.",
+	],
+	[
+		"fr:ui.chat.run_details.mcp_failure.with_reason",
+		"Pure joiner `{lead}. {reason}`: the MCP failure lead and the server's reason are both full, capitalised sentences, so this locale closes the lead with the same full stop and space as English; no lexical English (zh-CN, hi and ur differ because they use their own sentence terminators). Independently audited with the S17c drafts (PR #1897). Scoped to this locale/key only.",
+	],
+	[
+		"ru:ui.chat.run_details.mcp_failure.with_reason",
+		"Pure joiner `{lead}. {reason}`: the MCP failure lead and the server's reason are both full, capitalised sentences, so this locale closes the lead with the same full stop and space as English; no lexical English (zh-CN, hi and ur differ because they use their own sentence terminators). Independently audited with the S17c drafts (PR #1897). Scoped to this locale/key only.",
+	],
+	[
+		"vi:ui.chat.run_details.mcp_failure.with_reason",
+		"Pure joiner `{lead}. {reason}`: the MCP failure lead and the server's reason are both full, capitalised sentences, so this locale closes the lead with the same full stop and space as English; no lexical English (zh-CN, hi and ur differ because they use their own sentence terminators). Independently audited with the S17c drafts (PR #1897). Scoped to this locale/key only.",
+	],
+	[
+		"es:ui.chat.canonical.tool_row.detail_section.error",
+		"Spanish 'Error' is the same word as English; the S18b audit (s18b-es-canonical-8769431b) checked it against shipped neighbours (ui.chat.error_block.heading 'Detalle del error'). Scoped to Spanish only.",
+	],
+	[
+		"fr:ui.chat.code_block.default_header",
+		"French 'Code' is the same word as English; the S18b audit (s18b-fr-chat-6fdeef7b) checked it against shipped neighbours (ui.code_review.code_review_model.code and ui.library.kind.code are both 'Code'). Scoped to French only.",
+	],
 ]);
+
+/*
+ * An exemption is GLOBAL by default — a value no locale may translate, such as a
+ * filesystem identifier — and may be scoped to one locale with a `<locale>:<key>`
+ * row, for a word that is legitimately identical in that language only. The
+ * scoped form exists because a global row for, say, a French cognate also
+ * exempts hi/zh-CN/ru/ur/vi, where that word must differ: the guard would then
+ * pass on a value nobody translated, which is the failure it is meant to catch.
+ */
+function allowsIdenticalValue(locale, key, table = IDENTICAL_OK) {
+	return table.has(key) || table.has(`${locale}:${key}`);
+}
 
 function localeDirs() {
 	return readdirSync(CATALOGUES, { withFileTypes: true })
@@ -776,7 +2162,7 @@ for (const locale of localeDirs().filter((name) => name !== SOURCE_LOCALE)) {
 			for (const [key, message] of Object.entries(data)) {
 				const source = english.get(key);
 				if (source === undefined || typeof message !== "string") continue;
-				if (message === source && !IDENTICAL_OK.has(key)) {
+				if (message === source && !allowsIdenticalValue(locale, key)) {
 					stubs.push(`${file}: ${key}`);
 				}
 			}
@@ -784,3 +2170,23 @@ for (const locale of localeDirs().filter((name) => name !== SOURCE_LOCALE)) {
 		assert.deepEqual(stubs, [], `values identical to English in ${locale}`);
 	});
 }
+
+/*
+ * The scoped-entry guard, proved on its own table: a `<locale>:<key>` row must
+ * exempt exactly one language. If it exempted every locale, a translator could
+ * silence a real stub in six locales by writing one French cognate — the exact
+ * hole this form was added to close — so the property is asserted rather than
+ * assumed from the production table.
+ */
+test("a locale-scoped identical-value exemption does not exempt another locale", () => {
+	const table = new Map([
+		["fr:ui.example.cognate", "French cognate: same spelling"],
+	]);
+	assert.equal(allowsIdenticalValue("fr", "ui.example.cognate", table), true);
+	assert.equal(allowsIdenticalValue("es", "ui.example.cognate", table), false);
+	assert.equal(
+		allowsIdenticalValue("zh-CN", "ui.example.cognate", table),
+		false,
+	);
+	assert.equal(allowsIdenticalValue("fr", "ui.example.other", table), false);
+});

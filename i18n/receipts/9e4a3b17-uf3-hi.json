@@ -1,0 +1,66 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "anthropic/claude-sonnet-5-5",
+  "instance": "9e4a3b17-uf3-hi",
+  "locale": "hi",
+  "audit_date": "2026-11-08",
+  "status": "passed",
+  "scope": "fresh independent re-audit (uf3) of hi ui.updates.service (39 keys, incl. new global.app_owned.remedy) and ui.installer.setup_cause (7 keys), on-disk working-tree bytes, UI PR #1760 worktree i18n-update-flow @ 7390ee9dc92 + uncommitted edits; ui.updates.status excluded (byte-unchanged, audited in 5d1b7e42-uf2-hi). Previous receipt: 5d1b7e42-uf2-hi-update-flow-hi.json",
+  "independence_note": "Auditor did not write or edit any translation; read-only. Audited whole files from scratch against en + .context.json sidecars and shipped hi copy; then verified each prior finding.",
+  "evidence": "check-coverage.mjs: ok (7 gated languages, 0 allowed keys remain). locale-parity.test.mjs: 44/44 pass. context-parity.mjs: ok. Programmatic en-vs-hi comparison of placeholders, backticked commands, ::group-off skeletons and technical tokens (Local Operator, lop-update, .lop-source, uv/pipx/pip) for all 46 keys: 0 diffs; all 46 hi messages parse in intl-messageformat. hi CLDR: 0,1=one; 2,5,11,21,100=other. fleet.busy.lead renders 1 -> 'इस मशीन पर 1 सत्र अब भी काम कर रहा है: A, B, C और 1 अन्य।'; 2/5/11/21/100 -> '... N सत्र अब भी काम कर रहे हैं: A, B, C और N अन्य।'; extra=0 drops clause. Minutes plurals (attempt_running.message_minutes, fleet.unknown.body, fleet.busy.body) render '0/1/2/5/11/21/100 मिनट'. disk_space -> 'लगभग 12345 MB ... 987 MB ही खाली है'. not_effective with real ('0.42.7 पर ... 0.41.0 बता रहा है') and fallback values ('नई रिलीज़ पर ... उसका पिछला संस्करण बता रहा है') agree. Width: max hi/en length ratio 1.34 (no_server_reference), 1.12 in setup_cause; no overflow concern.",
+  "namespaces": {
+    "ui.updates.service": {
+      "status": "passed",
+      "result": "clean",
+      "keys_read": 39,
+      "sha256": {
+        "en": "e473e1fcca579cd11a398c7c21b86b4ef5d56efa5a48f09bce6b047170aa5ae2",
+        "hi": "c66c889abad341e9f930dfd9ad3ac5418cc6dc5314cb0e0e421467b2dc35d3c7"
+      },
+      "en_path": "src/i18n/catalogues/en/ui.updates.service.json",
+      "target_path": "src/i18n/catalogues/hi/ui.updates.service.json",
+      "counts": {
+        "BLOCKER": 0,
+        "MAJOR": 0,
+        "MINOR": 0,
+        "NIT": 0
+      },
+      "summary": "39 keys read; clean: no blocker/major/minor/nit. All 4 prior findings verified applied (release_unreadable, disk_space 'कोई बदलाव नहीं किया'; legacy_installer 'अपडेट की ज़िम्मेदारी ऐप संभालता है'; credentials_refused 'अस्वीकार कर दिए') with no new defects. New key global.app_owned.remedy is faithful in all three clauses (own managed env / no package manager owns it / no terminal command; app can only update a server it started: stop, restart Local Operator, let it start its own), natural, tokens verbatim.",
+      "findings": []
+    },
+    "ui.installer.setup_cause": {
+      "status": "passed",
+      "result": "clean-with-findings",
+      "keys_read": 7,
+      "sha256": {
+        "en": "330241db6a55045e62e90042cf26694ff73537c24c50467e117436958a4b610b",
+        "hi": "db78133d7676c007476f34586c16abb9c282eb0618ab92b7ecd81737977ef97f"
+      },
+      "en_path": "src/i18n/catalogues/en/ui.installer.setup_cause.json",
+      "target_path": "src/i18n/catalogues/hi/ui.installer.setup_cause.json",
+      "counts": {
+        "BLOCKER": 0,
+        "MAJOR": 0,
+        "MINOR": 0,
+        "NIT": 2
+      },
+      "summary": "7 keys read; no blocker/major/minor; 2 nit. Prior tls_interception nit (फिर दोबारा कोशिश करें) verified applied.",
+      "findings": [
+        {
+          "severity": "NIT",
+          "key": "ui.installer.setup_cause.tls_interception",
+          "current": "अपने IT से रूट प्रमाणपत्र माँगें",
+          "proposed": "अपने IT विभाग से रूट प्रमाणपत्र माँगें",
+          "reason": "Bare 'IT' as the addressee reads clipped in Hindi; 'IT विभाग' names the team the English 'IT' means. Understandable as is."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.installer.setup_cause.clock_or_expired",
+          "current": "इंडेक्स चलाने वाले को उसे नवीनीकृत करना होगा",
+          "proposed": "इंडेक्स चलाने वाले को उसे रिन्यू करना होगा",
+          "reason": "'नवीनीकृत' is formal and appears nowhere else in shipped hi copy, while UI Hindi usually uses 'रिन्यू' for renew; accurate, so optional."
+        }
+      ]
+    }
+  }
+}

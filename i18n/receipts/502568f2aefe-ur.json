@@ -1,0 +1,137 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit (team-bridge membership events + invitation_note_v3, auditor B)",
+	"date": "2026-10-30",
+	"auditor": "translation-auditor",
+	"agent": "translation-auditor",
+	"model": "radient/radient-research/radient-ultra",
+	"model_provenance": "Session 502568f2aefe began on anthropic/claude-opus-5-5 and was moved by provider quota failures to openai/gpt-6-astra, then kimi/k3.1-pro, then radient/radient-research/radient-ultra, which is the model that completed the audit and wrote this receipt. Disclosed as required; no role or tool defaults were changed.",
+	"model_fallback": {
+		"announced": true,
+		"observed": true,
+		"chain": [
+			"anthropic/claude-opus-5-5",
+			"openai/gpt-6-astra",
+			"kimi/k3.1-pro",
+			"radient/radient-research/radient-ultra"
+		],
+		"actual_model": "radient/radient-research/radient-ultra"
+	},
+	"status": "passed",
+	"namespace": "ui.teamBridge",
+	"locale": "ur",
+	"integration": {
+		"branch": "fix/team-bridge-member-events",
+		"head_at_audit": "1eeb46187ce12fbcb5e13c5f02be0251b8979ee8",
+		"worktree": "~/local-operator-ui/.worktrees/member-events",
+		"note": "Translations were uncommitted when audited; hashes bind the on-disk bytes."
+	},
+	"independence": "Independent auditor B: Local Operator session 502568f2aefe, team lopdev role translation-auditor. It authored none of the audited strings (they came from a separate `translator` agent) and worked without reading the other auditor's receipts before forming its verdicts. It wrote only this receipt, its evidence record and the ledger row through ledger-assemble.mjs; no catalogue was edited.",
+	"scope": {
+		"delta_kind": "New membership-event copy on branch fix/team-bridge-member-events: 11 ui.teamBridge.events.* keys and ui.teamBridge.members.invitation_note_v3 added, invitation_note_v2 removed. Translator's own words not relied on; the key set was read from the files.",
+		"keys_audited_linguistically": [
+			"ui.teamBridge.events.invited",
+			"ui.teamBridge.events.joined",
+			"ui.teamBridge.events.owner_added_agent",
+			"ui.teamBridge.events.left",
+			"ui.teamBridge.events.removed",
+			"ui.teamBridge.events.consented",
+			"ui.teamBridge.events.declined_self",
+			"ui.teamBridge.events.declined",
+			"ui.teamBridge.events.withdrawn",
+			"ui.teamBridge.events.unknown",
+			"ui.teamBridge.events.others",
+			"ui.teamBridge.members.invitation_note_v3"
+		],
+		"keys_read_for_context": "The whole 297-key ui.teamBridge namespace in en and in each of the seven locales (term/register/glossary comparison), plus members.title/current/remove/role.owner, member.count, notify.mute/muted/mention, replies.title/action, invitations.declined/declined_unnamed and the consent key bridge_agent_participation_v1.",
+		"state_at_audit": "The seven locale catalogues were uncommitted working-tree changes at HEAD 1eeb46187ce12fbcb5e13c5f02be0251b8979ee8 on fix/team-bridge-member-events; the audited bytes are the bytes on disk, hashed below.",
+		"english_source": "src/i18n/catalogues/en/ui.teamBridge.json at 56810571f7cf"
+	},
+	"mechanical_checks": {
+		"render": "Every ICU value re-rendered with intl-messageformat (the same library the app uses) at 1 and 3 targets, the target list built by Intl.ListFormat(type=conjunction) exactly as team-bridge-member-events.tsx does; events.others also rendered at count 1,2,3,5,11,21,22,1000000. Verbatim output is in renders below.",
+		"placeholders": "AST diff (@formatjs/icu-messageformat-parser) of every audited value against its English source: identical argument set and element types in all 7 locales; no renamed, dropped or added placeholder, no markup token invented. events.others carries {count} and nothing else everywhere; events.declined_self carries no {targets} anywhere.",
+		"plural_arms": "Arms compared with Intl.PluralRules(locale).resolvedOptions().pluralCategories: fr one/many/other, es one/many/other, zh-CN other, ru one/few/many/other, vi other, ur one/other, hi one/other — an exact match to CLDR at every locale, no missing category and no invented one. The fr and es 'many' arm ('# d’autres' / '# más') also renders correctly at 1000000.",
+		"others_no_conjunction": "Scanned for a conjunction inside events.others: no fr 'et', es 'y', ru 'и', vi 'và', zh '和', ur 'اور', hi 'और' — the platform's ListFormat adds the joiner, as required.",
+		"keyset": "All seven target files hold 297 keys, identical to the English key set; invitation_note_v2 is absent from every locale (verified by key scan, not by the translator's summary).",
+		"glossary": "i18n/glossary.md line 46 (agent → agente · 智能体 · агент · tác nhân · ایجنٹ · एजेंट) holds in every audited line; member terms match each locale's members.title/member.count (membres, miembros, 成员, участник, thành viên, ارکان, सदस्य); mute matches notify.mute in all 7; thread matches replies.title in all 7; owner matches members.role.owner in fr/es/zh-CN/ru/vi/ur/hi.",
+		"register": "Address forms match each locale's style guide: fr vous, es tú, zh-CN 你, vi bạn, ur آپ, hi आप, ru вы lowercase. No locale mixes T/V inside the audited group. Capitalisation is sentence case everywhere.",
+		"ru_style": "The ru colon/impersonal construction was judged against i18n/style-guides/ru.md ('prefer impersonal constructions where the English allows') and against the ru namespace's existing precedent — invitations.declined '{agent}: приглашение отклонено.' and invitations.declined_unnamed 'Ваш агент: приглашение отклонено.' — so the pattern reads as an established ru system line, not a calque. Two lines deviate in meaning or shape (RU-B1, RU-B2); the em-dash separator ' — {targets}' is new to this namespace but reads as a structured log line and is not a finding on its own.",
+		"independence": "This auditor read the English source, the context sidecar, all seven target files, the glossary and the style guides directly; no translator summary was taken on trust, and no other auditor's receipt was read before the verdicts above were written."
+	},
+	"audit_id": "teambridge-member-events-audit-b-502568f2aefe-ur",
+	"instance": "502568f2aefe-ur",
+	"instance_note": "Auditor session 502568f2aefe with a per-locale suffix, following the existing per-locale run convention.",
+	"result": "clean-with-findings",
+	"translator": {
+		"agent": "translator",
+		"model": "anthropic/claude-opus-5-5 (as stated in the audit brief; not verifiable from the working tree)",
+		"date": "2026-10-30"
+	},
+	"sha256": {
+		"ur": "60e3a2aaa4b063e3d0b60c9b37d1c33747343cd925f2c328738dd9792126bb98",
+		"en": "56810571f7cfe24841940394b0579e28a13616c40da35fe93301f5b66fb7290c"
+	},
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "56810571f7cfe24841940394b0579e28a13616c40da35fe93301f5b66fb7290c"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "adb76e0b6e40573f67398d6d260fbb738686f34f73077b593126cee6d2d0a77e"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/ur/ui.teamBridge.json",
+			"sha256": "60e3a2aaa4b063e3d0b60c9b37d1c33747343cd925f2c328738dd9792126bb98"
+		}
+	},
+	"findings": [
+		{
+			"severity": "minor",
+			"id": "UR-B1",
+			"key": "ui.teamBridge.events.unknown",
+			"current": "اراکین میں تبدیلی ہوئی",
+			"proposed": "ارکان میں تبدیلی ہوئی",
+			"reason": "Glossary drift on 'members': this file uses ارکان in eight places (members.title 'گفتگو کے ارکان', members.current 'موجودہ ارکان', member.count … 'ارکان') and the wider ur catalogues use it 25 times against this one اراکین — the only occurrence in the corpus. One term, one spelling.",
+			"disposition": "fix recommended"
+		},
+		{
+			"severity": "nit",
+			"id": "UR-B2",
+			"key": "ui.teamBridge.events.joined",
+			"current": "{targets} گفتگو میں شامل",
+			"proposed": "no change required — noted for the pair",
+			"reason": "Copula-free, so it reads as a status fragment next to events.left's full verb ('گفتگو چھوڑ دی'). The elision is the price of gender/number neutrality for an arbitrary name list, and the parallel 'شامل ہو گئے' would force masculine plural, so the fragment is the safer choice; recorded so the evenness of the pair is a known trade-off, not an oversight.",
+			"disposition": "accepted trade-off"
+		}
+	],
+	"verdict": "clean-with-findings: 0 blocker, 0 major, 1 minor, 1 nit.",
+	"invitation_note_v3_fidelity": "clause-by-clause: (1) قبول ہونے تک رسائی نہیں ✓ (2) آپ کے ایجنٹ فوراً / دوسرے کا مالک کی رضامندی سے ✓ (3) ہر پیغام پڑھتا ہے، خود طے کرتا ہے، 'جواب کی توقع' — expectation, not ہمیشہ ✓ (4) صرف @ والے ذکر اور اپنے تھریڈز تک، یا خاموش ✓; تھریڈ matches replies.title, خاموش matches notify.mute. No bidi control any place in the file (U+200E/F, U+202A–E, U+2066–9, U+061C, U+200B all absent).",
+	"namespace_verdict": {
+		"verdict": "clean-with-findings",
+		"keys_read": 12,
+		"scope_keys_clean": [
+			"ui.teamBridge.events.invited",
+			"ui.teamBridge.events.owner_added_agent",
+			"ui.teamBridge.events.left",
+			"ui.teamBridge.events.removed",
+			"ui.teamBridge.events.consented",
+			"ui.teamBridge.events.declined_self",
+			"ui.teamBridge.events.declined",
+			"ui.teamBridge.events.withdrawn",
+			"ui.teamBridge.events.others",
+			"ui.teamBridge.members.invitation_note_v3"
+		],
+		"note": "11 event keys + invitation_note_v3 read value by value; clean-with-findings: 0 blocker, 0 major, 1 minor, 1 nit."
+	},
+	"references": {
+		"glossary": "~/local-operator/i18n/glossary.md",
+		"style_guide": "~/local-operator/i18n/style-guides/ur.md",
+		"cl_dr": "Intl.PluralRules + Intl.ListFormat of the runtime (node 24.22.1, ICU full)",
+		"english_context": "src/i18n/catalogues/en/ui.teamBridge.context.json (role/tone/note per key)"
+	},
+	"evidence_record": "i18n/audits/evidence/ur/ui.teamBridge/teambridge-member-events-audit-b-502568f2aefe-ur/record.json",
+	"renders": "  invited [1]: Dana نے Ava کو مدعو کیا\n  invited [3]: Dana نے Ava، Ben، اور Cleo کو مدعو کیا\n  joined [1]: Ava گفتگو میں شامل\n  joined [3]: Ava، Ben، اور Cleo گفتگو میں شامل\n  owner_added_agent [1]: Dana نے اپنا ایجنٹ Ava شامل کیا\n  owner_added_agent [3]: Dana نے اپنا ایجنٹ Ava، Ben، اور Cleo شامل کیا\n  left [1]: Ava نے گفتگو چھوڑ دی\n  left [3]: Ava، Ben، اور Cleo نے گفتگو چھوڑ دی\n  removed [1]: Dana نے Ava کو ہٹا دیا\n  removed [3]: Dana نے Ava، Ben، اور Cleo کو ہٹا دیا\n  consented [1]: Dana نے Ava کو شامل ہونے کی منظوری دی\n  consented [3]: Dana نے Ava، Ben، اور Cleo کو شامل ہونے کی منظوری دی\n  declined_self [1]: Dana نے دعوت مسترد کر دی\n  declined_self [3]: Dana نے دعوت مسترد کر دی\n  declined [1]: Dana نے Ava کے لیے دعوت مسترد کر دی\n  declined [3]: Dana نے Ava، Ben، اور Cleo کے لیے دعوت مسترد کر دی\n  withdrawn [1]: Dana نے Ava کے لیے دعوت واپس لے لی\n  withdrawn [3]: Dana نے Ava، Ben، اور Cleo کے لیے دعوت واپس لے لی\n  unknown [1]: اراکین میں تبدیلی ہوئی\n  unknown [3]: اراکین میں تبدیلی ہوئی\n  ui.teamBridge.events.others n=1: 1 دیگر\n  ui.teamBridge.events.others n=2: 2 دیگر\n  ui.teamBridge.events.others n=3: 3 دیگر\n  ui.teamBridge.events.others n=5: 5 دیگر\n  ui.teamBridge.events.others n=11: 11 دیگر\n  ui.teamBridge.events.others n=21: 21 دیگر\n  ui.teamBridge.events.others n=22: 22 دیگر\n  ui.teamBridge.events.others n=1000000: 1,000,000 دیگر\n  list: Ben، Sana، اور 3 دیگر | Ben اور 1 دیگر",
+	"limitations": "Static audit: no rendered frame was produced, so the fr/es width findings are flagged, not proven or disproven. Native-speaker intuition for ur is the auditor's, not a hired reviewer's; the ru colon form is judged against the style guide and the namespace's own precedent rather than a native informant. Overflow was reasoned from character counts and the row's truncate+tooltip behaviour in team-bridge-member-events.tsx, not measured in cells.",
+	"audit_notes_not_execution_log": "Findings are this auditor's linguistic judgement. Renders, hashes and corpus counts are command output. info/fyi findings are not counted in the severity totals."
+}

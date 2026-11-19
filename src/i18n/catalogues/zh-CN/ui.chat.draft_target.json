@@ -1,0 +1,5 @@
+{
+	"ui.chat.draft_target.aria_label": "将与{target}开始此对话。选择智能体或团队",
+	"ui.chat.draft_target.default_agent": "默认智能体",
+	"ui.chat.draft_target.menu_heading": "选择对话对象"
+}

@@ -30,5 +30,10 @@
 	"ui.settings.model.model_setting_options.copy_needs_sign_in_group": "Connexion requise",
 	"ui.settings.model.system_prompt.saving": "Enregistrement…",
 	"ui.settings.model.model_setting_options.provider_detail": "{provider}{aggregated, select, yes {, via un agrégateur} other {}}{credential, select, signed_in {, connecté} missing {, aucun identifiant} other {}}",
-	"ui.settings.model.system_prompt.load_failed": "Impossible de charger le prompt système : {reason}"
+	"ui.settings.model.system_prompt.load_failed": "Impossible de charger le prompt système : {reason}",
+	"ui.settings.model.system_prompt.rich_text": "Texte enrichi",
+	"ui.settings.model.system_prompt.source": "Source Markdown",
+	"ui.settings.model.system_prompt.source_required": "Ce document utilise une syntaxe Markdown que l’éditeur visuel ne peut pas préserver. Modifiez le source pour conserver toutes les instructions.",
+	"ui.settings.model.system_prompt.source_edit": "Modifier le code source",
+	"ui.settings.model.system_prompt.source_stale": "Cette partie a changé pendant votre modification. Annulez et ouvrez-la à nouveau pour conserver les dernières instructions."
 }

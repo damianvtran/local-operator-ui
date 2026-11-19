@@ -3,19 +3,24 @@ import {
 	markdownToHtml,
 } from "@features/chat/components/canvas/wysiwyg-utils";
 import type { EditDiff } from "@shared/api/local-operator/types";
+import { BaseDialog } from "@shared/components/common/base-dialog";
 import { FindReplaceWidget } from "@shared/components/common/find-replace-widget";
 import { TextSelectionControls } from "@shared/components/common/text-selection-controls";
 import {
+	Alert,
 	Button,
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
+	Textarea,
 	Tooltip,
 } from "@shared/components/ui";
 import { useDebounce } from "@shared/hooks/use-debounce";
 import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import type { UndoManager } from "@shared/lib/undo-manager";
 import { cn } from "@shared/lib/utils";
 import { useUndoManagerStore } from "@shared/store/undo-manager-store";
@@ -42,12 +47,14 @@ import type { CanvasDocument } from "../../types/canvas";
 import { closeDocumentBuffer } from "./close-report";
 import {
 	adoptBuffer,
+	bufferText,
 	commitCanvasDocument,
 	proposeBuffer,
 	saveBuffer,
 } from "./document-buffers";
 import { isDocumentDirty } from "./file-freshness";
 import { InlineEdit } from "./inline-edit";
+import type { MarkdownEditorCodec } from "./source-preserving-markdown";
 import { InsertImageDialog } from "./wysiwyg/insert-image-dialog";
 import type { LinkDialogData } from "./wysiwyg/insert-link-dialog";
 import { InsertLinkDialog } from "./wysiwyg/insert-link-dialog";
@@ -165,6 +172,17 @@ const formatSelectionWithContext = (
 };
 
 type WysiwygMarkdownEditorProps = {
+	/** Explicit-save hosts own persistence; never enlist their drafts in Canvas buffers. */
+	draft?: {
+		onChange: (markdown: string) => void;
+		onLocalDraftActiveChange?: (active: boolean) => void;
+		sourceVersion?: number;
+		disabled?: boolean;
+		label: string;
+		codec?: MarkdownEditorCodec;
+		sourceLabel?: string;
+		sourceStaleLabel?: string;
+	};
 	document: CanvasDocument;
 	conversationId?: string;
 	agentId?: string;
@@ -178,6 +196,19 @@ type WysiwygMarkdownEditorProps = {
 	 * picker carries the same affordance for the same reason.
 	 */
 	initialFormatMenuOpen?: boolean;
+	/**
+	 * THE LINE MEASURE, chosen by the HOST because only the host knows how much
+	 * width the pane actually has.
+	 *
+	 * `reading` (the default and every Canvas mount) keeps the 640px column the
+	 * comment on the container argues for: dragged wide, 14px body text across a
+	 * 1200px panel is ~140 characters a line. `fill` is for a surface whose reader
+	 * asked to use the width it was given — the Library's expanded view — where the
+	 * panel IS the document and an editor floating in a third of it reads as an
+	 * unfinished column. The host's wrapper must agree: a `max-w` on the wrapper
+	 * would still narrow a `fill` editor (the double cap the Library had).
+	 */
+	measure?: "reading" | "fill";
 };
 
 /**
@@ -200,7 +231,7 @@ const editorProseClasses = cn(
 	// say nothing about where typing goes; the caret is the focus indicator, as
 	// it is in every text editor. The exception holds only because this is a
 	// full-pane editing surface - it does not extend to the fields around it.
-	"[&_[contenteditable]]:min-h-50 [&_[contenteditable]]:text-body [&_[contenteditable]]:leading-relaxed [&_[contenteditable]]:text-ink [&_[contenteditable]]:outline-none",
+	"[&_[data-wysiwyg-editor-root]]:min-h-50 [&_[data-wysiwyg-editor-root]]:text-body [&_[data-wysiwyg-editor-root]]:leading-relaxed [&_[data-wysiwyg-editor-root]]:text-ink [&_[data-wysiwyg-editor-root]]:outline-none",
 	// Find/replace, painted through the CSS Custom Highlight API. Highlight
 	// pseudo-elements inherit down the tree, so declaring them on the container
 	// covers every match inside it.
@@ -225,7 +256,7 @@ const editorProseClasses = cn(
 	// is the wrong reading. The header earns a rule and semibold weight rather
 	// than a fill, so the table has no boxes at all.
 	"[&_table]:my-3 [&_table]:w-full [&_table]:border-collapse",
-	"[&_:is(th,td)]:border-hairline [&_:is(th,td)]:border-b [&_:is(th,td)]:py-1.5 [&_:is(th,td)]:pr-4 [&_:is(th,td)]:text-left [&_:is(th,td):last-child]:pr-0",
+	"[&_:is(th,td)]:border-hairline [&_:is(th,td)]:border-b [&_:is(th,td)]:py-1.5 [&_:is(th,td)]:pe-4 [&_:is(th,td)]:text-start [&_:is(th,td):last-child]:pe-0",
 	"[&_th]:font-semibold [&_th]:text-ink-muted",
 	"[&_tbody_tr:last-child_td]:border-b-0",
 	// Links and images.
@@ -294,7 +325,9 @@ const appendDiffSide = (
 		DIFF_LABEL_CLASS,
 		isRemove ? "text-danger" : "text-success",
 	);
-	label.textContent = isRemove ? "- Remove" : "+ Add";
+	label.textContent = isRemove
+		? t("ui.canvas.wysiwyg_markdown_editor.remove")
+		: t("ui.canvas.wysiwyg_markdown_editor.add");
 	half.appendChild(label);
 
 	const content = window.document.createElement("div");
@@ -322,7 +355,10 @@ export const buildDiffContainer = (diff: EditDiff) => {
 	container.contentEditable = "false";
 	container.className = DIFF_CONTAINER_CLASS;
 	container.setAttribute("role", "group");
-	container.setAttribute("aria-label", "Proposed change");
+	container.setAttribute(
+		"aria-label",
+		t("ui.canvas.wysiwyg_markdown_editor.proposed_change"),
+	);
 	appendDiffSide(container, "remove", diff.find);
 	appendDiffSide(container, "add", diff.replace);
 	return container;
@@ -358,14 +394,28 @@ const ACTIVE_TOGGLE_CLASS =
  * silently turns a user's underline into italics is worse than no control,
  * because the document that comes back is not the one they wrote.
  */
-const PRIMARY_TEXT_FORMATS = [
-	{ value: "bold", label: "Bold (Ctrl+B)", Icon: Bold },
-	{ value: "italic", label: "Italic (Ctrl+I)", Icon: Italic },
-] as const;
+const PRIMARY_TEXT_FORMATS = () =>
+	[
+		{
+			value: "bold",
+			label: t("ui.canvas.wysiwyg_markdown_editor.bold_ctrl_b"),
+			Icon: Bold,
+		},
+		{
+			value: "italic",
+			label: t("ui.canvas.wysiwyg_markdown_editor.italic_ctrl_i"),
+			Icon: Italic,
+		},
+	] as const;
 
-const OVERFLOW_TEXT_FORMATS = [
-	{ value: "strikethrough", label: "Strikethrough", Icon: Strikethrough },
-] as const;
+const OVERFLOW_TEXT_FORMATS = () =>
+	[
+		{
+			value: "strikethrough",
+			label: t("ui.canvas.wysiwyg_markdown_editor.strikethrough"),
+			Icon: Strikethrough,
+		},
+	] as const;
 
 /*
  * Alignment is not offered, and the machinery for it is gone with the menu.
@@ -398,8 +448,21 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	conversationId,
 	agentId,
 	initialFormatMenuOpen = false,
+	measure = "reading",
+	draft,
 }) => {
-	const [content, setContent] = useState(document.content);
+	/*
+	 * A REMOUNT MUST SHOW THE RETAINED DRAFT, not the file's bytes. The buffer
+	 * owner outlives this component (dock/route switches unmount it), so the
+	 * editor's first paint and its document-id effect below both hydrate from
+	 * `bufferText` when a buffer exists; `document.content` is only the fallback
+	 * for a document the owner has never seen.
+	 */
+
+	const locale = useI18nLocale();
+	const [content, setContent] = useState(() =>
+		draft ? document.content : (bufferText(document.id) ?? document.content),
+	);
 	const [hasUserChanges, setHasUserChanges] = useState(false);
 	const [currentTextType, setCurrentTextType] = useState<TextType>("paragraph");
 	const [selectedFormats, setSelectedFormats] = useState<string[]>([]);
@@ -445,12 +508,62 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 
 	const debouncedContent = useDebouncedValue(content, 3000);
 	const editorRef = useRef<HTMLDivElement>(null);
+	const codec = draft?.codec;
+	const readCurrentMarkdown = useCallback(() => {
+		const root = editorRef.current;
+		return root
+			? codec
+				? codec.read(root)
+				: htmlToMarkdown(root.innerHTML)
+			: "";
+	}, [codec]);
+	const [opaqueEdit, setOpaqueEdit] = useState<{
+		id: string;
+		source: string;
+		expected: string;
+		codec: MarkdownEditorCodec;
+		sourceVersion: number | undefined;
+		insertionRange?: Range;
+	} | null>(null);
+	const [opaqueSource, setOpaqueSource] = useState("");
+	const [opaqueStale, setOpaqueStale] = useState(false);
+	const opaqueIsStale =
+		opaqueStale ||
+		(opaqueEdit !== null && opaqueEdit.sourceVersion !== draft?.sourceVersion);
+	const localDraftActiveChange = draft?.onLocalDraftActiveChange;
+	const openOpaqueEditor = useCallback(
+		(atom: { id: string; source: string }, insertionRange?: Range) => {
+			if (!codec) return;
+			// Ownership begins synchronously, before any refetch can remount the
+			// pristine host. Unapplied source is deliberately NOT an onChange value.
+			localDraftActiveChange?.(true);
+			setOpaqueEdit({
+				...atom,
+				expected: readCurrentMarkdown(),
+				codec,
+				sourceVersion: draft?.sourceVersion,
+				insertionRange,
+			});
+			setOpaqueSource(atom.source);
+			setOpaqueStale(false);
+		},
+		[codec, readCurrentMarkdown, localDraftActiveChange, draft?.sourceVersion],
+	);
+	const closeOpaqueEditor = useCallback(() => {
+		setOpaqueEdit(null);
+		localDraftActiveChange?.(false);
+	}, [localDraftActiveChange]);
+	useEffect(
+		() => () => localDraftActiveChange?.(false),
+		[localDraftActiveChange],
+	);
 	const originalContentRef = useRef(document.content);
 	const isInitialLoadRef = useRef(true);
 	const [canUndo, setCanUndo] = useState(false);
 	const [canRedo, setCanRedo] = useState(false);
 
-	const { getOrCreateManager } = useUndoManagerStore();
+	const { getOrCreateManager, removeManager } = useUndoManagerStore();
+	const isDraft = Boolean(draft);
 	const undoManagerRef = useRef<UndoManager | null>(null);
 
 	const findHighlightRegistry = "find-highlight";
@@ -475,6 +588,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	const latestDocumentRef = useRef(document);
 	latestDocumentRef.current = document;
 	useEffect(() => {
+		if (draft) return;
 		adoptBuffer({
 			documentId: document.id,
 			path: document.path,
@@ -491,11 +605,12 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				});
 			},
 		});
-	}, [conversationId, document]);
+	}, [conversationId, document, draft]);
 
 	// Manual save function that bypasses debounce
 	const handleManualSave = useCallback(() => {
 		if (
+			draft ||
 			!document.path ||
 			!hasUserChanges ||
 			content === originalContentRef.current
@@ -515,7 +630,11 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			.then((outcome) => {
 				if (outcome.status !== "written") return;
 				showSuccessToast(
-					outcome.replaced ? "File saved, replacing the change" : "File saved",
+					outcome.replaced
+						? t(
+								"ui.canvas.wysiwyg_markdown_editor.file_saved_replacing_the_change",
+							)
+						: t("ui.canvas.wysiwyg_markdown_editor.file_saved"),
 				);
 			})
 			.catch((error) => {
@@ -523,7 +642,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				// save attempts it again.
 				console.error("Could not save the document:", error);
 			});
-	}, [content, document.id, document.path, hasUserChanges]);
+	}, [content, document.id, document.path, hasUserChanges, draft]);
 
 	const updateCurrentTextType = useCallback(() => {
 		const selection = window.getSelection();
@@ -566,10 +685,15 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	const handleContentChange = useCallback(() => {
 		if (!editorRef.current) return;
 
-		const htmlContent = editorRef.current.innerHTML;
-		const markdownContent = htmlToMarkdown(htmlContent);
+		const markdownContent = readCurrentMarkdown();
 
 		setContent(markdownContent);
+		// The host must see this event before a subsequent Source/Save click;
+		// waiting for an effect would introduce a lost-last-keystroke boundary.
+		if (codec && reportedContent.current !== markdownContent) {
+			reportedContent.current = markdownContent;
+			draft?.onChange(markdownContent);
+		}
 
 		if (isInitialLoadRef.current) {
 			isInitialLoadRef.current = false;
@@ -581,14 +705,21 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		 * clears it (UX U11) - and publishes the registry the freshness check consults
 		 * before replacing anything.
 		 */
-		proposeBuffer(document.id, markdownContent);
+		if (!draft) proposeBuffer(document.id, markdownContent);
 		if (markdownContent !== originalContentRef.current) {
 			setHasUserChanges(true);
 		}
 
 		updateCurrentTextType();
 		updateSelectedFormats();
-	}, [document.id, updateCurrentTextType, updateSelectedFormats]);
+	}, [
+		document.id,
+		updateCurrentTextType,
+		updateSelectedFormats,
+		draft,
+		codec,
+		readCurrentMarkdown,
+	]);
 
 	const clearHighlights = useCallback(() => {
 		if (window.CSS && CSS.highlights) {
@@ -632,7 +763,10 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			while (node) {
 				const textNode = node as Text;
 				const text = textNode.nodeValue;
-				if (text) {
+				if (
+					text &&
+					!(codec && textNode.parentElement?.closest("[data-prompt-opaque]"))
+				) {
 					let fromIndex = 0;
 					let matchIndex = text
 						.toLowerCase()
@@ -718,7 +852,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 
 			return ranges.length;
 		},
-		[clearHighlights],
+		[clearHighlights, codec],
 	);
 
 	const handleNavigate = useCallback(
@@ -803,6 +937,28 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		(findText: string, replaceText: string) => {
 			if (!findText || !editorRef.current) return;
 			clearHighlights();
+			if (codec) {
+				const walker = window.document.createTreeWalker(
+					editorRef.current,
+					NodeFilter.SHOW_TEXT,
+				);
+				const nodes: Text[] = [];
+				let node: Node | null = walker.nextNode();
+				while (node) {
+					if (!node.parentElement?.closest("[data-prompt-opaque]"))
+						nodes.push(node as Text);
+					node = walker.nextNode();
+				}
+				const expression = new RegExp(
+					findText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+					"gi",
+				);
+				for (const text of nodes)
+					text.data = text.data.replace(expression, () => replaceText);
+				handleContentChange();
+				undoManagerRef.current?.saveCurrentState();
+				return;
+			}
 
 			const originalHtml = editorRef.current.innerHTML;
 			const regex = new RegExp(
@@ -820,22 +976,24 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			setMatchRanges([]);
 			setCurrentMatchIndex(-1);
 		},
-		[clearHighlights],
+		[clearHighlights, codec, handleContentChange],
 	);
 
 	// Initialize editor content
 	// biome-ignore lint/correctness/useExhaustiveDependencies: We need to run this effect only when the document is changed by the user
 	useEffect(() => {
 		if (editorRef.current && document.id) {
-			// Set editor content
-			const htmlContent = markdownToHtml(document.content);
+			// A retained draft wins over the file body; see the state initializer.
+			const retained = draft ? null : bufferText(document.id);
+			const shown = retained ?? document.content;
+			const htmlContent = codec ? codec.render(shown) : markdownToHtml(shown);
 
 			if (editorRef.current.innerHTML !== htmlContent) {
 				editorRef.current.innerHTML = htmlContent;
 			}
 
-			setContent(document.content);
-			setHasUserChanges(false);
+			setContent(shown);
+			setHasUserChanges(retained !== null && retained !== document.content);
 			originalContentRef.current = document.content;
 			isInitialLoadRef.current = true;
 		}
@@ -894,10 +1052,10 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	 */
 	const documentId = document.id;
 	const documentTitle = document.title;
-	useEffect(
-		() => () => closeDocumentBuffer({ id: documentId, title: documentTitle }),
-		[documentId, documentTitle],
-	);
+	useEffect(() => {
+		if (draft) return;
+		return () => closeDocumentBuffer({ id: documentId, title: documentTitle });
+	}, [documentId, documentTitle, draft]);
 
 	// Manage UndoManager lifecycle
 	useEffect(() => {
@@ -933,12 +1091,26 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			if (undoManagerRef.current) {
 				undoManagerRef.current.disconnect();
 			}
+			// Settings drafts have no retained Canvas owner. Releasing their undo
+			// histories avoids retaining a long prompt after each mode switch.
+			if (isDraft) removeManager(document.id);
 		};
-	}, [document.id, getOrCreateManager]);
+	}, [document.id, getOrCreateManager, isDraft, removeManager]);
+
+	// Controlled hosts receive all edits, including toolbar undo/redo, but never
+	// a mount-time serialization of their original canonical Markdown.
+	const draftChange = draft?.onChange;
+	const reportedContent = useRef(content);
+	useEffect(() => {
+		if (content === reportedContent.current) return;
+		reportedContent.current = content;
+		draftChange?.(content);
+	}, [content, draftChange]);
 
 	// Save content when debounced
 	useEffect(() => {
 		if (
+			!draft &&
 			hasUserChanges &&
 			!isInitialLoadRef.current &&
 			debouncedContent !== originalContentRef.current &&
@@ -952,13 +1124,14 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			 */
 			void saveBuffer(document.id)
 				.then((outcome) => {
-					if (outcome.status === "written") showSuccessToast("File saved");
+					if (outcome.status === "written")
+						showSuccessToast(t("ui.canvas.wysiwyg_markdown_editor.file_saved"));
 				})
 				.catch((error) => {
 					console.error("Could not save the document:", error);
 				});
 		}
-	}, [debouncedContent, document.id, document.path, hasUserChanges]);
+	}, [debouncedContent, document.id, document.path, hasUserChanges, draft]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: We need to run this effect when content changes to restore the scroll position.
 	useEffect(() => {
@@ -1132,6 +1305,11 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 
 			selection.removeAllRanges();
 			selection.addRange(selectionRef.current);
+			if (codec) {
+				const source = `[${text.split("[").join("\\[").split("]").join("\\]")}](${url.split(" ").join("%20")})`;
+				executeCommand("insertHTML", codec.insertSource(source));
+				return;
+			}
 
 			const anchor = selection.anchorNode?.parentElement;
 			if (anchor?.nodeName === "A") {
@@ -1144,7 +1322,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 
 			handleContentChange();
 		},
-		[executeCommand, handleContentChange],
+		[executeCommand, handleContentChange, codec],
 	);
 
 	// Insert image
@@ -1153,8 +1331,24 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		if (selection?.rangeCount) {
 			selectionRef.current = selection.getRangeAt(0).cloneRange();
 		}
+		if (codec && editorRef.current) {
+			const root = editorRef.current;
+			let range = selectionRef.current?.cloneRange();
+			if (!range || !root.contains(range.commonAncestorContainer)) {
+				range = window.document.createRange();
+				range.selectNodeContents(root);
+				range.collapse(false);
+			}
+			// Stage creation until Apply: Cancel/Close/Escape must not insert a
+			// placeholder, mark the host dirty, or add an undo transaction.
+			openOpaqueEditor(
+				{ id: "", source: "![](<https://example.invalid/image>)" },
+				range,
+			);
+			return;
+		}
 		setIsImageDialogOpen(true);
-	}, []);
+	}, [codec, openOpaqueEditor]);
 
 	const handleInsertImage = useCallback(
 		(url: string) => {
@@ -1213,7 +1407,9 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 
 				for (let j = 0; j < cols; j++) {
 					const th = window.document.createElement("th");
-					th.textContent = `Header ${j + 1}`;
+					th.textContent = t("ui.canvas.wysiwyg_markdown_editor.header", {
+						j: j + 1,
+					});
 					headerRow.appendChild(th);
 				}
 
@@ -1221,7 +1417,10 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 					const bodyRow = tbody.insertRow();
 					for (let j = 0; j < cols; j++) {
 						const td = bodyRow.insertCell();
-						td.textContent = `Cell ${i + 1}, ${j + 1}`;
+						td.textContent = t("ui.canvas.wysiwyg_markdown_editor.cell", {
+							i: i + 1,
+							j: j + 1,
+						});
 					}
 				}
 
@@ -1247,27 +1446,43 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	);
 
 	// Handle double-click on links to open in new tab
-	const handleDoubleClick = useCallback((event: React.MouseEvent) => {
-		const target = event.target as HTMLElement;
+	const handleDoubleClick = useCallback(
+		(event: React.MouseEvent) => {
+			if (codec) {
+				event.preventDefault();
+				return;
+			}
+			const target = event.target as HTMLElement;
 
-		// Check if the clicked element is a link or is within a link
-		let linkElement: HTMLAnchorElement | null = null;
-		if (target.tagName === "A") {
-			linkElement = target as HTMLAnchorElement;
-		} else {
-			// Check if the target is within a link element using closest
-			linkElement = target.closest?.("a") ?? null;
-		}
+			// Check if the clicked element is a link or is within a link
+			let linkElement: HTMLAnchorElement | null = null;
+			if (target.tagName === "A") {
+				linkElement = target as HTMLAnchorElement;
+			} else {
+				// Check if the target is within a link element using closest
+				linkElement = target.closest?.("a") ?? null;
+			}
 
-		if (linkElement?.href) {
-			event.preventDefault();
-			window.open(linkElement.href, "_blank", "noopener,noreferrer");
-		}
-	}, []);
+			if (linkElement?.href) {
+				event.preventDefault();
+				window.open(linkElement.href, "_blank", "noopener,noreferrer");
+			}
+		},
+		[codec],
+	);
 
 	const handleClick = useCallback(
 		(event: React.MouseEvent) => {
 			const target = event.target as HTMLInputElement;
+			if (codec) {
+				if (target.closest("a")) event.preventDefault();
+				const atom = codec.getOpaque(target);
+				if (atom) {
+					event.preventDefault();
+					openOpaqueEditor(atom);
+					return;
+				}
+			}
 			if (target.tagName === "INPUT" && target.type === "checkbox") {
 				// Manually update the 'checked' attribute to reflect the new state.
 				// The 'checked' property gives the current state post-click.
@@ -1282,12 +1497,24 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				handleContentChange();
 			}
 		},
-		[handleContentChange],
+		[handleContentChange, codec, openOpaqueEditor],
 	);
 
 	// Handle keyboard shortcuts
 	const handleKeyDown = useCallback(
 		(event: React.KeyboardEvent) => {
+			if (
+				codec &&
+				["Enter", " "].includes(event.key) &&
+				codec.getOpaque(event.target as Element)
+			) {
+				event.preventDefault();
+				const atom = codec.getOpaque(event.target as Element);
+				if (atom) {
+					openOpaqueEditor(atom);
+				}
+				return;
+			}
 			if (event.key === "Tab") {
 				/*
 				 * Tab nests a list item, and does nothing anywhere else.
@@ -1446,16 +1673,27 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 						}
 						break;
 					}
+					case "y":
+						if (codec) {
+							event.preventDefault();
+							event.stopPropagation();
+							undoManagerRef.current?.redo();
+							handleContentChange();
+							setCanUndo(undoManagerRef.current?.canUndo() ?? false);
+							setCanRedo(undoManagerRef.current?.canRedo() ?? false);
+						}
+						break;
 					case "z":
+						// The shared manager also listens on document. This codec read owns
+						// prompt history, so do not let the same chord undo a second time.
+						if (codec) event.stopPropagation();
 						if (event.shiftKey) {
 							event.preventDefault();
 							if (undoManagerRef.current?.canRedo()) {
 								undoManagerRef.current.redo();
 								// Update content state after redo
 								if (editorRef.current) {
-									const htmlContent = editorRef.current.innerHTML;
-									const markdownContent = htmlToMarkdown(htmlContent);
-									setContent(markdownContent);
+									handleContentChange();
 									setHasUserChanges(true);
 								}
 								setCanUndo(undoManagerRef.current.canUndo());
@@ -1467,9 +1705,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 								undoManagerRef.current.undo();
 								// Update content state after undo
 								if (editorRef.current) {
-									const htmlContent = editorRef.current.innerHTML;
-									const markdownContent = htmlToMarkdown(htmlContent);
-									setContent(markdownContent);
+									handleContentChange();
 									setHasUserChanges(true);
 								}
 								setCanUndo(undoManagerRef.current.canUndo());
@@ -1545,6 +1781,8 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			content,
 			handleManualSave,
 			handleContentChange,
+			codec,
+			openOpaqueEditor,
 		],
 	);
 
@@ -1572,7 +1810,11 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			void saveBuffer(document.id, { explicit: true }).then((outcome) => {
 				if (outcome.status !== "written") return;
 				showSuccessToast(
-					outcome.replaced ? "File saved, replacing the change" : "File saved",
+					outcome.replaced
+						? t(
+								"ui.canvas.wysiwyg_markdown_editor.file_saved_replacing_the_change",
+							)
+						: t("ui.canvas.wysiwyg_markdown_editor.file_saved"),
 				);
 			});
 		}
@@ -1587,85 +1829,92 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	 */
 	const showDiffInline = useCallback<
 		(diff: EditDiff, markdownContent: string) => void
-	>((diff, markdownContent) => {
-		if (!editorRef.current) return;
+	>(
+		(diff, markdownContent) => {
+			void locale;
+			if (!editorRef.current) return;
 
-		try {
-			const normalizedMarkdown = markdownContent.replace(/\r\n/g, "\n");
-			const normalizedFind = diff.find.replace(/\r\n/g, "\n");
+			try {
+				const normalizedMarkdown = markdownContent.replace(/\r\n/g, "\n");
+				const normalizedFind = diff.find.replace(/\r\n/g, "\n");
 
-			const startIndex = normalizedMarkdown.indexOf(normalizedFind);
-			if (startIndex === -1) {
-				console.error("Diff not found in markdown content", { diff });
-				return;
-			}
-
-			const getLineNumber = (text: string, index: number) => {
-				const lines = text.slice(0, index).split("\n");
-				return lines.length;
-			};
-
-			const startLine = getLineNumber(normalizedMarkdown, startIndex);
-			const endLine = getLineNumber(
-				normalizedMarkdown,
-				startIndex + normalizedFind.length,
-			);
-
-			// Look for elements with data-line attributes that match our line range
-			const allElements =
-				editorRef.current.querySelectorAll<HTMLElement>("[data-line]");
-			const elementsInRange: HTMLElement[] = [];
-
-			for (const el of allElements) {
-				const lineAttr = el.getAttribute("data-line");
-				if (!lineAttr) continue;
-
-				const elementLine = Number.parseInt(lineAttr, 10);
-				if (elementLine >= startLine && elementLine <= endLine) {
-					elementsInRange.push(el);
+				const startIndex = normalizedMarkdown.indexOf(normalizedFind);
+				if (startIndex === -1) {
+					console.error("Diff not found in markdown content", { diff });
+					return;
 				}
-			}
 
-			// If no elements found with exact line match, try to find elements containing the diff text
-			if (elementsInRange.length === 0) {
-				const allTextElements = editorRef.current.querySelectorAll<HTMLElement>(
-					"p, h1, h2, h3, h4, h5, h6, li, td, th",
+				const getLineNumber = (text: string, index: number) => {
+					const lines = text.slice(0, index).split("\n");
+					return lines.length;
+				};
+
+				const startLine = getLineNumber(normalizedMarkdown, startIndex);
+				const endLine = getLineNumber(
+					normalizedMarkdown,
+					startIndex + normalizedFind.length,
 				);
-				for (const el of allTextElements) {
-					if (el.textContent?.includes(normalizedFind.trim())) {
+
+				// Look for elements with data-line attributes that match our line range
+				const allElements =
+					editorRef.current.querySelectorAll<HTMLElement>("[data-line]");
+				const elementsInRange: HTMLElement[] = [];
+
+				for (const el of allElements) {
+					const lineAttr = el.getAttribute("data-line");
+					if (!lineAttr) continue;
+
+					const elementLine = Number.parseInt(lineAttr, 10);
+					if (elementLine >= startLine && elementLine <= endLine) {
 						elementsInRange.push(el);
-						break; // Take the first match
 					}
 				}
-			}
 
-			if (elementsInRange.length === 0) {
-				console.warn("No HTML elements match diff range", {
-					startLine,
-					endLine,
-					diff,
-				});
-				// Fallback: insert at the end of the editor
+				// If no elements found with exact line match, try to find elements containing the diff text
+				if (elementsInRange.length === 0) {
+					const allTextElements =
+						editorRef.current.querySelectorAll<HTMLElement>(
+							"p, h1, h2, h3, h4, h5, h6, li, td, th",
+						);
+					for (const el of allTextElements) {
+						if (el.textContent?.includes(normalizedFind.trim())) {
+							elementsInRange.push(el);
+							break; // Take the first match
+						}
+					}
+				}
+
+				if (elementsInRange.length === 0) {
+					console.warn("No HTML elements match diff range", {
+						startLine,
+						endLine,
+						diff,
+					});
+					// Fallback: insert at the end of the editor
+					const diffContainer = buildDiffContainer(diff);
+
+					editorRef.current.appendChild(diffContainer);
+					diffContainer.scrollIntoView({ behavior: "smooth", block: "center" });
+					return;
+				}
+
+				const rangeObj = window.document.createRange();
+				rangeObj.setStartBefore(elementsInRange[0]);
+				rangeObj.setEndAfter(elementsInRange[elementsInRange.length - 1]);
+
 				const diffContainer = buildDiffContainer(diff);
 
-				editorRef.current.appendChild(diffContainer);
+				rangeObj.deleteContents();
+				rangeObj.insertNode(diffContainer);
 				diffContainer.scrollIntoView({ behavior: "smooth", block: "center" });
-				return;
+			} catch (error) {
+				console.error("Failed to show diff inline:", error, { diff });
 			}
-
-			const rangeObj = window.document.createRange();
-			rangeObj.setStartBefore(elementsInRange[0]);
-			rangeObj.setEndAfter(elementsInRange[elementsInRange.length - 1]);
-
-			const diffContainer = buildDiffContainer(diff);
-
-			rangeObj.deleteContents();
-			rangeObj.insertNode(diffContainer);
-			diffContainer.scrollIntoView({ behavior: "smooth", block: "center" });
-		} catch (error) {
-			console.error("Failed to show diff inline:", error, { diff });
-		}
-	}, []);
+			// buildDiffContainer is raw DOM, so locale must re-arm this callback and
+			// the effect below to rebuild the visible review labels.
+		},
+		[locale],
+	);
 
 	useEffect(() => {
 		if (!reviewState || !editorRef.current) return;
@@ -1841,7 +2090,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 
 				{/* Character formatting */}
 				<div className={cn("flex shrink-0 items-center gap-1")}>
-					{PRIMARY_TEXT_FORMATS.map(({ value, label, Icon }) => {
+					{PRIMARY_TEXT_FORMATS().map(({ value, label, Icon }) => {
 						const isActive = selectedFormats.includes(value);
 						return (
 							<Tooltip key={value} content={label}>
@@ -1873,31 +2122,33 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 						"@max-[520px]:hidden",
 					)}
 				>
-					<Tooltip content="Bullet list">
+					<Tooltip content={t("ui.canvas.wysiwyg_markdown_editor.bullet_list")}>
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							aria-label="Bullet list"
+							aria-label={t("ui.canvas.wysiwyg_markdown_editor.bullet_list")}
 							onClick={() => toggleList("unordered")}
 						>
 							<List />
 						</Button>
 					</Tooltip>
-					<Tooltip content="Numbered list">
+					<Tooltip
+						content={t("ui.canvas.wysiwyg_markdown_editor.numbered_list")}
+					>
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							aria-label="Numbered list"
+							aria-label={t("ui.canvas.wysiwyg_markdown_editor.numbered_list")}
 							onClick={() => toggleList("ordered")}
 						>
 							<ListOrdered />
 						</Button>
 					</Tooltip>
-					<Tooltip content="Checklist">
+					<Tooltip content={t("ui.canvas.wysiwyg_markdown_editor.checklist")}>
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							aria-label="Checklist"
+							aria-label={t("ui.canvas.wysiwyg_markdown_editor.checklist")}
 							onClick={() => toggleList("task")}
 						>
 							<SquareCheckBig />
@@ -1906,11 +2157,11 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				</div>
 
 				<div className={cn("flex shrink-0 items-center gap-1")}>
-					<Tooltip content="Insert link">
+					<Tooltip content={t("ui.canvas.wysiwyg_markdown_editor.insert_link")}>
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							aria-label="Insert link"
+							aria-label={t("ui.canvas.wysiwyg_markdown_editor.insert_link")}
 							onClick={insertLink}
 						>
 							<Link />
@@ -1919,13 +2170,17 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 
 					{/* Everything else, grouped the way the menu reads */}
 					<DropdownMenu defaultOpen={initialFormatMenuOpen}>
-						<Tooltip content="More formatting">
+						<Tooltip
+							content={t("ui.canvas.wysiwyg_markdown_editor.more_formatting")}
+						>
 							<DropdownMenuTrigger asChild>
 								<Button
 									ref={overflowTriggerRef}
 									variant="ghost"
 									size="icon-sm"
-									aria-label="More formatting"
+									aria-label={t(
+										"ui.canvas.wysiwyg_markdown_editor.more_formatting",
+									)}
 								>
 									<Ellipsis />
 								</Button>
@@ -1937,7 +2192,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 						    106px, which with the icon column and padding needs
 						    176px and left 42% of a 208px menu empty. */}
 						<DropdownMenuContent align="start" className={cn("w-44")}>
-							{OVERFLOW_TEXT_FORMATS.map(({ value, label, Icon }) => (
+							{OVERFLOW_TEXT_FORMATS().map(({ value, label, Icon }) => (
 								<DropdownMenuItem
 									key={value}
 									onSelect={() => handleFormatToggle(value)}
@@ -1949,31 +2204,31 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 							<DropdownMenuSeparator />
 							<DropdownMenuItem onSelect={() => toggleList("unordered")}>
 								<List aria-hidden="true" />
-								Bullet list
+								{t("ui.canvas.wysiwyg_markdown_editor.bullet_list")}
 							</DropdownMenuItem>
 							<DropdownMenuItem onSelect={() => toggleList("ordered")}>
 								<ListOrdered aria-hidden="true" />
-								Numbered list
+								{t("ui.canvas.wysiwyg_markdown_editor.numbered_list")}
 							</DropdownMenuItem>
 							<DropdownMenuItem onSelect={() => toggleList("task")}>
 								<SquareCheckBig aria-hidden="true" />
-								Checklist
+								{t("ui.canvas.wysiwyg_markdown_editor.checklist")}
 							</DropdownMenuItem>
 							<DropdownMenuSeparator />
 							<DropdownMenuItem
 								onSelect={() => toggleBlockFormat("blockquote")}
 							>
 								<Quote aria-hidden="true" />
-								Quote
+								{t("ui.canvas.wysiwyg_markdown_editor.quote")}
 							</DropdownMenuItem>
 							<DropdownMenuItem onSelect={() => toggleBlockFormat("pre")}>
 								<Code aria-hidden="true" />
-								Code block
+								{t("ui.canvas.wysiwyg_markdown_editor.code_block")}
 							</DropdownMenuItem>
 							<DropdownMenuSeparator />
 							<DropdownMenuItem onSelect={insertImage}>
 								<Image aria-hidden="true" />
-								Insert image
+								{t("ui.canvas.wysiwyg_markdown_editor.insert_image")}
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								onSelect={() => {
@@ -1986,27 +2241,25 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 								}}
 							>
 								<Table aria-hidden="true" />
-								Insert table
+								{t("ui.canvas.wysiwyg_markdown_editor.insert_table")}
 							</DropdownMenuItem>
 						</DropdownMenuContent>
 					</DropdownMenu>
 				</div>
 
 				{/* History: document-scoped, so it sits opposite the selection tools */}
-				<div className={cn("ml-auto flex shrink-0 items-center gap-1")}>
-					<Tooltip content="Undo (Ctrl+Z)">
+				<div className={cn("ms-auto flex shrink-0 items-center gap-1")}>
+					<Tooltip content={t("ui.canvas.wysiwyg_markdown_editor.undo_ctrl_z")}>
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							aria-label="Undo"
+							aria-label={t("ui.canvas.wysiwyg_markdown_editor.undo")}
 							onClick={() => {
 								if (undoManagerRef.current?.canUndo()) {
 									undoManagerRef.current.undo();
 									// Update content state after undo
 									if (editorRef.current) {
-										const htmlContent = editorRef.current.innerHTML;
-										const markdownContent = htmlToMarkdown(htmlContent);
-										setContent(markdownContent);
+										handleContentChange();
 										setHasUserChanges(true);
 									}
 									setCanUndo(undoManagerRef.current.canUndo());
@@ -2018,19 +2271,19 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 							<Undo />
 						</Button>
 					</Tooltip>
-					<Tooltip content="Redo (Ctrl+Shift+Z)">
+					<Tooltip
+						content={t("ui.canvas.wysiwyg_markdown_editor.redo_ctrl_shift_z")}
+					>
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							aria-label="Redo"
+							aria-label={t("ui.canvas.wysiwyg_markdown_editor.redo")}
 							onClick={() => {
 								if (undoManagerRef.current?.canRedo()) {
 									undoManagerRef.current.redo();
 									// Update content state after redo
 									if (editorRef.current) {
-										const htmlContent = editorRef.current.innerHTML;
-										const markdownContent = htmlToMarkdown(htmlContent);
-										setContent(markdownContent);
+										handleContentChange();
 										setHasUserChanges(true);
 									}
 									setCanUndo(undoManagerRef.current.canUndo());
@@ -2064,11 +2317,15 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				 * measured always is. 640px lands at roughly 80.
 				 */}
 				<div
-					className={cn("relative mx-auto w-full max-w-160")}
+					className={cn(
+						"relative mx-auto w-full",
+						measure === "fill" ? "max-w-none" : "max-w-160",
+					)}
 					ref={relativeContainerRef}
 				>
 					<div
 						ref={editorRef}
+						data-wysiwyg-editor-root=""
 						/*
 						 * THE SCOPE MARKER. This element is what the undo manager is connected to
 						 * (`getOrCreateManager(document.id, editorRef.current, …)` below), and the
@@ -2085,13 +2342,45 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 						 * Value and name: `UNDO_SCOPE_ATTRIBUTE` in `@shared/lib/scrollbar-activity`.
 						 */
 						data-undo-scope="true"
-						contentEditable={!reviewState}
+						role="textbox"
+						tabIndex={draft?.disabled ? -1 : 0}
+						aria-label={draft?.label}
+						aria-multiline="true"
+						aria-disabled={draft?.disabled}
+						contentEditable={!reviewState && !draft?.disabled}
 						onInput={handleContentChange}
+						onPaste={
+							codec
+								? (event) => {
+										event.preventDefault();
+										window.document.execCommand(
+											"insertText",
+											false,
+											event.clipboardData.getData("text/plain"),
+										);
+										handleContentChange();
+									}
+								: undefined
+						}
+						onDrop={
+							codec
+								? (event) => {
+										event.preventDefault();
+										window.document.execCommand(
+											"insertText",
+											false,
+											event.dataTransfer.getData("text/plain"),
+										);
+										handleContentChange();
+									}
+								: undefined
+						}
 						onKeyDown={handleKeyDown}
 						onClick={handleClick}
 						onDoubleClick={handleDoubleClick}
 						suppressContentEditableWarning
 						onBlur={() => {
+							if (codec) handleContentChange();
 							if (inlineEdit) {
 								selectionRef.current = inlineEdit.range;
 							}
@@ -2218,6 +2507,87 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				findValue={searchQuery}
 				onFindValueChange={setSearchQuery}
 			/>
+
+			{codec && (
+				<BaseDialog
+					open={opaqueEdit !== null}
+					onClose={closeOpaqueEditor}
+					title={draft?.sourceLabel ?? draft?.label ?? ""}
+					maxWidth="md"
+					fullWidth
+					actions={
+						<>
+							<Button onClick={closeOpaqueEditor}>
+								{t("ui.canvas.insert_link_dialog.cancel")}
+							</Button>
+							<Button
+								variant="primary"
+								disabled={draft?.disabled || opaqueIsStale}
+								onClick={() => {
+									if (!opaqueEdit || !editorRef.current || draft?.disabled)
+										return;
+									if (
+										opaqueEdit.codec !== codec ||
+										opaqueIsStale ||
+										readCurrentMarkdown() !== opaqueEdit.expected
+									) {
+										setOpaqueStale(true);
+										return;
+									}
+									undoManagerRef.current?.saveCurrentState();
+									if (opaqueEdit.insertionRange) {
+										if (
+											!editorRef.current.contains(
+												opaqueEdit.insertionRange.commonAncestorContainer,
+											)
+										) {
+											setOpaqueStale(true);
+											return;
+										}
+										const selection = window.getSelection();
+										selection?.removeAllRanges();
+										selection?.addRange(opaqueEdit.insertionRange);
+										executeCommand(
+											"insertHTML",
+											codec.insertSource(opaqueSource),
+										);
+									} else if (
+										codec.replaceOpaque(
+											editorRef.current,
+											opaqueEdit.id,
+											opaqueEdit.expected,
+											opaqueSource,
+										) === null
+									) {
+										setOpaqueStale(true);
+										return;
+									}
+									handleContentChange();
+									undoManagerRef.current?.saveCurrentState();
+									closeOpaqueEditor();
+								}}
+							>
+								{t("ui.chat.pickers.picker_host.apply")}
+							</Button>
+						</>
+					}
+				>
+					{opaqueIsStale && (
+						<Alert variant="warning" role="alert">
+							{draft?.sourceStaleLabel}
+						</Alert>
+					)}
+					<Textarea
+						autoFocus
+						aria-label={draft?.sourceLabel}
+						value={opaqueSource}
+						onChange={(event) => setOpaqueSource(event.target.value)}
+						className="min-h-48 max-h-[60vh] font-mono"
+						disabled={draft?.disabled}
+					/>
+				</BaseDialog>
+			)}
+
 			<InsertLinkDialog
 				open={isLinkDialogOpen}
 				onClose={() => setIsLinkDialogOpen(false)}
@@ -2251,12 +2621,14 @@ const arePropsEqual = (
 	// Check if conversationId or agentId changed
 	if (
 		prevProps.conversationId !== nextProps.conversationId ||
-		prevProps.agentId !== nextProps.agentId
+		prevProps.agentId !== nextProps.agentId ||
+		prevProps.measure !== nextProps.measure
 	) {
 		return false;
 	}
 
 	// Check document properties that affect rendering
+	if (prevProps.draft !== nextProps.draft) return false;
 	const prevDoc = prevProps.document;
 	const nextDoc = nextProps.document;
 

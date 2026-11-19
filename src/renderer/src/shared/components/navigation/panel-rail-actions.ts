@@ -13,8 +13,10 @@
  */
 
 import type { AskScope } from "@features/chat/ask-queue";
+import { canvasDoorView, useCanvasStore } from "@shared/store/canvas-store";
 import {
 	type RightSlotRouteFacts,
+	resolveDrawnRightSlotPane,
 	useUiPreferencesStore,
 } from "@shared/store/ui-preferences-store";
 import type { PanelRailItemId } from "./panel-rail-model";
@@ -52,6 +54,16 @@ export type PanelRailActionContext = {
 	/** Which queue the ask door opens (the scope the route's own door passes). */
 	askScope?: AskScope;
 	/**
+	 * The canvas store's key for this conversation (the chat's `agentId`, NOT
+	 * the session id — `canvas-store.ts` keys per conversation). The projects
+	 * door needs it to pick the canvas's view; the canvas door reads it to step
+	 * off that view. Every canvas door passes it — the rail, the header row and
+	 * the chord (`runKeymapAction` derives it from the active conversation) —
+	 * because a door without it would reopen on a stored Projects view (R1-1).
+	 * Absent leaves the canvas arm a plain toggle and the projects arm inert.
+	 */
+	canvasConversationId?: string | null;
+	/**
 	 * The press came from a keyboard chord, not from the item under the pointer
 	 * or the keyboard's focus. Only the ask arm reads it: a chord leaves no door
 	 * focused, so its open has to say it was the user's (`requestAskOpen`).
@@ -77,9 +89,55 @@ export function togglePanelRailItem(
 		case "browser":
 			state.setBrowserPaneOpen(!state.isBrowserPaneOpen);
 			return true;
-		case "canvas":
+		case "canvas": {
+			/*
+			 * WHENEVER THE STORED VIEW IS PROJECTS, the canvas door is unlit and says
+			 * "Open canvas", so its press OPENS the canvas's own views — whether the
+			 * pane is drawn on Projects (switch the view, keep the pane) or closed
+			 * (switch, then open). The closed case is round-1 R1-1/U1/Q-1: the
+			 * Projects door's close (and the pane's own ✕) leave `viewMode` at
+			 * `projects`, so a plain toggle reopened the pane on Projects with this
+			 * door still unlit, and the chord alternated open-on-Projects/close and
+			 * never reached files. The view is the last one the user had
+			 * (`canvasDoorView`), written BEFORE the open so the first frame is it.
+			 */
+			const id = context.canvasConversationId;
+			const conversation = id
+				? useCanvasStore.getState().conversations[id]
+				: undefined;
+			if (id && conversation?.viewMode === "projects") {
+				useCanvasStore.getState().setViewMode(id, canvasDoorView(conversation));
+				if (resolveDrawnRightSlotPane(state) !== "canvas") {
+					state.setCanvasOpen(true);
+				}
+				return true;
+			}
 			state.setCanvasOpen(!state.isCanvasOpen);
 			return true;
+		}
+		case "projects": {
+			/*
+			 * A DOOR INTO THE CANVAS, not a pane: lit means "the canvas is drawn on
+			 * its Projects view", so the press closes exactly that, and otherwise
+			 * points the canvas at Projects and claims the slot (which also swaps
+			 * out any other pane or the Asks drawer, `claimRightSlot`). The view is
+			 * written BEFORE the claim so the pane's first frame is the list, never
+			 * a flash of the documents view.
+			 */
+			const id = context.canvasConversationId;
+			if (!id) return false;
+			const canvas = useCanvasStore.getState();
+			if (
+				resolveDrawnRightSlotPane(state) === "canvas" &&
+				canvas.conversations[id]?.viewMode === "projects"
+			) {
+				state.setCanvasOpen(false);
+				return true;
+			}
+			canvas.setViewMode(id, "projects");
+			state.setCanvasOpen(true);
+			return true;
+		}
 		case "code":
 			state.setCodeReviewPaneOpen(!state.isCodeReviewPaneOpen);
 			return true;
@@ -88,10 +146,15 @@ export function togglePanelRailItem(
 			return true;
 		case "console": {
 			/*
-			 * A CLOSE ALWAYS ACTS — the pane is on screen and the press means "put
-			 * it away" even on a route whose conversation has gone (the claim can
-			 * outlive the route; the slot's resolver is what refuses to draw it,
-			 * and the same close the item's own press performs is the honest one).
+			 * THE ITEM IS A TOGGLE WHILE THE PANE IS OPEN, ALWAYS (U5/m-5).
+			 *
+			 * The branch's first cut made a press on history-only pane mean "create a
+			 * terminal", so the rail stopped closing the pane and a keyboard user who
+			 * pressed the chord to put it away got a new shell. Openness is the pane's
+			 * own state, not liveness: an unlit item on an open history pane still hides
+			 * the pane when pressed, and a CLOSED pane is the open that may create
+			 * (`requestConsoleOpen` + `consoleOpenAction`). The lit paint stays keyed to
+			 * a running surface, which is a different fact from the toggle.
 			 */
 			if (state.isConsolePaneOpen) {
 				state.setConsolePaneOpen(false);

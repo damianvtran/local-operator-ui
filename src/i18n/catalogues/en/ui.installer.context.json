@@ -115,5 +115,29 @@
 			"step": "Already formatted step counter in timing composition, or decimal current step in step counter.",
 			"total": "Total matching items or total installer steps, as named by this message."
 		}
+	},
+	"ui.installer.phase.state.finished": {
+		"role": "Installer screen-reader status suffix",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source:  - finished"
+	},
+	"ui.installer.phase.state.active": {
+		"role": "Installer screen-reader status suffix",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source:  - in progress"
+	},
+	"ui.installer.phase.state.failed": {
+		"role": "Installer screen-reader status suffix",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source:  - failed"
+	},
+	"ui.installer.phase.state.waiting": {
+		"role": "Installer screen-reader status suffix",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source:  - waiting"
 	}
 }

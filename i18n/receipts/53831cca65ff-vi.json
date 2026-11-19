@@ -1,0 +1,133 @@
+{
+ "locale": "vi",
+ "namespace": "ui.agents.config",
+ "checkout": "/Users/damian/lo-audit-1439c @ ae918aa12a (PR #1439 head, detached)",
+ "audit_date": "2026-10-28",
+ "key_count": 38,
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "53831cca65ff",
+  "model": "anthropic/claude-sonnet-5-5",
+  "actual_model_source": "session header",
+  "independent_from_translator_session": true,
+  "round": 3
+ },
+ "input_sha256": {
+  "en": "5f06618661e942dd8dc61f2f40dc7894f2048855e624fdc58ffe1aa0f5fcb7a6",
+  "vi": "537c16bd292bc5560260541baf811ea5e53f44b945e91d67d943c2dc864e87af",
+  "context (via filesystem)": "07de5b1c02c8c64c130da1cc532cf03c13f7ef462c9cdc27e34b1a5cf3215459",
+  "glossary (via filesystem)": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide_vi (via filesystem)": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+ },
+ "read_provenance": {
+  "catalogue_via_read_public_copy": [
+   {
+    "path": "src/i18n/catalogues/en/ui.agents.config.json",
+    "keys": "whole file, all 38 keys (no key= argument)"
+   },
+   {
+    "path": "src/i18n/catalogues/vi/ui.agents.config.json",
+    "keys": "whole file, all 38 keys (no key= argument)"
+   }
+  ],
+  "context_and_docs_via_filesystem_not_catalogue_copy": [
+   "src/i18n/catalogues/en/ui.agents.config.context.json",
+   "~/local-operator/i18n/glossary.md",
+   "~/local-operator/i18n/style-guides/vi.md"
+  ],
+  "other_filesystem_reads": [
+   "src/renderer/src/features/agents/config-run/config-composer.tsx (kindWord/aboutLine/summary suffix)",
+   "git -C ~/local-operator-ui show origin/main:src/i18n/catalogues/{en,vi}/ui.agents.config.json (origin comparison)",
+   "sibling vi ui.agents.*.json greps for terminology"
+  ],
+  "not_read": "nothing under ~/qa/union-agents-config-*, reaudit-1439, reaudit3-1439 (pre-existing empty output dir only written to), fix-1439-*, kind-1439",
+  "deviation_disclosed": "In addition to read_public_copy, the audited en/vi ui.agents.config.json were also opened by shell (python mechanical checks, sha256, diff against origin/main, grep of sibling ui.agents.* vi catalogues for terminology). The brief said catalogues ONLY via read_public_copy; this was a deviation. Verdicts rest on the read_public_copy text, which matched."
+ },
+ "checks": {
+  "mechanical": {
+   "key_count_en": 38,
+   "key_count_vi": 38,
+   "keys_identical": true,
+   "placeholder_names_match": true,
+   "vi_plural_other_only": true,
+   "definitions_icu": "{count, plural, other {# định nghĩa}}",
+   "nfc": true,
+   "ascii_three_periods": [],
+   "trailing_ellipsis_parity": true,
+   "max_len_chars": 134
+  },
+  "about_with_bare_nouns": {
+   "result": {
+    "agent": "Về tác nhân {name}",
+    "team": "Về nhóm {name}",
+    "summary_suffix": [
+     "(tác nhân)",
+     "(nhóm)"
+    ]
+   },
+   "verdict": "both read natively: \"Về\" + bare lowercase noun + name; no article or case ending needed; Vietnamese noun needs no classifier here; \"(tác nhân)\"/\"(nhóm)\" suffix reads correctly after \"Đã tạo/Đã cập nhật {name}\""
+  },
+  "glossary": "agent=tác nhân, team=nhóm, subagent n/a, server/máy chủ per vi.md; kind.* match glossary and sibling ui.agents.teams.kind.* (capitalised there, lowercase here as sidecar requires) and skills.composer.kind \"kỹ năng\"",
+  "register": "bạn used only in you_asked, status.attached, background_only, hero; terse imperative elsewhere; no \"!\"; no Quý khách; sentence case",
+  "typography": "em dash with spaces, U+2026 on all 5 ellipsis keys matching en, no ASCII ..., NFC",
+  "fit": "no maxCells/maxChars hints in sidecar for this namespace; longest value 134 chars (status.attached); watch is the only button label that grew",
+  "pr_delta_vs_origin_main": "vi adds kind.agent, kind.team, placeholder.about/docked/hero and changes action.watch; all other 32 values byte-identical to origin/main"
+ },
+ "findings": [
+  {
+   "severity": "MINOR",
+   "key": "ui.agents.config.banner.unavailable",
+   "current": "Không kết nối được với máy chủ nên ô soạn tin tạm thời không dùng được.",
+   "problem": "Two terminology drifts: \"ô soạn tin\" (messaging-compose box) names the same box that status.attached calls \"ô nhập\"; and en \"backend\" is rendered \"máy chủ\" here while sibling ui.agents.* keys (detail.alert.unconfirmed_body, skills.where.unknown, publication.hub_unavailable) keep \"backend\", and vi.md reserves \"máy chủ\" for MCP/local API server contexts.",
+   "suggestion": "Không kết nối được với backend nên ô nhập tạm thời không dùng được.",
+   "origin": "inherited (identical on origin/main)"
+  },
+  {
+   "severity": "MINOR",
+   "key": "ui.agents.config.action.watch",
+   "current": "Bước của lượt chạy",
+   "problem": "18 cells for a trailing-row button that sits beside Stop/Dismiss (en 9); vi.md says vi runs long, tighten. \"lượt chạy\" also drifts from \"lần chạy\" used in 4 sibling keys.",
+   "suggestion": "Các bước (or \"Xem bước\")",
+   "origin": "introduced by this PR (en changed Watch -> Run steps; vi followed)"
+  },
+  {
+   "severity": "MINOR",
+   "key": "ui.agents.config.run_details_region",
+   "current": "Chi tiết lượt chạy",
+   "problem": "Run noun inconsistent within the namespace: \"lượt chạy\" here and in action.watch vs \"lần chạy\" in activity.empty, error.stop_refused, status.attached, summary.no_changes.",
+   "suggestion": "Chi tiết lần chạy",
+   "origin": "inherited (identical on origin/main)"
+  },
+  {
+   "severity": "NIT",
+   "key": "ui.agents.config.summary.hidden_changes",
+   "current": "phần cài đặt đã thay đổi. Danh sách không hiển thị chỉ dẫn, hãy mở mục này để xem đã ghi những gì.",
+   "problem": "After \"Đã cập nhật X (tác nhân): \" the clause \"phần cài đặt đã thay đổi\" has no possessive tie to the item (en \"its settings\"); comma splice \"..., hãy mở\" is acceptable but a full stop would be cleaner. Reads correctly; optional.",
+   "suggestion": "cài đặt của nó đã thay đổi. Danh sách không hiển thị chỉ dẫn, hãy mở mục này để xem đã ghi những gì.",
+   "origin": "inherited (identical on origin/main)"
+  },
+  {
+   "severity": "NIT",
+   "key": "ui.agents.config.composer.label",
+   "current": "Yêu cầu thay đổi tác nhân hoặc nhóm",
+   "problem": "\"Yêu cầu thay đổi tác nhân hoặc nhóm\" can parse as a bare noun phrase; \"cho\" makes the request reading unambiguous. Optional.",
+   "suggestion": "Yêu cầu thay đổi cho tác nhân hoặc nhóm",
+   "origin": "inherited (identical on origin/main)"
+  }
+ ],
+ "counts": {
+  "BLOCKER": 0,
+  "MAJOR": 0,
+  "MINOR": 3,
+  "NIT": 2
+ },
+ "unresolved_blocker_major_count": 0,
+ "verdict": "passed",
+ "instance": "53831cca65ff-vi",
+ "model": "anthropic/claude-sonnet-5-5",
+ "status": "passed",
+ "sha256": {
+  "vi": "537c16bd292bc5560260541baf811ea5e53f44b945e91d67d943c2dc864e87af",
+  "en": "5f06618661e942dd8dc61f2f40dc7894f2048855e624fdc58ffe1aa0f5fcb7a6"
+ }
+}

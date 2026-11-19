@@ -51,7 +51,9 @@ import {
  * and the four panel triggers moved to the rail with their relative order
  * preserved; the asks trigger's return to its old position is the fifth item
  * arriving where it always stood. CODE REVIEW IS APPENDED LAST (the #927 fold
- * onto #917): its appearing moves nothing above it.
+ * onto #917): its appearing moves nothing above it. LINKED PROJECTS IS
+ * APPENDED AFTER IT on the same terms (operator, 2026-11-15): a door into the
+ * canvas's Projects view rather than a pane of its own, so it moves nothing.
  */
 export const PANEL_RAIL_ORDER = [
 	"run",
@@ -60,6 +62,7 @@ export const PANEL_RAIL_ORDER = [
 	"console",
 	"canvas",
 	"code",
+	"projects",
 ] as const;
 
 export type PanelRailItemId = (typeof PANEL_RAIL_ORDER)[number];
@@ -134,6 +137,32 @@ export function consoleRailLabels(
 	};
 }
 
+/**
+ * The linked-projects item's tooltip and accessible name.
+ *
+ * NO CHORD: the item is a door into the canvas's Projects view, not a pane with
+ * a registry action, so it prints none (the `capClause` rule for an unbound
+ * action). The count is the conversation's linked projects, carried in both
+ * registers like the canvas item's file count; zero (or a backend that cannot
+ * answer) is the bare name, never "0 projects".
+ */
+export function projectsRailLabels(
+	open: boolean,
+	count: number,
+): { tooltip: string; aria: string } {
+	const state = open ? "open" : "closed";
+	if (count <= 0) {
+		return {
+			tooltip: t("ui.canvas.projects.rail_tooltip", { state }),
+			aria: t("ui.canvas.projects.rail_aria"),
+		};
+	}
+	return {
+		tooltip: t("ui.canvas.projects.rail_tooltip_count", { state, count }),
+		aria: t("ui.canvas.projects.rail_aria_count", { count }),
+	};
+}
+
 /** The canvas item's tooltip and accessible name; `cap` is the printed chord. */
 export function canvasRailLabels(
 	open: boolean,
@@ -187,8 +216,28 @@ export function askRailLabels(
 	scope: AskScope,
 	count: number,
 	cap: string | null,
+	/*
+	 * This conversation's unread notification updates (decisions D9, design
+	 * § 18): the door's badge counts them beside the asks, so its accessible
+	 * name must say both ("…, 1 waiting, 1 unread update"). Zero, or a backend
+	 * without `features.notifications`, is exactly the pre-feature name.
+	 */
+	updates = 0,
 ): { tooltip: string; aria: string } {
 	const chord = capClause(cap);
+	if (updates > 0) {
+		return {
+			tooltip: askRailToggleLabel({ open, scope, count, cap }),
+			aria: t("ui.notifications.rail.aria_with_updates", {
+				chord,
+				subject: askScopeSubject(scope),
+				count,
+				countText: String(count),
+				updates,
+				updatesText: String(updates),
+			}),
+		};
+	}
 	return {
 		tooltip: askRailToggleLabel({ open, scope, count, cap }),
 		aria:

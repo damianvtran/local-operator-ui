@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "receipt_kind": "locale-audit, RE-AUDIT of in-audit remediation (ui#1532 mentions)",
+  "date": "2026-10-30",
+  "auditor": "translation-auditor",
+  "agent": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "session": "93e37e001a89",
+  "instance": "93e37e001a89-fr",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "locale": "fr",
+  "namespace": "ui.teamBridge",
+  "independence": "Independent re-audit by session 93e37e001a89. It neither authored nor applied these remediations: the changes come from auditor session a72fc22aa8e8 and sit uncommitted in the working tree. Read-only; no repo file edited.",
+  "scope": {
+    "primary": [
+      "ui.teamBridge.mentions.empty",
+      "ui.teamBridge.mentions.agent_secondary",
+      "ui.teamBridge.mentions.notice.invite_failed"
+    ]
+  },
+  "sha256": {
+    "fr": "479846914f86ea5d3ebdb41336116d79fa42049aeb18d0ea1d0e96c905513d92",
+    "en": "fca3039a46e3113acca89ca90f026f943f717ed2e531406497d46837cf972af5"
+  },
+  "files": {
+    "en": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/tb-mentions/src/i18n/catalogues/en/ui.teamBridge.json",
+      "sha256": "fca3039a46e3113acca89ca90f026f943f717ed2e531406497d46837cf972af5"
+    },
+    "target": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/tb-mentions/src/i18n/catalogues/fr/ui.teamBridge.json",
+      "sha256": "479846914f86ea5d3ebdb41336116d79fa42049aeb18d0ea1d0e96c905513d92"
+    },
+    "context": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/tb-mentions/src/i18n/catalogues/en/ui.teamBridge.context.json",
+      "sha256": "2df42931aef59c5be610d072d70731a1bd71500306235a501bed8fdc9640511a"
+    }
+  },
+  "findings": [
+    {
+      "severity": "nit",
+      "id": "RA2-FR-1",
+      "key": "ui.teamBridge.mentions.notice.invite_failed",
+      "current": "Impossible d’inviter {name}. Vous pouvez quand même mentionner {name} sans notification.",
+      "proposed": "Impossible d’inviter {name}. Vous pouvez quand même mentionner {name} sans notifier.",
+      "reason": "Optional: sibling button ui.teamBridge.mentions.notice.silent reads «Mentionner sans notifier»; echoing that wording ties the notice to the button. Current wording is correct, gender-neutral and placeholder-safe, so non-gating."
+    }
+  ],
+  "verdict": "All 3 changes accepted. empty: U+202F confirmed by codepoint inside « » (fr.md L81; 94 of 105 fr « usages already use U+202F). agent_secondary: «cheffe de cabinet de {person}» matches every fr chief-of-staff string and keeps the lowercase start the context asks for. invite_failed: repeating {name} removes the gendered «le»; accurate vs en. One optional nit."
+}

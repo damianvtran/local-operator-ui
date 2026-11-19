@@ -1,0 +1,76 @@
+{
+ "auditor": "translation-auditor",
+ "model": "openai/gpt-6.1-sol",
+ "instance": "tbstack-r1-1304m-fr",
+ "session": "80f1658ad2b3",
+ "job": "d926263c9111",
+ "date": "2026-10-22",
+ "locale": "fr",
+ "translator": "translator",
+ "translator_session": "a0f0f5c8888a",
+ "namespace": "ui.teamBridge",
+ "status": "passed",
+ "keys_audited": 123,
+ "keys_substantive": 4,
+ "scope": "PR #1304 local merge 12dddf52f7: ui.teamBridge fr, 123 keys read side-by-side against English. Union integrity over audited 119-key own side e3c24e98eb and 115-key main side de047d49e3: 111 shared, 8 own-only, 4 main-only; no dropped or changed value. Substantive contextual review of the four OS-banner keys; namespace-wide thread/reply/message terminology and all-value ICU checks.",
+ "source_head": "12dddf52f78bd30704b48a8c856f2b69e1bef6e3",
+ "source_base": "de047d49e3818abdfc0cc8e64c0b6d59f5e4af40",
+ "sha256": {
+  "en": "281cb8adcc75e5bb4fcebf5c9112ab260bcf8ed2fbcf6bbcd6d04bfc3cfff41c",
+  "fr": "00f25eaca02107324037d83ead2c21144298d4cb704c31efb86e5cade2ea69a5",
+  "context": "f5cf60d75f5e8b8ecc378174bc9f9e5e158b14afb80cda504e1b61e921b5cafd"
+ },
+ "findings": [],
+ "inherited_receipts": [
+  {
+   "base": "b5b80ea4b44754b9f0fd482b0d7f920a8127889e",
+   "reached_via_parent": "e3c24e98ebeba1b3ddcf1751c1ea68a30acf2d50",
+   "path": "i18n/receipts/tbstack-r1-1304-fr.json",
+   "sha256": "e9012773034610692c7afcadcb52aac24eb376308877070bca4a37186d03718d",
+   "instance": "tbstack-r1-1304-fr",
+   "result": "clean",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "base_source_sha256": "966671be592ecd97389f9675637f3d2acd0f402e123c9732f157035dba809c99",
+   "base_target_sha256": "9a686fa2ebe5f49d1a1a951e95fb861ad4fd9274100945c4bb3d29aadd99ceb8",
+   "keys_inherited": 119,
+   "unchanged_values_verified": 119
+  },
+  {
+   "base": "dbe16bcd4a91c1a7f65f220ffb8be9b76e4ee4e3",
+   "reached_via_parent": "de047d49e3818abdfc0cc8e64c0b6d59f5e4af40",
+   "path": "i18n/receipts/tbstack-r1-1298-fr.json",
+   "sha256": "c7939a354a53840baf015aa629bdb68cef5b4da09a12e44799c8b42a32a0bd6c",
+   "instance": "tbstack-r1-1298-fr",
+   "result": "clean",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "base_source_sha256": "b8236cf905c6083ca9b2450611d0083c8a96d990c6c548e4091d0b99266bd333",
+   "base_target_sha256": "34102388ecbf62c4e4153359730ffec9925879b99b1aeda7d493530d5bdb4049",
+   "keys_inherited": 4,
+   "unchanged_values_verified": 4
+  }
+ ],
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+ },
+ "validation": {
+  "independence": "Independent translation-auditor session 80f1658ad2b3, job d926263c9111; this agent produced none of the reviewed catalogue copy. All repository bytes read with git show; no checkout or repository mutation. Same served model as some historical translators does not imply the same agent/session.",
+  "union": "Branch catalogue-union-parity.mjs ran with --repo against the three refs, exit 0. Independent Python JSON comparisons cover en/context/fr/es/vi: 123 = 119 + 4 = 115 + 8, 111 shared; zero missing, changed, conflicting or extra values. Raw target catalogue lines also match the union after trimming indentation and delimiter commas. Both inherited receipts were read from parent Git objects, matched to retained receipt bytes, and checked against actual parent en/context/target hashes.",
+  "semantics": "message → message; reply → réponse / répondre; thread → fil (expanded title: Fil de discussion). The shortened contextual fil and expanded title name the same concept, not competing glossary terms. Address remains vous. French narrow no-break space before the preview colon is preserved in every arm. The four notify.channel/subtitle/count/count_preview strings preserve channel marker, place-before-organization order, both identity nouns, unread-message count, newness, and final verbatim preview. Existing notify.title/body align with that meaning; no sender is invented in a count banner.",
+  "icu": "@formatjs/icu-messageformat-parser from the existing UI node_modules parsed all 123 English/target pairs. Argument names and types (including markup tags) match English. All six plural selectors retain the locale categories; count and preview are preserved in every applicable OS count arm. No date/number skeletons or markup occur in these catalogues.",
+  "plurals": "CLDR fr one/many/other; all six plural selectors provide all three categories. Million-count many arms retain the required de, and every count remains displayed.",
+  "overflow": "OS count arm other: # nouveaux messages (19 code points) vs # new messages (14); 3 words and context budget 2–4 words. Inherited title Fil de discussion vs Thread is longer; fit is not established without a rendered pane check.",
+  "limitations": "Catalogue/union audit only; no build, install, test suite, rendered fit, pseudo-localization, activation or release evidence is claimed. No repository files were edited. Prior non-OS values retain their existing substantive audit authority; this pass read all 123 keys for context and terminology but does not claim a fresh full linguistic re-audit of all inherited copy. Reaction terminology is not applicable: no reaction keys or reaction-bearing English values exist in this 123-key namespace at the audited head. LTR locales only (fr/es/vi); no RTL rendering claim. No bidi controls were found in their catalogue values."
+ },
+ "model_note": "Served model sequence in this auditor session: anthropic/claude-opus-5-5 (initial contract reading), anthropic/claude-sonnet-5-5 (union comparisons, terminology and OS-banner substantive review, ICU parsing), openai/gpt-6.1-sol (completed side-by-side reading, inherited-byte verification, final assessment and receipt/record writing and hash verification). Provider/quota fallbacks were announced in the transcript; no translator model is being reported as the auditor."
+}

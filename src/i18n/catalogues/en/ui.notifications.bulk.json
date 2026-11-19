@@ -1,0 +1,14 @@
+{
+	"ui.notifications.bulk.dismiss_all": "Dismiss all",
+	"ui.notifications.bulk.read_hint": "Marking read keeps updates in All.",
+	"ui.notifications.bulk.dismiss_hint": "Dismissing removes updates. Undo restores them.",
+	"ui.notifications.bulk.frozen_hint": "This selection is frozen. New arrivals are not included.",
+	"ui.notifications.bulk.confirm_title": "{count, plural, one {Dismiss # update?} other {Dismiss # updates?}}",
+	"ui.notifications.bulk.beyond_page": "This affects updates beyond the loaded page.",
+	"ui.notifications.bulk.asks_hint": "Unanswered asks stay. Review them separately: dismissing an ask cannot be undone.",
+	"ui.notifications.bulk.review_asks": "Review unanswered asks",
+	"ui.notifications.bulk.select_error": "Could not select this view. Try again.",
+	"ui.notifications.bulk.update_required": "Update Local Operator to select all matching results.",
+	"ui.notifications.bulk.partial": "{changed} changed · {skipped} skipped",
+	"ui.notifications.bulk.exclusion_limit": "You can exclude up to 500 items. Clear selection to choose individual items."
+}

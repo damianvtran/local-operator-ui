@@ -1,0 +1,222 @@
+{
+  "schema": 1,
+  "audit_id": "act-zh-CN-58de30166d",
+  "audit_kind": "delta verification (only-change-since-audit proof)",
+  "locale": "zh-CN",
+  "scope": "ui.common.actions: verification that the only change since 369bb0113f is the deletion of the unused key check_again",
+  "checkout_head": "58de30166d",
+  "branch": "i18n-final-literals",
+  "audit_date": "2026-10-29",
+  "audited_baseline": {
+    "commit": "369bb0113f",
+    "role": "bind commit for this namespace; the bytes the earlier audit bound"
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "ac5c0e209ed1",
+    "model": "radient/auto",
+    "model_fallbacks": [
+      "anthropic/claude-sonnet-5-5 (session primary, provider quota failure at turn start)",
+      "openai/gpt-6-astra (quota fallback)",
+      "kimi/k3.1-pro (quota fallback)"
+    ],
+    "actual_model_source": "harness model-switch notices in this session; every command, hash and read in this receipt was executed under radient/auto",
+    "independent_from_translator_session": true,
+    "independence_note": "This auditor did not translate, author or bind these values. It wrote nothing in the repository: git status shows only concurrent sibling-session writes (i18n/ledger.json for the ov2 wave and i18n/receipts/ov2-*.json), none of which mentions ui.common.actions. No translation API, SDK or MT service was consulted."
+  },
+  "input_sha256": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.common.actions.json",
+      "sha256": "8dc67dc7c285d2747f4586a5d01a39c23423b10e506f6cfa44c258caed37a412"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/zh-CN/ui.common.actions.json",
+      "sha256": "890dd9a65ac98544b8fa5954f02d9a3771df4be430c9e6ad7fc2d4ef136543d8"
+    },
+    "method": "shasum -a 256 over each whole file at checkout_head 58de30166d; working tree byte-identical to HEAD for both files (git diff --stat HEAD -- <both> produced no output)"
+  },
+  "diff_observed": {
+    "command": "git diff 369bb0113f..HEAD -- src/i18n/catalogues/{en,zh-CN}/ui.common.actions.json",
+    "numstat": [
+      "0\t1\tsrc/i18n/catalogues/en/ui.common.actions.json",
+      "0\t1\tsrc/i18n/catalogues/zh-CN/ui.common.actions.json"
+    ],
+    "numstat_reading": "en: 0 insertions, 1 deletion; zh-CN: 0 insertions, 1 deletion",
+    "en": {
+      "removed_lines": [
+        "\t\"ui.common.actions.check_again\": \"Check again\","
+      ],
+      "added_lines": [],
+      "blob_369bb0113f": "33fc638f184813cdc1f41182597c5a10dafafc5d",
+      "blob_head": "949e93c1777e35e00f40b6339159e61b494f467f",
+      "raw_diff": "diff --git a/src/i18n/catalogues/en/ui.common.actions.json b/src/i18n/catalogues/en/ui.common.actions.json\nindex 33fc638f18..949e93c177 100644\n--- a/src/i18n/catalogues/en/ui.common.actions.json\n+++ b/src/i18n/catalogues/en/ui.common.actions.json\n@@ -1,6 +1,5 @@\n {\n \t\"ui.common.actions.cancel\": \"Cancel\",\n-\t\"ui.common.actions.check_again\": \"Check again\",\n \t\"ui.common.actions.close\": \"Close\",\n \t\"ui.common.actions.copied\": \"Copied\",\n \t\"ui.common.actions.copy_failed\": \"Could not copy. Select and copy it manually.\",\n"
+    },
+    "zh_CN": {
+      "removed_lines": [
+        "\t\"ui.common.actions.check_again\": \"重新检查\","
+      ],
+      "added_lines": [],
+      "blob_369bb0113f": "3d58b544637eafc7f726b1069bb246610c88feb9",
+      "blob_head": "3685f9254c26c2b5a2b0ffd32598429b315683b0",
+      "raw_diff": "diff --git a/src/i18n/catalogues/zh-CN/ui.common.actions.json b/src/i18n/catalogues/zh-CN/ui.common.actions.json\nindex 3d58b54463..3685f9254c 100644\n--- a/src/i18n/catalogues/zh-CN/ui.common.actions.json\n+++ b/src/i18n/catalogues/zh-CN/ui.common.actions.json\n@@ -1,6 +1,5 @@\n {\n \t\"ui.common.actions.cancel\": \"取消\",\n-\t\"ui.common.actions.check_again\": \"重新检查\",\n \t\"ui.common.actions.close\": \"关闭\",\n \t\"ui.common.actions.copied\": \"已复制\",\n \t\"ui.common.actions.copy_failed\": \"无法复制。请选中内容后手动复制。\",\n"
+    },
+    "context_sidecar": {
+      "path": "src/i18n/catalogues/en/ui.common.actions.context.json",
+      "change": "the same one key's 4-line sidecar entry removed (role/tone/note); 0 other lines touched; 52 entries remain and match the catalogue key-for-key",
+      "consistent_with_deletion": true
+    },
+    "other_six_locales": "es, fr, hi, ru, ur, vi each show 0 insertions / 1 deletion for this namespace, i.e. the identical single-key deletion (checked for cross-locale consistency; outside this report's en+zh-CN scope)"
+  },
+  "byte_identity_proof": {
+    "method": "Reconstruct the audited bytes by deleting the single ui.common.actions.check_again line from the 369bb0113f blob, then compare the SHA-256 of that reconstruction with the SHA-256 of the HEAD blob. Equality proves every other byte - including the tab indentation, key order, trailing newline and closing brace - is untouched.",
+    "en": {
+      "reconstructed_sha256": "8dc67dc7c285d2747f4586a5d01a39c23423b10e506f6cfa44c258caed37a412",
+      "head_sha256": "8dc67dc7c285d2747f4586a5d01a39c23423b10e506f6cfa44c258caed37a412",
+      "identical": true
+    },
+    "zh_CN": {
+      "reconstructed_sha256": "890dd9a65ac98544b8fa5954f02d9a3771df4be430c9e6ad7fc2d4ef136543d8",
+      "head_sha256": "890dd9a65ac98544b8fa5954f02d9a3771df4be430c9e6ad7fc2d4ef136543d8",
+      "identical": true
+    },
+    "conclusion": "Both sides byte-identical outside the one deleted line. This is the strongest form of the requested proof: not a line-by-line reading but a hash equality of the reconstructed file.",
+    "commands": [
+      "git show 369bb0113f:<file> | grep -v '\"ui.common.actions.check_again\"' | shasum -a 256",
+      "git show HEAD:<file> | shasum -a 256"
+    ]
+  },
+  "key_integrity": {
+    "en_keys": 52,
+    "target_keys": 52,
+    "key_sets_identical": true,
+    "key_order_identical": true,
+    "missing_in_target": [],
+    "extra_in_target": [],
+    "check_again_residue_anywhere": false,
+    "placeholder_markup_mismatches": 0,
+    "empty_values_en": 0,
+    "empty_values_target": 0,
+    "identical_en_target_values": 0,
+    "plural_select_keys": "none in this namespace in either language (no ICU plural/select constructs to validate; zh-CN would need only the 'other' category per guide)",
+    "width_budget": "no maxCells hints exist for any key in this namespace's sidecar, so no budget can be violated; measured zh-CN cell width of the longest survivor (ui.common.actions.find_replace_widget.replace_all_cmd_ctrl_enter) = 20 cells",
+    "generated_key_map": "src/i18n/keys.gen.ts lost exactly one check_again entry (line 5048 at 369bb0113f, gone at HEAD); the five other check_again keys (ui.chat.device, ui.mesh.mesh_actions, ui.providers.phone.action, ui.providers.provider_detail, ui.settings.integrations.integration_model) are all still present; generate --check confirms the file is fresh"
+  },
+  "deletion_rationale_verified": {
+    "claim": "ui.common.actions.check_again had no consumer; ui.chat.device.check_again is the used one",
+    "checked": [
+      "grep -rn 'ui.common.actions.check_again' over src/**/*.ts,tsx excluding catalogues: no call site",
+      "grep -rn 'ui.chat.device.check_again': consumed at src/renderer/src/features/chat/device/chat-header-device.tsx:475, and the key exists in en/ui.chat.device.json",
+      "keys.gen.ts: ui.chat.device.check_again still generated"
+    ],
+    "verified": true
+  },
+  "sample_read_through_read_public_copy": [
+    {
+      "key": "ui.common.actions.copy_failed",
+      "en": "Could not copy. Select and copy it manually.",
+      "target": "无法复制。请选中内容后手动复制。",
+      "verdict": "meaning and the instruction to copy manually preserved; 请 is correct here because the English says 'Select and copy it manually' as an imperative to the user"
+    },
+    {
+      "key": "ui.common.actions.credential_updated",
+      "en": "Credential \"{key}\" updated successfully",
+      "target": "凭据“{key}”已更新",
+      "verdict": "placeholder intact; 已 carries 'successfully' idiomatically; full-width quotes “ ” per guide line 64"
+    },
+    {
+      "key": "ui.common.actions.find_replace_widget.of",
+      "en": "{currentmatch, number, ::group-off} of {matchcount, number, ::group-off}",
+      "target": "第{currentmatch, number, ::group-off}项，共{matchcount, number, ::group-off}项",
+      "verdict": "number skeletons preserved verbatim in the same order"
+    },
+    {
+      "key": "ui.common.actions.date_time_picker.choose_date",
+      "en": "Choose {label} date",
+      "target": "选择{label}日期",
+      "verdict": "placeholder intact; no space between the Latin run and the Chinese text, per guide line 67"
+    },
+    {
+      "key": "ui.common.actions.find_replace_widget.replace_all_cmd_ctrl_enter",
+      "en": "Replace all (Cmd/Ctrl+Enter)",
+      "target": "全部替换（Cmd/Ctrl+Enter）",
+      "verdict": "shortcut kept ASCII per guide; full-width parens for prose"
+    }
+  ],
+  "style_guide_read": {
+    "path": "/Users/damian/local-operator/i18n/style-guides/zh-CN.md",
+    "labelled_doc": true,
+    "points_applied": [
+      "formality 你, terse verbs (取消/关闭/重试/复制) - consistent with the survivors",
+      "no sentence-final 。 on short labels; present on the full sentence copy_failed",
+      "locale calls: agent 智能体, prompt 提示词, session 会话, credential 凭据 - all match",
+      "plurals: other only; namespace has no plural constructs",
+      "punctuation: full-width for prose, “ ” for quotes, no space before Latin runs - all match",
+      "kept-English: Cmd/Ctrl+Enter, Enter remain ASCII"
+    ]
+  },
+  "mechanical_gates_run": [
+    {
+      "command": "node scripts/i18n/generate.mjs --check",
+      "result": "keys.gen.ts byte-identical to a fresh generation",
+      "exit": 0
+    },
+    {
+      "command": "node scripts/i18n/check-duplicates.mjs",
+      "result": "934 files scanned, 0 duplicate keys",
+      "exit": 0
+    },
+    {
+      "command": "node scripts/i18n/context-parity.mjs",
+      "result": "every English key covered apart from 131 allowed gaps in 4 namespaces (shrink-only allowance)",
+      "exit": 0
+    },
+    {
+      "command": "node scripts/i18n/check-strings.mjs",
+      "result": "1409 files scanned, 0 literals at or below baseline",
+      "exit": 0
+    }
+  ],
+  "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 0,
+    "NIT": 0
+  },
+  "verdict": "pass",
+  "instance": "ac5c0e209ed1-act-zh-cn",
+  "instance_derivation": {
+    "given_expression": "$(basename $(dirname /Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/act-audit.sh))",
+    "literal_result": "scratchpad",
+    "why_not_literal": "The launcher script sits in the orchestrating session's scratchpad directory, so the expression collapses to the constant 'scratchpad' for all seven locale runs and identifies nothing. Recorded in the sibling auditors' convention (<session-id>-<wave>-<locale>) so the seven receipts stay distinguishable.",
+    "session_id_source": "LOCAL_OPERATOR_SCRATCHPAD=/Users/damian/.local-operator/sessions/ac5c0e209ed1/scratchpad in this session"
+  },
+  "namespaces": {
+    "ui.common.actions": {
+      "status": "passed",
+      "keys_audited": 52,
+      "keys_audited_note": "All 52 surviving keys checked structurally against English (key set, order, placeholders, plurals, sidecar parity, generated map); 5 read in full through read_public_copy as the semantic sample. The one deleted key is accounted for on both sides.",
+      "sha256": {
+        "en": "8dc67dc7c285d2747f4586a5d01a39c23423b10e506f6cfa44c258caed37a412",
+        "target": "890dd9a65ac98544b8fa5954f02d9a3771df4be430c9e6ad7fc2d4ef136543d8"
+      },
+      "context_sha256_en": "ec17c81a0549cb184a6493d62759c38f3523ca8e8dbd56eba409e64981c5c9b6",
+      "findings": []
+    }
+  },
+  "observations_out_of_scope": [
+    {
+      "id": "act-zh-o1",
+      "severity": "observation",
+      "subject": "ui.common.actions.date_time_picker.set_to_current_time369877 key name",
+      "note": "The key carries a stray numeric suffix in its name. It is a real, consumed key (src/renderer/src/shared/components/common/date-time-picker.tsx:329) and it is byte-identical to the audited bytes, so this verification neither introduces it nor re-files it as a translation finding. Flagged only so a future key-renaming ticket does not come as a surprise.",
+      "action_taken": "none; out of the delta's scope"
+    },
+    {
+      "id": "act-zh-o2",
+      "severity": "observation",
+      "subject": "worktree not clean during this verification",
+      "note": "git status showed a modified i18n/ledger.json and seven untracked i18n/receipts/ov2-*.json. These are concurrent sibling auditor sessions writing the ov2 wave (ui.chat.thread_search, ui.chat.canonical across all seven locales); the ledger diff contains zero mentions of ui.common.actions, and the two files in this scope show no working-tree difference from HEAD. Not caused by this auditor and it does not affect the hashes above.",
+      "action_taken": "none; reported so the manager knows the tree is shared"
+    }
+  ]
+}

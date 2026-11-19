@@ -1,3 +1,5 @@
+import { useMeasuredBrowserViewPanel } from "@shared/browser-view-policy";
+import { composeRefs } from "@shared/lib/compose-refs";
 import { cn } from "@shared/lib/utils";
 import { Check, ChevronRight, Circle } from "lucide-react";
 import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui";
@@ -6,6 +8,7 @@ import {
 	type ElementRef,
 	type HTMLAttributes,
 	forwardRef,
+	useMemo,
 } from "react";
 
 /**
@@ -35,8 +38,33 @@ export const DropdownMenuSub = DropdownMenuPrimitive.Sub;
 export const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup;
 
 /** Panel chrome, shared by the menu and its submenus. */
+/*
+ * NO STROKE: separation is the `elevated` ground plus the one shadow.
+ *
+ * Until 2026-11-06 this panel carried `border border-hairline`, and the operator
+ * reported it on four surfaces at once (tooltip, canvas rail, agent profile
+ * popover, sidebar overflow menu) as a border fighting the borderless-chrome
+ * system. The line was also doing work it could not do well: a hairline measures
+ * 1.03-1.18:1 against the panel's own fill, i.e. a boundary of nothing, while the
+ * ambient half of `shadow-overlay` starts 12px out and leaves the edge bare. So
+ * `--shadow-overlay` gained a contact layer that darkens the boundary itself
+ * (see "-- elevation --" in `styles/index.css`), and the stroke went.
+ *
+ * `data-lo-floating` is the machine-readable half of the rule. Every shared
+ * primitive's panel wears it; `scripts/floating-surface-no-border.test.mjs` fails
+ * if a border utility comes back on a marked panel's tag or on a class constant it
+ * names (this array included), if a stylesheet rule touching the attribute
+ * declares a border outside the one forced-colors rule, or if the focus rule's
+ * box-shadow reset stops excluding it. The check is static - there is no DOM in
+ * that suite - so a computed border is a browser run's evidence, not its claim.
+ * Adding a hairline back here does not just look wrong, it turns the suite red.
+ *
+ * The internal divider is the other half: `DropdownMenuSeparator` below insets
+ * its rule so it reads as a line BETWEEN groups rather than a box the group sits
+ * in.
+ */
 const panelClasses = [
-	"z-50 min-w-32 overflow-hidden rounded-md border border-hairline bg-elevated p-1",
+	"z-50 min-w-32 overflow-hidden rounded-md bg-elevated p-1",
 	// No entrance animation; see the note at the top of `tooltip.tsx`.
 	"shadow-overlay",
 ];
@@ -70,13 +98,16 @@ export const DropdownMenuSubTrigger = forwardRef<
 		className={cn(
 			itemClasses,
 			"data-[state=open]:bg-accent-wash",
-			inset && "pl-8",
+			inset && "ps-8",
 			className,
 		)}
 		{...props}
 	>
 		{children}
-		<ChevronRight className="ml-auto text-ink-dim" aria-hidden="true" />
+		<ChevronRight
+			className="ms-auto text-ink-dim rtl:-scale-x-100"
+			aria-hidden="true"
+		/>
 	</DropdownMenuPrimitive.SubTrigger>
 ));
 DropdownMenuSubTrigger.displayName = "DropdownMenuSubTrigger";
@@ -84,36 +115,92 @@ DropdownMenuSubTrigger.displayName = "DropdownMenuSubTrigger";
 export const DropdownMenuSubContent = forwardRef<
 	ElementRef<typeof DropdownMenuPrimitive.SubContent>,
 	ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubContent>
->(({ className, ...props }, ref) => (
-	<DropdownMenuPrimitive.SubContent
-		ref={ref}
-		/*
-		 * Not a drag surface; see the marker's note in `dialog.tsx` and the rule it is
-		 * read by in `styles/index.css`. A menu that opens near the top of the window
-		 * can overlap the chrome strip, and a row inside the window's draggable
-		 * region is a row that cannot be clicked.
-		 */
-		data-titlebar-no-drag=""
-		className={cn(panelClasses, className)}
-		{...props}
-	/>
-));
+>(({ className, ...props }, ref) => {
+	// The submenu panel is the same kind of overlay as the parent menu: it pauses
+	// the native browser view only where it MEASURABLY intersects it.
+	const panelRef = useMeasuredBrowserViewPanel<HTMLDivElement>("menu");
+	const composedRef = useMemo(
+		() => composeRefs(ref, panelRef),
+		[ref, panelRef],
+	);
+	/*
+	 * THE SUB PANEL IS PORTALLED, LIKE ITS PARENT (0.53.0: "Extensions" could not
+	 * be opened). Rendered in place it is a DOM descendant of the parent panel,
+	 * and Radix positions it `position: fixed`. A fixed box resolves against the
+	 * nearest ancestor with a `transform`/`filter`/`backdrop-filter`; on glass the
+	 * parent panel wears `backdrop-filter: blur(12px)` (`[data-glass-overlay]` in
+	 * `styles/index.css`), so it became the sub panel's containing block and its
+	 * `overflow-hidden` clipped the sub panel away entirely. The row highlighted,
+	 * the submenu opened invisibly, and the pointer heading for it left the
+	 * trigger for nothing, which closed it. Portalled to <body>, the sub panel is
+	 * positioned against the viewport, so Radix's collision handling can also flip
+	 * it to the left of a menu sitting at the window's right edge.
+	 *
+	 * The measured pause still holds: `panelRef` measures THIS element wherever
+	 * it is mounted, and Radix keeps the sub's pointer grace, focus and dismissal
+	 * through React context, not DOM nesting. Guarded by
+	 * `scripts/dropdown-submenu-portal-dom.test.mjs`.
+	 */
+	return (
+		<DropdownMenuPrimitive.Portal>
+			<DropdownMenuPrimitive.SubContent
+				ref={composedRef}
+				/*
+				 * Not a drag surface; see the marker's note in `dialog.tsx` and the rule it is
+				 * read by in `styles/index.css`. A menu that opens near the top of the window
+				 * can overlap the chrome strip, and a row inside the window's draggable
+				 * region is a row that cannot be clicked.
+				 */
+				data-titlebar-no-drag=""
+				data-glass-overlay=""
+				/* A submenu is a floating panel like its parent: without the marker the
+				 * focus rule's box-shadow reset (`styles/index.css`) still reaches it and
+				 * a focused submenu loses its elevation (QA round 1, Q1). */
+				data-lo-floating=""
+				className={cn(panelClasses, className)}
+				{...props}
+			/>
+		</DropdownMenuPrimitive.Portal>
+	);
+});
 DropdownMenuSubContent.displayName = "DropdownMenuSubContent";
 
 export const DropdownMenuContent = forwardRef<
 	ElementRef<typeof DropdownMenuPrimitive.Content>,
 	ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
->(({ className, sideOffset = 6, ...props }, ref) => (
-	<DropdownMenuPrimitive.Portal>
-		<DropdownMenuPrimitive.Content
-			ref={ref}
-			data-titlebar-no-drag=""
-			sideOffset={sideOffset}
-			className={cn(panelClasses, className)}
-			{...props}
-		/>
-	</DropdownMenuPrimitive.Portal>
-));
+>(({ className, sideOffset = 6, ...props }, ref) => {
+	/*
+	 * THE MENU PANEL IS A MEASURED PAUSE, NOT A BLANKET ONE (S5).
+	 *
+	 * The native browser view paints above all DOM, so a menu that crosses into
+	 * the page is partly invisible unless the view yields. Before S5 every menu
+	 * was either occluded (the shared primitive registered nothing) or paused the
+	 * page unconditionally (the browser's own two menus, by hand). Measuring is
+	 * the only rule that is right for both cases: a menu entirely inside the
+	 * chrome band — above the page — touches nothing and must not take the page
+	 * away, while a menu whose panel reaches the page must. Registering here, in
+	 * the primitive, is what makes that true for every dropdown in the app rather
+	 * than for the two that remembered.
+	 */
+	const panelRef = useMeasuredBrowserViewPanel<HTMLDivElement>("menu");
+	const composedRef = useMemo(
+		() => composeRefs(ref, panelRef),
+		[ref, panelRef],
+	);
+	return (
+		<DropdownMenuPrimitive.Portal>
+			<DropdownMenuPrimitive.Content
+				ref={composedRef}
+				data-titlebar-no-drag=""
+				data-glass-overlay=""
+				data-lo-floating=""
+				sideOffset={sideOffset}
+				className={cn(panelClasses, className)}
+				{...props}
+			/>
+		</DropdownMenuPrimitive.Portal>
+	);
+});
 DropdownMenuContent.displayName = "DropdownMenuContent";
 
 export const DropdownMenuItem = forwardRef<
@@ -129,7 +216,7 @@ export const DropdownMenuItem = forwardRef<
 		ref={ref}
 		className={cn(
 			itemClasses,
-			inset && "pl-8",
+			inset && "ps-8",
 			destructive && "text-danger data-[highlighted]:bg-danger-wash",
 			className,
 		)}
@@ -145,10 +232,10 @@ export const DropdownMenuCheckboxItem = forwardRef<
 	<DropdownMenuPrimitive.CheckboxItem
 		ref={ref}
 		checked={checked}
-		className={cn(itemClasses, "pl-8", className)}
+		className={cn(itemClasses, "ps-8", className)}
 		{...props}
 	>
-		<span className="absolute left-2 flex size-4 items-center justify-center">
+		<span className="absolute start-2 flex size-4 items-center justify-center">
 			<DropdownMenuPrimitive.ItemIndicator>
 				<Check className="text-accent" aria-hidden="true" />
 			</DropdownMenuPrimitive.ItemIndicator>
@@ -164,10 +251,10 @@ export const DropdownMenuRadioItem = forwardRef<
 >(({ className, children, ...props }, ref) => (
 	<DropdownMenuPrimitive.RadioItem
 		ref={ref}
-		className={cn(itemClasses, "pl-8", className)}
+		className={cn(itemClasses, "ps-8", className)}
 		{...props}
 	>
-		<span className="absolute left-2 flex size-4 items-center justify-center">
+		<span className="absolute start-2 flex size-4 items-center justify-center">
 			<DropdownMenuPrimitive.ItemIndicator>
 				{/* The one legitimate `rounded-full` here: this is a status dot. */}
 				<Circle className="size-2 fill-accent text-accent" aria-hidden="true" />
@@ -188,7 +275,7 @@ export const DropdownMenuLabel = forwardRef<
 		ref={ref}
 		className={cn(
 			"px-2 py-1.5 text-meta text-ink-dim",
-			inset && "pl-8",
+			inset && "ps-8",
 			className,
 		)}
 		{...props}
@@ -202,7 +289,19 @@ export const DropdownMenuSeparator = forwardRef<
 >(({ className, ...props }, ref) => (
 	<DropdownMenuPrimitive.Separator
 		ref={ref}
-		className={cn("-mx-1 my-1 h-px bg-hairline", className)}
+		/*
+		 * INSET, NOT FULL-BLEED (2026-11-06). This was `-mx-1`, i.e. 4px WIDER than the
+		 * panel's `p-1` content box, so the rule ran to the panel's rounded edge on both
+		 * sides and closed a box with the border the panel used to carry - the
+		 * full-bleed hairlines the operator photographed in the sidebar overflow menu.
+		 * `mx-2` puts it 12px in, which is exactly where the item labels start
+		 * (panel `p-1` + item `px-2`), so it reads as a rule between groups rather than
+		 * as a wall the group is standing behind. The colour is `divider-inset`, the
+		 * hairline mixed halfway toward the panel's ground: with the stroke gone, a full
+		 * hairline out-drew the panel's own edge on light and high-contrast palettes
+		 * (design round 1, D3; the measurement is on the utility in `styles/index.css`).
+		 */
+		className={cn("mx-2 my-1 h-px divider-inset", className)}
 		{...props}
 	/>
 ));
@@ -214,7 +313,7 @@ export const DropdownMenuShortcut = ({
 	...props
 }: HTMLAttributes<HTMLSpanElement>) => (
 	<span
-		className={cn("ml-auto font-mono text-ink-dim text-mono-sm", className)}
+		className={cn("ms-auto font-mono text-ink-dim text-mono-sm", className)}
 		{...props}
 	/>
 );

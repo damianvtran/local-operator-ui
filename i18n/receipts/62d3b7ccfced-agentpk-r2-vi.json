@@ -1,0 +1,120 @@
+{
+ "schema": 1,
+ "auditor": {
+  "agent": "reviewer",
+  "session": "62d3b7ccfced",
+  "instance": "62d3b7ccfced-agentpk-r2-vi",
+  "model": "anthropic/claude-opus-5-5",
+  "requested_model": "anthropic/claude-opus-5-5",
+  "fallback": false,
+  "model_source": "Session system prompt header 'Model: anthropic/claude-opus-5-5'; no model-switch or fallback notice in this session.",
+  "independence": "Fresh independent auditor (lopdev team reviewer, task agentpk-i18n-audit-r2); authored no translation in this PR. Round-2 translator: coder job 297ef117cabb; round-1 translator: coder job a03b04d91272; round-1 auditor: session 64e4e919c5b0. This session is 62d3b7ccfced.",
+  "independent_from_translator_session": true
+ },
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "62d3b7ccfced-agentpk-r2-vi",
+ "locale": "vi",
+ "date": "2026-11-10",
+ "head": "e6c56de164017f86fa557e0bbce8c9546bc29190",
+ "base": "5fbe506559f47af9a5fca61d68a04fe979d3598c",
+ "pr": "https://github.com/damianvtran/local-operator-ui/pull/1846",
+ "branch": "fix/browser-agent-tab-passkey (PR #1846)",
+ "audit_kind": "round-2 delta audit: 1 rewritten + 5 added keys, plus re-read of the 2 round-1 keys",
+ "scope": "ui.browser at e6c56de: rewritten ui.browser.browser_passkey_notice.agent_explanation; added ui.browser.browser_passkey_notice.continue_refused_stale, ui.browser.browser_passkey_notice.continue_refused_not_agent, ui.browser.browser_passkey_notice.continue_refused_in_flight, ui.browser.browser_passkey_notice.continue_refused_not_web, ui.browser.browser_passkey_notice.continue_unavailable; round-1 keys continue_in_own_tab and use_browser_chrome.passkey_continue_failed re-read (byte-identical to 5fbe506559f). Read against English source, English context sidecar, core glossary and the locale style guide. All other keys byte-identical to the base and not re-audited.",
+ "union_proof": "Computed from git objects: for en and every locale, e6c56de ui.browser.json keys == 5fbe506559f keys + exactly the 5 continue_refused_*/continue_unavailable keys; 1 changed (agent_explanation), 0 removed; worktree bytes == HEAD blob.",
+ "references": {
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/vi.md",
+   "sha256": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888"
+  },
+  "glossary_style_revision": "e21f92fa4ee1a7a4095586e33453c19f54aca4f9"
+ },
+ "status": "passed",
+ "result": "clean-with-findings",
+ "counts": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 1,
+  "nit": 1
+ },
+ "findings": [
+  {
+   "id": "m1",
+   "severity": "minor",
+   "key": "ui.browser.browser_passkey_notice.agent_explanation",
+   "issue": "«cửa sổ của nó không thể hiện trong thẻ…» — «thể hiện» is a strong collocation ('express/show'), so «không thể hiện» can first parse as 'does not express' before the intended 'không thể | hiện' (cannot appear).",
+   "suggested": "…cửa sổ của nó không thể xuất hiện trong thẻ do tác nhân điều khiển.",
+   "disposition": "suggested; does not gate"
+  },
+  {
+   "id": "n1",
+   "severity": "nit",
+   "key": "ui.browser.browser_passkey_notice.continue_refused_in_flight",
+   "issue": "«Thẻ của bạn đang được mở.» drops English 'already', so the toast reads as a plain status rather than the reason a second click did nothing.",
+   "suggested": "Thẻ của bạn đang được mở rồi.",
+   "disposition": "suggested; does not gate"
+  }
+ ],
+ "namespaces": {
+  "ui.browser": {
+   "namespace": "ui.browser",
+   "status": "passed",
+   "result": "clean-with-findings",
+   "sha256": {
+    "vi": "98ac97ff690b378d9bd2128abf9b4f57d209111fdeecfc67d99fc759f29e4041",
+    "en": "6d23b23923950590497a81defd8c40ea5f11779426a656efb88a08f066c82f6c"
+   },
+   "context_sha256": "ff53d98f8df551d7732e5c9f9b4cbef09d59056a80e121286614a6ecffa11d5d",
+   "keys_reviewed": [
+    "ui.browser.browser_passkey_notice.agent_explanation",
+    "ui.browser.browser_passkey_notice.continue_refused_stale",
+    "ui.browser.browser_passkey_notice.continue_refused_not_agent",
+    "ui.browser.browser_passkey_notice.continue_refused_in_flight",
+    "ui.browser.browser_passkey_notice.continue_refused_not_web",
+    "ui.browser.browser_passkey_notice.continue_unavailable",
+    "ui.browser.browser_passkey_notice.continue_in_own_tab",
+    "ui.browser.use_browser_chrome.passkey_continue_failed"
+   ],
+   "keys_read": 8,
+   "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 1
+   },
+   "findings": [
+    {
+     "id": "m1",
+     "severity": "minor",
+     "key": "ui.browser.browser_passkey_notice.agent_explanation",
+     "issue": "«cửa sổ của nó không thể hiện trong thẻ…» — «thể hiện» is a strong collocation ('express/show'), so «không thể hiện» can first parse as 'does not express' before the intended 'không thể | hiện' (cannot appear).",
+     "suggested": "…cửa sổ của nó không thể xuất hiện trong thẻ do tác nhân điều khiển.",
+     "disposition": "suggested; does not gate"
+    },
+    {
+     "id": "n1",
+     "severity": "nit",
+     "key": "ui.browser.browser_passkey_notice.continue_refused_in_flight",
+     "issue": "«Thẻ của bạn đang được mở.» drops English 'already', so the toast reads as a plain status rather than the reason a second click did nothing.",
+     "suggested": "Thẻ của bạn đang được mở rồi.",
+     "disposition": "suggested; does not gate"
+    }
+   ]
+  }
+ },
+ "checks": [
+  "ICU parse with the repo's @formatjs/icu-messageformat-parser for all 8 values (6 new/changed + 2 round-1 keys): 0 errors; the 6 notice keys carry no arguments, matching English; passkey_continue_failed keeps {reason} as its final sentence, so each refusal sentence composes as the toast's second sentence.",
+  "Agent term: glossary agent row → «tác nhân», used in agent_explanation and continue_refused_not_agent and consistent with the strip's message line.",
+  "'Prompt' rendered as «cửa sổ» (the password manager's own dialog window), per the English context note; NOT the glossary's AI-prompt term, which would misdescribe a browser-extension dialog. Agreed as correct.",
+  "Meaning vs English and context: conditional 'If…' kept (no diagnosis); shared sign-in described as this app browser's, not the system browser's; no promise of success; final step is asking the agent to reload this page; each refusal sentence matches its context note (stale / no longer agent-driven / already opening / web pages only / browser could not create the tab).",
+  "Reload verb matches this locale's own browser_url_bar.reload button.",
+  "No ASCII apostrophe, braces or manual bidi controls (U+200E/200F/202A-202E/2066-2069) in the 6 values.",
+  "Length: agent_explanation is wrapping body text in the strip (not a fixed-width control); refusals are toast sentences; the button key is unchanged from round 1.",
+  "Round-1 M1 (major, agent rendered «tác tử») re-checked: «tác tử» no longer appears; agent_explanation and continue_refused_not_agent use the glossary «tác nhân», matching the strip's message line. FIXED."
+ ],
+ "limitations": "Source/text audit only; no rendered-fit or execution claim beyond the ICU parse. Carried keys rely on byte identity to the base."
+}

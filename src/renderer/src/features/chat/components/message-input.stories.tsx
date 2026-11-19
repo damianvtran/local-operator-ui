@@ -4,6 +4,7 @@ import {
 	COMPOSER_PLACEHOLDER,
 	type SendOutcome,
 } from "@shared/hooks/use-message-input";
+import { currentLocale } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import {
 	SEND_FAILURE_COPY,
@@ -16,13 +17,16 @@ import {
 	useConversationInputStore,
 } from "@shared/store/conversation-input-store";
 import type { Meta, StoryObj } from "@storybook/react";
-import { screen, userEvent, within } from "@storybook/test";
+import { expect, screen, userEvent, waitFor, within } from "@storybook/test";
 import { type ReactNode, useEffect, useState } from "react";
+import { useArgs } from "storybook/internal/preview-api";
 import {
 	DESKTOP_DEADLINE_EXCEEDED_CODE,
 	DESKTOP_REQUEST_TOO_LARGE_DETAIL,
 } from "../../../../../../src/shared/desktop-contract";
 import type { CanonicalFrontendState } from "../../../../../../src/shared/desktop-session-contract";
+import enComposer from "../../../../../i18n/catalogues/en/ui.chat.composer.json";
+import frComposer from "../../../../../i18n/catalogues/fr/ui.chat.composer.json";
 import { interruptNotice, interruptUnavailableNotice } from "../interrupt-turn";
 import {
 	type PickerContext,
@@ -34,6 +38,7 @@ import type { SlashCommandMeta } from "./slash-commands";
 import type { SlashDispatchOutcome } from "./slash-dispatch";
 import type { SlashCommandInvocation } from "./slash-submit";
 import "./story-electron-shim";
+import { STAGED_IMAGE_DATA_URL } from "./attachment-image-fixture";
 
 /*
  * THE COMPOSER'S OWN STATES, which had no committed surface at all.
@@ -1262,37 +1267,37 @@ export const StopControlWhileStreaming: Story = {
 	),
 };
 
+/**
+ * A Stop press that has landed and whose turn has not ended: slot B keeps the
+ * Stop square in its pressed face (inert) - the same element, same x, so the
+ * pointer that just pressed it is still over what it pressed.
+ */
+export const StopControlStopping: Story = {
+	render: () => (
+		<Frame label="stopping: slot B holds the pressed Stop, inert">
+			<div className={cn("@container/chatcol")} style={{ width: 1024 }}>
+				<MessageInput
+					isLoading={false}
+					messages={NONEMPTY}
+					conversationId="story-stopping"
+					awaitingReply={true}
+					canonicalStop={{ active: true, stopping: true, onStop: () => {} }}
+					onSendMessage={async () => true}
+				/>
+			</div>
+		</Frame>
+	),
+};
+
 /*
- * THE SETTLED IDLE ROW, which is the operator's report on the first fix for the
- * round's MAJOR and has to be visible to be judged. The reservation of the Stop
- * control's box is now a GRACE WINDOW rather than a standing state
- * (`interrupt-slot-grace.ts`), so an idle composer on a capable backend holds
- * nothing and the dictation control sits beside Send with only the row's own gap
- * between them. Captured against the frame above, the pair is the point: the
- * cluster CHANGES between the two states - and it is the DICTATION control that
- * moves, 32px plus the row's own 4px gap to the right, while **Send keeps its
- * position**: it is pinned to the composer's right edge in every state (measured
- * on the live row, default rung: Send's left edge 1307 running, inside the window
- * and settled; the dictation control 1271 settled and 1235 running). As written
- * the other way round the pair would argue the weaker case - if the dictation
- * control never moved there would be nothing to protect from a press in the
- * Stop's box, and the window would need no justification. Against
- * `StopControlWithoutCapability` below it shows a backend that cannot interrupt
- * renders the same settled row.
- *
- * One ink difference from `interrupt-live/` beside these frames, stated so the
- * two sets are not read as one change: this story renders the dictation control
- * DISABLED (no Radient credential is armed in Storybook) and so in the
- * `ink-disabled` role, while the live rig arms a placeholder credential and
- * photographs the same box live and brighter. Both are legitimate states of the
- * same box, and the ink step is the credential rather than the reservation.
- *
- * The frames cannot show the grace itself: a story mounts a component in one
- * state, and the window opens on a TRANSITION the turn's own end produces (a
- * freshly mounted composer must render no reservation). That transition is
- * measured in the real app instead - `scripts/interrupt-esc-proof.mjs` presses the
- * Stop control and re-measures the cluster on both sides of the window, and its
- * `interrupt-live` frames carry both.
+ * THE SETTLED IDLE ROW, the other half of `StopControlWhileStreaming`: `[mic][Send]`,
+ * with Send disabled while the box is empty. The pair is the point of the
+ * button-slot change - Send and Stop are ONE slot, so between this frame and the
+ * streaming one the mic and the primary control keep the same x and only the
+ * face in the right-hand slot changes (measured, every state in the matrix, by
+ * `scripts/composer-readings-geometry.mjs --states=...`). One ink difference from
+ * `interrupt-live/`: Storybook arms no Radient credential, so the dictation
+ * control is drawn DISABLED here and in the `ink-disabled` role.
  */
 export const StopSlotSettled: Story = {
 	render: () => (
@@ -1302,7 +1307,6 @@ export const StopSlotSettled: Story = {
 					isLoading={false}
 					messages={NONEMPTY}
 					conversationId="story"
-					canonicalStopAvailable={true}
 					onSendMessage={async () => true}
 				/>
 			</div>
@@ -1319,7 +1323,6 @@ export const StopSlotSettledSmallView: Story = {
 					messages={NONEMPTY}
 					conversationId="story"
 					isSmallView={true}
-					canonicalStopAvailable={true}
 					interruptNotice={STOPPED_WITH_WORK_LEFT}
 					onSendMessage={async () => true}
 				/>
@@ -1437,7 +1440,7 @@ export const InterruptLeftWorkRunning: Story = {
  * keyboard/mask/citation path, and a story that rendered `•` directly would
  * photograph the paint while proving nothing about the gesture. `userEvent.type`
  * dispatches the same keydowns a person does, so the mask, the mint and the
- * Escape restore are exercised by the frames.
+ * Escape hold are exercised by the frames.
  *
  * The canary value is deliberate. `docs/design/composer-credential-capture.md`
  * §10 requires that a typed secret is greppable NOWHERE after a store-and-send
@@ -1457,7 +1460,9 @@ const CREDENTIAL_CANARY = "sk-live-CANARY-4417";
    call and `lint/performance/useTopLevelRegex` is the rule that says so. */
 const ARMED_NOTICE = /armed — add a space/;
 const MASKED_NOTICE = /masked as you type/;
-const PLAINTEXT_NOTICE = /now PLAIN TEXT in the composer/;
+const HELD_NOTICE = /^Esc again discards it — still masked/;
+const DISCARDED_NOTICE = /^credential discarded/;
+const MINTED_PILL = /\[Credential #1, \d+ chars\]/;
 /*
  * The cleared sentence as the copy authority writes it now: the key, the ordinal the
  * chip's face carries, and the composer's own key as the way back (UX round 3, U15/U16).
@@ -2309,18 +2314,265 @@ export const CredentialPillUnbacked: Story = {
 	),
 };
 
+/*
+ * THE SECRET-CLOSURE NOTICE'S STORIES - why they exist at all.
+ *
+ * `#composer-secret-closure-notice` renders only while a BLOCKING secret ask is
+ * pending (`secretAnswer`) AND the box holds a draft. Its copy moved from a
+ * module-level English `const` to `t("ui.chat.composer.secret_closure_notice")`
+ * (i18n audit, C1), and the rendered proof of that - per locale, per theme, a
+ * locale switch that keeps the draft, the answer that lifts the pause - could not
+ * be taken from the compiled app: reaching the blocking-secret state needs a
+ * backend parking a secret ask, and the app's installer stalls under the isolated
+ * HOME a fixture run requires (PR thread, "C1 blocking-state proof"). These
+ * stories mount the REAL `MessageInput` in that state instead.
+ *
+ * WHAT THEY CLAIM: the shipped component's own render of the notice in the
+ * requested locale and theme, the draft untouched across a locale switch, and the
+ * notice gone with the box writable once `secretAnswer` turns false. WHAT THEY DO
+ * NOT CLAIM: anything about native Electron, the backend's secret-ask protocol or
+ * the asks panel that delivers the answer - the prop flip stands in for all three.
+ *
+ * Their own conversation id keeps the seeded draft out of the `"story"` draft the
+ * credential stories share: the draft store is persisted, so a shared id would
+ * hand this sentence to whichever story the iframe loads next.
+ */
+const SECRET_CLOSURE_CONVERSATION = "story-secret-closure";
+const SECRET_CLOSURE_DRAFT =
+	"deploy notes for the staging box — finish after the key is in";
+const SECRET_CLOSURE_NOTICE = "#composer-secret-closure-notice";
+
+/** The composer's box, or a throw naming the missing piece. */
+const composerBox = (root: ParentNode): HTMLTextAreaElement => {
+	const box = root.querySelector<HTMLTextAreaElement>(
+		'textarea[role="combobox"]',
+	);
+	if (!box) throw new Error("the composer's textarea is not in this story");
+	return box;
+};
+
 /**
- * ESCAPED: the operator cancelled, and the characters came back as ORDINARY
- * TEXT. This is the only exit that leaves a secret in the composer, and the
- * frame cannot say so on its own — the masked span is gone and the composer
- * looks entirely normal while holding the characters the next Enter will expose
- * — so the warning sentence is the state, not decoration. It is the one frame
- * here where the canary IS on screen, and it is there because the operator asked
- * for it.
+ * Hold the shutter until `ready()` holds, then release it; an expiry REFUSES.
+ *
+ * The notice and the draft both arrive after the first paint (the draft is
+ * written in `WithDraft`'s effect, and the notice renders only once the store
+ * hands the composer a nonempty value), so a rig sampling the first settled frame
+ * could photograph the paused box with no notice under it. An expired hold writes
+ * `data-capture-failed` - which the capture rigs refuse - and throws, rather than
+ * releasing onto a frame that does not carry the claimed state (AGENTS.md, "What
+ * a capture may claim").
+ */
+const holdShutterUntil = (
+	ready: () => boolean,
+	label: string,
+): Promise<void> => {
+	holdShutter();
+	const started = Date.now();
+	return new Promise((resolve, reject) => {
+		const timer = window.setInterval(() => {
+			if (ready()) {
+				window.clearInterval(timer);
+				releaseShutter();
+				resolve();
+				return;
+			}
+			if (Date.now() - started > 20_000) {
+				window.clearInterval(timer);
+				releaseShutter();
+				document.documentElement.dataset.captureFailed = `secret-closure-shutter-not-reached: ${label}`;
+				reject(new Error(`secret-closure state never reached: ${label}`));
+			}
+		}, 50);
+	});
+};
+
+/**
+ * THE NOTICE ON SCREEN, per locale and theme: a paused box holding an ordinary
+ * draft, and the closure sentence under it.
+ *
+ * The locale is the preview's `?args=locale:<tag>` pin and the theme its theme
+ * arg - nothing here hard-codes either, so the fr / ru / ur x light / dark set is
+ * one story addressed six ways. The shutter waits for the notice AND for the
+ * draft in the box: a frame with the notice and an empty box would be a state
+ * the component cannot produce, and one with the draft and no notice is the
+ * defect this copy fix is about.
+ */
+export const SecretClosureNotice: Story = {
+	render: () => (
+		<Frame label="a blocking secret ask is pending and the box holds a draft: the closure notice">
+			<div className={cn("@container/chatcol")} style={{ width: 1024 }}>
+				<WithDraft
+					conversation={SECRET_CLOSURE_CONVERSATION}
+					text={SECRET_CLOSURE_DRAFT}
+				>
+					<MessageInput
+						isLoading={false}
+						messages={NONEMPTY}
+						conversationId={SECRET_CLOSURE_CONVERSATION}
+						onSendMessage={async () => true}
+						secretAnswer={true}
+					/>
+				</WithDraft>
+			</div>
+		</Frame>
+	),
+	play: async ({ canvasElement }) => {
+		await holdShutterUntil(() => {
+			const notice = canvasElement.querySelector(SECRET_CLOSURE_NOTICE);
+			const box = canvasElement.querySelector<HTMLTextAreaElement>(
+				'textarea[role="combobox"]',
+			);
+			return (
+				Boolean(notice?.textContent) && box?.value === SECRET_CLOSURE_DRAFT
+			);
+		}, "notice with the draft in the box");
+	},
+};
+
+/*
+ * The lifecycle harness's controls, published for the play function: the play
+ * runs outside React, and these are the two state changes it has to make from
+ * there. Module-level because a story has no other channel from its render to
+ * its play; `null` whenever the harness is not mounted.
+ */
+let secretClosureControls: {
+	answer: () => void;
+	switchLocale: (locale: string) => void;
+} | null = null;
+
+/**
+ * The composer under a blocking secret ask whose ANSWER can arrive: `secretAnswer`
+ * is this component's state rather than a fixed prop, and `answer()` is the asks
+ * panel's answer landing (the prop going false), which is all the composer sees
+ * of it.
+ */
+const SecretClosureHarness = ({
+	switchLocale,
+}: {
+	switchLocale: (locale: string) => void;
+}) => {
+	const [pending, setPending] = useState(true);
+	useEffect(() => {
+		secretClosureControls = {
+			answer: () => setPending(false),
+			switchLocale,
+		};
+		return () => {
+			secretClosureControls = null;
+		};
+	}, [switchLocale]);
+	return (
+		<WithDraft
+			conversation={SECRET_CLOSURE_CONVERSATION}
+			text={SECRET_CLOSURE_DRAFT}
+		>
+			<MessageInput
+				isLoading={false}
+				messages={NONEMPTY}
+				conversationId={SECRET_CLOSURE_CONVERSATION}
+				onSendMessage={async () => true}
+				secretAnswer={pending}
+			/>
+		</WithDraft>
+	);
+};
+
+/** One play at a time: an args update must not start a second, overlapping run. */
+let secretClosureLifecycleRunning = false;
+
+/**
+ * THE NOTICE'S LIFECYCLE, asserted rather than photographed: en -> fr with the
+ * draft byte-identical, then the answer arriving lifts the pause.
+ *
+ * THE LOCALE MOVES THROUGH THE PREVIEW'S ARG, not a bare `setLocale`: the
+ * preview's locale frame re-asserts its pinned locale on every store change
+ * (its sticky subscription against bridge stubs), so a direct `setLocale("fr")`
+ * from here is reverted before the composer can redraw. Updating the `locale`
+ * arg makes the preview itself call `setLocale(locale)` - the same store seam -
+ * the way a capture's `?args=locale:` pin does. The play restores the arg it
+ * found, so the stories loaded after this one keep their own pin.
+ *
+ * The expected sentences are the catalogues' own values, imported rather than
+ * retyped, so a copy edit cannot leave this test asserting yesterday's text.
+ */
+export const SecretClosureLifecycle: Story = {
+	args: { locale: "en" },
+	render: function Render() {
+		const [, updateArgs] = useArgs();
+		return (
+			<Frame label="lifecycle: the closure notice across a locale switch, then the answer arriving">
+				<div className={cn("@container/chatcol")} style={{ width: 1024 }}>
+					<SecretClosureHarness
+						switchLocale={(locale) => updateArgs({ locale })}
+					/>
+				</div>
+			</Frame>
+		);
+	},
+	play: async ({ canvasElement, args }) => {
+		if (secretClosureLifecycleRunning) return;
+		secretClosureLifecycleRunning = true;
+		// `Meta` is untyped here, so the preview's global `locale` arg is read by name.
+		const requested = (args as { locale?: unknown }).locale;
+		const pinned = typeof requested === "string" ? requested : "en";
+		const controls = () => {
+			if (!secretClosureControls)
+				throw new Error("the secret-closure harness is not mounted");
+			return secretClosureControls;
+		};
+		try {
+			const noticeText = () =>
+				canvasElement.querySelector(SECRET_CLOSURE_NOTICE)?.textContent;
+			const en = enComposer["ui.chat.composer.secret_closure_notice"];
+			const fr = frComposer["ui.chat.composer.secret_closure_notice"];
+
+			if (currentLocale() !== "en") controls().switchLocale("en");
+			await waitFor(() => expect(noticeText()).toBe(en));
+			const box = composerBox(canvasElement);
+			await waitFor(() => expect(box.value).toBe(SECRET_CLOSURE_DRAFT));
+			// Paused the way the component pauses: read-only (not `disabled`, so the
+			// draft stays selectable) and announced as unavailable; a keystroke lands
+			// nowhere.
+			expect(box.readOnly).toBe(true);
+			expect(box.getAttribute("aria-disabled")).toBe("true");
+			await userEvent.type(box, "x");
+			expect(box.value).toBe(SECRET_CLOSURE_DRAFT);
+
+			controls().switchLocale("fr");
+			await waitFor(() => expect(currentLocale()).toBe("fr"));
+			await waitFor(() => expect(noticeText()).toBe(fr));
+			expect(composerBox(canvasElement).value).toBe(SECRET_CLOSURE_DRAFT);
+
+			controls().answer();
+			await waitFor(() =>
+				expect(canvasElement.querySelector(SECRET_CLOSURE_NOTICE)).toBeNull(),
+			);
+			const answered = composerBox(canvasElement);
+			expect(answered.readOnly).toBe(false);
+			expect(answered.getAttribute("aria-disabled")).toBeNull();
+			expect(answered.value).toBe(SECRET_CLOSURE_DRAFT);
+		} finally {
+			secretClosureControls?.switchLocale(pinned);
+			secretClosureLifecycleRunning = false;
+		}
+	},
+};
+
+/**
+ * ESCAPED: the operator pressed Esc once, and the capture is HELD, still masked.
+ *
+ * Before the 2026-10-22 fix this frame showed the characters back as ORDINARY TEXT
+ * under a plain-text warning, and that was the leak: the box is what the draft store
+ * persists, so a cancelled credential reached `localStorage`. The first Esc now
+ * changes nothing in the box (the cells, the value in memory, the draft unwritten)
+ * and only the sentence moves, to say what the second press does. The export keeps
+ * its name because the evidence manifest and the capture list address the story by
+ * its id. The play asserts the canary is still NOT in the document, the same check
+ * `CredentialMasked` makes.
  */
 export const CredentialEscaped: Story = {
 	render: () => (
-		<Frame label="escaped: Esc gave the characters back as plain text, and the composer says so">
+		<Frame label="escaped once: the capture is held, still masked, and Esc again discards it">
 			<div className={cn("@container/chatcol")} style={{ width: 1024 }}>
 				<MessageInput
 					isLoading={false}
@@ -2338,12 +2590,124 @@ export const CredentialEscaped: Story = {
 			`/credential ${CREDENTIAL_CANARY}`,
 		);
 		await userEvent.type(box, "{Escape}");
-		await screen.findByText(PLAINTEXT_NOTICE);
-		if (!composerValue(box).endsWith(CREDENTIAL_CANARY)) {
-			throw new Error(
-				`the characters did not come back: ${composerValue(box)}`,
-			);
+		await screen.findByText(HELD_NOTICE);
+		if (composerValue(box).includes(CREDENTIAL_CANARY)) {
+			throw new Error("Esc put the typed secret in the buffer");
 		}
+		if (!composerValue(box).includes("•")) {
+			throw new Error("the held capture lost its mask cells");
+		}
+		releaseShutter();
+	},
+};
+
+/*
+ * THE HELD CAPTURE'S NEIGHBOURING STATES (design review round 1, D4/D5). The escaped
+ * frame proves the box is unchanged by the first Esc; these hold the states the
+ * operator meets deciding what to do next: focused and held, one more keystroke
+ * (typing resumes and the hold ends), Enter on the held span (it still mints), the
+ * second Esc (the discard line), and the held sentence at the small-view width.
+ * Each play asserts the state arrived and that the canary never entered the box.
+ */
+const typeAndHold = async (canvasElement: HTMLElement) => {
+	const box = await typeIntoComposer(
+		canvasElement,
+		`/credential ${CREDENTIAL_CANARY}`,
+	);
+	await userEvent.type(box, "{Escape}");
+	await screen.findByText(HELD_NOTICE);
+	if (composerValue(box).includes(CREDENTIAL_CANARY)) {
+		throw new Error("Esc put the typed secret in the buffer");
+	}
+	return box;
+};
+
+const heldFrame =
+	(label: string, width = 1024, isSmallView = false) =>
+	() => (
+		<Frame label={label}>
+			<div className={cn("@container/chatcol")} style={{ width }}>
+				<MessageInput
+					isLoading={false}
+					messages={NONEMPTY}
+					conversationId="story"
+					isSmallView={isSmallView}
+					onSendMessage={async () => true}
+				/>
+			</div>
+		</Frame>
+	);
+
+/** Held, with the caret still in the box: the state the second press is decided in. */
+export const CredentialEscapeHeldFocused: Story = {
+	render: heldFrame(
+		"held, focused: the caret is still in the box and the span carries the not-stored edge",
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		const box = await typeAndHold(canvasElement);
+		if (document.activeElement !== box) {
+			throw new Error("the held Esc moved focus out of the box");
+		}
+		releaseShutter();
+	},
+};
+
+/** Held, then one more character: typing resumes and the hold is over. */
+export const CredentialEscapeHeldThenTyped: Story = {
+	render: heldFrame(
+		"held, then one more keystroke: typing resumes, so the next Esc is held again",
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		const box = await typeAndHold(canvasElement);
+		await userEvent.type(box, "4");
+		await screen.findByText(MASKED_NOTICE);
+		releaseShutter();
+	},
+};
+
+/** Held, then Enter: the value was never lost, so it mints a pill of its full length. */
+export const CredentialEscapeHeldThenEnter: Story = {
+	render: heldFrame("held, then Enter: the held value still mints the pill"),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		const box = await typeAndHold(canvasElement);
+		await userEvent.type(box, "{Enter}");
+		if (!MINTED_PILL.test(composerValue(box))) {
+			throw new Error(`no pill was minted: ${composerValue(box)}`);
+		}
+		releaseShutter();
+	},
+};
+
+/** The second Esc: the cells and the value are gone, and the line says so. */
+export const CredentialEscapeDiscarded: Story = {
+	render: heldFrame(
+		"Esc twice: the value is discarded, the token is left inert, and the line says nothing was stored",
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		const box = await typeAndHold(canvasElement);
+		await userEvent.type(box, "{Escape}");
+		await screen.findByText(DISCARDED_NOTICE);
+		if (composerValue(box).includes("•")) {
+			throw new Error("the mask cells survived the discard");
+		}
+		releaseShutter();
+	},
+};
+
+/** The held sentence at the small-view width, where a wrap would push the box. */
+export const CredentialEscapeHeldSmallView: Story = {
+	render: heldFrame(
+		"held at small view (a 440px column): the held sentence above the box",
+		440,
+		true,
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		await typeAndHold(canvasElement);
 		releaseShutter();
 	},
 };
@@ -2622,6 +2986,8 @@ const PendingSendHarness = ({
 	awaitingReply = false,
 	row = "none",
 	stageChip = true,
+	chips,
+	byteSizes,
 	onSendMessage,
 	returned,
 	sendError,
@@ -2632,6 +2998,19 @@ const PendingSendHarness = ({
 	awaitingReply?: boolean;
 	row?: PendingSendRow;
 	stageChip?: boolean;
+	/**
+	 * The exact chips to stage, when a story needs more than `stageChip`'s one
+	 * file. Attachment ids are explicit here because they are the React keys the
+	 * chip row is built from (contract §6): a story that invented ids per render
+	 * could not show a stable row.
+	 */
+	chips?: { id: string; path: string }[];
+	/**
+	 * Sizes for those chips, by path. A Storybook frame has no preload bridge to
+	 * probe with, so without this the card's `TYPE · size` line would photograph
+	 * the loading state rather than the design.
+	 */
+	byteSizes?: Readonly<Record<string, number>>;
 	onSendMessage?: React.ComponentProps<typeof MessageInput>["onSendMessage"];
 	/**
 	 * The draft a FAILED send leaves, as the composer's own store holds it after
@@ -2666,11 +3045,17 @@ const PendingSendHarness = ({
 		 * took the file out of the row and into the transcript, so staging one there
 		 * would be a payload the app cannot be showing.
 		 */
-		if (stageChip)
-			store.addAttachment(PENDING_SESSION, {
-				id: "pending-chip",
-				path: returned?.chip ?? PENDING_CHIP_PATH,
-			});
+		const stagedChips =
+			chips ??
+			(stageChip
+				? [
+						{
+							id: "pending-chip",
+							path: returned?.chip ?? PENDING_CHIP_PATH,
+						},
+					]
+				: []);
+		for (const chip of stagedChips) store.addAttachment(PENDING_SESSION, chip);
 		/*
 		 * And the box, for the states a FAILED send leaves: the returned message is
 		 * in the composer (`returnInFlight` put it there and the hook adopted it), so
@@ -2719,7 +3104,7 @@ const PendingSendHarness = ({
 		 * changed `row` while mounted has to re-stage it (agent review round 3,
 		 * BLOCKER 1 - biome's `useExhaustiveDependencies` is right about this one).
 		 */
-	}, [row, stageChip, returned]);
+	}, [row, stageChip, chips, returned]);
 	const composer = (
 		<MessageInput
 			isLoading={isLoading}
@@ -2727,6 +3112,7 @@ const PendingSendHarness = ({
 			isSmallView={isSmallView || undefined}
 			messages={NONEMPTY}
 			conversationId={PENDING_SESSION}
+			attachmentByteSizes={byteSizes}
 			onSendMessage={onSendMessage ?? (async () => true)}
 			sendError={sendError}
 		/>
@@ -2889,6 +3275,300 @@ export const PendingSendChipRowSmallView: Story = {
 	play: async ({ canvasElement }) => {
 		if (!holdAndReset(canvasElement)) return;
 		await assertChipRowGeometry(canvasElement);
+		releaseShutter();
+	},
+};
+
+/**
+ * The chip row's bound for a row that is NOT the notes.md fixture.
+ *
+ * `assertChipRowGeometry` reads the notes.md name span, which is right for the
+ * states it was written for and wrong for the file-card stories: a PDF's card has
+ * no such span. What both rows share is the two claims - the row sits above the
+ * field and no ancestor clips it - so this reads those off whichever chip is
+ * first.
+ */
+const assertAttachmentRowAboveField = (canvasElement: HTMLElement) => {
+	const chip = canvasElement.querySelector("[data-attachment-id]");
+	if (!chip) throw new Error("no attachment chip is staged in this story");
+	const row = chip.parentElement ?? chip;
+	const field = composerField(canvasElement);
+	const chipRect = row.getBoundingClientRect();
+	const fieldRect = field.getBoundingClientRect();
+	if (chipRect.bottom > fieldRect.top + 0.5)
+		throw new Error(
+			`the chip row reaches the field: row bottom ${chipRect.bottom}, field top ${fieldRect.top}`,
+		);
+	for (
+		let ancestor = chip.parentElement;
+		ancestor && ancestor !== canvasElement;
+		ancestor = ancestor.parentElement
+	) {
+		const style = getComputedStyle(ancestor);
+		if (style.overflow === "hidden" || style.overflowY === "hidden") {
+			const box = ancestor.getBoundingClientRect();
+			if (chipRect.bottom > box.bottom + 0.5 || chipRect.top < box.top - 0.5)
+				throw new Error("an ancestor clips the chip row");
+		}
+	}
+};
+
+/** The path the file-card stories stage, so the three are read against each other. */
+const PENDING_FILE_PATH = "/Users/you/Documents/Complete_With_Docusign.pdf";
+
+/*
+ * Fixed identities, not inline literals: the harness's staging effect depends on
+ * the `chips` array, and a fresh array per render would re-run it on every
+ * store update - a loop rather than a story.
+ */
+const PENDING_PDF_CHIPS = [{ id: "pending-pdf", path: PENDING_FILE_PATH }];
+const PENDING_PDF_BYTES = { [PENDING_FILE_PATH]: 2_411_520 };
+/*
+ * THE IMAGE IS REAL BYTES. The old path existed on nobody's machine, so both
+ * mixed frames photographed the degraded icon tile and the thumbnail half of the
+ * design was never judged (design round 1, D3). The fixture is a committed 64x64
+ * PNG inlined as a data URL, so every checkout renders the same pixels.
+ */
+const PENDING_MIXED_CHIPS = [
+	{ id: "mixed-image", path: STAGED_IMAGE_DATA_URL },
+	{ id: "mixed-pdf", path: PENDING_FILE_PATH },
+];
+
+/** A non-image file's card: type icon, whole filename, `PDF · size` (contract §6). */
+export const PendingSendPdf: Story = {
+	render: () => (
+		<PendingSendHarness
+			label="a PDF staged: a wider file card rather than a 100px tile, and the row says it is not sent yet"
+			chips={PENDING_PDF_CHIPS}
+			byteSizes={PENDING_PDF_BYTES}
+		/>
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		assertAttachmentRowAboveField(canvasElement);
+		releaseShutter();
+	},
+};
+
+/**
+ * The remove affordance FOCUSED. The claim is negative and cannot be seen in one
+ * still: the control lives in a reserved overlay corner, so focusing it must not
+ * move the card or reflow the filename it overlaps (contract §6). The play takes
+ * the box, focuses the button, and compares - a shifted card throws instead of
+ * shipping.
+ */
+export const PendingSendPdfRemoveFocus: Story = {
+	render: () => (
+		<PendingSendHarness
+			label="the remove control focused: the corner is reserved, so the card and its filename do not move"
+			chips={PENDING_PDF_CHIPS}
+			byteSizes={PENDING_PDF_BYTES}
+		/>
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		assertAttachmentRowAboveField(canvasElement);
+		const card = canvasElement.querySelector(
+			'[data-attachment-id="pending-pdf"]',
+		);
+		if (!card) throw new Error("the PDF card is not in this story");
+		const button = card.querySelector("button");
+		if (!button) throw new Error("the PDF card has no remove control");
+		const before = card.getBoundingClientRect();
+		button.focus();
+		const after = card.getBoundingClientRect();
+		const same =
+			before.x === after.x &&
+			before.y === after.y &&
+			before.width === after.width &&
+			before.height === after.height;
+		if (!same)
+			throw new Error(
+				`focusing remove moved the card: ${JSON.stringify({ before, after })}`,
+			);
+		releaseShutter();
+	},
+};
+
+/** An image and a PDF in one row: the two chip shapes the composer now holds. */
+export const PendingSendMixed: Story = {
+	render: () => (
+		<PendingSendHarness
+			label="mixed row: an image keeps its 100px thumbnail tile, a PDF takes the wider file card"
+			chips={PENDING_MIXED_CHIPS}
+			byteSizes={PENDING_PDF_BYTES}
+		/>
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		assertAttachmentRowAboveField(canvasElement);
+		const cards = canvasElement.querySelectorAll("[data-attachment-id]");
+		if (cards.length !== 2)
+			throw new Error(`expected two chips, found ${cards.length}`);
+		releaseShutter();
+	},
+};
+
+/**
+ * A full draft: eight files, one of them a long name, so the row's WRAP is the
+ * subject rather than a single card's shape. Eight is the wire's own cap
+ * (`DESKTOP_MESSAGE_MAX_FILES`), so this is the largest row a send can carry.
+ */
+const PENDING_MANY_CHIPS = Array.from({ length: 6 }, (_, index) => ({
+	id: `many-${index}`,
+	path:
+		index === 3
+			? "/Users/you/Documents/Quarterly Reports/2026/Q4/Board_Pack_and_Appendices_Final_Reviewed.pdf"
+			: `/Users/you/Documents/Quarterly Reports/2026/Q4/file-${index + 1}.pdf`,
+}));
+const PENDING_MANY_BYTES = Object.fromEntries(
+	PENDING_MANY_CHIPS.map((chip, index) => [
+		chip.path,
+		120_000 + index * 31_000,
+	]),
+);
+
+export const PendingSendManyFiles: Story = {
+	render: () => (
+		<PendingSendHarness
+			label="six files staged: the row wraps, and a long filename is truncated inside its card rather than pushing the row"
+			chips={PENDING_MANY_CHIPS}
+			byteSizes={PENDING_MANY_BYTES}
+		/>
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		assertAttachmentRowAboveField(canvasElement);
+		const cards = canvasElement.querySelectorAll("[data-attachment-id]");
+		if (cards.length !== PENDING_MANY_CHIPS.length)
+			throw new Error(
+				`expected ${PENDING_MANY_CHIPS.length} chips, found ${cards.length}`,
+			);
+		releaseShutter();
+	},
+};
+
+/**
+ * THE MAXIMUM a send can carry: eight cards, which exceed the preview area's
+ * 240px bound. Deliberately NOT an evidence frame - the composer scrolls, so a
+ * still shows a sliced third row and describes the bound poorly. The assertion
+ * is the point: the SCROLLER ends above the field and really scrolls, rather
+ * than a band whose content escapes and takes the send controls off screen.
+ */
+const PENDING_EIGHT_CHIPS = Array.from({ length: 8 }, (_, index) => ({
+	id: `eight-${index}`,
+	path: `/Users/you/Documents/Quarterly Reports/2026/Q4/file-${index + 1}.pdf`,
+}));
+const PENDING_EIGHT_BYTES = Object.fromEntries(
+	PENDING_EIGHT_CHIPS.map((chip, index) => [
+		chip.path,
+		120_000 + index * 31_000,
+	]),
+);
+
+export const PendingSendEightFiles: Story = {
+	render: () => (
+		<PendingSendHarness
+			label="eight files, the wire's maximum: the preview area scrolls instead of growing the band"
+			chips={PENDING_EIGHT_CHIPS}
+			byteSizes={PENDING_EIGHT_BYTES}
+		/>
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		const cards = canvasElement.querySelectorAll("[data-attachment-id]");
+		if (cards.length !== PENDING_EIGHT_CHIPS.length)
+			throw new Error(
+				`expected ${PENDING_EIGHT_CHIPS.length} chips, found ${cards.length}`,
+			);
+		const scroller = cards[0]?.parentElement?.closest(".overflow-y-auto");
+		if (!scroller) throw new Error("the chip row has no bounded scroller");
+		const box = scroller.getBoundingClientRect();
+		const field = composerField(canvasElement).getBoundingClientRect();
+		if (box.bottom > field.top + 0.5)
+			throw new Error(
+				`the scroller reaches the field: bottom ${box.bottom}, field top ${field.top}`,
+			);
+		if (scroller.scrollHeight <= scroller.clientHeight)
+			throw new Error(
+				`eight cards were expected to overflow the scroller: scrollHeight ${scroller.scrollHeight}, clientHeight ${scroller.clientHeight}`,
+			);
+		releaseShutter();
+	},
+};
+
+/**
+ * The narrow rung with an image and two files: the wrapping case at the width
+ * where the file card and the 100px tile can no longer share one line. The long
+ * filename is the card's own truncation test, not a row-overflow test.
+ */
+const PENDING_NARROW_CHIPS = [
+	{ id: "narrow-image", path: STAGED_IMAGE_DATA_URL },
+	{
+		id: "narrow-long",
+		path: "/Users/you/Documents/Quarterly Reports/2026/Q4/Board_Pack_and_Appendices_Final_Reviewed.pdf",
+	},
+	{ id: "narrow-pdf", path: PENDING_FILE_PATH },
+];
+const PENDING_NARROW_BYTES = {
+	[PENDING_NARROW_CHIPS[1].path]: 8_912_345,
+	[PENDING_FILE_PATH]: 2_411_520,
+};
+
+export const PendingSendNarrowLongName: Story = {
+	render: () => (
+		<PendingSendHarness
+			label="the compact rung: an image and two files wrap, and the long filename stays inside its card"
+			isSmallView={true}
+			chips={PENDING_NARROW_CHIPS}
+			byteSizes={PENDING_NARROW_BYTES}
+		/>
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		assertAttachmentRowAboveField(canvasElement);
+		const cards = canvasElement.querySelectorAll("[data-attachment-id]");
+		if (cards.length !== PENDING_NARROW_CHIPS.length)
+			throw new Error(
+				`expected ${PENDING_NARROW_CHIPS.length} chips, found ${cards.length}`,
+			);
+		releaseShutter();
+	},
+};
+
+/**
+ * The remove control focused OVER REAL IMAGE PIXELS: the reserved corner must
+ * stay legible and the image tile must not move. The image is the committed
+ * fixture, so this frame is the image half of the focus claim (design D3).
+ */
+export const PendingSendImageRemoveFocus: Story = {
+	render: () => (
+		<PendingSendHarness
+			label="the image tile's remove control focused: a legible control over real pixels, and nothing reflows"
+			chips={[{ id: "focus-image", path: STAGED_IMAGE_DATA_URL }]}
+		/>
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		assertAttachmentRowAboveField(canvasElement);
+		const card = canvasElement.querySelector(
+			'[data-attachment-id="focus-image"]',
+		);
+		if (!card) throw new Error("the image tile is not in this story");
+		const button = card.querySelector("button");
+		if (!button) throw new Error("the image tile has no remove control");
+		const before = card.getBoundingClientRect();
+		button.focus();
+		const after = card.getBoundingClientRect();
+		if (
+			before.x !== after.x ||
+			before.y !== after.y ||
+			before.width !== after.width ||
+			before.height !== after.height
+		)
+			throw new Error(
+				`focusing remove moved the image tile: ${JSON.stringify({ before, after })}`,
+			);
 		releaseShutter();
 	},
 };
@@ -3307,7 +3987,7 @@ export const QueuedSecretAsk: Story = {
 				secretAsk={{
 					key: "story-secret-1:api_token",
 					fillable: true,
-					onOpen: () => {},
+					onOpen: () => false,
 					onFill: async () => "sent",
 				}}
 			/>
@@ -3326,7 +4006,7 @@ export const SecretAskSending: Story = {
 				secretAsk={{
 					key: "story-ask-sending",
 					fillable: true,
-					onOpen: () => {},
+					onOpen: () => false,
 					/* Never resolves: the frame is the window a slow link shows. */
 					onFill: () => new Promise(() => {}),
 				}}
@@ -3359,7 +4039,7 @@ export const SecretAskRefused: Story = {
 				secretAsk={{
 					key: "story-ask-refused",
 					fillable: true,
-					onOpen: () => {},
+					onOpen: () => false,
 					onFill: async () => "refused",
 				}}
 			/>
@@ -3391,7 +4071,7 @@ export const SecretAskMulti: Story = {
 				secretAsk={{
 					key: "story-ask-multi",
 					fillable: false,
-					onOpen: () => {},
+					onOpen: () => false,
 					onFill: async () => "multi",
 				}}
 			/>
@@ -3417,7 +4097,7 @@ export const SecretAskConfirm: Story = {
 				secretAsk={{
 					key: "story-secret-1:api_token",
 					fillable: true,
-					onOpen: () => {},
+					onOpen: () => false,
 					onFill: async () => "sent",
 				}}
 			/>

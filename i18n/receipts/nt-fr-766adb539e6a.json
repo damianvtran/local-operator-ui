@@ -1,0 +1,744 @@
+{
+  "schema": 1,
+  "locale": "fr",
+  "namespace": "ui.notifications",
+  "instance": "766adb539e6a",
+  "auditor": "translation-auditor",
+  "model": "openai/gpt-6-astra",
+  "date": "2026-10-25",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "key_count": 130,
+  "provenance": {
+    "agent": "translation-auditor",
+    "session": "766adb539e6a",
+    "model": "openai/gpt-6-astra",
+    "actual_model_source": "Session runtime header: Model: openai/gpt-6-astra",
+    "fallback_used": false,
+    "independence": "Separate agent/context from both translators; did not draft, polish or modify either translation. Independently read all catalogue values and context sidecars and derived parser/format/width results here."
+  },
+  "translator": {
+    "agent": "tr-fr",
+    "instance": "cdffb2441de0",
+    "model_history": [
+      "Opus5.5 research/draft",
+      "Sonnet5.5 quota fallback",
+      "gpt-6.1-sol final polishing/write"
+    ],
+    "source": "Delegation brief; history not independently queried or inferred from defaults"
+  },
+  "sha256": {
+    "en": "ce0c8d6d9af80980667741dd6d289ab7312d04aaea0e717e5cef4cf55c2b37ae",
+    "fr": "c9176eb1f3a692cda0ce73c511862e729b039b38bf111277f8d56c6ebfc6e50c",
+    "context": "3804068c75073ce9663f73539b508cbb46e495488dc47e5dd97aa80fd1a6918e"
+  },
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.notifications.json",
+      "sha256": "ce0c8d6d9af80980667741dd6d289ab7312d04aaea0e717e5cef4cf55c2b37ae"
+    },
+    "fr": {
+      "path": "src/i18n/catalogues/fr/ui.notifications.json",
+      "sha256": "c9176eb1f3a692cda0ce73c511862e729b039b38bf111277f8d56c6ebfc6e50c"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.notifications.context.json",
+      "sha256": "3804068c75073ce9663f73539b508cbb46e495488dc47e5dd97aa80fd1a6918e"
+    }
+  },
+  "guidance": {
+    "glossary": {
+      "path": "i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "i18n/style-guides/fr.md",
+      "sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+    },
+    "ui_i18n_howto": {
+      "path": "docs/I18N.md",
+      "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+    },
+    "ui_agent_instructions": {
+      "path": "AGENTS.md",
+      "sha256": "b05f5fd1472fe1617783e51bc709df8e6f079a87ceda0f2ff97fff539be320af"
+    }
+  },
+  "findings": [
+    {
+      "id": "FR-UI-1",
+      "severity": "MINOR",
+      "key": "ui.notifications.nav.unread",
+      "current_text": "Notifications, {count, plural, one {{countText} non lue} many {{countText} de non-lues} other {{countText} non lues}}",
+      "proposed_text": "Notifications, {count, plural, one {{countText} non lue} many {{countText} de notifications non lues} other {{countText} non lues}}",
+      "reason": "The many branch produces “1000000 de non-lues”: a stilted substantivized participle; name the omitted noun after de while retaining the numeric selector and countText.",
+      "evidence": "Real IntlMessageFormat output at count=1000000: Notifications, 1000000 de non-lues",
+      "disposition": "proposed; not edited; non-blocking idiom finding"
+    },
+    {
+      "id": "FR-UI-2",
+      "severity": "MINOR",
+      "key": "ui.notifications.time.now",
+      "current_text": "à l’instant",
+      "proposed_text": "à l’instant",
+      "reason": "Keep the idiomatic wording pending a rendered narrow-column check: now is 3 code points versus à l’instant at 11; static expansion is a width risk, not demonstrated clipping.",
+      "evidence": "Real formatter output measured with JS [...text].length: 3 -> 11; context calls this a very short label in a narrow time column.",
+      "disposition": "rendered-fit check assigned to design/QA; no screenshot or overflow claim",
+      "related_keys": [
+        "ui.notifications.page.subtitle",
+        "ui.notifications.page.refresh",
+        "ui.notifications.page.checking",
+        "ui.notifications.page.unavailable",
+        "ui.notifications.page.loading",
+        "ui.notifications.page.list_label",
+        "ui.notifications.filter.read_state",
+        "ui.notifications.filter.kind_updates",
+        "ui.notifications.filter.from_all",
+        "ui.notifications.filter.group",
+        "ui.notifications.filter.clear",
+        "ui.notifications.action.mark_all_read",
+        "ui.notifications.group.waiting",
+        "ui.notifications.group.today",
+        "ui.notifications.group.week",
+        "ui.notifications.group.older",
+        "ui.notifications.row.mark_read",
+        "ui.notifications.row.mark_unread",
+        "ui.notifications.row.select",
+        "ui.notifications.read_via.explicit",
+        "ui.notifications.select.all",
+        "ui.notifications.select.clear",
+        "ui.notifications.select.mark_read",
+        "ui.notifications.select.mark_unread",
+        "ui.notifications.ask.stays",
+        "ui.notifications.detail.label",
+        "ui.notifications.detail.close",
+        "ui.notifications.detail.back",
+        "ui.notifications.detail.open_conversation",
+        "ui.notifications.detail.kind.update",
+        "ui.notifications.detail.meta.updates_since",
+        "ui.notifications.detail.section.history",
+        "ui.notifications.detail.history.show_all",
+        "ui.notifications.detail.more.copy_link",
+        "ui.notifications.detail.gone.dismissed",
+        "ui.notifications.detail.empty",
+        "ui.notifications.detail.loading",
+        "ui.notifications.detail.error",
+        "ui.notifications.toast.marked_read",
+        "ui.notifications.toast.marked_unread",
+        "ui.notifications.empty.caught_up.show_all",
+        "ui.notifications.empty.none.title",
+        "ui.notifications.error.load.title",
+        "ui.notifications.error.refresh.title",
+        "ui.notifications.error.refresh.body",
+        "ui.notifications.new_pill",
+        "ui.notifications.drawer.tabs_label",
+        "ui.notifications.drawer.tab.updates",
+        "ui.notifications.drawer.tab.all",
+        "ui.notifications.drawer.mark_read",
+        "ui.notifications.drawer.show_in_conversation",
+        "ui.notifications.drawer.footer",
+        "ui.notifications.drawer.open_notifications"
+      ]
+    }
+  ],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 2,
+    "nit": 0
+  },
+  "mechanical_checks": {
+    "keys": 130,
+    "parsed_messages": 260,
+    "formatted_french_messages": 650,
+    "plural_arguments": 9,
+    "argument_and_type_parity": "PASS",
+    "select_and_exact_branch_parity": "PASS",
+    "branch_local_placeholders_and_pounds": "PASS",
+    "cldr": "PASS",
+    "no_visual_fit_claim": true,
+    "existing_french_parity_guard": {
+      "command": "node --test --test-name-pattern=^\\[fr\\] scripts/i18n/locale-parity.test.mjs",
+      "exit_code": 0,
+      "tests_passed": 6,
+      "tests_failed": 0,
+      "test_source_sha256": "86c666e4147ed3c795922a108f210baa23497d12455325c1b9b544ae0521ec0f"
+    }
+  },
+  "observations": [
+    "Three locale-scoped fr cognate IDENTICAL_OK allowances are present at guard execution; no outstanding guard repair and no test edits by this auditor.",
+    "row.updated_ago neutral phrasing verified against caller clock/date/duration variants.",
+    "row.ask_options zero case is not emitted by caller; numeric value must be >0.",
+    "String-typed simple count arguments preserved without introducing numeric selectors."
+  ],
+  "width_screen": {
+    "metric": "Unicode code points, not pixels or terminal cells",
+    "threshold": "target/source >1.25 AND target-source >=5",
+    "rendered_fit": "not performed; independent design/QA later",
+    "samples": [
+      {
+        "key": "ui.notifications.page.subtitle",
+        "en_codepoints": 71,
+        "fr_codepoints": 92,
+        "ratio": 1.3,
+        "en": "Questions your agents are waiting on, and updates they flagged for you.",
+        "fr": "Les questions de vos agents en attente de réponse et les mises à jour qu’ils vous signalent.",
+        "role": "page subtitle under the heading",
+        "length": "One line under the title."
+      },
+      {
+        "key": "ui.notifications.page.refresh",
+        "en_codepoints": 21,
+        "fr_codepoints": 28,
+        "ratio": 1.33,
+        "en": "Refresh notifications",
+        "fr": "Actualiser les notifications",
+        "role": "icon button accessible name and tooltip",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.page.checking",
+        "en_codepoints": 43,
+        "fr_codepoints": 67,
+        "ratio": 1.56,
+        "en": "Checking the server's notifications support",
+        "fr": "Vérification de la prise en charge des notifications par le serveur",
+        "role": "spinner label while the app asks the backend which features it serves",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.page.unavailable",
+        "en_codepoints": 79,
+        "fr_codepoints": 99,
+        "ratio": 1.25,
+        "en": "This server doesn't serve notifications yet. Update Local Operator to use them.",
+        "fr": "Ce serveur ne fournit pas encore les notifications. Mettez à jour Local Operator pour les utiliser.",
+        "role": "notice shown when the backend predates the feature",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.page.loading",
+        "en_codepoints": 21,
+        "fr_codepoints": 28,
+        "ratio": 1.33,
+        "en": "Loading notifications",
+        "fr": "Chargement des notifications",
+        "role": "accessible label of the skeleton list while the first read is in flight",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.page.list_label",
+        "en_codepoints": 18,
+        "fr_codepoints": 23,
+        "ratio": 1.28,
+        "en": "Notifications list",
+        "fr": "Liste des notifications",
+        "role": "accessible name of the list grid",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.filter.read_state",
+        "en_codepoints": 10,
+        "fr_codepoints": 15,
+        "ratio": 1.5,
+        "en": "Read state",
+        "fr": "État de lecture",
+        "role": "accessible name of the Unread/All segmented control",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.filter.kind_updates",
+        "en_codepoints": 7,
+        "fr_codepoints": 12,
+        "ratio": 1.71,
+        "en": "Updates",
+        "fr": "Mises à jour",
+        "role": "filter value: items an agent flagged with the notify tool",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.filter.from_all",
+        "en_codepoints": 17,
+        "fr_codepoints": 24,
+        "ratio": 1.41,
+        "en": "All conversations",
+        "fr": "Toutes les conversations",
+        "role": "filter value: every conversation",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.filter.group",
+        "en_codepoints": 5,
+        "fr_codepoints": 11,
+        "ratio": 2.2,
+        "en": "Group",
+        "fr": "Grouper par",
+        "role": "grouping menu label",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.filter.clear",
+        "en_codepoints": 13,
+        "fr_codepoints": 19,
+        "ratio": 1.46,
+        "en": "Clear filters",
+        "fr": "Effacer les filtres",
+        "role": "text button that resets every filter to its default",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.action.mark_all_read",
+        "en_codepoints": 13,
+        "fr_codepoints": 21,
+        "ratio": 1.62,
+        "en": "Mark all read",
+        "fr": "Tout marquer comme lu",
+        "role": "toolbar button: mark every item the page has loaded as read",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.group.waiting",
+        "en_codepoints": 14,
+        "fr_codepoints": 27,
+        "ratio": 1.93,
+        "en": "Waiting on you",
+        "fr": "En attente de votre réponse",
+        "role": "list group heading for live asks pinned at the top",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.group.today",
+        "en_codepoints": 5,
+        "fr_codepoints": 11,
+        "ratio": 2.2,
+        "en": "Today",
+        "fr": "Aujourd’hui",
+        "role": "time group heading",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.group.week",
+        "en_codepoints": 17,
+        "fr_codepoints": 22,
+        "ratio": 1.29,
+        "en": "Earlier this week",
+        "fr": "Plus tôt cette semaine",
+        "role": "time group heading",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.group.older",
+        "en_codepoints": 5,
+        "fr_codepoints": 14,
+        "ratio": 2.8,
+        "en": "Older",
+        "fr": "Plus anciennes",
+        "role": "time group heading",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.row.mark_read",
+        "en_codepoints": 9,
+        "fr_codepoints": 16,
+        "ratio": 1.78,
+        "en": "Mark read",
+        "fr": "Marquer comme lu",
+        "role": "row icon button accessible name and tooltip",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.row.mark_unread",
+        "en_codepoints": 11,
+        "fr_codepoints": 20,
+        "ratio": 1.82,
+        "en": "Mark unread",
+        "fr": "Marquer comme non lu",
+        "role": "row icon button accessible name and tooltip",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.row.select",
+        "en_codepoints": 14,
+        "fr_codepoints": 20,
+        "ratio": 1.43,
+        "en": "Select Exemple",
+        "fr": "Sélectionner Exemple",
+        "role": "row checkbox accessible name",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.time.now",
+        "en_codepoints": 3,
+        "fr_codepoints": 11,
+        "ratio": 3.67,
+        "en": "now",
+        "fr": "à l’instant",
+        "role": "compact age for under a minute",
+        "length": "Very short; sits in a narrow time column."
+      },
+      {
+        "key": "ui.notifications.read_via.explicit",
+        "en_codepoints": 11,
+        "fr_codepoints": 17,
+        "ratio": 1.55,
+        "en": "Marked read",
+        "fr": "Marquée comme lue",
+        "role": "provenance word in the drawer for a row the user read themselves",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.select.all",
+        "en_codepoints": 10,
+        "fr_codepoints": 17,
+        "ratio": 1.7,
+        "en": "Select all",
+        "fr": "Tout sélectionner",
+        "role": "select-all checkbox accessible name",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.select.clear",
+        "en_codepoints": 15,
+        "fr_codepoints": 20,
+        "ratio": 1.33,
+        "en": "Clear selection",
+        "fr": "Effacer la sélection",
+        "role": "selection bar text button",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.select.mark_read",
+        "en_codepoints": 9,
+        "fr_codepoints": 16,
+        "ratio": 1.78,
+        "en": "Mark read",
+        "fr": "Marquer comme lu",
+        "role": "selection bar button",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.select.mark_unread",
+        "en_codepoints": 11,
+        "fr_codepoints": 20,
+        "ratio": 1.82,
+        "en": "Mark unread",
+        "fr": "Marquer comme non lu",
+        "role": "selection bar button",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.ask.stays",
+        "en_codepoints": 33,
+        "fr_codepoints": 43,
+        "ratio": 1.3,
+        "en": "Asks stay until they're answered.",
+        "fr": "Les demandes restent jusqu’à votre réponse.",
+        "role": "polite announcement when the user tries to dismiss a live ask",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.detail.label",
+        "en_codepoints": 20,
+        "fr_codepoints": 26,
+        "ratio": 1.3,
+        "en": "Notification details",
+        "fr": "Détails de la notification",
+        "role": "accessible name of the detail pane",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.detail.close",
+        "en_codepoints": 13,
+        "fr_codepoints": 18,
+        "ratio": 1.38,
+        "en": "Close details",
+        "fr": "Fermer les détails",
+        "role": "icon button that closes the detail pane",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.detail.back",
+        "en_codepoints": 17,
+        "fr_codepoints": 24,
+        "ratio": 1.41,
+        "en": "All notifications",
+        "fr": "Toutes les notifications",
+        "role": "back link on a narrow window, returns to the list",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.detail.open_conversation",
+        "en_codepoints": 17,
+        "fr_codepoints": 22,
+        "ratio": 1.29,
+        "en": "Open conversation",
+        "fr": "Ouvrir la conversation",
+        "role": "primary button that jumps to the source conversation",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.detail.kind.update",
+        "en_codepoints": 6,
+        "fr_codepoints": 11,
+        "ratio": 1.83,
+        "en": "Update",
+        "fr": "Mise à jour",
+        "role": "kind label in the detail header",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.detail.meta.updates_since",
+        "en_codepoints": 21,
+        "fr_codepoints": 27,
+        "ratio": 1.29,
+        "en": "2 updates since 14:05",
+        "fr": "2 mises à jour depuis 14:05",
+        "role": "detail meta line for a collapsed repeat",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.detail.section.history",
+        "en_codepoints": 15,
+        "fr_codepoints": 24,
+        "ratio": 1.6,
+        "en": "Earlier updates",
+        "fr": "Mises à jour précédentes",
+        "role": "detail section heading above collapsed repeats",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.detail.history.show_all",
+        "en_codepoints": 10,
+        "fr_codepoints": 17,
+        "ratio": 1.7,
+        "en": "Show all 2",
+        "fr": "Tout afficher (2)",
+        "role": "button that expands the earlier updates list",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.detail.more.copy_link",
+        "en_codepoints": 9,
+        "fr_codepoints": 14,
+        "ratio": 1.56,
+        "en": "Copy link",
+        "fr": "Copier le lien",
+        "role": "overflow menu item copying the notification's in-app link",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.detail.gone.dismissed",
+        "en_codepoints": 37,
+        "fr_codepoints": 55,
+        "ratio": 1.49,
+        "en": "This was dismissed on another device.",
+        "fr": "Cette notification a été ignorée sur un autre appareil.",
+        "role": "notice in an open detail when the item was dismissed elsewhere",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.detail.empty",
+        "en_codepoints": 41,
+        "fr_codepoints": 55,
+        "ratio": 1.34,
+        "en": "Select a notification to see its details.",
+        "fr": "Sélectionnez une notification pour en voir les détails.",
+        "role": "detail pane placeholder when nothing is open",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.detail.loading",
+        "en_codepoints": 15,
+        "fr_codepoints": 22,
+        "ratio": 1.47,
+        "en": "Loading details",
+        "fr": "Chargement des détails",
+        "role": "accessible label while the detail read is in flight",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.detail.error",
+        "en_codepoints": 32,
+        "fr_codepoints": 41,
+        "ratio": 1.28,
+        "en": "Couldn't load this notification.",
+        "fr": "Impossible de charger cette notification.",
+        "role": "detail pane error",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.toast.marked_read",
+        "en_codepoints": 13,
+        "fr_codepoints": 23,
+        "ratio": 1.77,
+        "en": "Marked 2 read",
+        "fr": "Marquées comme lues : 2",
+        "role": "toast after mark read",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.toast.marked_unread",
+        "en_codepoints": 15,
+        "fr_codepoints": 27,
+        "ratio": 1.8,
+        "en": "Marked 2 unread",
+        "fr": "Marquées comme non lues : 2",
+        "role": "toast after mark unread",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.empty.caught_up.show_all",
+        "en_codepoints": 22,
+        "fr_codepoints": 33,
+        "ratio": 1.5,
+        "en": "Show all notifications",
+        "fr": "Afficher toutes les notifications",
+        "role": "empty state button that switches to the All filter",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.empty.none.title",
+        "en_codepoints": 20,
+        "fr_codepoints": 34,
+        "ratio": 1.7,
+        "en": "No notifications yet",
+        "fr": "Aucune notification pour l’instant",
+        "role": "empty state title when nothing has ever arrived",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.error.load.title",
+        "en_codepoints": 28,
+        "fr_codepoints": 40,
+        "ratio": 1.43,
+        "en": "Couldn't load notifications.",
+        "fr": "Impossible de charger les notifications.",
+        "role": "first-load error title",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.error.refresh.title",
+        "en_codepoints": 31,
+        "fr_codepoints": 42,
+        "ratio": 1.35,
+        "en": "Couldn't refresh notifications.",
+        "fr": "Impossible d’actualiser les notifications.",
+        "role": "refresh error notice title above a stale list",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.error.refresh.body",
+        "en_codepoints": 118,
+        "fr_codepoints": 150,
+        "ratio": 1.27,
+        "en": "The local server didn't answer. Showing what loaded at 14:05 — dismissing and marking read are paused until it's back.",
+        "fr": "Le serveur local n’a pas répondu. Affichage des données chargées à 14:05 — les actions Ignorer et Marquer comme lu sont suspendues jusqu’à son retour.",
+        "role": "refresh error notice body",
+        "length": "One or two lines."
+      },
+      {
+        "key": "ui.notifications.new_pill",
+        "en_codepoints": 5,
+        "fr_codepoints": 13,
+        "ratio": 2.6,
+        "en": "2 new",
+        "fr": "Nouvelles : 2",
+        "role": "pill at the top of the list when items arrived while scrolled",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.drawer.tabs_label",
+        "en_codepoints": 16,
+        "fr_codepoints": 24,
+        "ratio": 1.5,
+        "en": "Asks and updates",
+        "fr": "Demandes et mises à jour",
+        "role": "accessible name of the drawer tab strip",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.drawer.tab.updates",
+        "en_codepoints": 7,
+        "fr_codepoints": 12,
+        "ratio": 1.71,
+        "en": "Updates",
+        "fr": "Mises à jour",
+        "role": "drawer tab",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.drawer.tab.all",
+        "en_codepoints": 17,
+        "fr_codepoints": 24,
+        "ratio": 1.41,
+        "en": "All conversations",
+        "fr": "Toutes les conversations",
+        "role": "drawer tab showing asks across every conversation",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.drawer.mark_read",
+        "en_codepoints": 9,
+        "fr_codepoints": 21,
+        "ratio": 2.33,
+        "en": "Mark read",
+        "fr": "Tout marquer comme lu",
+        "role": "drawer group action: mark this conversation's unread updates read",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.drawer.show_in_conversation",
+        "en_codepoints": 20,
+        "fr_codepoints": 29,
+        "ratio": 1.45,
+        "en": "Show in conversation",
+        "fr": "Afficher dans la conversation",
+        "role": "icon button that scrolls the transcript to the flag line",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.drawer.footer",
+        "en_codepoints": 35,
+        "fr_codepoints": 45,
+        "ratio": 1.29,
+        "en": "Updates from this conversation only",
+        "fr": "Mises à jour de cette conversation uniquement",
+        "role": "drawer footer note",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      },
+      {
+        "key": "ui.notifications.drawer.open_notifications",
+        "en_codepoints": 18,
+        "fr_codepoints": 24,
+        "ratio": 1.33,
+        "en": "Open Notifications",
+        "fr": "Ouvrir les notifications",
+        "role": "drawer footer link to the full page filtered to this conversation",
+        "length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+      }
+    ]
+  },
+  "artifacts": [
+    {
+      "path": "/Users/damian/.local-operator/sessions/766adb539e6a/scratchpad/fr-notifications-audit/ui-fr-audit-report.md",
+      "sha256": "d7d49a11f0bf3a302e84ac5deedc120abdac14ef92e7709b1e957fd6a0edb4fb"
+    },
+    {
+      "path": "/Users/damian/.local-operator/sessions/766adb539e6a/scratchpad/fr-notifications-audit/ui-audit.log",
+      "sha256": "50a702b0b65e1fa2f69c65bd1b1cf29072c5ecdc541af17adcf078e15c40f3dc"
+    },
+    {
+      "path": "/Users/damian/.local-operator/sessions/766adb539e6a/scratchpad/fr-notifications-audit/ui-existing-parity.log",
+      "sha256": "1076f3a0057335694667cbf186dc08042c776a1d647b85dd7e7d64845b8f13aa"
+    },
+    {
+      "path": "/Users/damian/.local-operator/sessions/766adb539e6a/scratchpad/fr-notifications-audit/ui-parser-check.cjs",
+      "sha256": "8d580eeff8de21458495888b77f754bf982e554d7df38d3993ef7fe9cd664379"
+    }
+  ],
+  "limitations": [
+    "LLM linguistic audit; no human/native-speaker claim.",
+    "No rendered frames, native/Electron behavior, full-suite, activation or release claim.",
+    "No translation, code, ledger or git write; only requested audit evidence files created."
+  ]
+}

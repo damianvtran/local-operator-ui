@@ -1,0 +1,199 @@
+{
+	"schema": 1,
+	"kind": "translation-audit",
+	"audit_kind": "independent-nib-delta-audit-of-the-wave-b-zh-CN-nit",
+	"batch": "wave-b",
+	"round": "R2a (nib delta: one value, one namespace)",
+	"locale": "zh-CN",
+	"audit_date": "2026-10-27",
+	"branch": "i18n-wave-b",
+	"head": "fbd334629f",
+	"head_full": "fbd334629fab274a2b65337bd1490767d39baee1",
+	"parent": "a5356ce91c4f37bf4c4d1c4518070e3a9b2505cb",
+	"head_state": "committed; the audited file is clean in git status at this head (the worktree also carries other auditors' untracked evidence files, which this audit does not read or touch)",
+	"binding": "Binds the sha256 ef39c17d6fbc2a5f65661e8c97d8b2bab1657bfa0a2527359f1a0f348a7435d1 of the committed blob at fbd334629fab274a2b65337bd1490767d39baee1 for src/i18n/catalogues/zh-CN/ui.chat.device.json, read from disk, cross-checked against `git show <head>:<path>`, and re-hashed from a read-only `git archive` export in which the gates ran. A later commit that changes any audited value voids this receipt.",
+	"instance": "wb-zh-cn-nib-20261027-ca81be025b12",
+	"audit_id": "wb-nib-ca81be025b12",
+	"status": "passed",
+	"verdict": "passed",
+	"auditor": "i18n-auditor",
+	"model": "radient/auto",
+	"model_provenance": {
+		"route": "radient/auto",
+		"route_source": "the harness system prompt of this session ('Model: radient/auto')",
+		"fallback_used": false,
+		"fallback_chain": [],
+		"actual_model_source": "No [session incident] and no 'model switch' notice appears anywhere in this session's transcript (~/.local-operator/sessions/ca81be025b12/transcript.jsonl, 158 events, types message/custom only); grep finds the phrases only inside prompt text that quotes the guidance and inside this session's own tool output quoting that text. The upstream model behind the router alias is not exposed to this session, so none is invented: the route recorded is the one the harness reports.",
+		"disclosure": "Every judgement below was made in this session under the recorded route; no model change was requested or observed."
+	},
+	"session": "ca81be025b12",
+	"team": "lopdev",
+	"origin": {
+		"kind": "subagent",
+		"label": "Delta audit wave B zh-CN nib (ui.chat.device)",
+		"delegating_session": "the lopdev manager; the manager's session id is not exposed to this child"
+	},
+	"independence": "Independent NIB delta audit for zh-CN. This session wrote no catalogue byte and cannot edit the audited file; it read the committed bytes, the English source, the en context sidecar, the core glossary, the zh-CN style guide, the consuming renderer code and the predecessor audit's own record, and judged them against each other. The translation authorship is the wave's translation lane (agent i18n-translator, a different session); this run produced findings, the receipt and the records only. No translation or MT service was used to compare or back-translate anything.",
+	"auditor_continuity": "This session (ca81be025b12) is NOT the session that wrote ZH-WBD-1 (9b3e2c165c87, receipt wb-zh-cn-delta-20261027-9b3e2c165c87). Same auditor role, fresh session, and the fix is re-read here from the text rather than from that session's reasoning: the high-visibility second-pass request is satisfied by the session boundary, and the suggested wording was taken from the predecessor record's own bytes so 'it matches the suggestion' is checkable, not remembered.",
+	"source_dir": "src/i18n/catalogues/en",
+	"target_dir": "src/i18n/catalogues/zh-CN",
+	"predecessor": {
+		"receipt": "wb-zh-cn-delta-20261027-9b3e2c165c87",
+		"audited_head": "a5356ce91c4f37bf4c4d1c4518070e3a9b2505cb",
+		"where": "~/qa/wave-b-delta-zh-CN-deliver/changes/i18n/receipts/wb-zh-cn-delta-20261027-9b3e2c165c87.json",
+		"sha256": "c043021afcaf1512150ba2247483ac248f3fcc26983ae012750bbb29f10e3f1d",
+		"use": "Supplies the base bytes (its ui.chat.device target hash equals the blob at a5356ce91c here), the ZH-WBD-1 finding and suggested wording (compared byte for byte), and the eight sibling namespace hashes re-checked here."
+	},
+	"references": {
+		"glossary": {
+			"path": "i18n/glossary.md",
+			"repo": "local-operator (core)",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide": {
+			"path": "i18n/style-guides/zh-CN.md",
+			"repo": "local-operator (core)",
+			"sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+		},
+		"contract": {
+			"path": "docs/I18N.md",
+			"repo": "local-operator-ui"
+		},
+		"evidence_contract": {
+			"path": "i18n/audits/evidence/README.md",
+			"repo": "local-operator-ui"
+		}
+	},
+	"scope": "One namespace, one changed value. ZH-WBD-1 asked for ui.chat.device.sentence.local to read 此对话在此设备上运行。点击可将其迁移到其他设备，或稍后移回此处。; this audit verifies that the committed bytes carry exactly that value, that no other key or line of the file moved against a5356ce91c, that the other eight wave-B zh-CN namespaces are byte-unchanged, and that the change passes the repository gates, whole-catalogue terminology consistency, typography, register and fit checks.",
+	"delta": {
+		"base": "a5356ce91c4f37bf4c4d1c4518070e3a9b2505cb",
+		"head": "fbd334629fab274a2b65337bd1490767d39baee1",
+		"changed_values_zh_CN": {
+			"ui.chat.device.sentence.local": {
+				"was": "此对话在此设备上运行。点击可将其迁移到其他设备，或稍后召回。",
+				"now": "此对话在此设备上运行。点击可将其迁移到其他设备，或稍后移回此处。"
+			}
+		},
+		"changed_values_en": {},
+		"proof": "Parsed-JSON diff of the file at both commits: 25 keys each, identical order, exactly one value changed, one differing line of 27 (logs/delta-proof.log §3). The other eight namespaces' en, context and zh-CN hashes equal the predecessor receipt's (§4).",
+		"sibling_namespaces_unchanged": {
+			"ui.agents.config": {
+				"zh_CN_sha256": "417340255f620bb552045cf68cb3bbb0121d13d08111941b46cf7515a4137286",
+				"status": "unchanged"
+			},
+			"ui.chat": {
+				"zh_CN_sha256": "76bdcfd3abb2d67ecc49d87b078bd5a2d367b03d760c0a0ca20db59ebebd4a10",
+				"status": "unchanged"
+			},
+			"ui.chat.canonical": {
+				"zh_CN_sha256": "b1a3c93999622d6f2538e9252e8e17a4109f3c612525e3891f48f3db2fe0ffbc",
+				"status": "unchanged"
+			},
+			"ui.chat.pickers": {
+				"zh_CN_sha256": "78a402c9ac97417bd365fd98157390500c37c857bba179aaf0e83907ddd19028",
+				"status": "unchanged"
+			},
+			"ui.chat.run_details": {
+				"zh_CN_sha256": "0eb302844b1110be4748e72b361d126f865f208e3b02591e3b0b0d9a34a5b0b0",
+				"status": "unchanged"
+			},
+			"ui.chat.status": {
+				"zh_CN_sha256": "7fc957cfa3e777bd6d59fb7398b946637c3bca799a52f9008caddd4cd567d86e",
+				"status": "unchanged"
+			},
+			"ui.common.connection": {
+				"zh_CN_sha256": "b0a06d159014c977b4c6a58295564bd26eb70781fe512d39a1c6dbdbcb3ebf72",
+				"status": "unchanged"
+			},
+			"ui.common.layout": {
+				"zh_CN_sha256": "376260aa48e706b0a4bb9ab5ef3ca73bf97052cdc0eae1429b99b893591873b0",
+				"status": "unchanged"
+			}
+		}
+	},
+	"method": [
+		"Read the zh-CN style guide and the core glossary first, then the English source with its context sidecar, then the audited Chinese file — in that order, before judging any value.",
+		"Re-read every value of the namespace against English for meaning, polarity, register and terminology; the changed value got the full treatment and a second read after the mechanical checks.",
+		"Byte-compared the audited value to the ZH-WBD-1 suggestion read out of the predecessor record, and compared the raw file fragment too, so equality is not an artifact of JSON decoding.",
+		"Proved the delta by parsed-JSON and line diff against a5356ce91c rather than trusting a git stat: one changed value, no key added/dropped/reordered, one differing line.",
+		"Re-hashed the other eight wave-B zh-CN namespaces, and every en and context file, against the predecessor receipt to confirm this NIB disturbed none of them.",
+		"Ran the repository's own gates in a read-only `git archive` export of the audited head (generate --check, locale-parity, zh-CN activation, coverage, context-parity, duplicates) and two counterfactual controls so a green result means the gates discriminate.",
+		"Parsed both catalogues with the parity guard's own ICU parser and rendered every key through the app's own formatter (`new IntlMessageFormat(message, locale)`), including a before/after pair for the changed value and two negative controls.",
+		"Counted 召回 across all 95 zh-CN catalogue files and printed every 移回 site, then diffed the changed wording against the control it opens, the full refusal and its sibling.",
+		"Applied the style guide's rules mechanically to every value (full-width prose punctuation, no CJK/Latin spacing, no 您, no ASCII ellipsis, code spans byte-identical) and counted cells by the guide's 2-cells-per-CJK rule."
+	],
+	"validation": {
+		"delta_proof": "python3 tools/delta-proof.py -> RESULT: PASS (0 failures); one changed value, one differing line, 8/9 namespaces byte-unchanged",
+		"generate_check": "node scripts/i18n/generate.mjs --check -> keys.gen.ts byte-identical to a fresh generation (exit 0)",
+		"locale_parity": "node --test scripts/i18n/locale-parity.test.mjs -> tests 44, pass 44, fail 0",
+		"zh_cn_activation": "node --test scripts/i18n/zh-CN-activation.test.mjs -> tests 3, pass 3, fail 0",
+		"coverage": "node scripts/i18n/check-coverage.mjs -> ok (7 gated languages over 95 namespaces; 0 allowed keys remain)",
+		"context_parity": "node scripts/i18n/context-parity.mjs -> ok (131 allowed gaps in 4 namespaces, shrink-only)",
+		"duplicates": "node scripts/i18n/check-duplicates.mjs -> ok, 853 files, 0 duplicate keys",
+		"gate_controls": "appending one line to keys.gen.ts -> generate --check exit 1; adding a key en does not define -> locale-parity exit 1 (both restored, audited hashes re-verified)",
+		"icu": "node .audit-tools/icu-render-nib.mjs -> 25 keys, placeholder parity problems 0, zh-CN CLDR plural categories [other], render failures 0, TOTAL PROBLEMS 0",
+		"terminology": "bash tools/checks.sh -> 95 files, 0 occurrences of 召回, 7 移回 sites, 0 control mismatches",
+		"typography": "python3 tools/typography.py -> PROBLEMS 0; changed value 64 cells vs EN 93 (pre-fix 60)"
+	},
+	"namespaces": {
+		"ui.chat.device": {
+			"namespace": "ui.chat.device",
+			"keys": 25,
+			"wave_b_keys": 11,
+			"changed_keys": [
+				"ui.chat.device.sentence.local"
+			],
+			"sha256": {
+				"en": "0d4c357edbb9a67d015301f263e3892f752aca9ee63a3d5c737bf12a9ac6375a",
+				"zh-CN": "ef39c17d6fbc2a5f65661e8c97d8b2bab1657bfa0a2527359f1a0f348a7435d1"
+			},
+			"context_sha256": "b3f41c2c587de6559aa52fe15ab2cfdda521df44b770b76ac8160855fd5c4a7a",
+			"findings": [],
+			"counts": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"status": "passed",
+			"verdict": "clean",
+			"scope": "All 25 keys read against English; one value changed (ZH-WBD-1 resolved byte-identically). The other 24 values are byte-identical to the bytes the predecessor receipt audited."
+		}
+	},
+	"resolutions": [
+		{
+			"id": "ZH-WBD-1",
+			"severity_in_earlier_audit": "MINOR",
+			"namespace": "ui.chat.device",
+			"key": "ui.chat.device.sentence.local",
+			"earlier_suggestion": "此对话在此设备上运行。点击可将其迁移到其他设备，或稍后移回此处。",
+			"applied": "此对话在此设备上运行。点击可将其迁移到其他设备，或稍后移回此处。",
+			"decision": "resolved",
+			"judgement": "Applied byte for byte (sha256 of the value's UTF-8 is bcbe196ed542167ee563b5237f1156da258b2926d0d26253b6bc8c06f60b15b7 for both the suggestion and the audited bytes). It is the right fix, not merely the requested one: 移回 is now the locale's only verb for recall (7 sites, 0 occurrences of 召回), the sentence keeps both halves of the affordance, and it is 4 cells longer than the pre-fix wording while still 29 cells shorter than English.",
+			"checked": "sentence reads 此对话在此设备上运行。点击可将其迁移到其他设备，或稍后移回此处。 (64 cells vs EN 93)."
+		}
+	],
+	"findings": [],
+	"findings_note": "No new finding at any severity. The receipt-wide list is empty on purpose; the namespace block carries the counts the ledger reads. The only open defect from the predecessor receipt (ZH-WBD-1) is resolved and recorded under resolutions, not counted again.",
+	"totals": {
+		"keys_audited": 25,
+		"changed_values_reaudited": 1,
+		"unchanged_values_proven": 24,
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 0
+	},
+	"observations_not_findings": [
+		"ui.chat.device.sentence.gone / gone_did_not_answer render EN's 'bring it back here' as 带回此处, a different English verb from 'recall'. Kept: the source says a different thing there (carried from the predecessor report, still out of scope).",
+		"ui.chat.device.label.on is 12 cells against EN's 9 (+3) and label.moving_to 14 against 16; both stay under their maxCells hints (20 and 24). The only +delta on a visible label is label.on, which is 12 of 20 — no truncation risk at any width the chip truncates at.",
+		"The commit fbd334629f also carries an unrelated ur/ui.chat.pickers.json trailing-full-stop nit. It is outside this audit's namespace and was not read as evidence for anything here."
+	],
+	"limitations": [
+		"No browser or rendered frame was available, so no pixel, truncation or overflow claim is made; widths are codepoint cell counts, not measurements.",
+		"No native-speaker sign-off is claimed; the audit is an independent agent read of the locale against its own shipped catalogue, the glossary and the style guide.",
+		"The English copy was read as the source, not audited as English.",
+		"The upstream model behind the radient/auto route is not exposed to this session; the recorded route is the harness's own.",
+		"The predecessor's nine-namespace bundle was consumed as evidence (hashes and finding text) but not re-litigated as an audit."
+	]
+}

@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * The accessible name of one canvas view-switcher segment.
  *
@@ -24,14 +25,33 @@
  * A `files` count has no cap to admit — the documents are the open tabs the strip
  * already prints — so that segment calls this with `truncated` unset and keeps the
  * shipped shape.
+ *
+ * BOTH SPELLINGS ARE CALLER INPUT. Round 1 derived the plural by comparing the
+ * already-localized singular against `t("…file")` / `t("…goal")`, which made the
+ * plural depend on catalogue copy: in any other language neither branch matched
+ * and the fallback appended an English `s`. The caller knows the segment's kind,
+ * so it passes the catalogue plural explicitly and this function only formats.
  */
 export const viewSegmentName = (
 	label: string,
 	noun: string,
+	pluralNoun: string,
 	counted: number,
 	truncated = false,
 ): string => {
-	const count = `${counted} ${counted === 1 ? noun : `${noun}s`}`;
-	if (truncated) return `${label} view, ${count} shown — this list is capped`;
-	return counted > 0 ? `${label} view, ${count}` : `${label} view`;
+	if (truncated)
+		return t("ui.canvas.view_name.view_shown_this_list_is_capped", {
+			label: label,
+			counted: counted,
+			noun: noun,
+			pluralnoun: pluralNoun,
+		});
+	return counted > 0
+		? t("ui.canvas.view_name.view_count", {
+				label: label,
+				counted: counted,
+				noun: noun,
+				pluralnoun: pluralNoun,
+			})
+		: t("ui.canvas.view_name.view_empty", { label: label });
 };

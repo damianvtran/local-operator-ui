@@ -1,0 +1,10 @@
+{
+	"ui.chat.sidebar_notes.clear_all_why": "草稿正在发送——发送完成后才能清除",
+	"ui.chat.sidebar_notes.draft_sending_why": "正在发送——发送完成后才能放弃此草稿",
+	"ui.chat.sidebar_notes.loading_more": "正在加载更多对话……",
+	"ui.chat.sidebar_notes.opened_by_anonymous": "由智能体打开",
+	"ui.chat.sidebar_notes.opened_by_named": "由{agent}打开",
+	"ui.chat.sidebar_notes.running_none": "目前没有正在运行的对话。",
+	"ui.chat.sidebar_notes.running_unread": "守护进程无法读取哪些对话正在运行，因此此列表可能不完整。",
+	"ui.chat.sidebar_notes.stale_list": "{message}显示的是上次加载的对话。"
+}

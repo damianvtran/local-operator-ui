@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 2, of the 11 PR #1923 keys changed or added in a13d83ce2d in this namespace (scope: ui.browser.extensions.install_compat_note, ui.browser.extensions.details_desktop_apps, ui.browser.extensions.desktop_apps_none, ui.browser.extensions.native_confirm_body, ui.browser.extensions.native_confirm_host, ui.browser.extensions.native_confirm_note, ui.browser.extensions.native_confirm_deny, ui.browser.extensions.desktop_apps_refused, ui.browser.extensions.desktop_apps_ask_again, ui.browser.extensions.desktop_apps_ask_again_label, ui.browser.extensions.desktop_apps_onepassword_hint); unchanged keys audited in round 1 retained, out of scope",
+  "locale": "ru",
+  "namespace": "ui.browser.extensions",
+  "pr": 1923,
+  "date": "2026-11-14",
+  "head": "f59e7ef91429cc852d37c5baf29cbd8ad3bc251e",
+  "instance": "pr1923-ru-browser-extensions-r2-7eabf9fa",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "role": "independent translation auditor (team lopdev, task role); not the translator (coder subagent 4da329ae5783 on anthropic/claude-opus-5-5)",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session b991792b78a2: a different session and agent from the round-2 translator (coder 4da329ae5783) and from the round-1 auditor; same served model family anthropic/claude-opus-5-5 as stated by this session's harness system prompt, no fallback. No MT used.",
+    "instance": "pr1923-ru-browser-extensions-r2-7eabf9fa"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean",
+  "findings": [],
+  "binding": "Verified at f59e7ef91429: target src/i18n/catalogues/ru/ui.browser.extensions.json (sha256 cfa2da646d5f67a24c5b9f70726cc0c7a6aa6d1143c1f1080b1b25b46d0a8ce2); English src/i18n/catalogues/en/ui.browser.extensions.json (sha256 a44227481ff49391518de21a6596d0474697cd7245e9d6cac947d6e130edc58d); context sidecar sha256 7ae7fff463c0091b607fe47e728b1d60268843c40d40f7779e36d2bafd3f8df5. Checks (python): key set equals English, ICU argument names identical to English for all 11 keys (incl. new {app} in native_confirm_body and desktop_apps_ask_again_label), values NFC, no Cf characters. 1Password menu labels checked against 1Password's own UI strings read from the installed app (/Applications/1Password.app/Contents/Frameworks/index.node; 1Password ships fr, es, ru, zh-CN but not vi, hi, ur per its App Store language list). 1Password ru: Настройки / Браузер / Добавить браузер (match); 'Не разрешено' agrees with приложение (n.); «» without spaces per ru style; 'приложение для компьютера' matches round-1 term. Values: install_compat_note = 'Некоторые возможности расширений Chrome могут не работать в этом браузере.' (74/60 chars, 1.23x) | details_desktop_apps = 'Разрешённые приложения для компьютера' (37/20 chars, 1.85x) | desktop_apps_none = 'Пока нет. Разрешение будет запрошено, когда расширению впервые понадобится приложение для компьютера.' (101/75 chars, 1.35x) | native_confirm_body = '«{name}» хочет обмениваться сообщениями с {app} — программой, установленной на этом компьютере.' (95/85 chars, 1.12x) | native_confirm_host = 'Хост: {host}' (12/12 chars, 1.00x) | native_confirm_note = 'Разрешайте только приложениям, которым доверяете. Изменить ответ можно позже на странице сведений о расширении.' (111/92 chars, 1.21x) | native_confirm_deny = 'Не разрешать' (12/11 chars, 1.09x) | desktop_apps_refused = 'Не разрешено' (12/11 chars, 1.09x) | desktop_apps_ask_again = 'Спросить снова' (14/9 chars, 1.56x) | desktop_apps_ask_again_label = 'Спросить снова, прежде чем {app} сможет подключиться' (52/34 chars, 1.53x) | desktop_apps_onepassword_hint = 'Если 1Password по-прежнему не может связаться с приложением для компьютера, откройте 1Password, перейдите в «Настройки → Браузер → Добавить браузер» и выберите Local Operator.' (175/134 chars, 1.31x)",
+  "scope": "ui.browser.extensions for ru: 11 PR #1923 round-2 keys at branch head f59e7ef91429",
+  "revisions": {
+    "head": "f59e7ef91429cc852d37c5baf29cbd8ad3bc251e"
+  },
+  "en_sha256": "a44227481ff49391518de21a6596d0474697cd7245e9d6cac947d6e130edc58d",
+  "context_sha256": "7ae7fff463c0091b607fe47e728b1d60268843c40d40f7779e36d2bafd3f8df5",
+  "target_sha256": "cfa2da646d5f67a24c5b9f70726cc0c7a6aa6d1143c1f1080b1b25b46d0a8ce2",
+  "sha256": {
+    "ru": "cfa2da646d5f67a24c5b9f70726cc0c7a6aa6d1143c1f1080b1b25b46d0a8ce2",
+    "en": "a44227481ff49391518de21a6596d0474697cd7245e9d6cac947d6e130edc58d"
+  }
+}

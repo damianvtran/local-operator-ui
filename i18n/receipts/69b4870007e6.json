@@ -1,0 +1,90 @@
+{
+  "schema": 1,
+  "auditor": "reviewer (response-actions-audit)",
+  "model": "deepseek/deepseek-flash",
+  "instance": "69b4870007e6",
+  "date": "2026-10-18",
+  "status": "passed",
+  "scope": "First audit of the new one-key namespace ui.chat.response_actions in the four full-coverage locales (es, fr, ru, zh-CN) at head a64412e944. English landed with #1185; this commit adds the four translations and regenerates keys.gen.ts. Each value judged for accuracy/scope (screen-reader name for a settled non-closing response, distinct from the 'Answer actions' toolbar), idiom/register against that locale's own chat corpus, typography, and mechanics (key set, placeholders, parse, bytes).",
+  "head": "a64412e944c8e43bc5d3e75f05a8ad50a6623ec4",
+  "branch": "fix/i18n-response-actions-fill",
+  "worktree": ".worktrees/response-actions-fill",
+  "parent_instance": "7b57469f74f6",
+  "namespace": "ui.chat.response_actions",
+  "namespaces": {
+    "ui.chat.response_actions": {
+      "status": "passed",
+      "sha256": {
+        "en": "3c3e9480cf38316dda324d31e127ab9e63e2bf846c8e46f8efee7306fe4e47d5",
+        "es": "93158dd21279839c79f8055143a449bd812f0f9a7b2bc95487cefd9568caaeb2",
+        "fr": "22255dc9c6c29eb3b5a9409d79fc4b35bc41301f624c2c1d100c4ff908dae4d8",
+        "ru": "2352b3d5d9c99e8b07b39f7f922f48afb39b7f7a1403398961b17f95f2c02c36",
+        "zh-CN": "f697f5879bd07dc0f5c72e8357c2f2e8ba301d58071af156cc52ca4ac34ab8ed"
+      },
+      "keys": 1,
+      "key_names": [
+        "ui.chat.response_actions.label"
+      ]
+    }
+  },
+  "findings": [],
+  "keys_audited": 1,
+  "locales": [
+    "es",
+    "fr",
+    "ru",
+    "zh-CN"
+  ],
+  "locale_verdicts": {
+    "es": {
+      "value": "Acciones de la respuesta",
+      "verdict": "pass",
+      "note": "Genitive pattern matches this catalogue's own action labels (Acciones de la conversación, Acciones de la imagen, Acciones del archivo); 'respuesta' is its noun for a settled response (ui.settings.appearance 'Por respuesta'). Sentence case, no trailing punctuation, no placeholder."
+    },
+    "fr": {
+      "value": "Actions de la réponse",
+      "verdict": "pass",
+      "note": "Matches Actions de la conversation; 'réponse' is the corpus noun (Par réponse, réponse finale). No ':'/'!'/'?' so the U+202F rule is not exercised; no apostrophe so the U+2019 rule is not exercised; é is NFC. No trailing punctuation."
+    },
+    "ru": {
+      "value": "Действия с ответом",
+      "verdict": "pass",
+      "note": "'Действия с ответом' (instrumental) is correct and is the locale's established pattern: Действия с разговором, Действия с файлом, Действия с вкладкой, Действия с изображением. The genitive 'Действия ответа' would be a calque of the English possessive and ungrammatical as a toolbar name - the response does not own the actions. 'ответ' is the corpus noun for the reply (По ответам, финальный ответ)."
+    },
+    "zh-CN": {
+      "value": "回复操作",
+      "verdict": "pass",
+      "note": "操作 is this catalogue's only word for UI actions (45 occurrences; 动作 appears 0 times) and the label mirrors 对话操作. 回复 is the corpus noun for a response (按回复; 保留每条已完成的回复). '回复动作' would use the physical-motion word and is wrong. No spaces, no full-width mark needed on a short label, none present."
+    }
+  },
+  "observations": [
+    {
+      "severity": "INFO",
+      "key": "ui.chat.response_actions.label",
+      "note": "Distinctness from the sibling toolbars holds as strings today, but it is carried by the fact that those siblings are still hardcoded English: ANSWER_ACTIONS_LABEL = 'Answer actions' and USER_ACTIONS_LABEL = 'Your message actions' (src/renderer/src/features/chat/canonical/message-actions.ts:201,204) do not go through the catalogue, so every locale announces them in English. es/fr/ru use one noun for both answer and response (respuesta/réponse/ответ); if those constants are ever localized, the answer label needs a qualifier (e.g. 'réponse finale', 'финальный ответ') to keep the two toolbar names distinct. Out of scope for this one-key namespace and not a defect in these values; recorded so the follow-up is not lost."
+    },
+    {
+      "severity": "INFO",
+      "key": "ui.chat.response_actions.label",
+      "note": "Scope wording check: the repo has seven locale directories, but only es, fr, ru and zh-CN are full-coverage (each carries exactly the 2992 English keys). hi and vi carry 143 keys each and are partial tranches by design (scripts/i18n/hi-activation.test.mjs and vi-activation.test.mjs assert that uncarried namespaces use the English source). The commit's 'four shipped locales' is therefore accurate; hi/vi fall back to 'Response actions' (confirmed at runtime)."
+    },
+    {
+      "severity": "INFO",
+      "key": "ui.chat.response_actions.label",
+      "note": "Context siblings are English-only in this repo (52 *.context.json under en/, zero in every other locale), so the absence of es/fr/ru/zh-CN sidecars is the established shape, not a gap. No core glossary or native style guide is tracked in this repository (docs/I18N.md:110 references one); conformance was judged against each locale's own catalogue corpus plus the English sidecar."
+    }
+  ],
+  "evidence": {
+    "mechanical": "Exactly one key per locale file; key set identical to English in all four (computed set equality); no braces/ICU placeholders in any value; all five files parse as JSON; UTF-8, no BOM, LF, trailing newline, tab indentation, NFC; no control, NBSP, U+202F or other invisible characters in any value; leading/trailing whitespace none.",
+    "typography": "No value ends in '.', '!', '?', '。', '！', '？', ':' or '：'; the four comparable action labels in the corpus (Acciones de la conversación / Actions de la conversation / Действия с разговором / 对话操作) carry none either. fr: U+202F and U+2019 rules do not apply (the label has no ':'/'!'/'?'/';' and no apostrophe); the only non-ASCII character is U+00E9. zh-CN: no inter-character spaces, no sentence-final mark.",
+    "validators": "node scripts/i18n/generate.mjs --check -> exit 0, 'src/i18n/keys.gen.ts is byte-identical to a fresh generation.'; node scripts/i18n/check-strings.mjs -> exit 0 (1229 files scanned, 762 literals at or below baseline, 16 pre-existing report-only advisories, none in the files this commit touched); node scripts/i18n/context-parity.mjs -> exit 0 (every English key covered; 196 allowed gaps in 6 namespaces, plus an advisory that 8 allowance keys are now covered - unrelated to this key).",
+    "runtime": "Bundled the real src/i18n/messages + src/i18n/locale with esbuild (write:false) and called t('ui.chat.response_actions.label') after setLocale: en 'Response actions'; es 'Acciones de la respuesta'; fr 'Actions de la réponse'; ru 'Действия с ответом'; zh-CN '回复操作'; hi and vi 'Response actions' (documented English fallback).",
+    "ledger_check_on_head": "node scripts/i18n/ledger-check.mjs -> exit 1: 'es/fr/ru/zh-CN ui.chat.response_actions: shipped without a ledger entry - an unaudited locale must not ship' (4 findings across 224 entries). Expected pre-assembly: the rows are what this receipt is the input for.",
+    "assembly_proof": "Scratch-copy proof with these exact receipt bytes (the repo was never written): copied i18n/, scripts/i18n/ and src/i18n/ into a scratch root, then ran `node scripts/i18n/ledger-assemble.mjs --repo <scratch> --locale <es|fr|ru|zh-CN> --file src/i18n/catalogues/<locale>/ui.chat.response_actions.json --auditor-instance 69b4870007e6 --auditor-model deepseek/deepseek-flash --result clean --receipt <this file>`. All four exited 0 with \"ledger-assemble: <locale>/ui.chat.response_actions -> status audited | clean, 0 blocker, 0 major, 0 minor, 0 nit\". `node scripts/i18n/ledger-check.mjs` then exited 0: \"ledger-check: ok — 228 entr(ies) complete, fresh and independently audited\". The proof passed the translator placeholders i18n-translator / unrecorded-translator because the implementer's real values are not recorded here; the real translator agent and model must be passed. Independence only requires the translator agent to differ from \"reviewer\". Repo worktree verified untouched after the proof: `git status --short` empty, HEAD a64412e944c8e43bc5d3e75f05a8ad50a6623ec4."
+  },
+  "gate": {
+    "check_i18n": "Do not merge until ledger-assemble has written the four rows and pnpm check-i18n exits 0. The receipt carries one sha256 member per locale, which ledger-rules.mjs scopedHash() resolves for each row (source from sha256.en, target from sha256.<locale>), so the same receipt backs all four rows.",
+    "assemble": "node scripts/i18n/ledger-assemble.mjs --locale <es|fr|ru|zh-CN> --file src/i18n/catalogues/<locale>/ui.chat.response_actions.json --auditor-instance 69b4870007e6 --auditor-model deepseek/deepseek-flash --result clean --receipt <path to this receipt> --translator-agent <actual translator agent> --translator-model <actual translator model> --scope \"First audit of the new one-key namespace; four full-coverage locales\" --date 2026-10-18",
+    "note": "Copy this receipt byte-for-byte to i18n/receipts/69b4870007e6.json first; the row binds its sha256. This file is the delivery copy in the requesting session's scratchpad, not the repo copy."
+  }
+}

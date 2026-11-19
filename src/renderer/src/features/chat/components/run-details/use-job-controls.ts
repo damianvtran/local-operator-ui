@@ -35,6 +35,7 @@
  */
 import { SessionJobsApi } from "@shared/api/local-operator/session-jobs-api";
 import { resyncCanonicalSession } from "@shared/hooks/use-canonical-session";
+import { t } from "@shared/i18n";
 import { useMutation } from "@tanstack/react-query";
 import { useCallback } from "react";
 import {
@@ -66,7 +67,7 @@ export const useJobControls = ({
 			 */
 			if (!sessionId)
 				return Promise.reject(
-					new Error("There is no conversation to cancel a job on."),
+					new Error(t("ui.chat.run_controls.job.no_conversation")),
 				);
 			return SessionJobsApi.cancel(sessionId, jobId);
 		},

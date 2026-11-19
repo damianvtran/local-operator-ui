@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent-namespace-delta-translation-audit",
+  "date": "2026-11-04",
+  "locale": "vi",
+  "namespace": "ui.settings.appearance",
+  "instance": "aud1682-delta-vi-ba69d836a6d4",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "ba69d836a6d4",
+    "instance": "aud1682-delta-vi-ba69d836a6d4",
+    "model": "openai/gpt-6.1-sol",
+    "primary_model": "anthropic/claude-opus-5-5",
+    "fallback": "provider quota failure; host switched auditor to openai/gpt-6.1-sol before locale audit",
+    "independent_from_translator_session": true,
+    "independence": "Different session from translator fd3ba80e8c8f; this auditor authored no translations. Same fallback model, separate agent/session."
+  },
+  "model": "openai/gpt-6.1-sol",
+  "status": "passed",
+  "result": "clean",
+  "sha256": {
+    "en": "869f7fb3cae2de41496b3e0582009c690961d52dafd006f51bf796e0219d43e3",
+    "vi": "6de1efb648df6279c074518fb1287f9d7c2828a9b3ec359cd765d9dc5430b46d"
+  },
+  "context_sha256": "072b5c80bcce279e98ba60ef7da856b7831764b938d284647eb0b3a5bd2990ac",
+  "findings": [],
+  "keys_audited": [
+    "ui.settings.appearance.contrast.background_ceiling",
+    "ui.settings.appearance.contrast.capped_hint",
+    "ui.settings.appearance.accent.palette_override_notice"
+  ],
+  "scope": "3 new keys: contrast.background_ceiling, contrast.capped_hint, accent.palette_override_notice (PR #1682). Previous 85 keys retained from audit 63837f8; all previous namespace values verified byte-identical.",
+  "head": "003d40db17dc997dc586942de7498b30e027ec49",
+  "retained_audit_commit": "63837f8c9cdd6fea009c3b02699ce5ef914630b9",
+  "translator": {
+    "session": "fd3ba80e8c8f",
+    "model": "openai/gpt-6.1-sol",
+    "fallback": "quota fallback; map incorporated by coder"
+  }
+}

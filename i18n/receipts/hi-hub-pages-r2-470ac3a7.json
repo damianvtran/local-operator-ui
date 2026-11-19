@@ -1,0 +1,187 @@
+{
+	"schema": 1,
+	"receipt_kind": "delta-reaudit (round 2)",
+	"auditor": "translation-auditor",
+	"agent": "translation-auditor",
+	"model": "deepseek/deepseek-flash",
+	"model_provenance": "Actual served model is deepseek/deepseek-flash. Fallback chain this session: anthropic/claude-sonnet-5-5 (session header) -> anthropic/claude-opus-5-5 -> openai/gpt-6.1-sol -> deepseek/deepseek-flash, each switch a provider-quota failure. Only the initial `git rev-parse`/`git status` read ran on sonnet-5-5; every catalogue read, diff, hash, sibling comparison and the verdict were produced on deepseek/deepseek-flash. No verdict was carried over from an earlier model or from the r1 receipt.",
+	"fallback": "yes — three provider-quota switches (sonnet-5-5 -> opus-5-5 -> gpt-6.1-sol -> deepseek-flash); verdict derived on the served model only",
+	"independence": "Separate session (470ac3a7) from the implementer of 8d0b4e66f38 and from the r1 auditor (7c948004) whose H-P1 this commit closes. The r1 recommendation was treated as a claim to test at head, not as evidence; the corrected sentence was re-derived from en/ui.hub.pages.json, en/ui.hub.pages.context.json, the render site in agent-hub-page.tsx, the shipped hi sibling strings and the hi style guide.",
+	"instance": "470ac3a7-hub-hi-r2-pages",
+	"session": "470ac3a7",
+	"locale": "hi",
+	"locale_name": "Hindi",
+	"namespace": "ui.hub.pages",
+	"branch": "i18n/s5-agent-hub",
+	"base": "be77d308262ce0527c1fd4052ff77207edcac189",
+	"head": "8d0b4e66f38f1fac8df16767849c7a969a55b72f",
+	"round": 2,
+	"date": "2026-11-08",
+	"scope": "Round 2 delta: verify the single hi correction in 8d0b4e66f38 (ui.hub.pages.empty.search.title, the H-P1 fix filed in the r1 receipt 7c948004-hub-hi), Scope be77d308262..8d0b4e66f38. Retested keys: empty.search.title (the corrected key), empty.search.body (its stacked pair), and the direct neighbours used as the parallelism/register reference — hi ui.hub.teams.public.search_miss plus the four shipped hi 'search miss' siblings. The other 15 hi keys audited at r1 are retained: byte-identical at this head and outside the delta's surface. The three non-hi locale files the same commit touched (ru, vi, zh-CN) are outside this task's lane and are listed only as delta inventory.",
+	"corrected_keys": [
+		{
+			"key": "ui.hub.pages.empty.search.title",
+			"en": "No agents match that search.",
+			"base_value": "उस खोज से कोई एजेंट मेल नहीं खाता।",
+			"head_value": "इस खोज से कोई एजेंट मेल नहीं खाता।",
+			"r1_recommendation": "इस खोज से कोई एजेंट मेल नहीं खाता।",
+			"matches_r1_recommendation": "byte-identical (checked in Python, not by eye)",
+			"edit": "one codepoint region: उस (distal) -> इस (proximate). 34 codepoints at head; no ZWJ/ZWNJ, no double space, final danda ।; single leading tab in the JSON line, file still tab-indented and newline-terminated.",
+			"verdict": "accept — the fix is the recommended wording and reads correctly"
+		}
+	],
+	"delta_inventory": {
+		"note": "Every changed line in the two revisions, so nothing rides along unexamined. Only entry 1 is this task's lane.",
+		"lines": [
+			{
+				"file": "src/i18n/catalogues/hi/ui.hub.pages.json",
+				"key": "ui.hub.pages.empty.search.title",
+				"before": "उस खोज से कोई एजेंट मेल नहीं खाता।",
+				"after": "इस खोज से कोई एजेंट मेल नहीं खाता।",
+				"in_scope": true
+			},
+			{
+				"file": "src/i18n/catalogues/ru/ui.hub.pages.json",
+				"key": "ui.hub.pages.empty.org.body",
+				"before": "Агенты, опубликованные в хабе {org}, появятся здесь для его участников.",
+				"after": "Агенты, опубликованные в хабе {org}, появятся здесь для участников этой организации.",
+				"in_scope": false
+			},
+			{
+				"file": "src/i18n/catalogues/ru/ui.hub.pages.json",
+				"key": "ui.hub.pages.empty.category.title",
+				"before": "Нет агентов в категории {category}.",
+				"after": "В категории «{category}» нет агентов.",
+				"in_scope": false
+			},
+			{
+				"file": "src/i18n/catalogues/vi/ui.hub.pages.json",
+				"key": "ui.hub.pages.empty.search.body",
+				"before": "Không tên hay mô tả tác nhân nào chứa nội dung đó. Hãy xóa tìm kiếm để xem toàn bộ trung tâm.",
+				"after": "Không có tên hay mô tả tác nhân nào chứa nội dung đó. Hãy xóa tìm kiếm để xem toàn bộ trung tâm.",
+				"in_scope": false
+			},
+			{
+				"file": "src/i18n/catalogues/zh-CN/ui.hub.pages.json",
+				"key": "ui.hub.pages.empty.org.body",
+				"before": "发布到{org}的智能体将在此显示，供其成员查看。",
+				"after": "发布到{org}的智能体会在此显示，供其成员查看。",
+				"in_scope": false
+			}
+		],
+		"other_paths_changed": "none — the commit touches exactly these four catalogue files (git diff --name-only), adds and removes no key, and changes no code, test or generated file."
+	},
+	"paths": {
+		"source": "src/i18n/catalogues/en/ui.hub.pages.json",
+		"target": "src/i18n/catalogues/hi/ui.hub.pages.json",
+		"context": "src/i18n/catalogues/en/ui.hub.pages.context.json",
+		"render_site": "src/renderer/src/features/agent-hub/agent-hub-page.tsx"
+	},
+	"sha256": {
+		"source": "47793b98059be89eafc26b8aff209b3aed63a9eac26b44ac5da9b87e973c7b5a",
+		"target": "c0899f88ccf51cdb52cc955338f8062d5d59beebccb64bfd792d9c8042516738",
+		"context": "e78c02114d87f722bd47bb14ea61f5ac3281407581132bd9a715c81d1a112872",
+		"target_at_base": "5b9217b213923f3cb85dd2e39c8e1216d009791209db30d39e250a5d27fa00ff",
+		"source_at_base": "47793b98059be89eafc26b8aff209b3aed63a9eac26b44ac5da9b87e973c7b5a",
+		"source_unchanged_since_base": true
+	},
+	"inputs_sha256": {
+		"en/ui.hub.pages.json": "47793b98059be89eafc26b8aff209b3aed63a9eac26b44ac5da9b87e973c7b5a",
+		"en/ui.hub.pages.context.json": "e78c02114d87f722bd47bb14ea61f5ac3281407581132bd9a715c81d1a112872",
+		"en/ui.hub.teams.json": "b9674e6bb1f862d380d45568204abcd8735eb08782bfb1351f469019b4e583b8",
+		"hi/ui.hub.teams.json": "2db41a12c1229c95b0089f3f36d8bbeaaa1026095382c4483301d962a653ae30",
+		"glossary (local-operator/i18n/glossary.md)": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+		"style guide (local-operator/i18n/style-guides/hi.md)": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+	},
+	"key_count": {
+		"keys_in_file": {
+			"en": 59,
+			"hi": 59
+		},
+		"keys_in_hi_file_base": 59,
+		"keys_in_hi_file_head": 59,
+		"hi_keys_added": 0,
+		"hi_keys_removed": 0,
+		"hi_keys_changed": 1,
+		"key_order_preserved": true,
+		"retained_keys_verified_byte_identical": 58
+	},
+	"checks": [
+		{
+			"id": "C1",
+			"check": "corrected key is a grammatical, natural Hindi sentence at head",
+			"result": "PASS",
+			"evidence": "'इस खोज से कोई एजेंट मेल नहीं खाता।' parses as oblique PP (इस खोज से) + subject (कोई एजेंट, masc sg) + negated habitual verb (मेल नहीं खाता); the idiom 'X से मेल खाना' = 'to match X' is standard, and कोई+singular noun+singular verb is the natural Hindi negative-polarity form. No copula is needed in the present habitual, matching the shipped frame. Final danda per the hi style guide's punctuation rule; no ?, no !, standard conjunct spellings, no ZWJ/ZWNJ, single spaces."
+		},
+		{
+			"id": "C2",
+			"check": "title agrees with its stacked body",
+			"result": "PASS",
+			"evidence": "Body at head 'किसी एजेंट का नाम या विवरण इससे मेल नहीं खाता। पूरा हब देखने के लिए खोज हटाएँ।' — its 'इससे' now has an explicit proximate antecedent in the title's 'इस खोज', where the base title's 'उस खोज' left it pointing the other way (the r1 H-P1 defect). Stacking verified in the tree: agent-hub-page.tsx:1458 renders empty.search.title and :1483 renders empty.search.body as two <p> siblings inside the single data-testid=\"agent-hub-empty\" panel, both selected by the same hasFilters branch, so the pair is always read together. The search input is mounted in the toolbar with its own accessible name 'एजेंट खोजें', i.e. the referent is on screen — the proximate determiner is the correct Hindi choice."
+		},
+		{
+			"id": "C3",
+			"check": "pages/teams parallelism restored, and no sibling now disagrees",
+			"result": "PASS",
+			"evidence": "hi teams public.search_miss = 'इस पेज की कोई भी टीम “{query}” से मेल नहीं खाती।' — same proximate determiner, same '… से मेल नहीं खाता/खाती' frame, same danda. The base title's 'उस' was the odd one out against that frame; at head it matches. All four shipped hi search-miss siblings cited at r1 resolve at THIS head and use the same proximate frame: ui.hub.skills.search_empty 'इस खोज से कोई कौशल मेल नहीं खाता।' (ui.hub.json), ui.providers.provider_grid.no_providers_match_this_search 'इस खोज से कोई प्रोवाइडर मेल नहीं खाता।' (ui.providers.json), ui.chat.thread_search.empty 'इस खोज से कोई संदेश नहीं मिला।' (ui.chat.thread_search.json), ui.agents.navigation.sidebar.search_empty 'आपकी खोज से कोई एजेंट मेल नहीं खाता' (ui.agents.navigation.json). A repo-wide grep of the hi catalogues finds no remaining 'उस खोज'."
+		},
+		{
+			"id": "C4",
+			"check": "no other key in the namespace changed; delta is exactly one line in hi",
+			"result": "PASS",
+			"evidence": "Parsed both revisions as JSON: 59 keys each, identical key order, exactly one differing value (ui.hub.pages.empty.search.title), zero added, zero removed — so the other 58 hi values are byte-identical by construction, not by sampling. File still tab-indented and newline-terminated, matching the base. `git diff --name-only be77d308262..8d0b4e66f38` = the four catalogue JSONs only; hi accounts for one changed line (+1/-1)."
+		},
+		{
+			"id": "C5",
+			"check": "placeholders byte-exact and sensibly slotted",
+			"result": "PASS (n/a for this key, checked file-wide)",
+			"evidence": "en/ui.hub.pages.context.json declares placeholders {} for empty.search.title and the key carries no braces; file-wide placeholder parity against en at head shows zero mismatches across all 59 keys, so nothing in the namespace gained or lost a slot."
+		},
+		{
+			"id": "C6",
+			"check": "the edit introduced no new problem (whole string, not just the fixed word)",
+			"result": "PASS",
+			"evidence": "Reading title+body as the rendered pair: 'इस खोज से कोई एजेंट मेल नहीं खाता। / किसी एजेंट का नाम या विवरण इससे मेल नहीं खाता। / पूरा हब देखने के लिए खोज हटाएँ।' — reference chain holds (इस खोज -> इससे), the second sentence still names what was searched (नाम या विवरण) as its context note requires, and the clear action keeps the same noun खोज as clear.search ('खोज हटाएँ'). No meaning drift: en's 'that search' points at the query the reader just typed, which Hindi renders with the proximate, exactly as the four shipped siblings do for en 'this search'; the distal would have implied a query no longer present. No length/budget concern (renderer heading, no maxCells; same 8-token shape as the shipped sibling). Punctuation, spacing and typography unchanged apart from the one determiner."
+		}
+	],
+	"counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 0
+	},
+	"findings": [],
+	"per_key": [
+		{
+			"key": "empty.search.title",
+			"severity": "none",
+			"finding_ids": [],
+			"note": "en 'No agents match that search.' -> 'इस खोज से कोई एजेंट मेल नहीं खाता।'. H-P1 from r1 (उस vs this pair's इस) is closed: the correction is byte-identical to the r1 recommendation and the sentence is the shipped frame with a matching determiner. Reads naturally in isolation and in the pair."
+		},
+		{
+			"key": "empty.search.body",
+			"severity": "none",
+			"finding_ids": [],
+			"note": "Unchanged by this commit and re-read only as the title's stacked partner. 'किसी एजेंट का नाम या विवरण इससे मेल नहीं खाता।' now resolves 'इससे' to the title's 'इस खोज'; the second sentence keeps the imperative remedy and the noun खोज. Retained from r1 (which found no issue of its own with the body)."
+		},
+		{
+			"key": "teams.public.search_miss (hi, reference)",
+			"severity": "none",
+			"finding_ids": [],
+			"note": "Read only as the pages/teams parallel: same proximate determiner and 'से मेल नहीं खाता/खाती' frame, so the pages fix now matches it instead of diverging. Not part of the audited namespace and unchanged by this commit."
+		}
+	],
+	"out_of_scope_notes": [
+		"out of scope — pre-existing: the pair says 'मेल नहीं खाता' twice (en varies 'match' / 'carries'). The repetition is not introduced or worsened here — the body is untouched and the title's verb was already 'मेल नहीं खाता' at base — and it does not read as an error in Hindi. Non-gating.",
+		"out of scope — other locales: the same commit edits ru (2 lines), vi (1) and zh-CN (1). Listed in delta_inventory for completeness; each belongs to its own locale's delta auditor, not this receipt."
+	],
+	"status": "clean",
+	"result": "clean",
+	"verdict": "clean",
+	"ship": "yes — zero BLOCKER, zero MAJOR, zero MINOR/NIT in the hi delta. The H-P1 correction is exactly the recommended wording, agrees with its stacked body, restores the pages/teams frame and leaves no other hi key touched.",
+	"normalised_for_ledger": "auditor and instance rewritten to the ledger contract by the programme manager; original auditor text preserved verbatim inside the parentheses, findings and hashes untouched",
+	"auditor_provenance": "translation-auditor (translation-auditor (lopdev reviewer-role session 470ac3a7; INDEPENDENT delta audit of the hi correction in 8d0b4e66f38 at round 2 — not the coder of that commit and not the r1 auditor 7c948004 who proposed H-P1; the corrected value was checked against the English source, its context sidecar, the hi style guide, the rendered stacking of the pair and the shipped hi siblings, not accepted on the commit message's word))",
+	"identity_provenance": {
+		"agent": "reviewer (lopdev) — independent i18n auditor"
+	}
+}

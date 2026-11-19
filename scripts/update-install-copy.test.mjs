@@ -117,12 +117,20 @@ test("the panel uses these sentences rather than a copy of them", async () => {
 	 * by ~20x - and the instruction that must survive is the one the whole change
 	 * rests on.
 	 */
-	assert.match(prose, /usually a few seconds, occasionally a few minutes/);
-	assert.match(prose, /Don't reopen it until it starts by itself\./);
+	assert.match(prose, /for a few seconds, sometimes a few minutes/);
+	assert.match(prose, /reopens by itself/);
 	assert.match(
 		prose,
-		/Opening it while the update is installing cancels the install\./,
+		/Don't open it before then, or the install is cancelled\./,
 	);
+	/*
+	 * The reassurance LEADS (operator request, 2026-11-03): an app install
+	 * restarts only this window, and session runtimes are detached processes it
+	 * never signals, so the first thing the reader learns is that nothing they
+	 * have running needs stopping. No em dash in the sentence either.
+	 */
+	assert.match(prose, /^Your sessions keep running\./);
+	assert.doesNotMatch(prose, /\u2014/);
 });
 
 /**

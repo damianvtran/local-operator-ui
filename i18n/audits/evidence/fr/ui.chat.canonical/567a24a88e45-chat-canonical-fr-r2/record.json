@@ -1,0 +1,46 @@
+{
+ "auditor": "reviewer",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "567a24a88e45-chat-canonical-fr-r2",
+ "auditor_session": "567a24a88e45",
+ "status": "passed",
+ "namespace": "ui.chat.canonical",
+ "locale": "fr",
+ "sha256": {
+  "en": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e",
+  "fr": "620d4ab2d3db4a9c16b64c62fdd44c4e44ff55fe65b1b7f06e835db435319877"
+ },
+ "context_sha256": "04bfe86405155bf8437c4f867eea4dc9bfd4c277d2ae6b0aa7d6a1bf20390087",
+ "findings": [
+  {
+   "id": "I-FR-2",
+   "severity": "nit",
+   "key": "ui.chat.canonical.tool_row.diff.full.evicted",
+   "codepath": "diff-history-model.ts:477",
+   "message": "\"Diff complet plus conservé\" drops \"n’est\" and reads telegraphic or ambiguous.",
+   "fix": "Le diff complet n’est plus conservé — les anciens diffs sont supprimés pour libérer de l’espace",
+   "disposition": "deferred — retained; value byte-unchanged since 21bb",
+   "origin": "r2"
+  },
+  {
+   "id": "I-FR-3",
+   "severity": "nit",
+   "key": "ui.chat.canonical.tool_row.diff.full.not_recorded",
+   "message": "About 75 chars (en 41), beyond the fr style guide length note (15-25% longer, fr.md:67). It is a dim wrapping status, so fit is not proven or claimed.",
+   "fix": "Optional: \"Diff complet absent — modification antérieure à l’archivage des diffs\"; deferred, not gating",
+   "disposition": "deferred — non-gating nit",
+   "origin": "fr2"
+  }
+ ],
+ "verdict_date": "2026-11-11T03:52:42Z",
+ "serialized_at": "2026-11-11T04:32:28Z",
+ "basis": "fr2 delta verdict (2 changed values) + r2 approval of the other 279 values retained by value equality to 21bb",
+ "note": "Portable serialization of existing audit record(s); not a new audit and not backdated. Source-only; rendered/RTL fit unproven.",
+ "resolved_not_counted": [
+  {
+   "id": "I-FR-1",
+   "severity_was": "minor",
+   "resolved_by": "fr2 delta at 620d4ab2…"
+  }
+ ]
+}

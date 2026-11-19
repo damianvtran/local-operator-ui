@@ -1,0 +1,101 @@
+{
+  "audit_id": "fr-ui.chat.sidebar-70b31b87bdd3",
+  "locale": "fr",
+  "namespace": "ui.chat.sidebar",
+  "audit_date": "2026-11-10",
+  "key_count": 86,
+  "scope": "Delta audit of PR damianvtran/local-operator-ui #1837 @ fd09d8f296318319817edb5a511a42ff6a07868f. One changed key fully audited: ui.chat.sidebar.agents.builtin_offer (new `many` arm before `other`). The other 85 keys were read only for terminology consistency (agent intégré / installer / modifier); they are not certified by this record.",
+  "head_sha": "fd09d8f296318319817edb5a511a42ff6a07868f",
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "Delegation brief; translator session id not supplied. This auditor did not translate and took no part in the change."
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "70b31b87bdd3",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "Served session header: deepseek/deepseek-flash; session 70b31b87bdd3. No fallback used.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+      "sha256": "7db9ba5108a62330a1782f775b991ec0483537d2f7d808ae0691e1a6ef8840cd"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.chat.sidebar.context.json",
+      "sha256": "4f1593cc34b395ef8701a60e58e73a0371b3c93730eb7a1f2b2845dc6250d7e3"
+    },
+    "fr": {
+      "path": "src/i18n/catalogues/fr/ui.chat.sidebar.json",
+      "sha256": "ec93a140d65cf298bb4252b74f999b83bc7736860d0b7c7dbfe5625e7983e3a3"
+    }
+  },
+  "artifacts": [
+    {
+      "path": "receipt.json",
+      "sha256": "27c5de62eab7f42a8e9e1ad51fb182482e87aa7bbbab003bd011b9b1deb4dd9f",
+      "role": "audit receipt (schema of _s10-audits/89d7458/fr-sol-8195830a463b.json)"
+    },
+    {
+      "path": "audit.log",
+      "sha256": "eb51ff71ca83a6d1b939498a426fa460b0dc42f797ad89b71220d14749ef5af3",
+      "role": "execution log — commands actually run and outputs observed"
+    },
+    {
+      "path": "record.json",
+      "sha256": null,
+      "role": "this record; its own hash is not self-referential"
+    }
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "result": "clean",
+    "verdict": "clean",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": []
+  },
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "findings": [],
+  "observations": [
+    {
+      "kind": "pre-existing guide-vs-corpus divergence",
+      "gating": false,
+      "key": "ui.chat.sidebar.agents.builtin_offer",
+      "text": "i18n/style-guides/fr.md renders its plural example with '#' (grouped '1 000 000') and its Numbers rule calls for grouped digits, while all nine arms use the explicit {count, number, ::group-off} skeleton. Ungrouped digits are what the repo's own guard enforces — scripts/i18n/chat-data-copy.test.mjs (changed in this same PR) asserts out.includes(\"1000000\") and rejects any digit grouping — so '1 000 000 d’agents' would fail the shipped guard. The arm correctly copies the English skeleton; the guide's example is the outlying text. Untouched by this delta, not a finding on it."
+    },
+    {
+      "kind": "pre-existing, unreachable",
+      "gating": false,
+      "key": "ui.chat.sidebar.agents.builtin_offer",
+      "text": "At count 0 {list} is empty, so the =0 arm reads '… — . Vous pourrez les modifier…'. Identical in English, unchanged by this delta, and unreachable because chat-sidebar.tsx gates the sentence on availableBuiltins.length > 0."
+    },
+    {
+      "kind": "reachability",
+      "gating": false,
+      "key": "ui.chat.sidebar.agents.builtin_offer",
+      "text": "count = names.length of the backend's available built-ins (builtin-offer-sentence.ts), and the spelling arms cover 0–6. A 1,000,000-profile backend does not exist, so the new `many` arm is CLDR completeness rather than a rendered state: this change has no user-visible frame to screenshot. Correct and consistent with the namespace's other many-bearing keys; the manager should treat the PR's user-visible claim accordingly."
+    }
+  ],
+  "evidence_retention": {
+    "served_path": "/Users/damian/.local-operator/sessions/70b31b87bdd3/scratchpad/aud3-fr-ds",
+    "tracked": false,
+    "canonical_tracked_path_if_landed": "i18n/audits/evidence/fr/ui.chat.sidebar/fr-ui.chat.sidebar-70b31b87bdd3/",
+    "note": "Scratch only: the worktree is read-only for this audit, so nothing was committed and no ledger row was written. ledger-assemble.mjs needs a repo write. The manager must copy receipt.json, record.json and audit.log byte-for-byte into the canonical path and run the ledger step."
+  },
+  "verification_limits": [
+    "Node validators and the production ICU formatter (intl-messageformat / Intl.PluralRules) were not executed: the task forbids node, installs and builds. Python structural checks and source reading are not execution of them.",
+    "No browser, screenshot, accessibility tree or pixel-fit measurement; none claimable for this key (see reachability observation).",
+    "The served model is reported from the session header; not independently corroborable from inside the session.",
+    "no translation/MT service was used: CLDR plural rules were fetched from unicode-org/cldr-json as a specification lookup, and every French judgement is my own reading."
+  ],
+  "audit_notes_not_execution_log": false,
+  "companion_execution_log": "audit.log"
+}

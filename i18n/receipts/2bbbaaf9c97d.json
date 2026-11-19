@@ -1,0 +1,30 @@
+{
+  "auditor": "translation-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "2bbbaaf9c97d",
+  "date": "2026-10-20",
+  "locale": "vi",
+  "status": "passed",
+  "namespace": "ui.hub",
+  "sha256": {
+    "vi": "c124e309473f45f790b2575669abd7ce1de0d065a362e6ee5eb9d2780eb8f1d3",
+    "en": "96d5e20f3f1efc19efa36210ea7799af8216a863d7b872c71d69e599d5e59a44"
+  },
+  "scope": "ui.hub.skills.*: download, unpull, unpull_title, unpull_body, unpull_failed, subscribe_failed, local_path, published_by, not_downloaded, subscribed_absent, pulled, manual, detached (13 keys) audited against English ui.hub.json — round 3 re-read on the post-fix bytes; round-2 fix verified: unpull_body now reads bị xóa khỏi (rời khỏi no longer present in that key).",
+  "keys_audited": [
+    "download",
+    "unpull",
+    "unpull_title",
+    "unpull_body",
+    "unpull_failed",
+    "subscribe_failed",
+    "local_path",
+    "published_by",
+    "not_downloaded",
+    "subscribed_absent",
+    "pulled",
+    "manual",
+    "detached"
+  ],
+  "findings": []
+}

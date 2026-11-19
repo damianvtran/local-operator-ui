@@ -1,0 +1,566 @@
+{
+  "summary": [
+    {
+      "token": "meta-right-hold",
+      "micDelay": 150,
+      "chordAlone": true,
+      "holdThenChordRecording": {
+        "40ms": true,
+        "100ms": true,
+        "300ms": false,
+        "700ms": false,
+        "1500ms": false
+      },
+      "chordAfterReleasedHold": true
+    },
+    {
+      "token": "meta-right-hold",
+      "micDelay": 500,
+      "chordAlone": true,
+      "holdThenChordRecording": {
+        "40ms": true,
+        "100ms": true,
+        "300ms": true,
+        "700ms": false,
+        "1500ms": false
+      },
+      "chordAfterReleasedHold": true
+    },
+    {
+      "token": "ctrl-right-hold",
+      "micDelay": 150,
+      "chordAlone": true,
+      "holdThenChordRecording": {
+        "40ms": true,
+        "100ms": true,
+        "300ms": false,
+        "700ms": false,
+        "1500ms": false
+      },
+      "chordAfterReleasedHold": true
+    },
+    {
+      "token": "ctrl-right-hold",
+      "micDelay": 500,
+      "chordAlone": true,
+      "holdThenChordRecording": {
+        "40ms": true,
+        "100ms": true,
+        "300ms": true,
+        "700ms": false,
+        "1500ms": false
+      },
+      "chordAfterReleasedHold": true
+    }
+  ],
+  "results": [
+    {
+      "token": "meta-right-hold",
+      "micDelay": 150,
+      "alone": {
+        "recording": true,
+        "log": [
+          "gum",
+          "rec-start",
+          "gum"
+        ]
+      },
+      "cases": [
+        {
+          "afterMs": 40,
+          "duringHold": {
+            "recording": true,
+            "log": [
+              "gum",
+              "gum",
+              "rec-start",
+              "gum"
+            ]
+          },
+          "afterRelease": {
+            "recording": true,
+            "log": [
+              "gum",
+              "gum",
+              "rec-start",
+              "gum"
+            ]
+          }
+        },
+        {
+          "afterMs": 100,
+          "duringHold": {
+            "recording": true,
+            "log": [
+              "gum",
+              "gum",
+              "rec-start",
+              "gum"
+            ]
+          },
+          "afterRelease": {
+            "recording": true,
+            "log": [
+              "gum",
+              "gum",
+              "rec-start",
+              "gum"
+            ]
+          }
+        },
+        {
+          "afterMs": 300,
+          "duringHold": {
+            "recording": false,
+            "log": [
+              "gum",
+              "rec-start",
+              "gum",
+              "rec-stop"
+            ]
+          },
+          "afterRelease": {
+            "recording": false,
+            "log": [
+              "gum",
+              "rec-start",
+              "gum",
+              "rec-stop"
+            ]
+          }
+        },
+        {
+          "afterMs": 700,
+          "duringHold": {
+            "recording": false,
+            "log": [
+              "gum",
+              "rec-start",
+              "gum",
+              "rec-stop"
+            ]
+          },
+          "afterRelease": {
+            "recording": false,
+            "log": [
+              "gum",
+              "rec-start",
+              "gum",
+              "rec-stop"
+            ]
+          }
+        },
+        {
+          "afterMs": 1500,
+          "duringHold": {
+            "recording": false,
+            "log": [
+              "gum",
+              "rec-start",
+              "gum",
+              "rec-stop"
+            ]
+          },
+          "afterRelease": {
+            "recording": false,
+            "log": [
+              "gum",
+              "rec-start",
+              "gum",
+              "rec-stop"
+            ]
+          }
+        }
+      ],
+      "afterHold": {
+        "recording": true,
+        "log": [
+          "gum",
+          "rec-start",
+          "gum"
+        ]
+      }
+    },
+    {
+      "token": "meta-right-hold",
+      "micDelay": 500,
+      "alone": {
+        "recording": true,
+        "log": [
+          "gum",
+          "rec-start",
+          "gum"
+        ]
+      },
+      "cases": [
+        {
+          "afterMs": 40,
+          "duringHold": {
+            "recording": true,
+            "log": [
+              "gum",
+              "gum",
+              "rec-start",
+              "gum"
+            ]
+          },
+          "afterRelease": {
+            "recording": true,
+            "log": [
+              "gum",
+              "gum",
+              "rec-start",
+              "gum"
+            ]
+          }
+        },
+        {
+          "afterMs": 100,
+          "duringHold": {
+            "recording": true,
+            "log": [
+              "gum",
+              "gum",
+              "rec-start",
+              "gum"
+            ]
+          },
+          "afterRelease": {
+            "recording": true,
+            "log": [
+              "gum",
+              "gum",
+              "rec-start",
+              "gum"
+            ]
+          }
+        },
+        {
+          "afterMs": 300,
+          "duringHold": {
+            "recording": true,
+            "log": [
+              "gum",
+              "gum",
+              "rec-start",
+              "gum"
+            ]
+          },
+          "afterRelease": {
+            "recording": true,
+            "log": [
+              "gum",
+              "gum",
+              "rec-start",
+              "gum"
+            ]
+          }
+        },
+        {
+          "afterMs": 700,
+          "duringHold": {
+            "recording": false,
+            "log": [
+              "gum",
+              "rec-start",
+              "gum",
+              "rec-stop"
+            ]
+          },
+          "afterRelease": {
+            "recording": false,
+            "log": [
+              "gum",
+              "rec-start",
+              "gum",
+              "rec-stop"
+            ]
+          }
+        },
+        {
+          "afterMs": 1500,
+          "duringHold": {
+            "recording": false,
+            "log": [
+              "gum",
+              "rec-start",
+              "gum",
+              "rec-stop"
+            ]
+          },
+          "afterRelease": {
+            "recording": false,
+            "log": [
+              "gum",
+              "rec-start",
+              "gum",
+              "rec-stop"
+            ]
+          }
+        }
+      ],
+      "afterHold": {
+        "recording": true,
+        "log": [
+          "gum",
+          "rec-start",
+          "gum"
+        ]
+      }
+    },
+    {
+      "token": "ctrl-right-hold",
+      "micDelay": 150,
+      "alone": {
+        "recording": true,
+        "log": [
+          "gum",
+          "rec-start",
+          "gum"
+        ]
+      },
+      "cases": [
+        {
+          "afterMs": 40,
+          "duringHold": {
+            "recording": true,
+            "log": [
+              "gum",
+              "gum",
+              "rec-start",
+              "gum"
+            ]
+          },
+          "afterRelease": {
+            "recording": true,
+            "log": [
+              "gum",
+              "gum",
+              "rec-start",
+              "gum"
+            ]
+          }
+        },
+        {
+          "afterMs": 100,
+          "duringHold": {
+            "recording": true,
+            "log": [
+              "gum",
+              "gum",
+              "rec-start",
+              "gum"
+            ]
+          },
+          "afterRelease": {
+            "recording": true,
+            "log": [
+              "gum",
+              "gum",
+              "rec-start",
+              "gum"
+            ]
+          }
+        },
+        {
+          "afterMs": 300,
+          "duringHold": {
+            "recording": false,
+            "log": [
+              "gum",
+              "rec-start",
+              "gum",
+              "rec-stop"
+            ]
+          },
+          "afterRelease": {
+            "recording": false,
+            "log": [
+              "gum",
+              "rec-start",
+              "gum",
+              "rec-stop"
+            ]
+          }
+        },
+        {
+          "afterMs": 700,
+          "duringHold": {
+            "recording": false,
+            "log": [
+              "gum",
+              "rec-start",
+              "gum",
+              "rec-stop"
+            ]
+          },
+          "afterRelease": {
+            "recording": false,
+            "log": [
+              "gum",
+              "rec-start",
+              "gum",
+              "rec-stop"
+            ]
+          }
+        },
+        {
+          "afterMs": 1500,
+          "duringHold": {
+            "recording": false,
+            "log": [
+              "gum",
+              "rec-start",
+              "gum",
+              "rec-stop"
+            ]
+          },
+          "afterRelease": {
+            "recording": false,
+            "log": [
+              "gum",
+              "rec-start",
+              "gum",
+              "rec-stop"
+            ]
+          }
+        }
+      ],
+      "afterHold": {
+        "recording": true,
+        "log": [
+          "gum",
+          "rec-start",
+          "gum"
+        ]
+      }
+    },
+    {
+      "token": "ctrl-right-hold",
+      "micDelay": 500,
+      "alone": {
+        "recording": true,
+        "log": [
+          "gum",
+          "rec-start",
+          "gum"
+        ]
+      },
+      "cases": [
+        {
+          "afterMs": 40,
+          "duringHold": {
+            "recording": true,
+            "log": [
+              "gum",
+              "gum",
+              "rec-start",
+              "gum"
+            ]
+          },
+          "afterRelease": {
+            "recording": true,
+            "log": [
+              "gum",
+              "gum",
+              "rec-start",
+              "gum"
+            ]
+          }
+        },
+        {
+          "afterMs": 100,
+          "duringHold": {
+            "recording": true,
+            "log": [
+              "gum",
+              "gum",
+              "rec-start",
+              "gum"
+            ]
+          },
+          "afterRelease": {
+            "recording": true,
+            "log": [
+              "gum",
+              "gum",
+              "rec-start",
+              "gum"
+            ]
+          }
+        },
+        {
+          "afterMs": 300,
+          "duringHold": {
+            "recording": true,
+            "log": [
+              "gum",
+              "gum",
+              "rec-start",
+              "gum"
+            ]
+          },
+          "afterRelease": {
+            "recording": true,
+            "log": [
+              "gum",
+              "gum",
+              "rec-start",
+              "gum"
+            ]
+          }
+        },
+        {
+          "afterMs": 700,
+          "duringHold": {
+            "recording": false,
+            "log": [
+              "gum",
+              "rec-start",
+              "gum",
+              "rec-stop"
+            ]
+          },
+          "afterRelease": {
+            "recording": false,
+            "log": [
+              "gum",
+              "rec-start",
+              "gum",
+              "rec-stop"
+            ]
+          }
+        },
+        {
+          "afterMs": 1500,
+          "duringHold": {
+            "recording": false,
+            "log": [
+              "gum",
+              "rec-start",
+              "gum",
+              "rec-stop"
+            ]
+          },
+          "afterRelease": {
+            "recording": false,
+            "log": [
+              "gum",
+              "rec-start",
+              "gum",
+              "rec-stop"
+            ]
+          }
+        }
+      ],
+      "afterHold": {
+        "recording": true,
+        "log": [
+          "gum",
+          "rec-start",
+          "gum"
+        ]
+      }
+    }
+  ]
+}

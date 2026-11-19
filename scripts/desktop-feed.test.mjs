@@ -798,11 +798,20 @@ test("the sidebar's 5 s poll is gone, and the feed is what replaced it", () => {
 			.includes('document.visibilityState === "visible"'),
 		"and nothing on the feed path gates a poll on visibility",
 	);
-	// The disconnected line's pinned sentence, so a re-word shows up here.
+	// The disconnected line's pinned sentence, so a re-word shows up here. The
+	// sentence lives in the sidebar's catalogue now, so the anchor is the key and
+	// the copy is read from the message the user actually sees.
+	const sidebarCopy = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.chat.sidebar.json", "utf8"),
+	);
 	assert.ok(
-		source.includes(
-			"Not connected to the backend — showing the last known state.",
-		),
+		source.includes('t("ui.chat.sidebar.list.offline")'),
+		"the disconnected line no longer reads its message",
+	);
+	assert.equal(
+		sidebarCopy["ui.chat.sidebar.list.offline"],
+		"Not connected to the backend — showing the last known state.",
+		"the disconnected line's sentence moved",
 	);
 	// And the unseen mark is no longer a weight change on the title.
 	assert.ok(

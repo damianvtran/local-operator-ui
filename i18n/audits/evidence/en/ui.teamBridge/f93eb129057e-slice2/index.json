@@ -1,0 +1,101 @@
+{
+  "schema": 1,
+  "auditor": "reviewer",
+  "session": "f93eb129057e",
+  "model": "anthropic/claude-sonnet-5-5",
+  "scope": "Two new SOURCE keys only, not runtime/security approval",
+  "observed_baseline_head": "1364eb5fcab8aa0871304a7f644cf43cebbd1acc",
+  "source_sha256": "911d5928e6b206e9d60aca25c081383f0f2564661646d43d45f746af06e6d858",
+  "context_sha256": "96966f6ec44c50eaaf5f3e66ee4298dbd7fc81a0dd7a45f2c65b600cf8adb19a",
+  "keys": [
+    "ui.teamBridge.attachmentCard.download",
+    "ui.teamBridge.attachmentCard.saved"
+  ],
+  "artifacts": [
+    {
+      "locale": "es",
+      "instance": "f93eb129057e-slice2-es",
+      "path": "/Users/damian/.local-operator/sessions/f93eb129057e/scratchpad/slice2-translation-audit/f93eb129057e-slice2-es.json",
+      "sha256": "53dd7810d65eb0d2903dd113347b7b42d7722edc93aefe493772630d373ad150",
+      "target_sha256": "c2432a0b4a8652a585489cead9c8cea9f9c58571758e0c025afbc7daf31b64d5",
+      "result": "clean",
+      "new_key_verdicts": {
+        "ui.teamBridge.attachmentCard.download": "PASS",
+        "ui.teamBridge.attachmentCard.saved": "PASS"
+      }
+    },
+    {
+      "locale": "fr",
+      "instance": "f93eb129057e-slice2-fr",
+      "path": "/Users/damian/.local-operator/sessions/f93eb129057e/scratchpad/slice2-translation-audit/f93eb129057e-slice2-fr.json",
+      "sha256": "02215e635674678582aa40bc3c0b503269a69aba122a30d2cf129272b32015b2",
+      "target_sha256": "fbebd106e893b083ccb59b68be8f0312e548def67717c1d59f2bbf8a0a147386",
+      "result": "clean",
+      "new_key_verdicts": {
+        "ui.teamBridge.attachmentCard.download": "PASS",
+        "ui.teamBridge.attachmentCard.saved": "PASS"
+      }
+    },
+    {
+      "locale": "hi",
+      "instance": "f93eb129057e-slice2-hi",
+      "path": "/Users/damian/.local-operator/sessions/f93eb129057e/scratchpad/slice2-translation-audit/f93eb129057e-slice2-hi.json",
+      "sha256": "e8eb33bbe331bc6c56a68cb618609978bd168c7a66ba769823969d0a7bf21d1d",
+      "target_sha256": "8aafab2e2660a74faec6d68d2cd8ca36787ff650d075e8815d723e2cf51c9e7f",
+      "result": "clean",
+      "new_key_verdicts": {
+        "ui.teamBridge.attachmentCard.download": "PASS",
+        "ui.teamBridge.attachmentCard.saved": "PASS"
+      }
+    },
+    {
+      "locale": "ru",
+      "instance": "f93eb129057e-slice2-ru",
+      "path": "/Users/damian/.local-operator/sessions/f93eb129057e/scratchpad/slice2-translation-audit/f93eb129057e-slice2-ru.json",
+      "sha256": "1686036d692140e977ccfe2188f5e67e6e74f63f455211b09e731da010a9c21f",
+      "target_sha256": "22ff02fd0157fbf3c7075b40313d411ed38c34143adde60ab57c78964ad7e16d",
+      "result": "clean-with-findings",
+      "new_key_verdicts": {
+        "ui.teamBridge.attachmentCard.download": "PASS",
+        "ui.teamBridge.attachmentCard.saved": "PASS"
+      }
+    },
+    {
+      "locale": "ur",
+      "instance": "f93eb129057e-slice2-ur",
+      "path": "/Users/damian/.local-operator/sessions/f93eb129057e/scratchpad/slice2-translation-audit/f93eb129057e-slice2-ur.json",
+      "sha256": "5edf3e161fe700a4e55f53a743f87655e46ee734514ad773810c820a26eef076",
+      "target_sha256": "e47e5bfde22e942c2e7c41aa3c5bd8758283df0f73e2e2b8ddf652143df436a1",
+      "result": "clean",
+      "new_key_verdicts": {
+        "ui.teamBridge.attachmentCard.download": "PASS",
+        "ui.teamBridge.attachmentCard.saved": "PASS"
+      }
+    },
+    {
+      "locale": "vi",
+      "instance": "f93eb129057e-slice2-vi",
+      "path": "/Users/damian/.local-operator/sessions/f93eb129057e/scratchpad/slice2-translation-audit/f93eb129057e-slice2-vi.json",
+      "sha256": "70f0077449868f4d0f4498ad9011b677eccd238e084744f00aa083a64046dbf7",
+      "target_sha256": "cfb0e0442a6859a877b7b52bc92b15e301bc58d3a059a04cc9b86cd7c732248b",
+      "result": "clean",
+      "new_key_verdicts": {
+        "ui.teamBridge.attachmentCard.download": "PASS",
+        "ui.teamBridge.attachmentCard.saved": "PASS"
+      }
+    },
+    {
+      "locale": "zh-CN",
+      "instance": "f93eb129057e-slice2-zh-cn",
+      "path": "/Users/damian/.local-operator/sessions/f93eb129057e/scratchpad/slice2-translation-audit/f93eb129057e-slice2-zh-cn.json",
+      "sha256": "b8852c00c7e729245056735ac33d87d4347b95e78e84ec76b0f0e47ad25a9d00",
+      "target_sha256": "f5c5ae8d118b28b84e029f431d2f998dd07dacee3f30013950d225ed2f8bfa81",
+      "result": "clean",
+      "new_key_verdicts": {
+        "ui.teamBridge.attachmentCard.download": "PASS",
+        "ui.teamBridge.attachmentCard.saved": "PASS"
+      }
+    }
+  ],
+  "integration": "Use actual receipts byte-for-byte with ledger-assemble, preserve superseded history and canonical evidence mapping. Russian result stays clean-with-findings with inherited deferred R2. No translation identical-value allowlist widening is requested or justified. If text/context changes after this audit, obtain a scoped genuine re-audit; do not edit signed identity/hash fields."
+}

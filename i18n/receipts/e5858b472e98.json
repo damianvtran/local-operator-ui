@@ -1,0 +1,58 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "e5858b472e98",
+  "status": "passed",
+  "namespace": "ui.chat.dialogs",
+  "sha256": {
+    "ru": "7a17c7bd80441442896422d09855360d8beb171456ca702a8a1af170b60c8905",
+    "en": "17a1d110fa72efd3a1853e81ff5ed7baad3cfcc796a0b2f92729b6acb7312221"
+  },
+  "findings": [],
+  "locale": "ru",
+  "audit_date": "2026-11-15",
+  "session": "aeb55af2e69e",
+  "commit": "934572308bcfb5bbb46f358b88a6131cbaffeade",
+  "key_count": 19,
+  "reviewed_programme_keys": [
+    "ui.chat.dialogs.archive_title_named",
+    "ui.chat.dialogs.archive_title_unnamed",
+    "ui.chat.dialogs.archive_message"
+  ],
+  "scope": "Remediation diff archive_message; namespace hash covers all 19 keys, linguistic review limited to three programme keys; unchanged pre-existing keys excluded.",
+  "actual_model_source": "Host model-switch message: openai/gpt-6.1-sol temporary fallback after provider timeout. Initial reads used anthropic/claude-sonnet-5-5; host also announced anthropic/claude-opus-5-5 fallback before current model.",
+  "prior_findings_verification": [
+    {
+      "finding": "Repeated verb before gerund label",
+      "status": "fixed",
+      "reason": "параметр identifies the unchanged checkbox label; включите параметр «Включая архивные» is natural."
+    },
+    {
+      "finding": "позже vague",
+      "status": "fixed",
+      "reason": "после этого explicitly anchors the fallback to expiry of the undo period."
+    }
+  ],
+  "checks": {
+    "json": "valid; English/Russian each 19 keys; identical sets",
+    "repo_validator": "Imported scripts/i18n/check-duplicates.mjs duplicateKeys: 0 duplicates in both committed catalogues",
+    "icu": "FormatJS parse and typed placeholder parity PASS for all 3 programme keys; seconds plural and include_archived simple once in archive_message",
+    "cldr": "few,many,one,other matches Intl.PluralRules(ru)",
+    "nfc": "PASS for all 3 programme keys",
+    "bidi_controls": 0,
+    "format_execution_seconds": [
+      1,
+      2,
+      5,
+      8,
+      21,
+      22,
+      0,
+      1.5
+    ],
+    "case": "в течение requires genitive: 1 секунды, 2/5/8 секунд, 21 секунды, 22/0 секунд, 1,5 секунды; correct",
+    "terminology": "Восстановить matches shipped sidebar row.unarchive_label and row_menu.unarchive; label Включая архивные inserted verbatim",
+    "fit": "Body has no maxChars/maxCells hint; wraps as prose. No rendered UI fit claim."
+  },
+  "audit_notes_not_execution_log": true
+}

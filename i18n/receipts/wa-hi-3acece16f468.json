@@ -1,0 +1,410 @@
+{
+ "schema": 1,
+ "audit_kind": "independent-wave-a-catalogue-audit",
+ "date": "2026-10-27",
+ "audit_date": "2026-10-27",
+ "locale": "hi",
+ "batch": "wave-a",
+ "branch": "i18n-wave-a",
+ "audited_head": "a81c00cdda2667dc6b094128ff47ec72d0c4d095",
+ "parent_head": "6216167f44",
+ "candidate_state": "COMMITTED: the export was cut from a81c00cdda with `git archive`; all 12 input hashes were re-derived from the export and matched against `git show a81c00cdda:<path>` before any judgement was written.",
+ "round": 1,
+ "instance": "wa-hi-3acece16f468",
+ "status": "passed",
+ "auditor": {
+  "agent": "i18n-auditor",
+  "harness": "Local Operator (lop)",
+  "team": "lopdev",
+  "session": "3acece16f468",
+  "instance": "wa-hi-3acece16f468",
+  "model": "radient/auto",
+  "actual_model": "radient/auto",
+  "actual_model_source": "Harness session header for this run reads 'Model: radient/auto'. That is a routing alias: the resolved upstream vendor model behind it is not exposed to the agent and is not inferred here. No provider error, quota event or mid-run model switch was observed in this session.",
+  "fallback": {
+   "used": false,
+   "reason": "no provider error, quota event or mid-run model switch was observed",
+   "scope": "whole audit"
+  },
+  "independent_from_translator_session": true,
+  "independence_basis": "This session translated none of the reviewed bytes and wrote no catalogue, context, generated key, ledger row or code file: it read the git-archive export at a81c00cdda and wrote only this receipt and its evidence bundle. The translator worked in a different agent instance on branch i18n-wave-a. No translation API, SDK or MT service was used to compare or back-translate; ICU parsing and rendering ran the repository's own intl-messageformat."
+ },
+ "references": {
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+   "revision_note": "same bytes as the core glossary cited by existing hi receipts in this repo (ef07b446…)"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/hi.md",
+   "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5",
+   "revision_note": "same bytes as the hi style guide cited by existing hi receipts in this repo (82292dc8…)"
+  },
+  "contract": {
+   "path": "docs/I18N.md",
+   "ref": "a81c00cdda (same export)",
+   "sha256": "6fc7bea71643c0dcaeaed697ecd792cfdfeb11b7816b5f8d160011e7c7df2abe",
+   "note": "No i18n/audits/evidence/README.md exists at this commit; the bundle follows the prior dated bundles' layout instead."
+  }
+ },
+ "scope": "Independent hi audit of the 38 wave-A values in four namespaces — ui.chat (18), ui.chat.header (5), ui.chat.response_actions (4), ui.chat.sidebar (11) — at branch i18n-wave-a head a81c00cdda (parent 6216167f44 carries the English source and call sites). Every value was read against its English source, its context sidecar (role, tone, length, placeholder notes) and its real call site in src/renderer, then re-read a second time against the same three inputs. Key sets compared per namespace against English (133/17/5/60, no missing or extra key). Catalogue-only audit: no rendered-frame, browser, native-speaker sign-off beyond this reader, or activation claim.",
+ "method": [
+  "Recomputed all 12 input sha256 from the export and matched each against `git show a81c00cdda:<path>`; all 12 identical (export-integrity.log).",
+  "Ran the repository validators in the export: generate.mjs --check (byte-identical), locale-parity.test.mjs (44 tests, 44 pass, including the six [hi] cases), context-parity.mjs (ok, 131 allowed gaps), check-coverage.mjs (ok, 7 languages / 94 namespaces, 0 allowed gaps), check-duplicates.mjs (ok, 0 duplicates), check-strings.mjs (ok, 79 literals at/below baseline). Actual output: audit.log §2–§7.",
+  "ledger-check.mjs fails at this head with 84 findings across 658 entries — all 7 locales' rows for these four namespaces (28 rows, 3 findings each) are stale because wave A changed the English source and target bytes and those rows have not been re-bound to new receipts. The 12 hi lines of that output are in audit.log §8. This audit's receipt supplies the four hi rows; re-binding is the coordinator's step, and no ledger row was edited here.",
+  "Parsed all 38 en/hi pairs with @formatjs/icu-messageformat-parser: placeholder signatures identical (names, kinds, number styles), raw {…} span spellings byte-identical, key parity 38/38. Zero plural or select messages in this batch; the five plural messages that do live in these namespace files were separately checked against Intl.PluralRules('hi') = [one, other] and all arms are present (audit.log §9).",
+  "Rendered every audited value through the repository's intl-messageformat at locale hi: base args plus 12 realistic/adversarial {name}/{label}/{title} shapes (Latin, vowel-initial, Devanagari, ASCII quotes/apostrophe, comma, danda, CJK, RTL name, long, token-like, brace-like) — 168 variant renders, no throw, no placeholder leakage (render-table.txt §4).",
+  "Checked NFC, bidi controls (U+200E/F, U+202A–E, U+2066–9), ASCII apostrophes/double quotes, edge whitespace and ellipsis parity for all 38 values: 0 violations. No ZWJ/ZWNJ and no NBSP in the batch.",
+  "Terminology was checked against the rest of the hi catalogue by grep, not memory: टर्न (39 hits, incl. the same «{total} में से … टर्न» shape), सौंपना (20 hits), संग्रहित/बहाल (the pre-existing header pair), पिन/अनपिन (pre-existing pins.failure), समेटें/फैलाएँ (pre-existing collapse/expand), रद्द करें (64 hits), सहेजा जा रहा है (20 hits), जवाब (95 hits) vs प्रतिक्रिया (3 hits, 2 of them 'reaction')."
+ ],
+ "limitations": [
+  "Catalogue-only: no rendered frame, browser run, font-fallback check or geometry measurement. The width section in render-table.txt is a cluster-count estimate, not a fit claim, and no key in this batch carries a maxCells/maxChars hint (all 38 sidecars checked).",
+  "No native-speaker sign-off beyond this auditor's own reading; the second pass was the same reader re-reading, not an independent second auditor as high-visibility groups receive.",
+  "No ledger row, ledger-check pass, generated file, catalogue, context or code edit was made. ledger-check's failure at this head is the expected pre-binding state described in method item 3.",
+  "The second `{clock}` meridiems, the English backend sentences passed into {reason}, and the pre-existing कम्पोज़र/कंपोज़र split are outside the 38 values and are recorded as INFO, not counted."
+ ],
+ "findings": [
+  {
+   "id": "HI-WA-1",
+   "severity": "minor",
+   "keys": [
+    "ui.chat.header_identity.assign_agent",
+    "ui.chat.header_identity.assign_team",
+    "ui.chat.header_identity.aria_agent_assign",
+    "ui.chat.header_identity.aria_team_assign"
+   ],
+   "key": "ui.chat.header_identity.assign_agent",
+   "current": "एजेंट सौंपें · टीम सौंपें · एजेंट: {label}। एजेंट सौंपें · टीम: {label}। टीम सौंपें",
+   "problem": "सौंपना is this catalogue's own verb for assign-with-a-recipient (ui.settings.shortcuts.capture.already_assigned «पहले से {label} को सौंपा गया।») and for handing a thing over (ui.browser.browser_hand_over_dialog.hand_over «सौंपें»); ui.projects.project_start_session.a_plain_session_assign_a_team_or_agent_later already says «टीम या एजेंट बाद में सौंपें।». Here the agent/team itself is the object, no recipient is named and the surface is a bare chip tooltip, so «एजेंट सौंपें» shades toward 'hand the agent over' where every other locale uses its plain assign verb (fr Attribuer, es Asignar, ru Назначить, vi Gán, zh-CN 分配, ur مقرر کریں). Understandable and internally consistent, so not a blocker: the fix is an idiom improvement, not a meaning repair. Keep the tooltip and its aria twin identical, as they are today.",
+   "suggestion": "एजेंट असाइन करें · टीम असाइन करें (aria twins: एजेंट: {label}। एजेंट असाइन करें · टीम: {label}। टीम असाइन करें). If the product prefers picker language: एजेंट चुनें · टीम चुनें.",
+   "note": "Rejecting this with 'सौंपें is the house assign term' is a defensible answer; it is recorded, not gated."
+  },
+  {
+   "id": "HI-WA-2",
+   "severity": "INFO",
+   "key": "ui.chat.checkpoint.jump_agent",
+   "current": "“{name}” — {total, number} में से टर्न {turn, number} पर जाएँ",
+   "problem": "The sidecar describes the English order 'action … then the title after a comma'. Hindi fronts the quoted title and joins it with an em dash. Checked against the verb-final constraint: «…{total} में से टर्न {turn} पर जाएँ, “{name}”» would strand the title after the verb, and «टर्न {turn}, “{name}” पर जाएँ» would make the title the destination. The chosen order is the locale-correct adaptation, not an omission; verified rendered with 12 name shapes, all compose («“टीम, प्रमुख” — 34 में से टर्न 12 पर जाएँ»).",
+   "note": "Recorded as checked-and-accepted; no change requested."
+  },
+  {
+   "id": "HI-WA-3",
+   "severity": "INFO",
+   "key": "ui.chat.region.composer",
+   "current": "संदेश कंपोज़र",
+   "problem": "The hi catalogue spells this loan two ways: कंपोज़र (anusvara) in ui.chat.aside.empty, ui.chat.question_dock.hint.approval_held and this key (3 values); कम्पोज़र (conjunct म्प) in ui.canvas.create_file_dialog… and ui.chat.pickers.destination_pickers…secret… (2 values). Counts are exact, recomputed over every hi catalogue file. This batch adds the standard anusvara form and introduces no new split; the two कम्पोज़र values are pre-existing and outside this batch, so a spelling cleanup belongs to a later hi delta.",
+   "note": "Not counted: no value in this batch is wrong; the residual split predates a81c00cdda."
+  },
+  {
+   "id": "HI-WA-4",
+   "severity": "INFO",
+   "key": "ui.chat.checkpoint.jump_user",
+   "current": "{total, number} में से टर्न {turn, number} में {clock} पर भेजे गए अपने संदेश पर जाएँ",
+   "problem": "{clock} is formatted by checkpointClockLabel() in src/renderer/src/features/chat/canonical/checkpoint-model.ts, which hardcodes `${hour12}:${minutes} ${'AM'|'PM'}` — locale-independent. The Hindi sentence takes it correctly («3:42 PM पर भेजे गए»), but a Hindi reader sees a Latin meridiem where the hi style guide expects the formatter's am/pm suffix. Code-level, not a catalogue defect and out of this batch's scope.",
+   "note": "Recorded so the formatter gap is not lost; the catalogue value is correct for the input it receives."
+  },
+  {
+   "id": "HI-WA-5",
+   "severity": "INFO",
+   "key": "ui.chat.response_actions.answer_label",
+   "current": "जवाब की कार्रवाइयाँ",
+   "problem": "Distinctness check requested by the manager: the new «जवाब की कार्रवाइयाँ» (Answer actions) is lexically distinct from the pre-existing «प्रतिक्रिया की कार्रवाइयाँ» (ui.chat.response_actions.label, Response actions) and from «टिप्पणी की कार्रवाइयाँ» (commentary_actions.label) and «आपके संदेश की कार्रवाइयाँ» (yours_label), so message-actions-row.tsx's four-way aria-label switch never announces two identical rows. जवाब is the corpus's reply word (95 hits); प्रतिक्रिया otherwise means 'reaction' in this catalogue (ui.teamBridge.reactions.*). The pre-existing Response-actions value is the lexical outlier; changing it is outside this batch.",
+   "note": "Checked-and-accepted; no change requested for the new value."
+  },
+  {
+   "id": "HI-WA-6",
+   "severity": "INFO",
+   "key": "ui.chat.sidebar.row_menu.unarchive",
+   "current": "बातचीत बहाल करें",
+   "problem": "English distinguishes 'Unarchive conversation' (row menu) from 'Restore conversation' (header); Hindi renders both as «बातचीत बहाल करें», byte-identical to ui.chat.header.restore_conversation. Both surfaces perform the same act (clear the archive mark), बहाल is the catalogue's established restore word (ui.chat.header.archived_hint), and a coinage like «अनसंग्रहित करें» would be worse. fr/es do keep the distinction (Désarchiver/Desarchivar); if the programme ever wants it in hi, «बातचीत संग्रह से निकालें» is the honest native phrasing.",
+   "note": "Recorded as a considered collapse of a source distinction, not a defect."
+  }
+ ],
+ "namespaces": {
+  "ui.chat": {
+   "keys": 18,
+   "new_keys": 18,
+   "input_hashes": {
+    "en": {
+     "path": "src/i18n/catalogues/en/ui.chat.json",
+     "sha256": "1a1c9329a1a56ffda47b27da91e80fdf454751a4463b76f09ae9138d1ad0bcdc"
+    },
+    "context": {
+     "path": "src/i18n/catalogues/en/ui.chat.context.json",
+     "sha256": "1df3ad0e7054c77b2cc59971eae3a9387059be42839a271d80f70e754e542426"
+    },
+    "target": {
+     "path": "src/i18n/catalogues/hi/ui.chat.json",
+     "sha256": "849a6cd3093ca30986b9d85d347479859314ef99d490f91eeea98ed6639b4ebb"
+    }
+   },
+   "sha256": {
+    "en": "1a1c9329a1a56ffda47b27da91e80fdf454751a4463b76f09ae9138d1ad0bcdc",
+    "hi": "849a6cd3093ca30986b9d85d347479859314ef99d490f91eeea98ed6639b4ebb"
+   },
+   "context_sha256": "1df3ad0e7054c77b2cc59971eae3a9387059be42839a271d80f70e754e542426",
+   "status": "passed",
+   "result": "clean-with-findings",
+   "verdict": "clean-with-findings",
+   "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [
+     "HI-WA-1"
+    ]
+   },
+   "findings": [
+    {
+     "id": "HI-WA-1",
+     "severity": "minor",
+     "keys": [
+      "ui.chat.header_identity.assign_agent",
+      "ui.chat.header_identity.assign_team",
+      "ui.chat.header_identity.aria_agent_assign",
+      "ui.chat.header_identity.aria_team_assign"
+     ],
+     "key": "ui.chat.header_identity.assign_agent",
+     "current": "एजेंट सौंपें · टीम सौंपें · एजेंट: {label}। एजेंट सौंपें · टीम: {label}। टीम सौंपें",
+     "problem": "सौंपना is this catalogue's own verb for assign-with-a-recipient (ui.settings.shortcuts.capture.already_assigned «पहले से {label} को सौंपा गया।») and for handing a thing over (ui.browser.browser_hand_over_dialog.hand_over «सौंपें»); ui.projects.project_start_session.a_plain_session_assign_a_team_or_agent_later already says «टीम या एजेंट बाद में सौंपें।». Here the agent/team itself is the object, no recipient is named and the surface is a bare chip tooltip, so «एजेंट सौंपें» shades toward 'hand the agent over' where every other locale uses its plain assign verb (fr Attribuer, es Asignar, ru Назначить, vi Gán, zh-CN 分配, ur مقرر کریں). Understandable and internally consistent, so not a blocker: the fix is an idiom improvement, not a meaning repair. Keep the tooltip and its aria twin identical, as they are today.",
+     "suggestion": "एजेंट असाइन करें · टीम असाइन करें (aria twins: एजेंट: {label}। एजेंट असाइन करें · टीम: {label}। टीम असाइन करें). If the product prefers picker language: एजेंट चुनें · टीम चुनें.",
+     "note": "Rejecting this with 'सौंपें is the house assign term' is a defensible answer; it is recorded, not gated."
+    },
+    {
+     "id": "HI-WA-2",
+     "severity": "INFO",
+     "key": "ui.chat.checkpoint.jump_agent",
+     "current": "“{name}” — {total, number} में से टर्न {turn, number} पर जाएँ",
+     "problem": "The sidecar describes the English order 'action … then the title after a comma'. Hindi fronts the quoted title and joins it with an em dash. Checked against the verb-final constraint: «…{total} में से टर्न {turn} पर जाएँ, “{name}”» would strand the title after the verb, and «टर्न {turn}, “{name}” पर जाएँ» would make the title the destination. The chosen order is the locale-correct adaptation, not an omission; verified rendered with 12 name shapes, all compose («“टीम, प्रमुख” — 34 में से टर्न 12 पर जाएँ»).",
+     "note": "Recorded as checked-and-accepted; no change requested."
+    },
+    {
+     "id": "HI-WA-3",
+     "severity": "INFO",
+     "key": "ui.chat.region.composer",
+     "current": "संदेश कंपोज़र",
+     "problem": "The hi catalogue spells this loan two ways: कंपोज़र (anusvara) in ui.chat.aside.empty, ui.chat.question_dock.hint.approval_held and this key (3 values); कम्पोज़र (conjunct म्प) in ui.canvas.create_file_dialog… and ui.chat.pickers.destination_pickers…secret… (2 values). Counts are exact, recomputed over every hi catalogue file. This batch adds the standard anusvara form and introduces no new split; the two कम्पोज़र values are pre-existing and outside this batch, so a spelling cleanup belongs to a later hi delta.",
+     "note": "Not counted: no value in this batch is wrong; the residual split predates a81c00cdda."
+    },
+    {
+     "id": "HI-WA-4",
+     "severity": "INFO",
+     "key": "ui.chat.checkpoint.jump_user",
+     "current": "{total, number} में से टर्न {turn, number} में {clock} पर भेजे गए अपने संदेश पर जाएँ",
+     "problem": "{clock} is formatted by checkpointClockLabel() in src/renderer/src/features/chat/canonical/checkpoint-model.ts, which hardcodes `${hour12}:${minutes} ${'AM'|'PM'}` — locale-independent. The Hindi sentence takes it correctly («3:42 PM पर भेजे गए»), but a Hindi reader sees a Latin meridiem where the hi style guide expects the formatter's am/pm suffix. Code-level, not a catalogue defect and out of this batch's scope.",
+     "note": "Recorded so the formatter gap is not lost; the catalogue value is correct for the input it receives."
+    },
+    {
+     "id": "HI-WA-5",
+     "severity": "INFO",
+     "key": "ui.chat.response_actions.answer_label",
+     "current": "जवाब की कार्रवाइयाँ",
+     "problem": "Distinctness check requested by the manager: the new «जवाब की कार्रवाइयाँ» (Answer actions) is lexically distinct from the pre-existing «प्रतिक्रिया की कार्रवाइयाँ» (ui.chat.response_actions.label, Response actions) and from «टिप्पणी की कार्रवाइयाँ» (commentary_actions.label) and «आपके संदेश की कार्रवाइयाँ» (yours_label), so message-actions-row.tsx's four-way aria-label switch never announces two identical rows. जवाब is the corpus's reply word (95 hits); प्रतिक्रिया otherwise means 'reaction' in this catalogue (ui.teamBridge.reactions.*). The pre-existing Response-actions value is the lexical outlier; changing it is outside this batch.",
+     "note": "Checked-and-accepted; no change requested for the new value."
+    }
+   ],
+   "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+   }
+  },
+  "ui.chat.header": {
+   "keys": 5,
+   "new_keys": 5,
+   "input_hashes": {
+    "en": {
+     "path": "src/i18n/catalogues/en/ui.chat.header.json",
+     "sha256": "e759664b305988c9eca049a767384ecb9473ad673a41d01c15e65d2e1e257a4d"
+    },
+    "context": {
+     "path": "src/i18n/catalogues/en/ui.chat.header.context.json",
+     "sha256": "3ccb43d7d8c9bd9c1912656c2781037bdc70868f6ff3614be3f8d083c2644908"
+    },
+    "target": {
+     "path": "src/i18n/catalogues/hi/ui.chat.header.json",
+     "sha256": "e4ddad4a97cb8412fdd34e6d287b0e2176bb177cc4b9b9b4cc8ef5b08e8ae76a"
+    }
+   },
+   "sha256": {
+    "en": "e759664b305988c9eca049a767384ecb9473ad673a41d01c15e65d2e1e257a4d",
+    "hi": "e4ddad4a97cb8412fdd34e6d287b0e2176bb177cc4b9b9b4cc8ef5b08e8ae76a"
+   },
+   "context_sha256": "3ccb43d7d8c9bd9c1912656c2781037bdc70868f6ff3614be3f8d083c2644908",
+   "status": "passed",
+   "result": "clean",
+   "verdict": "clean",
+   "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": []
+   },
+   "findings": [],
+   "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   }
+  },
+  "ui.chat.response_actions": {
+   "keys": 4,
+   "new_keys": 4,
+   "input_hashes": {
+    "en": {
+     "path": "src/i18n/catalogues/en/ui.chat.response_actions.json",
+     "sha256": "8c23ba6a5b509c13d878c05aed0454026a6960566b043f5e983008dee93bcb18"
+    },
+    "context": {
+     "path": "src/i18n/catalogues/en/ui.chat.response_actions.context.json",
+     "sha256": "113b419d94df867024a91b9902c1385dc3b652fd39fd0612f37866030f937a28"
+    },
+    "target": {
+     "path": "src/i18n/catalogues/hi/ui.chat.response_actions.json",
+     "sha256": "5de763b8d3a5bf9e9c395931e4d150d76a7b7efab4cb8a3ea3f438c37176d55b"
+    }
+   },
+   "sha256": {
+    "en": "8c23ba6a5b509c13d878c05aed0454026a6960566b043f5e983008dee93bcb18",
+    "hi": "5de763b8d3a5bf9e9c395931e4d150d76a7b7efab4cb8a3ea3f438c37176d55b"
+   },
+   "context_sha256": "113b419d94df867024a91b9902c1385dc3b652fd39fd0612f37866030f937a28",
+   "status": "passed",
+   "result": "clean",
+   "verdict": "clean",
+   "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": []
+   },
+   "findings": [],
+   "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   }
+  },
+  "ui.chat.sidebar": {
+   "keys": 11,
+   "new_keys": 11,
+   "input_hashes": {
+    "en": {
+     "path": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+     "sha256": "7901d0902c1dff11a5f4aca6138ac1dc05268c82ea1561e4c81bc106fcb00353"
+    },
+    "context": {
+     "path": "src/i18n/catalogues/en/ui.chat.sidebar.context.json",
+     "sha256": "996e9bf0eda23ee7f56a3d4f979617b2a965cb20cd820f0da67570297030d1be"
+    },
+    "target": {
+     "path": "src/i18n/catalogues/hi/ui.chat.sidebar.json",
+     "sha256": "5aed52ab4d42e21d5ed21114900313e49e4a459bd94e4bcbff494a25080b5c81"
+    }
+   },
+   "sha256": {
+    "en": "7901d0902c1dff11a5f4aca6138ac1dc05268c82ea1561e4c81bc106fcb00353",
+    "hi": "5aed52ab4d42e21d5ed21114900313e49e4a459bd94e4bcbff494a25080b5c81"
+   },
+   "context_sha256": "996e9bf0eda23ee7f56a3d4f979617b2a965cb20cd820f0da67570297030d1be",
+   "status": "passed",
+   "result": "clean",
+   "verdict": "clean",
+   "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": []
+   },
+   "findings": [
+    {
+     "id": "HI-WA-6",
+     "severity": "INFO",
+     "key": "ui.chat.sidebar.row_menu.unarchive",
+     "current": "बातचीत बहाल करें",
+     "problem": "English distinguishes 'Unarchive conversation' (row menu) from 'Restore conversation' (header); Hindi renders both as «बातचीत बहाल करें», byte-identical to ui.chat.header.restore_conversation. Both surfaces perform the same act (clear the archive mark), बहाल is the catalogue's established restore word (ui.chat.header.archived_hint), and a coinage like «अनसंग्रहित करें» would be worse. fr/es do keep the distinction (Désarchiver/Desarchivar); if the programme ever wants it in hi, «बातचीत संग्रह से निकालें» is the honest native phrasing.",
+     "note": "Recorded as a considered collapse of a source distinction, not a defect."
+    }
+   ],
+   "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   }
+  }
+ },
+ "artifacts": [
+  {
+   "path": "i18n/audits/evidence/hi/ui.chat/wa-a81c00c-20261027/audit.log",
+   "role": "actual command output for every validator, plural and ICU/render run",
+   "sha256": "92a633ba1a21fa5d9e0dff3c66b91fd628e1dd12f168a1f530013f31634d89d6"
+  },
+  {
+   "path": "i18n/audits/evidence/hi/ui.chat/wa-a81c00c-20261027/render-table.txt",
+   "role": "rendered output: base table, template width, 168 adversarial/realistic name variants",
+   "sha256": "1e036137f4552940acaa134ba11f2e4f9a473dc600d215c2e7499a24208f1a06"
+  },
+  {
+   "path": "i18n/audits/evidence/hi/ui.chat/wa-a81c00c-20261027/icu-digest.json",
+   "role": "machine digest of the 38 per-key ICU/render checks",
+   "sha256": "7dc757a4e61133301734ff3854bf60640f7d8aa0104b8a55ecc8fefae6d2b4f2"
+  },
+  {
+   "path": "i18n/audits/evidence/hi/ui.chat/wa-a81c00c-20261027/export-integrity.log",
+   "role": "git show a81c00cdda:<path> vs export byte equality for all 12 inputs",
+   "sha256": "ba15d3cddc8b2177cc1f4158f103e0b4678655e5328789a02e516d505555c1d3"
+  },
+  {
+   "path": "i18n/audits/evidence/hi/ui.chat/wa-a81c00c-20261027/tools/icu-audit.mjs",
+   "role": "read-only harness that produced icu-digest.json and the render table",
+   "sha256": "90daa3a44aaaee17910c6f50575434b4aa7779698a27c7a076481e73106a45b6"
+  },
+  {
+   "path": "i18n/audits/evidence/hi/ui.chat/wa-a81c00c-20261027/tools/plural-arms.mjs",
+   "role": "plural-arm/CLDR check over the four namespace files",
+   "sha256": "98a2defa5ea84dad76563cbdbb3e21ce5276febe3732cef551154e86f6925c11"
+  },
+  {
+   "path": "i18n/audits/evidence/hi/ui.chat/wa-a81c00c-20261027/tools/derive-check.mjs",
+   "role": "the deriveReceiptAudit() invocation whose output is derive-check.json",
+   "sha256": "806e2b850b0b83a420a523dee88011ed22b0f84cd9a70e69cb3cdb9f9965161a"
+  }
+ ],
+ "audit_notes_not_execution_log": "The method list records what was run and seen; the verbatim validator and renderer output is in audit.log, render-table.txt and icu-digest.json, whose hashes are listed in artifacts. Working notes lived in the session scratchpad ($LOCAL_OPERATOR_SCRATCHPAD/wave-a-audit-hi) and are not artifacts of record.",
+ "ledger_binding": {
+  "note": "Rows are NOT edited here. The coordinator binds them with the repo's writer; each note is <=280 chars and names the record path.",
+  "command_template": "node scripts/i18n/ledger-assemble.mjs --locale hi --file src/i18n/catalogues/hi/<namespace>.json --auditor-instance wa-hi-3acece16f468 --auditor-model radient/auto --result <clean|clean-with-findings> --receipt i18n/receipts/wa-a81c00c-20261027-hi.json --translator-agent <translator> --translator-model <translator model> --date 2026-10-27 --repo <repo root> --note \"<note>\"",
+  "per_namespace": {
+   "ui.chat": {
+    "result": "clean-with-findings",
+    "note": "wa-a81c00c: 18 hi wave-A values at a81c00cdda, 1 minor (HI-WA-1 assign verb), 4 INFO. Record i18n/audits/evidence/hi/ui.chat/wa-a81c00c-20261027/record.json; hashes match this receipt."
+   },
+   "ui.chat.header": {
+    "result": "clean",
+    "note": "wa-a81c00c: 5 hi wave-A header values at a81c00cdda, clean (0 blocker/major/minor/nit). Record i18n/audits/evidence/hi/ui.chat.header/wa-a81c00c-20261027/record.json; hashes match this receipt."
+   },
+   "ui.chat.response_actions": {
+    "result": "clean",
+    "note": "wa-a81c00c: 4 hi wave-A action labels at a81c00cdda, clean (0 blocker/major/minor/nit). Record i18n/audits/evidence/hi/ui.chat.response_actions/wa-a81c00c-20261027/record.json; hashes match this receipt."
+   },
+   "ui.chat.sidebar": {
+    "result": "clean",
+    "note": "wa-a81c00c: 11 hi wave-A sidebar values at a81c00cdda, clean (0 blocker/major/minor/nit), 1 INFO (unarchive=restore). Record i18n/audits/evidence/hi/ui.chat.sidebar/wa-a81c00c-20261027/record.json; hashes match this receipt."
+   }
+  }
+ },
+ "overall_report_verdict": {
+  "status": "passed",
+  "unresolved_blocker_major_count": 0,
+  "finding_ids": [
+   "HI-WA-1"
+  ],
+  "severity_counts": {
+   "blocker": 0,
+   "major": 0,
+   "minor": 1,
+   "nit": 0
+  },
+  "info_count": 5
+ }
+}

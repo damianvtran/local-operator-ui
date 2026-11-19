@@ -1,0 +1,12 @@
+{
+  "measurements": {
+    "time": 1793705182.701659,
+    "load": 19.28173828125,
+    "memory_free_percent": 78,
+    "disk_GiB": 17.837989807128906,
+    "active_heavy_groups": 0,
+    "heavy_pgids": []
+  },
+  "launch_called": true,
+  "exit": 0
+}

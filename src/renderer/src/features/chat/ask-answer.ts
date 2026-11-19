@@ -85,6 +85,7 @@ import {
 	ANSWER_NOT_SENT_CODE,
 	withBusyResends,
 } from "@shared/store/canonical-sessions-store";
+import { t } from "../../../../i18n/messages";
 import {
 	DESKTOP_DEADLINE_EXCEEDED_CODE,
 	DESKTOP_LOST_SIGHT_CODE,
@@ -100,6 +101,26 @@ import type { PendingDesktopGate } from "../../../../shared/desktop-session-cont
  * existing reader keeps one import site.
  */
 import { BARE_OPTION_ORDINAL, approvalVerdict } from "./approval-words";
+/*
+ * TYPE-ONLY, so this module keeps its bundle independence: the dismissal's
+ * vocabulary lives with the rest of the queued-ask contract (`ask-queue.ts`),
+ * and an `import type` is erased rather than dragging that module's imports in.
+ */
+import type { AskDismissReason } from "./ask-queue";
+/*
+ * THE BUSY ARM'S TWO HALVES LIVE IN `ask-queue.ts` AND ARE RE-EXPORTED HERE, which
+ * is the reverse of the type-only rule above and deliberate: that module decides
+ * the QUEUED ask's refusal sentences (`askRefusalSentence`) and may not import this
+ * one — its node-side bundle in `scripts/ask-queue.test.mjs` aliases `@shared` only,
+ * and this module's reach into the store is not resolvable there. `ask-queue` has no
+ * runtime import of this module, so a value import in this direction is the one
+ * that closes the loop, and re-exporting keeps both names on the API every existing
+ * reader imports them from (`answerReport` here, `scripts/ask-options.test.mjs`).
+ * One disposition, one predicate, one sentence — wherever the ask is painted.
+ */
+import { answerBusyMessage, answerOwnerIsBusy } from "./ask-queue";
+
+export { answerBusyMessage, answerOwnerIsBusy };
 
 export {
 	APPROVAL_OPTIONS,
@@ -343,8 +364,8 @@ export const errorCodeOf = (error: unknown): string | undefined =>
  * same shape, and in those the question was still pending (measured — code review
  * round 1, MAJOR-1). Those two now have their own arms below.
  */
-export const SETTLED_ELSEWHERE_MESSAGE =
-	"That question was already answered somewhere else, so your answer was not sent.";
+export const settledElsewhereMessage = (): string =>
+	t("ui.chat.ask_answer.settled_elsewhere");
 
 /**
  * The sentence for a press whose question the ask had already moved past.
@@ -356,8 +377,8 @@ export const SETTLED_ELSEWHERE_MESSAGE =
  * the question, or the ask advanced on its own schedule) and both are true of
  * the user's situation: the question they answered is not the question on screen.
  */
-export const QUESTION_MOVED_ON_MESSAGE =
-	"That question had already been settled or moved on, so your answer was not sent.";
+export const questionMovedOnMessage = (): string =>
+	t("ui.chat.ask_answer.moved_on");
 
 /**
  * The sentence for a press addressed to a runtime instance that is gone.
@@ -383,8 +404,8 @@ export const QUESTION_MOVED_ON_MESSAGE =
  * U8). `answerReport` now chooses the sentence from the outcome class first and
  * the surface second, so this string is what both surfaces carry.
  */
-export const ANSWER_LOST_TO_RECONNECT_MESSAGE =
-	"Your answer was not sent. The app reconnected to a new runtime instance, so the question was not answered here.";
+export const answerLostToReconnectMessage = (): string =>
+	t("ui.chat.ask_answer.lost_to_reconnect");
 
 /**
  * The sentence for a press whose fate is genuinely UNKNOWN.
@@ -422,8 +443,8 @@ export const ANSWER_LOST_TO_RECONNECT_MESSAGE =
  * and the destination second, so an unknowable outcome says so wherever it is
  * reported.
  */
-export const ANSWER_UNCONFIRMED_LEAD =
-	"Whether your answer landed is not knowable.";
+export const answerUnconfirmedLead = (): string =>
+	t("ui.chat.ask_answer.unconfirmed_lead");
 
 /**
  * The whole sentence: the unknown register, then the app's own reason.
@@ -435,67 +456,10 @@ export const ANSWER_UNCONFIRMED_LEAD =
  * tells the user not to press again blindly.
  */
 export const answerUnconfirmedMessage = (error: unknown): string =>
-	`${ANSWER_UNCONFIRMED_LEAD} ${userFacingMessage(
-		error,
-		"The request could not be completed.",
-	)}`;
-
-/**
- * The sentence for a press the route could not hand to a BUSY owner, after the
- * app's own repeats are spent.
- *
- * The answers route answers `503 {"code": "runtime_busy", "retryable": true,
- * "retry_after_ms": 2000}` when the session's owner is alive and not answering
- * its attach socket. Two things about that arm decide this copy, and both were
- * design round 1 on the backend change (D1/D2/D4/D5):
- *
- *  - IT MUST NOT CLAIM THE ANSWER WAS NOT SENT. The busy refusal is raised for
- *    `RuntimeUnresponsiveError` AND for an ack timeout on a live owner
- *    (`desktop_sessions.py`), and the second is the write-then-wait path this app
- *    records on `DESKTOP_REFUSAL_CODE.transportFailed`: the frame was written and
- *    only its acknowledgement was lost. So the answer may have been taken, and
- *    this arm takes the unknowable register, exactly as the deadline and lost-hop
- *    arms do. The app's own bounded repeat (`withBusyResends`, spent before this
- *    sentence can paint) is what makes that acceptable to say in the first place.
- *
- *    THE SEND PATH HOLDS THE SAME EXPOSURE, and its copy is not changed here
- *    (agent review round 1, MINOR-2, which corrected an earlier draft of this
- *    note). That draft rested the argument on "nothing was admitted is true of
- *    `runtime_busy` on `/messages`", and the merged ladder does not support it:
- *    the busy refusal is raised from the SHARED `errors()` ladder, whose second
- *    arm is the generic ack timeout on a live owner, and that ladder wraps
- *    `/v1/desktop/sessions/{id}/messages` too - where admission is itself an
- *    acked write (`AttachedSession.admit_prompt` ends in
- *    `request_ack_with_duplicate`). So a send can meet this code over a
- *    write-then-wait loss, where `SEND_FAILURE_COPY.busy`'s "your message wasn't
- *    sent" is as unprovable as the sentence this arm replaced. Nothing about the
- *    ANSWER path changes either way - that arm's classification and copy are right
- *    on both raise arms - and the send half is deferred rather than fixed
- *    silently, because it is a copy decision about a different surface.
- *  - IT MUST NOT CARRY THE BACKEND'S PROSE. The route's sentence on this arm is
- *    the unreachable one - "Reconnect and reconcile before retrying" - which
- *    names a control this screen does not have and tells the user to retry what
- *    the app has already retried. The app's own noun for this owner is "the
- *    agent" (`SEND_FAILURE_COPY.busy`), not "the session owner".
- *
- * "isn't confirmed yet" rather than "wasn't sent" is the whole finding, and
- * "yet" is load-bearing: the owner may still take it, and the app may still be
- * told so.
- *
- * ITS LEAD IS DELIBERATELY ITS OWN, not `ANSWER_UNCONFIRMED_LEAD` (agent review
- * round 1, NIT-1). The sibling arm composes its lead so the two "outcome is not
- * knowable" sentences cannot drift apart, and composing this one too would put
- * that longer register - "Whether your answer landed is not knowable." - in front
- * of a sentence the design round chose short for a measured reason: the band
- * wraps to two lines at the 172 px column and the shorter candidate is the one
- * that fits it (`composer-notice-arms`, the busy arm's three widths). The factual
- * claim is the same one the lead makes ("isn't confirmed YET"), stated in the
- * first person of a press rather than the passive; the drift risk the sibling's
- * composition guards against is one of wording between two sentences that say the
- * same thing, and here the wording is the point.
- */
-export const ANSWER_BUSY_MESSAGE =
-	"Your answer isn't confirmed yet. The agent is busy.";
+	t("ui.chat.ask_answer.unconfirmed", {
+		lead: answerUnconfirmedLead(),
+		reason: userFacingMessage(error, t("ui.chat.ask_answer.request_failed")),
+	});
 
 /**
  * The sentence for a press addressed to a session the app could not reach at all.
@@ -520,17 +484,11 @@ export const ANSWER_BUSY_MESSAGE =
  * It is composed from the shared lead rather than spelled out, so the two arms
  * that say "the outcome is not knowable" cannot drift apart in one word.
  */
-export const ANSWER_SESSION_UNREACHABLE_MESSAGE = `${ANSWER_UNCONFIRMED_LEAD} The app could not reach this chat's session at all.`;
-
-/**
- * Whether this failure is the answers route's retryable-busy refusal.
- *
- * Keyed on the CODE and never the status: a `503` on a `/v1/desktop/` route is
- * also how the desktop plane refuses this app (`pairing.plane-closed`), which IS
- * an answer about the request rather than a lost sight of it.
- */
-export const answerOwnerIsBusy = (error: unknown): boolean =>
-	error instanceof DesktopControlError && error.code === RUNTIME_BUSY_CODE;
+export const answerSessionUnreachableMessage = (): string =>
+	t("ui.chat.ask_answer.unconfirmed", {
+		lead: answerUnconfirmedLead(),
+		reason: t("ui.chat.ask_answer.session_unreachable"),
+	});
 
 /**
  * Whether this failure is the daemon's own hop failure to the session's owner.
@@ -595,10 +553,9 @@ export const answerRefusedWithoutACode = (error: unknown): boolean =>
  * rather than `error.message`.
  */
 export const unsentAnswerMessage = (error: unknown): string =>
-	`Your answer was not sent. ${userFacingMessage(
-		error,
-		"The request could not be completed.",
-	)}`;
+	t("ui.chat.ask_answer.not_sent", {
+		reason: userFacingMessage(error, t("ui.chat.ask_answer.request_failed")),
+	});
 
 /**
  * What one option press reports, and WHERE it reports it.
@@ -946,16 +903,15 @@ const pressSentenceFor = (error: unknown, frame: PressFrame): string => {
 	 * before the unknowable arm because both ARE unknowable outcomes - the busy arm
 	 * is in that set, and `runtime_unreachable` always has been.
 	 */
-	if (answerOwnerIsBusy(error)) return ANSWER_BUSY_MESSAGE;
-	if (answerSessionUnreachable(error))
-		return ANSWER_SESSION_UNREACHABLE_MESSAGE;
+	if (answerOwnerIsBusy(error)) return answerBusyMessage();
+	if (answerSessionUnreachable(error)) return answerSessionUnreachableMessage();
 	if (answerOutcomeIsUnknown(error)) return answerUnconfirmedMessage(error);
 	if (answerRefusedWithoutACode(error)) {
 		if (frame.liveEpoch !== frame.sentEpoch)
-			return ANSWER_LOST_TO_RECONNECT_MESSAGE;
-		if (frame.liveGateKey === null) return SETTLED_ELSEWHERE_MESSAGE;
+			return answerLostToReconnectMessage();
+		if (frame.liveGateKey === null) return settledElsewhereMessage();
 		if (frame.liveGateKey !== frame.pressedGateKey)
-			return QUESTION_MOVED_ON_MESSAGE;
+			return questionMovedOnMessage();
 	}
 	return unsentAnswerMessage(error);
 };
@@ -998,8 +954,8 @@ const composerCodeFor = (error: unknown): string => {
  * the composer's alert offers no press that cannot work, exactly as the
  * approval's "Reply yes or no" refusal does.
  */
-export const SECRET_ANSWER_DOCKED_MESSAGE =
-	"Your answer was not sent — a secret request is answered in the field above the composer.";
+export const secretAnswerDockedMessage = (): string =>
+	t("ui.chat.ask_answer.secret_docked");
 
 /** The `sessions.answer` request, as the wire contract defines it. */
 export type GateAnswerRequest = Extract<
@@ -1246,7 +1202,43 @@ export const answerQueuedAsk = async (
 		answers,
 	};
 	try {
-		await send(request);
+		/*
+		 * THE APP'S OWN REPEAT, which this path did not have and `answerGateOption`
+		 * does. A queued ask's press reaches the owner over the same attach socket,
+		 * so a lost acknowledgement comes back as the retryable `runtime_busy`
+		 * refusal while the answer may already be in the ask log - the operator's
+		 * report (`a-7039` timed out under `The request could not be confirmed.`)
+		 * is that lost ack plus a client that never repeated it.
+		 *
+		 * THE SAME `request` goes out whole, and the answers route carries NO
+		 * receipt journal to replay from: a repeat cannot double-answer because the
+		 * ask log is FIRST-ANSWER-WINS. So what a repeat lands as depends on whether
+		 * the lost ack hid a write that had already happened: if the busy owner never
+		 * took the first one (the common case - it was mid-turn), the repeat is
+		 * accepted and this path returns `sent`; if the answer WAS recorded, the
+		 * owner refuses the repeat with its own sentence - "already answered by
+		 * <surface>" (`asks/render.py`'s `refusal_copy`, answered 409 by the answers
+		 * route) - which the card paints as that state rather than as a failure. It
+		 * is never a second answer, and it is never this path claiming the press
+		 * landed when the owner said otherwise.
+		 *
+		 * THE GATE BRANCH BESIDE IT IS THE IDEMPOTENT ONE, and the difference matters
+		 * when reading either comment: `answerGateOption` re-issues under the answer's
+		 * own settle (the backend's "an answer gate re-issues under its own idempotent
+		 * settle", on both busy arms), so ITS repeat comes back `sent` even when the
+		 * first write landed. A queued ask has no such op - the ask log has already
+		 * decided - so this door's honest ceiling is "sent, or the owner's
+		 * already-answered refusal".
+		 *
+		 * THE LOCK IS HELD ACROSS THE RESENDS, exactly as the gate path holds it:
+		 * the one-answer-in-flight rule covers the whole press rather than its first
+		 * attempt, so a second press cannot race this one while it waits out a busy
+		 * owner. Nothing is reported while it repeats - only the refusal left after
+		 * `BUSY_RESENDS` is spent reaches the classifier, which is what lets the
+		 * exhausted case say the outcome is not confirmed (`askRefusalSentence`'s
+		 * busy arm) instead of a definite "was not sent".
+		 */
+		await withBusyResends(() => send(request));
 		return { status: "sent" };
 	} catch (error) {
 		return { status: "failed", request, error };
@@ -1334,6 +1326,50 @@ export const declineQueuedAsk = async (
 		sessionId,
 		askId: taskId,
 		decline: true,
+	};
+	try {
+		await send(request);
+		return { status: "sent" };
+	} catch (error) {
+		return { status: "failed", request, error };
+	} finally {
+		lock.release();
+	}
+};
+
+/**
+ * Dismiss an OPEN queued ask: put it away without answering it (harness SA-D5).
+ *
+ * A third door beside the answer and the decline, addressed the same way and
+ * behind the same one-answer-in-flight lock. The difference is what the owner
+ * is told: a decline says "decide yourself", a dismissal carries the operator's
+ * reason (`answered_in_chat` or `moot`) so the agent knows whether to take the
+ * answer from the conversation or to drop the ask.
+ *
+ * NO `delivered`/status PRE-CHECK, for the reason the two siblings state: the
+ * owner's fold decides, and its refusal sentence ("this ask is relayed from
+ * another session — answer it there, or dismiss it here", the already-dismissed
+ * repeat, a settled row) is what the card renders in place. A client-side test
+ * would be a second opinion about a race this process cannot see.
+ */
+export const dismissQueuedAsk = async (
+	deps: {
+		taskId: string;
+		reason: AskDismissReason;
+		sessionId?: string | null;
+		lock: SendLock;
+	},
+	send: (request: GateAnswerRequest) => Promise<unknown>,
+): Promise<AnswerOutcome> => {
+	const { taskId, reason, sessionId, lock } = deps;
+	if (!sessionId || !taskId) return { status: "refused" };
+	if (!lock.tryAcquire()) return { status: "refused" };
+	const request: GateAnswerRequest = {
+		op: "sessions.answer",
+		sessionId,
+		askId: taskId,
+		dismiss: true,
+		reason,
 	};
 	try {
 		await send(request);

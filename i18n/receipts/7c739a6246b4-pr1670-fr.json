@@ -1,0 +1,132 @@
+{
+ "schema": 1,
+ "receipt_kind": "locale-audit (PR delta audit)",
+ "date": "2026-11-04",
+ "auditor": "translation-auditor",
+ "agent": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "model_provenance": "Served model as announced by the harness preamble for session 7c739a6246b4 (anthropic/claude-opus-5-5); no fallback announced or observed.",
+ "model_fallback": {
+  "announced": false,
+  "observed": false
+ },
+ "status": "passed",
+ "result": "clean-with-findings",
+ "namespace": "ui.teamBridge",
+ "locale": "fr",
+ "audit_id": "tb1670-7c739a6246b4-fr",
+ "instance": "7c739a6246b4-pr1670-fr",
+ "session": "7c739a6246b4",
+ "integration": {
+  "pr": 1670,
+  "repo": "damianvtran/local-operator-ui",
+  "branch": "feat/team-bridge-members-panel",
+  "base": "a70a761ae4704a43c60470beed7c5eaeba763e90",
+  "audited_head": "4397967ebe01f60a6a2c8b68b430f36c68fa90fe",
+  "auditor_fix_commit": "the commit that adds this record"
+ },
+ "independence": "Independent auditor: lopdev team translation-auditor, session 7c739a6246b4. Did not translate the 23 members_panel values (they arrived in the implementer's commit 4397967 on PR #1670), wrote no English copy or code in the PR, and is not any prior ui.teamBridge auditor (828e525994e6-pr1666-fr). It applied only the corrections listed in findings. Same model family as the team coder (anthropic/claude-opus-5-5), separate agent instance; disclosed. No MT service used. Row written by ledger-assemble.mjs.",
+ "sha256": {
+  "fr": "5251e202a8e37b0f6797777568c39a30cc363a7e2de0d6f58525b6dc900f09df",
+  "en": "28aed4e764637f920fa2fa67f089cffe1bcf250c3840f19bc47babeaae360352"
+ },
+ "context_sha256": "74f1e0353fe96e3d141d9a43b1134308fb4fcf1b57f8c01e73110416fd79c313",
+ "style_guide": {
+  "path": "~/local-operator i18n/style-guides/fr.md",
+  "sha256": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226",
+  "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "core_commit": "b42471d3935"
+ },
+ "scope": {
+  "delta_kind": "Delta audit of PR #1670 (a70a761ae47..4397967ebe0): the 23 new ui.teamBridge.members_panel.* values read against en, the en context sidecar, the glossary and the fr style guide, composed with real arguments; existing ui.teamBridge copy read for glossary consistency. No pre-existing value changed in the PR (verified); the other 342 values are byte-identical to the 828e525994e6-pr1666-fr audited bytes. No rendered fit or native RTL rendering claimed.",
+  "keys_added": [
+   "ui.teamBridge.members_panel.title",
+   "ui.teamBridge.members_panel.close",
+   "ui.teamBridge.members_panel.open_label",
+   "ui.teamBridge.members_panel.open_label_invited",
+   "ui.teamBridge.members_panel.state.pending_approval",
+   "ui.teamBridge.members_panel.leave_label",
+   "ui.teamBridge.members_panel.leave_tooltip",
+   "ui.teamBridge.members_panel.decline_label",
+   "ui.teamBridge.members_panel.decline_tooltip",
+   "ui.teamBridge.members_panel.confirm.remove_title",
+   "ui.teamBridge.members_panel.confirm.remove_body",
+   "ui.teamBridge.members_panel.confirm.withdraw_body",
+   "ui.teamBridge.members_panel.confirm.leave_title",
+   "ui.teamBridge.members_panel.confirm.leave_body",
+   "ui.teamBridge.members_panel.confirm.decline_title",
+   "ui.teamBridge.members_panel.confirm.decline_body",
+   "ui.teamBridge.members_panel.confirm.remove",
+   "ui.teamBridge.members_panel.confirm.leave",
+   "ui.teamBridge.members_panel.confirm.decline",
+   "ui.teamBridge.members_panel.note.general",
+   "ui.teamBridge.members_panel.note.humans",
+   "ui.teamBridge.members_panel.note.agents",
+   "ui.teamBridge.members_panel.note.dm"
+  ],
+  "keys_changed_by_auditor": [
+   "ui.teamBridge.members_panel.confirm.remove_title",
+   "ui.teamBridge.members_panel.confirm.leave_title",
+   "ui.teamBridge.members_panel.confirm.decline_title",
+   "ui.teamBridge.members_panel.close",
+   "ui.teamBridge.members_panel.confirm.remove_body",
+   "ui.teamBridge.members_panel.confirm.leave_body"
+  ]
+ },
+ "findings": [
+  {
+   "id": "FR-M1",
+   "severity": "minor",
+   "keys": [
+    "ui.teamBridge.members_panel.confirm.remove_title",
+    "ui.teamBridge.members_panel.confirm.leave_title",
+    "ui.teamBridge.members_panel.confirm.decline_title"
+   ],
+   "summary": "ASCII U+0020 before '?' in three dialog titles; the fr style guide requires U+202F and the other ui.teamBridge values use it (19 ':' and 9 ';' with U+202F).",
+   "disposition": "fixed by auditor in this commit (U+202F, codepoint-verified)"
+  },
+  {
+   "id": "FR-M2",
+   "severity": "minor",
+   "keys": [
+    "ui.teamBridge.members_panel.close"
+   ],
+   "summary": "'Fermer les membres' reads as shutting the members, not closing the panel; matches the sibling 'Fermer le fil'/'Fermer le profil' only if the object is the list.",
+   "current": "Fermer les membres",
+   "proposed": "Fermer la liste des membres",
+   "disposition": "fixed by auditor in this commit"
+  },
+  {
+   "id": "FR-M3",
+   "severity": "minor",
+   "keys": [
+    "ui.teamBridge.members_panel.confirm.remove_body",
+    "ui.teamBridge.members_panel.confirm.leave_body"
+   ],
+   "summary": "'ses messages' in a standalone dialog body reads as 'his/her own messages'; English 'its' is the conversation's.",
+   "proposed": "'les messages de cette conversation'",
+   "disposition": "fixed by auditor in this commit"
+  },
+  {
+   "id": "FR-N1",
+   "severity": "nit",
+   "keys": [
+    "ui.teamBridge.members_panel.state.pending_approval"
+   ],
+   "summary": "'En attente d’approbation' is 24 chars vs 16 English, in a shrink-0 badge beside a truncating name in a min-w-72 drawer; meaning is right and a shorter form ('À approuver') shifts who approves.",
+   "disposition": "open — flag for the design rendered check at 288px; no wording change"
+  }
+ ],
+ "evidence": {
+  "record": "i18n/audits/evidence/fr/ui.teamBridge/tb1670-7c739a6246b4-fr/record.json",
+  "record_sha256": "98942171f9e6268e181f0d62a86543d2afecd3fcbb558d9a3cf8c2a214f524fc"
+ },
+ "checks": {
+  "icu_command": "node scripts/verify.mjs (worktree root; @formatjs/icu-messageformat-parser) — all 365 values parse; argument names equal en; CLDR plural arms per style guide on delta keys",
+  "compose_command": "node scripts/compose.mjs (intl-messageformat, real arguments incl. 0/1/2/5/21/10^6)",
+  "unicode": "All values NFC; no bidi controls (U+200E/F, U+061C, U+202A-E, U+2066-9).",
+  "key_set": "365 keys, equal to English, same order.",
+  "execution_log": "i18n/audits/evidence/fr/ui.teamBridge/tb1670-7c739a6246b4-fr/audit.log"
+ },
+ "terminal": true
+}

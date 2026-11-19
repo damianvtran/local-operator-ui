@@ -1,0 +1,18 @@
+{
+	"ui.agents.refusals.name_taken": "“{name}” نام کا ایجنٹ پہلے سے موجود ہے۔ دوسرا نام منتخب کریں یا موجودہ ایجنٹ کھول کر اسے بدلیں۔",
+	"ui.agents.refusals.name_grammar": "ناموں میں خالی جگہ یا سلیش نہیں ہو سکتے۔",
+	"ui.agents.refusals.effort_unavailable": "“{tier}” کوشش کا ترتیب شدہ درجہ نہیں۔ inherit استعمال کریں یا ترتیبات میں درجہ شامل کریں۔",
+	"ui.agents.refusals.team_name_bound": "ٹیم کا نام 1-64 حروف کا ہوتا ہے۔",
+	"ui.agents.refusals.missing_manager": "“{name}” اس مشین پر کوئی ایجنٹ یا ٹیم نہیں ہے۔",
+	"ui.agents.refusals.missing_member": "“{name}” اس مشین پر کوئی ایجنٹ یا ٹیم نہیں ہے۔",
+	"ui.agents.refusals.team_nesting": "وہ ٹیم بہت زیادہ اندرونی سطحیں بنائے گی یا خود کو شامل کرے گی۔ اس کے ارکان جانچیں۔",
+	"ui.agents.refusals.class.label.proactive": "پیش قدم",
+	"ui.agents.refusals.class.label.reactive": "جوابی",
+	"ui.agents.refusals.class.meaning.proactive": "یہ خود آپ کو پیغام بھیج سکتا ہے؛ کچھ بھیجنے کے بعد جواب کے لیے چند منٹ انتظار کرتا ہے، پھر مقررہ تعداد تک بڑھتے وقفوں سے دوبارہ یاد دلاتا ہے، اس کے بعد آپ کا انتظار کرتا ہے — اور اپنے شیڈول پر بھی جاگ سکتا ہے۔",
+	"ui.agents.refusals.class.meaning.reactive": "جب آپ اسے لکھتے ہیں تو یہ جواب دیتا ہے۔ یہ آپ کو یاد دہانی نہیں بھیجتا اور اپنے شیڈول پر نہیں جاگتا۔",
+	"ui.agents.refusals.class.effect.proactive": "اسے بند کرنے سے یاد دہانیاں اور شیڈول کی بیداریاں رک جاتی ہیں۔ آپ لکھیں تو یہ اب بھی جواب دیتا ہے۔",
+	"ui.agents.refusals.class.effect.reactive": "اسے فعال کرنے سے یہ پہلے لکھ سکتا ہے؛ آپ کے جواب کے لیے چند منٹ انتظار کرے گا، مقررہ تعداد تک دوبارہ یاد دلائے گا اور اپنے شیڈول پر بھی جاگ سکتا ہے۔ آپ لکھیں تو یہ اب بھی جواب دیتا ہے۔",
+	"ui.agents.refusals.class.install_disclosure": "یہ ایپ کے ساتھ آتا ہے اور ابھی اس کی اپنی نقل نہیں، اس لیے تبدیلی سے پہلے اسے انسٹال کیا جاتا ہے — وہی ایجنٹ اور وہی ہدایات، اب قابل ترمیم — پھر اس کی قسم مقرر ہوتی ہے۔",
+	"ui.agents.refusals.class.error.no_reason": "بیک اینڈ نے اس کی کوئی وجہ نہیں بتائی۔ دوبارہ تبدیل کرنے کی کوشش کریں۔",
+	"ui.agents.refusals.class.error.install_landed": "{reason} انسٹالیشن مکمل ہو گئی، اس لیے ایجنٹ اب قابل ترمیم ہے۔"
+}

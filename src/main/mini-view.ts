@@ -130,7 +130,7 @@ export interface MiniView {
  * the frame between `show()` and the compositor's first frame, and it is the
  * dark theme's own canvas ground rather than a new colour.
  */
-export const MINI_VIEW_GROUND = "#22201c";
+export const MINI_VIEW_GROUND = "#1d1b17";
 
 /**
  * How long presentation waits for the renderer's first-commit signal.

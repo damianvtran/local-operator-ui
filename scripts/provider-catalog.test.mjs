@@ -43,6 +43,8 @@ const catalog = await import(
 );
 const {
 	brandOf,
+	connectedRowMeta,
+	methodBlurb,
 	methodName,
 	monogramOf,
 	providerGroup,
@@ -54,6 +56,8 @@ const {
 	hostOf,
 	unfinishedMessage,
 	chooseDefaultModel,
+	featuredRowTitle,
+	FEATURED_PROVIDER_IDS,
 } = catalog;
 
 const census = JSON.parse(
@@ -332,4 +336,111 @@ test("step 2 with nothing connected says so", () => {
 		chooseDefaultModel(withSuggestions, { hosting: null, model: null }).kind,
 		"none",
 	);
+});
+
+test("U7: a suggested onboarding row is titled by the account the reader pays for", () => {
+	const byId = (id) => census.find((row) => row.id === id);
+	// The step's intro asks "Already pay for Claude or ChatGPT?", so the rows
+	// that answer it carry those names rather than the companies behind them.
+	assert.equal(featuredRowTitle(byId("anthropic")), "Claude");
+	assert.equal(featuredRowTitle(byId("openai")), "ChatGPT");
+	assert.equal(featuredRowTitle(byId("radient")), "Radient");
+	// A provider with no separate account name keeps its brand.
+	assert.equal(featuredRowTitle(byId("google")), brandOf(byId("google")));
+	// Every other surface still names the PROVIDER: the brand is unchanged.
+	assert.equal(brandOf(byId("anthropic")), "Anthropic");
+	assert.equal(brandOf(byId("openai")), "OpenAI");
+	// The tile abbreviates the title beside it, and stays a legal monogram.
+	for (const id of FEATURED_PROVIDER_IDS) {
+		assert.match(
+			monogramOf(featuredRowTitle(byId(id))),
+			/^[A-Z0-9][A-Za-z0-9]$/,
+			id,
+		);
+	}
+});
+
+/*
+ * Amazon Bedrock's `aws` method (bedrock design §7): its tab is named for the
+ * account, not a mechanism, and the row stays in the key group beside the
+ * other per-use billings rather than among the subscriptions.
+ */
+test("bedrock's aws method is named for the account and keeps the key group", () => {
+	const bedrock = {
+		id: "bedrock",
+		name: "Amazon Bedrock",
+		local: false,
+		auth_methods: [
+			{
+				id: "bedrock",
+				method_id: "bedrock",
+				label: "AWS account",
+				kind: "aws",
+			},
+			{
+				id: "bedrock",
+				method_id: "bedrock:api-key",
+				label: "API key",
+				kind: "api_key",
+			},
+		],
+	};
+	assert.deepEqual(bedrock.auth_methods.map(methodName), [
+		"AWS account",
+		"API key",
+	]);
+	assert.match(methodBlurb(bedrock.auth_methods[0], bedrock), /AWS profile/);
+	assert.equal(providerGroup(bedrock), "key");
+});
+
+/*
+ * QA round 1, Q1: a Bedrock connection is a profile, an SSO sign-in or the
+ * default credentials far more often than a key, so the connected row names
+ * the stored connection (the backend's label, sent as `identity` when exactly
+ * one row is stored) instead of "API key saved". Plain key providers keep
+ * their line.
+ */
+test("a connected Bedrock row names its AWS connection, not an API key", () => {
+	const bedrock = {
+		id: "bedrock",
+		name: "Amazon Bedrock",
+		local: false,
+		identity: "acme-dev-sso · us-west-2",
+		auth_methods: [
+			{
+				id: "bedrock",
+				method_id: "bedrock",
+				label: "AWS account",
+				kind: "aws",
+			},
+			{
+				id: "bedrock",
+				method_id: "bedrock:api-key",
+				label: "API key",
+				kind: "api_key",
+			},
+		],
+	};
+	assert.equal(
+		connectedRowMeta(bedrock, "Claude Opus 5.5 (Bedrock)"),
+		"acme-dev-sso · us-west-2 · Claude Opus 5.5 (Bedrock)",
+	);
+	assert.equal(
+		connectedRowMeta({ ...bedrock, identity: null }, null),
+		"AWS connection saved",
+	);
+	const keyOnly = {
+		id: "openrouter",
+		name: "OpenRouter",
+		local: false,
+		auth_methods: [
+			{
+				id: "openrouter",
+				method_id: "openrouter:api-key",
+				label: "API key",
+				kind: "api_key",
+			},
+		],
+	};
+	assert.equal(connectedRowMeta(keyOnly, null), "API key saved");
 });

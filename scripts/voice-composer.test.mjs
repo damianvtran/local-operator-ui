@@ -1331,7 +1331,10 @@ test("voice on here dims the microphone, keeps it focusable, and starts no recor
 					messages: [{ id: "m", role: "system", timestamp: new Date(0) }],
 					conversationId: AT,
 					onSendMessage: async () => true,
-					recordingProbe: { canUseRadientSpeech: true, speechBlock: "none" },
+					recordingProbe: {
+						canUseRadientSpeech: true,
+						speechBlock: "could-not-check",
+					},
 				}),
 			),
 		);
@@ -1387,7 +1390,10 @@ test("paused releases the microphone, so dictation comes back", async () => {
 					messages: [{ id: "m", role: "system", timestamp: new Date(0) }],
 					conversationId: AT,
 					onSendMessage: async () => true,
-					recordingProbe: { canUseRadientSpeech: true, speechBlock: "none" },
+					recordingProbe: {
+						canUseRadientSpeech: true,
+						speechBlock: "could-not-check",
+					},
 				}),
 			),
 		);
@@ -1436,7 +1442,10 @@ test("voice in ANOTHER session blocks dictation here too", async () => {
 					messages: [{ id: "m", role: "system", timestamp: new Date(0) }],
 					conversationId: AT,
 					onSendMessage: async () => true,
-					recordingProbe: { canUseRadientSpeech: true, speechBlock: "none" },
+					recordingProbe: {
+						canUseRadientSpeech: true,
+						speechBlock: "could-not-check",
+					},
 				}),
 			),
 		);

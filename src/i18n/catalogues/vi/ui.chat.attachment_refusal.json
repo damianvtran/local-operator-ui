@@ -1,0 +1,17 @@
+{
+	"ui.chat.attachment_refusal.cannot_upload": "cửa sổ này không thể tải tệp lên",
+	"ui.chat.attachment_refusal.clause.read": "{name} không đọc được (có thể đã bị di chuyển hoặc xóa)",
+	"ui.chat.attachment_refusal.clause.remote": "{name} không thể đính kèm vì cuộc trò chuyện này do thiết bị khác sở hữu, và chỉ đính kèm được tệp vào các cuộc trò chuyện trên thiết bị này",
+	"ui.chat.attachment_refusal.clause.upload": "{name} không thể đính kèm",
+	"ui.chat.attachment_refusal.clause.upload_reason": "{name} không thể đính kèm ({reason})",
+	"ui.chat.attachment_refusal.files_many": "Bản nháp này có {total, number} tệp, trong khi một tin nhắn chỉ đính kèm được tối đa {cap, number} tệp, nên tin nhắn chưa được gửi. Hãy gỡ bớt {dropped, number} tệp, hoặc gửi chúng trong tin nhắn thứ hai.",
+	"ui.chat.attachment_refusal.files_one": "Bản nháp này có {total, number} tệp, trong khi một tin nhắn chỉ đính kèm được tối đa {cap, number} tệp, nên tin nhắn chưa được gửi. Hãy gỡ tệp thừa, hoặc gửi tệp đó trong tin nhắn thứ hai.",
+	"ui.chat.attachment_refusal.images_many": "Bản nháp này có {total, number} hình ảnh, trong khi một tin nhắn chỉ đính kèm được tối đa {cap, number} hình ảnh, nên tin nhắn chưa được gửi. Hãy gỡ bớt {dropped, number} hình ảnh, hoặc gửi chúng trong tin nhắn thứ hai.",
+	"ui.chat.attachment_refusal.images_one": "Bản nháp này có {total, number} hình ảnh, trong khi một tin nhắn chỉ đính kèm được tối đa {cap, number} hình ảnh, nên tin nhắn chưa được gửi. Hãy gỡ hình ảnh thừa, hoặc gửi hình ảnh đó trong tin nhắn thứ hai.",
+	"ui.chat.attachment_refusal.mixed_many": "{clauses}, nên tin nhắn chưa được gửi. Hãy đính kèm lại, hoặc gỡ chúng khỏi bản nháp.",
+	"ui.chat.attachment_refusal.mixed_one": "{clauses}, nên tin nhắn chưa được gửi. Hãy đính kèm lại, hoặc gỡ tệp đó khỏi bản nháp.",
+	"ui.chat.attachment_refusal.read_many": "{names} không đọc được (có thể đã bị di chuyển hoặc xóa), nên tin nhắn chưa được gửi. Hãy đính kèm lại, hoặc gỡ chúng khỏi bản nháp.",
+	"ui.chat.attachment_refusal.read_one": "{name} không đọc được (có thể đã bị di chuyển hoặc xóa), nên tin nhắn chưa được gửi. Hãy đính kèm lại, hoặc gỡ tệp đó khỏi bản nháp.",
+	"ui.chat.attachment_refusal.remote_many": "{names} không thể đính kèm vì cuộc trò chuyện này do thiết bị khác sở hữu, và chỉ đính kèm được tệp vào các cuộc trò chuyện trên thiết bị này. Hãy gửi tin nhắn mà không có chúng, hoặc bắt đầu cuộc trò chuyện tại đây.",
+	"ui.chat.attachment_refusal.remote_one": "{name} không thể đính kèm vì cuộc trò chuyện này do thiết bị khác sở hữu, và chỉ đính kèm được tệp vào các cuộc trò chuyện trên thiết bị này. Hãy gửi tin nhắn mà không có tệp đó, hoặc bắt đầu cuộc trò chuyện tại đây."
+}

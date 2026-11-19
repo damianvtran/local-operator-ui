@@ -1,0 +1,91 @@
+{
+  "scope": "Single-key delta only; NOT a fresh audit of the whole ui.chat.sidebar namespace.",
+  "receipt_adaptation": "Mechanical schema adaptation from retained independent auditor bundles, not a new audit. Original records and artifact bytes are preserved.",
+  "spanish_limitation": "Spanish y becomes e before an i-sound. A position-only select cannot inspect {tail}; architectural limitation, not a translation defect. Future fix: a key taking {tail} plus phonetic-aware caller/formatter selection.",
+  "entries": [
+    {
+      "locale": "fr",
+      "namespace": "ui.chat.sidebar",
+      "audited_keys": [
+        "ui.chat.sidebar.agents.list_join"
+      ],
+      "original_record": "i18n/audits/evidence/fr/ui.chat.sidebar/listjoin-2026-10-31/record.json",
+      "canonical_receipt": "i18n/audits/evidence/fr/ui.chat.sidebar/listjoin-2026-10-31/receipt.json",
+      "ledger_receipt": "i18n/receipts/781549e497e3.json",
+      "receipt_sha256": "983cc632f5a2aa6bcd4fa425761ccac06fbb614996102812b6bd6c8bbc486fbd",
+      "original_artifact_path_mapping": "Original record paths resolve by basename within the canonical evidence directory; original records remain byte-identical."
+    },
+    {
+      "locale": "es",
+      "namespace": "ui.chat.sidebar",
+      "audited_keys": [
+        "ui.chat.sidebar.agents.list_join"
+      ],
+      "original_record": "i18n/audits/evidence/es/ui.chat.sidebar/listjoin-2026-10-31/record.json",
+      "canonical_receipt": "i18n/audits/evidence/es/ui.chat.sidebar/listjoin-2026-10-31/receipt.json",
+      "ledger_receipt": "i18n/receipts/ff18a0fd5ea9.json",
+      "receipt_sha256": "574d938591c74b06eb617255d43c6db7620a41349aa01f8fbc2e737fcaa8b72d",
+      "original_artifact_path_mapping": "Original record paths resolve by basename within the canonical evidence directory; original records remain byte-identical."
+    },
+    {
+      "locale": "zh-CN",
+      "namespace": "ui.chat.sidebar",
+      "audited_keys": [
+        "ui.chat.sidebar.agents.list_join"
+      ],
+      "original_record": "i18n/audits/evidence/zh-CN/ui.chat.sidebar/listjoin-2026-10-31/record.json",
+      "canonical_receipt": "i18n/audits/evidence/zh-CN/ui.chat.sidebar/listjoin-2026-10-31/receipt.json",
+      "ledger_receipt": "i18n/receipts/ffff115e084f.json",
+      "receipt_sha256": "7b244d71f2e746294c668387a76570edf69e71fa578c086d937605893c4c8e62",
+      "original_artifact_path_mapping": "Original record paths resolve by basename within the canonical evidence directory; original records remain byte-identical."
+    },
+    {
+      "locale": "ru",
+      "namespace": "ui.chat.sidebar",
+      "audited_keys": [
+        "ui.chat.sidebar.agents.list_join"
+      ],
+      "original_record": "i18n/audits/evidence/ru/ui.chat.sidebar/listjoin-2026-10-31/record.json",
+      "canonical_receipt": "i18n/audits/evidence/ru/ui.chat.sidebar/listjoin-2026-10-31/receipt.json",
+      "ledger_receipt": "i18n/receipts/e3d68e9ca8b0.json",
+      "receipt_sha256": "4c094bf2d221e369ec69d01a38aefe4e955f13343b788b1e9391cbecf79788ef",
+      "original_artifact_path_mapping": "Original record paths resolve by basename within the canonical evidence directory; original records remain byte-identical."
+    },
+    {
+      "locale": "vi",
+      "namespace": "ui.chat.sidebar",
+      "audited_keys": [
+        "ui.chat.sidebar.agents.list_join"
+      ],
+      "original_record": "i18n/audits/evidence/vi/ui.chat.sidebar/listjoin-2026-10-31/record.json",
+      "canonical_receipt": "i18n/audits/evidence/vi/ui.chat.sidebar/listjoin-2026-10-31/receipt.json",
+      "ledger_receipt": "i18n/receipts/e591d2c7719f.json",
+      "receipt_sha256": "16505999a8348c133c34e2c1d02d89a6c8068ab9b25fc03def6cf9114c28314f",
+      "original_artifact_path_mapping": "Original record paths resolve by basename within the canonical evidence directory; original records remain byte-identical."
+    },
+    {
+      "locale": "hi",
+      "namespace": "ui.chat.sidebar",
+      "audited_keys": [
+        "ui.chat.sidebar.agents.list_join"
+      ],
+      "original_record": "i18n/audits/evidence/hi/ui.chat.sidebar/listjoin-2026-10-31/record.json",
+      "canonical_receipt": "i18n/audits/evidence/hi/ui.chat.sidebar/listjoin-2026-10-31/receipt.json",
+      "ledger_receipt": "i18n/receipts/ecb19e36b835.json",
+      "receipt_sha256": "1facda95c194bd808315640d5bf49ca59b0151441fdef76e2c261c52f23a805a",
+      "original_artifact_path_mapping": "Original record paths resolve by basename within the canonical evidence directory; original records remain byte-identical."
+    },
+    {
+      "locale": "ur",
+      "namespace": "ui.chat.sidebar",
+      "audited_keys": [
+        "ui.chat.sidebar.agents.list_join"
+      ],
+      "original_record": "i18n/audits/evidence/ur/ui.chat.sidebar/join-c-ee3004/record.json",
+      "canonical_receipt": "i18n/audits/evidence/ur/ui.chat.sidebar/join-c-ee3004/receipt.json",
+      "ledger_receipt": "i18n/receipts/ee3004a9b83d-ur-join-c.json",
+      "receipt_sha256": "6d05afe4c0d6221322244d0a32e021f9898184d454067f87613d398d9bf0d2d5",
+      "original_artifact_path_mapping": "Original record uses repo-relative canonical paths; retained byte-identical from auditor commits ed7986d0973 and ac6ea19b3b6."
+    }
+  ]
+}

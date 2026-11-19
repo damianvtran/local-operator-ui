@@ -1,0 +1,184 @@
+{
+ "audit_id": "ru-pages-fit-20261026",
+ "date": "2026-10-26",
+ "locale": "ru",
+ "namespace": "ui.agents.pages",
+ "requested_commit": "99abae51a8",
+ "head": "99abae51a82b7abdb3293fc2da8ebfb25eed7e18",
+ "head_note": "The audited file is UNCOMMITTED on this head: the delta is the fit remediation (scope.installed, empty.installed). The head bytes hash e5130e0f01fefec0274fde626a88d4f9c4981afea6d6beefef579f8fc12e32ba, which is the target hash the round-2 audit and ledger row for this namespace record, so the head was the round-2 audited file and the delta is exactly the two values named here.",
+ "scope": "Focused round-3 independent audit of the real-render width remediation in ru ui.agents.pages: all 22 keys read against en + context; judgement of the two changed values in every slot their keys feed (scope filter, roster source chip, detail meta line, empty state), shipped-ru consistency sweep, and the mechanical gate.",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "keys_read": 22,
+ "auditors": [
+  {
+   "agent": "i18n-auditor",
+   "model": "radient/auto",
+   "actual_model": "radient/auto",
+   "actual_model_source": "Harness session header for this run: 'Model: radient/auto'; the only model evidence this session has. No router log or provider header is exposed, so no served-model id is claimed; no fallback was signalled or observed.",
+   "session": "a714ec911362",
+   "instance": "5ce4f1b89cb7",
+   "team": "lopdev",
+   "date": "2026-10-26",
+   "result": "clean-with-findings",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 1
+   },
+   "receipt": "i18n/receipts/ru-agents-pages-fit-audit-5ce4f1b89cb7.json",
+   "receipt_sha256": "be9b2a33e0fadc04fe1f42f5dc3348fd339e04dc2cb05a9e340ddd36bc95fef5"
+  }
+ ],
+ "model_note": "Single route for the whole pass (style guide/glossary reading, catalogue reading, gate commands, receipt derivation): radient/auto, no model switch, no fallback disclosed or detected.",
+ "independence": "Independent of the translator and of the remediation author. This session translated nothing, edited no catalogue, context, allowance or ledger file, made no git write, and wrote only this receipt, this record and its audit.log. No translation API, SDK or MT service was used; the ICU parser and the repo validators are validation tools, not translation tools.",
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.agents.pages.json",
+   "sha256": "38a713b6cc4a63532543924cfdd2093b11c3618c31fc6266d28e20b84572feb5"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/ru/ui.agents.pages.json",
+   "sha256": "14e83197e6b0aad504c18e41e2c14d8bd0815c192fbf1435b8d9ad61e95314f6"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.agents.pages.context.json",
+   "sha256": "4b761bfa8eeeddf3689a2160e8249b153c095368b6f6fe3df7046052d95d2642"
+  },
+  "previous_audited_target": {
+   "path": "HEAD:src/i18n/catalogues/ru/ui.agents.pages.json",
+   "sha256": "e5130e0f01fefec0274fde626a88d4f9c4981afea6d6beefef579f8fc12e32ba"
+  }
+ },
+ "references": {
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/ru.md",
+   "sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+  },
+  "contract": {
+   "path": "docs/I18N.md",
+   "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+  }
+ },
+ "artifacts": {
+  "receipt": {
+   "path": "i18n/receipts/ru-agents-pages-fit-audit-5ce4f1b89cb7.json",
+   "sha256": "be9b2a33e0fadc04fe1f42f5dc3348fd339e04dc2cb05a9e340ddd36bc95fef5"
+  },
+  "audit_log": {
+   "path": "i18n/audits/evidence/ru/ui.agents.pages/ru-pages-fit-20261026/audit.log",
+   "sha256": "0616e44a9dc215a82a750906ea22d692488a88695b5e2ce074b5d31d8e0ae36b"
+  },
+  "render_frames": [
+   {
+    "path": "/Users/damian/.local-operator/sessions/90af5810a381/scratchpad/rendered-1432-fit/frames/ru-fit-agents-roster.png",
+    "sha256": "6e05d75444f0f1721e488dbf537350bb01543dfbc46198d665b0035ddd4aa299",
+    "produced_by": "translator rig (session 90af5810a381); read and hash-verified here, not produced by this audit"
+   },
+   {
+    "path": "/Users/damian/.local-operator/sessions/90af5810a381/scratchpad/rendered-1432-fit/frames/ru-fit-empty-agents-empty-installed.png",
+    "sha256": "693953e4dfc25dd83aae3e2070f81e45e28fbd284a06c575348b5b1083891ae5",
+    "produced_by": "translator rig; read and hash-verified here"
+   }
+  ],
+  "geometry_artifacts": [
+   {
+    "path": "/Users/damian/.local-operator/sessions/90af5810a381/scratchpad/rendered-1432-fit/measurements/run-ru.out.json",
+    "sha256": "37c8d41325042b7a85f24a743d3206af829f73dc2bd013e4c9c7225db01e760d",
+    "produced_by": "translator rig; read here, not re-executed"
+   },
+   {
+    "path": "/Users/damian/.local-operator/sessions/90af5810a381/scratchpad/rendered-1432-fit/measurements/probe-ru.out.json",
+    "sha256": "be4875160248c97c52698de19cd8e6d808982ad9f71149b1a505a622d82bad8a",
+    "produced_by": "translator rig; source of the 237.15 px 'Из хаба' figure, read here, not re-executed"
+   },
+   {
+    "path": "/Users/damian/.local-operator/sessions/90af5810a381/scratchpad/rendered-1432-fit/README.md",
+    "sha256": "f1552de6c36fc6393208f30274b3b7b1d10d4e09f7a8bcdc73fa536040d363ff",
+    "produced_by": "translator rig"
+   }
+  ],
+  "session_scratch": {
+   "path": "/Users/damian/.local-operator/sessions/a714ec911362/scratchpad/check-ru-pages.mjs",
+   "sha256": "266320f7a464ef1819ac3f73831733a82de5425129b2170e4f107558550d8c13",
+   "note": "temporary checker; output captured in audit.log; not the artifact of record"
+  }
+ },
+ "findings": [
+  {
+   "id": "ru-fit-F1",
+   "severity": "MINOR",
+   "key": "ui.agents.pages.scope.installed",
+   "current": "С хаба",
+   "proposed": "Из хаба",
+   "issue": "Correct and unambiguous in the filter, the roster chip and the detail meta line, and no overflow; but 25 shipped ru values across ui.hub.updates, ui.hub.links, ui.agents.navigation and ui.chat name this source 'из хаба', including the same short source-label slot (ui.agents.navigation.updates.preview.remote, 'The hub's' -> 'Из хаба'). At HEAD only two values used 'с хаба' (one verb-governed, 'сняли с хаба'); this delta adds the other two. 'С хаба' is idiomatic and 6.91 px narrower; the probe measured the 'Из хаба' quartet at 237.15 px natural sum (fits the 246 px row with 8.85 px slack, no well scroll, but 5.15 px over the remediation's 232 px target). Not gating: adopt 'Из хаба' only if cross-surface consistency outranks the extra margin (and re-capture the frame), else keep 'С хаба' and record the width call.",
+   "disposition": "answered; no remediation round requested"
+  },
+  {
+   "id": "ru-fit-F2",
+   "severity": "NIT",
+   "key": "ui.agents.pages.empty.installed",
+   "current": "С хаба ничего не установлено.",
+   "proposed": "Агентов с хаба нет.",
+   "issue": "Grammatical, impersonal and true in the only state that renders it (a query routes to empty.search first); it diverges in shape from its nominal siblings 'Своих агентов нет.' / 'Встроенных агентов нет.'. Parallel alternative is style only.",
+   "disposition": "answered; keep as is"
+  }
+ ],
+ "current_report_verdict": {
+  "status": "passed",
+  "unresolved_blocker_major_count": 0,
+  "finding_ids": [
+   "ru-fit-F1",
+   "ru-fit-F2"
+  ]
+ },
+ "validation": {
+  "key_parity": "22/22 keys, same set and order as en, 0 added, 0 missing",
+  "icu": {
+   "parser": "worktree @formatjs/icu-messageformat-parser (existing node_modules, no install)",
+   "parsed": 22,
+   "errors": [],
+   "arguments": [
+    "query"
+   ],
+   "arguments_match_en": true,
+   "plural_select_messages": 0,
+   "tags": 0,
+   "note": "No plural/select message exists in this namespace, so no CLDR category set is due; nothing was removed."
+  },
+  "nfc": true,
+  "bidi_controls": 0,
+  "digits": 0,
+  "latin_tokens": [
+   "query"
+  ],
+  "repo_gates": [
+   "node --test --test-name-pattern='[ru]' scripts/i18n/locale-parity.test.mjs (6/6 pass)",
+   "node scripts/i18n/context-parity.mjs (ok)",
+   "node scripts/i18n/check-duplicates.mjs (ok, 835 files, 0 duplicates)",
+   "node scripts/i18n/generate.mjs --check (keys.gen.ts byte-identical)"
+  ],
+  "rendered_fit": "Frames looked at: 230.24 px natural sum, no well scroll, last segment flush in the 246 px row; empty state on one line. Geometry figures are the translator rig's, hash-verified and read here; this audit did not boot the app.",
+  "derive_receipt_audit": {
+   "result": "clean-with-findings",
+   "instance": "5ce4f1b89cb7",
+   "model": "radient/auto",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 1
+   }
+  }
+ },
+ "audit_notes_not_execution_log": "The prose fields here and in the receipt are reasoning, not an execution log. Actual command output is in i18n/audits/evidence/ru/ui.agents.pages/ru-pages-fit-20261026/audit.log, which was written from the commands this session ran; the render frames and geometry JSON are the translator's artifacts, read and hash-verified here rather than re-generated.",
+ "new_report_is_original": true,
+ "new_report_is_historical_R2_recreation": false,
+ "backdated": false,
+ "original_lost_evidence": null
+}

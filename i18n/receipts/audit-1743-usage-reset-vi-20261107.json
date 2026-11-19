@@ -1,0 +1,77 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "agent": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "audit-1743-usage-reset-vi-20261107",
+  "locale": "vi",
+  "date": "2026-11-07",
+  "status": "passed",
+  "namespace": "ui.chat.usage_reset",
+  "keys_read": 13,
+  "sha256": {
+    "en": "dab7b5ad5816d8e855de5b77e5c5fe1e0d4021ceda20fefc832ccfede56fa739",
+    "vi": "eb29e90708aeac9503d7642544ea12730f8feb31f5926fbe0f0601fe218ec855"
+  },
+  "findings": [
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.usage_reset.chip_label",
+      "current": "Đặt lại giới hạn tốc độ cho {account}. {count, plural, other {Còn # tín dụng đặt lại.}}",
+      "proposed": "Đặt lại giới hạn tần suất cho {account}. {count, plural, other {Còn # tín dụng đặt lại.}}",
+      "reason": "'giới hạn tốc độ' drifts from the locale's shipped rate-limit term 'giới hạn tần suất' (6 uses incl. ui.chat.error_block.rate_limit.* vs 2 for 'tốc độ', both in API-key help text)."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.usage_reset.confirm_cost",
+      "current": "{count, plural, other {Dùng 1 trong # tín dụng đặt lại; xóa các khung thời gian giới hạn tốc độ của tài khoản này.}}",
+      "proposed": "{count, plural, other {Dùng 1 trong # tín dụng đặt lại; xóa các khung thời gian giới hạn tần suất của tài khoản này.}}",
+      "reason": "'giới hạn tốc độ' drifts from the locale's shipped rate-limit term 'giới hạn tần suất' (6 uses incl. ui.chat.error_block.rate_limit.* vs 2 for 'tốc độ', both in API-key help text)."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.usage_reset.outcome_reset",
+      "current": "{count, plural, other {Đã xóa # khung thời gian giới hạn tốc độ cho {account}.}}",
+      "proposed": "{count, plural, other {Đã xóa # khung thời gian giới hạn tần suất cho {account}.}}",
+      "reason": "'giới hạn tốc độ' drifts from the locale's shipped rate-limit term 'giới hạn tần suất' (6 uses incl. ui.chat.error_block.rate_limit.* vs 2 for 'tốc độ', both in API-key help text)."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.usage_reset.outcome_nothing_to_reset",
+      "current": "Không có khung thời gian giới hạn tốc độ nào của {account} cần xóa. Không có gì bị dùng.",
+      "proposed": "Không có khung thời gian giới hạn tần suất nào của {account} cần xóa. Không tốn gì.",
+      "reason": "'giới hạn tốc độ' drifts from the locale's shipped rate-limit term 'giới hạn tần suất' (6 uses incl. ui.chat.error_block.rate_limit.* vs 2 for 'tốc độ', both in API-key help text). Also: 'Không có gì bị dùng' is a word-for-word calque of 'Nothing was spent' with adversative 'bị' (the phrase occurs nowhere else in the vi catalogue); 'Không tốn gì' is native."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.usage_reset.outcome_already_redeemed",
+      "current": "Lần đặt lại cho {account} đã được dùng trước đó. Không có tín dụng thứ hai nào bị dùng.",
+      "proposed": "Lần đặt lại cho {account} đã được dùng trước đó. Không tốn thêm tín dụng nào.",
+      "reason": "'Không có tín dụng thứ hai nào bị dùng' is a word-for-word passive with adversative 'bị'; 'không tốn thêm' is how vi says nothing more was spent."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.usage_reset.outcome_no_credit",
+      "current": "{account} không còn tín dụng đặt lại. Không có gì bị dùng.",
+      "proposed": "{account} không còn tín dụng đặt lại. Không tốn gì.",
+      "reason": "'Không có gì bị dùng' is a word-for-word calque of 'Nothing was spent' with adversative 'bị' (the phrase occurs nowhere else in the vi catalogue); 'Không tốn gì' is native."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.usage_reset.outcome_refused",
+      "current": "Không có gì bị dùng: lần đặt lại cho {account} bị từ chối trước khi đến nhà cung cấp.",
+      "proposed": "Không tốn gì: lần đặt lại cho {account} bị từ chối trước khi đến nhà cung cấp.",
+      "reason": "'Không có gì bị dùng' is a word-for-word calque of 'Nothing was spent' with adversative 'bị' (the phrase occurs nowhere else in the vi catalogue); 'Không tốn gì' is native."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.usage_reset.outcome_failed",
+      "current": "Lần đặt lại cho {account} không trả về kết quả, nên chưa rõ số phận của tín dụng. Thử lại sẽ dùng lại cùng yêu cầu, nên không dùng tín dụng thứ hai.",
+      "proposed": "Lần đặt lại cho {account} không trả về kết quả, nên chưa rõ tín dụng đã bị trừ hay chưa. Thử lại sẽ dùng lại cùng yêu cầu, nên sẽ không tốn thêm tín dụng.",
+      "reason": "'số phận của tín dụng' calques 'the credit's fate'; vi says whether the credit was deducted."
+    }
+  ],
+  "scope": "PR #1743 ui.chat.usage_reset at 1d0e0cc0cb801f8ee1e2f1626212fddca32113c0 (clean working tree): full 13-key namespace, all seven locales",
+  "independence": "Separate session from the PR coder; verdict rebuilt from the English source, the en context, sibling keys and the locale style guide.",
+  "verdict": "vi: passed — 'window' is now 'khung thời gian' in all three keys, matching the /usage panel (prior MAJORs fixed); remaining items are MINOR: rate-limit term drift ('tốc độ' vs shipped 'tần suất') and 'bị dùng'/'số phận' calques."
+}

@@ -1,0 +1,362 @@
+Hindi wave-A render table — actual intl-messageformat output (locale hi)
+head a81c00cdda2667dc6b094128ff47ec72d0c4d095
+render args: turn=12 total=34 clock='3:42 PM' name='Acme Ops' label='Acme Ops' title='Q3 planning sync'
+cells = optimistic Devanagari cluster estimate (base+matra+conjunct = 1 cell), for width triage only.
+No rendered-frame/geometry measurement was made; this table is not a rendered-fit claim.
+
+== 1. catalogue-string width (templates, placeholders not expanded)
+key                                                   en cp  hi cp en cells hi cells  ratio
+ui.chat.checkpoint.generating_name                       16     20       16       14   0.88
+ui.chat.checkpoint.jump_agent                            54     61       54       56   1.04
+ui.chat.checkpoint.jump_agent_unnamed                    46     50       46       45   0.98
+ui.chat.checkpoint.jump_user                             71     84       71       72   1.01
+ui.chat.checkpoint.jump_user_no_clock                    62     65       62       55   0.89
+ui.chat.checkpoint.turn                                  38     42       38       38   1.00
+ui.chat.header_identity.aria_agent_assign                31     28       31       20   0.65
+ui.chat.header_identity.aria_agent_closed                24     24       24       22   0.92
+ui.chat.header_identity.aria_agent_switch                28     27       28       21   0.75
+ui.chat.header_identity.aria_team_assign                 28     24       28       18   0.64
+ui.chat.header_identity.aria_team_closed                 23     22       23       21   0.91
+ui.chat.header_identity.aria_team_switch                 26     23       26       19   0.73
+ui.chat.header_identity.assign_agent                     15     12       15        6   0.40
+ui.chat.header_identity.assign_team                      13     10       13        5   0.38
+ui.chat.header_identity.no_agent                          8     14        8        9   1.12
+ui.chat.header_identity.no_team                           7     12        7        8   1.14
+ui.chat.region.composer                                  16     13       16        8   0.50
+ui.chat.region.conversation                              12      6       12        4   0.33
+ui.chat.header.archive_conversation                      20     20       20       13   0.65
+ui.chat.header.cancel_rename                             13     19       13       14   1.08
+ui.chat.header.rename_conversation                       19     19       19       13   0.68
+ui.chat.header.restore_conversation                      20     16       20       11   0.55
+ui.chat.header.saving_conversation_name                  28     29       28       20   0.71
+ui.chat.response_actions.answer_label                    14     19       14       13   0.93
+ui.chat.response_actions.copied                           6     13        6        9   1.50
+ui.chat.response_actions.copy                             4      9        4        6   1.50
+ui.chat.response_actions.yours_label                     20     25       20       17   0.85
+ui.chat.sidebar.entity.collapse_chats                    21     20       21       15   0.71
+ui.chat.sidebar.entity.expand_chats                      19     20       19       16   0.84
+ui.chat.sidebar.entity.manage                            13     20       13       15   1.15
+ui.chat.sidebar.entity.pin                               12     17       12       14   1.17
+ui.chat.sidebar.entity.unpin                             14     19       14       16   1.14
+ui.chat.sidebar.pins.pin_label                           13     18       13       15   1.15
+ui.chat.sidebar.pins.unpin_label                         15     20       15       17   1.13
+ui.chat.sidebar.row_menu.archive                         20     20       20       13   0.65
+ui.chat.sidebar.row_menu.pin                             16     15       16       10   0.62
+ui.chat.sidebar.row_menu.unarchive                       22     16       22       11   0.50
+ui.chat.sidebar.row_menu.unpin                           18     17       18       12   0.67
+
+== 2. keys whose Hindi template exceeds the English cell estimate: 12
+    ui.chat.checkpoint.jump_agent: 54 -> 56 cells (+2)
+    ui.chat.checkpoint.jump_user: 71 -> 72 cells (+1)
+    ui.chat.header_identity.no_agent: 8 -> 9 cells (+1)
+    ui.chat.header_identity.no_team: 7 -> 8 cells (+1)
+    ui.chat.header.cancel_rename: 13 -> 14 cells (+1)
+    ui.chat.response_actions.copied: 6 -> 9 cells (+3)
+    ui.chat.response_actions.copy: 4 -> 6 cells (+2)
+    ui.chat.sidebar.entity.manage: 13 -> 15 cells (+2)
+    ui.chat.sidebar.entity.pin: 12 -> 14 cells (+2)
+    ui.chat.sidebar.entity.unpin: 14 -> 16 cells (+2)
+    ui.chat.sidebar.pins.pin_label: 13 -> 15 cells (+2)
+    ui.chat.sidebar.pins.unpin_label: 15 -> 17 cells (+2)
+
+== 3. rendered output per key
+--- ui.chat.checkpoint.generating_name
+    EN: Generating name…
+    HI: नाम बनाया जा रहा है…
+--- ui.chat.checkpoint.jump_agent
+    EN: Jump to turn {turn, number} of {total, number}, {name}
+    HI: “Acme Ops” — 34 में से टर्न 12 पर जाएँ
+--- ui.chat.checkpoint.jump_agent_unnamed
+    EN: Jump to turn {turn, number} of {total, number}
+    HI: 34 में से टर्न 12 पर जाएँ
+--- ui.chat.checkpoint.jump_user
+    EN: Jump to your message in turn {turn, number} of {total, number}, {clock}
+    HI: 34 में से टर्न 12 में 3:42 PM पर भेजे गए अपने संदेश पर जाएँ
+--- ui.chat.checkpoint.jump_user_no_clock
+    EN: Jump to your message in turn {turn, number} of {total, number}
+    HI: 34 में से टर्न 12 में अपने संदेश पर जाएँ
+--- ui.chat.checkpoint.turn
+    EN: Turn {turn, number} of {total, number}
+    HI: 34 में से टर्न 12
+--- ui.chat.header_identity.aria_agent_assign
+    EN: Agent: {label}. Assign an agent
+    HI: एजेंट: Acme Ops। एजेंट सौंपें
+--- ui.chat.header_identity.aria_agent_closed
+    EN: Agent: {label}. {reason}
+    HI: एजेंट: Acme Ops। The runtime closed this seat.
+--- ui.chat.header_identity.aria_agent_switch
+    EN: Agent: {label}. Switch agent
+    HI: एजेंट: Acme Ops। एजेंट बदलें
+--- ui.chat.header_identity.aria_team_assign
+    EN: Team: {label}. Assign a team
+    HI: टीम: Acme Ops। टीम सौंपें
+--- ui.chat.header_identity.aria_team_closed
+    EN: Team: {label}. {reason}
+    HI: टीम: Acme Ops। The runtime closed this seat.
+--- ui.chat.header_identity.aria_team_switch
+    EN: Team: {label}. Switch team
+    HI: टीम: Acme Ops। टीम बदलें
+--- ui.chat.header_identity.assign_agent
+    EN: Assign an agent
+    HI: एजेंट सौंपें
+--- ui.chat.header_identity.assign_team
+    EN: Assign a team
+    HI: टीम सौंपें
+--- ui.chat.header_identity.no_agent
+    EN: No agent
+    HI: कोई एजेंट नहीं
+--- ui.chat.header_identity.no_team
+    EN: No team
+    HI: कोई टीम नहीं
+--- ui.chat.region.composer
+    EN: Message composer
+    HI: संदेश कंपोज़र
+--- ui.chat.region.conversation
+    EN: Conversation
+    HI: बातचीत
+--- ui.chat.header.archive_conversation
+    EN: Archive conversation
+    HI: बातचीत संग्रहित करें
+--- ui.chat.header.cancel_rename
+    EN: Cancel rename
+    HI: नाम बदलना रद्द करें
+--- ui.chat.header.rename_conversation
+    EN: Rename conversation
+    HI: बातचीत का नाम बदलें
+--- ui.chat.header.restore_conversation
+    EN: Restore conversation
+    HI: बातचीत बहाल करें
+--- ui.chat.header.saving_conversation_name
+    EN: Saving the conversation name
+    HI: बातचीत का नाम सहेजा जा रहा है
+--- ui.chat.response_actions.answer_label
+    EN: Answer actions
+    HI: जवाब की कार्रवाइयाँ
+--- ui.chat.response_actions.copied
+    EN: Copied
+    HI: कॉपी किया गया
+--- ui.chat.response_actions.copy
+    EN: Copy
+    HI: कॉपी करें
+--- ui.chat.response_actions.yours_label
+    EN: Your message actions
+    HI: आपके संदेश की कार्रवाइयाँ
+--- ui.chat.sidebar.entity.collapse_chats
+    EN: Collapse {name} chats
+    HI: Acme Ops की चैट समेटें
+--- ui.chat.sidebar.entity.expand_chats
+    EN: Expand {name} chats
+    HI: Acme Ops की चैट फैलाएँ
+--- ui.chat.sidebar.entity.manage
+    EN: Manage {name}
+    HI: Acme Ops प्रबंधित करें
+--- ui.chat.sidebar.entity.pin
+    EN: Pin “{name}”
+    HI: “Acme Ops” पिन करें
+--- ui.chat.sidebar.entity.unpin
+    EN: Unpin “{name}”
+    HI: “Acme Ops” अनपिन करें
+--- ui.chat.sidebar.pins.pin_label
+    EN: Pin “{title}”
+    HI: “Q3 planning sync” पिन करें
+--- ui.chat.sidebar.pins.unpin_label
+    EN: Unpin “{title}”
+    HI: “Q3 planning sync” अनपिन करें
+--- ui.chat.sidebar.row_menu.archive
+    EN: Archive conversation
+    HI: बातचीत संग्रहित करें
+--- ui.chat.sidebar.row_menu.pin
+    EN: Pin conversation
+    HI: बातचीत पिन करें
+--- ui.chat.sidebar.row_menu.unarchive
+    EN: Unarchive conversation
+    HI: बातचीत बहाल करें
+--- ui.chat.sidebar.row_menu.unpin
+    EN: Unpin conversation
+    HI: बातचीत अनपिन करें
+
+== 4. adversarial + realistic {name}/{label}/{title} values (168 variants total)
+--- ui.chat.checkpoint.jump_agent
+    [name=latin                ] “Acme Ops” — 34 में से टर्न 12 पर जाएँ
+    [name=latin-vowel-initial  ] “Indira Rao” — 34 में से टर्न 12 पर जाएँ
+    [name=devanagari           ] “इंदिरा राव” — 34 में से टर्न 12 पर जाएँ
+    [name=devanagari-vowel-initial] “आशा टीम” — 34 में से टर्न 12 पर जाएँ
+    [name=ascii-quotes         ] “"Q" O'Brien” — 34 में से टर्न 12 पर जाएँ
+    [name=comma                ] “टीम, प्रमुख” — 34 में से टर्न 12 पर जाएँ
+    [name=danda                ] “अंत। नया” — 34 में से टर्न 12 पर जाएँ
+    [name=cjk                  ] “山田太郎” — 34 में से टर्न 12 पर जाएँ
+    [name=rtl-name             ] “محمد علي” — 34 में से टर्न 12 पर जाएँ
+    [name=long                 ] “A very long agent display name that goes on and on” — 34 में से टर्न 12 पर जाएँ
+    [name=token-like           ] “agent_01 (beta)” — 34 में से टर्न 12 पर जाएँ
+    [name=percent-braces-like  ] “100% done {x}” — 34 में से टर्न 12 पर जाएँ
+--- ui.chat.header_identity.aria_agent_assign
+    [label=latin               ] एजेंट: Acme Ops। एजेंट सौंपें
+    [label=latin-vowel-initial ] एजेंट: Indira Rao। एजेंट सौंपें
+    [label=devanagari          ] एजेंट: इंदिरा राव। एजेंट सौंपें
+    [label=devanagari-vowel-initial] एजेंट: आशा टीम। एजेंट सौंपें
+    [label=ascii-quotes        ] एजेंट: "Q" O'Brien। एजेंट सौंपें
+    [label=comma               ] एजेंट: टीम, प्रमुख। एजेंट सौंपें
+    [label=danda               ] एजेंट: अंत। नया। एजेंट सौंपें
+    [label=cjk                 ] एजेंट: 山田太郎। एजेंट सौंपें
+    [label=rtl-name            ] एजेंट: محمد علي। एजेंट सौंपें
+    [label=long                ] एजेंट: A very long agent display name that goes on and on। एजेंट सौंपें
+    [label=token-like          ] एजेंट: agent_01 (beta)। एजेंट सौंपें
+    [label=percent-braces-like ] एजेंट: 100% done {x}। एजेंट सौंपें
+--- ui.chat.header_identity.aria_agent_closed
+    [label=latin               ] एजेंट: Acme Ops। The runtime closed this seat.
+    [label=latin-vowel-initial ] एजेंट: Indira Rao। The runtime closed this seat.
+    [label=devanagari          ] एजेंट: इंदिरा राव। The runtime closed this seat.
+    [label=devanagari-vowel-initial] एजेंट: आशा टीम। The runtime closed this seat.
+    [label=ascii-quotes        ] एजेंट: "Q" O'Brien। The runtime closed this seat.
+    [label=comma               ] एजेंट: टीम, प्रमुख। The runtime closed this seat.
+    [label=danda               ] एजेंट: अंत। नया। The runtime closed this seat.
+    [label=cjk                 ] एजेंट: 山田太郎। The runtime closed this seat.
+    [label=rtl-name            ] एजेंट: محمد علي। The runtime closed this seat.
+    [label=long                ] एजेंट: A very long agent display name that goes on and on। The runtime closed this seat.
+    [label=token-like          ] एजेंट: agent_01 (beta)। The runtime closed this seat.
+    [label=percent-braces-like ] एजेंट: 100% done {x}। The runtime closed this seat.
+--- ui.chat.header_identity.aria_agent_switch
+    [label=latin               ] एजेंट: Acme Ops। एजेंट बदलें
+    [label=latin-vowel-initial ] एजेंट: Indira Rao। एजेंट बदलें
+    [label=devanagari          ] एजेंट: इंदिरा राव। एजेंट बदलें
+    [label=devanagari-vowel-initial] एजेंट: आशा टीम। एजेंट बदलें
+    [label=ascii-quotes        ] एजेंट: "Q" O'Brien। एजेंट बदलें
+    [label=comma               ] एजेंट: टीम, प्रमुख। एजेंट बदलें
+    [label=danda               ] एजेंट: अंत। नया। एजेंट बदलें
+    [label=cjk                 ] एजेंट: 山田太郎। एजेंट बदलें
+    [label=rtl-name            ] एजेंट: محمد علي। एजेंट बदलें
+    [label=long                ] एजेंट: A very long agent display name that goes on and on। एजेंट बदलें
+    [label=token-like          ] एजेंट: agent_01 (beta)। एजेंट बदलें
+    [label=percent-braces-like ] एजेंट: 100% done {x}। एजेंट बदलें
+--- ui.chat.header_identity.aria_team_assign
+    [label=latin               ] टीम: Acme Ops। टीम सौंपें
+    [label=latin-vowel-initial ] टीम: Indira Rao। टीम सौंपें
+    [label=devanagari          ] टीम: इंदिरा राव। टीम सौंपें
+    [label=devanagari-vowel-initial] टीम: आशा टीम। टीम सौंपें
+    [label=ascii-quotes        ] टीम: "Q" O'Brien। टीम सौंपें
+    [label=comma               ] टीम: टीम, प्रमुख। टीम सौंपें
+    [label=danda               ] टीम: अंत। नया। टीम सौंपें
+    [label=cjk                 ] टीम: 山田太郎। टीम सौंपें
+    [label=rtl-name            ] टीम: محمد علي। टीम सौंपें
+    [label=long                ] टीम: A very long agent display name that goes on and on। टीम सौंपें
+    [label=token-like          ] टीम: agent_01 (beta)। टीम सौंपें
+    [label=percent-braces-like ] टीम: 100% done {x}। टीम सौंपें
+--- ui.chat.header_identity.aria_team_closed
+    [label=latin               ] टीम: Acme Ops। The runtime closed this seat.
+    [label=latin-vowel-initial ] टीम: Indira Rao। The runtime closed this seat.
+    [label=devanagari          ] टीम: इंदिरा राव। The runtime closed this seat.
+    [label=devanagari-vowel-initial] टीम: आशा टीम। The runtime closed this seat.
+    [label=ascii-quotes        ] टीम: "Q" O'Brien। The runtime closed this seat.
+    [label=comma               ] टीम: टीम, प्रमुख। The runtime closed this seat.
+    [label=danda               ] टीम: अंत। नया। The runtime closed this seat.
+    [label=cjk                 ] टीम: 山田太郎। The runtime closed this seat.
+    [label=rtl-name            ] टीम: محمد علي। The runtime closed this seat.
+    [label=long                ] टीम: A very long agent display name that goes on and on। The runtime closed this seat.
+    [label=token-like          ] टीम: agent_01 (beta)। The runtime closed this seat.
+    [label=percent-braces-like ] टीम: 100% done {x}। The runtime closed this seat.
+--- ui.chat.header_identity.aria_team_switch
+    [label=latin               ] टीम: Acme Ops। टीम बदलें
+    [label=latin-vowel-initial ] टीम: Indira Rao। टीम बदलें
+    [label=devanagari          ] टीम: इंदिरा राव। टीम बदलें
+    [label=devanagari-vowel-initial] टीम: आशा टीम। टीम बदलें
+    [label=ascii-quotes        ] टीम: "Q" O'Brien। टीम बदलें
+    [label=comma               ] टीम: टीम, प्रमुख। टीम बदलें
+    [label=danda               ] टीम: अंत। नया। टीम बदलें
+    [label=cjk                 ] टीम: 山田太郎। टीम बदलें
+    [label=rtl-name            ] टीम: محمد علي। टीम बदलें
+    [label=long                ] टीम: A very long agent display name that goes on and on। टीम बदलें
+    [label=token-like          ] टीम: agent_01 (beta)। टीम बदलें
+    [label=percent-braces-like ] टीम: 100% done {x}। टीम बदलें
+--- ui.chat.sidebar.entity.collapse_chats
+    [name=latin                ] Acme Ops की चैट समेटें
+    [name=latin-vowel-initial  ] Indira Rao की चैट समेटें
+    [name=devanagari           ] इंदिरा राव की चैट समेटें
+    [name=devanagari-vowel-initial] आशा टीम की चैट समेटें
+    [name=ascii-quotes         ] "Q" O'Brien की चैट समेटें
+    [name=comma                ] टीम, प्रमुख की चैट समेटें
+    [name=danda                ] अंत। नया की चैट समेटें
+    [name=cjk                  ] 山田太郎 की चैट समेटें
+    [name=rtl-name             ] محمد علي की चैट समेटें
+    [name=long                 ] A very long agent display name that goes on and on की चैट समेटें
+    [name=token-like           ] agent_01 (beta) की चैट समेटें
+    [name=percent-braces-like  ] 100% done {x} की चैट समेटें
+--- ui.chat.sidebar.entity.expand_chats
+    [name=latin                ] Acme Ops की चैट फैलाएँ
+    [name=latin-vowel-initial  ] Indira Rao की चैट फैलाएँ
+    [name=devanagari           ] इंदिरा राव की चैट फैलाएँ
+    [name=devanagari-vowel-initial] आशा टीम की चैट फैलाएँ
+    [name=ascii-quotes         ] "Q" O'Brien की चैट फैलाएँ
+    [name=comma                ] टीम, प्रमुख की चैट फैलाएँ
+    [name=danda                ] अंत। नया की चैट फैलाएँ
+    [name=cjk                  ] 山田太郎 की चैट फैलाएँ
+    [name=rtl-name             ] محمد علي की चैट फैलाएँ
+    [name=long                 ] A very long agent display name that goes on and on की चैट फैलाएँ
+    [name=token-like           ] agent_01 (beta) की चैट फैलाएँ
+    [name=percent-braces-like  ] 100% done {x} की चैट फैलाएँ
+--- ui.chat.sidebar.entity.manage
+    [name=latin                ] Acme Ops प्रबंधित करें
+    [name=latin-vowel-initial  ] Indira Rao प्रबंधित करें
+    [name=devanagari           ] इंदिरा राव प्रबंधित करें
+    [name=devanagari-vowel-initial] आशा टीम प्रबंधित करें
+    [name=ascii-quotes         ] "Q" O'Brien प्रबंधित करें
+    [name=comma                ] टीम, प्रमुख प्रबंधित करें
+    [name=danda                ] अंत। नया प्रबंधित करें
+    [name=cjk                  ] 山田太郎 प्रबंधित करें
+    [name=rtl-name             ] محمد علي प्रबंधित करें
+    [name=long                 ] A very long agent display name that goes on and on प्रबंधित करें
+    [name=token-like           ] agent_01 (beta) प्रबंधित करें
+    [name=percent-braces-like  ] 100% done {x} प्रबंधित करें
+--- ui.chat.sidebar.entity.pin
+    [name=latin                ] “Acme Ops” पिन करें
+    [name=latin-vowel-initial  ] “Indira Rao” पिन करें
+    [name=devanagari           ] “इंदिरा राव” पिन करें
+    [name=devanagari-vowel-initial] “आशा टीम” पिन करें
+    [name=ascii-quotes         ] “"Q" O'Brien” पिन करें
+    [name=comma                ] “टीम, प्रमुख” पिन करें
+    [name=danda                ] “अंत। नया” पिन करें
+    [name=cjk                  ] “山田太郎” पिन करें
+    [name=rtl-name             ] “محمد علي” पिन करें
+    [name=long                 ] “A very long agent display name that goes on and on” पिन करें
+    [name=token-like           ] “agent_01 (beta)” पिन करें
+    [name=percent-braces-like  ] “100% done {x}” पिन करें
+--- ui.chat.sidebar.entity.unpin
+    [name=latin                ] “Acme Ops” अनपिन करें
+    [name=latin-vowel-initial  ] “Indira Rao” अनपिन करें
+    [name=devanagari           ] “इंदिरा राव” अनपिन करें
+    [name=devanagari-vowel-initial] “आशा टीम” अनपिन करें
+    [name=ascii-quotes         ] “"Q" O'Brien” अनपिन करें
+    [name=comma                ] “टीम, प्रमुख” अनपिन करें
+    [name=danda                ] “अंत। नया” अनपिन करें
+    [name=cjk                  ] “山田太郎” अनपिन करें
+    [name=rtl-name             ] “محمد علي” अनपिन करें
+    [name=long                 ] “A very long agent display name that goes on and on” अनपिन करें
+    [name=token-like           ] “agent_01 (beta)” अनपिन करें
+    [name=percent-braces-like  ] “100% done {x}” अनपिन करें
+--- ui.chat.sidebar.pins.pin_label
+    [title=latin               ] “Acme Ops” पिन करें
+    [title=latin-vowel-initial ] “Indira Rao” पिन करें
+    [title=devanagari          ] “इंदिरा राव” पिन करें
+    [title=devanagari-vowel-initial] “आशा टीम” पिन करें
+    [title=ascii-quotes        ] “"Q" O'Brien” पिन करें
+    [title=comma               ] “टीम, प्रमुख” पिन करें
+    [title=danda               ] “अंत। नया” पिन करें
+    [title=cjk                 ] “山田太郎” पिन करें
+    [title=rtl-name            ] “محمد علي” पिन करें
+    [title=long                ] “A very long agent display name that goes on and on” पिन करें
+    [title=token-like          ] “agent_01 (beta)” पिन करें
+    [title=percent-braces-like ] “100% done {x}” पिन करें
+--- ui.chat.sidebar.pins.unpin_label
+    [title=latin               ] “Acme Ops” अनपिन करें
+    [title=latin-vowel-initial ] “Indira Rao” अनपिन करें
+    [title=devanagari          ] “इंदिरा राव” अनपिन करें
+    [title=devanagari-vowel-initial] “आशा टीम” अनपिन करें
+    [title=ascii-quotes        ] “"Q" O'Brien” अनपिन करें
+    [title=comma               ] “टीम, प्रमुख” अनपिन करें
+    [title=danda               ] “अंत। नया” अनपिन करें
+    [title=cjk                 ] “山田太郎” अनपिन करें
+    [title=rtl-name            ] “محمد علي” अनपिन करें
+    [title=long                ] “A very long agent display name that goes on and on” अनपिन करें
+    [title=token-like          ] “agent_01 (beta)” अनपिन करें
+    [title=percent-braces-like ] “100% done {x}” अनपिन करें
+
+== 5. plural keys in this batch: none (0 of 38). Plural arms were still verified for the four namespace files: see audit.log §9.

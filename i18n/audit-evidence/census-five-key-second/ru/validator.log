@@ -1,0 +1,14 @@
+✔ [ru] ships at least one message (not an empty claim) (1.686959ms)
+✔ [ru] defines each key in at most one namespace file (1.45575ms)
+✔ [ru] carries EVERY key of each namespace file it ships (1.027041ms)
+✔ [ru] names only keys the English source defines (0.844709ms)
+✔ [ru] preserves every ICU placeholder from the English source (5.546709ms)
+✔ [ru] is not an English stub (no value identical to the source) (1.088125ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 157.235708

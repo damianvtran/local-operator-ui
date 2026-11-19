@@ -1,0 +1,176 @@
+{
+  "schema": 1,
+  "kind": "translation-audit-record",
+  "audit_kind": "landed-bytes-confirmation",
+  "audit_id": "s16d-zh",
+  "locale": "zh-CN",
+  "locale_name": "Simplified Chinese",
+  "namespace": "ui.common.time",
+  "audit_date": "2026-11-12",
+  "key_count": 4,
+  "key_count_note": "4 new s16d keys; the namespace file holds 5 (yesterday_at pre-exists and was read as sibling context)",
+  "pr": 1877,
+  "pr_url": "https://github.com/damianvtran/local-operator-ui/pull/1877",
+  "worktree": "~/local-operator-ui/.worktrees/i18n-s16d",
+  "head": "b2110ea9cd9fd0c103891a4a77b65ba741012cf4",
+  "branch": "feat/i18n-s16d-live-locale-formatting",
+  "worktree_clean_at_audit": true,
+  "auditor": {
+    "agent": "i18n-auditor",
+    "role": "independent i18n auditor (team lopdev); not the translator and not an earlier auditor of this group",
+    "session": "4517fbb34e79",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "harness session 'Model:' line; no provider fallback used or observed in this run",
+    "independent_from_translator_session": true,
+    "translator": {
+      "agent": "i18n-translator",
+      "session": "3ef6295a5545",
+      "model": "anthropic/claude-sonnet-5-5"
+    },
+    "independence": "Separate session from the translator. Read-only throughout: no catalogue, English source, context sidecar, ledger, allowance or generated file was written in the worktree; the ledger state was assembled only in a scratch mirror."
+  },
+  "locale_authority": {
+    "glossary": "~/local-operator i18n/glossary.md at origin/main",
+    "style_guide": "~/local-operator i18n/style-guides/zh-CN.md at origin/main"
+  },
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.common.time.json",
+      "sha256": "bb0b3aa1a71679cc73cb40d73616b5e22057c7dcbc86705c2ec4425984971e13"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.common.time.context.json",
+      "sha256": "a9069037edc11c59288a7c2d3171496b1ef44a0982fc28e6a0edb4bcae0f98d2"
+    },
+    "zh-CN": {
+      "path": "src/i18n/catalogues/zh-CN/ui.common.time.json",
+      "sha256": "111c7c99dc0a0d3543435224dbd41b87f6e930fd966457c1ea9bd4f74f7202cc"
+    }
+  },
+  "landed_byte_identity": {
+    "whole_file_matches_brief": true,
+    "whole_file_sha256": "111c7c99dc0a0d3543435224dbd41b87f6e930fd966457c1ea9bd4f74f7202cc",
+    "four_pair_canonical_sha256": "f053f4fa8c13edd023ef6df3f04fc9cee66bc0a4fb7f3ceccde2f29137472b6a",
+    "values_identical_to_pre_landing_audit": true,
+    "en_unchanged_since_pre_landing_audit": true,
+    "context_unchanged_since_pre_landing_audit": true,
+    "note": "The pre-landing first pass predicted this exact whole-file hash for the landed serialization (tab indent, en key order, final newline); the landed file matches it byte for byte."
+  },
+  "values_audited": {
+    "ui.common.time.today_at": "今天{time}",
+    "ui.common.time.yesterday": "昨天",
+    "ui.common.time.weekday_at": "{weekday}{time}",
+    "ui.common.time.date_at": "{date}{time}",
+    "ui.common.time.yesterday_at (pre-existing sibling, context)": "昨天{time}"
+  },
+  "composed_landed_outputs": {
+    "formatDividerLabel today 14:30": "今天14:30",
+    "formatDividerLabel today 09:05": "今天9:05",
+    "formatDividerLabel yesterday 14:30": "昨天14:30",
+    "formatDividerLabel 3 days ago 08:15": "星期一8:15",
+    "formatDividerLabel 30 days ago 16:45": "2026年10月5日16:45",
+    "formatMessageDateTime yesterday": "昨天",
+    "t(yesterday_at,14:30)": "昨天14:30"
+  },
+  "checks": {
+    "key_set_matches_english_subset": true,
+    "placeholders_identical_to_english": true,
+    "plural_select_messages": 0,
+    "nfc": true,
+    "bidi_controls": 0,
+    "markup_or_code": false,
+    "latin_residue_after_stripping_placeholders": 0,
+    "icu_runtime_throws": 0,
+    "negative_controls": "fired: English left, dropped placeholder, renamed placeholder, NFD, bidi control",
+    "shipped_lookup_path": "values resolved from bundledCatalogues['zh-CN'] with nothing registered (generate --check byte-identical, so the bundle carries the landed bytes)",
+    "validators": {
+      "generate_check": "byte-identical to a fresh generation",
+      "check_coverage": "ok — 7 gated languages over 158 namespaces, 0 allowed keys remaining",
+      "context_parity": "ok — every English key covered apart from 129 allowed gap(s) in 4 namespaces",
+      "locale_parity_test": "44/44 pass",
+      "zh_CN_activation_test": "3/3 pass",
+      "ledger_check_pre_assemble": "FAILED 21 findings; zh-CN/ui.common.time stale (source d29ccbd6→bb0b3aa1, target 6c4aa414→111c7c99, old receipt does not name current bytes) — expected",
+      "ledger_assemble": "zh-CN/ui.common.time -> status audited (prior audits moved to superseded) | clean-with-findings, 0 blocker, 0 major, 0 minor, 1 nit",
+      "ledger_check_post_assemble": "FAILED 18 findings, none for zh-CN (0 zh-CN lines); the remaining findings are the other six locales' ui.common.time rows, not this audit's scope"
+    }
+  },
+  "current_report_verdict": {
+    "status": "clean-with-findings",
+    "passed": true,
+    "unresolved_blocker_major_count": 0,
+    "counts": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 0,
+      "nit": 1
+    },
+    "finding_ids": [
+      "NIT-1"
+    ],
+    "observations": [
+      "OBS-1 pre-existing ui.teamBridge.threadRow.last uses '今天 {time}'/'昨天 {time}' with a space",
+      "OBS-2 formatter-side weekday long vs short width option"
+    ]
+  },
+  "artifacts": {
+    "record": {
+      "path": "record.json",
+      "sha256": "not self-hashed (a file cannot contain its own digest in a fixed point); the terminal commitment for this audit is the ledger row's receipt_sha256, recorded below and in audit.log's ledger-assemble step"
+    },
+    "audit_log": {
+      "path": "audit.log",
+      "sha256": "03afffc01915e2e8ed66379ea27b029aea78d14a5f63a149f68eec77f1c99612"
+    },
+    "receipt": {
+      "path": "receipt.json",
+      "sha256": "ad06980d8cea99c8460f43b09ff7580d1ef344b27476c5f19f503d2c16b8d165"
+    },
+    "report": {
+      "path": "audit-s16d-zh-CN.md",
+      "sha256": "acb2dc9686de9e2acac520874f989e73c76184c904bf82e77b941db0c4d4700b"
+    },
+    "checker_landed": {
+      "path": "zh-check/landed.mjs",
+      "sha256": "2c7546ea0bfddb228acf829f4f1343980274b69c843d07b03777f25c07ffd3b8"
+    },
+    "checker_first_pass": {
+      "path": "zh-check/run.mjs",
+      "sha256": "701d7fccb7bef857d0982c673b5b4f60741fc327b91360fbac787c878a2be9e3"
+    },
+    "checker_detectors": {
+      "path": "zh-check/part2.mjs",
+      "sha256": "47c998dbb051a9a9234a676d09b84264dfd55834c909d154260e06ae2b5e66b4"
+    }
+  },
+  "prior_record": {
+    "path": "audit-s16d-zh-CN.json (pre-landing first pass, session 4517fbb34e79)",
+    "result": "clean-with-findings, 1 nit — the same NIT-1; 4/4 values byte-identical on landing"
+  },
+  "audit_notes_not_execution_log": "record.json and the report's 'method' prose are NOTES. The executed commands and their real output are in audit.log (208 lines: git HEAD/status, sha256sum, the landed call-path checker, generate --check, check-coverage, context-parity, locale-parity, zh-CN activation, ledger-check pre/post, ledger-assemble).",
+  "original_lost_evidence": {
+    "status": "not_applicable",
+    "detail": "No original was lost: this record is the landed-bytes confirmation of a first pass whose artifacts still exist in this scratchpad."
+  },
+  "new_report_is_original": true,
+  "new_report_is_historical_R2_recreation": false,
+  "backdated": false,
+  "receipt_status": {
+    "bound_to_landed_bytes": true,
+    "receipt_path_outside_repo": "~/.local-operator/sessions/4517fbb34e79/scratchpad/receipt-zh-CN-s16d-landed.json",
+    "validated_by": "ledger-assemble.mjs exit 0 in a pristine mirror of HEAD b2110ea9; ledger-check post-assemble reports 0 findings for zh-CN",
+    "integrator_note": "The row assembled in the mirror is scratch state only; the real repo ledger is unchanged and the integrator must run the assemble command in the repo after copying this bundle to i18n/audits/evidence/zh-CN/ui.common.time/s16d-zh/ and the receipt to i18n/receipts/."
+  },
+  "not_performed": [
+    "rendered screen / screenshot",
+    "measured layout geometry",
+    "native-speaker sign-off",
+    "design/UX review",
+    "QA runtime pass"
+  ],
+  "record_placement": "This bundle is written in session scratch only. It is read-only from the repo's perspective; the integrator copies evidence/zh-CN/ui.common.time/s16d-zh/ to i18n/audits/evidence/zh-CN/ui.common.time/s16d-zh/ and the receipt to i18n/receipts/4517fbb34e79.json.",
+  "receipt_commitment": {
+    "receipt_sha256": "ad06980d8cea99c8460f43b09ff7580d1ef344b27476c5f19f503d2c16b8d165",
+    "committed_by": "i18n/ledger.json row zh-CN/ui.common.time auditor entry receipt_sha256 (produced by ledger-assemble in the mirror; the repo's row awaits the integrator's run)",
+    "receipt_path_in_repo": "i18n/receipts/4517fbb34e79.json"
+  }
+}

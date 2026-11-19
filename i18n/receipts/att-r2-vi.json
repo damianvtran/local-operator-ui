@@ -1,0 +1,59 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "att-r2-vi",
+ "session": "12aab7b684ab",
+ "job": "d8717b64c01a",
+ "date": "2026-10-21",
+ "locale": "vi",
+ "translator": "coder",
+ "translator_session": "03594b2dcc02",
+ "translator_job": "bc0c4b952eaa",
+ "namespace": "ui.teamBridge",
+ "status": "passed",
+ "keys_audited": 10,
+ "scope": "Round-2 delta audit of #1314: git diff cf1d7c616c..8cf05961d6 -- src/i18n/catalogues (vi: 10 values changed/added — error_quota, error_upload, expired_staged, expired_staged_retry, open, position, preview_unavailable, remove, remove_all, send_blocked). Includes the changed en attachments.expired_staged and new en attachments.expired_staged_retry / attachments.preview_unavailable with their context notes. Every round-1 finding of att-r1-vi re-verified against the bytes. The other 161 vi values are byte-identical to cf1d7c616c (line-level diff shows only these keys plus schedule.discard_attempt gaining a trailing comma, value unchanged) and stay covered by att-r1-vi and its inherited receipts. PR head 8cf05961d6 re-checked via gh. Catalogue audit only, not rendered-fit/activation/release.",
+ "source_head": "8cf05961d64322fe64ebccd6282069c7f52f12f3",
+ "source_base": "cf1d7c616ca36bd48c0bf160d64a08514b7c2b08",
+ "sha256": {
+  "en": "a1e4452d733cee31812938d27106ff5b8cb15a74e4da6eaddbc8d9c1519fe8ed",
+  "vi": "4853986bbd7c5c9e48a4616723878d948efd4ad7ce55e59e21aa9ad2d8a8c362",
+  "context": "09acfc1ecfb2533c8c340eb706b74b4f3ee68f367ad1bc60e41c06b549ca4f1a"
+ },
+ "findings": [],
+ "round1_dispositions": [
+  {
+   "finding": "ATT-VI-01",
+   "severity": "MINOR",
+   "keys": "remove (+5 related)",
+   "verified": "applied: Gỡ in remove, remove_all, send_blocked, error_upload, error_quota and the rewritten expired_staged; no Xóa/xóa left in attachments.*"
+  },
+  {
+   "finding": "ATT-VI-02",
+   "severity": "NIT",
+   "keys": "position/open",
+   "verified": "applied verbatim: 'Hình ảnh {index}/{count}' / 'Mở hình ảnh {index}/{count}'"
+  }
+ ],
+ "inherited_receipt": {
+  "path": "i18n/receipts/att-r1-vi.json",
+  "sha256": "a8f1ceb71bfbd5481e4a81842d1f9aacef58e286f98e25ee5ec38a4d0499a5b0",
+  "base": "cf1d7c616c",
+  "target_sha256": "608e2f506070968878a48fdbbf2a10ddc174de7c0e0db872bc6ade21b938bc03",
+  "keys_inherited": 161,
+  "unchanged_values_verified": true
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+ },
+ "validation": {
+  "independence": "Auditor session 12aab7b684ab (job d8717b64c01a, translation-auditor, served model anthropic/claude-opus-5-5 per this session's selected_model record) is a new instance, distinct from translator coder session 03594b2dcc02 (job bc0c4b952eaa, remediation commits 1ffc748e68/cedfe88fc6) and from the round-1 auditor session b7f054029a3f. Values read from working-tree bytes at 8cf05961d6 (equal to git show 8cf05961d6); translator/remediation summaries were checked, not relied on. No catalogue or code edits, no git operations, no ledger-assemble.",
+  "semantics": "New/changed keys: expired_staged 'Hình ảnh này không còn sẵn sàng để gửi. Hãy gỡ hình ảnh rồi thêm lại.' matches the new en (thêm = add 'Thêm hình ảnh', gỡ = remove); expired_staged_retry '… Hãy thử lại hoặc gỡ hình ảnh.' mirrors error_upload; preview_unavailable 'Không có bản xem trước' uses the locale's bản xem trước (13 values). Pronoun-dropped bạn register.",
+  "icu": "Parsed all 25 attachments.* values in en and vi with @formatjs/icu-messageformat-parser: argument names/types identical (0 mismatches); the 3 new/changed keys are argument-free in en and vi. in_message/limit plural arms unchanged in structure. Formatted with intl-messageformat: position(2,3)/open/remove composed strings render as recorded in the round-1 dispositions.",
+  "typography": "Changed values NFC, no bidi controls, no ASCII apostrophe or '...', no doubled/edge spaces. No Xóa left in attachments.*.",
+  "overflow": "expired_staged/expired_staged_retry render in the 12 px wrapping status/alert line under the composer and in the chip's sr-only description; preview_unavailable is a title tooltip plus a hidden aria-describedby node (team-bridge-attachments.tsx:128-132, 761-763, 786-788): no fixed-width visible surface, so no fit risk.",
+  "rtl": "Not applicable (vi is LTR).",
+  "limitations": "Browser not used; no rendered-fit, screenshots, glyph metrics, pseudo-localization or activation claim."
+ }
+}

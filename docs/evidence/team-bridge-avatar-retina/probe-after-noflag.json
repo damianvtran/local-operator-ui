@@ -1,0 +1,348 @@
+{
+  "label": "after-noflag",
+  "dpr": 2,
+  "surfaces": {
+    "message-row": {
+      "story": "team-bridge-page--agent-own-picture-messages",
+      "box": {
+        "x": 308,
+        "y": 385.359375,
+        "width": 36,
+        "height": 36
+      },
+      "dpr": 2,
+      "images": [
+        {
+          "where": "team-bridge-plate",
+          "naturalWidth": 64,
+          "clientWidth": 20,
+          "devicePx": 40,
+          "coverage": 1.6
+        },
+        {
+          "where": "team-bridge-plate",
+          "naturalWidth": 64,
+          "clientWidth": 20,
+          "devicePx": 40,
+          "coverage": 1.6
+        },
+        {
+          "where": "team-bridge-plate",
+          "naturalWidth": 256,
+          "clientWidth": 36,
+          "devicePx": 72,
+          "coverage": 3.556
+        },
+        {
+          "where": "team-bridge-plate",
+          "naturalWidth": 256,
+          "clientWidth": 36,
+          "devicePx": 72,
+          "coverage": 3.556
+        }
+      ],
+      "marks": [
+        {
+          "plate": 20,
+          "outer": 8,
+          "inner": 7
+        },
+        {
+          "plate": 36,
+          "outer": 12,
+          "inner": 11
+        }
+      ],
+      "reads": [
+        "team_bridge.endpoint_avatar:64",
+        "team_bridge.avatar:64",
+        "team_bridge.endpoint_avatar:256",
+        "team_bridge.avatar:256"
+      ]
+    },
+    "profile-card": {
+      "story": "team-bridge-page--agent-own-picture-profile-card",
+      "box": {
+        "x": 183,
+        "y": 444.5,
+        "width": 64,
+        "height": 64
+      },
+      "dpr": 2,
+      "images": [
+        {
+          "where": "team-bridge-plate",
+          "naturalWidth": 64,
+          "clientWidth": 20,
+          "devicePx": 40,
+          "coverage": 1.6
+        },
+        {
+          "where": "team-bridge-plate",
+          "naturalWidth": 64,
+          "clientWidth": 20,
+          "devicePx": 40,
+          "coverage": 1.6
+        },
+        {
+          "where": "team-bridge-plate",
+          "naturalWidth": 256,
+          "clientWidth": 36,
+          "devicePx": 72,
+          "coverage": 3.556
+        },
+        {
+          "where": "team-bridge-plate",
+          "naturalWidth": 256,
+          "clientWidth": 36,
+          "devicePx": 72,
+          "coverage": 3.556
+        },
+        {
+          "where": "team-bridge-plate",
+          "naturalWidth": 256,
+          "clientWidth": 64,
+          "devicePx": 128,
+          "coverage": 2
+        }
+      ],
+      "marks": [
+        {
+          "plate": 20,
+          "outer": 8,
+          "inner": 7
+        },
+        {
+          "plate": 36,
+          "outer": 12,
+          "inner": 11
+        },
+        {
+          "plate": 64,
+          "outer": 20,
+          "inner": 19
+        }
+      ],
+      "reads": [
+        "team_bridge.avatar:64",
+        "team_bridge.endpoint_avatar:64",
+        "team_bridge.avatar:256",
+        "team_bridge.endpoint_avatar:256"
+      ]
+    },
+    "rail": {
+      "story": "team-bridge-page--agent-own-picture-messages",
+      "box": {
+        "x": 12,
+        "y": 314.890625,
+        "width": 20,
+        "height": 20
+      },
+      "dpr": 2,
+      "images": [
+        {
+          "where": "team-bridge-plate",
+          "naturalWidth": 64,
+          "clientWidth": 20,
+          "devicePx": 40,
+          "coverage": 1.6
+        },
+        {
+          "where": "team-bridge-plate",
+          "naturalWidth": 64,
+          "clientWidth": 20,
+          "devicePx": 40,
+          "coverage": 1.6
+        },
+        {
+          "where": "team-bridge-plate",
+          "naturalWidth": 256,
+          "clientWidth": 36,
+          "devicePx": 72,
+          "coverage": 3.556
+        },
+        {
+          "where": "team-bridge-plate",
+          "naturalWidth": 256,
+          "clientWidth": 36,
+          "devicePx": 72,
+          "coverage": 3.556
+        }
+      ],
+      "marks": [
+        {
+          "plate": 20,
+          "outer": 8,
+          "inner": 7
+        },
+        {
+          "plate": 36,
+          "outer": 12,
+          "inner": 11
+        }
+      ],
+      "reads": [
+        "team_bridge.avatar:64",
+        "team_bridge.endpoint_avatar:64",
+        "team_bridge.avatar:256",
+        "team_bridge.endpoint_avatar:256"
+      ]
+    },
+    "sidebar-account": {
+      "story": "navigation-user-profile--account-photo",
+      "box": {
+        "x": 16,
+        "y": 753.546875,
+        "width": 28,
+        "height": 28
+      },
+      "dpr": 2,
+      "images": [
+        {
+          "where": "other",
+          "naturalWidth": 64,
+          "clientWidth": 28,
+          "devicePx": 56,
+          "coverage": 1.143
+        }
+      ],
+      "marks": [],
+      "reads": [
+        "team_bridge.avatar:64"
+      ]
+    },
+    "chat-header": {
+      "story": "features-agents-agent-avatar--header-geometry",
+      "box": {
+        "x": 32,
+        "y": 66,
+        "width": 20,
+        "height": 20
+      },
+      "dpr": 2,
+      "images": [
+        {
+          "where": "agent-mark",
+          "naturalWidth": 512,
+          "clientWidth": 18,
+          "devicePx": 36,
+          "coverage": 14.222
+        }
+      ],
+      "marks": [],
+      "reads": [
+        "agent.avatar:512"
+      ]
+    },
+    "chat-sidebar-row": {
+      "story": "features-agents-agent-avatar--chat-row-statuses",
+      "box": {
+        "x": 28,
+        "y": 32,
+        "width": 16,
+        "height": 16
+      },
+      "dpr": 2,
+      "images": [
+        {
+          "where": "agent-mark",
+          "naturalWidth": 512,
+          "clientWidth": 14,
+          "devicePx": 28,
+          "coverage": 18.286
+        },
+        {
+          "where": "agent-mark",
+          "naturalWidth": 512,
+          "clientWidth": 14,
+          "devicePx": 28,
+          "coverage": 18.286
+        },
+        {
+          "where": "agent-mark",
+          "naturalWidth": 512,
+          "clientWidth": 14,
+          "devicePx": 28,
+          "coverage": 18.286
+        },
+        {
+          "where": "agent-mark",
+          "naturalWidth": 512,
+          "clientWidth": 14,
+          "devicePx": 28,
+          "coverage": 18.286
+        }
+      ],
+      "marks": [],
+      "reads": [
+        "agent.avatar:512",
+        "agent.avatar:512",
+        "agent.avatar:512",
+        "agent.avatar:512"
+      ]
+    },
+    "agents-sidebar": {
+      "story": "features-agents-agent-avatar--roster-states",
+      "box": {
+        "x": 32,
+        "y": 32.4375,
+        "width": 32,
+        "height": 32
+      },
+      "dpr": 2,
+      "images": [
+        {
+          "where": "other",
+          "naturalWidth": 512,
+          "clientWidth": 30,
+          "devicePx": 60,
+          "coverage": 8.533
+        },
+        {
+          "where": "other",
+          "naturalWidth": 512,
+          "clientWidth": 30,
+          "devicePx": 60,
+          "coverage": 8.533
+        },
+        {
+          "where": "other",
+          "naturalWidth": 512,
+          "clientWidth": 30,
+          "devicePx": 60,
+          "coverage": 8.533
+        }
+      ],
+      "marks": [],
+      "reads": [
+        "agent.avatar:512",
+        "agent.avatar:512",
+        "agent.avatar:512"
+      ]
+    },
+    "agents-page-portrait": {
+      "story": "features-agents-agent-avatar--summary-portrait-populated",
+      "box": {
+        "x": 40,
+        "y": 40,
+        "width": 80,
+        "height": 80
+      },
+      "dpr": 2,
+      "images": [
+        {
+          "where": "agent-mark",
+          "naturalWidth": 512,
+          "clientWidth": 80,
+          "devicePx": 160,
+          "coverage": 3.2
+        }
+      ],
+      "marks": [],
+      "reads": [
+        "agent.avatar:512"
+      ]
+    }
+  },
+  "failures": []
+}

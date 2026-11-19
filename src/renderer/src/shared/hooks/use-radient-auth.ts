@@ -66,9 +66,12 @@ export const useRadientAuth = () => {
 		}
 
 		const { account } = radientUser;
+		// Human presentation is account profile state. Keep the identity name
+		// untouched, but use the edited display name consistently in own UI.
+		const displayName = account.profile?.display_name || account.name;
 
 		// Skip if no name or email is provided
-		if (!account.name && !account.email) {
+		if (!displayName && !account.email) {
 			return;
 		}
 
@@ -77,11 +80,11 @@ export const useRadientAuth = () => {
 
 		// Only update if the data is different from what's in the store
 		if (
-			(account.name && account.name !== currentName) ||
+			(displayName && displayName !== currentName) ||
 			(account.email && account.email !== currentEmail)
 		) {
 			userStore.updateProfile({
-				name: account.name || currentName,
+				name: displayName || currentName,
 				email: account.email || currentEmail,
 			});
 		}
@@ -107,7 +110,9 @@ export const useRadientAuth = () => {
 		user:
 			isAuthenticated && radientUser?.account
 				? {
-						name: radientUser.account.name,
+						name:
+							radientUser.account.profile?.display_name ||
+							radientUser.account.name,
 						email: radientUser.account.email,
 						radientUser: radientUser as RadientUser,
 					}

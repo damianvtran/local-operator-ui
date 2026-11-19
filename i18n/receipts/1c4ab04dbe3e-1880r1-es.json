@@ -1,0 +1,164 @@
+{
+	"audit_id": "pr1880-r1-es",
+	"mode": "round-1 independent audit of the 18 keys PR #1880 adds (16 ui.canvas.files.remote*, 2 ui.chat.attachments)",
+	"locale": "es",
+	"pr": 1880,
+	"repo": "damianvtran/local-operator-ui",
+	"head_sha": "a4462e72159d8fa9a45931c36b380221880ffb30",
+	"scope": "83a18c632..a4462e721",
+	"audit_date": "2026-11-12",
+	"translator": {
+		"agent": "coder",
+		"note": "PR #1880 coder translated the new keys (per manager brief ce618964c88e); its served model is not recorded here"
+	},
+	"auditor": {
+		"agent": "reviewer",
+		"session": "1c4ab04dbe3e",
+		"instance": "1c4ab04dbe3e-1880r1-es",
+		"model": "anthropic/claude-opus-5-5",
+		"actual_model_source": "session runtime header names 'Model: anthropic/claude-opus-5-5'; no fallback observed",
+		"independent_from_translator": true
+	},
+	"method": "Static reading of en value + en .context.json note per key, target value, call sites (remote-files.ts, remote-file-mark.tsx, finder-files-view.tsx, audio-document-player.tsx, attachment-frame.tsx, remote-file-transfer.tsx); term frequency against the existing locale catalogue; every value parsed and rendered with intl-messageformat (device='MacBook-Pro', remotePeerUpdate with the locale fallback; owner_unreachable prefixed with 'chart.png'): 0 parse errors, placeholders preserved byte-exactly, no bidi control characters in ur. No MT/translation service used.",
+	"references": {
+		"core_repo_rev": "ad910f5daea0bb40cf95170a5eeed496f4aebd69",
+		"glossary_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+		"style_guide": {
+			"path": "i18n/style-guides/es.md",
+			"sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+		},
+		"ui_doc": "docs/I18N.md"
+	},
+	"rtl": "n/a (LTR)",
+	"namespaces": {
+		"ui.canvas": {
+			"status": "passed",
+			"en_sha256": "5ee4ef4891c4888131172fb02ed6d6c3ee9e54eb09fca52c5e91d693dd62d6c1",
+			"es_sha256": "673b773ffab842938bce2010b726f20c5e72be589416acecfbe6d52f2878cde6",
+			"context_sha256": "e194326406b33442660eb0cbbebd70b4c7040b5773c5938a56b8aa84d35a05a3",
+			"keys_audited": [
+				{
+					"key": "ui.canvas.files.remoteUnreachable",
+					"en": "Couldn't reach the device that holds this file. Try again in a moment.",
+					"target": "No se pudo contactar con el dispositivo que tiene este archivo. Inténtalo de nuevo en un momento."
+				},
+				{
+					"key": "ui.canvas.files.remoteUnreachableRetry",
+					"en": "Couldn't reach the device that holds this sound. Click to retry.",
+					"target": "No se pudo contactar con el dispositivo que tiene este sonido. Haz clic para reintentar."
+				},
+				{
+					"key": "ui.canvas.files.remoteOn",
+					"en": "On {device}",
+					"target": "En {device}"
+				},
+				{
+					"key": "ui.canvas.files.remoteReason.missing",
+					"en": "No longer on {device}",
+					"target": "Ya no está en {device}"
+				},
+				{
+					"key": "ui.canvas.files.remoteReason.tooLarge",
+					"en": "Too large to fetch from {device}",
+					"target": "Demasiado grande para traerlo desde {device}"
+				},
+				{
+					"key": "ui.canvas.files.remoteReason.sensitive",
+					"en": "{device} keeps this file private",
+					"target": "{device} mantiene este archivo privado"
+				},
+				{
+					"key": "ui.canvas.files.remoteReason.notReferenced",
+					"en": "{device} no longer shares this file",
+					"target": "{device} ya no comparte este archivo"
+				},
+				{
+					"key": "ui.canvas.files.remoteReason.workspace",
+					"en": "Lives in {device}'s workspace. Ask the session to copy it to its scratchpad.",
+					"target": "Está en el espacio de trabajo de {device}. Pide a la sesión que lo copie a su borrador."
+				},
+				{
+					"key": "ui.canvas.files.remoteCopyOwnerPath",
+					"en": "Copy path on {device}",
+					"target": "Copiar ruta en {device}"
+				},
+				{
+					"key": "ui.canvas.files.remoteDownload",
+					"en": "Download to this device",
+					"target": "Descargar en este dispositivo"
+				},
+				{
+					"key": "ui.canvas.files.remoteDownloaded",
+					"en": "Downloaded {name}",
+					"target": "{name} descargado"
+				},
+				{
+					"key": "ui.canvas.files.remoteDownloadPending",
+					"en": "Still fetching from {device}. Try again in a moment.",
+					"target": "Aún se está trayendo desde {device}. Inténtalo de nuevo en un momento."
+				},
+				{
+					"key": "ui.canvas.files.remoteDownloadFailed",
+					"en": "Couldn't download from {device}.",
+					"target": "No se pudo descargar desde {device}."
+				},
+				{
+					"key": "ui.canvas.files.remoteReadFailed",
+					"en": "This file couldn't be read from the device that holds it.",
+					"target": "No se pudo leer este archivo desde el dispositivo que lo tiene."
+				},
+				{
+					"key": "ui.canvas.files.remotePeerUpdate",
+					"en": "Update {device} to see its files here.",
+					"target": "Actualiza {device} para ver aquí sus archivos."
+				},
+				{
+					"key": "ui.canvas.files.remoteDeviceFallback",
+					"en": "the other device",
+					"target": "el otro dispositivo"
+				}
+			],
+			"key_completeness": {
+				"en_keys": 376,
+				"target_keys": 376,
+				"missing": [],
+				"extra": []
+			},
+			"findings": [
+				{
+					"id": "I1-4",
+					"severity": "MINOR",
+					"key": "ui.canvas.files.remoteReason.workspace",
+					"current": "Está en el espacio de trabajo de {device}. Pide a la sesión que lo copie a su borrador.",
+					"corrected": "Está en el espacio de trabajo de {device}. Pide a la sesión que lo copie a su scratchpad.",
+					"problem": "Scratchpad term differs from the same namespace's ui.canvas.files.pathCopyNote ('scratchpad'); 'borrador' (draft) reads as a different place, and the user must name it to the session."
+				}
+			]
+		},
+		"ui.chat.attachments": {
+			"status": "passed",
+			"en_sha256": "0e6e4457711073f2b604e9b5374b91a2ed782064a00e486f3fb446ea3f2284be",
+			"es_sha256": "775c44570162b0e7105d98f8788ee345d731fbe634c0f6fb54195112d7d79e81",
+			"context_sha256": "9a10aa5f9bf67285e574b4e0b28b472b48fefff951d9d3b1b84e5a9889e4f2e6",
+			"keys_audited": [
+				{
+					"key": "ui.chat.attachments.owner_unreachable",
+					"en": "couldn't be fetched from the device that holds it.",
+					"target": "no se pudo traer desde el dispositivo que lo tiene."
+				},
+				{
+					"key": "ui.chat.attachments.retry_fetch",
+					"en": "Retry",
+					"target": "Reintentar"
+				}
+			],
+			"key_completeness": {
+				"en_keys": 25,
+				"target_keys": 25,
+				"missing": [],
+				"extra": []
+			},
+			"findings": []
+		}
+	}
+}

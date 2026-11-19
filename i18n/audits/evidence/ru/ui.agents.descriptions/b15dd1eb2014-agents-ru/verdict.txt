@@ -1,0 +1,1 @@
+PASS — no BLOCKER or MAJOR in 14 ru values; 2 MINOR (aida «правая рука» vs shipped «Координатор»; qa_tester «scoped» → «в рамках изменения») and 3 NIT, all follow-ups.

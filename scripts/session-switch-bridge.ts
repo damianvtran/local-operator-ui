@@ -31,10 +31,11 @@
  */
 
 import type {
+	CanonicalContentBlock,
 	CanonicalFrontendState,
 	DesktopHistoryPage,
 	DesktopSessionFrame,
-} from "../../src/shared/desktop-session-contract";
+} from "../src/shared/desktop-session-contract";
 import { DESKTOP_STREAM_DETAIL } from "../src/shared/desktop-stream-notice";
 
 /**
@@ -61,8 +62,21 @@ export type DurableEntry = DesktopHistoryPage["entries"][number];
  * turn these into the durable wire rows the transcript reducer reads, so the
  * harness never hand-writes `payload.content`.
  */
+/** Synthetic metadata only; the shipped reducer reads these exact wire fields. */
+export type FixtureDocument = Required<
+	Pick<CanonicalContentBlock, "attachment" | "filename" | "mime_type" | "bytes">
+> & {
+	type: "document";
+	injection: "native";
+};
+
 export type TranscriptStep =
-	| { kind: "user"; text: string }
+	| {
+			kind: "user";
+			text: string;
+			documents?: FixtureDocument[];
+			images?: Array<{ type: "image"; data: string; mime_type: string }>;
+	  }
 	| { kind: "assistant"; text: string }
 	| { kind: "tool"; name: string; output: string }
 	| {
@@ -197,6 +211,12 @@ export type BridgeLog = {
 export type BridgeHandle = {
 	log: BridgeLog;
 	dispose: () => void;
+	/** Capture-only owner admission: broadcasts the real history_delta contract. */
+	persistUser: (
+		sessionId: string,
+		step: Extract<TranscriptStep, { kind: "user" }>,
+		id: string,
+	) => void;
 };
 
 const now = () => performance.now();
@@ -292,6 +312,7 @@ function frontendState(
 		jobs: [],
 		todos: [],
 		wakes: [],
+		monitors: [],
 		mcp_servers: [],
 		model_catalogue: [],
 		context_tokens: 1234,
@@ -377,7 +398,11 @@ export function historyPage(
 				payload: {
 					kind: "message",
 					role: "user",
-					content: [{ type: "text", text: step.text }],
+					content: [
+						...(step.text ? [{ type: "text", text: step.text }] : []),
+						...(step.documents ?? []),
+						...(step.images ?? []),
+					],
 				},
 			});
 			continue;
@@ -602,8 +627,18 @@ export function installSwitchBridge(config: BridgeConfig): BridgeHandle {
 	const wait = (ms: number) =>
 		ms <= 0 ? Promise.resolve() : new Promise((r) => setTimeout(r, ms));
 
-	const historyFor = (sessionId: string) =>
-		historyPage(sessionId, config.stepsBySession[sessionId] ?? []);
+	const admitted = new Map<string, DurableEntry[]>();
+	const eventSinks = new Map<
+		string,
+		Set<(event: Record<string, unknown> & { type: string }) => void>
+	>();
+	const historyFor = (sessionId: string) => {
+		const page = historyPage(sessionId, config.stepsBySession[sessionId] ?? []);
+		return {
+			...page,
+			entries: [...page.entries, ...(admitted.get(sessionId) ?? [])],
+		};
+	};
 
 	const answer = (request: DesktopRequestLike) => {
 		switch (request.op) {
@@ -697,6 +732,21 @@ export function installSwitchBridge(config: BridgeConfig): BridgeHandle {
 					if (cancelled) return;
 					onEvent({ kind: "data", data: JSON.stringify(frame) });
 				};
+				const emitEvent = (
+					payload: Record<string, unknown> & { type: string },
+				) => {
+					seq += 1;
+					send({
+						session_id: args.sessionId,
+						epoch,
+						seq,
+						type: "event",
+						payload,
+					});
+				};
+				const sinks = eventSinks.get(args.sessionId) ?? new Set();
+				sinks.add(emitEvent);
+				eventSinks.set(args.sessionId, sinks);
 				void (async () => {
 					const streamDelay = delayFor(args.sessionId, "stream");
 					await wait(streamDelay);
@@ -761,6 +811,7 @@ export function installSwitchBridge(config: BridgeConfig): BridgeHandle {
 				return {
 					dispose: () => {
 						cancelled = true;
+						sinks.delete(emitEvent);
 						entry.disposedAt = now();
 						onEvent({ kind: "end" });
 					},
@@ -772,6 +823,24 @@ export function installSwitchBridge(config: BridgeConfig): BridgeHandle {
 	window.api = { ...(window.api ?? {}), desktop } as typeof window.api;
 	return {
 		log,
+		persistUser: (sessionId, step, id) => {
+			// One bounded capture row, with the SAME admission id as the local echo.
+			// Retain it for reopen/history reads instead of only faking a live paint.
+			if (admitted.has(sessionId))
+				throw new Error("Fixture row already persisted");
+			const row = {
+				...historyPage(sessionId, [step]).entries[0],
+				id,
+				ts: Date.now() / 1000,
+			};
+			admitted.set(sessionId, [row]);
+			for (const emit of eventSinks.get(sessionId) ?? []) {
+				emit({
+					type: "history_delta",
+					messages: [{ ...row.payload, id, ts: row.ts }],
+				});
+			}
+		},
 		dispose: () => {
 			if (previous) window.api = { ...window.api, desktop: previous };
 		},

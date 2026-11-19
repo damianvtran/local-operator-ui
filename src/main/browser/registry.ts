@@ -1,6 +1,13 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import type { DriveableView } from "./electron-types";
 import { BrowserHostError } from "./errors";
+import { custodyRefusal } from "./extensions/passkey-custody";
+import {
+	displayTitleFor,
+	displayUrlFor,
+	isInternalDocument,
+	trackInternalPages,
+} from "./internal-pages";
 import type { PersistedTab } from "./session-store";
 import type { SnapshotRef } from "./vendor/driver/ax-compact";
 
@@ -33,6 +40,23 @@ export interface ContentRect {
 	y: number;
 	width: number;
 	height: number;
+}
+
+/** The post-layout observation the fourth constructor callback receives.
+ *
+ * Deliberately COPIED (`contentRect` is a fresh object and the fields are
+ * primitives): an observer must not be able to mutate the registry's live
+ * rectangle, and a later pass must not rewrite a snapshot already delivered. */
+export interface LayoutSnapshot {
+	activeTabId: number | null;
+	/** The active tab's own presentation bit after this pass. */
+	presented: boolean;
+	/** Browser chrome may be visible over an empty/start canvas without a page. */
+	chromeVisible: boolean;
+	contentRect: ContentRect | null;
+	/** Monotone per registry, so a consumer can tell "another pass" from "a pass
+	 * with the same values" without diffing objects. */
+	revision: number;
 }
 
 export interface TabRecord {
@@ -68,6 +92,20 @@ export interface TabRecord {
 	nonce: string | null;
 	/** The session a user tab has been handed to (design 6.3), or null. */
 	handedTo: string | null;
+	/**
+	 * The session whose page opened this tab by a link (`target=_blank`, a
+	 * `noopener` window.open), or null. Set only for an AGENT-owned opener.
+	 *
+	 * WHY it is its own field and not `handedTo`: a hand-over forces
+	 * `owner: "user"` creation, which activates the tab (an agent's tab must
+	 * not — design 11.4), and `handedTo` also drives revocation. This tab was
+	 * never the user's; the ownership ledger's `mayAdopt` reads this so the
+	 * opening session can `open tab=<handle>` it. In memory only, like `nonce`.
+	 */
+	openedBy: string | null;
+	/** The tab whose page opened this one, for the per-opener bound. Null for a
+	 * tab nobody's link opened. */
+	openedByTab: number | null;
 	/**
 	 * The owner this tab had BEFORE its first hand-over — "user" for a tab the
 	 * user opened, "agent" for one an agent did — pinned at that moment and never
@@ -119,6 +157,32 @@ export interface TabRecord {
 	/** A close that could not complete is a retryable obligation, never proof
 	 * the view is gone. */
 	cleanupPending?: boolean;
+	/**
+	 * Set on a USER tab the host opened because the operator approved a site an
+	 * agent asked for (`BrowserHost.respondToConsent`), and null everywhere else.
+	 *
+	 * WHY IT EXISTS: before this, Allow wrote a grant and nothing navigated, so an
+	 * agent that asked the operator to "approve and sign in" left them with no page
+	 * to sign in on. The host now opens the approved page in a tab the OPERATOR owns
+	 * (so the agent cannot read credentials being typed, and opener popups such as
+	 * an MSAL sign-in are not held as an agent tab's), and this marker is what lets
+	 * the requesting session's next plain `open url=<same origin>` take that tab
+	 * over where it stands instead of opening a second one (`actions/tabs.ts`).
+	 *
+	 * It is a PICKUP RIGHT, not a capability: the tab has no nonce while it is set,
+	 * the session sees only a redacted handle, and the pickup still runs ordinary
+	 * admission. In memory only (never persisted, like `nonce`), bounded by
+	 * `expiresAt` (the access-result TTL), and cleared on pickup or hand-over.
+	 */
+	approvalPickup?: ApprovalPickup | null;
+}
+
+/** See `TabRecord.approvalPickup`. `requester` is the full `session:<id>`
+ * identity that raised the request; `origin` is the exact origin approved. */
+export interface ApprovalPickup {
+	requester: string;
+	origin: string;
+	expiresAt: number;
 }
 
 /** A snapshot ref as this host stores it: the vendored `SnapshotRef` plus where
@@ -138,10 +202,15 @@ export interface TabRef extends SnapshotRef {
  * `MAX_SURFACES = 8` (`extension/src/state.ts:12`).
  *
  * The reasoning transfers unchanged: parallel sessions each open their own tab,
- * and nothing else bounds how many an agent fleet can open. User tabs are NOT
- * capped (design 6.5) — a user opening a dozen tabs is their business, and the
- * honest bound on those is memory, which `status` reports rather than a second
- * invented number. */
+ * and nothing else bounds how many an agent fleet can open.
+ *
+ * User tabs have no cap of THIS kind — no number bounds how many the operator may
+ * hold — but they are not "uncapped" either, which is what this comment used to
+ * say while the popup route relied on it. The bound that exists is on the one path
+ * where the operator is not the one asking: a page in their own tab may not spawn
+ * link tabs without bound (`MAX_USER_LINK_TABS_PER_VIEW`, `popups.ts`) and may not
+ * spawn them from a link tab at all. Design 6.5's "a user opening a dozen tabs is
+ * their business" is about acts the USER takes; a page's loop is not one. */
 export const MAX_AGENT_TABS = 8;
 
 /** Background rendering must not depend on a foreground route's measurement.
@@ -219,6 +288,22 @@ export function sessionIdOf(identity: string): string {
 			: identity;
 }
 
+/**
+ * Whether `requester` (`session:<id>`) may ADOPT this tab with `open tab=`: the
+ * session the user handed it to, or the session whose page opened it by a link.
+ * An allocated tab is never adoptable (it already belongs to an allocation), and
+ * a tab no session is attached to never is either. One predicate, shared by the
+ * ownership hook in `index.ts` and the tests, so the rule cannot drift.
+ */
+export function sessionMayAdopt(
+	record: Pick<TabRecord, "handedTo" | "openedBy" | "allocationId">,
+	requester: string,
+): boolean {
+	const session = sessionIdOf(requester);
+	if (!session || record.allocationId) return false;
+	return record.handedTo === session || record.openedBy === session;
+}
+
 /** Mint a surface nonce. 16 random bytes hex-encoded: the same 32-character
  * shape and entropy the extension's nonces have, so a redacted handle leaks the
  * same 26 hidden characters either way. */
@@ -235,6 +320,14 @@ export interface CreateTabOptions {
 	/** The row this tab is restored from, when it is one. See `TabRecord`. */
 	restoreRow?: PersistedTab;
 	allocationId?: string;
+	/** A user tab becomes the active one unless this is `false` — a link opened
+	 * in the background (or from a tab nobody is looking at) must not switch the
+	 * tab the user is on. Agent tabs never activate, whatever this says. */
+	activate?: boolean;
+	/** See `TabRecord.openedBy`. */
+	openedBy?: string | null;
+	/** See `TabRecord.openedByTab`. */
+	openedByTab?: number | null;
 }
 
 export class TabRegistry {
@@ -242,13 +335,45 @@ export class TabRegistry {
 	private nextTabId = 1;
 	private activeTabId: number | null = null;
 	private visible = true;
+	/** WHY the view is hidden when it is: the renderer is painting one of the
+	 * browser's OWN state pages (start page, load failure), not an overlay that
+	 * covers the chrome band. Only shortcut ownership reads this. Presentation
+	 * reads `visible` alone, so a state page never makes a native view
+	 * "presented"; and every report overwrites it, so a reason cannot outlive the
+	 * hide it described. */
+	/** Why the view is hidden for the KEYBOARD: true only while the browser's own
+	 * state page is the reason, cleared when an overlay also hides it. */
+	private ownPageReason = false;
+	/** The browser's own content state (start page, failure), independent of any
+	 * overlay also hiding the view. Controls are refused on it. */
+	private ownStateContent = false;
 	private contentRect: ContentRect | null = null;
 	/** Tabs with a command in flight, keyed by tabId. See `lane`. */
 	private readonly busy = new Set<number>();
 	private readonly epochListeners: Array<
 		(tabId: number, epoch: number) => void
 	> = [];
+	/** Monotone count of layout passes, for an observer that needs identity, not
+	 * just values (S1's address overlay). */
+	private layoutRevision = 0;
 
+	/**
+	 * The fourth callback is a post-layout observer, optional and defaulted so
+	 * every existing three-argument construction is unchanged.
+	 *
+	 * WHY IT EXISTS: a native child positioned over a page has to know that the
+	 * presented tab, its presentation bit or the content rectangle moved. Polling
+	 * the registry would read a rectangle that is already stale, and `onChanged`
+	 * is deliberately NOT that signal (`setContentRect` does not call it). The
+	 * snapshot is copied and delivered after every pass — including null and
+	 * suppressed layouts — because "nothing is presented now" is exactly when a
+	 * stale overlay must hide.
+	 *
+	 * WHY IT CANNOT FAIL THE LAYOUT: page geometry is the product's behaviour and
+	 * an observer is infrastructure around it. A throwing observer is swallowed
+	 * here (the controller logs its own failure) so one experimental child can
+	 * never leave pages unlaid-out.
+	 */
 	constructor(
 		private readonly viewFactory: (
 			options: CreateTabOptions,
@@ -256,7 +381,51 @@ export class TabRegistry {
 		) => DriveableView,
 		private readonly onRemove: (tabId: number, webContentsId: number) => void,
 		private readonly onChanged: () => void,
+		private readonly onLayout: (snapshot: LayoutSnapshot) => void = () => {},
+		// Native attachment follows the same presentation decision as visibility.
+		// It is part of layout (not a best-effort observer): a hidden attached view
+		// can steal native input on navigation even when its DOM is never shown.
+		private readonly onPresentation: (
+			view: DriveableView,
+			presented: boolean,
+		) => void = () => {},
+		// Runs at the top of every layout pass, with the NEW state already set but
+		// before any view is hidden or detached. The live composite bridge
+		// (`composite-bridge.ts`) subscribes to the page's frames here so the
+		// compositor has a sink before presentation is withdrawn; an observer that
+		// ran after `onPresentation` would subscribe to an already-detached view.
+		private readonly onBeforeLayout: () => void = () => {},
 	) {}
+
+	/** Passkey custody (`extensions/passkey-custody.ts`), installed by the host
+	 * after construction. Null refuses nothing. */
+	private custody: {
+		isHeld(webContentsId: number): boolean;
+		epoch(webContentsId: number): number;
+	} | null = null;
+
+	setCustodyGate(gate: TabRegistry["custody"]): void {
+		this.custody = gate;
+	}
+
+	/**
+	 * Run a read that does NOT go through CDP (the isolated-world scripts of
+	 * `read`, `query`, `copy` and the geometry probes) and drop its answer if a
+	 * passkey hold began on the tab while it ran. `requireSurface` already refused
+	 * a held tab at the start; this closes the window between that check and the
+	 * answer, which is the one `cdp.ts` closes for CDP commands.
+	 */
+	async guardRead<T>(record: TabRecord, run: () => Promise<T>): Promise<T> {
+		const id = record.view.webContents.id;
+		const epoch = this.custody?.epoch(id) ?? 0;
+		const result = await run();
+		if (
+			this.custody &&
+			(this.custody.isHeld(id) || this.custody.epoch(id) !== epoch)
+		)
+			throw custodyRefusal();
+		return result;
+	}
 
 	// ---- creation, addressing, listing ---------------------------------------
 
@@ -283,6 +452,8 @@ export class TabRegistry {
 			homeSessionId: restored ? null : (options.sessionId ?? null),
 			nonce: restored || options.owner === "user" ? null : mintNonce(),
 			handedTo: null,
+			openedBy: restored ? null : (options.openedBy ?? null),
+			openedByTab: restored ? null : (options.openedByTab ?? null),
 			handedFrom: null,
 			restored,
 			restoreRow: options.restoreRow,
@@ -293,14 +464,18 @@ export class TabRegistry {
 			presented: false,
 			refs: {},
 			allocationId: options.allocationId ?? "",
+			approvalPickup: null,
 		};
 		this.tabs.set(tabId, record);
+		// Internal pages are shown only for commits main armed (internal-pages.ts).
+		trackInternalPages(record.view.webContents);
 		// Only a USER tab may become the active one, including when nothing is active
 		// yet. The earlier `activeTabId === null` form activated whichever tab was
 		// created first — on a session with no user tab that is the agent's own, so the
 		// agent's background tab silently became the presented one and every other tab
 		// kept zero layout. The layout pass below reads this to decide presentation.
-		if (record.owner === "user") this.activeTabId = tabId;
+		if (record.owner === "user" && options.activate !== false)
+			this.activeTabId = tabId;
 		this.applyLayout();
 		this.onChanged();
 		return record;
@@ -312,12 +487,44 @@ export class TabRegistry {
 	 * agent-owned count past the cap, after which the next `open` was refused with
 	 * "already driving 8 agent tabs" for tabs the user had handed over — the cap
 	 * reported by `status` and the cap enforced on `open` disagreeing (N3). */
-	private assertAgentCapacity(): void {
+	// Public so the approval pickup in `actions/tabs.ts` can refuse at the cap
+	// BEFORE it runs admission: a `once` grant spent and then refused by the
+	// hand-over's own cap check would be a grant the operator gave for nothing.
+	assertAgentCapacity(): void {
 		if (this.agentTabCount() < MAX_AGENT_TABS) return;
 		throw new BrowserHostError(
 			"tab_limit",
 			`this host is already driving ${MAX_AGENT_TABS} agent tabs; close one first`,
 			{ limit: MAX_AGENT_TABS },
+		);
+	}
+
+	/** How many open tabs were spawned by a link on `tabId` — the per-opener
+	 * bound's input (`routePopup`). */
+	openedTabCount(tabId: number): number {
+		let count = 0;
+		for (const record of this.tabs.values())
+			if (record.openedByTab === tabId) count += 1;
+		return count;
+	}
+
+	/**
+	 * The AGENT link tabs `openerTabId` spawned that nothing has taken over: no
+	 * allocation, so no ownership scope will ever close them. They are the tabs that
+	 * would leak (they count toward `MAX_AGENT_TABS`, and a later session sees only a
+	 * redacted handle), so they die with their opener. A tab a scope DID adopt is the
+	 * scope's to close, and a user's link tab stays, as in any browser.
+	 */
+	unadoptedLinkTabs(openerTabId: number): TabRecord[] {
+		return this.list().filter(
+			(record) =>
+				record.openedByTab === openerTabId &&
+				record.owner === "agent" &&
+				!record.allocationId &&
+				// A user's link tab that was handed to a session is that session's now
+				// (`handOver` makes it agent-owned with an empty allocationId): closing
+				// the opener must not close a tab the user chose to share.
+				record.handedTo === null,
 		);
 	}
 
@@ -331,6 +538,38 @@ export class TabRegistry {
 	}
 
 	/**
+	 * The live tab the host opened for `requester`'s approved request on `origin`,
+	 * or null. One predicate for the three readers (the re-approval reuse, the
+	 * `opened_tab` flag on `request_access`/`await_access`, and the `open` pickup)
+	 * so they cannot disagree about whether a tab is waiting.
+	 *
+	 * Only a tab that is STILL THE USER'S counts: once the operator hands it to
+	 * anyone (`handOver` clears the marker too) or it is gone, the pickup right is
+	 * spent. The marker's TTL is checked here rather than swept, because a stale
+	 * marker is inert once nothing reads it as live.
+	 */
+	approvalPickupTab(
+		requester: string,
+		origin: string,
+		now: number,
+	): TabRecord | null {
+		for (const record of this.list()) {
+			const pickup = record.approvalPickup;
+			if (
+				pickup &&
+				pickup.requester === requester &&
+				pickup.origin === origin &&
+				now < pickup.expiresAt &&
+				record.owner === "user" &&
+				record.handedTo === null &&
+				!record.view.webContents.isDestroyed()
+			)
+				return record;
+		}
+		return null;
+	}
+
+	/**
 	 * The tab whose view owns this webContents id, if any.
 	 *
 	 * The passkey chooser needs it to name the page a request came from: Electron
@@ -340,11 +579,15 @@ export class TabRegistry {
 	 * rather than an error.
 	 */
 	byWebContentsId(webContentsId: number): TabRecord | undefined {
-		return this.list().find(
-			(record) =>
-				!record.view.webContents.isDestroyed() &&
-				record.view.webContents.id === webContentsId,
-		);
+		return this.list().find((record) => {
+			// Electron detaches a WebContentsView's webContents during native
+			// destruction, before all extension callbacks have drained. Read it
+			// once: a late adapter callback simply belongs to no live tab.
+			const contents = record.view.webContents;
+			return (
+				contents && !contents.isDestroyed() && contents.id === webContentsId
+			);
+		});
 	}
 
 	/** The tab a webContents belongs to, or null.
@@ -366,12 +609,20 @@ export class TabRegistry {
 		return null;
 	}
 
-	/** Native shortcut eligibility needs the main-owned chrome visibility fact,
-	 * not an active page's presentation bit: blank browser chrome still owns
-	 * New tab, while a real blocking overlay must refuse it. Read-only and
-	 * main-internal; no layout behavior or agent projection changes. */
+	/** Whether the browser's chrome band is the presented UI and therefore owns
+	 * the native shortcut keys (Cmd+L/T/R and the rest).
+	 *
+	 * NOT the same fact as "the native view is visible". The browser's own state
+	 * pages - start page, load-failure panel - hide the view ON PURPOSE so their
+	 * DOM can paint (design 11.3), and they are still the browser the user is
+	 * looking at. Reading `visible` alone dropped every chord on those two states,
+	 * and on main's side the press was not even consumed, so the app menu's Reload
+	 * reloaded the whole window. Only an overlay hide, or an unmounted surface (no
+	 * rect), takes the chords away. The native window floor in
+	 * `browserChromeOwnsChord` is untouched: this says whose keys they are, never
+	 * that the window is foreground. */
 	get chromeVisible(): boolean {
-		return this.visible && this.contentRect !== null;
+		return this.contentRect !== null && (this.visible || this.ownPageReason);
 	}
 
 	get activeTab(): TabRecord | null {
@@ -429,7 +680,43 @@ export class TabRegistry {
 				{ reason: "view_destroyed" },
 			);
 		}
+		// The browser's own pages (lop://extensions) are management UI painted by
+		// the desktop renderer; an agent may neither read nor drive them, even on a
+		// tab it was handed. Every agent page action resolves its tab here.
+		// Same for an extension's own page in a tab (an onboarding/sign-in page
+		// opened via chrome.tabs.create, review U1): it holds vault UI.
+		const documentUrl = record.view.webContents.getURL();
+		if (/^chrome-extension:/i.test(documentUrl)) {
+			throw new BrowserHostError(
+				"owner_refused",
+				"that tab is showing a browser extension's own page, which agents cannot read or drive",
+				{ reason: "extension_page" },
+			);
+		}
+		if (isInternalDocument(documentUrl)) {
+			throw new BrowserHostError(
+				"owner_refused",
+				"that tab is showing the browser's own Extensions page, which agents cannot read or drive",
+				{ reason: "internal_page" },
+			);
+		}
+		// A password manager's passkey prompt is up in this tab and only the user
+		// may see or answer it. Refused here, before any action does anything, and
+		// again per command in `cdp.ts` for any path that does not come through here.
+		this.assertNotInCustody(record);
 		return record;
+	}
+
+	/**
+	 * Refuse an agent path on a tab the user holds for a password manager prompt
+	 * (`extensions/passkey-custody.ts`), with the one custody refusal every agent
+	 * path answers. `requireSurface` calls it; a path that reaches a record
+	 * WITHOUT a handle (handle-less `close`, review Q3) must call it itself.
+	 */
+	assertNotInCustody(record: TabRecord): void {
+		if (this.custody?.isHeld(record.view.webContents.id)) {
+			throw custodyRefusal();
+		}
 	}
 
 	/** Touch a tab driven by an agent, so `tabs` can order by recency. */
@@ -469,6 +756,10 @@ export class TabRegistry {
 		// handed on stays an agent's tab in the row it writes (round 1, m-2 — the
 		// capture keys on this, not on `handedTo`).
 		if (record.handedFrom === null) record.handedFrom = record.owner;
+		// Any hand-over spends an approval pickup: the tab now belongs to whichever
+		// session it went to, and a later `open` by the original requester must not
+		// find it as "waiting for you".
+		record.approvalPickup = null;
 		record.owner = "agent";
 		// `sessionId` moves to the session that now drives the tab; `homeSessionId` does
 		// NOT, and deliberately: a hand-over changes who may drive a tab, not the
@@ -479,8 +770,14 @@ export class TabRegistry {
 		record.nonce = mintNonce();
 		record.allocationId = "";
 		this.bumpEpoch(record.tabId);
+		this.ownerChanged?.(record);
 		this.onChanged();
 	}
+
+	/** Called after a hand-over moves a tab away from the user; index.ts uses
+	 * it to re-apply the extension-subframe rule to frames that loaded while the
+	 * tab was the user's (extensions/subframe-policy.ts, review R1-4). */
+	ownerChanged: ((record: TabRecord) => void) | null = null;
 
 	/** Revoke a hand-over: nulls the nonce, so the session's next action on that
 	 * handle gets the ordinary `tab_closed` refusal, and puts the tab back in the
@@ -595,10 +892,48 @@ export class TabRegistry {
 	}
 
 	/** Full-window overlays hide the view (design 11.3): a native view paints
-	 * above all DOM, so an overlay is invisible unless the view goes away. */
-	setViewVisible(visible: boolean): void {
+	 * above all DOM, so an overlay is invisible unless the view goes away.
+	 *
+	 * `ownPage` separates the two reasons a hide can have, because they mean
+	 * opposite things for the KEYBOARD: an overlay (dialog, menu, picker) owns it,
+	 * while the browser's own start page / failure panel does not - that surface is
+	 * still the browser, and `chromeVisible` keeps its shortcuts. Normalised
+	 * against `visible` so the invariant held is "a reason only exists while the
+	 * view is hidden", never two facts that disagree. */
+	setViewVisible(
+		visible: boolean,
+		ownPage = false,
+		ownStatePage = ownPage,
+	): void {
 		this.visible = visible;
+		this.ownPageReason = !visible && ownPage;
+		this.ownStateContent = !visible && ownStatePage;
 		this.applyLayout();
+	}
+
+	/**
+	 * Whether an APP OVERLAY (menu, dialog, picker) is what hides this tab's view.
+	 *
+	 * The page is still the active, laid-out tab - our own chrome asked the view to
+	 * stand down so a DOM panel could be seen - and the difference matters to
+	 * `controlPage`: Find/Print/Reset zoom are chrome-initiated commands on the
+	 * page, and "hidden so our menu is visible" must not read as "this tab is
+	 * gone" (QA Q2-F1). A route teardown drops `contentRect` and an own-state page
+	 * (start/failure) sets `ownStateContent`, so neither qualifies — and it stays
+	 * set while an overlay hides the same page (QA Q3-1).
+	 */
+	hiddenByOverlay(tabId: number): boolean {
+		const record = this.tabs.get(tabId);
+		if (!record || record.tabId !== this.activeTabId) return false;
+		return this.contentRect !== null && !this.visible && !this.ownStateContent;
+	}
+
+	/** A copy of the renderer-reported content rect, or null (route torn down). */
+	get presentationContentRect(): ContentRect | null {
+		const rect = this.contentRect;
+		return rect
+			? { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+			: null;
 	}
 
 	activate(tabId: number): void {
@@ -609,6 +944,11 @@ export class TabRegistry {
 	}
 
 	private applyLayout(): void {
+		try {
+			this.onBeforeLayout();
+		} catch {
+			// Same rule as `onLayout`: an observer must never interrupt page layout.
+		}
 		const active =
 			this.activeTabId === null ? null : this.tabs.get(this.activeTabId);
 		for (const record of this.tabs.values()) {
@@ -618,6 +958,28 @@ export class TabRegistry {
 				isActive && this.contentRect ? this.contentRect : BACKGROUND_VIEWPORT,
 			);
 			record.view.setVisible(record.presented);
+			this.onPresentation(record.view, record.presented);
+		}
+		this.layoutRevision += 1;
+		const rect = this.contentRect;
+		try {
+			this.onLayout({
+				activeTabId: this.activeTabId,
+				presented: active?.presented === true,
+				chromeVisible: this.chromeVisible,
+				contentRect: rect
+					? {
+							x: rect.x,
+							y: rect.y,
+							width: rect.width,
+							height: rect.height,
+						}
+					: null,
+				revision: this.layoutRevision,
+			});
+		} catch {
+			// An observer must never interrupt page layout. The controller logs its
+			// own failures; this catch is the load-bearing last resort.
 		}
 	}
 
@@ -759,12 +1121,12 @@ export class TabRegistry {
 				handedTo: record.handedTo,
 				restored: record.restored,
 				active: record.tabId === this.activeTabId,
-				url: record.view.webContents.isDestroyed()
-					? ""
-					: record.view.webContents.getURL(),
-				title: record.view.webContents.isDestroyed()
-					? ""
-					: record.view.webContents.getTitle(),
+				// An internal page's document is `about:blank#lop-<nonce>:…`; its
+				// display URL is what every reader (chrome, agent `tabs`) gets, and its
+				// title is blank because Chromium falls back to the URL (nonce
+				// included) for a titleless document. Chrome names it itself.
+				url: displayUrlFor(record.view.webContents),
+				title: displayTitleFor(record.view.webContents),
 				handle: token ? redactToken(token) : `ui:${record.tabId}:no-handle`,
 			};
 		});

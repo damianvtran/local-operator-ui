@@ -1,0 +1,128 @@
+{
+	"locale": "fr",
+	"pr": 1827,
+	"base_sha": "23ec4af967b",
+	"head_sha": "165aebb1b73e65a63ca2ba1e4d8c9e638e8dc696",
+	"audit_date": "2026-11-09",
+	"mode": "second independent high-visibility pass (docs/I18N.md); no earlier fr audit, PR comment or receipt read before forming this view",
+	"round": 2,
+	"scope": "23ec4af967b..165aebb1b73",
+	"key_count": 7,
+	"translator": {
+		"agent": "i18n-translator",
+		"model": "anthropic/claude-sonnet-5-5"
+	},
+	"auditor": {
+		"agent": "i18n-auditor",
+		"instance": "92b74137fc35",
+		"model": "deepseek/deepseek-flash",
+		"independent_from_translator_session": true,
+		"actual_model_source": "harness session model header for this run (deepseek/deepseek-flash); no fallback model was served or used",
+		"review_model_differs_from_translator": true
+	},
+	"input_hashes": {
+		"en": [
+			{ "path": "src/i18n/catalogues/en/ui.chat.canonical.json", "sha256": "38f767d08ff0f8a4fc6d8eee536ae82a023e93fe50fecc5fabb25a8f7609541f" },
+			{ "path": "src/i18n/catalogues/en/ui.chat.sidebar_view.json", "sha256": "1c4e36003278bf5ed2afd29acb7f1546eec9a76d330777c7747eaab3a5646adf" },
+			{ "path": "src/i18n/catalogues/en/ui.chat.sidebar.json", "sha256": "5fa8ca072b46407199075c77639deb93957ce3ca93ee03cc70d4134fc027e1ff" }
+		],
+		"context": [
+			{ "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json", "sha256": "58cefb7d2140be875f5bcc0688631a85c368b130b551f82185d78cec47eb8107" },
+			{ "path": "src/i18n/catalogues/en/ui.chat.sidebar_view.context.json", "sha256": "a6009c3a81f85dd2ab1c8dc730d410085850a69e6fdde28e9f37ee1c1bb93367" },
+			{ "path": "src/i18n/catalogues/en/ui.chat.sidebar.context.json", "sha256": "0449e60c6bd1eb2d298ed576e0428c67f50a9175eb260460ec3ba8e5e3f1eaff" }
+		],
+		"target": [
+			{ "path": "src/i18n/catalogues/fr/ui.chat.canonical.json", "sha256": "72353c812ac37c1728af21c33d429fa04e9c3ebf8e55c701b22617d443fb6d2e" },
+			{ "path": "src/i18n/catalogues/fr/ui.chat.sidebar_view.json", "sha256": "88699b197a699ca06c33ec57792d8ceda7cb36bd7a5a680a42b8f2cb0b2967cf" },
+			{ "path": "src/i18n/catalogues/fr/ui.chat.sidebar.json", "sha256": "8a837089e21f8dd4c4c86f276f7db989ee6562c8ad640c464d5444a880938d0b" }
+		],
+		"glossary": { "path": "~/local-operator/i18n/glossary.md", "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8" },
+		"style_guide": { "path": "~/local-operator/i18n/style-guides/fr.md", "sha256": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226" },
+		"harness_guide": { "path": "docs/I18N.md", "sha256": "9a4bde8d1c161286160be4a4ae1c7655615dbf39047052550b725a3da2eb00e2" }
+	},
+	"namespaces": {
+		"ui.chat.canonical": {
+			"status": "passed",
+			"key_count": 5,
+			"en_sha256": "38f767d08ff0f8a4fc6d8eee536ae82a023e93fe50fecc5fabb25a8f7609541f",
+			"fr_sha256": "72353c812ac37c1728af21c33d429fa04e9c3ebf8e55c701b22617d443fb6d2e",
+			"findings": [
+				{
+					"id": "FR2-F2",
+					"severity": "nit",
+					"key": "ui.chat.canonical.notice.stopped_with_error",
+					"current": "Arrêté sur une erreur",
+					"problem": "Comprehensible and correctly masculine for a turn-closing marker (precedent ui.chat.action.stopped 'Arrêté'), but participe + 'sur une erreur' reads slightly stiff as a status line; 'arrêté en erreur' is the commoner fr dev phrasing (cf. ui.chat.pickers.info_model.stopped_ago_reason 'arrêtée il y a {stoppedage}… raison : {stopreason}').",
+					"suggested": "Arrêté en erreur"
+				}
+			]
+		},
+		"ui.chat.sidebar_view": {
+			"status": "passed",
+			"key_count": 1,
+			"en_sha256": "1c4e36003278bf5ed2afd29acb7f1546eec9a76d330777c7747eaab3a5646adf",
+			"fr_sha256": "88699b197a699ca06c33ec57792d8ceda7cb36bd7a5a680a42b8f2cb0b2967cf",
+			"findings": []
+		},
+		"ui.chat.sidebar": {
+			"status": "changes_requested",
+			"key_count": 1,
+			"en_sha256": "5fa8ca072b46407199075c77639deb93957ce3ca93ee03cc70d4134fc027e1ff",
+			"fr_sha256": "8a837089e21f8dd4c4c86f276f7db989ee6562c8ad640c464d5444a880938d0b",
+			"findings": [
+				{
+					"id": "FR2-F1",
+					"severity": "major",
+					"key": "ui.chat.sidebar.mark_all_read.label",
+					"current": "Tout marquer comme lu ({count, number, ::group-off})",
+					"problem": "Fit, not meaning. en 'Mark all {count} read' is 16 cells at a two-digit count; fr is 26 (+10, +63%). The label is shrink-0 beside a flex-1 min-w-0 truncate section heading, and its sr-only fallback is a fixed pixel breakpoint derived from the ENGLISH label: src/renderer/src/features/chat/components/chat-sidebar.tsx:438 MARK_ALL_READ_LABEL_SHED = \"@max-[253px]/chatheading:sr-only\", justified at :405-423 as '253px is the TWO-DIGIT break … the action is unshrinkable so the name absorbs whatever is left', with the stated invariant 'Above the break the full label fits and nothing truncates'. That invariant is en-specific: with fr the row width at which the heading stops being ellipsised rises to roughly 315-325px, the shed still fires only below 253px, and the default panel is 280px (263px row), so in that whole band the section heading ellipsises while the action stays fully spelled — the trade design D1 rejected at 267-269px for en. Secondary: the count sits in trailing parentheses, so if truncation ever does occur the number the label exists to name (sidecar: 'The number is the exact count the request will clear') is the first thing lost, and a bare '(12)' beside a section heading can also read as a badge rather than the action's object.",
+					"suggested": "Keep the wording — it is faithful and matches the shipped precedent ui.notifications.action.mark_all_read 'Tout marquer comme lu' — and fix the layout: re-measure the fr string and raise the shed breakpoint for fr (≈310px row) or drive it from a per-locale measurement. Shortest faithful copy form if a smaller footprint is preferred: 'Marquer les {count} comme lus' (24 cells at two digits), which diverges from the shipped precedent, so the layout fix is preferred.",
+					"evidence": "cell counts computed here (widths: 16 en / 26 fr at count=12; 15 en / 25 fr at count=1, so the band is not limited to two-digit counts); breakpoint and its derivation quoted from chat-sidebar.tsx at head 165aebb1b73",
+					"fit_verified": "unverified by rendering — estimate from cell counts plus the code's own 253px derivation; a rendered frame of the default 280px panel at a 1- and 2-digit count would settle it"
+				}
+			]
+		}
+	},
+	"findings_severity_counts": { "blocker": 0, "major": 1, "minor": 0, "nit": 1 },
+	"current_report_verdict": {
+		"status": "changes_requested",
+		"unresolved_blocker_major_count": 1,
+		"finding_ids": ["FR2-F1"]
+	},
+	"cleared_keys": [
+		"ui.chat.canonical.notice.interrupted",
+		"ui.chat.canonical.notice.compaction_not_run",
+		"ui.chat.canonical.notice.compaction_not_run_after_colon",
+		"ui.chat.canonical.link_toolkit.actions_for",
+		"ui.chat.sidebar_view.ungrouped"
+	],
+	"precedents_cited": [
+		"ui.chat.canonical.transcript.interrupted (fr 'Interrompu')",
+		"ui.settings.imports.session_meta (fr 'compactage', glossary term honoured)",
+		"ui.notifications.action.mark_all_read (fr 'Tout marquer comme lu')",
+		"ui.library.menu.asset_actions_label / ui.shell.sidebar_navigation.row_actions (fr 'Actions pour {name}')",
+		"ui.chat.sidebar.nav.chats (fr 'Conversations'), ui.chat.sidebar_view.section.pinned / section.older (fr feminine plural headings)"
+	],
+	"verification": {
+		"executed": [
+			"read docs/I18N.md, i18n/style-guides/fr.md, i18n/glossary.md at the hashes above",
+			"read all 7 en values and their .context.json entries at 165aebb1b73 via git show",
+			"python3 (hashlib over git show bytes) for every sha256 in input_hashes",
+			"python3 json.loads on the three en and three fr namespace files; key parity 258/258, 27/27, 81/81 (no key added or dropped)",
+			"python3 placeholder extraction: detail(plain) x2, name(plain), count(number, ::group-off) identical en/fr; brace balance true on all 7",
+			"python3 codepoint dump: U+202F before ':' in compaction_not_run, U+2014 with U+0020 on both sides, U+2019 apostrophes; no Cf/Cc bidi or format controls",
+			"python3 unicodedata cell-width comparison per key"
+		],
+		"not_executed": [
+			"scripts/i18n/check-strings.mjs / ledger-check.mjs / check-coverage.mjs (no builds or test runs this pass; host under load)",
+			"pseudo-localisation",
+			"any rendered frame, Storybook, browser or Electron session",
+			"lint/typecheck"
+		],
+		"audit_notes_not_execution_log": "This block distinguishes what was run from what was read as notes. No validator, renderer or builder output is claimed; the only executed commands are the read-only git show / python3 reads above."
+	},
+	"artifacts": {
+		"receipt": "/Users/damian/local-operator-ui/.worktrees/_s9-audits/second/fr.json",
+		"pr_comment": "### i18n audit — fr — second independent pass (PR 1827)"
+	}
+}

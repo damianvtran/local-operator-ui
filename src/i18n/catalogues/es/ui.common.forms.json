@@ -25,5 +25,15 @@
 	"ui.common.forms.searchable_select.clear_value": "Borrar valor",
 	"ui.common.forms.searchable_select.no_matches": "Sin coincidencias",
 	"ui.common.forms.searchable_select.use": "Usar “{text}”",
-	"ui.common.forms.select.unlisted_value": "No está en ninguna lista; se guarda tal como lo escribes."
+	"ui.common.forms.select.unlisted_value": "No está en ninguna lista; se guarda tal como lo escribes.",
+	"ui.common.forms.categories_input_chips.add_category": "Añadir categoría…",
+	"ui.common.forms.categories_input_chips.remove_category": "Quitar la categoría {value}",
+	"ui.common.forms.categories_input_chips.no_categories_selected": "No hay categorías seleccionadas",
+	"ui.common.forms.slider_setting.saving": "Guardando {label}",
+	"ui.common.forms.tags_input_chips.add_tag": "Añadir etiqueta…",
+	"ui.common.forms.tags_input_chips.remove_tag": "Quitar la etiqueta {tag}",
+	"ui.common.forms.tags_input_chips.add_tage0db29": "Añadir etiqueta",
+	"ui.common.forms.tags_input_chips.no_tags_added": "Sin etiquetas",
+	"ui.common.forms.toggle_setting.saving": "Guardando {label}",
+	"ui.common.forms.categories_input_chips.category": "{category, select, investment {Inversión} accounting {Contabilidad} healthcare {Salud} legal {Legal} software {Software} security {Seguridad} role_play {Juego de rol} personal_assistance {Asistencia personal} education {Educación} marketing {Marketing} sales {Ventas} research {Investigación} analysis {Análisis} management {Gestión} social_media {Redes sociales} other_category {Otra} other {{category}}}"
 }

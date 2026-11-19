@@ -1,0 +1,46 @@
+{
+  "auditor": "translation-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "os1298-r1-ru",
+  "session": "48c1c63e7228",
+  "date": "2026-10-21",
+  "locale": "ru",
+  "translator": "translator",
+  "namespace": "ui.teamBridge",
+  "status": "passed",
+  "keys_audited": 4,
+  "scope": "Four-key notification delta: ui.teamBridge.notify.channel, ui.teamBridge.notify.subtitle, ui.teamBridge.notify.count, ui.teamBridge.notify.count_preview. Inherit the base 2e16fb1456 full namespace audit for the other 109 values, all verified unchanged; no new full semantic audit of unchanged copy. Catalogue audit only, not rendered-fit, activation or release approval.",
+  "sha256": {
+    "en": "b43e71da00a30dd44a9e4cd9eb842edcb324611d2725793cda48442e7f00360c",
+    "ru": "dab9f75ed1d5a3683c00af5379d54ee7f876c892c2231d5f977b9e3e66b95601",
+    "context": "c35db92afe5365b3e8263e10ad8f15eeaf48f066a915d136cf01f96dd1c1ccad"
+  },
+  "findings": [],
+  "inherited_receipt": {
+    "base": "2e16fb1456",
+    "path": "i18n/receipts/tbd-r3-ru.json",
+    "sha256": "7a53ac8b7187dd88eaeca49cc456ba89ee53fc72f441fa894b6fc204fee39445",
+    "keys_inherited": 109,
+    "unchanged_values_verified": 109,
+    "base_source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+    "base_target_sha256": "cd1c54f380c8e15c394e7dbec468cae2ed1c54073464f841072cdede69702cce",
+    "full_coverage_receipt": {
+      "path": "i18n/receipts/tbd-r2-ru.json",
+      "sha256": "d838cecd8a8ff57145572a51a1a796d8f393aae90e0334d39408856de2be78b0"
+    }
+  },
+  "reference_sha256": {
+    "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+  },
+  "validation": {
+    "independence": "This auditor did not translate or edit any catalogue or code. Served model switched from anthropic/claude-opus-5-5 to openai/gpt-6.1-sol before substantive catalogue review; all substantive audit judgments by openai/gpt-6.1-sol.",
+    "semantics": "Natural новое сообщение / новых сообщения / новых сообщений / нового сообщения; few and fractional other case agreement correct. Colon spacing matches Russian.",
+    "icu": "Parsed actual catalogue bytes with @formatjs/icu-messageformat-parser; formatted with intl-messageformat. Exact channel/place/organization/count/preview argument names and types; every CLDR arm; one active pound per arm; zero offset; no extra tokens; preview last and verbatim. Samples: 0, 1, 2, 3, 5, 21, 22, 1.5, 1000000. NFC and no manual bidi controls verified.",
+    "plural_arms_audited": 8,
+    "english_identical_channel": "Valid: #{channel} contains a conventional channel marker and an opaque user-assigned channel name, not untranslated English prose. ICU parses # as a literal outside a plural.",
+    "english_identical_subtitle": "Valid: {place} · {organization} is a language-neutral composition of dynamic names/localized place label, with a separator rather than prose punctuation. Both arguments and place-then-organization logical order exactly match frozen context, including Urdu.",
+    "overflow": "Rendered check required for notify.count and notify.count_preview: 2 новых сообщения (17 code points) versus 2 new messages (14); preview prefix 19 versus 16. Million-category text also expands; retain accurate full wording pending an actual OS-banner fit check. These are static expansion risks, not observed overflow defects.",
+    "limitations": "Browser unavailable by task constraint. No screenshots, glyph metrics, visual-fit or native bidi-rendering claim. No catalogue/code edits."
+  }
+}

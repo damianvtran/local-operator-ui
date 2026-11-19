@@ -1,0 +1,78 @@
+{
+ "schema": 1,
+ "kind": "translation-audit",
+ "audit_kind": "independent translation audit, round 2 (delta), PR #1973",
+ "locale": "hi",
+ "namespace": "ui.community",
+ "pr": 1973,
+ "date": "2026-11-18",
+ "head": "72da4b833910bfe97fdaf9e4198faf24b94e5a8a",
+ "instance": "pr1973-r2-hi-community-a8d649a9",
+ "auditor": {
+  "agent": "reviewer",
+  "role": "independent i18n auditor (reviewer role); did not translate, author, suggest or apply these strings",
+  "model": "anthropic/claude-opus-5-5",
+  "independence": "Reviewer session ef5cbe7f8a91, a fresh reviewer task for PR #1973 round 2; not the translator (coder job e584f309bede, session 1e4dc439a105), not the round-1 auditor whose suggestions these values are (session 9bf5768d1c00), and not the implementer who applied them. Served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. No MT used.",
+  "instance": "pr1973-r2-hi-community-a8d649a9"
+ },
+ "model": "anthropic/claude-opus-5-5",
+ "status": "passed",
+ "result": "clean",
+ "severity_counts": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 0,
+  "nit": 0
+ },
+ "findings": [],
+ "audited_values": {
+  "ui.community.role.community_admin": "समुदाय एडमिन",
+  "ui.community.noplan.body": "{name} के रूप में साइन इन हैं। निजी संगठन के लिए Team Bridge को Team प्लान चाहिए — या सार्वजनिक समुदाय में मुफ़्त जुड़ें।",
+  "ui.community.noplan.body_anonymous": "निजी संगठन के लिए Team Bridge को Team प्लान चाहिए — या सार्वजनिक समुदाय में मुफ़्त जुड़ें।",
+  "ui.community.noplan.trial.ask_owner_body": "केवल {org} का मालिक या एडमिन ही ट्रायल शुरू कर सकता है। समुदाय की सदस्यता इस पर निर्भर नहीं है।",
+  "ui.community.noplan.trial.ask_owner_body_unnamed": "केवल आपके संगठन का मालिक या एडमिन ही ट्रायल शुरू कर सकता है। समुदाय की सदस्यता इस पर निर्भर नहीं है।",
+  "ui.community.noplan.community.unavailable": "समुदाय अभी उपलब्ध नहीं है। बाद में फिर से कोशिश करें।",
+  "ui.community.join.step1.label": "समुदाय के दिशानिर्देश",
+  "ui.community.join.guidelines.heading": "समुदाय के दिशानिर्देश",
+  "ui.community.join.disclosure.body": "संदेश, तस्वीरें और एजेंट पोस्ट पहले एक स्वचालित मॉडरेटर जाँचता है। अगर कुछ अस्वीकार होता है, तो वह न पोस्ट होता है न सहेजा जाता है, और चेतावनी सिर्फ़ आपको दिखती है।",
+  "ui.community.join.next_hint": "आगे: अपनी समुदाय प्रोफ़ाइल का प्रीव्यू देखें",
+  "ui.community.join.step2.label": "आपकी समुदाय प्रोफ़ाइल",
+  "ui.community.join.step2.title": "आपकी समुदाय प्रोफ़ाइल",
+  "ui.community.join.agree": "मैं समुदाय के दिशानिर्देशों ({version}) से सहमत हूँ। मैं समझता/समझती हूँ कि मेरी प्रोफ़ाइल और पोस्ट सभी सदस्यों को दिखती हैं।",
+  "ui.community.join.submit": "जुड़ें और समुदाय खोलें",
+  "ui.community.rail.label": "समुदाय के चैनल",
+  "ui.community.message.images": "{count, plural, one {# तस्वीर} other {# तस्वीरें}}",
+  "ui.community.composer.attach": "तस्वीरें जोड़ें",
+  "ui.community.composer.audience.all": "समुदाय के सभी सदस्यों को दिखता है",
+  "ui.community.composer.audience.all_staff_post": "समुदाय के सभी सदस्यों को दिखता है · यहाँ स्टाफ़ और मॉडरेटर पोस्ट करते हैं",
+  "ui.community.composer.community_read_only": "यह समुदाय अभी सिर्फ़ पढ़ने के लिए है। आप पढ़ सकते हैं, पर पोस्ट नहीं कर सकते।",
+  "ui.community.composer.image_rejected.type": "सिर्फ़ PNG, JPEG और WebP तस्वीरें जोड़ी जा सकती हैं।",
+  "ui.community.composer.image_rejected.size": "तस्वीर अधिकतम 5 MiB की हो सकती है।",
+  "ui.community.composer.image_rejected.count": "हर संदेश में अधिकतम 4 तस्वीरें।",
+  "ui.community.outcome.limit.note": "सीमाएँ आप और आपके एजेंटों पर लागू होती हैं, पूरे समुदाय पर नहीं।",
+  "ui.community.outcome.images.title": "अभी तस्वीरें पोस्ट नहीं की जा सकतीं",
+  "ui.community.outcome.images.body": "कुछ भी पोस्ट नहीं हुआ। अपना टेक्स्ट भेजने के लिए तस्वीरें हटाएँ, या बाद में फिर से कोशिश करें।",
+  "ui.community.outcome.remove_images": "तस्वीरें हटाएँ",
+  "ui.community.outcome.too_large": "यह संदेश भेजने के लिए बहुत बड़ा है। कोई तस्वीर हटाएँ या टेक्स्ट छोटा करें। कुछ भी पोस्ट नहीं हुआ।"
+ },
+ "prior_round": {
+  "instance": "pr1973-r1-hi-community-fe02b16b",
+  "head": "aeecfe4aa9446031abf56959ce723c38aa3a37f0",
+  "rebased_head": "65b1ee0be4e97d49729e77b64a078d4257356e3d",
+  "findings_applied": [
+   "M2-hi",
+   "M2b-hi"
+  ],
+  "note": "Keys not listed in audited_values are byte-identical to the round-1 audited bytes (aeecfe4a == 65b1ee0b for this file). Every audited value equals the round-1 suggestion verbatim; where two round-1 findings touched one key, the value composes both.",
+  "receipt": "i18n/receipts/pr1973-r1-hi-community-fe02b16b.json"
+ },
+ "scope": "PR #1973 round 2 delta (65b1ee0b..72da4b83): 28 changed ui.community values (round-1 findings M2-hi, M2b-hi applied); rest of the file byte-identical to the round-1 audited bytes.",
+ "binding": "Verified on the committed tree at 72da4b833910bfe97fdaf9e4198faf24b94e5a8a (worktree .worktrees/community-ui): target src/i18n/catalogues/hi/ui.community.json sha256 2f47503b1842d2fd7f74c88858b0ad2f03894db66c424cf24b417504c295f1de; English sha256 1fe96e7e52077aed70cc76c2c1a1e64cc2786463b2e0a904b2028a89a58fe0e7; context sha256 8573f915548c463f547f89d929020aa301ef30778898db3b8d37709390f42219.",
+ "en_sha256": "1fe96e7e52077aed70cc76c2c1a1e64cc2786463b2e0a904b2028a89a58fe0e7",
+ "context_sha256": "8573f915548c463f547f89d929020aa301ef30778898db3b8d37709390f42219",
+ "target_sha256": "2f47503b1842d2fd7f74c88858b0ad2f03894db66c424cf24b417504c295f1de",
+ "sha256": {
+  "hi": "2f47503b1842d2fd7f74c88858b0ad2f03894db66c424cf24b417504c295f1de",
+  "en": "1fe96e7e52077aed70cc76c2c1a1e64cc2786463b2e0a904b2028a89a58fe0e7"
+ }
+}

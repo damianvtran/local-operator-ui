@@ -1,0 +1,183 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "9d18f30f431e",
+  "locale": "zh-CN",
+  "namespace": "ui.notices",
+  "branch": "feat/i18n-toasts",
+  "head": "ec4518da560867e897c290ddf8abc3b2496a4b59",
+  "date": "2026-10-25",
+  "audit_kind": "first audit of a newly translated namespace (not a re-bind)",
+  "result": "clean-with-findings",
+  "status": "passed",
+  "keys_read": 93,
+  "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 3,
+    "nit": 0
+  },
+  "sha256": {
+    "en": "f473fa10e95b24f50ce13647ae50a923b34d8efd31249d99d6c437e183722277",
+    "zh-CN": "8be1cfee34355c74b4c31186a0cc9868adb78a584f48d1d86f6e1b907f5065c6",
+    "context": "acce3fd5c70232afcc3ca2dec3c3bc7d63ab0869485900de3e6b6b03bd4e9379"
+  },
+  "reference_sha256": {
+    "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+  },
+  "inputs": {
+    "source": "src/i18n/catalogues/en/ui.notices.json",
+    "context": "src/i18n/catalogues/en/ui.notices.context.json",
+    "target": "src/i18n/catalogues/zh-CN/ui.notices.json",
+    "style_guide": "~/local-operator/i18n/style-guides/zh-CN.md",
+    "glossary": "~/local-operator/i18n/glossary.md",
+    "established_terminology_sampled": [
+      "src/i18n/catalogues/zh-CN/ui.chat.asks.json",
+      "src/i18n/catalogues/zh-CN/ui.chat.pickers.json",
+      "src/i18n/catalogues/zh-CN/ui.chat.dialogs.json",
+      "src/i18n/catalogues/zh-CN/ui.chat.sidebar.json",
+      "src/i18n/catalogues/zh-CN/ui.agents.settings.json",
+      "src/i18n/catalogues/zh-CN/ui.agents.refusals.json",
+      "src/i18n/catalogues/zh-CN/ui.hub.json",
+      "src/i18n/catalogues/zh-CN/ui.browser.json",
+      "src/i18n/catalogues/zh-CN/ui.common.updates.json",
+      "src/i18n/catalogues/zh-CN/ui.canvas.json"
+    ]
+  },
+  "translator": {
+    "agent": "not recorded",
+    "note": "i18n/ledger.json has no ui.notices row at this head (JSON scan: zero occurrences of 'ui.notices'), so translator identity is not derivable from repo artifacts. This audit is independent of the producing agents and read only the catalogue bytes."
+  },
+  "findings": [
+    {
+      "id": "ZH-1",
+      "severity": "minor",
+      "key": "ui.notices.chat.ask_changed_named",
+      "current": "已更新对{name}的回答",
+      "proposed": "已更新{name}中的回答",
+      "reason": "对{name}的回答 is the fixed Chinese collocation for 'the answer to {name}', which frames a conversation title as the question being answered; the three sibling receipts put the conversation in an adverbial slot (已向{name}发送回答 / 已拒绝{name}中的请求 / 已关闭{name}中的请求), and 中的 is the slot this key needs."
+    },
+    {
+      "id": "ZH-2",
+      "severity": "minor",
+      "key": "ui.notices.main.update_hold_body",
+      "current": "更新至版本{version}的安装仍在进行——现在打开应用会取消安装。{relaunch}点击此通知也不会让应用更早打开。",
+      "proposed": "正在安装版本{version}的更新——现在打开应用会取消安装。{relaunch}点击此通知也不会让应用更早打开。",
+      "reason": "更新至版本{version}的安装仍在进行 is a word-for-word nominalisation of English 'The update to version X is still installing'; Chinese states the ongoing act directly (正在安装版本X的更新), and the stacked 更新/版本/安装/进行 in an OS banner reads translated."
+    },
+    {
+      "id": "ZH-3",
+      "severity": "minor",
+      "key": "ui.notices.main.update_hold_no_relaunch",
+      "current": "此安装无法安排自动重启，请在安装完成后手动启动Local Operator。",
+      "proposed": "无法为此安装安排自动重启，请在安装完成后手动启动Local Operator。",
+      "reason": "此安装无法安排自动重启 makes the installation the subject that 'cannot arrange', a calque of English 'No relaunch could be arranged for this install'; fronting 无法为此安装安排 restores the native construction. 自动重启 for an app relaunch matches the corpus's 重启应用, so no term change is proposed."
+    }
+  ],
+  "checks": [
+    {
+      "check": "key-set parity both directions",
+      "result": "PASS",
+      "detail": "93 English keys, 93 zh-CN keys, no missing and no extra; the target preserves the English order."
+    },
+    {
+      "check": "ICU parse and argument integrity",
+      "result": "PASS",
+      "detail": "Parsed every message with @formatjs/icu-messageformat-parser from the worktree's shared node_modules: 0 parse failures. Argument sets are identical per key (name/title/keys/count/index/key/detail/reason/goal/version/origin/relaunch/existing/stored/published) with no argument added, dropped or renamed. Tags: none in either file. Number skeletons are byte-identical: {index, number} in credentials.removed and {count, number} in consent_body_many survive in the target."
+    },
+    {
+      "check": "plural categories are the locale's CLDR set",
+      "result": "PASS",
+      "detail": "Intl.PluralRules('zh-CN').resolvedOptions().pluralCategories = ['other']. Ten plural messages (config_run_changed, config_run_updated, drafts_offered_name, drafts_offered_verb, mark_all_read_cleared, mark_all_read_deferred, mark_all_read_superseded, mark_all_read_unknown, credentials.unconfirmed, credentials.unstored) use `other` only; no invented one/few/many arm. Every `other` arm carries {count}; drafts_offered_verb correctly receives {count} without printing it."
+    },
+    {
+      "check": "plural rendering for 0/1/2/5/21/1000000",
+      "result": "PASS",
+      "detail": "Formatted every zh-CN message with intl-messageformat at those counts; no render error. Examples: 配置操作已完成：1项定义已更改。 / 已将21个对话标记为已读。 / 1个凭据无法确认是否已存储（KEY_A,KEY_B）；已通知智能体在使用前先检查。"
+    },
+    {
+      "check": "placeholder byte survival",
+      "result": "PASS",
+      "detail": "Brace-matched comparison of every message: no placeholder renamed, dropped or reordered. /credential, /goal, '<text>', bash, Aida, Local Operator and ID remain byte-identical Latin runs; zh-CN adds no placeholder of its own."
+    },
+    {
+      "check": "no English left untranslated",
+      "result": "PASS",
+      "detail": "Zero zh-CN values equal their English source. The only Latin runs are the placeholders, Aida, bash, /credential, /goal, '<text>', Local Operator and ID - each a kept product/command/machine token per glossary §1. No English sentence survives."
+    },
+    {
+      "check": "register and address form",
+      "result": "PASS",
+      "detail": "你 throughout, zero 您 (matches the zh-CN guide's recorded decision). No 啦/哦/呀 particles and no ！. No 您/你 repetition; verb-forward phrasing in statuses (智能体已创建, 对话已清空). Four instruction strings use 请 (agents.save_unconfirmed, main.consent_body_many, main.consent_body_one, main.update_hold_no_relaunch); the guide's '请 only where English says please' clause is stricter than the corpus (181 existing imperative 请 against 6 English 'please' values), so this was recorded as a locale-wide observation, not counted as a finding."
+    },
+    {
+      "check": "glossary and established terminology",
+      "result": "PASS",
+      "detail": "Verified against the shared glossary and the 4,925 zh-CN values outside this namespace (5,018 including it): agent=智能体 (295 corpus hits), session=会话 (234), conversation=对话 (329), credential=凭据 (25), goal=目标 (52), draft=草稿 (9), archive=归档 (8), hub=中心 (上传到中心/从中心更新), approval=审批, site=网站, backend=后端 (46), prompt=提示词 (16), variable=变量 (19), configuration run=配置操作 (existing ui.hub.conflict.body), proactive/reactive=主动型/响应型 (existing ui.agents.refusals labels), seed=随机种子 (identical to ui.agents.settings.chat.error.invalid_seed), clear conversation=清空对话 (three existing keys), sign out=退出登录 (19), unread=未读 (5). dismiss=关闭 is the dominant corpus rendering (17 of 22 non-notices occurrences; three 忽略 for suggestions and one 不再显示此通知), so goal_dismiss_failed=无法关闭目标 is consistent, not drift."
+    },
+    {
+      "check": "punctuation, spacing and typography",
+      "result": "PASS",
+      "detail": "Full-width prose punctuation throughout (，。：；、（）“”); 0 half-width commas/periods/colons adjacent to CJK outside placeholders; no straight double quotes; no '...' (only the source's command literal uses ASCII single quotes); no bidi controls or zero-width characters; NFC; no double spaces; no CJK-Latin/digit spaces inside any value. Terminal 。 follows the guide: dropped on short statuses (已创建{name}, 已保存{name}, 已创建文件“{name}”), kept on full sentences (including files.save_failed_gone, where English omits the stop). Latin acronyms stay uppercase (ID)."
+    },
+    {
+      "check": "RTL sanity",
+      "result": "N/A",
+      "detail": "zh-CN is LTR; no RTL-specific requirement. Scanned for bidi controls and found none."
+    },
+    {
+      "check": "overflow / width budget",
+      "result": "PASS",
+      "detail": "Cell-counted every value (CJK and full-width punctuation = 2): no zh-CN string is materially longer than its English source. The only value wider than English is ui.notices.chat.mark_all_read_nothing at 18 cells vs 17 (+1). The two fixed tails are shorter than English (archive_offered_verb 8 vs 9 cells; drafts_offered_verb 8 vs 9), and their heads are shorter still (对话 4 cells; 21份草稿 8 cells vs '21 drafts' 9). OS banner bodies: update_hold_body 101 cells vs 151 English characters, consent_body_many 67 vs 84, consent_body_one 56 vs 71 — all under the sidecar's ~170/~250 limits. No rendered screenshot was taken; this is a cell/JSX-budget check only."
+    }
+  ],
+  "composition": {
+    "mechanism": "undo-toasts.tsx renders the archive and drafts offers as two spans inside `flex min-w-0 items-baseline gap-1`: the name/count span is `min-w-0 truncate`, the verb span is `shrink-0` (src/renderer/src/features/chat/components/undo-toasts.tsx:309-313 and 390-396). There is no literal space in the copy; the 4px flex gap separates the parts.",
+    "drafts_joined_counts": {
+      "1": "1份草稿已丢弃。",
+      "2": "2份草稿已丢弃。",
+      "5": "5份草稿已丢弃。",
+      "21": "21份草稿已丢弃。"
+    },
+    "archive_joined": {
+      "with_title": "“季度留存排查”已归档。",
+      "no_title": "对话已归档。"
+    },
+    "update_hold_body_with_relaunch": "更新至版本0.4.2的安装仍在进行——现在打开应用会取消安装。安装完成后，Local Operator会自动打开。点击此通知也不会让应用更早打开。",
+    "update_hold_body_with_no_relaunch": "更新至版本0.4.2的安装仍在进行——现在打开应用会取消安装。此安装无法安排自动重启，请在安装完成后手动启动Local Operator。点击此通知也不会让应用更早打开。",
+    "update_hold_body_with_empty_relaunch": "更新至版本0.4.2的安装仍在进行——现在打开应用会取消安装。点击此通知也不会让应用更早打开。",
+    "unread_not_cleared_composed": [
+      "后端未响应。未读标记未清除。",
+      "未读标记未清除。"
+    ],
+    "mark_all_read_sentences_per_count": {
+      "1": "已将1个对话标记为已读。 / 1个对话在其他设备上，待这些设备更新后会清除。 / 1个对话已有更新的结果，仍保持未读。 / 1个对话无法清除，仍保持未读。",
+      "2": "已将2个对话标记为已读。 / 2个对话在其他设备上，待这些设备更新后会清除。 / 2个对话已有更新的结果，仍保持未读。 / 2个对话无法清除，仍保持未读。",
+      "5": "已将5个对话标记为已读。 / 5个对话在其他设备上，待这些设备更新后会清除。 / 5个对话已有更新的结果，仍保持未读。 / 5个对话无法清除，仍保持未读。",
+      "21": "已将21个对话标记为已读。 / 21个对话在其他设备上，待这些设备更新后会清除。 / 21个对话已有更新的结果，仍保持未读。 / 21个对话无法清除，仍保持未读。"
+    },
+    "observations": [
+      "All joined sentences read correctly as sentences at 1, 2, 5 and 21; the plural arms are grammatical for every count because zh-CN has no agreement.",
+      "The archive offer's title (flex/truncate) and the fixed verb tail compose correctly with the 4px gap; the verb is never the truncated half. The gap reads as a small space in Chinese, which is visually acceptable and is a design constant, not a catalogue string.",
+      "mark-all-read joins its sentence list with the ASCII space in mark-all-read.ts (message: [lead, ...remainder].join(\" \")), so a Chinese toast containing a remainder renders as '…。 1个对话…' with a space after the full stop; archive_failed/unarchive_failed likewise append ' ' + detail in undo-toasts.tsx:254. Both are locale-neutral caller behaviour, not fixable in this catalogue and not counted as translation findings; a locale-aware join would be the source fix."
+    ]
+  },
+  "namespace_verdict": "clean-with-findings - 93 of 93 keys read; 0 blocker, 0 major, 3 minor, 0 nit. The three minors are naturalness/precision in two OS-banner sentences and one named receipt (ZH-1..ZH-3); no accuracy, ICU, plural, placeholder, register, glossary or spacing defect was found.",
+  "overall_verdict": "clean-with-findings (0 blocker, 0 major) - the zh-CN ui.notices translation is semantically faithful, ICU-intact, terminologically consistent with the existing zh-CN corpus, and typographically conformant; the three minors are recorded for a future polish pass, not churned in this audit.",
+  "notes": [
+    "Source-call-site observation, not a translation finding: ui.notices.files.highlights_update_failed (无法更新重点文件。) is currently called from supplement-row.tsx's sendOp for supplements.cancel/restart/steer, not from a Highlights action. The English lead itself names Highlights at that call site; the zh-CN value uses the established 重点文件 term and faithfully translates the English. Flagged only as a source-copy/call-site mismatch outside this namespace's translation scope.",
+    "Source-level ICU observation, not a translation finding: ui.notices.chat.goal_done contains /goal '<text>'. ICU single quotes are quote toggles, so both the English and zh-CN messages render '/goal <text>' without the apostrophes (verified with intl-messageformat). The target preserves the source bytes exactly; if literal quotes are wanted, the English source needs doubled apostrophes first.",
+    "No catalogue, ledger, generated file or code was edited. This receipt is the only file written."
+  ],
+  "limitations": "Catalogue-level audit only: no browser, screenshot or rendered-frame proof; no runtime or backend involvement; no activation or release claim. Width evidence is cell counting against the JSX budgets, not pixels.",
+  "evidence_provenance": "Executed in the i18n-toasts worktree at ec4518da56: hashed the three catalogue files, parsed and rendered every message with the worktree's shared @formatjs/icu-messageformat-parser 3.5.21 and intl-messageformat, scanned all 93 values for typography/placeholders, and compared terminology against 4,925 existing zh-CN values outside this namespace plus ~/local-operator/i18n/glossary.md and i18n/style-guides/zh-CN.md. All receipt hashes were taken from the clean worktree at audit start and re-verified against git show ec4518da56:<path>; a concurrent uncommitted remediation then changed the en source (see worktree_state), while the zh-CN target stayed byte-identical.",
+  "worktree_state": {
+    "audited_head": "ec4518da560867e897c290ddf8abc3b2496a4b59",
+    "at_audit_start": "The worktree was clean for the three catalogue files named below; their sha256 matched git show ec4518da56:<path> exactly.",
+    "concurrent_change_observed": "During the audit, uncommitted edits appeared in this shared worktree from another stream: en/ui.notices.json and en/ui.notices.context.json gained ui.notices.chat.archive_offered_title; fr/hi/ru ui.notices.json, src/i18n/keys.gen.ts and src/renderer/src/features/chat/archive-undo.ts also changed. Current disk en sha256 is f806e02def13361717f2db882ab91f407ca7f7b023da7be9e19b26f0e9c4302a (context 2980f9d4a5d99d7b32c1a752ac462a4f503488ac0d49e2465e10ce7f99ee0859).",
+    "target_unchanged": "src/i18n/catalogues/zh-CN/ui.notices.json is still byte-identical to the audited head (8be1cfee...), so the 93-key verdict below applies to the file on disk now.",
+    "implication": "This receipt names the committed ec4518da56 bytes, not the moving worktree. The new en key is outside the 93-key scope and has no zh-CN value yet; once the concurrent remediation is committed, the en hash changes for every locale and zh-CN needs archive_offered_title translated plus a delta audit. For zh-CN the value should be “{title}” — the same Chinese curly pair the head hardcodes in archiveOfferedName — so the locale-specific quotation fix keeps Chinese punctuation unchanged. This receipt must not be assembled against the current uncommitted en bytes."
+  }
+}

@@ -1,0 +1,209 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "convergence-rebind",
+  "locale": "hi",
+  "namespace": "ui.common.updates",
+  "pr": 1389,
+  "date": "2026-10-24",
+  "head": "fedd1597113eb10124ce9aa2ccaee73f02894afe",
+  "instance": "hi-updates-rebind-c64fd2babe34",
+  "auditor": {
+    "agent": "translation-auditor",
+    "role": "independent translation auditor (team lopdev); not a translator on either parent wave",
+    "instance": "hi-updates-rebind-c64fd2babe34",
+    "model": "deepseek/deepseek-flash",
+    "model_note": "Session banner reports deepseek/deepseek-flash; no provider fallback was reported or observed during this run.",
+    "independence": "This session authored no catalogue, ledger, allowance or code change for PR #1389 or either parent wave. It writes only this receipt and its sibling locale receipts. The two parent receipts were produced by other translation-auditor runs; this run re-binds their already-audited bytes."
+  },
+  "status": "passed",
+  "result": "clean",
+  "findings": [],
+  "binding": "Convergence re-bind audit, not a fresh translation review: every merged value must be byte-identical to one of the two audited parents, the key set must equal English, and the inherited ICU/placeholder structure must match.",
+  "scope": "ui.common.updates for hi: all 170 merged keys at PR head fedd1597113e, read against the English source, the English context sidecar and both parents (140209d30dcf, 1320319c9a27). No other namespace is in scope.",
+  "revisions": {
+    "merge": "fedd1597113eb10124ce9aa2ccaee73f02894afe",
+    "parent_a": "140209d30dcf47e4b27e08309d480ca4f2093d27",
+    "parent_b": "1320319c9a272d9880419478f120b5bc8f0434f6"
+  },
+  "en_sha256": "9b2983230ad0cdd30a7bebe5ca177d1ab9702e9f0d8e9b1ff6a417c27183eba3",
+  "context_sha256": "15ec225937bc2444d33a56c10ce67bf989686bd2aaa1dc278a33e5662e0f613c",
+  "target_sha256": "c64fd2babe34e54cbdb08737f80ff4357b0b46818b46d80b9501abb786f6f617",
+  "parents": {
+    "A": {
+      "rev": "140209d30dcf47e4b27e08309d480ca4f2093d27",
+      "role": "branch pre-merge head (140209d30d)",
+      "en_sha256": "5bb2c4cba16a412565d9c41dd5e9233e8ad8324d07758327ddd947607b59bc82",
+      "target_sha256": "095fd2a2d945b86fa70519840079bca361b236a371af8d0a935f9376df3e011e",
+      "receipt": "i18n/receipts/dab47dfc690a.json",
+      "receipt_sha256": "ef467c191feb9a91c8e4ada0c2814ec7a710506dcfd5fe0a8a4d964dc5738290",
+      "context_sha256": "5188c08320cea150fd71c3a26666ca6b0b637a94659bc6087155681b59d9614f",
+      "auditor_instance": "dab47dfc690a",
+      "auditor_model": "radient/auto",
+      "result": "clean",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    },
+    "B": {
+      "rev": "1320319c9a272d9880419478f120b5bc8f0434f6",
+      "role": "main at merge (1320319c9a)",
+      "en_sha256": "0529da94c42bf8d544e34a08bfac234012c0fb9a3ebbf5ccb1c99e73673265ac",
+      "target_sha256": "a0b65b9e59e66d7b917e4063cf0606c48cff110f5ce5915036d0299cedf60101",
+      "receipt": "i18n/receipts/7c3e9a1f4b2d.json",
+      "receipt_sha256": "4abe8440cac5e47583bfa3f0da30f36928a3fb8bc24118630d38fa4917ed2c51",
+      "context_sha256": "d7de4271fa5f439faa850df3bbdcd67ce0bafad8e604ec508cb965695d9262b6",
+      "auditor_instance": "7c3e9a1f4b2d",
+      "auditor_model": "amazon-bedrock/us.anthropic.claude-opus-5-5",
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 2
+      }
+    }
+  },
+  "checks": {
+    "keys": {
+      "merged": 170,
+      "parent_a": 138,
+      "parent_b": 159,
+      "shared": 127,
+      "only_a": 11,
+      "only_b": 32,
+      "union": 170
+    },
+    "key_set_equals_english": true,
+    "key_set_equals_parent_union": true,
+    "missing_vs_english": [],
+    "extra_vs_english": [],
+    "shared_values_identical_in_both_parents": true,
+    "every_merged_value_equals_its_parent_value": true,
+    "line_provenance_strict": {
+      "fromA": 10,
+      "fromB": 32,
+      "both": 127,
+      "neither": [
+        "\t\"ui.common.updates.error.version_unknown_required\": \"अज्ञात (अपडेट ज़रूरी)\","
+      ]
+    },
+    "line_provenance_after_trailing_comma_normalisation": {
+      "fromA": 11,
+      "fromB": 32,
+      "both": 127,
+      "neither": []
+    },
+    "strict_exceptions": [
+      {
+        "key": "ui.common.updates.error.version_unknown_required",
+        "normalised_from": "A",
+        "difference": "trailing comma only: the record stopped being the final record in the file, so JSON syntax requires a separator; value bytes are identical",
+        "line_sha256": "00be9545cd7e71fbd236fec16fb8218fcb9c8a1b4cd178f68bde0b5ddd9538c0",
+        "line": "\t\"ui.common.updates.error.version_unknown_required\": \"अज्ञात (अपडेट ज़रूरी)\","
+      }
+    ],
+    "icu": {
+      "parser": "@formatjs/icu-messageformat-parser 3.5.21 (generator's parser)",
+      "messages_parsed": 170,
+      "messages_total": 170,
+      "plural_messages": 5,
+      "plural_categories_cldr": [
+        "one",
+        "other"
+      ],
+      "findings": [],
+      "argument_and_skeleton_parity": true
+    },
+    "english_source": {
+      "key_set_equals_parent_union": true,
+      "parent_keys": {
+        "A": 138,
+        "B": 159
+      },
+      "merged_keys": 170,
+      "shared_keys": 127,
+      "only_a": 11,
+      "only_b": 32,
+      "shared_value_mismatches": [],
+      "line_provenance_strict": {
+        "fromA": 12,
+        "fromB": 32,
+        "both": 126,
+        "neither": []
+      },
+      "line_provenance_after_trailing_comma_normalisation": {
+        "fromA": 11,
+        "fromB": 32,
+        "both": 127,
+        "neither": []
+      },
+      "strict_exceptions": []
+    },
+    "context_sidecar": {
+      "sha256": "15ec225937bc2444d33a56c10ce67bf989686bd2aaa1dc278a33e5662e0f613c",
+      "parent_a_sha256": "5188c08320cea150fd71c3a26666ca6b0b637a94659bc6087155681b59d9614f",
+      "parent_b_sha256": "d7de4271fa5f439faa850df3bbdcd67ce0bafad8e604ec508cb965695d9262b6",
+      "bound_by_both_parent_receipts": true,
+      "keys": 170,
+      "key_set_equals_english": true,
+      "line_provenance_strict": {
+        "fromA": 10,
+        "fromB": 32,
+        "both": 127,
+        "neither": [
+          "\t\"ui.common.updates.error.version_unknown_required\": {\n\t\t\"role\": \"Hub update own_required\",\n\t\t\"tone\": \"Concise factual status.\",\n\t\t\"length\": \"One toast, status line, settings row, or hub update senten"
+        ]
+      },
+      "line_provenance_after_trailing_comma_normalisation": {
+        "fromA": 11,
+        "fromB": 32,
+        "both": 127,
+        "neither": []
+      },
+      "strict_exceptions": [
+        {
+          "key": "ui.common.updates.error.version_unknown_required",
+          "normalised_from": "A"
+        }
+      ]
+    },
+    "parent_audit_premise": {
+      "receipts_derived": 14,
+      "receipts_passing_with_zero_blocker_major": 14,
+      "note": "deriveReceiptAudit re-hashed both parent receipts against the parent catalogue bytes; every receipt names the exact source and target hashes and reports zero blocker/major."
+    },
+    "ledger_check_at_head": {
+      "finding_count": 21,
+      "ledger_entries": 574,
+      "rows": 7,
+      "finding_kinds": [
+        "stale source_sha256",
+        "stale target_sha256",
+        "auditor receipt does not name the current English source bytes"
+      ],
+      "other_rows_failing": 0
+    }
+  },
+  "verdict": "passed — binding audit only: 170/170 keys bind to an audited parent (127 shared, 11 branch-only, 32 main-only), 1 comma-only structural exception(s), 0 value changes, 0 invented keys; ICU/placeholder parity 170/170 messages with 5 plural messages at the locale's exact CLDR categories (one, other); 0 blocker, 0 major, 0 minor, 0 nit.",
+  "method": [
+    "Read the PR head and both parents from git objects (git show); no checkout or catalogue file was modified.",
+    "Diffed the merged target file line-by-line against both parent files. Each line is byte-identical to one parent line; the sole strict exception is the structural trailing comma on one key in four locales, proven value-identical after JSON parsing.",
+    "Checked the merged key set equals the English key set and the union of the two parent key sets, with no duplicate, missing or extra key.",
+    "Compared every merged value with the parent value(s) after JSON parsing: shared keys are identical in both parents, and each parent-only key equals its single parent.",
+    "Checked format invariants: tab-indented one-key-per-line JSON, LF, trailing newline, no BOM, unique keys, exactly one optional trailing comma on the final record.",
+    "Parsed all 170 messages with @formatjs/icu-messageformat-parser (the catalogue generator's parser); compared top-level argument names and types, number/date skeletons, plural category sets against Intl.PluralRules CLDR output for the locale, and companion argument references inside plural branches.",
+    "Ran the parser's negative controls: a dropped placeholder, a wrong plural category set, a malformed ICU message and a changed number skeleton each produce a finding, so the parity check is not vacuous.",
+    "Re-derived both parent receipts against the exact parent bytes with scripts/i18n/ledger-rules.mjs deriveReceiptAudit; all 14 (7 locales x 2 parents) derive to a passing result with zero blocker/major and bind the parent hashes. Both parent receipts also bind the English context sidecar hash (parent A 5188c08..., parent B d7de427...).",
+    "Reproduced node scripts/i18n/ledger-check.mjs on a scratch checkout of the PR head: 21 findings across 574 entries, exactly three per locale and only on the seven ui.common.updates rows (stale source, stale target, receipt not naming the current source). No other row failed."
+  ],
+  "notes": [
+    "Binding audit only: no accuracy, idiom, register or glossary judgement is re-made here. The claim is provenance of bytes, not a fresh translation review.",
+    "The merge commit is a two-parent merge: fedd159711 = 140209d30d (branch pre-merge) + 1320319c9a (main). Both parents carry a passing audit receipt for this namespace and locale.",
+    "Key order is not globally lexicographic: the catalogue files preserve each side's sorted core plus appended late keys. The merge preserves that inherited order; ordering is not part of this rebind's binding rule.",
+    "One line (ui.common.updates.error.version_unknown_required) differs from its parent only by the trailing comma required when the record stopped being file-final; its parsed value bytes are identical. This is JSON syntax, not copy."
+  ]
+}

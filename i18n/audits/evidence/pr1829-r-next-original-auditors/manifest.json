@@ -1,0 +1,668 @@
+{
+  "kind": "pr1829-r-next-original-auditor-canonical-retention",
+  "allowlist_sha256": "3a247aea897710c2c3bd2eedcf58d51ded9ded4b1d446739fe73b76788f123e4",
+  "source_coordinator_session": "74bc9d540e75",
+  "frozen_source_tree": "5df62a4bd832b1c29f90f85dbb95b2c0f5eab6f4",
+  "scope": "Receipt rebinding/exact 471-main + 23-PR selected-parent union seam only; 494 raw literals verified, zero new semantic keys; no new rendering/native/global approval",
+  "entries": [
+    {
+      "locale": "es",
+      "auditor_session": "5f8e54e78de8",
+      "auditor_model": "openai/gpt-6.1-sol",
+      "instance": "5f8e54e78de8-es-rnext-rebind-20261114",
+      "scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+      "receipt": {
+        "path": "i18n/receipts/5f8e54e78de8-es-rnext-rebind-20261114.json",
+        "sha256": "b054cc28eb36f3cfe4ef006270d40ad0df8f883c45966f5ba98a54332c4e773a"
+      },
+      "record": {
+        "path": "i18n/audits/evidence/es/ui.chat.canonical/5f8e54e78de8-es-rnext-rebind-20261114/record.json",
+        "sha256": "996fb8d22f1e791ae334befbffcfb3417eb6bf405cd62b1c8c39ed69bdea52db"
+      },
+      "companions": [
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/es/5f8e54e78de8-es-rnext-rebind-20261114/record.json",
+          "path": "i18n/audits/evidence/es/ui.chat.canonical/5f8e54e78de8-es-rnext-rebind-20261114/record.json",
+          "sha256": "996fb8d22f1e791ae334befbffcfb3417eb6bf405cd62b1c8c39ed69bdea52db"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/FINAL-MANIFEST-5f8e54e78de8.json",
+          "path": "i18n/audits/evidence/es/ui.chat.canonical/5f8e54e78de8-es-rnext-rebind-20261114/FINAL-MANIFEST-5f8e54e78de8.json",
+          "sha256": "7850cb739f864d0bae3d51a7adbe481448397835a5c0579079bbac911ac79f74"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/es/5f8e54e78de8-es-rnext-rebind-20261114/parents-and-findings.json",
+          "path": "i18n/audits/evidence/es/ui.chat.canonical/5f8e54e78de8-es-rnext-rebind-20261114/parents-and-findings.json",
+          "sha256": "a8f191f27c8630186fe0cbfa2ed0f7b96435c1a8462eafd53e1f233cd5bd09a5"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/seam-proof.json",
+          "path": "i18n/audits/evidence/es/ui.chat.canonical/5f8e54e78de8-es-rnext-rebind-20261114/seam-proof.json",
+          "sha256": "fae241b93352f51b329b41ea9b496309bfaaac68db61bd292a1aeea9718a4283"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/parent-contract-validation.json",
+          "path": "i18n/audits/evidence/es/ui.chat.canonical/5f8e54e78de8-es-rnext-rebind-20261114/parent-contract-validation.json",
+          "sha256": "7c4ae05726ecadafc58051f056722e34e99967ba44c0d0531ad6f0fe0e7210dd"
+        }
+      ],
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 5,
+        "nit": 2
+      }
+    },
+    {
+      "locale": "fr",
+      "auditor_session": "5f8e54e78de8",
+      "auditor_model": "openai/gpt-6.1-sol",
+      "instance": "5f8e54e78de8-fr-rnext-rebind-20261114",
+      "scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+      "receipt": {
+        "path": "i18n/receipts/5f8e54e78de8-fr-rnext-rebind-20261114.json",
+        "sha256": "16186f00614c8b35657b535a6059a8f97b5f2e08e8cec31d851fe6cd9a209f38"
+      },
+      "record": {
+        "path": "i18n/audits/evidence/fr/ui.chat.canonical/5f8e54e78de8-fr-rnext-rebind-20261114/record.json",
+        "sha256": "f7b257c79b22c630d6e928ebc41c1f74821497efb34b3df77ec16084cc9d7939"
+      },
+      "companions": [
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/fr/5f8e54e78de8-fr-rnext-rebind-20261114/record.json",
+          "path": "i18n/audits/evidence/fr/ui.chat.canonical/5f8e54e78de8-fr-rnext-rebind-20261114/record.json",
+          "sha256": "f7b257c79b22c630d6e928ebc41c1f74821497efb34b3df77ec16084cc9d7939"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/FINAL-MANIFEST-5f8e54e78de8.json",
+          "path": "i18n/audits/evidence/fr/ui.chat.canonical/5f8e54e78de8-fr-rnext-rebind-20261114/FINAL-MANIFEST-5f8e54e78de8.json",
+          "sha256": "7850cb739f864d0bae3d51a7adbe481448397835a5c0579079bbac911ac79f74"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/fr/5f8e54e78de8-fr-rnext-rebind-20261114/parents-and-findings.json",
+          "path": "i18n/audits/evidence/fr/ui.chat.canonical/5f8e54e78de8-fr-rnext-rebind-20261114/parents-and-findings.json",
+          "sha256": "cf865f5f1800003f2c8f4536907db3f29bbe998c48a9e312737ae7d258fd2746"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/seam-proof.json",
+          "path": "i18n/audits/evidence/fr/ui.chat.canonical/5f8e54e78de8-fr-rnext-rebind-20261114/seam-proof.json",
+          "sha256": "fae241b93352f51b329b41ea9b496309bfaaac68db61bd292a1aeea9718a4283"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/parent-contract-validation.json",
+          "path": "i18n/audits/evidence/fr/ui.chat.canonical/5f8e54e78de8-fr-rnext-rebind-20261114/parent-contract-validation.json",
+          "sha256": "7c4ae05726ecadafc58051f056722e34e99967ba44c0d0531ad6f0fe0e7210dd"
+        }
+      ],
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 4,
+        "nit": 3
+      }
+    },
+    {
+      "locale": "hi",
+      "auditor_session": "5f8e54e78de8",
+      "auditor_model": "openai/gpt-6.1-sol",
+      "instance": "5f8e54e78de8-hi-rnext-rebind-20261114",
+      "scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+      "receipt": {
+        "path": "i18n/receipts/5f8e54e78de8-hi-rnext-rebind-20261114.json",
+        "sha256": "ad7a764b5f158ef639a65d9195fe305afc4c68be7816a4d1bf12001d730540be"
+      },
+      "record": {
+        "path": "i18n/audits/evidence/hi/ui.chat.canonical/5f8e54e78de8-hi-rnext-rebind-20261114/record.json",
+        "sha256": "06bb6abf7c450d4f277163f12a7b797031ccb05f0186a858a99bffd67e45e476"
+      },
+      "companions": [
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/hi/5f8e54e78de8-hi-rnext-rebind-20261114/record.json",
+          "path": "i18n/audits/evidence/hi/ui.chat.canonical/5f8e54e78de8-hi-rnext-rebind-20261114/record.json",
+          "sha256": "06bb6abf7c450d4f277163f12a7b797031ccb05f0186a858a99bffd67e45e476"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/FINAL-MANIFEST-5f8e54e78de8.json",
+          "path": "i18n/audits/evidence/hi/ui.chat.canonical/5f8e54e78de8-hi-rnext-rebind-20261114/FINAL-MANIFEST-5f8e54e78de8.json",
+          "sha256": "7850cb739f864d0bae3d51a7adbe481448397835a5c0579079bbac911ac79f74"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/hi/5f8e54e78de8-hi-rnext-rebind-20261114/parents-and-findings.json",
+          "path": "i18n/audits/evidence/hi/ui.chat.canonical/5f8e54e78de8-hi-rnext-rebind-20261114/parents-and-findings.json",
+          "sha256": "36aed18269b6051713b29cc70a83bbcb69c5c5a41c8143896aecb0db05713046"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/seam-proof.json",
+          "path": "i18n/audits/evidence/hi/ui.chat.canonical/5f8e54e78de8-hi-rnext-rebind-20261114/seam-proof.json",
+          "sha256": "fae241b93352f51b329b41ea9b496309bfaaac68db61bd292a1aeea9718a4283"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/parent-contract-validation.json",
+          "path": "i18n/audits/evidence/hi/ui.chat.canonical/5f8e54e78de8-hi-rnext-rebind-20261114/parent-contract-validation.json",
+          "sha256": "7c4ae05726ecadafc58051f056722e34e99967ba44c0d0531ad6f0fe0e7210dd"
+        }
+      ],
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 2,
+        "nit": 1
+      }
+    },
+    {
+      "locale": "es",
+      "auditor_session": "6dfaec49abf0",
+      "auditor_model": "openai/gpt-6.1-sol",
+      "instance": "6dfaec49abf0-es-r-next-seam-20261114",
+      "scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+      "receipt": {
+        "path": "i18n/receipts/6dfaec49abf0-es-r-next-seam-20261114.json",
+        "sha256": "a79bd14cb4ffd32fc9348b1bc12be9ab64e84afddffe76b9533c0b26a85309ea"
+      },
+      "record": {
+        "path": "i18n/audits/evidence/es/ui.chat.canonical/6dfaec49abf0-es-r-next-seam-20261114/record.json",
+        "sha256": "aeea91c47cf3f1629facf2790a77885b17ae3c9b311924227dd2d1dfe8f0eddf"
+      },
+      "companions": [
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-es-r-next-seam-20261114-record.json",
+          "path": "i18n/audits/evidence/es/ui.chat.canonical/6dfaec49abf0-es-r-next-seam-20261114/record.json",
+          "sha256": "aeea91c47cf3f1629facf2790a77885b17ae3c9b311924227dd2d1dfe8f0eddf"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-r-next-rebinding-manifest.json",
+          "path": "i18n/audits/evidence/es/ui.chat.canonical/6dfaec49abf0-es-r-next-seam-20261114/6dfaec49abf0-r-next-rebinding-manifest.json",
+          "sha256": "aff41423415ebf2df84564c2d6b8b8763699201733b8be794b059e3434be188d"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-r-next-seam-20261114-proof.json",
+          "path": "i18n/audits/evidence/es/ui.chat.canonical/6dfaec49abf0-es-r-next-seam-20261114/seam-proof.json",
+          "sha256": "ca484b5acf0b37a6c04068968e8910ad257daebcbd194f4dd352c6c959117164"
+        }
+      ],
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 2,
+        "nit": 2
+      }
+    },
+    {
+      "locale": "fr",
+      "auditor_session": "6dfaec49abf0",
+      "auditor_model": "openai/gpt-6.1-sol",
+      "instance": "6dfaec49abf0-fr-r-next-seam-20261114",
+      "scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+      "receipt": {
+        "path": "i18n/receipts/6dfaec49abf0-fr-r-next-seam-20261114.json",
+        "sha256": "47214d7481b722b7cb24813ddfa7bf67f9379b602b55a47a77d8ac5931aae99f"
+      },
+      "record": {
+        "path": "i18n/audits/evidence/fr/ui.chat.canonical/6dfaec49abf0-fr-r-next-seam-20261114/record.json",
+        "sha256": "3745013fd02f58d83c62e648c9c9d87902475f08257aafde5ec637fc2b81d307"
+      },
+      "companions": [
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-fr-r-next-seam-20261114-record.json",
+          "path": "i18n/audits/evidence/fr/ui.chat.canonical/6dfaec49abf0-fr-r-next-seam-20261114/record.json",
+          "sha256": "3745013fd02f58d83c62e648c9c9d87902475f08257aafde5ec637fc2b81d307"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-r-next-rebinding-manifest.json",
+          "path": "i18n/audits/evidence/fr/ui.chat.canonical/6dfaec49abf0-fr-r-next-seam-20261114/6dfaec49abf0-r-next-rebinding-manifest.json",
+          "sha256": "aff41423415ebf2df84564c2d6b8b8763699201733b8be794b059e3434be188d"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-r-next-seam-20261114-proof.json",
+          "path": "i18n/audits/evidence/fr/ui.chat.canonical/6dfaec49abf0-fr-r-next-seam-20261114/seam-proof.json",
+          "sha256": "ca484b5acf0b37a6c04068968e8910ad257daebcbd194f4dd352c6c959117164"
+        }
+      ],
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 3
+      }
+    },
+    {
+      "locale": "hi",
+      "auditor_session": "6dfaec49abf0",
+      "auditor_model": "openai/gpt-6.1-sol",
+      "instance": "6dfaec49abf0-hi-r-next-seam-20261114",
+      "scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+      "receipt": {
+        "path": "i18n/receipts/6dfaec49abf0-hi-r-next-seam-20261114.json",
+        "sha256": "f6a7bfdda5c14ee4b84e55ac0ff091781eb57f37b581e5ccaa6e8be8120a6ab6"
+      },
+      "record": {
+        "path": "i18n/audits/evidence/hi/ui.chat.canonical/6dfaec49abf0-hi-r-next-seam-20261114/record.json",
+        "sha256": "36fe1bc9e950c59d26e5a49df7ea9c8265553e680a463da954b17bbfd12a611d"
+      },
+      "companions": [
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-hi-r-next-seam-20261114-record.json",
+          "path": "i18n/audits/evidence/hi/ui.chat.canonical/6dfaec49abf0-hi-r-next-seam-20261114/record.json",
+          "sha256": "36fe1bc9e950c59d26e5a49df7ea9c8265553e680a463da954b17bbfd12a611d"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-r-next-rebinding-manifest.json",
+          "path": "i18n/audits/evidence/hi/ui.chat.canonical/6dfaec49abf0-hi-r-next-seam-20261114/6dfaec49abf0-r-next-rebinding-manifest.json",
+          "sha256": "aff41423415ebf2df84564c2d6b8b8763699201733b8be794b059e3434be188d"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-r-next-seam-20261114-proof.json",
+          "path": "i18n/audits/evidence/hi/ui.chat.canonical/6dfaec49abf0-hi-r-next-seam-20261114/seam-proof.json",
+          "sha256": "ca484b5acf0b37a6c04068968e8910ad257daebcbd194f4dd352c6c959117164"
+        }
+      ],
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 1
+      }
+    },
+    {
+      "locale": "ru",
+      "auditor_session": "a0245acae0c5",
+      "auditor_model": "openai/gpt-6.1-sol",
+      "instance": "a0245acae0c5-rnext-ru-20261114t110721z",
+      "scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+      "receipt": {
+        "path": "i18n/receipts/a0245acae0c5-rnext-ru-20261114t110721z.json",
+        "sha256": "790ba4aa4bf40220e8ad85c70c84944625caf0881124cbdf6007cc16c67a809a"
+      },
+      "record": {
+        "path": "i18n/audits/evidence/ru/ui.chat.canonical/a0245acae0c5-rnext-ru-20261114t110721z/record.json",
+        "sha256": "2e033a5d832d53bad2ddc3b381d984fc1733e27422f4094fce8af3ebacff61d8"
+      },
+      "companions": [
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/r-next-a024-ru-record-20261114t110721z.json",
+          "path": "i18n/audits/evidence/ru/ui.chat.canonical/a0245acae0c5-rnext-ru-20261114t110721z/record.json",
+          "sha256": "2e033a5d832d53bad2ddc3b381d984fc1733e27422f4094fce8af3ebacff61d8"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/r-next-a024-final-manifest-20261114t110721z.json",
+          "path": "i18n/audits/evidence/ru/ui.chat.canonical/a0245acae0c5-rnext-ru-20261114t110721z/r-next-a024-final-manifest-20261114t110721z.json",
+          "sha256": "e80984cc8d8695eed2fda8c69a93e607b1cfbdbe9ccee2769532b8862c8768d2"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/r-next-a024-seam-proof-20261114t110721z.json",
+          "path": "i18n/audits/evidence/ru/ui.chat.canonical/a0245acae0c5-rnext-ru-20261114t110721z/r-next-a024-seam-proof-20261114t110721z.json",
+          "sha256": "a0f961f87c0e89c28a6dcc9733363c6bcecbb99e4473aa509e06e4b4d49cc1ee"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/r-next-a024-derivation-20261114t110721z.json",
+          "path": "i18n/audits/evidence/ru/ui.chat.canonical/a0245acae0c5-rnext-ru-20261114t110721z/r-next-a024-derivation-20261114t110721z.json",
+          "sha256": "289dd88943ac693c0a62389e8069a20a160ca3755745fd6454b9624655e305b0"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.json",
+          "path": "i18n/audits/evidence/ru/ui.chat.canonical/a0245acae0c5-rnext-ru-20261114t110721z/1829-bounded-evidence-readback.json",
+          "sha256": "b9d1b7bfe421c64818856ba500e671fcf51051133314f3c9471c9c43acf27f30"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.md",
+          "path": "i18n/audits/evidence/ru/ui.chat.canonical/a0245acae0c5-rnext-ru-20261114t110721z/1829-bounded-evidence-readback.md",
+          "sha256": "a8cbf67eef4052484b4bbc1937a7a6b4b1d3328a71cb813bc3a8f0119cc275ac"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-artifacts-20261112T234806Z.json",
+          "path": "i18n/audits/evidence/ru/ui.chat.canonical/a0245acae0c5-rnext-ru-20261114t110721z/1829-issued-artifacts-20261112T234806Z.json",
+          "sha256": "b44e242108588557721aad0d2d9a6487155b76f989b41042a1926d0b6ecdf0b9"
+        }
+      ],
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 1
+      }
+    },
+    {
+      "locale": "ur",
+      "auditor_session": "a0245acae0c5",
+      "auditor_model": "openai/gpt-6.1-sol",
+      "instance": "a0245acae0c5-rnext-ur-20261114t110721z",
+      "scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+      "receipt": {
+        "path": "i18n/receipts/a0245acae0c5-rnext-ur-20261114t110721z.json",
+        "sha256": "977fc11a078f2d98da31adc56b042c58ea69c7526e6fac1796a69fecbed7c0ea"
+      },
+      "record": {
+        "path": "i18n/audits/evidence/ur/ui.chat.canonical/a0245acae0c5-rnext-ur-20261114t110721z/record.json",
+        "sha256": "3ffaa2bab1bdc94ec0b915d56470aa521f2104d91b54ec01589057648d1d9f22"
+      },
+      "companions": [
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/r-next-a024-ur-record-20261114t110721z.json",
+          "path": "i18n/audits/evidence/ur/ui.chat.canonical/a0245acae0c5-rnext-ur-20261114t110721z/record.json",
+          "sha256": "3ffaa2bab1bdc94ec0b915d56470aa521f2104d91b54ec01589057648d1d9f22"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/r-next-a024-final-manifest-20261114t110721z.json",
+          "path": "i18n/audits/evidence/ur/ui.chat.canonical/a0245acae0c5-rnext-ur-20261114t110721z/r-next-a024-final-manifest-20261114t110721z.json",
+          "sha256": "e80984cc8d8695eed2fda8c69a93e607b1cfbdbe9ccee2769532b8862c8768d2"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/r-next-a024-seam-proof-20261114t110721z.json",
+          "path": "i18n/audits/evidence/ur/ui.chat.canonical/a0245acae0c5-rnext-ur-20261114t110721z/r-next-a024-seam-proof-20261114t110721z.json",
+          "sha256": "a0f961f87c0e89c28a6dcc9733363c6bcecbb99e4473aa509e06e4b4d49cc1ee"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/r-next-a024-derivation-20261114t110721z.json",
+          "path": "i18n/audits/evidence/ur/ui.chat.canonical/a0245acae0c5-rnext-ur-20261114t110721z/r-next-a024-derivation-20261114t110721z.json",
+          "sha256": "289dd88943ac693c0a62389e8069a20a160ca3755745fd6454b9624655e305b0"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.json",
+          "path": "i18n/audits/evidence/ur/ui.chat.canonical/a0245acae0c5-rnext-ur-20261114t110721z/1829-bounded-evidence-readback.json",
+          "sha256": "b9d1b7bfe421c64818856ba500e671fcf51051133314f3c9471c9c43acf27f30"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.md",
+          "path": "i18n/audits/evidence/ur/ui.chat.canonical/a0245acae0c5-rnext-ur-20261114t110721z/1829-bounded-evidence-readback.md",
+          "sha256": "a8cbf67eef4052484b4bbc1937a7a6b4b1d3328a71cb813bc3a8f0119cc275ac"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-artifacts-20261112T234806Z.json",
+          "path": "i18n/audits/evidence/ur/ui.chat.canonical/a0245acae0c5-rnext-ur-20261114t110721z/1829-issued-artifacts-20261112T234806Z.json",
+          "sha256": "b44e242108588557721aad0d2d9a6487155b76f989b41042a1926d0b6ecdf0b9"
+        }
+      ],
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 2,
+        "nit": 1
+      }
+    },
+    {
+      "locale": "vi",
+      "auditor_session": "a0245acae0c5",
+      "auditor_model": "openai/gpt-6.1-sol",
+      "instance": "a0245acae0c5-rnext-vi-20261114t110721z",
+      "scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+      "receipt": {
+        "path": "i18n/receipts/a0245acae0c5-rnext-vi-20261114t110721z.json",
+        "sha256": "fbccc2a2a131adc454e30b91f1f32891959ce948136fbc71e7e0d681ad6b8f72"
+      },
+      "record": {
+        "path": "i18n/audits/evidence/vi/ui.chat.canonical/a0245acae0c5-rnext-vi-20261114t110721z/record.json",
+        "sha256": "84075eac4f6ad6bf76cee035695955884eb279ceb020776f34a030df39c589f0"
+      },
+      "companions": [
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/r-next-a024-vi-record-20261114t110721z.json",
+          "path": "i18n/audits/evidence/vi/ui.chat.canonical/a0245acae0c5-rnext-vi-20261114t110721z/record.json",
+          "sha256": "84075eac4f6ad6bf76cee035695955884eb279ceb020776f34a030df39c589f0"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/r-next-a024-final-manifest-20261114t110721z.json",
+          "path": "i18n/audits/evidence/vi/ui.chat.canonical/a0245acae0c5-rnext-vi-20261114t110721z/r-next-a024-final-manifest-20261114t110721z.json",
+          "sha256": "e80984cc8d8695eed2fda8c69a93e607b1cfbdbe9ccee2769532b8862c8768d2"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/r-next-a024-seam-proof-20261114t110721z.json",
+          "path": "i18n/audits/evidence/vi/ui.chat.canonical/a0245acae0c5-rnext-vi-20261114t110721z/r-next-a024-seam-proof-20261114t110721z.json",
+          "sha256": "a0f961f87c0e89c28a6dcc9733363c6bcecbb99e4473aa509e06e4b4d49cc1ee"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/r-next-a024-derivation-20261114t110721z.json",
+          "path": "i18n/audits/evidence/vi/ui.chat.canonical/a0245acae0c5-rnext-vi-20261114t110721z/r-next-a024-derivation-20261114t110721z.json",
+          "sha256": "289dd88943ac693c0a62389e8069a20a160ca3755745fd6454b9624655e305b0"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.json",
+          "path": "i18n/audits/evidence/vi/ui.chat.canonical/a0245acae0c5-rnext-vi-20261114t110721z/1829-bounded-evidence-readback.json",
+          "sha256": "b9d1b7bfe421c64818856ba500e671fcf51051133314f3c9471c9c43acf27f30"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.md",
+          "path": "i18n/audits/evidence/vi/ui.chat.canonical/a0245acae0c5-rnext-vi-20261114t110721z/1829-bounded-evidence-readback.md",
+          "sha256": "a8cbf67eef4052484b4bbc1937a7a6b4b1d3328a71cb813bc3a8f0119cc275ac"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-artifacts-20261112T234806Z.json",
+          "path": "i18n/audits/evidence/vi/ui.chat.canonical/a0245acae0c5-rnext-vi-20261114t110721z/1829-issued-artifacts-20261112T234806Z.json",
+          "sha256": "b44e242108588557721aad0d2d9a6487155b76f989b41042a1926d0b6ecdf0b9"
+        }
+      ],
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 1
+      }
+    },
+    {
+      "locale": "zh-CN",
+      "auditor_session": "a0245acae0c5",
+      "auditor_model": "openai/gpt-6.1-sol",
+      "instance": "a0245acae0c5-rnext-zh-cn-20261114t110721z",
+      "scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+      "receipt": {
+        "path": "i18n/receipts/a0245acae0c5-rnext-zh-cn-20261114t110721z.json",
+        "sha256": "1f4b7454f09a6bf8b48f2a6b85d733a844da0234497c6e0a7dd96d358af722a0"
+      },
+      "record": {
+        "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/a0245acae0c5-rnext-zh-cn-20261114t110721z/record.json",
+        "sha256": "7f44492d58008ece80332be0e49e923d888168321299d9394b488448a9fa76ad"
+      },
+      "companions": [
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/r-next-a024-zh-CN-record-20261114t110721z.json",
+          "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/a0245acae0c5-rnext-zh-cn-20261114t110721z/record.json",
+          "sha256": "7f44492d58008ece80332be0e49e923d888168321299d9394b488448a9fa76ad"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/r-next-a024-final-manifest-20261114t110721z.json",
+          "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/a0245acae0c5-rnext-zh-cn-20261114t110721z/r-next-a024-final-manifest-20261114t110721z.json",
+          "sha256": "e80984cc8d8695eed2fda8c69a93e607b1cfbdbe9ccee2769532b8862c8768d2"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/r-next-a024-seam-proof-20261114t110721z.json",
+          "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/a0245acae0c5-rnext-zh-cn-20261114t110721z/r-next-a024-seam-proof-20261114t110721z.json",
+          "sha256": "a0f961f87c0e89c28a6dcc9733363c6bcecbb99e4473aa509e06e4b4d49cc1ee"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/r-next-a024-derivation-20261114t110721z.json",
+          "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/a0245acae0c5-rnext-zh-cn-20261114t110721z/r-next-a024-derivation-20261114t110721z.json",
+          "sha256": "289dd88943ac693c0a62389e8069a20a160ca3755745fd6454b9624655e305b0"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.json",
+          "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/a0245acae0c5-rnext-zh-cn-20261114t110721z/1829-bounded-evidence-readback.json",
+          "sha256": "b9d1b7bfe421c64818856ba500e671fcf51051133314f3c9471c9c43acf27f30"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.md",
+          "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/a0245acae0c5-rnext-zh-cn-20261114t110721z/1829-bounded-evidence-readback.md",
+          "sha256": "a8cbf67eef4052484b4bbc1937a7a6b4b1d3328a71cb813bc3a8f0119cc275ac"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-artifacts-20261112T234806Z.json",
+          "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/a0245acae0c5-rnext-zh-cn-20261114t110721z/1829-issued-artifacts-20261112T234806Z.json",
+          "sha256": "b44e242108588557721aad0d2d9a6487155b76f989b41042a1926d0b6ecdf0b9"
+        }
+      ],
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 2
+      }
+    },
+    {
+      "locale": "ru",
+      "auditor_session": "0e471bff3c0f",
+      "auditor_model": "openai/gpt-6.1-sol",
+      "instance": "0e471bff3c0f-20261114-rnext-ru",
+      "scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+      "receipt": {
+        "path": "i18n/receipts/0e471bff3c0f-20261114-rnext-ru.json",
+        "sha256": "8af0d7827c8d5b893ef55fcd900c78829115176b005d39c99e89a7c4ac9ceae0"
+      },
+      "record": {
+        "path": "i18n/audits/evidence/ru/ui.chat.canonical/0e471bff3c0f-20261114-rnext-ru/record.json",
+        "sha256": "b5552f7144e0fd639e925f409f63cdb13cb47305adca291dd5facb3e254ba23b"
+      },
+      "companions": [
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-20261114-rnext-ru-record.json",
+          "path": "i18n/audits/evidence/ru/ui.chat.canonical/0e471bff3c0f-20261114-rnext-ru/record.json",
+          "sha256": "b5552f7144e0fd639e925f409f63cdb13cb47305adca291dd5facb3e254ba23b"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-20261114-rnext-FINAL-MANIFEST.json",
+          "path": "i18n/audits/evidence/ru/ui.chat.canonical/0e471bff3c0f-20261114-rnext-ru/0e471bff3c0f-20261114-rnext-FINAL-MANIFEST.json",
+          "sha256": "3a53217f0d825541d39c9ba52232f5255e3ea65fc7fdac1e5f4e5b4b2bd93353"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-20261114-rnext-seam-companion.json",
+          "path": "i18n/audits/evidence/ru/ui.chat.canonical/0e471bff3c0f-20261114-rnext-ru/0e471bff3c0f-20261114-rnext-seam-companion.json",
+          "sha256": "7eef43f3e0e16450f0250af9200647f677a634a6be5bcb95246ab838f8de610b"
+        }
+      ],
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 1
+      }
+    },
+    {
+      "locale": "ur",
+      "auditor_session": "0e471bff3c0f",
+      "auditor_model": "openai/gpt-6.1-sol",
+      "instance": "0e471bff3c0f-20261114-rnext-ur",
+      "scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+      "receipt": {
+        "path": "i18n/receipts/0e471bff3c0f-20261114-rnext-ur.json",
+        "sha256": "95babf009da0b9bc76934b548f25fa8ab51d4c93bc61237042cfeae26a5c5ff2"
+      },
+      "record": {
+        "path": "i18n/audits/evidence/ur/ui.chat.canonical/0e471bff3c0f-20261114-rnext-ur/record.json",
+        "sha256": "f44c26e7f70f6ddb4571a7ab0f71f88059d9edb95c9ab312f0c49b6f4649bb4c"
+      },
+      "companions": [
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-20261114-rnext-ur-record.json",
+          "path": "i18n/audits/evidence/ur/ui.chat.canonical/0e471bff3c0f-20261114-rnext-ur/record.json",
+          "sha256": "f44c26e7f70f6ddb4571a7ab0f71f88059d9edb95c9ab312f0c49b6f4649bb4c"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-20261114-rnext-FINAL-MANIFEST.json",
+          "path": "i18n/audits/evidence/ur/ui.chat.canonical/0e471bff3c0f-20261114-rnext-ur/0e471bff3c0f-20261114-rnext-FINAL-MANIFEST.json",
+          "sha256": "3a53217f0d825541d39c9ba52232f5255e3ea65fc7fdac1e5f4e5b4b2bd93353"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-20261114-rnext-seam-companion.json",
+          "path": "i18n/audits/evidence/ur/ui.chat.canonical/0e471bff3c0f-20261114-rnext-ur/0e471bff3c0f-20261114-rnext-seam-companion.json",
+          "sha256": "7eef43f3e0e16450f0250af9200647f677a634a6be5bcb95246ab838f8de610b"
+        }
+      ],
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 2,
+        "nit": 1
+      }
+    },
+    {
+      "locale": "vi",
+      "auditor_session": "0e471bff3c0f",
+      "auditor_model": "openai/gpt-6.1-sol",
+      "instance": "0e471bff3c0f-20261114-rnext-vi",
+      "scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+      "receipt": {
+        "path": "i18n/receipts/0e471bff3c0f-20261114-rnext-vi.json",
+        "sha256": "c22f51ad52537cac57a8b93d4b32d39e984dc752b2dc90e527e624411a4d2231"
+      },
+      "record": {
+        "path": "i18n/audits/evidence/vi/ui.chat.canonical/0e471bff3c0f-20261114-rnext-vi/record.json",
+        "sha256": "1d47a857b1a47b942badbb466b2a49ee3b28d77bd5d439a8f607d5050c073eb2"
+      },
+      "companions": [
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-20261114-rnext-vi-record.json",
+          "path": "i18n/audits/evidence/vi/ui.chat.canonical/0e471bff3c0f-20261114-rnext-vi/record.json",
+          "sha256": "1d47a857b1a47b942badbb466b2a49ee3b28d77bd5d439a8f607d5050c073eb2"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-20261114-rnext-FINAL-MANIFEST.json",
+          "path": "i18n/audits/evidence/vi/ui.chat.canonical/0e471bff3c0f-20261114-rnext-vi/0e471bff3c0f-20261114-rnext-FINAL-MANIFEST.json",
+          "sha256": "3a53217f0d825541d39c9ba52232f5255e3ea65fc7fdac1e5f4e5b4b2bd93353"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-20261114-rnext-seam-companion.json",
+          "path": "i18n/audits/evidence/vi/ui.chat.canonical/0e471bff3c0f-20261114-rnext-vi/0e471bff3c0f-20261114-rnext-seam-companion.json",
+          "sha256": "7eef43f3e0e16450f0250af9200647f677a634a6be5bcb95246ab838f8de610b"
+        }
+      ],
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 1
+      }
+    },
+    {
+      "locale": "zh-CN",
+      "auditor_session": "0e471bff3c0f",
+      "auditor_model": "openai/gpt-6.1-sol",
+      "instance": "0e471bff3c0f-20261114-rnext-zh-cn",
+      "scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+      "receipt": {
+        "path": "i18n/receipts/0e471bff3c0f-20261114-rnext-zh-cn.json",
+        "sha256": "c1a92634f78e15b8276d24934cd9cf05dfbba83230c88f84b935560abde61177"
+      },
+      "record": {
+        "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/0e471bff3c0f-20261114-rnext-zh-cn/record.json",
+        "sha256": "b529fd7f2eddb52b176d2938a9ceb67388b6fc6d82f8c686f2766e1e7d05ab5e"
+      },
+      "companions": [
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-20261114-rnext-zh-cn-record.json",
+          "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/0e471bff3c0f-20261114-rnext-zh-cn/record.json",
+          "sha256": "b529fd7f2eddb52b176d2938a9ceb67388b6fc6d82f8c686f2766e1e7d05ab5e"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-20261114-rnext-FINAL-MANIFEST.json",
+          "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/0e471bff3c0f-20261114-rnext-zh-cn/0e471bff3c0f-20261114-rnext-FINAL-MANIFEST.json",
+          "sha256": "3a53217f0d825541d39c9ba52232f5255e3ea65fc7fdac1e5f4e5b4b2bd93353"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-20261114-rnext-seam-companion.json",
+          "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/0e471bff3c0f-20261114-rnext-zh-cn/0e471bff3c0f-20261114-rnext-seam-companion.json",
+          "sha256": "7eef43f3e0e16450f0250af9200647f677a634a6be5bcb95246ab838f8de610b"
+        }
+      ],
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 2
+      }
+    }
+  ],
+  "all_existing_records_immutable": true,
+  "new_rendered_or_native_evidence": false,
+  "translator_metadata_updated": false
+}

@@ -1,0 +1,96 @@
+{
+ "audit_id": "cmpmrg1-es",
+ "audit_kind": "independent-translation-delta-audit (merge convergence)",
+ "audit_date": "2026-11-04",
+ "locale": "es",
+ "namespace": "ui.chat.composer",
+ "key_count": 6,
+ "keys_audited": [
+  "ui.chat.composer.insert_transcript",
+  "ui.chat.composer.insert_transcript_hint",
+  "ui.chat.composer.send_recording",
+  "ui.chat.composer.send_recording_hint",
+  "ui.chat.composer.steer_hint",
+  "ui.chat.composer.secret_closure_notice"
+ ],
+ "repo": "~/local-operator-ui worktree .worktrees/i18n-four-flows",
+ "branch": "fix/i18n-four-flow-defects",
+ "head": "801b1ad29d47bbb89a0768e0ea1f193892db953d",
+ "auditor": {
+  "agent": "i18n-auditor",
+  "team": "lopdev",
+  "session": "bf2b29ee9a07",
+  "instance": "bf2b29ee9a07-cmpmrg1-es",
+  "model": "anthropic/claude-sonnet-5-5",
+  "independent_from_translator_session": true,
+  "actual_model_source": "harness session header line 'Model: anthropic/claude-sonnet-5-5' for session bf2b29ee9a07; no fallback observed, no pin applied",
+  "fallback": null
+ },
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.chat.composer.json",
+   "sha256": "1abe3bc2730635d6eae484b49bfafa1743dee3be1f0ca60863576632acb95f14"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.chat.composer.context.json",
+   "sha256": "de9e346489f6df64bc3ff08abd1f8e0550e95e54e44b7c0ddda47897ff50e2dc"
+  },
+  "es": {
+   "path": "src/i18n/catalogues/es/ui.chat.composer.json",
+   "sha256": "abe170ed1ff28951ea07eccc52af6f3c46fb987bdad3cdb7269c59eb03a2561e"
+  }
+ },
+ "references": {
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/es.md",
+   "sha256": "77b9227213802d14c74d4298d6b346ad842bbf2a5ca3b9d46fc6144430d26c3e"
+  }
+ },
+ "artifacts": [
+  {
+   "path": "i18n/audits/evidence/es/ui.chat.composer/cmpmrg1-es/report.md",
+   "sha256": "e9a5bf11438ac4a2739b23efbe30b085202407c7f9ad0f29db239a32a8b2113b"
+  },
+  {
+   "path": "i18n/audits/evidence/es/ui.chat.composer/cmpmrg1-es/audit.log",
+   "sha256": "78f080ade8ebfa9abe2eaa59eb2d4214a505213c7569f00696dff389d04e53e6",
+   "kind": "actual output of the verification script run in this session"
+  },
+  {
+   "path": "i18n/audits/evidence/es/ui.chat.composer/cmpmrg1-es/receipt.json",
+   "sha256": "self; see receipt.json (the ledger receipt)"
+  }
+ ],
+ "audit_notes_not_execution_log": "report.md is the audit judgement; only audit.log is command output. node scripts/i18n/ledger-check.mjs was run read-only before this bundle and showed the three es/ui.chat.composer findings that this receipt is meant to resolve.",
+ "no_mt_service_used": true,
+ "edited_files": "none outside this evidence bundle",
+ "current_report_verdict": {
+  "status": "passed",
+  "unresolved_blocker_major_count": 0,
+  "finding_ids": [
+   "S1",
+   "N1"
+  ]
+ },
+ "findings": [
+  {
+   "id": "S1",
+   "severity": "MINOR",
+   "key": "ui.chat.composer.insert_transcript_hint",
+   "also": [
+    "ui.chat.composer.steer_hint"
+   ],
+   "note": "Intro vs sidecar 'keep Enter'; accepted, consistent with sibling es composer keys; not gating"
+  },
+  {
+   "id": "N1",
+   "severity": "NIT",
+   "key": "ui.chat.composer.send_recording_hint",
+   "suggestion": "Transcribir y enviar ahora, sin revisión previa"
+  }
+ ]
+}

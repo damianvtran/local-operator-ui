@@ -33,13 +33,18 @@
  *
  * A refusal can be **the move's own** - one of `MOVE_REFUSAL_CODES` in
  * `local_operator/network/mobility.py`, mirrored here by the ones a client can know
- * BEFORE asking - or **this client's**, for the two facts the wire does not carry
- * as a move refusal: a `suspect` device (a security fact that outranks
- * reachability, PR #498's `stateOf` precedence) and a revoked membership. The
- * client-side two are named `suspect_device` and `revoked_membership` and are
- * deliberately NOT spelled as move codes, so a reader can tell which side decided
- * - `busy` and `unreachable` mean "the route will say this", and the other two mean
- * "this app will not ask".
+ * BEFORE asking - or **this client's**, for the facts the wire does not carry as a
+ * move refusal: a `suspect` device (a security fact that outranks reachability,
+ * PR #498's `stateOf` precedence) and a target that is not a device at all
+ * (`not_a_device`, `unknown_device`). `suspect_device` is deliberately NOT spelled
+ * as a move code, so a reader can tell which side decided - `busy` and
+ * `unreachable` mean "the route will say this", and the client's codes mean "this
+ * app will not ask".
+ *
+ * A REVOKED MEMBERSHIP IS NO LONGER ONE OF THESE FACTS. A tombstone is not a
+ * device node (`meshGraph` draws live memberships only), so no drop can land on
+ * one; a burned id that somehow arrives here resolves as `unknown_device`, which
+ * is the truthful answer for an identity no membership admits.
  *
  * ## The BUSY case is a refusal rather than a wait, and the wait is offered
  *
@@ -54,7 +59,12 @@
 
 import { t } from "../../../../i18n/messages";
 import type { MeshDevice, MeshNetwork } from "./mesh-graph";
-import { type MeshSessionRow, sessionIsBusy } from "./mesh-types";
+import { deviceReach, reachWords } from "./mesh-reach";
+import {
+	type MeshSessionRow,
+	deviceIdentityText,
+	sessionIsBusy,
+} from "./mesh-types";
 
 /** What the pointer is over. */
 export type DropTarget =
@@ -67,6 +77,11 @@ export type DragPayload = {
 	session: MeshSessionRow;
 	/** The device that holds it NOW, resolved (a local row's owner is this device). */
 	ownerDeviceId: string;
+	/**
+	 * The caller's display text for the owner. {@link resolveDrop} never builds its
+	 * own sentences from it: this text may be a raw wire name or an already formatted
+	 * identity, and neither is proof of WHICH device it names (agent review round 3).
+	 */
 	ownerLabel: string;
 };
 
@@ -99,7 +114,86 @@ export type MovePlan = {
 	 * confirmation names as lost. See {@link planConfirm}.
 	 */
 	lost: string | null;
+	/**
+	 * The working-set `scope_digest` the user ticked for in the move dialog, sent
+	 * as the transfer's `confirm_working_set`. Absent on every plan the dialog has
+	 * not confirmed (and always absent against a backend without
+	 * `session_transfer_working_set`), so an unconfirmed plan stays exactly the
+	 * request it was before the feature. Kept ON THE PLAN so a refusal's remedy
+	 * that re-issues the plan (`Wait for the turn to finish`) re-sends the same
+	 * consent rather than a consent-less move the route would refuse.
+	 */
+	confirmWorkingSet?: string;
+	/**
+	 * The explicit "move WITHOUT the working files" consent (`without_working_set`),
+	 * for a working set that cannot be sent (`unsupported`, or a manifest the owner
+	 * could not compute). Same rules as `confirmWorkingSet`: set only by the
+	 * dialog, carried on the plan for re-issues.
+	 */
+	withoutWorkingSet?: boolean;
 };
+
+/** The working-set consent a plan carries, and nothing else. */
+export type WorkingSetConsent = Pick<
+	MovePlan,
+	"confirmWorkingSet" | "withoutWorkingSet"
+>;
+
+/**
+ * The consent fields a plan actually SET, for spreading onto a transfer ask.
+ *
+ * Only set fields, because the core's transfer model is closed: a backend
+ * without `session_transfer_working_set` 422s on either key, and a plan the
+ * dialog never confirmed has neither.
+ */
+export function workingSetConsent(
+	plan: WorkingSetConsent | null | undefined,
+): WorkingSetConsent {
+	if (plan?.confirmWorkingSet)
+		return { confirmWorkingSet: plan.confirmWorkingSet };
+	if (plan?.withoutWorkingSet) return { withoutWorkingSet: true };
+	return {};
+}
+
+/** The question a move dialog asked: the drop's plan, its alternative(s), the risk. */
+export type MoveQuestion = {
+	plan: MovePlan;
+	alternatives: MovePlan[];
+	risky: boolean;
+};
+
+/**
+ * The dialog to REOPEN for a consent refusal, from the question that was asked.
+ *
+ * WHY THE ORIGINAL QUESTION (UX round 1, U4 / agent review N2). A consent
+ * refusal re-asks the SAME move with a fresh list, so it must keep what the first
+ * dialog offered: the Move/Copy choice (the reversible alternative is the point
+ * of that pair) and the "open elsewhere" warning. Both surfaces used to reopen
+ * with no alternatives, and the Mesh tab also dropped the risk, so one refusal
+ * rendered two ways. `initialKeep` restores the option the user had picked.
+ *
+ * Only an ask for the same session and destination is reused: anything else (a
+ * remedy's re-issue after the dialog's state is gone) falls back to the refused
+ * plan alone with the caller's own reading of the risk.
+ */
+export function reopenAsk(
+	asked: MoveQuestion | null | undefined,
+	refused: MovePlan,
+	fallbackRisky: boolean,
+): MoveQuestion & { initialKeep?: boolean } {
+	if (
+		asked &&
+		asked.plan.sessionId === refused.sessionId &&
+		asked.plan.to === refused.to
+	)
+		return {
+			plan: asked.plan,
+			alternatives: asked.alternatives,
+			risky: asked.risky,
+			initialKeep: refused.keep,
+		};
+	return { plan: refused, alternatives: [], risky: fallbackRisky };
+}
 
 /** The action that fixes a refusal, when there is one. */
 export type Remedy =
@@ -114,6 +208,14 @@ export type DropVerdict =
 			kind: "refused";
 			code: string;
 			sentence: string;
+			/**
+			 * The device's reach word, when this refusal was synthesised HERE with the
+			 * device in hand (`deviceRefusal` / the owner check below). The notice shows
+			 * it in place of the raw `code`, so different transport failures do not
+			 * read as one "unreachable". Absent on refusals
+			 * that came from the route, whose sentence is the route's own.
+			 */
+			reach?: string;
 			remedy: Remedy | null;
 			/**
 			 * The move that was refused, when the refusal is about ONE move rather than about
@@ -178,6 +280,25 @@ export function planConfirm(
 	};
 }
 
+/**
+ * The one-line consequence under each option in the move confirmation.
+ *
+ * DIRECTION DECIDES WHICH COPY IS "HERE" (UX review round 1, U1). An outbound move
+ * deletes the copy on this device; a recall (`to === "local"`) deletes the copy on
+ * the OWNER, and this device is the one gaining the conversation. A direction-blind
+ * caption told a recall's reader that the local copy goes, directly under a body
+ * that names the remote owner's copy as the one deleted - two opposite claims about
+ * a destructive action, on the option preselected for them to press. A copy deletes
+ * nothing in either direction.
+ */
+export function moveOptionCaption(option: MovePlan): string {
+	if (option.keep)
+		return t("ui.mesh.mesh_actions.the_original_stays_where_it_is");
+	return option.to === "local"
+		? t("ui.mesh.mesh_actions.the_copy_there_is_deleted_once_it")
+		: t("ui.mesh.mesh_actions.the_copy_here_is_deleted_once_it");
+}
+
 /** The sentence a destructive move reads out before it is sent. */
 /**
  * What a move costs, in one sentence, naming BOTH ends.
@@ -217,9 +338,15 @@ function runtimeSentence(session: MeshSessionRow, where: string): string {
 	});
 }
 
-/** Where a device's label is shown; the id's tail when it never told us a name. */
-function peerLabel(device: MeshDevice | undefined, deviceId: string): string {
-	return device?.label || deviceId.slice(-6);
+/** The destination's shared name+id identity; an unknown target keeps its full id. */
+function peerLabel(
+	device: MeshDevice | undefined,
+	deviceId: string,
+	displayedDeviceIds: readonly string[],
+): string {
+	return device
+		? deviceIdentityText(device, displayedDeviceIds, true)
+		: deviceId;
 }
 
 /**
@@ -236,28 +363,15 @@ function peerLabel(device: MeshDevice | undefined, deviceId: string): string {
 function deviceRefusal(
 	device: MeshDevice,
 	deviceId: string,
+	displayedDeviceIds: readonly string[],
 ): Extract<DropVerdict, { kind: "refused" }> | null {
 	if (device.suspect) {
 		return {
 			kind: "refused",
 			code: "suspect_device",
 			sentence: t("ui.mesh.mesh_drop.duplicate_key", {
-				device: device.label,
+				device: deviceIdentityText(device, displayedDeviceIds, true),
 				reason: device.reason ? ` (${device.reason})` : "",
-			}),
-			remedy: {
-				kind: "open",
-				label: t("ui.mesh.mesh_drop.see_this_device"),
-				deviceId,
-			},
-		};
-	}
-	if (device.memberships.every((membership) => !membership.active)) {
-		return {
-			kind: "refused",
-			code: "revoked_membership",
-			sentence: t("ui.mesh.mesh_drop.no_shared_network", {
-				device: device.label,
 			}),
 			remedy: {
 				kind: "open",
@@ -267,13 +381,23 @@ function deviceRefusal(
 		};
 	}
 	if (!device.reachable) {
+		/*
+		 * THE REACH WORD, NOT ONE "is not answering" (mesh link resilience). The device is
+		 * in hand here, so `deviceReach` can say whether its relay is not running, an
+		 * address did not answer, the handshake was refused, or no address was published.
+		 * Those are different operator actions, and collapsing them into one sentence is
+		 * the defect the Mesh tab itself is being fixed for.
+		 */
+		const reach = reachWords(deviceReach(device));
 		return {
 			kind: "refused",
 			code: "unreachable",
-			sentence: t("ui.mesh.mesh_drop.no_answer", {
-				device: device.label,
+			sentence: t("ui.mesh.mesh_drop.reach_refusal", {
+				device: deviceIdentityText(device, displayedDeviceIds, true),
+				reach,
 				reason: device.reason ? ` (${device.reason})` : "",
 			}),
+			reach,
 			remedy: { kind: "resume", label: t("ui.mesh.mesh_actions.check_again") },
 		};
 	}
@@ -293,8 +417,27 @@ export function resolveDrop(
 	target: DropTarget,
 	context: DropContext,
 ): DropVerdict {
-	const { session, ownerDeviceId, ownerLabel } = payload;
+	const { session, ownerDeviceId } = payload;
 	const { selfDeviceId, devices, networks } = context;
+	const displayedDeviceIds = [...devices.keys()];
+	const owner = devices.get(ownerDeviceId);
+	/*
+	 * DESTRUCTIVE COPY NAMES THE OWNER BY ID, never by the caller's text (agent review
+	 * round 2 F1, round 3 F1 / QA Q-1). Two devices may share a name, so a sentence
+	 * that says which copy is deleted must carry the id that tells them apart.
+	 *
+	 * A graph-resident owner gets the compact id, which is unique within the drawn
+	 * graph. An owner ABSENT from the graph (a stale row, or an owner the join could
+	 * not place - `mesh-sessions.ts`) has no graph to prove a short prefix unique, so
+	 * it gets the FULL id; its name half is the session's own wire name, quoted, and
+	 * an empty name reads as the unnamed-device word rather than as a name.
+	 */
+	const ownerLabel = owner
+		? deviceIdentityText(owner, displayedDeviceIds, true)
+		: deviceIdentityText({
+				id: ownerDeviceId,
+				name: session.owner_device_name,
+			});
 
 	if (target.kind === "ground") return { kind: "none" };
 
@@ -356,6 +499,7 @@ export function resolveDrop(
 								device: peerLabel(
 									devices.get(target.deviceId),
 									target.deviceId,
+									displayedDeviceIds,
 								),
 							}),
 				waitS: 0,
@@ -376,7 +520,7 @@ export function resolveDrop(
 
 	const destination = devices.get(target.deviceId);
 	const refused = destination
-		? deviceRefusal(destination, target.deviceId)
+		? deviceRefusal(destination, target.deviceId, displayedDeviceIds)
 		: {
 				code: "unknown_device",
 				sentence: t("ui.mesh.mesh_drop.that_device_is_no_longer_in_any"),
@@ -384,7 +528,11 @@ export function resolveDrop(
 			};
 	if (refused) return { kind: "refused", ...refused };
 
-	const destinationLabel = peerLabel(destination, target.deviceId);
+	const destinationLabel = peerLabel(
+		destination,
+		target.deviceId,
+		displayedDeviceIds,
+	);
 	const sourceIsLocal = session.locality === "local";
 
 	/*
@@ -395,15 +543,18 @@ export function resolveDrop(
 	 * answering, so nothing changed.
 	 */
 	if (!sourceIsLocal) {
-		const owner = devices.get(ownerDeviceId);
 		if (owner && !owner.reachable) {
+			/* The owner is in hand, so the refusal carries the owner's own reach word. */
+			const reach = reachWords(deviceReach(owner));
 			return {
 				kind: "refused",
 				code: "unreachable",
-				sentence: t("ui.mesh.mesh_drop.owner_no_answer", {
+				sentence: t("ui.mesh.mesh_drop.owner_reach_refusal", {
 					device: ownerLabel,
+					reach,
 					reason: owner.reason ? ` (${owner.reason})` : "",
 				}),
+				reach,
 				remedy: {
 					kind: "resume",
 					label: t("ui.mesh.mesh_actions.check_again"),

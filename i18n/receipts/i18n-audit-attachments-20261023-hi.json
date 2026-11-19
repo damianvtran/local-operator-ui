@@ -1,0 +1,42 @@
+{
+	"auditor": "i18n-auditor",
+	"model": "radient/auto",
+	"instance": "i18n-audit-attachments-20261023-hi",
+	"locale": "hi",
+	"date": "2026-10-23",
+	"status": "passed",
+	"namespace": "ui.chat.attachments",
+	"sha256": {
+		"hi": "c8ae6f4f7c37396d9b09e069ddf083690929f7daf3d65235817005c3002b5022",
+		"en": "fddfa41410b39cbf531ccce64247bcc9aec86eb8623f7f0e143b9efca00dd271"
+	},
+	"context_sha256": "185f3f901f0e2832ab2f433c445f094b99e42385e30b5db4ea86ce3f9c908c59",
+	"scope": "Full independent audit of all 5 keys for hi: English meaning and the en context sidecar, core glossary and the hi style guide, structural parity (key set/order, {type}/{size}/{digest}, ICU parse and format), NFC, manual bidi controls, and sibling terminology in the shipped catalogues.",
+	"model_provenance": "Served model label reported by this session is radient/auto (routed); the underlying provider model is not exposed to the session, so none is invented.",
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+			"revision": "local-operator 24dbccbb78"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/hi.md",
+			"sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+		},
+		"languages_manifest": {
+			"path": "i18n/languages.json",
+			"sha256": "7fd056b916fc3d56ddf36991a09b29864ea0b0f825d938aead1ed165926f8d63"
+		}
+	},
+	"findings": [
+		{
+			"severity": "MINOR",
+			"key": "ui.chat.attachments.file_retained",
+			"locale": "hi",
+			"current": "अभी भी अनुलग्नक संग्रह में सुरक्षित है ({digest})",
+			"proposed": "अभी भी अनुलग्नक स्टोर में सुरक्षित है ({digest})",
+			"rule": "Terminology consistency (core glossary, 'one term, one decision'; task rule b: 'store' must read as the app's attachment storage). The product's settled Hindi rendering for a data store is the loanword स्टोर — ui.settings.imports.* ('स्रोत स्टोर'), ui.settings.integrations.use_integrations.keys_not_saved ('एन्क्रिप्टेड स्टोर') — while संग्रह is the collection/archive noun and संग्रहित is this product's label for *archived* (ui.chat.dialogs.archive_action, ui.projects.project_model.archived). 'अनुलग्नक संग्रह' therefore reads as an attachment collection/archive, not the digest-addressed attachment store.",
+			"note": "Meaning is still recoverable; the defect is the wrong store term and the archive collision, not a misunderstanding of retained-vs-deleted."
+		}
+	]
+}

@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "agent": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "audit-1751-row-bg-vi-20261107",
+  "locale": "vi",
+  "date": "2026-11-07",
+  "status": "passed",
+  "namespace": "ui.chat.sidebar.row.bg",
+  "keys_read": 6,
+  "sha256": {
+    "en": "cb2b1c6bbaa8171855af0cd6769c1eda1bd65c2aeaf0c08452e94989720487fc",
+    "vi": "f7f3d9fd29710edd0ab99b08815025ed31d4977179aae457c5abd1b86a669901"
+  },
+  "findings": [],
+  "scope": "PR #1751 ui.chat.sidebar.row.bg at 47253d733ffd3e8c0b275a533c1b708c317709d6: full 6-key namespace (subagents, jobs, running, queued, subagents_queued, waiting), en catalogue + en context, composed output rendered with intl-messageformat + Intl.ListFormat as chat-session-subagents.ts builds it (counts 1/2/5/21/22), siblings ui.chat.pickers.info_model.*, ui.chat.composer.status.*_action, ui.projects.count.*, ui.common.errors.job*",
+  "independence": "lopdev task subagent ui-i18n-audit (job ab9ddad178e1, manager session 393182dd4bfe), separate from the PR coder that translated; same served model family (anthropic/claude-opus-5-5) disclosed; verdict rebuilt from the English source, the en context, sibling keys, the core glossary (~/local-operator/i18n/glossary.md) and the locale style guide.",
+  "references": "co",
+  "checks": "placeholders {count}/{items} exact per key, ICU arms = CLDR categories for the locale (fr/es one/many/other, ru one/few/many/other, ur/hi one/other, zh-CN/vi other), every arm renders via intl-messageformat, key set == en, NFC, zero Unicode Cf (bidi/format) code points, no ASCII ellipsis, tooltip + sr-only clause (no fixed width budget)",
+  "verdict": "vi: passed — tác nhân con/tác vụ per glossary; other-only plurals; 'trong hàng đợi' deliberately distinct from 'Đang chờ' used by the waiting clause (info_model.queued's 'đang chờ' would collide here). Clean."
+}

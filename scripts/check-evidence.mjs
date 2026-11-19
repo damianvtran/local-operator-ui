@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Assert that every committed frame is a picture of the app.
+ * Assert that every frame the capture rig wrote is a picture of the app.
  *
  * Why this exists: `chat-trace/conversation/localOperatorDark.webp` shipped as
  * a loading spinner on a white page - 2,762 bytes against its siblings' 57KB,
@@ -17,11 +17,14 @@
  * dims the ground under it. 25 sits well clear of that and the failing frame
  * measures 79.41, so the two populations do not overlap.
  *
- * It runs over the COMMITTED set rather than only during capture, which is
- * the difference between a set that was checked once and a set that can be
- * falsified now. `pnpm check-evidence`.
+ * It runs over the FRAMES TREE - `docs/evidence-frames/`, the rig's ignored
+ * output - rather than only during capture, which is the difference between a
+ * set that was checked once and a set that can be falsified now. The frames are
+ * regenerable and no longer committed (see `capture-evidence.mjs`'s constants),
+ * so a checkout with none has nothing to sweep and says so; capture first.
+ * `pnpm check-evidence`.
  *
- * WHAT A COMMITTED FRAME MUST BE CALLED, and why this is the place that says it.
+ * WHAT A FRAME MUST BE CALLED, and why this is the place that says it.
  * A frame's expected ground is derived FROM ITS FILENAME - the stem of
  * `<set>/<stem>.<container>` is looked up in `PALETTES` - so a frame whose stem
  * is not a palette id fails `no palette named <stem>` however its set is
@@ -45,33 +48,48 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { basename, dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 /*
- * The frame decoder, at module scope on purpose.
+ * The frame decoder, loaded ON FIRST DECODE rather than at module scope.
  *
  * `sharp` is a devDependency and is already how other rigs in this tree decode
  * WebP (see `desktop-renderer-transport.test.mjs`), so the histogram costs no
- * new package. Imported eagerly rather than per frame: a 9703-frame sweep must
- * not pay a module load per image, and the loader is synchronous anyway.
- */
-import sharp from "sharp";
-
-/*
- * The decoder's memory, BOUNDED ON PURPOSE.
+ * new package. It is loaded once and reused - not per frame - so a whole-tree
+ * sweep pays one module load.
  *
- * A whole-tree sweep decodes every frame in one process. Measured 2026-10-04 at
- * 200 / 800 / 1600 frames: resident set 500 / 586 / 735 MB with libvips' operation
- * cache on, and 424 / 431 / 599 MB with it off - so the cache is most of what
- * holds across a run, and turning it off is the bound that costs no throughput.
- * (The day's harness memory-guard figure of 177.3 GB for one such sweep is TOTAL
- * allocation, ~11 MB per decoded frame, not residency: it cannot be resident on a
- * 36 GB host, and the numbers above are the high-water marks that can.)
- * `sharp.concurrency(1)` was measured too and is deliberately NOT set: it flattens
- * the curve a little further and trades throughput the CI job needs (7 GB runner,
- * 11m27s measured) for memory it does not.
- *
- * The local path does not pay this at all - `evidence` is in `LOCAL_EXCLUSIONS`
- * (`ci-scope.mjs`), so `pnpm check-changed` never starts a whole-tree decode.
+ * WHY LAZY, and why that is correctness rather than micro-optimisation:
+ * `check-evidence.mjs` is imported for its PURE checks (`stampFailures`, `frames`,
+ * the count guards) by `check-evidence-structure.mjs`, the structural gate CI
+ * runs and a developer runs on a plain clone. An eager import made that gate die
+ * on `ERR_MODULE_NOT_FOUND: Cannot find package 'sharp'` before it printed a
+ * line (QA round 1, Q-2), and a gate that needs `pnpm install` first is one
+ * people stop running. The decoder is reachable only from `frameHistogram`,
+ * which nothing on the structural path calls.
  */
-sharp.cache(false);
+let sharpModule;
+const loadSharp = async () => {
+	if (sharpModule) return sharpModule;
+	const imported = (await import("sharp")).default;
+	/*
+	 * The decoder's memory, BOUNDED ON PURPOSE.
+	 *
+	 * A whole-tree sweep decodes every frame in one process. Measured 2026-10-04
+	 * at 200 / 800 / 1600 frames: resident set 500 / 586 / 735 MB with libvips'
+	 * operation cache on, and 424 / 431 / 599 MB with it off - so the cache is
+	 * most of what holds across a run, and turning it off is the bound that
+	 * costs no throughput. (The day's harness memory-guard figure of 177.3 GB for
+	 * one such sweep is TOTAL allocation, ~11 MB per decoded frame, not
+	 * residency: it cannot be resident on a 36 GB host, and the numbers above
+	 * are the high-water marks that can.) `sharp.concurrency(1)` was measured too
+	 * and is deliberately NOT set: it flattens the curve a little further and
+	 * trades throughput the CI job needs (7 GB runner, 11m27s measured) for
+	 * memory it does not.
+	 *
+	 * The local path does not pay this at all: the pixel sweep is the release
+	 * path's step, never `pnpm check-changed` (see `ci-scope.mjs`).
+	 */
+	imported.cache(false);
+	sharpModule = imported;
+	return imported;
+};
 /*
  * The capturer's own `dir` table, for `claimedStory` below - not to run it.
  *
@@ -118,7 +136,20 @@ const gitOut = (args) => {
 		return null;
 	}
 };
-const EVIDENCE = join(ROOT, "docs", "evidence");
+/*
+ * The FRAMES the sweep decodes, and the PROOF tree it reads beside them.
+ *
+ * Frames are regenerable rig output and live in the ignored
+ * `docs/evidence-frames/`; the manifest, the set READMEs and the proof JSONs
+ * are tracked in `docs/evidence/` (see `capture-evidence.mjs`'s constants, and
+ * `.gitignore`). This module reads BOTH: `frames()`/`countsMeanFailures`/
+ * `unjudgedFrameFailures`/`stampFailures` walk the frames tree, while the
+ * manifest is read from the proof tree. A path change here has to keep that
+ * pair straight - a manifest read out of the frames tree finds nothing on a
+ * checkout, and the gate then reports a tree with no declarations.
+ */
+const EVIDENCE = join(ROOT, "docs", "evidence-frames");
+const MANIFEST_DIR = join(ROOT, "docs", "evidence");
 
 /**
  * How far a frame's dominant colour may sit from the nearest ground of its own
@@ -339,6 +370,7 @@ export const unjudgedFrames = (dir, declared = [], palettes = PALETTES) => {
  * message downstream is unchanged.
  */
 export const frameHistogram = async (file) => {
+	const sharp = await loadSharp();
 	let decoded;
 	try {
 		decoded = await sharp(file).raw().toBuffer({ resolveWithObject: true });
@@ -554,6 +586,26 @@ export const claimedStory = (id, surface, leaf) => {
 	if (cut === -1 || id.slice(0, cut) !== surface) return false;
 	const name = id.slice(cut + 2);
 	return name === leaf || overrideDirFor(id) === leaf;
+};
+
+/**
+ * Whether a directory holds at least one FRAME FILE.
+ *
+ * `existsSync` is not the question. An EMPTY `docs/evidence-frames/` - created by
+ * the rig before it wrote anything, or by a checkout whose capture died - means
+ * "no frames here" exactly as an absent one does, and the count guards below are
+ * about frames that EXIST. Keying the stand-down on existence alone reddened a
+ * tree that simply has none (QA round 1, Q-3). Walks the tree, so call it once.
+ */
+export const holdsFrameFiles = (dir) => {
+	if (!existsSync(dir)) return false;
+	try {
+		return readdirSync(dir, { recursive: true }).some((entry) =>
+			isFrameContainer(String(entry)),
+		);
+	} catch {
+		return false;
+	}
 };
 
 /**
@@ -909,6 +961,21 @@ export const partialCaptureFailures = (manifest, git = gitOut) => {
  */
 export const stampFailures = (manifest, git = gitOut, dir = EVIDENCE) => {
 	const out = [];
+	/*
+	 * Whether the frames tree HOLDS a frame.
+	 *
+	 * It is rig output and is not committed (`.gitignore`, `docs/evidence-frames`),
+	 * so a checkout that has never been captured has none - and a directory that
+	 * exists but holds no frame is the same "none here" (a rig that died before its
+	 * first write, or a checkout that created the tree). The tree-dependent half
+	 * below - the swept count, the `countsMean` prose and the unjudged-frame
+	 * accounting - cannot be asked in either case, and asking it would fail every
+	 * checkout on a manifest that is in fact correct. The tree-INDEPENDENT half
+	 * (surfaces/themes against `HEAD:scripts/capture-evidence.mjs`, and the pass
+	 * tallies) still runs, and `main()` - which refuses before this point when the
+	 * tree is absent or empty - is where the tree half is enforced.
+	 */
+	const tree = holdsFrameFiles(dir);
 
 	/*
 	 * The `srcTree`/`scriptsTree` loop stood here and is RETIRED, not moved: a
@@ -980,7 +1047,7 @@ export const stampFailures = (manifest, git = gitOut, dir = EVIDENCE) => {
 	 * Skipped when the manifest carries no count, so a fixture built for the other
 	 * checks is not asked about a tree it does not describe.
 	 */
-	if (typeof manifest.frames === "number") {
+	if (tree && typeof manifest.frames === "number") {
 		const declaredDirs = (manifest.supplementary ?? [])
 			.filter((set) => typeof set.path === "string" && set.path.length > 0)
 			.map((set) => join(dir, set.path));
@@ -1006,15 +1073,15 @@ export const stampFailures = (manifest, git = gitOut, dir = EVIDENCE) => {
 	 * And the PROSE the fields are explained by, which is what a reader checks a
 	 * fold against (round 3, R3-1).
 	 */
-	out.push(...countsMeanFailures(manifest, git, dir));
+	if (tree) out.push(...countsMeanFailures(manifest, git, dir));
 
 	/*
 	 * And the frames the gate ACCOUNTS FOR but does not judge. Asked here, in the
 	 * half `test:desktop` runs, because the whole point of the count is that no
-	 * committed frame is invisible: a walk that reads no image is enough to notice
-	 * one appearing.
+	 * frame is invisible: a walk that reads no image is enough to notice one
+	 * appearing. Gated on the frames tree being present - see `tree` above.
 	 */
-	out.push(...unjudgedFrameFailures(manifest, dir));
+	if (tree) out.push(...unjudgedFrameFailures(manifest, dir));
 
 	return out;
 };
@@ -1646,8 +1713,10 @@ export const storyDriftReadings = (manifest, git = gitOut, root = ROOT) => {
 // Exported only for the admitted worker's import; ordinary imports still never
 // sweep frames (capture-evidence imports the single-frame predicates).
 export const main = async () => {
-	if (!existsSync(EVIDENCE)) {
-		console.error(`No evidence at ${EVIDENCE}`);
+	if (!holdsFrameFiles(EVIDENCE)) {
+		console.error(
+			`No frames at ${EVIDENCE}. Frames are rig output and are not committed, and the tree is ${existsSync(EVIDENCE) ? "EMPTY" : "absent"}, so there is nothing to decode - seed or capture first, then sweep.`,
+		);
 		process.exit(1);
 	}
 
@@ -1684,7 +1753,7 @@ export const main = async () => {
 		}
 	}
 
-	const manifestPath = join(EVIDENCE, "manifest.json");
+	const manifestPath = join(MANIFEST_DIR, "manifest.json");
 	if (existsSync(manifestPath)) {
 		const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
 		// A manifest that misdescribes itself is not evidence of anything, so
@@ -1732,6 +1801,20 @@ export const main = async () => {
 			}
 			const dir = join(EVIDENCE, set.path);
 			if (!existsSync(dir) || !statSync(dir).isDirectory()) {
+				/*
+				 * A ZERO-FRAME declaration is a declared STATE, not a lost directory.
+				 *
+				 * `submit-latency` is the shipped instance: it declares `frames: 0`
+				 * and says why in its own entry, and its only file is a README,
+				 * which is tracked in the proof tree. The frames tree therefore has
+				 * no directory for it, and demanding one would fail a correct tree
+				 * on the first sweep - measured on 2026-10-20 against the split
+				 * (`supplementary[99] (submit-latency) names a directory that is not
+				 * in the tree`). The moment a frame lands there the directory exists
+				 * and the usual `onDisk !== set.frames` check refuses it, so a
+				 * declaration cannot use this to hide pixels.
+				 */
+				if (set.frames === 0) continue;
 				failures.push(
 					`manifest.json: ${where} names a directory that is not in the tree`,
 				);

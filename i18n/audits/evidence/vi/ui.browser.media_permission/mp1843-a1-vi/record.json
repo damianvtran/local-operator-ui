@@ -1,0 +1,126 @@
+{
+ "audit_id": "mp1843-a1-vi",
+ "round": 1,
+ "audit_kind": "independent first audit of a new namespace",
+ "date": "2026-11-10",
+ "audit_date": "2026-11-10",
+ "locale": "vi",
+ "namespace": "ui.browser.media_permission",
+ "source_commit": "4f0df27743eecae09ccc8c3e69838faa616a3eb2",
+ "pr": "https://github.com/damianvtran/local-operator-ui/pull/1843",
+ "scope": "All 8 keys of ui.browser.media_permission.",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "key_count": 8,
+ "keys_read": 8,
+ "auditors": [
+  {
+   "agent": "task",
+   "model": "anthropic/claude-opus-5-5",
+   "session": "d1da94af17b7",
+   "team": "lopdev",
+   "label": "i18n-audit-1843",
+   "instance": "d1da94af17b7-mp1843-a1-vi",
+   "date": "2026-11-10",
+   "result": "clean-with-findings",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 3
+   },
+   "independent_from_translator_session": true,
+   "actual_model_source": "harness session header 'Model: anthropic/claude-opus-5-5' for session d1da94af17b7; no fallback observed, no role or model pin applied",
+   "fallback": null,
+   "receipt": "i18n/receipts/d1da94af17b7-mp1843-a1-vi.json",
+   "receipt_sha256": "fa9c89e6b77acbb6da09ebf56ff402c501f51189d46c7a0ec64d5f03ff36866e"
+  }
+ ],
+ "translator": {
+  "agent": "coder",
+  "model": "anthropic/claude-opus-5-5",
+  "date": "2026-11-10"
+ },
+ "independence": "Independent auditor; translated nothing originally. Authored only the corrections listed under resolutions, which are disclosed and recorded against the superseded translator bytes.",
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.browser.media_permission.json",
+   "sha256": "0a898598ac95277bfd9f8a4b502e81b1c0a3d30035bd205978112a83e13835a0"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.browser.media_permission.context.json",
+   "sha256": "361ee18bdb1beb154c2e9c318a88a21ee44285c4f1eeb3d90681e909de222f10"
+  },
+  "vi": {
+   "path": "src/i18n/catalogues/vi/ui.browser.media_permission.json",
+   "sha256": "3a03efae1d9cb8236925f7084d43598d3da13102e51871cc2817fb2f3c2b411f",
+   "translator_bytes_sha256": "a277d64030f5b44d19225951e91bceb57f2c74d1be969a6c689899c8651a0881"
+  },
+  "glossary": {
+   "path": "i18n/glossary.md (damianvtran/local-operator origin/main 9372a3a42d0e)",
+   "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+  },
+  "style_guide": {
+   "path": "i18n/style-guides/vi.md (local-operator origin/main 9372a3a42d0e)",
+   "sha256": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888"
+  }
+ },
+ "artifacts": [
+  {
+   "path": "i18n/audits/evidence/vi/ui.browser.media_permission/mp1843-a1-vi/audit.log",
+   "sha256": "678383b75efa8000960f46ba4e287e58f6c40771b8090a43449bb59b6724c5e9"
+  },
+  {
+   "path": "i18n/audits/evidence/vi/ui.browser.media_permission/mp1843-a1-vi/negative-control.log",
+   "sha256": "fb7373868a7cf230a4d875668bc9105ed273f14dfe0f35333503c5468e90a70a"
+  },
+  {
+   "path": "i18n/audits/evidence/vi/ui.browser.media_permission/mp1843-a1-vi/report.md",
+   "sha256": "18554d3e3b45a4c5e59d29fc44f09cdc57dc310f0934aa88db836f2e1d5c0445"
+  },
+  {
+   "path": "i18n/audits/evidence/vi/ui.browser.media_permission/mp1843-a1-vi/verify.mjs",
+   "sha256": "53eac836053b720ae636cbeffe0cc77461c0b2d03cf88928c8820bafbc6d78e6"
+  }
+ ],
+ "audit_notes_not_execution_log": "report.md is the auditor's notes; audit.log and negative-control.log are actual stdout of verify.mjs. The ledger-check result quoted in report.md was run interactively on the export and is not captured as a file.",
+ "findings": [
+  {
+   "id": "VI-N1",
+   "severity": "nit",
+   "key": "ui.browser.media_permission.agent_tab_hint",
+   "finding": "thẻ for tab vs predominant tab in ui.browser* vi copy (passkey notices use both). No change."
+  },
+  {
+   "id": "VI-N2",
+   "severity": "nit",
+   "key": "ui.browser.media_permission.label",
+   "finding": "camera/micrô vs ui.browser.extensions máy ảnh/micrô and corpus micro (5). Readable and common; no change."
+  },
+  {
+   "id": "VI-N3",
+   "severity": "nit",
+   "key": "ui.browser.media_permission.agent_tab_hint",
+   "finding": "Button name Cho phép is unquoted; “Cho phép” would read clearer. Optional, no change."
+  }
+ ],
+ "resolutions": [
+  {
+   "id": "VI-J1",
+   "original_severity": "major",
+   "key": "ui.browser.media_permission.agent_tab_hint",
+   "disposition": "corrected in audit patch",
+   "before": "Đây là thẻ do tác tử điều khiển, nên Cho phép chỉ áp dụng cho yêu cầu này.",
+   "after": "Đây là thẻ do tác nhân điều khiển, nên Cho phép chỉ áp dụng cho yêu cầu này.",
+   "reason": "Glossary §2 binds agent → tác nhân for vi; the value used tác tử, which appears nowhere else in the vi UI corpus (tác nhân: 683, including the sibling passkey “thẻ do tác nhân điều khiển”)."
+  }
+ ],
+ "observations": [
+  {
+   "id": "VI-I1",
+   "severity": "INFO",
+   "key": "ui.browser.media_permission.system_blocked_hint",
+   "finding": "Cài đặt hệ thống › Quyền riêng tư & Bảo mật matches core vi cli.permissions."
+  }
+ ]
+}

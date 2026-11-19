@@ -1,0 +1,53 @@
+{
+	"auditor": "reviewer (independent i18n auditor, lopdev team)",
+	"model": "anthropic/claude-opus-5-5",
+	"instance": "4b8febc34595-ru",
+	"run_id": "4b8febc34595",
+	"status": "passed",
+	"result": "clean",
+	"namespace": "ui.chat.canonical",
+	"locale": "ru",
+	"date": "2026-11-11",
+	"head": "80a346fd5fa2c79b29f6f37a27332bdd7dca59f5",
+	"base": "c1ba44696",
+	"key_count": 443,
+	"scope": "Delta audit at 80a346fd5 of the 5 added keys ui.chat.canonical.loading.{cold,revalidating,older,remote,region_label} and the 4 removed keys (placeholder.loading, placeholder.region_label, older_history.loading, transcript.stale_caption). The other 438 values were compared against c1ba44696 and are byte-identical; c1ba44696's ru bytes (a84811e9c087...) are the target the current ledger audit e8fd410766e5 bound, so they are retained on that proof, not re-read.",
+	"audited_values": {
+		"ui.chat.canonical.loading.cold": "Загрузка разговора…",
+		"ui.chat.canonical.loading.revalidating": "Проверка новых сообщений…",
+		"ui.chat.canonical.loading.older": "Загрузка предыдущих сообщений…",
+		"ui.chat.canonical.loading.remote": "Синхронизация с вашего другого устройства…",
+		"ui.chat.canonical.loading.region_label": "Загрузка разговора"
+	},
+	"checks": [
+		"meaning against en and the en context sidecar for each key; remote: с + genitive (с вашего другого устройства) correctly reads 'from', not 'with'",
+		"register: impersonal verbal-noun statuses, lowercase вы, sentence case, single U+2026 ellipsis, no period; region_label without ellipsis",
+		"glossary: device -> устройство (declined)",
+		"consistency: cold/region_label equal the audited placeholder.loading/region_label; older equals audited older_history.loading plus ellipsis and matches older_history.load (предыдущие сообщения); revalidating matches Проверка обновлений…; разговор matches attachment_refusal and older_history.conversation_start",
+		"no placeholders or ICU in source or target; no bidi controls"
+	],
+	"findings": [],
+	"severity_counts": { "blocker": 0, "major": 0, "minor": 0, "nit": 0 },
+	"observations": [
+		"INFO: region_label (en source 'Loading conversation') names the live region for all four variants, including revalidating while the transcript is already readable; that is English-source/product scope, not translation, and the ru rendering is faithful."
+	],
+	"independence": {
+		"translator_agent": "coder",
+		"translator_job": "6ca5ea22d2ab",
+		"translator_model": "anthropic/claude-opus-5-5 (as relayed by the manager brief)",
+		"auditor_agent": "reviewer",
+		"auditor_session": "4b8febc34595",
+		"independent_from_translator": true,
+		"disclosure": "different agent and session from the translator; same served model family, disclosed"
+	},
+	"references": {
+		"glossary": "~/local-operator/i18n/glossary.md @ 5079899f0",
+		"style_guide": "~/local-operator/i18n/style-guides/ru.md @ 5079899f0",
+		"policy": "docs/I18N.md 'Retain checkable audit records'"
+	},
+	"sha256": {
+		"target": "193220cead49cf7a0b20deb9ba3625f51416b34214ece1f328840db01dce3d27",
+		"en": "664a23730b7244a096f53a6e55e2014bd16400fb8846b25bd242b2668d6efa1a",
+		"context": "98c3bc0ac341eda0dec29f8b2698e40b860fa22e66a1dc471880054794a90e0b"
+	}
+}

@@ -1,0 +1,245 @@
+$ node ./bin/ensure-electron.js
+$ electron-vite build
+[36mvite v6.2.6 [32mbuilding SSR bundle for production...[36m[39m
+transforming...
+[32m✓[39m 819 modules transformed.
+[BABEL] Note: The code generator has deoptimised the styling of undefined as it exceeds the max of 500KB.
+rendering chunks...
+[2mout/main/[22m[32mbytecode-loader.cjs  [39m[1m[2m    2.31 kB[22m[1m[22m
+[2mout/main/[22m[36mindex.js             [39m[1m[33m5,340.62 kB[39m[22m
+[32m✓ built in 2.07s[39m
+[32m✓[39m 1 bundles compiled into bytecode.
+[90m[37m[2mout/main/[22m[90m[39m[32mindex.jsc  [39m [33m4816.26 kB[39m
+[36mvite v6.2.6 [32mbuilding SSR bundle for production...[36m[39m
+transforming...
+[32m✓[39m 17 modules transformed.
+rendering chunks...
+[2mout/preload/[22m[36mindex.js  [39m[1m[2m211.80 kB[22m[1m[22m
+[32m✓ built in 138ms[39m
+[36mvite v6.2.6 [32mbuilding for production...[36m[39m
+transforming...
+Found 4 warnings while optimizing generated CSS:
+
+Issue #1:
+[2m│     background-color: var(--color-ink-disabled);[22m
+[2m│   }[22m
+[2m│[22m   .\[\&\:\:highlight\(current-find-highlight\)\]\:bg-accent::highlight(current-find-highlight) {
+[2m┆[22m                                                                        [33m[2m^--[22m 'highlight' is not recognized as a valid pseudo-element. Did you mean ':highlight' (pseudo-class) or is this a typo?[39m
+[2m┆[22m
+[2m│     background-color: var(--color-accent);[22m
+[2m│   }[22m
+
+Issue #2:
+[2m│     background-color: var(--color-accent);[22m
+[2m│   }[22m
+[2m│[22m   .\[\&\:\:highlight\(current-find-highlight\)\]\:text-on-accent::highlight(current-find-highlight) {
+[2m┆[22m                                                                             [33m[2m^--[22m 'highlight' is not recognized as a valid pseudo-element. Did you mean ':highlight' (pseudo-class) or is this a typo?[39m
+[2m┆[22m
+[2m│     color: var(--color-on-accent);[22m
+[2m│   }[22m
+
+Issue #3:
+[2m│     color: var(--color-on-accent);[22m
+[2m│   }[22m
+[2m│[22m   .\[\&\:\:highlight\(find-highlight\)\]\:bg-accent-wash::highlight(find-highlight) {
+[2m┆[22m                                                                     [33m[2m^--[22m 'highlight' is not recognized as a valid pseudo-element. Did you mean ':highlight' (pseudo-class) or is this a typo?[39m
+[2m┆[22m
+[2m│     background-color: var(--color-accent-wash);[22m
+[2m│   }[22m
+
+Issue #4:
+[2m│     background-color: var(--color-accent-wash);[22m
+[2m│   }[22m
+[2m│[22m   .\[\&\:\:highlight\(find-highlight\)\]\:text-ink::highlight(find-highlight) {
+[2m┆[22m                                                               [33m[2m^--[22m 'highlight' is not recognized as a valid pseudo-element. Did you mean ':highlight' (pseudo-class) or is this a typo?[39m
+[2m┆[22m
+[2m│     color: var(--color-ink);[22m
+[2m│   }[22m
+
+[32m✓[39m 7383 modules transformed.
+rendering chunks...
+[2m../../out/renderer/[22m[32mconsole-capture.html                               [39m[1m[2m    0.83 kB[22m[1m[22m
+[2m../../out/renderer/[22m[32minstaller.html                                     [39m[1m[2m    0.93 kB[22m[1m[22m
+[2m../../out/renderer/[22m[32mmini.html                                          [39m[1m[2m    1.01 kB[22m[1m[22m
+[2m../../out/renderer/[22m[32mbrowser-address-overlay.html                       [39m[1m[2m    1.49 kB[22m[1m[22m
+[2m../../out/renderer/[22m[32mbrowser-address-overlay-list.html                  [39m[1m[2m    1.68 kB[22m[1m[22m
+[2m../../out/renderer/[22m[32mindex.html                                         [39m[1m[2m    3.94 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Size3-Regular-CTq5MqoE.woff           [39m[1m[2m    4.42 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Size4-Regular-Dl5lxZxV.woff2          [39m[1m[2m    4.93 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Size2-Regular-Dy4dx90m.woff2          [39m[1m[2m    5.21 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Size1-Regular-mCD8mA8B.woff2          [39m[1m[2m    5.47 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Size4-Regular-BF-4gkZK.woff           [39m[1m[2m    5.98 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Size2-Regular-oD1tc_U0.woff           [39m[1m[2m    6.19 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Size1-Regular-C195tn64.woff           [39m[1m[2m    6.50 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Caligraphic-Regular-Di6jR-x-.woff2    [39m[1m[2m    6.91 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Caligraphic-Bold-Dq_IR9rO.woff2       [39m[1m[2m    6.91 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mbrand-mark-Bv0Hu-Cz.png                     [39m[1m[2m    6.95 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Size3-Regular-DgpXs0kz.ttf            [39m[1m[2m    7.59 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Caligraphic-Regular-CTRA-rTL.woff     [39m[1m[2m    7.66 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Caligraphic-Bold-BEiXGLvX.woff        [39m[1m[2m    7.72 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Script-Regular-D3wIWfF6.woff2         [39m[1m[2m    9.64 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_SansSerif-Regular-DDBCnlJ7.woff2      [39m[1m[2m   10.34 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Size4-Regular-DWFBv043.ttf            [39m[1m[2m   10.36 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Script-Regular-D5yQViql.woff          [39m[1m[2m   10.59 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Fraktur-Regular-CTYiF6lA.woff2        [39m[1m[2m   11.32 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Fraktur-Bold-CL6g_b3V.woff2           [39m[1m[2m   11.35 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Size2-Regular-B7gKUWhC.ttf            [39m[1m[2m   11.51 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_SansSerif-Italic-C3H0VqGB.woff2       [39m[1m[2m   12.03 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_SansSerif-Bold-D1sUS0GD.woff2         [39m[1m[2m   12.22 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Size1-Regular-Dbsnue_I.ttf            [39m[1m[2m   12.23 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_SansSerif-Regular-CS6fqUqJ.woff       [39m[1m[2m   12.32 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Caligraphic-Regular-wX97UBjC.ttf      [39m[1m[2m   12.34 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Caligraphic-Bold-ATXxdsX0.ttf         [39m[1m[2m   12.37 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Fraktur-Regular-Dxdc4cR9.woff         [39m[1m[2m   13.21 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Fraktur-Bold-BsDP51OF.woff            [39m[1m[2m   13.30 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Typewriter-Regular-CO6r4hn1.woff2     [39m[1m[2m   13.57 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_SansSerif-Italic-DN2j7dab.woff        [39m[1m[2m   14.11 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_SansSerif-Bold-DbIhKOiC.woff          [39m[1m[2m   14.41 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Typewriter-Regular-C0xS9mPB.woff      [39m[1m[2m   16.03 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Math-BoldItalic-CZnvNsCZ.woff2        [39m[1m[2m   16.40 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Math-Italic-t53AETM-.woff2            [39m[1m[2m   16.44 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Script-Regular-C5JkGWo-.ttf           [39m[1m[2m   16.65 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Main-BoldItalic-DxDJ3AOS.woff2        [39m[1m[2m   16.78 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Main-Italic-NWA7e6Wa.woff2            [39m[1m[2m   16.99 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Math-BoldItalic-iY-2wyZ7.woff         [39m[1m[2m   18.67 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Math-Italic-DA0__PXp.woff             [39m[1m[2m   18.75 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Main-BoldItalic-SpSLRI95.woff         [39m[1m[2m   19.41 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_SansSerif-Regular-BNo7hRIc.ttf        [39m[1m[2m   19.44 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Fraktur-Regular-CB_wures.ttf          [39m[1m[2m   19.57 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Fraktur-Bold-BdnERNNW.ttf             [39m[1m[2m   19.58 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Main-Italic-BMLOBm91.woff             [39m[1m[2m   19.68 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_SansSerif-Italic-YYjJ1zSn.ttf         [39m[1m[2m   22.36 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_SansSerif-Bold-CFMepnvq.ttf           [39m[1m[2m   24.50 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Main-Bold-Cx986IdX.woff2              [39m[1m[2m   25.32 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Main-Regular-B22Nviop.woff2           [39m[1m[2m   26.27 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Typewriter-Regular-D3Ib7_Hf.ttf       [39m[1m[2m   27.56 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_AMS-Regular-BQhdFMY1.woff2            [39m[1m[2m   28.08 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Main-Bold-Jm3AIy58.woff               [39m[1m[2m   29.91 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Main-Regular-Dr94JaBh.woff            [39m[1m[2m   30.77 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Math-BoldItalic-B3XSjfu4.ttf          [39m[1m[2m   31.20 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Math-Italic-flOr_0UB.ttf              [39m[1m[2m   31.31 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Main-BoldItalic-DzxPMmG6.ttf          [39m[1m[2m   32.97 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_AMS-Regular-DMm9YOAa.woff             [39m[1m[2m   33.52 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Main-Italic-3WenGoN9.ttf              [39m[1m[2m   33.58 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Main-Bold-waoOVXN0.ttf                [39m[1m[2m   51.34 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mradient-icon-1024x1024-D_JJedvo.png         [39m[1m[2m   53.27 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_Main-Regular-ypZvNtVU.ttf             [39m[1m[2m   53.58 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mKaTeX_AMS-Regular-DRggAlZN.ttf              [39m[1m[2m   63.63 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mRobotoMono-Regular-BCiLwUa1.ttf             [39m[1m[2m   78.99 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mRobotoMono-Bold-CA4NrfZm.ttf                [39m[1m[2m   79.16 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mchat-input-CU-CA7Se.png                     [39m[1m[2m   92.88 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32minline-edit-canvas-O9conTkE.png             [39m[1m[2m  143.94 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mcanvas-variables-view-DrA20zqs.png          [39m[1m[2m  172.33 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mcanvas-code-inline-edit-DLji9b0m.png        [39m[1m[2m  239.14 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mchat-attachments-_3cRrONU.png               [39m[1m[2m  286.76 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32magentic-sequence-CExfswgi.png               [39m[1m[2m  433.83 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mcanvas-overview-CruGEIRC.png                [39m[1m[2m  565.74 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32micon-tV2fhamD.png                           [39m[1m[2m1,109.49 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mchat-full-view-e-eJPzrw.png                 [39m[1m[2m1,292.44 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mGeistMonoNerdFontMono-Regular-CWdDX7GJ.otf  [39m[1m[2m2,244.66 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[32mGeistMonoNerdFontMono-Bold-B9bGosAz.otf     [39m[1m[2m2,251.54 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[35maddressOverlayList-B7X6o95l.css             [39m[1m[2m    1.98 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[35mconversation-input-sync-CAX4_ErH.css        [39m[1m[2m    3.34 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[35mconsole-mirror-DOrYoP_4.css                 [39m[1m[2m    5.18 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[35mindex-DHKnfVbX.css                          [39m[1m[2m    6.07 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[35mkatex-BCx1q_2Y.css                          [39m[1m[2m   28.46 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[35mindex-ZovyVTxQ.css                          [39m[1m[2m  211.71 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mclone-BsOtkx8x.js                           [39m[1m[2m    0.10 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mchannel-DuTdQ059.js                         [39m[1m[2m    0.11 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mchunk-XZIHB7SX-BGKNGzAg.js                  [39m[1m[2m    0.20 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mchunk-4BMEZGHF-KMO4DRto.js                  [39m[1m[2m    0.23 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36morg-surface-gate-Dy0B7mtt.js                [39m[1m[2m    0.26 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mbrowser-page-DpDLgrKx.js                    [39m[1m[2m    0.42 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mheart-tKYqMVIH.js                           [39m[1m[2m    0.42 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mbook-open-C1uak1LZ.js                       [39m[1m[2m    0.46 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mstateDiagram-v2-YXO3MK2T-DtNGrQOg.js        [39m[1m[2m    0.47 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mclassDiagram-GIVACNV2-GsQXg71a.js           [39m[1m[2m    0.47 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mclassDiagram-v2-COTLJTTW-GsQXg71a.js        [39m[1m[2m    0.47 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mhash-BN0ECl3H.js                            [39m[1m[2m    0.48 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mpage-header-6mrV9W-E.js                     [39m[1m[2m    0.55 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36muse-session-snapshot-CdYiirKJ.js            [39m[1m[2m    0.62 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mbuilding-2-Bpz1qaDa.js                      [39m[1m[2m    0.62 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mnotebook-pen-C3CwzwGA.js                    [39m[1m[2m    0.66 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mchunk-RZ5BOZE2-BxYvxYm7.js                  [39m[1m[2m    0.68 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36minfoDiagram-PH2N3AL5-C1FdROpa.js            [39m[1m[2m    0.80 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mconsoleCapture-BzSftKjg.js                  [39m[1m[2m    1.28 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mchunk-D6G4REZN-BNCE2KmX.js                  [39m[1m[2m    1.44 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mradient-auth-buttons-BBJX2hS0.js            [39m[1m[2m    1.45 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mrpm-CTu-6PCP.js                             [39m[1m[2m    1.62 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36maddressOverlayList-SGt8bawf.js              [39m[1m[2m    2.17 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36m_basePickBy-C4kBw2nf.js                     [39m[1m[2m    2.59 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mparseISO-BHJWTxrA.js                        [39m[1m[2m    2.76 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36marc-BWIhwtSS.js                             [39m[1m[2m    3.44 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mdiagram-VNBRO52H-C8hW3tjO.js                [39m[1m[2m    3.85 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36masn1-EdZsLKOL.js                            [39m[1m[2m    3.98 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mttcn-cfg-B9xdYoR4.js                        [39m[1m[2m    4.05 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mmllike-CXdrOF99.js                          [39m[1m[2m    4.79 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mpieDiagram-IB7DONF6-BLkAsIQ5.js             [39m[1m[2m    5.00 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mgraph-BxbeZIdB.js                           [39m[1m[2m    5.92 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mdiagram-SSKATNLV-CGS3sfqf.js                [39m[1m[2m    6.02 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mbrowser-webauthn-prompt-zfa2h1Sk.js         [39m[1m[2m    6.05 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mpython-BuPzkPfP.js                          [39m[1m[2m    6.48 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mpug-DukmZTjD.js                             [39m[1m[2m    6.67 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36men-US-CHJkXXr4.js                           [39m[1m[2m    7.71 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36morg-access-BCHGT1C1.js                      [39m[1m[2m    8.14 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36minstaller-Dw1P6j8q.js                       [39m[1m[2m    9.08 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36msmartart-CHmgRmfL.js                        [39m[1m[2m   10.53 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mstateDiagram-DGXRK772-CBJylTe2.js           [39m[1m[2m   10.77 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mclojure-BMjYHr_A.js                         [39m[1m[2m   10.82 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mdagre-OKDRZEBW-D3dIHwsD.js                  [39m[1m[2m   11.12 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mpublication-validation-CXJokwje.js          [39m[1m[2m   11.45 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36m_baseUniq-BHaW9Bow.js                       [39m[1m[2m   11.89 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mformat-esAOn2VS.js                          [39m[1m[2m   12.47 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36muse-download-agent-mutation-CwPHzh9u.js     [39m[1m[2m   12.63 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mindex-C4DjEMHK.js                           [39m[1m[2m   12.78 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mmini-Zmm5BeZl.js                            [39m[1m[2m   13.02 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36magent-details-page-BJ7pOvAP.js              [39m[1m[2m   14.52 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mjavascript-qCveANmP.js                      [39m[1m[2m   17.08 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mkanban-definition-NDS4AKOZ-B1q6x3zR.js      [39m[1m[2m   20.25 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36msankeyDiagram-QLVOVGJD-CNll9Dnv.js          [39m[1m[2m   22.12 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mjourneyDiagram-U35MCT3I-V9zK5AqD.js         [39m[1m[2m   22.81 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mtimeline-definition-BDJGKUSR-B6g4p5za.js    [39m[1m[2m   23.65 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mgitGraphDiagram-7IBYFJ6S-ByEHP69u.js        [39m[1m[2m   24.18 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36merDiagram-Q7BY3M3F-DvOFXn3z.js              [39m[1m[2m   25.31 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mcss-BnMrqG3P.js                             [39m[1m[2m   27.13 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mlayout-DlMyO2E0.js                          [39m[1m[2m   27.21 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mrequirementDiagram-KVF5MWMF-BDx6Grn6.js     [39m[1m[2m   30.15 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mindex-CZNJK8pp.js                           [39m[1m[2m   30.88 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mquadrantDiagram-7GDLP6J5-Dv_rTsG8.js        [39m[1m[2m   33.86 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mchunk-AEK57VVT-CjfcHLMS.js                  [39m[1m[2m   34.50 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36msql-D0XecflT.js                             [39m[1m[2m   37.05 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mxychartDiagram-VJFVF3MP-q0R_Cg1g.js         [39m[1m[2m   37.45 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mchunk-A2AXSNBT-DLIcdiiQ.js                  [39m[1m[2m   45.03 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mganttDiagram-APWFNJXF-DpS6leiu.js           [39m[1m[2m   47.30 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mmesh-page-I439fKHQ.js                       [39m[1m[2m   53.25 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mlegacy-agents-page-DNnMMysr.js              [39m[1m[2m   55.70 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mflowDiagram-4HSFHLVR-DFn7VlZe.js            [39m[1m[2m   60.30 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36magent-hub-page-BGAVaGSw.js                  [39m[1m[2m   64.12 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mc4Diagram-VJAJSXHY-DgnRaU8g.js              [39m[1m[2m   70.24 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mblockDiagram-JOT3LUYC-C1MyRPSW.js           [39m[1m[2m   71.62 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36msequenceDiagram-X6HHIX6F-FKyU5bo1.js        [39m[1m[2m   88.55 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36magents-page-BBLfLLWo.js                     [39m[1m[2m   96.60 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mmindmap-definition-ALO5MXBD-CP-URutk.js     [39m[1m[2m  101.04 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36marchitectureDiagram-IEHRJDOE-DPlWNXq-.js    [39m[1m[2m  148.27 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mprojects-page-BLwl_uxL.js                   [39m[1m[2m  162.38 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36merror-boundary-ZYkSCpZC.js                  [39m[1m[2m  190.73 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36msettings-page-D1ultbBP.js                   [39m[1m[2m  197.37 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mlibrary-page-BGiKU3hH.js                    [39m[1m[2m  234.67 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mkatex-DsmCZfJr.js                           [39m[1m[2m  265.43 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mradar-MK3ICKWK-CUa_8iZa.js                  [39m[1m[2m  314.65 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mteam-bridge-page-Bh3F_KMY.js                [39m[1m[2m  331.81 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mconsole-mirror-Bxl6t4e9.js                  [39m[1m[2m  375.65 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mschedules-page-CYxHSGTd.js                  [39m[1m[2m  424.75 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mcytoscape.esm-DHvQc-Lm.js                   [39m[1m[2m  438.64 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mpath-utils-CRYGE4mK.js                      [39m[1m[2m  447.11 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mmermaid.core-dGXjbixL.js                    [39m[1m[2m  459.85 kB[22m[1m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mindex-Box5-7lw.js                           [39m[1m[33m2,954.69 kB[39m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mindex-BDzV3bGH.js                           [39m[1m[33m3,227.81 kB[39m[22m
+[2m../../out/renderer/[22m[2massets/[22m[36mconversation-input-sync-BTDJOSN7.js         [39m[1m[33m4,115.83 kB[39m[22m
+[33m
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+[32m✓ built in 11.58s[39m
+$ chmod +x ./bin/local-operator-ui.js

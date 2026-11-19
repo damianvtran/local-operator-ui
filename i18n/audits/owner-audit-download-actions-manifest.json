@@ -1,0 +1,66 @@
+{
+  "schema": 1,
+  "scope": "Two save action keys only; not runtime/transport approval. Original values unchanged; Russian R2 remains deferred.",
+  "auditor": "reviewer",
+  "session": "f93eb129057e",
+  "actual_model": "anthropic/claude-sonnet-5-5",
+  "source_sha256": "911d5928e6b206e9d60aca25c081383f0f2564661646d43d45f746af06e6d858",
+  "context_sha256": "96966f6ec44c50eaaf5f3e66ee4298dbd7fc81a0dd7a45f2c65b600cf8adb19a",
+  "index": "i18n/audits/evidence/en/ui.teamBridge/f93eb129057e-slice2/index.json",
+  "index_sha256": "4c43874eaeefd1798c2376b026fef8390d06db1e8f1ba2e744609d94a2f63751",
+  "records": [
+    {
+      "locale": "es",
+      "canonical_record": "i18n/audits/evidence/es/ui.teamBridge/f93eb129057e-slice2-es/record.json",
+      "receipt": "i18n/receipts/f93eb129057e-slice2-es.json",
+      "sha256": "53dd7810d65eb0d2903dd113347b7b42d7722edc93aefe493772630d373ad150",
+      "result": "clean"
+    },
+    {
+      "locale": "fr",
+      "canonical_record": "i18n/audits/evidence/fr/ui.teamBridge/f93eb129057e-slice2-fr/record.json",
+      "receipt": "i18n/receipts/f93eb129057e-slice2-fr.json",
+      "sha256": "02215e635674678582aa40bc3c0b503269a69aba122a30d2cf129272b32015b2",
+      "result": "clean"
+    },
+    {
+      "locale": "hi",
+      "canonical_record": "i18n/audits/evidence/hi/ui.teamBridge/f93eb129057e-slice2-hi/record.json",
+      "receipt": "i18n/receipts/f93eb129057e-slice2-hi.json",
+      "sha256": "e8eb33bbe331bc6c56a68cb618609978bd168c7a66ba769823969d0a7bf21d1d",
+      "result": "clean"
+    },
+    {
+      "locale": "ru",
+      "canonical_record": "i18n/audits/evidence/ru/ui.teamBridge/f93eb129057e-slice2-ru/record.json",
+      "receipt": "i18n/receipts/f93eb129057e-slice2-ru.json",
+      "sha256": "1686036d692140e977ccfe2188f5e67e6e74f63f455211b09e731da010a9c21f",
+      "result": "clean-with-findings"
+    },
+    {
+      "locale": "ur",
+      "canonical_record": "i18n/audits/evidence/ur/ui.teamBridge/f93eb129057e-slice2-ur/record.json",
+      "receipt": "i18n/receipts/f93eb129057e-slice2-ur.json",
+      "sha256": "5edf3e161fe700a4e55f53a743f87655e46ee734514ad773810c820a26eef076",
+      "result": "clean"
+    },
+    {
+      "locale": "vi",
+      "canonical_record": "i18n/audits/evidence/vi/ui.teamBridge/f93eb129057e-slice2-vi/record.json",
+      "receipt": "i18n/receipts/f93eb129057e-slice2-vi.json",
+      "sha256": "70f0077449868f4d0f4498ad9011b677eccd238e084744f00aa083a64046dbf7",
+      "result": "clean"
+    },
+    {
+      "locale": "zh-CN",
+      "canonical_record": "i18n/audits/evidence/zh-CN/ui.teamBridge/f93eb129057e-slice2-zh-cn/record.json",
+      "receipt": "i18n/receipts/f93eb129057e-slice2-zh-cn.json",
+      "sha256": "b8852c00c7e729245056735ac33d87d4347b95e78e84ec76b0f0e47ad25a9d00",
+      "result": "clean"
+    }
+  ],
+  "translation_source_provenance": "i18n/audits/evidence/en/ui.teamBridge/1f8487498771-slice2/translator.json",
+  "translation_source_provenance_sha256": "b8ad4231a26f8bc411d18859c81a5f2d4f884ebc1be3828d7fa3cef6ac062104",
+  "disposition": "Historical two-key save audit only; save capability and solely-save copy removed. Original signed evidence remains unchanged and ledger bindings are superseded.",
+  "removal_proof": "i18n/audits/evidence/en/ui.teamBridge/f93eb129057e-slice2-save-removal/record.json"
+}

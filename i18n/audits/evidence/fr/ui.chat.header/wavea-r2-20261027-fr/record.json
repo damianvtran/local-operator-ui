@@ -1,0 +1,208 @@
+{
+  "audit_id": "wavea-r2-20261027-fr",
+  "round": 2,
+  "audit_kind": "delta (round 2): 5 changed fr values audited in full + 33 unchanged wave-A values regression-checked",
+  "date": "2026-10-27",
+  "audit_date": "2026-10-27",
+  "locale": "fr",
+  "namespace": "ui.chat.header",
+  "source_commit": "80ee119bbd1084ee873994a1f39db0c085c62083",
+  "parent_commit": "a81c00cdda2667dc6b094128ff47ec72d0c4d095",
+  "previous_audited_commit": "a81c00cdda2667dc6b094128ff47ec72d0c4d095",
+  "previous_audit": {
+    "audit_id": "wavea-20261027-fr",
+    "receipt": "i18n/receipts/wavea-20261027-fr.json",
+    "receipt_sha256": "581c91f2f9ca8be5e212b070156ab8f4a4dbdb2b966ca4b087832e99525f0d4c",
+    "verdict_summary": "0 blocker / 0 major; 1 minor (fr-wavea-1, sidebar) and 2 nits (fr-wavea-2 composer, fr-wavea-3 checkpoint clock)"
+  },
+  "scope": "ui.chat.header: the 5 wave-A keys. No fr value in this namespace changed in this commit; the block is re-read over the same bytes. The other 5 keys were regression-checked byte-identical to the bytes the round-1 audit read (per-key comparison of the committed blobs, audit.log §3).",
+  "status": "passed",
+  "result": "clean",
+  "key_count": 5,
+  "keys_read": 5,
+  "keys_freshly_audited": [],
+  "keys_reverified_unchanged": [
+    "ui.chat.header.archive_conversation",
+    "ui.chat.header.cancel_rename",
+    "ui.chat.header.rename_conversation",
+    "ui.chat.header.restore_conversation",
+    "ui.chat.header.saving_conversation_name"
+  ],
+  "keys_audited": [
+    "ui.chat.header.archive_conversation",
+    "ui.chat.header.cancel_rename",
+    "ui.chat.header.rename_conversation",
+    "ui.chat.header.restore_conversation",
+    "ui.chat.header.saving_conversation_name"
+  ],
+  "translator": {
+    "agent": "the wave-A translation agent (coder role) that authored a81c00cdda and applied the amendments in 80ee119bbd",
+    "session": "not recorded in the commit (one shared git identity); independence is by agent instance, not by name",
+    "note": "This auditor wrote no catalogue bytes and edited no file; the values were judged only by reading them, their sidecars and their call sites."
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "6c78c3706206",
+    "instance": "6c78c3706206",
+    "model": "radient/auto",
+    "actual_model_source": "harness session context: `Model: radient/auto` (auto-routing alias). No concrete served provider/model id is exposed to this subagent session, and no fallback/switch/failure was reported or observed.",
+    "independent_from_translator_session": true,
+    "independent_from_round1_auditor": true,
+    "round1_auditor_instance": "5ea28832c601",
+    "team": "lopdev",
+    "date": "2026-10-27"
+  },
+  "model_note": "The harness reports this session's model route as `radient/auto` (an auto-routing alias); it exposes no concrete served provider/model id to a subagent session. No provider fallback, switch or failure was reported or observed during the run. Recorded as the route, not guessed into a vendor id.",
+  "independence": "Independent: this audit run (agent i18n-auditor, session 6c78c3706206) did not translate these values and wrote no catalogue bytes; it edited nothing in the repository. The translator was a different agent instance (the wave-A coder that authored a81c00cdda and applied the amendments in 80ee119bbd; the shared git identity does not record its session id). Judgement is by reading the English source, the context sidecars, the call sites and the fr catalogue; no translation API, SDK or MT service was used, and no back-translation service was consulted. This instance is also distinct from the round-1 auditor (5ea28832c601), so the regression read is not self-audit.",
+  "files": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.chat.header.json",
+      "sha256": "e759664b305988c9eca049a767384ecb9473ad673a41d01c15e65d2e1e257a4d",
+      "parent_sha256": "e759664b305988c9eca049a767384ecb9473ad673a41d01c15e65d2e1e257a4d",
+      "changed_in_this_commit": false
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.chat.header.context.json",
+      "sha256": "3ccb43d7d8c9bd9c1912656c2781037bdc70868f6ff3614be3f8d083c2644908",
+      "parent_sha256": "3ccb43d7d8c9bd9c1912656c2781037bdc70868f6ff3614be3f8d083c2644908",
+      "changed_in_this_commit": false
+    },
+    "target": {
+      "path": "src/i18n/catalogues/fr/ui.chat.header.json",
+      "sha256": "3b1041972c46660b5f3e5bf2259dd4c5a1a48538b6c991f2581af213316c9175",
+      "parent_sha256": "3b1041972c46660b5f3e5bf2259dd4c5a1a48538b6c991f2581af213316c9175",
+      "changed_in_this_commit": false
+    }
+  },
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.chat.header.json",
+      "sha256": "e759664b305988c9eca049a767384ecb9473ad673a41d01c15e65d2e1e257a4d"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.chat.header.context.json",
+      "sha256": "3ccb43d7d8c9bd9c1912656c2781037bdc70868f6ff3614be3f8d083c2644908"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/fr/ui.chat.header.json",
+      "sha256": "3b1041972c46660b5f3e5bf2259dd4c5a1a48538b6c991f2581af213316c9175"
+    }
+  },
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "revision": "dadf192382f",
+      "last_content_commit": "e433b2c54af",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/fr.md",
+      "revision": "dadf192382f",
+      "last_content_commit": "e433b2c54af",
+      "sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+    },
+    "contract": {
+      "path": "docs/I18N.md",
+      "ref": "80ee119bbd1084ee873994a1f39db0c085c62083",
+      "sha256": "6fc7bea71643c0dcaeaed697ecd792cfdfeb11b7816b5f8d160011e7c7df2abe"
+    },
+    "manifest": {
+      "path": "/Users/damian/.local-operator/sessions/6c78c3706206/scratchpad/wave-a-delta-fr/audited-keys.json",
+      "tracked": false,
+      "note": "The 38 audited keys, taken from the round-1 receipt's namespace blocks. Reproduced in this record as keys_audited."
+    }
+  },
+  "findings": [],
+  "validation": {
+    "icu_errors": [],
+    "placeholder_parity": "5/5 keys carry an identical argument name/type map to English (parsed with @formatjs/icu-messageformat-parser); 0 render errors through `new IntlMessageFormat(msg, \"fr\")`, the product's own formatter.",
+    "number_rendering": "Not exercised by these keys (no {x, number} in the audited set); the fr formatter's grouping is covered by the namespace files' own messages, unchanged here.",
+    "nfc": true,
+    "bidi_controls": 0,
+    "ascii_apostrophes": 0,
+    "typography_checked": "All five changed values are plain prose with no ':' ';' '!' '?' and no guillemets, so the U+202F rules do not apply to them; checked NFC, no ASCII apostrophe, no C0/C1 or bidi controls, no double or edge whitespace. The unchanged values keep the round-1 typography verdict, and their bytes are identical.",
+    "key_parity": "5/5 wave-A keys present in fr; the delta added and dropped no key in this namespace (parsed key-set comparison, audit.log §2; locale-parity test passes for fr).",
+    "width": {
+      "changed": {},
+      "call_site": "All five keys are accessible names and tooltips on header controls; the namespace's fr bytes are unchanged in this commit, so this block is a re-read of the audited bytes, not a new judgement of new wording.",
+      "note": "The sidecar's `length` fields are descriptions of the English, not maxCells/maxChars budgets, and none of these keys carries a numeric hint. Every changed value is an aria-label / tooltip, never painted text, so the only measured quantity worth recording is relative growth."
+    },
+    "ledger_rows": "The repository's writer (ledger-assemble.mjs) accepts this receipt and derives fr/ui.chat.header: status audited, result clean, counts {'blocker': 0, 'major': 0, 'minor': 0, 'nit': 0}. With the four fr rows so derived, ledger-check drops from 84 findings to 72 and reports none for fr (every other locale the wave touched is still stale - not this audit's scope). See ledger-assemble.log.",
+    "adversarial_names": "Not applicable: no audited key in this namespace takes a {name}/{title} argument.",
+    "rendered_fit": "Not executed: every value audited here is an accessible name or tooltip on a control whose visible content is an icon or a message row. No rendered frame, geometry or activation claim is made.",
+    "plural_select_messages": "None of the 5 keys carries a plural or select message."
+  },
+  "delta": {
+    "changed_keys": [],
+    "regression": "38 audited keys overall: 33 byte-identical, 5 changed - exactly the five the task named (audit.log §3, regression verdict PASS).",
+    "identical_ok_change": "Not applicable to this namespace.",
+    "english_basis": "The en catalogue and its context sidecar are byte-identical at a81 and 80ee for all four namespaces, so the English the round-1 audit read is still the English these values answer."
+  },
+  "deriveReceiptAudit": {
+    "module_ref": "80ee119bbd1084ee873994a1f39db0c085c62083",
+    "module_path": "scripts/i18n/ledger-rules.mjs",
+    "module_sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6",
+    "execution": "Exported tree of 80ee119bbd; `import * as rules from './scripts/i18n/ledger-rules.mjs'`; `deriveReceiptAudit(receiptBytes, {locale, namespace, sourceHash, targetHash})` called with the SHA-256 of the committed English and fr blobs; `compareReceiptAudit` and `validateAuditSet` run over the auditor entry each row would carry. No ledger write. See audit.log §11.",
+    "derived": {
+      "agent": "i18n-auditor",
+      "instance": "6c78c3706206",
+      "model": "radient/auto",
+      "result": "clean",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "source_sha256": "e759664b305988c9eca049a767384ecb9473ad673a41d01c15e65d2e1e257a4d",
+      "target_sha256": "3b1041972c46660b5f3e5bf2259dd4c5a1a48538b6c991f2581af213316c9175",
+      "receipt_sha256": "007ca7fd244fdff6c0d8939f750a1b514e61aac0037514d11a22bddceae46793"
+    }
+  },
+  "current_report_verdict": {
+    "status": "passed",
+    "result": "clean",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [],
+    "counts": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 0,
+      "nit": 0
+    }
+  },
+  "artifacts": [
+    {
+      "path": "i18n/audits/evidence/fr/ui.chat.header/wavea-r2-20261027-fr/record.json",
+      "sha256": null,
+      "note": "this file - a record cannot hash itself inside itself"
+    },
+    {
+      "path": "i18n/audits/evidence/fr/ui.chat.header/wavea-r2-20261027-fr/audit.log",
+      "sha256": "d1d3cd474863d095f13f4437193266e6cd57c7000ff61bfe6a959eae62118457",
+      "note": "verbatim captured stdout/stderr of every command run, with exit codes; identical bytes in all four bundles"
+    },
+    {
+      "path": "i18n/receipts/6c78c3706206.json",
+      "sha256": "007ca7fd244fdff6c0d8939f750a1b514e61aac0037514d11a22bddceae46793",
+      "note": "the namespace-scoped receipt these four blocks come from"
+    },
+    {
+      "path": "i18n/audits/evidence/fr/ui.chat.header/wavea-r2-20261027-fr/ledger-assemble.log",
+      "sha256": "da5fdf08803f7141f4d3e34b7c16924ef42b980e3fc595d19d98dcb2e9a472de",
+      "note": "companion execution log: the four fr rows the repository's own writer derives from this receipt (ledger-assemble.mjs) and the gate result with them in place. Identical bytes in all four bundles."
+    },
+    {
+      "path": "i18n/audits/evidence/fr/ui.chat.header/wavea-r2-20261027-fr/ledger-rows-suggested.json",
+      "sha256": "79a87afaa681d9338584741dc0cd5bf20e865ebe6a3bb3318f307abbd5fcd927",
+      "note": "companion deliverable: the four derived rows, for the implementer to apply; not applied by the auditor."
+    }
+  ],
+  "audit_notes_not_execution_log": "Prose in this receipt (scope, judgement, limitations, suggested wording) is audit reasoning, not command output. Every command claim above corresponds to a verbatim line in the companion audit.log, which carries the real stdout/stderr and exit codes; every hash comes from the committed blobs at 80ee119bbd, re-derived with `git show` and cross-checked against the exported tree.",
+  "limitations": [
+    "Catalogue and call-site evidence only; no compiled or rendered proof.",
+    "ui.chat.header is re-read rather than re-derived: its bytes are unchanged, and the schema offers no carried-forward block, so this receipt records a full 5-key pass instead of referencing round 1.",
+    "fr-wavea-3 (checkpoint clock shape) and fr-wavea-r2-i6 (unescaped selector interpolation) are code-level and cannot be fixed from a catalogue; both are recorded with their evidence rather than resolved.",
+    "ledger-check is red at this head for every locale the wave touched; the rows are the implementer's to rebind, with this receipt as their evidence."
+  ]
+}

@@ -1,0 +1,142 @@
+{
+	"audit_id": "consented-owner-audit-b-20261030-es",
+	"date": "2026-10-30",
+	"locale": "es",
+	"namespace": "ui.teamBridge",
+	"branch": "fix/team-bridge-member-events",
+	"worktree": "~/local-operator-ui/.worktrees/member-events",
+	"head": "9d19fc6d58e9cfe78577316e505a0799b87e5550",
+	"merge_state": "Commit 9d19fc6d58e9cfe78577316e505a0799b87e5550 (branch fix/team-bridge-member-events) adds this key to en and the seven target catalogues, its en sidecar entry and the generated keys.gen.ts. At audit time the working tree matched that commit exactly (git status showed no modification to any catalogue, ledger or receipt), so the bytes audited here are the committed bytes. This run wrote only receipts, its evidence records and the ledger rows, and those rows only through scripts/i18n/ledger-assemble.mjs.",
+	"key": "ui.teamBridge.events.consented_owner",
+	"translator": {
+		"agent": "translator",
+		"model": "radient/auto (as the assignment states; the translation session did not name its own served model)",
+		"session": "unstated",
+		"date": "2026-10-30 (shipped in commit 9d19fc6d58e9cfe78577316e505a0799b87e5550)",
+		"method": "LLM reasoning in a translation session; no MT service or translation API is involved",
+		"independence": "A different agent from the auditor, in a different session."
+	},
+	"auditors": [
+		{
+			"agent": "translation-auditor",
+			"model": "radient/auto",
+			"actual_model_note": "The run started on anthropic/claude-opus-5-5 and was switched to radient/auto by provider quota before this audit began; the receipt and this record name the model that actually executed.",
+			"date": "2026-10-30",
+			"session": "8cf6d0aaac7b",
+			"result": "changes_requested",
+			"instance": "consented-owner-b-58aa5428-es",
+			"findings": {
+				"blocker": 0,
+				"major": 1,
+				"minor": 2,
+				"nit": 0
+			},
+			"receipt": "i18n/receipts/consented-owner-b-58aa5428-es.json",
+			"scope": "Auditor B on the one key this branch adds to ui.teamBridge (ui.teamBridge.events.consented_owner) and its en sidecar entry, in es; the other 297 keys of the namespace are byte-identical to the base (verified: the commit adds one key per file and changes no other value) and are not re-audited here.",
+			"receipt_sha256": "4bbf86d0d527b6d66401cfba75377a4522819bd81924d18b7790c2724e6eaa86",
+			"immutable_receipt_notes": [
+				"CO-B4 cites the sentence span as team-bridge-member-events.tsx:144-151; the span opens at line 144 and its className (\"min-w-0 truncate\") is at line 150, i.e. 144-151. The class and file are right and no claim depends on the offset.",
+				"checks.placeholders says \"no ICU plural/select/number/date/tag nodes in any of the eight values\"; it means the eight VALUES of this key. The catalogues themselves do carry plural messages for other keys (ui.teamBridge.events.others, for one)."
+			]
+		}
+	],
+	"auditor_independence": "Auditor B is independent of the translator and did not author any audited string. The sibling key ui.teamBridge.events.consented and ui.teamBridge.events.owner_added_agent were read as shipped precedent, not as authority.",
+	"inputs": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md (core repo)",
+			"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/es.md (core repo)",
+			"sha256": "77b9227213802d14c74d4298d6b346ad842bbf2a5ca3b9d46fc6144430d26c3e"
+		},
+		"english_catalogue": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "4042a918bc64406c4c24ad5ea68fe3c3f3aaa7228917bc1678547cfb0c20285c"
+		},
+		"english_context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "330cadb0105c140d475e02dc6cd0aa74bdc1d02028bbf9ac54671453ffdc44b1"
+		},
+		"target_catalogue": {
+			"path": "src/i18n/catalogues/es/ui.teamBridge.json",
+			"sha256": "58aa54285bb97b36d652cfb617c7911915b3d9d07b36867692a659002fa70382"
+		}
+	},
+	"english": {
+		"value": "{actor} approved their agent {targets} joining",
+		"context_role": "timeline system line: an agent's owner approving that agent's joining",
+		"context_tone": "neutral, past tense, lowercase sentence-case like the sibling lines",
+		"context_note": "\"their\" refers to the actor's own agent. The target label already carries the owner in parentheses; that is server data and must never be moved into the sentence. {targets} is a list joined by Intl.ListFormat(conjunction), always exactly one name for this key.",
+		"placeholders": [
+			"actor",
+			"targets"
+		],
+		"renders": {
+			"english_one_target": "Sana Ketabchi approved their agent Aida (Sana Ketabchi) joining"
+		}
+	},
+	"audited": {
+		"key": "ui.teamBridge.events.consented_owner",
+		"translation": {
+			"value": "{actor} autorizó la entrada de su agente {targets}"
+		},
+		"renders": {
+			"one_target": "Sana Ketabchi autorizó la entrada de su agente Aida (Sana Ketabchi)",
+			"two_targets_rollup": "Sana Ketabchi autorizó la entrada de su agente Aida (Sana Ketabchi) y Scout (Sana Ketabchi)",
+			"sibling_one_target": "Sana Ketabchi autorizó la entrada de Aida (Sana Ketabchi)",
+			"owner_added_agent_one_target": "Sana Ketabchi añadió a su agente: Aida (Sana Ketabchi)",
+			"english_one_target": "Sana Ketabchi approved their agent Aida (Sana Ketabchi) joining"
+		},
+		"checks": {
+			"placeholders": "{actor} x1 and {targets} x1, the same argument sequence as English; no ICU plural/select/number/date/tag nodes in any of the eight values, so no CLDR category set is due for this key. Rendered through the repo's intl-messageformat 12.1.3 with the call shape in src/i18n/messages.ts:150 — both arguments substituted, no brace left in the output.",
+			"unicode": "value === value.normalize(\"NFC\"); no bidi control characters (U+200E/200F/202A-202E/2066-2069/U+061C) — the ur guide forbids inserting them because the render layer isolates; no ZWJ/ZWNJ; no NBSP or narrow NBSP; no leading, trailing or doubled spaces.",
+			"who_consented": "{actor} is the grammatical subject (or, for ru, the colon topic that supplies the impersonal verb's agent) in this locale, and the target appears as the object or after a dash, so a reader learns who consented and who joined.",
+			"sibling_elsewhere": "ui.teamBridge.events.consented keeps its wording and still claims no relation (Sana Ketabchi autorizó la entrada de Aida (Sana Ketabchi)); the new line adds the possessive and nothing else — no negation, no \"someone else\" — so the non-owner arm keeps its \"elsewhere\" meaning instead of being narrowed by the new key.",
+			"self_approval": "« su agente » cannot be read as the agent's own: the possessive attaches to the subject {actor}, and the target follows it; a self-approval reading would need « agente » to be the subject of « autorizó ».",
+			"register": "Third-person preterite, same construction as the sibling (« autorizó la entrada de {targets} »); « su » is the third-person possessive. No tú/usted address form appears, so the locale's register is untouched. Sentence case, no !.",
+			"terminology": "agent = « agente » (glossary §2). « su agente » matches ui.teamBridge.events.owner_added_agent (« añadió a su agente: {targets} »): same English term, same local phrase.",
+			"length": "67 cells at one target with the shipped fixture labels, against English's 63 and the namespace's previous maximum of 61 (ui.teamBridge.events.declined).",
+			"method": "Read the English value, the en sidecar entry in full, this locale's glossary row and style guide, the two shipped precedent keys in this namespace, and the renderer path (team-bridge-member-events.tsx:60-112 and team-bridge-member-events-model.ts:122-197); then executed the real path (esbuild bundle of the model + sentence renderer, real catalogues, setLocale per locale) at one target, at two rolled-up targets, and with an agent actor, and rendered every value with intl-messageformat at one target."
+		}
+	},
+	"findings": [
+		{
+			"severity": "major",
+			"id": "CO-B1",
+			"key": "ui.teamBridge.events.consented_owner",
+			"current": "{actor} autorizó la entrada de su agente {targets}",
+			"proposed": "(this locale's string unchanged) — pin the renderer: teamBridgeEventOwnerConsent returns true only when line.targets.length === 1, so a rolled-up consent keeps ui.teamBridge.events.consented, which reads correctly with a list here",
+			"detail": "A consent roll-up (two records sharing one request_id — the grouping key team-bridge-member-events-model.ts:144-156 groups on) produces one line with two targets, and the owner arm renders the possessive singular over the pair: « Sana Ketabchi autorizó la entrada de su agente Aida (Sana Ketabchi) y Scout (Sana Ketabchi) » — singular « su agente » with a coordinated pair. English has the same defect (\"their agent A and B\"), so this is not a translation error: the sentence's grammatical number depends on a cardinality nothing enforces, and the en sidecar's \"always exactly one name for this key\" is that unenforced assumption. « sus agentes A y B » is the plural form, but it cannot be selected from a pre-joined string; the cardinality guard is the fix. Reachability: the UI merges these events itself; whether the hub emits two consent records under one request_id is unverified (the server is not deployed and no corpus is readable here)."
+		},
+		{
+			"severity": "minor",
+			"id": "CO-B2",
+			"key": "teamBridgeEventOwnerConsent (src/renderer/src/features/team-bridge/team-bridge-member-events-model.ts:191)",
+			"current": "return line.targets.every((target) => target.kind === \"agent\" && target.account_id === line.actor.account_id);",
+			"proposed": "if (line.actor.kind !== \"human\") return false;  /* before the every() test; the cardinality guard is CO-B1 */",
+			"detail": "The predicate compares account ids but never the actor's kind. An agent party carries its OWNER's account_id (the contract's own statement, restated in the model's docstring), so a consent whose actor is an agent on the same account takes the owner arm and the sentence claims a relation an agent cannot have. Executed: actor = agent \"Aida (Sana Ketabchi)\", target = agent \"Scout (Sana Ketabchi)\" renders Aida (Sana Ketabchi) autorizó la entrada de su agente Scout (Sana Ketabchi) — for this locale the self-approval reading the audit was asked about becomes possible only through this hole, never through the wording. Minor: no readable corpus proves the hub records an agent as the consenting actor; the guard costs one line and makes the predicate match its own docstring (\"the actor owns the target\")."
+		},
+		{
+			"severity": "minor",
+			"id": "CO-B3",
+			"key": "ui.teamBridge.events.consented (en sidecar entry, unchanged by this branch)",
+			"current": "role: \"timeline system line: an agent's owner approved the agent joining\"; note: \"The owner gave consent for their agent to join this conversation. Reads 'X approved Y joining'.\"",
+			"proposed": "role: \"timeline system line: a consent the owner arm does not claim (the actor is not the sole owner of every target)\"; note: \"Reads 'X approved Y joining'. Claims no relation between actor and target (design round 1, D1); the owner's own act reads through ui.teamBridge.events.consented_owner.\"",
+			"detail": "The sibling now renders whenever the owner arm's predicate is false — the non-owner case, a mixed group, and (once CO-B1 is fixed) any multi-target group — so its sidecar still tells the next translator the key is the owner's line and invites a possessive into the arm that is designed to claim no relation. This locale's sibling value (Sana Ketabchi autorizó la entrada de Aida (Sana Ketabchi)) already claims none; only the English context is stale."
+		},
+		{
+			"severity": "info",
+			"id": "CO-B4",
+			"key": "ui.teamBridge.events.consented_owner",
+			"current": "{actor} autorizó la entrada de su agente {targets}",
+			"detail": "Length is not a concern in this locale: 67 cells against the namespace's previous maximum of 61 (ui.teamBridge.events.declined) and English's 63. No rendered check is requested on width grounds."
+		}
+	],
+	"verdict": {
+		"result": "changes_requested",
+		"status": "changes_requested",
+		"note": "One MAJOR: the singular possessive over a rolled-up list (CO-B1). The locale's own string is a faithful, idiomatic rendering of the English and would need no change once the renderer pins the cardinality; the row cannot read audited while the major stands."
+	},
+	"scratch": "Probe scripts and their output lived in the auditing session's scratchpad; this record carries the computed facts and the samples they produced."
+}

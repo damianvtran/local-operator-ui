@@ -1,0 +1,157 @@
+{
+  "schema": 1,
+  "auditor": "i18n-auditor (independent lopdev task 'UI #1604 i18n audit round 3', session f1566d61a664)",
+  "model": "anthropic/claude-opus-5-5",
+  "model_provenance": "Whole audit (source reads, semantic review, structural probe, receipt writing, gate runs) ran on this session's announced model anthropic/claude-opus-5-5. No fallback or model switch was observed during this session.",
+  "instance": "f1566d61a664-fr",
+  "audit_session": "f1566d61a664",
+  "locale": "fr",
+  "namespace": "ui.mesh",
+  "date": "2026-11-02",
+  "scope": "Translation delta round 3 of e0f8b4d7fc2..17eef656160 (PR #1604 'preserve credential outcomes and clarify approval decisions'): all 17 changed ui.mesh values in this locale (15 added keys, 2 changed: head_inheritance, file_key_disclosure) read in final bytes against the new English and its context notes, plus the renderer call sites. Neighbouring approval-card consent lines re-read for term consistency only. Unchanged values retain their earlier audits.",
+  "audited_head": "17eef6561605266d3b03eca395de2e54e9b83d9f",
+  "delta_base": "e0f8b4d7fc2a28d543d7066ee6a8d09c2c626a04",
+  "status": "passed",
+  "sha256": {
+    "en": "7acc3ea2a00d63aa3b68aadf7e42007e19d3de9e4cef9b72beafdbe73e351359",
+    "fr": "527832b560bdc4a8a816eb2189e510263ba7de3c189929f891228829619baa99"
+  },
+  "base_sha256": {
+    "en": "edf18f0d32404972428c4bfcc107f835d170df6e2f6c800d10681d1a1e6e4fd1",
+    "fr": "1420691a03f466060e2f3d003777214ffc4e97b9880b3ebe769a376a86d0ef1f"
+  },
+  "findings": [
+    {
+      "id": "R3-X-01",
+      "severity": "NIT",
+      "key": "ui.mesh.approval.result_status",
+      "value": "Partagés: {shared, number, ::group-off}. À traiter: {attention, number, ::group-off}.",
+      "issue": "No U+202F before either ':' (fr style guide: espace fine insécable required before : ; ! ?). Siblings shared_count and needs_attention in this same delta carry U+202F. Screen-reader-only live region, so no visual effect; meaning unaffected.",
+      "suggested": "Partagés : {shared, number, ::group-off}. À traiter : {attention, number, ::group-off}."
+    },
+    {
+      "id": "R3-X-02",
+      "severity": "NIT",
+      "key": "ui.mesh.approval.named_refusal",
+      "value": "Pour « {request} » : {reason}",
+      "issue": "Inside « » it uses U+00A0, not U+202F as the fr guide records (108 fr catalogue values use « ; this is the only « ). Meaning unaffected.",
+      "suggested": "Pour « {request} » : {reason}"
+    }
+  ],
+  "observations": [],
+  "changed_keys": [
+    "ui.mesh.approval.head_inheritance",
+    "ui.mesh.approval.file_key_disclosure",
+    "ui.mesh.approval.technical_request",
+    "ui.mesh.approval.needs_attention",
+    "ui.mesh.approval.shared_count",
+    "ui.mesh.approval.shared",
+    "ui.mesh.approval.result_status",
+    "ui.mesh.approval.duration_under_minute",
+    "ui.mesh.approval.duration_minutes",
+    "ui.mesh.approval.duration_hours",
+    "ui.mesh.approval.answer_window",
+    "ui.mesh.approval.file_key_recorded",
+    "ui.mesh.approval.cancel_sharing",
+    "ui.mesh.approval.cancel_hint",
+    "ui.mesh.approval.signing_applying",
+    "ui.mesh.approval.retry_hint",
+    "ui.mesh.approval.named_refusal"
+  ],
+  "verbatim_values": {
+    "ui.mesh.approval.head_inheritance": "Autoriser {device} à utiliser votre compte {provider} ({account})",
+    "ui.mesh.approval.file_key_disclosure": "La signature ici utilise un fichier de clé, pas Touch ID : elle ne peut pas prouver qu’une personne a approuvé la demande.",
+    "ui.mesh.approval.technical_request": "Demande signée exacte (technique)",
+    "ui.mesh.approval.needs_attention": "À traiter : {count, number, ::group-off}",
+    "ui.mesh.approval.shared_count": "Partagés : {count, number, ::group-off}",
+    "ui.mesh.approval.shared": "Partagé",
+    "ui.mesh.approval.result_status": "Partagés: {shared, number, ::group-off}. À traiter: {attention, number, ::group-off}.",
+    "ui.mesh.approval.duration_under_minute": "moins d’une minute",
+    "ui.mesh.approval.duration_minutes": "{count, plural, one {{count, number, ::group-off} minute} many {{count, number, ::group-off} minutes} other {{count, number, ::group-off} minutes}}",
+    "ui.mesh.approval.duration_hours": "{count, plural, one {{count, number, ::group-off} heure} many {{count, number, ::group-off} heures} other {{count, number, ::group-off} heures}}",
+    "ui.mesh.approval.answer_window": "Répondre sous {duration}",
+    "ui.mesh.approval.file_key_recorded": "Cette approbation a été signée avec un fichier de clé, pas avec Touch ID. Elle ne peut pas prouver qu’une personne l’a approuvée.",
+    "ui.mesh.approval.cancel_sharing": "Annuler le partage",
+    "ui.mesh.approval.cancel_hint": "Annuler le partage arrête cette demande, sans retirer les accès déjà partagés.",
+    "ui.mesh.approval.signing_applying": "Signature et application…",
+    "ui.mesh.approval.retry_hint": "Choisissez Réessayer pour appliquer cette demande approuvée.",
+    "ui.mesh.approval.named_refusal": "Pour « {request} » : {reason}"
+  },
+  "base_values": {
+    "ui.mesh.approval.head_inheritance": "Autoriser {device} à utiliser votre compte {provider} {account}",
+    "ui.mesh.approval.file_key_disclosure": "Cette machine signe avec un fichier de clé, pas avec Touch ID : cette approbation ne peut donc pas prouver qu’une personne l’a donnée."
+  },
+  "english_values": {
+    "ui.mesh.approval.head_inheritance": "Let {device} use your {provider} account ({account})",
+    "ui.mesh.approval.file_key_disclosure": "Signing here uses a key file, not Touch ID, so it cannot prove a person approved the request.",
+    "ui.mesh.approval.technical_request": "Exact signed request (technical)",
+    "ui.mesh.approval.needs_attention": "Needs attention: {count, number, ::group-off}",
+    "ui.mesh.approval.shared_count": "Shared: {count, number, ::group-off}",
+    "ui.mesh.approval.shared": "Shared",
+    "ui.mesh.approval.result_status": "Shared: {shared, number, ::group-off}. Needs attention: {attention, number, ::group-off}.",
+    "ui.mesh.approval.duration_under_minute": "less than a minute",
+    "ui.mesh.approval.duration_minutes": "{count, plural, one {{count, number, ::group-off} minute} other {{count, number, ::group-off} minutes}}",
+    "ui.mesh.approval.duration_hours": "{count, plural, one {{count, number, ::group-off} hour} other {{count, number, ::group-off} hours}}",
+    "ui.mesh.approval.answer_window": "Answer within {duration}",
+    "ui.mesh.approval.file_key_recorded": "This approval was signed with a key file, not Touch ID. It cannot prove a person approved it.",
+    "ui.mesh.approval.cancel_sharing": "Cancel sharing",
+    "ui.mesh.approval.cancel_hint": "Cancel sharing stops this request. It does not withdraw access already shared.",
+    "ui.mesh.approval.signing_applying": "Signing and applying…",
+    "ui.mesh.approval.retry_hint": "Choose Try again to apply this approved request.",
+    "ui.mesh.approval.named_refusal": "For “{request}”: {reason}"
+  },
+  "context_sidecar": {
+    "path": "src/i18n/catalogues/en/ui.mesh.context.json",
+    "sha256": "469d7b985ed12cf1c72f6c5f59eea6783cd2861ba8fb96ca7cd99e4089fcb6cf",
+    "read": "Notes for all 15 added keys and the two changed notes (head_inheritance: account id set off in parentheses; file_key_disclosure: unsigned waiting/refused records, no claim the request was signed) read in full."
+  },
+  "call_sites_read": [
+    "src/renderer/src/features/mesh/mesh-approvals.ts approvalAnswerWindowLabel (duration_* composed only into answer_window)",
+    "src/renderer/src/features/mesh/mesh-approvals-tray.tsx result_status (sr-only polite live region), needs_attention, shared_count, shared, file_key_recorded vs file_key_disclosure (signed ? recorded : disclosure), retry_hint, cancel_hint (signed && canDeny), cancel_sharing vs mesh_approvals_tray.deny, signing_applying, technical_request"
+  ],
+  "standards": {
+    "root": "~/local-operator/i18n at origin/main 7a641391b97 (read with git show origin/main:)",
+    "sha256": {
+      "glossary.md": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "style-guides/fr.md": "5315e1ac10c2ce57aac631ba653d08de680ee70c9a022ed3a8345ce2f9902ee7"
+    }
+  },
+  "translator": {
+    "agent": "coder",
+    "jobs": [
+      "07291411b980",
+      "c61a64298a45",
+      "21ddee198f0b",
+      "d82369d8e233",
+      "c3976a04742d"
+    ],
+    "remediation_commit": "17eef6561605266d3b03eca395de2e54e9b83d9f",
+    "attribution": "Translator/coder runs named by the manager; their served model is not verified by this auditor."
+  },
+  "independence": "This session (f1566d61a664) authored no catalogue value and edited no translation. It is distinct from the translator/coder runs 07291411b980, c61a64298a45, 21ddee198f0b, d82369d8e233, c3976a04742d and from earlier auditors 0a40e337218a, 38d28c8fb9bf, 4cb156711482, e4d4705aa898, ce58dae953f0, 3b60dc9f25d1, f89f59f896f1. The verdict comes from reading final bytes here.",
+  "semantic_checks": [
+    "head_inheritance: Only change is parenthesising {account}, matching English and the updated context note; device/account placeholders preserved; 'use, not copy' meaning unchanged.",
+    "file_key_disclosure: Present/habitual signing with a key file, not Touch ID, hence no proof a person approved the request; makes no claim the waiting/refused request was already signed (context).",
+    "file_key_recorded: Past tense: this approval WAS signed with a key file, not Touch ID; cannot prove a person approved it. Tense distinction from file_key_disclosure kept.",
+    "technical_request: Label for the collapsed technical disclosure of the exact signed request; 'technical' qualifier kept.",
+    "needs_attention / shared_count / shared / result_status: Counts name credential shares and items needing attention, not device connections; both numeric placeholders preserved with ::group-off; result_status uses the same terms as the visible labels.",
+    "duration_* / answer_window: Bare request-answer durations with locale plural categories (case inflected where the only consumer, answer_window, governs it); answer_window states a deadline to answer THIS request, never how long access lasts.",
+    "cancel_sharing / cancel_hint: Cancel stops this pending request and explicitly does NOT withdraw/revoke access already shared; not rendered as deny or revoke.",
+    "signing_applying: Neutral progress for sign-and-apply; no Touch ID prompt promised.",
+    "retry_hint: Names the Try again button with the same words as ui.mesh.approval.try_again and says it applies this already-approved request.",
+    "named_refusal: Attributes the verbatim backend reason to the named request; {request} and {reason} preserved.",
+    "Security-consent equivalence: no changed value reverses, omits or widens a consent consequence; share scope, answer-window-vs-share-lifetime and cancel-vs-deny/revoke semantics match English exactly in this locale."
+  ],
+  "evidence": {
+    "probe": "i18n/receipts/f1566d61a664-structural-probe.mjs.txt",
+    "probe_sha256": "1065625fa825e8719b169b25bd91e5312c7f0f6ddd06c4514bb25a6f6e57bd7e",
+    "log": "i18n/receipts/f1566d61a664-structural-probe-output.txt",
+    "log_sha256": "be08fac44d83aaed61ceed171489b1eb1e8d2f522c49f8d3d00c10d52e0e997f",
+    "verdict_location": "Status, findings and semantic_checks here are the auditor's review record. The companion log is the actual probe output: key-level base/head diff, ICU parse and argument parity with English, CLDR plural categories, NFC, bidi controls and punctuation signals."
+  },
+  "non_claims": [
+    "No rendered/compiled-native, width/fit, pseudo-localization, font shaping, RTL layout or visual validation (host memory hold).",
+    "No translation edits by this auditor; MINOR/NIT findings are left for the implementer to fix or answer."
+  ],
+  "notes": "Delta round 3 on PR #1604 head 17eef65: passed, 0 blocker/major; R3-X-01 NIT, R3-X-02 NIT."
+}

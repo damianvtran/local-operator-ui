@@ -33,6 +33,8 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Check, ChevronDown, Monitor } from "lucide-react";
 import {
@@ -44,7 +46,17 @@ import {
 	useState,
 } from "react";
 import { MoveConfirmDialog } from "../../mesh/mesh-actions";
-import type { MovePlan } from "../../mesh/mesh-drop";
+import {
+	type MovePlan,
+	type MoveQuestion,
+	type WorkingSetConsent,
+	reopenAsk,
+	workingSetConsent,
+} from "../../mesh/mesh-drop";
+import {
+	type MoveWorkingSetSeed,
+	workingSetReopen,
+} from "../../mesh/mesh-types";
 import {
 	type DevicePickerModel,
 	type DevicePlacement,
@@ -74,6 +86,63 @@ const EMPTY_PLAN: MovePlan = {
 	waitS: 0,
 	lost: null,
 };
+
+/**
+ * A catalogue message as prose plus its code spans: backticks become `<code>`.
+ *
+ * WHY IT EXISTS. `ui.chat.device.sentence.pairing_guidance` names two terminal
+ * commands, and its own context note asks for them verbatim inside backticks
+ * (`src/i18n/catalogues/en/ui.chat.device.context.json`). All seven catalogues
+ * carry the markers, so drawing `{guidance}` into a plain `<p>` printed the
+ * markers themselves - the picker's only instruction for a device in no network
+ * read as punctuation instead of as commands. `docs/branding.md` owns the rule
+ * that decides the treatment: "Monospace is machine voice", so a command is a
+ * mono run, and a mono run in the middle of a sentence is a `<code>` element.
+ *
+ * IT IS NOT A MARKDOWN RENDERER, deliberately. This is one catalogue sentence
+ * with two pairs of markers; pulling the chat's markdown pipeline in would let a
+ * catalogue value emit arbitrary markup, which is the class of bug
+ * `ledger-check` and the string scanner exist to keep out of the catalogues.
+ *
+ * `dir="ltr"` IS LOAD-BEARING IN `ur`. The commands are Latin and have to stay
+ * readable inside an RTL paragraph; the explicit direction is also what keeps a
+ * trailing neutral in the run from being resolved to the paragraph's direction,
+ * the bidi class this repo already fixes with an isolate elsewhere.
+ *
+ * AN UNCLOSED MARKER IS TEXT. `split` on one delimiter yields an even number of
+ * pieces only when the marker count is odd - one span opened and never closed -
+ * and that renders the message exactly as written rather than crashing or
+ * drawing half a span. A render path does not throw on a catalogue defect
+ * (`t()` does not either); the catalogue checks own that failure.
+ */
+export const messageRuns = (text: string): ReactNode[] => {
+	const parts = text.split("`");
+	if (parts.length % 2 === 0) return [text];
+	return parts.map((part, index) =>
+		index % 2 === 1 ? (
+			// biome-ignore lint/suspicious/noArrayIndexKey: a run's position in its own sentence is its identity; runs are derived per render from one string and never reordered in place.
+			<code key={index} dir="ltr" className="font-mono text-ink">
+				{part}
+			</code>
+		) : (
+			part
+		),
+	);
+};
+
+/**
+ * The pairing sentence, drawn where `DevicePicker` states it.
+ *
+ * A NAMED COMPONENT RATHER THAN AN INLINE `<p>`, so the suite renders the same
+ * paragraph the picker does: asserting `messageRuns` alone would stay green with
+ * a caller reverted to `{model.guidance}`, which is exactly the shape this fix
+ * closes.
+ */
+export const DeviceGuidance = ({ guidance }: { guidance: string }) => (
+	<p data-device-guidance="" className="px-2 py-1.5 text-meta text-ink-dim">
+		{messageRuns(guidance)}
+	</p>
+);
 
 /**
  * The reachability dot, drawn only where there is a reachability fact to state.
@@ -134,11 +203,11 @@ const ChipButton = forwardRef<
 			title={label}
 			className={cn(
 				/* `h-5` and `rounded-xs` are the identity controls' own contract: the block
-				 * clips at its line height, and a 28/32px control would move it. `pr-1`
+				 * clips at its line height, and a 28/32px control would move it. `pe-1`
 				 * rather than `px-1` because the zero-width carrier below takes one
 				 * `gap-1` slot at the leading edge - `0 + carrier + gap` equals the old
 				 * `px-1` inset in every state, dot present or not. */
-				"inline-flex h-5 max-w-full shrink-0 cursor-pointer items-center gap-1 rounded-xs pr-1",
+				"inline-flex h-5 max-w-full shrink-0 cursor-pointer items-center gap-1 rounded-xs pe-1",
 				"select-none whitespace-nowrap text-body-sm",
 				"text-ink-muted hover:bg-row-hover hover:text-ink",
 				className,
@@ -270,12 +339,12 @@ const PickerRow = ({
 				) : null}
 			</span>
 			{row.facts.length > 0 ? (
-				<span className="w-full pl-5.5 text-meta text-ink-dim">
+				<span className="w-full ps-5.5 text-meta text-ink-dim">
 					{row.facts.join(" · ")}
 				</span>
 			) : null}
 			{row.why ? (
-				<span className="w-full pl-5.5 text-meta text-warning">{row.why}</span>
+				<span className="w-full ps-5.5 text-meta text-warning">{row.why}</span>
 			) : null}
 		</DropdownMenuItem>
 	);
@@ -364,12 +433,7 @@ const DevicePicker = ({
 					 * ANSWERED read: see `model.readFailure` below, which is what an empty list
 					 * means when nobody answered.
 					 */
-					<p
-						data-device-guidance=""
-						className="px-2 py-1.5 text-meta text-ink-dim"
-					>
-						{model.guidance}
-					</p>
+					<DeviceGuidance guidance={model.guidance} />
 				) : null}
 			</div>
 			{model.footer ||
@@ -418,7 +482,7 @@ const DevicePicker = ({
 								}}
 								className="shrink-0 px-1 py-0 text-meta"
 							>
-								Check again
+								{t("ui.chat.device.check_again")}
 							</DropdownMenuItem>
 						) : null}
 					</div>
@@ -451,10 +515,20 @@ export const ChatHeaderDevice = ({
 	sessionId?: string;
 	/** A move this pane issued is in flight: the picker's own actions stand down. */
 	busy: boolean;
-	/** `keep` is the confirmation's own answer: false deletes the source copy. */
-	onPick: (deviceId: string | null, keep: boolean) => void;
+	/**
+	 * `keep` is the confirmation's own answer: false deletes the source copy.
+	 * `consent` is the working-set consent the same dialog produced (the scope
+	 * digest the user ticked for, or "without the working files"); absent when
+	 * there was nothing to confirm.
+	 */
+	onPick: (
+		deviceId: string | null,
+		keep: boolean,
+		consent?: WorkingSetConsent,
+	) => void;
 	onCheckAgain: () => void;
 }) => {
+	useI18nLocale();
 	/*
 	 * WHERE THE CONVERSATION IS NOW, for the recall's loss sentence. A pick on a
 	 * `gone` pane is a recall too - the copy the dialog names is the one on the peer
@@ -468,7 +542,47 @@ export const ChatHeaderDevice = ({
 		plan: MovePlan;
 		alternatives: MovePlan[];
 		risky: boolean;
+		/** The destination's display name, for the working-set review. */
+		destinationName?: string;
+		/** A consent refusal's fresh manifest, shown instead of a new preflight. */
+		seed?: MoveWorkingSetSeed | null;
+		/** The option to pre-select on a refusal reopen (the user's earlier pick). */
+		initialKeep?: boolean;
 	} | null>(null);
+	/*
+	 * The question the dialog last asked, kept past its close so a consent
+	 * refusal reopens the SAME question - Move/Copy pair and risk - as the Mesh
+	 * tab does (`reopenAsk`, UX round 1 U4).
+	 */
+	const askedRef = useRef<MoveQuestion | null>(null);
+	/*
+	 * A CONSENT REFUSAL REOPENS THE DIALOG (design move-working-set §11.4). When the
+	 * route refuses `working_set_changed` (the list moved after the tick) or
+	 * `working_set_unconfirmed` (the move reached it without a reviewed list), the
+	 * refusal carries the FRESH manifest; the honest next step is to show that list
+	 * and ask again, un-ticked, not to leave a notice the user has to decode. The
+	 * pane's refusal notice is dismissed because the dialog now says the same thing
+	 * with the remedy in hand. Keyed on the refusal OBJECT so one refusal reopens
+	 * the dialog once, and a cancel does not bring it back.
+	 */
+	const move = useChatDeviceStore((s) =>
+		sessionId ? s.moves[sessionId] : undefined,
+	);
+	const dismissMove = useChatDeviceStore((s) => s.dismissMove);
+	const reopenedRef = useRef<unknown>(null);
+	useEffect(() => {
+		if (!sessionId || move?.kind !== "refused" || !move.plan) return;
+		if (reopenedRef.current === move.refusal) return;
+		const seed = workingSetReopen(move.refusal);
+		if (!seed) return;
+		reopenedRef.current = move.refusal;
+		setAsk({
+			...reopenAsk(askedRef.current, move.plan, source !== null),
+			destinationName: move.name,
+			seed,
+		});
+		dismissMove(sessionId);
+	}, [move, sessionId, source, dismissMove]);
 	/*
 	 * THE HEADER MENU'S DOOR. The picker's open state is owned here, above the
 	 * `DevicePicker` Radix root, because the chip and the overflow item both open it:
@@ -526,6 +640,7 @@ export const ChatHeaderDevice = ({
 		});
 		setAsk({
 			...pair,
+			destinationName: row.name,
 			/*
 			 * RISK IS WHERE THE RUNTIME IS, and the dialog's own warning sentence is
 			 * written from that end: "it is open elsewhere right now" is true of a
@@ -560,10 +675,18 @@ export const ChatHeaderDevice = ({
 				alternatives={ask?.alternatives ?? []}
 				risky={ask?.risky ?? false}
 				busy={busy}
+				workingSetSeed={ask?.seed ?? null}
+				destinationName={ask?.destinationName}
+				initialKeep={ask?.initialKeep}
 				onCancel={() => setAsk(null)}
 				onChoose={(plan) => {
+					askedRef.current = ask;
 					setAsk(null);
-					onPick(plan.to === "local" ? null : plan.to, plan.keep);
+					onPick(
+						plan.to === "local" ? null : plan.to,
+						plan.keep,
+						workingSetConsent(plan),
+					);
 				}}
 			/>
 		</>

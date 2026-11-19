@@ -1,0 +1,18 @@
+{
+	"ui.chat.read_ack.clause.offscreen": "cuộn tới kết quả để đánh dấu cuộc trò chuyện này là đã đọc",
+	"ui.chat.read_ack.clause.pending": "đang đánh dấu đã đọc",
+	"ui.chat.read_ack.clause.remote": "nằm trên thiết bị khác và sẽ được xóa khi thiết bị đó cập nhật",
+	"ui.chat.read_ack.clause.remote_named": "nằm trên {device} và sẽ được xóa khi thiết bị đó cập nhật",
+	"ui.chat.read_ack.description.offscreen": "Cuộn tới kết quả để đánh dấu cuộc trò chuyện này là đã đọc.",
+	"ui.chat.read_ack.description.pending": "Đang đánh dấu cuộc trò chuyện này là đã đọc.",
+	"ui.chat.read_ack.description.remote": "Dấu chưa đọc nằm trên thiết bị khác. Dấu sẽ được xóa khi thiết bị đó cập nhật.",
+	"ui.chat.read_ack.description.remote_named": "Dấu chưa đọc nằm trên {device}. Dấu sẽ được xóa khi thiết bị đó cập nhật.",
+	"ui.chat.read_ack.description.unsettled": "Chưa đánh dấu là đã đọc. {remedy}",
+	"ui.chat.read_ack.refusal.busy": "Trạng thái đã đọc đang bận nên dấu chưa đọc chưa được xóa. {remedy}",
+	"ui.chat.read_ack.refusal.refused": "Không ghi được trạng thái đã đọc nên dấu chưa đọc chưa được xóa. {remedy}",
+	"ui.chat.read_ack.refusal.unreachable": "{reason} Dấu chưa đọc chưa được xóa. {remedy}",
+	"ui.chat.read_ack.refusal.unreported": "Dấu chưa đọc chưa được xóa. {remedy}",
+	"ui.chat.read_ack.retry_remedy": "nhấp vào cuộc trò chuyện để thử lại",
+	"ui.chat.read_ack.retry_remedy_sentence": "Nhấp vào cuộc trò chuyện để thử lại.",
+	"ui.chat.read_ack.unreachable_fallback": "Ứng dụng không kết nối được với backend."
+}

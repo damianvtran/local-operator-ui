@@ -1,0 +1,38 @@
+{
+	"auditor": "i18n-auditor",
+	"model": "deepseek/deepseek-flash",
+	"instance": "3227a8cf0a47",
+	"status": "passed",
+	"namespace": "ui.chat.canonical",
+	"sha256": {
+		"vi": "e829ddaba6a7b3c16dc8213bc836a6c91f4a853057f6a900fd06e90e1d2fed33",
+		"en": "0eb58c851335bcb90a14631b24b0ba330b5d0c80af80e9aa82a0970155dc7d45"
+	},
+	"findings": [
+		{
+			"severity": "MINOR",
+			"key": "ui.chat.canonical.image_gen.cancel.checking",
+			"note": "Term drift on EN 'settlement' inside one card: 'khoản phí' here vs 'quyết toán' in ui.chat.canonical.image_gen.settlement.pending (the adjacent note the same fact lands in), and 'Đang xác nhận khoản phí.' additionally asserts a charge exists where EN only states the settlement check is under way. Proposed: 'Đang kiểm tra quyết toán.' — or unify on the charge vocabulary in settlement.pending instead; one term either way, not two. Rendering join verified (running + ' ' + checking)."
+		},
+		{
+			"severity": "NIT",
+			"key": "ui.chat.canonical.temporary_deleted.detail",
+			"note": "Sentence-initial 'Nó' is the odd one out beside the sibling variant of the same notice (transcript.missing_session_detail opens with 'Cuộc trò chuyện'). Both forms have locale precedent and the variants never paint together — preference only, may be declined. 'không hoạt động' for 'went quiet' is correct."
+		},
+		{
+			"severity": "NIT",
+			"key": "ui.chat.canonical.temporary_deleted.back",
+			"note": "Width only, no change required: 29 chars vs EN 13 (+123%). Actions render in flex flex-wrap with no truncate (canonical-transcript.tsx:7846-7870), so buttons wrap rather than clip — flagged for a rendered check at the narrow fixture; shorter option 'Về danh sách trò chuyện' (24) if it clips."
+		},
+		{
+			"severity": "NIT",
+			"key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+			"note": "Width only, no change required: 26 chars vs EN 18 (+44%), 5 syllables against a 'one to three words' sidecar budget; error_class.unknown_tool (22 vs 12) and temporary_deleted.new (28 vs 18) share the note. Label is a plain wrapping <p class=\"text-meta text-ink-dim\"> with no truncate — flagged for a rendered check, no change proposed."
+		},
+		{
+			"severity": "NIT",
+			"key": "ui.chat.canonical.image_gen.error_class.duplicate_id",
+			"note": "Casing only, no change required: locale label vocabulary spells the identifier 'ID' (ID tác nhân, ID phiên, ui.agents.settings.general.id) while lowercase 'id' appears in prose; this key is a label, but mirroring the English source's lowercase 'id' is defensible. Recorded for the ledger."
+		}
+	]
+}

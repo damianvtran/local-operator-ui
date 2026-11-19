@@ -1,0 +1,206 @@
+{
+ "audit_id": "pr5-20261023-r2",
+ "round": 2,
+ "date": "2026-10-23",
+ "locale": "vi",
+ "namespace": "ui.chat.asks",
+ "source_commit": "7ecde120ded63e6c97e9593daf730513bbeb7e84",
+ "remediation_commit": "4cecb7a2a",
+ "scope": "PR #1363 round-2 re-check of all 10 ui.chat.asks keys for vi at 7ecde120d. Every value was re-read, not only the 9 changed by 4cecb7a2a. Each round-1 finding was verified against the new bytes. ICU, placeholders, CLDR plural arms (rendered at 1, 2, 5 and 1,000,000), NFC and bidi were re-run. The en catalogue is unchanged; the en context changed only in the dismiss.moot.note tone/note fields (other fields reordered, no value changes). No rendered-fit claim.",
+ "status": "passed",
+ "result": "clean",
+ "keys_read": 10,
+ "keys_changed_since_round1": [
+  "ui.chat.asks.context.messages_since",
+  "ui.chat.asks.dismiss.answered_in_chat.title",
+  "ui.chat.asks.dismiss.cancel",
+  "ui.chat.asks.dismiss.heading",
+  "ui.chat.asks.dismiss.moot.note",
+  "ui.chat.asks.dismiss.moot.title",
+  "ui.chat.asks.dismiss.receipt.answered_in_chat",
+  "ui.chat.asks.dismiss.receipt.moot",
+  "ui.chat.asks.dismiss.trigger"
+ ],
+ "translator": {
+  "note": "Round-2 values were applied by the coder in 4cecb7a2a, taking the round-1 auditor proposals. The ledger assembler supplies the row translator. This auditor did not write the catalogue bytes."
+ },
+ "auditors": [
+  {
+   "agent": "task",
+   "model": "anthropic/claude-opus-5-5",
+   "session": "fb125765ab49",
+   "team": "lopdev",
+   "instance": "pr5-20261023-r2-vi",
+   "date": "2026-10-23",
+   "result": "clean",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "receipt": "i18n/receipts/pr5-vi-r2.json",
+   "receipt_sha256": "9319d779cdfc98db29c44a8ba1ce60b09f4dcd587eb1bc1e81cdc26242531dc2"
+  }
+ ],
+ "model_note": "Served model anthropic/claude-opus-5-5 for the whole round-2 pass. No provider fallback occurred. The session runtime restarted once mid-task (Python kernel reset), but the model did not change.",
+ "independence": "Independent translation audit by the `task` member of team lopdev (session fb125765ab49), delegated by the team manager; the same independent auditor as round 1. This session produced none of the reviewed copy: the round-2 values were applied by the coder in 4cecb7a2a. It did not translate, edit, commit or push any catalogue, context file or ledger row, and wrote only its own receipts and evidence records. No MT, translation API or SDK was used. ICU parsing and plural rendering ran the worktree's existing intl-messageformat as validation, not as translation.",
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.chat.asks.json",
+   "sha256": "a2c4121f4347766ed176dc5d536a990a9c49bf0efff9fdd59be422833f4de6c4"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/vi/ui.chat.asks.json",
+   "sha256": "0ba67ad1f9d2f91aebfcec1d2b40676715be3fd9e9ed94525f5b509d865d099d"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.chat.asks.context.json",
+   "sha256": "5e0c467aeb72a886d6f32ef8311b48b4c73b4bc39669b75441e878b98366542c",
+   "previous_sha256": "f5e2f62d5630e4873ee3084265c8e487beac4854a690df4e824ce0a6135747ea",
+   "change": "dismiss.moot.note tone and note now state the agent is the actor; other entries reordered only (field-by-field comparison: no other value changed)."
+  }
+ },
+ "references": {
+  "glossary": {
+   "path": "~/workspace/repos/lo-stale-ask-dismiss/i18n/glossary.md",
+   "revision": "9969e2907933b1bf87df6c2502332396f36d36ec",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/workspace/repos/lo-stale-ask-dismiss/i18n/style-guides/vi.md",
+   "revision": "9969e2907933b1bf87df6c2502332396f36d36ec",
+   "sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+  },
+  "contract": {
+   "path": "docs/I18N.md",
+   "ref": "origin/main",
+   "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+  },
+  "cross_surface": {
+   "repo": "~/workspace/repos/lo-stale-ask-surfaces",
+   "commit": "93f798ddb284bca3e342112a7fca76c60729e83a",
+   "catalogues": [
+    "local_operator/i18n/catalogues/vi/tui.asks.json",
+    "local_operator/i18n/catalogues/vi/relay.ask.json"
+   ],
+   "note": "Unmerged branch at audit time."
+  }
+ },
+ "findings": [
+  {
+   "id": "vi-r2-i1",
+   "severity": "INFO",
+   "key": "ui.chat.asks.dismiss.moot.note",
+   "issue": "Round-1 major fixed: the note now names the agent as the one who stops waiting, matching the revised en context tone line and the harness terminal/phone note."
+  }
+ ],
+ "round1_verification": [
+  {
+   "round1_id": "vi-M1",
+   "round1_severity": "MAJOR",
+   "key": "ui.chat.asks.dismiss.moot.note",
+   "disposition": "fixed as proposed",
+   "head_value": "tác nhân sẽ không chờ câu trả lời nữa"
+  },
+  {
+   "round1_id": "vi-m1",
+   "round1_severity": "MINOR",
+   "key": "ui.chat.asks.dismiss.heading",
+   "disposition": "fixed as proposed",
+   "head_value": "Bỏ qua câu hỏi này"
+  },
+  {
+   "round1_id": "vi-m2",
+   "round1_severity": "MINOR",
+   "key": "ui.chat.asks.dismiss.answered_in_chat.title",
+   "disposition": "fixed as proposed",
+   "head_value": "Đã trả lời trong cuộc trò chuyện"
+  },
+  {
+   "round1_id": "vi-m3",
+   "round1_severity": "MINOR",
+   "key": "ui.chat.asks.dismiss.cancel",
+   "disposition": "fixed as proposed",
+   "head_value": "Hủy"
+  },
+  {
+   "round1_id": "vi-m4",
+   "round1_severity": "MINOR",
+   "key": "ui.chat.asks.context.messages_since",
+   "disposition": "fixed as proposed",
+   "head_value": "{count, plural, other {# tin nhắn của bạn kể từ khi câu hỏi này được đưa ra}} (gần nhất lúc {time})"
+  },
+  {
+   "round1_id": "vi-n1",
+   "round1_severity": "NIT",
+   "key": "ui.chat.asks.dismiss.moot.title",
+   "disposition": "fixed as proposed",
+   "head_value": "Không còn cần nữa"
+  }
+ ],
+ "validation": {
+  "icu_errors": [],
+  "plural_arms": [
+   "other"
+  ],
+  "cldr_categories": [
+   "other"
+  ],
+  "arms_match_cldr": true,
+  "placeholders_match_en": true,
+  "key_parity": "10/10",
+  "nfc": true,
+  "bidi_controls": 0,
+  "plural_samples": {
+   "1": "1 tin nhắn của bạn kể từ khi câu hỏi này được đưa ra (gần nhất lúc 19:36)",
+   "2": "2 tin nhắn của bạn kể từ khi câu hỏi này được đưa ra (gần nhất lúc 19:36)",
+   "5": "5 tin nhắn của bạn kể từ khi câu hỏi này được đưa ra (gần nhất lúc 19:36)",
+   "1000000": "1.000.000 tin nhắn của bạn kể từ khi câu hỏi này được đưa ra (gần nhất lúc 19:36)"
+  },
+  "rendered_fit": "Not executed; no rendered-frame or width claim."
+ },
+ "deriveReceiptAudit": {
+  "module_ref": "origin/main",
+  "module_path": "scripts/i18n/ledger-rules.mjs",
+  "module_sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6",
+  "execution": "Imported exact git-show bytes via in-memory data URL; called pure deriveReceiptAudit with actual en/target SHA-256 from disk; exit 0. No assembler or ledger write executed.",
+  "derived": {
+   "agent": "task",
+   "instance": "pr5-20261023-r2-vi",
+   "model": "anthropic/claude-opus-5-5",
+   "result": "clean",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "source_sha256": "a2c4121f4347766ed176dc5d536a990a9c49bf0efff9fdd59be422833f4de6c4",
+   "target_sha256": "0ba67ad1f9d2f91aebfcec1d2b40676715be3fd9e9ed94525f5b509d865d099d",
+   "receipt_sha256": "9319d779cdfc98db29c44a8ba1ce60b09f4dcd587eb1bc1e81cdc26242531dc2"
+  }
+ },
+ "retained_rounds": [
+  {
+   "round": 1,
+   "path": "i18n/receipts/pr5-vi.json",
+   "sha256": "046b009e051e7ba3721361cee059d0c3c21a0b07c8b20958cab1557b681a60e4",
+   "instance": "pr5-20261023-vi",
+   "result": "changes_requested",
+   "record": "i18n/audits/evidence/vi/ui.chat.asks/pr5-20261023/record.json"
+  },
+  {
+   "round": 2,
+   "path": "i18n/receipts/pr5-vi-r2.json",
+   "sha256": "9319d779cdfc98db29c44a8ba1ce60b09f4dcd587eb1bc1e81cdc26242531dc2",
+   "instance": "pr5-20261023-r2-vi",
+   "result": "clean"
+  }
+ ],
+ "limitations": [
+  "Catalogue-only audit; no build, test, install, browser, render or activation evidence.",
+  "Cross-surface alignment is against an unmerged harness branch (93f798ddb); re-check if it changes before merge.",
+  "Round-1 receipts no longer match the current target bytes; they are retained as history only and cannot back a ledger row."
+ ]
+}

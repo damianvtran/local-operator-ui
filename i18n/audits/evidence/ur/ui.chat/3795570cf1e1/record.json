@@ -1,0 +1,101 @@
+{
+ "locale": "ur",
+ "namespaces": {
+  "ui.chat": {
+   "status": "passed",
+   "fully_audited_key_count": 1,
+   "consistency_only_key_count": 207,
+   "finding_ids": [
+    "N1"
+   ],
+   "input_hashes": {
+    "en": {
+     "path": "src/i18n/catalogues/en/ui.chat.json",
+     "sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15"
+    },
+    "ur": {
+     "path": "src/i18n/catalogues/ur/ui.chat.json",
+     "sha256": "4be951ec20cc69544d66a59218bb26669df5d0034ed2c35e2305b979db07b256"
+    },
+    "context": {
+     "path": "src/i18n/catalogues/en/ui.chat.context.json",
+     "sha256": "84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf"
+    }
+   }
+  }
+ },
+ "audit_date": "2026-11-10",
+ "key_count": 208,
+ "fully_audited_key_count": 1,
+ "consistency_only_key_count": 207,
+ "scope": "PR damianvtran/local-operator-ui #1842 @ b8f0fc3aa922b99c6fad9c32edd36515fbd24e5a (prior head e5fb4310dab638f9cf428779d62539ec039a8990). Namespace under audit: ui.chat. Fully audited: 1 key, ui.chat.audio.position_label, \"{label} کی پوزیشن\" -> \"{label} کا مقام\". The other 207 values of ur/ui.chat.json are consistency-only (file parses, key set equals English 208/208, no key added or removed, values byte-identical to the prior head) and are NOT recertified by this receipt; the namespace's other new key, ui.chat.image_actions.actions, was certified in the prior round (receipts ur-ds-75c30f92d238 and ur-sol-a1d964dc45d5 at _s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/) and is unchanged here.",
+ "head_sha": "b8f0fc3aa922b99c6fad9c32edd36515fbd24e5a",
+ "prior_head_sha": "e5fb4310dab638f9cf428779d62539ec039a8990",
+ "auditor": {
+  "agent": "i18n-auditor",
+  "instance": "3795570cf1e1",
+  "session": "3795570cf1e1",
+  "model": "deepseek/deepseek-flash",
+  "actual_model_source": "Served session header for session 3795570cf1e1 states deepseek/deepseek-flash; no model switch, role pin or fallback occurred in this session.",
+  "fallback_used": false,
+  "independent_from_translator_session": true
+ },
+ "translator": {
+  "agent": "i18n-translator",
+  "model": "anthropic/claude-sonnet-5-5",
+  "source": "Fresh translator revision of the prior-round MINOR finding; translator agent/model and the new session identity were supplied by delegation (i18n-translator / anthropic/claude-sonnet-5-5, new session). This auditor did not translate, edit or participate in producing the value."
+ },
+ "policy_inputs": {
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/ur.md",
+   "sha256": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60"
+  },
+  "glossary": {
+   "path": "~/local-operator-ui/.worktrees/_s12-audits/b8f0fc3aa922b99c6fad9c32edd36515fbd24e5a/glossary.md",
+   "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+   "note": "Manager-owned byte-copy for this head; verified identical by sha256 to ~/local-operator/i18n/glossary.md. Glossary conformance was checked against this copy. No glossary row covers this string: no §2 core term (session, wake, agent, tool, workspace, approvals, project, model, prompt, compaction, schedule, monitor, relay, usage) appears; §1 keep-English rules are vacuous because the value carries no product name, command, flag, path or identifier."
+  }
+ },
+ "artifacts": [
+  {
+   "path": "ur-ds-3795570cf1e1.json",
+   "sha256": "44164cad751b6fc53f4696bf07c95284a4a40a4ef87849de5eb52e7629349c2d",
+   "kind": "audit_notes_not_execution_log",
+   "record_reference": "record.json"
+  },
+  {
+   "path": "ur-ds-3795570cf1e1.audit.log",
+   "sha256": "38b99f3001495cd89541ecbfbcf098c8851e7054743946787dbaddfa1b5a99a0",
+   "kind": "actual_execution_log",
+   "record_reference": "record.json"
+  },
+  {
+   "path": "ur-ds-3795570cf1e1-check.py",
+   "sha256": "f3836ae10e87ae4e1d8c4ed757181aecbb65a131850e513c141a307721de511e",
+   "kind": "executed_check_source",
+   "record_reference": "record.json"
+  }
+ ],
+ "current_report_verdict": {
+  "status": "passed",
+  "unresolved_blocker_major_count": 0,
+  "finding_ids": [
+   "N1"
+  ]
+ },
+ "finding_report": "ur-ds-3795570cf1e1.json",
+ "audit_notes_not_execution_log": false,
+ "execution_log": "ur-ds-3795570cf1e1.audit.log",
+ "retention": {
+  "state": "scratch_handoff_only_per_explicit_read_only_task",
+  "intended_tracked_directory": "i18n/audits/evidence/ur/ui.chat/s12-ds-3795570cf1e1",
+  "manager_action_required": "Retain these three files under the canonical evidence root and record the ledger row with the repo's audit-ledger command. No ledger command was run by this auditor (read-only task); ledger reconcile is ledger-assemble.mjs, the manager's write.",
+  "proposed_note": "passed; delta audit of ui.chat.audio.position_label (مقام kept, 1 NIT, ambiguity judged sufficient); record i18n/audits/evidence/ur/ui.chat/s12-ds-3795570cf1e1/record.json"
+ },
+ "unverified": [
+  "No production ICU parser/formatter, Electron/React run, screen-reader session or rendered-frame check: read-only, no-build, no-server constraint. Grammar, register and ambiguity judgments are native-reader reasoning over the catalogue plus source reading, not runtime output.",
+  "No ledger write, tracked evidence retention, PR comment or commit: writes were limited to this session's scratchpad. The manager retains these files under i18n/audits/evidence/ur/ui.chat/<audit-id>/ and records the ledger row with the audit-ledger command.",
+  "The other 207 values of ur/ui.chat.json were not recertified — consistency only (parse, key-set parity, byte-identical to the prior head).",
+  "The two audio slider components were read in source; neither was rendered, so no claim is made about the painted RTL layout of a Latin clip title inside this label beyond the bidi isolation the render layer applies (src/i18n/bidi.ts FSI/PDI), which the same shape already relied on before the revision."
+ ]
+}

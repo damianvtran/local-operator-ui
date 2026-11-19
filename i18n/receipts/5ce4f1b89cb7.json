@@ -1,0 +1,166 @@
+{
+ "schema": 1,
+ "kind": "translation-audit-receipt",
+ "audit_kind": "independent-translation-audit",
+ "batch": "agents-surfaces",
+ "round": 3,
+ "focus": "fit-remediation",
+ "head": "99abae51a82b7abdb3293fc2da8ebfb25eed7e18",
+ "branch": "i18n-agents-pages",
+ "locale": "ru",
+ "locale_name": "Russian",
+ "date": "2026-10-26",
+ "audit_date": "2026-10-26",
+ "namespace": "ui.agents.pages",
+ "status": "passed",
+ "keys_audited": 22,
+ "en_sha256": "38a713b6cc4a63532543924cfdd2093b11c3618c31fc6266d28e20b84572feb5",
+ "ru_sha256": "14e83197e6b0aad504c18e41e2c14d8bd0815c192fbf1435b8d9ad61e95314f6",
+ "source_sha256": "38a713b6cc4a63532543924cfdd2093b11c3618c31fc6266d28e20b84572feb5",
+ "target_sha256": "14e83197e6b0aad504c18e41e2c14d8bd0815c192fbf1435b8d9ad61e95314f6",
+ "context_sha256": "4b761bfa8eeeddf3689a2160e8249b153c095368b6f6fe3df7046052d95d2642",
+ "auditor": {
+  "agent": "i18n-auditor",
+  "harness": "Local Operator",
+  "team": "lopdev",
+  "session": "a714ec911362",
+  "instance": "5ce4f1b89cb7",
+  "model": "radient/auto",
+  "actual_model": "radient/auto",
+  "actual_model_source": "Harness session header for this run: 'Model: radient/auto'. That header is the only model evidence available to this session; no served-model id, provider response header or router log is exposed to it, so none is claimed or inferred.",
+  "model_provenance": "One route for the whole round - skill/style-guide/glossary reading, catalogue review, gate commands, receipt derivation: the session reported radient/auto and never switched model or provider. No fallback was signalled, observed or detected, and none is hidden: if the router had fallen back, this receipt would be wrong about the route rather than silent about it.",
+  "independence": "Independent of the translator and of the fit remediation: this session wrote no catalogue, context, ledger, context-allowance or git object, and the only files it writes are this receipt and its evidence record. It did not translate, edit, commit or push the two changed values; it read them only after they existed. No translation or MT service, API or SDK was used to compare, back-translate or generate copy - every judgement below is the auditor's own reading of Russian as a native-fluent reader.",
+  "independent_from_translator_session": true
+ },
+ "agent": "i18n-auditor",
+ "instance": "5ce4f1b89cb7",
+ "session": "a714ec911362",
+ "model": "radient/auto",
+ "scope": {
+  "worktree": "~/local-operator-ui/.worktrees/i18n-agents-pages",
+  "branch": "i18n-agents-pages",
+  "head": "99abae51a82b7abdb3293fc2da8ebfb25eed7e18",
+  "namespaces": [
+   "ui.agents.pages"
+  ],
+  "note": "Focused round 3 over the uncommitted fit-remediation delta on head 99abae51a8: exactly two ru values (scope.installed, empty.installed) changed in src/i18n/catalogues/ru/ui.agents.pages.json. All 22 keys of the namespace were read against the English source and its context sidecar; the other 20 values are byte-identical to the round-2 audited bytes. The fr delta in the same worktree is OUT of scope for this receipt and was not judged."
+ },
+ "reference": {
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/ru.md",
+   "sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+  },
+  "contract": {
+   "path": "docs/I18N.md",
+   "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+  }
+ },
+ "input_verification": {
+  "hash_binding": "Bound before judging, as instructed, and it matched on both sides: ru ui.agents.pages.json sha256 14e83197e6b0aad504c18e41e2c14d8bd0815c192fbf1435b8d9ad61e95314f6, en 38a713b6cc4a63532543924cfdd2093b11c3618c31fc6266d28e20b84572feb5 (shasum -a 256). No mismatch, so no stop.",
+  "round2_baseline": "git show HEAD:src/i18n/catalogues/ru/ui.agents.pages.json hashes to e5130e0f01fefec0274fde626a88d4f9c4981afea6d6beefef579f8fc12e32ba, which is the target_sha256 on ledger entry for ru/ui.agents.pages and the hash named by i18n/receipts/ru-agents-surfaces-audit-r2-a7f4f2fdf169.json (round 2, result clean, 0 findings). So HEAD bytes ARE the round-2 audited bytes.",
+  "delta_is_only_two_values": "Reconstructed the working file from the HEAD bytes by substituting exactly two strings ('Установленных агентов нет.' -> 'С хаба ничего не установлено.', 'Установленные' -> 'С хаба'), asserting each old string occurred exactly once; the reconstruction is byte-identical to the file on disk. Independent confirmation: git diff shows 2 hunks / 2 removed / 2 added lines, git diff --word-diff shows only those two value replacements, and git diff --stat shows 2 insertions, 2 deletions for the file. No key, order, indentation or other value moved.",
+  "en_and_context_unchanged": "The English catalogue and its context sidecar are untouched at this head (en sha256 equals the ledger's source_sha256 for this row); no English edit is hiding behind the ru change.",
+  "post_judgement_stability": "The ru file was re-hashed after the receipt was written; it still reports 14e83197..., so the bytes judged are the bytes recorded."
+ },
+ "method": {
+  "read_order": "ru style guide (i18n/style-guides/ru.md) and glossary first, then the English catalogue with its .context.json sidecar, then the ru catalogue, then the call sites, then the rendered frames.",
+  "call_sites_read": "agents-page.tsx (SCOPE_LABEL, EMPTY_BY_SCOPE, the empty branch at 788-794, the roster SourceChip at 1455), detail-parts.tsx (SourceChip, sourceLabel at 258-266) and agent-detail.tsx (AgentMeta at 168-184). Confirmed that ui.agents.pages.scope.installed is NOT only a filter segment: it also renders as the roster row's dim source chip and as the first fact of the detail meta line (dot-separated), and that empty.installed only renders when the roster has no rows AND no search query (a query routes to empty.search).",
+  "judgements": "Every ru value re-read against the English meaning, the context role/tone and the ru guide: formality (вы / impersonal / infinitive labels), terse sentence case, no added politeness, ё usage, guillemets, ellipsis, no Latin/digits where none belong. The two changed values were then judged in each of their three render slots, not only as filter labels.",
+  "consistency_sweep": "grep over src/i18n/catalogues/ru for 'хаб' (96 matching values), 'установлен' (18) and 'строен' (built-in family), plus a count of the two preposition forms: 'из хаба' is the shipped norm (ui.hub.updates.*, ui.agents.navigation.*, ui.hub.links.prefer_remote, ui.chat.hub_update.update_all_label), 'из хаба' also labels the same short source slot in ui.agents.navigation.updates.preview.remote ('The hub's' -> 'Из хаба'), while 'с хаба' occurs in one shipped sentence about updates not being applied and in 'сняли с хаба' where the verb governs с.",
+  "render_evidence_read": "Looked at the two frames named in the request (viewed as images) and verified their sha256 against the rig's README: ru-fit-agents-roster.png 6e05d75444f0f1721e488dbf537350bb01543dfbc46198d665b0035ddd4aa299, ru-fit-empty-agents-empty-installed.png 693953e4dfc25dd83aae3e2070f81e45e28fbd284a06c575348b5b1083891ae5. They are the translator's Electron capturePage output (head + delta); this auditor did not boot, build or screenshot the app.",
+  "geometry_provenance": "Width figures are READ from the translator's rig artifacts (measurements/run-ru.out.json and probe-ru.out.json under session 90af5810a381's scratchpad), not produced here. Their internal arithmetic was re-checked by hand: 38.18+46.29+55.82+89.95 = 230.24 (current), 38.18+46.29+62.73+89.95 = 237.15 (the 'Из хаба' candidate the probe substituted into the live buttons), against a 246 px segment row and the remediation's 232 px natural-sum target.",
+  "not_run": "No build, no app boot, no ledger write, no ledger-check, no catalogue edit, no git write. Full CI is not the auditor's gate."
+ },
+ "mechanical": {
+  "locale_parity": "node --test --test-name-pattern='[ru]' scripts/i18n/locale-parity.test.mjs -> 6 tests, 6 pass, 0 fail (exit 0): ships at least one message; defines each key in at most one namespace file; carries EVERY key of each namespace file it ships; names only keys the English source defines; preserves every ICU placeholder from the English source; is not an English stub.",
+  "context_parity": "node scripts/i18n/context-parity.mjs -> 'context-parity: ok - every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json).' exit 0.",
+  "duplicates": "node scripts/i18n/check-duplicates.mjs -> 'check-duplicates: ok - 835 file(s) scanned, 0 duplicate key(s)' exit 0.",
+  "generate": "node scripts/i18n/generate.mjs --check -> '<worktree>/src/i18n/keys.gen.ts is byte-identical to a fresh generation.' exit 0.",
+  "own_structure_check": "Own script over the two catalogues with the worktree's @formatjs/icu-messageformat-parser (no install): 22 en keys vs 22 ru keys, same key set, same order, 0 added, 0 missing; 0 ICU parse failures; 0 argument/tag shape mismatches; en totals arg=1 (the {query} in empty.search) tag=0 plural=0 select=0, so no CLDR plural/select categories are due in this namespace and none are present.",
+  "typography": "Own checks: NFC 22/22 in both locales, 0 bidi/zero-width controls, 0 three-dot ellipses, 0 double or edge spaces, ru empty.search keeps one « and one » around {query}, no digits and no Latin except the {query} placeholder; file is valid JSON, tab-indented, ends with a newline, no BOM, no CR.",
+  "derivation": "deriveReceiptAudit (scripts/i18n/ledger-rules.mjs) called on these final receipt bytes with {locale:'ru', namespace:'ui.agents.pages'} and the on-disk en/ru hashes, printed verbatim in this session: {\"agent\":\"i18n-auditor\",\"instance\":\"5ce4f1b89cb7\",\"model\":\"radient/auto\",\"result\":\"clean-with-findings\",\"findings\":{\"blocker\":0,\"major\":0,\"minor\":1,\"nit\":1},\"source_sha256\":\"38a713b6cc4a63532543924cfdd2093b11c3618c31fc6266d28e20b84572feb5\",\"target_sha256\":\"14e83197e6b0aad504c18e41e2c14d8bd0815c192fbf1435b8d9ad61e95314f6\"}; isPlaceholderInstance(instance) false. Receipt sha256 changes if this string changes, so the record's receipt_sha256 names the final bytes."
+ },
+ "artifacts": {
+  "render_frames": [
+   {
+    "path": "/Users/damian/.local-operator/sessions/90af5810a381/scratchpad/rendered-1432-fit/frames/ru-fit-agents-roster.png",
+    "sha256": "6e05d75444f0f1721e488dbf537350bb01543dfbc46198d665b0035ddd4aa299",
+    "note": "Translator rig capturePage of head + delta at 1380x900, ru, installed+custom rows seeded; hash matches that rig's README. Listed in this audit's frames and looked at directly; not produced by this session."
+   },
+   {
+    "path": "/Users/damian/.local-operator/sessions/90af5810a381/scratchpad/rendered-1432-fit/frames/ru-fit-empty-agents-empty-installed.png",
+    "sha256": "693953e4dfc25dd83aae3e2070f81e45e28fbd284a06c575348b5b1083891ae5",
+    "note": "Same rig: installed scope selected, empty state rendered; the frame this receipt's empty.installed judgement is based on."
+   }
+  ],
+  "geometry_artifacts": [
+   {
+    "path": "/Users/damian/.local-operator/sessions/90af5810a381/scratchpad/rendered-1432-fit/measurements/run-ru.out.json",
+    "sha256": "37c8d41325042b7a85f24a743d3206af829f73dc2bd013e4c9c7225db01e760d",
+    "note": "Live geometry after the change: segments Все/Свои/С хаба/Встроенные, minContentSum 230.24, wellClientWidth 256, wellScrollOverflow false. Read, not re-executed, by this audit."
+   },
+   {
+    "path": "/Users/damian/.local-operator/sessions/90af5810a381/scratchpad/rendered-1432-fit/measurements/probe-ru.out.json",
+    "sha256": "be4875160248c97c52698de19cd8e6d808982ad9f71149b1a505a622d82bad8a",
+    "note": "Label-probe boot: per-string widths in the app's own font (С хаба 55.82 box, Из хаба 62.73 box fixed by 16 px padding) and setReadings substituting each quartet into the live buttons (Из хаба quartet 237.15, no well scroll). Source of the 237.15 figure in ru-fit-F1; read, not re-executed."
+   },
+   {
+    "path": "/Users/damian/.local-operator/sessions/90af5810a381/scratchpad/rendered-1432-fit/README.md",
+    "sha256": "f1552de6c36fc6393208f30274b3b7b1d10d4e09f7a8bcdc73fa536040d363ff",
+    "note": "Translator's method and per-segment figures; audited hashes above were checked against it and against the files themselves."
+   }
+  ],
+  "session_scratch": {
+   "path": "/Users/damian/.local-operator/sessions/a714ec911362/scratchpad/check-ru-pages.mjs",
+   "sha256": "266320f7a464ef1819ac3f73831733a82de5425129b2170e4f107558550d8c13",
+   "note": "This audit's own ICU/key/typography checker (temporary work in progress, not the artifact of record). Its output is quoted under mechanical.own_structure_check and in the evidence audit.log."
+  },
+  "receipt": {
+   "path": "i18n/receipts/ru-agents-pages-fit-audit-5ce4f1b89cb7.json",
+   "note": "This file; its sha256 is recorded by the evidence record and by any ledger row assembled from it."
+  },
+  "evidence_record": {
+   "path": "i18n/audits/evidence/ru/ui.agents.pages/ru-pages-fit-20261026/record.json",
+   "note": "Written after this receipt; names these bytes by sha256."
+  }
+ },
+ "rendered_fit": {
+  "frame_evidence": "ru-fit-agents-roster.png: the four segments read 'Все | Свои | С хаба | Встроенные' inside the well with no clipping, and the roster's right-edge chips show 'Свои' (aa-custom), 'С хаба' (Aida) and 'Встроенные' (built-ins) as real profiles.list data. ru-fit-empty-agents-empty-installed.png: with 'С хаба' selected the roster shows one line, 'С хаба ничего не установлено.', inside the 288 px column, no truncation.",
+  "measured_numbers": "current quartet 230.24 px natural sum (15.76 px slack vs the 246 px row, 1.76 px inside the 232 px target); 'Из хаба' quartet 237.15 px (8.85 px slack vs the row, 5.15 px over the target). Both were measured with the app's real font through a Range on the button's computed style and by substituting each quartet into the live buttons, per the rig README.",
+  "not_claimed": "This audit makes no new render claim of its own: it did not boot the app, and the numbers above are the translator's measurements re-checked arithmetically, with the frames inspected directly."
+ },
+ "findings": [
+  {
+   "id": "ru-fit-F1",
+   "severity": "MINOR",
+   "key": "ui.agents.pages.scope.installed",
+   "current": "С хаба",
+   "proposed": "Из хаба",
+   "issue": "Meaning is right and unambiguous in all three slots this key feeds (scope segment, roster source chip, detail meta line), and the set no longer overflows - but shipped ru names this source 'из хаба' in 25 values across ui.hub.updates, ui.hub.links, ui.agents.navigation and ui.chat, including the same short source-label slot (ui.agents.navigation.updates.preview.remote, 'The hub's' -> 'Из хаба'). At HEAD only two values used 'с хаба', one of them verb-governed ('сняли с хаба'); this delta adds the two other occurrences, so the installed-source label now reads differently from the same concept everywhere else. 'С хаба' is idiomatic developer Russian too, and it is 6.91 px narrower, so the shorter form is a defensible width call rather than an error; 'Из хаба' was measured in the same rig at 237.15 px natural sum, i.e. it still fits the 246 px row (8.85 px slack, no well scroll) but misses the remediation's 14 px / 232 px margin by 5.15 px. Not gating: adopt 'Из хаба' only if the team prefers cross-surface consistency over the extra margin, and re-capture the frame if it does; otherwise keep 'С хаба' and record it as a width-driven call in the ru style guide's recorded-exception list.",
+   "rationale": "No shorter true participle exists in the budget - 'Установленные' 109.48 px box, 'Установлено' 93.19, 'Скачанные' 83.14, 'Загружено' 81.52 - and 'Штатные' was rejected on the встроен- family consistency that this same key's chip use makes binding, so a prepositional origin phrase is the right class of fix, not a terminology compromise."
+  },
+  {
+   "id": "ru-fit-F2",
+   "severity": "NIT",
+   "key": "ui.agents.pages.empty.installed",
+   "current": "С хаба ничего не установлено.",
+   "proposed": "Агентов с хаба нет.",
+   "issue": "Grammatical, impersonal (which the ru guide prefers), true in the only state that renders it (agents-page.tsx:788-794 routes any search to empty.search, so the sentence appears only when the installed scope is genuinely empty), and it echoes the segment label well. The only cost is shape: its siblings are nominal genitive + нет ('Своих агентов нет.', 'Встроенных агентов нет.'), while this one is a verbal clause. A parallel alternative would be 'Агентов с хаба нет.'; style only, and I would not spend a round on it.",
+   "rationale": "The context note asks that installed stay distinct from custom and built-in, which the current wording does; the divergence is therefore acceptable as it stands."
+  }
+ ],
+ "observations": [
+  "The scope group's screen-reader legend stays 'Чьи определения показывать' ('whose definitions'), while the segment now names origin; English has the same mismatch ('Installed' under 'Show definitions owned by') and the delta did not touch the legend, so this is recorded, not raised.",
+  "Consistency sweep detail: 'хаб' is a settled ru transliteration across the catalogues (96 values, incl. 'Хаб агентов' as a page title and mid-sentence 'в хабе'), and 'установлен-' is the settled state vocabulary elsewhere ('Навыки не установлены.', 'Установлено: {path}'), so neither the noun nor the verb introduced by this delta is a new term.",
+  "fr is modified in the same worktree but is out of this receipt's scope; nothing here should be read as a verdict on it."
+ ],
+ "verdict": {
+  "status": "passed",
+  "unresolved_blocker_major_count": 0,
+  "summary": "No blocker or major: the fit fix preserves meaning in every slot the key feeds, introduces no overflow, and keeps the namespace mechanically clean. One minor (preposition variant vs the shipped 'из хаба') and one nit (empty-state shape vs its siblings) are recorded and answered; neither needs a remediation round."
+ }
+}

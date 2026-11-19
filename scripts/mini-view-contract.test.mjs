@@ -440,3 +440,67 @@ test("a non-theme preferences write adopts nothing, and adoption cannot write", 
 		"a real theme change reads the writer's blob first, then repaints",
 	);
 });
+
+/*
+ * THE APPEARANCE TUPLE IS THE THEME (layered appearance picker). A contrast or
+ * accent change keeps `themeName` and changes every colour the popout paints,
+ * so with `currentAppearance` the reader compares the whole tuple. The key
+ * shape mirrors `appearanceKey` in `shared/themes/appearance.ts`; this test
+ * builds it the same way.
+ */
+test("a contrast or accent write is a theme write when the tuple is compared", () => {
+	const { themeNameFromPreferencesWrite } = miniView;
+	const storeKey = "ui-preferences-storage";
+	const state = {
+		themeName: "obsidian",
+		contrast: { dark: 0, light: 0 },
+		accent: { dark: { kind: "theme" }, light: { kind: "theme" } },
+	};
+	const key = (s) =>
+		JSON.stringify([
+			s.themeName,
+			s.contrast.dark,
+			s.contrast.light,
+			s.accent.dark,
+			s.accent.light,
+			s.customThemeId ?? null,
+		]);
+	const write = (next) =>
+		themeNameFromPreferencesWrite({
+			eventKey: storeKey,
+			storeKey,
+			newValue: JSON.stringify({ state: next, version: 5 }),
+			currentTheme: "obsidian",
+			currentAppearance: key(state),
+		});
+	assert.equal(write({ ...state, sidebarWidth: 300 }), null, "unrelated write");
+	assert.equal(
+		write({ ...state, customThemeId: "custom-synthetic" }),
+		"obsidian",
+		"saved custom identity is an appearance change, even with the same base",
+	);
+	assert.equal(
+		write({ ...state, contrast: { dark: 100, light: 0 } }),
+		"obsidian",
+	);
+	assert.equal(
+		write({
+			...state,
+			accent: { ...state.accent, light: { kind: "custom", hex: "#2563EB" } },
+		}),
+		"obsidian",
+		"the other mode's accent changes the tuple too",
+	);
+	assert.equal(
+		themeNameFromPreferencesWrite({
+			eventKey: storeKey,
+			storeKey,
+			newValue: JSON.stringify({
+				state: { ...state, contrast: { dark: 100, light: 0 } },
+			}),
+			currentTheme: "obsidian",
+		}),
+		null,
+		"without the tuple the reader keeps its name-only contract",
+	);
+});

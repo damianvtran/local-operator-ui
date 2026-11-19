@@ -1,0 +1,194 @@
+{
+ "audit_id": "wave-b-delta-20261027",
+ "kind": "translation-audit-record",
+ "schema": 1,
+ "date": "2026-10-27",
+ "locale": "hi",
+ "locale_name": "Hindi",
+ "namespace": "ui.chat.canonical",
+ "branch": "i18n-wave-b",
+ "requested_commit": "a5356ce91c4f37bf4c4d1c4518070e3a9b2505cb",
+ "source_commit": "a5356ce91c4f37bf4c4d1c4518070e3a9b2505cb",
+ "base_commit": "0559f7f7d830752b0c5d118c2b1049f125b43bbb",
+ "audit_kind": "delta re-audit at the amendment head: every changed value judged, every unchanged value proved byte-identical to the audited parent, whole batch re-read and re-checked",
+ "head_note": "The export under audit (~/qa/wave-b-delta-hi) was hash-checked against `git show a5356ce91c:<path>` for the English catalogue, its context sidecar and the Hindi file; all three matched byte-for-byte (see audit.log).",
+ "scope": "Wave B for hi, ui.chat.canonical: 8 wave-B values at a5356ce91c, 0 changed and 8 proven byte-identical to the previously audited 0559f7f7d8 bytes. Read against the English source, the context sidecar and the src/renderer call site that composes each string.",
+ "status": "passed",
+ "result": "clean",
+ "keys_read": 8,
+ "keys_audited": 8,
+ "namespace_key_count": 68,
+ "translator": {
+  "note": "The translator identity for the wave-B values is not recorded in the branch commits (the ledger row carries it); the new ui.chat.status row uses i18n-translator / radient/auto as stated by the coordinator. This auditor produced none of the values under audit and committed nothing."
+ },
+ "auditors": [
+  {
+   "agent": "i18n-auditor",
+   "role": "independent translation auditor (team lopdev); authored none of the values under audit and edited no catalogue, sidecar, ledger or allowance",
+   "team": "lopdev",
+   "harness": "Local Operator",
+   "session": "8f4aa3fba6ed",
+   "instance": "8f4aa3fba6ed",
+   "model": "radient/auto",
+   "actual_model": "radient/auto",
+   "actual_model_source": "harness model route as this session reports it: selector radient/auto (router alias). No resolved upstream model id is exposed to the session and no provider fallback occurred.",
+   "fallback": null,
+   "independent_from_translator": true,
+   "date": "2026-10-27",
+   "result": "clean",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "receipt": "i18n/receipts/8f4aa3fba6ed.json",
+   "receipt_sha256": "6f7340ba4885ef68f2bf75f04b4cc9e90cc3a3ea2b4e73b32ecfeabd173b5425"
+  }
+ ],
+ "model_note": "Model route as this harness reports it: radient/auto (selector radient/auto). radient/auto is a router alias, so no concrete served model id is exposed to the session; no provider fallback was recorded or observed.",
+ "independence": "Independent audit by the i18n-auditor member of team lopdev, session 8f4aa3fba6ed, delegated by the team manager. This session translated none of the reviewed copy: it wrote no catalogue, context sidecar, ledger or allowance byte, and its only writes are this record, its audit.log and the receipt it names. The branch head was read through a `git archive` export whose every reviewed file was hash-checked against `git show a5356ce91c:<path>`. Linguistic judgement is the auditor's own; the repository's own @formatjs/icu-messageformat-parser and intl-messageformat were used as validation and rendering, never as a translation source. No translation API, SDK or MT service was used.",
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+   "sha256": "5bb6a6fe5dd64f70a4caf0812d3fa4b95c70bd49c12bd556ab0d827176ac4477"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+   "sha256": "ea13112039dfed41998801904ccc88531f87452a7e3d7138ab09a5f48f9e65b2"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/hi/ui.chat.canonical.json",
+   "sha256": "2d1c8aae11fe236f19badb3ba86208c901b2dfc57cb06c0bf23a43bc0e975555"
+  }
+ },
+ "references": {
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/hi.md",
+   "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+  },
+  "contract": {
+   "path": "docs/I18N.md",
+   "ref": "a5356ce91c4f37bf4c4d1c4518070e3a9b2505cb",
+   "sha256": "6fc7bea71643c0dcaeaed697ecd792cfdfeb11b7816b5f8d160011e7c7df2abe"
+  }
+ },
+ "delta": {
+  "en_bytes_changed": false,
+  "hi_bytes_changed": false,
+  "en_changed_values": [],
+  "hi_changed_values": [],
+  "unchanged_wave_b_values": 8
+ },
+ "resolved_earlier_findings": [],
+ "findings": [],
+ "observations": [],
+ "checks": {
+  "parsed_json_delta": {
+   "command": "parsed-JSON comparison of all nine namespace files, en and hi, 0559f7f7d8..a5356ce91c (delta.json)",
+   "observed": "Exactly three values differ in the whole batch: hi ui.chat.session_status.not_signed_in, hi ui.chat.pickers.slash.enter_needs_a_pick, en ui.chat.device.sentence.pairing_guidance. No key was added, removed or reordered in any of the nine files."
+  },
+  "regression_bytes": {
+   "command": "per-key sha256 of the 62 wave-B hi values at 0559f7f7d8 against a5356ce91c (delta.json)",
+   "observed": "60 of 62 values byte-identical to the audited bytes; the 2 that differ are exactly the two amended values."
+  },
+  "generate_check": {
+   "command": "node scripts/i18n/generate.mjs --check",
+   "exit": 0,
+   "observed": "src/i18n/keys.gen.ts is byte-identical to a fresh generation."
+  },
+  "locale_parity": {
+   "command": "node --test scripts/i18n/locale-parity.test.mjs",
+   "exit": 0,
+   "observed": "44 tests, 44 pass, 0 fail; the six [hi] rows pass (ships a message; one key in one namespace; every English key carried; only English keys named; every ICU placeholder preserved; not an English stub)."
+  },
+  "coverage": {
+   "command": "node scripts/i18n/check-coverage.mjs",
+   "exit": 0,
+   "observed": "coverage-check: ok — 7 gated language(s) over 95 namespace(s); 0 allowed key(s) remain across 0 pair(s)."
+  },
+  "context_parity": {
+   "command": "node scripts/i18n/context-parity.mjs",
+   "exit": 0,
+   "observed": "context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (pre-existing shrink-only allowance, none in these nine namespaces)."
+  },
+  "hi_activation": {
+   "command": "node --test scripts/i18n/hi-activation.test.mjs",
+   "exit": 0,
+   "observed": "3 tests, 3 pass: Hindi covers all three surfaces and switches back to English; counts render ungrouped; the composed console capacity sentence reads as one sentence."
+  },
+  "wave_b_keyed_copy": {
+   "command": "node --test scripts/i18n-wave-b-keyed-copy.test.mjs",
+   "exit": 0,
+   "observed": "10 tests, 10 pass, including 'the pairing line closes both code spans it opens' and 'every shipped locale resolves each key the wave added'."
+  },
+  "icu_parity": {
+   "command": "node .i18n-audit-delta/icu-parity.mjs (instrument: instruments/icu-parity.mjs) over all 62 wave-B keys",
+   "exit": 0,
+   "observed": "62 keys, 180 real-formatter renders, 0 failures. Argument identity, plural/select arms and enriched tags identical to English; every hi plural carries the CLDR categories one/other; one recorded note: not_signed_in places {label} first, which Hindi grammar requires."
+  },
+  "pairing_render": {
+   "command": "node .i18n-audit-delta/render-real-path.mjs (instrument: instruments/render-real-path.mjs) through t() at locale hi",
+   "exit": 0,
+   "observed": "hi pairing renders with 4 backticks, spans [`lop network init`, `lop network join <token>`], literal <token>, terminal danda; the English control renders the same two spans. Both amended values render their amended wording with no key fallback."
+  },
+  "ledger": {
+   "command": "node scripts/i18n/ledger-assemble.mjs (x9, throwaway copy) then node scripts/i18n/ledger-check.mjs",
+   "observed": "All nine hi rows assemble to status audited, clean 0/0/0/0. ledger-check in the same throwaway tree then reports ZERO hi findings; its overall exit is 1 because other locales still carry unrecorded wave-B rows (150 findings, none of them hi) — that is their lanes' work, not this audit's.",
+   "exit": 1
+  }
+ },
+ "current_report_verdict": {
+  "status": "passed",
+  "unresolved_blocker_major_count": 0,
+  "finding_ids": [],
+  "note": "No blocker or major remains at these bytes. No finding remains open; earlier findings are resolved above."
+ },
+ "artifacts": [
+  {
+   "name": "audit.log",
+   "path": "i18n/audits/evidence/hi/ui.chat.canonical/wave-b-delta-20261027/audit.log",
+   "sha256": "99d1272a0d9041bbcbd662ac366a9228e289a4f63cfc2c2fdd10ad8b1b110ed1"
+  },
+  {
+   "name": "receipt",
+   "path": "i18n/receipts/8f4aa3fba6ed.json",
+   "sha256": "6f7340ba4885ef68f2bf75f04b4cc9e90cc3a3ea2b4e73b32ecfeabd173b5425"
+  },
+  {
+   "name": "delta.json",
+   "path": "delta.json",
+   "sha256": "ef7e19380c9da53e0da73f6712fd20e64643a6559a95695eb61a314268ded99b"
+  },
+  {
+   "name": "checks.log",
+   "path": "checks.log",
+   "sha256": "eedae38d10cb16bc15c0871cb4edce041228279eac97c0267b0638ec04d4d921"
+  },
+  {
+   "name": "icu-parity.json",
+   "path": "icu-parity.json",
+   "sha256": "100b01d79dfdd31736e8eccd9741c6a90a1ca04a49b499694820c24f0cd4ad3d"
+  },
+  {
+   "name": "render-real-path.json",
+   "path": "render-real-path.json",
+   "sha256": "b281e8f2f977eaf27a6686569b044c64addcfe015efc9a677682e993e261ab2c"
+  },
+  {
+   "name": "ledger-rows.json",
+   "path": "ledger-rows.json",
+   "sha256": "71df24e3883ba5a723459a194b347700b6731a305cd34d59dca75038a1ce7cc2"
+  },
+  {
+   "name": "ledger-check.log",
+   "path": "ledger-check.log",
+   "sha256": "8efb48df22cb004168f35fc6f08e50b101770a402c41cb1456e154fe76568768"
+  }
+ ],
+ "audit_notes_not_execution_log": "The narrative sections of this record are audit notes: they state what was read and judged. Command execution is evidenced separately by audit.log (this namespace) and by checks.log / icu-parity.json / render-real-path.json / ledger-check.log in the audit deliver tree, whose bytes are hashed in `artifacts`."
+}

@@ -1,4 +1,8 @@
+import { installClipboardShim } from "./actions/clipboard-shim";
+import { stopNetworkCapture } from "./actions/network";
+import { abortRecording } from "./actions/recording";
 import { BrowserHostError } from "./errors";
+import { custodyRefusal } from "./extensions/passkey-custody";
 import {
 	hasLogCapture,
 	routeDebuggerEvent,
@@ -146,12 +150,64 @@ export interface CdpPoolOptions {
 }
 
 /**
+ * The passkey-custody gate, as the pool sees it (`extensions/passkey-custody.ts`
+ * has the why). Structural so the pool does not import the custody module, and
+ * set after construction because the custody state is wired up later in the
+ * host's start.
+ */
+export interface CdpCustodyGate {
+	isHeld(webContentsId: number): boolean;
+	epoch(webContentsId: number): number;
+}
+
+/**
+ * The ONLY commands a held view still accepts: the origin gate's own `Fetch`
+ * answers (a paused request nobody continues would hang the very sign-in the
+ * user is completing) and the TEARDOWN of what an agent had running when the
+ * hold began. None of them returns page content, and none starts a capture:
+ *   - `Page.stopScreencast` / `Page.stopScreenRecording`: end a recording that
+ *     custody discarded (`discardRecordingForCustody`). The recorder stop
+ *     answers only a stream HANDLE; reading it needs `IO.read`, which stays
+ *     refused, so the bytes never leave Chromium (review R1).
+ *   - `IO.close`: drop that unread stream.
+ *   - `Emulation.clearDeviceMetricsOverride`: give the tab the user is looking
+ *     at its own size back after a sized recording (review R2).
+ *   - `Page.disable`: the origin gate's own teardown (`gate.ts`); refusing it
+ *     left the Page domain enabled after a hold (review N3).
+ * `IO.read`, `Page.startScreencast`, `Page.screencastFrameAck`, every
+ * `Emulation.set*` and every capture stay refused.
+ */
+const CUSTODY_INFRA_METHODS: ReadonlySet<string> = new Set([
+	"Fetch.continueRequest",
+	"Fetch.failRequest",
+	"Fetch.fulfillRequest",
+	"Fetch.continueWithAuth",
+	"Fetch.disable",
+	"Page.stopScreencast",
+	"Page.stopScreenRecording",
+	"IO.close",
+	"Emulation.clearDeviceMetricsOverride",
+	"Page.disable",
+]);
+
+/** Events a held view still routes: the origin gate must keep seeing the
+ * requests it has to continue. Everything else (screencast frames, console,
+ * network) is dropped while the user has the tab. */
+function routesUnderCustody(method: string): boolean {
+	return method.startsWith("Fetch.");
+}
+
+/**
  * The pool of debugger attachments, keyed by webContents id.
  *
  * One instance per host (not module-global state): the registry's tabs and these
  * attachments must be creatable and destroyable together, and a module-level map
  * is how a test or a second host instance inherits a stale attachment.
  */
+/** The pool's own event to `subscribe` handlers after a `Page.disable` it sent.
+ * Not a CDP event: Chromium says nothing when the screencast it ends goes quiet. */
+export const PAGE_DISABLED_EVENT = "LocalOperator.pageDisabled";
+
 export class CdpPool {
 	private readonly attachments = new Map<number, Attachment>();
 	/** Per-view CDP event subscribers, by webContents id. See `subscribe`. */
@@ -175,7 +231,14 @@ export class CdpPool {
 	 * callers (see `attachFrame`). */
 	private readonly frameAttaches = new Map<string, Promise<string>>();
 
+	private custody: CdpCustodyGate | null = null;
+
 	constructor(private readonly options: CdpPoolOptions = {}) {}
+
+	/** Install the passkey-custody gate (see `CdpCustodyGate`). */
+	setCustodyGate(gate: CdpCustodyGate | null): void {
+		this.custody = gate;
+	}
 
 	/**
 	 * Observe this view's CDP events for as long as the returned function has not
@@ -209,6 +272,11 @@ export class CdpPool {
 		method: string,
 		params: Record<string, unknown>,
 	): void {
+		// While the user holds the tab for a passkey prompt, no page content may
+		// leave it through an event either: a screencast frame or a console line is
+		// as much a read as a screenshot.
+		if (this.custody?.isHeld(webContentsId) && !routesUnderCustody(method))
+			return;
 		routeDebuggerEvent(webContentsId, method, params);
 		for (const listener of [...(this.subscribers.get(webContentsId) ?? [])]) {
 			listener(method, params);
@@ -311,6 +379,10 @@ export class CdpPool {
 			attachment.detachedReason = reason || "detached";
 			// Child sessions die with the page's (measured: "No target available").
 			this.frames.delete(contents.id);
+			// The detach EVENT is the one boundary where the tab survives: DevTools has
+			// taken it, so a later `record_stop` can still be answered with why its
+			// clip is gone (D7's tombstone).
+			this.dropCaptures(contents.id, reason || "detached");
 			this.options.log?.(
 				`[browser] debugger detached from view ${contents.id}: ${reason}`,
 			);
@@ -347,6 +419,30 @@ export class CdpPool {
 				},
 				CDP_DEADLINE_MS,
 			);
+			/*
+			 * The page's OWN clipboard write, served by a host-authored program in the
+			 * page's main world (see `actions/clipboard-shim.ts` for the measurement
+			 * that made a permission grant impossible: this runtime gates
+			 * `navigator.clipboard.writeText` on `clipboard-read`, which would also let
+			 * every page READ the user's clipboard). Installed on EVERY attach, not
+			 * once per tab: a re-attach is a fresh debugger session whose
+			 * `Page.addScriptToEvaluateOnNewDocument` registrations are gone, and the
+			 * shim's own `runImmediately` covers the document already loaded.
+			 *
+			 * A view that cannot take it is NOT an attach failure: a page whose write
+			 * keeps the native refusal is the state this host shipped before, and
+			 * failing the attach would take `read`, `click` and every other action down
+			 * with it. The reason is logged WITHOUT the payload.
+			 */
+			try {
+				await installClipboardShim(this, contents, contents.id, {
+					log: this.options.log,
+				});
+			} catch (error) {
+				this.options.log?.(
+					`[browser] could not install the page clipboard write on view ${contents.id}: ${error instanceof Error ? error.message : String(error)}`,
+				);
+			}
 		} catch (error) {
 			// A view that closed between attach and enable is not an attach failure
 			// worth keeping the attachment for.
@@ -391,12 +487,39 @@ export class CdpPool {
 				"that browser tab is gone; dropped the handle. Use 'open' with a URL to get a new tab",
 			);
 		}
-		return this.sendTo<T>(
+		const sent = this.sendTo<T>(
 			contents,
 			method,
 			params,
 			options.deadlineMs ?? CDP_DEADLINE_MS,
 			options.sessionId,
+		);
+		if (method !== "Page.disable" || options.sessionId) return sent;
+		// DISABLING `Page` ENDS A RUNNING SCREENCAST, and enabling it again does not
+		// restart one (measured on Electron 45, QA round 1 Q1: a `Page.disable` mid
+		// clip froze a `quality:"high"` recording at that instant while the clip kept
+		// its wall-clock length). The origin gate sends exactly that after every
+		// click, type, press and goto. A subscriber that owns a screencast cannot see
+		// the stop on the wire, so the pool says so, once the command has been
+		// attempted (a timed-out disable may still have landed).
+		const announce = (): void => {
+			for (const listener of [...(this.subscribers.get(contents.id) ?? [])]) {
+				try {
+					listener(PAGE_DISABLED_EVENT, {});
+				} catch {
+					// A subscriber's fault is not the disable's outcome.
+				}
+			}
+		};
+		return sent.then(
+			(value) => {
+				announce();
+				return value;
+			},
+			(error: unknown) => {
+				announce();
+				throw error;
+			},
 		);
 	}
 
@@ -502,6 +625,38 @@ export class CdpPool {
 		deadlineMs: number,
 		sessionId?: string,
 	): Promise<T> {
+		// THE SECOND CHOKE POINT for passkey custody (the first is
+		// `registry.requireSurface`): every command any action sends lands here, so
+		// a path that skipped the registry is refused all the same, before dispatch.
+		if (!CUSTODY_INFRA_METHODS.has(method)) {
+			const gate = this.custody;
+			if (gate) {
+				if (gate.isHeld(contents.id)) throw custodyRefusal();
+				const epoch = gate.epoch(contents.id);
+				const result = await this.dispatch<T>(
+					contents,
+					method,
+					params,
+					deadlineMs,
+					sessionId,
+				);
+				// A command already in flight when a hold began (a screenshot that
+				// raced the prompt's frame) must not deliver what it captured.
+				if (gate.isHeld(contents.id) || gate.epoch(contents.id) !== epoch)
+					throw custodyRefusal();
+				return result;
+			}
+		}
+		return this.dispatch<T>(contents, method, params, deadlineMs, sessionId);
+	}
+
+	private async dispatch<T>(
+		contents: CdpContents,
+		method: string,
+		params: Record<string, unknown>,
+		deadlineMs: number,
+		sessionId?: string,
+	): Promise<T> {
 		const attachment = this.attachments.get(contents.id);
 		if (!attachment) {
 			throw new BrowserHostError(
@@ -559,6 +714,34 @@ export class CdpPool {
 		);
 	}
 
+	/**
+	 * End every capture this view owns, at one debugger boundary.
+	 *
+	 * WHY ONE HELPER. The network buffer and a recording die at the same four
+	 * boundaries (`forget`, `detach`, the detach EVENT, and `close` through
+	 * `detach`), and each was hand-listed at each site. That is how a fourth capture
+	 * drifts: one boundary is missed, and a stale subscription or a running encoder
+	 * outlives the attachment that fed it.
+	 *
+	 * THE LOG RING IS THE EXCEPTION, and it is deliberate: the detach EVENT is a
+	 * DevTools hand-over of a view that stays open, and `logs` is defined as
+	 * "everything since the surface opened" — so the ring must survive it, which is
+	 * exactly what the re-attach case in `browser-host.test.mjs` asserts. `forget`
+	 * and `detach` end the view's drive and drop it. The detach event passes the
+	 * reason, which is what turns a recording's abort into the tombstone a later
+	 * `record_stop` reads.
+	 */
+	private dropCaptures(webContentsId: number, detachedReason?: string): void {
+		if (detachedReason === undefined) stopLogCapture(webContentsId);
+		stopNetworkCapture(webContentsId);
+		abortRecording(webContentsId, detachedReason ?? "detached", {
+			tombstone: detachedReason !== undefined,
+			// `forget`/`detach` end the handle, so an uncollected result dies with it;
+			// the detach EVENT hands a live tab over and must leave it alone.
+			clearSettled: detachedReason === undefined,
+		});
+	}
+
 	/** Drop the attachment record and its log buffer, without talking to the view.
 	 * Used when the view is already gone. */
 	forget(webContentsId: number): void {
@@ -567,7 +750,7 @@ export class CdpPool {
 		this.attachments.delete(webContentsId);
 		this.subscribers.delete(webContentsId);
 		this.frames.delete(webContentsId);
-		stopLogCapture(webContentsId);
+		this.dropCaptures(webContentsId);
 	}
 
 	/** Detach cleanly: release the debugger session and the log buffer. */
@@ -577,7 +760,7 @@ export class CdpPool {
 		this.attachments.delete(webContentsId);
 		this.subscribers.delete(webContentsId);
 		this.frames.delete(webContentsId);
-		stopLogCapture(webContentsId);
+		this.dropCaptures(webContentsId);
 		if (!attachment) return;
 		try {
 			if (attachment.contents.debugger.isAttached()) {

@@ -470,19 +470,23 @@ test("the payload's rows group and read their scope/source correctly", () => {
 	// This payload has a separate project file, so scope is worth a word.
 	const postgres = rows.find((row) => row.name === "postgres-prod");
 	assert.deepEqual(
-		m.integrationMeta(postgres, document_.project_scope_available),
+		m
+			.integrationMeta(postgres, document_.project_scope_available)
+			.map((part) => part.text),
 		["Local command", "4 tools when last checked", "This project"],
 	);
 	const broken = rows.find((row) => row.name === "acme-broken");
 	assert.deepEqual(
-		m.integrationMeta(broken, document_.project_scope_available),
+		m
+			.integrationMeta(broken, document_.project_scope_available)
+			.map((part) => part.text),
 		["Local command", "Global", "Imported from Codex CLI"],
 	);
 	// And with no separate project file, the same rows carry no scope word.
-	assert.deepEqual(m.integrationMeta(postgres, false), [
-		"Local command",
-		"4 tools when last checked",
-	]);
+	assert.deepEqual(
+		m.integrationMeta(postgres, false).map((part) => part.text),
+		["Local command", "4 tools when last checked"],
+	);
 });
 
 test("the payload's running operation drives the sign-in dialog's own sentence", () => {

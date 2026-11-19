@@ -1,17 +1,18 @@
-import { Badge, Button, Separator } from "@shared/components/ui";
-import { formatDateTime, t } from "@shared/i18n";
+import { Badge, Button } from "@shared/components/ui";
+import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
-import { ShieldCheck, X } from "lucide-react";
+import { X } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useRef } from "react";
 import type { ApprovalView } from "../hooks/use-browser-chrome";
+import type { ApprovalRow, ResolvedRow } from "../model/approval-queue-model";
+import { approvalsDockClasses } from "../model/approvals-dock-layout";
 import {
-	type ApprovalRow,
-	type ResolvedRow,
-	approvalScopeLabel,
-} from "../model/approval-queue-model";
+	BrowserApprovalsAgentsNotice,
+	BrowserApprovalsStanding,
+} from "./browser-approvals-sections";
 import { requesterLabel } from "./browser-consent-request";
 import {
 	BrowserConsentRequest,
@@ -65,6 +66,15 @@ import {
 
 export interface BrowserApprovalsDockProps {
 	open: boolean;
+	/**
+	 * The measured row says the side-by-side layout cannot keep both the panel
+	 * and the page. The dock then takes the full width IN FLOW; the surface
+	 * shrinks the content element, it never overlays it.
+	 */
+	fullWidth?: boolean;
+	/** Bumped when a caller needs the heading focused after an external close
+	 * sequence (the folded ⋯ menu closes after this component mounts). */
+	focusRequest?: number;
 	rows: ApprovalRow[];
 	resolved: ResolvedRow[];
 	selectedEntryId: string | null;
@@ -91,20 +101,10 @@ export interface BrowserApprovalsDockProps {
 	surfaceTag: string;
 }
 
-function grantedWhen(grantedAt: number): string {
-	if (!grantedAt) return "";
-	return formatDateTime(new Date(grantedAt), {
-		year: "numeric",
-		month: "numeric",
-		day: "numeric",
-		hour: "numeric",
-		minute: "numeric",
-		second: "numeric",
-	});
-}
-
 export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 	open,
+	fullWidth = false,
+	focusRequest = 0,
 	rows,
 	resolved,
 	selectedEntryId,
@@ -131,6 +131,12 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 		if (!open) return;
 		headingRef.current?.focus();
 	}, [open]);
+	/* A second focus on an explicit request: the folded menu closes after this
+	   component mounts, so its heading focus must be re-requested afterwards. */
+	useEffect(() => {
+		if (!open || focusRequest === 0) return;
+		headingRef.current?.focus();
+	}, [open, focusRequest]);
 
 	// Escape closes the dock, BOUND ON THE DOCUMENT rather than on the section (UX
 	// round 1, U1). The section handler looked equivalent and was not: deciding on
@@ -179,12 +185,9 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 		if (document.activeElement === document.body) headingRef.current?.focus();
 	}, [open, rowCount]);
 
-	// A `deny` record is a durable NO, not a grant: the agent stops asking about
-	// that origin. It is listed separately because "what may the agent reach" and
-	// "what have I turned off" are two different readings of the same store, and
-	// mixing them puts a refusal under a heading that says an agent may act there.
+	// The summary line counts grants only; the Denied list lives in the shared
+	// standing sections, which split the same store the same way.
 	const granted = approvals.filter((row) => row.scope !== "deny");
-	const denied = approvals.filter((row) => row.scope === "deny");
 
 	if (!open) return null;
 
@@ -192,28 +195,19 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 		<section
 			aria-label={t("ui.browser.browser_approvals_dock.approvals")}
 			data-tour-tag={surfaceTag}
+			data-dock-layout={fullWidth ? "full" : "side"}
 			className={cn(
 				"flex shrink-0 flex-col gap-4 overflow-y-auto px-3 py-3",
-				// The sole boundary between this chrome and a live page (§4.2).
+				// The sole boundary between chrome and a live page (§4.2). It stays
+				// floored at full width too: the panel then meets the chrome at the
+				// row's edge, and the contrast contract's structural check treats this
+				// call site's edge as load-bearing rather than as decoration.
 				"border-control border-l bg-surface",
-				// A fixed width rather than a drag handle: the canvas dock needs
-				// resizing because its content has no natural size, while a list of rows
-				// does (§4.2). 24rem at a 1280px surface and above, 20rem below it.
-				// CAPPED SO THE PAGE KEEPS A PAGE (design round 1, D7). The dock is a
-				// flex SIBLING of the content element, so its width comes straight out of
-				// the page: at the pane's 480 floor a fixed 24rem left the page 160px, and
-				// 96px when the window was wide enough for the 24rem form - the broken
-				// mobile column section 7.3's own floor exists to prevent, and the one
-				// failure a native-view pane cannot signal, because a page 160px wide looks
-				// exactly like a pane that is laid out correctly (measured in
-				// `docs/evidence/browser-pane/pane-dock-narrow`: 160x531 reported).
-				//
-				// The 15rem reserved here is the 240px page floor the surface names as the
-				// design's own, so the two numbers AGREE rather than contradicting each
-				// other: the page never goes below 240px and the dock gives way, never the
-				// page. At 640 - the pane's default - the cap cannot fire (400px is on
-				// offer for a 320px dock), so the default state is untouched.
-				"w-80 max-w-[calc(100%-15rem)] min-[1280px]:w-96",
+				// The side form is a fixed width rather than a drag handle: a list of
+				// rows has a natural size (§4.2), 24rem at a 1280px surface and 20rem
+				// below. The cap keeps the 240px page floor; the full form arrives when
+				// that arithmetic can no longer keep both (approvals-dock-layout.ts).
+				approvalsDockClasses(fullWidth),
 			)}
 		>
 			<div className="flex items-start justify-between gap-2">
@@ -266,24 +260,7 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 				)}
 			</p>
 
-			{/* The persistent statement (design 9.3): a standing notice in the browser
-			    feature that agents can drive tabs here, so the capability is never
-			    something the user has to remember. FIRST, because its words are "each
-			    site BELOW" and it used to be the panel's last child — under Browsing
-			    data, pointing at nothing (review round 1, finding 2; design round 2, D6).
-			    In the sheet it replaces it sat above the Approved list, which is the
-			    position its copy assumes and the one spec §4.2 says it keeps. */}
-			<div
-				className="flex items-start gap-2 rounded-sm bg-accent-wash px-3 py-2"
-				data-tour-tag="browser-agents-notice"
-			>
-				<ShieldCheck aria-hidden className="mt-0.5 size-4 shrink-0 text-ink" />
-				<p className="text-body-sm text-ink">
-					{t(
-						"ui.browser.browser_approvals_dock.agents_can_drive_tabs_in_this_app",
-					)}
-				</p>
-			</div>
+			<BrowserApprovalsAgentsNotice />
 
 			<section
 				aria-label={t("ui.browser.browser_approvals_dock.waiting_requests")}
@@ -321,7 +298,13 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 										onClick={() => onSelect(row.request.entryId)}
 										aria-expanded={selected}
 										data-tour-tag="browser-approvals-waiting-row"
-										className="flex w-full items-center gap-2 px-2 py-1.5 text-left"
+										// The row's own content can exceed a 264px (or 281px side)
+										// button once the authority, requester and expiry are all
+										// present: the rollup used to spill sideways and the panel's
+										// overflow-y resolved to a horizontal scrollbar. Wrap the
+										// expiry instead of clipping it; `ms-auto` keeps it at the
+										// inline end on both one- and two-line rows.
+										className="flex w-full flex-wrap items-center gap-x-2 gap-y-1 px-2 py-1.5 text-start"
 									>
 										{/* The ordinal the tray's chip and the tab's `Waiting n` chip
 										    both carry (§5.2) — the same number, from the same model. */}
@@ -370,7 +353,7 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 											)}
 										</span>
 										{row.remaining && (
-											<span className="shrink-0 text-meta text-ink-dim">
+											<span className="ms-auto shrink-0 text-meta text-ink-dim">
 												{row.remaining}
 											</span>
 										)}
@@ -413,187 +396,15 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 				)}
 			</section>
 
-			<section
-				aria-label={t("ui.browser.browser_approvals_dock.approved_sites")}
-			>
-				<h3 className="text-heading text-ink">
-					{t("ui.browser.browser_approvals_dock.approved")}
-				</h3>
-				{granted.length === 0 ? (
-					<p className="mt-2 text-body-sm text-ink-muted">
-						{t(
-							"ui.browser.browser_approvals_dock.no_site_is_approved_yet_the_agent",
-						)}
-					</p>
-				) : (
-					<ul className="mt-2 flex flex-col gap-2">
-						{granted.map((row) => (
-							<li
-								key={`${row.scope}:${row.origin}`}
-								className="flex items-center justify-between gap-2 rounded-sm bg-surface px-2 py-1.5"
-							>
-								<div className="min-w-0">
-									<p className="truncate font-mono text-mono-sm text-ink">
-										{row.origin}
-									</p>
-									<p className="text-meta text-ink-dim">
-										{approvalScopeLabel(row.scope)}
-										{grantedWhen(row.grantedAt)
-											? ` · ${grantedWhen(row.grantedAt)}`
-											: ""}
-									</p>
-								</div>
-								<Button
-									variant="outline"
-									size="sm"
-									disabled={busy}
-									onClick={() => onRevoke(row.origin)}
-									data-tour-tag="browser-revoke-approval"
-								>
-									{t("ui.browser.browser_approvals_dock.revoke")}
-								</Button>
-							</li>
-						))}
-					</ul>
-				)}
-				{granted.length > 0 && (
-					<Button
-						// THE SAME TREATMENT AS `Forget this site` (design round 2, D7). This is
-						// the widest-blast-radius control in the panel — it drops every site
-						// approval at once — and it was plain body text at the end of a list
-						// whose per-row `Revoke` is an outlined control and whose `Forget this
-						// site` is a danger-outlined one. One class of action, three
-						// affordances, and the loudest action was the quietest.
-						variant="danger"
-						size="sm"
-						className="mt-3 w-full"
-						disabled={busy}
-						onClick={onRevokeAll}
-						data-tour-tag="browser-revoke-all"
-					>
-						{t("ui.browser.browser_approvals_dock.revoke_all_site_approvals")}
-					</Button>
-				)}
-			</section>
-
-			{denied.length > 0 && (
-				<section
-					aria-label={t("ui.browser.browser_approvals_dock.denied_sites")}
-				>
-					<h3 className="text-heading text-ink">
-						{t("ui.browser.browser_approvals_dock.denied")}
-					</h3>
-					<p className="mt-1 text-body-sm text-ink-muted">
-						{t(
-							"ui.browser.browser_approvals_dock.the_agent_stops_asking_about_these_revoking",
-						)}
-					</p>
-					<ul className="mt-2 flex flex-col gap-2">
-						{denied.map((row) => (
-							<li
-								key={`${row.scope}:${row.origin}`}
-								className="flex items-center justify-between gap-2 rounded-sm bg-surface px-2 py-1.5"
-							>
-								<p className="min-w-0 truncate font-mono text-mono-sm text-ink">
-									{row.origin}
-								</p>
-								<Button
-									variant="outline"
-									size="sm"
-									disabled={busy}
-									onClick={() => onRevoke(row.origin)}
-								>
-									{t("ui.browser.browser_approvals_dock.revoke")}
-								</Button>
-							</li>
-						))}
-					</ul>
-				</section>
-			)}
-
-			{currentOrigin && (
-				<section
-					aria-label={t("ui.browser.browser_approvals_dock.current_site")}
-				>
-					<h3 className="text-heading text-ink">
-						{t("ui.browser.browser_approvals_dock.this_site")}
-					</h3>
-					<p className="mt-1 text-body-sm text-ink-muted">
-						{t(
-							"ui.browser.browser_approvals_dock.the_page_the_active_tab_is_on",
-						)}
-					</p>
-					<p className="mt-2 truncate font-mono text-mono-sm text-ink">
-						{currentOrigin}
-					</p>
-					<Button
-						variant="danger"
-						size="sm"
-						className="mt-3"
-						disabled={busy}
-						onClick={() => onForgetSite(currentOrigin)}
-						data-tour-tag="browser-forget-site"
-					>
-						{t("ui.browser.browser_approvals_dock.forget_this_site")}
-					</Button>
-					<p className="mt-1 text-meta text-ink-dim">
-						{t(
-							"ui.browser.browser_approvals_dock.revokes_any_approval_for_it_and_clears",
-						)}
-					</p>
-				</section>
-			)}
-
-			<Separator className="my-1" />
-
-			<section
-				aria-label={t("ui.browser.browser_approvals_dock.browsing_data")}
-			>
-				<h3 className="text-heading text-ink">
-					{t("ui.browser.browser_approvals_dock.browsing_data")}
-				</h3>
-				{/* The sentence the design asks for by name: revoking and clearing are
-				    different actions with different consequences, and a user who has
-				    just revoke-all'd needs to know that clearing cookies will NOT bring
-				    the deny state back. */}
-				<p className="mt-1 text-body-sm text-ink-muted">
-					{t(
-						"ui.browser.browser_approvals_dock.these_clear_what_this_app_s_browser",
-					)}
-				</p>
-				<div className="mt-3 flex flex-wrap gap-2">
-					<Button
-						variant="outline"
-						size="sm"
-						disabled={busy}
-						onClick={() => onClearData("cookies")}
-						data-tour-tag="browser-clear-cookies"
-					>
-						{t("ui.browser.browser_approvals_dock.clear_cookies_and_site_data")}
-					</Button>
-					<Button
-						variant="outline"
-						size="sm"
-						disabled={busy}
-						onClick={() => onClearData("cache")}
-					>
-						{t("ui.browser.browser_approvals_dock.clear_cache")}
-					</Button>
-					<Button
-						variant="outline"
-						size="sm"
-						disabled={busy}
-						onClick={() => onClearData("everything")}
-					>
-						{t("ui.browser.browser_approvals_dock.clear_everything")}
-					</Button>
-				</div>
-				<p className="mt-2 text-meta text-ink-dim">
-					{t(
-						"ui.browser.browser_approvals_dock.clearing_cookies_signs_this_app_out_of",
-					)}
-				</p>
-			</section>
+			<BrowserApprovalsStanding
+				approvals={approvals}
+				currentOrigin={currentOrigin}
+				busy={busy}
+				onRevoke={onRevoke}
+				onRevokeAll={onRevokeAll}
+				onForgetSite={onForgetSite}
+				onClearData={onClearData}
+			/>
 		</section>
 	);
 };

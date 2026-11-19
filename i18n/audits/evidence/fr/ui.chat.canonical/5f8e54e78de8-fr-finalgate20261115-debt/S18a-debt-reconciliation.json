@@ -1,0 +1,39 @@
+{
+  "locale": "fr",
+  "namespace": "ui.chat.canonical",
+  "scope": "Existing S18a debt applicability/disposition only; zero new semantic keys",
+  "source_parent": {
+    "locale": "fr",
+    "receipt_path": "i18n/receipts/0eddeb61023f.json",
+    "receipt_sha256": "907d4a5d79c709133e93c155edc20caa9aeb1d0f81b6094426de4accb390ddc8",
+    "receipt_git_ref": "e6122214503b9fc52841e119c060eabb7650391b",
+    "audited_snapshot": "759530dba089052f53c4c28da12c9c351cf6c1b4",
+    "audited_source_sha256": "0eb58c851335bcb90a14631b24b0ba330b5d0c80af80e9aa82a0970155dc7d45",
+    "audited_target_sha256": "17e5718061f737cb466fb767fa7b4970aeaad0571c1d797fb21dfe0f3d0624c0",
+    "agent": "i18n-auditor",
+    "model": "deepseek/deepseek-flash",
+    "instance": "0eddeb61023f",
+    "counts": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 0,
+      "nit": 0
+    }
+  },
+  "decisions": [],
+  "old_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 4,
+    "nit": 3
+  },
+  "amended_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 4,
+    "nit": 3
+  },
+  "fr_zero_findings_explicit": true,
+  "own_choice": "Carry genuine unremediated parent risks; deduplicate same Hindi NIT, do not equate no-change proposals with absence of findings. Latest S18b clean3-key delta never resolves earlier S18a debt.",
+  "no_other_auditor_verdict_read": true
+}

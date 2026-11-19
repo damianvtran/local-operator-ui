@@ -5,6 +5,7 @@ import {
 } from "@shared/hooks/use-window-glass";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import posthog from "posthog-js";
 import { PostHogProvider } from "posthog-js/react";
 import React from "react";
 import ReactDOM from "react-dom/client";
@@ -12,8 +13,11 @@ import { HashRouter } from "react-router-dom";
 import { ThemedToastContainer } from "./shared/components/common";
 import "@assets/fonts/fonts.css";
 import "@renderer/styles/index.css";
+import { registerProductEventClient } from "@shared/analytics/product-events";
 import { config, telemetryEnabled } from "@shared/config";
+import { LocaleDirectionProvider } from "@shared/i18n/locale-direction";
 import { installExternalOpenRefusalToasts } from "@shared/lib/external-open-refusal";
+import { installNotificationSoundPlayer } from "@shared/lib/notification-sound-player";
 import { installScrollbarActivity } from "@shared/lib/scrollbar-activity";
 import type { PostHogConfig } from "posthog-js";
 import App from "./app";
@@ -26,6 +30,8 @@ import { AuthProviders } from "./shared/providers/auth";
 import { FeatureFlagProvider } from "./shared/providers/feature-flags";
 import { installConversationInputSync } from "./shared/store/conversation-input-sync";
 import { installRightSlotMemoryFollower } from "./shared/store/right-slot-follower";
+import { useUiPreferencesStore } from "./shared/store/ui-preferences-store";
+import { appearanceOf, applyAppearance } from "./shared/themes/appearance";
 import { ThemeProvider } from "./shared/themes/theme-provider";
 import { isDevelopmentMode } from "./shared/utils/env-utils";
 
@@ -44,6 +50,21 @@ const posthogOptions: Partial<PostHogConfig> = {
  * A no-op in every normal launch; `docs/agent-driver.md` is the contract.
  */
 installDevDriver();
+
+/*
+ * THE COMPOSED THEME BEFORE FIRST PAINT. `themes/index.ts` publishes the
+ * DEFAULT palette at import, and `ThemeProvider` publishes the user's in a
+ * layout effect - before paint, but only once React has rendered the tree. A
+ * non-Standard composition (contrast preset or custom accent) used to be
+ * reachable only through that effect, and every module-scope paint in between
+ * (the splash, the scrollbar styles, anything the main process captures as the
+ * first frame) carried the built-in. The preferences store hydrates
+ * synchronously from localStorage at import, so the composition is known here:
+ * publish it now, the same way the mini-view and the installer publish theirs
+ * at module scope. The provider's effect then re-publishes the same id (a
+ * no-op write) and owns every later change.
+ */
+applyAppearance(appearanceOf(useUiPreferencesStore.getState()));
 
 /*
  * THE SCROLLBAR FADE'S DOM HALF, installed once for the whole app. Its CSS half
@@ -70,6 +91,8 @@ declare global {
 		__loSbUninstall?: () => void;
 		/** The same handle for the refused-link listener below. */
 		__loExtRefusalUninstall?: () => void;
+		/** The same handle for the notification-sound player below. */
+		__loNotificationSoundUninstall?: () => void;
 	}
 }
 window.__loSbUninstall?.();
@@ -93,6 +116,16 @@ installConversationInputSync();
  */
 window.__loExtRefusalUninstall?.();
 window.__loExtRefusalUninstall = installExternalOpenRefusalToasts();
+
+/*
+ * Main's notification-sound fallback (Windows/Linux, or a macOS staging
+ * failure): main raised the banner silent and sends the sound here. Module
+ * scope for the refused-link listener's reasons: it must work even if React
+ * fails to mount, and a hot reload must not stack a second listener (which
+ * would play every chime twice).
+ */
+window.__loNotificationSoundUninstall?.();
+window.__loNotificationSoundUninstall = installNotificationSoundPlayer();
 
 /*
  * THE RIGHT SLOT'S MEMORY IS PROJECTED BEFORE THE FIRST RENDER (issue #894).
@@ -169,6 +202,13 @@ document.addEventListener("DOMContentLoaded", () => {
 	 * for `posthog` is the feature-flag provider, and it is gated on the same
 	 * decision, so nothing here can re-enable what this skips.
 	 */
+	/*
+	 * The product-event sink gets its client from here rather than importing
+	 * `posthog-js` itself (see `product-events.ts`). Registering it is inert:
+	 * the sink still checks the launch's switch and `__loaded` per capture, and
+	 * `__loaded` turns true only once the gated provider below has run `init`.
+	 */
+	registerProductEventClient(posthog);
 	const appTree = (
 		<QueryClientProvider client={queryClient}>
 			<FeatureFlagProvider>
@@ -177,7 +217,15 @@ document.addEventListener("DOMContentLoaded", () => {
 						<GlobalScrollbarStyles />
 						<ErrorBoundary>
 							<HashRouter>
-								<App />
+								{/*
+								 * Radix reads direction from this context, not from `<html dir>`:
+								 * its content portals leave the DOM subtree that inherits the root
+								 * attribute. Mounted here so every route's menus inherit the locale
+								 * direction (see the provider's own note).
+								 */}
+								<LocaleDirectionProvider>
+									<App />
+								</LocaleDirectionProvider>
 							</HashRouter>
 						</ErrorBoundary>
 						<ThemedToastContainer />

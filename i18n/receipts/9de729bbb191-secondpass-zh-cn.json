@@ -1,0 +1,111 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit (second independent pass, auditor-authored replacements)",
+	"audit_id": "teambridge-owner-audit-secondpass-zh-CN",
+	"date": "2026-10-28",
+	"instance": "9de729bbb191-secondpass-zh-cn",
+	"instance_note": "Reviewer session 9de729bbb191 with a per-locale suffix so each ledger row carries a distinct instance (precedent: b393dc8cd01c-owneraudit-<locale>).",
+	"auditor": "i18n-auditor",
+	"agent": "i18n-auditor",
+	"model": "anthropic/claude-opus-5-5",
+	"model_provenance": "Harness session header: 'Model: anthropic/claude-opus-5-5'.",
+	"model_fallback": {
+		"announced": true,
+		"observed": true,
+		"chain": [
+			"anthropic/claude-opus-5-5",
+			"anthropic/claude-sonnet-5-5",
+			"openai/gpt-6-astra",
+			"kimi/k3.1-pro",
+			"radient/auto"
+		],
+		"note": "Quota exhaustion on the pinned model late in the turn. Every linguistic judgement, finding and prescribed string here was authored on anthropic/claude-opus-5-5; the fallbacks carried only the mechanical ledger write and the ledger-check re-run, which changed no wording."
+	},
+	"independence": "Second independent pass (reviewer role, session 9de729bbb191), independent of auditor b393dc8cd01c, whose replacements it re-audits: it authored none of them. Narrow scope: only the strings that auditor wrote itself. This reviewer wrote no catalogue byte; the operator applied the prescribed wording. It wrote only the two receipts and the two ledger rows via ledger-assemble.mjs.",
+	"status": "passed",
+	"result": "clean",
+	"translator": {
+		"agent": "i18n-translator",
+		"job": "64be94d56ced",
+		"model": "not supplied",
+		"date": "2026-10-28",
+		"method": "LLM translator subagent; no MT service referenced"
+	},
+	"integration": {
+		"branch": "feat/team-bridge-owner-audit-ui",
+		"reviewed_head": "a6ae8155c37e5a876ae6cf43876f25fafcd351a0",
+		"base": "e6320fbd33 (feat(sidebar) #1465)",
+		"worktree": "~/local-operator-ui-worktrees/team-bridge-owner-audit",
+		"pr": "not yet opened",
+		"note": "Reviews the auditor-authored replacement strings at HEAD a6ae8155c3; the four fixes are uncommitted working-tree bytes named by sha256 below."
+	},
+	"locale": "zh-CN",
+	"namespace": "ui.ownerAudit",
+	"scope": {
+		"kind": "second independent pass, narrow",
+		"auditor_under_review": "b393dc8cd01c",
+		"keys_audited_linguistically": [
+			"ui.ownerAudit.disclosure",
+			"ui.ownerAudit.viewer"
+		],
+		"confirmed_auditor_fixes": [
+			"I18N-zh-CN-1 (首席助理)",
+			"I18N-zh-CN-2 (讨论串)"
+		],
+		"not_reaudited": "The other ui.ownerAudit keys and ui.teamBridge.thread.not_available were audited by b393dc8cd01c and are unchanged since; out of scope."
+	},
+	"sha256": {
+		"en": "a83890d7dafe0a81c4bbc4862da0f77eaf4b7573b1654fbff6d8e37c19eaf4fb",
+		"zh-CN": "58757532a2963d24c4b2dfe151ed8ac23bc67481dc174e12631ef5e07763ab48"
+	},
+	"audited_strings": {
+		"ui.ownerAudit.disclosure": {
+			"before": "仅你作为此代理的所有者可见；其他成员可看到已启用所有者审计。",
+			"after": "仅你作为此智能体的所有者可见；其他成员可看到已启用所有者审计。"
+		},
+		"ui.ownerAudit.viewer": {
+			"before": "代理所有者 {name} 也可以查看。",
+			"after": "智能体所有者 {name} 也可以查看。"
+		}
+	},
+	"checks": {
+		"citation_chief": "首席助理 ships in 10 keys, incl. ui.teamBridge.chief.fallback, chief.unnamed, section.chiefs, builtin.agents_topic, thread.intro_chief, ui.agentMessages.settings.hold.chief_of_staff, ui.onboarding.extras.greeting_done/greeting_owed; 首席助手 appears in 0 other keys.",
+		"citation_thread": "讨论串 ships in ui.teamBridge.replies.title/action/close/placeholder and ui.teamBridge.archive.delete.body; 话题 appears in 0.",
+		"agent_term": "zh-CN style guide line 34 sets agent -> 智能体 (438 catalogue occurrences); 代理 appears in 0 other keys, so b393dc8cd01c left it wrong in disclosure and viewer (I18N2-zh-CN-1, the same defect class as I18N-vi-3 which that pass rated major).",
+		"collision": "筛选 (screening) stays distinct from 审计 (audit); 讨论串 carries no competing shipped meaning.",
+		"placeholders": "{name} preserved in ui.ownerAudit.viewer",
+		"unicode": "all values NFC; no bidi or format controls"
+	},
+	"notes": "Second pass over the auditor-authored zh-CN replacements: 首席助理 and 讨论串 confirmed shipped. I18N2-zh-CN-1 (代理 -> 智能体 in disclosure, viewer) found and fixed before signature. 0 open findings.",
+	"findings": [],
+	"resolved_findings": [
+		{
+			"id": "I18N2-zh-CN-1",
+			"severity": "major",
+			"status": "resolved",
+			"resolved_by": "operator, applying reviewer 9de729bbb191 wording verbatim",
+			"keys": [
+				"ui.ownerAudit.disclosure",
+				"ui.ownerAudit.viewer"
+			],
+			"finding": "auditor replacement pass left agent as 代理, which occurs nowhere else in the zh-CN catalogues",
+			"fix": "agent rendered as 代理 everywhere in the namespace, against style guide line 34 and 438 shipped 智能体 keys"
+		}
+	],
+	"limitations": "The prescribed replacement wording for the strings this pass found wrong was authored by this reviewer and applied by the operator verbatim. This is the second signature over auditor b393dc8cd01c, which the rule requires; it is not an authorship-independent third signature on this reviewer own corrections, and a further independent reviewer would be needed for that if the programme wants it.",
+	"audit_notes_not_execution_log": "notes, checks and findings are this reviewer linguistic judgement, not command output",
+	"execution": [
+		{
+			"command": "shasum -a 256 src/i18n/catalogues/zh-CN/ui.ownerAudit.json",
+			"result": "58757532a2963d24c4b2dfe151ed8ac23bc67481dc174e12631ef5e07763ab48"
+		},
+		{
+			"command": "python3 JSON parse + NFC/format-control scan of the changed values",
+			"result": "all NFC, no bidi/format controls, 28/28 keys, tab indent and trailing newline preserved"
+		},
+		{
+			"command": "python3 grep of the other catalogues for each claimed shipped term",
+			"result": "every citation resolves; counts recorded in checks"
+		}
+	]
+}

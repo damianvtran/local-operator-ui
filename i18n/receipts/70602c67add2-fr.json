@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "locale": "fr",
+  "namespace": "ui.agentMessages",
+  "date": "2026-10-19",
+  "status": "passed",
+  "audit_kind": "single-key-delta",
+  "key": "ui.agentMessages.dialog.consent_changed",
+  "english": "Read the current consent text, then choose Enable again.",
+  "target": "Lisez le texte de consentement actuel, puis choisissez à nouveau Activer.",
+  "scope": "Independent delta audit of the only changed key in fr/ui.agentMessages.json (direction-word removal). The rest of the namespace is unchanged from the previously audited bytes; this receipt binds the ENGLISH and fr file hashes it was derived from.",
+  "head": "59ae07343175672667bf781c86fbfdccb9c59b06",
+  "branch": "fix/agent-messages-dialog",
+  "worktree": ".worktrees/agent-messages-dialog",
+  "instance": "70602c67add2-fr",
+  "auditor": "reviewer (i18n consent_changed delta, fr)",
+  "model": "deepseek/deepseek-flash",
+  "sha256": {
+    "en": "8dadc34125e9434d3994cff7518f72774bd486ce36edd505d34e21ef4c4f574b",
+    "fr": "65dab69ba8726cd865d83237a848b7175f64fc6b2e3bd89e2f1ac91bc35aa37e"
+  },
+  "findings": [],
+  "audit": {
+    "back_translation": "“Read the current consent text, then choose Enable again.”",
+    "semantic_equivalence": "Pass: same object (the current consent text), same required action (choose Enable again), no added or lost instruction. The English was made direction-neutral; the target carries the same neutral scope.",
+    "register": "Formal vous, matching this dialog’s corpus (“Réessayez”, “Mettez Local Operator à jour”, “Votre consentement”); one terminal period as in English.",
+    "delta_proof": "Old value was “Lisez le texte de consentement actuel ci-dessous, puis choisissez à nouveau Activer.” The change removes exactly “ci-dessous, ” and changes no other word. The previous fr catalogue row was audited clean at the old bytes.",
+    "terminology": "“Activer” is byte-identical to ui.agentMessages.dialog.enable (“Activer”), so the notice names the same button label as the action. Corpus precedent for an unquoted label after choisir: ui.chat.tags.discovery “puis choisissez Étiquettes…”, so the unquoted “Activer” is the catalogue’s own convention, not a typography regression.",
+    "direction_scan": "Scanned for ci-dessous / ici / en bas: none present. Value is direction-neutral.",
+    "style": "“texte de consentement actuel” is idiomatic; “consentement” matches consent_unavailable and local_failure. “à nouveau” is standard between the imperative and its label complement.",
+    "mechanical": {
+      "key_present": true,
+      "key_set_equals_english": "16/16, no missing or extra keys",
+      "placeholders": "none in English or target; no braces in the value",
+      "punctuation": "one sentence; comma after the first clause before “puis”; one terminal period; no added exclamation or question marks",
+      "bytes": "UTF-8; NFC; no NBSP, U+202F, zero-width or BOM characters; no leading/trailing whitespace; no double spaces"
+    }
+  },
+  "note": "No blocker, major, minor or nit finding."
+}

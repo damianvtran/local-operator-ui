@@ -1,5 +1,5 @@
 {
-	"ui.onboarding.connect.intro": "Local Operator需要AI账户才能工作。Radient最方便：在浏览器中登录一次即可，无需粘贴任何内容。已订阅ChatGPT或Claude？也可以直接用该账户登录。要使用其他提供商，展开下方的提供商列表。",
+	"ui.onboarding.connect.intro": "选择Radient，在浏览器中登录一次即可使用多种模型、听写和智能体共享功能。你也可以使用现有的Claude或ChatGPT订阅、API密钥，或在自己电脑上运行的模型。符合条件的Radient新账户可在完成邮箱验证和安全检查后领取免费额度。",
 	"ui.onboarding.default_model.block.loading_models": "正在加载模型列表……",
 	"ui.onboarding.default_model.block.pick_a_model": "选择模型后继续。",
 	"ui.onboarding.default_model.change": "更改",
@@ -33,7 +33,7 @@
 	"ui.onboarding.search.each_key_saved": "离开某个输入框时，该密钥会立即保存到你的设备上。",
 	"ui.onboarding.search.intro": "智能体可以边工作边查询今天的价格、本周的新闻等信息，而不必只依赖模型已有的知识。",
 	"ui.onboarding.search.mode.free": "免费",
-	"ui.onboarding.search.mode.free_detail": "轮流使用DuckDuckGo、Tavily的免费服务、Exa和Parallel等免费提供商。无需密钥；服务池由大家共用，繁忙时搜索可能较慢。",
+	"ui.onboarding.search.mode.free_detail": "使用与其他用户共用的免费搜索服务。无需密钥。繁忙时搜索可能较慢。",
 	"ui.onboarding.search.mode.keys": "添加API密钥",
 	"ui.onboarding.search.mode.keys_detail": "为你使用的搜索提供商添加自己的密钥。",
 	"ui.onboarding.search.mode.label": "搜索设置",

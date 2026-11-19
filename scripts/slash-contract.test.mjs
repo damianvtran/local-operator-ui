@@ -81,7 +81,7 @@ const {
 	matchChoices,
 	lockedCommandNote,
 	lockedRunUndoCap,
-	NO_CONVERSATION_CLAUSE,
+	noConversationClause,
 	phaseLabel,
 	pickArmsCommand,
 	pickStagesDraft,
@@ -98,7 +98,6 @@ const {
 	slashKeyIntent,
 	slashRunAllowed,
 	stagedNote,
-	stagedPromiseVerb,
 	titleRefreshRows,
 	stagedSentence,
 } = await import(
@@ -2434,7 +2433,7 @@ test("the staged note's promise is the destination's, and the pane's", () => {
 	// exactly, from the one table, so the two cannot drift.
 	assert.equal(
 		stagedNote("/goal I approve spend", "session.goal", true),
-		`Staged /goal I approve spend. Enter ${stagedPromiseVerb("session.goal")}.`,
+		"Staged /goal I approve spend. Enter sets the goal and sends the text.",
 	);
 	// A pane with no conversation: the dispatcher refuses `/goal` there, so the
 	// note says what it can do instead of promising the goal will be set. The
@@ -2496,16 +2495,16 @@ test("the staged note's promise is the destination's, and the pane's", () => {
 	);
 	assert.equal(
 		reassembledNote("/loop please run", false),
-		`Staged /loop please run. ${NO_CONVERSATION_CLAUSE}`,
+		`Staged /loop please run. ${noConversationClause()}`,
 	);
 	// The clause is ONE string, so the two notes cannot drift into two refusals.
 	assert.ok(
 		stagedNote("/goal I approve spend", "session.goal", false).endsWith(
-			NO_CONVERSATION_CLAUSE,
+			noConversationClause(),
 		),
 	);
 	assert.ok(
-		reassembledNote("/loop please run", false).endsWith(NO_CONVERSATION_CLAUSE),
+		reassembledNote("/loop please run", false).endsWith(noConversationClause()),
 	);
 });
 

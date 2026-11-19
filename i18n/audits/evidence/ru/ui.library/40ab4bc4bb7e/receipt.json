@@ -1,0 +1,291 @@
+{
+ "locale": "ru",
+ "mode": "delta",
+ "scope": "PR damianvtran/local-operator-ui #1851, remediation head f04035bc3cb6a03644f8776a799e3daad93c7e58, previous audited head 8a9ce1f808c266ebe9a0e924094344cea60c2c23. Round-2 delta audit of ONE namespace (ui.library): (1) the single revised value ui.library.tag_category.custom, re-audited in full against the CURRENT English catalogue and sidecar, the ru catalogue's existing renderings, the ru style guide, the glossary, the width hint, invisible/bidi characters and its siblings in the filter rail; (2) the other 19 new keys, confirmed byte-identical to the round-1 audited bytes, so their round-1 verdicts carry unchanged; (3) key-set parity with English and zero legacy change against origin base 0e12072d2b3; (4) hash binding. The 159 legacy values of the namespace are NOT recertified.",
+ "head_sha": "f04035bc3cb6a03644f8776a799e3daad93c7e58",
+ "previous_head_sha": "8a9ce1f808c266ebe9a0e924094344cea60c2c23",
+ "base_sha": "0e12072d2b3",
+ "audit_date": "2026-11-10",
+ "key_count": 20,
+ "fully_audited_key_count": 1,
+ "fully_audited_keys": [
+  "ui.library.tag_category.custom"
+ ],
+ "carried_key_count": 19,
+ "carried_keys_byte_identical": true,
+ "translator": {
+  "agent": "i18n-translator",
+  "model": "anthropic/claude-sonnet-5-5",
+  "session": "not supplied",
+  "source": "Revision identity supplied by the delegation brief (a fresh translator, anthropic/claude-sonnet-5-5, revised this one value after audit findings); the revision session id was not supplied. Verified independently from the worktree: the ru guide note in _s14-audits/f04035bc.../ru-rev.json records model anthropic/claude-sonnet-5-5 and the single value that landed. This auditor translated nothing, cannot reach that session, never read another session's directory, and used no translation engine, API or MT service to compare or back-translate."
+ },
+ "auditor": {
+  "agent": "i18n-auditor",
+  "instance": "40ab4bc4bb7e",
+  "session": "40ab4bc4bb7e",
+  "model": "deepseek/deepseek-flash",
+  "actual_model_source": "Served session header for this session (40ab4bc4bb7e) states deepseek/deepseek-flash; no model switch, role-pin override or provider fallback occurred in this session. A role-level pin cannot be read from inside the session.",
+  "fallback_used": false,
+  "independent_from_translator_session": true
+ },
+ "policy_sources": {
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/ru.md",
+   "sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+  },
+  "glossary": {
+   "path": "~/local-operator-ui/.worktrees/_s14-audits/f04035bc3cb6a03644f8776a799e3daad93c7e58/glossary.md",
+   "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+   "note": "Manager-owned copy; a separate shasum run in this session confirmed it is byte-identical to ~/local-operator/i18n/glossary.md. No custom/tag/category row exists in it."
+  },
+  "expected_hashes": {
+   "path": "~/local-operator-ui/.worktrees/_s14-audits/f04035bc3cb6a03644f8776a799e3daad93c7e58/expected-hashes.json"
+  }
+ },
+ "status": "passed",
+ "result": "clean-with-findings",
+ "verdict": "passed — the revised value «Произвольные» is a faithful, idiomatic and width-compliant rendering of the English 'Custom' as the context note defines it, resolves the round-1 width finding (16 -> 12 cells, at the ~12-cell rail hint) and adopts exactly what the independent solution audit (ru-sol R1) proposed; the other 19 new keys are byte-identical to the round-1 audited bytes so their verdicts carry; key sets and legacy values are intact; 3/3 expected hashes match. One MINOR (F1): the split from the corpus's «Свои» rendering of 'Custom' is defensible but unrecorded. No BLOCKER, no MAJOR.",
+ "severity_counts": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 1,
+  "nit": 0
+ },
+ "findings": [
+  {
+   "id": "F1",
+   "key": "ui.library.tag_category.custom",
+   "severity": "minor",
+   "category": "terminology consistency / unrecorded per-sense term split",
+   "current_text": "Произвольные",
+   "source_text": "Custom",
+   "problem": "The revised value is faithful and idiomatic, but it is now the ONLY rendering of English 'Custom' in the whole ru catalogue set: «Произвольн…» occurs exactly once across src/i18n/catalogues/ru/*.json, while the established ru rendering of the same English label is the possessive adjective «Свои/Свой/Своё/Своя» in at least six places (ui.agents.pages.scope.custom «Свои» for en 'Custom', ui.settings.appearance.editor.custom_group «Свои темы», ui.canvas.insert_table_popover.custom_size «Свой размер», ui.chat.directory.menu.custom «Свой каталог», ui.common.models.model_select.custom_model «Своя модель», ui.settings.model.model_setting_options.custom_value «Своё значение»). The glossary binds a rendering per term («the SAME rendered word in every locale unless a row says otherwise») and has NO 'custom' row, so nothing authorises or forbids the split; the divergence is defensible on sense (a free-form taxonomy class that also holds agent-created and uncategorised tags, not an ownership scope), but it is a second vocabulary for one English headword that no recorded call covers, and a reader arriving from the Agents surface («Свои») will scan this rail for «Свои». The ru guide's own mechanism for exactly this is the recorded-call list («## Wave-2 recorded calls … every call below was audited in the catalogues before landing here», plus the recorded width/budget exceptions), and the translator's revision note ends «Proposal: none needed».",
+   "evidence": [
+    "ru ui.library.tag_category.custom = «Произвольные» (this head); en 'Custom'",
+    "ru ui.agents.pages.scope.custom = «Свои» (en 'Custom'); ru ui.settings.appearance.editor.custom_group = «Свои темы» (en 'Custom themes')",
+    "ru ui.canvas.insert_table_popover.custom_size = «Свой размер»; ui.chat.directory.menu.custom = «Свой каталог»; ui.common.models.model_select.custom_model = «Своя модель»; ui.settings.model.model_setting_options.custom_value = «Своё значение»",
+    "grep this session over src/i18n/catalogues/ru/: «Произвольн» -> 1 match, this key only",
+    "~/local-operator/i18n/glossary.md line 3: «Translation invariant per term: the SAME rendered word in every locale unless a row says otherwise.» — and no custom/tag/category row exists (grep of the glossary: only the unrelated «compaction» and the Urdu label note match)",
+    "~/local-operator/i18n/style-guides/ru.md «## Wave-2 recorded calls (2026-10-11)»: «Recorded after the ru wave passed audit; every call below was audited in the catalogues before landing here.»",
+    "src/i18n/catalogues/en/ui.library.context.json ui.library.tag_category.custom.note (current): «… an adjective heading over a group of tags (inflect as the target language requires), no placeholders. Names the category, not a count. …»"
+   ],
+   "why_not_blocker_or_major": "Not a MAJOR under this round's ladder: the heading does not misdescribe the concept (it names the free-form/uncategorised tag group exactly as the context note defines it: «tags the user or an agent created freely, with no fixed taxonomy … also the fallback group for a tag with an empty category»), it collides with no other control or heading in the rail (verified against all seven tag_category siblings, sort.kind/sort options and filter.tags/filter.categories/filter.source/filter.status), it is idiomatic product Russian («произвольные теги» is the standard Russian term for free-form tags), it meets the width budget at exactly 12 cells, and there is no glossary row it can violate. The cost is consistency plus the absence of a recorded call, which is a MINOR by definition ('defensible-but-weaker').",
+   "suggested_wording": "Keep «Произвольные» — do not change the catalogue. Record the split once, in the ru guide's recorded-call list or in this wave's exception note, e.g.: «Custom as an ownership scope -> «Свои» (ui.agents.pages.scope.custom, ui.settings.appearance.editor.custom_group); as a free-form tag-taxonomy class -> «Произвольные» (ui.library.tag_category.custom), because that group also holds agent-created and uncategorised tags and «Свои» would read as ownership.»"
+  }
+ ],
+ "round1_finding_disposition": [
+  {
+   "origin": "ru-ds-54847aeaaf30",
+   "id": "M1",
+   "severity_in_round1": "minor",
+   "key": "ui.library.tag_category.custom",
+   "round1_asked": "«Свои» (4 cells) on consistency grounds with ui.agents.pages.scope.custom, or keep «Пользовательские» with a recorded 16-cell exception",
+   "resolved": "partially — width half RESOLVED (12 cells, at the hint); terminology half NOT adopted",
+   "detail": "The width cost M1 measured (16 cells, +33% over the ~12-cell rail hint) is gone: «Произвольные» measures 12 cells and meets the hint without an exception. The wording half of M1 is not adopted, and I do not press it: my round-1 recommendation «Свои» was weaker than I stated, because this catalogue already renders BOTH en 'Custom' (ui.agents.pages.scope.custom «Свои») AND en 'Local' (ui.agents.skills.scope.local «Свои»; cf. ui.agents.skills.source.local «Локальный») with the same word, so «Свои» would have added a third, ownership-flavoured meaning to a heading whose group also holds agent-created and uncategorised tags. «Произвольные» names the taxonomy character instead of ownership and is more accurate for this concept. Residual: the split now needs the recorded call in F1."
+  },
+  {
+   "origin": "ru-ds-54847aeaaf30",
+   "id": "N2",
+   "severity_in_round1": "nit",
+   "key": "ui.library.tag_category.custom",
+   "metadata_layer": "english_context_sidecar",
+   "round1_asked": "The sidecar called 'Custom' «a single noun» and repeated «Singular, naming the category not a count», which gives a Russian translator no warning that the heading may need an agreeing plural form",
+   "resolved": "RESOLVED",
+   "detail": "The current note reads «… an adjective heading over a group of tags (inflect as the target language requires), no placeholders. Names the category, not a count. …» — the part of speech is now stated correctly and the inflection guidance is present. Verified in the current file and in the sidecar diff at this head."
+  },
+  {
+   "origin": "ru-sol-5d9d00eabe50",
+   "id": "R1",
+   "severity_in_round1": "minor",
+   "key": "ui.library.tag_category.custom",
+   "round1_asked": "«Optional compact rendering: Произвольные (12 characters), matching freely created tags; or explicitly accept the longer idiomatic Пользовательские after rendered fit verification.»",
+   "resolved": "RESOLVED — the first option was taken verbatim",
+   "detail": "The revised value is exactly «Произвольные», 12 cells, so the long-form acceptance path is moot."
+  },
+  {
+   "origin": "ru-sol-5d9d00eabe50",
+   "id": "R2",
+   "severity_in_round1": "minor",
+   "key": "ui.library.kind.other",
+   "metadata_layer": "english_context_sidecar",
+   "round1_asked": "The note said the label is «Rendered inside the sentence ui.library.preview.unsupported ONLY via the generic fallback»; asked for «Badge only. For the catch-all other kind the unsupported-preview state uses ui.library.preview.unsupported_generic, with no interpolated kind label.»",
+   "resolved": "RESOLVED (adjacent metadata, reported for completeness — not re-audited)",
+   "detail": "The current note now begins «Badge only. For the catch-all `other` kind the unsupported-preview state uses ui.library.preview.unsupported_generic, which has no kind slot; this label is never interpolated into a sentence.» Consistent with the English keys: ui.library.preview.unsupported = «A {kind} file has no in-app preview here.» carries the slot, ui.library.preview.unsupported_generic carries none. The ru value of kind.other is byte-unchanged and its round-1 verdict stands."
+  },
+  {
+   "origin": "ru-ds-54847aeaaf30",
+   "id": "N1",
+   "severity_in_round1": "nit",
+   "key": "ui.library.tag_category.type",
+   "round1_asked": "keep «Тип»; record that en 'Kind' and 'Type' share one Russian word by corpus decision",
+   "resolved": "CARRIED — unchanged key, out of this delta; no new evidence",
+   "detail": "ru ui.library.sort.kind «Тип» and ui.library.tag_category.type «Тип» remain identical; byte-unchanged at this head."
+  }
+ ],
+ "concern_verdicts": {
+  "a_accuracy": "pass — «Произвольные» preserves the meaning the current sidecar defines: tags created freely by the user or an agent with no fixed taxonomy, plus the fallback group for an empty category. No omission, no addition, no negation or polarity error, no placeholders, no numbers; nothing destructive or permission-bearing is affected. «Пользовательские» was also accurate but narrower (it names the user only, while the group also holds agent-created tags).",
+  "b_terminology_consistency": "pass with F1 minor — no glossary row covers 'custom', 'tag' or 'category' (grep of the 173-line glossary: no match), so nothing is violated; the divergence from the corpus's «Свои» is a consistency cost, not a term violation.",
+  "c_idiom_register": "pass — neutral single-word heading, sentence case, no exclamation, no addressing, no politeness padding, no Title Case; «произвольные теги» is the ordinary Russian term for free-form tags and is not a calque.",
+  "d_form_and_grammar": "pass — plural nominative adjective; the same -ые form agrees with either plausible elided parent in this rail (masc «теги» or fem «категории»), so no gender or number error is possible; the adjectival shape is unchanged from the round-1 value and is explicitly blessed by the corrected sidecar.",
+  "e_fit": "pass — 12 chars = 12 display cells against the sidecar's «Narrow rail header (about 12 characters)»: exactly at the hint, and the longest heading in the rail (Формат 6, Проект 6, Источник 8, Статус 6, Тема 4, Тип 3). No wide or combining glyphs; no truncation risk flagged.",
+  "f_invisible_bidi": "pass — zero invisible/bidi characters in the revised value (U+00A0, U+202F, U+200B-D, U+FEFF, U+200E/F, U+202A-E, U+2066-9, U+061C, U+00AD all scanned) and zero across all 179 ru values of the namespace.",
+  "g_collision": "pass — «Произвольные» equals no other value in ru/ui.library and no sibling heading, sort option or filter label; the two inherited collisions in the rail (tag_category.type «Тип» vs sort.kind «Тип»; tag_category.source «Источник» vs filter.source «Источник») are unchanged by this delta and are English-side mirrors (en 'Type'/'Kind', en 'Source'/'Source').",
+  "h_carried_keys": "not re-audited — the other 19 new keys are byte-identical to the round-1 audited bytes (verified by comparing every added key at both heads: exactly ui.library.tag_category.custom differs), so the round-1 verdicts of ru-ds-54847aeaaf30 and ru-sol-5d9d00eabe50 carry. Round-1 findings on them (N1) are carried above."
+ },
+ "namespaces": {
+  "ui.library": {
+   "status": "passed",
+   "result": "clean-with-findings",
+   "source_sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71",
+   "target_sha256": "49af1bd7b725040e8fc821fbe38fca35d8e82410020a0bc40f216ed7650fa8ae",
+   "input_hashes": {
+    "en": {
+     "path": "src/i18n/catalogues/en/ui.library.json",
+     "sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71"
+    },
+    "context": {
+     "path": "src/i18n/catalogues/en/ui.library.context.json",
+     "sha256": "f799fe911107aa1f7b83b0c026ee277d5c21ee5eba297e3ae13c2da51135cc8e"
+    },
+    "ru": {
+     "path": "src/i18n/catalogues/ru/ui.library.json",
+     "sha256": "49af1bd7b725040e8fc821fbe38fca35d8e82410020a0bc40f216ed7650fa8ae"
+    }
+   },
+   "fully_audited_keys": [
+    "ui.library.tag_category.custom"
+   ],
+   "carried_keys_count": 19,
+   "carried_keys_byte_identical": true,
+   "findings": [
+    {
+     "id": "F1",
+     "key": "ui.library.tag_category.custom",
+     "severity": "minor",
+     "category": "terminology consistency / unrecorded per-sense term split",
+     "current_text": "Произвольные",
+     "source_text": "Custom",
+     "problem": "The revised value is faithful and idiomatic, but it is now the ONLY rendering of English 'Custom' in the whole ru catalogue set: «Произвольн…» occurs exactly once across src/i18n/catalogues/ru/*.json, while the established ru rendering of the same English label is the possessive adjective «Свои/Свой/Своё/Своя» in at least six places (ui.agents.pages.scope.custom «Свои» for en 'Custom', ui.settings.appearance.editor.custom_group «Свои темы», ui.canvas.insert_table_popover.custom_size «Свой размер», ui.chat.directory.menu.custom «Свой каталог», ui.common.models.model_select.custom_model «Своя модель», ui.settings.model.model_setting_options.custom_value «Своё значение»). The glossary binds a rendering per term («the SAME rendered word in every locale unless a row says otherwise») and has NO 'custom' row, so nothing authorises or forbids the split; the divergence is defensible on sense (a free-form taxonomy class that also holds agent-created and uncategorised tags, not an ownership scope), but it is a second vocabulary for one English headword that no recorded call covers, and a reader arriving from the Agents surface («Свои») will scan this rail for «Свои». The ru guide's own mechanism for exactly this is the recorded-call list («## Wave-2 recorded calls … every call below was audited in the catalogues before landing here», plus the recorded width/budget exceptions), and the translator's revision note ends «Proposal: none needed».",
+     "evidence": [
+      "ru ui.library.tag_category.custom = «Произвольные» (this head); en 'Custom'",
+      "ru ui.agents.pages.scope.custom = «Свои» (en 'Custom'); ru ui.settings.appearance.editor.custom_group = «Свои темы» (en 'Custom themes')",
+      "ru ui.canvas.insert_table_popover.custom_size = «Свой размер»; ui.chat.directory.menu.custom = «Свой каталог»; ui.common.models.model_select.custom_model = «Своя модель»; ui.settings.model.model_setting_options.custom_value = «Своё значение»",
+      "grep this session over src/i18n/catalogues/ru/: «Произвольн» -> 1 match, this key only",
+      "~/local-operator/i18n/glossary.md line 3: «Translation invariant per term: the SAME rendered word in every locale unless a row says otherwise.» — and no custom/tag/category row exists (grep of the glossary: only the unrelated «compaction» and the Urdu label note match)",
+      "~/local-operator/i18n/style-guides/ru.md «## Wave-2 recorded calls (2026-10-11)»: «Recorded after the ru wave passed audit; every call below was audited in the catalogues before landing here.»",
+      "src/i18n/catalogues/en/ui.library.context.json ui.library.tag_category.custom.note (current): «… an adjective heading over a group of tags (inflect as the target language requires), no placeholders. Names the category, not a count. …»"
+     ],
+     "why_not_blocker_or_major": "Not a MAJOR under this round's ladder: the heading does not misdescribe the concept (it names the free-form/uncategorised tag group exactly as the context note defines it: «tags the user or an agent created freely, with no fixed taxonomy … also the fallback group for a tag with an empty category»), it collides with no other control or heading in the rail (verified against all seven tag_category siblings, sort.kind/sort options and filter.tags/filter.categories/filter.source/filter.status), it is idiomatic product Russian («произвольные теги» is the standard Russian term for free-form tags), it meets the width budget at exactly 12 cells, and there is no glossary row it can violate. The cost is consistency plus the absence of a recorded call, which is a MINOR by definition ('defensible-but-weaker').",
+     "suggested_wording": "Keep «Произвольные» — do not change the catalogue. Record the split once, in the ru guide's recorded-call list or in this wave's exception note, e.g.: «Custom as an ownership scope -> «Свои» (ui.agents.pages.scope.custom, ui.settings.appearance.editor.custom_group); as a free-form tag-taxonomy class -> «Произвольные» (ui.library.tag_category.custom), because that group also holds agent-created and uncategorised tags and «Свои» would read as ownership.»"
+    }
+   ]
+  }
+ },
+ "per_key_checks": [
+  {
+   "key": "ui.library.tag_category.custom",
+   "source": "Custom",
+   "current_text": "Произвольные",
+   "previous_audited_text": "Пользовательские",
+   "findings": [
+    "F1"
+   ],
+   "fully_reaudited": true,
+   "assessment": "Faithful and idiomatic. The current sidecar defines the group as «tags the user or an agent created freely, with no fixed taxonomy», also the fallback group for an empty category; «произвольные теги» is the standard Russian term for free-form tags, it covers the agent-created and uncategorised members that «Пользовательские» excluded, and it fits the ~12-cell rail hint where «Пользовательские» (16) did not. It reads correctly under the section heading ui.library.filter.categories «Категории» and beside the six noun siblings. The only cost is that the rest of the catalogue renders en 'Custom' as «Свои» (F1).",
+   "placeholder_integrity": {
+    "arguments": [],
+    "matches_english": true,
+    "number_skeleton": null,
+    "braces": 0,
+    "markup": 0,
+    "backticks": 0
+   },
+   "plural_select": [],
+   "length_chars": 12,
+   "length_cells": 12,
+   "length_source_chars": 6,
+   "hint_cells": 12,
+   "invisible_chars": [],
+   "collision_check": "none with ui.library.tag_category.{format,project,source,status,topic,type}, ui.library.sort.*, ui.library.page.sort, ui.library.filter.{tags,categories,source,status}; the only 'Произвольн' in src/i18n/catalogues/ru/*.json"
+  }
+ ],
+ "mechanical": {
+  "validator_commands_run": [
+   "node scripts/i18n/generate.mjs --check -> «src/i18n/keys.gen.ts is byte-identical to a fresh generation.» exit 0",
+   "node scripts/i18n/context-parity.mjs -> «ok — every English key is covered, apart from 129 allowed gap(s) in 4 namespace(s) (shrink-only)» exit 0",
+   "node scripts/i18n/check-duplicates.mjs -> «ok — 1419 file(s) scanned, 0 duplicate key(s)» exit 0",
+   "node scripts/i18n/ledger-check.mjs -> FAILED — 21 finding(s) across 1099 ledger entr(ies); ru/ui.library: stale source_sha256, stale target_sha256, receipt-linkage. Read as the expected pre-ledger-write state of this delta (the same three rows appear for all seven other locales); no ledger write was run.",
+   "python3 ru-delta-ds-40ab4bc4bb7e-check.py -> all checks PASS, exit 0 (source and .out retained beside this receipt)"
+  ],
+  "json_valid": true,
+  "key_sets_identical_to_english": true,
+  "keys_added_or_removed_vs_base": "vs origin base 0e12072d2b3: 20 added, 0 removed, 0 legacy value changed (verified by comparing every base value to its head value); en 179 keys = ru 179 keys, identical set AND identical key order",
+  "delta_vs_previous_audited_head": "git diff 8a9ce1f808c2..HEAD -- src/i18n/catalogues/ru/ui.library.json is exactly 1 insertion / 1 deletion (ui.library.tag_category.custom); the other 19 new keys are byte-identical",
+  "placeholder_parity": true,
+  "icu_plural_select_enforced": false,
+  "icu_note": "The revised value carries no ICU syntax and no placeholders, so plural/select completeness is not triggered by this delta; the namespace's legacy plurals were not re-certified in this round.",
+  "invisible_or_bidi_characters": "none in the revised value; none across all 179 ru values of the namespace",
+  "width_measurements": {
+   "revised_key": "ui.library.tag_category.custom",
+   "cells": 12,
+   "previous_cells": 16,
+   "hint_cells": 12,
+   "rail_siblings_cells": {
+    "format": 6,
+    "project": 6,
+    "source": 8,
+    "status": 6,
+    "topic": 4,
+    "type": 3
+   },
+   "over_budget": [],
+   "measurement": "python unicodedata: combining marks 0, East-Asian W/F counted 2; all glyphs are single-width Cyrillic"
+  },
+  "hash_binding": "3/3 recomputed sha256 of en, en context and ru match expected-hashes.json at this head; 0 mismatches. Glossary and style-guide hashes also unchanged from round 1.",
+  "delta_is_additions_only": true,
+  "legacy_values_removed_or_changed": []
+ },
+ "unverified": [
+  "No rendered frame, no Electron/React run, no screenshot and no measured pixel fit: this brief forbids builds, servers and test trees. The fit judgment is the sidecar's 12-cell hint against measured cell widths (12 exactly), not rendered geometry.",
+  "No production ICU formatter run and no runtime locale switch: the revised value has no ICU syntax, so this is N/A for it.",
+  "The 19 carried keys were NOT re-audited for wording; only byte-identity to the round-1 audited bytes was proven. Their round-1 verdicts (including ru-ds N1 on 'Тип') carry unchanged.",
+  "The 159 legacy values of ui.library were not recertified; only JSON validity, key-set parity, zero change vs base and hash binding were verified.",
+  "ledger-check.mjs currently FAILS on ru/ui.library (and on the other seven locales) because the ledger row for this round has not been written. That is a manager step, not a translation defect; no ledger command was run by this auditor.",
+  "No PR comment, commit or tracked-evidence write: writes were limited to this session's scratchpad (read-only task)."
+ ],
+ "receipt_contract_review": "Field set mirrors ~/local-operator-ui/.worktrees/_s14-audits/8a9ce1f8.../round1/fr-ds-7c6a1a31a0fb.json (the named model): root fields plus a `namespaces` object with exactly ONE ui.library block (status, result, source_sha256, target_sha256, input_hashes, findings), and the companion record mirrors fr-ds-7c6a1a31a0fb.record.json. Additive fields (previous_head_sha, round1_finding_disposition, per_key_checks.previous_audited_text, carried_*) carry no verdict weight. One deliberate deviation: the model's receipt lists its OWN sha256 inside its `artifacts` array, which cannot be correct for a file that contains that hash; here the receipt's own hash is recorded only in record.json, computed after the receipt was final. Every JSON file was re-parsed with python json.load after writing; no schema validator was run and no repository file was written.",
+ "audit_notes_not_execution_log": false,
+ "execution_log": "ru-delta-ds-40ab4bc4bb7e.audit.log",
+ "artifacts": [
+  {
+   "path": "ru-delta-ds-40ab4bc4bb7e.audit.log",
+   "sha256": "77574a263b0776fe5e056a29544532e8d38118251f1cdd725cfbede479b150ad",
+   "kind": "actual_execution_log",
+   "record_reference": "record.json"
+  },
+  {
+   "path": "ru-delta-ds-40ab4bc4bb7e-check.py",
+   "sha256": "2d3f1d9fa1e3f5dc41df6ee8cee5bfa4b7394c5a9d5a2e26fc9ceba558849e39",
+   "kind": "executed_check_source",
+   "record_reference": "record.json"
+  },
+  {
+   "path": "ru-delta-ds-40ab4bc4bb7e-check.out",
+   "sha256": "ae40a66cc93c0e2de6e9191a07b8108d834ff45cf47be5fe370429edb79b759a",
+   "kind": "actual_execution_output",
+   "record_reference": "record.json"
+  },
+  {
+   "path": "ru-delta-ds-40ab4bc4bb7e.record.json",
+   "kind": "audit_record",
+   "record_reference": "record.json",
+   "note": "records this receipt's own sha256, computed after finalisation"
+  }
+ ],
+ "retention": {
+  "state": "scratch_handoff_only_per_explicit_read_only_task",
+  "intended_tracked_directory": "i18n/audits/evidence/ru/ui.library/ru-delta-ds-40ab4bc4bb7e",
+  "manager_action_required": "Retain these files under the canonical evidence root (record.json plus the receipt/log/check companions), then record the ledger row with the repo's audit-ledger command — round 1 named `node scripts/i18n/ledger-assemble.mjs --locale ru --file src/i18n/catalogues/ru/ui.library.json`. No ledger command was run by this auditor: ledger-assemble writes i18n/ledger.json and i18n/receipts/<instance>.json and this task is read-only.",
+  "proposed_note": "passed; R2 delta ru/ui.library: tag_category.custom «Произвольные» (12 cells) fully re-audited, 19 keys carried byte-identical; 1 minor (unrecorded 'Custom' split Свои/Произвольные); ru 49af1bd7b725; record i18n/audits/evidence/ru/ui.library/ru-delta-ds-40ab4bc4bb7e/record.json"
+ }
+}

@@ -1,0 +1,142 @@
+{
+  "schema": "local-operator-ui/i18n-audit-receipt",
+  "kind": "translation-audit-receipt",
+  "audit_kind": "current-byte-rebind",
+  "round": 1,
+  "locale": "vi",
+  "locale_name": "Tiếng Việt",
+  "pr": 1403,
+  "branch": "feat/i18n-key-remaining-copy",
+  "head": "0adbb37b9429e2c70cbe64ea149cb091432c8dd6",
+  "audited_head": "0adbb37b9429e2c70cbe64ea149cb091432c8dd6",
+  "base": "91aa8f5f10797184d01c41143d1a3645176b566b",
+  "date": "2026-10-25",
+  "agent": "translation-auditor",
+  "model": "deepseek/deepseek-flash",
+  "status": "passed",
+  "namespace": "ui.common.errors",
+  "instance": "vi-bind-c6082f69de5b",
+  "auditor": {
+    "agent": "translation-auditor",
+    "role": "independent translation auditor (team lopdev); not a translator on PR #1403",
+    "harness": "Local Operator",
+    "team": "lopdev",
+    "session": "0040bedb2ab5",
+    "model": "deepseek/deepseek-flash",
+    "model_provenance": "Harness session header reports deepseek/deepseek-flash; no provider fallback was reported or observed during this run. No other model is claimed.",
+    "independence": "This run authored no catalogue, ledger, allowance or code change for PR #1403. It read the committed catalogue bytes at 0adbb37b94 from git and writes only the four vi-bind receipts. The translator rows for these namespaces name i18n-translator/translator, not translation-auditor.",
+    "date": "2026-10-25",
+    "instance": "vi-bind-c6082f69de5b"
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "openai/gpt-6.1-sol",
+    "date": "2026-10-18"
+  },
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/vi.md",
+      "sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+    },
+    "docs": {
+      "path": "docs/I18N.md",
+      "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+    }
+  },
+  "result": "clean",
+  "previous_head": "566fed884558fa38c662b6e4b55c7915f56798a8",
+  "previous_receipt": "i18n/receipts/vi-final-c6082f69de5b.json",
+  "binding": "Current-byte re-bind of an already-audited file: the target SHA-256 at 0adbb37b94 is byte-identical to the file audited by vi-final-c6082f69de5b at 566fed8845. Every value was re-read at the current head and the inherited ICU/placeholder structure re-checked; this receipt re-binds those bytes rather than claiming a fresh translation review of carried copy.",
+  "scope": "ui.common.errors for vi: all 8 keys at PR #1403 head 0adbb37b94, read against the English source, the English context sidecar, the vi style guide and the glossary. Parent A (branch, 566fed8845) has 8 keys and was audited; origin/main (91aa8f5f) has 4; the merged file is the 8-key union with all 4 shared values identical.",
+  "en_sha256": "79e061d415b61aed65c06e6800b379b332048a200d8d88f6cbbf4647eba593db",
+  "context_sha256": "33432e29556ed7d91eac12edeff1998b623da3fcb48e3515b045e1e0b5c84049",
+  "target_sha256": "c6082f69de5b1ad6f63f6579dec81cb0a24c736cef65478af9b8dcaa7748d8c0",
+  "instance_basis": "target_sha256 first 12 hex, per the re-bind naming instruction",
+  "union": {
+    "parent_a": {
+      "rev": "566fed8845",
+      "keys": 8,
+      "receipt": "i18n/receipts/vi-final-c6082f69de5b.json",
+      "only_a": [
+        "ui.common.errors.desktop_refusal.no_credential",
+        "ui.common.errors.desktop_refusal.plane_closed",
+        "ui.common.errors.desktop_refusal.refused",
+        "ui.common.errors.desktop_refusal.transport_failed"
+      ],
+      "sha256": "c6082f69de5b1ad6f63f6579dec81cb0a24c736cef65478af9b8dcaa7748d8c0",
+      "role": "branch pre-merge head (audited)"
+    },
+    "parent_b": {
+      "rev": "91aa8f5f",
+      "role": "origin/main at this read",
+      "keys": 4,
+      "only_b": [],
+      "sha256": "213e355b1280d2b9ab1bf8468cf1a2c0381f0d1811e83e28985158ed71558f67",
+      "note": "no B-only key; every B key is shared with parent A and its value is identical in both"
+    },
+    "shared": 4,
+    "shared_values_identical": true,
+    "merged_keys": 8,
+    "union_equals_merged": true,
+    "every_merged_value_from_a_parent": true
+  },
+  "checks": {
+    "keys": {
+      "english": 8,
+      "target": 8,
+      "set_equals_english": true,
+      "order_equals_english": true,
+      "missing": [],
+      "extra": []
+    },
+    "icu": {
+      "parser": "@formatjs/icu-messageformat-parser 3.5.21",
+      "messages_parsed": 8,
+      "plural_messages": 0,
+      "select_messages": 0,
+      "arguments": [],
+      "parse_errors": []
+    },
+    "placeholders": {
+      "all_preserved": true,
+      "detail": "No ICU arguments in this namespace."
+    },
+    "text": {
+      "nfc": true,
+      "ellipsis_preserved": true,
+      "bidi_controls": 0
+    },
+    "byte_identity": {
+      "prior_receipt": "i18n/receipts/vi-final-c6082f69de5b.json",
+      "prior_audited_head": "566fed8845",
+      "prior_target_sha256": "c6082f69de5b1ad6f63f6579dec81cb0a24c736cef65478af9b8dcaa7748d8c0",
+      "identical": true
+    }
+  },
+  "findings": [],
+  "observations": [
+    {
+      "key": "ui.common.errors.desktop_refusal.*",
+      "issue": "The four refusal sentences remain distinct and instruction-free: no credential / not paired; credential refused; running server does not accept desktop controls; the server did not answer the request. All four keep «Local Operator» in English and use the calm sentence-case register the sidecar asks for.",
+      "recommendation": "Pass; no change.",
+      "counted": false
+    }
+  ],
+  "totals": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0,
+    "keys_read": 8
+  },
+  "limitations": [
+    "No rendered app frame was captured; the width finding (where present) is a character-cell measurement against the sidecar's advisory maxCells, not a screenshot or a measured overflow.",
+    "No native-speaker sign-off is claimed; this is an independent agent audit against the vi style guide and glossary.",
+    "The repository's full pnpm check-i18n gate was not run; the mechanical checks (key parity, ICU parse, placeholder names, NFC, plural/select rendering with intl-messageformat 12.1.3) were run directly on the committed bytes at 0adbb37b94.",
+    "Carried copy: the file is byte-identical to vi-final-c6082f69de5b; no finding remains."
+  ]
+}

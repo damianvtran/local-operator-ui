@@ -1,0 +1,130 @@
+[
+  {
+    "cell": "r2-matrix-264-en-dark",
+    "counts": {
+      "PASS": 19,
+      "FAIL": 0,
+      "BLOCKED": 1
+    }
+  },
+  {
+    "cell": "r2-matrix-264-en-light",
+    "counts": {
+      "PASS": 19,
+      "FAIL": 0,
+      "BLOCKED": 1
+    }
+  },
+  {
+    "cell": "r2-matrix-264-es-dark",
+    "counts": {
+      "PASS": 19,
+      "FAIL": 0,
+      "BLOCKED": 1
+    }
+  },
+  {
+    "cell": "r2-matrix-264-es-light",
+    "counts": {
+      "PASS": 19,
+      "FAIL": 0,
+      "BLOCKED": 1
+    }
+  },
+  {
+    "cell": "r2-matrix-264-fr-dark",
+    "counts": {
+      "PASS": 19,
+      "FAIL": 0,
+      "BLOCKED": 1
+    }
+  },
+  {
+    "cell": "r2-matrix-264-fr-light",
+    "counts": {
+      "PASS": 19,
+      "FAIL": 0,
+      "BLOCKED": 1
+    }
+  },
+  {
+    "cell": "r2-matrix-264-ru-dark",
+    "counts": {
+      "PASS": 19,
+      "FAIL": 0,
+      "BLOCKED": 1
+    }
+  },
+  {
+    "cell": "r2-matrix-264-ru-light",
+    "counts": {
+      "PASS": 19,
+      "FAIL": 0,
+      "BLOCKED": 1
+    }
+  },
+  {
+    "cell": "r2-matrix-900-en-dark",
+    "counts": {
+      "PASS": 19,
+      "FAIL": 0,
+      "BLOCKED": 1
+    }
+  },
+  {
+    "cell": "r2-matrix-900-en-light",
+    "counts": {
+      "PASS": 19,
+      "FAIL": 0,
+      "BLOCKED": 1
+    }
+  },
+  {
+    "cell": "r2-matrix-900-es-dark",
+    "counts": {
+      "PASS": 19,
+      "FAIL": 0,
+      "BLOCKED": 1
+    }
+  },
+  {
+    "cell": "r2-matrix-900-es-light",
+    "counts": {
+      "PASS": 19,
+      "FAIL": 0,
+      "BLOCKED": 1
+    }
+  },
+  {
+    "cell": "r2-matrix-900-fr-dark",
+    "counts": {
+      "PASS": 19,
+      "FAIL": 0,
+      "BLOCKED": 1
+    }
+  },
+  {
+    "cell": "r2-matrix-900-fr-light",
+    "counts": {
+      "PASS": 19,
+      "FAIL": 0,
+      "BLOCKED": 1
+    }
+  },
+  {
+    "cell": "r2-matrix-900-ru-dark",
+    "counts": {
+      "PASS": 19,
+      "FAIL": 0,
+      "BLOCKED": 1
+    }
+  },
+  {
+    "cell": "r2-matrix-900-ru-light",
+    "counts": {
+      "PASS": 19,
+      "FAIL": 0,
+      "BLOCKED": 1
+    }
+  }
+]

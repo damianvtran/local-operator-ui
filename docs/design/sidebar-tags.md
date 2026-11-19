@@ -31,17 +31,17 @@ Off by default. Enabling is explicit. Off means no tag subheaders, no chips, no 
 
 The `off-{light,dark}.html/png` sheets use exact crops of the real before images, not a reimplementation. This is a baseline reference, **not proof that an implemented toggle restores layout**. The implementation must compare its own off path against that baseline.
 
-### Group only within Time sections
+### Two tag arrangements
 
-`tags.enabled` is independent of `groupBy`. Subdivide conversations only when `groupBy === "section"` and search is empty. Do not silently overwrite Agent and team or In one list. Preserve the switch when a mode change suspends grouping. Show `Tag groups use Time section grouping.` with an explicit **Use Time section** action; only that press changes the existing mode. Assignment remains available.
+Tags arrange the list in exactly two places. **(a) Time section + `Split time sections by tag`:** tag subheaders inside each time section (below). **(b) `Group by › Tag`:** tags are the top-level groups across all dates ([sidebar-tag-first-grouping.md](sidebar-tag-first-grouping.md)). `tags.enabled` governs (a) only. It is independent of `groupBy`, is never written by choosing (b), and its row is not drawn under (b). Under Agent and team or In one list, neither arrangement draws. Show `Tag groups use Time section grouping.` with **Use Time section**. Only that press changes the mode. Search suspends both arrangements. Assignment remains available everywhere.
 
 Search temporarily suspends tag grouping: retain flat search results, their existing membership explanations and marks. Clear search to restore groups. A future chip implementation may identify tags in search only when the same measured fit rule passes; it must not replace the search explanation slot. First slice has no chips anywhere.
 
-Within each existing conversation section, draw nonempty primary-tag groups in category order, then **Untagged**. Preserve the existing order within each bucket. One conversation appears once. Pinned/running membership wins over tags; tags never move a running row into Today. Section counts remain conversation counts, not assignment counts. Subheader counts describe the visible bucket, not an invented total beyond pagination.
+In arrangement (a), within each existing conversation section, draw nonempty primary-tag groups in category order, then **Untagged**. Preserve the existing order within each bucket. One conversation appears once. Pinned/running membership wins over tags; tags never move a running row into Today. In arrangement (b), **tags win**: pinned rows lead their primary tag's group in manual pin order, live rows follow under Active first, and there are no time sections. In both, section counts remain conversation counts, not assignment counts, and subheader counts describe the loaded bucket, not an invented total beyond pagination.
 
 A section with no tagged rows draws no tag subheaders. A section with one occupied category may draw its one labelled subheader: its label is useful even without a sibling category. No empty category buckets. Category management remains the route to create an initial category; there is no empty-section scaffolding.
 
-**Subheaders are 28px static labels, not controls. No chevrons and no collapse in slice 1.** They add vertical height but **zero horizontal indentation or row-width cost**. Rows remain at their existing x coordinate. For the proposed Today example, two buckets cost 56px; two This week buckets cost another 56px, independent of sidebar width. The shared scroller absorbs this height; no nested list scroller.
+**Subheaders are 28px static labels, not controls. No chevrons and no collapse in slice 1.** Superseded by #1639 / PR #1745: a chevron folds a tag group, keyed by tag id, in both arrangements. They add vertical height but **zero horizontal indentation or row-width cost**. Rows remain at their existing x coordinate. For the proposed Today example, two buckets cost 56px; two This week buckets cost another 56px, independent of sidebar width. The shared scroller absorbs this height; no nested list scroller.
 
 ### Multi-tag semantics and explicit primary
 

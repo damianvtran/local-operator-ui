@@ -1,0 +1,64 @@
+{
+  "schema": 1,
+  "audit_id": "rs1732-zh-cn-r2-c1cd6f2dbdc9",
+  "locale": "zh-CN",
+  "namespace": "ui.chat.radient_session",
+  "date": "2026-11-06",
+  "auditor": {
+    "agent": "reviewer",
+    "session": "c1cd6f2dbdc9",
+    "instance": "c1cd6f2dbdc9-pr1732-r2-zh-cn",
+    "model": "anthropic/claude-opus-5-5",
+    "independent_from_translator": true,
+    "translator": "PR #1732 coder session (remediation commit b315016)"
+  },
+  "inputs": {
+    "src/i18n/catalogues/en/ui.chat.radient_session.json": {
+      "sha256": "8866b91d57c2dc5733dd228c71e2352e7798c7847d62f27006d016fe66d7bd22"
+    },
+    "src/i18n/catalogues/en/ui.chat.radient_session.context.json": {
+      "sha256": "75efdd203308a6fcbfc7bf972cf9a71e1a185a62175fffa75b5ad51909e47f4d"
+    },
+    "src/i18n/catalogues/zh-CN/ui.chat.radient_session.json": {
+      "sha256": "ef9ed1611b9c0c4904bc588cddcffe061e715a6538b95f3f1eacfa99f18f01f7"
+    }
+  },
+  "style_guide": {
+    "path": "~/local-operator i18n/style-guides/zh-CN.md",
+    "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c",
+    "glossary_path": "~/local-operator i18n/glossary.md",
+    "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "core_commit": "066ba3ad1b6"
+  },
+  "result": "clean-with-findings",
+  "status": "passed",
+  "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 1,
+    "ids": [
+      "ZH-N1"
+    ]
+  },
+  "artifacts": {
+    "i18n/receipts/c1cd6f2dbdc9-pr1732-r2-zh-cn.json": {
+      "sha256": "e581787230877ed0cb336771fa960c0689a8cd7778784075b5b513d6e3d799ff"
+    },
+    "i18n/audits/evidence/zh-CN/ui.chat.radient_session/rs1732-zh-cn-r2-c1cd6f2dbdc9/audit.log": {
+      "sha256": "17be9cd7574fa935249c6bf1ce8064db46cba0df761be27f79a85b206ee64a59"
+    },
+    "i18n/audits/evidence/zh-CN/ui.chat.radient_session/rs1732-zh-cn-r2-c1cd6f2dbdc9/verify.py": {
+      "sha256": "0113a21c0c4259adb53f626440adda5e55b643c857bcf8bdb74e8e80a2d9f366"
+    }
+  },
+  "integration": {
+    "repo": "damianvtran/local-operator-ui",
+    "pr": 1732,
+    "branch": "fix/radient-callout-no-terminal",
+    "head": "b3150162018935661a2e7358db6910260a78c7bf",
+    "previous_audited_head": "dee563673f951c0b32d7d68aaa84a557f7c2e65b",
+    "base": "ec09bc17aff"
+  },
+  "terminal": true
+}

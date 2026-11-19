@@ -1,0 +1,13 @@
+{
+  "changed_keys": [
+    "ui.settings.appearance.picker.hex"
+  ],
+  "changed_values": {
+    "ui.settings.appearance.picker.hex": "HEX-код"
+  },
+  "unchanged_keys_retained": 161,
+  "icu_parse": "PASS",
+  "placeholders": "PASS (no placeholders on changed keys)",
+  "bidi": "PASS",
+  "technical_command_and_exemption": "PASS"
+}

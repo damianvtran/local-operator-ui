@@ -1,0 +1,137 @@
+Urdu independent audit account — 2026-11-10
+Auditor: i18n-auditor / a1d964dc45d5 / openai/gpt-6.1-sol; no fallback. Translator: f573f85d7297 / anthropic/claude-sonnet-5-5 (delegation).
+
+ACTUALLY EXECUTED (read-only except scratch outputs):
+- git -C ~/local-operator-ui/.worktrees/i18n-s8 rev-parse HEAD; printf SCRATCH: verified frozen e5fb4310dab638f9cf428779d62539ec039a8990 and own scratch identity.
+- rg --files -g '*glossary*' -g '*AGENTS*' -g '*I18N*' -g '*i18n*valid*'; cat expected-hashes.json; git status --porcelain; cat package.json.
+- rg -n 'glossary|validat|audit|^#' docs/I18N.md AGENTS.md | head -100; rg --files src/i18n scripts | head -65; cat the three English contexts and source/Urdu catalogues. Output was long; targeted Python and ranged reads were used to review the relevant messages/context, not to claim full legacy semantics.
+- sed AGENTS.md 148–174; sed docs/I18N.md 202–225; ls scripts/i18n; ls i18n; cat get-file-name.ts; rg -n -C 5 'pasted_file|getFileName|name:' attachment-encode.ts.
+- Python selected four new keys and pasted_file from source/context; selected direct Urdu neighbours; searched same-locale catalogue keys for actions_for / position.
+- sed check-strings.mjs 1–180; sed context-parity.mjs 1–95; sed catalogue-union-parity.mjs 1–110; find i18n -iname '*gloss*' -o -iname '*style*'; git diff origin/main HEAD -- three Urdu catalogue files and English composer context. No legacy Urdu changes/removals; only four assigned additions.
+- sed locale-parity.test.mjs 1–160; rg -n 'export|process.argv|--check|writeFile|parse\(' generate.mjs | tail -35; sed context-parity.mjs 1–100; sed attachment-encode.ts 161–188; rg -n 'position|مقام|پوزیشن' ui.chat.json ui.chat.attachments.json.
+- Python printed locale-parity test registration locations to scope the validator invocation.
+- node --test --test-name-pattern='\[ur\]' scripts/i18n/locale-parity.test.mjs > own scratch ur-validator.log 2>&1. Actual output: 6 tests, 6 PASS, 0 FAIL; duration 4844.881542 ms. This executes repository ICU placeholder validation, key parity, duplicate-file ownership and non-English-stub checks; it is not a build.
+- shasum -a 256 on all nine assigned inputs, the manager glossary copy and Urdu style guide > own scratch ur-hashes.log; git rev-parse origin/main returned 7385893f87a8e30d1b0872d2e8cc7ba887b01a70; git status --porcelain returned empty.
+- python3 "$LOCAL_OPERATOR_SCRATCHPAD/build_ur_receipt.py": recomputes every hash via hashlib AND shasum; compares all 9 against expected-hashes.json; duplicate-rejecting JSON parse of 9 inputs; per-namespace en/ur key equality; reads origin/main blobs with git show and compares every old en/ur value; checks four exact placeholders and invisible code points; writes and parses the receipt + record. Results appended below.
+
+READ / REASONED ONLY, NOT EXECUTED AS PRODUCT:
+- Read Urdu guide fully and manager-owned glossary copy; model JSON/record reference; relevant source contexts and attachment logic. No translation/MT service.
+- Logical RTL and arbitrary-title grammar: {name} کے اعمال agrees with the following plural noun; {label} کی پوزیشن agrees with feminine پوزیشن, not the title. Latin report.pdf, CJK 圖片.png and quoted/punctuated names are not inflected or translated. No new manual bidi controls; the guide forbids them. These are linguistic assessments, not screen-reader/browser or bidi-render results.
+- چسپاں کردہ تصویر matches existing چسپاں کردہ فائل; تصویر کے اعمال matches فائل کے اعمال and image sibling تصویر. No glossary conflict.
+- One MINOR: the accurate borrowed پوزیشن differs from existing پلے بیک کا مقام for playback position. Recommend {label} میں پلے بیک کا مقام for consistency, without changing arbitrary title bytes. No mandated glossary term, wrong meaning, agreement error or unsafe text; not MAJOR.
+- Context pasted_file broadening is accurate against getFileName data:image/ branch, generic data: branch, decodeURIComponent catch and ordinary basename branch; attachment-encode uses getFileName for upload name, retains dataUrl bytes, prefers stored.name. This is source inspection; no TypeScript runtime was executed.
+- No legacy semantic certification, browser/visual fit, ledger write, retained tracked evidence, builds, installs or servers. Scratch artifacts require manager handoff and tracked retention. No direct core glossary read: only authorized identical manager copy.
+
+DERIVED CHECK OUTPUT
+ui.chat: 208 keys; 9-way aggregate hashes bound; en/ur key parity; no removed or changed legacy values; added exactly 2 assigned key(s).
+ui.chat.composer_media: 9 keys; 9-way aggregate hashes bound; en/ur key parity; no removed or changed legacy values; added exactly 1 assigned key(s).
+ui.common.actions: 54 keys; 9-way aggregate hashes bound; en/ur key parity; no removed or changed legacy values; added exactly 1 assigned key(s).
+{
+  "ui.chat": {
+    "key_count": 208,
+    "fully_audited_key_count": 2,
+    "consistency_only_key_count": 206,
+    "key_parity": true,
+    "legacy_comparison": {
+      "en": {
+        "old_key_count": 206,
+        "removed": [],
+        "changed_legacy_values": [],
+        "added": [
+          "ui.chat.audio.position_label",
+          "ui.chat.image_actions.actions"
+        ]
+      },
+      "ur": {
+        "old_key_count": 206,
+        "removed": [],
+        "changed_legacy_values": [],
+        "added": [
+          "ui.chat.audio.position_label",
+          "ui.chat.image_actions.actions"
+        ]
+      }
+    },
+    "new_key_invisibles": []
+  },
+  "ui.chat.composer_media": {
+    "key_count": 9,
+    "fully_audited_key_count": 1,
+    "consistency_only_key_count": 8,
+    "key_parity": true,
+    "legacy_comparison": {
+      "en": {
+        "old_key_count": 8,
+        "removed": [],
+        "changed_legacy_values": [],
+        "added": [
+          "ui.chat.composer_media.pasted_image"
+        ]
+      },
+      "ur": {
+        "old_key_count": 8,
+        "removed": [],
+        "changed_legacy_values": [],
+        "added": [
+          "ui.chat.composer_media.pasted_image"
+        ]
+      }
+    },
+    "new_key_invisibles": []
+  },
+  "ui.common.actions": {
+    "key_count": 54,
+    "fully_audited_key_count": 1,
+    "consistency_only_key_count": 53,
+    "key_parity": true,
+    "legacy_comparison": {
+      "en": {
+        "old_key_count": 53,
+        "removed": [],
+        "changed_legacy_values": [],
+        "added": [
+          "ui.common.actions.actions_for_name"
+        ]
+      },
+      "ur": {
+        "old_key_count": 53,
+        "removed": [],
+        "changed_legacy_values": [],
+        "added": [
+          "ui.common.actions.actions_for_name"
+        ]
+      }
+    },
+    "new_key_invisibles": []
+  }
+}
+Repository validator actual output:
+✔ [ur] ships at least one message (not an empty claim) (250.980834ms)
+✔ [ur] defines each key in at most one namespace file (228.36825ms)
+✔ [ur] carries EVERY key of each namespace file it ships (415.4905ms)
+✔ [ur] names only keys the English source defines (254.960333ms)
+✔ [ur] preserves every ICU placeholder from the English source (1335.119ms)
+✔ [ur] is not an English stub (no value identical to the source) (705.671708ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4844.881542
+
+Required shasum actual output:
+ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15  src/i18n/catalogues/en/ui.chat.json
+46ddbd89585ba5d057b61bf90a83dfdca7b42fb2135ce18db940deed41794fdd  src/i18n/catalogues/ur/ui.chat.json
+84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf  src/i18n/catalogues/en/ui.chat.context.json
+79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae  src/i18n/catalogues/en/ui.chat.composer_media.json
+0b92eb10a96ac3e94f3acabe554e3e429cee150094ad333bb3c0f1bd0243e3fb  src/i18n/catalogues/ur/ui.chat.composer_media.json
+a0fbc1552ef6f27999f3cff365750025627a284faa106d767e22a24d131ae77b  src/i18n/catalogues/en/ui.chat.composer_media.context.json
+0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b  src/i18n/catalogues/en/ui.common.actions.json
+06ed5d8326b11d74df3891e15a1e9290c3893f03be43b79fa91f9d168058e7f7  src/i18n/catalogues/ur/ui.common.actions.json
+24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d  src/i18n/catalogues/en/ui.common.actions.context.json
+0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8  ../_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/glossary.md
+c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60  /Users/damian/local-operator/i18n/style-guides/ur.md
+
+Artifact JSON parse-back: receipt and record parsed by this script after write; all required namespace block sets, model/instance identity and hash equality assertions passed.

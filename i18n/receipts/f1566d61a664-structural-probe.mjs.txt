@@ -1,0 +1,70 @@
+// Structural probe for PR #1604 i18n delta round 3 (auditor session f1566d61a664).
+// Reads delta-base (e0f8b4d7fc2) and head (17eef656160) bytes via git, diffs ui.mesh per
+// locale at key level, and checks every changed value: ICU parse (the repo's own
+// @formatjs/icu-messageformat-parser), argument names vs English, plural selectors are
+// CLDR categories of the locale (Intl.PluralRules) and include `other`, NFC, no manual
+// bidi controls, and the locale punctuation conventions the style guides record
+// (fr U+202F before : ; ! ? and inside « »; zh-CN full-width ：（） after CJK;
+// hi danda / ur ۔ rather than an ASCII period after the script). Punctuation hits are
+// SIGNALS the auditor grades; they are not automatic verdicts.
+import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { TYPE, parse } from "@formatjs/icu-messageformat-parser";
+const BASE = "e0f8b4d7fc2a28d543d7066ee6a8d09c2c626a04";
+const HEAD = "17eef6561605266d3b03eca395de2e54e9b83d9f";
+const show = (rev, p) => execFileSync("git", ["show", `${rev}:${p}`]);
+const sha = (b) => createHash("sha256").update(b).digest("hex");
+const BIDI = /[\u200E\u200F\u202A-\u202E\u2066-\u2069]/;
+function walk(ast, args, plurals) {
+  for (const n of ast) {
+    if (n.type === TYPE.argument || n.type === TYPE.number || n.type === TYPE.date || n.type === TYPE.time) args.add(n.value);
+    if (n.type === TYPE.plural || n.type === TYPE.select) {
+      args.add(n.value);
+      if (n.type === TYPE.plural) plurals.push(Object.keys(n.options));
+      for (const o of Object.values(n.options)) walk(o.value, args, plurals);
+    }
+  }
+}
+const info = (s) => { const a = new Set(), p = []; walk(parse(s, { ignoreTag: true }), a, p); return { args: [...a].sort().join(","), plurals: p }; };
+const enP = "src/i18n/catalogues/en/ui.mesh.json";
+const enB = show(BASE, enP), enH = show(HEAD, enP);
+const ctx = "src/i18n/catalogues/en/ui.mesh.context.json";
+console.log(`en base=${sha(enB)} head=${sha(enH)}`);
+console.log(`context base=${sha(show(BASE, ctx))} head=${sha(show(HEAD, ctx))}`);
+const enBase = JSON.parse(enB), en = JSON.parse(enH);
+const enChanged = Object.keys(en).filter((k) => enBase[k] !== en[k]);
+console.log(`en changed=${enChanged.length} added=${enChanged.filter((k) => !(k in enBase)).length}`);
+let fail = 0, signals = 0;
+for (const l of ["es", "fr", "hi", "ru", "ur", "vi", "zh-CN"]) {
+  const p = `src/i18n/catalogues/${l}/ui.mesh.json`;
+  const b = show(BASE, p), h = show(HEAD, p);
+  const B = JSON.parse(b), H = JSON.parse(h);
+  const keysEq = JSON.stringify(Object.keys(H).sort()) === JSON.stringify(Object.keys(en).sort());
+  const changed = Object.keys(H).filter((k) => B[k] !== H[k]);
+  const sameDelta = JSON.stringify([...changed].sort()) === JSON.stringify([...enChanged].sort());
+  const cats = new Set(new Intl.PluralRules(l).resolvedOptions().pluralCategories);
+  console.log(`\n${l}: base=${sha(b)} head=${sha(h)} keyset_matches_en=${keysEq} changed=${changed.length} delta_matches_en=${sameDelta} cldr=${[...cats].join("/")}`);
+  if (!keysEq || !sameDelta) fail++;
+  for (const k of changed) {
+    const v = H[k];
+    let r;
+    try {
+      const t = info(v), e = info(en[k]);
+      const pluralOk = t.plurals.every((sel) => sel.includes("other") && sel.every((c) => cats.has(c) || /^=\d+$/.test(c)));
+      r = { parse: true, args_match: t.args === e.args, args: t.args, plural_ok: pluralOk, plural_selectors: t.plurals.map((s) => s.join("/")).join(";") || "-", nfc: v === v.normalize("NFC"), bidi_free: !BIDI.test(v) };
+    } catch (err) { r = { parse: false, error: String(err.message ?? err) }; }
+    const prose = v.replace(/\{[^{}]*\}/g, "").replace(/\{[^{}]*\}/g, "");
+    const sig = [];
+    if (l === "fr") { if (/[^\u202F][:;!?]/.test(prose)) sig.push("fr: missing U+202F before : ; ! ?"); if (/«[^\u202F]|[^\u202F]»/.test(v)) sig.push("fr: « » without U+202F"); }
+    if (l === "zh-CN") { if (/[\u4e00-\u9fff][:(]|\)[\u4e00-\u9fff]|[\u4e00-\u9fff}]\. /.test(v)) sig.push("zh-CN: ASCII : ( ) . beside CJK"); }
+    if (l === "hi" && /[\u0900-\u097f]\.(\s|$)/.test(v)) sig.push("hi: ASCII period, not danda");
+    if (l === "hi" && /\}\.(\s|$)/.test(v)) sig.push("hi: ASCII period after argument");
+    if (l === "ur" && /[\u0600-\u06ff}]\.(\s|$)/.test(v)) sig.push("ur: ASCII period, not ۔");
+    signals += sig.length;
+    const ok = r.parse && r.args_match && r.plural_ok && r.nfc && r.bidi_free;
+    if (!ok) fail++;
+    console.log(`  ${ok ? "PASS" : "FAIL"} ${k}${k in B ? "" : " (added)"}\n    base: ${B[k] ?? "-"}\n    head: ${v}\n    ${JSON.stringify(r)}${sig.length ? `\n    SIGNAL: ${sig.join("; ")}` : ""}`);
+  }
+}
+console.log(`\nprobe structural failures=${fail} punctuation signals=${signals}`);
+process.exit(fail ? 1 : 0);

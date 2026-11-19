@@ -2,7 +2,14 @@
  * this suite never launches Electron or claims rendered evidence. */
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -20,14 +27,23 @@ import {
 } from "./asks-app-fixture.mjs";
 import {
 	ASKS_CONTROL,
+	ASKS_CONTROL_FETCH_REF,
 	ASKS_CONTROL_PINNED,
 	ASKS_RAIL_CLOSE_POST_STATE,
 	CASES,
+	CONTROL_BUILD_NODE_ARGS,
 	CONTROL_REUSE_PARTS,
+	askScrollControlClaims,
+	assertControlPresent,
+	controlArchivePaths,
+	controlElectronPlan,
+	controlPredatesAskScrollFix,
+	controlPredatesFixFromEnv,
 	controlReusePlan,
 	describeMainPreloadReuse,
 	describePressRead,
 	pressWhenActionable,
+	probeCommit,
 	railCloseAssertion,
 	railCloseReading,
 	resolveAsksControl,
@@ -327,6 +343,14 @@ test("every case declares what it drives and the frames it promises", () => {
 		`the table carries the asks case plus new ones, got ${cases.length}`,
 	);
 	for (const [name, scenario] of cases) {
+		const legs = scenario.legs ?? ["control", "candidate"];
+		if (scenario.legs) {
+			// A real-core opt-in has no claimed historical binary compatibility.
+			// Existing default cases continue to owe BOTH historical legs.
+			assert.equal(scenario.backendMode, "real-core");
+			assert.equal(scenario.optInOnly, true);
+			assert.deepEqual(legs, ["candidate"]);
+		}
 		assert.equal(
 			typeof scenario.drive,
 			"function",
@@ -343,7 +367,7 @@ test("every case declares what it drives and the frames it promises", () => {
 		 * candidate-only steps photograph closers that revision predates would be
 		 * promising the control frames it cannot take - a red run for a correct case.
 		 */
-		for (const leg of ["control", "candidate"]) {
+		for (const leg of legs) {
 			const promised = scenario.frames[leg];
 			assert(
 				Array.isArray(promised) && promised.length > 0,
@@ -360,7 +384,7 @@ test("every case declares what it drives and the frames it promises", () => {
 				`${name} must not promise the acceptance row: the runner pushes it, so promising it would make the runner's own check circular`,
 			);
 		}
-		for (const label of scenario.frames.control)
+		for (const label of scenario.frames.control ?? [])
 			assert(
 				scenario.frames.candidate.includes(label),
 				`${name} promises the control leg a frame (${label}) the candidate does not take, so the two legs are not the same drive`,
@@ -399,7 +423,7 @@ test("every case declares what it drives and the frames it promises", () => {
 		 * legs keeps the direction enforced without an arm that is dead by construction.
 		 */
 		for (const label of captured(shared)) {
-			const missing = ["control", "candidate"].filter(
+			const missing = legs.filter(
 				(leg) => !scenario.frames[leg].includes(label),
 			);
 			assert.equal(
@@ -593,9 +617,10 @@ test("the control revision is DERIVED, and satisfies the reuse assertion by cons
 	 *    unchanged for this case);
 	 *  - rebuild: this branch changes main, preload or the vite config (a window
 	 *    option, an IPC channel), so the control builds its own from its own source.
-	 * What is never legitimate is a differing lockfile: the control shares the
-	 * candidate's node_modules, so that is a different experiment, and the producer
-	 * refuses it. This test fails for that reason and no other.
+	 * A differing lockfile is legitimate for a reviewed dependency addition: the
+	 * control installs its own dependencies from its own lockfile instead of
+	 * sharing the candidate's node_modules. The plan must still REPORT it so the
+	 * manifest records which control experiment ran.
 	 */
 	const plan = controlReusePlan(
 		(spec) =>
@@ -606,11 +631,6 @@ test("the control revision is DERIVED, and satisfies the reuse assertion by cons
 		base,
 		"HEAD",
 	);
-	assert.equal(
-		plan.lockDiffers,
-		false,
-		`the lockfile differs between the control ${base} and HEAD: the control would run on dependencies it was not built for`,
-	);
 	const touched = execFileSync(
 		"git",
 		["diff", "--name-only", base, "HEAD", "--", ...CONTROL_REUSE_PARTS],
@@ -618,13 +638,55 @@ test("the control revision is DERIVED, and satisfies the reuse assertion by cons
 	).trim();
 	/* The plan and the diff are two spellings of one fact; they must agree. */
 	assert.equal(
+		plan.lockDiffers,
+		touched.split("\n").includes("pnpm-lock.yaml"),
+		`the lockfile plan (${plan.lockDiffers}) disagrees with the diff (${JSON.stringify(touched)})`,
+	);
+	assert.equal(
 		plan.reuse,
 		touched === "",
 		`the reuse plan (${plan.reuse ? "reuse" : `rebuild: ${plan.differing.join(", ")}`}) disagrees with the diff of the reused parts (${JSON.stringify(touched)})`,
 	);
 });
 
-test("controlReusePlan: identical trees reuse; a main/preload/config change rebuilds; a lockfile change is refused", () => {
+test("the isolated control builder has a bounded heap without changing global NODE_OPTIONS", () => {
+	assert.deepEqual(CONTROL_BUILD_NODE_ARGS, [
+		"--max-old-space-size=4096",
+		"--input-type=module",
+	]);
+	const source = readFileSync(
+		new URL("./asks-app-regression.mjs", import.meta.url),
+		"utf8",
+	);
+	assert.ok(
+		source.includes(
+			'await execute(process.execPath, [...CONTROL_BUILD_NODE_ARGS, "-e", code]',
+		),
+	);
+	const inherited = process.env.NODE_OPTIONS;
+	const env = { ...process.env, NODE_OPTIONS: "--max-old-space-size=128" };
+	const code = `import v8 from 'node:v8';console.log(JSON.stringify({heap:v8.getHeapStatistics().heap_size_limit,options:process.env.NODE_OPTIONS}));`;
+	const run = (args) => {
+		const child = spawnSync(process.execPath, [...args, "-e", code], {
+			encoding: "utf8",
+			env,
+			timeout: 15000,
+		});
+		assert.equal(child.status, 0, child.stderr);
+		return JSON.parse(child.stdout);
+	};
+	// A real low-heap control proves the explicit builder flag takes effect;
+	// reading V8's configured limit allocates no multi-gigabyte test heap.
+	const low = run(["--input-type=module"]);
+	const bounded = run(CONTROL_BUILD_NODE_ARGS);
+	assert.ok(low.heap < 256 * 1024 ** 2, JSON.stringify(low));
+	assert.ok(bounded.heap >= 4 * 1024 ** 3, JSON.stringify(bounded));
+	assert.ok(bounded.heap < 4.25 * 1024 ** 3, JSON.stringify(bounded));
+	assert.equal(bounded.options, env.NODE_OPTIONS);
+	assert.equal(process.env.NODE_OPTIONS, inherited);
+});
+
+test("controlReusePlan: identical trees reuse; a main/preload/config change rebuilds; a lockfile change installs control dependencies", () => {
 	const same = (spec) => `tree:${spec.split(":")[1]}`;
 	const plan0 = controlReusePlan(same, "ctl", "HEAD");
 	assert.deepEqual(plan0, { reuse: true, differing: [], lockDiffers: false });
@@ -645,7 +707,7 @@ test("controlReusePlan: identical trees reuse; a main/preload/config change rebu
 		assert.equal(p.lockDiffers, false, `${part} is a rebuild, not a refusal`);
 	}
 
-	/* The lockfile is the one part that is NOT redirected to a rebuild. */
+	/* A lockfile change rebuilds the control and installs its own dependencies. */
 	const lock = (spec) =>
 		spec.startsWith("ctl:") && spec.endsWith(":pnpm-lock.yaml")
 			? "other"
@@ -765,16 +827,21 @@ test("future asks production and fixture-only deltas select the existing native 
 			"needs.audit.result == 'success' || needs.audit.result == 'skipped'",
 		),
 	);
+	const fullSuite = readFileSync(
+		new URL("../.github/workflows/full-suite.yml", import.meta.url),
+		"utf8",
+	);
+	assert(fullSuite.includes("needs.changes.outputs.pack != 'false'"));
 });
-test("existing job performs real native capture and always uploads measurements", () => {
+test("merge-gate native-proofs job performs real native capture and always uploads measurements", () => {
 	const workflow = readFileSync(
-		new URL("../.github/workflows/ci.yml", import.meta.url),
+		new URL("../.github/workflows/full-suite.yml", import.meta.url),
 		"utf8",
 	);
 	assert(workflow.includes("node scripts/asks-app-regression.mjs"));
 	assert(
 		workflow.includes(
-			"asks-app-regression-${{ github.event.pull_request.number }}",
+			"asks-app-regression-${{ github.event.pull_request.number || 'dispatch' }}-${{ github.run_id }}",
 		),
 	);
 	const source = readFileSync(
@@ -976,4 +1043,624 @@ test("existing job performs real native capture and always uploads measurements"
 			"asks-app-regression: pinned control commit not in this clone (shallow checkout); the fallback is asserted from source only",
 		);
 	}
+});
+
+/*
+ * THE LOG MUST CARRY THE REASON. `rc` stays 1 unless a case passes end to end,
+ * so `runCase`'s catch is the only place a failure can say anything - and it
+ * said nothing: CI reported just `model case failed (1)`, re-thrown by
+ * `runOwnedModelCase` from that exit status, while the actual cause
+ * (`AssertionError: required genuine carrier not captured`) sat in
+ * `measurements.json` and cost an artifact download plus a two-run diff to read.
+ *
+ * Only the source is asserted here: reaching that catch needs a compiled app, a
+ * fixture and Electron, none of which this suite launches. What is pinned is the
+ * CHANNEL - stderr - because `entry-point.test.mjs` holds `stdout: /^$/` for this
+ * script, and a diagnostic written to stdout has already red-ed a required check
+ * in a sibling change.
+ */
+test("a failing case narrates its stack on stderr, not only into the artifact", () => {
+	const source = readFileSync(
+		new URL("./asks-app-regression.mjs", import.meta.url),
+		"utf8",
+	);
+	const pushAt = source.indexOf("failures.push(stack);");
+	assert(pushAt > 0, "the failing case must still record its stack");
+	const catchBlock = source.slice(
+		source.lastIndexOf("} catch (error) {", pushAt),
+		pushAt,
+	);
+	assert(
+		catchBlock.includes("console.error("),
+		"the stack must reach the CI log on stderr",
+	);
+	assert(
+		catchBlock.includes(
+			"asks-app-regression: runCase ${scenarioName} ${kind} failed",
+		),
+		"the log line must name runCase and the case under test it failed",
+	);
+	assert(
+		catchBlock.includes("error?.stack ?? String(error)"),
+		"a non-Error throw must still print something diagnostic",
+	);
+	assert(
+		!catchBlock.includes("console.log(") &&
+			!catchBlock.includes("process.stdout"),
+		"stdout is contract-pinned (entry-point.test.mjs): the narration belongs on stderr",
+	);
+});
+
+/*
+ * THE CONTROL RESOLVER ASKS THE REPOSITORY, AND NAMES THE ANSWER IT TOOK.
+ *
+ * `resolveAsksControl` used to ask with `execFileSync`, which THROWS on git's exit
+ * 128 and also INHERITS stderr: a clone with no `origin/main` therefore printed
+ * `fatal: Not a valid object name origin/main` into the CI log while the catch
+ * swapped in the pinned revision, saying nothing about it. Both halves were measured
+ * on real runs - 42509070327 (job 128818578250, GREEN) and 42512944112 (job
+ * 128830450208, RED) carry the identical `fatal:` line, so it is a log defect and a
+ * SILENT degraded baseline, not what fails a step.
+ *
+ * Driven against repositories built here, so the shapes cannot pass by stub: a
+ * depth-1 PR checkout (merge commit, no `origin/main`) BOTH before and after the
+ * `--depth=2` fetch ci.yml:1171 runs - so deleting that line fails here - a branch
+ * clone that can fetch the ref, a developer clone that has it, an offline tree that
+ * must degrade LOUDLY to the pin, and the OVERRIDE branch, which is the only one this
+ * workflow actually executes (ci.yml:1179). `ASKS_CONTROL_NO_FETCH` is set throughout
+ * except in the fetch case: a unit test has no business talking to a remote, and the
+ * fetch branch is driven against a local one, which also proves that fetch writes a
+ * private ref and leaves the clone unshallow.
+ *
+ * AND THE TWO STREAMS ARE ASSERTED APART (round 1, R1-1). The provenance lines are on
+ * stderr because a release contract pins this script's stdout EMPTY on its refusal
+ * path, and they are emitted at IMPORT time, before any door can refuse. Every shape
+ * below therefore asserts `stdout === ""` instead of leaving the next reader to work
+ * out which stream a new line belongs on.
+ */
+const controlGitEnv = {
+	...process.env,
+	GIT_AUTHOR_NAME: "asks control test",
+	GIT_AUTHOR_EMAIL: "asks-control@test.invalid",
+	GIT_COMMITTER_NAME: "asks control test",
+	GIT_COMMITTER_EMAIL: "asks-control@test.invalid",
+	// No credential helper from this machine's system config, and no prompt: the
+	// repositories below are local files, but the system gitconfig's osxkeychain
+	// helper would still be consulted for anything that looks like a URL.
+	GIT_CONFIG_SYSTEM: "/dev/null",
+	GIT_TERMINAL_PROMPT: "0",
+};
+const controlGit = (cwd, ...args) =>
+	execFileSync("git", args, {
+		encoding: "utf8",
+		cwd,
+		env: controlGitEnv,
+	}).trim();
+
+/** A "remote" and a clone of it, shaped per case; returns the expected base too. */
+function buildControlRepo(
+	root,
+	{ merge = false, keepOriginMain = false } = {},
+) {
+	const origin = join(root, "origin");
+	const work = join(root, "work");
+	execFileSync("git", ["init", "-q", "-b", "main", origin], {
+		env: controlGitEnv,
+	});
+	const write = (dir, name, body) => {
+		writeFileSync(join(dir, name), body);
+		controlGit(dir, "add", ".");
+		controlGit(dir, "commit", "-qm", name);
+	};
+	write(origin, "a.txt", "a");
+	write(origin, "b.txt", "b");
+	controlGit(root, "clone", "-q", origin, work);
+	if (merge) {
+		controlGit(work, "checkout", "-q", "-b", "feat");
+		write(work, "f.txt", "f");
+		controlGit(work, "checkout", "-q", "main");
+		controlGit(work, "merge", "-q", "--no-ff", "feat", "-m", "merge ref");
+	}
+	if (!keepOriginMain)
+		controlGit(work, "update-ref", "-d", "refs/remotes/origin/main");
+	return { work, origin };
+}
+
+/** Git's answer in `cwd`, or "" when git refuses - a probe that never throws. */
+function tryGit(cwd, ...args) {
+	const out = spawnSync("git", args, {
+		cwd,
+		encoding: "utf8",
+		env: controlGitEnv,
+	});
+	return out.status === 0 ? out.stdout.trim() : "";
+}
+
+/**
+ * THE RELEASE CONTRACT'S OWN RULE (round 1, R1-1), asserted for every shape: the
+ * resolver's provenance goes to stderr and stdout stays EMPTY. `entry-point.test.mjs`
+ * pins `stdout: /^$/` for a refusing invocation of this script, and the resolution
+ * runs at IMPORT time - so a line drifting back to stdout must fail HERE, at unit
+ * cost, rather than on a required check forty minutes later.
+ */
+function assertQuietStdout(label, run) {
+	assert.equal(
+		run.stdout,
+		"",
+		`${label}: the resolver must keep stdout empty (a release contract pins stdout: /^$/), got ${JSON.stringify(run.stdout)}`,
+	);
+}
+
+/**
+ * THE SHAPE ci.yml ACTUALLY CHECKS OUT, built for real: a depth-1 fetch of the merge
+ * commit into an empty repository. MEASURED: such a checkout carries NEITHER parent
+ * (`HEAD^1` and `HEAD^2` both absent), and only the `--depth=2` re-fetch of HEAD that
+ * ci.yml:1171 runs supplies them - so this case fails if that fetch is deleted, which
+ * the full-clone merge case cannot see (round 1, R1-3).
+ */
+function buildDepthOneMergeCheckout(root, remote, mergeSha) {
+	const dir = join(root, "depth-one");
+	mkdirSync(dir, { recursive: true });
+	controlGit(dir, "init", "-q", "-b", "merge");
+	controlGit(dir, "remote", "add", "origin", remote);
+	controlGit(dir, "fetch", "-q", "--no-tags", "--depth=1", "origin", mergeSha);
+	controlGit(dir, "update-ref", "refs/heads/merge", "FETCH_HEAD");
+	return dir;
+}
+
+/** `resolveAsksControl()` asked IN `dir`, with its provenance lines captured. */
+function resolveControlIn(dir, env = {}) {
+	const saved = {
+		cwd: process.cwd(),
+		override: process.env.ASKS_CONTROL_OVERRIDE,
+		noFetch: process.env.ASKS_CONTROL_NO_FETCH,
+		allowFetch: process.env.ASKS_CONTROL_ALLOW_FETCH,
+		log: console.log,
+		error: console.error,
+	};
+	const stdout = [];
+	const stderr = [];
+	console.log = (...args) => stdout.push(args.join(" "));
+	console.error = (...args) => stderr.push(args.join(" "));
+	try {
+		Reflect.deleteProperty(process.env, "ASKS_CONTROL_OVERRIDE");
+		process.env.ASKS_CONTROL_NO_FETCH = "1";
+		Reflect.deleteProperty(process.env, "ASKS_CONTROL_ALLOW_FETCH");
+		// An explicit `undefined` means "unset": assigning it would store the string
+		// "undefined", which is truthy and would silently disable the fetch branch.
+		for (const [key, value] of Object.entries(env)) {
+			if (value === undefined) Reflect.deleteProperty(process.env, key);
+			else process.env[key] = value;
+		}
+		process.chdir(dir);
+		const value = resolveAsksControl();
+		return {
+			value,
+			stdout: stdout.join("\n"),
+			stderr: stderr.join("\n"),
+			logs: [...stdout, ...stderr],
+		};
+	} finally {
+		console.log = saved.log;
+		console.error = saved.error;
+		process.chdir(saved.cwd);
+		for (const [key, value] of [
+			["ASKS_CONTROL_OVERRIDE", saved.override],
+			["ASKS_CONTROL_NO_FETCH", saved.noFetch],
+			["ASKS_CONTROL_ALLOW_FETCH", saved.allowFetch],
+		]) {
+			if (value === undefined) Reflect.deleteProperty(process.env, key);
+			else process.env[key] = value;
+		}
+	}
+}
+
+test("the control resolver probes, fetches once, and names the branch it took", () => {
+	const root = mkdtempSync(
+		join(process.env.LOCAL_OPERATOR_SCRATCHPAD || tmpdir(), "asks-control-"),
+	);
+	try {
+		/*
+		 * 1. THE SHAPE CI ACTUALLY CHECKS OUT: GitHub's merge ref at depth 1. The
+		 * first parent IS main as of that run, so that - not a fetch, and certainly
+		 * not `origin/main` on a fork PR's remote - is the base it must use.
+		 */
+		const merged = buildControlRepo(join(root, "merge"), { merge: true });
+		const expectedParent = controlGit(merged.work, "rev-parse", "HEAD^1");
+		const fromMergeRef = resolveControlIn(merged.work);
+		assert.equal(fromMergeRef.value, expectedParent);
+		assert.match(
+			fromMergeRef.stderr,
+			new RegExp(`merge ref's first parent ${expectedParent}`),
+		);
+		assertQuietStdout("merge-ref checkout", fromMergeRef);
+
+		/*
+		 * 1b. THE SAME SHAPE AS THE DEPTH-1 CHECKOUT CI REALLY MAKES: `HEAD^1` is
+		 * absent, so the resolver must NOT invent a base - it degrades to the pin and
+		 * says so. Without this case the merge-parent assertion above proves only that
+		 * a full clone can read its own parent, which is not the property CI relies on.
+		 */
+		const depthOne = buildDepthOneMergeCheckout(
+			root,
+			merged.work,
+			controlGit(merged.work, "rev-parse", "HEAD"),
+		);
+		assert.equal(
+			tryGit(depthOne, "rev-parse", "--verify", "--quiet", "HEAD^1^{commit}"),
+			"",
+			"the depth-1 shape must really lack HEAD^1, or the case below proves nothing",
+		);
+		const dampened = resolveControlIn(depthOne);
+		assert.equal(dampened.value, ASKS_CONTROL_PINNED);
+		assert.match(dampened.stderr, /DEGRADED/);
+		assertQuietStdout("depth-1 merge-ref checkout", dampened);
+
+		/*
+		 * 1c. AND THE `--depth=2` FETCH ci.yml RUNS IS WHAT MAKES THE BRANCH WORK: delete
+		 * that line from the workflow and the assertion below is the one that fails.
+		 */
+		controlGit(
+			depthOne,
+			"fetch",
+			"-q",
+			"--no-tags",
+			"--depth=2",
+			"origin",
+			controlGit(depthOne, "rev-parse", "HEAD"),
+		);
+		const deepened = resolveControlIn(depthOne);
+		assert.equal(deepened.value, expectedParent);
+		assert.match(deepened.stderr, /merge ref's first parent/);
+		assertQuietStdout("deepened merge-ref checkout", deepened);
+
+		/* 2. A developer clone that HAS the ref keeps the merge-base answer. */
+		const full = buildControlRepo(join(root, "full"), { keepOriginMain: true });
+		const expectedBase = controlGit(full.work, "rev-parse", "origin/main");
+		const fromFull = resolveControlIn(full.work);
+		assert.equal(fromFull.value, expectedBase);
+		assert.match(
+			fromFull.stderr,
+			new RegExp(`merge base of origin/main and HEAD \\(${expectedBase}\\)`),
+		);
+		assertQuietStdout("developer clone", fromFull);
+
+		/*
+		 * 3. OFFLINE AND UNDEGRADED BY DEFAULT: no `origin/main`, no merge parent, no
+		 * fetch allowed. It must still answer, and it must SAY it degraded - the
+		 * silence is the defect this test exists for.
+		 */
+		const offline = buildControlRepo(join(root, "offline"));
+		const degraded = resolveControlIn(offline.work);
+		assert.equal(degraded.value, ASKS_CONTROL_PINNED);
+		assert.match(degraded.stderr, /DEGRADED/);
+		assert.ok(
+			degraded.stderr.includes(ASKS_CONTROL_PINNED),
+			"the degraded line must name the revision it is comparing against",
+		);
+		assertQuietStdout("offline tree", degraded);
+
+		/*
+		 * 4. ONE BOUNDED FETCH MAKES THE COMPARISON REAL when the ref is absent but
+		 * reachable - and it must leave the repository as it found it. Asked against a
+		 * local remote, so no test reaches the network.
+		 */
+		const fetchable = buildControlRepo(join(root, "fetchable"));
+		/* A sentinel proves `--no-write-fetch-head`: a real fetch would replace it. */
+		const fetchHead = join(fetchable.work, ".git", "FETCH_HEAD");
+		writeFileSync(fetchHead, "sentinel\n");
+		const fetched = resolveControlIn(fetchable.work, {
+			ASKS_CONTROL_ALLOW_FETCH: "1",
+			ASKS_CONTROL_NO_FETCH: undefined,
+		});
+		assert.equal(
+			fetched.value,
+			controlGit(fetchable.work, "rev-parse", ASKS_CONTROL_FETCH_REF),
+		);
+		assert.match(fetched.stderr, /fetched it once/);
+		assertQuietStdout("fetch branch", fetched);
+		/*
+		 * THE FETCH MUST NOT TOUCH WHAT A DEVELOPER READS (round 1, R1-4): no
+		 * remote-tracking ref written, no `FETCH_HEAD` replaced, and NO SHALLOW MARK -
+		 * `--depth=1` into a full clone writes `.git/shallow`, and that file outlives
+		 * the run, which is the mutation the private ref alone does not fix.
+		 */
+		assert.equal(
+			tryGit(
+				fetchable.work,
+				"rev-parse",
+				"--verify",
+				"--quiet",
+				"refs/remotes/origin/main",
+			),
+			"",
+			"the fallback fetch must not write the developer's remote-tracking ref",
+		);
+		assert.equal(readFileSync(fetchHead, "utf8"), "sentinel\n");
+		assert.equal(
+			existsSync(join(fetchable.work, ".git", "shallow")),
+			false,
+			"a full clone must not be shallow-marked by the fallback fetch",
+		);
+
+		/*
+		 * 5. THE BRANCH THIS WORKFLOW ACTUALLY TAKES (round 1, R1-2). ci.yml:1179 always
+		 * passes `ASKS_CONTROL_OVERRIDE` after refusing outright when `HEAD^1` is
+		 * missing, so on the model-case step the override - not the merge parent - is
+		 * what a real run resolves, and no test drove it. It must be returned VERBATIM
+		 * and BEFORE any probe: this clone HAS `origin/main`, so a resolver that probed
+		 * first would answer the merge base, and a value git cannot resolve proves no
+		 * validation rewrote it on the way out.
+		 */
+		const overridden = resolveControlIn(full.work, {
+			ASKS_CONTROL_OVERRIDE: "refs/heads/never-probed-by-the-resolver",
+		});
+		assert.equal(overridden.value, "refs/heads/never-probed-by-the-resolver");
+		assertQuietStdout("override branch", overridden);
+		assert.doesNotMatch(
+			overridden.logs.join("\n"),
+			/merge base of origin\/main/,
+		);
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
+test("a control revision that is not in the clone fails with the reason, not with git's fatal", () => {
+	const root = mkdtempSync(
+		join(
+			process.env.LOCAL_OPERATOR_SCRATCHPAD || tmpdir(),
+			"asks-control-missing-",
+		),
+	);
+	const saved = process.cwd();
+	try {
+		const { work } = buildControlRepo(root);
+		process.chdir(work);
+		// The probe answers ABSENCE as a value: exit 1, no output, no exception.
+		assert.equal(probeCommit("1111111111111111111111111111111111111111"), null);
+		assert.match(probeCommit("HEAD") || "", /^[0-9a-f]{40}$/);
+		assert.equal(assertControlPresent("HEAD"), "HEAD");
+		assert.throws(
+			() => assertControlPresent(ASKS_CONTROL_PINNED),
+			/asks-app-regression: the control revision 2461cfa3.* is not in this clone.*ASKS_CONTROL_OVERRIDE/s,
+		);
+	} finally {
+		process.chdir(saved);
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
+/*
+ * A `git` THAT CANNOT BE LAUNCHED IS NOT AN ABSENT REVISION (review NIT R1-6). Every
+ * answer this resolver gives comes from git, so before this the spawn failure read as
+ * "this clone has none of these refs": the degraded line blamed the clone's refs, and
+ * `assertControlPresent` would have blamed the control revision. Both send a reader to
+ * the wrong fix. Driven with an empty PATH so the failure is the real one, not a stub.
+ */
+test("a git that cannot be launched is named, not reported as an absent revision", () => {
+	const root = mkdtempSync(
+		join(
+			process.env.LOCAL_OPERATOR_SCRATCHPAD || tmpdir(),
+			"asks-control-no-git-",
+		),
+	);
+	try {
+		const emptyBin = join(root, "empty-bin");
+		mkdirSync(emptyBin);
+		const child = spawnSync(
+			process.execPath,
+			[
+				"--input-type=module",
+				"-e",
+				`const module = ${JSON.stringify(new URL("./asks-app-regression.mjs", import.meta.url).href)};
+try {
+	const imported = await import(module);
+	try {
+		imported.probeCommit("HEAD");
+		console.log("PROBED");
+	} catch (error) {
+		console.log("PROBE:" + error.message);
+	}
+} catch (error) {
+	console.log("IMPORT:" + error.message);
+}`,
+			],
+			{
+				cwd: root,
+				encoding: "utf8",
+				env: {
+					...process.env,
+					PATH: emptyBin,
+					GIT_CONFIG_SYSTEM: "/dev/null",
+					GIT_TERMINAL_PROMPT: "0",
+				},
+			},
+		);
+		assert.equal(child.status, 0, child.stderr);
+		assert.doesNotMatch(
+			child.stdout,
+			/PROBED/,
+			"an unlaunchable git must never answer as if the revision were absent",
+		);
+		assert.match(
+			child.stdout,
+			/could not run git to probe (origin\/main|HEAD)/,
+			`the failure must name git, got ${JSON.stringify(child.stdout)}`,
+		);
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
+test("controlElectronPlan: a lockfile-differing control reuses the same-version candidate binary, else runs only Electron's installer", () => {
+	/*
+	 * PR #1821 (CI run 42710783768): the control's `--ignore-scripts` install left
+	 * Electron without dist/path.txt. Same version -> the candidate's binary via
+	 * the control leg's own env; different -> Electron's installer, nothing else.
+	 */
+	const same = controlElectronPlan({
+		controlVersion: "45.1.0",
+		candidateVersion: "45.1.0",
+		candidateDist: "/cand/node_modules/electron/dist",
+	});
+	assert.equal(same.action, "reuse-candidate-binary");
+	assert.deepEqual(same.env, {
+		ELECTRON_OVERRIDE_DIST_PATH: "/cand/node_modules/electron/dist",
+	});
+	assert.equal(
+		same.installer,
+		undefined,
+		"same version never runs an installer",
+	);
+
+	const differ = controlElectronPlan({
+		controlVersion: "44.3.0",
+		candidateVersion: "45.1.0",
+		candidateDist: "/cand/node_modules/electron/dist",
+	});
+	assert.equal(differ.action, "run-electron-installer");
+	assert.deepEqual(differ.installer, ["node_modules/electron/install.js"]);
+	assert.deepEqual(
+		differ.env,
+		{},
+		"a differing control never borrows the candidate binary",
+	);
+	assert.ok(
+		differ.describe.includes("44.3.0") && differ.describe.includes("45.1.0"),
+		differ.describe,
+	);
+});
+
+test("control archive ships patches/ only when the control revision has it", () => {
+	// A lock-changing PR installs the control from its own lockfile, and pnpm
+	// aborts on a patchedDependencies file missing from the archived tree.
+	const withPatches = controlArchivePaths((path) => path === "patches");
+	assert.ok(withPatches.includes("patches"));
+	assert.ok(withPatches.includes("pnpm-lock.yaml"));
+	// A revision predating patches/ must not pass it, or `git archive` fails.
+	const without = controlArchivePaths(() => false);
+	assert.ok(!without.includes("patches"));
+	assert.deepEqual(
+		withPatches.filter((path) => path !== "patches"),
+		without,
+	);
+});
+
+test("the asks-scroll control's negative wheel reading is gated on a pre-#1901 control", () => {
+	/*
+	 * #1901 (merge e6122214, first parent 789b013d) put the fix on main, so the
+	 * merge-base control of any later PR is post-fix and cannot show the defect.
+	 * Driven against real git history: the last pre-fix main is pre-fix, the merge is not.
+	 */
+	const has = (rev) =>
+		spawnSync("git", ["cat-file", "-e", `${rev}^{commit}`]).status === 0;
+	if (!has("e6122214503b9fc52841e119c060eabb7650391b")) return; // shallow clone
+	assert.equal(
+		controlPredatesAskScrollFix("e6122214503b9fc52841e119c060eabb7650391b"),
+		false,
+		"the #1901 merge carries the fix",
+	);
+	if (has("789b013d6220cdd65b1f9cb86c9e3a70eeb524a4"))
+		assert.equal(
+			controlPredatesAskScrollFix("789b013d6220cdd65b1f9cb86c9e3a70eeb524a4"),
+			true,
+			"main before #1901 is the defect the control must show",
+		);
+	assert.throws(
+		() =>
+			controlPredatesAskScrollFix("0000000000000000000000000000000000000000"),
+		"an unknown revision must fail, not silently skip the assertion",
+	);
+});
+
+test("the pre-#1901 verdict survives a leg with no repository (CI failure of run 43673011929)", () => {
+	/*
+	 * The legs run in the control's extracted tree, which has no .git: asking git
+	 * there exits 128. RED shape = the old in-leg `git grep`; GREEN = parent decides,
+	 * leg reads env. The repo is built here in CI's clone shape (depth-1 fetch of a
+	 * merge commit, then depth-2 fetch) so the parent-side predicate is exercised too.
+	 */
+	const root = mkdtempSync(join(tmpdir(), "asks-clone-shape-"));
+	const run = (cwd, ...args) =>
+		execFileSync("git", args, { cwd, encoding: "utf8" }).trim();
+	try {
+		const up = join(root, "up");
+		mkdirSync(join(up, "src"), { recursive: true });
+		run(up, "init", "-q");
+		run(up, "config", "user.email", "a@b");
+		run(up, "config", "user.name", "a");
+		run(up, "config", "uploadpack.allowAnySHA1InWant", "true");
+		writeFileSync(join(up, "src/a"), "plain");
+		run(up, "add", ".");
+		run(up, "commit", "-qm", "base");
+		run(up, "checkout", "-qb", "pr");
+		writeFileSync(join(up, "src/b"), "data-lo-ask-list");
+		run(up, "add", ".");
+		run(up, "commit", "-qm", "pr");
+		run(up, "checkout", "-q", "-");
+		writeFileSync(join(up, "src/c"), "main moves");
+		run(up, "add", ".");
+		run(up, "commit", "-qm", "main2");
+		run(up, "merge", "-q", "--no-ff", "pr", "-m", "merge");
+		const merge = run(up, "rev-parse", "HEAD");
+		const clone = join(root, "clone");
+		mkdirSync(clone);
+		run(clone, "init", "-q");
+		run(clone, "remote", "add", "origin", `file://${up}`);
+		run(clone, "fetch", "-q", "--no-tags", "--depth=1", "origin", merge);
+		run(clone, "checkout", "-q", "FETCH_HEAD");
+		run(clone, "fetch", "-q", "--no-tags", "--depth=2", "origin", merge);
+		const control = run(clone, "rev-parse", "HEAD^1");
+		// Parent side: works in the CI clone shape (main2 has no marker = pre-fix).
+		assert.equal(controlPredatesAskScrollFix(control, clone), true);
+		assert.equal(controlPredatesAskScrollFix(merge, clone), false);
+		// A leg's cwd has no repository: the old in-leg predicate must name git's failure...
+		const bare = join(root, "extracted");
+		mkdirSync(bare);
+		assert.throws(
+			() => controlPredatesAskScrollFix(control, bare),
+			/exit 128.*not a git repository/s,
+		);
+		// ...and the leg reads the parent's verdict instead.
+		assert.equal(
+			controlPredatesFixFromEnv({ ASKS_CONTROL_PREDATES_FIX: "1" }),
+			true,
+		);
+		assert.equal(
+			controlPredatesFixFromEnv({ ASKS_CONTROL_PREDATES_FIX: "0" }),
+			false,
+		);
+		assert.throws(() => controlPredatesFixFromEnv({}), /must be "1" or "0"/);
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
+test("asks-scroll control claims: a pre-fix control keeps every defect claim, a post-fix control none (CI attempt 2, run 43679800429)", () => {
+	/* RED shape = gating only the wheel claim: body/stickyTop/chromeTab still ran post-fix. */
+	assert.deepEqual(askScrollControlClaims(true), {
+		wheel: true,
+		body: true,
+		stickyTop: true,
+		chromeTab: true,
+	});
+	assert.deepEqual(askScrollControlClaims(false), {
+		wheel: false,
+		body: false,
+		stickyTop: false,
+		chromeTab: false,
+	});
+	assert.throws(() => askScrollControlClaims(undefined));
+	/* The verdict block must route every control assertion through the table. */
+	const src = readFileSync(
+		new URL("./asks-app-regression.mjs", import.meta.url),
+		"utf8",
+	);
+	const block = src.slice(src.indexOf('} else if (kind === "control")'));
+	for (const claim of ["body", "stickyTop", "chromeTab"])
+		assert(
+			block.includes(`if (controlClaims.${claim})`),
+			`control claim ${claim} is not gated`,
+		);
 });

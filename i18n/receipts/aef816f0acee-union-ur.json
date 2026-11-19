@@ -1,0 +1,267 @@
+{
+  "instance": "aef816f0acee-union-ur",
+  "locale": "ur",
+  "namespace": "ui.chat.attachments",
+  "audit_date": "2026-10-29",
+  "scope": "ui.chat.attachments: verification of the hand-union of 5 branch keys and 1 main key onto the 12-key base",
+  "checkout_head": "36b88a45fe",
+  "checkout_head_full": "36b88a45fed4f6baea989a4cc113cfd6b0672429",
+  "merge": {
+    "state": "merge in progress; the catalogue is unmerged in the index (stages 1/2/3 all present for en and ur), so the WORKING-TREE file is the hand-union under test and HEAD is the branch side",
+    "branch": "i18n-final-literals",
+    "ours_head": "36b88a45fe",
+    "merge_head_theirs": "9a767426fe",
+    "merge_base": "aafa890e3c",
+    "unmerged_paths": [
+      "i18n/ledger.json",
+      "src/i18n/catalogues/en/ui.chat.attachments.context.json",
+      "src/i18n/catalogues/en/ui.chat.attachments.json",
+      "src/i18n/catalogues/es/ui.chat.attachments.json",
+      "src/i18n/catalogues/fr/ui.chat.attachments.json",
+      "src/i18n/catalogues/hi/ui.chat.attachments.json",
+      "src/i18n/catalogues/ru/ui.chat.attachments.json",
+      "src/i18n/catalogues/ur/ui.chat.attachments.json",
+      "src/i18n/catalogues/vi/ui.chat.attachments.json",
+      "src/i18n/catalogues/zh-CN/ui.chat.attachments.json"
+    ],
+    "note": "I read the three sides from the git index (aafa890e3c / HEAD / MERGE_HEAD) and compared them against the working-tree bytes; I did not resolve, stage or commit anything."
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "aef816f0acee",
+    "model": "radient/auto",
+    "actual_model_source": "session header began at anthropic/claude-sonnet-5-5, then three provider-quota fallbacks were announced in-session (openai/gpt-6-astra, kimi/k3.1-pro, radient/auto); this audit was executed on radient/auto, disclosed rather than assumed",
+    "independent_from_translator_session": true,
+    "independence_note": "Different agent and different session from the translator (ledger: ui-attachments-coder, radient/auto, 2026-10-23) and from the earlier ur audit rounds (sessions d2cc21c7d250, 040071214fd5). The model LABEL coincides with the translator's (radient/auto) because of the quota fallback chain above; independence here rests on agent and session identity, not on model diversity, and I am not claiming model diversity."
+  },
+  "input_sha256": {
+    "en": "5e99fd052e7a24dc2715d7de1332b378c1c964f801cdc1c241c7068569de41a0",
+    "target": "e080f88301214a92eb07b7c5888f5e4c5af16361f79140707c74244ab6303a49",
+    "context_en": "fb4658c36a67e0a4f5be52a7ca7cfe4b3d6479e3eced9b2e94b85279e89d740c",
+    "basis": "shasum -a 256 of the whole working-tree files at checkout_head 36b88a45fe with the merge uncommitted; these hashes hold only if the merge owner commits exactly these bytes"
+  },
+  "side_sha256_for_reference": {
+    "en": {
+      "merge_base_aafa890e3c": "845e53ef71cbd579f34ca7589d91fc180b98ca08cebf3b2da33a13fbba507f78",
+      "branch_head_36b88a45fe": "623a1363260ecbe40393b4424dde4d7b6cc084688ac354483052639a145ce892",
+      "main_9a767426fe": "1f476ef54a5fb470d00da5e66e7f2ccd2665d4d22f07ff11f20a3e00acfeadc5"
+    },
+    "ur": {
+      "merge_base_aafa890e3c": "233f015f846ca1f193599f243ef574f7427ac8079bb8c66d91377b880a6783e1",
+      "branch_head_36b88a45fe": "30ca6d0aece68231655313630379783fc2b4c852a1134c7d3499940f234895e9",
+      "main_9a767426fe": "94834d4c33aa796b11ea79abebaf81a2430f5af80f28d90dd207e9f00bb18241"
+    }
+  },
+  "verification": [
+    {
+      "claim": "1. The union equals base + the six additions, and every pre-existing key's value is byte-identical to the base.",
+      "result": "CONFIRMED, independently of the requester's account",
+      "evidence": {
+        "counts": {
+          "en": { "base": 12, "branch_side": 17, "main_side": 13, "union": 18 },
+          "ur": { "base": 12, "branch_side": 17, "main_side": 13, "union": 18 }
+        },
+        "branch_added_en_ur": [
+          "ui.chat.attachments.open",
+          "ui.chat.attachments.playback_position",
+          "ui.chat.attachments.playback_rate",
+          "ui.chat.attachments.playback_rate_option",
+          "ui.chat.attachments.volume"
+        ],
+        "main_added_en_ur": ["ui.chat.attachments.file_and_copy_missing"],
+        "keys_added_by_both_sides": [],
+        "union_keyset_equals_base_union_additions": true,
+        "missing_keys": [],
+        "unexpected_extra_keys": [],
+        "pre_existing_keys_with_changed_value": { "en": [], "ur": [] },
+        "keys_with_conflicting_values_between_sides": { "en": [], "ur": [] },
+        "byte_level_check": "For all 12 pre-existing keys in both locales the raw source line is unchanged except ui.chat.attachments.saved_copy_label, which is the base's LAST key and now carries the trailing comma that the following key requires; the string bytes inside the quotes are identical. No JSON escape normalisation anywhere (no \\uXXXX rewritten to a literal or vice versa).",
+        "conclusion": "The union is exactly base + 6, no key added twice, no value conflict, no pre-existing value touched."
+      }
+    },
+    {
+      "claim": "2. The five branch keys' ur values are the ones this PR audited.",
+      "result": "CONFIRMED to the byte, not merely by value",
+      "evidence": {
+        "method": "The branch-side blob at HEAD (git show HEAD:src/i18n/catalogues/ur/ui.chat.attachments.json) hashes to 30ca6d0aece68231655313630379783fc2b4c852a1134c7d3499940f234895e9, which is exactly the target_sha256 the round-4 ur audit recorded for keys_audited=5 (i18n/receipts/d2cc21c7d250-r4-ur.json, verdict pass), and its English counterpart 623a1363… is exactly that receipt's en hash. The union carries those five lines verbatim (raw-line comparison against the branch side: true for all five).",
+        "spot_checks_in_working_tree": {
+          "ui.chat.attachments.playback_rate_option": "{rate}x",
+          "ui.chat.attachments.volume": "آواز کا حجم",
+          "ui.chat.attachments.playback_position": "پلے بیک کا مقام"
+        },
+        "also_checked": {
+          "ui.chat.attachments.open": "کھولیں",
+          "ui.chat.attachments.playback_rate": "پلے بیک کی رفتار"
+        }
+      }
+    },
+    {
+      "claim": "3. Main's new key file_and_copy_missing has a sensible ur value in the same voice; read it and the English.",
+      "result": "SENSIBLE; no finding filed",
+      "evidence": {
+        "en": "The saved copy is gone too.",
+        "ur": "محفوظ شدہ نقل بھی موجود نہیں ہے۔",
+        "context_note": "Under 'Moved or deleted' on a sent file card: neither the original file nor the app's retained copy exists any more.",
+        "voice_consistency": "Same predicate as its sibling in the same namespace, file_missing_recovery = فائل اب اس راستے پر موجود نہیں ہے۔ (same موجود نہیں ہے۔ close, same ۔ full stop, same sentence shape), and the same term for the stored copy as the three existing keys that name it: 'saved copy' is محفوظ شدہ نقل in copy_saved_path, saved_path_copied and saved_copy_label. بھی carries 'too' in the ordinary mid-sentence slot.",
+        "sentence_vs_label_punctuation": "Ends with the Urdu full stop ۔ because it is a sentence, matching file_missing_recovery; the label-shaped keys in this file carry no stop, which is correct.",
+        "prior_audit": "Independently audited in PR #1452 as its own passing row (i18n/receipts/i18n-audit-1452-20261027-ur.json, keys_audited=1, status passed, no findings); the main-side blob hashes to that receipt's recorded target 94834d4c… / en 1f476ef5…, so that audit's bytes are the ones landing here. I did not rely on it, but it agrees.",
+        "attribution_note": "The value is main's, not the branch's. Its being already audited is context, not a substitute for the read above."
+      }
+    },
+    {
+      "claim": "4. No placeholder, plural or typography regression anywhere in the file.",
+      "result": "CONFIRMED",
+      "evidence": {
+        "placeholders": "Placeholder name/order compared en vs ur for all 18 keys: 0 mismatches. {type} · {size} keeps the middle dot and both placeholders; {digest} and {rate} untouched.",
+        "icu_plural_select": "No ICU plural/select/selectordinal construct exists in any of the 18 keys in either locale, so no CLDR category can be missing; nothing regressed.",
+        "bidi_controls": "No RLM/LRM/FSI/PDI/LRI/RLI/ALM (U+200E/200F/202A-202E/2066-2069) in any ur value, per the ur guide's ban on hand-inserted bidi controls.",
+        "punctuation": "Every sentence-shaped ur value ends with ۔ (file_missing_recovery, file_and_copy_missing); labels and verdicts carry no stop. No Hindi danda ।, no Arabic-only signs, no ASCII '.' / '?' / ',' inside ur prose, no leading or trailing whitespace.",
+        "identical_to_english": ["ui.chat.attachments.file_meta", "ui.chat.attachments.playback_rate_option"],
+        "identical_to_english_disposition": "Both are placeholders-only format strings and both are explicitly allowlisted in locale-parity's scoped reasons (file_meta pre-existing; playback_rate_option added at 930c8ec2d1 with the stated reason that a differing value would invent punctuation the format does not use). Neither is an untranslated stub.",
+        "hardcoded": "check-strings is not in this audit's path; the two catalogue values are the whole surface."
+      }
+    }
+  ],
+  "diffs": {
+    "summary": {
+      "en": {
+        "base_to_union": { "added": 6, "removed": 0, "changed_values": 0, "only_other_edit": "saved_copy_label gained the trailing comma the new final key requires" },
+        "branch_side_to_union": { "added": 1, "changed_values": 0 },
+        "main_side_to_union": { "added": 5, "changed_values": 0 }
+      },
+      "ur": {
+        "base_to_union": { "added": 6, "removed": 0, "changed_values": 0, "only_other_edit": "saved_copy_label gained the trailing comma the new final key requires" },
+        "branch_side_to_union": { "added": 1, "changed_values": 0 },
+        "main_side_to_union": { "added": 5, "changed_values": 0 }
+      },
+      "key_order": "The union appends the six new keys after the base's keys in a single alphabetical run (copy_path … saved_copy_label, then file_and_copy_missing, open, playback_*, volume); no pre-existing line was moved above another, so the diff is additions plus one comma.",
+      "full_diff_file": "union.diff (base→union, base→branch side, base→main side for both locales)"
+    }
+  },
+  "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 1,
+    "NIT": 0,
+    "basis": "Copy findings on the 18 keys of this namespace. Operational gate results are in checks/observations below and are not counted as copy findings."
+  },
+  "verdict": "pass",
+  "verdict_reason": "The hand-union is exactly base + 5 branch keys + 1 main key; all 12 pre-existing values are byte-identical to base in both locales; no key was added by both sides and no value conflicts; the five branch values are byte-identical to the file the round-4 ur audit passed; main's new value is idiomatic and in the same voice; no placeholder, plural, bidi or punctuation regression. One MINOR (volume calque) is pre-existing and non-gating under the blocker/major gate.",
+  "namespaces": {
+    "ui.chat.attachments": {
+      "status": "passed",
+      "keys_audited": 18,
+      "sha256": {
+        "en": "5e99fd052e7a24dc2715d7de1332b378c1c964f801cdc1c241c7068569de41a0",
+        "target": "e080f88301214a92eb07b7c5888f5e4c5af16361f79140707c74244ab6303a49"
+      },
+      "context_sha256": "fb4658c36a67e0a4f5be52a7ca7cfe4b3d6479e3eced9b2e94b85279e89d740c",
+      "findings": [
+        {
+          "id": "U-03",
+          "severity": "MINOR",
+          "namespace": "ui.chat.attachments",
+          "key": "ui.chat.attachments.volume",
+          "en": "Volume",
+          "target": "آواز کا حجم",
+          "problem": "Literal calque: حجم is volume in the bulk/size sense, not the loudness of an audio slider. The possessive آواز کا حجم reads as 'the bulk of the sound'; the locale's own word for audio is آواز, and its one existing والیوم is the disk-volume sense (ui.chat.directory.folder.volumes = والیومز), so borrowing that would collide senses.",
+          "suggested": "آواز (terse slider name) or آواز کی سطح",
+          "severity_reasoning": "Comprehensible and not unsafe; no glossary row fixes the term, so this is idiom, not a term violation. Not raised to MAJOR: it misleads nobody about what the control does.",
+          "status": "open (pre-existing; unchanged by this merge)",
+          "first_filed": "r3 (ur review, U-03), reconfirmed r4 (d2cc21c7d250-r4-ur) and independently re-derived here before reading either receipt",
+          "union_impact": "none — the value is byte-identical to base and to the r4-audited branch file; the hand-union neither introduced nor altered it",
+          "non_gating": true
+        }
+      ],
+      "considered_and_not_filed": [
+        {
+          "key": "ui.chat.attachments.playback_position",
+          "target": "پلے بیک کا مقام",
+          "why_not_filed": "I first read مقام as a rank/flank sense for a seek bar, but the locale renders 'position/location' with مقام throughout (45 occurrences, including Location = مقام and 'to position {n}' = {n} مقام پر), while پوزیشن appears nowhere. Consistent with the locale's own choice, so no finding would be honest here.",
+          "note": "Recorded because an auditor who silently drops a doubt is indistinguishable from one who never had it."
+        },
+        {
+          "key": "ui.chat.attachments.playback_rate",
+          "target": "پلے بیک کی رفتار",
+          "why_not_filed": "رفتار is the locale's established rendering for 'rate' in performance strings (ڈیکوڈ کی رفتار, تخلیق کی رفتار); consistent."
+        },
+        {
+          "key": "ui.chat.attachments.open",
+          "target": "کھولیں",
+          "why_not_filed": "Respectful imperative, already the locale's form for 'Open' (کھولیں appears in the error_block strings)."
+        }
+      ]
+    }
+  },
+  "checks": [
+    {
+      "name": "generate --check (generated key map vs English catalogues)",
+      "command": "node scripts/i18n/generate.mjs --check",
+      "result": "PASS — src/i18n/keys.gen.ts is byte-identical to a fresh generation",
+      "why_it_matters": "A hand-union could add a catalogue key without regenerating the typed key map; it did not."
+    },
+    {
+      "name": "check-duplicates (raw-text duplicate-key scan, the merge-specific gate)",
+      "command": "node scripts/i18n/check-duplicates.mjs",
+      "result": "PASS — 934 files scanned, 0 duplicate keys",
+      "why_it_matters": "This is the exact failure a 3-way merge of added keys can produce silently."
+    },
+    {
+      "name": "context-parity (English context sidecars vs catalogues)",
+      "command": "node scripts/i18n/context-parity.mjs",
+      "result": "PASS — every English key is covered, apart from 131 allowed gaps in 4 namespaces",
+      "independent_recheck": "I also verified the sidecar union myself: 12 → 18 entries, the same six keys, pre-existing notes byte-identical, no catalogue key without a context entry and no extra entry."
+    },
+    {
+      "name": "ledger-check (release provenance gate)",
+      "command": "node scripts/i18n/ledger-check.mjs",
+      "result": "FAIL — 23 findings across 728 entries; exit 1",
+      "interpretation": "Expected and NOT a copy defect: the union moved both files, so every shipped locale's ui.chat.attachments row is stale against the new bytes (urgent only in that the merge cannot land green until re-bound). ur/ui.chat.attachments specifically: stale source 623a1363… → 5e99fd05…, stale target 30ca6d0a… → e080f883…, and 'auditor 1: the receipt does not name the English source bytes on disk'. The other six locales' rows are the same shape and are not mine to bind.",
+      "not_fixed_here": "The brief forbids editing the repo, and the ledger is itself an unresolved conflict; re-binding is the merge owner's step."
+    },
+    {
+      "name": "read_public_copy (sanctioned public-copy route)",
+      "result": "REFUSED for both files — 'src/i18n/catalogues/{en,ur}/ui.chat.attachments.json differs from HEAD; commit the public copy before auditing it'",
+      "interpretation": "Honest constraint, not a workaround: the hand-union is uncommitted, so the audited route cannot serve it. I therefore bound the exact working-tree bytes by SHA-256 above and read the values from those bytes and from the index blobs, rather than claiming the sanctioned read. Once the merge owner commits identical bytes, the route will serve them and these hashes stay valid.",
+      "secondary_effect": "Because read_public_copy could not serve the uncommitted file, the vocabulary read for this audit came from the en sidecar (the hand-union of the same six keys, verified) and the labelled style guide."
+    }
+  ],
+  "observations": [
+    {
+      "id": "O-1",
+      "severity": "MINOR (operational, not copy)",
+      "what": "ui.chat.attachments was hand-unioned for the catalogue and the context sidecar but the ledger rows were not; ledger-check is red for all seven locales plus fr.",
+      "action_for_merge_owner": "Bind ur/ui.chat.attachments to source 5e99fd052e7a24dc2715d7de1332b378c1c964f801cdc1c241c7068569de41a0 and target e080f88301214a92eb07b7c5888f5e4c5af16361f79140707c74244ab6303a49 with this receipt as the auditor record, and keep the row honest for the other six locales (each needs its own auditor, not a copied ur row)."
+    },
+    {
+      "id": "O-2",
+      "severity": "note",
+      "what": "The en file's own bytes moved (623a1363… → 5e99fd05…) for every locale that translated this namespace, because main's key is English source. That is why the other locales' source_sha256 goes stale too, not only the targets.",
+      "action_for_merge_owner": "Expect the six other locales' attachments audits to be re-bound on the same en hash, not re-translated."
+    }
+  ],
+  "evidence": {
+    "directory": "/Users/damian/qa/union-audit/ur/",
+    "artifacts": [
+      { "path": "receipt.json", "role": "this record" },
+      { "path": "verdict.txt", "role": "one-line gate verdict" },
+      { "path": "union.diff", "role": "the observed diffs: base→union and base→each side, both locales" },
+      { "path": "gates.log", "role": "real execution log: the four gates' actual stdout and exit codes" },
+      { "path": "work/", "role": "the extracted base/branch/main blobs and the ledger stages this audit compared against" }
+    ],
+    "notes_not_execution_log": "Nothing in this receipt claims a command I did not run; gates.log holds stdout verbatim including the one FAIL and the one REFUSED.",
+    "manifest": "SHA256SUMS (sha256 of receipt.json, verdict.txt, union.diff, gates.log and every file in work/)"
+  },
+  "ledger_rebind_for_merge_owner": {
+    "why": "scripts/i18n/ledger-check.mjs re-derives both hashes and fails closed on a stale row, so the row must be re-bound to these bytes before the catalogue gate can be green; the repo was off-limits to me, so this is handed over rather than written.",
+    "locale": "ur",
+    "namespace": "ui.chat.attachments",
+    "source_sha256": "5e99fd052e7a24dc2715d7de1332b378c1c964f801cdc1c241c7068569de41a0",
+    "target_sha256": "e080f88301214a92eb07b7c5888f5e4c5af16361f79140707c74244ab6303a49",
+    "auditor": { "agent": "i18n-auditor", "model": "radient/auto", "date": "2026-10-29", "result": "clean-with-findings", "instance": "aef816f0acee-union-ur", "findings": { "blocker": 0, "major": 0, "minor": 1, "nit": 0 } },
+    "suggested_note": "Hand-union of 5 branch keys + main's file_and_copy_missing onto the 12-key base verified exact; MINOR U-03 volume carried; see qa/union-audit/ur/receipt.json",
+    "suggested_note_length": 157,
+    "caveat": "The five branch keys' earlier full audit (d2cc21c7d250-r4-ur) stays valid for the delta it covered, but its recorded target hash is the pre-union file; the row above is the post-union binding, and the receipt at d2cc21c7d250-r4-ur.json should be kept alongside it rather than replaced."
+  },
+  "not_edited": "No file under /Users/damian/lo-literals was modified, staged, resolved or committed by this audit."
+}

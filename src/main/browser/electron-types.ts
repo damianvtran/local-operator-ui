@@ -74,7 +74,10 @@ export interface DriveableWebContents {
 	isDestroyed(): boolean;
 	getURL(): string;
 	getTitle(): string;
-	loadURL(url: string): Promise<void>;
+	loadURL(
+		url: string,
+		options?: { httpReferrer?: { url: string; policy: string } },
+	): Promise<void>;
 	/** Destroy the webContents. Required on EVERY tab close: with
 	 * `WebContentsView` nothing destroys it for you (design 11.1). */
 	close(): void;
@@ -152,6 +155,12 @@ export interface NavigationHistoryLike {
 	length(): number;
 	getAllEntries?(): NavigationEntryLike[];
 	getActiveIndex?(): number;
+	/** Indexed read, required where the full stack is not. Address suggestions
+	 * read a bounded window around the active index instead of allocating
+	 * `getAllEntries()` for a history that may be arbitrarily deep (the same reason
+	 * Electron exposes it). Test fakes that define `navigationHistory` supply it;
+	 * a view that has none keeps `navigationHistory` absent altogether. */
+	getEntryAtIndex(index: number): NavigationEntryLike | undefined;
 	restore?(options: {
 		entries: NavigationEntryLike[];
 		index?: number;
@@ -169,6 +178,9 @@ export interface NavigationHistoryLike {
 	/** Optional so a fake view in a test need not model geometry. The driver reads
 	 * it to explain a capture that cannot happen (see `screenshot`). */
 	getBounds?(): { x: number; y: number; width: number; height: number };
+	/** Optional for the same reason as `getBounds`. Production is a
+	 * `WebContentsView`, whose native visibility is what the S1 probe reports. */
+	getVisible?(): boolean;
 	readonly webContents: DriveableWebContents;
 }
 

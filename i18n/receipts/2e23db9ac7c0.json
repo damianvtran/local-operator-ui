@@ -1,0 +1,33 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "2e23db9ac7c0",
+  "date": "2026-10-19",
+  "locale": "ur",
+  "status": "passed",
+  "scope": "Post-merge English drift audit: 12 new ui.chat.tags keys and 3 new ui.library filter-scope keys, plus direct neighbours, at the final bytes.",
+  "namespaces": {
+    "ui.chat.tags": {
+      "namespace": "ui.chat.tags",
+      "keys_read": 54,
+      "keys_audited_in_delta": 12,
+      "status": "passed",
+      "sha256": {
+        "en": "2d300213e1eb2712e757fa820867fc50c58ef98c4dcf5ca540ad593cf450d0fe",
+        "ur": "06ae29d9932af286d112532ef4e1d60691059a8521b453c3f86e7f2e97108828"
+      },
+      "findings": []
+    },
+    "ui.library": {
+      "namespace": "ui.library",
+      "keys_read": 152,
+      "keys_audited_in_delta": 3,
+      "status": "passed",
+      "sha256": {
+        "en": "009e864f684e85925001346dc382b5b04724d994f5b099a344f70827a2aa2b2a",
+        "ur": "1161086e3469bfed8c0fc0f4f80f1d6952aaf174cf3b9b92f449ee39299e0021"
+      },
+      "findings": []
+    }
+  }
+}

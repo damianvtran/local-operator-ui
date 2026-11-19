@@ -3,10 +3,7 @@ import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, test } from "node:test";
 import { TYPE, parse } from "@formatjs/icu-messageformat-parser";
 import { build } from "esbuild";
-import {
-	inEnforcedScope,
-	ratchetFindings,
-} from "../../../../../scripts/i18n/check-strings.mjs";
+import { ratchetFindings } from "../../../../../scripts/i18n/check-strings.mjs";
 import { messageArguments } from "../../../../../scripts/i18n/generate.mjs";
 
 // Execute the shipped helpers and the same catalogue runtime the renderer reads.
@@ -379,20 +376,16 @@ test("new theme contexts cover every key, UI role, width and ICU placeholder", (
 	assert.ok(Object.keys(catalogue).length > 400);
 });
 
-test("zero-ceiling ratchet rejects a new literal and accepts the extracted control", () => {
+test("a missing baseline entry fails, and a file with no literals needs no entry", () => {
 	const path =
 		"src/renderer/src/features/settings/components/settings-page.tsx";
 	assert.deepEqual(ratchetFindings({ [path]: 1 }, {}), [
 		{ path, count: 1, ceiling: null },
 	]);
 	assert.deepEqual(ratchetFindings({}, {}), []);
-	// Settings ceilings are lowered here, not activated globally: this fixture
-	// distinguishes a ratchet violation from the programme's enforced scope.
-	assert.equal(
-		inEnforcedScope(path, ["src/renderer/src/features/settings/"]),
-		true,
-	);
-	assert.equal(inEnforcedScope(path, ["src/i18n/"]), false);
+	// Global since the scope list was removed: a missing entry fails in every
+	// area, and a file with no literals (the extracted control) has nothing to
+	// ratchet.
 });
 
 // A counted noun written as `{count} things` renders "1 things" in English and has no

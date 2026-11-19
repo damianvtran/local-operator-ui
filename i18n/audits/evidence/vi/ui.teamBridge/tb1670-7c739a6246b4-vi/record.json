@@ -1,0 +1,217 @@
+{
+ "schema": 1,
+ "record_kind": "locale-audit evidence record (PR delta audit)",
+ "audit_id": "tb1670-7c739a6246b4-vi",
+ "locale": "vi",
+ "namespace": "ui.teamBridge",
+ "audit_date": "2026-11-04",
+ "key_count": 365,
+ "auditor": {
+  "agent": "translation-auditor",
+  "team": "lopdev",
+  "session": "7c739a6246b4",
+  "instance": "7c739a6246b4-pr1670-vi",
+  "model": "anthropic/claude-opus-5-5",
+  "independent_from_translator_session": true,
+  "actual_model_source": "Served model as announced by the harness preamble for session 7c739a6246b4 (anthropic/claude-opus-5-5); no fallback announced or observed.",
+  "model_fallback": {
+   "announced": false,
+   "observed": false
+  },
+  "findings": {
+   "blocker": 0,
+   "major": 0,
+   "minor": 0,
+   "nit": 1
+  }
+ },
+ "independence": "Independent auditor: lopdev team translation-auditor, session 7c739a6246b4. Did not translate the 23 members_panel values (they arrived in the implementer's commit 4397967 on PR #1670), wrote no English copy or code in the PR, and is not any prior ui.teamBridge auditor (828e525994e6-pr1666-vi). It applied only the corrections listed in findings. Same model family as the team coder (anthropic/claude-opus-5-5), separate agent instance; disclosed. No MT service used. Row written by ledger-assemble.mjs.",
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+   "sha256": "28aed4e764637f920fa2fa67f089cffe1bcf250c3840f19bc47babeaae360352"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+   "sha256": "74f1e0353fe96e3d141d9a43b1134308fb4fcf1b57f8c01e73110416fd79c313"
+  },
+  "vi": {
+   "path": "src/i18n/catalogues/vi/ui.teamBridge.json",
+   "sha256": "44ccf3f5613026f417173192085c9948d330eb7e08f6ba7214b57bd9fe40b74b",
+   "pr_head_sha256_before_auditor_fixes": "a3e453e33a9a61ae868f9391f8dd20e8c9193e88d1da4b4d939014a386e487bb"
+  }
+ },
+ "style_guide": {
+  "path": "~/local-operator i18n/style-guides/vi.md",
+  "sha256": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888",
+  "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "core_commit": "b42471d3935"
+ },
+ "integration": {
+  "pr": 1670,
+  "repo": "damianvtran/local-operator-ui",
+  "branch": "feat/team-bridge-members-panel",
+  "base": "a70a761ae4704a43c60470beed7c5eaeba763e90",
+  "audited_head": "4397967ebe01f60a6a2c8b68b430f36c68fa90fe",
+  "auditor_fix_commit": "the commit that adds this record"
+ },
+ "scope": {
+  "delta_kind": "Delta audit of PR #1670 (a70a761ae47..4397967ebe0): the 23 new ui.teamBridge.members_panel.* values read against en, the en context sidecar, the glossary and the vi style guide, composed with real arguments; existing ui.teamBridge copy read for glossary consistency. No pre-existing value changed in the PR (verified); the other 342 values are byte-identical to the 828e525994e6-pr1666-vi audited bytes. No rendered fit or native RTL rendering claimed.",
+  "keys_added": [
+   "ui.teamBridge.members_panel.title",
+   "ui.teamBridge.members_panel.close",
+   "ui.teamBridge.members_panel.open_label",
+   "ui.teamBridge.members_panel.open_label_invited",
+   "ui.teamBridge.members_panel.state.pending_approval",
+   "ui.teamBridge.members_panel.leave_label",
+   "ui.teamBridge.members_panel.leave_tooltip",
+   "ui.teamBridge.members_panel.decline_label",
+   "ui.teamBridge.members_panel.decline_tooltip",
+   "ui.teamBridge.members_panel.confirm.remove_title",
+   "ui.teamBridge.members_panel.confirm.remove_body",
+   "ui.teamBridge.members_panel.confirm.withdraw_body",
+   "ui.teamBridge.members_panel.confirm.leave_title",
+   "ui.teamBridge.members_panel.confirm.leave_body",
+   "ui.teamBridge.members_panel.confirm.decline_title",
+   "ui.teamBridge.members_panel.confirm.decline_body",
+   "ui.teamBridge.members_panel.confirm.remove",
+   "ui.teamBridge.members_panel.confirm.leave",
+   "ui.teamBridge.members_panel.confirm.decline",
+   "ui.teamBridge.members_panel.note.general",
+   "ui.teamBridge.members_panel.note.humans",
+   "ui.teamBridge.members_panel.note.agents",
+   "ui.teamBridge.members_panel.note.dm"
+  ],
+  "keys_changed_by_auditor": [
+   "ui.teamBridge.members_panel.note.agents"
+  ],
+  "parent_audited_by": [
+   "828e525994e6-pr1666-vi"
+  ]
+ },
+ "audited": {
+  "ui.teamBridge.members_panel.title": {
+   "en": "Members",
+   "translation": "Thành viên"
+  },
+  "ui.teamBridge.members_panel.close": {
+   "en": "Close members",
+   "translation": "Đóng danh sách thành viên"
+  },
+  "ui.teamBridge.members_panel.open_label": {
+   "en": "{count, plural, one {View # member} other {View # members}}",
+   "translation": "{count, plural, other {Xem # thành viên}}"
+  },
+  "ui.teamBridge.members_panel.open_label_invited": {
+   "en": "{active, plural, one {View # active member} other {View # active members}}, {invited, plural, one {# invited} other {# invited}}",
+   "translation": "{active, plural, other {Xem # thành viên đã tham gia}}, {invited, plural, other {# đã mời}}"
+  },
+  "ui.teamBridge.members_panel.state.pending_approval": {
+   "en": "Pending approval",
+   "translation": "Chờ phê duyệt"
+  },
+  "ui.teamBridge.members_panel.leave_label": {
+   "en": "Leave this conversation",
+   "translation": "Rời cuộc trò chuyện này"
+  },
+  "ui.teamBridge.members_panel.leave_tooltip": {
+   "en": "Leave conversation",
+   "translation": "Rời cuộc trò chuyện"
+  },
+  "ui.teamBridge.members_panel.decline_label": {
+   "en": "Decline the invitation for {name}",
+   "translation": "Từ chối lời mời cho {name}"
+  },
+  "ui.teamBridge.members_panel.decline_tooltip": {
+   "en": "Decline invitation",
+   "translation": "Từ chối lời mời"
+  },
+  "ui.teamBridge.members_panel.confirm.remove_title": {
+   "en": "Remove {name} from {conversation}?",
+   "translation": "Xóa {name} khỏi {conversation}?"
+  },
+  "ui.teamBridge.members_panel.confirm.remove_body": {
+   "en": "They stop receiving its messages. They can be invited again later.",
+   "translation": "Họ sẽ không nhận tin nhắn ở đây nữa. Có thể mời lại họ sau."
+  },
+  "ui.teamBridge.members_panel.confirm.withdraw_body": {
+   "en": "Your agent stops receiving messages here. You can add it again later.",
+   "translation": "Tác nhân của bạn sẽ không nhận tin nhắn ở đây nữa. Bạn có thể thêm lại sau."
+  },
+  "ui.teamBridge.members_panel.confirm.leave_title": {
+   "en": "Leave {conversation}?",
+   "translation": "Rời {conversation}?"
+  },
+  "ui.teamBridge.members_panel.confirm.leave_body": {
+   "en": "You stop receiving its messages. To come back, rejoin it from the channel list if it is open to your organization, or ask a member to invite you again.",
+   "translation": "Bạn sẽ không nhận tin nhắn ở đây nữa. Để quay lại, hãy tham gia từ danh sách kênh nếu kênh mở cho tổ chức của bạn, hoặc nhờ một thành viên mời lại bạn."
+  },
+  "ui.teamBridge.members_panel.confirm.decline_title": {
+   "en": "Decline the invitation for {name}?",
+   "translation": "Từ chối lời mời cho {name}?"
+  },
+  "ui.teamBridge.members_panel.confirm.decline_body": {
+   "en": "{name} will not join {conversation}. A member can invite it again later.",
+   "translation": "{name} sẽ không tham gia {conversation}. Một thành viên có thể mời lại sau."
+  },
+  "ui.teamBridge.members_panel.confirm.remove": {
+   "en": "Remove",
+   "translation": "Xóa"
+  },
+  "ui.teamBridge.members_panel.confirm.leave": {
+   "en": "Leave",
+   "translation": "Rời"
+  },
+  "ui.teamBridge.members_panel.confirm.decline": {
+   "en": "Decline",
+   "translation": "Từ chối"
+  },
+  "ui.teamBridge.members_panel.note.general": {
+   "en": "Everyone in the organization is a member of #general. Mute it instead of leaving.",
+   "translation": "Mọi người trong tổ chức đều là thành viên của #general. Hãy tắt tiếng thay vì rời đi."
+  },
+  "ui.teamBridge.members_panel.note.humans": {
+   "en": "Every person in the organization is a member of #humans. Mute it instead of leaving.",
+   "translation": "Mọi người trong tổ chức đều là thành viên của #humans. Hãy tắt tiếng thay vì rời đi."
+  },
+  "ui.teamBridge.members_panel.note.agents": {
+   "en": "Membership of #agents follows the organization. You can leave if you joined it yourself.",
+   "translation": "Tư cách thành viên của #agents được xác định theo tổ chức. Bạn có thể rời đi nếu đã tự tham gia."
+  },
+  "ui.teamBridge.members_panel.note.dm": {
+   "en": "The members of a direct message can't be changed.",
+   "translation": "Không thể thay đổi thành viên của tin nhắn trực tiếp."
+  }
+ },
+ "findings": [
+  {
+   "id": "VI-N1",
+   "severity": "nit",
+   "keys": [
+    "ui.teamBridge.members_panel.note.agents"
+   ],
+   "summary": "'Tư cách thành viên của #agents theo tổ chức' lacks a predicate and reads as a fragment.",
+   "proposed": "'… được xác định theo tổ chức'",
+   "disposition": "fixed by auditor in this commit",
+   "values": {
+    "ui.teamBridge.members_panel.note.agents": {
+     "before": "Tư cách thành viên của #agents theo tổ chức. Bạn có thể rời đi nếu đã tự tham gia.",
+     "after": "Tư cách thành viên của #agents được xác định theo tổ chức. Bạn có thể rời đi nếu đã tự tham gia."
+    }
+   }
+  }
+ ],
+ "checks": {
+  "icu_command": "node scripts/verify.mjs (worktree root; @formatjs/icu-messageformat-parser) — all 365 values parse; argument names equal en; CLDR plural arms per style guide on delta keys",
+  "compose_command": "node scripts/compose.mjs (intl-messageformat, real arguments incl. 0/1/2/5/21/10^6)",
+  "unicode": "All values NFC; no bidi controls (U+200E/F, U+061C, U+202A-E, U+2066-9).",
+  "key_set": "365 keys, equal to English, same order.",
+  "execution_log": "i18n/audits/evidence/vi/ui.teamBridge/tb1670-7c739a6246b4-vi/audit.log"
+ },
+ "not_claimed": "No rendered width fit (overflow nits are flagged for the design rendered check) and no native RTL rendering (UR-M3 is derived from the UBA).",
+ "artifacts": {
+  "audit.log": "e08c35a8e408abcd3341462f34ef43c7c90b946e426f2f0f49dcbe9b5f050a8e",
+  "scripts/verify.mjs": "e6d8e6e01df7afcbf6afaa6b7c635fb64db8192caa5c38d6db36449ca6c49f4d",
+  "scripts/compose.mjs": "4aeaa9f96c8487f89457e0f3004f0f183ad7e88b77c0a7d3566132c9a29bc06a"
+ }
+}

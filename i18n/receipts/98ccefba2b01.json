@@ -1,0 +1,28 @@
+{
+  "locale": "fr",
+  "namespace": "ui.chat.composer",
+  "agent": "i18n-auditor",
+  "instance": "98ccefba2b01",
+  "model": "radient/auto",
+  "requested_route": "radient/auto",
+  "served_underlying_model": "UNKNOWN",
+  "model_kind": "requested_route_only",
+  "status": "passed",
+  "source_sha256": "67b5bc499440a52a727774876e13ee4ed9eaef20b439c4f5ec97466ae8b238cd",
+  "target_sha256": "e2706876a2be7c60db269d89b56d4c990be137fde1efcd52c1789a8e3265f080",
+  "context_sha256": "77c879963392e2e3f202aa689ff5d372946995c76891cc0eabc293fe75097df7",
+  "base_target_sha256": "64b9c66fc88c54d51235c558cb4b424d907f4ba0f04123e949980531d76d4c86",
+  "reviewed_keys": [
+    "ui.chat.composer.secret_closure_notice"
+  ],
+  "findings": [
+    {
+      "id": "fr-composer-01",
+      "severity": "minor",
+      "key": "ui.chat.composer.secret_closure_notice",
+      "problem": "\"ce champ\" refers to the message box, but this fr corpus calls that surface \"zone de saisie\" (ui.agents.config.status.attached: \"elle est toujours dans la zone de saisie\" for EN \"it is still in the box\"; ui.agents.config.banner.unavailable: \"la zone de saisie est donc indisponible\" for EN \"the composer is unavailable\") and reserves \"champ\" for the secret field of this very flow (6 values: ui.chat.composer.secret_confirm_sending, secret_confirm_put, secret_fill_locked, secret_fill_changed, secret_fill_refused, secret_fill_unavailable use \"le champ secret\"). In a notice that first sends the reader to the asks panel, \"ce champ\" can be read as that secret field, which is not the paused surface. Meaning is still recoverable from the second clause (\"votre brouillon est conservé\"), so this is not a meaning break.",
+      "suggestion": "\"ce champ\" -> \"cette zone de saisie\": \"Répondez à la demande de secret dans le panneau des demandes — cette zone de saisie reste en pause jusqu'à votre réponse, et votre brouillon est conservé.\"",
+      "evidence": "Read of src/i18n/catalogues/fr/ui.chat.composer.json (66->67, candidate .local-operator/sessions/45515705efd9/scratchpad/target/fr/ui.chat.composer.json sha256 e2706876a2be7c60db269d89b56d4c990be137fde1efcd52c1789a8e3265f080) and of the fr corpus values cited above; EN source \"this box is paused until it is answered\" (src/i18n/catalogues/en/ui.chat.composer.json sha256 67b5bc499440a52a727774876e13ee4ed9eaef20b439c4f5ec97466ae8b238cd)."
+    }
+  ]
+}

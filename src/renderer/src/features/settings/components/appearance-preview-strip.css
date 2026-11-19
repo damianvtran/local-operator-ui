@@ -1,0 +1,110 @@
+/* A NEUTRAL backdrop, never a capture of the user's desktop and never the
+ * palette being judged. The stops are the measured material tier each scheme's
+ * alphas were solved against, emitted per scheme by `previewBackdropVars`, so
+ * the ground cannot move with the accent under review. What is true of the
+ * travel is that it goes only AWAY from the ink's side, so it can only gain
+ * contrast against the floors' single material tone - not that it stays inside
+ * that tone (it deliberately leaves it).
+ * The sample consumes production-derived inks over that backdrop only where a
+ * glass role is composited; `[data-preview-chrome]` below keeps the two text
+ * rows off the raw ramp. The local `--lo-*` palette must stay the view's own:
+ * html's global glass rules and its last committed palette must not override an
+ * uncommitted contrast draft. */
+.appearance-preview {
+	background: var(--lo-canvas);
+}
+
+.appearance-preview:not([data-preview-glass=""]) {
+	background: linear-gradient(
+		125deg,
+		var(--lo-preview-backdrop-a) 0%,
+		var(--lo-preview-backdrop-b) 50%,
+		var(--lo-preview-backdrop-c) 100%
+	);
+}
+
+/* THE TEXT ROWS SIT WHERE PRODUCTION PUTS THEM: ON THE CARD, never on the
+ * desktop itself and never as an opaque bar inside it. Painted straight onto the
+ * ramp they measured 3.05:1 (dark) and 3.70:1 (light), below AA on 56 of 59
+ * palettes (code C1, UX U5, design D5), because `--lo-ink-dim` at full strength
+ * is only promised over a composited role. So they take the canvas composite -
+ * the ground the published floor table is solved for (0 of 59 below AA) - for
+ * as long as the sample paints a backdrop at all.
+ *
+ * ANY coverage, not just `canvas` (code C3). Keying the composite off
+ * `~="canvas"` left the SIDEBARS-ONLY state - the one glass state that ships
+ * its own story - with flat `var(--lo-canvas)`: an opaque bar top and bottom of
+ * a card that is still painting the ramp, which is the N2 silhouette back. The
+ * card is one translucent surface whenever it shows a backdrop; the rows follow
+ * the card, and the opaque fallback is left to the solid states, where the
+ * whole card is that same canvas. */
+.appearance-preview [data-preview-chrome] {
+	background-color: var(--lo-canvas);
+}
+
+.appearance-preview:not([data-preview-glass=""]) [data-preview-chrome] {
+	background-color: color-mix(
+		in srgb,
+		var(--lo-canvas) calc(var(--lo-glass-a-canvas) * 100%),
+		transparent
+	);
+}
+
+.appearance-preview[data-preview-glass~="canvas"]
+	[data-preview-region="canvas"] {
+	background-color: color-mix(
+		in srgb,
+		var(--lo-canvas) calc(var(--lo-glass-a-canvas) * 100%),
+		transparent
+	);
+}
+
+.appearance-preview[data-preview-glass~="sidebar"]
+	[data-preview-region="sidebar"] {
+	background-color: color-mix(
+		in srgb,
+		var(--lo-surface) calc(var(--lo-glass-a-surface) * 100%),
+		transparent
+	);
+}
+
+/* Samples are pictures (div/span), so production's input/button selectors do
+ * not apply. Consume the same field and block tokens without dimming their ink. */
+.appearance-preview[data-preview-glass~="canvas"] [data-preview-field] {
+	background-color: color-mix(
+		in srgb,
+		var(--lo-ink) calc(var(--lo-glass-a-field) * 100%),
+		transparent
+	);
+}
+
+.appearance-preview[data-preview-glass~="canvas"] [data-preview-block] {
+	background-color: color-mix(
+		in srgb,
+		var(--lo-ink) calc(var(--lo-glass-a-block-veil) * 100%),
+		transparent
+	);
+}
+
+/* Only covered regions get the relative state/edge roles. Uncovered samples keep
+ * the authored solid roles, just like the app at sidebars-only coverage. */
+.appearance-preview[data-preview-glass~="canvas"]
+	[data-preview-region="canvas"],
+.appearance-preview[data-preview-glass~="sidebar"]
+	[data-preview-region="sidebar"] {
+	--color-row-hover: color-mix(
+		in srgb,
+		var(--lo-ink) calc(var(--lo-glass-a-row-hover) * 100%),
+		transparent
+	);
+	--color-row-selected: color-mix(
+		in srgb,
+		var(--lo-ink) calc(var(--lo-glass-a-row-selected) * 100%),
+		transparent
+	);
+	--color-control: color-mix(
+		in srgb,
+		var(--lo-ink) calc(var(--lo-glass-control-mix) * 100%),
+		var(--lo-border-control)
+	);
+}

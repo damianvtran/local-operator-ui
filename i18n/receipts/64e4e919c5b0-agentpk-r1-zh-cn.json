@@ -1,0 +1,95 @@
+{
+  "schema": 1,
+  "auditor": {
+    "agent": "reviewer",
+    "session": "64e4e919c5b0",
+    "instance": "64e4e919c5b0-agentpk-r1-zh-cn",
+    "model": "anthropic/claude-opus-5-5",
+    "requested_model": "anthropic/claude-opus-5-5",
+    "fallback": false,
+    "model_source": "Session system prompt header 'Model: anthropic/claude-opus-5-5'; no model-switch or fallback notice in this session.",
+    "independence": "Independent auditor (lopdev team reviewer, task agentpk-i18n-audit); authored no translation in this PR. PR translator: coder session job a03b04d91272. This session is 64e4e919c5b0.",
+    "independent_from_translator_session": true
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "64e4e919c5b0-agentpk-r1-zh-cn",
+  "locale": "zh-CN",
+  "date": "2026-11-10",
+  "head": "8c1dcceb6a29aec84d27244445d69628825614ed",
+  "base": "9130024f5be8e11cb30f0309dc68f5e5a42bf791",
+  "pr": "https://github.com/damianvtran/local-operator-ui/pull/1846",
+  "branch": "agent-passkey (PR #1846)",
+  "audit_kind": "delta audit of 3 added keys",
+  "scope": "ui.browser, 3 keys added by PR #1846 read against English source, English context sidecar, core glossary and the locale style guide: ui.browser.browser_passkey_notice.continue_in_own_tab, ui.browser.browser_passkey_notice.agent_explanation, ui.browser.use_browser_chrome.passkey_continue_failed. All other keys byte-identical to the base and not re-audited.",
+  "union_proof": "Computed from git objects: for en and every locale, HEAD ui.browser.json keys == origin/main 9130024f5be keys + exactly these 3 added keys; 0 changed, 0 removed; base locale bytes hash == the ledger row's previous target_sha256 and base en == previous source_sha256; worktree bytes == HEAD blob.",
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/zh-CN.md",
+      "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+    },
+    "glossary_style_revision": "e21f92fa4ee1a7a4095586e33453c19f54aca4f9"
+  },
+  "status": "changes_requested",
+  "result": "changes_requested",
+  "counts": {
+    "blocker": 0,
+    "major": 1,
+    "minor": 0,
+    "nit": 0
+  },
+  "findings": [
+    {
+      "id": "M1",
+      "severity": "major",
+      "key": "ui.browser.browser_passkey_notice.agent_explanation",
+      "issue": "Renders 'agent' as «代理» (twice). The binding glossary and zh-CN style guide (§Locale calls: agent → 智能体) fix the term; the zh-CN catalogues use 智能体 761 times and use 代理 only for a network PROXY — including in this same browser domain (ui.browser.extensions.permission_proxy «读取和更改你的代理设置»). In a browser notice «由代理控制的标签页» therefore reads as 'a tab controlled by a proxy', and the same strip's message line says «智能体驱动的标签页», so the explanation appears to describe a different actor. Meaning error in a security-relevant notice.",
+      "suggested": "密码管理器扩展无法在由智能体控制的标签页中打开。请在你自己的标签页中继续登录；它与此浏览器共享登录会话，因此智能体之后可以在已登录状态下继续。",
+      "disposition": "changes requested — translator to replace 代理 with 智能体; re-audit required."
+    }
+  ],
+  "namespaces": {
+    "ui.browser": {
+      "namespace": "ui.browser",
+      "status": "changes_requested",
+      "result": "changes_requested",
+      "sha256": {
+        "zh-CN": "2a786c949ad98132419ce8cb9792e83b7282f0a68835f1ef13b5fa9ba0bf487e",
+        "en": "42f3ccb0c0b4ec8d28f9e6b2a369a5fbfffa17852bafdf65011f384b754b14f9"
+      },
+      "context_sha256": "6d06934b27d3e3fc4883f753658bbdc4f34d0133138f2e5c5ec148dbe309ad20",
+      "keys_reviewed": [
+        "ui.browser.browser_passkey_notice.continue_in_own_tab",
+        "ui.browser.browser_passkey_notice.agent_explanation",
+        "ui.browser.use_browser_chrome.passkey_continue_failed"
+      ],
+      "keys_read": 3,
+      "counts": {
+        "blocker": 0,
+        "major": 1,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": [
+        {
+          "id": "M1",
+          "severity": "major",
+          "key": "ui.browser.browser_passkey_notice.agent_explanation",
+          "issue": "Renders 'agent' as «代理» (twice). The binding glossary and zh-CN style guide (§Locale calls: agent → 智能体) fix the term; the zh-CN catalogues use 智能体 761 times and use 代理 only for a network PROXY — including in this same browser domain (ui.browser.extensions.permission_proxy «读取和更改你的代理设置»). In a browser notice «由代理控制的标签页» therefore reads as 'a tab controlled by a proxy', and the same strip's message line says «智能体驱动的标签页», so the explanation appears to describe a different actor. Meaning error in a security-relevant notice.",
+          "suggested": "密码管理器扩展无法在由智能体控制的标签页中打开。请在你自己的标签页中继续登录；它与此浏览器共享登录会话，因此智能体之后可以在已登录状态下继续。",
+          "disposition": "changes requested — translator to replace 代理 with 智能体; re-audit required."
+        }
+      ]
+    }
+  },
+  "checks": [
+    "ICU parse with the repo's @formatjs/icu-messageformat-parser: argument names/types match English for all 3 keys (problems 0); {reason} kept as the final sentence of passkey_continue_failed.",
+    "No manual bidi control characters (U+200E/200F/202A-202E/2066-2069) in the 3 values.",
+    "Address register per style guide; 'your own tab' contrast with the agent's tab preserved; no promise the sign-in will succeed; session sharing described as this app browser's, not the system browser's.",
+    "Length: button and explanation fall within this locale's existing open_in_system_browser / explanation footprints in the same strip (explanation text wraps; buttons are shrink-0)."
+  ],
+  "limitations": "Source/text audit only; no rendered-fit or execution claim. Carried keys rely on byte identity to the base."
+}

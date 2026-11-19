@@ -1,0 +1,191 @@
+{
+  "schema": "local-operator-ui/i18n-audit-receipt",
+  "kind": "translation-audit-receipt",
+  "round": 1,
+  "locale": "vi",
+  "locale_name": "Tiếng Việt",
+  "batch": "final-eleven-keys",
+  "pr": 1403,
+  "branch": "feat/i18n-key-remaining-copy",
+  "head": "d784571d9017c2958a80c51808b2ace64e3f76ba",
+  "audited_head": "566fed884558fa38c662b6e4b55c7915f56798a8",
+  "head_note": "The PR head advanced from 566fed8845 to d784571d90 (a revert of a2be7769's chat-counter pluralization) after the audit read; git diff 566fed8845..d784571d90 is empty, so the three vi files and every hash in this receipt are byte-identical at both heads.",
+  "base": "3d0e9010d71c00662902971e4bd6888f7a8f6f1c",
+  "merge_base_main": "3d0e9010d71c00662902971e4bd6888f7a8f6f1c",
+  "previous_head": "d082bd9595dcc41018b86f22a26fa7f3ae4e891f",
+  "translation_commit": "5f7e78e7904355c3c76f5e1afd815e728e592c84",
+  "badge_fix_commit": "29bd499ed3d76ab662a049670f49a9f2cf7328af",
+  "integration_commit": "a3ba65ee90eea448f0fc256574ac3e8c0346eab3",
+  "date": "2026-10-25",
+  "model": "deepseek/deepseek-flash",
+  "translator": {
+    "agent": "not recorded on the branch",
+    "commits": [
+      "5f7e78e7904355c3c76f5e1afd815e728e592c84",
+      "29bd499ed3d76ab662a049670f49a9f2cf7328af"
+    ],
+    "author": "Damian Tran <damian@gominerva.com>",
+    "note": "The translation and badge-fix commits record no translator agent/model; the branch is authored under the shared account. The manager must supply --translator-agent/--translator-model when creating the absent ledger rows."
+  },
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/vi.md",
+      "sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+    },
+    "docs": {
+      "path": "docs/I18N.md",
+      "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+    }
+  },
+  "status": "clean-with-findings",
+  "verdict": "clean-with-findings — 69/69 keys read across the three namespaces (11/11 batch keys); 0 blocker, 0 major, 2 minor, 0 nit; whole-locale vi parity 3824/3824 with 0 missing/extra and 0 placeholder diffs. Header contributes 1 minor (width); sidebar contributes 1 minor (last-known drift); errors are clean.",
+  "auditor": {
+    "agent": "translation-auditor",
+    "harness": "Local Operator",
+    "team": "lopdev",
+    "session": "4354691259e5",
+    "instance": "vi-final-6e9c1ff48a0b",
+    "model": "deepseek/deepseek-flash",
+    "model_provenance": "Harness session header reports deepseek/deepseek-flash; no narrower underlying id and no fallback were exposed. No other model is claimed.",
+    "independence": "This run audited the Vietnamese bytes at 566fed8845 (translation 5f7e78e790, badge fix 29bd499ed3, integration a3ba65ee90); it authored or edited no catalogue, English, other-locale, ledger, allowance or generated file. Only these three new untracked receipts under i18n/receipts/ were written. The commits record no translator agent/model, so no translator identity is claimed; independence is established by this run reading only the committed bytes.",
+    "date": "2026-10-25"
+  },
+  "instance": "vi-final-6e9c1ff48a0b",
+  "instance_basis": "'vi-final-' plus the first 12 hex of this namespace's current target sha256",
+  "scope": {
+    "batch_keys": 11,
+    "batch_keys_by_namespace": {
+      "ui.chat.header": 2,
+      "ui.chat.sidebar": 5,
+      "ui.common.errors": 4
+    },
+    "namespaces_audited": 3,
+    "namespace_keys_read": 69,
+    "whole_locale_keys": 3824,
+    "whole_locale_namespaces": 75,
+    "whole_locale_missing": 0,
+    "whole_locale_extra": 0,
+    "placeholder_diffs": 0,
+    "icu_parse_failures": 0,
+    "description": "Final-keys audit for vi at 566fed8845 (tree-identical to d784571d90): the eleven batch keys (header 2, sidebar 5, errors 4) plus every other key in the three namespaces, all read semantically against English and the context sidecar. Since the previous vi receipt head d082bd9595, only these eleven vi values changed (three files); no other vi value changed. The badge plural fix (29bd499ed3, merged in a3ba65ee90) is included. Mechanical verification: 3824/3824 whole-locale keys present, 0 extra, 0 placeholder-name differences, 0 ICU parse failures across the three namespaces; all three namespace files and the eleven batch keys were read in full.",
+    "namespace_scope": {
+      "ui.chat.header": {
+        "batch_keys": 2,
+        "head_keys": 12,
+        "changed_keys": 2,
+        "delta_since_d082bd": 2
+      },
+      "ui.chat.sidebar": {
+        "batch_keys": 5,
+        "head_keys": 49,
+        "changed_keys": 5,
+        "delta_since_d082bd": 5
+      },
+      "ui.common.errors": {
+        "batch_keys": 4,
+        "head_keys": 8,
+        "changed_keys": 4,
+        "delta_since_d082bd": 4
+      }
+    }
+  },
+  "namespaces": {
+    "ui.chat.sidebar": {
+      "namespace": "ui.chat.sidebar",
+      "batch_keys": 5,
+      "batch_key_list": [
+        "ui.chat.sidebar.agents.builtin_offer",
+        "ui.chat.sidebar.catalogue.total",
+        "ui.chat.sidebar.catalogue.total_search",
+        "ui.chat.sidebar.catalogue.total_search_clipped",
+        "ui.chat.sidebar.groups.badge"
+      ],
+      "head_keys": 49,
+      "changed_keys": 5,
+      "sha256": {
+        "en": "ef1e1be1e56216cbace31a229d20979c2fc00fb43d15559a93605e33e900b171",
+        "context": "0a5a1fc27e8d0cab8dfe9b086144a19969268403afded5a7a68036eaf5485339",
+        "target": "6e9c1ff48a0b65dc36d041a421abe8421ca9cba4bd93d03f52df8fafd988d294"
+      },
+      "status": "clean-with-findings",
+      "findings": [
+        {
+          "id": "VI-FINAL-S1",
+          "severity": "minor",
+          "namespace": "ui.chat.sidebar",
+          "key": "ui.chat.sidebar.list.offline",
+          "current": "«Chưa kết nối với máy chủ — đang hiển thị trạng thái gần nhất đã biết.»",
+          "proposed": "«Chưa kết nối với máy chủ — đang hiển thị trạng thái ghi nhận gần nhất.»",
+          "reason": "The same English term, «last known», is rendered as «ghi nhận gần nhất» in ui.code_review.code_review_model.stale_last_known_state_not_current («Đã cũ — trạng thái ghi nhận gần nhất, không phải hiện tại.») and ui.code_review.row.stale_error («Đã cũ — thông tin ghi nhận gần nhất, không phải hiện tại: {error}»), while this key uses «gần nhất đã biết». Two local spellings for one English term: «trạng thái ghi nhận gần nhất» is the established house phrasing and the more idiomatic order; «trạng thái gần nhất đã biết» puts the distance term before the verb and reads translated. Meaning is unchanged.",
+          "evidence": "Exact catalogue values at 566fed8845: ui.code_review.code_review_model.stale_last_known_state_not_current and ui.code_review.row.stale_error use «ghi nhận gần nhất»; ui.chat.sidebar.list.offline uses «gần nhất đã biết».",
+          "disposition": "align to the house phrase in a future copy pass; not a meaning error"
+        }
+      ],
+      "summary": "49/49 keys read, including all five new keys. The badge is a vi-correct other-only plural: 1 renders «1 cuộc trò chuyện trong nhóm này», 2 renders «2 cuộc trò chuyện trong nhóm này», and 1234 renders without grouping because the nested {badge, number, ::group-off} keeps the skeleton. The other four new keys (builtin_offer, catalogue.total, total_search, total_search_clipped) are accurate and render correctly; builtin_offer uses exact-value arms =0..=6 plus other, with no `one` category. One minor glossary-consistency finding remains: list.offline renders «last known» as «gần nhất đã biết» while ui.code_review uses «ghi nhận gần nhất».",
+      "verdict": "clean-with-findings — 49/49 sidebar keys read; badge other-only plural and ::group-off verified; one minor glossary-consistency finding; no blocker/major."
+    }
+  },
+  "findings": [
+    {
+      "id": "VI-FINAL-S1",
+      "severity": "minor",
+      "namespace": "ui.chat.sidebar",
+      "key": "ui.chat.sidebar.list.offline",
+      "current": "«Chưa kết nối với máy chủ — đang hiển thị trạng thái gần nhất đã biết.»",
+      "proposed": "«Chưa kết nối với máy chủ — đang hiển thị trạng thái ghi nhận gần nhất.»",
+      "reason": "The same English term, «last known», is rendered as «ghi nhận gần nhất» in ui.code_review.code_review_model.stale_last_known_state_not_current («Đã cũ — trạng thái ghi nhận gần nhất, không phải hiện tại.») and ui.code_review.row.stale_error («Đã cũ — thông tin ghi nhận gần nhất, không phải hiện tại: {error}»), while this key uses «gần nhất đã biết». Two local spellings for one English term: «trạng thái ghi nhận gần nhất» is the established house phrasing and the more idiomatic order; «trạng thái gần nhất đã biết» puts the distance term before the verb and reads translated. Meaning is unchanged.",
+      "evidence": "Exact catalogue values at 566fed8845: ui.code_review.code_review_model.stale_last_known_state_not_current and ui.code_review.row.stale_error use «ghi nhận gần nhất»; ui.chat.sidebar.list.offline uses «gần nhất đã biết».",
+      "disposition": "align to the house phrase in a future copy pass; not a meaning error"
+    }
+  ],
+  "observations": [
+    {
+      "key": "ui.chat.sidebar.groups.badge",
+      "issue": "Verified the other-only plural and the number skeleton: options are exactly [other]; the value nests {badge, number, ::group-off} inside the plural arm. Rendered with intl-messageformat 12: 1 → «1 cuộc trò chuyện trong nhóm này», 2 → «2 cuộc trò chuyện trong nhóm này», 1234 → «1234 cuộc trò chuyện trong nhóm này» (no grouping). `#` would use the plural default number format and drop the skeleton; the nested number keeps it.",
+      "recommendation": "Pass. Note for the English owner, not a vi defect: the English source now uses `#` and renders 1234 as «1,234 chats in this group»; the vi arm keeps ::group-off and renders «1234», as the brief requires."
+    },
+    {
+      "key": "ui.chat.sidebar.agents.builtin_offer",
+      "issue": "Plural options are [=0, =1, =2, =3, =4, =5, =6, other]; there is no `one` category, so the vi category set is other-only. The exact-value arms spell the small counts and select «nó»/«chúng» correctly; rendered 0, 1, 2, 6, 7 and 1234. Exact arms already exist in audited vi copy (ui.chat.pickers.stop.confirm, ui.console.cleanup.result, ui.mesh.mesh_list.conversation_count), so this is an accepted vi pattern, not a plural-category violation.",
+      "recommendation": "Pass; no change."
+    },
+    {
+      "key": "ui.chat.sidebar.header.create",
+      "issue": "«Tác nhân hoặc nhóm mới» leaves the scope of «mới» to the nearest noun; it can read as «agent, or a new team» rather than «new agent or new team».",
+      "recommendation": "If a future pass touches it, «Tác nhân mới hoặc nhóm mới» removes the ambiguity. Not counted: pre-existing accessible name, still understood in the create-menu context."
+    },
+    {
+      "key": "ui.chat.sidebar.list.empty",
+      "issue": "«Chưa có cuộc trò chuyện nào. Chọn tác nhân, nhóm hoặc Cuộc trò chuyện mới.» capitalizes a common noun mid-sentence to mirror the New chat control label; Vietnamese sentence case would lowercase it or quote it.",
+      "recommendation": "Not counted: pre-existing copy and a UI-label convention; lowercase only if the house voice standardises it."
+    },
+    {
+      "key": "ui.chat.sidebar.section.current_chat",
+      "issue": "«Đang mở» is a state phrase rather than a noun phrase, but it is the recorded VI-EXT-3 width choice (receipt vi-extract-517c59bfdfe3-r2), 7 cells at the 220px sidebar minimum.",
+      "recommendation": "No change; recorded here so the full-namespace read is explicit."
+    }
+  ],
+  "totals": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0,
+    "keys_read": 49,
+    "batch_keys": 5
+  },
+  "limitations": [
+    "No rendered app frame was captured; the width finding is a character-cell measurement against the sidecar budgets, not a screenshot or a measured overflow.",
+    "No native-speaker sign-off is claimed; this is an independent agent audit against the vi style guide and glossary.",
+    "The repository’s full pnpm check-i18n gate was not run; the mechanical checks (whole-locale key parity, ICU parse, placeholder names, NFC, token counts, plural rendering with intl-messageformat) were run directly on the committed bytes at 566fed8845 (tree-identical to d784571d90).",
+    "The translation and badge-fix commits record no translator agent/model; the branch is authored under the shared account."
+  ],
+  "run_receipts": [
+    "i18n/receipts/vi-final-bae711b8664e.json (ui.chat.header)",
+    "i18n/receipts/vi-final-6e9c1ff48a0b.json (ui.chat.sidebar)",
+    "i18n/receipts/vi-final-c6082f69de5b.json (ui.common.errors)"
+  ]
+}

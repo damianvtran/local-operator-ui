@@ -1,0 +1,573 @@
+{
+  "schema": 1,
+  "audit_kind": "independent-translation-audit",
+  "locale": "ur",
+  "auditor": "i18n-auditor",
+  "agent": "i18n-auditor (lopdev team)",
+  "session": "312a0e1276c0",
+  "instance": "f98cb709d732",
+  "model": "radient/auto",
+  "model_fallback": "none",
+  "model_note": "Harness-reported route only: the session transcript records provider=radient, model_id=auto (selector radient/auto) and exposes no resolved upstream model. No model switch or fallback occurred in this run.",
+  "independence": "Independent auditor: I did not translate or remediate this locale and edited no catalogue, English source, context sidecar, ledger, allowance or generated file. Every value was read from the worktree at the recorded head; the files this run adds are this receipt and its evidence records only.",
+  "date": "2026-10-26",
+  "round": 1,
+  "scope": {
+    "pr": null,
+    "branch": "i18n-agents-literals-2",
+    "base": "f1aca5935b",
+    "parent": "73af0b6855",
+    "head": "a9e536bf892f48ed2a87772658055abfd10caa5e",
+    "namespaces": [
+      "ui.agents.pages",
+      "ui.agents.config",
+      "ui.agents.detail",
+      "ui.agents.upload",
+      "ui.hub.pages",
+      "ui.hub.teams",
+      "ui.common.actions"
+    ],
+    "keys": 25,
+    "keys_audited": [
+      "ui.agents.pages.add_manual.agent",
+      "ui.agents.pages.add_manual.team",
+      "ui.agents.pages.ask.body_agent",
+      "ui.agents.pages.ask.body_team",
+      "ui.agents.pages.ask.heading_agent",
+      "ui.agents.pages.ask.heading_team",
+      "ui.agents.pages.ask.manual_agent",
+      "ui.agents.pages.ask.manual_team",
+      "ui.agents.config.placeholder.about",
+      "ui.agents.config.placeholder.docked",
+      "ui.agents.config.placeholder.hero",
+      "ui.agents.detail.meta.delegates",
+      "ui.agents.detail.read.show_all",
+      "ui.agents.detail.read.show_less",
+      "ui.agents.upload.title.publish_org",
+      "ui.agents.upload.title.publish_public",
+      "ui.agents.upload.title.published_org",
+      "ui.agents.upload.title.published_public",
+      "ui.agents.upload.title.republished",
+      "ui.agents.upload.title.update_listing",
+      "ui.hub.pages.card.get",
+      "ui.hub.pages.card.updated",
+      "ui.hub.teams.recency.created",
+      "ui.hub.teams.recency.updated",
+      "ui.common.actions.retrying"
+    ],
+    "note": "The 25 English-keyed literals translated into ur by head a9e536bf89 on top of 73af0b6855: 8 ui.agents.pages + 3 ui.agents.config + 3 ui.agents.detail + 6 ui.agents.upload + 2 ui.hub.pages + 2 ui.hub.teams + 1 ui.common.actions. Catalogue audit only: accuracy, register, terminology, typography, bidi and rewrite logic. No rendered-frame, activation or release evidence is claimed.",
+    "passes": 2,
+    "second_pass": "A second cold pass re-read all 25 values against English and the sidecars, with the publish/permission strings and the agents creation surface re-checked against their notes (org vs public destination, receipt vs question, update vs publish, Agent Hub kept Latin as ui.hub.pages.header.title). It added no finding and removed none; it confirmed F1-F3 after checking the shipped ui.hub.teams.detail.* and ui.agents.config.summary.updated keys, which use the same marked order (see F1 problem text)."
+  },
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/ur.md",
+      "sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+    },
+    "ui_doc": {
+      "path": "docs/I18N.md",
+      "sha256": "6fc7bea71643c0dcaeaed697ecd792cfdfeb11b7816b5f8d160011e7c7df2abe"
+    }
+  },
+  "key_count": 25,
+  "namespace_count": 7,
+  "status": "changes_requested",
+  "result": "changes_requested",
+  "verdict": "changes_requested: 3 major (recency word order) + 1 minor over 25 keys; ui.hub.pages and ui.hub.teams blocked, 5 of 7 namespaces clean or clean-with-findings.",
+  "namespaces": {
+    "ui.agents.pages": {
+      "namespace": "ui.agents.pages",
+      "status": "passed",
+      "verdict": "clean-with-findings: 1 minor over 8 keys",
+      "keys_audited": 8,
+      "namespace_key_count": 30,
+      "source_sha256": "e85765ccb25a8675e64cb8cd1cc37edd86afbe9a77d444f9a1ec8ac9aee45781",
+      "target_sha256": "d63aa9ac6088634337ed79ba1ea11d4424241d9691f26bfd3356b022b69ba897",
+      "sha256": {
+        "en": "e85765ccb25a8675e64cb8cd1cc37edd86afbe9a77d444f9a1ec8ac9aee45781",
+        "ur": "d63aa9ac6088634337ed79ba1ea11d4424241d9691f26bfd3356b022b69ba897",
+        "context": "f9690a17e6e7307df154bdc0d71ab8a0d002a07a052e11c0025d2ff874d3dfea"
+      },
+      "findings": [
+        {
+          "id": "F4",
+          "severity": "minor",
+          "key": "ui.agents.pages.ask.manual_agent",
+          "keys": [
+            "ui.agents.pages.ask.manual_agent",
+            "ui.agents.pages.ask.manual_team"
+          ],
+          "current": "یا خود ایجنٹ شامل کریں / یا خود ٹیم شامل کریں",
+          "proposed": "یا ایجنٹ ہاتھ سے شامل کریں / یا ٹیم ہاتھ سے شامل کریں",
+          "problem": "Only the leading 'یا' distinguishes this from the roster button (ui.agents.pages.add_manual.agent 'خود ایجنٹ شامل کریں'): the English pair deliberately reads 'Add agent manually' vs 'Or add an agent by hand', and the sidecar asks that the link not read as a synonym of the roster's action. Both controls open the same manual route, so it is not misleading, but the alternative route reads as a duplicate of the button. The teams sibling has the same shape.",
+          "evidence": "shipped sibling ui.agents.pages.add_manual.agent is byte-identical apart from 'یا'."
+        }
+      ],
+      "note": "Keys audited: ui.agents.pages.add_manual.agent, ui.agents.pages.add_manual.team, ui.agents.pages.ask.body_agent, ui.agents.pages.ask.body_team, ui.agents.pages.ask.heading_agent, ui.agents.pages.ask.heading_team, ui.agents.pages.ask.manual_agent, ui.agents.pages.ask.manual_team. All other values in the file are byte-identical to 73af0b6855 and were not re-judged."
+    },
+    "ui.agents.config": {
+      "namespace": "ui.agents.config",
+      "status": "passed",
+      "verdict": "clean: 0 findings over 3 keys",
+      "keys_audited": 3,
+      "namespace_key_count": 31,
+      "source_sha256": "5338f6e229d67bf214a4741224470e82222bd2f04eba9bc9eda7324242393c32",
+      "target_sha256": "c4e7123c2be0b7353e0e750ba1229ca633fdd3ddc31270f33c66dc52ead39cb2",
+      "sha256": {
+        "en": "5338f6e229d67bf214a4741224470e82222bd2f04eba9bc9eda7324242393c32",
+        "ur": "c4e7123c2be0b7353e0e750ba1229ca633fdd3ddc31270f33c66dc52ead39cb2",
+        "context": "63a7879a771b5aa7732fcfc8848033ba207701aaf1452e2855e8ec2bd52821bf"
+      },
+      "findings": [],
+      "note": "Keys audited: ui.agents.config.placeholder.about, ui.agents.config.placeholder.docked, ui.agents.config.placeholder.hero. All other values in the file are byte-identical to 73af0b6855 and were not re-judged."
+    },
+    "ui.agents.detail": {
+      "namespace": "ui.agents.detail",
+      "status": "passed",
+      "verdict": "clean: 0 findings over 3 keys",
+      "keys_audited": 3,
+      "namespace_key_count": 50,
+      "source_sha256": "80877db48543e0557cd0a079c8fd2d0c238f1923c2885deae85428e17af1f65b",
+      "target_sha256": "38f9647ca8cc7f97f1cfef95f305501d939dee3b4ebfe2223625dc5fa24636db",
+      "sha256": {
+        "en": "80877db48543e0557cd0a079c8fd2d0c238f1923c2885deae85428e17af1f65b",
+        "ur": "38f9647ca8cc7f97f1cfef95f305501d939dee3b4ebfe2223625dc5fa24636db",
+        "context": "a0e40ba7fceccdf78da28d064fd4386cc48d8f1c80127a5721550e879c49b511"
+      },
+      "findings": [],
+      "note": "Keys audited: ui.agents.detail.meta.delegates, ui.agents.detail.read.show_all, ui.agents.detail.read.show_less. All other values in the file are byte-identical to 73af0b6855 and were not re-judged."
+    },
+    "ui.agents.upload": {
+      "namespace": "ui.agents.upload",
+      "status": "passed",
+      "verdict": "clean: 0 findings over 6 keys",
+      "keys_audited": 6,
+      "namespace_key_count": 29,
+      "source_sha256": "52876ab5bfa8b6c1f9170fdb9ea10c991f231d3d9fb103b16842476589083949",
+      "target_sha256": "f8ae928517294f95c263908e597aa18c59e8eaf9483e6c8457e8aeb3474de3b2",
+      "sha256": {
+        "en": "52876ab5bfa8b6c1f9170fdb9ea10c991f231d3d9fb103b16842476589083949",
+        "ur": "f8ae928517294f95c263908e597aa18c59e8eaf9483e6c8457e8aeb3474de3b2",
+        "context": "3141f45c4b8fc17b96061a4556a66b3133bbfe27345ee7e4d929dfe21ee049f0"
+      },
+      "findings": [],
+      "note": "Keys audited: ui.agents.upload.title.publish_org, ui.agents.upload.title.publish_public, ui.agents.upload.title.published_org, ui.agents.upload.title.published_public, ui.agents.upload.title.republished, ui.agents.upload.title.update_listing. All other values in the file are byte-identical to 73af0b6855 and were not re-judged."
+    },
+    "ui.hub.pages": {
+      "namespace": "ui.hub.pages",
+      "status": "changes_requested",
+      "verdict": "changes_requested: 1 major over 2 keys",
+      "keys_audited": 2,
+      "namespace_key_count": 37,
+      "source_sha256": "c54d0aca4e8047657a61367c667c6ad9351f198a10d7380c1478745152a832b6",
+      "target_sha256": "c64d666ba0e59c1e64865b23c612937a7438d76f17d468a7bbd110016641094b",
+      "sha256": {
+        "en": "c54d0aca4e8047657a61367c667c6ad9351f198a10d7380c1478745152a832b6",
+        "ur": "c64d666ba0e59c1e64865b23c612937a7438d76f17d468a7bbd110016641094b",
+        "context": "d913efa6ea062fe5c04861c6db202d5bf303b7b0c1a6f9c7efbdaa4b5c095d10"
+      },
+      "findings": [
+        {
+          "id": "F1",
+          "severity": "major",
+          "key": "ui.hub.pages.card.updated",
+          "keys": [
+            "ui.hub.pages.card.updated"
+          ],
+          "current": "اپ ڈیٹ کیا گیا {when}",
+          "proposed": "{when} اپ ڈیٹ کیا گیا",
+          "example": "3 دن پہلے اپ ڈیٹ کیا گیا",
+          "problem": "Source-order calque: the age follows the passive verb, composed as 'اپ ڈیٹ کیا گیا 3 دن پہلے'. Urdu fronts a relative-time phrase ('3 دن پہلے اپ ڈیٹ کیا گیا'). This key is one whole message precisely so the language can reorder it: the sidecar says the time may go before the verb, and the org-teams-list call-site comment names the shipped 'updated 2 دن پہلے' order as the defect the whole-message change removes. Measured with fribidi (RTL base), the age occupies the leftmost 9 columns - the end a single-line ellipsis truncates first. Shipped ui.settings.integrations...worked_when_with_tools renders 'Worked {when}' as '{when} کام کیا', the same time-first shape proposed here. Counter-evidence weighed: shipped ui.hub.teams.detail.created/updated and ui.agents.config.summary.updated use the same post-verbal shape, so this is not a term clash; but those placeholders are a formatted date or a name in label/value rows, while these three are whole single-line sentences the sidecar and call site explicitly freed for reordering.",
+          "evidence": "bidi-ur-literals.py CASE ui.hub.pages.card.updated: when log15..23 vis0..8; rtl_visual starts with the age at the left edge."
+        }
+      ],
+      "note": "Keys audited: ui.hub.pages.card.get, ui.hub.pages.card.updated. All other values in the file are byte-identical to 73af0b6855 and were not re-judged."
+    },
+    "ui.hub.teams": {
+      "namespace": "ui.hub.teams",
+      "status": "changes_requested",
+      "verdict": "changes_requested: 2 major over 2 keys",
+      "keys_audited": 2,
+      "namespace_key_count": 49,
+      "source_sha256": "4121cd4fada8986e1c77682c5909ecf8830f3015677ec99a0a5fb547f9040b06",
+      "target_sha256": "4dd219538049db430ada594dd3f3de70321b4b41842c5593b14f1329169741d6",
+      "sha256": {
+        "en": "4121cd4fada8986e1c77682c5909ecf8830f3015677ec99a0a5fb547f9040b06",
+        "ur": "4dd219538049db430ada594dd3f3de70321b4b41842c5593b14f1329169741d6",
+        "context": "b062f0ca8aed037084233730702e41c6f3ef09aa39bed405e007466716c711a0"
+      },
+      "findings": [
+        {
+          "id": "F2",
+          "severity": "major",
+          "key": "ui.hub.teams.recency.created",
+          "keys": [
+            "ui.hub.teams.recency.created"
+          ],
+          "current": "بنایا گیا {when}",
+          "proposed": "{when} بنایا گیا",
+          "example": "3 دن پہلے بنایا گیا",
+          "problem": "Same post-verbal order as F1 in the created arm: composed as 'بنایا گیا 3 دن پہلے'. The sidecar requires the creation date to be stated as a creation (it is) but the row is a single truncated line, so the marked English order is both less natural and the first thing cut. Keep the verb distinct from the updated arm, as it already is.",
+          "evidence": "bidi-ur-literals.py CASE ui.hub.teams.recency.created: when log10..18 vis0..8."
+        },
+        {
+          "id": "F3",
+          "severity": "major",
+          "key": "ui.hub.teams.recency.updated",
+          "keys": [
+            "ui.hub.teams.recency.updated"
+          ],
+          "current": "اپ ڈیٹ کیا گیا {when}",
+          "proposed": "{when} اپ ڈیٹ کیا گیا",
+          "example": "2 گھنٹے پہلے اپ ڈیٹ کیا گیا",
+          "problem": "Same defect as F1 in the teams row: 'اپ ڈیٹ کیا گیا {when}' composes as 'اپ ڈیٹ کیا گیا 2 گھنٹے پہلے'. The whole message exists so the target can front the age (sidecar: 'ONE whole sentence, so the target language can put the time before the verb'); the natural Urdu order is '2 گھنٹے پہلے اپ ڈیٹ کیا گیا'.",
+          "evidence": "bidi-ur-literals.py CASE ui.hub.teams.recency.updated: when log15..26 vis0..11."
+        }
+      ],
+      "note": "Keys audited: ui.hub.teams.recency.created, ui.hub.teams.recency.updated. All other values in the file are byte-identical to 73af0b6855 and were not re-judged."
+    },
+    "ui.common.actions": {
+      "namespace": "ui.common.actions",
+      "status": "passed",
+      "verdict": "clean: 0 findings over 1 keys",
+      "keys_audited": 1,
+      "namespace_key_count": 51,
+      "source_sha256": "132f60c9d401d804147f29fbe10fca265e2c3b3a5436b9eceb70c544afe8f1b9",
+      "target_sha256": "2750cf43d61f77f8e5ed4313a53fe816bee86bfbaf937aa640a630991809377b",
+      "sha256": {
+        "en": "132f60c9d401d804147f29fbe10fca265e2c3b3a5436b9eceb70c544afe8f1b9",
+        "ur": "2750cf43d61f77f8e5ed4313a53fe816bee86bfbaf937aa640a630991809377b",
+        "context": "48756cd31d4abbec5d56b3648ffb2fefe578c074645386480c91b4921accf321"
+      },
+      "findings": [],
+      "note": "Keys audited: ui.common.actions.retrying. All other values in the file are byte-identical to 73af0b6855 and were not re-judged."
+    }
+  },
+  "finding_index": [
+    {
+      "id": "F1",
+      "severity": "major",
+      "key": "ui.hub.pages.card.updated",
+      "keys": [
+        "ui.hub.pages.card.updated"
+      ]
+    },
+    {
+      "id": "F2",
+      "severity": "major",
+      "key": "ui.hub.teams.recency.created",
+      "keys": [
+        "ui.hub.teams.recency.created"
+      ]
+    },
+    {
+      "id": "F3",
+      "severity": "major",
+      "key": "ui.hub.teams.recency.updated",
+      "keys": [
+        "ui.hub.teams.recency.updated"
+      ]
+    },
+    {
+      "id": "F4",
+      "severity": "minor",
+      "key": "ui.agents.pages.ask.manual_agent",
+      "keys": [
+        "ui.agents.pages.ask.manual_agent",
+        "ui.agents.pages.ask.manual_team"
+      ]
+    }
+  ],
+  "observations": [
+    {
+      "id": "O1",
+      "topic": "bidi: punctuation inside user data",
+      "severity": "observation (not counted)",
+      "detail": "With a Latin {name} that starts or ends with punctuation, the Unicode bidi algorithm moves that punctuation to the other end of the name inside these RTL paragraphs: measured fribidi RTL visuals '!Beta' -> 'Beta!' and 'Really?' -> '?Really' (both in ui.agents.config.placeholder.about and in the publish titles). The catalogue value is correct and manual bidi controls are forbidden (ur-activation.test.mjs), so this is not a copy defect: {name} is user data and the render layer does not isolate it. This is shared by existing shipped keys that embed {name}. The fix, if wanted, is call-site isolation (FSI/PDI around the placeholder) exactly as hub-skills-library.tsx does for a local path; it is outside this catalogue audit and does not gate these 25 values."
+    },
+    {
+      "id": "O2",
+      "topic": "bidi: 'Agent Hub' Latin run and the کیا … ؟ question",
+      "severity": "observation (not counted)",
+      "detail": "Measured with fribidi RTL: U+061F ARABIC QUESTION MARK is bidi class AL, so it always lands at the visual left end of the RTL line (log39 -> vis0 with 'AcmeBot', log40 -> vis0 with '3D-Forge'), i.e. the correct end. The Latin run 'Agent Hub' stays intact and in place between its Urdu neighbours, and the quotes bracket the name correctly for RTL reading: U+201C sits immediately to the right of the name (vis35 vs name vis28..34) and U+201D immediately to its left (vis27). No leading punctuation displacement is measured under the app's RTL base direction; the receipt titles that begin with “ plus a Latin name still start at the right (U+201C log0 -> vis41 of 42)."
+    }
+  ],
+  "limitations": [
+    "Catalogue audit only. No rendered frame, screenshot, pseudo-localization, activation or release evidence is claimed.",
+    "Fit is judged from character counts and the sidecars, not from measured pixels. ui.hub.pages.card.get ('حاصل کریں', 9 cells vs 3 English) is the one value visibly longer than its English hint; no truncation was measured.",
+    "The bidi model is the app's RTL base direction (dir=rtl document root; BaseDialog title and AlertDescription carry no dir/auto override; messages.ts adds no per-string isolate per ur-activation.test.mjs).",
+    "Shipped ui.agents.detail.meta.* has no other key to compare against; 'تفویض' was judged against ui.agents.detail.delegate.label and ui.agents.upload.list.surface."
+  ],
+  "machine_checks": [
+    {
+      "command": "python3 verify-ur-literals.py (reads en/ur catalogues; git show 73af0b6855:<path>)",
+      "exit": 0,
+      "output": [
+        "head a9e536bf892f48ed2a87772658055abfd10caa5e",
+        "PASS JSON parses (en + ur) — 7/7 files",
+        "PASS key set and key order equal to en — 7/7 files",
+        "PASS per-key placeholder multiset equal to en — 0 mismatched",
+        "PASS no empty value — 0 empty",
+        "PASS pre-existing values byte-equal to 73af0b6855 — 252 unchanged, 0 changed, 0 removed",
+        "PASS delta is exactly the 25 manifest keys — 25 added",
+        "PASS no ASCII . ? , ; in new values — 0 hits",
+        "PASS no ASCII straight quotes — 0 hits",
+        "PASS no '...' (U+2026 only) — 0 hits; U+2026 in 4",
+        "PASS no manual bidi controls — 0 hits",
+        "PASS no Hindi/Arabic-only script letters — 0 hits",
+        "PASS no ZWSP/ZWNJ/ZWJ/BOM, NFC, no edge/double spaces — 0 hits",
+        "keys audited 25 across 7 namespaces"
+      ]
+    },
+    {
+      "command": "node --test scripts/i18n/locale-parity.test.mjs",
+      "exit": 0,
+      "output_tail": [
+        "✔ a locale-scoped identical-value exemption does not exempt another locale (0.133917ms)",
+        "ℹ tests 44",
+        "ℹ suites 0",
+        "ℹ pass 44",
+        "ℹ fail 0",
+        "ℹ cancelled 0",
+        "ℹ skipped 0",
+        "ℹ todo 0",
+        "ℹ duration_ms 1656.588042"
+      ],
+      "note": "full stdout retained in audit.log; the tail carries the pass/fail totals"
+    },
+    {
+      "command": "node scripts/i18n/check-coverage.mjs",
+      "exit": 0,
+      "output": [
+        "coverage-check: ok — 7 gated language(s) over 94 namespace(s); 0 allowed key(s) remain across 0 pair(s) (shrink-only; see i18n/coverage-allowance.json)."
+      ]
+    },
+    {
+      "command": "fribidi --version",
+      "exit": 0,
+      "output": [
+        "fribidi (GNU FriBidi) 1.0.16"
+      ]
+    },
+    {
+      "command": "python3 bidi-ur-literals.py (fribidi --rtl --nopad --nobreak + --ltov per composed string)",
+      "exit": 0,
+      "output": [
+        "fribidi (GNU FriBidi) 1.0.16",
+        "CASE ui.agents.config.placeholder.about {\"name\": \"AcmeBot\"}",
+        "  rtl_visual \\u+2026\\u+FB9F\\u+FBFE\\u+FEAE\\u+FB90 \\u+FBFD\\u+FEE0\\u+FBFE\\u+FEAA\\u+FE92\\u+FE97 \\u+FB9F\\u+FBFF\\u+FEE3 \\u+201DAcmeBot\\u+201C",
+        "  marks [('U+201C', 'log0', 'vis25'), ('U+201D', 'log8', 'vis17'), ('U+2026', 'log25', 'vis0')]",
+        "  spans ['name log1..7 vis18..24 visual=\"AcmeBot\"']",
+        "CASE ui.agents.config.placeholder.about {\"name\": \"میرا ایجنٹ\"}",
+        "  rtl_visual \\u+2026\\u+FB9F\\u+FBFE\\u+FEAE\\u+FB90 \\u+FBFD\\u+FEE0\\u+FBFE\\u+FEAA\\u+FE92\\u+FE97 \\u+FB9F\\u+FBFF\\u+FEE3 \\u+201D\\u+FB67\\u+FEE8\\u+FEA0\\u+FBFE\\u+FE8D \\u+FE8D\\u+FEAE\\u+FBFF\\u+FEE3\\u+201C",
+        "  marks [('U+201C', 'log0', 'vis28'), ('U+201D', 'log11', 'vis17'), ('U+2026', 'log28', 'vis0')]",
+        "  spans ['name log1..10 vis18..27 visual=\"ٹنجیا اریم\"']",
+        "CASE ui.agents.config.placeholder.about {\"name\": \"Really?\"}",
+        "  rtl_visual \\u+2026\\u+FB9F\\u+FBFE\\u+FEAE\\u+FB90 \\u+FBFD\\u+FEE0\\u+FBFE\\u+FEAA\\u+FE92\\u+FE97 \\u+FB9F\\u+FBFF\\u+FEE3 \\u+201D?Really\\u+201C",
+        "  marks [('U+201C', 'log0', 'vis25'), ('U+201D', 'log8', 'vis17'), ('U+2026', 'log25', 'vis0')]",
+        "  spans ['name log1..7 vis18..24 visual=\"?Really\"']",
+        "CASE ui.agents.upload.title.publish_public {\"name\": \"AcmeBot\"}",
+        "  rtl_visual \\u+061F\\u+FB9F\\u+FBFE\\u+FEAE\\u+FB90 \\u+FECA\\u+FE8B\\u+FE8E\\u+FEB7 \\u+FEAE\\u+FB58 Agent Hub \\u+FEEE\\u+FB90 \\u+201DAcmeBot\\u+201C \\u+FE8E\\u+FBFF\\u+FB90",
+        "  marks [('U+201C', 'log4', 'vis35'), ('U+201D', 'log12', 'vis27'), ('U+061F', 'log39', 'vis0')]",
+        "  spans ['name log5..11 vis28..34 visual=\"AcmeBot\"']",
+        "CASE ui.agents.upload.title.publish_public {\"name\": \"3D-Forge\"}",
+        "  rtl_visual \\u+061F\\u+FB9F\\u+FBFE\\u+FEAE\\u+FB90 \\u+FECA\\u+FE8B\\u+FE8E\\u+FEB7 \\u+FEAE\\u+FB58 Agent Hub \\u+FEEE\\u+FB90 \\u+201D3D-Forge\\u+201C \\u+FE8E\\u+FBFF\\u+FB90",
+        "  marks [('U+201C', 'log4', 'vis36'), ('U+201D', 'log13', 'vis27'), ('U+061F', 'log40', 'vis0')]",
+        "  spans ['name log5..12 vis28..35 visual=\"3D-Forge\"']",
+        "CASE ui.agents.upload.title.publish_public {\"name\": \"!Beta\"}",
+        "  rtl_visual \\u+061F\\u+FB9F\\u+FBFE\\u+FEAE\\u+FB90 \\u+FECA\\u+FE8B\\u+FE8E\\u+FEB7 \\u+FEAE\\u+FB58 Agent Hub \\u+FEEE\\u+FB90 \\u+201DBeta!\\u+201C \\u+FE8E\\u+FBFF\\u+FB90",
+        "  marks [('U+201C', 'log4', 'vis33'), ('U+201D', 'log10', 'vis27'), ('U+061F', 'log37', 'vis0')]",
+        "  spans ['name log5..9 vis28..32 visual=\"Beta!\"']",
+        "CASE ui.agents.upload.title.publish_public {\"name\": \"میرا ایجنٹ\"}",
+        "  rtl_visual \\u+061F\\u+FB9F\\u+FBFE\\u+FEAE\\u+FB90 \\u+FECA\\u+FE8B\\u+FE8E\\u+FEB7 \\u+FEAE\\u+FB58 Agent Hub \\u+FEEE\\u+FB90 \\u+201D\\u+FB67\\u+FEE8\\u+FEA0\\u+FBFE\\u+FE8D \\u+FE8D\\u+FEAE\\u+FBFF\\u+FEE3\\u+201C \\u+FE8E\\u+FBFF\\u+FB90",
+        "  marks [('U+201C', 'log4', 'vis38'), ('U+201D', 'log15', 'vis27'), ('U+061F', 'log42', 'vis0')]",
+        "  spans ['name log5..14 vis28..37 visual=\"ٹنجیا اریم\"']",
+        "CASE ui.agents.upload.title.publish_public {\"name\": \"Really?\"}",
+        "  rtl_visual \\u+061F\\u+FB9F\\u+FBFE\\u+FEAE\\u+FB90 \\u+FECA\\u+FE8B\\u+FE8E\\u+FEB7 \\u+FEAE\\u+FB58 Agent Hub \\u+FEEE\\u+FB90 \\u+201D?Really\\u+201C \\u+FE8E\\u+FBFF\\u+FB90",
+        "  marks [('U+201C', 'log4', 'vis35'), ('U+201D', 'log12', 'vis27'), ('U+061F', 'log39', 'vis0')]",
+        "  spans ['name log5..11 vis28..34 visual=\"?Really\"']",
+        "CASE ui.agents.upload.title.publish_org {\"name\": \"AcmeBot\", \"destination\": \"Acme Corp\"}",
+        "  rtl_visual \\u+061F\\u+FB9F\\u+FBFE\\u+FEAE\\u+FB90 \\u+FECA\\u+FE8B\\u+FE8E\\u+FEB7 \\u+FB9F\\u+FBFF\\u+FEE3 Acme Corp \\u+FEEE\\u+FB90 \\u+201DAcmeBot\\u+201C \\u+FE8E\\u+FBFF\\u+FB90",
+        "  marks [('U+201C', 'log4', 'vis36'), ('U+201D', 'log12', 'vis28'), ('U+061F', 'log40', 'vis0')]",
+        "  spans ['name log5..11 vis29..35 visual=\"AcmeBot\"', 'destination log17..25 vis15..23 visual=\"Acme Corp\"']",
+        "CASE ui.agents.upload.title.publish_org {\"name\": \"3D-Forge\", \"destination\": \"3M\"}",
+        "  rtl_visual \\u+061F\\u+FB9F\\u+FBFE\\u+FEAE\\u+FB90 \\u+FECA\\u+FE8B\\u+FE8E\\u+FEB7 \\u+FB9F\\u+FBFF\\u+FEE3 3M \\u+FEEE\\u+FB90 \\u+201D3D-Forge\\u+201C \\u+FE8E\\u+FBFF\\u+FB90",
+        "  marks [('U+201C', 'log4', 'vis30'), ('U+201D', 'log13', 'vis21'), ('U+061F', 'log34', 'vis0')]",
+        "  spans ['name log5..12 vis22..29 visual=\"3D-Forge\"', 'destination log18..19 vis15..16 visual=\"3M\"']",
+        "CASE ui.agents.upload.title.publish_org {\"name\": \"AcmeBot\", \"destination\": \"اینکر کمپنی\"}",
+        "  rtl_visual \\u+061F\\u+FB9F\\u+FBFE\\u+FEAE\\u+FB90 \\u+FECA\\u+FE8B\\u+FE8E\\u+FEB7 \\u+FB9F\\u+FBFF\\u+FEE3 \\u+FBFD\\u+FEE8\\u+FB59\\u+FEE4\\u+FB90 \\u+FEAE\\u+FB91\\u+FEE8\\u+FBFE\\u+FE8D \\u+FEEE\\u+FB90 \\u+201DAcmeBot\\u+201C \\u+FE8E\\u+FBFF\\u+FB90",
+        "  marks [('U+201C', 'log4', 'vis38'), ('U+201D', 'log12', 'vis30'), ('U+061F', 'log42', 'vis0')]",
+        "  spans ['name log5..11 vis31..37 visual=\"AcmeBot\"', 'destination log17..27 vis15..25 visual=\"ینپمک رکنیا\"']",
+        "CASE ui.agents.upload.title.published_org {\"name\": \"AcmeBot\", \"destination\": \"Acme Corp\"}",
+        "  rtl_visual \\u+FE8E\\u+FBFF\\u+FB94 \\u+FE8E\\u+FBFE\\u+FEA9 \\u+FEAE\\u+FB90 \\u+FECA\\u+FE8B\\u+FE8E\\u+FEB7 \\u+FB9F\\u+FBFF\\u+FEE3 Acme Corp \\u+FEEE\\u+FB90 \\u+201DAcmeBot\\u+201C",
+        "  marks [('U+201C', 'log0', 'vis41'), ('U+201D', 'log8', 'vis33')]",
+        "  spans ['name log1..7 vis34..40 visual=\"AcmeBot\"', 'destination log13..21 vis20..28 visual=\"Acme Corp\"']",
+        "CASE ui.agents.upload.title.published_org {\"name\": \"میرا ایجنٹ\", \"destination\": \"اینکر کمپنی\"}",
+        "  rtl_visual \\u+FE8E\\u+FBFF\\u+FB94 \\u+FE8E\\u+FBFE\\u+FEA9 \\u+FEAE\\u+FB90 \\u+FECA\\u+FE8B\\u+FE8E\\u+FEB7 \\u+FB9F\\u+FBFF\\u+FEE3 \\u+FBFD\\u+FEE8\\u+FB59\\u+FEE4\\u+FB90 \\u+FEAE\\u+FB91\\u+FEE8\\u+FBFE\\u+FE8D \\u+FEEE\\u+FB90 \\u+201D\\u+FB67\\u+FEE8\\u+FEA0\\u+FBFE\\u+FE8D \\u+FE8D\\u+FEAE\\u+FBFF\\u+FEE3\\u+201C",
+        "  marks [('U+201C', 'log0', 'vis46'), ('U+201D', 'log11', 'vis35')]",
+        "  spans ['name log1..10 vis36..45 visual=\"ٹنجیا اریم\"', 'destination log16..26 vis20..30 visual=\"ینپمک رکنیا\"']",
+        "CASE ui.agents.upload.title.published_public {\"name\": \"AcmeBot\"}",
+        "  rtl_visual \\u+FE8E\\u+FBFF\\u+FB94 \\u+FE8E\\u+FBFE\\u+FEA9 \\u+FEAE\\u+FB90 \\u+FECA\\u+FE8B\\u+FE8E\\u+FEB7 \\u+FEAE\\u+FB58 Agent Hub \\u+FEEE\\u+FB90 \\u+201DAcmeBot\\u+201C",
+        "  marks [('U+201C', 'log0', 'vis40'), ('U+201D', 'log8', 'vis32')]",
+        "  spans ['name log1..7 vis33..39 visual=\"AcmeBot\"']",
+        "CASE ui.agents.upload.title.republished {\"name\": \"AcmeBot\"}",
+        "  rtl_visual \\u+FE8E\\u+FBFF\\u+FB94 \\u+FE8E\\u+FBFE\\u+FEA9 \\u+FEAE\\u+FB90 \\u+FB67\\u+FBFE\\u+FB88 \\u+FB56\\u+FE8D \\u+FEAE\\u+FB58 Agent Hub \\u+FE9D\\u+FE8D\\u+FEAD\\u+FEAA\\u+FEE7\\u+FE8D \\u+FE8E\\u+FB90 \\u+201DAcmeBot\\u+201C",
+        "  marks [('U+201C', 'log0', 'vis49'), ('U+201D', 'log8', 'vis41')]",
+        "  spans ['name log1..7 vis42..48 visual=\"AcmeBot\"']",
+        "CASE ui.agents.upload.title.update_listing {\"name\": \"3D-Forge\"}",
+        "  rtl_visual \\u+061F\\u+FB9F\\u+FBFE\\u+FEAE\\u+FB90 \\u+FB67\\u+FBFE\\u+FB88 \\u+FB56\\u+FE8D \\u+FEAE\\u+FB58 Agent Hub \\u+FE9D\\u+FE8D\\u+FEAD\\u+FEAA\\u+FEE7\\u+FE8D \\u+FE8E\\u+FB90 \\u+201D3D-Forge\\u+201C \\u+FE8E\\u+FBFF\\u+FB90",
+        "  marks [('U+201C', 'log4', 'vis45'), ('U+201D', 'log13', 'vis36'), ('U+061F', 'log49', 'vis0')]",
+        "  spans ['name log5..12 vis37..44 visual=\"3D-Forge\"']",
+        "CASE ui.hub.pages.card.updated {\"when\": \"3 دن پہلے\"}",
+        "  rtl_visual \\u+FBAF\\u+FEE0\\u+FBA9\\u+FB58 \\u+FEE5\\u+FEA9 3 \\u+FE8E\\u+FBFF\\u+FB94 \\u+FE8E\\u+FBFF\\u+FB90 \\u+FB67\\u+FBFE\\u+FB88 \\u+FB56\\u+FE8D",
+        "  marks []",
+        "  spans ['when log15..23 vis0..8 visual=\"ےلہپ ند 3\"']",
+        "CASE ui.hub.teams.recency.created {\"when\": \"3 دن پہلے\"}",
+        "  rtl_visual \\u+FBAF\\u+FEE0\\u+FBA9\\u+FB58 \\u+FEE5\\u+FEA9 3 \\u+FE8E\\u+FBFF\\u+FB94 \\u+FE8E\\u+FBFE\\u+FE8E\\u+FEE8\\u+FE91",
+        "  marks []",
+        "  spans ['when log10..18 vis0..8 visual=\"ےلہپ ند 3\"']",
+        "CASE ui.hub.teams.recency.updated {\"when\": \"2 گھنٹے پہلے\"}",
+        "  rtl_visual \\u+FBAF\\u+FEE0\\u+FBA9\\u+FB58 \\u+FBAF\\u+FB69\\u+FEE8\\u+FBAD\\u+FB94 2 \\u+FE8E\\u+FBFF\\u+FB94 \\u+FE8E\\u+FBFF\\u+FB90 \\u+FB67\\u+FBFE\\u+FB88 \\u+FB56\\u+FE8D",
+        "  marks []",
+        "  spans ['when log15..26 vis0..11 visual=\"ےلہپ ےٹنھگ 2\"']"
+      ]
+    }
+  ],
+  "bidi_review": {
+    "tool": "fribidi (GNU FriBidi) 1.0.16",
+    "base_direction": "RTL (app document root dir=rtl; no per-string isolate in messages.ts)",
+    "method": "Compose each templated string with realistic values, reorder with GNU FriBidi as an RTL paragraph, and map logical to visual positions (--ltov). Sample values: Latin 'AcmeBot'; digit-led '3D-Forge'; punctuation-led '!Beta'; Urdu 'میرا ایجنٹ'; a name ending in a question mark 'Really?'; Latin and Urdu destinations; ages from the shipped ui.hub.comments.age.* messages.",
+    "measurements": [
+      "fribidi (GNU FriBidi) 1.0.16",
+      "CASE ui.agents.config.placeholder.about {\"name\": \"AcmeBot\"}",
+      "  rtl_visual \\u+2026\\u+FB9F\\u+FBFE\\u+FEAE\\u+FB90 \\u+FBFD\\u+FEE0\\u+FBFE\\u+FEAA\\u+FE92\\u+FE97 \\u+FB9F\\u+FBFF\\u+FEE3 \\u+201DAcmeBot\\u+201C",
+      "  marks [('U+201C', 'log0', 'vis25'), ('U+201D', 'log8', 'vis17'), ('U+2026', 'log25', 'vis0')]",
+      "  spans ['name log1..7 vis18..24 visual=\"AcmeBot\"']",
+      "CASE ui.agents.config.placeholder.about {\"name\": \"میرا ایجنٹ\"}",
+      "  rtl_visual \\u+2026\\u+FB9F\\u+FBFE\\u+FEAE\\u+FB90 \\u+FBFD\\u+FEE0\\u+FBFE\\u+FEAA\\u+FE92\\u+FE97 \\u+FB9F\\u+FBFF\\u+FEE3 \\u+201D\\u+FB67\\u+FEE8\\u+FEA0\\u+FBFE\\u+FE8D \\u+FE8D\\u+FEAE\\u+FBFF\\u+FEE3\\u+201C",
+      "  marks [('U+201C', 'log0', 'vis28'), ('U+201D', 'log11', 'vis17'), ('U+2026', 'log28', 'vis0')]",
+      "  spans ['name log1..10 vis18..27 visual=\"ٹنجیا اریم\"']",
+      "CASE ui.agents.config.placeholder.about {\"name\": \"Really?\"}",
+      "  rtl_visual \\u+2026\\u+FB9F\\u+FBFE\\u+FEAE\\u+FB90 \\u+FBFD\\u+FEE0\\u+FBFE\\u+FEAA\\u+FE92\\u+FE97 \\u+FB9F\\u+FBFF\\u+FEE3 \\u+201D?Really\\u+201C",
+      "  marks [('U+201C', 'log0', 'vis25'), ('U+201D', 'log8', 'vis17'), ('U+2026', 'log25', 'vis0')]",
+      "  spans ['name log1..7 vis18..24 visual=\"?Really\"']",
+      "CASE ui.agents.upload.title.publish_public {\"name\": \"AcmeBot\"}",
+      "  rtl_visual \\u+061F\\u+FB9F\\u+FBFE\\u+FEAE\\u+FB90 \\u+FECA\\u+FE8B\\u+FE8E\\u+FEB7 \\u+FEAE\\u+FB58 Agent Hub \\u+FEEE\\u+FB90 \\u+201DAcmeBot\\u+201C \\u+FE8E\\u+FBFF\\u+FB90",
+      "  marks [('U+201C', 'log4', 'vis35'), ('U+201D', 'log12', 'vis27'), ('U+061F', 'log39', 'vis0')]",
+      "  spans ['name log5..11 vis28..34 visual=\"AcmeBot\"']",
+      "CASE ui.agents.upload.title.publish_public {\"name\": \"3D-Forge\"}",
+      "  rtl_visual \\u+061F\\u+FB9F\\u+FBFE\\u+FEAE\\u+FB90 \\u+FECA\\u+FE8B\\u+FE8E\\u+FEB7 \\u+FEAE\\u+FB58 Agent Hub \\u+FEEE\\u+FB90 \\u+201D3D-Forge\\u+201C \\u+FE8E\\u+FBFF\\u+FB90",
+      "  marks [('U+201C', 'log4', 'vis36'), ('U+201D', 'log13', 'vis27'), ('U+061F', 'log40', 'vis0')]",
+      "  spans ['name log5..12 vis28..35 visual=\"3D-Forge\"']",
+      "CASE ui.agents.upload.title.publish_public {\"name\": \"!Beta\"}",
+      "  rtl_visual \\u+061F\\u+FB9F\\u+FBFE\\u+FEAE\\u+FB90 \\u+FECA\\u+FE8B\\u+FE8E\\u+FEB7 \\u+FEAE\\u+FB58 Agent Hub \\u+FEEE\\u+FB90 \\u+201DBeta!\\u+201C \\u+FE8E\\u+FBFF\\u+FB90",
+      "  marks [('U+201C', 'log4', 'vis33'), ('U+201D', 'log10', 'vis27'), ('U+061F', 'log37', 'vis0')]",
+      "  spans ['name log5..9 vis28..32 visual=\"Beta!\"']",
+      "CASE ui.agents.upload.title.publish_public {\"name\": \"میرا ایجنٹ\"}",
+      "  rtl_visual \\u+061F\\u+FB9F\\u+FBFE\\u+FEAE\\u+FB90 \\u+FECA\\u+FE8B\\u+FE8E\\u+FEB7 \\u+FEAE\\u+FB58 Agent Hub \\u+FEEE\\u+FB90 \\u+201D\\u+FB67\\u+FEE8\\u+FEA0\\u+FBFE\\u+FE8D \\u+FE8D\\u+FEAE\\u+FBFF\\u+FEE3\\u+201C \\u+FE8E\\u+FBFF\\u+FB90",
+      "  marks [('U+201C', 'log4', 'vis38'), ('U+201D', 'log15', 'vis27'), ('U+061F', 'log42', 'vis0')]",
+      "  spans ['name log5..14 vis28..37 visual=\"ٹنجیا اریم\"']",
+      "CASE ui.agents.upload.title.publish_public {\"name\": \"Really?\"}",
+      "  rtl_visual \\u+061F\\u+FB9F\\u+FBFE\\u+FEAE\\u+FB90 \\u+FECA\\u+FE8B\\u+FE8E\\u+FEB7 \\u+FEAE\\u+FB58 Agent Hub \\u+FEEE\\u+FB90 \\u+201D?Really\\u+201C \\u+FE8E\\u+FBFF\\u+FB90",
+      "  marks [('U+201C', 'log4', 'vis35'), ('U+201D', 'log12', 'vis27'), ('U+061F', 'log39', 'vis0')]",
+      "  spans ['name log5..11 vis28..34 visual=\"?Really\"']",
+      "CASE ui.agents.upload.title.publish_org {\"name\": \"AcmeBot\", \"destination\": \"Acme Corp\"}",
+      "  rtl_visual \\u+061F\\u+FB9F\\u+FBFE\\u+FEAE\\u+FB90 \\u+FECA\\u+FE8B\\u+FE8E\\u+FEB7 \\u+FB9F\\u+FBFF\\u+FEE3 Acme Corp \\u+FEEE\\u+FB90 \\u+201DAcmeBot\\u+201C \\u+FE8E\\u+FBFF\\u+FB90",
+      "  marks [('U+201C', 'log4', 'vis36'), ('U+201D', 'log12', 'vis28'), ('U+061F', 'log40', 'vis0')]",
+      "  spans ['name log5..11 vis29..35 visual=\"AcmeBot\"', 'destination log17..25 vis15..23 visual=\"Acme Corp\"']",
+      "CASE ui.agents.upload.title.publish_org {\"name\": \"3D-Forge\", \"destination\": \"3M\"}",
+      "  rtl_visual \\u+061F\\u+FB9F\\u+FBFE\\u+FEAE\\u+FB90 \\u+FECA\\u+FE8B\\u+FE8E\\u+FEB7 \\u+FB9F\\u+FBFF\\u+FEE3 3M \\u+FEEE\\u+FB90 \\u+201D3D-Forge\\u+201C \\u+FE8E\\u+FBFF\\u+FB90",
+      "  marks [('U+201C', 'log4', 'vis30'), ('U+201D', 'log13', 'vis21'), ('U+061F', 'log34', 'vis0')]",
+      "  spans ['name log5..12 vis22..29 visual=\"3D-Forge\"', 'destination log18..19 vis15..16 visual=\"3M\"']",
+      "CASE ui.agents.upload.title.publish_org {\"name\": \"AcmeBot\", \"destination\": \"اینکر کمپنی\"}",
+      "  rtl_visual \\u+061F\\u+FB9F\\u+FBFE\\u+FEAE\\u+FB90 \\u+FECA\\u+FE8B\\u+FE8E\\u+FEB7 \\u+FB9F\\u+FBFF\\u+FEE3 \\u+FBFD\\u+FEE8\\u+FB59\\u+FEE4\\u+FB90 \\u+FEAE\\u+FB91\\u+FEE8\\u+FBFE\\u+FE8D \\u+FEEE\\u+FB90 \\u+201DAcmeBot\\u+201C \\u+FE8E\\u+FBFF\\u+FB90",
+      "  marks [('U+201C', 'log4', 'vis38'), ('U+201D', 'log12', 'vis30'), ('U+061F', 'log42', 'vis0')]",
+      "  spans ['name log5..11 vis31..37 visual=\"AcmeBot\"', 'destination log17..27 vis15..25 visual=\"ینپمک رکنیا\"']",
+      "CASE ui.agents.upload.title.published_org {\"name\": \"AcmeBot\", \"destination\": \"Acme Corp\"}",
+      "  rtl_visual \\u+FE8E\\u+FBFF\\u+FB94 \\u+FE8E\\u+FBFE\\u+FEA9 \\u+FEAE\\u+FB90 \\u+FECA\\u+FE8B\\u+FE8E\\u+FEB7 \\u+FB9F\\u+FBFF\\u+FEE3 Acme Corp \\u+FEEE\\u+FB90 \\u+201DAcmeBot\\u+201C",
+      "  marks [('U+201C', 'log0', 'vis41'), ('U+201D', 'log8', 'vis33')]",
+      "  spans ['name log1..7 vis34..40 visual=\"AcmeBot\"', 'destination log13..21 vis20..28 visual=\"Acme Corp\"']",
+      "CASE ui.agents.upload.title.published_org {\"name\": \"میرا ایجنٹ\", \"destination\": \"اینکر کمپنی\"}",
+      "  rtl_visual \\u+FE8E\\u+FBFF\\u+FB94 \\u+FE8E\\u+FBFE\\u+FEA9 \\u+FEAE\\u+FB90 \\u+FECA\\u+FE8B\\u+FE8E\\u+FEB7 \\u+FB9F\\u+FBFF\\u+FEE3 \\u+FBFD\\u+FEE8\\u+FB59\\u+FEE4\\u+FB90 \\u+FEAE\\u+FB91\\u+FEE8\\u+FBFE\\u+FE8D \\u+FEEE\\u+FB90 \\u+201D\\u+FB67\\u+FEE8\\u+FEA0\\u+FBFE\\u+FE8D \\u+FE8D\\u+FEAE\\u+FBFF\\u+FEE3\\u+201C",
+      "  marks [('U+201C', 'log0', 'vis46'), ('U+201D', 'log11', 'vis35')]",
+      "  spans ['name log1..10 vis36..45 visual=\"ٹنجیا اریم\"', 'destination log16..26 vis20..30 visual=\"ینپمک رکنیا\"']",
+      "CASE ui.agents.upload.title.published_public {\"name\": \"AcmeBot\"}",
+      "  rtl_visual \\u+FE8E\\u+FBFF\\u+FB94 \\u+FE8E\\u+FBFE\\u+FEA9 \\u+FEAE\\u+FB90 \\u+FECA\\u+FE8B\\u+FE8E\\u+FEB7 \\u+FEAE\\u+FB58 Agent Hub \\u+FEEE\\u+FB90 \\u+201DAcmeBot\\u+201C",
+      "  marks [('U+201C', 'log0', 'vis40'), ('U+201D', 'log8', 'vis32')]",
+      "  spans ['name log1..7 vis33..39 visual=\"AcmeBot\"']",
+      "CASE ui.agents.upload.title.republished {\"name\": \"AcmeBot\"}",
+      "  rtl_visual \\u+FE8E\\u+FBFF\\u+FB94 \\u+FE8E\\u+FBFE\\u+FEA9 \\u+FEAE\\u+FB90 \\u+FB67\\u+FBFE\\u+FB88 \\u+FB56\\u+FE8D \\u+FEAE\\u+FB58 Agent Hub \\u+FE9D\\u+FE8D\\u+FEAD\\u+FEAA\\u+FEE7\\u+FE8D \\u+FE8E\\u+FB90 \\u+201DAcmeBot\\u+201C",
+      "  marks [('U+201C', 'log0', 'vis49'), ('U+201D', 'log8', 'vis41')]",
+      "  spans ['name log1..7 vis42..48 visual=\"AcmeBot\"']",
+      "CASE ui.agents.upload.title.update_listing {\"name\": \"3D-Forge\"}",
+      "  rtl_visual \\u+061F\\u+FB9F\\u+FBFE\\u+FEAE\\u+FB90 \\u+FB67\\u+FBFE\\u+FB88 \\u+FB56\\u+FE8D \\u+FEAE\\u+FB58 Agent Hub \\u+FE9D\\u+FE8D\\u+FEAD\\u+FEAA\\u+FEE7\\u+FE8D \\u+FE8E\\u+FB90 \\u+201D3D-Forge\\u+201C \\u+FE8E\\u+FBFF\\u+FB90",
+      "  marks [('U+201C', 'log4', 'vis45'), ('U+201D', 'log13', 'vis36'), ('U+061F', 'log49', 'vis0')]",
+      "  spans ['name log5..12 vis37..44 visual=\"3D-Forge\"']",
+      "CASE ui.hub.pages.card.updated {\"when\": \"3 دن پہلے\"}",
+      "  rtl_visual \\u+FBAF\\u+FEE0\\u+FBA9\\u+FB58 \\u+FEE5\\u+FEA9 3 \\u+FE8E\\u+FBFF\\u+FB94 \\u+FE8E\\u+FBFF\\u+FB90 \\u+FB67\\u+FBFE\\u+FB88 \\u+FB56\\u+FE8D",
+      "  marks []",
+      "  spans ['when log15..23 vis0..8 visual=\"ےلہپ ند 3\"']",
+      "CASE ui.hub.teams.recency.created {\"when\": \"3 دن پہلے\"}",
+      "  rtl_visual \\u+FBAF\\u+FEE0\\u+FBA9\\u+FB58 \\u+FEE5\\u+FEA9 3 \\u+FE8E\\u+FBFF\\u+FB94 \\u+FE8E\\u+FBFE\\u+FE8E\\u+FEE8\\u+FE91",
+      "  marks []",
+      "  spans ['when log10..18 vis0..8 visual=\"ےلہپ ند 3\"']",
+      "CASE ui.hub.teams.recency.updated {\"when\": \"2 گھنٹے پہلے\"}",
+      "  rtl_visual \\u+FBAF\\u+FEE0\\u+FBA9\\u+FB58 \\u+FBAF\\u+FB69\\u+FEE8\\u+FBAD\\u+FB94 2 \\u+FE8E\\u+FBFF\\u+FB94 \\u+FE8E\\u+FBFF\\u+FB90 \\u+FB67\\u+FBFE\\u+FB88 \\u+FB56\\u+FE8D",
+      "  marks []",
+      "  spans ['when log15..26 vis0..11 visual=\"ےلہپ ےٹنھگ 2\"']"
+    ],
+    "conclusion": "No punctuation or quote lands at the wrong end of these strings under RTL: the question mark ends the line at the left (correct for RTL), the opening quote sits to the right of the quoted name, the Latin 'Agent Hub' run is intact, and a Latin-led receipt still starts at the right. The one measured displacement is inside user data (O1), caused by the missing call-site isolation, not by the translation."
+  },
+  "evidence": {
+    "root": "i18n/audits/evidence/ur/<namespace>/lit2-ur-20261026/",
+    "records": [
+      "i18n/audits/evidence/ur/ui.agents.pages/lit2-ur-20261026/record.json",
+      "i18n/audits/evidence/ur/ui.agents.config/lit2-ur-20261026/record.json",
+      "i18n/audits/evidence/ur/ui.agents.detail/lit2-ur-20261026/record.json",
+      "i18n/audits/evidence/ur/ui.agents.upload/lit2-ur-20261026/record.json",
+      "i18n/audits/evidence/ur/ui.hub.pages/lit2-ur-20261026/record.json",
+      "i18n/audits/evidence/ur/ui.hub.teams/lit2-ur-20261026/record.json",
+      "i18n/audits/evidence/ur/ui.common.actions/lit2-ur-20261026/record.json"
+    ],
+    "execution_log": "i18n/audits/evidence/ur/ui.agents.pages/lit2-ur-20261026/audit.log",
+    "note": "Seven per-namespace record.json files share this audit id; the execution log lives once under ui.agents.pages and each record cites it with its sha256. The receipt itself is the ledger artifact under i18n/receipts/."
+  },
+  "finding_counts": {
+    "blocker": 0,
+    "major": 3,
+    "minor": 1,
+    "nit": 0
+  },
+  "icu_structure": "No value in the 25 carries a plural/select: the only ICU arguments are {name}, {destination} and {when}, and each placeholder multiset equals the English source (see machine_checks). No CLDR category question therefore arises in this group. {when} arrives as a whole localized age phrase from ui.hub.comments.age.* (one/other already correct there), so the verb around it is the only thing these keys translate.",
+  "terminology_rulings": [
+    {
+      "item": "Ask for X: مانگیں vs shipped طلب کریں",
+      "ruling": "pass",
+      "basis": "The locale already splits the two actions this way: asking for a new agent/team is مانگیں (ui.agents.pages.empty.agents/teams 'نیچے سے ایک مانگیں'), while requesting a change is طلب کریں (ui.agents.config.composer.label '… تبدیلی طلب کریں', ui.agents.detail.action.ask_change). طلب کریں in this heading would collide with the change-request verb; مانگیں is the shipped call for this action and a polite imperative, consistent with آپ."
+    },
+    {
+      "item": "Delegates → تفویض",
+      "ruling": "pass",
+      "basis": "Noun (delegation), consistent with ui.agents.detail.delegate.label 'ذیلی ایجنٹس کو تفویض کر سکتا ہے' and ui.agents.upload.list.surface '… اور تفویض …'. It states the capability as a noun (the sidecar forbids a verb) and does not duplicate the switch's editable sentence."
+    },
+    {
+      "item": "Get → حاصل کریں",
+      "ruling": "pass",
+      "basis": "حاصل کرنا is the shipped verb for obtaining (ui.agents.dialogs.create.hub_link '… حاصل کرنے کے لیے Agent Hub دیکھیں'; ui.agents.detail.alert.builtin_body). It also keeps the visible label distinct from the button's accessible name 'Download {name}' (ڈاؤن لوڈ), which is the English pair's own distinction."
+    },
+    {
+      "item": "Trying… → کوشش جاری ہے…",
+      "ruling": "pass",
+      "basis": "Byte-identical to the shipped ui.hub.teams.public.trying 'Trying…', and the same '… جاری ہے…' in-flight shape as ui.agents.navigation.updates.action.retrying 'دوبارہ کوشش جاری ہے…'; the retry action itself stays دوبارہ کوشش کریں."
+    },
+    {
+      "item": "Publish question shape: کیا “{name}” کو … شائع کریں؟",
+      "ruling": "pass",
+      "basis": "'کیا … کریں؟' is the standard Urdu confirmation-question frame (interrogative + subjunctive) and ends with U+061F ؟. The name is quoted with the locale's “ ” (the source quotes it too) and the destination is named; the organisation uses میں (publish in the organisation) while the public target uses Agent Hub پر (on the hub), so the two destinations do not read as the same place."
+    }
+  ]
+}

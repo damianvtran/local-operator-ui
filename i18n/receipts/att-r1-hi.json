@@ -1,0 +1,202 @@
+{
+  "auditor": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "att-r1-hi",
+  "session": "cd828f39c889",
+  "job": "316d26b2b034",
+  "date": "2026-10-21",
+  "locale": "hi",
+  "translator": "coder",
+  "translator_session": "03594b2dcc02",
+  "translator_job": "bc0c4b952eaa",
+  "namespace": "ui.teamBridge",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "keys_audited": 23,
+  "scope": "23-key image-attachment delta: ui.teamBridge.attachments.{add,strip,position,in_message,open,remove,retry,uploading,limit,unsupported,error_type,error_size,error_invalid,error_rate,error_quota,error_offline,error_upload,expired_staged,expired,unavailable,retry_load,send_blocked,remove_all}. git diff 5005cfe8b6..cf1d7c616c of en adds 31 keys: these 23 plus 8 ui.teamBridge.replies.* brought in by the #1304 merge (out of scope; en and hi byte-equal to 8913528, audited in threads1304-r2-hi). No en key removed or changed versus 5005cfe8b6. Within 715c864171..cf1d7c616c the only other attachment change is attachments.unsupported losing \"Only the text was pasted.\" at 0906d747e5 (audited in its final form); remove_all was added at b8aad1066b. 138 base values verified byte-unchanged versus 5005cfe8b6 and inherited; catalogue audit only, not rendered-fit/activation/release.",
+  "source_head": "cf1d7c616ca36bd48c0bf160d64a08514b7c2b08",
+  "source_base": "5005cfe8b6",
+  "sha256": {
+    "en": "de78ff4b0cf8aca9ddb5eda9687ee2a806e11f0bae32f005609579108360848f",
+    "hi": "81800a16e68bad3511726b517d74cc7648daf3696c76409e33dd7a8a30bfa78d",
+    "context": "8a84800e3d2d52aae3c44393b8fe79bcc567f2ca5d8660a2d260f889cc487902"
+  },
+  "findings": [
+    {
+      "severity": "MINOR",
+      "key": "ui.teamBridge.attachments.add",
+      "keys": [
+        "ui.teamBridge.attachments.add",
+        "ui.teamBridge.attachments.strip",
+        "ui.teamBridge.attachments.position",
+        "ui.teamBridge.attachments.in_message",
+        "ui.teamBridge.attachments.open",
+        "ui.teamBridge.attachments.uploading",
+        "ui.teamBridge.attachments.limit",
+        "ui.teamBridge.attachments.unsupported",
+        "ui.teamBridge.attachments.error_type",
+        "ui.teamBridge.attachments.error_size",
+        "ui.teamBridge.attachments.error_invalid",
+        "ui.teamBridge.attachments.error_rate",
+        "ui.teamBridge.attachments.error_quota",
+        "ui.teamBridge.attachments.error_offline",
+        "ui.teamBridge.attachments.error_upload",
+        "ui.teamBridge.attachments.expired_staged",
+        "ui.teamBridge.attachments.expired",
+        "ui.teamBridge.attachments.unavailable",
+        "ui.teamBridge.attachments.send_blocked",
+        "ui.teamBridge.attachments.remove_all"
+      ],
+      "current": {
+        "ui.teamBridge.attachments.add": "इमेज जोड़ें",
+        "ui.teamBridge.attachments.strip": "भेजी जाने वाली इमेज",
+        "ui.teamBridge.attachments.position": "इमेज {index}/{count}",
+        "ui.teamBridge.attachments.in_message": "{count, plural, one {# इमेज} other {# इमेज}}",
+        "ui.teamBridge.attachments.open": "इमेज {index}/{count} खोलें",
+        "ui.teamBridge.attachments.uploading": "इमेज अपलोड हो रही है…",
+        "ui.teamBridge.attachments.limit": "{max, plural, one {एक संदेश में ज़्यादा से ज़्यादा # इमेज जोड़ी जा सकती है।} other {एक संदेश में ज़्यादा से ज़्यादा # इमेज जोड़ी जा सकती हैं।}}",
+        "ui.teamBridge.attachments.unsupported": "इस संगठन में अभी इमेज नहीं भेजी जा सकतीं।",
+        "ui.teamBridge.attachments.error_type": "यह फ़ाइल भेजने लायक इमेज नहीं है। PNG, JPEG, WebP या GIF इस्तेमाल करें।",
+        "ui.teamBridge.attachments.error_size": "यह इमेज भेजने के लिए बहुत बड़ी है।",
+        "ui.teamBridge.attachments.error_invalid": "यह इमेज पढ़ी नहीं जा सकी। फ़ाइल खराब हो सकती है।",
+        "ui.teamBridge.attachments.error_rate": "एक साथ बहुत ज़्यादा इमेज। एक मिनट रुकें, फिर कोशिश करें।",
+        "ui.teamBridge.attachments.error_quota": "भेजे जाने के इंतज़ार में बहुत ज़्यादा इमेज हैं। कुछ भेजें या हटाएं, फिर कोशिश करें।",
+        "ui.teamBridge.attachments.error_offline": "Local Operator से संपर्क नहीं हो पाया, इसलिए इमेज अपलोड नहीं हुई। संपर्क वापस आने पर फिर कोशिश करें।",
+        "ui.teamBridge.attachments.error_upload": "इमेज अपलोड नहीं हो सकी। फिर कोशिश करें या उसे हटा दें।",
+        "ui.teamBridge.attachments.expired_staged": "यह इमेज अब भेजने के लिए तैयार नहीं है। इसे हटा दें, या अगर यह अभी भी दिख रही है तो फिर कोशिश करें।",
+        "ui.teamBridge.attachments.expired": "इमेज की अवधि खत्म हो गई",
+        "ui.teamBridge.attachments.unavailable": "इमेज उपलब्ध नहीं",
+        "ui.teamBridge.attachments.send_blocked": "भेजने से पहले गड़बड़ी वाली इमेज हटाएं या फिर आज़माएं।",
+        "ui.teamBridge.attachments.remove_all": "इमेज हटाएं"
+      },
+      "proposed": {
+        "ui.teamBridge.attachments.add": "तस्वीरें जोड़ें",
+        "ui.teamBridge.attachments.strip": "भेजी जाने वाली तस्वीरें",
+        "ui.teamBridge.attachments.position": "कुल {count} में से तस्वीर {index}",
+        "ui.teamBridge.attachments.in_message": "{count, plural, one {# तस्वीर} other {# तस्वीरें}}",
+        "ui.teamBridge.attachments.open": "कुल {count} में से तस्वीर {index} खोलें",
+        "ui.teamBridge.attachments.uploading": "तस्वीर अपलोड हो रही है…",
+        "ui.teamBridge.attachments.limit": "{max, plural, one {एक संदेश में ज़्यादा से ज़्यादा # तस्वीर जोड़ी जा सकती है।} other {एक संदेश में ज़्यादा से ज़्यादा # तस्वीरें जोड़ी जा सकती हैं।}}",
+        "ui.teamBridge.attachments.unsupported": "इस संगठन में अभी तस्वीरें नहीं भेजी जा सकतीं।",
+        "ui.teamBridge.attachments.error_type": "यह फ़ाइल भेजने लायक तस्वीर नहीं है। PNG, JPEG, WebP या GIF इस्तेमाल करें।",
+        "ui.teamBridge.attachments.error_size": "यह तस्वीर भेजने के लिए बहुत बड़ी है।",
+        "ui.teamBridge.attachments.error_invalid": "यह तस्वीर पढ़ी नहीं जा सकी। फ़ाइल ख़राब हो सकती है।",
+        "ui.teamBridge.attachments.error_rate": "एक साथ बहुत ज़्यादा तस्वीरें। एक मिनट रुकें, फिर कोशिश करें।",
+        "ui.teamBridge.attachments.error_quota": "आपकी बहुत ज़्यादा तस्वीरें भेजे जाने के इंतज़ार में हैं। कुछ भेजें या हटाएँ, फिर कोशिश करें।",
+        "ui.teamBridge.attachments.error_offline": "Local Operator से संपर्क नहीं हो पाया, इसलिए तस्वीर अपलोड नहीं हुई। संपर्क वापस आने पर फिर कोशिश करें।",
+        "ui.teamBridge.attachments.error_upload": "तस्वीर अपलोड नहीं हो सकी। फिर कोशिश करें या उसे हटा दें।",
+        "ui.teamBridge.attachments.expired_staged": "यह तस्वीर अब भेजने के लिए तैयार नहीं है। इसे हटा दें, या अगर यह अभी भी दिख रही है तो फिर कोशिश करें।",
+        "ui.teamBridge.attachments.expired": "तस्वीर की अवधि खत्म हो गई",
+        "ui.teamBridge.attachments.unavailable": "तस्वीर उपलब्ध नहीं",
+        "ui.teamBridge.attachments.send_blocked": "भेजने से पहले त्रुटि वाली तस्वीरें हटाएँ या उनके लिए फिर कोशिश करें।",
+        "ui.teamBridge.attachments.remove_all": "सभी तस्वीरें हटाएँ"
+      },
+      "note": "Glossary drift for \"image\": all 20 strings use इमेज, a spelling that appears nowhere else in the 58 hi catalogues, while the existing hi UI renders image as तस्वीर (ui.canvas.files.images/expand/imageActions, ui.library.category.images, and ui.projects.project_quick_send \"paste an image to attach it\" → \"तस्वीर जोड़ने के लिए पेस्ट करें\") and चित्र only in four settings descriptions; adopting तस्वीर also gives in_message/limit a real plural (तस्वीरें) where इमेज is invariant. The proposals here keep every other wording unchanged; a locale-wide switch to इमेज instead would be a style-guide decision, not a per-PR one. The proposed values in this finding are the fully remediated text (they also fold in the position/retry/candrabindu/nukta/remove_all/error_quota fixes below); the other findings' proposals are written against the current इमेज so each stands alone."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.teamBridge.attachments.position",
+      "keys": [
+        "ui.teamBridge.attachments.position",
+        "ui.teamBridge.attachments.open"
+      ],
+      "current": {
+        "ui.teamBridge.attachments.position": "इमेज {index}/{count}",
+        "ui.teamBridge.attachments.open": "इमेज {index}/{count} खोलें"
+      },
+      "proposed": {
+        "ui.teamBridge.attachments.position": "कुल {count} में से इमेज {index}",
+        "ui.teamBridge.attachments.open": "कुल {count} में से इमेज {index} खोलें"
+      },
+      "note": "These are screen-reader-only names (img alt, li/button aria-label, the lightbox's sr-only DialogTitle) and composed into remove/retry, and Hindi TTS reads \"1/2\" as a fraction (एक बटा दो / आधा) rather than \"1 of 2\"; the established hi pattern for \"X {index} of {count}\" is \"कुल {count} में से X {index}\" (ui.common.forms.pagination.position, ui.installer.status.step, ui.library.preview.slide_of)."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.teamBridge.attachments.retry",
+      "keys": [
+        "ui.teamBridge.attachments.retry",
+        "ui.teamBridge.attachments.send_blocked"
+      ],
+      "current": {
+        "ui.teamBridge.attachments.retry": "{label} फिर आज़माएं",
+        "ui.teamBridge.attachments.send_blocked": "भेजने से पहले गड़बड़ी वाली इमेज हटाएं या फिर आज़माएं।"
+      },
+      "proposed": {
+        "ui.teamBridge.attachments.retry": "{label} के लिए फिर कोशिश करें",
+        "ui.teamBridge.attachments.send_blocked": "भेजने से पहले त्रुटि वाली इमेज हटाएँ या उनके लिए फिर कोशिश करें।"
+      },
+      "note": "Retry drifts to फिर आज़माएं while this delta's own error_upload/error_rate/error_quota/error_offline/expired_staged/retry_load, the rest of ui.teamBridge (list.retry, composer.error) and 91 hi strings say फिर कोशिश करें (the tbs-r1-hi schedule.retry finding, fixed, was the same drift); in send_blocked \"हटाएं या फिर आज़माएं\" also parses as the idiom \"या फिर\" (\"or else\"), so it reads \"remove or else try out the images\" and the retry instruction is lost. error → त्रुटि (7 hi uses) replaces the one-off गड़बड़ी."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.teamBridge.attachments.remove",
+      "keys": [
+        "ui.teamBridge.attachments.remove",
+        "ui.teamBridge.attachments.error_quota",
+        "ui.teamBridge.attachments.remove_all"
+      ],
+      "current": {
+        "ui.teamBridge.attachments.remove": "{label} हटाएं",
+        "ui.teamBridge.attachments.error_quota": "भेजे जाने के इंतज़ार में बहुत ज़्यादा इमेज हैं। कुछ भेजें या हटाएं, फिर कोशिश करें।",
+        "ui.teamBridge.attachments.remove_all": "इमेज हटाएं"
+      },
+      "proposed": {
+        "ui.teamBridge.attachments.remove": "{label} हटाएँ",
+        "ui.teamBridge.attachments.error_quota": "भेजे जाने के इंतज़ार में बहुत ज़्यादा इमेज हैं। कुछ भेजें या हटाएँ, फिर कोशिश करें।",
+        "ui.teamBridge.attachments.remove_all": "इमेज हटाएँ"
+      },
+      "note": "The hi style guide's binding imperative example is \"हटाएँ\" (candrabindu) and the hi catalogues use -ाएँ 243 times; the only six -ाएं forms in all 58 files are in this delta (these three keys plus retry and send_blocked, covered by the retry finding), so हटाएं/आज़माएं is spelling drift."
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.teamBridge.attachments.error_invalid",
+      "current": "यह इमेज पढ़ी नहीं जा सकी। फ़ाइल खराब हो सकती है।",
+      "proposed": "यह इमेज पढ़ी नहीं जा सकी। फ़ाइल ख़राब हो सकती है।",
+      "note": "The style guide says keep nukta consistently and ui.library.preview.pptx_failed_detail already spells the same sentence ending \"फ़ाइल ख़राब हो सकती है\"; खराब without nukta is the only other occurrence."
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.teamBridge.attachments.remove_all",
+      "current": "इमेज हटाएं",
+      "proposed": "सभी इमेज हटाएँ",
+      "note": "The control removes every image from the scheduled message (context note), but इमेज is invariant so \"इमेज हटाएं\" equally reads \"Remove image\"; सभी restores the plural the English carries, at 10 graphemes still shorter than the 13 of \"Remove images\" in this nowrap ghost button."
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.teamBridge.attachments.error_quota",
+      "current": "भेजे जाने के इंतज़ार में बहुत ज़्यादा इमेज हैं। कुछ भेजें या हटाएं, फिर कोशिश करें।",
+      "proposed": "आपकी बहुत ज़्यादा इमेज भेजे जाने के इंतज़ार में हैं। कुछ भेजें या हटाएँ, फिर कोशिश करें।",
+      "note": "The English says \"You have too many images waiting\" because the allowance is the author's own; dropping \"you\" in a shared conversation lets it read as the conversation's pending images in general."
+    }
+  ],
+  "inherited_receipt": {
+    "base": "5005cfe8b6",
+    "path": "i18n/receipts/tbh-r1-hi.json",
+    "sha256": "e45b8b1e0467ccaab493e77cc2e385d046c15427266f012ae8c3147cea5aaff2",
+    "keys_inherited": 138,
+    "base_source_sha256": "5f67df6c37f34f1f83e4048ad47aef9bd4020fe2ba74c5e8e548b9c4439dc7ee",
+    "base_target_sha256": "4e453d80c3efcf76bdd6524d149839c0d0016d68f6a1188e578535bf4c4d0e08",
+    "unchanged_values_verified": 138
+  },
+  "merged_in_receipt": {
+    "stack": "#1304 8913528",
+    "keys": 8,
+    "path": "i18n/receipts/threads1304-r2-hi.json",
+    "sha256": "272412eef3f17302058255611b1dc6c041ab0982453f6a097a0bb2ae53012a65",
+    "source_sha256": "7de891f2cf03b7563747c440847c853f1c1356aa0a50480ec28eae347e6581e9",
+    "target_sha256": "dbada821a3167dede05e95f43867b34a46ddb128ec6f18c675226bbd48a5562c",
+    "note": "Out of scope; 8 ui.teamBridge.replies.* values verified byte-equal (en and hi) to 8913528 and not re-audited."
+  },
+  "reference_sha256": {
+    "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+  },
+  "validation": {
+    "independence": "Auditor session cd828f39c889 (job 316d26b2b034, agent translation-auditor), separate from the translator: the implementing coder agent tb-att-ui, session 03594b2dcc02, job bc0c4b952eaa (resumed from 7b1161ee751e), which wrote 0906d747e5. Read en, the en context sidecar, the hi catalogue, the core glossary, the hi style guide, and the renderer callers (team-bridge-attachments.tsx, use-team-bridge-attachments.ts, team-bridge-page.tsx, team-bridge-thread-pane.tsx, team-bridge-scheduled.tsx, shared image-lightbox.tsx) directly. PR head re-checked with gh: cf1d7c616c, unchanged from launch; worktree HEAD equals it and git status is clean for src/i18n and i18n/. On-disk en/hi/context hashes equal git show cf1d7c616c. The 23 hi values are byte-identical at 0906d747e5, 4a9e3aa91a, c60c7bd239 and cf1d7c616c (absent at b8aad1066b and 020929b98e). hi and en key sets equal (169 = 138 + 31). No repo file edited other than this receipt and its record; nothing staged or committed.",
+    "semantics": "Each string judged in its real UI role: composer icon-button aria-label/title (add, and limit as its disabled title), thumbnail-strip ul aria-label (strip), positional alt/aria/lightbox sr-only DialogTitle (position), message image-group aria-label (in_message), thumbnail button aria/title (open), 5×5 icon-button aria/title on composer chips (remove, retry — retry renders only when the bytes are still held), Spinner label and chip aria suffix (uploading), the strip notice line (limit, unsupported, failure copy, expired_staged), message placeholders in a 36×24 tile (expired, unavailable) with a text-link retry (retry_load), the composer alert under page and thread composers (send_blocked), and a whitespace-nowrap ghost Button in the reschedule dialog (remove_all). Meaning is preserved everywhere, including unsupported's trimmed English, error_offline's causal order (Local Operator unreachable → upload failed → retry when back), expired_staged's conditional retry, and limit's per-message cap. Register is आप-polite imperatives throughout; संगठन, संदेश, अपलोड, ज़्यादा, इस्तेमाल, फ़ाइल match existing hi usage; Local Operator and PNG/JPEG/WebP/GIF stay Latin per the product-name policy. Findings: image term drift (MINOR), \"1/2\" as a spoken position (MINOR), retry verb drift plus the \"या फिर\" misparse (MINOR), -ाएं vs the style guide's -ाएँ (MINOR), खराब nukta (NIT), remove_all lost plural (NIT), error_quota lost \"you\" (NIT). The other 13 keys' wording is clean apart from the term in finding 1.",
+    "icu": "Parsed en and hi for all 23 keys with @formatjs/icu-messageformat-parser from the repo's node_modules: argument sets identical in every key — {index}/{count} in position and open, {label} in remove and retry, {count, plural, one|other} with # in in_message, {max, plural, one|other} with # in limit; no select, number skeleton or markup. hi CLDR plural categories are one/other with 0 and 1 → one (Intl.PluralRules('hi') checked), so no extra branch is needed; # is used in both branches of both plurals. Formatted with intl-messageformat (locale hi) at 0/1/2/10: limit switches है/हैं correctly; in_message's branches are identical (\"# इमेज\") because इमेज is invariant, which is grammatical but is part of finding 1. All 23 proposals in this receipt also parse with the same argument sets.",
+    "typography": "All 23 values are NFC; no U+200B–F, U+202A–E, U+2066–9, U+061C, ZWJ or ZWNJ; no value equals English; Latin digits only (none hand-written); danda । ends every sentence that ends with a period in English; the ellipsis in uploading is U+2026; Latin runs are only Local Operator and PNG/JPEG/WebP/GIF; the file ends with a newline. Drift: -ाएं in five values versus -ाएँ 243 times elsewhere (finding 4); खराब without nukta (NIT).",
+    "overflow": "Grapheme counts en/hi (Intl.Segmenter): add 10/6, strip 14/12, position 24/19, open 29/22, remove 14/11, retry 13/15, uploading 16/16, expired 13/17, unavailable 17/11, retry_load 9/9, remove_all 13/7. Only expired (17 vs 13) is materially longer and it sits in a wrapping 144px placeholder tile beside unavailable; flagged for a rendered-fit check, not a finding, because \"अवधि खत्म हो गई\" is the shortest natural form. remove_all is the only nowrap control and is shorter than English (10 with the NIT's सभी). Sentence-length notices wrap.",
+    "limitations": "Browser unavailable by task constraint; no screenshots, glyph metrics, screen-reader/TTS playback, visual-fit or rendered-proof claim. The \"1/2\" TTS reading in finding 2 is a linguistic judgement, not a recorded speech run. No catalogue/code edits."
+  }
+}

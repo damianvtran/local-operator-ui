@@ -1,0 +1,825 @@
+{
+  "status": "headless-only",
+  "nativeWindowCapture": false,
+  "reviewedHeadSha": "79684fb4f4589229fb49fa6a6d4a4bc612b742d4",
+  "base": [
+    {
+      "frame": "glass-dark.png",
+      "file": "before.png",
+      "published": true,
+      "reviewedHeadSha": "79684fb4f4589229fb49fa6a6d4a4bc612b742d4",
+      "capturedAt": "2026-10-24T05:30:13.343978Z",
+      "theme": "localOperatorDark",
+      "glass": {
+        "capability": {
+          "supported": true,
+          "mechanism": "vibrancy",
+          "reason": "ok",
+          "materials": [
+            "window",
+            "menu",
+            "popover"
+          ],
+          "defaultMaterial": "window",
+          "liquid": true,
+          "defaultEnabled": true,
+          "liveToggle": true
+        },
+        "settings": {
+          "enabled": true,
+          "coverage": "full",
+          "intensity": 80,
+          "material": "window"
+        },
+        "active": true,
+        "restartRequired": false
+      },
+      "glassAttribute": "sidebar canvas pane",
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "dpr": 2
+      },
+      "strip": {
+        "x": 260,
+        "y": 32,
+        "width": 1120,
+        "height": 37,
+        "top": 32,
+        "right": 1380,
+        "bottom": 69,
+        "left": 260
+      },
+      "row": {
+        "x": 260,
+        "y": 69,
+        "width": 1120,
+        "height": 37,
+        "top": 69,
+        "right": 1380,
+        "bottom": 106,
+        "left": 260
+      },
+      "content": {
+        "x": 260,
+        "y": 106,
+        "width": 1120,
+        "height": 794,
+        "top": 106,
+        "right": 1380,
+        "bottom": 900,
+        "left": 260
+      }
+    },
+    {
+      "frame": "flat-dark.png",
+      "file": "before-flat-dark.png",
+      "published": true,
+      "reviewedHeadSha": "79684fb4f4589229fb49fa6a6d4a4bc612b742d4",
+      "capturedAt": "2026-10-24T05:30:14.091442Z",
+      "theme": "localOperatorDark",
+      "glass": {
+        "capability": {
+          "supported": true,
+          "mechanism": "vibrancy",
+          "reason": "ok",
+          "materials": [
+            "window",
+            "menu",
+            "popover"
+          ],
+          "defaultMaterial": "window",
+          "liquid": true,
+          "defaultEnabled": true,
+          "liveToggle": true
+        },
+        "settings": {
+          "enabled": false,
+          "coverage": "full",
+          "intensity": 80,
+          "material": "window"
+        },
+        "active": false,
+        "restartRequired": false
+      },
+      "glassAttribute": "",
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "dpr": 2
+      },
+      "strip": {
+        "x": 260,
+        "y": 32,
+        "width": 1120,
+        "height": 37,
+        "top": 32,
+        "right": 1380,
+        "bottom": 69,
+        "left": 260
+      },
+      "row": {
+        "x": 260,
+        "y": 69,
+        "width": 1120,
+        "height": 37,
+        "top": 69,
+        "right": 1380,
+        "bottom": 106,
+        "left": 260
+      },
+      "content": {
+        "x": 260,
+        "y": 106,
+        "width": 1120,
+        "height": 794,
+        "top": 106,
+        "right": 1380,
+        "bottom": 900,
+        "left": 260
+      }
+    },
+    {
+      "frame": "glass-light.png",
+      "file": "before-light.png",
+      "published": true,
+      "reviewedHeadSha": "79684fb4f4589229fb49fa6a6d4a4bc612b742d4",
+      "capturedAt": "2026-10-24T05:30:15.811275Z",
+      "theme": "localOperatorLight",
+      "glass": {
+        "capability": {
+          "supported": true,
+          "mechanism": "vibrancy",
+          "reason": "ok",
+          "materials": [
+            "window",
+            "menu",
+            "popover"
+          ],
+          "defaultMaterial": "window",
+          "liquid": true,
+          "defaultEnabled": true,
+          "liveToggle": true
+        },
+        "settings": {
+          "enabled": true,
+          "coverage": "full",
+          "intensity": 80,
+          "material": "window"
+        },
+        "active": true,
+        "restartRequired": false
+      },
+      "glassAttribute": "sidebar canvas pane",
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "dpr": 2
+      },
+      "strip": {
+        "x": 260,
+        "y": 32,
+        "width": 1120,
+        "height": 37,
+        "top": 32,
+        "right": 1380,
+        "bottom": 69,
+        "left": 260
+      },
+      "row": {
+        "x": 260,
+        "y": 69,
+        "width": 1120,
+        "height": 37,
+        "top": 69,
+        "right": 1380,
+        "bottom": 106,
+        "left": 260
+      },
+      "content": {
+        "x": 260,
+        "y": 106,
+        "width": 1120,
+        "height": 794,
+        "top": 106,
+        "right": 1380,
+        "bottom": 900,
+        "left": 260
+      }
+    },
+    {
+      "frame": "flat-light.png",
+      "file": "before-flat-light.png",
+      "published": true,
+      "reviewedHeadSha": "79684fb4f4589229fb49fa6a6d4a4bc612b742d4",
+      "capturedAt": "2026-10-24T05:30:16.576110Z",
+      "theme": "localOperatorLight",
+      "glass": {
+        "capability": {
+          "supported": true,
+          "mechanism": "vibrancy",
+          "reason": "ok",
+          "materials": [
+            "window",
+            "menu",
+            "popover"
+          ],
+          "defaultMaterial": "window",
+          "liquid": true,
+          "defaultEnabled": true,
+          "liveToggle": true
+        },
+        "settings": {
+          "enabled": false,
+          "coverage": "full",
+          "intensity": 80,
+          "material": "window"
+        },
+        "active": false,
+        "restartRequired": false
+      },
+      "glassAttribute": "",
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "dpr": 2
+      },
+      "strip": {
+        "x": 260,
+        "y": 32,
+        "width": 1120,
+        "height": 37,
+        "top": 32,
+        "right": 1380,
+        "bottom": 69,
+        "left": 260
+      },
+      "row": {
+        "x": 260,
+        "y": 69,
+        "width": 1120,
+        "height": 37,
+        "top": 69,
+        "right": 1380,
+        "bottom": 106,
+        "left": 260
+      },
+      "content": {
+        "x": 260,
+        "y": 106,
+        "width": 1120,
+        "height": 794,
+        "top": 106,
+        "right": 1380,
+        "bottom": 900,
+        "left": 260
+      }
+    },
+    {
+      "frame": "narrow.png",
+      "file": null,
+      "published": false,
+      "reviewedHeadSha": "79684fb4f4589229fb49fa6a6d4a4bc612b742d4",
+      "capturedAt": "2026-10-24T05:30:18.775228Z",
+      "theme": "localOperatorDark",
+      "glass": {
+        "capability": {
+          "supported": true,
+          "mechanism": "vibrancy",
+          "reason": "ok",
+          "materials": [
+            "window",
+            "menu",
+            "popover"
+          ],
+          "defaultMaterial": "window",
+          "liquid": true,
+          "defaultEnabled": true,
+          "liveToggle": true
+        },
+        "settings": {
+          "enabled": true,
+          "coverage": "full",
+          "intensity": 80,
+          "material": "window"
+        },
+        "active": true,
+        "restartRequired": false
+      },
+      "glassAttribute": "sidebar canvas pane",
+      "viewport": {
+        "width": 560,
+        "height": 900,
+        "dpr": 1
+      },
+      "strip": {
+        "x": 80,
+        "y": 32,
+        "width": 480,
+        "height": 37,
+        "top": 32,
+        "right": 560,
+        "bottom": 69,
+        "left": 80
+      },
+      "row": {
+        "x": 80,
+        "y": 69,
+        "width": 480,
+        "height": 37,
+        "top": 69,
+        "right": 560,
+        "bottom": 106,
+        "left": 80
+      },
+      "content": {
+        "x": 80,
+        "y": 106,
+        "width": 480,
+        "height": 794,
+        "top": 106,
+        "right": 560,
+        "bottom": 900,
+        "left": 80
+      }
+    },
+    {
+      "frame": "overflow.png",
+      "file": null,
+      "published": false,
+      "reviewedHeadSha": "79684fb4f4589229fb49fa6a6d4a4bc612b742d4",
+      "capturedAt": "2026-10-24T05:30:22.539563Z",
+      "theme": "localOperatorLight",
+      "glass": {
+        "capability": {
+          "supported": true,
+          "mechanism": "vibrancy",
+          "reason": "ok",
+          "materials": [
+            "window",
+            "menu",
+            "popover"
+          ],
+          "defaultMaterial": "window",
+          "liquid": true,
+          "defaultEnabled": true,
+          "liveToggle": true
+        },
+        "settings": {
+          "enabled": true,
+          "coverage": "full",
+          "intensity": 80,
+          "material": "window"
+        },
+        "active": true,
+        "restartRequired": false
+      },
+      "glassAttribute": "sidebar canvas pane",
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "dpr": 2
+      },
+      "strip": {
+        "x": 260,
+        "y": 32,
+        "width": 1120,
+        "height": 37,
+        "top": 32,
+        "right": 1380,
+        "bottom": 69,
+        "left": 260
+      },
+      "row": {
+        "x": 260,
+        "y": 69,
+        "width": 1120,
+        "height": 37,
+        "top": 69,
+        "right": 1380,
+        "bottom": 106,
+        "left": 260
+      },
+      "content": {
+        "x": 260,
+        "y": 106,
+        "width": 1120,
+        "height": 794,
+        "top": 106,
+        "right": 1380,
+        "bottom": 900,
+        "left": 260
+      }
+    }
+  ],
+  "after": [
+    {
+      "frame": "glass-dark.png",
+      "file": "after.png",
+      "published": true,
+      "reviewedHeadSha": "79684fb4f4589229fb49fa6a6d4a4bc612b742d4",
+      "capturedAt": "2026-10-24T05:30:32.827699Z",
+      "theme": "localOperatorDark",
+      "glass": {
+        "capability": {
+          "supported": true,
+          "mechanism": "vibrancy",
+          "reason": "ok",
+          "materials": [
+            "window",
+            "menu",
+            "popover"
+          ],
+          "defaultMaterial": "window",
+          "liquid": true,
+          "defaultEnabled": true,
+          "liveToggle": true
+        },
+        "settings": {
+          "enabled": true,
+          "coverage": "full",
+          "intensity": 80,
+          "material": "window"
+        },
+        "active": true,
+        "restartRequired": false
+      },
+      "glassAttribute": "sidebar canvas pane",
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "dpr": 2
+      },
+      "strip": {
+        "x": 260,
+        "y": 32,
+        "width": 1120,
+        "height": 37,
+        "top": 32,
+        "right": 1380,
+        "bottom": 69,
+        "left": 260
+      },
+      "row": {
+        "x": 260,
+        "y": 69,
+        "width": 1120,
+        "height": 37,
+        "top": 69,
+        "right": 1380,
+        "bottom": 106,
+        "left": 260
+      },
+      "content": {
+        "x": 260,
+        "y": 106,
+        "width": 1120,
+        "height": 794,
+        "top": 106,
+        "right": 1380,
+        "bottom": 900,
+        "left": 260
+      }
+    },
+    {
+      "frame": "flat-dark.png",
+      "file": "after-flat-dark.png",
+      "published": true,
+      "reviewedHeadSha": "79684fb4f4589229fb49fa6a6d4a4bc612b742d4",
+      "capturedAt": "2026-10-24T05:30:33.593472Z",
+      "theme": "localOperatorDark",
+      "glass": {
+        "capability": {
+          "supported": true,
+          "mechanism": "vibrancy",
+          "reason": "ok",
+          "materials": [
+            "window",
+            "menu",
+            "popover"
+          ],
+          "defaultMaterial": "window",
+          "liquid": true,
+          "defaultEnabled": true,
+          "liveToggle": true
+        },
+        "settings": {
+          "enabled": false,
+          "coverage": "full",
+          "intensity": 80,
+          "material": "window"
+        },
+        "active": false,
+        "restartRequired": false
+      },
+      "glassAttribute": "",
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "dpr": 2
+      },
+      "strip": {
+        "x": 260,
+        "y": 32,
+        "width": 1120,
+        "height": 37,
+        "top": 32,
+        "right": 1380,
+        "bottom": 69,
+        "left": 260
+      },
+      "row": {
+        "x": 260,
+        "y": 69,
+        "width": 1120,
+        "height": 37,
+        "top": 69,
+        "right": 1380,
+        "bottom": 106,
+        "left": 260
+      },
+      "content": {
+        "x": 260,
+        "y": 106,
+        "width": 1120,
+        "height": 794,
+        "top": 106,
+        "right": 1380,
+        "bottom": 900,
+        "left": 260
+      }
+    },
+    {
+      "frame": "glass-light.png",
+      "file": "after-light.png",
+      "published": true,
+      "reviewedHeadSha": "79684fb4f4589229fb49fa6a6d4a4bc612b742d4",
+      "capturedAt": "2026-10-24T05:30:35.480298Z",
+      "theme": "localOperatorLight",
+      "glass": {
+        "capability": {
+          "supported": true,
+          "mechanism": "vibrancy",
+          "reason": "ok",
+          "materials": [
+            "window",
+            "menu",
+            "popover"
+          ],
+          "defaultMaterial": "window",
+          "liquid": true,
+          "defaultEnabled": true,
+          "liveToggle": true
+        },
+        "settings": {
+          "enabled": true,
+          "coverage": "full",
+          "intensity": 80,
+          "material": "window"
+        },
+        "active": true,
+        "restartRequired": false
+      },
+      "glassAttribute": "sidebar canvas pane",
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "dpr": 2
+      },
+      "strip": {
+        "x": 260,
+        "y": 32,
+        "width": 1120,
+        "height": 37,
+        "top": 32,
+        "right": 1380,
+        "bottom": 69,
+        "left": 260
+      },
+      "row": {
+        "x": 260,
+        "y": 69,
+        "width": 1120,
+        "height": 37,
+        "top": 69,
+        "right": 1380,
+        "bottom": 106,
+        "left": 260
+      },
+      "content": {
+        "x": 260,
+        "y": 106,
+        "width": 1120,
+        "height": 794,
+        "top": 106,
+        "right": 1380,
+        "bottom": 900,
+        "left": 260
+      }
+    },
+    {
+      "frame": "flat-light.png",
+      "file": "after-flat-light.png",
+      "published": true,
+      "reviewedHeadSha": "79684fb4f4589229fb49fa6a6d4a4bc612b742d4",
+      "capturedAt": "2026-10-24T05:30:36.285144Z",
+      "theme": "localOperatorLight",
+      "glass": {
+        "capability": {
+          "supported": true,
+          "mechanism": "vibrancy",
+          "reason": "ok",
+          "materials": [
+            "window",
+            "menu",
+            "popover"
+          ],
+          "defaultMaterial": "window",
+          "liquid": true,
+          "defaultEnabled": true,
+          "liveToggle": true
+        },
+        "settings": {
+          "enabled": false,
+          "coverage": "full",
+          "intensity": 80,
+          "material": "window"
+        },
+        "active": false,
+        "restartRequired": false
+      },
+      "glassAttribute": "",
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "dpr": 2
+      },
+      "strip": {
+        "x": 260,
+        "y": 32,
+        "width": 1120,
+        "height": 37,
+        "top": 32,
+        "right": 1380,
+        "bottom": 69,
+        "left": 260
+      },
+      "row": {
+        "x": 260,
+        "y": 69,
+        "width": 1120,
+        "height": 37,
+        "top": 69,
+        "right": 1380,
+        "bottom": 106,
+        "left": 260
+      },
+      "content": {
+        "x": 260,
+        "y": 106,
+        "width": 1120,
+        "height": 794,
+        "top": 106,
+        "right": 1380,
+        "bottom": 900,
+        "left": 260
+      }
+    },
+    {
+      "frame": "narrow.png",
+      "file": "narrow.png",
+      "published": true,
+      "reviewedHeadSha": "79684fb4f4589229fb49fa6a6d4a4bc612b742d4",
+      "capturedAt": "2026-10-24T05:30:38.528296Z",
+      "theme": "localOperatorDark",
+      "glass": {
+        "capability": {
+          "supported": true,
+          "mechanism": "vibrancy",
+          "reason": "ok",
+          "materials": [
+            "window",
+            "menu",
+            "popover"
+          ],
+          "defaultMaterial": "window",
+          "liquid": true,
+          "defaultEnabled": true,
+          "liveToggle": true
+        },
+        "settings": {
+          "enabled": true,
+          "coverage": "full",
+          "intensity": 80,
+          "material": "window"
+        },
+        "active": true,
+        "restartRequired": false
+      },
+      "glassAttribute": "sidebar canvas pane",
+      "viewport": {
+        "width": 560,
+        "height": 900,
+        "dpr": 1
+      },
+      "strip": {
+        "x": 80,
+        "y": 32,
+        "width": 480,
+        "height": 37,
+        "top": 32,
+        "right": 560,
+        "bottom": 69,
+        "left": 80
+      },
+      "row": {
+        "x": 80,
+        "y": 69,
+        "width": 480,
+        "height": 37,
+        "top": 69,
+        "right": 560,
+        "bottom": 106,
+        "left": 80
+      },
+      "content": {
+        "x": 80,
+        "y": 106,
+        "width": 480,
+        "height": 794,
+        "top": 106,
+        "right": 560,
+        "bottom": 900,
+        "left": 80
+      }
+    },
+    {
+      "frame": "overflow.png",
+      "file": "overflow.png",
+      "published": true,
+      "reviewedHeadSha": "79684fb4f4589229fb49fa6a6d4a4bc612b742d4",
+      "capturedAt": "2026-10-24T05:30:42.700477Z",
+      "theme": "localOperatorLight",
+      "glass": {
+        "capability": {
+          "supported": true,
+          "mechanism": "vibrancy",
+          "reason": "ok",
+          "materials": [
+            "window",
+            "menu",
+            "popover"
+          ],
+          "defaultMaterial": "window",
+          "liquid": true,
+          "defaultEnabled": true,
+          "liveToggle": true
+        },
+        "settings": {
+          "enabled": true,
+          "coverage": "full",
+          "intensity": 80,
+          "material": "window"
+        },
+        "active": true,
+        "restartRequired": false
+      },
+      "glassAttribute": "sidebar canvas pane",
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "dpr": 2
+      },
+      "strip": {
+        "x": 260,
+        "y": 32,
+        "width": 1120,
+        "height": 37,
+        "top": 32,
+        "right": 1380,
+        "bottom": 69,
+        "left": 260
+      },
+      "row": {
+        "x": 260,
+        "y": 69,
+        "width": 1120,
+        "height": 37,
+        "top": 69,
+        "right": 1380,
+        "bottom": 106,
+        "left": 260
+      },
+      "content": {
+        "x": 260,
+        "y": 106,
+        "width": 1120,
+        "height": 794,
+        "top": 106,
+        "right": 1380,
+        "bottom": 900,
+        "left": 260
+      }
+    }
+  ]
+}

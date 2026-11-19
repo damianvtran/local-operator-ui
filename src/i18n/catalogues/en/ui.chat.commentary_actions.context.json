@@ -1,0 +1,7 @@
+{
+	"ui.chat.commentary_actions.label": {
+		"role": "accessible name of the hover-only toolbar over an in-between status message (mid-turn narration that carries its own tool calls; Copy alone)",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"note": "Screen-reader only. Must differ from both the closing answer's \"Answer actions\" and a non-closing final response's \"Response actions\", so one turn never announces two identically named toolbars. English is the bundled fallback for locales that have not audited this key."
+	}
+}

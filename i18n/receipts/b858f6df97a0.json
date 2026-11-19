@@ -1,0 +1,131 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "b858f6df97a0",
+  "locale": "hi",
+  "commit": "c44e9e8be8eb5a134a97acd87e7015f54b82c13d",
+  "parent": "6dd43fd7494f651fd99b3fe926606fc7ba35fd82",
+  "scope": "Only five added keys; full-file hashes identify input bytes, not a full-file audit",
+  "actual_model_source": "Host model-switch notice: anthropic/claude-sonnet-5-5 -> anthropic/claude-opus-5-5 -> openai/gpt-6.1-sol; provider quota fallback",
+  "namespaces": {
+    "ui.chat": {
+      "status": "passed",
+      "sha256": {
+        "hi": "7baae2daa30893954e19d0b3465f539bf8053c2aed8dbac4beb4ed9266ec939a",
+        "en": "270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27"
+      },
+      "context": {
+        "path": "src/i18n/catalogues/en/ui.chat.context.json",
+        "sha256": "efcf4d1872974b6fc7456e753a2e10010ab896fffede262ae7c19d96c35ecee1"
+      },
+      "findings": []
+    },
+    "ui.chat.run_details": {
+      "status": "passed",
+      "sha256": {
+        "hi": "af866c4e536679f7445e8c5c2cb748590f1fe56dc5313c22ebda82a0482a9b4e",
+        "en": "f8184d5f41b359364e47747871988bbb731d79c12bc3b9ec755f3db73e5db6ab"
+      },
+      "context": {
+        "path": "src/i18n/catalogues/en/ui.chat.run_details.context.json",
+        "sha256": "da588f521188a2bcba1d0aeb7a265c3474b16673b8f653a021fa7e9e7075e911"
+      },
+      "findings": []
+    }
+  },
+  "limitations": [
+    "No native rendered proof, pseudo-rendering or measured cell-width evidence; static fit assessment only",
+    "No repo-wide scanner, build, typecheck, Electron, installs, translation services, or other auditors reports"
+  ],
+  "checks": [
+    {
+      "key": "ui.chat.session_status.effort_level.low",
+      "icu": "PASS",
+      "placeholder_types": "PASS",
+      "Cf": 0,
+      "text": "कम",
+      "codepoints": 2,
+      "numeric_width_hint": null
+    },
+    {
+      "key": "ui.chat.session_status.effort_level.medium",
+      "icu": "PASS",
+      "placeholder_types": "PASS",
+      "Cf": 0,
+      "text": "मध्यम",
+      "codepoints": 5,
+      "numeric_width_hint": null
+    },
+    {
+      "key": "ui.chat.session_status.effort_level.high",
+      "icu": "PASS",
+      "placeholder_types": "PASS",
+      "Cf": 0,
+      "text": "उच्च",
+      "codepoints": 4,
+      "numeric_width_hint": null
+    },
+    {
+      "key": "ui.chat.run_details.wake.armed_count",
+      "cldr": [
+        "one",
+        "other"
+      ],
+      "arms": [
+        "=1",
+        "one",
+        "other"
+      ],
+      "samples": [
+        {
+          "count": 0,
+          "category": "one",
+          "display": "0"
+        },
+        {
+          "count": 1,
+          "category": "one",
+          "display": "1"
+        },
+        {
+          "count": 2,
+          "category": "other",
+          "display": "2"
+        },
+        {
+          "count": 1.5,
+          "category": "other",
+          "display": "1.5"
+        },
+        {
+          "count": 1234567,
+          "category": "other",
+          "display": "1234567"
+        },
+        {
+          "count": -1,
+          "category": "one",
+          "display": "-1"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.run_details.wake.armed_count",
+      "icu": "PASS",
+      "placeholder_types": "PASS",
+      "Cf": 0,
+      "text": "{count, plural, =1 {{count_display} जागृति सक्रिय} one {{count_display} जागृति सक्रिय} other {{count_display} जागृतियाँ सक्रिय}}",
+      "codepoints": 128,
+      "numeric_width_hint": null
+    },
+    {
+      "key": "ui.chat.run_details.wake.cadence_once",
+      "icu": "PASS",
+      "placeholder_types": "PASS",
+      "Cf": 0,
+      "text": "एक बार",
+      "codepoints": 6,
+      "numeric_width_hint": null
+    }
+  ]
+}

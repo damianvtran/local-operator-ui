@@ -72,13 +72,29 @@ const PLACEHOLDER_INSTANCES = new Set([
 
 const MIN_INSTANCE_LENGTH = 6;
 
-/** True when `value` is not an id an audit run could have: empty, too short, or a stock word. */
+/**
+ * True when `value` is not an id an audit run could have: empty, too short, or a
+ * stock word.
+ *
+ * WHY BOTH CASES ARE ALLOWED. Auditors distinguish the runs of one session across
+ * locales by suffixing the run id with the locale (`52583bdfa254-zh-CN`), and this
+ * repo spells region subtags in upper case - BCP 47 does, and the catalogues here
+ * are `zh-CN`, never `zh-cn`. Case carries no identity meaning for a run id: the
+ * substantive guarantees are unaffected, since a row must still name a receipt
+ * whose own `instance` equals this value exactly, whose bytes hash to the files on
+ * disk, and whose verdict matches its findings. What this rule exists to keep out
+ * is a non-id (empty, a stock word like `scratchpad`, or a path-like string), and
+ * an upper-case locale suffix is none of those. Written `/^[a-z0-9_-]+$/` until the
+ * zh-CN lane first used one: the writer refused it as a "placeholder" and the row
+ * could not be bound at all, which read as an evidence problem rather than the
+ * spelling problem it was.
+ */
 export function isPlaceholderInstance(value) {
 	if (typeof value !== "string") return true;
 	const trimmed = value.trim().toLowerCase();
 	return (
 		trimmed.length < MIN_INSTANCE_LENGTH ||
-		!/^[a-z0-9_-]+$/.test(value) ||
+		!/^[A-Za-z0-9_-]+$/.test(value) ||
 		PLACEHOLDER_INSTANCES.has(trimmed)
 	);
 }
@@ -238,11 +254,19 @@ export function validateAuditorEntry(auditor, where, label) {
  */
 export const RECEIPTS_DIR = "i18n/receipts";
 
-/** A `receipt` value the gate can verify against the repo (not `~/...`, not absolute). */
+/** A `receipt` value the gate can verify against the repo (not `~/...`, not absolute).
+ *
+ * WHY BOTH CASES. The leaf is `<instance>.json`, so this charset must accept every
+ * run id `isPlaceholderInstance` accepts, or the writer emits rows naming a receipt
+ * the gate then calls unverifiable. The zh-CN lane's `52583bdfa254-zh-CN` was the
+ * first id with an upper-case region subtag, and each row it touched stayed
+ * `pending` until this rule agreed with the instance rule. Path safety is not
+ * affected: the pattern still allows no slash, no dot and no second directory.
+ */
 export function isRepoReceiptPath(value) {
 	return (
 		typeof value === "string" &&
-		/^i18n\/receipts\/[a-z0-9_-]+\.json$/.test(value)
+		/^i18n\/receipts\/[A-Za-z0-9_-]+\.json$/.test(value)
 	);
 }
 

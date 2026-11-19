@@ -24,17 +24,25 @@ import type {
 	AccountVerification,
 	FirstTopUp,
 } from "@shared/api/radient/types";
+import { t } from "../../../../i18n/messages";
 
 /** Where an unverified account claims its signup grant, when the backend names none. */
 export const RADIENT_VERIFY_URL =
 	"https://console.radienthq.com/dashboard/verification";
+
+/**
+ * The console's root, for the composer callout's `not-cleared` state when the
+ * backend's `tunnel_remedy` names no URL (it normally does: the backend's
+ * `gateway.CONSOLE_URL`).
+ */
+export const RADIENT_CONSOLE_URL = "https://console.radienthq.com";
 
 /** Where credits are bought, when the backend names no `first_topup.topup_url`. */
 export const RADIENT_BILLING_URL =
 	"https://console.radienthq.com/dashboard/billing";
 
 /** The top-up action's own words, shared by the verified and unreadable arms. */
-const TOP_UP_LABEL = "Top up in Radient console";
+const topUpLabel = (): string => t("ui.common.account.top_up");
 
 /**
  * Whether the account still has the signup grant to claim by verifying its
@@ -62,8 +70,10 @@ export function needsEmailVerification(
  */
 export const freeCreditsText = (amount: number | undefined): string => {
 	if (typeof amount !== "number" || !Number.isFinite(amount))
-		return "your free credits";
-	return `$${amount.toFixed(2)} in free credits`;
+		return t("ui.common.account.free_credits_unknown");
+	return t("ui.common.account.free_credits", {
+		amount: `$${amount.toFixed(2)}`,
+	});
 };
 
 /**
@@ -83,8 +93,10 @@ export const formatUsd = (amount: number): string =>
  */
 export const grantAmountText = (amount: number | undefined): string => {
 	if (typeof amount !== "number" || !Number.isFinite(amount))
-		return "your free credits";
-	return `${formatUsd(amount)} in free credits`;
+		return t("ui.common.account.free_credits_unknown");
+	return t("ui.common.account.free_credits", {
+		amount: formatUsd(amount),
+	});
 };
 
 /**
@@ -112,6 +124,14 @@ export function consoleUrl(
 }
 
 /**
+ * The settings route whose section owns the Radient sign-in control.
+ *
+ * Named once here so a surface that can only say "sign in" (a gate, a refusal)
+ * links to the control instead of growing a second sign-in of its own.
+ */
+export const RADIENT_ACCOUNT_SETTINGS_ROUTE = "/settings?section=radient";
+
+/**
  * Open a console page in the reader's browser: the preload bridge in the
  * desktop app (the call `use-low-credits-dialog` also makes), the browser's own
  * `window.open` in Storybook and any non-Electron host.
@@ -135,8 +155,8 @@ export const verifyCopy = (
 ): { sentence: string; action: string } => {
 	if (grant === "pending")
 		return {
-			sentence: `Verify your email to claim ${amountText}. Check your inbox for the link Radient sent.`,
-			action: "Open verification page",
+			sentence: t("ui.common.account.verify_pending", { amount: amountText }),
+			action: t("ui.common.account.open_verification"),
 		};
 	if (grant === "expired")
 		return {
@@ -149,8 +169,8 @@ export const verifyCopy = (
 			 * for. What drops, rather than weakens, is the instruction to check the
 			 * inbox - that mail expired with the window (UX round 1, U1).
 			 */
-			sentence: `The link to claim ${amountText} has expired. Request a new one from the verification page.`,
-			action: "Request a new link",
+			sentence: t("ui.common.account.verify_expired", { amount: amountText }),
+			action: t("ui.common.account.request_new_link"),
 		};
 	/*
 	 * `none` (and the gated-out `claimed`, which never reaches this render): no
@@ -162,9 +182,8 @@ export const verifyCopy = (
 	 * wording promised a claim the state does not support).
 	 */
 	return {
-		sentence:
-			"No signup grant is attached to this account. Open the verification page to check the account.",
-		action: "Open verification page",
+		sentence: t("ui.common.account.verify_none"),
+		action: t("ui.common.account.open_verification"),
 	};
 };
 
@@ -205,12 +224,15 @@ export function outOfCreditsGuidance(
 		return {
 			state: "unknown",
 			lines: [
-				"You're out of credits. If you haven't verified your email yet, verify it to claim free credits and start using Local Operator for free.",
-				"Otherwise, top up in the Radient console.",
+				t("ui.common.account.out_unknown_verify"),
+				t("ui.common.account.out_unknown_top_up"),
 			],
 			links: [
-				{ label: "Open verification page", url: RADIENT_VERIFY_URL },
-				{ label: TOP_UP_LABEL, url: RADIENT_BILLING_URL },
+				{
+					label: t("ui.common.account.open_verification"),
+					url: RADIENT_VERIFY_URL,
+				},
+				{ label: topUpLabel(), url: RADIENT_BILLING_URL },
 			],
 		};
 	}
@@ -228,9 +250,7 @@ export function outOfCreditsGuidance(
 			 */
 			return {
 				state: "unverified",
-				lines: [
-					"You haven't verified your email yet. Open the verification page to check whether free credits are waiting on your account.",
-				],
+				lines: [t("ui.common.account.out_unverified_none")],
 				links: [{ label: action, url: claimUrl }],
 			};
 		}
@@ -240,17 +260,17 @@ export function outOfCreditsGuidance(
 		return {
 			state: "unverified",
 			lines: [
-				`You haven't verified your email yet. Verify to claim ${amountText} and start using Local Operator for free.`,
+				t("ui.common.account.out_unverified_claim", { amount: amountText }),
 				verification.signup_grant === "expired"
-					? "The link you were sent has expired. Request a new one on the verification page."
-					: "Check your inbox for the link Radient sent.",
+					? t("ui.common.account.out_unverified_expired")
+					: t("ui.common.account.out_unverified_inbox"),
 			],
 			links: [{ label: action, url: claimUrl }],
 		};
 	}
 
 	const topUp: FirstTopUp | undefined = verification.first_topup;
-	const lines = ["You're out of credits. Top up in the Radient console."];
+	const lines = [t("ui.common.account.out_verified")];
 	/*
 	 * The bonus line needs BOTH figures and an explicit `false`: an absent
 	 * `first_topup` (older backend) or a partial one must read as "no line", not
@@ -263,7 +283,10 @@ export function outOfCreditsGuidance(
 		Number.isFinite(topUp.minimum_purchase)
 	) {
 		lines.push(
-			`Get an extra ${formatUsd(topUp.bonus_amount)} free on your first top-up of ${formatUsd(topUp.minimum_purchase)} or more.`,
+			t("ui.common.account.first_top_up_bonus", {
+				bonus: formatUsd(topUp.bonus_amount),
+				minimum: formatUsd(topUp.minimum_purchase),
+			}),
 		);
 	}
 	return {
@@ -271,7 +294,7 @@ export function outOfCreditsGuidance(
 		lines,
 		links: [
 			{
-				label: TOP_UP_LABEL,
+				label: topUpLabel(),
 				url: consoleUrl(topUp?.topup_url, RADIENT_BILLING_URL),
 			},
 		],

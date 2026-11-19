@@ -152,6 +152,17 @@ test("chordFromEvent: the event shapes the recorder and dispatcher pass", () => 
 	assert.equal(chordFromEvent(press({ key: "F13", metaKey: true })), null);
 	assert.equal(chordFromEvent(press({ key: "Enter", metaKey: true })), null);
 	assert.equal(chordFromEvent(press({ key: "Escape" })), null);
+	assert.equal(
+		chordFromEvent(
+			press({ key: "®", code: "KeyR", altKey: true, metaKey: true }),
+		),
+		"primary+alt+r",
+	);
+	assert.equal(
+		chordFromEvent(press({ key: "q", code: "KeyA", metaKey: true })),
+		"primary+q",
+		"no-Alt AZERTY keeps event.key rather than the physical US letter",
+	);
 });
 
 test("display: glyph, caps and tokens match the mini view's own tables", () => {
@@ -276,6 +287,16 @@ test("captureRefusal: the four sentences, in precedence order", () => {
 		}),
 		"Already assigned to Open browser.",
 	);
+	assert.equal(
+		captureRefusal(
+			"primary+shift+s",
+			"panel.console",
+			{},
+			"linux",
+			new Map([["primary+shift+s", "Start recording"]]),
+		),
+		"Already assigned to Start recording.",
+	);
 });
 
 test("effectiveChord and buildChordMap: override ?? default, first claim wins", () => {
@@ -378,8 +399,8 @@ test("sanitizeShortcutBindings: junk, unknown ids, reserved chords, duplicates",
 });
 
 // R15: persistence must keep downgrade data without arming browser-owned chords.
-test("all fifteen legacy browser mappings survive dormant, never dispatch, and remain refused", () => {
-	assert.equal(LEGACY_BROWSER_CHORDS.size, 15);
+test("all sixteen formerly assignable mappings survive dormant, never dispatch, and remain refused", () => {
+	assert.equal(LEGACY_BROWSER_CHORDS.size, 16);
 	assert.deepEqual(
 		[...LEGACY_BROWSER_CHORDS],
 		[
@@ -390,6 +411,8 @@ test("all fifteen legacy browser mappings survive dormant, never dispatch, and r
 			"primary+shift+t",
 			"primary+l",
 			...[1, 2, 3, 4, 5, 6, 7, 8, 9].map((digit) => `primary+${digit}`),
+			// Reserved by temporary chats (review R1-4).
+			"primary+shift+n",
 		],
 	);
 	for (const chord of LEGACY_BROWSER_CHORDS) {

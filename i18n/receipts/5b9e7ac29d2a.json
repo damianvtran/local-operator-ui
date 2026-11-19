@@ -1,0 +1,70 @@
+{
+  "auditor": "independent-i18n-reviewer",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "5b9e7ac29d2a",
+  "status": "passed",
+  "namespace": "ui.teamBridge",
+  "sha256": {
+    "en": "8886c3944d34a1107b050b06f9b4f4a95aea24e10d59ad8bc5b1c4e2a8749f40",
+    "fr": "9929ce22f0855dbeb9130ffb5a6515e2922233b6c41cf1939020f69044c75b93",
+    "es": "dc8897569c6ae68205b3a9466e37f975188074ecc618ec93167c131013a540f7",
+    "zh-CN": "b7c07fdf1575b5af81b030e7593e51fe9ee39c10e3c97b67267cb6b8e6c5e873",
+    "ru": "8daae2d40438ca7179ea38f10404bde6c887eea459630cf6a54a48153dba1ad5",
+    "vi": "279543e8357fe03ee8ce7ea369badbbb98adc7452bf6528e57f1a1b9507bb4b9",
+    "ur": "d562135128ee5f135d2124e08c07dee38407060f08a23a6c6876120ed6c856d2",
+    "hi": "6a69a92480a92a74cae35c1d083152e7c7a66e643a3d277100cf059679df2907"
+  },
+  "findings": [],
+  "date": "2026-11-01",
+  "scope": "Delta audit only: ui.teamBridge.replies.legacy_window; unchanged existing namespace values retain prior review, not re-audited.",
+  "provenance": {
+    "auditor_session": "5b9e7ac29d2a",
+    "translator_session": "cd5c74fcddd3",
+    "independent": true,
+    "fallback_used": true,
+    "english_context_sha256": "6bc61f5c6b01c9d900834504c489f3814adf14e2529ddf4559851c0cfae9fd3d",
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "style_guide_sha256": {
+      "en": "c967c91037be79a7b184b3288b8c0326a261e4adae95b7db06d83e96f8ea6ec7",
+      "fr": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226",
+      "es": "77b9227213802d14c74d4298d6b346ad842bbf2a5ca3b9d46fc6144430d26c3e",
+      "zh-CN": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c",
+      "ru": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5",
+      "vi": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888",
+      "ur": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60",
+      "hi": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    },
+    "checks": "Original eight-locale copy audit retained. R2 verifies Chinese deletion of only 请 plus exact unchanged hashes for all other locales/context. No browser, pseudo-localization, RTL-layout or native execution.",
+    "model_provenance": {
+      "configured_model": "anthropic/claude-sonnet-5-5",
+      "host_observed_completion_model": "openai/gpt-6.1-sol",
+      "host_job_id": "95a63d31447d",
+      "source": "Parent-reported host job completion metadata",
+      "disclosure": "Host-observed completion used fallback. Complete per-step provider history is unknown; earlier steps are not all attributed to one provider. No role/default model pins or tools changed.",
+      "metadata_only": true,
+      "supersedes_receipt_sha256": "289eb47fa17db2633de551600e72362b4ed293c8455aab050c49cb853c279a43"
+    }
+  },
+  "remediation": [
+    {
+      "id": "I1",
+      "disposition": "fixed",
+      "locale": "zh-CN",
+      "previous_content_sha256": "a78de82d8c50fa02609328030a4265dc8f0153b29ec74e4735e8ec49513441be",
+      "current_content_sha256": "b7c07fdf1575b5af81b030e7593e51fe9ee39c10e3c97b67267cb6b8e6c5e873",
+      "byte_delta": "Only UTF-8 请 removed; exact pre-remediation full file recovered by reinsertion."
+    }
+  ],
+  "locales_covered": [
+    "fr",
+    "es",
+    "zh-CN",
+    "ru",
+    "vi",
+    "ur",
+    "hi"
+  ]
+}

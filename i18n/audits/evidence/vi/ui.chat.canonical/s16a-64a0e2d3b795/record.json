@@ -1,0 +1,187 @@
+{
+ "schema": 1,
+ "audit_id": "64a0e2d3b795-v3-vi",
+ "auditor": "i18n-auditor",
+ "agent": "i18n-auditor (lopdev team, independent translation audit)",
+ "model": "deepseek/deepseek-flash",
+ "model_provenance": {
+  "actual_audit_model": "deepseek/deepseek-flash",
+  "actual_model_source": "served model reported in the session header of instance 64a0e2d3b795",
+  "fallback_this_round": null
+ },
+ "fallback": "none observed in this session",
+ "independent_from_translator_session": true,
+ "independence": "Independent fresh instance 64a0e2d3b795 (lopdev i18n-auditor). Not the translator (anthropic/claude-sonnet-5-5 per the brief), not either earlier vi auditor of this slice, not the PR coder. No repo edits. No translation/MT API or back-translation was used: verdicts rebuilt from the English source, the en context sidecar, shipped vi usage grepped at file:key, the core glossary and the vi style guide. The v1/v2/v3 history was read only after forming per-key verdicts, and treated as claims to check.",
+ "instance": "64a0e2d3b795-v3-vi",
+ "session": "64a0e2d3b795",
+ "date": "2026-11-11",
+ "audit_date": "2026-11-11",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "locale": "vi",
+ "namespace": "ui.chat.canonical",
+ "key_count": 14,
+ "sha256": {
+  "en": "d6d47d31667fe69448cf408f5a4fecf9948782e850506a6141217585de9db1fd",
+  "vi": "a7929d1bb641cafa0a30d22e3ac7262840f1bb57d33e18232cae4ce739916518"
+ },
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+   "sha256": "d6d47d31667fe69448cf408f5a4fecf9948782e850506a6141217585de9db1fd",
+   "keys": 456
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+   "sha256": "ef8a12dea1835c241af3a166754322ce093af88592ec625036211458a50accac"
+  },
+  "target": {
+   "path": "$LOCAL_OPERATOR_SCRATCHPAD/s16a-drafts/vi-s16a-v3.json",
+   "sha256": "a7929d1bb641cafa0a30d22e3ac7262840f1bb57d33e18232cae4ce739916518",
+   "note": "the audited draft of the 14 new keys; not yet a file in the tree"
+  },
+  "vi_catalogue_on_disk": {
+   "path": "src/i18n/catalogues/vi/ui.chat.canonical.json",
+   "sha256": "325e37d1a3b5e8a0bbdfbf57bbb5ea3208fb377e35407ca989cba6d5e08b6cb8",
+   "keys": 442,
+   "note": "target file BEFORE the 14 keys land; all non-new vi bytes are those audited here"
+  }
+ },
+ "findings": [
+  {
+   "id": "VI-S16A-1",
+   "severity": "NIT",
+   "key": "ui.chat.canonical.image_gen.state.writing_request",
+   "current": "Đang viết yêu cầu…",
+   "problem": "Same model-composition phase this PR also keys as `đang soạn` on the tool row (`tool.composing_sized`/`_empty`; shipped sibling `tool.never_sent_composed` = `đã soạn`, vi/ui.chat.canonical.json:442). Two verbs for one action across two surfaces of the same feature; they can co-occur when the fold header summarises a call the expanded card renders (canonical-transcript.tsx:2565 card replaces the row; :5012 summaryOf still feeds the fold).",
+   "suggested": "Đang soạn yêu cầu…"
+  },
+  {
+   "id": "VI-S16A-2",
+   "severity": "NIT",
+   "key": "ui.chat.canonical.image_gen.state.queue_ahead",
+   "current": "{count, plural, other {{count, number, ::group-off} yêu cầu trước}}",
+   "problem": "Grows a noun the English deliberately omits (`N ahead`, sidecar: \"terse, no noun\") and `yêu cầu trước` is the standard spelling of \"the previous request(s)\" — a momentary wrong parse that only the leading `Đang xếp hàng` disambiguates.",
+   "suggested": "{count, plural, other {{count, number, ::group-off} lượt trước}}  (“2 lượt trước”, using the shipped “lượt” of ui.chat.aside.adopt.queued). Either form may ship."
+  }
+ ],
+ "finding_counts": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 0,
+  "nit": 2
+ },
+ "current_report_verdict": {
+  "status": "clean-with-findings",
+  "unresolved_blocker_major_count": 0,
+  "finding_ids": [
+   "VI-S16A-1",
+   "VI-S16A-2"
+  ]
+ },
+ "scope": {
+  "base": "93a61605b059ada503d75da6e9e38e8ef14e1b67",
+  "kind": "Round-1 independent full audit of the 14 new vi values introduced by 93a61605b (S16a), draft v3 (a7929d1b…); v3 differs from v1 in exactly 4 values",
+  "keys": [
+   "ui.chat.canonical.tool.composing_sized",
+   "ui.chat.canonical.tool.composing_empty",
+   "ui.chat.canonical.tool.queued_sized",
+   "ui.chat.canonical.tool.queued_empty",
+   "ui.chat.canonical.image_gen.state.queued",
+   "ui.chat.canonical.image_gen.state.writing_request",
+   "ui.chat.canonical.image_gen.state.queue_ahead",
+   "ui.chat.canonical.image_gen.state.running",
+   "ui.chat.canonical.image_gen.state.running_batch",
+   "ui.chat.canonical.image_gen.state.done",
+   "ui.chat.canonical.image_gen.state.done_batch",
+   "ui.chat.canonical.image_gen.state.already_finished",
+   "ui.chat.canonical.image_gen.state.failed",
+   "ui.chat.canonical.image_gen.state.failed_batch"
+  ],
+  "not_audited": [
+   "unchanged carried vi keys of ui.chat.canonical (byte-identical, previously audited)",
+   "runtime ICU formatting of the English source beyond the control line",
+   "rendered fit / wrapped-line count (no rendered frame taken)",
+   "RTL (n/a: vi is LTR)",
+   "pseudo-localization",
+   "the other six target locales"
+  ]
+ },
+ "context": {
+  "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+  "sha256": "ef8a12dea1835c241af3a166754322ce093af88592ec625036211458a50accac",
+  "delta_entries_present": true
+ },
+ "reference_repository_revision": "b42471d3935cb7e95d64428af27c32626665f4c0",
+ "reference_hashes": {
+  "i18n/glossary.md": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "i18n/style-guides/vi.md": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888"
+ },
+ "ui_procedure": {
+  "path": "docs/I18N.md",
+  "sha256": "d58ad473701f098b3c2c24343c3a7e7236f22db22cc871016c4cb75f25f41f5c"
+ },
+ "per_key_verdict": {
+  "ui.chat.canonical.tool.composing_sized": "PASS — đang soạn · {size}; imperfective sibling of shipped đã soạn (:442); lower-case terse row, U+00B7 kept",
+  "ui.chat.canonical.tool.composing_empty": "PASS — same state with the size off",
+  "ui.chat.canonical.tool.queued_sized": "PASS — đang xếp hàng · {size}; ongoing queueing sense matches shipped ui.chat.aside.ask_queued; perfective đã xếp hàng (ui.settings.imports.state_queued) would read as completed in a not-started slot",
+  "ui.chat.canonical.tool.queued_empty": "PASS — same state, size off",
+  "ui.chat.canonical.image_gen.state.queued": "PASS — Đang xếp hàng; sentence case, not the perfective Đã xếp hàng that would group with Đã tạo/Đã hoàn tất on the one-line StateLine; no object, so it reads as intransitive 'in the queue', not 'arranging'",
+  "ui.chat.canonical.image_gen.state.writing_request": "PASS with NIT VI-S16A-1",
+  "ui.chat.canonical.image_gen.state.queue_ahead": "PASS with NIT VI-S16A-2; 0 renders '0 yêu cầu trước' = nothing ahead, not a rank; ::group-off honoured at 1000000",
+  "ui.chat.canonical.image_gen.state.running": "PASS — Đang tạo <material>…, one whole message per material, hình ảnh per shipped image_gen.progress",
+  "ui.chat.canonical.image_gen.state.running_batch": "PASS — vi `other` only per style guide §Plurals; # bound to total; total=1 renders naturally",
+  "ui.chat.canonical.image_gen.state.done": "PASS — Đã tạo … matches shipped tool_row.verb.created_*.settled",
+  "ui.chat.canonical.image_gen.state.done_batch": "PASS — Loạt <material>, noun phrase, capitalised per branch, no punctuation",
+  "ui.chat.canonical.image_gen.state.already_finished": "PASS — Đã hoàn tất rồi.; đã…rồi is the standard 'already' frame and carries the English counter-expectation that bare Đã hoàn tất. loses; sentence-final rồi. has shipped precedent (ui.agents.publication.name_taken.owned_body)",
+  "ui.chat.canonical.image_gen.state.failed": "PASS — Không thể tạo <material>.; pro-drop, no blame, full stop",
+  "ui.chat.canonical.image_gen.state.failed_batch": "PASS — Loạt <material> không thành công.; sentence-register failure word per ui.common.errors.media_request, distinct from terse thất bại"
+ },
+ "artifacts": [
+  {
+   "path": "i18n/audits/evidence/vi/ui.chat.canonical/64a0e2d3b795-v3-vi/report.md",
+   "kind": "audit report (prose findings, evidence tables)",
+   "sha256": "073039a8ff470c6030befe9c67fd1a968b1341640e25c0f66cdea29be4a00a86",
+   "retained_now": "/Users/damian/.local-operator/sessions/64a0e2d3b795/scratchpad/vi-s16a-v3-audit/report.md"
+  },
+  {
+   "path": "i18n/audits/evidence/vi/ui.chat.canonical/64a0e2d3b795-v3-vi/mech.mjs",
+   "kind": "mechanical + ICU checker source (READ-ONLY on repo)",
+   "sha256": "34922c02cda98adbff8b325d33fbf127daaf4fa4c6f6195f48cf6d86964d1017",
+   "retained_now": "/Users/damian/.local-operator/sessions/64a0e2d3b795/scratchpad/vi-s16a-v3-audit/mech.mjs"
+  },
+  {
+   "path": "i18n/audits/evidence/vi/ui.chat.canonical/64a0e2d3b795-v3-vi/mech.log",
+   "kind": "execution log of mech.mjs against the audited draft",
+   "sha256": "a4957b5f0b5ebd09f457e94dd4e68e4601f59a923811cfd8111be776996b434e",
+   "retained_now": "/Users/damian/.local-operator/sessions/64a0e2d3b795/scratchpad/vi-s16a-v3-audit/mech.log"
+  },
+  {
+   "path": "i18n/audits/evidence/vi/ui.chat.canonical/64a0e2d3b795-v3-vi/neg.mjs",
+   "kind": "counterfactual control variant of mech.mjs",
+   "sha256": "a70e549d3306c122ab58aa17271706b296e9ced00a0efbe10aa5dac7b7b780e8",
+   "retained_now": "/Users/damian/.local-operator/sessions/64a0e2d3b795/scratchpad/vi-s16a-v3-audit/neg.mjs"
+  },
+  {
+   "path": "i18n/audits/evidence/vi/ui.chat.canonical/64a0e2d3b795-v3-vi/neg.log",
+   "kind": "execution log of the control (injected faults detected)",
+   "sha256": "745e7ed067e0ed546b03a4e1a2349787f83588407a3a24336cba954ff34f8acb",
+   "retained_now": "/Users/damian/.local-operator/sessions/64a0e2d3b795/scratchpad/vi-s16a-v3-audit/neg.log"
+  },
+  {
+   "path": "i18n/audits/evidence/vi/ui.chat.canonical/64a0e2d3b795-v3-vi/neg.json",
+   "kind": "control input: draft copy with 4 injected faults",
+   "sha256": "5837cdbec9159590c88a020438f7709d18eb57348cb644991a0a5c72cc169f37",
+   "retained_now": "/Users/damian/.local-operator/sessions/64a0e2d3b795/scratchpad/vi-s16a-v3-audit/neg.json"
+  },
+  {
+   "path": "i18n/audits/evidence/vi/ui.chat.canonical/64a0e2d3b795-v3-vi/receipt.json",
+   "kind": "ledger receipt candidate (regenerate target_sha256 at landing)",
+   "sha256": null,
+   "retained_now": "/Users/damian/.local-operator/sessions/64a0e2d3b795/scratchpad/vi-s16a-v3-audit/receipt.json"
+  }
+ ],
+ "canonical_record": "i18n/audits/evidence/vi/ui.chat.canonical/64a0e2d3b795-v3-vi/record.json",
+ "execution_limitations": "Source/git-object inspection; my own ICU checker over the draft using the worktree's @formatjs parser + intl-messageformat (mech.log), a counterfactual control (neg.log), and the repo gate scripts/i18n/context-parity.mjs as a control. check-strings.mjs was killed by the resource guard and is NOT claimed as passing. No browser, no rendered frame, no pixel measurement, no CI run. Ledger append not performed (repo read-only for this audit).",
+ "notes": "Retained in this audit dir; intended tracked path is canonical_record. report.md carries the prose, this file the machine-readable verdict."
+}

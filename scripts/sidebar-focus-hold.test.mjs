@@ -56,10 +56,17 @@ const bundle = await build({
 	platform: "node",
 	write: false,
 });
-const { holdFocusedRow, refreshFocusedInside, rowVisibility, ringBand } =
-	await import(
-		`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
-	);
+const {
+	holdFocusedRow,
+	refreshFocusedInside,
+	rowVisibility,
+	ringBand,
+	firstVisibleRow,
+	holdPageAnchor,
+	holdPageFoot,
+} = await import(
+	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+);
 
 /*
  * The DOM the module sees. `document.activeElement instanceof HTMLElement` is a
@@ -439,4 +446,180 @@ test("and with the box unchanged the same re-file is still followed (U1, the hal
 		"inside",
 		"and the cursor is back on screen",
 	);
+});
+
+/*
+ * THE TAG-MODE FOOT'S ANCHOR (issue #1733). Under `Group by › Tag` a foot press
+ * lands rows in groups ABOVE the reader; the scroller refuses Chromium's own
+ * anchoring, so `holdPageAnchor` must put the first visible row back where it
+ * was. The fake is a scroller whose rows are addressed by session id, the key
+ * the hold looks the anchor up by.
+ */
+const pagedScroller = (ids, entityCopies = []) => {
+	const state = { scrollTop: 0, ids: [...ids] };
+	const nodes = new Map();
+	/*
+	 * An expanded agent's child copy of a chat (PR #1747 R3): same
+	 * `data-session-row`, inside `[data-entity]`, drawn ABOVE the list.
+	 */
+	const copies = entityCopies.map((id) => {
+		const copy = new FakeElement();
+		copy.dataset = { sessionRow: id };
+		copy.closest = (selector) => (selector === "[data-entity]" ? {} : null);
+		copy.getBoundingClientRect = () => {
+			const top = 401 - ROW_H * 3 - state.scrollTop;
+			return { top, bottom: top + ROW_H, height: ROW_H };
+		};
+		return copy;
+	});
+	const node = (id) => {
+		if (!nodes.has(id)) {
+			const row = new FakeElement();
+			row.closest = () => null;
+			row.dataset = { sessionRow: id };
+			row.getBoundingClientRect = () => {
+				const top = 401 + state.ids.indexOf(id) * ROW_H - state.scrollTop;
+				return { top, bottom: top + ROW_H, height: ROW_H };
+			};
+			nodes.set(id, row);
+		}
+		return nodes.get(id);
+	};
+	const container = new FakeElement();
+	container.clientTop = 1;
+	container.clientHeight = 5 * ROW_H;
+	Object.defineProperty(container, "scrollTop", {
+		get: () => state.scrollTop,
+		set: (value) => {
+			state.scrollTop = Math.max(0, value);
+		},
+	});
+	container.getBoundingClientRect = () => ({
+		top: 400,
+		bottom: 400 + 5 * ROW_H,
+	});
+	container.querySelectorAll = (selector) => {
+		const id = /data-session-row="([^"]+)"/.exec(selector ?? "")?.[1];
+		const all = [...copies, ...state.ids.map(node)];
+		return id ? all.filter((entry) => entry.dataset.sessionRow === id) : all;
+	};
+	return { container, state };
+};
+globalThis.CSS = { escape: (value) => value };
+
+test("a foot press that grows rows above the reader leaves the first visible row in place", () => {
+	const { container, state } = pagedScroller(
+		Array.from({ length: 20 }, (_, i) => `r${i}`),
+	);
+	container.scrollTop = 10 * ROW_H + 12; // mid-row: r10 partly clipped
+	const anchor = firstVisibleRow(container);
+	assert.deepEqual(anchor, { id: "r10", offset: -12 });
+	// Seven new rows land ABOVE the reader (another tag group grew).
+	state.ids.splice(3, 0, ...Array.from({ length: 7 }, (_, i) => `n${i}`));
+	assert.notEqual(
+		firstVisibleRow(container).id,
+		"r10",
+		"control: without the hold the reader's row slides away",
+	);
+	holdPageAnchor(container, anchor);
+	assert.deepEqual(firstVisibleRow(container), anchor);
+	assert.equal(container.scrollTop, 17 * ROW_H + 12);
+	// A second commit with nothing new is a no-op, and a gone row is not chased.
+	holdPageAnchor(container, anchor);
+	assert.equal(container.scrollTop, 17 * ROW_H + 12);
+	holdPageAnchor(container, { id: "gone", offset: 0 });
+	assert.equal(container.scrollTop, 17 * ROW_H + 12);
+	holdPageAnchor(container, null);
+	assert.equal(container.scrollTop, 17 * ROW_H + 12);
+});
+
+test("the anchor ignores an agent's child copy of the same chat (R3)", () => {
+	const { container, state } = pagedScroller(
+		Array.from({ length: 20 }, (_, i) => `r${i}`),
+		["r10"],
+	);
+	container.scrollTop = 10 * ROW_H;
+	const anchor = firstVisibleRow(container);
+	assert.equal(anchor.id, "r10", "the list's row, not the entity copy");
+	state.ids.splice(2, 0, "n0", "n1");
+	holdPageAnchor(container, anchor);
+	assert.equal(container.scrollTop, 12 * ROW_H, "held to the list copy");
+});
+
+/*
+ * U5/Q2: the foot's half of the press. A fake foot and rows that record focus;
+ * `document.activeElement` is the module's own read.
+ */
+const footRig = ({ footInside = true } = {}) => {
+	const focusable = (attrs) => {
+		const node = new FakeElement();
+		Object.assign(node, attrs);
+		node.closest = () => null;
+		node.isConnected = true;
+		node.focus = () => {
+			document.activeElement = node;
+		};
+		return node;
+	};
+	const foot = focusable({
+		scrolled: 0,
+		scrollIntoView() {
+			this.scrolled += 1;
+		},
+		getBoundingClientRect: () =>
+			footInside ? { top: 450, bottom: 478 } : { top: 900, bottom: 928 },
+	});
+	const rows = [focusable({ id: "a" }), focusable({ id: "b" })];
+	const state = { foot };
+	const container = new FakeElement();
+	container.clientTop = 1;
+	container.clientHeight = 5 * ROW_H;
+	container.getBoundingClientRect = () => ({ top: 400, bottom: 560 });
+	container.querySelector = () => state.foot;
+	container.querySelectorAll = () => rows;
+	return { container, foot, rows, state };
+};
+
+test("a keyboard foot press keeps the focused foot in view (U5)", () => {
+	const outside = footRig({ footInside: false });
+	document.activeElement = outside.foot;
+	assert.equal(holdPageFoot(outside.container, true, outside.foot), null);
+	assert.equal(
+		outside.foot.scrolled,
+		1,
+		"scrolled the foot back into the clip",
+	);
+	const inside = footRig();
+	document.activeElement = inside.foot;
+	holdPageFoot(inside.container, true, inside.foot);
+	assert.equal(inside.foot.scrolled, 0, "already visible: no scroll");
+	const pointer = footRig({ footInside: false });
+	document.activeElement = pointer.foot;
+	holdPageFoot(pointer.container, false, pointer.foot);
+	assert.equal(
+		pointer.foot.scrolled,
+		0,
+		"a pointer press keeps the rows still",
+	);
+});
+
+test("a pressed control that unmounts hands focus on, never to body (Q2)", () => {
+	const rig = footRig();
+	const pressed = rig.foot;
+	// The press exhausted the catalogue: the foot unmounts under focus.
+	rig.state.foot = null;
+	pressed.isConnected = false;
+	document.activeElement = globalThis.document.body = new FakeElement();
+	const target = holdPageFoot(rig.container, false, pressed);
+	assert.equal(target, rig.rows[1], "the last chat row");
+	assert.equal(document.activeElement, rig.rows[1]);
+	// Control: a reader who clicked elsewhere is never pulled back.
+	const other = footRig();
+	other.state.foot = null;
+	const elsewhere = new FakeElement();
+	elsewhere.isConnected = true;
+	document.activeElement = elsewhere;
+	const stillMounted = footRig().foot;
+	assert.equal(holdPageFoot(other.container, false, stillMounted), null);
+	assert.equal(document.activeElement, elsewhere);
 });

@@ -3,6 +3,9 @@ import { unlink, writeFile } from "node:fs/promises";
 import { test } from "node:test";
 import { build } from "esbuild";
 
+const PRIMARY_CAUSE_CLASS_SEPARATOR = /\s+/;
+const LONG_CAUSE_PREFIX = /^could not persist update recovery:/;
+
 /**
  * Contract checks for the lifetime of the update affirmation (QA round 1, Q1).
  *
@@ -262,9 +265,23 @@ export const createElement = (type, props, ...children) => ({
 			: {}),
 	},
 });
-export const jsx = createElement;
-export const jsxs = createElement;
-export const jsxDEV = createElement;
+/*
+ * THE THIRD ARGUMENT OF THE AUTOMATIC RUNTIME IS THE KEY, NOT A CHILD (issue
+ * #1762). jsx(type, props, key) and createElement(type, props, ...children) are
+ * different contracts, and aliasing the second as the first made every keyed
+ * element render its KEY as its only child: a sentence that wrapped a token in
+ * <bdi key={part.at}> read "0" instead of the token's text, and the cases below
+ * called a correct panel blank. The key is recorded on the element the way React
+ * records it, and children stay wherever the runtime put them.
+ */
+const automatic = (type, props, key) => {
+	const element = createElement(type, props);
+	if (key !== undefined) element.key = key;
+	return element;
+};
+export const jsx = automatic;
+export const jsxs = automatic;
+export const jsxDEV = automatic;
 export default { useState, useEffect, useLayoutEffect, useInsertionEffect, useRef, useCallback, useMemo, useSyncExternalStore, useDebugValue, createElement, Fragment, version, jsx, jsxs, jsxDEV, forwardRef, memo, createContext, useContext, createRef, cloneElement, isValidElement, Children, useId, useImperativeHandle, startTransition, useDeferredValue, useTransition };`;
 
 const jsxRuntimeStandIn = `export { createElement, jsx, jsxs, jsxDEV, Fragment } from "react";`;
@@ -292,11 +309,18 @@ const bundle = await build({
 			*/
 			export { UpdateNotification } from "./src/renderer/src/shared/components/common/update-notification";
 			/*
+			 * THE PRODUCER'S OWN COMPOSER, so the panel case drives the sentence the app
+			 * would send rather than a paraphrase a fixture could drift from. The module
+			 * imports nothing at runtime (its failure vocabulary is a type-only import),
+			 * so this joins the bundle without dragging the main process in.
+			 */
+			export { serverUpdateFailureSentence } from "./src/main/server-update-copy";
+			/*
 			 * The failure panel's own container, so the sentence UNDER TEST is read from
 			 * the panel rather than from whatever else on screen happens to say it -
 			 * which surface holds it is the whole attribution question (R2-1, QA Q2).
 			 */
-			export { UpdateContainer } from "./src/renderer/src/shared/components/common/update-notification";
+			export { CommandBlock, InstallerOutput, UpdateContainer } from "./src/renderer/src/shared/components/common/update-notification";
 			/*
 			 * The alert that carries an update-path failure's sentence. Exported so the
 			 * harness can EXPAND it (below) rather than treat it as an opaque element:
@@ -412,6 +436,32 @@ export const useDeferredUpdatesStore = () => ({
 				stub("react/jsx-runtime", jsxRuntimeStandIn);
 				stub("react-dom", reactDomStandIn);
 				stub("react-dom/client", reactDomStandIn);
+				/*
+				 * The disclosure's tooltip pulls the `radix-ui` aggregate, whose password
+				 * fields import `flushSync` from react-dom. This harness has no DOM, so the
+				 * whole primitive is substituted with pass-through elements: the case under
+				 * test is the disclosure's collapsed state, not Radix's positioning.
+				 */
+				builder.onResolve({ filter: /^radix-ui$/ }, () => ({
+					path: "radix",
+					namespace: "affirmation-radix",
+				}));
+				builder.onLoad(
+					{ filter: /.*/, namespace: "affirmation-radix" },
+					() => ({
+						contents: `const passthrough = ({ children }) => children;
+const empty = () => null;
+export const Tooltip = {
+	Provider: passthrough,
+	Root: passthrough,
+	Trigger: passthrough,
+	Portal: passthrough,
+	Content: passthrough,
+	Arrow: empty,
+};`,
+						loader: "js",
+					}),
+				);
 			},
 		},
 	],
@@ -578,8 +628,11 @@ const {
 	UpdateErrorAlert,
 	PanelDetails,
 	Button,
+	CommandBlock,
+	InstallerOutput,
 	UpdateContainer,
 	UpdateNotification,
+	serverUpdateFailureSentence,
 	useUpdateNoticeStore,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
@@ -709,17 +762,25 @@ function linesOf(value) {
 }
 
 /**
- * Every string under a subtree, joined - what a message actually says.
+ * Every string under a subtree, concatenated - what a message actually says.
  *
  * The failure alert renders two lines (a sentence and the machine's own words),
  * so a message is a subtree rather than one string child.
+ *
+ * WHY THE JOIN IS `""` AND NOT `" "` (issue #1762). A DOM concatenates sibling
+ * text nodes with NOTHING between them: `<p>its <bdi>.lop-source</bdi> still</p>`
+ * says "its .lop-source still", not "its  .lop-source  still". Joining with a
+ * space put a separator between siblings that no reader ever sees, so the harness
+ * reported a double space the moment a sentence gained an inline element - the
+ * isolate this fix adds around a backticked token - and passed only for
+ * sentences that happened to be one text node.
  */
 function textOf(value) {
 	if (typeof value === "string" || typeof value === "number") {
 		return String(value);
 	}
 	if (Array.isArray(value)) {
-		return value.map(textOf).filter(Boolean).join(" ");
+		return value.map(textOf).filter(Boolean).join("");
 	}
 	if (value && typeof value === "object" && value.props) {
 		return textOf(value.props.children);
@@ -914,9 +975,18 @@ function mountNotification({ autoCheck = false, slowWaitHintMs } = {}) {
 	return handle;
 }
 
-/** Whether the panel is carrying this exact line of copy. */
+/**
+ * Whether the panel is carrying this exact line of copy.
+ *
+ * Read as a DOM reads it (issue #1762): the sentence is no longer always one
+ * string child. Since the bidi fix it can hold a token inside an inline isolate
+ * (`<bdi dir="ltr">`), so "this line" has to mean the subtree's text, which is
+ * what a reader sees - still an EXACT match, never a substring.
+ */
 function showsText(handle, text) {
-	return walk(handle.tree).some((node) => node.props?.children === text);
+	return walk(handle.tree).some(
+		(node) => textOf(node.props?.children) === text,
+	);
 }
 
 /**
@@ -927,9 +997,15 @@ function showsText(handle, text) {
  * part of a longer paragraph", which is what the R3-2 assertions need.
  */
 function allCopy(handle) {
+	/*
+	 * TEXT per node rather than "children that are a string" (issue #1762): a
+	 * sentence with an inline isolate is children of mixed kinds, and a helper that
+	 * skipped it would make every "the panel does not say X" case below pass by
+	 * reading nothing.
+	 */
 	return walk(handle.tree)
-		.filter((node) => typeof node.props?.children === "string")
-		.map((node) => node.props.children);
+		.map((node) => textOf(node.props?.children))
+		.filter((value) => value !== "");
 }
 
 /**
@@ -993,10 +1069,43 @@ function failurePanelReason(handle) {
 		(node) => node.type === UpdateContainer && node.props?.tone === "failed",
 	);
 	if (!failed) return null;
+	/*
+	 * The sentence paragraph is the first `<p>` in the container, and its words may
+	 * sit inside an inline isolate rather than directly as a string child (issue
+	 * #1762), so the paragraph is found by having text at all - not by the shape of
+	 * its children.
+	 */
 	const paragraph = walk(failed.props.children).find(
-		(node) => node.type === "p" && typeof node.props?.children === "string",
+		(node) => node.type === "p" && textOf(node.props?.children) !== "",
 	);
-	return paragraph?.props.children ?? null;
+	return paragraph ? textOf(paragraph.props.children) : null;
+}
+
+/**
+ * Step metadata precedes the cause. Read the failed panel's direct text-body
+ * paragraph, not its first paragraph or text inside the record disclosure.
+ */
+function primaryFailureCauseNode(handle) {
+	const failed = walk(handle.tree).find(
+		(node) => node.type === UpdateContainer && node.props?.tone === "failed",
+	);
+	if (!failed) return null;
+	return (
+		[failed.props.children]
+			.flat(Number.POSITIVE_INFINITY)
+			.find(
+				(node) =>
+					node?.type === "p" &&
+					(node.props?.className ?? "")
+						.split(PRIMARY_CAUSE_CLASS_SEPARATOR)
+						.includes("text-body"),
+			) ?? null
+	);
+}
+
+function primaryFailureCause(handle) {
+	const paragraph = primaryFailureCauseNode(handle);
+	return paragraph ? textOf(paragraph.props.children) : null;
 }
 
 /**
@@ -1012,9 +1121,10 @@ function failedPanelCopy(handle) {
 		(node) => node.type === UpdateContainer && node.props?.tone === "failed",
 	);
 	if (!failed) return null;
+	// Text per node, for the same reason `allCopy` reads it that way (issue #1762).
 	return walk(failed.props.children)
-		.filter((node) => typeof node.props?.children === "string")
-		.map((node) => node.props.children)
+		.map((node) => textOf(node.props?.children))
+		.filter((value) => value !== "")
 		.join(" ");
 }
 
@@ -1142,6 +1252,399 @@ test("backend-update-error takes the in-flight panel down and says why", () => {
 	// dismissal that defers the release.
 	control(handle, "Try again");
 	control(handle, "Update later");
+});
+
+/**
+ * THE INCIDENT THE STRUCTURED CAUSE EXISTS FOR (2026-10-24).
+ *
+ * The updater exited 1 with `fresh PyPI latest is 0.88.4, not 0.89.0` on line 7 of
+ * its stderr, behind two startup advisories long enough to consume
+ * `installDiagnosisLines`' 800-character budget. The panel therefore showed the
+ * advisories and no cause. These cases drive the shipped panel with the producer's
+ * composed sentence for those facts and assert the cause is what the reader sees.
+ */
+const INCIDENT_STARTUP_OUTPUT = [
+	"2026-10-24 16:42:26,743 - WARNING - /Users/operator/.local-operator/config.yml lost 1 setting(s) since the last launch: subagents.models.hi",
+	"2026-10-24 16:42:27,154 - WARNING - the LOADED page of the project store carries 2 rows named 'minerva-assigned-mr-release-20261013'",
+].join("\n");
+const STRUCTURED_FAILURE = {
+	step: "publish",
+	kind: "publication",
+	exitCode: 1,
+	error: "fresh PyPI latest is 0.88.4, not 0.89.0; retry lop update",
+	target: "0.89.0",
+	installVersion: "0.88.4",
+	runningVersion: "0.88.4",
+	restartable: false,
+	appOwnedEnvironment: false,
+	command: "lop update",
+};
+
+/** The legacy sentence every structured payload still carries, unused by its arm. */
+const legacySentence = () =>
+	serverUpdateFailureSentence({
+		rebuildRoute: false,
+		ran: true,
+		exitCode: 1,
+		groupSurvived: false,
+		diagnosis: INCIDENT_STARTUP_OUTPUT,
+		target: "0.89.0",
+		after: "0.88.4",
+		before: "0.88.4",
+		updateCommand: "lop update",
+	});
+
+test("a structured failure is a cause line and a remedy, with the machine record collapsed", () => {
+	const handle = mountNotification();
+	startServerUpdate(handle);
+
+	updater.emit("backend-update-error", {
+		message: legacySentence(),
+		phase: "update",
+		installerOutput: INCIDENT_STARTUP_OUTPUT,
+		failure: STRUCTURED_FAILURE,
+	});
+	handle.render();
+
+	assert.equal(showsText(handle, "Updating server"), false);
+	assert.ok(
+		showsText(handle, "The server update didn't finish"),
+		JSON.stringify(visible(handle)),
+	);
+	// D1/U4: the plain-language cause is its own primary-ink line, not a clause
+	// 16 words into a paragraph, and it is composed from the translated keys.
+	assert.ok(showsText(handle, "Publish step"));
+	assert.ok(showsText(handle, "Version 0.89.0 is not on PyPI yet."));
+	assert.ok(
+		showsText(
+			handle,
+			"The release is still publishing; try again in a few minutes.",
+		),
+	);
+	assert.ok(showsText(handle, "Nothing was restarted."));
+	/*
+	 * U6/D3: no command, exit status or second retry instruction in the primary
+	 * block. The updater's verbatim line lives in the raw record.
+	 */
+	const copy = allText(handle);
+	assert.doesNotMatch(copy, /lop update/);
+	assert.doesNotMatch(copy, /exited 1/);
+	assert.doesNotMatch(copy, /retry lop update/);
+	// The raw block survives as the fallback record, handed the stream head.
+	const outputBlock = walk(handle.tree).find(
+		(node) => node.type === InstallerOutput,
+	);
+	assert.ok(outputBlock, "the raw output must keep its own block");
+	assert.match(outputBlock.props.output, /config\.yml lost 1 setting\(s\)/);
+	control(handle, "Try again");
+	control(handle, "Update later");
+	assert.equal(dangerToasts(handle).length, 0);
+});
+
+test("the serve arm offers a restart, not a repeat install (U1)", () => {
+	const handle = mountNotification();
+	startServerUpdate(handle);
+
+	updater.emit("backend-update-error", {
+		message: legacySentence(),
+		phase: "update",
+		installerOutput: null,
+		failure: {
+			step: "services",
+			kind: "serve",
+			exitCode: 1,
+			error: "the server did not move onto 0.89.0",
+			target: "0.89.0",
+			installVersion: "0.89.0",
+			runningVersion: "0.88.4",
+			restartable: true,
+			appOwnedEnvironment: true,
+			command: null,
+		},
+	});
+	handle.render();
+
+	assert.ok(
+		showsText(handle, "The server is still on the old version"),
+		"the heading must not say the update did not install (F3)",
+	);
+	assert.ok(
+		showsText(
+			handle,
+			"The install finished, but the server is still running 0.88.4.",
+		),
+	);
+	assert.ok(
+		showsText(handle, "The app started this server, so it can restart it now."),
+	);
+	assert.equal(
+		showsText(handle, "Nothing was restarted."),
+		false,
+		"the install landed, so the consequence is false (F1)",
+	);
+	assert.equal(showsText(handle, "Try again"), false);
+	control(handle, "Restart the server").props.onClick();
+	handle.render();
+	// The restart press re-enters the app's own managed update path at the version
+	// already on disk, which is how the skew panel performs the same restart.
+	assert.equal(updater.backendUpdates.length, 2);
+	assert.equal(updater.backendUpdates[1].targetVersion, "0.89.0");
+});
+
+test("a serve failure the app may not restart names the owning account instead", () => {
+	const handle = mountNotification();
+	startServerUpdate(handle);
+	updater.emit("backend-update-error", {
+		message: legacySentence(),
+		phase: "update",
+		installerOutput: null,
+		failure: {
+			step: "services",
+			kind: "serve",
+			exitCode: 1,
+			error: "the server did not move onto 0.89.0",
+			target: "0.89.0",
+			installVersion: "0.89.0",
+			runningVersion: "0.88.4",
+			restartable: false,
+			appOwnedEnvironment: false,
+			command: null,
+		},
+	});
+	handle.render();
+	assert.ok(
+		showsText(
+			handle,
+			"This server was not started by the app, so restart it from the account that owns this install.",
+		),
+	);
+	assert.equal(showsText(handle, "Restart the server"), false);
+	assert.equal(
+		showsText(handle, "Try again"),
+		false,
+		"a repeat install is not the remedy this arm names",
+	);
+	control(handle, "Update later");
+});
+
+test("a serve failure with no running reading does not borrow the new version (R2-F2)", () => {
+	const handle = mountNotification();
+	startServerUpdate(handle);
+	updater.emit("backend-update-error", {
+		message: legacySentence(),
+		phase: "update",
+		installerOutput: null,
+		failure: {
+			step: "services",
+			kind: "serve",
+			exitCode: 1,
+			error: "the server did not move onto 0.89.0",
+			target: "0.89.0",
+			installVersion: "0.89.0",
+			runningVersion: null,
+			restartable: false,
+			appOwnedEnvironment: false,
+			command: null,
+		},
+	});
+	handle.render();
+	assert.ok(
+		showsText(
+			handle,
+			"The install finished, but the server did not move onto it.",
+		),
+	);
+	assert.equal(
+		showsText(handle, "still running 0.89.0"),
+		false,
+		"the version that landed is not the version that is running",
+	);
+});
+
+test("the stopped-group safety clause rides the structured failure (R2-F3)", () => {
+	const handle = mountNotification();
+	startServerUpdate(handle);
+	updater.emit("backend-update-error", {
+		message: legacySentence(),
+		phase: "update",
+		installerOutput: INCIDENT_STARTUP_OUTPUT,
+		failure: {
+			...STRUCTURED_FAILURE,
+			groupSurvived: true,
+		},
+	});
+	handle.render();
+	assert.ok(
+		showsText(
+			handle,
+			"The updater was stopped; something it started may still be replacing the install.",
+		),
+	);
+});
+
+test("the unknown arm shows the cause it was given and still points at the record", () => {
+	const handle = mountNotification();
+	startServerUpdate(handle);
+	/*
+	 * `installerOutput` and `error` are DELIBERATELY THE SAME SENTENCE here: the record
+	 * carries it whichever branch renders, so a whole-tree match would pass even while
+	 * the panel printed the old caption. The assertions below separate the two carriers.
+	 */
+	updater.emit("backend-update-error", {
+		message: legacySentence(),
+		phase: "update",
+		installerOutput: "unexpected state",
+		failure: {
+			step: "install",
+			kind: "unknown",
+			exitCode: 1,
+			error: "unexpected state",
+			target: "0.89.0",
+			installVersion: "0.88.4",
+			runningVersion: "0.88.4",
+			restartable: false,
+			appOwnedEnvironment: false,
+			command: null,
+		},
+	});
+	handle.render();
+	/*
+	 * THE PRIMARY LINE IS THE CAUSE (this case previously asserted the opposite).
+	 *
+	 * U3 dropped the cause because the remedy sentence began "The updater did not name a
+	 * cause." - true only for a block with no sentence, which the contract makes
+	 * impossible for `unknown`. `showsText` matches a NODE'S OWN TEXT exactly, so the
+	 * raw record (which carries the same string as a prop) cannot satisfy it: only a line
+	 * the panel prints can.
+	 */
+	assert.ok(
+		showsText(handle, "unexpected state"),
+		"the panel must print the cause the updater named",
+	);
+	assert.doesNotMatch(
+		failedPanelCopy(handle) ?? "",
+		/did not name a cause/,
+		"the false caption must not survive beside a real cause",
+	);
+	// The next step stays reachable...
+	control(handle, "Try again");
+	// ...and so does the machine record, which is the only surface that owns the raw text.
+	const record = walk(handle.tree).find(
+		(node) => node.type === InstallerOutput,
+	);
+	assert.ok(record, "the collapsed record must still be reachable");
+	assert.match(
+		String(record.props.output ?? ""),
+		/unexpected state/,
+		"the record still carries the installer's own sentence",
+	);
+});
+
+test("the refused arm gives a terminal route and no unconditional retry (U2)", () => {
+	const handle = mountNotification();
+	startServerUpdate(handle);
+	updater.emit("backend-update-error", {
+		message: legacySentence(),
+		phase: "update",
+		installerOutput: "lop-update: REFUSING to release a stale ref",
+		failure: {
+			step: "check",
+			kind: "refused",
+			exitCode: 1,
+			error: "lop-update: REFUSING to release a stale ref",
+			target: "0.89.0",
+			installVersion: "0.88.4",
+			runningVersion: "0.88.4",
+			restartable: false,
+			appOwnedEnvironment: true,
+			command: "lop-update",
+		},
+	});
+	handle.render();
+	assert.ok(
+		showsText(
+			handle,
+			"Bring this machine's checkout up to date, then try again.",
+		),
+	);
+	assert.equal(
+		showsText(handle, "Try again"),
+		false,
+		"the panel must not invite the refusal again",
+	);
+	const commandBlock = walk(handle.tree).find(
+		(node) => node.type === CommandBlock,
+	);
+	assert.ok(commandBlock, "the terminal escape hatch must be reachable");
+	assert.equal(commandBlock.props.command, "lop-update");
+	control(handle, "Update later");
+});
+
+test("the consequence is suppressed where the install did land (F1)", () => {
+	for (const step of ["services", "report"]) {
+		const handle = mountNotification();
+		startServerUpdate(handle);
+		updater.emit("backend-update-error", {
+			message: legacySentence(),
+			phase: "update",
+			installerOutput: null,
+			failure: {
+				step,
+				kind: "unknown",
+				exitCode: 1,
+				error: "unexpected state",
+				target: "0.89.0",
+				installVersion: "0.89.0",
+				runningVersion: "0.88.4",
+				restartable: false,
+				appOwnedEnvironment: false,
+				command: null,
+			},
+		});
+		handle.render();
+		assert.equal(
+			showsText(handle, "Nothing was restarted."),
+			false,
+			`${step}: the install landed, so the consequence is false`,
+		);
+	}
+});
+
+test("an older payload without a failure block keeps today's copy and does not crash", () => {
+	const handle = mountNotification();
+	startServerUpdate(handle);
+
+	const legacy = serverUpdateFailureSentence({
+		rebuildRoute: false,
+		ran: true,
+		exitCode: 1,
+		groupSurvived: false,
+		diagnosis: INCIDENT_STARTUP_OUTPUT,
+		target: "0.89.0",
+		after: "0.88.4",
+		before: "0.88.4",
+		updateCommand: "lop update",
+	});
+	// No `failure` field at all: the shape every build that predates the contract
+	// sends.
+	updater.emit("backend-update-error", {
+		message: legacy,
+		phase: "update",
+		installerOutput: INCIDENT_STARTUP_OUTPUT,
+	});
+	handle.render();
+
+	assert.ok(
+		showsText(handle, legacy),
+		`the older sentence must render unchanged: ${legacy}`,
+	);
+	assert.equal(
+		showsText(handle, "It stopped at"),
+		false,
+		"an older backend must not gain a cause clause it cannot back with data",
+	);
+	assert.equal(dangerToasts(handle).length, 0);
+	control(handle, "Try again");
 });
 
 test("a resolved false with no event still leaves the panel and says something", async () => {
@@ -1278,6 +1781,41 @@ test("a check-time failure does not end the check or claim an attempt", () => {
 	const toasts = dangerToasts(handle);
 	assert.equal(toasts.length, 1, JSON.stringify(visible(handle)));
 	assert.match(toasts[0].text, /Unable to determine backend version/);
+});
+
+/**
+ * A keyed update-service sentence reaches the toast AS the sentence, in a
+ * language the English-tuned classifier cannot read (PR #1760, design round 1,
+ * D1). The zh-CN refusal below has no space-separated words, so
+ * `isAuthoredSentence` called it machine output and the toast headlined "the
+ * update check could not finish" over a refusal that was no check. The producer
+ * now says the message is its own (`authored`), and the toast carries that flag
+ * from the report to `updateErrorCopy`. The unmarked twin is the negative
+ * control: the same text without the mark is still demoted, so this case fails
+ * if the wiring (not just the copy function, which
+ * `update-authored-copy.test.mjs` covers) is dropped.
+ */
+test("a producer-marked sentence is the toast's sentence even when the classifier cannot read the language", () => {
+	const zh = "服务器更新已在运行。请等待其完成后再开始新的更新。";
+	const incomplete = /could not finish/i;
+
+	const marked = mountNotification();
+	updater.emit("backend-update-error", {
+		...checkReport(zh),
+		authored: "message",
+	});
+	marked.render();
+	const [toast] = dangerToasts(marked);
+	assert.ok(toast, JSON.stringify(visible(marked)));
+	assert.ok(toast.text.includes(zh), toast.text);
+	assert.equal(incomplete.test(toast.text), false, toast.text);
+
+	const unmarked = mountNotification();
+	updater.emit("backend-update-error", checkReport(zh));
+	unmarked.render();
+	const [demoted] = dangerToasts(unmarked);
+	assert.ok(demoted, JSON.stringify(visible(unmarked)));
+	assert.match(demoted.text, incomplete, "control: unmarked is demoted");
 });
 
 /**
@@ -1692,9 +2230,9 @@ test("readings that agree raise no skew notice, and readings that differ do", ()
 	assert.ok(
 		copy.some(
 			(text) =>
-				/offline while it comes back - usually a few seconds, up to half a minute/.test(
+				/offline while it comes back \(usually a few seconds, up to half a minute\)/.test(
 					text,
-				) && /Nothing in flight is cut off/.test(text),
+				) && /Running sessions aren't interrupted/.test(text),
 		),
 		`the cost of the press must be stated before it: ${JSON.stringify(copy)}`,
 	);
@@ -2172,7 +2710,7 @@ test("the offer names the restart cost only where the app may restart the server
 		/keeps running the old build until it restarts/,
 		adoptedCopy,
 	);
-	assert.match(adoptedCopy, /nothing in flight is dropped/, adoptedCopy);
+	assert.match(adoptedCopy, /Running sessions aren't interrupted/, adoptedCopy);
 	/*
 	 * The plan's own sentence is not what an adopted machine is told: the two
 	 * describe opposite things about the server the reader is using, and the whole
@@ -2390,7 +2928,7 @@ test("the in-flight install panel is restart-neutral on both arms", () => {
 	assert.match(ownedCopy, /Rolling the server onto/, ownedCopy);
 	assert.match(
 		ownedCopy,
-		/Nothing in flight is cut off - the turns running on this machine keep running/,
+		/Running sessions aren't interrupted\. Rolling the server onto/,
 		ownedCopy,
 	);
 	assert.equal(
@@ -2412,7 +2950,7 @@ test("the in-flight install panel is restart-neutral on both arms", () => {
 	assert.match(adoptedCopy, /Rolling the server onto/, adoptedCopy);
 	assert.match(
 		adoptedCopy,
-		/can't be interrupted once it has started/,
+		/can't be stopped once it has started/,
 		adoptedCopy,
 	);
 	assert.equal(
@@ -3098,6 +3636,368 @@ test("Q1: an offer does not dismiss a message that is not the affirmation", asyn
 		["danger"],
 		"an unrelated offer must not close an error toast",
 	);
+});
+
+/*
+ * THE UNCLASSIFIED FAILURE MUST NOT BURY THE CAUSE IT WAS HANDED (red regression).
+ *
+ * Why this is here: `update.report.v1` hands the panel a machine block whose `error`
+ * is one sentence in the updater's own words. When the backend cannot name a kind
+ * this build maps (the observed one: "could not persist update recovery: update
+ * recovery records are at capacity; inspect pending operations", `detail` empty),
+ * the contract's parser keeps that sentence - `failureFromPayload` refuses a block
+ * whose `error` is empty, so an `unknown` kind always arrives carrying a real cause.
+ * The panel then rendered only the remedy sentence, whose opening clause is "The
+ * updater did not name a cause.", so the one fact the user needed was replaced by a
+ * statement that was not true.
+ *
+ * What this pins, and what it deliberately does not:
+ * - the panel carries the updater's sentence (its head, bounded - see the oversized
+ *   case), and does NOT claim no cause was named beside it;
+ * - a known kind keeps rendering its TRANSLATED cause, never the raw sentence: the
+ *   fix must not leak updater English under a translated heading;
+ * - a report with no machine block keeps the legacy surface, and an empty `error`
+ *   has no cause to show - neither may render "undefined" into the panel.
+ *
+ * This is not pixel evidence: it asserts the element tree the component returns,
+ * which is the boundary the sibling cases in this file already use. Rendered frames
+ * are the design/QA round's job.
+ */
+const CAPACITY_ERROR =
+	"could not persist update recovery: update recovery records are at capacity; inspect pending operations";
+
+/** The block the backend emitted for the capacity failure, `detail` empty as sent. */
+const UNKNOWN_CAPACITY_FAILURE = {
+	step: "environment",
+	kind: "unknown",
+	id: undefined,
+	exitCode: 1,
+	error: CAPACITY_ERROR,
+	detail: "",
+	target: "0.106.1",
+	installVersion: "0.106.0",
+	runningVersion: "0.106.0",
+	restartable: false,
+	appOwnedEnvironment: false,
+	command: null,
+};
+
+test("an unclassified failure shows the cause the updater named", () => {
+	const handle = mountNotification();
+	startServerUpdate(handle);
+
+	updater.emit("backend-update-error", {
+		message: legacySentence(),
+		phase: "update",
+		installerOutput: null,
+		failure: UNKNOWN_CAPACITY_FAILURE,
+	});
+	handle.render();
+
+	const panel = failedPanelCopy(handle);
+	assert.ok(panel, "the failure panel must be up");
+	assert.match(
+		allText(handle),
+		/update recovery records are at capacity/,
+		"the updater named this cause, so the panel has to carry it",
+	);
+	assert.doesNotMatch(
+		panel,
+		/did not name a cause/,
+		"the panel cannot both show a cause and say none was named",
+	);
+	// The next step survives the fix, and nothing here may read as success.
+	control(handle, "Try again");
+	assert.equal(successToasts(handle).length, 0);
+});
+
+test("a long first-line cause is bounded at 240 characters in its primary paragraph", () => {
+	const handle = mountNotification();
+	startServerUpdate(handle);
+	const marker = "SECRET-MARKER-9f3a";
+	const long = `could not persist update recovery: ${"y".repeat(1200)} ${marker} token=abc123\nSECOND-LINE-MARKER`;
+
+	updater.emit("backend-update-error", {
+		message: legacySentence(),
+		phase: "update",
+		installerOutput: null,
+		failure: { ...UNKNOWN_CAPACITY_FAILURE, error: long },
+	});
+	handle.render();
+
+	const primary = primaryFailureCause(handle);
+	assert.equal(
+		primary,
+		`${long.slice(0, 239)}\u2026`,
+		"the primary paragraph itself is bounded, not merely the dump's second line",
+	);
+	assert.equal(primary.length, 240);
+	assert.ok(primary.endsWith("\u2026"));
+	const text = allText(handle);
+	assert.match(text, /could not persist update recovery/);
+	assert.ok(
+		!text.includes("SECOND-LINE-MARKER"),
+		"dump lines still stay out of the cause paragraph",
+	);
+	assert.ok(
+		!text.includes(marker),
+		"a cause bound must stop before the tail of a 1.3 kB sentence",
+	);
+	assert.ok(
+		!text.includes("token=abc123"),
+		"the tail must not reach the panel",
+	);
+	assert.ok(
+		!/undefined|null/.test(text),
+		"a bounded cause never prints a placeholder",
+	);
+});
+
+test("a known kind still shows its translated cause, never the updater's sentence", () => {
+	const handle = mountNotification();
+	startServerUpdate(handle);
+
+	updater.emit("backend-update-error", {
+		message: legacySentence(),
+		phase: "update",
+		installerOutput: null,
+		failure: STRUCTURED_FAILURE,
+	});
+	handle.render();
+
+	const panel = failedPanelCopy(handle);
+	assert.ok(panel);
+	assert.match(panel, /Version 0\.89\.0 is not on PyPI yet\./);
+	assert.doesNotMatch(
+		panel,
+		/fresh PyPI latest is 0\.88\.4/,
+		"the raw sentence is the unknown arm's material, not the translated arm's",
+	);
+});
+
+test("a report with no machine block keeps the legacy surface", () => {
+	const handle = mountNotification();
+	startServerUpdate(handle);
+
+	updater.emit(
+		"backend-update-error",
+		updateReport("the updater stopped before it reported"),
+	);
+	handle.render();
+
+	assert.ok(
+		failurePanelReason(handle),
+		"the pre-contract surface must still carry a sentence",
+	);
+	assert.doesNotMatch(allText(handle), /undefined|\[object Object\]/);
+});
+
+test("an unclassified block whose error is empty has no cause to show and invents none", () => {
+	const handle = mountNotification();
+	startServerUpdate(handle);
+
+	updater.emit("backend-update-error", {
+		message: legacySentence(),
+		phase: "update",
+		installerOutput: null,
+		failure: { ...UNKNOWN_CAPACITY_FAILURE, error: "" },
+	});
+	handle.render();
+
+	const panel = failedPanelCopy(handle);
+	assert.ok(panel, "the panel is still up for a nameless block");
+	assert.doesNotMatch(allText(handle), /undefined|\[object Object\]/);
+	assert.doesNotMatch(panel, /at capacity/);
+});
+test("a first-line credential is masked on every shape an install emits, head kept", () => {
+	const handle = mountNotification();
+	startServerUpdate(handle);
+	/*
+	 * ONE LINE, AND SHORT ON PURPOSE: under the 240-character cause bound, so no secret
+	 * below can be "absent" merely because the sentence was truncated before it. The
+	 * discrimination is the mask table or nothing.
+	 */
+	const error =
+		"could not persist update recovery: access_token=ghp_abc123456789 " +
+		'{"refresh_token":"rt_9f3a2b"} client_secret=cs_5b1c9d token = 7d8e9f ' +
+		"Authorization: Basic dTpw via https://operator:hunter2@internal.example/update";
+	assert.ok(
+		error.length < 240,
+		`precondition: the fixture must fit the bound, was ${error.length}`,
+	);
+
+	updater.emit("backend-update-error", {
+		message: legacySentence(),
+		phase: "update",
+		installerOutput: null,
+		failure: { ...UNKNOWN_CAPACITY_FAILURE, error },
+	});
+	handle.render();
+
+	const text = allText(handle);
+	// The useful head survives - otherwise this is redaction by deletion.
+	assert.match(text, /could not persist update recovery/);
+	for (const secret of [
+		"ghp_abc123456789",
+		"rt_9f3a2b",
+		"cs_5b1c9d",
+		"7d8e9f",
+		"dTpw",
+		"hunter2",
+	]) {
+		assert.ok(
+			!text.includes(secret),
+			`the panel must not print ${secret} - a cause line is screenshot material`,
+		);
+	}
+	// The contract's own marker: enough to match your own, too few to reconstruct.
+	assert.match(text, /\u2026/);
+	// ...and the KEY stays readable, so the reader knows which credential was refused.
+	assert.match(text, /access_token=/);
+	assert.match(text, /refresh_token/);
+});
+
+for (const [label, value, expected] of [
+	["JSON whitespace", '{"password":"s first second"}', '{"password":"\u2026"}'],
+	[
+		"quoted punctuation",
+		"password=\"first; second, 'third'\"",
+		'password="\u2026"',
+	],
+	[
+		"escaped double quote",
+		'{"password":"first \\"second\\" third"}',
+		'{"password":"\u2026"}',
+	],
+	[
+		"escaped single quote",
+		"password='first \\'second\\' third'",
+		"password='\u2026'",
+	],
+	[
+		"escaped backslash",
+		'{"password":' + '"alpha\\\\beta"}',
+		'{"password":"\u2026"}',
+	],
+	["single-quoted key", "{'api_key':'first second'}", "{'api_key':'\u2026'}"],
+	[
+		"adjacent named values",
+		'{"password":"alpha bravo","client_secret":"charlie delta"}; retry later',
+		'{"password":"\u2026","client_secret":"\u2026"}; retry later',
+	],
+	["unterminated value", 'password="first second', 'password="\u2026'],
+	["trailing escape", 'password="first second\\', 'password="\u2026'],
+]) {
+	test(`a named credential masks its complete ${label} value`, () => {
+		const handle = mountNotification();
+		startServerUpdate(handle);
+		const error = `credential refused: ${value}`;
+		assert.ok(
+			error.length < 240,
+			"masking, not the display bound, must hide this value",
+		);
+		updater.emit("backend-update-error", {
+			message: legacySentence(),
+			phase: "update",
+			installerOutput: null,
+			failure: { ...UNKNOWN_CAPACITY_FAILURE, error },
+		});
+		handle.render();
+		assert.equal(
+			primaryFailureCause(handle),
+			`credential refused: ${expected}`,
+		);
+		control(handle, "Try again");
+		assert.equal(successToasts(handle).length, 0);
+	});
+}
+
+/*
+ * D3/Q3: a 240-character unbroken cause rendered on one line and was clipped at the
+ * card edge. Pixels are the visual round's evidence; this pins the class that lets
+ * the cause paragraph itself break inside a token.
+ */
+test("an unbroken cause paragraph may wrap inside the token", () => {
+	const handle = mountNotification();
+	startServerUpdate(handle);
+	updater.emit("backend-update-error", {
+		message: legacySentence(),
+		phase: "update",
+		installerOutput: null,
+		failure: { ...UNKNOWN_CAPACITY_FAILURE, error: "z".repeat(1200) },
+	});
+	handle.render();
+	const paragraph = primaryFailureCauseNode(handle);
+	assert.ok(paragraph, "the unknown arm renders its cause paragraph");
+	assert.equal(textOf(paragraph.props.children).length, 240);
+	assert.ok(
+		paragraph.props.className
+			.split(PRIMARY_CAUSE_CLASS_SEPARATOR)
+			.includes("[overflow-wrap:anywhere]"),
+		"an unbroken cause must be allowed to break inside the token",
+	);
+});
+
+test("a named value crossing the display bound is masked before shortening", () => {
+	const handle = mountNotification();
+	startServerUpdate(handle);
+	const head = `credential refused: ${"x".repeat(190)} `;
+	const error = `${head}password="${"p".repeat(400)}"`;
+	assert.ok(head.length + 'password="'.length < 239);
+	updater.emit("backend-update-error", {
+		message: legacySentence(),
+		phase: "update",
+		installerOutput: null,
+		failure: { ...UNKNOWN_CAPACITY_FAILURE, error },
+	});
+	handle.render();
+	assert.equal(primaryFailureCause(handle), `${head}password="\u2026"`);
+});
+
+// No machine-speed SLA: these adversarial shapes exercise candidate boundaries.
+// The carrier's bounded worker probe records durations separately. The previous
+// suffix-restarting expressions exceeded its 1500 ms ceiling at 64/256 KiB.
+for (const [label, tail] of [
+	["unbroken non-key", "x".repeat(256 * 1024)],
+	["hyphenated non-scheme", "a-".repeat(128 * 1024)],
+	["scheme without userinfo", `${"a-".repeat(128 * 1024)}://host/update`],
+	["header without value", `Basic${" ".repeat(256 * 1024)}`],
+]) {
+	test(`a long ${label} still preserves the useful cause and controls`, () => {
+		const handle = mountNotification();
+		startServerUpdate(handle);
+		const error = `could not persist update recovery: ${tail}; inspect pending operations`;
+		updater.emit("backend-update-error", {
+			message: legacySentence(),
+			phase: "update",
+			installerOutput: null,
+			failure: { ...UNKNOWN_CAPACITY_FAILURE, error },
+		});
+		handle.render();
+		const primary = primaryFailureCause(handle);
+		assert.match(primary, LONG_CAUSE_PREFIX);
+		assert.ok(primary.length <= 240);
+		control(handle, "Try again");
+		assert.equal(successToasts(handle).length, 0);
+	});
+}
+
+test("a malformed machine block invents no cause and prints no placeholder", () => {
+	const handle = mountNotification();
+	startServerUpdate(handle);
+
+	updater.emit("backend-update-error", {
+		message: legacySentence(),
+		phase: "update",
+		installerOutput: null,
+		failure: { step: null, kind: 42, exitCode: "nope", error: null },
+	});
+	handle.render();
+
+	const panel = failedPanelCopy(handle);
+	assert.ok(panel, "a malformed block still leaves a panel standing");
+	assert.doesNotMatch(allText(handle), /undefined|\[object Object\]|NaN/);
+	assert.doesNotMatch(panel, /at capacity/);
 });
 
 test("the retained-record banner names the version that is running, not the one the record captured", async () => {

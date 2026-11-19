@@ -1,0 +1,189 @@
+{
+	"ui.chat.device_move.another_device": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "name used for a device when its own name is unknown",
+		"tone": "lowercase noun phrase"
+	},
+	"ui.chat.device_move.gate.below_version": {
+		"length": "",
+		"note": "Device here means one of the user's own computers running Local Operator; a conversation can be moved between them.",
+		"placeholders": {},
+		"role": "reason the device picker is unavailable: the backend is too old",
+		"tone": "lowercase clause, no full stop"
+	},
+	"ui.chat.device_move.gate.checking": {
+		"length": "",
+		"note": "Device here means one of the user's own computers running Local Operator; a conversation can be moved between them.",
+		"placeholders": {},
+		"role": "reason shown beside the device picker while the app checks whether moving is possible",
+		"tone": "lowercase word and ellipsis"
+	},
+	"ui.chat.device_move.gate.unpaired": {
+		"length": "",
+		"note": "Device here means one of the user's own computers running Local Operator; a conversation can be moved between them.",
+		"placeholders": {},
+		"role": "reason the device picker is unavailable: the app has no paired backend",
+		"tone": "lowercase clause, no full stop"
+	},
+	"ui.chat.device_move.ineligible.cannot_receive": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "reason a device row is unavailable: it cannot accept conversations",
+		"tone": "lowercase clause, no full stop"
+	},
+	"ui.chat.device_move.ineligible.no_answer": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "reason a device row is unavailable: it did not respond",
+		"tone": "lowercase clause, no full stop"
+	},
+	"ui.chat.device_move.ineligible.no_transfer": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "reason a device row is unavailable: the backend lacks the transfer feature",
+		"tone": "lowercase clause, no full stop"
+	},
+	"ui.chat.device_move.moving": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"name": "the destination device's name; shown verbatim"
+		},
+		"role": "headline while a conversation is being moved to another device",
+		"tone": "gerund phrase, no full stop"
+	},
+	"ui.chat.device_move.other_device": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "name used for the source device when its own name is unknown",
+		"tone": "lowercase noun phrase"
+	},
+	"ui.chat.device_move.plan.copy": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"name": "the destination device's name; shown verbatim"
+		},
+		"role": "alternative button for copying a conversation to another device instead of moving it",
+		"tone": "imperative phrase"
+	},
+	"ui.chat.device_move.plan.copy_here": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "alternative button for copying a conversation here instead of moving it",
+		"tone": "imperative phrase with a comma"
+	},
+	"ui.chat.device_move.plan.move": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"name": "the destination device's name; shown verbatim"
+		},
+		"role": "button and dialog title for moving a conversation to another device",
+		"tone": "imperative phrase"
+	},
+	"ui.chat.device_move.plan.recall": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "button and dialog title for bringing a conversation back to this device",
+		"tone": "imperative phrase"
+	},
+	"ui.chat.device_move.result.back.detail": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "detail of the recall receipt",
+		"tone": "lowercase clause, no full stop"
+	},
+	"ui.chat.device_move.result.back.detail_deleted": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"from": "the device the conversation came back from; shown verbatim"
+		},
+		"role": "detail of the recall receipt when the source copy was deleted",
+		"tone": "lowercase clause with a semicolon, no full stop"
+	},
+	"ui.chat.device_move.result.back.verb": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "headline of the receipt after recalling a conversation to this device",
+		"tone": "past-tense phrase, no full stop"
+	},
+	"ui.chat.device_move.result.copied.detail": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"name": "the destination device's name; shown verbatim",
+			"id": "the last six characters of the new conversation's id; never translated"
+		},
+		"role": "detail of the copy receipt",
+		"tone": "lowercase clause with a semicolon, no full stop"
+	},
+	"ui.chat.device_move.result.copied.second": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"name": "the destination device's name; shown verbatim"
+		},
+		"role": "second line of the copy receipt when nothing runs on the destination yet",
+		"tone": "two sentences, ends with a full stop"
+	},
+	"ui.chat.device_move.result.copied.verb": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"name": "the destination device's name; shown verbatim"
+		},
+		"role": "headline of the receipt after copying a conversation to another device",
+		"tone": "past-tense phrase, no full stop"
+	},
+	"ui.chat.device_move.result.moved.detail_running": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "detail of the move receipt when the destination is running it",
+		"tone": "lowercase clause with a semicolon, no full stop"
+	},
+	"ui.chat.device_move.result.moved.detail_there": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "detail of the move receipt when the destination has it but is not running it",
+		"tone": "lowercase clause with a semicolon, no full stop"
+	},
+	"ui.chat.device_move.result.moved.second": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"name": "the destination device's name; shown verbatim"
+		},
+		"role": "second line of the move receipt when nothing runs on the destination yet",
+		"tone": "two sentences, ends with a full stop"
+	},
+	"ui.chat.device_move.result.moved.verb": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"name": "the destination device's name; shown verbatim"
+		},
+		"role": "headline of the receipt after moving a conversation to another device",
+		"tone": "past-tense phrase, no full stop"
+	},
+	"ui.chat.device_move.result.source_retired": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "detail line explaining the local copy no longer exists after a move",
+		"tone": "lowercase clause, no full stop"
+	}
+}

@@ -41,74 +41,75 @@ function chromeBandTooltipTag(source, keyId) {
 // Source/layout guard ONLY: jsdom cannot measure a WebContentsView or prove
 // Radix's final placement. Keep new triggers in the in-flow chrome band with
 // explicit top placement; native intersection evidence remains a separate gate.
-test("source guard: new find/zoom tooltips prefer chrome-side top, not native-page overlays", () => {
+test("source guard: find/zoom live in the page menu, which pauses the page while open", () => {
 	const base = "src/renderer/src/features/browser/components/";
 	const row = readFileSync(`${base}browser-find-row.tsx`, "utf8");
-	const bar = readFileSync(`${base}browser-url-bar.tsx`, "utf8");
+	const menu = readFileSync(`${base}browser-page-menu.tsx`, "utf8");
 	const surface = readFileSync(`${base}browser-surface.tsx`, "utf8");
+	// S5: the pause moved into the shared primitive, and it is MEASURED. The page
+	// menu is a `DropdownMenuContent`, so it registers only where its painted panel
+	// intersects the native view — which the row's bottom edge makes true in the
+	// product, and which an inside-band menu can measure as false.
+	const primitive = readFileSync(
+		"src/renderer/src/shared/components/ui/dropdown-menu.tsx",
+		"utf8",
+	);
 	const tags = [...row.matchAll(/<Tooltip\b[^>]*>/g)].map((m) => m[0]);
 	assert.equal(tags.length, 3, "Previous, Next and Close all need this guard");
 	for (const tag of tags) assert.ok(tag.includes('side="top"'), tag);
-	for (const [label, keyId] of [
-		["Find in page", "ui.browser.browser_url_bar.find_in_page_shortcut"],
-		["Reset page zoom", "ui.browser.browser_url_bar.reset_page_zoom_shortcut"],
-	]) {
-		const tag = chromeBandTooltipTag(bar, keyId);
-		assert.ok(tag, `${label} needs a tooltip wired to ${keyId}`);
-		assert.ok(
-			tag.includes('side="top"'),
-			`${label} must prefer the chrome band`,
-		);
-	}
-	const toolbar = surface.indexOf("<BrowserUrlBar");
+	// S4b moved Find and Print out of the bar and Zoom reset into the page menu.
+	// A menu panel paints into the content rect, so it must hide the native view
+	// while open — the rule the old tooltip guard protected in the chrome band.
+	assert.match(menu, /ui\.browser\.browser_url_bar\.find_in_page/);
+	assert.match(menu, /ui\.browser\.browser_url_bar\.page_zoom_reset/);
+	assert.match(
+		menu,
+		/<DropdownMenuContent/,
+		"the menu uses the shared primitive",
+	);
+	assert.match(
+		primitive,
+		/useMeasuredBrowserViewPanel<HTMLDivElement>\("menu"\)/,
+		"the shared menu primitive registers the measured pause",
+	);
+	assert.doesNotMatch(
+		menu,
+		/useSuppressBrowserView\(/,
+		"the page menu carries no unconditional registration of its own",
+	);
+	const popout = surface.indexOf("<BrowserUrlBar");
 	const find = surface.indexOf("<BrowserFindRow");
 	const viewport = surface.indexOf('data-tour-tag="browser-content"');
 	assert.ok(
-		toolbar >= 0 && find > toolbar && viewport > find,
-		"both chrome regions precede the native viewport",
+		popout >= 0 && find > popout && viewport > find,
+		"the permanent address row and the find row precede the native viewport",
 	);
 	assert.match(row, /className="@container\/bfind flex shrink-0 flex-wrap/);
-	assert.doesNotMatch(row + bar, /useSuppressBrowserViewWhileReaching/);
+	assert.doesNotMatch(row + menu, /useSuppressBrowserViewWhileReaching/);
 });
 
 /*
- * NEGATIVE CONTROL for the source guard above. A guard whose subject cannot fail
- * is not a guard: this takes the SAME shipped source, strips `side="top"` from
- * the find/zoom tooltip tags, and requires the guard's own predicate
- * (`chromeBandTooltipTag(...).includes('side="top"')`) to become false. So the
- * assertion measures the chrome-band preference rather than the mere existence
- * of a tag, and the repoint from the English literal to the key id is proved to
- * still discriminate on the attribute it exists to protect.
+ * NEGATIVE CONTROL: the guard above must fail when the page menu stops hiding
+ * the view, or it would be a sentence about a file rather than a check on it.
  */
-test("negative control: the chrome-band guard fails when side=top is removed", () => {
-	const bar = readFileSync(
-		"src/renderer/src/features/browser/components/browser-url-bar.tsx",
+test("negative control: removing the page menu's view suppression fails the guard", () => {
+	const menu = readFileSync(
+		"src/renderer/src/features/browser/components/browser-page-menu.tsx",
 		"utf8",
 	);
-	for (const keyId of [
-		"ui.browser.browser_url_bar.find_in_page_shortcut",
-		"ui.browser.browser_url_bar.reset_page_zoom_shortcut",
-	]) {
-		const shipped = chromeBandTooltipTag(bar, keyId);
-		assert.ok(shipped, `the tag wired to ${keyId} is present on the head`);
-		assert.ok(
-			shipped.includes('side="top"'),
-			`the head's ${keyId} tag prefers the chrome band`,
-		);
-		// The tag is multi-line, so `side="top"` sits on its own line; removing the
-		// attribute token by string, not a regex literal, keeps the control free of a
-		// function-scope regex.
-		const strippedTag = shipped.replace('side="top"', "");
-		assert.notEqual(strippedTag, shipped, "the control must alter the tag");
-		const strippedSource = bar.replace(shipped, strippedTag);
-		assert.notEqual(strippedSource, bar, "the control must alter the source");
-		const stripped = chromeBandTooltipTag(strippedSource, keyId);
-		assert.ok(stripped, "the tag is still found; only the attribute is gone");
-		assert.ok(
-			!stripped.includes('side="top"'),
-			`removing side=top must make the guard fail for ${keyId}`,
-		);
-	}
+	const primitive = readFileSync(
+		"src/renderer/src/shared/components/ui/dropdown-menu.tsx",
+		"utf8",
+	);
+	const guard = (source) =>
+		/useMeasuredBrowserViewPanel<HTMLDivElement>\("menu"\)/.test(source);
+	assert.ok(guard(primitive), "the shipped primitive registers the pause");
+	const stripped = primitive.replaceAll(
+		'useMeasuredBrowserViewPanel<HTMLDivElement>("menu")',
+		"",
+	);
+	assert.notEqual(stripped, primitive, "the control must alter the source");
+	assert.ok(!guard(stripped), "without the call the guard fails");
 });
 
 test("find row uses main counts, accessible status, next/previous/Escape and no overlay tooltip", async () => {

@@ -1,0 +1,97 @@
+{
+  "schema": 1,
+  "auditor": "i18n-auditor (independent lopdev task 'UI #1604 delta i18n audit A', session f89f59f896f1)",
+  "model": "anthropic/claude-opus-5-5",
+  "model_provenance": "Whole audit (source reads, semantic review, structural probe, classification, receipt writing) ran on the session's announced model anthropic/claude-opus-5-5. No fallback or model switch was observed during this session.",
+  "instance": "f89f59f896f1-fr",
+  "audit_session": "f89f59f896f1",
+  "locale": "fr",
+  "namespace": "ui.mesh",
+  "date": "2026-11-02",
+  "scope": "Delta audit A of f6a91444077..fbbbdec31b1 (PR #1604 remediation commit). All 3 changed ui.mesh value(s) in this locale read in final bytes; English/context change to scope_session reviewed. Also re-read in final bytes the 19 ui.mesh.approval.* values for consent consistency (borrow/login terms). Unchanged non-approval values retain historical audits.",
+  "audited_head": "fbbbdec31b15b34d06b511278707ae3b0792b080",
+  "delta_base": "f6a91444077ee6e70edfbdff6d4b740c864b8503",
+  "status": "passed",
+  "sha256": {
+    "en": "edf18f0d32404972428c4bfcc107f835d170df6e2f6c800d10681d1a1e6e4fd1",
+    "fr": "d8699315817a459b7fc559ccb54b0aae92dc27345741b2c0c504903d56a15afe"
+  },
+  "base_sha256": {
+    "en": "14428f2aa934af49f6c9d34a09696a3ba29505f653894a1c69b3fb8a22a261e4",
+    "fr": "26a35122971f22f3fbccdef1e8daf9b9b95260e344d1eed66d789ae942c45f87"
+  },
+  "findings": [
+    {
+      "id": "TA3A-FR-01",
+      "severity": "minor",
+      "key": "ui.mesh.approval.scope_session",
+      "keys": [
+        "ui.mesh.approval.scope_session",
+        "ui.mesh.approval.head_finite_share",
+        "ui.mesh.approval.not_copied",
+        "ui.mesh.approval.needs_broker"
+      ],
+      "verbatim": "fr renders \"this login\" as \"cet accès\" and \"session-bound access\" as \"une autorisation liée à chaque session\". The namespace renders login as \"connexion\" (head_finite_share, not_copied, needs_broker \"emprunter des connexions\"), so the borrowed object drifts to a vaguer term. Who may borrow (all sessions on the device) and the per-session binding are preserved.",
+      "recommendation": "Name the login with the namespace term, e.g. \"Les sessions sur {device} peuvent emprunter cette connexion avec un accès lié à chaque session.\"",
+      "disposition": "not applied: auditors never edit translations; handed to the implementer for one batched remediation or explicit deferral. Nonblocking: no security-consent consequence is reversed or omitted."
+    }
+  ],
+  "changed_keys": [
+    "ui.mesh.approval.scope_session",
+    "ui.mesh.approval.recipient_key",
+    "ui.mesh.approval.file_key_disclosure"
+  ],
+  "verbatim_values": {
+    "ui.mesh.approval.scope_session": "Les sessions sur {device} peuvent emprunter cet accès avec une autorisation liée à chaque session.",
+    "ui.mesh.approval.recipient_key": "Clé de {device} :",
+    "ui.mesh.approval.file_key_disclosure": "Cette machine signe avec un fichier de clé, pas avec Touch ID : cette approbation ne peut donc pas prouver qu’une personne l’a donnée."
+  },
+  "english_values": {
+    "ui.mesh.approval.scope_session": "Sessions on {device} can borrow this login with session-bound access.",
+    "ui.mesh.approval.recipient_key": "{device} key:",
+    "ui.mesh.approval.file_key_disclosure": "This machine signs with a key file, not Touch ID, so this approval can't prove a person made it."
+  },
+  "context_sidecar": {
+    "path": "src/i18n/catalogues/en/ui.mesh.context.json",
+    "sha256": "79b22ab6e83a0d8675409f9673a452928b77cee22e47c52930ea0c2127f269f5",
+    "read": "scope_session context note read in full: session scope = device is holder, its sessions may each borrow with grants bound to the individual incoming session; NOT restricted to the requesting session."
+  },
+  "standards": {
+    "root": "~/local-operator/i18n at origin/main 5909dc26678 (shared checkout is on a feature branch; bytes read with git show origin/main:)",
+    "sha256": {
+      "glossary.md": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "style-guides/fr.md": "5315e1ac10c2ce57aac631ba653d08de680ee70c9a022ed3a8345ce2f9902ee7"
+    }
+  },
+  "translator": {
+    "agent": "coder",
+    "jobs": [
+      "job07291411b980",
+      "c61a64298a45",
+      "21ddee198f0b"
+    ],
+    "remediation_commit": "fbbbdec31b15b34d06b511278707ae3b0792b080",
+    "attribution": "Translator/remediation coder runs named by the manager; their served model is not verified by this auditor."
+  },
+  "independence": "This session (f89f59f896f1) authored no catalogue value and is distinct from the translator/coder runs and from earlier auditors 1f7797b807b7 (job0a40e337218a) and 5c609e74f770 (job38d28c8fb9bf). Parallel auditor B writes its own receipts under its own instance ids; none were read before this verdict.",
+  "semantic_checks": [
+    "scope_session: every final locale says sessions (plural/each) on {device} may use/borrow the login with access bound to each session; none retains the superseded 'only the requesting session' claim; none widens to unbound device-wide access.",
+    "scope_device vs scope_session remain distinguishable: device scope = any session can use it; session scope adds per-session binding.",
+    "No changed value reverses or omits a consent consequence; {device} placeholder present in every changed scope line.",
+    "Prior TA2 typography/glossary remediations verified in final bytes where applicable to this locale.",
+    "scope_session: all sessions; borrow (emprunter) kept; per-session binding kept; object named \"accès\" not \"connexion\" (TA3A-FR-01). recipient_key and file_key_disclosure: U+0020 before \":\" replaced with U+202F (probe confirms) — TA2-FR-01 resolved."
+  ],
+  "evidence": {
+    "probe": "i18n/receipts/f89f59f896f1-structural-probe.mjs.txt",
+    "probe_sha256": "be39a0750797ec72151f7fc18676f5b1e8b35e219485acfdb7d8c9bbb53b6fac",
+    "log": "i18n/receipts/f89f59f896f1-structural-probe-output.txt",
+    "log_sha256": "7edf239e9a6f244d05483b48b30cdcf3f3b5abe6a91318b48a7455425ce6dafd",
+    "verdict_location": "Findings, status and semantic_checks in this receipt are the auditor's review record; the companion log is actual probe output (ICU arg/plural parity vs English, NFC, bidi controls, fr colon spacing, zh spaces/ellipsis)."
+  },
+  "non_claims": [
+    "No rendered/compiled-native, width/fit, pseudo-localization, font shaping or visual RTL validation (host memory hold).",
+    "No translation edits by this auditor.",
+    "Not the second (B) delta audit; B records its own receipts."
+  ],
+  "notes": "Delta audit A on PR #1604 head fbbbdec. Passing with 1 minor / 0 nit; zero blocker/major."
+}

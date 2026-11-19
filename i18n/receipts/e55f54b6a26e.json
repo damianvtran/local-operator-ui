@@ -1,0 +1,87 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "e55f54b6a26e",
+  "locale": "zh-CN",
+  "audit_date": "2026-11-03",
+  "commit": "c44e9e8be8eb5a134a97acd87e7015f54b82c13d",
+  "base_commit": "6dd43fd7494f651fd99b3fe926606fc7ba35fd82",
+  "scope": "Delta-only native-language and mechanical audit of five newly translated keys; not a full-namespace re-audit.",
+  "provenance": {
+    "actual_model_source": "Host model-switch message: openai/gpt-6.1-sol, temporary fallback after provider quota failure; earlier notices named anthropic/claude-sonnet-5-5 and anthropic/claude-opus-5-5.",
+    "independent_from_translator_session": true,
+    "independence_basis": "This auditor instance did not produce or modify translations and did not read other audit reports. Translator session ID was not supplied."
+  },
+  "namespaces": {
+    "ui.chat": {
+      "status": "passed",
+      "sha256": {
+        "zh-CN": "e18b5d6dfd7cc62e6e1da113353118f302b7a61767281bc1b81ceb8bb7e0bf85",
+        "en": "270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27"
+      },
+      "context_sha256": "efcf4d1872974b6fc7456e753a2e10010ab896fffede262ae7c19d96c35ecee1",
+      "audited_keys": [
+        "ui.chat.session_status.effort_level.low",
+        "ui.chat.session_status.effort_level.medium",
+        "ui.chat.session_status.effort_level.high"
+      ],
+      "key_count": 3,
+      "findings": []
+    },
+    "ui.chat.run_details": {
+      "status": "passed",
+      "sha256": {
+        "zh-CN": "199805bd13b5b96944dfcf97e1226b409fbd0ba97351fdbee3941295a8fb33f9",
+        "en": "f8184d5f41b359364e47747871988bbb731d79c12bc3b9ec755f3db73e5db6ab"
+      },
+      "context_sha256": "da588f521188a2bcba1d0aeb7a265c3474b16673b8f653a021fa7e9e7075e911",
+      "audited_keys": [
+        "ui.chat.run_details.wake.armed_count",
+        "ui.chat.run_details.wake.cadence_once"
+      ],
+      "key_count": 2,
+      "findings": []
+    }
+  },
+  "checks": {
+    "json": "Full committed English/target JSON parsed with duplicate rejection; target key sets equal English; exactly 3+2 target keys added versus parent, existing target values unchanged; English namespace bytes unchanged.",
+    "icu": "Executed committed generate.mjs messageArguments helper with existing @formatjs/icu-messageformat-parser 3.5.21 under node --max-old-space-size=128 and 256 MB process-group ceiling. Helper copied to scratch with only package-import resolution rewritten.",
+    "cldr": "Intl.PluralRules(zh-CN) => [other]; armed_count has only other, selector count:number and count_display:string match source. No English =1 arm required.",
+    "display_samples": [
+      "0个唤醒项待触发",
+      "1个唤醒项待触发",
+      "2个唤醒项待触发",
+      "1000个唤醒项待触发",
+      "1.5个唤醒项待触发"
+    ],
+    "format_controls": "Cf=0 for every scoped target string; no introduced tags, backticks, flags, identifiers or code fragments.",
+    "width": "Static style-guide cell counting: 低/中/高 each 2 cells; 一次 4 cells; armed_count fixed text 个唤醒项待触发 14 cells plus raw count_display. No numeric maxCells/maxChars appears on these five source sidecar entries.",
+    "native_review": "低/中/高 are idiomatic distinct reasoning-effort display labels (推理强度 context). 个唤醒项待触发 correctly states pending scheduled wakes and matches existing 唤醒项 terminology. 一次 is a natural one-time cadence; no punctuation or added pronouns.",
+    "embedding": "Actual keepRepeatLabel(null) uses independent pre-existing 保持单次运行, not 保持+一次. Non-null repeat branch invokes formatWakeCadence with an interval. Wake row directly prints 一次 after due label separator, which is grammatical.",
+    "wire": "effortDisplay maps raw low/medium/high only for display; wire rung strings remain unchanged."
+  },
+  "limitations": [
+    "No native rendered proof, browser, Electron, build, typecheck, scanner or full-suite validation (explicit task constraints).",
+    "No executed pseudo-localization or geometric overflow measurement; static width/context review only.",
+    "No ledger assembler write, repo edit, commit, push or PR post. Scratch receipt is for manager retention/assembly, not a claim of tracked evidence or main-branch audit status.",
+    "This single independent pass does not substitute for a separately requested second auditor on high-visibility groups."
+  ],
+  "artifacts": {
+    "mechanical.log": {
+      "path": "/Users/damian/.local-operator/sessions/e55f54b6a26e/scratchpad/zh-CN-audit/mechanical.log",
+      "sha256": "de29c0952130961b608aed5d765fb2ef8638e33f809a294af7cedac06264375d"
+    },
+    "icu.log": {
+      "path": "/Users/damian/.local-operator/sessions/e55f54b6a26e/scratchpad/zh-CN-audit/icu.log",
+      "sha256": "47d88a05fcf3e6bcdf6ac4ec8cb7a1ace123f4573c8fcbd8ffadd2d10681cc26"
+    },
+    "validate.mjs": {
+      "path": "/Users/damian/.local-operator/sessions/e55f54b6a26e/scratchpad/zh-CN-audit/validate.mjs",
+      "sha256": "a68935d0e7ea58461400c1dd9576189617119ca58a5c5541be1a32d33962624b"
+    },
+    "inputs.json": {
+      "path": "/Users/damian/.local-operator/sessions/e55f54b6a26e/scratchpad/zh-CN-audit/inputs.json",
+      "sha256": "1a6b7f4d8b24386a54ae64d8d1cbdc9930148e762531ed2bcf096d61d878d167"
+    }
+  }
+}

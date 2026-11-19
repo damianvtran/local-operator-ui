@@ -1,0 +1,112 @@
+{
+  "audit_id": "hl2-20261026-c512d322",
+  "date": "2026-10-26",
+  "audit_date": "2026-10-26",
+  "key_count": 8,
+  "locale": "hi",
+  "namespace": "ui.agents.pages",
+  "source_commit": "a9e536bf89",
+  "byte_equality_base": "73af0b6855",
+  "keys_audited": [
+    "ui.agents.pages.add_manual.agent",
+    "ui.agents.pages.add_manual.team",
+    "ui.agents.pages.ask.body_agent",
+    "ui.agents.pages.ask.body_team",
+    "ui.agents.pages.ask.heading_agent",
+    "ui.agents.pages.ask.heading_team",
+    "ui.agents.pages.ask.manual_agent",
+    "ui.agents.pages.ask.manual_team"
+  ],
+  "translator": {
+    "agent": "translator (i18n-translator lane)",
+    "model": "unreported-by-delegating-agent",
+    "date": "2026-10-26",
+    "note": "Produced the hi values in the translation lane; this auditor saw only the committed catalogue and did not observe the translator's session."
+  },
+  "auditors": [
+    {
+      "agent": "i18n-auditor",
+      "model": "radient/auto",
+      "model_source": "harness session header; no fallback observed (see receipt.model_fallback)",
+      "date": "2026-10-26",
+      "result": "clean-with-findings",
+      "instance": "c512d3228b7f",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 1
+      },
+      "receipt": "i18n/receipts/hi-agents-literals-audit-c512d3228b7f.json",
+      "receipt_sha256": "ba1e7dd7de85f490ba0717a332ab1184be19c7caab62b9461ede0eee420f68cc",
+      "scope": "25-key hi delta, this namespace's 8 new keys; whole file (30 keys) also checked mechanically",
+      "note": "Independent auditor: did not translate or remediate; no MT service; no catalogue/ledger edits."
+    }
+  ],
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.agents.pages.json",
+      "sha256": "e85765ccb25a8675e64cb8cd1cc37edd86afbe9a77d444f9a1ec8ac9aee45781"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.agents.pages.context.json",
+      "sha256": "f9690a17e6e7307df154bdc0d71ab8a0d002a07a052e11c0025d2ff874d3dfea"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/hi/ui.agents.pages.json",
+      "sha256": "bfc7fc6bddba1e788cae049784256711390d38488c88a6544c7fa74fe5a18bb4"
+    },
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/hi.md",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    },
+    "delta_sidecar": {
+      "path": "agents-literals-2-keys.json",
+      "sha256": "ec602c83236ec67358370105c140880a55e134b68f872b0ba033446387cefada"
+    }
+  },
+  "artifacts": [
+    {
+      "path": "i18n/receipts/hi-agents-literals-audit-c512d3228b7f.json",
+      "sha256": "ba1e7dd7de85f490ba0717a332ab1184be19c7caab62b9461ede0eee420f68cc"
+    },
+    {
+      "path": "i18n/audits/evidence/hi/ui.agents.pages/hl2-20261026-c512d322/audit.log",
+      "sha256": "3d639777502c22e7880802a71a154a1e32a7187b454b2cb22d3c226092981028"
+    },
+    {
+      "path": "i18n/audits/evidence/hi/ui.agents.pages/hl2-20261026-c512d322/tools/mech-hi.py",
+      "sha256": "10f4b345651534133a25c8f1512902be1034ec7365beabc321403c44e07718a7"
+    },
+    {
+      "path": "i18n/audits/evidence/hi/ui.agents.pages/hl2-20261026-c512d322/tools/render-hi.mjs",
+      "sha256": "aaf40078dc55949f6a027eb04c22219c12eb2f4a87cf14acf571336e941cc409"
+    },
+    {
+      "path": "i18n/audits/evidence/hi/ui.agents.pages/hl2-20261026-c512d322/tools/derive-check.mjs",
+      "sha256": "494aeb56d3d8281332656a8ecb23533a22b720a5f81a0200e165ef32d576cb2b"
+    }
+  ],
+  "current_report_verdict": {
+    "status": "clean-with-findings",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [
+      "HI-L2-01",
+      "HI-L2-02"
+    ]
+  },
+  "auditor_identity": {
+    "agent": "i18n-auditor",
+    "session": "c512d3228b7f",
+    "model": "radient/auto",
+    "actual_model_source": "harness session header + origin.json; upstream resolution not visible",
+    "independent_from_translator_session": true
+  },
+  "audit_notes_not_execution_log": true,
+  "evidence_note": "record.json is this bundle's record; audit.log is the captured command output for the whole seven-namespace run; both are companions of the receipt named above.",
+  "notes": "Findings and rulings: see the receipt (findings ids match). Execution output only: audit.log. Multi-namespace audit: the same 25-key delta is recorded under one audit_id per namespace, all pointing at one receipt."
+}

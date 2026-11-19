@@ -17,15 +17,18 @@
  * the remedy. Both sentences are real; see `arrivalCopy`.
  */
 
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import type { FC } from "react";
 import { MoveNotice } from "../../mesh/mesh-actions";
+import { workingSetConsent } from "../../mesh/mesh-drop";
 import {
 	useMeshNetworks,
 	useMeshPeers,
 	useMeshTransfer,
 } from "../../mesh/mesh-store";
-import { MOVE_HOLD_DETAIL, arrivalCopy } from "./chat-device-model";
+import { arrivalCopy, moveHoldDetail } from "./chat-device-model";
 import { useChatDeviceStore } from "./chat-device-store";
 
 /** The row the notice lives in: one line of chrome under the header's own band. */
@@ -42,6 +45,7 @@ const ROW = "px-4 pt-2";
 const WAIT_CEILING_S = 300;
 
 export const ChatDeviceNotice: FC<{ sessionId?: string }> = ({ sessionId }) => {
+	useI18nLocale();
 	const move = useChatDeviceStore((state) =>
 		sessionId ? state.moves[sessionId] : undefined,
 	);
@@ -59,7 +63,10 @@ export const ChatDeviceNotice: FC<{ sessionId?: string }> = ({ sessionId }) => {
 	 * Mesh tab fetched, so `Check again` costs one read rather than creating a
 	 * second poller (see `chat-device-slot.tsx`'s note on the pair).
 	 */
-	const peers = useMeshPeers(true, { poll: false });
+	const peers = useMeshPeers(true, {
+		poll: false,
+		stamp: () => useCanonicalSessionsStore.getState().beginAnswer(),
+	});
 	const networks = useMeshNetworks(true, { poll: false });
 	if (!sessionId || !move) return null;
 
@@ -114,6 +121,8 @@ export const ChatDeviceNotice: FC<{ sessionId?: string }> = ({ sessionId }) => {
 								to: plan.to,
 								keep: plan.keep,
 								waitS: WAIT_CEILING_S,
+								// The consent the original pick carried, re-sent with it.
+								...workingSetConsent(plan),
 							},
 							{
 								onSuccess: (outcome) => {
@@ -131,7 +140,8 @@ export const ChatDeviceNotice: FC<{ sessionId?: string }> = ({ sessionId }) => {
 											name: move.name,
 											from: move.from,
 											receipt: outcome.receipt,
-											engaged: null,
+											// The receipt's own fact, as the pane's pick reads it.
+											engaged: outcome.receipt.engagement?.engaged ?? null,
 										});
 										return;
 									}
@@ -164,7 +174,7 @@ export const ChatDeviceNotice: FC<{ sessionId?: string }> = ({ sessionId }) => {
 					canWait={false}
 					refusal={null}
 					receipt={{
-						verb: `Moving to ${move.name}`,
+						verb: t("ui.chat.device_move.moving", { name: move.name }),
 						/*
 						 * NO INVENTED PROGRESS: the route answers once, when the move settles, and
 						 * streams nothing - so there is no percentage to show. What is true
@@ -173,7 +183,7 @@ export const ChatDeviceNotice: FC<{ sessionId?: string }> = ({ sessionId }) => {
 						 * turn in flight, a state the accepted path cannot be in - a busy session
 						 * is REFUSED, not drained).
 						 */
-						detail: MOVE_HOLD_DETAIL,
+						detail: moveHoldDetail(),
 						undo: null,
 					}}
 					onWait={() => undefined}
@@ -194,6 +204,7 @@ export const ChatDeviceNotice: FC<{ sessionId?: string }> = ({ sessionId }) => {
 
 	const arrival = arrivalCopy({
 		engaged: move.engaged,
+		resumeRequested: Boolean(move.receipt.resume_requested),
 		name: move.name,
 		from: move.from,
 		newSessionId: move.receipt.new_session_id,

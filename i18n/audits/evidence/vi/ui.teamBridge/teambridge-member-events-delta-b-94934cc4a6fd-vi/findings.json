@@ -1,0 +1,23 @@
+[
+	{
+		"id": "VI-DB1",
+		"severity": "nit",
+		"key": "ui.teamBridge.events.joined",
+		"related_keys": [
+			"ui.teamBridge.events.left",
+			"ui.teamBridge.events.removed"
+		],
+		"current": "{targets} đã tham gia",
+		"proposed": "{targets} đã tham gia cuộc trò chuyện",
+		"reason": "The shortened line is grammatical and reads fine alone, but its siblings name the object («đã rời cuộc trò chuyện», «xóa {targets} khỏi cuộc trò chuyện»), so the joined/left pair is now asymmetric on adjacent rows. Either restore «cuộc trò chuyện» or accept the brevity as the locale's shorter form; the delta did not make the line wrong, it made the pair uneven."
+	},
+	{
+		"id": "VI-DB2",
+		"severity": "nit",
+		"key": "ui.teamBridge.events.unknown",
+		"current": "Thành viên đã thay đổi",
+		"proposed": "Tư cách thành viên đã thay đổi",
+		"also_accepts": "revert to «Danh sách thành viên đã thay đổi» (the round-1 text)",
+		"reason": "The English is 'Membership changed' with the context note 'must fit any membership change; no subject, no blame'. «Thành viên đã thay đổi» reads as 'the member(s) changed' - a change TO a member rather than to the membership - where the round-1 «Danh sách thành viên đã thay đổi» read as the roster changing. Accuracy cost is small (the fallback line is generic anyway), hence nit rather than minor."
+	}
+]

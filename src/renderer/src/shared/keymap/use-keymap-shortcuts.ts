@@ -42,6 +42,7 @@ import {
 	togglePanelRailItem,
 } from "@shared/components/navigation/panel-rail-actions";
 import {
+	panelIdentityFor,
 	panelSessionIdOfView,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
@@ -133,6 +134,16 @@ function runKeymapAction(actionId: ActionId): void {
 	togglePanelRailItem(railIdOf(actionId), {
 		sessionId,
 		askScope: sessionId === null ? "fleet" : "session",
+		/*
+		 * THE CANVAS STORE'S KEY, derived the way the chat page keys the pane it
+		 * renders (`panelIdentityFor`, `chat-page.tsx`): the session id once there
+		 * is one, else the draft key. Without it the canvas chord was a plain
+		 * toggle that reopened onto a stored Projects view and never reached the
+		 * canvas's own views (canvas-projects round-1 U1), and `panel.projects`
+		 * could not act at all.
+		 */
+		canvasConversationId:
+			panelIdentityFor(sessions.activeDraftKey, sessionId) ?? null,
 		via: "chord",
 	});
 }

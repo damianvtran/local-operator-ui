@@ -1,0 +1,249 @@
+{
+	"ui.miniView.alternates": {
+		"role": "shortcut help",
+		"tone": "Practical and concise.",
+		"note": "Suggests two alternative global shortcuts after the first choice is unavailable. Keep the displayed keyboard chords verbatim.",
+		"length": "One or two lines in Settings.",
+		"placeholders": {
+			"first": "First platform-formatted keyboard chord.",
+			"second": "Second platform-formatted keyboard chord."
+		}
+	},
+	"ui.miniView.context": {
+		"role": "context status",
+		"tone": "Compact factual meter text.",
+		"note": "Reports formatted token use without a known context-window total.",
+		"length": "One compact status row.",
+		"placeholders": { "used": "Already locale-formatted used-token count." }
+	},
+	"ui.miniView.context_estimated": {
+		"role": "context status",
+		"tone": "Compact factual meter text.",
+		"note": "Same as context, with an explicit estimate qualifier and no known context-window total.",
+		"length": "One compact status row.",
+		"placeholders": {
+			"used": "Already locale-formatted estimated used-token count."
+		}
+	},
+	"ui.miniView.context_no_reading": {
+		"role": "context status",
+		"tone": "Neutral empty state.",
+		"note": "No token reading has arrived; this is not an error.",
+		"length": "One compact status row."
+	},
+	"ui.miniView.context_window": {
+		"role": "context status",
+		"tone": "Compact factual meter text.",
+		"note": "Reports formatted token use against the model's formatted context-window total.",
+		"length": "One compact status row.",
+		"placeholders": {
+			"used": "Already locale-formatted used-token count.",
+			"window": "Already locale-formatted context-window token total."
+		}
+	},
+	"ui.miniView.context_window_estimated": {
+		"role": "context status",
+		"tone": "Compact factual meter text.",
+		"note": "Reports estimated formatted token use against the formatted context-window total.",
+		"length": "One compact status row.",
+		"placeholders": {
+			"used": "Already locale-formatted estimated used-token count.",
+			"window": "Already locale-formatted context-window token total."
+		}
+	},
+	"ui.miniView.control_unavailable": {
+		"role": "status error",
+		"tone": "Brief limitation statement.",
+		"note": "A conversation control cannot be presented in the quick-send mini window.",
+		"length": "One compact status row."
+	},
+	"ui.miniView.cwd_read_only": {
+		"role": "field explanation",
+		"tone": "Factual and reassuring.",
+		"note": "Explains why the directory control is read-only: quick send inherits the conversation directory.",
+		"length": "One short sentence."
+	},
+	"ui.miniView.hint": {
+		"role": "keyboard hint",
+		"tone": "Compact instruction.",
+		"note": "Resting composer hint. Enter, Shift+Enter and Esc are key names and stay verbatim.",
+		"length": "One compact status row."
+	},
+	"ui.miniView.hotkey_needs_modifier": {
+		"role": "validation error",
+		"tone": "Direct explanation.",
+		"note": "Rejects a global shortcut without a modifier because it would interfere with typing.",
+		"length": "One sentence beneath the shortcut field."
+	},
+	"ui.miniView.keep_text": {
+		"role": "error reassurance",
+		"tone": "Calm and reassuring.",
+		"note": "A pre-admission failure preserved the user's draft; pair with the refusal rather than implying delivery.",
+		"length": "One short sentence."
+	},
+	"ui.miniView.macos_detection_boundary": {
+		"role": "shortcut help",
+		"tone": "Honest practical limitation.",
+		"note": "macOS cannot always identify the application owning a chord. Do not claim the registration definitely failed.",
+		"length": "One sentence beneath the shortcut field."
+	},
+	"ui.miniView.placeholder": {
+		"role": "composer placeholder",
+		"tone": "Inviting and brief.",
+		"note": "Addresses the resolved seat by its display name.",
+		"length": "One input row.",
+		"placeholders": {
+			"name": "Resolved seat display name; preserve user-provided spelling."
+		}
+	},
+	"ui.miniView.post_admission": {
+		"role": "delivery warning",
+		"tone": "Cautious and factual.",
+		"note": "Delivery is uncertain after admission; direct the user to inspect the conversation rather than retrying and possibly duplicating the message.",
+		"length": "One sentence.",
+		"placeholders": {
+			"name": "Resolved seat display name; preserve user-provided spelling."
+		}
+	},
+	"ui.miniView.prior_art_editors": {
+		"role": "shortcut warning",
+		"tone": "Informational, not blocking.",
+		"note": "Warns about common uses of a chord in editors and word processors. Parameter hints and non-breaking space are technical function names.",
+		"length": "One sentence beneath the shortcut field.",
+		"placeholders": {
+			"chord": "Platform-formatted keyboard chord; keep verbatim."
+		}
+	},
+	"ui.miniView.prior_art_launchers_mac": {
+		"role": "shortcut warning",
+		"tone": "Informational, not blocking.",
+		"note": "Fantastical, Things Quick Entry and Control+Option+Space are proper names/a keyboard chord; keep them verbatim.",
+		"length": "One sentence beneath the shortcut field."
+	},
+	"ui.miniView.prior_art_launchers_other": {
+		"role": "shortcut warning",
+		"tone": "Informational, not blocking.",
+		"note": "Non-macOS warning that similar capture applications may reserve this chord family and allow rebinding.",
+		"length": "One sentence beneath the shortcut field."
+	},
+	"ui.miniView.quick_send_scope": {
+		"role": "setting description",
+		"tone": "Concise capability statement.",
+		"note": "Explains that the global quick-send shortcut works without application focus.",
+		"length": "One short sentence."
+	},
+	"ui.miniView.recording": {
+		"role": "recording status",
+		"tone": "Calm active-state instruction.",
+		"note": "Shown while dictation records; the stop control has its own separate accessible label.",
+		"length": "One compact status row."
+	},
+	"ui.miniView.registration_invalid": {
+		"role": "shortcut registration error",
+		"tone": "Direct and factual.",
+		"note": "The operating system rejected this key as a global shortcut.",
+		"length": "One sentence."
+	},
+	"ui.miniView.registration_registered": {
+		"role": "shortcut registration status",
+		"tone": "Brief success confirmation.",
+		"note": "Confirms the registered global shortcut and includes its platform-formatted display spelling.",
+		"length": "One short status row.",
+		"placeholders": {
+			"display": "Platform-formatted registered keyboard chord; keep verbatim."
+		}
+	},
+	"ui.miniView.registration_taken": {
+		"role": "shortcut registration error",
+		"tone": "Helpful and non-accusatory.",
+		"note": "Another application may own the chord; offer choosing another without claiming which application owns it.",
+		"length": "One sentence.",
+		"placeholders": {
+			"display": "Platform-formatted rejected keyboard chord; keep verbatim."
+		}
+	},
+	"ui.miniView.registration_unavailable": {
+		"role": "shortcut registration error",
+		"tone": "Brief platform limitation.",
+		"note": "Global shortcuts are unsupported on this operating system.",
+		"length": "One sentence."
+	},
+	"ui.miniView.seat_label": {
+		"role": "recipient label",
+		"tone": "Compact addressing label.",
+		"note": "Names the resolved seat receiving the quick-send message.",
+		"length": "One truncated header row.",
+		"placeholders": {
+			"name": "Resolved seat display name; preserve user-provided spelling."
+		}
+	},
+	"ui.miniView.seat_missing": {
+		"role": "configuration error",
+		"tone": "Factual limitation.",
+		"note": "This build has no seat matching the resolved display name.",
+		"length": "One sentence.",
+		"placeholders": {
+			"name": "Resolved seat display name; preserve user-provided spelling."
+		}
+	},
+	"ui.miniView.seat_open_failed": {
+		"role": "conversation error",
+		"tone": "Brief actionable failure.",
+		"note": "The named seat's conversation could not be opened.",
+		"length": "One sentence.",
+		"placeholders": {
+			"name": "Resolved seat display name; preserve user-provided spelling."
+		}
+	},
+	"ui.miniView.seat_unreachable": {
+		"role": "connection error",
+		"tone": "Brief connectivity failure.",
+		"note": "The named seat could not be reached; do not imply the message was delivered.",
+		"length": "One sentence.",
+		"placeholders": {
+			"name": "Resolved seat display name; preserve user-provided spelling."
+		}
+	},
+	"ui.miniView.sent": {
+		"role": "success status",
+		"tone": "Brief confirmation.",
+		"note": "Momentary status before the mini window hides after sending.",
+		"length": "One word where natural."
+	},
+	"ui.miniView.sheet_effort": {
+		"role": "sheet heading",
+		"tone": "Concise setting name.",
+		"note": "Title of the reasoning-effort picker; use the glossary term for reasoning effort if specified by the locale.",
+		"length": "One sheet-title row."
+	},
+	"ui.miniView.sheet_failed": {
+		"role": "retryable error",
+		"tone": "Brief failure with a retry action.",
+		"note": "The model or effort list request failed; pressing the row retries.",
+		"length": "One sentence."
+	},
+	"ui.miniView.sheet_loading": {
+		"role": "loading status",
+		"tone": "Brief in-progress statement.",
+		"note": "Shown while reading the model or effort list from the backend.",
+		"length": "One short status row."
+	},
+	"ui.miniView.sheet_model": {
+		"role": "sheet heading",
+		"tone": "Concise setting name.",
+		"note": "Title of the model picker for the current conversation; model is a glossary term, model IDs remain verbatim.",
+		"length": "One sheet-title row."
+	},
+	"ui.miniView.sheet_unavailable": {
+		"role": "capability error",
+		"tone": "Brief limitation statement.",
+		"note": "The connected backend cannot switch the selected setting through quick send.",
+		"length": "One sentence."
+	},
+	"ui.miniView.switch_failed": {
+		"role": "error lead-in",
+		"tone": "Brief factual failure.",
+		"note": "Lead-in followed by a technical backend error; retain the colon and trailing separation supplied by the caller.",
+		"length": "One short clause."
+	}
+}

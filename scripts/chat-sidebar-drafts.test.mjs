@@ -70,6 +70,8 @@ const bundle = await build({
 		resolveDir: process.cwd(),
 		loader: "ts",
 	},
+	// `draft-rows` words its marker and discard label through `t()`.
+	alias: { "@shared": `${process.cwd()}/src/renderer/src/shared` },
 	bundle: true,
 	format: "esm",
 	platform: "node",
@@ -82,24 +84,25 @@ const draftRows = await import(
 
 test("the discard control's name is an action with the row's own title, not the row's label verbatim", () => {
 	/*
-	 * The action, never the state, and the prefix does not echo (the row's label
+	 * The action, never the state, and the marker does not echo (the row's label
 	 * already says "Draft: " - the control would otherwise read the noun twice).
+	 * It takes the row's TITLE (no marker to strip, so it holds in any language);
 	 * `title` carries the same string in the component below, so the pointer and
 	 * the screen reader describe the control in one voice.
 	 */
 	assert.equal(
-		draftRows.discardDraftLabel("Draft: Can you check our google drive"),
+		draftRows.discardDraftLabel("Can you check our google drive"),
 		"Discard draft “Can you check our google drive”",
 	);
 	assert.equal(
-		draftRows.discardDraftLabel("no prefix, kept as is"),
-		"Discard draft “no prefix, kept as is”",
+		draftRows.discardDraftLabel("no marker, kept as is"),
+		"Discard draft “no marker, kept as is”",
 	);
 	/*
-	 * And the module still declares the prefix the strip reads, so a prefix that
-	 * moves cannot silently leave the label intact.
+	 * The English render of the keyed row label is the old `Draft: ` + title
+	 * literal, byte for byte: keying the marker must not move a character.
 	 */
-	assert.equal(draftRows.DRAFT_ROW_PREFIX, "Draft: ");
+	assert.equal(draftRows.draftRowLabel("Fix it"), "Draft: Fix it");
 });
 
 test("the discard control is a SIBLING of the row's button, and the wrapper carries the group state", () => {
@@ -229,7 +232,7 @@ test("the clear-all is inside the drafts section, rides the row walk, and clears
 	);
 	assert.match(foot, /if \(clearableDraftRows\.length === 0\) \{/);
 	assert.match(foot, /CLEAR_ALL_WHY_ID/);
-	assert.match(foot, /CLEAR_ALL_WHY/);
+	assert.match(foot, /clearAllWhy/);
 	assert.match(foot, /aria-disabled:text-ink-disabled!/);
 	/*
 	 * The fresh key the discard stages is written to the STORE (`setStagedByDiscard`),
@@ -325,7 +328,7 @@ test("a row whose send hop is live cannot be discarded", () => {
 	 */
 	assert.match(control, /aria-describedby=/);
 	assert.match(control, /draftWhyId\(row\.key\)/);
-	assert.match(control, /SENDING_DISCARD_WHY/);
+	assert.match(control, /sendingDiscardWhy/);
 	/* Colour, never opacity (design round 2's D5; branding.md §6). */
 	assert.match(control, /aria-disabled:text-ink-disabled!/);
 	assert.match(control, /aria-disabled:hover:text-ink-disabled!/);
@@ -393,7 +396,14 @@ test("the discard offer is its own toast: one id, one slot, an Undo that restore
 		false,
 		"the discard offer must not share the archive's id: nothing about this act is an archive",
 	);
-	assert.match(branch, /label: "Undo"/);
+	/*
+	 * The label is the shared KEY now, not a literal: the same action text is the
+	 * archive offer's (`ui.notices.chat.undo`), so one catalogue entry owns it and
+	 * a locale switch redraws it (agent review round 1, R1-2). The pin keeps what
+	 * it was for - the offer must carry an Undo action - and drops the English
+	 * spelling it used to spell out.
+	 */
+	assert.match(branch, /label: t\("ui\.notices\.chat\.undo"\)/);
 	assert.match(branch, /restoreDraftsUndo\(\);/);
 	/*
 	 * LIFETIME, CHROME AND SHRINKING ARE SONNER'S (2026-09-27): the offer's own
@@ -401,7 +411,19 @@ test("the discard offer is its own toast: one id, one slot, an Undo that restore
 	 * no persistent duration for a clock to outlive, no `position`, and the same
 	 * `min-w-0` chain as the archive offer so the copy can give at the card's width.
 	 */
-	assert.match(branch, /duration: ARCHIVE_UNDO_TOAST_MS/);
+	/*
+	 * The documented eight seconds is now the value the raise RECEIVES and the
+	 * base a locale redraw counts down from (agent review round 1, R1-5): the
+	 * option is the computed remainder, so the pin names the computation rather
+	 * than a literal option that would re-arm the timer on every language switch.
+	 * The predicate was spelled `redraw` when the pin was written; the source
+	 * names it `sameMessage` since R2's no-op rule landed (R2 N2-1) - the same
+	 * fact, and the same remainder of the original raise.
+	 */
+	assert.match(
+		branch,
+		/const duration = sameMessage \? raised\.raisedAt \+ ARCHIVE_UNDO_TOAST_MS - Date\.now\(\) : ARCHIVE_UNDO_TOAST_MS;/,
+	);
 	assert.equal(branch.includes("POSITIVE_INFINITY"), false);
 	assert.equal(branch.includes("position:"), false);
 	assert.match(branch, /classNames: \{ content: "min-w-0" \}/);

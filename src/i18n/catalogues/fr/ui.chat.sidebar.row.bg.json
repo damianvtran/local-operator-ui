@@ -1,0 +1,8 @@
+{
+	"ui.chat.sidebar.row.bg.subagents": "{count, plural, one {{count, number, ::group-off} sous-agent} many {{count, number, ::group-off} de sous-agents} other {{count, number, ::group-off} sous-agents}}",
+	"ui.chat.sidebar.row.bg.jobs": "{count, plural, one {{count, number, ::group-off} tâche} many {{count, number, ::group-off} de tâches} other {{count, number, ::group-off} tâches}}",
+	"ui.chat.sidebar.row.bg.running": "{items} en cours",
+	"ui.chat.sidebar.row.bg.queued": "{count, plural, one {{count, number, ::group-off} en file d’attente} many {{count, number, ::group-off} en file d’attente} other {{count, number, ::group-off} en file d’attente}}",
+	"ui.chat.sidebar.row.bg.subagents_queued": "{count, plural, one {{count, number, ::group-off} sous-agent en file d’attente} many {{count, number, ::group-off} de sous-agents en file d’attente} other {{count, number, ::group-off} sous-agents en file d’attente}}",
+	"ui.chat.sidebar.row.bg.waiting": "En attente d’un travail en arrière-plan"
+}

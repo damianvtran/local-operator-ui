@@ -1,0 +1,58 @@
+{
+  "schema": 1,
+  "auditor": "i18n-auditor (lopdev team; session 88ce35339ca3; independent zh-CN linguistic auditor, not the translator)",
+  "agent": "i18n-auditor (lopdev team; session 88ce35339ca3; independent zh-CN linguistic auditor, not the translator)",
+  "model": "anthropic/claude-sonnet-5-5",
+  "model_provenance": "Model as shown in this session's runtime header (anthropic/claude-sonnet-5-5). No fallback used or claimed; no mid-session model switch observed. Not independently verified beyond the runtime header.",
+  "fallback": "none",
+  "session": "88ce35339ca3",
+  "job_id": null,
+  "job_identity_note": "Delegated lopdev i18n-auditor task; no separate background job id was supplied. The session id identifies this auditor.",
+  "role": "i18n-auditor / independent translation auditor",
+  "independence": "I did not author or edit this translation. I read the zh-CN style guide, glossary, English source with its context sidecar, the committed zh-CN target, and neighbouring zh-CN keys for terminology.",
+  "locale": "zh-CN",
+  "branch": "fix/agent-transport-copy",
+  "head": "dd75287b77ca8b8447a362aa9d052a2dccacf097",
+  "pr": "damianvtran/local-operator-ui#1594",
+  "date": "2026-11-02",
+  "status": "passed",
+  "instance": "88ce35339ca3-ui-agents-detail-zh-cn-census",
+  "namespace": "ui.agents.detail",
+  "result": "clean-with-findings",
+  "source_sha256": "b52991233e7fdf8f9b54f9ec465fc0e20ac32239c37e8c5b9ed8ebd8fbdbd8f8",
+  "context_sha256": "f7c25bd96d74a861ab0a2c34764394a6feec1a8a0069085ab83517dc1a5d3e49",
+  "target_sha256": "d89af4293646a363f9412e93814fdf736a05e54d5aa9d9369e9fbb5bbee6fd05",
+  "paths": {
+    "source": "src/i18n/catalogues/en/ui.agents.detail.json",
+    "context": "src/i18n/catalogues/en/ui.agents.detail.context.json",
+    "target": "src/i18n/catalogues/zh-CN/ui.agents.detail.json"
+  },
+  "keys_read": 1,
+  "keys_in_file": 51,
+  "linguistic_scope_keys": [
+    "ui.agents.detail.origin.created_locally"
+  ],
+  "findings": [
+    {
+      "id": "A-3",
+      "severity": "nit",
+      "key": "ui.agents.detail.origin.created_locally",
+      "text": "此智能体创建于这台电脑。",
+      "note": "这台电脑 is unique in the catalogue; established form is 此电脑. Optional; 这台电脑 is natural and unambiguous."
+    },
+    {
+      "id": "A-4",
+      "severity": "nit",
+      "key": "ui.agents.detail.origin.created_locally",
+      "text": "此智能体创建于这台电脑。",
+      "note": "Leading 此智能体 adds a subject the English lacks. Harmless; subject-free 创建于这台电脑。 also acceptable."
+    }
+  ],
+  "scope": "PARTIAL-FILE LINGUISTIC AUDIT. (a) My linguistic judgement covers ONLY the one new key ui.agents.detail.origin.created_locally. (b) The other 50 keys in this file are byte-unchanged from the previously audited state: I checked the commit's zh-CN diff (git show dd75287b -- src/i18n/catalogues/zh-CN), which adds exactly this one key (plus the previous last line's trailing comma) and changes nothing else; and the key set equals English (51 keys, no adds/drops, valid JSON). (c) I did NOT re-audit those other keys linguistically; their clearance rests on the earlier ledger audit, not on this receipt. This receipt does not clear rendered layout, wrapping or live UI; no rendered frame was inspected.",
+  "verified": [
+    "'This machine' renders as 电脑, the user's own computer, matching the catalogue's other 此电脑 uses; not readable as a hostname.",
+    "Key has no placeholders, plural arms or markup, and none were added.",
+    "Source, context and target hashes derived from committed blobs at dd75287b77ca8b8447a362aa9d052a2dccacf097; on-disk files in this worktree verified byte-identical (shasum).",
+    "I did not run the repo validator or ledger command for the audit itself; deriveReceiptAudit was run on this receipt afterwards."
+  ]
+}

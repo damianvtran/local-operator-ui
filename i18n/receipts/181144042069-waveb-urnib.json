@@ -1,0 +1,161 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent-delta-audit",
+  "batch": "wave-b-delta-nib",
+  "pr": null,
+  "head": "e90a9ac4094fed38dea41bf17470904ffedeb9da",
+  "audit_workspace_head": "fbd334629fab274a2b65337bd1490767d39baee1",
+  "repository_moved_during_audit": {
+    "workspace_head_when_gates_ran": "fbd334629fab274a2b65337bd1490767d39baee1",
+    "head_when_record_written": "e90a9ac4094fed38dea41bf17470904ffedeb9da",
+    "audited_bytes_identical_at_both": true,
+    "commits_landed": "e90a9ac409 fix(test) / c471ab54eb merge origin/main / bbf844b152 ledger bind",
+    "effect_on_this_audit": "none: `git diff --stat fbd334629f HEAD -- src/i18n/catalogues src/renderer scripts/i18n` is empty, and generate --check and locale-parity (44/44) were re-run at HEAD — see audit.log section 9"
+  },
+  "base": "a5356ce91c4f37bf4c4d1c4518070e3a9b2505cb",
+  "locale": "ur",
+  "locale_name": "Urdu",
+  "auditor": "i18n-auditor",
+  "agent": "i18n-auditor",
+  "team": "lopdev",
+  "session": "181144042069",
+  "instance": "181144042069-waveb-urnib",
+  "model": "radient/auto",
+  "model_route": "This session's own runtime state (~/.local-operator/sessions/181144042069/tail-anchor.v1.json -> selection_payloads[0].details.selector = 'radient/auto', effort 'auto', boot 'radient/auto') and the run's system context ('Model: radient/auto'), which name the same route. The upstream provider/model behind the router alias is not exposed to the session, so none is invented; no fallback is claimed.",
+  "fallback": null,
+  "fallback_note": "No model-switch or fallback notice appeared in this session; the route stayed radient/auto from boot.",
+  "date": "2026-10-27",
+  "independence": "This session is NOT the session that wrote UR-WBD-01 (that was c89cee263ac2), NOT the session that applied this amendment (the coordinator applied it), and NOT the translator of the value (commit 0559f7f7d8 / a5356ce91c, other sessions). It edited no catalogue, context file, ledger, generated file or package.json: `git status` shows this bundle and receipt as the only paths it created. It judged the amendment on the English source, the sidecar, the consuming component and the style guide, and it ran no translation API, SDK, MT service or back-translation. ICU rendering used the repo's own intl-messageformat 12.1.3 and @formatjs parser; the RTL pass used GNU FriBidi 1.0.16 locally.",
+  "actual_model_source": "This session's own runtime state (~/.local-operator/sessions/181144042069/tail-anchor.v1.json -> selection_payloads[0].details.selector = 'radient/auto', effort 'auto', boot 'radient/auto') and the run's system context ('Model: radient/auto'), which name the same route. The upstream provider/model behind the router alias is not exposed to the session, so none is invented; no fallback is claimed.",
+  "source_dir": "src/i18n/catalogues/en",
+  "target_dir": "src/i18n/catalogues/ur",
+  "scope": "ONE value in ui.chat.pickers for ur: ui.chat.pickers.slash.enter_needs_a_pick. Audited in full against the English value, its context sidecar and the component that paints it; the other 737 values of the file are proved unchanged by a byte-level diff, and the eight other namespaces of the earlier receipt are proved unchanged by sha256.",
+  "key_count": 738,
+  "changed_value_count": {
+    "ur": 1,
+    "en": 0
+  },
+  "namespaces": {
+    "ui.chat.pickers": {
+      "namespace": "ui.chat.pickers",
+      "status": "passed",
+      "result": "clean",
+      "key_count": 738,
+      "instance": "181144042069-waveb-urnib",
+      "model": "radient/auto",
+      "en_sha256": "d91585397b3314c5ffd81d93c3fd7d9fdb1e0a54cc6ddd57ba082f55d666522c",
+      "ur_sha256": "4772ed26451c1118c927a0aec722428eb88f3cd3f26c80dfae183ec2b14af0c1",
+      "context_sha256": "6861dbfbdbc9af23c8c09332670a6f7d77c2a12b5724afc91d0054660ef904d0",
+      "ur_sha256_previous_receipt": "7802b5fdd2e5a8c3847c8cc97dfb1faabbc0c9064ba50caab7f93aec3de01925",
+      "ur_bytes_changed_in_commit": true,
+      "en_bytes_changed_in_commit": false,
+      "changed_values": [
+        "ui.chat.pickers.slash.enter_needs_a_pick"
+      ],
+      "findings": [
+        {
+          "id": "UR-WBD-01",
+          "severity": "minor",
+          "state": "resolved",
+          "key": "ui.chat.pickers.slash.enter_needs_a_pick",
+          "resolution": "The amendment is BYTE-EQUAL to the string UR-WBD-01 proposed (134 bytes each, compared in code, not by eye): the value now ends U+06D4 ARABIC FULL STOP. All five click lines it sits above already ended in U+06D4, and the English value, its three hardcoded siblings and every other shipped locale except zh-CN end in a stop. Verified independently of the session that wrote the finding.",
+          "verification": [
+            "byte compare of the disk value against the proposal extracted from the finding's own report: equal",
+            "render: 6/6 strip lines end in U+06D4 after formatting with the repo's intl-messageformat",
+            "fribidi: the final U+06D4 is at visual index 0 on all six lines, no bidi controls, NFC stable",
+            "parsed-JSON diff: this is the only value changed in the file; 738 keys, order unchanged"
+          ]
+        }
+      ],
+      "observation_ids": [
+        "NIB-OBS-1",
+        "NIB-OBS-2"
+      ],
+      "result_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    }
+  },
+  "other_eight_namespaces_unchanged": {
+    "from_receipt": "i18n/receipts/c89cee263ac2-waveb-delta-ur.json",
+    "all_identical": true,
+    "namespaces": [
+      "ui.agents.config",
+      "ui.chat",
+      "ui.chat.canonical",
+      "ui.chat.device",
+      "ui.chat.run_details",
+      "ui.chat.status",
+      "ui.common.connection",
+      "ui.common.layout"
+    ],
+    "ur_sha256": {
+      "ui.agents.config": "35c369946919f4d93ae1ddc7e79a97196666632f8c727eccca12a8bf53be2a1c",
+      "ui.chat": "f426744c3577e192c66c94f3dcad22918fd7ebf38361cc0a83ff1f6ca201a643",
+      "ui.chat.canonical": "5bf58414f7bbd78921fb1671a4032dd66e8b45159c236d4cf072b8b2c4d273d9",
+      "ui.chat.device": "7c46f933a3f32d8145f5484c1fda47f42d58c5cde505ba40b419b989f00aa64e",
+      "ui.chat.run_details": "ddce087907e8e07db42bf819cef78c133e66a6f5f02edee98bc503cb0d5d7061",
+      "ui.chat.status": "77138a3d3fe8d02576f05a79346e92d6f71536669d477cda7501398faaf08bfa",
+      "ui.common.connection": "455e6f80179c80af412138d3edcd3780b610a10273a2cbcdb7e631cb2fa353ae",
+      "ui.common.layout": "145bc93d2724ea34181b9c14f2c5847c28896a5d131c16b487ecfbc10c5587e1"
+    }
+  },
+  "adjudication_of_previous_findings": {
+    "UR-WBD-01": {
+      "severity": "minor",
+      "disposition": "resolved",
+      "evidence": "value byte-equal to the proposal; strip both lines stopped; stop visually leftmost; gates green"
+    }
+  },
+  "verdict": {
+    "status": "passed",
+    "result": "clean",
+    "unresolved_blocker_major_count": 0,
+    "counts": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 0,
+      "nit": 0
+    },
+    "finding_ids": [],
+    "resolved_finding_ids": [
+      "UR-WBD-01"
+    ],
+    "observation_ids": [
+      "NIB-OBS-1",
+      "NIB-OBS-2"
+    ],
+    "summary": "UR-WBD-01 is resolved: the amended value is byte-identical to the proposed string, the strip's two lines both stop, and the stop is visually leftmost with no bidi hazard. No blocker, no major, no open minor. passed."
+  },
+  "evidence_root": "i18n/audits/evidence/ur/ui.chat.pickers/waveb-urnib-20261027",
+  "evidence": {
+    "record": {
+      "path": "i18n/audits/evidence/ur/ui.chat.pickers/waveb-urnib-20261027/record.json"
+    },
+    "audit_log": {
+      "path": "i18n/audits/evidence/ur/ui.chat.pickers/waveb-urnib-20261027/audit.log"
+    }
+  },
+  "ledger_row_suggestion": {
+    "locale": "ur",
+    "namespace": "ui.chat.pickers",
+    "status": "passed",
+    "auditor": "i18n-auditor",
+    "model": "radient/auto",
+    "session": "181144042069",
+    "source_hash": "d91585397b3314c5ffd81d93c3fd7d9fdb1e0a54cc6ddd57ba082f55d666522c",
+    "target_sha256": "4772ed26451c1118c927a0aec722428eb88f3cd3f26c80dfae183ec2b14af0c1",
+    "evidence": "i18n/audits/evidence/ur/ui.chat.pickers/waveb-urnib-20261027/record.json",
+    "note": "wave-b nib delta: ui.chat.pickers.slash.enter_needs_a_pick now ends U+06D4; byte-equal to UR-WBD-01; ur 4772ed26; 8 other namespaces unchanged vs c89cee263ac2; see record.json",
+    "applied": false,
+    "applied_note": "NOT applied: the coordinator assembles the ledger; this audit ran no ledger-assemble and edited no ledger."
+  },
+  "audit_notes_not_execution_log": {
+    "execution_log": "i18n/audits/evidence/ur/ui.chat.pickers/waveb-urnib-20261027/audit.log",
+    "note": "audit.log is the execution log: every command and its captured stdout/stderr, run on the audited tree at e90a9ac4094fed38dea41bf17470904ffedeb9da. It carries no hand-written claim. The prose fields in this record (method, findings, limits) are audit notes and are not themselves proof of execution; the artifacts listed above are. This record claims no CLI or validator output that is not in audit.log."
+  }
+}

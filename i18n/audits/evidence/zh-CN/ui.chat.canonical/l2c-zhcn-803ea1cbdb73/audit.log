@@ -1,0 +1,64 @@
+# Execution log — zh-CN / ui.chat.canonical — candidate 659ef7e44b7c
+# Every line below is a command actually run in this session (803ea1cbdb73) and its real outcome.
+# Candidate bytes were read ONLY through `git show`; nothing was checked out, installed, built or generated.
+# The repo validator (`pnpm check-i18n`) was NOT run: the brief forbids installs/build/tests/generator in this
+# read-only audit lane (memory guard active). The equivalent static checks were re-implemented in python;
+# see "Validator substitution" in the report for exactly which gate each one stands in for.
+
+$ git -C ~/local-operator-ui/.worktrees/i18n-l2-file-sizes log --oneline -3 659ef7e44b7c
+659ef7e44b7 chore(i18n): regenerate condense parity fixture for the localized size spelling
+31091eea605 fix(i18n): keep English sizes ungrouped, localize sub-kilobyte attachments and the budget refusal rung
+982d11ab9da feat(i18n): ship translations and audit receipts for the never-sent size line
+
+$ git show 659ef7e44b7c:src/i18n/catalogues/en/ui.chat.canonical.json        > en_ui.chat.canonical.json
+$ git show origin/main:src/i18n/catalogues/en/ui.chat.canonical.json          > en_main_ui.chat.canonical.json
+$ git show 659ef7e44b7c:src/i18n/catalogues/en/ui.chat.canonical.context.json > en_ui.chat.canonical.context.json
+$ git show 659ef7e44b7c:src/i18n/catalogues/zh-CN/ui.chat.canonical.json      > zh-CN_ui.chat.canonical.json
+$ git show origin/main:src/i18n/catalogues/zh-CN/ui.chat.canonical.json       > zh_main.json
+  -> sha256 en        38f1069648c9241799bb1b316820e0530bf9445dfba3151e1c28df70153916b3
+  -> sha256 context   c258ab485de698eec85e81ffed506866e3b1e8caf29cb3ff434901388065b390
+  -> sha256 target    4176670606e68058e498a36006ba8c770af64489ec77d77e78d3a2754ab2ddf0
+  -> sha256 en@main   a385671b988e5f03df6f650beb4a06f73c9efaead2316dfa9ab15bf043798765
+  -> sha256 zh@main   5a2d874409f2839c78ee8d63bcc62305bd9cc7b11782c80551561edc189515e2
+
+$ git diff origin/main...659ef7e44b7c -- src/i18n/catalogues/en/ui.chat.canonical.json
+  -> 2 lines added (tool.never_sent_composed, tool.never_sent_empty); no other en byte changed
+$ git diff origin/main...659ef7e44b7c -- src/i18n/catalogues/zh-CN/ui.chat.canonical.json
+  -> the same 2 keys appended; all 440 retained values byte-identical (confirmed by value compare)
+$ git diff origin/main...659ef7e44b7c -- src/i18n/catalogues/en/ui.chat.canonical.context.json
+  -> 2 context entries added (role/tone/length/note/placeholders for both keys)
+
+$ python3 audit_mech.py   (full mechanical suite; see mechanical.json)
+  key_count en=442 target=442 context=442        PASS
+  key set missing=[] extra=[]                    PASS
+  key order == English                           PASS
+  raw key lines=442, duplicate keys=[]           PASS
+  JSON parses, trailing newline, tab indent      PASS
+  NFC all values                                 PASS
+  empty values []                                PASS
+  placeholder name/type mismatches []            PASS
+  plural messages 58, issues []                  PASS  (zh-CN: `other` present in all 58; no one/few/many)
+  identical-to-English values: 2 (both structural)  PASS
+  stray whitespace: only fold.unit_separator " · "  PASS (by design)
+  backticks/tags/flags in en: 0/0/0              PASS (nothing to carry)
+
+$ node -e '<Intl unit probe + zh-CN word/cell counts>'
+  zh-CN narrow byte/kilobyte/megabyte/gigabyte = B / kB / MB / GB
+  separator literal = U+0020 (plain space)
+  512 -> "512 B"; 1536 -> "1.5 kB"; 1048576 -> "1.0 MB"; 2600000 -> "2.5 MB"
+  rendered lines: 未发送 · 已编写512 B (20 cells) · 未发送 · 已编写1.5 kB (21) · 未发送 · 未编写内容 (19)
+  node v24.22.1, ICU 78.3, CLDR 48.0
+
+$ git show 659ef7e44b7c:scripts/i18n/file-size.test.mjs | grep -n zh-CN
+  -> line 68: "zh-CN": ["0 B","1 B","1 kB","1 kB","1.5 kB","1 MB","2.5 GB"]   (agrees with the probe above)
+
+$ git show 659ef7e44b7c:src/i18n/format.ts   (fileSizeUnitLabel / fileSizeSeparator / formatByteQuantity)
+  -> unit = Intl narrow unit part; separator = Intl short kilobyte literal; callers pre-round
+$ git show 659ef7e44b7c:src/renderer/src/features/chat/canonical/canonical-transcript.tsx | sed -n '2313,2330p'
+  -> never_sent branch calls t("…never_sent_composed",{size: formatBytes(record.argumentBytes)}) / t("…never_sent_empty")
+
+$ shasum -a 256 ~/local-operator/i18n/style-guides/zh-CN.md ~/local-operator/i18n/glossary.md
+  8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c  zh-CN.md
+  0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8  glossary.md
+$ git -C ~/local-operator show origin/main:<path> | shasum -a 256
+  -> both identical to origin/main (no local divergence); the UI repo has NO i18n/style-guides directory.

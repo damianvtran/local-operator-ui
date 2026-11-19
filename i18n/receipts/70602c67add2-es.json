@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "locale": "es",
+  "namespace": "ui.agentMessages",
+  "date": "2026-10-19",
+  "status": "passed",
+  "audit_kind": "single-key-delta",
+  "key": "ui.agentMessages.dialog.consent_changed",
+  "english": "Read the current consent text, then choose Enable again.",
+  "target": "Lee el texto de consentimiento actual y vuelve a elegir Activar.",
+  "scope": "Independent delta audit of the only changed key in es/ui.agentMessages.json (direction-word removal). The rest of the namespace is unchanged from the previously audited bytes; this receipt binds the ENGLISH and es file hashes it was derived from.",
+  "head": "59ae07343175672667bf781c86fbfdccb9c59b06",
+  "branch": "fix/agent-messages-dialog",
+  "worktree": ".worktrees/agent-messages-dialog",
+  "instance": "70602c67add2-es",
+  "auditor": "reviewer (i18n consent_changed delta, es)",
+  "model": "deepseek/deepseek-flash",
+  "sha256": {
+    "en": "8dadc34125e9434d3994cff7518f72774bd486ce36edd505d34e21ef4c4f574b",
+    "es": "7e5e750b59fab4433b09b444999d9918a963eae8175c6eb02140ed46e1b191c6"
+  },
+  "findings": [],
+  "audit": {
+    "back_translation": "“Read the current consent text and choose Enable again.”",
+    "semantic_equivalence": "Pass: same object (the current consent text), same required action (choose Enable again), no added or lost instruction. The English was made direction-neutral; the target carries the same neutral scope.",
+    "register": "Informal tú, matching this dialog’s corpus (“Inténtalo”, “Actualiza”, “Puedes activarlo”); sentence-initial capital and one terminal period as in English.",
+    "delta_proof": "Old value was “Lee el texto de consentimiento actual que aparece abajo y vuelve a elegir Activar.” The change removes exactly “que aparece abajo ” (the directional clause) and changes no other word. The previous es catalogue row was audited clean at the old bytes.",
+    "terminology": "“Activar” is byte-identical to ui.agentMessages.dialog.enable (“Activar”), so the notice names the same button label as the action. “vuelve a elegir” is the natural Spanish for “choose … again”.",
+    "direction_scan": "Scanned for abajo / aquí / a continuación / más abajo: none present. Value is direction-neutral.",
+    "style": "“texto de consentimiento actual” uses “actual” in its Spanish sense of current/present; “consentimiento” matches the rest of the namespace (consent_unavailable, local_failure). Same imperative person as the neighbouring failure copy.",
+    "mechanical": {
+      "key_present": true,
+      "key_set_equals_english": "16/16, no missing or extra keys",
+      "placeholders": "none in English or target; no braces in the value",
+      "punctuation": "one sentence; no comma before “y” (correct for two coordinated imperatives); one terminal period; no added exclamation or question marks",
+      "bytes": "UTF-8; NFC; no NBSP, U+202F, zero-width or BOM characters; no leading/trailing whitespace; no double spaces"
+    }
+  },
+  "note": "No blocker, major, minor or nit finding."
+}

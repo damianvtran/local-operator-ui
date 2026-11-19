@@ -1,0 +1,78 @@
+{
+	"auditor": "reviewer",
+	"model": "anthropic/claude-opus-5-5",
+	"instance": "15686088b7ce-vi",
+	"run_id": "15686088b7ce",
+	"status": "passed",
+	"result": "clean-with-findings",
+	"namespace": "ui.chat.canonical",
+	"locale": "vi",
+	"date": "2026-11-12",
+	"head": "c213a0616d0272b53fee8293fbc0a241255b2a52",
+	"key_count": 457,
+	"scope": "whole merged file at c213a0616: #1870's 14 status keys + this PR's 5 loading.* keys; seam review and merge-integrity proof",
+	"merge_integrity": "all 457 values equal origin/main or 10eba3637 (14 #1870 keys = main, 5 loading.* = 10eba3637); only raw-line change is a trailing comma on main's last line; removed vs main = the 4 audited removals",
+	"checks": [
+		"loading.* meaning/register vs en + context (values = 4b8febc34595 audit)",
+		"seam: Đang tải/Đang đồng bộ/Đang kiểm tra match main's Đang tạo/Đang soạn/Đang viết and existing 'Đang tải đồ họa…', 'Đang đồng bộ tác nhân'; pronoun bạn used once (thiết bị khác của bạn); glossary device -> thiết bị",
+		"ellipsis: single U+2026, no space before, wherever en has one, all 19 keys; no ASCII ...",
+		"ICU args identical to en; no bidi controls; no duplicate loading.* values",
+		"glossary/style guide unchanged since 5079899f0"
+	],
+	"audited_values": {
+		"ui.chat.canonical.loading.cold": "Đang tải cuộc trò chuyện…",
+		"ui.chat.canonical.loading.revalidating": "Đang kiểm tra tin nhắn mới…",
+		"ui.chat.canonical.loading.older": "Đang tải tin nhắn trước…",
+		"ui.chat.canonical.loading.remote": "Đang đồng bộ từ thiết bị khác của bạn…",
+		"ui.chat.canonical.loading.region_label": "Đang tải cuộc trò chuyện"
+	},
+	"findings": [
+		{
+			"id": "64a0e2d3b795/VI-S16A-1",
+			"severity": "NIT",
+			"origin": "i18n/receipts/64a0e2d3b795.json",
+			"disposition": "carried from origin (key and detail there): bytes unchanged, still applies, severity concurred; deferred"
+		},
+		{
+			"id": "64a0e2d3b795/VI-S16A-2",
+			"severity": "NIT",
+			"origin": "i18n/receipts/64a0e2d3b795.json",
+			"disposition": "carried from origin (key and detail there): bytes unchanged, still applies, severity concurred; deferred"
+		},
+		{
+			"id": "4b8febc34595-vi/N1",
+			"severity": "NIT",
+			"origin": "i18n/receipts/4b8febc34595-vi.json",
+			"disposition": "carried from origin (key and detail there): bytes unchanged, still applies, severity concurred; deferred"
+		}
+	],
+	"severity_counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 3
+	},
+	"supersedes": [
+		"64a0e2d3b795",
+		"4b8febc34595-vi"
+	],
+	"independence": {
+		"translators": [
+			"i18n-translator anthropic/claude-sonnet-5-5 (14 keys)",
+			"coder 6ca5ea22d2ab anthropic/claude-opus-5-5 (loading.*)"
+		],
+		"auditor_agent": "reviewer",
+		"auditor_session": "15686088b7ce",
+		"independent_from_translator": true,
+		"disclosure": "different agent/session from both translators; same model family as coder; no fallback"
+	},
+	"references": {
+		"glossary": "~/local-operator/i18n/glossary.md @ ad910f5da",
+		"style_guide": "~/local-operator/i18n/style-guides/vi.md @ ad910f5da"
+	},
+	"sha256": {
+		"target": "3c6f6097083fd0e921fc5f6c2c436633cb4ce522e35a66d329e4fecfaf9a1b65",
+		"en": "0c9b709973d3b7769708502491a0d3d81798ac2ac68319967198e53e2d495113",
+		"context": "5eeed243125c66031b335e1dcdf029ce54306db70fb1fb65e69dc53d64e30391"
+	}
+}

@@ -2,6 +2,13 @@ import {
 	useAidaDisplayName,
 	useAidaTarget,
 } from "@features/aida/use-aida-target";
+import { sessionPictureEditable } from "@shared/agent-avatar/agent-avatar-meta";
+import { useAgentSlotMark } from "@shared/agent-avatar/agent-avatar-slot";
+import { categorizeSendFailure } from "@shared/analytics/first-run-reasons";
+import {
+	trackFirstMessageSent,
+	trackProductEvent,
+} from "@shared/analytics/product-events";
 import {
 	backendPaneSentence,
 	compatibilityBannerShown,
@@ -18,6 +25,7 @@ import {
 } from "@shared/api/local-operator/desktop-hooks";
 import {
 	type ChatTarget,
+	useProfiles,
 	useTeams,
 } from "@shared/api/local-operator/profile-hooks";
 import { teamDisplayName } from "@shared/api/local-operator/team-display";
@@ -34,41 +42,61 @@ import {
 } from "@shared/hooks/use-canonical-session";
 import { useServerHealth } from "@shared/hooks/use-connectivity-status";
 import { useDesktopWatchLease } from "@shared/hooks/use-desktop-watch-lease";
+import { useHomeDirectory } from "@shared/hooks/use-home-directory";
 import type { SendOutcome } from "@shared/hooks/use-message-input";
 import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
+import {
+	dismissSettingsIntent,
+	intentPendingModel,
+	retrySettingsIntent,
+	useModelDescriber,
+	usePickerCataloguePrefetch,
+	useSessionSettingsIntents,
+} from "@shared/hooks/use-settings-intents";
 import { isDictationActive } from "@shared/hooks/use-speech-to-text-manager";
 import { useStableCallback } from "@shared/hooks/use-stable-callback";
 import {
 	useDraftWarmSession,
 	useWarmSession,
 } from "@shared/hooks/use-warm-session";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useAsideStore } from "@shared/store/aside-store";
 import {
 	ANSWER_NOT_SENT_CODE,
 	ASIDE_NOT_ANSWERED_CODE,
 	ASIDE_STILL_ANSWERING_CODE,
+	type PanelMount,
 	SEND_FAILURE_COPY,
 	SESSION_UNVALIDATED_CODE,
-	SESSION_UNVALIDATED_MESSAGE,
 	UNREADABLE_ATTACHMENT_CODE,
 	admitChatDraft,
+	composerIdentityFor,
 	isSessionUnvalidated,
 	migrateHeldClaim,
 	paneDraftKey,
 	panelIdentityFor,
+	panelMountKeyFor,
 	panelSessionIdOfView,
 	pressLockCopy,
+	remoteOwnedId,
 	resynthesisePendingSend,
 	sendFailureCopy,
+	sessionUnvalidatedMessage,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import {
+	type MirroredIntent,
+	noteSupersededOnce,
+} from "@shared/store/settings-intents";
+import {
 	type AskDrawerCloseOptions,
 	useUiPreferencesStore,
 } from "@shared/store/ui-preferences-store";
+import { formatDirectory } from "@shared/utils/path-utils";
 import { showSuccessToast } from "@shared/utils/toast-manager";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -79,9 +107,11 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { flushSync } from "react-dom";
 import { useNavigate, useParams } from "react-router-dom";
 import { pairingHasRemedy } from "../../../../../shared/backend-status";
 import { DESKTOP_REFUSAL_CODE } from "../../../../../shared/desktop-contract";
+import { TURN_AVATAR_BOX, parseAgentAvatarSize } from "../agent-avatar-size";
 import {
 	asideAskBlockedReason,
 	askAside,
@@ -89,21 +119,24 @@ import {
 } from "../aside";
 import {
 	type AnswerOutcome,
-	SECRET_ANSWER_DOCKED_MESSAGE,
 	type SendLock,
 	answerGateOption,
 	answerGateSecret,
+	answerOwnerIsBusy,
 	answerQueuedAsk,
 	answerReport,
 	answerValue,
 	approvalAnswerValue,
 	createSendLock,
 	declineQueuedAsk,
+	dismissQueuedAsk,
 	gateIsSecret,
 	reviseQueuedAsk,
+	secretAnswerDockedMessage,
 } from "../ask-answer";
 import {
 	type AskAnswerAttempt,
+	type AskDismissReason,
 	type AskDraft,
 	type AskOutcome,
 	askClaimsEscape,
@@ -121,7 +154,15 @@ import {
 	turnStopped,
 } from "../canonical/working-line-model";
 import { useStripSpeaksConnection } from "../chat-status-presence";
-import { catalogueTitleUpdate, resolveChatTitle } from "../chat-title";
+import {
+	catalogueTitleUpdate,
+	resolveChatTitle,
+	resolveFirstSendDescription,
+} from "../chat-title";
+/* The ask band's machine anchor: its accessible name is translated, so the
+ * keyboard probes below cannot query the English label they used to spell
+ * (i18n audit, C2). */
+import { ASK_OPTIONS_SELECTOR } from "../composer-field";
 import {
 	caughtFailureNotice,
 	composerNoticeFor,
@@ -132,10 +173,20 @@ import { ChatDeviceHold } from "../device/chat-device-hold";
 import { ChatDeviceNotice } from "../device/chat-device-notice";
 import { ChatDeviceSlot } from "../device/chat-device-slot";
 import {
+	dictatedRefusalSentence,
+	dictatedSends,
+	dismissDictatedToast,
+	setDictatedSendNavigate,
+	useDictatedSendStore,
+} from "../dictated-send";
+import {
 	type DraftResolution,
 	type DraftSelectionTarget,
+	FAST_UNAVAILABLE_CODE,
 	draftPreviewQuery,
+	fastUnavailableSentence,
 } from "../draft-selection";
+import { FLEET_ASKS_QUERY_KEY, useFleetAsks } from "../fleet-asks";
 import { useInterruptOnEscape } from "../hooks/use-interrupt-on-escape";
 import {
 	interruptNotice,
@@ -144,26 +195,36 @@ import {
 	sessionInterruptEnabled,
 } from "../interrupt-turn";
 import {
-	MOVE_NOT_READY_REASON,
-	MOVE_UNAVAILABLE_REASON,
+	moveNotReadyReason,
+	moveUnavailableReason,
 	sessionMoveEnabled,
 	useSessionMove,
 } from "../move-session";
 import { openConversation } from "../open-conversation";
+import { openTrace } from "../open-trace";
 import { PickerOutlet } from "../pickers/picker-registry";
+import type { FailureCause } from "../send-recovery";
+import { resolveSessionAskFrame } from "../session-asks";
 import {
+	effortDisplay,
 	effortQueryModel,
 	modelAccessLocality,
 } from "../session-status/session-model";
 import type { Message } from "../types/message";
-import { encodeImageAttachments } from "../utils/attachment-encode";
+import { encodeAttachments } from "../utils/attachment-encode";
 import {
+	fileOverflowRefusal,
 	imageOverflowRefusal,
 	unreadableAttachmentRefusal,
 } from "../utils/attachment-read";
 import { canvasDocumentForPath } from "../utils/canvas-document";
-import { messageBudgetRefusal } from "../utils/message-budget";
+import {
+	budgetCheckedSeam,
+	messageBudgetRefusal,
+} from "../utils/message-budget";
 import { ChatContent } from "./chat-content";
+import { ChatHeaderDraftTarget } from "./chat-header-draft-target";
+import { draftTargetChipShown } from "./chat-header-draft-target-model";
 import type { HeaderIdentityData } from "./chat-header-identity";
 import {
 	headerHostKey,
@@ -201,6 +262,34 @@ const gateKeyOf = (gate: { request_id: string; question_index: number }) =>
 /** The header's second line when nothing true can fill it; see the live arm. */
 const HELD_DESCRIPTION_LINE = "\u00a0";
 
+/**
+ * The options bar's button label for a slash command, resolved at render.
+ *
+ * Keyed per command (not `command[0].toUpperCase()`-derived): capitalising the
+ * command NAME is English grammar, and the name itself is a protocol token that
+ * must not be what a French reader sees. The names stay the dispatch argument.
+ */
+const optionsCommandLabel = (command: string): string => {
+	switch (command) {
+		case "agent":
+			return t("ui.chat.page_chrome.options.choose_agent");
+		case "team":
+			return t("ui.chat.page_chrome.options.choose_team");
+		case "model":
+			return t("ui.chat.page_chrome.options.model");
+		case "rename":
+			return t("ui.chat.page_chrome.options.rename");
+		case "resume":
+			return t("ui.chat.page_chrome.options.resume");
+		case "fork":
+			return t("ui.chat.page_chrome.options.fork");
+		case "new":
+			return t("ui.chat.page_chrome.options.new");
+		default:
+			return t("ui.chat.page_chrome.options.settings");
+	}
+};
+
 /** How a send held for the validation window ends; see `send`. */
 type WindowOutcome = "ready" | "failed" | "gone" | "abandoned";
 
@@ -231,10 +320,17 @@ function SessionPanel({
 	identity,
 	draftKey,
 	sessionId,
+	onStartNewChat,
 }: {
 	identity: string;
 	draftKey: string | null;
 	sessionId?: string;
+	/**
+	 * The missing notice's route move, owned by `ChatPage` (agent review round 1 /
+	 * QA round 1, Q1): the panel and the transcript below it can stage the fresh
+	 * draft, but only the page holds `navigate`.
+	 */
+	onStartNewChat: () => void;
 }) {
 	const draftIdentity = useCanonicalSessionsStore((state) =>
 		paneDraftKey(draftKey, sessionId, state.drafts),
@@ -242,6 +338,39 @@ function SessionPanel({
 	const draft = useCanonicalSessionsStore((state) =>
 		draftIdentity ? state.drafts[draftIdentity] : undefined,
 	);
+	/*
+	 * A DICTATED SEND THAT ENDED WITHOUT POSTING IS SAID HERE (bug 2).
+	 *
+	 * The refusal is recorded against the CONVERSATION (`dictated-send.ts`), not
+	 * against a pane, because the pane it belongs to is exactly the thing that may
+	 * be gone when it happens. This effect is where the record meets the notice this
+	 * pane already renders: opening that chat - now, or an hour later - states the
+	 * sentence, clears the record and retires the persistent toast, so the reader is
+	 * told once, in the place the dictation lives.
+	 *
+	 * The toast itself is raised at the refusal, and only when the reader is looking
+	 * at another chat; `dismissDictatedToast` here is what withdraws it once they
+	 * come back to this one.
+	 */
+	const dictatedRefusal = useDictatedSendStore((state) =>
+		identity ? state.refused[identity] : undefined,
+	);
+	useEffect(() => {
+		if (!identity || !dictatedRefusal) return;
+		setSendError(dictatedRefusalSentence(dictatedRefusal));
+		setSendErrorCode(undefined);
+		setSendErrorRetry(false);
+		setSendErrorMuted(false);
+		dictatedSends.clearRefusal(identity);
+		dismissDictatedToast(identity);
+	}, [identity, dictatedRefusal]);
+	/*
+	 * THE REFUSAL TOAST'S "Open chat" NEEDS A ROUTER (bug 2), and this panel is
+	 * where one lives. Registered rather than imported so `dictated-send.ts` stays
+	 * a plain module the node suites can drive without a React tree. Declared below
+	 * with the panel's own `navigate` (line ~1380), which is why it registers in an
+	 * effect there instead of here.
+	 */
 	/*
 	 * The id this pane's STREAM addresses: the session once it exists, the
 	 * minted draft before that (`sessions.draft`'s id — a real bridge on the
@@ -315,6 +444,36 @@ function SessionPanel({
 		},
 	);
 	useDesktopWatchLease(streamId, canonical.subscriptionId);
+	/*
+	 * THE SESSION'S ASK FRAME, RESOLVED ONCE HERE (the resumed-ask fix).
+	 *
+	 * The canonical snapshot of a resumed conversation is deliberately CLAIMLESS
+	 * (`session-asks.ts`'s module note carries the measured 1,465 ms frame and the
+	 * backend's reason), while the index-backed aggregate answers in single-digit
+	 * milliseconds. So the two reads are merged once, at the page that owns the
+	 * stream and already has the fleet read mounted below it (React Query dedupes
+	 * the key), and the ONE resolved frame is handed to the transcript surfaces
+	 * and to the composer's status row.
+	 *
+	 * WHY THE PAGE AND NOT EACH SURFACE: the drawer, the header/rail count, the
+	 * composer chip and the open policy all read this queue, and the bug being
+	 * fixed was two of them reading one source while the frame said nothing. A
+	 * second resolution is how they would disagree again.
+	 *
+	 * `canonical.frontend` and not the held frame: a reconnect gap has no claim to
+	 * preserve, and the aggregate can answer for it - which is strictly better
+	 * than the unread state the gap used to produce. The readings strip keeps its
+	 * own hold for the model/cost numbers.
+	 */
+	const fleetAsks = useFleetAsks();
+	const sessionAskFrame = useMemo(
+		() =>
+			resolveSessionAskFrame(sessionId, canonical.frontend, {
+				rows: fleetAsks.rows,
+				capability: fleetAsks.capability,
+			}),
+		[sessionId, canonical.frontend, fleetAsks.rows, fleetAsks.capability],
+	);
 	// Fired from the composer's first keystroke, never from this mount - see
 	// `useWarmSession` for why browsing must not spawn runtimes.
 	const warm = useWarmSession(sessionId, panelCapabilities.data);
@@ -351,6 +510,18 @@ function SessionPanel({
 			.getState()
 			.setDraftWarmable(
 				desktopFeatureEnabled(panelCapabilities.data, "session_draft_warm"),
+			);
+		/*
+		 * The same publication for the draft dial (round 2's F1 follow-up). The
+		 * store builds the create and the warm-mint bodies and must not import this
+		 * module's capability hook, so the mounted pane states whether the field can
+		 * ride; fail-closed, so an unanswered query strips it rather than sending a
+		 * body an older core refuses whole.
+		 */
+		useCanonicalSessionsStore
+			.getState()
+			.setDraftFastCarries(
+				desktopFeatureEnabled(panelCapabilities.data, "draft_fast"),
 			);
 	}, [panelCapabilities.data]);
 	/*
@@ -958,32 +1129,34 @@ function SessionPanel({
 	 * roster on screen past the stream it describes.
 	 */
 	const runFrontend = canonical.frontend ?? canonical.heldFrontend;
-	const runDetails = useMemo(
-		() =>
-			sessionId && runFrontend
-				? deriveRunDetails({
-						jobs: runFrontend.jobs,
-						todos: runFrontend.todos,
-						/*
-						 * The armed wake schedules ride the same derivation, which is what puts the
-						 * composer's wake chip, the pane's Wakes section and the section's tally on
-						 * ONE list: the chip is gated on `runDetails.wakes.length` and the section
-						 * renders those same rows, so a second read of the wire here would be a
-						 * second source of truth for a count the user can see twice on one screen.
-						 */
-						wakes: runFrontend.wakes,
-						/*
-						 * The armed monitors ride the same derivation, which is what puts the
-						 * composer's monitor chip, the pane's Monitors section and the section's
-						 * trailing tally on ONE list — the wake wiring's own argument, one count
-						 * over: a second read of the wire here would be a second source of truth
-						 * for a count the user can see twice on one screen.
-						 */
-						monitors: runFrontend.monitors,
-					})
-				: null,
-		[sessionId, runFrontend],
-	);
+	const runDetailsLocale = useI18nLocale();
+	const runDetails = useMemo(() => {
+		// Cadence labels are derived copy. A retained frontend is unchanged when
+		// language moves, so locale must invalidate these rows without a new frame.
+		void runDetailsLocale;
+		return sessionId && runFrontend
+			? deriveRunDetails({
+					jobs: runFrontend.jobs,
+					todos: runFrontend.todos,
+					/*
+					 * The armed wake schedules ride the same derivation, which is what puts the
+					 * composer's wake chip, the pane's Wakes section and the section's tally on
+					 * ONE list: the chip is gated on `runDetails.wakes.length` and the section
+					 * renders those same rows, so a second read of the wire here would be a
+					 * second source of truth for a count the user can see twice on one screen.
+					 */
+					wakes: runFrontend.wakes,
+					/*
+					 * The armed monitors ride the same derivation, which is what puts the
+					 * composer's monitor chip, the pane's Monitors section and the section's
+					 * trailing tally on ONE list — the wake wiring's own argument, one count
+					 * over: a second read of the wire here would be a second source of truth
+					 * for a count the user can see twice on one screen.
+					 */
+					monitors: runFrontend.monitors,
+				})
+			: null;
+	}, [sessionId, runFrontend, runDetailsLocale]);
 	/*
 	 * The run panel's MCP half, read here for the reason the model is derived here:
 	 * this is the component that owns the session identity and the capabilities, and
@@ -1197,7 +1370,7 @@ function SessionPanel({
 	 * And the sentence for the case where there is none, PER CAUSE (agent review
 	 * m1).
 	 *
-	 * `MOVE_UNAVAILABLE_REASON` is about the backend, so it is only true where the
+	 * `moveUnavailableReason` is about the backend, so it is only true where the
 	 * backend is the reason. The second case is a pane whose session is being
 	 * created: `draftKey` survives admission by design (the pane is keyed on the
 	 * session identity so it does not remount), and for that window a move would
@@ -1208,11 +1381,20 @@ function SessionPanel({
 	 */
 	const cwdReadOnlyReason =
 		draftKey && (Boolean(draft?.sessionId) || admitting)
-			? MOVE_NOT_READY_REASON
+			? moveNotReadyReason()
 			: canMove
 				? undefined
-				: MOVE_UNAVAILABLE_REASON;
+				: moveUnavailableReason();
 	const navigate = useNavigate();
+	/*
+	 * THE REFUSAL TOAST'S "Open chat" NEEDS A ROUTER (bug 2), and this panel has one.
+	 * Registered rather than imported so `dictated-send.ts` stays a plain module the
+	 * node suites can drive without a React tree; re-registered on a rerender so the
+	 * toast never opens a route through a stale closure.
+	 */
+	useEffect(() => {
+		setDictatedSendNavigate(navigate);
+	}, [navigate]);
 	const rebind = (id: string) => {
 		/* The `/chat` slash finger on the switch; the rule is in `openConversation`. */
 		void openConversation(navigate, id);
@@ -1401,8 +1583,21 @@ function SessionPanel({
 		!sessionId &&
 		cwd.length > 0 &&
 		desktopFeatureEnabled(capabilities.data, "draft_preview");
+	/*
+	 * WHETHER THIS BACKEND CARRIES THE DIAL (round 2's F1 follow-up). A row
+	 * persisted with `fast_mode: true` meets an older core with a 422 for the WHOLE
+	 * body, and that core refuses the preview as readily as the create - so the
+	 * query filters the field out at its own sender (`draftPreviewQuery`) and the
+	 * store does the same for `sessions.draft`/`sessions.create`. The row keeps the
+	 * dial (it was the user's choice, and a capable backend restores it); the line
+	 * below says so out loud rather than dropping it in silence.
+	 */
+	const draftFastCarries = desktopFeatureEnabled(
+		capabilities.data,
+		"draft_fast",
+	);
 	const preview = useQuery({
-		...draftPreviewQuery(draftTarget),
+		...draftPreviewQuery(draftTarget, draftFastCarries),
 		enabled: draftPreviewOn,
 	});
 	/*
@@ -1423,6 +1618,35 @@ function SessionPanel({
 				? { status: "failed", retry: () => void preview.refetch() }
 				: { status: "pending" }
 		: undefined;
+	/*
+	 * A DIAL THE USER SET THAT THIS BACKEND CANNOT CARRY (round 2's F1 follow-up).
+	 *
+	 * The senders drop the field so the request survives (`draftPreviewQuery`, the
+	 * store's create and its warm mint), but dropping it in silence is the discard
+	 * the effort carry exists to prevent. The pane says it once, on the surface it
+	 * already uses for statements of fact about a send (`muted`, the register the
+	 * queued-send line uses), and only when the answer is `below-version` - an
+	 * unanswered probe or a missing pairing is not "update the service".
+	 */
+	const draftFastDropped =
+		!sessionId &&
+		draft?.model?.fast_mode === true &&
+		desktopFeatureState(capabilities.data, "draft_fast") === "below-version";
+	useEffect(() => {
+		if (!draftFastDropped) return;
+		/*
+		 * ITS OWN CODE, not the lock answer's shape (QA round 2, Q1). `muted` alone
+		 * is what the retirement effect reads, and a notice in that register naming
+		 * no code is how it identifies the lock answer - so this line used to be
+		 * cleared on the next commit by `lockAnswerOutlived`, which found nothing
+		 * pending on a restored draft and retired a statement of fact as if it were
+		 * a claim about a flight.
+		 */
+		setSendError(fastUnavailableSentence());
+		setSendErrorCode(FAST_UNAVAILABLE_CODE);
+		setSendErrorRetry(false);
+		setSendErrorMuted(true);
+	}, [draftFastDropped]);
 	const draftPickable =
 		!sessionId &&
 		desktopFeatureEnabled(capabilities.data, "draft_selection") &&
@@ -1446,6 +1670,12 @@ function SessionPanel({
 	 *   - `catalogues` — the picker's list. `models.catalogue` is where its rows come
 	 *     from, and a picker that opens onto an empty list is a dead control wearing
 	 *     a live one's clothes.
+	 *
+	 * `/fast` is NOT one of these chips, and it needs a FOURTH: the core field its
+	 * pick writes (`draft_fast`) is a capability of the row, not of the pane, so
+	 * `draftSelectionRoute` asks it there and this flag stays exactly as it was —
+	 * a core with `draft_selection` but without `draft_fast` keeps its model and
+	 * effort chips AND refuses `/fast` on a draft (agent review round 1, F1).
 	 */
 	/*
 	 * Retire whatever the composer's error line is holding.
@@ -1598,6 +1828,13 @@ function SessionPanel({
 								.setDraftModel(draftIdentity, selection),
 					}
 				: undefined,
+		/*
+		 * And WHERE the resolution is, which is the only way the dispatcher can tell
+		 * "this pane cannot carry a draft pick" from "this pane has not answered
+		 * yet" (round 2, D7). The same value the strip paints, so the refusal and
+		 * the reading describe one state.
+		 */
+		draftResolution,
 	});
 
 	/*
@@ -1769,8 +2006,38 @@ function SessionPanel({
 		 * whichever value the first attempt carried.
 		 */
 		inputMode?: "typed" | "dictated" | "mixed",
+		/**
+		 * THE SEND IS BOUND TO THE CONVERSATION IT STARTED IN, WHICHEVER PANE IS ON
+		 * SCREEN (bug 2). Passed by exactly one caller: the composer's dictated-away
+		 * deliverer, which finishes a "send recording" press in the chat the press
+		 * belonged to after the user has moved to another one.
+		 *
+		 * It relaxes exactly two of this function's own refusals, and both are about
+		 * the VIEW rather than about the send:
+		 *
+		 *   - the "the user has already left this conversation" gate below, whose
+		 *     whole point is to stop a press that raced a switch - here the switch is
+		 *     the expected state, and refusing would drop the dictation;
+		 *   - the validation-window hold, which parks a press until THIS pane's stream
+		 *     answers - a pane that is not mounted has no stream to wait on, so an
+		 *     unvalidated origin is refused with a sentence instead of held forever.
+		 *
+		 * It does NOT relax the payload refusals above (an unreadable attachment, the
+		 * size budget): those are about the message, and the voice's words are held to
+		 * the same rules as the keyboard's. Nor does it enable the navigation the
+		 * success path performs - that would yank the reader out of the chat they chose.
+		 */
+		options?: { originBound?: boolean },
 	): Promise<SendOutcome> => {
 		const store = useCanonicalSessionsStore.getState();
+		/*
+		 * READ AFTER THE STORE (round-1 finding, reviewer test pin). The door's shape is
+		 * pinned by `ask-composer-no-routing.test.mjs`: the first statement inside it is
+		 * the store read, which is what makes the test's "no ask branch before the
+		 * store" claim readable at all. A declaration about the CALLER's options sat
+		 * between the two and broke that pin without changing what this function does.
+		 */
+		const originBound = options?.originBound === true;
 		// Same ROW the view reads, so a send can never address a different draft
 		// than the one whose retained text and Discard control are shown. The
 		// resolver rather than `draftIdentityFor` alone: a pane reached by the
@@ -1899,14 +2166,14 @@ function SessionPanel({
 				 *
 				 * The sentence and the code are the ones every refused answer uses, so
 				 * the composer's alert offers no press that cannot work
-				 * (`SECRET_ANSWER_DOCKED_MESSAGE` carries the reasoning). The read itself
+				 * (`secretAnswerDockedMessage` carries the reasoning). The read itself
 				 * is `gateIsSecret` — the ONE predicate the dock's field arm, the
 				 * composer's closure and the answer door share (agent review round 1,
 				 * NIT-1), so no surface can mask while another stays open.
 				 */
 				if (gateIsSecret(gate))
 					throw new UserFacingError(
-						SECRET_ANSWER_DOCKED_MESSAGE,
+						secretAnswerDockedMessage(),
 						ANSWER_NOT_SENT_CODE,
 					);
 				if (gate.kind === "approval") {
@@ -1931,7 +2198,7 @@ function SessionPanel({
 					const approved = approvalAnswerValue(typed ?? content);
 					if (approved === null)
 						throw new UserFacingError(
-							"Reply yes or no to answer the approval request.",
+							t("ui.chat.approval.reply_required"),
 							ANSWER_NOT_SENT_CODE,
 						);
 					await desktopResult({
@@ -1960,10 +2227,25 @@ function SessionPanel({
 					});
 				return true;
 			}
-			const { images, unreadable, overflow } = await encodeImageAttachments(
-				attachments,
-				content,
+			/*
+			 * Files cannot ride a peer-owned conversation in v1 (attachment contract
+			 * §6b.2): the upload lands in THIS machine's attachment store, and the owner
+			 * has a different one. The encoder reports the files as `remote` failures, so
+			 * the refusal below names them and the send stops here rather than posting a
+			 * digest the owner could never resolve. Images keep today's peer staging.
+			 */
+			const remoteOwned = remoteOwnedId(
+				useCanonicalSessionsStore.getState().sessions,
+				useCanonicalSessionsStore.getState().placementFacts,
+				sessionId ?? draft?.sessionId ?? "",
 			);
+			const {
+				images,
+				files,
+				failures,
+				overflow,
+				fileOverflow: fileOverflowCount,
+			} = await encodeAttachments(attachments, content, { remoteOwned });
 			/*
 			 * An attachment the send could not read, reported before admission for the
 			 * same reason as the budget refusal below: the file is not in the message
@@ -1978,7 +2260,7 @@ function SessionPanel({
 			 * how the same sentence was measured both with and without it (design
 			 * round 4, D13; the predicate is `withholdsRetryHint`).
 			 */
-			const unreadableRefusal = unreadableAttachmentRefusal(unreadable);
+			const unreadableRefusal = unreadableAttachmentRefusal(failures);
 			if (unreadableRefusal) {
 				setSendError(unreadableRefusal);
 				setSendErrorCode(UNREADABLE_ATTACHMENT_CODE);
@@ -2001,6 +2283,14 @@ function SessionPanel({
 				setSendErrorMuted(false);
 				return false;
 			}
+			const fileOverflow = fileOverflowRefusal(fileOverflowCount);
+			if (fileOverflow) {
+				setSendError(fileOverflow);
+				setSendErrorCode(undefined);
+				setSendErrorRetry(false);
+				setSendErrorMuted(false);
+				return false;
+			}
 			// Refuse BEFORE admission, where the sizes are still known and the
 			// composer is still editable. A refusal from the transport arrives after
 			// the draft has latched, so its "send it again" advice is then refused by
@@ -2018,6 +2308,19 @@ function SessionPanel({
 				setSendErrorMuted(false);
 				return false;
 			}
+			/*
+			 * THE SEAM'S ANSWER IS A PAYLOAD, SO IT IS WEIGHED LIKE ONE (bug 1).
+			 *
+			 * Up to this change the press's `content` WAS the whole payload, and the
+			 * refusal above weighed all of it. A `$skill` message now carries its
+			 * typed line here and its `<operator-skills>` block through
+			 * `beforeAdmission` (`message-input.tsx`), so the string the owner receives
+			 * is no longer the string that was weighed - and a skill body is arbitrary
+			 * length. `budgetCheckedSeam` re-weighs the composed answer inside the
+			 * admission and refuses it there; see its own note for why that is the
+			 * failure row rather than this line.
+			 */
+			const admitSeam = budgetCheckedSeam(beforeAdmission, images);
 			/*
 			 * WHILE AN ASIDE IS ATTACHED THE COMPOSER ADDRESSES THE ASIDE.
 			 *
@@ -2081,9 +2384,7 @@ function SessionPanel({
 					 * where the chips that have to be removed are. `false` keeps both halves
 					 * with the user.
 					 */
-					setSendError(
-						"An aside answers text only. Remove the attached files to ask it.",
-					);
+					setSendError(t("ui.chat.page_chrome.aside_text_only"));
 					return false;
 				}
 				/*
@@ -2109,6 +2410,33 @@ function SessionPanel({
 					 */
 					noteAsideRefusal(busy);
 					return false;
+				}
+				/*
+				 * THE QUESTION TAKES THE COMPOSED TEXT (bug 1's aside arm). An aside is an
+				 * off-record answer that never enters `admitChatDraft`, so it is the one
+				 * door the store's seam never runs for: the composer hands it the typed
+				 * line now and the `$skill` block rides
+				 * `beforeAdmission` like everywhere else, so the door has to ask the seam
+				 * itself or the question reaches the owner with `$name` as prose.
+				 *
+				 * AND THE ANSWER IS WEIGHED HERE rather than through
+				 * `budgetCheckedSeam`: that wrapper throws, which is right inside the
+				 * store's admission (a failure row) and wrong on this door, where the
+				 * refusal belongs on the composer's own line with the question still in
+				 * the box. `beforeAdmission` is undefined whenever nothing is left to
+				 * compose, so a plain attached send is byte-identical to today's.
+				 */
+				let asideContent = content;
+				if (beforeAdmission) {
+					asideContent = (await beforeAdmission(sessionId)) ?? content;
+					const asideRefusal = messageBudgetRefusal(asideContent, images);
+					if (asideRefusal) {
+						setSendError(asideRefusal);
+						setSendErrorCode(undefined);
+						setSendErrorRetry(false);
+						setSendErrorMuted(false);
+						return false;
+					}
 				}
 				/*
 				 * THE SUBSCRIPTION TRAVELS WITH THE ASK. The stream is read by every
@@ -2140,7 +2468,7 @@ function SessionPanel({
 				setSendErrorCode(undefined);
 				const ask = askAside(
 					sessionId,
-					content,
+					asideContent,
 					canonical.subscriptionId ?? undefined,
 				);
 				/*
@@ -2217,10 +2545,48 @@ function SessionPanel({
 			 * with this conversation's draft, the same outcome as `abandoned`.
 			 */
 			if (
+				!originBound &&
 				sessionId &&
 				!viewIsOnThisSession(useCanonicalSessionsStore.getState(), sessionId)
 			)
 				return false;
+			/*
+			 * AN ORIGIN-BOUND SEND HAS NO WINDOW TO WAIT IN (bug 2). The hold below parks
+			 * a press until THIS pane's stream answers; a pane that is not mounted has no
+			 * stream and never will while the reader is elsewhere, so the press would sit
+			 * in `awaitWindow()` until something settled it. Refused with the same
+			 * sentence the stream failure uses, and recorded against the origin so the
+			 * reader is told why their dictation did not go - `not-ready` rather than a
+			 * wait they cannot see.
+			 */
+			if (
+				originBound &&
+				sessionId &&
+				isSessionUnvalidated(
+					useCanonicalSessionsStore.getState().validatingSessionId,
+					sessionId,
+				)
+			) {
+				const sentence = sessionUnvalidatedMessage();
+				setSendError(sentence);
+				setSendErrorCode(SESSION_UNVALIDATED_CODE);
+				setSendErrorRetry(false);
+				setSendErrorMuted(false);
+				/*
+				 * AND THE ORIGIN IS TOLD, not only this pane (bug 2). `setSendError` above
+				 * writes a pane-state notice, and the pane this send belongs to may not be
+				 * mounted: the sentence would be lost with it. The refusal record carries
+				 * the same words to whichever composer holds that conversation next - and,
+				 * because the reader is by definition looking somewhere else, raises the
+				 * persistent toast that names the chat.
+				 */
+				dictatedSends.refuseAway(
+					composerIdentityFor(key, sessionId),
+					"not-ready",
+					sentence,
+				);
+				return false;
+			}
 			if (
 				sessionId &&
 				isSessionUnvalidated(
@@ -2263,7 +2629,7 @@ function SessionPanel({
 					if (outcome === "failed") {
 						setSendError(
 							streamRef.current.failure?.statement ??
-								SESSION_UNVALIDATED_MESSAGE,
+								sessionUnvalidatedMessage(),
 						);
 						setSendErrorCode(SESSION_UNVALIDATED_CODE);
 						/*
@@ -2277,26 +2643,42 @@ function SessionPanel({
 					return false;
 				}
 			}
-			const id = await admitChatDraft(
-				key,
-				{
-					text: content,
-					attachments,
-					images,
-					mode: turnAlive ? "steer" : "prompt",
-					cwd,
-					/*
-					 * The capability gate, applied HERE rather than at the composer: this
-					 * function already reads the capability map for the `@` affordance,
-					 * and one gate at the one seam every door passes is what keeps the
-					 * suggestion grid's own sends (which pass no `inputMode`) on the
-					 * legacy body by construction.
-					 */
-					inputMode: inputModeEnabled ? inputMode : undefined,
-				},
-				sessionId,
-				onEchoPainted,
-				beforeAdmission,
+			/*
+			 * ONE COMMIT FOR THE PRESS (operator report, 2026-11-11: the transcript went
+			 * blank for a few frames after Send). The call's synchronous prefix marks
+			 * the draft `pending` - a store update, which React always commits
+			 * synchronously - and paints the echo through the pane's `setView`, a
+			 * plain state update. By this line the press has already crossed an
+			 * `await` (`encodeAttachments`), so that state update no longer carries the
+			 * click's priority: it rendered as default-priority, time-sliced work, and
+			 * the frame in between showed the greeting gone and the pane empty (traced:
+			 * ~35 ms, one painted frame, before the row). `flushSync` commits the
+			 * claim, the echo, the wait line and the composer's clear together; the
+			 * create and the message POST after the prefix are unaffected.
+			 */
+			const id = await flushSync(() =>
+				admitChatDraft(
+					key,
+					{
+						text: content,
+						attachments,
+						images,
+						...(files.length ? { files } : {}),
+						mode: turnAlive ? "steer" : "prompt",
+						cwd,
+						/*
+						 * The capability gate, applied HERE rather than at the composer: this
+						 * function already reads the capability map for the `@` affordance,
+						 * and one gate at the one seam every door passes is what keeps the
+						 * suggestion grid's own sends (which pass no `inputMode`) on the
+						 * legacy body by construction.
+						 */
+						inputMode: inputModeEnabled ? inputMode : undefined,
+					},
+					sessionId,
+					onEchoPainted,
+					admitSeam,
+				),
 			);
 			if (!id) return false;
 			/*
@@ -2326,13 +2708,20 @@ function SessionPanel({
 				canvas.addMentionedFilesBatch(id, sentFiles);
 			}
 			if (
+				!originBound &&
 				draftKey &&
 				useCanonicalSessionsStore.getState().activeSessionId === id
 			)
 				navigate(`/chat/${id}`, { replace: true });
 			void store.fetchSessions();
+			// Activation funnel: once per install; no content (product-events.ts).
+			trackFirstMessageSent();
 			return true;
 		} catch (error) {
+			// The category only - status class or transport - never the text.
+			trackProductEvent("message_send_failed", {
+				reason_category: categorizeSendFailure(error),
+			});
 			/*
 			 * THE BOUNDARY RULE, ON THE SURFACE THAT HAS TO OBEY IT: "a failure raised
 			 * after the optimistic row was painted belongs to the row; before it, the
@@ -2444,7 +2833,8 @@ function SessionPanel({
 	 * was told nothing while a fresh question appeared where they had pressed.
 	 *
 	 * `cardOnScreen` asks about EITHER answer surface — the options band
-	 * (`[aria-label="Answer options"]`) and the secret field's form
+	 * (`data-ask-options`, the machine anchor its translated name cannot be) and
+	 * the secret field's form
 	 * (`[data-ask-secret]`) — because the question the probe exists for is "is
 	 * this answer's own surface still on screen and able to carry its
 	 * sentence", and a secret answer's surface is the field it was typed in.
@@ -2466,9 +2856,8 @@ function SessionPanel({
 			sentEpoch: canonical.ownerEpoch,
 			liveEpoch: liveOwnerEpoch.current,
 			cardOnScreen:
-				document.querySelector(
-					'[aria-label="Answer options"], [data-ask-secret]',
-				) !== null,
+				document.querySelector(`${ASK_OPTIONS_SELECTOR}, [data-ask-secret]`) !==
+				null,
 		});
 		switch (report.to) {
 			case "refused":
@@ -2579,7 +2968,7 @@ function SessionPanel({
 		 */
 		const fromKeyboard =
 			document.activeElement instanceof HTMLElement &&
-			document.activeElement.closest('[aria-label="Answer options"]') !== null;
+			document.activeElement.closest(ASK_OPTIONS_SELECTOR) !== null;
 		/*
 		 * The pressed option is `disabled` the moment this press lands, and a
 		 * disabled control cannot hold focus: the browser drops it to the document
@@ -2771,8 +3160,23 @@ function SessionPanel({
 					 * the chip only ever read the sentence.
 					 */
 					refusedByOwner: askRefusalIsOwner(outcome.error),
+					/* The ink's half of the same classification; see `AskOutcome.busy`. */
+					busy: answerOwnerIsBusy(outcome.error),
 				},
 			}));
+			/*
+			 * A BUSY PRESS MAY HAVE LANDED, SO THIS ARM READS THE QUEUE AGAIN (design round
+			 * 1, D2). The old note here - "nothing reached the owner" - is true of a
+			 * transport failure and FALSE of `runtime_busy`, which is the write-then-wait
+			 * arm: the frame may have been written with only its acknowledgement lost.
+			 * Returning without a read left a settled ask drawn `open` for up to
+			 * `FLEET_ASKS_POLL_MS`, and the operator pressing it again inside that window
+			 * was answering an ask that had already been answered. Same key, same call and
+			 * same tolerance as the success path below: `void`, so a failed refetch is not
+			 * a second failure to report and the poll corrects it.
+			 */
+			if (answerOwnerIsBusy(outcome.error))
+				void queryClient.invalidateQueries({ queryKey: FLEET_ASKS_QUERY_KEY });
 			return;
 		}
 		setAskOutcomes((current) => ({
@@ -2783,6 +3187,19 @@ function SessionPanel({
 				...(changed ? { changed: true } : {}),
 			},
 		}));
+		/*
+		 * THE AGGREGATE IS A SESSION DRAWER'S SEED AS WELL (the resumed-ask fix), so
+		 * a settled answer has to move it rather than wait out the poll: while the
+		 * canonical frame is claimless, the aggregate is what the drawer painted,
+		 * and the row the user just answered would otherwise sit "open" for up to
+		 * `FLEET_ASKS_POLL_MS`. The fleet pane already invalidates this key after
+		 * its own settles (`fleet-ask-drawer.tsx`); this is the session scope's
+		 * half, through the one key both reads share. Both remaining statuses reach
+		 * here (`sent` and `refused` - a refusal is the ask changing under us); the
+		 * transport-failure arm returned above because nothing reached the owner, and
+		 * the BUSY arm refreshed before returning for the opposite reason (D2).
+		 */
+		void queryClient.invalidateQueries({ queryKey: FLEET_ASKS_QUERY_KEY });
 	};
 	const answerAsk = async (
 		taskId: string,
@@ -2863,7 +3280,8 @@ function SessionPanel({
 		 * nothing, leaving the card's own receipt (below, in `AskPanel`) as the only
 		 * trace on one side and a stale frame on the other.
 		 */
-		if (outcome.status === "sent") showSuccessToast("Answer changed");
+		if (outcome.status === "sent")
+			showSuccessToast(t("ui.notices.chat.answer_changed"));
 	};
 	const declineAsk = async (taskId: string) => {
 		if (!sessionId || sendLock.held) return;
@@ -2882,6 +3300,53 @@ function SessionPanel({
 			setAdmitting(false);
 		}
 		settleAskOutcome(taskId, outcome);
+	};
+	/**
+	 * PUT AN OPEN ASK AWAY (harness PR #2833, SA-D5).
+	 *
+	 * The third queued-ask door, behind the same lock as its siblings. Its receipt
+	 * is this surface's own record (`AskOutcome.dismissed`): the wire folds the ask
+	 * to `dismissed` with no marker for WHICH reason went, and the card that offered
+	 * the chooser collapses on the frame — so the reason has to be remembered here
+	 * or it is lost between the press and the row.
+	 *
+	 * NO TOAST. A decline has none and the card keeps its own line: the reader is
+	 * looking at the ask they just put away, and a transient notice over it would
+	 * be the second receipt for one act. The fleet scope does toast, because there
+	 * the row leaves the pane rather than settling in place (see its own note).
+	 */
+	const dismissAsk = async (taskId: string, reason: AskDismissReason) => {
+		if (!sessionId || sendLock.held) return;
+		setAdmitting(true);
+		setAskOutcomes((current) => ({
+			...current,
+			[taskId]: { sending: true, refused: null },
+		}));
+		let outcome: AnswerOutcome;
+		try {
+			outcome = await dismissQueuedAsk(
+				{ taskId, reason, sessionId, lock: sendLock },
+				(request) => desktopResult(request),
+			);
+		} finally {
+			setAdmitting(false);
+		}
+		if (outcome.status !== "sent") {
+			/*
+			 * `settleAskOutcome` is the one place that clears the in-flight flag and
+			 * records the sentence: a transport failure carries the owner's words, and
+			 * a `refused` outcome (the lock was taken, or the session id is gone) reached
+			 * nothing so it records neither. Returning without it would leave the card
+			 * disabled for the mount's life.
+			 */
+			settleAskOutcome(taskId, outcome);
+			return;
+		}
+		setAskOutcomes((current) => ({
+			...current,
+			[taskId]: { sending: false, refused: null, dismissed: reason },
+		}));
+		void queryClient.invalidateQueries({ queryKey: FLEET_ASKS_QUERY_KEY });
 	};
 	/*
 	 * THE DRAWER'S TOGGLE. The bar, the chip and the panel's Escape all call this
@@ -2960,7 +3425,7 @@ function SessionPanel({
 			 * surface or the other, never both, so this stays the "first live thing
 			 * the next question offers" the option-only query was.
 			 */
-			'[aria-label="Answer options"] button:not([disabled]), [data-ask-secret] input:not([disabled])',
+			`${ASK_OPTIONS_SELECTOR} button:not([disabled]), [data-ask-secret] input:not([disabled])`,
 		);
 		if (next) next.focus();
 		else input.current?.focusInput();
@@ -3193,7 +3658,7 @@ function SessionPanel({
 				 */
 				const sentence = userFacingMessage(
 					error,
-					"Stop could not be confirmed. The turn may still be running.",
+					t("ui.chat.page_chrome.stop_unconfirmed"),
 				);
 				stopAlertSentence.current = sentence;
 				setSendError(sentence);
@@ -3468,6 +3933,92 @@ function SessionPanel({
 		[boundRow?.binding?.agent, boundRow?.binding?.team]
 			.filter(Boolean)
 			.join(" · ");
+	/*
+	 * THE AGENT'S PICTURE FOR THIS PANE (operator request, 2026-10-30).
+	 *
+	 * WHY THE JOIN IS HERE. `useAgentAvatar` is keyed by the AGENT's id, and a
+	 * conversation carries its agent's NAME and nothing else (`SessionBinding` is
+	 * `{agent, team}`, two strings). The profile catalogue is the one thing that
+	 * holds both (`agent_id` beside `name`), so the pane that already reads the
+	 * conversation's binding is where the two meet - once per pane, rather than a
+	 * query per row. The same chain the header uses to say who is speaking, in the
+	 * same precedence (`||`, so the wire's empty-string "unset" falls through),
+	 * with the draft's own target last: a pane with no session yet still knows
+	 * which agent was picked.
+	 *
+	 * A TEAM CHAT WEARS ITS MANAGER'S PICTURE, and that is core's answer rather
+	 * than this join's (review round 1, R-4). Attaching a team CLAIMS the agent
+	 * slot for that team's manager (`_claim_agent_slot_for_team` in
+	 * `local_operator/session/session.py`, issue #2014: one session, one persona),
+	 * so the wire's `active_agent` already names the manager and the join below
+	 * finds the manager's profile. The manager is the slot that speaks for the
+	 * team, so the picture names the speaker - nothing here invents a team picture,
+	 * and no team has a picture of its own. The DRAFT arm is the narrower one: it
+	 * reads `kind === "agent"` alone, because a team that is only PICKED has no
+	 * manager speaking yet, and a name that happened to match a profile would be a
+	 * wrong mark rather than none.
+	 *
+	 * `agent_id` is null for the packaged profiles (they have no registry row to
+	 * key a picture by), which is why the chain ends at null and the transcript
+	 * draws nothing: no picture is a state, not a failure.
+	 *
+	 * WHAT IT CANNOT SAY, and why it is the pane's answer rather than each row's:
+	 * the wire carries no per-record agent, so a conversation's mark names the
+	 * agent in force NOW. Switching agent mid-conversation repaints the earlier
+	 * turns' marks with the new picture - a claim those turns would not make if
+	 * the journal recorded who answered them. Stated here because a reader of the
+	 * frames is entitled to know which fact the mark is.
+	 */
+	const speakerAgent =
+		canonical.frontend?.active_agent ||
+		boundRow?.binding?.agent ||
+		(draft?.target?.kind === "agent" ? draft.target.name : "") ||
+		null;
+	const agentProfiles = useProfiles(
+		Boolean(speakerAgent) &&
+			desktopFeatureEnabled(panelCapabilities.data, "profile_catalogue"),
+	);
+	const speakerAgentId =
+		agentProfiles.data?.find((row) => row.name === speakerAgent)?.agent_id ??
+		null;
+	// The turn mark's box, i.e. the size its bytes are read at.
+	const avatarSize = parseAgentAvatarSize(
+		useUiPreferencesStore((state) => state.agentAvatarSize),
+	);
+	/*
+	 * THE TURN HEAD'S MARK: the picture when it resolves, else nothing - decided by
+	 * the one function the header also asks (`decideAvatarMark`). A pictureless
+	 * agent draws no mark and reserves no line above its first row. Ownership is
+	 * the row's own answer (`sessionPictureEditable`: a remote conversation's
+	 * agent is another device's), and a draft has no row, which is the same
+	 * "local" answer a plain page's rows get. `pictureDoor` is false: the turn's
+	 * picture has never been a link.
+	 *
+	 * `cssPx` is the box `MessageAvatar` draws it at, from the same size table -
+	 * the read asks for the derivative that covers THAT box, so a `large` mark is
+	 * not served the `small` step's 64 px file on a retina panel.
+	 *
+	 * `sha256Hint` IS THE ROW'S DIGEST, only when the row is about this speaker
+	 * (QA Q-1): unhinted, the read claims nothing until the agents map answers,
+	 * so a pictured agent drew nothing and then popped in 24px. The row's claim
+	 * lets the cold head hold its plate. Not hinted otherwise (`undefined`, look
+	 * it up): a live switch to another agent, or a row with no digest - the map
+	 * also knows a picture set in this window before the row refetches, and a
+	 * `null` hint would never consult it. Unclaimed still draws nothing.
+	 */
+	const rowSpeaks =
+		speakerAgentId !== null && boundRow?.agent_id === speakerAgentId;
+	const agentAvatar = useAgentSlotMark({
+		agentId: speakerAgentId,
+		agentName: speakerAgent,
+		sha256Hint: (rowSpeaks && boundRow?.avatar_sha256) || undefined,
+		owned: sessionPictureEditable({
+			agent_id: speakerAgentId,
+			locality: boundRow?.locality,
+		}),
+		pictureDoor: false,
+		cssPx: TURN_AVATAR_BOX[avatarSize].px,
+	});
 	// The header names the conversation the user clicked, so it falls back to the
 	// catalogue row's name for the same reason `loaded` falls back to its binding:
 	// `conversation_title` is the journalled title only, and the row's name is
@@ -3477,6 +4028,13 @@ function SessionPanel({
 	// See chat-title.ts for the TUI precedent both rules follow.
 	const title = resolveChatTitle({
 		draftKey,
+		/*
+		 * AND THE CONVERSATION THE ROW ALREADY CREATED, so the header stops calling
+		 * it a new chat (the operator's report, 2026-10-22: the header said
+		 * "New chat with <team>" over a pane showing - or reporting gone - a
+		 * conversation). `resolveChatTitle` states the rule.
+		 */
+		draftSessionId: draft?.sessionId,
 		draftTarget: loadedTargetDisplay,
 		liveTitle: canonical.frontend?.conversation_title,
 		// The row's own name, or - for a conversation this window has deleted - the
@@ -3486,6 +4044,32 @@ function SessionPanel({
 	const view = !sessionId
 		? { ...canonical, status: "live" as const, error: null }
 		: canonical;
+	/*
+	 * THIS MOUNT BEGAN AS A DRAFT WITH NO SESSION (design round 1, D1b and D2).
+	 * The pane's mount key holds through its own draft's admission and retirement
+	 * (`panelMountKeyFor`), so a panel that mounted on a session-less draft is, for
+	 * its whole life, a conversation this pane CREATED. Two facts follow:
+	 * - It has painted the header as text since its first frame. When the draft
+	 *   row retired while the new session's stream was still connecting,
+	 *   `identityPending` read true and turned that text back into the pulsing
+	 *   skeleton (~220 ms after the press): a reload where nothing reloaded.
+	 * - Nothing precedes its first row, so its history is proven empty before any
+	 *   read (`createdHere` on the transcript), instead of "Earlier history not
+	 *   loaded · Try again" over the message the user just sent.
+	 * A draft mounted already bound to a session (a reload, a stable team row that
+	 * created one earlier) is NOT this: that session may have history, and a cold
+	 * open still holds the slot with the skeleton.
+	 */
+	const bornFromDraft = useRef(draftKey !== null && !sessionId);
+	/*
+	 * The target a targeted draft's header named at the press, held past the
+	 * draft row retiring so the second line stays on it until the owner states
+	 * the identity (design D6) - the draft, and so `draft.target`, is gone from
+	 * the commit the create answers.
+	 */
+	const sendTargetDisplay = useRef<string | undefined>(undefined);
+	if (draftKey && draft?.target)
+		sendTargetDisplay.current = loadedTargetDisplay;
 	/*
 	 * Nothing has named this session's identity yet, and the panel is waiting for
 	 * the stream that will.
@@ -3504,7 +4088,11 @@ function SessionPanel({
 	 * that states what it has. `view` and not `canonical`, so this reads the same
 	 * status the panel below it renders from.
 	 */
-	const identityPending = !loaded && !draftKey && view.status === "connecting";
+	const identityPending =
+		!loaded &&
+		!draftKey &&
+		!bornFromDraft.current &&
+		view.status === "connecting";
 	/*
 	 * WHETHER THE HEADER'S IDENTITY SLOT OFFERS THE TWO SWITCHERS, computed here
 	 * because this is the component that owns the four facts the gate reads -
@@ -3654,7 +4242,12 @@ function SessionPanel({
 		if (!sessionId || !windowOpen) return;
 		const store = useCanonicalSessionsStore.getState();
 		if (canonical.status === "live") store.confirmSessionLive(sessionId);
-		else if (canonical.missing) store.confirmSessionMissing(sessionId);
+		else if (canonical.missing) {
+			// Before the store write: `confirmSessionMissing` moves the view off
+			// the session, which the open trace would otherwise read as `left`.
+			openTrace.fail(sessionId, "missing");
+			store.confirmSessionMissing(sessionId);
+		}
 	}, [sessionId, windowOpen, canonical.status, canonical.missing]);
 	/*
 	 * The held sends' side of the window (see `send`): each waiter is settled by
@@ -3825,10 +4418,15 @@ function SessionPanel({
 	 * and the row's `Send again` would offer a second live press for the same
 	 * message. Read from the same store `Edit` wrote to, so the comparison is
 	 * against the box the user is looking at.
+	 *
+	 * The read is a BOOLEAN and it sits beside `editText` (see
+	 * `composerHoldsEditText` below, where the payload is computed) rather than
+	 * here: a selector answering the raw `currentInput` re-rendered this whole
+	 * 5,500-line page on EVERY keystroke of every draft - measured at 1.04 commits
+	 * per keystroke (`scripts/composer-typing-perf.test.mjs`, B2). A selector can
+	 * only see the store, so it has to be built where this render's `editText`
+	 * exists.
 	 */
-	const composerText = useConversationInputStore(
-		(state) => state.inputByConversation[identity]?.currentInput ?? "",
-	);
 	/*
 	 * §F3's PER-MESSAGE FAILURE STATE, addressed here because this page owns both
 	 * halves of it: the row it is about (the draft's open claim, or the
@@ -3852,6 +4450,8 @@ function SessionPanel({
 		attachments: readonly string[];
 		message?: string;
 		retry?: boolean;
+		code?: string;
+		cause?: FailureCause;
 	} | null = !draft
 		? null
 		: draft.submittedText !== undefined &&
@@ -3863,6 +4463,10 @@ function SessionPanel({
 					message: draft.error,
 					retry:
 						draft.errorRetry ?? retryOfferedForFailureCode(draft.errorCode),
+					// The cause's code rides to the row so it can name the fix (D3).
+					code: draft.errorCode,
+					// And the configuration cause the store classified (R1).
+					cause: draft.errorCause,
 				}
 			: (draft.undelivered ?? null);
 	/*
@@ -3886,11 +4490,26 @@ function SessionPanel({
 	 */
 	const editDraft = deliveryTurn ? editDraftOf(deliveryTurn.text) : null;
 	const editText = deliveryTurn ? (editDraft?.text ?? deliveryTurn.text) : null;
+	/*
+	 * A BOOLEAN, NOT THE STRING (composer typing perf, 2026-11-08). This page's one
+	 * use of the draft is "does the box hold exactly the payload `Edit` handed
+	 * back", and a selector answering the raw `currentInput` re-rendered the whole
+	 * page on every keystroke of every draft (1.04 commits/keystroke, measured in
+	 * `scripts/composer-typing-perf.test.mjs` B2). Comparing here means the page
+	 * commits only when the ANSWER changes - the press goes live, or it goes dim -
+	 * which is what `retryDisabled` reads.
+	 */
+	const composerHoldsEditText = useConversationInputStore((state) => {
+		const composed = state.inputByConversation[identity]?.currentInput ?? "";
+		return composed.trim().length > 0 && composed === editText;
+	});
 	const undeliveredTurn = deliveryTurn
 		? {
 				recordId: deliveryTurn.recordId,
 				message: deliveryTurn.message,
 				retry: deliveryTurn.retry,
+				code: deliveryTurn.code,
+				cause: deliveryTurn.cause,
 				/*
 				 * DIMMED WHILE THE BOX HOLDS THIS EXACT PAYLOAD (UX round 1, U4): the row
 				 * keeps its statement - the outcome may be unknowable - but one message
@@ -3899,8 +4518,7 @@ function SessionPanel({
 				 * the comparison is exact rather than trimmed: a box the user changed is a
 				 * different message and the row's press is re-armed rather than dimmed.
 				 */
-				retryDisabled:
-					composerText.trim().length > 0 && composerText === editText,
+				retryDisabled: composerHoldsEditText,
 				onSendAgain: () => {
 					void send(deliveryTurn.text, [...deliveryTurn.attachments]);
 				},
@@ -4015,6 +4633,7 @@ function SessionPanel({
 				admitting,
 				gatePending: canonical.frontend?.pending_gate != null,
 				muted: sendErrorMuted,
+				code: sendErrorCode,
 			})
 		)
 			return;
@@ -4027,6 +4646,7 @@ function SessionPanel({
 		admitting,
 		canonical.frontend?.pending_gate,
 		sendErrorMuted,
+		sendErrorCode,
 	]);
 	/*
 	 * MEMOISED FOR THE COMPOSER'S MEMO BOUNDARY (C1), with the registry read kept
@@ -4167,6 +4787,99 @@ function SessionPanel({
 	const servingLocality = useCanonicalSessionsStore((state) =>
 		modelAccessLocality(state.sessions, sessionId),
 	);
+	/*
+	 * DURABLE SETTINGS INTENTS (`features.settings_intents`). The server applies a
+	 * model/effort/cwd pick in the background; this pane mirrors the slots and
+	 * paints the TARGET at once - the model through the same `pendingModel` slot
+	 * the handle's paint uses, so the band draws both alike. The handle's own
+	 * paint (and its 15 s backstop) is never armed under the capability, because
+	 * the pickers no longer call `paintPendingModel` there; the intent is the
+	 * one source. Without the capability every value below is null and the
+	 * readings are today's.
+	 */
+	const settingsIntentsOn = desktopFeatureEnabled(
+		capabilities.data,
+		"settings_intents",
+	);
+	const intentSlots = useSessionSettingsIntents(
+		settingsIntentsOn ? sessionId : null,
+	);
+	const describeIntentModel = useModelDescriber(settingsIntentsOn);
+	/*
+	 * The cwd chip names the directory the way the directory indicator beside
+	 * it does (`~/...`), through the same shared rule (UX U3): the server's
+	 * absolute path made the chip disagree with the chip next to it and pushed
+	 * the sentence into truncation.
+	 */
+	const homeDirectory = useHomeDirectory();
+	const describeIntentDir = useCallback(
+		(dir: string) => formatDirectory(dir, homeDirectory),
+		[homeDirectory],
+	);
+	usePickerCataloguePrefetch(sessionId);
+	const intentModel = useMemo(
+		() =>
+			settingsIntentsOn
+				? intentPendingModel(intentSlots, describeIntentModel)
+				: null,
+		[settingsIntentsOn, intentSlots, describeIntentModel],
+	);
+	const settingsIntentsBand = useMemo(
+		() =>
+			settingsIntentsOn && sessionId
+				? {
+						slots: intentSlots,
+						describeModel: describeIntentModel,
+						describeDir: describeIntentDir,
+						onRetry: (intent: MirroredIntent) =>
+							void retrySettingsIntent(sessionId, intent),
+						onDismiss: (intent: MirroredIntent) =>
+							void dismissSettingsIntent(sessionId, intent),
+					}
+				: undefined,
+		[
+			settingsIntentsOn,
+			sessionId,
+			intentSlots,
+			describeIntentModel,
+			describeIntentDir,
+		],
+	);
+	/*
+	 * A SUPERSEDED pick - the TUI or the phone changed the setting first - is
+	 * published once and then pruned, so it is told here as a transcript note
+	 * rather than a chip that would vanish on its own. Noted once per request,
+	 * across pane remounts (`noteSupersededOnce` keeps a module-level set).
+	 */
+	useEffect(() => {
+		for (const intent of Object.values(intentSlots)) {
+			if (intent?.state !== "superseded") continue;
+			if (!noteSupersededOnce(intent.request_id)) continue;
+			const inForce =
+				canonical.frontend?.effective_model ??
+				canonical.frontend?.selected_model;
+			if (intent.kind === "model" && inForce) {
+				canonical.addNote(
+					t("ui.chat.settings_intents.superseded_model", {
+						model: describeIntentModel(
+							`${inForce.provider}/${inForce.model_id}`,
+						),
+					}),
+				);
+			} else if (
+				intent.kind === "effort" &&
+				typeof inForce?.reasoning_effort === "string"
+			) {
+				canonical.addNote(
+					t("ui.chat.settings_intents.superseded_effort", {
+						level: effortDisplay(inForce.reasoning_effort),
+					}),
+				);
+			} else {
+				canonical.addNote(t("ui.chat.settings_intents.superseded_other"));
+			}
+		}
+	}, [intentSlots, canonical.addNote, canonical.frontend, describeIntentModel]);
 	const liveSessionStatus = useMemo(
 		() =>
 			sessionId
@@ -4192,6 +4905,18 @@ function SessionPanel({
 						 */
 						frontend: canonical.frontend ?? canonical.heldFrontend,
 						servingLocality,
+						/*
+						 * The ask reading this page resolved from the canonical frame and the
+						 * aggregate index (`session-asks.ts`). The strip reads the model, cost
+						 * and goal from the same snapshot as before; only the ask lane uses
+						 * this merged frame, so a claimless resumed snapshot cannot turn into
+						 * "this runtime doesn't support queued asks".
+						 *
+						 * AFTER `servingLocality` deliberately: `session-status.test.mjs` pins
+						 * the frontend/locality PAIR as one contiguous reading, and an unrelated
+						 * field between them broke that pin (CI round, Desktop Tests).
+						 */
+						asks: sessionAskFrame,
 						/*
 						 * Whether those readings are the HELD ones, which is a
 						 * different question from whether a frontend is present:
@@ -4222,7 +4947,8 @@ function SessionPanel({
 						 * (latency U1). Straight off the handle, which owns both the paint and
 						 * its reconciliation with the authoritative frames.
 						 */
-						pendingModel: canonical.pendingModel,
+						pendingModel: intentModel ?? canonical.pendingModel,
+						settingsIntents: settingsIntentsBand,
 						/*
 						 * `dispatchFromControl`'s STABLE WRAPPER, not `dispatch`: a chip has no
 						 * fallback path to report a failure the way typed text does, so an
@@ -4260,9 +4986,12 @@ function SessionPanel({
 			servingLocality,
 			readingsDroppedFor,
 			canonical.pendingModel,
+			intentModel,
+			settingsIntentsBand,
 			stableDispatchFromControl,
 			effortEntities.data,
 			capabilities.data,
+			sessionAskFrame,
 		],
 	);
 
@@ -4337,11 +5066,7 @@ function SessionPanel({
 								void dispatch({ name: command, args: "" });
 							}}
 						>
-							{command === "agent"
-								? "Choose agent"
-								: command === "team"
-									? "Choose team"
-									: command.charAt(0).toUpperCase() + command.slice(1)}
+							{optionsCommandLabel(command)}
 						</button>
 					))}
 				</div>
@@ -4350,6 +5075,7 @@ function SessionPanel({
 				<ChatContent
 					activeTab={tab}
 					onTabChange={setTab}
+					onStartNewChat={onStartNewChat}
 					/*
 					 * THE DEVICE CONTROL'S TWO SURFACES, composed here because this is the one
 					 * place that knows both halves of the pane's identity: the live `sessionId`
@@ -4362,6 +5088,26 @@ function SessionPanel({
 							sessionId={sessionId ?? undefined}
 							draftKey={draftKey ?? undefined}
 						/>
+					}
+					/*
+					 * WHO ANSWERS THIS NEW CHAT, chosen in the header (operator request,
+					 * 2026-11-11). Draft panes only - `draftTargetChipShown` states why a
+					 * live pane and a draft whose create already answered are excluded -
+					 * and it stands down while a send is starting, because a pick re-keys
+					 * the draft the admission is finishing under.
+					 */
+					draftTargetSlot={
+						draftTargetChipShown({
+							sessionId,
+							draftKey,
+							draftSessionId: draft?.sessionId,
+						}) ? (
+							<ChatHeaderDraftTarget
+								target={draft?.target}
+								capabilities={capabilities.data}
+								busy={starting || Boolean(draft?.pending)}
+							/>
+						) : null
 					}
 					deviceNotice={<ChatDeviceNotice sessionId={sessionId ?? undefined} />}
 					deviceHold={deviceHold}
@@ -4403,10 +5149,28 @@ function SessionPanel({
 								 * always has). The directory is also the exact thing the footer
 								 * declares immutable, so the two lines now state one fact.
 								 */
-								starting
-								? (loadedTargetDisplay ?? "Starting the session")
+								/*
+								 * Only until the create answers (design round 1, D1c): from the
+								 * commit that writes `sessionId` - the one that lists the row in
+								 * the sidebar - the line names the conversation's directory, so
+								 * the header swaps once, together with the sidebar.
+								 */
+								/*
+								 * An untargeted draft keeps its own directory line through the
+								 * press rather than flashing "Starting the session" for the ~3
+								 * frames the create takes (design D6); the transcript's wait
+								 * line already says the session is starting.
+								 */
+								starting && !draft?.sessionId
+								? resolveFirstSendDescription({
+										targetDisplay: loadedTargetDisplay,
+										liveCwd: canonical.frontend?.cwd,
+										stagedCwd: cwd,
+									})
 								: draft?.sessionId
-									? canonical.frontend?.cwd || cwd || "Canonical chat"
+									? canonical.frontend?.cwd ||
+										cwd ||
+										t("ui.chat.header.canonical_chat")
 									: /*
 										 * A DRAFT WITH NO SESSION STATES WHERE IT WILL RUN, NOT WHAT IT
 										 * WILL DO (§H, U23). This slot held "The session starts when you
@@ -4443,7 +5207,24 @@ function SessionPanel({
 								 * no-break space keeps the `text-body-sm` line box, so the title does
 								 * not jump the 3.8 px the skeleton-to-text swap measured.
 								 */
-								live.cwd || HELD_DESCRIPTION_LINE)
+								/*
+								 * A mount born from this pane's draft keeps the directory it
+								 * already painted while the new session's stream connects
+								 * (D1b): the draft arm above read the same staged `cwd`, so the
+								 * retire is text-for-text in the same span.
+								 */
+								/*
+								 * And it holds that text until the identity controls replace it
+								 * (QA Q4): a targeted chat keeps the target it named at the
+								 * press, so the line never blanks or detours through the path.
+								 */
+								(bornFromDraft.current
+									? resolveFirstSendDescription({
+											targetDisplay: sendTargetDisplay.current,
+											liveCwd: live.cwd,
+											stagedCwd: cwd,
+										})
+									: live.cwd) || HELD_DESCRIPTION_LINE)
 					}
 					descriptionPending={identityPending}
 					identity={identityControls}
@@ -4475,10 +5256,17 @@ function SessionPanel({
 							? sessionId
 							: undefined
 					}
+					// The pencil's box, held from the draft so its mount moves nothing (D1a).
+					createdHere={bornFromDraft.current}
+					renameSlotReserved={
+						!sessionId && desktopFeatureEnabled(capabilities.data, "commands")
+					}
 					onOpenOptions={() => setOptions((value) => !value)}
 					isOptionsSidebarOpen={false}
 					onCloseOptions={() => setOptions(false)}
 					agentId={identity}
+					agentAvatar={agentAvatar}
+					agentSpeakerName={speakerAgent}
 					turnTerminal={canonical.turnsCompleted}
 					/*
 					 * Draft: the store's staged cwd, which `admitChatDraft` passes to
@@ -4534,6 +5322,20 @@ function SessionPanel({
 					scrollToBottom={scrollToBottom}
 					rawInfoContent={JSON.stringify(canonical.frontend, null, 2)}
 					onSendMessage={stableSend}
+					/*
+					 * THIS PAGE APPLIES THE SEAM: `send` forwards it to `admitChatDraft`
+					 * (weighed by `budgetCheckedSeam`) and composes an aside's question
+					 * through it, so the composer may hand the `$skill` read to it and paint
+					 * the typed line first (bug 1). See `MessageInputProps`.
+					 */
+					admissionSeamHonoured
+					/*
+					 * AND THIS PAGE FINISHES A DICTATED SEND IN THE CHAT IT STARTED IN (bug 2):
+					 * `send` accepts an `originBound` call for a conversation this pane is not
+					 * showing, so a "send recording" press survives a session switch instead of
+					 * landing in the next chat's box. See `MessageInputProps`.
+					 */
+					dictatedAwayDelivery
 					/*
 					 * The SAME dispatcher the chips use, handed the planner's own answer (an
 					 * invocation, never the draft) with its outcome handed back: the composer
@@ -4663,6 +5465,13 @@ function SessionPanel({
 					canonical={{
 						view,
 						/*
+						 * THE SAME RESOLVED FRAME the composer's status row reads (below, as
+						 * `sessionStatus.asks`): the drawer, the header/rail count and the
+						 * open policy all paint from this one value, so the two surfaces can
+						 * never disagree about whether the queue is readable.
+						 */
+						asks: sessionAskFrame,
+						/*
 						 * The claim surfaces AND the controls that act on the turn read THROUGH
 						 * THE HOLD (round 1's D2: one predicate, so the line, the hint, the
 						 * Stop control, its Escape accelerator and the send mode cannot
@@ -4743,6 +5552,20 @@ function SessionPanel({
 						onDeclineAsk: (taskId: string) => void declineAsk(taskId),
 						onReviseAsk: (taskId: string, answers: Record<string, string[]>) =>
 							void reviseAsk(taskId, answers),
+						/*
+						 * THE DISMISS DOOR IS GATED ON THE CAPABILITY, not on the reason a call
+						 * might fail: an older daemon's `Answer` is `extra="forbid"`, so a body
+						 * carrying `dismiss` is a 422 there, and a control that can only be
+						 * refused is the dead affordance the ask panel refuses. Absent means the
+						 * panel draws no button.
+						 */
+						onDismissAsk: desktopFeatureEnabled(
+							capabilities.data,
+							"ask_dismiss",
+						)
+							? (taskId: string, reason: AskDismissReason) =>
+									void dismissAsk(taskId, reason)
+							: undefined,
 						askOutcomes,
 						/* The asks drawer's lane: the flag, its door and the panel's draft. The
 						 * composer is deliberately NOT part of it (no sentence, no mode). */
@@ -4760,6 +5583,8 @@ function SessionPanel({
 }
 
 export function ChatPage() {
+	// The pane's own copy follows a backend locale change like every other surface.
+	useI18nLocale();
 	const { agentId: routeIdentity } = useParams<{ agentId?: string }>();
 	const navigate = useNavigate();
 	const capabilities = useDesktopCapabilities();
@@ -4875,9 +5700,7 @@ export function ChatPage() {
 		 * non-session identity - gets the honest sentence.
 		 */
 		if (!SESSION_ID.test(routeIdentity)) {
-			setRouteError(
-				"This legacy link has no canonical chat. Its saved history is unchanged.",
-			);
+			setRouteError(t("ui.chat.page_chrome.legacy_link"));
 			return;
 		}
 		const id = routeIdentity;
@@ -4923,6 +5746,18 @@ export function ChatPage() {
 		setRouteError(null);
 		navigate("/chat");
 	};
+	/**
+	 * The missing notice's way out, as a ROUTE (agent review round 1 / QA round 1,
+	 * Q1): the transcript owns the button but not `navigate`, and this page is the
+	 * one place that can move the view without a second router. The store action
+	 * has already staged the fresh draft and cleared the selection by the time this
+	 * runs; what is left is the address, or a reload would re-open the dead
+	 * conversation the press just left.
+	 */
+	const startNewChatRoute = useCallback(() => {
+		setRouteError(null);
+		navigate("/chat");
+	}, [navigate]);
 	/*
 	 * THERE IS NO `select` HERE ANY MORE, and its absence is the change rather than
 	 * an omission: the sidebar's rows used to call back into this route so that the
@@ -4941,8 +5776,42 @@ export function ChatPage() {
 	// a second copy of the expression that computes it.
 	const id = panelSessionIdOfView(draftKey, draft?.sessionId, active);
 	const identity = panelIdentityFor(draftKey, id);
+	// The panel's MOUNT key, which unlike `identity` survives the draft's own
+	// admission: remounting there repainted the echo the press had just painted
+	// (`panelMountKeyFor`). Derived during render from the COMMITTED mount, and
+	// recorded only once this render commits (agent review round 1, F2): a
+	// render React discards must not leave its inputs behind as "the mount".
+	const panelMount = useRef<PanelMount | null>(null);
+	const mountKey = panelMountKeyFor(panelMount.current, draftKey, id);
+	useLayoutEffect(() => {
+		panelMount.current =
+			mountKey === undefined
+				? null
+				: { key: mountKey, draftKey, sessionId: id };
+	}, [mountKey, draftKey, id]);
+	// The route-level sentence, when one shows; see the `role="alert"` note below.
+	const routeSentence =
+		routeError ||
+		(error && !stripSpeaksConnection && !coveredByCompatibilityBanner
+			? error
+			: null);
 	return (
-		<div className={cn("flex h-full min-h-0 flex-col")}>
+		/*
+		 * THE CHAT ROUTE IS A PANEL ROUTE (design round 1, D1).
+		 *
+		 * Every column on this route owns a ground that has to reach the window's
+		 * top edge: the conversation (`canvas`), whichever pane holds the right
+		 * slot (`elevated`) and the shell's 44px rail host. As an ordinary page
+		 * the route sat under `<main>`'s shell pad, so the whole row began at y32
+		 * and each slot occupant's own `panel-top-pad` padded a SECOND time - a
+		 * band in the strip above the dock and its first row 32px lower than the
+		 * conversation's. `panel-flush` cancels the shell pad, so the row starts
+		 * at y0 and the one pad each column wears is the only one: the
+		 * conversation column pads itself in `chat-content.tsx`, the occupants
+		 * already do. `flex-1` rather than `h-full`, as on every flush root: the
+		 * negative margin is absorbed by the grow, so the bottom 32px are not lost.
+		 */
+		<div className="panel-flush flex min-h-0 flex-1 flex-col">
 			{/*
 			 * ONE sentence above the panel: a legacy route that names no
 			 * conversation, or a store failure the composer does not own. A
@@ -4961,11 +5830,19 @@ export function ChatPage() {
 			 * sentence is the same incident the banner is stating, so this half stands
 			 * down to it as well.
 			 */}
-			{(routeError ||
-				(error && !stripSpeaksConnection && !coveredByCompatibilityBanner)) && (
-				<p role="alert" className={cn("px-4 py-2 text-body-sm text-danger")}>
-					{routeError || error}
-				</p>
+			{routeSentence && (
+				/*
+				 * `panel-top-pad` on a wrapper: the root is flush, so this sentence -
+				 * the route's first row whenever it shows - would otherwise sit under
+				 * the drag lane and the traffic lights. The pad is the wrapper's so the
+				 * sentence keeps its own `py-2`. The `New chat` arm below is reached
+				 * only beneath this sentence (see its note), so it needs no pad.
+				 */
+				<div className="panel-top-pad">
+					<p role="alert" className={cn("px-4 py-2 text-body-sm text-danger")}>
+						{routeSentence}
+					</p>
+				</div>
 			)}
 			{!enabled ? (
 				/*
@@ -5000,14 +5877,14 @@ export function ChatPage() {
 						 * itself is untouched while the backend is being reached.
 						 */}
 						{capabilities.isLoading
-							? "Connecting to the backend… Your conversation is safe."
+							? t("ui.chat.page_chrome.backend.connecting")
 							: capabilities.error
 								? userFacingMessage(
 										capabilities.error,
-										"The Local Operator server did not answer as expected.",
+										t("ui.chat.page_chrome.backend.no_answer"),
 									)
 								: (pairingSentence ??
-									"Update the backend to use canonical chats. Your existing histories are unchanged.")}
+									t("ui.chat.page_chrome.backend.update_needed"))}
 					</p>
 					{offerRetry && (
 						<button
@@ -5015,17 +5892,31 @@ export function ChatPage() {
 							className={cn("underline")}
 							onClick={() => void paneRetry()}
 						>
-							Retry
+							{t("ui.common.actions.retry")}
 						</button>
 					)}
 				</div>
 			) : identity ? (
-				<div className={cn("min-h-0 flex-1")}>
+				<div
+					className={cn(
+						"min-h-0 flex-1",
+						/*
+						 * ONE PAD PER ROW. With the sentence above it this row starts below
+						 * the strip, so the columns inside it (the conversation, the slot's
+						 * pane) must not pad for the strip again: the sentence's wrapper
+						 * already consumed it. Zeroing the shell's published number here is
+						 * what keeps `panel-top-pad` meaning "the strip that is still above
+						 * me" rather than a second 32px band under the sentence.
+						 */
+						routeSentence && "[--panel-top-pad:0px]",
+					)}
+				>
 					<SessionPanel
-						key={identity}
+						key={mountKey}
 						identity={identity}
 						draftKey={draftKey}
 						sessionId={id}
+						onStartNewChat={startNewChatRoute}
 					/>
 				</div>
 			) : (
@@ -5052,7 +5943,7 @@ export function ChatPage() {
 						className={cn("rounded-md border border-control px-3 py-2")}
 						onClick={() => stage(undefined, true)}
 					>
-						New chat
+						{t("ui.shell.sidebar_navigation.new_chat")}
 					</button>
 				</div>
 			)}

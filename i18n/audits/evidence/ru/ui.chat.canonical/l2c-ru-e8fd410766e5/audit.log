@@ -1,0 +1,25 @@
+# execution log — au-1861-ru mechanical probes
+# commands run (all read-only; inputs read via git show from commit 659ef7e44b7c)
+
+## sha256 of inputs
+38f1069648c9241799bb1b316820e0530bf9445dfba3151e1c28df70153916b3  en.json
+c258ab485de698eec85e81ffed506866e3b1e8caf29cb3ff434901388065b390  en.context.json
+a84811e9c087aa79873ef756a2a268e298ebe4b6789d7dd834f4f51a127b4acb  ru.json
+
+## icu2.mjs (strict ICU parity, formatjs parser) last run
+keys 442 issues 48
+ui.chat.canonical.fold.count.shell :: NUMFMT :: en=2:count,2:count ru=2:count,2:count,2:count,2:count
+ui.chat.canonical.fold.count.python :: NUMFMT :: en=2:count,2:count ru=2:count,2:count,2:count,2:count
+
+## intl.mjs (CLDR ru unit short forms)
+ICU 78.3 CLDR 48.0 Node v24.22.1
+ru byte=1,5 Б | kilobyte=1,5 кБ | megabyte=1,5 МБ | gigabyte=1,5 ГБ
+ru number 12345.5 -> 12 345,5
+en byte=1.5 byte | kilobyte=1.5 kB | megabyte=1.5 MB | gigabyte=1.5 GB
+en number 12345.5 -> 12,345.5
+ru 0 -> "0 Б"
+ru 1 -> "1 Б"
+ru 1023 -> "1 023 Б"
+ru 1536 -> "1,5 кБ"
+ru 1048576 -> "1 МБ"
+ru 2500000000 -> "2,3 ГБ"

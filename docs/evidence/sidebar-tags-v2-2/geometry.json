@@ -1,0 +1,484 @@
+{
+  "picker-220-dark": {
+    "url": "http://localhost:6044/iframe.html?id=chat-sidebar-tags--picker&viewMode=story&args=scenario:picker;width:220;theme:localOperatorDark;locale:en",
+    "viewport": [
+      1280,
+      720
+    ],
+    "dialog": [
+      420,
+      560
+    ],
+    "body": [
+      370,
+      370,
+      398,
+      452
+    ],
+    "footerVisible": true,
+    "horizontalOverflow": false,
+    "optionHeights": [
+      36
+    ],
+    "options": 3,
+    "rovingStops": 1,
+    "registryWrites": 0,
+    "assignmentWrites": 0
+  },
+  "picker-320-dark": {
+    "url": "http://localhost:6044/iframe.html?id=chat-sidebar-tags--picker&viewMode=story&args=scenario:picker;width:320;theme:localOperatorDark;locale:en",
+    "viewport": [
+      1280,
+      720
+    ],
+    "dialog": [
+      420,
+      560
+    ],
+    "body": [
+      370,
+      370,
+      398,
+      452
+    ],
+    "footerVisible": true,
+    "horizontalOverflow": false,
+    "optionHeights": [
+      36
+    ],
+    "options": 3,
+    "rovingStops": 1,
+    "registryWrites": 0,
+    "assignmentWrites": 0
+  },
+  "picker-220-light": {
+    "url": "http://localhost:6044/iframe.html?id=chat-sidebar-tags--picker&viewMode=story&args=scenario:picker;width:220;theme:localOperatorLight;locale:en",
+    "viewport": [
+      1280,
+      720
+    ],
+    "dialog": [
+      420,
+      560
+    ],
+    "body": [
+      370,
+      370,
+      398,
+      452
+    ],
+    "footerVisible": true,
+    "horizontalOverflow": false,
+    "optionHeights": [
+      36
+    ],
+    "options": 3,
+    "rovingStops": 1,
+    "registryWrites": 0,
+    "assignmentWrites": 0
+  },
+  "picker-260-light": {
+    "url": "http://localhost:6044/iframe.html?id=chat-sidebar-tags--picker&viewMode=story&args=scenario:picker;width:260;theme:localOperatorLight;locale:en",
+    "viewport": [
+      1280,
+      720
+    ],
+    "dialog": [
+      420,
+      560
+    ],
+    "body": [
+      370,
+      370,
+      398,
+      452
+    ],
+    "footerVisible": true,
+    "horizontalOverflow": false,
+    "optionHeights": [
+      36
+    ],
+    "options": 3,
+    "rovingStops": 1,
+    "registryWrites": 0,
+    "assignmentWrites": 0
+  },
+  "picker-320-light": {
+    "url": "http://localhost:6044/iframe.html?id=chat-sidebar-tags--picker&viewMode=story&args=scenario:picker;width:320;theme:localOperatorLight;locale:en",
+    "viewport": [
+      1280,
+      720
+    ],
+    "dialog": [
+      420,
+      560
+    ],
+    "body": [
+      370,
+      370,
+      398,
+      452
+    ],
+    "footerVisible": true,
+    "horizontalOverflow": false,
+    "optionHeights": [
+      36
+    ],
+    "options": 3,
+    "rovingStops": 1,
+    "registryWrites": 0,
+    "assignmentWrites": 0
+  },
+  "dense-32-dark": {
+    "url": "http://localhost:6044/iframe.html?id=chat-sidebar-tags--picker-dense&viewMode=story&args=scenario:picker-dense;width:220;theme:localOperatorDark;locale:en",
+    "viewport": [
+      1280,
+      720
+    ],
+    "dialog": [
+      420,
+      560
+    ],
+    "body": [
+      370,
+      370,
+      398,
+      1496
+    ],
+    "footerVisible": true,
+    "horizontalOverflow": false,
+    "optionHeights": [
+      36
+    ],
+    "options": 32,
+    "rovingStops": 1,
+    "registryWrites": 0,
+    "assignmentWrites": 0
+  },
+  "selected-8-dark": {
+    "url": "http://localhost:6044/iframe.html?id=chat-sidebar-tags--picker-eight&viewMode=story&args=scenario:picker-eight;width:260;theme:localOperatorDark;locale:en",
+    "viewport": [
+      1280,
+      720
+    ],
+    "dialog": [
+      420,
+      560
+    ],
+    "body": [
+      370,
+      370,
+      398,
+      1148
+    ],
+    "footerVisible": true,
+    "horizontalOverflow": false,
+    "optionHeights": [
+      36
+    ],
+    "options": 12,
+    "rovingStops": 1,
+    "registryWrites": 0,
+    "assignmentWrites": 0
+  },
+  "registry-0-dark": {
+    "url": "http://localhost:6044/iframe.html?id=chat-sidebar-tags--picker-empty&viewMode=story&args=theme:localOperatorDark;locale:en",
+    "viewport": [
+      1280,
+      720
+    ],
+    "dialog": [
+      420,
+      560
+    ],
+    "body": [
+      370,
+      370,
+      398,
+      398
+    ],
+    "footerVisible": true,
+    "horizontalOverflow": false,
+    "optionHeights": [],
+    "options": 0,
+    "rovingStops": 0,
+    "registryWrites": 0,
+    "assignmentWrites": 0
+  },
+  "registry-1-dark": {
+    "url": "http://localhost:6044/iframe.html?id=chat-sidebar-tags--picker-one&viewMode=story&args=scenario:picker-one;width:320;theme:localOperatorDark;locale:en",
+    "viewport": [
+      1280,
+      720
+    ],
+    "dialog": [
+      420,
+      560
+    ],
+    "body": [
+      370,
+      370,
+      398,
+      398
+    ],
+    "footerVisible": true,
+    "horizontalOverflow": false,
+    "optionHeights": [
+      36
+    ],
+    "options": 1,
+    "rovingStops": 1,
+    "registryWrites": 0,
+    "assignmentWrites": 0
+  },
+  "unicode-dark": {
+    "url": "http://localhost:6044/iframe.html?id=chat-sidebar-tags--picker-unicode&viewMode=story&args=theme:localOperatorDark;locale:en",
+    "viewport": [
+      1280,
+      720
+    ],
+    "dialog": [
+      420,
+      560
+    ],
+    "body": [
+      370,
+      370,
+      398,
+      1694
+    ],
+    "footerVisible": true,
+    "horizontalOverflow": false,
+    "optionHeights": [
+      36
+    ],
+    "options": 32,
+    "rovingStops": 1,
+    "registryWrites": 0,
+    "assignmentWrites": 0
+  },
+  "assignment-error": {
+    "url": "http://localhost:6044/iframe.html?id=chat-sidebar-tags--picker-error&viewMode=story&args=theme:localOperatorDark;locale:en",
+    "viewport": [
+      1280,
+      720
+    ],
+    "dialog": [
+      420,
+      560
+    ],
+    "body": [
+      370,
+      370,
+      398,
+      516
+    ],
+    "footerVisible": true,
+    "horizontalOverflow": false,
+    "optionHeights": [
+      36
+    ],
+    "options": 3,
+    "rovingStops": 1,
+    "registryWrites": 0,
+    "assignmentWrites": 1
+  },
+  "loading": {
+    "url": "http://localhost:6044/iframe.html?id=chat-sidebar-tags--picker-loading&viewMode=story&args=theme:localOperatorDark;locale:en",
+    "viewport": [
+      1280,
+      720
+    ],
+    "dialog": [
+      420,
+      560
+    ],
+    "body": [
+      370,
+      370,
+      398,
+      398
+    ],
+    "footerVisible": true,
+    "horizontalOverflow": false,
+    "optionHeights": [],
+    "options": 0,
+    "rovingStops": 0,
+    "registryWrites": 0,
+    "assignmentWrites": 0
+  },
+  "create-error": {
+    "url": "http://localhost:6044/iframe.html?id=chat-sidebar-tags--picker-create-error&viewMode=story&args=theme:localOperatorDark;locale:en",
+    "viewport": [
+      1280,
+      720
+    ],
+    "dialog": [
+      420,
+      560
+    ],
+    "body": [
+      370,
+      370,
+      398,
+      412
+    ],
+    "footerVisible": true,
+    "horizontalOverflow": false,
+    "optionHeights": [],
+    "options": 0,
+    "rovingStops": 0,
+    "registryWrites": 0,
+    "assignmentWrites": 0
+  },
+  "manage-32-dark": {
+    "url": "http://localhost:6044/iframe.html?id=chat-sidebar-tags--manage-dense&viewMode=story&args=scenario:manage-dense;width:220;theme:localOperatorDark;locale:en",
+    "viewport": [
+      1280,
+      720
+    ],
+    "dialog": [
+      420,
+      560
+    ],
+    "body": [
+      370,
+      370,
+      379,
+      2479
+    ],
+    "footerVisible": true,
+    "horizontalOverflow": false,
+    "optionHeights": [],
+    "options": 0,
+    "rovingStops": 0,
+    "registryWrites": 0,
+    "assignmentWrites": 0
+  },
+  "manage-320-light": {
+    "url": "http://localhost:6044/iframe.html?id=chat-sidebar-tags--manage&viewMode=story&args=scenario:manage;width:320;theme:localOperatorLight;locale:en",
+    "viewport": [
+      1280,
+      720
+    ],
+    "dialog": [
+      420,
+      560
+    ],
+    "body": [
+      370,
+      370,
+      379,
+      379
+    ],
+    "footerVisible": true,
+    "horizontalOverflow": false,
+    "optionHeights": [],
+    "options": 0,
+    "rovingStops": 0,
+    "registryWrites": 0,
+    "assignmentWrites": 0
+  },
+  "manage-error": {
+    "url": "http://localhost:6044/iframe.html?id=chat-sidebar-tags--manage-error&viewMode=story&args=theme:localOperatorDark;locale:en",
+    "viewport": [
+      1280,
+      720
+    ],
+    "dialog": [
+      420,
+      560
+    ],
+    "body": [
+      370,
+      370,
+      379,
+      483
+    ],
+    "footerVisible": true,
+    "horizontalOverflow": false,
+    "optionHeights": [],
+    "options": 0,
+    "rovingStops": 0,
+    "registryWrites": 1,
+    "assignmentWrites": 0
+  },
+  "assignment-conflict": {
+    "url": "http://localhost:6044/iframe.html?id=chat-sidebar-tags--picker-assignment-conflict&viewMode=story&args=theme:localOperatorDark;locale:en",
+    "viewport": [
+      1280,
+      720
+    ],
+    "dialog": [
+      420,
+      560
+    ],
+    "body": [
+      370,
+      370,
+      398,
+      484
+    ],
+    "footerVisible": true,
+    "horizontalOverflow": false,
+    "optionHeights": [
+      36
+    ],
+    "options": 3,
+    "rovingStops": 1,
+    "registryWrites": 0,
+    "assignmentWrites": 1
+  },
+  "remote-refusal": {
+    "url": "http://localhost:6044/iframe.html?id=chat-sidebar-tags--picker-remote-refusal&viewMode=story&args=theme:localOperatorDark;locale:en",
+    "viewport": [
+      1280,
+      720
+    ],
+    "dialog": [
+      420,
+      560
+    ],
+    "body": [
+      370,
+      370,
+      398,
+      484
+    ],
+    "footerVisible": true,
+    "horizontalOverflow": false,
+    "optionHeights": [
+      36
+    ],
+    "options": 3,
+    "rovingStops": 1,
+    "registryWrites": 0,
+    "assignmentWrites": 1
+  },
+  "last-option-32": {
+    "url": "http://localhost:6044/iframe.html?id=chat-sidebar-tags--picker-last-option&viewMode=story&args=theme:localOperatorDark;locale:en",
+    "viewport": [
+      1280,
+      720
+    ],
+    "dialog": [
+      420,
+      560
+    ],
+    "body": [
+      370,
+      370,
+      398,
+      1496
+    ],
+    "footerVisible": true,
+    "horizontalOverflow": false,
+    "optionHeights": [
+      36
+    ],
+    "options": 32,
+    "rovingStops": 1,
+    "registryWrites": 0,
+    "assignmentWrites": 0
+  }
+}

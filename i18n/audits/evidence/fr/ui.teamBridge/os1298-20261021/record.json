@@ -1,0 +1,66 @@
+{
+  "audit_id": "os1298-20261021",
+  "date": "2026-10-21",
+  "locale": "fr",
+  "namespace": "ui.teamBridge",
+  "source_commit": "21ad93664d79f69aa70546760aa535ca4d13a4a1",
+  "translator": {
+    "agent": "translator",
+    "model": "openai/gpt-6.1-sol",
+    "session": "a0f0f5c8888a",
+    "date": "2026-10-21"
+  },
+  "auditors": [
+    {
+      "agent": "translation-auditor",
+      "model": "openai/gpt-6.1-sol",
+      "date": "2026-10-21",
+      "result": "clean",
+      "instance": "os1298-r1-fr",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "receipt": "i18n/receipts/os1298-r1-fr.json",
+      "receipt_sha256": "5cf07776a29d9d41cc8317cf604b3d22c35f76afcd2f8599e2e3ee428fa966e0",
+      "scope": "Four-key notification delta: ui.teamBridge.notify.channel, ui.teamBridge.notify.subtitle, ui.teamBridge.notify.count, ui.teamBridge.notify.count_preview. Inherit the base 2e16fb1456 full namespace audit for the other 109 values, all verified unchanged; no new full semantic audit of unchanged copy. Catalogue audit only, not rendered-fit, activation or release approval.",
+      "note": "Independent delta audit; inherited unchanged base coverage. No rendered-fit claim."
+    }
+  ],
+  "files": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+      "sha256": "b43e71da00a30dd44a9e4cd9eb842edcb324611d2725793cda48442e7f00360c"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/fr/ui.teamBridge.json",
+      "sha256": "593af71aba6d190defd9978fe2e6721aa7db24eef6144dfc6fb4d4c8c708d4d4"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+      "sha256": "c35db92afe5365b3e8263e10ad8f15eeaf48f066a915d136cf01f96dd1c1ccad"
+    }
+  },
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/fr.md",
+      "sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+    }
+  },
+  "independence": "Translation auditor is a different subagent from translator and coordinator; auditor never edited catalogues.",
+  "limitations": [
+    "Browser unavailable; no rendered-fit, screenshots, pseudo-localization or activation evidence claimed."
+  ],
+  "retained_rounds": [
+    {
+      "path": "i18n/receipts/os1298-r1-fr.json",
+      "sha256": "5cf07776a29d9d41cc8317cf604b3d22c35f76afcd2f8599e2e3ee428fa966e0"
+    }
+  ]
+}

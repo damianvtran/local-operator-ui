@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "auditor": "i18n-auditor",
+  "model": "radient/auto",
+  "instance": "f12bd5c0b78b-zh-cn",
+  "locale": "zh-CN",
+  "namespace": "ui.settings.shortcuts",
+  "date": "2026-10-29",
+  "status": "passed",
+  "sha256": {
+    "zh-CN": "641caca7a34b1d1d078b384efab4c3b65fe06ad111bf169447bdeca92d1bdf0b",
+    "en": "5967dfaf152c5ca139a5d33347d94597a1d25b3dd01bb6bd37cdb881858aa7d4"
+  },
+  "findings": [
+    {
+      "severity": "minor",
+      "key": "ui.settings.shortcuts.keyboard_shortcuts_section.browser_shortcuts_answer_only_while_the_browser_has_focus",
+      "issue": "\"浏览器面板\" renders \"browser pane\" with 面板 (panel). The same section calls the panel rail 面板栏, and the only other user-facing translation of this surface (ui.browser \"This pane is too narrow …\") uses 窗格. Calling the browser a 面板 in a section about 面板栏 blurs the exact distinction this copy exists to draw.",
+      "disposition": "fixed in this audit",
+      "remediation": "Changed 浏览器面板 -> 浏览器窗格 (one occurrence) to match the corpus term for a pane and avoid the panel-rail collision."
+    }
+  ],
+  "scope": "Changed rows only: 8 keys (1 new paragraph + 7 reserved-sentence tails). Key set == English (64/64), ICU placeholder parity, sentence-by-sentence meaning against the .context.json note, register and terminology against the same file and corpus.",
+  "notes": "No other wording changed. Native-reader naturalness was NOT verified by a native speaker of the target language; this audit is a semantic/structural read by an agent. Meaning, register, placeholder and terminology consistency were checked against the English source and the existing target-locale corpus."
+}

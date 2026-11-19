@@ -2,60 +2,57 @@
  * The write a `$skill` PICK performs on the draft, as a pure function.
  *
  * A port of the `completion_for` SKILL branch in
- * `local_operator/tui/widgets/command_picker.py`: `_skill_span_replacement`
- * for a token that already LEADS its draft, `_reassembled_skill` otherwise.
- * Both are needed because the composer's `$` is INLINE (see `skill-token.ts`)
- * while the submit-side parser is ANCHORED at the buffer start — the
- * reassembly is what bridges the two by the time Enter can see the text.
+ * `local_operator/tui/widgets/command_picker.py`: `_skill_span_replacement`,
+ * and NOTHING ELSE. The token is replaced where it sits — `[start, end)` — and
+ * every character outside that span survives verbatim.
+ *
+ * WHY THERE IS NO REASSEMBLY ANY MORE. The submit-side trigger used to be
+ * anchored at the start of the message, so a token typed mid-sentence had to be
+ * moved to the front for the send to see it. It is not anchored any more:
+ * `skillMentions` reads every boundary `$name` in the message, the same way the
+ * TUI does after its own inline change. Moving a token the user placed would
+ * now be an edit nobody asked for — and it would mangle a draft that mentions
+ * two skills (`compare $a and $b`).
+ *
+ * TAB and ENTER both still accept a suggestion and still land on the token's
+ * span, not at the end of the buffer; neither ever submits. The user keeps
+ * writing after the skill name.
  *
  * Pure, and deliberately its own module: `completion_for` lives beside the
  * slash machinery for the same reason, and a component file cannot be bundled
  * by the node harness that exercises this.
  */
 
-import { type SkillToken, skillTokenIsLeading } from "./skill-token";
-import { pyTrim, pyTrimStart } from "./slash-token";
+import type { SkillToken } from "./skill-token";
+import { SEPARATOR } from "./slash-token";
 
 /**
  * The buffer and caret that accepting `name` produces. Pure, so the popup's
  * footer and the apply path cannot disagree about what a pick writes.
  *
- * LEADING (`_skill_span_replacement`): replace the token's span with
- * `$name `, preserving the leading run and lstripping the suffix. The leading
- * run is preserved rather than normalised away so completing never silently
- * reformats what the user typed (an indented `  $research` keeps its indent),
- * and the suffix is lstripped because the write brings its own separator —
- * `$res fix bug` must not come back as `$research  fix bug`. The caret parks
- * right after `$name `, which is where the request is typed.
+ * The token's `$name` replaces its own span. A single space is inserted ONLY
+ * when the next character is not already whitespace: that space is the token
+ * terminator the list-close depends on, and when the user already typed one it
+ * is the separator and stays byte-identical. Nothing is lstripped or joined:
+ * `fix $re\nthe bug` keeps its newline rather than being collapsed into one
+ * line.
  *
- * INLINE (`_reassembled_skill`): the token moves to the FRONT with the
- * SURVIVING draft as its request (`fix this $res` → `$research fix this `),
- * staged for the user to read and send — neither Tab nor Enter ever submits
- * for a skill row, because a completed `$skill ` is the opening of a prompt
- * the user is still writing. One adjoining separator goes with the token, the
- * same rule the slash splice and reassembly use, so the gap the token used to
- * occupy does not survive the move. The caret parks at the END of the
- * assembled line (the TUI's own answer for this branch), which is where the
- * request continues.
+ * The caret lands one cell past whatever separator terminated the token — the
+ * inserted space, or the user's own whitespace — so it sits where the request
+ * continues without the completion moving any character. A NEWLINE terminates
+ * the token but is not a place to park the caret: the request continues on the
+ * line the token is on, so the caret stops right after the name.
  */
 export function skillCompletionFor(
 	text: string,
 	token: SkillToken,
 	name: string,
 ): { text: string; caret: number } {
-	if (skillTokenIsLeading(text, token)) {
-		const lead = text.slice(0, token.start);
-		const completed = `${lead}$${name} ${pyTrimStart(text.slice(token.end))}`;
-		return { text: completed, caret: token.start + name.length + 2 };
+	const tail = text.slice(token.end);
+	const separator = tail === "" || !SEPARATOR.test(tail[0]) ? " " : "";
+	const completed = `${text.slice(0, token.start)}$${name}${separator}${tail}`;
+	if (tail !== "" && (tail[0] === "\r" || tail[0] === "\n")) {
+		return { text: completed, caret: token.start + name.length + 1 };
 	}
-	// One adjoining separator goes with the token; the PRECEDING one is
-	// preferred, the following one is taken only when the token opens the
-	// rebuilt region (the TUI's own two-arm rule).
-	let start = token.start;
-	let end = token.end;
-	if (start > 0 && " \t\n".includes(text[start - 1])) start -= 1;
-	else if (end < text.length && " \t\n".includes(text[end])) end += 1;
-	const rest = pyTrim(text.slice(0, start) + text.slice(end));
-	const assembled = rest ? `$${name} ${rest} ` : `$${name} `;
-	return { text: assembled, caret: assembled.length };
+	return { text: completed, caret: token.start + name.length + 2 };
 }

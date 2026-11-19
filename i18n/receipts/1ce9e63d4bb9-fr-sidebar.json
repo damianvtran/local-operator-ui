@@ -1,0 +1,343 @@
+{
+	"instance": "1ce9e63d4bb9-fr-sidebar",
+	"auditor": "i18n-auditor",
+	"model": "radient/auto",
+	"model_provenance": "Session primary anthropic/claude-opus-5-5 failed on provider quota and fell back openai/gpt-6.1-sol -> kimi/k3.1-pro -> radient/auto; every read, check and receipt byte in this audit was produced on that final radient/auto resolution. No model performed any translation or back-translation.",
+	"locale": "fr",
+	"namespace": "ui.chat.sidebar",
+	"audit_date": "2026-11-05",
+	"task": "Independent audit of the final bytes of this contribution: ten new keys across seven locales, three of them corrected since the previous audit.",
+	"worktree": "~/local-operator-ui/.worktrees/i18n-sidebar-literals",
+	"head_reviewed": "257ad02237a1ea7b8676efea55d76f89bb145ee4",
+	"head_at_write": "2cdbf215d7bea01aff156e8dbd5bddb5343684bd",
+	"base": "65116989dc9",
+	"heads_equivalence": {
+		"all_audited_files_identical": true,
+		"files_compared": 16,
+		"note": "The branch was rebuilt while this audit ran. Every audited catalogue file is byte-identical at both heads, so these hashes describe the bytes on disk; see the manifest for the per-file comparison."
+	},
+	"independence": "This run translated none of these values and implemented none of this change. It read the English source, the en context sidecars, sibling keys in the same catalogue and the runtime's own ICU library, then judged every value itself.",
+	"keys_audited": 9,
+	"keys": [
+		"ui.chat.sidebar.row_menu.hint",
+		"ui.chat.sidebar.row_menu.hint_mac",
+		"ui.chat.sidebar.row.search_beyond",
+		"ui.chat.sidebar.row.recent",
+		"ui.chat.sidebar.row.not_sent_suffix",
+		"ui.chat.sidebar.row.unread_suffix",
+		"ui.chat.sidebar.row.silent_remedy",
+		"ui.chat.sidebar.catalogue.show_more",
+		"ui.chat.sidebar.catalogue.show_more_chats"
+	],
+	"en_path": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+	"target_path": "src/i18n/catalogues/fr/ui.chat.sidebar.json",
+	"sha256": {
+		"en": "d1796cf86e2c2dde5f0dce93c8d5abceaf3ab09c2d44f9ff8ba42ac290fe3558",
+		"fr": "beec493e1a58484b5a4909ff082292bc76b8df33e3af9938e5955e85071e3ca0"
+	},
+	"status": "passed",
+	"result": "clean",
+	"findings": [],
+	"finding_counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 0
+	},
+	"observations": [
+		{
+			"severity": "INFO",
+			"id": "fr-O1",
+			"point": "Feminine suffixes vs the pre-existing masculine row badge",
+			"detail": "Deux formes du même fait coexistent sur une même ligne : le badge visible `ui.chat.sidebar.row.not_sent` = \"Pas encore envoyé\" (masc.) et le suffixe du tooltip = \", pas encore envoyée\" (fém.), tous deux déclenchés par `unstarted` (chat-search.ts `rowTrailingStatement` → \"not_sent\"; chat-sidebar.tsx line ~4669). Les deux lectures sont grammaticales (masculin = « le message », féminin = « la conversation ») et les trois suffixes sont cohérents entre eux (fém.), y compris avec le préexistant `row.archived_suffix` = \", archivée\". Aucune correction demandée aux octets audités ; si l'équipe veut une seule voix, aligner `row.not_sent` (clé préexistante, hors de ces dix)."
+		}
+	],
+	"checks": {
+		"values": {
+			"ui.chat.sidebar.row_menu.hint": "Cliquez avec le bouton droit ou appuyez sur Shift+F10 pour accéder à ses actions.",
+			"ui.chat.sidebar.row_menu.hint_mac": "Cliquez avec le bouton droit ou appuyez sur Shift+F10 (avec Fn sur la plupart des claviers Mac) pour accéder à ses actions.",
+			"ui.chat.sidebar.row.search_beyond": "trouvée par la recherche, au-delà des conversations listées ici",
+			"ui.chat.sidebar.row.recent": "Récente",
+			"ui.chat.sidebar.row.not_sent_suffix": ", pas encore envoyée",
+			"ui.chat.sidebar.row.unread_suffix": ", non lue",
+			"ui.chat.sidebar.row.silent_remedy": "/stop si le silence persiste.",
+			"ui.chat.sidebar.catalogue.show_more": "Afficher {hidden, plural, one {{hidden, number, ::group-off} de plus} many {{hidden, number, ::group-off} de plus} other {{hidden, number, ::group-off} de plus}}",
+			"ui.chat.sidebar.catalogue.show_more_chats": "Afficher {add, plural, one {{add, number, ::group-off} conversation de plus} many {{add, number, ::group-off} de conversations de plus} other {{add, number, ::group-off} conversations de plus}}"
+		},
+		"icu": {
+			"show_more": {
+				"compiled": true,
+				"bracesBalanced": true,
+				"argument": "hidden",
+				"declaredCategories": [
+					"many",
+					"one",
+					"other"
+				],
+				"intlCategories": [
+					"many",
+					"one",
+					"other"
+				],
+				"categoriesEqual": true,
+				"groupOffInEveryArm": true,
+				"armCount": 3,
+				"formatted": {
+					"0": "Afficher 0 de plus",
+					"1": "Afficher 1 de plus",
+					"2": "Afficher 2 de plus",
+					"3": "Afficher 3 de plus",
+					"5": "Afficher 5 de plus",
+					"11": "Afficher 11 de plus",
+					"21": "Afficher 21 de plus",
+					"22": "Afficher 22 de plus",
+					"25": "Afficher 25 de plus",
+					"101": "Afficher 101 de plus",
+					"1000": "Afficher 1000 de plus",
+					"12345": "Afficher 12345 de plus",
+					"1000000": "Afficher 1000000 de plus"
+				}
+			},
+			"show_more_chats": {
+				"compiled": true,
+				"bracesBalanced": true,
+				"argument": "add",
+				"declaredCategories": [
+					"many",
+					"one",
+					"other"
+				],
+				"intlCategories": [
+					"many",
+					"one",
+					"other"
+				],
+				"categoriesEqual": true,
+				"groupOffInEveryArm": true,
+				"armCount": 3,
+				"formatted": {
+					"0": "Afficher 0 conversation de plus",
+					"1": "Afficher 1 conversation de plus",
+					"2": "Afficher 2 conversations de plus",
+					"3": "Afficher 3 conversations de plus",
+					"5": "Afficher 5 conversations de plus",
+					"11": "Afficher 11 conversations de plus",
+					"21": "Afficher 21 conversations de plus",
+					"22": "Afficher 22 conversations de plus",
+					"25": "Afficher 25 conversations de plus",
+					"101": "Afficher 101 conversations de plus",
+					"1000": "Afficher 1000 conversations de plus",
+					"12345": "Afficher 12345 conversations de plus",
+					"1000000": "Afficher 1000000 de conversations de plus"
+				}
+			}
+		},
+		"composition": {
+			"parts": {
+				"ui.chat.sidebar.row.not_sent_suffix": {
+					"value": ", pas encore envoyée",
+					"firstCodepoint": "U+002C",
+					"secondCodepoint": "U+0020",
+					"localeComma": true,
+					"oneSpaceAfter": true,
+					"noDoubleSpace": true,
+					"noNbsp": true
+				},
+				"ui.chat.sidebar.row.unread_suffix": {
+					"value": ", non lue",
+					"firstCodepoint": "U+002C",
+					"secondCodepoint": "U+0020",
+					"localeComma": true,
+					"oneSpaceAfter": true,
+					"noDoubleSpace": true,
+					"noNbsp": true
+				}
+			},
+			"composed": {
+				"statusOnly": "Récente",
+				"statusPlusNotSent": "Récente, pas encore envoyée",
+				"statusPlusUnread": "Récente, non lue",
+				"searchBeyondPlusUnread": "trouvée par la recherche, au-delà des conversations listées ici, non lue",
+				"statusPlusBothPlusArchived": "Récente, pas encore envoyée, non lue, archivée",
+				"withSilentRemedy": "Récente · /stop si le silence persiste."
+			}
+		},
+		"literals": {
+			"hint": {
+				"Shift+F10": {
+					"present": true,
+					"count": 1,
+					"codepoints": [
+						83,
+						104,
+						105,
+						102,
+						116,
+						43,
+						70,
+						49,
+						48
+					]
+				},
+				"Fn": {
+					"present": false,
+					"count": 0,
+					"codepoints": null
+				},
+				"Mac": {
+					"present": false,
+					"count": 0,
+					"codepoints": null
+				}
+			},
+			"hint_mac": {
+				"Shift+F10": {
+					"present": true,
+					"count": 1,
+					"codepoints": [
+						83,
+						104,
+						105,
+						102,
+						116,
+						43,
+						70,
+						49,
+						48
+					]
+				},
+				"Fn": {
+					"present": true,
+					"count": 1,
+					"codepoints": [
+						70,
+						110
+					]
+				},
+				"Mac": {
+					"present": true,
+					"count": 1,
+					"codepoints": [
+						77,
+						97,
+						99
+					]
+				}
+			},
+			"slashStop": {
+				"atStart": true,
+				"codepoints": [
+					47,
+					115,
+					116,
+					111,
+					112
+				],
+				"finalCodepoint": "U+002E"
+			}
+		},
+		"terminology": {
+			"ui.chat.sidebar.row_menu.hint": [
+				{
+					"comparedWith": "ui.chat.sidebar.row_menu.archive",
+					"why": "the row-menu family the hint opens; names the menu's items, not the menu",
+					"value": "Archiver la conversation",
+					"equalToAudited": false
+				},
+				{
+					"comparedWith": "ui.chat.sidebar.row_menu.pin",
+					"why": "second member of the same family",
+					"value": "Épingler la conversation",
+					"equalToAudited": false
+				}
+			],
+			"ui.chat.sidebar.row_menu.hint_mac": [
+				{
+					"comparedWith": "ui.chat.sidebar.row_menu.archive",
+					"why": "the row-menu family the hint opens",
+					"value": "Archiver la conversation",
+					"equalToAudited": false
+				}
+			],
+			"ui.chat.sidebar.row.search_beyond": [
+				{
+					"comparedWith": "ui.chat.sidebar.row.matched_in_conversation",
+					"why": "the sibling why-this-row-is-here fragment for a filtered row",
+					"value": ", correspondance dans la conversation",
+					"equalToAudited": false
+				}
+			],
+			"ui.chat.sidebar.row.recent": [
+				{
+					"comparedWith": "ui.command_palette.palette_search.recents",
+					"why": "the corpus's existing word for recency",
+					"value": "Récents"
+				}
+			],
+			"ui.chat.sidebar.row.not_sent_suffix": [
+				{
+					"comparedWith": "ui.chat.sidebar.row.not_sent",
+					"why": "the row's own visible badge for the same fact",
+					"value": "Pas encore envoyé",
+					"equalToAudited": false
+				},
+				{
+					"comparedWith": "ui.chat.sidebar.row.archived_suffix",
+					"why": "the pre-existing suffix this one is shaped on",
+					"value": ", archivée",
+					"equalToAudited": false
+				}
+			],
+			"ui.chat.sidebar.row.unread_suffix": [
+				{
+					"comparedWith": "ui.command_palette.palette_search.unread",
+					"why": "the corpus's existing word for unread",
+					"value": "Non lues"
+				},
+				{
+					"comparedWith": "ui.chat.sidebar.row.archived_suffix",
+					"why": "the pre-existing suffix this one is shaped on",
+					"value": ", archivée",
+					"equalToAudited": false
+				}
+			],
+			"ui.chat.sidebar.row.silent_remedy": [
+				{
+					"comparedWith": "ui.chat.sidebar.row.search_beyond",
+					"why": "the neighbouring clause in the same status line (register)",
+					"value": "trouvée par la recherche, au-delà des conversations listées ici",
+					"equalToAudited": false
+				},
+				{
+					"comparedWith": "ui.chat.sidebar.row.in_conversation",
+					"why": "the row's other ' · '-slot clause (register)",
+					"value": "dans la conversation",
+					"equalToAudited": false
+				}
+			],
+			"ui.chat.sidebar.catalogue.show_more": [
+				{
+					"comparedWith": "ui.chat.sidebar.catalogue.total",
+					"why": "the same footer's count formatting and plural style",
+					"value": "{shown, number, ::group-off} sur {total, plural, one {{total, number, ::group-off} conversation} many {{total, number, ::group-off} de conversations} other {{total, number, ::group-off} conversations}}",
+					"equalToAudited": false
+				}
+			],
+			"ui.chat.sidebar.catalogue.show_more_chats": [
+				{
+					"comparedWith": "ui.chat.sidebar.catalogue.total",
+					"why": "the same namespace's word for a chat and its plural arms",
+					"value": "{shown, number, ::group-off} sur {total, plural, one {{total, number, ::group-off} conversation} many {{total, number, ::group-off} de conversations} other {{total, number, ::group-off} conversations}}",
+					"equalToAudited": false
+				},
+				{
+					"comparedWith": "ui.chat.sidebar.catalogue.total_search",
+					"why": "the same footer family's many-arm 'de …' form",
+					"value": "{shown, number, ::group-off} {shown, plural, one {correspondance} many {de correspondances} other {correspondances}} sur {total, plural, one {{total, number, ::group-off} conversation} many {{total, number, ::group-off} de conversations} other {{total, number, ::group-off} conversations}}",
+					"equalToAudited": false
+				}
+			],
+			"ui.chat.sidebar.row.archived_suffix": []
+		}
+	}
+}

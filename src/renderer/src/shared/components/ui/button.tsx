@@ -195,6 +195,38 @@ const buttonVariants = cva(
 				 * Hover steps UP to `ink` so the affordance is never carried by
 				 * colour alone.
 				 */
+				/*
+				 * THE ACTION INSIDE A FLOATING SURFACE: a borderless neutral fill one
+				 * ground step off the panel.
+				 *
+				 * WHY IT EXISTS. A floating panel separates by ground and elevation,
+				 * never by a stroke (branding § 2), and `secondary` brings its
+				 * `border-control` edge in with it - a box inside the box the panel
+				 * stopped drawing (agent review round 1, R4). `primary` has no edge but
+				 * spends the accent: on the agent-profile hovercard the full-width
+				 * accent bar outweighed the person's name and took an accent the
+				 * screen's send control already spends (design round 1, D4). An
+				 * accent-wash fill is not an option either - it sits within ΔE00
+				 * 1.4-2.6 of a ground on fifteen palettes and is `ghost`'s hover, so a
+				 * tonal button would read as a hovered ghost beside a real one.
+				 *
+				 * THE RAMP, measured over all palettes on the `elevated` panel it lives
+				 * on: rest `sunken` (ΔE00 >= 6.07 off `elevated`, `iceberg` worst),
+				 * hover `surface` (>= 3.96 off `sunken`), pressed `hairline` (>= 5.34
+				 * off `surface` and >= 4.02 off `sunken`, so a keyboard press with no
+				 * hover still moves the face). The label is `ink` throughout: >= 7.10:1
+				 * on `sunken`, 5.92:1 on `hairline` (both `everforestLight`). The
+				 * contract's "tonal button" rows in `contract-tables.mjs` hold the ink;
+				 * the edge is a ground step, not a 3:1 boundary, so they declare
+				 * `edge: false` like the other borderless fills. Use it for a floating
+				 * panel's action; `primary` only where that action is the screen's
+				 * commit, `ghost` for the quieter ones.
+				 */
+				tonal: [
+					"bg-sunken text-ink",
+					"hover:bg-surface active:bg-hairline",
+					"disabled:bg-sunken disabled:text-ink-disabled",
+				],
 				linkQuiet: [
 					"h-auto rounded-xs p-0 text-ink-dim underline-offset-4",
 					"hover:text-ink hover:underline",

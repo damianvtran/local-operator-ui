@@ -1,0 +1,268 @@
+{
+  "audit_id": "aud2-1827-es-second",
+  "mode": "second independent high-visibility pass (transcript notices + sidebar bulk action)",
+  "locale": "es",
+  "pr": 1827,
+  "head_sha": "165aebb1b73e65a63ca2ba1e4d8c9e638e8dc696",
+  "scope": "23ec4af967b..165aebb1b73",
+  "audit_date": "2026-11-09",
+  "key_count": 7,
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5"
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "000a2504613d",
+    "instance": "000a2504613d",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "session runtime header names 'Model: deepseek/deepseek-flash'; no fallback observed or declared in this run",
+    "independent_from_translator_session": true,
+    "review_model_differs_from_translator": true
+  },
+  "method": "static reading only: locale style guide i18n/style-guides/es.md, i18n/glossary.md, docs/I18N.md, en value + en .context.json sidecar per key, es target, plus read-only call sites (notice-copy.ts, transcript-reducer.ts, link-actions.ts, chat-sidebar-view.ts, chat-sidebar.tsx, mark-all-read.ts). No translation/MT service used; no back-translation.",
+  "input_hashes": {
+    "ui.chat.canonical": {
+      "en": {
+        "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+        "sha256": "38f767d08ff0f8a4fc6d8eee536ae82a023e93fe50fecc5fabb25a8f7609541f"
+      },
+      "context": {
+        "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+        "sha256": "58cefb7d2140be875f5bcc0688631a85c368b130b551f82185d78cec47eb8107"
+      },
+      "target": {
+        "path": "src/i18n/catalogues/es/ui.chat.canonical.json",
+        "sha256": "7735932bf45197226c40366421862f9596d224f06f463e84eadfe8bf020682d1"
+      }
+    },
+    "ui.chat.sidebar": {
+      "en": {
+        "path": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+        "sha256": "5fa8ca072b46407199075c77639deb93957ce3ca93ee03cc70d4134fc027e1ff"
+      },
+      "context": {
+        "path": "src/i18n/catalogues/en/ui.chat.sidebar.context.json",
+        "sha256": "0449e60c6bd1eb2d298ed576e0428c67f50a9175eb260460ec3ba8e5e3f1eaff"
+      },
+      "target": {
+        "path": "src/i18n/catalogues/es/ui.chat.sidebar.json",
+        "sha256": "a68d906d49a141cda86aff09dde654db16f3b5e258b0ffa235cb86143b3a46e2"
+      }
+    },
+    "ui.chat.sidebar_view": {
+      "en": {
+        "path": "src/i18n/catalogues/en/ui.chat.sidebar_view.json",
+        "sha256": "1c4e36003278bf5ed2afd29acb7f1546eec9a76d330777c7747eaab3a5646adf"
+      },
+      "context": {
+        "path": "src/i18n/catalogues/en/ui.chat.sidebar_view.context.json",
+        "sha256": "a6009c3a81f85dd2ab1c8dc730d410085850a69e6fdde28e9f37ee1c1bb93367"
+      },
+      "target": {
+        "path": "src/i18n/catalogues/es/ui.chat.sidebar_view.json",
+        "sha256": "cb4045ba1bf88d09ca752d3ef5e8a62a1edf816b0e6843f26d1e0ff0d09946ab"
+      }
+    }
+  },
+  "namespaces": {
+    "ui.chat.canonical": {
+      "status": "passed",
+      "en_sha256": "38f767d08ff0f8a4fc6d8eee536ae82a023e93fe50fecc5fabb25a8f7609541f",
+      "es_sha256": "7735932bf45197226c40366421862f9596d224f06f463e84eadfe8bf020682d1",
+      "key_completeness": {
+        "en_keys": 258,
+        "es_keys": 258,
+        "missing": [],
+        "extra": []
+      },
+      "findings": [
+        {
+          "id": "es2-M1",
+          "severity": "minor",
+          "key": "ui.chat.canonical.notice.stopped_with_error",
+          "current": "Se detuvo con un error",
+          "source": "Stopped with an error",
+          "problem": "Collocation calque. Spanish pairs 'detenerse' with 'por', and settles a process ending in error on 'terminar/finalizar con un error'; 'detenerse con un error' reads translated. Meaning and polarity are correct, and the line still avoids naming a cause (the sidecar's constraint).",
+          "suggestion": "Terminó con un error",
+          "alternatives": [
+            "Se detuvo por un error (keeps the shipped sibling verb ui.chat.canonical.transcript.stopped_before_finishing = 'Se detuvo antes de terminar', but reads a cause the sidecar says this line avoids)"
+          ],
+          "severity_rationale": "Idiom only; no meaning, safety or placeholder defect, so minor rather than major."
+        },
+        {
+          "id": "es2-I1",
+          "severity": "INFO",
+          "key": "ui.chat.canonical.notice.interrupted",
+          "note": "Accepted: 'Interrumpido'. Matches shipped precedent ui.chat.canonical.transcript.interrupted (identical string) and ui.chat.canonical.tool_row.outcome.interrupted ('interrumpido'); masculine agrees with 'turno', the unit the notice closes. Sentence case, no trailing punctuation, per sidecar."
+        },
+        {
+          "id": "es2-I2",
+          "severity": "INFO",
+          "key": "ui.chat.canonical.notice.compaction_not_run",
+          "note": "Accepted: 'La compactación no se ejecutó: {detail}'. Glossary compaction -> compactación, precedent ui.settings.imports.session_meta / preview_summary ('compactación'); colon attached with no preceding space per es guide; {detail} name/type identical and left in place so the runtime sentence is inserted verbatim."
+        },
+        {
+          "id": "es2-I3",
+          "severity": "INFO",
+          "key": "ui.chat.canonical.notice.compaction_not_run_after_colon",
+          "note": "Accepted: 'La compactación no se ejecutó — {detail}'. Em dash U+2014 with spaces on both sides per es guide (no NBSP, no manual bidi control); the two forms keep the same verb and differ only in the joiner, as the sidecar requires."
+        },
+        {
+          "id": "es2-I4",
+          "severity": "INFO",
+          "key": "ui.chat.canonical.link_toolkit.actions_for",
+          "note": "Accepted: 'Acciones para {name}'. Exact precedent for the same accessible-name shape: ui.shell.sidebar_navigation.row_actions, ui.settings.appearance.editor.more, ui.projects.project_board.actions_for_displayname, ui.browser.browser_tab_strip.actions_for ('Acciones para \"{title}\"'). {name} verbatim, no article inserted, no trailing punctuation."
+        }
+      ]
+    },
+    "ui.chat.sidebar": {
+      "status": "passed",
+      "en_sha256": "5fa8ca072b46407199075c77639deb93957ce3ca93ee03cc70d4134fc027e1ff",
+      "es_sha256": "a68d906d49a141cda86aff09dde654db16f3b5e258b0ffa235cb86143b3a46e2",
+      "key_completeness": {
+        "en_keys": 81,
+        "es_keys": 81,
+        "missing": [],
+        "extra": []
+      },
+      "findings": [
+        {
+          "id": "es2-M2",
+          "severity": "minor",
+          "key": "ui.chat.sidebar.mark_all_read.label",
+          "current": "Marcar todos como leídos ({count, number, ::group-off})",
+          "source": "Mark all {count, number, ::group-off} read",
+          "problem": "Fit. Rendered width 28 cells against en 15 (+87%): 'Marcar todos como leídos (3)' vs 'Mark all 3 read'; the sidecar calls this string 'Short; sits in a narrow section header'. Read from the markup (not rendered): the control renders inside sectionLabel() (chat-sidebar.tsx:8155-8161), whose heading is 'min-w-0 flex-1 truncate' while the Button is 'shrink-0' (chat-sidebar.tsx:2308) and its label span cannot shed on this path (es2-I7), so the extra ~13 cells come out of the section heading, not the label. Sidebar default width 260 / minimum 220 (chat-sidebar-layout.ts:30,38) leaves ~244/~204 usable px; at a nominal 5.5 px per meta glyph the button takes ~188 px in es against ~116 px in en, leaving the heading ~56 px vs ~128 px at the default and ~16 px vs ~88 px at the minimum - estimates from markup, so 'Esta semana'/'Anteriores' clip in es where en fits.",
+          "suggestion": "Marcar todos leídos ({count, number, ::group-off})",
+          "alternatives": [
+            "Marcar como leído ({count, number, ::group-off}) — 22 cells and the shipped notifications wording (ui.notifications.action.mark_all_read 'Marcar todo como leído', ui.notifications.select.mark_read 'Marcar como leído'), at the cost of dropping 'todos'"
+          ],
+          "severity_rationale": "No maxCells/maxChars hint exists for this key and nothing overflows the control itself (count stays in the accessible name via the label + scope suffix), so a fit risk rather than a broken layout: minor, not major. Fit is unverified by rendering.",
+          "unverified_fit": true,
+          "evidence": {
+            "files": [
+              "src/renderer/src/features/chat/components/chat-sidebar.tsx:438,2308,8155-8161,10158-10167",
+              "src/renderer/src/features/chat/chat-sidebar-layout.ts:30,38",
+              "src/i18n/catalogues/en/ui.chat.sidebar.context.json#ui.chat.sidebar.mark_all_read.label"
+            ],
+            "rendering": "not performed (no build/browser this run); numbers are arithmetic over the markup and en/es strings"
+          }
+        },
+        {
+          "id": "es2-I5",
+          "severity": "INFO",
+          "key": "ui.chat.sidebar.mark_all_read.label",
+          "note": "'leídos' (masculine plural) agrees with the sidebar's dominant noun: 'chats' 22 occurrences vs 'conversación/conversaciones' 14 in es/ui.chat.sidebar.json (precedent ui.chat.sidebar.catalogue.total 'Mostrando … chats'). A gender-neutral shipped alternative exists (ui.notifications.action.mark_all_read 'Marcar todo como leído') but is not required and is longer (29 cells)."
+        },
+        {
+          "id": "es2-I6",
+          "severity": "INFO",
+          "key": "ui.chat.sidebar.mark_all_read.label",
+          "note": "Mechanical: {count, number, ::group-off} is byte-identical to en including the number skeleton; no plural branch exists on either side, so no es CLDR category (one/many/other) is owed. Moving the count into parentheses at the end keeps it inside the visible label as the sidecar requires, and the imperative infinitive matches the es action-label rule."
+        },
+        {
+          "id": "es2-I7",
+          "severity": "INFO",
+          "key": "ui.chat.sidebar.mark_all_read.label",
+          "note": "Code observation, pre-existing and NOT a defect of this copy: the label's shed variant MARK_ALL_READ_LABEL_SHED keys on '@max-[253px]/chatheading' (chat-sidebar.tsx:438), but @container/chatheading is declared only by heading() (line 7942, used at 9047/9398) while this control renders via sectionLabel(), which declares no container. On that path the shed rule cannot match in any locale. Out of i18n scope; for design/UX if the shed behaviour was intended here."
+        }
+      ]
+    },
+    "ui.chat.sidebar_view": {
+      "status": "passed",
+      "en_sha256": "1c4e36003278bf5ed2afd29acb7f1546eec9a76d330777c7747eaab3a5646adf",
+      "es_sha256": "cb4045ba1bf88d09ca752d3ef5e8a62a1edf816b0e6843f26d1e0ff0d09946ab",
+      "key_completeness": {
+        "en_keys": 27,
+        "es_keys": 27,
+        "missing": [],
+        "extra": []
+      },
+      "findings": [
+        {
+          "id": "es2-N1",
+          "severity": "nit",
+          "key": "ui.chat.sidebar_view.ungrouped",
+          "current": "Sin agrupar",
+          "source": "Ungrouped",
+          "problem": "Mild ambiguity in place. The heading sits in the same view as the grouping control ui.chat.sidebar_view.group_by = 'Agrupar por', so 'Sin agrupar' can be read as one of the grouping modes rather than as the residual category of chats bound to no agent or team (the sidecar asks for a category, not a name or an option).",
+          "suggestion": "Sin grupo",
+          "severity_rationale": "Both forms are grammatical and used in es UI; the list context disambiguates, so nit. No existing es precedent for this heading either way.",
+          "unverified_fit": true
+        },
+        {
+          "id": "es2-I8",
+          "severity": "INFO",
+          "key": "ui.chat.sidebar_view.ungrouped",
+          "note": "'Sin agrupar' is a defensible residual-category form (same shape as 'Sin clasificar'); if the manager prefers the current string, the ambiguity is context-resolved and no change is owed. Sentence case, no trailing punctuation, one short word per sidecar intent."
+        }
+      ]
+    }
+  },
+  "per_key_verdicts": {
+    "ui.chat.canonical.notice.interrupted": "accept",
+    "ui.chat.canonical.notice.stopped_with_error": "accept-with-minor (es2-M1)",
+    "ui.chat.canonical.notice.compaction_not_run": "accept",
+    "ui.chat.canonical.notice.compaction_not_run_after_colon": "accept",
+    "ui.chat.canonical.link_toolkit.actions_for": "accept",
+    "ui.chat.sidebar_view.ungrouped": "accept-with-nit (es2-N1)",
+    "ui.chat.sidebar.mark_all_read.label": "accept-with-minor (es2-M2)"
+  },
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 2,
+    "nit": 1
+  },
+  "verdict": "clean-with-findings",
+  "ledger": {
+    "status": "passed",
+    "note": "status is passed because no blocker or major remains; the two minors and one nit are recorded, not churned."
+  },
+  "checks_performed": [
+    "JSON.parse of all three es namespaces at head (valid JSON)",
+    "key-set parity per namespace against en: 258/258, 81/81, 27/27; no key added or dropped (checked at head, not just the diff)",
+    "ICU argument extraction on all 7 en/es pairs comparing argument NAME, TYPE and number STYLE: identical (detail; name; count/number/::group-off); brace balance verified per string",
+    "CLDR plural need: neither side carries plural/select in these 7 keys, so no es category requirement arises; no '#' misuse",
+    "markup/Rich tags, backticks, code spans, flags, identifiers, paths: none present on either side",
+    "no value identical to its en source (no English stub); no Latin-script English words left in the es values beyond the allowed ICU argument names",
+    "whitespace: no double spaces, no leading/trailing whitespace, no trailing . ! ? on any of the 7 (matches the sidecars)",
+    "codepoints: em dash is U+2014 with single spaces, no NBSP, no manual bidi controls, accents composed as precomposed Latin-1 codepoints",
+    "rendered-width arithmetic for mark_all_read.label with the placeholder substituted (en 15 cells at count=3, es 28) and sidebar width constants read from chat-sidebar-layout.ts",
+    "read the en .context.json sidecar for every key plus the call sites that consume it (notice-copy.ts, transcript-reducer.ts, link-actions.ts, chat-sidebar-view.ts, chat-sidebar.tsx, mark-all-read.ts)"
+  ],
+  "checks_not_performed": [
+    "pnpm check-i18n / node scripts/i18n/generate.mjs --check / check-strings.mjs / context-parity.mjs / ledger-check.mjs (host declared overloaded: no builds, tests or installs this run)",
+    "@formatjs ICU parser execution (arguments compared with a hand-written scanner, not the repo parser)",
+    "pseudo-localisation run",
+    "rendered fit: no screenshots, no browser, no window; width figures are computed from markup and nominal glyph widths, not measured",
+    "rich.cells/terminal cell width: the width figures above are character counts under a 1-cell-per-Latin-glyph assumption, not rich.cells measurements",
+    "any earlier audit comment or receipt for es (deliberately not read; this pass is independent)"
+  ],
+  "artifacts": [
+    {
+      "path": "~/local-operator-ui/.worktrees/_s9-audits/second/es.json",
+      "role": "candidate receipt (repo copy for ledger assembly: i18n/receipts/000a2504613d.json)"
+    },
+    {
+      "path": "~/local-operator-ui/.worktrees/_s9-audits/second/es-comment.md",
+      "role": "PR comment body as posted on #1827"
+    }
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [
+      "es2-M1",
+      "es2-M2",
+      "es2-N1"
+    ]
+  },
+  "unresolved_doubts": [
+    "es2-M2 fit is arithmetic from markup, not a rendered frame; if design says the es header is measured fine, this minor can be answered as no change.",
+    "es2-M1 'Terminó con un error' trades the sibling's verb for idiom; the manager may prefer keeping 'Se detuvo' for cross-key consistency and taking 'por' instead.",
+    "The es catalogue has no locale .context.json sidecars (only ui.chat.sidebar), so locale-specific translator context exists for one of the three namespaces; not a defect of this diff."
+  ],
+  "result": "clean-with-findings"
+}

@@ -1,0 +1,56 @@
+{
+ "schema": 1,
+ "auditor": "translation-auditor (lopdev coder-role session 32ed16b45687, scope-key delta audit; not the PR coder, translator or previous auditor)",
+ "agent": "translation-auditor (lopdev coder-role session 32ed16b45687, scope-key delta audit; not the PR coder, translator or previous auditor)",
+ "model": "anthropic/claude-opus-5-5",
+ "model_provenance": "Every catalogue read, measurement and verdict in this receipt ran on anthropic/claude-opus-5-5; no fallback occurred in this session.",
+ "fallback": "none",
+ "independence": "Separate session (32ed16b45687) from the PR coder that added the scope keys with initial values in 7f20cc0842, from the translator (58d893da06) and from the previous auditor (bf41e95b4e1e) whose fit measurements proposed those values. Same served model family as those sessions, so NOT model-independent; the ledger rule is agent-instance independence.",
+ "instance": "32ed16b45687-es",
+ "session": "32ed16b45687",
+ "locale": "es",
+ "namespace": "ui.agents.skills",
+ "branch": "feat/skills-tab-redesign",
+ "head": "7f20cc0842265205e62fa131830ea7c097a57adc",
+ "pr": "damianvtran/local-operator-ui#1458",
+ "date": "2026-10-27",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "verdict": "pass",
+ "keys_read": 101,
+ "scope": "Delta re-audit after ui.agents.skills.scope.{local,hub,builtin} were added in 7f20cc0842: the 98 carried keys are proven byte-identical to the bf41e95b4e1e audit (git diff 101d9a2a66..7f20cc0842 on this catalogue and on en is exactly the three added lines; the 101d9a2a66 blobs hash to the sha256 recorded in the bf41e95b4e1e receipts), so its findings stand unchanged; the three new keys are audited in full, as segments 2-4 of the Skills scope control whose segment 1 is ui.agents.pages.scope.all.",
+ "sha256": {
+  "es": "96c8479c5d56301ec879206a6ff60103ef2b5f46015a62cfc4540b28d3b337ab",
+  "en": "120bced73452069b6c18a8758c356a9e4babb5dd0740e12fa72855cad4faf3d4"
+ },
+ "inputs_sha256": {
+  "en_context": "2caa5630381423e3da0a297e4ad66acd3283a4b9a67ccf48ed79f917282ccbf9",
+  "glossary (local-operator/i18n/glossary.md)": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style guide (local-operator/i18n/style-guides/es.md)": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+ },
+ "verified": [
+  "key set equals en (101 keys); the three new values carry no placeholders, ICU syntax, bidi/zero-width/BOM characters, edge or double spaces; all NFC",
+  "meaning: each segment names the same scope as en (Local = made on this machine, Agent Hub = managed from the hub, Built-in = ships with the app) and matches the row source word it filters; final control: Todos / Locales / Hub / Integrados",
+  "grammatical form against segment 1 (ui.agents.pages.scope.all) and #1432's ui.agents.pages.scope.*: Segment 1 « Todos » is masculine plural (reused from the Agents control); final segments Locales / Hub / Integrados are plural and agree; Integrados is byte-equal to ui.agents.pages.scope.builtin.",
+  "fit: Todos 50.95 / Locales 60.06 / Hub 39.77 / Integrados 78.21 = 228.98 px vs 246 px row (all four segments, natural width, 12 px / 500 + 16 px padding each) — before correction: Todos 50.95 / Local 46.64 / Hub 39.77 / Integrada 71.33 = 208.68",
+  "measurement: harness browser (Local Operator desktop browser host), static CSS replica served from the session scratchpad: span per segment with font: 500 12px system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif (text-meta + font-medium, Button size=sm) and 0 8px padding (px-2), natural widths summed vs the 246 px row; en control 212.48 px reproduces the previous audit's en figure exactly. Replica, not the built app."
+ ],
+ "findings": [
+  {
+   "severity": "minor",
+   "key": "ui.agents.skills.scope.local",
+   "summary": "Singular « Local » beside the reused plural segment « Todos » (ui.agents.pages.scope.all) and #1432's plural segments (Integrados, Míos, Del hub): one control mixed number. CORRECTED by the auditor.",
+   "before": "Local",
+   "after": "Locales",
+   "resolution": "fixed by auditor in this commit"
+  },
+  {
+   "severity": "minor",
+   "key": "ui.agents.skills.scope.builtin",
+   "summary": "Feminine singular « Integrada » (the row's source word) does not agree with segment 1 « Todos » (masculine plural, reused from the Agents control). Plural masculine « Integrados » agrees with « Todos » and is byte-equal to #1432's ui.agents.pages.scope.builtin, so the two scope controls share one word. CORRECTED by the auditor.",
+   "before": "Integrada",
+   "after": "Integrados",
+   "resolution": "fixed by auditor in this commit"
+  }
+ ]
+}

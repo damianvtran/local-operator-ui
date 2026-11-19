@@ -1,0 +1,44 @@
+{
+  "locale": "ru",
+  "namespace": "ui.common.errors",
+  "date": "2026-11-09",
+  "auditor": {
+    "agent": "reviewer",
+    "session": "5bd8c68783d2",
+    "instance": "5bd8c68783d2-1817r1-ru",
+    "model": "anthropic/claude-opus-5-5",
+    "model_note": "Served model as named in the auditor session's own system header (anthropic/claude-opus-5-5); no fallback observed or claimed.",
+    "independent_from_translator": true,
+    "role": "lopdev team reviewer, task r1-i18n-audit"
+  },
+  "independence": "Translated by the PR's coder (lopdev team coder session, not this one); this auditor (reviewer session 5bd8c68783d2) translated, edited or remediated no string. Independence is by agent and session.",
+  "english": {
+    "path": "src/i18n/catalogues/en/ui.common.errors.json",
+    "sha256": "f85143309f924a6d75162645b148c1cf969d71e14e59f49b0735ac33bdc503c0"
+  },
+  "context": {
+    "path": "src/i18n/catalogues/en/ui.common.errors.context.json",
+    "sha256": "7e48e4574a49eeb707db4de172b8c8c958ce0eb9bbc44a0c56e9f4de00ffb7d3"
+  },
+  "target": {
+    "path": "src/i18n/catalogues/ru/ui.common.errors.json",
+    "sha256": "9e9a3a4d8b4c77449905c22a24d74839d361dcb82dcaba6d47ea8a138cd416cd"
+  },
+  "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "style_guide_sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5",
+  "result": "clean",
+  "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "finding_ids": [],
+  "artifacts": [
+    {
+      "path": "i18n/receipts/5bd8c68783d2-1817r1-ru.json",
+      "sha256": "0aba3b6bebd513391a0f8ce8db10faf0d5d0b8fa8558648cb51c3f8edc79c33a"
+    }
+  ],
+  "note": "Audit notes, not an execution log. Text-only audit; no rendered evidence."
+}

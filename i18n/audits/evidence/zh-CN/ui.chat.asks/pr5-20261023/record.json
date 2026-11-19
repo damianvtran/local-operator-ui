@@ -1,0 +1,165 @@
+{
+ "audit_id": "pr5-20261023",
+ "date": "2026-10-23",
+ "locale": "zh-CN",
+ "namespace": "ui.chat.asks",
+ "source_commit": "9571f33c537c9ce5d9432f691f969f0b3f86b37a",
+ "requested_commit": "5b10cb570b555752ec714d45a777c93bd5925c38",
+ "head_note": "Requested 5b10cb570 had moved to 9571f33c5; the catalogue diff between them under src/i18n and i18n is empty, so the hashes below are identical at both heads.",
+ "scope": "Fresh full audit of all 10 ui.chat.asks keys (zh-CN): meaning/idiom, glossary and style-guide conformance, register, placeholders/ICU, CLDR plural arms; cross-surface consistency with harness tui.asks/relay.ask.",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "keys_read": 10,
+ "translator": {
+  "note": "Translator identity is not recorded in the PR commits (2e230df57, 5b10cb570 by bbqben); the coder assembling the ledger row supplies it. This auditor is not it."
+ },
+ "auditors": [
+  {
+   "agent": "task",
+   "model": "anthropic/claude-opus-5-5",
+   "session": "fb125765ab49",
+   "team": "lopdev",
+   "instance": "pr5-20261023-zh-cn",
+   "date": "2026-10-23",
+   "result": "clean-with-findings",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 2,
+    "nit": 1
+   },
+   "receipt": "i18n/receipts/pr5-zh-cn.json",
+   "receipt_sha256": "ccacc7fe53c90cb3c1eac29ff7903fe7b72448dc249eaa8ca19be52df753ffa9"
+  }
+ ],
+ "model_note": "Served model anthropic/claude-opus-5-5 for the whole pass (skill reading, contract reading, catalogue review, ICU validation and artifacts). No provider fallback occurred.",
+ "independence": "Independent translation audit by the `task` member of team lopdev (session fb125765ab49), delegated by the team manager. This session produced none of the reviewed copy: it did not translate, edit, commit or push any catalogue, context file or ledger row, and wrote only its own receipts and evidence records. No MT, translation API or SDK was used; all linguistic judgement is the auditor's own. ICU parsing and plural rendering ran the worktree's existing intl-messageformat as validation, not as translation.",
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.chat.asks.json",
+   "sha256": "a2c4121f4347766ed176dc5d536a990a9c49bf0efff9fdd59be422833f4de6c4"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/zh-CN/ui.chat.asks.json",
+   "sha256": "cc3043de9670cc18b807ca3e5bb26fccd47523b926d908f0e62495f472c36f15"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.chat.asks.context.json",
+   "sha256": "f5e2f62d5630e4873ee3084265c8e487beac4854a690df4e824ce0a6135747ea"
+  }
+ },
+ "references": {
+  "glossary": {
+   "path": "~/workspace/repos/lo-stale-ask-dismiss/i18n/glossary.md",
+   "revision": "9969e2907933b1bf87df6c2502332396f36d36ec",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/workspace/repos/lo-stale-ask-dismiss/i18n/style-guides/zh-CN.md",
+   "revision": "9969e2907933b1bf87df6c2502332396f36d36ec",
+   "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+  },
+  "contract": {
+   "path": "docs/I18N.md",
+   "ref": "origin/main",
+   "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+  },
+  "cross_surface": {
+   "repo": "~/workspace/repos/lo-stale-ask-surfaces",
+   "commit": "93f798ddb284bca3e342112a7fca76c60729e83a",
+   "catalogues": [],
+   "note": "Unmerged branch at audit time. No zh-CN catalogue exists there; no cross-surface comparison possible."
+  }
+ },
+ "findings": [
+  {
+   "id": "zh-m1",
+   "severity": "MINOR",
+   "key": "ui.chat.asks.dismiss.trigger",
+   "issue": "The zh-CN style guide says 'Ellipsis is …… (two marks)'. The desktop corpus uses …… 111 times and a single … once.",
+   "current": "关闭…",
+   "proposed": "关闭……"
+  },
+  {
+   "id": "zh-m2",
+   "severity": "MINOR",
+   "key": "ui.chat.asks.context.messages_since",
+   "issue": "The style guide says 'No space inserted between Chinese text and Latin/digit runs'; the corpus writes «#条消息» 9 times and «# 条» 0 times. «最近 19:36» is also loose: «最近» means 'recent'. The corpus pattern for the last item's time is «最后…于{time}» (e.g. «最后回复于{time}»).",
+   "current": "{count, plural, other {自提出这个请求以来你发来了 # 条消息}}（最近 {time}）",
+   "proposed": "{count, plural, other {自提出这个请求以来你发来了#条消息}}（最后一条于{time}）"
+  },
+  {
+   "id": "zh-n1",
+   "severity": "NIT",
+   "key": "ui.chat.asks.dismiss.receipt.moot",
+   "issue": "A half-width spaced em dash inside Chinese text; full-width «——» is mainland convention. The corpus is mixed (6 « — », 7 «——»). Also applies to dismiss.receipt.answered_in_chat.",
+   "current": "已关闭 — 不再需要 | 已关闭 — 已在对话中解决",
+   "proposed": "已关闭——不再需要 | 已关闭——已在对话中解决"
+  },
+  {
+   "id": "zh-i1",
+   "severity": "INFO",
+   "key": "ui.chat.asks.dismiss.moot.note",
+   "issue": "«无需继续等待» is impersonal and does not make the operator the one waiting, so the defect raised in the other six locales does not apply. The harness has no zh-CN tui.asks/relay.ask at 93f798ddb, so there is no cross-surface comparison. Not counted."
+  }
+ ],
+ "proposed_values": {
+  "ui.chat.asks.dismiss.trigger": "关闭……",
+  "ui.chat.asks.context.messages_since": "{count, plural, other {自提出这个请求以来你发来了#条消息}}（最后一条于{time}）",
+  "ui.chat.asks.dismiss.receipt.moot": "已关闭——不再需要",
+  "ui.chat.asks.dismiss.receipt.answered_in_chat": "已关闭——已在对话中解决"
+ },
+ "validation": {
+  "key_parity": "10/10 keys equal to en",
+  "icu": {
+   "parser": "worktree intl-messageformat (existing node_modules, no install)",
+   "parsed": 10,
+   "errors": [],
+   "plural_arms": [
+    "other"
+   ],
+   "cldr_categories_match": true,
+   "placeholders": [
+    "count",
+    "time"
+   ],
+   "placeholders_match_en": true
+  },
+  "nfc": true,
+  "bidi_controls": 0,
+  "proposed_values_parse": true,
+  "rendered_fit": "Not executed; no rendered-frame or width claim."
+ },
+ "deriveReceiptAudit": {
+  "module_ref": "origin/main",
+  "module_path": "scripts/i18n/ledger-rules.mjs",
+  "module_sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6",
+  "execution": "Imported exact git-show bytes via in-memory data URL; called pure deriveReceiptAudit with actual en/target SHA-256 from disk; exit 0. No assembler or ledger write executed.",
+  "derived": {
+   "agent": "task",
+   "instance": "pr5-20261023-zh-cn",
+   "model": "anthropic/claude-opus-5-5",
+   "result": "clean-with-findings",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 2,
+    "nit": 1
+   },
+   "source_sha256": "a2c4121f4347766ed176dc5d536a990a9c49bf0efff9fdd59be422833f4de6c4",
+   "target_sha256": "cc3043de9670cc18b807ca3e5bb26fccd47523b926d908f0e62495f472c36f15",
+   "receipt_sha256": "ccacc7fe53c90cb3c1eac29ff7903fe7b72448dc249eaa8ca19be52df753ffa9"
+  }
+ },
+ "retained_rounds": [
+  {
+   "path": "i18n/receipts/pr5-zh-cn.json",
+   "sha256": "ccacc7fe53c90cb3c1eac29ff7903fe7b72448dc249eaa8ca19be52df753ffa9"
+  }
+ ],
+ "limitations": [
+  "Catalogue-only audit; no build, test, install, browser, render or activation evidence.",
+  "Cross-surface terms come from an unmerged harness branch; if it changes before merge, the alignment proposals should be re-checked.",
+  "Proposed values are the auditor's suggestions; the fix belongs to the coder and needs a fresh audit round on the new target bytes."
+ ]
+}

@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "agent": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "audit-1745-tag-groups-hi-20261107",
+  "locale": "hi",
+  "date": "2026-11-07",
+  "status": "passed",
+  "namespace": "ui.chat.tag_groups",
+  "keys_read": 2,
+  "sha256": {
+    "en": "bb046f0781f89559eeeb9382a8ece731281d58d8872f342e0ca09e2229f7d3ca",
+    "hi": "fd1018cefeb60fce4c8559122bb58fd6b10b35e3bb532f59e86cb9aa05a9b2f9"
+  },
+  "findings": [
+    {
+      "id": "H1",
+      "severity": "MINOR",
+      "key": "ui.chat.tag_groups.expand",
+      "current": "{name} खोलें",
+      "proposed": "{name} फैलाएँ",
+      "reason": "Glossary/verb-pair drift: the same sidebar's group fold (ui.chat.sidebar.entity.expand_chats), the sidebar toggle and Expand all all pair समेटें with फैलाएँ (only goal_expand uses खोलें), and the en context asks for the app's existing pair; खोलें ('open') in a conversation list also reads as opening the tag rather than unfolding it.",
+      "disposition": "corrected in remediation; this receipt binds the corrected bytes"
+    }
+  ],
+  "scope": "PR #1745 ui.chat.tag_groups at 2209af742306909800ae675df54d8df4dc5b3074: full 2-key namespace (collapse, expand), en catalogue + en context, sibling collapse/expand keys, ui.chat.tags.untagged substitution",
+  "independence": "lopdev translation-auditor, separate session (f015890e4661) from the PR coder that translated; same served model family (anthropic/claude-opus-5-5) disclosed; verdict rebuilt from the English source, the en context, sibling keys, the core glossary and the locale style guide.",
+  "references": "co",
+  "checks": "placeholders {name} exactly once per key, no ICU/plural arms (none in source; CLDR categories not applicable), key set == en, zero Unicode Cf (bidi/format) code points, aria-label + title only (no fixed width budget), Untagged substitution read in-locale",
+  "verdict": "hi: passed after H1 — समेटें/फैलाएँ now matches the sidebar group fold and the app's pair; polite imperative, object-first, {name} intact; one MINOR (H1) found and corrected."
+}

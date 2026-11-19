@@ -13,6 +13,7 @@ import {
 	LINK_TARGET_ATTR,
 	LINK_TARGET_PATH_ATTR,
 	type LinkKind,
+	claimFirstScan,
 	classifyHref,
 	clickDecision,
 	evidenceFor,
@@ -30,7 +31,9 @@ import {
 import { closeOpenMarkdown, openFenceOf } from "../utils/markdown-remend";
 import { opensInCanvas } from "../utils/open-in-canvas";
 import { remarkLinkifyTargets } from "../utils/remark-linkify-targets";
+import { remarkSkillInk } from "../utils/remark-skill-ink";
 import { remarkSoftBreaks } from "../utils/remark-soft-breaks";
+import { remarkTableHtml } from "../utils/remark-table-html";
 import { citationAwareAnchor } from "./credential-citation";
 import { remarkCredentialCitations } from "./credential-citation-remark";
 import { MarkdownImage } from "./markdown-image";
@@ -43,8 +46,8 @@ import remarkGuardedMath from "./markdown-math-guarded";
 import { MarkdownTable } from "./markdown-table";
 import "./markdown.css";
 import { MAX_PROBE_PATHS } from "../../../../../shared/desktop-contract";
+import { ChatDiagram } from "./chat-diagram";
 import { containsRenderableMath } from "./markdown-math";
-import { MermaidDiagram } from "./mermaid-diagram";
 import { SEPARATOR_CLASS, SEPARATOR_RUN } from "./slash-token";
 
 // katex.min.css is unconditional dead weight for the vast majority of messages,
@@ -115,6 +118,26 @@ type MarkdownRendererProps = {
 	 * a second flag - the four citation pipelines below carry it and say why.
 	 */
 	credentialCitations?: boolean;
+	/**
+	 * The skills the turn ATTACHED (`skillBlockNames(record.text)`), so their
+	 * `$name` tokens in the painted text take the command-token ink.
+	 *
+	 * Only meaningful with `credentialCitations`, i.e. on the reader's own turn:
+	 * the ink is the same opt-in family as the chips and the kept line breaks, and
+	 * an agent's answer never passes it. Absent or empty means NO plugin in the
+	 * pipeline at all, so every render that does not invoke a skill is the array it
+	 * always was. See `utils/remark-skill-ink.ts` for the grammar and the ordering.
+	 */
+	skillNames?: readonly string[];
+	/**
+	 * The identity of the message this text belongs to - the transcript's
+	 * `record.id` - so the link evidence can tell a NEW message from a remount of
+	 * an old one when their text is byte-identical (round 3, review R3-3b): a
+	 * report repeating the pre-tool message word for word is still the event that
+	 * says its cached negatives may have moved. Optional: a surface without one
+	 * keys on the text alone (see `claimFirstScan`).
+	 */
+	documentId?: string;
 };
 
 const LANGUAGE_REGEX = /language-(\w+)/;
@@ -369,12 +392,12 @@ const MARKDOWN_COMPONENTS: Components = {
 
 		if (language === "mermaid") {
 			return (
-				<MermaidDiagram chart={String(children).replace(NEWLINE_REGEX, "")} />
+				<ChatDiagram chart={String(children).replace(NEWLINE_REGEX, "")} />
 			);
 		}
 
 		return (
-			<code className={className} {...rest}>
+			<code dir="ltr" className={className} {...rest}>
 				{children}
 			</code>
 		);
@@ -401,8 +424,8 @@ const MARKDOWN_COMPONENTS_WITH_CITATIONS: Components = {
 	a: citationAwareAnchor(MarkdownAnchor),
 };
 
-const GFM_ONLY = [remarkGfm];
-const GFM_AND_MATH = [remarkGfm, remarkGuardedMath];
+const GFM_ONLY = [remarkGfm, remarkTableHtml];
+const GFM_AND_MATH = [remarkGfm, remarkTableHtml, remarkGuardedMath];
 /*
  * Every combination of the three things this pipeline can add, hoisted for the
  * reason `MARKDOWN_COMPONENTS`'s comment records - and, MEASURED on
@@ -420,8 +443,13 @@ const GFM_AND_MATH = [remarkGfm, remarkGuardedMath];
  * Eight constants rather than a builder, and `REMARK_PIPELINES` below is only a
  * selector over them.
  */
-const GFM_LINKIFY = [remarkGfm, remarkLinkifyTargets];
-const GFM_MATH_LINKIFY = [remarkGfm, remarkGuardedMath, remarkLinkifyTargets];
+const GFM_LINKIFY = [remarkGfm, remarkTableHtml, remarkLinkifyTargets];
+const GFM_MATH_LINKIFY = [
+	remarkGfm,
+	remarkTableHtml,
+	remarkGuardedMath,
+	remarkLinkifyTargets,
+];
 /*
  * THE FOUR CITATION-BEARING PIPELINES ARE ALSO THE FOUR USER-TURN PIPELINES,
  * and `remarkSoftBreaks` rides them (operator report, 2026-09-25). The report:
@@ -451,23 +479,27 @@ const GFM_MATH_LINKIFY = [remarkGfm, remarkGuardedMath, remarkLinkifyTargets];
  */
 const GFM_AND_CITATIONS = [
 	remarkGfm,
+	remarkTableHtml,
 	remarkCredentialCitations,
 	remarkSoftBreaks,
 ];
 const GFM_MATH_AND_CITATIONS = [
 	remarkGfm,
+	remarkTableHtml,
 	remarkGuardedMath,
 	remarkCredentialCitations,
 	remarkSoftBreaks,
 ];
 const GFM_LINKIFY_AND_CITATIONS = [
 	remarkGfm,
+	remarkTableHtml,
 	remarkLinkifyTargets,
 	remarkCredentialCitations,
 	remarkSoftBreaks,
 ];
 const GFM_MATH_LINKIFY_AND_CITATIONS = [
 	remarkGfm,
+	remarkTableHtml,
 	remarkGuardedMath,
 	remarkLinkifyTargets,
 	remarkCredentialCitations,
@@ -490,8 +522,44 @@ const REMARK_PIPELINES: Record<string, typeof GFM_MATH_LINKIFY_AND_CITATIONS> =
 		"110": GFM_MATH_LINKIFY,
 		"111": GFM_MATH_LINKIFY_AND_CITATIONS,
 	};
+/*
+ * THE SKILL INK IS THE ONE PLUGIN THAT NEEDS PER-MESSAGE OPTIONS, which the eight
+ * hoisted arrays above cannot carry: `[remarkSkillInk, { names }]` is a different
+ * entry for every distinct set of attached skills. So the arrays stay exactly as
+ * they were (and every render with no attached skill still gets one of them,
+ * the identity contract above untouched), and a turn that DID attach a skill gets
+ * the same array with the plugin FIRST, built once per (pipeline, names) by
+ * `useMathPipeline` and held by `useMemo`.
+ *
+ * FIRST, not last, and it is not a style choice: the plugin maps its matches onto
+ * text nodes by their `position` offsets into the source, and `remarkLinkifyTargets`,
+ * `remarkCredentialCitations` and `remarkSoftBreaks` all emit text nodes with no
+ * `position`. Behind any of them a node has nothing to map by (`remark-skill-ink.ts`).
+ */
 const NO_REHYPE: [] = [];
-const KATEX_ONLY = [rehypeKatex];
+/*
+ * KaTeX options (2026-11-10). Agent output is untrusted TeX, so:
+ *   - `throwOnError: false` - invalid TeX renders as KaTeX's own error span (the
+ *     source, in the error colour, with the parse error as its tooltip) and
+ *     never breaks the message. `rehype-katex` already retries this way after a
+ *     throw; stating it keeps that behaviour if the plugin's fallback changes.
+ *   - `strict: "ignore"` - LaTeX-compatibility warnings (unicode text in math,
+ *     `\\` in inline mode) are not errors for a reader.
+ *   - `trust: false` - `\href`, `\url`, `\htmlClass` and friends stay disabled:
+ *     model-written TeX must not mint links or attributes.
+ *   - `errorColor` - a theme ROLE, not KaTeX's hard-coded `#cc0000`, so the
+ *     error span reads correctly on all fifty-nine palettes. KaTeX writes it
+ *     into an inline `style="color: ..."`, where `var()` resolves normally.
+ */
+const KATEX_OPTIONS = {
+	throwOnError: false,
+	strict: "ignore",
+	trust: false,
+	errorColor: "var(--lo-danger)",
+} as const;
+const KATEX_ONLY: [[typeof rehypeKatex, typeof KATEX_OPTIONS]] = [
+	[rehypeKatex, KATEX_OPTIONS],
+];
 
 /**
  * Whether the content is worth paying for the math pipeline.
@@ -536,11 +604,20 @@ const useStyleVariables = (
  * rename here would be a third spelling of the same function for no behaviour.
  * `REMARK_PIPELINES` above is what holds the answer; every branch of it is a
  * hoisted array, which is what such a memo would read.
+ *
+ * ONE EXCEPTION TO "ONE OF THE EIGHT", stated here because the paragraphs above
+ * claim otherwise: a user turn that ATTACHED a skill (`skillNames`, never empty
+ * for it) gets a `useMemo`'d array that is the selected constant with
+ * `[remarkSkillInk, { names }]` in front. It is keyed by the names' content, so
+ * the same skills give the same array across re-renders, and every render with no
+ * attached skill - all of agent output, and almost all user turns - still returns
+ * a hoisted constant untouched.
  */
 const useMathPipeline = (
 	content: string,
 	linkify: boolean,
 	citations: boolean,
+	skillNames?: readonly string[],
 ) => {
 	const hasLatex = useMemo(() => containsRenderableMath(content), [content]);
 	/*
@@ -569,13 +646,27 @@ const useMathPipeline = (
 		};
 	}, [hasLatex, katexReady]);
 
+	// Keyed by the three decisions in their own order - math, linkify, citations
+	// - so the answer is one of the eight hoisted arrays and never a fresh one.
+	const base =
+		REMARK_PIPELINES[
+			`${mathEnabled ? 1 : 0}${linkify ? 1 : 0}${citations ? 1 : 0}`
+		];
+	/*
+	 * The key is the names' CONTENT, not the array's identity: the caller derives
+	 * the list per record and a re-render must not rebuild the pipeline for the same
+	 * skills. Only the user-turn (citation) pipelines carry the ink.
+	 */
+	const inkKey = citations && skillNames ? skillNames.join("\0") : "";
+	const remarkPlugins = useMemo(
+		() =>
+			inkKey === ""
+				? base
+				: [[remarkSkillInk, { names: inkKey.split("\0") }], ...base],
+		[base, inkKey],
+	);
 	return {
-		// Keyed by the three decisions in their own order - math, linkify, citations
-		// - so the answer is one of the eight hoisted arrays and never a fresh one.
-		remarkPlugins:
-			REMARK_PIPELINES[
-				`${mathEnabled ? 1 : 0}${linkify ? 1 : 0}${citations ? 1 : 0}`
-			],
+		remarkPlugins: remarkPlugins as typeof base,
 		rehypePlugins: mathEnabled ? KATEX_ONLY : NO_REHYPE,
 	};
 };
@@ -603,20 +694,33 @@ const useMathPipeline = (
  * nothing and are the shape that survives a future upgrade restoring an internal
  * memo - not because they gate this today.
  *
- * ONE ASK PER DISTINCT SPELLING, EVER. The pre-scan is deduped, `probeTargets`
- * dedupes again against the cache and against the asks already in flight (two
- * rows carrying `/tmp` paint in the same frame and would otherwise both ask), and
- * the answers land in the same cache the link toolbar reads. A streaming row
- * (`linkify` false) does no scanning and asks nothing at all - a per-delta stat
- * storm is the one shape this could go wrong in.
+ * ONE ASK PER DISTINCT SPELLING PER DOCUMENT. The pre-scan is deduped,
+ * `probeTargets` dedupes again against the cache and against the asks already in
+ * flight (two rows carrying `/tmp` paint in the same frame and would otherwise
+ * both ask), and the answers land in the same cache the link toolbar reads. A
+ * streaming row (`linkify` false) does no scanning and asks nothing at all - a
+ * per-delta stat storm is the one shape this could go wrong in.
  *
- * A FRESH PATH CREATED AFTER THE MESSAGE PAINTED STAYS PLAIN. The Files panel
- * owns a growth-triggered retry (`use-mentioned-files`); the linkifier owns none,
- * so an extensionless file that appears later is not re-scanned. That is the
+ * A NEW MESSAGE RE-ASKS THE MISSING ONES (round 2, review R2-1): an agent that
+ * lists its deliverables BEFORE the tool writes them caches a negative per name,
+ * and the report that lists them after would otherwise read that negative
+ * forever. `claimFirstScan` marks the first scan of each document, so the new
+ * report re-probes the spellings it names that are cached as missing, and the
+ * landing answer re-renders the earlier rows through `subscribeProbes` too. A
+ * remount of the SAME document is not a new message and re-asks nothing.
+ *
+ * A FRESH PATH CREATED AFTER THE MESSAGE PAINTED, AND NEVER NAMED AGAIN, STAYS
+ * PLAIN. The Files panel owns a growth-triggered retry (`use-mentioned-files`);
+ * the linkifier retries only on a new message, so an extensionless file that
+ * appears later with no later message naming it is not re-scanned. That is the
  * accepted false negative of plain-until-known, recorded on the pull request
  * rather than discovered by a reader.
  */
-const useLinkEvidence = (content: string, linkify: boolean): void => {
+const useLinkEvidence = (
+	content: string,
+	linkify: boolean,
+	documentId?: string,
+): void => {
 	const [, setTick] = useState(0); // the state is the re-render, not a value
 	useEffect(() => {
 		if (!linkify) return; // a streaming row is parsed but not linkified
@@ -628,27 +732,29 @@ const useLinkEvidence = (content: string, linkify: boolean): void => {
 			if (live && landed.some((target) => armed.has(target)))
 				setTick((count) => count + 1);
 		});
-		void probeTargets(suspects, window.api?.probeFiles, MAX_PROBE_PATHS).then(
-			() => {
-				/*
-				 * An answer that landed before this effect subscribed - another row, or
-				 * the toolbar, asked first - is caught here rather than by the
-				 * subscription: the ask above returns immediately when every spelling is
-				 * already cached, and nothing would notify a listener that arrived after
-				 * the fact.
-				 */
-				if (
-					live &&
-					suspects.some((target) => evidenceFor(target) !== "unknown")
-				)
-					setTick((count) => count + 1);
-			},
-		);
+		void probeTargets(
+			suspects,
+			window.api?.probeFiles,
+			MAX_PROBE_PATHS,
+			claimFirstScan(
+				documentId === undefined ? content : `${documentId}\u0000${content}`,
+			),
+		).then(() => {
+			/*
+			 * An answer that landed before this effect subscribed - another row, or
+			 * the toolbar, asked first - is caught here rather than by the
+			 * subscription: the ask above returns immediately when every spelling is
+			 * already cached, and nothing would notify a listener that arrived after
+			 * the fact.
+			 */
+			if (live && suspects.some((target) => evidenceFor(target) !== "unknown"))
+				setTick((count) => count + 1);
+		});
 		return () => {
 			live = false;
 			stop();
 		};
-	}, [content, linkify]);
+	}, [content, linkify, documentId]);
 };
 
 /**
@@ -676,19 +782,22 @@ export const MarkdownRenderer: FC<MarkdownRendererProps> = memo(
 		className,
 		linkify = true,
 		credentialCitations = false,
+		skillNames,
+		documentId,
 	}) => {
 		const trimmed = useMemo(() => content.trim(), [content]);
 		const { remarkPlugins, rehypePlugins } = useMathPipeline(
 			trimmed,
 			linkify,
 			credentialCitations,
+			skillNames,
 		);
 		const style = useStyleVariables(styleProps);
 		/*
 		 * The pre-scan runs on the SAME string the parse does, so the suspects and the
 		 * tokens the plugin will meet cannot drift on a leading newline.
 		 */
-		useLinkEvidence(trimmed, linkify);
+		useLinkEvidence(trimmed, linkify, documentId);
 
 		return (
 			<div className={cn("lo-markdown", className)} style={style}>

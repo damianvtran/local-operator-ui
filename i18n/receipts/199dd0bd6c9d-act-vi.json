@@ -1,0 +1,172 @@
+{
+  "locale": "vi",
+  "namespace": "ui.common.actions",
+  "scope": "ui.common.actions: verification that the only change since 369bb0113f is the deletion of the unused key check_again",
+  "checkout_head": "58de30166d",
+  "audit_date": "2026-10-29",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "role": "independent verification auditor (did not author the change)",
+    "session": "199dd0bd6c9d",
+    "model": "radient/auto",
+    "actual_model_source": "fallback: session primary anthropic/claude-sonnet-5-5 hit provider quota; routed through openai/gpt-6-astra then kimi/k3.1-pro, ran as radient/auto",
+    "independent_from_translator_session": true,
+    "instance": "199dd0bd6c9d-act-vi"
+  },
+  "instance": "199dd0bd6c9d-act-vi",
+  "instance_source": "run id assigned by the operator's correction (2026-10-29): verifier session 199dd0bd6c9d, run tag 'act', locale vi. Supersedes the originally instructed placeholder expression, whose basename/dirname literally resolved to a junk value ('scratchpad') and was never a real run id.",
+  "input_sha256": {
+    "en": "8dc67dc7c285d2747f4586a5d01a39c23423b10e506f6cfa44c258caed37a412",
+    "target": "995b18a19abb919a1ddbcace2319627be92bde0c9335c5a7b9861d1089bea0e2",
+    "context_sidecar": "ec17c81a0549cb184a6493d62759c38f3523ca8e8dbd56eba409e64981c5c9b6",
+    "audited_state": {
+      "en": "0c279fc21d17c3f1937e4364fac698601ec4304ce7c7055df786bc037a8b12e3",
+      "target": "af632c1c29b935a6c8e0e6a8bf919d1e389e1406fe5f780a2b100c49a446e1cc"
+    },
+    "ledger_agreement": "audited-state hashes recomputed from git blobs at 369bb0113f equal i18n/ledger.json source_sha256/target_sha256 for locale vi / namespace ui.common.actions"
+  },
+  "diff": {
+    "rev_range": "369bb0113f..58de30166d",
+    "files": [
+      {
+        "path": "src/i18n/catalogues/en/ui.common.actions.json",
+        "numstat": {
+          "added": 0,
+          "deleted": 1
+        },
+        "added_lines": [],
+        "removed_lines": [
+          {
+            "line": 3,
+            "content": "\t\"ui.common.actions.check_again\": \"Check again\","
+          }
+        ]
+      },
+      {
+        "path": "src/i18n/catalogues/vi/ui.common.actions.json",
+        "numstat": {
+          "added": 0,
+          "deleted": 1
+        },
+        "added_lines": [],
+        "removed_lines": [
+          {
+            "line": 3,
+            "content": "\t\"ui.common.actions.check_again\": \"Kiểm tra lại\","
+          }
+        ]
+      },
+      {
+        "path": "src/i18n/catalogues/en/ui.common.actions.context.json",
+        "numstat": {
+          "added": 0,
+          "deleted": 5
+        },
+        "note": "English context sidecar lost only the 5-line entry for the same key (role/tone/note/brace); context-parity passes",
+        "removed_lines": [
+          "\t\"ui.common.actions.check_again\": {",
+          "\t\t\"role\": \"action\",",
+          "\t\t\"tone\": \"plain\",",
+          "\t\t\"note\": \"Re-runs a read that answered with nothing, where nothing failed.\"",
+          "\t},"
+        ]
+      }
+    ],
+    "raw": "diff --git a/src/i18n/catalogues/en/ui.common.actions.json b/src/i18n/catalogues/en/ui.common.actions.json\nindex 33fc638f18..949e93c177 100644\n--- a/src/i18n/catalogues/en/ui.common.actions.json\n+++ b/src/i18n/catalogues/en/ui.common.actions.json\n@@ -1,6 +1,5 @@\n {\n \t\"ui.common.actions.cancel\": \"Cancel\",\n-\t\"ui.common.actions.check_again\": \"Check again\",\n \t\"ui.common.actions.close\": \"Close\",\n \t\"ui.common.actions.copied\": \"Copied\",\n \t\"ui.common.actions.copy_failed\": \"Could not copy. Select and copy it manually.\",\ndiff --git a/src/i18n/catalogues/vi/ui.common.actions.json b/src/i18n/catalogues/vi/ui.common.actions.json\nindex 335c0dd190..d9ab2243bd 100644\n--- a/src/i18n/catalogues/vi/ui.common.actions.json\n+++ b/src/i18n/catalogues/vi/ui.common.actions.json\n@@ -1,6 +1,5 @@\n {\n \t\"ui.common.actions.cancel\": \"Hủy\",\n-\t\"ui.common.actions.check_again\": \"Kiểm tra lại\",\n \t\"ui.common.actions.close\": \"Đóng\",\n \t\"ui.common.actions.copied\": \"Đã sao chép\",\n \t\"ui.common.actions.copy_failed\": \"Không sao chép được. Hãy chọn và sao chép thủ công.\",\ndiff --git a/src/i18n/catalogues/en/ui.common.actions.context.json b/src/i18n/catalogues/en/ui.common.actions.context.json\nindex d1ab750aee..207ea19103 100644\n--- a/src/i18n/catalogues/en/ui.common.actions.context.json\n+++ b/src/i18n/catalogues/en/ui.common.actions.context.json\n@@ -287,11 +287,6 @@\n \t\t\"length\": \"One compact status line, placeholder, button, or spoken suffix.\",\n \t\t\"note\": \"English source: Clear\"\n \t},\n-\t\"ui.common.actions.check_again\": {\n-\t\t\"role\": \"action\",\n-\t\t\"tone\": \"plain\",\n-\t\t\"note\": \"Re-runs a read that answered with nothing, where nothing failed.\"\n-\t},\n \t\"ui.common.actions.dismiss\": {\n \t\t\"role\": \"action\",\n \t\t\"tone\": \"plain\"\n",
+    "summary": "en: 0 added / 1 deleted; vi: 0 added / 1 deleted; context sidecar: 0 added / 5 deleted (same key)"
+  },
+  "verification": {
+    "byte_identity_test": "For each of en and vi, removing the single line containing \"ui.common.actions.check_again\" from the 369bb0113f blob reproduces the HEAD blob byte-for-byte (en True, 3548->3499 bytes, delta 49; vi True, 3653->3603 bytes, delta 50). No other byte moved.",
+    "key_counts": {
+      "en": 52,
+      "target": 52,
+      "audited_state": 53,
+      "now": 52,
+      "sets_identical": true,
+      "en_only": [],
+      "target_only": []
+    },
+    "deleted_key_absent_both_sides": true,
+    "placeholders": "zero placeholder mismatches across all 52 surviving keys; the only braced values are {label}, {key} and the ICU number-format {currentmatch, number, ::group-off} / {matchcount, number, ::group-off}, identical on both sides",
+    "plurals": "namespace contains no ICU plural/select; nothing to re-categorise",
+    "nfc": "all 52 target values are NFC precomposed",
+    "consumer_check": "no consumer of ui.common.actions.check_again remains in src/ (grep); src/i18n/keys.gen.ts is byte-identical to fresh generation and no longer lists the key; ui.chat.device.check_again is the live key and is untouched",
+    "validators": [
+      "node scripts/i18n/context-parity.mjs -> ok (every English key covered; 131 allowed shrink-only gaps in 4 other namespaces)",
+      "node scripts/i18n/check-duplicates.mjs -> ok (934 files, 0 duplicate keys)",
+      "node scripts/i18n/generate.mjs --check -> src/i18n/keys.gen.ts is byte-identical to a fresh generation"
+    ],
+    "sample_pairs_read": [
+      {
+        "key": "ui.common.actions.cancel",
+        "en": "Cancel",
+        "target": "Hủy",
+        "verdict": "matches; guide orthography hủy on first vowel"
+      },
+      {
+        "key": "ui.common.actions.copy_failed",
+        "en": "Could not copy. Select and copy it manually.",
+        "target": "Không sao chép được. Hãy chọn và sao chép thủ công.",
+        "verdict": "matches; direct imperative, no stray 'vui lòng'"
+      },
+      {
+        "key": "ui.common.actions.retry",
+        "en": "Retry",
+        "target": "Thử lại",
+        "verdict": "matches; guide example verb"
+      },
+      {
+        "key": "ui.common.actions.credential_updated",
+        "en": "Credential \"{key}\" updated successfully",
+        "target": "Đã cập nhật thông tin xác thực “{key}”",
+        "verdict": "matches; glossary credentials -> thông tin xác thực, {key} intact, curly quotes per guide"
+      },
+      {
+        "key": "ui.common.actions.date_time_picker.choose_date",
+        "en": "Choose {label} date",
+        "target": "Chọn ngày {label}",
+        "verdict": "matches; {label} preserved"
+      },
+      {
+        "key": "ui.common.actions.find_replace_widget.replace_all_cmd_ctrl_enter",
+        "en": "Replace all (Cmd/Ctrl+Enter)",
+        "target": "Thay thế tất cả (Cmd/Ctrl+Enter)",
+        "verdict": "matches; Cmd/Ctrl+Enter byte-identical"
+      },
+      {
+        "key": "ui.common.actions.find_replace_widget.of",
+        "en": "{currentmatch, number, ::group-off} of {matchcount, number, ::group-off}",
+        "target": "{currentmatch, number, ::group-off} / {matchcount, number, ::group-off}",
+        "verdict": "number formats identical; '/' is the recorded target rendering, unchanged since the audited state"
+      }
+    ]
+  },
+  "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 0,
+    "NIT": 0
+  },
+  "findings": [],
+  "verdict": "pass",
+  "namespaces": {
+    "ui.common.actions": {
+      "status": "passed",
+      "keys_audited": 52,
+      "keys_at_audited_state": 53,
+      "sha256": {
+        "en": "8dc67dc7c285d2747f4586a5d01a39c23423b10e506f6cfa44c258caed37a412",
+        "target": "995b18a19abb919a1ddbcace2319627be92bde0c9335c5a7b9861d1089bea0e2",
+        "en_audited": "0c279fc21d17c3f1937e4364fac698601ec4304ce7c7055df786bc037a8b12e3",
+        "target_audited": "af632c1c29b935a6c8e0e6a8bf919d1e389e1406fe5f780a2b100c49a446e1cc"
+      },
+      "only_change_since_audit": "deletion of unused key ui.common.actions.check_again on both sides",
+      "findings": []
+    }
+  },
+  "ledger_note": "i18n/ledger.json still carries the 369bb0113f hashes for this namespace (en 0c279fc2, vi af632c1c) and so needs re-signing against the values in input_sha256 before pnpm check-i18n:catalogues passes. That is expected bookkeeping for the deletion, not a literal defect; this verification did not edit the ledger.",
+  "report": {
+    "conclusion": "PASS - the only difference between the audited state 369bb0113f and HEAD 58de30166d in the ui.common.actions namespace is the removal of the dead key ui.common.actions.check_again (one line from each of the en and vi catalogues, plus that key's 5-line context-sidecar entry); both files are otherwise byte-identical, with 52 keys per side, identical key sets, no placeholder, plural, ICU or glossary drift, no surviving consumer of the deleted key, and context-parity / check-duplicates / generate --check all green.",
+    "unverified": "Runtime rendering of the 52 surviving strings was not exercised; this is a byte/lexical verification of a deletion, not a fresh translation audit of the surviving copy."
+  }
+}

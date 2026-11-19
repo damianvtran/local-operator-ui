@@ -71,6 +71,15 @@ export type AudioEngineStatus =
 export type AudioEngineHandlers = {
 	onEnded?: () => void;
 	onError?: () => void;
+	/**
+	 * A FIXED level and rate for this activation only, leaving the shared
+	 * `volume` / `playbackRate` untouched. For an owner whose bytes already
+	 * carry their loudness: the notification-sound preview is rendered with the
+	 * banner's own gain (`?volume=`), so inheriting the chat player's volume or
+	 * mute would make "preview = what the banner sounds like" false
+	 * (notification-sound review round 1, m1). Absent, the shared values apply.
+	 */
+	fixedOutput?: { volume: number; playbackRate: number };
 };
 
 /**
@@ -230,8 +239,11 @@ export const useAudioEngineStore = create<
 			// The one exclusivity point: whatever played before stops, whichever
 			// surface started it (speech, a card, the legacy attachment).
 			detach(audio);
-			audio.volume = get().volume;
-			audio.playbackRate = get().playbackRate;
+			audio.volume = handlers?.fixedOutput
+				? clamp(handlers.fixedOutput.volume, 0, 1)
+				: get().volume;
+			audio.playbackRate =
+				handlers?.fixedOutput?.playbackRate ?? get().playbackRate;
 			audio.src = url;
 			set({
 				ownerId,
@@ -355,14 +367,15 @@ export const useAudioEngineStore = create<
 		setVolume: (volume) => {
 			const next = clamp(volume, 0, 1);
 			const audio = get().element;
-			if (audio) audio.volume = next;
+			// A fixed-output activation keeps its level; the next one picks this up.
+			if (audio && !get().handlers?.fixedOutput) audio.volume = next;
 			set({ volume: next });
 		},
 
 		setPlaybackRate: (rate) => {
 			const next = clamp(rate, 0.5, 4);
 			const audio = get().element;
-			if (audio) audio.playbackRate = next;
+			if (audio && !get().handlers?.fixedOutput) audio.playbackRate = next;
 			set({ playbackRate: next });
 		},
 	};

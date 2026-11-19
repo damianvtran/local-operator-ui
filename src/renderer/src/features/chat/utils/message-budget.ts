@@ -13,6 +13,9 @@
  * composer still editable.
  */
 
+// Relative, not `@shared/i18n`: bundled by node tests without an alias map.
+import { formatByteQuantity, formatNumber } from "../../../../../i18n/format";
+import { t } from "../../../../../i18n/messages";
 import {
 	DESKTOP_MESSAGE_BUDGET_BYTES,
 	DESKTOP_MESSAGE_MAX_CHARS,
@@ -20,6 +23,7 @@ import {
 	DESKTOP_SYSTEM_PROMPT_MAX_CHARS,
 	desktopEndpoint,
 } from "../../../../../shared/desktop-contract";
+import { UserFacingError } from "../../../shared/api/local-operator/desktop-api";
 import { formatByteSize } from "../../../shared/lib/format-bytes";
 import type { WireImage } from "./bound-image";
 
@@ -40,6 +44,13 @@ const MEASUREMENT_REQUEST_ID = "00000000-0000-0000-0000-000000000000";
  * the same serialization the guard applies - the mismatch this whole change
  * exists to remove is two places computing "the size" differently.
  */
+/**
+ * An upper bound on a text-only message body's bytes OTHER than the text's own
+ * (field names, the fixed-width ids, `mode`, punctuation). See the fast path in
+ * `messageBudgetRefusal`; the suite pins it above the real envelope.
+ */
+export const MESSAGE_ENVELOPE_BOUND_BYTES = 1024;
+
 export function messageBodyBytes(text: string, images: WireImage[]): number {
 	const target = desktopEndpoint({
 		op: "sessions.message",
@@ -91,19 +102,31 @@ function formatByteSizePair(total: number, budget: number): [string, string] {
 	if (base !== formatByteSize(budget)) return [base, formatByteSize(budget)];
 	// Same unit on both sides throughout, so the sentence never asks the reader
 	// to compare a KB against an MB.
-	const inMb = base.endsWith("MB");
+	// The rung comes from the NUMBER, not from the formatted text: the text now
+	// ends in the locale's symbol (`Mo` in fr, `МБ` in ru), so `endsWith("MB")`
+	// silently took the KB branch for a megabyte-scale size (review M2 / QA Q1).
+	// 999_500 is the MB rung `formatByteSize` itself uses.
+	const inMb = total >= 999_500;
 	const divisor = inMb ? 1_000_000 : 1000;
 	const unit = inMb ? "MB" : "KB";
+	// The separator and the digits are the LOCALE's, not JavaScript's: `toFixed`
+	// writes "1.10" beside the sibling `{count}` that ICU formats as "1,10" in
+	// fr, so one sentence carried two decimal conventions (review round 1, m1).
+	// Fixed fraction digits, so the two operands are still comparable at a glance.
 	for (const decimals of [2, 3]) {
-		const totalText = (total / divisor).toFixed(decimals);
-		const budgetText = (budget / divisor).toFixed(decimals);
-		if (totalText !== budgetText) {
-			return [`${totalText} ${unit}`, `${budgetText} ${unit}`];
-		}
+		const digits = {
+			minimumFractionDigits: decimals,
+			maximumFractionDigits: decimals,
+		};
+		// Operands are spelled by the shared helper so the unit symbol and the
+		// digits are the locale's (`1 200,09 ko`), never a literal `KB`.
+		const totalText = formatByteQuantity(total / divisor, unit, digits);
+		const budgetText = formatByteQuantity(budget / divisor, unit, digits);
+		if (totalText !== budgetText) return [totalText, budgetText];
 	}
 	return [
-		`${total.toLocaleString()} bytes`,
-		`${budget.toLocaleString()} bytes`,
+		t("ui.chat.message_budget.bytes", { count: total }),
+		t("ui.chat.message_budget.bytes", { count: budget }),
 	];
 }
 
@@ -135,7 +158,10 @@ export function commandBudgetRefusal(
 	// `z.string().max()` counts, so this check and the one it front-runs agree on
 	// every input rather than only on ASCII.
 	if (args.length > DESKTOP_MESSAGE_MAX_CHARS) {
-		return `This command is ${args.length.toLocaleString()} characters, more than the ${DESKTOP_MESSAGE_MAX_CHARS.toLocaleString()} one command can carry. Shorten it, or put the text in a message instead.`;
+		return t("ui.chat.message_budget.command_chars", {
+			count: args.length,
+			limit: formatNumber(DESKTOP_MESSAGE_MAX_CHARS),
+		});
 	}
 	const target = desktopEndpoint({
 		op: "sessions.command",
@@ -147,7 +173,7 @@ export function commandBudgetRefusal(
 	const total = new TextEncoder().encode(JSON.stringify(target.body)).length;
 	if (total <= budget) return null;
 	const [size, limit] = formatByteSizePair(total, budget);
-	return `This command is ${size}, more than the ${limit} one command can carry. Shorten it, or put the text in a message instead.`;
+	return t("ui.chat.message_budget.command_size", { size, limit });
 }
 
 /**
@@ -179,14 +205,17 @@ export function systemPromptBudgetRefusal(
 	budget: number = DESKTOP_SYSTEM_PROMPT_BUDGET_BYTES,
 ): string | null {
 	if (systemPrompt.length > DESKTOP_SYSTEM_PROMPT_MAX_CHARS) {
-		return `This system prompt is ${systemPrompt.length.toLocaleString()} characters, more than the ${DESKTOP_SYSTEM_PROMPT_MAX_CHARS.toLocaleString()} one agent can carry. Shorten it.`;
+		return t("ui.chat.message_budget.prompt_chars", {
+			count: systemPrompt.length,
+			limit: formatNumber(DESKTOP_SYSTEM_PROMPT_MAX_CHARS),
+		});
 	}
 	const total = new TextEncoder().encode(
 		JSON.stringify({ system_prompt: systemPrompt }),
 	).length;
 	if (total <= budget) return null;
 	const [size, limit] = formatByteSizePair(total, budget);
-	return `This system prompt is ${size}, more than the ${limit} one agent can carry. Shorten it.`;
+	return t("ui.chat.message_budget.prompt_size", { size, limit });
 }
 
 /**
@@ -209,7 +238,10 @@ export function forkBudgetRefusal(
 	budget: number = DESKTOP_MESSAGE_BUDGET_BYTES,
 ): string | null {
 	if (message.length > DESKTOP_MESSAGE_MAX_CHARS) {
-		return `This first message is ${message.length.toLocaleString()} characters, more than the ${DESKTOP_MESSAGE_MAX_CHARS.toLocaleString()} one message can carry. Shorten it, or send it in the new conversation instead.`;
+		return t("ui.chat.message_budget.fork_chars", {
+			count: message.length,
+			limit: formatNumber(DESKTOP_MESSAGE_MAX_CHARS),
+		});
 	}
 	const target = desktopEndpoint({
 		op: "sessions.fork",
@@ -221,7 +253,7 @@ export function forkBudgetRefusal(
 	const total = new TextEncoder().encode(JSON.stringify(target.body)).length;
 	if (total <= budget) return null;
 	const [size, limit] = formatByteSizePair(total, budget);
-	return `This first message is ${size}, more than the ${limit} one message can carry. Shorten it, or send it in the new conversation instead.`;
+	return t("ui.chat.message_budget.fork_size", { size, limit });
 }
 
 /**
@@ -246,8 +278,29 @@ export function messageBudgetRefusal(
 	// because that is what `z.string().max()` counts, so this check and the one it
 	// front-runs agree on every input rather than only on ASCII.
 	if (text.length > DESKTOP_MESSAGE_MAX_CHARS) {
-		return `This message is ${text.length.toLocaleString()} characters, more than the ${DESKTOP_MESSAGE_MAX_CHARS.toLocaleString()} one message can carry. Split it across two messages.`;
+		return t("ui.chat.message_budget.message_chars", {
+			count: text.length,
+			limit: formatNumber(DESKTOP_MESSAGE_MAX_CHARS),
+		});
 	}
+	/*
+	 * THE PRESS PATH SKIPS THE SERIALIZATION WHEN THE ANSWER IS ALREADY KNOWN
+	 * (send smoothness, 2026-11-11). This runs between the press and the commit
+	 * that paints the echo, and building the endpoint body plus a `TextEncoder`
+	 * pass measured ~2-4 ms of that budget for a one-line message. A text-only
+	 * body can be bounded without building it: `JSON.stringify` writes at most 6
+	 * bytes per UTF-16 unit (a `\uXXXX` escape; any unescaped unit is <= 3 UTF-8
+	 * bytes, a surrogate pair 4 for two units), and the rest of the body is the
+	 * fixed envelope `MESSAGE_ENVELOPE_BOUND_BYTES` bounds (pinned against the real
+	 * serialization by `scripts/desktop-renderer-transport.test.mjs`). Below that bound the
+	 * exact count could only say "fits", so it is not computed; anything near the
+	 * budget still takes the exact path.
+	 */
+	if (
+		images.length === 0 &&
+		MESSAGE_ENVELOPE_BOUND_BYTES + text.length * 6 <= budget
+	)
+		return null;
 	const total = messageBodyBytes(text, images);
 	if (total <= budget) return null;
 	const textBytes = messageBodyBytes(text, []);
@@ -263,8 +316,69 @@ export function messageBudgetRefusal(
 	// that is the number the budget must be readably distinct from.
 	if (images.length && imageBytes >= textBytes) {
 		const [size, limit] = formatByteSizePair(imageBytes, budget);
-		return `These images total ${size}, more than the ${limit} one message can carry. Remove an image, or send them in a second message.`;
+		return t("ui.chat.message_budget.images_size", { size, limit });
 	}
 	const [size, limit] = formatByteSizePair(textBytes, budget);
-	return `This message is ${size} of text, more than the ${limit} one message can carry. Split it across two messages.`;
+	return t("ui.chat.message_budget.text_size", { size, limit });
+}
+
+/**
+ * An admission seam, as `admitChatDraft` runs one.
+ *
+ * Spelled here beside the weigh it is wrapped with, so the two halves of "the
+ * seam's answer is a payload like any other" are in one module rather than in
+ * the component that happens to build the seam.
+ */
+export type AdmissionSeam = (sessionId: string) => Promise<string | undefined>;
+
+/**
+ * The code an over-budget composed payload carries.
+ *
+ * It exists so the refusal is classified by a FACT rather than by a sentence:
+ * the store's `isRefusedBeforeAdmission` reads codes, and a bare
+ * `UserFacingError` with none is classed "unknown outcome" - which would say the
+ * app cannot tell whether the message went, latch a claim on the row and offer a
+ * Retry that re-posts the same over-budget bytes. Nothing was admitted here and
+ * the app knows it (`budgetCheckedSeam`'s own note).
+ */
+export const MESSAGE_BUDGET_CODE = "message_budget";
+
+/**
+ * The press's budget rule, applied to the seam's answer.
+ *
+ * WHY THE ANSWER IS WEIGHED AT ALL. The press weighs `content` before it admits
+ * anything (`chat-page.tsx`), and that was the whole payload while the composer
+ * composed the `$skill` block ahead of the press. The block now travels through
+ * the seam instead - the typed line is what the press carries, and the seam's
+ * answer is what the owner receives - so the string that reaches the wire is no
+ * longer the string that was weighed. A skill body is arbitrary length (a
+ * SKILL.md plus whatever reference files it names), so a message that passed at
+ * the press could still be refused by the transport AFTER the row was painted
+ * and the box cleared. Weighing the seam's answer puts the refusal back where
+ * the remedy is: the box still holds the message and the sentence names what to
+ * cut.
+ *
+ * A THROW RATHER THAN A SENTENCE, because this runs inside the store's own
+ * admission: `admitChatDraft` runs the seam before the wire, so a
+ * `UserFacingError` from here is "nothing was admitted" - the store classifies
+ * it `not_sent`, writes that sentence on the failure row and hands the payload
+ * back to the composer, which is the outcome an over-budget press already got.
+ *
+ * `undefined` in, `undefined` out: a host that offers no seam keeps its own
+ * pre-seam behaviour untouched, because there is nothing to weigh.
+ */
+export function budgetCheckedSeam(
+	seam: AdmissionSeam | undefined,
+	images: readonly WireImage[],
+): AdmissionSeam | undefined {
+	if (!seam) return undefined;
+	return async (sessionId) => {
+		const rendered = await seam(sessionId);
+		if (rendered === undefined) return undefined;
+		// A copy because `messageBudgetRefusal` takes the wire images to weigh them
+		// with the text, and its own callers all own their array.
+		const refusal = messageBudgetRefusal(rendered, [...images]);
+		if (refusal) throw new UserFacingError(refusal, MESSAGE_BUDGET_CODE);
+		return rendered;
+	};
 }

@@ -1,0 +1,129 @@
+{
+	"audit_id": "54f8dec9b13b-agents-vi",
+	"audit_date": "2026-10-30",
+	"date": "2026-10-30",
+	"locale": "vi",
+	"namespace": "ui.agents.descriptions",
+	"source_commit": "604ffbce4625a2c0e4d737ab1e219f00fb3fb4d2",
+	"translator": {
+		"agent": "i18n-translator"
+	},
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "54f8dec9b13b",
+		"model": "radient/auto",
+		"actual_model_source": "harness model-switch notices: configured selector anthropic/claude-sonnet-5-5 (session tail-anchor selected_model), quota fallbacks openai/gpt-6-astra then kimi/k3.1-pro then radient/auto; radient/auto served this audit",
+		"independent_from_translator_session": true,
+		"result": "clean-with-findings",
+		"receipt": "i18n/receipts/54f8dec9b13b-agents-vi.json",
+		"receipt_sha256": "22d1f8404b358605c87a52887a268229984a0afaf15cfb07fe53c1faddc27a62"
+	},
+	"key_count": 12,
+	"input_hashes": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.agents.descriptions.json",
+			"sha256": "ec18513f0ebaa99be4c329a8ea5896631fd2b9e4f4d53febdc5c7acd049b5511"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.agents.descriptions.context.json",
+			"sha256": "6311128dc89d50d886f3066f9cea2c802482a7db9979d9c5cc4bd93cdd8a7398"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/vi/ui.agents.descriptions.json",
+			"sha256": "dfa4ae25ba6396f90ef5c9780b55d86ecb51aedebd984f8ce6bb6674db6d1284"
+		}
+	},
+	"findings": [
+		{
+			"id": "V-M1",
+			"severity": "MINOR",
+			"key": "ui.agents.descriptions.copy_reviewer",
+			"current": "\"chữ sản phẩm người dùng thấy\"",
+			"problem": "Same concept as \"copy\" is rendered \"câu chữ\" at the head of the same string and \"chữ\" here; \"chữ sản phẩm\" is an awkward compound to parse at a glance on a 256 px card line.",
+			"suggestion": "\"câu chữ sản phẩm mà người dùng thấy\" (or \"câu chữ trong sản phẩm người dùng thấy\")."
+		},
+		{
+			"id": "V-M2",
+			"severity": "MINOR",
+			"key": "ui.agents.descriptions.qa_tester",
+			"current": "\"kiểm tra sơ bộ dàn thử\"",
+			"problem": "\"dàn thử\" for \"rig\" is an unreviewed coinage with no occurrence in the vi catalogue and is not the conventional engineering term; the translator itself flagged this row as the one open glossary question.",
+			"suggestion": "\"giàn thử\" (conventional test-rig form) or \"môi trường thử\"; record whichever is chosen in i18n/glossary.md or the vi guide."
+		},
+		{
+			"id": "V-M3",
+			"severity": "MINOR",
+			"key": "ui.agents.descriptions.ux_reviewer",
+			"current": "\"Đi trọn luồng thật của thay đổi từ đầu đến cuối\"",
+			"problem": "Pleonasm: \"trọn\" and \"từ đầu đến cuối\" both carry \"the whole\"; doubled in a card blurb it reads clumsy.",
+			"suggestion": "\"Đi hết luồng thật của thay đổi: …\" or \"Đi luồng thật của thay đổi từ đầu đến cuối: …\"."
+		},
+		{
+			"id": "V-N1",
+			"severity": "NIT",
+			"key": "ui.agents.descriptions.copy_reviewer",
+			"current": "\"cơ sở cho khẳng định\"",
+			"problem": "Collocation for \"claim support\"; \"cơ sở cho\" + bare noun reads thin in a criteria list.",
+			"suggestion": "\"căn cứ cho các khẳng định\" or \"tính có căn cứ của khẳng định\"."
+		},
+		{
+			"id": "V-N2",
+			"severity": "NIT",
+			"key": "ui.agents.descriptions.copy_reviewer",
+			"current": "\"lối viết đặc trưng của AI\"",
+			"problem": "\"AI-isms\" names a defect class (AI-flavoured tics); the Vietnamese is neutral description (\"the writing style characteristic of AI\") and loses the critical edge.",
+			"suggestion": "\"lối viết rập khuôn kiểu AI\" (keeps AI as Latin)."
+		},
+		{
+			"id": "V-N3",
+			"severity": "NIT",
+			"key": "ui.agents.descriptions.qa_tester",
+			"current": "\"trường hợp lỗi\"",
+			"problem": "\"negative cases\" is deliberately invalid/adversarial input, not merely error cases; the shorthand narrows the claim.",
+			"suggestion": "\"trường hợp không hợp lệ\" or \"ca kiểm thử âm\"."
+		},
+		{
+			"id": "V-N4",
+			"severity": "NIT",
+			"key": "ui.agents.descriptions.tui_designer",
+			"current": "\"hình học đo được\"",
+			"problem": "Reads \"measurable geometry\"; the English asserts geometry that is measured (numbers, not impressions).",
+			"suggestion": "\"hình học đã đo\"."
+		},
+		{
+			"id": "V-N5",
+			"severity": "NIT",
+			"key": "ui.agents.descriptions.reviewer",
+			"current": "\"Rà soát mã độc lập cho diff, MR hoặc PR\"",
+			"problem": "\"mã độc lập\" is momentarily available as a noun phrase (\"independent code\") before the following clause disambiguates; the sibling qa_tester card puts the adverb first (\"Bằng chứng thực thi độc lập\").",
+			"suggestion": "\"Rà soát độc lập mã cho diff, MR hoặc PR\" (or \"Rà soát mã một cách độc lập cho …\")."
+		}
+	],
+	"namespace_status": "passed",
+	"artifacts": [
+		{
+			"path": "i18n/receipts/54f8dec9b13b-agents-vi.json",
+			"sha256": "22d1f8404b358605c87a52887a268229984a0afaf15cfb07fe53c1faddc27a62"
+		},
+		{
+			"path": "i18n/audits/evidence/vi/ui.agents.descriptions/54f8dec9b13b-agents-vi/record.json",
+			"sha256": "self (this file)"
+		},
+		{
+			"path": "i18n/audits/evidence/vi/ui.agents.descriptions/54f8dec9b13b-agents-vi/receipt.json",
+			"sha256": "22d1f8404b358605c87a52887a268229984a0afaf15cfb07fe53c1faddc27a62"
+		},
+		{
+			"path": "i18n/audits/evidence/vi/ui.agents.descriptions/54f8dec9b13b-agents-vi/verdict.txt",
+			"sha256": "c73bb43d01993b401272c5e685b3e0e8c1806ae1840016a054daa7863d7bd126"
+		},
+		{
+			"path": "i18n/audits/evidence/vi/ui.agents.descriptions/54f8dec9b13b-agents-vi/auditor.log",
+			"sha256": "196fc5bb4e4f68972e7f4e3819fb49b8290c7a5d4c5a14133b2ad16ecee73116"
+		}
+	],
+	"retention": {
+		"record_of_truth": "i18n/receipts/54f8dec9b13b-agents-vi.json (byte-identical copy of the auditor's receipt)",
+		"note": "record.json restates the receipt; the copied logs are the auditor's own execution output, not notes."
+	}
+}

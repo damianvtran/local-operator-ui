@@ -1,0 +1,52 @@
+{
+ "auditor": "i18n-auditor",
+ "model": "deepseek/deepseek-flash",
+ "model_source": "session runtime model header (deepseek/deepseek-flash); no provider fallback used or declared for this run",
+ "instance": "3fcd4635c3cc",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "namespace": "ui.chat.canonical",
+ "locale": "es",
+ "round": 2,
+ "key_count": 2,
+ "findings": [
+  {
+   "id": "N1",
+   "severity": "nit",
+   "key": "ui.chat.canonical.tool.never_sent_composed",
+   "current": "nunca enviado · redactado: {size}",
+   "problem": "correct and idiomatic; 'redactado' is the heavier verb (drafting a document) where the payload is machine-written JSON. 'escrito' is plainer and 2 cells shorter.",
+   "suggestion": "nunca enviado · escrito: {size} (with sibling 'nunca enviado · nada escrito')",
+   "disposition": "no change required — both are correct Spanish; recorded so the choice stays deliberate"
+  }
+ ],
+ "severity_counts": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 0,
+  "nit": 1
+ },
+ "independence": {
+  "translator_agent": "i18n-translator",
+  "translator_model": "openai/gpt-6.1-sol",
+  "translator_session": "d489baef5da9",
+  "independent_from_translator_session": true,
+  "translator_did_not_audit_own_work": true
+ },
+ "sha256": {
+  "en": "27ae7327daa34be60b619be551c840e057d61c3d69dc801269e4f389edc0f031",
+  "en_context": "c0aff0d8bd80304e063b55f80875e3f8b5f50ad201e9b51770f570eb8dd253e4",
+  "es_audited_values": "ed6a86779fa26d6678f4b1d7622fde385dd2994085909c2b0aed2219eccf531b",
+  "es_shipped_catalogue_baseline": "7735932bf45197226c40366421862f9596d224f06f463e84eadfe8bf020682d1"
+ },
+ "key_values_sha256": {
+  "ui.chat.canonical.tool.never_sent_composed": "faf937346644e9cc2f91bd22737c037d5021bb5d879a9a45ce25e028c0772e3c",
+  "ui.chat.canonical.tool.never_sent_empty": "53c2092ca9412ff14376d8b7c09ba14ef60d75352e21e02e25ede18d4568d4ae"
+ },
+ "audited_values": {
+  "ui.chat.canonical.tool.never_sent_composed": "nunca enviado · redactado: {size}",
+  "ui.chat.canonical.tool.never_sent_empty": "nunca enviado · nada redactado"
+ },
+ "not_an_assemblable_ledger_receipt": "The es catalogue on disk does not yet carry these two keys (es 258 keys vs en 260), so no target_sha256 can name bytes that include them; ledger-assemble.mjs refuses the row today. After the landing commit writes these values into src/i18n/catalogues/es/ui.chat.canonical.json, assemble the row from that file and re-check the two values against key_values_sha256 above — this verdict applies to those value bytes.",
+ "scope": "l2 file-sizes wave, es delta round 2: ui.chat.canonical.tool.never_sent_composed and ui.chat.canonical.tool.never_sent_empty as revised in .worktrees/_l2-prep/es.v2.json after audit-es.md F1 fix"
+}

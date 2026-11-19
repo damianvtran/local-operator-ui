@@ -76,10 +76,12 @@
  * `:focus-visible` outline from `styles/index.css` rather than a local ring.
  */
 
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import type { KeyboardEvent } from "react";
 import type { PendingDesktopGate } from "../../../../../../shared/desktop-session-contract";
-import { AskRecommendedBadge, recommendedIndex } from "../ask-recommended";
+import { AskRecommendedBadge, recommendedIndexes } from "../ask-recommended";
 
 export type AskOptionsProps = {
 	/** The gate's options, in the order the wire carried them. */
@@ -100,6 +102,11 @@ export type AskOptionsProps = {
 	 */
 	recommended?: number | null;
 	/**
+	 * Every recommended row when two or more are (`PendingDesktopGate.recommended_all`);
+	 * absent for one, where `recommended` alone marks the row.
+	 */
+	recommendedAll?: number[] | null;
+	/**
 	 * An answer is in flight, or this gate's answer has already been sent.
 	 * Disables every option so a second click — or a click racing a typed send —
 	 * cannot post a second answer for one question.
@@ -113,8 +120,28 @@ export type AskOptionsProps = {
 	busy?: boolean;
 	/** Submit this option's label as the answer. */
 	onAnswer: (label: string) => void;
+	/**
+	 * What to DRAW for an option when it differs from what is SUBMITTED. The
+	 * submitted `label` is the wire/protocol token; the client's own approval pair
+	 * uses this to show localized words while still submitting `label` verbatim.
+	 */
+	display?: (option: PendingDesktopGate["options"][number]) => {
+		label: string;
+		description?: string;
+	};
 	/** Stable prefix for option keys, so two gates never share a key. */
 	requestId: string;
+	/**
+	 * On a SHORT WINDOW (viewport height <= 760 px) draw each description on
+	 * the label's line, muted, single-line and truncated (full text in `title`),
+	 * in a 36 px row instead of a two-line one. The inline dock's approval pair
+	 * asks for it (design round 2, S5): at 1024x600 the two-line pair took 124 of
+	 * the card's 274 px, leaving the question - what is being approved - one
+	 * faded line. A media query rather than a measured switch because the
+	 * budget it buys is the window's, and CSS flips it with no layout pass.
+	 * Rows stay full width and >= 36 px tall; above 760 px nothing changes.
+	 */
+	inlineDescriptions?: boolean;
 };
 
 /**
@@ -158,10 +185,14 @@ export const askOptionKeyIntent = (
 export const AskOptions = ({
 	options,
 	recommended,
+	recommendedAll,
 	busy = false,
 	onAnswer,
 	requestId,
+	display,
+	inlineDescriptions = false,
 }: AskOptionsProps) => {
+	useI18nLocale();
 	if (options.length === 0) return null;
 
 	// A `secret` ask arrives with EMPTY options and is answered from the dock's
@@ -170,10 +201,23 @@ export const AskOptions = ({
 	// entirely — there is no option list to render and nothing here reads the
 	// typed value.
 	// THE ONE VALIDATED READ of the recommendation, shared with the drawer card
-	// (`ask-recommended.tsx`'s `recommendedIndex`) so the two cannot disagree about
-	// which row is marked: an index that is absent, null, out of range or not an
+	// (`ask-recommended.tsx`'s `recommendedIndexes`) so the two cannot disagree about
+	// which rows are marked: an index that is absent, null, out of range or not an
 	// integer badges NOTHING rather than the wrong row.
-	const marked = recommendedIndex(recommended, options.length);
+	const marked = recommendedIndexes(
+		recommended,
+		recommendedAll,
+		options.length,
+	);
+	/*
+	 * Resolved ONCE per option, not once per field. `display` is a catalogue
+	 * lookup and the row reads both the label and the description, so calling it
+	 * at each site ran it twice per option per render for one value (review
+	 * round 1, N3). One array keeps the two readings identical as well - a
+	 * translator whose label and description are resolved separately cannot
+	 * disagree with itself.
+	 */
+	const shown = options.map((option) => display?.(option) ?? option);
 
 	return (
 		/*
@@ -215,7 +259,17 @@ export const AskOptions = ({
 		 * stays 8px (`mt-1` 4px + `py-1` 4px).
 		 */
 		<fieldset
-			aria-label="Answer options"
+			/*
+			 * MACHINE IDENTITY, NOT THE ACCESSIBLE NAME. The band's name is translated
+			 * (`ui.chat.asks.answer_options`), so the keyboard paths that find this card -
+			 * the press probe, the card-on-screen check and the focus restore in
+			 * `chat-page.tsx`, and the first-live-option reader in `message-input.tsx` -
+			 * cannot query the English label they used to spell. The marker is emitted
+			 * here and read there; the label below stays catalogue-backed and unchanged,
+			 * because a reader still has to HEAR what this band is.
+			 */
+			data-ask-options
+			aria-label={t("ui.chat.asks.answer_options")}
 			className="flex min-w-0 max-h-[380px] flex-col gap-0.5 overflow-y-auto border-0 p-1"
 			onKeyDown={(event) => {
 				const buttons = Array.from(
@@ -259,6 +313,7 @@ export const AskOptions = ({
 						//    `leading` below), not by a baseline coupling across a column
 						//    that can be multi-line.
 						"flex min-h-[34px] w-full shrink-0 items-start gap-3 rounded-sm px-2 py-2 text-left",
+						inlineDescriptions && "[@media(max-height:760px)]:min-h-9",
 						// Colour-only transition: hover is a colour step, and nothing on
 						// this card lifts, scales or translates.
 						"transition-colors duration-fast ease-out-quart",
@@ -312,8 +367,19 @@ export const AskOptions = ({
 							{index + 1}
 						</span>
 					)}
-					<span className="flex min-w-0 flex-1 flex-col gap-0.5">
-						<span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+					<span
+						className={cn(
+							"flex min-w-0 flex-1 flex-col gap-0.5",
+							inlineDescriptions &&
+								"[@media(max-height:760px)]:flex-row [@media(max-height:760px)]:items-baseline [@media(max-height:760px)]:gap-2",
+						)}
+					>
+						<span
+							className={cn(
+								"flex flex-wrap items-baseline gap-x-2 gap-y-0.5",
+								inlineDescriptions && "[@media(max-height:760px)]:shrink-0",
+							)}
+						>
 							<span
 								className={cn(
 									"min-w-0 text-body-sm",
@@ -328,12 +394,12 @@ export const AskOptions = ({
 									 * on the light theme (see `ask-recommended.tsx`), and the accent
 									 * is already spent on the callout above.
 									 */
-									marked === index && "font-semibold",
+									marked.has(index) && "font-semibold",
 								)}
 							>
-								{option.label}
+								{shown[index].label}
 							</span>
-							{marked === index && (
+							{marked.has(index) && (
 								/*
 								 * The glyph + word mark, and the reason it is a shared module
 								 * rather than a span here: the drawer card carries the same fact
@@ -365,14 +431,20 @@ export const AskOptions = ({
 						 * synonyms — dropping it makes the user answer a thinner
 						 * question than the model asked.
 						 */}
-						{option.description && (
+						{shown[index].description && (
 							<span
+								data-ask-option-description=""
+								title={
+									inlineDescriptions ? shown[index].description : undefined
+								}
 								className={cn(
 									"text-body-sm",
+									inlineDescriptions &&
+										"[@media(max-height:760px)]:min-w-0 [@media(max-height:760px)]:truncate",
 									busy ? "text-ink-disabled" : "text-ink-muted",
 								)}
 							>
-								{option.description}
+								{shown[index].description}
 							</span>
 						)}
 					</span>

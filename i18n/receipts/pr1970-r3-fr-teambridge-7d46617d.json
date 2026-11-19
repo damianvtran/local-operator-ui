@@ -1,0 +1,80 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 3 (post-rebase convergence), PR #1970",
+  "locale": "fr",
+  "namespace": "ui.teamBridge",
+  "pr": 1970,
+  "date": "2026-11-18",
+  "head": "2cea4d29cb95a5c54cd80645dec8f44491174e92",
+  "instance": "pr1970-r3-fr-teambridge-7d46617d",
+  "auditor": {
+    "agent": "reviewer",
+    "role": "independent i18n auditor (reviewer role); did not translate or author these strings and did not resolve the rebase",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Reviewer session 7d46617d9b1e, a fresh round-3 task for PR #1970; not the translator/implementer, not the rebase author, not the round-1 (8c463a3c88c3) or round-2 (e9adf2dc1808) auditor sessions, and not PR #1969's auditor (bcc4b8aad6ff). Served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. No MT or translation API used.",
+    "instance": "pr1970-r3-fr-teambridge-7d46617d"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean",
+  "references": {
+    "glossary": "damianvtran/local-operator i18n/glossary.md @ origin/main 4c4715294118 (no 'app'/'sender'/'community'/'organization' row; catalogue usage decides)",
+    "style_guide": "damianvtran/local-operator i18n/style-guides/fr.md @ origin/main 4c4715294118 (sha256 5315e1ac10c2…)",
+    "context": "src/i18n/catalogues/en/ui.teamBridge.context.json @ 2cea4d29cb95a5c54cd80645dec8f44491174e92"
+  },
+  "findings": [
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Merge provenance at 2cea4d29cb95a5c54cd80645dec8f44491174e92: every value in this file equals its value at PR head c31ce6bb (this PR's round-2 audited bytes) or at main 1f59324dc0 (PR #1969's audited bytes); no key holds a value from neither parent, no key was dropped, and no key was changed differently by both sides relative to merge-base 58cbcea202. The file differs from c31ce6bb by exactly the 3 sender.* insertions and from 1f59324dc0 by exactly the 9 scope.* insertions. The context entries for all 12 keys are byte-identical to the context each prior audit judged."
+    },
+    {
+      "severity": "INFO",
+      "key": "scope.group.organizations, scope.group.communities, scope.group.communities_joined, scope.invited, scope.community.public, scope.community.search, scope.community.no_match, scope.community.browse, scope.community.trigger, sender.app_badge, sender.unknown_app, sender.unknown_sender",
+      "note": "Org/community split holds: 'Organisations' vs 'Communautés'; 'Communauté : {name}' and 'Organisation : {name}' both keep U+202F before the colon (fr.md). 'Publique' and 'rejointes' agree with communauté(s). Sender keys: badge 'Appli' (short form, kept deliberately by #1969's audit for badge width) beside 'Application inconnue' (catalogue term) reads as short + full form; 'Expéditeur inconnu' matches ui.ownerAudit.unknown_sender."
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Mechanical checks on the committed bytes: key set equals English; every value parses with @formatjs/icu-messageformat-parser 3.5.21 and the 12 audited values carry the same arguments as English ({name}; {count, number}); NFC; no leading/trailing/double spaces; U+2026 kept, no ASCII '...'; no bidi control characters (U+200E/F, U+202A-E, U+2066-9, U+061C) anywhere in the file. generate --check, context-parity, check-coverage and check-duplicates pass at the head. Rendered fit not verified in this lane (no browser tool)."
+    }
+  ],
+  "audited_values": {
+    "ui.teamBridge.scope.group.organizations": "Organisations",
+    "ui.teamBridge.scope.group.communities": "Communautés",
+    "ui.teamBridge.scope.group.communities_joined": "Communautés · {count, number} rejointes",
+    "ui.teamBridge.scope.invited": "Invitation",
+    "ui.teamBridge.scope.community.public": "Publique",
+    "ui.teamBridge.scope.community.search": "Rechercher des communautés",
+    "ui.teamBridge.scope.community.no_match": "Aucune communauté ne correspond.",
+    "ui.teamBridge.scope.community.browse": "Parcourir les communautés…",
+    "ui.teamBridge.scope.community.trigger": "Communauté : {name}",
+    "ui.teamBridge.sender.app_badge": "Appli",
+    "ui.teamBridge.sender.unknown_app": "Application inconnue",
+    "ui.teamBridge.sender.unknown_sender": "Expéditeur inconnu"
+  },
+  "prior_audits": [
+    {
+      "instance": "pr1970-r2-fr-teambridge-6482a8d8",
+      "receipt": "i18n/receipts/pr1970-r2-fr-teambridge-6482a8d8.json",
+      "head": "a4697362c0896225de096d6a05edcc9486b3f264",
+      "covers": "this PR's scope.* keys (r1 2295ee16 + r2 delta); kept in superseded"
+    },
+    {
+      "instance": "bcc4b8aad6ff-pr1969-r1-fr",
+      "receipt": "i18n/receipts/bcc4b8aad6ff-pr1969-r1-fr.json",
+      "head": "f731886a60f0c2867cab71666a62983c05fa3df7",
+      "covers": "PR #1969 sender.app_badge/unknown_app/unknown_sender; kept in superseded"
+    }
+  ],
+  "scope": "PR #1970 round 3 (c31ce6bb..2cea4d29, rebase onto main 1f59324dc0): the merged ui.teamBridge file - this PR's 9 scope.* keys plus main's 3 sender.* keys from PR #1969, re-audited together; the rest of the file is byte-identical to bytes audited on both parents",
+  "binding": "Verified on the committed tree at 2cea4d29cb95a5c54cd80645dec8f44491174e92 (worktree .worktrees/tb-org-defaults): target src/i18n/catalogues/fr/ui.teamBridge.json sha256 061c4082992a7a3c145a01cd12281615613f01a369777a1203e56542cf298a91; English sha256 4f3cf16c9cdf8fd85149d57683f4d8c0b556a98266d8622e7526e8a78e5e0cc6; context sha256 dcf71bbcb686dab1c8d536f005489b648df454bba476dd238dc59dc55c48ae56.",
+  "en_sha256": "4f3cf16c9cdf8fd85149d57683f4d8c0b556a98266d8622e7526e8a78e5e0cc6",
+  "context_sha256": "dcf71bbcb686dab1c8d536f005489b648df454bba476dd238dc59dc55c48ae56",
+  "target_sha256": "061c4082992a7a3c145a01cd12281615613f01a369777a1203e56542cf298a91",
+  "sha256": {
+    "fr": "061c4082992a7a3c145a01cd12281615613f01a369777a1203e56542cf298a91",
+    "en": "4f3cf16c9cdf8fd85149d57683f4d8c0b556a98266d8622e7526e8a78e5e0cc6"
+  }
+}

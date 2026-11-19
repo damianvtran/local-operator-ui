@@ -1,0 +1,267 @@
+{
+	"schema": 1,
+	"kind": "i18n-audit-record",
+	"audit_id": "union-vi-20261028-61bc743db02b",
+	"locale": "vi",
+	"namespace": "ui.chat",
+	"audit_date": "2026-10-28",
+	"key_count": 142,
+	"head": "c5e19ecec883b45e281d696f06dac86bcb0d90f3",
+	"head_short": "c5e19ecec8",
+	"branch": "i18n-wave-a",
+	"pr": 1449,
+	"merge_parents": [
+		"e5f7c8daeaf3bd5a6267c5910288e2b5f1bcc807",
+		"1d631be71fb7a674b117aab61508d6dd822708b4"
+	],
+	"audit_kind": "union-delta-audit of two independently audited wave deltas over unchanged-by-proof bytes",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "61bc743db02b",
+		"team": "lopdev",
+		"model": "radient/auto",
+		"route_source": "this session's harness system prompt: 'Model: radient/auto'",
+		"actual_model_source": "No [session incident] record and no model-switch notice exists anywhere in this session's transcript (~/.local-operator/sessions/61bc743db02b/transcript.jsonl, 272 events, types message/custom only; the phrases appear there only inside the system prefix's rule text, a tool result quoting the es audit log, and this session's own commands). The upstream model behind the router alias is not exposed to this session, so none is invented.",
+		"fallback": null,
+		"fallback_used": false,
+		"fallback_disclosure": "No fallback was selected, configured or observed; the route did not change during the audit.",
+		"independent_from_translator_session": true,
+		"independence_statement": "Independent union audit for vi. This session wrote no catalogue byte, no context sidecar, no ledger row and no generated file, and could not edit the audited file: it read the committed bytes through a read-only git archive export and read the shared checkout only with git show/grep/log. It did not translate or amend anything for vi, and it is not the session that produced either wave (wave A was audited by session eb62f05b28e1, wave B by 70d334e903c9). The working checkout (~/local-operator-ui) was never written; no ledger-assemble was run."
+	},
+	"input_hashes": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.chat.json",
+			"sha256": "d3bc8ec097540b123500005e941093dbc73eaaa46fa1152643a04d51b6f259e4"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.chat.context.json",
+			"sha256": "994de1d3c61cdc19ba61bb8b0995e4e96e17e80c531c9b3dafb4572d3c8bca3e"
+		},
+		"vi": {
+			"path": "src/i18n/catalogues/vi/ui.chat.json",
+			"sha256": "ea73edb23f1b3ba4b37541becb415f74cd1cb68898644da86470272605b6bb54"
+		}
+	},
+	"artifacts": [
+		{
+			"path": "i18n/receipts/union-vi-20261028-61bc743db02b.json",
+			"sha256": "bccc925fb428e15c89f63ddc650b8e92a86a9c8a6cee80bb0f871484ecd7f9a2",
+			"role": "the receipt itself (repo path the ledger row names)"
+		},
+		{
+			"path": "i18n/audits/evidence/vi/ui.chat/union-vi-20261028-61bc743db02b/record.json",
+			"sha256": null,
+			"role": "this record (hash deliberately not self-referential; see record_self_hash)"
+		},
+		{
+			"path": "i18n/audits/evidence/vi/ui.chat/union-vi-20261028-61bc743db02b/audit.log",
+			"sha256": "0a965819ea94a86104bf35f26e13f1d7978c591f061ff9c6d0a2018dd6cfae85",
+			"role": "execution log (commands + actual output)"
+		},
+		{
+			"path": "i18n/audits/evidence/vi/ui.chat/union-vi-20261028-61bc743db02b/report.md",
+			"sha256": "3e9bda15d59d7f5544fbff302e51d451a8129a4dbfb091707482e3278c9bf656",
+			"role": "human-readable findings, method and observations"
+		},
+		{
+			"path": "i18n/audits/evidence/vi/ui.chat/union-vi-20261028-61bc743db02b/receipt.json",
+			"sha256": "bccc925fb428e15c89f63ddc650b8e92a86a9c8a6cee80bb0f871484ecd7f9a2",
+			"role": "companion copy of the receipt bound by the ledger row"
+		}
+	],
+	"record_self_hash": "Deliberately not recorded: a file cannot carry its own final sha256 (writing it changes the bytes it hashes). The record is hashed by the commit that lands it; its companions' hashes are in artifacts and in the receipt's receipt_sha256.",
+	"replacement_status": "original — no prior record existed for these union bytes; this is not a replacement, not a historical recreation, and not backdated.",
+	"current_report_verdict": {
+		"status": "passed",
+		"result": "clean-with-findings",
+		"unresolved_blocker_major_count": 0,
+		"finding_ids": [
+			"VI-1",
+			"VI-2",
+			"VI-3"
+		],
+		"findings_by_severity": {
+			"blocker": 0,
+			"major": 0,
+			"minor": 1,
+			"nit": 2
+		}
+	},
+	"delta": {
+		"base_pre_union": {
+			"commit": "1d631be71f",
+			"vi_sha256": "f4ce605d35572644f664c2c4510f82b26feba094572bcd60dcc193ec9dbc3902",
+			"en_sha256": "4d07ed6de9382fdf1310fd70bf48be2602952538c1ddf43bda8972834760be04"
+		},
+		"wave_a_audited_bytes": {
+			"commit": "80ee119bbd",
+			"receipt": "wave-a-vi-delta-eb62f05b28e1",
+			"vi_sha256": "008ac443d140f40f0de80165ccb014348123fe2084089eb4de0bd2240ce00bae",
+			"en_sha256": "1a1c9329a1a56ffda47b27da91e80fdf454751a4463b76f09ae9138d1ad0bcdc"
+		},
+		"wave_b_audited_bytes": {
+			"commit": "a5356ce91c",
+			"receipt": "70d334e903c9",
+			"vi_sha256": "f4ce605d35572644f664c2c4510f82b26feba094572bcd60dcc193ec9dbc3902",
+			"en_sha256": "4d07ed6de9382fdf1310fd70bf48be2602952538c1ddf43bda8972834760be04"
+		},
+		"pre_wave_base": {
+			"commit": "81f286ee5c",
+			"vi_sha256": "ea2ce7175c288fb6926e975ec18fc8e809e86cfe805d253be385c0f9710f98b4",
+			"en_sha256": "6b6e21835462fccbbdbea4cfcca132344595bf3f14804018de64dbe8d9fbacf0"
+		},
+		"key_counts": {
+			"base": 115,
+			"wave_a_head": 133,
+			"origin_main_after_wave_b": 124,
+			"union": 142
+		},
+		"wave_a_keys": [
+			"ui.chat.checkpoint.generating_name",
+			"ui.chat.checkpoint.jump_agent",
+			"ui.chat.checkpoint.jump_agent_unnamed",
+			"ui.chat.checkpoint.jump_user",
+			"ui.chat.checkpoint.jump_user_no_clock",
+			"ui.chat.checkpoint.turn",
+			"ui.chat.header_identity.aria_agent_assign",
+			"ui.chat.header_identity.aria_agent_closed",
+			"ui.chat.header_identity.aria_agent_switch",
+			"ui.chat.header_identity.aria_team_assign",
+			"ui.chat.header_identity.aria_team_closed",
+			"ui.chat.header_identity.aria_team_switch",
+			"ui.chat.header_identity.assign_agent",
+			"ui.chat.header_identity.assign_team",
+			"ui.chat.header_identity.no_agent",
+			"ui.chat.header_identity.no_team",
+			"ui.chat.region.composer",
+			"ui.chat.region.conversation"
+		],
+		"wave_b_keys": [
+			"ui.chat.session_status.context_heading",
+			"ui.chat.session_status.context_nothing_measured_tooltip",
+			"ui.chat.session_status.conversation_starting",
+			"ui.chat.session_status.model_none_resolved_tooltip",
+			"ui.chat.session_status.not_signed_in",
+			"ui.chat.session_status.not_signed_in_description",
+			"ui.chat.session_status.nothing_measured_yet",
+			"ui.chat.session_status.temporarily_unavailable",
+			"ui.chat.session_status.temporarily_unavailable_description"
+		],
+		"shared_key_names": [],
+		"proof": "Parsed-JSON comparison over six snapshots (git show into a throw-away dir, never the shared checkout): 0 value mismatches in en and vi for all 142 keys; 0 raw-line mismatches after normalising only the file-final comma, so every audited key's stored text is byte-identical to the file the earlier receipt bound; key order in the union is origin/main's 124 keys followed by wave A's 18, so no base line moved; en and vi key sets and order are identical to each other. See audits/evidence/vi/ui.chat/union-vi-20261028-61bc743db02b/audit.log section 2.",
+		"binding": "Binds vi ea73edb23f1b3ba4b37541becb415f74cd1cb68898644da86470272605b6bb54 and en d3bc8ec097540b123500005e941093dbc73eaaa46fa1152643a04d51b6f259e4, each read from a read-only `git archive` export of c5e19ecec8 and cross-checked with `git show c5e19ecec8:<path> | shasum -a 256`. A later commit that changes any value voids this receipt.",
+		"context_delta": {
+			"a5356ce91c_sha256": "f300190022daa1e49a200072b29501cfc6a5be7c542a57ef741873c14bfa6164",
+			"c5e19ecec8_sha256": "994de1d3c61cdc19ba61bb8b0995e4e96e17e80c531c9b3dafb4572d3c8bca3e",
+			"entries": {
+				"a5356ce91c": 118,
+				"c5e19ecec8": 136
+			},
+			"added_keys": [
+				"ui.chat.checkpoint.turn",
+				"ui.chat.checkpoint.jump_agent",
+				"ui.chat.checkpoint.jump_agent_unnamed",
+				"ui.chat.checkpoint.jump_user",
+				"ui.chat.checkpoint.jump_user_no_clock",
+				"ui.chat.header_identity.no_agent",
+				"ui.chat.header_identity.no_team",
+				"ui.chat.header_identity.assign_agent",
+				"ui.chat.header_identity.assign_team",
+				"ui.chat.header_identity.aria_agent_assign",
+				"ui.chat.header_identity.aria_agent_switch",
+				"ui.chat.header_identity.aria_agent_closed",
+				"ui.chat.header_identity.aria_team_assign",
+				"ui.chat.header_identity.aria_team_switch",
+				"ui.chat.header_identity.aria_team_closed",
+				"ui.chat.region.composer",
+				"ui.chat.region.conversation",
+				"ui.chat.checkpoint.generating_name"
+			],
+			"changed_keys": [],
+			"removed_keys": [],
+			"note": "The sidecar grew by exactly the 18 wave-A keys; no pre-existing key's entry changed, so the base and wave-B context the earlier audits read is unchanged at this head."
+		}
+	},
+	"gates": {
+		"ledger-check": "fails exactly 7 rows / 21 findings, every one */ui.chat stale source+target+receipt-vs-bytes: the expected pre-audit state the union bytes are in until this receipt and its six siblings are assembled.",
+		"generate --check": "pass - keys.gen.ts byte-identical to a fresh generation",
+		"context-parity": "pass - 131 allowed gaps in 4 namespaces; all 27 wave keys carry sidecar entries (18 wave-A entries were added by the merge, 0 changed, 0 removed)",
+		"check-coverage": "pass - 7 gated languages over 99 namespaces, 0 allowed keys remain",
+		"locale-parity": "pass - 44/44 tests across all shipped locales (vi: every key, no unknown key, placeholder parity, not an English stub)",
+		"check-duplicates": "pass - 889 files, 0 duplicate keys",
+		"mechanical_sweep": "pass - 142/142 keys parsed, 153 real intl-messageformat renders, arg name/type parity, select arms identical, number/date/time skeletons identical (14 placeholders, ::group-off on the same 3 keys), vi plural categories = other with other present, NFC, no bidi/zero-width, no token drift, no markup, no straight quotes, no ASCII ellipsis, no double spaces"
+	},
+	"predecessors": [
+		{
+			"receipt": "wave-a-vi-delta-eb62f05b28e1",
+			"namespace": "ui.chat",
+			"status": "passed",
+			"findings": "round-1 minor vi-wa-1 resolved at 80ee119bbd (region.conversation -> «Khung trò chuyện»); two INFO observations (12-hour {clock}; label repetition inherited from English)",
+			"use": "Supplies the wave-A audited bytes: its en and vi ui.chat hashes equal the files at 80ee119bbd, re-verified here (that receipt records no context hash; the wave-A context entries are the 18 the merge adds)."
+		},
+		{
+			"receipt": "70d334e903c9",
+			"namespace": "ui.chat",
+			"status": "passed",
+			"findings": "none (clean; 62 keys over 9 namespaces, 7 changed vi values audited, 55 proved byte-identical)",
+			"use": "Supplies the wave-B audited bytes: its en/vi/context ui.chat hashes equal the files at a5356ce91c and at origin/main 1d631be71f, re-verified here."
+		}
+	],
+	"wave_a_info_closure": "Wave A's INFO i1 (English 12-hour AM/PM inside the composed {clock}) is CLOSED at this head: checkpointClockLabel returns formatTime(date, { hour: 'numeric', minute: '2-digit' }) (src/renderer/src/features/chat/canonical/checkpoint-model.ts:220, fixed in cbc7082c53), so '…, {clock}' renders 'Đi tới tin nhắn của bạn ở lượt 3 trên 7, 15:42' in vi — the locale's 24-hour clock, per the vi style guide. INFO i2 (the inherited 'Tác nhân: Không có tác nhân.' repetition) is unchanged by design: the English source has the same repetition. No finding is carried forward.",
+	"observations_not_findings": [
+		{
+			"id": "UVI-O1",
+			"topic": "hub rendered as «trung tâm»",
+			"detail": "ui.chat renders the hub as «trung tâm» (4 keys). The vi programme is split elsewhere: ui.hub.updates says «từ hub», while ui.hub.taxonomy and agents.publication say «trung tâm». The glossary has no hub row and zh-CN also translates the generic noun, so this is a pre-existing programme-level choice, not a defect of these bytes; ui.chat is internally consistent. Worth one programme call, not a change here."
+		},
+		{
+			"id": "UVI-O2",
+			"topic": "composer and message box both «ô soạn tin»",
+			"detail": "English distinguishes the composer region («Message composer») from «message box» in the two approval hints. vi uses «ô soạn tin» for both because both name the same widget; the es audit recorded the same 1:2 question in the other direction. No reader-facing collision."
+		},
+		{
+			"id": "UVI-O3",
+			"topic": "Approve/Deny/yes/no stay English",
+			"detail": "The approval card prints APPROVAL_OPTIONS labels from src/renderer/src/features/chat/approval-words.ts and submits the label verbatim; typed answers resolve through the English word list ([\"y\",\"yes\",\"approve\",\"ok\",\"allow\"]) in the same module. «Chọn Approve hoặc Deny… nhập yes, no, 1 hoặc 2» names what the reader sees and what the parser accepts."
+		},
+		{
+			"id": "UVI-O4",
+			"topic": "{reason} stays English",
+			"detail": "header_identity.aria_*_closed passes {reason} through: the sidecar records it as UI-composed text mirroring core's team_owns_the_agent_slot_message byte for byte (a cross-repo contract), so the mixed-language utterance is intentional in every locale."
+		},
+		{
+			"id": "UVI-O5",
+			"topic": "«lượt» (turn) and «lượt chạy» (run); «X trên Y» for «X of Y»",
+			"detail": "The checkpoint family's «Lượt {turn} trên {total}» is the programme's recorded «X trên Y» pattern, not a calque: 17 occurrences across the vi catalogues, including onboarding «Bước {current} trên {total}», console tab labels and mesh «{shown} trên {total}». «lượt chạy» is the separate compound for a run and does not collide with «lượt» for a turn."
+		}
+	],
+	"limitations": [
+		"Catalogue-level audit: proves strings, ICU structure and rendering; it does not render the Electron UI and claims no screenshot (design/QA lanes own visual proof).",
+		"Base and wave-B keys are carried by the delta proof rather than re-derived from a second source; every whole-file mechanical and narrative check was nevertheless re-run over all 142 keys.",
+		"The audit reads catalogue files and the en context sidecar only; no network and no MT.",
+		"Width is judged only against the two maxCells hints the sidecar carries (choose_model 18, last_reading 16); other strings have no measured fit."
+	],
+	"references": {
+		"glossary": {
+			"repo": "local-operator (core)",
+			"path": "i18n/glossary.md",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide": {
+			"repo": "local-operator (core)",
+			"path": "i18n/style-guides/vi.md",
+			"sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+		},
+		"contract": {
+			"repo": "local-operator-ui",
+			"path": "docs/I18N.md"
+		},
+		"evidence_root": {
+			"repo": "local-operator-ui",
+			"path": "i18n/audits/evidence/vi/ui.chat/union-vi-20261028-61bc743db02b/"
+		}
+	},
+	"audit_notes_not_execution_log": "The prose in this record, the report and the receipt states what this audit concluded. Command execution is evidenced ONLY by audit.log, which carries the commands and their actual output; nothing here claims a run that audit.log does not show, and audit.log is not a substitute for the receipt's own hashes.",
+	"evidence_contract_note": "i18n/audits/evidence/README.md does not exist at c5e19ecec8 (git cat-file -e fails, exit 128); this bundle follows the canonical evidence root and the record/receipt/log shape of the existing bundles (e.g. es/ui.chat/union-es-20261028-4c367c3b6e41). Adding the README is outside an auditor's write scope.",
+	"ledger_note_draft": "vi/ui.chat union: passed, 0 blocker/major, 1 minor + 2 nit; union = 115 base + 18 wave A + 9 wave B unchanged by parsed+raw-line proof at c5e19ecec8; record i18n/audits/evidence/vi/ui.chat/union-vi-20261028-61bc743db02b/record.json"
+}

@@ -1,0 +1,67 @@
+{
+  "schema": 1,
+  "audit_kind": "independent-final-key-translation-audit",
+  "date": "2026-10-25",
+  "locale": "es",
+  "namespace": "ui.common.errors",
+  "pr": "#1403",
+  "branch": "feat/i18n-key-remaining-copy",
+  "audited_head": "d784571d9017c2958a80c51808b2ace64e3f76ba",
+  "content_audited_head": "ae40ebc959d9e3dbee6001f7e16d41f050af113e",
+  "head_identity": "The en, en.context and es blobs for this namespace are byte-identical between content_audited_head ae40ebc959 and audited_head d784571d90 (git diff --quiet for the three files). The commits in between touch other locales' badge values plus an English-source add/revert pair (a2be7769e7 'pluralize the chat counter total', d784571d90 Revert) whose net tree diff is empty.",
+  "base": "3d0e9010d71c00662902971e4bd6888f7a8f6f1c",
+  "batch_commits": {
+    "es_translation": "9b0148d53cab0faabae47ec23709b5189636c8b9",
+    "badge_plural": "d8de01976218ce39018c459ae87cd1e657c40e5d"
+  },
+  "instance": "es-final-4a33077e20ef",
+  "status": "clean",
+  "auditor": {
+    "agent": "translation-auditor",
+    "session": "65856d4a9723",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "harness session model (system prompt line 'Model: deepseek/deepseek-flash'); no fallback used",
+    "fallback": null,
+    "independent_from_translators": true,
+    "independence_basis": "Separate session 65856d4a9723 from the es translation commits 9b0148d53c and d8de019762. This run read the catalogue bytes with git show, wrote no translated value, edited no catalogue, English, ledger, allowance or generated file, and did not author or approve the es values under audit. The earlier es sidebar audit es-extract-a815d841bd5d-r2 is a different receipt and does not cover this delta."
+  },
+  "references": {
+    "glossary": {
+      "path": "local_operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "local_operator/i18n/style-guides/es.md",
+      "sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+    },
+    "docs": {
+      "path": "docs/I18N.md",
+      "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+    }
+  },
+  "scope": "Full ui.common.errors namespace (8 keys; 4 new desktop_refusal sentences), read at the current PR head against the English source and context sidecar.",
+  "method": [
+    "Read all 8 ui.common.errors values at the current head against the English source and the en context sidecar; key set and order equal, no English stub.",
+    "Parsed all 8 messages with @formatjs/icu-messageformat-parser: this namespace has no placeholders, plurals, selects or number/date skeletons; the four new sentences are plain text.",
+    "Compared the four desktop_refusal sentences with the app's existing es pairing and refusal voice: no_credential is a structural match to ui.projects.projects_page.this_app_is_not_paired_with_the_local_operator_server_so_projects ('Esta app no está vinculada al servidor de Local Operator, así que … no está disponible.'), transport_failed matches ui.agents.starters.server_unanswered ('El servidor no respondió.'), and refused matches the 'se rechazó' register of ui.projects.project_detail.the_link_was_refused. All four are calm factual diagnoses: sentence case, full stop, no instruction, no blame, no exclamation; Local Operator is kept; app, vinculada, servidor and control are the house terms.",
+    "Checked UTF-8/NFC, BOM, duplicate keys, bidi controls and whitespace; the namespace carries no maxCells hints, and each sentence stays within the es 15-25% length norm against English.",
+    "Confirmed the en, en.context and es blobs are byte-identical between content_audited_head ae40ebc959 and the current head 566fed8845; the intervening commits touch only vi and zh-CN."
+  ],
+  "namespaces": {
+    "ui.common.errors": {
+      "keys_read": 8,
+      "changed_keys": 4,
+      "sha256": {
+        "en": "79e061d415b61aed65c06e6800b379b332048a200d8d88f6cbbf4647eba593db",
+        "target": "9f3835e7f6fcd60f2753e472be46da0470a6016b0f2fd8d0556978145a598633"
+      },
+      "context_sha256": "33432e29556ed7d91eac12edeff1998b623da3fcb48e3515b045e1e0b5c84049",
+      "key_set": "equal to English; no extra or missing key",
+      "status": "clean",
+      "findings": []
+    }
+  },
+  "findings": [],
+  "verdict": "clean — 8 keys read; all four desktop_refusal sentences are accurate and match the app's established refusal and pairing voice, with no instruction or blame added.",
+  "limitations": "Static catalogue audit only: no rendered screen was built or captured in this pass, so width checks are code-point arithmetic against the sidecar hints, not measured pixels. No native-speaker sign-off is claimed. The catalogue values are the subject; component call sites were read only to establish role and placeholder meaning."
+}

@@ -1,0 +1,119 @@
+{
+ "audit_id": "att-attachments-20261021",
+ "date": "2026-10-21",
+ "locale": "es",
+ "namespace": "ui.teamBridge",
+ "source_commit": "0906d747e527473f253c7ff422e2036cb59f8f21",
+ "source_head": "cf1d7c616ca36bd48c0bf160d64a08514b7c2b08",
+ "source_base": "5005cfe8b6",
+ "scope": "23 ui.teamBridge.attachments.* keys, introduced across 715c864171..0906d747e5 with es added at 0906d747e5 (git diff 5005cfe8b6..cf1d7c616c of en, attachments subset). The 8 ui.teamBridge.replies.* keys that arrive via the #1304 merge are out of scope and inherited from threads1304-r2-es. The other 138 values are inherited unchanged from the tbh-held-schedule-20261021 audit.",
+ "status": "audited",
+ "translator": {
+  "agent": "coder",
+  "model": "anthropic/claude-opus-5-5",
+  "date": "2026-10-21",
+  "session": "03594b2dcc02",
+  "job": "bc0c4b952eaa"
+ },
+ "auditors": [
+  {
+   "agent": "translation-auditor",
+   "model": "anthropic/claude-opus-5-5",
+   "date": "2026-10-21",
+   "result": "clean-with-findings",
+   "instance": "att-r1-es",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 1
+   },
+   "receipt": "i18n/receipts/att-r1-es.json",
+   "receipt_sha256": "d267d3689a22c7bb760db10ddadfddf11813ce2609606ad870e393a07eb922ba",
+   "scope": "Team Bridge image attachments: 23-key delta (ui.teamBridge.attachments.*) independently audited in att-r1-es. 138 base values inherited unchanged from 5005cfe8b6 (tbh-r1-es); 8 replies.* inherited from 8913528e50 (threads1304-r2-es). Catalogue audit only, not rendered-fit, activation or release approval.",
+   "note": "Round 1: 1 MINOR (attachments.retry_load glossary drift) and 1 NIT (remove/retry label composition). No blocker or major. No rendered-fit claim."
+  }
+ ],
+ "audit_rounds": [
+  {
+   "round": 1,
+   "instance": "att-r1-es",
+   "session": "f5b05da4cf25",
+   "job": "e56145b2fcf2",
+   "model": "anthropic/claude-opus-5-5",
+   "status": "passed",
+   "keys_audited": 23,
+   "target_sha256": "cf5d345b07f1425343eb091cab1959f258695532177ad5f473036231a730eebb",
+   "findings": [
+    {
+     "severity": "MINOR",
+     "key": "ui.teamBridge.attachments.retry_load"
+    },
+    {
+     "severity": "NIT",
+     "key": "ui.teamBridge.attachments.remove"
+    }
+   ],
+   "receipt": {
+    "path": "i18n/receipts/att-r1-es.json",
+    "sha256": "d267d3689a22c7bb760db10ddadfddf11813ce2609606ad870e393a07eb922ba"
+   }
+  }
+ ],
+ "inherited_receipt": {
+  "base": "5005cfe8b6",
+  "path": "i18n/receipts/tbh-r1-es.json",
+  "sha256": "3da7b99f0f97255ffdaf4c81901ed300326e4c22898d7559e436a420a708923f",
+  "keys_inherited": 138,
+  "base_source_sha256": "5f67df6c37f34f1f83e4048ad47aef9bd4020fe2ba74c5e8e548b9c4439dc7ee",
+  "base_target_sha256": "055492d0493b4bad648830f5d5cc6c57ef5db2588aa8178fdc189b39d6f6eae7",
+  "unchanged_values_verified": 138,
+  "status": "passed"
+ },
+ "merged_in_receipt": {
+  "stack": "#1304 (8913528e50), out of scope",
+  "path": "i18n/receipts/threads1304-r2-es.json",
+  "sha256": "2831beb0151b16b5bc03c0d471d376ebd09b286fc43d2f30df1d31902ab97ceb",
+  "keys_inherited": 8,
+  "source_sha256": "7de891f2cf03b7563747c440847c853f1c1356aa0a50480ec28eae347e6581e9",
+  "target_sha256": "a3e8880949b8b30e84c566e3ae602def5e1ecd909e887bb0fa7cf087795509be",
+  "unchanged_values_verified": 8
+ },
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+   "sha256": "de78ff4b0cf8aca9ddb5eda9687ee2a806e11f0bae32f005609579108360848f"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/es/ui.teamBridge.json",
+   "sha256": "cf5d345b07f1425343eb091cab1959f258695532177ad5f473036231a730eebb"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+   "sha256": "8a84800e3d2d52aae3c44393b8fe79bcc567f2ca5d8660a2d260f889cc487902"
+  }
+ },
+ "references": {
+  "core_revision": "24dbccbb784bd1c9b690ce4601f489791ceacb09",
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/es.md",
+   "sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+  }
+ },
+ "independence": "Translator (coder agent, session 03594b2dcc02, job bc0c4b952eaa) and auditor (translation-auditor, session f5b05da4cf25, job e56145b2fcf2) are different agents in different sessions. The auditor never edited catalogues or code, did no git operations and assembled no ledger.",
+ "limitations": [
+  "No browser was used for this audit: no rendered-fit, screenshots, glyph metrics, pseudo-localization or activation evidence is claimed.",
+  "remove_all sits in a whitespace-nowrap ghost Button and retry_load in a 144px placeholder tile; both were judged to fit at catalogue level only, with no rendered check."
+ ],
+ "retained_rounds": [
+  {
+   "path": "i18n/receipts/att-r1-es.json",
+   "sha256": "d267d3689a22c7bb760db10ddadfddf11813ce2609606ad870e393a07eb922ba"
+  }
+ ],
+ "note": "Round 1 recorded 1 MINOR and 1 NIT. A remediation delta, if any, gets a round 2 re-audit scoped to the changed keys."
+}

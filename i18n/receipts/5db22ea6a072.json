@@ -1,0 +1,92 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "agent": "translation-auditor",
+  "model": "radient/auto",
+  "model_provenance": "Session model header reports radient/auto for this audit run; no 402 was observed in this narrow R2 pass, so no fallback is claimed and none is needed - the receipt schema does not require a literal route.",
+  "instance": "5db22ea6a072",
+  "session": "5db22ea6a072",
+  "locale": "zh-CN",
+  "namespace": "ui.notices",
+  "date": "2026-10-25",
+  "audit_kind": "round-2 narrow single-key verification; R1 retained for the other 101 keys",
+  "result": "clean",
+  "status": "passed",
+  "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "findings": [],
+  "keys_read": 102,
+  "delta_keys_read": 1,
+  "unchanged_keys_preserved": 101,
+  "sha256": {
+    "en": "c9556d7d6d8b399bc62f3a35b7bb4d01109f118b1ab29fe47ba70b739552a4e0",
+    "zh-CN": "64d9bba7cd8d2535f9f764d68ad5cfcc1895012ca580e322827085f9c9adec44",
+    "context": "9a536d75dec597c27281380946b807abdca8ad5c1f7c4e02ba54852a4568c5ee"
+  },
+  "refs": {
+    "source_ref": "7b32fd2704b6168d653e717bfc7fa4ddc58686e5",
+    "source_state": "committed and clean at HEAD; en and context hashes unchanged from R1",
+    "target_ref": "uncommitted working-tree bytes"
+  },
+  "previous_receipt": {
+    "receipt": "i18n/receipts/zh-cn-ui-notices-delta-audit-7b32fd2704.json",
+    "sha256": "326d649071bf860d0757cf124d12bb662b9769fcdf84846bdc53850bea679d17",
+    "result": "clean-with-findings",
+    "target_sha256": "a779457dc770073c5c98d4f19b8cf0da9df631c40540838c923b829d5cf19b1f",
+    "target_state": "R1-audited candidate bytes (not committed)"
+  },
+  "preservation_proof": {
+    "method": "inverse unique replacement",
+    "detail": "The new value string occurs exactly once in the candidate file; replacing it with the R1-audited value reproduces the R1 target bytes exactly (sha256 a779457dc770073c5c98d4f19b8cf0da9df631c40540838c923b829d5cf19b1f). No snapshot was invented: the R1 value and hash are the ones bound in the previous receipt.",
+    "inverted_sha256": "a779457dc770073c5c98d4f19b8cf0da9df631c40540838c923b829d5cf19b1f",
+    "r1_target_sha256": "a779457dc770073c5c98d4f19b8cf0da9df631c40540838c923b829d5cf19b1f",
+    "match": true,
+    "current_target_sha256": "64d9bba7cd8d2535f9f764d68ad5cfcc1895012ca580e322827085f9c9adec44",
+    "current_matches_manager_hash": true
+  },
+  "resolved_findings": [
+    {
+      "id": "ZH-D8-1 (my R1 minor)",
+      "previous": "如果一直没有反应",
+      "current": "如果一直没有动静",
+      "resolution": "resolved - the trigger is now progress/nothing-happens (动静), distinct from the app-unresponsive condition in the retained parenthetical 若无响应; Quit step 退出Local Operator and the stay-closed clause are unchanged."
+    }
+  ],
+  "structural": {
+    "keys_in_file": 102,
+    "key_set_equals_english": true,
+    "elapsed_occurrences_in_changed_key": 1,
+    "changed_key_parses": true,
+    "latin_runs_in_changed_key": [
+      "Local Operator (product name)",
+      "{elapsed}"
+    ],
+    "approved_english_only": true,
+    "duration_renders": [
+      "已等待0 s",
+      "已等待2 min 30 s"
+    ],
+    "render_note": "Two narrow synthetic durations (0 s, 2 min 30 s) formatted with the worktree's intl-messageformat; {elapsed} is a string, no plural/count branch is involved."
+  },
+  "translator_provenance": {
+    "note": "Translator identity for the candidate was recorded in the R1 receipt from the dispatch brief (session 2d50d5947169); this R2 audit is independent and read only catalogue bytes.",
+    "auditor_independent": true
+  },
+  "independence": {
+    "authored_translation": false,
+    "authored_remediation": false,
+    "repo_edits": false,
+    "note": "Read-only on catalogue, context, code and ledger; this audit wrote only this receipt."
+  },
+  "limitations": "Catalogue-level single-key verification only: no browser, rendered frame, pixel, native UI or macOS notification; no RTL glyph-shaping proof; no official Apple Urdu menu wording claim; no build, suite or install. Width, where mentioned, is unchanged from R1.",
+  "namespace_verdict": "clean (round 2, single-key delta) - 1 changed key verified, 101 unchanged keys byte-preserved against the R1 target by inverse unique replacement; 0 blocker, 0 major, 0 minor, 0 nit.",
+  "overall_verdict": "clean (round 2) - ZH-D8-1 (my R1 minor) is resolved on the current candidate bytes.",
+  "worktree_state": {
+    "audited_head": "7b32fd2704b6168d653e717bfc7fa4ddc58686e5",
+    "receipt_only": true
+  }
+}

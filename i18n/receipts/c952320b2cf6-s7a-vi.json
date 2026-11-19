@@ -1,0 +1,123 @@
+{
+  "locale": "vi",
+  "branch": "feat/i18n-s7",
+  "head": "aba5d0310761cedc384c35847498d4197ce4b107",
+  "base": "0ad5542379a349a98e0a8d602dbd992746fd40a2",
+  "main_base": "41c265cbff628f8c6add089f6c042363a131f24c",
+  "instance": "c952320b2cf6-s7a-vi",
+  "agent": "reviewer",
+  "model": "openai/gpt-6.1-sol",
+  "auditor": {
+    "agent": "reviewer",
+    "instance": "c952320b2cf6-s7a-vi",
+    "model": "openai/gpt-6.1-sol",
+    "independent_of_translator": true
+  },
+  "model_provenance": "Requested anthropic/claude-sonnet-5-5; host announced quota fallbacks anthropic/claude-opus-5-5 then openai/gpt-6.1-sol. Substantive audit and executable checks performed on openai/gpt-6.1-sol.",
+  "date": "2026-11-09",
+  "round": 1,
+  "status": "passed",
+  "result": "clean",
+  "scope": "Vietnamese 29 new additions only across three namespaces; retained approval canonical labels and encoder diagnostics explicitly excluded.",
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [],
+    "nit": []
+  },
+  "namespaces": {
+    "ui.agents.pages": {
+      "status": "passed",
+      "sha256": {
+        "en": "0b2e8e8a93001604df2d7a49abe57c8070f29ef30b50209bc3a84cbdc43b540f",
+        "vi": "46ddd2bdc08df788c58013345d02538d5747747bd3632a8f5e79b69a30bd16cc"
+      },
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      },
+      "keys_audited": 7,
+      "keys": [
+        "ui.agents.pages.backend.connecting",
+        "ui.agents.pages.backend.loading_capabilities",
+        "ui.agents.pages.backend.unreachable",
+        "ui.agents.pages.backend.upgrade_heading",
+        "ui.agents.pages.backend.upgrade_body",
+        "ui.agents.pages.change.new",
+        "ui.agents.pages.change.updated"
+      ],
+      "evidence": {
+        "path": "i18n/audits/evidence/vi/ui.agents.pages/c952320b2cf6-s7a-vi/record.json",
+        "sha256": "c0fcc6c62a999cc8801c4e1df486b34338ecb2bd4a4d24d4adbea8801611cca2"
+      }
+    },
+    "ui.chat.run_details": {
+      "status": "passed",
+      "sha256": {
+        "en": "02877dbbfba534fb2467008550d55ffd45c928c990b89c3d1a72acbfc76d2d50",
+        "vi": "efbe1b0118acc6d9679ab3dc9903222bb3262ef079a051402458c616652a0ac8"
+      },
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      },
+      "keys_audited": 16,
+      "keys": [
+        "ui.chat.run_details.child.brief.show_less",
+        "ui.chat.run_details.child.brief.show_more",
+        "ui.chat.run_details.child.result.title",
+        "ui.chat.run_details.child.result.preview",
+        "ui.chat.run_details.child.result.unavailable",
+        "ui.chat.run_details.child.result.unavailable_clipped",
+        "ui.chat.run_details.mcp_auth.no_references",
+        "ui.chat.run_details.mcp_auth.upgrade",
+        "ui.chat.run_details.mcp_auth.status",
+        "ui.chat.run_details.mcp_auth.status_unavailable",
+        "ui.chat.run_details.mcp_auth.waiting",
+        "ui.chat.run_details.mcp_auth.unknown_method",
+        "ui.chat.run_details.mcp_failure.busy",
+        "ui.chat.run_details.mcp_failure.refused",
+        "ui.chat.run_details.mcp_failure.session",
+        "ui.chat.run_details.mcp_failure.cancel_lead"
+      ],
+      "evidence": {
+        "path": "i18n/audits/evidence/vi/ui.chat.run_details/c952320b2cf6-s7a-vi/record.json",
+        "sha256": "5bbca18d50eaabd510b8fa50d6d04e7b896f50373e4dd67331b4294752048b29"
+      }
+    },
+    "ui.notices": {
+      "status": "passed",
+      "sha256": {
+        "en": "043243b66381b6fa1143acb645ce0c83fcb381883038ef88bbcb28e36764b112",
+        "vi": "ecad376314fb6c1d724f417149932eef827ed3cec29c176c790c335aa0e2e2d8"
+      },
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      },
+      "keys_audited": 6,
+      "keys": [
+        "ui.notices.aida.account_required",
+        "ui.notices.aida.active",
+        "ui.notices.aida.open_fallback",
+        "ui.notices.aida.paused",
+        "ui.notices.aida.paused_receipt",
+        "ui.notices.aida.resumed_receipt"
+      ],
+      "evidence": {
+        "path": "i18n/audits/evidence/vi/ui.notices/c952320b2cf6-s7a-vi/record.json",
+        "sha256": "7e2c940fd3e78c76e554e873e41ad602614a1caf3a5de225b3bf7b99784455ec"
+      }
+    }
+  },
+  "limitations": [
+    "Source/ICU-formatter audit only; no browser rendering or visual clipping proof. Browser unavailable to this role."
+  ],
+  "keys_audited": 29
+}

@@ -8,7 +8,9 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
  * tour tag belong to the section wrapper the settings page renders around this.
  */
 
+import { PhonePairingSettings } from "@features/phone-pairing/paired-phones-section";
 import { PhoneAccessBlock } from "@features/providers/phone-access-block";
+import { subscribeUrlFor } from "@features/team-bridge-trial/team-bridge-trial-model";
 import type { AccountVerification } from "@shared/api/radient";
 import { RadientAuthButtons } from "@shared/components/auth";
 import { Spinner } from "@shared/components/common/spinner";
@@ -27,6 +29,7 @@ import {
 } from "@shared/utils/radient-account-copy";
 import { Info, LogOut } from "lucide-react";
 import { type FC, useCallback } from "react";
+import { AccountProfileSection } from "./account-profile-section";
 import { InfoGrid, InfoItem } from "./settings-section";
 
 type RadientAccountSectionProps = {
@@ -110,6 +113,9 @@ export const RadientAccountSection: FC<RadientAccountSectionProps> = ({
 
 		return (
 			<>
+				<div className="mb-8">
+					<AccountProfileSection />
+				</div>
 				<InfoGrid>
 					<InfoItem
 						label={t("ui.settings.account.radient_account_section.status")}
@@ -170,8 +176,46 @@ export const RadientAccountSection: FC<RadientAccountSectionProps> = ({
 				 * request sent, unless the backend advertises `tunnel_setup`.
 				 */}
 				<div className="mt-8">
-					<PhoneAccessBlock offerSignIn />
+					<PhoneAccessBlock
+						offerSignIn
+						diagnostics
+						searchRow="radient.phone-access"
+					/>
 				</div>
+
+				{/*
+				 * Turn on phone approvals, then the phones paired by approval (pairing
+				 * design v2 §4.2). Beside the block above because it is the same
+				 * subject - what a phone can do with this computer - and absent (no
+				 * element, no spacing, no request) unless the backend advertises it.
+				 */}
+				<PhonePairingSettings className="mt-6" />
+
+				{/*
+				 * THE ONE PLACE THE TEAM PLAN IS DESCRIBED OUTSIDE A GATE (onboarding
+				 * audit U8). Every gated surface names the plan where the reader hits
+				 * it; this is the single line that lists what the plan covers, for a
+				 * reader who went looking in their own account. One sentence and one
+				 * link at the section's body ink: no card, no badge, no accent fill,
+				 * so it reads as account information rather than a promotion.
+				 *
+				 * The sentence lists only what this app itself gates on the plan
+				 * (Team Bridge, and agents and teams shared inside an organization).
+				 * Anything else the plan includes is the console page's to say.
+				 */}
+				<p
+					className="mt-8 text-body-sm text-ink-muted"
+					data-testid="radient-team-plan-line"
+				>
+					{t("ui.settings.account.radient_account_section.team_plan_line")}{" "}
+					<Button
+						variant="link"
+						size="sm"
+						onClick={() => openConsolePage(subscribeUrlFor(account.tenant_id))}
+					>
+						{t("ui.teamBridge.plan.see_plan")}
+					</Button>
+				</p>
 
 				{/*
 				 * A section-tier gap replaces the rule that used to sit here: the

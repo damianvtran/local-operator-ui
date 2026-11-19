@@ -45,7 +45,14 @@
  */
 
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { after, afterEach, beforeEach, test } from "node:test";
 import { pathToFileURL } from "node:url";
@@ -794,6 +801,185 @@ test("a slash command is never an anchor, and a real directory becomes one when 
 	]);
 });
 
+test("R2-1: message A lists files that do not exist yet; after they are written, message B links them AND A re-links", async () => {
+	/*
+	 * THE REVIEWER'S FLOW, driven through the real component rather than through
+	 * the cache alone. A is a pre-tool segment (`Writing to ...` + names) that
+	 * finalizes before the tool runs; B is the report. At round-1's head the
+	 * negative A cached was read by B for the rest of the session, so B stayed
+	 * plain even though the files were on disk - and plain text has no failed
+	 * click to evict the entry.
+	 *
+	 * The disk here is a real temp directory, not a lookup table: the flip from
+	 * "planned" to "written" is `writeFileSync`, which is the event the fix
+	 * exists for.
+	 */
+	const dir = mkdtempSync(join(tmpdir(), "r2-1-"));
+	const A = `I'll write the deliverables to \`${dir}/\`:\n- report.pdf\n- data.xlsx`;
+	const B = `Done. Files are in \`${dir}/\`:\n- report.pdf\n- data.xlsx`;
+	const asked = [];
+	frame.window.api = {
+		...frame.window.api,
+		probeFiles: async (paths) => {
+			asked.push([...paths]);
+			return paths.map((input) => {
+				const exists = existsSync(input);
+				return {
+					input,
+					resolved: input,
+					exists,
+					isFile: exists,
+					sizeBytes: null,
+					mtimeMs: null,
+				};
+			});
+		},
+	};
+	const Row = ({ text }) =>
+		React.createElement(MarkdownRenderer, { content: text });
+	const listed = (url) =>
+		anchorsWithTarget(frame.document, url).map((a) => a.textContent);
+
+	// A paints first: both names are missing, so both stay plain.
+	await frame.render(React.createElement(Row, { text: A }));
+	assert.deepEqual(listed(`${dir}/report.pdf`), []);
+	assert.deepEqual(listed(`${dir}/data.xlsx`), []);
+	const afterA = asked.length;
+
+	// A re-renders (a virtualized remount): no new stat.
+	await frame.render(React.createElement(Row, { text: A }));
+	assert.equal(
+		asked.length,
+		afterA,
+		"a remount of the same document asks nothing",
+	);
+
+	// The tool runs.
+	writeFileSync(join(dir, "report.pdf"), "%PDF-1.4\n");
+	writeFileSync(join(dir, "data.xlsx"), "PK");
+
+	// B paints, naming the same paths: it re-asks, and BOTH rows now link.
+	await frame.render(
+		React.createElement(
+			React.Fragment,
+			null,
+			React.createElement(Row, { key: "a", text: A }),
+			React.createElement(Row, { key: "b", text: B }),
+		),
+	);
+	assert.ok(asked.length > afterA, "the new document re-asked the negatives");
+	assert.deepEqual(listed(`${dir}/report.pdf`), ["report.pdf", "report.pdf"]);
+	assert.deepEqual(listed(`${dir}/data.xlsx`), ["data.xlsx", "data.xlsx"]);
+	rmSync(dir, { recursive: true, force: true });
+});
+
+/** `probeFiles` answered by the real disk, recording every batch it was asked. */
+const diskProbe = (asked) => async (paths) => {
+	asked.push([...paths]);
+	return paths.map((input) => {
+		const exists = existsSync(input);
+		return {
+			input,
+			resolved: input,
+			exists,
+			isFile: exists,
+			sizeBytes: null,
+			mtimeMs: null,
+		};
+	});
+};
+
+test("R3-1: a chain of messages naming one MISSING path re-renders no earlier row", async () => {
+	/*
+	 * THE RE-RENDER STORM, counted in renders rather than asks. Every new
+	 * message re-asks the negatives it names (R2-1), and at round 2's head the
+	 * landing "still missing" was announced to every subscriber - so each
+	 * mounted row naming `/health` re-parsed on every later message: 101
+	 * messages cost 5,151 re-renders. A `React.Profiler` around each row
+	 * counts its UPDATE commits; each row element is created ONCE and reused,
+	 * so React bails out of a row nothing inside changed and only the
+	 * evidence hook's own state bump can commit one.
+	 */
+	const asked = [];
+	frame.window.api = { ...frame.window.api, probeFiles: diskProbe(asked) };
+	const updates = [];
+	const rows = [];
+	const N = 21;
+	for (let k = 0; k < N; k += 1) {
+		updates.push(0);
+		rows.push(
+			React.createElement(
+				React.Profiler,
+				{
+					key: `m${k}`,
+					id: `m${k}`,
+					onRender: (_id, phase) => {
+						if (phase === "update") updates[k] += 1;
+					},
+				},
+				React.createElement(MarkdownRenderer, {
+					content: `Step ${k}: I updated the handler behind /api/v1/users and the /health check.`,
+				}),
+			),
+		);
+		const before = [...updates];
+		await frame.render(React.createElement(React.Fragment, null, ...rows));
+		assert.deepEqual(
+			updates.slice(0, k),
+			before.slice(0, k),
+			`message ${k} re-rendered no earlier row`,
+		);
+	}
+	assert.equal(asked.length, N, "each new message still re-asked once (R2-1)");
+	/*
+	 * Only each row's OWN landing commits it: the first row's answer is new
+	 * information (absent -> missing), so it ticks through both the
+	 * subscription and its own `.then`; every later re-check lands unchanged
+	 * and ticks only the asking row. Linear in the session, never quadratic.
+	 */
+	const total = updates.reduce((sum, count) => sum + count, 0);
+	assert.ok(total <= N + 1, `re-renders over ${N} messages: ${total}`);
+});
+
+test("R3-3b: a later message byte-identical to an earlier one still re-checks", async () => {
+	/*
+	 * Keyed on text alone, the second record's first scan was not a first
+	 * scan: identical text had already been claimed, so it asked nothing and
+	 * both rows stayed plain though the file existed. The transcript now keys
+	 * the claim on `record.id` with the text, through the real
+	 * `CanonicalTranscript` wiring.
+	 */
+	const dir = mkdtempSync(join(tmpdir(), "r3-3b-"));
+	const text = `Files are in \`${dir}/\`:\n- a.pdf`;
+	const asked = [];
+	const transcriptOf = (...ids) => ({
+		records: [
+			record("u1", "user", "Write it."),
+			...ids.map((id) => record(id, "assistant", text)),
+		],
+		index: new Map([["u1", 0], ...ids.map((id, at) => [id, at + 1])]),
+	});
+	const linked = () =>
+		anchorsWithTarget(frame.document, `${dir}/a.pdf`).map((anchor) =>
+			anchor.closest("[data-record-id]")?.getAttribute("data-record-id"),
+		);
+	await mountTranscript({
+		transcript: transcriptOf("a1"),
+		probeFiles: diskProbe(asked),
+	});
+	assert.deepEqual(linked(), [], "a1 paints before the file exists");
+	const afterA = asked.length;
+
+	writeFileSync(join(dir, "a.pdf"), "%PDF-1.4\n");
+	await mountTranscript({
+		transcript: transcriptOf("a1", "a2"),
+		probeFiles: diskProbe(asked),
+	});
+	assert.ok(asked.length > afterA, "the identical second message re-asked");
+	assert.deepEqual(linked(), ["a1", "a2"]);
+	rmSync(dir, { recursive: true, force: true });
+});
+
 test("with no probe bridge the ambiguous tokens stay prose and nothing throws", async () => {
 	/*
 	 * Storybook and browser development have no preload, so `window.api` is absent
@@ -867,8 +1053,10 @@ test("a streaming row scans and asks nothing at all", async () => {
 
 /** Mount the transcript with the fixture, and stub every box it measures. */
 async function mountTranscript(options = {}) {
-	const { transcript = TRANSCRIPT, ...apiOptions } = options;
+	const { transcript = TRANSCRIPT, probeFiles, ...apiOptions } = options;
 	stubApi(frame.window, apiOptions);
+	// A test that needs the REAL disk (review R3-3b) hands its own probe.
+	if (probeFiles) frame.window.api = { ...frame.window.api, probeFiles };
 	/*
 	 * The layout stubs go in BEFORE the mount: the toolbar's buttons carry Radix
 	 * tooltips, which position themselves on mount, and a zero-sized reference

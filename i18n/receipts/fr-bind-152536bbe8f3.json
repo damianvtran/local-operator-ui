@@ -1,0 +1,181 @@
+{
+  "schema": 1,
+  "kind": "translation-audit-receipt",
+  "audit_kind": "current-byte rebind",
+  "date": "2026-10-25",
+  "locale": "fr",
+  "namespace": "ui.chat.sidebar",
+  "pr": 1403,
+  "branch": "feat/i18n-key-remaining-copy",
+  "head": "0adbb37b9429e2c70cbe64ea149cb091432c8dd6",
+  "merge": "ab9bd739c21ebc24c22b9d4fb25ce78a43c4fede",
+  "instance": "fr-bind-152536bbe8f3",
+  "auditor": {
+    "agent": "translation-auditor",
+    "role": "independent translation auditor (team lopdev); authored no catalogue value for PR #1403 and edited no catalogue or ledger",
+    "team": "lopdev",
+    "harness": "Local Operator",
+    "session": "e2287a4a6524",
+    "model": "deepseek/deepseek-flash",
+    "actual_model": "deepseek/deepseek-flash",
+    "model_source": "harness session banner (system prompt line 'Model: deepseek/deepseek-flash'); no fallback used",
+    "fallback": null,
+    "independence": "This run read the catalogue bytes with git show, wrote no translated value, and edited no catalogue, English source, context sidecar, ledger or allowance file. It did not author any fr value under audit. Prior value sets were audited by other sessions; this receipt re-binds the current bytes and records which parent or prior receipt each set comes from.",
+    "instance": "fr-bind-152536bbe8f3"
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "binding": "Current-byte re-bind at PR #1403 head 0adbb37b94. The sidebar row was changes_requested at the pre-merge head d784571d90 (fr-final-a833e8da3150): FR-FINAL-01 was a major on the unpluralised counter denominator. Commit 0adbb37b94 applied exactly the three proposed plural values; this run re-read the resulting bytes, rendered them, and verified the fix. The remaining FR-FINAL-02 nit (the offer has no `many` arm) is carried unchanged. This is not a fresh translation wave.",
+  "scope": "All 49 ui.chat.sidebar keys for fr at current PR head 0adbb37b94, read against the English source and its context sidecar. The five keys added by this PR (builtin_offer, catalogue.total, catalogue.total_search, catalogue.total_search_clipped, groups.badge) and current_chat were read in full; the other 43 values are byte-identical to the independently audited d082bd95 file and are covered by that hash identity.",
+  "sha256": {
+    "en": "ef1e1be1e56216cbace31a229d20979c2fc00fb43d15559a93605e33e900b171",
+    "fr": "152536bbe8f3a1ed6c5aaf78109a6bc7494645f82d3c0c584b38308e4ac9d2df",
+    "context": "0a5a1fc27e8d0cab8dfe9b086144a19969268403afded5a7a68036eaf5485339"
+  },
+  "parents": {
+    "branch_pre_plural": {
+      "rev": "d784571d9017c2958a80c51808b2ace64e3f76ba",
+      "role": "PR pre-merge head; prior sidebar audit head",
+      "en_sha256": "ef1e1be1e56216cbace31a229d20979c2fc00fb43d15559a93605e33e900b171",
+      "fr_sha256": "7ba6741b6192b70c0a627ff99a1952ba079c5d754101c970b7c97ca85aaf8dc5"
+    },
+    "current": {
+      "rev": "0adbb37b94",
+      "role": "PR head after the French counter pluralisation",
+      "en_sha256": "ef1e1be1e56216cbace31a229d20979c2fc00fb43d15559a93605e33e900b171",
+      "fr_sha256": "152536bbe8f3a1ed6c5aaf78109a6bc7494645f82d3c0c584b38308e4ac9d2df"
+    }
+  },
+  "keys_read": 49,
+  "key_set": "equal to English: 49/49, same key order, no missing or extra key, no duplicate key, no English stub",
+  "icu": "All 49 values parsed with @formatjs/icu-messageformat-parser. The three counters now carry a nested plural on {total} (one/many/other) and the match noun keeps one/many/other; the badge keeps {badge, plural} with one/many/other; builtin_offer keeps the English =0/one/=2..=6/other arms. Argument names are identical to English. The explicit {badge, number, ::group-off} form where English uses `#` is the programme-wide badge pattern and was accepted in the prior audit; it renders 0/1/2 correctly and keeps the group-off output.",
+  "plural_renders": {
+    "counts": [
+      0,
+      1,
+      2,
+      1000000
+    ],
+    "catalogue_total": [
+      "0 sur 0 conversation",
+      "1 sur 1 conversation",
+      "2 sur 2 conversations",
+      "1000000 sur 1000000 de conversations"
+    ],
+    "catalogue_total_search": [
+      "0 correspondance sur 0 conversation",
+      "1 correspondance sur 1 conversation",
+      "2 correspondances sur 2 conversations",
+      "1000000 de correspondances sur 1000000 de conversations"
+    ],
+    "catalogue_total_search_clipped": [
+      "0+ correspondance sur 0 conversation",
+      "1+ correspondance sur 1 conversation",
+      "2+ correspondances sur 2 conversations",
+      "1000000+ de correspondances sur 1000000 de conversations"
+    ],
+    "groups_badge": [
+      "0 conversation dans ce groupe",
+      "1 conversation dans ce groupe",
+      "2 conversations dans ce groupe",
+      "1000000 de conversations dans ce groupe"
+    ],
+    "formatter": "intl-messageformat 12.1.3 with locale fr; Intl.PluralRules(fr) selects one for 0/1, other for 2, many for 10^6."
+  },
+  "register": "vous throughout; no tu/ton/ta/tes; sentence case; no added politeness. The offer uses « Vous pourrez » correctly.",
+  "glossary": "chat -> conversation (nav.chats, list.empty, header.new_chat); built-in -> intégré (dismiss_offer « agents intégrés »); match -> correspondance (search.no_match); team -> équipe; agent -> agent. The counters use the house « {shown} sur {total} » shape.",
+  "typography": "U+2019 apostrophes; U+202F inside « » quotes; U+202F before prose colons; U+2026 ellipsis; no ASCII ellipsis, straight quotes, NBSP, bidi controls; NFC-clean.",
+  "width": "No maxCells hints in this namespace. The offer is a wrapping sentence; the counters are a status line, not a fixed-width label. The prior audit measured no clipping; this pass did not build a frame.",
+  "findings": [
+    {
+      "severity": "nit",
+      "id": "FR-FINAL-02",
+      "key": "ui.chat.sidebar.agents.builtin_offer",
+      "current": "{count, plural, =0 {Aucun agent intégré n’est prêt à être installé — {list}. Vous pourrez les modifier une fois installés.} one {Un agent intégré est prêt à être installé — {list}. Vous pourrez le modifier une fois installé.} =2 {Deux agents intégrés sont prêts à être installés — {list}. Vous pourrez les modifier une fois installés.} =3 {Trois agents intégrés sont prêts à être installés — {list}. Vous pourrez les modifier une fois installés.} =4 {Quatre agents intégrés sont prêts à être installés — {list}. Vous pourrez les modifier une fois installés.} =5 {Cinq agents intégrés sont prêts à être installés — {list}. Vous pourrez les modifier une fois installés.} =6 {Six agents intégrés sont prêts à être installés — {list}. Vous pourrez les modifier une fois installés.} other {{count, number, ::group-off} agents intégrés sont prêts à être installés — {list}. Vous pourrez les modifier une fois installés.}}",
+      "proposed": "{count, plural, =0 {Aucun agent intégré n’est prêt à être installé — {list}. Vous pourrez les modifier une fois installés.} one {Un agent intégré est prêt à être installé — {list}. Vous pourrez le modifier une fois installé.} =2 {Deux agents intégrés sont prêts à être installés — {list}. Vous pourrez les modifier une fois installés.} =3 {Trois agents intégrés sont prêts à être installés — {list}. Vous pourrez les modifier une fois installés.} =4 {Quatre agents intégrés sont prêts à être installés — {list}. Vous pourrez les modifier une fois installés.} =5 {Cinq agents intégrés sont prêts à être installés — {list}. Vous pourrez les modifier une fois installés.} =6 {Six agents intégrés sont prêts à être installés — {list}. Vous pourrez les modifier une fois installés.} many {{count, number, ::group-off} d’agents intégrés sont prêts à être installés — {list}. Vous pourrez les modifier une fois installés.} other {{count, number, ::group-off} agents intégrés sont prêts à être installés — {list}. Vous pourrez les modifier une fois installés.}}",
+      "reason": "At an exact multiple of 10^6 the `other` arm renders « 1000000 agents intégrés », where French requires « d’agents intégrés »; 187 of the fr catalogue’s 190 plural messages carry one/many/other, so this is a conformance gap, not a house style. It is a nit because the offer count is bounded by the packaged built-in profiles and the =0 arm is gated at the call site (availableBuiltins.length > 0), so no user can reach the count that exposes it.",
+      "disposition": "inherited from fr-final-a833e8da3150 (FR-FINAL-02), still present at the current bytes; non-gating."
+    }
+  ],
+  "inherited_findings": [],
+  "remediated_findings": [
+    {
+      "id": "FR-FINAL-01",
+      "prior_severity": "major",
+      "status": "fixed",
+      "keys": [
+        "ui.chat.sidebar.catalogue.total",
+        "ui.chat.sidebar.catalogue.total_search",
+        "ui.chat.sidebar.catalogue.total_search_clipped"
+      ],
+      "applied": [
+        {
+          "key": "ui.chat.sidebar.catalogue.total",
+          "matches_proposed": true,
+          "current": "{shown, number, ::group-off} sur {total, plural, one {{total, number, ::group-off} conversation} many {{total, number, ::group-off} de conversations} other {{total, number, ::group-off} conversations}}"
+        },
+        {
+          "key": "ui.chat.sidebar.catalogue.total_search",
+          "matches_proposed": true,
+          "current": "{shown, number, ::group-off} {shown, plural, one {correspondance} many {de correspondances} other {correspondances}} sur {total, plural, one {{total, number, ::group-off} conversation} many {{total, number, ::group-off} de conversations} other {{total, number, ::group-off} conversations}}"
+        },
+        {
+          "key": "ui.chat.sidebar.catalogue.total_search_clipped",
+          "matches_proposed": true,
+          "current": "{shown, number, ::group-off}+ {shown, plural, one {correspondance} many {de correspondances} other {correspondances}} sur {total, plural, one {{total, number, ::group-off} conversation} many {{total, number, ::group-off} de conversations} other {{total, number, ::group-off} conversations}}"
+        }
+      ],
+      "note": "All three current values equal the prior receipt’s proposed strings byte-for-byte. Rendered at 0/1/2/10^6: 0/1 take the singular « conversation » / « correspondance », 2 takes the plural, 10^6 takes « de conversations » / « de correspondances ». The prior major is closed by this re-bind."
+    }
+  ],
+  "observations": [
+    {
+      "severity": "info",
+      "key": "ui.chat.sidebar.groups.badge",
+      "observation": "The badge uses an explicit {badge, number, ::group-off} in each arm where English uses `#`; this is the same pattern as es/ru/hi/vi/ur/zh-CN and the prior audit accepted it. At 1 it renders « 1 conversation dans ce groupe »; at 10^6 it renders « 1000000 de conversations dans ce groupe » (group-off preserved, as the source skeleton asks)."
+    }
+  ],
+  "prior_audits": [
+    {
+      "instance": "fr-final-a833e8da3150",
+      "receipt": "i18n/receipts/fr-final-a833e8da3150.json",
+      "receipt_sha256": "146e149ded341dcd185b8a592ddd27448288d9d0be47328f812044fedc3f3ff1",
+      "covers": "changes_requested audit of all 49 values at d784571d90: 1 major (FR-FINAL-01, counters) + 1 nit (FR-FINAL-02, offer many arm); the major is fixed at the current head, the nit remains",
+      "namespace_block_sha256": {
+        "en": "ef1e1be1e56216cbace31a229d20979c2fc00fb43d15559a93605e33e900b171",
+        "fr": "7ba6741b6192b70c0a627ff99a1952ba079c5d754101c970b7c97ca85aaf8dc5"
+      }
+    },
+    {
+      "instance": "fr-extract-da12aa6ade20-r2",
+      "receipt": "i18n/receipts/fr-extract-da12aa6ade20-r2.json",
+      "receipt_sha256": "c56cf3241e239dc06441c5cff8c944ab04f7b81584390228b0c497e1d956842d",
+      "covers": "clean round-2 extraction audit of the 44 pre-existing values at d082bd95 (en b20a2e81, fr 2ee131c8); the current 44 unchanged values are byte-identical to that file"
+    }
+  ],
+  "method": [
+    "Pulled every value with git show <head>:<path>; did not check out or edit the PR worktree catalogue.",
+    "Compared key list and key order with English in both directions; rejected duplicate keys.",
+    "Parsed every message with @formatjs/icu-messageformat-parser and compared arguments, select arms and plural categories with English.",
+    "Rendered the three counters and the badge at 0, 1, 2 and 10^6 with the repository’s intl-messageformat dependency under locale fr.",
+    "Compared the three counter values with the prior major’s proposed strings byte-for-byte; compared the 44 pre-existing values with the d082bd95 audited file.",
+    "Re-read the five new values and current_chat against the sidecar role/tone/note and the fr style guide."
+  ],
+  "verdict": "clean-with-findings — 49/49 values read; the prior major FR-FINAL-01 is fixed exactly as proposed and renders grammatically at 0/1/2/10^6; 1 remaining nit (FR-FINAL-02, unreachable offer many arm). No blocker or major.",
+  "limitations": "Static catalogue audit plus formatter-level renders; no rendered French screen was built or captured in this pass, and no native-speaker sign-off is claimed.",
+  "ledger_binding": {
+    "agent": "translation-auditor",
+    "model": "deepseek/deepseek-flash",
+    "result": "clean-with-findings",
+    "instance": "fr-bind-152536bbe8f3",
+    "receipt": "i18n/receipts/fr-bind-152536bbe8f3.json",
+    "findings": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 0,
+      "nit": 1
+    },
+    "scope": "current-byte rebind at 0adbb37b94; all 49 keys; FR-FINAL-01 fixed, FR-FINAL-02 nit remains",
+    "note": "Re-binds fr/ui.chat.sidebar to en ef1e1be1e562 / fr 152536bbe8f3 at PR #1403 head."
+  }
+}

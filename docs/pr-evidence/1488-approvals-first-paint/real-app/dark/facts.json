@@ -1,0 +1,708 @@
+{
+  "palette": "obsidian",
+  "commit": "d60e5d5e2edb4c02e2120ef4fc6508a114aae07b",
+  "window": "1200x800",
+  "steps": {
+    "rendererTarget": {
+      "id": "10574ED333CF80B69B9D301E3209EB9D",
+      "url": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/index.html"
+    },
+    "preferencesBefore": {
+      "present": true,
+      "bytes": 1012,
+      "stateKeys": [
+        "finderFiles",
+        "isCommandPaletteOpen",
+        "commandPaletteQuery",
+        "isSidebarCollapsed",
+        "sidebarOverflowExpanded",
+        "showAgentReasoning",
+        "transcriptDisplayMode",
+        "themeName",
+        "rightSlotWidth",
+        "chatSidebarWidth",
+        "chatSidebarRegions",
+        "chatSidebarView",
+        "chatSidebarListHeight",
+        "chatSidebarOrder",
+        "dismissedBuiltinOfferSignature",
+        "rightSlotMemory",
+        "rightSlotLegacySeed",
+        "browserPaneScope",
+        "consoleActiveSurface",
+        "consoleUnseen",
+        "isCreateAgentDialogOpen",
+        "mentionRecents",
+        "profileRecents",
+        "conversationRecents",
+        "shortcutBindings"
+      ],
+      "version": 4
+    },
+    "preferencesSeeded": {
+      "fromBlob": true,
+      "version": 4,
+      "themeName": "obsidian"
+    },
+    "themeApplied": {
+      "theme": "obsidian",
+      "dark": true,
+      "bodyBackground": "rgba(0, 0, 0, 0)"
+    },
+    "browserRoute": {
+      "route": true,
+      "pane": false,
+      "content": true,
+      "hash": "#/browser"
+    },
+    "cardTarget": {
+      "url": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?theme=dark",
+      "id": "BA16B58AB1B1FCCC1B6B7394E067A10C"
+    },
+    "addressField": {
+      "x": 762,
+      "y": 87,
+      "width": 732,
+      "height": 28,
+      "disabled": false,
+      "readOnly": false,
+      "editing": "false",
+      "value": "127.0.0.1:60092/page"
+    },
+    "addressEditing": {
+      "editing": "true",
+      "focused": true
+    },
+    "typedValue": {
+      "attempt": 1,
+      "typed": "http://127.0.0.1:60324/page"
+    },
+    "pageTarget": {
+      "url": "http://127.0.0.1:60324/page",
+      "id": "C6B8BBDA6699BB50147C726228B62D40"
+    },
+    "livePage": {
+      "url": "http://127.0.0.1:60324/page",
+      "probe": {
+        "geo": "denied:1",
+        "notifications": "denied"
+      },
+      "size": [
+        940,
+        694
+      ],
+      "dpr": 2,
+      "geoText": "geolocation: denied (1)",
+      "notifyText": "notifications: denied"
+    },
+    "geometry": {
+      "content": {
+        "x": 260,
+        "y": 106,
+        "width": 940,
+        "height": 694
+      },
+      "dpr": 2,
+      "viewport": [
+        1200,
+        800
+      ]
+    },
+    "browserHost": {
+      "port": 60340,
+      "keys": [
+        "pid",
+        "port",
+        "session_key",
+        "proto",
+        "host",
+        "app_version",
+        "instance_id",
+        "profile_dir",
+        "capabilities",
+        "tabs",
+        "agent_tabs",
+        "console",
+        "console_surfaces",
+        "console_agent_surfaces",
+        "console_live",
+        "console_archived",
+        "console_max_live",
+        "console_host_epoch",
+        "console_started_at",
+        "console_generation",
+        "console_sampled_at",
+        "heartbeat_at",
+        "started_at"
+      ]
+    },
+    "requestAccess": {
+      "status": 200,
+      "body": "{\"id\":\"qa-1488-request-access\",\"ok\":true,\"result\":{\"origin\":\"http://127.0.0.1:60324\",\"state\":\"pending\",\"entry_id\":\"8827767fb85e4b0aac56d493bae4ae7d\",\"authority\":\"127.0.0.1:60324\",\"expires_at\":1793284877202,\"broad\":{\"scope\":\"host\",\"key\":\"127.0.0.1\"}}}"
+    },
+    "presented": {
+      "at": 189,
+      "target": "674133F8C2A93C188BAF18D618F4EA3D",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian",
+      "theme": "localOperatorDark",
+      "vis": "hidden",
+      "size": [
+        368,
+        112
+      ],
+      "hasCard": true,
+      "text": "",
+      "bg": "rgb(50, 45, 34)"
+    },
+    "firstVisible": {
+      "at": 353,
+      "target": "674133F8C2A93C188BAF18D618F4EA3D",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian",
+      "theme": "obsidian",
+      "vis": "visible",
+      "size": [
+        368,
+        383
+      ],
+      "hasCard": true,
+      "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+      "bg": "rgb(53, 52, 56)"
+    },
+    "cardBurst": {
+      "presentedAt": 189,
+      "firstVisibleAt": 353,
+      "firstFrameAt": 189,
+      "frames": 22,
+      "frameThemes": [
+        "localOperatorDark",
+        "obsidian"
+      ]
+    },
+    "composites": [
+      {
+        "label": "first-presented",
+        "atMs": 377,
+        "sincePresented": 0,
+        "theme": "obsidian",
+        "vis": "visible",
+        "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian"
+      },
+      {
+        "label": "mid-settle",
+        "atMs": 1167,
+        "sincePresented": 790,
+        "theme": "obsidian",
+        "vis": "visible",
+        "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian"
+      },
+      {
+        "label": "settled",
+        "atMs": 2633,
+        "sincePresented": 2257,
+        "theme": "obsidian",
+        "vis": "visible",
+        "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian"
+      }
+    ],
+    "paletteTimeline": {
+      "samples": 23,
+      "withTarget": 23,
+      "errors": 1,
+      "first": {
+        "at": 9,
+        "error": "Error: evaluate threw: Uncaught TypeError: Cannot read properties of null (reading 'dataset')\n    at <anonymous>:5:41\n    at <anonymous>:12:7"
+      },
+      "atPresentation": {
+        "at": 189,
+        "target": "674133F8C2A93C188BAF18D618F4EA3D",
+        "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian",
+        "theme": "localOperatorDark",
+        "vis": "hidden",
+        "size": [
+          368,
+          112
+        ],
+        "hasCard": true,
+        "text": "",
+        "bg": "rgb(50, 45, 34)"
+      },
+      "last": {
+        "at": 2941,
+        "target": "674133F8C2A93C188BAF18D618F4EA3D",
+        "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian",
+        "theme": "obsidian",
+        "vis": "visible",
+        "size": [
+          368,
+          383
+        ],
+        "hasCard": true,
+        "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+        "bg": "rgb(53, 52, 56)"
+      },
+      "themes": [
+        null,
+        "localOperatorDark",
+        "obsidian"
+      ],
+      "themesAfterPresentation": [
+        "localOperatorDark",
+        "obsidian"
+      ],
+      "visibilityValues": [
+        null,
+        "hidden",
+        "visible"
+      ],
+      "beforeFirstPaint": [
+        {
+          "at": 9,
+          "error": "Error: evaluate threw: Uncaught TypeError: Cannot read properties of null (reading 'dataset')\n    at <anonymous>:5:41\n    at <anonymous>:12:7"
+        },
+        {
+          "at": 189,
+          "target": "674133F8C2A93C188BAF18D618F4EA3D",
+          "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian",
+          "theme": "localOperatorDark",
+          "vis": "hidden",
+          "size": [
+            368,
+            112
+          ],
+          "hasCard": true,
+          "text": "",
+          "bg": "rgb(50, 45, 34)"
+        }
+      ],
+      "firstVisible": {
+        "at": 353,
+        "target": "674133F8C2A93C188BAF18D618F4EA3D",
+        "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian",
+        "theme": "obsidian",
+        "vis": "visible",
+        "size": [
+          368,
+          383
+        ],
+        "hasCard": true,
+        "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+        "bg": "rgb(53, 52, 56)"
+      },
+      "visibleSamples": 21
+    },
+    "rendererConsole": {
+      "resources": 0
+    },
+    "browserLogTail": [
+      "10:31:17.088 › [browser] address overlay hidden: stale_layout",
+      "10:31:17.089 › [browser] denied a media permission request from http://127.0.0.1:60092/page",
+      "10:31:17.089 › [browser] denied a media permission request from http://127.0.0.1:60092/page",
+      "10:31:17.089 › [browser] denied a web-app-installation permission request from http://127.0.0.1:60092/page",
+      "10:31:17.090 › [browser] denied a geolocation permission request from http://127.0.0.1:60092/page",
+      "10:31:17.092 › [browser] address overlay hidden: navigation",
+      "10:31:17.093 › [browser] address overlay hidden: projection_hidden",
+      "10:31:17.160 › [browser] tab 1 navigated to http://127.0.0.1:60324/page",
+      "10:31:17.165 › [browser] denied a geolocation permission request from http://127.0.0.1:60324/page",
+      "10:31:17.166 › [browser] denied a notifications permission request from http://127.0.0.1:60324/page",
+      "10:31:17.204 › [browser] approvals overlay child released: resize",
+      "10:31:17.207 › [browser] session:qa-1488-synthetic is asking for access to http://127.0.0.1:60324 (1 pending)"
+    ]
+  },
+  "assertions": [
+    {
+      "label": "the app's own theme provider applies the seeded palette",
+      "status": "PASS",
+      "detail": "documentElement data-theme=\"obsidian\" dark=true"
+    },
+    {
+      "label": "the app's browser route mounts its live content box",
+      "status": "PASS",
+      "detail": "{\"route\":true,\"pane\":false,\"content\":true,\"hash\":\"#/browser\"}"
+    },
+    {
+      "label": "the browser route shows an enabled address field",
+      "status": "PASS",
+      "detail": "{\"x\":762,\"y\":87,\"width\":732,\"height\":28,\"disabled\":false,\"readOnly\":false,\"editing\":\"false\",\"value\":\"127.0.0.1:60092/page\"}"
+    },
+    {
+      "label": "a real loopback page is live inside the app",
+      "status": "PASS",
+      "detail": "url=http://127.0.0.1:60324/page viewport=940,694 dpr=2"
+    },
+    {
+      "label": "the page's permission request reaches the app's policy and is denied",
+      "status": "PASS",
+      "detail": "geolocation result=\"geolocation: denied (1)\" probe={\"geo\":\"denied:1\",\"notifications\":\"denied\"}"
+    },
+    {
+      "label": "the pending access request is queued (request_access answered pending)",
+      "status": "PASS",
+      "detail": "200 {\"id\":\"qa-1488-request-access\",\"ok\":true,\"result\":{\"origin\":\"http://127.0.0.1:60324\",\"state\":\"pending\",\"entry_id\":\"8827767fb85e4b0aac56d493bae4ae7d\",\"authority\":\"127.0.0.1:60324\",\"expires_at\":1793284877202,\"broad\":{\"scope\":\"host\",\"key\":\"127.0.0.1\"}}}"
+    },
+    {
+      "label": "the card is presented (queue count non-zero and the child carries bounds)",
+      "status": "PASS",
+      "detail": "first presented sample at 189 ms after the request"
+    },
+    {
+      "label": "the FIRST VISIBLE card sample already carries the seeded palette",
+      "status": "PASS",
+      "detail": "first visible at 353 ms: theme=\"obsidian\" size=[368,383] text=\"Local Operator Approvals Close An agent \""
+    },
+    {
+      "label": "every VISIBLE card sample carries the seeded palette",
+      "status": "PASS",
+      "detail": "visible samples=21 themes=[\"obsidian\"]"
+    },
+    {
+      "label": "no VISIBLE card sample carries localOperatorDark",
+      "status": "PASS",
+      "detail": "default-palette visible samples=0"
+    },
+    {
+      "label": "the document URL the app loaded at presentation carries the seeded palette",
+      "status": "PASS",
+      "detail": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian"
+    },
+    {
+      "label": "the presented card document carries the queued entry, not the empty state",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "label": "every composite captured from a VISIBLE card carries the seeded palette",
+      "status": "PASS",
+      "detail": "[[\"first-presented\",\"visible\",\"obsidian\"],[\"mid-settle\",\"visible\",\"obsidian\"],[\"settled\",\"visible\",\"obsidian\"]]"
+    },
+    {
+      "label": "no app process from this run survives teardown",
+      "status": "PASS",
+      "detail": "[]"
+    }
+  ],
+  "frames": [
+    {
+      "file": "card-00.png",
+      "atMs": 189,
+      "sincePresented": 0,
+      "theme": "localOperatorDark",
+      "vis": "hidden",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian"
+    },
+    {
+      "file": "card-01.png",
+      "atMs": 353,
+      "sincePresented": 164,
+      "theme": "obsidian",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian"
+    },
+    {
+      "file": "card-02.png",
+      "atMs": 578,
+      "sincePresented": 389,
+      "theme": "obsidian",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian"
+    },
+    {
+      "file": "card-03.png",
+      "atMs": 694,
+      "sincePresented": 505,
+      "theme": "obsidian",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian"
+    },
+    {
+      "file": "card-04.png",
+      "atMs": 812,
+      "sincePresented": 623,
+      "theme": "obsidian",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian"
+    },
+    {
+      "file": "card-05.png",
+      "atMs": 925,
+      "sincePresented": 736,
+      "theme": "obsidian",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian"
+    },
+    {
+      "file": "card-06.png",
+      "atMs": 1034,
+      "sincePresented": 845,
+      "theme": "obsidian",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian"
+    },
+    {
+      "file": "card-07.png",
+      "atMs": 1143,
+      "sincePresented": 954,
+      "theme": "obsidian",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian"
+    },
+    {
+      "file": "card-08.png",
+      "atMs": 1350,
+      "sincePresented": 1161,
+      "theme": "obsidian",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian"
+    },
+    {
+      "file": "card-09.png",
+      "atMs": 1468,
+      "sincePresented": 1279,
+      "theme": "obsidian",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian"
+    },
+    {
+      "file": "card-10.png",
+      "atMs": 1584,
+      "sincePresented": 1395,
+      "theme": "obsidian",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian"
+    },
+    {
+      "file": "card-11.png",
+      "atMs": 1700,
+      "sincePresented": 1511,
+      "theme": "obsidian",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian"
+    },
+    {
+      "file": "card-12.png",
+      "atMs": 1808,
+      "sincePresented": 1619,
+      "theme": "obsidian",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian"
+    },
+    {
+      "file": "card-13.png",
+      "atMs": 1917,
+      "sincePresented": 1728,
+      "theme": "obsidian",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian"
+    },
+    {
+      "file": "card-14.png",
+      "atMs": 2033,
+      "sincePresented": 1844,
+      "theme": "obsidian",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian"
+    },
+    {
+      "file": "card-15.png",
+      "atMs": 2142,
+      "sincePresented": 1953,
+      "theme": "obsidian",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian"
+    },
+    {
+      "file": "card-16.png",
+      "atMs": 2267,
+      "sincePresented": 2078,
+      "theme": "obsidian",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian"
+    },
+    {
+      "file": "card-17.png",
+      "atMs": 2384,
+      "sincePresented": 2195,
+      "theme": "obsidian",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian"
+    },
+    {
+      "file": "card-18.png",
+      "atMs": 2500,
+      "sincePresented": 2311,
+      "theme": "obsidian",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian"
+    },
+    {
+      "file": "card-19.png",
+      "atMs": 2610,
+      "sincePresented": 2421,
+      "theme": "obsidian",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian"
+    },
+    {
+      "file": "card-20.png",
+      "atMs": 2827,
+      "sincePresented": 2638,
+      "theme": "obsidian",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian"
+    },
+    {
+      "file": "card-21.png",
+      "atMs": 2941,
+      "sincePresented": 2752,
+      "theme": "obsidian",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian"
+    }
+  ],
+  "startedAt": "2026-10-29T14:31:15.128Z",
+  "pid": 79187,
+  "cdpPort": 9491,
+  "pageUrl": "http://127.0.0.1:60324/page",
+  "cardUrlAtAttach": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?theme=dark",
+  "presentation": {
+    "presentedAt": 189,
+    "firstVisibleAt": 353,
+    "firstFrameAt": 189,
+    "frames": 22,
+    "frameThemes": [
+      "localOperatorDark",
+      "obsidian"
+    ]
+  },
+  "composites": [
+    {
+      "label": "first-presented",
+      "atMs": 377,
+      "sincePresented": 0,
+      "theme": "obsidian",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian"
+    },
+    {
+      "label": "mid-settle",
+      "atMs": 1167,
+      "sincePresented": 790,
+      "theme": "obsidian",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian"
+    },
+    {
+      "label": "settled",
+      "atMs": 2633,
+      "sincePresented": 2257,
+      "theme": "obsidian",
+      "vis": "visible",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian"
+    }
+  ],
+  "timeline": {
+    "samples": 23,
+    "withTarget": 23,
+    "errors": 1,
+    "first": {
+      "at": 9,
+      "error": "Error: evaluate threw: Uncaught TypeError: Cannot read properties of null (reading 'dataset')\n    at <anonymous>:5:41\n    at <anonymous>:12:7"
+    },
+    "atPresentation": {
+      "at": 189,
+      "target": "674133F8C2A93C188BAF18D618F4EA3D",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian",
+      "theme": "localOperatorDark",
+      "vis": "hidden",
+      "size": [
+        368,
+        112
+      ],
+      "hasCard": true,
+      "text": "",
+      "bg": "rgb(50, 45, 34)"
+    },
+    "last": {
+      "at": 2941,
+      "target": "674133F8C2A93C188BAF18D618F4EA3D",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian",
+      "theme": "obsidian",
+      "vis": "visible",
+      "size": [
+        368,
+        383
+      ],
+      "hasCard": true,
+      "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+      "bg": "rgb(53, 52, 56)"
+    },
+    "themes": [
+      null,
+      "localOperatorDark",
+      "obsidian"
+    ],
+    "themesAfterPresentation": [
+      "localOperatorDark",
+      "obsidian"
+    ],
+    "visibilityValues": [
+      null,
+      "hidden",
+      "visible"
+    ],
+    "beforeFirstPaint": [
+      {
+        "at": 9,
+        "error": "Error: evaluate threw: Uncaught TypeError: Cannot read properties of null (reading 'dataset')\n    at <anonymous>:5:41\n    at <anonymous>:12:7"
+      },
+      {
+        "at": 189,
+        "target": "674133F8C2A93C188BAF18D618F4EA3D",
+        "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian",
+        "theme": "localOperatorDark",
+        "vis": "hidden",
+        "size": [
+          368,
+          112
+        ],
+        "hasCard": true,
+        "text": "",
+        "bg": "rgb(50, 45, 34)"
+      }
+    ],
+    "firstVisible": {
+      "at": 353,
+      "target": "674133F8C2A93C188BAF18D618F4EA3D",
+      "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian",
+      "theme": "obsidian",
+      "vis": "visible",
+      "size": [
+        368,
+        383
+      ],
+      "hasCard": true,
+      "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+      "bg": "rgb(53, 52, 56)"
+    },
+    "visibleSamples": 21
+  },
+  "browserLog": [
+    "10:31:17.088 › [browser] address overlay hidden: stale_layout",
+    "10:31:17.089 › [browser] denied a media permission request from http://127.0.0.1:60092/page",
+    "10:31:17.089 › [browser] denied a media permission request from http://127.0.0.1:60092/page",
+    "10:31:17.089 › [browser] denied a web-app-installation permission request from http://127.0.0.1:60092/page",
+    "10:31:17.090 › [browser] denied a geolocation permission request from http://127.0.0.1:60092/page",
+    "10:31:17.092 › [browser] address overlay hidden: navigation",
+    "10:31:17.093 › [browser] address overlay hidden: projection_hidden",
+    "10:31:17.160 › [browser] tab 1 navigated to http://127.0.0.1:60324/page",
+    "10:31:17.165 › [browser] denied a geolocation permission request from http://127.0.0.1:60324/page",
+    "10:31:17.166 › [browser] denied a notifications permission request from http://127.0.0.1:60324/page",
+    "10:31:17.204 › [browser] approvals overlay child released: resize",
+    "10:31:17.207 › [browser] session:qa-1488-synthetic is asking for access to http://127.0.0.1:60324 (1 pending)"
+  ],
+  "teardown": {
+    "signal": "SIGTERM",
+    "survivors": []
+  },
+  "finishedAt": "2026-10-29T14:31:20.948Z",
+  "exitCode": 0
+}

@@ -82,11 +82,13 @@ reported as a failed Save operation.
 
 ## Remediation evidence geometry
 
-The production dock is capped at 560px (`chat-sidebar-layout.ts`,
-`CANVAS_PANE_MAX_PX` and `canvasDockWidth`). The remediation matrix measures a
+The dock's width came from `canvasDockWidth` and its own 560px cap
+(`CANVAS_PANE_MAX_PX`) when this remediation matrix was measured; that cap is now
+the slot's one ceiling (`RIGHT_SLOT_MAX_PX`, 1200), so the figures below record
+the tree the matrix ran on. It measures a
 real 400px dock, narrow overlay and 560px maximum, plus a 960px window with its
 actual pane width reported. It does not invent a 960px dock or widen the global
-canvas contract. Sticky headers pin at the scroller top: vertical padding is on
+canvas contract at the time. Sticky headers pin at the scroller top: vertical padding is on
 the bottom/content, not above that sticky coordinate.
 
 ## The resource boundary

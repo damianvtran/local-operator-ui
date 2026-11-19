@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "date": "2026-11-04",
+  "agent": "i18n-auditor",
+  "instance": "b5bf3a7c1761",
+  "model": "openai/gpt-6.1-sol",
+  "model_fallback": null,
+  "translator": {
+    "agent": "D2-r2-translator",
+    "model": "openai/gpt-6.1-sol",
+    "instance": "da5835b00771",
+    "date": "2026-11-04"
+  },
+  "independence": "New keys independently translated in da5835b00771; auditor b5bf3a7c1761 is a distinct agent. Unchanged 68 keys carried forward from independent round-1 audit ed833173e70f of coder/anthropic/claude-opus-5-5 drafts.",
+  "locale": "fr",
+  "namespace": "ui.settings.notifications",
+  "status": "passed",
+  "source_sha256": "f9222665b29b8e5ac4317c7a22983fdf439c6ec9108519c1cb0fd819c43e15f1",
+  "target_sha256": "3a2d632c9dd1219cf6a69e92dab201203589c0bd62a1b7260a3fd8d7dce929d8",
+  "context_sha256": "989785b3efbb298d76277f9359a3e860207f2eb183aad3626f860ee12d93704a",
+  "scope": "Round 2 delta 9080108975ba..bb570f28bebb1165a95f3509ac52325978baf0b2: audit 3 new keys, confirm processing removed, 68 retained values byte-independent equal to round-1 audited JSON; full raw-byte rehash of 71 keys.",
+  "findings": [],
+  "new_keys": {
+    "ui.settings.notifications.custom.finishing": "Finalisation…",
+    "ui.settings.notifications.error.silent": "{file} ne contient aucun son. Choisissez un extrait audible.",
+    "ui.settings.notifications.search_terms": "son, carillon, son de notification, volume, alerte, sound, chime, notification sound, volume, alert"
+  },
+  "continuity": {
+    "added": {},
+    "removed": {
+      "ui.settings.notifications.custom.processing": "Ajustement du volume…"
+    },
+    "changed": {},
+    "retained_identical": 68
+  },
+  "formatting_proof": {
+    "locale": "fr",
+    "parent_sha256": "0b8addb16285a210ac0ce3c648aca77bc27193475c244bc4fb62f75c510e45c4",
+    "head_sha256": "0ab0c917f21d3f9988dc5ee7638c6f00d88c273db53144a8b9553adabb50e7d7",
+    "parsed_json_equal": true,
+    "r1_retained_values_equal": 68,
+    "removed_only": "custom.processing"
+  },
+  "references": {
+    "round_1_comment": "https://github.com/damianvtran/local-operator-ui/pull/1661#issuecomment-6624268656",
+    "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "style_guide_sha256": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226"
+  },
+  "checks": {
+    "mechanical": "71 keys; exact parity; ICU AST args/types; locale CLDR categories; no manual bidi controls; Vietnamese NFC; 710 format evaluations",
+    "linguistic": "New status denotes completion in progress, not completed success. Silent error retains filename and audible-clip remedy, not a volume-settings workaround. Search terms use natural locale terms and retain English; ASCII comma separators per context.",
+    "formatting": "All pre-existing head bytes preserved; new keys appended in source order."
+  },
+  "limitations": [
+    "No localized rendered fit or Urdu native shaping proof; this is an independent linguistic/ICU delta audit, not visual sign-off."
+  ]
+}

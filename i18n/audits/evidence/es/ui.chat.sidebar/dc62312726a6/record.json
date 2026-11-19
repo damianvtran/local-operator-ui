@@ -1,0 +1,127 @@
+{
+  "locale": "es",
+  "mode": "fresh independent five-key translation audit; remaining sidebar keys read for terminology consistency",
+  "scope": "28a6127617e4ebe0b6ba47d39fca5d3a22d1ba93; es/ui.chat.sidebar; fully audited five new mark_all_read scope/suffix keys; remaining keys read for consistency",
+  "head_sha": "28a6127617e4ebe0b6ba47d39fca5d3a22d1ba93",
+  "audit_date": "2026-11-10",
+  "key_count": 86,
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "translator file .worktrees/_s10-translations/es.json; no fallback per translator notes; translator session not supplied"
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "dc62312726a6",
+    "session": "631f355a0944",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "Actual served model in session runtime header: openai/gpt-6.1-sol; no fallback used. Independent fresh session 631f355a0944.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "status": "passed",
+  "result": "clean",
+  "verdict": "clean",
+  "findings": [],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "namespaces": {
+    "ui.chat.sidebar": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "7db9ba5108a62330a1782f775b991ec0483537d2f7d808ae0691e1a6ef8840cd",
+      "target_sha256": "819ca98aca0847a3e5452a0fd89fa2e622d8f9442fffb587ca6341ebe3a14694",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+          "sha256": "7db9ba5108a62330a1782f775b991ec0483537d2f7d808ae0691e1a6ef8840cd"
+        },
+        "es": {
+          "path": "src/i18n/catalogues/es/ui.chat.sidebar.json",
+          "sha256": "819ca98aca0847a3e5452a0fd89fa2e622d8f9442fffb587ca6341ebe3a14694"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.sidebar.context.json",
+          "sha256": "4f1593cc34b395ef8701a60e58e73a0371b3c93730eb7a1f2b2845dc6250d7e3"
+        }
+      },
+      "findings": []
+    }
+  },
+  "per_key_checks": [
+    {
+      "key": "ui.chat.sidebar.mark_all_read.scope_chats",
+      "source": "{count, plural, one {Mark {count, number, ::group-off} unread chat as read.} other {Mark {count, number, ::group-off} unread chats as read.}}",
+      "current_text": "{count, plural, one {Marcar {count, number, ::group-off} chat sin leer como leído.} many {Marcar {count, number, ::group-off} de chats sin leer como leídos.} other {Marcar {count, number, ::group-off} chats sin leer como leídos.}}",
+      "findings": [],
+      "assessment": "Faithful infinitive action matching label; chat/chats and sin leer match counted/sidebar unread copy. one: chat/leído; many: de chats/leídos; other: chats/leídos. Full stop retained.",
+      "placeholder_integrity": "Exact argument names/types and ::group-off number skeletons verified with Python recursive parser against English",
+      "plural_select": "one/many/other verified on every plural; Python structural samples 1/2/1000000, not runtime ICU execution",
+      "manual_bidi_controls": false
+    },
+    {
+      "key": "ui.chat.sidebar.mark_all_read.scope_chats_elsewhere",
+      "source": "{count, plural, one {Mark {count, number, ::group-off} unread chat as read} other {Mark {count, number, ::group-off} unread chats as read}}, including {elsewhere, plural, one {{elsewhere, number, ::group-off} that is not active} other {{elsewhere, number, ::group-off} that are not active}}.",
+      "current_text": "{count, plural, one {Marcar {count, number, ::group-off} chat sin leer como leído} many {Marcar {count, number, ::group-off} de chats sin leer como leídos} other {Marcar {count, number, ::group-off} chats sin leer como leídos}}, {elsewhere, plural, one {incluido {elsewhere, number, ::group-off} chat no activo} many {incluidos {elsewhere, number, ::group-off} de chats no activos} other {incluidos {elsewhere, number, ::group-off} chats no activos}}.",
+      "findings": [],
+      "assessment": "elsewhere is a subset, not added count. chat no activo describes backend class without inventing a section or substituting running. Included noun phrases inflect for each branch; many retains de chats. One final full stop.",
+      "placeholder_integrity": "Exact argument names/types and ::group-off number skeletons verified with Python recursive parser against English",
+      "plural_select": "one/many/other verified on every plural; Python structural samples 1/2/1000000, not runtime ICU execution",
+      "manual_bidi_controls": false
+    },
+    {
+      "key": "ui.chat.sidebar.mark_all_read.scope_tokenless",
+      "source": "{count, plural, one {{count, number, ::group-off} unread mark with no completion token cannot be cleared.} other {{count, number, ::group-off} unread marks with no completion token cannot be cleared.}}",
+      "current_text": "{count, plural, one {No se puede borrar {count, number, ::group-off} marca sin leer que no tiene token de finalización.} many {No se pueden borrar {count, number, ::group-off} de marcas sin leer que no tienen token de finalización.} other {No se pueden borrar {count, number, ::group-off} marcas sin leer que no tienen token de finalización.}}",
+      "findings": [],
+      "assessment": "Negative inability preserved; does not promise clearing. Separate unread-mark count is not added to ackable chats. token de finalización describes a completion token, not an access/security token; token is explicitly kept English by es guide. No earlier exact completion-token rendering found in sibling es UI catalogues; receipt is separately recibo in canonical.fold.receipt.*. one: marca/tiene/puede; many and other: marcas/tienen/pueden, many includes de.",
+      "placeholder_integrity": "Exact argument names/types and ::group-off number skeletons verified with Python recursive parser against English",
+      "plural_select": "one/many/other verified on every plural; Python structural samples 1/2/1000000, not runtime ICU execution",
+      "manual_bidi_controls": false
+    },
+    {
+      "key": "ui.chat.sidebar.mark_all_read.scope_joined",
+      "source": "{chats} {tokenless}",
+      "current_text": "{chats} {tokenless}",
+      "findings": [],
+      "assessment": "Plain U+0020 between two independently punctuated Spanish sentences is correct; no added punctuation or missing boundary. Argument names chats/tokenless unchanged.",
+      "placeholder_integrity": "Exact argument names/types and ::group-off number skeletons verified with Python recursive parser against English",
+      "plural_select": "No plural selector; both plain arguments preserved",
+      "manual_bidi_controls": false
+    },
+    {
+      "key": "ui.chat.sidebar.mark_all_read.name_suffix_elsewhere",
+      "source": ", including {elsewhere, plural, one {{elsewhere, number, ::group-off} that is not active} other {{elsewhere, number, ::group-off} that are not active}}",
+      "current_text": ", {elsewhere, plural, one {incluido {elsewhere, number, ::group-off} chat no activo} many {incluidos {elsewhere, number, ::group-off} de chats no activos} other {incluidos {elsewhere, number, ::group-off} chats no activos}}",
+      "findings": [],
+      "assessment": "Comma plus space starts suffix. Direct concatenation reads Marcar todos como leídos (5), incluidos 2 chats no activos. Full visible label remains exact prefix; no trailing punctuation; one/many/other forms preserve subset meaning.",
+      "placeholder_integrity": "Exact argument names/types and ::group-off number skeletons verified with Python recursive parser against English",
+      "plural_select": "one/many/other verified on every plural; Python structural samples 1/2/1000000, not runtime ICU execution",
+      "manual_bidi_controls": false
+    }
+  ],
+  "remediation_verification": {},
+  "unverified": [
+    "Repository Node validator/deriveReceiptAudit not executed: explicit no-node-process constraint. Compatibility assessed from source, not claimed as executed.",
+    "Native tooltip wrapping, live screen-reader pronunciation and rendered fit unverified: browser/build prohibited; these keys have no numeric maxCells/maxChars hint.",
+    "No pseudo-localization or runtime ICU formatter executed; Python recursive structural checks and sample expansion only."
+  ],
+  "receipt_contract_review": {
+    "source": "scripts/i18n/ledger-rules.mjs deriveReceiptAudit/receiptScope/scopedHash/countFindings; scripts/i18n/ledger-assemble.mjs call sites; docs/I18N.md Retain checkable audit records",
+    "assessment": "Single namespace owns status/result, matching source/target hash aliases and explicit findings []; auditor agent/instance/model unambiguous; passed and clean normalize consistently; empty findings supports zero counts and clean. Expected derivation: i18n-auditor, dc62312726a6, openai/gpt-6.1-sol, clean. Not executed in Node."
+  },
+  "audit_notes_not_execution_log": {
+    "executed": [
+      "Read locale guide and glossary from core i18n/style-guides/es.md and i18n/glossary.md (UI has no such files); read English/context/target, canonical and sibling terminology, translator notes, composition source and receipt-contract sources.",
+      "git rev-parse HEAD returned 28a6127617e4ebe0b6ba47d39fca5d3a22d1ba93",
+      "shasum -a 256 on English, context and Spanish target returned hashes recorded in namespace block; expected target prefix matched.",
+      "Python json.loads, full-file key parity, recursive ICU parsing of five source/target keys, argument/type comparison, exact number skeleton validation, one/many/other completeness, format-control scan; sample branch expansion at 1, 2 and 1000000; composed 5/2/5 tooltip and label-prefix assertion.",
+      "Fresh random 12-hex instance scanned unused through i18n/receipts and i18n/audits/evidence."
+    ],
+    "notes": "Semantic, register, terminology, typography and agreement judgments are auditor reasoning, not output of a translation service or execution log. No MT used. No pre-existing-other-key findings raised. Only this scratch receipt written; worktree left read-only."
+  }
+}

@@ -1,0 +1,38 @@
+locale   key                                   parse placeholders          ICU arms
+===== fr (297 keys in namespace)
+    events.invited                 args=[actor,targets] plural=- 
+      1 target: Dana a invité Ava
+      3 targets: Dana a invité Ava, Ben et Cleo cells=26 (en 25)
+    events.joined                  args=[targets] plural=- 
+      1 target: Arrivée dans la conversation : Ava
+      3 targets: Arrivée dans la conversation : Ava, Ben et Cleo cells=40 (en 16)
+    events.owner_added_agent       args=[actor,targets] plural=- 
+      1 target: Dana a ajouté son agent Ava
+      3 targets: Dana a ajouté son agent Ava, Ben et Cleo cells=36 (en 35)
+    events.left                    args=[targets] plural=- 
+      1 target: Départ de la conversation : Ava
+      3 targets: Départ de la conversation : Ava, Ben et Cleo cells=37 (en 14)
+    events.removed                 args=[actor,targets] plural=- 
+      1 target: Dana a retiré Ava
+      3 targets: Dana a retiré Ava, Ben et Cleo cells=26 (en 25)
+    events.consented               args=[actor,targets] plural=- 
+      1 target: Dana a autorisé Ava à rejoindre la conversation
+      3 targets: Dana a autorisé Ava, Ben et Cleo à rejoindre la conversation cells=56 (en 34)
+    events.declined_self           args=[actor] plural=- 
+      1 target: Dana a refusé l’invitation
+      3 targets: Dana a refusé l’invitation cells=29 (en 31)
+    events.declined                args=[actor,targets] plural=- 
+      1 target: Dana a refusé l’invitation pour Ava
+      3 targets: Dana a refusé l’invitation pour Ava, Ben et Cleo cells=44 (en 45)
+    events.withdrawn               args=[actor,targets] plural=- 
+      1 target: Dana a annulé l’invitation pour Ava
+      3 targets: Dana a annulé l’invitation pour Ava, Ben et Cleo cells=44 (en 45)
+    events.unknown                 args=[] plural=- 
+      1 target: Modification des membres
+      3 targets: Modification des membres cells=24 (en 18)
+    events.others                  args=[] plural=count:many/one/other !! POUND 3 vs en 2 
+      render: 1->1 autre  2->2 autres  3->3 autres  5->5 autres  11->11 autres  21->21 autres cells=65 (en 47)
+    members.invitation_note_v3     args=[] plural=- 
+      1 target: Les invitations ne donnent accès qu’une fois acceptées. Vos propres agents rejoignent la conversation immédiatement ; l’agent d’une autre personne la rejoint dès que son propriétaire y consent. Un agent membre lit chaque message ici et décide s’il répond, et il est censé répondre quand on le mentionne avec @. Son propriétaire peut le limiter aux mentions avec @ et aux fils où il intervient, ou le mettre en sourdine.
+      3 targets: Les invitations ne donnent accès qu’une fois acceptées. Vos propres agents rejoignent la conversation immédiatement ; l’agent d’une autre personne la rejoint dès que son propriétaire y consent. Un agent membre lit chaque message ici et décide s’il répond, et il est censé répondre quand on le mentionne avec @. Son propriétaire peut le limiter aux mentions avec @ et aux fils où il intervient, ou le mettre en sourdine. cells=419 (en 310)
+  quote census (namespace): ’=86 «=5 »=5

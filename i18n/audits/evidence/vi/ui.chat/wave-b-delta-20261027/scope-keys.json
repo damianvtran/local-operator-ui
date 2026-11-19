@@ -1,0 +1,312 @@
+[
+	{
+		"namespace": "ui.agents.config",
+		"key": "ui.agents.config.banner.unavailable",
+		"en": "The backend could not be reached, so the composer is unavailable for now."
+	},
+	{
+		"namespace": "ui.agents.config",
+		"key": "ui.agents.config.disabled_gate",
+		"en": "Configure agents by conversation"
+	},
+	{
+		"namespace": "ui.agents.config",
+		"key": "ui.agents.config.run_details_region",
+		"en": "Run details"
+	},
+	{
+		"namespace": "ui.chat",
+		"key": "ui.chat.session_status.context_heading",
+		"en": "Context"
+	},
+	{
+		"namespace": "ui.chat",
+		"key": "ui.chat.session_status.context_nothing_measured_tooltip",
+		"en": "Context: nothing measured yet. The window fills as the conversation runs."
+	},
+	{
+		"namespace": "ui.chat",
+		"key": "ui.chat.session_status.conversation_starting",
+		"en": "Set once the conversation starts."
+	},
+	{
+		"namespace": "ui.chat",
+		"key": "ui.chat.session_status.model_none_resolved_tooltip",
+		"en": "Model: none resolved yet. Choose the model this conversation will run on."
+	},
+	{
+		"namespace": "ui.chat",
+		"key": "ui.chat.session_status.not_signed_in",
+		"en": "Not signed in to {label}"
+	},
+	{
+		"namespace": "ui.chat",
+		"key": "ui.chat.session_status.not_signed_in_description",
+		"en": "This session runs {label} without a working sign-in, so it cannot answer until you connect it."
+	},
+	{
+		"namespace": "ui.chat",
+		"key": "ui.chat.session_status.nothing_measured_yet",
+		"en": "Nothing measured yet. The window fills as the conversation runs."
+	},
+	{
+		"namespace": "ui.chat",
+		"key": "ui.chat.session_status.temporarily_unavailable",
+		"en": "{label} is temporarily unavailable"
+	},
+	{
+		"namespace": "ui.chat",
+		"key": "ui.chat.session_status.temporarily_unavailable_description",
+		"en": "Your saved sign-in is still present. Try again later or choose another model."
+	},
+	{
+		"namespace": "ui.chat.canonical",
+		"key": "ui.chat.canonical.placeholder.loading",
+		"en": "Loading conversation…"
+	},
+	{
+		"namespace": "ui.chat.canonical",
+		"key": "ui.chat.canonical.placeholder.region_label",
+		"en": "Loading conversation"
+	},
+	{
+		"namespace": "ui.chat.canonical",
+		"key": "ui.chat.canonical.tool_row.generic_verb.running",
+		"en": "Calling"
+	},
+	{
+		"namespace": "ui.chat.canonical",
+		"key": "ui.chat.canonical.tool_row.generic_verb.settled",
+		"en": "Called"
+	},
+	{
+		"namespace": "ui.chat.canonical",
+		"key": "ui.chat.canonical.tool_row.outcome.failed",
+		"en": "failed"
+	},
+	{
+		"namespace": "ui.chat.canonical",
+		"key": "ui.chat.canonical.tool_row.outcome.interrupted",
+		"en": "interrupted"
+	},
+	{
+		"namespace": "ui.chat.canonical",
+		"key": "ui.chat.canonical.tool_row.outcome.never_ran",
+		"en": "never ran"
+	},
+	{
+		"namespace": "ui.chat.canonical",
+		"key": "ui.chat.canonical.tool_row.outcome.succeeded",
+		"en": "succeeded"
+	},
+	{
+		"namespace": "ui.chat.device",
+		"key": "ui.chat.device.fact.this_device",
+		"en": "this device"
+	},
+	{
+		"namespace": "ui.chat.device",
+		"key": "ui.chat.device.footer.move_deletes_copy",
+		"en": "The copy on this device is deleted when the move commits."
+	},
+	{
+		"namespace": "ui.chat.device",
+		"key": "ui.chat.device.label.this_device",
+		"en": "This device"
+	},
+	{
+		"namespace": "ui.chat.device",
+		"key": "ui.chat.device.notice.move_hold_detail",
+		"en": "handing off · it continues there; this cannot be stopped from here"
+	},
+	{
+		"namespace": "ui.chat.device",
+		"key": "ui.chat.device.picker.heading.move",
+		"en": "Move this conversation to"
+	},
+	{
+		"namespace": "ui.chat.device",
+		"key": "ui.chat.device.picker.heading.start",
+		"en": "Start the conversation on"
+	},
+	{
+		"namespace": "ui.chat.device",
+		"key": "ui.chat.device.row.conversations",
+		"en": "{count, plural, one {{count, number, ::group-off} conversation} other {{count, number, ::group-off} conversations}}"
+	},
+	{
+		"namespace": "ui.chat.device",
+		"key": "ui.chat.device.row.not_here_why",
+		"en": "the conversation is not here to move; recall it here first"
+	},
+	{
+		"namespace": "ui.chat.device",
+		"key": "ui.chat.device.sentence.mesh_read_failure",
+		"en": "The device list could not be read, so this is what the last answer holds."
+	},
+	{
+		"namespace": "ui.chat.device",
+		"key": "ui.chat.device.sentence.move_in_flight",
+		"en": "This conversation is moving to {name}. It continues there; nothing sent from here would be delivered."
+	},
+	{
+		"namespace": "ui.chat.device",
+		"key": "ui.chat.device.sentence.pairing_guidance",
+		"en": "This device is in no network. Create one with `lop network init`, or join one with `lop network join '<token>'."
+	},
+	{
+		"namespace": "ui.chat.pickers",
+		"key": "ui.chat.pickers.at_menu.heading.files",
+		"en": "Files"
+	},
+	{
+		"namespace": "ui.chat.pickers",
+		"key": "ui.chat.pickers.at_menu.heading.projects",
+		"en": "Projects"
+	},
+	{
+		"namespace": "ui.chat.pickers",
+		"key": "ui.chat.pickers.at_menu.region_label",
+		"en": "Files"
+	},
+	{
+		"namespace": "ui.chat.pickers",
+		"key": "ui.chat.pickers.at_menu.tag.directory",
+		"en": "Directory"
+	},
+	{
+		"namespace": "ui.chat.pickers",
+		"key": "ui.chat.pickers.at_menu.tag.file",
+		"en": "File"
+	},
+	{
+		"namespace": "ui.chat.pickers",
+		"key": "ui.chat.pickers.at_menu.tag.project",
+		"en": "Project"
+	},
+	{
+		"namespace": "ui.chat.pickers",
+		"key": "ui.chat.pickers.slash.arguments_region_label",
+		"en": "Command arguments"
+	},
+	{
+		"namespace": "ui.chat.pickers",
+		"key": "ui.chat.pickers.slash.click.chooses_name",
+		"en": "Click chooses this name."
+	},
+	{
+		"namespace": "ui.chat.pickers",
+		"key": "ui.chat.pickers.slash.click.completes_label",
+		"en": "Click completes /{label}."
+	},
+	{
+		"namespace": "ui.chat.pickers",
+		"key": "ui.chat.pickers.slash.click.completes_value",
+		"en": "Click completes this value."
+	},
+	{
+		"namespace": "ui.chat.pickers",
+		"key": "ui.chat.pickers.slash.click.connects",
+		"en": "Click connects {name}."
+	},
+	{
+		"namespace": "ui.chat.pickers",
+		"key": "ui.chat.pickers.slash.click.runs",
+		"en": "Click runs /{label}."
+	},
+	{
+		"namespace": "ui.chat.pickers",
+		"key": "ui.chat.pickers.slash.click.runs_command",
+		"en": "Click runs the command."
+	},
+	{
+		"namespace": "ui.chat.pickers",
+		"key": "ui.chat.pickers.slash.click.runs_with_value",
+		"en": "Click runs {command}{value}."
+	},
+	{
+		"namespace": "ui.chat.pickers",
+		"key": "ui.chat.pickers.slash.click.stages",
+		"en": "Click stages /{label}."
+	},
+	{
+		"namespace": "ui.chat.pickers",
+		"key": "ui.chat.pickers.slash.enter_needs_a_pick",
+		"en": "Enter needs a row you pick: ↓ then Enter · Tab completes this row."
+	},
+	{
+		"namespace": "ui.chat.pickers",
+		"key": "ui.chat.pickers.slash.phase.arguments",
+		"en": "Arguments"
+	},
+	{
+		"namespace": "ui.chat.pickers",
+		"key": "ui.chat.pickers.slash.region_label",
+		"en": "Slash commands"
+	},
+	{
+		"namespace": "ui.chat.run_details",
+		"key": "ui.chat.run_details.nothing_in_flight",
+		"en": "Nothing in flight."
+	},
+	{
+		"namespace": "ui.chat.run_details",
+		"key": "ui.chat.run_details.nothing_to_show_yet",
+		"en": "Nothing to show yet."
+	},
+	{
+		"namespace": "ui.chat.status",
+		"key": "ui.chat.status.credential_refused",
+		"en": "The running server refused this app's credential, so sign-in, settings and slash commands are unavailable."
+	},
+	{
+		"namespace": "ui.chat.status",
+		"key": "ui.chat.status.degraded",
+		"en": "The server is answering slowly. Your messages are queued."
+	},
+	{
+		"namespace": "ui.chat.status",
+		"key": "ui.chat.status.internet_offline",
+		"en": "This machine is offline. Sending will wait."
+	},
+	{
+		"namespace": "ui.chat.status",
+		"key": "ui.chat.status.unreachable",
+		"en": "Can't reach the Local Operator server. Sending will wait."
+	},
+	{
+		"namespace": "ui.common.connection",
+		"key": "ui.common.connection.session_loss.frame_too_large",
+		"en": "This conversation's updates were too large to display — reconnect to try again."
+	},
+	{
+		"namespace": "ui.common.connection",
+		"key": "ui.common.connection.session_loss.history_unreadable",
+		"en": "Could not load this conversation's history — reconnect to try again."
+	},
+	{
+		"namespace": "ui.common.connection",
+		"key": "ui.common.connection.session_loss.lost",
+		"en": "Lost the connection to this conversation — reconnect to keep reading."
+	},
+	{
+		"namespace": "ui.common.connection",
+		"key": "ui.common.connection.session_loss.not_paired",
+		"en": "This app is not paired with the Local Operator server, so this conversation cannot be read yet."
+	},
+	{
+		"namespace": "ui.common.connection",
+		"key": "ui.common.connection.session_loss.server_down",
+		"en": "The Local Operator server is not running — reconnect once it is back, or restart the app if it stays down."
+	},
+	{
+		"namespace": "ui.common.layout",
+		"key": "ui.common.layout.toasts.dismiss",
+		"en": "Close toast"
+	},
+	{
+		"namespace": "ui.common.layout",
+		"key": "ui.common.layout.toasts.notifications",
+		"en": "Notifications"
+	}
+]

@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import type { FC, ReactNode } from "react";
 import type { Components } from "react-markdown";
 import { unconfirmedChipLabel, unconfirmedHover } from "./credential-capture";
@@ -68,7 +70,7 @@ const citationLabel = (citation: CitationRef): string => {
 	if (citation.kind === "stored") return citation.key;
 	if (citation.kind === "unconfirmed")
 		return unconfirmedChipLabel(citation.key);
-	return "Credential not stored";
+	return t("ui.chat.page_chrome.credential_not_stored");
 };
 
 /**
@@ -92,19 +94,24 @@ const citationTitle = (
 export const CredentialCitationChip: FC<{
 	citation: CitationRef;
 	title?: string;
-}> = ({ citation, title }) => (
-	<CredentialChip
-		tone={citation.kind === "stored" ? "live" : "warning"}
-		label={citationLabel(citation)}
-		chars={citation.kind === "stored" ? citation.chars : null}
-		title={citationTitle(citation, title)}
-		// Inline flow, which is the whole requirement: a citation mid-sentence must
-		// stay inside its paragraph. `align-middle` keeps the chip's box on the
-		// text's own baseline band instead of lifting the line, and the leading is
-		// the paragraph's.
-		className="align-middle"
-	/>
-);
+}> = ({ citation, title }) => {
+	// The label is resolved at render, so the chip must follow a language switch
+	// even when the markdown tree above it is memoised.
+	useI18nLocale();
+	return (
+		<CredentialChip
+			tone={citation.kind === "stored" ? "live" : "warning"}
+			label={citationLabel(citation)}
+			chars={citation.kind === "stored" ? citation.chars : null}
+			title={citationTitle(citation, title)}
+			// Inline flow, which is the whole requirement: a citation mid-sentence must
+			// stay inside its paragraph. `align-middle` keeps the chip's box on the
+			// text's own baseline band instead of lifting the line, and the leading is
+			// the paragraph's.
+			className="align-middle"
+		/>
+	);
+};
 
 /**
  * The props the override hands a link it does not recognise as a citation.

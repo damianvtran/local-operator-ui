@@ -1,0 +1,45 @@
+{
+ "schema": 1,
+ "instance": "2bc153cbf350",
+ "locale": "hi",
+ "namespace": "ui.chat.canonical",
+ "audit_date": "2026-11-11",
+ "auditor": {
+  "agent": "i18n-auditor",
+  "instance": "2bc153cbf350",
+  "session": "2bc153cbf350",
+  "model": "deepseek/deepseek-flash",
+  "independent_from_translator_session": true,
+  "actual_model_source": "as stated in the auditor's own record (session runtime model header deepseek/deepseek-flash); no fallback was reported"
+ },
+ "status": "passed",
+ "result": "clean",
+ "scope": "the 14 NEW tool-state / image-generation status keys of ui.chat.canonical for hi (PR #1870, S16a), audited as the translator's draft hi-s16a.json (sha256 2b7d98192ccbe13deb01e0b24c2cad296c21fcdb1514cf50a56924f0dd685db6); the other 442 keys are byte-identical to the origin/main bytes covered by the superseded row audits (verify.log)",
+ "sha256": {
+  "hi": "4678c723a8aba6c2d1ef63cb3bb9255967f0a02107baa99da2129480dff750c4",
+  "en": "d6d47d31667fe69448cf408f5a4fecf9948782e850506a6141217585de9db1fd",
+  "context": "ef8a12dea1835c241af3a166754322ce093af88592ec625036211458a50accac"
+ },
+ "findings": [],
+ "provenance": {
+  "kind": "BINDING RECEIPT: verdict, counts, model and session are transcribed from the auditor's own record/report; this file was written by the integrating coder session (agent coder), NOT by the auditor. The auditor audited the 14-key draft fragment, so no auditor-authored file can name the landed catalogue hash; this receipt names it, and verify.log proves the 14 landed values equal the audited draft. Finding ids/keys/headlines are lifted from the auditor record/report (the report is authoritative for detail).",
+  "auditor_record_instance_label": "2bc153cbf350-s16a-au-hi",
+  "source_report": {
+   "path": "i18n/audits/evidence/hi/ui.chat.canonical/s16a-2bc153cbf350/report.md",
+   "sha256": "068d94fdb4aab296265074cdf1b26720d73d92e1c87e6a95ae794944c91b62f4"
+  },
+  "auditor_record": {
+   "path": "i18n/audits/evidence/hi/ui.chat.canonical/s16a-2bc153cbf350/record.json",
+   "sha256": "de0c739f71e2dd68f6ca5ef42afd2533796e59273cf935cb49327d20c429728f"
+  },
+  "auditor_authored_receipt": null,
+  "audited_draft": {
+   "file": "hi-s16a.json",
+   "sha256": "2b7d98192ccbe13deb01e0b24c2cad296c21fcdb1514cf50a56924f0dd685db6"
+  },
+  "landed_value_proof": {
+   "path": "i18n/audits/evidence/hi/ui.chat.canonical/s16a-2bc153cbf350/verify.log",
+   "sha256": "9e90bcffb0214e1c2430663f9e63298dae27707951f09cbda9a7dca98dd2a91c"
+  }
+ }
+}

@@ -19,8 +19,11 @@
  * opened" report.
  *
  * Usage: node scripts/notarize-artifacts.mjs [--dist dist]
- * Env: APPLE_ID, APPLE_ID_PASSWORD (app-specific password), APPLE_TEAM_ID,
- *      NOTARIZE=true. Loaded from .env.build when present.
+ * Env: NOTARIZE=true and APPLE_API_KEY (path to the App Store Connect .p8),
+ *      APPLE_API_KEY_ID, APPLE_API_ISSUER - what CI binds. A local .env.build
+ *      may carry APPLE_ID / APPLE_ID_PASSWORD / APPLE_TEAM_ID instead
+ *      (`notarizationCredentials` in build-env.mjs decides). Loaded from
+ *      .env.build when present.
  */
 import { createHash } from "node:crypto";
 import {
@@ -34,7 +37,12 @@ import {
 } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import { notarize } from "@electron/notarize";
-import { loadBuildEnv } from "./build-env.mjs";
+import {
+	NOTARIZATION_CREDENTIAL_HINT,
+	loadBuildEnv,
+	missingNotarizationCredentialIsFatal,
+	notarizationCredentials,
+} from "./build-env.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
 
 /** Disk images in a build's artifact list. */
@@ -194,14 +202,18 @@ export async function notarizeArtifacts({
 		log("Skipping disk image notarization: NOTARIZE not set to true");
 		return { notarized: [] };
 	}
-	if (
-		!process.env.APPLE_ID ||
-		!process.env.APPLE_ID_PASSWORD ||
-		!process.env.APPLE_TEAM_ID
-	) {
-		log(
-			"Skipping disk image notarization: set APPLE_ID, APPLE_ID_PASSWORD and APPLE_TEAM_ID (in .env.build when building locally)",
-		);
+	// The skip line stays the `Skipping ...` shape `require-notarized-dmg.sh`
+	// refuses, so a local run reads as it always did. On GitHub Actions a missing
+	// credential under NOTARIZE=true throws instead - a misbound secret on a
+	// release run, refused at the step that cannot do its job rather than by the
+	// next gate (see `missingNotarizationCredentialIsFatal`).
+	const credentials = notarizationCredentials();
+	if (!credentials) {
+		if (missingNotarizationCredentialIsFatal())
+			throw new Error(
+				`Disk image notarization credentials missing: ${NOTARIZATION_CREDENTIAL_HINT}`,
+			);
+		log(`Skipping disk image notarization: ${NOTARIZATION_CREDENTIAL_HINT}`);
 		return { notarized: [] };
 	}
 	if (env.loaded) log(`Loaded build environment from ${env.path}`);
@@ -239,9 +251,7 @@ export async function notarizeArtifacts({
 		await notarize({
 			tool: "notarytool",
 			appPath: dmgPath,
-			appleId: process.env.APPLE_ID,
-			appleIdPassword: process.env.APPLE_ID_PASSWORD,
-			teamId: process.env.APPLE_TEAM_ID,
+			...credentials.options,
 		});
 
 		const removedZip = removeTransientZip(dmgPath);

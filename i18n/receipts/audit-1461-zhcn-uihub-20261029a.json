@@ -1,0 +1,12 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "kimi/k3.1-pro",
+  "instance": "audit-1461-zhcn-uihub-20261029a",
+  "status": "passed",
+  "namespace": "ui.hub",
+  "sha256": {
+    "zh-CN": "81d356c1f6904b030cbd701fa34c4abe37a54f59be7801bc39c183887cb8676c",
+    "en": "0522358c7f0dc91b5dc02f5a6d2c3919e88d11ef041983f092e099b98033632e"
+  },
+  "findings": []
+}

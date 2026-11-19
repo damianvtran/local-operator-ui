@@ -1,0 +1,129 @@
+{
+	"schema": 1,
+	"kind": "translation-audit-record",
+	"audit_kind": "independent-delta-audit-of-the-wave-b-remediation-head",
+	"batch": "wave-b",
+	"round": "R2 (remediation delta)",
+	"audit_id": "wb-d2-9b3e2c165c87",
+	"instance": "wb-zh-cn-delta-20261027-9b3e2c165c87",
+	"locale": "zh-CN",
+	"namespace": "ui.chat.device",
+	"audit_date": "2026-10-27",
+	"head": "a5356ce91c",
+	"head_full": "a5356ce91c4f37bf4c4d1c4518070e3a9b2505cb",
+	"parent_full": "0559f7f7d830752b0c5d118c2b1049f125b43bbb",
+	"key_count": 25,
+	"wave_b_keys": 11,
+	"changed_keys": [
+		"ui.chat.device.row.not_here_why"
+	],
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "9b3e2c165c87",
+		"model": "radient/auto",
+		"model_provenance": {
+			"route": "radient/auto",
+			"route_source": "the harness system prompt of this session ('Model: radient/auto')",
+			"fallback_used": false,
+			"fallback_chain": [],
+			"actual_model_source": "No [session incident] and no 'model switch' notice appears anywhere in this session's transcript (~/.local-operator/sessions/9b3e2c165c87/transcript.jsonl, 264 events, types message/custom only); the phrase occurs only inside prompt text that quotes the guidance itself. The upstream model behind the router alias is not exposed to this session, so none is invented: the route recorded is the one the harness reports.",
+			"disclosure": "Every judgement below was made in this session under the recorded route; no model change was requested or observed."
+		},
+		"independent_from_translator_session": true,
+		"actual_model_source": "No [session incident] and no 'model switch' notice appears anywhere in this session's transcript (~/.local-operator/sessions/9b3e2c165c87/transcript.jsonl, 264 events, types message/custom only); the phrase occurs only inside prompt text that quotes the guidance itself. The upstream model behind the router alias is not exposed to this session, so none is invented: the route recorded is the one the harness reports."
+	},
+	"translator": {
+		"agent": "i18n-translator",
+		"model": "radient/auto",
+		"model_note": "router alias recorded by the coordinator for the reply lane; the upstream model is not exposed to the auditor. Disclosed rather than guessed.",
+		"date": "2026-10-27"
+	},
+	"input_hashes": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.chat.device.json",
+			"sha256": "0d4c357edbb9a67d015301f263e3892f752aca9ee63a3d5c737bf12a9ac6375a"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.chat.device.context.json",
+			"sha256": "b3f41c2c587de6559aa52fe15ab2cfdda521df44b770b76ac8160855fd5c4a7a"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/zh-CN/ui.chat.device.json",
+			"sha256": "5b3aed9a129dc90811ff57fd251678d0f8253c9859716f8ea2aae1d41c608cbe"
+		}
+	},
+	"artifacts": [
+		{
+			"path": "i18n/audits/evidence/zh-CN/ui.chat.device/wb-d2-9b3e2c165c87/audit.log",
+			"sha256": "556345ec07946c61c9feb962a35d5302bf9bb276c5b7bbfac5256c3142fa64cc"
+		},
+		{
+			"path": "i18n/receipts/wb-zh-cn-delta-20261027-9b3e2c165c87.json",
+			"sha256": "c043021afcaf1512150ba2247483ac248f3fcc26983ae012750bbb29f10e3f1d"
+		}
+	],
+	"current_report_verdict": {
+		"status": "passed",
+		"result": "clean-with-findings",
+		"unresolved_blocker_major_count": 0,
+		"severity_counts": {
+			"blocker": 0,
+			"major": 0,
+			"minor": 1,
+			"nit": 0
+		},
+		"finding_ids": [
+			"ZH-WBD-1"
+		],
+		"independent_of_translator": true
+	},
+	"delta": {
+		"changed_keys": [
+			"ui.chat.device.row.not_here_why"
+		],
+		"unchanged_wave_b_values": 10,
+		"note": "Parsed-JSON diff 0559f7f7d8 -> a5356ce91c proves this file's other values are byte-identical to the audited bytes (delta-diff.log); the changed values are audited in audit.log §1-2."
+	},
+	"resolutions": [
+		{
+			"id": "ZH-WB-1",
+			"severity_in_earlier_audit": "MINOR",
+			"namespace": "ui.chat.device",
+			"key": "ui.chat.device.row.not_here_why",
+			"earlier_suggestion": "对话不在此处，无法迁移；先将其移回此处",
+			"applied": "此对话的定位行现为 对话不在此处，无法迁移；先将其移回此处",
+			"decision": "resolved",
+			"judgement": "Applied verbatim and it is the right fix: the row now names the action with the same verb as the mesh control (移回此设备), the full refusal it shortens (ui.mesh.mesh_drop.recall_first -> 请先将其移回此处) and this file's sibling sentence.remote (…点击可将其移回此处…). The clause stays lowercase-style, keeps the semicolon, and drops no trailing punctuation, matching EN and the two other stand-down reasons.",
+			"checked": "sentence reads 对话不在此处，无法迁移；先将其移回此处 (38 cells vs EN 58)."
+		}
+	],
+	"findings": [
+		{
+			"id": "ZH-WBD-1",
+			"severity": "MINOR",
+			"category": "terminology/consistency",
+			"key": "ui.chat.device.sentence.local",
+			"current": "此对话在此设备上运行。点击可将其迁移到其他设备，或稍后召回。",
+			"source": "This conversation runs on this device. Click to move it to another device or recall it later.",
+			"problem": "召回 is the only occurrence of 召回 in the zh-CN catalogue; EN's recall reads 移回 in five shipped places, including the control this chip opens. Naming the action with a word the control never uses costs the reader a translation step. Pre-existing (it predates wave B and the earlier audit listed it under verified-no-finding); this wave made it the sole outlier by fixing row.not_here_why.",
+			"suggested": "此对话在此设备上运行。点击可将其迁移到其他设备，或稍后移回此处。",
+			"severity_note": "MINOR, not MAJOR: the meaning is never ambiguous (the destination control reads 移回此设备 on the same screen) and the sentence is a tooltip/accessible name for a chip whose label already says where the conversation runs. Not a shipping blocker; a one-line, wider-by-4-cells fix in a file this wave already touches.",
+			"evidence": [
+				"ui.mesh.mesh_card.recall_to_this_device = 移回此设备",
+				"ui.mesh.mesh_drop.recall_it = 移回此设备",
+				"ui.mesh.mesh_drop.recall_first = 此对话位于{owner}。转移必须经过此设备，请先将其移回此处。",
+				"ui.chat.device.sentence.remote = 此对话在{name}上运行。点击可将其移回此处，或继续迁移。",
+				"ui.chat.device.row.not_here_why (this wave) = 对话不在此处，无法迁移；先将其移回此处",
+				"grep 召回 src/i18n/catalogues/zh-CN/*.json -> one hit, sentence.local"
+			]
+		}
+	],
+	"next_action": "Only recorded MINOR: ZH-WBD-1 (ui.chat.device.sentence.local -> …或稍后移回此处。). Not a shipping blocker. Recommended while the file is already open in this PR.",
+	"limitations": [
+		"No browser or rendered frame was available, so no pixel, truncation or overflow claim is made; widths are codepoint cell counts, not measurements.",
+		"No native-speaker sign-off is claimed; the audit is an independent agent read of the locale against its own shipped catalogue, the glossary and the style guide.",
+		"Pre-existing keys in the nine files were read as terminology evidence, not re-audited, except where a finding names one (ZH-WBD-1).",
+		"The English copy was read as the source, not audited as English; the one English change (the closed code span) was verified only for what it does to both locales through the formatter.",
+		"The upstream model behind the radient/auto route is not exposed to this session; the recorded route is the harness's own."
+	]
+}

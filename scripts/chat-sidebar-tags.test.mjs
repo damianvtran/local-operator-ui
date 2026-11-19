@@ -5,6 +5,7 @@ import { build } from "esbuild";
 
 const root = process.cwd();
 const values = new Map();
+globalThis.tagMoveToasts = [];
 globalThis.localStorage = {
 	getItem: (key) => values.get(key) ?? null,
 	setItem: (key, value) => values.set(key, value),
@@ -23,8 +24,10 @@ const bundle = await build({
 	stdin: {
 		contents: `
 export * from "./src/renderer/src/features/chat/chat-tag-groups";
-export * from "./src/renderer/src/features/chat/chat-tag-draft";
-export {parseSidebarView, DEFAULT_SIDEBAR_VIEW} from "./src/renderer/src/features/chat/chat-sidebar-view";
+export {foldedLiveCue} from "./src/renderer/src/features/chat/chat-sidebar-view";
+export {moveChatToTag} from "./src/renderer/src/features/chat/chat-tag-move";
+export {parseSidebarView, DEFAULT_SIDEBAR_VIEW, toggleTagDisclosure, tagGroupBodyRows, tagGroupCollapsed} from "./src/renderer/src/features/chat/chat-sidebar-view";
+export {DesktopControlError} from "./src/renderer/src/shared/api/local-operator/desktop-api";
 export {desktopEndpoint, desktopRequestSchema} from "./src/shared/desktop-contract";
 export {useUiPreferencesStore} from "./src/renderer/src/shared/store/ui-preferences-store";
 export {useSessionTagsStore} from "./src/renderer/src/shared/store/session-tags-store";
@@ -41,6 +44,22 @@ export {useCanonicalSessionsStore} from "./src/renderer/src/shared/store/canonic
 	platform: "node",
 	write: false,
 	plugins: [
+		{
+			name: "tag-toast-capture",
+			setup(builder) {
+				builder.onResolve({ filter: /@shared\/utils\/toast-manager/ }, () => ({
+					path: "toast",
+					namespace: "tag-toast",
+				}));
+				builder.onLoad({ filter: /.*/, namespace: "tag-toast" }, () => ({
+					contents: `
+export const showSuccessToast = (message,options) => globalThis.tagMoveToasts.push({message,options});
+export const showWarningToast = (message,options) => globalThis.tagMoveToasts.push({message,options});
+`,
+					loader: "js",
+				}));
+			},
+		},
 		{
 			name: "transcript-echo-fixture",
 			setup(builder) {
@@ -68,11 +87,18 @@ export const discardPendingSends = () => undefined;
 	],
 });
 const {
+	moveChatToTag,
 	groupChatsByTag,
-	deletedTagNameReused,
+	moveTagPast,
+	unusedTags,
 	draftPrimary,
 	parseSidebarView,
 	DEFAULT_SIDEBAR_VIEW,
+	toggleTagDisclosure,
+	tagGroupBodyRows,
+	tagGroupCollapsed,
+	withUnloadedTags,
+	foldedLiveCue,
 	desktopEndpoint,
 	desktopRequestSchema,
 	useUiPreferencesStore: preferences,
@@ -114,17 +140,120 @@ test("opt-in grouping is primary-only, ordered, stable, once per section", () =>
 	assert.equal(groups.flatMap((group) => group.rows).length, rows.length);
 	assert.equal(groupChatsByTag(rows, categories, false), null);
 	assert.equal(groupChatsByTag(rows, [], true), null);
-	assert.equal(groupChatsByTag([row("x", null)], categories, true), null);
-	assert.equal(groupChatsByTag([row("x", "deleted")], categories, true), null);
+	for (const primary of [null, "deleted"])
+		assert.deepEqual(
+			groupChatsByTag([row("x", primary)], categories, true).map(
+				(group) => group.id,
+			),
+			["untagged"],
+			"all-Untagged sections still permit the first drag onto an unused tag",
+		);
 });
-test("grouping is suspended outside Time sections and while searching", () => {
+test("unused tags are the zero-conversation registry entries, in registry order (v3 D3)", () => {
+	const registry = [
+		{ id: "c", name: "C", order: 2, conversations: 0 },
+		{ id: "a", name: "A", order: 0, conversations: 3 },
+		{ id: "b", name: "B", order: 1, conversations: 0 },
+	];
+	assert.deepEqual(
+		unusedTags(registry).map((tag) => tag.id),
+		["b", "c"],
+	);
+});
+test("a header move repositions past the VISIBLE neighbour, not the registry neighbour (v3 D2)", () => {
+	// Registry a,b,c,d; this section only draws a and d (b, c carry no chat here).
+	const registry = ["a", "b", "c", "d"].map((id, order) => ({
+		id,
+		name: id.toUpperCase(),
+		order,
+		conversations: 1,
+	}));
+	const ids = (next) => next.map((tag) => tag.id);
+	// A registry-index swap would give a,c,b,d and d's header would not move.
+	assert.deepEqual(ids(moveTagPast(registry, "d", "a", "up")), [
+		"d",
+		"a",
+		"b",
+		"c",
+	]);
+	assert.deepEqual(ids(moveTagPast(registry, "a", "d", "down")), [
+		"b",
+		"c",
+		"d",
+		"a",
+	]);
+	assert.deepEqual(moveTagPast(registry, "a", "b", "up")[0], {
+		id: "a",
+		name: "A",
+	});
+	assert.equal(moveTagPast(registry, "a", "a", "up"), null);
+	assert.equal(moveTagPast(registry, "gone", "a", "up"), null);
+	assert.equal(moveTagPast(registry, "a", "gone", "up"), null);
+});
+test("grouping is suspended under Agent and team, In one list, and while searching", () => {
+	const source = readFileSync(
+		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		"utf8",
+	);
+	/*
+	 * Two arrangements draw tag headers since issue #1733: Time section with the
+	 * switch on, and `Group by › Tag`. Both through ONE predicate, minus search,
+	 * shared by the bucketing and the re-tag drag.
+	 */
+	assert.match(
+		source,
+		/const tagsGrouped =\s*tagsAvailable &&\s*\(groupBy === "section" \|\| groupBy === "tag"\) &&\s*tagSurfaceOn\(\{ \.\.\.view, groupBy \}\);/,
+	);
+	assert.match(
+		source,
+		/const tagRowsGrouped = tagsGrouped && !query\.trim\(\);/,
+	);
+	assert.match(
+		source,
+		/groupChatsByTag\(rows, tagCategories, tagRowsGrouped\)/,
+	);
+	assert.match(source, /enabled: tagRowsGrouped,/);
+});
+/*
+ * ISSUE #1639: a fold is keyed by TAG, so one press folds that tag's header in
+ * Pinned and in a time section alike; and under a list query grouping is
+ * suspended, so a stored fold hides nothing - every match draws flat.
+ */
+test("a tag fold applies to every section's header of that tag", () => {
+	const folded = toggleTagDisclosure({}, "a");
+	const pinned = groupChatsByTag(
+		[row("p1", "a"), row("p2", "b")],
+		categories,
+		true,
+	);
+	const today = groupChatsByTag(
+		[row("t1", "a"), row("t2", null)],
+		categories,
+		true,
+	);
+	for (const groups of [pinned, today]) {
+		const review = groups.find((group) => group.id === "a");
+		assert.equal(review.rows.length, 1, "the header count is the whole group");
+		assert.deepEqual(tagGroupBodyRows(review.rows, folded, review.id), []);
+		for (const other of groups.filter((group) => group.id !== "a"))
+			assert.equal(tagGroupBodyRows(other.rows, folded, other.id), other.rows);
+	}
+});
+test("a stored fold has no effect while a search query suspends grouping", () => {
+	const folded = toggleTagDisclosure(toggleTagDisclosure({}, "a"), "untagged");
+	assert.equal(tagGroupCollapsed(folded, "a"), true);
+	const rows = [row("x", "a"), row("y", null)];
+	// `taggedRows` passes `!query.trim()` as `enabled` (pinned by the test above):
+	// with a query there are no groups, so the flat path draws every row.
+	assert.equal(groupChatsByTag(rows, categories, false), null);
 	const source = readFileSync(
 		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
 		"utf8",
 	);
 	assert.match(
 		source,
-		/tagsAvailable &&[\s\S]*?view.tagsEnabled &&[\s\S]*?view.groupBy === "section" &&[\s\S]*?!query\.trim\(\)/,
+		/if \(!loaded\) return rows\.map\(\(row\) => sessionRow\(row\)\);/,
+		"the ungrouped path must draw every row, untouched by any fold",
 	);
 });
 test("parser accepts only boolean tagsEnabled and retains it across mode changes", () => {
@@ -241,7 +370,7 @@ test("registry replacement failure keeps the loaded categories and editable draf
 		body: { detail: "synthetic write refusal" },
 	});
 	await assert.rejects(
-		tags.getState().replaceCategories([{ id: "a", name: "Renamed" }]),
+		tags.getState().replaceCategories(() => [{ id: "a", name: "Renamed" }]),
 	);
 	assert.deepEqual(tags.getState().categories, categories);
 	assert.equal(
@@ -299,95 +428,552 @@ test("clear uses one assignment and settles the canonical row on the response", 
 	assert.equal(canonical.getState().sessions[0].primary, null);
 });
 
-test("management has one explicit desired-state write and buffered local operations", () => {
-	const source = readFileSync(
-		"src/renderer/src/features/chat/components/manage-tags-dialog.tsx",
+test("management writes every create, rename, reorder and delete immediately with no Apply transaction", () => {
+	/*
+	 * v3 (spec D2/D3): management lives on the group headers and the tag footer,
+	 * through ONE registry hook. Each act is its own `tags.replace` desired state
+	 * built from the store at press time; nothing is staged for an Apply.
+	 */
+	const registry = readFileSync(
+		"src/renderer/src/features/chat/use-chat-tag-registry.ts",
 		"utf8",
 	);
-	assert.equal(source.split("await replaceCategories(").length - 1, 1);
-	assert.ok(source.includes("await replaceCategories(draft)"));
-	assert.ok(source.includes("setDraft(next)"));
-	assert.ok(source.includes('t("ui.chat.tags.cancel")'));
-	assert.ok(source.includes('t("ui.chat.tags.apply")'));
-	assert.ok(!source.includes('t("ui.chat.tags.done")'));
-});
-test("assignment confirms the exact grouped or Untagged success copy after the write", () => {
+	const header = readFileSync(
+		"src/renderer/src/features/chat/components/chat-tag-header.tsx",
+		"utf8",
+	);
+	for (const source of [registry, header]) {
+		assert.ok(!source.includes("setDraft"), "no staged draft remains");
+		assert.ok(!source.includes('t("ui.chat.tags.apply")'), "no Apply action");
+	}
+	assert.ok(
+		registry.split("write((categories)").length - 1 >= 4,
+		"create, rename, move and delete each commit",
+	);
+	assert.ok(registry.includes("await replaceCategories(derive)"));
+	// The destructive path keeps a per-action confirmation, anchored, not modal.
+	assert.ok(header.includes('role="alertdialog"'));
+	assert.ok(header.includes('t("ui.chat.tags.delete_description"'));
+	assert.ok(header.includes('t("ui.chat.tags.delete_tag")'));
+	assert.ok(!header.includes("<Dialog"), "no modal dialog");
 	const copy = JSON.parse(
-		readFileSync("src/i18n/catalogues/en/ui.chat.tags.json", "utf8"),
+		readFileSync("src/i18n/catalogues/en/ui.chat.tag_dialogs.json", "utf8"),
 	);
-	assert.equal(
-		copy["ui.chat.tags.updated_grouped"],
-		"Tags updated. Grouped under {tag}.",
-	);
-	assert.equal(
-		copy["ui.chat.tags.updated_untagged"],
-		"Tags updated. Shown under Untagged.",
-	);
-	const source = readFileSync(
-		"src/renderer/src/features/chat/components/chat-session-tags-dialog.tsx",
+	for (const key of ["picker_description", "manage_description", "close"])
+		assert.equal(copy[`ui.chat.tag_dialogs.${key}`], undefined);
+});
+test("assignment writes through the shared immediate-commit hook from an anchored popover", () => {
+	const popover = readFileSync(
+		"src/renderer/src/features/chat/components/chat-tag-popover.tsx",
 		"utf8",
 	);
+	assert.ok(popover.includes("useChatTagAssignment({"));
+	assert.ok(popover.includes("<PopoverAnchor virtualRef="));
+	assert.ok(!popover.includes("<Dialog"), "no modal dialog");
 	assert.ok(
-		source.indexOf("showSuccessToast(") >
-			source.indexOf("await assignSessionTags("),
+		popover.includes('t("ui.chat.tags.shown_under", { tag: shownUnder })'),
 	);
-	assert.ok(
-		source.includes(
-			't("ui.chat.tags.updated_grouped", { tag: primaryTag.name })',
-		),
+	assert.ok(popover.includes('t("ui.chat.tags.shown_untagged")'));
+	// Create resolves the new tag from the registry the write returned, then
+	// assigns it in the same interaction; it never waits for Apply.
+	const hook = readFileSync(
+		"src/renderer/src/features/chat/use-chat-tag-assignment.ts",
+		"utf8",
 	);
-	assert.ok(source.includes('t("ui.chat.tags.updated_untagged")'));
+	assert.ok(hook.includes("const registry = await replaceCategories("));
+	assert.ok(hook.includes("registry.find((tag) => tag.name === trimmed)"));
+	assert.ok(hook.includes("await write(next, fallback)"));
+	assert.ok(hook.includes("const showUnder = async"));
+	assert.ok(!hook.includes('t("ui.chat.tags.apply")'));
+	assert.ok(!popover.includes('t("ui.chat.tags.apply")'));
 });
 
-test("delete plus name-only recreation is blocked without blocking normal add/delete", () => {
-	const registry = [
-		{ id: "a", name: "Review" },
-		{ id: "b", name: "Project" },
-	];
-	assert.equal(
-		deletedTagNameReused(registry, [
-			{ id: "b", name: "Project" },
-			{ name: "Review" },
-		]),
-		"Review",
+test("save failures are tag-specific, loading errors are not empty registries", () => {
+	const registry = readFileSync(
+		"src/renderer/src/features/chat/use-chat-tag-registry.ts",
+		"utf8",
 	);
-	assert.equal(
-		deletedTagNameReused(registry, [{ name: " review " }]),
-		" review ",
+	const hook = readFileSync(
+		"src/renderer/src/features/chat/use-chat-tag-assignment.ts",
+		"utf8",
 	);
-	assert.equal(
-		deletedTagNameReused(registry, [{ id: "b", name: "Project" }]),
-		null,
+	const popover = readFileSync(
+		"src/renderer/src/features/chat/components/chat-tag-popover.tsx",
+		"utf8",
 	);
-	assert.equal(
-		deletedTagNameReused(registry, [...registry, { name: "Concept" }]),
-		null,
-	);
-	assert.equal(
-		deletedTagNameReused(registry, [
-			{ id: "a", name: "Renamed" },
-			{ name: "Review" },
-		]),
-		null,
-	);
-});
-test("save failures are tag-specific, loading errors are not empty registries, and title has no action ellipsis", () => {
-	for (const file of ["chat-session-tags-dialog", "manage-tags-dialog"]) {
-		const source = readFileSync(
-			`src/renderer/src/features/chat/components/${file}.tsx`,
-			"utf8",
-		);
-		assert.ok(source.includes('setError(t("ui.chat.tags.save_failed"))'));
+	assert.ok(registry.includes('"ui.chat.tags.save_failed"'));
+	assert.ok(hook.includes('"ui.chat.tags.save_failed"'));
+	assert.ok(hook.includes('"ui.chat.tags.create_failed"'));
+	assert.ok(popover.includes('t("ui.chat.tags.load_failed")'));
+	for (const source of [registry, popover, hook])
 		assert.ok(!source.includes("userFacingMessage"));
-	}
 	const sidebar = readFileSync(
 		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
 		"utf8",
 	);
+	// The tag footer (and its empty state) waits for a settled registry.
 	assert.ok(sidebar.includes("tagCategoriesError === null"));
 	const copy = JSON.parse(
 		readFileSync("src/i18n/catalogues/en/ui.chat.tags.json", "utf8"),
 	);
-	assert.equal(copy["ui.chat.tags.manage_title"], "Manage tags");
-	assert.equal(copy["ui.chat.tags.done"], undefined);
+	for (const key of ["manage_title", "manage", "move_menu", "none_yet", "done"])
+		assert.equal(copy[`ui.chat.tags.${key}`], undefined);
+});
+
+test("opaque revision is sent only when supplied and the response revision is returned", async () => {
+	canonical.setState({
+		sessions: [{ ...row("aaaaaaaaaaaa", "a"), tags_revision: "0009" }],
+	});
+	tags.setState({ categories });
+	const requests = [];
+	window.api.desktop.request = async (request) => {
+		requests.push(request);
+		if (request.op === "sessions.tags")
+			return {
+				status: 200,
+				body: {
+					result: {
+						session_id: request.sessionId,
+						tags: [{ id: "b", name: "Project" }],
+						primary: "b",
+						tags_revision: "0010",
+					},
+				},
+			};
+		if (request.op === "tags.list")
+			return { status: 200, body: { result: { tags: categories } } };
+		return {
+			status: 200,
+			body: { result: { sessions: [], truncated: false } },
+		};
+	};
+	const result = await tags
+		.getState()
+		.assignSessionTags("aaaaaaaaaaaa", ["b"], "b");
+	assert.equal(result.tags_revision, "0010");
+	assert.equal(
+		requests.find((request) => request.op === "sessions.tags")
+			.expected_revision,
+		"0009",
+	);
+	assert.deepEqual(desktopEndpoint(requests[0]).body, {
+		tags: ["b"],
+		primary: "b",
+		expected_revision: "0009",
+	});
+	canonical.setState({
+		sessions: [{ ...row("aaaaaaaaaaaa", "b"), tags_revision: "0011" }],
+	});
+	requests.length = 0;
+	await tags
+		.getState()
+		.assignSessionTags("aaaaaaaaaaaa", ["a"], "a", result.tags_revision);
+	assert.equal(
+		requests[0].expected_revision,
+		"0010",
+		"Undo captures the write response, not the newer catalogue",
+	);
+	canonical.setState({ sessions: [row("aaaaaaaaaaaa", "a")] });
+	requests.length = 0;
+	await tags.getState().assignSessionTags("aaaaaaaaaaaa", ["b"], "b");
+	assert.equal(Object.hasOwn(requests[0], "expected_revision"), false);
+});
+
+test("409 tags_conflict reloads authoritative state and never retries the write", async () => {
+	canonical.setState({
+		sessions: [{ ...row("aaaaaaaaaaaa", "a"), tags_revision: "4" }],
+	});
+	tags.setState({ categories });
+	const requests = [];
+	window.api.desktop.request = async (request) => {
+		requests.push(request);
+		if (request.op === "sessions.tags")
+			return {
+				status: 409,
+				body: {
+					detail: {
+						code: "tags_conflict",
+						text: "Tags changed elsewhere",
+						result: { ...row("aaaaaaaaaaaa", "b"), tags_revision: "5" },
+					},
+				},
+			};
+		return {
+			status: 200,
+			body: {
+				result: {
+					sessions: [
+						{
+							id: "aaaaaaaaaaaa",
+							name: "Other edit",
+							mtime: 1,
+							tags: [{ id: "b", name: "Project" }],
+							primary: "b",
+							tags_revision: "5",
+						},
+					],
+					truncated: false,
+				},
+			},
+		};
+	};
+	await assert.rejects(
+		tags.getState().assignSessionTags("aaaaaaaaaaaa", [], null, "4"),
+		(error) => error.status === 409 && error.code === "tags_conflict",
+	);
+	assert.equal(
+		requests.filter((request) => request.op === "sessions.tags").length,
+		1,
+	);
+	assert.equal(canonical.getState().sessions[0].tags_revision, "5");
+	assert.equal(canonical.getState().sessions[0].primary, "b");
+});
+
+test("move helper guards edited snapshot and Undo uses the produced revision, showing conflicts visibly", async () => {
+	const original = { ...row("aaaaaaaaaaaa", "a"), tags_revision: "8" };
+	canonical.setState({ sessions: [{ ...original, tags_revision: "9" }] });
+	tags.setState({ categories });
+	globalThis.tagMoveToasts = [];
+	const requests = [];
+	const announcements = [];
+	let conflict = false;
+	window.api.desktop.request = async (request) => {
+		requests.push(request);
+		if (request.op === "sessions.tags") {
+			if (conflict)
+				return {
+					status: 409,
+					body: {
+						detail: {
+							code: "tags_conflict",
+							text: "Tags changed elsewhere",
+							result: { ...row("aaaaaaaaaaaa", "b"), tags_revision: "11" },
+						},
+					},
+				};
+			return {
+				status: 200,
+				body: {
+					result: {
+						...row("aaaaaaaaaaaa", "b", ["a", "b"]),
+						tags_revision: "10",
+					},
+				},
+			};
+		}
+		if (request.op === "tags.list")
+			return { status: 200, body: { result: { tags: categories } } };
+		return {
+			status: 200,
+			body: {
+				result: {
+					sessions: [
+						{
+							id: "aaaaaaaaaaaa",
+							name: "Refreshed later",
+							mtime: 1,
+							tags: [{ id: "b", name: "Project" }],
+							primary: "b",
+							tags_revision: "11",
+						},
+					],
+					truncated: false,
+				},
+			},
+		};
+	};
+	await moveChatToTag(original, "b", (message) => announcements.push(message));
+	assert.equal(
+		requests[0].expected_revision,
+		"8",
+		"a newer canonical revision must not authorize a stale menu snapshot",
+	);
+	assert.equal(
+		globalThis.tagMoveToasts[0].message,
+		"Added “Project” and grouped under it",
+	);
+	conflict = true;
+	globalThis.tagMoveToasts[0].options.action.onClick();
+	for (
+		let attempt = 0;
+		attempt < 20 && globalThis.tagMoveToasts.length < 2;
+		attempt++
+	)
+		await new Promise((resolve) => setTimeout(resolve, 1));
+	assert.equal(
+		requests.filter((request) => request.op === "sessions.tags")[1]
+			.expected_revision,
+		"10",
+	);
+	assert.equal(
+		globalThis.tagMoveToasts.at(-1).message,
+		"Tags changed elsewhere",
+	);
+	assert.equal(announcements.at(-1), "Tags changed elsewhere");
+	assert.equal(canonical.getState().sessions[0].tags_revision, "11");
+	assert.equal(
+		requests.filter((request) => request.op === "sessions.tags").length,
+		2,
+		"conflicting Undo must not retry",
+	);
+});
+
+test("failed move restores the source tags and reports move-specific retry guidance", async () => {
+	const original = { ...row("aaaaaaaaaaaa", "a"), tags_revision: "4" };
+	canonical.setState({ sessions: [original] });
+	tags.setState({ categories });
+	globalThis.tagMoveToasts = [];
+	const requests = [];
+	const announcements = [];
+	window.api.desktop.request = async (request) => {
+		requests.push(request);
+		return {
+			status: 503,
+			body: { detail: { code: "store_busy", text: "Fixture write refused" } },
+		};
+	};
+	await assert.rejects(
+		moveChatToTag(original, "b", (message) => announcements.push(message)),
+	);
+	assert.equal(canonical.getState().sessions[0].primary, "a");
+	assert.deepEqual(canonical.getState().sessions[0].tags, original.tags);
+	assert.equal(
+		globalThis.tagMoveToasts.at(-1).message,
+		"Tags were not moved. Try again.",
+	);
+	assert.equal(announcements.at(-1), "Tags were not moved. Try again.");
+	assert.equal(
+		requests.filter((request) => request.op === "sessions.tags").length,
+		1,
+	);
+});
+
+/*
+ * ISSUE #1733, `Group by › Tag` (docs/design/sidebar-tag-first-grouping.md):
+ * the same header and the same fold map as the Time-section subheaders.
+ */
+test("tag mode folds with the same tag:<id> key as Time section", () => {
+	const folded = toggleTagDisclosure({}, "a");
+	// Tag mode draws ONE list of top-level groups; the Time section draws per section.
+	const tagMode = groupChatsByTag(
+		[row("p1", "a"), row("t1", "a"), row("t2", null)],
+		categories,
+		true,
+	);
+	const review = tagMode.find((group) => group.id === "a");
+	assert.equal(review.rows.length, 2);
+	assert.deepEqual(tagGroupBodyRows(review.rows, folded, "a"), []);
+	assert.equal(
+		tagGroupCollapsed(folded, "a"),
+		true,
+		"the fold Time section reads",
+	);
+	const source = readFileSync(
+		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		"utf8",
+	);
+	// One header in both modes; only the top-level wrapper and heading differ.
+	assert.match(source, /headingId=\{headingId\}/);
+	assert.match(source, /data-chat-tag-section=\{bucket\.id\}/);
+	// The arrangement is ONE drag section, so a row may move to any tag's header.
+	assert.match(source, /<div data-chat-section="tag">/);
+	assert.match(source, /aria-labelledby=\{headingId\}/);
+	const header = readFileSync(
+		"src/renderer/src/features/chat/components/chat-tag-header.tsx",
+		"utf8",
+	);
+	assert.match(header, /const NameTag = headingId \? "h3" : "span";/);
+});
+test("tag mode: a pinned row's drag is a tag move, never a pin reorder", () => {
+	const source = readFileSync(
+		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		"utf8",
+	);
+	assert.match(
+		source,
+		/if \(groupBy === "section" && pinnedDrawnIds\.includes\(id\)\) \{/,
+	);
+	assert.match(source, /pinsEnabled &&\s*groupBy === "section" &&\s*!nested/);
+});
+test("the popover offers Tag second, only with tags, and hides the switch under it", () => {
+	const menu = readFileSync(
+		"src/renderer/src/features/chat/components/chat-sidebar-view-menu.tsx",
+		"utf8",
+	);
+	const order = [
+		"time_section",
+		'ui.chat.sidebar_view.tag"',
+		"agent_team",
+		"one_list",
+	].map((key) => menu.indexOf(key));
+	assert.ok(order.every((at) => at > 0));
+	assert.deepEqual(
+		[...order].sort((a, b) => a - b),
+		order,
+		"radio order",
+	);
+	assert.match(menu, /\.\.\.\(tagsAvailable\s*\?\s*\[/);
+	assert.match(
+		menu,
+		/\{drawn !== "tag" && \(\s*<div className="flex h-\[39px\]/,
+	);
+	assert.match(menu, /tagSurfaceOn\(view\) && autoTagAvailable/);
+	assert.match(menu, /\(drawn === "agent" \|\| drawn === "flat"\) &&/);
+	const en = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.chat.tags.json", "utf8"),
+	);
+	assert.equal(en["ui.chat.tags.group"], "Split time sections by tag");
+	const view = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.chat.sidebar_view.json", "utf8"),
+	);
+	assert.equal(view["ui.chat.sidebar_view.tag"], "Tag");
+});
+/*
+ * #1745 round-2 follow-ups, carried by the #1733 PR. Source pins, because the
+ * sidebar's ring cannot be rendered under node:test; `TagGroupKeyboardFollowUps`
+ * in `chat-sidebar-tags.stories.tsx` drives the same keys on the real component.
+ */
+test("#1745 follow-ups: bare arrows fold, Right moves the stop, Left climbs to the header", () => {
+	const source = readFileSync(
+		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		"utf8",
+	);
+	// N1: Alt/Meta+Arrow never fold.
+	assert.match(
+		source,
+		/const bareArrow =\s*!event\.altKey &&\s*!event\.metaKey &&/,
+	);
+	assert.match(source, /if \(tagFold && bareArrow\) \{/);
+	// M2: ArrowRight into the first row moves the ring's stop with it.
+	assert.match(source, /first\.focus\(\);\s*applyRowStop\(first\);/);
+	// U7: ArrowLeft from a row in a tag group climbs to that group's header.
+	assert.match(
+		source,
+		/event\.key === "ArrowLeft" &&\s*bareArrow &&\s*target\.hasAttribute\("data-chat-row"\)/,
+	);
+	assert.match(
+		source,
+		/rowGroupHeader\.focus\(\);\s*applyRowStop\(rowGroupHeader\);/,
+	);
+});
+test("#1745 follow-ups: a chord's action returns focus to the stop it was pressed on", () => {
+	const header = readFileSync(
+		"src/renderer/src/features/chat/components/chat-tag-header.tsx",
+		"utf8",
+	);
+	// M1/U8: the origin is recorded on the chord and preferred on restore.
+	assert.match(
+		header,
+		/origin\.current = event\.currentTarget === toggle\.current \? "toggle" : "stop";/,
+	);
+	assert.match(
+		header,
+		/origin\.current === "toggle" && toggle\.current\?\.isConnected\s*\?\s*toggle\.current/,
+	);
+	// A pointer press on `⋯` is an action that started on `⋯`.
+	assert.match(
+		header,
+		/onPointerDown=\{\(\) => \{\s*origin\.current = "stop";/,
+	);
+	// D4: the inset ring must win over the shared outline utility's offset.
+	assert.match(header, /focus-visible:-outline-offset-2!/);
+	// The first-use title stays the mode-neutral pre-PR copy: it also draws in Tag
+	// mode, which has no time sections to split (PR #1747 round 1, D1/U3/R5/M1).
+	const en = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.chat.tags.json", "utf8"),
+	);
+	assert.equal(en["ui.chat.tags.empty_title"], "Group chats by tag.");
+});
+
+/*
+ * PR #1747 round 1, U2: a tag whose chats are all past the loaded page keeps a
+ * (countless) header in Tag mode while more can load - and only then.
+ */
+test("tag mode: a tag with only unloaded chats keeps its header while more can load", () => {
+	const registry = [
+		{ id: "b", name: "Project", order: 1, conversations: 1 },
+		{ id: "a", name: "Review", order: 0, conversations: 2 },
+		{ id: "taxes", name: "Taxes", order: 2, conversations: 4 },
+		{ id: "empty", name: "Empty", order: 3, conversations: 0 },
+	];
+	const loaded = groupChatsByTag(
+		[row("1", "a"), row("2", null)],
+		registry,
+		true,
+	);
+	const groups = withUnloadedTags(loaded, registry, true);
+	assert.deepEqual(
+		groups.map((group) => [
+			group.id,
+			group.rows.length,
+			group.unloaded ?? false,
+		]),
+		[
+			["a", 1, false],
+			["b", 0, true],
+			["taxes", 0, true],
+			["untagged", 1, false],
+		],
+		"registry order, unloaded tags with no rows, zero-conversation tags left to the footer, Untagged last",
+	);
+	assert.deepEqual(
+		withUnloadedTags(loaded, registry, false).map((group) => group.id),
+		["a", "untagged"],
+		"with nothing more to load, no placeholder promises a press with nothing behind it",
+	);
+	const source = readFileSync(
+		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		"utf8",
+	);
+	assert.match(source, /withUnloadedTags\(loaded, tagCategories, footShown\)/);
+	assert.match(source, /count=\{null\}/);
+	assert.match(
+		source,
+		/data-sidebar-page-more-tag=\{bucket\.id\}\s*onPointerDown=\{notePagePointer\}\s*onClick=\{pressPageMore\}/,
+	);
+});
+/* PR #1747 round 1, U1/D2: a folded group's live cue. */
+test("tag mode: a folded group hiding live chats owes its header a live cue", () => {
+	const live = (id, code) => ({ session_id: id, status: { code } });
+	const rows = [live("a", "idle"), live("b", "busy"), live("c", "approval")];
+	assert.equal(foldedLiveCue(rows, false), null, "open: the rows say it");
+	assert.equal(foldedLiveCue([live("a", "idle")], true), null);
+	const cue = foldedLiveCue(rows, true);
+	assert.equal(cue.count, 2);
+	assert.equal(cue.row.session_id, "c", "the row stopped on the reader wins");
+	const source = readFileSync(
+		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		"utf8",
+	);
+	assert.match(
+		source,
+		/live=\{topLevel \? foldedLiveCue\(bucket\.rows, collapsed\) : null\}/,
+	);
+	const header = readFileSync(
+		"src/renderer/src/features/chat/components/chat-tag-header.tsx",
+		"utf8",
+	);
+	// The list's own status glyph, never a new token.
+	assert.match(header, /<ChatSessionStatus row=\{live\.row\} \/>/);
+	assert.match(
+		header,
+		/t\("ui\.chat\.tag_mode\.live", \{ count: live\.count \}\)/,
+	);
+});
+/* PR #1747 round 1, U4/U6. */
+test("tag mode: the Agent/flat hint offers Tag, and Tag mode speaks a pin", () => {
+	const menu = readFileSync(
+		"src/renderer/src/features/chat/components/chat-sidebar-view-menu.tsx",
+		"utf8",
+	);
+	assert.match(menu, /t\("ui\.chat\.tag_mode\.mode_hint"\)/);
+	assert.match(menu, /onView\(\{ \.\.\.view, groupBy: "tag" \}\)/);
+	const source = readFileSync(
+		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		"utf8",
+	);
+	assert.match(
+		source,
+		/pinned && groupBy === "tag" && !nested && \(\s*<span className="sr-only">\s*, \{t\("ui\.chat\.sidebar_view\.section\.pinned"\)\}/,
+	);
 });

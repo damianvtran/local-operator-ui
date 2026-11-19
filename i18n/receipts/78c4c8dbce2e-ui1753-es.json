@@ -1,0 +1,270 @@
+{
+ "schema": 1,
+ "auditor": {
+  "agent": "translation-auditor",
+  "instance": "78c4c8dbce2e-ui1753-es",
+  "model": "anthropic/claude-sonnet-5-5",
+  "model_note": "Model identity taken from this session's header (anthropic/claude-sonnet-5-5); no fallback or model switch was reported during the session.",
+  "independence": "Separate session (78c4c8dbce2e) from the PR coder, the es translator, the remediation author and the earlier round-1 / delta auditors. The verdict was rebuilt from the English source, the en .context.json sidecars, shipped es precedent (quoted file:key in the report), i18n/glossary.md and the es style guide; no prior audit claim was accepted without reading the committed bytes.",
+  "description": "translation-auditor (lopdev translation-auditor session 78c4c8dbce2e, final independent audit of the 86 keys added by #1753 for es; not the PR coder, the es translator, the remediator, the round-1 auditor or the delta re-auditor)"
+ },
+ "agent": "translation-auditor",
+ "model": "anthropic/claude-sonnet-5-5",
+ "model_provenance": "Model identity taken from this session's header (anthropic/claude-sonnet-5-5); no fallback or model switch was reported during the session.",
+ "fallback": "none reported",
+ "instance": "78c4c8dbce2e-ui1753-es",
+ "session": "78c4c8dbce2e",
+ "session_id_provenance": "read from LOCAL_OPERATOR_SESSION_ID in the audit session's environment",
+ "locale": "es",
+ "branch": "i18n/key-census-literals",
+ "head": "bd17b456e079c761013c580ea4263b5c4bc57f5d",
+ "pr": "damianvtran/local-operator-ui#1753",
+ "date": "2026-11-07",
+ "status": "passed",
+ "scope": "The 86 keys added by 874446c2c80e8c3849c20ed72780d1455e7752a9 in seven namespaces (ui.chat.canonical 55, ui.chat.asks 8, ui.chat.sidebar 7, ui.chat.pickers 8, ui.chat.run_details 2, ui.chat.user_turn 3, ui.hub.pages 3), read key by key in the committed es catalogue against English and the en context sidecar. keys_read counts those delta keys, not whole namespaces. Sha256 values are over the whole committed en and es namespace files.",
+ "inputs_sha256": {
+  "glossary (local-operator/i18n/glossary.md)": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "style guide (local-operator/i18n/style-guides/es.md)": "77b9227213802d14c74d4298d6b346ad842bbf2a5ca3b9d46fc6144430d26c3e"
+ },
+ "verified": [
+  "key sets: all 86 delta keys exist in es; every one of the seven es namespaces has exactly the key set of en (0 missing, 0 extra); check-coverage.mjs: ok - 7 gated language(s) over 129 namespace(s); 0 allowed key(s) remain",
+  "ICU: all 86 es messages parse with @formatjs/icu-messageformat-parser; argument names, nested number skeletons (::group-off), select/plural nodes and tag sets match English; every es plural carries one/many/other and never few; Intl.PluralRules('es') gives 1:one, 1000000 and 2000000:many, 0/2/3/5/11/21/22/25/100/1000/1500000:other, and intl-messageformat renders every plural at counts 0,1,2,3,5,11,21,22,25,100,1000,1000000,1500000 without error (1000 prints ungrouped, 1000000 takes 'de', 1500000 does not)",
+  "bytes: all 86 es strings NFC, no Cf/bidi/zero-width/BOM/soft-hyphen characters, no edge or doubled spaces beyond the English edge spaces of fold.unit_separator (' · ' identical to en)",
+  "known fixes re-judged in final text and resolved: fold.count.todo '# actualizacion(es) de pendientes' and fold.count.todo_read '# lectura(s) de pendientes' (shipped bare 'pendientes' in ui.projects.project_model.todos_summary, shipped full 'tareas pendientes' in ui.chat.run_details.todos.title / ui.projects.count.todo; the full term would be 5 words against the 'two to four' budget); fold.count.actions_partial single-digit one arm '1+ acciones' (en uses the same text in both arms)",
+  "terminology vs shipped precedent: ask -> consulta / settled -> Atendidas (ui.chat.asks.filter_label, settled_heading, outstanding_count); outstanding -> 'sin responder' (ui.chat.asks.outstanding_aria); steer -> guiar (ui.chat.composer.placeholder.waiting 'Guía al agente', steer_hint 'Guiar al agente'; ui.mesh uses 'dirigir', an existing split outside this PR); receipt -> recibo (ui.hub.status.receipt 'Recibo de la operación'); wake -> despertar (es style guide); monitor -> 'monitores' noun (ui.chat.sidebar show-more monitores); subagent -> subagente (glossary, ui.chat.run_details.reader.read_only_footer); Intro/Esc key names (ui.chat.pickers.picker_host.arrows_move_enter_picks_esc_closes 'Intro elige, Esc cierra'); 'Mostrar # agentes más' (ui.chat.sidebar.catalogue.show_more_chats); 'Incluir archivadas' byte-equal to ui.chat.sidebar.search.include_archived; 'Comando desconocido' / '¿Querías decir' tú register; caducó (ui.chat.pickers.usage_view_model.sign_in_expired_run_login 'La sesión caducó')",
+  "meaning/safety: pending and failed states never read as done: transcript.not_delivered 'No entregado'; clause.delivering 'aún sin entregar - todavía puedes cambiarla' keeps both facts and the pronoun follows the count; clause.timed_out 'caducó/caducaron' agrees with the count; clause.waiting vs clause.outstanding keep their different scope; slash.row_slot.fast_on/fast_off 'actualmente activado/desactivado' keep the 'state the row starts from' qualifier; wake.managed_note keeps '/aida pause' verbatim, {name} untranslated and no gendered pronoun",
+  "register: tú throughout (Busca, Inicia sesión, usa, Escribe, ¿Querías decir, todavía puedes); sentence case; no usted/vosotros; sentence.* clauses use the unmarked third-person preterite (Exploró/Ejecutó/Editó/Delegó/Buscó) with lower-case follow forms that read correctly after the {first}, {second} comma join",
+  "observation, not a finding: the en context sidecars for ui.chat.sidebar.catalogue.show_more_agents/teams list a placeholder named 'hidden' while the message and the call site (chat-sidebar-view.ts, keys.gen.ts) use 'count'; es follows the message. The sidecar is outside the locale and was not edited. A second observation: ui.chat.asks.clause.waiting '# consulta esperando respuesta' is 4 words against the sidecar's 'Three words'; faithful, shorter alternatives lose 'waiting for your answer'"
+ ],
+ "namespaces": {
+  "ui.chat.canonical": {
+   "namespace": "ui.chat.canonical",
+   "status": "passed",
+   "result": "clean-with-findings",
+   "keys_read": 55,
+   "delta_keys_audited": [
+    "ui.chat.canonical.fold.count.shell",
+    "ui.chat.canonical.fold.count.python",
+    "ui.chat.canonical.fold.count.file",
+    "ui.chat.canonical.fold.count.search",
+    "ui.chat.canonical.fold.count.web",
+    "ui.chat.canonical.fold.count.edit",
+    "ui.chat.canonical.fold.count.task",
+    "ui.chat.canonical.fold.count.agent",
+    "ui.chat.canonical.fold.count.team",
+    "ui.chat.canonical.fold.count.team_delete",
+    "ui.chat.canonical.fold.count.hub",
+    "ui.chat.canonical.fold.count.secret",
+    "ui.chat.canonical.fold.count.project",
+    "ui.chat.canonical.fold.count.project_delete",
+    "ui.chat.canonical.fold.count.wake",
+    "ui.chat.canonical.fold.count.jobs",
+    "ui.chat.canonical.fold.count.jobs_cancel",
+    "ui.chat.canonical.fold.count.console",
+    "ui.chat.canonical.fold.count.network",
+    "ui.chat.canonical.fold.count.browser",
+    "ui.chat.canonical.fold.count.todo",
+    "ui.chat.canonical.fold.count.todo_read",
+    "ui.chat.canonical.fold.count.send",
+    "ui.chat.canonical.fold.count.ask",
+    "ui.chat.canonical.fold.count.wait",
+    "ui.chat.canonical.fold.count.lsp",
+    "ui.chat.canonical.fold.count.web_read",
+    "ui.chat.canonical.fold.count.list_variables",
+    "ui.chat.canonical.fold.count.read_variable",
+    "ui.chat.canonical.fold.count.sessions",
+    "ui.chat.canonical.fold.count.named",
+    "ui.chat.canonical.fold.count.actions",
+    "ui.chat.canonical.fold.count.other_actions",
+    "ui.chat.canonical.fold.unit_separator",
+    "ui.chat.canonical.fold.sentence.files",
+    "ui.chat.canonical.fold.sentence.searches",
+    "ui.chat.canonical.fold.sentence.web_lead",
+    "ui.chat.canonical.fold.sentence.web_follow",
+    "ui.chat.canonical.fold.sentence.commands_lead",
+    "ui.chat.canonical.fold.sentence.commands_follow",
+    "ui.chat.canonical.fold.sentence.edits_lead",
+    "ui.chat.canonical.fold.sentence.edits_follow",
+    "ui.chat.canonical.fold.sentence.delegated_lead",
+    "ui.chat.canonical.fold.sentence.delegated_follow",
+    "ui.chat.canonical.fold.sentence.join",
+    "ui.chat.canonical.fold.receipt.incoming",
+    "ui.chat.canonical.fold.receipt.job_result",
+    "ui.chat.canonical.fold.receipt.wake",
+    "ui.chat.canonical.fold.receipt.monitor_prompt",
+    "ui.chat.canonical.fold.receipt.other",
+    "ui.chat.canonical.fold.receipt.reply_requested",
+    "ui.chat.canonical.fold.receipt.steered",
+    "ui.chat.canonical.checkpoint_rail.label",
+    "ui.chat.canonical.transcript.not_delivered",
+    "ui.chat.canonical.fold.count.actions_partial"
+   ],
+   "sha256": {
+    "es": "36e22f64e6e2187cccdff1a308415dd27c0e60117445e8719ed1a4bd07e5b806",
+    "en": "c5f286f8f88ec52c722e6b3eebd0c41f7969a47b6f496473f692ae3e4f500885"
+   },
+   "context_sha256": "88a491a6e91758d1cd956d458a341717c878a8b3d61caf003b7a9f1ed1a4593a",
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.canonical.json",
+    "target": "src/i18n/catalogues/es/ui.chat.canonical.json",
+    "context": "src/i18n/catalogues/en/ui.chat.canonical.context.json"
+   },
+   "findings": [
+    {
+     "id": "ES-1753-F1",
+     "severity": "nit",
+     "key": "ui.chat.canonical.fold.receipt.job_result",
+     "summary": "Width-budget flag, not a meaning defect. Four es keys exceed the en sidecar's soft word budget by one word at every count because Spanish needs a 'de' complement: fold.receipt.job_result '# resultado de trabajo', fold.receipt.wake '# recibo de despertar' and fold.receipt.monitor_prompt '# prompt de monitor' are 4 words against 'Two to three words including the count'; fold.sentence.web_lead/web_follow 'Buscó en la web # veces' is 6 words against 'Three to five'. The 'many' arm's extra 'de' is not a width issue (it only renders at multiples of 10^6). No shorter faithful phrasing exists for the receipt units (glossary: wake -> despertar, monitor kept, job -> trabajo). For the sentence keys a one-word-shorter and equally idiomatic option is 'Hizo # búsquedas web' (4 words; one: 'Hizo # búsqueda web'; follow: 'hizo # ...'). Recommend a rendered narrow-width check of the receipt group header; no change required.",
+     "before": "{count, plural, one {# resultado de trabajo} ...} / Buscó en la web # veces",
+     "after": "unchanged (receipt units); optional 'Hizo # búsquedas web' for sentence.web_lead/web_follow",
+     "resolution": "recorded, not churned (nit)"
+    }
+   ]
+  },
+  "ui.chat.asks": {
+   "namespace": "ui.chat.asks",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 8,
+   "delta_keys_audited": [
+    "ui.chat.asks.scope.session",
+    "ui.chat.asks.scope.fleet",
+    "ui.chat.asks.scope_line",
+    "ui.chat.asks.clause.settled",
+    "ui.chat.asks.clause.outstanding",
+    "ui.chat.asks.clause.waiting",
+    "ui.chat.asks.clause.delivering",
+    "ui.chat.asks.clause.timed_out"
+   ],
+   "sha256": {
+    "es": "634fb98f9ff99e6fc46d03f5e73c981d9bc661a4c164142e2ec9ce3edfadc291",
+    "en": "36346bf6a1422f090b306be21eebe034b0a9ee071725c94f7296d1d1322e9e0e"
+   },
+   "context_sha256": "f61b397ea87067d1792983c3a1d904d1f88ee92ca98539a7335eaa2cbb3b8c3e",
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.asks.json",
+    "target": "src/i18n/catalogues/es/ui.chat.asks.json",
+    "context": "src/i18n/catalogues/en/ui.chat.asks.context.json"
+   },
+   "findings": []
+  },
+  "ui.chat.sidebar": {
+   "namespace": "ui.chat.sidebar",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 7,
+   "delta_keys_audited": [
+    "ui.chat.sidebar.groups.empty",
+    "ui.chat.sidebar.groups.loading",
+    "ui.chat.sidebar.groups.withheld",
+    "ui.chat.sidebar.catalogue.show_more_agents",
+    "ui.chat.sidebar.catalogue.show_more_teams",
+    "ui.chat.sidebar.drafts.row_label",
+    "ui.chat.sidebar.drafts.discard_label"
+   ],
+   "sha256": {
+    "es": "0de76316882579c222d735d2c51b4eb4fcf2ebbfa5de8ea5be0a110f3185def6",
+    "en": "da4e961e7f19619d98860565be68e0edf65d26ebd8eef4eac2a48e8e6aa8b3df"
+   },
+   "context_sha256": "8e06707ca7184110e9599e1d4acaa5ad4f4409e3034dabfb4d861244a07c4cbb",
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+    "target": "src/i18n/catalogues/es/ui.chat.sidebar.json",
+    "context": "src/i18n/catalogues/en/ui.chat.sidebar.context.json"
+   },
+   "findings": []
+  },
+  "ui.chat.pickers": {
+   "namespace": "ui.chat.pickers",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 8,
+   "delta_keys_audited": [
+    "ui.chat.pickers.at_menu.footer.nothing",
+    "ui.chat.pickers.at_menu.footer.inserts",
+    "ui.chat.pickers.at_menu.footer.opens",
+    "ui.chat.pickers.slash.row_slot.fast_on",
+    "ui.chat.pickers.slash.row_slot.fast_off",
+    "ui.chat.pickers.slash.row_slot.needs_value",
+    "ui.chat.pickers.slash.unknown_command",
+    "ui.chat.pickers.slash.unknown_command_suggest"
+   ],
+   "sha256": {
+    "es": "12c2f0180d146cb31585dd95bb72d97c7db0421a2cb777cb5f64dbc1d9cdc5a7",
+    "en": "fc24432940fa342e87f169992f8f9bf00d2d73a06ee654a29a62b547bcb6be37"
+   },
+   "context_sha256": "39138377d3df864dfcb9f64e084110244a40abce650f3c0837e1d31e45fa1df9",
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.pickers.json",
+    "target": "src/i18n/catalogues/es/ui.chat.pickers.json",
+    "context": "src/i18n/catalogues/en/ui.chat.pickers.context.json"
+   },
+   "findings": []
+  },
+  "ui.chat.run_details": {
+   "namespace": "ui.chat.run_details",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 2,
+   "delta_keys_audited": [
+    "ui.chat.run_details.wake.managed_by",
+    "ui.chat.run_details.wake.managed_note"
+   ],
+   "sha256": {
+    "es": "cfcca70e2ae05f58cfd6b356067fe4a966b6e48ef79d3666ae07352245ca77ce",
+    "en": "92fb1e13c99204304e7f567f29be4983416d7eddd3c5ff092a3abf4716dbf5e4"
+   },
+   "context_sha256": "be214f5b36ae7cd9c131b4372d0537321d7a22c6d35555883e8ca3f149c4bdb7",
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.run_details.json",
+    "target": "src/i18n/catalogues/es/ui.chat.run_details.json",
+    "context": "src/i18n/catalogues/en/ui.chat.run_details.context.json"
+   },
+   "findings": []
+  },
+  "ui.chat.user_turn": {
+   "namespace": "ui.chat.user_turn",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 3,
+   "delta_keys_audited": [
+    "ui.chat.user_turn.stamp.sent",
+    "ui.chat.user_turn.stamp.answered",
+    "ui.chat.user_turn.stamp.ran"
+   ],
+   "sha256": {
+    "es": "790d2fd45ac328e998acfdf7b502fef5b7ad85fcf488a91590ff4b9f023705e4",
+    "en": "5447e7d6963609e2769747e31b64beec7b7957e1f2c92126d281b21f5dbf78e8"
+   },
+   "context_sha256": "83dc1782e60b76208d1baacc6bbfbcc49acb8ea10421ae17ff7acd5f44c9637f",
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.user_turn.json",
+    "target": "src/i18n/catalogues/es/ui.chat.user_turn.json",
+    "context": "src/i18n/catalogues/en/ui.chat.user_turn.context.json"
+   },
+   "findings": []
+  },
+  "ui.hub.pages": {
+   "namespace": "ui.hub.pages",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 3,
+   "delta_keys_audited": [
+    "ui.hub.pages.signed_out.title",
+    "ui.hub.pages.signed_out.body",
+    "ui.hub.pages.load_failed.title"
+   ],
+   "sha256": {
+    "es": "2daf5d10c96963ece3918e6433c9834d53736b8fd608d6763677e1939a383be3",
+    "en": "cf81ba3771a985ac8dbe5d992df409977d792b836f1e48fb335f65f253837a20"
+   },
+   "context_sha256": "a767550cecb7c9469be395ece18098651441441777713e5f9101045f5df58ce5",
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.hub.pages.json",
+    "target": "src/i18n/catalogues/es/ui.hub.pages.json",
+    "context": "src/i18n/catalogues/en/ui.hub.pages.context.json"
+   },
+   "findings": []
+  }
+ }
+}

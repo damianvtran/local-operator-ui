@@ -1,0 +1,137 @@
+{
+ "audit_id": "tbh-held-schedule-20261021",
+ "date": "2026-10-21",
+ "locale": "fr",
+ "namespace": "ui.teamBridge",
+ "source_commit": "c06b457be90a58b3a330f361f9e260cf88a4dfa4",
+ "source_base": "51dceb5a09",
+ "scope": "2 keys added at c06b457be9: ui.teamBridge.schedule.held and ui.teamBridge.schedule.discard_attempt (git diff 51dceb5a09..c06b457be9 of en). The other 136 values are inherited unchanged from the tbs-drafts-schedule-20261021 audit.",
+ "status": "audited",
+ "translator": {
+  "agent": "translator",
+  "model": "anthropic/claude-opus-5-5",
+  "date": "2026-10-21",
+  "session": "7f91449c7aa6",
+  "job": "a7380f37ab56",
+  "remediation_job": "b4390a98f09f"
+ },
+ "auditors": [
+  {
+   "agent": "translation-auditor",
+   "model": "anthropic/claude-opus-5-5",
+   "date": "2026-10-21",
+   "result": "clean",
+   "instance": "tbh-r2-fr",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "receipt": "i18n/receipts/tbh-r2-fr.json",
+   "receipt_sha256": "ea54d0ab14dead34e0b18e912905cc9601c7c1cdc393c7bc2b18f0f26e4e6eb6",
+   "scope": "Team Bridge held-schedule recovery: 2-key delta (schedule.held, schedule.discard_attempt) independently audited in tbh-r1-fr, NIT remediation delta re-audited here; other 136 values inherited unchanged from c06b457be9 (tbs-r2-fr). Catalogue audit only, not rendered-fit, activation or release approval.",
+   "note": "Independent delta audit; round 1 retained at i18n/receipts/tbh-r1-fr.json and i18n/audits/evidence/fr/ui.teamBridge/tbh-held-schedule-20261021/. No rendered-fit claim."
+  }
+ ],
+ "audit_rounds": [
+  {
+   "round": 1,
+   "instance": "tbh-r1-fr",
+   "session": "1a89c9920568",
+   "job": "cb620f9eb142",
+   "model": "anthropic/claude-opus-5-5",
+   "status": "passed",
+   "keys_audited": 2,
+   "target_sha256": "21289e3b3f5f54dcd3c5f67486f2e089448cf611f3e864efd953b820bc049809",
+   "findings": [
+    {
+     "severity": "NIT",
+     "key": "ui.teamBridge.schedule.discard_attempt"
+    }
+   ],
+   "receipt": {
+    "path": "i18n/receipts/tbh-r1-fr.json",
+    "sha256": "0bc3c31ede31793ed472f2771a2c7915526f613af8062f57966f0d4ebe6feed1"
+   }
+  },
+  {
+   "round": 2,
+   "instance": "tbh-r2-fr",
+   "session": "1a89c9920568",
+   "job": "eb514aefbf22",
+   "model": "anthropic/claude-opus-5-5",
+   "status": "passed",
+   "keys_audited": 2,
+   "target_sha256": "1d888863b58369dc278d348d20f1975216e91daa54cd51c7e8e882db3d52540a",
+   "findings": [],
+   "remediation": [
+    {
+     "key": "ui.teamBridge.schedule.held",
+     "r1_severity": "NIT",
+     "disposition": "fixed",
+     "verified": true
+    },
+    {
+     "key": "ui.teamBridge.schedule.discard_attempt",
+     "r1_severity": "NIT",
+     "disposition": "fixed",
+     "verified": true
+    }
+   ],
+   "receipt": {
+    "path": "i18n/receipts/tbh-r2-fr.json",
+    "sha256": "ea54d0ab14dead34e0b18e912905cc9601c7c1cdc393c7bc2b18f0f26e4e6eb6"
+   }
+  }
+ ],
+ "inherited_receipt": {
+  "base": "c06b457be9",
+  "path": "i18n/receipts/tbs-r2-fr.json",
+  "sha256": "a22cd7571d983c4b3a81c433d4d59edb3616de87e9b573348a48a58a9795918e",
+  "keys_inherited": 136,
+  "base_source_sha256": "145e5d2de5165a0fa6e5ce1cff91f6e6909007e448b4a6e229b47a87a71cb46b",
+  "base_target_sha256": "551c9ae899c431dfd85d4e9ce30ca4942eb698df4b032f6943dc2c3af2418ce4",
+  "unchanged_values_verified": 136
+ },
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+   "sha256": "5f67df6c37f34f1f83e4048ad47aef9bd4020fe2ba74c5e8e548b9c4439dc7ee"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/fr/ui.teamBridge.json",
+   "sha256": "1d888863b58369dc278d348d20f1975216e91daa54cd51c7e8e882db3d52540a"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+   "sha256": "02e7be8fe466cd83941fcead89f234a705d0aa40765d274b9d92390333e4337c"
+  }
+ },
+ "references": {
+  "core_revision": "24dbccbb784bd1c9b690ce4601f489791ceacb09",
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/fr.md",
+   "sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+  }
+ },
+ "independence": "Translator and auditor are different agents (translator vs translation-auditor) in different sessions; the auditor never edited catalogues; the coordinator neither translated nor audited and only assembled evidence with scripts/i18n/ledger-assemble.mjs.",
+ "limitations": [
+  "Browser unavailable by task constraint; no rendered-fit, screenshots, glyph metrics, pseudo-localization, native bidi rendering or activation evidence claimed.",
+  "schedule.discard_attempt sits in a whitespace-nowrap ghost Button; auditors flagged it for a rendered-width check that has not been performed."
+ ],
+ "retained_rounds": [
+  {
+   "path": "i18n/receipts/tbh-r1-fr.json",
+   "sha256": "0bc3c31ede31793ed472f2771a2c7915526f613af8062f57966f0d4ebe6feed1"
+  },
+  {
+   "path": "i18n/receipts/tbh-r2-fr.json",
+   "sha256": "ea54d0ab14dead34e0b18e912905cc9601c7c1cdc393c7bc2b18f0f26e4e6eb6"
+  }
+ ]
+}

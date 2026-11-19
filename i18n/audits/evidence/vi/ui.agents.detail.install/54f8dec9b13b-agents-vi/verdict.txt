@@ -1,0 +1,2 @@
+PASS
+0 blocker / 0 major: all 14 values carry the English claim in shipped-catalogue vi (3 minor polish items, 5 nit); nothing unsafe, nothing missing.

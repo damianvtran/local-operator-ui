@@ -1,0 +1,6 @@
+{
+	"ui.chat.tag_mode.live": "{count, plural, one {{count, number, ::group-off} चल रही} other {{count, number, ::group-off} चल रही}}",
+	"ui.chat.tag_mode.not_loaded": "इस टैग की पुरानी चैट अभी लोड नहीं हुई हैं।",
+	"ui.chat.tag_mode.mode_hint": "टैग के समूह समय के खंड या टैग वाले समूह इस्तेमाल करते हैं।",
+	"ui.chat.tag_mode.use_tag": "टैग चुनें"
+}

@@ -1,0 +1,189 @@
+{
+  "schema": "local-operator-ui/i18n-audit-receipt",
+  "kind": "translation-audit-receipt",
+  "audit_kind": "current-byte-rebind",
+  "round": 1,
+  "locale": "vi",
+  "locale_name": "Tiếng Việt",
+  "pr": 1403,
+  "branch": "feat/i18n-key-remaining-copy",
+  "head": "0adbb37b9429e2c70cbe64ea149cb091432c8dd6",
+  "audited_head": "0adbb37b9429e2c70cbe64ea149cb091432c8dd6",
+  "base": "91aa8f5f10797184d01c41143d1a3645176b566b",
+  "date": "2026-10-25",
+  "agent": "translation-auditor",
+  "model": "deepseek/deepseek-flash",
+  "status": "passed",
+  "namespace": "ui.chat.header",
+  "instance": "vi-bind-bae711b8664e",
+  "auditor": {
+    "agent": "translation-auditor",
+    "role": "independent translation auditor (team lopdev); not a translator on PR #1403",
+    "harness": "Local Operator",
+    "team": "lopdev",
+    "session": "0040bedb2ab5",
+    "model": "deepseek/deepseek-flash",
+    "model_provenance": "Harness session header reports deepseek/deepseek-flash; no provider fallback was reported or observed during this run. No other model is claimed.",
+    "independence": "This run authored no catalogue, ledger, allowance or code change for PR #1403. It read the committed catalogue bytes at 0adbb37b94 from git and writes only the four vi-bind receipts. The translator rows for these namespaces name i18n-translator/translator, not translation-auditor.",
+    "date": "2026-10-25",
+    "instance": "vi-bind-bae711b8664e"
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "openai/gpt-6.1-sol",
+    "date": "2026-10-18"
+  },
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/vi.md",
+      "sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+    },
+    "docs": {
+      "path": "docs/I18N.md",
+      "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+    }
+  },
+  "result": "clean-with-findings",
+  "previous_head": "566fed884558fa38c662b6e4b55c7915f56798a8",
+  "previous_receipt": "i18n/receipts/vi-final-bae711b8664e.json",
+  "binding": "Current-byte re-bind of an already-audited file: the target SHA-256 at 0adbb37b94 is byte-identical to the file audited by vi-final-bae711b8664e at 566fed8845. Every value was re-read at the current head and the inherited ICU/placeholder structure re-checked; this receipt re-binds those bytes rather than claiming a fresh translation review of carried copy.",
+  "scope": "ui.chat.header for vi: all 12 keys at PR #1403 head 0adbb37b94, read against the English source, the English context sidecar, the vi style guide and the glossary. Parent A (branch, 566fed8845) has 12 keys and was audited; origin/main (91aa8f5f) has 10; the merged file is the 12-key union with all 10 shared values identical.",
+  "en_sha256": "04fa4fb0f73dc33811c40b9574f92b8bc0ddafb8a458242497a92400c009e3f0",
+  "context_sha256": "39558b26f12ae22908a146f61c8c40795ac9e3b19e41a6ebed7ada883e7281bf",
+  "target_sha256": "bae711b8664e1c3eb08500407c194150908c27151f3d9b504a7905baad11b6d4",
+  "instance_basis": "target_sha256 first 12 hex, per the re-bind naming instruction",
+  "union": {
+    "parent_a": {
+      "rev": "566fed8845",
+      "keys": 12,
+      "receipt": "i18n/receipts/vi-final-bae711b8664e.json",
+      "only_a": [
+        "ui.chat.header.new_chat",
+        "ui.chat.header.new_chat_with"
+      ],
+      "sha256": "bae711b8664e1c3eb08500407c194150908c27151f3d9b504a7905baad11b6d4",
+      "role": "branch pre-merge head (audited)"
+    },
+    "parent_b": {
+      "rev": "91aa8f5f",
+      "role": "origin/main at this read",
+      "keys": 10,
+      "only_b": [],
+      "sha256": "403864dd874acd8b95d426454d01a7b06bdbdb4fc97ba812b531d35c4521ee9b",
+      "note": "no B-only key; every B key is shared with parent A and its value is identical in both"
+    },
+    "shared": 10,
+    "shared_values_identical": true,
+    "merged_keys": 12,
+    "union_equals_merged": true,
+    "every_merged_value_from_a_parent": true
+  },
+  "checks": {
+    "keys": {
+      "english": 12,
+      "target": 12,
+      "set_equals_english": true,
+      "order_equals_english": true,
+      "missing": [],
+      "extra": []
+    },
+    "icu": {
+      "parser": "@formatjs/icu-messageformat-parser 3.5.21",
+      "messages_parsed": 12,
+      "plural_messages": 0,
+      "select_messages": 0,
+      "arguments": [
+        "target"
+      ],
+      "parse_errors": []
+    },
+    "placeholders": {
+      "all_preserved": true,
+      "detail": "1/1 argument: {target} in new_chat_with; no other ICU arguments, selects or plurals."
+    },
+    "width": {
+      "budget_source": "en/ui.chat.header.context.json maxCells (advisory, not measured fit)",
+      "over_budget": [
+        {
+          "key": "ui.chat.header.new_chat",
+          "cells": 19,
+          "maxCells": 16,
+          "english_cells": 8
+        },
+        {
+          "key": "ui.chat.header.new_chat_with",
+          "cells": 32,
+          "maxCells": 32,
+          "english_cells": 22
+        }
+      ],
+      "render_surface": "chat-header.tsx:879-901 renders the title in h2 `min-w-0 max-w-full truncate`."
+    },
+    "text": {
+      "nfc": true,
+      "ellipsis_preserved": true,
+      "bidi_controls": 0
+    },
+    "byte_identity": {
+      "prior_receipt": "i18n/receipts/vi-final-bae711b8664e.json",
+      "prior_audited_head": "566fed8845",
+      "prior_target_sha256": "bae711b8664e1c3eb08500407c194150908c27151f3d9b504a7905baad11b6d4",
+      "identical": true
+    }
+  },
+  "findings": [
+    {
+      "id": "VI-BIND-H1",
+      "severity": "minor",
+      "category": "width",
+      "namespace": "ui.chat.header",
+      "key": "ui.chat.header.new_chat",
+      "keys": [
+        "ui.chat.header.new_chat",
+        "ui.chat.header.new_chat_with"
+      ],
+      "current": "new_chat: «Cuộc trò chuyện mới» (19 cells; maxCells 16; English 8); new_chat_with: «Cuộc trò chuyện mới với {target}» (32 cells including the 8-cell placeholder; maxCells 32; English 22 including the placeholder).",
+      "proposed": "No mandatory rewording: flag for a rendered check at the narrowest header width. If truncation is observed, the term-preserving shortenings are «Trò chuyện mới» (14 cells) and «Trò chuyện mới với {target}» (27 cells including the placeholder, 19 before it); both drop the «cuộc» classifier used by the sidebar New chat label, so keep the current values if the header has room.",
+      "reason": "The two header titles are materially longer than English (new_chat is 2.4x) and the h2 is `truncate`; the new_chat_with fixed prefix is 24 cells, so with the 8-cell placeholder the template already sits at 32/32 and any target longer than 8 cells exceeds the budget (English leaves about 17 cells for the target), so a typical agent or team name can be cut. The sidecar calls maxCells advisory, not measured fit; this is a rendered-fit flag, not a proven overflow.",
+      "evidence": "ui.chat.header.context.json maxCells 16/32; chat-header.tsx:879-901 renders the title in h2 `min-w-0 max-w-full truncate`. Character-cell counts are NFC codepoints including spaces. Same finding as vi-final-bae711b8664e VI-FINAL-H1, re-read on the current bytes.",
+      "disposition": "rendered check; no change demanded on advisory evidence"
+    }
+  ],
+  "observations": [
+    {
+      "key": "ui.chat.header.transcript_display",
+      "issue": "«Hiển thị bản ghi» is a verb phrase where the sidecar specifies a noun-phrase overflow submenu trigger; in the menu it can read as the action «display the transcript» rather than the display-mode setting the submenu chooses.",
+      "recommendation": "If a future copy pass touches it, «Chế độ hiển thị bản ghi» (23 cells, within maxCells 28) states the setting and keeps transcript → bản ghi. Not counted: pre-existing, previously audited clean.",
+      "counted": false
+    },
+    {
+      "key": "ui.chat.header.archived_hint",
+      "issue": "«Nó sẽ ẩn khỏi danh sách cuộc trò chuyện cho đến khi bạn khôi phục.» reads as a future/passive consequence where the English states the present state («It is hidden»); the pronoun «Nó» is optional in Vietnamese.",
+      "recommendation": "If touched, «Cuộc trò chuyện này đã được lưu trữ nên bị ẩn khỏi danh sách cho đến khi bạn khôi phục.» is more direct. Not counted: the tooltip sits on an already-archived badge and the statement is not false.",
+      "counted": false
+    },
+    {
+      "key": "ui.chat.header.close_run_details, ui.chat.header.open_run_details",
+      "issue": "Carry-over width overruns: close «Đóng chi tiết lượt chạy» is 23 cells against maxCells 20 (en 17); open «Mở chi tiết lượt chạy» is 21 against 20 (en 15).",
+      "recommendation": "No shorter phrasing preserves the established «lượt chạy» term («Đóng chi tiết» would drop «run»); flag alongside VI-BIND-H1 if a rendered check runs. Not counted separately: pre-existing keys and auto-width overflow-menu rows.",
+      "counted": false
+    }
+  ],
+  "totals": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0,
+    "keys_read": 12
+  },
+  "limitations": [
+    "No rendered app frame was captured; the width finding (where present) is a character-cell measurement against the sidecar's advisory maxCells, not a screenshot or a measured overflow.",
+    "No native-speaker sign-off is claimed; this is an independent agent audit against the vi style guide and glossary.",
+    "The repository's full pnpm check-i18n gate was not run; the mechanical checks (key parity, ICU parse, placeholder names, NFC, plural/select rendering with intl-messageformat 12.1.3) were run directly on the committed bytes at 0adbb37b94.",
+    "Carried copy: the file is byte-identical to vi-final-bae711b8664e; the only finding is the previously recorded advisory width flag."
+  ]
+}

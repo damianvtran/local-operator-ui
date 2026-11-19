@@ -1,0 +1,17 @@
+Final-round audit A, locale fr, namespace ui.teamBridge, 2026-10-30.
+Auditor: translation-auditor (session 268b21348730); model radient/auto (see record.json model_provenance for the fallback chain).
+
+This file is a note, not a command log: the execution outputs sit beside it as
+render-and-plurals.txt, struct-audit.txt, bidi-nfc-scan.txt and check-i18n-*.log.
+
+Scope: the whole 297-key namespace, with the round's correction read byte by byte.
+Findings: 0 blocker, 0 major, 2 minor, 0 nit.
+Observations recorded as INFO (not counted): 2.
+
+No catalogue, ledger row or receipt was edited by this audit.
+Clarification of one shared sentence in record.json "checks": the line about CLDR
+plural arms ends "except the single finding above". For es and fr that exception is
+the recorded attachments.failed_count `many` gap; for hi and ur the arm statement
+(first clause) holds with no exception, and their finding lists are the term-drift
+finding (hi) and none (ur). The receipt itself is unchanged: this note adds no
+verdict, and the immutable receipt in i18n/receipts/ is the artefact of record.

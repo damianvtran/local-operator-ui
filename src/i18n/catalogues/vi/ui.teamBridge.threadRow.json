@@ -1,0 +1,5 @@
+{
+	"ui.teamBridge.threadRow.label": "Xem luồng trò chuyện, {count, plural, other {# câu trả lời}}{unread, plural, =0 {} other {, # chưa đọc}}{hasLast, select, yes {. {last}} other {}}",
+	"ui.teamBridge.threadRow.last": "Trả lời gần nhất {when, select, today {hôm nay lúc {time}} yesterday {hôm qua lúc {time}} other {{time}}}",
+	"ui.teamBridge.threadRow.unread_badge": "{count, plural, other {{label} chưa đọc}}"
+}

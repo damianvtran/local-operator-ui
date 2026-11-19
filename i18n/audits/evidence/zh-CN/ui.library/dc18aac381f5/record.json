@@ -1,0 +1,37 @@
+{
+  "locale": "zh-CN",
+  "namespace": "ui.library",
+  "date": "2026-11-11",
+  "slice": "P7",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "dc18aac381f5",
+    "session": "dc18aac381f5",
+    "model": "deepseek/deepseek-flash",
+    "independent_from_translator_session": true,
+    "actual_model_source": "as stated in the auditor's own report (companion report); no fallback reported"
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "per delegation and the candidate file model field; translator session id not supplied"
+  },
+  "keys": [
+    "ui.library.preview.organized_by_agent",
+    "ui.library.preview.organized_by_librarian",
+    "ui.library.preview.organized_by_system",
+    "ui.library.preview.organized_by_user",
+    "ui.library.preview.organized_unattributed"
+  ],
+  "english_sha256": "39d053e0e00464bc6166a022d6718ac6dbe19bfb5ff2db9497d1ae06a78f4444",
+  "target_sha256": "d7e044a2d086aea98fc1c6efba5f487152f4846d7d2621cbb96722c6f1a21277",
+  "status": "passed",
+  "result": "clean",
+  "findings": [],
+  "artifacts": {
+    "p7-au-zh-CN.md": "ca8c84f6bb61643a684c6ca2b7180882f684b4daa6dc0fe183fc9f8400a1798a",
+    "receipt.json": "348cc9d80ecece920537a7085922ee5a5aef540e23059ed21a431e42f06f85af",
+    "verify.log": "a0cbb2612c7833e7ecd3b3fef5eff965c5d1f3034c7019ccc5588cf12f6b398a"
+  },
+  "note": "record.json written by the integrating coder; verify.log is the coder re-check, not an auditor log."
+}

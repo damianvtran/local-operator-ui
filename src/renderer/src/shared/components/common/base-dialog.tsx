@@ -245,10 +245,18 @@ export const PrimaryButton = forwardRef<HTMLButtonElement, DialogButtonProps>(
 PrimaryButton.displayName = "PrimaryButton";
 
 /**
- * Secondary action button for dialogs
+ * Secondary action button for dialogs.
+ *
+ * `tonal`, not the `secondary` variant its name suggests: every caller renders it
+ * in a dialog footer, a dialog is a floating surface, and a floating surface's
+ * nested controls may not bring back the stroke the panel no longer draws -
+ * `secondary`'s `border-control` edge was a box inside the box (branding § 2;
+ * agent review round 1, R4). Changing it here moves all 32 footer call sites at
+ * once instead of patching each. The name stays: it is the footer's role (the
+ * action beside the primary), not the variant's.
  */
 export const SecondaryButton = forwardRef<HTMLButtonElement, DialogButtonProps>(
-	(props, ref) => <ActionButton ref={ref} variant="secondary" {...props} />,
+	(props, ref) => <ActionButton ref={ref} variant="tonal" {...props} />,
 );
 SecondaryButton.displayName = "SecondaryButton";
 

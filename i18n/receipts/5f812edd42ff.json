@@ -1,0 +1,160 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "model": "deepseek/deepseek-flash",
+  "model_provenance": {
+    "initial_model": "deepseek/deepseek-flash",
+    "actual_audit_model": "deepseek/deepseek-flash",
+    "automatic_fallback": "none observed"
+  },
+  "instance": "5f812edd42ff",
+  "supersedes_instance": "7bfce9199de0",
+  "reaudit": true,
+  "reaudit_of_round": 9,
+  "date": "2026-10-20",
+  "round": 9,
+  "namespace": "ui.hub",
+  "locale": "es",
+  "status": "passed",
+  "verdict": "clean",
+  "independence": "Independent auditor; did not translate, edit, stage or commit any repository file. Read-only pass over the remediated worktree at the recorded head.",
+  "scope": {
+    "repository": "damianvtran/local-operator-ui",
+    "pr": 1269,
+    "worktree": "/Users/damian/local-operator-ui/.worktrees/hub-skills-state",
+    "head": "e8d2963cddaf4db47606a996cd416a2166e48078",
+    "worktree_state": "remediated round-9 key present uncommitted in the working tree; auditor made no writes to the repository",
+    "focus": "Re-audit of ui.hub.skills.inventory_unknown at the remediated bytes only; key-set parity re-checked, the other 49 ui.hub.skills.* keys re-verified byte-identical, and every accuracy/idiom/register/glossary/placeholder/punctuation/length/RTL check re-run.",
+    "keys_in_namespace": 50,
+    "keys_semantically_audited": 1,
+    "keys_verified_unchanged": 49
+  },
+  "sha256": {
+    "es": "cd6afd28a967652b3bcfbcd3ad74b9bddd7315f205db99a0d89df1b88f3152c4",
+    "en": "16f600aa3e0900651df1537b6d0013f438a322994d073cc38afa933e122bfa52"
+  },
+  "required_sources": {
+    "ui_howto": {
+      "path": "docs/I18N.md",
+      "sha256": "f6699c1015a16cbf782bbd008a28c50edd63ade3e98f84be2d41dec6b14b95db"
+    },
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/es.md",
+      "sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+    }
+  },
+  "keys_audited": [
+    "ui.hub.skills.title",
+    "ui.hub.skills.empty",
+    "ui.hub.skills.search_empty",
+    "ui.hub.skills.loading",
+    "ui.hub.skills.unavailable",
+    "ui.hub.skills.remote_empty",
+    "ui.hub.skills.scope",
+    "ui.hub.skills.pull_title",
+    "ui.hub.skills.pull_help",
+    "ui.hub.skills.pull_failed",
+    "ui.hub.skills.policy_pending",
+    "ui.hub.skills.publish_title",
+    "ui.hub.skills.select_authored",
+    "ui.hub.skills.revision",
+    "ui.hub.skills.file_count",
+    "ui.hub.skills.files",
+    "ui.hub.skills.text_limits",
+    "ui.hub.skills.local_exists",
+    "ui.hub.skills.initial_policy_description",
+    "ui.hub.skills.search",
+    "ui.hub.skills.search_loaded",
+    "ui.hub.skills.open_detail",
+    "ui.hub.skills.catalogue_failed",
+    "ui.hub.skills.installed_alias",
+    "ui.hub.skills.session_selection",
+    "ui.hub.skills.download",
+    "ui.hub.skills.unpull",
+    "ui.hub.skills.unpull_title",
+    "ui.hub.skills.unpull_body",
+    "ui.hub.skills.unpull_failed",
+    "ui.hub.skills.subscribe_failed",
+    "ui.hub.skills.local_path",
+    "ui.hub.skills.published_by",
+    "ui.hub.skills.not_downloaded",
+    "ui.hub.skills.subscribed_absent",
+    "ui.hub.skills.pulled",
+    "ui.hub.skills.manual",
+    "ui.hub.skills.detached",
+    "ui.hub.skills.update_available",
+    "ui.hub.skills.update_applied",
+    "ui.hub.skills.update_failed",
+    "ui.hub.skills.update_now",
+    "ui.hub.skills.download_help",
+    "ui.hub.skills.subscribe_help",
+    "ui.hub.skills.unsubscribe",
+    "ui.hub.skills.unsubscribe_help",
+    "ui.hub.skills.public_hub",
+    "ui.hub.skills.count",
+    "ui.hub.skills.count_shared",
+    "ui.hub.skills.inventory_unknown"
+  ],
+  "remediation_check": {
+    "prior_instance": "7bfce9199de0",
+    "prior_finding": "minor",
+    "prior_current": "Estado del vínculo no disponible.",
+    "proposed": "Estado del enlace no disponible.",
+    "resolved_current": "Estado del enlace no disponible.",
+    "resolved": true,
+    "note": "Resolved. The remediated value uses the namespace term \"enlace\" (ui.hub.links.title/load_failed/healthy, subscriptions.policy_menu, skills.unpull_body, skills.unpull_failed) instead of \"vínculo\"."
+  },
+  "checks": {
+    "on_disk_sha256_matches_brief": true,
+    "key_set_parity": {
+      "ui.hub.skills.*": {
+        "english": 50,
+        "target": 50,
+        "missing": [],
+        "extra": []
+      },
+      "whole_catalogue": {
+        "english": 179,
+        "target": 179
+      }
+    },
+    "delta_vs_head": {
+      "added": [
+        "ui.hub.skills.inventory_unknown"
+      ],
+      "removed": [],
+      "changed_values": 0
+    },
+    "previous_audit_spot_check": {
+      "ledger_instance": "86e9d43790ad",
+      "ledger_round": "round 7",
+      "ledger_audited_target_sha256": "c9a98e7c88042643953a86f45cfba64f691f87e21161a3ac02753cd307ff8e66",
+      "head_blob_sha256": "c9a98e7c88042643953a86f45cfba64f691f87e21161a3ac02753cd307ff8e66",
+      "match": true,
+      "keys_verified_unchanged": 49,
+      "method": "Whole-file SHA-256 equals the ledger audited target hash; independently, a key-by-key JSON value comparison against HEAD reports 0 changed values."
+    },
+    "placeholder_integrity": "No placeholders, ICU plural/select branches, number/date skeletons or markup tokens in the key.",
+    "nfc": true,
+    "bidi_controls": "not applicable (no RTL content)",
+    "punctuation": "full stop (.) matching the English terminal period",
+    "length": {
+      "english_chars": 23,
+      "target_chars": 32,
+      "existing_status_slot_max_chars": 34,
+      "note": "32 chars vs 23 English (+39%); equal to or below the pre-existing 34-char status maximum in this footer slot (\"No instalada — sin actualizaciones\"). Reasonable; no rendered-check flag."
+    },
+    "glossary": "link -> enlace, matching every other ui.hub link string, including the adjacent ui.hub.skills.unpull_failed (\"revisa el estado del enlace\"); state -> estado. Consistent."
+  },
+  "findings": [],
+  "findings_count": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  }
+}

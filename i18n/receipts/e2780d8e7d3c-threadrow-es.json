@@ -1,0 +1,29 @@
+{
+	"auditor": "task",
+	"model": "anthropic/claude-opus-5-5",
+	"instance": "e2780d8e7d3c-threadrow-es",
+	"status": "passed",
+	"namespace": "ui.teamBridge.threadRow",
+	"sha256": {
+		"es": "3d8bb7ca84d3726827add799cc418dce0bbe55c653f772cbc1dd6c9a1ff6e114",
+		"en": "a67a9afc1e1fd719cb39821bb98cb7585e2e71008847be00fc28a855cb00b777",
+		"en_context": "35fb80e43d7cf3dca07bdcb39b2b575df73d8a047c341b9ba61d6d21e940dc18"
+	},
+	"scope": "Round 1 on PR #1672 (base head 797c73e1c7c297c16218e1f229a55468fce9e6cb): all 3 keys of the new namespace ui.teamBridge.threadRow read against en + ui.teamBridge.threadRow.context.json, the glossary and the es style guide; key-set parity (3), placeholders count/unread/last/hasLast/when/time/label preserved, CLDR categories per Intl.PluralRules (node), every key rendered through intl-messageformat across count 1/2/5/21/1000000, unread 0/1/3/21, when today/yesterday/older and the capped '99+' badge label with real Intl time/date output; no ASCII apostrophes, no manual bidi controls, no em/en dashes; terminology checked against sibling ui.teamBridge and bridge tool-row catalogues.",
+	"references": {
+		"glossary": "damianvtran/local-operator@60d412f2e7b3d986e9d11ae40fa114f8ccde8a77:i18n/glossary.md",
+		"style_guide": "damianvtran/local-operator@60d412f2e7b3d986e9d11ae40fa114f8ccde8a77:i18n/style-guides/es.md",
+		"note": "pinned to origin/main; fr/es read from git show origin/main because the shared checkout had uncommitted edits to those two guides"
+	},
+	"translator": {
+		"agent": "coder",
+		"model": "anthropic/claude-opus-5-5",
+		"job": "f7fc643a89d3",
+		"commits": ["81ba1afa330", "797c73e1c7c"],
+		"verified": "identity confirmed by the team manager"
+	},
+	"independence": "Auditor task (session e2780d8e7d3c, team lopdev) is a different agent and run from the translator (coder, job f7fc643a89d3). Same served model family disclosed; no fallback model used. The auditor's only catalogue edits are the fixes listed in findings, made in the audit commit and re-rendered before hashing.",
+	"date": "2026-11-04",
+	"notes": "tú-neutral 'Ver hilo' matches sibling 'hilo'; one/many/other; 'sin leer' invariant; '1.000.000 de respuestas' via many; colon after 'Última respuesta' reads naturally with hoy/ayer/date.",
+	"findings": []
+}

@@ -1,0 +1,740 @@
+{
+ "tool": "fribidi (GNU FriBidi) 1.0.16",
+ "base_direction": "RTL (fribidi --rtl; app sets dir=rtl for ur, storage stays logical)",
+ "method": "order proved from fribidi --novisual --vtol (visual->logical map); the shaped visual string is display only because this build shapes Arabic (lam-alef merges), which would corrupt a code-point-multiset argument",
+ "key": "ui.chat.pickers.slash.enter_needs_a_pick",
+ "checks": [
+  {
+   "label": "ui.chat.pickers.slash.enter_needs_a_pick",
+   "logical": "Enter کے لیے قطار منتخب کرنی ہو گی: پہلے ↓ پھر Enter · Tab اس قطار کو مکمل کرتا ہے۔",
+   "visual_unshaped": "۔ےہ اترک لمکم وک راطق سا Enter · Tab رھپ ↓ ےلہپ :یگ وہ ینرک بختنم راطق ےیل ےک Enter",
+   "visual_shaped_display_only": "۔ﮯﮨ ﺎﺗﺮﮐ ﻞﻤﮑﻣ ﻮﮐ ﺭﺎﻄﻗ ﺱﺍ Enter · Tab ﺮﮭﭘ ↓ ﮯﻠﮩﭘ :ﯽﮔ ﻮﮨ ﯽﻧﺮﮐ ﺐﺨﺘﻨﻣ ﺭﺎﻄﻗ ﮯﯿﻟ ﮯﮐ Enter",
+   "vtol_head": [
+    82,
+    81,
+    80
+   ],
+   "vtol_tail": [
+    2,
+    3,
+    4
+   ],
+   "A_vtol0_is_final_index": true,
+   "A_visual_leftmost_char": "۔",
+   "A_final_stop_is_visually_leftmost": true,
+   "B_controls_zero": true,
+   "B_controls_found": [],
+   "C_islands": [
+    {
+     "token": "Enter",
+     "logical_span": [
+      0,
+      5
+     ],
+     "visual_span": [
+      78,
+      82
+     ],
+     "contiguous_and_unreversed": true
+    },
+    {
+     "token": "Enter",
+     "logical_span": [
+      47,
+      52
+     ],
+     "visual_span": [
+      25,
+      29
+     ],
+     "contiguous_and_unreversed": true
+    },
+    {
+     "token": "Tab",
+     "logical_span": [
+      55,
+      58
+     ],
+     "visual_span": [
+      33,
+      35
+     ],
+     "contiguous_and_unreversed": true
+    }
+   ],
+   "C_islands_contiguous": true,
+   "C_runs": [
+    {
+     "level": 2,
+     "logical_span": [
+      0,
+      5
+     ],
+     "visual_span": [
+      78,
+      82
+     ],
+     "text": "Enter",
+     "contiguous": true,
+     "order_ok": true
+    },
+    {
+     "level": 1,
+     "logical_span": [
+      5,
+      47
+     ],
+     "visual_span": [
+      77,
+      36
+     ],
+     "text": " کے لیے قطار منتخب کرنی ہو گی: پہلے ↓ پھر ",
+     "contiguous": true,
+     "order_ok": true
+    },
+    {
+     "level": 2,
+     "logical_span": [
+      47,
+      58
+     ],
+     "visual_span": [
+      25,
+      35
+     ],
+     "text": "Enter · Tab",
+     "contiguous": true,
+     "order_ok": true
+    },
+    {
+     "level": 1,
+     "logical_span": [
+      58,
+      83
+     ],
+     "visual_span": [
+      24,
+      0
+     ],
+     "text": " اس قطار کو مکمل کرتا ہے۔",
+     "contiguous": true,
+     "order_ok": true
+    }
+   ],
+   "C_runs_contiguous_and_ordered": true,
+   "C_run_blocks_right_to_left": true,
+   "D_brackets_needing_mirror": [],
+   "E_nfc_stable": true,
+   "E_permutation_preserves_codepoints": true
+  },
+  {
+   "label": "ui.chat.pickers.slash.click.stages (rendered with /help)",
+   "logical": "کلک کرنے سے /help مسودے میں آ جائے گی۔",
+   "visual_unshaped": "۔یگ ےئاج آ ںیم ےدوسم help/ ےس ےنرک کلک",
+   "visual_shaped_display_only": "۔ﯽﮔ ﮯﺋﺎﺟ ﺁ ﮟﯿﻣ ﮮﺩﻮﺴﻣ help/ ﮯﺳ ﮯﻧﺮﮐ ﮏﻠﮐ",
+   "vtol_head": [
+    37,
+    36,
+    35
+   ],
+   "vtol_tail": [
+    2,
+    1,
+    0
+   ],
+   "A_vtol0_is_final_index": true,
+   "A_visual_leftmost_char": "۔",
+   "A_final_stop_is_visually_leftmost": true,
+   "B_controls_zero": true,
+   "B_controls_found": [],
+   "C_islands": [
+    {
+     "token": "help",
+     "logical_span": [
+      13,
+      17
+     ],
+     "visual_span": [
+      21,
+      24
+     ],
+     "contiguous_and_unreversed": true
+    }
+   ],
+   "C_islands_contiguous": true,
+   "C_runs": [
+    {
+     "level": 1,
+     "logical_span": [
+      0,
+      13
+     ],
+     "visual_span": [
+      37,
+      25
+     ],
+     "text": "کلک کرنے سے /",
+     "contiguous": true,
+     "order_ok": true
+    },
+    {
+     "level": 2,
+     "logical_span": [
+      13,
+      17
+     ],
+     "visual_span": [
+      21,
+      24
+     ],
+     "text": "help",
+     "contiguous": true,
+     "order_ok": true
+    },
+    {
+     "level": 1,
+     "logical_span": [
+      17,
+      38
+     ],
+     "visual_span": [
+      20,
+      0
+     ],
+     "text": " مسودے میں آ جائے گی۔",
+     "contiguous": true,
+     "order_ok": true
+    }
+   ],
+   "C_runs_contiguous_and_ordered": true,
+   "C_run_blocks_right_to_left": true,
+   "D_brackets_needing_mirror": [],
+   "E_nfc_stable": true,
+   "E_permutation_preserves_codepoints": true
+  },
+  {
+   "label": "ui.chat.pickers.slash.click.runs (rendered with /help)",
+   "logical": "کلک کرنے سے /help چل جائے گی۔",
+   "visual_unshaped": "۔یگ ےئاج لچ help/ ےس ےنرک کلک",
+   "visual_shaped_display_only": "۔ﯽﮔ ﮯﺋﺎﺟ ﻞﭼ help/ ﮯﺳ ﮯﻧﺮﮐ ﮏﻠﮐ",
+   "vtol_head": [
+    28,
+    27,
+    26
+   ],
+   "vtol_tail": [
+    2,
+    1,
+    0
+   ],
+   "A_vtol0_is_final_index": true,
+   "A_visual_leftmost_char": "۔",
+   "A_final_stop_is_visually_leftmost": true,
+   "B_controls_zero": true,
+   "B_controls_found": [],
+   "C_islands": [
+    {
+     "token": "help",
+     "logical_span": [
+      13,
+      17
+     ],
+     "visual_span": [
+      12,
+      15
+     ],
+     "contiguous_and_unreversed": true
+    }
+   ],
+   "C_islands_contiguous": true,
+   "C_runs": [
+    {
+     "level": 1,
+     "logical_span": [
+      0,
+      13
+     ],
+     "visual_span": [
+      28,
+      16
+     ],
+     "text": "کلک کرنے سے /",
+     "contiguous": true,
+     "order_ok": true
+    },
+    {
+     "level": 2,
+     "logical_span": [
+      13,
+      17
+     ],
+     "visual_span": [
+      12,
+      15
+     ],
+     "text": "help",
+     "contiguous": true,
+     "order_ok": true
+    },
+    {
+     "level": 1,
+     "logical_span": [
+      17,
+      29
+     ],
+     "visual_span": [
+      11,
+      0
+     ],
+     "text": " چل جائے گی۔",
+     "contiguous": true,
+     "order_ok": true
+    }
+   ],
+   "C_runs_contiguous_and_ordered": true,
+   "C_run_blocks_right_to_left": true,
+   "D_brackets_needing_mirror": [],
+   "E_nfc_stable": true,
+   "E_permutation_preserves_codepoints": true
+  },
+  {
+   "label": "ui.chat.pickers.slash.click.completes_label (rendered with /help)",
+   "logical": "کلک کرنے سے /help مکمل ہو جائے گی۔",
+   "visual_unshaped": "۔یگ ےئاج وہ لمکم help/ ےس ےنرک کلک",
+   "visual_shaped_display_only": "۔ﯽﮔ ﮯﺋﺎﺟ ﻮﮨ ﻞﻤﮑﻣ help/ ﮯﺳ ﮯﻧﺮﮐ ﮏﻠﮐ",
+   "vtol_head": [
+    33,
+    32,
+    31
+   ],
+   "vtol_tail": [
+    2,
+    1,
+    0
+   ],
+   "A_vtol0_is_final_index": true,
+   "A_visual_leftmost_char": "۔",
+   "A_final_stop_is_visually_leftmost": true,
+   "B_controls_zero": true,
+   "B_controls_found": [],
+   "C_islands": [
+    {
+     "token": "help",
+     "logical_span": [
+      13,
+      17
+     ],
+     "visual_span": [
+      17,
+      20
+     ],
+     "contiguous_and_unreversed": true
+    }
+   ],
+   "C_islands_contiguous": true,
+   "C_runs": [
+    {
+     "level": 1,
+     "logical_span": [
+      0,
+      13
+     ],
+     "visual_span": [
+      33,
+      21
+     ],
+     "text": "کلک کرنے سے /",
+     "contiguous": true,
+     "order_ok": true
+    },
+    {
+     "level": 2,
+     "logical_span": [
+      13,
+      17
+     ],
+     "visual_span": [
+      17,
+      20
+     ],
+     "text": "help",
+     "contiguous": true,
+     "order_ok": true
+    },
+    {
+     "level": 1,
+     "logical_span": [
+      17,
+      34
+     ],
+     "visual_span": [
+      16,
+      0
+     ],
+     "text": " مکمل ہو جائے گی۔",
+     "contiguous": true,
+     "order_ok": true
+    }
+   ],
+   "C_runs_contiguous_and_ordered": true,
+   "C_run_blocks_right_to_left": true,
+   "D_brackets_needing_mirror": [],
+   "E_nfc_stable": true,
+   "E_permutation_preserves_codepoints": true
+  },
+  {
+   "label": "ui.chat.pickers.slash.click.runs_with_value (rendered with /help)",
+   "logical": "کلک کرنے سے /team engineering چل جائے گی۔",
+   "visual_unshaped": "۔یگ ےئاج لچ team engineering/ ےس ےنرک کلک",
+   "visual_shaped_display_only": "۔ﯽﮔ ﮯﺋﺎﺟ ﻞﭼ team engineering/ ﮯﺳ ﮯﻧﺮﮐ ﮏﻠﮐ",
+   "vtol_head": [
+    40,
+    39,
+    38
+   ],
+   "vtol_tail": [
+    2,
+    1,
+    0
+   ],
+   "A_vtol0_is_final_index": true,
+   "A_visual_leftmost_char": "۔",
+   "A_final_stop_is_visually_leftmost": true,
+   "B_controls_zero": true,
+   "B_controls_found": [],
+   "C_islands": [
+    {
+     "token": "team",
+     "logical_span": [
+      13,
+      17
+     ],
+     "visual_span": [
+      12,
+      15
+     ],
+     "contiguous_and_unreversed": true
+    },
+    {
+     "token": "engineering",
+     "logical_span": [
+      18,
+      29
+     ],
+     "visual_span": [
+      17,
+      27
+     ],
+     "contiguous_and_unreversed": true
+    }
+   ],
+   "C_islands_contiguous": true,
+   "C_runs": [
+    {
+     "level": 1,
+     "logical_span": [
+      0,
+      13
+     ],
+     "visual_span": [
+      40,
+      28
+     ],
+     "text": "کلک کرنے سے /",
+     "contiguous": true,
+     "order_ok": true
+    },
+    {
+     "level": 2,
+     "logical_span": [
+      13,
+      29
+     ],
+     "visual_span": [
+      12,
+      27
+     ],
+     "text": "team engineering",
+     "contiguous": true,
+     "order_ok": true
+    },
+    {
+     "level": 1,
+     "logical_span": [
+      29,
+      41
+     ],
+     "visual_span": [
+      11,
+      0
+     ],
+     "text": " چل جائے گی۔",
+     "contiguous": true,
+     "order_ok": true
+    }
+   ],
+   "C_runs_contiguous_and_ordered": true,
+   "C_run_blocks_right_to_left": true,
+   "D_brackets_needing_mirror": [],
+   "E_nfc_stable": true,
+   "E_permutation_preserves_codepoints": true
+  },
+  {
+   "label": "ui.chat.pickers.slash.click.runs_command (rendered with /help)",
+   "logical": "کلک کرنے سے کمانڈ چل جائے گی۔",
+   "visual_unshaped": "۔یگ ےئاج لچ ڈنامک ےس ےنرک کلک",
+   "visual_shaped_display_only": "۔ﯽﮔ ﮯﺋﺎﺟ ﻞﭼ ﮉﻧﺎﻤﮐ ﮯﺳ ﮯﻧﺮﮐ ﮏﻠﮐ",
+   "vtol_head": [
+    28,
+    27,
+    26
+   ],
+   "vtol_tail": [
+    2,
+    1,
+    0
+   ],
+   "A_vtol0_is_final_index": true,
+   "A_visual_leftmost_char": "۔",
+   "A_final_stop_is_visually_leftmost": true,
+   "B_controls_zero": true,
+   "B_controls_found": [],
+   "C_islands": [],
+   "C_islands_contiguous": true,
+   "C_runs": [
+    {
+     "level": 1,
+     "logical_span": [
+      0,
+      29
+     ],
+     "visual_span": [
+      28,
+      0
+     ],
+     "text": "کلک کرنے سے کمانڈ چل جائے گی۔",
+     "contiguous": true,
+     "order_ok": true
+    }
+   ],
+   "C_runs_contiguous_and_ordered": true,
+   "C_run_blocks_right_to_left": true,
+   "D_brackets_needing_mirror": [],
+   "E_nfc_stable": true,
+   "E_permutation_preserves_codepoints": true
+  },
+  {
+   "label": "en control: ui.chat.pickers.slash.enter_needs_a_pick",
+   "logical": "Enter needs a row you pick: ↓ then Enter · Tab completes this row.",
+   "visual_unshaped": ".Enter needs a row you pick: ↓ then Enter · Tab completes this row",
+   "visual_shaped_display_only": ".Enter needs a row you pick: ↓ then Enter · Tab completes this row",
+   "vtol_head": [
+    65,
+    0,
+    1
+   ],
+   "vtol_tail": [
+    62,
+    63,
+    64
+   ],
+   "A_vtol0_is_final_index": true,
+   "A_visual_leftmost_char": ".",
+   "A_final_stop_is_visually_leftmost": false,
+   "B_controls_zero": true,
+   "B_controls_found": [],
+   "C_islands": [
+    {
+     "token": "Enter",
+     "logical_span": [
+      0,
+      5
+     ],
+     "visual_span": [
+      1,
+      5
+     ],
+     "contiguous_and_unreversed": true
+    },
+    {
+     "token": "needs",
+     "logical_span": [
+      6,
+      11
+     ],
+     "visual_span": [
+      7,
+      11
+     ],
+     "contiguous_and_unreversed": true
+    },
+    {
+     "token": "a",
+     "logical_span": [
+      12,
+      13
+     ],
+     "visual_span": [
+      13,
+      13
+     ],
+     "contiguous_and_unreversed": true
+    },
+    {
+     "token": "row",
+     "logical_span": [
+      14,
+      17
+     ],
+     "visual_span": [
+      15,
+      17
+     ],
+     "contiguous_and_unreversed": true
+    },
+    {
+     "token": "you",
+     "logical_span": [
+      18,
+      21
+     ],
+     "visual_span": [
+      19,
+      21
+     ],
+     "contiguous_and_unreversed": true
+    },
+    {
+     "token": "pick:",
+     "logical_span": [
+      22,
+      27
+     ],
+     "visual_span": [
+      23,
+      27
+     ],
+     "contiguous_and_unreversed": true
+    },
+    {
+     "token": "then",
+     "logical_span": [
+      30,
+      34
+     ],
+     "visual_span": [
+      31,
+      34
+     ],
+     "contiguous_and_unreversed": true
+    },
+    {
+     "token": "Enter",
+     "logical_span": [
+      35,
+      40
+     ],
+     "visual_span": [
+      36,
+      40
+     ],
+     "contiguous_and_unreversed": true
+    },
+    {
+     "token": "Tab",
+     "logical_span": [
+      43,
+      46
+     ],
+     "visual_span": [
+      44,
+      46
+     ],
+     "contiguous_and_unreversed": true
+    },
+    {
+     "token": "completes",
+     "logical_span": [
+      47,
+      56
+     ],
+     "visual_span": [
+      48,
+      56
+     ],
+     "contiguous_and_unreversed": true
+    },
+    {
+     "token": "this",
+     "logical_span": [
+      57,
+      61
+     ],
+     "visual_span": [
+      58,
+      61
+     ],
+     "contiguous_and_unreversed": true
+    },
+    {
+     "token": "row.",
+     "logical_span": [
+      62,
+      66
+     ],
+     "visual_span": [
+      63,
+      0
+     ],
+     "contiguous_and_unreversed": false
+    }
+   ],
+   "C_islands_contiguous": false,
+   "C_runs": [
+    {
+     "level": 2,
+     "logical_span": [
+      0,
+      65
+     ],
+     "visual_span": [
+      1,
+      65
+     ],
+     "text": "Enter needs a row you pick: ↓ then Enter · Tab completes this row",
+     "contiguous": true,
+     "order_ok": true
+    },
+    {
+     "level": 1,
+     "logical_span": [
+      65,
+      66
+     ],
+     "visual_span": [
+      0,
+      0
+     ],
+     "text": ".",
+     "contiguous": true,
+     "order_ok": true
+    }
+   ],
+   "C_runs_contiguous_and_ordered": true,
+   "C_run_blocks_right_to_left": true,
+   "D_brackets_needing_mirror": [],
+   "E_nfc_stable": true,
+   "E_permutation_preserves_codepoints": true
+  }
+ ],
+ "verdict": {
+  "A_final_stop_visually_leftmost": true,
+  "B_no_manual_bidi_controls": true,
+  "C_islands_contiguous": true,
+  "C_runs_contiguous_ordered_and_rtl": true,
+  "D_no_mirrored_brackets_present": true,
+  "E_nfc_and_permutation": true,
+  "strip_both_lines_stopped_leftmost": true,
+  "all_pass": true
+ }
+}

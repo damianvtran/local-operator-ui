@@ -1,11 +1,42 @@
-import { type BrowserWindow, type IpcMainInvokeEvent, ipcMain } from "electron";
+import {
+	type BrowserWindow,
+	type IpcMainInvokeEvent,
+	Menu,
+	ipcMain,
+} from "electron";
 import { t } from "../../i18n";
+import {
+	ADDRESS_HISTORY_MAX_LIMIT,
+	ADDRESS_HISTORY_MAX_QUERY_LENGTH,
+	type AddressHistoryRequest,
+} from "../../shared/browser-address-history";
+import {
+	type ExtensionsRequest,
+	type ExtensionsResponse,
+	decodeExtensionsRequest,
+} from "../../shared/browser-extensions";
+import {
+	type MediaPermissionDecision,
+	isMediaPermissionDecision,
+} from "../../shared/browser-media-permission";
+import {
+	type TabActionsMenuSelection,
+	tabActionsMenuRequestOrThrow,
+	tabActionsMenuSelectionOrNull,
+} from "../../shared/browser-tab-actions-menu";
 import { trustedDesktopFrame } from "../desktop-transport";
+import {
+	DEV_DRIVER_ADDRESS_OVERLAY,
+	DEV_DRIVER_ADDRESS_OVERLAY_PROJECT,
+} from "../dev-driver";
 import type { WebauthnChooser } from "../webauthn";
+import type { AddressOverlayFacts } from "./address-overlay";
 import type { BrowserHost, CloseTabsIntent } from "./host";
 import { type BrowserAvailability, MAX_START_ATTEMPTS } from "./lifecycle";
 import type { ClearWhat } from "./profile";
 import type { ContentRect } from "./registry";
+import { numberOrThrow, tabIdOrThrow } from "./request-guards";
+import { buildTabActionsMenuTemplate } from "./tab-actions-menu";
 
 /**
  * The renderer IPC surface for the browser feature.
@@ -36,6 +67,14 @@ import type { ContentRect } from "./registry";
 
 export interface RegisterBrowserIpcOptions {
 	window: () => BrowserWindow | null;
+	/**
+	 * `windowShow === "never"` from the launch plan: true only in `headless`
+	 * (`src/main/window-mode.ts`'s WINDOW_BEHAVIOUR table). Forwarded rather than
+	 * re-read here, like every other launch fact this module consumes, so the tab
+	 * menu's refusal and `window-chrome.ts`'s app-menu refusal cannot disagree
+	 * about which launches have a window a popup can hang from.
+	 */
+	headless: boolean;
 	/** The trusted renderer URL: the dev server during development, the packaged
 	 * `index.html` otherwise. Same value the desktop transport is given. */
 	expectedUrl: string;
@@ -50,6 +89,64 @@ export interface RegisterBrowserIpcOptions {
 	 * condition `authorize` already refuses.
 	 */
 	webauthn: () => WebauthnChooser | null;
+	/**
+	 * The passkey notice's two user actions. Both take the notice's `at` as its
+	 * identity and return a boolean/outcome; neither takes a URL (the open reads the
+	 * tab's own URL in main) - see `passkey-notice.ts`.
+	 */
+	passkeyNotice?: {
+		dismiss: (tabId: number, at: number) => boolean;
+		openInSystemBrowser: (
+			tabId: number,
+			at: number,
+		) => Promise<{ ok: true } | { ok: false; reason: string }>;
+		/** An agent tab's notice only: open the same page in a new user tab
+		 * (`continuePasskeyNoticeInUserTab`). Optional for a host predating it. */
+		continueInUserTab?: (
+			tabId: number,
+			at: number,
+		) => Promise<{ ok: true } | { ok: false; reason: string }>;
+	};
+	/**
+	 * Passkey custody's one user action, "Return to agent"
+	 * (`extensions/passkey-custody.ts`). `trusted` is the click's `isTrusted`;
+	 * main refuses anything else, as for the media prompt.
+	 */
+	passkeyCustody?: {
+		/** `reloaded`: the hold lifts only once the reload commits, so the band
+		 * stays busy until it disappears. */
+		release: (
+			tabId: number,
+			at: number,
+			trusted: boolean,
+		) => { ok: true; reloaded?: boolean } | { ok: false; reason: string };
+	};
+	/**
+	 * The sidebar notification row's click (`user-attention.ts`): the ONLY way
+	 * a wait an agent tab has on the user — a passkey custody hold, a held popup
+	 * — comes forward. Sender-checked like every channel here, so neither an
+	 * agent (no RPC method reaches it) nor a page can bring a tab to the front.
+	 * `false`: the tab is gone.
+	 */
+	userAttention?: { open: (tabId: number) => boolean };
+	/**
+	 * The camera/microphone prompt's one action (`media-permissions.ts`). This
+	 * channel is the ONLY route to a media grant, and `authorize()` admits only
+	 * the app window's own top frame: a driven page or the agent cannot reach it.
+	 * `trusted` is the renderer's `event.isTrusted` for the click; main refuses
+	 * anything else.
+	 */
+	mediaPermission?: {
+		decide: (
+			tabId: number,
+			id: string,
+			decision: MediaPermissionDecision,
+			trusted: boolean,
+		) => Promise<boolean>;
+		/** The system-blocked notice's "Open System Settings" (review U6/D3).
+		 * Takes the notice's tab and id only; main maps it to a fixed pane URL. */
+		openSystemSettings: (tabId: number, id: string) => Promise<boolean>;
+	};
 	/** The clear-data affordances (design 5.4). Injected so this module does not
 	 * depend on the session object. */
 	clearData: (what: ClearWhat) => Promise<void>;
@@ -66,6 +163,33 @@ export interface RegisterBrowserIpcOptions {
 	 * otherwise — so a failure is shown rather than thrown: a reveal that fails is a
 	 * Finder problem, not a fault in the agent's download. */
 	revealDownloads: () => Promise<string>;
+	/**
+	 * S1's probe-only overlay channel, present ONLY when the launch gate passed
+	 * (see `StartBrowserHostOptions.addressOverlay`). It is registered under a
+	 * dev-driver channel rather than a `browser-*` one on purpose: the browser
+	 * namespace is the agent/tool protocol and its trust boundary is unchanged,
+	 * while this experimental surface exists for the armed headless probe alone.
+	 *
+	 * The callback reads the host's CURRENT controller per call; a retry replaces
+	 * it, so no handler holds a stale attempt's controller.
+	 */
+	addressOverlayProbe?: (
+		action: "show" | "hide" | "facts" | "click" | "measure" | "key",
+		argument?: unknown,
+	) => Promise<AddressOverlayFacts>;
+	/**
+	 * S2's projection handler, same lifetime and sender rules as the probe above.
+	 * Its argument is revalidated in the controller (`sanitizeProjection`), so a
+	 * renderer cannot widen what reaches the child document; absent means the
+	 * channel is not registered at all and the renderer's port latches off.
+	 */
+	addressOverlayProject?: (payload: unknown) => Promise<unknown>;
+	/**
+	 * S4b's product projection handler. Registered whenever the launch built a
+	 * product controller, independently of the probe gate: the product has no
+	 * environment variable to turn it on, so this channel is the only door.
+	 */
+	addressOverlayProduct?: (payload: unknown) => Promise<unknown>;
 	/** Ask the host to start again for this window (design round 1, D1a). Injected
 	 * rather than imported so this module does not reach back into `index.ts`'s
 	 * lifecycle; `index.ts` supplies the same `startBrowserHost` the app already
@@ -76,8 +200,32 @@ export interface RegisterBrowserIpcOptions {
 	 * Optional because only a launch mode that may focus a window supplies it; the
 	 * helper behind it refuses an unfocused or hidden window and never raises one. */
 	focusPage?: () => void;
+	/**
+	 * The live composite of an overlay-suppressed page (`composite-bridge.ts`).
+	 * `ack` releases the next frame after the shell drew one (false = stale,
+	 * duplicate or forged); `consumer` is the shell's canvas mounting/unmounting.
+	 * Pixels travel main -> owner shell only; these are the renderer's replies.
+	 */
+	composite?: {
+		ack: (payload: unknown) => boolean;
+		consumer: (ready: boolean) => void;
+	};
+	/** The extension manager (extensions/manager.ts). Desktop renderer only;
+	 * there is deliberately no agent RPC op for any of it (design §4.4). */
+	extensions?: (request: ExtensionsRequest) => Promise<ExtensionsResponse>;
 	log: (message: string) => void;
 }
+
+/** Session ids are names, not free text: a control character cannot appear in
+ * one, and allowing it would store an attribution no scope comparison can match. */
+const CONTROL_CHARS = /[\p{Cc}]/u;
+
+/**
+ * S4b's product event channel (main -> owner renderer): a validated row click or
+ * a main-decided dismissal. Distinct from the dev-driver's event so a product
+ * launch never depends on, or exposes, the probe bridge.
+ */
+export const PRODUCT_ADDRESS_OVERLAY_EVENT = "browser-address-overlay-event";
 
 /** The channels this namespace owns, in one place so a test can enumerate them. */
 export const BROWSER_IPC_CHANNELS = [
@@ -86,12 +234,18 @@ export const BROWSER_IPC_CHANNELS = [
 	"browser-page-control",
 	"browser-reopen-tab",
 	"browser-focus-page",
+	"browser-approvals-card-open",
+	"browser-approvals-card-close",
+	"browser-approvals-card-context",
 	"browser-new-tab",
 	"browser-reorder-tabs",
 	"browser-tab-action",
+	"browser-tab-actions-menu",
 	"browser-close-tab",
 	"browser-close-tabs",
 	"browser-activate-tab",
+	"browser-address-history",
+	"browser-address-overlay-project",
 	"browser-navigate",
 	"browser-home",
 	"browser-reload",
@@ -109,9 +263,28 @@ export const BROWSER_IPC_CHANNELS = [
 	"browser-webauthn-respond",
 	"browser-webauthn-pending",
 	"browser-reveal-downloads",
+	"browser-passkey-notice-dismiss",
+	"browser-passkey-notice-open",
+	"browser-passkey-notice-continue",
+	"browser-passkey-custody-release",
+	"browser-open-user-attention",
+	"browser-media-permission-decide",
+	"browser-media-permission-open-settings",
+	"browser-extensions",
 	/** The user's own recovery click on the `unavailable` state (round 1, D1a).
 	 * Named here so the namespace stays the one place that lists its channels. */
 	"browser-retry",
+	/** The live composite's renderer replies (`composite-bridge.ts`). */
+	"browser-composite-ack",
+	"browser-composite-consumer",
+	/**
+	 * S1's probe-only channel. Listed here for unregistration only: the handler
+	 * below is registered only when the launch gate passed, and this entry makes
+	 * `unregisterBrowserIpc` remove it on a stop/retry like every other channel
+	 * (removing an unregistered handler is a no-op).
+	 */
+	DEV_DRIVER_ADDRESS_OVERLAY,
+	DEV_DRIVER_ADDRESS_OVERLAY_PROJECT,
 ] as const;
 
 export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
@@ -197,6 +370,74 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 			return host.actOnChromeTab(numberOrThrow(tabId, "tabId"), action);
 		},
 	);
+	/**
+	 * The tab strip's actions menu, as a NATIVE menu (LOH-13 operator report).
+	 *
+	 * WHY THIS IS IPC AT ALL. A native `Menu` is built and popped from the main
+	 * process, and the strip is renderer DOM. The request carries the item list
+	 * (labels already interpolated by the strip) and an anchor; the answer is the
+	 * selected item id, or null. The strip runs its existing handler for that id,
+	 * so this channel adds a PRESENTATION path and no new tab operation: the
+	 * vocabulary it may return is fixed in `browser-tab-actions-menu.ts`, and every
+	 * id in it maps to a control the strip already offered.
+	 *
+	 * WHY IT DOES NOT NEED A HOST. Building a menu is display, not browser state;
+	 * requiring a running host would make the menu refuse on a strip whose tabs
+	 * are still on screen while the host restarts. Sender authorization is the
+	 * same owner check every channel here uses.
+	 *
+	 * NO WINDOW, NO MENU. A native popup needs a visible window to hang from. A
+	 * headless launch has none - and a menu left open on a window nobody can see
+	 * is a state nothing can reach to close - so the request answers `null` (a
+	 * dismissal) instead of arming a popup that could never be dismissed. This is
+	 * the launch-mode gate `window-chrome.ts` makes for the app menu, including
+	 * its one log line: a rig must be able to tell a refusal from a window that
+	 * simply did not show a menu.
+	 *
+	 * The visibility check after it is the same refusal for a non-headless window
+	 * that is hidden or minimised: a menu there is equally unreachable.
+	 *
+	 * THE ANCHOR IS CSS PX; `menu.popup` READS DIP. The strip sends
+	 * `getBoundingClientRect()` (or `clientX`/`clientY`), which the renderer lays
+	 * out in zoomed CSS px, while Electron/AppKit place the popup in DIP. At
+	 * `webContents` zoom factor z, `DIP = CSS x z`; multiplying here is what keeps
+	 * the menu on its trigger when the app UI is zoomed.
+	 */
+	ipcMain.handle("browser-tab-actions-menu", (event, payload: unknown) => {
+		authorizeSender(event);
+		const request = tabActionsMenuRequestOrThrow(payload);
+		if (options.headless) {
+			options.log(
+				"[browser-ipc] tab actions menu refused: this launch is headless, so there is no window to hang it from",
+			);
+			return null;
+		}
+		const owner = options.window();
+		if (!owner || owner.isDestroyed() || !owner.isVisible()) return null;
+		const zoom = owner.webContents.getZoomFactor();
+		return new Promise<TabActionsMenuSelection>((resolve) => {
+			// One settlement: a clicked item resolves before the popup's own close
+			// callback, and a dismissal is the callback alone. The answer is
+			// validated too, so nothing outside the action vocabulary can reach the
+			// strip even if a template were ever built from something else.
+			let settled = false;
+			const settle = (selection: unknown): void => {
+				if (settled) return;
+				settled = true;
+				resolve(tabActionsMenuSelectionOrNull(selection));
+			};
+			const menu = Menu.buildFromTemplate(
+				buildTabActionsMenuTemplate(request.items, settle),
+			);
+			menu.popup({
+				window: owner,
+				x: Math.round(request.anchor.x * zoom),
+				y: Math.round(request.anchor.y * zoom),
+				callback: () => settle(null),
+			});
+		});
+	});
+
 	ipcMain.handle("browser-close-tab", (event, tabId: unknown) => {
 		const host = authorize(event);
 		return host.closeTab(numberOrThrow(tabId, "tabId"));
@@ -212,12 +453,35 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 		return host.activateTab(numberOrThrow(tabId, "tabId"));
 	});
 
-	ipcMain.handle("browser-navigate", async (event, url: unknown) => {
+	ipcMain.handle(
+		"browser-navigate",
+		async (event, url: unknown, expectedTabId: unknown) => {
+			const host = authorize(event);
+			if (typeof url !== "string" || !url.trim()) {
+				throw new Error("A URL is required.");
+			}
+			return host.navigateActive(
+				url.trim(),
+				expectedTabId === undefined || expectedTabId === null
+					? undefined
+					: tabIdOrThrow(expectedTabId, "expectedTabId"),
+			);
+		},
+	);
+
+	/**
+	 * The address field's local suggestions.
+	 *
+	 * A READ, so it authorizes exactly like `browser-state` (the sender check is
+	 * independent of host readiness) and then validates every field. The renderer
+	 * is untrusted input here like everywhere else on this namespace: a request id
+	 * and an expected tab are integers, and the scope is either the literal `all`
+	 * or a non-empty bounded conversation id. The host owns the stale-tab refusal;
+	 * this boundary owns shape.
+	 */
+	ipcMain.handle("browser-address-history", (event, request: unknown) => {
 		const host = authorize(event);
-		if (typeof url !== "string" || !url.trim()) {
-			throw new Error("A URL is required.");
-		}
-		return host.navigateActive(url.trim());
+		return host.addressHistory(addressHistoryRequestOrThrow(request));
 	});
 
 	ipcMain.handle(
@@ -270,9 +534,36 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 	ipcMain.handle("browser-reopen-tab", (event, sessionId: unknown) =>
 		authorize(event).reopenClosed(optionalConversationOrThrow(sessionId)),
 	);
+	ipcMain.handle("browser-approvals-card-open", (event, input: unknown) => {
+		const host = authorize(event);
+		return host.openApprovalsCard(input);
+	});
+
+	ipcMain.handle("browser-approvals-card-close", (event) => {
+		const host = authorize(event);
+		return host.closeApprovalsCard();
+	});
+
+	ipcMain.handle("browser-approvals-card-context", (event, input: unknown) => {
+		const host = authorize(event);
+		host.setApprovalsCardContext(input);
+	});
+
 	ipcMain.handle("browser-focus-page", (event) => {
 		authorize(event);
 		options.focusPage?.();
+	});
+	// Owner-gated like every browser channel: only the trusted shell that the
+	// frames were sent to may pace or (de)register the stream.
+	ipcMain.handle("browser-composite-ack", (event, payload: unknown) => {
+		authorize(event);
+		return options.composite?.ack(payload) ?? false;
+	});
+	ipcMain.handle("browser-composite-consumer", (event, ready: unknown) => {
+		authorize(event);
+		if (typeof ready !== "boolean")
+			throw new Error("Composite consumer state must be a boolean.");
+		options.composite?.consumer(ready);
 	});
 	// Home (LOH-13): the user's own press, no argument — main decides the
 	// start state, so a renderer cannot aim this channel at an origin.
@@ -303,13 +594,30 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 		return host.setContentRect(contentRectOrNull(rect));
 	});
 
-	ipcMain.handle("browser-set-visible", (event, visible: unknown) => {
-		const host = authorize(event);
-		if (typeof visible !== "boolean") {
-			throw new Error("Visibility must be a boolean.");
-		}
-		return host.setViewVisible(visible);
-	});
+	ipcMain.handle(
+		"browser-set-visible",
+		(event, visible: unknown, ownPage: unknown, ownStatePage: unknown) => {
+			const host = authorize(event);
+			if (typeof visible !== "boolean") {
+				throw new Error("Visibility must be a boolean.");
+			}
+			// The reason half of the report (S4a). Absent is "no reason given", which
+			// keeps every pre-S4a caller's meaning: a hide with no reason is an overlay
+			// hide and refuses shortcuts. A truthy non-boolean is refused rather than
+			// coerced: this fact decides whether the browser consumes the user's keys.
+			if (ownPage !== undefined && typeof ownPage !== "boolean") {
+				throw new Error("The view-hidden reason must be a boolean.");
+			}
+			if (ownStatePage !== undefined && typeof ownStatePage !== "boolean") {
+				throw new Error("The own-state reason must be a boolean.");
+			}
+			return host.setViewVisible(
+				visible,
+				ownPage === true,
+				ownStatePage === undefined ? ownPage === true : ownStatePage,
+			);
+		},
+	);
 
 	ipcMain.handle(
 		"browser-hand-over",
@@ -372,6 +680,150 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 		// the truth in both cases.
 		return options.webauthn()?.pendingRequests() ?? [];
 	});
+
+	/*
+	 * Extension management. Sender-checked like every channel here, then a
+	 * strict decode (closed op set, exact fields, id regex) before main reads
+	 * any value. Install is NOT an op: it originates only from the Chrome Web
+	 * Store page's own button plus a native dialog (extensions/webstore.ts).
+	 */
+	ipcMain.handle("browser-extensions", async (event, raw: unknown) => {
+		authorize(event);
+		const request = decodeExtensionsRequest(raw);
+		if (!request) throw new Error("Invalid extensions request");
+		return options.extensions?.(request) ?? { extensions: [], ok: false };
+	});
+	/*
+	 * The passkey notice's actions. Sender-checked like every channel here; the
+	 * renderer names a tab and the notice's `at` and nothing else, so there is no
+	 * URL or origin for it to retarget (the open reads the tab's own URL in main).
+	 */
+	ipcMain.handle(
+		"browser-passkey-notice-dismiss",
+		(event, tabId: unknown, at: unknown) => {
+			authorize(event);
+			return (
+				options.passkeyNotice?.dismiss(
+					numberOrThrow(tabId, "tabId"),
+					numberOrThrow(at, "at"),
+				) ?? false
+			);
+		},
+	);
+	ipcMain.handle(
+		"browser-passkey-notice-open",
+		async (event, tabId: unknown, at: unknown) => {
+			authorize(event);
+			if (!options.passkeyNotice) {
+				return { ok: false, reason: "the passkey notice is not available" };
+			}
+			return options.passkeyNotice.openInSystemBrowser(
+				numberOrThrow(tabId, "tabId"),
+				numberOrThrow(at, "at"),
+			);
+		},
+	);
+	/*
+	 * "Continue in your own tab" on an agent tab's passkey notice. The sender check
+	 * in `authorize` is the whole of "only the user can do this": the app's own
+	 * renderer main frame is the one caller it admits, and no RPC method reaches
+	 * this path, so an agent (CDP, the driver RPC) or a page cannot open a user tab
+	 * through it. Takes a tab id and the notice's `at`, never a URL.
+	 */
+	ipcMain.handle(
+		"browser-passkey-notice-continue",
+		async (event, tabId: unknown, at: unknown) => {
+			authorize(event);
+			if (!options.passkeyNotice?.continueInUserTab) {
+				return {
+					ok: false,
+					reason: t("ui.browser.browser_passkey_notice.continue_unavailable"),
+				};
+			}
+			return options.passkeyNotice.continueInUserTab(
+				numberOrThrow(tabId, "tabId"),
+				numberOrThrow(at, "at"),
+			);
+		},
+	);
+
+	/*
+	 * "Return to agent" on a passkey custody notice: the only way an agent gets a
+	 * held tab back. Sender-checked here and trusted-click-checked in main, so
+	 * neither an agent (no RPC method) nor a page can end a hold.
+	 */
+	ipcMain.handle(
+		"browser-passkey-custody-release",
+		(event, tabId: unknown, at: unknown, trusted: unknown) => {
+			authorize(event);
+			if (!options.passkeyCustody) return { ok: false, reason: "not_held" };
+			return options.passkeyCustody.release(
+				numberOrThrow(tabId, "tabId"),
+				numberOrThrow(at, "at"),
+				trusted === true,
+			);
+		},
+	);
+
+	// A sidebar notification row's click: see `userAttention` above.
+	ipcMain.handle("browser-open-user-attention", (event, tabId: unknown) => {
+		authorize(event);
+		return options.userAttention?.open(tabIdOrThrow(tabId, "tabId")) ?? false;
+	});
+
+	/*
+	 * The camera/microphone prompt's answer. Sender-checked like every channel
+	 * here; the renderer names a tab, the prompt's host-minted id, the decision
+	 * and whether the click was a trusted (human) event — never an origin, so it
+	 * cannot retarget a grant at a site other than the one main is asking about.
+	 */
+	ipcMain.handle(
+		"browser-media-permission-decide",
+		async (
+			event,
+			tabId: unknown,
+			id: unknown,
+			decision: unknown,
+			trusted: unknown,
+		) => {
+			authorize(event);
+			if (typeof id !== "string" || !id) {
+				throw new Error("A pending camera/microphone request id is required.");
+			}
+			if (!isMediaPermissionDecision(decision)) {
+				throw new Error("Unsupported camera/microphone decision.");
+			}
+			return (
+				(await options.mediaPermission?.decide(
+					numberOrThrow(tabId, "tabId"),
+					id,
+					decision,
+					trusted === true,
+				)) ?? false
+			);
+		},
+	);
+
+	/*
+	 * The system-blocked notice's "Open System Settings". Sender-checked; the
+	 * renderer names a live notice (tab + host-minted id), never a URL, so this
+	 * channel cannot be used to open an arbitrary external target.
+	 */
+	ipcMain.handle(
+		"browser-media-permission-open-settings",
+		async (event, tabId: unknown, id: unknown) => {
+			authorize(event);
+			if (typeof id !== "string" || !id) {
+				throw new Error("A camera/microphone notice id is required.");
+			}
+			return (
+				(await options.mediaPermission?.openSystemSettings(
+					numberOrThrow(tabId, "tabId"),
+					id,
+				)) ?? false
+			);
+		},
+	);
 
 	ipcMain.handle(
 		"browser-consent-respond",
@@ -453,6 +905,83 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 		await options.retry();
 		return { retried: true };
 	});
+
+	/*
+	 * S1's probe. Registered NOTHING unless the launch gate resolved a probe
+	 * callback, so an off-gate invocation reaches Electron's own
+	 * "No handler registered for 'dev-driver-address-overlay'" — the same
+	 * fail-closed shape the dev driver's own channels use.
+	 *
+	 * The ONLY accepted input is one of three exact action words. There is no
+	 * URL, script, geometry, tab selection, commit, navigation, clipboard or file
+	 * argument, because this surface exists to operate the real host's child, not
+	 * to become a second browser API. Sender authorization is the existing owner
+	 * check: the owner window's own main frame at the trusted document URL. A
+	 * driven page, a popup, a foreign window or a subframe is refused before the
+	 * action is read.
+	 */
+	if (options.addressOverlayProbe) {
+		ipcMain.handle(
+			DEV_DRIVER_ADDRESS_OVERLAY,
+			(event, action: unknown, argument: unknown) => {
+				authorizeSender(event);
+				if (
+					action !== "show" &&
+					action !== "hide" &&
+					action !== "facts" &&
+					action !== "click" &&
+					action !== "measure" &&
+					action !== "key"
+				) {
+					throw new Error(
+						"address_overlay_invalid_action: expected 'show', 'hide', 'facts', 'click', 'measure' or 'key'.",
+					);
+				}
+				const probe = options.addressOverlayProbe;
+				if (!probe) {
+					throw new Error(
+						"address_overlay_unavailable: the overlay probe is not running.",
+					);
+				}
+				// Only the three probe-only actions read a second argument. A stray
+				// payload on show/hide/facts is DROPPED rather than carried, so the
+				// probe surface cannot grow a second meaning by accident.
+				const readsArgument =
+					action === "click" || action === "measure" || action === "key";
+				return probe(action, readsArgument ? argument : undefined);
+			},
+		);
+	}
+	if (options.addressOverlayProduct) {
+		ipcMain.handle(
+			"browser-address-overlay-project",
+			(event, payload: unknown) => {
+				authorizeSender(event);
+				const project = options.addressOverlayProduct;
+				if (!project) {
+					throw new Error(
+						"address_overlay_unavailable: the overlay projection is not running.",
+					);
+				}
+				return project(payload);
+			},
+		);
+	}
+	if (options.addressOverlayProject) {
+		ipcMain.handle(
+			DEV_DRIVER_ADDRESS_OVERLAY_PROJECT,
+			(event, payload: unknown) => {
+				authorizeSender(event);
+				const project = options.addressOverlayProject;
+				if (!project) {
+					throw new Error(
+						"address_overlay_unavailable: the overlay projection is not running.",
+					);
+				}
+				return project(payload);
+			},
+		);
+	}
 }
 
 /**
@@ -467,11 +996,47 @@ export function unregisterBrowserIpc(): void {
 	for (const channel of BROWSER_IPC_CHANNELS) ipcMain.removeHandler(channel);
 }
 
-function numberOrThrow(value: unknown, name: string): number {
-	if (typeof value !== "number" || !Number.isInteger(value)) {
-		throw new Error(`${name} must be an integer.`);
+/**
+ * The address-history request, validated at the boundary.
+ *
+ * The scope is gone: the list is one list for the field, and half of it (the
+ * persistent store) is session-agnostic, so a display scope would describe only
+ * the tab rows and mislead about the rest. The query and limit are bounded here
+ * as well as in the shared type, because the shared type is erased at runtime:
+ * a query is a prefix the user typed, never a pattern, and an unbounded limit
+ * is an unbounded IPC payload.
+ */
+function addressHistoryRequestOrThrow(value: unknown): AddressHistoryRequest {
+	if (!value || typeof value !== "object") {
+		throw new Error("An address history request is required.");
 	}
-	return value;
+	const request = value as {
+		requestId?: unknown;
+		expectedTabId?: unknown;
+		query?: unknown;
+		limit?: unknown;
+	};
+	const requestId = numberOrThrow(request.requestId, "requestId");
+	const expectedTabId = tabIdOrThrow(request.expectedTabId, "expectedTabId");
+	if (typeof request.query !== "string") {
+		throw new Error("The address history query must be a string.");
+	}
+	const query = request.query;
+	if (
+		query.length > ADDRESS_HISTORY_MAX_QUERY_LENGTH ||
+		CONTROL_CHARS.test(query)
+	) {
+		throw new Error("The address history query is invalid.");
+	}
+	if (
+		typeof request.limit !== "number" ||
+		!Number.isSafeInteger(request.limit) ||
+		request.limit < 1 ||
+		request.limit > ADDRESS_HISTORY_MAX_LIMIT
+	) {
+		throw new Error("The address history limit is invalid.");
+	}
+	return { requestId, expectedTabId, query, limit: request.limit };
 }
 
 /**

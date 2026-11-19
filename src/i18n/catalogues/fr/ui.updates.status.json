@@ -1,0 +1,5 @@
+{
+	"ui.updates.status.dev_mode.app": "L’application s’exécute en mode développement. Les mises à jour sont désactivées.",
+	"ui.updates.status.dev_mode.backend": "Les mises à jour du backend sont désactivées en mode développement.",
+	"ui.updates.status.up_to_date": "L’application et le serveur sont à jour"
+}

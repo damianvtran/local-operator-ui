@@ -16,7 +16,13 @@
  * what this thing IS versus where it stands right now.
  */
 
-import type { DesktopCapabilities } from "../../../../../shared/desktop-contract";
+import { formatList, t } from "@shared/i18n";
+import type { MessageKey } from "@shared/i18n";
+
+import type {
+	DesktopCapabilities,
+	TagCategory,
+} from "../../../../../shared/desktop-contract";
 import type { McpCatalogVerb } from "../../../../../shared/desktop-control-contract";
 import type { DesktopFeature } from "../../../shared/api/local-operator/desktop-hooks";
 /*
@@ -27,7 +33,25 @@ import type { DesktopFeature } from "../../../shared/api/local-operator/desktop-
  * the same leaf.
  */
 import { teamDisplayName } from "../../../shared/api/local-operator/team-display";
+/*
+ * Relative for the same reason as the import above (the slash test bundles run
+ * without path aliases). The resolver itself reaches `@shared/i18n`, which the
+ * bundling tests already alias.
+ */
+import { agentDescriptionText } from "../../agents/utils/agent-description";
 import { brandOf } from "../../providers/provider-catalog";
+/*
+ * The picker's own validation, limits and duplicate rule. Imported rather than
+ * restated so a slash create and a dialog create cannot disagree about what
+ * the store accepts; the module is plain TypeScript, so the node harness that
+ * bundles this file needs no alias for it.
+ */
+import {
+	TAG_REGISTRY_LIMIT,
+	TAG_SELECTION_LIMIT,
+	hasTagName,
+	tagNameIssue,
+} from "../chat-tag-picker";
 import { activeModelForDefault } from "../pickers/model-default-settings";
 import { effortDisplay } from "../session-status/session-model";
 import { pyTrim } from "./slash-token";
@@ -74,6 +98,27 @@ export type ArgumentRow = {
 	 */
 	connected?: boolean;
 	current?: boolean;
+	/**
+	 * Applied membership, for the tag source only. Rendered as the fixed-width
+	 * `[x]`/`[ ]` marker rather than the `current` bullet: the bullet means "the
+	 * value this conversation already holds" on every catalogue, while a tag row
+	 * needs a visible binary that does not depend on colour and does not read as
+	 * the listbox's navigation cursor.
+	 */
+	applied?: boolean;
+	/** The tag's stable id. `value` is the NAME a person reads; this is the id
+	 * every write takes, so a rename cannot turn a pick into a different tag. */
+	tagId?: string;
+	/** The tag that currently controls sidebar grouping, when it is this row. */
+	primary?: boolean;
+	/**
+	 * This row is the explicit create-and-apply action, not a catalogue value.
+	 * It is deliberately an ARGUMENT row rather than the `ArgumentActionRow`
+	 * kind: that kind carries model-default's own payload and one hardcoded
+	 * action id, and widening it for a second operation would put two unrelated
+	 * writes behind one narrow type. Its `value` is the name to create.
+	 */
+	create?: boolean;
 	/**
 	 * The team's ADDRESS — its slug — when `name` displays a LABEL instead.
 	 *
@@ -132,14 +177,17 @@ export function modelDefaultActionRow(
 	return {
 		kind: "action",
 		id: "model-default",
-		name: "Set current model as default",
+		name: t("ui.chat.pickers.models.set_as_default"),
 		description: model
-			? `Save the current model (${provider}/${modelId}) as the default for new sessions.`
-			: "No active session model is available to save.",
+			? t("ui.chat.slash_arguments.model_default_description", {
+					provider,
+					model: modelId,
+				})
+			: t("ui.chat.slash_arguments.model_default_unavailable"),
 		model,
 		clickText: model
-			? "Click does the same."
-			: "A session model is required before this action can save a default.",
+			? t("ui.chat.slash_arguments.model_default_click")
+			: t("ui.chat.slash_arguments.model_default_required"),
 		disabled: model === null,
 	};
 }
@@ -183,6 +231,21 @@ export function shouldRunArgumentAction(
  *     not), which is exactly why this is a renderer source and not a sixth
  *     backend id.
  */
+/**
+ * The tag list's declaration, shared by the destination table and the tests.
+ *
+ * It lives beside the row shaper rather than in `picker-registry.tsx` because
+ * that module imports every picker component and cannot be bundled by the node
+ * harness; a constant the contract test has to read from source would be a
+ * second answer to "does this list run" waiting to drift.
+ */
+export const TAG_INLINE_ARGUMENT = {
+	source: "session-tags",
+	nameThenMessage: false,
+	runs: true,
+	requires: "session_tags",
+} as const;
+
 export type EntityArgumentSource =
 	| "model"
 	| "effort"
@@ -208,7 +271,11 @@ export type SessionlessArgumentSource =
 export type BackendArgumentSource =
 	| EntityArgumentSource
 	| SessionlessArgumentSource;
-export type RendererArgumentSource = "theme" | "title-refresh";
+export type RendererArgumentSource =
+	| "theme"
+	| "title-refresh"
+	/** The current conversation's tags and the registry, from the tag store. */
+	| "session-tags";
 export type ArgumentSource = BackendArgumentSource | RendererArgumentSource;
 
 /**
@@ -228,6 +295,7 @@ export type ArgumentSource = BackendArgumentSource | RendererArgumentSource;
 export const RENDERER_LOCAL_SOURCES: ReadonlySet<ArgumentSource> = new Set([
 	"theme",
 	"title-refresh",
+	"session-tags",
 ]);
 
 /** Whether this source's rows are available with no session and no transport. */
@@ -281,8 +349,8 @@ export function mcpInServerSlot(argument: string): boolean {
  * is empty BY DESIGN (round 1, U2). The route sentence stays: Enter really
  * does run the command.
  */
-export const MCP_EMPTY_SLOT_COPY =
-	"No servers to choose. Enter runs the command.";
+export const mcpEmptySlotCopy = (): string =>
+	t("ui.chat.slash.empty.no_servers");
 
 /**
  * The minimum version of a `requires` feature that licenses its inline list.
@@ -514,16 +582,23 @@ export function showsUnmatchedList(
  * Lives beside the source union so a new source cannot be added without the
  * label being decided: the record is exhaustive over `ArgumentSource`, so a
  * seventh source is a type error here rather than a list that renders under the
- * previous subject's name (round 1 D3 / UX U3). Sentence case, like every other
- * label in the app.
+ * previous subject's name (round 1 D3 / UX U3).
+ *
+ * IT HOLDS MESSAGE KEYS, NOT SENTENCES (i18n audit, C4). The English words used
+ * to live here as literals, so the popup's heading stayed English while every
+ * other word in the composer switched: a module-level record is read once at
+ * import and no `t()` ever saw it. Callers resolve the key at PRESENTATION time
+ * (`phaseLabel`), so a locale switch redraws the heading and the table itself
+ * never carries a stale language. The `MessageKey` type is what stops a literal
+ * creeping back in - a new source still cannot be added without naming a key.
  */
-export const ARGUMENT_SOURCE_LABEL: Record<ArgumentSource, string> = {
-	model: "Models",
-	effort: "Effort",
-	approvals: "Approvals",
-	team: "Teams",
-	agent: "Agents",
-	providers: "Providers",
+export const ARGUMENT_SOURCE_LABEL = {
+	model: "ui.chat.pickers.slash.source.model",
+	effort: "ui.chat.pickers.slash.source.effort",
+	approvals: "ui.chat.pickers.slash.source.approvals",
+	team: "ui.chat.pickers.slash.source.team",
+	agent: "ui.chat.pickers.slash.source.agent",
+	providers: "ui.chat.pickers.slash.source.providers",
 	/*
 	 * `/logout`'s list: the providers that hold stored credentials, one row each.
 	 * "Accounts" is the word the LogoutPicker and the accounts route already use
@@ -531,7 +606,7 @@ export const ARGUMENT_SOURCE_LABEL: Record<ArgumentSource, string> = {
 	 * for one thing (the spec's §5 copy rule: copy stays per-surface, but a
 	 * surface's own words do not drift between its list and its dialog).
 	 */
-	"provider-accounts": "Accounts",
+	"provider-accounts": "ui.chat.pickers.slash.source.provider_accounts",
 	/*
 	 * `/mcp`'s two slots read as one list across two keystrokes — the verbs, then
 	 * their servers, split on the argument exactly as the TUI's list is — so the
@@ -540,8 +615,8 @@ export const ARGUMENT_SOURCE_LABEL: Record<ArgumentSource, string> = {
 	 * the first slot ("Subcommands") would misdescribe the list a user is looking
 	 * at after one more keystroke.
 	 */
-	mcp: "Servers",
-	theme: "Themes",
+	mcp: "ui.chat.pickers.slash.source.mcp",
+	theme: "ui.chat.pickers.slash.source.theme",
 	/*
 	 * `/rename`'s list, and why it is not called "Titles".
 	 *
@@ -554,8 +629,11 @@ export const ARGUMENT_SOURCE_LABEL: Record<ArgumentSource, string> = {
 	 * prevent, reached from the other direction. "Options" is what the rows are,
 	 * and it keeps the plural-noun shape of its siblings.
 	 */
-	"title-refresh": "Options",
-};
+	"title-refresh": "ui.chat.pickers.slash.source.title_refresh",
+	/* The conversation's own tags, a renderer-local list. "Tags" is the same word
+	   the command and the sidebar use for the same subject. */
+	"session-tags": "ui.chat.pickers.slash.source.session_tags",
+} as const satisfies Record<ArgumentSource, MessageKey>;
 
 /**
  * `400k` / `1.0m` / `""` when unknown.
@@ -617,9 +695,9 @@ export function formatPricePair(
 	output: number,
 	routed: boolean,
 ): string {
-	if (routed) return "usage-based";
+	if (routed) return t("ui.chat.slash.arg.price_usage_based");
 	if (!(input >= 0) || !(output >= 0)) return "";
-	if (input === 0 && output === 0) return "free";
+	if (input === 0 && output === 0) return t("ui.chat.slash.arg.price_free");
 	return `$${trimPrice(input)}/${trimPrice(output)}`;
 }
 
@@ -641,6 +719,13 @@ type ProfileEntity = {
 	value?: unknown;
 	name?: unknown;
 	description?: unknown;
+	/**
+	 * Registry provenance of an `agent` row (`builtin` | `installed` | `custom`),
+	 * present on both the draft roster (`profiles.list`) and the session's
+	 * `commands.entities` agent arm. Only read to decide whether `description`
+	 * is a shipped sentence that has a catalogue translation.
+	 */
+	source?: unknown;
 	kind?: unknown;
 	members?: unknown;
 	/**
@@ -725,8 +810,12 @@ export const TITLE_REFRESH_ROWS: readonly ArgumentRow[] = [
 	{
 		value: "--refresh",
 		name: "--refresh",
-		description: "Re-read the conversation and name it again",
-		detail: "resumes auto-naming",
+		get description() {
+			return t("ui.chat.slash_arguments.refresh_description");
+		},
+		get detail() {
+			return t("ui.chat.slash_arguments.refresh_detail");
+		},
 		aliases: ["refresh", "update", "retitle", "--update", "--retitle"],
 	},
 ];
@@ -797,10 +886,14 @@ const asAliases = (value: unknown): readonly string[] | undefined =>
  * `remove <kind>`, and the same two words `/accounts` prints, so one credential
  * does not have two names across two surfaces.
  */
-const CREDENTIAL_KINDS: Record<string, string> = {
-	oauth: "oauth",
-	api_key: "api key",
-};
+/* `oauth` is the wire kind word, shown as is; only `api key` is prose. Resolved
+ * per call so the word follows the language in force. */
+const credentialKindWord = (kind: string): string =>
+	kind === "api_key"
+		? t("ui.chat.slash.arg.credential_api_key")
+		: kind === "oauth"
+			? "oauth"
+			: kind;
 
 /**
  * The accounts route's sentinel for "no label found"
@@ -817,12 +910,21 @@ const STORED_CREDENTIAL_FALLBACK = "Stored credential";
  * composer's detail column here say one thing about one provider. The strings
  * are the spec's §5 copy table, pinned by `scripts/slash-contract.test.mjs`.
  */
-const PROVIDER_STATE_COPY: Record<string, string> = {
-	logged_in: "logged in",
-	env_key: "env key",
-	needs_login: "needs login",
-	local_ready: "configured server",
-	local_unconfigured: "configure server",
+const providerStateCopy = (state: string): string | undefined => {
+	switch (state) {
+		case "logged_in":
+			return t("ui.chat.slash.arg.provider_state.logged_in");
+		case "env_key":
+			return t("ui.chat.slash.arg.provider_state.env_key");
+		case "needs_login":
+			return t("ui.chat.slash.arg.provider_state.needs_login");
+		case "local_ready":
+			return t("ui.chat.slash.arg.provider_state.local_ready");
+		case "local_unconfigured":
+			return t("ui.chat.slash.arg.provider_state.local_unconfigured");
+		default:
+			return undefined;
+	}
 };
 
 /** `_squashed` (`app.py:52585`): the ASCII half of a name, lowercased. */
@@ -867,18 +969,43 @@ const MCP_OFFER_ACTIONS: Record<string, readonly string[]> = {
 };
 
 /**
+ * The `/agent` row's detail column: the profile KIND in the active language.
+ *
+ * The backend sends the wire token (`role` / `specialist`) and the column used to
+ * print it raw, so every other language still read English there. The column is
+ * lowercase machine voice (see `mcpStatusWord`), so these are their own keys
+ * rather than the hub roster's capitalised `ui.hub.teams.kind.*` labels, which
+ * would have changed the English frame. An unknown kind is shown as stored: it is
+ * the backend's own word and has no translation to invent.
+ */
+function profileKindDetail(kind: string): string {
+	if (kind === "role") return t("ui.chat.slash.arg.kind_role");
+	if (kind === "specialist") return t("ui.chat.slash.arg.kind_specialist");
+	return kind;
+}
+
+/**
  * The catalog's status enum in the composer's own words. The detail column is
  * machine voice (`argumentRowContent`), so these stay lowercase; `not_started`
  * reads "not connected", the word the integrations page uses for the same
  * state, and `needs_sign_in` reads "needs sign-in" rather than the TUI's
  * `auth-required` because the composer has no room to teach the wire word.
  */
-const MCP_STATUS_WORDS: Record<string, string> = {
-	connected: "connected",
-	connecting: "connecting",
-	needs_sign_in: "needs sign-in",
-	not_started: "not connected",
-	error: "error",
+const mcpStatusWord = (status: string): string | undefined => {
+	switch (status) {
+		case "connected":
+			return t("ui.chat.slash.arg.mcp_status.connected");
+		case "connecting":
+			return t("ui.chat.slash.arg.mcp_status.connecting");
+		case "needs_sign_in":
+			return t("ui.chat.slash.arg.mcp_status.needs_sign_in");
+		case "not_started":
+			return t("ui.chat.slash.arg.mcp_status.not_started");
+		case "error":
+			return t("ui.chat.slash.arg.mcp_status.error");
+		default:
+			return undefined;
+	}
 };
 
 /**
@@ -894,18 +1021,18 @@ function mcpServerDetail(verb: string, server: McpServerEntity): string {
 	if (verb === "remove") return compactPath(asText(server.source?.path));
 	if (verb === "logout") {
 		return status === "connected"
-			? "stored credential · connected"
-			: "stored credential";
+			? t("ui.chat.slash.arg.mcp_detail.stored_connected")
+			: t("ui.chat.slash.arg.mcp_detail.stored");
 	}
 	if (verb === "reauth") {
 		return status === "connected"
-			? "connected — will re-authorize"
-			: (MCP_STATUS_WORDS[status] ?? "");
+			? t("ui.chat.slash.arg.mcp_detail.reauthorize")
+			: (mcpStatusWord(status) ?? "");
 	}
 	// `login`, the only remaining verb with a server slot.
 	return status === "connected"
-		? "connected — will re-use"
-		: (MCP_STATUS_WORDS[status] ?? "");
+		? t("ui.chat.slash.arg.mcp_detail.reuse")
+		: (mcpStatusWord(status) ?? "");
 }
 
 /**
@@ -967,20 +1094,22 @@ export function argumentRows(
 				 * the per-row `connected` this route does send is already
 				 * resolved on the store's own thread.
 				 */
-				const description = [
-					asText(row.provider),
-					row.aggregated ? "aggregated" : "",
-					/*
-					 * THE SHARED VOCABULARY (design review round 1, D5; UX round 1, U3): the
-					 * dialog's row, its group heading and its count all say `sign-in`; this
-					 * list's rows carried a different word for the same fact, the one
-					 * register outside the family. The fact itself is unchanged — only the
-					 * word for it.
-					 */
-					row.connected === false ? "needs sign-in" : "",
-				]
-					.filter(Boolean)
-					.join(", ");
+				const description = formatList(
+					[
+						asText(row.provider),
+						row.aggregated ? t("ui.chat.slash.arg.model_aggregated") : "",
+						/*
+						 * THE SHARED VOCABULARY (design review round 1, D5; UX round 1, U3): the
+						 * dialog's row, its group heading and its count all say `sign-in`; this
+						 * list's rows carried a different word for the same fact, the one
+						 * register outside the family. The fact itself is unchanged — only the
+						 * word for it.
+						 */
+						row.connected === false
+							? t("ui.chat.slash.arg.model_needs_sign_in")
+							: "",
+					].filter(Boolean),
+				);
 				const detail = [
 					formatWindow(asNumber(row.context_window)),
 					formatPricePair(
@@ -1035,12 +1164,26 @@ export function argumentRows(
 					name,
 					slug: name !== value ? value : undefined,
 					aliases: label?.trim() && name !== value ? [value] : undefined,
-					description: asText(row.description),
+					/* An `/agent` row is a registry profile whose description may be a
+					 * shipped seed sentence (installed seeds serve their ROUTING text),
+					 * so it renders through the same resolver as the roster and the
+					 * pickers; a team's description is always the operator's. Unknown
+					 * or missing `source` resolves to nothing and stays raw. */
+					description:
+						command === "agent"
+							? agentDescriptionText({
+									name: base,
+									source: asText(row.source) || undefined,
+									description: asText(row.description),
+								})
+							: asText(row.description),
 					// The TUI's own row detail for these lists is the profile
 					// KIND (role/specialist) — the fact a user picks a hat by. A
 					// team row carries none, so its detail column is empty rather
-					// than an invented count.
-					detail: asText(row.kind) || undefined,
+					// than an invented count. The two kinds the registry defines read
+					// through the catalogue (lowercase, like every other word in this
+					// monospace column); anything else stays as stored.
+					detail: profileKindDetail(asText(row.kind)) || undefined,
 					current: Boolean(current) && current === value,
 				};
 			});
@@ -1075,7 +1218,7 @@ export function argumentRows(
 			return entities.map((raw) => {
 				const row = raw as ProviderEntity;
 				const id = asText(row.id);
-				const detail = PROVIDER_STATE_COPY[asText(row.state)];
+				const detail = providerStateCopy(asText(row.state));
 				return {
 					value: id,
 					name: brandOf({
@@ -1127,14 +1270,14 @@ export function argumentRows(
 			);
 			return [...groups.entries()].map(([provider, group]) => {
 				const kinds = new Set(
-					group.kinds
-						.map((kind) => CREDENTIAL_KINDS[kind] ?? kind)
-						.filter(Boolean),
+					group.kinds.map((kind) => credentialKindWord(kind)).filter(Boolean),
 				);
 				const removal =
 					kinds.size === 1
-						? `remove ${[...kinds][0]}`
-						: `remove ${group.kinds.length} credentials`;
+						? t("ui.chat.slash.arg.removal_one", { kind: [...kinds][0] ?? "" })
+						: t("ui.chat.slash.arg.removal_many", {
+								count: group.kinds.length,
+							});
 				const identity =
 					group.labels.length === 1 &&
 					group.labels[0] !== STORED_CREDENTIAL_FALLBACK
@@ -1250,6 +1393,14 @@ export function argumentRows(
 				};
 			});
 		/*
+		 * Shaped by `tagArgumentRows` instead: membership, the primary flag and the
+		 * frozen order are three inputs this signature does not carry. Returning an
+		 * empty list keeps the switch total rather than inventing a half-answer a
+		 * later caller could mistake for the real one.
+		 */
+		case "session-tags":
+			return [];
+		/*
 		 * The one case that ignores its inputs, and the comment says so rather than
 		 * leaving a reader to wonder whether `entities` is a bug.
 		 *
@@ -1265,4 +1416,141 @@ export function argumentRows(
 		case "title-refresh":
 			return titleRefreshRows();
 	}
+}
+
+/**
+ * The current conversation's tag rows, in a FROZEN order.
+ *
+ * ORDER IS THE POINT. The list shows applied rows first (registry order inside
+ * each partition), but the order is captured by the caller and held while the
+ * list is open: a toggle would otherwise move the row under the cursor, and the
+ * TUI's own rule is that an explicit choice survives a mutation of the same
+ * candidate set (`command_picker.py:1728`). The `applied` FLAG updates in
+ * place; the row does not move.
+ *
+ * `value` is the tag NAME because that is what a person reads and what the
+ * matcher scores; `tagId` is what every write takes. The two are deliberately
+ * separate: the registry is editable elsewhere, and a stale name must not
+ * become a stale id.
+ */
+export function tagArgumentRows(
+	categories: readonly TagCategory[],
+	selected: readonly string[],
+	primary: string | null,
+	order: readonly string[],
+): ArgumentRow[] {
+	const byId = new Map(categories.map((tag) => [tag.id, tag]));
+	const held = new Set(selected);
+	/*
+	 * A registry refresh can add or delete categories while the list is open.
+	 * Deleted ids disappear; new ids are appended in registry order rather than
+	 * dropped, so a tag created by another client is still offered.
+	 */
+	const ordered = [
+		...order.flatMap((id) => {
+			const tag = byId.get(id);
+			return tag ? [tag] : [];
+		}),
+		...categories.filter((tag) => !order.includes(tag.id)),
+	];
+	return ordered.map((tag) => ({
+		value: tag.name,
+		name: tag.name,
+		applied: held.has(tag.id),
+		tagId: tag.id,
+		primary: primary === tag.id,
+	}));
+}
+
+/**
+ * The one explicit create-and-apply row, or null when the query must not offer
+ * one.
+ *
+ * Existing exact names ALWAYS win (`hasTagName`): the create action can never
+ * be a second spelling of a tag that already exists. Validation and the two
+ * caps reuse the same helpers and limits the merged dialog uses, so the slash
+ * row cannot create what the dialog would refuse. `label` and `description`
+ * arrive translated from the caller, keeping this module locale-free and
+ * bundleable by the node harness.
+ */
+export function tagCreateRow(
+	categories: readonly TagCategory[],
+	selected: readonly string[],
+	query: string,
+	label: string,
+	description: string,
+): ArgumentRow | null {
+	const name = query.trim();
+	if (!name || tagNameIssue(name) || hasTagName(categories, name)) return null;
+	if (categories.length >= TAG_REGISTRY_LIMIT) return null;
+	if (selected.length >= TAG_SELECTION_LIMIT) return null;
+	return {
+		value: name,
+		name: label,
+		description,
+		create: true,
+	};
+}
+
+/**
+ * What a pick of a tag row does.
+ *
+ * `run: false` is Tab, or an ambiguous Enter: it keeps the existing completion
+ * semantics (write the name, mutate nothing) so the first keystroke can never
+ * toggle a fuzzy survivor. A running pick is a toggle for a registry row and a
+ * create for the explicit action; there is no third mutation path.
+ */
+export function tagPickAction(
+	row: ArgumentRow,
+	run: boolean,
+): "complete" | "create" | "toggle" | "none" {
+	if (!run) return "complete";
+	if (row.create) return "create";
+	if (row.tagId) return "toggle";
+	return "none";
+}
+
+/**
+ * Applied rows first, registry order inside each partition.
+ *
+ * Extracted so the ordering rule is executable by the node harness instead of
+ * living only inside the hook's memo. It is called once per registry/session by
+ * the composer, never per toggle: see `tagArgumentRows` for why the order is
+ * frozen after that.
+ */
+export function appliedFirstTagIds(
+	categories: readonly TagCategory[],
+	selected: readonly string[],
+): string[] {
+	const held = new Set(selected);
+	return [...categories]
+		.sort((a, b) => Number(held.has(b.id)) - Number(held.has(a.id)))
+		.map((tag) => tag.id);
+}
+
+/** A frozen order and the registry/session signature it was derived under. */
+export type FrozenTagOrder = { signature: string; order: string[] };
+
+/**
+ * Freeze the applied-first order for one registry and conversation.
+ *
+ * WHY A CONTENT SIGNATURE. Every successful assignment refetches the registry,
+ * and `fetchCategories` installs a FRESH ARRAY even when the content is
+ * identical. Keying the order on that array identity re-partitions the list one
+ * store round-trip after the user's own Enter, so the marker moves and the next
+ * Enter toggles a tag the user was not on (review round 1, F1). The signature is
+ * therefore the conversation plus the registry's ids in registry order: a
+ * refetch of unchanged content keeps the previous order, while a genuinely
+ * different registry (a tag created, deleted or reordered) or another
+ * conversation re-partitions.
+ */
+export function freezeTagOrder(
+	previous: FrozenTagOrder | null,
+	sessionId: string,
+	categories: readonly TagCategory[],
+	selected: readonly string[],
+): FrozenTagOrder {
+	const signature = `${sessionId}\u0000${categories.map((tag) => tag.id).join("\u0000")}`;
+	if (previous !== null && previous.signature === signature) return previous;
+	return { signature, order: appliedFirstTagIds(categories, selected) };
 }

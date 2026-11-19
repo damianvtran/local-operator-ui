@@ -1,0 +1,160 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "actual_model_source": "harness session model (system prompt: deepseek/deepseek-flash); no fallback used",
+  "instance": "07ffa6b6bc78",
+  "instance_source": "Local Operator subagent session id 07ffa6b6bc78 (subagent-lane-b918f21633e8, label audit-mesh-vi-delta, parent 7b57469f74f6)",
+  "independent_from_translator_session": true,
+  "independence_basis": "The translator is a different agent/session (i18n-translator, model openai/gpt-6.1-sol per the ledger row). This audit only read the catalogue, English source, context sidecar, style guide and glossary; the catalogue was not edited.",
+  "date": "2026-10-19",
+  "locale": "vi",
+  "namespace": "ui.mesh",
+  "round": 2,
+  "audit_kind": "namespace-delta-remediation",
+  "key_count": 245,
+  "new_key_count": 22,
+  "delta_key_count": 4,
+  "worktree": "~/local-operator-ui/.worktrees/mesh-link-states (branch fix/mesh-link-states, PR #1225); uncommitted translator remediation audited in place",
+  "scope": "vi/ui.mesh round 2 delta re-audit: the four remediated values (relay term in mesh_reach.relay_not_running, mesh_graph.relay_down_count and mesh_reach.peer_relay_not_running; epoch/removal wording in mesh_reach.handshake_refused_hint). The other 18 previously accepted new-key values were not re-audited semantically; their bytes are proved unchanged by exact reconstruction of the prior audited target hash. Whole-file mechanical checks were rerun. The catalogue was not edited.",
+  "style_guide": {
+    "path": "~/local-operator/i18n/style-guides/vi.md",
+    "sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97",
+    "glossary_path": "~/local-operator/i18n/glossary.md",
+    "glossary_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "note": "The UI checkout has no local i18n/glossary.md or i18n/style-guides/; docs/I18N.md points to the core repository's binding glossary and per-locale guide, which were used."
+  },
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.mesh.json",
+      "sha256": "876ba5b9c176f2ae3070894f90f2da2bff6e707cc85b61fea5f53f3bf74825ad"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.mesh.context.json",
+      "sha256": "4ceb0a871d50757e49e8079b0446a91fe7fc4ad571f54479a056632cd1f1d533"
+    },
+    "vi": {
+      "path": "src/i18n/catalogues/vi/ui.mesh.json",
+      "sha256": "16ea2f87e30f53a77b6a5c46282502e0589cb21c1b062ef7bb5f41e710810723"
+    }
+  },
+  "artifacts": [
+    {
+      "path": "i18n/receipts/07ffa6b6bc78.json",
+      "role": "immutable audit receipt; the ledger row records its sha256"
+    }
+  ],
+  "status": "passed",
+  "findings": [],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": []
+  },
+  "namespaces": {
+    "ui.mesh": {
+      "status": "passed",
+      "keys_audited": 245,
+      "new_keys_audited": 22,
+      "delta_keys_audited": 4,
+      "sha256": {
+        "en": "876ba5b9c176f2ae3070894f90f2da2bff6e707cc85b61fea5f53f3bf74825ad",
+        "vi": "16ea2f87e30f53a77b6a5c46282502e0589cb21c1b062ef7bb5f41e710810723"
+      },
+      "context_sha256": "4ceb0a871d50757e49e8079b0446a91fe7fc4ad571f54479a056632cd1f1d533",
+      "findings": [],
+      "dimensions": {
+        "mechanical": "PASS. Valid JSON, 245 unique keys, no duplicate members, 245/245 key parity with en. All four values parse with @formatjs; the plural in mesh_graph.relay_down_count has exactly the vi CLDR category other, its {count} argument is a number with the ::group-off style byte-identical to en, and the other three values carry no placeholders in either language. No markup, backticks, commands, flags, paths or identifiers. All four values NFC, zero Cf/bidi controls, no leading/trailing/double spaces, NBSP or NNBSP.",
+        "accuracy": "PASS. The four remediated values preserve the source meaning. The three relay strings now render relay as dịch vụ chuyển tiếp, keeping the named transport verdict and its distinction from timeout and handshake refusal. The handshake hint still names the two protocol causes, still frames them as things to check rather than an asserted cause, and now says the device was removed from the network (gỡ khỏi mạng), not deleted.",
+        "idiom_and_register": "PASS. Native Vietnamese status fragments and headline; sentence case; no calque or register spike. Hãy kiểm tra is a plain next-check instruction, matching the guide's direct imperative preference. Terminology is consistent with the existing catalogue.",
+        "terminology": "PASS. relay → chuyển tiếp (glossary and style guide; no Latin relay remains in any vi value). epoch → phiên bản thành viên, the catalogue's existing disambiguated rendering in ui.mesh.mesh_actions.removed_the_membership_epoch_is_now, used consistently twice in the hint. handshake → bắt tay; peer → thiết bị ngang hàng; network → mạng; member → thành viên. All match the existing 223 values.",
+        "fit": "PASS by source inspection. ui.mesh.context.json defines no maxCells/maxChars hint for these keys; the handshake hint explicitly sits where there is room. The hint is 207 characters vs 142 English (+46%), acceptable for the described device-panel slot. No terminal width or wide-glyph risk beyond normal Vietnamese NFC text.",
+        "rtl": "N/A for vi (LTR). Scanned the four values for U+200E/U+200F/U+202A-U+202E and other Cf controls: zero."
+      }
+    }
+  },
+  "delta_verification": {
+    "baseline_target_sha256": "4d23360dd0fb6c169aa94b550823239b39750128b134ad5ea8120a8d1eec7b07",
+    "reconstruction": "Replacing the four current values in the working-tree file with the pre-remediation values recorded in receipt 545b92054115 and hashing the resulting bytes gives 4d23360dd0fb6c169aa94b550823239b39750128b134ad5ea8120a8d1eec7b07, exactly the prior audited target hash. This proves no other key's value, key order or formatting moved.",
+    "values": [
+      {
+        "key": "ui.mesh.mesh_reach.relay_not_running",
+        "previous": "relay không chạy",
+        "current": "dịch vụ chuyển tiếp không chạy",
+        "verdict": "PASS — VI-MESH-1 cleared; glossary term applied, status-phrase register kept."
+      },
+      {
+        "key": "ui.mesh.mesh_graph.relay_down_count",
+        "previous": "{count, plural, other {{count, number, ::group-off} relay không chạy}}",
+        "current": "{count, plural, other {{count, number, ::group-off} dịch vụ chuyển tiếp không chạy}}",
+        "verdict": "PASS — VI-MESH-1 cleared; plural structure, other-only category and ::group-off unchanged."
+      },
+      {
+        "key": "ui.mesh.mesh_reach.peer_relay_not_running",
+        "previous": "Relay của thiết bị ngang hàng không chạy",
+        "current": "Dịch vụ chuyển tiếp của thiết bị ngang hàng không chạy",
+        "verdict": "PASS — VI-MESH-1 cleared; consistent with the other two relay strings and the peer rendering."
+      },
+      {
+        "key": "ui.mesh.mesh_reach.handshake_refused_hint",
+        "previous": "Hãy kiểm tra xem thiết bị này còn là thành viên của mạng không và phiên bản có khớp không; thiết bị đã bị xóa hoặc phiên bản đã thay đổi sẽ khiến bước bắt tay bị từ chối.",
+        "current": "Hãy kiểm tra xem thiết bị này còn là thành viên của mạng không và phiên bản thành viên có khớp không; thiết bị đã bị gỡ khỏi mạng hoặc phiên bản thành viên đã thay đổi đều khiến bắt tay bị từ chối.",
+        "verdict": "PASS — VI-MESH-2 cleared; epoch is now phiên bản thành viên (not bare software version), and xóa 'deleted' is replaced by gỡ khỏi mạng 'removed from the network'."
+      }
+    ]
+  },
+  "mechanical": {
+    "json": "valid JSON; 245 unique keys; no duplicate members",
+    "parity": "245/245 English keys present; no added or dropped keys",
+    "placeholders": "all four values compared by full ICU signature with @formatjs/icu-messageformat-parser; argument name, node type, plural type, plural categories and number style identical to en",
+    "icu": "plural mesh_graph.relay_down_count parses; vi uses other only (correct for Vietnamese); ::group-off preserved",
+    "markup": "no markup, backtick code, commands, flags, paths or identifiers in the four values",
+    "unicode": "all four values NFC; zero Cf/bidi control characters; no leading/trailing/double spaces, NBSP or NNBSP",
+    "execution": [
+      {
+        "command": "node --test scripts/i18n/locale-parity.test.mjs",
+        "exit": 0,
+        "result": "43/43 tests passed, including [vi] key parity, placeholder preservation and non-stub checks."
+      },
+      {
+        "command": "node scripts/i18n/context-parity.mjs",
+        "exit": 0,
+        "result": "ok — every English key is covered, apart from 196 allowed gaps in 6 namespaces; 8 allowance keys now covered (shrink-only note, not a vi defect)."
+      },
+      {
+        "command": "focused Node check: @formatjs AST signature comparison for the four keys plus key-parity scan",
+        "exit": 0,
+        "result": "PASS — 245/245 keys, identical placeholder/plural signatures, other-only vi plural, ::group-off present."
+      },
+      {
+        "command": "reconstruction hash check (four current values -> pre-remediation values -> sha256)",
+        "exit": 0,
+        "result": "4d23360dd0fb6c169aa94b550823239b39750128b134ad5ea8120a8d1eec7b07 matches the prior audited target hash exactly."
+      },
+      {
+        "command": "node scripts/i18n/ledger-check.mjs (pre-ledger-update state)",
+        "exit": 1,
+        "result": "Expected pre-update failures only: vi/ui.mesh stale target hash, status changes_requested and the old receipt not naming the new target; also unrelated hi/ui.mesh staleness and an untracked ur/ui.mesh from other lanes. The vi row is superseded and re-recorded by this audit."
+      }
+    ],
+    "notes_are_not_execution_log": true
+  },
+  "out_of_delta_observations": [
+    {
+      "key": "ui.mesh.mesh_list.epoch",
+      "current": "phiên bản {epoch, number, ::group-off}",
+      "observation": "Pre-existing (byte-identical to HEAD, not part of this four-value delta): the hover tooltip renders the membership epoch as bare phiên bản, the same software-version ambiguity VI-MESH-2 fixed in the hint. It needs phiên bản thành viên or an explicit epoch rendering.",
+      "severity": "major",
+      "counted_in_findings": false,
+      "agreement": "I agree it needs the same fix. I also agree it should ride a separate change: it is outside this delta, changing it widens the audited scope and forces another namespace hash, and this remediation should stay limited to the four values the translator changed. It should be recorded in the PR thread as deferred with that reason and fixed promptly so the namespace does not ship with two renderings of epoch."
+    }
+  ],
+  "second_pass": {
+    "performed": false,
+    "reason": "ui.mesh is not one of the named high-visibility groups (onboarding, errors, settings); this is a four-value delta re-audit, and the prior full audit of the 22-key delta remains the first independent pass."
+  },
+  "limits": [
+    "Source-only delta audit; no rendered-frame or pseudo-localization proof. The fit conclusion is geometry/length reasoning from the sidecar, not a screenshot.",
+    "The other 18 new-key values were not re-read semantically; their bytes are proved unchanged by the exact reconstruction of the prior audited target hash.",
+    "Out-of-delta mesh_list.epoch is recorded for the manager and is NOT counted in this delta verdict."
+  ]
+}

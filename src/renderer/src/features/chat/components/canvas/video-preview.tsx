@@ -1,9 +1,14 @@
+import { remoteUnreachableText } from "@features/chat/canonical/remote-files";
 import {
 	type LocalOperatorClient,
 	createLocalOperatorClient,
 } from "@shared/api/local-operator";
+import { Button } from "@shared/components/ui";
 import { apiConfig } from "@shared/config";
 import { useFileBlobUrl } from "@shared/hooks/use-file-blob-url";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
+import { isRemoteFilePath } from "@shared/lib/remote-file-path";
 import { cn } from "@shared/lib/utils";
 import { type FC, memo, useMemo, useState } from "react";
 import {
@@ -82,6 +87,7 @@ const VideoPreviewComponent: FC<{ document: CanvasDocument }> = ({
 const ArtifactVideoPreview: FC<{ document: CanvasDocument }> = ({
 	document,
 }) => {
+	useI18nLocale();
 	const artifact = document.artifact;
 	const source = useAttachmentSource(
 		{
@@ -120,13 +126,34 @@ const ArtifactVideoPreview: FC<{ document: CanvasDocument }> = ({
 				) : null}
 			</ViewerChrome>
 			{source.state === "resolving" ? (
-				<FileViewerState quiet title="Opening…" />
+				<FileViewerState
+					quiet
+					title={
+						/* A slow owner is named, not "Opening…" (design D1-3). */
+						source.pending && document.remote
+							? t("ui.canvas.files.remoteFetching", {
+									device: document.remote.deviceName,
+								})
+							: t("ui.common.viewer.opening")
+					}
+				/>
+			) : source.state === "retryable" ? (
+				<FileViewerState
+					title={remoteUnreachableText(document.remote?.deviceName ?? "")}
+					detail={document.title}
+				>
+					<Button variant="secondary" size="sm" onClick={source.retry}>
+						{t("ui.canvas.files.retry")}
+					</Button>
+				</FileViewerState>
 			) : source.state === "missing" || playbackFailed ? (
 				<FileViewerState
 					title={
 						playbackFailed
-							? "This video could not be played"
-							: "This video is no longer in the session"
+							? t("ui.canvas.video_preview.this_video_could_not_be_played")
+							: t(
+									"ui.canvas.video_preview.this_video_is_no_longer_in_the_session",
+								)
 					}
 					detail={document.title}
 				/>
@@ -156,7 +183,11 @@ const PathVideoPreview: FC<{ document: CanvasDocument }> = ({ document }) => {
 	 * re-read that moves the mtime re-keys the element (and, for bytes, the
 	 * cache) rather than re-trying the route.
 	 */
-	const [source, setSource] = useState<"route" | "bytes">("route");
+	// A peer's file (`remote-file:`) has no path for the backend's media route
+	// to stream; its bytes come over the content route from the start (I3-1).
+	const [source, setSource] = useState<"route" | "bytes">(() =>
+		isRemoteFilePath(document.path) ? "bytes" : "route",
+	);
 	/*
 	 * Read once, used for the route's token, the bytes component's key and the
 	 * request's cache key: two spellings of "which version is this" would be a
@@ -207,6 +238,7 @@ const RouteVideo: FC<{
 	version: string;
 	onUnavailable: () => void;
 }> = ({ document, version, onUnavailable }) => {
+	useI18nLocale();
 	const client = useMemo<LocalOperatorClient>(
 		() => createLocalOperatorClient(apiConfig.baseUrl),
 		[],
@@ -270,7 +302,7 @@ const RouteVideo: FC<{
 		>
 			{loaded ? null : (
 				<div className={cn("absolute inset-0")}>
-					<FileViewerState quiet title="Opening…" />
+					<FileViewerState quiet title={t("ui.common.viewer.opening")} />
 				</div>
 			)}
 			{url === null ? null : (
@@ -303,7 +335,9 @@ const RouteVideo: FC<{
  * other reason is "could not be played".
  */
 const BytesVideo: FC<{ document: CanvasDocument }> = ({ document }) => {
+	useI18nLocale();
 	const state = useFileBlobUrl(document.path, {
+		remoteDevice: document.remote?.deviceName,
 		mtimeMs: document.lastAgentModified,
 		mimeType: mimeTypeForPath(document.path),
 		sizeBytes: document.sizeBytes,
@@ -311,7 +345,7 @@ const BytesVideo: FC<{ document: CanvasDocument }> = ({ document }) => {
 	const [playbackFailed, setPlaybackFailed] = useState(false);
 
 	if (state.status === "loading") {
-		return <FileViewerState quiet title="Opening…" />;
+		return <FileViewerState quiet title={t("ui.common.viewer.opening")} />;
 	}
 	if (state.status === "unavailable" || playbackFailed) {
 		const tooLarge =
@@ -321,10 +355,10 @@ const BytesVideo: FC<{ document: CanvasDocument }> = ({ document }) => {
 			<FileViewerState
 				title={
 					tooLarge
-						? "Too large to preview"
+						? t("ui.canvas.video_preview.too_large_to_preview")
 						: gone
-							? "File no longer exists"
-							: "This video could not be played"
+							? t("ui.canvas.video_preview.file_no_longer_exists")
+							: t("ui.canvas.video_preview.this_video_could_not_be_played")
 				}
 				detail={
 					state.status === "unavailable"

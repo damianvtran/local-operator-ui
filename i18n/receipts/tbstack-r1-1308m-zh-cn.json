@@ -1,0 +1,109 @@
+{
+ "auditor": "translation-auditor",
+ "model": "openai/gpt-6.1-sol",
+ "model_note": "Host-announced fallback sequence: anthropic/claude-opus-5-5 → anthropic/claude-sonnet-5-5 → openai/gpt-6.1-sol (provider quota). Substantive catalogue review, receipts and final verification completed under openai/gpt-6.1-sol.",
+ "instance": "tbstack-r1-1308m-zh-cn",
+ "session": "c3f4ad19c4ad",
+ "job": "5ddd51d10a50",
+ "date": "2026-10-22",
+ "locale": "zh-CN",
+ "namespace": "ui.teamBridge",
+ "status": "passed",
+ "keys_audited": 4,
+ "keys_read": 144,
+ "union_keys_verified": 144,
+ "scope": "PR #1308, 2908b0a9f1ad0c7be87553cd2c12b20008ad0c31: 144-key exact two-parent English/target/context union verified; all 144 keys read side by side, 4 new-to-feature OS-banner keys substantively audited against thread/reaction/scheduling/attachment terminology where present. Other values traced to actual inherited audited receipts. Catalogue-only; no rendered-fit, activation or release claim.",
+ "sha256": {
+  "en": "f9d6aa7afa46fd6b877e5fe1b3e8a276657445bf929f237a51b0726f6860d214",
+  "zh-CN": "4f9cd664854f8108f2d8d54789ea2dd3747fdd6b311a813203cade4feb4a2965",
+  "context": "be847e5b61705864af0972446332cbed327f98f2d7f591c4a4de0d86f39e6f7b"
+ },
+ "findings": [],
+ "union_integrity": {
+  "merge": {
+   "head": "2908b0a9f1ad0c7be87553cd2c12b20008ad0c31",
+   "parents": [
+    "2156430ae280ba2e368db32a51242927c72057fb",
+    "3269107dbd8582ab07a6fddba55b271ad0a6c076"
+   ]
+  },
+  "files": [
+   {
+    "file": "src/i18n/catalogues/en/ui.teamBridge.json",
+    "head_keys": 144,
+    "left_keys": 140,
+    "right_keys": 123,
+    "dropped": 0,
+    "changed": 0
+   },
+   {
+    "file": "src/i18n/catalogues/zh-CN/ui.teamBridge.json",
+    "head_keys": 144,
+    "left_keys": 140,
+    "right_keys": 123,
+    "dropped": 0,
+    "changed": 0
+   },
+   {
+    "file": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+    "head_keys": 144,
+    "left_keys": 140,
+    "right_keys": 123,
+    "dropped": 0,
+    "changed": 0
+   }
+  ],
+  "keys_dropped": 0,
+  "shared_keys_altered": 0,
+  "keys_unsourced": []
+ },
+ "inherited_receipts": [
+  {
+   "base": "2156430ae280ba2e368db32a51242927c72057fb",
+   "path": "i18n/receipts/tbstack-r2-1308-zh-cn.json",
+   "sha256": "51241c18ab95bf40730e5f7abdbfd238e984f2c188ada0e8c55f370c3e528ddc",
+   "instance": "tbstack-r2-1308-zh-cn",
+   "keys_inherited": 140,
+   "unchanged_values_verified": 140,
+   "base_en_sha256": "f940f0c6b7bd896e49c691c1afa4cdb21a0c7dcf8179b81e3c9071503f168448",
+   "base_target_sha256": "c358b9a8f3b728ddb7e9a4de0c70a708b619fb69833d2047daeb36f7ec69799e",
+   "base_context_sha256": "2c60cbbbf0164f2a888809eeb8e3eddb11dc6c8bf9bbb2176b3687542acb4843",
+   "location": "git ledger audited parent",
+   "findings": []
+  },
+  {
+   "base": "3269107dbd8582ab07a6fddba55b271ad0a6c076",
+   "path": "i18n/receipts/tbstack-r1-1304m-zh-cn.json",
+   "sha256": "1ac603c3d789f59a00d230851bbd6833fa8ff649f4dc0ba1142beae7065128d2",
+   "instance": "tbstack-r1-1304m-zh-cn",
+   "keys_inherited": 4,
+   "unchanged_values_verified": 123,
+   "base_en_sha256": "281cb8adcc75e5bb4fcebf5c9112ab260bcf8ed2fbcf6bbcd6d04bfc3cfff41c",
+   "base_target_sha256": "5e8822cf220c6b342d31fede419802eeba569e8dc79fcf39d61094c203d6ba61",
+   "base_context_sha256": "f5cf60d75f5e8b8ecc378174bc9f9e5e158b14afb80cda504e1b61e921b5cafd",
+   "location": "git ledger audited parent",
+   "findings": []
+  }
+ ],
+ "validation": {
+  "independence": "Read-only independent translation-auditor session c3f4ad19c4ad, job 5ddd51d10a50; no translation/catalogue/source edits. Translator identity preserved from parent ledger, never invented. All assertions checked against git objects, not translator summaries.",
+  "semantics": "message → 消息, thread → 讨论串, reply → 回复, reaction → 表情回应; scheduled messages → 定时消息, image → 图片 where present. #条新消息 is idiomatic, uses established 消息 and classifier 条; other-only plural is correct. No 您/你 register change. Preview remains verbatim and last, preceded by Chinese full-width colon.",
+  "banner": "notify.channel retains literal # and {channel}; notify.subtitle retains {place} · {organization}, exact placeholder names/order and middle dot. notify.count and count_preview count messages, not replies/reactions/attachments or scheduled delivery; no sender attribution added. Every plural arm retains #; every count_preview arm retains {preview} last.",
+  "icu": {
+   "locale": "zh-CN",
+   "head": "2908b0a9f1ad0c7be87553cd2c12b20008ad0c31",
+   "keys": 144,
+   "plural_blocks": 6,
+   "skeletons": 0,
+   "markup_tags": 0,
+   "errors": []
+  },
+  "overflow": "New banner literals are shorter in character count (#条新消息 vs # new messages); CJK display width differs, so this is not rendered-fit proof. Dynamic channel/place/organization and preview lengths require rendered OS-banner checks.",
+  "typography": "NFC; no BOM, bidi controls or zero-width codepoints in target catalogue. ru and zh-CN are LTR; RTL-specific audit is not applicable. Embedded channel marker and Latin names/placeholders preserved.",
+  "limitations": "No repo writes, builds, tests, installs, worktrees, pushes or browser/render execution. Prior feature namespace audits inherited after exact source/context/target comparison, not falsely represented as fresh full semantic re-audits."
+ },
+ "reference_sha256": {
+  "i18n/glossary.md": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "i18n/style-guides/zh-CN.md": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+ }
+}

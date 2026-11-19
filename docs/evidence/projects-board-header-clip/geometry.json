@@ -1,0 +1,121 @@
+{
+  "surface": "Projects board (Projects/Tab, Board view)",
+  "story": "projects-tab--board-header-boundary",
+  "storybook": "http://localhost:6033/iframe.html?id=projects-tab--board-header-boundary&viewMode=story&args=theme:<theme>;glass:<on|off>",
+  "viewport": {
+    "window": "1280x720 CSS px, dpr 2",
+    "board_root": "1280x540.71 at y 179.29",
+    "columns": 5
+  },
+  "glass_model": {
+    "harness": "Storybook GlassFrame calls the shipped applyGlassFacts (vibrancy, coverage full, material window, intensity 80); the alphas are glassPaintFor's, not hand-picked",
+    "dark": { "canvas_alpha": 0.66, "lane_alpha": 0.48 },
+    "light": { "canvas_alpha": 0.68, "lane_alpha": 0.49 }
+  },
+  "before": {
+    "source": "origin/main ab1ab8e65e (v0.36.1), board code 863c7e5664",
+    "header": {
+      "element": "[data-board-column-handle=\"active\"]",
+      "top": 179.29,
+      "height": 44,
+      "row_position": "sticky, top 0, z-index 30, inside the one two-axis scroller",
+      "background_dark_glass_on": "color(srgb 0.113725 0.105882 0.0980392 / 0.48)",
+      "background_light_glass_on": "color(srgb 0.968627 0.960784 0.933333 / 0.49)",
+      "background_glass_off_dark": "rgb(29, 27, 25)",
+      "background_glass_off_light": "rgb(236, 230, 216)",
+      "backdrop_filter": "none"
+    },
+    "scrollport": {
+      "element": "[data-board-strip]",
+      "top": 179.29,
+      "height": 540.71,
+      "overflow": "auto (both axes)",
+      "top_offset_vs_header": "0.0 (the header begins at the scrollport's own top edge)",
+      "vertical_scrollbar": "at the view's right edge (old strip was full-width)"
+    },
+    "boundary_card": {
+      "element": "[data-project-name=\"load-shed-2\"]",
+      "top": 171.29,
+      "top_offset_vs_scrollport": -8,
+      "title_inset": 12,
+      "title_top": 183.29,
+      "title_line": "load-shed-2 (the key; this card has no title, so the title display falls back to the key)",
+      "description_line": "Slice 2 of the load shed (the second line, below the title)",
+      "result": "the title line sits at y 183.29-201.29, inside the 44px header band and behind its 0.48/0.49 fill; the glyphs are readable through it"
+    },
+    "team_header": {
+      "element": "[data-board-team]",
+      "sticky_top": "44px",
+      "background": "rgb(34, 32, 28) (dark, alpha 1)"
+    },
+    "behaviour_baseline": {
+      "sticky_team_headers": true,
+      "per_column_vertical_scrollers": "max-height: calc(100cqh - 92px), overflow-y auto",
+      "whole_board_vertical_scroll": "the strip's own scrollTop over the team bands"
+    }
+  },
+  "after": {
+    "header_viewport": {
+      "element": "[data-board-header-viewport]",
+      "top": 179.29,
+      "height": 44,
+      "bottom": 223.29,
+      "overflow": "hidden (a window, not a scroll target; the wheel is forwarded)",
+      "padding_right": "15px (a copy of the body's scrollbar gutter, so the two x max offsets are equal)"
+    },
+    "header_cell": {
+      "element": "[data-board-column-handle=\"active\"]",
+      "background_dark_glass_on": "rgb(29, 27, 25)",
+      "background_light_glass_on": "rgb(236, 230, 216)",
+      "computed_alpha": 1,
+      "backdrop_filter": "none"
+    },
+    "body": {
+      "element": "[data-board-strip]",
+      "top": 223.29,
+      "height": 496.71,
+      "overflow": "auto (both axes)",
+      "top_offset_vs_header": "44.0 (the body begins exactly at the header viewport's bottom edge)",
+      "client_width": 1265,
+      "scrollbar_gutter": 15,
+      "vertical_scrollbar": "at the view's right edge, x 1265-1280",
+      "horizontal_scrollbar": "at the view's bottom edge"
+    },
+    "boundary_card": {
+      "element": "[data-project-name=\"load-shed-2\"]",
+      "top": 215.29,
+      "top_offset_vs_scrollport": -8,
+      "result": "the card's layout top is 8px above the body; the body clips it at 223.29, so no pixel paints above the boundary"
+    },
+    "team_header": {
+      "element": "[data-board-team]",
+      "sticky_top": "0px",
+      "background": "rgb(34, 32, 28) (dark, alpha 1)"
+    },
+    "strap_pin": {
+      "scenario": "body scrollLeft 111 after the horizontal-sync play",
+      "band_header_left": -87,
+      "label_left": 36,
+      "sticky_left": "12px",
+      "result": "the team name stays at the view's left gutter while its band header scrolls under it"
+    },
+    "cell_cap": {
+      "board_root_height": 540.71,
+      "css": "calc(100cqh - 92px) = 448.71px",
+      "measured_cell_height": 448.7
+    },
+    "horizontal_scroll": {
+      "scroller": "[data-board-strip]",
+      "header_window": "[data-board-header-viewport]",
+      "body_scrollLeft": 111,
+      "header_window_scrollLeft": 111,
+      "header_cell_shift": 111,
+      "band_cell_shift": 111,
+      "sync": "bidirectional; a UA focus scroll of a clipped grip moves the body and both windows settle on the same offset (active header and band cell both return to x 292)"
+    },
+    "pointer_reorder": {
+      "story": "projects-tab--board-column-drop-commits",
+      "result": "planning,qa,validation,active,done,paused (the pointer drop commits and persists)"
+    }
+  }
+}

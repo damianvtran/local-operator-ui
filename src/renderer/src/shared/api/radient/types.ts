@@ -137,6 +137,25 @@ export type AccountInfo = {
 	 */
 	metadata?: Record<string, string>;
 	/**
+	 * The person's optional presentation (agent-server #216). ADDITIVE: an older
+	 * hub omits it. Human profile fields belong to the OAuth account, never an
+	 * agent document; `hash` pins the version the private avatar relay serves.
+	 * Optional fields preserve compatibility with accounts created before the
+	 * profile API. An explicit empty string clears a field on PATCH.
+	 */
+	profile?: {
+		display_name?: string;
+		title?: string;
+		description?: string;
+		timezone?: string;
+		avatar?: { source?: string; hash?: string } | null;
+	} | null;
+	/**
+	 * Relative, hash-pinned avatar URL. Response-only and derived; `/me` does not
+	 * currently decorate it, so it is optional and only cross-checked when present.
+	 */
+	avatar_url?: string;
+	/**
 	 * Account status (assuming this is still relevant, though not in Go struct)
 	 */
 	status?: "active" | "pending" | "suspended";

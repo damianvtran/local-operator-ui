@@ -1,4 +1,6 @@
 import { Disclosure } from "@shared/components/ui/disclosure";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { formatTurnTimestamp } from "@shared/utils/date-utils";
 import { CircleCheck, History } from "lucide-react";
@@ -53,6 +55,7 @@ export const CanvasGoalsViewer: FC<{
 	 */
 	goalPresent: boolean;
 }> = ({ entries, truncated, goalPresent }) => {
+	useI18nLocale();
 	if (entries.length === 0 && !truncated) {
 		/*
 		 * THE PANE'S OWN EMPTY STATE, imported rather than restated (design review round
@@ -71,7 +74,7 @@ export const CanvasGoalsViewer: FC<{
 		 */
 		return (
 			<EmptyState
-				title="No goals completed yet"
+				title={t("ui.canvas.goals_viewer.no_goals_completed_yet")}
 				description={
 					goalPresent
 						? /*
@@ -81,8 +84,12 @@ export const CanvasGoalsViewer: FC<{
 							 * and it is the same second-half fact the invitation carried, so the two
 							 * strings share their shape rather than inventing a register for the new one.
 							 */
-							"Goals appear here once they are finished."
-						: "No goal set — /goal <text> to set one. Finished goals are kept here."
+							t(
+								"ui.canvas.goals_viewer.goals_appear_here_once_they_are_finished",
+							)
+						: t(
+								"ui.canvas.goals_viewer.no_goal_set_goal_text_to_set_one_finished_goals_are_kept_here",
+							)
 				}
 			/>
 		);
@@ -99,7 +106,9 @@ export const CanvasGoalsViewer: FC<{
 					"flex items-baseline justify-between gap-2 px-3 pt-2 pb-1",
 				)}
 			>
-				<span className={cn("shrink-0 text-meta text-ink-muted")}>Goals</span>
+				<span className={cn("shrink-0 text-meta text-ink-muted")}>
+					{t("ui.canvas.goals_viewer.goals")}
+				</span>
 				<span
 					className={cn(
 						"min-w-0 flex-1 truncate text-right text-meta text-ink-dim",
@@ -113,10 +122,10 @@ export const CanvasGoalsViewer: FC<{
 					 * (`Goals view, 2 goals shown — this list is capped`), so the two agree.
 					 */}
 					{truncated
-						? `${entries.length === 1 ? "1 goal" : `${entries.length} goals`} shown`
-						: entries.length === 1
-							? "1 goal"
-							: `${entries.length} goals`}
+						? t("ui.canvas.goals_viewer.count_shown", {
+								count: entries.length,
+							})
+						: t("ui.canvas.goals_viewer.count", { count: entries.length })}
 				</span>
 			</div>
 			{/*
@@ -136,7 +145,9 @@ export const CanvasGoalsViewer: FC<{
 				 * the 400px dock floor the sentence does not run the pane's full width.
 				 */
 				<p className={cn("max-w-80 px-3 pb-1 text-meta text-ink-dim")}>
-					Older settled goals are not carried here — this list is capped.
+					{t(
+						"ui.canvas.goals_viewer.older_settled_goals_are_not_carried_here_this_list_is_capped",
+					)}
 				</p>
 			)}
 			<ul className={cn("flex flex-col pb-1.5")}>

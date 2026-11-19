@@ -1,0 +1,29 @@
+{
+  "auditor": "translation-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "6f30a2b4d901",
+  "reissued_from": "859a20bd9c70",
+  "date": "2026-10-20",
+  "round": 7,
+  "namespace": "ui.hub",
+  "locale": "zh-CN",
+  "status": "clean-with-findings",
+  "sha256": {
+    "zh-CN": "481720e297adc4d1351fdea0a34d3c239d7b04ac19c3fcd75ba5f939e4e2bec5",
+    "en": "281a4058420d135c4dd8767610f6144ab1597fc2fca50e96253bd5846605905f"
+  },
+  "head": "1c3ecb6d52bb7dd0bc7436ea1493cff594dcd007",
+  "keys_audited": 49,
+  "scope": "ui.hub.skills.* — all 49 keys in zh-CN/ui.hub.json read against en/ui.hub.json (full namespace pass). Every plural message parsed and rendered with the repo's intl-messageformat 12.1.3 for counts 0/1/2/3/5/11/21/100/1.5/1000000, and its declared branches compared with Intl.PluralRules('zh-CN') CLDR categories; every placeholder, plural branch and ::group-off skeleton checked per branch. count/count_shared judged at their only call sites (hub-skills-library.tsx:385-392): count is a bare plural concatenated with public_hub, count_shared carries {organization}. Term consistency cross-checked against ui.hub.taxonomy.origin.named and the sibling subscription keys (auto_push, pull, subscri*). Read at head 1c3ecb6d52 (fix(i18n): keep the scope out of the count sentence).",
+  "findings": [
+    {
+      "severity": "nit",
+      "type": "message",
+      "key": "ui.hub.skills.initial_policy_description",
+      "location": "policy explanation under the publish dialog",
+      "current": "新关联默认订阅传入更新。自动推送保持关闭，直到你为此目标开启自动推送。",
+      "proposed": "… 自动推送保持关闭，直到为此目标开启。",
+      "reason": "The same term appears twice in one sentence; English elides the second occurrence (“until enabled for this destination”), and the repetition is what makes the line read translated."
+    }
+  ]
+}

@@ -27,8 +27,12 @@
 
 import type { Meta, StoryObj } from "@storybook/react";
 import type { CanonicalEffectiveAccessState } from "../../../../../shared/desktop-session-contract";
-import { modelAccessReading } from "./session-model";
+import {
+	modelAccessIsInformational,
+	modelAccessReading,
+} from "./session-model";
 import { SessionModelAccessBand } from "./session-model-access";
+import { SessionStatusStrip } from "./session-status-strip";
 
 const noop = () => {};
 
@@ -95,6 +99,12 @@ const nativeStates: [CanonicalEffectiveAccessState, string][] = [
  * Real reader + real band, synthetic keyless host frames. No provider mode is
  * invented and no selector/effort change is dispatched while access converges.
  * Local access and an older host's silence render no band (covered by contracts).
+ *
+ * Informational states (healthy borrow, and access the runtime is still
+ * resolving) render the SESSION STRIP instead, the surface the composer now
+ * mounts for them: an `i` readout beside the model and effort whose tooltip
+ * carries the same lines (`modelAccessIsInformational`; operator report
+ * 2026-11-11). Hover or focus the `i` to judge the tooltip.
  */
 export const NativeAccessMatrix: Story = {
 	parameters: { layout: "fullscreen" },
@@ -122,12 +132,17 @@ export const NativeAccessMatrix: Story = {
 							"owner_unavailable",
 							"withdrawn",
 						].includes(state);
-						const access = modelAccessReading({
+						const frame = {
 							selected_model: {
 								provider: "openai",
 								model_id: "gpt-6.1-sol",
+								display_name: "GPT-6.1 Sol",
+								reasoning: true,
 								reasoning_effort: "high",
+								reasoning_efforts: ["low", "medium", "high"],
 							},
+							context_tokens: 41_000,
+							context_window: 1_000_000,
 							model_access: {
 								provider: "openai",
 								label: "OpenAI",
@@ -144,19 +159,24 @@ export const NativeAccessMatrix: Story = {
 									? observed + (state === "effective_borrow" ? 600 : -120)
 									: undefined,
 							},
-						} as Parameters<typeof modelAccessReading>[0]);
+						} as Parameters<typeof modelAccessReading>[0];
+						const access = modelAccessReading(frame);
 						return (
 							<section key={state}>
 								<h2 className="mb-2 text-body-sm font-medium text-ink-muted">
 									{heading}
 								</h2>
-								{access && (
-									<SessionModelAccessBand
-										access={access}
-										isSmallView={args.isSmallView}
-										onConnect={noop}
-										onSwitchModel={noop}
-									/>
+								{access && modelAccessIsInformational(access) ? (
+									<SessionStatusStrip frontend={frame} onCommand={noop} />
+								) : (
+									access && (
+										<SessionModelAccessBand
+											access={access}
+											isSmallView={args.isSmallView}
+											onConnect={noop}
+											onSwitchModel={noop}
+										/>
+									)
 								)}
 							</section>
 						);

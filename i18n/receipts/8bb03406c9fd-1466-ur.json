@@ -1,0 +1,69 @@
+{
+ "schema": 1,
+ "auditor": "i18n-auditor (lopdev reviewer-role session 8bb03406c9fd, delta audit of the two ui.chat.asks keys #1466 added; not the PR coder, not the translator 1d58a9985da6, not any previous auditor of this row)",
+ "agent": "i18n-auditor (lopdev reviewer-role session 8bb03406c9fd, delta audit of the two ui.chat.asks keys #1466 added; not the PR coder, not the translator 1d58a9985da6, not any previous auditor of this row)",
+ "model": "anthropic/claude-opus-5-5",
+ "model_provenance": "Every catalogue read and verdict in this receipt ran on anthropic/claude-opus-5-5 (session header of 8bb03406c9fd); no fallback occurred in this session.",
+ "fallback": "none",
+ "independence": "Separate session (8bb03406c9fd, team lopdev, reviewer role) from the translator of these keys (8f79f63fcb: coder session 1d58a9985da6, anthropic/claude-opus-5-5) and from every earlier auditor of this row. SAME-FAMILY, NOT model-independent: translator and auditor both ran anthropic/claude-opus-5-5; agent-instance independent. Verdicts rebuilt from the English source and context, core relay.asks.status.* in this locale, the namespace's keyed siblings, the core glossary and the locale style guide; the translator's commit message was not used as evidence.",
+ "instance": "8bb03406c9fd-1466-ur",
+ "session": "8bb03406c9fd",
+ "locale": "ur",
+ "branch": "fix/notifications-ask-optimistic",
+ "head": "8f79f63fcb3dc6f76aaf8fedd075bde2953d2a77",
+ "pr": "damianvtran/local-operator-ui#1466",
+ "date": "2026-10-28",
+ "status": "passed",
+ "scope": "ui.chat.asks: delta audit of the 2 keys 8f79f63fcb added (status.withdrawn, status.withdrawn_label). The other 26 keys are byte-identical to the 96cf90fc7a blob the existing ledger row's target_sha256 names.",
+ "inputs_sha256": {
+  "en_context (ui.chat.asks.context.json)": "e1d26bb6356b2ead4b2825ec23cd7496674049494478b1a085182ae4bae98da1",
+  "glossary (local-operator/i18n/glossary.md @ 9495f8a6c3)": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style guide (local-operator/i18n/style-guides/ur.md @ 9495f8a6c3)": "3f8d600cd51d585278405f6bfcf93c0ddd1718d2490423849e8dab3f4f1d6545",
+  "core relay.asks (local_operator/i18n/catalogues/ur/relay.asks.json @ 9495f8a6c3)": "bf4f4cf0d0403bfe0ecb20b509cbfc4b0adf0d885b2574b02fd5c7ee347cb561"
+ },
+ "verified": [
+  "key set equals en (28 keys); neither key has placeholders (en has none); values carry no bidi/zero-width/BOM characters, no edge or double spaces; NFC",
+  "carried keys byte-identical: the 26 pre-existing values equal the 96cf90fc7a file, whose sha256 is the existing ledger row's target_sha256; en ui.chat.asks likewise only adds these 2 keys",
+  "status.withdrawn equals core relay.asks.status.withdrawn in this locale byte-for-byte; withdrawn_label equals that sentence's leading clause (the sentence starts with the label)",
+  "meaning: the agent (asker) withdrew its own question and no longer needs an answer; the agent is the subject or beneficiary, not the user; not confusable with declined/dismissed/timed out in this locale",
+  "render path: ask-queue.ts ASK_STATUS_COPY.withdrawn getter -> t(status.withdrawn) (full sentence, settled card); askStatusWord('withdrawn') -> t(status.withdrawn_label) (compact badge); no English delimiter split applied to localized copy",
+  "anchors: core relay.asks.status.* (… کیا گیا — ایجنٹ کو …); namespace dismiss.receipt.* «ہٹا دیا — …»; جواب is the namespace's and core's word for answer",
+  "RTL: dir=rtl per manifest; no manual RLM/LRM/FSI/PDI/ALM per ur.md 'RTL & bidi'; em dash and Latin-free run; no final ۔ on a status, matching core siblings"
+ ],
+ "namespaces": {
+  "ui.chat.asks": {
+   "namespace": "ui.chat.asks",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 28,
+   "delta_keys_audited": [
+    "ui.chat.asks.status.withdrawn",
+    "ui.chat.asks.status.withdrawn_label"
+   ],
+   "values": {
+    "ui.chat.asks.status.withdrawn": {
+     "en": "Withdrawn — the agent no longer needs an answer",
+     "translated (8f79f63fcb)": "واپس لیا گیا — ایجنٹ کو اب جواب کی ضرورت نہیں",
+     "after (this audit)": "واپس لیا گیا — ایجنٹ کو اب جواب کی ضرورت نہیں",
+     "changed_by_auditor": false
+    },
+    "ui.chat.asks.status.withdrawn_label": {
+     "en": "Withdrawn",
+     "translated (8f79f63fcb)": "واپس لیا گیا",
+     "after (this audit)": "واپس لیا گیا",
+     "changed_by_auditor": false
+    }
+   },
+   "sha256": {
+    "ur": "612dfb9a06b8990cf18f2861d8c106729ab9bf0d07f82f259c48e38a10b5d9be",
+    "en": "4b81cb96606b6bc647c5d3020b64346c5a3f48d757b8b2990ec47ec42c33c5ee"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.asks.json",
+    "target": "src/i18n/catalogues/ur/ui.chat.asks.json",
+    "context": "src/i18n/catalogues/en/ui.chat.asks.context.json"
+   },
+   "findings": []
+  }
+ }
+}

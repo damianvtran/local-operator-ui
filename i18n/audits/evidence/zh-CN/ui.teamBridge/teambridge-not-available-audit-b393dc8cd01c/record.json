@@ -1,0 +1,87 @@
+{
+	"audit_id": "teambridge-not-available-audit-b393dc8cd01c",
+	"date": "2026-10-28",
+	"locale": "zh-CN",
+	"namespace": "ui.teamBridge",
+	"source_commit": "a975a0b4ec82c0cd6b6541d68b1d3501f683328d",
+	"translator": {
+		"agent": "i18n-translator",
+		"job": "64be94d56ced",
+		"model": "not supplied",
+		"date": "2026-10-28",
+		"method": "LLM translator subagent; no MT service referenced"
+	},
+	"auditors": [
+		{
+			"agent": "i18n-auditor",
+			"model": "anthropic/claude-opus-5-5",
+			"date": "2026-10-28",
+			"result": "clean",
+			"instance": "b393dc8cd01c-notavail-zh-cn",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"receipt": "i18n/receipts/b393dc8cd01c-notavail-zh-cn.json",
+			"receipt_sha256": "9b0c68a1386ce6a5db7734e5de0b58d4d4ef2b5b4bb72254c5f69ffbf4266883"
+		}
+	],
+	"ledger_status": "audited",
+	"independence": "Independent auditor (reviewer role, session b393dc8cd01c). It authored none of the translated strings as delivered by i18n-translator job 64be94d56ced. Per the audit brief it then FIXED blocker/major strings itself; those replaced values (listed in resolved_findings with before/after) are auditor-authored and were not re-audited by a second agent. This run wrote only catalogue fixes, receipts, evidence records and ledger rows; it did not commit.",
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "1a011fa4637cf70544162f4257b8bd24f7f11b1785c9a5a633d5b05328b3fbe4"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/zh-CN/ui.teamBridge.json",
+			"sha256": "531242bf93f46e35e6fbb56653cfb11369d3e780d78e9b5baca77b12d5778a95"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "cc89c0d9a5392c195e6f26a997b269f7db50c3741840adb05a2d73ac14c3f03b"
+		}
+	},
+	"audited": {
+		"ui.teamBridge.thread.not_available": {
+			"en": "This conversation is not open to you. You may not be a member of it, or it may have been archived.",
+			"target": "你无法打开此对话。你可能不是对话成员，也可能该对话已归档。"
+		}
+	},
+	"scope": {
+		"keys_audited_linguistically": [
+			"ui.teamBridge.thread.not_available"
+		],
+		"inherited_byte_identical": {
+			"previous_receipt": "i18n/receipts/6d269032fdc7-r3-zh-cn.json",
+			"previous_receipt_sha256": "9b28b45e43516ecad130ba4261e111abc4317ebd8862281ef3607fe5d87d0b58",
+			"previous_target_sha256": "e614104042ec5b3ba8cb6a63073c063791c34b4f0237175dae214f783974386d",
+			"note": "target at a975a0b4ec with the single ui.teamBridge.thread.not_available line removed hashes to the previously audited target bytes (base e6320fbd33); git numstat e6320fbd33..a975a0b4ec = 1 added, 0 removed."
+		},
+		"english_change": "en adds only thread.not_available (value + context note); no other en key changed."
+	},
+	"notes": "你 per guide; '成员'/'已归档' match archive.*; '无法打开' is access-only; '可能…也可能…' keeps the reason undisclosed.",
+	"findings": [],
+	"resolved_findings": [],
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide_zh-CN": {
+			"path": "~/local-operator/i18n/style-guides/zh-CN.md",
+			"revision": "ad1de332210d47cc01e62393c2d0cd4708e2312b",
+			"sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+		}
+	},
+	"artifacts": {
+		"receipt": {
+			"path": "i18n/receipts/b393dc8cd01c-notavail-zh-cn.json",
+			"sha256": "9b0c68a1386ce6a5db7734e5de0b58d4d4ef2b5b4bb72254c5f69ffbf4266883"
+		}
+	},
+	"limitations": "No rendered-fit, screenshot, pseudo-localization or FriBidi evidence: this role has no browser tool and the host is source-only (builds/tests paused). Fit for not_available judged by character count only (en 104; longest fr 117)."
+}

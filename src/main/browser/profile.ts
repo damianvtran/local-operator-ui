@@ -1,3 +1,4 @@
+import os from "node:os";
 import {
 	type DownloadItem,
 	type Event,
@@ -5,8 +6,10 @@ import {
 	type WebContents,
 	session,
 } from "electron";
+import { forgetClientHintOptIns, installClientHints } from "./client-hints";
 import type { DownloadDecision } from "./downloads";
 import type { DownloadItemLike } from "./electron-types";
+import type { MediaCheckInput, MediaRequestInput } from "./media-permissions";
 
 /**
  * The persistent browsing profile, and the session-level handlers that go with
@@ -108,15 +111,89 @@ export function browserUserAgent(): string {
 	return `Mozilla/5.0 (${platform}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${major}.0.0.0 Safari/537.36`;
 }
 
+/**
+ * WHY THIS SESSION GRANTS NOTHING, and where the browser's copy goes instead.
+ *
+ * MEASURED 2026-11-06 on Electron 45.1.0 (built dev app, headless, a real driven
+ * tab on a loopback page):
+ *
+ * - A page's own Copy button calls `navigator.clipboard.writeText`, and Chromium
+ *   gates that write on ONE content setting (`CLIPBOARD_READ_WRITE`) which
+ *   Electron surfaces to `setPermissionRequestHandler` as **`clipboard-read`**. No
+ *   `clipboard-sanitized-write` ask is ever made, so granting that name fixes
+ *   nothing: measured still refused, with it granted.
+ * - Granting `clipboard-read` DOES make the write work — and it also lets the page
+ *   read the user's clipboard: measured, the same page read back the text it had
+ *   written after its own click. That is the capability the operator ruled out, so
+ *   the write cannot be bought with this permission system at any scope.
+ * - Focus is not a factor: with the permission granted, the write succeeded from a
+ *   tab that was NOT the active one, so a driven view needs no additional focus
+ *   emulation for this (`cdp.ts` already enables `Emulation.setFocusEmulationEnabled`
+ *   at attach for `type`, and that is not what this depends on).
+ *
+ * SO BOTH HANDLERS STAY DEFAULT-DENY, for every permission and every view —
+ * with ONE exception, `media` (camera/microphone), which is routed to the
+ * user-mediated prompt in `media-permissions.ts` when the `media` hook is
+ * installed (and stays denied when it is not):
+ * `clipboard-read` and `clipboard-sanitized-write` are both refused, so
+ * `navigator.permissions.query` answers "denied" and `readText()` rejects — a
+ * PERMISSION-level fact rather than a shim — and the page's own WRITE is served by
+ * the host-authored program in `actions/clipboard-shim.ts`, which adds exactly the
+ * write capability and none of the read half.
+ *
+ * The handlers still REPORT every ask (with which handler asked and what was
+ * answered), because a permission that silently stops being requested is the one
+ * thing this log exists to make visible.
+ */
 /** What the session handlers tell the rest of the app. */
 export interface BrowserSessionHooks {
 	/** A page asked for a permission (camera, geolocation, clipboard…). Reported
-	 * so a consent surface can show it; the ANSWER is always deny for now. */
+	 * for every ask, with the answer, because the trace somebody needs when a page's
+	 * feature stops working is "what was requested, by which handler, and what did
+	 * the host answer" — not silence. */
 	onPermissionRequested?: (details: {
+		/** The asking view's id, or -1 when Electron gave none (the startup
+		 * probes the check handler runs with no `WebContents`). */
 		webContentsId: number;
 		origin: string;
 		permission: string;
+		/** What the session answered. Always false today (see the policy comment
+		 * above the handlers); carried rather than assumed, so a future grant cannot
+		 * hide behind a log line that always says "denied". */
+		granted: boolean;
+		/**
+		 * Which of Electron's two handlers asked. They are not interchangeable, and a
+		 * page that fails "even though the grant says yes" is exactly the case this
+		 * disambiguates: the check handler runs FIRST and for probes, the request
+		 * handler runs for the ask the page actually made.
+		 */
+		source: "request" | "check";
+		/**
+		 * For `media` only: the devices the ask named (a request's `mediaTypes`,
+		 * a check's single `mediaType`); `[]` for a request that named none (the
+		 * `<usermedia>` element's). Without it a correct camera-check denial after a
+		 * microphone grant reads like a bug in the log (review R3).
+		 */
+		mediaTypes?: readonly string[];
 	}) => void;
+	/**
+	 * Camera/microphone: the ONE permission that is not a constant refusal.
+	 *
+	 * ABSENT means `media` is denied like everything else, so a test or a session
+	 * that installs the handlers alone never grants a capture device. Present, the
+	 * request handler hands `media` requests (and only those) to `request`, which
+	 * answers the callback exactly once — possibly much later, after the user
+	 * decides — and the check handler answers `media` checks from `check`, which is
+	 * true only for what the user already allowed. See `media-permissions.ts` for
+	 * the human-only invariant.
+	 */
+	media?: {
+		request: (
+			input: MediaRequestInput,
+			callback: (granted: boolean) => void,
+		) => void;
+		check: (input: MediaCheckInput) => boolean;
+	};
 	/**
 	 * Decide one download attempt, for EVERY download on this session.
 	 *
@@ -189,39 +266,141 @@ export function installBrowserSessionHandlers(
 	// affect existing WebContents", so a later call would silently leave the
 	// first tab presenting the default Electron UA.
 	browserSession.setUserAgent(browserUserAgent());
+	// The string alone is not the identity: without this the tab's document
+	// requests carry NO `Sec-CH-UA*` at all (measured; Electron has no browser-side
+	// client-hints delegate), which is the inconsistency Google's sign-in check
+	// can see. See `client-hints.ts` for the measurement and why the brand list is
+	// the engine's own.
+	const clientHints = installClientHints(
+		browserSession,
+		{
+			chromeVersion: process.versions.chrome ?? "0",
+			platform: process.platform,
+			arch: process.arch,
+			// macOS: the product version Chromium reports (`27.2.0` measured in both
+			// this runtime and Chrome); Linux: the kernel release, as Chromium sends;
+			// Windows: unused (`composeClientHints` omits that one hint there).
+			// `getSystemVersion` is Electron's; a plain-Node test host has none.
+			platformVersion:
+				process.platform === "darwin" && process.getSystemVersion
+					? process.getSystemVersion()
+					: os.release(),
+		},
+		hooks.log,
+	);
 
-	// Default-deny, both handlers. Not optional and not redundant: Electron
-	// "automatically approve[s] all permission requests unless the developer has
-	// manually configured a custom handler", and "most web APIs do a permission
-	// check and then make a permission request if the check is denied" — so a
-	// request handler alone leaves the check path auto-approving. One handler
-	// without the other is a hole.
+	// ONE REPORT, both handlers. The answer is a constant refusal; what the handlers
+	// differ on is what Electron hands each of them, and the report says which one
+	// asked (`source`) so a page that fails "even though the log says granted" is
+	// diagnosable. Electron "automatically approve[s] all permission requests
+	// unless the developer has manually configured a custom handler", and "most web
+	// APIs do a permission check then make a request if the check is denied" — so
+	// BOTH handlers must be installed; one alone is a hole.
+	const report = <T extends boolean = false>(
+		source: "request" | "check",
+		webContentsId: number | null,
+		permission: string,
+		origin: string,
+		granted: T = false as T,
+		mediaTypes?: readonly string[],
+	): T => {
+		hooks.onPermissionRequested?.({
+			webContentsId: webContentsId ?? -1,
+			origin,
+			permission,
+			granted,
+			source,
+			...(mediaTypes ? { mediaTypes } : {}),
+		});
+		return granted;
+	};
+	const topUrlOf = (webContents: WebContents | null | undefined): string => {
+		try {
+			return webContents && !webContents.isDestroyed()
+				? webContents.getURL()
+				: "";
+		} catch {
+			return "";
+		}
+	};
 	browserSession.setPermissionRequestHandler(
-		(_webContents, permission, callback, details) => {
-			hooks.onPermissionRequested?.({
-				webContentsId: -1,
-				origin:
+		(webContents, permission, callback, details) => {
+			const media = hooks.media;
+			if (permission === "media" && media && webContents) {
+				const mediaDetails = details as {
+					securityOrigin?: string;
+					requestingUrl?: string;
+					mediaTypes?: string[];
+				};
+				const requestingOrigin =
+					mediaDetails?.securityOrigin || mediaDetails?.requestingUrl || "";
+				// The answer may come long after this handler returns (the user is
+				// being asked), so the report is written when it is known, not now.
+				media.request(
+					{
+						webContentsId: webContents.id,
+						topUrl: topUrlOf(webContents),
+						requestingOrigin,
+						mediaTypes: mediaDetails?.mediaTypes,
+					},
+					(granted) =>
+						callback(
+							report(
+								"request",
+								webContents.id,
+								permission,
+								requestingOrigin,
+								granted === true,
+								mediaDetails?.mediaTypes ?? [],
+							),
+						),
+				);
+				return;
+			}
+			callback(
+				report(
+					"request",
+					webContents?.id ?? null,
+					permission,
 					typeof details?.requestingUrl === "string"
 						? details.requestingUrl
 						: "",
-				permission,
-			});
-			callback(false);
+				),
+			);
 		},
 	);
 	browserSession.setPermissionCheckHandler(
-		(_webContents, permission, requestingOrigin, details) => {
-			hooks.onPermissionRequested?.({
-				webContentsId: -1,
+		(webContents, permission, requestingOrigin, details) => {
+			const media = hooks.media;
+			if (permission === "media" && media) {
+				const origin = requestingOrigin || details?.requestingUrl || "";
+				const mediaType = (details as { mediaType?: string } | undefined)
+					?.mediaType;
+				return report(
+					"check",
+					webContents?.id ?? null,
+					permission,
+					origin,
+					media.check({
+						webContentsId: webContents?.id ?? null,
+						topUrl: topUrlOf(webContents),
+						requestingOrigin: origin,
+						mediaType,
+					}) === true,
+					mediaType ? [mediaType] : [],
+				);
+			}
+			return report(
+				"check",
+				webContents?.id ?? null,
+				permission,
 				// Electron calls this handler with an empty origin during the
 				// per-webContents startup probes (media, geolocation, app install), so the
 				// documented `requestingUrl` is preferred when it is there: an
 				// "(unknown origin)" line for a probe the PAGE caused is exactly the line
 				// somebody needs when a site's permission stops working.
-				origin: requestingOrigin || details?.requestingUrl || "",
-				permission,
-			});
-			return false;
+				requestingOrigin || details?.requestingUrl || "",
+			);
 		},
 	);
 
@@ -265,11 +444,25 @@ export function installBrowserSessionHandlers(
 	// Remove only our listener; the permission-denying session policy stays set.
 	return () => {
 		browserSession.removeListener("will-download", onDownload);
+		clientHints.detach();
 	};
 }
 
 /** Which of the three honest buttons was pressed (design 5.4). */
 export type ClearWhat = "cookies" | "cache" | "everything";
+
+/**
+ * The suggestion history, as this module is allowed to see it.
+ *
+ * STRUCTURAL, because the store is the host's document and this module owns the
+ * Chromium session: passing the store itself would make `profile.ts` depend on
+ * the suggestion index, and passing nothing would leave "clear everything"
+ * silently keeping a list of every page the user visited.
+ */
+export interface HistoryClearer {
+	clear(): void;
+	clearOrigin(origin: string): void;
+}
 
 /**
  * Clear browsing data.
@@ -289,13 +482,20 @@ export type ClearWhat = "cookies" | "cache" | "everything";
 export async function clearBrowsingData(
 	browserSession: Session,
 	what: ClearWhat,
+	history?: HistoryClearer | null,
 ): Promise<void> {
 	browserSession.flushStorageData();
 	if (what === "cache") {
+		// CACHE IS NOT HISTORY: clearing a cache is a performance action, and
+		// forgetting every page the user visited because a page loaded slowly would
+		// be a surprise they could not undo.
 		await browserSession.clearCache();
 		return;
 	}
 	if (what === "cookies") {
+		// COOKIES ARE NOT HISTORY either: logging out of every site must leave the
+		// suggestions the user relies on alone, exactly as it leaves `session.json`
+		// and the approval store alone. Only the explicit "everything" clears it.
 		await browserSession.clearData({
 			dataTypes: [
 				"cookies",
@@ -307,6 +507,9 @@ export async function clearBrowsingData(
 				"backgroundFetch",
 			],
 		});
+		// A site's `Accept-CH` opt-in is site data it wrote; logging out of every
+		// site must not leave a per-site pattern that re-identifies the user.
+		forgetClientHintOptIns(browserSession);
 		return;
 	}
 	// "everything": the same call with no filter, plus the cache — `clearData`'s
@@ -314,6 +517,12 @@ export async function clearBrowsingData(
 	// user who asked for everything should not keep it.
 	await browserSession.clearData();
 	await browserSession.clearCache();
+	forgetClientHintOptIns(browserSession);
+	// HISTORY IS PART OF "EVERYTHING": a user who asked for all browsing data to
+	// be gone would be misled by a local list of every URL they visited surviving
+	// the clear. The snapshot is deleted synchronously inside `clear()`, so this
+	// await cannot return before the document is gone.
+	history?.clear();
 }
 
 /**
@@ -336,6 +545,7 @@ export async function clearBrowsingData(
 export async function clearOriginData(
 	browserSession: Session,
 	origin: string,
+	history?: HistoryClearer | null,
 ): Promise<void> {
 	browserSession.flushStorageData();
 	await browserSession.clearData({
@@ -352,6 +562,10 @@ export async function clearOriginData(
 			"cache",
 		],
 	});
+	// "Forget this site" is one intention, so the suggestion history for the
+	// origin goes with its cookies. Other origins' rows are untouched.
+	history?.clearOrigin(origin);
+	forgetClientHintOptIns(browserSession, origin);
 }
 
 /** Write any buffered DOMStorage to disk. Called on quit so a hard kill does not

@@ -1,0 +1,7 @@
+locale: hi   namespace: ui.teamBridge   date: 2026-10-30   session: ad10902cfa81
+head: 1eeb46187ce12fbcb5e13c5f02be0251b8979ee8 (translations uncommitted; hashes bind the on-disk bytes)
+en      56810571f7cfe24841940394b0579e28a13616c40da35fe93301f5b66fb7290c  src/i18n/catalogues/en/ui.teamBridge.json
+context adb76e0b6e40573f67398d6d260fbb738686f34f73077b593126cee6d2d0a77e  src/i18n/catalogues/en/ui.teamBridge.context.json
+hi      c51c89590c7f0e00f01f6128fdc2acc05e32aa773ea7da36dd909103d35ecb60  src/i18n/catalogues/hi/ui.teamBridge.json
+
+prior bytes this round replaces (reverse-apply target): 57b7bc7207eba05879dada197dea46a8ed03f145d506c903521e64fa35e2411d

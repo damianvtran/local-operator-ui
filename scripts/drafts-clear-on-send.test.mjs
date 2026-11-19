@@ -64,7 +64,7 @@ globalThis.__canonicalEcho = (event) => {
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {DesktopControlError} from "@shared/api/local-operator/desktop-api"; export {desktopRequestSchema} from "./src/shared/desktop-contract"; export {desktopFeatureEnabled} from "./src/renderer/src/shared/api/local-operator/desktop-hooks"; export {mergeReturnedText, mergeReturnedPayload} from "./src/renderer/src/shared/store/conversation-input-store";export { sendUnsettledForSession } from "./src/renderer/src/features/chat/canonical/working-line-model"; export { composerIdentityFor, panelIdentityFor as composerPanelIdentity } from "./src/renderer/src/shared/store/canonical-sessions-store"; export {useConversationInputStore} from "./src/renderer/src/shared/store/conversation-input-store"; export { rehydrateInputRows } from "./src/renderer/src/shared/store/conversation-input-store"; export { heldSendClaimsBySession, resolveHeldSendsFromServer } from "./src/renderer/src/features/chat/draft-resolution"; export { discardSuccessorIndex, untargetedDraftRows } from "./src/renderer/src/features/chat/draft-rows"; export { ARCHIVE_UNDO_TOAST_MS } from "./src/renderer/src/features/chat/archive-undo";',
+			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {DesktopControlError} from "@shared/api/local-operator/desktop-api"; export {desktopRequestSchema} from "./src/shared/desktop-contract"; export {desktopFeatureEnabled} from "./src/renderer/src/shared/api/local-operator/desktop-hooks"; export {mergeReturnedText, mergeReturnedPayload} from "./src/renderer/src/shared/store/conversation-input-store";export { sendUnsettledForSession } from "./src/renderer/src/features/chat/canonical/working-line-model"; export { composerIdentityFor, panelIdentityFor as composerPanelIdentity } from "./src/renderer/src/shared/store/canonical-sessions-store"; export {useConversationInputStore} from "./src/renderer/src/shared/store/conversation-input-store"; export { rehydrateInputRows } from "./src/renderer/src/shared/store/conversation-input-store"; export { heldSendClaimsBySession, resolveHeldSendsFromServer } from "./src/renderer/src/features/chat/draft-resolution"; export { currentSessionRowId, discardSuccessorIndex, newChatCurrent, unsentSessionIds, untargetedDraftRows } from "./src/renderer/src/features/chat/draft-rows"; export { ARCHIVE_UNDO_TOAST_MS } from "./src/renderer/src/features/chat/archive-undo";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -205,6 +205,9 @@ const {
 	heldSendClaimsBySession,
 	resolveHeldSendsFromServer,
 	discardSuccessorIndex,
+	unsentSessionIds,
+	currentSessionRowId,
+	newChatCurrent,
 	untargetedDraftRows,
 	ARCHIVE_UNDO_TOAST_MS,
 } = module;
@@ -783,6 +786,141 @@ test("a live send hop is stated on the row, which is what withholds the acts", (
 	assert.equal(rows.find((row) => row.key === settled)?.pending, false);
 });
 
+test("a new chat's first send never lists its session as `Not sent yet`, and the created row is filed under its birth time (send smoothness, 2026-11-11)", async () => {
+	/*
+	 * Built-app trace of the first send: the list went `Draft: ...` -> `OLDER
+	 * Untitled chat · Not sent yet` -> `TODAY Untitled chat · Not sent yet` ->
+	 * `TODAY Untitled chat`. Two transients at the source: the created row had no
+	 * clock (so `sectionOf` filed it OLDER), and the in-flight draft counted as an
+	 * unsent session. Observed here at the moment the create answers, before the
+	 * message is admitted.
+	 */
+	reset();
+	useConversationInputStore.setState({ inputByConversation: {} });
+	let atMessage = null;
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create")
+			return { session_id: "333333333333", binding: null };
+		if (request.op === "sessions.message") {
+			const state = store.getState();
+			atMessage = {
+				unsent: unsentSessionIds(state.drafts),
+				row: state.sessions.find((r) => r.session_id === "333333333333"),
+			};
+			return { status: "admitted" };
+		}
+		return { sessions: [], truncated: false };
+	};
+	const before = Date.now() / 1000;
+	const key = store.getState().stageDraft();
+	await admitChatDraft(key, input);
+	assert.ok(atMessage, "the message hop ran");
+	assert.equal(
+		atMessage.unsent.has("333333333333"),
+		false,
+		"a first send in flight is not `Not sent yet`",
+	);
+	assert.ok(
+		typeof atMessage.row?.updated_at === "number" &&
+			atMessage.row.updated_at >= before - 1 &&
+			atMessage.row.updated_at <= Date.now() / 1000 + 1,
+		`the created row carries its birth clock, got ${atMessage.row?.updated_at}`,
+	);
+	assert.equal(atMessage.row.created_at, atMessage.row.updated_at);
+
+	// The suffix's own case still holds: a claim that settled without a
+	// completed send keeps its session listed as unsent.
+	reset();
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create")
+			return { session_id: "444444444444", binding: null };
+		if (request.op === "sessions.message")
+			throw new Error("provider unavailable");
+		return { sessions: [], truncated: false };
+	};
+	const failed = store.getState().stageDraft();
+	await assert.rejects(admitChatDraft(failed, input));
+	assert.equal(store.getState().drafts[failed]?.pending, false);
+	assert.ok(unsentSessionIds(store.getState().drafts).has("444444444444"));
+});
+
+test("a create whose session the catalogue already listed keeps the owner's times", async () => {
+	reset();
+	store.getState().upsertSession({
+		session_id: "555555555555",
+		title: "",
+		updated_at: 1_000,
+		created_at: 900,
+	});
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create")
+			return { session_id: "555555555555", binding: null };
+		if (request.op === "sessions.message") return { status: "admitted" };
+		return {};
+	};
+	await admitChatDraft(store.getState().stageDraft(), input);
+	const row = store
+		.getState()
+		.sessions.find((r) => r.session_id === "555555555555");
+	assert.equal(row.updated_at, 1_000);
+	assert.equal(row.created_at, 900);
+});
+
+/*
+ * TEMPORARY CHATS THROUGH THE FIRST-SEND PATH (#1874 over #1872). Here rather
+ * than in `chat-temporary.test.mjs` because this is the suite that bundles the
+ * real store and drives `admitChatDraft` end to end; that one runs only the
+ * pure rules. The create's `temporary` and the row's birth clock are written by
+ * the same `createSession` call, so one observation at the message hop pins
+ * both features on the one path.
+ */
+test("a temporary draft's first send creates a temporary chat, and an ordinary draft's does not", async () => {
+	const observe = async (temporary) => {
+		reset();
+		store.setState({ temporaryChats: true });
+		let atMessage = null;
+		globalThis.__canonicalRequest = async (request) => {
+			calls.push(request);
+			if (request.op === "sessions.create")
+				return { session_id: "666666666666", binding: null };
+			if (request.op === "sessions.message") {
+				const state = store.getState();
+				atMessage = {
+					row: state.sessions.find((r) => r.session_id === "666666666666"),
+					draft: state.drafts[key],
+				};
+				return { status: "admitted" };
+			}
+			return { sessions: [], truncated: false };
+		};
+		const key = store.getState().stageDraft();
+		if (temporary) store.getState().setDraftTemporary(key, true);
+		try {
+			await admitChatDraft(key, input);
+		} finally {
+			store.setState({ temporaryChats: false });
+		}
+		const create = calls.find((c) => c.op === "sessions.create");
+		assert.ok(create, "the first send created its conversation");
+		assert.ok(atMessage, "the message hop ran");
+		return { create, ...atMessage };
+	};
+
+	const temp = await observe(true);
+	assert.equal(temp.create.temporary, true);
+	assert.equal(temp.row.temporary?.hold, "running");
+	assert.equal(temp.row.created_at, temp.row.updated_at);
+	assert.equal(temp.draft?.temporary, true, "the draft keeps its flag");
+
+	const plain = await observe(false);
+	assert.equal("temporary" in plain.create, false);
+	assert.equal(plain.row.temporary, undefined);
+	assert.equal(typeof plain.row.created_at, "number");
+});
+
 test("a second discard replaces the first offer, one slot", () => {
 	reset();
 	useConversationInputStore.setState({ inputByConversation: {} });
@@ -848,4 +986,31 @@ test("the discard offer's life has one home, sonner's duration of the archive fa
 		"the offer's life must not grow a second clock: sonner's duration is it, imported from archive-undo.ts",
 	);
 	assert.equal(ARCHIVE_UNDO_TOAST_MS, 8_000);
+});
+
+test("the created conversation's row is the current one from the commit it is listed in (design round 1, D3)", () => {
+	const key = "draft:5e2b7a10-0000-4000-8000-000000000003";
+	const staged = { [key]: { pending: false } };
+	const sending = { [key]: { pending: true } };
+	const created = { [key]: { pending: true, sessionId: "777777777777" } };
+	// Typing, and the press before the create answers: `New chat` is current.
+	assert.equal(newChatCurrent(key, staged), true);
+	assert.equal(currentSessionRowId(key, staged, undefined), undefined);
+	assert.equal(newChatCurrent(key, sending), true);
+	// The create answers: the row it lists is current in that same commit, and
+	// `New chat` lets go - one selection on screen, never two or none.
+	assert.equal(currentSessionRowId(key, created, undefined), "777777777777");
+	assert.equal(newChatCurrent(key, created), false);
+	// The draft retiring into its session changes nothing the reader sees.
+	assert.equal(currentSessionRowId(null, {}, "777777777777"), "777777777777");
+	assert.equal(newChatCurrent(null, {}), false);
+	// A targeted draft belongs to its agent's row, never `New chat`.
+	assert.equal(
+		newChatCurrent(key, {
+			[key]: { target: { kind: "agent", name: "coder" } },
+		}),
+		false,
+	);
+	// A stale route id never outranks the active draft.
+	assert.equal(currentSessionRowId(key, staged, "888888888888"), undefined);
 });

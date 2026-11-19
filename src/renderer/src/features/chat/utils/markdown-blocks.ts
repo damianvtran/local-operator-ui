@@ -61,15 +61,18 @@ const BLANK_LINE = /^[ \t]*$/;
 const FENCE_OPEN = /^ {0,3}(`{3,}|~{3,})/;
 const LIST_ITEM = /^ {0,3}(?:[-*+]|\d{1,9}[.)])(?:[ \t]|$)/;
 const INDENTED_CODE = /^(?: {4}|\t)/;
+const HTML_TABLE_START = /^ {0,3}<table(?:\s|>)/i;
+const HTML_LINE = /^ {0,3}</;
 /** Two spaces is enough to hang content under a list item, so it keeps the list open. */
 const LIST_CONTINUATION = /^(?: {2,}|\t)/;
 
 /**
  * Only the distinctions that change whether a blank line ends the block. Every
- * other construct — paragraph, heading, table, quote, fenced code — closes at a
- * blank line, so they share one kind.
+ * other construct — paragraph, heading, GFM table, quote, fenced code — closes
+ * at a blank line. Structural HTML tables also retain adjacent HTML blocks so
+ * the renderer can reconstruct their rows across CommonMark's blank boundary.
  */
-type OpenBlockKind = "none" | "list" | "indented-code" | "other";
+type OpenBlockKind = "none" | "list" | "indented-code" | "html-table" | "other";
 
 type OpenFence = {
 	/** Backtick or tilde. A tilde fence is not closed by backticks. */
@@ -123,6 +126,7 @@ const resetScanner = (scanner: BlockScanner): void => {
 const classify = (line: string): OpenBlockKind => {
 	if (INDENTED_CODE.test(line)) return "indented-code";
 	if (LIST_ITEM.test(line)) return "list";
+	if (HTML_TABLE_START.test(line)) return "html-table";
 	return "other";
 };
 
@@ -133,6 +137,11 @@ const continuesOpenBlock = (kind: OpenBlockKind, line: string): boolean => {
 	if (kind === "indented-code") {
 		return INDENTED_CODE.test(line);
 	}
+	// remark's table transform reunites adjacent HTML blocks across blank
+	// lines. Keep the same ownership while streaming so rows reach ONE parse.
+	// Ordinary Markdown/fences end it: an unfinished table cannot consume the
+	// following answer or a literal code example. No closing-tag regex is used.
+	if (kind === "html-table") return HTML_LINE.test(line);
 	return false;
 };
 
@@ -213,6 +222,13 @@ export const scanMarkdownBlocks = (
 			scanner.blankRunStart = -1;
 		} else if (scanner.kind === "none") {
 			scanner.kind = classify(line);
+		} else if (scanner.kind === "other" && HTML_TABLE_START.test(line)) {
+			// CommonMark tables can interrupt prose/headings without a blank line.
+			// Keep the prefix in this parse, but let the table own later blank runs
+			// so its rows do not become independent escaped Markdown fragments.
+			// Fences already bypass this path; code/list kinds and prefixed quote
+			// or list lines must keep their existing container ownership.
+			scanner.kind = "html-table";
 		}
 
 		// A fence marker inside an indented code block is literal text, not a

@@ -663,6 +663,28 @@ test("presentation waits for the renderer's first commit - and never shows a bla
 	}
 });
 
+test("the mini window's ground is the generated brand canvas, not a copy that drifted", () => {
+	/*
+	 * THE SAME DRIFT GUARD `INSTALL_WINDOW_CANVAS` AND THE WINDOW CHROME DEFAULTS
+	 * HAVE (QA round 1 on #1658, Q2). Main paints `MINI_VIEW_GROUND` before any
+	 * theme module loads, so it is a hand-copied `localOperatorDark.canvas`, and
+	 * the darker-grounds pass found it as the one copy with no test: reverting it
+	 * to the old canvas left every suite green. Read from the GENERATED stylesheet,
+	 * because that is what the renderer paints the frame after it with.
+	 */
+	const css = readFileSync(
+		"src/renderer/src/styles/themes.generated.css",
+		"utf8",
+	);
+	const block = css.slice(css.indexOf('[data-theme="localOperatorDark"]'));
+	const canvas = /--lo-canvas:\s*([^;]+);/.exec(block);
+	assert.ok(canvas, "the generated stylesheet has no --lo-canvas");
+	assert.equal(
+		mini.MINI_VIEW_GROUND.toLowerCase(),
+		canvas[1].trim().toLowerCase(),
+	);
+});
+
 test("the failure card is a dark, scriptless document that cannot fail with the bundle", () => {
 	const html = mini.miniViewErrorSurfaceHtml();
 	assert.ok(

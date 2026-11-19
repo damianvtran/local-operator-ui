@@ -1,0 +1,72 @@
+{
+	"runs": [
+		{
+			"theme": "dark",
+			"state": "hover",
+			"hovered": true,
+			"frame": "/Users/damian/.local-operator/sessions/1fad9ec7917e/scratchpad/rig/states/states-states-dark-hover.png"
+		},
+		{
+			"theme": "dark",
+			"state": "selected",
+			"current": {
+				"rowTop": 157,
+				"rowBottom": 311,
+				"headerTop": 152,
+				"headerBottom": 184,
+				"crossesBand": true,
+				"cls": "group relative min-w-0 rounded-sm bg-row-selected font-medium text-ink hover:bg-row-selected"
+			},
+			"frame": "/Users/damian/.local-operator/sessions/1fad9ec7917e/scratchpad/rig/states/states-states-dark-selected.png"
+		},
+		{
+			"theme": "light",
+			"state": "hover",
+			"hovered": true,
+			"frame": "/Users/damian/.local-operator/sessions/1fad9ec7917e/scratchpad/rig/states/states-states-light-hover.png"
+		},
+		{
+			"theme": "light",
+			"state": "selected",
+			"current": {
+				"rowTop": 157,
+				"rowBottom": 311,
+				"headerTop": 152,
+				"headerBottom": 184,
+				"crossesBand": true,
+				"cls": "group relative min-w-0 rounded-sm bg-row-selected font-medium text-ink hover:bg-row-selected"
+			},
+			"frame": "/Users/damian/.local-operator/sessions/1fad9ec7917e/scratchpad/rig/states/states-states-light-selected.png"
+		},
+		{
+			"theme": "dark",
+			"state": "library",
+			"measured": {
+				"background": "rgb(29, 27, 25)",
+				"backdropFilter": "none",
+				"position": "sticky",
+				"height": 26,
+				"top": 391,
+				"bottom": 417
+			},
+			"frame": "/Users/damian/.local-operator/sessions/1fad9ec7917e/scratchpad/rig/states/states-states-library-dark.png"
+		},
+		{
+			"theme": "light",
+			"state": "library",
+			"measured": {
+				"background": "rgb(236, 230, 216)",
+				"backdropFilter": "none",
+				"position": "sticky",
+				"height": 26,
+				"top": 391,
+				"bottom": 417
+			},
+			"frame": "/Users/damian/.local-operator/sessions/1fad9ec7917e/scratchpad/rig/states/states-states-library-light.png"
+		}
+	],
+	"themeGrounds": {
+		"dark": "#2b2721",
+		"light": "#f7f5ee"
+	}
+}

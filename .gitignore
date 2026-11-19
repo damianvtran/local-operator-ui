@@ -4,6 +4,9 @@ node_modules/
 # so it materialises inside the working tree and is ~52k files of cache.
 .pnpm-store/
 
+# Incremental typecheck metadata belongs to this worktree, not borrowed dependencies.
+/.cache/typecheck/
+
 # Build outputs
 dist/
 out/
@@ -89,10 +92,37 @@ storybook-static/
 # so far, because the pass that produces one has no say in which name it lands on.
 ._*
 
-scripts/_*.bundle.mjs
-scripts/_*.bundle.cjs
+#
+# Most rigs name their bundle `_<name>-${process.pid}.mjs` (or `.cjs`) with no
+# `.bundle.` infix, and those ~14MB files are deleted only by the test's
+# `after()` hook - which a killed run never reaches - so the patterns cover
+# every `_`-prefixed module directly in `scripts/`. No tracked file there starts
+# with `_`; keep it that way, or this ignore hides a new one from `git add -A`.
+# Deliberately NOT `scripts/**`: `scripts/i18n/check-added-strings.test.mjs`
+# needs an untracked, un-ignored `scripts/i18n/_x.bundle.mjs` to exercise the
+# vanished-file race, and ignoring it would turn that test vacuous.
+scripts/_*.mjs
+scripts/_*.cjs
 
 # The docs-library capture rig's default output tree
 # (`scripts/capture-docs-library.mjs` writes `docs-library-captures/` beside the
 # repo root). Regenerable from the rig, so it stays out of the repo.
 docs-library-captures
+
+# The evidence capture rigs' frames (`scripts/capture-evidence.mjs` and the
+# live-app rigs beside it write `docs/evidence-frames/`). The manifest, each
+# set's README and the proof JSONs stay tracked in `docs/evidence/`; the pixels
+# do not. Regenerable from the rig, so it stays out of the repo.
+docs/evidence-frames
+
+# Frames left at the PRE-SPLIT path in checkouts made before that split. The
+# untracking commit removed them from the index but deliberately left the files
+# on disk, so without these rules every existing worktree reports ~20k
+# untracked files and a `git add -A` would put the frames straight back. They
+# are the same regenerable rig output as the tree above; tracked READMEs and
+# proof JSONs under `docs/evidence/` are unaffected, because ignore rules do not
+# apply to tracked files.
+docs/evidence/**/*.webp
+docs/evidence/**/*.png
+docs/evidence/**/*.jpg
+docs/evidence/**/*.jpeg

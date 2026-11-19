@@ -31,6 +31,8 @@
  * discard replacing it (the store keeps ONE slot, `DraftsUndoOffer`).
  */
 
+import { t } from "../../../../i18n";
+
 /**
  * The count an offer prints, with the verb left outside it.
  *
@@ -40,8 +42,18 @@
  * the verb — the half that says what happened.
  */
 export function draftsOfferedName(count: number): string {
-	return count === 1 ? "Draft" : `${count} drafts`;
+	return t("ui.notices.chat.drafts_offered_name", { count });
 }
 
-/** The verb a discard offer prints after the count. One home for the copy. */
-export const DRAFTS_OFFERED_VERB = "discarded.";
+/**
+ * The verb a discard offer prints after the count. One home for the copy.
+ *
+ * THE COUNT IS PASSED EVEN THOUGH ENGLISH NEVER PRINTS IT (translator report,
+ * four locales): a fixed tail cannot agree with both `Draft` and `3 drafts`, so
+ * the participle has to be chosen by the same count the head printed. Both
+ * English arms read `discarded.`; the parameter exists for inflected languages,
+ * where the tail is the agreeing half. The message prints no number, so the card
+ * still carries one count, in the head.
+ */
+export const draftsOfferedVerb = (count: number): string =>
+	t("ui.notices.chat.drafts_offered_verb", { count });

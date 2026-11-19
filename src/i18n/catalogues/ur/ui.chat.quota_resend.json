@@ -1,0 +1,9 @@
+{
+	"ui.chat.quota_resend.failed": "بھیجا نہیں جا سکا۔ دوبارہ کوشش کریں۔",
+	"ui.chat.quota_resend.rate_limited": "حال ہی میں درخواست کی جا چکی ہے۔ تقریباً 2 منٹ بعد دوبارہ کوشش کریں۔",
+	"ui.chat.quota_resend.refresh_checking": "جانچ ہو رہی ہے…",
+	"ui.chat.quota_resend.refresh_failed": "جانچ نہیں ہو سکی۔ دوبارہ کوشش کریں۔",
+	"ui.chat.quota_resend.refresh_unchanged": "ابھی جانچا گیا — ابھی تک کوئی تبدیلی نہیں۔",
+	"ui.chat.quota_resend.sending": "بھیجا جا رہا ہے…",
+	"ui.chat.quota_resend.sent": "بھیج دیا گیا۔ اپنا ان باکس اور اسپام فولڈر دیکھیں۔"
+}

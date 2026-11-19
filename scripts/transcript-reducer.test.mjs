@@ -17,6 +17,10 @@ const bundle = await build({
 	bundle: true,
 	format: "esm",
 	platform: "node",
+	alias: {
+		"@shared": "./src/renderer/src/shared",
+		"@shared/i18n": "./src/i18n",
+	},
 	write: false,
 });
 const reducer = await import(
@@ -258,11 +262,41 @@ test("the turn end stamps whatever it settles, aborted or not", () => {
 	assert.equal(aborted.records[0].streaming, false);
 	assert.equal(aborted.records[0].stopReason, "aborted");
 	assert.equal(aborted.records[0].settledAt, 5);
+	/*
+	 * C3 (review round 1): this settle must STATE the final-response fact rather
+	 * than leave it absent. An aborted stream never assembled calls, so its text
+	 * is a handover - and the type's absence rule is for hand-built fixtures, not
+	 * for a live path.
+	 */
 	assert.equal(
-		applyEvent(stream(), { type: "agent_end", aborted: false }, 7).records[0]
-			.settledAt,
+		aborted.records[0].kind,
+		"assistant",
+		"the settled row is the assistant stream",
+	);
+	assert.equal(
+		aborted.records[0].callsTools,
+		false,
+		"an aborted stream settles as a final response",
+	);
+	const cleanEnd = applyEvent(
+		stream(),
+		{ type: "agent_end", aborted: false },
+		7,
+	);
+	assert.equal(
+		cleanEnd.records[0].settledAt,
 		7,
 		"a clean end that lost its `message_end` settles the same way",
+	);
+	assert.equal(
+		cleanEnd.records[0].kind,
+		"assistant",
+		"and the row is the assistant stream",
+	);
+	assert.equal(
+		cleanEnd.records[0].callsTools,
+		false,
+		"and states the same fact on a clean end",
 	);
 });
 
@@ -2708,6 +2742,152 @@ test("a replayed frame without details does not erase a diff already shown", () 
 	assert.deepEqual([row.added, row.removed], [2, 1]);
 });
 
+test("diff_truncated_rows rides both the live end and the durable page", () => {
+	/*
+	 * The core contract: a producer-truncated diff carries
+	 * `details.diff_truncated_rows`. Both reducer paths read it (the live
+	 * `tool_execution_end` and the durable history row), and a frame whose
+	 * `details` the live budget stripped keeps the figure, as the counters do.
+	 */
+	const end = (details) => ({
+		type: "tool_execution_end",
+		tool_call_id: "c-big",
+		tool_name: "write",
+		result: { content: [{ type: "text", text: "Wrote big.py" }], details },
+		duration_s: 0.1,
+	});
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		end({
+			added: 531,
+			removed: 163,
+			diff: REAL_EDIT_DIFF,
+			diff_truncated_rows: 494,
+		}),
+		1,
+	);
+	const row = () => state.records.find((r) => r.kind === "tool");
+	assert.equal(row().diffTruncatedRows, 494);
+	state = applyEvent(state, end(undefined), 2);
+	assert.equal(row().diffTruncatedRows, 494, "a stripped frame keeps it");
+
+	const page = (details) => ({
+		entries: [
+			{
+				id: "t-big",
+				ts: 3,
+				type: "message",
+				payload: {
+					role: "tool",
+					tool_call_id: "c-big",
+					tool_name: "write",
+					content: [{ text: "Wrote big.py", type: "text" }],
+					provider_payload: { duration_s: 0.1, details },
+				},
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	state = applyHistoryPage(
+		state,
+		page({
+			added: 531,
+			removed: 163,
+			diff: REAL_EDIT_DIFF,
+			diff_truncated_rows: 7,
+		}),
+	);
+	assert.equal(row().diffTruncatedRows, 7, "the durable row states its own");
+	// An untruncated diff states no key, which is the producer saying 0.
+	state = applyHistoryPage(
+		state,
+		page({ added: 2, removed: 1, diff: REAL_EDIT_DIFF }),
+	);
+	assert.equal(row().diffTruncatedRows, 0);
+});
+
+test("diff_full rides the live end and the durable replay, never the digest", () => {
+	/*
+	 * The archive descriptor follows the counters' absent-vs-stated rule on both
+	 * reducer paths, so a REPLAYED transcript (durable page) still knows the call
+	 * has a full diff to page — and the parsed record never keeps the digest,
+	 * because nothing in the renderer may send it.
+	 */
+	const full = { v: 1, state: "archived", rows: 1847, digest: "a".repeat(32) };
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "c-full",
+			tool_name: "edit",
+			result: {
+				content: [{ type: "text", text: "Edited big.py" }],
+				details: {
+					diff: REAL_EDIT_DIFF,
+					diff_truncated_rows: 1647,
+					diff_full: full,
+				},
+			},
+			duration_s: 0.1,
+		},
+		1,
+	);
+	const row = () => state.records.find((r) => r.kind === "tool");
+	assert.deepEqual(row().diffFull, { state: "archived", rows: 1847 });
+	assert.ok(!JSON.stringify(row()).includes("a".repeat(32)));
+	// Replay: a fresh transcript built from the durable page alone.
+	state = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			{
+				id: "t-full",
+				ts: 2,
+				type: "message",
+				payload: {
+					role: "tool",
+					tool_call_id: "c-full",
+					tool_name: "edit",
+					content: [{ text: "Edited big.py", type: "text" }],
+					provider_payload: {
+						duration_s: 0.1,
+						details: {
+							diff: REAL_EDIT_DIFF,
+							diff_truncated_rows: 1647,
+							diff_full: full,
+						},
+					},
+				},
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.deepEqual(row().diffFull, { state: "archived", rows: 1847 });
+	assert.equal(row().toolCallId, "c-full");
+	// A legacy durable row (no descriptor) states none.
+	state = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			{
+				id: "t-old",
+				ts: 3,
+				type: "message",
+				payload: {
+					role: "tool",
+					tool_call_id: "c-old",
+					tool_name: "edit",
+					content: [{ text: "Edited", type: "text" }],
+					provider_payload: {
+						details: { diff: REAL_EDIT_DIFF, diff_truncated_rows: 5 },
+					},
+				},
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.equal(row().diffFull, null);
+});
+
 test("a durable row that dropped its diff leaves the live one in place", () => {
 	let state = applyEvent(
 		EMPTY_TRANSCRIPT,
@@ -4843,6 +5023,104 @@ test("an anchor of epoch 0 is no anchor, so a settling frame is refused whatever
 	assert.deepEqual(
 		inFlight.records.map((record) => record.id),
 		["a0", "later"],
+	);
+});
+
+test("a page read before a live write cannot rewrite the row, and a later read can", () => {
+	/*
+	 * THE OPERATOR'S FLICKER, at the merge that decides it (report, 2026-10-26:
+	 * "the history jitters back to an earlier state of an agent response, then
+	 * returns to the latest").
+	 *
+	 * Neither content nor timestamps can order two sources, and both of the two
+	 * obvious tests are wrong: "the page disagrees" is also what a CORRECTION
+	 * looks like, and "the page is shorter" is also what a correction that
+	 * SHORTENS an answer looks like. So the merge compares clocks the caller can
+	 * witness: the row carries the live frame that wrote it, and the read carries
+	 * the receipt the pane had when it was dispatched.
+	 */
+	const older =
+		"Four invoices were late: 1042, 1088, 1103 and 1177. I have started chasing them.";
+	const live = applyEvent(
+		applyHistoryPage(
+			EMPTY_TRANSCRIPT,
+			pageOf([messageEntry("a1", 1_760_000_000, assistant("a1", ""))]),
+		),
+		{
+			type: "message_end",
+			message: { ...assistant("a1", older), stop_reason: "stop" },
+		},
+		5_000,
+		{ frame: { epoch: "e", seq: 5 } },
+	);
+	assert.equal(live.records.at(-1).text, older, "the live end is the control");
+	assert.deepEqual(
+		"frame" in live.records.at(-1) ? live.records.at(-1).frame : null,
+		{ epoch: "e", seq: 5 },
+		"the settled row keeps the frame that wrote it",
+	);
+
+	// A read dispatched at seq 2 was answered from a source that had not seen the
+	// live write, so its mid-stream projection cannot rewrite the row.
+	const stalePage = pageOf([
+		messageEntry("a1", 1_759_999_000, assistant("a1", older.slice(0, 40))),
+	]);
+	assert.equal(
+		applyHistoryPage(live, stalePage, {
+			readWitness: { epoch: "e", seq: 2 },
+		}).records.at(-1).text,
+		older,
+		"a shorter mid-stream projection from an older read keeps the newer text",
+	);
+
+	/*
+	 * AND THE CORRECTION STILL LANDS, including one that SHORTENS the answer -
+	 * the case a prefix test cannot tell apart from a stale projection. This read
+	 * went out after the live write, so its answer is the authority.
+	 */
+	const corrected = "Four invoices were late: 1042 and 1088.";
+	const laterPage = pageOf([
+		messageEntry("a1", 1_760_000_100, assistant("a1", corrected)),
+	]);
+	assert.equal(
+		applyHistoryPage(live, laterPage, {
+			readWitness: { epoch: "e", seq: 9 },
+		}).records.at(-1).text,
+		corrected,
+		"a suffix-deleting correction from a later read replaces the answer",
+	);
+
+	// A different epoch is a replaced owner: its numbering says nothing here, and
+	// the page keeps durable-wins-by-id rather than being refused.
+	assert.equal(
+		applyHistoryPage(live, laterPage, {
+			readWitness: { epoch: "other", seq: 1 },
+		}).records.at(-1).text,
+		corrected,
+		"a cross-epoch witness does not suppress the page",
+	);
+
+	// No witness at all: a first hydration has no clock to compare, so the page
+	// is applied exactly as it always was.
+	assert.equal(
+		applyHistoryPage(live, laterPage).records.at(-1).text,
+		corrected,
+		"an unwitnessed page keeps durable-wins-by-id",
+	);
+
+	/*
+	 * AND THE BOUNDARY IS STRICT (agent review round 2, m1). A read dispatched AT
+	 * the very receipt that wrote the row has seen that write - the bridge answers
+	 * the state as of the position it was asked at - so it may correct the row.
+	 * Changing `>` to `>=` here would silently forbid every same-position
+	 * correction, and nothing else in this suite would notice.
+	 */
+	assert.equal(
+		applyHistoryPage(live, laterPage, {
+			readWitness: { epoch: "e", seq: 5 },
+		}).records.at(-1).text,
+		corrected,
+		"a read at the row's own receipt has seen it and may correct it",
 	);
 });
 
@@ -7122,6 +7400,52 @@ const loopGoalPrompt = (goal) =>
 const LOOP_SELF_CONTINUATION =
 	"Continue working toward the standing goal. Make concrete progress with the tools available, then briefly state what advanced and what remains. If the goal is already fully met, say so plainly and stop.";
 
+const MISSING_ARGUMENTS_RECOVERY =
+	"Harness recovery notice: required tool arguments were omitted. No rejected call ran. Supply the named required fields inside each call's argument object, including each parallel child's parameters; do not resend empty objects or invent values. If the values are unavailable, explain the blocker. An unchanged retry will stop.";
+
+test("missing-argument recovery stays hidden live and in legacy history", () => {
+	for (const text of [
+		MISSING_ARGUMENTS_RECOVERY,
+		"Harness recovery notice: the last three tool batches repeated the same arguments and errors. Inspect the error and change approach; do not repeat the unchanged failing calls. If an external condition must change, use a supported wait operation or explain the blocker.",
+	]) {
+		const message = user("recovery", text);
+		const live = applyEvent(
+			EMPTY_TRANSCRIPT,
+			{ type: "message_start", message },
+			1,
+		);
+		const history = applyHistoryPage(
+			EMPTY_TRANSCRIPT,
+			durablePage({
+				id: "recovery",
+				ts: 10,
+				type: "message",
+				payload: { kind: "message", ...message },
+			}),
+		);
+		assert.deepEqual(live.records, []);
+		assert.deepEqual(history.records, []);
+	}
+	const warning =
+		"Harness recovery notice: required tool arguments were omitted. Please investigate.";
+	const human = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		durablePage({
+			id: "human",
+			ts: 10,
+			type: "message",
+			payload: { kind: "message", ...user("human", warning) },
+		}),
+	);
+	assert.equal(human.records[0].text, warning);
+	const liveHuman = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_start", message: user("human-live", warning) },
+		1,
+	);
+	assert.equal(liveHuman.records[0].text, warning);
+});
+
 test("an unstamped goal-continuation row is chrome, live - no marker needed", () => {
 	const state = applyEvent(
 		EMPTY_TRANSCRIPT,
@@ -7803,6 +8127,10 @@ const devBundle = await build({
 	bundle: true,
 	format: "esm",
 	platform: "node",
+	alias: {
+		"@shared": "./src/renderer/src/shared",
+		"@shared/i18n": "./src/i18n",
+	},
 	write: false,
 	define: { "import.meta.env": '{"DEV":true}' },
 });
@@ -8558,4 +8886,123 @@ test("late audio_settle_v1 receipt is retained despite its canonical empty detai
 			"never infer a bill from terminal alone",
 		);
 	}
+});
+
+/*
+ * A Team Bridge (`bridge`) row carries its destination's NAME from the result
+ * (`bridgeLabel`) and the result's own fields (`bridge`), on both doors, so a
+ * reloaded transcript names the DM the live one named - and the budget-stripped
+ * replay of a live frame cannot blank it.
+ */
+test("a bridge row carries bridgeLabel and its facts on the live and durable paths", () => {
+	const details = {
+		ok: true,
+		state: "sent",
+		conversation_id: "bcv_9",
+		message_id: "bcmsg_1",
+		seq: 3,
+		destination_type: "conversation_dm",
+		content:
+			"direct message to Ada Lovelace in bcv_9: message bcmsg_1 at seq 3",
+	};
+	let live = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "tool_execution_start",
+			tool_call_id: "c-dm",
+			tool_name: "bridge",
+			args: { op: "dm", account_id: "acc_1", body: "hi" },
+		},
+		1,
+	);
+	live = applyEvent(
+		live,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "c-dm",
+			tool_name: "bridge",
+			result: { content: [{ type: "text", text: details.content }], details },
+			duration_s: 0.3,
+		},
+		2,
+	);
+	const liveRow = live.records.find((r) => r.kind === "tool");
+	assert.equal(liveRow.bridgeLabel, "Ada Lovelace");
+	assert.equal(liveRow.bridge.seq, 3);
+	// A replayed end frame whose details the live budget stripped keeps both.
+	const stripped = applyEvent(
+		live,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "c-dm",
+			tool_name: "bridge",
+			result: { content: [{ type: "text", text: details.content }] },
+			duration_s: 0.3,
+		},
+		3,
+	);
+	const kept = stripped.records.find((r) => r.kind === "tool");
+	assert.equal(kept.bridgeLabel, "Ada Lovelace");
+	assert.equal(kept.bridge, liveRow.bridge, "same object, no re-render");
+
+	const durable = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			{
+				id: "t-dm",
+				ts: 2,
+				type: "message",
+				payload: {
+					role: "tool",
+					tool_call_id: "c-dm",
+					tool_name: "bridge",
+					content: [{ text: details.content, type: "text" }],
+					provider_payload: { duration_s: 0.3, details },
+				},
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	const durableRow = durable.records.find((r) => r.kind === "tool");
+	assert.equal(durableRow.bridgeLabel, "Ada Lovelace");
+	assert.equal(durableRow.bridge.destination_type, "conversation_dm");
+
+	// A pair-lane send's inbox-only acceptance is the amber state on both doors.
+	const inbox = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "c-send",
+			tool_name: "bridge",
+			result: {
+				content: [{ type: "text", text: "{}" }],
+				details: { ok: true, message_id: "m", destination_type: "peer_inbox" },
+			},
+			duration_s: 0.2,
+		},
+		4,
+	);
+	const inboxRow = inbox.records.find((r) => r.kind === "tool");
+	assert.equal(inboxRow.delivery, "inbox_only");
+	assert.equal(inboxRow.bridgeLabel, null);
+
+	// Every other tool stays exactly as it was: no bridge fields grow on it.
+	const other = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "c-read",
+			tool_name: "read",
+			result: {
+				content: [],
+				details: { conversation_label: "x", destination_type: "peer_inbox" },
+			},
+			duration_s: 0.1,
+		},
+		5,
+	);
+	const otherRow = other.records.find((r) => r.kind === "tool");
+	assert.equal(otherRow.bridgeLabel, null);
+	assert.equal(otherRow.bridge, null);
+	assert.equal(otherRow.delivery, null);
 });

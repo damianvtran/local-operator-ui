@@ -1,0 +1,57 @@
+{
+ "schema": 1,
+ "auditor": "translation-auditor",
+ "agent": "translation-auditor",
+ "model": "anthropic/claude-sonnet-5-5",
+ "model_provenance": "Session started on deepseek/deepseek-flash and switched to anthropic/claude-sonnet-5-5 after a provider quota error (HTTP 402) before any catalogue was read; every catalogue read, check and verdict in this receipt ran on anthropic/claude-sonnet-5-5.",
+ "fallback": "deepseek/deepseek-flash -> anthropic/claude-sonnet-5-5 (quota 402)",
+ "independence": "Separate agent role (translation-auditor vs translator) and separate session from the translator, which the operator reports also ran on anthropic/claude-sonnet-5-5 after a fallback. Same served model, so NOT model-independent; the ledger rule is agent-independence.",
+ "instance": "17d1ca9bf58a-vi",
+ "session": "17d1ca9bf58a",
+ "locale": "vi",
+ "namespace": "ui.agents.skills",
+ "branch": "feat/agents-skills-tab",
+ "head": "f0af61b5d5bda5214a492e26de3f842ff8bdaae0",
+ "pr": "damianvtran/local-operator-ui#1443",
+ "date": "2026-10-26",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "verdict": "pass",
+ "keys_read": 53,
+ "sha256": {
+  "vi": "d84e7dd0eef13d39b2a6cae6bf0325779eb08994f09f4ebc4504e7450ff11c15",
+  "en": "acb2c3bfbec269c3e6faf30a97cc193020079608df8f8a3b0b96af2f872657ff"
+ },
+ "glossary_style": "local-operator/i18n/glossary.md + i18n/style-guides/vi.md (read at audit time; files not hashed)",
+ "verified": [
+  "placeholders {size},{path},{query},{name},{shown},{total},{count} identical to en in every key (regex-diffed, ICU skeletons ::group-off counted)",
+  "every message formatted through intl-messageformat with the locale's own plural rules at counts 0,1,2,5,11,21,1000000: no throw, no empty output",
+  "files_truncated_of keeps 'at least' (es al menos, fr au moins, hi कम से कम, ru или более, ur کم از کم, vi ít nhất, zh-CN 至少)",
+  "plural arms valid for CLDR: es/fr one+many+other, ru one+few+many+other, hi/ur one+other, vi/zh-CN other",
+  "installed_not equals ui.hub.skills.subscribed_absent; tab equals ui.hub.skills.title; section.hub equals shell agent_hub in all 7 locales (byte compare)",
+  "no bidi controls / ZW chars / non-NFC / double spaces / ASCII ellipsis in any of the 7 files"
+ ],
+ "findings": [
+  {
+   "severity": "minor",
+   "key": "ui.agents.skills.source.hub",
+   "current": "Trung tâm tác nhân",
+   "proposed": "unchanged (fit check only)",
+   "summary": "18 chars vs 9 in a shrink-0 right-edge badge. The glossary term matches the shell, so only the fit needs a rendered check."
+  },
+  {
+   "severity": "nit",
+   "key": "ui.agents.skills.detail.body_truncated",
+   "current": "Tệp này nặng {size}.",
+   "proposed": "Tệp này có dung lượng {size}.",
+   "summary": "\"nặng\" is colloquial for size."
+  },
+  {
+   "severity": "nit",
+   "key": "ui.agents.skills.detail.form.document",
+   "current": "Tài liệu đơn",
+   "proposed": "Tài liệu riêng lẻ",
+   "summary": "\"đơn\" is a calque of \"single\"."
+  }
+ ]
+}

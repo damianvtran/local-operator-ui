@@ -1,0 +1,19 @@
+{
+	"ui.agents.detail.read_state.failed_title": "Не удалось прочитать «{name}»",
+	"ui.agents.detail.read_state.not_found": "Запрошенная сессия, профиль, команда или подписка не найдены.",
+	"ui.agents.detail.read_state.failed_meaning": "Возможно, определение было удалено или бэкенд отказал в чтении.",
+	"ui.agents.detail.read_state.request_failed": "Не удалось выполнить запрос.",
+	"ui.agents.detail.read_state.retry": "Повторить",
+	"ui.agents.detail.read_state.retrying": "Повторная попытка…",
+	"ui.agents.detail.read_state.delegates": "Может передавать работу субагентам.",
+	"ui.agents.detail.read_state.no_delegation": "Выполняет работу самостоятельно, без делегирования.",
+	"ui.agents.detail.read_state.class_description": "Реактивные агенты только отвечают. Проактивные агенты могут также писать вам первыми.",
+	"ui.agents.detail.read_state.used_by_description": "Команды, в которых этот агент указан как менеджер или участник.",
+	"ui.agents.detail.read_state.class_on": "Включено",
+	"ui.agents.detail.read_state.class_off": "Выключено",
+	"ui.agents.detail.read_state.class_switching": "Переключение…",
+	"ui.agents.detail.read_state.effort_inherit": "Использовать уровень усилий сессии",
+	"ui.agents.detail.read_state.list_failed_teams": "Не удалось прочитать команды",
+	"ui.agents.detail.read_state.list_failed_agents": "Не удалось прочитать агентов",
+	"ui.agents.detail.read_state.list_failed_meaning": "Ничего не потеряно. Чтение не удалось: бэкенд вернул ошибку — это не то же самое, что устаревший бэкенд."
+}

@@ -1,0 +1,6 @@
+{
+	"ui.chat.tag_dialogs.deleted_name": "已删除“{name}”",
+	"ui.chat.tag_dialogs.created_assigned": "已创建“{name}”并添加到此对话",
+	"ui.chat.tag_dialogs.assign_created_failed": "已创建“{name}”，但未能添加到此对话。从列表中选择该标签即可添加。",
+	"ui.chat.tag_dialogs.changed_elsewhere": "标签已在其他位置更改。列表现已显示最新标签；重新选择即可应用更改。"
+}

@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "auditor": "reviewer",
+  "model": "deepseek/deepseek-flash",
+  "instance": "5b6764cda3f8",
+  "date": "2026-10-19",
+  "locale": "zh-CN",
+  "namespace": "ui.agentMessages",
+  "status": "passed",
+  "scope": "Delta audit: zh-CN/ui.agentMessages at fix/zh-register-align@d39b4b7903 (PR #1205, base origin/main@c875238ae3). Five register rewrites vs the previously audited 47815752ff2d target (您→你 in lead/reach/account_guard_unavailable; pronoun dropped in later/local_failure), plus re-verification of dialog.consent_changed against #1208's 'below'-removed English. 16 keys.",
+  "sha256": {
+    "en": "8dadc34125e9434d3994cff7518f72774bd486ce36edd505d34e21ef4c4f574b",
+    "zh-CN": "57d8e4846f0727597674cc64676131b0c8231fef378f4b5ad9a34e519a3e8171"
+  },
+  "keys": 16,
+  "changed_strings": 5,
+  "checks": {
+    "key_set_and_order": "identical (16/16, order equal)",
+    "register": "0 occurrences of 您; 你 used where a pronoun is required (lead, reach, account_guard_unavailable)",
+    "consent_changed_below_removed": "pass: target contains no 下方 or 以下; '请阅读最新的同意声明，然后再次点击“启用”。' matches the new English",
+    "icu": "0 parse failures; argument names {field} and {rule} preserved; brace counts equal",
+    "plural_arms": "none in either file",
+    "group_off": "absent from source and target; nothing to preserve in this namespace",
+    "punctuation": "full-width multiset unchanged for all five rewrites; …… ellipsis; no ASCII punctuation outside placeholders",
+    "product_names": "Radient and Local Operator kept Latin, no inserted Chinese/Latin spaces",
+    "delta_vs_prev_audited_target": "exactly the five register rewrites; every other value byte-identical to 47815752ff2d",
+    "en_delta_vs_main": "none: head English sha equals origin/main English sha"
+  },
+  "findings": []
+}

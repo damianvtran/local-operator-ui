@@ -1,3 +1,4 @@
+import { remoteUnreachableText } from "@features/chat/canonical/remote-files";
 import {
 	fetchAttachmentBlob,
 	useAttachmentSource,
@@ -5,7 +6,10 @@ import {
 import type { CanvasDocument } from "@features/chat/types/canvas";
 import { artifactFileName } from "@features/chat/utils/artifact-identity";
 import { mimeTypeForPath } from "@features/chat/utils/file-kind";
+import { Button } from "@shared/components/ui";
 import { useFileBlobUrl } from "@shared/hooks/use-file-blob-url";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { type FC, memo, useState } from "react";
 import { ImageActionsMenu } from "../image-actions-menu";
@@ -76,6 +80,7 @@ const ImagePreviewComponent: FC<{ document: CanvasDocument }> = ({
 const ArtifactImagePreview: FC<{ document: CanvasDocument }> = ({
 	document,
 }) => {
+	useI18nLocale();
 	const artifact = document.artifact;
 	const source = useAttachmentSource(
 		{
@@ -127,13 +132,34 @@ const ArtifactImagePreview: FC<{ document: CanvasDocument }> = ({
 					/>
 				</div>
 			) : source.state === "resolving" ? (
-				<FileViewerState quiet title="Opening…" />
+				<FileViewerState
+					quiet
+					title={
+						/* A slow owner is named, not "Opening…" (design D1-3). */
+						source.pending && document.remote
+							? t("ui.canvas.files.remoteFetching", {
+									device: document.remote.deviceName,
+								})
+							: t("ui.common.viewer.opening")
+					}
+				/>
+			) : source.state === "retryable" ? (
+				<FileViewerState
+					title={remoteUnreachableText(document.remote?.deviceName ?? "")}
+					detail={document.title}
+				>
+					<Button variant="secondary" size="sm" onClick={source.retry}>
+						{t("ui.canvas.files.retry")}
+					</Button>
+				</FileViewerState>
 			) : (
 				<FileViewerState
 					title={
 						readyUrl !== null
-							? "This image could not be shown"
-							: "This image is no longer in the session"
+							? t("ui.canvas.image_preview.this_image_could_not_be_shown")
+							: t(
+									"ui.canvas.image_preview.this_image_is_no_longer_in_the_session",
+								)
 					}
 					detail={document.title}
 				/>
@@ -143,7 +169,9 @@ const ArtifactImagePreview: FC<{ document: CanvasDocument }> = ({
 };
 
 const PathImagePreview: FC<{ document: CanvasDocument }> = ({ document }) => {
+	useI18nLocale();
 	const state = useFileBlobUrl(document.path, {
+		remoteDevice: document.remote?.deviceName,
 		mtimeMs: document.lastAgentModified,
 		mimeType: mimeTypeForPath(document.path),
 		sizeBytes: document.sizeBytes,
@@ -173,11 +201,11 @@ const PathImagePreview: FC<{ document: CanvasDocument }> = ({ document }) => {
 	const title =
 		state.status === "unavailable"
 			? state.code === "too-large"
-				? "Too large to preview"
+				? t("ui.canvas.image_preview.too_large_to_preview")
 				: state.code === "not-found"
-					? "File no longer exists"
-					: "This image could not be opened"
-			: "This image could not be shown";
+					? t("ui.canvas.image_preview.file_no_longer_exists")
+					: t("ui.canvas.image_preview.this_image_could_not_be_opened")
+			: t("ui.canvas.image_preview.this_image_could_not_be_shown");
 
 	return (
 		/* The letterbox wears the PANE's ground (`canvas/index.tsx`): it is the pane's
@@ -215,7 +243,7 @@ const PathImagePreview: FC<{ document: CanvasDocument }> = ({ document }) => {
 					/>
 				</div>
 			) : state.status === "loading" ? (
-				<FileViewerState quiet title="Opening…" />
+				<FileViewerState quiet title={t("ui.common.viewer.opening")} />
 			) : (
 				<FileViewerState
 					title={title}

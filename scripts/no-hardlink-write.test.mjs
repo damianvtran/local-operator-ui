@@ -13,6 +13,10 @@ import {
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { test } from "node:test";
+import {
+	DESKTOP_COMMAND,
+	discoverDesktopTests,
+} from "./desktop-test-inventory.mjs";
 
 /*
  * The shared-inode write guard, and the wiring that arms it for the whole
@@ -77,13 +81,42 @@ const SCRATCH = join(
 	`no-hardlink-write-test-${process.pid}`,
 );
 const CHILD_PATH = join(SCRATCH, "child.mjs");
+/*
+ * THE CHILD'S PROCESS TEMP GROUND, inside this test's own scratch root.
+ *
+ * The evasion test needs a shared file OUTSIDE the process temp ground and a
+ * name for it INSIDE that ground. It took the ground from `os.tmpdir()`, which
+ * is `/tmp` - and GitHub's `ubuntu-latest` runner image moved to Ubuntu 26.04
+ * on 2026-10-21, where `/tmp` is a RAM-backed tmpfs (actions/runner-images
+ * issue #14777). `linkSync` from the workspace into `/tmp` is then EXDEV, the
+ * unguarded control cannot clobber, and the assertion that the control proves
+ * something fails - exactly as it did on `main` (runs 39658605528 and
+ * 39659214597) and on every pull request that day.
+ *
+ * THIS PRESERVES THE BOUNDARY THE CONTROL ASSERTS; it does not weaken it. That
+ * boundary is CONTAINMENT in the process temp directory, not device
+ * separation: the guard's own rule is `isInTempGround`, which compares the
+ * REALPATH of the source and destination against the REALPATH of `tmpdir()`
+ * (device ids appear only as the `dev:ino` key for declared inodes). The ground
+ * here is still a directory OUTSIDE the `evasion` fixture and INSIDE the
+ * child's declared temp directory, so the unguarded run still performs the
+ * exact prohibited sequence - link a shared file from outside the ground to a
+ * name inside it, then write through that name - and still clobbers the shared
+ * inode. The guarded run still refuses the link itself.
+ *
+ * A cross-device ground cannot host the evasion at all: the link is impossible
+ * before the guard is consulted, so the sequence the guard refuses only exists
+ * on one filesystem. `TMPDIR` is what `os.tmpdir()` reads, in the child and in
+ * the guard preload (`tempGround()` in no-hardlink-write.mjs), which is why pointing
+ * it here keeps the rule and the fixture on the same boundary.
+ */
+const GROUND_TMP = join(SCRATCH, "tmp");
 const ORIGINAL = "ORIGINAL SHARED CONTENT";
 
 /** Biome's `useTopLevelRegex`: every pattern this file matches on, named. */
 const LINK_COUNT = /link count (\d+), shared inode (\d+)/;
 const GUARDING = /no-hardlink-write: guarding \d+ fs entry points/;
 const STANDING_DOWN = /STANDING DOWN/;
-const TEST_DESKTOP = /^node scripts\/run-desktop-tests\.mjs (.*)$/;
 const REPORTS_THE_LINK = /declared inside the temp ground/;
 const IMPORT_FLAG = /--import=\$\{GUARD_PRELOAD\.href\}/;
 const NAMES_THE_PATH = /refusing writeFileSync on /;
@@ -92,12 +125,13 @@ const READ_BACK = /read=ORIGINAL/;
 const WILL_NOT_REFUSE = /will not be refused/;
 const EVASION = /EVASION=refused/;
 const EVASION_WROTE = /EVASION=wrote/;
+const EVASION_DEVICES = /EVASION_DEVICES=(\d+):(\d+)/;
 const IN_TEMP_STAGED = /IN_TEMP=STAGED/;
 const SHARED_INTACT = /SHARED=ORIGINAL SHARED CONTENT/;
 const SIBLING_INTACT = /SIBLING=ORIGINAL SHARED CONTENT/;
 const SHARED_STUBBED = /SHARED=STUB VIA TEMP GROUND/;
 const BOUND_NAMED = /larger than this guard checks/;
-const WHITESPACE = /\s+/;
+const ONE_SPAWN = /runNode\(\[RUNNER, \.\.\.rest, \.\.\.files\], ROOT\)/;
 
 /**
  * The surfaces that can retruncate the target, each one exercised through the
@@ -324,6 +358,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 const [shared, sibling] = process.argv.slice(2);
 const ground = fs.mkdtempSync(join(tmpdir(), "lo-evasion-"));
+console.log("EVASION_DEVICES=" + fs.statSync(shared).dev + ":" + fs.statSync(ground).dev);
 try {
 	// Sanctioned call one: give the shared inode a name inside the temp ground.
 	fs.linkSync(shared, join(ground, "linked"));
@@ -332,6 +367,10 @@ try {
 	console.log("EVASION=wrote");
 } catch (error) {
 	console.log("EVASION=refused:" + error.name);
+	// A native link/write failure is also named Error. Preserve its cause in
+	// the assertion's captured stdout; otherwise the unguarded control cannot
+	// distinguish a filesystem boundary from an installed guard on CI.
+	console.log("EVASION_ERROR=" + JSON.stringify({ code: error.code ?? null, syscall: error.syscall ?? null, message: error.message }));
 }
 console.log("SHARED=" + fs.readFileSync(shared, "utf8"));
 console.log("SIBLING=" + fs.readFileSync(sibling, "utf8"));
@@ -344,6 +383,7 @@ const EVASION_PATH = join(SCRATCH, "evasion.mjs");
 test.before(() => {
 	rmSync(SCRATCH, { recursive: true, force: true });
 	mkdirSync(SCRATCH, { recursive: true });
+	mkdirSync(GROUND_TMP, { recursive: true });
 	writeFileSync(CHILD_PATH, CHILD);
 	writeFileSync(SURFACES_PATH, SURFACES_CHILD);
 	writeFileSync(EVASION_PATH, EVASION_CHILD);
@@ -525,22 +565,30 @@ test("the desktop runner arms the guard for every file in the test:desktop list"
 		readFileSync(join(REPO, "package.json"), "utf8"),
 	).scripts;
 	const command = scripts["test:desktop"];
-	const match = command.match(TEST_DESKTOP);
-	assert.ok(match, `test:desktop must go through the runner; got ${command}`);
+	assert.equal(
+		command,
+		DESKTOP_COMMAND,
+		`test:desktop must go through the derived inventory and the runner; got ${command}`,
+	);
 	assert.match(
 		readFileSync(RUNNER, "utf8"),
 		IMPORT_FLAG,
 		"the runner must pass --import to the child; dropping it disarms every file below",
 	);
+	assert.match(
+		readFileSync(join(REPO, "scripts", "desktop-test-inventory.mjs"), "utf8"),
+		ONE_SPAWN,
+		"the inventory must reach the runner in ONE spawn, so one --import covers every file",
+	);
 
 	/*
-	 * EVERY file the list runs is enumerated here rather than a sample, and the
-	 * runner spawns ONE child for the whole list (a single `spawn` call whose argv
-	 * carries every file), so that one `--import` covers all of them. A new test
-	 * file therefore cannot arrive unguarded: it joins this list, and this list is
-	 * what the runner arms.
+	 * EVERY file the inventory runs is enumerated here rather than a sample, and
+	 * the runner spawns ONE child for the whole list (a single `spawn` call whose
+	 * argv carries every file), so that one `--import` covers all of them. A new
+	 * test file therefore cannot arrive unguarded: it joins the derived
+	 * inventory, and that inventory is what the runner arms.
 	 */
-	const files = match[1].trim().split(WHITESPACE);
+	const files = discoverDesktopTests(REPO);
 	assert.ok(
 		files.length > 200,
 		`expected the whole desktop list, got ${files.length}`,
@@ -582,12 +630,31 @@ test("a name given to a shared inode inside the temp ground does not launder it"
 	const dir = fixture("evasion");
 	const shared = join(dir, "base");
 	const sibling = join(dir, "b");
+	// Retain upstream's isolated temp-ground boundary, and additionally prove
+	// that the real child can link on one device rather than accepting EXDEV.
+	assert.equal(
+		statSync(shared).dev,
+		statSync(GROUND_TMP).dev,
+		"the evasion must be able to create a real same-device hardlink",
+	);
+	const env = {
+		...process.env,
+		TMPDIR: GROUND_TMP,
+		TMP: GROUND_TMP,
+		TEMP: GROUND_TMP,
+	};
 	for (const guard of [false, true]) {
 		reset(dir);
 		const args = guard
 			? [`--import=${PRELOAD}`, EVASION_PATH, shared, sibling]
 			: [EVASION_PATH, shared, sibling];
-		const result = spawnSync(process.execPath, args, { encoding: "utf8" });
+		const result = spawnSync(process.execPath, args, { encoding: "utf8", env });
+		const devices = result.stdout.match(EVASION_DEVICES);
+		assert.ok(
+			devices,
+			`the child must report both st_dev values: ${result.stdout}`,
+		);
+		assert.equal(devices[1], devices[2], "the child must link on one device");
 		if (guard) {
 			assert.match(
 				result.stdout,
@@ -596,6 +663,14 @@ test("a name given to a shared inode inside the temp ground does not launder it"
 			);
 			assert.match(result.stdout, SHARED_INTACT);
 			assert.match(result.stdout, SIBLING_INTACT);
+			// Prove this isolated tmpdir still grants the REAL exemption to an
+			// inode declared entirely inside it, not blanket refusal of all links.
+			const declared = spawnSync(
+				process.execPath,
+				[`--import=${PRELOAD}`, IN_TEMP_PATH],
+				{ encoding: "utf8", env },
+			);
+			assert.match(declared.stdout, IN_TEMP_STAGED, declared.stderr);
 		} else {
 			assert.match(
 				result.stdout,

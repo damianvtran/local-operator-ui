@@ -1,0 +1,25 @@
+{
+	"auditor": "i18n-auditor",
+	"agent": "i18n-auditor",
+	"model": "openai/gpt-6-astra",
+	"instance": "tb-invite-20260930-zh-cn",
+	"date": "2026-09-30",
+	"status": "passed",
+	"locale": "zh-CN",
+	"namespace": "ui.teamBridge",
+	"sha256": {
+		"en": "c7b1dc752c9f773df7e116be1d121bec0009c33da52bcd5931cc88c41ce9cbe3",
+		"zh-CN": "b7d6b3e4b4c97ab7cd07462e954722fece44806f4dd43df4aaa77667397a61a9"
+	},
+	"findings": [],
+	"checks": {
+		"key_parity": "Ran the specified Python key-set comparison: 283 English keys, 283 zh-CN keys; en-d=set(); d-en=set().",
+		"icu_render": "Imported intl-messageformat from the repo node_modules and rendered under zh-CN: 0=发送邀请; 1=发送1份邀请; 2=发送2份邀请; 5=发送5份邀请; 21=发送21份邀请.",
+		"cldr_arms": "Required Simplified Chinese category present: other; exact =0 arm present. No unexpected plural categories. {count} occurs once in the other arm and zero times in the =0 arm.",
+		"bidi": "Whole-file scan found no U+200E/U+200F/U+202A–U+202E bidi controls and no scanned zero-width characters (U+200B/U+200C/U+200D/U+2060/U+FEFF).",
+		"apostrophes": "Whole-file ICU-message scan found no ASCII apostrophe U+0027."
+	},
+	"scope": "Reviewed in depth only the four changed keys: members.add, members.reason.bridge_unavailable, members.group.people, and members.group.agents, including terminology consistency, the 份 invitation measure word, and the established no-space CJK/Latin convention. Ran the specified whole-file key-parity, hidden-character, apostrophe, and git-diff checks; the diff contains only two heading insertions after members.invite, the counted add modification, the reason modification, and the state.left deletion. Deliberately did not re-audit the other 279 previously passed keys.",
+	"independence": "Auditor wrote none of the audited strings; the translator was a separate subagent. No catalogue or ledger edit by the auditor.",
+	"status_vocabulary_note": "Auditor wrote status 'pass' with an empty findings list; the coordinator normalised the vocabulary to the ledger tool's passed | changes_requested. The verdict is the auditor's."
+}

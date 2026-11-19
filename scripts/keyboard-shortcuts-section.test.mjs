@@ -47,8 +47,10 @@ const CACHE = join(
 const bundle = await build({
 	stdin: {
 		contents: `
-			export { KeyboardShortcutsSection } from "./src/renderer/src/features/settings/components/keyboard-shortcuts-section";
-			export { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";
+				export { KeyboardShortcutsSection } from "./src/renderer/src/features/settings/components/keyboard-shortcuts-section";
+				export { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";
+				export { RESERVED_CHORDS } from "./src/renderer/src/shared/keymap/keymap-registry";
+				export { browserChordIntent } from "./src/shared/browser-chord";
 		`,
 		resolveDir: ROOT,
 	},
@@ -84,9 +86,12 @@ const bundle = await build({
 mkdirSync(CACHE, { recursive: true });
 const bundlePath = join(CACHE, "section.mjs");
 writeFileSync(bundlePath, bundle.outputFiles[0].text);
-const { KeyboardShortcutsSection, useUiPreferencesStore } = await import(
-	pathToFileURL(bundlePath).href
-);
+const {
+	KeyboardShortcutsSection,
+	useUiPreferencesStore,
+	RESERVED_CHORDS,
+	browserChordIntent,
+} = await import(pathToFileURL(bundlePath).href);
 
 const FIELD_SELECTOR = (label) =>
 	`input[aria-label="${label}: press the keys you want"]`;
@@ -481,5 +486,152 @@ test("keyboard-only: the field records, Tab navigates, Escape parks the cue with
 		pressKey(field, { key: "u" });
 		assert.deepEqual(api.outputs(), ["A shortcut needs Ctrl."]);
 		assert.ok(hint(), "the next capture re-arms the cue");
+	});
+});
+
+/*
+ * THE BROWSER'S SCOPE (LOH-13), driven from the one table that spells a browser
+ * chord. `browser-chord.ts` is where a browser chord acquires its meaning, so a
+ * chord added there is a chord whose Settings sentence must tell the reader how
+ * to reach it — this cell asks that table rather than re-listing the chords.
+ *
+ * A chord is DUAL-SCOPE when the app answers it OUTSIDE the browser too: the
+ * application menu's window close, the transcript search, chat-region walking
+ * and app zoom all live outside this registry (and outside any one table), so
+ * their five surfaces are named here. Everything else the browser claims is
+ * browser-ONLY, and a refusal sentence for a browser-only chord that does not
+ * end with the instruction leaves the reader with "the shortcut is broken".
+ */
+/* The copy this change owns, as top-level literals (biome's
+ * `useTopLevelRegex`): one instruction ending and the paragraph's three claims. */
+const FOCUS_INSTRUCTION_TAIL = /Focus the browser first\.$/;
+const SCOPE_WHERE = /browser pane or a page inside it has focus/;
+const SCOPE_REASON =
+	/must not take those chords away from the rest of the interface/;
+const SCOPE_INSTRUCTION = /To use one, focus the browser first\.$/;
+
+const PUNCTUATION_KEYS = new Map([
+	["plus", "+"],
+	["=", "="],
+	["-", "-"],
+]);
+
+/** The chord table's own input shape for a canonical chord, on one platform. */
+const chordInput = (chord, platform) => {
+	const tokens = chord.split("+");
+	const last = tokens[tokens.length - 1];
+	const modifiers = new Set(tokens.slice(0, -1));
+	return {
+		type: "keyDown",
+		key: PUNCTUATION_KEYS.get(last) ?? last,
+		meta: platform === "darwin" && modifiers.has("primary"),
+		control: platform === "linux" && modifiers.has("primary"),
+		alt: modifiers.has("alt"),
+		shift: modifiers.has("shift"),
+	};
+};
+
+const browserClaims = (chord) =>
+	["darwin", "linux"].some(
+		(platform) =>
+			browserChordIntent(chordInput(chord, platform), platform) !== null,
+	);
+
+const DUAL_SCOPE = new Set([
+	// Menu: closes the window outside the browser.
+	"primary+w",
+	/*
+	 * Menu "Reload"/"Force Reload": `runBrowserMenuAction` falls THROUGH to
+	 * `webContents.reload()`/`reloadIgnoringCache()` on the callback window when
+	 * the browser does not own the chord, so outside the browser these reload the
+	 * whole app window rather than nothing. They were wrongly pinned as
+	 * browser-only, which is the claim that loses a user their renderer.
+	 */
+	"primary+r",
+	"primary+shift+r",
+	// Transcript search outside the browser.
+	"primary+f",
+	// Chat navigation outside the browser.
+	"primary+[",
+	"primary+]",
+	// App zoom outside the browser.
+	"primary+0",
+	"primary+-",
+	"primary+plus",
+	"primary+=",
+]);
+
+const BROWSER_ONLY = [...RESERVED_CHORDS.keys()]
+	.filter((chord) => browserClaims(chord) && !DUAL_SCOPE.has(chord))
+	.sort();
+
+const BROWSER_ONLY_EXPECTED = [
+	...["1", "2", "3", "4", "5", "6", "7", "8", "9"].map(
+		(digit) => `primary+${digit}`,
+	),
+	"primary+l",
+	"primary+shift+t",
+	"primary+t",
+].sort();
+
+test("every browser-owning reserved sentence tells the reader to focus the browser first", () => {
+	/*
+	 * The set is the table's answer, and the pin is the reviewable half: a new
+	 * browser chord in `browser-chord.ts` fails here until its refusal copy is
+	 * written, rather than shipping a dead-looking shortcut.
+	 */
+	assert.deepEqual(
+		BROWSER_ONLY,
+		BROWSER_ONLY_EXPECTED,
+		"the browser-only set moved: a chord the browser claims needs a Settings sentence",
+	);
+	for (const chord of BROWSER_ONLY) {
+		assert.match(
+			RESERVED_CHORDS.get(chord),
+			FOCUS_INSTRUCTION_TAIL,
+			`${chord}'s refusal must tell the reader to focus the browser first`,
+		);
+	}
+});
+
+test("a dual-scope chord's row never claims the chord is browser-only", () => {
+	/*
+	 * THE INVERSE OF THE PIN ABOVE, and the regression that motivated it. A row
+	 * whose chord the app also answers outside the browser must NOT end with the
+	 * focus instruction: read literally, "Focus the browser first" says the chord
+	 * does nothing anywhere else. Excluding a chord from `BROWSER_ONLY` alone
+	 * would leave such a row unchecked, so the exclusion is asserted, not assumed.
+	 */
+	for (const chord of DUAL_SCOPE) {
+		const copy = RESERVED_CHORDS.get(chord);
+		if (copy === undefined) continue;
+		assert.doesNotMatch(
+			copy,
+			FOCUS_INSTRUCTION_TAIL,
+			`${chord} is dual-scope: outside the browser the app answers it, so its row must not tell the reader to focus the browser first`,
+		);
+	}
+});
+
+test("the section explains the browser's scope and why the app does not take those chords", async () => {
+	await mount(async (api) => {
+		const note = api.$('[data-shortcut-note="browser-scope"]');
+		assert.ok(note, "the browser-scope paragraph must render in the section");
+		const text = note.textContent;
+		assert.match(
+			text,
+			SCOPE_WHERE,
+			"the paragraph must say where the chords act",
+		);
+		assert.match(
+			text,
+			SCOPE_REASON,
+			"the paragraph must give the reason the app does not claim them",
+		);
+		assert.match(
+			text,
+			SCOPE_INSTRUCTION,
+			"the paragraph must tell the reader what to do",
+		);
 	});
 });

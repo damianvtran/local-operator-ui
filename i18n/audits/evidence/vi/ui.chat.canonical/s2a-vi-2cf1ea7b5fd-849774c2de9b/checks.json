@@ -1,0 +1,291 @@
+{
+  "checks": [
+    {
+      "check": "ui.chat.canonical full key parity",
+      "result": "PASS",
+      "actual": "en=249 vi=249; missing=[] extra=[]"
+    },
+    {
+      "check": "ui.chat.canonical changed key count",
+      "result": "PASS",
+      "actual": [
+        "ui.chat.canonical.transcript.earlier_text_offscreen",
+        "ui.chat.canonical.transcript.interrupted",
+        "ui.chat.canonical.transcript.no_answer_given",
+        "ui.chat.canonical.transcript.not_run",
+        "ui.chat.canonical.transcript.answer_may_be_missing",
+        "ui.chat.canonical.transcript.worked",
+        "ui.chat.canonical.transcript.worked_for",
+        "ui.chat.canonical.transcript.job_suffix"
+      ]
+    },
+    {
+      "check": "ui.chat.canonical.transcript.earlier_text_offscreen placeholders",
+      "result": "PASS",
+      "actual": {
+        "en": [],
+        "vi": []
+      }
+    },
+    {
+      "check": "ui.chat.canonical.transcript.earlier_text_offscreen NFC",
+      "result": "PASS",
+      "actual": "Phần trước của câu trả lời này không hiển thị trên màn hình"
+    },
+    {
+      "check": "ui.chat.canonical.transcript.earlier_text_offscreen bidi/format-control",
+      "result": "PASS",
+      "actual": []
+    },
+    {
+      "check": "ui.chat.canonical.transcript.earlier_text_offscreen no unchanged-English fallback",
+      "result": "PASS",
+      "actual": "Phần trước của câu trả lời này không hiển thị trên màn hình"
+    },
+    {
+      "check": "ui.chat.canonical.transcript.interrupted placeholders",
+      "result": "PASS",
+      "actual": {
+        "en": [],
+        "vi": []
+      }
+    },
+    {
+      "check": "ui.chat.canonical.transcript.interrupted NFC",
+      "result": "PASS",
+      "actual": "Bị gián đoạn"
+    },
+    {
+      "check": "ui.chat.canonical.transcript.interrupted bidi/format-control",
+      "result": "PASS",
+      "actual": []
+    },
+    {
+      "check": "ui.chat.canonical.transcript.interrupted no unchanged-English fallback",
+      "result": "PASS",
+      "actual": "Bị gián đoạn"
+    },
+    {
+      "check": "ui.chat.canonical.transcript.no_answer_given placeholders",
+      "result": "PASS",
+      "actual": {
+        "en": [],
+        "vi": []
+      }
+    },
+    {
+      "check": "ui.chat.canonical.transcript.no_answer_given NFC",
+      "result": "PASS",
+      "actual": "Chưa có câu trả lời"
+    },
+    {
+      "check": "ui.chat.canonical.transcript.no_answer_given bidi/format-control",
+      "result": "PASS",
+      "actual": []
+    },
+    {
+      "check": "ui.chat.canonical.transcript.no_answer_given no unchanged-English fallback",
+      "result": "PASS",
+      "actual": "Chưa có câu trả lời"
+    },
+    {
+      "check": "ui.chat.canonical.transcript.not_run placeholders",
+      "result": "PASS",
+      "actual": {
+        "en": [],
+        "vi": []
+      }
+    },
+    {
+      "check": "ui.chat.canonical.transcript.not_run NFC",
+      "result": "PASS",
+      "actual": "Không chạy"
+    },
+    {
+      "check": "ui.chat.canonical.transcript.not_run bidi/format-control",
+      "result": "PASS",
+      "actual": []
+    },
+    {
+      "check": "ui.chat.canonical.transcript.not_run no unchanged-English fallback",
+      "result": "PASS",
+      "actual": "Không chạy"
+    },
+    {
+      "check": "ui.chat.canonical.transcript.answer_may_be_missing placeholders",
+      "result": "PASS",
+      "actual": {
+        "en": [],
+        "vi": []
+      }
+    },
+    {
+      "check": "ui.chat.canonical.transcript.answer_may_be_missing NFC",
+      "result": "PASS",
+      "actual": "Câu trả lời này có thể bị thiếu một phần"
+    },
+    {
+      "check": "ui.chat.canonical.transcript.answer_may_be_missing bidi/format-control",
+      "result": "PASS",
+      "actual": []
+    },
+    {
+      "check": "ui.chat.canonical.transcript.answer_may_be_missing no unchanged-English fallback",
+      "result": "PASS",
+      "actual": "Câu trả lời này có thể bị thiếu một phần"
+    },
+    {
+      "check": "ui.chat.canonical.transcript.worked placeholders",
+      "result": "PASS",
+      "actual": {
+        "en": [],
+        "vi": []
+      }
+    },
+    {
+      "check": "ui.chat.canonical.transcript.worked NFC",
+      "result": "PASS",
+      "actual": "Đã làm việc"
+    },
+    {
+      "check": "ui.chat.canonical.transcript.worked bidi/format-control",
+      "result": "PASS",
+      "actual": []
+    },
+    {
+      "check": "ui.chat.canonical.transcript.worked no unchanged-English fallback",
+      "result": "PASS",
+      "actual": "Đã làm việc"
+    },
+    {
+      "check": "ui.chat.canonical.transcript.worked_for placeholders",
+      "result": "PASS",
+      "actual": {
+        "en": [
+          "duration"
+        ],
+        "vi": [
+          "duration"
+        ]
+      }
+    },
+    {
+      "check": "ui.chat.canonical.transcript.worked_for NFC",
+      "result": "PASS",
+      "actual": "Đã làm việc trong {duration}"
+    },
+    {
+      "check": "ui.chat.canonical.transcript.worked_for bidi/format-control",
+      "result": "PASS",
+      "actual": []
+    },
+    {
+      "check": "ui.chat.canonical.transcript.worked_for no unchanged-English fallback",
+      "result": "PASS",
+      "actual": "Đã làm việc trong {duration}"
+    },
+    {
+      "check": "ui.chat.canonical.transcript.job_suffix placeholders",
+      "result": "PASS",
+      "actual": {
+        "en": [
+          "id"
+        ],
+        "vi": [
+          "id"
+        ]
+      }
+    },
+    {
+      "check": "ui.chat.canonical.transcript.job_suffix NFC",
+      "result": "PASS",
+      "actual": "· Tác vụ {id}"
+    },
+    {
+      "check": "ui.chat.canonical.transcript.job_suffix bidi/format-control",
+      "result": "PASS",
+      "actual": []
+    },
+    {
+      "check": "ui.chat.canonical.transcript.job_suffix no unchanged-English fallback",
+      "result": "PASS",
+      "actual": "· Tác vụ {id}"
+    },
+    {
+      "check": "ui.agents.upload full key parity",
+      "result": "PASS",
+      "actual": "en=48 vi=48; missing=[] extra=[]"
+    },
+    {
+      "check": "ui.agents.upload changed key count",
+      "result": "PASS",
+      "actual": [
+        "ui.agents.upload.failure.publish_fallback"
+      ]
+    },
+    {
+      "check": "ui.agents.upload.failure.publish_fallback placeholders",
+      "result": "PASS",
+      "actual": {
+        "en": [],
+        "vi": []
+      }
+    },
+    {
+      "check": "ui.agents.upload.failure.publish_fallback NFC",
+      "result": "PASS",
+      "actual": "Không thể xuất bản tác nhân. Hãy thử lại."
+    },
+    {
+      "check": "ui.agents.upload.failure.publish_fallback bidi/format-control",
+      "result": "PASS",
+      "actual": []
+    },
+    {
+      "check": "ui.agents.upload.failure.publish_fallback no unchanged-English fallback",
+      "result": "PASS",
+      "actual": "Không thể xuất bản tác nhân. Hãy thử lại."
+    },
+    {
+      "check": "neutral worked pair",
+      "result": "PASS",
+      "actual": [
+        "Đã làm việc",
+        "Đã làm việc trong {duration}"
+      ]
+    },
+    {
+      "check": "no-answer copula/existential preserved",
+      "result": "PASS",
+      "actual": "Chưa có câu trả lời"
+    },
+    {
+      "check": "uncertainty and partial scope preserved",
+      "result": "PASS",
+      "actual": "Câu trả lời này có thể bị thiếu một phần"
+    },
+    {
+      "check": "not-run terminology matches existing key",
+      "result": "PASS",
+      "actual": [
+        "Không chạy",
+        "không chạy"
+      ]
+    },
+    {
+      "check": "exact middle dot and identifier",
+      "result": "PASS",
+      "actual": "· Tác vụ {id}"
+    },
+    {
+      "check": "illustrative duration/id substitution preserves values",
+      "result": "PASS",
+      "actual": {
+        "worked_for": "Đã làm việc trong 2m 4s",
+        "job_suffix": "· Tác vụ audit_job_7",
+        "method": "Direct placeholder substitution only; not a runtime formatter test."
+      }
+    }
+  ],
+  "summary": "46 PASS; 0 FAIL"
+}

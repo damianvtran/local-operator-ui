@@ -1,0 +1,118 @@
+{
+  "schema": 1,
+  "auditor": "i18n-auditor (independent team lopdev task, session 1f7797b807b7)",
+  "model": "anthropic/claude-opus-5-5 + openai/gpt-6.1-sol",
+  "model_provenance": "Initial semantic first pass, English/context/locale reads and glossary/style comparison ran as anthropic/claude-opus-5-5. Runtime then reported auth HTTP 401 fallbacks to anthropic/claude-sonnet-5-5 and then openai/gpt-6.1-sol; subsequent structural verification, classification and receipt recording ran under the latter announced route. No independent second auditor is represented by these model changes.",
+  "instance": "1f7797b807b7-ru",
+  "audit_session": "1f7797b807b7",
+  "locale": "ru",
+  "namespace": "ui.mesh",
+  "date": "2026-11-02",
+  "scope": "Delta audit of all 19 newly added ui.mesh.approval.* messages; no other catalogue value changed or was removed versus origin/main. Meaning, consent consequences, placeholders/ICU/CLDR, glossary, native locale style, logical RTL storage and absence of manual bidi controls. Unchanged namespace values retain historical audits; this is not a new full-namespace semantic review.",
+  "audited_head": "42f20ecbd929b64b7da75423e93b9cfaba605ff1",
+  "status": "passed",
+  "sha256": {
+    "en": "14428f2aa934af49f6c9d34a09696a3ba29505f653894a1c69b3fb8a22a261e4",
+    "ru": "25e6540676f395a603a830cd0f56cce2516f7a124dd0f10bd634373e3b3b29e7"
+  },
+  "findings": [
+    {
+      "id": "TA-RU-01",
+      "severity": "minor",
+      "key": "ui.mesh.approval.scope_device",
+      "keys": [
+        "ui.mesh.approval.scope_device",
+        "ui.mesh.approval.scope_session"
+      ],
+      "verbatim": "The two new scope strings use сеанс (сеанс/сеансу family), while glossary §2 and ru style-guide Locale calls require сессия for a product session. Existing catalogues use the сесси- stem 292 times and сеанс zero times outside this delta. Device-wide versus requesting-session-only scope remains accurate.",
+      "recommendation": "Use the glossary’s сессия, inflected naturally, in both scope strings.",
+      "disposition": "not applied: collected for the implementer’s unified remediation; target catalogue bytes are unchanged. Nonblocking terminology/typography finding; no consent consequence is reversed or omitted."
+    }
+  ],
+  "audited_keys": [
+    "ui.mesh.approval.head_finite_share",
+    "ui.mesh.approval.head_inheritance",
+    "ui.mesh.approval.scope_device",
+    "ui.mesh.approval.scope_session",
+    "ui.mesh.approval.org_limited",
+    "ui.mesh.approval.org_any",
+    "ui.mesh.approval.not_copied",
+    "ui.mesh.approval.until_revoked",
+    "ui.mesh.approval.future_logins_covered",
+    "ui.mesh.approval.future_logins_not_shared",
+    "ui.mesh.approval.installs_something",
+    "ui.mesh.approval.installs_nothing",
+    "ui.mesh.approval.needs_broker",
+    "ui.mesh.approval.undoes_withdrawals",
+    "ui.mesh.approval.recipient_key",
+    "ui.mesh.approval.file_key_disclosure",
+    "ui.mesh.approval.approved_not_applied",
+    "ui.mesh.approval.try_again",
+    "ui.mesh.approval.applying"
+  ],
+  "verbatim_values": {
+    "ui.mesh.approval.head_finite_share": "Поделиться входом {credential} с {device}",
+    "ui.mesh.approval.head_inheritance": "Разрешить {device} использовать ваш аккаунт {provider} {account}",
+    "ui.mesh.approval.scope_device": "Им может пользоваться любой сеанс на {device}.",
+    "ui.mesh.approval.scope_session": "Им может пользоваться только запросивший сеанс на {device}.",
+    "ui.mesh.approval.org_limited": "Только для организации {org}.",
+    "ui.mesh.approval.org_any": "Для любой организации этого аккаунта.",
+    "ui.mesh.approval.not_copied": "Ваш вход не копируется на {device}.",
+    "ui.mesh.approval.until_revoked": "Действует, пока вы его не отзовёте.",
+    "ui.mesh.approval.future_logins_covered": "Последующие входы в этот аккаунт покрываются без повторного запроса.",
+    "ui.mesh.approval.future_logins_not_shared": "Будущие входы не передаются.",
+    "ui.mesh.approval.installs_something": "Одобрение может также что-то установить или подключить.",
+    "ui.mesh.approval.installs_nothing": "Ничего не устанавливается и не подключается.",
+    "ui.mesh.approval.needs_broker": "{device} также нужно разрешение заимствовать входы, а это одобрение его не даёт.",
+    "ui.mesh.approval.undoes_withdrawals": "{count, plural, one {Отменяет {count, number, ::group-off} прежний отзыв этого входа для {device}.} few {Отменяет {count, number, ::group-off} прежних отзыва этого входа для {device}.} many {Отменяет {count, number, ::group-off} прежних отзывов этого входа для {device}.} other {Отменяет {count, number, ::group-off} прежнего отзыва этого входа для {device}.}}",
+    "ui.mesh.approval.recipient_key": "Ключ {device}:",
+    "ui.mesh.approval.file_key_disclosure": "Эта машина подписывает файлом ключа, а не Touch ID, поэтому одобрение не может доказать, что его дал человек.",
+    "ui.mesh.approval.approved_not_applied": "Одобрено, но ещё не применено.",
+    "ui.mesh.approval.try_again": "Повторить",
+    "ui.mesh.approval.applying": "Применение…"
+  },
+  "context_sidecar": {
+    "path": "src/i18n/catalogues/en/ui.mesh.context.json",
+    "sha256": "853d41789baa773984f386bbd25c93ca0beb1490b14a7d5b70948793473c0e90",
+    "read": "All 19 new context records read; no numeric maxCells budget is specified for these new records."
+  },
+  "standards": {
+    "root": "~/local-operator/i18n",
+    "glossary": "Read all 173 lines including continued truncated spans; native locale guide read completely.",
+    "sha256": {
+      "glossary.md": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "style-guides/ru.md": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+    }
+  },
+  "translator": {
+    "agent": "coder",
+    "job": "job07291411b980",
+    "draft_commit": "42f20ecbd929b64b7da75423e93b9cfaba605ff1",
+    "attribution": "Parent reports coder launched as anthropic/claude-opus-5-5; actual served model at translation step is unverified. Commit message explicitly labels these seven target catalogues as draft translations for independent audit."
+  },
+  "independence": "This auditor session did not author or edit any target catalogue value. Translator coder job07291411b980 is a different agent/run. This receipt is ONE independent auditor instance, not the required second high-visibility audit.",
+  "semantic_checks": [
+    "Device scope includes every session; session scope excludes other sessions.",
+    "Any-organization scope is not narrowed; organization-limited scope preserves the identifier.",
+    "No credential copy; duration lasts until operator revocation.",
+    "Later sign-ins covered without renewed approval versus future sign-ins not shared are distinct.",
+    "Install/join fallback preserves may; installs-nothing preserves both negations.",
+    "Broker permission is separately required and is not granted here.",
+    "Withdrawal count restores earlier withdrawn login access; all locale plural branches retain count and device.",
+    "File signing versus Touch ID and inability to prove a human approval remain explicit.",
+    "Approved-but-not-applied status does not claim access is already effective."
+  ],
+  "evidence": {
+    "log": "i18n/receipts/1f7797b807b7-structural-evidence.txt",
+    "log_sha256": "b6d54cf295eaa3b56cf7bedb42e7348888d23fdc09eb222ca871162e28f8e239",
+    "probe": "i18n/receipts/1f7797b807b7-structural-probe.txt",
+    "probe_sha256": "46586b82f143cecd1b37759e8f1b21b25498f57181ae5772f1f895600e20653e",
+    "verdict_location": "This receipt findings, status and semantic_checks are the auditor’s original review record; companion log is actual structural execution output only."
+  },
+  "non_claims": [
+    "No second independent high-visibility audit has been performed by this session. Parent is arranging it.",
+    "No rendered/compiled-native, width/fit, pseudo-localization, font shaping or visual RTL validation. Host load hold forbids heavy/native/browser dispatch.",
+    "No translation edits: all findings are handed to the implementer for one unified remediation. Changed target bytes will require fresh delta receipts."
+  ],
+  "notes": "Original independent audit receipt recorded in the same auditor session. Model fallback disclosed. This passing individual audit has zero blocker/major findings; it does not waive separate high-visibility or design/UX gates."
+}

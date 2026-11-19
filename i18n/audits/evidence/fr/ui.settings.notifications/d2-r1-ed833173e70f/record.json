@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "locale": "fr",
+  "namespace": "ui.settings.notifications",
+  "date": "2026-11-04",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "ed833173e70f",
+    "model": "openai/gpt-6.1-sol"
+  },
+  "independence": "Auditor is a distinct agent/session from coder/anthropic/claude-opus-5-5; no translation API used.",
+  "source": {
+    "path": "src/i18n/catalogues/en/ui.settings.notifications.json",
+    "sha256": "4bf3f8ffb1daecc09ac44049245bb85fe4c78b2c45ba19062218accc53782d65"
+  },
+  "context": {
+    "path": "src/i18n/catalogues/en/ui.settings.notifications.context.json",
+    "sha256": "aec944a760fd984421ddb0afcb1135d03cb156b844fc88ff8a32ad250385e554"
+  },
+  "target": {
+    "path": "src/i18n/catalogues/fr/ui.settings.notifications.json",
+    "sha256": "c8acd58cdfff1623184dde929b20334e012983b642b7af0dc564d6b416733971"
+  },
+  "artifacts": [
+    {
+      "path": "i18n/receipts/d2-notification-sounds-r1-ed833173e70f-fr.json",
+      "sha256": "3878cabc28b30ef000caf35effa535d121f57611fd3d8a9515814b18ec27d787"
+    }
+  ],
+  "findings": [
+    {
+      "id": "FR1",
+      "severity": "minor",
+      "disposition": "fixed in supplied audited file",
+      "keys": [
+        "ui.settings.notifications.custom.remove_confirm_selected",
+        "ui.settings.notifications.custom.removed_reset"
+      ],
+      "reason": "Avoid masculine agreement against the feminine displayed sound name Pulsation douce."
+    }
+  ],
+  "status": "passed",
+  "notes_not_execution_logs": true,
+  "limitations": [
+    "One independent LLM linguistic audit, not human-native certification or second high-visibility/safety audit.",
+    "No translated rendered-fit, pseudo-localization, RTL visual/shaping proof or audio/runtime QA claimed. English screenshots supplied by implementer do not prove target fit."
+  ]
+}

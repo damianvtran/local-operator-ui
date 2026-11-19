@@ -1,18 +1,21 @@
 import { readFileSync, writeFileSync } from "node:fs";
-import { existsSync, statSync } from "node:fs";
+import { existsSync, realpathSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { electronApp, is, optimizer } from "@electron-toolkit/utils";
+import { electronApp, is } from "@electron-toolkit/utils";
 import {
 	BrowserWindow,
 	type BrowserWindowConstructorOptions,
 	Menu,
+	type NativeImage,
 	WebContentsView,
 	app,
+	clipboard,
 	dialog,
 	globalShortcut,
 	ipcMain,
 	nativeImage,
+	nativeTheme,
 	session,
 	shell,
 	systemPreferences,
@@ -21,6 +24,13 @@ import {
 } from "electron";
 import { PostHog } from "posthog-node";
 import icon from "../../resources/icon.png?asset";
+import { t } from "../i18n/index";
+import { LANGUAGE_SETTING_KEY, subscribeLocale } from "../i18n/locale";
+import type {
+	AttachmentUploadResult,
+	AttachmentUploadSource,
+} from "../shared/attachment-upload";
+import { BACKEND_RESTART_CHANNEL } from "../shared/backend-startup";
 import {
 	BACKEND_RECONNECT_CHANNEL,
 	BACKEND_STATUS_CHANNEL,
@@ -34,6 +44,7 @@ import {
 	MAX_FILE_READ_BYTES,
 	type ProbedFile,
 	type ReadFileBytesResponse,
+	desktopRequestSchema,
 } from "../shared/desktop-contract";
 import type { DesktopFeedState } from "../shared/desktop-contract";
 import type { DesktopFeedFrame } from "../shared/desktop-session-contract";
@@ -58,6 +69,11 @@ import {
 	windowGlassArgument,
 } from "../shared/window-glass";
 import { VOICE_PAGE_CHANNELS } from "../voice-page/channels";
+import { AppAttentionService } from "./app-attention-service";
+import { createAppIconBadge } from "./app-icon-badge";
+import { appIconBadgeBitmap } from "./app-icon-badge-bitmap";
+import { applicationMenuLabels } from "./application-menu-labels";
+import { uploadAttachment } from "./attachment-upload";
 import {
 	BackendInstaller,
 	BackendServiceManager,
@@ -67,6 +83,7 @@ import {
 	OWNED_STOP_WORST_MS,
 	READINESS_POLL_INTERVAL_MS,
 } from "./backend";
+import { resolveBackendAttachForThisProcess } from "./backend/attach-backend";
 import { backendConfig, launchEnv } from "./backend/config";
 import { LogFileType, logger } from "./backend/logger";
 import {
@@ -77,6 +94,14 @@ import {
 	startBrowserHost,
 	stopBrowserHost,
 } from "./browser";
+import { disposeAllRecordingEncoders } from "./browser/actions/recording-encoder-host";
+import {
+	ADDRESS_OVERLAY_VISIBLE_MAX_MS,
+	addressListDocumentUrlFor,
+	addressOverlayDocumentUrlFor,
+	documentUrlFor,
+	resolveAddressOverlayGate,
+} from "./browser/address-overlay";
 import { runBrowserMenuAction } from "./browser/browser-chord";
 import {
 	CONSENT_ATTENTION_CHANNEL,
@@ -92,27 +117,69 @@ import {
 } from "./desktop-ipc";
 import { DesktopNotifier } from "./desktop-notifier";
 import {
+	DEV_DRIVER_SCRIPT_RESULT,
+	DEV_DRIVER_SCRIPT_STEP,
 	describeDevDriverArming,
+	describeDevDriverScript,
 	devDriverArgument,
+	devDriverQuietUpdatesReason,
+	devDriverSceneArgument,
+	devDriverScriptArgument,
 	headlessExerciserAllowed,
 	resolveDevDriverArming,
+	resolveDevDriverScript,
+	resolveDevDriverStartupScene,
 } from "./dev-driver";
+import { readAttachArguments } from "./dev-driver-attach";
 import { registerDevDriverIPC } from "./dev-driver-ipc";
+import {
+	DEV_DRIVER_SCRIPT_CAP_MS,
+	parseDevDriverScript,
+	runDevDriverScript,
+} from "./dev-driver-script";
+import { devRendererUrl } from "./dev-renderer-url";
+import { shouldToggleDevTools } from "./dev-shortcuts";
 import {
 	listDirectory,
 	probeFiles,
 	resolveUserPath as resolveUserPathWith,
 } from "./directory-listing";
 import { type MiniViewRegistrar, createRegistrar } from "./hotkey-registration";
+import { runLaunchProbeIfRequested } from "./launch-probe";
 import { isProcessAlive, startLauncherWatch } from "./launcher-watch";
 import type { LauncherWatch } from "./launcher-watch";
+import { LinkPreviewArtifactCache } from "./link-preview/artifact-cache";
+import { createLinkPreviewService } from "./link-preview/service";
 import {
 	type QuickSendWatcher,
+	quickSendConfigDir,
 	readQuickSendValue,
+	watchLocalConfig,
 	watchQuickSend,
 } from "./local-config";
+import { createMainLocale } from "./main-locale";
+import {
+	MESH_PAIRING_DEBUG_SWITCHES,
+	MESH_PAIRING_PROBE_WORLD_ID,
+	MeshPairingConfirmations,
+	type PairingAnswerHost,
+	answerMeshPairing,
+	confirmMeshPairing,
+	meshPairingEligibility,
+	refusalEnv,
+} from "./mesh-pairing-attest";
 import { type MiniView, createMiniView, miniViewUrlFor } from "./mini-view";
+import { installTypeOfServiceGuard } from "./net-tos-guard";
+import {
+	NOTIFICATION_SOUND_PLAY_CHANNEL,
+	configureNotificationSound,
+} from "./notification-sound";
+import {
+	NOTIFICATION_TEST_CHANNEL,
+	sendTestNotification,
+} from "./notification-test";
 import { paletteDoorChannel } from "./palette-door";
+import { pdfViewerStatus } from "./pdf-viewer-status";
 import {
 	rememberPickedDirectory,
 	withRememberedDirectory,
@@ -122,6 +189,7 @@ import {
 	quitExitDeadlineMs,
 } from "./quit-exit-deadline";
 import { createQuitState } from "./quit-state";
+import { RecordingShortcutCoordinator } from "./recording-shortcut";
 import { createRelaunchPending } from "./relaunch-pending";
 import { createUserShellPath } from "./shell-path";
 import { SupplementFrameMounts } from "./supplement-mounts";
@@ -129,6 +197,10 @@ import {
 	installSupplementProtocol,
 	registerSupplementScheme,
 } from "./supplement-protocol";
+import { TeamBridgeImageCache } from "./team-bridge-image-cache";
+import { TeamBridgeNotificationImages } from "./team-bridge-notification-images";
+import { TeamBridgeNotifier } from "./team-bridge-notifier";
+import { TeamBridgeNotifyStore } from "./team-bridge-notify-store";
 import {
 	describeTelemetryLaunch,
 	resolveTelemetryLaunch,
@@ -213,6 +285,33 @@ import {
 	reportSkippedWhileQuitting,
 } from "./window-raise";
 import { attachWindowSurface } from "./window-surface";
+
+/*
+ * THE RELEASE GATE'S LAUNCH PROBE, FIRST, before any statement of this module
+ * that touches the window, the Dock, the profile lock or the backend. Reaching
+ * this line at all is what the gate measures (the launcher exec'd, `app.asar`
+ * passed integrity, this bytecode loaded under the bundle's own V8); see
+ * `./launch-probe.ts` for why it replaced the node-mode checks. On a match it
+ * calls `app.exit(0)`, which before `ready` ends the process inside the same
+ * tick: measured with the npm Electron (44.3.0), a `writeSync` placed after
+ * `app.exit(0)`, a `requestSingleInstanceLock()`, a timer and a `whenReady`
+ * handler all never ran. So the rest of this module never executes on a probe
+ * launch, and the probe cannot reach the operator's running instance.
+ */
+runLaunchProbeIfRequested(app);
+
+/*
+ * Before the first socket this process opens: a reset connection must reject its
+ * `fetch`, not reach the `uncaughtException` handler below, which stops the
+ * owned backend and exits the app. Cause, numbers and removal condition are in
+ * `./net-tos-guard.ts`.
+ */
+installTypeOfServiceGuard((error) => {
+	logger.warn(
+		`Absorbed a socket type-of-service failure (nodejs/undici#6075): ${String(error)}`,
+		LogFileType.BACKEND,
+	);
+});
 
 const BASE64_FILE_EXTENSIONS = ["csv", "tsv", "xls", "xlsx", "ods"];
 
@@ -399,7 +498,8 @@ app.setName("Local Operator");
  * two byte-identical relaunches came up regular and accessory — so the policy
  * is asserted here, where the mode is already known, instead of trusted from
  * whatever the launch context handed the process. The dock-policy show call is
- * idempotent for an app that is already regular, and it is NOT a window raise:
+ * must be gated on isVisible(): Electron's DockShow can transfer activation
+ * even for an already-regular active app. It is NOT an ordinary window raise:
  * the dock show/hide pair sets the app's DOCK participation, which is the policy
  * `windowLaunch.hideDock` already decides — the raise-family ban in
  * `scripts/window-mode.test.mjs` is about windows (show/focus/maximize), so its
@@ -417,7 +517,9 @@ if (process.platform === "darwin" && app.dock) {
 	if (windowLaunch.hideDock) {
 		app.dock.hide();
 	} else {
-		app.dock.show();
+		if (!app.dock.isVisible()) {
+			app.dock.show();
+		}
 		app.dock.setIcon(image);
 	}
 }
@@ -452,6 +554,9 @@ if (process.platform === "darwin" && app.dock) {
 function reassertDockParticipation(): void {
 	if (process.platform !== "darwin" || !app.dock) return;
 	if (windowLaunch.hideDock) return;
+	// DockShow can hand activation to the Dock and then take it back. Only
+	// repair accessory policy; never bounce an already-regular active app.
+	if (app.dock.isVisible()) return;
 	app.dock.show();
 }
 
@@ -572,18 +677,26 @@ function configureAboutPanel(): void {
  */
 function createApplicationMenu(): void {
 	// Check if we're in development mode
-	const isDev = Boolean(process.env.ELECTRON_RENDERER_URL);
+	const isDev = Boolean(devRendererUrl(app.isPackaged));
+	/*
+	 * Resolved per BUILD, not once at import: the labels live in the catalogue and
+	 * the main process's locale follows the backend (see `main-locale.ts`), so a
+	 * menu built before the backend answers must be rebuilt when it does. A
+	 * module-scope constant here would freeze the first language for the life of
+	 * the process.
+	 */
+	const labels = applicationMenuLabels();
 
 	// Define zoom functions
 
 	// Create menu template
 	const template: Electron.MenuItemConstructorOptions[] = [
 		{
-			label: "File",
+			label: labels.file,
 			submenu: [{ role: "quit" }],
 		},
 		{
-			label: "Edit",
+			label: labels.edit,
 			submenu: [
 				{ role: "undo" },
 				{ role: "redo" },
@@ -597,11 +710,31 @@ function createApplicationMenu(): void {
 			],
 		},
 		{
-			label: "View",
+			label: labels.view,
 			submenu: [
 				{
+					id: "app-new-tab",
+					label: labels.newBrowserTab,
+					accelerator: "CmdOrCtrl+T",
+					/*
+					 * THE NATIVE ACCELERATOR ROUTE FOR CMD+T, which had no menu item at all.
+					 * The browser owns the command through the same predicate as Reload
+					 * (`ownsPage` for a focused driven page, `ownsChrome` for browser chrome);
+					 * outside the browser this is deliberately a no-op, never a window close.
+					 * When the chrome's own `before-input-event` already claimed the press it
+					 * prevents this accelerator, so rapid/legit presses stay exactly once.
+					 */
+					click: (_item, target) =>
+						runBrowserMenuAction(
+							"new-tab",
+							target,
+							mainWindow,
+							routeBrowserMenu,
+						),
+				},
+				{
 					id: "app-reload",
-					label: "Reload",
+					label: labels.reload,
 					accelerator: "CmdOrCtrl+R",
 					click: (_item, target) =>
 						runBrowserMenuAction(
@@ -613,7 +746,7 @@ function createApplicationMenu(): void {
 				},
 				{
 					id: "app-force-reload",
-					label: "Force Reload",
+					label: labels.forceReload,
 					accelerator: "CmdOrCtrl+Shift+R",
 					click: (_item, target) =>
 						runBrowserMenuAction(
@@ -626,7 +759,7 @@ function createApplicationMenu(): void {
 				{ type: "separator" as const },
 				{
 					id: "app-actual-size",
-					label: "Actual Size",
+					label: labels.actualSize,
 					accelerator: "CmdOrCtrl+0",
 					click: (
 						_item: Electron.MenuItem,
@@ -639,7 +772,7 @@ function createApplicationMenu(): void {
 				},
 				{
 					id: "app-zoom-in",
-					label: "Zoom In",
+					label: labels.zoomIn,
 					accelerator: "CmdOrCtrl+Plus", // On macOS, this often requires Shift as well (Cmd+Shift+=)
 					click: (
 						_item: Electron.MenuItem,
@@ -654,7 +787,7 @@ function createApplicationMenu(): void {
 				},
 				{
 					id: "app-zoom-out",
-					label: "Zoom Out",
+					label: labels.zoomOut,
 					accelerator: "CmdOrCtrl+-",
 					click: (
 						_item: Electron.MenuItem,
@@ -672,7 +805,7 @@ function createApplicationMenu(): void {
 			],
 		},
 		{
-			label: "Window",
+			label: labels.window,
 			submenu: [
 				{ role: "minimize" },
 				{ role: "zoom" },
@@ -698,7 +831,7 @@ function createApplicationMenu(): void {
 								// browser TAB while the browser has focus and the WINDOW elsewhere,
 								// and a menu label cannot follow focus that lives in a page view
 								// (UX r1 U4). The roles it replaced were "Close Window"/"Close".
-								label: "Close Tab or Window",
+								label: labels.closeTabOrWindow,
 								accelerator: "CmdOrCtrl+W",
 								click: (_item, target) =>
 									runBrowserMenuAction(
@@ -718,7 +851,7 @@ function createApplicationMenu(): void {
 								// browser TAB while the browser has focus and the WINDOW elsewhere,
 								// and a menu label cannot follow focus that lives in a page view
 								// (UX r1 U4). The roles it replaced were "Close Window"/"Close".
-								label: "Close Tab or Window",
+								label: labels.closeTabOrWindow,
 								accelerator: "CmdOrCtrl+W",
 								click: (_item, target) =>
 									runBrowserMenuAction(
@@ -735,7 +868,7 @@ function createApplicationMenu(): void {
 			role: "help",
 			submenu: [
 				{
-					label: "Learn More",
+					label: labels.learnMore,
 					click: async () => {
 						await shell.openExternal("https://local-operator.com");
 					},
@@ -746,7 +879,10 @@ function createApplicationMenu(): void {
 
 	// Add developer tools option only in development mode
 	if (isDev) {
-		const viewMenu = template.find((menu) => menu.label === "View");
+		// Compared against the RESOLVED label rather than the word it used to be
+		// spelled with: the template now carries a catalogue value, and a literal
+		// here would silently stop matching once the locale moved.
+		const viewMenu = template.find((menu) => menu.label === labels.view);
 		if (viewMenu?.submenu && Array.isArray(viewMenu.submenu)) {
 			viewMenu.submenu.push(
 				{ type: "separator" as const },
@@ -769,7 +905,7 @@ function createApplicationMenu(): void {
 				 * phrasing and takes the name from `app.name` the way the role did.
 				 */
 				{
-					label: `About ${app.name}`,
+					label: labels.about(app.name),
 					click: () => {
 						if (resolveAboutPanelAction(windowLaunch.mode) === "suppress") {
 							// A line rather than silence: an action that nothing reached and a
@@ -832,7 +968,7 @@ const ownLaunchRequest = (): RaiseRequest => ({
  * trusted frame" is how one of them drifts.
  */
 const rendererDocumentUrl = (): string =>
-	process.env.ELECTRON_RENDERER_URL ||
+	devRendererUrl(app.isPackaged) ||
 	pathToFileURL(join(__dirname, "../renderer/index.html")).href;
 
 /**
@@ -1042,7 +1178,7 @@ function createWindow(
 			sandbox: false,
 			// Only enable devTools when running with 'pnpm dev'
 			// Disable for 'pnpm start' and production builds
-			devTools: Boolean(process.env.ELECTRON_RENDERER_URL),
+			devTools: Boolean(devRendererUrl(app.isPackaged)),
 			// Security settings
 			nodeIntegration: false,
 			contextIsolation: true,
@@ -1185,6 +1321,7 @@ function createWindow(
 	mainWindow.on("ready-to-show", () => {
 		if (presentHandled) return;
 		presentHandled = true;
+		refreshAppIconBadge();
 		/*
 		 * `normal` raises and focuses the window: the ordinary launch, which is a
 		 * person starting the app. `inactive` orders the window without
@@ -1268,8 +1405,11 @@ function createWindow(
 
 	// HMR for renderer base on electron-vite cli.
 	// Load the remote URL for development or the local html file for production.
-	if (is.dev && process.env.ELECTRON_RENDERER_URL) {
-		mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL);
+	// Through `devRendererUrl` like every other read, so the loaded document and
+	// `rendererDocumentUrl` (the frame the IPC trusts) can never disagree.
+	const devUrl = devRendererUrl(app.isPackaged);
+	if (is.dev && devUrl) {
+		mainWindow.loadURL(devUrl);
 	} else {
 		mainWindow.loadFile(join(__dirname, "../renderer/index.html"));
 	}
@@ -1310,7 +1450,21 @@ function createWindow(
 const userShellPath = createUserShellPath({
 	log: (message) => logger.info(message, LogFileType.BACKEND),
 });
-const backendService = new BackendServiceManager({ userShellPath });
+/*
+ * WHAT THIS LAUNCH WAS TOLD ABOUT ITS BACKEND, resolved ONCE here and acted on by
+ * both consumers: the manager attaches to it, and this file refuses to run the
+ * setup installer when the named backend cannot be attached to
+ * (`./backend/attach-backend` holds what the switch is for, why the URL is the
+ * opt-in, and why the token half is not a second credential). Resolving it in one
+ * place is the point - a second read of the environment could disagree with this
+ * one, and the installer would then run against a backend the manager was
+ * already attached to.
+ */
+const backendAttach = resolveBackendAttachForThisProcess();
+const backendService = new BackendServiceManager({
+	userShellPath,
+	attach: backendAttach,
+});
 /*
  * WHETHER THIS PROCESS HAS BEGUN QUITTING, and has not been cancelled since.
  *
@@ -1348,6 +1502,7 @@ const backendInstaller = new BackendInstaller({
 	// (`./relaunch-pending` owns why scheduling happens only at the terminal).
 	onQuitCancelled: () => {
 		quitState.cancel();
+		resumeAppIconBadge();
 		/*
 		 * AND THE QUIT'S HARD DEADLINE IS RELEASED WITH IT, because this is the
 		 * quit's ONE cancellation: the process goes on running, and a deadline
@@ -1378,6 +1533,34 @@ const reportBackendFailure = (message: string, fileType: LogFileType): void => {
 		return;
 	}
 	dialog.showErrorBox("Backend Error", message);
+};
+
+/**
+ * A launch that NAMED its backend, and cannot have it, says so and stops - it
+ * never installs a runtime instead.
+ *
+ * WHY THERE IS NO FALLBACK HERE. The installer exists to produce a backend, so
+ * using it to answer "the backend you named is not usable" would replace a
+ * specific, diagnosable failure (wrong token, nothing listening, wrong port) with
+ * several minutes of downloading and a different daemon at the end of it. For the
+ * rig this switch exists for, that is worse than useless: the run would report
+ * success while measuring a backend it never chose.
+ *
+ * WHY IT DOES NOT RAISE A DIALOG, unlike every other backend failure here. Two
+ * reasons, and the first is a standing invariant:
+ *   - `reportBackendFailure` above is this file's ONE native modal, and it is
+ *     asserted to be the only one (`owned-serve-lifecycle.test.mjs`): a second
+ *     `dialog.showErrorBox` is a modal that can park a quit again. This path has
+ *     no business becoming the second.
+ *   - The launches this switch exists for are headless, and a native error box has
+ *     nobody to dismiss it there - it parks the main thread and leaves a process
+ *     with no window and no exit, which is the state a rig reads as a hang rather
+ *     than as a failure. A named line on stderr plus exit code 1 is the honest
+ *     face of it for the person at a terminal and for the rig alike.
+ */
+const reportAttachFailure = (detail: string): void => {
+	logger.error(`[attach] ${detail}`, LogFileType.BACKEND);
+	console.error(`[attach] ${detail}`);
 };
 
 /*
@@ -1507,6 +1690,216 @@ const devDriverLine = describeDevDriverArming(devDriverArming);
 if (devDriverLine) console.log(devDriverLine);
 
 /*
+ * S1: the dev-driver STEP RUNNER's gate (`scripts/mac-proof-capture.mjs`), a
+ * fact about the LAUNCH like the arming above and read from `launchEnv` for the
+ * same reason (a checkout's `.env` cannot supply the script). Silent unless the
+ * opt-in was given. The default-profile candidates are every name this app's
+ * userData has been derived from: the running name, the product name the
+ * packaged app uses, and the two unpackaged names (package `name`, Electron's
+ * own default). A profile equal to, inside, or containing any of them refuses -
+ * a script never runs against a profile the operator could be using.
+ */
+const devDriverScript = (() => {
+	const realpathOrSelf = (path: string): string => {
+		try {
+			return realpathSync(path);
+		} catch {
+			return path;
+		}
+	};
+	try {
+		const appData = app.getPath("appData");
+		return resolveDevDriverScript({
+			env: launchEnv,
+			armed: devDriverArming.armed,
+			windowMode: windowLaunch.mode,
+			userData: app.getPath("userData"),
+			defaultUserData: [
+				...new Set([
+					app.getName(),
+					"Local Operator",
+					"local-operator-ui",
+					"Electron",
+				]),
+			].map((name) => join(appData, name)),
+			realpath: realpathOrSelf,
+			// APFS is case-insensitive by default: compare folded there (R1-3).
+			caseInsensitive: process.platform === "darwin",
+		});
+	} catch (error) {
+		// A path Electron cannot answer is not a profile this gate can vouch for.
+		return {
+			honoured: false,
+			scriptPath: null,
+			refusal: launchEnv.LOCAL_OPERATOR_UI_DEV_DRIVER_SCRIPT
+				? `the profile paths could not be read (${error instanceof Error ? error.message : String(error)})`
+				: null,
+		};
+	}
+})();
+const devDriverScriptLine = describeDevDriverScript(devDriverScript);
+if (devDriverScriptLine) console.log(devDriverScriptLine);
+
+/** Whether the runner has started, so a recreated window never re-runs a script. */
+let devDriverScriptStarted = false;
+
+/**
+ * S1: start the step runner on the FIRST main window, once its page loaded.
+ *
+ * Inert unless the gate passed: the early return is the whole function in every
+ * ordinary launch, and the IPC listener is registered only past it, so a normal
+ * run has no `dev-driver-script-*` channel (pinned by
+ * `scripts/dev-driver-script-gate.test.mjs`). Results are accepted only from
+ * this window's own main frame. A script that fails to parse, or a run that
+ * ends (DONE or FAILED), quits through `endHeadlessRun` - the same bounded
+ * terminal every other non-product run takes - so the harness never has to
+ * kill a healthy app to finish.
+ */
+function startDevDriverScriptOnce(window: BrowserWindow): void {
+	if (
+		!devDriverScript.honoured ||
+		!devDriverScript.scriptPath ||
+		!devDriverArming.outDir ||
+		devDriverScriptStarted
+	)
+		return;
+	devDriverScriptStarted = true;
+	const outDir = devDriverArming.outDir;
+	let script: ReturnType<typeof parseDevDriverScript>;
+	try {
+		script = parseDevDriverScript(
+			readFileSync(devDriverScript.scriptPath, "utf8"),
+		);
+	} catch (error) {
+		console.log(
+			`[dev-driver-script] refused: ${error instanceof Error ? error.message : String(error)}`,
+		);
+		endHeadlessRun("the dev-driver script was refused");
+		return;
+	}
+	let nextId = 1;
+	const pending = new Map<
+		number,
+		{ resolve: (value: unknown) => void; reject: (error: Error) => void }
+	>();
+	ipcMain.on(DEV_DRIVER_SCRIPT_RESULT, (event, message) => {
+		if (
+			window.isDestroyed() ||
+			event.sender !== window.webContents ||
+			event.senderFrame !== window.webContents.mainFrame
+		)
+			return;
+		const id = (message as { id?: unknown })?.id;
+		const waiter = typeof id === "number" ? pending.get(id) : undefined;
+		if (!waiter) return;
+		pending.delete(id as number);
+		const result = message as { ok: boolean; value?: unknown; error?: string };
+		if (result.ok) waiter.resolve(result.value);
+		else waiter.reject(new Error(result.error ?? "the verb failed"));
+	});
+	const send = (verb: string, payload?: unknown): Promise<unknown> =>
+		new Promise((resolve, reject) => {
+			if (window.isDestroyed()) {
+				reject(new Error("the window is gone"));
+				return;
+			}
+			const id = nextId++;
+			pending.set(id, { resolve, reject });
+			window.webContents.send(DEV_DRIVER_SCRIPT_STEP, { id, verb, payload });
+		});
+	window.webContents.once("did-finish-load", () => {
+		void runDevDriverScript(script, {
+			verbs: async () => (await send("__verbs")) as string[],
+			call: (verb, payload) => send(verb, payload),
+			capture: async (label) =>
+				(await send("__capture", { label })) as {
+					path: string;
+					pixels: { width: number; height: number };
+				},
+			mediaSourceId: () => window.getMediaSourceId(),
+			windowFacts: () => ({
+				visible: !window.isDestroyed() && window.isVisible(),
+				focused: !window.isDestroyed() && window.isFocused(),
+			}),
+			outDir,
+			ackExists: (path) => existsSync(path),
+			sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms).unref()),
+			now: () => Date.now(),
+			log: (line) => console.log(line),
+		}).then(({ ok }) =>
+			endHeadlessRun(
+				ok ? "the dev-driver script finished" : "the dev-driver script failed",
+			),
+		);
+	});
+}
+
+/*
+ * THE PAPERCLIP'S PICKER, REPLACED ONLY FOR AN ARMED DRIVER RUN. The queue is
+ * emptied by the first `show-open-dialog` it answers, so one press stages the
+ * paths this launch was told about and a second press opens the real dialog
+ * again rather than replaying the first answer. Unarmed launches parse nothing:
+ * an operator's own file dialog is never answered by a flag.
+ */
+const attachQueue = devDriverArming.armed
+	? readAttachArguments(process.argv)
+	: { paths: [], problems: [] };
+for (const problem of attachQueue.problems)
+	console.error(`[dev-driver] ${problem}`);
+if (devDriverArming.armed && attachQueue.paths.length > 0)
+	console.log(
+		`[dev-driver] attach queue: ${attachQueue.paths.length} path(s) will answer the next file dialog`,
+	);
+
+/*
+ * S1's address-overlay gate, resolved ONCE here for the same reason the window
+ * mode and the dev driver are: it is a fact about the LAUNCH, decided before a
+ * window or a host exists. It needs the exact opt-in AND the already-armed dev
+ * driver AND `headless`; anything else refuses with a printed reason. Pure in
+ * `browser/address-overlay.ts`, so its edges are asserted without an app.
+ *
+ * S3 adds one more opt-in (`…_VISIBLE=1`) on top of S1+S2: same pure function,
+ * `packaged: app.isPackaged` so an installed build can never arm it, and the only
+ * accepted mode becomes `inactive`. Nothing here re-derives those conditions; the
+ * `visible` field is read by the launcher watch, the lifetime cap and the host.
+ *
+ * Nothing here reaches the product: an ordinary launch has no opt-in, so the
+ * host receives no `addressOverlay` option, registers no probe channel and
+ * creates no native child. The in-flow address editor and its list are untouched.
+ */
+const addressOverlayGate = resolveAddressOverlayGate({
+	env: launchEnv,
+	devDriverArmed: devDriverArming.armed,
+	windowMode: windowLaunch.mode,
+	packaged: app.isPackaged,
+});
+/**
+ * S4b's product chrome, with no user-facing switch.
+ *
+ * DARWIN ONLY, and that is evidence rather than preference: every measured fact
+ * about the native child is macOS (S1–S3; the Windows/Linux rows are BLOCKED),
+ * so the other platforms keep the Tier 1 field-only popout. A probe launch wins:
+ * when `addressOverlayGate.enabled`, the probe's own channels and child are the
+ * ones wired, so an evidence run never shares a controller with the product.
+ */
+const addressOverlayProduct =
+	process.platform === "darwin" && !addressOverlayGate.enabled;
+if (addressOverlayProduct) {
+	console.log(
+		"[address-overlay] product chrome armed (darwin): permanent address row, native list child",
+	);
+}
+if (addressOverlayGate.asked) {
+	console.log(
+		addressOverlayGate.enabled
+			? addressOverlayGate.visible
+				? "[address-overlay] ARMED (S3 VISIBLE probe, inactive window, 120 s cap, no product path)"
+				: `[address-overlay] ARMED (S${addressOverlayGate.list ? "2 probe: mirror list" : "1 probe: native child"}, no product path)`
+			: `[address-overlay] not armed: ${addressOverlayGate.reason}`,
+	);
+}
+
+/*
  * The renderer's half of that decision, as `webPreferences` for whichever window
  * is created. Empty in an unarmed launch, so a normal run's window options are
  * the options they would have had: the preload reads this entry out of its own
@@ -1517,7 +1910,14 @@ if (devDriverLine) console.log(devDriverLine);
  */
 const devDriverWebPreferences =
 	devDriverArming.armed && devDriverArming.outDir
-		? { additionalArguments: [devDriverArgument(devDriverArming.outDir)] }
+		? {
+				additionalArguments: [
+					devDriverArgument(devDriverArming.outDir),
+					// S1: the preload installs its step listener only when this is
+					// present, i.e. only when the script gate above passed.
+					...(devDriverScript.honoured ? [devDriverScriptArgument()] : []),
+				],
+			}
 		: {};
 
 /*
@@ -1547,6 +1947,19 @@ const telemetryWebPreferences = {
 // Some APIs can only be used after this event occurs.
 // Define mainWindow at a higher scope to be accessible in event handlers
 let mainWindow: BrowserWindow | null = null;
+// A replacement Windows taskbar target needs a fresh native write, not a new
+// unread observer. This callback never creates, presents or retains a window.
+let refreshAppIconBadge = (): void => {};
+let stopAppIconBadge = (): void => {};
+let resumeAppIconBadge = (): void => {};
+
+// Kept outside the quick-send availability gate: recording has its own window door.
+const recordingShortcut = new RecordingShortcutCoordinator(
+	process.env,
+	process.platform,
+	(message) =>
+		logger.warn(`recording-shortcut: ${message}`, LogFileType.BACKEND),
+);
 
 /*
  * THE QWEN VOICE RIG (`./voice/qwen-voice.ts`): main owns both processes and
@@ -1825,6 +2238,7 @@ registerSupplementScheme();
 let miniView: MiniView | null = null;
 let miniViewRegistrar: MiniViewRegistrar | null = null;
 let quickSendWatcher: QuickSendWatcher | null = null;
+let localConfigWatcher: QuickSendWatcher | null = null;
 
 /*
  * The update service of the most recent window, kept here rather than in the
@@ -1877,6 +2291,51 @@ function launchArgumentFlags(
 	return {};
 }
 
+/** Evaluate only after discovery, at actual window construction. launchEnv is
+ * captured before dotenv; a checkout file must never activate this test seam.
+ * realpath refuses missing directories and symlink escapes, including an argv
+ * profile that Electron did not actually select. No scene means no path reads. */
+function ownerAuditStartupArguments(): string[] {
+	if (!launchEnv.LOCAL_OPERATOR_UI_DEV_DRIVER_SCENE) return [];
+	let paths: Parameters<typeof resolveDevDriverStartupScene>[0]["paths"] = null;
+	try {
+		const requested = process.argv
+			.find((arg) => arg.startsWith("--user-data-dir="))
+			?.slice("--user-data-dir=".length);
+		if (
+			requested &&
+			launchEnv.LOCAL_OPERATOR_UI_DEV_DRIVER_ROOT &&
+			launchEnv.HOME &&
+			launchEnv.LOCAL_OPERATOR_CONFIG_DIR &&
+			process.env.HOME &&
+			process.env.LOCAL_OPERATOR_CONFIG_DIR &&
+			realpathSync(process.env.HOME) === realpathSync(launchEnv.HOME) &&
+			realpathSync(process.env.LOCAL_OPERATOR_CONFIG_DIR) ===
+				realpathSync(launchEnv.LOCAL_OPERATOR_CONFIG_DIR)
+		) {
+			paths = {
+				root: realpathSync(launchEnv.LOCAL_OPERATOR_UI_DEV_DRIVER_ROOT),
+				home: realpathSync(launchEnv.HOME),
+				config: realpathSync(launchEnv.LOCAL_OPERATOR_CONFIG_DIR),
+				requestedUserData: realpathSync(requested),
+				actualUserData: realpathSync(app.getPath("userData")),
+			};
+		}
+	} catch {
+		/* Missing isolation is refusal, never an alternate launch path. */
+	}
+	const scene = resolveDevDriverStartupScene({
+		env: launchEnv,
+		armed: devDriverArming.armed,
+		packaged: app.isPackaged,
+		windowMode: windowLaunch.mode,
+		backendManagerDisabled: process.env.VITE_DISABLE_BACKEND_MANAGER === "true",
+		selectedBackendUrl: backendService.getBackendUrl(),
+		paths,
+	});
+	return scene ? [devDriverSceneArgument(scene)] : [];
+}
+
 /**
  * Everything this app puts in a renderer process's argv, in one value.
  *
@@ -1918,6 +2377,7 @@ function rendererArgumentFlags(
 		...(launchArgumentFlags(initialSession, openCatalogue)
 			.additionalArguments ?? []),
 		...(devDriverWebPreferences.additionalArguments ?? []),
+		...ownerAuditStartupArguments(),
 		...(telemetryWebPreferences.additionalArguments ?? []),
 	];
 	return flags.length > 0 ? { additionalArguments: flags } : {};
@@ -2478,6 +2938,24 @@ app
 		}
 
 		/*
+		 * A launch whose attach pair is broken stops HERE, before discovery, before
+		 * any window and long before the installer.
+		 *
+		 * WHY SO EARLY. Half an attach pair is not a degraded attach and it is not an
+		 * absent one: nothing downstream can tell the difference between "this rig
+		 * forgot the token" and "this machine has no backend", so discovery would
+		 * find nothing, `start()` would find it may not spawn, and the next branch is
+		 * the installer - which is exactly the silent substitution the switch
+		 * forbids. Naming the missing half at the top of the launch is the only place
+		 * the two are still distinguishable.
+		 */
+		if (backendAttach.kind === "incomplete") {
+			reportAttachFailure(backendAttach.detail);
+			app.exit(1);
+			return;
+		}
+
+		/*
 		 * A launch that finds its own install still running gets out of the way.
 		 *
 		 * WHY IT IS THIS EARLY, AND WHAT IT SAVES. An install four minutes into its
@@ -2510,6 +2988,29 @@ app
 		}
 
 		/*
+		 * THE MAIN PROCESS'S OWN LOCALE SOURCE (agent review round 1, R1-1).
+		 *
+		 * The banners this process raises are keyed copy now, so the process has to
+		 * know the language - and the only authoritative source is the backend
+		 * `language` setting, which is read through the SAME configured transport the
+		 * renderer's capabilities query uses. Priming the DEVICE reading here is the
+		 * RFC's pre-connection rule: a notification raised before the first
+		 * capabilities answer speaks the OS's language, not English. Refreshes are
+		 * wired below (backend ready, the feed's config frame, and an accepted
+		 * settings write), and each one re-reads instead of trusting a pushed value.
+		 *
+		 * Placed after the launch hold deliberately: that path has already applied
+		 * its own marker/device reading and is about to exit, so it pays for
+		 * nothing here.
+		 */
+		const mainLocale = createMainLocale({
+			app,
+			request: (request) => backendService.requestDesktop(request),
+			log: (message) => logger.info(message, LogFileType.BACKEND),
+		});
+		mainLocale.applyDevice();
+
+		/*
 		 * The app's own menu, installed BEFORE THIS HANDLER AWAITS ANYTHING.
 		 *
 		 * Why the position is load-bearing rather than tidy (code review round 1,
@@ -2530,6 +3031,18 @@ app
 		 */
 		configureAboutPanel();
 		createApplicationMenu();
+		/*
+		 * REBUILD THE MENU WHEN THE LANGUAGE MOVES. Electron installs one menu object
+		 * for the whole app, so a label resolved at build time keeps that language
+		 * until the template is rebuilt. `subscribeLocale` fires only on a real
+		 * CHANGE (`src/i18n/locale.ts` notifies nothing for a repeated identical
+		 * answer), so a re-read that agrees does not rebuild the menu under a click.
+		 *
+		 * The trigger is the main process's own locale mirror, which is the same
+		 * value `t()` renders here: a subscription to anything else would rebuild the
+		 * menu in a language the next label lookup does not agree with.
+		 */
+		subscribeLocale(createApplicationMenu);
 
 		/*
 		 * A headless run does not outlive the process that launched it.
@@ -2550,6 +3063,12 @@ app
 			mode: windowLaunch.mode,
 			launcherPid: process.ppid,
 			env: launchEnv,
+			// S3 only: the one visible run nobody is watching still must not
+			// outlive its launcher. False for every product launch.
+			// The S1 step runner too: an `inactive` scripted run is a visible
+			// window nobody is at, so it is launcher-bound and capped (below).
+			boundedVisibleProbe:
+				addressOverlayGate.visible || devDriverScript.honoured,
 		});
 		logger.info(`[window-mode] ${launcher.reason}`, LogFileType.BACKEND);
 		if (windowLaunch.mode !== "normal") {
@@ -2565,7 +3084,44 @@ app
 					endHeadlessRun(message, detail),
 			});
 		}
-		if (windowLaunch.mode === "headless") {
+		/*
+		 * S3's hard cap. The launcher watch above covers the harness dying; this
+		 * covers the harness hanging, the operator walking away, and any path where
+		 * the visible probe's own reaping fails. It is deliberately the same
+		 * `endHeadlessRun` terminal every other non-product run takes — a bounded quit
+		 * with a deadline underneath it — rather than a bare `app.exit`, so the overlay
+		 * and the pages are disposed in their normal order first. `unref()`
+		 * because the cap must never be the reason a process is alive.
+		 */
+		if (addressOverlayGate.visible) {
+			const cap = setTimeout(() => {
+				endHeadlessRun(
+					`the visible address-overlay probe reached its ${ADDRESS_OVERLAY_VISIBLE_MAX_MS / 1000} s cap`,
+				);
+			}, ADDRESS_OVERLAY_VISIBLE_MAX_MS);
+			cap.unref();
+			console.log(
+				`[address-overlay] visible probe cap: ${ADDRESS_OVERLAY_VISIBLE_MAX_MS / 1000} s from launch`,
+			);
+		}
+		/*
+		 * S1's hard cap, the scripted run's twin of the probe cap above: the
+		 * launcher watch covers a harness that died, this covers one that hung.
+		 * Same bounded terminal, same `unref()`.
+		 */
+		if (devDriverScript.honoured) {
+			const scriptCap = setTimeout(() => {
+				endHeadlessRun(
+					`the dev-driver script reached its ${DEV_DRIVER_SCRIPT_CAP_MS / 1000} s cap`,
+				);
+			}, DEV_DRIVER_SCRIPT_CAP_MS);
+			scriptCap.unref();
+		}
+		if (
+			windowLaunch.mode === "headless" ||
+			addressOverlayGate.visible ||
+			devDriverScript.honoured
+		) {
 			/*
 			 * A signal is the case the graceful path does NOT reach on its own.
 			 * Chromium's SIGTERM shutdown closes the window and then leaves the
@@ -2580,7 +3136,11 @@ app
 				process.on(signal, () => endHeadlessRun(`received ${signal}`));
 			}
 		}
-		if (windowLaunch.mode !== "headless") {
+		if (
+			windowLaunch.mode !== "headless" &&
+			!addressOverlayGate.visible &&
+			!devDriverScript.honoured
+		) {
 			/*
 			 * SIGTERM DURING A QUIT IS A CONTRACT, NOT A SURPRISE (2026-10-11).
 			 *
@@ -2603,7 +3163,11 @@ app
 			 * default) - a person's `kill` keeps meaning exactly what it meant.
 			 * The headless modes keep the handlers above, which own SIGINT too;
 			 * this one is SIGTERM only because it is the escalator's signal.
-			 * `scripts/launcher-watch.test.mjs` pins the gate.
+			 * `scripts/launcher-watch.test.mjs` pins the gate. S3's visible probe is
+			 * excluded from this handler on purpose: it already registers the direct
+			 * handlers above (same lifetime contract as headless, plus its cap), and
+			 * registering both would let this one re-raise TERM into the handler that
+			 * just took it.
 			 */
 			const onSigtermDuringQuit = () => {
 				if (!quitState.isQuitting()) {
@@ -2643,34 +3207,294 @@ app
 			process.on("SIGINT", onSigint);
 		}
 
-		// Default open or close DevTools by F12 in development
-		// and ignore CommandOrControl + R in production.
-		// see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
+		// F12 toggles DevTools in development only. Not the toolkit's
+		// `optimizer.watchWindowShortcuts`: it also cancels Ctrl+R in packaged
+		// builds and Cmd/Ctrl+minus by default, so the Console never saw reverse
+		// search and Zoom Out never fired (#1085).
 		app.on("browser-window-created", (_, window) => {
-			optimizer.watchWindowShortcuts(window);
+			// Update relaunch can detach Dock participation after startup. Healing
+			// on real window events never shows/focuses a window of its own.
+			window.on("show", () => refreshAppIconBadge());
+			window.webContents.on("before-input-event", (event, input) => {
+				if (!shouldToggleDevTools(input, is.dev)) return;
+				event.preventDefault();
+				const { webContents } = window;
+				if (webContents.isDevToolsOpened()) webContents.closeDevTools();
+				else webContents.openDevTools({ mode: "undocked" });
+			});
 		});
 
 		// One guarded sender for every main-process caller, so a read receipt
 		// requires a genuinely foreground window no matter which path emits it.
 		// The notifier holds its own reference to this sender, so guarding only
 		// the renderer IPC entry would leave that path ungated.
+		// LauncherEntry needs the installed desktop identity, not a made-up count
+		// or a promise that every Linux desktop supports this protocol.
+		const desktopName = process.env.CHROME_DESKTOP;
+		const desktopIdentity =
+			process.platform === "linux" &&
+			typeof desktopName === "string" &&
+			/^[A-Za-z0-9_.-]+\.desktop$/.test(desktopName) &&
+			[
+				process.env.XDG_DATA_HOME || join(app.getPath("home"), ".local/share"),
+				...(process.env.XDG_DATA_DIRS || "/usr/local/share:/usr/share")
+					.split(":")
+					.filter((root) => root.startsWith("/")),
+			].some((root) => existsSync(join(root, "applications", desktopName)));
+		if (desktopIdentity && desktopName) app.setDesktopName(desktopName);
+		const nativeBadge = createAppIconBadge<NativeImage>({
+			platform: process.platform,
+			setDockBadge: (label) => {
+				if (!app.dock) throw new Error("Dock unavailable");
+				app.dock.setBadge(label);
+			},
+			setOverlayIcon: (image, description) => {
+				if (!mainWindow || mainWindow.isDestroyed())
+					throw new Error("Taskbar target unavailable");
+				mainWindow.setOverlayIcon(image, description);
+			},
+			createOverlayImage: (label) =>
+				nativeImage.createFromBitmap(appIconBadgeBitmap(label), {
+					width: 16,
+					height: 16,
+					scaleFactor: 1,
+				}),
+			setBadgeCount: (count) => app.setBadgeCount(count),
+			linuxDesktopIdentity: desktopIdentity,
+			describe: ({ unreadCount, pending }) =>
+				pending
+					? unreadCount > 0
+						? t("ui.nativeBadge.attentionPending", { count: unreadCount })
+						: t("ui.nativeBadge.pending")
+					: t("ui.nativeBadge.attention", { count: unreadCount }),
+		});
+		// Headless hides the Dock tile: hosted scene evidence reads the real
+		// Dock API through CDP, not Dock pixels. This opt-in exposes only the
+		// adapter's last projection, never a mutation or acknowledgement port.
+		if (
+			process.env.LOCAL_OPERATOR_UI_APP_ICON_BADGE_SCENE === "1" &&
+			process.env.CI === "true" &&
+			process.env.GITHUB_ACTIONS === "true" &&
+			process.env.RUNNER_ENVIRONMENT === "github-hosted" &&
+			process.platform === "darwin" &&
+			!app.isPackaged &&
+			windowLaunch.show === "never"
+		) {
+			const sceneGlobal = globalThis as typeof globalThis & {
+				__lopAppIconBadgeSceneRead?: typeof nativeBadge.readForScene;
+			};
+			sceneGlobal.__lopAppIconBadgeSceneRead = () => nativeBadge.readForScene();
+		}
+		if (process.platform === "darwin") {
+			logger.info(
+				"[app-badge] notificationAuthorization=unknown (no supported Electron badge permission query)",
+				LogFileType.BACKEND,
+			);
+		}
+		let lastBadgeLog: string | undefined;
+		const publishBadge = (
+			snapshot: { unreadCount: number; pending: boolean },
+			enabled?: boolean,
+			reassert = true,
+		) => {
+			// Keep the existing headless guard in the one Dock policy helper.
+			// setBadge alone succeeds even with no running tile after ShipIt.
+			if (reassert) reassertDockParticipation();
+			nativeBadge.update(snapshot, enabled);
+			const state = nativeBadge.readForScene();
+			// isVisible reports regular activation policy, not painted Dock pixels
+			// or notification authorization. Read after the gated show decision;
+			// an asynchronous repair can still report accessory until it completes.
+			const policy =
+				process.platform === "darwin" && app.dock
+					? app.dock.isVisible()
+						? "regular"
+						: "accessory"
+					: "unavailable";
+			const label =
+				process.platform === "darwin" && app.dock
+					? app.dock.getBadge()
+					: "platform-native";
+			const line = `[app-badge] label=${label} count=${state.unreadCount} pending=${state.pending} policy=${policy} enabled=${enabled !== false}`;
+			if (line !== lastBadgeLog) {
+				lastBadgeLog = line;
+				logger.info(line, LogFileType.BACKEND);
+			}
+		};
+		const appAttention = new AppAttentionService({
+			request: (input) => backendService.requestDesktop(input),
+			supportsUnreadEvents: desktopRequestSchema.safeParse({
+				op: "team_bridge.unread.events",
+				after: "0",
+				wait: 20,
+			}).success,
+			publish: publishBadge,
+			clear: () => {
+				// Quit/reset clears must never request Dock activation-policy repair.
+				publishBadge({ unreadCount: 0, pending: false }, undefined, false);
+				nativeBadge.reset();
+			},
+			// Fire-and-forget: the sign-out must not wait on a directory sweep. A delete that
+			// fails is retried by the next `clear()` and otherwise waits for the NEXT LAUNCH:
+			// this process reaps orphaned files in `open()` and in every `clearLocked()`, and
+			// nowhere else (review round 1, F-4; corrected in round 2). Both caches are
+			// constructed just below this statement — see why there, beside those
+			// constructions — and these closures only reach them when a transition actually
+			// fires, which is after this synchronous block has finished.
+			principalChanged: () => {
+				// `fence()`, not `clear()`, for both caches and for the same reason: the
+				// transition drops everything only once this process has confirmed a principal,
+				// so the `null -> <account>` report every launch produces does not delete a cache
+				// the feature exists to keep.
+				void linkPreviewArtifacts.fence();
+				void teamBridgeImages.fence();
+			},
+			/*
+			 * THE SAME PRINCIPAL, AS A STATE RATHER THAN ONLY AS AN EVENT.
+			 *
+			 * `principalChanged` above is fired from one witness (`observeResponse`), so it
+			 * never fires for a principal that changed while this process was closed, and
+			 * it fires spuriously at every launch. This port carries the answer instead:
+			 * fired from a renderer status AND from the reconcile poll, it lets the image
+			 * cache bind its bytes to the principal the app can actually see, and drop
+			 * them when that is a different account or a verified sign-out.
+			 */
+			principalResolved: (accountId) => {
+				void linkPreviewArtifacts.bind(accountId);
+				void teamBridgeImages.bind(accountId);
+			},
+		});
+		/*
+		 * LINK PREVIEWS' BYTE CACHE — built BELOW the attention service, deliberately.
+		 *
+		 * WHY NOT ABOVE IT, where it reads more naturally: `scripts/app-icon-badge.test.mjs`
+		 * slices this file from `const publishBadge =` to `const appAttention =` and
+		 * evaluates that region through `new Function` with an explicit name list.
+		 * A construction inside that region fails there with `ReferenceError:
+		 * LinkPreviewArtifactCache is not defined` — a real regression in a test this
+		 * change does not own (QA round 2, Q-2), so the cache is built here instead.
+		 * The port above is outside that region and only reaches this binding when a
+		 * principal transition actually fires, which cannot happen before this
+		 * synchronous block finishes.
+		 *
+		 * WHAT IT IS FOR. It holds third-party image BYTES for 24 h, and a sign-out or
+		 * account switch must not leave the departing account's images on disk — so it
+		 * consumes BOTH principal ports above, exactly as the Team Bridge image cache
+		 * does: `principalResolved` binds it to the account the app can see (same keeps,
+		 * different drops, a verified sign-out drops), `principalChanged` drops it at the
+		 * transition. A per-entry account fingerprint already stops a replayed id being
+		 * served under another receipt (see `link-preview/artifact-cache.ts`); this is
+		 * the other half: the bytes stop existing.
+		 *
+		 * WHAT MAIN DOES NOT DO HERE, because the next reader will be tempted: it does
+		 * not fetch, parse, or validate any remote document. Issues with a preview
+		 * (dial-tone page, private host, disabled feature) belong to core's routes; main
+		 * only forwards and keeps the bytes.
+		 *
+		 * OPENED IN THE BACKGROUND: `open()` ensures the directory, reads the index and
+		 * sweeps once, and until it settles every lookup is a miss and every store is a
+		 * no-op — a cold cache, not an error. Blocking the window on a directory scan to
+		 * save one image download would trade the first paint for it.
+		 */
+		const linkPreviewArtifacts = new LinkPreviewArtifactCache({
+			// The documented home: <userData>/cache/link-previews, one file per
+			// artifact id with an `index.json` beside them.
+			dir: join(app.getPath("userData"), "cache", "link-previews"),
+		});
+		void linkPreviewArtifacts.open().catch(() => {});
+		/*
+		 * TEAM BRIDGE MESSAGE IMAGES' BYTE CACHE — built here, for the same two reasons
+		 * the link-preview cache is: this region is outside the slice
+		 * `scripts/app-icon-badge.test.mjs` evaluates (see the note above), and a cache
+		 * needs `app.getPath("userData")`, which only exists once the app is ready.
+		 *
+		 * WHAT IT IS FOR. Entering a channel re-downloaded every visible image and
+		 * nothing survived a restart. This holds the bytes behind one
+		 * `team_bridge.attachment` receipt for seven days, bounded, and is consulted by
+		 * the media relay before it fetches — same request, same bearer, same route, no
+		 * new IPC op and no renderer contract change. It does NOT park blob URLs: the
+		 * network cost goes, the IPC cost stays (`team-bridge-image-cache.ts` states
+		 * that decision where the next reader will look for it).
+		 *
+		 * AND A SIGN-OUT MUST NOT LEAVE THEM BEHIND, which is why this cache consumes BOTH
+		 * of the attention service's principal ports above: `principalResolved` binds the
+		 * bytes to the account the app can see and drops them for a different one or a
+		 * verified sign-out (the state check, fed by a renderer status AND by the
+		 * reconcile poll), while `principalChanged` drops them at the transition itself,
+		 * before the next read can race the switch. A per-entry account fingerprint
+		 * already stops a replayed key being served under another receipt; the drop is
+		 * the other half, where the bytes stop existing.
+		 *
+		 * ATTACHED, NOT PASSED, to the media relay: `backendService` is constructed at
+		 * module load, long before this block, so the cache reaches it through
+		 * `attachTeamBridgeImageCache` — one owner for "does this process cache
+		 * message images", and a `null` there means every read is a fetch.
+		 *
+		 * OPENED IN THE BACKGROUND, like its link-preview neighbour: until `open()`
+		 * settles every lookup is a miss and every store is a no-op. A cold cache is
+		 * not an error, and blocking the first paint on a directory scan to save one
+		 * image download would be the wrong trade. No principal is passed here on
+		 * purpose: at this instant the app has not answered a status yet, so "unknown"
+		 * is the truth, and `bind` resolves it on the first answer. Passing `null` as
+		 * "signed out" would delete the cache at every launch — the thing it exists to
+		 * avoid — and buys nothing, because a read can only be answered for the account
+		 * whose fingerprint stored the entry.
+		 */
+		const teamBridgeImages = new TeamBridgeImageCache({
+			// The documented home: <userData>/cache/team-bridge-images, one hashed file
+			// per receipt with an `index.json` beside them.
+			dir: join(app.getPath("userData"), "cache", "team-bridge-images"),
+		});
+		void teamBridgeImages.open().catch(() => {});
+		backendService.attachTeamBridgeImageCache(teamBridgeImages);
+		refreshAppIconBadge = () => {
+			if (process.platform === "win32") nativeBadge.invalidateOverlayTarget();
+			appAttention.projection.refresh();
+		};
+		const stopBadgeLocale = subscribeLocale(() =>
+			appAttention.projection.refresh(),
+		);
+		stopAppIconBadge = () => appAttention.stop();
+		resumeAppIconBadge = () => appAttention.resume();
+		app.once("will-quit", stopBadgeLocale);
 		const sendDesktop = guardForegroundReceipts(
 			() => mainWindow,
-			(input) =>
-				backendService.requestDesktop(input).then((response) => {
-					/*
-					 * The voice slot's reads and the `/voice/text` answers, seen by MAIN:
-					 * the only way a reply or gate text becomes speakable is that it came
-					 * back from the daemon through here (the speak guard).
-					 */
-					qwenVoice.noteDesktopAnswer(input, response);
-					return response;
-				}),
+			async (input) => {
+				const response = await backendService.requestDesktop(input);
+				/*
+				 * The voice slot's reads and the `/voice/text` answers, seen by MAIN:
+				 * the only way a reply or gate text becomes speakable is that it came
+				 * back from the daemon through here (the speak guard).
+				 */
+				qwenVoice.noteDesktopAnswer(input, response);
+				appAttention.observeResponse(input, response);
+				return response;
+			},
 		);
+		/*
+		 * The configured notification sound for all four banner owners
+		 * (`notification-sound.ts`). Configured BEFORE any of them can raise a
+		 * banner; until its first read settles every banner keeps today's OS
+		 * chime. The renderer fallback (Windows/Linux, or macOS when staging
+		 * failed) needs a window; with none the banner simply goes out silent.
+		 */
+		const notificationSound = configureNotificationSound({
+			request: (input) => backendService.requestDesktop(input),
+			media: (input) => backendService.requestDesktopMedia(input, null),
+			playInRenderer: (bytes) => {
+				const window = mainWindow;
+				if (!window || window.isDestroyed()) return false;
+				window.webContents.send(NOTIFICATION_SOUND_PLAY_CHANNEL, bytes);
+				return true;
+			},
+			log: (line) => logger.info(line, LogFileType.BACKEND),
+		});
 		const desktopNotifier = new DesktopNotifier(
 			() => mainWindow,
 			sendDesktop,
-			windowLaunch.show,
+			// S1: a scripted run banners nothing, `inactive` included - its banners
+			// would duplicate the operator's own app and could enter a frame.
+			devDriverScript.honoured ? "never" : windowLaunch.show,
 			{
 				/*
 				 * Whether a window we have a heartbeat from is still there.
@@ -2716,6 +3540,62 @@ app
 			// line is what tells that trigger apart from the other four.
 			reportRaise,
 		);
+		/*
+		 * Team Bridge message banners. A SEPARATE owner from the notifier above: its
+		 * vocabulary is the renderer's (a conversation and a sender label), not the
+		 * backend's composition, and its dedupe cursor is per conversation rather
+		 * than per backend dedupe key.
+		 *
+		 * The store is a small file in `userData`: only conversation ids and the
+		 * newest seq a banner was raised for. The window and the raise policy are
+		 * the same ones every other banner click uses, so a click lands where the
+		 * app already brings itself forward. `reopen` asks the app for a window the
+		 * only way it knows how (the Dock-click path); the target stays pending for
+		 * the new renderer to pull on mount.
+		 */
+		let notificationAvatarAvailable = false;
+		let notificationEndpointAvatarAvailable = false;
+		const notificationImages = new TeamBridgeNotificationImages({
+			enabled: () => notificationAvatarAvailable,
+			endpointAvatars: () => notificationEndpointAvatarAvailable,
+			request: (input) => backendService.requestDesktopMedia(input, null),
+			theme: () => (nativeTheme.shouldUseDarkColors ? "dark" : "light"),
+			decode: (data) => {
+				const icon = nativeImage.createFromBuffer(Buffer.from(data));
+				return icon.isEmpty() ? undefined : icon;
+			},
+		});
+		const teamBridgeNotifier = new TeamBridgeNotifier({
+			// Native capability belongs only to the admitted Team Bridge notifier,
+			// not a renderer IPC or the regular completion/gate notification path.
+			attention: {
+				request: () => app.dock?.bounce("informational") ?? -1,
+				cancel: (id) => app.dock?.cancelBounce(id),
+			},
+			images: notificationImages,
+			window: () => mainWindow,
+			show: windowLaunch.show,
+			icon: image,
+			store: new TeamBridgeNotifyStore(
+				join(app.getPath("userData"), "team-bridge-notifications.json"),
+				(message, error) =>
+					logger.warn(`${message}: ${String(error)}`, LogFileType.BACKEND),
+			),
+			host: {
+				signalOpen: () => {
+					const window = mainWindow;
+					if (window && !window.isDestroyed()) {
+						window.webContents.send("team-bridge:open");
+					}
+				},
+				reopen: () => app.emit("activate"),
+			},
+			present: (window) =>
+				raiseWindow(window, windowLaunch.show, {
+					trigger: "banner-click",
+					report: reportRaise,
+				}),
+		});
 		// Read `features.notification_contract` whenever the backend becomes
 		// reachable, NOT here: the desktop token is minted inside
 		// `backendService.start()` below, so a capability request issued now
@@ -2734,6 +3614,45 @@ app
 		// defers the legacy toast until the read settles, so nothing can slip
 		// through the window in between.
 		backendService.onBackendReady(() => {
+			appAttention.reset();
+			// Negotiate outside delivery. A restarted/older core drops all image
+			// eligibility until its own capability answers; never 404-probe per event.
+			notificationAvatarAvailable = false;
+			notificationEndpointAvatarAvailable = false;
+			notificationImages.clear();
+			void backendService
+				.requestDesktop({ op: "capabilities" })
+				.then((response) => {
+					const body = response.body as {
+						result?: { features?: Record<string, unknown> };
+					} | null;
+					notificationAvatarAvailable =
+						Number(
+							body?.result?.features?.team_bridge_notification_avatar ?? 0,
+						) >= 1;
+					// An agent's own picture on a banner needs core's endpoint relay;
+					// without it the agent keeps the glyph composite.
+					notificationEndpointAvatarAvailable =
+						Number(body?.result?.features?.team_bridge_endpoint_avatar ?? 0) >=
+						1;
+					// Gated on the capability reading TRUE after any backend-ready, not on a
+					// false -> true flip: this event cleared the cache just above, so the
+					// replay only refills what it emptied, and no path runs from cache
+					// completion back here. One reconciliation per negotiation, no retry.
+					if (notificationAvatarAvailable)
+						teamBridgeNotifier.replayDirectories();
+				})
+				.catch(() => undefined);
+			/*
+			 * And the main process's locale, for the same reason and on the same
+			 * transitions: a restarted or newly discovered backend can carry a
+			 * different `language` answer, and every later banner reads the store at
+			 * draw time.
+			 */
+			void mainLocale.refresh();
+			// Same transitions: a different backend can carry a different sound
+			// setting, or none (an older core drops back to today's chime).
+			void notificationSound?.refresh();
 			void desktopNotifier.refreshNotificationContract();
 			// The feed's own gate: it reads `features.desktop_feed` and opens
 			// nothing without it, so an older backend keeps the per-session path and
@@ -2744,11 +3663,17 @@ app
 			void publishViewerPresence();
 		});
 		backendService.observeStream((sessionId, data) => {
+			let snapshot: true | undefined;
 			try {
-				desktopNotifier.observe(sessionId, JSON.parse(data));
+				const frame = JSON.parse(data);
+				// Reuse type knowledge even if a notification side effect throws;
+				// otherwise the diagnostic could silently label a later snapshot first.
+				if (frame?.type === "snapshot") snapshot = true;
+				desktopNotifier.observe(sessionId, frame);
 			} catch {
 				// A frame the renderer cannot parse is not a notification either.
 			}
+			return snapshot;
 		});
 		// The ONE trusted renderer URL: the dev server while developing, the packaged
 		// document otherwise. Named rather than inlined because a second consumer
@@ -2767,6 +3692,32 @@ app
 		 */
 		const consoleCaptureUrl = consoleCaptureUrlFor(rendererUrl);
 		/*
+		 * S1's inert document, derived from the same trusted URL rather than spelled
+		 * a second time: a dev server on another port or a moved bundle cannot leave
+		 * the overlay pointing at a document that is not there. The host only receives
+		 * it when the gate passed; the URL itself is never renderer- or caller-supplied.
+		 */
+		const addressOverlayDocumentUrl =
+			addressOverlayGate.list || addressOverlayProduct
+				? addressListDocumentUrlFor(rendererUrl)
+				: addressOverlayDocumentUrlFor(rendererUrl);
+		/*
+		 * S6c: the approvals card is default-on. The kill switch is read in the
+		 * host (`approvalsOverlayEnabled`), so the trusted document URL is derived
+		 * on every launch and the host receives the option; setting the switch
+		 * makes the host create no controller and no child.
+		 */
+		const approvalsOverlayDocumentUrl = documentUrlFor(
+			rendererUrl,
+			"browser-approvals-overlay.html",
+		);
+		// The hidden H.264 encoder document (`record_start {quality: "high"}`),
+		// derived from the same trusted URL for the same reason.
+		const recordingEncoderDocumentUrl = documentUrlFor(
+			rendererUrl,
+			"recording-encoder.html",
+		);
+		/*
 		 * The machine-wide feed's two consumers, and the split between them is the
 		 * design: main takes the notifications (so a completion banners with no
 		 * window at all — the operator's own reported case) and the window takes
@@ -2784,15 +3735,39 @@ app
 				 * starts on an enable even with no window open to see the frame.
 				 */
 				qwenVoice.observeFrame(frame);
+				appAttention.observe(frame);
 				if (frame.type === "notification") {
 					desktopNotifier.observe(frame.session_id, frame);
 					return;
 				}
+				/*
+				 * A config frame naming the language key is an INVALIDATION, not the
+				 * value: the payload's `language` is a convenience for clients that
+				 * mirror config, while the authoritative answer is the capabilities
+				 * read this triggers. Re-reading keeps one source of truth and means a
+				 * frame written by a foreign process cannot pin a tag of its choosing.
+				 *
+				 * BEFORE the window check on purpose: the frame matters with no window
+				 * at all (the app alive in the dock), and the locale store is main's,
+				 * not the renderer's. The frame is still forwarded below when a window
+				 * exists.
+				 */
+				if (
+					frame.type === "config" &&
+					frame.payload.changed_keys.includes(LANGUAGE_SETTING_KEY)
+				) {
+					void mainLocale.refresh();
+				}
+				// Same reasoning for the sound settings: main owns the banners, so
+				// the re-read must not depend on a window existing.
+				if (frame.type === "config")
+					notificationSound?.observeConfigChange(frame.payload.changed_keys);
 				const window = mainWindow;
 				if (!window || window.isDestroyed()) return;
 				window.webContents.send("desktop-feed-frame", frame);
 			},
 			(state: DesktopFeedState) => {
+				if (!state.connected) appAttention.reset();
 				const window = mainWindow;
 				if (!window || window.isDestroyed()) return;
 				window.webContents.send("desktop-feed-state", state);
@@ -3061,7 +4036,14 @@ app
 					logger.warn(`mini-view: ${message}`, LogFileType.BACKEND),
 				baseline: initial.present ? initial.value : undefined,
 			});
-		} else {
+		}
+		// Recording remains live in window modes where global hotkeys are off.
+		localConfigWatcher = watchLocalConfig({
+			onConfigChange: () => recordingShortcut.refresh(),
+			onProblem: (message) =>
+				logger.warn(`recording-shortcut: ${message}`, LogFileType.BACKEND),
+		});
+		if (!hotkeysAllowed(windowLaunch.mode)) {
 			if (miniViewExerciser) {
 				const line =
 					"mini-view: exerciser window created (dev driver armed; no registration in this mode)";
@@ -3130,6 +4112,46 @@ app
 			(m) => logger.warn(m, LogFileType.BACKEND),
 		);
 
+		const linkPreview = createLinkPreviewService({
+			transport: {
+				request: (input) => sendDesktop(input),
+				media: (input) => backendService.requestDesktopMedia(input, null),
+			},
+			cache: linkPreviewArtifacts,
+		});
+
+		/*
+		 * Mesh pairing confirmations (security review round 1, US-R1-1): one
+		 * outstanding token per window, bound to the sending document. The document
+		 * GENERATION is main's count of cross-document commits and renderer losses on
+		 * that webContents, so a token minted for one loaded page cannot be spent by
+		 * the next even where Chromium reuses the frame host (same frame token).
+		 * Listeners attach on the first read - generation 0 is "the page that asked
+		 * first" - and every bump also burns that window's token outright.
+		 */
+		const meshPairingConfirmations = new MeshPairingConfirmations();
+		const pairingDocumentGenerations = new WeakMap<
+			Electron.WebContents,
+			number
+		>();
+		const pairingDocumentGeneration = (contents: Electron.WebContents) => {
+			const known = pairingDocumentGenerations.get(contents);
+			if (known !== undefined) return known;
+			pairingDocumentGenerations.set(contents, 0);
+			const id = contents.id;
+			const bump = () => {
+				pairingDocumentGenerations.set(
+					contents,
+					(pairingDocumentGenerations.get(contents) ?? 0) + 1,
+				);
+				meshPairingConfirmations.forget(id);
+			};
+			contents.on("did-navigate", bump);
+			contents.on("render-process-gone", bump);
+			contents.once("destroyed", () => meshPairingConfirmations.forget(id));
+			return 0;
+		};
+
 		registerDesktopIPC(
 			() => mainWindow,
 			rendererUrl,
@@ -3145,6 +4167,7 @@ app
 			 * and the poll share one source of truth.
 			 */
 			() => {
+				recordingShortcut.refresh();
 				const reading = readQuickSendValue();
 				if (reading.problem !== undefined) {
 					logger.warn(
@@ -3175,6 +4198,148 @@ app
 			 * and the guard are two halves of one decision and must share one list.
 			 */
 			supplementMounts,
+			teamBridgeNotifier,
+			/*
+			 * The language setting's write-through tap: an accepted `settings.edit` /
+			 * `settings.reset` of the language key re-reads the backend's resolved
+			 * tag instead of trusting the value the renderer sent. The setting is the
+			 * one owner; main only mirrors what the backend answers.
+			 */
+			() => {
+				void mainLocale.refresh();
+			},
+			(input) => recordingShortcut.admit(input),
+			/*
+			 * The link-preview proxy, LAST for the reason the signature's own note gives:
+			 * every earlier caller passes these positionally. It rides the same sender
+			 * gate as every other channel above it.
+			 */
+			linkPreview,
+			/*
+			 * Main's own mesh pairing ops (`mesh-pairing-attest.ts`): the launch's
+			 * static eligibility, the one-shot confirmation (click-provenance gate,
+			 * isolated-world activation pre-filter, then the person's approval of
+			 * the exact answer on a native sheet built from main's own read), and
+			 * the answer (consume for the identical answer, re-check, attest over
+			 * `mesh-pairing.sock`, then this same forwarder). ONLY the
+			 * main window may confirm or answer (the tray lives there; the mini view
+			 * has no pairing card), so the sender is re-checked against it alone.
+			 */
+			async (event, pairingRequest) => {
+				const launchFacts = () => ({
+					platform: process.platform,
+					packaged: app.isPackaged,
+					/*
+					 * argv PLUS any debug switch main appended to Chromium's own
+					 * command line at runtime (`app.commandLine.appendSwitch`), which
+					 * `process.argv` never shows.
+					 */
+					argv: [
+						...process.argv,
+						...MESH_PAIRING_DEBUG_SWITCHES.filter((name) =>
+							app.commandLine.hasSwitch(name.slice(2)),
+						),
+					],
+					/*
+					 * Refusal-only: this env feeds nothing but the `dev_flag` check in
+					 * `pairingStaticRefusal`, which REFUSES when a driver variable is
+					 * set. So unlike the launch facts above (window mode, driver
+					 * arming), where a cwd `.env` must not be able to ADD anything and
+					 * `launchEnv` alone is the safe read, here the safe read is the
+					 * superset of the launch snapshot and the folded env: the snapshot
+					 * alone would miss a driver variable a `.env` added and so weaken
+					 * the refusal. `refusalEnv` keeps any non-empty value per key, so
+					 * a `.env` line blanking a launch-time driver variable cannot mask
+					 * it either: a driver variable set in EITHER env refuses.
+					 */
+					env: refusalEnv(launchEnv, process.env),
+					windowMode: windowLaunch.mode,
+				});
+				if (pairingRequest.op === "pairings.eligibility")
+					return meshPairingEligibility(launchFacts());
+				const owner = mainWindow;
+				// Re-read on every call: the window may close, or the sender's
+				// document change, between the confirmation and the answer.
+				const admitted = () =>
+					owner !== null &&
+					!owner.isDestroyed() &&
+					isAdmittedSender(event, [{ window: owner, url: rendererUrl }]);
+				const host: PairingAnswerHost = {
+					facts: () => ({
+						...launchFacts(),
+						window:
+							admitted() && owner
+								? {
+										visible: owner.isVisible(),
+										minimized: owner.isMinimized(),
+										focused: owner.isFocused(),
+										devToolsOpened: owner.webContents.isDevToolsOpened(),
+										debuggerAttached: owner.webContents.debugger.isAttached(),
+									}
+								: null,
+					}),
+					document: () => {
+						const frame = event.senderFrame;
+						if (!admitted() || !owner || !frame || frame.isDestroyed())
+							return null;
+						return {
+							webContentsId: event.sender.id,
+							processId: frame.processId,
+							frameToken: frame.frameToken,
+							generation: pairingDocumentGeneration(owner.webContents),
+						};
+					},
+					/*
+					 * In an ISOLATED world (code review F2): a page script can redefine
+					 * `navigator.userActivation` in its own world, not in this one.
+					 * `userGesture` is FALSE on purpose: `true` would GRANT the page an
+					 * activation, which is exactly the fact being asked about.
+					 */
+					userActivation: async () =>
+						owner !== null && !owner.isDestroyed()
+							? (await owner.webContents.executeJavaScriptInIsolatedWorld(
+									MESH_PAIRING_PROBE_WORLD_ID,
+									[{ code: "navigator.userActivation.isActive === true" }],
+									false,
+								)) === true
+							: false,
+					/*
+					 * Main's OWN read of the cards (security review round 2, US-R2-1):
+					 * the sheet's labels and the answerability check never come from
+					 * the renderer's request.
+					 */
+					readPairings: () => sendDesktop({ op: "pairings.list" }),
+					/*
+					 * The TRUSTED CONTROL: a native message box attached to the main
+					 * window (window-modal - a sheet on macOS), which no page script,
+					 * CDP session or dev driver can click. Button 0 is the action and
+					 * the ONLY answer that approves. Cancel is the default AND the
+					 * cancel button, so a held or repeated Return from the code field
+					 * and Escape both dismiss rather than approve. `signal` closes it
+					 * at the card's expiry (Electron resolves that as the cancel id).
+					 */
+					showSheet: async (sheet, signal) => {
+						if (owner === null || owner.isDestroyed()) return false;
+						const { response } = await dialog.showMessageBox(owner, {
+							type: "question",
+							buttons: [sheet.actionLabel, sheet.cancelLabel],
+							defaultId: 1,
+							cancelId: 1,
+							noLink: true,
+							message: sheet.message,
+							detail: sheet.detail,
+							signal,
+						});
+						return response === 0 && !signal.aborted;
+					},
+					confirmations: meshPairingConfirmations,
+					configDir: () => quickSendConfigDir(),
+					forward: sendDesktop,
+				};
+				return pairingRequest.op === "pairings.confirm"
+					? confirmMeshPairing(pairingRequest, host)
+					: answerMeshPairing(pairingRequest, host);
+			},
 		);
 		registerQwenVoiceIPC(() => mainWindow, rendererUrl, {
 			getEnabled: () => qwenVoice.isEnabled(),
@@ -3195,6 +4360,104 @@ app
 			pause: () => qwenVoice.pause(),
 			resume: () => qwenVoice.resume(),
 			setMuted: (muted) => qwenVoice.setMuted(muted),
+		});
+
+		// Both app documents may read recording state; only the main window's
+		// main frame may publish panel/fixed claims.
+		const recordingSenders = () => [
+			...(mainWindow === null
+				? []
+				: [{ window: mainWindow, url: rendererUrl }]),
+			...(miniView === null
+				? []
+				: [{ window: miniView.window, url: miniViewUrlFor(rendererUrl) }]),
+		];
+		/*
+		 * Settings' "Send test notification" (`notification-test.ts`): one real
+		 * banner through the shared sound helper. Only the main window's main
+		 * frame may ask; a headless run answers `suppressed` and raises nothing.
+		 */
+		ipcMain.removeHandler(NOTIFICATION_TEST_CHANNEL);
+		ipcMain.handle(NOTIFICATION_TEST_CHANNEL, (event) => {
+			const owner = mainWindow;
+			if (
+				!owner ||
+				owner.isDestroyed() ||
+				!isAdmittedSender(event, [{ window: owner, url: rendererUrl }])
+			)
+				throw new Error("This window cannot send a test notification.");
+			return sendTestNotification({
+				windowRaise: windowLaunch.show,
+				sound: () => notificationSound,
+			});
+		});
+		ipcMain.removeHandler("recording-shortcut:get");
+		ipcMain.handle("recording-shortcut:get", (event) => {
+			if (!isAdmittedSender(event, recordingSenders()))
+				throw new Error("This window cannot read the recording shortcut.");
+			return recordingShortcut.getState();
+		});
+		ipcMain.removeAllListeners("recording-shortcut:claims");
+		ipcMain.on("recording-shortcut:claims", (event, rev, claims) => {
+			const owner = mainWindow;
+			if (
+				!owner ||
+				owner.isDestroyed() ||
+				!isAdmittedSender(event, [{ window: owner, url: rendererUrl }])
+			) {
+				return;
+			}
+			recordingShortcut.setClaims(rev, claims);
+		});
+		/*
+		 * THE PASTE'S PLAIN TEXT, SYNCHRONOUSLY (issue #1573). On macOS a paste
+		 * whose pasteboard holds a file hands the renderer's `paste` event only
+		 * `types: ["Files"]` with `getData("text/plain") === ""`, yet Chromium's
+		 * default insert still types the pasteboard's plain string - the file's
+		 * name - into the composer (measured on Electron 45.1.0, QA round 1). The
+		 * handler must decide inside the event whether to cancel that insert, so
+		 * it asks here with `sendSync`; the reply waits for Electron 45's
+		 * promise-only `clipboard.readText()`, and the renderer stays blocked only
+		 * for that one read.
+		 *
+		 * The same two documents that mount the chat composer may ask (main window
+		 * and mini view). A refused or failed read STILL answers `""`: a `sendSync`
+		 * with no `returnValue` never returns, which would freeze the renderer, and
+		 * `""` is the fail-safe answer (the paste keeps its default insert).
+		 */
+		ipcMain.removeAllListeners("clipboard:paste-plain-text");
+		ipcMain.on("clipboard:paste-plain-text", (event) => {
+			if (!isAdmittedSender(event, recordingSenders())) {
+				event.returnValue = "";
+				return;
+			}
+			clipboard.readText().then(
+				(text) => {
+					event.returnValue = text;
+				},
+				() => {
+					event.returnValue = "";
+				},
+			);
+		});
+		ipcMain.removeAllListeners("recording-shortcut:pending");
+		ipcMain.on("recording-shortcut:pending", (event, value) => {
+			const owner = mainWindow;
+			if (
+				!owner ||
+				owner.isDestroyed() ||
+				!isAdmittedSender(event, [{ window: owner, url: rendererUrl }]) ||
+				(value !== undefined && typeof value !== "string")
+			) {
+				return;
+			}
+			recordingShortcut.markPending(value);
+		});
+		recordingShortcut.onChange((state) => {
+			for (const window of [mainWindow, miniView?.window]) {
+				if (window && !window.isDestroyed())
+					window.webContents.send("recording-shortcut:change", state);
+			}
 		});
 
 		/*
@@ -3342,12 +4605,31 @@ app
 		 */
 		ipcMain.handle(
 			"probe-files",
-			async (event, paths: unknown, cwd?: string): Promise<ProbedFile[]> => {
+			async (
+				event,
+				paths: unknown,
+				cwd?: string,
+				options?: { fresh?: boolean },
+			): Promise<ProbedFile[]> => {
 				authorizeLocalFileSender(event, "probe files");
 				const asked = Array.isArray(paths)
 					? paths.filter((path): path is string => typeof path === "string")
 					: [];
-				return await probeFiles(asked, cwd, app.getPath("home"));
+				/*
+				 * `fresh` is the watcher's opt-out of the answer cache (see
+				 * `probeFiles`); it is read as a strict boolean because the option
+				 * arrives over IPC, and anything else is the default - a caller
+				 * cannot turn caching off for everyone by sending garbage.
+				 */
+				const fresh = options?.fresh === true;
+				return await probeFiles(
+					asked,
+					cwd,
+					app.getPath("home"),
+					undefined,
+					undefined,
+					fresh,
+				);
 			},
 		);
 
@@ -3382,6 +4664,12 @@ app
 				return await listDirectory(resolveUserPath(target, cwd));
 			},
 		);
+
+		// Same sender gate as file reads; only the existing guest's status enum escapes.
+		ipcMain.handle("pdf-viewer-status", async (event, blobUrl: unknown) => {
+			authorizeLocalFileSender(event, "inspect its PDF viewer");
+			return pdfViewerStatus(event.sender, blobUrl, trustedRendererDocuments());
+		});
 
 		/*
 		 * Bytes for the in-app viewers, capped and named.
@@ -3464,6 +4752,46 @@ app
 						error: error instanceof Error ? error.message : String(error),
 					};
 				}
+			},
+		);
+
+		/*
+		 * One composer attachment, read and POSTed to the daemon.
+		 *
+		 * The sender gate is the SAME as `read-file-bytes` above and for the same
+		 * reason: this channel turns a path into bytes leaving the machine. It is
+		 * additionally the only door that attaches the daemon's bearer token, so a
+		 * foreign frame that somehow acquired `window.api` could not reach the
+		 * attachment store without it.
+		 *
+		 * Answers a discriminant rather than throwing, because the composer renders
+		 * the `error` string in its refusal and a structured-clone-stripped Error
+		 * would arrive with nothing it can read.
+		 */
+		ipcMain.handle(
+			"upload-attachment",
+			async (
+				event,
+				source: AttachmentUploadSource,
+			): Promise<AttachmentUploadResult> => {
+				if (!isAdmittedSender(event, trustedLocalFileSenders())) {
+					return {
+						success: false,
+						code: "unreadable",
+						error: "This window cannot read local files.",
+					};
+				}
+				// Only the path form has a path to resolve; a pasted file's bytes
+				// arrive in the data URL it was stored as.
+				const resolved =
+					source.kind === "path"
+						? { ...source, path: resolveUserPath(source.path) }
+						: source;
+				return uploadAttachment({
+					source: resolved,
+					backendUrl: backendService.getBackendUrl(),
+					token: backendService.getDesktopToken(),
+				});
 			},
 		);
 
@@ -3570,6 +4898,16 @@ app
 			 * mini, and the broadcast latch below covers the platforms and
 			 * situations where focus still moves.
 			 */
+			// The armed rig's queue answers FIRST, before any window is needed: a
+			// paperclip press in a headless scene has a parent, but the answer must not
+			// depend on the dialog sheet's own plumbing. See `dev-driver-attach.ts`.
+			if (attachQueue.paths.length > 0) {
+				const filePaths = attachQueue.paths.splice(0);
+				console.log(
+					`[dev-driver] answered the file dialog with ${filePaths.length} queued path(s)`,
+				);
+				return { canceled: false, filePaths };
+			}
 			const parent = BrowserWindow.fromWebContents(event.sender) ?? mainWindow;
 			if (!parent) {
 				logger.error(
@@ -3732,6 +5070,15 @@ app
 		ipcMain.handle(BACKEND_RECONNECT_CHANNEL, () =>
 			backendService.reconnectNow(),
 		);
+		/*
+		 * The start-up panel's Restart. Quiet: its outcome is drawn by the same
+		 * panel from the start-up record, so a failure must not also raise a
+		 * modal over the window that already shows it.
+		 */
+		ipcMain.handle(BACKEND_RESTART_CHANNEL, async () => {
+			await backendService.restart({ quiet: true });
+			return backendService.getStatusSnapshot();
+		});
 		backendService.onStatusChange((snapshot) => {
 			if (mainWindow && !mainWindow.isDestroyed()) {
 				mainWindow.webContents.send(BACKEND_STATUS_EVENT, snapshot);
@@ -3751,6 +5098,26 @@ app
 		 * (design §3.7).
 		 */
 		const hasExternalBackend = await backendService.checkExistingBackend();
+
+		/*
+		 * A NAMED BACKEND THAT COULD NOT BE ATTACHED TO ENDS HERE.
+		 *
+		 * Everything below answers `hasExternalBackend === false` by finding or
+		 * making a backend: discovery is skipped, `start()` is reached, and on the
+		 * managed-path conditions the installer runs. All of those are the wrong
+		 * answer to "the daemon you named is not serving, or does not accept this
+		 * token" - they turn a diagnosable misconfiguration into a DIFFERENT daemon,
+		 * minutes later, inside the same process. The manager recorded why the
+		 * attach failed at the point it failed, so this reports that and stops.
+		 */
+		if (backendAttach.kind === "attach" && !hasExternalBackend) {
+			reportAttachFailure(
+				backendService.lastAttachFailure() ??
+					`This launch named ${backendAttach.baseUrl} as its backend, but nothing was attached to it.`,
+			);
+			app.exit(1);
+			return;
+		}
 
 		/*
 		 * Only an app permitted to manage a daemon may install or start one. A
@@ -3849,7 +5216,21 @@ app
 					 * `return` on the other arms exists to skip window creation, and skipping
 					 * it here would leave the operator with the same nothing, only quieter.
 					 */
-					if (backendService.isStartBlockedByOccupiedAddress()) {
+					if (backendService.startupFailureReported()) {
+						/*
+						 * A failed start this app RECORDED - exit code, stderr, the errno
+						 * a blocked executable leaves - keeps the window: its start-up
+						 * panel names the cause and offers Restart and Copy diagnostics.
+						 * The modal-and-quit below said "restart the application" and
+						 * nothing else, and took the only place the cause could be read
+						 * away with it (PostHog D2: 26% of Windows users' sessions carry
+						 * "Server is offline" errors).
+						 */
+						logger.error(
+							"Failed to start backend after installation; keeping the window, whose start-up panel reports the cause.",
+							LogFileType.INSTALLER,
+						);
+					} else if (backendService.isStartBlockedByOccupiedAddress()) {
 						logger.error(
 							"Failed to start backend after installation: every address this app may serve on is held by something it does not own. Continuing without quitting; the status surface names the holder and the app keeps probing.",
 							LogFileType.INSTALLER,
@@ -3895,7 +5276,21 @@ app
 					 * arms exists to skip window creation, and skipping it here would leave the
 					 * operator with the same nothing, only quieter.
 					 */
-					if (backendService.isStartBlockedByOccupiedAddress()) {
+					if (backendService.startupFailureReported()) {
+						/*
+						 * A failed start this app RECORDED - exit code, stderr, the errno
+						 * a blocked executable leaves - keeps the window: its start-up
+						 * panel names the cause and offers Restart and Copy diagnostics.
+						 * The modal-and-quit below said "restart the application" and
+						 * nothing else, and took the only place the cause could be read
+						 * away with it (PostHog D2: 26% of Windows users' sessions carry
+						 * "Server is offline" errors).
+						 */
+						logger.error(
+							"Failed to start backend with existing installation; keeping the window, whose start-up panel reports the cause.",
+							LogFileType.BACKEND,
+						);
+					} else if (backendService.isStartBlockedByOccupiedAddress()) {
 						logger.error(
 							"Failed to start backend with existing installation: every address this app may serve on is held by something it does not own. Continuing without quitting; the status surface names the holder and the app keeps probing.",
 							LogFileType.BACKEND,
@@ -4052,6 +5447,7 @@ app
 			// The `webContents` id this window's watch state is keyed on, captured
 			// here because `mainWindow` is null by the time `closed` runs.
 			const windowId = mainWindow.webContents.id;
+			startDevDriverScriptOnce(mainWindow);
 
 			/*
 			 * EVERY remaining parked conversation goes to this window, in arrival order.
@@ -4130,7 +5526,11 @@ app
 			}
 
 			// Initialize the update service with a reference to the backend service
-			updateService = new UpdateService(mainWindow, backendService);
+			updateService = new UpdateService(mainWindow, backendService, {
+				// S3: an armed (rig) boot of the shipped bundle neither repairs that
+				// bundle's seal nor checks for updates. Null for every product launch.
+				quietReason: devDriverQuietUpdatesReason(devDriverArming),
+			});
 			activeUpdateService = updateService;
 
 			// Clean up update service and mainWindow reference when the window is closed
@@ -4158,6 +5558,7 @@ app
 					if (held) clearTimeout(held.timer);
 					heldForConversation.delete(windowId);
 				}
+				recordingShortcut.clearClaims();
 				mainWindow = null;
 			});
 
@@ -4176,9 +5577,10 @@ app
 				updateService?.checkForAllUpdates(true);
 			}, 3000);
 
+			// A recreated window gets the latest file value without a per-keypress read.
+			recordingShortcut.refresh();
 			// Register local shortcuts for focused window
 			mainWindow.webContents.on("before-input-event", (event, input) => {
-				const isCmdOrCtrl = input.control || input.meta;
 				/*
 				 * THE PALETTE'S DOOR (issues #659, #850): Cmd/Ctrl+P opens the palette on
 				 * EVERYTHING, Cmd/Ctrl+Shift+P opens it on COMMANDS. WHICH press means which
@@ -4202,15 +5604,11 @@ app
 				) {
 					event.preventDefault();
 					mainWindow.webContents.send(paletteChannel);
+					return;
 				}
 
-				// Start speech to text: Cmd/Ctrl + Shift + S
-				if (
-					isCmdOrCtrl &&
-					input.shift &&
-					input.key.toLowerCase() === "s" &&
-					input.type === "keyDown"
-				) {
+				// Main owns this door because the renderer may never receive the key.
+				if (recordingShortcut.matches(input)) {
 					if (mainWindow?.isFocused() && mainWindow?.isVisible()) {
 						event.preventDefault();
 						mainWindow.webContents.send("start-speech-to-text");
@@ -4257,12 +5655,17 @@ app
 					window,
 					expectedUrl: rendererUrl,
 					appVersion: app.getVersion(),
+					onPendingConsentChanged: (pending) =>
+						appAttention.projection.setBrowserPending(pending),
 					userDataDir: app.getPath("userData"),
 					// The launch plan's own answer, forwarded rather than re-derived: the
 					// browser host uses it to suppress consent banners in a run with nobody at
 					// the screen, and re-deciding it there would be a second policy beside
 					// `window-mode.ts`.
 					windowShow: windowLaunch.show,
+					// The vetted door to the OS's URL handlers, for the passkey notice's
+					// "Open in system browser" (see `src/main/browser/passkey-notice.ts`).
+					openExternal: openExternalVetted,
 					// The other half of the plan the browser host forwards to a popup's
 					// `webPreferences`: a hidden popup must render like a shown one, so the
 					// mode's own answer travels with the mode rather than being re-derived
@@ -4309,6 +5712,34 @@ app
 					// document, and the preload every renderer in this app gets, which is what
 					// lets main feed the reconstruction to it.
 					consoleCaptureUrl,
+					// S1: only a gated headless probe arm gets this option at all. The
+					// URL is this app's own packaged document, not a caller's string.
+					...(addressOverlayGate.enabled || addressOverlayProduct
+						? {
+								addressOverlay: {
+									enabled: true,
+									list: addressOverlayGate.list || addressOverlayProduct,
+									visible: addressOverlayGate.visible,
+									product: addressOverlayProduct,
+									documentUrl: addressOverlayDocumentUrl,
+								},
+							}
+						: {}),
+					approvalsOverlay: {
+						enabled: true,
+						documentUrl: approvalsOverlayDocumentUrl,
+						preloadPath: join(
+							__dirname,
+							"../preload/browser-approvals-overlay.js",
+						),
+					},
+					// The hidden H.264 encoder behind `record_start {quality: "high"}`:
+					// the app's own bundled document and preload, derived like the
+					// documents above and never caller-supplied.
+					recordingEncoder: {
+						documentUrl: recordingEncoderDocumentUrl,
+						preloadPath: join(__dirname, "../preload/recording-encoder.js"),
+					},
 					preloadPath: join(__dirname, "../preload/index.js"),
 					/*
 					 * The console's surfaces are handed the user's own PATH, from the same
@@ -4999,6 +6430,7 @@ app.on("before-quit", async (event) => {
 	 * its own cancellation (`./quit-state` owns why it is the only one).
 	 */
 	quitState.begin();
+	stopAppIconBadge();
 	/*
 	 * AND THE HARD DEADLINE IS ARMED HERE, IN THE SYNCHRONOUS PART - beside the
 	 * quit's record, BEFORE the session-cookie hold can wait (the hold can spend
@@ -5036,6 +6468,7 @@ app.on("before-quit", async (event) => {
 	globalShortcut.unregisterAll();
 	miniViewRegistrar?.dispose();
 	quickSendWatcher?.stop();
+	localConfigWatcher?.stop();
 	miniView?.dispose();
 	if (windowLaunch.mode === "headless") {
 		launcherWatch?.stop();
@@ -5054,6 +6487,10 @@ app.on("before-quit", async (event) => {
 	 * that is the difference between a shutdown and an app that refuses to close
 	 * without saying so.
 	 */
+	// Encoder windows go down in the synchronous part, ahead of every await below:
+	// Electron closes the windows when this listener's synchronous part returns, and
+	// a hidden renderer left running past that is a process the quit has to wait for.
+	disposeAllRecordingEncoders();
 	if (await holdQuitForSessionCookieSnapshot(event)) return;
 
 	quitExitDeadline.phase("after the session-cookie hold");
@@ -5134,6 +6571,11 @@ app.on("before-quit", async (event) => {
 	// file, so a session stopping at the same moment does not read a record naming
 	// a process that is already gone. Not awaited: `before-quit` is synchronous,
 	// and each of these steps is also safe to lose (see `stopBrowserHost`).
+	// Encoder windows were already destroyed at the top of this handler, in its
+	// synchronous part (D21); a recording in flight is lost with the app, exactly as
+	// the standard path's is. A second pass here is the idempotent backstop for a
+	// quit that re-entered after the hold.
+	disposeAllRecordingEncoders();
 	void stopBrowserHost();
 	/*
 	 * The synchronous tail is done. What remains is the window close Electron

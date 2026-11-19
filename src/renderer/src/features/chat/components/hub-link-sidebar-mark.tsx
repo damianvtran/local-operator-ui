@@ -3,11 +3,20 @@ import {
 	hubLinkSourceName,
 } from "@features/agents/components/hub-link-policy-controls";
 import { hubLinkView } from "@features/agents/hub-link-adapter";
-import { hubReasonText } from "@features/agents/hub-link-copy";
+import {
+	hubFailureReasonText,
+	hubLinkFailureText,
+	hubMarkFailureDetail,
+	hubReasonText,
+	hubUnresolvedDetailText,
+} from "@features/agents/hub-link-copy";
+import { useHubLinkSource } from "@features/agents/hub-link-source";
 import { hubLinkMark } from "@features/agents/hub-link-view";
 import { useHubLinkActions } from "@shared/api/local-operator/hub-link-actions";
+import { hubLinksKey } from "@shared/api/local-operator/hub-link-hooks";
 import type { HubLink } from "@shared/api/local-operator/hub-links";
 import { HubMutationUpgradeRequired } from "@shared/api/local-operator/hub-mutation-safety";
+import { Button } from "@shared/components/ui/button";
 import {
 	Popover,
 	PopoverAnchor,
@@ -17,6 +26,7 @@ import { Tooltip } from "@shared/components/ui/tooltip";
 import { type WithoutParams, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
 import {
 	Check,
 	CircleAlert,
@@ -46,6 +56,14 @@ const INK = {
 };
 
 /**
+ * How far the policy popover is kept from the window's edges, in px - the same
+ * 8px step the sidebar's row flyout and the tag popover clamp to. Without it
+ * Radix keeps the panel only flush with the viewport, and a mark near the foot
+ * of the sidebar drew a panel that ran off the bottom of the window.
+ */
+const POPOVER_COLLISION_PADDING = 8;
+
+/**
  * One fixed 24px slot, including healthy links. Primary update/retry behavior is
  * preserved, while right-click/Shift+F10 always exposes independent policies.
  * The policy popover is a dialog, not a fake menu: real labelled switches remain
@@ -55,15 +73,56 @@ export function HubLinkSidebarMark({
 	link,
 	staged,
 	onDetail,
-}: { link: HubLink; staged: boolean; onDetail: () => void }) {
+	itemName,
+	displayName,
+	itemsById = false,
+	nameAmbiguous = true,
+}: {
+	link: HubLink;
+	staged: boolean;
+	onDetail: () => void;
+	/**
+	 * The item's REGISTRY name (an agent's or team's `name`), the address core's
+	 * released item routes match. Not the label: a team drawn as "Radient
+	 * Development" is addressed as `radientdev`.
+	 */
+	itemName?: string;
+	/**
+	 * What the row is CALLED (a team's label, else its name). Required for a
+	 * readable sentence: core falls back to the item's local id for an agent or
+	 * team link row's `name`, so `link.name` reads as a UUID.
+	 */
+	displayName?: string;
+	/** `desktopFeatureEnabled(capabilities, "hub_items_by_id")`. */
+	itemsById?: boolean;
+	/** Legacy writes require a proved unique registry name; absence fails closed. */
+	nameAmbiguous?: boolean;
+}) {
 	useI18nLocale();
-	const actions = useHubLinkActions(link.link_id);
+	const client = useQueryClient();
+	const actions = useHubLinkActions(link, { displayName: itemName, itemsById });
 	const [open, setOpen] = useState(false);
 	const [consentOpen, setConsentOpen] = useState(false);
 	const button = useRef<HTMLButtonElement>(null);
 	const titleId = useId();
 	const descriptionId = useId();
-	const source = hubLinkSourceName(link);
+	/*
+	 * Two retry affordances can be on screen at once (an unresolved source and a
+	 * failed incoming update). Their labels are distinct, and each button is
+	 * described by its own sentence, so the pair never reads as one control in the
+	 * accessibility tree - the described-by idiom the policy switches already use.
+	 */
+	const sourceUnresolvedId = useId();
+	// The signed-out state's own sentence: the source Retry has nothing to run
+	// there, so the reason it is unavailable is described by a second id rather
+	// than folded into the unresolved line, which holds in states that retry.
+	const sourceSignInId = useId();
+	const failedUpdateId = useId();
+	const item = displayName?.trim() ? displayName : link.name;
+	const { source, memberships, mayReadMemberships } = useHubLinkSource(link);
+
+	const legacyWriteBlocked = !itemsById && (nameAmbiguous || !itemName?.trim());
+
 	const mark = hubLinkMark(hubLinkView(link));
 	const Glyph = actions.isPending ? LoaderCircle : ICON[mark.kind];
 	const direction = t(
@@ -71,36 +130,110 @@ export function HubLinkSidebarMark({
 			? "ui.hub.links.direction_pull"
 			: "ui.hub.links.direction_push",
 	);
-	const policies = t("ui.hub.links.healthy", {
-		item: link.name,
-		source,
-		subscribe: t(
-			link.policy.subscribe
+	const onOff = (value: boolean) =>
+		t(
+			value
 				? "ui.hub.subscriptions.configured_on"
 				: "ui.hub.subscriptions.configured_off",
-		),
-		autoPush: t(
-			link.policy.auto_push
-				? "ui.hub.subscriptions.configured_on"
-				: "ui.hub.subscriptions.configured_off",
-		),
-	});
+		);
+	/*
+	 * Every sentence has a twin written WITHOUT a destination. An unknown source
+	 * used to be the literal "Source unavailable" interpolated into each one
+	 * ("Retry Incoming update for <id> at Source unavailable"); the source line in
+	 * the popover says once, plainly, that it could not be identified.
+	 */
+	const policies = source
+		? t("ui.hub.links.healthy", {
+				item,
+				source,
+				subscribe: onOff(link.policy.subscribe),
+				autoPush: onOff(link.policy.auto_push),
+			})
+		: t("ui.hub.links.healthy_unsourced", {
+				item,
+				subscribe: onOff(link.policy.subscribe),
+				autoPush: onOff(link.policy.auto_push),
+			});
 	const actionLabel =
 		mark.kind === "available"
-			? t("ui.hub.links.available", { item: link.name, source })
+			? source
+				? t("ui.hub.links.available", { item, source })
+				: t("ui.hub.links.available_unsourced", { item })
 			: mark.kind === "failed"
-				? t("ui.hub.links.failed", { direction, item: link.name, source })
+				? source
+					? t("ui.hub.links.failed", { direction, item, source })
+					: t("ui.hub.links.failed_unsourced", { direction, item })
 				: mark.kind === "busy"
-					? t("ui.hub.links.busy", { direction, item: link.name, source })
+					? source
+						? t("ui.hub.links.busy", { direction, item, source })
+						: t("ui.hub.links.busy_unsourced", { direction, item })
 					: mark.kind === "applied"
-						? t(
-								mark.direction === "pull"
-									? "ui.hub.links.updated"
-									: "ui.hub.links.published",
-								{ item: link.name, source },
-							)
+						? mark.direction === "pull"
+							? source
+								? t("ui.hub.links.updated", { item, source })
+								: t("ui.hub.links.updated_unsourced", { item })
+							: source
+								? t("ui.hub.links.published", { item, source })
+								: t("ui.hub.links.published_unsourced", { item })
 						: policies;
-	const description = `${actionLabel} ${policies}${link.policy.auto_push && link.eligibility.reason ? ` ${t("ui.hub.subscriptions.effective_paused", { reason: hubReasonText(link.eligibility.reason) })}` : ""}`;
+	/*
+	 * A FAILED INCOMING UPDATE is retried through the item route core serves:
+	 * `/v1/desktop/hub/updates/retry` takes `kind` + one item address. The old
+	 * `{link_id, direction}` body is not a member of that route (core answered
+	 * 422 "invalid fields"), which is why the popover only ever said the update
+	 * "did not complete". `local_id` is exact and needs `hub_items_by_id`; an
+	 * older core gets the registry name, the address it has always taken.
+	 */
+	const pullFailed =
+		link.pull.state === "failed" ||
+		(link.pull.state === "retry-wait" && link.pull.error_class !== null);
+	const retryIncoming = () => {
+		// Guard the callback as well as the disabled control: mark-click and the
+		// popover action share this path and must never fan out by legacy name.
+		if (legacyWriteBlocked || !actions.canWrite || actions.isPending) {
+			setOpen(true);
+			return;
+		}
+		actions.mutate(
+			{
+				action: "retry",
+				linkId: link.link_id,
+				direction: "pull",
+			},
+			{ onError: () => setOpen(true) },
+		);
+	};
+	const retryFailed =
+		actions.error !== null && actions.variables?.action === "retry";
+	const refetchSource = () => {
+		if (mayReadMemberships) void memberships.refetch();
+		void client.invalidateQueries({ queryKey: hubLinksKey });
+	};
+	/*
+	 * A failed or review mark names WHY and WHEN in its tooltip (the direction
+	 * the mark points at, so a pull failure is not explained by push state).
+	 * Without it every failure read as the same generic retry sentence.
+	 */
+	/*
+	 * A sign-in failure draws no failed/review mark (design B6.2.4, see
+	 * `hubLinkMark`), yet a hover should still say why this link is not
+	 * updating, so its reason rides whatever mark the row does show.
+	 */
+	const signInDirection = (["pull", "push"] as const).find(
+		(direction) =>
+			link[direction].error_class?.split("/")[0] === "no-credential",
+	);
+	const failureDetail =
+		mark.kind === "failed" || mark.kind === "review"
+			? hubMarkFailureDetail(link[mark.direction])
+			: signInDirection
+				? hubMarkFailureDetail(link[signInDirection])
+				: "";
+	// A review mark's label IS the policies sentence; saying it twice buried the
+	// reason that now follows it.
+	const lead =
+		actionLabel === policies ? policies : `${actionLabel} ${policies}`;
+	const description = `${lead}${failureDetail ? ` ${failureDetail}` : ""}${link.policy.auto_push && link.eligibility.reason ? ` ${t("ui.hub.subscriptions.effective_paused", { reason: hubReasonText(link.eligibility.reason) })}` : ""}`;
 	return (
 		<Popover
 			open={open}
@@ -108,7 +241,7 @@ export function HubLinkSidebarMark({
 				if (next || !consentOpen) setOpen(next);
 			}}
 		>
-			<Tooltip content={description} side="right" disableHoverableContent>
+			<Tooltip content={description} side="top" disableHoverableContent>
 				<PopoverAnchor asChild>
 					<button
 						ref={button}
@@ -117,7 +250,7 @@ export function HubLinkSidebarMark({
 						data-testid={`hub-mark-${link.kind}-${link.name}`}
 						aria-label={actionLabel}
 						aria-disabled={
-							(!actions.canWrite &&
+							((!actions.canWrite || legacyWriteBlocked) &&
 								(mark.action === "apply" || mark.action === "retry")) ||
 							undefined
 						}
@@ -150,7 +283,7 @@ export function HubLinkSidebarMark({
 							if (
 								actions.isPending ||
 								mark.action === "policy" ||
-								(!actions.canWrite &&
+								((!actions.canWrite || legacyWriteBlocked) &&
 									(mark.action === "apply" || mark.action === "retry"))
 							) {
 								setOpen(true);
@@ -158,6 +291,10 @@ export function HubLinkSidebarMark({
 							}
 							if (mark.action === "detail") {
 								onDetail();
+								return;
+							}
+							if (mark.action === "retry" && mark.direction === "pull") {
+								retryIncoming();
 								return;
 							}
 							actions.mutate(
@@ -186,11 +323,20 @@ export function HubLinkSidebarMark({
 					</button>
 				</PopoverAnchor>
 			</Tooltip>
+			{/*
+			 * Kept inside the window: Radix flips the side and shifts along it when
+			 * the panel would cross an edge (8px clear), and the available-size
+			 * variables Radix measures cap the box so a long body scrolls inside the
+			 * panel instead of running off the bottom of the screen.
+			 */}
 			<PopoverContent
 				side="right"
 				align="start"
+				avoidCollisions
+				collisionPadding={POPOVER_COLLISION_PADDING}
 				aria-labelledby={titleId}
-				className="max-w-[calc(100vw-2rem)]"
+				data-hub-link-popover={link.link_id}
+				className="max-h-[var(--radix-popover-content-available-height)] max-w-[min(20rem,var(--radix-popover-content-available-width))] overflow-y-auto"
 				onInteractOutside={(event) => {
 					if (consentOpen) event.preventDefault();
 				}}
@@ -199,23 +345,156 @@ export function HubLinkSidebarMark({
 					button.current?.focus();
 				}}
 			>
-				<h4 id={titleId} className="mb-3 break-words text-body-sm text-ink">
-					{t("ui.hub.subscriptions.policy_menu", { item: link.name, source })}
+				{/*
+				 * `text-heading` (16px/600) is the rank the app's own `DialogTitle` carries.
+				 * At `text-body-sm` this title competed with its own section labels.
+				 */}
+				<h4 id={titleId} className="break-words text-heading text-ink">
+					{t("ui.hub.links.policy_title", { item })}
 				</h4>
+				{source ? (
+					<p
+						className="mb-3 break-words text-meta text-ink-muted"
+						data-hub-link-source=""
+					>
+						{source}
+					</p>
+				) : (
+					<div
+						className="mb-3 flex items-start justify-between gap-3"
+						data-hub-link-source-unresolved=""
+					>
+						<div className="flex min-w-0 flex-col gap-1">
+							<p id={sourceUnresolvedId} className="text-meta text-ink-muted">
+								{t("ui.hub.links.source_unresolved")}
+							</p>
+							{!mayReadMemberships && (
+								<p id={sourceSignInId} className="text-meta text-ink-muted">
+									{t("ui.hub.links.sign_in_required")}
+								</p>
+							)}
+						</div>
+						{/*
+						 * The label follows the fetch, but NOT "exactly as" the incoming-update
+						 * Retry follows its mutation: that one tracks `isPending`, its own write,
+						 * while this one tracks `isFetching`, which the read an account switch
+						 * starts also sets - so it can read "Retrying..." for a retry nobody
+						 * pressed. Held invariant, this panel's only action sat in the disabled
+						 * ink pair on open, on click and through every backoff attempt, looking
+						 * dead with nothing on screen saying why.
+						 *
+						 * `!mayReadMemberships` joins the disabled condition because
+						 * `refetchSource` declines that same case: with no signed-in account
+						 * there is no membership read to re-run. A control that takes the press
+						 * and reaches nothing is the inert action this popover exists to remove,
+						 * so the admission and the control are stated once, together.
+						 */}
+						<Button
+							variant="outline"
+							size="sm"
+							disabled={memberships.isFetching || !mayReadMemberships}
+							// A dangling idref is worse than none: the reason is named only
+							// while the line carrying it renders.
+							aria-describedby={
+								mayReadMemberships
+									? sourceUnresolvedId
+									: `${sourceUnresolvedId} ${sourceSignInId}`
+							}
+							onClick={refetchSource}
+						>
+							{t(
+								memberships.isFetching
+									? "ui.hub.links.retrying"
+									: "ui.hub.links.retry",
+							)}
+						</Button>
+					</div>
+				)}
+				{legacyWriteBlocked && (
+					<output
+						data-hub-legacy-blocked=""
+						className="mb-3 text-meta text-warning"
+					>
+						{/*
+						 * One block, two refusals, each naming its own fix. On an old core a
+						 * duplicated name and a missing registry name are the same press being
+						 * unaddressable, but they read differently: the collision is a decision
+						 * the reader makes in the item's own view (rounded in from main), while
+						 * the upgrade is what actually lifts the restriction. When both hold,
+						 * both are stated - a notice that hid one of them would leave either
+						 * the cause or the remedy unspoken.
+						 */}
+						{nameAmbiguous && (
+							<span className="block">{t("ui.hub.links.name_ambiguous")}</span>
+						)}
+						{(!itemName?.trim() || nameAmbiguous) &&
+							t("ui.hub.links.legacy_retry_unverified")}
+					</output>
+				)}
+				{/*
+				 * Ink roles, not borders: the first line carries the attention ink
+				 * (`text-warning`, escalating to `text-danger` only when the retry itself
+				 * fails), and the well fill separates the block from the panel body in
+				 * every palette. `border-hairline` stays - a decorative container edge.
+				 */}
+				{pullFailed && (
+					<div
+						className="mb-3 flex flex-col gap-2 rounded-md border border-hairline bg-sunken p-3"
+						data-hub-link-incoming-failed=""
+					>
+						<p id={failedUpdateId} className="text-body-sm text-warning">
+							{t("ui.hub.links.incoming_update_failed")}
+						</p>
+						<p className="text-meta text-ink-muted">
+							{hubFailureReasonText(link.pull)}
+						</p>
+						{retryFailed && (
+							<p role="alert" className="text-meta text-danger">
+								{hubLinkFailureText(
+									actions.error,
+									t("ui.hub.links.retry_failed"),
+									HubMutationUpgradeRequired,
+								)}
+							</p>
+						)}
+						<div>
+							<Button
+								variant="outline"
+								size="sm"
+								disabled={
+									actions.isPending || !actions.canWrite || legacyWriteBlocked
+								}
+								aria-describedby={failedUpdateId}
+								onClick={retryIncoming}
+							>
+								{t(
+									actions.isPending
+										? "ui.hub.links.retrying"
+										: "ui.hub.links.retry_update",
+								)}
+							</Button>
+						</div>
+					</div>
+				)}
 				<HubLinkPolicyControls
 					key={link.link_id}
 					link={link}
+					item={item}
+					source={source}
 					onConsentChange={setConsentOpen}
 				/>
-				{actions.error && (
+				{actions.error && !retryFailed && (
 					<p role="alert" className="mt-3 text-meta text-danger">
-						{actions.error instanceof HubMutationUpgradeRequired
-							? actions.error.message
-							: t("ui.hub.links.action_failed", {
-									direction,
-									item: link.name,
-									source,
-								})}
+						{hubLinkFailureText(
+							actions.error,
+							source
+								? t("ui.hub.links.action_failed", { direction, item, source })
+								: t("ui.hub.links.action_failed_unsourced", {
+										direction,
+										item,
+									}),
+							HubMutationUpgradeRequired,
+						)}
 					</p>
 				)}
 			</PopoverContent>
@@ -236,21 +515,44 @@ export function HubUnresolvedMark({
 	item,
 	staged,
 	onResolve,
-}: { item: string; staged: boolean; onResolve: () => void }) {
+	details = [],
+}: {
+	item: string;
+	staged: boolean;
+	onResolve: () => void;
+	/** Core's `detail` codes for this item's unresolved rows (PR #3807). */
+	details?: ReadonlyArray<string | undefined>;
+}) {
 	useI18nLocale();
+	const describedBy = useId();
 	/*
 	 * D25: the label NAMES the row. Two unresolved items both truncate to "legac…"
 	 * in the roster, so a mark that did not name its item left the reader unable to
 	 * tell which one it belongs to.
 	 */
 	const label = t("ui.hub.links.unresolved_mark", { item });
+	/*
+	 * WHY it is unresolved, one sentence per distinct cause (an item can sit
+	 * unresolved at more than one origin). An older core sends no code and an
+	 * unknown one has no sentence, so either case keeps the label alone. The
+	 * label stays the accessible name; the cause is its description.
+	 */
+	const why = [
+		...new Set(
+			details
+				.map((detail) => hubUnresolvedDetailText(detail))
+				.filter((text): text is string => text !== null),
+		),
+	].join(" ");
+	const content = why ? `${label} ${why}` : label;
 	return (
-		<Tooltip content={label} side="right" disableHoverableContent>
+		<Tooltip content={content} side="top" disableHoverableContent>
 			<button
 				type="button"
 				data-hub-mark="unresolved"
 				data-testid="hub-mark-unresolved"
 				aria-label={label}
+				aria-describedby={why ? describedBy : undefined}
 				className={cn(
 					"flex size-6 shrink-0 items-center justify-center rounded-md text-warning",
 					!staged && "hover:bg-row-hover",
@@ -261,6 +563,11 @@ export function HubUnresolvedMark({
 					onResolve();
 				}}
 			>
+				{why && (
+					<span id={describedBy} className="sr-only">
+						{why}
+					</span>
+				)}
 				<CircleHelp aria-hidden="true" className="size-3.5" />
 			</button>
 		</Tooltip>
@@ -335,7 +642,7 @@ export function HubLinkAggregateMark({
 		state: t(MARK_STATE_KEY[worst] ?? "ui.hub.links.mark_healthy"),
 	});
 	return (
-		<Tooltip content={label} side="right" disableHoverableContent>
+		<Tooltip content={label} side="top" disableHoverableContent>
 			<button
 				type="button"
 				data-hub-mark="aggregate"

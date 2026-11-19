@@ -1,0 +1,30 @@
+{
+  "auditor": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "tbd-r3-es",
+  "session": "22d11a212546",
+  "date": "2026-10-21",
+  "locale": "es",
+  "translator": "translator",
+  "namespaces": {
+    "ui.teamBridge": {
+      "status": "passed",
+      "keys_audited": 109,
+      "scope": "Whole es ui.teamBridge catalogue (109/109 keys) against en frozen at 7bf957741a plus context, glossary and es style guide; 9 new keys read in full, 4 round-1 fixes verified, 96 unchanged keys confirmed byte-identical to round-1 audited bytes with unchanged en/context; ICU, plural, NFC and bidi checks run in node.",
+      "sha256": {
+        "en": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+        "es": "53002e341301af99f17eee947f7787e64c11fe99d6f97ed5f78d2c31914108a6",
+        "context": "17b7e1450dc7fa529d8e2e684bb8653fcc4f6cf220bf8261631d078d26545de5"
+      },
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.teamBridge.thread.intro_chief",
+          "current": "Este es el comienzo de tu conversación con {name}, el agente jefe de gabinete de un miembro del equipo. Trata tus mensajes como información no confiable y su propietario decide sobre qué actúa.",
+          "proposed": "Este es el comienzo de tu conversación con {name}, el agente jefe de gabinete de un miembro del equipo. Trata tus mensajes como información no confiable y su propietario decide qué hace con ellos.",
+          "note": "«decide sobre qué actúa» calques English \"acts on\"; Spanish «actuar sobre» means to affect or operate on something, so this safety sentence reads stiff and blurs the meaning (the owner decides what the agent does with your messages). The proposal keeps {name} and says it plainly."
+        }
+      ]
+    }
+  }
+}

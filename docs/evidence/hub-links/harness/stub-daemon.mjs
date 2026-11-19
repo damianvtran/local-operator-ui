@@ -63,7 +63,80 @@ const SKILLS_REMOTE_EMPTY = process.argv.includes("--skills-remote-empty");
 const SKILLS_UNSUPPORTED = process.argv.includes("--skills-unsupported");
 const SKILLS_LATENCY_MS = Number(arg("skills-latency-ms", "0"));
 const PULL_LATENCY_MS = Number(arg("pull-latency-ms", "0"));
+/** The one answer shape both #1461 routes return; core adds no inventory to it. */
+const hubSleep = () =>
+	HUB_LATENCY_MS > 0
+		? new Promise((resolve) => setTimeout(resolve, HUB_LATENCY_MS))
+		: Promise.resolve();
+
+const hubStatus = () => ({
+	generated_at: new Date().toISOString(),
+	credential: "ok",
+	settings: { auto_agents: true, auto_teams: true, interval_min: 15 },
+	counts: {},
+	items: [],
+});
+
+/** One item's report, addressed the way the request addressed it. */
+const hubReport = (body, outcome) => {
+	const row =
+		links.find(
+			(link) =>
+				link.kind === body?.kind &&
+				((body?.local_id && link.local_id === body.local_id) ||
+					(body?.name && link.name === body.name)),
+		) ?? links[0];
+	return {
+		kind: row.kind,
+		local_id: row.local_id,
+		name: row.name,
+		hub_id: row.hub_id,
+		outcome,
+		applied: false,
+		backup: null,
+		error_class: outcome === "needs-review" ? "model-unavailable" : null,
+		message: HUB_MESSAGE,
+		warnings: [],
+		replaced: {},
+		fields: [],
+		classification: "remote-only",
+		skipped_reason: null,
+	};
+};
+
 const PULL_OUTCOME = arg("pull-outcome", "ok");
+/*
+ * THE #1461 DESIGN-ROUND-1 STATES (`--scene hub-links-actions`). Core's answer to
+ * a dry run is what the incoming preview is built from, and the panel's pending
+ * state is only visible while an answer is outstanding - neither is on the wire
+ * this stub served before. A run that names none of these keeps the 503 the
+ * other scenes expect.
+ *
+ * `--hub-outcome` is one of core's `ItemOutcome` classes (`would-merge`,
+ * `needs-review`, `up-to-date`); `--hub-message` is core's own sentence for the
+ * row (`report.py` `ItemMergeReport.message`), which the panel shows verbatim
+ * BESIDE its own conclusion line; `--hub-latency-ms` holds the answer so a
+ * capture can photograph the row WHILE the press is running.
+ */
+const HUB_OUTCOME = arg("hub-outcome", null);
+const HUB_MESSAGE = arg("hub-message", "");
+const HUB_LATENCY_MS = Number(arg("hub-latency-ms", "0"));
+/*
+ * A SECOND dry-run class in the SAME boot: a row whose baseline is unknown
+ * answers `needs-review`, and a boot with one outcome could not photograph both
+ * the would-merge row and the unknown-baseline row - two different sentences in
+ * the same dialogue.
+ */
+const HUB_OUTCOME_SECOND = arg("hub-outcome-second", null);
+/** Counted per DRY RUN only: a check must not consume the second answer. */
+let dryRuns = 0;
+/*
+ * A second origin on the agent row, in the two states #1461's design round
+ * photographed: a FAILED pull whose retry has no scheduled time, and an
+ * UNKNOWN BASELINE (the legacy state a dry run answers `needs-review` for).
+ */
+const ORIGIN2_FAILED = process.argv.includes("--origin2-failed");
+const ORIGIN2_UNKNOWN = process.argv.includes("--origin2-unknown");
 const PUBLISH_OUTCOME = arg("publish-outcome", "complete");
 const skillsSleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const RECORDS = arg("records", null);
@@ -71,7 +144,12 @@ const INSTANCE_ID = randomUUID();
 const startedAt = Date.now() / 1000;
 
 /** One approved, credential-free source. The panel contributes exactly this. */
-const SOURCE = "https://hub.radient.local";
+/**
+ * The hub source the fixture's links name. Default keeps the historic value;
+ * the Skills scene passes the same loopback base the app is built against, so
+ * its links JOIN the catalogue rows instead of reading as a foreign origin.
+ */
+const SOURCE = arg("source", "https://hub.radient.local");
 const TENANT_ID = "org-minerva";
 const TENANT_NAME = "Minerva";
 
@@ -222,6 +300,28 @@ const links = [
 	},
 ];
 
+if (ORIGIN2_UNKNOWN) links[3].baseline_state = "adopt-unknown";
+if (ORIGIN2_FAILED) {
+	/*
+	 * SUBSCRIBED, because the panel draws a direction's status only where that
+	 * direction is live: with Subscribe off it states that incoming updates are
+	 * off and draws no column, so a failed row behind an unsubscribed link is a
+	 * state no reader can see.
+	 */
+	links[3].policy.subscribe = true;
+	links[3].pull = direction({
+		state: "failed",
+		error_class: "hub-error/transport",
+		attempts: 2,
+		// ONE metadata line, so the Retry control's position in the column is
+		// readable: below the check time in the base tree, above it after D4.
+		last_checked_at: "2026-10-13T10:30:00Z",
+		// NO next_retry_at: this is the state QA r1 photographed, where the row
+		// says a retry is scheduled and shows no time for it.
+		next_retry_at: null,
+	});
+}
+
 /**
  * The legacy unknown-origin row: a link whose source was never confirmed, so the
  * panel draws the source-confirmation control instead of a healthy row. It is a
@@ -238,6 +338,19 @@ const unresolved = [
 		reason: "source-unresolved",
 	},
 	/*
+	 * The TEAM half of the same legacy shape. The resolve arm's domain is
+	 * `agent|team` (core `HubApply.kind`), and until this fixture existed NO row
+	 * exercised the team half - so the confirmation card was never photographed
+	 * on a team pane, where the block describes a TEAM rather than an agent.
+	 */
+	{
+		kind: "team",
+		local_id: "team-legacy",
+		name: "legacy-team",
+		hub_id: "hub-team-legacy",
+		reason: "source-unresolved",
+	},
+	/*
 	 * An unresolved-only item (no row in `links`): the roster must show the
 	 * "source not confirmed" affordance for it (CODE MAJOR-B).
 	 */
@@ -249,9 +362,6 @@ const unresolved = [
 		reason: "source-unresolved",
 	},
 ];
-
-/** Whether the source confirmation has been accepted for the legacy row. */
-let legacyResolved = false;
 
 /** v1 vs unsupported: the library reads capability off the response contract. */
 const skillContract = () =>
@@ -601,11 +711,22 @@ const route = async (method, pathname, query, body) => {
 				 * affordance (CODE MAJOR-B) is for exactly this case.
 				 */
 				{ name: "legacy-solo", source: "custom", description: "" },
+				/*
+				 * A record with NO hub presence at all: no link row and no
+				 * unresolved diagnostic, so the panel has nothing to say about it
+				 * and must say NOTHING rather than draw a "not linked" line.
+				 */
+				{ name: "loner", source: "custom", description: "" },
 			],
 		});
 	}
 	if (method === "GET" && pathname === "/v1/desktop/teams") {
-		return ok({ teams: [{ name: "lopdev", description: "" }] });
+		return ok({
+			teams: [
+				{ name: "lopdev", description: "" },
+				{ name: "legacy-team", description: "" },
+			],
+		});
 	}
 	const profileMatch = pathname.match(/^\/v1\/desktop\/profiles\/([^/]+)$/);
 	if (method === "GET" && profileMatch) {
@@ -626,7 +747,9 @@ const route = async (method, pathname, query, body) => {
 						? "agent-legacy"
 						: name === "legacy-solo"
 							? "agent-legacy-solo"
-							: "agent-2",
+							: name === "loner"
+								? "agent-loner"
+								: "agent-2",
 			description: "",
 			instructions: "",
 			tools: [],
@@ -640,7 +763,9 @@ const route = async (method, pathname, query, body) => {
 		const name = decodeURIComponent(teamMatch[1]);
 		return ok({
 			name,
-			id: "team-1",
+			// The legacy team carries its own id: the panel narrows `unresolved`
+			// to the CURRENT record by local id, so a second team needs a second id.
+			id: name === "legacy-team" ? "team-legacy" : "team-1",
 			description: "",
 			manager: "manager",
 			members: [],
@@ -682,7 +807,35 @@ const route = async (method, pathname, query, body) => {
 	 * desktop transport sends are read: a request that names a resolve and carries
 	 * the frozen shape succeeds; anything else falls through to the 503 below.
 	 */
+	/*
+	 * THE DRY RUN, and the check that applies nothing: core reports per ITEM
+	 * (`report.py` `ItemMergeReport.to_json`), so a row carries `kind`/`local_id`/
+	 * `name` and NO `link_id` or `direction` - which is exactly what the panel's
+	 * incoming preview reads.
+	 */
+	if (method === "POST" && pathname === "/v1/desktop/hub/updates/check") {
+		if (HUB_OUTCOME === null) {
+			return { status: 503, body: { detail: "the stub has no check answer" } };
+		}
+		await hubSleep();
+		return ok({
+			reports: links.map((row) =>
+				hubReport({ kind: row.kind, local_id: row.local_id }, HUB_OUTCOME),
+			),
+			status: hubStatus(),
+		});
+	}
 	if (method === "POST" && pathname === "/v1/desktop/hub/updates/apply") {
+		if (
+			HUB_OUTCOME !== null &&
+			body?.dry_run === true &&
+			body?.resolve_source !== true
+		) {
+			await hubSleep();
+			const outcome =
+				dryRuns++ > 0 && HUB_OUTCOME_SECOND ? HUB_OUTCOME_SECOND : HUB_OUTCOME;
+			return ok({ reports: [hubReport(body, outcome)], status: hubStatus() });
+		}
 		if (body?.resolve_source === true) {
 			const row = unresolved.find(
 				(candidate) =>
@@ -710,6 +863,11 @@ const route = async (method, pathname, query, body) => {
 					},
 				};
 			}
+			// The solo fixture represents a stored, conflicting scope. Refusal must
+			// leave inventory untouched so the UI can keep its recovery controls.
+			if (row.name === "legacy-solo") {
+				return { status: 409, body: { detail: { code: "origin-conflict" } } };
+			}
 			const isOrg = body.visibility === "org";
 			const adopted = {
 				link_id: `link-${row.local_id}`,
@@ -733,11 +891,10 @@ const route = async (method, pathname, query, body) => {
 				pull: direction({ state: "idle" }),
 				push: direction({ state: "idle", enabled: false }),
 			};
-			if (!legacyResolved) {
-				legacyResolved = true;
-				unresolved.length = 0;
-				links.push(adopted);
-			}
+			// Confirming one record cannot erase another record's outstanding
+			// diagnostic. Keep the team/error fixtures available after agent success.
+			unresolved.splice(unresolved.indexOf(row), 1);
+			links.push(adopted);
 			return ok({
 				reports: [],
 				/*

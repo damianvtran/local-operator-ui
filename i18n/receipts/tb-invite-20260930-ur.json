@@ -1,0 +1,26 @@
+{
+	"auditor": "i18n-auditor",
+	"agent": "i18n-auditor",
+	"model": "kimi/k3.1-pro",
+	"model_comment": "Launched as claude-opus-5-5; provider quota failures switched the session to openai/gpt-6-astra and then kimi/k3.1-pro. The audit and this receipt were completed while running as kimi/k3.1-pro.",
+	"instance": "tb-invite-20260930-ur",
+	"date": "2026-09-30",
+	"status": "passed",
+	"locale": "ur",
+	"namespace": "ui.teamBridge",
+	"sha256": {
+		"en": "c7b1dc752c9f773df7e116be1d121bec0009c33da52bcd5931cc88c41ce9cbe3",
+		"ur": "efe7272d207d55a370c45037e490d054ea6451b85c6303613d55e51e71df99ad"
+	},
+	"findings": [],
+	"checks": {
+		"key_parity": "283 283 set() set()",
+		"icu_render": "Rendered with repo node_modules intl-messageformat under locale 'ur' at counts 0,1,2,5,21: 0 => \"دعوتیں بھیجیں\"; 1 => \"1 دعوت بھیجیں\"; 2 => \"2 دعوتیں بھیجیں\"; 5 => \"5 دعوتیں بھیجیں\"; 21 => \"21 دعوتیں بھیجیں\"",
+		"cldr_arms": "Required for ur: one, other plus exact =0. Present: =0, one, other. {count} appears exactly once in one and other arms, absent from =0 arm.",
+		"bidi": "No bidi control characters (U+200E/200F/202A-202E) and no zero-width/format characters in the four changed keys; whole-file scan also clean. Product name 'Team Bridge' in reason.bridge_unavailable sits bare in Latin script between Urdu words, matching existing entries (page.title, nav.label, plan.title, people.bridge_off) which use no manual bidi marks.",
+		"apostrophes": "No ASCII apostrophe (U+0027) anywhere in the locale file; none in any ICU message."
+	},
+	"scope": "Reviewed in depth the four changed keys (members.add counted ICU plural, members.reason.bridge_unavailable, members.group.people, members.group.agents) against the English source and the context file, plus mechanical whole-file checks: key parity, ICU parse/render, CLDR arm presence, bidi/zero-width/apostrophe scan, and git diff confirming only the four intended changes (2 insertions after members.invite, 1 modified add, 1 modified reason, 1 deleted state.left) with no unrelated key touched or reordered. Terminology cross-checked against existing catalogue entries (section.chiefs, chief.unnamed, people.title, people.bridge_off, plan.title, invitations.*). Did NOT re-audit the other 279 keys already passed by a previous audit.",
+	"independence": "Auditor wrote none of the audited strings; the translator was a separate subagent. No catalogue or ledger edit by the auditor.",
+	"status_vocabulary_note": "Auditor wrote status 'pass' with an empty findings list; the coordinator normalised the vocabulary to the ledger tool's passed | changes_requested. The verdict is the auditor's."
+}

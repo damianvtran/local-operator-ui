@@ -1,0 +1,36 @@
+{
+	"auditor": "i18n-auditor",
+	"model": "openai/gpt-6.1-sol",
+	"instance": "aa4d6c3f5c30",
+	"locale": "hi",
+	"round": 2,
+	"namespaces": {
+		"ui.command_palette": {
+			"status": "passed",
+			"keys_audited": 75,
+			"sha256": {
+				"en": "c48797d973f81dea023e5c89c40c83d8ae0a9cdfaeb2509f6cbc4e9fb8abd7c6",
+				"hi": "f9c706b077306a6dbea5e589455bb7736904b1fbe3083ea35b2bf912cef42ba6"
+			},
+			"findings": []
+		},
+		"ui.common.forms": {
+			"status": "passed",
+			"keys_audited": 27,
+			"sha256": {
+				"en": "28a63a53e5b6c3c4fccb9995eb07637c8521ce9d5019e304f3fedb0ddbc053d9",
+				"hi": "b119957f85772f7212a6ab28caf1f1b1fa79f3b7dd476a82649999c016b32894"
+			},
+			"findings": []
+		},
+		"ui.installer": {
+			"status": "passed",
+			"keys_audited": 18,
+			"sha256": {
+				"en": "35b34093f3d065acf26e96a4e9601cb2906bd9439230a7fa7f9fc9a43784f7a3",
+				"hi": "a0a4ae791bf906984220916d7d3280f486a5d8c7a2c305c0f5f5b4fc076a16b8"
+			},
+			"findings": []
+		}
+	}
+}

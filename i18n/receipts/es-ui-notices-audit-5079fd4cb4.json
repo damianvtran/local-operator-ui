@@ -1,0 +1,285 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "model": "radient/auto",
+  "model_identity": {
+    "provider": "radient",
+    "model_id": "auto",
+    "selector": "radient/auto",
+    "effort": "auto",
+    "boot": "radient/auto",
+    "session_record": "selected_model: {version: 2, selector: 'radient/auto', effort: 'auto', boot: 'radient/auto'}; spend by_identity: radient/auto",
+    "fallback": "none recorded in the session transcript"
+  },
+  "instance": "7a295753839b",
+  "independence": "The audited value was produced by the translation remediation workflow this audit reviews; this run wrote no catalogue or ledger value. The receipt is created by a separate session and process.",
+  "locale": "es",
+  "locale_name": "Spanish (es)",
+  "namespace": "ui.notices",
+  "branch": "feat/i18n-toasts (PR #1413 worktree .worktrees/i18n-toasts)",
+  "head": "5079fd4cb4af89eee6ddd3d1a7617ff5bc9a0e6b",
+  "previous_head": "a32f7349e3efff461cdfa63674b86ddbc21bf955",
+  "date": "2026-10-25",
+  "round": 3,
+  "audit_kind": "one-key delta audit against the round-2 receipt (ES-4 closure), with whole-namespace current-byte integrity checks",
+  "scope": "a32f7349e3..5079fd4cb4, es/ui.notices.json ui.notices.credentials.stored only; en source and en context asserted unchanged; merge-parent opacity asserted for all ui.notices paths",
+  "result": "clean",
+  "status": "passed",
+  "keys_read": 94,
+  "keys_audited": 1,
+  "keys_unchanged_bytes": 93,
+  "delta": {
+    "previous_head": "a32f7349e3efff461cdfa63674b86ddbc21bf955",
+    "head": "5079fd4cb4af89eee6ddd3d1a7617ff5bc9a0e6b",
+    "previous_keys": 94,
+    "head_keys": 94,
+    "changed": 1,
+    "new": 0,
+    "removed": 0,
+    "changed_keys": [
+      "ui.notices.credentials.stored"
+    ],
+    "unchanged": 93,
+    "before": "Guardado: {keys}. Se inyectan en cada comando de bash como variables de entorno; el agente no puede leer el valor.",
+    "after": "Guardado: {keys}. Cada clave se inyecta en cada comando de bash como variable de entorno; el agente no puede leer el valor.",
+    "whole_file_proof": "HEAD es file equals the a32f es file with exactly the ui.notices.credentials.stored line substituted: true; 9676 -> 9685 bytes (+9). No other byte, key order or value changed.",
+    "prior_finding": "ES-4 (minor, still-open-after-remediation in the round-2 receipt)",
+    "prior_proposed": "Guardado: {keys}. Cada clave se inyecta en cada comando de bash como variable de entorno; el agente no puede leer el valor.",
+    "remediation_matches_proposed": true
+  },
+  "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "sha256": {
+    "en": "f806e02def13361717f2db882ab91f407ca7f7b023da7be9e19b26f0e9c4302a",
+    "en_context": "2980f9d4a5d99d7b32c1a752ac462a4f503488ac0d49e2465e10ce7f99ee0859",
+    "es": "aea8bd5d78636e9a3f41fa24cde13b0ff9ad752d748a205a24465a574a237ade",
+    "es_previous": "31214a70f416f7b2de397cc8bdab50061f3e3b1f198de68cce50cf291a11c57f",
+    "en_previous": "f806e02def13361717f2db882ab91f407ca7f7b023da7be9e19b26f0e9c4302a",
+    "en_context_previous": "2980f9d4a5d99d7b32c1a752ac462a4f503488ac0d49e2465e10ce7f99ee0859",
+    "previous_receipt": "7aaf7b3ff60ba19f68de47508988e1df190778431d1ab844519b92e7b982599a"
+  },
+  "git_blob_sha1": {
+    "en": "277cbf872c4a56c40fef0d4b4fe494dfdfbfbeec",
+    "en_context": "9c0cc37e8b3d014b3d61b62b8e2de1fc7c3d9fde",
+    "es": "29456816506aba1ac1e79f0fa261e9e3e39a1c74",
+    "es_previous": "79207ddfe43b4d595f4e320df036cced930a500a"
+  },
+  "merge_parent_check": {
+    "first_parent": "77d1fb82b242833c5b9366c459811da9166bb3b0",
+    "second_parent": "1b2c4afbea3cbd0237b188355f580b56d5df7a2a",
+    "head": "5079fd4cb4af89eee6ddd3d1a7617ff5bc9a0e6b",
+    "paths_checked": [
+      "src/i18n/catalogues/en/ui.notices.json",
+      "src/i18n/catalogues/en/ui.notices.context.json",
+      "src/i18n/catalogues/es/ui.notices.json",
+      "src/i18n/catalogues/fr/ui.notices.json",
+      "src/i18n/catalogues/hi/ui.notices.json",
+      "src/i18n/catalogues/ru/ui.notices.json",
+      "src/i18n/catalogues/ur/ui.notices.json",
+      "src/i18n/catalogues/vi/ui.notices.json",
+      "src/i18n/catalogues/zh-CN/ui.notices.json"
+    ],
+    "blob_sha1_identical_across_merge": true,
+    "blob_sha1": {
+      "src/i18n/catalogues/en/ui.notices.json": "277cbf872c4a56c40fef0d4b4fe494dfdfbfbeec",
+      "src/i18n/catalogues/en/ui.notices.context.json": "9c0cc37e8b3d014b3d61b62b8e2de1fc7c3d9fde",
+      "src/i18n/catalogues/es/ui.notices.json": "29456816506aba1ac1e79f0fa261e9e3e39a1c74",
+      "src/i18n/catalogues/fr/ui.notices.json": "5aa60ea866d6beaa90ee7127814cd1f969105a87",
+      "src/i18n/catalogues/hi/ui.notices.json": "333fc9df69da8a09e232a43207f57b0a6ecc8acf",
+      "src/i18n/catalogues/ru/ui.notices.json": "c54e11b3e6a125d34978e24c495e6cbdb42aaaa1",
+      "src/i18n/catalogues/ur/ui.notices.json": "331f0e12d95db21a5b3198c2ca96270f77501e92",
+      "src/i18n/catalogues/vi/ui.notices.json": "7b26d06f87c775df44e9c8333ccaf49a4812b26e",
+      "src/i18n/catalogues/zh-CN/ui.notices.json": "60c008105ec6f7fe5b7b7b731d0b3b861b484eb7"
+    },
+    "detail": "The merge commit does not touch ui.notices: every path has the same blob SHA-1 at the first parent and at the frozen head."
+  },
+  "inputs": {
+    "source": "src/i18n/catalogues/en/ui.notices.json",
+    "context": "src/i18n/catalogues/en/ui.notices.context.json",
+    "target": "src/i18n/catalogues/es/ui.notices.json",
+    "style_guide": "~/local-operator/i18n/style-guides/es.md",
+    "glossary": "~/local-operator/i18n/glossary.md",
+    "established_terminology_sampled": [
+      "src/i18n/catalogues/es/ui.onboarding.json (Cada clave se guarda...)",
+      "src/i18n/catalogues/es/ui.browser.json (clave de acceso)",
+      "src/i18n/catalogues/es/ui.common.errors.json (clave de API)",
+      "src/i18n/catalogues/es/ui.notices.json (el agente; Guardado: ...)"
+    ],
+    "context_entry_for_changed_key": {
+      "role": "success toast body after a credential was captured",
+      "tone": "Confirmation plus how it is used and its safety.",
+      "length": "Two sentences; toast card.",
+      "note": "The keys are environment variable names, machine identifiers, joined with commas. Never translate key names or 'bash'.",
+      "placeholders": {
+        "keys": "string"
+      }
+    }
+  },
+  "remediation": [
+    {
+      "id": "ES-4",
+      "status": "fixed",
+      "key": "ui.notices.credentials.stored",
+      "evidence": "The plural clause Se inyectan ... como variables de entorno became the distributive Cada clave se inyecta ... como variable de entorno. The singular verb and singular object agree with cada clave and stay grammatical when {keys} is one name or several; {keys} is untouched. Rendered at one, two and three synthetic names; every output reads correctly."
+    }
+  ],
+  "findings": [],
+  "checks": [
+    {
+      "check": "delta identity",
+      "mode": "re-run on current bytes",
+      "result": "PASS",
+      "detail": "94 keys on both revisions, identical order, 0 added, 0 removed; exactly one value changed: ui.notices.credentials.stored. Whole-file substitution equality true (9676 -> 9685 bytes, +9)."
+    },
+    {
+      "check": "unchanged-value byte proof (93 values)",
+      "mode": "re-run on current bytes",
+      "result": "PASS",
+      "detail": "Because the file equals the round-2 file after substituting one line, all 93 other values and all other bytes are unchanged; prior clean dimensions apply without re-audit."
+    },
+    {
+      "check": "English source and context unchanged",
+      "mode": "re-run on current bytes",
+      "result": "PASS",
+      "detail": "git diff a32f7349e3..5079fd4cb4 is empty for both paths; sha256 en f806e02def133617... and context 2980f9d4a5d99d7b... equal the round-2 receipt's recorded hashes."
+    },
+    {
+      "check": "merge-parent opacity for ui.notices",
+      "mode": "re-run on current bytes",
+      "result": "PASS",
+      "detail": "All 9 ui.notices paths (en, en context, seven locales) have the same blob SHA-1 at 77d1fb82b2 and 5079fd4cb4; the origin/main merge did not touch this namespace."
+    },
+    {
+      "check": "key-set parity both directions",
+      "mode": "re-run on current bytes",
+      "result": "PASS",
+      "detail": "94 English keys, 94 Spanish keys, no missing, no extra, identical order."
+    },
+    {
+      "check": "ICU argument integrity",
+      "mode": "re-run on current bytes",
+      "result": "PASS",
+      "detail": "Parsed all 94 Spanish values with @formatjs/icu-messageformat-parser: argument-name sets equal to English for 94/94. The changed key's argument set is ['keys']; no plural or number node."
+    },
+    {
+      "check": "placeholder integrity (changed key)",
+      "mode": "re-audited now",
+      "result": "PASS",
+      "detail": "{keys} occurs exactly once in Spanish and once in English; no token renamed, dropped or added; no bare {count} appears anywhere in the namespace."
+    },
+    {
+      "check": "plural categories are the locale's CLDR set",
+      "mode": "re-run on current bytes",
+      "result": "PASS",
+      "detail": "Ten Spanish plural messages select from one/many/other; Intl.PluralRules('es') reports one,many,other; no few or two arm."
+    },
+    {
+      "check": "plural category parity vs the English arms",
+      "mode": "re-run on current bytes",
+      "result": "PASS",
+      "detail": "Ten Spanish plural keys: every English arm exists in Spanish, and the only extra arm is the documented Spanish many (exact multiples of 10^6). 10/10 conform, 0 deviations."
+    },
+    {
+      "check": "number formatting at 1, 2, 1000000, 1000001",
+      "mode": "re-run on current bytes",
+      "result": "PASS",
+      "detail": "The changed value carries no number. For the namespace, the round-2 render matrix (9 keys x counts 1, 2, 1000000, 1000001) reproduced exactly, including Spanish grouping (1.000.000 / 1.000.001): 36/36 renders identical."
+    },
+    {
+      "check": "composed sentences head + tail",
+      "mode": "carried (values byte-identical; integration code outside this delta)",
+      "result": "PASS",
+      "detail": "The drafts, archive and mark-all-read values this check exercised in round 2 are byte-identical here; mark-all-read.ts and drafts-undo.ts are unchanged in a32f7349e3..5079fd4cb4. The merge's unrelated archive-title display change in undo-toasts.tsx is integration-review scope, not a change to any audited ui.notices value."
+    },
+    {
+      "check": "plural render matrix reproduced",
+      "mode": "re-run on current bytes",
+      "result": "PASS",
+      "detail": "Every key in the round-2 render matrix was re-rendered through the real t() at 1, 2, 1000000 and 1000001: 9/9 sample sets identical to the recorded round-2 output (36 renders), unaffected by the one-key delta."
+    },
+    {
+      "check": "accuracy and number neutrality (changed key)",
+      "mode": "re-audited now",
+      "result": "PASS",
+      "detail": "English 'Injected into every bash command as an environment variable' is carried by Cada clave se inyecta en cada comando de bash como variable de entorno. The distributive cada + singular verb and object is grammatical for one key and for many, and states the same fact as the English passive. Rendered output differs only in the interpolated key list."
+    },
+    {
+      "check": "idiom (changed key)",
+      "mode": "re-audited now",
+      "result": "PASS",
+      "detail": "Reads as native Spanish rather than a calque; the two cada phrases are distributive, not redundant, and the colon/full stop keep the terse toast register."
+    },
+    {
+      "check": "register and address form",
+      "mode": "carried (value has no address form; namespace bytes otherwise unchanged)",
+      "result": "PASS",
+      "detail": "No tú/usted choice is present in this value; el agente matches the sibling credentials notices and the namespace's neutral tone."
+    },
+    {
+      "check": "glossary and term consistency",
+      "mode": "re-audited now",
+      "result": "PASS",
+      "detail": "bash stays English per the context note and glossary section 1; clave matches the established Spanish family (clave de API, clave de acceso, Cada clave in onboarding); agent = agente and credentials = credenciales per the glossary, with no drift introduced by this value."
+    },
+    {
+      "check": "no secret material",
+      "mode": "re-run on current bytes plus call-site inspection",
+      "result": "PASS",
+      "detail": "The message carries only {keys}. The call site passes credential KEY NAMES, never values: credential-copy.ts:2197 keys.join(', ') and message-input.tsx:2641 stored.push(payload.key); the notice is raised only when at least one key was stored. Renders used synthetic names and contain no secret."
+    },
+    {
+      "check": "typography and spacing",
+      "mode": "carried (all bytes except the changed line are identical) + changed line read",
+      "result": "PASS",
+      "detail": "No space before : or ;, full stop and semicolon intact, no quote or dash change on the changed line; the rest of the file is byte-identical to the round-2 audited bytes."
+    },
+    {
+      "check": "no English left untranslated",
+      "mode": "re-run on current bytes",
+      "result": "PASS",
+      "detail": "Only ui.notices.chat.archive_offered_title is byte-identical to English; it is the locale's own quote pair around {title} and is allowlisted in locale-parity.test.mjs with that reason. The changed value is Spanish."
+    },
+    {
+      "check": "RTL",
+      "mode": "carried",
+      "result": "N/A",
+      "detail": "es is left-to-right."
+    },
+    {
+      "check": "overflow",
+      "mode": "re-audited now",
+      "result": "PASS",
+      "detail": "123 characters vs 108 English (+13.9%), inside the style guide's 15-25% expansion band; toast-card string, and the context sidecar sets no maxCells for this namespace."
+    },
+    {
+      "check": "mechanical gates at this head",
+      "mode": "re-run on current bytes",
+      "result": "PASS",
+      "detail": "node --test scripts/i18n/es-activation.test.mjs scripts/i18n/locale-parity.test.mjs: 47/47 pass. node --test scripts/i18n/context-parity.test.mjs scripts/i18n/typed-keys.test.mjs: 14/14 pass. node scripts/i18n/generate.mjs --check: keys.gen.ts byte-identical to a fresh generation."
+    }
+  ],
+  "render": {
+    "tool": "intl-messageformat 12.1.3 through an esbuild bundle of src/i18n/messages (the repository's real t()), locale es, es catalogue registered; Node v24.22.1, ICU 78.3",
+    "key": "ui.notices.credentials.stored",
+    "params": "keys: environment-variable names joined with ', ' (the production call site's join)",
+    "samples": {
+      "one_synthetic_key": "Guardado: SYNTHETIC_KEY_ONE. Cada clave se inyecta en cada comando de bash como variable de entorno; el agente no puede leer el valor.",
+      "two_synthetic_keys": "Guardado: SYNTHETIC_KEY_ONE, SYNTHETIC_KEY_TWO. Cada clave se inyecta en cada comando de bash como variable de entorno; el agente no puede leer el valor.",
+      "three_synthetic_keys": "Guardado: SYNTHETIC_KEY_ONE, SYNTHETIC_KEY_TWO, SYNTHETIC_KEY_THREE. Cada clave se inyecta en cada comando de bash como variable de entorno; el agente no puede leer el valor."
+    },
+    "en_reference": {
+      "one_synthetic_key": "Stored SYNTHETIC_KEY_ONE. Injected into every bash command as an environment variable; the agent cannot read the value.",
+      "two_synthetic_keys": "Stored SYNTHETIC_KEY_ONE, SYNTHETIC_KEY_TWO. Injected into every bash command as an environment variable; the agent cannot read the value."
+    },
+    "single_key_path": "storedNotice is raised whenever carried.stored.length > 0 (message-input.tsx:2913 and 3073), so the single-paste path renders this sentence with one name; zero never renders."
+  },
+  "namespace_verdict": {
+    "ui.notices": "clean at 5079fd4cb4 — 94 of 94 keys read for current-byte integrity; 93 values are byte-identical to the round-2 audited file; the one changed value (ui.notices.credentials.stored) was read in bytes and rendered at one, two and three synthetic names. 0 blocker, 0 major, 0 minor, 0 nit. ES-4 is resolved."
+  },
+  "overall_verdict": "clean (0 findings) — ES-4's replacement wording is accurate and number-neutral, keeps {keys} exactly once, and carries no secret material. The other 93 values, the English source and the English context are unchanged, and the origin/main merge did not touch ui.notices.",
+  "evidence_provenance": "Executed in /Users/damian/local-operator-ui/.worktrees/i18n-toasts at 5079fd4cb4af89eee6ddd3d1a7617ff5bc9a0e6b (git status clean before writing this receipt). Renders used the repository's own intl-messageformat 12.1.3 through an esbuild bundle of src/i18n/messages with the es catalogue registered (Node v24.22.1, ICU 78.3). Commands run: node --test scripts/i18n/es-activation.test.mjs scripts/i18n/locale-parity.test.mjs -> 47/47 pass; node --test scripts/i18n/context-parity.test.mjs scripts/i18n/typed-keys.test.mjs -> 14/14 pass; node scripts/i18n/generate.mjs --check -> byte-identical; git diff/rev-parse and sha256 comparisons for the delta and merge-parent checks. The repo-wide pnpm check-i18n was not re-run: its ledger half is known-red on this head for the missing ui.notices rows across seven locales (PR review, 2026-10-25), which this one-locale receipt does not change. No catalogue, context, ledger, generated or code file was edited by this audit; this receipt is the only repository file written. Analysis scripts live in the session scratchpad outside the repo."
+}

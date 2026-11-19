@@ -36,10 +36,23 @@ export type ConfigRunStatus =
 	| "stopped"
 	| "error";
 
+/**
+ * The kinds of definition a configuration run can be about.
+ *
+ * `skill` joined `agent` and `team` for the Agents page's Skills tab (design spec
+ * C4, seam note §3): the target still travels to the run as the first message's
+ * TEXT ("About the skill “x”: …"), exactly like the other two, because the
+ * server deliberately refuses a `target` field on purpose creates. Only a core
+ * advertising `agents_config_skills` builds the `skill` tool the run would use,
+ * so the Skills tab gates on that key (`configSkillRunEnabled`).
+ */
+export type RunTargetKind = "agent" | "team" | "skill";
+
 /** One definition the run is working on, as its tool rows named it. */
-export type RunTarget = { kind: "agent" | "team"; name: string };
+export type RunTarget = { kind: RunTargetKind; name: string };
 
 import type { WireImage } from "@features/chat/utils/bound-image";
+import type { ChatFile } from "@shared/store/canonical-sessions-store";
 
 /** A catalogue field that changed, in the operator's words. */
 export type RunChange = { label: string; before: string; after: string };
@@ -61,8 +74,26 @@ export type RunMark = RunTarget & {
 export type ConfigRunStore = {
 	sessionId: string | null;
 	status: ConfigRunStatus;
-	/** What the operator asked for, so the strip can say it back. */
+	/**
+	 * What the operator TYPED, so the strip can say it back ("You asked: …").
+	 *
+	 * NOT what was sent (UX r1 U6): the sent body carries the page's own context
+	 * sentence ("About the skill “x”: …") and often the seeded "Change the skill
+	 * x: " too, and echoing that scaffolding named the skill twice in words the
+	 * operator never wrote. `prompt` is the sent body, kept for Retry.
+	 */
 	topic: string;
+	/**
+	 * The body that was (or was to be) SENT, byte for byte - what Retry re-sends.
+	 * The retry rule is "the same body, or a 409", so this is never re-composed.
+	 */
+	prompt: string;
+	/**
+	 * The run's TURN failed (a session incident: the provider errored, the model
+	 * refused, the turn died), as opposed to a transport or settle-read failure.
+	 * The strip heads it "Did not finish" and offers Retry (UX r1 U3).
+	 */
+	turnFailed: boolean;
 	/** The row the next send is about, when one is selected on the page. */
 	about: RunTarget | null;
 	error: string | null;
@@ -121,6 +152,13 @@ export type ConfigRunStore = {
 	 */
 	images: WireImage[];
 	/**
+	 * The uploaded file references the accepted request carried, for the same
+	 * retry rule as `images`: the receipt hashes the whole body, so a retry that
+	 * dropped the files would be a different request (attachment contract §1.2).
+	 * Already stored when this is written; a retry re-sends only the references.
+	 */
+	files: ChatFile[];
+	/**
 	 * A run exists and is live.
 	 *
 	 * THE DRAFT IS NOT SPENT HERE, and that is the rule this store used to hold with
@@ -133,9 +171,12 @@ export type ConfigRunStore = {
 	 */
 	adopt: (
 		sessionId: string,
-		topic: string,
+		prompt: string,
 		before: unknown,
 		images?: WireImage[],
+		files?: ChatFile[],
+		/** What the operator typed, when it differs from the sent body. */
+		topic?: string,
 	) => void;
 	noteTouched: (target: RunTarget) => void;
 	stopping: () => void;
@@ -150,6 +191,12 @@ export type ConfigRunStore = {
 	fail: (message: string) => void;
 	/** The send itself failed: the request is still unsent and retryable. */
 	failUnsent: (message: string) => void;
+	/**
+	 * The run's turn ended in a session incident. Retryable: nothing was done
+	 * for the request (the model never answered it), so re-sending the same
+	 * body onto the same run is the chat composer's own retry.
+	 */
+	failTurn: (message: string) => void;
 	dismiss: () => void;
 	clearMark: (target: RunTarget) => void;
 };
@@ -165,7 +212,10 @@ export const useConfigRunStore = create<ConfigRunStore>((set) => ({
 	sessionId: null,
 	status: "idle",
 	topic: "",
+	prompt: "",
+	turnFailed: false,
 	images: [],
+	files: [],
 	about: null,
 	error: null,
 	stopError: null,
@@ -180,12 +230,15 @@ export const useConfigRunStore = create<ConfigRunStore>((set) => ({
 
 	setAbout: (about) => set({ about }),
 
-	adopt: (sessionId, topic, before, images = []) =>
+	adopt: (sessionId, prompt, before, images = [], files = [], topic = prompt) =>
 		set({
 			sessionId,
 			status: "running",
 			topic,
+			prompt,
+			turnFailed: false,
 			images,
+			files,
 			error: null,
 			stopError: null,
 			startedAt: Date.now(),
@@ -245,6 +298,7 @@ export const useConfigRunStore = create<ConfigRunStore>((set) => ({
 			sessionId: null,
 			// A settled run has no request left to repeat, images included.
 			images: [],
+			files: [],
 			// A run that settled has nothing left to refuse: the stop is moot.
 			stopError: null,
 			// `before` is spent by the diff it was taken for.
@@ -271,6 +325,16 @@ export const useConfigRunStore = create<ConfigRunStore>((set) => ({
 	failUnsent: (message) =>
 		set({ status: "error", error: message, unsent: true, stopError: null }),
 
+	failTurn: (message) =>
+		set({
+			status: "error",
+			error: message,
+			unsent: true,
+			turnFailed: true,
+			stopError: null,
+			settledAt: Date.now(),
+		}),
+
 	dismiss: () =>
 		set({
 			status: "idle",
@@ -279,7 +343,10 @@ export const useConfigRunStore = create<ConfigRunStore>((set) => ({
 			stopError: null,
 			unsent: false,
 			topic: "",
+			prompt: "",
+			turnFailed: false,
 			images: [],
+			files: [],
 			touched: [],
 			results: [],
 			answer: "",

@@ -1,0 +1,8 @@
+{
+	"ui.hub.card.download_named": "下载{name}",
+	"ui.hub.card.downloads_tooltip": "下载次数",
+	"ui.hub.card.get": "获取",
+	"ui.hub.card.unknown_author": "未知作者",
+	"ui.hub.card.updated": "更新于{ago}前",
+	"ui.hub.card.view_details": "查看{name}的详情"
+}

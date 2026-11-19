@@ -1,0 +1,130 @@
+{
+ "audit_id": "wave-b-delta-8bbe685ce56d",
+ "round": 2,
+ "audit_kind": "independent-translation-delta-audit",
+ "date": "2026-10-27",
+ "audit_date": "2026-10-27",
+ "locale": "es",
+ "namespace": "ui.chat.pickers",
+ "source_commit": "a5356ce91c4f37bf4c4d1c4518070e3a9b2505cb",
+ "previous_audited_commit": "0559f7f7d830752b0c5d118c2b1049f125b43bbb",
+ "scope": "Wave B delta: the nine wave-B namespace files for es at a5356ce91c, all 62 wave-B keys. Six es values and one en value differ from the audited parent; the other 56 values are byte-identical to the audited bytes (triples snapshot 62/62 against the parent bytes). Every changed value was judged against English, its context sidecar, its renderer call site, the glossary, the es style guide and the prior finding it answers. Prior findings es-01..es-05 and the pairing_guidance code span are adjudicated in report.md.",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "key_count": 18,
+ "keys_read": 18,
+ "keys_changed_since_previous_round": [
+  "ui.chat.pickers.slash.enter_needs_a_pick"
+ ],
+ "translator": {
+  "agent": "i18n-translator",
+  "model": "radient/auto",
+  "date": "2026-10-27",
+  "note": "The wave-B amendments were applied by the translator in a5356ce91c; the es catalogue values themselves were not written by this auditor, and this auditor edited no catalogue, context, generated or ledger byte in the branch."
+ },
+ "auditors": [
+  {
+   "agent": "i18n-auditor",
+   "model": "radient/auto",
+   "session": "8bbe685ce56d",
+   "team": "lopdev",
+   "instance": "8bbe685ce56d",
+   "date": "2026-10-27",
+   "result": "clean-with-findings",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 1
+   },
+   "independent_from_translator_session": true,
+   "actual_model_source": "harness session header line 'Model: radient/auto' for session 8bbe685ce56d; no fallback observed, no role or model pin applied",
+   "fallback": null,
+   "receipt": "i18n/receipts/8bbe685ce56d.json",
+   "receipt_sha256": "ae29c068108f4283eed63edd201ef7fec65ff90763c5fd70f2b04b9f94623baa"
+  }
+ ],
+ "model_note": "Served through the radient/auto router alias for the whole pass; the upstream model behind the alias is not exposed by this harness, and no fallback was observed. This is recorded rather than guessed.",
+ "independence": "Independent audit by the i18n-auditor member of team lopdev (session 8bbe685ce56d), delegated by the team manager. This session produced none of the reviewed copy: the es amendments landed in a5356ce91c from the translator. It translated nothing, edited no catalogue value, context file, generated file or ledger row on the branch, and wrote only its own evidence plus a throwaway worktree copy used to prove the ledger rows. No MT service, translation API or SDK was used; intl-messageformat ran as validation of the app's own render path, never to produce or compare copy by machine translation.",
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.chat.pickers.json",
+   "sha256": "d91585397b3314c5ffd81d93c3fd7d9fdb1e0a54cc6ddd57ba082f55d666522c"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.chat.pickers.context.json",
+   "sha256": "6861dbfbdbc9af23c8c09332670a6f7d77c2a12b5724afc91d0054660ef904d0"
+  },
+  "es": {
+   "path": "src/i18n/catalogues/es/ui.chat.pickers.json",
+   "sha256": "33a92db2a4e9e42f3657e597d36626f33a84805ba8669511764f0e30cbcfebf0"
+  }
+ },
+ "current_bytes_match_audited_hashes": true,
+ "artifacts": [
+  {
+   "path": "i18n/audits/evidence/es/ui.chat.pickers/wave-b-delta-8bbe685ce56d/audit.log",
+   "sha256": "86f55b9040e3d7e82997d663d5f66a72264a21761ee89fd32d10ab26a1db8605"
+  },
+  {
+   "path": "i18n/audits/evidence/es/ui.chat.pickers/wave-b-delta-8bbe685ce56d/report.md",
+   "sha256": "4a2e03262b7ac34c8f7f48c7bf3ce6491f5f42fb0a7e2f6807e8c88d5d1ce366"
+  },
+  {
+   "path": "i18n/receipts/8bbe685ce56d.json",
+   "sha256": "ae29c068108f4283eed63edd201ef7fec65ff90763c5fd70f2b04b9f94623baa",
+   "role": "audit receipt referenced by the ledger row"
+  }
+ ],
+ "references": {
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/es.md",
+   "sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+  },
+  "contract": {
+   "path": "docs/I18N.md",
+   "sha256": "6fc7bea71643c0dcaeaed697ecd792cfdfeb11b7816b5f8d160011e7c7df2abe"
+  },
+  "previous_round_receipt": {
+   "path": "~/qa/wave-b-audit-es/receipt.json",
+   "sha256": "481bf2d41a0a61f5b124a7a3c7ff831f6f0eee6638c463009589c3d9eb5dc34d",
+   "note": "machine-local artifact of the previous round; named for provenance, not tracked"
+  }
+ },
+ "validation": {
+  "key_parity": "18/18 keys; en and es key sets equal, no extra key",
+  "values_changed_since_previous_round": 1,
+  "bytes_identical_to_previous_round": false,
+  "icu_placeholder_parity": "62/62 keys, real intl-messageformat 12.1.3, 0 failures",
+  "unicode_nfc": true,
+  "bidi_controls": 3,
+  "maxcells_maxchars_hint": "none present on any changed key of this namespace",
+  "rendered": false,
+  "rendered_note": "no frame captured; fit assessed geometrically from the call sites (wrapping containers, no truncate/line-clamp)"
+ },
+ "current_report_verdict": {
+  "status": "passed",
+  "unresolved_blocker_major_count": 0,
+  "finding_ids": [
+   "es-d1"
+  ]
+ },
+ "findings": [
+  {
+   "severity": "nit",
+   "id": "es-d1",
+   "key": "ui.chat.pickers.slash.enter_needs_a_pick",
+   "issue": "The English context note says the key names '(Enter, Tab)' are 'keyboard names: keep them verbatim', but the settled es rendering is 'Intro' (17 keys / 18 occurrences in the es catalogue, and both other composer hints in this file). The es value is CORRECT and needs no change; the note is what will regress it, because the next translator following it writes 'Enter' again. Amend the note to 'keep the locale's recorded key label (es: Intro; Tab stays Tab)' and record the decision in i18n/style-guides/es.md (core repo, out of this branch's scope).",
+   "disposition": "deferred - the sidecar and the es style guide live outside this UI branch"
+  }
+ ],
+ "limitations": [
+  "Copy audit only: no build, no rendered frame, no browser, no native-render claim.",
+  "The 56 unchanged wave-B values inherit the earlier linguistic verdict through byte identity; they were not re-judged line by line.",
+  "The high-visibility status/error strings were read twice by this auditor; that is not an independent second auditor."
+ ]
+}

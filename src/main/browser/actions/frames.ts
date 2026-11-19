@@ -1,6 +1,8 @@
 import { FRAME_DETACHED } from "../cdp";
 import type { DriveableView } from "../electron-types";
 import { BrowserHostError } from "../errors";
+import { CUSTODY_REFUSAL_REASON } from "../extensions/passkey-custody";
+import { isExtensionDocumentUrl } from "../extensions/subframe-policy";
 import type { BrowserActionContext } from "./context";
 
 /**
@@ -169,12 +171,36 @@ export function isDeniedFrame(
 	return ctx.approvals?.refusalReason(url) === "denied";
 }
 
+/**
+ * An extension's own document inside a page (a password manager's prompt or
+ * menu) is never an agent's to read or drive, whatever the tab's custody state:
+ * `subframe-policy.ts` keeps such frames out of agent tabs, and passkey custody
+ * (`extensions/passkey-custody.ts`) pauses the agent while one is admitted, so
+ * this is the third, independent line — a frame that slipped past both (a tab
+ * handed over mid-load) is still refused at the one place every route into a
+ * frame passes. Matched on the document URL: `new URL(...).origin` is the
+ * string "null" for a `chrome-extension:` URL, so the origin cannot carry it.
+ */
+export function assertNotExtensionFrame(documentUrl: string | undefined): void {
+	if (!documentUrl || !isExtensionDocumentUrl(documentUrl)) return;
+	throw new BrowserHostError(
+		"owner_refused",
+		"that frame is a browser extension's own page, which agents cannot read or drive",
+		{ reason: "extension_frame" },
+	);
+}
+
 /** A frame-walk refusal that must stop the walk rather than skip one frame: the
  * whole tab is unusable (DevTools took it, or it closed). */
 function isFatalWalkError(error: unknown): boolean {
 	return (
 		error instanceof BrowserHostError &&
-		(error.code === "debugger_conflict" || error.code === "tab_closed")
+		(error.code === "debugger_conflict" ||
+			error.code === "tab_closed" ||
+			// The user took the tab for a passkey prompt mid-walk: every further
+			// command is refused too, so say that rather than "matched nothing".
+			(error.data as { reason?: unknown } | undefined)?.reason ===
+				CUSTODY_REFUSAL_REASON)
 	);
 }
 
@@ -294,6 +320,7 @@ export async function enterFrame(
 	// selector existed there, and a path could step THROUGH a denied middle frame.
 	const inProcess = node.contentDocument?.backendNodeId;
 	if (inProcess !== undefined) {
+		assertNotExtensionFrame(node.contentDocument?.documentURL);
 		assertFrameNotDenied(ctx, {
 			origin: originOf(node.contentDocument?.documentURL),
 		});
@@ -338,6 +365,7 @@ export async function enterFrame(
 	// iframe's `src` is not where the document landed after redirects. So the
 	// attach and the document read come first, and nothing else does.
 	const rooted = await childRoot(ctx, contents, frameId);
+	assertNotExtensionFrame(rooted.documentUrl);
 	assertFrameNotDenied(ctx, { origin: rooted.origin });
 	return {
 		sessionId: rooted.sessionId,
@@ -357,7 +385,12 @@ export async function childRoot(
 	ctx: BrowserActionContext,
 	contents: CdpContents,
 	frameId: string,
-): Promise<{ sessionId: string; rootNodeId: number; origin?: string }> {
+): Promise<{
+	sessionId: string;
+	rootNodeId: number;
+	origin?: string;
+	documentUrl?: string;
+}> {
 	for (let attempt = 0; ; attempt += 1) {
 		try {
 			// Inside the try: a stale error from the attach's own focus-emulation send
@@ -377,6 +410,7 @@ export async function childRoot(
 				sessionId,
 				rootNodeId,
 				origin: originOf(document?.root?.documentURL),
+				documentUrl: document?.root?.documentURL,
 			};
 		} catch (error) {
 			if (attempt === 0 && isFrameDetached(error)) continue;

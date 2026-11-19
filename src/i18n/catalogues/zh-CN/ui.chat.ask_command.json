@@ -1,0 +1,20 @@
+{
+	"ui.chat.ask_command.copy": "复制",
+	"ui.chat.ask_command.dialog_caution": "智能体给出的命令可能有误或不安全。运行前请仔细阅读这条命令。",
+	"ui.chat.ask_command.dialog_closed": "此请求已关闭，无法再从中运行该命令。",
+	"ui.chat.ask_command.dialog_confirm": "在终端中运行",
+	"ui.chat.ask_command.dialog_device_local": "它会在这台电脑上的新终端中运行，位于你的主目录。",
+	"ui.chat.ask_command.dialog_device_remote": "它会在这台电脑上的新终端中运行，位于你的主目录，而不是在智能体工作的{device}上。",
+	"ui.chat.ask_command.dialog_device_remote_unnamed": "它会在这台电脑上的新终端中运行，位于你的主目录，而不是在智能体工作的设备上。",
+	"ui.chat.ask_command.dialog_refused": "此命令已无法从这里运行。未运行任何内容。",
+	"ui.chat.ask_command.dialog_title": "运行此命令？",
+	"ui.chat.ask_command.insert": "在终端中打开",
+	"ui.chat.ask_command.insert_hint": "输入到新终端中，但不运行",
+	"ui.chat.ask_command.label": "建议的命令",
+	"ui.chat.ask_command.notice_elsewhere": "智能体在{device}上工作。此命令会在这里运行，而不是在那台设备上。",
+	"ui.chat.ask_command.notice_elsewhere_unnamed": "智能体在另一台设备上工作。此命令会在这里运行，而不是在那台设备上。",
+	"ui.chat.ask_command.notice_target_unknown": "此请求未说明命令应在哪里运行，因此无法从这里运行。",
+	"ui.chat.ask_command.notice_unplaced": "无法确认智能体在这台电脑上工作，因此无法从这里运行此命令。",
+	"ui.chat.ask_command.run": "运行……",
+	"ui.chat.ask_command.run_hint": "确认后，输入到新终端中并运行"
+}

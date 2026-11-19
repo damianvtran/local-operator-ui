@@ -69,6 +69,13 @@ scan whenever the list is touched. One class is deliberately not on it:
 punctuation keys (unrepresentable in the canonical grammar — `⌘+`/`⌘-`/`⌘0`
 cannot be captured by construction).
 
+One fixed chord is outside this rule by construction rather than by exemption:
+`Ctrl+Tab` / `Ctrl+Shift+Tab` opens the recent-session switcher
+(`docs/session-switcher.md`), and it belongs to no registry binding because the
+grammar cannot spell `tab` at all and no binding in this registry can commit on a
+modifier's keyUp. It needs no `RESERVED_CHORDS` row for the same reason: capture
+can never produce it.
+
 The canvas editors' save/open chords (`⌘S`, `⌘O`) and the focused row's move
 (`⌘⇧↑`/`⌘⇧↓`) ARE on it, and the reason is a phase-order fact the first draft
 got wrong (agent review round 1's F1 = QA's Q1, measured): their listeners sit
@@ -96,6 +103,13 @@ and its default stops claiming its chord, freeing it for another row. Pressing
 the chord a row already shows changes nothing; pressing its default while an
 override exists is the override's own reset (U3). The recorder's refusal sentence
 names the platform's own modifier key (U5).
+
+The two Speech to text rows (`keymap.start_recording`, `keymap.push_to_talk`)
+follow the same Clear/Reset rule: Clear stores the string sentinel `"none"`
+(a backend-owned row cannot store an empty value), Reset deletes the key and
+restores the default. A cleared row's field shows "No shortcut" and Reset stays
+visible while cleared. Cleared is distinct from invalid in every resolver:
+invalid falls back to the default, `"none"` is no door.
 
 ## The recipe for a seventh action
 

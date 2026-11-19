@@ -1,0 +1,28 @@
+{
+  "locale": "vi",
+  "namespace": "ui.chat.composer",
+  "agent": "i18n-auditor",
+  "instance": "838d86bd8e0f",
+  "model": "radient/auto",
+  "requested_route": "radient/auto",
+  "served_underlying_model": "UNKNOWN",
+  "model_kind": "requested_route_only",
+  "status": "passed",
+  "source_sha256": "67b5bc499440a52a727774876e13ee4ed9eaef20b439c4f5ec97466ae8b238cd",
+  "target_sha256": "c114864cc373fb1b996752d4624a5ed987f4c86746038e9411c0efba7b809888",
+  "context_sha256": "77c879963392e2e3f202aa689ff5d372946995c76891cc0eabc293fe75097df7",
+  "base_target_sha256": "a6bc2d8119b3fabeb915560fac9ba7ae3ff342696b3acbe187675c21fba53a6b",
+  "reviewed_keys": [
+    "ui.chat.composer.secret_closure_notice"
+  ],
+  "findings": [
+    {
+      "id": "vi-r2-c1",
+      "severity": "nit",
+      "key": "ui.chat.composer.secret_closure_notice",
+      "problem": "'ô này tạm dừng' attaches the pause verb to a text box with no state marker; every paused state in the approved vi corpus carries đã/đang ('Đã tạm dừng', 'Thao tác này đang tạm dừng.'). Meaning is not lost and the reader still sees the box is unusable, so this is polish, not a defect.",
+      "suggestion": "ô này đang tạm dừng cho đến khi có câu trả lời — mirrors the corpus shape 'Thao tác này đang tạm dừng.' without changing the clause order or the em dash",
+      "evidence": "corpus: ui.agentMessages.settings.state.d_title='Đã tạm dừng' (en 'Paused'); ui.hub.status.other_error='Thao tác này đang tạm dừng.' (en 'This action is paused.'); ui.hub.subscriptions.incoming_paused='Đã tạm dừng nhận cập nhật.'; corpus input-box noun is 'ô' (ui.chat.composer.secret_confirm_put='Đưa vào ô bí mật', ui.chat.pickers…='… trong ô soạn tin …'). Facts, clause order and ' — ' verified against en; no security/storage/attempt claim present."
+    }
+  ]
+}

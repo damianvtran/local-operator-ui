@@ -1,0 +1,12 @@
+{
+	"ui.chat.message_budget.bytes": "{count, plural, one {# बाइट} other {# बाइट}}",
+	"ui.chat.message_budget.command_chars": "यह कमांड {count, plural, one {# अक्षर} other {# अक्षर}} का है, जो एक कमांड की सीमा ({limit} अक्षर) से ज़्यादा है। इसे छोटा करें, या इसका टेक्स्ट संदेश में लिखें।",
+	"ui.chat.message_budget.command_size": "यह कमांड {size} का है, जो एक कमांड की सीमा ({limit}) से ज़्यादा है। इसे छोटा करें, या इसका टेक्स्ट संदेश में लिखें।",
+	"ui.chat.message_budget.fork_chars": "यह पहला संदेश {count, plural, one {# अक्षर} other {# अक्षर}} का है, जो एक संदेश की सीमा ({limit} अक्षर) से ज़्यादा है। इसे छोटा करें, या नई बातचीत में भेजें।",
+	"ui.chat.message_budget.fork_size": "यह पहला संदेश {size} का है, जो एक संदेश की सीमा ({limit}) से ज़्यादा है। इसे छोटा करें, या नई बातचीत में भेजें।",
+	"ui.chat.message_budget.images_size": "इन तस्वीरों का कुल आकार {size} है, जो एक संदेश की सीमा ({limit}) से ज़्यादा है। कोई तस्वीर हटाएँ, या उन्हें दूसरे संदेश में भेजें।",
+	"ui.chat.message_budget.message_chars": "यह संदेश {count, plural, one {# अक्षर} other {# अक्षर}} का है, जो एक संदेश की सीमा ({limit} अक्षर) से ज़्यादा है। इसे दो संदेशों में बाँटें।",
+	"ui.chat.message_budget.prompt_chars": "यह सिस्टम प्रॉम्प्ट {count, plural, one {# अक्षर} other {# अक्षर}} का है, जो एक एजेंट की सीमा ({limit} अक्षर) से ज़्यादा है। इसे छोटा करें।",
+	"ui.chat.message_budget.prompt_size": "यह सिस्टम प्रॉम्प्ट {size} का है, जो एक एजेंट की सीमा ({limit}) से ज़्यादा है। इसे छोटा करें।",
+	"ui.chat.message_budget.text_size": "इस संदेश का टेक्स्ट {size} का है, जो एक संदेश की सीमा ({limit}) से ज़्यादा है। इसे दो संदेशों में बाँटें।"
+}

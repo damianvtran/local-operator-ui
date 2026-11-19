@@ -1,0 +1,79 @@
+{
+  "schema": 1,
+  "receipt_kind": "locale-audit (PR #1832 round 2, 19 added/changed keys across 2 namespaces vs base)",
+  "date": "2026-11-09",
+  "locale": "zh-CN",
+  "instance": "ff66daec882c-pr1832-r2-zh-cn",
+  "audit_id": "pr1832-delivery-r2-zh-cn-ff66daec882c",
+  "agent": "reviewer",
+  "model": "anthropic/claude-opus-5-5",
+  "auditor": {
+    "agent": "reviewer",
+    "instance": "ff66daec882c-pr1832-r2-zh-cn",
+    "model": "anthropic/claude-opus-5-5",
+    "session": "ff66daec882c",
+    "independent_of_translator": true
+  },
+  "model_provenance": "Ran on anthropic/claude-opus-5-5; no fallback observed during the audit.",
+  "status": "passed",
+  "integration": {
+    "repo": "damianvtran/local-operator-ui",
+    "pr": 1832,
+    "branch": "feat/bridge-delivery-summary",
+    "translated_head": "de18cd95b7c",
+    "base": "23ec4af967b",
+    "supersedes": "1d408adb357b-pr1832-r1-zh-cn (never committed; English moved in de18cd95b7c)"
+  },
+  "independence": "Audit by lop session ff66daec882c (lopdev team reviewer role, i18n audit round 2). Values authored by the lopdev coder in 24d4216f8e3 and de18cd95b7c (I1-I4 from round-1 auditor 1d408adb357b applied there); this session wrote no product code or catalogue bytes. No MT service used.",
+  "style_inputs": {
+    "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "style_guide_sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+  },
+  "scope": "Every ui.teamBridge (15) and ui.ownerAudit (4) key whose English or locale value differs from base 23ec4af967b at head de18cd95b7c, read against en context notes; checks: key set == en, ICU placeholders, plural arms == Intl.PluralRules categories, no bidi controls, no ASCII '...'. Round-1 fixes I1-I4 and I5 (IDENTICAL_OK) verified landed.",
+  "findings_total": 0,
+  "namespaces": {
+    "ui.teamBridge": {
+      "status": "passed",
+      "sha256": {
+        "en": "c506ab781f739efe772068ab8c4295933d22631daef4d814dabe54d643057d59",
+        "zh-CN": "09076fd2cb37545f5c6d4affa52e1e26865d0c7b94b135bf9a2df1ddca4a1459"
+      },
+      "findings": [],
+      "keys_audited": 15,
+      "keys": [
+        "ui.teamBridge.delivery.held",
+        "ui.teamBridge.delivery.held_screening",
+        "ui.teamBridge.delivery.held_screening_unavailable",
+        "ui.teamBridge.delivery.held_awaiting_review",
+        "ui.teamBridge.delivery.held_awaiting_review_unnamed",
+        "ui.teamBridge.delivery.held_not_reviewed",
+        "ui.teamBridge.delivery.info_held",
+        "ui.teamBridge.delivery.summary.delivered",
+        "ui.teamBridge.delivery.summary.screening",
+        "ui.teamBridge.delivery.summary.held",
+        "ui.teamBridge.delivery.summary.not_reviewed",
+        "ui.teamBridge.delivery.summary.not_delivered",
+        "ui.teamBridge.delivery.summary.separator",
+        "ui.teamBridge.delivery.summary.details_label",
+        "ui.teamBridge.delivery.summary.not_reviewed_note"
+      ],
+      "retained": "407 other pairs byte-identical to base 23ec4af967b (mechanically verified)"
+    },
+    "ui.ownerAudit": {
+      "status": "passed",
+      "sha256": {
+        "en": "7e2531bcaf24bd647d1ad0f69ebf793f4c0a8d5ac20c292a2d0548f827b37c0c",
+        "zh-CN": "112264ae5562657af7173ab9fb1972d857a14392283ed03b9eab1c92998876c7"
+      },
+      "findings": [],
+      "keys_audited": 4,
+      "keys": [
+        "ui.ownerAudit.held_review",
+        "ui.ownerAudit.screening",
+        "ui.ownerAudit.screening_retry",
+        "ui.ownerAudit.delivery_pending"
+      ],
+      "retained": "40 other pairs byte-identical to base 23ec4af967b (mechanically verified)"
+    }
+  }
+}

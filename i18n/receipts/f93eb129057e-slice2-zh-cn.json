@@ -1,0 +1,94 @@
+{
+  "schema": 1,
+  "receipt_kind": "Independent two-key working-tree linguistic delta audit with proved inherited unchanged coverage",
+  "auditor": "reviewer",
+  "model": "anthropic/claude-sonnet-5-5",
+  "model_provenance": "Actual current host descriptor for session f93eb129057e: anthropic/claude-sonnet-5-5. No new fallback announced for this task. Prior receipt model identities are referenced unchanged, not rewritten.",
+  "instance": "f93eb129057e-slice2-zh-cn",
+  "session": "f93eb129057e",
+  "date": "2026-11-03",
+  "locale": "zh-CN",
+  "namespace": "ui.teamBridge",
+  "status": "passed",
+  "result": "clean",
+  "sha256": {
+    "en": "911d5928e6b206e9d60aca25c081383f0f2564661646d43d45f746af06e6d858",
+    "zh-CN": "f5c5ae8d118b28b84e029f431d2f998dd07dacee3f30013950d225ed2f8bfa81"
+  },
+  "context": {
+    "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+    "sha256": "96966f6ec44c50eaaf5f3e66ee4298dbd7fc81a0dd7a45f2c65b600cf8adb19a",
+    "audited_entries": {
+      "ui.teamBridge.attachmentCard.download": {
+        "role": "button on an explicitly bound opaque attachment in authenticated owner audit",
+        "tone": "direct action",
+        "length": "2-4 words",
+        "placeholders": {},
+        "note": "Opens the native main-owned Save As dialog with fixed opaque name attachment.bin. Not upload, inline preview, or a public URL. Only shown when native saving and captured owner authority are available."
+      },
+      "ui.teamBridge.attachmentCard.saved": {
+        "role": "polite success status after the native file save completes",
+        "tone": "factual, concise",
+        "length": "2-4 words",
+        "placeholders": {},
+        "note": "Shown only after the main process confirms writing the opaque file chosen by the user. Not shown on cancel, refusal, account switch or failure. Do not include a filename or filesystem path."
+      }
+    },
+    "assessment": "Download action initiates native Save As; saved status denotes confirmed completed writing, not upload, cancel, refusal, failure or account switch. Both entries contain no placeholders or path interpolation."
+  },
+  "reference_hashes": {
+    "i18n/glossary.md": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "i18n/style-guides/zh-CN.md": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+  },
+  "scope": {
+    "working_tree": "/Users/damian/local-operator-ui/.worktrees/audit-attachment-resource",
+    "observed_head": "1364eb5fcab8aa0871304a7f644cf43cebbd1acc",
+    "uncommitted": true,
+    "keys": [
+      "ui.teamBridge.attachmentCard.download",
+      "ui.teamBridge.attachmentCard.saved"
+    ],
+    "audited_values": {
+      "ui.teamBridge.attachmentCard.download": {
+        "en": "Download file",
+        "zh-CN": "下载文件",
+        "verdict": "PASS: 下载文件 is terse standard Simplified Chinese download action copy."
+      },
+      "ui.teamBridge.attachmentCard.saved": {
+        "en": "File saved",
+        "zh-CN": "文件已保存",
+        "verdict": "PASS: 文件已保存 explicitly marks completed saving; no sentence-final punctuation needed."
+      }
+    },
+    "non_goals": [
+      "Authenticated transport implementation/security",
+      "Native save lifecycle/runtime behavior",
+      "Other code changes",
+      "Rendered fit/pseudo-localization/RTL execution",
+      "New whole-namespace linguistic audit"
+    ],
+    "pinning": "Applies only to the exact raw catalogue/context hashes above. Observed HEAD identifies the baseline, not a commit containing these uncommitted additions. Subsequent changed text or context invalidates these bindings."
+  },
+  "inheritance": {
+    "proof": "HEAD English and target raw-byte hashes exactly equal existing ledger bindings. Working-tree English/target/context add exactly download and saved; all pre-existing keys/values unchanged. Referenced glossary/style byte hashes are unchanged from the earlier independently audited receipt.",
+    "base_source_sha256": "00a4cb6150b71677766c8527369527497cf29ec3ccb91cb5e2b8a3d1c65baffd",
+    "base_target_sha256": "a24f0b1db6a5f97e6739f31bafc65ccb4ac12db210592bcfdbd9fd16468adb23",
+    "prior_receipt": "i18n/receipts/f93eb129057e-zh-cn.json",
+    "prior_receipt_sha256": "3080a67ffe533a151a201f7871cd40e6ccab40caaa48331fe7bc65992671c2e0",
+    "prior_auditor_instance": "f93eb129057e-zh-cn",
+    "prior_auditor_model": "openai/gpt-6.1-sol",
+    "inherited_prior_result": "clean",
+    "inherited_unresolved_findings": "No unresolved finding in prior receipt."
+  },
+  "findings": [],
+  "new_findings": [],
+  "independence": "Independent reviewer; did not author either new key, translations, context or implementation. No repository edits. Scratch receipt is authored by this session only.",
+  "static_data_checks": {
+    "exact_two_added_keys": true,
+    "all_prior_values_unchanged": true,
+    "nfc": true,
+    "no_manual_bidi_controls": true,
+    "no_interpolation_placeholders": true
+  },
+  "not_run": "No tests, typecheck, builds, browser, native saving, authenticated requests, ICU runtime or local ledger writer. Semantic/source-data audit only; does not approve authenticated attachment transport."
+}

@@ -1,0 +1,98 @@
+### 1. hash binding vs expected-hashes.json
+en/ui.library                065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71 OK
+vi/ui.library                12262f8cd5b313b9eeddf157a9dfe28051399cbc8df1ddada416ef9506b44daa OK
+en/ui.library.context        2fe63e830b49079dac67c5c4513358d0a8559a94fbf27ac8d437212b13aa2e72 OK
+hash binding: PASS
+
+### 2. JSON validity + key-set parity
+HEAD: 8a9ce1f808c266ebe9a0e924094344cea60c2c23 match: True | worktree dirty: False
+en keys: 179 vi keys: 179 | missing in vi: none | extra in vi: none
+key ORDER equal en vs vi: True
+context sidecar top-level entries: 179 | covers every en key: True | covers the 20: True
+context entry field sets: [('length', 'note', 'placeholders', 'plural', 'role', 'tone'), ('length', 'note', 'placeholders', 'role', 'tone'), ('length', 'note', 'role', 'tone')]
+
+### 3. delta vs base: additions only, no existing value changed
+added key lines: 21 | removed key lines: 1 | ['ui.library.time.years_y_ago']
+removed line is the pre-existing last key, value identical after (comma rewrite): True
+NEW keys added: 20 of 20 | unexplained additions: none
+existing values changed vs base: none
+keys dropped vs base: none
+
+### 4. placeholder parity, namespace-wide (names as SETS; type/branch text excluded)
+placeholder name-set mismatches: none
+printf %s/%d tokens en vs vi: none
+new keys declare placeholders: none
+
+### 5. ICU plural categories (glossary §3: vi is `other`-only)
+en categories: ['one'] | vi categories: ['other']
+vi uses only `other`: True | same categories as en: False
+ICU constructs in the 20 new keys: none (none present in en either)
+vi plural keys count: 7 | any one/few/many/ZERO/OTHER branch in vi: none
+
+### 6. markup, backticks, tags, flags in the 20 new keys
+none in en
+none in vi
+
+### 7. invisible / bidi / combining / NFC (the 20 new keys)
+invisible/combining/NFC offenders: NONE (all 20 NFC, no ZW*/bidi/NBSP/combining)
+
+### 8. width: ~12-cell badge slot for the 19 labels, body copy for the sentence
+ui.library.kind.audio                      cells= 8 fits
+ui.library.kind.code                       cells= 8 fits
+ui.library.kind.docx                       cells= 4 fits
+ui.library.kind.html                       cells= 4 fits
+ui.library.kind.image                      cells= 8 fits
+ui.library.kind.markdown                   cells= 8 fits
+ui.library.kind.other                      cells= 4 fits
+ui.library.kind.pdf                        cells= 3 fits
+ui.library.kind.pptx                       cells= 4 fits
+ui.library.kind.spreadsheet                cells= 9 fits
+ui.library.kind.text                       cells= 7 fits
+ui.library.kind.video                      cells= 5 fits
+ui.library.tag_category.custom             cells= 9 fits
+ui.library.tag_category.format             cells= 9 fits
+ui.library.tag_category.project            cells= 5 fits
+ui.library.tag_category.source             cells= 5 fits
+ui.library.tag_category.status             cells=10 fits
+ui.library.tag_category.topic              cells= 6 fits
+ui.library.tag_category.type               cells= 4 fits
+over-budget badge labels: none
+widest kind: (9, 'spreadsheet') | widest heading: (10, 'status')
+sentence cells: 46 | existing unsupported cells: 49 | delta: -3
+
+### 9. terminology cross-check inside the SAME locale (values quoted from disk)
+  kind.code             ='Mã nguồn'   category.code         ='Mã nguồn'   equal=True
+  kind.image            ='Hình ảnh'   category.images       ='Hình ảnh'   equal=True
+  kind.audio            ='Âm thanh'   category.sounds       ='Âm thanh'   equal=True
+  kind.spreadsheet      ='Bảng tính'  category.spreadsheets ='Bảng tính'  equal=True
+  kind.video            ='Video'      category.video        ='Video'      equal=True
+  kind.other            ='Khác'       category.other        ='Khác'       equal=True
+  tag_category.source   ='Nguồn'      filter.source         ='Nguồn'      collision=True
+  tag_category.status   ='Trạng thái' filter.status         ='Trạng thái' collision=True
+  tag_category.type     ='Loại'       sort.kind             ='Loại'       collision=True
+  unsupported         = 'Tệp {kind} không có bản xem trước trong ứng dụng.'
+  unsupported_generic = 'Tệp này không có bản xem trước trong ứng dụng.'
+  generic names no kind and no placeholder: True
+  generic == unsupported with the {kind} clause replaced by 'này' (same frame): True
+
+### 10. punctuation/typography of the 20 values
+ui.library.kind.audio                      last='h' ascii_quote=False dblspace=False ellipsis_ascii=False
+ui.library.kind.code                       last='n' ascii_quote=False dblspace=False ellipsis_ascii=False
+ui.library.kind.docx                       last='X' ascii_quote=False dblspace=False ellipsis_ascii=False
+ui.library.kind.html                       last='L' ascii_quote=False dblspace=False ellipsis_ascii=False
+ui.library.kind.image                      last='h' ascii_quote=False dblspace=False ellipsis_ascii=False
+ui.library.kind.markdown                   last='n' ascii_quote=False dblspace=False ellipsis_ascii=False
+ui.library.kind.other                      last='c' ascii_quote=False dblspace=False ellipsis_ascii=False
+ui.library.kind.pdf                        last='F' ascii_quote=False dblspace=False ellipsis_ascii=False
+ui.library.kind.pptx                       last='X' ascii_quote=False dblspace=False ellipsis_ascii=False
+ui.library.kind.spreadsheet                last='h' ascii_quote=False dblspace=False ellipsis_ascii=False
+ui.library.kind.text                       last='n' ascii_quote=False dblspace=False ellipsis_ascii=False
+ui.library.kind.video                      last='o' ascii_quote=False dblspace=False ellipsis_ascii=False
+ui.library.tag_category.custom             last='h' ascii_quote=False dblspace=False ellipsis_ascii=False
+ui.library.tag_category.format             last='g' ascii_quote=False dblspace=False ellipsis_ascii=False
+ui.library.tag_category.project            last='n' ascii_quote=False dblspace=False ellipsis_ascii=False
+ui.library.tag_category.source             last='n' ascii_quote=False dblspace=False ellipsis_ascii=False
+ui.library.tag_category.status             last='i' ascii_quote=False dblspace=False ellipsis_ascii=False
+ui.library.tag_category.topic              last='ề' ascii_quote=False dblspace=False ellipsis_ascii=False
+ui.library.tag_category.type               last='i' ascii_quote=False dblspace=False ellipsis_ascii=False
+ui.library.preview.unsupported_generic     last='.' ascii_quote=False dblspace=False ellipsis_ascii=False

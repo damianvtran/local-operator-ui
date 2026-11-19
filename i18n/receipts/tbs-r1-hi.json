@@ -1,0 +1,74 @@
+{
+  "auditor": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "tbs-r1-hi",
+  "session": "5cbd61e9669b",
+  "date": "2026-10-21",
+  "locale": "hi",
+  "translator": "translator",
+  "translator_session": "79cb4bc439e2",
+  "namespace": "ui.teamBridge",
+  "status": "passed",
+  "keys_audited": 27,
+  "scope": "27-key drafts/schedule delta (5 ui.teamBridge.drafts.* + 22 ui.teamBridge.schedule.*, per git diff 2e16fb1456..e400709b71 of en); base 109 values verified byte-unchanged versus HEAD and inherited; catalogue audit only, not rendered-fit/activation/release.",
+  "sha256": {
+    "en": "145e5d2de5165a0fa6e5ce1cff91f6e6909007e448b4a6e229b47a87a71cb46b",
+    "hi": "8ae1dd53731eed74ea1b8d2e2a3cd8bf04b2225b40e648f985db360e1e1b9343",
+    "context": "cfb426eebee10f1a71310746c4491690a24e2ad6074401115e217d222b9857b2"
+  },
+  "findings": [
+    {
+      "severity": "MINOR",
+      "key": "ui.teamBridge.schedule.confirm",
+      "current": "{date} को भेजें?",
+      "proposed": "{date} भेजें?",
+      "note": "With the hi full date + long time pattern (ICU 78 / CLDR 48, same in Node and the repo's Electron) the formatter already inserts को and ends with बजे, so the rendered text reads \"गुरुवार, 22 अक्टूबर 2026 को 5:30:00 am GMT-4 बजे को भेजें?\": को twice and the nonstandard \"बजे को\"; dropping the extra को gives natural \"…बजे भेजें?\"."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.teamBridge.schedule.invalid",
+      "current": "अभी से 1 मिनट से 120 दिन के बीच की कोई मान्य तारीख और समय चुनें।",
+      "proposed": "अभी से 1 मिनट और 120 दिन के बीच की कोई मान्य तारीख़ और समय चुनें।",
+      "note": "The hi catalogues spell तारीख़ with nukta 28 times and तारीख only 3 times (this key plus two in ui.library), and the style guide says to keep nukta consistently; \"1 मिनट से 120 दिन के बीच\" also stacks से right after \"अभी से\", where \"…और… के बीच\" is the idiomatic range."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.teamBridge.schedule.cancel_failed",
+      "current": "रद्द होने की पुष्टि नहीं हुई। हो सकता है संदेश भेजा जा रहा हो। फिर कोशिश करने से पहले रिफ़्रेश करें।",
+      "proposed": "रद्द होने की पुष्टि नहीं हुई। हो सकता है संदेश भेजा जाना शुरू हो चुका हो। फिर कोशिश करने से पहले रीफ़्रेश करें।",
+      "note": "Two spellings of refresh drift: रिफ़्रेश appears here and once in ui.projects, while the established hi spelling रीफ़्रेश is used 10 times (ui.code_review, ui.schedules, ui.settings.*); the proposal also restores the \"already\" in \"may already be sending\" (शुरू हो चुका हो), so the uncertainty is about something that may already have happened."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.teamBridge.schedule.retry",
+      "current": "पिछला शेड्यूल फिर आज़माएँ",
+      "proposed": "पिछले शेड्यूल से फिर कोशिश करें",
+      "note": "In the same file, retry/try again is फिर कोशिश करें (list.retry, composer.error, create.error, and schedule.failed, which renders \"Retry with the original text and time\" as \"…फिर कोशिश करें\" in the alert directly above this button), so the button that carries out that instruction should use the same verb, not फिर आज़माएँ."
+    }
+  ],
+  "inherited_receipt": {
+    "base": "2e16fb1456",
+    "path": "i18n/receipts/tbd-r3-hi.json",
+    "sha256": "b0a3d96a6fce52dab28f89094ee16997846e8301cedbe06d90733e8d450b0313",
+    "keys_inherited": 109,
+    "base_source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+    "base_target_sha256": "78ff808697020fdde224fe7609a18d4aee9ab63f1f8719d2447d204a39933b7c",
+    "full_coverage_receipt": {
+      "path": "i18n/receipts/tbd-r1-hi.json",
+      "sha256": "48c6c90dc1cda69478373a5f312bec377ac13ca4d4286dd2101d3df25e1b2cae"
+    },
+    "unchanged_values_verified": 109
+  },
+  "reference_sha256": {
+    "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+  },
+  "validation": {
+    "independence": "Auditor session 5cbd61e9669b, separate from translator session 79cb4bc439e2. Read en, the en context sidecar, the hi catalogue, the glossary, the hi style guide, and the three renderer files (team-bridge-scheduled.tsx, team-bridge-page.tsx, team-bridge-rail.tsx) directly. Verified en/context/glossary hashes match the brief. git show HEAD:hi and 2e16fb1456:hi both hash 78ff8086… (= base_target_sha256), and the 2e16fb1456 en hashes 92f6c40f… (= base_source_sha256). Both inherited receipt files hash as stated. Key sets of en and hi are equal (136 = 109 + 27). All 109 HEAD values are byte-identical in the working file; the only removed line in git diff is error_pane gaining a trailing comma, with its value unchanged. No repo file edited; nothing staged.",
+    "semantics": "Each of the 27 strings was judged in its real UI role: rail nav buttons (drafts.title, schedule.list), nav aria-label (drafts.navigation), rail-row sr-only/title indicator (drafts.indicator), dialog title + icon-button aria-label (schedule.title), DialogDescription (timezone), field labels (when, edit_body), help/alert text (window, invalid, failed), the two-step primary button (review, then confirm_action), list h2/aria-label, status lines, row buttons (reschedule, cancel), and composer alerts and ghost buttons (retry, create_uncertain, create_retry, storage_failed, success). Register is consistently आप with polite imperatives; create_retry correctly keeps the first person (मैंने). Failure copy keeps explicit uncertainty: पुष्टि नहीं हुई, हो सकता है, पहले ही बन चुका हो. failed and success name the Scheduled view as “शेड्यूल किए गए”, byte-equal to schedule.list. create_uncertain and create_retry name Groups as “समूह”, matching section.groups. Terms match existing usage: ड्राफ़्ट (= ui.code_review draft), शेड्यूल (glossary/style guide), संगठन, संदेश, रद्द करें, डिवाइस, ऑफ़लाइन, पेज, फिर कोशिश करें (except schedule.retry, flagged). The four findings are all MINOR; the other 23 keys are clean.",
+    "icu": "Parsed en and hi for all 27 keys with @formatjs/icu-messageformat-parser from the repo's node_modules. Argument sets are identical: {timezone} in schedule.timezone and {date} in schedule.confirm, both type argument; no plural/select/markup in the scope. Formatted with intl-messageformat (locale hi): timezone with Asia/Kolkata, and confirm with a real Intl.DateTimeFormat('hi',{dateStyle:'full',timeStyle:'long'}) string. Both render; the double को in the rendered confirm string is the confirm finding.",
+    "typography": "All 27 values are NFC. No U+200E/F, U+202A–E, U+2066–9, U+061C, ZWJ or ZWNJ. No value is identical to English. No Latin text outside placeholders. Latin digits (1, 120) per the style guide, no Devanagari digits. Danda । ends sentences; ? kept in confirm; quotes are “ ” per the style guide; the ellipsis in schedule.loading is U+2026; the em dash is kept in sending and create_retry; the file ends with a newline. The only nukta inconsistency is तारीख in schedule.invalid (flagged).",
+    "overflow": "Code points hi/en for short labels: drafts.indicator 8/5 and drafts.title 8/6 (Devanagari conjuncts take fewer cells than code points). schedule.list 14/9 sits in a 30px-high rail nav button next to an icon, and confirm_action 22/16 is the dialog primary button; both are flagged for a rendered-fit check, not as findings, because the context permits wrapping and no shorter idiomatic form keeps the meaning. Similar length: review 14/15, reschedule 9/10, cancel 15/14, retry 25/23 (31 if the proposal is adopted; it is a ghost button that can wrap), when 12/7 (label above the input), title 18/16, navigation 13/17 (aria-only).",
+    "limitations": "Browser unavailable by task constraint; no screenshots, glyph metrics, visual-fit or rendered bidi claim. No catalogue/code edits."
+  }
+}

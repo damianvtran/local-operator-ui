@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1, of all 17 keys of the new PR #1927 namespace ui.canvas.projects (chat canvas linked-projects view)",
+  "locale": "hi",
+  "namespace": "ui.canvas.projects",
+  "pr": 1927,
+  "date": "2026-11-15",
+  "head": "b23ea041b84e1fe947f35ae994432f37ed9c7179",
+  "instance": "pr1927-hi-canvas-projects-1d4625a1",
+  "auditor": {
+    "agent": "reviewer",
+    "role": "independent i18n auditor (team lopdev, reviewer role, UI i18n audit r1); not the translator (coder, anthropic/claude-opus-5-5, per the PR #1927 body)",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session 3f535aabaa26: a different session and agent from the translator (coder lane that authored 0c1eb01b89); same served model family anthropic/claude-opus-5-5 as stated by this session's harness system prompt, no fallback. No MT used.",
+    "instance": "pr1927-hi-canvas-projects-1d4625a1"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean",
+  "findings": [],
+  "binding": "Verified at b23ea041b84e: target src/i18n/catalogues/hi/ui.canvas.projects.json (sha256 92a83754ae56ac57315e6b0444f858921553d44bdd645fe69176c414606f2e29); English src/i18n/catalogues/en/ui.canvas.projects.json (sha256 542a9cb926396ffde3704dc4fb2ac4f2bc17db5fd2101a3edf5af53e48cbf00b); context sidecar sha256 b079d6897d45edb1175703d866f2be0073943f8dcc34f5896bfa216f57fec2d0. Reference: core glossary ~/local-operator i18n/glossary.md @ origin/main cb85fcb962 (sha256 5de3929198c3…); style guide i18n/style-guides/hi.md (sha256 82292dc8d13f). Checks (python): key set equals English; ICU argument names (state, count, name) and select arms (open/other) preserved; plural arms = one/other per glossary §3; ::group-off number skeleton kept; values NFC; no Cf characters. आप register; प्रोजेक्ट/सत्र/एजेंट per glossary; 'जुड़े सत्र' matches linked_sessions; रनटाइम per hi guide; 'फिर कोशिश करें' matches existing try_again; one/other arms. Not done: rendered fit/pseudo-localization frames (no browser tool in this lane; PR evidence frames are English). Values: segment = \"प्रोजेक्ट\" (9/8 chars) | heading = \"जुड़े प्रोजेक्ट\" (15/15 chars) | back = \"जुड़े प्रोजेक्ट\" (15/15 chars) | rail_tooltip = \"{state, select, open {जुड़े प्रोजेक्ट बंद करें} other {जुड़े प्रोजेक्ट खोलें}}\" (78/74 chars) | rail_tooltip_count = \"{state, select, open {जुड़े प्रोजेक्ट बंद करें} other {जुड़े प्रोजेक्ट खोलें}} — {count, plural, one {{count, number, ::group-off} प्रोजेक्ट} other {{count, number, ::group-off} प्रोजेक्ट}}\" (189/182 chars) | rail_aria = \"जुड़े प्रोजेक्ट\" (15/15 chars) | rail_aria_count = \"जुड़े प्रोजेक्ट, {count, plural, one {{count, number, ::group-off} प्रोजेक्ट} other {{count, number, ::group-off} प्रोजेक्ट}}\" (125/122 chars) | loading = \"जुड़े प्रोजेक्ट लोड हो रहे हैं\" (30/23 chars) | empty_title = \"कोई जुड़ा प्रोजेक्ट नहीं\" (24/18 chars) | empty_description = \"यह बातचीत जिन प्रोजेक्ट से जुड़ी है, वे यहाँ दिखते हैं। किसी प्रोजेक्ट के जुड़े सत्र वाले हिस्से से इसे जोड़ें, या एजेंट से जोड़ने को कहें।\" (139/131 chars) | draft_title = \"अभी कोई बातचीत नहीं\" (19/19 chars) | draft_description = \"पहला संदेश भेजें, फिर इस बातचीत को किसी प्रोजेक्ट से जोड़ें ताकि वह यहाँ दिखे।\" (78/78 chars) | unavailable_title = \"जुड़े प्रोजेक्ट उपलब्ध नहीं हैं\" (31/32 chars) | unavailable_description = \"यह रनटाइम किसी बातचीत के प्रोजेक्ट की सूची नहीं दिखा सकता। उन्हें यहाँ देखने के लिए Local Operator अपडेट करें।\" (110/90 chars) | error_title = \"जुड़े प्रोजेक्ट लोड नहीं हो सके\" (31/35 chars) | try_again = \"फिर कोशिश करें\" (14/9 chars) | open_project = \"{name} खोलें\" (12/11 chars)",
+  "scope": "ui.canvas.projects for hi: 17 PR #1927 keys at branch head b23ea041b84e",
+  "revisions": {
+    "head": "b23ea041b84e1fe947f35ae994432f37ed9c7179"
+  },
+  "en_sha256": "542a9cb926396ffde3704dc4fb2ac4f2bc17db5fd2101a3edf5af53e48cbf00b",
+  "context_sha256": "b079d6897d45edb1175703d866f2be0073943f8dcc34f5896bfa216f57fec2d0",
+  "target_sha256": "92a83754ae56ac57315e6b0444f858921553d44bdd645fe69176c414606f2e29",
+  "sha256": {
+    "hi": "92a83754ae56ac57315e6b0444f858921553d44bdd645fe69176c414606f2e29",
+    "en": "542a9cb926396ffde3704dc4fb2ac4f2bc17db5fd2101a3edf5af53e48cbf00b"
+  }
+}

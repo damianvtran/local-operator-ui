@@ -233,6 +233,18 @@ let profilesList: { name: string; kind: string; source: string }[] = PROFILES;
 let teamsList: string[] = ["release-crew", "docs-pod"];
 /** `capabilities` answers OK until this flips (the off-route voice story). */
 let capabilitiesFail = false;
+/**
+ * The tags capability fixture for the tags stories only: 0 is absent, 1 is the
+ * durable store (`session_tags`), 2 adds the fork's `session_tags_auto_tag`.
+ *
+ * Off by default so every existing frame in this file keeps the panel without a
+ * Tags group - the stories above were photographed against a backend that
+ * predates `session_tags`, and turning it on globally would change frames whose
+ * claim says nothing about tags. The pair below sets it in its own render,
+ * exactly as `capabilitiesFail` is a per-story switch. 1 is the BEFORE frame:
+ * the same Tags group, the same empty registry, no auto-tag row.
+ */
+let tagsFixture = 0;
 /** `sessions.list` answers OK until this flips (the off-route voice story). */
 let sessionsFail = false;
 /** What `backend.getStatus` answers: attached is the healthy default. */
@@ -288,6 +300,11 @@ const bridge = () => {
 						profile_catalogue: 1,
 						team_catalogue: 1,
 						session_pins: 1,
+						// The tags stories' switch; every other frame in this file
+						// deliberately predates the tags capability. 1 is the catalogue
+						// alone, 2 adds the fork's own key (they are separate in core).
+						...(tagsFixture ? { session_tags: 1 } : {}),
+						...(tagsFixture >= 2 ? { session_tags_auto_tag: 1 } : {}),
 					},
 				});
 			case "sessions.list":
@@ -295,6 +312,14 @@ const bridge = () => {
 				return ok({ sessions: roster, truncated: false });
 			case "profiles.list":
 				return ok({ profiles: profilesList.map(profile) });
+			case "tags.list":
+				/*
+				 * Only reached when a story turns the tags capability on. The empty
+				 * registry is the frame's worst case: it draws the group's own
+				 * "no tags yet" sentence UNDER the auto-tag row, so the height the
+				 * frame measures is the tallest the Tags group can be.
+				 */
+				return ok({ tags: [] });
 			case "teams.list":
 				return ok({
 					teams: teamsList.map((name) => ({
@@ -564,7 +589,7 @@ const KillSwitch: FC = () => {
  * as offline - the facts a frame in this file is read for. It is a caption
  * for the evidence, in the idiom `chat-sidebar-sections.stories.tsx` uses.
  */
-const Readout = () => {
+const Readout: FC<{ autoTag?: boolean }> = ({ autoTag = false }) => {
 	const stored = useUiPreferencesStore((state) => state.chatSidebarView);
 	const health = useServerHealth();
 	const [lines, setLines] = useState<string[]>([]);
@@ -618,6 +643,25 @@ const Readout = () => {
 			const retryRefresh = [...document.querySelectorAll("button")].filter(
 				(el) => text(el) === "Retry refresh",
 			).length;
+			/*
+			 * THE AUTO-TAG SETTING'S OWN LINE, drawn only for the stories that turn
+			 * the tags capability on. It reads the CONTROL (present, checked), the
+			 * helper's actual words, and the number of elements that actually scroll -
+			 * the panel ITSELF plus anything inside it, because the panel is the
+			 * scroller (a descendant-only walk printed "inner scrollers 0" beside a
+			 * "panel scrolls yes"). The "one scroller" claim is a count, not a
+			 * glance at the pixels.
+			 */
+			const autoTagRow = document.querySelector("[data-sidebar-auto-tag]");
+			const scrollers = panel
+				? [panel, ...panel.querySelectorAll<HTMLElement>("*")].filter((el) => {
+						const overflow = getComputedStyle(el).overflowY;
+						return (
+							(overflow === "auto" || overflow === "scroll") &&
+							el.scrollHeight > el.clientHeight + 1
+						);
+					}).length
+				: 0;
 			const next = [
 				`Stored view: ${stored.groupBy}/${stored.basis}/${stored.orderBy} · hidden [${stored.hidden.join(", ")}] · loads ${stored.loads}`,
 				`Drawn: ${chatRows()} chat row(s)`,
@@ -636,6 +680,11 @@ const Readout = () => {
 					? `Panel: OPEN — sections [${orderNow.join(", ")}] · ${checks.join(" ")} · basis [${basisChecks.join(" ")}] · ${panelGeometry(panel)}`
 					: "Panel: (not open)",
 				`“Retry refresh” controls on screen: ${retryRefresh}`,
+				...(autoTag
+					? [
+							`Auto-tag: row ${autoTagRow ? "drawn" : "absent"} · checked ${autoTagRow?.getAttribute("aria-checked") ?? "—"} · helper “${text(document.getElementById("sidebar-auto-tag-help"))}” · inner scrollers ${scrollers} · panel scrolls ${panel && panel.scrollHeight > panel.clientHeight + 1 ? "yes" : "no"}`,
+						]
+					: []),
 			];
 			setLines((previous) =>
 				previous.length === next.length &&
@@ -647,7 +696,7 @@ const Readout = () => {
 		sample();
 		const timer = setInterval(sample, 250);
 		return () => clearInterval(timer);
-	}, [stored, health.data]);
+	}, [stored, health.data, autoTag]);
 	return (
 		<div className="w-[380px] shrink-0 space-y-1 border-l border-hairline p-4 text-meta text-ink-muted">
 			<p className="pb-1 text-ink">The sidebar as the frame reads it</p>
@@ -658,10 +707,11 @@ const Readout = () => {
 	);
 };
 
-const Page: FC<{ sidebarWidth?: number; selectedConversation?: string }> = ({
-	sidebarWidth = 360,
-	selectedConversation,
-}) => (
+const Page: FC<{
+	sidebarWidth?: number;
+	selectedConversation?: string;
+	autoTag?: boolean;
+}> = ({ sidebarWidth = 360, selectedConversation, autoTag = false }) => (
 	<div className="flex h-screen overflow-hidden bg-canvas text-ink">
 		<div
 			className="shrink-0 border-r border-hairline"
@@ -673,7 +723,7 @@ const Page: FC<{ sidebarWidth?: number; selectedConversation?: string }> = ({
 				onStageDraft={() => undefined}
 			/>
 		</div>
-		<Readout />
+		<Readout autoTag={autoTag} />
 	</div>
 );
 
@@ -692,6 +742,7 @@ const resetFixtures = () => {
 	profilesList = PROFILES;
 	teamsList = ["release-crew", "docs-pod"];
 	capabilitiesFail = false;
+	tagsFixture = 0;
 	sessionsFail = false;
 	backendState = "attached";
 	localStorage.removeItem("chat-sidebar-disclosures");
@@ -784,6 +835,94 @@ export const PopoverOpenNarrow: Story = {
 		await waitFor(() => chatRows() >= 3);
 		await openViewPopover();
 	},
+};
+
+/**
+ * The auto-tagging row inside the Tags group, at the three column widths the
+ * height budget is measured at (LOH-11 V2-3, `sidebar-tags-v2.md` §5.4).
+ *
+ * TAGS ARE ON AND THE REGISTRY IS EMPTY, which is the tallest the group can
+ * draw: the master row, the auto-tag row and its helper, then the "no tags
+ * yet" sentence. The helper is a full sentence at `text-meta`, so the narrow
+ * column is where it wraps; the frames and the readout beside each one carry
+ * the panel's box, its content height and whether it scrolls, and the story's
+ * own line counts the elements that actually scroll inside the panel (one).
+ *
+ * A story cannot make the panel shorter than the window it is opened in: the
+ * short-viewport half of the budget is a capture-rig viewport, and these three
+ * stories are the same state at 220/260/320.
+ */
+const autoTagState = (width: number) => () => {
+	resetFixtures();
+	tagsFixture = 2;
+	bridge();
+	split();
+	view({ tagsEnabled: true });
+	roster = groupRoster();
+	return <Page sidebarWidth={width} autoTag />;
+};
+const autoTagPlay = async () => {
+	await waitFor(() => chatRows() >= 3);
+	await openViewPopover();
+};
+
+/** The BEFORE frame: v1 tags, so the group draws without the auto-tag row. */
+const tagsOnlyState = (width: number) => () => {
+	resetFixtures();
+	tagsFixture = 1;
+	bridge();
+	split();
+	view({ tagsEnabled: true });
+	roster = groupRoster();
+	return <Page sidebarWidth={width} />;
+};
+
+export const PopoverTagsBefore220: Story = {
+	render: tagsOnlyState(220),
+	play: autoTagPlay,
+};
+
+export const PopoverTagsBefore260: Story = {
+	render: tagsOnlyState(260),
+	play: autoTagPlay,
+};
+
+export const PopoverTagsBefore320: Story = {
+	render: tagsOnlyState(320),
+	play: autoTagPlay,
+};
+
+export const PopoverAutoTag220: Story = {
+	render: autoTagState(220),
+	play: autoTagPlay,
+};
+
+/**
+ * The same state with the panel scrolled to its END, so the frame shows the
+ * last section row and the hidden-sections sentence rather than trusting the
+ * content height alone: the setting's row must not push any existing control
+ * out of reach inside the panel's one scroller.
+ */
+export const PopoverAutoTagEnd: Story = {
+	render: autoTagState(220),
+	play: async () => {
+		await autoTagPlay();
+		const panel = document.querySelector<HTMLElement>(
+			"[data-sidebar-view-panel]",
+		);
+		if (panel) panel.scrollTop = panel.scrollHeight;
+		await sleep(350);
+	},
+};
+
+export const PopoverAutoTag260: Story = {
+	render: autoTagState(260),
+	play: autoTagPlay,
+};
+
+export const PopoverAutoTag320: Story = {
+	render: autoTagState(320),
+	play: autoTagPlay,
 };
 
 /**

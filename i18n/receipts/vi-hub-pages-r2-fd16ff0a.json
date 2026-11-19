@@ -1,0 +1,85 @@
+{
+	"schema": 1,
+	"auditor": "translation-auditor",
+	"agent": "translation-auditor",
+	"model": "deepseek/deepseek-flash",
+	"model_provenance": "Session header opened as anthropic/claude-sonnet-5-5; provider quota failures forced three in-turn fallbacks (anthropic/claude-opus-5-5, then openai/gpt-6.1-sol, then this model). Every read, diff and check below completed on the model that served that call; the verdict was assembled and written on deepseek/deepseek-flash. No check was skipped across a switch and no other model's summary is quoted.",
+	"fallback": "anthropic/claude-sonnet-5-5 -> anthropic/claude-opus-5-5 -> openai/gpt-6.1-sol -> deepseek/deepseek-flash (provider quota)",
+	"independence": "Separate session and role from the PR coder, from the translator, and from the author of the correction under test. This is round 2 on a delta: the audit was rebuilt from the English source, its .context.json sidecar, the render site and the shipped vi catalogue at this head. The correction commit's message was read only as a claim to check, never as evidence.",
+	"instance": "fd16ff0a-hub-pages-r2-pages",
+	"session": "fd16ff0ab19f",
+	"locale": "vi",
+	"namespace": "ui.hub.pages",
+	"branch": "i18n/s5-agent-hub",
+	"head": "8d0b4e66f38f1fac8df16767849c7a969a55b72f",
+	"pr": "damianvtran/local-operator-ui (i18n/s5-agent-hub)",
+	"date": "2026-11-08",
+	"round": 2,
+	"scope": "be77d308262..8d0b4e66f38",
+	"scope_note": "Delta round. Round 1 (receipt vi-hub-pages-r1-0f28bdfc.json, head be77d308262) audited 16 pages keys and one teams key for vi and filed VI-HUB-1 (minor) on ui.hub.pages.empty.search.body, proposing exactly the wording this round verifies. This round re-reads only the corrected key plus the parallelism and whole-string checks it was meant to restore; the other 15 keys of the namespace are retained clean from round 1 against an unchanged file apart from this one line.",
+	"result": "clean",
+	"result_rationale": "Zero blockers, zero majors, zero in-scope defects. One nit is recorded non-gating (see findings[0]): a residual two-word ambiguity in `tên hay` that predates this delta and that the correction did not introduce or worsen. Under the review gate a nit never forces a further round, so the round is clean and terminal. It is NOT filed as clean-with-findings, which would imply an open in-scope finding.",
+	"corrected_keys": [
+		"ui.hub.pages.empty.search.body"
+	],
+	"corrected_values": {
+		"ui.hub.pages.empty.search.body": {
+			"before": "Không tên hay mô tả tác nhân nào chứa nội dung đó. Hãy xóa tìm kiếm để xem toàn bộ trung tâm.",
+			"after": "Không có tên hay mô tả tác nhân nào chứa nội dung đó. Hãy xóa tìm kiếm để xem toàn bộ trung tâm.",
+			"delta_chars": "+'có ' inline after 'Không' (4 bytes UTF-8); no other character of the string moved",
+			"sha256_before_value": "09f92982d25f5a62",
+			"sha256_after_value": "891c49198ba80e18"
+		}
+	},
+	"paths": {
+		"en": "src/i18n/catalogues/en/ui.hub.pages.json",
+		"target": "src/i18n/catalogues/vi/ui.hub.pages.json",
+		"context": "src/i18n/catalogues/en/ui.hub.pages.context.json",
+		"render_site": "src/renderer/src/features/agent-hub/agent-hub-page.tsx"
+	},
+	"sha256": {
+		"en": "47793b98059be89eafc26b8aff209b3aed63a9eac26b44ac5da9b87e973c7b5a",
+		"target": "04590db6c40efc1c3c3f31f1ad9d5bc25f6b2d51c33363f4a00dc9cb77777c82",
+		"context": "e78c02114d87f722bd47bb14ea61f5ac3281407581132bd9a715c81d1a112872"
+	},
+	"sha256_note": "Computed with sha256sum-equivalent over the on-disk bytes of each file at head 8d0b4e66f38. The en source and the context sidecar are byte-identical to their round-1 values (47793b98…, e78c0211…), which confirms this commit is copy-only on the target side; the target moved 58ba4a56… -> 04590db6… .",
+	"changed_lines_in_commit": [
+		"src/i18n/catalogues/hi/ui.hub.pages.json :: ui.hub.pages.empty.search.title :: उस खोज से -> इस खोज से (other locale, outside this audit)",
+		"src/i18n/catalogues/ru/ui.hub.pages.json :: ui.hub.pages.empty.org.body :: для его участников -> для участников этой организации (other locale, outside this audit)",
+		"src/i18n/catalogues/ru/ui.hub.pages.json :: ui.hub.pages.empty.category.title :: Нет агентов в категории {category}. -> В категории «{category}» нет агентов. (other locale, outside this audit)",
+		"src/i18n/catalogues/vi/ui.hub.pages.json :: ui.hub.pages.empty.search.body :: Không tên -> Không có tên (THIS DELTA, the only vi line in the commit)",
+		"src/i18n/catalogues/zh-CN/ui.hub.pages.json :: ui.hub.pages.empty.org.body :: 将在此显示 -> 会在此显示 (other locale, outside this audit)"
+	],
+	"changed_lines_summary": "git show --stat reports 4 files, 5 insertions, 5 deletions. The vi catalogue contributes exactly one changed line (1 insertion, 1 deletion); the vi file grew 4657 -> 4661 bytes, matching the 4 bytes of 'có '. No other vi catalogue, no key, no ledger row and no generated type is touched by this commit.",
+	"verified": [
+		"KEY SETS: vi ui.hub.pages still has 59 keys against 59 in English at this head; key set and key ORDER are both byte-for-byte identical to be77d308262, so nothing was added, removed, renamed or reordered. No duplicate key in the raw JSON text; tab indentation, single trailing newline, no CRLF, no BOM preserved.",
+		"CHANGE SCOPE: exactly one value differs between the two revisions across the whole 59-key file — ui.hub.pages.empty.search.body. Every other value is identical object-for-object, checked by parsing both revisions rather than by reading the diff alone.",
+		"PLACEHOLDERS: the corrected string carries none (context sidecar placeholders = {}), so no placeholder could be renamed, reordered or inflected. The four placeholder-bearing keys of this delta ({category} in empty.category.title, {org} in empty.org.body and in the two org.access keys) are untouched at this head.",
+		"FRAME FIX IS CORRECT AND NECESSARY: 'Không tên …' negated a bare noun with no predicate, which vi does not licence; 'không có … nào' is the standard negative-existential frame and 'nào' is its negative-polarity item. Before the edit the first three words read as a truncated 'không tên' ('no name') and the sentence had to be re-parsed; with 'có' the frame closes and the phrase weight (~11 syllables in the quantified NP) no longer outruns it. This matches how the language is written elsewhere in this catalogue: a sweep of every vi catalogue value carrying the 'Không … nào' frame found the 'có' form throughout (ui.agents.pages.empty.search 'Không có kết quả nào khớp…', ui.agents.skills.empty.search 'Không có kỹ năng nào khớp…', ui.hub.teams.public.search_miss 'Không có nhóm nào…', ui.teamBridge.members.no_matches 'Không có người hoặc tác nhân nào…'), and the corrected string now sits in that family instead of being the lone clipped member.",
+		"SIBLING PARALLELISM RESTORED, NOT BROKEN: all four pages empty-state bodies/titles now carry a 'có'/'chưa có'/'chưa' frame — empty.org.title 'chưa có', empty.category.body 'Chưa có gì', empty.search.title 'Không có', empty.search.body 'Không có', empty.public.body 'Chưa ai'. Before the edit this body was the only one without it. Cross-namespace, the pages search miss ('Không có tên hay mô tả tác nhân nào chứa nội dung đó') and the teams search miss ('Không có nhóm nào trên trang này khớp với “{query}”') now share the same 'Không có … nào khớp/chứa …' shape. The two untouched pages/teams pairs that matter (empty.org.body vs teams org.empty, and clear.search vs the teams search affordance) are unchanged by this commit.",
+		"MEANING AGAINST ENGLISH: source 'No agent's name or description carries that. Clear it to see the whole hub.' The vi sentence keeps both required facts from the sidecar: the coverage ('tên hay mô tả tác nhân' = the agent's name or description) and the action, using the same noun as clear.search ('Xóa tìm kiếm', value of ui.hub.pages.clear.search). The sidecar's warning against the category miss's 'carries that filter' phrasing does not bite in vi: the vi category body is 'Chưa có gì trong danh mục này' and the vi search body uses 'chứa nội dung đó' ('contains that content'), which is neutral in Vietnamese and does not reproduce the English oddity of something 'carrying' a typed query.",
+		"WHOLE STRING AFTER THE EDIT: the second sentence is untouched and still reads naturally ('Hãy xóa tìm kiếm để xem toàn bộ trung tâm.'), the imperative tone and terminal full stop match the sidecar's 'plain two-sentence explanation, imperative second sentence', and 'trung tâm' for the hub is the settled noun in this file (also in empty.category.body). Length 96 chars / 23 words, unwrapped in a max-w-md paragraph with the clear button beneath, so the extra 3 characters cannot change layout behaviour.",
+		"CHARACTER HYGIENE: value is NFC (no decomposed combining sequences), contains no format (Cf) characters, no bidi control, no NBSP or other odd space, no leading/trailing or double space, ASCII digits absent, ASCII '...' absent (a full stop is used), and the sentence ends with a period. Keys are unchanged so src/i18n/keys.gen.ts needs no regeneration and still carries the key."
+	],
+	"findings": [
+		{
+			"id": "VI-HUB-R2-1",
+			"severity": "nit",
+			"key": "ui.hub.pages.empty.search.body",
+			"summary": "Residual two-word ambiguity, pre-existing word order, not introduced or worsened by this correction: 'tên hay mô tả tác nhân' can momentarily parse as 'tên hay' ('a good name', hay as adjective) before 'mô tả tác nhân' forces the coordination reading (hay = 'or'). The 'nào' resolves it on the second pass, so no meaning is lost and no reader is left in a wrong reading; it is materially shallower than the clipped-'có' garden path this round confirms fixed. Suggested one-line fix if a later copy pass touches the line: 'Không có tên tác nhân hay mô tả nào chứa nội dung đó.' keeps 'tên tác nhân' together and removes the 'good name' reading.",
+			"status": "open — nit, non-gating (defers in-thread; no commit required, clean is terminal)",
+			"gate": "does not gate: zero blockers, zero majors",
+			"evidence": "Read at head 8d0b4e66f38 in src/i18n/catalogues/vi/ui.hub.pages.json; the ambiguity is present identically in the be77d308262 wording, so this delta neither introduced nor worsened it."
+		}
+	],
+	"out_of_scope": [
+		"The four non-vi changed lines in this commit (hi, ru x2, zh-CN) are other auditors' scope; they are listed above only so the changed-line enumeration is complete.",
+		"Pre-existing vi inconsistency between 'danh mục' (taxonomy, this delta) and 'loại' (browse_aria) was reported in round 1 and remains out of scope here."
+	],
+	"verdict": "clean",
+	"normalised_for_ledger": "auditor and instance rewritten to the ledger contract by the programme manager; original auditor text preserved verbatim inside the parentheses, findings and hashes untouched",
+	"auditor_provenance": "translation-auditor (local-operator reviewer session fd16ff0ab19f (lopdev reviewer role), independent i18n auditor for vi on the Agent Hub publication copy)",
+	"identity_provenance": {
+		"agent": "local-operator reviewer session fd16ff0ab19f (lopdev reviewer role)"
+	}
+}

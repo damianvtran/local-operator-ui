@@ -1,0 +1,195 @@
+{
+ "audit_id": "ur-tour-first-20261025",
+ "date": "2026-10-25",
+ "locale": "ur",
+ "namespace": "ui.onboarding.tour",
+ "source_commit": "34e6964513eb2ec7aeb6d50aa9cd2010af071610",
+ "scope": "Full first independent audit of ui.onboarding.tour for ur: 123 English, 123 context and 123 target values read against the frozen source. Text-only; rendered fit unverified.",
+ "status": "audited",
+ "high_visibility": {
+  "group": "onboarding",
+  "second_independent_audit_required": true,
+  "second_independent_audit": "performed",
+  "second_instance": "de447a030b3b"
+ },
+ "translator": {
+  "agent": "i18n-translator",
+  "model": "radient/auto",
+  "date": "2026-10-25",
+  "job": "03e8045ae218"
+ },
+ "auditors": [
+  {
+   "agent": "translation-auditor",
+   "model": "radient/auto",
+   "date": "2026-10-25",
+   "result": "clean",
+   "instance": "de447a030b3b",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "receipt": "i18n/receipts/de447a030b3b.json",
+   "receipt_sha256": "ef2088c051e243e35165aeea4ab7f699dea7379cbad91e0def50bc4487c9844a",
+   "scope": "Second independent confirmation of the 17-value remediation after the second audit changes_requested verdict. Prior audits are superseded history, not current evidence. Clean: 0 blocker/major/minor/nit.",
+   "note": "Second independent audit; high-visibility two-audit rule now evidenced. Remaining findings are non-blocking; rendered/native proof not claimed."
+  }
+ ],
+ "audit_rounds": [
+  {
+   "round": 1,
+   "instance": "c62009d5ecba",
+   "agent": "translation-auditor (lopdev team)",
+   "model": "radient/auto",
+   "date": "2026-10-25",
+   "status": "clean-with-findings",
+   "result": "clean-with-findings",
+   "keys_audited": 123,
+   "target_sha256": "49089358f48ef8807c380736444e18569772e97e46105b727f7552a9088ed028",
+   "context_sha256": "7131faf88213b943cfa7ee0b951a8e0d5fb512728b677c023beec11b677c0906",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 8,
+    "nit": 4
+   },
+   "receipt": {
+    "path": "i18n/receipts/ur-onboarding-tour-first-audit-c62009d5ecba.json",
+    "sha256": "141274f656cac2590eb4abff1d743b6d1f8d6cbd317ba44e0a221089e9861c1e"
+   }
+  },
+  {
+   "receipt": {
+    "path": "i18n/receipts/ur-onboarding-tour-second-audit-de447a030b3b.json",
+    "sha256": "e6b8c7d44fd97d0e52f8ca6026ee6c2d39e3f2348871e19e4e37593d242d143e"
+   },
+   "instance": "de447a030b3b",
+   "agent": "translation-auditor (lopdev team)",
+   "model": "radient/auto",
+   "date": "2026-10-25",
+   "status": "changes_requested",
+   "result": "changes_requested",
+   "findings": {
+    "blocker": 0,
+    "major": 1,
+    "minor": 9,
+    "nit": 3
+   },
+   "target_sha256": "49089358f48ef8807c380736444e18569772e97e46105b727f7552a9088ed028",
+   "keys_audited": 123,
+   "round": 2,
+   "label": "second independent audit changes_requested"
+  },
+  {
+   "receipt": {
+    "path": "i18n/receipts/ur-onboarding-tour-second-audit-remediation-de447a030b3b.json",
+    "sha256": "ef2088c051e243e35165aeea4ab7f699dea7379cbad91e0def50bc4487c9844a"
+   },
+   "instance": "de447a030b3b",
+   "agent": "translation-auditor (lopdev team)",
+   "model": "radient/auto",
+   "date": "2026-10-25",
+   "status": "clean",
+   "result": "clean",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "target_sha256": "75eebcf042bdcf233f7dbaf734c8e4ba5663993729bddf7cc649effd2f12e83e",
+   "keys_audited": 123,
+   "round": 3,
+   "label": "second independent audit on final bytes"
+  }
+ ],
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.onboarding.tour.json",
+   "sha256": "81fc4e3b70850e6961092aeb42a9cc12160fe1bd064d47cb28ce548618bcb976"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.onboarding.tour.context.json",
+   "sha256": "7131faf88213b943cfa7ee0b951a8e0d5fb512728b677c023beec11b677c0906"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/ur/ui.onboarding.tour.json",
+   "sha256": "75eebcf042bdcf233f7dbaf734c8e4ba5663993729bddf7cc649effd2f12e83e"
+  }
+ },
+ "limitations": "Text-only catalogues audit. The high-visibility second independent audit is now performed; no rendered frame, browser fit, native-speaker sign-off or release approval is claimed.",
+ "superseded": [
+  {
+   "source_sha256": "81fc4e3b70850e6961092aeb42a9cc12160fe1bd064d47cb28ce548618bcb976",
+   "target_sha256": "49089358f48ef8807c380736444e18569772e97e46105b727f7552a9088ed028",
+   "auditors": [
+    {
+     "agent": "translation-auditor",
+     "model": "radient/auto",
+     "date": "2026-10-25",
+     "result": "clean-with-findings",
+     "instance": "c62009d5ecba",
+     "findings": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 8,
+      "nit": 4
+     },
+     "receipt": "i18n/receipts/c62009d5ecba.json",
+     "receipt_sha256": "141274f656cac2590eb4abff1d743b6d1f8d6cbd317ba44e0a221089e9861c1e",
+     "scope": "Full first independent audit of ui.onboarding.tour for ur: 123 English/context/target values; text-only, rendered fit unverified.",
+     "note": "First independent audit only. The high-visibility second independent audit required by docs/I18N.md A4 is not performed; this row is not release eligibility. Auditor actual model is recorded from the receipt."
+    }
+   ],
+   "status": "audited"
+  }
+ ],
+ "second_audit": {
+  "receipt": {
+   "path": "i18n/receipts/ur-onboarding-tour-second-audit-remediation-de447a030b3b.json",
+   "sha256": "ef2088c051e243e35165aeea4ab7f699dea7379cbad91e0def50bc4487c9844a"
+  },
+  "instance": "de447a030b3b",
+  "agent": "translation-auditor (lopdev team)",
+  "model": "radient/auto",
+  "date": "2026-10-25",
+  "status": "clean",
+  "result": "clean",
+  "findings": {
+   "blocker": 0,
+   "major": 0,
+   "minor": 0,
+   "nit": 0
+  },
+  "target_sha256": "75eebcf042bdcf233f7dbaf734c8e4ba5663993729bddf7cc649effd2f12e83e",
+  "keys_audited": 123
+ },
+ "carried_source_observations": [
+  "Agent Hub hardcoded Get control: fr « Obtenir » is correct; the source control must be localized in the upcoming agent-hub source slice.",
+  "English ‘Create schedule’ quote does not match the ‘New scheduled task’ control; carried source/programme item, not fixed by target edits.",
+  "Comma-prefix join artefact in the command-palette fragments; carried source/programme item."
+ ],
+ "second_audit_history": {
+  "receipt": {
+   "path": "i18n/receipts/ur-onboarding-tour-second-audit-de447a030b3b.json",
+   "sha256": "e6b8c7d44fd97d0e52f8ca6026ee6c2d39e3f2348871e19e4e37593d242d143e"
+  },
+  "instance": "de447a030b3b",
+  "agent": "translation-auditor (lopdev team)",
+  "model": "radient/auto",
+  "date": "2026-10-25",
+  "status": "changes_requested",
+  "result": "changes_requested",
+  "findings": {
+   "blocker": 0,
+   "major": 1,
+   "minor": 9,
+   "nit": 3
+  },
+  "target_sha256": "49089358f48ef8807c380736444e18569772e97e46105b727f7552a9088ed028",
+  "keys_audited": 123
+ },
+ "remediation_chain": "UR chain: second audit changes_requested (1 major, 9 minor, 3 nit) -> 17-value remediation → clean confirmation on the final bytes."
+}

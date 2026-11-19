@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "locale": "ru",
+  "namespace": "ui.settings.notifications",
+  "date": "2026-11-04",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "ed833173e70f",
+    "model": "openai/gpt-6.1-sol"
+  },
+  "independence": "Auditor is a distinct agent/session from coder/anthropic/claude-opus-5-5; no translation API used.",
+  "source": {
+    "path": "src/i18n/catalogues/en/ui.settings.notifications.json",
+    "sha256": "4bf3f8ffb1daecc09ac44049245bb85fe4c78b2c45ba19062218accc53782d65"
+  },
+  "context": {
+    "path": "src/i18n/catalogues/en/ui.settings.notifications.context.json",
+    "sha256": "aec944a760fd984421ddb0afcb1135d03cb156b844fc88ff8a32ad250385e554"
+  },
+  "target": {
+    "path": "src/i18n/catalogues/ru/ui.settings.notifications.json",
+    "sha256": "d71fc955d24181d5ff1df4c4dd8b0460fc312bcf7d1f0eb33b6601fb95a08917"
+  },
+  "artifacts": [
+    {
+      "path": "i18n/receipts/d2-notification-sounds-r1-ed833173e70f-ru.json",
+      "sha256": "8375882ec1bd9b20a366db2e7db6835ae1a374d344056a9d1bb785c7c28c927f"
+    }
+  ],
+  "findings": [
+    {
+      "id": "RU1",
+      "severity": "minor",
+      "disposition": "fixed in supplied audited file",
+      "keys": [
+        "ui.settings.notifications.volume.valuetext"
+      ],
+      "reason": "The spec §4 allows externally set values such as 71/73 before drag snapping; Russian percent must inflect for 1/21/71 and 2–4, not always процентов."
+    }
+  ],
+  "status": "passed",
+  "notes_not_execution_logs": true,
+  "limitations": [
+    "One independent LLM linguistic audit, not human-native certification or second high-visibility/safety audit.",
+    "No translated rendered-fit, pseudo-localization, RTL visual/shaping proof or audio/runtime QA claimed. English screenshots supplied by implementer do not prove target fit."
+  ]
+}

@@ -1,5 +1,7 @@
 import { FileActionsMenu } from "@shared/components/common/file-actions-menu";
 import { ImageLightbox } from "@shared/components/common/image-lightbox";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
@@ -7,13 +9,10 @@ import { File } from "lucide-react";
 import type { FC } from "react";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { getFileTypeFromPath } from "../../utils/file-types";
+import { getFileName } from "../../utils/get-file-name";
 import { isCanvasSupported } from "../../utils/is-canvas-supported";
 import { isSpreadsheetFile } from "../../utils/is-spreadsheet-file";
-import {
-	ATTACHMENT_UNAVAILABLE_COPY,
-	AttachmentFrame,
-	BrokenAttachment,
-} from "./attachment-frame";
+import { AttachmentFrame, BrokenAttachment } from "./attachment-frame";
 /**
  * Props for the FileAttachment component (base)
  */
@@ -26,51 +25,13 @@ type FileAttachmentProps = BaseFileAttachmentProps & {
 	conversationId: string;
 };
 
-const RESOURCE_NAME_REGEX = /name=([^;,]+)/;
-
-/**
- * Extracts the filename from a path
- * @param path - The file path or URL
- * @returns The extracted filename
- */
-const PATH_SEPARATOR_REGEX = /[/\\]/;
-const getFileName = (path: string): string => {
-	if (path.startsWith("data:image/")) {
-		// Attempt to get a name from the data URI if it's there (e.g., from a download attribute)
-		// This is a basic heuristic and might not always work.
-		const nameMatch = path.match(RESOURCE_NAME_REGEX);
-		if (nameMatch?.[1]) {
-			try {
-				return decodeURIComponent(nameMatch[1]);
-			} catch (_) {
-				// Fallback if decoding fails
-				return "Pasted image";
-			}
-		}
-		return "Pasted image";
-	}
-	if (path.startsWith("data:")) {
-		const nameMatch = path.match(RESOURCE_NAME_REGEX);
-		if (nameMatch?.[1]) {
-			try {
-				return decodeURIComponent(nameMatch[1]);
-			} catch (_) {
-				return "Pasted file";
-			}
-		}
-		return "Pasted file";
-	}
-	// Handle both local paths and URLs
-	const parts = path.split(PATH_SEPARATOR_REGEX);
-	return parts[parts.length - 1];
-};
-
 /**
  * A file the conversation carries: a named card for anything with a path, and
  * the same reserved picture frame as `image-attachment` for a pasted image.
  */
 export const FileAttachment: FC<FileAttachmentProps> = memo(
 	({ file, onClick, conversationId }) => {
+		useI18nLocale();
 		const [hasError, setHasError] = useState(false);
 		const [isLoaded, setIsLoaded] = useState(false);
 		/**
@@ -218,7 +179,7 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 				await handleSpreadsheetClick(file);
 				return;
 			}
-			const title = getFileName(file); // This will be "Pasted image" for image data URIs
+			const title = getFileName(file);
 			const fallbackAction = (err?: string) => {
 				if (err) console.error("Error processing file:", err);
 				onClick(file); // Pass the original file string (path or data URI)
@@ -363,7 +324,8 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 							{/*
 							 * Expanding, not `handleClick`. That handler's `data:` branch
 							 * resolves a canvas document from a title, and a pasted image's own
-							 * title is "Pasted image" — never a canvas-supported extension — so
+							 * title uses the localized fallback (ui.chat.composer_media.pasted_image),
+							 * with no canvas-supported extension, so
 							 * the click fell through to `onClick(file)`, which asked the OS to
 							 * open a `data:` URI as a path. That was a SILENT no-op rather
 							 * than an error, and the distinction is worth the sentence:
@@ -380,8 +342,8 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 								type="button"
 								className={cn("block max-w-full cursor-pointer")}
 								onClick={() => setExpanded(true)}
-								aria-label={`Expand ${name}`}
-								title={`Click to expand ${name}`}
+								aria-label={t("ui.chat.attachments.expand_aria", { name })}
+								title={t("ui.chat.attachments.expand_title", { name })}
 							>
 								<AttachmentFrame>
 									<img
@@ -407,12 +369,7 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 								 * copy is the honest sentence here — the split
 								 * `canonical-image.tsx` makes for the same reason.
 								 */
-								fallback={
-									<BrokenAttachment
-										name={name}
-										detail={ATTACHMENT_UNAVAILABLE_COPY}
-									/>
-								}
+								fallback={<BrokenAttachment name={name} kind="unavailable" />}
 							/>
 						</>
 					)}
@@ -433,9 +390,11 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 				 * invalid HTML. */}
 				<button
 					type="button"
-					className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 text-left"
+					className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 text-start"
 					onClick={handleClick}
-					title={`Click to open ${getFileName(file)}`}
+					title={t("ui.chat.attachments.open_title", {
+						name: getFileName(file),
+					})}
 				>
 					{/* Neutral, not accent. A conversation can carry a dozen of these
 					 * and § 2 budgets the accent at about three spends per screen —
@@ -449,8 +408,8 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 					<div className="file-actions-menu invisible opacity-0 transition-[opacity,visibility] duration-fast ease-out-quart group-hover:visible group-hover:opacity-100">
 						<FileActionsMenu
 							filePath={normalizedPath}
-							tooltip="File actions"
-							aria-label="File actions"
+							tooltip={t("ui.common.actions.file_actions_menu.file_actions")}
+							aria-label={t("ui.common.actions.file_actions_menu.file_actions")}
 							onShowInCanvas={handleClick}
 						/>
 					</div>

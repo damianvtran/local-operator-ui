@@ -66,7 +66,11 @@ const bundle = await build({
 			// through the shipped authorize gate and the shipped validators, which is
 			// where a new tab's conversation id is validated.
 			'export * from "./src/main/browser/ipc";',
-			'export { ipcMain } from "electron";',
+			'export { ipcMain, Menu } from "electron";',
+			// The tab-actions menu's wire contract: the browser-host test drives the
+			// menu CHANNEL through `registerBrowserIpc`, so the same validators the
+			// main process applies are importable here rather than re-spelled.
+			'export * from "./src/shared/browser-tab-actions-menu";',
 			'export * from "./src/main/browser/ownership";',
 			'export * from "./src/main/browser/host";',
 			// The download capture and the file-transfer policy pair. Bundled so the
@@ -92,6 +96,14 @@ const bundle = await build({
 			// below can pin the dispatched code to them; the gate that keeps them equal
 			// to the vendored driver's functions is scripts/check-geometry-sources.test.mjs.
 			'export * from "./src/main/browser/actions/geometry-sources.gen";',
+			// The two page PROGRAMS the host injects (`select`, `setvalue`), for the
+			// same reason: the lane tests below assert the `functionDeclaration` that
+			// actually reached CDP is this constant, which is the invariant the
+			// bytecode transport breaks when it is fed a computed `.toString()`.
+			'export * from "./src/main/browser/actions/page-programs.gen";',
+			// The main-process locale store, reached through the SAME module graph the host
+			// resolves `t()` from, so a test can drive the language the host speaks.
+			'export { clearRegisteredCatalogues, registerCatalogue, setLocale } from "./src/i18n";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -129,6 +141,9 @@ const {
 	// budget expiry should leave queued from `RESTORE_CONCURRENCY`, and a literal
 	// would read green the day the number moves.
 	RESTORE_CONCURRENCY,
+	clearRegisteredCatalogues,
+	registerCatalogue,
+	setLocale,
 	RESTORE_TAB_TIMEOUT_MS,
 	RESTORE_BUDGET_MS,
 	surfaceToken,
@@ -157,9 +172,12 @@ const {
 	consentClickHandler,
 	ElectronNotification,
 	ipcMain,
+	Menu,
 	registerBrowserIpc,
 	unregisterBrowserIpc,
 	BROWSER_IPC_CHANNELS,
+	TAB_ACTIONS_MENU_ACTION_IDS,
+	tabActionsMenuSelectionOrNull,
 	OwnershipLedger,
 	BrowserHost,
 	CdpPool,
@@ -171,14 +189,21 @@ const {
 	READ_STYLES_SOURCE,
 	HIT_TEST_SOURCE,
 	ANCESTORS_SOURCE,
+	SELECT_PAGE_SOURCE,
+	SETVALUE_PAGE_SOURCE,
 	navigateView,
 	settle,
 	// The popup policy's pure decision function and its cap constant: the matrix
 	// below drives this directly, and reads the cap rather than hard-coding 4 — a
 	// test that hard-codes the cap stops testing it the day the cap moves.
 	decidePopup,
+	routePopup,
+	isLinkTabRecord,
+	linkLoadLeftNoPage,
 	effectivePresentation,
+	sessionMayAdopt,
 	MAX_POPUP_CHILDREN_PER_VIEW,
+	MAX_USER_LINK_TABS_PER_VIEW,
 	// The file-transfer surface (design §8, §10.4): the capture, the policy port the
 	// app host runs, and the shared generated tables it reads.
 	DownloadArmer,
@@ -212,6 +237,10 @@ class FakeWebContents extends EventEmitter {
 			goBack: () => {},
 			goForward: () => {},
 			length: () => 1,
+			getActiveIndex: () => 0,
+			// The indexed read address suggestions use. The fake models one entry so
+			// the structural shape matches the real API; it is not a history test.
+			getEntryAtIndex: () => ({ url: this.url || "about:blank" }),
 		};
 	}
 
@@ -2031,6 +2060,39 @@ test("the projection names each tab's conversation — and never its capability"
 	);
 });
 
+test("an untitled tab is named by main in the language main speaks (Q-T2-4)", async () => {
+	// The projection hands the strip a READY title, so the renderer's own `New tab`
+	// fallback never runs for it: main owns the word. The census saw it in English
+	// under Urdu because it was a string literal here.
+	const { host } = makeHost();
+	await host.newTab(null);
+	try {
+		setLocale("en");
+		assert.equal(
+			host.chromeState().tabs.at(-1).title,
+			"New tab",
+			"English is byte-for-byte what it was",
+		);
+		registerCatalogue("ur", {
+			"ui.browser.browser_tab_strip.new_tab": "UR[new tab]",
+		});
+		setLocale("ur");
+		assert.equal(
+			host.chromeState().tabs.at(-1).title,
+			"UR[new tab]",
+			"a translated catalogue changes what main paints",
+		);
+		assert.equal(
+			host.chromeState().tabs.at(-1).url,
+			"about:blank",
+			"and only the title: the URL the chrome keys on is untouched",
+		);
+	} finally {
+		clearRegisteredCatalogues();
+		setLocale("en");
+	}
+});
+
 test("a tab the user opens in a conversation belongs to it, and still gives no agent a capability (R1)", async () => {
 	const { host, registry } = makeHost();
 	const owner = { requester: "session:alice", url: "https://scope.example/" };
@@ -2300,6 +2362,7 @@ test("browser readiness reads stay authorized before initialization and across r
 	registerBrowserIpc({
 		window: () => window,
 		expectedUrl: "http://localhost:5173",
+		headless: false,
 		host: () => currentHost,
 		availability: () => availability,
 		clearData: async () => {},
@@ -2348,6 +2411,148 @@ test("browser readiness reads stay authorized before initialization and across r
 			read,
 			"attempts do not replace the handler",
 		);
+	} finally {
+		unregisterBrowserIpc();
+	}
+});
+
+test("the tab actions menu channel: authorization, refusals, validation and one settlement", async () => {
+	/** What the channel logged, so a rig can tell a refusal from a window that
+	 * simply did not show a menu (the diagnosability `window-chrome.ts` argues for). */
+	const logs = [];
+	const frame = { url: "http://localhost:5173/index.html" };
+	let zoom = 1;
+	const webContents = { id: 1, mainFrame: frame, getZoomFactor: () => zoom };
+	let visible = true;
+	const window = {
+		isDestroyed: () => false,
+		isVisible: () => visible,
+		webContents,
+	};
+	/** Mutable because the handler reads the option per call: flipping this is how
+	 * one registration exercises both the headless gate and the normal path. */
+	const state = { headless: false };
+	ipcMain.reset();
+	Menu.reset();
+	registerBrowserIpc({
+		window: () => window,
+		expectedUrl: "http://localhost:5173",
+		host: () => null,
+		clearData: async () => {},
+		get headless() {
+			return state.headless;
+		},
+		log: (line) => logs.push(line),
+	});
+	const menu = ipcMain.handlers.get("browser-tab-actions-menu");
+	const event = { sender: webContents, senderFrame: frame };
+	const items = [
+		{ id: "header", label: 'Actions for "Tab 2"', enabled: false },
+		{ id: "watch", label: 'Watch "Tab 2"', enabled: true },
+		{ id: "close", label: 'Close "Tab 2"', enabled: true },
+	];
+	const request = (overrides = {}) => ({
+		tabId: 2,
+		anchor: { x: 40, y: 60 },
+		items,
+		...overrides,
+	});
+	try {
+		/*
+		 * THE SENDER GATE COMES FIRST, and it is the only authority this new channel
+		 * adds: a foreign frame is refused before its payload is even read.
+		 */
+		assert.throws(
+			() => menu({ sender: {}, senderFrame: frame }, request()),
+			/cannot use/,
+		);
+		assert.throws(
+			() => menu({ sender: webContents, senderFrame: { ...frame } }, request()),
+			/cannot use/,
+		);
+
+		/*
+		 * VALIDATION HAPPENS BEFORE A MENU EXISTS. Each payload below is refused as
+		 * a whole, and `Menu.built` staying empty is the property: a menu that
+		 * dropped an unknown row would be a different menu from the strip's.
+		 */
+		for (const bad of [
+			{ items: [{ ...items[1], id: "format-disk" }] },
+			{ items: [{ ...items[1], enabled: "yes" }] },
+			{ items: [] },
+			{ items: [{ ...items[1], label: "" }] },
+			{ anchor: { x: Number.NaN, y: 60 } },
+			{ tabId: 0 },
+		]) {
+			assert.throws(
+				() => menu(event, request(bad)),
+				/Menu item|menu item|items must|anchor|tabId/,
+			);
+		}
+		assert.equal(
+			Menu.built.length,
+			0,
+			"no menu is built for a refused request",
+		);
+
+		/*
+		 * THE LAUNCH-MODE GATE. A headless launch has no window to hang a popup
+		 * from, so the request answers a dismissal AND says so - a rig must be able
+		 * to tell this refusal from a menu that simply did not show.
+		 */
+		state.headless = true;
+		assert.equal(menu(event, request()), null);
+		assert.equal(Menu.built.length, 0);
+		assert.ok(
+			logs.some((line) => /headless/.test(line)),
+			"the headless refusal is logged",
+		);
+		state.headless = false;
+
+		/* A hidden window is the same refusal, and equally dismisses. */
+		visible = false;
+		assert.equal(menu(event, request()), null);
+		assert.equal(Menu.built.length, 0);
+		visible = true;
+
+		/*
+		 * THE BUILT MENU carries the validated list and a DIP anchor: the request's
+		 * CSS px (40, 60) times the window's zoom factor (1.5).
+		 */
+		zoom = 1.5;
+		const first = menu(event, request());
+		assert.equal(Menu.built.length, 1);
+		const built = Menu.built.at(-1);
+		assert.equal(built.popupOptions.window, window);
+		assert.equal(built.popupOptions.x, 60);
+		assert.equal(built.popupOptions.y, 90);
+		assert.deepEqual(
+			built.template.map((entry) => entry.label ?? entry.type),
+			['Actions for "Tab 2"', 'Watch "Tab 2"', 'Close "Tab 2"'],
+		);
+		/*
+		 * ONE SETTLEMENT. A click resolves with the item it named; a second click
+		 * and the popup's own close callback (what Escape/outside press run) cannot
+		 * replace that answer. The answer is drawn from the action vocabulary.
+		 */
+		built.template[1].click();
+		built.template[2].click();
+		built.closePopup();
+		assert.equal(await first, "watch");
+		assert.ok(TAB_ACTIONS_MENU_ACTION_IDS.includes("watch"));
+
+		/* A dismissal settles null, once. */
+		const second = menu(event, request());
+		Menu.built.at(-1).closePopup();
+		assert.equal(await second, null);
+
+		/*
+		 * THE ANSWER DIRECTION IS VALIDATED TOO: an id outside the action set never
+		 * reaches the strip, and every listed action does.
+		 */
+		assert.equal(tabActionsMenuSelectionOrNull("format-disk"), null);
+		for (const id of TAB_ACTIONS_MENU_ACTION_IDS)
+			assert.equal(tabActionsMenuSelectionOrNull(id), id);
 	} finally {
 		unregisterBrowserIpc();
 	}
@@ -2459,6 +2664,7 @@ test("a conversation id is validated at the IPC boundary rather than trusted (R1
 	registerBrowserIpc({
 		window: () => window,
 		expectedUrl: "http://localhost:5173",
+		headless: false,
 		host: () => host,
 		clearData: async () => {},
 		// The reveal's ANSWER is recorded rather than performed: this fixture has no
@@ -2799,6 +3005,13 @@ function makeHost(overrides = {}) {
 				};
 			}
 			if (method === "Page.captureScreenshot") return { data: "iVBORw0KGgo=" };
+			// The scoped snapshot asks for the scope's document before it asks for the
+			// scope itself; a fixture that answers `{}` to the first makes every scoped
+			// call fail with "the page has no document to query" — how this surfaced
+			// (the once-grant test drives `snapshot` with a selector).
+			if (method === "DOM.getDocument") return { root: { nodeId: 1 } };
+			if (method === "DOM.querySelector") return { nodeId: 2 };
+			if (method === "DOM.describeNode") return { node: { backendNodeId: 7 } };
 			return {};
 		},
 		calls: [],
@@ -2823,13 +3036,8 @@ function makeHost(overrides = {}) {
 				return false;
 			}
 		},
-		mayAdopt: (token, requester) => {
-			const record = registry.requireSurface(token);
-			return (
-				record.handedTo === requester.slice("session:".length) &&
-				!record.allocationId
-			);
-		},
+		mayAdopt: (token, requester) =>
+			sessionMayAdopt(registry.requireSurface(token), requester),
 	});
 	const downloads = new DownloadArmer({
 		tabForWebContents: (webContentsId) =>
@@ -2865,6 +3073,81 @@ function makeHost(overrides = {}) {
 		downloads,
 	};
 }
+
+test("address history refuses a stale expected tab and reads the live snapshot", async () => {
+	const { host } = makeHost();
+	await host.newTab(null);
+	const first = host.chromeState().activeTabId;
+	await host.navigateActive("https://example.test/history");
+	await host.newTab(null);
+	const second = host.chromeState().activeTabId;
+	assert.notEqual(second, first, "a second tab became active");
+	assert.throws(
+		() =>
+			host.addressHistory({
+				requestId: 1,
+				expectedTabId: first,
+				query: "",
+				limit: 8,
+			}),
+		/active tab changed before suggestions were read/,
+		"a request naming the previous tab is refused rather than answered",
+	);
+	const response = host.addressHistory({
+		requestId: 2,
+		expectedTabId: second,
+		query: "",
+		limit: 8,
+	});
+	assert.equal(response.requestId, 2);
+	assert.equal(response.activeTabId, second);
+	assert.ok(
+		response.entries.some((entry) =>
+			entry.url.includes("example.test/history"),
+		),
+		"the other tab's live history is in the snapshot",
+	);
+	assert.ok(response.entries.length <= 256, "the DTO cap holds");
+});
+
+test("the host merges persistent history ahead of the live-tab rows", async () => {
+	const historyFile = join(root, `browser-history-${Date.now()}.json`);
+	const { host } = makeHost({ historyFilePath: historyFile });
+	await host.newTab(null);
+	const tabId = host.chromeState().activeTabId;
+	host.recordHistoryVisit("https://remembered.example/a");
+	host.recordHistoryTitle("https://remembered.example/a", "Remembered page");
+	host.recordHistoryVisit("https://remembered.example/a");
+	const response = host.addressHistory({
+		requestId: 3,
+		expectedTabId: tabId,
+		query: "remembered",
+		limit: 8,
+	});
+	const first = response.entries[0];
+	assert.equal(first.source, "history");
+	assert.equal(first.url, "https://remembered.example/a");
+	assert.equal(first.title, "Remembered page");
+	assert.equal(first.visitCount, 2);
+	assert.ok(first.lastVisitedAt > 0);
+	assert.ok(
+		response.entries.length <= 8,
+		"the request's limit bounds the merged answer",
+	);
+	// A non-HTTP(S) visit never reaches the document.
+	host.recordHistoryVisit("about:blank");
+	host.flushHistory();
+	const persisted = JSON.parse(readFileSync(historyFile, "utf8"));
+	assert.ok(Array.isArray(persisted.entries));
+	assert.ok(
+		persisted.entries.every((entry) => entry.url.startsWith("http")),
+		"about:blank is not a stored destination",
+	);
+	assert.equal(
+		persisted.entries.some((entry) => entry.url === "about:blank"),
+		false,
+	);
+});
 
 test("closed-tab stack is user-only, scoped, bounded and erased with host UI lifetime", async () => {
 	const { host, registry } = makeHost();
@@ -3108,6 +3391,38 @@ test("a document round trip cannot return the unapproved document's text", async
 	};
 	await assert.rejects(
 		() => host.dispatch("read", { ...params, tab: opened.tab }, "round-trip"),
+		(error) =>
+			error.code === "origin_not_allowed" && error.data.reason === "changed",
+	);
+});
+
+test("a query is document-scoped: a navigation it did not cause discards it", async () => {
+	// Agent review round 2 on the query slice: `query` was in NEITHER action set,
+	// so it skipped document authorization and the per-tab lane. Same round-trip
+	// shape as the read above — the answer must not be described as coming from a
+	// document the call did not enter on.
+	const { host, registry } = makeHost();
+	const params = {
+		url: "https://approved.example/",
+		requester: "session:alice",
+	};
+	await host.dispatch("request_access", params, "request");
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
+	const opened = await host.dispatch("open", params, "open");
+	const record = registry.requireSurface(opened.tab);
+	record.view.webContents.executeJavaScriptInIsolatedWorld = async () => {
+		record.view.webContents.url = "https://forbidden.example/";
+		registry.bumpEpoch(record.tabId);
+		record.view.webContents.url = "https://approved.example/";
+		return { count: 1, matches: [{ tag: "input", id: "secret" }] };
+	};
+	await assert.rejects(
+		() =>
+			host.dispatch(
+				"query",
+				{ ...params, tab: opened.tab, selector: "input" },
+				"q1",
+			),
 		(error) =>
 			error.code === "origin_not_allowed" && error.data.reason === "changed",
 	);
@@ -3728,11 +4043,18 @@ test("the gate disables the Page domain it enabled, and nothing else", async () 
 	// experiment that measures "the debugger attachment" against the Cloudflare
 	// stall. Enabled by this call, disabled by this call.
 	const { host, cdp } = makeHost();
+	// `open_on_approval: false`: this test is about the navigation's frame-tree gate, not about the Allow
+	// opening the approved page (covered by the approval-pickup tests), so it keeps
+	// the pre-pickup flow where `open` navigates a fresh agent tab.
 	const params = {
 		url: "https://approved.example/",
 		requester: "session:alice",
 	};
-	await host.dispatch("request_access", params, "request");
+	await host.dispatch(
+		"request_access",
+		{ ...params, open_on_approval: false },
+		"request",
+	);
 	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
 	await host.dispatch("open", params, "open");
 	const count = (method) =>
@@ -3754,7 +4076,11 @@ test("the gate disables the Page domain it enabled, and nothing else", async () 
 		if (method === "Page.enable") throw new Error("no document");
 		return send(contents, method, callParams);
 	};
-	await failing.host.dispatch("request_access", params, "request");
+	await failing.host.dispatch(
+		"request_access",
+		{ ...params, open_on_approval: false },
+		"request",
+	);
 	failing.host.respondToConsent(
 		failing.host.chromeState().pendingConsent[0].entryId,
 		"site",
@@ -3778,7 +4104,11 @@ test("the gate disables the Page domain it enabled, and nothing else", async () 
 		if (method === "Page.getFrameTree") throw new Error("no frame tree");
 		return sendRead(contents, method, callParams);
 	};
-	await readFails.host.dispatch("request_access", params, "request");
+	await readFails.host.dispatch(
+		"request_access",
+		{ ...params, open_on_approval: false },
+		"request",
+	);
 	readFails.host.respondToConsent(
 		readFails.host.chromeState().pendingConsent[0].entryId,
 		"site",
@@ -3827,11 +4157,18 @@ test("the per-hop gate is armed for the actions that can navigate, and only thos
 		return send(contents, method, params);
 	};
 	installHeldValue(cdp);
+	// `open_on_approval: false`: this test is about which actions arm the per-hop gate, not about the Allow
+	// opening the approved page (covered by the approval-pickup tests), so it keeps
+	// the pre-pickup flow where `open` navigates a fresh agent tab.
 	const params = {
 		url: "https://approved.example/",
 		requester: "session:alice",
 	};
-	await host.dispatch("request_access", params, "request");
+	await host.dispatch(
+		"request_access",
+		{ ...params, open_on_approval: false },
+		"request",
+	);
 	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
 	const opened = await host.dispatch("open", params, "open");
 	registry.requireSurface(opened.tab).view.webContents.isolatedResult = {
@@ -3903,9 +4240,12 @@ test("native handover grants only its requester a fenced owner allocation", asyn
 	await assert.rejects(() => host.dispatch("open", owner, "unapproved"), {
 		code: "origin_not_allowed",
 	});
+	// `open_on_approval: false`: this test is about adopting a natively handed-over tab, not about the Allow
+	// opening the approved page (covered by the approval-pickup tests), so it keeps
+	// the pre-pickup flow where `open` navigates a fresh agent tab.
 	await host.dispatch(
 		"request_access",
-		{ ...owner, url: "https://approved.example/" },
+		{ ...owner, url: "https://approved.example/", open_on_approval: false },
 		"request",
 	);
 	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "once");
@@ -4039,12 +4379,11 @@ test("allow once authorizes one requester document until the next navigation", a
 	await host.dispatch("request_access", owner, "request");
 	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "once");
 	const opened = await host.dispatch("open", owner, "open");
+	// No `selector`: this test is about the once grant surviving across three
+	// document-scoped verbs, not about scoping (which has its own test). A scoped
+	// snapshot here would need a fixture subtree and would test `ax-compact`.
 	for (const method of ["read", "snapshot", "screenshot"]) {
-		await host.dispatch(
-			method,
-			{ ...owner, tab: opened.tab, selector: "input", text: "synthetic" },
-			method,
-		);
+		await host.dispatch(method, { ...owner, tab: opened.tab }, method);
 	}
 	registry.bumpEpoch(registry.requireSurface(opened.tab).tabId);
 	await assert.rejects(
@@ -4337,6 +4676,311 @@ test("read runs in an isolated world, and snapshot refs carry the tab's epoch", 
 	assert.equal(registry.requireSurface(opened.tab).refs.e1.epoch, snap.epoch);
 });
 
+/* R1-3: the locator route in `actions/input.ts` had no test at this layer. This
+ * drives the same stubbed CDP the extension's `input-locator.test.mjs` does and
+ * pins the two things only the app host can get wrong: the backend-id push and
+ * the `resolved` shape, and a miss that is typed with candidates. */
+test("a locator click pushes the matched backend id and reports what it resolved", async () => {
+	const { FRAMES_ACTIONS } = await frameActions();
+	const calls = [];
+	const send = async (_contents, method, params) => {
+		calls.push({ method, params });
+		switch (method) {
+			case "Accessibility.enable":
+			case "Accessibility.disable":
+				return {};
+			case "Accessibility.getFullAXTree":
+				return {
+					nodes: [
+						{
+							nodeId: "1",
+							role: { value: "RootWebArea" },
+							name: { value: "" },
+							childIds: ["2"],
+						},
+						{
+							nodeId: "2",
+							backendDOMNodeId: 41,
+							role: { value: "checkbox" },
+							name: { value: "Active" },
+							properties: [{ name: "checked", value: { value: "true" } }],
+							childIds: [],
+						},
+					],
+				};
+			case "DOM.getDocument":
+				return { root: { nodeId: 1 } };
+			case "DOM.pushNodesByBackendIdsToFrontend":
+				return { nodeIds: [77] };
+			case "DOM.scrollIntoViewIfNeeded":
+			case "Runtime.callFunctionOn":
+				return {};
+			case "DOM.resolveNode":
+				return { object: { objectId: "object:1" } };
+			default:
+				return {};
+		}
+	};
+	const record = {
+		epoch: 1,
+		refs: {},
+		view: {
+			webContents: {
+				getURL: () => "https://approved.example/",
+				getTitle: () => "Create App",
+				isDestroyed: () => false,
+				on: () => undefined,
+				removeListener: () => undefined,
+			},
+		},
+	};
+	const ctx = {
+		cdp: { send },
+		registry: { requireSurface: () => record, touch: () => {} },
+	};
+
+	const out = await FRAMES_ACTIONS.click(ctx, {
+		tab: "ui:1:nonce",
+		selector: 'role=checkbox[name="Active"]',
+	});
+
+	assert.deepEqual(
+		calls.find((call) => call.method === "DOM.pushNodesByBackendIdsToFrontend")
+			.params,
+		{ backendNodeIds: [41] },
+	);
+	assert.ok(
+		!calls.some((call) => call.method === "DOM.querySelector"),
+		"a locator never reaches the CSS path",
+	);
+	assert.deepEqual(out.resolved, {
+		by: "locator",
+		role: "checkbox",
+		name: "Active",
+		matched: 1,
+	});
+});
+
+/* The diagnostics half: a selector that matches nothing names the elements that
+ * DO exist, with the locator for each — the measured loop (nine CSS guesses, each
+ * a whole tool call) is what this turns into one correction. */
+test("a CSS miss carries candidates from the accessibility tree", async () => {
+	const { FRAMES_ACTIONS } = await frameActions();
+	const send = async (_contents, method) => {
+		switch (method) {
+			case "DOM.getDocument":
+				return { root: { nodeId: 1 } };
+			case "DOM.querySelector":
+				return { nodeId: 0 };
+			case "Accessibility.enable":
+			case "Accessibility.disable":
+				return {};
+			case "Accessibility.getFullAXTree":
+				return {
+					nodes: [
+						{
+							nodeId: "1",
+							role: { value: "checkbox" },
+							name: { value: "Active" },
+							backendDOMNodeId: 5,
+						},
+					],
+				};
+			default:
+				return {};
+		}
+	};
+	const record = {
+		epoch: 1,
+		refs: {},
+		view: {
+			webContents: {
+				getURL: () => "https://approved.example/",
+				getTitle: () => "Create App",
+				isDestroyed: () => false,
+			},
+		},
+	};
+	const ctx = {
+		cdp: { send },
+		registry: { requireSurface: () => record, touch: () => {} },
+	};
+
+	await assert.rejects(
+		() =>
+			FRAMES_ACTIONS.click(ctx, {
+				tab: "ui:1:nonce",
+				selector: "#hook_active",
+			}),
+		(error) => {
+			assert.equal(error.code, "element_not_found");
+			assert.ok(
+				Array.isArray(error.data?.candidates),
+				JSON.stringify(error.data),
+			);
+			assert.ok(error.data.candidates.some((entry) => entry.name === "Active"));
+			assert.match(error.data.candidates[0].locator, /^role=/);
+			return true;
+		},
+	);
+});
+
+/* R1-4: the host path this lane added had no test at this layer. These pin the
+ * three decisions that only exist in `page.ts`: the scope is resolved BEFORE the
+ * a11y read, a scoped read is windowed by the shared driver, and a scoped read
+ * whose page contains frames SAYS so instead of silently dropping them. */
+test("a scoped snapshot resolves the scope first, windows the tree, and names skipped frames", async () => {
+	const { FRAMES_ACTIONS } = await frameActions();
+	const calls = [];
+	const TREE = [
+		{
+			nodeId: "1",
+			role: { value: "RootWebArea" },
+			name: { value: "" },
+			childIds: ["2"],
+		},
+		{
+			nodeId: "2",
+			backendDOMNodeId: 500,
+			role: { value: "form" },
+			name: { value: "" },
+			childIds: ["3", "4"],
+		},
+		{
+			nodeId: "3",
+			backendDOMNodeId: 501,
+			role: { value: "checkbox" },
+			name: { value: "Active" },
+			properties: [{ name: "checked", value: { value: "true" } }],
+			childIds: [],
+		},
+		{
+			nodeId: "4",
+			backendDOMNodeId: 502,
+			role: { value: "Iframe" },
+			name: { value: "Payment" },
+			childIds: [],
+		},
+		{
+			nodeId: "5",
+			backendDOMNodeId: 503,
+			role: { value: "button" },
+			name: { value: "Outside" },
+			childIds: [],
+		},
+		{
+			nodeId: "6",
+			backendDOMNodeId: 504,
+			role: { value: "region" },
+			name: { value: "Inner" },
+			childIds: ["7"],
+		},
+		{
+			nodeId: "7",
+			backendDOMNodeId: 505,
+			role: { value: "button" },
+			name: { value: "Inside" },
+			childIds: [],
+		},
+	];
+	// The button sits under the root, OUTSIDE the scope: the scoped read does not
+	// RENDER it, but — per R1-1 — the whole-tree mint still gives it a ref, so a
+	// remembered `e2` keeps naming this button and can never be re-pointed at the
+	// scope's first node.
+	TREE[0].childIds.push("5");
+	TREE[1].childIds.push("6");
+	const send = async (_contents, method, params) => {
+		calls.push({ method, params });
+		switch (method) {
+			case "DOM.getDocument":
+				return { root: { nodeId: 1 } };
+			case "DOM.querySelector":
+				// Two scopes are driven: the form (500) and its frameless
+				// subsections (504), so the skip note can be told apart from a
+				// page-level frame count.
+				return { nodeId: params.selector === "#inner" ? 9 : 7 };
+			case "DOM.describeNode":
+				return { node: { backendNodeId: params.nodeId === 9 ? 504 : 500 } };
+			case "Accessibility.enable":
+			case "Accessibility.disable":
+				return {};
+			case "Accessibility.getFullAXTree":
+				return { nodes: TREE };
+			default:
+				return {};
+		}
+	};
+	const record = {
+		epoch: 4,
+		refs: {},
+		view: {
+			webContents: {
+				getURL: () => "https://approved.example/",
+				getTitle: () => "Create App",
+				isDestroyed: () => false,
+			},
+		},
+	};
+	const ctx = {
+		cdp: { send },
+		registry: { requireSurface: () => record, touch: () => {} },
+	};
+
+	const out = await FRAMES_ACTIONS.snapshot(ctx, {
+		tab: "ui:1:nonce",
+		selector: "#new_app",
+	});
+
+	const methods = calls.map((call) => call.method);
+	// R1-3: the selector is resolved before any a11y command crosses.
+	assert.ok(
+		methods.indexOf("DOM.querySelector") <
+			methods.indexOf("Accessibility.enable"),
+		methods.join(","),
+	);
+	assert.equal(out.scoped, true);
+	// The skip note is a REMARK about the scope, appended after the window: it is
+	// not a tree line, so `total_lines` counts the scope's own lines only.
+	assert.equal(out.total_lines, 5, "form, checkbox, Iframe, Inner, Inside");
+	assert.equal(out.returned_lines, 5);
+	assert.ok(
+		!out.snapshot.includes("Outside"),
+		"a node outside the scope is not rendered",
+	);
+	assert.ok(
+		out.snapshot.includes("skipped") ||
+			out.snapshot.includes("does not read frames"),
+		out.snapshot,
+	);
+	assert.ok(
+		!calls.some((call) => call.method === "Runtime.callFunctionOn"),
+		"a scoped read never walks frames",
+	);
+
+	// R2-1: a scope that contains NO frame must not claim one was skipped.
+	const frameless = await FRAMES_ACTIONS.snapshot(ctx, {
+		tab: "ui:1:nonce",
+		selector: "#inner",
+	});
+	assert.equal(frameless.scoped, true);
+	assert.ok(
+		!frameless.snapshot.includes("does not read frames"),
+		frameless.snapshot,
+	);
+	assert.equal(frameless.frames_in_scope, 0);
+
+	// The window is applied to the SCOPED text, after refs are minted, so a ref
+	// read on page 2 names the same element as the full read.
+	const page2 = await FRAMES_ACTIONS.snapshot(ctx, {
+		tab: "ui:1:nonce",
+		selector: "#new_app",
+		start: 2,
+		limit: 1,
+	});
+	assert.equal(page2.returned_lines, 1);
+	assert.equal(page2.snapshot.split("\n")[0], out.snapshot.split("\n")[1]);
+});
+
 test("the structured reads run the vendored page functions in read's isolated world", async () => {
 	const { host, registry } = makeHost();
 	const params = { url: "https://approved.example/", requester: "session:a" };
@@ -4566,7 +5210,14 @@ test("screenshot keeps the {data, url, title} shape Python validates", async () 
 test("a background tab captures without a route, without activation, through the product's own path", async () => {
 	const { host, registry, cdp } = makeHost();
 	const params = { url: "https://approved.example/", requester: "session:a" };
-	await host.dispatch("request_access", params, "r1");
+	// `open_on_approval: false`: this test is about capturing a BACKGROUND agent tab, not about the Allow
+	// opening the approved page (covered by the approval-pickup tests), so it keeps
+	// the pre-pickup flow where `open` navigates a fresh agent tab.
+	await host.dispatch(
+		"request_access",
+		{ ...params, open_on_approval: false },
+		"r1",
+	);
 	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
 	const opened = await host.dispatch("open", params, "r2");
 	const record = registry.requireSurface(opened.tab);
@@ -4677,6 +5328,77 @@ test("a driven view is sized before it is ever hidden", () => {
 		);
 	assert.notEqual(swapped, source, "the swap must have changed the source");
 	assert.throws(() => assertSizedBeforeHidden(swapped));
+});
+
+/**
+ * The page's press must reach the address overlay's `dismissForTab`.
+ *
+ * WHY A SOURCE SCAN: the wiring is a closure inside `startBrowserHost`'s
+ * `wireView`, and no harness in this file can boot Electron to deliver a native
+ * mouse event into a page. The controller's own tab scoping and reason are
+ * exercised against the real controller in
+ * `scripts/browser-address-overlay.test.mjs`; this pins the two links that make
+ * the press reach it — the page contents' `before-mouse-event` (not the child's)
+ * and the `page_pointer` reason the renderer's abandonment is keyed on.
+ */
+function assertPagePointerDismissal(source) {
+	const wireView = source.slice(source.indexOf("function wireView("));
+	assert.notEqual(wireView.length, 0, "no `wireView` in browser/index.ts");
+	// Anchor on the call itself, then walk back to the page handler that owns it:
+	// a fixed-character window goes stale on any comment edit above the call.
+	const call = wireView.indexOf('dismissForTab(tabId, "page_pointer")');
+	assert.notEqual(
+		call,
+		-1,
+		"a page mouse-down must dismiss the bound tab's overlay as page_pointer",
+	);
+	const handler = wireView.lastIndexOf(
+		'contents.on("before-mouse-event"',
+		call,
+	);
+	assert.notEqual(
+		handler,
+		-1,
+		"the page contents must observe its own mouse events",
+	);
+	assert.match(
+		wireView.slice(handler, call),
+		/if \(mouse\.type === "mouseDown"\)/,
+		"the dismissal must be the mouse-down arm of the page handler",
+	);
+}
+
+test("a page pointer press dismisses the address field even when the page has focus", () => {
+	const source = readFileSync(
+		new URL("../src/main/browser/index.ts", import.meta.url),
+		"utf8",
+	);
+	assertPagePointerDismissal(source);
+	// The check has bite: the plausible wrong wiring is the focus event's reason,
+	// which would also make the renderer's dismissal indistinguishable from a
+	// focus move — the case that already missed a second click into the page.
+	const wrongReason = source.replace(
+		'dismissForTab(tabId, "page_pointer")',
+		'dismissForTab(tabId, "page_focus")',
+	);
+	assert.notEqual(
+		wrongReason,
+		source,
+		"the reason swap must have changed the source",
+	);
+	assert.throws(() => assertPagePointerDismissal(wrongReason));
+	const removed = source.replace(
+		'contents.on("before-mouse-event", (_event, mouse) => {',
+		'contents.on("unused-mouse-event", (_event, mouse) => {',
+	);
+	assert.throws(() => assertPagePointerDismissal(removed));
+	// A mouse-up would also fire on hover-less releases and would dismiss after
+	// the page had already handled the press; only the down arm is the fact.
+	const wrongArm = source.replace(
+		'if (mouse.type === "mouseDown")',
+		'if (mouse.type === "mouseUp")',
+	);
+	assert.throws(() => assertPagePointerDismissal(wrongArm));
 });
 
 test("a background capture retries a stalled attempt, and does not retry a real failure", async () => {
@@ -5883,6 +6605,44 @@ test("a hydration that never commits a page is marked failed, and the next navig
 	assert.equal(host.failedTabIds().size, 0, "the next navigation retires it");
 });
 
+test("a restore superseded mid-flight, then stopped, is not marked failed (F7)", async () => {
+	// The restore rejects ERR_ABORTED before the superseding page commits; if the
+	// superseding load is then stopped, no did-navigate ever arrives to clear a
+	// mark. The abort is ordinary navigation, not a restore failure.
+	const registry = new TabRegistry(
+		(_options, tabId) => {
+			const view = new FakeView(tabId);
+			view.webContents.loadURL = () =>
+				Promise.reject(
+					new Error("ERR_ABORTED (-3) loading 'http://127.0.0.1:3691/second'"),
+				);
+			return view;
+		},
+		() => {},
+		() => {},
+	);
+	const { host } = makeHost({ registry, log: () => {} });
+	host.restoreTabs([
+		{
+			owner: "user",
+			active: true,
+			entries: [{ url: "http://127.0.0.1:3691/first", title: "first" }],
+			activeIndex: 0,
+		},
+	]);
+	await host.whenRestored();
+	assert.equal(
+		host.failedTabIds().size,
+		0,
+		"a superseded restore is not a Failed tab, even when its successor is stopped",
+	);
+	assert.equal(
+		host.chromeState().navFailure,
+		null,
+		"no restore-failure panel is published for the abort",
+	);
+});
+
 test("a hydration that failed after a commit is not marked failed", async () => {
 	const registry = new TabRegistry(
 		(_options, tabId) => {
@@ -6411,13 +7171,22 @@ class FakeDownloadItem {
 /** An armer over one tab, with the quiet window shortened so the suite is not
  * slowed by real waiting. `log` is collected so a test can assert the operator's
  * trace exists without reading stdout. */
-function makeArmer({ tabId = 7, webContentsId = 101, lines = [] } = {}) {
+function makeArmer({
+	tabId = 7,
+	webContentsId = 101,
+	lines = [],
+	popupOpener = new Map(),
+} = {}) {
 	const armer = new DownloadArmer({
 		tabForWebContents: (id) => (id === webContentsId ? tabId : null),
+		// The one-hop attribution seam: popup webContents id → the webContents id that
+		// opened it. Empty by default, so every other test in this file exercises the
+		// direct lookup exactly as it did before the hop existed.
+		openerWebContentsId: (id) => popupOpener.get(id) ?? null,
 		log: (message) => lines.push(message),
 		quietMs: 5,
 	});
-	return { armer, tabId, webContentsId, lines };
+	return { armer, tabId, webContentsId, lines, popupOpener };
 }
 
 function tempDir(name) {
@@ -6975,6 +7744,17 @@ test("a call where the page starts nothing answers with the no-download copy, no
 	assert.deepEqual(result.files, []);
 	assert.equal(result.armed, true);
 	assert.match(result.reason, /no download started within/);
+	// A missed file says nothing about whether a one-time provider mutation ran.
+	assert.match(result.reason, /download\(selector=<final confirm button>\)/);
+	assert.match(result.reason, /before clicking/);
+	assert.match(result.reason, /future download event/);
+	assert.match(result.reason, /already dispatched or cancelled/);
+	assert.match(result.reason, /does not prove.*handler.*server mutation/);
+	assert.match(
+		result.reason,
+		/check the provider-side effect before repeating/,
+	);
+	assert.doesNotMatch(result.reason, /`click` it and retry/);
 	rmSync(dir, { recursive: true, force: true });
 });
 
@@ -7001,6 +7781,204 @@ test("the armer creates the harness directory 0700", () => {
 	}).arm(1, dir, 5_000);
 	assert.equal(statSync(dir).mode & 0o777, 0o700);
 	rmSync(parent, { recursive: true, force: true });
+});
+
+// ---- a download the PAGE starts, and the three outcomes the agent can see ------
+
+// THE POPUP ATTRIBUTION (operator report, 2026-11-06). `will-download` names the
+// webContents that started the item, and a popup window is not a registry tab — so
+// before the hop a download a page started through `window.open` was cancelled with
+// "no download call is armed on this tab" while the tab that opened the popup sat
+// armed and waiting. The hop is ONE step, and only when the direct lookup misses.
+test("a download a POPUP starts lands through the arm on the tab that opened it", async () => {
+	const dir = tempDir("popup");
+	// The popup's webContents is 9_001; the DRIVEN tab's is 700 and it owns tab 3.
+	const popupOpener = new Map([[9_001, 700]]);
+	const { armer } = makeArmer({ webContentsId: 700, tabId: 3, popupOpener });
+	const arm = armer.arm(3, dir, 5_000);
+	const item = new FakeDownloadItem({ filename: "key.json", total: 12 });
+	assert.deepEqual(armer.decide(item, 9_001), { cancel: false, reason: "" });
+	assert.equal(
+		item.savePath,
+		join(dir, "key.json"),
+		"the popup's download lands in the directory the armed call composed",
+	);
+	writeFileSync(item.savePath, '{"k":1}');
+	item.finish("completed");
+	const result = await arm.done();
+	assert.equal(result.files.length, 1);
+	assert.equal(result.files[0].name, "key.json");
+	assert.equal(
+		result.reason,
+		"",
+		"a landed file is neither a refusal nor a no-op",
+	);
+	rmSync(dir, { recursive: true, force: true });
+});
+
+test("a webContents with NO known opener is refused, with the reason it always had", () => {
+	const dir = tempDir("popup-orphan");
+	const { armer, tabId } = makeArmer({ webContentsId: 700, tabId: 3 });
+	armer.arm(tabId, dir, 5_000);
+	const decision = armer.decide(
+		new FakeDownloadItem({ filename: "key.json" }),
+		9_255,
+	);
+	assert.deepEqual(decision, {
+		cancel: true,
+		reason: "no download call is armed on this tab",
+	});
+	rmSync(dir, { recursive: true, force: true });
+});
+
+test("the direct lookup WINS over the hop, so a tab's own download is never re-attributed", () => {
+	const dir = tempDir("direct-first");
+	// A map that would send the driven tab's OWN webContents to a tab nobody armed:
+	// if the hop ran first this download would be cancelled instead of captured.
+	const popupOpener = new Map([[700, 900]]);
+	const { armer } = makeArmer({ webContentsId: 700, tabId: 3, popupOpener });
+	armer.arm(3, dir, 5_000);
+	const item = new FakeDownloadItem({ filename: "receipt.pdf", total: 8 });
+	assert.deepEqual(armer.decide(item, 700), { cancel: false, reason: "" });
+	assert.equal(item.savePath, join(dir, "receipt.pdf"));
+	rmSync(dir, { recursive: true, force: true });
+});
+
+// THE THREE OUTCOMES, asserted head-first because the HARNESS keys on the head: a
+// `reason` whose head is `refused:` is recorded as `armed_refused`; any other
+// non-empty one is relayed as the host's own account (`armed_reason`); an empty one
+// with no files is the `no_download` row. One shape, three distinguishable answers.
+test("nothing started, refused and landed are three distinguishable answers", async () => {
+	const dir = tempDir("outcomes");
+	const { armer, tabId, webContentsId } = makeArmer();
+	// (1) NOTHING STARTED: the page began no transfer at all.
+	const idle = armer.arm(tabId, dir, 5_000);
+	armer.forget(tabId);
+	const idleResult = await idle.done();
+	assert.deepEqual(idleResult.files, []);
+	assert.match(idleResult.reason, /^no download started within /);
+	assert.doesNotMatch(idleResult.reason, /^refused: /);
+	// (2) STARTED AND REFUSED: the page's attempt reached the host, and the host said
+	// no — the refusal, not an account of a call that saw nothing.
+	const armed = armer.arm(tabId, dir, 5_000);
+	armer.decide(
+		new FakeDownloadItem({ filename: "payload.command" }),
+		webContentsId,
+	);
+	armer.forget(tabId);
+	const refusedResult = await armed.done();
+	assert.deepEqual(refusedResult.files, []);
+	assert.match(refusedResult.reason, /^refused: /);
+	assert.doesNotMatch(refusedResult.reason, /no download started/);
+	// (3) STARTED AND LANDED: a file, and no sentence at all.
+	const landing = armer.arm(tabId, dir, 5_000);
+	const item = new FakeDownloadItem({ filename: "receipt.pdf", total: 8 });
+	armer.decide(item, webContentsId);
+	writeFileSync(item.savePath, "%PDF-1.4");
+	item.finish("completed");
+	armer.forget(tabId);
+	const landed = await landing.done();
+	assert.equal(landed.files.length, 1);
+	assert.equal(landed.reason, "");
+	rmSync(dir, { recursive: true, force: true });
+});
+
+// A PAGE THAT DOWNLOADS THROUGH A POPUP the host denied never reaches
+// `will-download`, so the only honest answer to the armed call is the refusal the
+// host made — otherwise it waits out its budget and claims nothing started.
+test("a denied popup is named in the armed answer, not reported as nothing started", async () => {
+	const dir = tempDir("popup-denied");
+	const { armer, tabId } = makeArmer();
+	const armed = armer.arm(tabId, dir, 5_000);
+	armer.noteRefusedPopup(tabId, "scheme");
+	armer.forget(tabId);
+	const result = await armed.done();
+	assert.deepEqual(result.files, []);
+	assert.match(result.reason, /^refused: /);
+	assert.match(
+		result.reason,
+		/opened a popup and the host denied it \(scheme\)/,
+	);
+	assert.doesNotMatch(result.reason, /no download started/);
+	rmSync(dir, { recursive: true, force: true });
+});
+
+// THE GRANDCHILD DENY-ALL, asserted as a SOURCE shape for the same reason the
+// restore-failure marks are: `wirePopup` needs a real `BrowserWindow` this suite
+// must never boot (agent review round 1, R1-1).
+const WIRE_POPUP_TELLS_THE_ARM =
+	/setWindowOpenHandler\([\s\S]{0,1200}?noteRefusedPopup\(tabId, "popup_from_popup"\)[\s\S]{0,200}?action: "deny"/;
+const WIRE_POPUP_RECEIVES_THE_TAB =
+	/wirePopup\(\s*child,\s*popupChildren,\s*routed\.presentation,\s*tabId\s*\)/;
+
+// EVERY DENIAL POINT TELLS THE ARMED CALL (agent review round 1, R1-1). The two
+// wired sites left this one out, so a page whose download path opens a popup from
+// INSIDE its popup reproduced the reported silence exactly: the call waited out its
+// budget and answered "no download started within Ns".
+test("a popup opened from inside a popup is named in the armed answer, not silence", async () => {
+	const source = readFileSync(
+		new URL("../src/main/browser/index.ts", import.meta.url),
+		"utf8",
+	);
+	const wirePopup = functionBody(
+		source,
+		"function wirePopup(",
+		"src/main/browser/index.ts",
+	);
+	assert.match(
+		wirePopup,
+		WIRE_POPUP_TELLS_THE_ARM,
+		"the grandchild deny-all says nothing to the armed call: a page that downloads through a popup opened from its popup is back to 'no download started'",
+	);
+	// The tab whose arm owns the denied popup is the OPENER's, and it has to arrive:
+	// `wirePopup` is a sibling of `wireView`, so it cannot read `tabId` from scope.
+	assert.match(
+		functionBody(source, "function wireView(", "src/main/browser/index.ts"),
+		WIRE_POPUP_RECEIVES_THE_TAB,
+		"the popup is wired without its opener's tab id, so the denial cannot be attributed",
+	);
+	assert.equal(
+		(source.match(/downloads\.noteRefusedPopup\(/g) || []).length,
+		3,
+		"there are three popup denial points (the open handler, the refused route, the grandchild deny-all) and each one must tell the armed call",
+	);
+	// AND THE TOKEN THAT WIRING PASSES becomes the refusal the model reads, not the
+	// no-op sentence — the other half of the loop, driven through the real armer.
+	const dir = tempDir("popup-nested");
+	const { armer, tabId } = makeArmer();
+	const armed = armer.arm(tabId, dir, 5_000);
+	armer.noteRefusedPopup(tabId, "popup_from_popup");
+	armer.forget(tabId);
+	const result = await armed.done();
+	assert.deepEqual(result.files, []);
+	assert.match(result.reason, /^refused: /);
+	assert.match(result.reason, /denied it \(popup_from_popup\)/);
+	assert.doesNotMatch(result.reason, /no download started/);
+	rmSync(dir, { recursive: true, force: true });
+});
+
+// WHAT THIS PROVES IS THE OBSERVABLE PROPERTY, NOT THE `capture.settled` GUARD
+// (agent review round 1, R1-4). The mechanism under test is the map entry going
+// away — `forget` here, and `settle` in the deadline path — and the guard itself is
+// cheap defence that both of those paths currently make unreachable.
+test("a popup denied after the call answered changes nothing, and an unarmed tab is a no-op", async () => {
+	const dir = tempDir("popup-late");
+	const { armer, tabId } = makeArmer();
+	const armed = armer.arm(tabId, dir, 5_000);
+	armer.noteRefusedPopup(tabId, "cap");
+	// The call ends the way a real one does — the arm is dropped when the action's
+	// `finally` runs — so the suite is not slowed by the deadline budget.
+	armer.forget(tabId);
+	const answered = await armed.done();
+	// The answer is out; a popup denied afterwards must not change a result a caller
+	// already holds.
+	armer.noteRefusedPopup(tabId, "link_depth");
+	assert.match(answered.reason, /denied it \(cap\)/);
+	assert.doesNotMatch(answered.reason, /link_depth/);
+	// A tab nobody armed has no capture to tell, which is not an error: the button
+	// that opens a popup exists on every page.
+	armer.noteRefusedPopup(424_242, "scheme");
+	rmSync(dir, { recursive: true, force: true });
 });
 
 /** A `FileFact`-shaped input for the upload-note test, which needs names and no
@@ -7089,9 +8067,160 @@ test("/health carries the capabilities this build serves", async () => {
 		"styles",
 		"hit_test",
 		"ancestors",
+		"query",
 		"download",
 		"upload",
+		"press",
+		"press_chord",
+		"hover",
+		"select",
+		// Writing a form control's value; the pin above exists so this list is
+		// edited by the PR that adds the capability, never discovered drifting.
+		"setvalue",
+		"network_start",
+		"network_stop",
+		"network_read",
+		"network_clear",
+		"record_start",
+		"record_stop",
+		"record_size",
+		"record_quality",
+		// Clipboard write through the host. Literal like the rest, for the same
+		// reason: the harness refuses `copy` on the extension, the cmux host and any
+		// desktop build that does not advertise it.
+		"copy",
 	]);
+});
+
+test("a record_start whose answer is refused aborts the capture it began", async () => {
+	// The result-side document assertion runs AFTER `record_start` has already
+	// registered a capture (review N5). If it refuses the answer, the footage the
+	// refusal is about must not keep recording into an approved path.
+	const { host, registry, cdp } = makeHost();
+	const dir = mkdtempSync(join(root, "record-refused-"));
+	const params = {
+		url: "https://approved.example/",
+		requester: "session:alice",
+	};
+	await host.dispatch("request_access", params, "request");
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
+	const opened = await host.dispatch("open", params, "open");
+	const record = registry.requireSurface(opened.tab);
+	const originalSend = cdp.send;
+	cdp.send = async (contents, method, sendParams, options) => {
+		if (method === "Page.startScreenRecording") {
+			// The page leaves for an unapproved origin while the start is in flight,
+			// which is exactly what the result-side check discards the answer for.
+			record.view.webContents.url = "https://forbidden.example/";
+			registry.bumpEpoch(record.tabId);
+		}
+		if (method === "Page.stopScreenRecording") {
+			cdp.calls.push({ method, params: sendParams });
+			return { stream: "s-refused" };
+		}
+		return originalSend(contents, method, sendParams, options);
+	};
+	await assert.rejects(
+		() =>
+			host.dispatch(
+				"record_start",
+				{ ...params, tab: opened.tab, path: join(dir, "clip.mp4") },
+				"rec",
+			),
+		(error) => error.code === "origin_not_allowed",
+	);
+	cdp.send = originalSend;
+	// F1: dropping the bookkeeping is not enough — Chromium's recorder has to be
+	// stopped, or the next start on this tab is refused with "Screencast is
+	// already active". The stop and the stream close must both have been sent.
+	assert.ok(
+		cdp.calls.some((call) => call.method === "Page.stopScreenRecording"),
+		"the refused start's recorder was stopped",
+	);
+	assert.ok(
+		cdp.calls.some(
+			(call) =>
+				call.method === "IO.close" && call.params?.handle === "s-refused",
+		),
+		"and its stream was closed",
+	);
+	await assert.rejects(
+		() => host.dispatch("record_stop", { ...params, tab: opened.tab }, "stop"),
+		(error) => error.data?.reason === "record_not_active",
+	);
+	assert.equal(existsSync(join(dir, "clip.mp4")), false);
+});
+
+test("record_start and record_stop share the tab's command lane", async () => {
+	// Review round 1, MINOR 2: dropping both verbs from TAB_SCOPED left every test
+	// green, so "the two verbs serialise on one tab" was a comment, not a pin. The
+	// lane does not queue; it refuses the second command with `busy`. So while a
+	// start is in flight, an overlapping stop AND an overlapping second start on the
+	// same tab must both read `busy` (and send no CDP call), and the tab is usable
+	// again once the start lands.
+	const { host, cdp } = makeHost();
+	const dir = mkdtempSync(join(root, "record-lane-"));
+	const params = {
+		url: "https://approved.example/",
+		requester: "session:alice",
+	};
+	await host.dispatch("request_access", params, "request");
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
+	const opened = await host.dispatch("open", params, "open");
+	const originalSend = cdp.send;
+	let releaseStart = () => {};
+	const startHeld = new Promise((resolve) => {
+		releaseStart = resolve;
+	});
+	let startEntered = () => {};
+	const startIsInFlight = new Promise((resolve) => {
+		startEntered = resolve;
+	});
+	cdp.send = async (contents, method, sendParams, options) => {
+		if (method === "Page.startScreenRecording") {
+			startEntered();
+			await startHeld;
+			return {};
+		}
+		if (method === "Page.stopScreenRecording") return { stream: "s-lane" };
+		return originalSend(contents, method, sendParams, options);
+	};
+	const start = host.dispatch(
+		"record_start",
+		{ ...params, tab: opened.tab, path: join(dir, "lane.mp4") },
+		"lane-start",
+	);
+	await startIsInFlight;
+	// If the lane were missing the overlapping calls could wait on the held start
+	// forever; releasing it on a timer makes that a failed assertion, not a hang.
+	const safety = setTimeout(releaseStart, 1500);
+	const before = cdp.calls.length;
+	await assert.rejects(
+		() => host.dispatch("record_stop", { ...params, tab: opened.tab }, "stop"),
+		(error) => error.code === "busy",
+		"a stop overlapping a start is refused by the tab lane",
+	);
+	await assert.rejects(
+		() =>
+			host.dispatch(
+				"record_start",
+				{ ...params, tab: opened.tab, path: join(dir, "second.mp4") },
+				"lane-second",
+			),
+		(error) => error.code === "busy",
+		"a second start overlapping the first is refused by the tab lane",
+	);
+	assert.equal(cdp.calls.length, before, "the refused calls reached no CDP");
+	clearTimeout(safety);
+	releaseStart();
+	await start;
+	// The lane is free again: the stop now finds the recording the start made.
+	await assert.rejects(
+		() => host.dispatch("record_stop", { ...params, tab: opened.tab }, "stop2"),
+		(error) => error.code !== "busy",
+	);
+	cdp.send = originalSend;
+	assert.equal(existsSync(join(dir, "second.mp4")), false);
 });
 
 test("the state file carries the same list, from the same constant", () => {
@@ -7477,6 +8606,7 @@ test("the download reveal opens the host's own directory and takes no path from 
 	registerBrowserIpc({
 		window: () => window,
 		expectedUrl: "http://localhost:5173",
+		headless: false,
 		host: () => host,
 		clearData: async () => {},
 		revealDownloads: async () => {
@@ -7515,13 +8645,19 @@ test("the download reveal opens the host's own directory and takes no path from 
  * cases pin the DECISION; the run that proves a real child window opens with a
  * live `window.opener`, carries the session's cookies and closes on cue is
  * `scripts/browser-host-proof.mjs` — the same division every other browser
- * surface uses here. The grandchild rule ("a popup from a popup is refused") is
- * NOT in this bundle by construction: a child gets its own deny-all handler in
- * `wirePopup`, which is Electron-side code only the running app can exercise, and
- * the proof asserts it end to end.
+ * surface uses here. TWO grandchild rules exist and only one of them is pinned
+ * here: a popup WINDOW's children are refused by its own deny-all handler in
+ * `wirePopup`, which is Electron-side code only the running app can exercise (the
+ * proof asserts it end to end), while a user's LINK TAB is refused its TAB route
+ * in `routePopup` (`link_depth`) and is asserted below.
  */
 test("the popup policy allows about:blank and http(s), and refuses every other scheme", () => {
-	const policy = { mode: "focus", live: 0 };
+	const policy = {
+		mode: "focus",
+		live: 0,
+		openerOwner: "user",
+		openerIsLinkTab: false,
+	};
 	const ask = (url, disposition = "default") =>
 		decidePopup({ url, disposition }, policy);
 
@@ -7587,7 +8723,7 @@ test("the popup cap bounds the view's LIVE children, driven from the constant", 
 		assert.equal(
 			decidePopup(
 				{ url: "https://example.com/", disposition: "default" },
-				{ mode: "focus", live },
+				{ mode: "focus", live, openerOwner: "user", openerIsLinkTab: false },
 			).allow,
 			true,
 			`live=${live} is under the cap`,
@@ -7596,7 +8732,7 @@ test("the popup cap bounds the view's LIVE children, driven from the constant", 
 	assert.deepEqual(
 		decidePopup(
 			{ url: "https://example.com/", disposition: "default" },
-			{ mode: "focus", live: cap },
+			{ mode: "focus", live: cap, openerOwner: "user", openerIsLinkTab: false },
 		),
 		{ allow: false, reason: "cap" },
 	);
@@ -7607,7 +8743,12 @@ test("the popup cap bounds the view's LIVE children, driven from the constant", 
 	assert.equal(
 		decidePopup(
 			{ url: "https://example.com/", disposition: "default" },
-			{ mode: "focus", live: cap - 1 },
+			{
+				mode: "focus",
+				live: cap - 1,
+				openerOwner: "user",
+				openerIsLinkTab: false,
+			},
 		).allow,
 		true,
 	);
@@ -7616,7 +8757,7 @@ test("the popup cap bounds the view's LIVE children, driven from the constant", 
 	assert.deepEqual(
 		decidePopup(
 			{ url: "https://example.com/", disposition: "background-tab" },
-			{ mode: "focus", live: cap },
+			{ mode: "focus", live: cap, openerOwner: "user", openerIsLinkTab: false },
 		),
 		{ allow: false, reason: "cap" },
 	);
@@ -7627,40 +8768,683 @@ test("the §2.4 effective-show table: disposition picks presentation only under 
 	// `background-tab` presents without foregrounding, everything else focuses.
 	const foregrounding = ["default", "foreground-tab", "new-window", "other"];
 	for (const disposition of foregrounding) {
-		assert.equal(effectivePresentation("focus", disposition), "focus");
+		assert.equal(effectivePresentation("focus", disposition, "user"), "focus");
 		assert.equal(
 			decidePopup(
 				{ url: "https://example.com/", disposition },
-				{ mode: "focus", live: 0 },
+				{ mode: "focus", live: 0, openerOwner: "user", openerIsLinkTab: false },
 			).presentation,
 			"focus",
 		);
 	}
-	assert.equal(effectivePresentation("focus", "background-tab"), "inactive");
+	assert.equal(
+		effectivePresentation("focus", "background-tab", "user"),
+		"inactive",
+	);
 	assert.equal(
 		decidePopup(
 			{ url: "https://example.com/", disposition: "background-tab" },
-			{ mode: "focus", live: 0 },
+			{ mode: "focus", live: 0, openerOwner: "user", openerIsLinkTab: false },
 		).presentation,
 		"inactive",
 	);
 	// `inactive`: every disposition presents the same way — visible, never
 	// foregrounded.
 	for (const disposition of [...foregrounding, "background-tab"]) {
-		assert.equal(effectivePresentation("inactive", disposition), "inactive");
+		assert.equal(
+			effectivePresentation("inactive", disposition, "user"),
+			"inactive",
+		);
 	}
 	// `headless`: the popup still EXISTS — the page's flow needs it and CDP can
 	// drive it — so the effective show is `never`, not a refusal.
 	for (const disposition of [...foregrounding, "background-tab"]) {
-		assert.equal(effectivePresentation("never", disposition), "never");
+		assert.equal(effectivePresentation("never", disposition, "user"), "never");
 		assert.deepEqual(
 			decidePopup(
 				{ url: "about:blank", disposition },
-				{ mode: "never", live: 0 },
+				{ mode: "never", live: 0, openerOwner: "user", openerIsLinkTab: false },
 			),
 			{ allow: true, presentation: "never" },
 		);
 	}
+});
+
+/*
+ * ---- where a popup goes: tab or window (docs/design/browser-oauth-popups.md 1.1)
+ *
+ * `routePopup` is the one decision `did-create-window` runs once the child exists
+ * and its opener can be read. The rows below are the measured Electron 44.3.0
+ * table (a plain link, `rel=noopener`, an iframe link and `window.open(...,
+ * "noopener")` arrive with no opener; a bare/sized `window.open` and `rel=opener`
+ * arrive with one) turned into rules, crossed with owner, mode and the bounds.
+ */
+const ROUTE_BASE = {
+	url: "https://example.com/next",
+	disposition: "foreground-tab",
+	hasOpener: false,
+	hasPostBody: false,
+	alreadyLoading: false,
+	openerActive: true,
+	openedTabs: 0,
+};
+const route = (request, policy = {}) =>
+	routePopup(
+		{ ...ROUTE_BASE, ...request },
+		{
+			mode: "focus",
+			live: 0,
+			openerOwner: "user",
+			openerIsLinkTab: false,
+			...policy,
+		},
+	);
+
+test("an opener-less link becomes a tab, owned like its opener, never a window", () => {
+	// The user's link from the tab being looked at: the new tab comes to the front,
+	// as a browser's does.
+	assert.deepEqual(route({}), { route: "tab", owner: "user", activate: true });
+	// An agent's link: an AGENT tab. It never activates (design 11.4), and an
+	// agent-owned opener ignores `openerActive` entirely.
+	for (const openerActive of [true, false]) {
+		assert.deepEqual(route({ openerActive }, { openerOwner: "agent" }), {
+			route: "tab",
+			owner: "agent",
+			activate: false,
+		});
+	}
+	// A user's link from a tab nobody is looking at, or a background-tab request,
+	// opens without switching the tab the user is on.
+	assert.equal(route({ openerActive: false }).activate, false);
+	assert.equal(route({ disposition: "background-tab" }).activate, false);
+	// The same result in every launch mode: the tab route has no window, so the
+	// mode (which only selects how a window is presented) cannot change it.
+	for (const mode of ["focus", "inactive", "never"]) {
+		for (const openerOwner of ["user", "agent"]) {
+			assert.equal(route({}, { mode, openerOwner }).route, "tab", mode);
+		}
+	}
+});
+
+test("an opener-bearing popup, a form POST and about:blank stay windows", () => {
+	// MSAL `loginPopup` and Google `storagerelay` shapes: `window.opener` is the
+	// contract, so the child must stay a real window. An opener-bearing popup is
+	// NEVER a tab, whoever owns the opener.
+	for (const openerOwner of ["user", "agent"]) {
+		assert.equal(
+			route({ hasOpener: true }, { openerOwner }).route,
+			"window",
+			openerOwner,
+		);
+	}
+	// Form POST `target=_blank` has no opener but replaying its body into a fresh
+	// view was measured flaky (3 runs: 1/1/0), so it stays on the window path.
+	assert.equal(route({ hasPostBody: true }).route, "window");
+	// MSAL opens `about:blank` from script and navigates it: it has an opener by
+	// construction, and must never be mistaken for a link even if a read said null.
+	assert.equal(route({ url: "about:blank" }).route, "window");
+});
+
+test("a window's presentation: an agent-owned opener never raises the app", () => {
+	const present = (mode, openerOwner, disposition = "foreground-tab") =>
+		route({ hasOpener: true, disposition }, { mode, openerOwner });
+	// `normal` + user opener: today's behaviour, the person who clicked is there.
+	assert.deepEqual(present("focus", "user"), {
+		route: "window",
+		presentation: "focus",
+	});
+	assert.equal(
+		present("focus", "user", "background-tab").presentation,
+		"inactive",
+	);
+	// `normal` + agent opener: shown, but never activating (the 12 logged raises).
+	for (const disposition of [
+		"default",
+		"foreground-tab",
+		"new-window",
+		"background-tab",
+		"other",
+	]) {
+		assert.equal(
+			present("focus", "agent", disposition).presentation,
+			"inactive",
+			disposition,
+		);
+		assert.equal(
+			effectivePresentation("focus", disposition, "agent"),
+			"inactive",
+		);
+	}
+	// The other launch modes do not read the owner.
+	for (const openerOwner of ["user", "agent"]) {
+		assert.equal(present("inactive", openerOwner).presentation, "inactive");
+		assert.equal(present("never", openerOwner).presentation, "never");
+	}
+	// No path through `routePopup` yields `focus` for an agent opener.
+	for (const mode of ["focus", "inactive", "never"]) {
+		for (const hasPostBody of [false, true]) {
+			for (const hasOpener of [false, true]) {
+				const routed = route(
+					{ hasOpener, hasPostBody },
+					{ mode, openerOwner: "agent" },
+				);
+				assert.notEqual(routed.presentation, "focus");
+			}
+		}
+	}
+});
+
+test("a form POST is a window only because the open handler's postBody is carried (Q1)", () => {
+	// `routePopup` cannot see the difference between "no body" and "body that
+	// Electron did not report in did-create-window" — which is the bug: the router
+	// must be fed the open handler's fact. Pin both halves of the contract.
+	assert.equal(route({ hasPostBody: true }).route, "window");
+	assert.equal(route({ hasPostBody: false }).route, "tab");
+	// The wiring reads the fact from setWindowOpenHandler and not from the
+	// did-create-window details, where it is absent on Electron 44.3.0.
+	const wiring = readFileSync("src/main/browser/index.ts", "utf8");
+	assert.equal(
+		wiring.split("details.postBody").length - 1,
+		1,
+		"exactly one read of postBody, in the open handler",
+	);
+	assert.ok(
+		wiring.indexOf("details.postBody") <
+			wiring.indexOf('contents.on("did-create-window"'),
+		"and that read comes before the did-create-window listener",
+	);
+});
+
+test("a child that already began loading (cmd/shift/middle click) is a window, never a second fetch (Q2)", () => {
+	for (const disposition of ["background-tab", "new-window"]) {
+		for (const openerOwner of ["user", "agent"]) {
+			const routed = route(
+				{ alreadyLoading: true, disposition },
+				{ openerOwner },
+			);
+			assert.equal(routed.route, "window", `${disposition}/${openerOwner}`);
+			// A background open never takes focus, whatever the launch mode.
+			assert.notEqual(
+				routed.presentation,
+				"focus",
+				`${disposition}/${openerOwner}`,
+			);
+		}
+	}
+	// `never` stays hidden, `inactive` stays inactive.
+	assert.equal(
+		route({ alreadyLoading: true }, { mode: "never" }).presentation,
+		"never",
+	);
+	// Not loading => the ordinary tab route is unchanged.
+	assert.equal(route({ alreadyLoading: false }).route, "tab");
+	// The scheme refusal still comes first.
+	assert.deepEqual(route({ alreadyLoading: true, url: "mailto:a@b.test" }), {
+		route: "deny",
+		reason: "scheme",
+	});
+});
+
+test("an opener with no registry record is refused on every route, never defaulted to focus (R1-2)", () => {
+	const gone = { openerOwner: null };
+	for (const mode of ["focus", "inactive", "never"]) {
+		for (const request of [
+			{},
+			{ hasOpener: true },
+			{ hasPostBody: true },
+			{ url: "about:blank" },
+			{ alreadyLoading: true },
+		]) {
+			assert.deepEqual(
+				route(request, { ...gone, mode }),
+				{ route: "deny", reason: "opener_gone" },
+				`${mode} ${JSON.stringify(request)}`,
+			);
+		}
+	}
+	assert.deepEqual(
+		decidePopup(
+			{ url: "https://example.com/", disposition: "default" },
+			{ mode: "focus", live: 0, openerOwner: null, openerIsLinkTab: false },
+		),
+		{ allow: false, reason: "opener_gone" },
+	);
+});
+
+test("closing an opener closes its unadopted agent link tabs, and only those (R1-1)", () => {
+	const { registry, removed } = makeRegistry();
+	const opener = registry.create({ owner: "agent", sessionId: "a" });
+	const other = registry.create({ owner: "agent", sessionId: "a" });
+	const link = (from, extra = {}) =>
+		registry.create({
+			owner: "agent",
+			sessionId: "a",
+			openedBy: "a",
+			openedByTab: from.tabId,
+			activate: false,
+			...extra,
+		});
+	const unadopted = [link(opener), link(opener)];
+	const adopted = link(opener, { allocationId: "alloc-1" });
+	const foreign = link(other);
+	const userLink = registry.create({
+		owner: "user",
+		openedByTab: opener.tabId,
+		activate: false,
+	});
+	assert.deepEqual(
+		registry.unadoptedLinkTabs(opener.tabId).map((r) => r.tabId),
+		unadopted.map((r) => r.tabId),
+		"adopted, foreign-opener and user link tabs are not reclaimable",
+	);
+	// What index.ts's release path does for each tab it closes.
+	for (const spawned of registry.unadoptedLinkTabs(opener.tabId))
+		registry.destroy(spawned.tabId);
+	registry.destroy(opener.tabId);
+	assert.equal(registry.get(unadopted[0].tabId), undefined);
+	assert.equal(registry.get(unadopted[1].tabId), undefined);
+	assert.ok(
+		registry.get(adopted.tabId),
+		"an adopted tab is its scope's to close",
+	);
+	assert.ok(registry.get(foreign.tabId));
+	assert.ok(
+		registry.get(userLink.tabId),
+		"a user's link tab stays, as in a browser",
+	);
+	assert.equal(removed.length, 3);
+	// The slots are free again: the leak R1-1 describes cannot fill the cap.
+	assert.equal(registry.agentTabCount(), 3);
+});
+
+test("owner_finish closes the unadopted link tabs its allocated openers spawned (R1-1)", async () => {
+	const { registry } = makeRegistry();
+	const closedSpawned = [];
+	const ledger = new OwnershipLedger({
+		closeTab: async (token) => {
+			registry.destroy(registry.requireSurface(token).tabId);
+			return true;
+		},
+		isLive: (token) => {
+			try {
+				registry.requireSurface(token);
+				return true;
+			} catch {
+				return false;
+			}
+		},
+		closeSpawnedBy: (tokens) => closedSpawned.push(...tokens),
+	});
+	const opener = registry.create({ owner: "agent", sessionId: "a" });
+	const token = surfaceToken(opener);
+	const owner = {
+		requester: "session:a",
+		owner_proof: "a".repeat(40),
+		owner_generation: "g1",
+		allocation_id: "open-a",
+	};
+	// Create the scope the way a real `open` does, then record the opener's tab.
+	await ledger.withOwnership("open", owner, async () => {
+		ledger.recordAllocation(owner, token, "allocated");
+		return { tab: token };
+	});
+	assert.equal(
+		(await ledger.withOwnership("owner_finish", owner, async () => ({}))).state,
+		"closed",
+	);
+	assert.deepEqual(closedSpawned, [token]);
+});
+
+test("a link tab closes only when its failed load left no page AND nothing is loading (M-1)", () => {
+	const view = (extra) => ({
+		destroyed: false,
+		url: "",
+		loading: false,
+		...extra,
+	});
+	// The download case (ERR_FAILED -2): blank, idle => close.
+	assert.equal(linkLoadLeftNoPage(view({})), true);
+	assert.equal(linkLoadLeftNoPage(view({ url: "about:blank" })), true);
+	assert.equal(linkLoadLeftNoPage(view({ destroyed: true })), true);
+	// A superseded or stopped-then-replaced load (ERR_ABORTED -3): blank but the
+	// replacement is loading => the tab is in use and stays.
+	assert.equal(linkLoadLeftNoPage(view({ loading: true })), false);
+	assert.equal(
+		linkLoadLeftNoPage(view({ url: "about:blank", loading: true })),
+		false,
+	);
+	// An error page or any committed document stays, loading or not.
+	assert.equal(
+		linkLoadLeftNoPage(view({ url: "http://127.0.0.1:1/never" })),
+		false,
+	);
+});
+
+test("a user link tab handed to a session is not reclaimed with its opener (M-3)", () => {
+	const { registry } = makeRegistry();
+	const opener = registry.create({ owner: "agent", sessionId: "a" });
+	const unhanded = registry.create({
+		owner: "agent",
+		sessionId: "a",
+		openedBy: "a",
+		openedByTab: opener.tabId,
+		activate: false,
+	});
+	// A user's link tab from the same opener, then shared with a session through the
+	// real `handOver`: agent-owned, empty allocationId, but not the opener's to close.
+	const shared = registry.create({
+		owner: "user",
+		openedByTab: opener.tabId,
+		activate: false,
+	});
+	registry.handOver(shared.tabId, "session:b");
+	assert.equal(shared.owner, "agent");
+	assert.equal(shared.allocationId, "");
+	assert.deepEqual(
+		registry.unadoptedLinkTabs(opener.tabId).map((r) => r.tabId),
+		[unhanded.tabId],
+	);
+	// Revoking the hand-over returns it to the user, who still keeps it.
+	registry.revokeHandOver(shared.tabId);
+	assert.deepEqual(
+		registry.unadoptedLinkTabs(opener.tabId).map((r) => r.tabId),
+		[unhanded.tabId],
+	);
+});
+
+test("popup refusals and bounds are unchanged by the tab route", () => {
+	// Scheme and live-window cap still deny, for an opener-less link too.
+	for (const url of ["mailto:a@b.test", "javascript:alert(1)", "file:///x"]) {
+		assert.deepEqual(route({ url }), { route: "deny", reason: "scheme" });
+	}
+	assert.deepEqual(route({}, { live: MAX_POPUP_CHILDREN_PER_VIEW }), {
+		route: "deny",
+		reason: "cap",
+	});
+	// An agent's tab may spawn MAX_POPUP_CHILDREN_PER_VIEW link tabs, no more.
+	const cap = MAX_POPUP_CHILDREN_PER_VIEW;
+	assert.equal(
+		route({ openedTabs: cap - 1 }, { openerOwner: "agent" }).route,
+		"tab",
+	);
+	// Its own token (R1-4): the window cap frees a slot when a window closes, this
+	// one when a link tab does, and a log reader should see which wall was hit.
+	assert.deepEqual(route({ openedTabs: cap }, { openerOwner: "agent" }), {
+		route: "deny",
+		reason: "opener_cap",
+	});
+	// A user's tab has its own, larger bound (M1, below); the agent's wall is not
+	// theirs, so the same count that refuses an agent is ordinary here.
+	assert.equal(
+		route({ openedTabs: cap }, { openerOwner: "user" }).route,
+		"tab",
+	);
+	// The tab bound does not touch a window route (that has its own live cap).
+	assert.equal(
+		route({ hasOpener: true, openedTabs: cap }, { openerOwner: "agent" }).route,
+		"window",
+	);
+});
+
+test("one operator tab holds at most MAX_USER_LINK_TABS_PER_VIEW link tabs open (M1 of #1497)", () => {
+	const cap = MAX_USER_LINK_TABS_PER_VIEW;
+	// Ordinary use: the design's own example is a person opening five links from
+	// one page. Every one of those is allowed, activated as a browser would.
+	for (let openedTabs = 0; openedTabs < 5; openedTabs += 1) {
+		assert.deepEqual(
+			route({ openedTabs }),
+			{ route: "tab", owner: "user", activate: true },
+			`link ${openedTabs + 1} of five is ordinary use`,
+		);
+	}
+	// The last slot under the bound is still a tab, and the next one is refused.
+	assert.equal(route({ openedTabs: cap - 1 }).route, "tab");
+	assert.deepEqual(route({ openedTabs: cap }), {
+		route: "deny",
+		reason: "user_opener_cap",
+	});
+	// Its own token: a log reader tells a user cap from the agent's `opener_cap`,
+	// and the agent's bound is untouched at its own, lower number.
+	assert.deepEqual(route({ openedTabs: cap }, { openerOwner: "agent" }), {
+		route: "deny",
+		reason: "opener_cap",
+	});
+	assert.equal(
+		route(
+			{
+				openedTabs: MAX_POPUP_CHILDREN_PER_VIEW - 1,
+			},
+			{ openerOwner: "agent" },
+		).route,
+		"tab",
+	);
+	// A hostile page's loop stops at the bound however far past it it asks.
+	assert.deepEqual(route({ openedTabs: cap + 100 }), {
+		route: "deny",
+		reason: "user_opener_cap",
+	});
+	// The bound selects the tab route only: an opener-bearing popup (a sign-in
+	// window) and a background-tab link route exactly as they did before.
+	assert.equal(route({ hasOpener: true, openedTabs: cap }).route, "window");
+	assert.deepEqual(
+		route({ openedTabs: cap - 1, disposition: "background-tab" }),
+		{ route: "tab", owner: "user", activate: false },
+	);
+});
+
+test("a user link tab cannot spawn a grandchild, so the fan-out stays one level deep (B1)", () => {
+	// THE HOLE THIS CLOSES: a link tab is a registered tab carrying the same open
+	// handler as the tab that spawned it, and `openedTabCount` counts a tab's own
+	// children — so a child's count starts at zero and a self-replicating page
+	// (`window.open(location.href, "_blank", "noopener")` inside the child too)
+	// would fan out at every level: 12, 144, 1728, 20736 live views. The registry's
+	// own numbers, which is what a cap alone cannot see:
+	const { registry } = makeRegistry();
+	const first = registry.create({ owner: "user" });
+	const child = registry.create({ owner: "user", openedByTab: first.tabId });
+	assert.equal(registry.openedTabCount(first.tabId), 1);
+	assert.equal(child.openedByTab, first.tabId);
+	// A child is a FRESH budget to the count the cap reads: the cap is per opener,
+	// so it cannot bound depth, and this is the assertion that says so.
+	assert.equal(registry.openedTabCount(child.tabId), 0);
+
+	// The rule: a user-owned LINK tab's TAB route is refused, whatever its own count
+	// says. `route({})` is the plain-link shape — no opener, no post body, not
+	// `about:blank`, not already loading — and it is the ONE route that nests,
+	// because the tab child carries this same handler.
+	for (const openedTabs of [
+		0,
+		1,
+		MAX_USER_LINK_TABS_PER_VIEW - 1,
+		MAX_USER_LINK_TABS_PER_VIEW,
+	]) {
+		assert.deepEqual(route({ openedTabs }, { openerIsLinkTab: true }), {
+			route: "deny",
+			reason: "link_depth",
+		});
+	}
+	// THE OTHER THREE SHAPES ARE WINDOWS (B2 of round 2). A link tab is a tab like any
+	// other to its page: MSAL opens `about:blank` first, "Sign in with Google/Microsoft"
+	// from a `target=_blank` tab needs a real child with `window.opener`, and a form
+	// POST needs the window route for its body. Each of those children carries
+	// `wirePopup`'s deny-all, so the window route is depth 2 by construction — refusing
+	// it bought no safety and only made the page's `window.open` return null, the
+	// silent sign-in failure §0 exists to remove.
+	assert.deepEqual(route({ hasOpener: true }, { openerIsLinkTab: true }), {
+		route: "window",
+		presentation: "focus",
+	});
+	assert.deepEqual(
+		route({ url: "about:blank", hasOpener: true }, { openerIsLinkTab: true }),
+		{ route: "window", presentation: "focus" },
+	);
+	assert.deepEqual(route({ hasPostBody: true }, { openerIsLinkTab: true }), {
+		route: "window",
+		presentation: "focus",
+	});
+	// A modifier click (`alreadyLoading`) is a window too, and `inactive` at most: a
+	// background open never takes focus.
+	for (const disposition of ["background-tab", "new-window"]) {
+		assert.deepEqual(
+			route({ alreadyLoading: true, disposition }, { openerIsLinkTab: true }),
+			{ route: "window", presentation: "inactive" },
+		);
+	}
+	// The CONTROL for that sign-in: from the operator's own tab it already was a
+	// window, so the rows above pin the shape and not an accident of the flag.
+	assert.deepEqual(route({ hasOpener: true }), {
+		route: "window",
+		presentation: "focus",
+	});
+	// A non-focus launch still presents by its mode: the route is a window in every
+	// mode, only the presentation changes.
+	assert.deepEqual(
+		route({ hasOpener: true }, { openerIsLinkTab: true, mode: "never" }),
+		{ route: "window", presentation: "never" },
+	);
+	// It is its own token, not `user_opener_cap`: the wall is depth, and a log that
+	// called it a count would send a reader looking for twelve tabs.
+	assert.notEqual(
+		route(
+			{ openedTabs: MAX_USER_LINK_TABS_PER_VIEW + 100 },
+			{ openerIsLinkTab: true },
+		).reason,
+		"user_opener_cap",
+	);
+
+	// ORDINARY depth-1 use is untouched: the operator's own tab still opens tabs
+	// under the bound — the rule is about the OPENER being a link tab, never about
+	// the popup being a link.
+	for (let openedTabs = 0; openedTabs < 5; openedTabs += 1) {
+		assert.deepEqual(route({ openedTabs }, { openerIsLinkTab: false }), {
+			route: "tab",
+			owner: "user",
+			activate: true,
+		});
+	}
+	// An AGENT's link tab keeps the route it had: agent tabs are bounded in
+	// aggregate by `MAX_AGENT_TABS`, so its nesting cannot grow the strip past a
+	// number nothing checks (and this fix deliberately does not change that route).
+	assert.deepEqual(route({}, { openerOwner: "agent", openerIsLinkTab: true }), {
+		route: "tab",
+		owner: "agent",
+		activate: false,
+	});
+});
+
+test("the link-tab flag is derived from a real registry record at every call site (M1)", () => {
+	// The router rows above pass `openerIsLinkTab` by hand, so a call site that
+	// derived it wrongly — or omitted it — stayed invisible. Drive real records
+	// through the derivation the two call sites use.
+	const { registry } = makeRegistry();
+	const root = registry.create({ owner: "user" });
+	const link = registry.create({ owner: "user", openedByTab: root.tabId });
+	assert.equal(isLinkTabRecord(registry.get(root.tabId)), false);
+	assert.equal(isLinkTabRecord(registry.get(link.tabId)), true);
+	// The absences read as NOT a link tab, and both matter: a closed tab has no
+	// record, and the registry clears `openedByTab` on restore, so a restored tab
+	// opens exactly as it did before the depth rule.
+	assert.equal(isLinkTabRecord(registry.get(-1)), false);
+	assert.equal(isLinkTabRecord(undefined), false);
+	assert.equal(isLinkTabRecord({ openedByTab: null }), false);
+
+	// The wiring: no call site may pass a literal, and none may spell the derivation
+	// itself — either one would reintroduce the hole on that path alone.
+	const wiring = readFileSync("src/main/browser/index.ts", "utf8");
+	const values = [...wiring.matchAll(/openerIsLinkTab:\s*([^,\n]+)/g)].map(
+		(m) => m[1].trim(),
+	);
+	assert.deepEqual(
+		values.sort(),
+		["isLinkTabRecord(record)", "openerIsLinkTab()"],
+		"both call sites pass a value derived from the tab record",
+	);
+	assert.match(
+		wiring,
+		/const openerIsLinkTab = \(\): boolean =>\s*isLinkTabRecord\(registry\.get\(tabId\)\);/,
+		"and the handler derives it through the same function",
+	);
+	assert.ok(
+		!/openedByTab\s*[!=]==?\s*null/.test(wiring),
+		"no hand-rolled `openedByTab` comparison is left in the wiring",
+	);
+});
+
+test("a link tab inherits its opener's session and activates only when told to", () => {
+	const { registry } = makeRegistry();
+	const userBase = registry.create({ owner: "user" });
+	const agentOpener = registry.create({ owner: "agent", sessionId: "a" });
+	assert.equal(registry.activeTab.tabId, userBase.tabId);
+
+	// An agent's link tab: same session, not active, the user's tab stays put.
+	const agentChild = registry.create({
+		owner: "agent",
+		sessionId: agentOpener.sessionId,
+		openedBy: agentOpener.sessionId,
+		openedByTab: agentOpener.tabId,
+		activate: false,
+	});
+	assert.equal(agentChild.sessionId, "a");
+	assert.equal(agentChild.openedBy, "a");
+	assert.equal(registry.activeTab.tabId, userBase.tabId);
+	assert.equal(registry.openedTabCount(agentOpener.tabId), 1);
+
+	// A user's link tab: active only when the route said so.
+	const background = registry.create({
+		owner: "user",
+		openedByTab: userBase.tabId,
+		activate: false,
+	});
+	assert.equal(registry.activeTab.tabId, userBase.tabId);
+	assert.equal(background.openedBy, null);
+	const foreground = registry.create({
+		owner: "user",
+		openedByTab: userBase.tabId,
+		activate: true,
+	});
+	assert.equal(registry.activeTab.tabId, foreground.tabId);
+	assert.equal(registry.openedTabCount(userBase.tabId), 2);
+
+	// The bound counts OPEN link tabs: closing one frees its slot.
+	registry.destroy(agentChild.tabId);
+	assert.equal(registry.openedTabCount(agentOpener.tabId), 0);
+
+	// A restored tab is never anyone's link child, whatever the options said.
+	const restored = registry.create({
+		owner: "user",
+		restored: true,
+		openedBy: "a",
+		openedByTab: userBase.tabId,
+	});
+	assert.equal(restored.openedBy, null);
+	assert.equal(restored.openedByTab, null);
+});
+
+test("a link tab is adoptable by the opening session only", () => {
+	const { registry } = makeRegistry();
+	const opener = registry.create({ owner: "agent", sessionId: "a" });
+	const child = registry.create({
+		owner: "agent",
+		sessionId: "a",
+		openedBy: "a",
+		openedByTab: opener.tabId,
+		activate: false,
+	});
+	assert.equal(sessionMayAdopt(child, "session:a"), true);
+	assert.equal(sessionMayAdopt(child, "session:b"), false);
+	assert.equal(sessionMayAdopt(child, "session:"), false);
+	// A tab with an allocation already belongs to it: no second claim.
+	assert.equal(
+		sessionMayAdopt({ ...child, allocationId: "alloc-1" }, "session:a"),
+		false,
+	);
+	// A tab nobody's link opened and nobody handed over stays unadoptable.
+	assert.equal(sessionMayAdopt(opener, "session:a"), false);
+	// The hand-over rule it extends is unchanged.
+	const user = registry.create({ owner: "user" });
+	registry.handOver(user.tabId, "session:c");
+	assert.equal(sessionMayAdopt(user, "session:c"), true);
+	assert.equal(sessionMayAdopt(user, "session:a"), false);
 });
 
 // ---- type: a non-editable target must fail, never echo its own write --------
@@ -8336,7 +10120,15 @@ class FramePage {
 			case "DOM.describeNode": {
 				const node = this.nodeIn(sessionId, params.nodeId);
 				if (!node?.frame)
-					return { node: { nodeName: node?.nodeName ?? "INPUT" } };
+					return {
+						node: {
+							nodeName: node?.nodeName ?? "INPUT",
+							// The scoped snapshot translates a frontend node id into the
+							// BACKEND id the a11y tree indexes by; a fake that omitted it
+							// would make every scoped read fail as "no backend node id".
+							backendNodeId: node?.backendNodeId,
+						},
+					};
 				if (node.frame.inProcess) {
 					return {
 						node: {
@@ -8906,6 +10698,10 @@ test("frames 7: a ref with frameId routes to its session; the epoch rule is unch
 			nodeId: "b",
 			role: { value: "textbox" },
 			name: { value: "Number" },
+			// A value the frame's own document carries: the frame walk must project
+			// it exactly as the top-level walk does, or a form inside an iframe
+			// reports its fields without saying what they hold.
+			value: { value: "4242" },
 			backendDOMNodeId: 21,
 		},
 	];
@@ -8926,7 +10722,7 @@ test("frames 7: a ref with frameId routes to its session; the epoch rule is unch
 	assert.ok(frameRef, `a frame ref exists: ${JSON.stringify(record.refs)}`);
 	assert.match(
 		snap.snapshot,
-		new RegExp(`textbox "Number" \\[${frameRef[0]}\\]`),
+		new RegExp(`textbox "Number" \\[${frameRef[0]}\\] = "4242"`),
 	);
 	assert.equal(record.refs.e1.frameId, undefined, "a top ref carries no frame");
 
@@ -8997,6 +10793,79 @@ test("frames 7b: a page with no iframe snapshots with exactly the pre-change com
 	);
 });
 
+test("frames 7c: a control's value rides on the snapshot line", async () => {
+	// The measured gap: `combobox "Environment" [collapsed]` could not be told
+	// apart from the same combobox holding `Production`, so the only way to learn
+	// what a settings form was set to was a screenshot. Fixtures are the shapes
+	// `Accessibility.getFullAXTree` returns (measured on Electron 44.3.0): a native
+	// <select> carries the selected option's TEXT on the combobox node, a password
+	// field carries bullets rather than its text, and an option carries no value.
+	const { FRAMES_ACTIONS } = await frameActions();
+	const page = new FramePage();
+	page.addDoc("", 1, []);
+	page.docs.get("").ax = [
+		{
+			nodeId: "1",
+			role: { value: "RootWebArea" },
+			name: { value: "Settings" },
+			childIds: ["2", "3", "4"],
+		},
+		{
+			nodeId: "2",
+			role: { value: "combobox" },
+			name: { value: "Environment" },
+			value: { value: "Production" },
+			backendDOMNodeId: 11,
+			properties: [
+				{ name: "focusable", value: { value: true } },
+				{ name: "expanded", value: { value: false } },
+			],
+		},
+		{
+			nodeId: "3",
+			role: { value: "textbox" },
+			name: { value: "App name" },
+			value: { value: "release-bot" },
+			backendDOMNodeId: 12,
+		},
+		{
+			nodeId: "4",
+			role: { value: "textbox" },
+			name: { value: "Password" },
+			value: { value: "••••••" },
+			backendDOMNodeId: 13,
+		},
+	];
+	const { pool, contents } = await framePool(page);
+	const record = { view: { webContents: contents }, refs: {}, epoch: 1 };
+	const snap = await FRAMES_ACTIONS.snapshot(
+		{ cdp: pool, registry: { requireSurface: () => record, touch: () => {} } },
+		{ tab: "t" },
+	);
+	assert.match(
+		snap.snapshot,
+		/- combobox "Environment" \[e1\] \[collapsed\] = "Production"/,
+	);
+	assert.match(snap.snapshot, /- textbox "App name" \[e2\] = "release-bot"/);
+	// The password line carries NO value segment at all — not the text, and not
+	// the bullet run Chromium masks it with either. The vendored projection
+	// refuses a masked value outright, because a bullet run publishes the
+	// secret's LENGTH. The fixture's bullets are what a real page's AX tree
+	// carries (measured), and the assertion is written so that ANY value segment
+	// fails it; the two lines above are the positive control that this rule did
+	// not mute the fields around it.
+	const passwordLine = snap.snapshot
+		.split("\n")
+		.find((line) => line.includes('textbox "Password"'));
+	assert.ok(passwordLine, snap.snapshot);
+	assert.equal(passwordLine.includes(' = "'), false, passwordLine);
+	assert.ok(!passwordLine.includes("\u2022"), passwordLine);
+	assert.ok(!/hunter2|secret/i.test(snap.snapshot), "no password text");
+	// The value is a suffix: every earlier token keeps its position, which the
+	// locator grammar and the ref vocabulary depend on.
+	assert.match(snap.snapshot, /\[e1\] \[collapsed\] = /);
+});
+
 test("frames 8: upload refuses a node that resolved inside a frame", async () => {
 	const { FRAMES_ACTIONS } = await frameActions();
 	const { page } = cardPage();
@@ -9022,6 +10891,367 @@ test("frames 8: upload refuses a node that resolved inside a frame", async () =>
 		"nothing was attached",
 	);
 	rmSync(dir, { recursive: true, force: true });
+});
+
+/* ---- upload resolves a file input WITHOUT any layout step ------------------------
+ *
+ * The defect: a file input hidden with `display:none` (a styled button calls
+ * `input.click()`; React, Slack and GitHub all do this) has no layout object, and
+ * Chromium answers every layout-dependent CDP command for it with `Node does not have
+ * a layout object`. `upload` reached `DOM.scrollIntoViewIfNeeded` through the shared
+ * resolver, so it failed with `internal` on exactly the inputs real sites use.
+ * `DOM.setFileInputFiles` needs only the node. These tests drive the shipped action
+ * through a CDP that behaves like Chromium for a layout-less node: it THROWS on the
+ * three layout commands, so a resolver that still scrolls (or measures) fails here
+ * instead of passing against a permissive stub. */
+const NO_LAYOUT = "Node does not have a layout object";
+const LAYOUT_COMMANDS = [
+	"DOM.scrollIntoViewIfNeeded",
+	"DOM.getBoxModel",
+	"DOM.getContentQuads",
+];
+
+function hiddenInputRig({ refs = {}, epoch = 1, readBack = null } = {}) {
+	const calls = [];
+	const notes = [];
+	const send = async (_contents, method, params) => {
+		calls.push({ method, params });
+		if (LAYOUT_COMMANDS.includes(method)) throw new Error(NO_LAYOUT);
+		switch (method) {
+			case "DOM.getDocument":
+				return { root: { nodeId: 1 } };
+			case "DOM.querySelector":
+				return { nodeId: 42 };
+			case "DOM.pushNodesByBackendIdsToFrontend":
+				return { nodeIds: [42] };
+			case "DOM.resolveNode":
+				return { object: { objectId: "obj-hidden" } };
+			case "DOM.getAttributes":
+				return { attributes: ["type", "file", "style", "display:none"] };
+			case "Runtime.callFunctionOn":
+				return { result: { value: readBack } };
+			case "Accessibility.enable":
+			case "Accessibility.disable":
+				return {};
+			case "Accessibility.getFullAXTree":
+				return {
+					nodes: [
+						{
+							nodeId: "1",
+							role: { value: "RootWebArea" },
+							name: { value: "" },
+							childIds: ["2"],
+						},
+						{
+							nodeId: "2",
+							backendDOMNodeId: 41,
+							role: { value: "textbox" },
+							name: { value: "Attach" },
+							childIds: [],
+						},
+					],
+				};
+			default:
+				return {};
+		}
+	};
+	const record = {
+		tabId: 7,
+		epoch,
+		refs,
+		view: {
+			webContents: {
+				getURL: () => "https://approved.example/compose",
+				getTitle: () => "Compose",
+				isDestroyed: () => false,
+				on: () => undefined,
+				removeListener: () => undefined,
+			},
+		},
+	};
+	const ctx = {
+		cdp: { send },
+		approvals: { refusalReason: () => "unapproved" },
+		downloads: { noteUpload: (...args) => notes.push(args) },
+		registry: { requireSurface: () => record, touch: () => {} },
+	};
+	return { ctx, calls, notes, record };
+}
+
+function hiddenInputFile() {
+	const dir = tempDir("upload-hidden");
+	const file = join(dir, "deck.pdf");
+	writeFileSync(file, "x".repeat(21));
+	return { dir, file };
+}
+
+const held = (names, sizes) => ({
+	result: { value: { count: names.length, names, sizes } },
+});
+
+test("upload attaches to a display:none file input: no scroll, no box model, no quads, and the read-back still runs", async () => {
+	const { FRAMES_ACTIONS } = await frameActions();
+	const { dir, file } = hiddenInputFile();
+	// The read-back answers from the node, as the page would.
+	const { ctx, calls, notes } = hiddenInputRig({
+		readBack: { count: 1, names: ["deck.pdf"], sizes: [21] },
+	});
+
+	const result = await FRAMES_ACTIONS.upload(ctx, {
+		tab: "t",
+		selector: "input[type=file]",
+		paths: [file],
+	});
+
+	assert.deepEqual(result.inputs, ["input[type=file]"]);
+	assert.deepEqual(
+		result.accepted.map((fact) => [fact.name, fact.bytes]),
+		[["deck.pdf", 21]],
+	);
+	assert.equal(result.readback, "", "the read-back completed");
+	assert.deepEqual(
+		calls.filter((call) => LAYOUT_COMMANDS.includes(call.method)),
+		[],
+		"upload never asks Chromium for layout",
+	);
+	const attach = calls.find((call) => call.method === "DOM.setFileInputFiles");
+	assert.deepEqual(attach.params, { files: [file], nodeId: 42 });
+	assert.equal(notes.length, 1, "the strip's upload note is still recorded");
+	assert.deepEqual(
+		calls.map((call) => call.method),
+		[
+			"DOM.getDocument",
+			"DOM.querySelector",
+			"DOM.resolveNode",
+			"DOM.getAttributes",
+			"DOM.setFileInputFiles",
+			"Runtime.callFunctionOn",
+		],
+	);
+	rmSync(dir, { recursive: true, force: true });
+});
+
+test("upload to a hidden input by snapshot ref and by locator skips the scroll too, and a stale ref still fails", async () => {
+	const { FRAMES_ACTIONS } = await frameActions();
+	const { dir, file } = hiddenInputFile();
+	const wire = (rig) => {
+		const send = rig.ctx.cdp.send;
+		rig.ctx.cdp.send = async (contents, method, params) =>
+			method === "Runtime.callFunctionOn"
+				? held(["deck.pdf"], [21])
+				: send(contents, method, params);
+		return rig;
+	};
+	{
+		const rig = wire(
+			hiddenInputRig({ refs: { e3: { backendNodeId: 41, epoch: 1 } } }),
+		);
+		const result = await FRAMES_ACTIONS.upload(rig.ctx, {
+			tab: "t",
+			selector: "e3",
+			paths: [file],
+		});
+		assert.deepEqual(result.inputs, ["e3"]);
+		assert.deepEqual(
+			rig.calls.filter((call) => LAYOUT_COMMANDS.includes(call.method)),
+			[],
+		);
+		assert.deepEqual(
+			rig.calls.find(
+				(call) => call.method === "DOM.pushNodesByBackendIdsToFrontend",
+			).params,
+			{ backendNodeIds: [41] },
+		);
+	}
+	{
+		const rig = wire(hiddenInputRig());
+		await FRAMES_ACTIONS.upload(rig.ctx, {
+			tab: "t",
+			selector: 'role=textbox[name="Attach"]',
+			paths: [file],
+		});
+		assert.deepEqual(
+			rig.calls.filter((call) => LAYOUT_COMMANDS.includes(call.method)),
+			[],
+		);
+		assert.ok(
+			rig.calls.some((call) => call.method === "DOM.setFileInputFiles"),
+		);
+	}
+	{
+		// The epoch rule is the resolver's, and dropping the scroll must not drop it.
+		const rig = wire(
+			hiddenInputRig({
+				refs: { e3: { backendNodeId: 41, epoch: 1 } },
+				epoch: 2,
+			}),
+		);
+		await assert.rejects(
+			() =>
+				FRAMES_ACTIONS.upload(rig.ctx, {
+					tab: "t",
+					selector: "e3",
+					paths: [file],
+				}),
+			(error) =>
+				error.code === "element_not_found" &&
+				/navigated since that snapshot/.test(error.message),
+		);
+		assert.equal(
+			rig.calls.some((call) => call.method === "DOM.setFileInputFiles"),
+			false,
+		);
+	}
+	rmSync(dir, { recursive: true, force: true });
+});
+
+test("upload without a layout step keeps the frame refusal, the denial check and the missing-element diagnostics", async () => {
+	const { FRAMES_ACTIONS } = await frameActions();
+	const { dir, file } = hiddenInputFile();
+	{
+		// A same-process frame ref whose origin the user DENIED: refused before any command.
+		const rig = hiddenInputRig({
+			refs: {
+				e9: { backendNodeId: 41, epoch: 1, frameOrigin: "https://pay.example" },
+			},
+		});
+		rig.ctx.approvals = { refusalReason: () => "denied" };
+		await assert.rejects(
+			() =>
+				FRAMES_ACTIONS.upload(rig.ctx, {
+					tab: "t",
+					selector: "e9",
+					paths: [file],
+				}),
+			(error) => /pay\.example/.test(error.message),
+		);
+		assert.equal(
+			rig.calls.some((call) => call.method === "DOM.setFileInputFiles"),
+			false,
+		);
+	}
+	{
+		// An undenied same-process frame ref still resolves into a frame and is refused as
+		// before ("upload into a frame is not supported"), still without a scroll.
+		const rig = hiddenInputRig({
+			refs: {
+				e9: { backendNodeId: 41, epoch: 1, frameOrigin: "https://pay.example" },
+			},
+		});
+		rig.ctx.approvals = { refusalReason: () => "unapproved" };
+		await assert.rejects(
+			() =>
+				FRAMES_ACTIONS.upload(rig.ctx, {
+					tab: "t",
+					selector: "e9",
+					paths: [file],
+				}),
+			(error) => /upload into a frame is not supported/.test(error.message),
+		);
+		assert.deepEqual(
+			rig.calls.filter((call) => LAYOUT_COMMANDS.includes(call.method)),
+			[],
+		);
+	}
+	{
+		const rig = hiddenInputRig();
+		const send = rig.ctx.cdp.send;
+		rig.ctx.cdp.send = async (contents, method, params) =>
+			method === "DOM.querySelector"
+				? { nodeId: 0 }
+				: send(contents, method, params);
+		await assert.rejects(
+			() =>
+				FRAMES_ACTIONS.upload(rig.ctx, {
+					tab: "t",
+					selector: "#nope",
+					paths: [file],
+				}),
+			(error) =>
+				error.code === "element_not_found" &&
+				/#nope matched nothing/.test(error.message),
+		);
+	}
+	rmSync(dir, { recursive: true, force: true });
+});
+
+test("upload into a frame hop sends no scroll in any session; click through the same hop still scrolls", async () => {
+	const { FRAMES_ACTIONS } = await frameActions();
+	const { dir, file } = hiddenInputFile();
+	{
+		const { page } = cardPage();
+		const { pool, contents } = await framePool(page);
+		await assert.rejects(
+			() =>
+				FRAMES_ACTIONS.upload(frameCtx(pool, contents), {
+					tab: "t",
+					selector: "iframe#card >>> #number",
+					paths: [file],
+				}),
+			(error) => /upload into a frame is not supported/.test(error.message),
+		);
+		assert.equal(
+			page.calls.some((call) => call.method === "DOM.scrollIntoViewIfNeeded"),
+			false,
+			"no scroll for the frame hop or the node",
+		);
+	}
+	{
+		const { page } = cardPage();
+		const { pool, contents } = await framePool(page);
+		await FRAMES_ACTIONS.click(frameCtx(pool, contents), {
+			tab: "t",
+			selector: "iframe#card >>> #number",
+		}).catch(() => undefined);
+		assert.ok(
+			page.calls.some((call) => call.method === "DOM.scrollIntoViewIfNeeded"),
+			"click keeps scrolling the frame chain",
+		);
+	}
+	rmSync(dir, { recursive: true, force: true });
+});
+
+test("click and type still scroll the node into view before acting (the upload change must not leak into them)", async () => {
+	const { FRAMES_ACTIONS } = await frameActions();
+	for (const [name, params] of [
+		["click", { tab: "t", selector: "#go" }],
+		["type", { tab: "t", selector: "#go", text: "hi" }],
+	]) {
+		const rig = hiddenInputRig();
+		// A visible node: layout commands answer, so the action runs as it always did.
+		const send = rig.ctx.cdp.send;
+		rig.ctx.cdp.send = async (contents, method, p) => {
+			if (LAYOUT_COMMANDS.includes(method)) {
+				rig.calls.push({ method, params: p });
+				return method === "DOM.getBoxModel"
+					? { model: { content: [0, 0, 10, 0, 10, 10, 0, 10] } }
+					: {};
+			}
+			return send(contents, method, p);
+		};
+		await FRAMES_ACTIONS[name](rig.ctx, params).catch(() => undefined);
+		const scrolls = rig.calls.filter(
+			(call) => call.method === "DOM.scrollIntoViewIfNeeded",
+		);
+		assert.deepEqual(
+			scrolls.map((call) => call.params),
+			[{ nodeId: 42 }],
+			`${name} scrolls the resolved node exactly once`,
+		);
+		const order = rig.calls.map((call) => call.method);
+		assert.ok(
+			order.indexOf("DOM.scrollIntoViewIfNeeded") <
+				order.indexOf("DOM.resolveNode"),
+			`${name}: the scroll comes before the node is resolved, as before`,
+		);
+	}
+	// And a layout-less node still FAILS a click, which is the honest answer for an
+	// action that needs geometry.
+	const rig = hiddenInputRig();
+	await assert.rejects(
+		() => FRAMES_ACTIONS.click(rig.ctx, { tab: "t", selector: "#go" }),
+		(error) => error.message.includes(NO_LAYOUT),
+	);
 });
 
 test("frames M1: a frame from an origin the user DENIED is refused on every path, and hidden from snapshot", async () => {
@@ -9645,6 +11875,7 @@ test("human page-control IPC validates owner/frame/URL and primitive inputs", as
 	registerBrowserIpc({
 		window: () => owner,
 		expectedUrl: "http://localhost:5173",
+		headless: false,
 		host: () => host,
 		clearData: async () => {},
 		log: () => {},
@@ -9713,9 +11944,16 @@ test("zoom reset precedes handover capability and agent screenshot/read keep 100
 		allocation_id: "a2-geometry",
 		tab: token,
 	};
+	// `open_on_approval: false`: this test is about the handed-over tab's zoom and geometry, not about the Allow
+	// opening the approved page (covered by the approval-pickup tests), so it keeps
+	// the pre-pickup flow where `open` navigates a fresh agent tab.
 	await host.dispatch(
 		"request_access",
-		{ requester: owner.requester, url: "https://approved.example/" },
+		{
+			requester: owner.requester,
+			url: "https://approved.example/",
+			open_on_approval: false,
+		},
 		"req",
 	);
 	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
@@ -9810,6 +12048,7 @@ test("tab management IPC rejects foreign sender/frame and malformed permutations
 	registerBrowserIpc({
 		window: () => window,
 		expectedUrl: "http://localhost:5173",
+		headless: false,
 		host: () => host,
 		clearData: async () => {},
 		log: () => {},
@@ -9953,4 +12192,1724 @@ test("duplicate source disappearing during URL read resolves a typed failure", a
 	assert.equal(result.tabId, null);
 	assert.equal(result.error.code, "navigation_failed");
 	assert.equal(registry.count(), 1);
+});
+
+test("page controls work while an app overlay hides the view, and only then (Q2-F1)", async () => {
+	const { host } = makeHost();
+	await host.newTab();
+	host.setContentRect({ x: 0, y: 0, width: 1000, height: 700 });
+	const id = host.registry.activeTab.tabId;
+	// Find, Print and Reset zoom are chrome-initiated: the menu that pauses the
+	// page must not make its own items dead. `false` = our overlay asked the view
+	// to stand down, `contentRect` still laid out.
+	host.setViewVisible(false);
+	await host.controlPage(id, "open");
+	assert.equal(host.chromeState().pageControls.find?.tabId, id);
+	await host.controlPage(id, "reset");
+	assert.equal(host.chromeState().pageControls.notice, null);
+	// An own-state page (start/failure) is not a page to control, and it stays
+	// refused while an overlay ALSO hides it (Q3-1): true in the third slot means
+	// "the browser's own content, whatever else is over it".
+	host.setViewVisible(false, false, true);
+	await assert.rejects(
+		() => host.controlPage(id, "open"),
+		/no longer presented/,
+	);
+	host.setViewVisible(false, true);
+	await assert.rejects(
+		() => host.controlPage(id, "open"),
+		/no longer presented/,
+	);
+	// A route teardown drops the rect entirely: not presented, no overlay excuse.
+	host.setViewVisible(true);
+	host.setContentRect(null);
+	await assert.rejects(
+		() => host.controlPage(id, "open"),
+		/no longer presented/,
+	);
+});
+
+// press shares the existing owned-tab fixture: these are CDP contract tests,
+// not a claim that Chromium delivers keys to a hidden native view.
+async function openPressTab(host, owner = {}) {
+	const params = {
+		...owner,
+		url: "https://press.example/",
+		requester: owner.requester ?? "session:press",
+	};
+	await host.dispatch("request_access", params, "request");
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
+	return host.dispatch("open", params, "open");
+}
+
+test("press closed wire admits the method and preserves unsupported_key", async () => {
+	assert.ok(METHODS.includes("press"));
+	assert.equal(METHODS.indexOf("press"), METHODS.indexOf("type") + 1);
+	assert.ok(ERROR_CODES.includes("unsupported_key"));
+	assert.ok(HOST_CAPABILITIES.includes("press"));
+	assert.equal(COMMAND_TIMEOUTS_S.press, 25);
+});
+
+for (const [key, code, virtualKeyCode, modifiers] of [
+	["Tab", "Tab", 9, 0],
+	["Shift+Tab", "Tab", 9, 8],
+	["Enter", "Enter", 13, 0],
+	["Escape", "Escape", 27, 0],
+	["ArrowUp", "ArrowUp", 38, 0],
+	["ArrowDown", "ArrowDown", 40, 0],
+	["ArrowLeft", "ArrowLeft", 37, 0],
+	["ArrowRight", "ArrowRight", 39, 0],
+]) {
+	test(`press ${key} dispatches only the named native key pair to the owned contents`, async () => {
+		const { host, registry, cdp } = makeHost();
+		const owner = {
+			requester: "session:press",
+			owner_proof: "p".repeat(40),
+			owner_generation: "press-g1",
+			allocation_id: "press-allocation",
+		};
+		const opened = await openPressTab(host, owner);
+		const record = registry.requireSurface(opened.tab);
+		const contents = record.view.webContents;
+		const visibility = [...record.view.visibility];
+		contents.focus = () => assert.fail("press must not focus OS contents");
+		const originalSend = cdp.send;
+		const keys = [];
+		cdp.send = async (target, method, params) => {
+			if (method.startsWith("Input.")) keys.push({ target, method, params });
+			return originalSend(target, method, params);
+		};
+		cdp.calls.length = 0;
+		const result = await host.dispatch(
+			"press",
+			{ ...owner, tab: opened.tab, key },
+			"press",
+		);
+		assert.equal(result.key, key);
+		assert.equal(result.navigated, false);
+		assert.deepEqual(record.view.visibility, visibility);
+		assert.deepEqual(
+			keys,
+			["keyDown", "keyUp"].map((type) => ({
+				target: contents,
+				method: "Input.dispatchKeyEvent",
+				params: {
+					key: code,
+					code,
+					windowsVirtualKeyCode: virtualKeyCode,
+					modifiers,
+					type,
+					...(key === "Enter" && type === "keyDown"
+						? { text: "\r", unmodifiedText: "\r" }
+						: {}),
+				},
+			})),
+		);
+		assert.ok(cdp.calls.some((call) => call.method === "Fetch.enable"));
+		assert.ok(cdp.calls.some((call) => call.method === "Fetch.disable"));
+		assert.equal(contents.listenerCount("did-start-navigation"), 0);
+	});
+}
+
+test("press validation refuses arbitrary keys and modifier syntax before any input", async () => {
+	const { host, cdp } = makeHost();
+	const opened = await openPressTab(host);
+	cdp.calls.length = 0;
+	for (const key of [
+		undefined,
+		null,
+		9,
+		{},
+		"",
+		"tab",
+		"Shift",
+		// Not refused any more (the chord grammar admits them), so they are NOT
+		// here: Ctrl+Tab, Shift+Enter, a. The refusals below are what stays closed.
+		"Ctrl+Nope",
+		"Shift+Shift+a",
+		"ab",
+		"hunter2-hunter2",
+		"__proto__",
+	]) {
+		await assert.rejects(
+			host.dispatch("press", { tab: opened.tab, key }, "press"),
+			(error) =>
+				error.code === "unsupported_key" && error.message.includes(String(key)),
+		);
+	}
+	assert.ok(!cdp.calls.some((call) => call.method.startsWith("Input.")));
+});
+
+test("press retains missing-tab, owner proof, generation, foreign-owner and origin fences", async () => {
+	const { host, registry, cdp } = makeHost();
+	const owner = {
+		requester: "session:press",
+		owner_proof: "p".repeat(40),
+		owner_generation: "g1",
+		allocation_id: "alloc",
+	};
+	const opened = await openPressTab(host, owner);
+	cdp.calls.length = 0;
+	for (const override of [
+		{ owner_generation: "stale" },
+		{ owner_proof: "short" },
+		{ requester: "session:foreign" },
+		{ requester: "session:foreign", owner_proof: "q".repeat(40) },
+	]) {
+		await assert.rejects(
+			host.dispatch(
+				"press",
+				{ ...owner, tab: opened.tab, key: "Enter", ...override },
+				"press",
+			),
+			{ code: "owner_refused" },
+		);
+	}
+	await assert.rejects(
+		host.dispatch("press", { ...owner, key: "Tab" }, "missing"),
+		{ code: "tab_closed" },
+	);
+	await assert.rejects(
+		host.dispatch(
+			"press",
+			{ ...owner, tab: "ui:missing", key: "Tab" },
+			"closed",
+		),
+		{ code: "tab_closed" },
+	);
+	registry.requireSurface(opened.tab).view.webContents.url =
+		"https://unapproved.example/";
+	await assert.rejects(
+		host.dispatch(
+			"press",
+			{ ...owner, tab: opened.tab, key: "Enter" },
+			"origin",
+		),
+		{ code: "origin_not_allowed" },
+	);
+	assert.ok(!cdp.calls.some((call) => call.method.startsWith("Input.")));
+});
+
+test("press releases after debugger failure without masking the typed failure", async () => {
+	const { host, registry, cdp } = makeHost();
+	const opened = await openPressTab(host);
+	const originalSend = cdp.send;
+	const attempts = [];
+	cdp.send = async (contents, method, params) => {
+		if (method === "Input.dispatchKeyEvent") {
+			attempts.push(params.type);
+			throw Object.assign(new Error("detached"), {
+				code: params.type === "keyDown" ? "debugger_conflict" : "tab_closed",
+			});
+		}
+		return originalSend(contents, method, params);
+	};
+	await assert.rejects(
+		host.dispatch("press", { tab: opened.tab, key: "Shift+Tab" }, "press"),
+		{ code: "debugger_conflict" },
+	);
+	assert.deepEqual(attempts, ["keyDown", "keyUp"]);
+	assert.equal(
+		registry
+			.requireSurface(opened.tab)
+			.view.webContents.listenerCount("did-start-navigation"),
+		0,
+	);
+	assert.ok(cdp.calls.some((call) => call.method === "Fetch.disable"));
+});
+
+test("press keeps the per-hop gate over an asynchronous Enter redirect", async () => {
+	const { host, cdp, registry } = makeHost();
+	const opened = await openPressTab(host);
+	let hop = null;
+	cdp.subscribe = (_id, listener) => {
+		hop = listener;
+		return () => {
+			hop = null;
+		};
+	};
+	const originalSend = cdp.send;
+	const pending = [];
+	cdp.send = async (contents, method, params) => {
+		if (method === "Input.dispatchKeyEvent" && params.type === "keyUp") {
+			pending.push(
+				new Promise((resolve) =>
+					setTimeout(() => {
+						assert.ok(
+							hop,
+							"gate must survive keyUp until navigation grace ends",
+						);
+						hop("Fetch.requestPaused", {
+							requestId: "approved-hop",
+							request: { url: "https://press.example/redirect" },
+						});
+						hop("Fetch.requestPaused", {
+							requestId: "forbidden-hop",
+							request: { url: "https://forbidden.example/" },
+						});
+						resolve();
+					}, 0),
+				),
+			);
+		}
+		return originalSend(contents, method, params);
+	};
+	const result = await host.dispatch(
+		"press",
+		{ tab: opened.tab, key: "Enter" },
+		"press",
+	);
+	await Promise.all(pending);
+	assert.equal(result.url, "https://press.example/");
+	assert.equal(
+		registry.requireSurface(opened.tab).view.webContents.getURL(),
+		result.url,
+	);
+	assert.ok(
+		cdp.calls.some(
+			(call) =>
+				call.method === "Fetch.continueRequest" &&
+				call.params.requestId === "approved-hop",
+		),
+	);
+	assert.ok(
+		cdp.calls.some(
+			(call) =>
+				call.method === "Fetch.failRequest" &&
+				call.params.requestId === "forbidden-hop" &&
+				call.params.errorReason === "BlockedByClient",
+		),
+	);
+	assert.equal(hop, null);
+});
+
+test("press unsupported_key crosses the real RPC envelope without becoming internal", async () => {
+	const { host } = makeHost();
+	const opened = await openPressTab(host);
+	const server = await startRpcServer({
+		key: "press-isolated-key",
+		dispatch: (method, params, id) => host.dispatch(method, params, id),
+		log: () => {},
+	});
+	try {
+		const response = await fetch(`http://127.0.0.1:${server.port}${RPC_PATH}`, {
+			method: "POST",
+			headers: { [KEY_HEADER]: "press-isolated-key" },
+			body: JSON.stringify({
+				id: "unsupported",
+				method: "press",
+				params: { tab: opened.tab, key: "Ctrl+Nope" },
+			}),
+		});
+		assert.equal(response.status, 200);
+		const body = await response.json();
+		assert.equal(body.ok, false);
+		assert.equal(body.error.code, "unsupported_key");
+		assert.equal(body.error.message, "unsupported key: Ctrl+Nope");
+		assert.equal(body.error.data.key, "Ctrl+Nope");
+	} finally {
+		await server.close();
+	}
+});
+
+// ---- press chords and hover (harness issue #3248) ---------------------------
+
+test("press admits chords: modifiers ride ONE key pair, and a shortcut carries no text", async () => {
+	for (const [key, expected, canonical] of [
+		[
+			"Control+K",
+			{ key: "k", code: "KeyK", windowsVirtualKeyCode: 75, modifiers: 2 },
+			"Control+K",
+		],
+		[
+			"cmd+k",
+			{ key: "k", code: "KeyK", windowsVirtualKeyCode: 75, modifiers: 4 },
+			"Meta+k",
+		],
+		[
+			"Ctrl+Shift+ArrowLeft",
+			{
+				key: "ArrowLeft",
+				code: "ArrowLeft",
+				windowsVirtualKeyCode: 37,
+				modifiers: 10,
+			},
+			"Control+Shift+ArrowLeft",
+		],
+		[
+			"e",
+			{
+				key: "e",
+				code: "KeyE",
+				windowsVirtualKeyCode: 69,
+				modifiers: 0,
+				text: "e",
+				unmodifiedText: "e",
+			},
+			"e",
+		],
+		[
+			"F5",
+			{ key: "F5", code: "F5", windowsVirtualKeyCode: 116, modifiers: 0 },
+			"F5",
+		],
+	]) {
+		const { host, cdp, registry } = makeHost();
+		const opened = await openPressTab(host);
+		const contents = registry.requireSurface(opened.tab).view.webContents;
+		contents.focus = () => assert.fail("press must not focus OS contents");
+		cdp.calls.length = 0;
+		const result = await host.dispatch(
+			"press",
+			{ tab: opened.tab, key },
+			"press",
+		);
+		assert.equal(
+			result.key,
+			canonical,
+			`${key} reports its canonical spelling`,
+		);
+		const keys = cdp.calls.filter(
+			(call) => call.method === "Input.dispatchKeyEvent",
+		);
+		assert.deepEqual(
+			keys.map((call) => call.params),
+			["keyDown", "keyUp"].map((type) => ({
+				...Object.fromEntries(
+					Object.entries(expected).filter(
+						([field]) =>
+							type === "keyDown" || !["text", "unmodifiedText"].includes(field),
+					),
+				),
+				type,
+			})),
+			key,
+		);
+		assert.ok(
+			!cdp.calls.some((call) => call.method.startsWith("Input.dispatchMouse")),
+		);
+	}
+});
+
+test("press with a selector focuses the element first, refuses one that will not take focus, and sends nothing then", async () => {
+	const { host, cdp } = makeHost();
+	const opened = await openPressTab(host);
+	const send = cdp.send;
+	let focusAnswer = true;
+	cdp.send = async (contents, method, params) => {
+		if (method === "DOM.resolveNode") {
+			cdp.calls.push({ method, params });
+			return { object: { objectId: "obj-1" } };
+		}
+		if (
+			method === "Runtime.callFunctionOn" &&
+			String(params?.functionDeclaration ?? "").includes("preventScroll")
+		) {
+			cdp.calls.push({ method, params });
+			return { result: { value: focusAnswer } };
+		}
+		return send(contents, method, params);
+	};
+	cdp.calls.length = 0;
+	await host.dispatch(
+		"press",
+		{ tab: opened.tab, key: "e", selector: "#item" },
+		"press",
+	);
+	const order = cdp.calls.map((call) => call.method);
+	assert.ok(
+		order.indexOf("Runtime.callFunctionOn") <
+			order.indexOf("Input.dispatchKeyEvent"),
+		`focus precedes the key: ${order.join(",")}`,
+	);
+	const focusCall = cdp.calls.find(
+		(call) => call.method === "Runtime.callFunctionOn",
+	);
+	assert.ok(
+		!focusCall.params.functionDeclaration.includes("not_editable"),
+		"focus does not require an editable (that is type's check)",
+	);
+	focusAnswer = false;
+	cdp.calls.length = 0;
+	await assert.rejects(
+		host.dispatch(
+			"press",
+			{ tab: opened.tab, key: "e", selector: "#item" },
+			"press",
+		),
+		(error) =>
+			error.code === "element_not_found" &&
+			/cannot take focus/.test(error.message),
+	);
+	assert.ok(!cdp.calls.some((call) => call.method.startsWith("Input.")));
+});
+
+test("hover is in the wire vocabulary, advertised beside press, lane-scoped, and not a navigating action", async () => {
+	assert.ok(METHODS.includes("hover"));
+	assert.ok(isMethod("hover"));
+	// `hover` was APPENDED when it landed, then main appended `setvalue`, then this
+	// branch appended `copy`, so the pin is that no append moved an existing index:
+	// the tail is hover, select, setvalue, copy in that order.
+	assert.deepEqual(
+		METHODS.slice(-4),
+		["hover", "select", "setvalue", "copy"],
+		"appends only: no existing method's index moved",
+	);
+	assert.equal(
+		METHODS.at(-4),
+		"hover",
+		"copy was appended last: no existing method's index moved",
+	);
+	assert.equal(
+		METHODS.at(-1),
+		"copy",
+		"copy was appended after setvalue: no existing method's index moved",
+	);
+	assert.ok(HOST_CAPABILITIES.includes("hover"));
+	// The harness gates extended press on this exact token; `press` alone is true of
+	// every older desktop build, so it is not evidence of chord support.
+	assert.equal(
+		HOST_CAPABILITIES.indexOf("press_chord"),
+		HOST_CAPABILITIES.indexOf("press") + 1,
+	);
+	assert.equal(
+		HOST_CAPABILITIES.indexOf("hover"),
+		HOST_CAPABILITIES.indexOf("press_chord") + 1,
+	);
+	assert.ok(!METHODS.includes("press_chord"), "a token, not a wire method");
+	assert.ok(!isMethod("press_chord"));
+	assert.equal(COMMAND_TIMEOUTS_S.hover, 20);
+	// Behavioural proof of set membership, not a source grep: TAB_SCOPED puts it in
+	// the per-tab lane (a second concurrent command is refused as `busy`), and it
+	// arms NO per-hop gate (`Fetch.enable`), which click/type/press do.
+	const { host, cdp } = makeHost();
+	const opened = await openPressTab(host);
+	cdp.calls.length = 0;
+	await host
+		.dispatch("hover", { tab: opened.tab, x: 10, y: 20 }, "hover")
+		.catch(() => undefined);
+	assert.ok(
+		!cdp.calls.some((call) => call.method === "Fetch.enable"),
+		"no per-hop gate around hover",
+	);
+	assert.ok(
+		cdp.calls.some((call) => call.method === "Input.dispatchMouseEvent"),
+	);
+});
+
+test("hover refuses selector+coordinates, a lone coordinate and nothing, before any page work", async () => {
+	const { host, cdp } = makeHost();
+	const opened = await openPressTab(host);
+	for (const params of [
+		{ selector: "#a", x: 1, y: 2 },
+		{ ref: "e1", x: 1, y: 2 },
+		{ selector: "#a", x: 1 },
+		{ x: 1 },
+		{ y: 2 },
+		{},
+		{ x: "1", y: "2" },
+		{ x: Number.NaN, y: 2 },
+	]) {
+		cdp.calls.length = 0;
+		await assert.rejects(
+			host.dispatch("hover", { tab: opened.tab, ...params }, "hover"),
+			(error) =>
+				error.code === "internal" &&
+				error.data.reason === "invalid_arguments" &&
+				typeof error.data.param === "string",
+			JSON.stringify(params),
+		);
+		assert.equal(
+			cdp.calls.length,
+			0,
+			`${JSON.stringify(params)} touched the page`,
+		);
+	}
+});
+
+test("hover by position sends ONE buttonless mouseMoved and reports the hit_test descriptor", async () => {
+	const { host, cdp, registry } = makeHost();
+	const opened = await openPressTab(host);
+	const contents = registry.requireSurface(opened.tab).view.webContents;
+	contents.isolatedResult = {
+		count: 1,
+		elements: [{ tag: "li", id: "row-1" }],
+	};
+	contents.focus = () => assert.fail("hover must not focus OS contents");
+	cdp.calls.length = 0;
+	const result = await host.dispatch(
+		"hover",
+		{ tab: opened.tab, x: 40.5, y: 90 },
+		"hover",
+	);
+	const moves = cdp.calls.filter(
+		(call) => call.method === "Input.dispatchMouseEvent",
+	);
+	assert.deepEqual(
+		moves.map((call) => call.params),
+		[
+			{
+				type: "mouseMoved",
+				x: 40.5,
+				y: 90,
+				button: "none",
+				buttons: 0,
+				pointerType: "mouse",
+			},
+		],
+	);
+	assert.equal(result.x, 40.5);
+	assert.equal(result.y, 90);
+	assert.deepEqual(result.hit, contents.isolatedResult);
+	assert.equal(result.url, "https://press.example/");
+	assert.ok(
+		!cdp.calls.some((call) =>
+			["Fetch.enable", "Input.dispatchKeyEvent"].includes(call.method),
+		),
+	);
+});
+
+test("hover by selector scrolls first, points at the box centre, and refuses a box-less element without moving", async () => {
+	const { host, cdp, registry } = makeHost();
+	const opened = await openPressTab(host);
+	registry.requireSurface(opened.tab).view.webContents.isolatedResult = {
+		count: 1,
+		elements: [],
+	};
+	const send = cdp.send;
+	let centre = { x: 100.004, y: 200.996 };
+	cdp.send = async (contents, method, params) => {
+		if (method === "DOM.resolveNode") {
+			cdp.calls.push({ method, params });
+			return { object: { objectId: "obj-1" } };
+		}
+		if (
+			method === "Runtime.callFunctionOn" &&
+			String(params?.functionDeclaration ?? "").includes(
+				"getBoundingClientRect",
+			)
+		) {
+			cdp.calls.push({ method, params });
+			return { result: { value: centre } };
+		}
+		return send(contents, method, params);
+	};
+	cdp.calls.length = 0;
+	const result = await host.dispatch(
+		"hover",
+		{ tab: opened.tab, selector: "#row-1" },
+		"hover",
+	);
+	const order = cdp.calls.map((call) => call.method);
+	assert.ok(
+		order.indexOf("DOM.scrollIntoViewIfNeeded") <
+			order.indexOf("Input.dispatchMouseEvent"),
+	);
+	assert.equal(result.x, 100);
+	assert.equal(result.y, 201);
+	centre = null;
+	cdp.calls.length = 0;
+	await assert.rejects(
+		host.dispatch("hover", { tab: opened.tab, selector: "#hidden" }, "hover"),
+		(error) =>
+			error.code === "element_not_found" && /no box/.test(error.message),
+	);
+	assert.ok(
+		!cdp.calls.some((call) => call.method === "Input.dispatchMouseEvent"),
+	);
+});
+
+test("hover retains missing-tab, owner proof, generation, foreign-owner and origin fences", async () => {
+	const { host, registry, cdp } = makeHost();
+	const owner = {
+		requester: "session:press",
+		owner_proof: "p".repeat(40),
+		owner_generation: "g1",
+		allocation_id: "alloc",
+	};
+	const opened = await openPressTab(host, owner);
+	cdp.calls.length = 0;
+	for (const override of [
+		{ owner_generation: "stale" },
+		{ owner_proof: "short" },
+		{ requester: "session:foreign" },
+		{ requester: "session:foreign", owner_proof: "q".repeat(40) },
+	]) {
+		await assert.rejects(
+			host.dispatch(
+				"hover",
+				{ ...owner, tab: opened.tab, x: 1, y: 2, ...override },
+				"hover",
+			),
+			{ code: "owner_refused" },
+		);
+	}
+	await assert.rejects(
+		host.dispatch("hover", { ...owner, x: 1, y: 2 }, "missing"),
+		{
+			code: "tab_closed",
+		},
+	);
+	await assert.rejects(
+		host.dispatch(
+			"hover",
+			{ ...owner, tab: "ui:missing", x: 1, y: 2 },
+			"closed",
+		),
+		{ code: "tab_closed" },
+	);
+	registry.requireSurface(opened.tab).view.webContents.url =
+		"https://unapproved.example/";
+	await assert.rejects(
+		host.dispatch("hover", { ...owner, tab: opened.tab, x: 1, y: 2 }, "origin"),
+		{ code: "origin_not_allowed" },
+	);
+	assert.ok(!cdp.calls.some((call) => call.method.startsWith("Input.")));
+});
+
+test("a hover whose page handler navigates to an unapproved origin is refused with the origin named and the landing reverted (review R1-3)", async () => {
+	// `hover` cannot navigate by itself, but a page's own mouseenter handler can, and
+	// measured against the built app it was first refused as a bare `changed` while the
+	// tab STAYED on the unapproved page. Membership in NAVIGATING_ACTIONS is what names
+	// the origin and reverts; this pins it, and that no per-hop `Fetch` gate is armed.
+	const { host, cdp, registry } = makeHost();
+	const { owner, tab } = await openApprovedTab(host);
+	const record = registry.requireSurface(tab);
+	record.view.webContents.isolatedResult = { count: 1, elements: [] };
+	const perform = host.perform.bind(host);
+	host.perform = async (method, params, requestId) => {
+		const result = await perform(method, params, requestId);
+		record.view.webContents.url = "https://forbidden.example/landed";
+		registry.bumpEpoch(record.tabId);
+		return result;
+	};
+	cdp.calls.length = 0;
+	await assert.rejects(
+		() => host.dispatch("hover", { ...owner, tab, x: 10, y: 10 }, "hover"),
+		(error) =>
+			error.code === "origin_not_allowed" &&
+			error.data.reason === "unapproved" &&
+			error.data.origin === "https://forbidden.example",
+	);
+	assert.equal(record.view.webContents.url, "https://approved.example/");
+	assert.ok(
+		record.view.webContents.loaded.includes("https://approved.example/"),
+	);
+	assert.ok(
+		!cdp.calls.some((call) => call.method === "Fetch.enable"),
+		"hover arms no per-hop gate",
+	);
+});
+
+for (const failure of ["null hit", "read throws"]) {
+	test(`hover navigation is authorized and restored even when the post-move ${failure} prevents perform from returning (review R2)`, async () => {
+		const { host, cdp, registry } = makeHost();
+		const { owner, tab } = await openApprovedTab(host);
+		const record = registry.requireSurface(tab);
+		const contents = record.view.webContents;
+		// Unlike the R1 test (navigation AFTER perform returned), this is the page's
+		// mouseenter handler running DURING the move. The new document has no hit at
+		// that point, or its context disappeared: both make perform THROW before its
+		// return-side document check. Neither may leave the forbidden landing open.
+		contents.isolatedResult = null;
+		if (failure === "read throws")
+			contents.isolatedError = new Error("context destroyed");
+		const send = cdp.send;
+		cdp.send = async (target, method, params) => {
+			if (method === "Input.dispatchMouseEvent") {
+				contents.url = "https://forbidden.example/landed";
+				registry.bumpEpoch(record.tabId);
+			}
+			return send(target, method, params);
+		};
+		cdp.calls.length = 0;
+		await assert.rejects(
+			host.dispatch("hover", { ...owner, tab, x: 10, y: 10 }, "hover"),
+			(error) =>
+				error.code === "origin_not_allowed" &&
+				error.data.reason === "unapproved" &&
+				error.data.origin === "https://forbidden.example",
+		);
+		assert.equal(contents.url, "https://approved.example/");
+		assert.ok(contents.loaded.includes("https://approved.example/"));
+		assert.ok(!cdp.calls.some((call) => call.method === "Fetch.enable"));
+	});
+}
+
+test("hover's original hit failure survives when the landing document is still approved", async () => {
+	const { host, registry } = makeHost();
+	const { owner, tab } = await openApprovedTab(host);
+	const contents = registry.requireSurface(tab).view.webContents;
+	contents.isolatedResult = null;
+	const loads = contents.loaded.length;
+	await assert.rejects(
+		host.dispatch("hover", { ...owner, tab, x: 10, y: 10 }, "hover"),
+		(error) =>
+			error.code === "element_not_found" &&
+			error.message.includes("no element at point"),
+	);
+	assert.equal(
+		contents.loaded.length,
+		loads,
+		"no spurious restore without an unapproved landing",
+	);
+});
+
+test("select is advertised, owned/document scoped, and restores forbidden change-handler landings without Fetch", async () => {
+	assert.ok(METHODS.includes("select"));
+	assert.ok(isMethod("select"));
+	assert.ok(HOST_CAPABILITIES.includes("select"));
+	assert.equal(
+		HOST_CAPABILITIES.indexOf("select"),
+		HOST_CAPABILITIES.indexOf("hover") + 1,
+	);
+	assert.equal(COMMAND_TIMEOUTS_S.select, 25);
+	const { host, cdp, registry } = makeHost();
+	const { owner, tab } = await openApprovedTab(host);
+	const contents = registry.requireSurface(tab).view.webContents;
+	const original = cdp.send;
+	// Every program this action injects. The assertion after the dispatch is the
+	// one a computed `.toString()` cannot survive: in a bytecode bundle it sends
+	// the loader's dummy string, not the program.
+	const declarations = [];
+	cdp.send = async (target, method, params) => {
+		if (method === "DOM.resolveNode") return { object: { objectId: "select" } };
+		if (method === "Runtime.callFunctionOn") {
+			declarations.push(params.functionDeclaration);
+			if (params.functionDeclaration.includes("tagName === 'SELECT'"))
+				return { result: { value: true } };
+			if (params.arguments?.[0]?.value === "apply") {
+				contents.url = "https://forbidden.example/selected";
+				registry.bumpEpoch(registry.requireSurface(tab).tabId);
+				throw new Error("context destroyed on change");
+			}
+		}
+		return original(target, method, params);
+	};
+	cdp.calls.length = 0;
+	await assert.rejects(
+		host.dispatch(
+			"select",
+			{ ...owner, tab, selector: "#s", options: ["Beta"] },
+			"select",
+		),
+		(e) =>
+			e.code === "origin_not_allowed" &&
+			e.data.origin === "https://forbidden.example",
+	);
+	assert.equal(contents.url, "https://approved.example/");
+	assert.ok(!cdp.calls.some((c) => c.method === "Fetch.enable"));
+	assert.ok(
+		declarations.includes(SELECT_PAGE_SOURCE),
+		"the program that reached CDP is the generated constant, never a computed .toString()",
+	);
+	await assert.rejects(
+		host.dispatch(
+			"select",
+			{
+				...owner,
+				tab,
+				selector: "#s",
+				options: [0],
+				owner_generation: "stale",
+			},
+			"select",
+		),
+		{ code: "owner_refused" },
+	);
+});
+
+test("setvalue is advertised, document/owner scoped, and restores forbidden change-handler landings without Fetch", async () => {
+	assert.ok(METHODS.includes("setvalue"));
+	assert.ok(isMethod("setvalue"));
+	// MEMBERSHIP, not adjacency: order inside the capability list carries no
+	// semantics, and the literal `/health` snapshot above already fails loudly
+	// when the list changes (review R1-6).
+	assert.ok(HOST_CAPABILITIES.includes("setvalue"));
+	assert.equal(COMMAND_TIMEOUTS_S.setvalue, 25);
+	const { host, cdp, registry } = makeHost();
+	const { owner, tab } = await openApprovedTab(host);
+	const contents = registry.requireSurface(tab).view.webContents;
+	const original = cdp.send;
+	// Every program this action injects, asserted against the generated constant
+	// below. That is the invariant a computed `.toString()` cannot survive: in a
+	// bytecode bundle it sends the loader's dummy string, not the program
+	// (review R1-4).
+	const declarations = [];
+	// A plain write: the program's own read-back is the whole answer, and no
+	// per-hop gate is armed (that is click/type/press only — a write fetches
+	// nothing itself).
+	cdp.send = async (target, method, params) => {
+		if (method === "DOM.resolveNode")
+			return { object: { objectId: "setvalue" } };
+		if (method === "Runtime.callFunctionOn") {
+			declarations.push(params.functionDeclaration);
+			return {
+				result: {
+					value: {
+						status: "ready",
+						kind: "input",
+						type: "text",
+						value: "Damian",
+						verified: true,
+					},
+				},
+			};
+		}
+		return original(target, method, params);
+	};
+	cdp.calls.length = 0;
+	const written = await host.dispatch(
+		"setvalue",
+		{ ...owner, tab, selector: "#i", text: "Damian" },
+		"setvalue",
+	);
+	assert.equal(written.value, "Damian");
+	assert.equal(written.verified, true);
+	assert.ok(!cdp.calls.some((c) => c.method === "Fetch.enable"));
+	assert.ok(
+		declarations.includes(SETVALUE_PAGE_SOURCE),
+		"the program that reached CDP is the generated constant, never a computed .toString()",
+	);
+	// A page answer is answered by the host in kind: the harness routes on these
+	// three shapes, so each is driven here through the real dispatcher.
+	const answers = async (value) => {
+		cdp.send = async (target, method, params) => {
+			if (method === "DOM.resolveNode")
+				return { object: { objectId: "setvalue" } };
+			if (method === "Runtime.callFunctionOn") return { result: { value } };
+			return original(target, method, params);
+		};
+	};
+	// A typed refusal rides `data.reason`, not prose: that is the field a caller
+	// branches on, and the wire's ErrorCode vocabulary is closed.
+	await answers({ status: "disabled", tag: "input" });
+	await assert.rejects(
+		host.dispatch(
+			"setvalue",
+			{ ...owner, tab, selector: "#i", text: "x" },
+			"setvalue",
+		),
+		(e) => e.code === "element_not_found" && e.data.reason === "disabled",
+	);
+	// A checkbox is not a value control, and the refusal must name the verb that
+	// DOES work: a caller told only "refused" retries the same call.
+	await answers({
+		status: "not_a_value_control",
+		tag: "input",
+		input_type: "checkbox",
+	});
+	await assert.rejects(
+		host.dispatch(
+			"setvalue",
+			{ ...owner, tab, selector: "#c", text: "true" },
+			"setvalue",
+		),
+		(e) =>
+			e.code === "element_not_found" &&
+			e.data.reason === "not_a_value_control" &&
+			e.message.includes("click"),
+	);
+	// A value-sanitizing field reports the format that WOULD work, and the type.
+	await answers({
+		status: "value_rejected",
+		tag: "input",
+		input_type: "date",
+		expected: "YYYY-MM-DD",
+	});
+	await assert.rejects(
+		host.dispatch(
+			"setvalue",
+			{ ...owner, tab, selector: "#d", text: "01/03/2027" },
+			"setvalue",
+		),
+		(e) =>
+			e.code === "element_not_found" &&
+			e.data.reason === "value_rejected" &&
+			e.data.expected === "YYYY-MM-DD" &&
+			e.data.input_type === "date",
+	);
+	// A password answer carries `verified` and NO value: nothing on this path may
+	// put a credential into a transcript (review, credential safety).
+	await answers({
+		status: "ready",
+		kind: "input",
+		type: "password",
+		redacted: true,
+		verified: true,
+	});
+	const secret = await host.dispatch(
+		"setvalue",
+		{ ...owner, tab, selector: "#p", text: "hunter2" },
+		"setvalue",
+	);
+	assert.equal(secret.verified, true);
+	assert.equal(secret.input_type, "password");
+	assert.equal("value" in secret, false, "the credential is not in the answer");
+	// The change handler navigates to an unapproved origin and the program throws
+	// on the context teardown: the THROW path is judged and the tab restored,
+	// exactly as `select`'s is.
+	assert.ok(!cdp.calls.some((c) => c.method === "Fetch.enable"));
+	cdp.send = async (target, method, params) => {
+		if (method === "DOM.resolveNode")
+			return { object: { objectId: "setvalue" } };
+		if (method === "Runtime.callFunctionOn") {
+			contents.url = "https://forbidden.example/written";
+			registry.bumpEpoch(registry.requireSurface(tab).tabId);
+			throw new Error("context destroyed on change");
+		}
+		return original(target, method, params);
+	};
+	await assert.rejects(
+		host.dispatch(
+			"setvalue",
+			{ ...owner, tab, selector: "#i", text: "x" },
+			"setvalue",
+		),
+		(e) =>
+			e.code === "origin_not_allowed" &&
+			e.data.origin === "https://forbidden.example",
+	);
+	assert.equal(contents.url, "https://approved.example/");
+});
+
+test("U1c: typed chrome-extension pages require an installed+enabled extension and a USER tab", async () => {
+	const id = "aeblfdkhhhdcdjpifhhbdiojplfjncoa";
+	let active = true;
+	const { host, registry } = makeHost({
+		isActiveExtension: (candidate) => active && candidate === id,
+	});
+	await host.newTab();
+	const welcome = `chrome-extension://${id}/app/app.html#/page/welcome`;
+	const shown = await host.navigateActive(welcome);
+	assert.equal(shown.url, welcome);
+	active = false;
+	await assert.rejects(() => host.navigateActive(welcome), {
+		code: "nav_failed",
+	});
+	active = true;
+	await assert.rejects(
+		() => host.navigateActive(`chrome-extension://${"b".repeat(32)}/x.html`),
+		{ code: "nav_failed" },
+	);
+	// Agent page actions still refuse the extension document, even after handover.
+	const tab = registry.activeTab;
+	host.handOver(tab.tabId, "synthetic-u1c");
+	const listed = await host.dispatch(
+		"tabs",
+		{ requester: "session:synthetic-u1c" },
+		"u1c-tabs",
+	);
+	await assert.rejects(
+		() =>
+			host.dispatch(
+				"read",
+				{ tab: listed.tabs[0].tab, requester: "session:synthetic-u1c" },
+				"u1c-read",
+			),
+		(error) => error.code === "owner_refused",
+	);
+});
+
+/*
+ * The passkey notice's "Continue in your own tab" (agent tabs only). Password
+ * managers' passkey prompts are extension subframes, refused in agent tabs by
+ * design (subframe-policy.ts), so the recovery is the agent tab's page in a NEW
+ * user tab on the same profile. These pin: the top-level URL is read in main,
+ * the copy is the user's (active, no nonce, attributed to the conversation so a
+ * conversation-scoped pane shows it), the agent tab is untouched, a user tab or
+ * non-web page is refused, and only the app renderer can reach the IPC channel.
+ */
+test("continue-in-user-tab copies an agent tab's top-level URL into an active user tab and leaves the agent tab alone", async () => {
+	const { host, registry } = makeHost();
+	const agent = registry.create({ owner: "agent", sessionId: "synthetic-s1" });
+	await agent.view.webContents.loadURL(
+		"https://appstoreconnect.apple.com/login?targetUrl=%2Fapps",
+	);
+	const agentNonce = agent.nonce;
+	const outcome = await host.continueAgentTabInUserTab(agent.tabId);
+	assert.equal(outcome.ok, true);
+	const copy = registry.get(outcome.tabId);
+	assert.notEqual(copy.tabId, agent.tabId);
+	assert.equal(copy.owner, "user");
+	assert.equal(copy.nonce, null, "no capability: an agent cannot drive it");
+	assert.equal(copy.handedTo, null);
+	assert.equal(copy.sessionId, "synthetic-s1");
+	assert.equal(registry.mayDrive(copy, "synthetic-s1"), false);
+	assert.equal(
+		copy.view.webContents.getURL(),
+		"https://appstoreconnect.apple.com/login?targetUrl=%2Fapps",
+	);
+	assert.equal(registry.activeTab, copy, "the user's tab is the one shown");
+	// The agent's tab: same record, owner, nonce and page.
+	assert.equal(registry.get(agent.tabId), agent);
+	assert.equal(agent.owner, "agent");
+	assert.equal(agent.nonce, agentNonce);
+	assert.equal(
+		agent.view.webContents.getURL(),
+		"https://appstoreconnect.apple.com/login?targetUrl=%2Fapps",
+	);
+});
+
+test("continue-in-user-tab refuses a user tab, a non-web page and a closed tab without creating one", async () => {
+	const { host, registry } = makeHost();
+	const user = registry.create({ owner: "user" });
+	await user.view.webContents.loadURL("https://github.com/login");
+	const internal = registry.create({ owner: "agent", sessionId: "s" });
+	await internal.view.webContents.loadURL("about:blank");
+	const before = registry.count();
+	for (const tabId of [user.tabId, internal.tabId, 9999]) {
+		const outcome = await host.continueAgentTabInUserTab(tabId);
+		assert.equal(outcome.ok, false, String(tabId));
+	}
+	assert.equal(registry.count(), before);
+});
+
+test("continue-in-user-tab counts a created tab whose load fails as continued, and keeps it showing the failure (review U3)", async () => {
+	const { host, registry } = makeHost();
+	const agent = registry.create({ owner: "agent", sessionId: "synthetic-s1" });
+	await agent.view.webContents.loadURL("https://appstoreconnect.apple.com/");
+	const create = registry.create.bind(registry);
+	let created;
+	registry.create = (options) => {
+		const record = create(options);
+		created = record;
+		record.view.webContents.loadURL = async () => {
+			throw Object.assign(new Error("fixture navigation aborted"), {
+				code: "ERR_ABORTED",
+			});
+		};
+		return record;
+	};
+	const outcome = await host.continueAgentTabInUserTab(agent.tabId);
+	assert.deepEqual(outcome, { ok: true, tabId: created.tabId });
+	assert.equal(registry.get(created.tabId), created, "the user's tab is kept");
+	assert.equal(registry.activeTab, created);
+	assert.ok(
+		host.chromeState().tabs.find((t) => t.tabId === created.tabId).failed,
+		"the tab shows its own load failure",
+	);
+});
+
+test("continue-in-user-tab refusals are their own localized sentences (review R2/Q2)", async () => {
+	const { host, registry } = makeHost();
+	const user = registry.create({ owner: "user" });
+	await user.view.webContents.loadURL("https://github.com/login");
+	const internal = registry.create({ owner: "agent", sessionId: "s" });
+	await internal.view.webContents.loadURL("about:blank");
+	assert.deepEqual(await host.continueAgentTabInUserTab(user.tabId), {
+		ok: false,
+		reason: "An agent is no longer driving that tab.",
+	});
+	assert.deepEqual(await host.continueAgentTabInUserTab(internal.tabId), {
+		ok: false,
+		reason: "Only web pages can open in your own tab.",
+	});
+});
+
+test("the continue-in-user-tab IPC channel admits only the app renderer and passes ids, not URLs", async () => {
+	const frame = { url: "http://localhost:5173/index.html" };
+	const webContents = { id: 1, mainFrame: frame };
+	const window = { isDestroyed: () => false, webContents };
+	const { host } = makeHost();
+	const calls = [];
+	ipcMain.reset();
+	registerBrowserIpc({
+		window: () => window,
+		expectedUrl: "http://localhost:5173",
+		headless: false,
+		host: () => host,
+		clearData: async () => {},
+		log: () => {},
+		passkeyNotice: {
+			dismiss: () => false,
+			openInSystemBrowser: async () => ({ ok: true }),
+			continueInUserTab: async (...args) => {
+				calls.push(args);
+				return { ok: true };
+			},
+		},
+	});
+	const handler = ipcMain.handlers.get("browser-passkey-notice-continue");
+	try {
+		assert.ok(handler, "the channel is registered");
+		// A page's webContents (an agent-driven tab, or any other sender) and a
+		// subframe of the app window are both refused.
+		await assert.rejects(
+			async () => handler({ sender: {}, senderFrame: frame }, 3, 1),
+			/cannot use/,
+		);
+		await assert.rejects(
+			async () =>
+				handler({ sender: webContents, senderFrame: { ...frame } }, 3, 1),
+			/cannot use/,
+		);
+		await assert.rejects(
+			async () =>
+				handler(
+					{ sender: webContents, senderFrame: frame },
+					"https://evil.example/",
+					1,
+				),
+			/tabId/,
+		);
+		assert.deepEqual(calls, []);
+		assert.deepEqual(
+			await handler({ sender: webContents, senderFrame: frame }, 3, 1),
+			{ ok: true },
+		);
+		assert.deepEqual(calls, [[3, 1]]);
+	} finally {
+		unregisterBrowserIpc();
+	}
+});
+
+// ---- approving a site opens it for the operator (the approval pickup) -------
+//
+// The operator's report: an agent asked them to "approve and sign in", they
+// approved, and there was no page to sign in on, because Allow only wrote a
+// grant. Allow now opens the URL the agent asked for in a NEW USER tab, marked
+// for the requester, and that session's next plain `open` continues in it.
+
+const PICKUP_URL = "https://approved.example/login?next=%2Fhome";
+
+/** An approvals store on a clock the test moves, for the TTL cases. */
+function clockedApprovals() {
+	const clock = { now: Date.now() };
+	const approvals = new ApprovalStore({
+		dir: join(root, `approvals-pickup-${Math.random()}`),
+		now: () => clock.now,
+	});
+	return { approvals, clock };
+}
+
+/** Raise `requester`'s request and return its pending entry id. */
+async function raisePickup(
+	host,
+	requester = "session:alice",
+	url = PICKUP_URL,
+) {
+	const pending = await host.dispatch(
+		"request_access",
+		{ requester, url },
+		`req-${Math.random()}`,
+	);
+	assert.equal(pending.state, "pending");
+	return pending.entry_id;
+}
+
+test("approval pickup: Allow opens the full requested URL in one active user tab marked for the requester", async () => {
+	const { host, registry } = makeHost();
+	const entryId = await raisePickup(host);
+	const answer = host.respondToConsent(entryId, "once");
+	assert.equal(answer.state, "allowed");
+	assert.equal(registry.count(), 1, "exactly one tab was opened");
+	const [tab] = registry.list();
+	assert.equal(tab.owner, "user", "the operator's tab, not an agent's");
+	assert.equal(tab.nonce, null, "no capability exists before pickup");
+	assert.equal(
+		tab.sessionId,
+		"alice",
+		"it lives in the requester's conversation",
+	);
+	assert.equal(
+		registry.activeTabId,
+		tab.tabId,
+		"the opened tab is the presented one",
+	);
+	assert.equal(
+		answer.activeTabId,
+		tab.tabId,
+		"the card's answer already shows it",
+	);
+	assert.deepEqual(
+		tab.view.webContents.loaded,
+		[PICKUP_URL],
+		"path and query kept",
+	);
+	assert.equal(tab.approvalPickup.requester, "session:alice");
+	assert.equal(tab.approvalPickup.origin, "https://approved.example");
+	const awaited = await host.dispatch(
+		"await_access",
+		{ requester: "session:alice", url: PICKUP_URL },
+		"await",
+	);
+	assert.equal(awaited.state, "allowed");
+	assert.equal(awaited.opened_tab, true);
+	const again = await host.dispatch(
+		"request_access",
+		{ requester: "session:alice", url: PICKUP_URL },
+		"again",
+	);
+	assert.equal(again.state, "allowed");
+	assert.equal(again.opened_tab, true);
+	// Another session's answer for the same origin does not claim a tab it cannot pick up.
+	const other = await host.dispatch(
+		"await_access",
+		{ requester: "session:bob", url: PICKUP_URL },
+		"await-bob",
+	);
+	assert.equal(other.opened_tab, undefined);
+});
+
+test("approval pickup: Deny, an expired request and a cancelled one open nothing", async () => {
+	{
+		const { host, registry } = makeHost();
+		host.respondToConsent(await raisePickup(host), "deny");
+		assert.equal(registry.count(), 0, "deny");
+	}
+	{
+		const { approvals, clock } = clockedApprovals();
+		const { host, registry } = makeHost({ approvals });
+		const entryId = await raisePickup(host);
+		clock.now += ACCESS_REQUEST_TTL_MS + 1;
+		assert.throws(() => host.respondToConsent(entryId, "once"), /expired/);
+		assert.equal(registry.count(), 0, "expired");
+	}
+	{
+		const { host, registry } = makeHost();
+		const entryId = await raisePickup(host);
+		await host.dispatch(
+			"cancel_access",
+			{ requester: "session:alice", url: PICKUP_URL },
+			"cancel",
+		);
+		assert.throws(
+			() => host.respondToConsent(entryId, "once"),
+			/no longer pending/,
+		);
+		assert.equal(registry.count(), 0, "cancelled");
+	}
+});
+
+test("approval pickup: a once grant is adopted in place, spent exactly once, with no navigation", async () => {
+	const { host, registry } = makeHost();
+	host.respondToConsent(await raisePickup(host), "once");
+	const [tab] = registry.list();
+	// The operator signed in; the IdP sent them back to a different same-origin page.
+	tab.view.webContents.url = "https://approved.example/home";
+	const owner = { requester: "session:alice" };
+	const opened = await host.dispatch(
+		"open",
+		{ ...owner, url: PICKUP_URL },
+		"pickup",
+	);
+	assert.equal(registry.count(), 1, "no second tab");
+	assert.equal(
+		opened.tab,
+		surfaceToken(tab),
+		"the same tab, with a full handle",
+	);
+	assert.equal(opened.adopted, "approval");
+	assert.equal(opened.via, "once_grant");
+	assert.equal(
+		opened.url,
+		"https://approved.example/home",
+		"where the operator left it",
+	);
+	assert.equal(opened.requested_url, PICKUP_URL);
+	assert.deepEqual(tab.view.webContents.loaded, [PICKUP_URL], "no new loadURL");
+	assert.equal(tab.owner, "agent");
+	assert.equal(tab.handedTo, "alice");
+	assert.equal(tab.handedFrom, "user", "the hand-over chip and revoke apply");
+	assert.equal(tab.approvalPickup, null, "the marker is spent");
+	assert.equal(
+		(await host.dispatch("read", { ...owner, tab: opened.tab }, "read")).url,
+		"https://approved.example/home",
+	);
+	// The grant was spent by that pickup: a second plain `open` is refused.
+	await assert.rejects(
+		() => host.dispatch("open", { ...owner, url: PICKUP_URL }, "second"),
+		{ code: "origin_not_allowed" },
+	);
+	assert.equal(registry.count(), 1);
+});
+
+test("approval pickup: another session does not adopt, and sees no handle for the waiting tab", async () => {
+	const { host, registry } = makeHost();
+	host.respondToConsent(await raisePickup(host), "site");
+	const [tab] = registry.list();
+	const listing = await host.dispatch(
+		"tabs",
+		{ requester: "session:bob" },
+		"tabs",
+	);
+	assert.equal(listing.tabs.length, 1);
+	assert.equal(
+		listing.tabs[0].tab,
+		"",
+		"no handle, redacted or full, before pickup",
+	);
+	const bobs = await host.dispatch(
+		"open",
+		{ requester: "session:bob", url: PICKUP_URL },
+		"bob",
+	);
+	assert.notEqual(bobs.tab, surfaceToken(tab));
+	assert.equal(bobs.adopted, undefined);
+	assert.equal(registry.count(), 2, "bob got his own agent tab");
+	assert.equal(tab.owner, "user");
+	assert.ok(tab.approvalPickup, "alice's pickup is still waiting");
+	assert.equal(
+		registry.activeTabId,
+		tab.tabId,
+		"bob's open did not switch tabs",
+	);
+});
+
+test("approval pickup: an operator still off-origin keeps their tab", async () => {
+	const { host, registry } = makeHost();
+	host.respondToConsent(await raisePickup(host), "site");
+	const [tab] = registry.list();
+	tab.view.webContents.url = "https://login.idp.example/authorize";
+	const opened = await host.dispatch(
+		"open",
+		{ requester: "session:alice", url: PICKUP_URL },
+		"open",
+	);
+	assert.equal(opened.adopted, undefined);
+	assert.notEqual(opened.tab, surfaceToken(tab));
+	assert.equal(registry.count(), 2);
+	assert.equal(tab.owner, "user", "the operator's tab is untouched");
+	assert.equal(tab.view.webContents.url, "https://login.idp.example/authorize");
+	assert.deepEqual(
+		tab.view.webContents.loaded,
+		[PICKUP_URL],
+		"never navigated away",
+	);
+});
+
+test("approval pickup: a durable grant adopts once, and a later open makes a new tab", async () => {
+	const { host, registry } = makeHost();
+	host.respondToConsent(await raisePickup(host), "site");
+	const [tab] = registry.list();
+	const first = await host.dispatch(
+		"open",
+		{ requester: "session:alice", url: PICKUP_URL },
+		"first",
+	);
+	assert.equal(first.adopted, "approval");
+	assert.equal(first.via, "stored_grant");
+	assert.equal(first.tab, surfaceToken(tab));
+	const second = await host.dispatch(
+		"open",
+		{ requester: "session:alice", url: PICKUP_URL },
+		"second",
+	);
+	assert.equal(second.adopted, undefined);
+	assert.notEqual(second.tab, first.tab);
+	assert.equal(registry.count(), 2);
+});
+
+test("approval pickup: a failed page load or a refused tab never turns Allow into an error", async () => {
+	{
+		const logs = [];
+		const { host, registry, approvals } = makeHost({
+			log: (m) => logs.push(m),
+		});
+		const create = registry.create.bind(registry);
+		registry.create = (options) => {
+			const record = create(options);
+			record.view.webContents.loadURL = async (url) => {
+				throw Object.assign(
+					new Error(`ERR_NAME_NOT_RESOLVED (-105) loading '${url}'`),
+					{
+						code: "ERR_NAME_NOT_RESOLVED",
+					},
+				);
+			};
+			return record;
+		};
+		const answer = host.respondToConsent(await raisePickup(host), "once");
+		assert.equal(answer.state, "allowed");
+		await new Promise((resolve) => setImmediate(resolve));
+		assert.equal(
+			approvals.accessStateFor(PICKUP_URL, "session:alice").state,
+			"allowed",
+			"the once grant stands, unspent by the failed open",
+		);
+		const line = logs.find((m) =>
+			m.includes("could not open the approved page"),
+		);
+		assert.ok(line, "the failure is logged");
+		assert.match(line, /\[URL omitted\]: ERR_NAME_NOT_RESOLVED/);
+		assert.ok(!line.includes("/login"), "the path and query are not logged");
+	}
+	{
+		const { host, registry } = makeHost({ log: () => {} });
+		registry.create = () => {
+			throw Object.assign(new Error("full"), { code: "tab_limit" });
+		};
+		const answer = host.respondToConsent(await raisePickup(host), "site");
+		assert.equal(answer.state, "allowed");
+	}
+});
+
+test("approval pickup: a re-approval brings back the waiting tab instead of opening another", async () => {
+	const { approvals, clock } = clockedApprovals();
+	const { host, registry } = makeHost({ approvals });
+	host.respondToConsent(await raisePickup(host), "once");
+	const [tab] = registry.list();
+	// The operator wandered to another tab, and the once grant lapsed (sign-in took
+	// longer than its 10 minutes) while the pickup marker (15 minutes) is live.
+	await host.newTab(null);
+	assert.notEqual(registry.activeTabId, tab.tabId);
+	clock.now += 11 * 60_000;
+	// The operator finished on a post-login callback whose query carries a code.
+	tab.view.webContents.url =
+		"https://approved.example/callback?code=OPERATOR-SECRET";
+	// R1: the pickup's own refusal falls through, so the agent is refused with the
+	// URL it asked for (never the operator's callback URL) and is told the page is
+	// still waiting (U1).
+	await assert.rejects(
+		() =>
+			host.dispatch(
+				"open",
+				{ requester: "session:alice", url: PICKUP_URL },
+				"late",
+			),
+		(error) =>
+			error.code === "origin_not_allowed" &&
+			error.data.url === PICKUP_URL &&
+			error.data.opened_tab === true &&
+			!JSON.stringify(error.data).includes("OPERATOR-SECRET"),
+	);
+	assert.equal(tab.owner, "user", "the refused pickup left the tab alone");
+	assert.ok(tab.approvalPickup, "and its marker live");
+	// U1: the re-request's pending answer says the page is already open.
+	const pending = await host.dispatch(
+		"request_access",
+		{ requester: "session:alice", url: PICKUP_URL },
+		"re-request",
+	);
+	assert.equal(pending.state, "pending");
+	assert.equal(pending.opens_on_approval, true);
+	assert.equal(pending.opened_tab, true);
+	// Another session's pending request for the same origin has no tab waiting.
+	const bobs = await host.dispatch(
+		"request_access",
+		{ requester: "session:bob", url: PICKUP_URL },
+		"bob-request",
+	);
+	assert.equal(bobs.state, "pending");
+	assert.equal(bobs.opened_tab, undefined);
+	host.respondToConsent(pending.entry_id, "once");
+	assert.equal(registry.count(), 2, "no second sign-in tab");
+	assert.equal(
+		registry.activeTabId,
+		tab.tabId,
+		"the waiting tab is shown again",
+	);
+	const opened = await host.dispatch(
+		"open",
+		{ requester: "session:alice", url: PICKUP_URL },
+		"pickup",
+	);
+	assert.equal(opened.tab, surfaceToken(tab));
+	assert.equal(opened.adopted, "approval");
+});
+
+test("approval pickup: an opted-out re-request is not told a page will come back", async () => {
+	const { approvals, clock } = clockedApprovals();
+	const { host } = makeHost({ approvals });
+	host.respondToConsent(await raisePickup(host), "once");
+	clock.now += 11 * 60_000;
+	// The waiting tab is live, but this request's Allow opens (and brings back)
+	// nothing, so the pending answer must not promise it.
+	const optedOut = await host.dispatch(
+		"request_access",
+		{ requester: "session:alice", url: PICKUP_URL, open_on_approval: false },
+		"opt-out",
+	);
+	assert.equal(optedOut.state, "pending");
+	assert.equal(optedOut.opens_on_approval, undefined);
+	assert.equal(optedOut.opened_tab, undefined);
+});
+
+test("approval pickup: the operator's find bar and zoom are reset before the tab passes to the agent", async () => {
+	const { host, registry } = makeHost();
+	host.respondToConsent(await raisePickup(host), "once");
+	const [tab] = registry.list();
+	const calls = [];
+	const prepare = host.pageControls.prepareAgent.bind(host.pageControls);
+	host.pageControls.prepareAgent = (record) => {
+		// Recorded with the owner AT THE CALL: the app's own hand-over prepares
+		// while the tab is still the operator's, before `registry.handOver`.
+		calls.push([record.tabId, record.owner, record.nonce]);
+		prepare(record);
+	};
+	const opened = await host.dispatch(
+		"open",
+		{ requester: "session:alice", url: PICKUP_URL },
+		"pickup",
+	);
+	assert.equal(opened.adopted, "approval");
+	assert.deepEqual(calls, [[tab.tabId, "user", null]]);
+});
+
+test("approval pickup: a redirect that aborts the first load is not logged as a failed open", async () => {
+	const logs = [];
+	const { host, registry } = makeHost({ log: (m) => logs.push(m) });
+	const create = registry.create.bind(registry);
+	registry.create = (options) => {
+		const record = create(options);
+		record.view.webContents.loadURL = async (url) => {
+			// The page replaced its own navigation before load (an IdP redirect).
+			record.view.webContents.url = "https://approved.example/sso";
+			throw Object.assign(new Error(`ERR_ABORTED (-3) loading '${url}'`), {
+				code: "ERR_ABORTED",
+				errno: -3,
+			});
+		};
+		return record;
+	};
+	const answer = host.respondToConsent(await raisePickup(host), "once");
+	assert.equal(answer.state, "allowed");
+	await new Promise((resolve) => setImmediate(resolve));
+	assert.equal(
+		logs.filter((m) => m.includes("could not open the approved page")).length,
+		0,
+		"the page did open",
+	);
+	const [tab] = registry.list();
+	assert.ok(tab.approvalPickup, "still waiting for the requester");
+	const opened = await host.dispatch(
+		"open",
+		{ requester: "session:alice", url: PICKUP_URL },
+		"pickup",
+	);
+	assert.equal(opened.adopted, "approval");
+	assert.equal(opened.tab, surfaceToken(tab));
+});
+
+test("approval pickup: the cap is checked before admission, so a full host does not spend a once grant", async () => {
+	const { host, registry } = makeHost();
+	host.respondToConsent(await raisePickup(host), "once");
+	const fillers = [];
+	for (let index = 0; index < MAX_AGENT_TABS; index += 1)
+		fillers.push(registry.create({ owner: "agent", sessionId: "carol" }));
+	await assert.rejects(
+		() =>
+			host.dispatch(
+				"open",
+				{ requester: "session:alice", url: PICKUP_URL },
+				"full",
+			),
+		{ code: "tab_limit" },
+	);
+	registry.destroy(fillers[0].tabId);
+	const opened = await host.dispatch(
+		"open",
+		{ requester: "session:alice", url: PICKUP_URL },
+		"room",
+	);
+	assert.equal(opened.adopted, "approval");
+	assert.equal(
+		opened.via,
+		"once_grant",
+		"the grant survived the refused attempt",
+	);
+});
+
+test("approval pickup: with an ownership proof, owner_recover returns the adopted tab", async () => {
+	const { host, registry } = makeHost();
+	const owner = {
+		requester: "session:alice",
+		owner_proof: "a".repeat(40),
+		owner_generation: "g1",
+		allocation_id: "allocation-pickup",
+	};
+	await host.dispatch("request_access", { ...owner, url: PICKUP_URL }, "req");
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "once");
+	const opened = await host.dispatch(
+		"open",
+		{ ...owner, url: PICKUP_URL },
+		"open",
+	);
+	assert.equal(opened.adopted, "approval");
+	assert.equal(
+		(await host.dispatch("owner_recover", owner, "recover")).tab,
+		opened.tab,
+	);
+	assert.equal(registry.list()[0].allocationId, "allocation-pickup");
+	assert.equal(
+		(await host.dispatch("owner_finish", owner, "finish")).state,
+		"closed",
+	);
+	assert.equal(registry.count(), 0);
+});
+
+test("approval pickup: the refusal and the pending answer advertise it, only for sessions", async () => {
+	const { host, registry } = makeHost();
+	await assert.rejects(
+		() =>
+			host.dispatch(
+				"open",
+				{ requester: "session:alice", url: PICKUP_URL },
+				"o",
+			),
+		(error) =>
+			error.code === "origin_not_allowed" &&
+			error.data.url === PICKUP_URL &&
+			error.data.opens_on_approval === true &&
+			error.data.opened_tab === undefined,
+	);
+	const pending = await host.dispatch(
+		"request_access",
+		{ requester: "session:alice", url: PICKUP_URL },
+		"r",
+	);
+	assert.equal(pending.opens_on_approval, true);
+	assert.equal(pending.opened_tab, undefined, "no tab is waiting yet");
+	// A `call:*` requester (no session) can never pick a tab up: it is not told one
+	// opens, and its Allow opens nothing.
+	await assert.rejects(
+		() => host.dispatch("open", { url: PICKUP_URL }, "call-o"),
+		(error) =>
+			error.code === "origin_not_allowed" &&
+			error.data.url === PICKUP_URL &&
+			error.data.opens_on_approval === undefined,
+	);
+	const call = await host.dispatch(
+		"request_access",
+		{ url: "https://other.example/x" },
+		"call-r",
+	);
+	assert.equal(call.opens_on_approval, undefined);
+	host.respondToConsent(call.entry_id, "once");
+	// The opt-out: the grant without the page.
+	const optedOut = await host.dispatch(
+		"request_access",
+		{
+			requester: "session:alice",
+			url: "https://third.example/",
+			open_on_approval: false,
+		},
+		"opt",
+	);
+	assert.equal(optedOut.opens_on_approval, undefined);
+	host.respondToConsent(optedOut.entry_id, "once");
+	assert.equal(registry.count(), 0);
+});
+
+test("approval pickup: neither the auto-open nor the pickup raises or focuses a window", () => {
+	const host = readFileSync("src/main/browser/host.ts", "utf8");
+	const tabs = readFileSync("src/main/browser/actions/tabs.ts", "utf8");
+	for (const [body, name] of [
+		[
+			functionBody(host, "private openApprovedRequest(", "host.ts"),
+			"openApprovedRequest",
+		],
+		[functionBody(host, "\trespondToConsent(", "host.ts"), "respondToConsent"],
+		[
+			functionBody(tabs, "async function adoptApprovalPickup(", "tabs.ts"),
+			"adoptApprovalPickup",
+		],
+	]) {
+		assert.doesNotMatch(
+			body,
+			/\.(show|showInactive|focus|moveTop|restore)\(|app\.focus|\.dock\./,
+			`${name} must not take the operator's window focus`,
+		);
+	}
 });

@@ -1,0 +1,158 @@
+{
+	"schema": 1,
+	"audit_kind": "independent-translation-audit",
+	"audit_id": "ur-upload-r1-74af897140ba",
+	"locale": "ur",
+	"namespace": "ui.agents.upload",
+	"auditor": "i18n-auditor",
+	"agent": "i18n-auditor (lopdev team)",
+	"session": "74af897140ba",
+	"instance": "74af897140ba",
+	"model": "deepseek/deepseek-flash",
+	"model_fallback": "anthropic/claude-sonnet-5-5 -> anthropic/claude-opus-5-5 -> openai/gpt-6.1-sol -> deepseek/deepseek-flash",
+	"model_note": "The harness served four models for this run: the primary anthropic/claude-sonnet-5-5, then anthropic/claude-opus-5-5, openai/gpt-6.1-sol and finally deepseek/deepseek-flash, each switch attributed by the harness to 'provider failure: quota'. The whole audit was executed by the final served model, deepseek/deepseek-flash, which is what this receipt names; earlier switches happened before any audit step.",
+	"independence": "Independent auditor: I did not translate or remediate ur and edited no catalogue, English source, context sidecar, ledger, allowance, generated file or test. This run adds this receipt, one evidence record, its report and the transcript/companions it cites.",
+	"date": "2026-11-08",
+	"round": 1,
+	"scope": {
+		"branch": "i18n/slice-upload-agent-dialog",
+		"base": "e9fef11640364c9e55e68fc84eac89af45886279",
+		"head": "2b72db6a56ad8204ec7f30a0ba6ffbc941be3b82",
+		"namespaces": [
+			"ui.agents.upload"
+		],
+		"keys": 15,
+		"keys_audited": [
+			"ui.agents.upload.action.publish",
+			"ui.agents.upload.action.publishing",
+			"ui.agents.upload.action.update_listing",
+			"ui.agents.upload.availability.reserved_named",
+			"ui.agents.upload.availability.reserved_unnamed",
+			"ui.agents.upload.intro.org",
+			"ui.agents.upload.intro.public",
+			"ui.agents.upload.not_leaving.org",
+			"ui.agents.upload.not_leaving.public",
+			"ui.agents.upload.published.org_listed",
+			"ui.agents.upload.receipt.title_hub",
+			"ui.agents.upload.receipt.title_org",
+			"ui.agents.upload.receipt.title_updated",
+			"ui.agents.upload.target.blocked_hint",
+			"ui.agents.upload.target.visibility_hint_public"
+		],
+		"delta": "e9fef11640..2b72db6a56: the 15 ur values this branch adds to ui.agents.upload.json (24 -> 39 keys in the file).",
+		"note": "Round 1 of the ur contribution to the upload-agent-dialog slice. The other 31 keys of the namespace are pre-existing and byte-unchanged on this branch; they are read as terminology precedent, not re-judged. Catalogue audit of accuracy, register, terminology, bidi composition and placeholder integrity; not a rendered-frame, activation or release approval."
+	},
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/ur.md",
+			"sha256": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60"
+		},
+		"ui_doc": {
+			"path": "docs/I18N.md",
+			"sha256": "d58ad473701f098b3c2c24343c3a7e7236f22db22cc871016c4cb75f25f41f5c"
+		}
+	},
+	"key_count": 15,
+	"namespace_count": 1,
+	"status": "passed",
+	"result": "clean-with-findings",
+	"verdict": "passed: 0 blocker / 0 major / 0 minor / 1 nit. All 15 new ur values are accurate to the English source and their context notes, read naturally as Urdu sentences, carry no manual bidi control characters, keep placeholders and the ICU plural skeleton identical, and match the locale's settled terminology: اندراج for a hub listing (the translator's claim, verified against ui.agents.publication and this file's own pre-existing keys), Team پلان, Radient کنسول, Agent Hub kept in Latin exactly as ui.hub.pages.header.title does, بلٹ ان as elsewhere, and ہب only where the English says the short 'hub'. The single nit is a wording preference (N1).",
+	"namespaces": {
+		"ui.agents.upload": {
+			"namespace": "ui.agents.upload",
+			"status": "passed",
+			"result": "clean-with-findings",
+			"verdict": "passed: 0 blocker / 0 major / 0 minor / 1 nit (N1, wording).",
+			"keys_audited": 15,
+			"namespace_key_count": 46,
+			"en_sha256": "3676c1b366cc5159b94be65acdaea925bd193d20c2524ff3f410a8a5ddff514f",
+			"ur_sha256": "89fe14994a64d7eba37f789a7ca5debc6503beb42ee99eabfe7f5256ef135c62",
+			"context_sha256": "76323fe386f9b15d490c3a48feaddbd924f04148f1c893e927c2acde06f11cec",
+			"sha256": {
+				"en": "3676c1b366cc5159b94be65acdaea925bd193d20c2524ff3f410a8a5ddff514f",
+				"ur": "89fe14994a64d7eba37f789a7ca5debc6503beb42ee99eabfe7f5256ef135c62",
+				"context": "76323fe386f9b15d490c3a48feaddbd924f04148f1c893e927c2acde06f11cec"
+			},
+			"findings": [
+				{
+					"id": "N1",
+					"severity": "nit",
+					"key": "ui.agents.upload.target.visibility_hint_public",
+					"line": 39,
+					"issue": "EN 'Public hub publications are readable by anyone.' is rendered عوامی ہب پر شائع ہونے والی چیزیں ('the things published on the public hub'). The referent is exactly the hub listings the locale already names اندراج — the same noun this file's own action.open_listing / action.update_listing / published.* values use, and the one ui.agents.publication uses for 'listing' in 11 ur values. The generic چیزیں is clear, but the settled noun would read as the same surface the dialog is about.",
+					"evidence": "11 ur values render an EN 'listing' with اندراج (ui.agents.publication.action.publish_as_new, action.update_listing, agent_not_found.headline, name_taken.owned_body, not_owner.body, not_owner.headline + this file's action.open_listing, action.update_listing, receipt.title_updated, title.republished, title.update_listing); grep over EN values containing 'listing' in i18n/audits/evidence/ur/ui.agents.upload/ur-upload-74af897140ba/archive.log",
+					"fix": "عوامی ہب پر شائع شدہ اندراجات کوئی بھی پڑھ سکتا ہے۔ تنظیم کے ایجنٹس صرف اس کے ارکان پڑھ سکتے ہیں۔ (second sentence unchanged).",
+					"impact": "None on correctness: the shipped sentence is accurate, grammatical and natural. This is a wording preference, not a defect."
+				}
+			],
+			"keys": [
+				"ui.agents.upload.action.publish",
+				"ui.agents.upload.action.publishing",
+				"ui.agents.upload.action.update_listing",
+				"ui.agents.upload.availability.reserved_named",
+				"ui.agents.upload.availability.reserved_unnamed",
+				"ui.agents.upload.intro.org",
+				"ui.agents.upload.intro.public",
+				"ui.agents.upload.not_leaving.org",
+				"ui.agents.upload.not_leaving.public",
+				"ui.agents.upload.published.org_listed",
+				"ui.agents.upload.receipt.title_hub",
+				"ui.agents.upload.receipt.title_org",
+				"ui.agents.upload.receipt.title_updated",
+				"ui.agents.upload.target.blocked_hint",
+				"ui.agents.upload.target.visibility_hint_public"
+			],
+			"record": "i18n/audits/evidence/ur/ui.agents.upload/ur-upload-74af897140ba/record.json",
+			"note": "Record: i18n/audits/evidence/ur/ui.agents.upload/ur-upload-74af897140ba/record.json"
+		}
+	},
+	"findings": [
+		{
+			"id": "N1",
+			"severity": "nit",
+			"key": "ui.agents.upload.target.visibility_hint_public",
+			"line": 39,
+			"issue": "EN 'Public hub publications are readable by anyone.' is rendered عوامی ہب پر شائع ہونے والی چیزیں ('the things published on the public hub'). The referent is exactly the hub listings the locale already names اندراج — the same noun this file's own action.open_listing / action.update_listing / published.* values use, and the one ui.agents.publication uses for 'listing' in 11 ur values. The generic چیزیں is clear, but the settled noun would read as the same surface the dialog is about.",
+			"evidence": "11 ur values render an EN 'listing' with اندراج (ui.agents.publication.action.publish_as_new, action.update_listing, agent_not_found.headline, name_taken.owned_body, not_owner.body, not_owner.headline + this file's action.open_listing, action.update_listing, receipt.title_updated, title.republished, title.update_listing); grep over EN values containing 'listing' in i18n/audits/evidence/ur/ui.agents.upload/ur-upload-74af897140ba/archive.log",
+			"fix": "عوامی ہب پر شائع شدہ اندراجات کوئی بھی پڑھ سکتا ہے۔ تنظیم کے ایجنٹس صرف اس کے ارکان پڑھ سکتے ہیں۔ (second sentence unchanged).",
+			"impact": "None on correctness: the shipped sentence is accurate, grammatical and natural. This is a wording preference, not a defect."
+		}
+	],
+	"observations": [
+		{
+			"id": "O1",
+			"severity": "observation (not counted)",
+			"topic": "bidi: two data islands in one sentence are separated by the runtime, not the catalogue",
+			"detail": "published.org_listed places {name} and {destination} with only a quote and a space between them. Spliced raw they merge into ONE 20-byte LTR island (fribidi --rtl, level-2 run 'fleet-ops\" Acme Corp'); through translate() each Latin-led argument is FSI/PDI-isolated (src/i18n/bidi.ts isolateArguments) and the level map shows two separate islands, so the RTL base orders them name-then-destination as the sentence reads. The catalogue correctly adds no controls of its own."
+		},
+		{
+			"id": "O2",
+			"severity": "observation (not counted)",
+			"topic": "wording: not_leaving.org/.public reuse the sibling sign_in.nothing_left's 'مشین سے مخصوص ترتیب'",
+			"detail": "The context calls sign_in.nothing_left the past-tense sibling, so identical wording is the intended behaviour. The wider ur locale also renders 'configuration' as کنفیگریشن in 28 EN values; that split is pre-existing and out of scope for this round."
+		},
+		{
+			"id": "O3",
+			"severity": "observation (not counted)",
+			"topic": "fit: action.publishing is four Urdu words against the sidecar's 'one word plus a single-character ellipsis' hint",
+			"detail": "شائع کیا جا رہا ہے… is 19 characters against شائع کریں (9) and اندراج اپ ڈیٹ کریں (18), so the footer's widest submit state changes from the update label to the progress label; the English spread is 7/11/14, so the width behaviour is comparable and no maxCells budget exists for these keys. U+2026 is used, never three periods."
+		},
+		{
+			"id": "O4",
+			"severity": "observation (not counted)",
+			"topic": "hub naming: ہب and Agent Hub are not interchangeable in this slice, and the values follow the English",
+			"detail": "ہب appears exactly where the English says 'the hub' / 'public hub' (receipt.title_hub, availability.reserved_*, target.visibility_hint_public); Agent Hub appears exactly where the English says 'Agent Hub' (intro.public, title.publish_public, title.published_public, title.republished, title.update_listing). Both agree with ui.hub.pages.header.title = 'Agent Hub' and with the pre-existing sign_in.needed/published.listed in the same file."
+		}
+	],
+	"artifacts": [],
+	"limitations": [
+		"Catalogue audit only: no rendered frame, screenshot, activation or release evidence is claimed, and no native-speaker review beyond this auditor's own reading.",
+		"No maxCells budget exists for any of the 15 keys, so fit is inferred from character counts and the sidecar's length_hint, not measured in the component.",
+		"The bidi model measured here is the app's RTL base direction with the runtime's own FSI/PDI isolation (dir=rtl document root, src/i18n/bidi.ts); the audit did not re-verify the isolation for call sites that bypass translate()."
+	],
+	"audit_notes_not_execution_log": "This receipt and the record are structured claims; verify-ur-upload.json, render-ur-upload.log, bidi-ur-upload.log and transcript.log are the raw outputs of the commands named in the record, run at the head above."
+}

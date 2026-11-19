@@ -146,7 +146,13 @@ export function desktopProxyPlugin(): Plugin {
 					 * proxy that claimed it for a stale bundle would hand that bundle a
 					 * page shape it does not read.
 					 */
-					if (openFrame === "1") query.set("open_frame", "1");
+					// `diff_bindings` is forwarded only beside the open frame it rides
+					// with, never invented (`src/main/desktop-stream.ts`).
+					if (openFrame === "1") {
+						query.set("open_frame", "1");
+						if (requestUrl.searchParams.get("diff_bindings") === "1")
+							query.set("diff_bindings", "1");
+					}
 					if (journalOrder === "1") {
 						query.set("journal_order", "1");
 						/*
@@ -324,11 +330,22 @@ export function desktopProxyPlugin(): Plugin {
 						 * shape, so the renderer's reader (`desktopMedia`) recovers the
 						 * same `voiceCode` main's relay hands it directly.
 						 */
+						/*
+						 * A notification-sound upload's refusal travels as the daemon's
+						 * own envelope, so the browser reader below gets `too_long` and its
+						 * params exactly as main's IPC answer carries them (review n1).
+						 */
 						res.end(
 							JSON.stringify({
 								detail: result.voiceCode
 									? { code: result.voiceCode, text: result.detail }
-									: result.detail,
+									: result.refusal
+										? {
+												code: result.refusal.code,
+												params: result.refusal.params,
+												text: result.detail,
+											}
+										: result.detail,
 							}),
 						);
 					}

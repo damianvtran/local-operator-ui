@@ -1,0 +1,101 @@
+{
+  "schema": 1,
+  "auditor": "i18n-auditor (independent lopdev task 'UI #1604 i18n audit round 8', session 51423a065e9f)",
+  "model": "[redacted]/claude-opus-5-5",
+  "model_id": "claude-opus-5-5",
+  "model_provenance": "Whole audit (source reads, semantic review, probe, receipt writing, gate runs) ran on this session's announced model claude-opus-5-5 (provider prefix recorded in the repository's existing redacted form, matching the ledger convention). No fallback or model switch was observed.",
+  "instance": "51423a065e9f-es",
+  "audit_session": "51423a065e9f",
+  "locale": "es",
+  "namespace": "ui.mesh",
+  "date": "2026-11-02",
+  "scope": "Translation audit round 8 of PR #1604 head f3a758d5da6: the two es ui.mesh values changed in f93c4beb4e5..f3a758d5da6 (expires_window, typed_review_unavailable) read against English, the en context and the es style guide; expires_window rendered through the shipped approvalAnswerWindowLabel + t() for every reachable duration. The other six locales' catalogues are byte-identical to f93c4beb4e5 and keep their round-7 audits. Unchanged es values retain their earlier audits.",
+  "audited_head": "f3a758d5da69e11f7cb16148040ac167894769b6",
+  "delta_base": "f93c4beb4e51f102bba6095d4b4bfa3280531866",
+  "status": "passed",
+  "sha256": {
+    "en": "4e7d304432abb54b8e7d5eb96fd83d6ba1bbbdeab3a97ba1b07a80faa20ae10e",
+    "es": "7658a8e0b1fba0edf2308e3869df9c69a700c424c09d6f6beadbe6147ceeb0dd"
+  },
+  "findings": [],
+  "resolved_prior_findings": [
+    {
+      "id": "R7A-ES-01 / R7B-1",
+      "key": "ui.mesh.approval.expires_window",
+      "disposition": "resolved at f3a758d5da6: 'Esta tarjeta caduca en {duration}' names the card, as the English and its context note require; the tray subject is no longer the request."
+    },
+    {
+      "id": "R7A-ES-02 / R7B-2",
+      "key": "ui.mesh.approval.typed_review_unavailable",
+      "disposition": "resolved at f3a758d5da6: 'Deniégala' is the tú imperative of denegar with enclitic la (written accent required, esdrújula), the same verb as the adjacent Deny control 'Denegar'."
+    }
+  ],
+  "observations": [
+    "English could_not_apply context note now reads 'suppresses countdown when apply_outcome is not retryable (false or absent)'. Verified against code by executing hasPermanentCredentialOutcome on parsed rows: stored retryable false -> permanent; retryable ABSENT inside a present apply_outcome -> permanent (applyOutcome normalises retryable === true); retryable true -> not permanent; a fresh refusal carrying an outcome without retryable overrides a stored true -> permanent; a no-outcome refusal keeps the stored value. The tray renders could_not_apply in place of approved_not_applied and gates the countdown on !permanentOutcome; canDenyApproval keeps Cancel sharing on approved/failed. Accurate. Wording caveat, not counted: a row with NO apply_outcome object at all is not permanent; '(false or absent)' is meant as retryable false or absent, which is how a translator reads it in context. No translation affected."
+  ],
+  "changed_keys": [
+    "ui.mesh.approval.expires_window",
+    "ui.mesh.approval.typed_review_unavailable"
+  ],
+  "verbatim_values": {
+    "ui.mesh.approval.expires_window": "Esta tarjeta caduca en {duration}",
+    "ui.mesh.approval.typed_review_unavailable": "Esta solicitud no se puede mostrar aquí de forma segura. Deniégala y pide una nueva."
+  },
+  "english_values": {
+    "ui.mesh.approval.expires_window": "This card expires in {duration}",
+    "ui.mesh.approval.typed_review_unavailable": "This request can't be shown safely here. Deny it and ask for a new request."
+  },
+  "deny_control_label": "Denegar",
+  "context_sidecar": {
+    "path": "src/i18n/catalogues/en/ui.mesh.context.json",
+    "sha256": "dcfaf736b3daea7df4daf4eada7819869c039504ff5ac6ec3dd07524387f47f9",
+    "changed_notes": [
+      "ui.mesh.approval.could_not_apply"
+    ]
+  },
+  "call_sites_read": [
+    "src/renderer/src/features/mesh/mesh-approvals.ts approvalAnswerWindowLabel (expires_window only when isAttentionApproval), hasPermanentCredentialOutcome, applyOutcome, approvalRefusal, canDenyApproval",
+    "src/renderer/src/features/mesh/mesh-approvals-tray.tsx state label (could_not_apply), countdown guard !permanentOutcome, restrictedRemedy (typed_review_unavailable under waiting && restricted && !canApprove), Deny button label while waiting"
+  ],
+  "standards": {
+    "root": "~/local-operator/i18n at origin/main 1c7fd39304d (read with git show origin/main:)",
+    "sha256": {
+      "glossary.md": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "style-guides/es.md": "4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6"
+    }
+  },
+  "translator": {
+    "agent": "coder",
+    "jobs": [
+      "07291411b980",
+      "c61a64298a45",
+      "21ddee198f0b",
+      "d82369d8e233",
+      "c3976a04742d",
+      "4fe47970b5a5",
+      "486744e25afc",
+      "835b27311cfb",
+      "317b3e0e1617",
+      "3dc95465c455"
+    ],
+    "remediation_commit": "f3a758d5da69e11f7cb16148040ac167894769b6",
+    "attribution": "Translator/coder runs named by the manager; their served model is not verified by this auditor."
+  },
+  "independence": "This session (51423a065e9f) authored no catalogue value and edited no translation or code. It is distinct from translator/coder runs 07291411b980, c61a64298a45, 21ddee198f0b, d82369d8e233, c3976a04742d, 4fe47970b5a5, 486744e25afc, 835b27311cfb, 317b3e0e1617, 3dc95465c455 and from every prior auditor (including round-7 sessions 0ab504098e2b and d459d2006f29). Round-7 comments were read only to learn which findings the delta claims to address; verdicts here come from the head bytes and executed probe.",
+  "semantic_checks": [
+    "expires_window 'Esta tarjeta caduca en {duration}': subject is the card (tarjeta), as English and the context note require; 'tarjeta' is the es word for a UI card elsewhere in shipped catalogues (ui.chat question_dock 'Esc en la tarjeta', ui.settings 'las tarjetas', ui.hub 'ninguna tarjeta'); 'caduca en {time}' matches ui.notifications.row.ask_expires. Feminine demonstrative agrees. Does not imply the permission or share expires. Rendered through the shipped code for 352 durations (1..59 s, 1..89 min, 90 min..200 h incl. boundaries 89m+1s, 90m, 90m+1s, 2h+1s): 4 shapes ('menos de un minuto', '1 minuto', 'N minutos', 'N horas'), 0 agreement mismatches. The es 'many' branch is unreachable (max 200).",
+    "typed_review_unavailable 'Esta solicitud no se puede mostrar aquí de forma segura. Deniégala y pide una nueva.': tú imperatives (Deniégala, pide) per es style guide; Deniégala correctly accented and matches the Deny control 'Denegar' rendered beside it; 'una nueva' elides solicitud with clear feminine agreement (terse, per style guide); no terminal/CLI/outdated-app wording, no blind-approval suggestion; NFC, no bidi controls, no stray spacing."
+  ],
+  "evidence": {
+    "probe": "i18n/receipts/51423a065e9f-structural-probe.mjs.txt",
+    "probe_sha256": "375a6d912a0be029e22f1249a29749e1c29593a7596f796a2c4612f5296be7cc",
+    "log": "i18n/receipts/51423a065e9f-structural-probe-output.txt",
+    "log_sha256": "cf6d3b629239961ea28ae2c995e6484de4d0316be90675850ce90308caef7e58",
+    "verdict_location": "Status, findings and semantic_checks here are the auditor's review record. The companion log is the actual probe output (delta shape, six-locale byte identity, es value checks, every-duration render through approvalAnswerWindowLabel/t(), could_not_apply note-vs-code table)."
+  },
+  "non_claims": [
+    "No rendered/compiled-native, width/fit, font shaping, screen-reader or visual validation (host memory hold); source-only.",
+    "No translation edits by this auditor."
+  ],
+  "notes": "Round 8 at f3a758d5: passed, 0 findings. R7A-ES-01/R7B-1 and R7A-ES-02/R7B-2 resolved."
+}

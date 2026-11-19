@@ -1,0 +1,136 @@
+{
+	"auditor": "reviewer",
+	"model": "anthropic/claude-opus-5-5",
+	"fallback": "none — every usage record in auditor session 0c29cfb164b5 names claude-opus-5-5 (provider anthropic)",
+	"instance": "i18n-audit-1452-r6-20261028-fr",
+	"session": "0c29cfb164b5",
+	"job": "b3b307f7e6fb",
+	"parent_session": "65a12b105119",
+	"date": "2026-10-28",
+	"locale": "fr",
+	"round": 6,
+	"status": "passed",
+	"translator": {
+		"agent": "coder",
+		"job": "06881db8a7b7",
+		"session": "652fc21ad527",
+		"parent_session": "65a12b105119",
+		"model": "anthropic/claude-opus-5-5 (usage records in session 652fc21ad527 name claude-opus-5-5 357x, provider anthropic)",
+		"commit": "d162d2fa40ac9debade0b33abba52e96acfae6d4",
+		"lineage": [
+			{
+				"round": 1,
+				"agent": "task",
+				"job": "7c09e08359e1",
+				"model": "anthropic/claude-opus-5-5",
+				"commit": "0a02713ed4 (rebased as 6da4ebea87)"
+			},
+			{
+				"round": 2,
+				"agent": "coder",
+				"job": "4a907cae19a9",
+				"session": "5f4c49fec12b",
+				"model": "kimi/k3.1-pro via radient/auto",
+				"commit": "752abc1c19 (rebased as 922b9a5a40)"
+			},
+			{
+				"round": 3,
+				"agent": "coder",
+				"job": "0fc4118bdd37",
+				"session": "43acf20a38da",
+				"model": "anthropic/claude-opus-5-5",
+				"commit": "8cbaff82e6"
+			},
+			{
+				"round": 4,
+				"agent": "coder",
+				"job": "bdb7d1ad75b7",
+				"session": "cedb979297ba",
+				"parent_session": "65a12b105119",
+				"model": "anthropic/claude-opus-5-5",
+				"commit": "c6eac7664b",
+				"what": "added ui.canvas.files.attachmentRefused (en + context note + 7 locales); no other ui.canvas value changed"
+			},
+			{
+				"round": 5,
+				"agent": "coder",
+				"job": "44760bfa9008",
+				"session": "f2acc2988e22",
+				"parent_session": "65a12b105119",
+				"model": "anthropic/claude-opus-5-5 (usage records in session f2acc2988e22 name claude-opus-5-5 324x, provider anthropic)",
+				"commit": "0f61692348 (rebased as 2558056b45)",
+				"what": "added ui.canvas.files.attachmentReadOnly (en + context note + 7 locales) and revised the en context note of attachmentRefused (D16); no other ui.canvas value changed"
+			},
+			{
+				"round": 6,
+				"agent": "coder",
+				"job": "06881db8a7b7",
+				"session": "652fc21ad527",
+				"parent_session": "65a12b105119",
+				"model": "anthropic/claude-opus-5-5 (usage records in session 652fc21ad527 name claude-opus-5-5 357x, provider anthropic)",
+				"commit": "d162d2fa40ac9debade0b33abba52e96acfae6d4",
+				"what": "shortened fr/es ui.canvas.files.attachmentRefused to the round-4/5 proposal (I-fr-1/I-es-1) and rewrote its en context note (I-en-1); no other ui.canvas value changed"
+			}
+		]
+	},
+	"pr": "damianvtran/local-operator-ui#1452",
+	"source_base": "62316d32bd48ea755863b29e3048d710be0534c5",
+	"source_head": "d162d2fa40ac9debade0b33abba52e96acfae6d4",
+	"scope": "Round-6 audit of ui.canvas: the one changed value ui.canvas.files.attachmentRefused (fr) from coder job 06881db8a7b7 in d162d2fa40, and the rewritten en context note of that key. Baseline 62316d32bd (the round-5 audit commit after the rebase onto origin/main 74fd739b; range-diff '=' with 2ce450fe, and i18n/ plus every ui.canvas catalogue byte-identical between the two) carries exactly the round-5 audited bytes: sha256 of en and all seven locales' ui.canvas.json equal the r5 receipts'. 62316d32bd..d162d2fa40 in ui.canvas is that one value in fr and es, and in the en context file that one note; keys.gen.ts unchanged. Catalogue audit only.",
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "local-operator 60b626671df (origin/main)",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/fr.md",
+			"revision": "local-operator 60b626671df (origin/main)",
+			"sha256": "49010212a65f0d30d49bf532601bb39ad277be28aef5d476715186cf28525990"
+		}
+	},
+	"namespaces": {
+		"ui.canvas": {
+			"status": "passed",
+			"keys_audited": 1,
+			"keys": [
+				"ui.canvas.files.attachmentRefused"
+			],
+			"value": "Ressemble à un secret, actions sur le fichier désactivées",
+			"previous_value": "Ressemble à un secret, les actions sur le fichier sont donc désactivées",
+			"sha256": {
+				"en": "36169fd626d09bca2e4cc8c9e8be3386e66aa70dd0195b63eda58672552ecfe8",
+				"fr": "637b60fa0d58ce91b440720cfcfb095e5deecaee09541e27cb612f42f352f950"
+			},
+			"context_sha256": "1ab46165ddae95cdba588a2210a3d91ab4a24b5304143adf47de8559b637c706",
+			"key_sha256": {
+				"en": "1366b01b7fa93baf10f23bab88b072fe019ad3f0da8fa0391160462fc9c0e824",
+				"fr": "5286d2e63ba6a94f73a640273c5a7594a8bc097bdf8d39e3d58faeefc356ceb6",
+				"attachmentRefused_context": "e95021deb6afba30da78a76d71dea949af993a6cdd5250cf1dca67d03fa93459"
+			},
+			"findings": []
+		}
+	},
+	"source_findings": [
+		{
+			"id": "I-src-1",
+			"severity": "MINOR",
+			"key": "ui.canvas.files.attachmentRefused",
+			"file": "src/renderer/src/features/chat/components/canvas/finder-files-view.tsx:1262-1264 with attachment-items.ts:160-166",
+			"issue": "Q5 made attachmentStatus() return this sentence for a refused row with no saved copy, and the tooltip still appends it as its refusal line, so that row's hover text shows it twice. Reproduced at d162d2fa40 in the jsdom render harness (dotEnv bare row): title lines ['.env', 'Looks like a secret, so file actions are off', 'Looks like a secret, so file actions are off']. A row with a saved copy reads correctly (identity, sentence).",
+			"proposed": "Append the refusal line only when the status line is not already that sentence.",
+			"disposition": "non-gating; code scope, not a catalogue value (not counted in this locale's row)"
+		}
+	],
+	"checks": {
+		"independence": "Auditor reviewer session 0c29cfb164b5 (job b3b307f7e6fb): a different agent and session from coder job 06881db8a7b7 (session 652fc21ad527) and every earlier author in the lineage; this auditor edited no catalogue value.",
+		"unchanged": "62316d32bd vs d162d2fa40, ui.canvas key by key: es and fr 1 changed value (attachmentRefused), 0 added, 0 removed, 360 keys = en; hi, ru, ur, vi, zh-CN 0 changed (bytes equal to their r5 receipts); en ui.canvas.json byte-identical (36169fd6…); en context 1 changed note (attachmentRefused), 0 added; keys.gen.ts unchanged.",
+		"terminology": "'secret' = the catalogue's own word for a password/key/token ('magasin de secrets', 'champ secret', 'Collez le secret'); 'actions sur le fichier' is verbatim the row menu's sibling label 'Actions sur le fichier' (4 uses in the fr catalogues), which is exactly what the note says 'file actions' names; 'désactivées' agrees (fem. pl.) with 'actions'. Subjectless 'Ressemble à…' + participle clause is the terse fragment register the fr guide asks for ('statuses are past participles'); vous-address not needed (no pronoun).",
+		"note_fit": "Measured against the new note's three placements. (1) Tooltip: 57 characters vs the identity line for the canonical .env row (61 characters with an 8-character digest), so it is no longer than the identity line, under the ~60 target and the 70 cap. (2) Truncated focus/no-copy note line: the cause comes first and the comma sits at character 22, so a cut at the 25-35 characters the note says survive ('Ressemble à un secret, ac…' / 'Ressemble à un secret, actions sur …') always keeps the whole cause. (3) Toast: a short line, so its length does not matter. Code read at finder-files-view.tsx:1262/1280/1289 and attachment-items.ts:166 confirms the three sites named and the no-copy case.",
+		"punctuation": "No trailing full stop, as the note asks; ASCII comma joining two fragments, same as the en source; no quotes, dashes or apostrophes, so no typographic-space or U+2019 question arises.",
+		"typography": "Value and whole ui.canvas file NFC; no bidi controls (U+200E/F, U+061C, U+202A-E, U+2066-9).",
+		"length": "57 characters (was 71; en 44; note: about 60, never more than 70)."
+	},
+	"limitations": "No app build, browser or Storybook this round (pure file work by brief): no rendered-fit measurement. Truncation was judged from the note's 25-35 character figure and the class min-w-[min(13rem,50%)] flex-1 truncate (finder-files-view.tsx:1594), not measured. I-src-1 was reproduced in the jsdom render harness, not in a rendered app.",
+	"status_note": "Passed, no locale findings; one non-gating MINOR in source code (I-src-1)."
+}

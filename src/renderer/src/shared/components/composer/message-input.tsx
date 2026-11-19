@@ -19,7 +19,7 @@ import {
 	CHAT_COLUMN_INSET,
 	CHAT_MEASURE,
 } from "@features/chat/chat-measure";
-import { CHAT_REGION_LABEL } from "@features/chat/chat-regions";
+import { chatRegionLabel } from "@features/chat/chat-regions";
 import { AttachmentsPreview } from "@features/chat/components/attachments-preview";
 import { AudioRecordingIndicator } from "@features/chat/components/audio-recording-indicator";
 import { ComposerStatusRow } from "@features/chat/components/composer-status-row";
@@ -31,17 +31,12 @@ import { ComposerStatusRow } from "@features/chat/components/composer-status-row
  * for why that split is the point rather than tidiness.
  */
 import {
-	CREDENTIAL_CLEAR_UNDO_LABEL,
-	CREDENTIAL_EMPTY_SPAN_DRAFT_NOTICE,
-	CREDENTIAL_EMPTY_SPAN_NOTICE,
 	CREDENTIAL_TOKEN,
-	CREDENTIAL_TYPING_NOTICE,
 	CREDENTIAL_WORDS,
 	type CancelledToken,
 	type Capture,
 	type CredentialFate,
 	type CredentialPayload,
-	HELD_TAKEN_BY,
 	IDLE_CAPTURE,
 	MASK_CELL,
 	type UnredactedDisclosure,
@@ -53,7 +48,14 @@ import {
 	citedPayloads,
 	clearCitedCredential,
 	clearedToastLine,
+	credentialClearUndoLabel,
+	credentialDiscardedNotice,
+	credentialEmptySpanDraftNotice,
+	credentialEmptySpanNotice,
+	credentialEscapeHeldNotice,
 	credentialNamesFrom,
+	credentialTypingNotice,
+	escapeHolds,
 	holdsCancelledToken,
 	isArmed,
 	isTyping,
@@ -75,29 +77,46 @@ import {
 	unstoredNotice,
 } from "@features/chat/components/credential-capture";
 import {
+	ASK_OPTIONS_SELECTOR,
 	COMPOSER_TEXTAREA_SELECTOR,
+	REPLY_CHIP_REMOVE_SELECTOR,
 	registerComposerFocus,
 } from "@features/chat/composer-field";
+import {
+	type SendRecordingPhase,
+	dictatedSendCheck,
+	dictatedWouldAnswerGate,
+	sendRecordingNext,
+	slotARole,
+	slotBRole,
+	slotCRole,
+} from "@features/chat/composer-slots";
 import type {
 	DraftPickerDestination,
 	DraftResolution,
 } from "@features/chat/draft-selection";
-import { useInterruptSlotHold } from "@features/chat/hooks/use-interrupt-slot-hold";
+import { useRoleGuard } from "@features/chat/hooks/use-role-guard";
 import { MISSING_SESSION_NOTICE_ID } from "@features/chat/missing-session-notice";
-import { MOVE_UNAVAILABLE_REASON } from "@features/chat/move-session";
+import { moveUnavailableReason } from "@features/chat/move-session";
 import { connectProviderForSelector } from "@features/chat/pickers/model-catalogue-listing";
 import {
 	destinationNeedsSession,
 	draftStageForSource,
 } from "@features/chat/pickers/picker-registry";
+import type { SessionAskFrame } from "@features/chat/session-asks";
 import {
 	bandYieldsToRadientIssue,
 	composerModelAccessReading,
+	modelAccessIsInformational,
 	modelAccessOwnsRadientStatus,
 	radientCalloutOwnsTheSignIn,
 } from "@features/chat/session-status/session-model";
 import { SessionModelAccessBand } from "@features/chat/session-status/session-model-access";
 import { SessionStatusStrip } from "@features/chat/session-status/session-status-strip";
+import {
+	SettingsIntentChips,
+	type SettingsIntentsBand,
+} from "@features/chat/session-status/settings-intent-chips";
 import type { Message } from "@features/chat/types/message";
 import { useVoiceCapability } from "@features/voice/use-voice-status";
 import {
@@ -114,8 +133,10 @@ import {
 } from "@shared/api/local-operator/desktop-api";
 import { TranscriptionApi } from "@shared/api/local-operator/transcription-api";
 import {
-	EMPTY_TRANSCRIPTION_MESSAGE,
+	emptyTranscriptionMessage,
+	isTransientTranscriptionFailure,
 	transcriptionFailureMessage,
+	transcriptionFailureRowMessage,
 } from "@shared/api/local-operator/transcription-failure";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { ErrorBoundary } from "@shared/components/common/error-boundary";
@@ -127,18 +148,21 @@ import {
 	type SendOutcome,
 	composerPlaceholder,
 	isOffRecordAsk,
+	joinTranscript,
 	settleOffRecordPayload,
 	useMessageInput,
 } from "@shared/hooks/use-message-input";
 import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
 import { useRadientSessionIssue } from "@shared/hooks/use-radient-session-issue";
+import { useRecordingShortcutLabel } from "@shared/hooks/use-recording-shortcut";
 import {
 	SpeechToTextPriority,
 	resolvePushToTalkBinding,
 	setDictationActive,
 	useSpeechToTextManager,
 } from "@shared/hooks/use-speech-to-text-manager";
-import { t } from "@shared/i18n";
+import { type WithoutParams, isolateLtr, t } from "@shared/i18n";
+import { ShortcutText } from "@shared/i18n/shortcut-text";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import {
 	type RadientSpeechBlock,
@@ -147,18 +171,21 @@ import {
 import { cn } from "@shared/lib/utils";
 import { useAsideStore } from "@shared/store/aside-store";
 import {
-	CLEAR_LABEL,
-	RETRY_LABEL,
 	SEND_FAILURE_COPY,
 	buildSendPayload,
+	clearLabel,
+	retryLabel,
 } from "@shared/store/canonical-sessions-store";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import {
 	type Attachment,
 	type Reply,
+	flushComposerDraftPersist,
 	useConversationInputStore,
 } from "@shared/store/conversation-input-store";
+import { intentOverride } from "@shared/store/settings-intents";
 import type { AskDrawerCloseOptions } from "@shared/store/ui-preferences-store";
+import { pasteInsertsOnlyFileNames } from "@shared/utils/paste-utils";
 import { normalizePath } from "@shared/utils/path-utils";
 import {
 	dismissToast,
@@ -199,6 +226,7 @@ import type {
 	CanonicalFrontendState,
 	CanonicalModel,
 } from "../../../../../shared/desktop-session-contract";
+import { recordingHintParts } from "../../../../../shared/recording-shortcut";
 
 /**
  * The capture's words, in the shape the planner takes them.
@@ -252,8 +280,6 @@ const CREDENTIAL_NOTICE_ID = "composer-credential-notice";
  * this box.
  */
 const SECRET_CLOSURE_NOTICE_ID = "composer-secret-closure-notice";
-const SECRET_CLOSURE_NOTICE =
-	"Answer the secret request in the asks panel — this box is paused until it is answered, and your draft is kept.";
 
 /**
  * The QUEUED secret ask's notice, and the confirm a password-shaped send opens.
@@ -328,16 +354,18 @@ import {
 	CredentialOverlay,
 	composerTextBox,
 } from "@features/chat/components/credential-overlay";
+import {
+	SendBlockedLine,
+	useLocalSelection,
+} from "@features/chat/components/send-recovery-action";
 /*
  * The pre-emptive quota notice (design §6): its own line beside the connect
  * line above, on the empty band only. Imported like the connect card next
  * door, and the module documents its own lift discipline.
  */
 import { QuotaNoticeLine } from "@features/chat/quota-notice/quota-notice-line";
-import {
-	ConnectProviderCard,
-	NoProviderLine,
-} from "@features/providers/connect-provider-card";
+import { sendBlockFor } from "@features/chat/send-recovery";
+import { ConnectProviderCard } from "@features/providers/connect-provider-card";
 import {
 	NO_PROVIDER_NOTICE,
 	useConnectProviderStore,
@@ -383,15 +411,11 @@ import { ScrollToBottomButton } from "@features/chat/components/scroll-to-bottom
  * which component modules cannot be.
  */
 import { skillCompletionFor } from "@features/chat/components/skill-completion";
-/*
- * The `$` INK, a pure builder beside the slash one and merged below the plan
- * gate rather than inside it (`skill-highlight.ts` states the gates).
- */
 import { skillHighlightRuns } from "@features/chat/components/skill-highlight";
 import {
-	parseSkillInvocation,
-	renderSkillInvocation,
-	skillBodyHasContent,
+	planSkillMentions,
+	readPlannedSkillBodies,
+	renderSkillBlock,
 } from "@features/chat/components/skill-invocation";
 import {
 	type SkillCatalogRow,
@@ -456,6 +480,15 @@ import {
 	slashTokenSpan,
 } from "@features/chat/components/slash-token";
 import { WaveformAnimation } from "@features/chat/components/waveform-animation";
+/*
+ * The `$` INK, a pure builder beside the slash one and merged below the plan
+ * gate rather than inside it (`skill-highlight.ts` states the gates).
+ */
+import {
+	type DeliverOutcome,
+	dictatedSends,
+	useDictatedSendStore,
+} from "@features/chat/dictated-send";
 import { useAtResolution } from "@features/chat/hooks/use-at-resolution";
 import {
 	activeModelForDefault,
@@ -475,6 +508,14 @@ export type ComposerSendError = {
 	 * that is not already obvious from the controls beside it.
 	 */
 	message?: string;
+	/**
+	 * App-owned notices with no interpolation retain their key across page
+	 * memoization. Backend error sentences still use `message`; translating a
+	 * key here lets the locale subscription invalidate the consumer, not the
+	 * transcript-scale producer. Parameterized notices need a typed params
+	 * contract rather than storing a pre-rendered sentence.
+	 */
+	messageKey?: WithoutParams;
 	/**
 	 * The failure's code, for the surfaces that read one (the ask-answer report,
 	 * the draft row's own copy). Nothing in this file branches on it any more -
@@ -543,6 +584,12 @@ const EMPTY_RECORDING_PROBE: {
  * Props for the MessageInput component
  */
 export type MessageInputProps = {
+	/**
+	 * Sizes for the staged attachment chips, by path. Nothing in the app sets it:
+	 * the live composer's cards probe `probeFiles`, and this exists for the
+	 * Storybook frames, where there is no preload bridge to probe with.
+	 */
+	attachmentByteSizes?: Readonly<Record<string, number>>;
 	onSendMessage: (
 		content: string,
 		attachments: string[],
@@ -587,8 +634,59 @@ export type MessageInputProps = {
 		 * harness that cannot carry it receives the legacy body.
 		 */
 		inputMode?: "typed" | "dictated" | "mixed",
+		/**
+		 * PER-CALL OPTIONS FOR A SEND THAT IS NOT THE USER'S PRESS IN THIS PANE (bug
+		 * 2). `originBound` says the send belongs to the conversation it started in
+		 * and must be posted there even though another pane is on screen; only the
+		 * chat page acts on it (`chat-page.tsx`'s `send`). Absent - and every other
+		 * caller leaves it absent - the send is the press it always was.
+		 */
+		options?: { originBound?: boolean },
 	) => SendOutcome | Promise<SendOutcome>;
 	isLoading: boolean;
+	/**
+	 * THIS HOST APPLIES THE `beforeAdmission` SEAM'S ANSWER - so the composer may
+	 * hand it work that has to happen AFTER the message is on screen.
+	 *
+	 * The `$skill` bodies are the case: reading them is one daemon catalogue scan
+	 * per name (measured p50 67 ms, max 80 ms, n=15), and awaiting them before the
+	 * press reaches `onSendMessage` is what put a partial-second gap between Enter
+	 * and the bubble on exactly the messages that named skills. With this flag the
+	 * composer sends the TYPED line at once and the composed payload travels
+	 * through the seam instead; without it there is no agreed way back from the
+	 * seam to the wire, and the composer keeps the pre-seam behaviour (await the
+	 * reads, first argument is the composed payload).
+	 *
+	 * OFF BY DEFAULT, deliberately: hosts that ignore the fifth argument
+	 * (`project-quick-send`, `config-composer`, `library-composer`) would post the
+	 * typed line and drop the expansion on the floor, and a `$name` reaching the
+	 * model as prose is worse than the wait this flag removes.
+	 */
+	admissionSeamHonoured?: boolean;
+	/**
+	 * THIS HOST WILL FINISH A DICTATED SEND IN THE CHAT IT STARTED IN, WHICHEVER
+	 * COMPOSER IS MOUNTED WHEN THE WORDS LAND.
+	 *
+	 * The operator's report: "when it's transcribing after you hit the immediate send
+	 * and switch to another session it actually doesn't send it and stores it in the
+	 * input box." The press arms a send for `conversationId`; the chat page remounts
+	 * its panel per conversation, so a switch after the press destroys the composer
+	 * and the effect that would have sent the words from that render never runs.
+	 *
+	 * WITH THIS FLAG the press registers an intent (`dictated-send.ts`) and the
+	 * transcript, whenever it lands, is written into the ORIGIN's draft and posted
+	 * through the origin's registered sender - a send bound to a conversation
+	 * rather than to a mount. The flag is the host's promise that its
+	 * `onSendMessage` honours the seventh argument's `originBound`, which is what
+	 * lets the page accept a send for a conversation it is not showing.
+	 *
+	 * OFF BY DEFAULT, and every host that ignores the seventh argument keeps the
+	 * pre-change behaviour byte for byte (`mini-view`, `config-composer`,
+	 * `library-composer`, `project-quick-send`, the stories, the rigs): those hosts
+	 * would post the words into whatever conversation they ARE on, which is the
+	 * defect this flag exists to prevent.
+	 */
+	dictatedAwayDelivery?: boolean;
 	/**
 	 * A send this composer made has been admitted and the owner has not answered
 	 * it yet.
@@ -744,9 +842,13 @@ export type MessageInputProps = {
 	 * review round 1, m1; QA round 1, Q2). `fillable` is false for an ask with
 	 * more than one secret question: one value names no field there, so the
 	 * confirm's primary control opens the panel instead of putting anything
-	 * (design round 1, D2). `onOpen` opens the asks panel -- with `focus: false`
-	 * when the open is a RESULT of the composer (a refused fill) rather than a
-	 * press, so the caret stays in the box. `onFill` posts one value as that
+	 * (design round 1, D2). `onOpen` opens the asks panel and RESOLVES WHETHER THE
+	 * SURFACE TOOK THE KEYBOARD: a press (no options) always does, a refused fill
+	 * (`focus: false`) does only where the composer cannot keep the caret - under
+	 * the overlay sheet, where the box is `inert` - and a landed fill
+	 * (`focus: false, openInSheet: false`) never does and does not open the sheet
+	 * at all. The caller decides the caret with that answer rather than assuming
+	 * the box is focusable. `onFill` posts one value as that
 	 * field's answer and resolves WHAT HAPPENED, not merely whether it landed: a
 	 * refusal, a lock, an expired ask and a missing session are four different
 	 * sentences, and `false` collapsed them into "nothing happened" (agent review
@@ -757,7 +859,10 @@ export type MessageInputProps = {
 	secretAsk?: {
 		key: string;
 		fillable: boolean;
-		onOpen: (options?: { focus?: boolean }) => void;
+		onOpen: (options?: {
+			focus?: boolean;
+			openInSheet?: boolean;
+		}) => boolean;
 		onFill: (value: string, key: string) => Promise<SecretFillOutcome>;
 	} | null;
 	/**
@@ -829,21 +934,6 @@ export type MessageInputProps = {
 	 */
 	canonicalStop?: { active: boolean; stopping?: boolean; onStop: () => void };
 	/**
-	 * Whether this session's backend negotiates `session_interrupt` at all.
-	 *
-	 * The control's SLOT can only be held on a backend that could ever fill it, so
-	 * this is the outer half of the reservation's gate - an invisible placeholder
-	 * that no control will ever stand in for is a gap, not a reservation. It is the
-	 * same capability `canonicalStop.active` is folded with at the call site, so the
-	 * reservation cannot outlive the control it reserves for.
-	 *
-	 * It is no longer the whole gate: the slot is held while a turn runs and for a
-	 * grace window after it ends, and is empty once the row has settled (the
-	 * operator's report that the standing gap put the dictation control away from
-	 * Send). See the reservation at the row and `interrupt-slot-grace.ts`.
-	 */
-	canonicalStopAvailable?: boolean;
-	/**
 	 * The last interrupt's own answer, or null for the common silent case.
 	 *
 	 * Deliberately NOT the `sendError` alert, which is the failure register: this
@@ -896,7 +986,7 @@ export type MessageInputProps = {
 	 * a constant the caller owns: the composer draws a sample and never sorts,
 	 * appends to or otherwise edits what it was handed.
 	 */
-	initialSuggestions?: readonly string[];
+	initialSuggestions?: readonly WithoutParams[];
 	/**
 	 * True when the app KNOWS no model provider is connected (the census was
 	 * read and nothing answers; see `useProviderStatus`). The empty chat then
@@ -919,6 +1009,16 @@ export type MessageInputProps = {
 	 * Typing is still allowed; the send is not, and the line under the box says why.
 	 */
 	noModel?: boolean;
+	/**
+	 * The app's background service is not answering (`useConnectivityStatus`).
+	 *
+	 * NOT a send gate: a press still goes out and the store's own failure
+	 * classes still answer it, because the health read can lag a recovery by one
+	 * poll. It is the composer's half of D4 (onboarding friction, 2026-11): the
+	 * box says, before the press, that nothing will answer right now, and offers
+	 * the reconnect the pane's status strip offers.
+	 */
+	serverOffline?: boolean;
 	agentData?: AgentDetails | null;
 	/**
 	 * Working directory for this conversation, and the way to change it.
@@ -935,7 +1035,7 @@ export type MessageInputProps = {
 	cwdWritePath?: DirectoryWritePath;
 	/**
 	 * Why the chip is read-only here. Supplied per cause rather than assumed:
-	 * `MOVE_UNAVAILABLE_REASON` is false on a session that is merely still being
+	 * `moveUnavailableReason` is false on a session that is merely still being
 	 * created, and the composer is the layer that knows which of the two it is
 	 * looking at (agent review m1).
 	 */
@@ -1018,6 +1118,21 @@ export type MessageInputProps = {
 	 * splash by leaving it off.
 	 */
 	transcriptless?: boolean;
+	/**
+	 * Which speech-to-text registration this composer owns, defaulted to the
+	 * chat's own id so every existing host keeps registering where it does today.
+	 *
+	 * WHY IT IS A PROP AT ALL. The push-to-talk binding is dispatched through a
+	 * module-level `Map` of handlers keyed by this string
+	 * (`use-speech-to-text-manager.ts`), and `Map.set` keeps ONE handler per key.
+	 * Two composers live at once - the chat pane and a host that mounts its own
+	 * box beside it - would therefore have the second mount silently REPLACE the
+	 * first, so the chord dispatched to the wrong box (or to an unmounted one)
+	 * and the displaced composer's hold stopped answering. A host that mounts a
+	 * second live composer supplies its own id; the default keeps the single-host
+	 * case byte-identical.
+	 */
+	speechRegistrationId?: string;
 	/**
 	 * Whether this box may take the caret ON ITS OWN INITIATIVE - the mount, and
 	 * the moments a refused box becomes writable again (a session is picked in the
@@ -1114,6 +1229,17 @@ export type MessageInputProps = {
 	 */
 	sessionStatus?: {
 		frontend: CanonicalFrontendState | null;
+		/**
+		 * The ask lane's frame, resolved by the page from the canonical snapshot and
+		 * the aggregate index (`session-asks.ts`).
+		 *
+		 * PASSED SEPARATELY FROM `frontend` on purpose: the status row's other
+		 * readings (goal, loop, model) still come from the raw canonical snapshot,
+		 * and only the ask item needs the merged frame. A caller that does not
+		 * supply it (a story, a host with no ask lane) leaves the row on
+		 * `frontend`, which is the pre-fix reading.
+		 */
+		asks?: SessionAskFrame | null;
 		/** Trusted catalogue source, not credential-owner metadata or mesh membership. */
 		servingLocality?: "local" | "remote";
 		onCommand?: (invocation: SlashCommandInvocation) => void;
@@ -1121,6 +1247,13 @@ export type MessageInputProps = {
 		effortEntities?: readonly unknown[];
 		/** A chosen model the owner has not confirmed; see `SessionStatusStripProps`. */
 		pendingModel?: CanonicalModel | null;
+		/**
+		 * Durable settings-intent slots and their actions
+		 * (`features.settings_intents`): rendered as a chip line above the control
+		 * row, and the pending effort level painted on the band. Absent without
+		 * the capability, which leaves the composer exactly as before.
+		 */
+		settingsIntents?: SettingsIntentsBand;
 		/**
 		 * This pane is a NEW conversation's draft: there is no session yet, so the
 		 * readings come from `sessions.preview` and render inert unless the backend
@@ -1602,7 +1735,7 @@ const readFileAsDataUrl = (file: File): Promise<string | null> =>
  */
 const firstLiveAnswerOption = (): HTMLElement | null =>
 	document.querySelector<HTMLElement>(
-		'[aria-label="Answer options"] button:not([disabled])',
+		`${ASK_OPTIONS_SELECTOR} button:not([disabled])`,
 	);
 
 /**
@@ -1621,13 +1754,12 @@ const composerBox = (): HTMLTextAreaElement | null =>
 /**
  * A staged quote's own remove control, as the removal's focus hand-off finds it.
  *
- * The accessible name is the handle rather than a `data-` attribute, because it
- * is the same one `reply-preview.tsx` labels the control with and the same one a
- * screen reader announces - a second name for the same button is how the
- * control and its selector stop meaning the same thing.
+ * A `data-` marker, not the accessible name: that name is translated
+ * (`ui.chat.reply.remove`), so the English spelling this used to query stopped
+ * matching after a locale switch and focus fell out of the strip (i18n audit,
+ * C3). The marker is emitted by `reply-preview.tsx` and named once in
+ * `composer-field.ts`, where the field's own anchor lives for the same reason.
  */
-const REPLY_CHIP_REMOVE_SELECTOR = '[aria-label="Remove reply"]';
-
 /**
  * Whether the user has POINTED at the composer since it was last handed focus.
  *
@@ -1821,13 +1953,13 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			hasNewActivity = false,
 			scrollToBottom = () => {},
 			canonicalStop,
-			canonicalStopAvailable = false,
 			interruptNotice,
 			sendError,
 			stopConfirmation,
 			initialSuggestions,
 			noProvider = false,
 			noModel = false,
+			serverOffline = false,
 			agentData,
 			cwd,
 			cwdWritePath,
@@ -1841,10 +1973,13 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			ownGutter = false,
 			isHydrating = false,
 			transcriptless = false,
+			speechRegistrationId = "message-input",
 			autoFocus = true,
 			unavailable = false,
 			mentionsEnabled = false,
 			mentionsUnsupported = false,
+			admissionSeamHonoured = false,
+			dictatedAwayDelivery = false,
 			sessionStatus,
 			onSlashCommand,
 			onSlashNote,
@@ -1854,11 +1989,12 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			onCredentialsStored,
 			onDictationStateChange,
 			placeholderOverride,
+			attachmentByteSizes,
 		},
 		ref,
 	) => {
 		// Copy follows backend locale changes without altering composer state or handlers.
-		useI18nLocale();
+		const locale = useI18nLocale();
 		messageInputRenderCount.current += 1;
 		/*
 		 * The canonical session's cwd is the answer where there is one; the legacy
@@ -1984,17 +2120,170 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 */
 		const [isPreparing, setIsPreparing] = useState(false);
 		const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
-		const [isTranscribing, setIsTranscribing] = useState(false);
+		/*
+		 * THIS COMPOSER'S OWN DICTATION, and the conversation's may be somebody
+		 * else's (bug 2).
+		 *
+		 * `isTranscribingOwn` is the take THIS mount is sending. `isTranscribing` -
+		 * derived below, and the value every surface already reads - is true when
+		 * this mount is transcribing OR when another composer holds a dictated send
+		 * for this conversation that has not finished. That is what makes a return
+		 * to the origin mid-flight show the busy face in the same frame: an idle box
+		 * with a live mic is the state that let a second press start a second take
+		 * over a send already in flight.
+		 */
+		const [isTranscribingOwn, setIsTranscribingOwn] = useState(false);
+		/*
+		 * THIS MOUNT'S NAME AMONG THE COMPOSERS OF ONE CONVERSATION.
+		 *
+		 * The busy face above must not fire on the very instance that owns the
+		 * intent - its own `isTranscribingOwn` already covers that - and a remounted
+		 * composer has to be distinguishable from the dead one whose send is still
+		 * being delivered, because the two are the same `conversationId` and only
+		 * one of them may show the cap. A ref, so a remount is a new value by
+		 * construction.
+		 */
+		const instanceId = useRef<string>(crypto.randomUUID());
+		const dictatedIntent = useDictatedSendStore((state) =>
+			conversationId ? state.intents[conversationId] : undefined,
+		);
+		const isTranscribing =
+			isTranscribingOwn ||
+			(dictatedIntent !== undefined &&
+				dictatedIntent.owner !== instanceId.current);
+		/*
+		 * "SEND RECORDING": stop, transcribe and submit in one press. The phase is
+		 * the whole of that step (`composer-slots.ts`), and slot B holds its busy
+		 * face from the press until the submit settles or fails - it never shows
+		 * Stop in between, because the box emptying on a send is exactly what would
+		 * flip a Send into a Stop under a double click.
+		 */
+		const [sendRecordingPhase, setSendRecordingPhase] =
+			useState<SendRecordingPhase>("idle");
+		/*
+		 * What the press captured: the draft as it stood, so the check after the
+		 * transcript lands can tell "the box holds exactly draft + transcript" from
+		 * "the user typed while the words were in flight". `transcript` is null
+		 * until a usable one arrives.
+		 */
+		const dictatedSendRef = useRef<{
+			draftAtPress: string;
+			transcript: string | null;
+			/**
+			 * The conversation-wide record this press armed (`dictated-send.ts`), or
+			 * null on a host that did not opt in - where the press keeps today's
+			 * mount-bound behaviour and nothing leaves after an unmount.
+			 */
+			intentId: string | null;
+			/** The conversation the press belonged to, captured at the press. */
+			originId: string;
+		} | null>(null);
+		/*
+		 * WHETHER THIS TREE IS STILL THE MOUNTED ONE - read from a callback that can
+		 * fire after the unmount, which is exactly the case bug 2 is about.
+		 *
+		 * `onstop` is a recorder event, not a React event: a take stopped by the
+		 * press's release can deliver its blob after the panel was replaced, and an
+		 * effect cannot tell a callback that. The mount effect re-arms on a remount,
+		 * so React's double-invoke cannot leave the flag false for good.
+		 */
+		const mountedRef = useRef(true);
+		useEffect(() => {
+			mountedRef.current = true;
+			return () => {
+				mountedRef.current = false;
+			};
+		}, []);
+		/*
+		 * THE CONVERSATION THIS MOUNT ADDRESSES, read at the moment a transcript
+		 * lands: a host that keeps one composer mounted and re-points it at another
+		 * conversation (the jsdom harness, and any future host that reuses the box)
+		 * has the same problem as a remount - the words must not go to the
+		 * conversation now in the prop.
+		 */
+		const conversationIdRef = useRef(conversationId);
+		conversationIdRef.current = conversationId;
+		/*
+		 * THE TAKE'S OWN DOOR, for a recorder event that can outlive this tree (bug
+		 * 2's shape (c)): an `onstop` delivered after the panel was replaced has no
+		 * `audioBlob` state to land in and no effect left to send it, so it calls the
+		 * transcription directly. Declared with the takes it serves - a closure that
+		 * read a `const` declared further down would be a TDZ error the first time it
+		 * fired, which is the kind of defect a test only finds if it fires.
+		 */
+		const transcribeTakeRef = useRef<(take: Blob) => void>(() => {});
+		/*
+		 * THE TAKE THAT OUTLIVED ITS FAILURE (#1087).
+		 *
+		 * A take lands in `audioBlob` and is sent once; the effect below sends a take
+		 * once per (blob, nudge) pair, so a failed attempt used to leave the recording
+		 * sitting in state with nothing able to reach it - the user's speech, kept but
+		 * unreachable, and the only way back was to record again. `dictationFailure`
+		 * holds the sentence that offers the SAME bytes back when the failure is one
+		 * time can fix, and `dictationRetry` is the nudge that re-arms that one
+		 * effect: a retry is the first attempt's own path, never a second send path
+		 * beside it.
+		 *
+		 * Both are cleared when the take is retired - a new recording, a success - so
+		 * the offer cannot outlive the recording it describes.
+		 */
+		const [dictationFailure, setDictationFailure] = useState<string | null>(
+			null,
+		);
+		const [dictationRetry, setDictationRetry] = useState(0);
+		/*
+		 * WHAT HAS ALREADY BEEN SENT, and why it is a ref rather than a dependency.
+		 * `handleSendAudio` is re-created whenever the text writer's identity moves
+		 * (`appendTranscriptText` -> `appendToDraft` -> `handleChange`), which happens
+		 * on renders this composer does not control. The auto-send effect lists it
+		 * because the send IS that callback's, so identity churn alone used to re-fire
+		 * a send whose take was still in state. Measured on the #1087 rig: one failed
+		 * dictation produced TWO full retry bursts 115 ms apart - six upstream attempts
+		 * where three were owed - and the second burst hid the retained-take offer for
+		 * as long as it ran. A take is therefore sent once per (blob, nudge) PAIR,
+		 * which is what the effect's trigger actually means.
+		 */
+		const sentTakeRef = useRef<{ blob: Blob; attempt: number } | null>(null);
+		/*
+		 * THE BURST BELONGS TO THIS COMPOSER (#1087 review round 1, F4). A retry
+		 * burst outlives neither the surface that started it nor a newer take: the
+		 * controller is aborted on unmount and whenever another send begins, so the
+		 * remaining attempts are not issued into a component nobody is watching.
+		 */
+		const transcriptionAbortRef = useRef<AbortController | null>(null);
+		useEffect(
+			() => () => {
+				/*
+				 * A DICTATED SEND'S BURST OUTLIVES THE COMPOSER (bug 2). The abort exists so a
+				 * retry burst is not issued into a component nobody is watching; an armed
+				 * dictate is the one case where somebody IS still watching - the origin's
+				 * draft, and the sender this module keeps registered - and aborting here
+				 * threw away the take that the whole feature exists to finish. Bounded at
+				 * three attempts either way (`TRANSIENT_TRANSCRIPTION_ATTEMPTS`).
+				 */
+				if (!dictatedSendRef.current?.intentId)
+					transcriptionAbortRef.current?.abort();
+			},
+			[],
+		);
 		/*
 		 * The hint Enter's refusal shows (UX round 3 U13). A countdown, not a toggle,
 		 * so it cannot outlive the moment it explains.
 		 */
 		const [noProviderHint, setNoProviderHint] = useState(false);
+		/*
+		 * EVERY refused press, counted (design round 1, D5). Keying the five-second
+		 * window on the boolean let a second Enter inside it change nothing on
+		 * screen; keyed on the count, each press restarts the window and re-keys the
+		 * block line's fix control, which replays its one-shot cue.
+		 */
+		const [refusedPresses, setRefusedPresses] = useState(0);
 		useEffect(() => {
-			if (!noProviderHint) return undefined;
+			if (refusedPresses === 0) return undefined;
+			setNoProviderHint(true);
 			const timer = window.setTimeout(() => setNoProviderHint(false), 5000);
 			return () => window.clearTimeout(timer);
-		}, [noProviderHint]);
+		}, [refusedPresses]);
 		const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 		const audioChunksRef = useRef<Blob[]>([]);
 		const [platform, setPlatform] = useState("");
@@ -2198,31 +2487,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * keeps the array identity stable across a gate flip, so
 		 * `MeasuredSuggestionStack` does not re-measure for unchanged content.
 		 */
-		const heldSample = useRef<readonly string[] | null>(null);
-		/*
-		 * The last held-press sentence RAISED, AND THE RECORD IT WAS RAISED FOR, so a
-		 * repeated Enter on an unchanged held box does not append the same transcript
-		 * line again (remediation round 1, U4). A ref rather than state: this decides
-		 * whether to say something, never what the frame draws, and a change that
-		 * re-rendered the composer here would be the re-render for its own sake.
-		 *
-		 * KEYED TO THE RECORD, NOT TO THE SENTENCE (agent review round 2, R6). The
-		 * dedupe used to hold the bare string and be reset imperatively when the
-		 * record was pruned — and that prune lives in `applyCapture`, which the
-		 * notice's OWN remedy never runs: clearing the box with the keyboard goes
-		 * through the textarea `onChange` → `applyDomEdit` route, which clears
-		 * `cancelledToken.current` (its effect is keyed on the buffer) but never this
-		 * ref. So the operator followed the app's named way out, re-armed the
-		 * identical shape, and the second hold was SILENT — the box kept, nothing
-		 * dispatched, no sentence. Folding the record into the key removes the
-		 * imperative reset altogether: a fresh cancel writes a NEW `CancelledToken`
-		 * object, so identity alone says this is a new hold that owes its own words,
-		 * on every route that can retire the old one — the keystroke path included.
-		 */
-		const lastHeldNotice = useRef<{
-			token: CancelledToken;
-			notice: string;
-		} | null>(null);
+		const heldSample = useRef<readonly WithoutParams[] | null>(null);
 		const suggestions = useMemo(() => {
 			if (!initialSuggestions || initialSuggestions.length === 0) return [];
 			/*
@@ -2237,6 +2502,19 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			}
 			return heldSample.current;
 		}, [initialSuggestions, showEmptyChatPrompt]);
+
+		/*
+		 * The chip LABELS, resolved at the render that draws them: the sample above
+		 * holds keys so a draw is locale-independent, and `t()` here is what makes
+		 * the same four chips follow a language switch. Memoized on the sample and
+		 * the locale so the measured stack sees a new array only when one of them
+		 * changes - a fresh array per render would re-run its measurement.
+		 */
+		// biome-ignore lint/correctness/useExhaustiveDependencies: `t()` reads the locale store directly, so `locale` is not referenced in the body - it is the dependency that RE-RUNS this memo when the language changes. Dropping it would leave the four chips in the previous language until the sample itself changed.
+		const suggestionLabels = useMemo(
+			() => suggestions.map((key) => t(key)),
+			[suggestions, locale],
+		);
 
 		// Node-valued callback refs follow conditional splash remounts; a stable
 		// suggestion sample does not imply that the measured DOM is still alive.
@@ -2261,19 +2539,57 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * to repaint as the mode changes, and the ref is what the event handlers read
 		 * so a handler built for one render cannot act on a stale capture.
 		 *
-		 * `unredactedChars` is the one disclosure the app makes, and it is the
-		 * operator's
-		 * own Esc: §5's notice that the characters are now plain text in the
-		 * composer. The sentence is derived from the count at the render site rather
-		 * than held as state, because it describes an EVENT and the state that follows
-		 * it is an ordinary composer holding prose.
+		 * `unredactedChars` is the disclosure for characters in the box that came from
+		 * a credential gesture as plain text. Esc wrote them until 2026-10-22 and does
+		 * not any more (§5); the remaining writer is the locked-run undo, which hands
+		 * back characters the operator typed UNMASKED and that were already in the
+		 * draft. A draft an older build persisted after an Esc is re-raised on arrival.
 		 */
+		/*
+		 * THE STATE A FIRST ESC WAS HELD OVER, or `null` (see `escapeHolds`): the buffer
+		 * and the held value together, compared field by field.
+		 *
+		 * Not a flag: a flag survives a typed character, so the operator's first Esc after
+		 * resuming would discard without the warning. Not the `Capture` object: caret
+		 * syncs rebuild it with the same contents, which would silently drop the hold.
+		 * Not the buffer alone: every cell is the same bullet, so a backspace-and-retype
+		 * of a different character leaves it byte-identical. The pair changes on every
+		 * edit to the span and on nothing else. In-memory only, like `Capture.value`.
+		 */
+		const [escapeHeldOver, setEscapeHeldOver] = useState<{
+			buffer: string;
+			value: string;
+		} | null>(null);
+		/*
+		 * A transient line after the second Esc, so a reflexive double-press does not
+		 * land on a box that silently lost its secret (design review round 1, D2). It
+		 * names no value and no length, and the next edit retires it (keyed on the
+		 * buffer it was raised over, the same way the hold is).
+		 */
+		const [discardedOver, setDiscardedOver] = useState<string | null>(null);
 		const [capture, setCaptureState] = useState<Capture>(IDLE_CAPTURE);
 		const captureRef = useRef<Capture>(IDLE_CAPTURE);
 		const setCapture = useCallback((next: Capture) => {
 			captureRef.current = next;
 			setCaptureState(next);
+			/*
+			 * THE HOLD ENDS WITH THE CAPTURE, on every route (agent review round 1,
+			 * R1-1). Mint, send, a whole-buffer replacement and a conversation switch
+			 * all leave typing through here; a hold left standing would re-light on a
+			 * later capture that reached the same buffer and value, raising "still
+			 * masked" before any Esc and turning the first press into an unwarned
+			 * discard.
+			 */
+			if (!isTyping(next)) setEscapeHeldOver(null);
 		}, []);
+
+		const escapeIsHeld = useCallback(
+			(buffer: string, held: Capture): boolean =>
+				escapeHeldOver !== null &&
+				escapeHeldOver.buffer === buffer &&
+				escapeHeldOver.value === held.value,
+			[escapeHeldOver],
+		);
 		const payloadsRef = useRef(new Map<number, CredentialPayload>());
 		const nextIndexRef = useRef(1);
 		/*
@@ -2366,12 +2682,12 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		/*
 		 * The token an Esc cancel just left inert in the buffer (§5).
 		 *
-		 * It is what keeps the SUBMIT seam from re-reading the restored plaintext as
-		 * the `/credential` COMMAND: the notice promices "Enter will expose them",
-		 * and the dispatcher used to take the leading token instead — opening the
-		 * picker and stripping the very characters the sentence was about (QA round
-		 * 1, Q2). Held as the cancel's own arrival offset and text, so it stops
-		 * applying the instant an edit moves the token (`holdsCancelledToken`).
+		 * It is what keeps the SUBMIT seam from reading the inert token as the
+		 * `/credential` COMMAND: the words the operator writes after a cancel are their
+		 * prose, and the dispatcher used to take them as the command's argument and
+		 * strip them out of the box (QA round 1, Q2; UX round 2, U9). Held as the
+		 * cancel's own arrival offset and text, so it stops applying the instant an
+		 * edit moves the token (`holdsCancelledToken`).
 		 */
 		const cancelledToken = useRef<CancelledToken | null>(null);
 		/*
@@ -2755,322 +3071,416 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			useOptionalQueryClient();
 
 		const onSubmit = useMemo(
-			() => async (message: string, onEchoPainted?: () => void) => {
-				/*
-				 * A BUBBLE THAT CANNOT RUN IS NEVER POSTED (UX round 1, U1).
-				 *
-				 * §K answers `baseline-U2` in one sentence: "with no model resolved the send
-				 * control IS `Choose a model` … Enter does the same; a bubble that cannot run
-				 * is never posted." The chip half shipped; the Enter half did not. Measured on
-				 * the live app: with the draft's model unresolved, Enter posted a user bubble
-				 * into the transcript that no runtime could answer, stamped in the transcript a
-				 * turn that never ran - the exact state `baseline-U2` is about.
-				 *
-				 * GATED HERE, ON `onSubmit`, because this is the ONE function both doors reach:
-				 * the form's `type="submit"` control and the Enter key both end in
-				 * `useMessageInput`'s submit, which calls this. A second gate on the key alone
-				 * is how the button and the key start disagreeing - the defect round 1 found in
-				 * the refusal, one door over.
-				 *
-				 * WHAT HAPPENS INSTEAD. The affordance is the pane's own `Choose a model`
-				 * (it is rendered by the strip, above the box, in exactly this state), and when
-				 * the backend can honour a pick the same affordance is one key away, so the key
-				 * opens it rather than doing nothing. With no picker to open (a backend that
-				 * advertises no `draft_selection`) the press is a no-op and the chip is the
-				 * only route, which is what §K says the screen offers.
-				 */
-				if (draftModelUnresolved) {
-					sessionStatus?.onOpenDraftPicker?.("session.model");
+			() =>
+				async (
+					message: string,
+					onEchoPainted?: () => void,
+					opts?: { dictatedAway?: true; inputMode?: "dictated" | "mixed" },
+				) => {
 					/*
-					 * And the same `false`: this gate refuses the press too - it hands it to the
-					 * picker instead - so the box must keep its text. It was a bare `return`
-					 * (QA Q4's finding, one gate over), which retired a draft the user still
-					 * had to send once they had chosen a model.
+					 * A BUBBLE THAT CANNOT RUN IS NEVER POSTED (UX round 1, U1).
+					 *
+					 * §K answers `baseline-U2` in one sentence: "with no model resolved the send
+					 * control IS `Choose a model` … Enter does the same; a bubble that cannot run
+					 * is never posted." The chip half shipped; the Enter half did not. Measured on
+					 * the live app: with the draft's model unresolved, Enter posted a user bubble
+					 * into the transcript that no runtime could answer, stamped in the transcript a
+					 * turn that never ran - the exact state `baseline-U2` is about.
+					 *
+					 * GATED HERE, ON `onSubmit`, because this is the ONE function both doors reach:
+					 * the form's `type="submit"` control and the Enter key both end in
+					 * `useMessageInput`'s submit, which calls this. A second gate on the key alone
+					 * is how the button and the key start disagreeing - the defect round 1 found in
+					 * the refusal, one door over.
+					 *
+					 * WHAT HAPPENS INSTEAD. The affordance is the pane's own `Choose a model`
+					 * (it is rendered by the strip, above the box, in exactly this state), and when
+					 * the backend can honour a pick the same affordance is one key away, so the key
+					 * opens it rather than doing nothing. With no picker to open (a backend that
+					 * advertises no `draft_selection`) the press is a no-op and the chip is the
+					 * only route, which is what §K says the screen offers.
 					 */
-					return false;
-				}
-				/*
-				 * A LIVE TAKE OWNS THE KEY (UX review round 1, U2).
-				 *
-				 * While a recording is up, Enter's job is to CONFIRM THE TAKE - the
-				 * recording branch below is that door, and the footer says so
-				 * ("Recording. Press the stop button when you're done."). It was not
-				 * the only door: the window-level recording listener runs after
-				 * React's delegated textarea handler, so the submit had already been
-				 * decided by the time the take's own Enter arrived, and the press
-				 * posted the TYPED draft while the take's words were never written
-				 * (measured live, 3/3: the daemon's history carried the typed text,
-				 * `input_mode: typed`, and no transcript). The dictating user's most
-				 * likely press sent a different message than the one they were
-				 * composing.
-				 *
-				 * Refused HERE, beside the model gate and for its reason: this is the
-				 * one function both doors (the form's submit control and the Enter
-				 * key) reach, so a second gate on the key alone is how the two start
-				 * disagreeing. `isTranscribing` is included because a transcript is
-				 * still landing - a send then would race the take's own write for the
-				 * same box.
-				 */
-				/*
-				 * `return false`, NOT a bare `return` (UX round 2 / QA Q4). `useMessageInput`
-				 * reads only `outcome === false` as a refusal (`use-message-input.ts`) and
-				 * treats `undefined` as an ACCEPTED send: it cleared the box, retired the
-				 * draft and logged the payload with no request ever made - the take's words
-				 * lost and the typed draft gone with them, silently (measured live, 3/3).
-				 * This is the shape the Esc-cancel path already refuses in, so the press now
-				 * leaves the text exactly where the user left it.
-				 */
-				if (isRecording || isTranscribing) return false;
-				// Assembled by the same function the composer compares against, so the
-				// string sent, stored, guarded and reasoned about by the copy is one
-				// string on the reply path too. Building the prefix inline here put it
-				// downstream of every comparison and deadlocked Restore - see
-				// `buildSendPayload`.
-				/*
-				 * A DRAFT PANE IS THE ONE PLACE THE STORE CANNOT RUN YET, and the most
-				 * likely first use of this feature is exactly that pane (UX round 1, U2).
-				 * `credentialSessionId` is undefined until a session exists, the session is
-				 * created INSIDE the send, and the whole point of §9 is that the value is
-				 * in the session's tool environment BEFORE the message citing it leaves.
-				 * So when there is no session to reach, the store defers to the host's own
-				 * `beforeAdmission` seam - the one window between `sessions.create`
-				 * answering and `sessions.message` going out - and the payload it sends is
-				 * the UNSUBSTITUTED text, so the seam still gets to write the citation
-				 * after it has stored. `settled` carries the answer back out of the seam
-				 * for the toasts, which cannot be raised before the send on this path
-				 * because there is nothing to raise them about until it lands.
-				 */
-				let settled:
-					| {
-							text: string;
-							stored: string[];
-							refused: string[];
-							unconfirmed: string[];
-					  }
-					| undefined;
-				// Assembled by the same function the composer compares against, so the
-				// string sent, stored, guarded and reasoned about by the copy is one
-				// string on the reply path too. Building the prefix inline here put it
-				// downstream of every comparison and deadlocked Restore - see
-				// `buildSendPayload`.
-				/*
-				 * THE COMPLEMENT OF THE SEAM'S CONDITION — and the polarity is the
-				 * whole point: `seam` exists on exactly the panes this ternary does
-				 * NOT store on yet. A draft has no session to store against, so it
-				 * keeps the literal and the store's own admission hook settles it
-				 * through the seam above; an attached pane stores HERE, in the send,
-				 * before the payload is built. Swapping the arms silently detaches
-				 * the citation store from every attached send and double-settles the
-				 * draft (round-2 review, R2-1 — it shipped swapped once).
-				 */
-				const carried = credentialSessionId
-					? await storeCitedCredentials(message)
-					: { text: message, stored: [], refused: [], unconfirmed: [] };
-				if (carried.stored.length > 0)
-					showSuccessToast(storedNotice(carried.stored));
-				/*
-				 * THE OPERATOR HEARS IT TOO, on every refusal and not only the
-				 * all-failed one. Warning rather than info: it reports a gesture that
-				 * did not do what it looked like it did, and it names the retry that
-				 * actually works — arming `/credential` and pasting again, because
-				 * `/credential <KEY>` cannot reach any store (the space after the token
-				 * opens a masked capture and the KEY is minted as a short secret).
-				 */
-				if (carried.refused.length > 0)
-					showWarningToast(unstoredNotice(carried.refused));
-				/*
-				 * AND THE THIRD RECEIPT, which is not a failure and must not be worded as
-				 * one: the store never confirmed the write, so the operator is told what
-				 * was observed ("could not be confirmed") rather than what was not
-				 * ("could not be stored"), and the notice names the one check that settles
-				 * it. Raised on the same warning surface for the same reason as the refusal
-				 * above: a gesture that did not do what it looked like it did.
-				 */
-				if (carried.unconfirmed.length > 0)
-					showWarningToast(unconfirmedNotice(carried.unconfirmed));
-				/*
-				 * THE `$skill` EXPANSION (issue #664), resolved on the SUBMITTED line
-				 * and applied where the message leaves. Only a FIRST-TOKEN `$name`
-				 * matching a DISCOVERED skill fires — `parseSkillInvocation` is the
-				 * harness's own recognition rule, and the vocabulary is the
-				 * `skills.list` answer with no hard-coded names — and the payload it
-				 * injects is `invoke.py`'s expansion character-for-character
-				 * (`skill-invocation.ts` owns that half, escape order included).
-				 *
-				 * WHAT KEEPS A PASTED DOCUMENT FROM FIRING IS THE ANCHOR, not a
-				 * typed-vs-pasted marker: the rule reads the FIRST token of what is
-				 * being submitted, so a document whose later line says `$research …`
-				 * cannot fire — the harness's own stated guarantee
-				 * (`command_picker.py`). A paste whose content IS the first line
-				 * behaves exactly as typing it does, which is also the harness's
-				 * behaviour (`$skill` at offset 0 IS the invocation). Mid-document
-				 * pastes stay prose for the same anchor reason.
-				 *
-				 * A skill whose body cannot be read is NOT silently swallowed: the
-				 * notice says so and the raw text goes through untouched, which is the
-				 * harness's own trade — a message the user can see and resend beats a
-				 * gesture that looked like it fired and did not. The REQUEST comes from
-				 * the substituted text (whichever one this path's credential step
-				 * settled on — `composeOutgoing` below takes it as its argument) when
-				 * that still parses to the SAME skill, because credential citations may
-				 * have rewritten it inside the request; a different or missing parse
-				 * keeps the typed request.
-				 */
-				const skillNames = skillNamesRef.current;
-				const invocation = parseSkillInvocation(message, skillNames);
-				/*
-				 * THE SESSIONLESS BODY READ (#690's draft-pane finding, closed): the read
-				 * travels with the composer's OWN folder — the staged cwd on a first
-				 * message, the session's cwd once attached — so a `$skill` expands on a
-				 * first message exactly as it does in a live one. The parse still reads
-				 * the TYPED line before anything splices it, and the vocabulary it
-				 * resolves against is the same sessionless answer the list shows.
-				 *
-				 * READ ONCE, ABOVE BOTH COMPOSERS: the attached path's composition and
-				 * the draft path's seam both consume this body, and a second read
-				 * inside the seam would be a second request for an answer already in
-				 * hand.
-				 */
-				let skillBody: string | null = null;
-				if (invocation && skillReadProvided) {
-					const body = await readSkillBody(
-						skillReadClient,
-						cwd ?? "",
-						invocation.name,
-					);
-					if (body !== null && skillBodyHasContent(body)) skillBody = body;
-					else if (body !== null) {
-						onSlashNote?.(
-							`skill \`${invocation.name}\` has an empty body — sending your message as written`,
-						);
-					} else {
-						onSlashNote?.(
-							`could not load skill \`${invocation.name}\` — sending your message as written`,
-						);
+					if (draftModelUnresolved) {
+						sessionStatus?.onOpenDraftPicker?.("session.model");
+						/*
+						 * And the same `false`: this gate refuses the press too - it hands it to the
+						 * picker instead - so the box must keep its text. It was a bare `return`
+						 * (QA Q4's finding, one gate over), which retired a draft the user still
+						 * had to send once they had chosen a model.
+						 */
+						return false;
 					}
-				}
-				/*
-				 * THE ONE COMPOSITION, over whichever text the credential step settled
-				 * on — and WHY IT IS ONE (QA round 1, Q-1, the blocker). On a DRAFT pane
-				 * the credential work runs inside the store's `beforeAdmission` seam, and
-				 * the store lets that seam's RETURN REPLACE the payload the press built
-				 * (`admitChatDraft`: `(await beforeAdmission(id)) ?? text`). The seam used
-				 * to answer with the substituted raw line, so a first-message `$skill`
-				 * degraded to prose: the read succeeded, the payload was built, and the
-				 * replacement discarded it — the exact string the model then received
-				 * was the typed line. Both paths therefore end HERE: the attached path
-				 * composes once over `carried.text`, the seam composes over the
-				 * substituted text it just settled. One builder, so the two cannot
-				 * drift — the failure was invisible precisely because every gate, the
-				 * read and the list were all working; only the final string was
-				 * replaced.
-				 */
-				const composeOutgoing = (substitutedText: string): string => {
-					if (invocation !== null && skillBody !== null) {
-						const substituted = parseSkillInvocation(
-							substitutedText,
-							skillNames,
+					/*
+					 * A LIVE TAKE OWNS THE KEY (UX review round 1, U2).
+					 *
+					 * While a recording is up, Enter's job is to CONFIRM THE TAKE - the
+					 * recording branch below is that door, and the footer says so
+					 * ("Recording. Press the stop button when you're done."). It was not
+					 * the only door: the window-level recording listener runs after
+					 * React's delegated textarea handler, so the submit had already been
+					 * decided by the time the take's own Enter arrived, and the press
+					 * posted the TYPED draft while the take's words were never written
+					 * (measured live, 3/3: the daemon's history carried the typed text,
+					 * `input_mode: typed`, and no transcript). The dictating user's most
+					 * likely press sent a different message than the one they were
+					 * composing.
+					 *
+					 * Refused HERE, beside the model gate and for its reason: this is the
+					 * one function both doors (the form's submit control and the Enter
+					 * key) reach, so a second gate on the key alone is how the two start
+					 * disagreeing. `isTranscribing` is included because a transcript is
+					 * still landing - a send then would race the take's own write for the
+					 * same box.
+					 */
+					/*
+					 * `return false`, NOT a bare `return` (UX round 2 / QA Q4). `useMessageInput`
+					 * reads only `outcome === false` as a refusal (`use-message-input.ts`) and
+					 * treats `undefined` as an ACCEPTED send: it cleared the box, retired the
+					 * draft and logged the payload with no request ever made - the take's words
+					 * lost and the typed draft gone with them, silently (measured live, 3/3).
+					 * This is the shape the Esc-cancel path already refuses in, so the press now
+					 * leaves the text exactly where the user left it.
+					 */
+					/*
+					 * THE LIVE-TAKE GATE IS THE PRESS'S OWN, AND A DICTATED-AWAY DELIVERY IS NOT
+					 * A PRESS (bug 2). While a transcript is in flight this refuses the key
+					 * because a send would race the take's own write for the box. The away
+					 * delivery runs INSIDE that state by construction - it IS the take - and
+					 * its box is another composer's or nobody's, so the race it guards against
+					 * cannot arise. Skipped only for `opts.dictatedAway`; every other send keeps
+					 * the gate exactly as it was.
+					 */
+					if (!opts?.dictatedAway && (isRecording || isTranscribing))
+						return false;
+					// Assembled by the same function the composer compares against, so the
+					// string sent, stored, guarded and reasoned about by the copy is one
+					// string on the reply path too. Building the prefix inline here put it
+					// downstream of every comparison and deadlocked Restore - see
+					// `buildSendPayload`.
+					/*
+					 * A DRAFT PANE IS THE ONE PLACE THE STORE CANNOT RUN YET, and the most
+					 * likely first use of this feature is exactly that pane (UX round 1, U2).
+					 * `credentialSessionId` is undefined until a session exists, the session is
+					 * created INSIDE the send, and the whole point of §9 is that the value is
+					 * in the session's tool environment BEFORE the message citing it leaves.
+					 * So when there is no session to reach, the store defers to the host's own
+					 * `beforeAdmission` seam - the one window between `sessions.create`
+					 * answering and `sessions.message` going out - and the payload it sends is
+					 * the UNSUBSTITUTED text, so the seam still gets to write the citation
+					 * after it has stored. `settled` carries the answer back out of the seam
+					 * for the toasts, which cannot be raised before the send on this path
+					 * because there is nothing to raise them about until it lands.
+					 */
+					let settled:
+						| {
+								text: string;
+								stored: string[];
+								refused: string[];
+								unconfirmed: string[];
+						  }
+						| undefined;
+					// Assembled by the same function the composer compares against, so the
+					// string sent, stored, guarded and reasoned about by the copy is one
+					// string on the reply path too. Building the prefix inline here put it
+					// downstream of every comparison and deadlocked Restore - see
+					// `buildSendPayload`.
+					/*
+					 * THE COMPLEMENT OF THE SEAM'S CONDITION — and the polarity is the
+					 * whole point: `seam` exists on exactly the panes this ternary does
+					 * NOT store on yet. A draft has no session to store against, so it
+					 * keeps the literal and the store's own admission hook settles it
+					 * through the seam above; an attached pane stores HERE, in the send,
+					 * before the payload is built. Swapping the arms silently detaches
+					 * the citation store from every attached send and double-settles the
+					 * draft (round-2 review, R2-1 — it shipped swapped once).
+					 */
+					const carried = credentialSessionId
+						? await storeCitedCredentials(message)
+						: { text: message, stored: [], refused: [], unconfirmed: [] };
+					if (carried.stored.length > 0)
+						showSuccessToast(storedNotice(carried.stored));
+					/*
+					 * THE OPERATOR HEARS IT TOO, on every refusal and not only the
+					 * all-failed one. Warning rather than info: it reports a gesture that
+					 * did not do what it looked like it did, and it names the retry that
+					 * actually works — arming `/credential` and pasting again, because
+					 * `/credential <KEY>` cannot reach any store (the space after the token
+					 * opens a masked capture and the KEY is minted as a short secret).
+					 */
+					if (carried.refused.length > 0)
+						showWarningToast(unstoredNotice(carried.refused));
+					/*
+					 * AND THE THIRD RECEIPT, which is not a failure and must not be worded as
+					 * one: the store never confirmed the write, so the operator is told what
+					 * was observed ("could not be confirmed") rather than what was not
+					 * ("could not be stored"), and the notice names the one check that settles
+					 * it. Raised on the same warning surface for the same reason as the refusal
+					 * above: a gesture that did not do what it looked like it did.
+					 */
+					if (carried.unconfirmed.length > 0)
+						showWarningToast(unconfirmedNotice(carried.unconfirmed));
+					/*
+					 * THE `$skill` EXPANSION (issue #664), INLINE AND MULTI now — every
+					 * boundary `$name` matching a DISCOVERED name fires, not only a leading
+					 * one, and a message may name several. `planSkillMentions` is the
+					 * harness's own trigger (`local_operator/sigils.py::skill_mentions`),
+					 * so the token the ink painted is the token that expands; the
+					 * vocabulary is the `skills.list` answer with no hard-coded names.
+					 *
+					 * THE PAYLOAD IS THE USER'S TEXT VERBATIM and one tail block carrying
+					 * a body per fired name, joined by a blank line (`renderSkillBlock`,
+					 * byte-identical to `invoke.py`). `harness.rows.user_row_text` strips
+					 * that block back off, and this side's `displayTextOf` does the same,
+					 * which is what keeps the row on screen the typed line rather than a
+					 * wall of SKILL.md.
+					 *
+					 * A skill whose body cannot be read is NOT silently swallowed: one
+					 * keyed notice per skipped name — empty body, or the read failed — the
+					 * rest still attach, and when NONE attach the text goes through
+					 * untouched. That is the harness's own trade: a message the user can
+					 * see and resend beats a gesture that looked like it fired and did not.
+					 */
+					const skillNames = skillNamesRef.current;
+					const planned = planSkillMentions(message, skillNames);
+					/*
+					 * THE SESSIONLESS BODY READ (#690's draft-pane finding, closed): the read
+					 * travels with the composer's OWN folder — the staged cwd on a first
+					 * message, the session's cwd once attached — so a `$skill` expands on a
+					 * first message exactly as it does in a live one. The plan reads the
+					 * TYPED line before anything splices it, and the vocabulary it resolves
+					 * against is the same sessionless answer the list shows.
+					 *
+					 * ONE READ PER NAME, AND ITS RESULT HANDED TO WHICHEVER PATH COMPOSES
+					 * (`readPlannedSkillBodies`): a second read inside the seam would be a
+					 * second request for an answer already in hand.
+					 */
+					const readPlanned = () =>
+						readPlannedSkillBodies(planned, (name) =>
+							readSkillBody(skillReadClient, cwd ?? "", name),
 						);
-						const request =
-							substituted && substituted.name === invocation.name
-								? substituted.request
-								: invocation.request;
-						return buildSendPayload(
-							renderSkillInvocation({ ...invocation, request }, skillBody),
+					const raiseSkippedNotes = (
+						skipped: readonly {
+							name: string;
+							reason: "empty" | "unreadable";
+						}[],
+					) => {
+						for (const { name, reason } of skipped)
+							onSlashNote?.(
+								t(
+									reason === "empty"
+										? "ui.chat.composer_notes.skill_empty_body"
+										: "ui.chat.composer_notes.skill_load_failed",
+									{ name },
+								),
+							);
+					};
+					/*
+					 * THE BODY READ LEAVES THE PRESS'S PATH WHEN THE HOST CAN TAKE IT LATER
+					 * (operator report, 2026-11-17: "I press enter and it's ... up to a second
+					 * when there are skills noted in the message too. this shouldn't be the
+					 * case, it should be instant or at least appear instant and run in the
+					 * background if needed").
+					 *
+					 * EVERYTHING ABOVE THIS LINE IS THE PRESS'S OWN WORK — the credential
+					 * rewrite, the plan, the composition — and it is a promise about the
+					 * STRING, not a request. The bodies are a request: one desktop IPC and one
+					 * daemon catalogue scan per name (measured p50 67 ms, max 80 ms, n=15, with
+					 * no cache in the daemon), serial, all of it BETWEEN Enter and
+					 * `onSendMessage` — so the bubble and the box waited on the wire. A host
+					 * that honours `beforeAdmission` gives the press a window after the row is
+					 * painted and before the message is admitted, and the read belongs there:
+					 * started HERE so it overlaps the paint, awaited by the seam.
+					 *
+					 * THE SEAM IS THE ONLY CHANNEL THAT CAN CARRY IT. `onSendMessage`'s first
+					 * argument is what a host that ignores the seam would post, so it stays
+					 * the TYPED line here; a host that cannot honour the seam (the three
+					 * quick-send rows, a story, a rig) keeps the awaited read and the composed
+					 * first argument, which is the behaviour every one of them has today.
+					 */
+					const seamCarriesSkillRead =
+						planned.length > 0 && skillReadProvided && admissionSeamHonoured;
+					const seamSkillRead = seamCarriesSkillRead ? readPlanned() : null;
+					let skillBlock = "";
+					if (
+						planned.length > 0 &&
+						skillReadProvided &&
+						!seamCarriesSkillRead
+					) {
+						const read = await readPlanned();
+						raiseSkippedNotes(read.skipped);
+						skillBlock =
+							read.entries.length > 0 ? renderSkillBlock(read.entries) : "";
+					}
+					/*
+					 * THE ONE COMPOSITION, over whichever text the credential step settled
+					 * on — and WHY IT IS ONE (QA round 1, Q-1, the blocker). On a DRAFT pane
+					 * the credential work runs inside the store's `beforeAdmission` seam, and
+					 * the store lets that seam's RETURN REPLACE the payload the press built
+					 * (`admitChatDraft`: `(await beforeAdmission(id)) ?? text`). The seam used
+					 * to answer with the substituted raw line, so a first-message `$skill`
+					 * degraded to prose: the read succeeded, the payload was built, and the
+					 * replacement discarded it — the exact string the model then received
+					 * was the typed line. Both paths therefore end HERE: the attached path
+					 * composes once over `carried.text`, the seam composes over the
+					 * substituted text it just settled. One builder, so the two cannot
+					 * drift — the failure was invisible precisely because every gate, the
+					 * read and the list were all working; only the final string was
+					 * replaced.
+					 *
+					 * AND THE BLOCK IS A PARAMETER (bug 1): the seam composes from the bodies
+					 * it awaited, so the builder cannot close over a block the press did not
+					 * read.
+					 */
+					const composeOutgoing = (
+						substitutedText: string,
+						block: string,
+					): string =>
+						buildSendPayload(
+							block ? `${substitutedText}\n\n${block}` : substitutedText,
 							replies,
 						);
+					/*
+					 * THE SEAM EXISTS WHENEVER SOMETHING IS STILL TO SETTLE AFTER THE PRESS:
+					 * a credential that has no session to be stored into yet (a draft pane),
+					 * or a `$skill` read the press started and did not await. An attached
+					 * pane with neither keeps `undefined` — the pre-seam behaviour, byte for
+					 * byte.
+					 */
+					const seam =
+						!credentialSessionId || seamCarriesSkillRead
+							? async (sessionId: string) => {
+									/*
+									 * THE CREDENTIAL STEP, AND ONLY ON THE PANE THAT COULD NOT TAKE IT
+									 * AT THE PRESS: an attached pane settled `carried` above, and
+									 * storing it a second time inside the seam would repeat a write
+									 * whose answer the press already reported.
+									 */
+									if (!credentialSessionId)
+										settled = await storeCitedCredentials(message, sessionId);
+									const substituted = settled?.text ?? carried.text;
+									if (!seamSkillRead)
+										return composeOutgoing(substituted, skillBlock);
+									/*
+									 * THE BODIES, READ WHILE THE PRESS WAS PAINTING. A read that could
+									 * not answer is `readSkillBody`'s own `null`, reported per name and
+									 * sent WITHOUT the block (the design agreed with UX to keep today's
+									 * semantics: the note says what happened, the message goes as
+									 * written). The `catch` is the belt on that brace — a throw here
+									 * would fail the whole send, and a message the user can see and
+									 * resend beats a gesture that looked like it fired and did not.
+									 */
+									try {
+										const read = await seamSkillRead;
+										raiseSkippedNotes(read.skipped);
+										return composeOutgoing(
+											substituted,
+											read.entries.length > 0
+												? renderSkillBlock(read.entries)
+												: "",
+										);
+									} catch {
+										return composeOutgoing(substituted, "");
+									}
+								}
+							: undefined;
+					const outgoingText = composeOutgoing(carried.text, skillBlock);
+					const accepted = await onSendMessage(
+						/*
+						 * THE COMPOSED PAYLOAD WHEN THE PRESS HAD TO READ THE BODIES ITSELF (a host
+						 * that ignores the seam, or one with no `$skill` in the message), and the
+						 * TYPED line when the seam carries them: `seamSkillRead` is the one fact
+						 * that decides, and `outgoingText` above is built from that same read, so
+						 * the two cannot disagree. With the seam the payload travels with its
+						 * markers as before — the bodies were read from the TYPED line, and the
+						 * prose is whichever text the credential step settled on.
+						 */
+						outgoingText,
+						attachments.map((a) => a.path),
+						onEchoPainted,
+						// The typed text, beside the composed payload: the gate answer path
+						// resolves an option ordinal against THIS, never against the string
+						// the reply prefix produced.
+						message,
+						seam,
+						/*
+						 * HOW THIS MESSAGE WAS PRODUCED, stamped at the press (arch §4.2):
+						 * `typed`, `dictated`, or `mixed`. Carriage only - nothing in this
+						 * app renders it, and the store pins it so a retry replays the same
+						 * bytes. `undefined` when the backend has not advertised
+						 * `features.input_mode`; the page's `send` applies that gate.
+						 *
+						 * A dictated-away delivery carries the value FROZEN when its words
+						 * landed: this closure is a composer that may already be gone, and
+						 * its own flags describe the box it had, not the one it wrote to.
+						 */
+						opts?.inputMode ?? inputModeForSend(),
+						/*
+						 * THE SEVENTH ARGUMENT: this send is bound to the conversation it
+						 * started in rather than to the pane on screen (bug 2). Only the
+						 * dictated-away path passes it; every other door leaves it
+						 * `undefined`, which is what keeps the page's view gate, its
+						 * validation hold and its navigation exactly as they were.
+						 */
+						opts?.dictatedAway ? { originBound: true } : undefined,
+					);
+					if (accepted !== false) {
+						/*
+						 * THE PROVENANCE DIES WITH THE MESSAGE IT DESCRIBED. The reset
+						 * effect below would catch the empty box anyway, but only AFTER an
+						 * in-flight send settles - and a transcript landing inside that
+						 * window would otherwise inherit this message's flags (a dictated
+						 * follow-up reported `mixed`).
+						 */
+						sawTypingRef.current = false;
+						sawDictationRef.current = false;
 					}
-					return buildSendPayload(substitutedText, replies);
-				};
-				const seam = credentialSessionId
-					? undefined
-					: async (sessionId: string) => {
-							settled = await storeCitedCredentials(message, sessionId);
-							return composeOutgoing(settled.text);
-						};
-				const outgoingText = composeOutgoing(carried.text);
-				const accepted = await onSendMessage(
+					// The deferred store's own receipts, raised now that they exist.
+					if (accepted !== false && settled) {
+						if (settled.stored.length > 0)
+							showSuccessToast(storedNotice(settled.stored));
+						if (settled.refused.length > 0)
+							showWarningToast(unstoredNotice(settled.refused));
+						if (settled.unconfirmed.length > 0)
+							showWarningToast(unconfirmedNotice(settled.unconfirmed));
+					}
 					/*
-					 * THE INVOCATION PAYLOAD WHEN ONE FIRED, the composed text otherwise.
-					 * With the seam the payload travels with its MARKERS as before — the
-					 * branch above read the TYPED line, and the payload's request came from
-					 * the substituted text when that still parsed.
+					 * A failure leaves the composer's payload alone, replies and attachments
+					 * included, because the STORE put it back and this component must not
+					 * undo that: the chips it would restore are already restored, the text is
+					 * on its way in through `pendingText`, and the retry is one press of Send
+					 * (or of the notice's Retry) over unchanged bytes.
 					 */
-					outgoingText,
-					attachments.map((a) => a.path),
-					onEchoPainted,
-					// The typed text, beside the composed payload: the gate answer path
-					// resolves an option ordinal against THIS, never against the string
-					// the reply prefix produced.
-					message,
-					seam,
+					if (accepted === false) return accepted;
 					/*
-					 * HOW THIS MESSAGE WAS PRODUCED, stamped at the press (arch §4.2):
-					 * `typed`, `dictated`, or `mixed`. Carriage only - nothing in this
-					 * app renders it, and the store pins it so a retry replays the same
-					 * bytes. `undefined` when the backend has not advertised
-					 * `features.input_mode`; the page's `send` applies that gate.
+					 * THE CHIP ROW IS NOT CLEARED HERE ANY MORE, and that is the fix rather
+					 * than an omission. It used to be cleared on this line - i.e. once the
+					 * send had settled - while the text left the box at the echo, so the
+					 * whole in-flight window showed the transcript's copy of the message
+					 * with its attachment beside the composer's chip for the same file. The
+					 * two halves now leave together, in `use-message-input`'s `clearOnce`,
+					 * which is the one trigger both of them share (`clearStagedPayload`).
+					 * AN OFF-RECORD ASK'S PAYLOAD IS THE ASK'S TO SETTLE (review round 2, F6).
+					 * The question left at the press, so nothing here can know yet whether it
+					 * will be answered — and the two outcomes retire different things: an
+					 * ANSWERED ask consumed the staged reply and the credential it carried, so
+					 * both go as an accepted send's do; a REFUSED one keeps them, which is the
+					 * pre-F1 behaviour of that branch and the rule the block above states for a
+					 * refusal ("the operator's unsent draft must not lose the value behind a
+					 * pill they can still see"). Retiring on the press retired them either
+					 * way, and said nothing about it.
+					 *
+					 * The refusal itself is NOT repeated here: it belongs to the surface that
+					 * owns the exchange — the panel, or the composer's own error line when the
+					 * panel is gone (`chat-page.tsx`) — and a second copy of another surface's
+					 * sentence is a second place for the two to drift apart.
 					 */
-					inputModeForSend(),
-				);
-				if (accepted !== false) {
-					/*
-					 * THE PROVENANCE DIES WITH THE MESSAGE IT DESCRIBED. The reset
-					 * effect below would catch the empty box anyway, but only AFTER an
-					 * in-flight send settles - and a transcript landing inside that
-					 * window would otherwise inherit this message's flags (a dictated
-					 * follow-up reported `mixed`).
-					 */
-					sawTypingRef.current = false;
-					sawDictationRef.current = false;
-				}
-				// The deferred store's own receipts, raised now that they exist.
-				if (accepted !== false && settled) {
-					if (settled.stored.length > 0)
-						showSuccessToast(storedNotice(settled.stored));
-					if (settled.refused.length > 0)
-						showWarningToast(unstoredNotice(settled.refused));
-					if (settled.unconfirmed.length > 0)
-						showWarningToast(unconfirmedNotice(settled.unconfirmed));
-				}
-				/*
-				 * A failure leaves the composer's payload alone, replies and attachments
-				 * included, because the STORE put it back and this component must not
-				 * undo that: the chips it would restore are already restored, the text is
-				 * on its way in through `pendingText`, and the retry is one press of Send
-				 * (or of the notice's Retry) over unchanged bytes.
-				 */
-				if (accepted === false) return accepted;
-				/*
-				 * THE CHIP ROW IS NOT CLEARED HERE ANY MORE, and that is the fix rather
-				 * than an omission. It used to be cleared on this line - i.e. once the
-				 * send had settled - while the text left the box at the echo, so the
-				 * whole in-flight window showed the transcript's copy of the message
-				 * with its attachment beside the composer's chip for the same file. The
-				 * two halves now leave together, in `use-message-input`'s `clearOnce`,
-				 * which is the one trigger both of them share (`clearStagedPayload`).
-				 * AN OFF-RECORD ASK'S PAYLOAD IS THE ASK'S TO SETTLE (review round 2, F6).
-				 * The question left at the press, so nothing here can know yet whether it
-				 * will be answered — and the two outcomes retire different things: an
-				 * ANSWERED ask consumed the staged reply and the credential it carried, so
-				 * both go as an accepted send's do; a REFUSED one keeps them, which is the
-				 * pre-F1 behaviour of that branch and the rule the block above states for a
-				 * refusal ("the operator's unsent draft must not lose the value behind a
-				 * pill they can still see"). Retiring on the press retired them either
-				 * way, and said nothing about it.
-				 *
-				 * The refusal itself is NOT repeated here: it belongs to the surface that
-				 * owns the exchange — the panel, or the composer's own error line when the
-				 * panel is gone (`chat-page.tsx`) — and a second copy of another surface's
-				 * sentence is a second place for the two to drift apart.
-				 */
-				if (isOffRecordAsk(accepted)) {
-					settleOffRecordPayload(accepted, retireAcceptedPayload);
+					if (isOffRecordAsk(accepted)) {
+						settleOffRecordPayload(accepted, retireAcceptedPayload);
+						return accepted;
+					}
+					retireAcceptedPayload();
 					return accepted;
-				}
-				retireAcceptedPayload();
-				return accepted;
-			},
+				},
 			[
 				onSendMessage,
 				attachments,
@@ -3110,6 +3520,11 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				skillReadProvided,
 				cwd,
 				onSlashNote,
+				// Whether this host can take the `$skill` read through the seam (bug 1):
+				// a memo that captured the old value would keep awaiting the bodies on a
+				// host that had become able to take them later, or send it a typed line
+				// it cannot compose.
+				admissionSeamHonoured,
 			],
 		);
 
@@ -3165,8 +3580,9 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			 * this hook makes — including the keystrokes that follow the cancel, which
 			 * is why it rides the hook rather than being written by the composer's own
 			 * capture path alone. Design round 2's D2 was the missing half of §6's
-			 * deliberate decision to persist the Esc-restored characters: the
-			 * characters came back and the sentence that makes them legible did not.
+			 * then-deliberate decision to persist the Esc-restored characters (retired
+			 * 2026-10-22; Esc no longer restores any): the characters came back and the
+			 * sentence that makes them legible did not.
 			 *
 			 * A FUNCTION OF THE VALUE rather than a number, because the write happens
 			 * inside the keystroke's own handler: a number captured at render time still
@@ -3177,6 +3593,12 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			 */
 			draftUnredacted: disclosureOver,
 		});
+
+		/*
+		 * A send this composer made is unacknowledged: the one fact slot B's role
+		 * function and the Send-recording hold read (`composer-slots.ts`).
+		 */
+		const sendBusy = sendInFlight || sendUnsettled;
 
 		/*
 		 * The reset: when the box is EMPTY and no send of this composer is still
@@ -3485,13 +3907,11 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * makes the persisted draft agree with the box at the moments the box changes
 		 * for a reason the operator did not type.
 		 *
-		 * THE ESC-RESTORED PLAINTEXT IS PERSISTED TOO, deliberately (UX round 1,
-		 * U4). Leaving it out kept a secret off disk, which is defensible — but the
-		 * draft then held the inert `/credential ` the operator had just cancelled,
-		 * so a crash or a quit came back holding a token that looks like a capture
-		 * and is not one, with their line gone. The module's own words for that state
-		 * are the answer: after the unredact "it is their prose, not a credential",
-		 * and the composer persists prose.
+		 * NO TYPED CHARACTERS ARE PERSISTED BY ANY ESC (2026-10-22). Until then the
+		 * Esc-restored plaintext was persisted here on purpose (UX round 1, U4), which
+		 * is how a cancelled credential reached `localStorage`. Esc now holds and then
+		 * discards (§5), so what an Esc leaves for this write is the inert token and
+		 * the operator's own prose around it.
 		 */
 		const persistDraft = useCallback(
 			(capture: Capture, buffer: string) => {
@@ -3686,19 +4106,22 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			 */
 			lockedRun.current = null;
 			setDisclosure(null);
+			// The held Esc is about this box's capture, which was just torn down: kept, a
+			// same-length secret typed in the next conversation would open already held.
+			setEscapeHeldOver(null);
+			setDiscardedOver(null);
 		}, [conversationId, setCapture, setDisclosure]);
 
 		/*
 		 * WHAT THE DRAFT SAYS ABOUT ITSELF, re-raised on arrival (design round 2,
 		 * D2).
 		 *
-		 * §6 persists the Esc-restored characters deliberately — by then they are the
-		 * operator's prose — and the teardown above clears this composer's own
-		 * disclosure on a switch, which is right for a LIVE cancel and was the whole
-		 * of the persisted state: the restored draft came back holding a secret with
-		 * no notice, no arm and no pill, and one Enter exposed it. §5 says that state
-		 * must never be silent, so the count now travels with the characters in the
-		 * draft store and this raises the same sentence on the way back in.
+		 * A draft can arrive holding plaintext a credential gesture produced: one an
+		 * older build persisted after an Esc unredact (retired 2026-10-22), or one a
+		 * locked-run undo handed back. The teardown above clears this composer's own
+		 * disclosure on a switch, so without this the draft would come back with no
+		 * notice and one Enter would expose it. The count travels with the characters
+		 * in the draft store and this raises the same sentence on the way back in.
 		 *
 		 * A subscription rather than a read of the hook's restored value, because the
 		 * store is what is persisted and the store is written on every keystroke: the
@@ -3896,51 +4319,45 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				}
 
 				if (event.key === "Escape") {
+					/*
+					 * THE FIRST ESC ON A SPAN WITH CHARACTERS IS CLAIMED AND CHANGES NOTHING
+					 * (operator-approved fix, 2026-10-22). It used to unredact the value into
+					 * the buffer, and `applyCapture` below persists the buffer — so a cancelled
+					 * credential reached `localStorage` in plaintext. The mask, the value and
+					 * the draft stay exactly as they were; only the notice changes, to name what
+					 * the second press does. Claimed (`true`) so the press does not fall through
+					 * to the composer's other Escape meanings while a capture is open.
+					 */
+					if (escapeHolds(current) && !escapeIsHeld(newMessage, current)) {
+						setEscapeHeldOver({ buffer: newMessage, value: current.value });
+						return true;
+					}
+					const discarding = current.value !== "";
 					const cancelled = cancelTypedCredential(current, newMessage);
 					if (!cancelled.cancelled) return false;
 					/*
-					 * THE TOKEN THIS CANCEL LEAVES INERT, remembered so the SUBMIT seam can
-					 * keep the promise the notice below makes (QA round 1, Q2). Enter on
-					 * the restored draft used to reach the dispatcher, which read the
-					 * leading `/credential` as the COMMAND: it opened the picker and
-					 * stripped the restored characters out of the operator's sentence, so
-					 * the text they were told they were about to expose was destroyed
-					 * instead. Recorded at the cancel because the cancel is the only place
-					 * that knows which token was the gesture.
+					 * THE TOKEN THIS CANCEL LEAVES INERT, remembered so the SUBMIT seam treats
+					 * the words written after it as the operator's prose rather than as the
+					 * command's argument (UX round 2, U9): `/credential ` + Esc + `mysecretname`
+					 * + Enter must send the sentence, not eat it. Recorded at the cancel because
+					 * the cancel is the only place that knows which token was the gesture.
 					 *
-					 * RECORDED FOR THE EMPTY-SPAN CANCEL TOO (UX round 2, U9), which is
-					 * the round-2 correction: `null` there was justified by the NOTICE
-					 * being suppressed — nothing was restored, so there is nothing to
-					 * warn about — and that is true about the notice and false about the
-					 * submit. With no token registered, `/credential ` + Esc +
-					 * `mysecretname` + Enter dispatched the command, ate the operator's
-					 * words as its argument and stripped them out of the box. What the
-					 * cancel promises is that the gesture is OVER; the token is how the
-					 * submit is told.
+					 * The token is LEFT in the box rather than removed (design review round 1,
+					 * D6): it is what the operator typed, an empty-span cancel has always left
+					 * it, and removing it would make the two cancels look different for one
+					 * gesture. It is inert, not re-armed (the no-re-arm rule above), and the
+					 * discard line below says what happened to the value.
 					 */
 					cancelledToken.current = cancelled.token;
 					/*
-					 * THE ONE DISCLOSURE THE APP ANNOUNCES, because the frame cannot
-					 * say it on its own: after the unredact the composer looks entirely
-					 * ordinary while holding characters that are now plain text, and
-					 * the very next Enter exposes them. The length is the count, never
-					 * the value. An empty cancel owes no warning — it put nothing in
-					 * the buffer — and the count travels with the draft it describes, so
-					 * the same sentence comes back on a reload (design round 2, D2).
-					 *
-					 * SET BEFORE `applyCapture`, deliberately, because that call is what
-					 * PERSISTS the draft: it asks `disclosureOver` for this buffer, and a
-					 * cancel that wrote the characters first and the disclosure second would
-					 * put a disclosure-free plaintext draft on disk — silently, and only
-					 * after a reload, which is exactly the shape D2 filed. There is ONE such
-					 * pair here: the remediation briefly had two, and the duplicate made the
-					 * ordering invisible to the pin (code review round 3, MINOR 2).
+					 * THE DISCLOSURE IS ALWAYS CLEARED. A cancel discards (`cancelTypedCredential`)
+					 * and puts nothing in the box for a sentence to warn about. Cleared BEFORE
+					 * `applyCapture`, which persists the draft with `disclosureOver` this buffer,
+					 * so a disclosure read back from a pre-fix draft cannot ride the post-cancel
+					 * write (design round 2, D2; code review round 3, MINOR 2).
 					 */
-					setDisclosure(
-						cancelled.restored > 0
-							? { chars: cancelled.restored, over: cancelled.buffer }
-							: null,
-					);
+					setDisclosure(null);
+					if (discarding) setDiscardedOver(cancelled.buffer);
 					applyCapture(cancelled);
 					return true;
 				}
@@ -3995,6 +4412,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				// dependency here.
 				submitCapture,
 				setDisclosure,
+				escapeIsHeld,
 			],
 		);
 
@@ -4060,25 +4478,15 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					 */
 					commandLockedWords: CREDENTIAL_LOCKED_WORDS,
 					/*
-					 * WHICH WORD'S RUN THIS DRAFT IS CARRYING, when the cancel record says it
-					 * put characters back — and NOTHING for a draft the app never un-masked.
-					 *
-					 * This is the whole difference between the two drafts that look alike:
-					 * `the docs/credential rotation policy is stale` is prose (no live run, so
-					 * the planner's boundary rule holds it to a word-opening slash, and the
-					 * sentence sends), while `please /credxential <secret>` one keystroke
-					 * after the app's own Escape is credential material (the run is still in
-					 * the box, so it is taken whatever spelling the word now has). The word
-					 * handed over is the record's own, and it is handed over only while the
-					 * run it restored is still in the draft — a record that restored nothing,
-					 * or whose characters have been edited away, hands nothing over. See
-					 * `carriesRestoredRun` above and `lockedWordPlan`.
+					 * WHICH WORD'S RUN THIS DRAFT IS CARRYING, when a PASTE brought it in and the
+					 * pasted run is still in the draft; NOTHING for a draft the app never exposed.
+					 * An Esc cancel used to hand its word over too, while the characters it
+					 * restored stood in the box; it restores none now (2026-10-22), so only the
+					 * paste route remains. See `carriesPastedRun` and `lockedWordPlan`.
 					 */
-					unmaskedRunWord: carriesRestoredRun(draft)
-						? cancelledToken.current?.text.trim().replace(/^\//, "")
-						: carriesPastedRun(draft)
-							? pastedRun.current?.word
-							: undefined,
+					unmaskedRunWord: carriesPastedRun(draft)
+						? pastedRun.current?.word
+						: undefined,
 					nameListCommands: slash.nameListCommands,
 					enabled: slash.available && Boolean(onSlashCommand),
 				}),
@@ -4119,12 +4527,9 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * The planner, with §5's one exception in front of it.
 		 *
 		 * AFTER AN ESC CANCEL THE TEXT THE OPERATOR SEES IS WHAT GETS SENT (QA round
-		 * 1, Q2). The notice the composer itself raises for that state promises
-		 * "Enter will expose them", and Enter did the opposite: the restored draft
-		 * still begins with `/credential`, so the planner read it as a COMMAND — the
-		 * picker opened, nothing was sent or stored, and mid-prose the dispatcher
-		 * stripped the restored characters out of the operator's sentence. The
-		 * characters they were just told they were about to expose were destroyed.
+		 * 1, Q2). The draft still begins with the inert `/credential`, and the planner
+		 * used to read it as a COMMAND: the picker opened, nothing was sent, and
+		 * mid-prose the dispatcher stripped the operator's words out of their sentence.
 		 *
 		 * Scoped to the token the composer KNOWS it just cancelled, which is why the
 		 * predicate is `holdsCancelledToken` rather than a flag: it matches the exact
@@ -4193,37 +4598,9 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			[recordWord],
 		);
 		/**
-		 * Whether THIS DRAFT still holds the characters the cancel put back.
-		 *
-		 * The record's own reach (UX round 6, U24; code review round 6, MINOR 1). The
-		 * composer's record lives until a send, a dispatch or a conversation change —
-		 * that is the pane's history, and handing the record's word to the planner on
-		 * the strength of it alone applied the run's rule to drafts holding NONE of the
-		 * app's characters: `/credential <secret>` -> Escape -> clear the box -> write a
-		 * sentence -> Enter truncated the sentence, opened a Credential dialog for a
-		 * secret the operator does not have, and left it unsendable (round 5's loop, on
-		 * prose). The control — the same sentence with no Escape — was never consumed.
-		 *
-		 * So the byte comparison decides, not the history: the record counts only while
-		 * the run it restored is still in the box, which is exactly the state every
-		 * shape this branch closes is in at the press.
-		 */
-		const carriesRestoredRun = useCallback((draft: string): boolean => {
-			const cancelled = cancelledToken.current;
-			if (cancelled === null || cancelled.restored === 0) return false;
-			/*
-			 * AS A TOKEN, not as a substring (UX round 7, U27): `prod` restored from
-			 * `/credential prod` is not the `prod` inside `the prod/staging split is stale`,
-			 * and a sentence the operator wrote must not have its tail taken because two
-			 * characters of it happen to match a short value.
-			 */
-			return standsAsToken(draft, cancelled.restoredText);
-		}, []);
-		/**
 		 * Whether this draft still carries the run a PASTE brought in (QA round 6, Q-1).
 		 *
-		 * The same shape as `carriesRestoredRun` and for the same reason — the bytes
-		 * decide, not the history — with the pasted TAIL as the bytes: an edit inside the
+		 * The bytes decide, not the history, with the pasted TAIL as the bytes: an edit inside the
 		 * word leaves the secret exposed and must stay covered, while a box that no longer
 		 * holds the pasted value is prose again.
 		 */
@@ -4231,98 +4608,9 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			const pasted = pastedRun.current;
 			return pasted !== null && standsAsToken(draft, pasted.run);
 		}, []);
-		/**
-		 * Whether THIS draft is one whose press is HELD — nothing runs, nothing
-		 * sends, the box is kept, one notice names the way out.
-		 *
-		 * ONE PREDICATE, TWO READERS (agent review round 2, R5). `planForDraft`
-		 * answers `{kind:"held"}` on exactly this shape, and the composer line must
-		 * not claim the hold on any other: the line said so on `unredactedChars !=
-		 * null`, and that disclosure OUTLIVES the record. On the reload /
-		 * conversation-switch shape the disclosure and the buffer persist while
-		 * `cancelledToken.current` (a ref) dies, so the old test passed where the
-		 * press runs no hold at all — Enter DISPATCHED `/credential <secret>` and ate
-		 * the trailing words as its argument, the very defect this change closes,
-		 * under a sentence promising the opposite. Both readers ask this now, so the
-		 * claim and the press cannot drift.
-		 *
-		 * The two facts are the press's own: `holdsCancelledToken` is the exact span
-		 * `gestureFor` reads (the draft still carries the box's cancelled token where
-		 * it was put back), and `restored > 0` is the branch's own condition — an
-		 * empty span restores nothing, so its words are prose and its press sends.
-		 * CARET-INDEPENDENT by construction, which is what lets the render path read
-		 * it: `gestureFor` takes the draft alone, and no part of the held answer
-		 * depends on where the cursor sits. A `useCallback` with NO dependency, like
-		 * `gestureFor` its sibling: it reads refs only, so its identity is stable and
-		 * `planForDraft` can list it without re-creating on every render.
-		 */
-		const holdsHeldPress = useCallback((draft: string): boolean => {
-			const token = cancelledToken.current;
-			return (
-				token !== null &&
-				token.restored > 0 &&
-				holdsCancelledToken(draft, token)
-			);
-		}, []);
 		const planForDraft = useCallback(
 			(draft: string, at: number): SlashSubmissionPlan => {
 				const gesture = gestureFor(draft);
-				if (gesture === "send" && holdsHeldPress(draft)) {
-					/*
-					 * §5's EXCEPTION, AND THE ONE DRAFT IT MAY NOT SEND.
-					 *
-					 * `send` here means "what you see is what gets sent" — the box cancelled this
-					 * token and the visible text is the operator's own prose (QA round 1 Q2; UX
-					 * round 2 U9). That reading cannot hold for a COMMAND-LOCKED word carrying a
-					 * tail, whose tail is a secret: [redacted] on a live conversation, type
-					 * `/credential `, type the secret behind the mask, press Escape — which THIS APP
-					 * offers in its own notice — and the press put `/credential <the secret>` into
-					 * the conversation, on the remediation's first head and on `main` alike (UX
-					 * round 1, U1). The exception promises the user their own words, not their
-					 * secret's.
-					 *
-					 * WHAT THE CANCEL ITSELF RECORDED DECIDES, and it is the only fact that can
-					 * (review round 3, MINOR 1). The first form of this asked the DISCLOSURE
-					 * (`unredactedChars !== null`), a whole-buffer equality any keystroke clears — so
-					 * one keystroke after the Escape the exception answered `send` and the secret went
-					 * to the model (QA round 2, Q-1). The second form asked the planner for EVERY
-					 * draft holding a locked run: that closed the door, and it also cost the
-					 * operator's own sentence on the one shape where a locked word arrives through a
-					 * route the app has already told them is over — `/credential ` + Escape + words +
-					 * Enter deleted the words instead of sending them.
-					 *
-					 * `token.restored` is the fact both readings were guessing at, taken where it is
-					 * known. An EMPTY span puts nothing back, so the words written after it are the
-					 * operator's own (§5) and the composer sends them as prose — and where the draft
-					 * OPENS with the token, the leading-slash policy refuses that send outright and
-					 * the words stay in the box with nothing sent (UX round 4, U16 [redacted] both, and
-					 * corrected this: the earlier claim here that the shape re-sends the sentence was
-					 * wrong — it is refused, and the gain over the previous head is that the words are
-					 * KEPT rather than consumed). A span that HELD characters puts a secret back, and
-					 * no later keystroke can make that untrue — but the run is no longer DISPATCHED
-					 * here; the press is HELD, which is what `holdsHeldPress` asks and the composer
-					 * line now reads too (agent review round 2, R5 — the two used to ask different
-					 * questions, and the line's was the survivor-less disclosure).
-					 */
-					/*
-					 * A HELD PRESS, NOT A DISPATCHED ONE (operator requirement).
-					 *
-					 * The dispatch route below used to run here and it answered Q-1 — the restored
-					 * secret was never SENT to the model — but at the operator's own cost: the words
-					 * they typed after the cancelled token became the command's ARGUMENT, the run
-					 * consumed them, and the receipt said so. The operator's requirement outranks
-					 * that route. Both of the plan's old answers are wrong at this state:
-					 * dispatching consumes their words, and `send` puts the restored secret into a
-					 * message record. So the press is HELD: nothing runs, nothing sends, the box is
-					 * kept, and one notice names the way out. The Q-1 security invariant is met by
-					 * the hold rather than by the dispatch.
-					 */
-					return {
-						kind: "held",
-						notice:
-							"These characters are still the credentials you cancelled — clear the box to release your words and send your sentence.",
-					};
-				}
 				if (gesture === "send") return { kind: "send" };
 				const plan =
 					gesture === "pick" ? planFor(draft, at, "pick") : planFor(draft, at);
@@ -4360,7 +4648,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			 * which stopped being true when the call site at the composer line moved to
 			 * the held sentinel).
 			 */
-			[gestureFor, holdsHeldPress, planFor, recordWord],
+			[gestureFor, planFor, recordWord],
 		);
 		/*
 		 * The composer's syntax highlight, and the ONE gate that decides whether the
@@ -4432,14 +4720,17 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * THE `$skill` INK, merged AFTER the plan gate above rather than through it —
 		 * and the order is load-bearing, not tidiness. A `$research fix this` draft
 		 * goes to the model on Enter (`plan.kind` is `send`), so `runsMatchingPlan`
-		 * blanks every run of it: a skill run merged before the gate would blank
-		 * exactly the primary case this tint exists for. The merge below appends the
-		 * `$` runs to the gated slash runs, and the two families cannot overlap by
-		 * construction — a paintable skill token must be LEADING (whitespace-only
-		 * before it), while a slash run needs its `/` word before anything a claim
-		 * could leave it, so at most one family can hold the draft's first token.
+		 * blanks every run of it: a skill run merged before that gate would blank
+		 * exactly the primary case this tint exists for.
 		 *
-		 * The four inputs are the ones `skill-highlight.ts` judges on: the draft, the
+		 * THE SURFACE GATE IS THE PLAN Enter USES (`planForDraft`), because a skill
+		 * only expands on a draft that reaches the send seam. `/team delivery
+		 * $research` dispatches a command and the argument is admitted by the
+		 * backend; no skill attaches, so no ink claims one. A leading slash word the
+		 * planner treats as prose still paints — Enter sends it, and the seam
+		 * expands it. `skill-highlight.ts` carries the whole surface argument.
+		 *
+		 * The rest are the inputs `skill-highlight.ts` judges on: the draft, the
 		 * vocabulary the popup reads (one vocabulary, no second request), whether
 		 * that answer is settled, and whether the list is open on the token — which
 		 * suppresses the UNRESOLVED ink only (a resolved name paints through, see
@@ -4452,8 +4743,17 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				vocabulary: skills.vocabulary,
 				settled: skills.settled,
 				picking: skills.open,
+				expands: planForDraft(newMessage, caret).kind === "send",
 			});
-		}, [newMessage, composing, skills.vocabulary, skills.settled, skills.open]);
+		}, [
+			newMessage,
+			caret,
+			composing,
+			skills.vocabulary,
+			skills.settled,
+			skills.open,
+			planForDraft,
+		]);
 		const composerRuns = useMemo(
 			() => [...slashRuns, ...skillRuns],
 			[slashRuns, skillRuns],
@@ -4498,39 +4798,6 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * guard rather than becoming a refusal that restores the draft (round 1 NIT-3).
 				 */
 				const runSlashCommand = onSlashCommand;
-				if (plan.kind === "held") {
-					/*
-					 * A HELD PRESS (operator requirement). This plan is asked of the composer
-					 * when the box still carries an Esc-cancelled credential token whose
-					 * characters were restored: the operator's own words after the token must not
-					 * become the command's argument, and the restored secret must not go to the
-					 * model. So the plan's answer is "do nothing, keep the box, and say the way
-					 * out". The notice is raised BEFORE the dispatcher guard below, deliberately:
-					 * the hold is a property of the composer's own state, not of whether a
-					 * dispatcher is wired, so a harness that mounts the composer alone still gets
-					 * the one sentence rather than a silently dead Enter.
-					 *
-					 * AND THE SENTENCE IS RAISED ONCE PER HOLD (remediation round 1, U4). The box
-					 * is byte-identical after the press, so nothing else about the frame changes:
-					 * four presses on a held box would otherwise append four identical transcript
-					 * lines, and the hold is one standing state rather than one event per press.
-					 * The guard lives HERE and not in the host's `note` for exactly that reason -
-					 * every other note is a fresh outcome with something new to say, and only this
-					 * branch repeats a sentence that is already the whole answer. A ref, not state:
-					 * re-raising the line must not itself re-render the composer, and any state
-					 * change (a keystroke, a clear) re-plans the draft and starts a new hold.
-					 */
-					const held = cancelledToken.current;
-					if (
-						held !== null &&
-						(lastHeldNotice.current?.token !== held ||
-							lastHeldNotice.current?.notice !== plan.notice)
-					) {
-						lastHeldNotice.current = { token: held, notice: plan.notice };
-						onSlashNote?.(plan.notice);
-					}
-					return;
-				}
 				if (!runSlashCommand) return;
 				/*
 				 * A `/model` SUBMISSION NAMING A ROW THAT NEEDS A SIGN-IN IS THE CONNECT
@@ -4572,6 +4839,38 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 							return;
 						}
 					}
+					/*
+					 * `/tag` OPENS ITS LIST; IT IS NOT RUN FROM THE SUBMIT.
+					 *
+					 * The destination is renderer-local: the tag list is the composer's own
+					 * inline surface, a pick toggles through the assignment hook, and the
+					 * backend has no `/tag` command to post. A submit is therefore the
+					 * gesture that OPENS the list, never the mutation.
+					 *
+					 * With no argument, write the trailing space the argument phase needs
+					 * at the token's own span (`replaceSpan`), so prose before and after it
+					 * survives. With an argument, leave the draft byte-identical and clear
+					 * the dismissed latch: the list reopens on the query already typed,
+					 * and nothing has been toggled by the Enter that opened it.
+					 */
+					if (spec?.destination === "session.tags") {
+						/*
+						 * `reopen()` runs in BOTH branches. A bare `/tag ` after Escape
+						 * rewrites the draft to the same bytes, so `setNewMessage` bails, the
+						 * phase key is unchanged and the dismissed latch would keep the list
+						 * closed: Enter neither sends, mutates nor reopens (review F3).
+						 */
+						if (!pyTrim(plan.command.args ?? "")) {
+							const start = plan.kind === "splice" ? plan.start : 0;
+							const end = plan.kind === "splice" ? plan.end : draft.length;
+							const opened = replaceSpan(draft, start, end, `/${spec.name} `);
+							pendingCaret.current = opened.caret;
+							setNewMessage(opened.text);
+							setCaret(opened.caret);
+						}
+						slash.reopen();
+						return;
+					}
 				}
 				if (plan.kind === "list-open") {
 					// The roster owns the next Enter — but only while it can give a row.
@@ -4583,7 +4882,9 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					// waiting for (round 1 UX U5).
 					if (slash.open && slash.matches.length > 0) return;
 					onSlashNote?.(
-						`Type a name after /${plan.command.name}, or choose one from the list.`,
+						t("ui.chat.composer_notes.slash_needs_name", {
+							command: plan.command.name,
+						}),
 					);
 					return;
 				}
@@ -4741,6 +5042,9 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				// inline list's rows, whose own `connected` it asks about.
 				slash.commands,
 				slash.argumentList.rows,
+				// `/tag`'s submit re-opens the list it dismissed; the setter is a
+				// stable callback, but the lint reads it off the object like the rest.
+				slash.reopen,
 				stage,
 				// The reassembly's note carries the pane's own clause too (review F3):
 				// the promise is conditioned on this pane being able to address a
@@ -4888,6 +5192,18 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			secretConfirmGroup.current?.focus();
 		}, [secretFilling]);
 
+		/**
+		 * THE LAST CONFIRM PRESS ASKED THE PANEL TO TAKE THE KEYBOARD.
+		 *
+		 * The retirement effect below moves focus back into the box whenever the
+		 * confirm disappears - right for a dismissal, a send, and a refusal whose panel
+		 * stayed out of the way. It is wrong when the same press opened a surface that
+		 * took the keyboard itself (the sheet under the overlay): that write lands
+		 * after the panel's own layout effect and would pull the caret out of a surface
+		 * the user just asked for. One press, one answer, read once.
+		 */
+		const openTookKeyboard = useRef(false);
+
 		/*
 		 * THE CONFIRM IS BOUND TO ITS ASK (agent review round 1, m1; QA round 1,
 		 * Q1/Q2). If the ask goes away - answered in the panel, expired, declined -
@@ -4914,6 +5230,10 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			 * so a press that left the keyboard on a confirm control is found by
 			 * `contains` and handed back to the box.
 			 */
+			if (openTookKeyboard.current) {
+				openTookKeyboard.current = false;
+				return;
+			}
 			const active = document.activeElement;
 			if (
 				active !== null &&
@@ -4947,6 +5267,14 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		const guardSecretSend = useCallback(
 			(text: string): boolean => {
 				if (!secretAsk || !looksLikeSecret(text)) return false;
+				/*
+				 * A NEW ATTEMPT STARTS WITH A CLEAN FOCUS LEDGER (agent review round 3,
+				 * MINOR-2). The retirement effect's first line returns when there is no
+				 * confirm, so a press that ENDED one - `openTookKeyboard` set, confirm
+				 * already null - leaves the flag standing; the next retirement would then
+				 * skip the caret it owes the box, once, for a press it never belonged to.
+				 */
+				openTookKeyboard.current = false;
 				setSecretConfirm({ value: text.trim(), key: secretAsk.key });
 				return true;
 			},
@@ -4999,8 +5327,15 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			if (!secretAsk.fillable) {
 				setSecretConfirm(null);
 				setSecretRefusal(t("ui.chat.composer.secret_fill_multi"));
-				secretAsk.onOpen({ focus: false });
-				textareaRef.current?.focus();
+				/*
+				 * A PRESS, not a result (agent review round 2, M2-r2): the control is
+				 * labelled "Open asks panel", and the panel is where the user must choose
+				 * the field. It takes the keyboard in BOTH presentations, so this branch
+				 * does not put the caret back in the box - doing so would be the second
+				 * thing deciding focus, and under the sheet the box is about to be inert.
+				 */
+				secretAsk.onOpen();
+				openTookKeyboard.current = true;
 				return;
 			}
 			setSecretFilling(true);
@@ -5037,12 +5372,21 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			setSecretRefusal(secretFillSentence(outcome));
 			/*
 			 * THE PANEL IS WHERE THE ASK IS, so a refusal puts it on screen beside the
-			 * sentence - including the owner's own refusal on the card - without taking
-			 * the caret out of the box (`focus: false`, QA round 1, Q3). An
-			 * `unavailable` pane has no session to open onto, so it is left closed.
+			 * sentence - including the owner's own refusal on the card. `focus: false`
+			 * asks it not to take the caret; the ANSWER says whether it could keep that
+			 * promise (agent review round 2, M2-r2). DOCKED this box gets the caret back
+			 * (QA round 1, Q3) and the card's own refusal-recovery focus then moves it on
+			 * to the masked field or Retry - the keyboard ends in the pane, which is
+			 * where the next act is (agent review round 3, Q1: corrected; the composer's
+			 * hand-back is real, it is just not the last write). Under the overlay sheet
+			 * the box is inert and cannot hold it, so the sheet takes it instead of
+			 * letting it fall to `<body>`. An `unavailable` pane has no session to open
+			 * onto, so it is left closed and the box keeps the caret.
 			 */
-			if (outcome !== "unavailable") secretAsk.onOpen({ focus: false });
-			textareaRef.current?.focus();
+			const takesFocus =
+				outcome === "unavailable" ? false : secretAsk.onOpen({ focus: false });
+			openTookKeyboard.current = takesFocus;
+			if (!takesFocus) textareaRef.current?.focus();
 		}, [
 			secretAsk,
 			secretConfirm,
@@ -5083,6 +5427,43 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * note on `holdCaretOnRefusedPress`.
 		 */
 		const sendRefused = noProvider || noModel;
+		/*
+		 * THE BLOCK THE LINE UNDER THE BOX STATES, before any press (D4). Wider than
+		 * `sendRefused` by one term, `serverOffline`, which is stated but does not
+		 * refuse - see the prop's note.
+		 */
+		/*
+		 * U1: the conversation's chosen model is on a local runtime that is not
+		 * the default, the replays' dead end (Ollama running, a model picked, Send
+		 * refused). Read only while `noProvider` holds; the census is the one the
+		 * chat already caches, so this adds no poll.
+		 */
+		const localSelection = useLocalSelection(quotaNoticeSelection, noProvider);
+		const sendBlock = sendBlockFor({
+			noProvider,
+			noModel,
+			serverOffline,
+			localSelection: localSelection !== null,
+		});
+		/*
+		 * "Choose a model" opens a MODEL PICKER (UX round 1, U3), not the connect
+		 * dialog: the pane's own draft picker where the backend offers one, else the
+		 * `/model` completion in an empty box. A box holding the user's text is not
+		 * overwritten; the caller falls back to the connect dialog.
+		 */
+		const chooseModelFromComposer = useCallback((): boolean => {
+			if (sessionStatus?.onOpenDraftPicker) {
+				sessionStatus.onOpenDraftPicker("session.model");
+				return true;
+			}
+			if (newMessage.trim() !== "") return false;
+			const text = "/model ";
+			pendingCaret.current = text.length;
+			setNewMessage(text);
+			setCaret(text.length);
+			textareaRef.current?.focus();
+			return true;
+		}, [sessionStatus, newMessage, setNewMessage, textareaRef]);
 		/**
 		 * Refuse a send and say so, which is what the KEY already does (U27).
 		 *
@@ -5091,7 +5472,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * the two had drifted apart.
 		 */
 		const explainRefusedSend = useCallback(() => {
-			setNoProviderHint(true);
+			setRefusedPresses((count) => count + 1);
 		}, []);
 
 		const handleSlashAction = useCallback(
@@ -5116,13 +5497,18 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					);
 					setNewMessage("");
 					onSlashNote?.(
-						`Default for new sessions: ${model.provider}/${model.model_id}`,
+						t("ui.chat.composer_notes.default_saved", {
+							model: `${model.provider}/${model.model_id}`,
+						}),
 					);
 				} catch (error) {
 					onSlashNote?.(
-						`The default was not saved: ${
-							error instanceof Error ? error.message : "the backend refused it"
-						}`,
+						t("ui.chat.composer_notes.default_not_saved", {
+							reason:
+								error instanceof Error
+									? error.message
+									: t("ui.chat.composer_notes.default_not_saved_fallback"),
+						}),
 					);
 				}
 			},
@@ -5143,6 +5529,28 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * the popup is a sibling of the textarea, not a keystroke in it.
 				 */
 				if (isInputDisabled) return;
+				/*
+				 * A TAG PICK IS A MUTATION, NOT A COMPLETION.
+				 *
+				 * The tag list runs on pick (`inline.runs`), but its rows must never go
+				 * through `completionFor`/`applyPlan`: that path writes the value into the
+				 * box, clears or splices the command, and asks the dispatcher to run
+				 * `/tag <name>` — while what the user asked for is one assignment toggle
+				 * with the draft, the caret and the open list all preserved so more tags
+				 * can follow. The write is the merged hook's (`actOnTagRow`), so rollback,
+				 * the 8/32 caps and the revision each write carries keep their one owner.
+				 *
+				 * `disposition.run` is the SAME gate the router applied: Tab and an
+				 * ambiguous Enter still complete the name and mutate nothing.
+				 */
+				if (
+					row.kind === "argument" &&
+					slash.inline?.source === "session-tags" &&
+					disposition.run
+				) {
+					await slash.actOnTagRow(row.row);
+					return;
+				}
 				const completion = completionFor(
 					newMessage,
 					caret,
@@ -5512,12 +5920,13 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 
 		/*
 		 * THE `$skill` ACCEPT (issue #664) — the one gesture whose whole output is a
-		 * STAGED DRAFT. Accepting a row writes `$name ` plus the surviving draft
-		 * (the pure `skillCompletionFor`, the TUI's own `_complete_skill`
-		 * arithmetic) and stops there: neither Tab nor Enter ever submits for a
-		 * skill row, because a completed `$skill ` is the opening of a prompt the
-		 * user is still writing. What the NEXT Enter sends is the expanded payload,
-		 * built in `onSubmit` to match `invoke.py` character-for-character.
+		 * STAGED DRAFT. Accepting a row replaces the token's OWN SPAN with `$name `
+		 * (the pure `skillCompletionFor`, the TUI's own `_skill_span_replacement`
+		 * arithmetic) and stops there: nothing outside the token moves, and neither
+		 * Tab nor Enter ever submits for a skill row, because a completed `$skill `
+		 * is the opening of a prompt the user is still writing. What the NEXT Enter
+		 * sends is the expanded payload, built in `onSubmit` to match `invoke.py`
+		 * character-for-character.
 		 *
 		 * The refusal covers this popup's click too — the same MAJOR-2 rule the two
 		 * sibling popups carry. `readOnly` cannot close this path here either,
@@ -5566,8 +5975,8 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				/*
 				 * AND THE SENTENCE THAT DESCRIBES THE STATE IT RESTORES. Where the run took
 				 * characters, `record.text` is those characters — the operator's own — so the box
-				 * is holding a credential in plain text: exactly what §5's own Escape produces and
-				 * announces, and the one state this app says must never be silent (design round 2,
+				 * is holding a credential in plain text: the state §5's Escape produced until
+				 * 2026-10-22, and the one state this app says must never be silent (design round 2,
 				 * D2). `plain` is that run's count, so the announcement fires wherever the restore
 				 * is REAL rather than wherever a live mask was unredacted — a live mask never
 				 * reaches this record at all (it answers Enter by minting), so keying it on that
@@ -5581,7 +5990,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * asks `disclosureOver` for the buffer it is about to write), so an undo that
 				 * wrote the characters first and the disclosure second would persist a plaintext
 				 * secret with `unredactedChars: 0`, silently — measured exactly that way: the
-				 * sentence right on screen, `0` in the store. The Escape path sets its disclosure
+				 * sentence right on screen, `0` in the store. The Escape path clears its disclosure
 				 * before its own persist for the same reason, and there is ONE such pair here.
 				 */
 				if (record.plain > 0)
@@ -5833,7 +6242,14 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				// Tab, and every Tab with an empty box or a caret mid-draft, keeps
 				// its native meaning (UX round 2, U7; code review round 2, F2).
 				const textarea = textareaRef.current;
-				const target = firstLiveAnswerOption();
+				/*
+				 * AND THE OPTION GROUP'S QUERY RUNS ONLY FOR THE KEY THAT CAN REACH IT (bug
+				 * 1's reading of this handler). Every keydown in the box used to build a
+				 * selector and walk the document to answer a question only Tab can act on
+				 * (`shouldTabIntoAnswerOptions` is Tab's alone), including the keydown that
+				 * submits - which is the press this change is about.
+				 */
+				const target = event.key === "Tab" ? firstLiveAnswerOption() : null;
 				if (
 					target &&
 					shouldTabIntoAnswerOptions(
@@ -5929,11 +6345,12 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			 *
 			 * THE STALE BRANCH IS A SILENT NO-OP, NOT A LATE SENTENCE, and that is the
 			 * fact the recording understated: Enter is `preventDefault`ed and returns, and
-			 * the sentence the branch raises on its way out is gated by the same pair the
-			 * stale read is wrong about - the notice renders only while
-			 * `(noProvider || noModel) && noProviderHint` - so with a provider now connected
-			 * the hint is set for a notice that draws NOTHING. The reader presses Enter on a
-			 * composer that can send, and the app answers nobody.
+			 * the cue the branch raises on its way out lands on a line gated by the live
+			 * facts the stale read is wrong about - the block line under the box renders
+			 * only while `sendBlock` is set (D4, onboarding friction 2026-11) - so with a
+			 * provider now connected the press is counted for a line that draws NOTHING.
+			 * The reader presses Enter on a composer that can send, and the app answers
+			 * nobody.
 			 *
 			 * THAT GATE IS NAMED BY ITS OWN TEXT, NOT BY A LINE NUMBER, and the reason is the
 			 * history of this one sentence (agent review round 3, MINOR 1): three rounds have
@@ -6417,7 +6834,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				 */
 				slot.toastId = showWarningToast(clearedToastLine(index), {
 					action: {
-						label: CREDENTIAL_CLEAR_UNDO_LABEL,
+						label: credentialClearUndoLabel(),
 						onClick: () => undoClear(slot),
 					},
 				});
@@ -6440,53 +6857,22 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		);
 
 		/*
-		 * THE STOP CONTROL'S BOX, HELD FOR A GRACE WINDOW AFTER A TURN ENDS.
+		 * THE THIRD BOX IN THE CONTROLS GROUP, named ONCE, because the strip's width
+		 * ladders ask about it and a second copy of the condition is how they drift.
 		 *
-		 * The reservation itself is argued at the row (see `data-interrupt-slot`
-		 * below); the clock it runs on is `useInterruptSlotHold`, which owns the
-		 * edge, the single timer and its disposal, and which the review round's own
-		 * test drives through the measured sequence. What belongs here is the ONE
-		 * thing the argument decides and the gate cannot: the edge the window opens
-		 * on is the Stop control's own state (`canonicalStop?.active`), never the
-		 * capability or a busy flag - that argument and the gate's own
-		 * `!canonicalStop?.active` term are what between them keep the box off the
-		 * row while the control is drawn there.
+		 * The group is two fixed slots, `[A][B]` = 68px (60px small view), in every
+		 * state except a live recording, where `[C Insert][A Cancel][B Send
+		 * recording]` draws a third box to the LEFT of the other two = 104px (92px).
+		 * A running turn is NOT a third box any more: Stop stands in Send's own slot.
+		 *
+		 * WHY THE STRIP IS TOLD (issue #788). Effort, cost and context are shed by
+		 * container-range queries, and a container query can see a width but not a
+		 * SIBLING growing, so those three ladders carry a state pair; the 780/740/675
+		 * arms now apply only while recording. The duration reading measures the
+		 * group's real left edge (`data-lo-composer-controls`) instead and needs no
+		 * flag.
 		 */
-		const slotHold = useInterruptSlotHold(Boolean(canonicalStop?.active));
-
-		/*
-		 * THE THIRD BOX IN THE CONTROLS GROUP, named ONCE, because two surfaces ask
-		 * about it and a second copy of the condition is how they drift.
-		 *
-		 * The row's right group is `[mic][send]` in the ordinary state and gains a
-		 * THIRD 32px box in two: while a turn runs (`canonicalStop.active` draws the
-		 * danger Square), and for the grace window after it ends, where the invisible
-		 * `data-interrupt-slot` below holds the same box open - `slotHold.held` for
-		 * the 500ms window, `isRecording` for as long as a live recording needs a press
-		 * in the box the Stop just left kept off the dictation control.
-		 *
-		 * WHY THE STRIP IS TOLD ABOUT IT (issue #788). The readings cluster's shed
-		 * rule is a container query, and a container query can see a width but not a
-		 * SIBLING: the active-time reading returned at the band's upper edge into a row
-		 * that by then carried 36px more controls, and overran them by ~8px with the
-		 * model name already at its `min-w-14` floor. It did that at EVERY column above
-		 * the band, not just at its edge, because the composer box is capped at
-		 * `--lo-chat-measure` (810 shipped, `styles/index.css`), so the row is 778px at
-		 * every column from 858 up - no width exists at which the running row fits the
-		 * fullest cluster, which is why the fix is the state and not a wider band.
-		 * Measured on both trees by `scripts/composer-readings-geometry.mjs`.
-		 *
-		 * AND THE SLOT'S OWN JSX READS `interruptSlotDrawn` rather than repeating the
-		 * condition, so a change to when the box is drawn cannot leave the shed
-		 * behind - the two questions have one answer by construction.
-		 */
-		const interruptSlotDrawn =
-			canonicalStopAvailable &&
-			!canonicalStop?.active &&
-			(slotHold.held || isRecording) &&
-			!(isLoading && currentJobId);
-		const controlsThirdBox =
-			Boolean(canonicalStop?.active) || interruptSlotDrawn;
+		const controlsThirdBox = isRecording;
 
 		/*
 		 * Whether the suggestion chips are inert.
@@ -6514,11 +6900,17 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * change — typed, transcribed, or restored from the draft store —
 		 * because a native textarea does not grow on its own.
 		 *
-		 * `newMessage`, `isRecording` and `isTranscribing` are triggers, not
-		 * reads: the body only touches the ref, so the linter sees them as
-		 * surplus. They are what tell the textarea to re-measure, and removing
-		 * them leaves it stuck at its previous height after a transcription
-		 * lands or a draft is restored.
+		 * `newMessage`, `isRecording`, `isTranscribing` and `isPreparing` are
+		 * triggers, not reads: the body only touches the ref, so the linter sees
+		 * them as surplus. They are what tell the textarea to re-measure, and
+		 * removing them leaves it stuck at its previous height after a
+		 * transcription lands or a draft is restored.
+		 *
+		 * `isPreparing` is here because the press opens the recording lane in the
+		 * same frame and the field must settle in THAT commit: re-measured only at
+		 * the handover it changed height a second time (34px to 28px at a 520px
+		 * column, where the placeholder swap to "Recording" wraps differently), so
+		 * one press cost two height changes (design round 3, D14).
 		 */
 		// biome-ignore lint/correctness/useExhaustiveDependencies: deps are re-measure triggers, not values read in the body
 		useEffect(() => {
@@ -6526,7 +6918,47 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			if (!el) return;
 			el.style.height = "auto";
 			el.style.height = `${el.scrollHeight}px`;
-		}, [newMessage, textareaRef, isRecording, isTranscribing]);
+		}, [newMessage, textareaRef, isRecording, isTranscribing, isPreparing]);
+
+		/*
+		 * A HOST-GATED EMPTY BOX FITS ITS SENTENCE (#1458 design r1 D3 / UX U9).
+		 * When a host refuses input (`hostNotice.blocksInput`) and the box is empty,
+		 * the placeholder IS the explanation of why it is dead - and the measure
+		 * above runs only on a VALUE change, so a gate sentence that arrived after
+		 * mount (capabilities, a selection) or a pane that narrowed kept the old
+		 * one-line height: at 800 px the Skills gate read "Update Local Operator /
+		 * to change skills by", with a scrollbar thumb in a read-only box.
+		 * Chromium counts an overflowing placeholder in `scrollHeight` (that thumb
+		 * is the proof), so the same measure is re-run whenever the placeholder or
+		 * the box's width changes, up to the same `max-h`. Chat passes no
+		 * `hostNotice`, so its box is untouched.
+		 */
+		const gatedEmpty = Boolean(hostNotice?.blocksInput) && newMessage === "";
+		const fittedPlaceholder = useRef<string | null>(null);
+		useLayoutEffect(() => {
+			const el = textareaRef.current;
+			if (!el || !gatedEmpty) {
+				if (el && fittedPlaceholder.current !== null) el.style.overflowY = "";
+				fittedPlaceholder.current = null;
+				return;
+			}
+			if (fittedPlaceholder.current === el.placeholder) return;
+			fittedPlaceholder.current = el.placeholder;
+			fitGatedBox(el);
+		});
+		useEffect(() => {
+			const el = textareaRef.current;
+			if (!el || !gatedEmpty || typeof ResizeObserver === "undefined") return;
+			let width = el.clientWidth;
+			const observer = new ResizeObserver(() => {
+				// Width only: the height this sets is itself a resize.
+				if (el.clientWidth === width) return;
+				width = el.clientWidth;
+				fitGatedBox(el);
+			});
+			observer.observe(el);
+			return () => observer.disconnect();
+		}, [gatedEmpty, textareaRef]);
 
 		/**
 		 * THE COMPOSER'S OWN INITIATIVE TO TAKE THE CARET: the mount, and every
@@ -6568,10 +7000,21 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			if (!autoFocus && !dictationEnded) return;
 			if (isInputDisabled || dictating) return;
 			const activeElement = document.activeElement;
+			/*
+			 * A FOCUSED TAB IS NOT A PLACE TO TAKE FOCUS FROM (UX round 1, U2). Radix
+			 * activates a tab on focus, so arrowing along a tab strip can MOUNT this box
+			 * (leaving a tab whose pane had no composer), and the claim below then moved
+			 * the caret out of the strip mid-keystroke: the second arrow press moved a
+			 * text cursor instead of the next tab. Deliberately NARROW - a tab, not
+			 * "anything focused" - so the box still takes focus on an ordinary page
+			 * open, where focus is on <body> or on a control the user did not just
+			 * arrow with.
+			 */
 			const isInputFocused =
 				activeElement &&
 				(activeElement.tagName === "INPUT" ||
-					activeElement.tagName === "TEXTAREA");
+					activeElement.tagName === "TEXTAREA" ||
+					activeElement.getAttribute("role") === "tab");
 			/*
 			 * Not while nothing is connected: the empty chat's headline invites a
 			 * question and the connect card asks for a provider, and autofocus put
@@ -6717,6 +7160,19 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						}
 						setAudioBlob(null);
 						audioChunksRef.current = [];
+						/*
+						 * A DISCARDED TAKE ENDS A PENDING "SEND RECORDING" (too short, or
+						 * cancelled): no transcription request will ever settle it, so
+						 * without this slot B would hold its busy face for good. And since bug
+						 * 2 the conversation-wide record has to learn it too, or the origin's
+						 * box would show a cap for a send nothing will ever finish.
+						 */
+						const discarded = dictatedSendRef.current?.intentId;
+						dictatedSendRef.current = null;
+						if (discarded) dictatedSends.end(discarded);
+						setSendRecordingPhase((phase) =>
+							sendRecordingNext(phase, { type: "discarded" }),
+						);
 					};
 				}
 				recorder.stop();
@@ -6894,11 +7350,39 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						const completeAudioBlob = new Blob(audioChunksRef.current, {
 							type: "audio/webm",
 						});
-						setAudioBlob(completeAudioBlob);
+						// A new take supersedes any offer to resend the last one.
+						setDictationFailure(null);
 						// Stop all tracks on the stream to release the microphone
 						for (const track of stream.getTracks()) {
 							track.stop();
 						}
+						/*
+						 * A TAKE STOPPED ON A TREE THAT IS ALREADY GONE STILL HAS TO BE SENT (bug
+						 * 2). The press releases the recorder, and a session switch landing in the
+						 * window between that release and this event replaced the panel: setting
+						 * `audioBlob` on that dead tree left the recording in a state nothing could
+						 * reach, so the user's speech - which they asked to send - was never even
+						 * transcribed. With an armed dictated send the bytes go straight to the
+						 * transcription instead; on every other path (a plain Confirm, a
+						 * discarded take) this is the same write it always was.
+						 *
+						 * AND THE INTENT IS THE GATE, NOT THE REF (round-1 finding, reviewer M3).
+						 * `dictatedSendRef` is written by every press on every host - it is how the
+						 * stay path arms itself - so `dictatedSendRef.current` alone was true on a
+						 * host that never opted in (`dictatedAwayDelivery` absent: the mini view,
+						 * config, library, project quick-send). A press that raced an unmount there
+						 * transcribed the take and appended the words to the draft, which is a
+						 * behaviour those hosts did not have and this change promised they would not
+						 * gain (`shared-composer.test.mjs` case 11: the media stub is never called).
+						 * Only an armed intent - the opt-in's own record, created by
+						 * `dictatedSends.begin` - authorises a take from a dead tree.
+						 */
+						if (dictatedSendRef.current?.intentId && !mountedRef.current) {
+							audioChunksRef.current = [];
+							transcribeTakeRef.current(completeAudioBlob);
+							return;
+						}
+						setAudioBlob(completeAudioBlob);
 					};
 
 					mediaRecorderRef.current.start();
@@ -6943,14 +7427,18 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					setIsPreparing(false);
 					console.error("Error accessing microphone:", err);
 					showErrorToast(
-						"Error accessing microphone. Please ensure microphone permissions are granted.",
+						t(
+							"ui.canvas.inline_edit.error_accessing_microphone_please_ensure_microphone_permissions_are_gran",
+						),
 					);
 				}
 			} else {
 				console.error("This runtime exposes no MediaRecorder");
 				/* Not "your browser": this is a desktop app, and the person reading
 				   this did not choose a browser and cannot change it. */
-				showErrorToast("Dictation is not available on this device.");
+				showErrorToast(
+					t("ui.canvas.inline_edit.dictation_is_not_available_on_this_device"),
+				);
 			}
 		}, [canEnableRecordingFeature, isInputDisabled, voiceBlocksDictation]);
 
@@ -6963,6 +7451,73 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			if (!isRecording) return;
 			settleRecordingAttempt("abort");
 		}, [isRecording, settleRecordingAttempt]);
+
+		/*
+		 * "SEND RECORDING": stop the take, transcribe it and submit the words as a
+		 * message in one press. Only the PRESS lives here - it records the draft the
+		 * words will join and releases the take exactly as Confirm does. The send
+		 * itself is the effect after `handleSubmit`, because it must run against the
+		 * render in which the transcript is in the box, and only after a check that
+		 * the box is what the press would have sent.
+		 */
+		const handleSendRecording = useCallback(() => {
+			if (!isRecording || sendRecordingPhase !== "idle") return;
+			// The same refusals as a plain Send, plus a send of this composer still
+			// going out: its clear would park the transcript instead of boxing it.
+			if (isInputDisabled || noProvider || noModel || sendBusy) return;
+			/*
+			 * A RECORDER THAT ALREADY DIED has no `onstop` to come, so entering the
+			 * phase would hold slot B and the mic inert until a remount. Settle it as
+			 * Insert transcript would and send nothing.
+			 */
+			if (mediaRecorderRef.current?.state !== "recording") {
+				settleRecordingAttempt("release");
+				return;
+			}
+			/*
+			 * THE SEND IS BOUND TO THE CONVERSATION, NOT TO THIS MOUNT (bug 2). On an
+			 * opted-in host the press registers an intent for `conversationId`; the
+			 * transcript then completes THERE whichever composer is mounted when it
+			 * lands, which is what stops a session switch from turning the dictated
+			 * send into a draft that was never sent.
+			 *
+			 * A conversation that already holds one refuses this press (no second
+			 * intent), because two bursts writing one box would race each other's
+			 * joins and the second transcript would have no box left to land in.
+			 * `sendBusy` above already covers this composer's own flight; this covers
+			 * the other one - a dictation started before a switch and still being
+			 * written down when the reader came back.
+			 */
+			const intentId =
+				dictatedAwayDelivery && conversationId
+					? dictatedSends.begin(conversationId, {
+							draftAtPress: newMessage,
+							owner: instanceId.current,
+						})
+					: null;
+			if (dictatedAwayDelivery && intentId === null) return;
+			dictatedSendRef.current = {
+				draftAtPress: newMessage,
+				transcript: null,
+				intentId,
+				originId: conversationId ?? "",
+			};
+			setSendRecordingPhase((phase) =>
+				sendRecordingNext(phase, { type: "press" }),
+			);
+			settleRecordingAttempt("release");
+		}, [
+			isRecording,
+			sendRecordingPhase,
+			isInputDisabled,
+			noProvider,
+			noModel,
+			sendBusy,
+			newMessage,
+			settleRecordingAttempt,
+			dictatedAwayDelivery,
+			conversationId,
+		]);
 
 		useEffect(() => {
 			/*
@@ -6979,6 +7534,20 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			const handleKeyDown = (event: globalThis.KeyboardEvent) => {
 				if (isRecording) {
 					if (event.key === "Enter") {
+						/*
+						 * A FOCUSED CLUSTER BUTTON KEEPS ITS OWN ENTER (UX round 1, U2).
+						 * Enter on Cancel or Send recording used to be swallowed here and
+						 * run Insert transcript instead - the one key press that does the
+						 * opposite of the control it is on. The button's native activation
+						 * (detail 0, never guarded) is the answer; this window-level
+						 * shortcut is for focus anywhere else.
+						 */
+						const target = event.target;
+						if (
+							target instanceof Element &&
+							target.closest("[data-lo-composer-controls] button")
+						)
+							return;
 						event.preventDefault();
 						handleConfirmRecording();
 					} else if (event.key === "Escape") {
@@ -7021,59 +7590,262 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			handleStopRecording,
 		]);
 
-		const handleSendAudio = useCallback(async () => {
-			if (!audioBlob) return;
+		/*
+		 * The press of "Send recording" ends WITHOUT a send: stable (a ref and a
+		 * setState), so `handleSendAudio`'s dependencies are unchanged.
+		 */
+		const endDictatedSend = useCallback(() => {
+			if (!dictatedSendRef.current) return;
+			const { intentId } = dictatedSendRef.current;
+			dictatedSendRef.current = null;
+			if (intentId) dictatedSends.end(intentId);
+			setSendRecordingPhase((phase) =>
+				sendRecordingNext(phase, { type: "transcript", usable: false }),
+			);
+		}, []);
 
-			try {
-				setIsTranscribing(true);
-				const response = await TranscriptionApi.createTranscription(
-					apiConfig.baseUrl,
-					{
-						file: new File([audioBlob], "recording.webm", {
-							type: "audio/webm",
-						}),
-					},
-				);
-				if (response.result?.text) {
-					const newText = response.result?.text || "";
-					sawDictationRef.current = true;
+		/*
+		 * ONE TAKE, TRANSCRIBED (bug 2's refactor of `handleSendAudio`). The bytes are
+		 * the parameter rather than `audioBlob` state because one caller now has no
+		 * state to hand over: an `onstop` delivered after the panel was replaced calls
+		 * this directly with the blob it just built (see the recorder's `onstop`).
+		 *
+		 * Everything else is the path it always was - one burst at a time, bounded,
+		 * the words appended to the box on a live composer, `ready-to-submit` deciding
+		 * the send - plus the one branch that sends the words HOME when this composer
+		 * is no longer the one holding the conversation.
+		 */
+		const transcribeTake = useCallback(
+			async (take: Blob) => {
+				/*
+				 * ONE BURST AT A TIME, bounded to this component (#1087 review round 1,
+				 * F4). Starting another send supersedes the previous controller so a
+				 * stale burst cannot keep issuing requests; unmount aborts too - unless a
+				 * dictated send is armed, which is the one case that must outlive it.
+				 */
+				transcriptionAbortRef.current?.abort();
+				const controller = new AbortController();
+				transcriptionAbortRef.current = controller;
+				/* The armed press is on the wire: the origin's busy face starts here. */
+				const armed = dictatedSendRef.current?.intentId;
+				if (armed) dictatedSends.markTranscribing(armed);
+
+				try {
+					setIsTranscribingOwn(true);
+					const response = await TranscriptionApi.createTranscriptionWithRetry(
+						apiConfig.baseUrl,
+						{
+							file: new File([take], "recording.webm", {
+								type: "audio/webm",
+							}),
+						},
+						{
+							signal: controller.signal,
+							/*
+							 * THE RETRY IS WRITTEN DOWN WHERE SUPPORT LOOKS (#1087). The app's
+							 * own log is the artifact support asks for, and "the hop was tried
+							 * three times" is the one fact that separates a transient fault
+							 * from a refusal when the two wear the same sentence.
+							 */
+							onRetry: ({ attempt, total, delayMs, error }) => {
+								console.warn(
+									`Transcription attempt ${attempt}/${total} failed with a transient upstream fault; retrying in ${delayMs} ms.`,
+									error,
+								);
+							},
+						},
+					);
+					if (response.result?.text) {
+						const newText = response.result?.text || "";
+						sawDictationRef.current = true;
+						const pending = dictatedSendRef.current;
+						/*
+						 * IS THIS MOUNT STILL THE ONE HOLDING THE CONVERSATION? (bug 2) Two facts,
+						 * because two things can have replaced it: the panel was unmounted with the
+						 * switch, or this composer was re-pointed at another conversation. Either
+						 * way the words belong to `pending.originId` and nowhere else.
+						 */
+						const alive =
+							mountedRef.current &&
+							(!pending || conversationIdRef.current === pending.originId);
+						if (!alive && pending?.intentId) {
+							/*
+							 * THE SEND GOES HOME (the operator's report, bug 2). No append to any box
+							 * from here: `deliverAway` writes the words into the ORIGIN's draft first
+							 * and then asks that origin's registered sender to post them, so a failure
+							 * at any point leaves them in the draft the user will come back to.
+							 *
+							 * The mode is frozen HERE, at the landing, because this is the last moment
+							 * this composer knows whether the box was dictated only or dictated on top
+							 * of typed text; the sender is another instance's closure and its own flags
+							 * describe a different box.
+							 */
+							void dictatedSends.deliverAway(
+								pending.intentId,
+								newText,
+								sawTypingRef.current || pending.draftAtPress.trim()
+									? "mixed"
+									: "dictated",
+							);
+							return;
+						}
+						/*
+						 * NOT `setNewMessage(newMessage + newText)`: that write reads a box
+						 * captured before the press, so a transcript landing between a send's
+						 * press and its clear was appended against a stale value - and the
+						 * clear then either took the fresh words back or resurrected the sent
+						 * text beside them. `appendTranscriptText` carries the wait that makes
+						 * the two writes one (its contract is in `use-message-input`).
+						 */
+						appendTranscriptText(newText);
+						if (dictatedSendRef.current) {
+							// The words are in (or parked for a send's clear); the check
+							// effect below decides whether the box is exactly what the press
+							// would have sent.
+							dictatedSendRef.current.transcript = newText;
+							setSendRecordingPhase((phase) =>
+								sendRecordingNext(phase, { type: "transcript", usable: true }),
+							);
+						}
+					} else {
+						/*
+						 * A SUCCESSFUL, EMPTY TRANSCRIPT IS SAID OUT LOUD (UX round 1, U3): the
+						 * strip used to disappear and nothing else happened, which reads as a
+						 * gesture that did not work. Info, not error - the request
+						 * succeeded; the take held no speech.
+						 *
+						 * AWAY, the sentence has to travel to the chat it happened in (bug 2):
+						 * this composer may already be gone, and an empty take it could not turn
+						 * into words is exactly the case where silence would leave the user
+						 * believing the message went.
+						 */
+						const armedElsewhere = dictatedSendRef.current;
+						if (
+							armedElsewhere?.intentId &&
+							(!mountedRef.current ||
+								conversationIdRef.current !== armedElsewhere.originId)
+						) {
+							dictatedSends.failAway(armedElsewhere.intentId, "transcription");
+							return;
+						}
+						showInfoToast(emptyTranscriptionMessage());
+						endDictatedSend();
+					}
+					// The take landed: nothing is left to offer back.
+					setDictationFailure(null);
+					setAudioBlob(null); // Clear the blob after sending
+				} catch (error) {
 					/*
-					 * NOT `setNewMessage(newMessage + newText)`: that write reads a box
-					 * captured before the press, so a transcript landing between a send's
-					 * press and its clear was appended against a stale value - and the
-					 * clear then either took the fresh words back or resurrected the sent
-					 * text beside them. `appendTranscriptText` carries the wait that makes
-					 * the two writes one (its contract is in `use-message-input`).
+					 * AN ABORTED BURST IS NOT A FAILURE TO REPORT. The surface that owned it
+					 * is gone, or a newer take replaced it; a toast about a request nobody is
+					 * waiting for would outlive the state it describes.
 					 */
-					appendTranscriptText(newText);
-				} else {
+					if (controller.signal.aborted) {
+						endDictatedSend();
+						return;
+					}
+					// The raw server message stays on the console; the toast names the
+					// cause in a sentence a person can act on (see
+					// `transcriptionFailureMessage`), because "please try again" cannot
+					// fix an account with no credits or a refused sign-in.
+					console.error("Error transcribing audio:", error);
 					/*
-					 * A SUCCESSFUL, EMPTY TRANSCRIPT IS SAID OUT LOUD (UX round 1, U3): the
-					 * strip used to disappear and nothing else happened, which reads as a
-					 * gesture that did not work. Info, not error - the request
-					 * succeeded; the take held no speech.
+					 * THE TAKE STAYS WHEN TIME COULD FIX IT (#1087). A transient upstream
+					 * fault - the one class `isTransientTranscriptionFailure` names, and the
+					 * one the client has just retried - is the failure where sending the same
+					 * bytes again is an action a person can take, so the recording is offered
+					 * back rather than left in a state nothing can reach. A refusal keeps the
+					 * old behaviour: re-sending a decision cannot change it, and offering to
+					 * would be the "try again" lie this copy exists to delete.
+					 *
+					 * THE ROW SPEAKS FOR ITSELF (design round 1, D1/D2). It carries the
+					 * retained-take sentence (`transcriptionFailureRowMessage`), not the
+					 * toast's, and the toast is withheld for this class: the row is the one
+					 * surface with the control, and two copies of the same sentence eleven
+					 * pixels apart - the louder one without the control, over the composer's
+					 * own mic and send - was the duplication this deletes.
 					 */
-					showInfoToast(EMPTY_TRANSCRIPTION_MESSAGE);
+					// A failed transcription sends NOTHING: the press ends here, the typed
+					// draft is untouched, and the kept take (if any) is offered back by the
+					// row below - a retry appends to the box and never auto-sends.
+					/*
+					 * AWAY, THERE IS NO ROW TO OFFER THE TAKE BACK (bug 2): the composer that
+					 * held it is gone, so the recording is genuinely lost and the sentence says
+					 * so instead of offering a Retry over bytes nothing has. Skip the toast this
+					 * path would otherwise raise - the refusal record carries the sentence to
+					 * the origin's own notice, and two copies for one failure is the duplication
+					 * design round 1 (D1/D2) deleted.
+					 */
+					const failedAway = dictatedSendRef.current;
+					if (
+						failedAway?.intentId &&
+						(!mountedRef.current ||
+							conversationIdRef.current !== failedAway.originId)
+					) {
+						dictatedSends.failAway(failedAway.intentId, "transcription");
+						return;
+					}
+					endDictatedSend();
+					const transient = isTransientTranscriptionFailure(error);
+					setDictationFailure(
+						transient ? transcriptionFailureRowMessage(error) : null,
+					);
+					if (!transient) showErrorToast(transcriptionFailureMessage(error));
+				} finally {
+					if (transcriptionAbortRef.current === controller) {
+						setIsTranscribingOwn(false);
+					}
 				}
-				setAudioBlob(null); // Clear the blob after sending
-			} catch (error) {
-				// The raw server message stays on the console; the toast names the
-				// cause in a sentence a person can act on (see
-				// `transcriptionFailureMessage`), because "please try again" cannot
-				// fix an account with no credits or a refused sign-in.
-				console.error("Error transcribing audio:", error);
-				showErrorToast(transcriptionFailureMessage(error));
-			} finally {
-				setIsTranscribing(false);
-			}
-		}, [audioBlob, appendTranscriptText]);
+			},
+			[appendTranscriptText, endDictatedSend],
+		);
+		/*
+		 * THE RECORDER'S DOOR TO THE TAKE (bug 2's shape (c)). An `onstop` can fire after
+		 * this tree is gone, so it cannot go through `audioBlob` state or the effect
+		 * that spends it; it calls the transcription itself, through a ref that always
+		 * holds this render's closure.
+		 */
+		transcribeTakeRef.current = (take: Blob) => {
+			void transcribeTake(take);
+		};
+		const handleSendAudio = useCallback(() => {
+			if (!audioBlob) return;
+			void transcribeTake(audioBlob);
+		}, [audioBlob, transcribeTake]);
 
-		// Automatically send audio for transcription when audioBlob is set
+		/**
+		 * Send the kept take again.
+		 *
+		 * The bump is what re-arms the auto-send effect below, so a retry rides the
+		 * same path the first attempt took - one owner of "a take is being sent"
+		 * (`isTranscribing`), one place that retires it. The offer is withdrawn in the
+		 * same commit, so a second press cannot queue a send nothing asked for.
+		 */
+		const retryDictation = useCallback(() => {
+			setDictationFailure(null);
+			setDictationRetry((attempt) => attempt + 1);
+		}, []);
+
+		/*
+		 * One effect owns every attempt. `dictationRetry` is a TRIGGER rather than an
+		 * input - it exists so the kept take can be sent again without a second send
+		 * path - and the ref above is what keeps the callback's identity churn from
+		 * being a second trigger: the send fires once per (blob, nudge) pair.
+		 */
 		useEffect(() => {
-			if (audioBlob) {
-				handleSendAudio();
+			if (!audioBlob) {
+				sentTakeRef.current = null;
+				return;
 			}
-		}, [audioBlob, handleSendAudio]);
+			if (
+				sentTakeRef.current?.blob === audioBlob &&
+				sentTakeRef.current.attempt === dictationRetry
+			) {
+				return;
+			}
+			sentTakeRef.current = { blob: audioBlob, attempt: dictationRetry };
+			handleSendAudio();
+		}, [audioBlob, dictationRetry, handleSendAudio]);
 
 		/*
 		 * THE DICTATION CHORD ASKS THE BOX TO BE ON SCREEN (agent review round 1,
@@ -7115,7 +7887,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 
 		// Register with speech-to-text manager
 		useSpeechToTextManager(
-			"message-input",
+			speechRegistrationId,
 			SpeechToTextPriority.MESSAGE_INPUT,
 			{ start: handleStartRecording, stop: handleStopRecording },
 			/*
@@ -7140,8 +7912,19 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				),
 		);
 
-		const handleSubmit = (e: FormEvent) => {
-			e.preventDefault();
+		/**
+		 * The form's submit, as a function of nothing but the box.
+		 *
+		 * `dictated` is the "Send recording" caller: the words in the box came from a
+		 * microphone and the user has not read them, so the three doors that turn a
+		 * draft into something OTHER than a plain message are closed to it - a
+		 * transcript that begins with a slash must not run a command, an open
+		 * credential capture must not mint a span, and text that looks like a secret
+		 * must not skip the confirm that the typed path raises. In each case nothing
+		 * is sent and the words stay in the box for review. Returns whether the
+		 * submit path was entered.
+		 */
+		const runSubmit = (dictated = false): boolean => {
 			/*
 			 * THE REFUSAL COMES FIRST HERE TOO (review round 1, MAJOR 2), and this is
 			 * the guard the `readOnly` attribute cannot supply: `handleSubmit` is the
@@ -7151,9 +7934,9 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			 * the second of two - and it is the one that holds if a future control
 			 * submits this form.
 			 */
-			if (isInputDisabled) return;
+			if (isInputDisabled) return false;
 			// One more way in: nothing connected means no send, whichever control asked.
-			if (noProvider) return;
+			if (noProvider) return false;
 			/*
 			 * AND THE SAME RULE ONE STEP PAST IT: a provider this app cannot name a model
 			 * for cannot answer either, so a press that reaches here is refused and
@@ -7161,9 +7944,9 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			 */
 			if (noModel) {
 				explainRefusedSend();
-				return;
+				return false;
 			}
-			if (!newMessage.trim() && attachments.length === 0) return;
+			if (!newMessage.trim() && attachments.length === 0) return false;
 			/*
 			 * THE CAPTURE IS ASKED FIRST, exactly as the key handler asks it, so the
 			 * button and the key cannot disagree about an open masked span (design
@@ -7172,7 +7955,18 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			 * takes the planner below to the picker — the same two outcomes Enter
 			 * has, by construction, because it is the same function.
 			 */
-			if (submitCapture()) return;
+			if (dictated && isTyping(capture)) return false;
+			/*
+			 * AN APPROVAL GATE IS ANSWERED BY THIS SAME PRESS (agent review round 1,
+			 * M1): `chat-page.tsx` takes the sent text of a pending gate through
+			 * `approvalAnswerValue`, where "yes", "ok" or "1" is an approval. Words from
+			 * a microphone the user has not read must never be one - a stray "ok" from
+			 * the room would approve a tool action - so a transcript that WOULD answer
+			 * the gate stays in the box for the user to read and send by hand.
+			 */
+			if (dictated && awaitingAnswer && dictatedWouldAnswerGate(newMessage))
+				return false;
+			if (submitCapture()) return true;
 			/*
 			 * The SAME planner the Enter key consults, so the Send button and the
 			 * key cannot disagree about whether a draft is a command — and every
@@ -7182,8 +7976,9 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			 */
 			const plan = planForDraft(newMessage, caret);
 			if (plan.kind !== "send") {
+				if (dictated) return false;
 				void applyPlan(plan, newMessage, caret);
-				return;
+				return true;
 			}
 			/*
 			 * THE QUEUED SECRET ASK'S CONFIRM, on exactly the line the planner called
@@ -7192,9 +7987,258 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			 * `Send as message` on the confirm reaches `submitMessage` directly, which is
 			 * that press's whole meaning.
 			 */
-			if (guardSecretSend(newMessage)) return;
+			if (dictated) {
+				if (secretAsk && looksLikeSecret(newMessage)) return false;
+			} else if (guardSecretSend(newMessage)) return true;
 			submitMessage();
+			return true;
 		};
+		const handleSubmit = (e: FormEvent) => {
+			e.preventDefault();
+			runSubmit();
+		};
+		const runSubmitRef = useRef(runSubmit);
+		runSubmitRef.current = runSubmit;
+
+		/*
+		 * THE SENDER FOR A DICTATED SEND THIS COMPOSER NO LONGER HOLDS (bug 2).
+		 *
+		 * WHY IT LIVES HERE RATHER THAN IN `dictated-send.ts`: the send must be the
+		 * SAME composition the stay path makes (U3) - the `$skill` expansion through
+		 * the seam, the credential rewrite, the staged replies, the wire's `input_mode`
+		 * - and copying that into a store would be a second implementation of the
+		 * payload that could drift from the one that ships. So this is `onSubmit`,
+		 * with the two decisions that belong to the press taken in advance.
+		 *
+		 * WHAT IS TAKEN IN ADVANCE IS THE REFUSAL SET `runSubmit(true)` would apply,
+		 * in its order and with its answers: the box refuses input, nothing is
+		 * connected, no model to answer, the words would run as a command, the words
+		 * would answer a pending gate, the words look like a secret. Each one is a
+		 * reason the user is told, because a dictated send that silently did not happen
+		 * is the defect this whole change exists for. Nothing else is re-decided here.
+		 *
+		 * THE CLOSURE IS THE DEAD INSTANCE'S, and that is the design rather than a
+		 * leak: `onSendMessage` is the page's stable `send`, which addresses a
+		 * conversation by id, so this closure is still the only route from a replaced
+		 * panel to the origin's conversation.
+		 */
+		const deliverAway = useCallback(
+			async (
+				text: string,
+				options: { inputMode?: "dictated" | "mixed"; originId?: string },
+			): Promise<DeliverOutcome> => {
+				/*
+				 * THE ORIGIN, FROM THE RECORD (bug 2). A composer that was re-pointed at
+				 * another conversation still has this entry registered against the one it
+				 * pressed in, and its own `conversationId` now names the wrong row - so
+				 * every write below names `origin`, never the prop.
+				 */
+				const origin = options.originId ?? conversationId;
+				if (!origin) return "origin-gone";
+				/*
+				 * A PANE THAT IS STILL OPENING IS NOT A CHAT THAT CANNOT BE REACHED (round-1
+				 * finding, UX U2). `isHydrating` is the transcript's own "no page applied
+				 * yet" hold - the state the pane paints as "Loading conversation…" - and it
+				 * refuses input on this composer for as long as it lasts, so the away delivery
+				 * used to answer `unavailable`: "that chat could not take a message", about a
+				 * chat the reader had just navigated INTO. Nothing was wrong with the chat; it
+				 * was still opening. `not-ready` is the module's existing arm for exactly that
+				 * sentence ("that chat is still opening"), which is true, and the words stay in
+				 * its draft either way.
+				 *
+				 * THE TERM IS `isHydrating` ON TOP OF A REFUSAL, not on its own: a pane can be
+				 * hydrating while its box still takes a press (measured here - the away send
+				 * posts normally), and that path is left exactly as it was. Only a press this
+				 * composer would have refused BECAUSE the transcript has not painted yet is
+				 * re-worded - which is why `noProvider` is asked separately below: it is a
+				 * blocker of its own, and "that chat is still opening" would name a wait
+				 * that is not what refused the press (agent review round 2's MINOR).
+				 *
+				 * WAITING FOR THE READY DELIVERER INSTEAD WAS REJECTED rather than overlooked:
+				 * the closure is re-registered every render, so the wait would have to be
+				 * bounded by a number nobody has measured (the ledger's own rule: no new
+				 * timeout without its distribution), and an unbounded wait holds a delivered
+				 * transcript hostage to a pane the reader may never finish opening. The truthful
+				 * sentence is the smaller, safer answer.
+				 */
+				if (isInputDisabled) return isHydrating ? "not-ready" : "unavailable";
+				if (noProvider) return "unavailable";
+				if (noModel || draftModelUnresolved) return "no-model";
+				if (planForDraft(text, text.length).kind !== "send") return "command";
+				if (awaitingAnswer && dictatedWouldAnswerGate(text)) return "gate";
+				if (secretAsk !== null && looksLikeSecret(text)) return "secret";
+				/*
+				 * THE ECHO'S PAINT IS THE CLEAR'S CLOCK ONLY WHILE THIS SEND IS STILL OUT.
+				 *
+				 * WHY THAT IS A CONDITION AND NOT A GIVEN (round-1 finding, UX U1 = QA Q1).
+				 * The paint is not synchronous on this path: `paintPendingSend` applies it at
+				 * the press only when a transcript for the origin is MOUNTED, and RETAINS it
+				 * otherwise (`use-canonical-session`'s registry). A dictated send whose origin
+				 * the reader has left has no such transcript, so the callback below runs at
+				 * the origin's NEXT mount - seconds later, after `finishDraft` has already
+				 * settled the send. The write it then made ("move what left into
+				 * `inFlight`, empty the box") was therefore a record nothing would ever
+				 * settle: the row kept `inFlight: <the message>` with an empty box, the next
+				 * launch folded it back into the box (`rehydrateInputRows`), and Enter over it
+				 * posted the sent words again - measured 4/4, and the store-level repro is
+				 * in `shared-composer.test.mjs`'s retained-paint case.
+				 *
+				 * So the callback is the paint's clock, and `sendEnded` is the send's:
+				 * a paint that arrives while the request is out still empties the box in the
+				 * same commit the row appears (the reader came back mid-flight, and the
+				 * mounted box must not hold words that are already sent); one drained after
+				 * the send ended is a no-op, because the accept arm below is what clears the
+				 * box by then - and on a failure the text must stay exactly where it is.
+				 */
+				let sendEnded = false;
+				const accepted = await onSubmit(
+					text,
+					() => {
+						if (sendEnded) return;
+						/*
+						 * The row records what left and empties the box in one write, which is
+						 * what a remounted composer adopts (`textRevision`). Read from the store
+						 * rather than from this render, because the box may have been re-keyed
+						 * since.
+						 */
+						const box = useConversationInputStore.getState();
+						box.beginInFlight(origin, { text, attachments, replies }, true);
+					},
+					{ dictatedAway: true, inputMode: options.inputMode },
+				);
+				sendEnded = true;
+				/*
+				 * THE SAME TERM ON THE ARM THE BUILT APP ACTUALLY TAKES (round-2 F2). A
+				 * hydrating pane whose box still takes a press is not refused by this closure's
+				 * gates at all: the press goes through `onSubmit` and comes back refused by the
+				 * admission side, so answering `unavailable` here told the reader their chat
+				 * "could not take a message" about a chat that was still opening. `isHydrating`
+				 * is this render's copy of the pane's live hold, and the deliverer is
+				 * re-registered on every render, so the value is the one in force at the press.
+				 */
+				if (accepted === false)
+					return isHydrating ? "not-ready" : "unavailable";
+				const box = useConversationInputStore.getState();
+				/*
+				 * AND THE CLEAR AN ACCEPTED AWAY SEND OWES ITS BOX IS THIS WRITE.
+				 *
+				 * Nothing else will empty the origin's row once the send has settled:
+				 * `finishDraft` settles records, it does not write the box, and the paint
+				 * that would have done it has either already run (a mounted transcript -
+				 * where this write finds nothing left to clear and says so with
+				 * `textLeaves` false) or is retained and will be skipped by `sendEnded`
+				 * above. `record: false` is the whole point: the send is OVER, so there is
+				 * no in-flight window left for a payload record to restore a crash from -
+				 * `inFlight` here would be a message the app already delivered, offered
+				 * back to the composer at the next launch.
+				 *
+				 * The write is conditional on the row still holding exactly the words that
+				 * left (`beginInFlight`'s own `textLeaves`), so text typed in the origin
+				 * while the request was out survives it.
+				 */
+				box.beginInFlight(origin, { text, attachments, replies }, false);
+				box.addSubmittedMessage(origin, text);
+				/*
+				 * AND THE EMPTIED DRAFT LANDS NOW, not 300 ms from now: the writer that came
+				 * home is another mount's - or nobody's - so a coalesced retire left the sent
+				 * message restorable on the next launch, which is the draft resurrection
+				 * `retireDraft` flushes against.
+				 */
+				flushComposerDraftPersist();
+				return true;
+			},
+			[
+				conversationId,
+				isHydrating,
+				isInputDisabled,
+				noProvider,
+				noModel,
+				draftModelUnresolved,
+				planForDraft,
+				awaitingAnswer,
+				secretAsk,
+				onSubmit,
+				attachments,
+				replies,
+			],
+		);
+		const deliverAwayRef = useRef(deliverAway);
+		deliverAwayRef.current = deliverAway;
+		/*
+		 * THE REGISTRATION RUNS EVERY RENDER AND IS NEVER WITHDRAWN (bug 2).
+		 *
+		 * Fresh: the entry must hold the newest closure, or a gate that appeared while
+		 * the user was away would be decided by the values of a render an hour old.
+		 * Never withdrawn: after the switch this instance is the ONLY thing that can
+		 * reach the page's send for its conversation, and the next mount overwrites the
+		 * entry anyway. Unconditional on opted-in hosts rather than gated on an intent,
+		 * because the intent is created at the press - after this render - and a host
+		 * that mounted and switched inside one commit would otherwise never register.
+		 */
+		useLayoutEffect(() => {
+			if (!conversationId) return;
+			if (!dictatedAwayDelivery && !dictatedSends.has(conversationId)) return;
+			dictatedSends.register(conversationId, (text, options) =>
+				deliverAwayRef.current(text, options),
+			);
+		});
+
+		/*
+		 * THE SEND HALF OF "SEND RECORDING", run against the render in which the
+		 * transcript is in the box.
+		 *
+		 * Three questions, in order, each of which ends the press WITHOUT a send:
+		 *   1. is the take still being transcribed? (wait - `onSubmit` refuses it)
+		 *   2. does the box hold exactly the draft-at-press joined with the
+		 *      transcript? Anything else means the user typed or pasted while the
+		 *      words were in flight, and sending would ship text they never meant to
+		 *      send together; the box is left as it is.
+		 *   3. does the normal submit path accept it? It is the SAME function Enter
+		 *      and the Send button reach (attachments, steer-vs-prompt, the
+		 *      no-provider refusal), run in dictated mode so a transcript can never
+		 *      be read as a slash command, mint a credential span or skip the
+		 *      secret confirm.
+		 * Then slot B keeps its busy face until `sendBusy` falls: the submit sets it
+		 * synchronously, so the first `submitting` render already sees it, and a
+		 * submit that was never entered is released on that same render.
+		 */
+		useEffect(() => {
+			if (sendRecordingPhase === "ready-to-submit") {
+				if (isTranscribing) return;
+				const pending = dictatedSendRef.current;
+				if (!pending || pending.transcript === null) {
+					setSendRecordingPhase("idle");
+					return;
+				}
+				const { intact } = dictatedSendCheck({
+					draftAtPress: pending.draftAtPress,
+					transcript: pending.transcript,
+					current: newMessage,
+					join: joinTranscript,
+				});
+				/*
+				 * THE STAY PATH RETIRES THE CONVERSATION-WIDE RECORD TOO (bug 2). This
+				 * composer was still the one holding the conversation when the words landed,
+				 * so the press's intent has done its job either way: a send it entered, or a
+				 * box it deliberately left alone because the user had edited it.
+				 */
+				dictatedSendRef.current = null;
+				if (pending.intentId) dictatedSends.end(pending.intentId);
+				const entered = intact ? runSubmitRef.current(true) : false;
+				setSendRecordingPhase((phase) =>
+					sendRecordingNext(phase, {
+						type: "checked",
+						draftIntact: intact && entered,
+					}),
+				);
+				return;
+			}
+			if (sendRecordingPhase === "submitting" && !sendBusy) {
+				setSendRecordingPhase((phase) =>
+					sendRecordingNext(phase, { type: "settled", sendBusy: false }),
+				);
+			}
+		}, [sendRecordingPhase, isTranscribing, newMessage, sendBusy]);
 
 		/*
 		 * KEEP THE CARET ON A PRESS THAT LANDS ON A CONTROL THE BOX IS REFUSING WITH
@@ -7351,7 +8395,22 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			 * is asked for its word only while those bytes are still in the draft, exactly
 			 * like the cancel's, so an emptied box is prose again.
 			 */
-			if (pasted) pastedRun.current = pastedCredentialRun(pasted);
+			/*
+			 * A PASTED FILE IS NOT ALSO PASTED AS ITS NAME (issue #1573). A Finder copy
+			 * puts the file name(s) on `text/plain` beside the file items; the loop below
+			 * attaches the files, so letting the browser's insert run as well typed the
+			 * name into the prompt. Cancelled ONLY when that text is nothing but the
+			 * names (`pastedTextIsOnlyFileNames`) - prose pasted alongside a file is the
+			 * operator's and still lands. This sits AFTER the credential branch on
+			 * purpose: an armed capture owns the paste whatever it carries. On macOS
+			 * the event omits that `text/plain` entirely (QA round 1, Q1), so the
+			 * predicate reads the pasteboard synchronously when files arrive alone.
+			 * Only a paste whose insert still happens records its provenance run
+			 * (review round 1, R3): a cancelled insert brings no bytes into the draft.
+			 */
+			if (pasteInsertsOnlyFileNames(event.clipboardData ?? null))
+				event.preventDefault();
+			else if (pasted) pastedRun.current = pastedCredentialRun(pasted);
 			const items = event.clipboardData?.items;
 			if (items) {
 				for (let i = 0; i < items.length; i++) {
@@ -7456,7 +8515,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 *
 		 * THE REPRESENTATION IS THE PATH WHEN THERE IS ONE, and that choice comes from
 		 * what the consumer requires rather than from what is easiest:
-		 * `encodeImageAttachments` (features/chat/utils/attachment-encode.ts) takes both
+		 * `encodeAttachments` (features/chat/utils/attachment-encode.ts) takes both
 		 * forms - a data URL is used as the base64 directly, a filesystem path has its
 		 * bytes read in main over `api.readFile` - and both are then bounded by the same
 		 * `boundImagesForBudget` before the send. What decides between them is the
@@ -7579,73 +8638,66 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 */
 		const credentialNotice = isTyping(capture)
 			? capture.value !== ""
-				? CREDENTIAL_TYPING_NOTICE
+				? // Keyed on (buffer, value), so the first edit after the held Esc
+					// restores the ordinary typing sentence without any reset path.
+					escapeIsHeld(newMessage, capture)
+					? credentialEscapeHeldNotice()
+					: credentialTypingNotice()
 				: credentialSessionId
-					? CREDENTIAL_EMPTY_SPAN_NOTICE
-					: CREDENTIAL_EMPTY_SPAN_DRAFT_NOTICE
-			: noticeLineFor({
-					unredacted:
-						unredactedChars !== null
-							? unredactedNotice(
-									unredactedChars,
-									/*
-									 * WHAT THE NEXT ENTER WILL DO WITH THEM, and the sentinel is passed ONLY where
-									 * the press really is held (agent review round 2, R5). The hold is a fact
-									 * about the RECORD, not about the disclosure: `unredactedChars !== null`
-									 * survives a reload / conversation switch while `cancelledToken` (a ref)
-									 * dies with it, so gating on the disclosure alone painted "Enter is held:
-									 * clear the box to release your words" over a box whose Enter DISPATCHES
-									 * `/credential <secret>` and eats the trailing words as its argument — the
-									 * defect this change exists to close, under a sentence promising the
-									 * opposite. `holdsHeldPress` is the same predicate the press asks, so the
-									 * claim and the press cannot drift; where it is false the plain
-									 * `unredactedNotice(n)` sentence stands, which is what a restored draft with
-									 * no live record actually does — expose the characters.
-									 */
-									holdsHeldPress(newMessage) ? HELD_TAKEN_BY : undefined,
-								)
-							: null,
-					/*
-					 * ARMED OUTRANKS CLEARED (UX round 2, U10), and it is the same rule that puts
-					 * the disclosure first: the sentence that knows what the NEXT keystroke will do
-					 * beats the one reporting the last edit. Measured on round 1's order: arm the
-					 * capture at the end of the buffer, clear a chip, and the line stopped saying
-					 * the capture was armed while it still was.
-					 *
-					 * Measured at the END OF THE BUFFER rather than at the `caret` state, and the
-					 * difference is a race rather than a nicety: `caret` lags one commit behind the
-					 * keystroke that moved it, so a derivation that read it here would flicker the
-					 * armed notice on and off between renders — and in the evidence play functions
-					 * it did, producing a frame with the notice in one theme and not in the next.
-					 * The line's tail is the true subject of the predicate (`CREDENTIAL_ARM` is
-					 * anchored to the caret's own line end), and the end of the buffer is that same
-					 * tail in every state the operator can be typing in.
-					 */
-					armed:
-						capture.arm !== null &&
-						armSpan(newMessage, newMessage.length) !== null,
-					cleared:
-						clearedReference === null
-							? null
-							: {
-									key: clearedReference.key,
-									index: clearedReference.index,
-								},
-					/*
-					 * THE SHORTCUT'S OWN SPELLING, from the label the handler's copy uses
-					 * (UX round 3, U15): the durable sentence has to name the key this
-					 * platform actually listens for, and the platform is the composer's to
-					 * know, not the copy module's.
-					 */
-					undoCap: lockedRunUndoCap(platform === "darwin"),
-				});
+					? credentialEmptySpanNotice()
+					: credentialEmptySpanDraftNotice()
+			: // The discard line stands only over the buffer the discard left, so the
+				// next edit retires it the same way the hold is retired.
+				discardedOver !== null && discardedOver === newMessage
+				? credentialDiscardedNotice()
+				: noticeLineFor({
+						unredacted:
+							unredactedChars !== null
+								? // Only a draft persisted by a pre-2026-10-22 build can carry this:
+									// no Esc writes characters into the box any more.
+									unredactedNotice(unredactedChars)
+								: null,
+						/*
+						 * ARMED OUTRANKS CLEARED (UX round 2, U10), and it is the same rule that puts
+						 * the disclosure first: the sentence that knows what the NEXT keystroke will do
+						 * beats the one reporting the last edit. Measured on round 1's order: arm the
+						 * capture at the end of the buffer, clear a chip, and the line stopped saying
+						 * the capture was armed while it still was.
+						 *
+						 * Measured at the END OF THE BUFFER rather than at the `caret` state, and the
+						 * difference is a race rather than a nicety: `caret` lags one commit behind the
+						 * keystroke that moved it, so a derivation that read it here would flicker the
+						 * armed notice on and off between renders — and in the evidence play functions
+						 * it did, producing a frame with the notice in one theme and not in the next.
+						 * The line's tail is the true subject of the predicate (`CREDENTIAL_ARM` is
+						 * anchored to the caret's own line end), and the end of the buffer is that same
+						 * tail in every state the operator can be typing in.
+						 */
+						armed:
+							capture.arm !== null &&
+							armSpan(newMessage, newMessage.length) !== null,
+						cleared:
+							clearedReference === null
+								? null
+								: {
+										key: clearedReference.key,
+										index: clearedReference.index,
+									},
+						/*
+						 * THE SHORTCUT'S OWN SPELLING, from the label the handler's copy uses
+						 * (UX round 3, U15): the durable sentence has to name the key this
+						 * platform actually listens for, and the platform is the composer's to
+						 * know, not the copy module's.
+						 */
+						undoCap: lockedRunUndoCap(platform === "darwin"),
+					});
 
-		const shortcutText = useMemo(() => {
-			if (platform === "darwin") {
-				return "Cmd+Shift+S";
-			}
-			return "Ctrl+Shift+S";
-		}, [platform]);
+		const shortcutText = useRecordingShortcutLabel(
+			platform === "darwin" ? "mac" : platform === "win32" ? "win" : "linux",
+			// Main dispatches start-speech only to the main window. The transcriptless
+			// mini composer still records through its button, but has no chord door.
+			!transcriptless,
+		);
 
 		/*
 		 * WHERE FOCUS GOES WHEN A STAGED QUOTE IS REMOVED (UX round 1, U2).
@@ -7704,6 +8756,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * there is a claim to drop (or a returned payload waiting to be adopted), and
 		 * it is that second half `hasSomethingToClear` reads.
 		 */
+		// biome-ignore lint/correctness/useExhaustiveDependencies: t() reads the locale store; locale invalidates a keyed notice even when its object is memoized by the page.
 		const composerAlert = useMemo(() => {
 			const boxPayload = buildSendPayload(newMessage, replies);
 			const hasSomethingToClear = boxPayload !== "" || attachments.length > 0;
@@ -7720,13 +8773,18 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				(sendError?.message && NO_PROVIDER_NOTICE.test(sendError.message))
 					? [
 							{
-								label: "Connect a provider",
+								// The memo survives locale changes; resolve copy when displayed.
+								get label() {
+									return t("ui.chat.composer.connect_provider");
+								},
 								onClick: () => useConnectProviderStore.getState().openConnect(),
 							},
 						]
 					: [];
 			return {
-				message: sendError?.message,
+				message: sendError?.messageKey
+					? t(sendError.messageKey)
+					: sendError?.message,
 				muted: sendError?.muted === true,
 				polite: sendError?.polite === true,
 				/*
@@ -7767,7 +8825,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					sendError?.muted !== true &&
 					(sendError?.onClear !== undefined || hasSomethingToClear),
 			};
-		}, [sendError, newMessage, replies, attachments, noProvider]);
+		}, [sendError, newMessage, replies, attachments, noProvider, locale]);
 
 		/*
 		 * The session issue: the state of this machine's Radient sign-in, and the one
@@ -7808,8 +8866,8 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			// The same padding step the interrupt notice beside the composer uses, so
 			// the two sentences share one text edge with the box's own contents.
 			isSmallView ? "px-2 pb-1" : "px-4 pb-2",
-			// The unredact is the one state where the next Enter discloses a
-			// secret, so it takes the warning role rather than muted ink.
+			// A plain-text credential in the box is the one state where the next
+			// Enter discloses a secret, so it takes the warning role, not muted ink.
 			unredactedChars !== null ? "text-warning" : "text-ink-muted",
 		);
 
@@ -7950,8 +9008,16 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * on screen, so those states keep it (`radientCalloutOwnsTheSignIn` states
 		 * why; any other provider cannot collide with the connector).
 		 */
+		/*
+		 * An INFORMATIONAL reading (healthy borrowed access, or access the runtime
+		 * is still resolving on its own) asks nothing of the user, so it is not a
+		 * standing card: the session strip carries it as an `i` icon beside the
+		 * model and effort chips (`modelAccessIsInformational` records the
+		 * per-state decision; operator report 2026-11-11).
+		 */
 		const modelAccessBlock =
 			modelAccess &&
+			!modelAccessIsInformational(modelAccess) &&
 			!bandYieldsToRadientIssue(
 				modelAccess,
 				radientCalloutOwnsTheSignIn(radientIssue.issue),
@@ -7994,6 +9060,67 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			isPreparing ||
 			(!isRecording && !isTranscribing && !(isLoading && currentJobId));
 
+		/*
+		 * THE CLUSTER'S ROLES (`composer-slots.ts` owns the rules and the matrix).
+		 *
+		 * Two fixed slots, `[A][B]`, plus a third LEFT of them only while recording.
+		 * Send and Stop are the SAME slot (B), so they are never drawn together and
+		 * nothing the user aimed at moves when a turn starts or ends. Each role below
+		 * is its own keyed button: a press that began on one role cannot complete as a
+		 * click on another, because the old element unmounts.
+		 */
+		const dictationPhase = isRecording
+			? "recording"
+			: isTranscribing
+				? "transcribing"
+				: isPreparing
+					? "preparing"
+					: "idle";
+		const hasPayload = newMessage.trim() !== "" || attachments.length > 0;
+		const slotA = slotARole(dictationPhase, sendRecordingPhase);
+		const slotC = slotCRole(dictationPhase);
+		const slotB = slotBRole({
+			dictation: dictationPhase,
+			alive: Boolean(canonicalStop?.active),
+			stopping: canonicalStop?.stopping === true,
+			hasPayload,
+			refused: isInputDisabled || sendRefused,
+			sendBusy,
+			sendRecording: sendRecordingPhase,
+			// Dictated words are not sent unreviewed inside a masked capture.
+			reviewRequired: isTyping(capture),
+		});
+		/*
+		 * Stop and its pressed face are ONE element (same key): the press flips
+		 * `stopping` while the pointer or the keyboard focus is still on it, and a
+		 * remount there would drop focus mid-gesture.
+		 */
+		const slotBKey = slotB.role === "stop-busy" ? "stop" : slotB.role;
+		const { ignore: ignoreCancelPress, arming: cancelArming } = useRoleGuard(
+			slotC ?? "none",
+		);
+		const { ignore: ignoreConfirmPress, arming: confirmArming } =
+			useRoleGuard(slotA);
+		const { ignore: ignoreSlotBPress, arming: slotBArming } =
+			useRoleGuard(slotBKey);
+		/*
+		 * A FOCUSED CONTROL THAT LEAVES THE ROW TAKES THE CARET WITH IT. When a role
+		 * flip unmounts the button focus was on (Send -> Connecting, Confirm ->
+		 * spinner), focus falls to <body> and the next keystroke goes nowhere; hand
+		 * it to the field instead - but only if the cluster HAD focus, and not when
+		 * the user blurred it on purpose (a focusout whose target is still mounted).
+		 */
+		const clusterHadFocusRef = useRef(false);
+		const rolesKey = `${slotA}|${slotB.role}|${slotC}`;
+		// biome-ignore lint/correctness/useExhaustiveDependencies: `rolesKey` is the trigger; the body reads only refs and the document
+		useEffect(() => {
+			if (!clusterHadFocusRef.current) return;
+			const active = document.activeElement;
+			if (active && active !== document.body) return;
+			clusterHadFocusRef.current = false;
+			textareaRef.current?.focus({ preventScroll: true });
+		}, [rolesKey]);
+
 		const inputContent = (
 			<form
 				onSubmit={handleSubmit}
@@ -8010,7 +9137,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * (the refusal notice replaces the box).
 				 */
 				data-chat-region="composer"
-				aria-label={CHAT_REGION_LABEL.composer}
+				aria-label={chatRegionLabel("composer")}
 				tabIndex={-1}
 				className="w-full"
 			>
@@ -8038,6 +9165,13 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					<ComposerStatusRow
 						key={conversationId}
 						frontend={sessionStatus?.frontend}
+						/*
+						 * THE MERGED ASK FRAME, never `undefined` on the app's path: `null` means
+						 * the read is still in flight, and the row must paint that state rather
+						 * than fall back to a claimless snapshot. `undefined` (no page supplied
+						 * one) keeps the row reading `frontend`.
+						 */
+						askFrontend={sessionStatus?.asks}
 						runDetails={runDetails}
 						isSmallView={isSmallView}
 						askExpanded={askExpanded}
@@ -8206,7 +9340,16 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					>
 						<p
 							className={cn(
-								"flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1",
+								/*
+								 * `flex-nowrap items-start`, NOT `flex-wrap items-center` (design round 1,
+								 * D4). A multi-line sentence (the dictated-away refusal names the chat and
+								 * the reason) left the icon on a line of its own with the text starting on
+								 * the next - a 14 px glyph alone above a paragraph reads as a broken layout.
+								 * Nowrap keeps the glyph at the first line's left and `items-start` aligns
+								 * it to that first line instead of to the paragraph's middle. The sentence
+								 * span already owns `min-w-0 break-words`, so it still wraps inside the row.
+								 */
+								"flex min-w-0 flex-nowrap items-start gap-x-3",
 								composerAlert.muted ? "text-ink-muted" : "text-danger",
 							)}
 						>
@@ -8275,7 +9418,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 										)}
 										onClick={() => sendError.onRetry?.()}
 									>
-										{RETRY_LABEL}
+										{retryLabel()}
 									</Button>
 								)}
 								{composerAlert.clear && sendError?.onClear && (
@@ -8295,7 +9438,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 										)}
 										onClick={() => sendError.onClear?.()}
 									>
-										{CLEAR_LABEL}
+										{clearLabel()}
 									</Button>
 								)}
 							</>
@@ -8566,7 +9709,15 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 							id={SECRET_CLOSURE_NOTICE_ID}
 							className={cn(CHAT_MEASURE, credentialNoticeLine)}
 						>
-							{SECRET_CLOSURE_NOTICE}
+							{/*
+							 * RESOLVED WHERE IT RENDERS, NOT WHERE THE MODULE LOADS. The sentence is
+							 * catalogue copy (`ui.chat.composer.secret_closure_notice`), so `t()` has
+							 * to run in the render body: a module-level `const` - which is what this
+							 * was - freezes the English string at import and hands every locale the
+							 * same sentence (i18n audit, C1). The component subscribes to the locale
+							 * above, so a switch redraws this line with the draft still in the box.
+							 */}
+							{t("ui.chat.composer.secret_closure_notice")}
 						</output>
 					)}
 					{/*
@@ -8736,9 +9887,9 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					 */}
 					{outsideMentions > 0 && (
 						<span id={MENTION_OUTSIDE_NOTICE_ID} className="sr-only">
-							{outsideMentions === 1
-								? "1 reference points outside this session's working directory; the agent will ask you to approve it before reading."
-								: `${outsideMentions} references point outside this session's working directory; the agent will ask you to approve them before reading.`}
+							{t("ui.chat.composer_notes.outside_mentions", {
+								count: outsideMentions,
+							})}
 						</span>
 					)}
 					{/*
@@ -8859,11 +10010,10 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 								)}
 								{attachments.length > 0 && (
 									<AttachmentsPreview
-										attachments={attachments.map((a) => a.path)}
-										onRemoveAttachment={(index) =>
-											handleRemoveAttachment(attachments[index].id)
-										}
+										attachments={attachments}
+										onRemoveAttachment={handleRemoveAttachment}
 										disabled={isInputDisabled || isRecording || isTranscribing}
+										byteSizes={attachmentByteSizes}
 									/>
 								)}
 							</div>
@@ -8895,6 +10045,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 								text={newMessage}
 								payloads={payloadsRef.current}
 								capture={capture}
+								held={escapeIsHeld(newMessage, capture)}
 								fieldRef={textareaRef}
 								mirrorRef={mirrorRef}
 								isSmallView={isSmallView}
@@ -9030,7 +10181,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 										 * control row hold their position through it (design round 1, D4).
 										 */
 										isRecording
-											? COMPOSER_PLACEHOLDER.recording
+											? t(COMPOSER_PLACEHOLDER.recording)
 											: composerPlaceholder({
 													unavailable,
 													secretAnswer: secretAnswerPending,
@@ -9218,6 +10369,14 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 									onKeyDown={handleComposerKeyDown}
 									onPointerDown={() => {
 										/*
+										 * A CLICK INTO A BOX THAT CANNOT SEND lands on the reason (D4):
+										 * ~32 users rage-clicked this field with nothing connected, and
+										 * the field answered with a caret and nothing else. Typing stays
+										 * allowed; the line under the box steps up to full ink so the
+										 * click visibly reaches the explanation and its one-click fix.
+										 */
+										if (sendBlock) explainRefusedSend();
+										/*
 										 * "I am about to type here." An ask gate can advance while the
 										 * user is on their way into this box, and the restore must not
 										 * move them off it: the characters they type would reach
@@ -9399,37 +10558,42 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 							/>
 						</div>
 						{/*
-						 * NO PREPARING STRIP IN THIS SLOT, and the slot is the reason rather
-						 * than tidiness (design round 1, D2). The acknowledgment used to be a
-						 * one-line strip here - "the same slot the recording lane takes" - and
-						 * that claim was false as geometry: the lane is 84px tall where the
-						 * strip was 40px with its gap, so a press moved the composer TWICE
-						 * (card top 774 -> 734 while preparing, then 690 at handover) inside a
-						 * card whose bottom edge is pinned. The acknowledgment now rides in
-						 * the control row below - a row that exists at every width and in
-						 * every state - so a press costs the composer exactly 0px, and the
-						 * only movement left is the recording lane's own, unchanged
-						 * appearance (the lane's drawn geometry is not part of this fix).
+						 * THE LANE, from the PRESS (design round 1 D2, round 3 D14; QA round 3
+						 * Q-1). The press is answered before the recorder exists - the
+						 * microphone acquisition is the one genuinely slow part of the click
+						 * path (830 ms cold on this fleet, past two minutes under swap
+						 * exhaustion) - and the answer used to be a separate one-line row
+						 * that grew the card, after which the lane grew it AGAIN at handover:
+						 * the field jumped twice per press. Here the SAME block that the take
+						 * will occupy opens at once, at its final height, with "Starting
+						 * recording" in its label row, and the handover to recording swaps
+						 * the words and starts the waveform without moving anything. So a
+						 * press costs ONE height change, the lane's own (84px, `composer-
+						 * slots-proof.mjs` asserts the preparing and recording heights are
+						 * equal), and in the bottom-anchored chat band the controls row does
+						 * not move at all. It is not 0px: a press that adds a lane to the
+						 * card cannot be free, and the claim that it was is retired.
 						 *
-						 * AN `absolute` OVERLAY IN THIS SLOT was the alternative and it is
-						 * rejected on the record: the next thing in this box's flow is the
-						 * control row itself, so a line drawn over the slot would cover the
-						 * controls it exists to answer. The row is where a line can be added
-						 * without buying height - see the acknowledgment below, which is a
-						 * child of that row and not of this one.
+						 * NOT IN THE CONTROLS ROW and not an overlay (design round 2, D9):
+						 * as a flex item it grew the 68px cluster and pushed Send past the
+						 * card's edge, and as an overlay it painted over the readings.
+						 *
+						 * The block carries a status and no control, so the pointer map does
+						 * not move. Its words are a live region (`<output>`), and the ring on
+						 * the mic's busy face is the surface's one indeterminate element.
 						 */}
-						{/*
-						 * THE RECORDING STATE, as a full-width block under the field it belongs
-						 * to (operator feedback via Aida, 2026-09-29): the lane spans the
-						 * field's own content column, its label row sits over it, and nothing
-						 * is washed or bordered - it reads as composer chrome, on the same
-						 * step of ground the box itself uses. The controls stay in the
-						 * cluster below, where `Confirm recording`/`Cancel recording` already
-						 * hold the boxes the interrupt-slot geometry reserves; this block
-						 * carries a status and no control, so the pointer map does not move.
-						 */}
-						{isRecording && (
-							<AudioRecordingIndicator isRecording={isRecording} />
+						{(isRecording || (isPreparing && micControlShown)) && (
+							<AudioRecordingIndicator
+								isRecording={isRecording}
+								preparingLabel={
+									!isRecording && isPreparing
+										? isSmallView
+											? t("ui.chat.composer.starting")
+											: t("ui.chat.composer.starting_recording")
+										: null
+								}
+								sendsNow={slotB.role === "send-recording" && slotB.enabled}
+							/>
 						)}
 						{isTranscribing && (
 							<div
@@ -9439,9 +10603,81 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 								<span className="font-medium text-body-sm text-ink-muted">
 									{t("ui.chat.composer.processing_audio")}
 								</span>
-								<WaveformAnimation />
+								{/*
+								 * ONE LIVE ELEMENT FOR A SEND-RECORDING WAIT (design D13): slot A
+								 * already spins for it, so the caption is words only there. A plain
+								 * dictation has no spinner in the row and keeps its waveform.
+								 */}
+								{sendRecordingPhase === "idle" && <WaveformAnimation />}
 							</div>
 						)}
+						{/*
+						 * THE OFFER, in the slot the transcribing row vacates (#1087).
+						 *
+						 * The toast names the fault and the action; this row exists because a
+						 * toast cannot carry the control those words point at, and the take it
+						 * would spend is already in hand - one press, no re-recording. It is a
+						 * row rather than a toast action because a toast dismisses and the
+						 * take does not: the offer has to last as long as the recording does.
+						 *
+						 * It renders only once the attempts are spent (`!isTranscribing`), so
+						 * the row never appears while a send is still in flight.
+						 */}
+						{/*
+						 * The durable settings changes still applying (or failed) for this
+						 * session: their own line, in the dictation row's slot and register,
+						 * because the control row below is one line that cannot hold a
+						 * sentence with buttons (see `settings-intent-chips.tsx`).
+						 */}
+						{sessionStatus?.settingsIntents && (
+							<SettingsIntentChips
+								{...sessionStatus.settingsIntents}
+								restoreFocus={() => textareaRef.current?.focus()}
+							/>
+						)}
+						{dictationFailure !== null &&
+							!isTranscribing &&
+							audioBlob !== null && (
+								<div
+									data-dictation-retry=""
+									className="mt-1 flex items-center gap-2 px-2 [min-height:1.5rem]"
+								>
+									{/*
+									 * AN ERROR REGISTER, not the metadata one (design round 1,
+									 * D6). The row sat in `ink-muted` with no mark at all, so it
+									 * read as the same quiet status as "Processing audio" - and
+									 * the toast it replaces carried the danger icon. The take is
+									 * still here, but the attempt failed: the icon says which,
+									 * and the sentence stays at reading ink.
+									 */}
+									<CircleAlert
+										aria-hidden="true"
+										className="size-3.5 shrink-0 text-danger"
+									/>
+									<span className="font-medium text-body-sm text-ink-muted">
+										{dictationFailure}
+									</span>
+									<Button
+										type="button"
+										variant="link"
+										size="sm"
+										/*
+										 * A REAL TARGET AND A VISIBLE AFFORDANCE (design round 1,
+										 * D3). The `link` variant's `h-auto p-0` left this
+										 * control 29x12px - the text's own line box - and the
+										 * underline appeared only on hover, so the one recovery
+										 * control in the state was a colour-only word. `h-7 px-2`
+										 * restores a 28px target (the size every other `sm`
+										 * control in the row takes) and `underline` makes it
+										 * look pressable at rest.
+										 */
+										className="h-7 shrink-0 px-2 underline"
+										onClick={retryDictation}
+									>
+										{t("ui.common.actions.retry")}
+									</Button>
+								</div>
+							)}
 						{/*
 						 * The composer's controls and the session's readings, on ONE row, at EVERY width.
 						 *
@@ -9470,7 +10706,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						 *
 						 * `justify-between` cannot express this — with three children it
 						 * centres the middle one, which is the opposite of what the row needs — so
-						 * the row uses `ml-auto` instead, on the controls group, which is the one
+						 * the row uses `ms-auto` instead, on the controls group, which is the one
 						 * child that always renders.
 						 *
 						 * That "always renders" is not a nicety, it is the round-1 blocker. The
@@ -9539,6 +10775,16 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 										contextHeld={sessionStatus.contextHeld}
 										readingsDropped={sessionStatus.readingsDropped}
 										pendingModel={sessionStatus.pendingModel}
+										pendingEffort={
+											sessionStatus.settingsIntents
+												? intentOverride(sessionStatus.settingsIntents.slots)
+														.effort
+												: null
+										}
+										pendingModelQueued={
+											sessionStatus.settingsIntents?.slots?.model?.state ===
+											"queued_next_step"
+										}
 										costChannels={sessionStatus.costChannels}
 										/*
 										 * The row's own third-box predicate, handed down rather than
@@ -9649,7 +10895,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 											readOnlyReason={
 												cwdWritePath
 													? undefined
-													: (cwdReadOnlyReason ?? MOVE_UNAVAILABLE_REASON)
+													: (cwdReadOnlyReason ?? moveUnavailableReason())
 											}
 										/>
 									)}
@@ -9680,9 +10926,9 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 
 								{/* Right side: microphone, send or stop button.
 								 *
-								 * `ml-auto` is the row's ONE live auto margin, at EVERY width, and it is
-								 * here rather than on the readings on purpose (design round 1.5, D7):
-								 * this group cannot return `null`, so the row's right-justification
+								 * `ms-auto` is the row's ONE live auto margin, at EVERY width, and it
+								 * is here rather than on the readings on purpose (design round 1.5,
+								 * D7): this group cannot return `null`, so the row's justification
 								 * does not depend on whether a cluster that can vanish happens to be
 								 * rendering. Below 750px of column it separates this group from the
 								 * attached line above it; above, it holds the free space between the
@@ -9690,199 +10936,236 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 								 * immediately after the working-directory chip. A second live auto
 								 * margin would share that space evenly and float the controls mid-row.
 								 *
+								 * LOGICAL, not physical (`ms-auto`, not `ml-auto`): in an RTL row
+								 * (`ur` is a shipped locale) a physical left margin puts the free
+								 * space on the far side of this group, so the readings sit flush
+								 * against the controls and the duration measurement correctly finds
+								 * no gap. `margin-inline-start` is the same margin in LTR and the
+								 * mirrored one in RTL, which keeps this row's one live auto margin
+								 * doing its job in both directions.
+								 *
 								 * `order-3` above the threshold is only needed because the strip's DOM
 								 * slot is first (see above); it makes the paint [attach][chip]
 								 * [readings][mic][send] out of a DOM whose first child is the cluster.
 								 */}
-								<div className="ml-auto flex order-3 items-center gap-1">
-									{/*
-									 * THE PRESS IS ANSWERED BEFORE THE RECORDER EXISTS (operator feedback
-									 * via Aida, 2026-10-01). The microphone acquisition is the one part
-									 * of the click path that is genuinely slow - 830 ms cold on this
-									 * fleet, and measured past two minutes under swap exhaustion - and it
-									 * used to be silent: the screen looked exactly as it did before the
-									 * press. This line, with the control's own busy face beside it, is
-									 * that window's answer, both written in the click's own frame.
-									 *
-									 * IT LIVES IN THIS ROW, NOT UNDER THE FIELD (design round 1, D2): a
-									 * line of its own grew the card on the press. This row is 32px in
-									 * every state, so an ~18px child cannot make it taller - and the line
-									 * is added to the LEFT of a group this row right-anchors with
-									 * `ml-auto`, so the mic and send controls keep the x they had: the
-									 * free space between the readings and this group is what pays.
-									 *
-									 * ONE INDETERMINATE ELEMENT ON THIS SURFACE (branding § 5's
-									 * "one such element per surface"): the ring is on the control below
-									 * and this line is words, so the acknowledgment is one live element
-									 * rather than two spinners for one wait (UX round 1, U4).
-									 */}
-									{isPreparing && micControlShown && (
-										<output
-											data-preparing-indicator=""
-											/*
-											 * THE STATE IS ANNOUNCED, not merely painted (agent review round 2,
-											 * minor a). `aria-busy` on the button is the control's half and screen
-											 * readers expose it inconsistently; the words are the other half, and they
-											 * are only announced if they ARE a live region - a bare span changes on
-											 * screen and says nothing to a reader that is not looking at it. The caption
-											 * carries the text, so the region goes here rather than on the ring - as an
-											 * `<output>` rather than a `role="status"` attribute, which is this file's
-											 * established spelling of the same thing (the interrupt notice and the
-											 * no-model hint both use the element).
-											 */
-											/*
-											 * The five-word copy is the composer's own; the SMALL VIEW's
-											 * shorter one is this row's existing yield rule rather than a
-											 * second wording - the model selector shortens to its glyph, the
-											 * usage reading drops below 480px of composer and the cwd chip
-											 * truncates at the same pressure, and a truncated "Starting
-											 * recor..." is not a sentence. `shrink-0` puts this line on the
-											 * yielding side of that bargain rather than letting it compress
-											 * into an ellipsis of its own.
-											 */
-											className="shrink-0 font-medium text-body-sm text-ink-muted"
-										>
-											{isSmallView
-												? t("ui.chat.composer.starting")
-												: t("ui.chat.composer.starting_recording")}
-										</output>
-									)}
-									{micControlShown && (
+								<div
+									data-lo-composer-controls={true}
+									onFocus={() => {
+										clusterHadFocusRef.current = true;
+									}}
+									onBlur={(event) => {
+										// A removed button reports a disconnected target; a user
+										// who tabbed or clicked away reports a mounted one.
+										if (event.target.isConnected) {
+											clusterHadFocusRef.current = false;
+										}
+									}}
+									className="ms-auto flex order-3 shrink-0 items-center gap-1"
+								>
+									{slotC === "confirm" && (
 										<Tooltip
-											content={
-												isPreparing
-													? t("ui.chat.composer.starting_recording")
-													: !canEnableRecordingFeature
-														? recordingUnavailableReason
-														: voiceBlocksDictation
-															? dictationOff
-															: t("ui.chat.composer.start_recording_hint", {
-																	shortcut: shortcutText,
-																	pushToTalk: resolvePushToTalkBinding().label,
-																})
-											}
+											key="confirm"
+											content={t("ui.chat.composer.insert_transcript_hint")}
 										>
 											<span>
 												<Button
-													variant="ghost"
+													data-composer-slot="c"
+													variant="outline"
 													size={isSmallView ? "icon-sm" : "icon"}
+													type="button"
 													className={cn(
-														"text-ink-dim hover:bg-elevated hover:text-ink",
-														/*
-														 * THE DIMMED FACE OF A REFUSAL THAT KEEPS ITS TOOLTIP (spec §3):
-														 * `aria-disabled` carries the state and the ink step matches the
-														 * ghost variant's own `disabled:` line, so a voice-blocked mic and a
-														 * feature-unavailable one read the same - the reason in the tooltip
-														 * is what differs, and it is the one that says what to do.
-														 */
-														"aria-disabled:text-ink-disabled aria-disabled:opacity-50 aria-disabled:cursor-not-allowed aria-disabled:hover:bg-transparent aria-disabled:hover:text-ink-disabled",
+														"border-success-border bg-success-wash text-success hover:bg-success-wash",
+														confirmArming && "opacity-72",
 													)}
-													onPointerDown={holdCaretOnRefusedPress}
-													onClick={handleStartRecording}
-													aria-label={t("ui.chat.composer.start_recording")}
-													aria-disabled={voiceBlocksDictation || undefined}
+													onClick={(event) => {
+														if (ignoreConfirmPress(event.detail)) return;
+														handleConfirmRecording();
+													}}
+													aria-label={t("ui.chat.composer.insert_transcript")}
 													/*
-													 * BUSY IS ITS OWN FACE (operator feedback via Aida,
-													 * 2026-10-01): while the recorder is being acquired the
-													 * control shows the acknowledgment instead of the mic glyph.
-													 * It is NOT disabled while it does (design round 1, D1) -
-													 * the handler's own guard is what refuses a second press,
-													 * and the hold contract reaches the same handler without
-													 * consulting `disabled` at all. The label stays "Start
-													 * recording" - the control IS still the start control, and
-													 * `aria-busy` plus the captioned line in this row carry the
-													 * state.
-													 * carry the state; the reader that keys on this label
-													 * (`scripts/renderer-driver.mjs`, the mini-view scene)
-													 * keeps resolving it.
+													 * NO `disabled` HERE, and NOT gated on the composer's refusal either
+													 * (the refusal contract's own test forbids that gate anywhere in this
+													 * file - see composer-refusal.test.mjs): the control must stay
+													 * pressable while a recording exists, including in a box that refuses
+													 * input, because the alternative is a live microphone nothing can
+													 * stop. The handler's own guard keeps it safe (a press with nothing
+													 * recording is a no-op).
 													 */
-													aria-busy={isPreparing || undefined}
-													/*
-													 * `isLoading` IS NOT A TERM HERE (the operator's report): the
-													 * composer's own writability is `isInputDisabled`, and a send in
-													 * flight does not make this box unwritable - mid-turn messages
-													 * ride the steer path, and dictation is a state OF this box. The
-													 * old term closed the control for the whole admit-to-first-answer
-													 * window while the box itself stayed writable; the manager's own
-													 * gate (the registration below) carries the same correction.
-													 *
-													 * `isPreparing` IS NOT A TERM EITHER (design round 1, D1):
-													 * disabling the control during the acknowledgment made the one
-													 * control the user just pressed go inert on a 32px target, and it
-													 * was redundant besides - a second press inside the acquisition
-													 * is refused by the handler's own `recordingAttemptRef` guard,
-													 * which is the door the hold contract reaches the same callback
-													 * through and which `disabled` never covered anyway. `aria-busy`
-													 * is what says the control is working, so no gate is needed to
-													 * say it twice.
-													 */
-													disabled={
-														isInputDisabled || !canEnableRecordingFeature
-													}
 												>
-													{isPreparing ? (
-														/*
-														 * ONE RING ON THIS SURFACE (design round 1, D3): this is the composer's only
-														 * indeterminate element - the caption in the row beside it is words - which is
-														 * branding § 5's "one such element per surface". The track's ROLE is fixed in
-														 * `Spinner` itself rather than patched here, and that is measured: a call-site
-														 * `border-control` flattens this ring's accent quadrant (tailwind-merge merges
-														 * the track and the quadrant as one border colour), so the ring came back
-														 * `#837c6d` on both sides - a circle with nothing visibly rotating in it.
-														 */
-														<Spinner size="sm" />
-													) : (
-														<Mic aria-hidden="true" />
-													)}
+													<Check aria-hidden="true" />
 												</Button>
 											</span>
 										</Tooltip>
 									)}
-									{isRecording && (
-										<>
+									{(slotA === "mic" || slotA === "mic-preparing") &&
+										micControlShown && (
 											<Tooltip
-												content={t("ui.chat.composer.confirm_recording_hint")}
+												key="mic"
+												content={
+													<ShortcutText
+														text={
+															isPreparing
+																? t("ui.chat.composer.starting_recording")
+																: !canEnableRecordingFeature
+																	? recordingUnavailableReason
+																	: voiceBlocksDictation
+																		? (dictationOff ?? "")
+																		: (() => {
+																				const hint = recordingHintParts(
+																					shortcutText,
+																					resolvePushToTalkBinding()?.label ??
+																						null,
+																				);
+																				return hint === null
+																					? t(
+																							"ui.chat.composer.start_recording",
+																						)
+																					: t(
+																							"ui.chat.composer.start_recording_hint",
+																							{
+																								shortcut: isolateLtr(
+																									hint.shortcut,
+																								),
+																								pushToTalk: hint.pushToTalk,
+																							},
+																						);
+																			})()
+														}
+													/>
+												}
 											>
 												<span>
 													<Button
+														data-composer-slot="a"
 														variant="ghost"
 														size={isSmallView ? "icon-sm" : "icon"}
-														className="text-success hover:bg-success-wash hover:text-success"
-														onClick={handleConfirmRecording}
-														aria-label={t("ui.chat.composer.confirm_recording")}
+														className={cn(
+															"text-ink-dim hover:bg-elevated hover:text-ink",
+															/*
+															 * THE DIMMED FACE OF A REFUSAL THAT KEEPS ITS TOOLTIP (spec §3):
+															 * `aria-disabled` carries the state and the ink step matches the
+															 * ghost variant's own `disabled:` line, so a voice-blocked mic and a
+															 * feature-unavailable one read the same - the reason in the tooltip
+															 * is what differs, and it is the one that says what to do.
+															 */
+															"aria-disabled:text-ink-disabled aria-disabled:opacity-50 aria-disabled:cursor-not-allowed aria-disabled:hover:bg-transparent aria-disabled:hover:text-ink-disabled",
+														)}
+														onPointerDown={holdCaretOnRefusedPress}
+														onClick={handleStartRecording}
+														aria-label={t("ui.chat.composer.start_recording")}
+														aria-disabled={voiceBlocksDictation || undefined}
 														/*
-														 * NO `disabled` HERE, and NOT gated on the composer's refusal either
-														 * (the refusal contract's own test forbids that gate anywhere in this
-														 * file - see composer-refusal.test.mjs): the control must stay
-														 * pressable while a recording exists, including in a box that refuses
-														 * input, because the alternative is a live microphone nothing can
-														 * stop. Loading used to sit here and closed the pointer door for the
-														 * whole turn; the handler's own guard is what keeps it safe (a press
-														 * with nothing recording is a no-op).
+														 * BUSY IS ITS OWN FACE (operator feedback via Aida,
+														 * 2026-10-01): while the recorder is being acquired the
+														 * control shows the acknowledgment instead of the mic glyph.
+														 * It is NOT disabled while it does (design round 1, D1) -
+														 * the handler's own guard is what refuses a second press,
+														 * and the hold contract reaches the same handler without
+														 * consulting `disabled` at all. The label stays "Start
+														 * recording" - the control IS still the start control, and
+														 * `aria-busy` plus the captioned line in this row carry the
+														 * state.
+														 * carry the state; the reader that keys on this label
+														 * (`scripts/renderer-driver.mjs`, the mini-view scene)
+														 * keeps resolving it.
 														 */
+														aria-busy={isPreparing || undefined}
+														/*
+														 * `isLoading` IS NOT A TERM HERE (the operator's report): the
+														 * composer's own writability is `isInputDisabled`, and a send in
+														 * flight does not make this box unwritable - mid-turn messages
+														 * ride the steer path, and dictation is a state OF this box. The
+														 * old term closed the control for the whole admit-to-first-answer
+														 * window while the box itself stayed writable; the manager's own
+														 * gate (the registration below) carries the same correction.
+														 *
+														 * `isPreparing` IS NOT A TERM EITHER (design round 1, D1):
+														 * disabling the control during the acknowledgment made the one
+														 * control the user just pressed go inert on a 32px target, and it
+														 * was redundant besides - a second press inside the acquisition
+														 * is refused by the handler's own `recordingAttemptRef` guard,
+														 * which is the door the hold contract reaches the same callback
+														 * through and which `disabled` never covered anyway. `aria-busy`
+														 * is what says the control is working, so no gate is needed to
+														 * say it twice.
+														 */
+														disabled={
+															isInputDisabled || !canEnableRecordingFeature
+														}
 													>
-														<Check aria-hidden="true" />
+														{isPreparing ? (
+															/*
+															 * ONE RING ON THIS SURFACE (design round 1, D3): this is the composer's only
+															 * indeterminate element - the caption in the row beside it is words - which is
+															 * branding § 5's "one such element per surface". The track's ROLE is fixed in
+															 * `Spinner` itself rather than patched here, and that is measured: a call-site
+															 * `border-control` flattens this ring's accent quadrant (tailwind-merge merges
+															 * the track and the quadrant as one border colour), so the ring came back
+															 * `#837c6d` on both sides - a circle with nothing visibly rotating in it.
+															 */
+															<Spinner size="sm" />
+														) : (
+															<Mic aria-hidden="true" />
+														)}
 													</Button>
 												</span>
 											</Tooltip>
-											<Tooltip
-												content={t("ui.chat.composer.cancel_recording_hint")}
-											>
-												<span>
-													<Button
-														variant="ghost"
-														size={isSmallView ? "icon-sm" : "icon"}
-														className="text-danger hover:bg-danger-wash hover:text-danger"
-														onClick={handleCancelRecording}
-														aria-label={t("ui.chat.composer.cancel_recording")}
-														// NO `disabled`: cancelling is the mic's own off switch and must work
-														// even where the box refuses input (see the confirm control above).
-													>
-														<X aria-hidden="true" />
-													</Button>
-												</span>
-											</Tooltip>
-										</>
+										)}
+									{slotA === "spinner" && (
+										/*
+										 * THE MIC'S OWN PRESS POINT WHILE A TAKE IS BEING TRANSCRIBED, or
+										 * its words are going out as a message: inert and busy rather than
+										 * a live mic, so a second press cannot start a new take over the one
+										 * in flight. `aria-disabled`, never `disabled`, so focus stays.
+										 */
+										<Button
+											key="spinner"
+											data-composer-slot="a"
+											variant="ghost"
+											size={isSmallView ? "icon-sm" : "icon"}
+											type="button"
+											className="text-ink-dim"
+											aria-busy={true}
+											aria-disabled={true}
+											aria-label={t("ui.chat.composer.processing_audio")}
+											onClick={(event) => event.preventDefault()}
+										>
+											<Spinner size="sm" />
+										</Button>
+									)}
+									{slotA === "cancel" && (
+										<Tooltip
+											key="cancel"
+											content={t("ui.chat.composer.cancel_recording_hint")}
+										>
+											<span>
+												<Button
+													data-composer-slot="a"
+													variant="outline"
+													size={isSmallView ? "icon-sm" : "icon"}
+													type="button"
+													className={cn(
+														// A neutral outline body with the glyph in danger red: the
+														// one colour cue that says "this throws the take away", and
+														// not a loud third fill beside the green disc. The red fill
+														// is for hover and focus only.
+														"text-danger hover:bg-danger-wash hover:text-danger focus-visible:bg-danger-wash",
+														cancelArming && "opacity-72",
+													)}
+													onClick={(event) => {
+														// A reflex press right after the row flips to recording
+														// would discard a take the user just began.
+														if (ignoreCancelPress(event.detail)) return;
+														handleCancelRecording();
+													}}
+													aria-label={t("ui.chat.composer.cancel_recording")}
+													// NO `disabled`: cancelling is the mic's own off switch and must work
+													// even where the box refuses input.
+												>
+													<X aria-hidden="true" />
+												</Button>
+											</span>
+										</Tooltip>
 									)}
 									{/*
 									 * THE WAVE TOGGLE (spec §1): the two input modes sit together -
@@ -9894,238 +11177,168 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 										sessionId={voiceSessionId}
 										isSmallView={isSmallView}
 									/>
-									{/*
-									 * THE STOP CONTROL'S BOX, HELD FOR A GRACE WINDOW AFTER THE
-									 * TURN IT BELONGED TO ENDS - and empty otherwise.
-									 *
-									 * THE HAZARD, MEASURED TWICE. Pressing Stop used to slide the
-									 * dictation control 36px right - 32px of control plus the row's
-									 * 4px gap - into the exact centre of the box the press had just
-									 * landed in, so a reflex second press started a MICROPHONE
-									 * RECORDING. UX round 1 (U1) and QA (Q1) found it independently
-									 * on the unreserved build: the element at the Stop's own centre
-									 * was `button[aria-label="Start recording"]` once the turn
-									 * settled, and a press there reported `recording_started: true`.
-									 * A 120ms double press still hit Stop twice, which is what made
-									 * it a trap rather than something a user notices.
-									 *
-									 * WHY A GRACE RATHER THAN A STANDING RESERVATION. Holding the
-									 * box for as long as the capability is negotiated removes the
-									 * hazard and leaves the idle composer with a one-control gap
-									 * between dictation and Send, which the operator reported as a
-									 * defect of its own ("the dictation control should sit beside
-									 * Send"). Both cannot hold: the right cluster is right-justified
-									 * (`ml-auto`), so the dictation control sits exactly one
-									 * control-plus-gap - the Stop's own 32px plus the row's 4px -
-									 * further from Send while the Stop is rendered than with it gone,
-									 * and an idle row whose dictation control sits BESIDE Send is the
-									 * row in which the control has moved into the vacated box - the layout
-									 * cannot be preserved, only the hazard bounded. What a user
-									 * needs protection from is the moment the turn ends, which is
-									 * when the reflex press arrives; a row that has settled since is
-									 * a row nobody is mid-double-press on. So the box is held while
-									 * the turn runs and for `INTERRUPT_SLOT_GRACE_MS` (500) after the
-									 * control leaves, then released to nothing. The window's own
-									 * reasoning, the measurement behind the number and what it costs
-									 * (a second press more than 500ms after the turn settles lands on
-									 * the dictation control, which by then is where it is drawn) live
-									 * in `interrupt-slot-grace.ts`, where they can be tested without
-									 * a browser.
-									 *
-									 * WHAT IS DELIBERATELY NOT DONE: the recording action is never
-									 * refused, gated or greyed. The dictation control stays visible,
-									 * live and pressable at every instant, and during the grace it is
-									 * at its busy position - the row the operator sees today. The
-									 * reservation (the window's grace, or the in-flight dictation case
-									 * below) decides whether an invisible placeholder sits beside a
-									 * control, and nothing else. A control that looks live but is not
-									 * would be a worse defect than the gap it replaced, and it would
-									 * refuse a deliberate press.
-									 *
-									 * ALTERNATIVES CONSIDERED AND REJECTED. (a) No guard at all:
-									 * reintroduces the MAJOR above. (b) Putting Stop to the LEFT of
-									 * the dictation control, so the dictation control never moves:
-									 * changes the running layout the operator explicitly asked to keep
-									 * and moves Stop away from Send, where the hand that just sent the
-									 * message already is. (c) Refusing or greying the first press
-									 * inside the window: a control that looks live but is not, a grey
-									 * flicker after every turn, and a deliberate press refused. (d)
-									 * Holding the box while the pointer rests in it: a standing gap
-									 * for exactly the user who just pressed Stop, i.e. the reported
-									 * defect restored for the one person it was measured on.
-									 *
-									 * THE START-OF-TURN TRANSITION IS DELIBERATELY NOT CHANGED (noted
-									 * so a later reader does not "fix" it by symmetry). When the turn
-									 * starts, the Stop appears in the box the dictation control had
-									 * occupied, so the DICTATION control moves 36px LEFT - 32px of
-									 * control plus the row's 4px gap - and Send does not move at all:
-									 * it is pinned to the row's right edge in every state (measured,
-									 * default rung: Send 1307 while running, inside the window and
-									 * settled; the dictation control 1271 settled and 1235 running).
-									 * The residual is the mirror of the one this box exists for: a press
-									 * aimed at the dictation control's own position lands on the Stop
-									 * once the Stop is drawn there, so a user reaching for dictation as a
-									 * turn starts stops the turn instead. It stays unchanged on the
-									 * merits: the control that ARRIVES is the one the new turn needs,
-									 * stopping a turn is legible and recoverable (the transcript says
-									 * "Interrupted") where a silent microphone recording is not, and the
-									 * only alternative that removes it - holding the box while idle too -
-									 * is the operator's own reported defect.
-									 *
-									 * THE BOX IS HELD WHILE A DICTATION IS IN FLIGHT, on a different
-									 * reason than the window. While `isRecording` the row draws
-									 * `[Confirm recording][Cancel recording]` where the dictation control
-									 * and Send were (Send is gated on `!isRecording`), and the held box
-									 * renders AFTER them: `[Confirm 1235][Cancel 1271][box 1307]`, which
-									 * is this record's own `inFlight.grace`. Release the box and both
-									 * controls move 36px right, to the two-control row the PREVIOUS
-									 * head's record carries - a different head, so it is named with the
-									 * path to it: `git show 043b0b7c3:docs/evidence/interrupt-live/
-									 * interrupt-proof.json`, `slot.recordingCancelled.aim.rect.left =
-									 * 1307`, i.e. `[Confirm 1271][Cancel 1307]`. (That head's step is
-									 * that row with the box already released, which is why its Cancel
-									 * sits a slot right of this head's own `slot.recordingCancelled` -
-									 * the same aim, 1271, in the row with the box HELD. Same field,
-									 * two rows: read the record each number belongs to.) The slot the
-									 * Stop itself occupies in that shape is 1307, from THIS record
-									 * (`inFlight.pressed.rect.left`), so a
-									 * reflex press at the Stop's own centre would land on **Cancel
-									 * recording** and DISCARD in-flight audio - a mistimed Stop press
-									 * would throw away a recording the user made deliberately, which is
-									 * why the box is held for as long as the dictation controls are
-									 * rendered rather than only for the window.
-									 *
-									 * WHAT THIS SHAPE COSTS, stated because the honest version is not
-									 * "nothing visible": the row's rightmost VISIBLE control sits one
-									 * control-plus-gap short of the row's right edge for the whole
-									 * recording, because the third slot is held empty and the box draws
-									 * no ink. That is a TRAILING void - both controls are drawn where the
-									 * right-justified cluster puts them and nothing is displaced - and it
-									 * is not introduced here: it is `origin/main`'s own recording row,
-									 * whose reservation was unconditional. Against `main` this change
-									 * removes the void from the idle row and leaves this one alone.
-									 *
-									 * AND STARTING A RECORDING MOVES THE PAIR 36px LEFT: the third slot
-									 * fills from the instant `isRecording` is true, so `[mic 1271]
-									 * [Send 1307]` becomes `[Confirm 1235][Cancel 1271][box 1307]` - the
-									 * slot that was just pressed (the dictation control's own, 1271) comes
-									 * back as **Cancel recording**, where without the box it would be
-									 * Confirm. Legible and one press from recovery, and the alternative
-									 * (filling the slot only once a window opens during a recording)
-									 * trades it for a 36px jump at the moment a turn ends under a
-									 * recording - the re-layout class this change exists to bound. The
-									 * same class of note as the start-of-turn transition above, for the
-									 * same reason: recorded so a later reader does not "fix" it by
-									 * symmetry.
-									 *
-									 * `isTranscribing` deliberately gets no such term, and that is a
-									 * statement rather than an omission: `!isTranscribing` gates both the
-									 * dictation control and Send, so while a transcription is in flight
-									 * the row draws nothing a press could reach in the vacated box, and a
-									 * term for it would be symmetry rather than a fix.
-									 *
-									 * `aria-hidden`, no focus and no pointer events: this is geometry,
-									 * not a control - nothing may be reachable, announced or pressed
-									 * there. Gated on the same legacy condition the mic is (`isLoading
-									 * && currentJobId`), because that path hides the mic and renders
-									 * its own `Stop agent` in this cluster; reserving a slot nothing
-									 * will fill would move a control for no reason.
-									 */}
-									{interruptSlotDrawn && (
-										<span
-											aria-hidden="true"
-											data-interrupt-slot=""
-											className={cn(
-												"pointer-events-none invisible flex items-center",
-											)}
+									{(slotB.role === "send-recording" ||
+										slotB.role === "send-recording-busy") && (
+										<Tooltip
+											key="send-recording"
+											content={t("ui.chat.composer.send_recording_hint")}
 										>
-											{/*
-											 * THE RESERVATION IS THE STOP'S OWN BOX, INVISIBLE, and that is
-											 * what makes "holding the place moves nothing" true rather than
-											 * nearly true (chat redesign §G3, U3).
-											 *
-											 * The control is the icon-only red square again (operator report,
-											 * 2026-09-26 - see the live branch below), so this renders that
-											 * SAME markup invisible: `visibility: hidden` keeps layout,
-											 * unlike `display: none`, so the two boxes agree by construction
-											 * rather than by a measured width that could drift. It carries
-											 * NO accessible name and no labelling attribute, because it must
-											 * stay out of the live probes that select the control by its own
-											 * name and must not be announced.
-											 */}
-											<Button
-												variant="danger"
-												size={isSmallView ? "icon-sm" : "icon"}
-												type="button"
-												tabIndex={-1}
-											>
-												<Square aria-hidden="true" />
-											</Button>
-										</span>
-									)}
-									{canonicalStop?.active && (
-										/*
-										 * THE STOP IS THE ICON-ONLY RED SQUARE IT WAS BEFORE THE
-										 * REDESIGN (operator report, 2026-09-26).
-										 *
-										 * The redesign relabelled it - a `surface` control with a
-										 * `border-control` edge, the word `Stop` and a visible `Esc` cap
-										 * (§G3, U3) - and the operator's verdict was that the row it sits
-										 * in is now over-full: the label and cap crowded a row that
-										 * already carries five other items, and at their window width the
-										 * cap read as a fragment clipped under this button. Restored: the
-										 * bare `danger` square, `icon-sm`/`icon` like its `Stop agent`
-										 * sibling above.
-										 *
-										 * WHAT THE LABEL'S REMOVAL KEEPS, deliberately, because an
-										 * icon-only destructive-adjacent control is worse than a
-										 * labelled one when it loses them: `aria-label="Stop"` is the
-										 * button's accessible NAME, `aria-keyshortcuts="Escape"` still
-										 * states the key binding to assistive tech, and the tooltip
-										 * still says both in words. The VISIBLE cap is what went, not
-										 * the binding.
-										 */
-										<Tooltip content={t("ui.chat.composer.stop_work_hint")}>
 											<span>
 												<Button
-													variant="danger"
+													data-composer-slot="b"
+													variant="primary"
 													size={isSmallView ? "icon-sm" : "icon"}
 													type="button"
-													onClick={canonicalStop.onStop}
-													aria-label={t("ui.chat.composer.stop")}
-													aria-keyshortcuts="Escape"
-													/*
-													 * THE PRESSED HOLD (design round 2, D6). While the press
-													 * window is live the square wears the `danger` variant's own
-													 * pressed composite - the exact three classes on the
-													 * variant's `active:` line, applied by ATTRIBUTE rather than
-													 * `:active` because the hold must outlive the pointer (an
-													 * Escape press leaves it elsewhere entirely), and the two
-													 * frames measured byte-identical rest-vs-pending without
-													 * it. `button.tsx`'s header documents the composite as two
-													 * authored roles (`danger-wash`, `danger`), not a new one,
-													 * and it is deliberately NOT the `disabled:` line: the
-													 * control is engaged, not unavailable - still focusable,
-													 * still named `Stop`, announced busy to assistive tech.
-													 * The glyph stays the `Square`; the rung already carries
-													 * the spinner a second one would duplicate.
-													 */
-													data-stopping={
-														canonicalStop.stopping === true ? "true" : undefined
-													}
-													aria-busy={
-														canonicalStop.stopping === true ? true : undefined
-													}
 													className={cn(
-														"data-[stopping]:border-danger data-[stopping]:text-ink data-[stopping]:bg-[color-mix(in_oklab,var(--color-danger-wash)_80%,var(--color-danger))]",
+														"rounded-full disabled:bg-surface",
+														// The held face after the press: the same disc, quieter, and
+														// STATIC - slot A carries this wait's one spinner (design
+														// round 1, D1).
+														(slotB.role === "send-recording-busy" ||
+															slotBArming) &&
+															"opacity-72",
 													)}
+													aria-busy={
+														slotB.role === "send-recording-busy" || undefined
+													}
+													aria-disabled={
+														slotB.role === "send-recording-busy" || undefined
+													}
+													/*
+													 * THE SAME REFUSAL AS SEND: no provider or model disables it and
+													 * the press explains why (the caret-holding press handler), so
+													 * the two controls cannot disagree about a refused send.
+													 */
+													onPointerDown={holdCaretOnSendPress}
+													onClick={(event) => {
+														// Inert while held, without `disabled`: focus stays on the
+														// control that was pressed.
+														if (slotB.role === "send-recording-busy") return;
+														if (ignoreSlotBPress(event.detail)) return;
+														handleSendRecording();
+													}}
+													// The held face keeps the primary disc (design D1: reduced emphasis, not
+													// a disabled grey) and is inert through `aria-disabled` and the click
+													// guard above, so it never drops focus.
+													disabled={
+														!slotB.enabled &&
+														slotB.role !== "send-recording-busy"
+													}
+													aria-label={
+														aside !== null && !awaitingAnswer
+															? t("ui.chat.composer.ask_aside")
+															: t("ui.chat.composer.send_recording")
+													}
 												>
-													<Square aria-hidden="true" />
+													{/* The idle Send's own glyph: one icon for one press point. */}
+													<Send aria-hidden="true" />
 												</Button>
 											</span>
 										</Tooltip>
 									)}
-									{isLoading && currentJobId ? (
+									{slotB.role === "connecting" && (
+										/*
+										 * THE SLOT'S HELD FACE while a send goes out, from the press until
+										 * the submit settles. The box empties on admission, so without this
+										 * the slot would flip to Stop under the finger that just pressed
+										 * Send - and a double click would interrupt the run it just started.
+										 * Inert (`aria-disabled`, never `disabled`, so focus stays).
+										 */
+										<Button
+											key="connecting"
+											data-composer-slot="b"
+											variant="secondary"
+											size={isSmallView ? "icon-sm" : "icon"}
+											type="button"
+											className="rounded-full"
+											aria-busy={true}
+											aria-disabled={true}
+											aria-label={t("ui.chat.composer.placeholder.sending")}
+											onClick={(event) => event.preventDefault()}
+										>
+											<Spinner size="sm" />
+										</Button>
+									)}
+									{(slotB.role === "stop" || slotB.role === "stop-busy") &&
+										canonicalStop && (
+											/*
+											 * THE STOP IS THE ICON-ONLY RED SQUARE IT WAS BEFORE THE
+											 * REDESIGN (operator report, 2026-09-26).
+											 *
+											 * The redesign relabelled it - a `surface` control with a
+											 * `border-control` edge, the word `Stop` and a visible `Esc` cap
+											 * (§G3, U3) - and the operator's verdict was that the row it sits
+											 * in is now over-full: the label and cap crowded a row that
+											 * already carries five other items, and at their window width the
+											 * cap read as a fragment clipped under this button. Restored: the
+											 * bare `danger` square, `icon-sm`/`icon` like its `Stop agent`
+											 * sibling above.
+											 *
+											 * WHAT THE LABEL'S REMOVAL KEEPS, deliberately, because an
+											 * icon-only destructive-adjacent control is worse than a
+											 * labelled one when it loses them: `aria-label="Stop"` is the
+											 * button's accessible NAME, `aria-keyshortcuts="Escape"` still
+											 * states the key binding to assistive tech, and the tooltip
+											 * still says both in words. The VISIBLE cap is what went, not
+											 * the binding.
+											 */
+											<Tooltip
+												key="stop"
+												content={t("ui.chat.composer.stop_work_hint")}
+											>
+												<span>
+													<Button
+														data-composer-slot="b"
+														variant="danger"
+														size={isSmallView ? "icon-sm" : "icon"}
+														type="button"
+														onClick={(event) => {
+															// Stop-busy is inert, and a reflex press inside the guard
+															// window after Stop ARRIVES in the slot is ignored (pointer
+															// only; Esc and the keyboard are instant).
+															if (slotB.role === "stop-busy") return;
+															if (ignoreSlotBPress(event.detail)) return;
+															canonicalStop.onStop();
+														}}
+														aria-label={t("ui.chat.composer.stop")}
+														aria-keyshortcuts="Escape"
+														/*
+														 * THE PRESSED HOLD (design round 2, D6). While the press
+														 * window is live the square wears the `danger` variant's own
+														 * pressed composite - the exact three classes on the
+														 * variant's `active:` line, applied by ATTRIBUTE rather than
+														 * `:active` because the hold must outlive the pointer (an
+														 * Escape press leaves it elsewhere entirely), and the two
+														 * frames measured byte-identical rest-vs-pending without
+														 * it. `button.tsx`'s header documents the composite as two
+														 * authored roles (`danger-wash`, `danger`), not a new one,
+														 * and it is deliberately NOT the `disabled:` line: the
+														 * control is engaged, not unavailable - still focusable,
+														 * still named `Stop`, announced busy to assistive tech.
+														 * The glyph stays the `Square`; the rung already carries
+														 * the spinner a second one would duplicate.
+														 */
+														data-stopping={
+															canonicalStop.stopping === true
+																? "true"
+																: undefined
+														}
+														aria-busy={
+															canonicalStop.stopping === true ? true : undefined
+														}
+														className={cn(
+															"data-[stopping]:border-danger data-[stopping]:text-ink data-[stopping]:bg-[color-mix(in_oklab,var(--color-danger-wash)_80%,var(--color-danger))]",
+															// A Stop that arrived because a SEND flipped the slot ignores a pointer
+															// press for ~500 ms; the ramp says so (opacity, never `disabled`).
+															slotBArming && "opacity-72",
+														)}
+													>
+														<Square aria-hidden="true" />
+													</Button>
+												</span>
+											</Tooltip>
+										)}
+									{isLoading && currentJobId && (
 										<Tooltip content={t("ui.chat.composer.stop_agent")}>
 											<span>
 												<Button
@@ -10139,10 +11352,11 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 												</Button>
 											</span>
 										</Tooltip>
-									) : (
-										!isRecording &&
-										!isTranscribing && (
+									)}
+									{(slotB.role === "send" || slotB.role === "steer") &&
+										!(isLoading && currentJobId) && (
 											<Tooltip
+												key={slotB.role}
 												content={
 													/*
 													 * THE VERB FOLLOWS THE DESTINATION (UX round 1, U5). While an aside is
@@ -10162,7 +11376,11 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 													 */
 													aside !== null && !awaitingAnswer
 														? t("ui.chat.composer.ask_aside")
-														: t("ui.chat.composer.send_message")
+														: slotB.role === "steer"
+															? /* Stop is the same slot as Send, so while text is typed the
+															     pointer has no Stop: the tooltip is where Esc is said. */
+																t("ui.chat.composer.steer_hint")
+															: t("ui.chat.composer.send_message")
 												}
 											>
 												<span>
@@ -10196,15 +11414,12 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 													 * failed by naming the size rather than the comment.
 													 */}
 													<Button
+														data-composer-slot="b"
 														variant="primary"
 														size={isSmallView ? "icon-sm" : "icon"}
 														type="submit"
 														onPointerDown={holdCaretOnSendPress}
-														disabled={
-															isInputDisabled ||
-															sendRefused ||
-															(!newMessage.trim() && attachments.length === 0)
-														}
+														disabled={!slotB.enabled}
 														className="rounded-full disabled:bg-surface"
 														aria-label={
 															aside !== null && !awaitingAnswer
@@ -10216,8 +11431,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 													</Button>
 												</span>
 											</Tooltip>
-										)
-									)}
+										)}
 								</div>
 							</div>
 						</div>
@@ -10231,19 +11445,33 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * (the card takes the chips' slot there); the two mirrors main kept for a
 				 * centred band are dropped with the centring they existed for.
 				 */}
-				{noProvider && !showEmptyChatPrompt ? (
+				{/*
+				 * ONE LINE FOR EVERY "CANNOT SEND" STATE, ALWAYS VISIBLE WHILE IT HOLDS
+				 * (D4, onboarding friction 2026-11). It replaces two lines: the
+				 * no-provider line (non-empty chats only) and the five-second hint a
+				 * refused press raised as plain text - the text users rage-clicked,
+				 * because it named a fix and was not one. The line carries the fix as a
+				 * control, shows on the empty chat too (the connect card above is not
+				 * where the user is typing), and a refused press or a click into the box
+				 * steps it to full ink (`noProviderHint`) instead of making it appear.
+				 */}
+				{/*
+				 * EXCEPT the plain no-provider block on the empty chat (design round 1,
+				 * D3): the connect card above already offers "Connect a provider" there,
+				 * and a second identical button 240 px lower made three calls to action
+				 * where activation is decided. Base's guard, restored for that one
+				 * block; no-model, offline, a local runtime not yet the default and every
+				 * non-empty chat keep the line.
+				 */}
+				{sendBlock && !(sendBlock === "no_provider" && showEmptyChatPrompt) ? (
 					<div className={cn("mt-2", CHAT_MEASURE)}>
-						<NoProviderLine />
-					</div>
-				) : null}
-
-				{(noProvider || noModel) && noProviderHint ? (
-					<div className={cn("mt-2", CHAT_MEASURE)}>
-						<output className="block text-body-sm text-ink-muted">
-							{noModel
-								? "Choose a model for this conversation before sending."
-								: "Connect a provider to send."}
-						</output>
+						<SendBlockedLine
+							block={sendBlock}
+							emphasis={noProviderHint}
+							cue={refusedPresses}
+							local={localSelection}
+							onChooseModel={chooseModelFromComposer}
+						/>
 					</div>
 				) : null}
 			</form>
@@ -10340,6 +11568,19 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					 * that then moves, and that is the honest move.
 					 */
 					bandCentred ? "grow" : "shrink-0",
+					/*
+					 * NO TRANSITION ON THE BAND'S LAYOUT, stated because reduced motion
+					 * otherwise adds one (QA round 1, Q3). The global cap in
+					 * styles/index.css sets `transition-duration: 0.01ms` on EVERY element,
+					 * and an element that declares no transition still has the initial
+					 * `transition-property: all` - so under the cap `grow` -> `shrink-0`
+					 * became a 0.01 ms transition, and a transition paints its START value
+					 * for one frame: the first send's frame laid the transcript out
+					 * against the greeting band (the echo 104 px up, under the header),
+					 * then dropped it into place. `transition-none` keeps the first frame
+					 * the final one; the band has no motion of its own to lose.
+					 */
+					"transition-none",
 					// The horizontal inset is the SHARED one and is the same at every
 					// width, because it is half of a shared edge: see
 					// `CHAT_COLUMN_INSET`. Only the VERTICAL padding compacts in the
@@ -10407,6 +11648,8 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					className={cn(
 						"flex w-full flex-col items-center justify-center",
 						bandCentred ? "grow" : null,
+						// The band's reason, for the same `grow` flip (Q3, see the band).
+						"transition-none",
 					)}
 				>
 					<div
@@ -10470,7 +11713,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 											band={band}
 											splash={splash}
 											foot={foot}
-											suggestions={suggestions}
+											suggestions={suggestionLabels}
 											disabled={suggestionsDisabled}
 											onRefusedPress={holdCaretOnRefusedPress}
 											onSelect={handleSuggestionClick}
@@ -10554,6 +11797,18 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		);
 	},
 );
+
+/*
+ * `scrollHeight` is an integer and the laid-out content is not: at 800 px the
+ * fitted box still scrolled by 0.5 px and kept an overlay thumb painted
+ * (QA r2 Q12). The fitted box is read-only and sized to its content, so it
+ * hides overflow; a box at its `max-h` cap still scrolls.
+ */
+function fitGatedBox(el: HTMLTextAreaElement) {
+	el.style.height = "auto";
+	el.style.height = `${Math.ceil(el.scrollHeight)}px`;
+	el.style.overflowY = el.scrollHeight <= el.clientHeight + 1 ? "hidden" : "";
+}
 
 /*
  * THE MEMO BOUNDARY (C1). This component sits under the chat pane, which

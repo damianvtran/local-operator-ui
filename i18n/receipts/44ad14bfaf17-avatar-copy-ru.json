@@ -1,0 +1,55 @@
+{
+	"auditor": "reviewer",
+	"model": "anthropic/claude-sonnet-5-5",
+	"instance": "44ad14bfaf17-avatar-copy-ru",
+	"locale": "ru",
+	"date": "2026-11-03",
+	"head": "ffa3a3d83cef39cf2f889f6aa049ab998cc4111d",
+	"independence": "Independent auditor (role reviewer, sub-lane avatar-i18n-auditor of session 44ad14bfaf17); did not write or edit the translations; translator was coder. No fallback model was used.",
+	"reference": {
+		"glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+		"style_guide_sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5",
+		"source": "origin/main of damianvtran/local-operator at audit time"
+	},
+	"method": "Read the 6 new values per locale against English, the English context sidecar, the core glossary, the locale style guide and sibling keys in the same namespaces; mechanically checked placeholders ({name}), key parity/order, untranslated values and absence of bidi control characters (U+200E/F, U+061C, U+202A-E, U+2066-9). No rendered-fit or native-reader claim.",
+	"namespaces": {
+		"ui.agents.avatar": {
+			"status": "passed",
+			"sha256": {
+				"en": "ed899664c0cb834a71327c6d9704338d711beb1bc15beffc07d800dbf8275a46",
+				"ru": "b7e3ba87ff43f8483bd37b1c7e74ed503a5498274e74c6747e1673b3be8bd355"
+			},
+			"findings": [],
+			"keys_audited": [
+				"ui.agents.avatar.add_link"
+			]
+		},
+		"ui.settings.appearance": {
+			"status": "passed",
+			"sha256": {
+				"en": "6993e23a7d9607a033159d72344f21058c8232a16de96ae1f3bb63bdd45e82dd",
+				"ru": "57a7a3f05f543f94c1ff9e648739753dc7581c5e459f985717bf78fe62178991"
+			},
+			"findings": [
+				{
+					"severity": "NIT",
+					"key": "ui.settings.appearance.agent_avatar_size_setting.how_large_the_agent_s_picture_appears_in_the_chat_window_and_the_chat",
+					"finding": "\"в его заголовке\" — \"его\" can attach to агент or чат; siblings say \"заголовок чата\" (ui.agents.avatar.editor.preview_header).",
+					"suggested_fix": "Размер фото агента в окне чата и в заголовке чата. Боковая панель остаётся прежней."
+				},
+				{
+					"severity": "NIT",
+					"key": "ui.settings.appearance.agent_avatar_size_setting.small",
+					"finding": "\"Маленький\" is 9 characters against English 5 (context hint: stay within ~1.5x). Not rendered; strip is flex shrink-0 so the label column absorbs it. Acceptable, flagged for the designer fit check."
+				}
+			],
+			"keys_audited": [
+				"ui.settings.appearance.agent_avatar_size_setting.agent_picture_size",
+				"ui.settings.appearance.agent_avatar_size_setting.how_large_the_agent_s_picture_appears_in_the_chat_window_and_the_chat",
+				"ui.settings.appearance.agent_avatar_size_setting.small",
+				"ui.settings.appearance.agent_avatar_size_setting.medium",
+				"ui.settings.appearance.agent_avatar_size_setting.large"
+			]
+		}
+	}
+}

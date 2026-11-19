@@ -1,0 +1,105 @@
+{
+  "schema": 1,
+  "head": "0b3d90980efb2b70306f665a10af128a06a421b6",
+  "scope": "PR #1652 round 2: ui.chat.canonical.supplement.withheld.reason_separator; static independent linguistic audit; unchanged namespace keys inherit prior ledger-bound coverage (bytes at a3dfdf7b027 bound by the round-1 rows). NOT runtime/rendered evidence.",
+  "records": [
+    {
+      "locale": "es",
+      "namespace": "ui.chat.canonical",
+      "receipt": "i18n/receipts/3b93a13f3f5b-1652r2-es.json",
+      "receipt_sha256": "230c69213dde963a866ff638abdc22f7bab3546335e3b5239dc97a478d573d10",
+      "record": "i18n/audits/evidence/es/ui.chat.canonical/3b93a13f3f5b-1652r2-es/record.json",
+      "record_sha256": "230c69213dde963a866ff638abdc22f7bab3546335e3b5239dc97a478d573d10",
+      "companions": [
+        {
+          "path": "i18n/audits/evidence/es/ui.chat.canonical/3b93a13f3f5b-1652r2-es/notes.json",
+          "sha256": "746ad40196fc0d44caa31e92a9a735ff15ec5cb35cfa459053cf3e39f6d31f0f"
+        }
+      ]
+    },
+    {
+      "locale": "fr",
+      "namespace": "ui.chat.canonical",
+      "receipt": "i18n/receipts/3b93a13f3f5b-1652r2-fr.json",
+      "receipt_sha256": "f360cf766c60e759cbac2a772668b0862b50bfe25064557ee5d65a59286cb1cf",
+      "record": "i18n/audits/evidence/fr/ui.chat.canonical/3b93a13f3f5b-1652r2-fr/record.json",
+      "record_sha256": "f360cf766c60e759cbac2a772668b0862b50bfe25064557ee5d65a59286cb1cf",
+      "companions": [
+        {
+          "path": "i18n/audits/evidence/fr/ui.chat.canonical/3b93a13f3f5b-1652r2-fr/notes.json",
+          "sha256": "20c1af989866525803b39587d1dc614292495c2d4b1a628d2b66b6b9a69a1a07"
+        }
+      ]
+    },
+    {
+      "locale": "hi",
+      "namespace": "ui.chat.canonical",
+      "receipt": "i18n/receipts/3b93a13f3f5b-1652r2-hi.json",
+      "receipt_sha256": "ed1f94f05d18a62d317322e6c44cd777d8c1a7735933d25ba68e5f239a83b6a5",
+      "record": "i18n/audits/evidence/hi/ui.chat.canonical/3b93a13f3f5b-1652r2-hi/record.json",
+      "record_sha256": "ed1f94f05d18a62d317322e6c44cd777d8c1a7735933d25ba68e5f239a83b6a5",
+      "companions": [
+        {
+          "path": "i18n/audits/evidence/hi/ui.chat.canonical/3b93a13f3f5b-1652r2-hi/notes.json",
+          "sha256": "595714b6c0e9388e57d0970e1ccdff163334a7c981b7da92133e6593e6516a58"
+        }
+      ]
+    },
+    {
+      "locale": "ru",
+      "namespace": "ui.chat.canonical",
+      "receipt": "i18n/receipts/3b93a13f3f5b-1652r2-ru.json",
+      "receipt_sha256": "0ec062b9aced1557821a09f2fd6ab1d081f0a9d5404cf62d838b1a933d1baec8",
+      "record": "i18n/audits/evidence/ru/ui.chat.canonical/3b93a13f3f5b-1652r2-ru/record.json",
+      "record_sha256": "0ec062b9aced1557821a09f2fd6ab1d081f0a9d5404cf62d838b1a933d1baec8",
+      "companions": [
+        {
+          "path": "i18n/audits/evidence/ru/ui.chat.canonical/3b93a13f3f5b-1652r2-ru/notes.json",
+          "sha256": "45f4f44501311dd98aa5cae60eac0f2e99e7d4abd3f767b81883200eecc906c8"
+        }
+      ]
+    },
+    {
+      "locale": "ur",
+      "namespace": "ui.chat.canonical",
+      "receipt": "i18n/receipts/3b93a13f3f5b-1652r2-ur.json",
+      "receipt_sha256": "87834b761e7ac5b4fa90af9000b811b788f5f6a10f8e828f4e646abd624bf377",
+      "record": "i18n/audits/evidence/ur/ui.chat.canonical/3b93a13f3f5b-1652r2-ur/record.json",
+      "record_sha256": "87834b761e7ac5b4fa90af9000b811b788f5f6a10f8e828f4e646abd624bf377",
+      "companions": [
+        {
+          "path": "i18n/audits/evidence/ur/ui.chat.canonical/3b93a13f3f5b-1652r2-ur/notes.json",
+          "sha256": "345b354c78b88354dff760961de51695ff4fa4b27ce859454103d9a148741a9f"
+        }
+      ]
+    },
+    {
+      "locale": "vi",
+      "namespace": "ui.chat.canonical",
+      "receipt": "i18n/receipts/3b93a13f3f5b-1652r2-vi.json",
+      "receipt_sha256": "2e8896773c24936dfbf478da073f0e9821958f80e3f413eefce3358981b68df5",
+      "record": "i18n/audits/evidence/vi/ui.chat.canonical/3b93a13f3f5b-1652r2-vi/record.json",
+      "record_sha256": "2e8896773c24936dfbf478da073f0e9821958f80e3f413eefce3358981b68df5",
+      "companions": [
+        {
+          "path": "i18n/audits/evidence/vi/ui.chat.canonical/3b93a13f3f5b-1652r2-vi/notes.json",
+          "sha256": "87c9ed097474c55bb1d24565f076cd1bd7c169352548ec61be04835e6a8d43d7"
+        }
+      ]
+    },
+    {
+      "locale": "zh-CN",
+      "namespace": "ui.chat.canonical",
+      "receipt": "i18n/receipts/3b93a13f3f5b-1652r2-zh-cn.json",
+      "receipt_sha256": "17d43fc75842f180eefaf322978bf7ff46c8ef0f3ed1bf6fe8c23acc77420b22",
+      "record": "i18n/audits/evidence/zh-CN/ui.chat.canonical/3b93a13f3f5b-1652r2-zh-cn/record.json",
+      "record_sha256": "17d43fc75842f180eefaf322978bf7ff46c8ef0f3ed1bf6fe8c23acc77420b22",
+      "companions": [
+        {
+          "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/3b93a13f3f5b-1652r2-zh-cn/notes.json",
+          "sha256": "e2d25a5d647d93f04e91cf595f3596d762890f275e87a152fcea20e6a740ab3d"
+        }
+      ]
+    }
+  ]
+}

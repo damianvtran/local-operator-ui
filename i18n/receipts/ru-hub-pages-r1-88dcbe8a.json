@@ -1,0 +1,162 @@
+{
+	"schema": 1,
+	"date": "2026-11-08",
+	"auditor": "translation-auditor",
+	"agent": "translation-auditor",
+	"model": "deepseek/deepseek-flash",
+	"model_provenance": "Session 88dcbe8a59e7 opened on anthropic/claude-sonnet-5-5. Before this audit's first tool call the harness switched the served model on provider quota failures: anthropic/claude-opus-5-5, then openai/gpt-6.1-sol, then deepseek/deepseek-flash. Every catalogue read, render-site trace and verdict in this receipt was formed under deepseek/deepseek-flash.",
+	"fallback": "yes — provider quota; see model_provenance. Disclosed as required.",
+	"independence": "Independent ru auditor. I did not author, translate or edit any value in this commit (author of be77d308262 is Damian Tran; the per-locale translation lanes are not me), I did not read another auditor's ru receipt for this delta before forming this verdict, and I held the worktree read-only: the only files I wrote are the two ru receipts under i18n/receipts/. Verdict rebuilt from the English source, its context sidecar, the render sites, the ru taxonomy labels, the shipped ru ui.hub.* family, the glossary and the ru style guide. The commit message was read as a claim to check, not as evidence.",
+	"instance": "88dcbe8a",
+	"instance_note": "8-hex truncation of this run's session id, per the audit brief's receipt-naming convention; the full id is in `session`.",
+	"session": "88dcbe8a59e7",
+	"locale": "ru",
+	"round": 1,
+	"worktree": "/Users/damian/local-operator-ui/.worktrees/i18n-s4",
+	"branch": "i18n/s5-agent-hub",
+	"head": "be77d308262ce0527c1fd4052ff77207edcac189",
+	"base": "c88ad36bbca",
+	"references": [
+		{
+			"path": "i18n/glossary.md",
+			"repo": "damianvtran/local-operator",
+			"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+			"state": "working-tree bytes at audit time"
+		},
+		{
+			"path": "i18n/style-guides/ru.md",
+			"repo": "damianvtran/local-operator",
+			"sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5",
+			"state": "working-tree bytes at audit time"
+		}
+	],
+	"method": "diff-first: git diff c88ad36bbca..be77d308262 for the ru catalogues, then the en source + en context sidecars for the same keys, then the render sites for every placeholder and fallback slot, then the whole ru ui.hub.pages/teams families and the ru taxonomy labels for register and terminology. Mechanical pass (python, stdlib) over both namespaces: key-set parity, placeholder set equality, plural detection, Latin-script residue, control/bidi characters, NFC, edge and double spaces, trailing punctuation.",
+	"receipt_kind": "independent i18n audit, round 1 (new-key audit of one namespace)",
+	"namespace": "ui.hub.pages",
+	"scope": "The 16 new ui.hub.pages values added to ru in be77d308262 (part of a 17-key Agent Hub publication delta: 16 pages + 1 teams). Both ru namespaces were read in full for register and terminology consistency; only these 16 values are judged here. ui.hub.pages.load_failed.title appears in the diff only because a trailing comma was added — its value is unchanged and it is not judged.",
+	"key_count": {
+		"new_keys_audited": 16,
+		"namespace_keys_total": 59,
+		"namespace_keys_read_for_consistency": 59,
+		"delta_keys_in_commit": 17,
+		"ns_other_delta_keys": [
+			"ui.hub.teams.unnamed_team (judged in ru-hub-teams-r1-88dcbe8a.json)"
+		]
+	},
+	"paths": {
+		"source": "src/i18n/catalogues/en/ui.hub.pages.json",
+		"context": "src/i18n/catalogues/en/ui.hub.pages.context.json",
+		"target": "src/i18n/catalogues/ru/ui.hub.pages.json"
+	},
+	"sha256": {
+		"source_en": "47793b98059be89eafc26b8aff209b3aed63a9eac26b44ac5da9b87e973c7b5a",
+		"context_en": "e78c02114d87f722bd47bb14ea61f5ac3281407581132bd9a715c81d1a112872",
+		"target_ru": "d84e487abe9391918fc76d61617181a78bf7fdc09f8b175df574b464d8d594c9"
+	},
+	"keys_audited": [
+		"ui.hub.pages.list_unreadable",
+		"ui.hub.pages.org.plan_headline",
+		"ui.hub.pages.org.no_access_headline",
+		"ui.hub.pages.org.plan_body",
+		"ui.hub.pages.org.no_access_body",
+		"ui.hub.pages.org.that_organization",
+		"ui.hub.pages.empty.org.title",
+		"ui.hub.pages.empty.org.body",
+		"ui.hub.pages.empty.category.title",
+		"ui.hub.pages.empty.category.body",
+		"ui.hub.pages.empty.search.title",
+		"ui.hub.pages.empty.search.body",
+		"ui.hub.pages.empty.public.title",
+		"ui.hub.pages.empty.public.body",
+		"ui.hub.pages.clear.filter",
+		"ui.hub.pages.clear.search"
+	],
+	"checks": {
+		"completeness": "16/16 new keys present in ru; ru key set == en key set (59/59, no missing, no extra); no value equals its key id; all 17 delta keys exist in src/i18n/keys.gen.ts.",
+		"placeholders": "{org} in org.plan_body, org.no_access_body and empty.org.body, and {category} in empty.category.title, are byte-identical to the English placeholders; nothing invents, drops or translates a placeholder; no other new key carries one.",
+		"cldr_plurals": "No new key carries a plural. The plural-bearing keys in this namespace are the pre-existing status.count.agents and status.count.teams; no CLDR plural-category check applies to this delta.",
+		"characters": "NFC; no bidi controls, zero-width or BOM characters; no edge spaces and no double spaces; punctuation matches the English key for key (full stop on every sentence key, none on the headline).",
+		"english_residue": "No Latin script beyond the product names Radient and Team, both kept verbatim.",
+		"register": "вы-form; infinitive action labels (Сбросить фильтр / Сбросить поиск); sentence case; no exclamation; no politeness padding — consistent with the ru style guide and the shipped ru hub copy.",
+		"terminology": "хаб, агент, команда, организация, участник, опубликовать, фильтр, поиск, общий (shared, cf. ui.hub.skills.count_shared 'общий с {organization}') all match the shipped ru ui.hub.* family.",
+		"case_after_prepositions": "Every {org} slot checked against its own government: genitive after 'Владелец' (org.plan_body) and 'Вы не участник' (org.no_access_body), prepositional after 'в хабе' (empty.org.body) — all satisfied by the shipped fallback 'этой организации', which is identical in genitive, dative and prepositional. The one slot that cannot be satisfied with a nominative label is {category} after 'в категории' (finding RU-HUB-P1).",
+		"rendered_slots": "Traced every new key to its call site: agent-hub-page.tsx:1285 (list_unreadable, joined by backendLoadErrorMessage with a space after a full-stopped lead), :1355-1364 (plan/no_access bodies and their fallbacks), :1451-1457 (empty headings), :1475-1484 (empty bodies), :1506-1507 (clear buttons)."
+	},
+	"verified": [
+		"Completeness and parity: 16/16 new values present, ru == en key sets, no value equals its key id, and all 17 delta keys are declared in keys.gen.ts.",
+		"Placeholder fidelity: {org} and {category} preserved exactly and never inflected; no placeholder added or lost against English.",
+		"No CLDR plural in any of the 16 keys, so no plural-category verdict is due on this delta.",
+		"No bidi/control/zero-width characters, no double or edge spaces, NFC, and key-for-key punctuation parity with English.",
+		"English residue limited to the product names Radient and Team, which the catalogue keeps verbatim in 9 shipped ru strings ('тариф Radient Team').",
+		"Pages/teams parallelism holds for the two alert bodies: org.plan_body and org.no_access_body are literal case-correct parallels of the pre-existing ru teams.org.plan_body / teams.org.no_access_body ('вы не участник {org} … владелец может пригласить вас снова'), which is exactly the parallel the en sidecar asks for.",
+		"clear.filter / clear.search share their noun with the sibling empty bodies ('Сбросить фильтр' ↔ 'Сбросьте фильтр'; 'Сбросить поиск' ↔ 'Сбросьте поиск'), which the en sidecars require, and both verbs match the shipped ru 'Сбросить фильтры' (ui.notifications.filter.clear).",
+		"list_unreadable is a full-stopped lead with no remedy of its own, as its sidecar requires; joined with the shared diagnosis and remedy sentences ('… Не удалось загрузить список агентов. Сервер Local Operator не отвечает. …') it reads as one announcement.",
+		"org.that_organization 'этой организации' takes the genitive that org.no_access_body's 'участник {org}' governs and agrees with the demonstrative in org.no_access_headline ('к этой организации'), which is the binding its sidecar states.",
+		"Clear-button labels are infinitives, matching the ru style guide's action-label call and the shipped ru buttons ('Загрузить', 'Опубликовать агента', 'Открыть настройки, чтобы войти')."
+	],
+	"observations": [
+		"org.that_organization and scope.org_unnamed are the same ru string, 'этой организации'. English distinguishes 'that organization' from 'this organization', but Russian's feminine demonstrative is identical in the genitive/dative/prepositional and both slots demand one of those cases, so the collapse is correct here rather than a lost distinction. Recorded so a later reader does not file it again.",
+		"'в хабе {org}' (empty.org.body, and the pre-existing status.scope.shared_with) is apposition: correct with the shipped fallback 'этой организации' and with an indeclinable foreign name; a declinable Russian organization name would want quotes. The pattern predates this commit and the new key follows it — out of scope, not gating.",
+		"'тариф Radient Team' is the established ru rendering of 'Team plan' (9 shipped strings, including ui.agents.publication.team_plan_required.headline, byte-identical to the new org.plan_headline, and the pre-existing teams sibling). Not a deviation.",
+		"ui.hub.pages.load_failed.title changed only by the trailing comma the diff shows; its value is untouched.",
+		"Source-only audit: the worktree was not built or run and no rendered frame was captured (outside this brief's scope; the reviewer role does not run the app). The two findings are grammar/agreement defects visible in the strings themselves and do not depend on rendering."
+	],
+	"findings": [
+		{
+			"id": "RU-HUB-P1",
+			"severity": "MAJOR",
+			"key": "ui.hub.pages.empty.category.title",
+			"current": "Нет агентов в категории {category}.",
+			"proposed": "В категории «{category}» нет агентов.",
+			"reason": "{category} sits after the preposition 'в категории', which governs the prepositional case, but the value the render site passes is the taxonomy label in the nominative — 'Бухгалтерия', 'Право', 'Продажи', 'Другое', 'Соцсети' (ui.hub.taxonomy.category.*). 'Нет агентов в категории Бухгалтерия.' is ungrammatical for every one of the 16 labels. The English sidecar forbids the other repair ('insert it whole, do not decline or re-case it'), so the label has to be cited rather than declined: «ёлочки» is the ru style guide's prose quote pair, and the catalogue already cites placeholders that way (ui.hub.teams.pull_failed '«{name}»', teams.public.search_miss '«{query}»', ui.hub.detail.delist_body '«{name}»').",
+			"evidence": [
+				"src/renderer/src/features/agent-hub/agent-hub-page.tsx:1453-1456 — t('ui.hub.pages.empty.category.title', { category: categoryEntry(selectedCategory).label })",
+				"src/i18n/catalogues/ru/ui.hub.taxonomy.json:3-18 — nominative labels ('Бухгалтерия', 'Право', 'Продажи', 'Другое', …)",
+				"src/i18n/catalogues/en/ui.hub.pages.context.json — empty.category.title placeholders.category: 'insert it whole, do not decline or re-case it'",
+				"i18n/style-guides/ru.md, Punctuation & typography — 'Quotes: «ёлочки» in prose'"
+			]
+		},
+		{
+			"id": "RU-HUB-P2",
+			"severity": "MAJOR",
+			"key": "ui.hub.pages.empty.org.body",
+			"current": "Агенты, опубликованные в хабе {org}, появятся здесь для его участников.",
+			"proposed": "Агенты, опубликованные в хабе {org}, появятся здесь для участников {org}.",
+			"alternatives": [
+				"Агенты, опубликованные в хабе {org}, появятся здесь для участников организации. — avoids repeating the placeholder, at the cost of not naming the org a second time"
+			],
+			"reason": "'его' is masculine/neuter and cannot refer to the organization: 'организация' is feminine, and the shipped fallback for an unreadable name is scope.org_unnamed = 'этой организации', also feminine. In that reachable path the pronoun has no agreeing antecedent and attaches to 'хабе' (masculine), so the sentence reads 'for the hub's members' — 'участники хаба' is not this surface's vocabulary (members belong to the org or team). The same mismatch appears with any feminine organization name (Ромашка, Альфа). The audited teams sibling avoids the pronoun entirely — ui.hub.teams.org.empty 'Команды, открытые для участников {org}, появятся здесь.' — and keeping the pages/teams pair in one voice is what the programme asks for.",
+			"evidence": [
+				"src/renderer/src/features/agent-hub/agent-hub-page.tsx:1475-1478 — org: orgName ?? t('ui.hub.pages.scope.org_unnamed')",
+				"src/i18n/catalogues/ru/ui.hub.pages.json:14 — scope.org_unnamed = 'этой организации' (feminine)",
+				"src/i18n/catalogues/ru/ui.hub.teams.json:21 — teams.org.empty has no pronoun",
+				"src/i18n/catalogues/en/ui.hub.pages.context.json — empty.org.body note: 'Says who the list is FOR (its members)'"
+			]
+		},
+		{
+			"id": "RU-HUB-P3",
+			"severity": "NIT",
+			"key": "ui.hub.pages.empty.search.body",
+			"current": "Этого нет ни в названии, ни в описании агентов. Сбросьте поиск, чтобы увидеть весь хаб.",
+			"proposed": "Этого нет ни в названии, ни в описании ни одного агента. Сбросьте поиск, чтобы увидеть весь хаб.",
+			"reason": "The English distributes over each agent ('No agent's name or description carries that'); the ru bare genitive plural 'агентов' under a singular 'описании' invites the reading of one shared description. Grammatical as written and the meaning survives, so this is wording only — take it or leave it in the remediation wave.",
+			"evidence": [
+				"src/i18n/catalogues/en/ui.hub.pages.json:58 — 'No agent's name or description carries that.'"
+			]
+		}
+	],
+	"counts": {
+		"blocker": 0,
+		"major": 2,
+		"minor": 0,
+		"nit": 1,
+		"total": 3
+	},
+	"status": "changes_requested",
+	"result": "changes_requested",
+	"verdict": "Not clean: 2 MAJOR, 1 NIT, 0 BLOCKER. Not shippable as-is; both majors are one-line fixes and neither changes meaning or layout.",
+	"identity_provenance": {
+		"agent": "reviewer — lopdev team, session 88dcbe8a59e7",
+		"auditor": "translation-auditor (independent; lopdev reviewer role)"
+	}
+}

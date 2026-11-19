@@ -1,5 +1,5 @@
 {
-	"ui.onboarding.connect.intro": "Local Operator a besoin d’un compte IA pour fonctionner. Radient est le plus simple : une connexion dans le navigateur, rien à coller. Vous payez déjà pour ChatGPT ou Claude ? Connectez-vous avec ce compte. Les autres options sont regroupées plus bas.",
+	"ui.onboarding.connect.intro": "Choisissez Radient pour accéder à de nombreux modèles, à la dictée et au partage d’agents avec une seule connexion dans le navigateur. Vous pouvez aussi utiliser votre abonnement Claude ou ChatGPT, une clé API ou un modèle sur votre ordinateur. Les nouveaux comptes Radient éligibles peuvent obtenir un crédit gratuit après vérification de leur adresse e-mail et un contrôle de sécurité.",
 	"ui.onboarding.default_model.block.loading_models": "Chargement des modèles…",
 	"ui.onboarding.default_model.block.pick_a_model": "Choisissez un modèle pour continuer.",
 	"ui.onboarding.default_model.change": "Modifier",
@@ -33,7 +33,7 @@
 	"ui.onboarding.search.each_key_saved": "Chaque clé est enregistrée sur votre appareil dès que vous quittez son champ.",
 	"ui.onboarding.search.intro": "Les agents peuvent chercher des informations pendant leur travail — prix du jour, actualités de la semaine — plutôt que de se limiter aux connaissances du modèle.",
 	"ui.onboarding.search.mode.free": "Gratuit",
-	"ui.onboarding.search.mode.free_detail": "Utilise à tour de rôle des fournisseurs gratuits — DuckDuckGo, l’offre gratuite de Tavily, Exa et Parallel. Aucune clé nécessaire ; l’accès est partagé, les recherches peuvent donc ralentir aux heures de pointe.",
+	"ui.onboarding.search.mode.free_detail": "Utilise des services de recherche gratuits, partagés avec d’autres utilisateurs. Aucune clé nécessaire. Les recherches peuvent ralentir aux heures de pointe.",
 	"ui.onboarding.search.mode.keys": "Ajouter des clés API",
 	"ui.onboarding.search.mode.keys_detail": "Utilisez vos propres clés pour vos fournisseurs de recherche.",
 	"ui.onboarding.search.mode.label": "Mode de recherche",

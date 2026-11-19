@@ -5,6 +5,15 @@
  * that makes the Browser/Console separators announce the width the row can
  * actually host.
  *
+ * HISTORICAL RIG, PINNED TO THE TREE IT MEASURED. The expectations below describe
+ * the tree of the committed pair (`docs/evidence/right-slot-one-default/`): the
+ * canvas capped at 560, the run pane's ceiling at 640, the browser/console at
+ * 1200. A later change made the slot's ceiling ONE number for every pane
+ * (`RIGHT_SLOT_MAX_PX`, 1200), which retires the canvas's dock cap and the run
+ * pane's 640, so a `--label after` run on the current tree fails those cells -
+ * by design, because the numbers moved. Re-derive `PANES`/`expectedDrawn` before
+ * using it as evidence again; it is not a live gate.
+ *
  *     node scripts/right-slot-one-default-evidence.mjs \
  *         --label before|after --origin http://localhost:<storybook-port>
  *

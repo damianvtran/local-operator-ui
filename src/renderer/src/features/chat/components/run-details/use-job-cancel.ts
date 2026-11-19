@@ -61,9 +61,20 @@ import type { CancelCardAnchor } from "./cancel-card-placement";
 import type { JobCancelSection, JobControls } from "./job-controls-model";
 import type { SubagentRow } from "./run-detail-model";
 
+/**
+ * The attribute that marks the control a press came from. The Jobs panel's
+ * rows carry `data-job-cancel`; another surface running its own instance of
+ * this flow (the in-chat music card's `data-music-cancel`) names its own, so
+ * the keyboard returns to the control the user actually pressed (R15-3).
+ */
+const DEFAULT_CONTROL_ATTRIBUTE = "data-job-cancel";
+
 /** The pressed row's own control, by job id. */
-const jobCancelControl = (id: string): HTMLElement | null =>
-	document.querySelector<HTMLElement>(`[data-job-cancel="${CSS.escape(id)}"]`);
+const jobCancelControl = (
+	id: string,
+	attribute: string = DEFAULT_CONTROL_ATTRIBUTE,
+): HTMLElement | null =>
+	document.querySelector<HTMLElement>(`[${attribute}="${CSS.escape(id)}"]`);
 
 /**
  * Where a closed question's keyboard lands when focus fell through: the row's
@@ -71,8 +82,11 @@ const jobCancelControl = (id: string): HTMLElement | null =>
  * still live — its control is the next attempt (the monitors' rule) — and a
  * landed cancel may have taken the row with it, which is the pane's case.
  */
-const jobCancelLanding = (id: string): HTMLElement | null =>
-	jobCancelControl(id) ??
+const jobCancelLanding = (
+	id: string,
+	attribute: string = DEFAULT_CONTROL_ATTRIBUTE,
+): HTMLElement | null =>
+	jobCancelControl(id, attribute) ??
 	document.querySelector<HTMLElement>("[data-run-panel-pane]");
 
 /**
@@ -97,6 +111,7 @@ export type JobCancelPopoverProps = {
 	open: boolean;
 	/** The pressed row's label, for the copy ("this job"). */
 	label: string | null;
+	jobType?: string | null;
 	anchor: CancelCardAnchor | null;
 	refusal: string | null;
 	refusalSeq: number;
@@ -118,14 +133,18 @@ export type JobCancelInteraction = {
 export const useJobCancel = ({
 	sessionId,
 	controls,
+	controlAttribute = DEFAULT_CONTROL_ATTRIBUTE,
 }: {
 	/** The conversation whose Jobs section this is, or `null` when none exists. */
 	sessionId: string | null;
 	controls: JobControls;
+	/** The pressed control's id attribute, for the focus landing; see above. */
+	controlAttribute?: string;
 }): JobCancelInteraction => {
 	const [pending, setPending] = useState<{
 		id: string;
 		label: string;
+		jobType: string | null;
 	} | null>(null);
 	const [anchor, setAnchor] = useState<CancelCardAnchor | null>(null);
 	const [refusal, setRefusal] = useState<string | null>(null);
@@ -191,14 +210,14 @@ export const useJobCancel = ({
 		if (id === null) return;
 		if (pressKeepsFocus) return;
 		if (!jobFocusFellThrough(document.activeElement)) return;
-		jobCancelLanding(id)?.focus();
-	}, [pending]);
+		jobCancelLanding(id, controlAttribute)?.focus();
+	}, [pending, controlAttribute]);
 
 	const request = useCallback(
 		(row: SubagentRow, pressedAnchor: CancelCardAnchor) => {
 			if (busy) return;
 			lastPressedIdRef.current = row.id;
-			setPending({ id: row.id, label: row.label });
+			setPending({ id: row.id, label: row.label, jobType: row.jobType });
 			setAnchor(pressedAnchor);
 			/*
 			 * A fresh open is a FRESH question: the previous refusal's sentence is
@@ -265,6 +284,7 @@ export const useJobCancel = ({
 		popover: {
 			open: pending !== null,
 			label: pending?.label ?? null,
+			jobType: pending?.jobType ?? null,
 			anchor,
 			refusal,
 			refusalSeq,

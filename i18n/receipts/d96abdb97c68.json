@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "locale": "es",
+  "namespace": "ui.library",
+  "date": "2026-10-20",
+  "status": "passed",
+  "audit_kind": "namespace re-audit after source growth",
+  "scope": "PR #1254: six ui.library.time.* keys added to the English source. Full audit of the six new keys in es; the other 152 keys are byte-identical to the bytes covered by the prior wave-1 audit (b28d4e61-r2), which is superseded by this receipt only because the English source moved.",
+  "keys_audited": 158,
+  "new_keys": [
+    "ui.library.time.just_now",
+    "ui.library.time.minutes_m_ago",
+    "ui.library.time.hours_h_ago",
+    "ui.library.time.days_d_ago",
+    "ui.library.time.months_mo_ago",
+    "ui.library.time.years_y_ago"
+  ],
+  "prior_audit": {
+    "instance": "b28d4e61-r2",
+    "source_sha256": "009e864f684e85925001346dc382b5b04724d994f5b099a344f70827a2aa2b2a",
+    "target_sha256": "37bf8f3e1d5e8785938444bf346ef1aafb2d00b150d34dd5a48aa70b598a2f86",
+    "byte_identity_proof": "the prior 152-key file is a byte-for-byte prefix of the audited file (9075-byte common prefix); the only delta is the comma inserted after the former last value plus the six appended keys, so every pre-existing key retained its exact bytes."
+  },
+  "auditor": {
+    "agent": "reviewer",
+    "instance": "d96abdb97c68",
+    "model": "deepseek/deepseek-flash"
+  },
+  "sha256": {
+    "en": "d38247e1cc3871ed45581b84e5d514de7a6aa91cd0d946027a1dd37f5920daa5",
+    "es": "d2bcc2ab1d21fcbe56cc98039b50b1b076219d98bada6636756b1ee80db874f7"
+  },
+  "findings": [],
+  "note": "Independent es pass, not the translator. All five placeholders preserved with the ::group-off skeleton; messages parsed with intl-messageformat for es and render as 'ahora mismo', 'hace 4 min', 'hace 4 h', 'hace 4 d', 'hace 4 meses', 'hace 4 años'. Spanish CLDR one/other is sufficient because every variable is an integer in a range where 'many' cannot occur (minutes 1-59, hours 1-23, days 1-29, months 1-11, years <= ~55). Wording matches the established es pattern in ui.settings.integrations.integration_model.*; 'ahora mismo' matches six other es namespaces. Unit abbreviations min/h/d are the ones already used in es ui.code_review; mes/meses and año/años follow the context note that forbids an ambiguous single-letter month. Longer than English by construction ('hace' + unit), as the task's own examples anticipate; no finding."
+}

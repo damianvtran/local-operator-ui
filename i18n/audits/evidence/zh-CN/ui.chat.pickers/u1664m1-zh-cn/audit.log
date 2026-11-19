@@ -1,0 +1,40 @@
+ACTUAL EXECUTION LOG — 2026-11-05 — i18n-auditor session 68db5d33c61e
+Command: node --test --test-name-pattern="\[zh-CN\]" scripts/i18n/locale-parity.test.mjs
+✔ [zh-CN] ships at least one message (not an empty claim) (161.588208ms)
+✔ [zh-CN] defines each key in at most one namespace file (81.942833ms)
+✔ [zh-CN] carries EVERY key of each namespace file it ships (122.565791ms)
+✔ [zh-CN] names only keys the English source defines (52.74325ms)
+✔ [zh-CN] preserves every ICU placeholder from the English source (71.462292ms)
+✔ [zh-CN] is not an English stub (no value identical to the source) (50.100625ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1034.7105
+
+Exit code: 0
+
+ACTUAL EXECUTION: node --input-type=module [namespace-specific independent mechanical checks; inline script in session tool transcript]
+source: ecc10fb18100d4d462f36214c83507a48c7f0f8173cb72f37bf5964a05abb58c (752 keys)
+context: a03f45c9158177d2282d89c088fec46c949f42952959ac84d6a8b72e0582d981 (752 keys)
+target: 9fb0a6c242291790b791f284916e2e9eba3e749424feae2a3922243d59c0421c (752 keys)
+PR_parent: added=0, changed=20, removed=0, exact retained=732
+main_parent: added=11, changed=0, removed=0, exact retained=741
+{"result":"PASS","keys_checked":752,"placeholder_name_and_type_parity":true,"select_arm_parity":true,"plural_nodes":30,"select_nodes":13,"rich_tag_nodes":0,"backtick_code_parity":true,"manual_bidi_controls":0,"delta_linguistic_keys":31,"retained_linguistic_keys":721,"verified_parent_receipt_references":17}
+Exit code: 0
+
+ACTUAL EXECUTION: python3 [duplicate-key, literal-token and CJK-width checks; inline script in session tool transcript]
+Traceback (most recent call last):
+  File "<stdin>", line 18, in <module>
+AssertionError: ['ui.chat.pickers.destination_pickers.has_not_reported_its_effort_levels_yet_they_appear_after_the_next_turn_o', 'ui.chat.pickers.destination_pickers.has_no_adjustable_effort_pick_a_reasoning_model_with_model_first', 'ui.chat.pickers.destination_pickers.ends_the_chosen_sessions_current_work_through_the_runtime_s_own_stop_pro', 'ui.chat.pickers.destination_pickers.set_a_standing_goal_with_goal_first_or_switch_to_a_goal_loop', 'ui.chat.pickers.mcp_command.unknown_mcp_server_or_command_use_mcp_login_name_or_mcp_reauth_name', 'ui.chat.pickers.usage_view_model.sign_in_expired_run_login']
+
+ACTUAL EXECUTION: corrected Python token probe + duplicate-key/CJK widths
+Previous probe FAILED: Unicode \w boundaries treated adjoining Chinese as identifier characters, hiding valid slash commands. Corrected to ASCII identifier boundaries; previous failure retained above, not a translation finding.
+PASS duplicate JSON keys EN/context/target; PASS ASCII-delimited commands/flags/URLs: 752 keys
+Delta numeric width hints: 0
+Slash headings static widths: {"ui.chat.pickers.slash.source.agent": 6, "ui.chat.pickers.slash.source.approvals": 4, "ui.chat.pickers.slash.source.effort": 8, "ui.chat.pickers.slash.source.mcp": 6, "ui.chat.pickers.slash.source.model": 4, "ui.chat.pickers.slash.source.provider_accounts": 4, "ui.chat.pickers.slash.source.providers": 6, "ui.chat.pickers.slash.source.session_tags": 4, "ui.chat.pickers.slash.source.team": 4, "ui.chat.pickers.slash.source.theme": 4, "ui.chat.pickers.slash.source.title_refresh": 4}
+Negative control: command recognition adjoining Chinese: True
+No rendered fit measured. Exit code: 0

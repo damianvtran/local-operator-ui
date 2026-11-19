@@ -1,0 +1,176 @@
+{
+	"audit_id": "teambridge-pr1489-merge-rebind-20261030-ur",
+	"date": "2026-10-30",
+	"locale": "ur",
+	"namespace": "ui.teamBridge",
+	"pr": 1489,
+	"branch": "fix/tb-instant-open",
+	"merge": {
+		"pr": 1489,
+		"branch": "fix/tb-instant-open",
+		"worktree": "~/local-operator-ui/.worktrees/1489-fold",
+		"branch_head_at_fold": "56a6b65513aefc0f27aff3b0fb69aebf7a3ffeff",
+		"origin_main_at_fold": "f6e740ab146c0629e44804dfd42e330c8c321194",
+		"merge_base": "9fd9984f258ac66d686c88bc2fa4f438f2fe94ee",
+		"merge_state": "merge of origin/main into the branch, uncommitted at audit time. Two conflicts: package.json (test:desktop token union, 632 = 630 branch U 631 main) and i18n/ledger.json (per-ROW three-way; the 7 ui.teamBridge rows both sides moved were left at the branch's values for this receipt to re-derive). The rows were written by scripts/i18n/ledger-assemble.mjs, never by hand."
+	},
+	"rebind": {
+		"why": "PR #1482 merged into origin/main after the previous fold and moved the same seven ui.teamBridge rows, so the merged file now carries both independently audited deltas and its hash is neither side's.",
+		"what_moved": "The binding only: en 420386d89620 -> 095e2c75afda, ur df0a381186b3 -> 4a1c43f94ea9, and the sidecar context hash.",
+		"what_did_not_move": "The audited content. 283 keys = 282 branch U 282 main, a pure union with zero values changed on either side; this key's value is byte-identical to the one the previous audit passed, and the co-resident main-only key is byte-identical to the one audited under tb1482m3-ur-2d47856c6ee9.",
+		"limits": "The per-locale `limitations` below are copied verbatim from the previous receipt. This re-bind does not upgrade any limit into a pass: where native naturalness was not claimed before, it is still not claimed."
+	},
+	"prior_bindings": [
+		{
+			"receipt": "i18n/receipts/tb1489m2-ur-2d47856c6ee9.json",
+			"note": "bound to the pre-#1482 merged bytes; its audits stand under `superseded` on the row"
+		},
+		{
+			"receipt": "i18n/receipts/tb1482m3-ur-2d47856c6ee9.json",
+			"note": "PR #1482's independent audit of the co-resident key thread.not_available, on these same bytes"
+		}
+	],
+	"translator": {
+		"agent": "translator",
+		"model": "not supplied by the commit",
+		"date": "2026-10-30",
+		"source": "commit 548b9b1010d7a9cf034f1187e5dec75e5ab0922c",
+		"method": "LLM reasoning in the PR authoring session; no MT service or translation API"
+	},
+	"auditors": [
+		{
+			"agent": "i18n-auditor",
+			"model": "radient/auto",
+			"date": "2026-10-30",
+			"result": "clean",
+			"instance": "tb1489m3-ur-2d47856c6ee9",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"receipt": "i18n/receipts/tb1489m3-ur-2d47856c6ee9.json",
+			"receipt_sha256": "e99c41ac158569a44044ba654b0e69836274ba68016d7917504876decb27a808",
+			"scope": "Merge-delta RE-BIND after PR #1482 landed on origin/main: the same audited one-key delta (list.error_stale), re-bound to the merged catalogue that now carries both audited deltas; 283 keys = 282 branch U 282 main, zero values changed."
+		}
+	],
+	"files": {
+		"english": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "095e2c75afdab6c73f78840c5c9624c01639a43c2e713cef5bfdabcd1972c1ea"
+		},
+		"context_sidecar": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "0d53298f804599d64983cd11ba9ba77d516aa8771d09f65e31c1844f7ab8887f"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/ur/ui.teamBridge.json",
+			"sha256": "4a1c43f94ea9a18d0b0df0ff899fe369b53b7d15ccfa5e909876c7b12a4e7ab9"
+		}
+	},
+	"scope": {
+		"delta_kind": "Merge delta RE-BIND: what this fold adds to origin/main, in one namespace.",
+		"added_relative_to_origin_main": [
+			"ui.teamBridge.list.error_stale"
+		],
+		"inherited_from_origin_main": "origin/main contributes exactly one key to this namespace that the branch does not carry - ui.teamBridge.thread.not_available, added by PR #1482 - which is byte-identical to the value audited under tb1482m3-<locale>. The merged catalogue is 283 keys = 282 branch U 282 main, a pure union with zero values changed on either side, so every one of main's 282 keys is inherited unchanged.",
+		"key_sets": "283 English keys; this locale is key-complete at 283 and ledger-assemble.mjs re-checks it.",
+		"keys_read_for_consistency": [
+			"ui.teamBridge.list.error",
+			"ui.teamBridge.list.loading",
+			"ui.teamBridge.list.empty.title",
+			"ui.chat.analytics.toolbar.refreshing",
+			"ui.schedules.scheduled_task_model.the_list_below_is_the_last_one_that_loaded_so_it_may_be_out_of_da"
+		],
+		"keys_audited_linguistically": [
+			"ui.teamBridge.list.error_stale"
+		],
+		"not_audited": "The other 282 English keys and their translations. One of them, thread.not_available, is new to this merge but was independently audited on these exact bytes under tb1482m3-<locale>-2d47856c6ee9; the rest are unchanged and covered by their own receipts. Nothing here re-audits them."
+	},
+	"english": {
+		"ui.teamBridge.list.error_stale": {
+			"value": "Couldn't refresh. Showing your last read.",
+			"clause_1": "Couldn't refresh - the read failed. Names no cause, because the client cannot prove one.",
+			"clause_2": "Showing your last read - the rows painted below are the reader's own last read, so the sentence never contradicts what is visible.",
+			"context_role": "stale-list notice",
+			"context_tone": "factual, reassuring, no blame",
+			"context_length": "Two short clauses.",
+			"context_note": "Shown INSTEAD of list.error when the list read failed but rows from the cached snapshot are still painted below it. The first clause states the failed refresh; the second says the rows on screen are the reader's last read, so the sentence never contradicts what is visible. Do not name a cause the client cannot prove.",
+			"placeholders": []
+		}
+	},
+	"audited": {
+		"key": "ui.teamBridge.list.error_stale",
+		"translation": {
+			"value": "تازہ کاری نہیں ہو سکی۔ آپ کی آخری پڑھی گئی فہرست دکھائی جا رہی ہے۔",
+			"clause_map": "Clause 1 = 'the refresh could not happen'. Clause 2 = 'the list you last read is being shown'."
+		},
+		"checks": {
+			"placeholders": "The English source takes no interpolation arguments; this locale declares none either, so placeholder parity is 0 = 0.",
+			"unicode": "NFC verified; no bidi control characters; no NBSP; no double or edge spaces.",
+			"structure": "Two clauses for the sidecar's 'Two short clauses'.",
+			"meaning": "Both clauses present, failed refresh first. The second clause names فہرست (list) where the English says 'your last read'; that is a clarification of what is on screen, not a contradiction, and it does not name a cause.",
+			"register": "آپ (آپ کی), matching the namespace; the ur guide forbids تم/تو.",
+			"terminology": "'تازہ کاری' is the refresh term: it is what this key now uses and it matches ui.chat.analytics.toolbar.refreshing ('تازہ کاری جاری ہے'). 'ریفریش' survives only in two OAuth credential-manifest strings where it names a *refresh token* - a machine term, correctly left English - so the earlier fix (ریفرش → تازہ کاری) is the consistent call and this audit confirms it landed on the bytes that ship.",
+			"punctuation": "Urdu ۔ full stops, twice; Arabic-script punctuation only; no bidi control characters.",
+			"length": "58 characters against 42 English; two short clauses.",
+			"consistent_with": "ui.teamBridge.list.error, ui.teamBridge.list.loading, ui.teamBridge.list.empty.title, ui.chat.analytics.toolbar.refreshing, ui.schedules.scheduled_task_model.the_list_below_is_the_last_one_that_loaded_so_it_may_be_out_of_da",
+			"method": "Read against the English value, the full English sidecar entry, the locale style guide and the glossary, then against the shipped siblings named in consistent_with, including the corpus counts quoted in terminology (counted from this tree's catalogues, not recalled).",
+			"corpus_counts": "Re-measured on the merged tree: 'ریفریش' 2 values, both OAuth refresh-token strings; 'تازہ کاری' 2 values, one being ui.chat.analytics.toolbar.refreshing and the other this key. Unchanged by the merge."
+		}
+	},
+	"findings": [
+		{
+			"severity": "info",
+			"id": "UR-I1",
+			"detail": "Re-verified rather than inherited: the PR shipped 'ریفریش نہیں ہو سکا۔' and the earlier audit corrected it before its verdict. Checked here against the corpus - 2 ریفریش values remain and both are OAuth 'refresh token', with تازہ کاری carrying the refresh action - so the corrected term is the consistent one."
+		}
+	],
+	"status": "audited",
+	"ledger_row": {
+		"locale": "ur",
+		"namespace": "ui.teamBridge",
+		"source_sha256": "095e2c75afdab6c73f78840c5c9624c01639a43c2e713cef5bfdabcd1972c1ea",
+		"target_sha256": "4a1c43f94ea9a18d0b0df0ff899fe369b53b7d15ccfa5e909876c7b12a4e7ab9",
+		"status": "audited",
+		"auditor_instances_current": [
+			"tb1489m3-ur-2d47856c6ee9"
+		],
+		"superseded_entries": 38,
+		"written_by": "scripts/i18n/ledger-assemble.mjs, never by hand"
+	},
+	"artifacts": {
+		"receipt": {
+			"path": "i18n/receipts/tb1489m3-ur-2d47856c6ee9.json",
+			"sha256": "e99c41ac158569a44044ba654b0e69836274ba68016d7917504876decb27a808"
+		},
+		"evidence_record": {
+			"path": "i18n/audits/evidence/ur/ui.teamBridge/tb1489-rebind-20261030-ur/record.json"
+		}
+	},
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+		},
+		"docs_I18N": {
+			"path": "docs/I18N.md",
+			"sha256": "9a4bde8d1c161286160be4a4ae1c7655615dbf39047052550b725a3da2eb00e2"
+		},
+		"ledger_rules": {
+			"path": "scripts/i18n/ledger-rules.mjs",
+			"sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6"
+		},
+		"ledger_assemble": {
+			"path": "scripts/i18n/ledger-assemble.mjs",
+			"sha256": "66ec03de791b515424b8d9a93094315111c179c149b35a5323d80c9c38644657"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/ur.md",
+			"sha256": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60"
+		}
+	},
+	"limitations": "Auditor competence: limited (basic reading, RTL locale). Verdict confidence: medium on meaning, term consistency and punctuation; LOW on naturalness overall. A native ur pass is required before release claims; this receipt records a structural and consistency verdict, not a native one. Not claimed: rendered fit.",
+	"audit_notes_not_execution_log": "The notes and findings are this auditor's reading of the bytes, not a script's output. The mechanical properties (encoding, placeholders, script, punctuation, length) and every sha256 were computed from the catalogue files on disk; the linguistic judgement is written per key so a native reviewer can check the reasoning instead of trusting a verdict."
+}

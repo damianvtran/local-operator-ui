@@ -90,6 +90,7 @@ import {
 	reapOnExit,
 	stopAppTree,
 } from "./app-tree-teardown.mjs";
+import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
 import { withNotificationsOff } from "./notifications-off.mjs";
 import { withTelemetryOff } from "./telemetry-off.mjs";
 
@@ -275,7 +276,7 @@ async function freeDevtoolsPort(timeoutMs = 10_000) {
  * the arm does. Everything downstream of that emit is the app's own code; only
  * the trigger is synthetic, and the arm says so in its output.
  */
-function launchApp(windowMode, { inspectPort = 0 } = {}) {
+function launchApp(windowMode, { inspectPort = 0, extraArgs = [] } = {}) {
 	const env = withNotificationsOff({
 		...process.env,
 		HOME: join(SCRATCH, "home"),
@@ -306,6 +307,7 @@ function launchApp(windowMode, { inspectPort = 0 } = {}) {
 			`--remote-debugging-port=${devtoolsPort}`,
 			"--window-size=1380x900",
 			`--window-mode=${windowMode}`,
+			...extraArgs,
 		],
 		{
 			env,
@@ -1834,6 +1836,664 @@ async function runWebauthnAttempt() {
 	return failures === 0 && !launched.exited();
 }
 
+// ---- the passkey notice arm -------------------------------------------------
+
+/**
+ * The passkey-notice arm: a page asks for a passkey in the shipped (gate-off)
+ * state, and the notice must appear without the page's call being touched.
+ *
+ * WHAT IS REAL AND WHAT IS A RIG CHOICE:
+ *   - REAL: the built app in `--window-mode=headless`, its real browser host, the
+ *     shim registered by the real CDP attach, the real Chromium `credentials.create`
+ *     hang (the platform authenticator is off in this unsigned tree, exactly the
+ *     shipped state: `[webauthn] ... off`), the console-message path, the
+ *     projection read by the renderer, the notice component painted, and the IPC
+ *     the buttons call.
+ *   - RIG CHOICES, each because the alternative cannot run headless on this host:
+ *       * `--host-resolver-rules` maps `rp.test` to 127.0.0.1 and
+ *         `--unsafely-treat-insecure-origin-as-secure` makes the plain-http fixture a
+ *         secure context. Needed because the app's external door refuses loopback
+ *         hosts (correctly), so a `localhost` fixture could only ever show the
+ *         REFUSAL; a non-loopback hostname is what lets the opener be reached.
+ *       * `shell.openExternal` is replaced from the main inspector with a recorder, so
+ *         the handler's argument is observed and no real browser is launched.
+ */
+const PASSKEY_FIXTURE_TOP = (
+	frameOrigin,
+) => `<!doctype html><meta charset="utf-8"><title>Passkey fixture</title>
+<body style="font:14px system-ui;padding:16px"><h1>Passkey fixture</h1><p id="s">idle</p>
+${frameOrigin ? `<iframe id="f" src="${frameOrigin}/frame" allow="publickey-credentials-create *; publickey-credentials-get *" width="300" height="80"></iframe>` : ""}
+<script>
+  window.__calls = [];
+  const opts = (rp) => ({ publicKey: { rp: { id: rp, name: "fixture" }, user: { id: new Uint8Array(16), name: "u", displayName: "u" },
+    challenge: crypto.getRandomValues(new Uint8Array(32)), pubKeyCredParams: [{ type: "public-key", alg: -7 }],
+    authenticatorSelection: { residentKey: "required", requireResidentKey: true, userVerification: "required" }, timeout: 120000 } });
+  window.__go = (kind) => {
+    const record = { kind, state: "pending", args: null };
+    window.__calls.push(record);
+    const p = kind === "create"
+      ? navigator.credentials.create(opts(location.hostname))
+      : navigator.credentials.get({ publicKey: { rpId: location.hostname, challenge: crypto.getRandomValues(new Uint8Array(32)), userVerification: "required", timeout: 120000 } });
+    p.then(() => { record.state = "resolved"; }, (e) => { record.state = "rejected:" + e.name; });
+    return typeof p.then;
+  };
+  addEventListener("message", (event) => { if (event.data === "go-create") window.__go("create"); });
+</script></body>`;
+const PASSKEY_FIXTURE_FRAME = `<!doctype html><meta charset="utf-8"><title>frame</title>
+<body style="margin:0"><button id="b" style="width:300px;height:80px;font:14px system-ui">Create passkey (frame)</button>
+<script>
+  window.__calls = [];
+  // A cross-origin frame may only create a credential under USER ACTIVATION
+  // (measured: without one Chromium rejects at once with NotAllowedError, "A user
+  // activation is required to create a credential in a cross-origin iframe"), so the
+  // rig clicks this button with a real CDP mouse event rather than posting a message.
+  document.getElementById("b").addEventListener("click", () => {
+    const record = { kind: "create", state: "pending" };
+    window.__calls.push(record);
+    navigator.credentials.create({ publicKey: { rp: { id: location.hostname, name: "frame" }, user: { id: new Uint8Array(16), name: "u", displayName: "u" },
+      challenge: crypto.getRandomValues(new Uint8Array(32)), pubKeyCredParams: [{ type: "public-key", alg: -7 }], timeout: 120000 } })
+      .then(() => { record.state = "resolved"; }, (e) => { record.state = "rejected:" + e.name + ":" + String(e.message).slice(0, 160); });
+  });
+</script>`;
+
+const NOTICE_STATE = `(async () => {
+  const s = await window.api.browser.state();
+  const el = document.querySelector('[data-tour-tag="browser-passkey-notice"]');
+  const r = el ? el.getBoundingClientRect() : null;
+  const buttons = el ? [...el.querySelectorAll('button')].map((b) => ({ label: (b.getAttribute('aria-label') || b.textContent || '').trim(), w: Math.round(b.getBoundingClientRect().width), h: Math.round(b.getBoundingClientRect().height) })) : [];
+  return JSON.stringify({
+    activeTabId: s.activeTabId,
+    notice: s.passkeyNotice ?? null,
+    dom: el ? { text: el.textContent.trim().replace(/\\s+/g, ' '), x: Math.round(r.left), y: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height), scrollWidth: el.scrollWidth, clientWidth: el.clientWidth, buttons } : null,
+  });
+})()`;
+
+async function noticeState(renderer) {
+	const raw = await evaluateValue(renderer, NOTICE_STATE, 10_000);
+	try {
+		return JSON.parse(raw);
+	} catch {
+		return { error: raw };
+	}
+}
+
+async function runPasskeyAttempt() {
+	/*
+	 * This arm OWNS its two loopback listeners, because the caller's outer
+	 * `servers` variable is deliberately null for it — main() cannot close what
+	 * the attempt opened. The attempt proper therefore runs inside this wrapper,
+	 * whose `finally` runs on every exit path (success, early return and throw)
+	 * and closes whatever it registered. Without it a throw AFTER the second
+	 * listen left Node holding two referenced listening handles: the process
+	 * never exited, and every further attempt accumulated another pair
+	 * (agent review round 1, R1 — reproduced with real loopback servers and an
+	 * injected exception).
+	 */
+	const owners = [];
+	try {
+		return await passkeyAttemptBody(owners);
+	} finally {
+		await closePasskeyServers(owners);
+	}
+}
+
+/**
+ * Closes the servers an attempt opened, newest first, and NEVER throws: a close
+ * failure must not replace the attempt's own error, which is what the caller
+ * records. Keep-alive and half-open sockets are destroyed first because
+ * `close()` alone waits for them, so a page still holding a connection would
+ * keep the handle alive and defeat the whole point of closing here.
+ */
+async function closePasskeyServers(owners) {
+	for (const server of [...owners].reverse()) {
+		if (!server.listening) continue;
+		server.closeAllConnections?.();
+		await new Promise((settle) => server.close(() => settle()));
+	}
+}
+
+/**
+ * The passkey attempt proper. Each server is registered in `owners` the moment
+ * it exists — before the next await that can throw — because the wrapper's
+ * `finally` is the only place that runs on a failed attempt.
+ */
+async function passkeyAttemptBody(owners) {
+	const inspectPort = await freeDevtoolsPort();
+	const topServer = await startServer("rp.test top (origin P1)", {});
+	owners.push(topServer);
+	const frameServer = await startServer("rp.test frame (origin P2)", {});
+	owners.push(frameServer);
+	const p1 = topServer.address().port;
+	const p2 = frameServer.address().port;
+	// Rebuild the routes now that both ports are known (startServer closes over a
+	// fixed table, so the table is filled in place).
+	topServer.removeAllListeners("request");
+	frameServer.removeAllListeners("request");
+	const serve = (table) => (request, response) => {
+		const key = request.url.split("?")[0];
+		const body = table[key];
+		if (body === undefined) {
+			response.writeHead(404);
+			response.end("no route");
+			return;
+		}
+		response.writeHead(200, { "Content-Type": "text/html" });
+		response.end(body);
+	};
+	topServer.on(
+		"request",
+		serve({
+			"/page": PASSKEY_FIXTURE_TOP(null),
+			"/withframe": PASSKEY_FIXTURE_TOP(`http://rp.test:${p2}`),
+		}),
+	);
+	frameServer.on("request", serve({ "/frame": PASSKEY_FIXTURE_FRAME }));
+	const top = `http://rp.test:${p1}`;
+	const frameOrigin = `http://rp.test:${p2}`;
+	const local = `http://localhost:${p1}`;
+
+	// Frame names below are `<set>/<theme>` (the evidence gate derives the expected
+	// ground from the file name), so their directories must exist before a capture.
+	for (const frameSet of [
+		"passkey-notice-user-top",
+		"passkey-notice-user-top-narrow",
+		"passkey-notice-embedded-frame",
+		"passkey-notice-agent-tab",
+		"passkey-notice-agent-tab-narrow",
+	]) {
+		mkdirSync(join(OUT_DIR, frameSet), { recursive: true });
+	}
+	const launched = launchApp("headless", {
+		inspectPort,
+		extraArgs: [
+			// A scratch HOME has no keychain; without this Chromium asks macOS to create
+			// one and the prompt lands on the operator's screen (AGENTS.md, the keychain
+			// section on rigs). The switch is spelled once, in chrome-keychain.mjs.
+			MOCK_KEYCHAIN_SWITCH,
+			"--host-resolver-rules=MAP rp.test 127.0.0.1",
+			`--unsafely-treat-insecure-origin-as-secure=${top},${frameOrigin}`,
+		],
+	});
+	const renderer = await connectRenderer();
+	const main = await connectMainInspector(inspectPort);
+	await renderer.send("Runtime.enable").catch(() => {});
+	await renderer.send("Page.enable").catch(() => {});
+	await openBrowserRoute(renderer);
+
+	// Replace the opener with a recorder, in main. `shell.openExternal` is what the
+	// app's vetted door calls, so every argument it receives is what would have been
+	// handed to the OS.
+	const stub = await evaluateValue(
+		main,
+		`(() => {
+			const { createRequire } = process.getBuiltinModule("node:module");
+			const electron = createRequire(process.cwd() + "/probe.js")("electron");
+			globalThis.__opened = [];
+			electron.shell.openExternal = async (url) => { globalThis.__opened.push(url); };
+			return typeof electron.shell.openExternal;
+		})()`,
+		10_000,
+	);
+	check(
+		"the opener is stubbed in main (no real browser can launch)",
+		stub === "function",
+		`typeof shell.openExternal = ${stub}`,
+	);
+	const opened = () =>
+		evaluateValue(main, "JSON.stringify(globalThis.__opened)", 8_000).then(
+			(v) => JSON.parse(v),
+		);
+
+	const gate = readAppLog().filter((line) => line.includes("[webauthn]"));
+	check(
+		"the platform authenticator is OFF in this tree (the shipped state)",
+		gate.some((line) => line.includes("Touch ID passkeys are off")),
+		gate.join(" | ").slice(0, 300),
+	);
+
+	/** Open a tab as the user does and navigate it. Returns its tab id. */
+	async function userTab(url) {
+		const made = await evaluateValue(
+			renderer,
+			"(async () => { const s = await window.api.browser.newTab(null); return JSON.stringify({ active: s.activeTabId }); })()",
+			15_000,
+		);
+		const tabId = JSON.parse(made).active;
+		await evaluateValue(
+			renderer,
+			`(async () => { await window.api.browser.navigate(${JSON.stringify(url)}, ${tabId}); return 1; })()`,
+			30_000,
+		);
+		return tabId;
+	}
+	async function drive(prefix) {
+		const client = await connectDriven(prefix);
+		await client.send("Runtime.enable").catch(() => {});
+		return client;
+	}
+	const sleepFor = async (ms) => sleep(ms);
+
+	// ---- 1. a top-level request in a USER tab --------------------------------
+	const tab1 = await userTab(`${top}/page`);
+	const page1 = await drive(`${top}/page`);
+	const shape = await evaluateValue(
+		page1,
+		"JSON.stringify({ secure: isSecureContext, pkc: typeof PublicKeyCredential, uvpaa: null })",
+		8_000,
+	);
+	say(`[passkey] fixture page ${shape}`);
+	check(
+		"the fixture is a secure context with WebAuthn exposed",
+		JSON.parse(shape).secure === true && JSON.parse(shape).pkc === "function",
+		shape,
+	);
+	const t0 = Date.now();
+	const returned = await evaluateValue(page1, `window.__go("create")`, 8_000);
+	check(
+		"the page's create() returned a Promise to the page (pass-through)",
+		returned === "function",
+		`typeof promise.then = ${returned}`,
+	);
+	const before = await noticeState(renderer);
+	check(
+		"no notice before the request has been pending for a few seconds",
+		before.notice === null,
+		JSON.stringify(before.notice),
+	);
+	await waitFor(
+		async () => (await noticeState(renderer)).notice,
+		"the passkey notice",
+		15_000,
+	);
+	const raisedAfter = Date.now() - t0;
+	const s1 = await noticeState(renderer);
+	say(
+		`[passkey] notice raised after ${raisedAfter}ms ${JSON.stringify(s1.notice)}`,
+	);
+	check(
+		"the notice names the REQUESTING frame's origin, read by main",
+		s1.notice?.origin === top &&
+			s1.notice?.embedded === false &&
+			s1.notice?.kind === "create" &&
+			s1.notice?.tabId === tab1,
+		JSON.stringify(s1.notice),
+	);
+	check(
+		"the notice says the tab is the user's",
+		s1.notice?.ownerKind === "user",
+		`ownerKind=${s1.notice?.ownerKind}`,
+	);
+	check(
+		"the notice is painted in the renderer, with its copy and both controls",
+		s1.dom !== null &&
+			/rp\.test:\d+ asked for a passkey and may be waiting/.test(s1.dom.text) &&
+			s1.dom.buttons.length === 2,
+		JSON.stringify(s1.dom),
+	);
+	const callState = JSON.parse(
+		await evaluateValue(page1, "JSON.stringify(window.__calls)", 8_000),
+	);
+	check(
+		"the page's call is STILL PENDING after the notice (never rejected, resolved or faked)",
+		callState.every((c) => c.state === "pending"),
+		JSON.stringify(callState),
+	);
+	await sleepFor(5_000);
+	const still = JSON.parse(
+		await evaluateValue(page1, "JSON.stringify(window.__calls)", 8_000),
+	);
+	check(
+		"and still pending 5 s later",
+		still.every((c) => c.state === "pending"),
+		JSON.stringify(still),
+	);
+	await captureFrame("passkey-notice-user-top/localOperatorDark", { renderer });
+
+	// ---- 2. the rate limit ---------------------------------------------------
+	await evaluateValue(
+		page1,
+		`window.__go("get") + window.__go("create")`,
+		8_000,
+	);
+	await sleepFor(5_000);
+	const s1b = await noticeState(renderer);
+	check(
+		"two more requests from the same tab inside the window raise no new notice",
+		s1b.notice?.at === s1.notice.at,
+		`at ${s1.notice.at} -> ${s1b.notice?.at}`,
+	);
+	const raisedLines = readAppLog().filter(
+		(line) =>
+			line.includes(`tab ${tab1} has a passkey`) &&
+			line.includes("notice raised"),
+	);
+	check(
+		"the log records exactly one raise for that tab",
+		raisedLines.length === 1,
+		raisedLines.join(" | "),
+	);
+
+	// ---- 3. the open handler, called through the real IPC -----------------------
+	const stale = await evaluateValue(
+		renderer,
+		`window.api.browser.openPasskeyNotice(${tab1}, ${s1.notice.at + 1}).then((r) => JSON.stringify(r))`,
+		8_000,
+	);
+	check(
+		"a stale notice identity is refused and nothing is opened",
+		JSON.parse(stale).ok === false && (await opened()).length === 0,
+		`${stale} opened=${JSON.stringify(await opened())}`,
+	);
+	const wrongTab = await evaluateValue(
+		renderer,
+		`window.api.browser.openPasskeyNotice(${tab1 + 99}, ${s1.notice.at}).then((r) => JSON.stringify(r))`,
+		8_000,
+	);
+	check(
+		"a notice for a tab that does not exist is refused",
+		JSON.parse(wrongTab).ok === false && (await opened()).length === 0,
+		wrongTab,
+	);
+	// Pressed the way a person does: the real button.
+	const pressed = await evaluateValue(
+		renderer,
+		`(() => { const b = [...document.querySelectorAll('[data-tour-tag="browser-passkey-notice"] button')].find((x) => /system browser/i.test(x.textContent)); if (!b) return false; b.click(); return true; })()`,
+		8_000,
+	);
+	await sleepFor(600);
+	const openedNow = await opened();
+	check(
+		"pressing Open in system browser hands the tab's own URL to the opener, once",
+		pressed === true &&
+			openedNow.length === 1 &&
+			openedNow[0] === `${top}/page`,
+		`pressed=${pressed} opened=${JSON.stringify(openedNow)}`,
+	);
+	check(
+		"the renderer supplied no URL (the bridge takes a tab id and the notice identity only)",
+		true,
+		"openPasskeyNotice(tabId, at) in src/preload/index.ts",
+	);
+
+	// ---- 4. a cross-origin iframe is attributed to ITSELF --------------------
+	const tab2 = await userTab(`${top}/withframe`);
+	const page2 = await drive(`${top}/withframe`);
+	await sleepFor(1_000);
+	// A real mouse press inside the iframe's box: user activation is what lets a
+	// cross-origin frame call create() at all (see the frame fixture).
+	const box = JSON.parse(
+		await evaluateValue(
+			page2,
+			`(() => { const r = document.getElementById("f").getBoundingClientRect(); return JSON.stringify({ x: r.left + r.width / 2, y: r.top + r.height / 2 }); })()`,
+			8_000,
+		),
+	);
+	for (const type of ["mousePressed", "mouseReleased"]) {
+		await page2.send("Input.dispatchMouseEvent", {
+			type,
+			x: box.x,
+			y: box.y,
+			button: "left",
+			clickCount: 1,
+		});
+	}
+	await waitFor(
+		async () => (await noticeState(renderer)).notice?.tabId === tab2,
+		"the iframe notice",
+		15_000,
+	);
+	const s2 = await noticeState(renderer);
+	check(
+		"a cross-origin iframe's request is attributed to the FRAME's origin and marked embedded",
+		s2.notice?.origin === frameOrigin &&
+			s2.notice?.embedded === true &&
+			frameOrigin !== top,
+		JSON.stringify(s2.notice),
+	);
+	check(
+		"the embedded notice says a frame asked",
+		/A frame from rp\.test:\d+ on this page asked for a passkey/.test(
+			s2.dom?.text ?? "",
+		),
+		s2.dom?.text ?? "(none)",
+	);
+	await captureFrame("passkey-notice-embedded-frame/localOperatorDark", {
+		renderer,
+	});
+	// A navigation clears it (it described the old document).
+	await evaluateValue(
+		renderer,
+		`(async () => { await window.api.browser.navigate(${JSON.stringify(`${top}/page`)}, ${tab2}); return 1; })()`,
+		30_000,
+	);
+	await waitFor(
+		async () => (await noticeState(renderer)).notice === null,
+		"the notice to clear on navigation",
+		10_000,
+	);
+	check(
+		"a new document clears the notice",
+		true,
+		"notice null after navigation",
+	);
+
+	// ---- 5. the door refuses a loopback page ---------------------------------
+	const tab3 = await userTab(`${local}/page`);
+	const page3 = await drive(`${local}/page`);
+	await evaluateValue(page3, `window.__go("create")`, 8_000);
+	await waitFor(
+		async () => (await noticeState(renderer)).notice?.tabId === tab3,
+		"the loopback notice",
+		15_000,
+	);
+	const s3 = await noticeState(renderer);
+	const refusal = await evaluateValue(
+		renderer,
+		`window.api.browser.openPasskeyNotice(${tab3}, ${s3.notice.at}).then((r) => JSON.stringify(r))`,
+		8_000,
+	);
+	check(
+		"a loopback page is refused by the app's vetted door and never reaches the opener",
+		JSON.parse(refusal).ok === false &&
+			/loopback|private/.test(JSON.parse(refusal).reason) &&
+			(await opened()).length === 1,
+		`${refusal} opened=${JSON.stringify(await opened())}`,
+	);
+	const dismissed = await evaluateValue(
+		renderer,
+		`window.api.browser.dismissPasskeyNotice(${tab3}, ${s3.notice.at + 1})`,
+		8_000,
+	);
+	check(
+		"a dismissal with a stale identity changes nothing",
+		dismissed === false && (await noticeState(renderer)).notice !== null,
+		`dismiss(stale)=${dismissed}`,
+	);
+	const pressedDismiss = await evaluateValue(
+		renderer,
+		`(() => { const b = document.querySelector('[data-tour-tag="browser-passkey-notice"] button[aria-label]'); if (!b) return false; b.click(); return true; })()`,
+		8_000,
+	);
+	await waitFor(
+		async () => (await noticeState(renderer)).notice === null,
+		"the dismissed notice to clear",
+		10_000,
+	);
+	check(
+		"the dismiss control clears the notice",
+		pressedDismiss === true,
+		"notice null after click",
+	);
+
+	// ---- 6. an AGENT-driven tab: said, and not shown on the user's page -------
+	const state = await waitForState();
+	const { token } = await approveAndOpen({
+		state,
+		renderer,
+		url: `${top}/page`,
+		origin: top,
+		attempt: 1,
+	});
+	check(
+		"an agent tab was opened through the real consent path",
+		Boolean(token),
+		`token=${Boolean(token)}`,
+	);
+	const tabsNow = JSON.parse(
+		await evaluateValue(
+			renderer,
+			"(async () => { const s = await window.api.browser.state(); return JSON.stringify({ active: s.activeTabId, tabs: s.tabs.map((t) => ({ id: t.tabId, owner: t.owner, url: t.url })) }); })()",
+			10_000,
+		),
+	);
+	const agentTab = tabsNow.tabs.find((t) => t.owner === "agent");
+	check(
+		"the agent's tab exists and is NOT the active tab",
+		Boolean(agentTab) && agentTab.id !== tabsNow.active,
+		JSON.stringify(tabsNow),
+	);
+	// The agent's page is the fixture target whose own `__calls` is empty and whose
+	// tab is not the one the user has open: pick it by asking each fixture target.
+	const agentPages = (await targets()).filter(
+		(t) => t.type === "page" && t.url === `${top}/page`,
+	);
+	let agentClient = null;
+	for (const target of agentPages) {
+		const client = await connectTarget(
+			(t) => t.id === target.id,
+			`target ${target.id}`,
+		);
+		await client.send("Runtime.enable").catch(() => {});
+		const calls = JSON.parse(
+			await evaluateValue(
+				client,
+				"JSON.stringify(window.__calls ?? [])",
+				5_000,
+			),
+		);
+		// Tab 1's page has recorded calls (section 1); the agent's has none yet.
+		if (calls.length === 0 && !agentClient) agentClient = client;
+		else client.close();
+	}
+	check(
+		"the agent's page was found among the fixture targets",
+		agentClient !== null,
+		`${agentPages.length} candidate targets`,
+	);
+	await evaluateValue(agentClient, `window.__go("create")`, 8_000);
+	await sleepFor(6_000);
+	const s5 = await noticeState(renderer);
+	check(
+		"a request from the BACKGROUND agent tab does not narrate itself onto the user's page",
+		s5.notice === null || s5.notice.tabId !== agentTab.id,
+		JSON.stringify(s5.notice),
+	);
+	const agentLog = readAppLog().filter(
+		(line) =>
+			line.includes(`agent-driven tab ${agentTab.id}`) &&
+			line.includes("notice raised"),
+	);
+	check(
+		"the host log says the AGENT-driven tab asked",
+		agentLog.length === 1,
+		agentLog.join(" | "),
+	);
+	await evaluateValue(
+		renderer,
+		`window.api.browser.activateTab(${agentTab.id}).then(() => 1)`,
+		10_000,
+	);
+	await waitFor(
+		async () => (await noticeState(renderer)).notice?.tabId === agentTab.id,
+		"the notice on activation",
+		10_000,
+	);
+	const s4 = await noticeState(renderer);
+	check(
+		"on activation the notice is shown, and it says the tab is agent-driven",
+		s4.notice?.ownerKind === "agent" && AGENT_DRIVEN.test(s4.dom?.text ?? ""),
+		JSON.stringify({ notice: s4.notice, text: s4.dom?.text }),
+	);
+	await captureFrame("passkey-notice-agent-tab/localOperatorDark", {
+		renderer,
+	});
+	agentClient.close();
+
+	// ---- 7. narrow, then light -------------------------------------------------
+	await renderer.send("Emulation.setDeviceMetricsOverride", {
+		width: 800,
+		height: 700,
+		deviceScaleFactor: 2,
+		mobile: false,
+	});
+	await sleepFor(500);
+	const narrowDark = await noticeState(renderer);
+	await captureFrame("passkey-notice-agent-tab-narrow/localOperatorDark", {
+		renderer,
+	});
+	await renderer.send("Emulation.clearDeviceMetricsOverride");
+	// Light: the same kind of state, repainted under the other ramp. A fresh USER tab
+	// raises a fresh notice (each tab has its own rate budget).
+	const tab4 = await userTab(`${top}/page`);
+	const page4 = await drive(`${top}/page`);
+	await evaluateValue(page4, `window.__go("get")`, 8_000);
+	await waitFor(
+		async () => (await noticeState(renderer)).notice?.tabId === tab4,
+		"the light-theme notice",
+		15_000,
+	);
+	await evaluateValue(
+		renderer,
+		`localStorage.setItem("ui-preferences-storage", JSON.stringify({ state: { themeName: "localOperatorLight" }, version: 0 })); "ok"`,
+		8_000,
+	);
+	await renderer.send("Page.reload", { ignoreCache: true });
+	await waitFor(
+		() =>
+			evaluateValue(
+				renderer,
+				"typeof window.api?.browser?.state === 'function'",
+				8_000,
+			),
+		"renderer after theme reload",
+		30_000,
+	);
+	await evaluateValue(renderer, "location.hash = '#/browser'; 'ok'", 8_000);
+	await waitFor(
+		async () => (await noticeState(renderer)).notice?.tabId === tab4,
+		"the notice after the reload",
+		15_000,
+	);
+	await sleepFor(600);
+	await captureFrame("passkey-notice-user-top/localOperatorLight", {
+		renderer,
+	});
+	await renderer.send("Emulation.setDeviceMetricsOverride", {
+		width: 800,
+		height: 700,
+		deviceScaleFactor: 2,
+		mobile: false,
+	});
+	await sleepFor(500);
+	const narrowLight = await noticeState(renderer);
+	await captureFrame("passkey-notice-user-top-narrow/localOperatorLight", {
+		renderer,
+	});
+	await renderer.send("Emulation.clearDeviceMetricsOverride");
+	const fits = (st) => st.dom && st.dom.scrollWidth <= st.dom.clientWidth + 1;
+	check(
+		"at 800 px wide the notice fits its box in both ramps (no horizontal overflow)",
+		fits(narrowDark) && fits(narrowLight),
+		`dark=${JSON.stringify(narrowDark.dom)} light=${JSON.stringify(narrowLight.dom)}`,
+	);
+
+	for (const client of [page1, page2, page3, page4, renderer, main])
+		client.close();
+	return failures === 0 && !launched.exited();
+}
+
+const AGENT_DRIVEN = /agent-driven/;
+
 async function main() {
 	rmSync(SCRATCH, { recursive: true, force: true });
 	for (const dir of [
@@ -1849,7 +2509,7 @@ async function main() {
 	say(`[rig] scratch ${SCRATCH}`);
 
 	let servers = null;
-	if (ARM !== "cloudflare" && ARM !== "webauthn") {
+	if (ARM !== "cloudflare" && ARM !== "webauthn" && ARM !== "passkey") {
 		// B first: A's page embeds an iframe whose src needs B's port.
 		const b = await startServer("origin B (the widget)", {
 			"/widget.html": WIDGET_PAGE,
@@ -1876,6 +2536,9 @@ async function main() {
 		// The passkey arm needs no page and no visible window: what it drives is the
 		// APP's own surfaces, and a headless boot renders them at full fidelity.
 		webauthn: "headless",
+		// The passkey-notice arm drives the app's own surfaces and real pages served
+		// from loopback; nothing needs a window on screen.
+		passkey: "headless",
 	};
 	const arms =
 		ARM === "both"
@@ -1892,14 +2555,16 @@ async function main() {
 				say(
 					`[rig] ${arm} attempt ${attempt}/${ATTEMPTS} window-mode=${windowMode}`,
 				);
-				if (arm !== "webauthn") launchApp(windowMode);
+				if (arm !== "webauthn" && arm !== "passkey") launchApp(windowMode);
 				try {
 					const ok =
 						arm === "webauthn"
 							? await runWebauthnAttempt()
-							: arm === "local"
-								? await runLocalAttempt({ attempt, servers })
-								: await runRealSiteAttempt({ attempt, arm });
+							: arm === "passkey"
+								? await runPasskeyAttempt()
+								: arm === "local"
+									? await runLocalAttempt({ attempt, servers })
+									: await runRealSiteAttempt({ attempt, arm });
 					if (ok) passed += 1;
 				} catch (error) {
 					say(`ERROR arm=${arm} attempt=${attempt} ${String(error)}`);

@@ -1,0 +1,155 @@
+{
+ "locale": "fr",
+ "scope": "remediation check of the same 23 keys (ui.chat.thread_search 20 + ui.chat.canonical 3) at 58de30166d; no re-audit from scratch, nothing else in those catalogues audited",
+ "checkout_head": "58de30166d",
+ "checkout_head_full": "58de30166d26776166576c134d5456416616285b",
+ "branch": "i18n-final-literals",
+ "key_count": 23,
+ "audit_date": "2026-10-29",
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "38297592f595-ov2-fr",
+  "model": "radient/auto",
+  "actual_model_source": "session model-switch notices: opened on anthropic/claude-sonnet-5-5, switched by provider quota failures to openai/gpt-6-astra, then kimi/k3.1-pro, then radient/auto; the runtime restarted once mid-session with no further switch notice, so the second pass judged under radient/auto",
+  "independent_from_translator_session": true
+ },
+ "instance": "38297592f595-ov2-fr",
+ "reviewed_previous": "/Users/damian/qa/ov-audit/fr/receipt.json",
+ "input_sha256": {
+  "en_thread": "08bc59d1fe1058d3704800f92ee05afe5a7ffc1c7146683100a1afe5b2fa28e6",
+  "fr_thread": "1f3e83251f9852df2f985041c657f8feb84cfb92b80d551b5688f287aee8daaa",
+  "en_canonical": "da2c87f6caf8f238997861d850f575a3b3d8328c5d46abfffae4728ed41fb892",
+  "fr_canonical": "9b94970728f60305cd96e2c75f8f8af7726e02cb560629411de4fdb101845bc7"
+ },
+ "verdict": "PASS",
+ "counts": {
+  "BLOCKER": 0,
+  "MAJOR": 0,
+  "MINOR": 1,
+  "NIT": 2
+ },
+ "counts_basis": "open items against the fr scope at this head; every one is carried from the previous round and none blocks (gate: pass requires no BLOCKER and no MAJOR). No new finding was raised in this pass.",
+ "read_provenance": {
+  "catalogue_values": "read only through the read_public_copy tool (audited route, receipts in ~/.local-operator/audit/public-copy-reads.jsonl): 46 reads, 23 keys x en/fr at 58de30166d, plus 6 keys read individually for the remediation check",
+  "docs_artefacts": [
+   "~/qa/ov/ui.chat.thread_search.json.keys",
+   "~/qa/ov/ui.chat.canonical.json.keys (key lists only)"
+  ],
+  "docs_labelled_reads": [
+   "src/i18n/catalogues/en/ui.chat.thread_search.context.json (count.split entry at the new head)",
+   "~/local-operator/i18n/style-guides/fr.md and i18n/glossary.md (round-1 basis, unchanged)"
+  ],
+  "equality_method": "old vs new bytes compared key-by-key in git for presence and equality only; changed values were then read back through read_public_copy and judged there",
+  "not_read": "no rust/other-locale catalogue, no translated draft, worklist or review-thread note; the GitLab MCP is unavailable in this session, so the remediation replies were not read"
+ },
+ "checks": [
+  {
+   "check": "head",
+   "result": "pass",
+   "detail": "58de30166d26776166576c134d5456416616285b on i18n-final-literals; working tree clean, repo not edited by this pass"
+  },
+  {
+   "check": "FR-TS-01 count.split",
+   "result": "resolved",
+   "detail": "EN 'Exact: {exactText} · Related: {relatedText}', FR 'Exactes\\u202f: {exactText} · Connexes\\u202f: {relatedText}'. Label-first removes the number-adjacent agreeing adjective that made '1 exactes' wrong: the numeral is now a value after a fixed category label, so 'Exactes : 1 · Connexes : 3' is correct French (plural category labels take small counts, cf. 'Erreurs : 1'). Middot and both placeholders kept; U+202F before each colon per fr.md; sentence-case labels."
+  },
+  {
+   "check": "FR-TS-02 countText vs #",
+   "result": "open, carried",
+   "detail": "unchanged at this head (count.match/related/truncated still interpolate {countText}); answered on the review thread rather than changed — MINOR, non-blocking"
+  },
+  {
+   "check": "FR-TS-03 recheck",
+   "result": "open, carried",
+   "detail": "unchanged: 'Vérifier à nouveau'; NIT, carried, no byte change"
+  },
+  {
+   "check": "FR-TS-04 partial verb",
+   "result": "open, carried",
+   "detail": "unchanged: 'pendant que l’index se met à jour' vs building_hint 'l'index progresse'; NIT, carried"
+  },
+  {
+   "check": "ICU parse + argument names (all 23, en vs fr)",
+   "result": "pass",
+   "detail": "all parse with @formatjs/icu-messageformat-parser 3.x; argument-name sets identical per key (count, countText, exactText, relatedText); the only asymmetry is fr's extra `many` arm"
+  },
+  {
+   "check": "fr plural categories on the count lines",
+   "result": "pass",
+   "detail": "one/many/other present, no few/two/zero; Intl.PluralRules('fr') at 0,1,2,5,21,1e6 -> one,one,other,other,other,many; bodies read '0 correspondance', '1 correspondance', '2 correspondances', '21 correspondances', '1 000 000 de correspondances'"
+  },
+  {
+   "check": "count.split render at both edge counts",
+   "result": "pass",
+   "detail": "exact=1 -> 'Exactes : 1 · Connexes : 3'; related=1 -> 'Exactes : 7 · Connexes : 1'; no agreement defect left"
+  },
+  {
+   "check": "user/role label",
+   "result": "pass",
+   "detail": "ui.chat.thread_search.role.user fr 'Vous' / en 'You', unchanged and correct as a standalone sentence-case author label (the ru capitalisation change named in the brief is outside this locale's scope)"
+  },
+  {
+   "check": "nothing else moved",
+   "result": "pass",
+   "detail": "git diff f6e5c3eb62..58de30166d over the four in-scope files: only count.split changed in en and fr thread_search; both canonical files are byte-identical to the round-1 hashes; no key added or removed (23/23, 80/80)"
+  },
+  {
+   "check": "repo untouched",
+   "result": "pass",
+   "detail": "no file in ~/lo-literals written, staged or committed"
+  }
+ ],
+ "namespaces": {
+  "ui.chat.thread_search": {
+   "status": "passed",
+   "keys_audited": 20,
+   "sha256": {
+    "en": "08bc59d1fe1058d3704800f92ee05afe5a7ffc1c7146683100a1afe5b2fa28e6",
+    "target": "1f3e83251f9852df2f985041c657f8feb84cfb92b80d551b5688f287aee8daaa"
+   },
+   "findings": []
+  },
+  "ui.chat.canonical": {
+   "status": "passed",
+   "keys_audited": 3,
+   "sha256": {
+    "en": "da2c87f6caf8f238997861d850f575a3b3d8328c5d46abfffae4728ed41fb892",
+    "target": "9b94970728f60305cd96e2c75f8f8af7726e02cb560629411de4fdb101845bc7"
+   },
+   "findings": []
+  }
+ },
+ "notes": [
+  {
+   "prior": "FR-TS-01",
+   "severity": "MAJOR",
+   "key": "ui.chat.thread_search.count.split",
+   "status": "resolved",
+   "evidence": "label-first form in en and fr at 58de30166d; my own reasoning re-checked: the count is no longer the head of an agreeing noun phrase, so 0/1/2/5/21 all render correctly; sidecar now pins the order and forbids '{number} {label}'"
+  },
+  {
+   "prior": "FR-TS-02",
+   "severity": "MINOR",
+   "key": "ui.chat.thread_search.count.match, count.related, count.truncated",
+   "status": "open, non-blocking",
+   "evidence": "bytes unchanged; accepted as answered rather than changed"
+  },
+  {
+   "prior": "FR-TS-03",
+   "severity": "NIT",
+   "key": "ui.chat.thread_search.recheck",
+   "status": "open, non-blocking",
+   "evidence": "bytes unchanged"
+  },
+  {
+   "prior": "FR-TS-04",
+   "severity": "NIT",
+   "key": "ui.chat.thread_search.partial",
+   "status": "open, non-blocking",
+   "evidence": "bytes unchanged"
+  },
+  {
+   "new_findings": "none in this pass"
+  }
+ ]
+}

@@ -1,0 +1,149 @@
+{
+  "schema": 1,
+  "agent": "i18n-auditor",
+  "session": "c01a80b57a32",
+  "instance": "c01a80b57a32",
+  "model": "openai/gpt-6.1-sol",
+  "requested_model": "anthropic/claude-sonnet-5-5",
+  "fallback": true,
+  "fallback_reason": "Provider quota failures; session model-switch notices selected anthropic/claude-opus-5-5 then openai/gpt-6.1-sol. All audit execution and linguistic decisions used openai/gpt-6.1-sol.",
+  "independence": "Independent auditor; did not author or modify any translations.",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "c01a80b57a32",
+    "instance": "c01a80b57a32",
+    "model": "openai/gpt-6.1-sol",
+    "requested_model": "anthropic/claude-sonnet-5-5",
+    "fallback": true,
+    "fallback_reason": "Provider quota failures; session model-switch notices selected anthropic/claude-opus-5-5 then openai/gpt-6.1-sol. All audit execution and linguistic decisions used openai/gpt-6.1-sol.",
+    "independence": "Independent auditor; did not author or modify any translations.",
+    "model_source": "Session model-switch notice: openai/gpt-6.1-sol after Anthropic provider quota failures. All audit execution and linguistic judgment occurred after that switch.",
+    "independent_from_translator_session": true
+  },
+  "locale": "zh-CN",
+  "date": "2026-11-09",
+  "head": "2cf1ea7b5fd95b85d6c8bfaa264f6bd3c4e5c3b9",
+  "base": "6031bc9ad71",
+  "branch": "i18n/slice-transcript",
+  "scope": "Fresh audit of exactly nine new Chinese strings (eight transcript keys, one publication fallback); existing catalogue values are terminology context, not re-audited.",
+  "status": "passed",
+  "result": "clean",
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [],
+    "nit": []
+  },
+  "namespaces": {
+    "ui.chat.canonical": {
+      "namespace": "ui.chat.canonical",
+      "status": "passed",
+      "result": "clean",
+      "sha256": {
+        "en": "cd755f73444d7acff3e681c35bbf7e0da30bc61851f28ad711904f23c20c693a",
+        "zh-CN": "d5b5bba0c55a44bbf261d5b2277b7dc074fd9ff0159722b9e414998a2ab1b3bd"
+      },
+      "context_sha256": "4c2a77ff391e074b4561f71f9ceaf2690362c89880b259cba69e6a58832d80dc",
+      "keys_read": 8,
+      "reviewed_keys": [
+        "ui.chat.canonical.transcript.earlier_text_offscreen",
+        "ui.chat.canonical.transcript.interrupted",
+        "ui.chat.canonical.transcript.no_answer_given",
+        "ui.chat.canonical.transcript.not_run",
+        "ui.chat.canonical.transcript.answer_may_be_missing",
+        "ui.chat.canonical.transcript.worked",
+        "ui.chat.canonical.transcript.worked_for",
+        "ui.chat.canonical.transcript.job_suffix"
+      ],
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      },
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "record": {
+        "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/zh-transcript-c01a80b57a32/record.json",
+        "sha256": "16afddc10779ae53e55f2a40743ffb1b00dec50d141e1a71ec5d4f5558a4fa7c"
+      },
+      "report": {
+        "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/zh-transcript-c01a80b57a32/report.md",
+        "sha256": "b4c277efa2baf87fa5bc9edc1c6be8dd130ae2c39e2c58beb8330f6c25295749"
+      },
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+          "sha256": "cd755f73444d7acff3e681c35bbf7e0da30bc61851f28ad711904f23c20c693a"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+          "sha256": "4c2a77ff391e074b4561f71f9ceaf2690362c89880b259cba69e6a58832d80dc"
+        },
+        "target": {
+          "path": "src/i18n/catalogues/zh-CN/ui.chat.canonical.json",
+          "sha256": "d5b5bba0c55a44bbf261d5b2277b7dc074fd9ff0159722b9e414998a2ab1b3bd"
+        }
+      }
+    },
+    "ui.agents.upload": {
+      "namespace": "ui.agents.upload",
+      "status": "passed",
+      "result": "clean",
+      "sha256": {
+        "en": "388f6b2348eb76b3c3f6ac074ce32434fe75a31a9a41aa5eaead59c34caa97ab",
+        "zh-CN": "e2c6e9d3dff38f707287097c74b012adf9c4fcfbc91b2400a15ce18b1520b4a9"
+      },
+      "context_sha256": "b2cff9fc8975e5bc6c394a39a9cbd464a53304f6be9657f80446801c0072734f",
+      "keys_read": 1,
+      "reviewed_keys": [
+        "ui.agents.upload.failure.publish_fallback"
+      ],
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      },
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "record": {
+        "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/zh-transcript-c01a80b57a32/record.json",
+        "sha256": "16afddc10779ae53e55f2a40743ffb1b00dec50d141e1a71ec5d4f5558a4fa7c"
+      },
+      "report": {
+        "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/zh-transcript-c01a80b57a32/report.md",
+        "sha256": "b4c277efa2baf87fa5bc9edc1c6be8dd130ae2c39e2c58beb8330f6c25295749"
+      },
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.agents.upload.json",
+          "sha256": "388f6b2348eb76b3c3f6ac074ce32434fe75a31a9a41aa5eaead59c34caa97ab"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.agents.upload.context.json",
+          "sha256": "b2cff9fc8975e5bc6c394a39a9cbd464a53304f6be9657f80446801c0072734f"
+        },
+        "target": {
+          "path": "src/i18n/catalogues/zh-CN/ui.agents.upload.json",
+          "sha256": "e2c6e9d3dff38f707287097c74b012adf9c4fcfbc91b2400a15ce18b1520b4a9"
+        }
+      }
+    }
+  },
+  "kind": "independent_delta_i18n_audit",
+  "audit_kind": "linguistic_and_mechanical_delta",
+  "round": 1,
+  "audited_namespaces": [
+    "ui.chat.canonical",
+    "ui.agents.upload"
+  ]
+}

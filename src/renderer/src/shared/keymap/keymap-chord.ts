@@ -26,6 +26,7 @@
  * made unambiguous for every stored blob, so the order is a belt to that brace.
  */
 
+import { t } from "../../../../i18n/messages";
 import {
 	type MiniViewPlatform,
 	formatQuickSendDisplay,
@@ -199,7 +200,9 @@ export function buildChordMap(
  * so a caller that shows the sentence passes the platform it read.
  */
 const needsModifierSentence = (platform: MiniViewPlatform): string =>
-	platform === "mac" ? "A shortcut needs ⌘ or Ctrl." : "A shortcut needs Ctrl.";
+	platform === "mac"
+		? t("ui.settings.shortcuts.capture.needs_modifier_mac")
+		: t("ui.settings.shortcuts.capture.needs_modifier");
 
 /**
  * Why a captured chord cannot be assigned, as the sentence shown under the
@@ -209,7 +212,9 @@ const needsModifierSentence = (platform: MiniViewPlatform): string =>
  * 2. a chord with no `primary` (it would fire while the user types);
  * 3. a reserved chord (the set's own sentence names the job);
  * 4. a chord another action already answers — under its effective binding, so
- *    a default counts as taken, not only a stored override.
+ *    a default counts as taken, not only a stored override. External claim
+ *    values are bare action labels; this renderer composes the localized
+ *    sentence so labels never become nested "Already assigned" messages.
  *
  * The action's OWN chord is not a conflict: re-pressing the chord a row already
  * shows is never refused, and the ROW answers it without a store write (UX
@@ -222,16 +227,24 @@ export function captureRefusal(
 	actionId: ActionId,
 	bindings: ShortcutBindings | undefined,
 	platform: MiniViewPlatform = "linux",
+	external: ReadonlyMap<string, string> = new Map(),
 ): string | null {
 	const normalized = chord === null ? null : normalizeChord(chord);
-	if (normalized === null) return "That key cannot be bound.";
+	if (normalized === null) return t("ui.settings.shortcuts.capture.unbindable");
 	if (!chordHasPrimary(normalized)) return needsModifierSentence(platform);
 	const reserved = RESERVED_CHORDS.get(normalized);
 	if (reserved !== undefined) return reserved;
+	const externalClaim = external.get(normalized);
+	if (externalClaim !== undefined)
+		return t("ui.settings.shortcuts.capture.already_assigned", {
+			label: externalClaim,
+		});
 	for (const action of KEYMAP_ACTIONS) {
 		if (action.id === actionId) continue;
 		if (effectiveChord(action.id, bindings) === normalized) {
-			return `Already assigned to ${action.label}.`;
+			return t("ui.settings.shortcuts.capture.already_assigned", {
+				label: action.label,
+			});
 		}
 	}
 	return null;

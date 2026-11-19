@@ -1,0 +1,18 @@
+{
+	"ui.agents.starters.server_unanswered": "सर्वर ने जवाब नहीं दिया।",
+	"ui.agents.starters.summary.installed": "{count, plural, one {{count} इंस्टॉल हुआ} other {{count} इंस्टॉल हुए}}",
+	"ui.agents.starters.summary.already_present": "{count, plural, one {{count} पहले से मौजूद} other {{count} पहले से मौजूद}}",
+	"ui.agents.starters.summary.skipped": "{count, plural, one {{count} छोड़ा गया} other {{count} छोड़े गए}}",
+	"ui.agents.starters.summary.failed": "{count, plural, one {{count} विफल} other {{count} विफल}}",
+	"ui.agents.starters.summary.empty": "इंस्टॉल करने के लिए कुछ नहीं",
+	"ui.agents.starters.summary.sentence": "{parts}।",
+	"ui.agents.starters.summary.separator": ", ",
+	"ui.agents.starters.summary.collisions": "{count, plural, one {{count} छोड़ा गया: आपके पास {names} नाम का एजेंट पहले से है।} other {{count} छोड़े गए: आपके पास {names} नाम के एजेंट पहले से हैं।}}",
+	"ui.agents.starters.action.all_builtins": "सभी अंतर्निहित एजेंट इंस्टॉल करें",
+	"ui.agents.starters.available": "{count, plural, one {{count} अंतर्निहित एजेंट उपलब्ध} other {{count} अंतर्निहित एजेंट उपलब्ध}}",
+	"ui.agents.starters.action.all_count": "{count, plural, one {सभी {count} इंस्टॉल करें} other {सभी {count} इंस्टॉल करें}}",
+	"ui.agents.starters.progress.accessible": "अंतर्निहित एजेंट इंस्टॉल हो रहे हैं, {step}, कुल {total}",
+	"ui.agents.starters.progress.named": "एजेंट {step}/{total} इंस्टॉल हो रहा है — {name}…",
+	"ui.agents.starters.progress.count": "इंस्टॉल करने की प्रगति: {done}/{total} प्रयास पूरे…",
+	"ui.agents.starters.action.done": "हो गया"
+}

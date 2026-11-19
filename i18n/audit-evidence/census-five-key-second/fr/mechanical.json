@@ -1,0 +1,67 @@
+{
+  "keys": [
+    {
+      "key": "ui.chat.session_status.effort_level.low",
+      "en": "Low",
+      "fr": "Faible",
+      "no_Cf": true,
+      "chars": 6
+    },
+    {
+      "key": "ui.chat.session_status.effort_level.medium",
+      "en": "Medium",
+      "fr": "Moyen",
+      "no_Cf": true,
+      "chars": 5
+    },
+    {
+      "key": "ui.chat.session_status.effort_level.high",
+      "en": "High",
+      "fr": "Élevé",
+      "no_Cf": true,
+      "chars": 5
+    },
+    {
+      "key": "ui.chat.run_details.wake.armed_count",
+      "en": "{count, plural, =1 {{count_display} wake armed} other {{count_display} wakes armed}}",
+      "fr": "{count, plural, one {{count_display} réveil activé} many {{count_display} de réveils activés} other {{count_display} réveils activés}}",
+      "no_Cf": true,
+      "chars": 134,
+      "outputs": [
+        {
+          "count": 0,
+          "text": "0 réveil activé"
+        },
+        {
+          "count": 1,
+          "text": "1 réveil activé"
+        },
+        {
+          "count": 2,
+          "text": "2 réveils activés"
+        },
+        {
+          "count": 1000000,
+          "text": "1000000 de réveils activés"
+        },
+        {
+          "count": 1500000,
+          "text": "1500000 réveils activés"
+        }
+      ],
+      "selector_display_separation": "RAW_COUNT réveils activés"
+    },
+    {
+      "key": "ui.chat.run_details.wake.cadence_once",
+      "en": "once",
+      "fr": "une fois",
+      "no_Cf": true,
+      "chars": 8
+    }
+  ],
+  "plural_categories": [
+    "one",
+    "many",
+    "other"
+  ]
+}

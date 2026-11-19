@@ -1,0 +1,97 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "8ea83141eaec-r2",
+  "locale": "fr",
+  "status": "passed",
+  "translator_session_label": "prB1-tr-fr",
+  "independent_from_translator_session": true,
+  "actual_model_source": "served model named in this session's system prompt (Model: anthropic/claude-opus-5-5); no fallback observed",
+  "scope": "Round 2 re-audit of the 24 new keys on final bytes (HEAD 25eabf1aff + uncommitted fr ui.chat.canonical.json edit; diff vs f132aad424 = working_line.queued only)",
+  "audit_date": "2026-11-17",
+  "context_sha256": {
+    "ui.chat.canonical": "a67abe26c757c3a5b514136d61d2223b4a17521b7b5ede4f815a7771b3a4b420",
+    "ui.chat.attachments": "d10bc98fc6f0b3337dff3b08f06798d87eb1cdd3fa15c4a85e4fcedf05559c3f"
+  },
+  "namespaces": {
+    "ui.chat.canonical": {
+      "status": "passed",
+      "key_count_audited": 21,
+      "sha256": {
+        "fr": "b2be5e350598b90f2a0778fdccca402d93f08d9fe36c1c0ced656bf9784a8943",
+        "en": "dca993aa47b9c7c6287aadf423a750f0c923ff062eaf817f229d6b292a451be5"
+      },
+      "findings": [
+        {
+          "id": "F2",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.link_actions.too_large_note",
+          "current": "Trop volumineux pour l’aperçu Canvas (also open_in_canvas 'Ouvrir dans Canvas', too_large_title)",
+          "problem": "Pre-existing split in fr: 14 base keys write 'Canvas' (capitalised name, no article, incl. sibling file_actions 'Afficher/Ouvrir dans Canvas') vs 14 'le canvas' (header menu, shortcuts, rail tooltip); no 'canevas'. New keys follow the nearest siblings; not mixed-script.",
+          "suggestion": "No change here; settle Canvas vs le canvas in the glossary/fr guide and align both groups.",
+          "disposition_r2": "unchanged (NIT, not gating)"
+        },
+        {
+          "id": "F3",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.link_actions.too_large_title",
+          "current": "Trop volumineux pour l’aperçu Canvas, donc Ouvrir utilise l’application par défaut",
+          "problem": "', donc' clause join reads spoken/calqued from ', so'.",
+          "suggestion": "Trop volumineux pour l’aperçu Canvas : Ouvrir utilise donc l’application par défaut",
+          "disposition_r2": "unchanged (NIT, not gating)"
+        },
+        {
+          "id": "F4",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.link_actions.missing_file",
+          "current": "Aucun fichier à {path}",
+          "problem": "Frame is 16 chars (fits the budget; renders 33/24 chars) but 'à <path>' is a slight calque of 'at'.",
+          "suggestion": "Introuvable : {path} (14-char frame) or keep as is",
+          "disposition_r2": "unchanged (NIT, not gating)"
+        },
+        {
+          "id": "F5",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.working_line.composing",
+          "current": "composing one {rédaction de {count_display} appel}; queued now =1 {appel en attente}; running_tools one {exécution de {count_display} outil}",
+          "problem": "Singular arms now differ in form across the three working-line plurals: queued =1 drops both digit and article ('appel en attente', which also echoes telephony 'call waiting'), composing/running_tools keep '1'. All correct; consistency preference.",
+          "suggestion": "queued =1 {un appel en attente}; optionally composing =1 {rédaction d’un appel}",
+          "disposition_r2": "unchanged, extended to the new queued =1 arm"
+        }
+      ],
+      "resolved_findings": [
+        {
+          "id": "F1",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.working_line.queued",
+          "disposition_r2": "fixed — renders 0:'0 appel en attente'(18) 1:'appel en attente'(16) 2/5:'N appels en attente'(19) 1e6 many:'1000000 d’appels en attente'(27); within en slot (22/21) at realistic counts"
+        }
+      ]
+    },
+    "ui.chat.attachments": {
+      "status": "passed",
+      "key_count_audited": 3,
+      "sha256": {
+        "fr": "ec4cbc7eeb7ec1a303580093818cbed51f171af7e33705f4ba42561db1aea7a2",
+        "en": "1a5709a63c44655e0d96ec39ef87ddfd4715a811b6de2f29e851080a10dd42e7"
+      },
+      "findings": [
+        {
+          "id": "F6",
+          "severity": "NIT",
+          "key": "ui.chat.attachments.broken_unavailable",
+          "current": "… Sa copie conservée n’est pas accessible dans cette application.",
+          "problem": "'accessible dans' is less idiomatic than 'accessible depuis' for access from this app; same in broken_media_unavailable.",
+          "suggestion": "Sa copie conservée n’est pas accessible depuis cette application. (both keys, keep parallel)",
+          "disposition_r2": "unchanged (NIT, not gating)"
+        }
+      ]
+    }
+  },
+  "not_verified": "no rendered UI frame; no native-speaker review; judged by reasoning only, no MT",
+  "round": 2,
+  "previous_receipt": {
+    "path": "audit-fr-r1.json",
+    "sha256": "d3b6cbfc1046a6056e184ac564d0b601b9a913082bb88adc4b202754f85dcf6c"
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "agent": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "audit-1743-usage-reset-hi-20261107",
+  "locale": "hi",
+  "date": "2026-11-07",
+  "status": "passed",
+  "namespace": "ui.chat.usage_reset",
+  "keys_read": 13,
+  "sha256": {
+    "en": "dab7b5ad5816d8e855de5b77e5c5fe1e0d4021ceda20fefc832ccfede56fa739",
+    "hi": "f566899b07913ae325e02414d1531345b208c557ef54292f0ea75c40b0c801db"
+  },
+  "findings": [
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.usage_reset.chip_label",
+      "current": "{account} की दर-सीमाएँ रीसेट करें। {count, plural, one {# रीसेट क्रेडिट शेष है।} other {# रीसेट क्रेडिट शेष हैं।}}",
+      "proposed": "{account} की रेट सीमाएँ रीसेट करें। {count, plural, one {# रीसेट क्रेडिट शेष है।} other {# रीसेट क्रेडिट शेष हैं।}}",
+      "reason": "'दर-सीमा' (hyphenated) is a third spelling of rate limit: the hi catalogue ships 'रेट सीमा' (4, incl. ui.chat.error_block.rate_limit.before) and 'दर सीमा' (2) and never the hyphenated form; align on the shipped user-facing 'रेट सीमा'."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.usage_reset.confirm_cost",
+      "current": "{count, plural, one {# में से 1 रीसेट क्रेडिट खर्च करता है; इस खाते की दर-सीमा अवधि साफ़ करता है।} other {# में से 1 रीसेट क्रेडिट खर्च करता है; इस खाते की दर-सीमा अवधि साफ़ करता है।}}",
+      "proposed": "{count, plural, one {# में से 1 रीसेट क्रेडिट खर्च करता है; इस खाते की रेट सीमा अवधियाँ साफ़ करता है।} other {# में से 1 रीसेट क्रेडिट खर्च करता है; इस खाते की रेट सीमा अवधियाँ साफ़ करता है।}}",
+      "reason": "'दर-सीमा' (hyphenated) is a third spelling of rate limit: the hi catalogue ships 'रेट सीमा' (4, incl. ui.chat.error_block.rate_limit.before) and 'दर सीमा' (2) and never the hyphenated form; align on the shipped user-facing 'रेट सीमा'. Also 'अवधि' is singular where the English clears the account's windows (plural 'अवधियाँ', as outcome_reset's other arm already writes)."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.usage_reset.outcome_reset",
+      "current": "{count, plural, one {{account} की # दर-सीमा अवधि साफ़ की गई।} other {{account} की # दर-सीमा अवधियाँ साफ़ की गईं।}}",
+      "proposed": "{count, plural, one {{account} की # रेट सीमा अवधि साफ़ की गई।} other {{account} की # रेट सीमा अवधियाँ साफ़ की गईं।}}",
+      "reason": "'दर-सीमा' (hyphenated) is a third spelling of rate limit: the hi catalogue ships 'रेट सीमा' (4, incl. ui.chat.error_block.rate_limit.before) and 'दर सीमा' (2) and never the hyphenated form; align on the shipped user-facing 'रेट सीमा'."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.usage_reset.outcome_nothing_to_reset",
+      "current": "{account} की किसी दर-सीमा अवधि को साफ़ करने की ज़रूरत नहीं थी। कुछ भी खर्च नहीं हुआ।",
+      "proposed": "{account} की किसी रेट सीमा अवधि को साफ़ करने की ज़रूरत नहीं थी। कुछ भी खर्च नहीं हुआ।",
+      "reason": "'दर-सीमा' (hyphenated) is a third spelling of rate limit: the hi catalogue ships 'रेट सीमा' (4, incl. ui.chat.error_block.rate_limit.before) and 'दर सीमा' (2) and never the hyphenated form; align on the shipped user-facing 'रेट सीमा'."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.usage_reset.outcome_refused",
+      "current": "कुछ भी खर्च नहीं हुआ: {account} का रीसेट प्रदाता तक पहुँचने से पहले अस्वीकार कर दिया गया।",
+      "proposed": "कुछ भी खर्च नहीं हुआ: {account} का रीसेट प्रोवाइडर तक पहुँचने से पहले अस्वीकार कर दिया गया।",
+      "reason": "'प्रदाता' drifts from the locale's provider term 'प्रोवाइडर' (137 occurrences elsewhere in the hi catalogue, 0 of 'प्रदाता')."
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.chat.usage_reset.outcome_failed",
+      "current": "{account} के रीसेट ने कोई परिणाम नहीं बताया, इसलिए क्रेडिट का परिणाम अज्ञात है। दोबारा कोशिश वही अनुरोध दोहराती है, इसलिए दूसरा क्रेडिट खर्च नहीं होगा।",
+      "proposed": "{account} के रीसेट ने कोई परिणाम नहीं बताया, इसलिए पता नहीं कि क्रेडिट खर्च हुआ या नहीं। दोबारा कोशिश वही अनुरोध दोहराती है, इसलिए दूसरा क्रेडिट खर्च नहीं होगा।",
+      "reason": "'परिणाम' renders both 'result' and 'fate' in consecutive clauses, which reads translated."
+    }
+  ],
+  "scope": "PR #1743 ui.chat.usage_reset at 1d0e0cc0cb801f8ee1e2f1626212fddca32113c0 (clean working tree): full 13-key namespace, all seven locales",
+  "independence": "Separate session from the PR coder; verdict rebuilt from the English source, the en context, sibling keys and the locale style guide.",
+  "verdict": "hi: passed — 'window' is now 'अवधि/अवधियाँ' in all three keys, matching the /usage panel (prior MAJORs fixed); placeholders and one/other arms intact; remaining items are MINOR term drift (hyphenated 'दर-सीमा', 'प्रदाता') and a singular 'अवधि' in confirm_cost."
+}

@@ -6,11 +6,11 @@
  * real scan (`SCAN_EXCLUDED`), which is exactly why it can live inside
  * `scripts/i18n/` at all.
  *
- * The exemption placements show the rule: a pragma exempts a finding when it
- * sits inside the flagged node's own span, or inside the node's NEAREST
- * enclosing JSX element — so the comment goes inside the element whose copy it
- * is about, and a pragma in an outer wrapper does NOT reach into a nested
- * element (the test pins both directions).
+ * The exemption placements show the ONE rule both gates share: a pragma exempts
+ * the literal on its own line, and the NEXT line when it stands alone there. It
+ * reaches no further — the tag-level pragma on line 34 covers `aria-label` (35)
+ * but not the tag-mate `title` (36) or the child text (38): per-literal, the
+ * narrowing M1/Q-2 on #1767 asked for, re-pinned by R-1 on #1787.
  */
 
 export const ScanFixture = () => (

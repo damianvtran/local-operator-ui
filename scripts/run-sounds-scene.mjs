@@ -119,11 +119,19 @@ for (const signal of ["SIGINT", "SIGTERM"])
 		reap();
 		process.exit(1);
 	});
+/*
+ * THE BOUND COVERS THE WHOLE RUN, AND THE BUILD IS THE LONGEST LEG. Measured
+ * on this checkout (2026-10-23): `pnpm build` is 1m29s on its own, the isolated
+ * daemon's readiness and the history/files preflight add ~20s, and the scene
+ * itself is ~40s - which put the old 240s budget exactly at the seam and the
+ * run was killed with an empty frames dir after the preflight passed. 480s
+ * keeps the same reap-on-timeout guarantee with room for a cold build.
+ */
 const bound = setTimeout(() => {
 	reap();
 	console.error(`sounds timed out; evidence ${root}`);
 	process.exit(1);
-}, 240000);
+}, 480000);
 try {
 	const expired = await fetch(expiredUrl);
 	if (expired.status !== 403)

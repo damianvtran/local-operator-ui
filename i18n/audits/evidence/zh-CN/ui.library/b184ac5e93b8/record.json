@@ -1,0 +1,99 @@
+{
+  "locale": "zh-CN",
+  "namespaces": {
+    "ui.library": {
+      "status": "passed",
+      "fully_audited_key_count": 20,
+      "consistency_only_key_count": 159,
+      "finding_ids": [
+        "M1"
+      ],
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.library.json",
+          "sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.library.context.json",
+          "sha256": "2fe63e830b49079dac67c5c4513358d0a8559a94fbf27ac8d437212b13aa2e72"
+        },
+        "zh-CN": {
+          "path": "src/i18n/catalogues/zh-CN/ui.library.json",
+          "sha256": "686dfeeaa8ee25abd2815181ea7fe11ff7cd708cd0ea718632f870e5b1d5b857"
+        }
+      }
+    }
+  },
+  "audit_date": "2026-11-10",
+  "key_count": 179,
+  "fully_audited_key_count": 20,
+  "consistency_only_key_count": 159,
+  "scope": "PR damianvtran/local-operator-ui #1851 @ 8a9ce1f808c266ebe9a0e924094344cea60c2c23; 20 new ui.library messages vs 0e12072d2b3; read-only worktree ~/local-operator-ui/.worktrees/i18n-s8. Legacy 159 values not recertified.",
+  "head_sha": "8a9ce1f808c266ebe9a0e924094344cea60c2c23",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "b184ac5e93b8",
+    "session": "b184ac5e93b8",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "Served system session header for b184ac5e93b8: Model openai/gpt-6.1-sol. No fallback or model switch occurred.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "Delegation identifies zh-CN translator session 86ce45a242a4; independent auditor did not translate or participate in translation."
+  },
+  "policy_inputs": {
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/zh-CN.md",
+      "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+    },
+    "glossary": {
+      "path": "~/local-operator-ui/.worktrees/_s14-audits/8a9ce1f808c266ebe9a0e924094344cea60c2c23/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "note": "Manager-supplied byte-copy, recomputed SHA matches supplied full 0eb34437... hash. Original core glossary was not read under restricted allowlist."
+    }
+  },
+  "artifacts": [
+    {
+      "path": "zh-CN-sol-b184ac5e93b8.json",
+      "sha256": "fbc7228dd2a57b28d8d3688caac614d9633a36da426492f4fd47684c9b7ce33e",
+      "kind": "audit_notes_not_execution_log",
+      "record_reference": "zh-CN-sol-b184ac5e93b8.record.json"
+    },
+    {
+      "path": "zh-CN-sol-b184ac5e93b8.audit.log",
+      "sha256": "6586d17fa7bd308be37c54729e6bbc031139f9e27314169e7cbbb58fa3eaeeaf",
+      "kind": "actual_execution_log_with_separately_labelled_audit_notes",
+      "record_reference": "zh-CN-sol-b184ac5e93b8.record.json"
+    },
+    {
+      "path": "zh-CN-sol-b184ac5e93b8-check.mjs",
+      "sha256": "ebb9cef517807988626e476a4f57dcb4990b69fa9e92aab8326ebf056011bb05",
+      "kind": "executed_check_source",
+      "record_reference": "zh-CN-sol-b184ac5e93b8.record.json"
+    }
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [
+      "M1"
+    ]
+  },
+  "finding_report": "zh-CN-sol-b184ac5e93b8.json",
+  "audit_notes_not_execution_log": false,
+  "execution_log": "zh-CN-sol-b184ac5e93b8.audit.log",
+  "retention": {
+    "state": "scratch_handoff_only_per_explicit_read_only_task",
+    "intended_tracked_directory": "i18n/audits/evidence/zh-CN/ui.library/s14-sol-b184ac5e93b8/",
+    "manager_action_required": "Retain receipt, record, log and executed .mjs source under canonical evidence root; run audit-ledger command as manager. No ledger write run by this read-only auditor.",
+    "proposed_note": "passed; 20-key delta; M1 MINOR metadata; record i18n/audits/evidence/zh-CN/ui.library/s14-sol-b184ac5e93b8/record.json"
+  },
+  "unverified": [
+    "No rendered frame, browser, Electron/React, server, build, installation or test tree run; fit is measured character/cell sanity, not actual font geometry.",
+    "No ledger write, repository edits, commit, PR comment or tracked retention; manager must retain the delivered artifacts under canonical root and record ledger.",
+    "159 non-delta legacy values only checked for JSON validity, parity, unchanged values and targeted terminology; not fully semantically/ICU recertified."
+  ]
+}

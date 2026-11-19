@@ -1,0 +1,32 @@
+{
+  "auditor": "reviewer",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "tbd-sender-r1-ur",
+  "session": "b2fa9b669196",
+  "date": "2026-10-22",
+  "locale": "ur",
+  "translator": "coder",
+  "translator_session": "51333032ede5",
+  "translator_job": "2cb7c6eb3a49",
+  "namespaces": {
+    "ui.teamBridge": {
+      "status": "passed",
+      "keys_audited": 2,
+      "scope": "PR #1296 two-key delta: ui.teamBridge.sender.unknown_person and sender.unknown_agent (new; placeholder author name when the sender cannot be resolved, also the DM title fallback). Other 109 values verified byte-identical to HEAD f1520f143e, whose ur bytes (76bfaa1fa565994bbeeb8c76450042111a405525442a1ba2e0a956e1ba2e5397) are the audited ledger row; semantic coverage inherited from i18n/receipts/tbd-r3-ur.json (SHA256 84aef64e4d8e735ad57713e54ec6f5b514ad89ba3d02b387e44a67c68b26a0a4). Checked: reads unmistakably as a placeholder, not a name; core glossary and ur style guide; register vs neighbours scope.unknown, people.title, chief.fallback; agent wording vs audited ui.schedules unknown_agent. Mechanical: 111-key parity with English, no placeholders/ICU, NFC, no bidi or zero-width controls. Values: 'نامعلوم شخص', 'نامعلوم ایجنٹ'. نامعلوم prefix matches neighbour scope.unknown 'نامعلوم تنظیم' and ui.projects/ui.mesh usage. Agent string byte-equal to audited ui.schedules unknown_agent; glossary agent=ایجنٹ. RTL: values are pure Arabic-script single runs, Urdu letters ی U+06CC and ٹ U+0679 (no Arabic-only ي/ك), no Latin, digits, bidi controls or punctuation, so no mixed-direction run inside the string; the header places the time in a separate element. Fit: header span truncates (team-bridge-message-list.tsx); no rendered-fit, screenshot or pseudo-localization evidence is claimed.",
+      "sha256": {
+        "en": "7fd64414c053ab675f35a7aedd1389d30de404b964565207a02173ce9fd4935e",
+        "ur": "d450e7167746c3e80789b58dbf8f165aa1a2b6581e114fa70a56e353058cc52b",
+        "context": "f27dbb405c98a145cfd610464a1c661f1dd3bf5663c7c7cf3a263c1f9737d968"
+      },
+      "findings": []
+    }
+  },
+  "style_guide": {
+    "path": "~/local-operator/i18n/style-guides/ur.md",
+    "sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c",
+    "glossary_path": "~/local-operator/i18n/glossary.md",
+    "glossary_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "note": "Core repository revision 24dbccbb78; the UI checkout carries no local glossary or style guides (docs/I18N.md points to core)."
+  },
+  "independence": "Auditor is reviewer subagent session b2fa9b669196 (label i18n-1296-audit), spawned by parent 17cd3e74c66f; the delta translator is coder subagent session 51333032ede5 (label ui1296-member-fallback, job 2cb7c6eb3a49). The auditor did not author or edit any catalogue value; catalogues were only read."
+}

@@ -1,0 +1,36 @@
+{
+	"auditor": "i18n-auditor",
+	"model": "openai/gpt-6.1-sol",
+	"instance": "f290d34143fb",
+	"locale": "hi",
+	"round": 1,
+	"namespaces": {
+		"ui.chat.tags": {
+			"status": "passed",
+			"keys_audited": 54,
+			"sha256": {
+				"en": "2d300213e1eb2712e757fa820867fc50c58ef98c4dcf5ca540ad593cf450d0fe",
+				"hi": "d080a7a26f02b412ab00642049c54391280d91afbfb5dcaf2fdc611724463101"
+			},
+			"findings": []
+		},
+		"ui.library": {
+			"status": "passed",
+			"keys_audited": 152,
+			"sha256": {
+				"en": "009e864f684e85925001346dc382b5b04724d994f5b099a344f70827a2aa2b2a",
+				"hi": "e30da1148f9d927bd0dd088de9229c338b4835512e83a3b5591efa951a2cb956"
+			},
+			"findings": []
+		},
+		"ui.agentMessages": {
+			"status": "passed",
+			"keys_audited": 16,
+			"sha256": {
+				"en": "8dadc34125e9434d3994cff7518f72774bd486ce36edd505d34e21ef4c4f574b",
+				"hi": "85d66871d38261f8685edd081f504bce50b7984875f8fb4dc8476c8c4b84fcd4"
+			},
+			"findings": []
+		}
+	}
+}

@@ -1,0 +1,641 @@
+{
+  "head": "aba5d0310761cedc384c35847498d4197ce4b107",
+  "base": "0ad5542379a349a98e0a8d602dbd992746fd40a2",
+  "key_count": 29,
+  "status": "PASS",
+  "checks": [
+    "29 key-specific en/hi ICU AST contracts identical",
+    "29 values formatted at counts 0,1,2,1000 (116 formatter calls)",
+    "quoted literal and group-off occurrences byte-identical",
+    "literal renders as ${NAME}; ungrouped 1000 retained",
+    "0/1 singular and 2/1000 plural forms correct for hi",
+    "no manual bidi controls or unexplained Latin tokens",
+    "six catalogue file hashes match committed head",
+    "negative controls distinguish renamed placeholder and removed skeleton"
+  ],
+  "namespaces": {
+    "ui.agents.pages": {
+      "keys_audited": 7,
+      "keys": [
+        "ui.agents.pages.backend.connecting",
+        "ui.agents.pages.backend.loading_capabilities",
+        "ui.agents.pages.change.new",
+        "ui.agents.pages.backend.upgrade_heading",
+        "ui.agents.pages.backend.unreachable",
+        "ui.agents.pages.backend.upgrade_body",
+        "ui.agents.pages.change.updated"
+      ],
+      "source_sha256": "0b2e8e8a93001604df2d7a49abe57c8070f29ef30b50209bc3a84cbdc43b540f",
+      "target_sha256": "368841ff17b1b60c04d4029aa0fab43451c7369f18f0208dc9f7c97846d6c812",
+      "sha256": {
+        "en": "0b2e8e8a93001604df2d7a49abe57c8070f29ef30b50209bc3a84cbdc43b540f",
+        "hi": "368841ff17b1b60c04d4029aa0fab43451c7369f18f0208dc9f7c97846d6c812"
+      },
+      "rows": [
+        {
+          "key": "ui.agents.pages.backend.connecting",
+          "line": 33,
+          "en": "Connecting to the backend",
+          "hi": "बैकएंड से कनेक्ट हो रहा है",
+          "icu_contract": [],
+          "latin_tokens": [],
+          "bidi_controls": [],
+          "rendered": {
+            "0": "बैकएंड से कनेक्ट हो रहा है",
+            "1": "बैकएंड से कनेक्ट हो रहा है",
+            "2": "बैकएंड से कनेक्ट हो रहा है",
+            "1000": "बैकएंड से कनेक्ट हो रहा है"
+          }
+        },
+        {
+          "key": "ui.agents.pages.backend.loading_capabilities",
+          "line": 34,
+          "en": "Loading what this backend can do…",
+          "hi": "इस बैकएंड की क्षमताएँ लोड हो रही हैं…",
+          "icu_contract": [],
+          "latin_tokens": [],
+          "bidi_controls": [],
+          "rendered": {
+            "0": "इस बैकएंड की क्षमताएँ लोड हो रही हैं…",
+            "1": "इस बैकएंड की क्षमताएँ लोड हो रही हैं…",
+            "2": "इस बैकएंड की क्षमताएँ लोड हो रही हैं…",
+            "1000": "इस बैकएंड की क्षमताएँ लोड हो रही हैं…"
+          }
+        },
+        {
+          "key": "ui.agents.pages.change.new",
+          "line": 35,
+          "en": "New",
+          "hi": "नया",
+          "icu_contract": [],
+          "latin_tokens": [],
+          "bidi_controls": [],
+          "rendered": {
+            "0": "नया",
+            "1": "नया",
+            "2": "नया",
+            "1000": "नया"
+          }
+        },
+        {
+          "key": "ui.agents.pages.backend.upgrade_heading",
+          "line": 36,
+          "en": "Reusable agents need a newer backend",
+          "hi": "बार-बार इस्तेमाल होने वाले एजेंटों के लिए नया बैकएंड चाहिए",
+          "icu_contract": [],
+          "latin_tokens": [],
+          "bidi_controls": [],
+          "rendered": {
+            "0": "बार-बार इस्तेमाल होने वाले एजेंटों के लिए नया बैकएंड चाहिए",
+            "1": "बार-बार इस्तेमाल होने वाले एजेंटों के लिए नया बैकएंड चाहिए",
+            "2": "बार-बार इस्तेमाल होने वाले एजेंटों के लिए नया बैकएंड चाहिए",
+            "1000": "बार-बार इस्तेमाल होने वाले एजेंटों के लिए नया बैकएंड चाहिए"
+          }
+        },
+        {
+          "key": "ui.agents.pages.backend.unreachable",
+          "line": 37,
+          "en": "The backend could not be reached",
+          "hi": "बैकएंड से संपर्क नहीं हो सका",
+          "icu_contract": [],
+          "latin_tokens": [],
+          "bidi_controls": [],
+          "rendered": {
+            "0": "बैकएंड से संपर्क नहीं हो सका",
+            "1": "बैकएंड से संपर्क नहीं हो सका",
+            "2": "बैकएंड से संपर्क नहीं हो सका",
+            "1000": "बैकएंड से संपर्क नहीं हो सका"
+          }
+        },
+        {
+          "key": "ui.agents.pages.backend.upgrade_body",
+          "line": 38,
+          "en": "Update the backend to manage reusable agents and teams. Saved chats are unchanged.",
+          "hi": "बार-बार इस्तेमाल होने वाले एजेंटों और टीमों को प्रबंधित करने के लिए बैकएंड अपडेट करें। सहेजी गई बातचीत में कोई बदलाव नहीं हुआ है।",
+          "icu_contract": [],
+          "latin_tokens": [],
+          "bidi_controls": [],
+          "rendered": {
+            "0": "बार-बार इस्तेमाल होने वाले एजेंटों और टीमों को प्रबंधित करने के लिए बैकएंड अपडेट करें। सहेजी गई बातचीत में कोई बदलाव नहीं हुआ है।",
+            "1": "बार-बार इस्तेमाल होने वाले एजेंटों और टीमों को प्रबंधित करने के लिए बैकएंड अपडेट करें। सहेजी गई बातचीत में कोई बदलाव नहीं हुआ है।",
+            "2": "बार-बार इस्तेमाल होने वाले एजेंटों और टीमों को प्रबंधित करने के लिए बैकएंड अपडेट करें। सहेजी गई बातचीत में कोई बदलाव नहीं हुआ है।",
+            "1000": "बार-बार इस्तेमाल होने वाले एजेंटों और टीमों को प्रबंधित करने के लिए बैकएंड अपडेट करें। सहेजी गई बातचीत में कोई बदलाव नहीं हुआ है।"
+          }
+        },
+        {
+          "key": "ui.agents.pages.change.updated",
+          "line": 39,
+          "en": "Updated",
+          "hi": "अपडेट हुआ",
+          "icu_contract": [],
+          "latin_tokens": [],
+          "bidi_controls": [],
+          "rendered": {
+            "0": "अपडेट हुआ",
+            "1": "अपडेट हुआ",
+            "2": "अपडेट हुआ",
+            "1000": "अपडेट हुआ"
+          }
+        }
+      ]
+    },
+    "ui.chat.run_details": {
+      "keys_audited": 16,
+      "keys": [
+        "ui.chat.run_details.child.result.preview",
+        "ui.chat.run_details.child.result.title",
+        "ui.chat.run_details.child.result.unavailable_clipped",
+        "ui.chat.run_details.child.result.unavailable",
+        "ui.chat.run_details.child.brief.show_less",
+        "ui.chat.run_details.child.brief.show_more",
+        "ui.chat.run_details.mcp_auth.upgrade",
+        "ui.chat.run_details.mcp_auth.no_references",
+        "ui.chat.run_details.mcp_auth.unknown_method",
+        "ui.chat.run_details.mcp_auth.waiting",
+        "ui.chat.run_details.mcp_auth.status",
+        "ui.chat.run_details.mcp_auth.status_unavailable",
+        "ui.chat.run_details.mcp_failure.cancel_lead",
+        "ui.chat.run_details.mcp_failure.busy",
+        "ui.chat.run_details.mcp_failure.refused",
+        "ui.chat.run_details.mcp_failure.session"
+      ],
+      "source_sha256": "02877dbbfba534fb2467008550d55ffd45c928c990b89c3d1a72acbfc76d2d50",
+      "target_sha256": "39e84adf092e58b14f6942f4b4a9fb2751e0008648bf63d6593a240bc45e4350",
+      "sha256": {
+        "en": "02877dbbfba534fb2467008550d55ffd45c928c990b89c3d1a72acbfc76d2d50",
+        "hi": "39e84adf092e58b14f6942f4b4a9fb2751e0008648bf63d6593a240bc45e4350"
+      },
+      "rows": [
+        {
+          "key": "ui.chat.run_details.child.result.preview",
+          "line": 95,
+          "en": "Result preview",
+          "hi": "परिणाम का पूर्वावलोकन",
+          "icu_contract": [],
+          "latin_tokens": [],
+          "bidi_controls": [],
+          "rendered": {
+            "0": "परिणाम का पूर्वावलोकन",
+            "1": "परिणाम का पूर्वावलोकन",
+            "2": "परिणाम का पूर्वावलोकन",
+            "1000": "परिणाम का पूर्वावलोकन"
+          }
+        },
+        {
+          "key": "ui.chat.run_details.child.result.title",
+          "line": 96,
+          "en": "Result",
+          "hi": "परिणाम",
+          "icu_contract": [],
+          "latin_tokens": [],
+          "bidi_controls": [],
+          "rendered": {
+            "0": "परिणाम",
+            "1": "परिणाम",
+            "2": "परिणाम",
+            "1000": "परिणाम"
+          }
+        },
+        {
+          "key": "ui.chat.run_details.child.result.unavailable_clipped",
+          "line": 97,
+          "en": "This is a shortened copy. This subagent's conversation is not available here.",
+          "hi": "यह एक संक्षिप्त प्रति है। इस उप-एजेंट की बातचीत यहाँ उपलब्ध नहीं है।",
+          "icu_contract": [],
+          "latin_tokens": [],
+          "bidi_controls": [],
+          "rendered": {
+            "0": "यह एक संक्षिप्त प्रति है। इस उप-एजेंट की बातचीत यहाँ उपलब्ध नहीं है।",
+            "1": "यह एक संक्षिप्त प्रति है। इस उप-एजेंट की बातचीत यहाँ उपलब्ध नहीं है।",
+            "2": "यह एक संक्षिप्त प्रति है। इस उप-एजेंट की बातचीत यहाँ उपलब्ध नहीं है।",
+            "1000": "यह एक संक्षिप्त प्रति है। इस उप-एजेंट की बातचीत यहाँ उपलब्ध नहीं है।"
+          }
+        },
+        {
+          "key": "ui.chat.run_details.child.result.unavailable",
+          "line": 98,
+          "en": "This subagent's conversation is not available here.",
+          "hi": "इस उप-एजेंट की बातचीत यहाँ उपलब्ध नहीं है।",
+          "icu_contract": [],
+          "latin_tokens": [],
+          "bidi_controls": [],
+          "rendered": {
+            "0": "इस उप-एजेंट की बातचीत यहाँ उपलब्ध नहीं है।",
+            "1": "इस उप-एजेंट की बातचीत यहाँ उपलब्ध नहीं है।",
+            "2": "इस उप-एजेंट की बातचीत यहाँ उपलब्ध नहीं है।",
+            "1000": "इस उप-एजेंट की बातचीत यहाँ उपलब्ध नहीं है।"
+          }
+        },
+        {
+          "key": "ui.chat.run_details.child.brief.show_less",
+          "line": 99,
+          "en": "Show less",
+          "hi": "कम दिखाएँ",
+          "icu_contract": [],
+          "latin_tokens": [],
+          "bidi_controls": [],
+          "rendered": {
+            "0": "कम दिखाएँ",
+            "1": "कम दिखाएँ",
+            "2": "कम दिखाएँ",
+            "1000": "कम दिखाएँ"
+          }
+        },
+        {
+          "key": "ui.chat.run_details.child.brief.show_more",
+          "line": 100,
+          "en": "{count, plural, one {Show {count, number, ::group-off} more line} other {Show {count, number, ::group-off} more lines}}",
+          "hi": "{count, plural, one {{count, number, ::group-off} और पंक्ति दिखाएँ} other {{count, number, ::group-off} और पंक्तियाँ दिखाएँ}}",
+          "icu_contract": [
+            {
+              "type": 6,
+              "value": "count",
+              "offset": 0,
+              "pluralType": "cardinal",
+              "options": {
+                "one": [
+                  {
+                    "type": 2,
+                    "value": "count",
+                    "style": {
+                      "type": 0,
+                      "tokens": [
+                        {
+                          "stem": "group-off",
+                          "options": []
+                        }
+                      ],
+                      "parsedOptions": {
+                        "useGrouping": false
+                      }
+                    }
+                  }
+                ],
+                "other": [
+                  {
+                    "type": 2,
+                    "value": "count",
+                    "style": {
+                      "type": 0,
+                      "tokens": [
+                        {
+                          "stem": "group-off",
+                          "options": []
+                        }
+                      ],
+                      "parsedOptions": {
+                        "useGrouping": false
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "latin_tokens": [
+            "count",
+            "plural",
+            "one",
+            "count",
+            "number",
+            "group-off",
+            "other",
+            "count",
+            "number",
+            "group-off"
+          ],
+          "bidi_controls": [],
+          "rendered": {
+            "0": "0 और पंक्ति दिखाएँ",
+            "1": "1 और पंक्ति दिखाएँ",
+            "2": "2 और पंक्तियाँ दिखाएँ",
+            "1000": "1000 और पंक्तियाँ दिखाएँ"
+          }
+        },
+        {
+          "key": "ui.chat.run_details.mcp_auth.upgrade",
+          "line": 101,
+          "en": "Update the backend for secure MCP key entry. OAuth and the server list remain available.",
+          "hi": "MCP कुंजियाँ सुरक्षित रूप से दर्ज करने के लिए बैकएंड अपडेट करें। OAuth और सर्वर सूची उपलब्ध हैं।",
+          "icu_contract": [],
+          "latin_tokens": [
+            "MCP",
+            "OAuth"
+          ],
+          "bidi_controls": [],
+          "rendered": {
+            "0": "MCP कुंजियाँ सुरक्षित रूप से दर्ज करने के लिए बैकएंड अपडेट करें। OAuth और सर्वर सूची उपलब्ध हैं।",
+            "1": "MCP कुंजियाँ सुरक्षित रूप से दर्ज करने के लिए बैकएंड अपडेट करें। OAuth और सर्वर सूची उपलब्ध हैं।",
+            "2": "MCP कुंजियाँ सुरक्षित रूप से दर्ज करने के लिए बैकएंड अपडेट करें। OAuth और सर्वर सूची उपलब्ध हैं।",
+            "1000": "MCP कुंजियाँ सुरक्षित रूप से दर्ज करने के लिए बैकएंड अपडेट करें। OAuth और सर्वर सूची उपलब्ध हैं।"
+          }
+        },
+        {
+          "key": "ui.chat.run_details.mcp_auth.no_references",
+          "line": 102,
+          "en": "This server does not use OAuth and declares no secret references. Add explicit $'{'NAME'}' references to its MCP environment or headers, then retry.",
+          "hi": "यह सर्वर OAuth का इस्तेमाल नहीं करता और इसमें सीक्रेट के कोई संदर्भ घोषित नहीं हैं। इसके MCP एनवायरनमेंट या हेडर में स्पष्ट $'{'NAME'}' संदर्भ जोड़ें, फिर कोशिश करें।",
+          "icu_contract": [],
+          "latin_tokens": [
+            "OAuth",
+            "MCP",
+            "NAME"
+          ],
+          "bidi_controls": [],
+          "rendered": {
+            "0": "यह सर्वर OAuth का इस्तेमाल नहीं करता और इसमें सीक्रेट के कोई संदर्भ घोषित नहीं हैं। इसके MCP एनवायरनमेंट या हेडर में स्पष्ट ${NAME} संदर्भ जोड़ें, फिर कोशिश करें।",
+            "1": "यह सर्वर OAuth का इस्तेमाल नहीं करता और इसमें सीक्रेट के कोई संदर्भ घोषित नहीं हैं। इसके MCP एनवायरनमेंट या हेडर में स्पष्ट ${NAME} संदर्भ जोड़ें, फिर कोशिश करें।",
+            "2": "यह सर्वर OAuth का इस्तेमाल नहीं करता और इसमें सीक्रेट के कोई संदर्भ घोषित नहीं हैं। इसके MCP एनवायरनमेंट या हेडर में स्पष्ट ${NAME} संदर्भ जोड़ें, फिर कोशिश करें।",
+            "1000": "यह सर्वर OAuth का इस्तेमाल नहीं करता और इसमें सीक्रेट के कोई संदर्भ घोषित नहीं हैं। इसके MCP एनवायरनमेंट या हेडर में स्पष्ट ${NAME} संदर्भ जोड़ें, फिर कोशिश करें।"
+          }
+        },
+        {
+          "key": "ui.chat.run_details.mcp_auth.unknown_method",
+          "line": 103,
+          "en": "Could not determine this server's sign-in method. Check its connection and MCP setup, then retry.",
+          "hi": "इस सर्वर के साइन इन का तरीका पता नहीं चल सका। इसका कनेक्शन और MCP सेटअप जाँचें, फिर कोशिश करें।",
+          "icu_contract": [],
+          "latin_tokens": [
+            "MCP"
+          ],
+          "bidi_controls": [],
+          "rendered": {
+            "0": "इस सर्वर के साइन इन का तरीका पता नहीं चल सका। इसका कनेक्शन और MCP सेटअप जाँचें, फिर कोशिश करें।",
+            "1": "इस सर्वर के साइन इन का तरीका पता नहीं चल सका। इसका कनेक्शन और MCP सेटअप जाँचें, फिर कोशिश करें।",
+            "2": "इस सर्वर के साइन इन का तरीका पता नहीं चल सका। इसका कनेक्शन और MCP सेटअप जाँचें, फिर कोशिश करें।",
+            "1000": "इस सर्वर के साइन इन का तरीका पता नहीं चल सका। इसका कनेक्शन और MCP सेटअप जाँचें, फिर कोशिश करें।"
+          }
+        },
+        {
+          "key": "ui.chat.run_details.mcp_auth.waiting",
+          "line": 104,
+          "en": "Waiting for backend sign-in status…",
+          "hi": "बैकएंड से साइन इन की स्थिति का इंतज़ार है…",
+          "icu_contract": [],
+          "latin_tokens": [],
+          "bidi_controls": [],
+          "rendered": {
+            "0": "बैकएंड से साइन इन की स्थिति का इंतज़ार है…",
+            "1": "बैकएंड से साइन इन की स्थिति का इंतज़ार है…",
+            "2": "बैकएंड से साइन इन की स्थिति का इंतज़ार है…",
+            "1000": "बैकएंड से साइन इन की स्थिति का इंतज़ार है…"
+          }
+        },
+        {
+          "key": "ui.chat.run_details.mcp_auth.status",
+          "line": 105,
+          "en": "Sign-in {status}.",
+          "hi": "साइन इन: {status}।",
+          "icu_contract": [
+            {
+              "type": 1,
+              "value": "status"
+            }
+          ],
+          "latin_tokens": [
+            "status"
+          ],
+          "bidi_controls": [],
+          "rendered": {
+            "0": "साइन इन: स्थिति-परीक्षण।",
+            "1": "साइन इन: स्थिति-परीक्षण।",
+            "2": "साइन इन: स्थिति-परीक्षण।",
+            "1000": "साइन इन: स्थिति-परीक्षण।"
+          }
+        },
+        {
+          "key": "ui.chat.run_details.mcp_auth.status_unavailable",
+          "line": 106,
+          "en": "status unavailable",
+          "hi": "स्थिति उपलब्ध नहीं",
+          "icu_contract": [],
+          "latin_tokens": [],
+          "bidi_controls": [],
+          "rendered": {
+            "0": "स्थिति उपलब्ध नहीं",
+            "1": "स्थिति उपलब्ध नहीं",
+            "2": "स्थिति उपलब्ध नहीं",
+            "1000": "स्थिति उपलब्ध नहीं"
+          }
+        },
+        {
+          "key": "ui.chat.run_details.mcp_failure.cancel_lead",
+          "line": 107,
+          "en": "The cancellation could not be confirmed",
+          "hi": "रद्द किए जाने की पुष्टि नहीं हो सकी",
+          "icu_contract": [],
+          "latin_tokens": [],
+          "bidi_controls": [],
+          "rendered": {
+            "0": "रद्द किए जाने की पुष्टि नहीं हो सकी",
+            "1": "रद्द किए जाने की पुष्टि नहीं हो सकी",
+            "2": "रद्द किए जाने की पुष्टि नहीं हो सकी",
+            "1000": "रद्द किए जाने की पुष्टि नहीं हो सकी"
+          }
+        },
+        {
+          "key": "ui.chat.run_details.mcp_failure.busy",
+          "line": 108,
+          "en": "{lead}: a sign-in is already running for this conversation, and only one can run at a time. Wait for it to finish, or cancel it from the server's row.",
+          "hi": "{lead}: इस बातचीत के लिए साइन इन पहले से चल रहा है, और एक समय में एक ही चल सकता है। इसके पूरा होने का इंतज़ार करें, या सर्वर की पंक्ति से इसे रद्द करें।",
+          "icu_contract": [
+            {
+              "type": 1,
+              "value": "lead"
+            }
+          ],
+          "latin_tokens": [
+            "lead"
+          ],
+          "bidi_controls": [],
+          "rendered": {
+            "0": "परीक्षण: इस बातचीत के लिए साइन इन पहले से चल रहा है, और एक समय में एक ही चल सकता है। इसके पूरा होने का इंतज़ार करें, या सर्वर की पंक्ति से इसे रद्द करें।",
+            "1": "परीक्षण: इस बातचीत के लिए साइन इन पहले से चल रहा है, और एक समय में एक ही चल सकता है। इसके पूरा होने का इंतज़ार करें, या सर्वर की पंक्ति से इसे रद्द करें।",
+            "2": "परीक्षण: इस बातचीत के लिए साइन इन पहले से चल रहा है, और एक समय में एक ही चल सकता है। इसके पूरा होने का इंतज़ार करें, या सर्वर की पंक्ति से इसे रद्द करें।",
+            "1000": "परीक्षण: इस बातचीत के लिए साइन इन पहले से चल रहा है, और एक समय में एक ही चल सकता है। इसके पूरा होने का इंतज़ार करें, या सर्वर की पंक्ति से इसे रद्द करें।"
+          }
+        },
+        {
+          "key": "ui.chat.run_details.mcp_failure.refused",
+          "line": 109,
+          "en": "{lead}: the server refused it without giving a reason, and nothing was changed.",
+          "hi": "{lead}: सर्वर ने बिना कारण बताए इसे अस्वीकार कर दिया, और कोई बदलाव नहीं हुआ।",
+          "icu_contract": [
+            {
+              "type": 1,
+              "value": "lead"
+            }
+          ],
+          "latin_tokens": [
+            "lead"
+          ],
+          "bidi_controls": [],
+          "rendered": {
+            "0": "परीक्षण: सर्वर ने बिना कारण बताए इसे अस्वीकार कर दिया, और कोई बदलाव नहीं हुआ।",
+            "1": "परीक्षण: सर्वर ने बिना कारण बताए इसे अस्वीकार कर दिया, और कोई बदलाव नहीं हुआ।",
+            "2": "परीक्षण: सर्वर ने बिना कारण बताए इसे अस्वीकार कर दिया, और कोई बदलाव नहीं हुआ।",
+            "1000": "परीक्षण: सर्वर ने बिना कारण बताए इसे अस्वीकार कर दिया, और कोई बदलाव नहीं हुआ।"
+          }
+        },
+        {
+          "key": "ui.chat.run_details.mcp_failure.session",
+          "line": 110,
+          "en": "{lead} because this conversation's session is not running. Trying again restarts it and repeats this request.",
+          "hi": "{lead} क्योंकि इस बातचीत का सत्र नहीं चल रहा है। फिर कोशिश करने पर सत्र दोबारा शुरू होता है और यही अनुरोध दोहराया जाता है।",
+          "icu_contract": [
+            {
+              "type": 1,
+              "value": "lead"
+            }
+          ],
+          "latin_tokens": [
+            "lead"
+          ],
+          "bidi_controls": [],
+          "rendered": {
+            "0": "परीक्षण क्योंकि इस बातचीत का सत्र नहीं चल रहा है। फिर कोशिश करने पर सत्र दोबारा शुरू होता है और यही अनुरोध दोहराया जाता है।",
+            "1": "परीक्षण क्योंकि इस बातचीत का सत्र नहीं चल रहा है। फिर कोशिश करने पर सत्र दोबारा शुरू होता है और यही अनुरोध दोहराया जाता है।",
+            "2": "परीक्षण क्योंकि इस बातचीत का सत्र नहीं चल रहा है। फिर कोशिश करने पर सत्र दोबारा शुरू होता है और यही अनुरोध दोहराया जाता है।",
+            "1000": "परीक्षण क्योंकि इस बातचीत का सत्र नहीं चल रहा है। फिर कोशिश करने पर सत्र दोबारा शुरू होता है और यही अनुरोध दोहराया जाता है।"
+          }
+        }
+      ]
+    },
+    "ui.notices": {
+      "keys_audited": 6,
+      "keys": [
+        "ui.notices.aida.paused_receipt",
+        "ui.notices.aida.resumed_receipt",
+        "ui.notices.aida.paused",
+        "ui.notices.aida.active",
+        "ui.notices.aida.account_required",
+        "ui.notices.aida.open_fallback"
+      ],
+      "source_sha256": "043243b66381b6fa1143acb645ce0c83fcb381883038ef88bbcb28e36764b112",
+      "target_sha256": "5b33e919a9f21d3d247082b1bc824971d7d3b08d58418b3be3e01869282c1336",
+      "sha256": {
+        "en": "043243b66381b6fa1143acb645ce0c83fcb381883038ef88bbcb28e36764b112",
+        "hi": "5b33e919a9f21d3d247082b1bc824971d7d3b08d58418b3be3e01869282c1336"
+      },
+      "rows": [
+        {
+          "key": "ui.notices.aida.paused_receipt",
+          "line": 104,
+          "en": "Aida is paused. She will not check in until you resume her.",
+          "hi": "Aida रुकी हुई है। फिर शुरू करने तक वह हालचाल नहीं पूछेगी।",
+          "icu_contract": [],
+          "latin_tokens": [
+            "Aida"
+          ],
+          "bidi_controls": [],
+          "rendered": {
+            "0": "Aida रुकी हुई है। फिर शुरू करने तक वह हालचाल नहीं पूछेगी।",
+            "1": "Aida रुकी हुई है। फिर शुरू करने तक वह हालचाल नहीं पूछेगी।",
+            "2": "Aida रुकी हुई है। फिर शुरू करने तक वह हालचाल नहीं पूछेगी।",
+            "1000": "Aida रुकी हुई है। फिर शुरू करने तक वह हालचाल नहीं पूछेगी।"
+          }
+        },
+        {
+          "key": "ui.notices.aida.resumed_receipt",
+          "line": 105,
+          "en": "Aida is resumed. She will check in on her usual schedule.",
+          "hi": "Aida फिर शुरू हो गई है। वह अपने सामान्य शेड्यूल पर हालचाल पूछेगी।",
+          "icu_contract": [],
+          "latin_tokens": [
+            "Aida"
+          ],
+          "bidi_controls": [],
+          "rendered": {
+            "0": "Aida फिर शुरू हो गई है। वह अपने सामान्य शेड्यूल पर हालचाल पूछेगी।",
+            "1": "Aida फिर शुरू हो गई है। वह अपने सामान्य शेड्यूल पर हालचाल पूछेगी।",
+            "2": "Aida फिर शुरू हो गई है। वह अपने सामान्य शेड्यूल पर हालचाल पूछेगी।",
+            "1000": "Aida फिर शुरू हो गई है। वह अपने सामान्य शेड्यूल पर हालचाल पूछेगी।"
+          }
+        },
+        {
+          "key": "ui.notices.aida.paused",
+          "line": 106,
+          "en": "Aida is paused.",
+          "hi": "Aida रुकी हुई है।",
+          "icu_contract": [],
+          "latin_tokens": [
+            "Aida"
+          ],
+          "bidi_controls": [],
+          "rendered": {
+            "0": "Aida रुकी हुई है।",
+            "1": "Aida रुकी हुई है।",
+            "2": "Aida रुकी हुई है।",
+            "1000": "Aida रुकी हुई है।"
+          }
+        },
+        {
+          "key": "ui.notices.aida.active",
+          "line": 107,
+          "en": "Aida is active.",
+          "hi": "Aida सक्रिय है।",
+          "icu_contract": [],
+          "latin_tokens": [
+            "Aida"
+          ],
+          "bidi_controls": [],
+          "rendered": {
+            "0": "Aida सक्रिय है।",
+            "1": "Aida सक्रिय है।",
+            "2": "Aida सक्रिय है।",
+            "1000": "Aida सक्रिय है।"
+          }
+        },
+        {
+          "key": "ui.notices.aida.account_required",
+          "line": 108,
+          "en": "{name} will say hello once an AI account is connected. Connect one from the chat to start.",
+          "hi": "एआई खाता कनेक्ट होने पर {name} बातचीत शुरू करेगी। शुरू करने के लिए चैट से खाता कनेक्ट करें।",
+          "icu_contract": [
+            {
+              "type": 1,
+              "value": "name"
+            }
+          ],
+          "latin_tokens": [
+            "name"
+          ],
+          "bidi_controls": [],
+          "rendered": {
+            "0": "एआई खाता कनेक्ट होने पर Aida बातचीत शुरू करेगी। शुरू करने के लिए चैट से खाता कनेक्ट करें।",
+            "1": "एआई खाता कनेक्ट होने पर Aida बातचीत शुरू करेगी। शुरू करने के लिए चैट से खाता कनेक्ट करें।",
+            "2": "एआई खाता कनेक्ट होने पर Aida बातचीत शुरू करेगी। शुरू करने के लिए चैट से खाता कनेक्ट करें।",
+            "1000": "एआई खाता कनेक्ट होने पर Aida बातचीत शुरू करेगी। शुरू करने के लिए चैट से खाता कनेक्ट करें।"
+          }
+        },
+        {
+          "key": "ui.notices.aida.open_fallback",
+          "line": 109,
+          "en": "{name}'s conversation could not be opened, so you are in a new chat instead. {detail}",
+          "hi": "{name} की बातचीत नहीं खोली जा सकी, इसलिए उसकी जगह नई चैट खुली है। {detail}",
+          "icu_contract": [
+            {
+              "type": 1,
+              "value": "detail"
+            },
+            {
+              "type": 1,
+              "value": "name"
+            }
+          ],
+          "latin_tokens": [
+            "name",
+            "detail"
+          ],
+          "bidi_controls": [],
+          "rendered": {
+            "0": "Aida की बातचीत नहीं खोली जा सकी, इसलिए उसकी जगह नई चैट खुली है। विवरण-परीक्षण",
+            "1": "Aida की बातचीत नहीं खोली जा सकी, इसलिए उसकी जगह नई चैट खुली है। विवरण-परीक्षण",
+            "2": "Aida की बातचीत नहीं खोली जा सकी, इसलिए उसकी जगह नई चैट खुली है। विवरण-परीक्षण",
+            "1000": "Aida की बातचीत नहीं खोली जा सकी, इसलिए उसकी जगह नई चैट खुली है। विवरण-परीक्षण"
+          }
+        }
+      ]
+    }
+  }
+}

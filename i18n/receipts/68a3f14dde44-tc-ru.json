@@ -1,0 +1,99 @@
+{
+  "auditor": "reviewer",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "68a3f14dde44-tc-ru",
+  "date": "2026-11-12",
+  "locale": "ru",
+  "independence": "Independent of the translators (coder sessions); did not read or run anything from sessions 2d1500d56d0e or 506f24a144fa or any other session scratchpad. Audit from this session's own reading.",
+  "references": {
+    "glossary": "damianvtran/local-operator@5d3db79f6e17 i18n/glossary.md",
+    "style_guide": "damianvtran/local-operator@5d3db79f6e17 i18n/style-guides/ru.md",
+    "cross_surface": "core tui.app.temporary_hold_* at the same core sha"
+  },
+  "repo": "damianvtran/local-operator-ui",
+  "pr": 1874,
+  "head": "8b2de66ae",
+  "scope": "All 34 keys this PR adds per namespace read in full against en value + en .context.json, glossary and locale style guide; whole files mechanically checked (key parity, ICU argument names, plural categories, typography, NFC/bidi, maxCells on rendered text).",
+  "namespaces": {
+    "ui.chat.canonical": {
+      "status": "passed",
+      "sha256": {
+        "en": "8ff690628996934a90145dbd99d99e977376215a98eaa5419cafbb30670bffce",
+        "ru": "acbf51b0772ff1bbc087a651a11117a3b3db590bc14a009b9fce6d80e0291530"
+      },
+      "findings": []
+    },
+    "ui.chat.composer": {
+      "status": "passed",
+      "sha256": {
+        "en": "a90cc99706b0a4c0958323aa0d152490e1e0518b7c4f8953ade5e6785b5fe8fd",
+        "ru": "6f2b78af476f03775b7758ae7d62353a9cc8f9babb794758298e331d50e59e7d"
+      },
+      "findings": []
+    },
+    "ui.chat.dialogs": {
+      "status": "passed",
+      "sha256": {
+        "en": "fb527224aa77c898c3a154b05e8265f3db5c81d1789ec9b12f4cdec72f668f25",
+        "ru": "3b9d55e120dd3f18efb9dcb0898c06d1c25363373d5d07d111117b0563bc9681"
+      },
+      "findings": []
+    },
+    "ui.chat.header": {
+      "status": "passed",
+      "sha256": {
+        "en": "52920afe9253986f97977259ef09c46db652279ee5b383381401ac28d70055bd",
+        "ru": "e5f7e1df8a6a18237b59e8aa8e533de2b202d2c5e9c5c8b7e6b65df9b2b0cbb7"
+      },
+      "findings": [
+        {
+          "id": "m1",
+          "severity": "MINOR",
+          "key": "ui.chat.header.temporary_ends_in",
+          "note": "'Удаление через 30 мин' 1 cell over the context maxCells 20 at the default 30 min (21/20, U+202F/space counted as 1). Not gating: the hold.* lines painted in the same sidebar slot carry no budget and run longer; no shorter correct synonym kept the verb.",
+          "disposition": "accepted, deferred"
+        }
+      ]
+    },
+    "ui.chat.header_menu": {
+      "status": "passed",
+      "sha256": {
+        "en": "ff39f4ea0aa359910328c05023ea21e39caf2e2995bfec2e6f2e24317a26ac68",
+        "ru": "df2eee99c2dc093d2275bb0056441370b40a89877b3d57e2e27e221dbf5789b6"
+      },
+      "findings": []
+    },
+    "ui.chat.sidebar_view": {
+      "status": "passed",
+      "sha256": {
+        "en": "82bad181593074ff90e65c720e30e13a02b8ca4bf6fc0eec32dc06392c1371a6",
+        "ru": "773a6339e723ddbf05fbe1ad252871f3cc946170fce702cc04d1dfcfd30dbe77"
+      },
+      "findings": [
+        {
+          "id": "m1",
+          "severity": "MINOR",
+          "key": "ui.chat.sidebar_view.temporary.deletes_in",
+          "note": "'Удаление через 30 мин' 1 cell over the context maxCells 20 at the default 30 min (21/20, U+202F/space counted as 1). Not gating: the hold.* lines painted in the same sidebar slot carry no budget and run longer; no shorter correct synonym kept the verb.",
+          "disposition": "accepted, deferred"
+        }
+      ]
+    },
+    "ui.command_palette": {
+      "status": "passed",
+      "sha256": {
+        "en": "41a633c3a7006733c63e0beb15b1f0f4a867f329a2bf90bd3f6851ed225c1afb",
+        "ru": "f6d58e63aac9671b8b9f46bda149b5ce96c8ff18cd45a3d74c95c42338d1c85d"
+      },
+      "findings": []
+    },
+    "ui.settings.shortcuts": {
+      "status": "passed",
+      "sha256": {
+        "en": "1dd7c82fb3ccd6d9d4ae7984b1b7570ca3dbff9d1343c981b0dfa2411443d0b1",
+        "ru": "96c95ea4f41be4605f39d60e004535c853f4570e790f26cc7654d18e18f8253b"
+      },
+      "findings": []
+    }
+  }
+}

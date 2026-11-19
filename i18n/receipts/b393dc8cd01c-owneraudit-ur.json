@@ -1,0 +1,274 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit (new namespace, full)",
+	"audit_id": "teambridge-owner-audit-audit-b393dc8cd01c",
+	"date": "2026-10-28",
+	"instance": "b393dc8cd01c-owneraudit-ur",
+	"instance_note": "Auditor session b393dc8cd01c; per-namespace, per-locale suffix so every ledger row carries a distinct instance.",
+	"auditor": "i18n-auditor",
+	"agent": "i18n-auditor",
+	"model": "anthropic/claude-opus-5-5",
+	"model_provenance": "Harness session header: 'Model: anthropic/claude-opus-5-5'.",
+	"model_fallback": {
+		"announced": false,
+		"observed": false
+	},
+	"independence": "Independent auditor (reviewer role, session b393dc8cd01c). It authored none of the translated strings as delivered by i18n-translator job 64be94d56ced. Per the audit brief it then FIXED blocker/major strings itself; those replaced values (listed in resolved_findings with before/after) are auditor-authored and were not re-audited by a second agent. This run wrote only catalogue fixes, receipts, evidence records and ledger rows; it did not commit.",
+	"status": "passed",
+	"result": "clean",
+	"translator": {
+		"agent": "i18n-translator",
+		"job": "64be94d56ced",
+		"model": "not supplied",
+		"date": "2026-10-28",
+		"method": "LLM translator subagent; no MT service referenced"
+	},
+	"integration": {
+		"branch": "feat/team-bridge-owner-audit-ui",
+		"reviewed_head": "a975a0b4ec82c0cd6b6541d68b1d3501f683328d",
+		"base": "e6320fbd33 (feat(sidebar) #1465)",
+		"worktree": "~/local-operator-ui-worktrees/team-bridge-owner-audit",
+		"pr": "not yet opened",
+		"note": "audited bytes are the working tree at reviewed_head plus this run's uncommitted catalogue fixes; the parent commits them"
+	},
+	"locale": "ur",
+	"namespace": "ui.ownerAudit",
+	"scope": {
+		"keys_audited_linguistically": [
+			"ui.ownerAudit.title",
+			"ui.ownerAudit.read_only",
+			"ui.ownerAudit.loading",
+			"ui.ownerAudit.error",
+			"ui.ownerAudit.retry",
+			"ui.ownerAudit.refresh",
+			"ui.ownerAudit.empty_list",
+			"ui.ownerAudit.empty_history",
+			"ui.ownerAudit.unnamed",
+			"ui.ownerAudit.agent",
+			"ui.ownerAudit.more",
+			"ui.ownerAudit.older",
+			"ui.ownerAudit.admitted",
+			"ui.ownerAudit.rejected",
+			"ui.ownerAudit.not_screened",
+			"ui.ownerAudit.unknown_status",
+			"ui.ownerAudit.own",
+			"ui.ownerAudit.body_unavailable",
+			"ui.ownerAudit.attachment_expired",
+			"ui.ownerAudit.attachment_unavailable",
+			"ui.ownerAudit.unknown_sender",
+			"ui.ownerAudit.reveal",
+			"ui.ownerAudit.active",
+			"ui.ownerAudit.left",
+			"ui.ownerAudit.removed",
+			"ui.ownerAudit.disclosure",
+			"ui.ownerAudit.viewer",
+			"ui.ownerAudit.replies"
+		],
+		"new_namespace": true,
+		"note": "first audit of this namespace; all 28 keys"
+	},
+	"sha256": {
+		"en": "a83890d7dafe0a81c4bbc4862da0f77eaf4b7573b1654fbff6d8e37c19eaf4fb",
+		"ur": "8e330a5e59bddcbd896ca8f1a46482ed2d2f87007eadbbf20cc7a44a175f44b9"
+	},
+	"context_sha256": "ad77dcc43ee06d1f43ef6c2a6422c33ee458534b805d888cb413a4f9ebf8226c",
+	"english": {
+		"ui.ownerAudit.title": {
+			"value": "Your chief of staff’s messages"
+		},
+		"ui.ownerAudit.read_only": {
+			"value": "Read-only history. Sending, reactions and editing are unavailable."
+		},
+		"ui.ownerAudit.loading": {
+			"value": "Loading audited messages"
+		},
+		"ui.ownerAudit.error": {
+			"value": "Audited messages could not be loaded."
+		},
+		"ui.ownerAudit.retry": {
+			"value": "Try again"
+		},
+		"ui.ownerAudit.refresh": {
+			"value": "Refresh"
+		},
+		"ui.ownerAudit.empty_list": {
+			"value": "No audited conversations in this organization."
+		},
+		"ui.ownerAudit.empty_history": {
+			"value": "No messages in the audit window for this conversation."
+		},
+		"ui.ownerAudit.unnamed": {
+			"value": "Unnamed conversation"
+		},
+		"ui.ownerAudit.agent": {
+			"value": "Chief of staff"
+		},
+		"ui.ownerAudit.more": {
+			"value": "Load more"
+		},
+		"ui.ownerAudit.older": {
+			"value": "Load older messages"
+		},
+		"ui.ownerAudit.admitted": {
+			"value": "Admitted to your chief of staff"
+		},
+		"ui.ownerAudit.rejected": {
+			"value": "Rejected by your chief of staff’s screening"
+		},
+		"ui.ownerAudit.not_screened": {
+			"value": "Not screened by your chief of staff"
+		},
+		"ui.ownerAudit.unknown_status": {
+			"value": "Status unknown"
+		},
+		"ui.ownerAudit.own": {
+			"value": "Sent by your chief of staff"
+		},
+		"ui.ownerAudit.body_unavailable": {
+			"value": "Message text unavailable."
+		},
+		"ui.ownerAudit.attachment_expired": {
+			"value": "Attachment expired; bytes are unavailable."
+		},
+		"ui.ownerAudit.attachment_unavailable": {
+			"value": "Attachment present; downloading is unavailable in this view."
+		},
+		"ui.ownerAudit.unknown_sender": {
+			"value": "Unknown sender"
+		},
+		"ui.ownerAudit.reveal": {
+			"value": "Show message text"
+		},
+		"ui.ownerAudit.active": {
+			"value": "Your chief of staff is still a member."
+		},
+		"ui.ownerAudit.left": {
+			"value": "Your chief of staff left this conversation; later messages are outside the audit window."
+		},
+		"ui.ownerAudit.removed": {
+			"value": "Your chief of staff was removed; later messages are outside the audit window."
+		},
+		"ui.ownerAudit.disclosure": {
+			"value": "Visible only to you as this agent’s owner; other members see that owner auditing is enabled."
+		},
+		"ui.ownerAudit.viewer": {
+			"value": "Also visible to {name}, an agent owner."
+		},
+		"ui.ownerAudit.replies": {
+			"value": "Read thread replies"
+		}
+	},
+	"audited_strings": {
+		"ui.ownerAudit.title": "آپ کے چیف آف اسٹاف کے پیغامات",
+		"ui.ownerAudit.read_only": "صرف پڑھنے کے لیے سابقہ پیغامات۔ بھیجنا، ردعمل اور ترمیم دستیاب نہیں۔",
+		"ui.ownerAudit.loading": "آڈٹ شدہ پیغامات لوڈ ہو رہے ہیں",
+		"ui.ownerAudit.error": "آڈٹ شدہ پیغامات لوڈ نہیں ہو سکے۔",
+		"ui.ownerAudit.retry": "دوبارہ کوشش کریں",
+		"ui.ownerAudit.refresh": "تازہ کریں",
+		"ui.ownerAudit.empty_list": "اس تنظیم میں کوئی آڈٹ شدہ گفتگو نہیں۔",
+		"ui.ownerAudit.empty_history": "اس گفتگو کے آڈٹ کے دور میں کوئی پیغام نہیں۔",
+		"ui.ownerAudit.unnamed": "بلا نام گفتگو",
+		"ui.ownerAudit.agent": "چیف آف اسٹاف",
+		"ui.ownerAudit.more": "مزید لوڈ کریں",
+		"ui.ownerAudit.older": "پرانے پیغامات لوڈ کریں",
+		"ui.ownerAudit.admitted": "آپ کے چیف آف اسٹاف نے قبول کیا",
+		"ui.ownerAudit.rejected": "آپ کے چیف آف اسٹاف کی جانچ نے مسترد کیا",
+		"ui.ownerAudit.not_screened": "آپ کے چیف آف اسٹاف نے جانچ نہیں کی",
+		"ui.ownerAudit.unknown_status": "حالت نامعلوم",
+		"ui.ownerAudit.own": "آپ کے چیف آف اسٹاف نے بھیجا",
+		"ui.ownerAudit.body_unavailable": "پیغام کا متن دستیاب نہیں۔",
+		"ui.ownerAudit.attachment_expired": "منسلکہ کی میعاد ختم ہو گئی؛ مواد دستیاب نہیں۔",
+		"ui.ownerAudit.attachment_unavailable": "منسلکہ موجود ہے؛ اس منظر میں ڈاؤن لوڈ دستیاب نہیں۔",
+		"ui.ownerAudit.unknown_sender": "نامعلوم بھیجنے والا",
+		"ui.ownerAudit.reveal": "پیغام کا متن دکھائیں",
+		"ui.ownerAudit.active": "آپ کا چیف آف اسٹاف اب بھی رکن ہے۔",
+		"ui.ownerAudit.left": "آپ کا چیف آف اسٹاف اس گفتگو سے چلا گیا؛ بعد کے پیغامات آڈٹ کے دور سے باہر ہیں۔",
+		"ui.ownerAudit.removed": "آپ کے چیف آف اسٹاف کو ہٹا دیا گیا؛ بعد کے پیغامات آڈٹ کے دور سے باہر ہیں۔",
+		"ui.ownerAudit.disclosure": "اس ایجنٹ کے مالک کی حیثیت سے صرف آپ دیکھ سکتے ہیں؛ دیگر ارکان دیکھ سکتے ہیں کہ مالک کا آڈٹ فعال ہے۔",
+		"ui.ownerAudit.viewer": "ایجنٹ کے مالک {name} بھی دیکھ سکتے ہیں۔",
+		"ui.ownerAudit.replies": "تھریڈ کے جوابات پڑھیں"
+	},
+	"checks": {
+		"placeholders": "{name} preserved in ui.ownerAudit.viewer; no other placeholders/ICU in source or target",
+		"key_parity": "28/28 keys, same order as en",
+		"bidi_controls": "none",
+		"nfc": "all values NFC"
+	},
+	"notes": "Namespace-wide audit against en + context (owner vs agent, screening vs authorship, audit window). RTL: Arabic punctuation ۔ ، ؛, {name} mid-sentence, no manual bidi controls. Open findings: 0; resolved by this run: 3.",
+	"findings": [],
+	"resolved_findings": [
+		{
+			"id": "I18N-ur-1",
+			"severity": "major",
+			"status": "resolved",
+			"resolved_by": "auditor b393dc8cd01c (this run)",
+			"keys": [
+				"ui.ownerAudit.read_only"
+			],
+			"reason": "Meaning: 'صرف پڑھنے کی تاریخ' reads first as 'read-only date' (تاریخ = date/history); shipped Team Bridge renders history as 'سابقہ پیغامات' (ui.teamBridge.preview.banner). Also ردِعمل -> ردعمل to match ui.teamBridge.reactions.add.",
+			"change": {
+				"ui.ownerAudit.read_only": {
+					"before": "صرف پڑھنے کی تاریخ۔ بھیجنا، ردِعمل اور ترمیم دستیاب نہیں۔",
+					"after": "صرف پڑھنے کے لیے سابقہ پیغامات۔ بھیجنا، ردعمل اور ترمیم دستیاب نہیں۔"
+				}
+			}
+		},
+		{
+			"id": "I18N-ur-2",
+			"severity": "major",
+			"status": "resolved",
+			"resolved_by": "auditor b393dc8cd01c (this run)",
+			"keys": [
+				"ui.ownerAudit.empty_list"
+			],
+			"reason": "Terminology consistency: organization 'ادارہ' broke shipped 'تنظیم' (ui.teamBridge.scope.label, read_only.note).",
+			"change": {
+				"ui.ownerAudit.empty_list": {
+					"before": "اس ادارے میں کوئی آڈٹ شدہ گفتگو نہیں۔",
+					"after": "اس تنظیم میں کوئی آڈٹ شدہ گفتگو نہیں۔"
+				}
+			}
+		},
+		{
+			"id": "I18N-ur-3",
+			"severity": "minor",
+			"status": "resolved",
+			"resolved_by": "auditor b393dc8cd01c (this run)",
+			"keys": [
+				"ui.ownerAudit.disclosure"
+			],
+			"reason": "Grammar: آڈٹ is masculine — 'مالک کی آڈٹ' -> 'مالک کا آڈٹ'.",
+			"change": {
+				"ui.ownerAudit.disclosure": {
+					"before": "اس ایجنٹ کے مالک کی حیثیت سے صرف آپ دیکھ سکتے ہیں؛ دیگر ارکان دیکھ سکتے ہیں کہ مالک کی آڈٹ فعال ہے۔",
+					"after": "اس ایجنٹ کے مالک کی حیثیت سے صرف آپ دیکھ سکتے ہیں؛ دیگر ارکان دیکھ سکتے ہیں کہ مالک کا آڈٹ فعال ہے۔"
+				}
+			}
+		}
+	],
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide_ur": {
+			"path": "~/local-operator/i18n/style-guides/ur.md",
+			"revision": "24d328a19a8b39ba4d6e824b8bf2ebf1bb629ffe",
+			"sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+		}
+	},
+	"execution": [
+		{
+			"command": "git diff e6320fbd33..a975a0b4ec --numstat -- src/i18n",
+			"result": "en ownerAudit(+30)/context(+14), en teamBridge(+1)/context(+7), each locale ownerAudit +30 and teamBridge +1"
+		},
+		{
+			"command": "python3 NFC/bidi/placeholder/key-parity scan of the target catalogue",
+			"result": "no bidi controls, NFC, placeholders and key set match en"
+		}
+	],
+	"audit_notes_not_execution_log": "notes, checks and findings are this auditor's linguistic judgement, not command output",
+	"limitations": "No rendered-fit, screenshot, pseudo-localization or FriBidi evidence: this role has no browser tool and the host is source-only (builds/tests paused). Fit for not_available judged by character count only (en 104; longest fr 117).",
+	"evidence_record": "i18n/audits/evidence/ur/ui.ownerAudit/teambridge-owner-audit-audit-b393dc8cd01c/record.json"
+}

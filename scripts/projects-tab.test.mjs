@@ -163,15 +163,24 @@ test("the date field's rule accepts a day or its own empty", () => {
 test("progress age is bounded by the unit it reads best in", () => {
 	const now = 1_700_000_000_000; // ms
 	const at = (seconds) => now / 1000 - seconds;
-	assert.equal(progressAge(at(5), now), "just now");
-	assert.equal(progressAge(at(30 * 60), now), "30m");
-	assert.equal(progressAge(at(2 * 3600), now), "2h");
-	assert.equal(progressAge(at(3 * 86400), now), "3d");
+	assert.deepEqual(progressAge(at(5), now), { kind: "now" });
+	assert.deepEqual(progressAge(at(30 * 60), now), {
+		kind: "elapsed",
+		text: "30m",
+	});
+	assert.deepEqual(progressAge(at(2 * 3600), now), {
+		kind: "elapsed",
+		text: "2h",
+	});
+	assert.deepEqual(progressAge(at(3 * 86400), now), {
+		kind: "elapsed",
+		text: "3d",
+	});
 	// Unknown is not "0m ago": an absent stamp has no age.
-	assert.equal(progressAge(null, now), "");
-	assert.equal(progressAge(undefined, now), "");
+	assert.deepEqual(progressAge(null, now), { kind: "unknown" });
+	assert.deepEqual(progressAge(undefined, now), { kind: "unknown" });
 	// A clock that went backwards clamps rather than printing a negative age.
-	assert.equal(progressAge(now / 1000 + 60, now), "just now");
+	assert.deepEqual(progressAge(now / 1000 + 60, now), { kind: "now" });
 });
 
 test("the reporter half names what the value is", () => {
@@ -1018,10 +1027,18 @@ test("the card's progress line carries ONE 'ago'", () => {
 	 * ago" (measured in the committed board frames). The sentence is derived in
 	 * the model now, and this pin is the same one `progressLine` keeps.
 	 */
-	assert.equal(boardProgressText("2h"), "reported 2h ago");
-	assert.equal(boardProgressText("6d"), "reported 6d ago");
-	assert.equal(boardProgressText("just now"), "reported just now");
-	assert.equal(boardProgressText(""), "no progress");
+	const now = 1_700_000_000_000;
+	const at = (seconds) => now / 1000 - seconds;
+	assert.equal(
+		boardProgressText(progressAge(at(2 * 3600), now)),
+		"reported 2h ago",
+	);
+	assert.equal(
+		boardProgressText(progressAge(at(6 * 86400), now)),
+		"reported 6d ago",
+	);
+	assert.equal(boardProgressText(progressAge(at(5), now)), "reported just now");
+	assert.equal(boardProgressText(progressAge(null, now)), "no progress");
 });
 
 test("the sessions trigger names the door and keeps liveness beside it", () => {

@@ -1,0 +1,45 @@
+{
+ "auditor": "i18n-auditor",
+ "model": "anthropic/claude-sonnet-5-5",
+ "instance": "l2-au-zhcn",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "namespace": "ui.chat.canonical",
+ "locale": "zh-CN",
+ "key_count": 2,
+ "scope": "l2 file-size wave: the 2 keys ui.chat.canonical.tool.never_sent_composed / never_sent_empty (the rest of the namespace is not re-audited here)",
+ "findings": [
+  {
+   "id": "M1",
+   "severity": "minor",
+   "key": "ui.chat.canonical.tool.never_sent_composed + ui.chat.canonical.tool.never_sent_empty",
+   "problem": "编写 connotes hand-authoring; shipped copy uses 生成 for model output; suggested '未发送 · 已生成{size}' / '未发送 · 尚未生成内容'",
+   "disposition": "deferred — wording preference, not wrong"
+  },
+  {
+   "id": "N1",
+   "severity": "nit",
+   "key": "ui.chat.canonical.tool.never_sent_empty",
+   "problem": "'未…内容' slightly stiff; '尚无内容' / '尚未生成内容' more natural",
+   "disposition": "deferred"
+  }
+ ],
+ "severity_counts": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 1,
+  "nit": 1
+ },
+ "independence": {
+  "translator_agent": "i18n-translator",
+  "translator_model": "openai/gpt-6.1-sol",
+  "independent_from_translator": true,
+  "independent_auditors_for_this_locale": 1
+ },
+ "sha256": {
+  "zh-CN": "451cfd5a04b0e14c246f90bf5ce87d023a5afbdb06139f23a8bdc56f1c620421",
+  "en": "27ae7327daa34be60b619be551c840e057d61c3d69dc801269e4f389edc0f031"
+ },
+ "assembled_from": "Assembled by the landing coder from the auditor's report audit-zh-CN.md; verdict, severity counts and findings are transcribed from that report, the sha256 values are computed from the catalogue files at the landing commit. The auditor's own evidence bundle, where one exists, is under i18n/audits/evidence/zh-CN/ui.chat.canonical/.",
+ "instance_note": "instance is the audit label from the report header; the auditor report names no 12-hex session id"
+}

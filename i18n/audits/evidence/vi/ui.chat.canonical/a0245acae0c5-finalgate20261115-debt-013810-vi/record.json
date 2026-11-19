@@ -1,0 +1,475 @@
+{
+  "schema": 1,
+  "kind": "immutable-finalgate-inherited-debt-amended-final-record",
+  "not_a_ledger_receipt": true,
+  "auditor": "translation-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "session": "a0245acae0c5",
+  "instance": "a0245acae0c5-finalgate20261115-debt-013810-vi",
+  "profile_revision": "definition-revision:v1:977d12b70eb8adff7d8b9491e8e59b748a9fac283683abd963fdf586cb596f8a",
+  "launch_selection": "inherited parent; no override",
+  "fallback": "No in-session fallback observed; coordinator-only fallback authority not claimed",
+  "date": "2026-11-15T01:38:10.016203+00:00",
+  "locale": "vi",
+  "namespace": "ui.chat.canonical",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "scope": "receipt rebinding/exact486-main+23-PR union seam only;509mechanically checked;0new semantic keys",
+  "sha256": {
+    "en": "2db00914699ea873b03ce4b061cf41c1bb18a5dc57ed264b6fd1bd20f6a169e6",
+    "vi": "17192d9d959ed5fc5d9f6216b860c68441d21298bc909aff442956d54ec7e503"
+  },
+  "context_sha256": "d4e186611426232b8972f8f1d597c69269715e38503e1390068a6cd0d9e8e643",
+  "paths": {
+    "source": "/home/ec2-user/local-operator-ui/.worktrees/full-diff-metadata/src/i18n/catalogues/en/ui.chat.canonical.json",
+    "target": "/home/ec2-user/local-operator-ui/.worktrees/full-diff-metadata/src/i18n/catalogues/vi/ui.chat.canonical.json",
+    "context": "/home/ec2-user/local-operator-ui/.worktrees/full-diff-metadata/src/i18n/catalogues/en/ui.chat.canonical.context.json"
+  },
+  "frozen": {
+    "HEAD": "7ee980af5532ce5c01da75d19f8a1e2d2c052a6f",
+    "MERGE_HEAD": "e6122214503b9fc52841e119c060eabb7650391b",
+    "tree": "e822d6068f049dfb8fad4ba41e9f8ca22409fc6a",
+    "raw_index_sha256": "b12fb56d069dc27ea1b9d547aa5b71768f04148d3b043828cbd24d341dec93a9",
+    "index_entries": 14129,
+    "independent_all_entries_match_tree": true
+  },
+  "seam_verdict": "exact disjoint selected-parent raw literal union; no seam defect found",
+  "key_counts": {
+    "selected_main_keys": 486,
+    "selected_PR_keys": 23,
+    "mechanical_target_keys": 509,
+    "new_semantic_keys_read": 0
+  },
+  "seam_proof": {
+    "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/a024-finalgate20261115-012841-seam-proof.json",
+    "sha256": "4e6d4e5e2239f8f0142f4961569f7cfe2863b95a61feeb3f3455600eb397679f"
+  },
+  "parent_receipts": [
+    {
+      "parent": "7ee980af5532ce5c01da75d19f8a1e2d2c052a6f",
+      "role": "PR",
+      "path": "i18n/receipts/a0245acae0c5-rnext-vi-20261114t110721z.json",
+      "sha256": "fbccc2a2a131adc454e30b91f1f32891959ce948136fbc71e7e0d681ad6b8f72",
+      "instance": "a0245acae0c5-rnext-vi-20261114t110721z",
+      "agent": "translation-auditor",
+      "model": "openai/gpt-6.1-sol",
+      "source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+      "target_sha256": "8eb5a837b784cfcfed19ba24e7e3dde219354cd3f39a35be36d26d049a0f7779",
+      "retained_exact_in_index": true
+    },
+    {
+      "parent": "7ee980af5532ce5c01da75d19f8a1e2d2c052a6f",
+      "role": "PR",
+      "path": "i18n/receipts/0e471bff3c0f-20261114-rnext-vi.json",
+      "sha256": "c22f51ad52537cac57a8b93d4b32d39e984dc752b2dc90e527e624411a4d2231",
+      "instance": "0e471bff3c0f-20261114-rnext-vi",
+      "agent": "translation-auditor",
+      "model": "openai/gpt-6.1-sol",
+      "source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+      "target_sha256": "8eb5a837b784cfcfed19ba24e7e3dde219354cd3f39a35be36d26d049a0f7779",
+      "retained_exact_in_index": true
+    },
+    {
+      "parent": "e6122214503b9fc52841e119c060eabb7650391b",
+      "role": "incoming main",
+      "path": "i18n/receipts/s18b-vi-canonical-6ddc56af.json",
+      "sha256": "cd5029c84e48d82244f90cd86e8babb01faa884c63f2a546718eba4460573c57",
+      "instance": "s18b-vi-canonical-6ddc56af",
+      "agent": "i18n-auditor",
+      "model": "anthropic/claude-opus-5-5",
+      "source_sha256": "cbbb90eadffcc9a6ff2d7ca70794b4d39fb33e4476f610ece0a06701c1d97e4b",
+      "target_sha256": "94123b3dc4a22d7d2e13d69ade48b90ff304a8f4ea91bcfe504f51056b0bf308",
+      "retained_exact_in_index": true
+    }
+  ],
+  "parent_contexts": {
+    "PR_sha256": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7",
+    "main_sha256": "f589e147b11533c0587d412415eed1dcc6b360b9658484fde624116f020fdbff",
+    "receipt_contexts_match_actual_parent_bytes": true
+  },
+  "main_parent_scope_and_identity": {
+    "auditor": {
+      "agent": "i18n-auditor",
+      "role": "independent translation auditor (team lopdev); not the translator (i18n-translator on anthropic/claude-sonnet-5-5), not the integrator",
+      "model": "anthropic/claude-opus-5-5",
+      "independence": "Session 097e801c9a50: a different session, agent and model from the translator. Served model anthropic/claude-opus-5-5, as stated by this session's harness system prompt; no fallback. Read-only in the worktree (git show/diff and python3 hashing/unicode/ICU scans only). My only repo writes are these untracked receipts in i18n/receipts/. Judgement derived here from English, the sidecar and the shipped corpus; no MT or translation service used.",
+      "instance": "s18b-vi-canonical-6ddc56af"
+    },
+    "model": "anthropic/claude-opus-5-5",
+    "instance": "s18b-vi-canonical-6ddc56af",
+    "scope": "ui.chat.canonical for vi: 3 S18b key(s) (ui.chat.canonical.tool_row.detail_section.error, ui.chat.canonical.tool_row.detail_section.interrupted, ui.chat.canonical.tool_row.detail_section.output) at branch head 3837df2f6cfe, read against English (source commit 6210ce4d17) and the sidecar",
+    "binding": "Verified here at 3837df2f6cfe: target is the committed blob (git show 3837df2f6cfe8f355556a1e7f7ffdfae8a129176:src/i18n/catalogues/vi/ui.chat.canonical.json, sha256 94123b3dc4a22d7d2e13d69ade48b90ff304a8f4ea91bcfe504f51056b0bf308). The worktree file is byte-identical to it. Diff a114b6d102..3837df2f6c: +3/-0 lines. Every changed line is an in-scope key, or the previous last key re-emitted with a trailing comma (value unchanged; checked by value comparison, no pre-existing value changed). JSON valid, no duplicate keys, TAB indent, one trailing newline, no BOM/CR/\\u escapes. ICU check (python brace-depth and argument scan; the repo's node validator was not run under the no-node constraint): braces balanced; argument names, types and the ::group-off skeletons byte-identical to English; all values NFC; no Cf characters. ui.chat.canonical.tool_row.detail_section.error = 'Lỗi' (3/5 chars, 0.60x) ui.chat.canonical.tool_row.detail_section.interrupted = 'Bị ngắt' (7/11 chars, 0.64x) ui.chat.canonical.tool_row.detail_section.output = 'Đầu ra' (6/6 chars, 1.00x) Terminology checked against shipped neighbours: ui.chat.error_block.heading='Lỗi'; ui.chat.canonical.notice.interrupted='Bị ngắt'; ui.chat.canonical.transcript.interrupted='Bị gián đoạn'; ui.chat.transcript_copy.block.output='Đầu ra'; ui.chat.pickers.session_panel.output='Đầu ra' Translator flag 'Đầu ra' vs 'Kết quả': rejected. 'Đầu ra' is already shipped for Output (ui.chat.transcript_copy.block.output, ui.chat.pickers.session_panel.output). 'Bị ngắt' matches ui.chat.canonical.notice.interrupted. No English fragment ships: the only Latin is ICU syntax and placeholders.",
+    "revisions": {
+      "head": "3837df2f6cfe8f355556a1e7f7ffdfae8a129176"
+    }
+  },
+  "own_previous_lineage": {
+    "locale": "vi",
+    "namespace": "ui.chat.canonical",
+    "result": "clean-with-findings",
+    "status": "passed",
+    "findings": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 0,
+      "nit": 1
+    },
+    "finding_ids": [
+      {
+        "id": "VI-C1",
+        "ids": [],
+        "additional_inherited_ids": [],
+        "severity": "NIT",
+        "key": "ui.chat.canonical.temporary_deleted.detail"
+      }
+    ],
+    "session": "a0245acae0c5",
+    "served_model": "openai/gpt-6.1-sol",
+    "instance": "a0245acae0c5-rnext-vi-20261114t110721z",
+    "seam_verdict": "exact selected-parent union; no merge seam defect found",
+    "source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+    "target_sha256": "8eb5a837b784cfcfed19ba24e7e3dde219354cd3f39a35be36d26d049a0f7779",
+    "context_sha256": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7",
+    "receipt": {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/r-next-a024-vi-receipt-20261114t110721z.json",
+      "sha256": "fbccc2a2a131adc454e30b91f1f32891959ce948136fbc71e7e0d681ad6b8f72"
+    },
+    "record": {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/r-next-a024-vi-record-20261114t110721z.json",
+      "sha256": "84075eac4f6ad6bf76cee035695955884eb279ceb020776f34a030df39c589f0",
+      "canonical_destination": "i18n/audits/evidence/vi/ui.chat.canonical/a0245acae0c5-rnext-vi-20261114t110721z/record.json"
+    },
+    "parent_receipts": [
+      {
+        "parent": "d582c3d8a1537078bd13681dfbfe5ad31cc55f61",
+        "role": "PR",
+        "path": "i18n/receipts/a0245acae0c5-1829-final-vi-20261112t234806z-issued.json",
+        "sha256": "bffc8b06c8c5b7b1eb5c26a4b31e97071b7c574deab6d6368c4c69853bd6e5a1",
+        "instance": "a0245acae0c5-1829-final-vi-20261112t234806z-issued",
+        "agent": "translation-auditor",
+        "model": "openai/gpt-6.1-sol",
+        "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "target_sha256": "e5c472aaa257bc7acded037a73c470ed79a1e3cc8dc162d854052b3aa89746fb",
+        "retained_exact_in_index": true
+      },
+      {
+        "parent": "d582c3d8a1537078bd13681dfbfe5ad31cc55f61",
+        "role": "PR",
+        "path": "i18n/receipts/0e471bff3c0f-1829-final-evidence-vi.json",
+        "sha256": "0eaa29282ea974559c613226a7742b308dc69beafeeef98ff93c83df0e307bc1",
+        "instance": "0e471bff3c0f-1829-final-evidence-vi",
+        "agent": "translation-auditor",
+        "model": "openai/gpt-6.1-sol",
+        "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "target_sha256": "e5c472aaa257bc7acded037a73c470ed79a1e3cc8dc162d854052b3aa89746fb",
+        "retained_exact_in_index": true
+      },
+      {
+        "parent": "e2d980d217ec4c72e409ef8a21a8aed9602b57a2",
+        "role": "incoming main",
+        "path": "i18n/receipts/94f6e325484c-canon3-vi.json",
+        "sha256": "2384ddaa3fdcc687c8a1391e24d39eceb2aff1bd0201d9ab2f07b92fb190ff3e",
+        "instance": "94f6e325484c-canon3-vi",
+        "agent": "reviewer",
+        "model": "anthropic/claude-opus-5-5",
+        "source_sha256": "ff5c51320c726be67dcee1c6036bdb141fad2231cf717e6856d385602f6b5731",
+        "target_sha256": "ad2bc4870aefc08190576e588d493ae99b5ff0bdd043afbdfb8f873edfa111a2",
+        "retained_exact_in_index": true
+      }
+    ],
+    "parent_contexts": {
+      "main_context_receipt_form": {
+        "en": "51f705da9160454ef4f72c5f9c14004a3f31b2bccc46dac6c208a36d18cb53bf"
+      },
+      "main_context_actual_sha256": "51f705da9160454ef4f72c5f9c14004a3f31b2bccc46dac6c208a36d18cb53bf",
+      "PR_context_sha256": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae",
+      "all_bindings_valid": true
+    },
+    "own_prior_lineage": {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-vi-receipt-20261112T234806Z.json",
+      "sha256": "bffc8b06c8c5b7b1eb5c26a4b31e97071b7c574deab6d6368c4c69853bd6e5a1",
+      "instance": "a0245acae0c5-1829-final-vi-20261112t234806z-issued",
+      "result": "clean",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "target_sha256": "e5c472aaa257bc7acded037a73c470ed79a1e3cc8dc162d854052b3aa89746fb",
+      "record": {
+        "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-vi-record-20261112T234806Z.json",
+        "sha256": "9272dc5a132e4e7be7c5956d08cc26193f5dbb8b9c2a980c8cdf9a61edb02000",
+        "canonical_destination": "i18n/audits/evidence/vi/ui.chat.canonical/a0245acae0c5-1829-final-vi-20261112t234806z-issued/record.json"
+      }
+    },
+    "assembler_consumability": {
+      "lawful_for_bounded_scope": true,
+      "pure_derivation_passed": true,
+      "assembler_not_invoked": true,
+      "scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+      "conditions": "Apply only this final allowlisted receipt per locale; retain record and companions, exact scope and findings. Do not count prior/new same-session instances as another independent lineage. Do not imply new rendering,494 semantic,all-actions,native/global approval."
+    }
+  },
+  "prior_manifest": {
+    "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/r-next-a024-final-manifest-20261114t110721z.json",
+    "sha256": "e80984cc8d8695eed2fda8c69a93e607b1cfbdbe9ccee2769532b8862c8768d2"
+  },
+  "applicable_glossary_style": {
+    "own_existing_bindings": {
+      "glossary": {
+        "path": "/home/ec2-user/local-operator/i18n/glossary.md",
+        "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+        "same_as_previously_read_binding": true
+      },
+      "style_guide": {
+        "path": "/home/ec2-user/local-operator/i18n/style-guides/vi.md",
+        "sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97",
+        "same_as_previously_read_binding": true
+      }
+    },
+    "parent_PR_recorded_bindings": {
+      "own_prior_unchanged": {
+        "glossary": {
+          "path": "/home/ec2-user/local-operator/i18n/glossary.md",
+          "original_binding": {
+            "path": "/home/ec2-user/local-operator/i18n/glossary.md",
+            "original_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+            "current_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+            "same_bytes": true
+          },
+          "current_local_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+          "unchanged_from_prior_read": true
+        },
+        "style_guide": {
+          "path": "/home/ec2-user/local-operator/i18n/style-guides/vi.md",
+          "original_binding": {
+            "path": "/home/ec2-user/local-operator/i18n/style-guides/vi.md",
+            "original_sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97",
+            "current_sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97",
+            "same_bytes": true
+          },
+          "current_local_sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97",
+          "unchanged_from_prior_read": true
+        }
+      },
+      "incoming_auditor_recorded_refs": {
+        "glossary": "damianvtran/local-operator@2ba8127d9 i18n/glossary.md sha256:0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+        "style_guide": "damianvtran/local-operator@2ba8127d9 i18n/style-guides/vi.md sha256:e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888"
+      },
+      "scope_note": "Preserved actual parent binding revisions; not a new style audit."
+    },
+    "no_fresh_style_audit": true
+  },
+  "prior_accepted_bounded_evidence": {
+    "json": {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.json",
+      "sha256": "b9d1b7bfe421c64818856ba500e671fcf51051133314f3c9471c9c43acf27f30"
+    },
+    "markdown": {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.md",
+      "sha256": "a8cbf67eef4052484b4bbc1937a7a6b4b1d3328a71cb813bc3a8f0119cc275ac"
+    },
+    "historical_only_not_new_current_capture": true
+  },
+  "findings": [
+    {
+      "severity": "NIT",
+      "id": "VI-C1",
+      "key": "ui.chat.canonical.temporary_deleted.detail",
+      "detail": "Opening pronoun 'Nó' and the relative 'các tệp nó đã thay đổi' are slightly colloquial for a conversation; the vi guide prefers dropping pronouns. Optional: 'Đã bị xóa sau một thời gian không hoạt động và không thể mở lại. Các tệp đã được thay đổi trên máy tính của bạn vẫn còn nguyên.' Meaning is correct.",
+      "disposition": "carried from 94f6e325484c-canon2: bytes unchanged, still applies; deferred",
+      "current": "Nó đã bị xóa sau khi không hoạt động và không thể mở lại. Các tệp nó đã thay đổi trên máy tính của bạn vẫn còn đó.",
+      "proposed": "Đã bị xóa sau một thời gian không hoạt động và không thể mở lại. Các tệp đã được thay đổi trên máy tính của bạn vẫn còn nguyên.",
+      "reason": "Opening pronoun 'Nó' and the relative 'các tệp nó đã thay đổi' are slightly colloquial for a conversation; the vi guide prefers dropping pronouns. Optional: 'Đã bị xóa sau một thời gian không hoạt động và không thể mở lại. Các tệp đã được thay đổi trên máy tính của bạn vẫn còn nguyên.' Meaning is correct.",
+      "origin_receipt": {
+        "parent": "e2d980d217ec4c72e409ef8a21a8aed9602b57a2",
+        "role": "incoming main",
+        "path": "i18n/receipts/94f6e325484c-canon3-vi.json",
+        "sha256": "2384ddaa3fdcc687c8a1391e24d39eceb2aff1bd0201d9ab2f07b92fb190ff3e",
+        "instance": "94f6e325484c-canon3-vi",
+        "agent": "reviewer",
+        "model": "anthropic/claude-opus-5-5",
+        "source_sha256": "ff5c51320c726be67dcee1c6036bdb141fad2231cf717e6856d385602f6b5731",
+        "target_sha256": "ad2bc4870aefc08190576e588d493ae99b5ff0bdd043afbdfb8f873edfa111a2",
+        "retained_exact_in_index": true
+      },
+      "rebinding_disposition": "Author carries incoming-main deferred NIT VI-C1 on exact selected parent wording; this is inherited debt, not a newly discovered semantic issue.",
+      "prior_rebinding_location_line": 483,
+      "line": 483,
+      "finalgate_disposition": "Author carries unchanged genuine deferred finding on exact selected-parent bytes. No new semantic or rendered observation.",
+      "additional_inherited_ids": [
+        "3227a8cf0a47/finding-2"
+      ]
+    },
+    {
+      "id": "3227a8cf0a47/finding-1",
+      "origin_id_note": "Original has no ID; receipt/finding-index locator for explicit inheritance accounting",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.image_gen.cancel.checking",
+      "current": "Đang xác nhận khoản phí.",
+      "proposed": "Đang kiểm tra quyết toán.",
+      "reason": "Term drift on EN 'settlement' inside one card: 'khoản phí' here vs 'quyết toán' in ui.chat.canonical.image_gen.settlement.pending (the adjacent note the same fact lands in), and 'Đang xác nhận khoản phí.' additionally asserts a charge exists where EN only states the settlement check is under way. Proposed: 'Đang kiểm tra quyết toán.' — or unify on the charge vocabulary in settlement.pending instead; one term either way, not two. Rendering join verified (running + ' ' + checking).",
+      "disposition": "Inherited S18a debt retained/deferred on exact unchanged snapshot bytes; no fresh semantic audit",
+      "origin_receipt": {
+        "path": "i18n/receipts/3227a8cf0a47.json",
+        "sha256": "0704f083e82d9c810df6a31d6f93790fdd8bc8fab4f7ba89faa7c0d40e3b57cc"
+      },
+      "original_finding": {
+        "severity": "MINOR",
+        "key": "ui.chat.canonical.image_gen.cancel.checking",
+        "note": "Term drift on EN 'settlement' inside one card: 'khoản phí' here vs 'quyết toán' in ui.chat.canonical.image_gen.settlement.pending (the adjacent note the same fact lands in), and 'Đang xác nhận khoản phí.' additionally asserts a charge exists where EN only states the settlement check is under way. Proposed: 'Đang kiểm tra quyết toán.' — or unify on the charge vocabulary in settlement.pending instead; one term either way, not two. Rendering join verified (running + ' ' + checking)."
+      }
+    },
+    {
+      "id": "3227a8cf0a47/finding-3",
+      "origin_id_note": "Original has no ID; receipt/finding-index locator for explicit inheritance accounting",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.temporary_deleted.back",
+      "current": "Quay lại danh sách trò chuyện",
+      "proposed": "Về danh sách trò chuyện",
+      "reason": "Width only, no change required: 29 chars vs EN 13 (+123%). Actions render in flex flex-wrap with no truncate (canonical-transcript.tsx:7846-7870), so buttons wrap rather than clip — flagged for a rendered check at the narrow fixture; shorter option 'Về danh sách trò chuyện' (24) if it clips.",
+      "disposition": "Inherited S18a debt retained/deferred on exact unchanged snapshot bytes; no fresh semantic audit",
+      "origin_receipt": {
+        "path": "i18n/receipts/3227a8cf0a47.json",
+        "sha256": "0704f083e82d9c810df6a31d6f93790fdd8bc8fab4f7ba89faa7c0d40e3b57cc"
+      },
+      "original_finding": {
+        "severity": "NIT",
+        "key": "ui.chat.canonical.temporary_deleted.back",
+        "note": "Width only, no change required: 29 chars vs EN 13 (+123%). Actions render in flex flex-wrap with no truncate (canonical-transcript.tsx:7846-7870), so buttons wrap rather than clip — flagged for a rendered check at the narrow fixture; shorter option 'Về danh sách trò chuyện' (24) if it clips."
+      }
+    },
+    {
+      "id": "3227a8cf0a47/finding-4",
+      "origin_id_note": "Original has no ID; receipt/finding-index locator for explicit inheritance accounting",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+      "current": "Giới hạn tần suất âm thanh",
+      "proposed": "Giới hạn tần suất âm thanh",
+      "reason": "Width only, no change required: 26 chars vs EN 18 (+44%), 5 syllables against a 'one to three words' sidecar budget; error_class.unknown_tool (22 vs 12) and temporary_deleted.new (28 vs 18) share the note. Label is a plain wrapping <p class=\"text-meta text-ink-dim\"> with no truncate — flagged for a rendered check, no change proposed.",
+      "disposition": "Inherited S18a debt retained/deferred on exact unchanged snapshot bytes; no fresh semantic audit",
+      "origin_receipt": {
+        "path": "i18n/receipts/3227a8cf0a47.json",
+        "sha256": "0704f083e82d9c810df6a31d6f93790fdd8bc8fab4f7ba89faa7c0d40e3b57cc"
+      },
+      "original_finding": {
+        "severity": "NIT",
+        "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+        "note": "Width only, no change required: 26 chars vs EN 18 (+44%), 5 syllables against a 'one to three words' sidecar budget; error_class.unknown_tool (22 vs 12) and temporary_deleted.new (28 vs 18) share the note. Label is a plain wrapping <p class=\"text-meta text-ink-dim\"> with no truncate — flagged for a rendered check, no change proposed."
+      },
+      "proposed_action": "No copy authored: retain parent optional harmonisation/rendered-width check or source composition/glossary action as stated in original note."
+    }
+  ],
+  "findings_count": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 3
+  },
+  "finding_reconciliation": [
+    {
+      "key": "ui.chat.canonical.temporary_deleted.detail",
+      "id": "VI-C1",
+      "ids": [],
+      "additional_inherited_ids": [],
+      "severity": "NIT",
+      "wording_unchanged": true,
+      "choice": "retain deferred, count once"
+    }
+  ],
+  "independent_choice": "Rebinding justified by actual selected-parent raw union, verified actual parent receipts and same-author lineage. Carry genuine unchanged deferred debts; no forced pass, no fresh semantic or rendering certification.",
+  "limitations": {
+    "scope": "Only final merge-gate receipt rebinding/exact486-main+23-PR union seam.509 mechanically checked,zero new semantic keys. PR full494 other471 members are not selected basis for main partition.",
+    "lineage": "Same original independent auditor session a0245acae0c5. New unique immutable instance does not create another independent author/high-visibility second audit.",
+    "render": "Historical accepted23-key capture stays prior bounded evidence only (22visible+navAX). No new image reading/capture, current fit/native/global RTL or fullrender-path compatibility claim.",
+    "unproven": "No new functional outcomes, count variants, DOM geometry, font fallback, native/fullapp, globalRTL, RTLpseudo or shipped-pseudo proof. Earlier legacy clipped/count1+offer598 and syntheticENpseudo bounds persist.",
+    "bidi": "A024-UR-BIDI-1 / authority-supplied D11UR remains deferred design debt from earlier fixture/component evidence; no new native runtime defect or fix is asserted. RTL198–1 alone is not a translation bug.",
+    "findings": "Prior current-wording issues preserved even though latest incoming3-key S18b receipt has no findings. Its scope is not a resolution of prior unchanged issues. Aliases count as one issue, not duplicate severities.",
+    "history": "All old withholds/receipts/candidates/records and parent histories remain immutable and unmodified. New scope-specific receipt is not retroactive approval.",
+    "execution": "No assembler, ledger-check, tests,build/install,browser/native,runtime,newworktree,index/catalogue/source/ledger/PR/Git writes. Only own scratch NEW immutable JSON/receipts. Pure parsers and deriveReceiptAudit in memory only."
+  },
+  "canonical_destination": "i18n/audits/evidence/vi/ui.chat.canonical/a0245acae0c5-finalgate20261115-debt-013810-vi/record.json",
+  "assembler": {
+    "lawful_only_for_declared_scope": true,
+    "inspected_frozen_contracts": {
+      "scripts/i18n/ledger-assemble.mjs": {
+        "path": "/home/ec2-user/local-operator-ui/.worktrees/full-diff-metadata/scripts/i18n/ledger-assemble.mjs",
+        "sha256": "63651def0c5be756f61e71e5905bcf090a1c709464292864f1a6429d06e676a5",
+        "frozen_index_exact": true
+      },
+      "scripts/i18n/ledger-rules.mjs": {
+        "path": "/home/ec2-user/local-operator-ui/.worktrees/full-diff-metadata/scripts/i18n/ledger-rules.mjs",
+        "sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6",
+        "frozen_index_exact": true
+      },
+      "docs/I18N.md": {
+        "path": "/home/ec2-user/local-operator-ui/.worktrees/full-diff-metadata/docs/I18N.md",
+        "sha256": "d58ad473701f098b3c2c24343c3a7e7236f22db22cc871016c4cb75f25f41f5c",
+        "frozen_index_exact": true
+      }
+    },
+    "not_invoked": true,
+    "note": "Finalgate exact486-main+23-PR union seam only;509mechanical/0newsemantics; inherited findings retained. Prior23capture historical, not current/native/global approval.",
+    "conditions": "Only final amended allowlist; preserve all prior candidates/records and exact scope, counts and companions. No fresh semantic/native/current render approval."
+  },
+  "informational_dispositions": [
+    {
+      "origin_id_assigned_for_accounting": "3227a8cf0a47/finding-5",
+      "origin_id_note": "Original finding has no id; stable receipt/index locator, not a fabricated historical ID",
+      "original_severity": "NIT",
+      "severity": "INFO",
+      "key": "ui.chat.canonical.image_gen.error_class.duplicate_id",
+      "current": "Trùng id",
+      "proposed": "Trùng id",
+      "reason": "Parent explicitly calls source-mirroring lowercase defensible and says no change required; accepted casing choice, retained as advisory rather than unresolved debt.",
+      "original_note": "Casing only, no change required: locale label vocabulary spells the identifier 'ID' (ID tác nhân, ID phiên, ui.agents.settings.general.id) while lowercase 'id' appears in prose; this key is a label, but mirroring the English source's lowercase 'id' is defensible. Recorded for the ledger.",
+      "disposition": "Accepted/no change, not counted as an unresolved NIT; original receipt untouched"
+    }
+  ],
+  "S18a_accounting": {
+    "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/a024-finalgate20261115-debt-013810-accounting.json",
+    "sha256": "16a72359338c7c414395ec125dc70dc2d77e846fb6f917d5089f2615252b01dd",
+    "dispositions": [
+      {
+        "origin": "3227a8cf0a47/finding-1",
+        "choice": "retain deferred MINOR",
+        "key": "ui.chat.canonical.image_gen.cancel.checking"
+      },
+      {
+        "origin": "3227a8cf0a47/finding-2",
+        "choice": "deduplicated into VI-C1, same pronoun issue; count once"
+      },
+      {
+        "origin": "3227a8cf0a47/finding-3",
+        "choice": "retain deferred NIT",
+        "key": "ui.chat.canonical.temporary_deleted.back"
+      },
+      {
+        "origin": "3227a8cf0a47/finding-4",
+        "choice": "retain deferred NIT",
+        "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited"
+      },
+      {
+        "origin": "3227a8cf0a47/finding-5",
+        "choice": "INFO accepted/no-change",
+        "reason": "Parent explicitly calls source-mirroring lowercase defensible and says no change required; accepted casing choice, retained as advisory rather than unresolved debt."
+      }
+    ]
+  },
+  "previous_sealed_same_round": {
+    "manifest_path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/a024-finalgate20261115-012841-final-manifest.json",
+    "manifest_sha256": "ad3268b7af21619f7d11191e17bea09afa43f074c175d22d71f19cb9f6f14dda",
+    "receipt": {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/a024-finalgate20261115-012841-vi-receipt.json",
+      "sha256": "98978d18e0bcc5c1ea7592298f834c69f0057a8daea4a95ef9e60aa0d60467c8"
+    },
+    "record": {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/a024-finalgate20261115-012841-vi-record.json",
+      "sha256": "775878e7da9e26e68bf65e1c24ae9a8ace3ca11092d88a6429dfc496b1483b36",
+      "canonical_destination": "i18n/audits/evidence/vi/ui.chat.canonical/a0245acae0c5-finalgate20261115-vi-012841/record.json"
+    },
+    "note": "Immutable historical candidate, NOT application allowlist now; same original author, not extra independent lineage."
+  },
+  "clarification_scope": "Same finalgate allocation: only inherited S18a debt reconciliation and current509 hash rebind;0newsemantic keys; earlier seam proof unchanged."
+}

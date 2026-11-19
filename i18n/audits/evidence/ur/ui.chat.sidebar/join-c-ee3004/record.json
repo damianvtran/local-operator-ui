@@ -1,0 +1,91 @@
+{
+  "locale": "ur",
+  "namespace": "ui.chat.sidebar",
+  "audit_date": "2026-11-01",
+  "key_count": 1,
+  "keys": [
+    "ui.chat.sidebar.agents.list_join"
+  ],
+  "source_commit": "1e28ba901ab0c1499d317420060162981bdc8708",
+  "auditor": {
+    "agent": "i18n-auditor-ur-c",
+    "session": "ee3004a9b83d",
+    "model": "openai/gpt-6.1-sol",
+    "independent_from_translator_session": true,
+    "translator_session": "not supplied; auditor did not translate these files",
+    "actual_model_source": "host model-switch notification: provider quota fallback sonnet-5-5 -> opus-5-5 -> openai/gpt-6.1-sol",
+    "fallback": true
+  },
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+      "sha256": "0928091b1241792f86f7fe2fafb9895d0c9d8f75341f59513f7d720a9acb477b"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.chat.sidebar.context.json",
+      "sha256": "cf078e20bcf1e8e6070e8f5daf8d60c1676bd9f2c9c6671c3bbbc49777676925"
+    },
+    "ur": {
+      "path": "src/i18n/catalogues/ur/ui.chat.sidebar.json",
+      "sha256": "19f6faef2fa4e496b7f430ea7373866dfd7289dadb299c322e0c37dc45111189"
+    },
+    "ur_context": {
+      "path": "src/i18n/catalogues/ur/ui.chat.sidebar.context.json",
+      "sha256": "fcb3acf0f16151be4307ca494ffe5ebb3a4c25b34b3180f56a95e819b1ed4e77"
+    }
+  },
+  "guidance_hashes": {
+    "/Users/damian/local-operator/i18n/style-guides/ur.md": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60",
+    "/Users/damian/local-operator/i18n/glossary.md": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+  },
+  "artifacts": [
+    {
+      "path": "i18n/audits/evidence/ur/ui.chat.sidebar/join-c-ee3004/probe.cjs",
+      "sha256": "89917f4c00fead79963c23b2ad6ca25dc2361a1dcd630a9d1823dab713bbab96"
+    },
+    {
+      "path": "i18n/audits/evidence/ur/ui.chat.sidebar/join-c-ee3004/probe.log",
+      "sha256": "022046fde7a1397763eb9d3c5f88380a71e6548c451e1f63c84ba09a541ee1b6"
+    },
+    {
+      "path": "i18n/audits/evidence/ur/ui.chat.sidebar/join-c-ee3004/production-test.log",
+      "sha256": "c503767aa1715c87f92829fd2c580ae84d1cebeb83027d6e9a1fc02808610538"
+    },
+    {
+      "path": "i18n/audits/evidence/ur/ui.chat.sidebar/join-c-ee3004/receipt.json",
+      "sha256": "6d05afe4c0d6221322244d0a32e021f9898184d454067f87613d398d9bf0d2d5"
+    },
+    {
+      "path": "i18n/audits/evidence/ur/ui.chat.sidebar/join-c-ee3004/report.md",
+      "sha256": "b9fc1c3126612b159a9b9ccf1b495e76b03915efcd28b399a4ac18ef4d811a71"
+    },
+    {
+      "path": "i18n/audits/evidence/ur/ui.chat.sidebar/join-c-ee3004/validator.log",
+      "sha256": "49ca7888efa94e1f78061206fe2514151fac9f778d7bf38cc20b3fb82d2ad901"
+    },
+    {
+      "path": "i18n/audits/evidence/ur/ui.chat.sidebar/join-c-ee3004/ledger.log",
+      "sha256": "3df20ea144e0639d2dc6c2a1364a92b1c5df5712310a60a2a6f75e75ed9a8951"
+    }
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": []
+  },
+  "scope": "Only list_join delta; not whole-namespace certification",
+  "report_classification": "audit_notes_not_execution_log",
+  "execution_logs": [
+    "validator.log",
+    "production-test.log",
+    "probe.log",
+    "ledger.log"
+  ],
+  "unverified": [
+    "Rendered visual bidi order, wrapping and terminal font shaping"
+  ],
+  "new_report_is_original": true,
+  "new_report_is_historical_R2_recreation": false,
+  "backdated": false,
+  "ledger_result_note": "Assembler reported status audited for the row. Evidence scope remains one key only; do not interpret generated row status as a new complete-sidebar linguistic audit."
+}

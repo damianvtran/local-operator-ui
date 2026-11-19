@@ -1,0 +1,383 @@
+{
+  "schema": 1,
+  "kind": "translation-audit-receipt",
+  "audit_kind": "independent-translation-audit",
+  "batch": "agents-literals-2",
+  "locale": "ru",
+  "locale_name": "Russian",
+  "date": "2026-10-26",
+  "audit_date": "2026-10-26",
+  "branch": "i18n-agents-literals-2",
+  "head": "a9e536bf892f48ed2a87772658055abfd10caa5e",
+  "base": "73af0b6855231c8e484bd4097e57fb879e10e9a8",
+  "instance": "114c8d6e8551",
+  "session": "d2fba0341c06",
+  "agent": "i18n-auditor",
+  "model": "radient/auto",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "harness": "Local Operator",
+    "team": "lopdev",
+    "session": "d2fba0341c06",
+    "instance": "114c8d6e8551",
+    "model": "radient/auto",
+    "actual_model": "radient/auto",
+    "actual_model_source": "Harness session header for this run: 'Model: radient/auto'. That header is the only model evidence the session has; no fallback notice appeared during the audit and nothing here reports a different served model. The provider behind the route is not visible from inside the session, so no vendor model is claimed or inferred.",
+    "model_provenance": "One route for the whole audit: style guide/glossary reading, the 25-key fidelity pass, the machine checks, the measurements and this receipt were all produced in this session under the reported route. The route string is reported as the harness states it, not resolved further.",
+    "independence": "Independent of the translator: this session did not translate or remediate these values, has not read the translator's reasoning, made no catalogue, context, ledger, English or generated-file edit, and used no translation/MT service to compare or back-translate. The only files written are this receipt, the evidence records beside it and session scratch.",
+    "independent_from_translator_session": true
+  },
+  "key_count": 25,
+  "result": "clean-with-findings",
+  "findings_summary": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 2,
+    "nit": 2
+  },
+  "namespaces": {
+    "ui.agents.pages": {
+      "namespace": "ui.agents.pages",
+      "status": "passed",
+      "keys_audited": 8,
+      "keys_in_file": 30,
+      "sha256": {
+        "en": "e85765ccb25a8675e64cb8cd1cc37edd86afbe9a77d444f9a1ec8ac9aee45781",
+        "ru": "220ee7e2dc6fb4df210a6c489de1c16f55817f085625adf7e55769d3f46732f5"
+      },
+      "en_sha256": "e85765ccb25a8675e64cb8cd1cc37edd86afbe9a77d444f9a1ec8ac9aee45781",
+      "ru_sha256": "220ee7e2dc6fb4df210a6c489de1c16f55817f085625adf7e55769d3f46732f5",
+      "context_sha256": "f9690a17e6e7307df154bdc0d71ab8a0d002a07a052e11c0025d2ff874d3dfea",
+      "findings": [
+        {
+          "id": "RU-AL2-01",
+          "severity": "MINOR",
+          "category": "idiom",
+          "key": "ui.agents.pages.ask.body_agent",
+          "source": "An agent is a reusable set of instructions you can start a chat with, or let other agents call on. Describe what you want and a configuration run sets it up.",
+          "current": "Агент — это набор инструкций, который можно использовать повторно: с ним можно начать чат, а можно позволить другим агентам обращаться к нему. Опишите, что нужно, и запуск конфигурации всё настроит.",
+          "proposed": "Агент — это многоразовый набор инструкций: с ним можно начать чат или разрешить другим агентам обращаться к нему. Опишите, что нужно, и запуск конфигурации всё настроит.",
+          "problem": "Meaning is faithful and every clause of the English survives. The first sentence is nonetheless wordy where a native editor would tighten it: 'который можно использовать повторно' is a periphrasis for 'reusable', and 'можно' occurs three times in 22 words ('который можно использовать', 'с ним можно начать', 'а можно позволить'). The sibling ask.body_team is compact, so the pair reads unevenly.",
+          "evidence": "First sentence measures 1043.27 px at 14 px (system-ui/SF Pro) in the 810 px ask column, i.e. two lines; the proposal is about 20 characters shorter and keeps the shared closing sentence byte-identical to ask.body_team.",
+          "disposition": "open"
+        }
+      ],
+      "result_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 0
+      },
+      "derived_result": "clean-with-findings"
+    },
+    "ui.agents.config": {
+      "namespace": "ui.agents.config",
+      "status": "passed",
+      "keys_audited": 3,
+      "keys_in_file": 31,
+      "sha256": {
+        "en": "5338f6e229d67bf214a4741224470e82222bd2f04eba9bc9eda7324242393c32",
+        "ru": "20742e63cfb6659de47960cf361b81812e275ef0b0b0e6625d16cc7b7464fc99"
+      },
+      "en_sha256": "5338f6e229d67bf214a4741224470e82222bd2f04eba9bc9eda7324242393c32",
+      "ru_sha256": "20742e63cfb6659de47960cf361b81812e275ef0b0b0e6625d16cc7b7464fc99",
+      "context_sha256": "63a7879a771b5aa7732fcfc8848033ba207701aaf1452e2855e8ec2bd52821bf",
+      "findings": [
+        {
+          "id": "RU-AL2-03",
+          "severity": "NIT",
+          "category": "register",
+          "key": "ui.agents.config.placeholder.about",
+          "source": "Change {name}…",
+          "current": "Изменить «{name}»…",
+          "proposed": "Измените «{name}»… if the three placeholders should share one mood; otherwise keep the infinitive and record it as the house form for 'изменить X' placeholders.",
+          "problem": "Infinitive where the English tone hint says 'imperative' and the two sibling placeholders in the same namespace are imperative ('Запросите изменение или опишите что-то новое…', 'Опишите, что нужно…'). Not an error: the ru guide prescribes the infinitive for action labels, and 'Изменить графику…' (ui.chat.canonical.supplement.adjust_placeholder) already ships in the locale with the same verb, ellipsis and mood. Recorded as taste, not gating.",
+          "evidence": "Survey of all 39 sentence-shaped ru placeholders: both moods ship, with infinitives on 'изменить'/'написать' and imperatives on the invitation-style boxes. The {name} guillemets are a second, separate call (see rulings.quoting).",
+          "disposition": "open"
+        }
+      ],
+      "result_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 1
+      },
+      "derived_result": "clean-with-findings"
+    },
+    "ui.agents.detail": {
+      "namespace": "ui.agents.detail",
+      "status": "passed",
+      "keys_audited": 3,
+      "keys_in_file": 50,
+      "sha256": {
+        "en": "80877db48543e0557cd0a079c8fd2d0c238f1923c2885deae85428e17af1f65b",
+        "ru": "a79ce20314721ec2574266e6951bf00dcff26fb83c3f6763a492d0b2cf7e5c4d"
+      },
+      "en_sha256": "80877db48543e0557cd0a079c8fd2d0c238f1923c2885deae85428e17af1f65b",
+      "ru_sha256": "a79ce20314721ec2574266e6951bf00dcff26fb83c3f6763a492d0b2cf7e5c4d",
+      "context_sha256": "a0e40ba7fceccdf78da28d064fd4386cc48d8f1c80127a5721550e879c49b511",
+      "findings": [],
+      "result_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "derived_result": "clean"
+    },
+    "ui.agents.upload": {
+      "namespace": "ui.agents.upload",
+      "status": "passed",
+      "keys_audited": 6,
+      "keys_in_file": 29,
+      "sha256": {
+        "en": "52876ab5bfa8b6c1f9170fdb9ea10c991f231d3d9fb103b16842476589083949",
+        "ru": "37c8d508c4a48748e5ea8d759e26f20b0d54cf66562add737dce0fd323875872"
+      },
+      "en_sha256": "52876ab5bfa8b6c1f9170fdb9ea10c991f231d3d9fb103b16842476589083949",
+      "ru_sha256": "37c8d508c4a48748e5ea8d759e26f20b0d54cf66562add737dce0fd323875872",
+      "context_sha256": "3141f45c4b8fc17b96061a4556a66b3133bbfe27345ee7e4d929dfe21ee049f0",
+      "findings": [
+        {
+          "id": "RU-AL2-02",
+          "severity": "MINOR",
+          "category": "accuracy",
+          "key": "ui.agents.upload.title.publish_org",
+          "related_keys": [
+            "ui.agents.upload.title.published_org"
+          ],
+          "source": "Publish \"{name}\" to {destination}? / Published \"{name}\" to {destination}",
+          "current": "Опубликовать «{name}» в организации {destination}? / Опубликовано «{name}» в организации {destination}",
+          "proposed": "Опубликовать «{name}» в организацию {destination}? and Опубликовано «{name}» в организацию {destination} — same appositional name, directional head. If the team keeps the locative, keep it deliberately and record it, because the locale otherwise says 'публикация в организацию'.",
+          "problem": "The English destination is directional ('to {destination}'), and the ru locale's shipped wording for publishing to an organisation is the accusative: ui.agents.publication.insufficient_role.body 'Для публикации в организацию нужна роль…' and ui.agents.upload.target.orgs_unread '…чтобы опубликовать в организацию'. The new titles use the locative head 'в организации', which reads as publishing inside the organisation rather than to it. The construction itself is standard Russian apposition ('в городе Москва', 'в компании Acme'), so this is a nuance of the case, not a broken sentence, and the meaning a user takes away is still the organisation. Severity is MINOR for that reason.",
+          "evidence": "Composed with real shapes: 'Опубликовать «Release Crew» в организации Acme Corp?' (456.04 px at 16 px semibold) and '…в организации ООО «Ромашка»?'. The case-avoidance rationale does not require the locative: a bare nominative name works under the accusative head too ('в организацию Acme Corp'), which is why the shipped phrase can be reused.",
+          "disposition": "open"
+        },
+        {
+          "id": "RU-AL2-04",
+          "severity": "NIT",
+          "category": "consistency",
+          "key": "ui.agents.upload.title.publish_public",
+          "related_keys": [
+            "ui.agents.upload.title.published_public",
+            "ui.agents.upload.title.republished",
+            "ui.agents.upload.title.update_listing"
+          ],
+          "source": "Publish \"{name}\" to the Agent Hub? / Updated the Agent Hub listing for \"{name}\"",
+          "current": "…в Хаб агентов / …в Хабе агентов (capitalised) in all four new titles",
+          "proposed": "Keep the capitalised surface form and record it as the rule, or align these four with the lowercase prose form the same namespace mostly ships ('в хабе'). Either way one rule should be written down; no change is required for this wave.",
+          "problem": "The locale has no settled letter case for the hub in prose: the same namespace ships lowercase 'хаб' five times (availability.taken 'уже опубликовано в хабе', field.name_label 'Имя в хабе', published.listed '«{name}» в хабе', published.republished 'в хабе хранится', sign_in.reauthenticate 'хаб отклонил') and capitalised 'Хаб агентов' once (sign_in.needed). The four new titles follow the capitalised sibling, which is defensible when naming the surface as a destination, but a reader can see both forms on adjacent screens. Recorded so the locale settles one rule rather than drifting.",
+          "evidence": "grep over src/i18n/catalogues/ru: 'Хаб агентов' as a title/navigation label (ui.shell.sidebar_navigation.agent_hub, ui.hub.pages.header.title, ui.command_palette.use_palette_sources.agent_hub) and in prose at sign_in.needed; lowercase 'хаб' in the other five upload values and in ui.agents.publication.agent_not_found.body 'сняли с хаба'.",
+          "disposition": "open"
+        }
+      ],
+      "result_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 1
+      },
+      "derived_result": "clean-with-findings"
+    },
+    "ui.hub.pages": {
+      "namespace": "ui.hub.pages",
+      "status": "passed",
+      "keys_audited": 2,
+      "keys_in_file": 37,
+      "sha256": {
+        "en": "c54d0aca4e8047657a61367c667c6ad9351f198a10d7380c1478745152a832b6",
+        "ru": "aee9ff22982f4da22d1ee86c5770559f367d103a7f78bad5994962c11ef01afd"
+      },
+      "en_sha256": "c54d0aca4e8047657a61367c667c6ad9351f198a10d7380c1478745152a832b6",
+      "ru_sha256": "aee9ff22982f4da22d1ee86c5770559f367d103a7f78bad5994962c11ef01afd",
+      "context_sha256": "d913efa6ea062fe5c04861c6db202d5bf303b7b0c1a6f9c7efbdaa4b5c095d10",
+      "findings": [],
+      "result_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "derived_result": "clean"
+    },
+    "ui.hub.teams": {
+      "namespace": "ui.hub.teams",
+      "status": "passed",
+      "keys_audited": 2,
+      "keys_in_file": 49,
+      "sha256": {
+        "en": "4121cd4fada8986e1c77682c5909ecf8830f3015677ec99a0a5fb547f9040b06",
+        "ru": "31b2d3bffac3f7a0b8ffcc475a9409fceb876acf40d13283109c8cf19e13c4ee"
+      },
+      "en_sha256": "4121cd4fada8986e1c77682c5909ecf8830f3015677ec99a0a5fb547f9040b06",
+      "ru_sha256": "31b2d3bffac3f7a0b8ffcc475a9409fceb876acf40d13283109c8cf19e13c4ee",
+      "context_sha256": "b062f0ca8aed037084233730702e41c6f3ef09aa39bed405e007466716c711a0",
+      "findings": [],
+      "result_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "derived_result": "clean"
+    },
+    "ui.common.actions": {
+      "namespace": "ui.common.actions",
+      "status": "passed",
+      "keys_audited": 1,
+      "keys_in_file": 51,
+      "sha256": {
+        "en": "132f60c9d401d804147f29fbe10fca265e2c3b3a5436b9eceb70c544afe8f1b9",
+        "ru": "05b997517999a61f5c89448e83124000f04c67424b3a9682764def2fa210b6b1"
+      },
+      "en_sha256": "132f60c9d401d804147f29fbe10fca265e2c3b3a5436b9eceb70c544afe8f1b9",
+      "ru_sha256": "05b997517999a61f5c89448e83124000f04c67424b3a9682764def2fa210b6b1",
+      "context_sha256": "48756cd31d4abbec5d56b3648ffb2fefe578c074645386480c91b4921accf321",
+      "findings": [],
+      "result_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "derived_result": "clean"
+    }
+  },
+  "input_verification": {
+    "hash_binding": "Bound before judging and it matched on the first check, all seven target files: ui.agents.pages 220ee7e2, ui.agents.config 20742e63, ui.agents.detail a79ce203, ui.agents.upload 37c8d508, ui.hub.pages aee9ff22, ui.hub.teams 31b2d3bf, ui.common.actions 05b99751 (first 8 hex of sha256), against the prefixes in the task.",
+    "head_and_base": "HEAD a9e536bf892f48ed2a87772658055abfd10caa5e ('feat(i18n): translate the remaining agents and Agent Hub copy into seven locales'); HEAD~1 73af0b6855231c8e484bd4097e57fb879e10e9a8 ('feat(i18n): key the remaining agents and Agent Hub copy'). The sidecar's base f1aca5935b (merge of PR #1432) carries byte-identical ru files for all seven namespaces, verified by hashing both trees, so the byte-equality check is sound at either commit.",
+    "pre_existing_values": "252 pre-existing ru values across the seven files were compared with git show 73af0b6855:<path>: 0 changed, 0 missing. The batch adds exactly 25 keys and alters no shipped value.",
+    "new_keys_come_from": "The 25 keys are the ones listed in agents-literals-2-keys.json (untracked copy at the worktree root, sha256 ec602c83236ec67358370105c140880a55e134b68f872b0ba033446387cefada); every key in the list exists in both the English and the ru file at this head.",
+    "post_judgement_stability": "The seven ru files were re-hashed after the findings were written and still report the hashes above, so the bytes judged are the bytes recorded."
+  },
+  "machine_checks": [
+    {
+      "command": "node scripts/i18n/check-coverage.mjs",
+      "exit_code": 0,
+      "actual_output": "coverage-check: ok — 7 gated language(s) over 94 namespace(s); 0 allowed key(s) remain across 0 pair(s) (shrink-only; see i18n/coverage-allowance.json)."
+    },
+    {
+      "command": "node --test scripts/i18n/locale-parity.test.mjs",
+      "exit_code": 0,
+      "actual_output": "tests 44, suites 0, pass 44, fail 0, cancelled 0, skipped 0, todo 0 (duration_ms 1581.833 in the logged run). Includes '[ru] carries EVERY key of each namespace file it ships', '[ru] names only keys the English source defines', '[ru] preserves every ICU placeholder from the English source' and '[ru] is not an English stub (no value identical to the source)'."
+    },
+    {
+      "command": "node scripts/i18n/context-parity.mjs",
+      "exit_code": 0,
+      "actual_output": "context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json)."
+    },
+    {
+      "command": "node scripts/i18n/generate.mjs --check",
+      "exit_code": 0,
+      "actual_output": "src/i18n/keys.gen.ts is byte-identical to a fresh generation."
+    },
+    {
+      "command": "node scripts/i18n/check-duplicates.mjs",
+      "exit_code": 0,
+      "actual_output": "check-duplicates: ok — 844 file(s) scanned, 0 duplicate key(s)"
+    },
+    {
+      "command": "node <scratch>/audit-ru-literals.mjs <worktree> (this audit's own checker)",
+      "exit_code": 0,
+      "actual_output": "Key set equal to en in all seven files (30/30, 31/31, 50/50, 29/29, 37/37, 49/49, 51/51; added=0 dropped=0). No empty values. Placeholder multiset equal for all 25 new keys (empty for 20 of them; name, destination, when where the source has them). Typography clean on all 25 (no ASCII double quote, no three-dot ellipsis, no space before ?:;!,, no space inside guillemets, no double space, no NBSP). Key order equal to en in six of seven files; ui.common.actions differs and is pre-existing (see observations.order_claim). Pre-existing values byte-equal to the parent in all seven. Codepoint audit: U+2026 in the three placeholders and retrying, U+00AB/U+00BB in the six titles and the about placeholder, U+2014 in ask.body_agent; no ASCII quotes or '...' anywhere."
+    },
+    {
+      "command": "osascript -l JavaScript <scratch>/measure-ru-widths.js and measure-ru-titles.js (CoreText, system-ui)",
+      "exit_code": 0,
+      "actual_output": "Calibration: the English docked placeholder measures 301.1709 px at 14 px regular, which is exactly the figure the component's own comment records from native QA, so the method reproduces the app's own measurement. Then: ru docked 344.1279; ru hero 149.5771; ru roster team button 180.258 and agent button 167.4107 at 13 px medium; en 118.3795 and 122.6607; ru card get 60.8042 at 12 px medium vs en 20.581; ru delegates 98.4712 vs en 60.855; ru show all 83.8018 vs en 50.2227; ru show less 59.4648 vs en 60.5947; ru ask manual links 172.2074 and 166.0636; ru heading 170.6687 at 20 px semibold; ru ask.body_agent first sentence 1043.2666 at 14 px; ru retrying 138.4632 vs en 50.0371; ru updated {when} 136.7402 vs en 112.0664; ru created {when} 121.8633 vs en 108.334; titles at 16 px semibold: ru publish_public 368.0521 (20-char Latin name) and 528.6055 (32-char Cyrillic name), ru update_listing 435.9191, ru republished 434.3141, ru publish_org 456.0423, against en 327.0549 / 374.8281 / 376.3789 / 294.3684."
+    }
+  ],
+  "machine_checks_note": "Entries above quote the command and its actual result line; where a command prints more than the result (per-test lines, exit banners), the entry is a faithful digest of the same run and the verbatim stream is in audit.log beside every evidence record for this audit. No output was edited or invented.",
+  "rulings": {
+    "quoting_name": "«{name}» is right and should stay. Russian marks a name with ёлочки in prose (ru guide, punctuation), and a quoted name stays indeclinable, which is exactly how a user-supplied name has to be embedded where a case ending would otherwise be required. The shipped locale already does this (ui.agents.publication.name_taken.owned_body 'Вы уже опубликовали «{name}»', ui.agents.upload.published.listed '«{name}» в хабе'). Two calls follow: in the upload titles the source itself quotes the name, so the ru is faithful as well as idiomatic; in placeholder.about the source has no quotes, so the ru adds them for the case, which is a justified addition rather than an embellishment.",
+    "destination_case": "'в организации {destination}' is not ungrammatical: generic locative head plus nominative name is standard apposition (в городе Москва, в компании Acme), and it is why a name that cannot take an ending can still sit in the sentence. It is still the wrong head for this meaning, because the source is directional and the locale's shipped phrase for publishing to an organisation is accusative ('публикация в организацию', 'опубликовать в организацию'). Recommend 'в организацию {destination}' (finding RU-AL2-02). Do not wrap {destination} in guillemets: backend display names can already carry them ('ООО «Ромашка»'), and nesting identical marks breaches the guide's „лапки“ rule, so the bare appositional name is the safer form.",
+    "hub_case_forms": "'в Хаб агентов' (accusative) in the two publish questions and 'в Хабе агентов' (prepositional) in the two update strings is correct, not a defect. The head verb governs it: publishing is a direction (куда?), so the accusative; a listing exists in the hub (где?), so the prepositional. Russian declines the surface name because 'хаб' here is a translated common noun, not a kept-English product name: Agent Hub is not in glossary §1's keep-English list and the shipped locale renders it 'Хаб агентов' throughout. Only the letter case of 'хаб' is unsettled in prose — recorded as NIT RU-AL2-04.",
+    "pronoun_gender": "'Или добавьте его вручную' (агент, masculine) and 'Или добавьте её вручную' (команда, feminine) agree correctly with the object each tab creates, and the pronoun is what keeps the link distinct from the roster's own 'Добавить агента/команду вручную' as the sidecar requires. It also matches the shipped empty-state sentences '…или добавьте его вручную' / '…или добавьте её вручную', so the same user reads the same phrase in both places.",
+    "get_verb": "'Загрузить' for Get is right and should stay. The locale's shipped verb for pulling something from the hub is 'Загрузить' (ui.hub.teams.pull 'Загрузить', ui.hub.skills.download 'Загрузить', ui.hub.subscriptions.pull 'Загрузить сейчас'); 'скачивания' appears only as the noun in the sort label 'По скачиваниям' and never as the button verb, so there is no contradiction to fix. 'Скачать' would be marginally shorter but would introduce a second verb for one action.",
+    "show_less": "'Свернуть' for Show less is right. It is the locale's shipped collapse verb (ui.shell.sidebar_navigation.collapse_sidebar, ui.settings.configuration.settings_filter_bar.collapse_all, ui.chat.composer.status.goal_collapse), and 'Показать всё' / 'Свернуть' is the clamp-and-collapse pair Russian product copy actually uses. The pair stays clearly opposed and both labels fit their link box (83.80 px and 59.46 px against English 50.22 px and 60.59 px, in a box measured at 48 x 17.4 px for 'Show all')."
+  },
+  "observations": [
+    {
+      "id": "O-ORDER",
+      "title": "The translator's key-order claim is only half right",
+      "detail": "Verified at the parent commit rather than repeated. At 73af0b6855, comparing each locale's ui.common.actions order with the English order minus the then-absent 'retrying': fr, es, zh-CN, ur and hi matched English exactly; only ru and vi already differed (they put confirmation_modal.* before date_time_picker.* and group the find_replace_widget leaves differently). At this head the same split holds: fr/es/zh-CN/ur/hi are order-identical to en and ru/vi are not. So 'differs from en in EVERY locale' is wrong, while 'pre-existing in ru' is right. The 'retrying' insertion itself is clean: every locale put it at index 6, immediately after retry_again, which is English's own position. Nothing here is a finding on the ru values: key sets are equal, and the runtime and every gate read keys, not order."
+    },
+    {
+      "id": "O-ARIA",
+      "title": "Out-of-scope English literal in the same button and meta line",
+      "detail": "Not a finding against this translation, and not fixable from the catalogue. (1) src/renderer/src/features/agent-hub/components/agent-card.tsx line 416 hardcodes aria-label={`Download ${displayName}`}, so a ru screen reader hears English while the visible label says 'Загрузить'; the English sidecar describes that name as 'a separate message', which it is not. (2) src/renderer/src/features/agents/components/agent-detail.tsx line 177 renders the literal 'Specialist' in the dot-separated meta line, so a ru user reads 'Свой · Делегирование · Specialist' — the new ru value sits next to an untranslated English word. Both want an extraction round in the code lane; they are outside the 25 keys and outside an auditor's write scope."
+    },
+    {
+      "id": "O-WIDTH",
+      "title": "The ru docked placeholder wraps where the English does not, and the contract permits it",
+      "detail": "See rendered_fit.docked_placeholder for the numbers: the ru string is 344.13 px against the 304 px content box the component's own comment names, so it takes two lines; the English at 301.17 px sits 2.8 px inside one line. The component comment accepts readable wrapping and forbids clipping and vertical overflow, and two 14 px lines at line-height 1.55 (43.4 px) sit inside the fixed 55 px box the native check recorded. Flagged for the rendered QA pass rather than as a finding, because no wording change is proposed and the string cannot be shortened much without losing 'or describe something new'."
+    }
+  ],
+  "rendered_fit": {
+    "method": "Text metrics from CoreText with system-ui (SF Pro on this machine), at the size and weight each component applies, validated by reproducing the repository's own recorded native figure for the English docked placeholder to four decimals (301.1709 px). These are composed strings, not rendered frames: no app was booted, so this claims text width and line-count arithmetic only, not pixels on screen.",
+    "roster_button": "The roster column is w-72 (288 px) with px-4, so 256 px of content; a md button takes 24 px of px-3, a size-4 icon 16 px and gap-1.5 6 px, leaving 210 px for the label. 'Добавить команду вручную' measures 180.258 px and 'Добавить агента вручную' 167.411 px at 13 px medium, so both fit with about 29.7 px and 42.6 px to spare (en 118.380 / 122.661). The 25-character ru string therefore neither wraps nor truncates despite the 'about 20 characters' English hint, and the earlier design-review overflow on the scope control is not repeated here.",
+    "ask_pane": "'Или добавьте его вручную' 172.207 px and '…её…' 166.064 px (en 152.251) in the 810 px measure; heading 'Запросите агента' 170.669 px at 20 px semibold (en 148.816), one line. ask.body_agent's first sentence is 1043.27 px at 14 px, i.e. two lines of the 810 px column, and the whole paragraph stays inside the 'three or four lines' the sidecar allows.",
+    "docked_placeholder": "ru 'Запросите изменение или опишите что-то новое…' 344.128 px at 14 px against the 304 px content box of the narrowest docked pane: two lines, no third line needed (2 x 304 = 608 px of capacity), and two lines of line-height 1.55 (43.4 px) sit inside the box's fixed 55 px height. Readable wrapping, which the component contract accepts; clipping and vertical overflow, which it forbids, do not occur by arithmetic.",
+    "hub_card_get": "'Загрузить' measures 60.804 px at 12 px medium against English 'Get' at 20.581 px, so the sm button grows by about 40.2 px (icon 14 + gap 4 + px-2 16 are the same in both). The card footer is flex flex-wrap with the action container ml-auto shrink-0, so a wider counter cluster pushes the button to a second line instead of clipping it; at the 280 px minimum card width the footer content box is 256 px, which the row can still hold. Risk noted for the rendered pass, no wording change proposed.",
+    "meta_line": "'Делегирование' 98.471 px at 13 px against en 'Delegates' 60.855 px, in a flex-wrap line joined with ' · ': the line may take a second row, which the sidecar explicitly allows, and nothing is clipped.",
+    "upload_titles": "DialogTitle is text-heading 16 px semibold inside DialogHeader (pe-8) in DialogContent max-w-lg (512 px) with p-6, so the title line is 432 px. English 'Publish \"Support Agent\" to the Agent Hub?' is 327.055 px on one line. ru with a 20-character Latin name is 368.052 px, one line; with a 32-character Cyrillic name 528.606 px, two lines. 'Обновить публикацию «Release Crew» в Хабе агентов?' 435.919 px and 'Обновлена публикация «Release Crew» в Хабе агентов' 434.314 px are 2.3-3.9 px over the line and wrap by a hair; 'Опубликовать «Release Crew» в организации Acme Corp?' 456.042 px wraps too. The title wraps under the close control rather than clipping (DialogTitle has no truncate), which the sidecar permits.",
+    "provenance_fragments": "'обновлено 4 дня назад' 136.740 px and 'создано 4 дня назад' 121.863 px at 12 px, against English 112.066 and 108.334. Both appear in single-line truncate containers (card provenance, team row) with the age at the tail, so a long author name can ellipsise the age — inherited behaviour, and the surrounding words are already the shortest true ones ('обновлено' / 'создано').",
+    "retry_label": "'Повторная попытка…' 138.463 px against English 'Trying…' 50.037 px: the sleeping/idle label is 'Повторить', so a sm button grows while disabled. It sits in an Alert (max-w-2xl) or a card action row, both of which have room, and the identical string already ships as ui.hub.teams.public.trying."
+  },
+  "method": {
+    "read_order": "ru style guide and glossary first, then the English catalogue with its .context.json sidecar and the batch sidecar, then the ru values, then the shipped ru siblings and the call sites in the renderer.",
+    "call_sites_read": "agents-page.tsx (AddManuallyButton 1301-1324, AskPaneCopy 1333-1349, the ask link 1280-1287), config-composer.tsx:1106-1121 and its width comment, agent-card.tsx:242-256 and 408-420, org-teams-list.tsx:600-620, upload-agent-dialog.tsx:163-207 and the 772 title render, agent-detail.tsx:168-178, public-teams-library.tsx:326-337, comment-age.ts.",
+    "consistency_sweep": "grep over src/i18n/catalogues/ru for Хаб/хаб (and uk/az false friends excluded by case-sensitive patterns where relevant), публикац, запуск/конфигурац, Загрузить/скачиван, Показать всё/Свернуть/Развернуть, Повторить/Повторная попытка, делегирование, Запросите агента/команду, добавьте его/её вручную; plus a survey of all 39 sentence-shaped ru placeholders for mood. Divergences are findings only where the same concept would read as a different feature (none) — the rest are recorded as rulings.",
+    "judgements": "Every one of the 25 values was read against the English meaning, the sidecar's role/tone/length/note and the ru guide: formality (вы, lowercase), impersonality where the source allows, infinitive for action buttons, sentence case, «ёлочки»/„лапки“, em dash with spaces, U+2026, no space before ? ; :. Placeholders were composed with realistic Latin and Cyrillic names and an organisation name that itself carries guillemets, and the two {when} keys with the locale's own shipped age phrases (4 дня назад, 1 минуту назад, 5 месяцев назад, 3 года назад).",
+    "second_pass": "The 25 values were re-read end to end after the first findings list was written, specifically for omissions, additions and polarity, and nothing new was found; the second pass did not change the verdict. RTL reasoning is not applicable to ru.",
+    "not_claimed": "Catalogue-only audit. No app boot, no screenshot, no activation, eligibility or release claim. Widths are font metrics, not rendered frames. The two evidence records' companions are the actual execution log; the prose here is reasoning, not command output."
+  },
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/ru.md",
+      "sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+    },
+    "contract": {
+      "path": "docs/I18N.md",
+      "sha256": "6fc7bea71643c0dcaeaed697ecd792cfdfeb11b7816b5f8d160011e7c7df2abe"
+    }
+  },
+  "scope": {
+    "worktree": "~/local-operator-ui/.worktrees/i18n-agents-literals-2",
+    "branch": "i18n-agents-literals-2",
+    "head": "a9e536bf892f48ed2a87772658055abfd10caa5e",
+    "base": "73af0b6855231c8e484bd4097e57fb879e10e9a8",
+    "note": "The 25 new keys of the batch in seven namespaces; every other ru value in these files was verified byte-identical to the parent and not re-audited. A read-only auditor: no catalogue, context, ledger, English, generated or test edit, no git add/commit/stash/checkout/reset/merge."
+  },
+  "artifacts": {
+    "receipt": {
+      "path": "i18n/receipts/ru-agents-literals-audit-114c8d6e8551.json",
+      "note": "This file. Its sha256 is recorded by the evidence records and by any ledger row assembled from it."
+    },
+    "evidence_records": {
+      "root": "i18n/audits/evidence/ru/<namespace>/agents-literals2-20261026/",
+      "note": "One record.json per namespace plus the actual audit.log, written after this receipt so they can name its bytes; the canonical root is used, not a sibling."
+    },
+    "session_scratch": {
+      "note": "This audit's checker, width-measurement scripts and execution log lived in the session scratchpad; the log is retained as audit.log beside each evidence record, and the scratch copies are not the artifact of record."
+    }
+  },
+  "verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "summary": "No blocker or major anywhere in the 25 values: placeholders and ICU shapes are identical to the English, the typography follows the ru guide, the terminology matches the shipped locale (запуск конфигурации, публикация for listing, Загрузить for a hub pull, Свернуть for collapse, участники for members), and every hinted slot either fits or wraps inside the allowance. Two MINORs (a wordy ask.body_agent first sentence; the locative 'в организации {destination}' where the locale's shipped direction is accusative) and two NITs (placeholder mood; unsettled letter case for хаб in prose) are recorded, none gating.",
+    "derived_results": {
+      "ui.agents.pages": "clean-with-findings",
+      "ui.agents.config": "clean-with-findings",
+      "ui.agents.detail": "clean",
+      "ui.agents.upload": "clean-with-findings",
+      "ui.hub.pages": "clean",
+      "ui.hub.teams": "clean",
+      "ui.common.actions": "clean"
+    }
+  }
+}

@@ -1,0 +1,214 @@
+{
+  "schema": 1,
+  "audit_kind": "translation-audit",
+  "artifact_kind": "first-independent-translation-audit-of-an-uncommitted-candidate",
+  "auditor": {
+    "agent": "translation-auditor (lopdev team)",
+    "instance": "c62009d5ecba",
+    "model": "radient/auto"
+  },
+  "agent": "translation-auditor",
+  "instance": "c62009d5ecba",
+  "session": "c62009d5ecba",
+  "model": "radient/auto",
+  "model_fallback": "none",
+  "model_note": "The session reports the selector radient/auto. The routed upstream provider/model is not exposed to this session and is not guessed here; no fallback model was used.",
+  "date": "2026-10-25",
+  "locale": "ur",
+  "namespace": "ui.onboarding.tour",
+  "source_ref": "b3dd694c1702e36239cb7da94d636a02318d13ad",
+  "source_ref_note": "Repository HEAD at audit time; the English catalogue and its context sidecar are byte-identical to that commit (git cat-file blob vs working tree).",
+  "candidate": {
+    "path": "src/i18n/catalogues/ur/ui.onboarding.tour.json",
+    "status": "uncommitted-translator-candidate",
+    "tracked": false,
+    "git_status": "?? (untracked)",
+    "bytes": 30366,
+    "keys": 123,
+    "note": "Audited as working-tree bytes only. Nothing in this receipt claims the candidate is in b3dd694c or in any commit."
+  },
+  "translator": {
+    "instance": "b9dcd1bbfb29",
+    "model": "not supplied",
+    "provenance_note": "Translator instance is the manager-supplied identity. The translator's model was not supplied to this audit and is not asserted; this auditor is a different agent instance and did not produce or edit the candidate."
+  },
+  "sha256": {
+    "en": "81fc4e3b70850e6961092aeb42a9cc12160fe1bd064d47cb28ce548618bcb976",
+    "ur": "49089358f48ef8807c380736444e18569772e97e46105b727f7552a9088ed028",
+    "context": "7131faf88213b943cfa7ee0b951a8e0d5fb512728b677c023beec11b677c0906"
+  },
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/ur.md",
+      "sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+    },
+    "languages": {
+      "path": "i18n/languages.json",
+      "sha256": "7fd056b916fc3d56ddf36991a09b29864ea0b0f825d938aead1ed165926f8d63"
+    }
+  },
+  "keys_read": 123,
+  "keys_audited": 123,
+  "key_set": {
+    "english": 123,
+    "context": 123,
+    "target": 123,
+    "equals_english": true,
+    "order_equals_english": true,
+    "missing": [],
+    "extra": [],
+    "duplicate_json_members": []
+  },
+  "checks": {
+    "placeholders_and_icu": "N/A: no {argument}, plural/select arm, number/date skeleton or markup token occurs in the English source or the candidate (zero matches for brace/argument patterns). CLDR plural-category testing is therefore not applicable and none is fabricated.",
+    "encoding": "UTF-8, no BOM, newline-terminated; every value is NFC and NFC-stable.",
+    "bidi": "No U+200E/U+200F/U+202A-U+202E/U+2066-U+2069/U+061C, no ZWSP/ZWNJ/ZWJ, no NBSP/U+202F/U+2009. Storage order is logical; isolation is the render layer's FSI/PDI job, not the copy's.",
+    "punctuation": "Urdu ۔ (121), ، (96), ؛ (2), ؟ (1); no ASCII sentence punctuation leaks into Urdu prose; all curly quotes balanced; colon/parentheses/em-dash usage matches the source's structure.",
+    "whitespace": "Leading/trailing whitespace matches the English for every key, including all joined command-palette fragments and the connector (structural spaces preserved; no fragment glues a Latin key to Urdu).",
+    "latin_tokens": "Product/code tokens preserved: Local Operator 15, Radient 10, Agent Hub 7, Canvas 6, HTML 3, PDF 2 (+1 English plural, see finding), Automatic 2, Cmd/Ctrl+K 1; markdown/mermaid/iframe, Google/Gmail/Calendar/Drive, Excel/Word/CSV, GitHub Issues kept. No non-product English prose is left untranslated.",
+    "quoted_ui_labels": "Verified against the app's own ur catalogue: 'View agent settings' = ایجنٹ کی ترتیبات دیکھیں (ui.agents.dialogs.menu.settings); 'Create schedule' = شیڈول بنائیں (ui.schedules.schedule_form_dialog.create_schedule); 'Recommended' = تجویز کردہ (ui.common.models.model_select.recommended); 'Agent Hub' = Agent Hub (ui.shell.sidebar_navigation.agent_hub); 'Automatic' stays Latin in ui.common.models.model_select... ('تجویز کردہ Automatic'); '+' kept. 'Get' is the Hub card's visible hardcoded label (agent-card.tsx renders Get outside t()), so the Latin quote matches today's control; it has no catalogue key to compare.",
+    "joined_paragraphs": "Both command-palette paragraphs were reconstructed in caller order from tour-copy.ts with paletteDoorLabel() values (⌘P/Ctrl+P, ⌘K/Ctrl+K, ⌘⇧P/Ctrl+Shift+P) and the , @ # > prefix spans. The joined Urdu is grammatical, verb-final, single-spaced, and every Latin island has one space on each side."
+  },
+  "status": "clean-with-findings",
+  "result": "clean-with-findings",
+  "verdict": "PASS — clean-with-findings. 123 of 123 keys read against the English source, its 123 context records, the core glossary, the ur style guide and the app's own ur labels. No blocker and no major: placeholders/ICU are N/A, encoding/NFC/bidi controls/whitespace/quote balance are clean, and the joined shortcut paragraphs compose correctly. 8 minors and 4 nits remain, led by two terminology drifts (services rendered سہولتیں instead of the app's سروسز; proactive rendered فعال instead of the app's پیش قدم). Rendered fit and mixed-direction isolation are UNVERIFIED; no browser or native frame was available, so this is not a rendered or native sign-off.",
+  "findings": [
+    {
+      "id": "UR-TOUR-01",
+      "severity": "minor",
+      "category": "terminology",
+      "key": "ui.onboarding.tour.integrations_settings.title",
+      "also_affects": [
+        "ui.onboarding.tour.integrations_settings.body.1"
+      ],
+      "current": "title: «اپنی سہولتیں منسلک کریں»; body.1: «Gmail، Calendar اور Drive جیسی اپنی Google سہولتیں منسلک کر کے»",
+      "proposed": "title: «اپنی سروسز منسلک کریں»; body.1: «Gmail، Calendar اور Drive جیسی اپنی Google سروسز منسلک کر کے»",
+      "reason": "The locale's established rendering of «services» is سروسز (ui.settings.navigation: «ان سروسز میں سائن ان کریں»; ui.settings.integrations: «Google سروسز»), while سہولت is this file's word for «feature» (application_updates_settings, schedules_overview). The step therefore presents Google's services as «facilities» in its headline and first sentence."
+    },
+    {
+      "id": "UR-TOUR-02",
+      "severity": "minor",
+      "category": "terminology-and-meaning",
+      "key": "ui.onboarding.tour.welcome.body.1",
+      "also_affects": [
+        "ui.onboarding.tour.welcome.list.1.item.6",
+        "ui.onboarding.tour.schedules_overview.title",
+        "ui.onboarding.tour.schedules_overview.body.1"
+      ],
+      "current": "welcome.body.1: «فعال AI ایجنٹس»; welcome.list.1.item.6: «فعال ایجنٹس کے لیے شیڈول»; schedules_overview.title: «شیڈول والے فعال ایجنٹس»; schedules_overview.body.1: «ایسے فعال ایجنٹس»",
+      "proposed": "welcome.body.1: «پیش قدم AI ایجنٹس»; welcome.list.1.item.6: «پیش قدم ایجنٹس کے لیے شیڈول»; schedules_overview.title: «شیڈول والے پیش قدم ایجنٹس»; schedules_overview.body.1: «ایسے پیش قدم ایجنٹس»",
+      "reason": "The locale already renders the product term «Proactive» as پیش قدم (ui.agents.refusals.class.label.proactive), while فعال is its word for «active/enabled» (فعال کریں = enable). All four occurrences both drift from the established term and weaken «proactive» to «active»; the drifts are named here in both spellings: پیش قدم vs فعال."
+    },
+    {
+      "id": "UR-TOUR-03",
+      "severity": "minor",
+      "category": "terminology",
+      "key": "ui.onboarding.tour.agent_options.body.1",
+      "current": "«جیسے اس کی ترتیبات دیکھنا، اسے ایکسپورٹ کرنا یا حذف کرنا»",
+      "proposed": "«جیسے اس کی ترتیبات دیکھنا، اسے برآمد کرنا یا حذف کرنا»",
+      "reason": "The sentence enumerates agent-options menu items; the app labels this one برآمد کریں (ui.agents.dialogs.menu.export; ui.agents.navigation.legacy.export), and the sibling action «import» is درآمد in agent_list.body.2. The tour therefore names the menu action with a different word from the menu the user sees (برآمد vs ایکسپورٹ)."
+    },
+    {
+      "id": "UR-TOUR-04",
+      "severity": "minor",
+      "category": "terminology",
+      "key": "ui.onboarding.tour.modify_agent_prompt.body.1",
+      "current": "«آپ یہاں کام کے مخصوص طریقے کی ہدایات دے سکتے ہیں جنہیں الگ سے مانا جائے گا»",
+      "proposed": "«آپ یہاں ورک فلو کی مخصوص ہدایات دے سکتے ہیں جنہیں الگ سے مانا جائے گا»",
+      "reason": "«workflow» is ورک فلو in this same namespace (schedules_overview.body.3: «آپ کا ورک فلو ہموار رہے») and in ui.common.account. This sentence paraphrases the same English term as «a specific way of working», leaving two local renderings for one term (ورک فلو vs کام کے مخصوص طریقے)."
+    },
+    {
+      "id": "UR-TOUR-05",
+      "severity": "minor",
+      "category": "punctuation",
+      "key": "ui.onboarding.tour.chat_input.list.1.item.3",
+      "current": "«کوئی منسلکہ منتخب کریں اور پھر کہیں “اس دستاویز کا فرانسیسی میں ترجمہ کریں”۔»",
+      "proposed": "«کوئی منسلکہ منتخب کریں اور پھر کہیں “اس دستاویز کا فرانسیسی میں ترجمہ کریں۔”»",
+      "reason": "The source's full stop belongs to the quoted example input, and the two sibling items place the Urdu ۔ inside the closing quote («…بنائیں۔» / «…بنائیں۔»); item 3 alone closes the quote before the stop, leaving the quoted utterance unpunctuated."
+    },
+    {
+      "id": "UR-TOUR-05b",
+      "severity": "minor",
+      "category": "idiom",
+      "key": "ui.onboarding.tour.pre_command_palette_open_canvas.body.2.1",
+      "current": "«کسی گفتگو کے لیے جلدی ہے؟ » (trailing space is structural; a shortcut span follows)",
+      "proposed": "«کسی گفتگو تک جلدی پہنچنا ہے؟ » (keep the trailing space)",
+      "reason": "«کسی گفتگو کے لیے جلدی ہے؟» is a word-for-word rendering of «In a hurry for a conversation?»; Urdu expresses haste with «کی جلدی» or «تک جلدی پہنچنا», so the opening reads translated even though the joined sentence's verb-final structure after the shortcut is correct."
+    },
+    {
+      "id": "UR-TOUR-06",
+      "severity": "minor",
+      "category": "accuracy-grammar",
+      "key": "ui.onboarding.tour.attachments.body.3",
+      "current": "«Excel، Word اور CSV جیسی دوسری فائلیں آپ کی ڈیوائس کے فائل پاتھ کے طور پر شامل کی جاتی ہیں»",
+      "proposed": "«Excel، Word اور CSV جیسی دوسری فائلیں آپ کی ڈیوائس پر موجود فائل پاتھوں کے طور پر شامل کی جاتی ہیں»",
+      "reason": "«file paths on your device» is plural and locative; the current «ڈیوائس کے فائل پاتھ» says «the device's file path» (one path, possessed), which misstates how the non-image files are included in the request."
+    },
+    {
+      "id": "UR-TOUR-07",
+      "severity": "minor",
+      "category": "accuracy",
+      "key": "ui.onboarding.tour.upload_agent_hub_dialog.body.1",
+      "current": "«اس کا نام، تفصیل، ہدایات اور ٹول کی سطح»",
+      "proposed": "«اس کا نام، تفصیل، ہدایات اور ٹولز کی فہرست»",
+      "reason": "«tool surface» means the set of tools the agent exposes, not a «level of tool»; the literal «ٹول کی سطح» is ambiguous inside the privacy sentence whose point is exactly what does and does not leave the computer."
+    },
+    {
+      "id": "UR-TOUR-08",
+      "severity": "nit",
+      "category": "consistency",
+      "key": "ui.onboarding.tour.welcome.body.3",
+      "current": "«اس واک تھرو میں ہم یہ دیکھیں گے:»",
+      "proposed": "«اس ٹور میں ہم یہ دیکھیں گے:»",
+      "reason": "The product and the rest of this namespace call the walkthrough a ٹور (action.close «ٹور بند کریں», agent_list.body.2 «اس ٹور میں», tour_complete.title «ٹور مکمل»); واک تھرو appears once and reads as a transliterated synonym."
+    },
+    {
+      "id": "UR-TOUR-09",
+      "severity": "nit",
+      "category": "clarity",
+      "key": "ui.onboarding.tour.agent_list.body.1",
+      "current": "«آپ کے پاس کتنے ہی ایجنٹس ہو سکتے ہیں، اس لیے … جتنے چاہیں بنائیں۔»",
+      "proposed": "«آپ کے پاس ایجنٹس کی کوئی حد نہیں، اس لیے … جتنے چاہیں بنائیں۔»",
+      "reason": "«کتنے ہی … ہو سکتے ہیں» can be read as a rhetorical «how many can you have?», whereas the source asserts «There are no limits»; «کوئی حد نہیں» states the promise directly."
+    },
+    {
+      "id": "UR-TOUR-10",
+      "severity": "nit",
+      "category": "consistency",
+      "key": "ui.onboarding.tour.welcome.body.2",
+      "current": "«تصاویر، ویڈیوز اور PDFs میں ترمیم کرنا»",
+      "proposed": "«تصاویر، ویڈیوز اور PDF میں ترمیم کرنا»",
+      "reason": "Latin acronyms stay undeclined in this locale per the ur style guide, and attachments.body.3 already writes PDF; this is the only place in the file that carries the English plural «s» into Urdu prose."
+    },
+    {
+      "id": "UR-TOUR-11",
+      "severity": "nit",
+      "category": "grammar",
+      "key": "ui.onboarding.tour.agent_capabilities.image.1.alt",
+      "current": "«ترتیب سے جڑے ایجنٹ کام کے تین مراحل»",
+      "proposed": "«ترتیب سے جڑے ایجنٹ کے کام کے تین مراحل»",
+      "reason": "This alt is the figure's only description; «ایجنٹ کام» reads as an unlinked compound, while the ezafat «ایجنٹ کے کام کے» states «three steps of the agent's work» without adding length that matters for a screen-reader label."
+    }
+  ],
+  "findings_count": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 8,
+    "nit": 4
+  },
+  "observations": [
+    "Key parity: English, context and target all have the same 123 keys in the same order; no duplicate JSON members and no raw duplicate key lines.",
+    "All 123 target values were read in full; the audit did not sample. The English source and all 123 context records were read in full.",
+    "Composition was read from tour-copy.ts (TOUR_BODIES, renderRuns/renderBlock) and the relevant callers in tour-steps.ts (tourLabel for every title/footer button, renderTourBody for every body). The two command-palette paragraphs were recomposed in caller order and checked for spacing/grammar.",
+    "Quoted-label cross-checks were made against the app's ur catalogue values for the same controls; results are recorded under checks.quoted_ui_labels.",
+    "No manual bidi control characters are present. The logical order of the joined shortcut paragraphs is correct. Visual isolation of the LTR spans (⌘/Ctrl shortcuts and the , @ # > prefixes) is a render-layer behaviour and was NOT inspected.",
+    "Width: the only string materially longer than English is welcome.list.1.item.4 «ایجنٹس کو اپنی مرضی کے مطابق بنانا» (34 chars vs 18, ≈1.89x; ≈34 cells vs ≈10). The panel is max-width 500px with body-sm text, so the arithmetic fits on one line, but this is a flag for a rendered check, not proof. Every title/button stays within the context sidecar's ≈1.5x guidance (largest 1.45x, appearance_settings.title).",
+    "The English source's «Get» quote names the Hub card's visible hardcoded label (agent-card.tsx renders Get without t()); if that control is localized later, download_agent.body.1 must be re-quoted to the localized label. This is a source/control observation, not a candidate defect.",
+    "Pseudo-localization was not run: the source has no ICU arguments/plurals or markup to exercise, and a pseudo-expanded copy is explicitly not a production translation. A small fixture would add no coverage here."
+  ],
+  "limitations": "Read-only audit: no catalogue, context, ledger, allowance, generated key file or source file was edited; this receipt (and only this receipt) was added. No git command wrote anything. Browser use was unavailable/held, so there is NO rendered, native, font, geometry or mixed-direction screenshot sign-off; overflow and bidi isolation are string-level estimates only. The candidate is untracked working-tree bytes (?? in git status), not a commit. The translator's model was not supplied and is not asserted; only instance b9dcd1bbfb29 is recorded. The upstream model behind radient/auto is not exposed and is not invented. No full test suite, build, dependency install or whole-app bundling was run."
+}

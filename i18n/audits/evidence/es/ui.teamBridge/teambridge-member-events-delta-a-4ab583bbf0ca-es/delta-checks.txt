@@ -1,0 +1,82 @@
+locale   key                                   parse placeholders          ICU arms
+===== es (297 keys in namespace)
+    events.invited                 args=[actor,targets] plural=- 
+      1 target: Dana invitó a Ava
+      3 targets: Dana invitó a Ava, Ben y Cleo cells=26 (en 25)
+    events.joined                  args=[targets] plural=- 
+      1 target: Entrada en la conversación: Ava
+      3 targets: Entrada en la conversación: Ava, Ben y Cleo cells=37 (en 16)
+    events.owner_added_agent       args=[actor,targets] plural=- 
+      1 target: Dana añadió a su agente Ava
+      3 targets: Dana añadió a su agente Ava, Ben y Cleo cells=36 (en 35)
+    events.left                    args=[targets] plural=- 
+      1 target: Salida de la conversación: Ava
+      3 targets: Salida de la conversación: Ava, Ben y Cleo cells=36 (en 14)
+    events.removed                 args=[actor,targets] plural=- 
+      1 target: Dana eliminó a Ava
+      3 targets: Dana eliminó a Ava, Ben y Cleo cells=27 (en 25)
+    events.consented               args=[actor,targets] plural=- 
+      1 target: Dana autorizó la entrada de Ava
+      3 targets: Dana autorizó la entrada de Ava, Ben y Cleo cells=40 (en 34)
+    events.declined_self           args=[actor] plural=- 
+      1 target: Dana rechazó la invitación
+      3 targets: Dana rechazó la invitación cells=29 (en 31)
+    events.declined                args=[actor,targets] plural=- 
+      1 target: Dana rechazó la invitación para Ava
+      3 targets: Dana rechazó la invitación para Ava, Ben y Cleo cells=44 (en 45)
+    events.withdrawn               args=[actor,targets] plural=- 
+      1 target: Dana retiró la invitación para Ava
+      3 targets: Dana retiró la invitación para Ava, Ben y Cleo cells=43 (en 45)
+    events.unknown                 args=[] plural=- 
+      1 target: Cambio en los miembros
+      3 targets: Cambio en los miembros cells=22 (en 18)
+    events.others                  args=[] plural=count:many/one/other !! POUND 3 vs en 2 
+      render: 1->1 más  2->2 más  3->3 más  5->5 más  11->11 más  21->21 más cells=55 (en 47)
+    members.invitation_note_v3     args=[] plural=- 
+      1 target: Las invitaciones no dan acceso hasta que se aceptan. Tus propios agentes se unen de inmediato; el agente de otra persona se une cuando su propietario da su consentimiento. Un agente miembro lee todos los mensajes de aquí y decide si responde, y se espera que responda cuando se le menciona con @. Su propietario puede limitarlo a las menciones con @ y a los hilos en los que participa, o silenciarlo.
+      3 targets: Las invitaciones no dan acceso hasta que se aceptan. Tus propios agentes se unen de inmediato; el agente de otra persona se une cuando su propietario da su consentimiento. Un agente miembro lee todos los mensajes de aquí y decide si responde, y se espera que responda cuando se le menciona con @. Su propietario puede limitarlo a las menciones con @ y a los hilos en los que participa, o silenciarlo. cells=400 (en 310)
+  quote census (namespace): “=1 ”=1
+
+--- delta values in full ---
+
+zh-CN ui.teamBridge.events.declined
+  {actor}代{targets}拒绝了邀请
+
+zh-CN ui.teamBridge.events.others
+  {count, plural, other {其他#名成员}}
+
+zh-CN ui.teamBridge.members.invitation_note_v3
+  邀请在被接受前不会授予访问权限。你自己的智能体会立即加入；他人的智能体在其所有者同意后加入。成员智能体会阅读此处的每条消息并自行决定是否回复，被@提及时应当回复。其所有者可将它限制在@提及和它参与的讨论串内，或将其静音。
+
+ru ui.teamBridge.events.joined
+  Присоединение к разговору: {targets}
+
+ru ui.teamBridge.events.declined
+  {actor}: отклонение приглашения для {targets}
+
+ru ui.teamBridge.events.owner_added_agent
+  {actor}: добавление собственного агента — {targets}
+
+vi ui.teamBridge.events.owner_added_agent
+  {actor} đã thêm tác nhân của mình là {targets}
+
+vi ui.teamBridge.events.joined
+  {targets} đã tham gia
+
+vi ui.teamBridge.events.unknown
+  Thành viên đã thay đổi
+
+ur ui.teamBridge.events.declined_self
+  {actor} نے دعوت سے انکار کر دی
+
+ur ui.teamBridge.events.declined
+  {actor} نے {targets} کے لیے دعوت سے انکار کر دی
+
+ur ui.teamBridge.events.unknown
+  ارکان میں تبدیلی ہوئی
+
+ur ui.teamBridge.events.others
+  {count, plural, one {مزید #} other {مزید #}}
+
+hi ui.teamBridge.events.others
+  {count, plural, one {# अन्य व्यक्ति} other {# अन्य लोग}}

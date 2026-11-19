@@ -1,0 +1,589 @@
+{
+ "schema": 1,
+ "kind": "translation-audit",
+ "batch": "canvas",
+ "pr": 1388,
+ "head": "936e3a483b4d675c9827be5f40167da186f86900",
+ "base": "40462495827dfb0e1bfacb8643da805912493a5b",
+ "locale": "ru",
+ "auditor": "translation-auditor",
+ "model": "radient/auto",
+ "session": "0f5238900a89",
+ "instance": "0f5238900a89-canvas",
+ "date": "2026-10-24",
+ "independence": "Independent session/agent from the i18n translators; no translator ran in this audit.",
+ "source_dir": "src/i18n/catalogues/en",
+ "target_dir": "src/i18n/catalogues/ru",
+ "glossary_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+ "style_guide_sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465",
+ "method": "Read the full English and ru files at the audited head via git show (no checkout), namespace by namespace, with the en context sidecars. Ran automated checks for ICU argument/branch structure (ru one/few/many/other), dropped count tokens in plural branches, NFC, manual bidi controls, placeholder and ::group-off skeletons, character-length ratios, and identical values. No compiled Electron render was used; overflow is measured character counts and flagged for rendered check.",
+ "keys_audited": 1079,
+ "namespaces": {
+  "ui.canvas": {
+   "namespace": "ui.canvas",
+   "status": "changes_requested",
+   "keys_audited": 290,
+   "sha256": {
+    "en": "be8acd20add01188abed4985d0aad11325a7ebd8cdbc3bd5c9376be65543563f",
+    "ru": "a7c181ca79d07eb7e145af1fb99003350d2122e026efbfba84078b7b7559a984"
+   },
+   "context_sha256": "4bc0f2bc47d4b0e826ebb10ba78ff965c550debef54f47c912b9e257fd1784f8",
+   "findings": [
+    {
+     "severity": "major",
+     "category": "grammar",
+     "key": "ui.canvas.view_name.view_shown_this_list_is_capped",
+     "related_keys": [
+      "ui.canvas.view_name.view_count"
+     ],
+     "source": "{label} view, {counted, plural, one {{counted, number, ::group-off} {noun}} other {{counted, number, ::group-off} {pluralnoun}}} shown — this list is capped",
+     "current": "{label} · показано {counted, plural, one {{counted, number, ::group-off} {noun}} few {{pluralnoun}: {counted, number, ::group-off} шт.} many {{pluralnoun}: {counted, number, ::group-off} шт.} other {{pluralnoun}: {counted, number, ::group-off} шт.}} — список ограничен",
+     "proposed": "{label} · показано: {counted, number, ::group-off} — список ограничен",
+     "reason": "`{pluralnoun}` is a dynamic nominative plural (files/goals); after «показано» it needs the genitive, so the template renders «показано файлы: 3 шт.» / «показано цели: 3 шт.» — wrong case, duplicated segment label and the inventory unit «шт.». The sibling `view_count` renders «файлы · файлы: 3 шт.». `view_empty` already uses the register «Представление «{label}»». Dropping the uninflectable noun keeps the count and the cap caveat without the agreement failure.",
+     "disposition": "open"
+    },
+    {
+     "severity": "major",
+     "category": "glossary",
+     "key": "ui.canvas.finder_layout.highlights",
+     "source": "Highlights",
+     "current": "Избранное",
+     "proposed": "Выделенные",
+     "reason": "The section is built from `item.highlighted` (finder-layout.ts), not from user favourites. «Избранное» means favourites, a different feature. The same state is already rendered as «Выделенные» in `ui.library.status.highlighted` and «Выделено» in `ui.library.card.highlighted`.",
+     "disposition": "open"
+    },
+    {
+     "severity": "major",
+     "category": "grammar",
+     "key": "ui.canvas.variable_form_dialog.this_name_cannot_be_sent_use_up_to_128_characters_without_control_charac",
+     "source": "This name cannot be sent. Use up to 128 characters, without control characters, and not only dots.",
+     "current": "Это имя нельзя отправить. Используйте не более 128 символов, без управляющих символов и не только из точек.",
+     "proposed": "Это имя нельзя отправить. Используйте не более 128 символов, без управляющих символов; имя не должно состоять только из точек.",
+     "reason": "«не только из точек» is ungrammatical and says «not only from dots», not the actual rule «must not consist only of dots». A validation message must state the constraint clearly.",
+     "disposition": "open"
+    }
+   ]
+  },
+  "ui.chat.pickers": {
+   "namespace": "ui.chat.pickers",
+   "status": "changes_requested",
+   "keys_audited": 720,
+   "sha256": {
+    "en": "8109df703e1a4901e4d892607dddd875e6a737c9ea8ee7ef41ec28dbe6ac2e58",
+    "ru": "e75baa492be02e21042bb07587a6d529fb3c48b0889420e67006ab5f5fa67bd9"
+   },
+   "context_sha256": "c921d3e37ce54288a18e2b45310034a0df0114f15c30e57133422018a00b38d9",
+   "findings": [
+    {
+     "severity": "blocker",
+     "category": "placeholder",
+     "key": "ui.chat.pickers.stop.confirm",
+     "source": "Stop {count, plural, one {this session} other {{count, number, ::group-off} sessions}} now",
+     "current": "Остановить {count, plural, one {эту сессию} few {эти сессии} many {эти сессии} other {эту сессию}} сейчас",
+     "proposed": "Остановить {count, plural, one {эту сессию} few {{count, number, ::group-off} сессии} many {{count, number, ::group-off} сессий} other {{count, number, ::group-off} сессии}} сейчас",
+     "reason": "The count argument and its ::group-off skeleton are dropped in every non-one branch. The source context explicitly says the plural branch names the chosen count, ungrouped; with five sessions selected the dialog only says «Остановить эти сессии сейчас» and never states five. A dropped ICU argument is a blocker.",
+     "disposition": "open"
+    },
+    {
+     "severity": "blocker",
+     "category": "accuracy",
+     "key": "ui.chat.pickers.destination_pickers.signed_out_environment_variables_and_other_accounts_are_untouched",
+     "source": "Signed out. Environment variables and other accounts are untouched.",
+     "current": "Вход выполнен. Переменные окружения и другие учётные записи не затронуты.",
+     "proposed": "Выход выполнен. Переменные окружения и другие учётные записи не затронуты.",
+     "reason": "Inverts the state: «Вход выполнен» means sign-in completed, while this string confirms sign-out. The shipped locale already uses «Выход выполнен» for `ui.common.account.signed_out`. A user is told they signed in immediately after signing out.",
+     "disposition": "open"
+    },
+    {
+     "severity": "major",
+     "category": "plural",
+     "key": "ui.chat.pickers.info_model.runtimes",
+     "related_keys": [
+      "ui.chat.pickers.info_model.subagents",
+      "ui.chat.pickers.info_model.sessions",
+      "ui.chat.pickers.info_model.trajectories",
+      "ui.chat.pickers.info_model.count_noun"
+     ],
+     "source": "runtimes",
+     "current": "рантайма",
+     "proposed": "Split the facts label from the counted noun: label key «Рантаймы»; counted nouns «субагентов», «сессий», «рантаймов», «траекторий»; `count_noun` few/many/other «{pluralnoun}: {count, number, ::group-off}» (or give each noun a CLDR one/few/many/other form).",
+     "reason": "`runtimes` is used as the Info facts label at info-model.ts:652, where the genitive singular «рантайма» is simply the wrong case for the heading «Runtimes»; it is also passed to `plural()`/`count_noun`, which uses one `pluralnoun` for both few and many. At count 5 the helper renders «рантайма: 5 шт.» and its siblings «субагента: 5 шт.», «сессии: 5 шт.». Russian needs one/few/many forms; the two-form English shape cannot supply them from one string. This affects the runtime/trajectory/session/subagent counters across the Info panel.",
+     "disposition": "open",
+     "related_values": {
+      "ui.chat.pickers.info_model.subagents": "субагента",
+      "ui.chat.pickers.info_model.sessions": "сессии",
+      "ui.chat.pickers.info_model.trajectories": "траектории",
+      "ui.chat.pickers.info_model.count_noun": "{count, plural, one {{count, number, ::group-off} {noun}} few {{pluralnoun}: {count, number, ::group-off} шт.} many {{pluralnoun}: {count, number, ::group-off} шт.} other {{pluralnoun}: {count, number, ::group-off} шт.}}"
+     }
+    },
+    {
+     "severity": "minor",
+     "category": "idiom",
+     "key": "ui.chat.pickers.destination_pickers.refresh_from_providers",
+     "source": "Refresh from providers",
+     "current": "Обновить от провайдеров",
+     "proposed": "Обновить у провайдеров",
+     "reason": "«Обновить от провайдеров» is not idiomatic; the action fetches a fresh catalogue from the providers, so «Обновить у провайдеров» or «Обновить данные провайдеров» reads naturally.",
+     "disposition": "open"
+    },
+    {
+     "severity": "minor",
+     "category": "glossary",
+     "key": "ui.chat.pickers.destination_pickers.stalled_send_a_message_to_continue",
+     "source": "stalled — send a message to continue",
+     "current": "остановлено — отправьте сообщение, чтобы продолжить",
+     "proposed": "приостановлено — отправьте сообщение, чтобы продолжить",
+     "reason": "`stalled` is distinct from a requested stop; «остановлено» collides with «остановлена» used for stopped sessions (`info_model.stopped_ago`), while this locale reserves «приостановлено» for paused/stalled states such as `use_file_freshness` and `hub.subscriptions`.",
+     "disposition": "open"
+    },
+    {
+     "severity": "minor",
+     "category": "glossary",
+     "key": "ui.chat.pickers.destination_pickers.no_models_are_signed_in_yet",
+     "related_keys": [
+      "ui.chat.pickers.usage_view_model.sign_in_expired_run_login"
+     ],
+     "source": "No models are signed in yet.",
+     "current": "Ни одна модель ещё не авторизована.",
+     "proposed": "Ни одна модель ещё не подключена.",
+     "reason": "The batch otherwise renders sign-in as «вход» (`Выполнен вход`, `Требуется вход`, `Состояние входа`); «авторизована» and «Срок авторизации» introduce a second term for the same state.",
+     "disposition": "open",
+     "related_values": {
+      "ui.chat.pickers.usage_view_model.sign_in_expired_run_login": "Срок авторизации истёк — выполните /login {provider}"
+     }
+    },
+    {
+     "severity": "minor",
+     "category": "typography",
+     "key": "ui.chat.pickers.fork.search_placeholder",
+     "source": "Try a different approach...",
+     "current": "Попробуйте другой подход…",
+     "proposed": "Попробуйте другой подход...",
+     "reason": "The source context explicitly says «ASCII ellipsis as shipped»; the translation replaced the three ASCII periods with U+2026, changing the shipped shape.",
+     "disposition": "open"
+    },
+    {
+     "severity": "minor",
+     "category": "grammar",
+     "key": "ui.chat.pickers.destination_pickers.show_all_supported_models_sign_in",
+     "source": "Show all supported models ({scopecount} needs sign-in)",
+     "current": "{scopecount, plural, one {Показать все поддерживаемые модели ({scopecount, number, ::group-off} требуется вход)} few {Показать все поддерживаемые модели ({scopecount, number, ::group-off} требуют вход)} many {Показать все поддерживаемые модели ({scopecount, number, ::group-off} требуют вход)} other {Показать все поддерживаемые модели ({scopecount, number, ::group-off} требуют вход)}}",
+     "proposed": "{scopecount, plural, one {Показать все поддерживаемые модели (требуется вход: {scopecount, number, ::group-off})} few {Показать все поддерживаемые модели (требуется вход: {scopecount, number, ::group-off})} many {Показать все поддерживаемые модели (требуется вход: {scopecount, number, ::group-off})} other {Показать все поддерживаемые модели (требуется вход: {scopecount, number, ::group-off})}}",
+     "reason": "The one branch reads «(1 требуется вход)», which has no subject/preposition and is ungrammatical; the few/many branches read acceptably as «2 требуют вход». An invariant «(N: требуется вход)» or «(для N требуется вход)» works for every category.",
+     "disposition": "open"
+    },
+    {
+     "severity": "minor",
+     "category": "overflow",
+     "key": "ui.chat.pickers.usage_view_model.last_known",
+     "related_keys": [
+      "ui.chat.pickers.destination_pickers.use_team",
+      "ui.chat.pickers.destination_pickers.default_effort"
+     ],
+     "source": "Last known",
+     "current": "Последние известные данные",
+     "proposed": "Последние данные (primary); «Использовать» or «Выбрать» for use_team; «Рассуждения по умолчанию» for default_effort — all flagged for a rendered fit check.",
+     "reason": "These are compact status/button labels materially longer than their English sources. «Последние данные» is already the shipped shorter form in `ui.chat.pickers.usage_view_model.last_known1c1a43`; the other two should be confirmed in a rendered frame before accepting the width, or shortened as proposed.",
+     "disposition": "open",
+     "related_values": {
+      "ui.chat.pickers.destination_pickers.use_team": {
+       "value": "Использовать команду",
+       "measurement": "8→20 chars, 2.50x"
+      },
+      "ui.chat.pickers.destination_pickers.default_effort": {
+       "value": "Глубина рассуждений по умолчанию",
+       "measurement": "14→32 chars, 2.29x"
+      }
+     }
+    }
+   ]
+  },
+  "ui.common.actions": {
+   "namespace": "ui.common.actions",
+   "status": "passed",
+   "keys_audited": 30,
+   "sha256": {
+    "en": "d65be7beac66c209a55db5d8a672ff8a8a743eea49ba21593120d4b8664603b2",
+    "ru": "56c5649c7e4b71e216cd9a770571726644fe8eb4da26fb237e964cea74097b40"
+   },
+   "context_sha256": "29a6cc54f8605ab2612775708bf5eb202a89e6708167d8a7c3f329a536b339db",
+   "findings": []
+  },
+  "ui.common.forms": {
+   "namespace": "ui.common.forms",
+   "status": "passed",
+   "keys_audited": 10,
+   "sha256": {
+    "en": "c87c16b1169f32105e017fd27eb80047446938b1b45046c28bcf693856898238",
+    "ru": "da39ff7a53fc07dc5c0cdc8bbca8f62b4ff9fa7ae210224b5577fc85ae0cf364"
+   },
+   "context_sha256": "c11472cc390fe7771e08dcd34bb633e63797f979a113feaa47d70d06daea38b4",
+   "findings": [
+    {
+     "severity": "minor",
+     "category": "grammar",
+     "key": "ui.common.forms.slider_setting.saving",
+     "related_keys": [
+      "ui.common.forms.toggle_setting.saving"
+     ],
+     "source": "Saving {label}",
+     "current": "Сохранение {label}",
+     "proposed": "Сохранение: {label}",
+     "reason": "`{label}` is a nominative settings label (for example «Размер шрифта»); «Сохранение {label}» lacks the genitive and is ungrammatical. Both keys feed a Spinner aria-label (slider-setting.tsx:305, toggle-setting.tsx:136); a colon keeps the dynamic label invariant.",
+     "disposition": "open"
+    }
+   ]
+  },
+  "ui.common.layout": {
+   "namespace": "ui.common.layout",
+   "status": "passed",
+   "keys_audited": 8,
+   "sha256": {
+    "en": "c4efaa88bba85706ac9fb976bc3d3d009f3bb08fc762a90dfeb73d90d0c14db6",
+    "ru": "58c4d7a152138cf8f9ddee54d631880d3ed2f7ce443b477573d71322dd1eb4ca"
+   },
+   "context_sha256": "318673c640a31e11f5249127c8ef5a76d63c16c3c191960824391d934766bd39",
+   "findings": []
+  },
+  "ui.common.speech": {
+   "namespace": "ui.common.speech",
+   "status": "passed",
+   "keys_audited": 5,
+   "sha256": {
+    "en": "fa6a973f1a6a36f25218e884174299ba154e124baaddc87594bd516c8d07d8f6",
+    "ru": "0cae5d5f726c1d3c606ca09730345b3c08b02234e083809151de4b84d29f9d3f"
+   },
+   "context_sha256": "740828525702d67b6ee0ecf7eb0a3f1582167989355bd12d0579d698b982267a",
+   "findings": []
+  },
+  "ui.common.updates": {
+   "namespace": "ui.common.updates",
+   "status": "changes_requested",
+   "keys_audited": 8,
+   "sha256": {
+    "en": "1f81721263fa4c7d74219bd2c0af82b908bf2fb4491df074e99e2215ad00d667",
+    "ru": "11a410e3f7ff790b8b370e4559e5f4a27bc8da3bcbd18e2c07bd781aa168e430"
+   },
+   "context_sha256": "cb4a160ef62b1760d4622b29c90e130cff1b4165ac770dab200ebc54eca38bee",
+   "findings": [
+    {
+     "severity": "major",
+     "category": "grammar",
+     "key": "ui.common.updates.update_notification.the_new_build",
+     "related_keys": [
+      "ui.common.updates.update_notification.rolling_the_server_onto"
+     ],
+     "source": "the new build",
+     "current": "новой сборке",
+     "proposed": "новую сборку",
+     "reason": "The only caller is `rolling_the_server_onto`: «Сервер переводится на {detail}» requires the accusative, so the fallback renders «Сервер переводится на новой сборке» (prepositional) — ungrammatical. The separate restart key correctly uses «на новой сборке» for the state sense, so the fallback needs its own case.",
+     "disposition": "open"
+    }
+   ]
+  },
+  "ui.common.viewer": {
+   "namespace": "ui.common.viewer",
+   "status": "passed",
+   "keys_audited": 8,
+   "sha256": {
+    "en": "c0ffdd08058b062c88c6fad428db0e33c4162bcee1094dd5dd16890fe4e9705f",
+    "ru": "b6fafba450fed745a8a94282ea71e6f742afb38072a7238a011bca7e2348e995"
+   },
+   "context_sha256": "8b324e966ddb4aaef92ec3b3465f8ac6a80982529bcbd3b45a3c1cf1f9b28dd8",
+   "findings": [
+    {
+     "severity": "nit",
+     "category": "idiom",
+     "key": "ui.common.viewer.image_lightbox.previous",
+     "related_keys": [
+      "ui.common.viewer.image_lightbox.next",
+      "ui.common.viewer.image_lightbox.close"
+     ],
+     "source": "Previous {medialabel}",
+     "current": "Предыдущий материал: {medialabel}",
+     "proposed": "Предыдущее: {medialabel} (related: «Следующее: {medialabel}», «Закрыть: {medialabel}»).",
+     "reason": "Adds «материал» (asset) that the source does not have and a colon; with medialabel='изображение' the accessible label becomes «Предыдущий материал: изображение», redundant and longer (17→32 characters). The three siblings should share one shape.",
+     "disposition": "open",
+     "related_values": {
+      "ui.common.viewer.image_lightbox.next": "Следующий материал: {medialabel}",
+      "ui.common.viewer.image_lightbox.close": "Закрыть: {medialabel}"
+     }
+    }
+   ]
+  }
+ },
+ "identical_values": [
+  {
+   "key": "ui.canvas.create_file_dialog.markdown_md",
+   "value": "Markdown (.md)",
+   "classification": "IDENTICAL_OK",
+   "reason": "File-format display name and literal extension. Technology names and extensions are product/machine tokens kept as-is (glossary §1); translating either would misname the format or break the extension shown."
+  },
+  {
+   "key": "ui.canvas.create_file_dialog.html_html",
+   "value": "HTML (.html)",
+   "classification": "IDENTICAL_OK",
+   "reason": "File-format display name and literal extension. Technology names and extensions are product/machine tokens kept as-is (glossary §1); translating either would misname the format or break the extension shown."
+  },
+  {
+   "key": "ui.canvas.create_file_dialog.css_css",
+   "value": "CSS (.css)",
+   "classification": "IDENTICAL_OK",
+   "reason": "File-format display name and literal extension. Technology names and extensions are product/machine tokens kept as-is (glossary §1); translating either would misname the format or break the extension shown."
+  },
+  {
+   "key": "ui.canvas.create_file_dialog.javascript_js",
+   "value": "JavaScript (.js)",
+   "classification": "IDENTICAL_OK",
+   "reason": "File-format display name and literal extension. Technology names and extensions are product/machine tokens kept as-is (glossary §1); translating either would misname the format or break the extension shown."
+  },
+  {
+   "key": "ui.canvas.create_file_dialog.jsx_jsx",
+   "value": "JSX (.jsx)",
+   "classification": "IDENTICAL_OK",
+   "reason": "File-format display name and literal extension. Technology names and extensions are product/machine tokens kept as-is (glossary §1); translating either would misname the format or break the extension shown."
+  },
+  {
+   "key": "ui.canvas.create_file_dialog.typescript_ts",
+   "value": "TypeScript (.ts)",
+   "classification": "IDENTICAL_OK",
+   "reason": "File-format display name and literal extension. Technology names and extensions are product/machine tokens kept as-is (glossary §1); translating either would misname the format or break the extension shown."
+  },
+  {
+   "key": "ui.canvas.create_file_dialog.tsx_tsx",
+   "value": "TSX (.tsx)",
+   "classification": "IDENTICAL_OK",
+   "reason": "File-format display name and literal extension. Technology names and extensions are product/machine tokens kept as-is (glossary §1); translating either would misname the format or break the extension shown."
+  },
+  {
+   "key": "ui.canvas.create_file_dialog.python_py",
+   "value": "Python (.py)",
+   "classification": "IDENTICAL_OK",
+   "reason": "File-format display name and literal extension. Technology names and extensions are product/machine tokens kept as-is (glossary §1); translating either would misname the format or break the extension shown."
+  },
+  {
+   "key": "ui.canvas.create_file_dialog.go_go",
+   "value": "Go (.go)",
+   "classification": "IDENTICAL_OK",
+   "reason": "File-format display name and literal extension. Technology names and extensions are product/machine tokens kept as-is (glossary §1); translating either would misname the format or break the extension shown."
+  },
+  {
+   "key": "ui.canvas.create_file_dialog.java_java",
+   "value": "Java (.java)",
+   "classification": "IDENTICAL_OK",
+   "reason": "File-format display name and literal extension. Technology names and extensions are product/machine tokens kept as-is (glossary §1); translating either would misname the format or break the extension shown."
+  },
+  {
+   "key": "ui.canvas.create_file_dialog.c_cs",
+   "value": "C# (.cs)",
+   "classification": "IDENTICAL_OK",
+   "reason": "File-format display name and literal extension. Technology names and extensions are product/machine tokens kept as-is (glossary §1); translating either would misname the format or break the extension shown."
+  },
+  {
+   "key": "ui.canvas.create_file_dialog.php_php",
+   "value": "PHP (.php)",
+   "classification": "IDENTICAL_OK",
+   "reason": "File-format display name and literal extension. Technology names and extensions are product/machine tokens kept as-is (glossary §1); translating either would misname the format or break the extension shown."
+  },
+  {
+   "key": "ui.canvas.create_file_dialog.ruby_rb",
+   "value": "Ruby (.rb)",
+   "classification": "IDENTICAL_OK",
+   "reason": "File-format display name and literal extension. Technology names and extensions are product/machine tokens kept as-is (glossary §1); translating either would misname the format or break the extension shown."
+  },
+  {
+   "key": "ui.canvas.create_file_dialog.rust_rs",
+   "value": "Rust (.rs)",
+   "classification": "IDENTICAL_OK",
+   "reason": "File-format display name and literal extension. Technology names and extensions are product/machine tokens kept as-is (glossary §1); translating either would misname the format or break the extension shown."
+  },
+  {
+   "key": "ui.canvas.create_file_dialog.json_json",
+   "value": "JSON (.json)",
+   "classification": "IDENTICAL_OK",
+   "reason": "File-format display name and literal extension. Technology names and extensions are product/machine tokens kept as-is (glossary §1); translating either would misname the format or break the extension shown."
+  },
+  {
+   "key": "ui.canvas.create_file_dialog.yaml_yaml",
+   "value": "YAML (.yaml)",
+   "classification": "IDENTICAL_OK",
+   "reason": "File-format display name and literal extension. Technology names and extensions are product/machine tokens kept as-is (glossary §1); translating either would misname the format or break the extension shown."
+  },
+  {
+   "key": "ui.canvas.create_file_dialog.yaml_yml",
+   "value": "YAML (.yml)",
+   "classification": "IDENTICAL_OK",
+   "reason": "File-format display name and literal extension. Technology names and extensions are product/machine tokens kept as-is (glossary §1); translating either would misname the format or break the extension shown."
+  },
+  {
+   "key": "ui.canvas.create_file_dialog.xml_xml",
+   "value": "XML (.xml)",
+   "classification": "IDENTICAL_OK",
+   "reason": "File-format display name and literal extension. Technology names and extensions are product/machine tokens kept as-is (glossary §1); translating either would misname the format or break the extension shown."
+  },
+  {
+   "key": "ui.canvas.create_file_dialog.toml_toml",
+   "value": "TOML (.toml)",
+   "classification": "IDENTICAL_OK",
+   "reason": "File-format display name and literal extension. Technology names and extensions are product/machine tokens kept as-is (glossary §1); translating either would misname the format or break the extension shown."
+  },
+  {
+   "key": "ui.canvas.create_file_dialog.ini_ini",
+   "value": "INI (.ini)",
+   "classification": "IDENTICAL_OK",
+   "reason": "File-format display name and literal extension. Technology names and extensions are product/machine tokens kept as-is (glossary §1); translating either would misname the format or break the extension shown."
+  },
+  {
+   "key": "ui.canvas.create_file_dialog.env",
+   "value": ".env",
+   "classification": "IDENTICAL_OK",
+   "reason": "File-format display name and literal extension. Technology names and extensions are product/machine tokens kept as-is (glossary §1); translating either would misname the format or break the extension shown."
+  },
+  {
+   "key": "ui.canvas.create_file_dialog.dockerfile",
+   "value": "Dockerfile",
+   "classification": "IDENTICAL_OK",
+   "reason": "File-format display name and literal extension. Technology names and extensions are product/machine tokens kept as-is (glossary §1); translating either would misname the format or break the extension shown."
+  },
+  {
+   "key": "ui.canvas.create_file_dialog.c_c",
+   "value": "C (.c)",
+   "classification": "IDENTICAL_OK",
+   "reason": "File-format display name and literal extension. Technology names and extensions are product/machine tokens kept as-is (glossary §1); translating either would misname the format or break the extension shown."
+  },
+  {
+   "key": "ui.canvas.create_file_dialog.c_cpp",
+   "value": "C++ (.cpp)",
+   "classification": "IDENTICAL_OK",
+   "reason": "File-format display name and literal extension. Technology names and extensions are product/machine tokens kept as-is (glossary §1); translating either would misname the format or break the extension shown."
+  },
+  {
+   "key": "ui.canvas.create_file_dialog.swift_swift",
+   "value": "Swift (.swift)",
+   "classification": "IDENTICAL_OK",
+   "reason": "File-format display name and literal extension. Technology names and extensions are product/machine tokens kept as-is (glossary §1); translating either would misname the format or break the extension shown."
+  },
+  {
+   "key": "ui.canvas.create_file_dialog.kotlin_kt",
+   "value": "Kotlin (.kt)",
+   "classification": "IDENTICAL_OK",
+   "reason": "File-format display name and literal extension. Technology names and extensions are product/machine tokens kept as-is (glossary §1); translating either would misname the format or break the extension shown."
+  },
+  {
+   "key": "ui.canvas.create_file_dialog.scala_scala",
+   "value": "Scala (.scala)",
+   "classification": "IDENTICAL_OK",
+   "reason": "File-format display name and literal extension. Technology names and extensions are product/machine tokens kept as-is (glossary §1); translating either would misname the format or break the extension shown."
+  },
+  {
+   "key": "ui.canvas.pdf_preview.pdf",
+   "value": "PDF: {title}",
+   "classification": "IDENTICAL_OK",
+   "reason": "PDF acronym plus {title}; acronym is a kept-Latin technical token and the placeholder must stay byte-identical."
+  },
+  {
+   "key": "ui.canvas.variable_form_dialog.example_key_example_value",
+   "value": "'{ \"example_key\": \"example_value\" }'",
+   "classification": "IDENTICAL_OK",
+   "reason": "JSON example shown verbatim as the field's example value; it is a code literal, not prose."
+  },
+  {
+   "key": "ui.canvas.variable_form_dialog.item1_item2",
+   "value": "[ \"item1\", \"item2\" ]",
+   "classification": "IDENTICAL_OK",
+   "reason": "JSON array example shown verbatim; code literal kept as-is."
+  },
+  {
+   "key": "ui.canvas.insert_image_dialog.users_eren_documents_image_png",
+   "value": "/Users/eren/Documents/image.png",
+   "classification": "IDENTICAL_OK",
+   "reason": "Example filesystem path; paths are byte-identical machine tokens (glossary §1)."
+  },
+  {
+   "key": "ui.canvas.insert_link_dialog.url",
+   "value": "URL",
+   "classification": "IDENTICAL_OK",
+   "reason": "URL acronym; kept-Latin technical token."
+  },
+  {
+   "key": "ui.canvas.insert_link_dialog.https_example_com",
+   "value": "https://example.com",
+   "classification": "IDENTICAL_OK",
+   "reason": "Example URL; kept byte-identical."
+  },
+  {
+   "key": "ui.chat.pickers.destination_pickers.skill",
+   "value": "skill://",
+   "classification": "IDENTICAL_OK",
+   "reason": "skill:// URI scheme token; identifiers stay as-is."
+  },
+  {
+   "key": "ui.chat.pickers.destination_pickers.my_api_key",
+   "value": "MY_API_KEY",
+   "classification": "IDENTICAL_OK",
+   "reason": "Example environment-variable name; identifiers are not translated."
+  },
+  {
+   "key": "ui.chat.pickers.info_model.term",
+   "value": "TERM",
+   "classification": "IDENTICAL_OK",
+   "reason": "Environment-variable name TERM; machine token."
+  },
+  {
+   "key": "ui.chat.pickers.info_model.colorterm",
+   "value": "COLORTERM",
+   "classification": "IDENTICAL_OK",
+   "reason": "Environment-variable name COLORTERM; machine token."
+  },
+  {
+   "key": "ui.chat.pickers.info_model.python",
+   "value": "Python {python_version}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Python product name plus {python_version}; technology name and placeholder stay as-is."
+  },
+  {
+   "key": "ui.chat.pickers.info_model.pid",
+   "value": "pid {pid, number, ::group-off}",
+   "classification": "IDENTICAL_OK",
+   "reason": "pid machine token plus ICU number placeholder; token stays as-is."
+  },
+  {
+   "key": "ui.chat.pickers.info_model.pid_7837d5",
+   "value": "pid {pid, number, ::group-off}",
+   "classification": "IDENTICAL_OK",
+   "reason": "pid machine token plus ICU number placeholder; token stays as-is."
+  },
+  {
+   "key": "ui.chat.pickers.usage_view_model.note_with_period",
+   "value": "{note}.",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only template ({note} plus full stop); no lexical content to translate."
+  },
+  {
+   "key": "ui.chat.pickers.destination_pickers.completed_only",
+   "value": "{completed, number, ::group-off}",
+   "classification": "IDENTICAL_OK",
+   "reason": "ICU number placeholder only; no lexical content."
+  },
+  {
+   "key": "ui.chat.pickers.info_model.runtime_trajectories",
+   "value": "{runtimecount} · {bound}{trajectorycount}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder/separator-only skeleton; all three arguments must survive exactly."
+  },
+  {
+   "key": "ui.common.layout.chat_layout.mac",
+   "value": "MAC",
+   "classification": "IDENTICAL_OK",
+   "reason": "MAC is a platform sentinel compared with navigator.platform in chat-layout.tsx; translating it would break macOS detection, so it is intentionally byte-identical."
+  }
+ ],
+ "identical_stub_count": 0,
+ "counts": {
+  "blocker": 2,
+  "major": 5,
+  "minor": 7,
+  "nit": 1
+ },
+ "verdict": "changes_requested"
+}

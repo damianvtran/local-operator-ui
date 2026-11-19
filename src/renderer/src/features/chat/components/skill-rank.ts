@@ -74,9 +74,8 @@ export function hasLowercaseEvidence(query: string): boolean {
  *
  * Returns `(name, choice)` pairs in the shared scorer's order. `leading` is the
  * caller's answer to `skillTokenIsLeading` — passed in rather than recomputed
- * because the two callers that need it (this gate and the accept gesture that
- * reassembles the buffer) must read the same one, and a second derivation is
- * how a rule and its gesture come to disagree.
+ * so the picker's two arms and the ink's own leading flag cannot answer
+ * differently.
  */
 export function skillSuggestions<
 	C extends { name: string; aliases?: readonly string[] },

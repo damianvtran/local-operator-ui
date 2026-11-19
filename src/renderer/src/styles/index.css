@@ -3,9 +3,11 @@
 @import "tw-animate-css";
 @import "./themes.generated.css";
 
-/* Arrival is ink only: reserve final layout immediately and never replay on
- * history restore or virtual remount. Streamed answers have no arrival
- * fade at all: live text is the committed DOM, parsed per block. */
+/* Arrival reserves final layout immediately and never replays on history
+ * restore or virtual remount. Streamed answers have no arrival fade at all:
+ * live text is the committed DOM, parsed per block. Every arriving row is ink
+ * only (opacity) EXCEPT a user message, which also rises 5px into its slot
+ * (`lo-transcript-arrival-rise` below). */
 @keyframes lo-transcript-arrival {
 	from {
 		opacity: 0;
@@ -22,6 +24,338 @@
 	.lo-transcript-arrival {
 		animation: none;
 	}
+}
+
+/* A USER MESSAGE FADES INTO POSITION (operator request, 2026-11-11: "the
+ * sending should be optimistic where we fade the message into position").
+ * Every user row that arrives LIVE rises - the echo of this window's own send,
+ * and equally a message typed in the TUI, a peer or another window arriving
+ * while the reader watches (agent review round 1, F4: the same object arriving
+ * the same way gets the same entrance). Agent rows, tool rows and the wait line
+ * stay ink-only so a streaming turn does not jostle; history and remounts never
+ * enter (`entered` is fixed at the row's mount). Compositor-only: the layout box
+ * is final from the first frame (transform does not move the stick-to-bottom
+ * measurements), and only opacity and transform animate. `backwards`, not
+ * `both`: once the rise ends the row carries no residual `transform`, which
+ * would otherwise keep a containing block and stacking context on every user
+ * row for its lifetime. Reduced motion: the row simply appears.
+ *
+ * ONE KEYFRAME FOR A MESSAGE ROW'S RISE (design round 1, D4), shared with Team
+ * Bridge's `lo-team-bridge-arrival` below, whose comment records why the
+ * offset is 5px; one definition so the two message lists cannot drift. */
+@keyframes lo-message-rise {
+	from {
+		opacity: 0;
+		transform: translateY(5px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+.lo-transcript-arrival-rise {
+	animation: lo-message-rise var(--duration-slow) var(--ease-out-quart)
+		backwards;
+}
+@media (prefers-reduced-motion: reduce) {
+	.lo-transcript-arrival-rise {
+		animation: none;
+	}
+}
+
+/* The sidebar's settings-intent dot (design D5): Tailwind's `animate-pulse`
+ * dips to 0.5 opacity, which took the 6 px ink-dim dot to 2.57:1 on the dark
+ * surface - under WCAG 1.4.11's 3:1 for a meaningful non-text mark. This
+ * trough stays at 0.75 (>= 3:1 on every theme surface measured) while the
+ * motion still reads; reduced motion keeps it still at full opacity. */
+@keyframes lo-intent-pulse {
+	50% {
+		opacity: 0.75;
+	}
+}
+.lo-intent-pulse {
+	animation: lo-intent-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+	.lo-intent-pulse {
+		animation: none;
+	}
+}
+
+/* The composer's refused-send cue (design round 1, D5, onboarding friction
+ * 2026-11). A refused Send re-keys the block line's fix control
+ * (`send-recovery-action.tsx`, `cue`), which replays this ONE-SHOT accent ring:
+ * every refused press gives a new signal, not only the first. A ring (box
+ * shadow), so nothing moves or reflows; 2 x 300 ms, then the control is exactly
+ * as it was. Reduced motion drops the ring and keeps the line's ink step. */
+@keyframes lo-refused-cue {
+	0%,
+	100% {
+		box-shadow: 0 0 0 0 transparent;
+	}
+	50% {
+		box-shadow: 0 0 0 3px
+			color-mix(in oklab, var(--color-accent) 45%, transparent);
+	}
+}
+.lo-refused-cue {
+	animation: lo-refused-cue 300ms var(--ease-out-quart) 2;
+}
+@media (prefers-reduced-motion: reduce) {
+	.lo-refused-cue {
+		animation: none;
+	}
+}
+
+/* Team Bridge uses the same arrival grammar as the transcript: a message that
+ * appears while its stream is open enters quietly, while history and remounts
+ * stay still. The final layout box exists from the first frame; only opacity
+ * and transform change, so the stick-to-bottom measurements never move.
+ *
+ * FIVE PIXELS, WHERE THE INSTALLER'S `enter` RISES FOUR (design round 1, D3).
+ * Deliberate, not drift: the installer's entrance is a PANEL arriving into the
+ * window, and 4px there is a fraction of the thing that moves. A message row is
+ * 52px of dense text in a column the reader is already looking at, so the same
+ * offset is a larger share of the object and reads as a nudge; 5px is the size
+ * at which the motion is felt rather than watched. Both sit under the same
+ * 240ms `--duration-slow` and `--ease-out-quart`, so the two entrances agree on
+ * timing and differ only in scale. Changing this number means re-shooting the
+ * arrival frames, which is why it is stated here rather than tuned in review. */
+.lo-team-bridge-arrival {
+	/* `lo-message-rise` (above) is the 5px rise this comment decides. */
+	animation: lo-message-rise var(--duration-slow) var(--ease-out-quart) both;
+}
+@media (prefers-reduced-motion: reduce) {
+	.lo-team-bridge-arrival {
+		animation: none;
+	}
+}
+
+/* The message a Team Bridge notification click named: an accent wash on the row
+ * that fades back to the row's own ground over 1.4 s, so the eye finds the
+ * message it was told about and is then left alone. 1400 ms is
+ * `JUMP_HIGHLIGHT_MS` (`shared/lib/jump-highlight.ts`), the chat surface's
+ * checkpoint landing flash: one cue, one time, and the page's clear timer reads
+ * the same constant (design review round 1, D4). The row keeps its box, so
+ * nothing moves.
+ *
+ * WHY THE WASH IS AN OVERLAY, NOT THE ROW'S OWN BACKGROUND (design round 1,
+ * D3). Painting `background-color` on the row meant the animated value won over
+ * the row's `hover:bg-row-hover` for the whole life of the class - including
+ * the tail after the fade had finished, because `both` holds the end keyframe -
+ * so the exact second a reader reached for the row its hover feedback was gone,
+ * and any future hover or selection styling on a message row would inherit the
+ * hole. The wash now lives on an `::after` band: the row is its own stacking
+ * context (`isolation`), the band sits at `z-index: -1` so it paints ABOVE the
+ * row's background (hover, current) and BELOW its content, and it takes no
+ * pointer events. The row's own tints keep working underneath - a hovered row
+ * under the band measures 1.349:1 dark / 1.270:1 light against the pane, so the
+ * hover remains independent in a solid window. Covered glass instead uses
+ * one derived selected veil, excluding hover while the target cue is present.
+ *
+ * WHY 12% ACCENT OVER THE SOLID GROUND, NOT THE FLAT `accent-wash` TOKEN (design
+ * round 1, D2). `accent-wash` on this pane measured 1.044:1 dark and 1.061:1
+ * light - fainter than the row hover tint (1.084:1) and the rail's selected row
+ * (1.127:1 / 1.135:1), so the mark the reader was TOLD about was drawn more
+ * quietly than one their pointer merely rested on. 12% of the accent role
+ * composited over the pane is 1.237:1 dark and 1.176:1 light: above the hover
+ * tint and above the selected row in both themes, so the hierarchy reads
+ * arrival > current > hover. It is a role, mixed at paint time - no new raw
+ * colour - and 12% is the ceiling: at 14% the 12 px muted glyph inside the row
+ * drops to 4.39:1 in the dark theme, under the 4.5:1 AA floor the round-1
+ * design evidence measured on this surface. Reduced motion keeps the cue but
+ * drops the fade: the band holds at full strength for the same span and the
+ * page removes the class, which is a state change, not motion. */
+@keyframes lo-team-bridge-target {
+	from {
+		opacity: 1;
+	}
+	to {
+		opacity: 0;
+	}
+}
+.lo-team-bridge-target {
+	isolation: isolate;
+	/* On glass, target and hover are alternative states, never two ink veils.
+	 * Outside covered glass these fallbacks keep the original ground steps. */
+	--color-row-hover-surface: var(--lo-target-hover-surface, var(--lo-surface));
+	--color-row-hover-elevated: var(
+		--lo-target-hover-elevated,
+		var(--lo-elevated)
+	);
+}
+.lo-team-bridge-target::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	/* Below the row's own content, above its own background. */
+	z-index: -1;
+	/* A ground, never a target: the row's menu and badges keep their hit area. */
+	pointer-events: none;
+	/* The accent wash remains the solid-window fallback. Composed glass uses
+	 * the derived selected step: a fixed accent alpha has no contrast budget
+	 * on an arbitrary translucent ground, especially stacked with hover. */
+	background-color: var(
+		--lo-target-wash,
+		color-mix(in srgb, var(--color-accent) 12%, transparent)
+	);
+	animation: lo-team-bridge-target 1400ms var(--ease-out-quart) both;
+}
+@media (prefers-reduced-motion: reduce) {
+	.lo-team-bridge-target::after {
+		animation: none;
+	}
+}
+
+/*
+ * WHY THE WASHED ROW'S DIM INK LIFTS WHILE THE BAND IS UP (design review round
+ * 2, D6). The band paints under the row's content, so an 11-12 px `ink-dim`
+ * timestamp sits on it. Swept over the fifty-nine palettes, `ink-dim` on the
+ * 12 % mix is under 4.5:1 in ten of them - cyberpunk 4.05:1, from 5.59:1 on the
+ * plain pane - and no single mix fixes that: the mix that keeps the metadata at
+ * AA in every palette is 8.3 %, and at 8.3 % the arrival stops beating the
+ * selected row in 24 of 59 palettes. So the lever is the INK, not the mix:
+ * `ink-muted` on the same band clears 4.5:1 in all fifty-nine (floor 5.21:1,
+ * nightfox). Scoped to the band's lifetime and to the dim utilities inside it,
+ * so nothing else on the row changes and the lift ends with the class - the
+ * same shape as the covered-pane hover translation further down this file.
+ *
+ * AND IT FADES BACK OVER THE BAND'S OWN 1400 ms (design review round 3, D9).
+ * Removing the class alone returned the ink in ONE frame (7.855:1 -> 5.700:1), so
+ * the end of the arrival was a visible snap in the row's smallest type. The
+ * keyframe lands the ink on its resting role exactly when the band's own
+ * animation lands on `opacity: 0` and the class is removed, so there is nothing
+ * left to snap: same time, same easing, one cue. The faded path stays at or above
+ * 5.213:1 across all fifty-nine palettes (design's sweep), so no frame of the
+ * fade is less legible than the resting row. Reduced motion drops the fade and
+ * keeps the static lift for the class's lifetime, like the band itself.
+ */
+@keyframes lo-team-bridge-target-ink {
+	from {
+		color: var(--color-ink-muted);
+	}
+	to {
+		color: var(--color-ink-dim);
+	}
+}
+.lo-team-bridge-target [class~="text-ink-dim"] {
+	color: var(--color-ink-muted);
+	animation: lo-team-bridge-target-ink 1400ms var(--ease-out-quart) both;
+}
+@media (prefers-reduced-motion: reduce) {
+	.lo-team-bridge-target [class~="text-ink-dim"] {
+		animation: none;
+	}
+}
+
+/*
+ * THE PENDING INK REACHES MARKDOWN'S OWN EMPHASIS (design round 3, D7).
+ *
+ * `markdown.css` pins `strong`, `code` and the headings to `var(--lo-ink)` - full
+ * ink, on purpose, because a reasoning panel and a chat answer want emphasis to be
+ * emphasis. In a Team Bridge row that is sending, those elements were therefore the
+ * one part of the message that stayed confirmed-looking: an all-bold or all-code
+ * message had no pending cue at all, and bold stood out MORE while pending than
+ * after the hub took it.
+ *
+ * SCOPED ON PURPOSE. The rule reads `--md-ink`, which the pending row sets inline
+ * (`team-bridge-message-list.tsx`), so it follows that row's state and nothing else.
+ * Editing the rules in `markdown.css` instead would restyle every markdown surface
+ * in the app, the reasoning panel included - a decision well beyond a sending state.
+ * The attribute below is the row's own `data-delivery`, so the rule cannot reach an
+ * element outside a pending Team Bridge message.
+ */
+[data-delivery="pending"]
+	.team-bridge-message-body
+	:is(strong, b, em, code, pre, h1, h2, h3, h4, h5, h6) {
+	color: var(--md-ink, var(--lo-ink));
+}
+
+/* An avatar photo arriving over its initials (sidebar account row, design
+ * review round 1, D5): the same opacity-only keyframe as the transcript, at
+ * `--duration-fast` because the plate is 28px and the swap should read as
+ * arrival rather than a flicker, not as an entrance to watch. Radix mounts the
+ * image only once decoded and the box keeps its size, so nothing moves. Under
+ * reduced motion the photo simply appears. */
+.lo-avatar-arrival {
+	animation: lo-transcript-arrival var(--duration-fast) var(--ease-out-quart)
+		both;
+}
+@media (prefers-reduced-motion: reduce) {
+	.lo-avatar-arrival {
+		animation: none;
+	}
+}
+
+/*
+ * ONE HIGHLIGHT, ONE STRIP (design round 2, D1; closed properly 2026-10-19).
+ * The quote and link toolbars own a highlight that begins in their turn; the
+ * shared selection toolbar is the fallback for every other selection. This rule
+ * is the PAINT half of that: the moment an owning strip is in the document the
+ * fallback is `display: none`, in the same style recalculation, so no frame can
+ * show both. The component's own pre-paint `useLayoutEffect` closes the same
+ * window for its MOUNTED state (and for the accessibility tree, where CSS
+ * cannot help); the two are deliberately redundant because this is the frame
+ * the operator saw as a flash. `:has()` is available in the Electron Chromium
+ * this app ships. The rule is scoped to the column's content root so the
+ * legacy transcript's strip - which shares this component - is unaffected.
+ */
+[data-lo-transcript-content]:has([data-lo-quote-toolkit])
+	[data-lo-selection-toolbar],
+[data-lo-transcript-content]:has([data-lo-link-toolbar])
+	[data-lo-selection-toolbar] {
+	display: none;
+}
+
+/*
+ * WHILE A SELECTION EXISTS IN THE TRANSCRIPT, THE ROW'S OWN TOOLBAR IS NOT THE
+ * TOOLBAR (operator report, 2026-10-19: "since both are up, the toolbar on
+ * select flashes briefly when you make a selection before disappearing and
+ * yielding to a toolbar on the right").
+ *
+ * THE FOUR CLUSTERS ARE ONE RULE NOW. `data-lo-selection-active` is written by
+ * the quote toolkit on the row it owns, and it covered the two gutter overlays
+ * and not the closing answer's in-flow Copy/Speak/Fork row - so a drag painted
+ * the selection strip and that row at once for the WHOLE gesture (measured: 84
+ * of 87 drag frames on the base tree in the committed pair).
+ * `data-lo-response-actions` is the FOURTH (the non-closing final response's
+ * in-flow row, review round 1 C1): it landed after this rule was written and
+ * was the only seat a drag could still show beside the strip. The marker below is the column's own fact, published by the
+ * `selectionchange` reader in `canonical-transcript.tsx` before paint, so it is
+ * true for a selection the quote toolkit does not own as well (a drag that
+ * begins in a ledger row, where the shared strip is the owner).
+ *
+ * `visibility` keeps the zero-layout promise; `pointer-events` takes the
+ * controls out of the hit test for both mouse and keyboard paths. The
+ * `:has()` arm is the belt to the marker's braces: it holds even in a frame
+ * where a selection strip has mounted but the column's state has not committed
+ * yet, which is the one frame this rule exists to close.
+ */
+[data-lo-selection-live] [data-lo-answer-actions],
+[data-lo-selection-live] [data-lo-gutter-actions],
+[data-lo-selection-live] [data-lo-user-actions],
+[data-lo-selection-live] [data-lo-response-actions],
+[data-lo-selection-active] [data-lo-answer-actions],
+[data-lo-selection-active] [data-lo-gutter-actions],
+[data-lo-selection-active] [data-lo-user-actions],
+[data-lo-selection-active] [data-lo-response-actions],
+[data-lo-transcript-content]:has([data-lo-quote-toolkit])
+	[data-lo-answer-actions],
+[data-lo-transcript-content]:has([data-lo-quote-toolkit])
+	[data-lo-gutter-actions],
+[data-lo-transcript-content]:has([data-lo-quote-toolkit])
+	[data-lo-user-actions],
+[data-lo-transcript-content]:has([data-lo-quote-toolkit])
+	[data-lo-response-actions],
+[data-lo-transcript-content]:has([data-lo-link-toolbar])
+	[data-lo-answer-actions],
+[data-lo-transcript-content]:has([data-lo-link-toolbar])
+	[data-lo-gutter-actions],
+[data-lo-transcript-content]:has([data-lo-link-toolbar]) [data-lo-user-actions],
+[data-lo-transcript-content]:has([data-lo-link-toolbar])
+	[data-lo-response-actions] {
+	visibility: hidden;
+	pointer-events: none;
 }
 
 /*
@@ -64,6 +398,11 @@
 	/* The caption buttons' HEIGHT where they trail, for the panel rail's top
 	   clearance (#872). 0 wherever the OS draws no buttons over the app. */
 	--chrome-inset-end-h: 0px;
+	/* The full-screen top inset: one 8px step of the spacing grid. It is a named
+	   property rather than a literal in the full-screen rule below so the design
+	   review has ONE number to tune and a story rig can read the same value; see
+	   that rule for why full screen is not simply 0. */
+	--chrome-fullscreen-top: 8px;
 }
 
 /*
@@ -131,14 +470,40 @@
 }
 
 /*
- * Full screen: the lane collapses to 0 and both insets fall with it. Driven by
+ * Full screen: the OS's controls leave the window, so both insets fall to 0 and the
+ * top inset drops from the windowed lane to `--chrome-fullscreen-top`. Driven by
  * main's `enter-full-screen`/`leave-full-screen`, because full screen is not
  * something the renderer can observe - on macOS the lights come back on the
  * slide-down title bar, and on Linux the WCO rect goes empty and Blink REMOVES the
  * four `titlebar-area-*` env vars, so the fallbacks above already resolve to 0.
+ *
+ * WHY NOT 0 (operator, 2026-11-13): at 0 the sidebar's brand row, the chat
+ * header and the panel rail sat hard against the screen's top edge, which read
+ * as cramped once there is no window frame above them. The inset is PADDING
+ * INSIDE EACH COLUMN, never a band: it rides `--chrome-strip-h`, which every
+ * full-height column already turns into `panel-top-pad` / `panel-scroll` (and the
+ * shell's `<main>` into its one pad for ordinary routes), so each column's own
+ * ground still reaches y0 and all first rows move down together on one line.
+ * The lane that `--chrome-strip-h` sizes is hidden in full screen (below), so the
+ * number buys no drag surface and paints nothing of its own.
+ *
+ * EVERY MODE, NOT ONLY `integrated`. A native-frame window (Windows/Linux
+ * fallback) also loses its OS title bar in full screen, so its columns hit the
+ * same edge; main pushes the full-screen fact in both modes (`window-chrome.ts`),
+ * so the same rule gives every OS the same full-screen layout while each
+ * windowed layout stays exactly as it was (none of them can match this rule).
+ *
+ * NO TRANSITION. The value lands in the same frame as the attribute flip: a
+ * transition on `padding-top` would relayout every column per frame, and the
+ * OS's own full-screen animation is already the motion the user sees. Scroll
+ * regions keep their `scrollTop` - only a padding (or `panel-scroll`'s margin
+ * and height) changes, never the scroller's content.
+ *
+ * `[data-chrome-mode]` (any value) keeps the specificity equal to the mac rule
+ * above, which this one beats by coming later.
  */
-[data-chrome-mode="integrated"][data-chrome-fullscreen="true"] {
-	--chrome-strip-h: 0px;
+[data-chrome-mode][data-chrome-fullscreen="true"] {
+	--chrome-strip-h: var(--chrome-fullscreen-top);
 	--chrome-inset-start: 0px;
 	--chrome-inset-end: 0px;
 	--chrome-inset-end-h: 0px;
@@ -234,6 +599,82 @@
 }
 
 /*
+ * THE PANEL TOP CONTRACT, AS TWO UTILITIES AND ONE VARIABLE.
+ *
+ * THE LANE IS ALWAYS AN OVERLAY. It never reserves height, so the columns
+ * behind it reach y0 and paint their own ground through the traffic lights'
+ * 32px. That is the operator's rule stated in `docs/branding.md` ("Full-height
+ * panels extend through the titlebar strip; no top inset on the panel; the
+ * scroll region clips and fades under it"), and it replaced the shell's
+ * gradient band - a reserved row that could only paint a MIRROR of the
+ * columns' grounds and was wrong the moment a panel started inside the route
+ * (the Library dock, the right slot, the canvas tabs).
+ *
+ * `--panel-top-pad` is the shell's statement of how far the OS's controls
+ * reach into the window. It is set on the content column for EVERY route
+ * (`chat-layout.tsx`), and inherited by everything inside it. Outside the
+ * column - the app sidebar, a portal such as the sheet - the utility falls
+ * back to `--chrome-strip-h`, the same number from the same chrome facts.
+ *
+ * TWO UTILITIES, ONE DECISION, because a route root and a column inside it do
+ * different jobs and conflating them is how the seam returns:
+ *
+ *   - `panel-flush` is the route root that owns the whole window height. It
+ *     cancels the shell's ordinary-content pad with a negative margin, so the
+ *     root's box begins at y0 (and, because it is a flex child, its height
+ *     absorbs the same 32px at the bottom). It does NOT pad its own content:
+ *     its columns each own a ground and pad themselves.
+ *   - `panel-top-pad` is a full-height PANEL COLUMN: it starts at y0 (from the
+ *     flush root or from the shell row) and pushes its first content row below
+ *     the strip. The box keeps its full height; only the inside moves.
+ *
+ * A simple page that is not a panel needs neither: the shell pads it once on
+ * `<main>`, which is what keeps every ordinary route's first row clear without
+ * a per-page inset. No route opts into the LANE; a route only says whether it
+ * is a panel.
+ */
+@utility panel-flush {
+	margin-top: calc(-1 * var(--panel-top-pad, 0px));
+}
+
+@utility panel-top-pad {
+	padding-top: var(--panel-top-pad, var(--chrome-strip-h, 0px));
+}
+
+/*
+ * And the same contract for a panel whose ROOT is the scroll region. The pad has
+ * to be a margin here, not padding: a scroll container's `padding-top` is inside
+ * its clip, so scrolled text would still paint through the strip. The margin
+ * moves the box below the strip and the height takes back exactly that number,
+ * which is why the region clips at the panel's content edge.
+ */
+@utility panel-scroll {
+	margin-top: var(--panel-top-pad, var(--chrome-strip-h, 0px));
+	height: calc(100% - var(--panel-top-pad, var(--chrome-strip-h, 0px)));
+}
+
+/*
+ * THE DIVIDER INSIDE A FLOATING PANEL: the hairline mixed halfway toward the
+ * panel's own `elevated` ground.
+ *
+ * Once a floating panel lost its stroke (branding § 2), the full `hairline` rule
+ * between its groups became the strongest line on the panel - 1.44:1 light and
+ * 1.74:1 high-contrast against the panel, while the panel's own boundary to the
+ * ground under it is 1.15 / 1.25:1 (design round 1, D3). An internal rule louder
+ * than the object's edge redraws the box from the inside. Halfway toward the
+ * ground keeps the rule visible as a group break and below the edge it sits
+ * within. One utility so the menu and select separators cannot drift apart; a
+ * divider in an in-flow surface keeps plain `bg-hairline`.
+ */
+@utility divider-inset {
+	background-color: color-mix(
+		in oklab,
+		var(--color-hairline) 50%,
+		var(--color-elevated)
+	);
+}
+
+/*
  * THE TRAILING RESERVATION, AS ONE UTILITY.
  *
  * It is a SPACER at the end of a 40px row's first line rather than padding on the
@@ -316,6 +757,20 @@
  */
 [data-chrome-mode="integrated"][data-chrome-leading="true"]
 	[data-chrome-route-band] {
+	display: none;
+}
+
+/*
+ * NO DRAG SURFACE IN FULL SCREEN. A full-screen window cannot be moved, and with
+ * `--chrome-strip-h` at the full-screen inset the mac lane would otherwise come back
+ * as an 8px drag strip over every column's top padding; on Windows the route band
+ * would add the caption height on top of the inset if Blink still reported it. Both
+ * leave the flow, as their own rules do outside their gates. Four attribute tests so
+ * this outranks the route band's `:not(...)` arm (0,4,0) and the lane's (0,3,0) by
+ * specificity, with source order as the tie-break against the band.
+ */
+[data-chrome-mode][data-chrome-platform][data-chrome-fullscreen="true"]
+	:is([data-titlebar-lane], [data-chrome-route-band]) {
 	display: none;
 }
 
@@ -430,6 +885,24 @@
 		black var(--lo-transcript-top-fade),
 		black 100%
 	);
+}
+
+/*
+ * THE SCROLLER'S TRANSITION LIST NAMES ONLY THE SCROLLBAR FADE (QA round 1, Q3).
+ * Under reduced motion the global cap gives every element a 0.01 ms
+ * `transition-duration`. An element that has not been scrolled yet carries no
+ * `data-lo-scrollbar` and so keeps the initial `transition-property: all`. A new
+ * chat's first send flips this scroller from `p-0 grow-0` to `p-4 grow`, and the
+ * transition painted the start value for one frame. Measured on the built app:
+ * the echo sat at y 124 for two frames, then 140.
+ *
+ * Why not a `transition-none` utility: on this element it would also replace
+ * the `--lo-sb` fade, and `scripts/scrollbar-activity.test.mjs` forbids that.
+ * This sets only the property list, to the one property the fade animates, so
+ * the fade keeps its duration whichever rule comes later.
+ */
+[data-lo-canonical-transcript] {
+	transition-property: --lo-sb;
 }
 
 @supports (animation-timeline: scroll()) {
@@ -818,6 +1291,30 @@
 	   `accent` hue at two strengths; see the two roles' doc in the palette
 	   contract and § 2 of docs/branding.md. */
 	--color-row-hover: var(--lo-row-hover);
+	/* Inset states keep their opaque ground step outside covered glass regions.
+	 *
+	 * THROUGH THE THEMED TOKEN, NOT THE PALETTE ROLE (2026-11-06). These four used to
+	 * read `var(--lo-surface)` / `var(--lo-elevated)` / `var(--lo-sunken)` directly,
+	 * which made them ALIASES of a role that `--color-surface` and its siblings
+	 * already pair. `generate-theme-css.mjs` holds the one-to-one mapping between
+	 * palette roles and themed tokens as an invariant - its own comment explains why
+	 * (an alias is what makes a truncated harvest undetectable) - so it rejected the
+	 * block and `pnpm gen-themes` could not run at all, which `check-themes` reported
+	 * as `@theme maps --lo-surface, --lo-elevated, --lo-sunken more than once` on
+	 * every branch, including `main`.
+	 *
+	 * Routing through the themed token removes the alias without changing a single
+	 * resolved value. This `@theme` block is not `inline`, so these four are computed
+	 * once on `:root` - where `--color-surface` and its siblings are the palette roles
+	 * - and inherited from there. A `[data-theme]` subtree therefore does NOT
+	 * re-resolve them, before this change or after it (agent review round 1, R7);
+	 * a subtree that needs its own row-hover ground has to re-declare the token
+	 * itself.
+	 */
+	--color-row-hover-surface: var(--color-surface);
+	--color-row-hover-elevated: var(--color-elevated);
+	--color-placeholder: var(--color-sunken);
+	--color-floating: var(--color-elevated);
 	--color-row-selected: var(--lo-row-selected);
 	/* The user message block's own surface. Not a fifth ground and not a row
 	   state: one object's fill, and the fill IS its boundary (D10), so it
@@ -1031,8 +1528,49 @@
 	/* ---- elevation -------------------------------------------------------
 	 * One shadow. Elevation between in-flow surfaces is a lightness step; the
 	 * shadow is only for objects that leave the flow.
+	 *
+	 * LAYERED SINCE 2026-11-06, and the layers have different jobs. The palette
+	 * ambient (`--lo-overlay-shadow`: `0 12px 32px -12px`) starts 12px out and
+	 * resolves over 32px, so at the panel's own boundary it contributes almost
+	 * nothing - which is precisely why the hairline, not the shadow, was doing
+	 * the separating, and why deleting the hairline without repairing the shadow
+	 * would leave every menu and tooltip floating with no edge at all.
+	 *
+	 * So the ambient is joined by a CONTACT layer: one symmetric halo that hugs
+	 * the boundary on all four sides (`0 0 2px -1px`) and one short drop that
+	 * seats the panel on the ground (`0 2px 6px -3px`). Deliberately NOT a
+	 * `0 0 0 1px` spread ring: a zero-blur ring is a border drawn with a shadow,
+	 * it reintroduces the exact line the operator reported, and it inherits none
+	 * of a shadow's falloff. Blur is what makes this read as elevation rather
+	 * than as a stroke.
+	 *
+	 * THE CONTACT COLOUR IS `--lo-scrim`, not a new role. Scrim is the palette's
+	 * "dim what is behind" colour - the only role already tuned for that job - and
+	 * it is authored as an alpha (0.35-0.65 across the 60 palettes), so compositing
+	 * it down with `color-mix` yields a contact that is properly dark on the dark
+	 * palettes and grey on the light ones with no palette hand-edited. At 45% the
+	 * resolved alpha lands around 0.16-0.29: a visible step at the edge, far short
+	 * of the 0.6+ that reads as a drop-shadow box.
+	 *
+	 * `--lo-shadow-contact` is a variable rather than a literal so the window-glass
+	 * rule below can restrengthen the boundary for a translucent panel without
+	 * redeclaring the geometry (see "the boundary is its own role"). It is spelled
+	 * `--lo-*` and not `--shadow-*` on purpose: this block is Tailwind's `@theme`,
+	 * and a `--shadow-*` name would also mint a `shadow-contact()` utility that
+	 * nothing should use - the contact layer exists only as part of the one shadow.
+	 *
+	 * `--lo-shadow-ambient` is not decoration: `generate-theme-css.mjs` requires
+	 * every palette role to appear in this block as a pairing whose value is a bare
+	 * `var()` of that role, so the role reaches a `[data-theme]` subtree instead of
+	 * only `:root`. That pairing used to be `--shadow-overlay` itself; once the value
+	 * became a composition it stopped being a pairing, and the generator fails by
+	 * name until the ambient is carried pass-through like this. The shadow below then
+	 * names it, so the palette's tuned ambient is still the far field.
 	 */
-	--shadow-overlay: var(--lo-overlay-shadow);
+	--lo-shadow-ambient: var(--lo-overlay-shadow);
+	--lo-shadow-contact: color-mix(in srgb, var(--lo-scrim) 45%, transparent);
+	--shadow-overlay: 0 0 2px -1px var(--lo-shadow-contact), 0 2px 6px -3px
+		var(--lo-shadow-contact), var(--lo-shadow-ambient);
 
 	/* ---- the installer window's two animations ----------------------------
 	 * The first screen a new user sees, and the only place in the app that
@@ -1499,6 +2037,17 @@
  *    `outline-none` keeps meaning what it says, and everything that has not
  *    asked for silence still gets a ring. The `solid` fallback covers elements
  *    with no Tailwind outline utility at all, such as the MUI date-picker.
+ *
+ * 5. THE BOX-SHADOW RESET SKIPS A FLOATING PANEL, and only that half: the
+ *    outline above still reaches it, so "focus is an outline" holds everywhere.
+ *    A panel's box-shadow is not a focus indicator, it is the panel's
+ *    elevation - its only separation now that it carries no stroke (branding
+ *    § 2). Radix focuses a menu's CONTENT element on a pointer open, and on the
+ *    sidebar row menus that focus matches `:focus-visible`, so one rule with
+ *    the `!important` reset stripped `shadow-overlay` off every pointer-opened
+ *    menu and left it with neither border nor shadow (QA round 1, Q1; design
+ *    round 1, D1). `floating-surface-no-border.test.mjs` holds both selectors
+ *    of the reset to the `:not([data-lo-floating])` exclusion.
  */
 html :focus-visible,
 html .Mui-focusVisible {
@@ -1506,7 +2055,26 @@ html .Mui-focusVisible {
 	outline-style: var(--tw-outline-style, solid);
 	outline-color: var(--color-accent);
 	outline-offset: 2px;
+}
+html :focus-visible:not([data-lo-floating]),
+html .Mui-focusVisible:not([data-lo-floating]) {
 	box-shadow: none !important;
+}
+
+/*
+ * THE ONE STROKE A FLOATING PANEL MAY DRAW: forced-colors mode (Windows High
+ * Contrast and its kin). That mode drops every box-shadow and repaints grounds in
+ * the user's own scheme, so a panel that separates by ground step plus elevation
+ * (branding § 2) has neither there - it would sit edgeless on whatever it covers.
+ * `CanvasText` is the user's scheme's own edge colour, not a palette role the mode
+ * would override anyway. Unlayered so no utility can out-rank it; elsewhere a
+ * border on `[data-lo-floating]` stays a regression, and
+ * `floating-surface-no-border.test.mjs` (O-4/O-4b) allows exactly this rule.
+ */
+@media (forced-colors: active) {
+	[data-lo-floating] {
+		border: 1px solid CanvasText;
+	}
 }
 
 /*
@@ -1532,6 +2100,19 @@ html .Mui-focusVisible {
  * `utilities` layer loses to this block whatever its specificity.
  */
 html [data-device-chip]:focus-visible {
+	outline-offset: -2px;
+}
+
+/*
+ * THE ASK LIST'S RING IS DRAWN INSIDE ITS OWN BOX, for the reason above and one
+ * the device chip does not have: this box is a SCROLLPORT (`overflow-y: auto`) and
+ * it sits inside the drawer's column, so the global 2 px/2 px outset ring was
+ * clipped at the port's edges - agent review round 1's m3 = UX's U2 measured the
+ * ring there with its outer two pixels cut on all four sides. Inset by exactly the
+ * ring's width and offset, every edge paints inside the box the reader sees, and
+ * the ring still reads as a full ring.
+ */
+html [data-lo-ask-list]:focus-visible {
 	outline-offset: -2px;
 }
 
@@ -1751,8 +2332,7 @@ html[data-glass~="sidebar"] [data-glass-region="sidebar"] {
  */
 html[data-glass~="sidebar"]
 	[data-glass-region="sidebar"]
-	[data-glass-region="sidebar"],
-html[data-glass~="pane"] [data-glass-region="pane"] [data-glass-region="pane"] {
+	[data-glass-region="sidebar"] {
 	background-color: transparent;
 }
 /*
@@ -1823,6 +2403,16 @@ html[data-glass~="pane"]
 		var(--lo-elevated) calc(var(--lo-glass-a-elevated) * 100%),
 		transparent
 	);
+}
+/* The clear comes AFTER every raw/net/split pane paint. The generic rule wins
+ * the raw tie; the main-qualified rule matches net/split specificity and wins
+ * by order, so no descendant can compound a second alpha over its outer pane. */
+html[data-glass~="pane"] [data-glass-region="pane"] [data-glass-region="pane"],
+html[data-glass~="pane"]
+	main[data-glass-region="canvas-backing"]
+	[data-glass-region="pane"]
+	[data-glass-region="pane"] {
+	background-color: transparent;
 }
 /*
  * A PANEL is one of the page's own large list frames or rails (the Schedules list, the
@@ -1895,12 +2485,53 @@ html[data-glass~="pane"] [data-glass-region="pane"] {
 		var(--lo-ink) calc(var(--lo-glass-a-row-selected) * 100%),
 		transparent
 	);
+	/* Pseudo-element states cannot use the ordinary hover:bg-* translation:
+	 * their paint belongs to ::before, not the row. Reuse the same derived ink
+	 * steps, without changing the inset box or multiplying text opacity. */
+	--color-row-hover-surface: var(--color-row-hover);
+	--color-row-hover-elevated: var(--color-row-hover);
+	--color-placeholder: var(--color-row-selected);
+	--lo-target-wash: var(--color-row-selected);
+	--lo-target-hover-surface: transparent;
+	--lo-target-hover-elevated: transparent;
+	/* A floating action strip owns ONE isolating ground, not another ink veil
+	 * over the hovered row. Keep the elevated readability floor and blur what
+	 * scrolls behind it; making only its buttons translucent exposes old text. */
+	--color-floating: color-mix(
+		in srgb,
+		var(--lo-elevated) calc(var(--lo-glass-a-elevated) * 100%),
+		transparent
+	);
+	--lo-floating-backdrop: blur(12px);
 	/* The structural edge, nudged toward `ink` so 3:1 holds on the translucent ground. */
 	--color-control: color-mix(
 		in srgb,
 		var(--lo-ink) calc(var(--lo-glass-control-mix) * 100%),
 		var(--lo-border-control)
 	);
+}
+/* Skeleton callers sometimes request a different SOLID ground (for example
+ * elevated bars in notifications). On covered glass they are still placeholder
+ * marks, not opaque content islands. Match the shared component's marker so
+ * those utility overrides cannot bypass its role; uncovered callers keep their
+ * original class-selected fills. Do not lower opacity on a loading container. */
+html[data-glass~="sidebar"]
+	:is([data-glass-region="sidebar"], [data-glass-region="page-sidebar"])
+	[data-glass-placeholder],
+html[data-glass~="canvas"]
+	:is(
+		[data-glass-region="canvas"],
+		main[data-glass-region="canvas-backing"],
+		[data-glass-region="panel"]
+	)
+	[data-glass-placeholder],
+html[data-glass~="pane"] [data-glass-region="pane"] [data-glass-placeholder] {
+	background-color: var(--color-placeholder);
+}
+/* No data-glass means no inherited blur: unsupported and reduced-transparency
+ * windows retain the original solid floating ground and the same hit geometry. */
+[data-glass-plane="floating"] {
+	backdrop-filter: var(--lo-floating-backdrop, none);
 }
 html[data-glass~="sidebar"]
 	:is([data-glass-region="sidebar"], [data-glass-region="page-sidebar"])
@@ -1932,6 +2563,15 @@ html[data-glass~="canvas"]
 	[class~="bg-sunken"]:is([role="tablist"], [data-glass-well]):not(
 		:where([data-glass-region="chrome"])
 	),
+/* A PAGE THAT OWNS ITS GROUND is the same class of container as the backing: its
+ * `canvas` marker is where a track inside it reads the page alpha from, and
+ * without this arm the same page mounted outside `<main>` (the Storybook glass
+ * harness) kept an opaque track and the frames measured a different surface. */
+	html[data-glass~="canvas"]
+	[data-glass-region="canvas"]
+	[class~="bg-sunken"]:is([role="tablist"], [data-glass-well]):not(
+		:where([data-glass-region="chrome"])
+	),
 html[data-glass~="pane"]
 	[data-glass-region="pane"]
 	[class~="bg-sunken"]:is([role="tablist"], [data-glass-well]):not(
@@ -1953,6 +2593,10 @@ html[data-glass~="canvas"]
 	main[data-glass-region="canvas-backing"]
 	[class~="bg-sunken"]:is([role="tablist"], [data-glass-well])
 	[role="tab"][data-state="active"],
+html[data-glass~="canvas"]
+	[data-glass-region="canvas"]
+	[class~="bg-sunken"]:is([role="tablist"], [data-glass-well])
+	:is([role="tab"][data-state="active"], [role="radio"][aria-checked="true"]),
 html[data-glass~="pane"]
 	[data-glass-region="pane"]
 	[class~="bg-sunken"]:is([role="tablist"], [data-glass-well])
@@ -2206,6 +2850,18 @@ html[data-glass~="pane"] [data-glass-chrome-live] [data-glass-region="chrome"] {
 	);
 }
 /*
+ * The ROUTE's outer chrome wrapper paints from y0 through the tab track. The
+ * nested strip keeps its chrome role (including the segmented-track exclusion
+ * and active-tab stacking contract), but must not lay the same alpha over the
+ * wrapper a second time. Pane-hosted strips have no chrome ancestor and keep
+ * their existing paint unchanged.
+ */
+html[data-glass~="pane"]
+	[data-browser-route-chrome]
+	[data-glass-region="chrome"] {
+	background-color: transparent;
+}
+/*
  * A chrome band inside a CONVERSATION's rail pane (the browser opened beside a
  * chat) is not the page's chrome: that pane already owns the alpha, so the bands
  * clear into it rather than stacking a second raw surface over the pane's
@@ -2308,11 +2964,252 @@ html[data-glass~="pane"]
 		transparent
 	);
 }
+/*
+ * A BAND THAT ISOLATES (`data-glass-plane="band-backdrop"`), and the reason it
+ * is a KIND of band and not a band.
+ *
+ * THE DEFECT THIS EXISTS FOR (operator report, 2026-10-19). The Files tab's
+ * section headers are `position: sticky` INSIDE the scroller, so the rows
+ * scroll UNDER them. The plain band painted 5% ink over them, which is a
+ * translucent wash over moving content: the operator's frame shows a
+ * thumbnail's green filling the header band and a file name colliding with
+ * the section label. Measured on the running app: the band's computed
+ * background was `color(srgb ... / 0.05)` with `backdrop-filter: none`, and
+ * the band was 32px of the scroller's own clip region, so every row that
+ * scrolled up passed through those 32 pixels.
+ *
+ * A LOW-ALPHA FILL CANNOT ISOLATE, WHATEVER IT COVERS. Any fill under 100%
+ * alpha leaves the content behind it visible; the content under a sticky
+ * header is MOVING, so the collision is not a one-frame overlap but a
+ * continuous one. The only two ways to isolate are an opaque fill (which is
+ * the hard seam in a translucent column the glass report removed) or an
+ * ISOLATING BACKDROP: the element gets its own compositing layer, the
+ * backdrop behind it is BLURRED, and a tint derived from the panel's own
+ * surface role knocks the rest back.
+ *
+ * WHY THE TINT IS THE SURFACE ROLE AND NOT INK. The band's job is to be the
+ * panel's own material, sampled over the content that passes under it. The
+ * surface role is the panel's own ground; the ink field overlay is a STATE
+ * step (a hover, a selection) and is deliberately near-invisible. A state
+ * step cannot be a mask: at 5% it hides nothing, and the content under it
+ * stays legible. The surface role at the surface alpha is the panel's own
+ * translucency, so the band reads as part of the glass the user chose
+ * rather than as a hole in it - and the alpha is the PUBLISHED surface alpha,
+ * so the band thickens as the user turns the translucency down and thins as
+ * they turn it up, exactly as the pane around it does.
+ *
+ * THE BLUR IS WHAT DOES THE ISOLATING. `backdrop-filter` samples what is
+ * painted behind the element, so the rows passing under are blurred into a
+ * wash that no text survives; the tint then keeps the band reading as a
+ * material rather than as a fog. The blur radius is deliberately larger than
+ * a row's text height, because the failure this fixes is TEXT colliding with
+ * a LABEL, not a fill meeting a fill.
+ *
+ * OFF GLASS NOTHING CHANGES: the element's own `bg-surface` is opaque there
+ * and the scroller's content never reaches it.
+ *
+ * THE BAND'S OWN ALPHA FLOOR, and why the pane's published alpha is not enough.
+ *
+ * The band above is a band over MOVING content, and that is a different
+ * proposition from every other band in this file. The other bands sit on a
+ * STATIC ground - the pane's own fill - so the pane's published alpha is
+ * exactly the right alpha for them: the ground behind them is the ground the
+ * whole surface model was derived against. This band's ground is whatever
+ * happens to be scrolling under it, so its alpha is not a style choice but a
+ * CONTRACT: the count next to the label has to clear 4.5:1 against it, and a
+ * saturated thumbnail under a 0.5-alpha band pushes the band's own colour far
+ * enough that `inkDim` cannot.
+ *
+ * MEASURED, and the measurement is the reason for the floor. On the running
+ * app at the default 80% in the LIGHT theme, the band's computed background was
+ * a 0.59-alpha light surface and a saturated thumbnail under it made the
+ * band a warm mid-tone: the section count's `inkDim` measured 3.57:1 against
+ * it, below the app's 4.5 text floor, and 2.50:1 at the most transparent end
+ * (design round 1's D1, measured independently off the captured PNGs' glyph
+ * interiors). The same count on the pane's own `elevated` ground - the
+ * canvas pane's real ground - clears the floor at every intensity.
+ *
+ * So the band wears the PANE'S OWN ROLE, `--lo-elevated`, not `--lo-surface`:
+ * the band IS the pane's ground, sampled over the content passing under it,
+ * and one role step of the surface ladder is a visible mismatch against the
+ * pane it sits in (the canvas pane's ground is `bg-elevated`,
+ * `features/chat/components/canvas/index.tsx`).
+ *
+ * And its alpha is the ELEVATED ROLE'S OWN ALPHA, `--lo-glass-a-elevated` -
+ * not the surface role's published alpha. That is the floor, and it is where
+ * the contract comes from: the band is the pane's ground sampled over the
+ * content passing under it, so the count's contrast on the band is the
+ * count's contrast on the pane - a number the surface model already asserts -
+ * rather than a number that depends on what is scrolling underneath.
+ *
+ * IT IS THE RAW ALPHA AND NOT `--lo-glass-in-elevated`, and the difference
+ * is not cosmetic. The `in-` variable is the NET alpha a pane root paints
+ * INSIDE `<main>`, which is derived against the canvas backing already
+ * painted beneath it: at the opaque end it is 0, because the backing is
+ * already opaque and the pane adds nothing to it. The band's backdrop is not
+ * the backing - it is the pane's own content, the rows - and those are
+ * opaque whatever the backing is. A band at a 0 alpha would be a band that
+ * hides nothing, which is the defect this rule exists for. (Measured: the
+ * first attempt at this rule used the `in-` variable and the band's
+ * computed background came back at alpha 0 at the opaque end.)
+ *
+ * MEASURED, and the measurement is why the floor is the elevated role's. At
+ * the default 80% in the light theme the surface alpha left 41% of a
+ * saturated thumbnail showing through, which put the band at 3.57:1 against
+ * the count's `inkDim` (the 4.5 floor is the app's own,
+ * `scripts/contrast-contract.mjs`) and 2.50:1 at the most transparent end
+ * (design round 1's D1, measured independently off the captured PNGs' glyph
+ * interiors).
+ *
+ * AND ITS ALPHA IS FLOORED AT `--lo-glass-a-band-floor`, which is the one
+ * number in the model derived for a band over MOVING content: the smallest
+ * alpha at which the band's own role still holds the count's ink over the
+ * worst content colour that can pass beneath it, derived over every palette
+ * by `scripts/derive-glass-floors.mjs` (0.88 dark, 0.78 light) and asserted
+ * by `scripts/contrast-contract.mjs`. The ordinary bands do not need it -
+ * they sit on the pane's own STATIC ground, where the published alpha is
+ * right - but this band's ground is a thumbnail, so its alpha is a contract
+ * and not a style choice. Above the floor the band's alpha is the pane's
+ * own, so the band thickens and thins with the slider exactly as the pane
+ * around it does; below it, the floor holds and the count stays readable
+ * whatever scrolls under.
+ *
+ * THE BAND IS NOT A LIGHTER OR DARKER STRIP THAN ITS PANE. It is the same
+ * role at the same alpha, so what the eye reads as a band is the BLUR - the
+ * content passing under is washed out and the ground is the pane's own.
+ * That is the "part of that glass, not a hole in it" the operator asked for:
+ * the translucency the user chose is the translucency of the ground the band
+ * is made of, so it tracks the slider exactly as the pane around it does.
+ *
+ * THE CEILING THIS BUYS, MEASURED (design review round 2, D5), so nobody reads the
+ * floor as "the band is opaque and the glass is a gesture": the header is an
+ * ISOLATING BAND of the panel's material, not a see-through one. Read off the
+ * committed frames' own alpha at 1024x657 in `docs/pr-evidence/notifications-glass/`,
+ * the band's rect carries alpha 0.980 at dark 80 and 0.976 at light 80 - so 1.96%
+ * and 2.35% of the desktop reaches the eye through it (0.78% and 1.18% at 50%),
+ * against 38% and 32% through the page beside it. The band's step over the page it
+ * sits in, over the fixed wallpaper, is 3.17:1 at base and 2.56:1 here in the dark
+ * scheme; in light it is 1.10:1 from the declared alphas (1.09:1 over white, 1.13:1
+ * over the fixed wallpaper) rather than from a composite, since none is committed for
+ * light.
+ *
+ * WHY NOT THE TWO-ALPHA MODEL, which an earlier draft of this note quoted: (1-0.88)
+ * x (1-0.62) gives 4.6% and treats the band as sitting directly on the page. The
+ * capture says the composition is about 2.3x more isolating than that, so the
+ * model understated the very property the note exists to describe. Quote the frame.
+ */
+html[data-glass~="pane"]
+	main[data-glass-region="canvas-backing"]
+	[data-glass-region="pane"]
+	[data-glass-plane="band-backdrop"],
+html[data-glass~="canvas"]
+	[data-glass-region="canvas"]
+	[data-glass-plane="band-backdrop"] {
+	/*
+	 * THE SAME PLANE ON A PAGE THAT IS NOT A PANE (the notifications list's sticky
+	 * group headers). A page like Notifications has no pane - its material is the
+	 * canvas the `<main>` backing paints - so its 32px band needs this gate too, and
+	 * it takes the ONE declaration above rather than a second composition: same
+	 * elevated role, same published floor, same blur.
+	 *
+	 * WHY THE FIELD OVERLAY IS NOT ENOUGH HERE. `docs/branding.md` calls a sticky
+	 * scroll-under header a band and the lighter treatment of one is the field
+	 * overlay (the Projects board's team header). A 5% ink pass does not hide what
+	 * moves under it: the Finder band's own note records "a thumbnail's green filling
+	 * the band and a file name colliding with the section label". A notification
+	 * row's TITLE is that file name, at 32px against a label at the same x, so this
+	 * band carries the isolating treatment.
+	 *
+	 * THE GATE IS THE PAGE'S OWN `canvas` REGION MARKER, not `<main>`'s backing:
+	 * a page that owns its ground marks its root (Projects, Library, Settings all
+	 * do), and that marker is what the rules inside the page hang off. The backing
+	 * gate would only match in the shell, so the same page rendered outside it -
+	 * Storybook's harness, which paints the real glass attributes - would keep the
+	 * flat fills and every frame taken there would measure the wrong tree.
+	 *
+	 * WHY NOT THE PAGE'S OWN CANVAS ROLE. Measured before writing this: the canvas
+	 * role at this same floor holds `ink`/`inkMuted`/`inkDim` on the dark palettes but
+	 * misses the floors on 17 OF THE 18 light palettes - all but `highContrastLight`
+	 * - (inkDim 3.11-3.46 against 3.5 on rosePineDawn, localOperatorLight, githubLight,
+	 * catppuccinLatte and others; inkMuted 3.77-4.41 against 4.5 on kanagawaLotus,
+	 * rosePineDawn, tokyoNightDay, ayuLight). Both counts re-derived over the 59 palettes by the
+	 * review's own probe (`minAlpha`-shape solve at the band floor over the scheme
+	 * extreme); the dark fleet is clean, 0 of 41.
+	 * The floor is derived for `elevated`, and re-deriving one for the canvas role
+	 * changes the number by a few points either way, because the ink floors rather than
+	 * the role's own colour set the density: swapping ONLY the role inside
+	 * `deriveBandFloor` solves to 0.82 dark / 0.86 light over the 59 palettes - 6 points
+	 * MORE TRANSPARENT than the shipped 0.88 on dark, 8 points more opaque than 0.78 on
+	 * light, not a different regime. (Those are not the `alphaFloor` entries in
+	 * `window-glass-floors.json`, canvas 0.53 dark / 0.61 light: that table solves the
+	 * role's own alpha against the window material, a different question.) So the band
+	 * is one role step up from the page, which is what makes it read as a band at all.
+	 *
+	 * Under *Sidebars only* neither gate matches: the canvas is not covered, so the
+	 * header keeps its flat opaque `bg-canvas` and nothing here applies.
+	 */
+	/*
+	 * THE `1` IS A FALLBACK, and it is the OPAQUE end on purpose.
+	 *
+	 * A bare `var(--lo-glass-a-band-floor)` that is missing would make this
+	 * declaration invalid at computed-value time, and `background-color` would
+	 * fall back to its initial `transparent` - the class `bg-surface` does not
+	 * re-enter the cascade once an unlayered rule has claimed the property. The
+	 * band would then be a hole that hides nothing, which is the defect this
+	 * rule exists for, in reverse. With the fallback the worst case is an
+	 * opaque band: the material is lost, the content is still isolated.
+	 *
+	 * (Measured: with the property removed at runtime the band paints
+	 * `rgba(0,0,0,0)` and the content's edge energy into it jumps from 0.098 to
+	 * 0.428. That is the failure this fallback removes.)
+	 */
+	background-color: color-mix(
+		in srgb,
+		var(--lo-elevated)
+			calc(
+				max(var(--lo-glass-a-elevated), var(--lo-glass-a-band-floor, 1)) *
+				100%
+			),
+		transparent
+	);
+	backdrop-filter: blur(12px);
+}
 html[data-glass~="pane"]
 	main[data-glass-region="canvas-backing"]
 	[data-glass-region="pane"]
 	[role="tablist"]
 	:is([class~="bg-surface"], [class~="bg-sunken"], [class~="bg-elevated"]) {
+	background-color: color-mix(
+		in srgb,
+		var(--lo-ink) calc(var(--lo-glass-a-row-selected) * 100%),
+		transparent
+	);
+}
+/*
+ * A WELL'S SELECTED SEGMENT ON A PANE'S OWN TRACK (the chat rail's updates
+ * drawer). The track's field overlay comes from the pane rule above, so only the
+ * checked segment's selected step is stated here: the selected segment's own
+ * `bg-elevated` is an opaque pill in a see-through column, so it takes the SAME
+ * selected-row overlay every other selected thing wears - one step OVER the
+ * track, relative to whatever the ground already is, so it reads on every page
+ * material instead of being a hole.
+ *
+ * WHY NO CANVAS HALF. This rule had one, for the notifications page's switch, and
+ * it was DEAD (agent review round 1, C3): the canvas translation above already
+ * matches `[class~="bg-sunken"]:is([role="tablist"], [data-glass-well])` with the
+ * same two segment selectors and the same declaration, so the narrower arm could
+ * never win a cascade it was not already covered by - and the note that "the
+ * tablist translation can never reach it" was the opposite of the truth. A second
+ * selector spelling the same rule is a maintenance trap, not a fallback.
+ *
+ * Scoped to a marked well: the track that opts in with `data-glass-well` is the
+ * only ancestor this may fire under, which is what keeps an arbitrary
+ * `bg-elevated` control outside a segmented track at its authored role.
+ */
+html[data-glass~="pane"]
+	[data-glass-region="pane"]
+	[class~="bg-sunken"][data-glass-well]
+	[role="radio"][aria-checked="true"] {
 	background-color: color-mix(
 		in srgb,
 		var(--lo-ink) calc(var(--lo-glass-a-row-selected) * 100%),
@@ -2407,4 +3304,391 @@ html[data-glass~="canvas"] [data-glass-lane] {
 		var(--lo-glass-lane-tone) calc(var(--lo-glass-a-lane) * 100%),
 		transparent
 	);
+}
+
+/*
+ * WINDOW GLASS, ROUND 3: THE FLOATING LAYER (menus, tooltips, popovers, dialogs)
+ * ----------------------------------------------------------------------------
+ *
+ * THE OPERATOR'S REPORT. With window glass on, every panel that FLOATS was still an
+ * opaque plate: the sidebar's move-to menu, the Bridge conversation menu, a tooltip,
+ * the update card. The columns behind them were translucent and the thing that had
+ * left the flow was the one surface you could not see through - the exact inverse of
+ * what a material is supposed to say, because a panel that detaches from the window
+ * is the panel where the desktop is most visible.
+ *
+ * WHY THEY WERE SOLID, and why no existing rule reached them. Every glass rule in
+ * this file is keyed on `data-glass-region` (or a marker inside a region), because
+ * an alpha may only be painted once per region and the region is the thing that owns
+ * it. A PORTAL has no such ancestor: Radix paints the panel at the document body, so
+ * the only ancestor a menu, tooltip, popover, dialog, select or drawer shares with
+ * the app is `<html>` - which is exactly why `data-glass` (written there by
+ * `use-window-glass.ts`) is the gate this section uses, and why these panels stayed
+ * on their opaque `bg-elevated` class while everything around them moved.
+ *
+ * ONE MARKER, ONE RULE. The panels wear `data-glass-overlay` (a direct prop in each
+ * primitive, `shared/components/ui/{dropdown-menu,context-menu,tooltip,popover,
+ * dialog,select,sheet}.tsx`), and the rule below is the only place the floating
+ * layer's ground is defined - so a submenu, a select list and a dialog cannot drift
+ * into three different translucencies.
+ *
+ * THE MARKER IS NOT THE PRIMITIVE LAYER'S PROPERTY, though. The same attribute is on
+ * the update card and on the feature-level panels that float with their own ground -
+ * the settings search results, the thread search panel, the session switcher - because
+ * the defect was the CLASS, not the primitives: a panel that leaves the flow is a
+ * panel the desktop should show through, whatever component it lives in.
+ * `scripts/glass-overlay.test.mjs` derives the membership twice - from the primitives
+ * that render a Portal, and from the app's own "this leaves the flow" vocabulary
+ * (`shadow-overlay` paired with a ground role, out of flow) - and names the pre-existing
+ * panels that stay opaque for now, each with the reason it waits. That vocabulary is
+ * read off the code in both shapes this codebase writes it: a class string on the
+ * element, and a module-level class constant the element wears. So a new panel of that
+ * shape fails a test until marking it or naming it is a decision.
+ *
+ * WHERE THAT GUARANTEE ENDS is the derivation's edge, not the rule's, and it is worth
+ * knowing before trusting the sentence above: a ground or shadow that arrives through an
+ * inline style (`themed-toast-container.tsx` spends `--shadow-overlay` as `boxShadow`,
+ * and a toast may legitimately be a surface of its own), a class string composed at
+ * runtime or through a ternary alias, and a class constant imported from another module
+ * are all outside what the scan can see. Those are gaps in detection, not in the rule: a
+ * panel marked by hand is styled right whether or not the guard found it.
+ *
+ * THE ALPHA IS ITS OWN DERIVED FLOOR, NOT THE ELEVATED RUNG. `--lo-glass-a-overlay`
+ * (`glassOverlayAlpha` in `src/shared/window-glass.ts`) tracks the slider from the
+ * veil ceiling to `GLASS_FLOORS.overlayFloor` - 0.70 dark / 0.50 light (0.75 / 0.59 at
+ * the default 80, so the panel tracks the slider rather than sitting at its floor),
+ * derived by `scripts/derive-glass-floors.mjs` against the LEAST opaque column the
+ * app can present. Painting the `elevated` role's own alpha here was the tempting
+ * reuse and it is wrong: that floor is derived as if the column stood on the desktop
+ * alone, so a portal ON TOP of the column composites to near-opaque - the elevated
+ * rung's own floor, 0.68 dark, over the least opaque column's `canvas` 0.53 composes
+ * to 0.85 (0.45 over 0.61 is 0.79 on the light palettes) - and the panel would be
+ * the slab it is today. The overlay floor answers the question a portal actually
+ * asks: what does this panel need, given that the app has already painted something
+ * translucent under it? That is what makes it genuinely see-through AND readable
+ * rather than a re-paint.
+ *
+ * THE DIM REGISTER COLLAPSES INTO THE MUTED ONE, and only inside these panels. The
+ * palette's `ink-dim` is authored one step under `ink-muted` against the OPAQUE
+ * `elevated` plate, and it does not survive this composite: at the overlay's floor
+ * `ink-dim` measures 3.62:1 on the dark palettes and 3.59:1 on the light ones, under
+ * the 4.5 text floor on 57 of the 59 palettes, where the same ink on the opaque plate
+ * read 5.48-7.94:1. Those rows are not decoration - `DropdownMenuLabel`, an item's
+ * shortcut and `SelectPrimitive.Label` are navigation text, and the flat contract
+ * already counts `ink-dim` as an AA TEXT register. Nor can the fill be raised until
+ * it passes: `ink-dim` needs 0.86 dark / 0.71 light, denser than the `elevated` rung's
+ * own floor (0.68 / 0.45) and a step under the band's (0.88 / 0.78) - a panel more
+ * opaque than the plate it replaces, which is the slab this section exists to remove.
+ *
+ * So the trade is made at the ink instead: on glass, a floating panel rebinds
+ * `--color-ink-dim` to `--color-ink-muted`. One custom property on the panel subtree,
+ * so every label, shortcut and group heading lifts from a single declaration rather
+ * than three class overrides, and a panel born tomorrow inherits the fix by carrying
+ * the marker. The hierarchy deliberately flattens there - dim and muted read the same
+ * inside a menu - and that is the correct trade: on a translucent ground the step
+ * between the two registers is smaller than the legibility it costs, so the pair that
+ * survives is the one that still clears AA. `ink` and `ink-muted` keep the derived
+ * floor; only the third register moves, and only here.
+ *
+ * THE BLUR DOES THE ISOLATING, as it does for the sticky band: `backdrop-filter`
+ * samples what is painted behind the panel, so a saturated thumbnail or a line of
+ * prose passing under it is washed into a ground the panel's own inks can sit on.
+ * The 12px radius is the band's, for the same reason - it is larger than a text line,
+ * because the failure being prevented is TEXT colliding with TEXT, not fill with
+ * fill.
+ *
+ * NOT A COVERAGE. The rule is gated on `data-glass` alone, not on a kind. A portal
+ * has no route: the same menu primitive is used in the sidebar, on the canvas and in
+ * a dialog, and CSS cannot know which column the anchor sat in. One alpha for all of
+ * them is also the safe direction - the floor is derived against the CLEAREST column
+ * the app can draw, so a panel over a solid page (Sidebars only coverage) composites
+ * onto something more opaque and is easier to read, never harder.
+ *
+ * NO ELEMENT OPACITY, EVER. Only `background-color`, `backdrop-filter` and that one
+ * ink rebinding are set. The panel's text, icons, the close control, the highlighted
+ * row's opaque `accentWash`, `data-[disabled]` ink and the `outline` focus ring are
+ * all untouched, so they stay crisp at every alpha - and a tooltip's
+ * `pointer-events-none`, a menu's keyboard highlight and a dialog's trapped focus
+ * behave exactly as they do today.
+ * The column's `shadow-overlay` also stays: elevation here is still a lightness step
+ * plus the one shadow that exists for things which leave the flow.
+ *
+ * A NESTED PANEL COMPOUNDS, and should: a submenu or a select inside a dialog paints
+ * its floor over a panel that already has one, so the inner surface is denser than
+ * the outer - the same direction the elevation ladder asks for, arrived at by the
+ * same alpha rather than a second number.
+ *
+ * OFF GLASS NOTHING CHANGES: with no `data-glass` on the root no rule here matches,
+ * and every panel keeps the opaque `bg-elevated` its component declares.
+ */
+html[data-glass] [data-glass-overlay] {
+	/*
+	 * THE MEANING COLOURS ARE TEXT HERE TOO (design round 1, D1).
+	 *
+	 * The rebinding above fixes the third BODY ink. The palette's semantic registers
+	 * are the other half of the same problem and were left out of it: a destructive
+	 * menu item is `text-danger` (`dropdown-menu.tsx`, `context-menu.tsx`), a link in
+	 * a search result or a changelog entry is `text-accent` (`settings-search.tsx`,
+	 * `update-notification.tsx`), and the flat contract already holds every one of
+	 * them to the 4.5 ink floor. On this ground they lose it - measured from the
+	 * palettes at the slider's floor, the worst semantic register reads 3.03:1 dark /
+	 * 3.23:1 light against the panel over the extreme backdrop, and dialogs measured
+	 * 3.36-3.80:1 on real pixels before they were taken off this tier.
+	 *
+	 * WHY THE FILL IS NOT RAISED FOR THEM, the way `ink-dim`'s failure was answered
+	 * there: a meaning colour sits in the MIDDLE of the lightness range by necessity,
+	 * and the floating panel's ground does not - over the palette's own ground the
+	 * panel is dark, over the extreme backdrop it rises to mid-tone. A mid-tone ink on
+	 * a mid-tone ground is the one case opacity cannot fix from above: solving it
+	 * needs alpha 1.00 for the dark half of the table and 0.82 for the light one, i.e.
+	 * the panel stops being a material. `overlayInkMix` is the measured answer instead
+	 * - each register mixed toward `ink` by the smallest constant that holds 4.5:1 at
+	 * the floor over every palette of the scheme (0.65 dark / 0.60 light).
+	 *
+	 * THE COST, STATED: this is one constant for the whole subtree, so a destructive
+	 * item is quieter on glass than on the opaque plate even where the ground could
+	 * have carried the authored red. CSS cannot condition a rebind on what is painted
+	 * behind the panel, and quiet everywhere beats illegible somewhere.
+	 *
+	 * WHY `accent` IS NOT IN THIS SET, though it is text here too (a result link in
+	 * `settings-search.tsx`, a changelog link in the update card). The accent role is
+	 * the ONE dual-use token in the palette: it is an ink AND the primary action's
+	 * FILL (`button.tsx`: `primary: bg-accent text-on-accent`), and there are 165
+	 * `bg-accent` sites app-wide. A subtree rebind cannot tell the two apart, so
+	 * mixing accent toward ink would recolour every primary button face inside a
+	 * panel - 0.60 toward ink in the light scheme, i.e. `#644AC9` to near-black -
+	 * which is an identity regression the contrast fix has no right to buy. Closing
+	 * accent's text case needs it split into an ink token and a fill token, or the two
+	 * link sites moved to ink-with-accent-underline; both are their own change, and
+	 * the deferral is recorded on the PR rather than hidden here.
+	 */
+	--color-danger: color-mix(
+		in srgb,
+		var(--lo-ink) calc(var(--lo-glass-overlay-ink-mix, 0) * 100%),
+		var(--lo-danger)
+	);
+	--color-success: color-mix(
+		in srgb,
+		var(--lo-ink) calc(var(--lo-glass-overlay-ink-mix, 0) * 100%),
+		var(--lo-success)
+	);
+	--color-warning: color-mix(
+		in srgb,
+		var(--lo-ink) calc(var(--lo-glass-overlay-ink-mix, 0) * 100%),
+		var(--lo-warning)
+	);
+	--color-info: color-mix(
+		in srgb,
+		var(--lo-ink) calc(var(--lo-glass-overlay-ink-mix, 0) * 100%),
+		var(--lo-info)
+	);
+	/*
+	 * THE BOUNDARY IS ITS OWN ROLE (design round 1, D2).
+	 *
+	 * The fill step used to separate this panel from the column under it, and measured
+	 * over the model's under-window grey it does not: -2.2 L* in the dark scheme,
+	 * +1.4..+2.1 over white in the light one, i.e. at or under the threshold where a
+	 * fill step reads as a step - and it cannot be repaired by density, because the
+	 * `elevated` ROLE is darker than the column it floats over in the dark palettes
+	 * ((47,42,31) against (49,48,45)), so no alpha puts the panel above its own column.
+	 * What was left carrying the layer was the shadow alone, while the hairline landed
+	 * ON the panel's own fill: 1.03:1 dark / 1.18:1 light, a boundary of nothing.
+	 *
+	 * So the edge WAS stepped toward `ink` by a derived constant (`overlayEdgeMix`),
+	 * painted as a 1px stroke, enough to clear 1.5:1 against the panel's own ground -
+	 * the history the next paragraph closes.
+	 *
+	 * THE STROKE IS GONE, AND THE STEP TOWARD INK WENT WITH IT (2026-11-06). The
+	 * derived edge used to be painted as a 1px `border-color`; a stroke around a
+	 * floating surface is now a regression by construction (branding § 2; operator
+	 * report 2026-11-06). Spending the same ink step on the shadow's contact layer
+	 * instead was tried in this change's first head and measured wrong twice: on a
+	 * dark palette ink is near-white, so the "shadow" painted a blurred rim LIGHTER
+	 * than the column beneath - 1.31:1 over a black desktop, the very
+	 * lighter-than-surface outline the operator reported (design round 1, D2) - and,
+	 * modelled as it is painted (each layer's Gaussian coverage, sigma = blur / 2, at
+	 * the pixel 0.5px outside the edge), its worst corner was 1.00:1 against the
+	 * panel: the glow cancelled the panel's own step (agent review round 1, R2).
+	 *
+	 * So on glass the contact is the off-glass contact pulled 50% toward black: the
+	 * same `scrim` role and the same 45% share, darker in colour and (because a
+	 * colour-mix with opaque black adds alpha) a little stronger, which is the
+	 * restrengthening a panel over an already-translucent column needs. It can never
+	 * be lighter than the column beneath it, and `contrast-contract.mjs` holds both
+	 * facts - the direction, and a ratchet at the measured worst of this composition
+	 * - as the glass overlay's boundary row. `--lo-glass-overlay-edge-mix` is still
+	 * published by the runtime but read by nothing here any more.
+	 *
+	 * The panel's fill stays translucent: that is the operator's own request
+	 * (#1706, "every panel that leaves the flow is still an opaque plate"), and the
+	 * `backdrop-filter` below is what keeps the column beneath from reading through.
+	 */
+	--lo-shadow-contact: color-mix(
+		in srgb,
+		color-mix(in srgb, black 50%, var(--lo-scrim)) 45%,
+		transparent
+	);
+	/* THE ONE INK REBINDING (see "THE DIM REGISTER COLLAPSES" above). It is here, in
+	 * the same rule as the fill, so the panel's ground and the ink that has to read on
+	 * it cannot be changed apart: a later edit that repaints this surface without the
+	 * remap is an edit that reopens the 3.6:1 failure. */
+	--color-ink-dim: var(--color-ink-muted);
+	/*
+	 * THE `1` IS A FALLBACK, and it is the OPAQUE end on purpose - the band's
+	 * argument. A missing custom property would make this declaration invalid at
+	 * computed-value time, and `background-color` would then resolve to its initial
+	 * `transparent` rather than falling back to the class: the utility class loses
+	 * the cascade to this unlayered rule. A transparent menu is a hole that hides
+	 * nothing and that nobody can read; an opaque one loses the material and keeps
+	 * the panel working. Choose the one that still works.
+	 */
+	background-color: color-mix(
+		in srgb,
+		var(--lo-elevated) calc(var(--lo-glass-a-overlay, 1) * 100%),
+		transparent
+	);
+	backdrop-filter: blur(12px);
+}
+
+/*
+ * OVER A LIVE PAGE PICTURE THE FLOATING LAYER IS OPAQUE (PR #1929, design D1).
+ *
+ * The overlay alpha above is derived against the app's own translucent column
+ * underneath. While an overlay is open over the browser, the surface now draws a
+ * live picture of the page (`browser-live-composite.tsx`) - an arbitrary OPAQUE
+ * ground with no column between it and the panel. Over a white page the dark
+ * palette's 0.75 panel composes to (98,95,88) and the muted ink on it measures
+ * 3.36:1, under the 4.5:1 text floor (design round 1, from the measured alpha and
+ * inks). Pages are on branding.md's "stays solid" list ("the page paints
+ * itself"), so the panels over one take the opaque plate: the surface sets
+ * `data-browser-live-composite` on the root exactly while a picture is drawn
+ * (`holdLiveCompositeRoot`) and this pins the overlay alpha to 1 on the root.
+ *
+ * WHY ON THE ROOT, AND WHY `!important`. The floating layer keeps exactly ONE
+ * `[data-glass-overlay]` rule (`scripts/glass-overlay.test.mjs` O-3: a second
+ * selector is a second opinion about the same ground), so the change is made to
+ * the alpha that rule reads rather than in a second panel rule.
+ * `use-window-glass.ts` writes `--lo-glass-a-overlay` as an INLINE style on
+ * `<html>`, and only an important stylesheet declaration outranks a normal
+ * inline one. Nothing else reads this property.
+ */
+html[data-glass][data-browser-live-composite] {
+	--lo-glass-a-overlay: 1 !important;
+}
+
+/*
+ * A SECURITY NOTICE ON THE FLOATING LAYER IS OPAQUE (PR #1954, design round 3,
+ * D12 and D13).
+ *
+ * The Team Bridge Touch ID prompt notice (`team-bridge-approval-notice.tsx`) is
+ * a security control: it is the only place the person can see what the OS sheet
+ * is about to sign, and the foreign variant's one instruction ("click Cancel on
+ * the Touch ID prompt") and the request excerpts are the words that must not
+ * fail. It floats over ANY page, so the ground under it is arbitrary opaque
+ * content, not the column the overlay alpha is derived against: over a white
+ * patch in dark, or a black patch in light, its muted ink measured 3.59 / 3.30:1
+ * at the default intensity and 3.04 / 2.52:1 at 100 (design round 3), under the
+ * 4.5:1 text floor. Same argument as the live composite above: choose the one
+ * that still works, so this one surface takes the opaque plate.
+ *
+ * `--lo-glass-overlay-ink-mix: 0` goes with it. The rebind exists for meaning
+ * colours drawn on a translucent ground; on the opaque plate it only pulled the
+ * foreign strip's warning ink ~60% toward body ink (CIELAB chroma 48.6 -> 20.1
+ * dark), which is the notice's one at-a-glance colour cue (D13). The strip's
+ * `bg-warning-wash` is an opaque palette hex, so the authored amber already
+ * clears AA on it.
+ *
+ * WHY ON THE ELEMENT, AND WHY NO `!important`. Both properties are written
+ * inline on `<html>` (`use-window-glass.ts`) and reach the notice by
+ * inheritance; a declared value on the element itself beats an inherited one,
+ * and the one `[data-glass-overlay]` rule resolves its `var()`s on that same
+ * element. The selector deliberately does not name `[data-glass-overlay]`, so
+ * the floating layer keeps exactly one rule (`glass-overlay.test.mjs` O-3);
+ * this only moves the inputs that rule reads, for one surface. The markers stay
+ * on, so the focus exclusion, the forced-colors edge and the no-border contract
+ * still apply.
+ */
+html[data-glass] [data-lo-security-notice] {
+	--lo-glass-a-overlay: 1;
+	--lo-glass-overlay-ink-mix: 0;
+}
+
+/*
+ * ENDED CONSOLE HISTORY: NO CARET, BUT A FOCUS RING (D1, D2).
+ *
+ * The cursor cell is made transparent and its ink inherited from the row, so the
+ * glyph under it stays legible (painting the cell in the ground colour could blank
+ * a character — the reason this is CSS rather than a theme trick). The ring is a
+ * real outline on the mirror's own box, in the structural role the app uses for
+ * focus edges, and it appears only for keyboard focus: `focus()` from the pane's
+ * caret request is not a focus-visible state.
+ */
+/*
+ * THE RING IS ON THE PANE'S BOX, NOT THE MIRROR (D2, round 2). On the mirror the
+ * outline was clipped by the host's own `overflow-hidden` and by xterm's viewport:
+ * measured as a 16 px L with no top edge. This box is the visible history surface,
+ * owns the gutter and the marker, and does not clip its own outline. `:has` keeps
+ * it tied to the keyboard-focused textarea, so a programmatic caret focus does not
+ * paint it.
+ */
+[data-console-box]:has(
+		[data-console-history] .xterm-helper-textarea:focus-visible
+	) {
+	outline: 2px solid var(--lo-border-control);
+	outline-offset: -2px;
+}
+
+/* Native range tracks paint ABOVE the input background. Style the actual
+   track for the shared editor/accent picker, keeping the native keyboard/AT
+   value semantics and a 24px pointer target rather than replacing the input. */
+input[data-colour-hue] {
+	appearance: none;
+	background: transparent;
+	cursor: pointer;
+}
+input[data-colour-hue]::-webkit-slider-runnable-track {
+	height: 8px;
+	border-radius: 4px;
+	background: linear-gradient(
+		to right,
+		#ff0000,
+		#ffff00,
+		#00ff00,
+		#00ffff,
+		#0000ff,
+		#ff00ff,
+		#ff0000
+	);
+}
+input[data-colour-hue]::-webkit-slider-thumb {
+	appearance: none;
+	box-sizing: border-box;
+	width: 16px;
+	height: 16px;
+	margin-top: -4px;
+	border: 2px solid var(--lo-ink);
+	border-radius: 50%;
+	background: var(--lo-elevated);
+}
+input[data-colour-hue]::-moz-range-track {
+	height: 8px;
+	border-radius: 4px;
+	background: linear-gradient(
+		to right,
+		#ff0000,
+		#ffff00,
+		#00ff00,
+		#00ffff,
+		#0000ff,
+		#ff00ff,
+		#ff0000
+	);
+}
+input[data-colour-hue]::-moz-range-thumb {
+	box-sizing: border-box;
+	width: 16px;
+	height: 16px;
+	border: 2px solid var(--lo-ink);
+	border-radius: 50%;
+	background: var(--lo-elevated);
 }

@@ -42,13 +42,21 @@
  */
 
 import {
+	applyAuthorizeFrame,
+	clearAuthorizeNotices,
+} from "@features/team-bridge/team-bridge-approvals-model";
+import { applyAgentAvatarFrame } from "@shared/agent-avatar/agent-avatar";
+import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import { hostPublishRecord } from "@shared/lib/host-publish-record";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useEffect, useRef, useState } from "react";
-import type { DesktopFeedFrame } from "../../../../shared/desktop-session-contract";
+import type {
+	DesktopFeedFrame,
+	SessionStatusFrameCounts,
+} from "../../../../shared/desktop-session-contract";
 
 export type DesktopFeedConnection = {
 	/** The backend advertises the feed AND this build can consume it. */
@@ -154,9 +162,83 @@ export type DesktopFeedConnection = {
 	} | null;
 };
 
+/**
+ * The last `notifications` frame, held at MODULE scope.
+ *
+ * WHY NOT A FIELD ON `useDesktopFeed`'s ANSWER, like `codeRequestsRevision`.
+ * Every `useDesktopFeed()` call opens its own IPC subscription and reads
+ * `window` during render. The reel's consumers (the rail's count badge, the
+ * page, the drawer tab, the transcript's flag lines) are many and are mounted
+ * in places that must not grow either: the collapsed strip is pinned to exactly
+ * ONE subscription (`aida-rail-marks.test.mjs`), and the transcript is
+ * server-rendered by its paint tests, where `window` does not exist. So the
+ * frame rides the subscriptions that already exist - the app-level locale sync
+ * and the rail's keeper/list are always mounted - and a consumer reads it
+ * through `useSyncExternalStore`, which opens nothing and has a server snapshot.
+ *
+ * ONE RECORD PER FRAME, NOT PER SUBSCRIBER. Each existing subscription receives
+ * the same frame, so publication is deduplicated on the frame's identity
+ * (`epoch` + `seq`: the feed's sequence restarts per process, and its epoch is
+ * fresh per process). Identity, not `payload.revision`: an ask-queue change can
+ * arrive with an unchanged store revision and must still invalidate (R1/Q1).
+ */
+export type NotificationsFrame = {
+	/** `${epoch}:${seq}` - the frame's identity, unique across restarts. */
+	key: string;
+	revision: number;
+	unreadCount: number;
+	waitingCount: number;
+	waitingUnreadCount: number;
+};
+
+let latestNotificationsFrame: NotificationsFrame | null = null;
+/** The last `agent.avatar.changed` frame applied (see its branch below). */
+let lastAvatarFrameKey: string | null = null;
+const notificationsFrameListeners = new Set<() => void>();
+
+function publishNotificationsFrame(
+	frame: Extract<DesktopFeedFrame, { type: "notifications" }>,
+): void {
+	const key = `${frame.epoch}:${frame.seq}`;
+	// IPC dispatches one event to every listener before the next event, so the
+	// latest key is enough to collapse N subscribers' deliveries into one.
+	if (latestNotificationsFrame?.key === key) return;
+	latestNotificationsFrame = {
+		key,
+		revision: frame.payload.revision,
+		unreadCount: frame.payload.unread_count,
+		waitingCount: frame.payload.waiting_count,
+		waitingUnreadCount: frame.payload.waiting_unread_count,
+	};
+	for (const listener of notificationsFrameListeners) listener();
+}
+
+/** The `useSyncExternalStore` triple for the record above. */
+export const notificationsFrameRecord = {
+	subscribe(listener: () => void): () => void {
+		notificationsFrameListeners.add(listener);
+		return () => {
+			notificationsFrameListeners.delete(listener);
+		};
+	},
+	snapshot: (): NotificationsFrame | null => latestNotificationsFrame,
+	/* A server render has received no frame, by construction. */
+	serverSnapshot: (): NotificationsFrame | null => null,
+};
+
 export function useDesktopFeed(): DesktopFeedConnection {
 	const capabilities = useDesktopCapabilities();
-	const native = window.api?.desktop?.feed;
+	/*
+	 * `globalThis.window` rather than `window`: this hook is rendered by suites
+	 * that paint the page with `react-dom/server`, where no `window` exists and a
+	 * bare reference throws `ReferenceError: window is not defined` before the
+	 * markup is produced. The file's own note above already states the contract
+	 * (the transcript is server-rendered by its paint tests), so this is the
+	 * guard that contract implies rather than a new exception: `globalThis.window`
+	 * is `undefined` on the server, the optional chain short-circuits, and in the
+	 * renderer it is the same object the bare reference resolved to.
+	 */
+	const native = globalThis.window?.api?.desktop?.feed;
 	const available =
 		desktopFeatureEnabled(capabilities.data, "desktop_feed") && Boolean(native);
 	const [connected, setConnected] = useState(false);
@@ -222,6 +304,12 @@ export function useDesktopFeed(): DesktopFeedConnection {
 			 * outage never leaves a lock the record cannot vouch for.
 			 */
 			if (!nextConnected) hostPublishRecord.reset();
+			/*
+			 * The prompt notice is live-only: a frame lost in the outage could be the
+			 * one that closes it, so a dropped feed clears every standing notice
+			 * rather than leave one up for a prompt that has already ended.
+			 */
+			if (!nextConnected) clearAuthorizeNotices();
 			wasConnected.current = nextConnected;
 			setReported(true);
 			setConnected(nextConnected);
@@ -266,6 +354,7 @@ export function useDesktopFeed(): DesktopFeedConnection {
 					{ code: frame.payload.code, label: frame.payload.label },
 					frame.payload.revision,
 					frame.epoch,
+					statusFrameCounts(frame.payload),
 				);
 				/*
 				 * THE OTHER ALWAYS-PUBLISHED EDGE of a turn that started or finished:
@@ -279,6 +368,23 @@ export function useDesktopFeed(): DesktopFeedConnection {
 			}
 			if (frame.type === "catalogue") {
 				setCatalogueRevision(frame.payload.revision);
+				return;
+			}
+			/*
+			 * A settings-intent slot moved (`features.settings_intents`). Applied
+			 * straight to the store's mirror, like `attention`: every mounted feed
+			 * hook receives the frame, and the mirror's generation guard makes the
+			 * second and later deliveries no-ops. A backend without the capability
+			 * never publishes the type.
+			 */
+			if (frame.type === "settings_intent") {
+				useCanonicalSessionsStore
+					.getState()
+					.applySettingsIntentFrame(
+						frame.session_id,
+						frame.payload.kind,
+						frame.payload.intent,
+					);
 				return;
 			}
 			/*
@@ -309,6 +415,40 @@ export function useDesktopFeed(): DesktopFeedConnection {
 					sessionId: frame.session_id,
 					revision: frame.payload.revision,
 				});
+				return;
+			}
+			/*
+			 * The notifications reel moved. Published to the module-scope record
+			 * below rather than to this call's state: see `notificationsFrameRecord`.
+			 * The invalidation belongs to the module that owns the reel's query keys,
+			 * and this hook stays free of query knowledge.
+			 */
+			if (frame.type === "notifications") {
+				publishNotificationsFrame(frame);
+				return;
+			}
+			/*
+			 * A local agent's picture changed. Applied by the module that owns the
+			 * picture's query keys (`shared/agent-avatar/agent-avatar.ts`), once per
+			 * frame: this hook is mounted by more than one component, and each mount
+			 * receives every frame, so the key collapses N deliveries into one
+			 * refresh the way `publishNotificationsFrame` does.
+			 */
+			if (frame.type === "agent.avatar.changed") {
+				const key = `${frame.epoch}:${frame.seq}`;
+				if (lastAvatarFrameKey !== key) {
+					lastAvatarFrameKey = key;
+					applyAgentAvatarFrame(frame.payload);
+				}
+				return;
+			}
+			/*
+			 * A Team Bridge Touch ID prompt moved (local-operator #4099, S-6).
+			 * Applied to the approvals module's notice store, keyed by `epoch:seq`
+			 * so the one delivery per mounted feed hook lands once.
+			 */
+			if (frame.type === "team_bridge_authorize") {
+				applyAuthorizeFrame(frame.payload, `${frame.epoch}:${frame.seq}`);
 				return;
 			}
 			/*
@@ -354,4 +494,32 @@ export function useDesktopFeed(): DesktopFeedConnection {
 		configChange,
 		voiceActive,
 	};
+}
+
+/**
+ * The background-work counts a `session_status` frame carries, projected onto
+ * exactly the row's field names - or `undefined` for an older backend's frame,
+ * which carries only the derived pair and must leave the row's counts alone.
+ *
+ * Projected key by key for the same reason the status pair is: the store
+ * spreads what it is given onto the row, and the payload's `code`/`label`/
+ * `revision` are not row fields. A key is copied only when the wire sent it, so
+ * an absent count stays "as the list last said" rather than becoming `undefined`.
+ */
+export function statusFrameCounts(
+	payload: SessionStatusFrameCounts,
+): SessionStatusFrameCounts | undefined {
+	if (typeof payload.background_work !== "boolean") return undefined;
+	const counts: SessionStatusFrameCounts = {
+		background_work: payload.background_work,
+	};
+	for (const key of [
+		"subagents_running",
+		"subagents_queued",
+		"jobs_running",
+		"waiting_on",
+	] as const) {
+		if (key in payload) counts[key] = payload[key] ?? null;
+	}
+	return counts;
 }

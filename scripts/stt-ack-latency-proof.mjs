@@ -492,7 +492,7 @@ try {
 
 		const read = () => ({
 			mic: !!document.querySelector(MIC),
-			confirm: !!document.querySelector('[aria-label="Confirm recording"]'),
+			confirm: !!document.querySelector('[aria-label="Insert transcript"]'),
 			cancel: !!document.querySelector('[aria-label="Cancel recording"]'),
 			indicator: !!document.querySelector('[data-recording-indicator]'),
 			preparing: !!document.querySelector('[data-preparing-indicator]'),

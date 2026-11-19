@@ -1,0 +1,178 @@
+{
+ "schema": 1,
+ "kind": "translation-audit-receipt",
+ "audit_kind": "namespace audit of the final keys wave",
+ "date": "2026-10-25",
+ "locale": "fr",
+ "locale_name": "French",
+ "pr": 1403,
+ "pr_url": "https://github.com/damianvtran/local-operator-ui/pull/1403",
+ "branch": "feat/i18n-key-remaining-copy",
+ "audited_head": "d784571d9017c2958a80c51808b2ace64e3f76ba",
+ "pr_base": "3d0e9010d71c00662902971e4bd6888f7a8f6f1c (PR baseRefOid; origin/main has since moved to 91aa8f5f1079)",
+ "guidance": {
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/fr.md",
+   "sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+  },
+  "contracts": [
+   {
+    "path": "~/local-operator-ui/docs/I18N.md",
+    "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+   },
+   {
+    "path": "~/local-operator-ui/AGENTS.md (read from the working checkout; the head copy differs by unrelated sections, sha256 b05f5fd1472fe1617783e51bc709df8e6f079a87ceda0f2ff97fff539be320af at d784571d)",
+    "sha256": "a259e3cff9de9675176c0f6b03490526762735540e59f4d8255d0e99920a717f"
+   }
+  ]
+ },
+ "method": "Bytes pulled with `git show <head>:<path>` (no checkout) into a scratch tree and SHA-256 hashed there; no catalogue, English, ledger, allowance or generated file was edited. English, French and the English context sidecar were read side by side for the whole namespace, not just the delta. ICU was parsed with @formatjs/icu-messageformat-parser 3.5.21 (argument names, argument types, plural categories and selectors, number skeletons, tags) and rendered with intl-messageformat 12.1.3 under locale fr by a read-only Node probe against the repository's own node_modules. Key sets and order were compared per namespace; every maxCells hint in the sidecar was measured against the French value (code-point cells); register and glossary were checked against the core glossary and the fr style guide, and the locale's key terms were grepped across the whole fr catalogue for drift.",
+ "namespace": "ui.chat.header",
+ "instance": "fr-final-6dec3dc7a6af",
+ "instance_note": "One run per namespace, unique to this namespace by sha256(en bytes + en context bytes + fr bytes), first 12 hex; distinct from the round-2 extract audit da12aa6ade20, which predates the final keys.",
+ "auditor": {
+  "agent": "translation-auditor",
+  "role": "independent translation auditor (team lopdev); authored no catalogue value in this batch",
+  "team": "lopdev",
+  "harness": "Local Operator",
+  "session": "d25a74a9522a",
+  "model": "deepseek/deepseek-flash",
+  "actual_model": "deepseek/deepseek-flash",
+  "actual_model_source": "harness session model (system prompt: Model: deepseek/deepseek-flash); no fallback selected or observed",
+  "fallback": null,
+  "independent_from_translator": true,
+  "independence_basis": "This session d25a74a9522a authored no value in these namespaces and is distinct from the fr round-2 extract auditor da12aa6ade20 (receipt fr-extract-audit-da12aa6ade20-r2) and from the canvas/surfaces auditor d94011de0dc0; the final-keys translation is commit 42c72a8a73, produced by a different session. Every value was read from the catalogue bytes at the audited head, not from the translator's commit summary.",
+  "instance": "fr-final-6dec3dc7a6af"
+ },
+ "translator": {
+  "agent": "not recorded for the final keys (no translator receipt exists for this wave at the audited head)",
+  "model": "not recorded",
+  "commit": "42c72a8a73 feat(i18n): translate the final eleven keys to French",
+  "ledger_state": "i18n/ledger.json carries a fr ui.chat.header row with pre-final hashes (source 1e395f111014, target 636be1bdb3ea, auditor 7c40d1c357cf); it is stale for the two new keys and must be re-pointed at this receipt by the implementer.",
+  "commit_note": "The commit message claims: chats -> conversations (ui.chat.sidebar.nav.chats), the counters reuse the house \"{shown} sur {total}\" shape from ui.canvas.files.narrowCount, match -> correspondance, paired -> appairée (ui.projects), built-in agents -> agents intégrés (dismiss_offer), and that the plural arms were rendered in the real ICU formatter at 0,1,2..7,12 and 10^6. The terminology claims hold in the bytes; the 10^6 render does not: only groups.badge carries a `many` arm; the counter and offer messages fall to `other` without the required \"de\" (recorded as FR-FINAL-01/-02 in the ui.chat.sidebar receipt)."
+ },
+ "scope": "All 12 values of ui.chat.header at PR #1403 head d784571d90, read against src/i18n/catalogues/en/ui.chat.header.json and its context sidecar; the final-keys delta is 2 values (new_chat, new_chat_with). Catalogue-level audit only: no rendered-frame pass, no browser, and no native-speaker sign-off is claimed. The fr bytes are identical at the previous head ae40ebc959 and at d784571d90.",
+ "sha256": {
+  "en": "04fa4fb0f73dc33811c40b9574f92b8bc0ddafb8a458242497a92400c009e3f0",
+  "fr": "5cfb8aea064075820f9c79136f5a0194efe7f6089b9b2d5a1aa96c399c69abb3",
+  "context": "39558b26f12ae22908a146f61c8c40795ac9e3b19e41a6ebed7ada883e7281bf"
+ },
+ "keys_total": 12,
+ "keys_in_batch": 2,
+ "checks": {
+  "key_set": "equal to en (0 missing, 0 extra, same order)",
+  "icu_parse": "all 12 values parse; 0 failures",
+  "placeholders": "argument names preserved exactly; new_chat_with keeps {target}; no number skeletons in this namespace",
+  "identical_to_en": "none",
+  "register": "sentence case throughout; no second person in the two new titles; « vous » where the namespace addresses the reader (archived_hint). Matches the fr guide's vous decision.",
+  "glossary": "chat -> conversation, consistent with ui.shell.sidebar_navigation.new_chat (« Nouvelle conversation »), ui.command_palette.use_palette_sources.new_chat, and 292 « conversation » occurrences across the fr catalogue (the only « chat » hits are placeholder names, not prose).",
+  "maxcells": "11 hints; the two new keys are 21/16 and 35/32. All nine pre-existing hinted values were re-measured: 6 within, transcript_display 29/28, close_run_details 33/20, open_run_details 33/20 (all three pre-existing at the base).",
+  "accuracy": "Both titles say what English says, including the sidecar's distinction that new_chat names the new chat itself and is not the New chat control's label."
+ },
+ "width": "new_chat is 21 cells against a 16-cell advisory (2.62x the 8-cell English) and new_chat_with is 35 against 32 (27-cell literal prefix vs 14 in English, plus {target}). The advisory is explicitly 'not measured fit'. Accepted, not shortened: (1) the key is the header title that stands in for arbitrary conversation names, and the h2 is `min-w-0 max-w-full truncate` (chat-header.tsx, head), so a long value ellipsizes instead of breaking the row; (2) the app's declared minimum window is WINDOW_MIN_WIDTH = 800 (src/main/window-mode.ts), and at the 560px design frame the 20-character English stand-in still ends before the identity chip, so 21 characters fit at the real minimum with room; (3) the only <=16-cell alternatives are « Nouveau chat » (12) or an abbreviation, both of which contradict the locale's settled term for chat (conversation, 292 occurrences) and the control label the same header sits beside. No rendered French frame was captured in this session; the pixel claim above is read from the existing 560px design frame at ~/.local-operator/sessions/a444fd0978dd/scratchpad/design-1403/fr/device-560.webp, not from a French render of this key.",
+ "widths": [
+  {
+   "key": "ui.chat.header.conversation_name",
+   "maxCells": 24,
+   "en_cells": 17,
+   "fr_cells": 22,
+   "in_batch": false,
+   "verdict": "within"
+  },
+  {
+   "key": "ui.chat.header.archived",
+   "maxCells": 16,
+   "en_cells": 8,
+   "fr_cells": 8,
+   "in_batch": false,
+   "verdict": "within"
+  },
+  {
+   "key": "ui.chat.header.actions",
+   "maxCells": 28,
+   "en_cells": 20,
+   "fr_cells": 26,
+   "in_batch": false,
+   "verdict": "within"
+  },
+  {
+   "key": "ui.chat.header.copy_id",
+   "maxCells": 24,
+   "en_cells": 15,
+   "fr_cells": 22,
+   "in_batch": false,
+   "verdict": "within"
+  },
+  {
+   "key": "ui.chat.header.move_device",
+   "maxCells": 32,
+   "en_cells": 23,
+   "fr_cells": 32,
+   "in_batch": false,
+   "verdict": "within"
+  },
+  {
+   "key": "ui.chat.header.transcript_display",
+   "maxCells": 28,
+   "en_cells": 18,
+   "fr_cells": 29,
+   "in_batch": false,
+   "verdict": "pre-existing overrun, not introduced by this wave; rendered check recommended"
+  },
+  {
+   "key": "ui.chat.header.delete",
+   "maxCells": 28,
+   "en_cells": 20,
+   "fr_cells": 26,
+   "in_batch": false,
+   "verdict": "within"
+  },
+  {
+   "key": "ui.chat.header.close_run_details",
+   "maxCells": 20,
+   "en_cells": 17,
+   "fr_cells": 33,
+   "in_batch": false,
+   "verdict": "pre-existing overrun, not introduced by this wave; rendered check recommended"
+  },
+  {
+   "key": "ui.chat.header.open_run_details",
+   "maxCells": 20,
+   "en_cells": 16,
+   "fr_cells": 33,
+   "in_batch": false,
+   "verdict": "pre-existing overrun, not introduced by this wave; rendered check recommended"
+  },
+  {
+   "key": "ui.chat.header.new_chat",
+   "maxCells": 16,
+   "en_cells": 8,
+   "fr_cells": 21,
+   "in_batch": true,
+   "verdict": "accepted: over the advisory, title truncates; see width"
+  },
+  {
+   "key": "ui.chat.header.new_chat_with",
+   "maxCells": 32,
+   "en_cells": 22,
+   "fr_cells": 35,
+   "in_batch": true,
+   "verdict": "accepted: advisory excludes the target name; see width"
+  }
+ ],
+ "rendered_evidence": [],
+ "findings": [],
+ "status": "clean",
+ "result": "clean",
+ "verdict": "clean — 12/12 values read, 0 findings. Both new titles match the English, the sidecar roles and the fr house term; the 21-cell header title is accepted against the 16-cell advisory with the geometry above.",
+ "outside_scope_observations": [
+  {
+   "key": "ui.chat.header.close_run_details / open_run_details / transcript_display",
+   "observation": "Pre-existing fr values exceed their maxCells budgets (33/20, 33/20, 29/28) and were already at the PR base 3d0e9010; not introduced by this wave and not re-litigated here. They sit in an overflow menu whose width is not the header title's; if that menu is ever narrowed, a rendered check of these three is the follow-up."
+  }
+ ]
+}

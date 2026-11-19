@@ -1,0 +1,223 @@
+{
+ "schema": 1,
+ "record_kind": "locale-audit evidence record (PR delta audit)",
+ "audit_id": "tb1670-7c739a6246b4-hi",
+ "locale": "hi",
+ "namespace": "ui.teamBridge",
+ "audit_date": "2026-11-04",
+ "key_count": 365,
+ "auditor": {
+  "agent": "translation-auditor",
+  "team": "lopdev",
+  "session": "7c739a6246b4",
+  "instance": "7c739a6246b4-pr1670-hi",
+  "model": "anthropic/claude-opus-5-5",
+  "independent_from_translator_session": true,
+  "actual_model_source": "Served model as announced by the harness preamble for session 7c739a6246b4 (anthropic/claude-opus-5-5); no fallback announced or observed.",
+  "model_fallback": {
+   "announced": false,
+   "observed": false
+  },
+  "findings": {
+   "blocker": 0,
+   "major": 0,
+   "minor": 1,
+   "nit": 0
+  }
+ },
+ "independence": "Independent auditor: lopdev team translation-auditor, session 7c739a6246b4. Did not translate the 23 members_panel values (they arrived in the implementer's commit 4397967 on PR #1670), wrote no English copy or code in the PR, and is not any prior ui.teamBridge auditor (66bfac56f929-merge1643-hi). It applied only the corrections listed in findings. Same model family as the team coder (anthropic/claude-opus-5-5), separate agent instance; disclosed. No MT service used. Row written by ledger-assemble.mjs.",
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+   "sha256": "28aed4e764637f920fa2fa67f089cffe1bcf250c3840f19bc47babeaae360352"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+   "sha256": "74f1e0353fe96e3d141d9a43b1134308fb4fcf1b57f8c01e73110416fd79c313"
+  },
+  "hi": {
+   "path": "src/i18n/catalogues/hi/ui.teamBridge.json",
+   "sha256": "bd3571766f03aeafc8ea69caf1e916cb9047827c9041022c42a6ad2c47f1aeb4",
+   "pr_head_sha256_before_auditor_fixes": "2211479012b71b50419f404efa5e4969762c4c89d77068a8327963a7f079c834"
+  }
+ },
+ "style_guide": {
+  "path": "~/local-operator i18n/style-guides/hi.md",
+  "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5",
+  "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "core_commit": "b42471d3935"
+ },
+ "integration": {
+  "pr": 1670,
+  "repo": "damianvtran/local-operator-ui",
+  "branch": "feat/team-bridge-members-panel",
+  "base": "a70a761ae4704a43c60470beed7c5eaeba763e90",
+  "audited_head": "4397967ebe01f60a6a2c8b68b430f36c68fa90fe",
+  "auditor_fix_commit": "the commit that adds this record"
+ },
+ "scope": {
+  "delta_kind": "Delta audit of PR #1670 (a70a761ae47..4397967ebe0): the 23 new ui.teamBridge.members_panel.* values read against en, the en context sidecar, the glossary and the hi style guide, composed with real arguments; existing ui.teamBridge copy read for glossary consistency. No pre-existing value changed in the PR (verified); the other 342 values are byte-identical to the 66bfac56f929-merge1643-hi audited bytes. No rendered fit or native RTL rendering claimed.",
+  "keys_added": [
+   "ui.teamBridge.members_panel.title",
+   "ui.teamBridge.members_panel.close",
+   "ui.teamBridge.members_panel.open_label",
+   "ui.teamBridge.members_panel.open_label_invited",
+   "ui.teamBridge.members_panel.state.pending_approval",
+   "ui.teamBridge.members_panel.leave_label",
+   "ui.teamBridge.members_panel.leave_tooltip",
+   "ui.teamBridge.members_panel.decline_label",
+   "ui.teamBridge.members_panel.decline_tooltip",
+   "ui.teamBridge.members_panel.confirm.remove_title",
+   "ui.teamBridge.members_panel.confirm.remove_body",
+   "ui.teamBridge.members_panel.confirm.withdraw_body",
+   "ui.teamBridge.members_panel.confirm.leave_title",
+   "ui.teamBridge.members_panel.confirm.leave_body",
+   "ui.teamBridge.members_panel.confirm.decline_title",
+   "ui.teamBridge.members_panel.confirm.decline_body",
+   "ui.teamBridge.members_panel.confirm.remove",
+   "ui.teamBridge.members_panel.confirm.leave",
+   "ui.teamBridge.members_panel.confirm.decline",
+   "ui.teamBridge.members_panel.note.general",
+   "ui.teamBridge.members_panel.note.humans",
+   "ui.teamBridge.members_panel.note.agents",
+   "ui.teamBridge.members_panel.note.dm"
+  ],
+  "keys_changed_by_auditor": [
+   "ui.teamBridge.members_panel.decline_label",
+   "ui.teamBridge.members_panel.confirm.decline_title"
+  ],
+  "parent_audited_by": [
+   "66bfac56f929-merge1643-hi"
+  ]
+ },
+ "audited": {
+  "ui.teamBridge.members_panel.title": {
+   "en": "Members",
+   "translation": "सदस्य"
+  },
+  "ui.teamBridge.members_panel.close": {
+   "en": "Close members",
+   "translation": "सदस्य सूची बंद करें"
+  },
+  "ui.teamBridge.members_panel.open_label": {
+   "en": "{count, plural, one {View # member} other {View # members}}",
+   "translation": "{count, plural, one {# सदस्य देखें} other {# सदस्य देखें}}"
+  },
+  "ui.teamBridge.members_panel.open_label_invited": {
+   "en": "{active, plural, one {View # active member} other {View # active members}}, {invited, plural, one {# invited} other {# invited}}",
+   "translation": "{active, plural, one {# सक्रिय सदस्य देखें} other {# सक्रिय सदस्य देखें}}, {invited, plural, one {# आमंत्रित} other {# आमंत्रित}}"
+  },
+  "ui.teamBridge.members_panel.state.pending_approval": {
+   "en": "Pending approval",
+   "translation": "स्वीकृति लंबित"
+  },
+  "ui.teamBridge.members_panel.leave_label": {
+   "en": "Leave this conversation",
+   "translation": "यह बातचीत छोड़ें"
+  },
+  "ui.teamBridge.members_panel.leave_tooltip": {
+   "en": "Leave conversation",
+   "translation": "बातचीत छोड़ें"
+  },
+  "ui.teamBridge.members_panel.decline_label": {
+   "en": "Decline the invitation for {name}",
+   "translation": "{name} के लिए आमंत्रण अस्वीकार करें"
+  },
+  "ui.teamBridge.members_panel.decline_tooltip": {
+   "en": "Decline invitation",
+   "translation": "आमंत्रण अस्वीकार करें"
+  },
+  "ui.teamBridge.members_panel.confirm.remove_title": {
+   "en": "Remove {name} from {conversation}?",
+   "translation": "{name} को {conversation} से हटाएँ?"
+  },
+  "ui.teamBridge.members_panel.confirm.remove_body": {
+   "en": "They stop receiving its messages. They can be invited again later.",
+   "translation": "उन्हें यहाँ के संदेश मिलने बंद हो जाएँगे। बाद में उन्हें फिर से आमंत्रित किया जा सकता है।"
+  },
+  "ui.teamBridge.members_panel.confirm.withdraw_body": {
+   "en": "Your agent stops receiving messages here. You can add it again later.",
+   "translation": "आपके एजेंट को यहाँ संदेश मिलने बंद हो जाएँगे। आप उसे बाद में फिर से जोड़ सकते हैं।"
+  },
+  "ui.teamBridge.members_panel.confirm.leave_title": {
+   "en": "Leave {conversation}?",
+   "translation": "{conversation} छोड़ें?"
+  },
+  "ui.teamBridge.members_panel.confirm.leave_body": {
+   "en": "You stop receiving its messages. To come back, rejoin it from the channel list if it is open to your organization, or ask a member to invite you again.",
+   "translation": "आपको यहाँ के संदेश मिलने बंद हो जाएँगे। वापस आने के लिए, अगर यह आपके संगठन के लिए खुला है तो चैनल सूची से फिर जुड़ें, या किसी सदस्य से आपको फिर आमंत्रित करने को कहें।"
+  },
+  "ui.teamBridge.members_panel.confirm.decline_title": {
+   "en": "Decline the invitation for {name}?",
+   "translation": "{name} के लिए आमंत्रण अस्वीकार करें?"
+  },
+  "ui.teamBridge.members_panel.confirm.decline_body": {
+   "en": "{name} will not join {conversation}. A member can invite it again later.",
+   "translation": "{name} {conversation} में शामिल नहीं होगा। कोई सदस्य बाद में उसे फिर से आमंत्रित कर सकता है।"
+  },
+  "ui.teamBridge.members_panel.confirm.remove": {
+   "en": "Remove",
+   "translation": "हटाएँ"
+  },
+  "ui.teamBridge.members_panel.confirm.leave": {
+   "en": "Leave",
+   "translation": "छोड़ें"
+  },
+  "ui.teamBridge.members_panel.confirm.decline": {
+   "en": "Decline",
+   "translation": "अस्वीकार करें"
+  },
+  "ui.teamBridge.members_panel.note.general": {
+   "en": "Everyone in the organization is a member of #general. Mute it instead of leaving.",
+   "translation": "संगठन का हर व्यक्ति #general का सदस्य है। इसे छोड़ने के बजाय म्यूट करें।"
+  },
+  "ui.teamBridge.members_panel.note.humans": {
+   "en": "Every person in the organization is a member of #humans. Mute it instead of leaving.",
+   "translation": "संगठन का हर व्यक्ति #humans का सदस्य है। इसे छोड़ने के बजाय म्यूट करें।"
+  },
+  "ui.teamBridge.members_panel.note.agents": {
+   "en": "Membership of #agents follows the organization. You can leave if you joined it yourself.",
+   "translation": "#agents की सदस्यता संगठन के अनुसार होती है। अगर आप खुद जुड़े थे, तो इसे छोड़ सकते हैं।"
+  },
+  "ui.teamBridge.members_panel.note.dm": {
+   "en": "The members of a direct message can't be changed.",
+   "translation": "सीधे संदेश के सदस्य बदले नहीं जा सकते।"
+  }
+ },
+ "findings": [
+  {
+   "id": "HI-M1",
+   "severity": "minor",
+   "keys": [
+    "ui.teamBridge.members_panel.decline_label",
+    "ui.teamBridge.members_panel.confirm.decline_title"
+   ],
+   "summary": "'{name} का आमंत्रण' means the invitation issued by {name}; the reader declines an invitation FOR their agent, and events.declined uses '{targets} के लिए आमंत्रण'.",
+   "proposed": "'{name} के लिए आमंत्रण अस्वीकार करें'",
+   "disposition": "fixed by auditor in this commit",
+   "values": {
+    "ui.teamBridge.members_panel.decline_label": {
+     "before": "{name} का आमंत्रण अस्वीकार करें",
+     "after": "{name} के लिए आमंत्रण अस्वीकार करें"
+    },
+    "ui.teamBridge.members_panel.confirm.decline_title": {
+     "before": "{name} का आमंत्रण अस्वीकार करें?",
+     "after": "{name} के लिए आमंत्रण अस्वीकार करें?"
+    }
+   }
+  }
+ ],
+ "checks": {
+  "icu_command": "node scripts/verify.mjs (worktree root; @formatjs/icu-messageformat-parser) — all 365 values parse; argument names equal en; CLDR plural arms per style guide on delta keys",
+  "compose_command": "node scripts/compose.mjs (intl-messageformat, real arguments incl. 0/1/2/5/21/10^6)",
+  "unicode": "All values NFC; no bidi controls (U+200E/F, U+061C, U+202A-E, U+2066-9).",
+  "key_set": "365 keys, equal to English, same order.",
+  "execution_log": "i18n/audits/evidence/hi/ui.teamBridge/tb1670-7c739a6246b4-hi/audit.log"
+ },
+ "not_claimed": "No rendered width fit (overflow nits are flagged for the design rendered check) and no native RTL rendering (UR-M3 is derived from the UBA).",
+ "artifacts": {
+  "audit.log": "78bf77dbd0c2ab733b9a05676b35113f7cf0f0c58502a6f22bc5969051fec404",
+  "scripts/verify.mjs": "e6d8e6e01df7afcbf6afaa6b7c635fb64db8192caa5c38d6db36449ca6c49f4d",
+  "scripts/compose.mjs": "4aeaa9f96c8487f89457e0f3004f0f183ad7e88b77c0a7d3566132c9a29bc06a"
+ }
+}

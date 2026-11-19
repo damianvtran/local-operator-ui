@@ -1,0 +1,178 @@
+{
+  "locale": "ur",
+  "scope": "ui.common.actions: verification that the only change since 369bb0113f is the deletion of the unused key check_again",
+  "baseline_commit": "369bb0113f",
+  "checkout_head": "58de30166d",
+  "branch": "i18n-final-literals",
+  "instance": "738fad4b20c4-act-ur",
+  "instance_note": "literal expansion of the requested command: basename(dirname(.../sessions/3ef6295a5545/scratchpad/act-audit.sh)) == 'scratchpad'; the requesting session id 3ef6295a5545 is recorded under auditor.requesting_session, and this run's own session id under auditor.session",
+  "audit_date": "2026-10-29",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "738fad4b20c4",
+    "model": "radient/auto",
+    "model_history": [
+      "anthropic/claude-sonnet-5-5",
+      "openai/gpt-6-astra",
+      "kimi/k3.1-pro",
+      "radient/auto"
+    ],
+    "actual_model_source": "harness model-switch notices in this session (provider failure: quota, cascaded before the first tool run); all verification below was executed under the fallback chain, ending on radient/auto",
+    "independent_from_translator_session": true,
+    "requesting_session": "3ef6295a5545",
+    "authored_this_change": false,
+    "instance": "738fad4b20c4-act-ur"
+  },
+  "input_sha256": {
+    "en": "8dc67dc7c285d2747f4586a5d01a39c23423b10e506f6cfa44c258caed37a412",
+    "target": "4999408a82f004e3d33270dfe6a863415b2199bc59ed2912d31d4f278d370967",
+    "context_sidecar": "ec17c81a0549cb184a6493d62759c38f3523ca8e8dbd56eba409e64981c5c9b6",
+    "en_at_bind": "0c279fc21d17c3f1937e4364fac698601ec4304ce7c7055df786bc037a8b12e3",
+    "target_at_bind": "49cbf7aac8f818ddd7f15fb207b1962e3bb192c4f947888ea58f1e8c26aa58a4",
+    "en_path": "src/i18n/catalogues/en/ui.common.actions.json",
+    "target_path": "src/i18n/catalogues/ur/ui.common.actions.json",
+    "heads_catalogue_bytes_match_disk": {
+      "en": true,
+      "target": true
+    }
+  },
+  "diff": {
+    "method": "git diff 369bb0113f 58de30166d -- src/i18n/catalogues/en/ui.common.actions.json src/i18n/catalogues/ur/ui.common.actions.json",
+    "hunks_per_file": {
+      "en": 1,
+      "target": 1
+    },
+    "numstat": "0\t5\tsrc/i18n/catalogues/en/ui.common.actions.context.json\n0\t1\tsrc/i18n/catalogues/en/ui.common.actions.json\n0\t1\tsrc/i18n/catalogues/ur/ui.common.actions.json",
+    "en_added_lines": [],
+    "en_removed_lines": [
+      "-\t\"ui.common.actions.check_again\": \"Check again\","
+    ],
+    "target_added_lines": [],
+    "target_removed_lines": [
+      "-\t\"ui.common.actions.check_again\": \"دوبارہ چیک کریں\","
+    ],
+    "en_unified": "diff --git a/src/i18n/catalogues/en/ui.common.actions.json b/src/i18n/catalogues/en/ui.common.actions.json\nindex 33fc638f18..949e93c177 100644\n--- a/src/i18n/catalogues/en/ui.common.actions.json\n+++ b/src/i18n/catalogues/en/ui.common.actions.json\n@@ -1,6 +1,5 @@\n {\n \t\"ui.common.actions.cancel\": \"Cancel\",\n-\t\"ui.common.actions.check_again\": \"Check again\",\n \t\"ui.common.actions.close\": \"Close\",\n \t\"ui.common.actions.copied\": \"Copied\",\n \t\"ui.common.actions.copy_failed\": \"Could not copy. Select and copy it manually.\",\n",
+    "target_unified": "diff --git a/src/i18n/catalogues/ur/ui.common.actions.json b/src/i18n/catalogues/ur/ui.common.actions.json\nindex 10c4951ab7..bd648f7403 100644\n--- a/src/i18n/catalogues/ur/ui.common.actions.json\n+++ b/src/i18n/catalogues/ur/ui.common.actions.json\n@@ -1,6 +1,5 @@\n {\n \t\"ui.common.actions.cancel\": \"منسوخ کریں\",\n-\t\"ui.common.actions.check_again\": \"دوبارہ چیک کریں\",\n \t\"ui.common.actions.close\": \"بند کریں\",\n \t\"ui.common.actions.copied\": \"نقل ہو گیا\",\n \t\"ui.common.actions.copy_failed\": \"نقل نہیں ہو سکا۔ اسے منتخب کر کے خود نقل کریں۔\",\n",
+    "context_sidecar_unified": "diff --git a/src/i18n/catalogues/en/ui.common.actions.context.json b/src/i18n/catalogues/en/ui.common.actions.context.json\nindex d1ab750aee..207ea19103 100644\n--- a/src/i18n/catalogues/en/ui.common.actions.context.json\n+++ b/src/i18n/catalogues/en/ui.common.actions.context.json\n@@ -287,11 +287,6 @@\n \t\t\"length\": \"One compact status line, placeholder, button, or spoken suffix.\",\n \t\t\"note\": \"English source: Clear\"\n \t},\n-\t\"ui.common.actions.check_again\": {\n-\t\t\"role\": \"action\",\n-\t\t\"tone\": \"plain\",\n-\t\t\"note\": \"Re-runs a read that answered with nothing, where nothing failed.\"\n-\t},\n \t\"ui.common.actions.dismiss\": {\n \t\t\"role\": \"action\",\n \t\t\"tone\": \"plain\"\n",
+    "context_sidecar_note": "en ui.common.actions.context.json drops the 5-line metadata block for the same key (role/tone/note) — the same deletion's sidecar; it is the only other file in the namespace that moved, and no non-en sidecar exists for this namespace",
+    "only_commit_in_range": "fbf78b5f67 fix(i18n): key the find overlay and image-gen controls, unstick the ratchet tests",
+    "whole_namespace_check": "git diff 369bb0113f..58de30166d over src/i18n/catalogues/*/ui.common.actions.json: all eight files 0 added / 1 deleted each — the same single key, en plus all seven locales"
+  },
+  "verification": {
+    "byte_identity_after_deletion": {
+      "en": true,
+      "target": true,
+      "how": "bind-commit bytes with the single check_again line removed == current bytes exactly, trailing newline included, both locales"
+    },
+    "key_sets_equal_en_vs_target": true,
+    "key_order_equal_en_vs_target": true,
+    "key_order_preserved_vs_bind": true,
+    "keys": {
+      "at_bind": 53,
+      "at_head": 52,
+      "deleted": 1,
+      "added": 0
+    },
+    "placeholder_name_sets_equal": true,
+    "placeholder_order_differences": [
+      {
+        "key": "ui.common.actions.find_replace_widget.of",
+        "en": "{currentmatch, number, ::group-off} of {matchcount, number, ::group-off}",
+        "ur": "{matchcount, number, ::group-off} میں سے {currentmatch, number, ::group-off}",
+        "verdict": "not a defect and not a delta: byte-identical to the bind-commit audited value; both number formatters and ::group-off are verbatim, and 'Y میں سے X' is the correct Urdu order for 'X of Y'"
+      }
+    ],
+    "plural_messages_in_namespace": 0,
+    "duplicate_keys": {
+      "en": [],
+      "target": [],
+      "how": "object_pairs_hook scan of the raw bytes counts keys before the dict collapses duplicates"
+    },
+    "json_valid": {
+      "en": true,
+      "target": true
+    },
+    "ur_hygiene": {
+      "bidi_control_chars_in_values": [],
+      "hindi_danda": [],
+      "note": "style guide forbids manual RLM/LRM/FSI/PDI (the render layer isolates) and Hindi ।; neither present"
+    },
+    "no_consumer_proof": {
+      "ui.common.actions.check_again": "0 code references across src/ scripts/ app/ electron/; absent from the regenerated i18n/keys.gen.ts; only residue is a historical audit receipt (i18n/receipts/d2cc21c7d250-r4-ur.json), which is provenance, not a live key",
+      "ui.chat.device.check_again": "used at src/renderer/src/features/chat/device/chat-header-device.tsx:475 — the used key the deleted one duplicated"
+    },
+    "repo_gates": {
+      "i18n/generate.mjs --check": "rc=0, src/i18n/keys.gen.ts byte-identical to a fresh generation",
+      "i18n/check-duplicates.mjs": "rc=0, 934 files scanned, 0 duplicate keys",
+      "i18n/context-parity.mjs": "rc=0, every English key covered apart from 131 allowed gaps in 4 namespaces (shrink-only allowance)",
+      "i18n/ledger-check.mjs": "rc=1 — expected and pre-existing: every locale's ui.common.actions row still carries the bind-commit hashes (ur: source 0c279fc21d17…, target 49cbf7aac8f8…) against the current 8dc67dc7c285… / 4999408a82f0…; staleness in this namespace is the re-bind this receipt serves, not a translation defect. Not repo-edited: the task forbids it"
+    },
+    "sample_reads_via_read_public_copy": [
+      {
+        "key": "ui.common.actions.cancel",
+        "en": "Cancel",
+        "ur": "منسوخ کریں"
+      },
+      {
+        "key": "ui.common.actions.copy_failed",
+        "en": "Could not copy. Select and copy it manually.",
+        "ur": "نقل نہیں ہو سکا۔ اسے منتخب کر کے خود نقل کریں۔"
+      },
+      {
+        "key": "ui.common.actions.date_time_picker.choose_date",
+        "en": "Choose {label} date",
+        "ur": "{label} کی تاریخ منتخب کریں"
+      },
+      {
+        "key": "ui.common.actions.find_replace_widget.of",
+        "en": "{currentmatch, number, ::group-off} of {matchcount, number, ::group-off}",
+        "ur": "{matchcount, number, ::group-off} میں سے {currentmatch, number, ::group-off}"
+      },
+      {
+        "key": "ui.common.actions.credential_updated",
+        "en": "Credential \"{key}\" updated successfully",
+        "ur": "اسناد “{key}” اپ ڈیٹ ہو گئیں"
+      },
+      {
+        "key": "ui.common.actions.retry",
+        "en": "Retry",
+        "ur": "دوبارہ کوشش کریں"
+      }
+    ],
+    "style_guide": "/Users/damian/local-operator/i18n/style-guides/ur.md read as a labelled doc (آپ address, respectful imperatives, Latin product names untouched, Urdu punctuation ۔ ، ؟ and quotes “ ”, Latin digits in v1, no manual bidi controls)",
+    "style_sample_notes": [
+      "credential_updated keeps the Urdu quotes “ ” around the Latin {key} per guide §Punctuation & typography while en uses straight quotes — per-guide, not a defect",
+      "cancel/close/retry use the respectful imperative forms the guide names (منسوخ کریں، بند کریں، دوبارہ کوشش کریں)",
+      "find_replace_widget.of keeps the two Latin ICU number formatters as LTR islands inside the Urdu sentence"
+    ]
+  },
+  "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 0,
+    "NIT": 0
+  },
+  "verdict": "pass",
+  "namespaces": {
+    "ui.common.actions": {
+      "status": "passed",
+      "keys_audited": 52,
+      "keys_at_bind": 53,
+      "sha256": {
+        "en": "8dc67dc7c285d2747f4586a5d01a39c23423b10e506f6cfa44c258caed37a412",
+        "target": "4999408a82f004e3d33270dfe6a863415b2199bc59ed2912d31d4f278d370967"
+      },
+      "findings": [],
+      "deletion_verified": "exactly one key removed on both sides; each catalogue byte-identical to its bind-commit bytes with that one line removed"
+    }
+  },
+  "observations": [
+    "Pre-existing, unchanged, outside this verification: ui.common.actions.date_time_picker.set_to_current_time369877 carries a digit-suffixed name in both en and ur and is byte-identical to the bind commit — worth a separate cleanup ticket, not a delta from this change.",
+    "Pre-existing, unchanged: retry and retry_again both render دوبارہ کوشش کریں (en 'Retry' / 'Try again'). Recorded by the earlier round-4 audit as a minor; byte-identical to the audited bytes here, so not re-opened by this verification."
+  ],
+  "ledger_row": {
+    "written": false,
+    "reason": "task instruction forbids repo edits; no audit-ledger command named in this task; i18n/ledger.json is already modified in the worktree by other sessions and was not touched"
+  },
+  "repo_edits_made": false
+}

@@ -1,0 +1,67 @@
+{
+  "schema": 1,
+  "kind": "translation-audit-evidence",
+  "evidence_classification": {
+    "linguistic_notes": "auditor judgments derived from actual en/hi values and prior hi neighborhood",
+    "checks": "captured execution output, not simulated"
+  },
+  "date": "2026-11-09",
+  "locale": "hi",
+  "namespace": "ui.agents.pages",
+  "branch": "feat/i18n-s7",
+  "head": "aba5d0310761cedc384c35847498d4197ce4b107",
+  "base": "0ad5542379a349a98e0a8d602dbd992746fd40a2",
+  "auditor": {
+    "agent": "reviewer",
+    "instance": "9368437cbc2e",
+    "session": "9368437cbc2e",
+    "model": "openai/gpt-6.1-sol",
+    "independent_from_translator_session": true,
+    "independence": "Did not author or remediate any catalogue values; wrote only own receipt and evidence."
+  },
+  "model": "openai/gpt-6.1-sol",
+  "instance": "9368437cbc2e",
+  "status": "passed",
+  "result": "clean",
+  "source": {
+    "path": "src/i18n/catalogues/en/ui.agents.pages.json",
+    "sha256": "0b2e8e8a93001604df2d7a49abe57c8070f29ef30b50209bc3a84cbdc43b540f"
+  },
+  "target": {
+    "path": "src/i18n/catalogues/hi/ui.agents.pages.json",
+    "sha256": "368841ff17b1b60c04d4029aa0fab43451c7369f18f0208dc9f7c97846d6c812"
+  },
+  "context": {
+    "path": "src/i18n/catalogues/en/ui.agents.pages.context.json",
+    "sha256": "d17a2e44ddb8bf3d0896cdd6eddd13933ec9cdd804252e4e03c840ab3dca59f1"
+  },
+  "keys_audited": 7,
+  "keys": [
+    "ui.agents.pages.backend.connecting",
+    "ui.agents.pages.backend.loading_capabilities",
+    "ui.agents.pages.change.new",
+    "ui.agents.pages.backend.upgrade_heading",
+    "ui.agents.pages.backend.unreachable",
+    "ui.agents.pages.backend.upgrade_body",
+    "ui.agents.pages.change.updated"
+  ],
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [],
+    "nit": []
+  },
+  "linguistic_notes": [
+    "All seven additions inspected against their English values. Connecting/loading/unreachable statuses remain terse. Reusable agents is paraphrased as बार-बार इस्तेमाल होने वाले एजेंटों without changing the feature meaning.",
+    "loading_capabilities: इस modifies बैकएंड in the singular oblique because the noun is followed by की. Hindi इस is singular oblique for both genders; it is not a masculine-only form. की agrees with feminine क्षमताएँ, not with बैकएंड. क्षमताएँ is feminine plural, so रही हैं is correct. Connecting uses masculine singular रहा है for बैकएंड. नया बैकएंड and नए-agent semantics are preserved.",
+    "Existing terminology: बैकएंड matches ui.chat.run_details.update_backend and children_unopenable, एजेंट/टीम match existing pages values. No untranslated prose or inappropriate register."
+  ],
+  "checks": {
+    "path": "i18n/audits/evidence/hi/ui.chat.run_details/s7-hi-9368437cbc2e/checks.json",
+    "sha256": "031e7041cf8bf9b09944ea442e0a6eb0185083e7b278271c0b6d9a70e5efb852"
+  },
+  "report": {
+    "path": "i18n/audits/evidence/hi/ui.chat.run_details/s7-hi-9368437cbc2e/report.md",
+    "sha256": "688edf2dfa08415bc295a83fdbff7f29f29c437ac49bd44c668ad4b2fdd55ce0"
+  }
+}

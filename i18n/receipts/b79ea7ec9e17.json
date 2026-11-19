@@ -1,0 +1,20 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "b79ea7ec9e17",
+  "locale": "vi",
+  "status": "passed",
+  "namespace": "ui.console",
+  "sha256": {
+    "en": "c0aa99e935c874ff2bdbac467ca9278007d885efcd6aa4f6269e0d1132a975f9",
+    "target": "e4638cf12e63c70fddf1430c3e929a932acfaafb0a3f270efe0b4559d1432020"
+  },
+  "findings": [
+    {
+      "severity": "MINOR",
+      "key": "ui.console.ended.app_quit",
+      "issue": "\"nó\" uses the conversational object pronoun for the terminal, which the vi guide's pronoun-dropping product-copy register avoids; naming the object reads as product copy rather than speech.",
+      "suggestion": "ứng dụng đã đóng cửa sổ này khi thoát (37 cells, +8 on the mono span, so check the banner width there)"
+    }
+  ]
+}

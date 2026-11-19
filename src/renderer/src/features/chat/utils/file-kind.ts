@@ -185,6 +185,29 @@ const HTML = toSet(htmlExtensions);
 const PDF = toSet(pdfExtensions);
 
 /**
+ * A `data:` URL's HEADER — everything before the payload, with the comma dropped.
+ *
+ * WHY THIS EXISTS (perf, QA round 1 on PR #1773): a pasted image arrives as a
+ * `data:` URL of 1.5 MB or more, and the classifiers below used to read it whole
+ * — `lastIndexOf` twice, a `slice` of the payload, a `toLowerCase` of that slice.
+ * Measured at 1.53 ms per `mimeTypeForPath` call on a 1.5 MB paste, times two
+ * calls per tile, times six tiles, ON EVERY KEYSTROKE, because the composer
+ * re-renders its attachment row as the box changes. Nothing a classifier needs
+ * lives after the comma: the media type, any `name=` and any `;base64` marker
+ * are all in the header (`data:image/png;base64,<payload>`).
+ *
+ * A `data:` URL with no comma is malformed, so the bounded prefix is used as the
+ * header rather than treating the whole string as one: a classifier on a broken
+ * URL may be wrong, but it may not be unbounded.
+ */
+const DATA_URL_HEADER_MAX = 512;
+
+export function dataUrlHeader(path: string): string {
+	const comma = path.indexOf(",");
+	return path.slice(0, comma < 0 ? DATA_URL_HEADER_MAX : comma);
+}
+
+/**
  * A file's extension in lower case, or `null` when it has none.
  *
  * A leading dot is not an extension: `.env` and `.gitignore` are dotfiles, not
@@ -193,10 +216,17 @@ const PDF = toSet(pdfExtensions);
  * that is exactly the kind of typo a path scanner then reports as a file.
  * Multiple dots are fine: only the last segment counts, and a trailing dot
  * yields `null` rather than an empty string.
+ *
+ * A `data:` URL is classified from its HEADER only (see `dataUrlHeader`): the
+ * payload is bytes, not a name, and scanning it is the cost PR #1773 removed.
+ * The answer is unchanged for every shape this app produces — a base64 payload
+ * contains no `.`, so the header is the only place an extension could be, and
+ * `data:image/png;base64,…` answered `null` before this bound too.
  */
 export function extensionOf(path: string): string | null {
-	const lastSeparator = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
-	const name = path.slice(lastSeparator + 1);
+	const scan = path.startsWith("data:") ? dataUrlHeader(path) : path;
+	const lastSeparator = Math.max(scan.lastIndexOf("/"), scan.lastIndexOf("\\"));
+	const name = scan.slice(lastSeparator + 1);
 	const dot = name.lastIndexOf(".");
 	// `dot <= 0` covers both "no dot" and "the dot is the first character"
 	// (a dotfile), and "name." (a trailing dot) leaves an empty extension.

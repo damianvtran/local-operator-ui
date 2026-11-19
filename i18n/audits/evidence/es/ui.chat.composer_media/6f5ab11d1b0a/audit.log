@@ -1,0 +1,1678 @@
+Spanish s12 independent delta audit; 2026-11-10. Allocation: fix (<2h).
+Actual execution below is captured directly by this script. Earlier tool reads/diffs are listed separately at end.
+$ git rev-parse HEAD
+exit=0
+e5fb4310dab638f9cf428779d62539ec039a8990
+
+
+$ git status --short
+exit=0
+
+
+$ node --input-type=module -e import {namespaceGap} from "./scripts/i18n/context-parity.mjs"; for (const ns of ["ui.chat","ui.chat.composer_media","ui.common.actions"]) console.log(ns,JSON.stringify(namespaceGap(ns)));
+exit=0
+ui.chat {"uncovered":["ui.chat.highlights.file_resolution_failed","ui.chat.usage.blocked","ui.chat.usage.continue","ui.chat.usage.eligibility_unknown","ui.chat.usage.family_caps","ui.chat.usage.unlimited"],"orphaned":[],"hasSidecar":true,"contextKeys":{},"catalogueKeys":{}}
+ui.chat.composer_media {"uncovered":[],"orphaned":[],"hasSidecar":true,"contextKeys":{},"catalogueKeys":{}}
+ui.common.actions {"uncovered":[],"orphaned":[],"hasSidecar":true,"contextKeys":{},"catalogueKeys":{}}
+
+
+$ shasum -a 256 src/i18n/catalogues/en/ui.chat.json src/i18n/catalogues/es/ui.chat.json src/i18n/catalogues/en/ui.chat.context.json src/i18n/catalogues/en/ui.chat.composer_media.json src/i18n/catalogues/es/ui.chat.composer_media.json src/i18n/catalogues/en/ui.chat.composer_media.context.json src/i18n/catalogues/en/ui.common.actions.json src/i18n/catalogues/es/ui.common.actions.json src/i18n/catalogues/en/ui.common.actions.context.json
+exit=0
+ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15  src/i18n/catalogues/en/ui.chat.json
+73e79f400865c43fd43bd3ce7dbc3e5979e53c8bc7986930d7441e01d9859c46  src/i18n/catalogues/es/ui.chat.json
+84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf  src/i18n/catalogues/en/ui.chat.context.json
+79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae  src/i18n/catalogues/en/ui.chat.composer_media.json
+82d113f5948cf0d3d12bfe3fff081dbf99339489324057c7017a4ca37c3e79dc  src/i18n/catalogues/es/ui.chat.composer_media.json
+a0fbc1552ef6f27999f3cff365750025627a284faa106d767e22a24d131ae77b  src/i18n/catalogues/en/ui.chat.composer_media.context.json
+0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b  src/i18n/catalogues/en/ui.common.actions.json
+297982c56ead7383ca4bd8ea94c2c961f7532785957f648287a335e7168dd2a8  src/i18n/catalogues/es/ui.common.actions.json
+24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d  src/i18n/catalogues/en/ui.common.actions.context.json
+
+
+PASS: all 9 shasum hashes equal manager expected-hashes.json.
+$ git show origin/main:src/i18n/catalogues/en/ui.chat.json
+exit=0
+{
+	"ui.chat.action.stopped": "Stopped",
+	"ui.chat.composer.status.goal_collapse": "Collapse the session goal",
+	"ui.chat.composer.status.goal_dismiss": "Dismiss",
+	"ui.chat.composer.status.goal_dismiss_keep": "it stays in the goal history",
+	"ui.chat.composer.status.goal_dismiss_name": "Dismiss the finished goal",
+	"ui.chat.composer.status.goal_done": "Done",
+	"ui.chat.composer.status.goal_done_name": "Mark the goal done",
+	"ui.chat.composer.status.goal_expand": "Expand the session goal",
+	"ui.chat.composer.status.goal_label": "Goal:",
+	"ui.chat.composer.status.jobs_action": "Open the jobs in run details",
+	"ui.chat.composer.status.loop_clear": "Clear loop",
+	"ui.chat.composer.status.loop_label": "Loop:",
+	"ui.chat.composer.status.loop_progress_of_turns": "{completed, number, ::group-off} of {total, number, ::group-off} turns",
+	"ui.chat.composer.status.loop_progress_turns": "{count, plural, one {# turn} other {# turns}}",
+	"ui.chat.composer.status.loop_stop": "Stop loop",
+	"ui.chat.composer.status.monitors_action": "Open the monitors in run details",
+	"ui.chat.composer.status.plan_action": "Open the plan in run details",
+	"ui.chat.composer.status.session_goal": "Session goal",
+	"ui.chat.composer.status.subagents_action": "Open the subagents in run details",
+	"ui.chat.composer.status.wakes_action": "Open the wakes in run details",
+	"ui.chat.header_identity.loading": "{kind, select, agents {Loading agents…} teams {Loading teams…} other {Loading…}}",
+	"ui.chat.header_identity.no_matches": "Nothing matches “{query}”.",
+	"ui.chat.header_identity.search": "{kind, select, agents {Search agents} teams {Search teams} other {Search}}",
+	"ui.chat.highlights.file_resolution_failed": "Couldn't resolve this file in the session working directory. Use Copy file path to check its location against this session's workspace before trying again.",
+	"ui.chat.hub_update.check_now": "Check the hub for updates now",
+	"ui.chat.hub_update.dismiss": "Dismiss",
+	"ui.chat.hub_update.dismiss_summary": "Dismiss update summary",
+	"ui.chat.hub_update.update_all": "Update all ({count, number, ::group-off})",
+	"ui.chat.hub_update.update_all_label": "{kind, select, agents {Update all {count, number, ::group-off} agent updates from the hub} teams {Update all {count, number, ::group-off} team updates from the hub} skills {Update all {count, number, ::group-off} skill updates from the hub} other {Update all {count, number, ::group-off} updates from the hub}}",
+	"ui.chat.hub_update.updating": "Updating…",
+	"ui.chat.provider_error.action.open_provider_settings": "Open provider settings",
+	"ui.chat.provider_error.action.open_radient_account": "Open Radient account",
+	"ui.chat.provider_error.action.sign_in_radient": "Sign in to Radient",
+	"ui.chat.provider_error.headline.out_of_credits": "Out of credits{status}: {body}",
+	"ui.chat.provider_error.headline.out_of_credits_refused": "Out of credits{status}: Radient refused the request",
+	"ui.chat.question_dock.asking": "The agent is asking",
+	"ui.chat.question_dock.from_agent_label": "Question from the agent",
+	"ui.chat.question_dock.secret_answer_label": "Secret answer",
+	"ui.chat.question_dock.secret_note": "Hidden as you type — sent to the agent, not shown in the transcript.",
+	"ui.chat.question_dock.secret_placeholder": "Paste the secret",
+	"ui.chat.question_dock.secret_value_label": "Secret value",
+	"ui.chat.question_dock.send": "Send",
+	"ui.chat.question_dock.show": "Show",
+	"ui.chat.question_dock.show_question_label": "Show the agent's question",
+	"ui.chat.quota_notice.dismiss": "Dismiss",
+	"ui.chat.reply.remove": "Remove reply",
+	"ui.chat.reply.replying_to": "Replying to",
+	"ui.chat.session_status.choose_model": "Choose a model",
+	"ui.chat.session_status.choose_model_tooltip": "Choose the model this conversation will run on",
+	"ui.chat.session_status.estimate": "estimate",
+	"ui.chat.session_status.last_reading": "Last reading",
+	"ui.chat.session_status.no_model_resolved": "No model resolved yet",
+	"ui.chat.skill_invocation.instructions_label": "Skill instructions sent with this message",
+	"ui.chat.skill_invocation.trigger_label": "{token} skill instructions",
+	"ui.chat.status_strip.dismiss": "Dismiss",
+	"ui.chat.tabs.chat": "Chat",
+	"ui.chat.tabs.raw": "Raw",
+	"ui.chat.usage.blocked": "Spend unavailable",
+	"ui.chat.usage.continue": "Included quota used; credits will continue.",
+	"ui.chat.usage.eligibility_unknown": "Spend eligibility unknown",
+	"ui.chat.usage.family_caps": "Model-family caps still apply.",
+	"ui.chat.usage.unlimited": "Unlimited paid allowance",
+	"ui.chat.mermaid.zoom_in": "Zoom in",
+	"ui.chat.mermaid.zoom_out": "Zoom out",
+	"ui.chat.mermaid.pan": "Drag to pan",
+	"ui.chat.mermaid.pan_hint": "Drag the diagram to pan",
+	"ui.chat.mermaid.reset_view": "Reset view",
+	"ui.chat.mermaid.save_svg": "Save as SVG",
+	"ui.chat.mermaid.copied": "Copied",
+	"ui.chat.mermaid.copy_text": "Copy mermaid text",
+	"ui.chat.mermaid.error_title": "Mermaid diagram error",
+	"ui.chat.mermaid.unexpected_error": "An unexpected error occurred while rendering the diagram",
+	"ui.chat.mermaid.error_contained": "The error was contained within the diagram component.",
+	"ui.chat.mermaid.chart_label": "Chart",
+	"ui.chat.mermaid.loading": "Loading diagram...",
+	"ui.chat.mermaid.rendering_error": "Rendering error",
+	"ui.chat.mermaid.render_failed": "Failed to render diagram content.",
+	"ui.chat.mermaid.fullscreen": "Fullscreen",
+	"ui.chat.mermaid.open_fullscreen": "Open diagram fullscreen",
+	"ui.chat.mermaid.diagram_title": "Mermaid diagram",
+	"ui.chat.mermaid.close_fullscreen": "Close fullscreen",
+	"ui.chat.aside.question_label": "Question:",
+	"ui.chat.aside.you_label": "You:",
+	"ui.chat.aside.thinking": "thinking…",
+	"ui.chat.aside.title": "Aside",
+	"ui.chat.aside.off_record": "off the record — nothing here joins the conversation",
+	"ui.chat.aside.close_label": "Close the aside",
+	"ui.chat.aside.exchange_label": "The aside exchange",
+	"ui.chat.aside.empty": "Type a question in the composer below — the answer lands here.",
+	"ui.chat.aside.add_to_conversation": "Add to conversation",
+	"ui.chat.error_block.heading": "Error",
+	"ui.chat.error_block.link.settings": "settings page",
+	"ui.chat.error_block.link.providers": "Providers section",
+	"ui.chat.error_block.provider.before": "You haven't selected an AI provider yet. Go to the",
+	"ui.chat.error_block.provider.after": "to configure it for all your agents. If you don't have an AI provider, you can sign in to Radient to get access for free to start.",
+	"ui.chat.error_block.model.before": "You haven't selected an AI model yet. Go to the",
+	"ui.chat.error_block.model.after": "to select a model for all your agents. If you don't have an AI provider, you can sign in to Radient to get access for free to start.",
+	"ui.chat.error_block.rate_limit.before": "You've hit the rate limit for your AI provider. Please try again later or get Radient Pass in the",
+	"ui.chat.error_block.rate_limit.after": "to access AI models with no rate limits at low prices.",
+	"ui.chat.error_block.rate_limit.all_after": "to access all AI models with no rate limits at low prices.",
+	"ui.chat.error_block.invalid_key.before": "Your API key is invalid. Update it in the",
+	"ui.chat.error_block.invalid_key.after": ", or sign in to the provider again.",
+	"ui.chat.error_block.unavailable.before": "The model you're trying to use is not available. Go to the",
+	"ui.chat.error_block.unavailable.after": "to select a different model, or use Radient to get access to hundreds of models with no rate limits",
+	"ui.chat.error_block.schema.before": "The model tried to perform an action but was unable to express its intent in the required schema. Typically this happens because the model can't follow the complex instructions required for agentic AI.",
+	"ui.chat.error_block.schema.after_before": "Change your model in the",
+	"ui.chat.error_block.schema.after": "to fix this. We recommend using Radient Automatic to have the best combo of cheap and smart picked for you based on your requests (typically cheaper than bringing your own key), or use one of the recommended models with a star icon.",
+	"ui.chat.approval.reply_required": "Reply yes or no to answer the approval request.",
+	"ui.chat.question_dock.hint.approval": "Choose Approve or Deny above, type yes, no, 1, or 2 and send, or press Escape in the message box to stop the turn.",
+	"ui.chat.question_dock.hint.approval_held": "Answer from the composer instead: type yes, no, 1, or 2 and send, or press Escape in the message box to stop the turn.",
+	"ui.chat.question_dock.hint.prefix": "Question {index} of {total}. ",
+	"ui.chat.question_dock.hint.secret": "{prefix}Type or paste the secret above · Enter sends · Esc hides",
+	"ui.chat.question_dock.hint.secret_held": "{prefix}Held while this answer's fate is unknown — it may have landed, so nothing can send again · Esc in the card hides it",
+	"ui.chat.question_dock.hint.type": "{prefix}Type your answer below.",
+	"ui.chat.question_dock.hint.options": "{prefix}Up/Down choose · Enter or {digits} answers · Esc hides · or type your own answer below",
+	"ui.chat.session_status.context_heading": "Context",
+	"ui.chat.session_status.context_nothing_measured_tooltip": "Context: nothing measured yet. The window fills as the conversation runs.",
+	"ui.chat.session_status.conversation_starting": "Set once the conversation starts.",
+	"ui.chat.session_status.model_none_resolved_tooltip": "Model: none resolved yet. Choose the model this conversation will run on.",
+	"ui.chat.session_status.not_signed_in": "Not signed in to {label}",
+	"ui.chat.session_status.not_signed_in_description": "This session runs {label} without a working sign-in, so it cannot answer until you connect it.",
+	"ui.chat.session_status.nothing_measured_yet": "Nothing measured yet. The window fills as the conversation runs.",
+	"ui.chat.session_status.temporarily_unavailable": "{label} is temporarily unavailable",
+	"ui.chat.session_status.temporarily_unavailable_description": "Your saved sign-in is still present. Try again later or choose another model.",
+	"ui.chat.checkpoint.generating_name": "Generating name…",
+	"ui.chat.checkpoint.jump_agent": "Jump to turn {turn, number} of {total, number}, {name}",
+	"ui.chat.checkpoint.jump_agent_unnamed": "Jump to turn {turn, number} of {total, number}",
+	"ui.chat.checkpoint.jump_user": "Jump to your message in turn {turn, number} of {total, number}, {clock}",
+	"ui.chat.checkpoint.jump_user_no_clock": "Jump to your message in turn {turn, number} of {total, number}",
+	"ui.chat.checkpoint.turn": "Turn {turn, number} of {total, number}",
+	"ui.chat.header_identity.aria_agent_assign": "Agent: {label}. Assign an agent",
+	"ui.chat.header_identity.aria_agent_closed": "Agent: {label}. {reason}",
+	"ui.chat.header_identity.aria_agent_switch": "Agent: {label}. Switch agent",
+	"ui.chat.header_identity.aria_team_assign": "Team: {label}. Assign a team",
+	"ui.chat.header_identity.aria_team_closed": "Team: {label}. {reason}",
+	"ui.chat.header_identity.aria_team_switch": "Team: {label}. Switch team",
+	"ui.chat.header_identity.assign_agent": "Assign an agent",
+	"ui.chat.header_identity.assign_team": "Assign a team",
+	"ui.chat.header_identity.no_agent": "No agent",
+	"ui.chat.header_identity.no_team": "No team",
+	"ui.chat.region.composer": "Message composer",
+	"ui.chat.region.conversation": "Conversation",
+	"ui.chat.audio.play": "Play",
+	"ui.chat.audio.pause": "Pause",
+	"ui.chat.audio.play_label": "Play {label}",
+	"ui.chat.audio.pause_label": "Pause {label}",
+	"ui.chat.audio.mute": "Mute",
+	"ui.chat.audio.unmute": "Unmute",
+	"ui.chat.message_controls.copy": "Copy message",
+	"ui.chat.message_controls.copied": "Copied",
+	"ui.chat.image_actions.save_as": "Save as…",
+	"ui.chat.image_actions.copy_image": "Copy image",
+	"ui.chat.image_actions.copy_image_url": "Copy image URL",
+	"ui.chat.image_actions.open_in_browser": "Open in browser",
+	"ui.chat.image_actions.expand_image": "Expand image",
+	"ui.chat.composer.connect_provider": "Connect a provider",
+	"ui.chat.slot_notice.run_draft_title": "Run details need a conversation.",
+	"ui.chat.slot_notice.run_draft_detail": "Send a message to start this conversation; its subagents, plan and scheduled work appear here.",
+	"ui.chat.slot_notice.run_reading_title": "Reading this conversation's run…",
+	"ui.chat.slot_notice.run_unreadable_title": "Run details could not be read for this conversation.",
+	"ui.chat.slot_notice.run_unreadable_detail": "The conversation beside this pane says why and how to reconnect.",
+	"ui.chat.slot_notice.run_missing_detail": "This conversation is no longer on this machine.",
+	"ui.chat.slot_notice.code_draft_title": "Code review needs a conversation.",
+	"ui.chat.slot_notice.code_draft_detail": "Send a message to start this conversation; the pull requests and merge requests it opens or mentions appear here.",
+	"ui.chat.slot_notice.code_below_version_title": "The Local Operator server doesn't serve code review yet.",
+	"ui.chat.slot_notice.code_below_version_detail": "Update the server to see the pull requests and merge requests this conversation opens.",
+	"ui.chat.slot_notice.code_checking_title": "Checking whether the server serves code review…",
+	"ui.chat.slot_notice.code_load_lead": "Code review could not be loaded.",
+	"ui.chat.slash_arguments.model_default_description": "Save the current model ({provider}/{model}) as the default for new sessions.",
+	"ui.chat.slash_arguments.model_default_unavailable": "No active session model is available to save.",
+	"ui.chat.slash_arguments.model_default_click": "Click does the same.",
+	"ui.chat.slash_arguments.model_default_required": "A session model is required before this action can save a default.",
+	"ui.chat.slash_arguments.refresh_description": "Re-read the conversation and name it again",
+	"ui.chat.slash_arguments.refresh_detail": "resumes auto-naming",
+	"ui.chat.aside.add_to_conversation_tooltip": "Add the aside to the conversation",
+	"ui.chat.message_controls.content_header": "Content",
+	"ui.chat.message_controls.replacements_header": "Replacements",
+	"ui.chat.message_controls.thinking_label": "Thinking",
+	"ui.chat.scroll_to_bottom.label": "Scroll to bottom",
+	"ui.chat.scroll_to_bottom.label_new_activity": "New activity, scroll to bottom",
+	"ui.chat.session_status.last_reading_note": "Last reading from before the reconnect.",
+	"ui.chat.session_status.readings_aria_held": "Session readings. {note}",
+	"ui.chat.session_status.commands_off": "Slash commands are off on this server, so this reading cannot be opened from here.",
+	"ui.chat.session_status.context_click_breakdown_held": "Click for the full breakdown, which estimates your next request.",
+	"ui.chat.session_status.context_click_breakdown_held_plain": "Click for the full breakdown.",
+	"ui.chat.session_status.context_measured_now": "Measured now; click for the full breakdown, which estimates your next request",
+	"ui.chat.session_status.context_estimated_now": "Estimated now; click for the full breakdown, which estimates your next request",
+	"ui.chat.session_status.context_click_breakdown": "Click for the full breakdown",
+	"ui.chat.session_status.model_click_choose_draft": "Click to choose a different model. It applies to this conversation.",
+	"ui.chat.session_status.model_click_choose": "Click to choose a different model",
+	"ui.chat.session_status.model_draft_inert": "This conversation will use it. Change it once the conversation starts.",
+	"ui.chat.session_status.effort_change_draft": "Change it. It applies to this conversation.",
+	"ui.chat.session_status.effort_change": "Change it.",
+	"ui.chat.session_status.model_aria": "Model: {selector}{fast, select, yes {, fast mode on} other {}}. {reason}",
+	"ui.chat.session_status.model_aria_pending": "Model: {selector}{fast, select, yes {, fast mode on} other {}}. Switching; waiting for the session to confirm it.",
+	"ui.chat.session_status.switching_model": "Switching the model",
+	"ui.chat.session_status.model_aria_unresolved": "Model: this conversation's model was not resolved. Retry.",
+	"ui.chat.session_status.model_aria_resolving": "Model: resolving the model this conversation will run on.",
+	"ui.chat.session_status.resolving_model_spinner": "Resolving the model this conversation will run on",
+	"ui.chat.session_status.context_aria_no_reading": "Context: no reading yet. {hint}",
+	"ui.chat.session_status.context_aria_reading": "Context: {spelling}{estimate, select, yes {, estimated} other {}}. {hint}",
+	"ui.chat.session_status.active_time_aria": "Active time: {duration}. {explanation}",
+	"ui.chat.session_status.duration_explanation": "Time spent working; waiting is not counted.",
+	"ui.chat.session_status.effort_level.low": "Low",
+	"ui.chat.session_status.effort_level.medium": "Medium",
+	"ui.chat.session_status.effort_level.high": "High"
+}
+
+
+$ git show origin/main:src/i18n/catalogues/es/ui.chat.json
+exit=0
+{
+	"ui.chat.action.stopped": "Detenido",
+	"ui.chat.composer.status.goal_collapse": "Contraer el objetivo de sesión",
+	"ui.chat.composer.status.goal_dismiss": "Descartar",
+	"ui.chat.composer.status.goal_dismiss_keep": "sigue en el historial de objetivos",
+	"ui.chat.composer.status.goal_dismiss_name": "Descartar el objetivo finalizado",
+	"ui.chat.composer.status.goal_done": "Hecho",
+	"ui.chat.composer.status.goal_done_name": "Marcar el objetivo como hecho",
+	"ui.chat.composer.status.goal_expand": "Expandir el objetivo de sesión",
+	"ui.chat.composer.status.goal_label": "Objetivo:",
+	"ui.chat.composer.status.jobs_action": "Abrir los trabajos en los detalles de ejecución",
+	"ui.chat.composer.status.loop_clear": "Quitar el bucle",
+	"ui.chat.composer.status.loop_label": "Bucle:",
+	"ui.chat.composer.status.loop_progress_of_turns": "{completed, number, ::group-off} de {total, number, ::group-off} turnos",
+	"ui.chat.composer.status.loop_progress_turns": "{count, plural, one {# turno} many {# de turnos} other {# turnos}}",
+	"ui.chat.composer.status.loop_stop": "Detener el bucle",
+	"ui.chat.composer.status.monitors_action": "Abrir los monitores en los detalles de ejecución",
+	"ui.chat.composer.status.plan_action": "Abrir el plan en los detalles de ejecución",
+	"ui.chat.composer.status.session_goal": "Objetivo de sesión",
+	"ui.chat.composer.status.subagents_action": "Abrir los subagentes en los detalles de ejecución",
+	"ui.chat.composer.status.wakes_action": "Abrir los despertares en los detalles de ejecución",
+	"ui.chat.header_identity.loading": "{kind, select, agents {Cargando agentes…} teams {Cargando equipos…} other {Cargando…}}",
+	"ui.chat.header_identity.no_matches": "Nada coincide con “{query}”.",
+	"ui.chat.header_identity.search": "{kind, select, agents {Buscar agentes} teams {Buscar equipos} other {Buscar}}",
+	"ui.chat.highlights.file_resolution_failed": "No se pudo resolver este archivo en el directorio de trabajo de la sesión. Usa Copiar ruta del archivo para comprobar su ubicación frente al espacio de trabajo de esta sesión antes de volver a intentarlo.",
+	"ui.chat.hub_update.check_now": "Buscar actualizaciones del hub ahora",
+	"ui.chat.hub_update.dismiss": "Descartar",
+	"ui.chat.hub_update.dismiss_summary": "Descartar el resumen de actualizaciones",
+	"ui.chat.hub_update.update_all": "Actualizar todo ({count, number, ::group-off})",
+	"ui.chat.hub_update.update_all_label": "{kind, select, agents {Actualizar las {count, number, ::group-off} actualizaciones de agentes desde el hub} teams {Actualizar las {count, number, ::group-off} actualizaciones de equipos desde el hub} skills {Actualizar las {count, number, ::group-off} actualizaciones de habilidades desde el hub} other {Actualizar las {count, number, ::group-off} actualizaciones desde el hub}}",
+	"ui.chat.hub_update.updating": "Actualizando…",
+	"ui.chat.provider_error.action.open_provider_settings": "Abrir ajustes del proveedor",
+	"ui.chat.provider_error.action.open_radient_account": "Abrir la cuenta de Radient",
+	"ui.chat.provider_error.action.sign_in_radient": "Iniciar sesión en Radient",
+	"ui.chat.provider_error.headline.out_of_credits": "Sin créditos{status}: {body}",
+	"ui.chat.provider_error.headline.out_of_credits_refused": "Sin créditos{status}: Radient rechazó la solicitud",
+	"ui.chat.question_dock.asking": "El agente pregunta",
+	"ui.chat.question_dock.from_agent_label": "Pregunta del agente",
+	"ui.chat.question_dock.secret_answer_label": "Respuesta secreta",
+	"ui.chat.question_dock.secret_note": "Oculto mientras escribes — se envía al agente y no aparece en la transcripción.",
+	"ui.chat.question_dock.secret_placeholder": "Pega el secreto",
+	"ui.chat.question_dock.secret_value_label": "Valor secreto",
+	"ui.chat.question_dock.send": "Enviar",
+	"ui.chat.question_dock.show": "Mostrar",
+	"ui.chat.question_dock.show_question_label": "Mostrar la pregunta del agente",
+	"ui.chat.quota_notice.dismiss": "Descartar",
+	"ui.chat.reply.remove": "Quitar respuesta",
+	"ui.chat.reply.replying_to": "Respondiendo a",
+	"ui.chat.session_status.choose_model": "Elegir un modelo",
+	"ui.chat.session_status.choose_model_tooltip": "Elige el modelo con el que se ejecutará esta conversación",
+	"ui.chat.session_status.estimate": "estimado",
+	"ui.chat.session_status.last_reading": "Última lectura",
+	"ui.chat.session_status.no_model_resolved": "Aún no hay ningún modelo resuelto",
+	"ui.chat.skill_invocation.instructions_label": "Instrucciones de la habilidad enviadas con este mensaje",
+	"ui.chat.skill_invocation.trigger_label": "Instrucciones de la habilidad {token}",
+	"ui.chat.status_strip.dismiss": "Descartar",
+	"ui.chat.tabs.chat": "Chat",
+	"ui.chat.tabs.raw": "Sin procesar",
+	"ui.chat.usage.blocked": "Gasto no disponible",
+	"ui.chat.usage.continue": "Cuota incluida agotada; se seguirán usando créditos.",
+	"ui.chat.usage.eligibility_unknown": "Elegibilidad de gasto desconocida",
+	"ui.chat.usage.family_caps": "Los límites por familia de modelos siguen vigentes.",
+	"ui.chat.usage.unlimited": "Cuota de pago ilimitada",
+	"ui.chat.mermaid.zoom_in": "Acercar",
+	"ui.chat.mermaid.zoom_out": "Alejar",
+	"ui.chat.mermaid.pan": "Arrastra para desplazar",
+	"ui.chat.mermaid.pan_hint": "Arrastra el diagrama para desplazarlo",
+	"ui.chat.mermaid.reset_view": "Restablecer vista",
+	"ui.chat.mermaid.save_svg": "Guardar como SVG",
+	"ui.chat.mermaid.copied": "Copiado",
+	"ui.chat.mermaid.copy_text": "Copiar el texto de Mermaid",
+	"ui.chat.mermaid.error_title": "Error en el diagrama de Mermaid",
+	"ui.chat.mermaid.unexpected_error": "Se produjo un error inesperado al renderizar el diagrama",
+	"ui.chat.mermaid.error_contained": "El error quedó contenido en el componente del diagrama.",
+	"ui.chat.mermaid.chart_label": "Gráfico",
+	"ui.chat.mermaid.loading": "Cargando diagrama…",
+	"ui.chat.mermaid.rendering_error": "Error de renderizado",
+	"ui.chat.mermaid.render_failed": "No se pudo renderizar el contenido del diagrama.",
+	"ui.chat.mermaid.fullscreen": "Pantalla completa",
+	"ui.chat.mermaid.open_fullscreen": "Abrir el diagrama en pantalla completa",
+	"ui.chat.mermaid.diagram_title": "Diagrama de Mermaid",
+	"ui.chat.mermaid.close_fullscreen": "Salir de pantalla completa",
+	"ui.chat.aside.question_label": "Pregunta:",
+	"ui.chat.aside.you_label": "Tú:",
+	"ui.chat.aside.thinking": "pensando…",
+	"ui.chat.aside.title": "Consulta al margen",
+	"ui.chat.aside.off_record": "Sin registro — nada de aquí pasa a la conversación",
+	"ui.chat.aside.close_label": "Cerrar la consulta al margen",
+	"ui.chat.aside.exchange_label": "El intercambio al margen",
+	"ui.chat.aside.empty": "Escribe una pregunta en el compositor de abajo — la respuesta aparece aquí.",
+	"ui.chat.aside.add_to_conversation": "Añadir a la conversación",
+	"ui.chat.error_block.heading": "Detalle del error",
+	"ui.chat.error_block.link.settings": "página de ajustes",
+	"ui.chat.error_block.link.providers": "sección Proveedores",
+	"ui.chat.error_block.provider.before": "Todavía no has elegido un proveedor de IA. Ve a la",
+	"ui.chat.error_block.provider.after": "para configurarlo para todos tus agentes. Si no tienes proveedor de IA, puedes iniciar sesión en Radient y empezar gratis.",
+	"ui.chat.error_block.model.before": "Todavía no has elegido un modelo de IA. Ve a la",
+	"ui.chat.error_block.model.after": "para elegir un modelo para todos tus agentes. Si no tienes proveedor de IA, puedes iniciar sesión en Radient y empezar gratis.",
+	"ui.chat.error_block.rate_limit.before": "Has alcanzado el límite de solicitudes de tu proveedor de IA. Vuelve a intentarlo más tarde u obtén Radient Pass en la",
+	"ui.chat.error_block.rate_limit.after": "para acceder a modelos de IA sin límites de solicitudes a precios bajos.",
+	"ui.chat.error_block.rate_limit.all_after": "para acceder a todos los modelos de IA sin límites de solicitudes a precios bajos.",
+	"ui.chat.error_block.invalid_key.before": "Tu clave de API no es válida. Actualízala en la",
+	"ui.chat.error_block.invalid_key.after": ", o vuelve a iniciar sesión en el proveedor.",
+	"ui.chat.error_block.unavailable.before": "El modelo que intentas usar no está disponible. Ve a la",
+	"ui.chat.error_block.unavailable.after": "para elegir otro modelo, o usa Radient para acceder a cientos de modelos sin límites de solicitudes",
+	"ui.chat.error_block.schema.before": "El modelo intentó realizar una acción, pero no pudo expresar su intención en el esquema requerido. Normalmente ocurre porque el modelo no puede seguir las instrucciones complejas que exige la IA agéntica.",
+	"ui.chat.error_block.schema.after_before": "Cambia tu modelo en la",
+	"ui.chat.error_block.schema.after": "para solucionarlo. Recomendamos Radient Automatic, que elige para ti la mejor combinación de barato e inteligente según tus solicitudes (normalmente más barato que usar tu propia clave), o uno de los modelos recomendados con el icono de estrella.",
+	"ui.chat.approval.reply_required": "Responde “yes” o “no” para contestar la solicitud de aprobación.",
+	"ui.chat.question_dock.hint.approval": "Elige Aprobar o Denegar arriba, escribe “yes”, “no”, 1 o 2 y envía, o pulsa Escape en el cuadro de mensaje para detener el turno.",
+	"ui.chat.question_dock.hint.approval_held": "Responde desde el compositor: escribe “yes”, “no”, 1 o 2 y envía, o pulsa Escape en el cuadro de mensaje para detener el turno.",
+	"ui.chat.question_dock.hint.prefix": "Pregunta {index} de {total}. ",
+	"ui.chat.question_dock.hint.secret": "{prefix}Escribe o pega el secreto arriba · Intro envía · Esc oculta",
+	"ui.chat.question_dock.hint.secret_held": "{prefix}En espera: no se sabe si esta respuesta llegó — puede que sí, así que nada puede volver a enviarse · Esc en la tarjeta la oculta",
+	"ui.chat.question_dock.hint.type": "{prefix}Escribe tu respuesta abajo.",
+	"ui.chat.question_dock.hint.options": "{prefix}Arriba/Abajo para elegir · Intro o {digits} responde · Esc oculta · o escribe tu propia respuesta abajo",
+	"ui.chat.session_status.context_heading": "Contexto",
+	"ui.chat.session_status.context_nothing_measured_tooltip": "Contexto: aún no se ha medido nada. La ventana se llena a medida que avanza la conversación.",
+	"ui.chat.session_status.conversation_starting": "Se establece cuando empiece la conversación.",
+	"ui.chat.session_status.model_none_resolved_tooltip": "Modelo: aún no hay ninguno resuelto. Elige el modelo con el que se ejecutará esta conversación.",
+	"ui.chat.session_status.not_signed_in": "No has iniciado sesión en {label}",
+	"ui.chat.session_status.not_signed_in_description": "Esta sesión se ejecuta con {label} sin un inicio de sesión que funcione, así que no podrá responder hasta que lo conectes.",
+	"ui.chat.session_status.nothing_measured_yet": "Aún no se ha medido nada. La ventana se llena a medida que avanza la conversación.",
+	"ui.chat.session_status.temporarily_unavailable": "{label} no está disponible temporalmente",
+	"ui.chat.session_status.temporarily_unavailable_description": "Tu inicio de sesión guardado sigue ahí. Vuelve a intentarlo más tarde o elige otro modelo.",
+	"ui.chat.checkpoint.generating_name": "Generando el nombre…",
+	"ui.chat.checkpoint.jump_agent": "Ir al turno {turn, number} de {total, number}, {name}",
+	"ui.chat.checkpoint.jump_agent_unnamed": "Ir al turno {turn, number} de {total, number}",
+	"ui.chat.checkpoint.jump_user": "Ir a tu mensaje del turno {turn, number} de {total, number}, a las {clock}",
+	"ui.chat.checkpoint.jump_user_no_clock": "Ir a tu mensaje del turno {turn, number} de {total, number}",
+	"ui.chat.checkpoint.turn": "Turno {turn, number} de {total, number}",
+	"ui.chat.header_identity.aria_agent_assign": "Agente: {label}. Asignar un agente",
+	"ui.chat.header_identity.aria_agent_closed": "Agente: {label}. {reason}",
+	"ui.chat.header_identity.aria_agent_switch": "Agente: {label}. Cambiar de agente",
+	"ui.chat.header_identity.aria_team_assign": "Equipo: {label}. Asignar un equipo",
+	"ui.chat.header_identity.aria_team_closed": "Equipo: {label}. {reason}",
+	"ui.chat.header_identity.aria_team_switch": "Equipo: {label}. Cambiar de equipo",
+	"ui.chat.header_identity.assign_agent": "Asignar un agente",
+	"ui.chat.header_identity.assign_team": "Asignar un equipo",
+	"ui.chat.header_identity.no_agent": "Sin agente",
+	"ui.chat.header_identity.no_team": "Sin equipo",
+	"ui.chat.region.composer": "Compositor de mensajes",
+	"ui.chat.region.conversation": "Conversación",
+	"ui.chat.audio.play": "Reproducir",
+	"ui.chat.audio.pause": "Pausar",
+	"ui.chat.audio.play_label": "Reproducir {label}",
+	"ui.chat.audio.pause_label": "Pausar {label}",
+	"ui.chat.audio.mute": "Silenciar",
+	"ui.chat.audio.unmute": "Activar sonido",
+	"ui.chat.message_controls.copy": "Copiar mensaje",
+	"ui.chat.message_controls.copied": "Copiado",
+	"ui.chat.image_actions.save_as": "Guardar como…",
+	"ui.chat.image_actions.copy_image": "Copiar imagen",
+	"ui.chat.image_actions.copy_image_url": "Copiar URL de la imagen",
+	"ui.chat.image_actions.open_in_browser": "Abrir en el navegador",
+	"ui.chat.image_actions.expand_image": "Ampliar imagen",
+	"ui.chat.composer.connect_provider": "Conectar un proveedor",
+	"ui.chat.slot_notice.run_draft_title": "Los detalles de ejecución requieren una conversación.",
+	"ui.chat.slot_notice.run_draft_detail": "Envía un mensaje para iniciar la conversación; aquí verás sus subagentes, su plan y sus trabajos programados.",
+	"ui.chat.slot_notice.run_reading_title": "Leyendo la ejecución de esta conversación…",
+	"ui.chat.slot_notice.run_unreadable_title": "No se pudieron leer los detalles de ejecución de esta conversación.",
+	"ui.chat.slot_notice.run_unreadable_detail": "La conversación junto a este panel explica por qué y cómo volver a conectarte.",
+	"ui.chat.slot_notice.run_missing_detail": "Esta conversación ya no está en este dispositivo.",
+	"ui.chat.slot_notice.code_draft_title": "La revisión de código requiere una conversación.",
+	"ui.chat.slot_notice.code_draft_detail": "Envía un mensaje para iniciar la conversación; aquí verás las pull requests y merge requests que abra o mencione.",
+	"ui.chat.slot_notice.code_below_version_title": "El servidor de Local Operator aún no ofrece revisión de código.",
+	"ui.chat.slot_notice.code_below_version_detail": "Actualiza el servidor para ver las pull requests y merge requests que abra esta conversación.",
+	"ui.chat.slot_notice.code_checking_title": "Comprobando si el servidor ofrece revisión de código…",
+	"ui.chat.slot_notice.code_load_lead": "No se pudo cargar la revisión de código.",
+	"ui.chat.slash_arguments.model_default_description": "Guardar el modelo actual ({provider}/{model}) como predeterminado para nuevas sesiones.",
+	"ui.chat.slash_arguments.model_default_unavailable": "No hay ningún modelo de sesión activo que guardar.",
+	"ui.chat.slash_arguments.model_default_click": "Hacer clic tiene el mismo efecto.",
+	"ui.chat.slash_arguments.model_default_required": "Se necesita un modelo de sesión para guardarlo como predeterminado.",
+	"ui.chat.slash_arguments.refresh_description": "Volver a leer la conversación y asignarle un nuevo nombre",
+	"ui.chat.slash_arguments.refresh_detail": "reanuda los nombres automáticos",
+	"ui.chat.aside.add_to_conversation_tooltip": "Añadir la consulta al margen a la conversación",
+	"ui.chat.message_controls.content_header": "Contenido",
+	"ui.chat.message_controls.replacements_header": "Reemplazos",
+	"ui.chat.message_controls.thinking_label": "Pensamiento",
+	"ui.chat.scroll_to_bottom.label": "Ir al final",
+	"ui.chat.scroll_to_bottom.label_new_activity": "Actividad nueva, ir al final",
+	"ui.chat.session_status.last_reading_note": "Última lectura antes de la reconexión.",
+	"ui.chat.session_status.readings_aria_held": "Lecturas de la sesión. {note}",
+	"ui.chat.session_status.commands_off": "Los comandos slash están desactivados en este servidor, así que esta lectura no se puede abrir desde aquí.",
+	"ui.chat.session_status.context_click_breakdown_held": "Haz clic para ver el desglose completo, que estima tu próxima solicitud.",
+	"ui.chat.session_status.context_click_breakdown_held_plain": "Haz clic para ver el desglose completo.",
+	"ui.chat.session_status.context_measured_now": "Medido ahora; haz clic para ver el desglose completo, que estima tu próxima solicitud",
+	"ui.chat.session_status.context_estimated_now": "Estimado ahora; haz clic para ver el desglose completo, que estima tu próxima solicitud",
+	"ui.chat.session_status.context_click_breakdown": "Haz clic para ver el desglose completo",
+	"ui.chat.session_status.model_click_choose_draft": "Haz clic para elegir otro modelo. Se aplica a esta conversación.",
+	"ui.chat.session_status.model_click_choose": "Haz clic para elegir otro modelo",
+	"ui.chat.session_status.model_draft_inert": "Esta conversación lo usará. Cámbialo una vez iniciada la conversación.",
+	"ui.chat.session_status.effort_change_draft": "Cámbialo. Se aplica a esta conversación.",
+	"ui.chat.session_status.effort_change": "Cámbialo.",
+	"ui.chat.session_status.model_aria": "Modelo: {selector}{fast, select, yes {, modo rápido activado} other {}}. {reason}",
+	"ui.chat.session_status.model_aria_pending": "Modelo: {selector}{fast, select, yes {, modo rápido activado} other {}}. Cambiando; esperando a que la sesión lo confirme.",
+	"ui.chat.session_status.switching_model": "Cambiando el modelo",
+	"ui.chat.session_status.model_aria_unresolved": "Modelo: no se resolvió el modelo de esta conversación. Reintentar.",
+	"ui.chat.session_status.model_aria_resolving": "Modelo: resolviendo el modelo con el que se ejecutará esta conversación.",
+	"ui.chat.session_status.resolving_model_spinner": "Resolviendo el modelo con el que se ejecutará esta conversación",
+	"ui.chat.session_status.context_aria_no_reading": "Contexto: aún no hay ninguna lectura. {hint}",
+	"ui.chat.session_status.context_aria_reading": "Contexto: {spelling}{estimate, select, yes {, estimado} other {}}. {hint}",
+	"ui.chat.session_status.active_time_aria": "Tiempo activo: {duration}. {explanation}",
+	"ui.chat.session_status.duration_explanation": "Tiempo dedicado a trabajar; la espera no se cuenta.",
+	"ui.chat.session_status.effort_level.low": "Bajo",
+	"ui.chat.session_status.effort_level.medium": "Medio",
+	"ui.chat.session_status.effort_level.high": "Alto"
+}
+
+
+PASS ui.chat: 208 keys en/es; legacy keys unchanged, none removed; only expected additions.
+PASS ui.chat.image_actions.actions: placeholders byte-exact; no plural/select; no NBSP/narrow NBSP/zero-width/bidi controls. 'Acciones de la imagen'
+PASS ui.chat.audio.position_label: placeholders byte-exact; no plural/select; no NBSP/narrow NBSP/zero-width/bidi controls. 'Posición de {label}'
+$ git show origin/main:src/i18n/catalogues/en/ui.chat.composer_media.json
+exit=0
+{
+	"ui.chat.composer_media.recording": "Recording",
+	"ui.chat.composer_media.confirms": "inserts",
+	"ui.chat.composer_media.cancels": "cancels",
+	"ui.chat.composer_media.sends_now": "sends now",
+	"ui.chat.composer_media.pasted_type": "Pasted {mimeType}",
+	"ui.chat.composer_media.pasted_file": "Pasted file",
+	"ui.chat.composer_media.preview_failed": "Could not be previewed",
+	"ui.chat.composer_media.remove_attachment": "Remove attachment"
+}
+
+
+$ git show origin/main:src/i18n/catalogues/es/ui.chat.composer_media.json
+exit=0
+{
+	"ui.chat.composer_media.recording": "Grabando",
+	"ui.chat.composer_media.confirms": "inserta",
+	"ui.chat.composer_media.cancels": "cancela",
+	"ui.chat.composer_media.sends_now": "envía ahora",
+	"ui.chat.composer_media.pasted_type": "Pegado {mimeType}",
+	"ui.chat.composer_media.pasted_file": "Archivo pegado",
+	"ui.chat.composer_media.preview_failed": "No se pudo previsualizar",
+	"ui.chat.composer_media.remove_attachment": "Quitar adjunto"
+}
+
+
+PASS ui.chat.composer_media: 9 keys en/es; legacy keys unchanged, none removed; only expected additions.
+PASS ui.chat.composer_media.pasted_image: placeholders byte-exact; no plural/select; no NBSP/narrow NBSP/zero-width/bidi controls. 'Imagen pegada'
+$ git show origin/main:src/i18n/catalogues/en/ui.common.actions.json
+exit=0
+{
+	"ui.common.actions.cancel": "Cancel",
+	"ui.common.actions.close": "Close",
+	"ui.common.actions.copied": "Copied",
+	"ui.common.actions.copy_failed": "Could not copy. Select and copy it manually.",
+	"ui.common.actions.dismiss": "Dismiss",
+	"ui.common.actions.more_info": "More info",
+	"ui.common.actions.retry": "Retry",
+	"ui.common.actions.retry_again": "Try again",
+	"ui.common.actions.retrying": "Trying…",
+	"ui.common.actions.date_time_picker.select_date": "Select date",
+	"ui.common.actions.date_time_picker.choose_date": "Choose {label} date",
+	"ui.common.actions.date_time_picker.select_time": "Select time",
+	"ui.common.actions.date_time_picker.choose_time": "Choose {label} time",
+	"ui.common.actions.date_time_picker.set_to_current_time": "Set to current time",
+	"ui.common.actions.date_time_picker.set_to_current_time369877": "Set {label} to current time",
+	"ui.common.actions.file_actions_menu.file_actions": "File actions",
+	"ui.common.actions.file_actions_menu.file_path_copied_to_clipboard": "File path copied to clipboard",
+	"ui.common.actions.file_actions_menu.failed_to_copy_file_path": "Failed to copy file path",
+	"ui.common.actions.find_replace_widget.switch_to_replace": "Switch to replace",
+	"ui.common.actions.find_replace_widget.switch_to_find": "Switch to find",
+	"ui.common.actions.find_replace_widget.find": "Find",
+	"ui.common.actions.find_replace_widget.replace": "Replace",
+	"ui.common.actions.find_replace_widget.no_results": "No results",
+	"ui.common.actions.find_replace_widget.previous_match": "Previous match",
+	"ui.common.actions.find_replace_widget.next_match": "Next match",
+	"ui.common.actions.find_replace_widget.replace_enter": "Replace (Enter)",
+	"ui.common.actions.find_replace_widget.replace_all_cmd_ctrl_enter": "Replace all (Cmd/Ctrl+Enter)",
+	"ui.common.actions.find_replace_widget.replace_all": "Replace all",
+	"ui.common.actions.find_replace_widget.all": "All",
+	"ui.common.actions.find_replace_widget.close": "Close",
+	"ui.common.actions.text_selection_controls.ask_for_an_edit": "Ask for an edit",
+	"ui.common.actions.text_selection_controls.copy": "Copy",
+	"ui.common.actions.text_selection_controls.copy_without_formatting": "Copy without formatting",
+	"ui.common.actions.text_selection_controls.reply": "Reply",
+	"ui.common.actions.text_selection_controls.refer_to_this_from_file": "Refer to this from file",
+	"ui.common.actions.text_selection_controls.open_in_browser": "Open in browser",
+	"ui.common.actions.confirmation_modal.confirm": "Confirm",
+	"ui.common.actions.confirmation_modal.cancel": "Cancel",
+	"ui.common.actions.find_replace_widget.of": "{currentmatch, number, ::group-off} of {matchcount, number, ::group-off}",
+	"ui.common.actions.agent_created": "Agent created",
+	"ui.common.actions.agent_deleted": "Agent deleted",
+	"ui.common.actions.agent_imported": "Agent imported",
+	"ui.common.actions.agent_exported": "Agent exported",
+	"ui.common.actions.agent_updated": "Agent updated",
+	"ui.common.actions.agent_system_prompt_updated": "Agent system prompt updated",
+	"ui.common.actions.conversation_cleared": "Conversation cleared",
+	"ui.common.actions.variable_created": "Variable created",
+	"ui.common.actions.variable_updated": "Variable updated",
+	"ui.common.actions.variable_deleted": "Variable deleted",
+	"ui.common.actions.configuration_updated": "Configuration updated",
+	"ui.common.actions.system_prompt_updated": "System prompt updated",
+	"ui.common.actions.credential_updated": "Credential \"{key}\" updated successfully",
+	"ui.common.actions.clear": "Clear"
+}
+
+
+$ git show origin/main:src/i18n/catalogues/es/ui.common.actions.json
+exit=0
+{
+	"ui.common.actions.cancel": "Cancelar",
+	"ui.common.actions.close": "Cerrar",
+	"ui.common.actions.copied": "Copiado",
+	"ui.common.actions.copy_failed": "No se pudo copiar. Selecciónalo y cópialo manualmente.",
+	"ui.common.actions.dismiss": "Descartar",
+	"ui.common.actions.more_info": "Más información",
+	"ui.common.actions.retry": "Reintentar",
+	"ui.common.actions.retry_again": "Volver a intentar",
+	"ui.common.actions.retrying": "Reintentando…",
+	"ui.common.actions.date_time_picker.select_date": "Seleccionar fecha",
+	"ui.common.actions.date_time_picker.choose_date": "Elegir fecha de {label}",
+	"ui.common.actions.date_time_picker.select_time": "Seleccionar hora",
+	"ui.common.actions.date_time_picker.choose_time": "Elegir hora de {label}",
+	"ui.common.actions.date_time_picker.set_to_current_time": "Usar la hora actual",
+	"ui.common.actions.date_time_picker.set_to_current_time369877": "Establecer {label} a la hora actual",
+	"ui.common.actions.file_actions_menu.file_actions": "Acciones del archivo",
+	"ui.common.actions.file_actions_menu.file_path_copied_to_clipboard": "Ruta del archivo copiada al portapapeles",
+	"ui.common.actions.file_actions_menu.failed_to_copy_file_path": "No se pudo copiar la ruta del archivo",
+	"ui.common.actions.find_replace_widget.switch_to_replace": "Cambiar a reemplazar",
+	"ui.common.actions.find_replace_widget.switch_to_find": "Cambiar a buscar",
+	"ui.common.actions.find_replace_widget.find": "Buscar",
+	"ui.common.actions.find_replace_widget.replace": "Reemplazar",
+	"ui.common.actions.find_replace_widget.no_results": "Sin resultados",
+	"ui.common.actions.find_replace_widget.previous_match": "Coincidencia anterior",
+	"ui.common.actions.find_replace_widget.next_match": "Coincidencia siguiente",
+	"ui.common.actions.find_replace_widget.replace_enter": "Reemplazar (Intro)",
+	"ui.common.actions.find_replace_widget.replace_all_cmd_ctrl_enter": "Reemplazar todo (Cmd/Ctrl+Intro)",
+	"ui.common.actions.find_replace_widget.replace_all": "Reemplazar todo",
+	"ui.common.actions.find_replace_widget.all": "Todo",
+	"ui.common.actions.find_replace_widget.close": "Cerrar",
+	"ui.common.actions.text_selection_controls.ask_for_an_edit": "Pedir una edición",
+	"ui.common.actions.text_selection_controls.copy": "Copiar",
+	"ui.common.actions.text_selection_controls.copy_without_formatting": "Copiar sin formato",
+	"ui.common.actions.text_selection_controls.reply": "Responder",
+	"ui.common.actions.text_selection_controls.refer_to_this_from_file": "Hacer referencia a esto desde el archivo",
+	"ui.common.actions.text_selection_controls.open_in_browser": "Abrir en el navegador",
+	"ui.common.actions.confirmation_modal.confirm": "Confirmar",
+	"ui.common.actions.confirmation_modal.cancel": "Cancelar",
+	"ui.common.actions.find_replace_widget.of": "{currentmatch, number, ::group-off} de {matchcount, number, ::group-off}",
+	"ui.common.actions.agent_created": "Agente creado",
+	"ui.common.actions.agent_deleted": "Agente eliminado",
+	"ui.common.actions.agent_imported": "Agente importado",
+	"ui.common.actions.agent_exported": "Agente exportado",
+	"ui.common.actions.agent_updated": "Agente actualizado",
+	"ui.common.actions.agent_system_prompt_updated": "Prompt del sistema del agente actualizado",
+	"ui.common.actions.conversation_cleared": "Conversación borrada",
+	"ui.common.actions.variable_created": "Variable creada",
+	"ui.common.actions.variable_updated": "Variable actualizada",
+	"ui.common.actions.variable_deleted": "Variable eliminada",
+	"ui.common.actions.configuration_updated": "Configuración actualizada",
+	"ui.common.actions.system_prompt_updated": "Prompt del sistema actualizado",
+	"ui.common.actions.credential_updated": "Credencial “{key}” actualizada",
+	"ui.common.actions.clear": "Borrar"
+}
+
+
+PASS ui.common.actions: 54 keys en/es; legacy keys unchanged, none removed; only expected additions.
+PASS ui.common.actions.actions_for_name: placeholders byte-exact; no plural/select; no NBSP/narrow NBSP/zero-width/bidi controls. 'Acciones de {name}'
+$ git show origin/main:src/i18n/catalogues/en/ui.chat.context.json
+exit=0
+{
+	"ui.chat.action.stopped": {
+		"role": "status word after a turn was stopped",
+		"tone": "past participle, sentence case, no trailing punctuation",
+		"note": "Follows the turn's own stop control, so it names what the reader did rather than a failure.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.goal_collapse": {
+		"role": "accessible name of the session goal while its disclosure is open; the press closes it",
+		"tone": "imperative verb phrase, sentence case, no trailing punctuation",
+		"note": "The goal's own text follows after an em dash, so this string carries no final punctuation. 'Session goal' is the region's name, kept identical to the expand arm's.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.goal_dismiss": {
+		"role": "visible word on the control that puts a finished goal's chip away",
+		"tone": "one verb, sentence case, no trailing punctuation",
+		"note": "Not a deletion: the finished goal stays in the goal history, which the longer name states. This word sits on a 24px row and is dropped below the narrow column floor, where the control keeps its icon and accessible name.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.goal_dismiss_keep": {
+		"role": "middle clause of the finished goal's dismiss accessible name",
+		"tone": "declarative clause, lower-case start, no trailing punctuation",
+		"note": "Relays that the dismissal hides the row and keeps the record. It is joined between em dashes, so it stays lower case and takes no full stop.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.goal_dismiss_name": {
+		"role": "head of the finished goal's dismiss tooltip and accessible name",
+		"tone": "imperative verb phrase, sentence case, no trailing punctuation",
+		"note": "Followed by the keep clause and the goal itself, both after em dashes. It names dismissing the chip, not deleting the record that the next clause says survives.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.goal_done": {
+		"role": "visible word on the control that records the goal as done",
+		"tone": "one verb, sentence case",
+		"note": "It marks the goal finished and records the decision; it is not a dismissing 'Done' from a dialog. A separate longer key names the action for screen readers, because 'Done' alone would not say what is done.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.goal_done_name": {
+		"role": "head of the goal's done control in its accessible name and tooltip",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"note": "The goal text follows after a dash. Nothing is destroyed: the record stays in the goal history.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.goal_expand": {
+		"role": "accessible name of the session goal while its disclosure is closed; the press opens it",
+		"tone": "imperative verb phrase, sentence case, no trailing punctuation",
+		"note": "The goal's own text follows after an em dash. 'Session goal' is the region's name, identical in both arms so the name does not change identity when it opens.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.goal_label": {
+		"role": "visible label at the head of the session goal chip",
+		"tone": "noun with a colon, sentence case",
+		"note": "The row's chips lead with the fact's name and a colon; the disambiguating words live in the accessible names.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.jobs_action": {
+		"role": "head of the jobs chip's tooltip and accessible name",
+		"tone": "imperative verb phrase plus the destination section, sentence case, no trailing punctuation",
+		"note": "The count and state clauses follow after an em dash. 'Open' moves the reader to the run pane's Jobs section instead of disclosing something in place.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.loop_clear": {
+		"role": "action label on the loop chip's dismiss control once the loop has settled",
+		"tone": "verb plus object, sentence case, no trailing punctuation",
+		"note": "The settled state is cleared, never stopped - 'Stop' belongs to the running state only. This press sends no command: it clears the row's own acknowledgement of a settled loop.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.loop_label": {
+		"role": "visible label at the head of the loop chip",
+		"tone": "noun with a colon, sentence case",
+		"note": "The wire's own status word follows, untranslated, so the chip and the loop picker spell one state the same way.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.loop_progress_of_turns": {
+		"role": "turn progress clause inside the loop chip and its accessible name",
+		"tone": "two counts with a trailing noun",
+		"note": "Rendered after a comma that follows the wire's status word. Keep both numbers and the noun; the wording is a fact about turns completed out of the loop's allowance.",
+		"placeholders": {
+			"completed": "number of turns the loop has completed",
+			"total": "number of turns the loop was allowed"
+		}
+	},
+	"ui.chat.composer.status.loop_progress_turns": {
+		"role": "turn count clause inside the loop chip when the loop carries no allowance",
+		"tone": "a counted noun, pluralized by the locale's own rules",
+		"note": "Rendered after a comma that follows the wire's status word. Plural categories are the locale's own; do not copy English's two-arm shape.",
+		"placeholders": {
+			"count": "number of turns completed so far"
+		}
+	},
+	"ui.chat.composer.status.loop_stop": {
+		"role": "action label on the loop chip's dismiss control while the loop is running",
+		"tone": "verb plus object, sentence case, no trailing punctuation",
+		"note": "The running state is stopped; a settled loop is cleared instead, which is a separate key. The loop picker's own primary button says 'Cancel loop' - that dialog is a different control and does not share this wording.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.monitors_action": {
+		"role": "head of the monitors chip's tooltip and accessible name",
+		"tone": "imperative verb phrase plus the destination section, sentence case, no trailing punctuation",
+		"note": "The armed-monitor count clause follows after an em dash. 'Open' moves the reader to the run pane's Monitors section instead of disclosing something in place; the plural matches that section's own heading.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.plan_action": {
+		"role": "head of the plan chip's tooltip and accessible name",
+		"tone": "imperative verb phrase plus the destination section, sentence case, no trailing punctuation",
+		"note": "The to-do count clause follows after an em dash. 'Open' moves the reader to the run pane's To-dos section instead of disclosing something in place.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.session_goal": {
+		"role": "accessible name of the region that holds the authored session goal",
+		"tone": "noun phrase, sentence case",
+		"note": "A group name, not a heading: the goal is one authored paragraph that a keyboard reader must be able to scroll.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.subagents_action": {
+		"role": "head of the subagents chip's tooltip and accessible name",
+		"tone": "imperative verb phrase plus the destination section, sentence case, no trailing punctuation",
+		"note": "The count and state clauses follow after an em dash. 'Open' moves the reader to the run pane's Subagents section instead of disclosing something in place.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.wakes_action": {
+		"role": "head of the wakes chip's tooltip and accessible name",
+		"tone": "imperative verb phrase plus the destination section, sentence case, no trailing punctuation",
+		"note": "The armed-schedule count clause follows after an em dash. 'Open' moves the reader to the run pane's Wakes section instead of disclosing something in place.",
+		"placeholders": {}
+	},
+	"ui.chat.header_identity.loading": {
+		"role": "loading line under the header identity search",
+		"tone": "present participle plus the item kind, trailing ellipsis",
+		"note": "`kind` selects agents or teams. Live region is the parent's; this is the visible sentence.",
+		"placeholders": {
+			"kind": "selects the item kind: `agents` or `teams`. Keep every arm."
+		}
+	},
+	"ui.chat.header_identity.no_matches": {
+		"role": "empty state under the header identity search",
+		"tone": "one sentence in the app's quoted-query style",
+		"note": "`{query}` is the reader's own search text, echoed verbatim between curly quotes. Do not translate the query.",
+		"placeholders": {
+			"query": "the reader's own search text, echoed verbatim. Never translate or trim it."
+		}
+	},
+	"ui.chat.header_identity.search": {
+		"role": "accessible name and placeholder of the header identity search field",
+		"tone": "verb plus the item kind",
+		"note": "`kind` selects agents or teams so the noun and its article can inflect. Names what the field searches, not the page it lives on.",
+		"placeholders": {
+			"kind": "selects the item kind: `agents` or `teams`. Keep every arm."
+		}
+	},
+	"ui.chat.hub_update.check_now": {
+		"role": "tooltip and accessible name of the hub refresh control",
+		"tone": "short imperative, sentence case",
+		"note": "Re-reads the hub for newer agent, team and skill versions; it downloads nothing by itself.",
+		"placeholders": {}
+	},
+	"ui.chat.hub_update.dismiss": {
+		"role": "visible caption of the control that dismisses the hub update summary",
+		"tone": "one word, sentence case",
+		"note": "Removes the summary line from the sidebar; it does not cancel an update in flight.",
+		"placeholders": {}
+	},
+	"ui.chat.hub_update.dismiss_summary": {
+		"role": "accessible name of the control that dismisses the hub update summary",
+		"tone": "verb phrase, sentence case",
+		"note": "The visible control says Dismiss; this name says what is being dismissed.",
+		"placeholders": {}
+	},
+	"ui.chat.hub_update.update_all": {
+		"role": "update-all control caption",
+		"tone": "verb phrase with a count, sentence case",
+		"note": "The count is how many updates the press would apply. Keep the parentheses.",
+		"placeholders": {
+			"count": "number of updates the press would apply."
+		}
+	},
+	"ui.chat.hub_update.update_all_label": {
+		"role": "accessible name of the update-all control",
+		"tone": "verb phrase with a count and the item kind",
+		"note": "`kind` selects the noun (agents, teams, skills) so each language can inflect it; the count is how many updates would be applied. Everything in ONE message because the noun and the count agree with each other.",
+		"placeholders": {
+			"count": "number of updates the press would apply.",
+			"kind": "selects the item kind: `agents`, `teams` or `skills`."
+		}
+	},
+	"ui.chat.hub_update.updating": {
+		"role": "update-all control caption while the update runs",
+		"tone": "present participle, sentence case, trailing ellipsis",
+		"note": "Shown in place of the count while a hub update is in flight.",
+		"placeholders": {}
+	},
+	"ui.chat.provider_error.action.open_provider_settings": {
+		"role": "action on any other provider error",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"note": "Opens the provider settings grid. The subject is a per-provider setting surface, not the reader's account.",
+		"placeholders": {}
+	},
+	"ui.chat.provider_error.action.open_radient_account": {
+		"role": "action on a Radient billing error",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"note": "Opens the account surface that shows the balance and the top-up entry. `Radient` is the product name and stays untranslated; `account` is the reader's own account.",
+		"placeholders": {}
+	},
+	"ui.chat.provider_error.action.sign_in_radient": {
+		"role": "action on a provider error that is Radient's own sign-in failure",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"note": "`Radient` is the product name and stays untranslated; `Sign in` is the action. Only shown when the failing provider is Radient itself.",
+		"placeholders": {}
+	},
+	"ui.chat.provider_error.headline.out_of_credits": {
+		"role": "headline on an out-of-credits provider error",
+		"tone": "statement with the vendor's own body",
+		"note": "`{status}` already carries its leading space and parentheses (` (HTTP 402)`), so do not add punctuation around it. `{body}` is the provider's own sentence, shown verbatim and never translated. `Out of credits` is the app's own diagnosis.",
+		"placeholders": {
+			"status": "the HTTP status with its own parentheses and a leading space, or an empty string.",
+			"body": "the provider's own sentence, taken from the wire. Never translate or paraphrase it."
+		}
+	},
+	"ui.chat.provider_error.headline.out_of_credits_refused": {
+		"role": "headline on an out-of-credits error with no body",
+		"tone": "statement",
+		"note": "Used when the relay gave a status but no body. `Radient` is the product name and stays untranslated. `{status}` carries its own leading space and parentheses.",
+		"placeholders": {
+			"status": "the HTTP status with its own parentheses and a leading space, or an empty string."
+		}
+	},
+	"ui.chat.question_dock.asking": {
+		"role": "collapsed question pill caption",
+		"tone": "short status sentence, no trailing punctuation",
+		"note": "Says the agent is waiting on an answer. The pill also carries `Show` beside it.",
+		"placeholders": {}
+	},
+	"ui.chat.question_dock.from_agent_label": {
+		"role": "accessible name of the expanded question card",
+		"tone": "noun phrase, sentence case",
+		"note": "Landmark name for the card holding the agent's question and its options.",
+		"placeholders": {}
+	},
+	"ui.chat.question_dock.secret_answer_label": {
+		"role": "accessible name of the secret-answer form",
+		"tone": "noun phrase, sentence case",
+		"note": "This form appears only when the agent has asked for a secret; the value is masked and never written to the transcript.",
+		"placeholders": {}
+	},
+	"ui.chat.question_dock.secret_note": {
+		"role": "reassurance line above the secret field",
+		"tone": "one sentence, sentence case, trailing period",
+		"note": "Claims three checkable things: the field masks the value, the value goes only to the asking agent, and the app keeps no record of it in the transcript. The em dash separates the masking claim from where the value goes.",
+		"placeholders": {}
+	},
+	"ui.chat.question_dock.secret_placeholder": {
+		"role": "placeholder inside the masked secret field",
+		"tone": "short imperative, sentence case",
+		"note": "The value is pasted rather than typed on purpose: the clipboard path is the one the dock is designed around.",
+		"placeholders": {}
+	},
+	"ui.chat.question_dock.secret_value_label": {
+		"role": "accessible name of the masked secret field",
+		"tone": "short noun phrase",
+		"note": "The field is a password input; its content is masked as typed.",
+		"placeholders": {}
+	},
+	"ui.chat.question_dock.send": {
+		"role": "submit control under the secret field",
+		"tone": "one word, sentence case",
+		"note": "Sends the secret answer to the asking agent.",
+		"placeholders": {}
+	},
+	"ui.chat.question_dock.show": {
+		"role": "collapsed question pill action word",
+		"tone": "one word, sentence case",
+		"note": "Second half of the pill: what pressing it does.",
+		"placeholders": {}
+	},
+	"ui.chat.question_dock.show_question_label": {
+		"role": "accessible name of the collapsed question pill",
+		"tone": "verb phrase, sentence case",
+		"note": "Expands the agent's question back into the dock; it does not answer it.",
+		"placeholders": {}
+	},
+	"ui.chat.quota_notice.dismiss": {
+		"role": "control that dismisses the quota notice",
+		"tone": "one word, sentence case",
+		"note": "Dismisses the notice for this conversation; it does not change the quota.",
+		"placeholders": {}
+	},
+	"ui.chat.reply.remove": {
+		"role": "accessible name of the control that removes a staged reply",
+		"tone": "verb phrase, sentence case",
+		"note": "The control is an X icon; it removes this quoted reply from the draft, not from the transcript.",
+		"placeholders": {}
+	},
+	"ui.chat.reply.replying_to": {
+		"role": "label on a quoted reply staged above the composer",
+		"tone": "gerund phrase, sentence case, no trailing punctuation",
+		"note": "Announces that the message being sent quotes another message.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.choose_model": {
+		"role": "model chip caption when no model is resolved",
+		"tone": "verb phrase, sentence case",
+		"note": "Invites the reader to pick the model this conversation will run on; the chip opens the model picker. The chip truncates at narrow widths; maxCells is an advisory translation target, not measured fit.",
+		"placeholders": {},
+		"maxCells": 18
+	},
+	"ui.chat.session_status.choose_model_tooltip": {
+		"role": "tooltip on the model chip when no model is resolved",
+		"tone": "imperative sentence, sentence case",
+		"note": "Explains what the chip's press does: opens the picker for this conversation's model.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.estimate": {
+		"role": "qualifier on an estimated reading",
+		"tone": "one word, lowercase",
+		"note": "Marks a number the app estimated rather than read from the provider. Lowercase on purpose: it sits inline after the figure.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.last_reading": {
+		"role": "mark beside a reading taken before a reconnect",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"note": "Qualifies the numbers beside it: they were measured before the connection dropped and are not live. The chip truncates at narrow widths; maxCells is an advisory translation target, not measured fit.",
+		"placeholders": {},
+		"maxCells": 16
+	},
+	"ui.chat.session_status.no_model_resolved": {
+		"role": "tooltip when a conversation has no model yet",
+		"tone": "short statement, sentence case",
+		"note": "Shown on the model chip in a new conversation before the backend has resolved a model.",
+		"placeholders": {}
+	},
+	"ui.chat.skill_invocation.instructions_label": {
+		"role": "label above the skill instructions a `$name` invocation sent",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"note": "Sits at the top of the recessed block a reader gets by expanding a `$skill` row's header. It names what the block is - the skill's own instructions, which the app sent on the reader's behalf - so keep it a description of the content and not an action. Space is a full-width prose column, so it may run to a line."
+	},
+	"ui.chat.skill_invocation.trigger_label": {
+		"role": "accessible name of the control that expands a `$name` invocation's header (a button whose visible summary is the token, a separator and the skill's one-line purpose)",
+		"tone": "noun phrase naming the control's content, sentence case, no trailing punctuation",
+		"note": "Read by a screen reader INSTEAD of the visible summary, which is a token plus a purpose sentence that can run to 150 characters - the name says what the press opens. `{token}` is the invocation's resolved skill token including its leading `$` (for example `$seal-demo`), so the translation keeps the placeholder and does not add or drop the sign. The purpose sentence stays visible on the row and in its `title`."
+	},
+	"ui.chat.status_strip.dismiss": {
+		"role": "accessible name of the control that dismisses a status strip notice",
+		"tone": "one word, sentence case",
+		"note": "The control is an X icon; it hides this notice and does not fix what it reports.",
+		"placeholders": {}
+	},
+	"ui.chat.tabs.chat": {
+		"role": "tab label",
+		"tone": "one word, sentence case",
+		"note": "Switches the conversation pane to the rendered conversation.",
+		"placeholders": {}
+	},
+	"ui.chat.tabs.raw": {
+		"role": "tab label",
+		"tone": "one word, sentence case",
+		"note": "Switches the conversation pane to the raw message payload; `Raw` is the app's established word for machine JSON.",
+		"placeholders": {}
+	},
+	"ui.chat.mermaid.zoom_in": "Diagram control tooltip and accessible name for the zoom-in button.",
+	"ui.chat.mermaid.zoom_out": "Diagram control tooltip and accessible name for the zoom-out button.",
+	"ui.chat.mermaid.pan": "Accessible name for the pan (hand) control on a diagram.",
+	"ui.chat.mermaid.pan_hint": "Tooltip explaining that the diagram is dragged to pan it.",
+	"ui.chat.mermaid.reset_view": "Diagram control tooltip and accessible name that restores zoom and pan.",
+	"ui.chat.mermaid.save_svg": "Diagram control tooltip and accessible name that downloads the diagram as an SVG file.",
+	"ui.chat.mermaid.copied": "Brief confirmation state of the copy control, after the diagram source was copied.",
+	"ui.chat.mermaid.copy_text": "Tooltip and accessible name of the control that copies the mermaid source.",
+	"ui.chat.mermaid.error_title": "Heading of the danger alert shown when a diagram cannot be parsed or rendered.",
+	"ui.chat.mermaid.unexpected_error": "Fallback sentence shown when the render failed without a message of its own.",
+	"ui.chat.mermaid.error_contained": "Reassurance that the failure did not break the rest of the conversation.",
+	"ui.chat.mermaid.chart_label": "Small label above the raw diagram source shown in the error alert.",
+	"ui.chat.mermaid.loading": "Placeholder while the diagram is being rendered.",
+	"ui.chat.mermaid.rendering_error": "Heading of the alert for a failure inside the render path.",
+	"ui.chat.mermaid.render_failed": "Body of the alert for a failure inside the render path.",
+	"ui.chat.mermaid.fullscreen": "Tooltip on the control that opens the diagram fullscreen.",
+	"ui.chat.mermaid.open_fullscreen": "Accessible name of the control that opens the diagram fullscreen.",
+	"ui.chat.mermaid.diagram_title": "Title of the fullscreen dialog that holds a diagram.",
+	"ui.chat.mermaid.close_fullscreen": "Tooltip and accessible name that closes the fullscreen diagram dialog.",
+	"ui.chat.aside.question_label": "Screen-reader label that introduces the question in an aside exchange.",
+	"ui.chat.aside.you_label": "Visible quiet marker naming the asker of the aside question.",
+	"ui.chat.aside.thinking": "Placeholder while the aside answer is still streaming.",
+	"ui.chat.aside.title": "Heading of the aside panel: an off-the-record exchange beside the conversation.",
+	"ui.chat.aside.off_record": "Sub-heading stating that the aside is not part of the conversation.",
+	"ui.chat.aside.close_label": "Accessible name of the control that closes the aside panel.",
+	"ui.chat.aside.exchange_label": "Accessible name of the scrollable region holding the aside question and answers.",
+	"ui.chat.aside.empty": "Empty state of the aside panel before any question was asked.",
+	"ui.chat.aside.add_to_conversation": "Action that adopts the aside answer into the conversation.",
+	"ui.chat.error_block.heading": "Label above the danger block that shows raw error output.",
+	"ui.chat.error_block.link.settings": "Link text inside a suggestion sentence pointing at the settings page.",
+	"ui.chat.error_block.link.providers": "Link text pointing at the Providers section of settings.",
+	"ui.chat.error_block.provider.before": "First half of the sentence; a settings link follows, then `provider.after`.",
+	"ui.chat.error_block.provider.after": "Second half of the sentence, after the settings link. 'Radient' is a product name and stays English.",
+	"ui.chat.error_block.model.before": "First half of the sentence; a settings link follows, then `model.after`.",
+	"ui.chat.error_block.model.after": "Second half of the sentence, after the settings link. 'Radient' is a product name and stays English.",
+	"ui.chat.error_block.rate_limit.before": "First half of the rate-limit sentence; a settings link follows, then one of the two `after` keys.",
+	"ui.chat.error_block.rate_limit.after": "Second half of the rate-limit sentence, after the settings link. 'Radient Pass' is a product name and stays English.",
+	"ui.chat.error_block.rate_limit.all_after": "Second half of the rate-limit sentence for the hyphenated wire variant, after the settings link.",
+	"ui.chat.error_block.invalid_key.before": "First half of the invalid-key sentence; the Providers link follows, then `invalid_key.after` which starts with a comma.",
+	"ui.chat.error_block.invalid_key.after": "Second half of the invalid-key sentence; starts with a comma because it follows the link directly.",
+	"ui.chat.error_block.unavailable.before": "First half of the unavailable-model sentence; a settings link follows, then `unavailable.after`.",
+	"ui.chat.error_block.unavailable.after": "Second half of the unavailable-model sentence, after the settings link. 'Radient' is a product name and stays English.",
+	"ui.chat.error_block.schema.before": "First paragraph of the schema-failure suggestion, before a line break.",
+	"ui.chat.error_block.schema.after_before": "Start of the second paragraph; a settings link follows, then `schema.after`.",
+	"ui.chat.error_block.schema.after": "Second half of the schema paragraph, after the settings link. 'Radient Automatic' is a product name and stays English.",
+	"ui.chat.approval.reply_required": "Error shown when an approval answer is neither yes/no nor a listed option.",
+	"ui.chat.question_dock.hint.approval": "Hint under an approval card naming all three exits.",
+	"ui.chat.question_dock.hint.approval_held": "Held-state hint: the card's own buttons cannot send until the outcome is known.",
+	"ui.chat.question_dock.hint.prefix": "Prefix for a multi-question ask; trailing space is intentional, the sentence follows.",
+	"ui.chat.question_dock.hint.secret": "Hint for a secret answer: the card's own field, Enter, and the dock's collapse.",
+	"ui.chat.question_dock.hint.secret_held": "Held-state secret hint: nothing can send, only the card's own Escape works.",
+	"ui.chat.question_dock.hint.type": "Hint when the question offers no options.",
+	"ui.chat.question_dock.hint.options": "Hint when options are offered; {digits} is a precomputed key range such as '1-3'.",
+	"ui.chat.session_status.context_heading": {
+		"role": "the word Context as a proportional-heading line in the draft context tooltip",
+		"tone": "noun, sentence case, no trailing punctuation",
+		"length": "One word.",
+		"note": "A heading, not a sentence: the tooltip draws it as prose (never monospace) over the sentence below it. It names the reading the control shows.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.context_nothing_measured_tooltip": {
+		"role": "accessible name of the context reading on a draft conversation",
+		"tone": "one utterance leading with the word Context, comma after it, two sentences, trailing period",
+		"length": "Fourteen words.",
+		"note": "The same fact the tooltip states, written as ONE utterance for screen readers. 'No reading yet' would also be true of a resumed session and is deliberately not used: a draft's window fills because the user sends the first message.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.conversation_starting": {
+		"role": "the effort reading's line on a draft, before any conversation exists",
+		"tone": "statement, sentence case, trailing period",
+		"length": "Six words.",
+		"note": "The reasoning-effort ladder is real but not yet available on a draft, so the line says when it becomes so. It must not read as an instruction.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.model_none_resolved_tooltip": {
+		"role": "accessible name of the model reading when the backend resolved a model that names none",
+		"tone": "one utterance leading with the word Model, colon after it, two sentences, trailing period",
+		"length": "Fifteen words.",
+		"note": "Only the RESOLVED-no-model state says this: a resolution still in flight, or one that failed, are drawn by their own readings. The second sentence is the offer the control performs.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.not_signed_in": {
+		"role": "title of the model-access band when this session runs a provider with no working sign-in",
+		"tone": "statement of fact, sentence case, no trailing punctuation",
+		"length": "Four words plus the provider name.",
+		"note": "The provider's display label is carried by the placeholder and must stay verbatim. The temporary-unavailability arm has its own title and is selected before this one.",
+		"placeholders": {
+			"label": "the provider's display label as the app received it, e.g. Radient. A product name: keep it verbatim, never translate it."
+		}
+	},
+	"ui.chat.session_status.not_signed_in_description": {
+		"role": "the sentence under the not-signed-in title, naming the remedy",
+		"tone": "statement plus the remedy, sentence case, trailing period",
+		"length": "Twenty words plus the provider name.",
+		"note": "Says what is true of the session rather than what the reader did: the sign-in is missing on this machine, and connecting it is the fix. It must not blame an expired credential — that is the sibling arm's sentence.",
+		"placeholders": {
+			"label": "the provider's display label as the app received it. A product name: keep it verbatim, never translate it."
+		}
+	},
+	"ui.chat.session_status.nothing_measured_yet": {
+		"role": "the sentence under the Context heading in the draft context tooltip",
+		"tone": "statement plus the reason, sentence case, trailing period",
+		"length": "Eleven words.",
+		"note": "Names the fact and the reason. The window is the context window; it fills as the conversation runs, which is why a draft has nothing in it.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.temporarily_unavailable": {
+		"role": "title of the model-access band when the provider is temporarily refusing access",
+		"tone": "statement of fact, sentence case, no trailing punctuation",
+		"length": "Four words plus the provider name.",
+		"note": "The transient arm of the not-signed-in title, selected first when the wire reports `temporarily_unavailable`. The difference from `Not signed in to {label}` matters: nothing was revoked, so the reader should retry rather than reconnect.",
+		"placeholders": {
+			"label": "the provider's display label as the app received it. A product name: keep it verbatim."
+		}
+	},
+	"ui.chat.session_status.temporarily_unavailable_description": {
+		"role": "the sentence under the temporarily-unavailable title",
+		"tone": "reassurance plus two remedies, sentence case, trailing period",
+		"length": "Thirteen words.",
+		"note": "Says the credential is still saved, which is the fact that makes retrying reasonable. Never imply the sign-in was lost or expired.",
+		"placeholders": {}
+	},
+	"ui.chat.checkpoint.turn": {
+		"role": "the structural identity of one turn in the conversation, shown on the run-details rail",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "Four words.",
+		"note": "Also restated inside the rail tick's accessible name, but not by embedding this message: `jump_agent` / `jump_user` carry {turn} and {total} in their own sentences, so the word order and the turn noun are each message's own — write a noun phrase here and do not assume it will sit inside a longer sentence. Both numbers are ordinal-safe counts of turns, not messages.",
+		"placeholders": {
+			"turn": "the turn's 1-based position in the conversation",
+			"total": "the number of turns in the conversation"
+		}
+	},
+	"ui.chat.checkpoint.jump_agent": {
+		"role": "accessible name of a run-details tick that jumps to an agent turn that has a title",
+		"tone": "action plus the destination, sentence case, then the title after a comma",
+		"length": "Up to a short sentence; the title can be long.",
+		"note": "{turn} and {total} are the same two numbers the tick's visible identity line shows; the turn noun and its word order belong to this sentence. {name} is the turn's own generated title and is never translated.",
+		"placeholders": {
+			"turn": "the turn's 1-based position in the conversation",
+			"total": "the number of turns in the conversation",
+			"name": "the turn's own title"
+		}
+	},
+	"ui.chat.checkpoint.jump_agent_unnamed": {
+		"role": "accessible name of a run-details tick that jumps to an agent turn that has no title yet",
+		"tone": "action plus the destination, sentence case",
+		"length": "Up to a short sentence.",
+		"note": "Same tick as ui.chat.checkpoint.jump_agent while the turn is still unnamed; the title is simply absent, never substituted.",
+		"placeholders": {
+			"turn": "the turn's 1-based position in the conversation",
+			"total": "the number of turns in the conversation"
+		}
+	},
+	"ui.chat.checkpoint.jump_user": {
+		"role": "accessible name of a run-details tick that jumps to the reader's own message",
+		"tone": "action plus the destination and a time, sentence case",
+		"length": "Up to a short sentence.",
+		"note": "{turn} and {total} are the same two numbers the tick's visible identity line shows. {clock} is a clock time already formatted by the locale-aware time formatter, not a pattern.",
+		"placeholders": {
+			"turn": "the turn's 1-based position in the conversation",
+			"total": "the number of turns in the conversation",
+			"clock": "the locale-formatted time of the message"
+		}
+	},
+	"ui.chat.checkpoint.jump_user_no_clock": {
+		"role": "accessible name of a run-details tick that jumps to the reader's own message when no time is known",
+		"tone": "action plus the destination, sentence case",
+		"length": "Up to a short sentence.",
+		"note": "The clock half is omitted rather than invented when the message carries no usable timestamp.",
+		"placeholders": {
+			"turn": "the turn's 1-based position in the conversation",
+			"total": "the number of turns in the conversation"
+		}
+	},
+	"ui.chat.header_identity.no_agent": {
+		"role": "chip label meaning no agent is attached to the open conversation",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "It is an assign affordance, not a status claim about a named-but-unknown agent: pressing it opens the agent picker. The same words appear inside the control's accessible name.",
+		"placeholders": {}
+	},
+	"ui.chat.header_identity.no_team": {
+		"role": "chip label meaning no team is attached to the open conversation",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "The team twin of ui.chat.header_identity.no_agent: pressing it opens the team picker. A closed seat never shows this label.",
+		"placeholders": {}
+	},
+	"ui.chat.header_identity.assign_agent": {
+		"role": "tooltip of the header chip while no agent is attached",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Three words.",
+		"note": "Tooltip only: the same act is spelled inside the chip's accessible name (ui.chat.header_identity.aria_agent_assign), so keep the verb consistent between the two.",
+		"placeholders": {}
+	},
+	"ui.chat.header_identity.assign_team": {
+		"role": "tooltip of the header chip while no team is attached",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Three words.",
+		"note": "Tooltip only: the same act is spelled inside the chip's accessible name (ui.chat.header_identity.aria_team_assign), so keep the verb consistent between the two.",
+		"placeholders": {}
+	},
+	"ui.chat.header_identity.aria_agent_assign": {
+		"role": "accessible name of the header agent chip while no agent is attached",
+		"tone": "role and state, then the action, separated by periods",
+		"length": "Up to a short sentence.",
+		"note": "A whole sentence, not a concatenation: {label} is the chip's visible label (usually the no-agent phrase) and must appear verbatim so voice control keeps matching the control.",
+		"placeholders": {
+			"label": "the chip's own visible label"
+		}
+	},
+	"ui.chat.header_identity.aria_agent_switch": {
+		"role": "accessible name of the header agent chip while an agent is attached",
+		"tone": "role and state, then the action, separated by periods",
+		"length": "Up to a short sentence.",
+		"note": "The assigned-state twin of aria_agent_assign; the visible agent name is {label} and must appear verbatim.",
+		"placeholders": {
+			"label": "the attached agent's own display name"
+		}
+	},
+	"ui.chat.header_identity.aria_agent_closed": {
+		"role": "accessible name of the header agent chip while the runtime has closed the seat",
+		"tone": "role and state, then the reason, separated by periods",
+		"length": "Up to a sentence; the reason is backend prose.",
+		"note": "{reason} is a sentence this UI composes itself (`identityAgentClosedCaption` in `chat-header-identity-menu-model.ts`) to mirror core's `team_owns_the_agent_slot_message` byte for byte — core's docstring names this UI as keying on the exact words, so it is a cross-repo contract, NOT backend text: never translate or paraphrase it.",
+		"placeholders": {
+			"label": "the attached agent's own display name",
+			"reason": "the runtime-served closure sentence"
+		}
+	},
+	"ui.chat.header_identity.aria_team_assign": {
+		"role": "accessible name of the header team chip while no team is attached",
+		"tone": "role and state, then the action, separated by periods",
+		"length": "Up to a short sentence.",
+		"note": "The team twin of aria_agent_assign; {label} is the chip's visible label and must appear verbatim.",
+		"placeholders": {
+			"label": "the chip's own visible label"
+		}
+	},
+	"ui.chat.header_identity.aria_team_switch": {
+		"role": "accessible name of the header team chip while a team is attached",
+		"tone": "role and state, then the action, separated by periods",
+		"length": "Up to a short sentence.",
+		"note": "The assigned-state twin of aria_team_assign; the visible team name is {label} and must appear verbatim.",
+		"placeholders": {
+			"label": "the attached team's own display name"
+		}
+	},
+	"ui.chat.header_identity.aria_team_closed": {
+		"role": "accessible name of the header team chip while the runtime has closed the seat",
+		"tone": "role and state, then the reason, separated by periods",
+		"length": "Up to a sentence; the reason is backend prose.",
+		"note": "{reason} is a sentence this UI composes itself (`identityAgentClosedCaption` in `chat-header-identity-menu-model.ts`) to mirror core's `team_owns_the_agent_slot_message` byte for byte — a cross-repo contract, not backend text: passed through unchanged, never translated.",
+		"placeholders": {
+			"label": "the attached team's own display name",
+			"reason": "the runtime-served closure sentence"
+		}
+	},
+	"ui.chat.region.composer": {
+		"role": "accessible name of the composer landmark",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Screen-reader only: it names the form region the message field lives in, and the F6 region walk reads it back. Not a placeholder and not a button label.",
+		"placeholders": {}
+	},
+	"ui.chat.region.conversation": {
+		"role": "accessible name of the transcript landmark and of the chat header landmark",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "One word.",
+		"note": "Screen-reader only: the transcript's role=log region and the header landmark share it because both head the same conversation. It names the region, not a tab.",
+		"placeholders": {}
+	},
+	"ui.chat.checkpoint.generating_name": {
+		"role": "line on a run-details card while the turn's title is still being generated",
+		"tone": "plain progress statement, sentence case, trailing ellipsis as shown",
+		"length": "Two words plus an ellipsis.",
+		"note": "A temporary line, replaced by the generated title when it lands. The ellipsis is part of the source string; keep it as the locale's own ellipsis character.",
+		"placeholders": {}
+	},
+	"ui.chat.audio.play": {
+		"role": "accessible control name",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 40,
+		"placeholders": {}
+	},
+	"ui.chat.audio.pause": {
+		"role": "accessible control name",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 40,
+		"placeholders": {}
+	},
+	"ui.chat.audio.play_label": {
+		"role": "accessible control name",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 40,
+		"placeholders": {
+			"label": "User-provided audio title; do not translate."
+		}
+	},
+	"ui.chat.audio.pause_label": {
+		"role": "accessible control name",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 40,
+		"placeholders": {
+			"label": "User-provided audio title; do not translate."
+		}
+	},
+	"ui.chat.audio.mute": {
+		"role": "accessible control name",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 40,
+		"placeholders": {}
+	},
+	"ui.chat.audio.unmute": {
+		"role": "accessible control name",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 40,
+		"placeholders": {}
+	},
+	"ui.chat.message_controls.copy": {
+		"role": "accessible control name",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 40,
+		"placeholders": {}
+	},
+	"ui.chat.message_controls.copied": {
+		"role": "accessible control name",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 40,
+		"placeholders": {}
+	},
+	"ui.chat.image_actions.save_as": {
+		"role": "image action menu label",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 28,
+		"placeholders": {}
+	},
+	"ui.chat.image_actions.copy_image": {
+		"role": "image action menu label",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 28,
+		"placeholders": {}
+	},
+	"ui.chat.image_actions.copy_image_url": {
+		"role": "image action menu label",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 28,
+		"placeholders": {}
+	},
+	"ui.chat.image_actions.open_in_browser": {
+		"role": "image action menu label",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 28,
+		"placeholders": {}
+	},
+	"ui.chat.image_actions.expand_image": {
+		"role": "image action menu label",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 28,
+		"placeholders": {}
+	},
+	"ui.chat.composer.connect_provider": {
+		"role": "composer error recovery action",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 28,
+		"placeholders": {}
+	},
+	"ui.chat.slot_notice.run_draft_title": {
+		"role": "right-slot notice title",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 120,
+		"placeholders": {}
+	},
+	"ui.chat.slot_notice.run_draft_detail": {
+		"role": "right-slot notice detail",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 120,
+		"placeholders": {}
+	},
+	"ui.chat.slot_notice.run_reading_title": {
+		"role": "right-slot notice title",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 120,
+		"placeholders": {}
+	},
+	"ui.chat.slot_notice.run_unreadable_title": {
+		"role": "right-slot notice title",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 120,
+		"placeholders": {}
+	},
+	"ui.chat.slot_notice.run_unreadable_detail": {
+		"role": "right-slot notice detail",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 120,
+		"placeholders": {}
+	},
+	"ui.chat.slot_notice.run_missing_detail": {
+		"role": "right-slot notice detail",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 120,
+		"placeholders": {}
+	},
+	"ui.chat.slot_notice.code_draft_title": {
+		"role": "right-slot notice title",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 120,
+		"placeholders": {}
+	},
+	"ui.chat.slot_notice.code_draft_detail": {
+		"role": "right-slot notice detail",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 120,
+		"placeholders": {}
+	},
+	"ui.chat.slot_notice.code_below_version_title": {
+		"role": "right-slot notice title",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 120,
+		"placeholders": {}
+	},
+	"ui.chat.slot_notice.code_below_version_detail": {
+		"role": "right-slot notice detail",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 120,
+		"placeholders": {}
+	},
+	"ui.chat.slot_notice.code_checking_title": {
+		"role": "right-slot notice title",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 120,
+		"placeholders": {}
+	},
+	"ui.chat.slot_notice.code_load_lead": {
+		"role": "right-slot notice title",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 120,
+		"placeholders": {}
+	},
+	"ui.chat.slash_arguments.model_default_description": {
+		"role": "slash argument description or action help",
+		"tone": "sentence case; concise factual guidance",
+		"maxCells": 100,
+		"placeholders": {
+			"provider": "Provider identifier; preserve verbatim.",
+			"model": "Model identifier; preserve verbatim."
+		}
+	},
+	"ui.chat.slash_arguments.model_default_unavailable": {
+		"role": "slash argument description or action help",
+		"tone": "sentence case; concise factual guidance",
+		"maxCells": 100,
+		"placeholders": {}
+	},
+	"ui.chat.slash_arguments.model_default_click": {
+		"role": "slash argument description or action help",
+		"tone": "sentence case; concise factual guidance",
+		"maxCells": 100,
+		"placeholders": {}
+	},
+	"ui.chat.slash_arguments.model_default_required": {
+		"role": "slash argument description or action help",
+		"tone": "sentence case; concise factual guidance",
+		"maxCells": 100,
+		"placeholders": {}
+	},
+	"ui.chat.slash_arguments.refresh_description": {
+		"role": "slash argument description or action help",
+		"tone": "sentence case; concise factual guidance",
+		"maxCells": 100,
+		"placeholders": {}
+	},
+	"ui.chat.slash_arguments.refresh_detail": {
+		"role": "slash argument state detail",
+		"tone": "sentence case; concise factual guidance",
+		"maxCells": 100,
+		"placeholders": {}
+	},
+	"ui.chat.aside.add_to_conversation_tooltip": {
+		"role": "Tooltip of the control that adopts an aside exchange into the main conversation",
+		"tone": "Imperative sentence, no period",
+		"length_hint": "Six words",
+		"note": "Longer sibling of the control's own label; names the verb the keyboard chord alone cannot carry."
+	},
+	"ui.chat.message_controls.content_header": {
+		"role": "Header of the raw content block under a message",
+		"tone": "Single noun",
+		"length_hint": "One word",
+		"note": "Names the block that shows the message's raw content text."
+	},
+	"ui.chat.message_controls.replacements_header": {
+		"role": "Header of the replacements block under a message",
+		"tone": "Single noun",
+		"length_hint": "One word",
+		"note": "Names the block that shows text replacements an action applied."
+	},
+	"ui.chat.message_controls.thinking_label": {
+		"role": "Trigger label of the collapsible reasoning block above a reply",
+		"tone": "Single word",
+		"length_hint": "One word",
+		"note": "Single progressive word; it opens the model's visible reasoning."
+	},
+	"ui.chat.scroll_to_bottom.label": {
+		"role": "Accessible name of the floating button that jumps to the newest message",
+		"tone": "Imperative phrase",
+		"length_hint": "Three words",
+		"note": "Imperative; the button sits above the composer."
+	},
+	"ui.chat.scroll_to_bottom.label_new_activity": {
+		"role": "Accessible name of the jump-to-newest button while unseen activity exists",
+		"tone": "Noun phrase, comma, imperative",
+		"length_hint": "Five words",
+		"note": "Says why the button matters, then what it does."
+	},
+	"ui.chat.session_status.last_reading_note": {
+		"role": "Sentence marking held session readings as stale (tooltip and accessible name)",
+		"tone": "Plain statement ending in a period",
+		"length_hint": "One sentence",
+		"note": "States that the numbers shown are the last ones received before the connection dropped."
+	},
+	"ui.chat.session_status.readings_aria_held": {
+		"role": "Accessible name of the session readings group while the readings are held",
+		"tone": "Label then sentence",
+		"length_hint": "Two short sentences",
+		"note": "Group name followed by the held-readings note.",
+		"placeholders": {
+			"note": "The already-localised last-reading note; interpolate as-is."
+		}
+	},
+	"ui.chat.session_status.commands_off": {
+		"role": "Reason a session reading cannot be opened",
+		"tone": "Plain explanatory sentence",
+		"length_hint": "One sentence",
+		"note": "Slash commands are the in-conversation commands (for example /model); the server can switch them off."
+	},
+	"ui.chat.session_status.context_click_breakdown_held": {
+		"role": "Hint on the context reading while its numbers are held (measured or estimated)",
+		"tone": "Short imperative plus a clause",
+		"length_hint": "One sentence",
+		"note": "Invites opening the breakdown panel."
+	},
+	"ui.chat.session_status.context_click_breakdown_held_plain": {
+		"role": "Hint on the context reading while held and nothing was measured",
+		"tone": "Short imperative",
+		"length_hint": "Five words",
+		"note": "Invites opening the breakdown panel."
+	},
+	"ui.chat.session_status.context_measured_now": {
+		"role": "Hint on a measured context reading",
+		"tone": "Two clauses joined by a semicolon",
+		"length_hint": "One line",
+		"note": "Says the number is current and invites opening the breakdown; no final period in the source."
+	},
+	"ui.chat.session_status.context_estimated_now": {
+		"role": "Hint on an estimated context reading",
+		"tone": "Two clauses joined by a semicolon",
+		"length_hint": "One line",
+		"note": "Says the number is an estimate and invites opening the breakdown; no final period in the source."
+	},
+	"ui.chat.session_status.context_click_breakdown": {
+		"role": "Hint on a context reading with no measurement",
+		"tone": "Short imperative",
+		"length_hint": "Five words",
+		"note": "Invites opening the breakdown panel; no final period in the source."
+	},
+	"ui.chat.session_status.model_click_choose_draft": {
+		"role": "Hint on the model chip of a draft conversation",
+		"tone": "Imperative plus a statement",
+		"length_hint": "Two sentences",
+		"note": "Tells the person the model choice applies to the conversation about to start."
+	},
+	"ui.chat.session_status.model_click_choose": {
+		"role": "Hint on the model chip of a running conversation",
+		"tone": "Short imperative",
+		"length_hint": "Six words",
+		"note": "No final period in the source."
+	},
+	"ui.chat.session_status.model_draft_inert": {
+		"role": "Reason the model chip of a draft is not openable",
+		"tone": "Two plain statements",
+		"length_hint": "Two sentences",
+		"note": "The model is fixed until the draft becomes a real conversation."
+	},
+	"ui.chat.session_status.effort_change_draft": {
+		"role": "Hint on the reasoning-effort chip of a draft",
+		"tone": "Imperative plus a statement",
+		"length_hint": "Two short sentences",
+		"note": "'It' is the reasoning effort."
+	},
+	"ui.chat.session_status.effort_change": {
+		"role": "Hint on the reasoning-effort chip of a running conversation",
+		"tone": "Short imperative",
+		"length_hint": "Two words",
+		"note": "'It' is the reasoning effort."
+	},
+	"ui.chat.session_status.model_aria": {
+		"role": "Accessible name of the model chip",
+		"tone": "Label, identifier, clause, sentence",
+		"length_hint": "One line plus a sentence",
+		"note": "Model identifier, then fast-mode state when on, then the reason or hint sentence.",
+		"placeholders": {
+			"selector": "Model identifier such as a vendor/model slug; do not translate.",
+			"fast": "'yes' when fast mode is on, otherwise 'no'; a select selector, never translate.",
+			"reason": "The already-localised hint sentence; interpolate as-is."
+		}
+	},
+	"ui.chat.session_status.model_aria_pending": {
+		"role": "Accessible name of the model chip while a switch is pending",
+		"tone": "Label, identifier, clause, two clauses",
+		"length_hint": "One line plus a sentence",
+		"note": "Model identifier, fast-mode state when on, then a statement that the session has not yet confirmed the switch.",
+		"placeholders": {
+			"selector": "Model identifier such as a vendor/model slug; do not translate.",
+			"fast": "'yes' when fast mode is on, otherwise 'no'; a select selector, never translate."
+		}
+	},
+	"ui.chat.session_status.switching_model": {
+		"role": "Spinner accessible name while the model switch is in flight",
+		"tone": "Progressive phrase, no ellipsis",
+		"length_hint": "Three words",
+		"note": "Announced by assistive technology next to the model chip."
+	},
+	"ui.chat.session_status.model_aria_unresolved": {
+		"role": "Accessible name of the model reading when resolving a draft's model failed",
+		"tone": "Label, statement, imperative",
+		"length_hint": "Two short sentences",
+		"note": "'Retry' is the action the reading offers."
+	},
+	"ui.chat.session_status.model_aria_resolving": {
+		"role": "Accessible name of the model reading while a draft's model resolves",
+		"tone": "Label then progressive statement",
+		"length_hint": "One sentence",
+		"note": "Progress statement."
+	},
+	"ui.chat.session_status.resolving_model_spinner": {
+		"role": "Spinner accessible name while a draft's model resolves",
+		"tone": "Progressive phrase, no final period",
+		"length_hint": "Eight words",
+		"note": "Announced next to the 'Resolving the model' text."
+	},
+	"ui.chat.session_status.context_aria_no_reading": {
+		"role": "Accessible name of the context reading before any measurement",
+		"tone": "Label, statement, sentence",
+		"length_hint": "One line plus a hint",
+		"note": "Label, statement, then the already-localised hint.",
+		"placeholders": {
+			"hint": "The already-localised breakdown hint; interpolate as-is."
+		}
+	},
+	"ui.chat.session_status.context_aria_reading": {
+		"role": "Accessible name of the context reading with a value",
+		"tone": "Label, value, clause, sentence",
+		"length_hint": "One line plus a hint",
+		"note": "Label, the value as the strip spells it, 'estimated' when it is an estimate, then the hint.",
+		"placeholders": {
+			"spelling": "The value as spelled in the strip (for example 20.3%/1M); do not translate.",
+			"estimate": "'yes' when the value is an estimate, otherwise 'no'; a select selector, never translate.",
+			"hint": "The already-localised breakdown hint; interpolate as-is."
+		}
+	},
+	"ui.chat.session_status.active_time_aria": {
+		"role": "Accessible name of the session's active-time reading",
+		"tone": "Label, value, sentence",
+		"length_hint": "One line plus a sentence",
+		"note": "Label, the formatted duration, then the short explanation.",
+		"placeholders": {
+			"duration": "The already-formatted duration; interpolate as-is.",
+			"explanation": "The already-localised duration explanation; interpolate as-is."
+		}
+	},
+	"ui.chat.session_status.duration_explanation": {
+		"role": "Short explanation of the active-time reading, for the accessible name",
+		"tone": "Plain clause pair",
+		"length_hint": "One sentence",
+		"note": "Spoken in one breath after the number, so it is a single clause with a semicolon."
+	},
+	"ui.chat.session_status.effort_level.low": {
+		"role": "display name of one reasoning-effort level, in the status strip's effort reading, the effort picker rows, the default-effort select and the /effort argument rows",
+		"tone": "single plain word, capitalised as a menu item",
+		"length": "One word; the status strip reading is a few cells wide.",
+		"note": "The name of a rung on a model's effort ladder, ordered None < Minimal < Low < Medium < High < xHigh < Max. Use the word a reader would expect on a speed/quality scale, and keep the levels distinct from one another. The wire value behind it stays the lowercase English token and is never shown through this key.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.effort_level.medium": {
+		"role": "display name of one reasoning-effort level, in the status strip's effort reading, the effort picker rows, the default-effort select and the /effort argument rows",
+		"tone": "single plain word, capitalised as a menu item",
+		"length": "One word; the status strip reading is a few cells wide.",
+		"note": "The name of a rung on a model's effort ladder, ordered None < Minimal < Low < Medium < High < xHigh < Max. Use the word a reader would expect on a speed/quality scale, and keep the levels distinct from one another. The wire value behind it stays the lowercase English token and is never shown through this key.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.effort_level.high": {
+		"role": "display name of one reasoning-effort level, in the status strip's effort reading, the effort picker rows, the default-effort select and the /effort argument rows",
+		"tone": "single plain word, capitalised as a menu item",
+		"length": "One word; the status strip reading is a few cells wide.",
+		"note": "The name of a rung on a model's effort ladder, ordered None < Minimal < Low < Medium < High < xHigh < Max. Use the word a reader would expect on a speed/quality scale, and keep the levels distinct from one another. The wire value behind it stays the lowercase English token and is never shown through this key.",
+		"placeholders": {}
+	}
+}
+
+
+Derived origin/main context gaps: ["ui.chat.highlights.file_resolution_failed", "ui.chat.usage.blocked", "ui.chat.usage.continue", "ui.chat.usage.eligibility_unknown", "ui.chat.usage.family_caps", "ui.chat.usage.unlimited"]
+Read-only inspection (not execution evidence): locale style guide; manager-owned glossary; reference JSON/record; expected-hashes; English contexts then Spanish values and neighbors; get-file-name.ts and attachment-encode.ts.
+Earlier actual commands: git diff origin/main HEAD -- scoped catalogue paths and composer metadata; rg neighboring Spanish catalogue terms; git ls-files *glossary* scripts/i18n/*valid*; package.json/AGENTS.md scoped reads. Missing in-worktree i18n/glossary.md was a read error, resolved via manager-provided glossary copy.
+Semantic assessment below is auditor reasoning, not a runtime result:
+ui.chat.image_actions.actions: Acciones de la imagen is a natural noun phrase, consistent with Acciones del archivo and Copiar imagen / Ampliar imagen. Fixed la agrees with imagen, not user data.
+ui.chat.audio.position_label: Posición de {label} names the seek position for the particular clip; consistent with Posición de reproducción and Reproducir {label} / Pausar {label}. de introduces a verbatim title, not an inflected common noun; arbitrary titles need no article/gender/number agreement or contraction.
+ui.chat.composer_media.pasted_image: Imagen pegada correctly describes a pasted-image fallback filename, not a paste action. Feminine pegada agrees with fixed imagen and parallels existing Archivo pegado; no extension or punctuation added.
+ui.common.actions.actions_for_name: Acciones de {name} naturally names the asset-specific actions menu, parallel to Acciones del archivo. Existing Acciones para {name} is also valid; de versus para is a contextual relation choice, not a conflicting translation of acciones. The inserted proper title is not declined, translated or made to agree.
+No translation/MT service used. No repository files modified.

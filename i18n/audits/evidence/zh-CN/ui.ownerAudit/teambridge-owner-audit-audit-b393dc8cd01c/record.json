@@ -1,0 +1,290 @@
+{
+	"audit_id": "teambridge-owner-audit-audit-b393dc8cd01c",
+	"date": "2026-10-28",
+	"locale": "zh-CN",
+	"namespace": "ui.ownerAudit",
+	"source_commit": "a975a0b4ec82c0cd6b6541d68b1d3501f683328d",
+	"translator": {
+		"agent": "i18n-translator",
+		"job": "64be94d56ced",
+		"model": "not supplied",
+		"date": "2026-10-28",
+		"method": "LLM translator subagent; no MT service referenced"
+	},
+	"auditors": [
+		{
+			"agent": "i18n-auditor",
+			"model": "anthropic/claude-opus-5-5",
+			"date": "2026-10-28",
+			"result": "clean",
+			"instance": "b393dc8cd01c-owneraudit-zh-cn",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"receipt": "i18n/receipts/b393dc8cd01c-owneraudit-zh-cn.json",
+			"receipt_sha256": "2021c577824c772bbd793b4450cac3f48f93280e168fbace8f3fd42ad500901d"
+		}
+	],
+	"ledger_status": "audited",
+	"independence": "Independent auditor (reviewer role, session b393dc8cd01c). It authored none of the translated strings as delivered by i18n-translator job 64be94d56ced. Per the audit brief it then FIXED blocker/major strings itself; those replaced values (listed in resolved_findings with before/after) are auditor-authored and were not re-audited by a second agent. This run wrote only catalogue fixes, receipts, evidence records and ledger rows; it did not commit.",
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.ownerAudit.json",
+			"sha256": "a83890d7dafe0a81c4bbc4862da0f77eaf4b7573b1654fbff6d8e37c19eaf4fb"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/zh-CN/ui.ownerAudit.json",
+			"sha256": "0f6a5b9d22594310fbab993d6c5455db553b59f1a2693fb51db560ef6fb691c9"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.ownerAudit.context.json",
+			"sha256": "ad77dcc43ee06d1f43ef6c2a6422c33ee458534b805d888cb413a4f9ebf8226c"
+		}
+	},
+	"audited": {
+		"ui.ownerAudit.title": {
+			"en": "Your chief of staff’s messages",
+			"target": "你的首席助理的消息"
+		},
+		"ui.ownerAudit.read_only": {
+			"en": "Read-only history. Sending, reactions and editing are unavailable.",
+			"target": "只读历史记录。无法发送、回应或编辑。"
+		},
+		"ui.ownerAudit.loading": {
+			"en": "Loading audited messages",
+			"target": "正在加载审计消息"
+		},
+		"ui.ownerAudit.error": {
+			"en": "Audited messages could not be loaded.",
+			"target": "无法加载审计消息。"
+		},
+		"ui.ownerAudit.retry": {
+			"en": "Try again",
+			"target": "重试"
+		},
+		"ui.ownerAudit.refresh": {
+			"en": "Refresh",
+			"target": "刷新"
+		},
+		"ui.ownerAudit.empty_list": {
+			"en": "No audited conversations in this organization.",
+			"target": "此组织中没有已审计的对话。"
+		},
+		"ui.ownerAudit.empty_history": {
+			"en": "No messages in the audit window for this conversation.",
+			"target": "此对话的审计时段内没有消息。"
+		},
+		"ui.ownerAudit.unnamed": {
+			"en": "Unnamed conversation",
+			"target": "未命名对话"
+		},
+		"ui.ownerAudit.agent": {
+			"en": "Chief of staff",
+			"target": "首席助理"
+		},
+		"ui.ownerAudit.more": {
+			"en": "Load more",
+			"target": "加载更多"
+		},
+		"ui.ownerAudit.older": {
+			"en": "Load older messages",
+			"target": "加载较早的消息"
+		},
+		"ui.ownerAudit.admitted": {
+			"en": "Admitted to your chief of staff",
+			"target": "已被你的首席助理接收"
+		},
+		"ui.ownerAudit.rejected": {
+			"en": "Rejected by your chief of staff’s screening",
+			"target": "已被你的首席助理的筛选拒绝"
+		},
+		"ui.ownerAudit.not_screened": {
+			"en": "Not screened by your chief of staff",
+			"target": "未经你的首席助理筛选"
+		},
+		"ui.ownerAudit.unknown_status": {
+			"en": "Status unknown",
+			"target": "状态未知"
+		},
+		"ui.ownerAudit.own": {
+			"en": "Sent by your chief of staff",
+			"target": "由你的首席助理发送"
+		},
+		"ui.ownerAudit.body_unavailable": {
+			"en": "Message text unavailable.",
+			"target": "消息正文不可用。"
+		},
+		"ui.ownerAudit.attachment_expired": {
+			"en": "Attachment expired; bytes are unavailable.",
+			"target": "附件已过期；内容不可用。"
+		},
+		"ui.ownerAudit.attachment_unavailable": {
+			"en": "Attachment present; downloading is unavailable in this view.",
+			"target": "包含附件；此视图无法下载。"
+		},
+		"ui.ownerAudit.unknown_sender": {
+			"en": "Unknown sender",
+			"target": "未知发送者"
+		},
+		"ui.ownerAudit.reveal": {
+			"en": "Show message text",
+			"target": "显示消息正文"
+		},
+		"ui.ownerAudit.active": {
+			"en": "Your chief of staff is still a member.",
+			"target": "你的首席助理仍是成员。"
+		},
+		"ui.ownerAudit.left": {
+			"en": "Your chief of staff left this conversation; later messages are outside the audit window.",
+			"target": "你的首席助理已离开此对话；此后的消息不在审计时段内。"
+		},
+		"ui.ownerAudit.removed": {
+			"en": "Your chief of staff was removed; later messages are outside the audit window.",
+			"target": "你的首席助理已被移除；此后的消息不在审计时段内。"
+		},
+		"ui.ownerAudit.disclosure": {
+			"en": "Visible only to you as this agent’s owner; other members see that owner auditing is enabled.",
+			"target": "仅你作为此代理的所有者可见；其他成员可看到已启用所有者审计。"
+		},
+		"ui.ownerAudit.viewer": {
+			"en": "Also visible to {name}, an agent owner.",
+			"target": "代理所有者 {name} 也可以查看。"
+		},
+		"ui.ownerAudit.replies": {
+			"en": "Read thread replies",
+			"target": "阅读讨论串回复"
+		}
+	},
+	"scope": {
+		"keys_audited_linguistically": [
+			"ui.ownerAudit.title",
+			"ui.ownerAudit.read_only",
+			"ui.ownerAudit.loading",
+			"ui.ownerAudit.error",
+			"ui.ownerAudit.retry",
+			"ui.ownerAudit.refresh",
+			"ui.ownerAudit.empty_list",
+			"ui.ownerAudit.empty_history",
+			"ui.ownerAudit.unnamed",
+			"ui.ownerAudit.agent",
+			"ui.ownerAudit.more",
+			"ui.ownerAudit.older",
+			"ui.ownerAudit.admitted",
+			"ui.ownerAudit.rejected",
+			"ui.ownerAudit.not_screened",
+			"ui.ownerAudit.unknown_status",
+			"ui.ownerAudit.own",
+			"ui.ownerAudit.body_unavailable",
+			"ui.ownerAudit.attachment_expired",
+			"ui.ownerAudit.attachment_unavailable",
+			"ui.ownerAudit.unknown_sender",
+			"ui.ownerAudit.reveal",
+			"ui.ownerAudit.active",
+			"ui.ownerAudit.left",
+			"ui.ownerAudit.removed",
+			"ui.ownerAudit.disclosure",
+			"ui.ownerAudit.viewer",
+			"ui.ownerAudit.replies"
+		],
+		"new_namespace": true,
+		"note": "first audit of this namespace; all 28 keys"
+	},
+	"notes": "Namespace-wide audit against en + context (owner vs agent, screening vs authorship, audit window). Open findings: 0; resolved by this run: 2.",
+	"findings": [],
+	"resolved_findings": [
+		{
+			"id": "I18N-zh-CN-1",
+			"severity": "major",
+			"status": "resolved",
+			"resolved_by": "auditor b393dc8cd01c (this run)",
+			"keys": [
+				"ui.ownerAudit.title",
+				"ui.ownerAudit.agent",
+				"ui.ownerAudit.admitted",
+				"ui.ownerAudit.rejected",
+				"ui.ownerAudit.not_screened",
+				"ui.ownerAudit.own",
+				"ui.ownerAudit.active",
+				"ui.ownerAudit.left",
+				"ui.ownerAudit.removed"
+			],
+			"reason": "Terminology consistency: '首席助手' broke the shipped '首席助理' (ui.teamBridge.chief.fallback, section.chiefs, onboarding).",
+			"change": {
+				"ui.ownerAudit.title": {
+					"before": "你的首席助手的消息",
+					"after": "你的首席助理的消息"
+				},
+				"ui.ownerAudit.agent": {
+					"before": "首席助手",
+					"after": "首席助理"
+				},
+				"ui.ownerAudit.admitted": {
+					"before": "已被你的首席助手接收",
+					"after": "已被你的首席助理接收"
+				},
+				"ui.ownerAudit.rejected": {
+					"before": "已被你的首席助手的筛选拒绝",
+					"after": "已被你的首席助理的筛选拒绝"
+				},
+				"ui.ownerAudit.not_screened": {
+					"before": "未经你的首席助手筛选",
+					"after": "未经你的首席助理筛选"
+				},
+				"ui.ownerAudit.own": {
+					"before": "由你的首席助手发送",
+					"after": "由你的首席助理发送"
+				},
+				"ui.ownerAudit.active": {
+					"before": "你的首席助手仍是成员。",
+					"after": "你的首席助理仍是成员。"
+				},
+				"ui.ownerAudit.left": {
+					"before": "你的首席助手已离开此对话；此后的消息不在审计时段内。",
+					"after": "你的首席助理已离开此对话；此后的消息不在审计时段内。"
+				},
+				"ui.ownerAudit.removed": {
+					"before": "你的首席助手已被移除；此后的消息不在审计时段内。",
+					"after": "你的首席助理已被移除；此后的消息不在审计时段内。"
+				}
+			}
+		},
+		{
+			"id": "I18N-zh-CN-2",
+			"severity": "major",
+			"status": "resolved",
+			"resolved_by": "auditor b393dc8cd01c (this run)",
+			"keys": [
+				"ui.ownerAudit.replies"
+			],
+			"reason": "Terminology consistency: thread '话题' broke shipped '讨论串' (ui.teamBridge.replies.*).",
+			"change": {
+				"ui.ownerAudit.replies": {
+					"before": "阅读话题回复",
+					"after": "阅读讨论串回复"
+				}
+			}
+		}
+	],
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide_zh-CN": {
+			"path": "~/local-operator/i18n/style-guides/zh-CN.md",
+			"revision": "ad1de332210d47cc01e62393c2d0cd4708e2312b",
+			"sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+		}
+	},
+	"artifacts": {
+		"receipt": {
+			"path": "i18n/receipts/b393dc8cd01c-owneraudit-zh-cn.json",
+			"sha256": "2021c577824c772bbd793b4450cac3f48f93280e168fbace8f3fd42ad500901d"
+		}
+	},
+	"limitations": "No rendered-fit, screenshot, pseudo-localization or FriBidi evidence: this role has no browser tool and the host is source-only (builds/tests paused). Fit for not_available judged by character count only (en 104; longest fr 117)."
+}

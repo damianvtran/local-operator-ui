@@ -1,0 +1,89 @@
+# companion of i18n/audits/evidence/vi/ui.teamBridge/tb1666-828e525994e6-vi/record.json (audit tb1666-828e525994e6-vi); shared execution log for the fr/vi/zh-CN PR #1666 audits
+# audit.log — execution log, i18n-auditor session 828e525994e6, PR #1666, 2026-11-04T11:25:02Z
+# cwd: worktree root (.worktrees/ui1-followups); node v24.22.1
+$ git rev-parse HEAD
+f11ee9d8823917d2d2a9955c6e7fd95388d66545
+$ git diff --name-only 649d45c HEAD -- src/i18n i18n
+src/i18n/catalogues/fr/ui.teamBridge.json
+src/i18n/catalogues/vi/ui.teamBridge.json
+src/i18n/catalogues/zh-CN/ui.teamBridge.json
+$ shasum -a 256 <en, en context, fr, vi, zh-CN ui.teamBridge>
+d06d4b8e8292b006364c800f24719c0f569b36bb86e2c81cba194de9f8b005ab  src/i18n/catalogues/en/ui.teamBridge.json
+31535f65e12b7dbb6b907f926be5d60ff80939605d1db538e1160530310ce59c  src/i18n/catalogues/en/ui.teamBridge.context.json
+95df579590ef4460dd6073faaa704c7a36b1a41dcba18fc4ef36ec7107f4263c  src/i18n/catalogues/fr/ui.teamBridge.json
+1d4fe34c2d2f6da23d5e5c4a9520586af37e99516b502e11c8ca7f348ca5491e  src/i18n/catalogues/vi/ui.teamBridge.json
+c02110f8a978e298803f17dc82e0f4ebf6015dde0653eee810a583543981231e  src/i18n/catalogues/zh-CN/ui.teamBridge.json
+$ shasum -a 256 (base 649d45c targets)
+65e5c4be341d0450a4d1eb3a3313af471d0cb648efb65aba8ff391de72d6ee8a  649d45c:fr
+3fbf6eed08cead8e66c239a5192398c082f9ceecb174469d3c696f85cd969ab6  649d45c:vi
+365c5b2503d6111f9a0811cbd93f6d5463b40875b3cf5faf64178eb7500593ba  649d45c:zh-CN
+$ python3 (changed keys vs 649d45c, key order equal)
+fr key_order_equal= True changed= ['ui.teamBridge.builtin.general_topic', 'ui.teamBridge.delivery.refused_out_of_scope']
+vi key_order_equal= True changed= ['ui.teamBridge.builtin.general_topic']
+zh-CN key_order_equal= True changed= ['ui.teamBridge.builtin.general_topic', 'ui.teamBridge.attachmentCard.list', 'ui.teamBridge.attachmentCard.bytes', 'ui.teamBridge.fileCard.list']
+$ node verify.mjs   # ICU parse, arg names/kinds, CLDR plural arms, NFC, bidi controls, fr U+0020/U+00A0 before high punctuation, zh-CN CJK/digit spacing, code spans
+== fr: 342 keys; 3 notes
+  ui.teamBridge.attachments.failed_count: plural miss many extra 
+  ui.teamBridge.reactions.others: plural miss many extra 
+  ui.teamBridge.attachmentCard.list: plural miss many extra 
+== vi: 342 keys; 2 notes
+  ui.teamBridge.attachmentCard.list: arg count kind en=6 vi=2 (info)
+  ui.teamBridge.fileCard.list: arg count kind en=6 vi=2 (info)
+== zh-CN: 342 keys; 2 notes
+  ui.teamBridge.attachmentCard.list: arg count kind en=6 zh-CN=2 (info)
+  ui.teamBridge.fileCard.list: arg count kind en=6 zh-CN=2 (info)
+context keys: 342
+ui.teamBridge.builtin.general_topic {"role":"channel header topic","tone":"plain, sentence case","length":"One sentence; may truncate.","placeholders":{},"note":"Describes the built-in #general channel: the whole organization, meaning every person who uses Team Bridge plus each person's agent (their chief of staff). Lead with the whole organization so it reads differently from #humans. The agent rule: every agent in the channel sees every message, and replies when @-mentioned or in a thread it follows. Each owner sets their own agent's notify level, so never promise that every agent answers every message, and make no reply-time promise. 'Threads they follow' means the agent follows the thread, not the reader. Nobody can leave the channel, and it cannot be renamed. Keep 'agents' as the product's usual word for AI agents. Use no em dash; use a colon or the language's natural equivalent."}
+ui.teamBridge.delivery.refused_out_of_scope {"role":"message delivery status line","tone":"neutral, factual, non-accusatory","length":"One line; may wrap","placeholders":{"recipient":"the recipient's full display label, already composed exactly as the conversation shows it: an agent with its owner (\"Aida (Ben Tran)\") or an unnamed agent (\"Ben Tran's chief of staff\"). Never add the owner again around it."},"note":"Muted status line under a message the sender sent. The recipient agent's own moderation declined it; this is NOT the sender's error and must not sound accusatory or alarming. Keep 'their' referring to the recipient agent/owner. The parenthetical is a hedged, coarse category ('looked like a request outside what this agent handles'): keep the hedge ('looked like'), never state it as a verdict."}
+ui.teamBridge.attachmentCard.list {"role":"accessible label for the structured attachment list; visible label for a count-only audit receipt","tone":"neutral, factual","length":"short noun phrase with count","placeholders":{"count":"Number of actual descriptors, or the known attachment count when no descriptors are supplied. Use the locale's ICU plural rules."},"note":"Counts files/images attached to one message, not upload progress. A count-only audit receipt grants no preview or download authority and must not invent individual attachment names."}
+ui.teamBridge.attachmentCard.bytes {"role":"attachment-card metadata for a positive safe-integer byte size","tone":"neutral, technical unit label","length":"one short numeric phrase","placeholders":{"size":"Byte count formatted with ICU number formatting; not kilobytes, upload percentage or dimensions."},"note":"Translate the byte unit idiomatically; standard Spanish bytes legitimately matches English. Inflect units according to the locale's number rules. The value is omitted when size is unknown or the attachment is unavailable."}
+ui.teamBridge.fileCard.list {"role":"accessible label for a message's list of generic file cards; visible label of a count-only file receipt","tone":"neutral, factual","length":"short noun phrase with count","placeholders":{"count":"Number of files attached to one message. Use the locale's ICU plural rules."},"note":"Counts non-image files (documents, text, archives) on one message, not upload progress. Never includes a file name. A count-only receipt grants no preview or download."}
+$ node compose.mjs  # composed sentences via intl-messageformat; U+202F shown as ⟨NNBSP⟩
+fr general_topic: Toute l’organisation⟨NNBSP⟩: les personnes et leurs agents. Les agents voient chaque message et répondent quand on les mentionne avec @ ou dans les fils qu’ils suivent.
+fr out_of_scope : Non remis à Aida (Ben Tran)⟨NNBSP⟩: refusé par sa modération (ressemblait à une demande hors du périmètre de cet agent)
+fr out_of_scope : Non remis à la cheffe de cabinet (Ben Tran)⟨NNBSP⟩: refusé par sa modération (ressemblait à une demande hors du périmètre de cet agent)
+vi general_topic: Toàn bộ tổ chức: mọi người và tác nhân của họ. Tác nhân xem mọi tin nhắn và trả lời khi được nhắc đến bằng @ hoặc trong các luồng họ theo dõi.
+zh general_topic: 整个组织：所有人及其智能体。智能体会看到每条消息，并在被@提及时或在其关注的讨论串中回复。
+zh n=1: 1个附件 | 1个文件 | 1,000字节
+zh n=3: 3个附件 | 3个文件 | 3,000字节
+zh n=1234: 1,234个附件 | 1,234个文件 | 1,234,000字节
+$ node scripts/i18n/generate.mjs --check
+/Users/damian/local-operator-ui/.worktrees/ui1-followups/src/i18n/keys.gen.ts is byte-identical to a fresh generation.
+exit=0
+$ node scripts/i18n/ledger-check.mjs   # BEFORE this audit's rows
+ledger-check: fr/ui.teamBridge: stale target_sha256 (ledger 65e5c4be341d…, file 95df579590ef…) — the translated file changed since it was audited
+ledger-check: fr/ui.teamBridge: auditor 1: the receipt does not name the target bytes on disk - it audited a different file
+ledger-check: vi/ui.teamBridge: stale target_sha256 (ledger 3fbf6eed08ce…, file 1d4fe34c2d2f…) — the translated file changed since it was audited
+ledger-check: vi/ui.teamBridge: auditor 1: the receipt does not name the target bytes on disk - it audited a different file
+ledger-check: zh-CN/ui.teamBridge: stale target_sha256 (ledger 365c5b2503d6…, file c02110f8a978…) — the translated file changed since it was audited
+ledger-check: zh-CN/ui.teamBridge: auditor 1: the receipt does not name the target bytes on disk - it audited a different file
+ledger-check: FAILED — 6 finding(s) across 840 ledger entr(ies)
+exit=1
+$ node scripts/i18n/ledger-check.mjs   # AFTER ledger-assemble
+ledger-check: ok — 840 entr(ies) complete, fresh and independently audited
+exit=0
+$ pnpm run check-i18n:catalogues
+$ node scripts/i18n/generate.mjs --check && node scripts/i18n/check-duplicates.mjs && node scripts/i18n/check-strings.mjs && node scripts/i18n/ledger-check.mjs && node scripts/i18n/context-parity.mjs
+/Users/damian/local-operator-ui/.worktrees/ui1-followups/src/i18n/keys.gen.ts is byte-identical to a fresh generation.
+check-duplicates: ok — 1085 file(s) scanned, 0 duplicate key(s)
+check-strings.mjs: ok — 1549 file(s) scanned, 0 literal(s) at or below the baseline
+ledger-check: ok — 840 entr(ies) complete, fresh and independently audited
+context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json).
+exit=0
+$ node scripts/i18n/check-coverage.mjs
+coverage-check: ok — 7 gated language(s) over 120 namespace(s); 0 allowed key(s) remain across 0 pair(s) (shrink-only; see i18n/coverage-allowance.json).
+exit=0
+$ node scripts/run-desktop-tests.mjs scripts/i18n/zh-CN-activation.test.mjs scripts/i18n/vi-activation.test.mjs scripts/i18n/locale-parity.test.mjs scripts/i18n/ledger-check.test.mjs scripts/i18n/catalogue-locale.test.mjs
+zh-CN composed: 应用中运行64个，上限128个 · 已保留33个
+✔ shipped Simplified Chinese covers all three surfaces and switches back to English (10.736959ms)
+✔ counts render ungrouped (the #1131 fidelity rule) in Chinese and on the English fallback (0.971ms)
+✔ zh-CN: the composed console capacity sentence reads as one sentence (0.467709ms)
+ℹ tests 75
+ℹ suites 0
+ℹ pass 75
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1483.9175
+exit=0

@@ -1,0 +1,163 @@
+{
+  "locale": "vi",
+  "namespace": "ui.chat.pickers",
+  "auditor": "i18n-auditor",
+  "agent": "i18n-auditor",
+  "instance": "84f34f75ad89-u1664m1-vi",
+  "model": "openai/gpt-6.1-sol",
+  "date": "2026-11-05",
+  "audit_date": "2026-11-05",
+  "status": "passed",
+  "sha256": {
+    "en": "ecc10fb18100d4d462f36214c83507a48c7f0f8173cb72f37bf5964a05abb58c",
+    "vi": "262fe49cc21c91392e70fe2b8b2a5dfb27b1c594b92115a53353c3a78cb0a7cf"
+  },
+  "context_sha256": "a03f45c9158177d2282d89c088fec46c949f42952959ac84d6a8b72e0582d981",
+  "frozen_head": "625b865eff2ab4476fdff40144c1368a05878482",
+  "record": "i18n/audits/evidence/vi/ui.chat.pickers/u1664m1-vi/record.json",
+  "report": "i18n/audits/evidence/vi/ui.chat.pickers/u1664m1-vi/report.md",
+  "auditor_provenance": {
+    "agent": "i18n-auditor",
+    "session": "84f34f75ad89",
+    "instance": "84f34f75ad89-u1664m1-vi",
+    "model": "openai/gpt-6.1-sol",
+    "independent_from_translator_session": true,
+    "known_translator_session": "5baf5b219d15",
+    "independence_statement": "This auditor authored neither parent translation; only the four new evidence files are written. Original parent translators and auditors remain in prior_audit_bindings.",
+    "actual_model_source": "Host model-switch notices in this session: requested anthropic/claude-sonnet-5-5; quota fallback notice to anthropic/claude-opus-5-5, then openai/gpt-6.1-sol. The latest notice names the served model for all linguistic and mechanical audit work; initial guide read preceded fallback. No underlying-model lookup is claimed.",
+    "fallback": {
+      "used": true,
+      "reason": "provider failure: quota",
+      "requested_model": "anthropic/claude-sonnet-5-5",
+      "announced_chain": [
+        "anthropic/claude-opus-5-5",
+        "openai/gpt-6.1-sol"
+      ]
+    }
+  },
+  "reviewed_keys": [
+    "ui.chat.pickers.analytics_model.no_call_in_this_window_has_a_measured_generation_time_yet_so_the_rate_re",
+    "ui.chat.pickers.analytics_panel.no_call_in_this_window_has_a_published_price",
+    "ui.chat.pickers.analytics_panel.no_daily_rows_for_this_window",
+    "ui.chat.pickers.analytics_panel.no_per_model_rows_in_this_window",
+    "ui.chat.pickers.analytics_panel.no_per_provider_rows_in_this_window",
+    "ui.chat.pickers.analytics_panel.no_per_session_rows_in_this_window",
+    "ui.chat.pickers.analytics_panel.no_priced_calls_in_this_window",
+    "ui.chat.pickers.analytics_panel.of_in_this_window",
+    "ui.chat.pickers.analytics_panel.of_in_this_windowf655cc",
+    "ui.chat.pickers.analytics_panel.of_the_output_tokens_this_ledger_read_recorded_in_this_window",
+    "ui.chat.pickers.analytics_panel.the_ledger_records_a_model_on_every_provider_call_so_this_window_has_non",
+    "ui.chat.pickers.analytics_panel.usage_by_provider_in_this_window",
+    "ui.chat.pickers.analytics_panel.usage_by_session_in_this_window",
+    "ui.chat.pickers.analytics_panel.window",
+    "ui.chat.pickers.analytics_session_state.all_sessions_in_this_window_have_a_parent",
+    "ui.chat.pickers.analytics_session_state.clear_the_search_to_see",
+    "ui.chat.pickers.analytics_session_state.no_top_level_sessions_in_this_window",
+    "ui.chat.pickers.analytics_session_state.the_one_session_in_this_window_has_a_parent",
+    "ui.chat.pickers.destination_pickers.choose_the_model_this_conversation_starts_on_and_keeps_running_on_your_d",
+    "ui.chat.pickers.destination_pickers.default_approvals_for_all_sessions_that_follow_it_this_session_follows_i",
+    "ui.chat.pickers.destination_pickers.default_for_all_sessions_that_follow_it",
+    "ui.chat.pickers.destination_pickers.delivered_exactly_once_to_the_new_conversation",
+    "ui.chat.pickers.destination_pickers.effort_levels_supports_this_sets_the_level_this_conversation_starts_on_a",
+    "ui.chat.pickers.destination_pickers.stop_requested_acknowledged_not_a_completed_exit",
+    "ui.chat.pickers.destination_pickers.the_fork_starts_before_the_message_you_chose_a_cut_cannot_separate_a_too",
+    "ui.chat.pickers.destination_pickers.this_conversation_starts_on_and_keeps_running_on_it_choosing_another_cha",
+    "ui.chat.pickers.destination_pickers.this_goal_is_settled_it_stays_in_the_goal_history_dismiss_it_to_clear_th",
+    "ui.chat.pickers.destination_pickers.your_first_message_starts_the_chat_with_this_profile",
+    "ui.chat.pickers.destination_pickers.your_first_message_starts_the_chat_with_this_team",
+    "ui.chat.pickers.info_model.mobile_relay",
+    "ui.chat.pickers.model_catalogue_listing.the_provider_listing_failed_the_rows_below_are_refresh_from_providers_tr",
+    "ui.chat.pickers.slash.source.agent",
+    "ui.chat.pickers.slash.source.approvals",
+    "ui.chat.pickers.slash.source.effort",
+    "ui.chat.pickers.slash.source.mcp",
+    "ui.chat.pickers.slash.source.model",
+    "ui.chat.pickers.slash.source.provider_accounts",
+    "ui.chat.pickers.slash.source.providers",
+    "ui.chat.pickers.slash.source.session_tags",
+    "ui.chat.pickers.slash.source.team",
+    "ui.chat.pickers.slash.source.theme",
+    "ui.chat.pickers.slash.source.title_refresh",
+    "ui.chat.pickers.usage_view.loading_provider_usage",
+    "ui.chat.pickers.usage_view_model.credits",
+    "ui.chat.pickers.usage_view_model.report"
+  ],
+  "retained_key_count": 707,
+  "scope": "Fresh 45-key bilingual linguistic delta (34 upstream changed values + 11 PR additions); 752-key mechanical verification and supplemental EN/VI whole-file scan; 707 unchanged keys retain parent audit provenance. Not an interface-wide English-free or rendering pass.",
+  "findings": [
+    {
+      "id": "V-N1",
+      "severity": "NIT",
+      "key": "ui.chat.pickers.info_model.mobile_relay",
+      "reason": "Glossary-correct relay label; adding the service noun would remove a slight verb-phrase reading. Optional, not a semantic defect.",
+      "suggested": "Dịch vụ chuyển tiếp di động",
+      "disposition": "retained, non-gating",
+      "prior_receipts": [
+        "i18n/receipts/c124ae957985.json",
+        "i18n/receipts/i18n-auditor-vi-pickers-3e4aeb5-9344cb74ab66.json"
+      ]
+    },
+    {
+      "id": "V-N2",
+      "severity": "NIT",
+      "key": "ui.chat.pickers.destination_pickers.choose_the_model_this_conversation_starts_on_and_keeps_running_on_your_d",
+      "reason": "Relative construction repeats the model noun; meaning and unchanged-default boundary are correct. Optional tightening.",
+      "suggested": "Chọn mô hình để cuộc trò chuyện này bắt đầu và tiếp tục chạy. Mặc định không thay đổi.",
+      "disposition": "retained, non-gating",
+      "prior_receipts": [
+        "i18n/receipts/i18n-auditor-vi-pickers-3e4aeb5-9344cb74ab66.json"
+      ]
+    },
+    {
+      "id": "V-N3",
+      "severity": "NIT",
+      "key": "ui.chat.pickers.destination_pickers.delivered_exactly_once_to_the_new_conversation",
+      "reason": "Passive delivery wording is slightly calque-like, but accurately preserves exactly-once delivery. Optional tightening only.",
+      "suggested": "Chỉ gửi đúng một lần tới cuộc trò chuyện mới.",
+      "disposition": "retained, non-gating",
+      "prior_receipts": [
+        "i18n/receipts/i18n-auditor-vi-pickers-3e4aeb5-9344cb74ab66.json"
+      ]
+    },
+    {
+      "id": "V-N4",
+      "severity": "NIT",
+      "key": "ui.chat.pickers.destination_pickers.default_approvals_for_all_sessions_that_follow_it_this_session_follows_i",
+      "reason": "Own-choice phrase repeats; inheritance rather than future-session chronology is now correct and must remain so. Optional tightening.",
+      "suggested": "Phê duyệt mặc định cho mọi phiên không có lựa chọn riêng: {string}. Phiên này cũng dùng mặc định đó nếu chưa tự chọn.",
+      "disposition": "retained, non-gating",
+      "prior_receipts": [
+        "i18n/receipts/i18n-auditor-vi-pickers-3e4aeb5-9344cb74ab66.json"
+      ]
+    },
+    {
+      "id": "V-N5",
+      "severity": "NIT",
+      "key": "ui.chat.pickers.analytics_panel.no_call_in_this_window_has_a_published_price",
+      "related_keys": [
+        "ui.chat.pickers.analytics_model.no_call_in_this_window_has_a_measured_generation_time_yet_so_the_rate_re",
+        "ui.chat.pickers.analytics_panel.no_call_in_this_window_has_a_published_price",
+        "ui.chat.pickers.analytics_panel.no_daily_rows_for_this_window",
+        "ui.chat.pickers.analytics_panel.no_per_model_rows_in_this_window",
+        "ui.chat.pickers.analytics_panel.no_per_provider_rows_in_this_window",
+        "ui.chat.pickers.analytics_panel.no_per_session_rows_in_this_window",
+        "ui.chat.pickers.analytics_panel.no_priced_calls_in_this_window",
+        "ui.chat.pickers.analytics_panel.of_in_this_window",
+        "ui.chat.pickers.analytics_panel.of_in_this_windowf655cc",
+        "ui.chat.pickers.analytics_panel.of_the_output_tokens_this_ledger_read_recorded_in_this_window",
+        "ui.chat.pickers.analytics_panel.usage_by_provider_in_this_window",
+        "ui.chat.pickers.analytics_panel.usage_by_session_in_this_window",
+        "ui.chat.pickers.analytics_session_state.all_sessions_in_this_window_have_a_parent",
+        "ui.chat.pickers.analytics_session_state.clear_the_search_to_see",
+        "ui.chat.pickers.analytics_session_state.no_top_level_sessions_in_this_window",
+        "ui.chat.pickers.analytics_session_state.the_one_session_in_this_window_has_a_parent"
+      ],
+      "reason": "The shortened time-range noun is understandable with the visible range selector and meets the terse guide. The fuller time-range phrase would be clearer where space permits; this is prior optional wording, not wrong meaning.",
+      "suggested": "Trong khoảng thời gian này (replace the shortened range phrase where fit permits)",
+      "disposition": "retained, non-gating",
+      "prior_receipts": [
+        "i18n/receipts/c124ae957985.json"
+      ]
+    }
+  ]
+}

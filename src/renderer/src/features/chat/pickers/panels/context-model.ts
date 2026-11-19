@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 import type { DesktopContextNumbers } from "../../../../../../shared/desktop-contract";
 import type { SlashOutcome } from "../use-picker-backend";
 import { formatContextTokens, formatPercent, formatWindow } from "./formatters";
@@ -21,6 +22,13 @@ export type ContextBlock = {
 	numbers?: DesktopContextNumbers;
 };
 
+/**
+ * `local_operator/session/runtime/serving.py` / `local_operator/tui/app.py`:
+ * the fixed sentence for "no breakdown to give". See the docstring above for
+ * why it is not localized.
+ */
+const CONTEXT_BREAKDOWN_UNAVAILABLE_NOTICE = "context breakdown unavailable.";
+
 /** The block, or `null` when the outcome is not one. */
 export function contextBlockOf(
 	outcome: SlashOutcome | null | undefined,
@@ -37,13 +45,19 @@ export function contextBlockOf(
  * one notice for this case and the panel must not invent a second wording for
  * it. The panel does NOT show this text — it shows copy that says what to do
  * about it — which is why the test lives here rather than in the JSX.
+ *
+ * THE PHRASE IS THE SERVER'S, NEVER `t()`. `serving.py` and the TUI emit this
+ * exact English sentence regardless of the UI language, so matching the
+ * translated string made the answer look like a real block in `ru`/`es` and
+ * the panel rendered the wrong body. Compare the wire constant; the catalogue
+ * keeps the translated wording available for display elsewhere.
  */
 export function isBreakdownUnavailable(
 	outcome: SlashOutcome | null | undefined,
 ): boolean {
 	return Boolean(
 		outcome?.kind === "notice" &&
-			outcome.text?.includes("context breakdown unavailable"),
+			outcome.text?.includes(CONTEXT_BREAKDOWN_UNAVAILABLE_NOTICE),
 	);
 }
 
@@ -68,13 +82,28 @@ export type EstimateRow = {
  * different kind of fact (an exact measurement rather than an estimate) and the
  * second is the denominator, not a row.
  */
-const ESTIMATE_ROWS: { key: keyof DesktopContextNumbers; label: string }[] = [
-	{ key: "instructions", label: "Instructions" },
-	{ key: "tool_inventory", label: "Tool inventory" },
-	{ key: "tool_schemas", label: "Tool schemas" },
-	{ key: "environment", label: "Environment" },
-	{ key: "knowledge_mcp_goal", label: "Skills / MCP / goal" },
-	{ key: "messages", label: "Messages" },
+const ESTIMATE_ROWS = (): {
+	key: keyof DesktopContextNumbers;
+	label: string;
+}[] => [
+	{
+		key: "instructions",
+		label: t("ui.chat.pickers.context_model.instructions"),
+	},
+	{
+		key: "tool_inventory",
+		label: t("ui.chat.pickers.context_model.tool_inventory"),
+	},
+	{
+		key: "tool_schemas",
+		label: t("ui.chat.pickers.context_model.tool_schemas"),
+	},
+	{ key: "environment", label: t("ui.chat.pickers.context_model.environment") },
+	{
+		key: "knowledge_mcp_goal",
+		label: t("ui.chat.pickers.context_model.skills_mcp_goal"),
+	},
+	{ key: "messages", label: t("ui.chat.pickers.context_model.messages") },
 ];
 
 /**
@@ -89,7 +118,7 @@ export function estimateRows(
 ): EstimateRow[] {
 	if (!numbers) return [];
 	const total = numbers.total;
-	return ESTIMATE_ROWS.map(({ key, label }) => {
+	return ESTIMATE_ROWS().map(({ key, label }) => {
 		const value = numbers[key];
 		return {
 			key,
@@ -144,7 +173,11 @@ export function headline(
 		frontend.context_tokens === null ||
 		!frontend.context_window
 	) {
-		return { value: "not measured", fraction: null, estimated: false };
+		return {
+			value: t("ui.chat.pickers.context_model.not_measured"),
+			fraction: null,
+			estimated: false,
+		};
 	}
 	const fraction = frontend.context_tokens / frontend.context_window;
 	return {

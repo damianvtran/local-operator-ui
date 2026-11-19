@@ -1,0 +1,38 @@
+locale   key                                   parse placeholders          ICU arms
+===== ur (297 keys in namespace)
+    events.invited                 args=[actor,targets] plural=- 
+      1 target: Dana نے Ava کو مدعو کیا
+      3 targets: Dana نے Ava، Ben، اور Cleo کو مدعو کیا cells=32 (en 25)
+    events.joined                  args=[targets] plural=- 
+      1 target: Ava گفتگو میں شامل
+      3 targets: Ava، Ben، اور Cleo گفتگو میں شامل cells=24 (en 16)
+    events.owner_added_agent       args=[actor,targets] plural=- 
+      1 target: Dana نے اپنا ایجنٹ Ava شامل کیا
+      3 targets: Dana نے اپنا ایجنٹ Ava، Ben، اور Cleo شامل کیا cells=40 (en 35)
+    events.left                    args=[targets] plural=- 
+      1 target: Ava نے گفتگو چھوڑ دی
+      3 targets: Ava، Ben، اور Cleo نے گفتگو چھوڑ دی cells=26 (en 14)
+    events.removed                 args=[actor,targets] plural=- 
+      1 target: Dana نے Ava کو ہٹا دیا
+      3 targets: Dana نے Ava، Ben، اور Cleo کو ہٹا دیا cells=31 (en 25)
+    events.consented               args=[actor,targets] plural=- 
+      1 target: Dana نے Ava کو شامل ہونے کی منظوری دی
+      3 targets: Dana نے Ava، Ben، اور Cleo کو شامل ہونے کی منظوری دی cells=46 (en 34)
+  * events.declined_self           args=[actor] plural=- 
+      1 target: Dana نے دعوت سے انکار کر دی
+      3 targets: Dana نے دعوت سے انکار کر دی cells=30 (en 31)
+  * events.declined                args=[actor,targets] plural=- 
+      1 target: Dana نے Ava کے لیے دعوت سے انکار کر دی
+      3 targets: Dana نے Ava، Ben، اور Cleo کے لیے دعوت سے انکار کر دی cells=47 (en 45)
+    events.withdrawn               args=[actor,targets] plural=- 
+      1 target: Dana نے Ava کے لیے دعوت واپس لے لی
+      3 targets: Dana نے Ava، Ben، اور Cleo کے لیے دعوت واپس لے لی cells=43 (en 45)
+  * events.unknown                 args=[] plural=- 
+      1 target: ارکان میں تبدیلی ہوئی
+      3 targets: ارکان میں تبدیلی ہوئی cells=21 (en 18)
+  * events.others                  args=[] plural=count:one/other 
+      render: 1->مزید 1  2->مزید 2  3->مزید 3  5->مزید 5  11->مزید 11  21->مزید 21 cells=44 (en 47)
+    members.invitation_note_v3     args=[] plural=- 
+      1 target: دعوتیں قبول ہونے تک رسائی نہیں دیتیں۔ آپ کے اپنے ایجنٹ فوراً شامل ہو جاتے ہیں؛ کسی اور کا ایجنٹ اپنے مالک کی رضامندی کے بعد شامل ہوتا ہے۔ رکن ایجنٹ یہاں ہر پیغام پڑھتا ہے اور خود طے کرتا ہے کہ جواب دے یا نہیں، اور @ کے ساتھ ذکر ہونے پر اس سے جواب کی توقع کی جاتی ہے۔ اس کا مالک اسے صرف @ والے ذکر اور ان تھریڈز تک محدود کر سکتا ہے جن میں وہ شریک ہے، یا اسے خاموش کر سکتا ہے۔
+      3 targets: دعوتیں قبول ہونے تک رسائی نہیں دیتیں۔ آپ کے اپنے ایجنٹ فوراً شامل ہو جاتے ہیں؛ کسی اور کا ایجنٹ اپنے مالک کی رضامندی کے بعد شامل ہوتا ہے۔ رکن ایجنٹ یہاں ہر پیغام پڑھتا ہے اور خود طے کرتا ہے کہ جواب دے یا نہیں، اور @ کے ساتھ ذکر ہونے پر اس سے جواب کی توقع کی جاتی ہے۔ اس کا مالک اسے صرف @ والے ذکر اور ان تھریڈز تک محدود کر سکتا ہے جن میں وہ شریک ہے، یا اسے خاموش کر سکتا ہے۔ cells=374 (en 310)
+  quote census (namespace): “=7 ”=7

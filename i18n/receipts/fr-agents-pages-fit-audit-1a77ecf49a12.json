@@ -1,0 +1,252 @@
+{
+  "schema": 1,
+  "kind": "translation-audit-receipt",
+  "audit_kind": "independent-translation-audit",
+  "round": 3,
+  "round_note": "Focused round-3 re-audit of the CURRENT bytes of one namespace after a measured fit defect: the fr scope segments overflowed their 246 px row by 5.21 px, and the translator shortened four labels by changing feminine to masculine plural. Round 2 and the batch round 3 read this namespace before this delta; this run is independent of both and of the translator.",
+  "locale": "fr",
+  "locale_name": "French",
+  "namespace": "ui.agents.pages",
+  "batch": "agents-pages-fit",
+  "branch": "i18n-agents-pages",
+  "worktree": "~/local-operator-ui/.worktrees/i18n-agents-pages",
+  "head": "99abae51a8",
+  "head_note": "HEAD 99abae51a8 plus the uncommitted fr delta under audit: `git diff --numstat` for the fr file is 4 4 and the object diff names only the four scope keys. The same worktree also carries an uncommitted ru delta, which is outside this audit and was not read for judgement.",
+  "date": "2026-10-26",
+  "audit_date": "2026-10-26",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "harness": "Local Operator",
+    "team": "lopdev",
+    "session": "1a77ecf49a12",
+    "instance": "1a77ecf49a12",
+    "model": "radient/auto",
+    "actual_model_source": "harness session header (Model: radient/auto); upstream provider/model resolution is not visible to the agent and is not inferred",
+    "model_fallback": "none observed and none claimed: the only model identity visible to this run is the harness header 'Model: radient/auto'; no fallback model is asserted and no provider switch was disclosed to the agent",
+    "independent_from_translator_session": true,
+    "independence": "Independent round-3 auditor: did not translate or remediate this namespace, and wrote no catalogue, ledger or git state; bound to the task-supplied en/fr hashes before reading, then audited the final working-tree bytes"
+  },
+  "agent": "i18n-auditor",
+  "session": "1a77ecf49a12",
+  "instance": "1a77ecf49a12",
+  "model": "radient/auto",
+  "model_fallback": "none observed and none claimed: the only model identity visible to this run is the harness header 'Model: radient/auto'; no fallback model is asserted",
+  "actual_model_source": "harness session header (Model: radient/auto); upstream resolution not visible to the agent and not inferred",
+  "independent_from_translator_session": true,
+  "independence": "Independent round-3 auditor: did not translate or remediate this namespace; no catalogue, ledger or git write was made by this run",
+  "status": "changes_requested",
+  "result": "changes_requested",
+  "verdict": "changes_requested: 1 major, 1 minor, 0 blocker, 0 nit over 22 keys. The gender half of the fix is right (agents is masculine) and the fit claim is confirmed in the rendered DOM; the shared key still renders a PLURAL adjective in the per-agent slots, and the sr-only legend still names 'définitions' (feminine) while its options now agree with 'agents'.",
+  "key_count": 22,
+  "keys_read": 22,
+  "severity_counts": {
+    "blocker": 0,
+    "major": 1,
+    "minor": 1,
+    "nit": 0
+  },
+  "findings": [
+    {
+      "id": "F-r3-1",
+      "severity": "major",
+      "category": "agreement / unidiomatic (not a meaning error)",
+      "keys": [
+        "ui.agents.pages.scope.builtin",
+        "ui.agents.pages.scope.installed",
+        "ui.agents.pages.scope.custom"
+      ],
+      "current": "Intégrés · Installés · Créés",
+      "problem": "The same key is also the per-item source word: sourceLabel() (detail-parts.tsx:258-266) feeds SourceChip on every roster row (agents-page.tsx:1455) and AgentMeta on one agent's detail line (agent-detail.tsx:171). In those slots the referent is ONE agent, so a plural adjective is an agreement error. The rendered frame shows 'Intégrés' beside the single rows architect / coder / copy-reviewer, 'Créés' on aa-custom and 'Installés' on Aida. Masculine is correct (the visible noun is 'agent', as in the shipped 'Agent intégré' and 'Aucun agent créé'), but the NUMBER is not.",
+      "evidence": "Frame fr-fit-agents-roster.png (sha256 60e39a85...) at frames/fr-fit-agents-roster.png; call sites cited above; shipped fr uses per-item singular ('Agent intégré', 'Aucun agent créé') and group plural ('les agents intégrés', ui.library.origin.created 'Créés' as a group label).",
+      "introduced_by_this_delta": false,
+      "pre_existing": "The round-2 bytes were feminine plural ('Intégrées'), equally number-wrong in the per-agent slots; the delta fixed gender and exposed the number problem more plainly.",
+      "suggested": "Exact fix for this catalogue-only PR: make the shared word singular and the All option invariable — ui.agents.pages.scope.all = 'Tout', ui.agents.pages.scope.builtin = 'Intégré', ui.agents.pages.scope.custom = 'Créé', ui.agents.pages.scope.installed = 'Installé'. The filter row then reads Tout | Créé | Installé | Intégré as class labels (idiomatic French filter register), the row chip and the meta line read 'Intégré' etc., and the empty states already agree ('Aucun agent créé / installé / intégré.'). The three new labels are one character shorter than the measured ones, so the measured 25.17 px slack cannot shrink; re-measure in the render before shipping. If the team prefers to keep plural filter labels, the correct alternative needs an en catalogue plus code change: add ui.agents.pages.source.builtin|installed|custom (en 'Built-in | Installed | Custom') and point sourceLabel() at them, keeping scope.* plural — out of this delta's scope. 'Tous' is not ungrammatical as a plural pronoun, but 'Tout' avoids mixing number inside one row."
+    },
+    {
+      "id": "F-r3-2",
+      "severity": "minor",
+      "category": "consistency / accessible name",
+      "keys": [
+        "ui.agents.pages.scope_legend"
+      ],
+      "current": "Afficher les définitions selon leur propriétaire",
+      "problem": "The group's only accessible name names the referent as feminine plural 'définitions', while the four option words now agree with 'agents' (masculine). A screen-reader user hears the group name and then options that no longer agree with it. The control exists only in agent mode (the fieldset renders only when !teamMode), so 'agents' is also the more accurate noun. No meaning or fit impact.",
+      "suggested": "Afficher les agents selon leur propriétaire",
+      "fix_note": "One value; sr-only, so no visual fit change. Keeps the en axis ('owned by') and matches the page's visible noun ('Agents et équipes', 'Aucun agent…', 'Rechercher des agents')."
+    }
+  ],
+  "current_report_verdict": {
+    "status": "changes_requested",
+    "unresolved_blocker_major_count": 1,
+    "finding_ids": [
+      "F-r3-1",
+      "F-r3-2"
+    ],
+    "closed_finding_ids": [],
+    "carried_open_observation_ids": [
+      "O-r3-1",
+      "O-r3-2",
+      "O-r3-3"
+    ]
+  },
+  "input_binding": {
+    "bound_by": "manager brief hashes, checked BEFORE reading any file: both matched the working-tree bytes exactly",
+    "en_sha256": "38a713b6cc4a63532543924cfdd2093b11c3618c31fc6266d28e20b84572feb5",
+    "fr_sha256": "6bf37b790f88e4265fcd3e0cf71bf0bc5f6d256c5c0d6ecb896c1aa4c9fb0de8",
+    "context_sha256": "4b761bfa8eeeddf3689a2160e8249b153c095368b6f6fe3df7046052d95d2642",
+    "match": true,
+    "mismatch_action": "would have stopped on mismatch; none occurred"
+  },
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.agents.pages.json",
+      "sha256": "38a713b6cc4a63532543924cfdd2093b11c3618c31fc6266d28e20b84572feb5"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.agents.pages.context.json",
+      "sha256": "4b761bfa8eeeddf3689a2160e8249b153c095368b6f6fe3df7046052d95d2642"
+    },
+    "fr": {
+      "path": "src/i18n/catalogues/fr/ui.agents.pages.json",
+      "sha256": "6bf37b790f88e4265fcd3e0cf71bf0bc5f6d256c5c0d6ecb896c1aa4c9fb0de8"
+    }
+  },
+  "en_sha256": "38a713b6cc4a63532543924cfdd2093b11c3618c31fc6266d28e20b84572feb5",
+  "source_sha256": "38a713b6cc4a63532543924cfdd2093b11c3618c31fc6266d28e20b84572feb5",
+  "fr_sha256": "6bf37b790f88e4265fcd3e0cf71bf0bc5f6d256c5c0d6ecb896c1aa4c9fb0de8",
+  "target_sha256": "6bf37b790f88e4265fcd3e0cf71bf0bc5f6d256c5c0d6ecb896c1aa4c9fb0de8",
+  "context_sha256": "4b761bfa8eeeddf3689a2160e8249b153c095368b6f6fe3df7046052d95d2642",
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/fr.md",
+      "sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+    },
+    "context_sidecar": {
+      "path": "src/i18n/catalogues/en/ui.agents.pages.context.json",
+      "sha256": "4b761bfa8eeeddf3689a2160e8249b153c095368b6f6fe3df7046052d95d2642"
+    }
+  },
+  "mechanical": {
+    "json_valid": true,
+    "key_set_and_order_equal_to_en": true,
+    "key_count_en": 22,
+    "key_count_fr": 22,
+    "context_keys": 22,
+    "placeholder_parity": "pass — every placeholder/argument set is identical to en; the namespace has one argument, {query} in empty.search, and no other braces",
+    "icu_structure": "pass — this namespace contains no plural/select/selectordinal message in en or fr, so CLDR-arm coverage is not applicable; no plural/select structure was changed",
+    "cldr_note": "fr categories are one/many/other; not exercised here because the namespace has no plural message",
+    "nfc_normalised": true,
+    "manual_bidi_controls": "none",
+    "typography": "pass — U+202F before '?' in both discard questions (…cet agent ?, …cette équipe ?), « » with U+202F inside in empty.search, U+2019 apostrophes only, no straight quotes; no U+202F inside {query} or code",
+    "file_shape": "tab indent, single trailing newline, key order identical to en, no key added or dropped",
+    "budgets": "no maxCells/maxChars field in this sidecar; fit judged from the rendered DOM geometry of the real app (see fit_verification)",
+    "delta_proof": "git show HEAD:…/fr/ui.agents.pages.json = 33b4134fec995c… (the ledger row's round-2 audited target_sha256) vs working file 6bf37b790f88e…: numstat 4 4, one hunk, object-level difference names exactly scope.all, scope.builtin, scope.custom, scope.installed; nothing else changed (no order, indent or newline churn)"
+  },
+  "commands": [
+    {
+      "command": "node --test --test-name-pattern='\\[fr\\]' scripts/i18n/locale-parity.test.mjs",
+      "exit": 0,
+      "output": "✔ [fr] ships at least one message (not an empty claim) · ✔ [fr] defines each key in at most one namespace file · ✔ [fr] carries EVERY key of each namespace file it ships · ✔ [fr] names only keys the English source defines · ✔ [fr] preserves every ICU placeholder from the English source · ✔ [fr] is not an English stub (no value identical to the source); ℹ tests 6 · pass 6 · fail 0 · duration_ms 716.96",
+      "note": "actual output of this run; the full six fr subtests, no skips"
+    },
+    {
+      "command": "node scripts/i18n/context-parity.mjs",
+      "exit": 0,
+      "output": "context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json)."
+    },
+    {
+      "command": "node scripts/i18n/check-duplicates.mjs",
+      "exit": 0,
+      "output": "check-duplicates: ok — 835 file(s) scanned, 0 duplicate key(s)"
+    },
+    {
+      "command": "node scripts/i18n/generate.mjs --check",
+      "exit": 0,
+      "output": "/Users/damian/local-operator-ui/.worktrees/i18n-agents-pages/src/i18n/keys.gen.ts is byte-identical to a fresh generation."
+    },
+    {
+      "command": "python3 <scratchpad>/r3-fr-agents-pages/mechanical.py",
+      "exit": 0,
+      "output": "$ python3 \"/Users/damian/.local-operator/sessions/1a77ecf49a12/scratchpad/r3-fr-agents-pages/mechanical.py\"\nkeys: en=22 fr=22 context=22\nkey order identical to en: True\ncontext covers every en key: True\nkeys added/dropped: none\nkeys changed vs HEAD: ['ui.agents.pages.scope.all', 'ui.agents.pages.scope.builtin', 'ui.agents.pages.scope.custom', 'ui.agents.pages.scope.installed']\nplaceholder/argument parity: True\nICU plural/select messages: {'en': [], 'fr': []}\nNFC normalised: {'en': True, 'fr': True}\nmanual bidi controls: none\nprose : ; ! ? without U+202F: none\nU+202F before ?: ['ui.agents.pages.discard_bar.agent', 'ui.agents.pages.discard_bar.team']\nstraight apostrophes/quotes: none\nguillemets carry U+202F inside: {'ui.agents.pages.empty.search': True}\nsrc/i18n/catalogues/en/ui.agents.pages.json 38a713b6cc4a63532543924cfdd2093b11c3618c31fc6266d28e20b84572feb5 tab-indent= True single-trailing-newline= True\nsrc/i18n/catalogues/fr/ui.agents.pages.json 6bf37b790f88e4265fcd3e0cf71bf0bc5f6d256c5c0d6ecb896c1aa4c9fb0de8 tab-indent= True single-trailing-newline= True\nsrc/i18n/catalogues/en/ui.agents.pages.context.json 4b761bfa8eeeddf3689a2160e8249b153c095368b6f6fe3df7046052d95d2642 tab-indent= True single-trailing-newline= True\ngit diff --numstat: 4\t4\tsrc/i18n/catalogues/fr/ui.agents.pages.json\nEXIT=0",
+      "note": "actual output; read-only key/ICU/NFC/typography/delta digest"
+    }
+  ],
+  "fit_verification": {
+    "claim": "Before: fr's four segments totalled 253.21 px in a 246 px row (+5.21, well scrolled). After: natural sum 220.83 px, 25.17 px slack, no scroll, no truncation.",
+    "verdict": "confirmed in the rendered DOM: fr order Tous / Créés / Installés / Intégrés, buttonBoxSum 245.99, minContentSum 220.83, lastSegmentRight 530 vs well right 532, wellScrollWidth 256 == clientWidth 256, truncated=false on all four; en control minContentSum 214.54, buttonBoxSum 245.99",
+    "geometry_files": [
+      {
+        "path": "/Users/damian/.local-operator/sessions/90af5810a381/scratchpad/rendered-1432-fit/measurements/run-fr.out.json",
+        "sha256": "19a9d537f04cf2798b5f68a0acaaf456c772a7b6a885a0ee6536c119c5ea253a"
+      },
+      {
+        "path": "/Users/damian/.local-operator/sessions/90af5810a381/scratchpad/rendered-1432-fit/measurements/run-en.out.json",
+        "sha256": "1443e1887b4a0300ee1906650a28a4c0da44f5c33dc1af37f03e7a31ebed74ed"
+      }
+    ],
+    "frames": [
+      {
+        "path": "/Users/damian/.local-operator/sessions/90af5810a381/scratchpad/rendered-1432-fit/frames/fr-fit-agents-roster.png",
+        "sha256": "60e39a8532c20829605a34168118e72f0cfc2cd91166b9b8407fb0f5db823528",
+        "note": "after: all four segments inside the well"
+      },
+      {
+        "path": "/Users/damian/.local-operator/sessions/90af5810a381/scratchpad/rendered-1432-fit/frames/before-fr-seeded-agents-roster.png",
+        "sha256": "07db696cf5241d0f656fc1d742643b9020d47cb16c6b9389cde0f6d2d5d9bc4a",
+        "note": "before: last segment runs past the well's right edge"
+      }
+    ],
+    "looked_at": "yes — both frames were opened and compared here; the before frame shows the truncated/overflowing row, the after frame shows the row fitting with a visible margin. The row chips are visible on every roster row in both."
+  },
+  "delta_proof": {
+    "baseline": "git show HEAD:src/i18n/catalogues/fr/ui.agents.pages.json = 33b4134fec995c556c89b730e4e28d07d84054caa7be559fc307de803ca5dab8, identical to the ledger row's round-2 audited target_sha256",
+    "current": "6bf37b790f88e4265fcd3e0cf71bf0bc5f6d256c5c0d6ecb896c1aa4c9fb0de8",
+    "numstat": "4\t4\tsrc/i18n/catalogues/fr/ui.agents.pages.json",
+    "changed_keys": [
+      "ui.agents.pages.scope.all",
+      "ui.agents.pages.scope.builtin",
+      "ui.agents.pages.scope.custom",
+      "ui.agents.pages.scope.installed"
+    ],
+    "only_those_keys": true,
+    "note": "one hunk, four removed and four added lines, all scope.* values; no other byte moved"
+  },
+  "observations": [
+    {
+      "id": "O-r3-1",
+      "kind": "out-of-namespace, code-verified, not a finding",
+      "text": "agent-detail.tsx:173-174 still renders the literals 'Delegates' and 'Specialist' in the same meta line that carries the shared source word, so a fr detail line would read 'Intégrés · Proactif · Delegates · Specialist'. Outside ui.agents.pages; recorded because it affects the coherence of that line, not judged here."
+    },
+    {
+      "id": "O-r3-2",
+      "kind": "scope",
+      "text": "The worktree also carries an uncommitted ru ui.agents.pages delta (numstat 2 2). It is outside this fr audit and was not read for judgement."
+    },
+    {
+      "id": "O-r3-3",
+      "kind": "ledger state",
+      "text": "The fr/ui.agents.pages ledger row still names the round-2 bytes (33b4134f…) and status 'audited'; no ledger write was made by this run (per brief). The row must be re-assembled from this receipt after remediation."
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "i18n/receipts/fr-agents-pages-fit-audit-1a77ecf49a12.json",
+      "note": "this receipt; sha256 recorded in the report, not self-embedded"
+    },
+    {
+      "path": "/Users/damian/.local-operator/sessions/90af5810a381/scratchpad/rendered-1432-fit/README.md",
+      "sha256": "f1552de6c36fc6393208f30274b3b7b1d10d4e09f7a8bcdc73fa536040d363ff",
+      "note": "translator evidence for the fit delta (read; hashes re-computed here)"
+    }
+  ],
+  "audit_notes_not_execution_log": "This section is prose, not a substitute for the commands above, which were actually executed in this run. The frame/measurement files were produced by the translator's rig (a different session) and were inspected and re-hashed here, not re-rendered; the DOM numbers are the translator's measurement, and the frames visually corroborate them. No second browser boot was performed for this audit.",
+  "limitations": [
+    "No re-render was performed by the auditor; fit is judged from the existing DOM geometry plus both frames.",
+    "The per-agent chip defect is code- and frame-verified; the detail meta line was not re-rendered in this run.",
+    "No translation/MT service was used for comparison or back-translation."
+  ]
+}

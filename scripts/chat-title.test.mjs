@@ -34,7 +34,7 @@ globalThis.__canonicalRequest = async (request) => {
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {isBlankTitle, resolveChatTitle, catalogueTitleUpdate, UNTITLED_CHAT} from "./src/renderer/src/features/chat/chat-title";',
+			'export { t } from "./src/i18n"; export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {isBlankTitle, resolveChatTitle, resolveFirstSendDescription, catalogueTitleUpdate, UNTITLED_CHAT_KEY} from "./src/renderer/src/features/chat/chat-title";',
 		resolveDir: process.cwd(),
 	},
 	/*
@@ -90,8 +90,10 @@ const {
 	useCanonicalSessionsStore: store,
 	isBlankTitle,
 	resolveChatTitle,
+	resolveFirstSendDescription,
 	catalogueTitleUpdate,
-	UNTITLED_CHAT,
+	t,
+	UNTITLED_CHAT_KEY,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -167,12 +169,12 @@ test("a live title wins, so a rename still shows where it landed", () => {
 test("a conversation neither source can name is untitled", () => {
 	assert.equal(
 		resolveChatTitle({ liveTitle: "", catalogueTitle: "" }),
-		UNTITLED_CHAT,
+		t(UNTITLED_CHAT_KEY),
 	);
-	assert.equal(resolveChatTitle({}), UNTITLED_CHAT);
+	assert.equal(resolveChatTitle({}), t(UNTITLED_CHAT_KEY));
 	assert.equal(
 		resolveChatTitle({ liveTitle: null, catalogueTitle: undefined }),
-		UNTITLED_CHAT,
+		t(UNTITLED_CHAT_KEY),
 	);
 });
 
@@ -194,6 +196,72 @@ test("the draft branch is the draft's own name and never the row's", () => {
 			catalogueTitle: OPENER_NAME,
 		}),
 		"New chat",
+	);
+});
+
+test("a draft that has already created a conversation names the conversation, not a new chat", () => {
+	/*
+	 * THE OPERATOR'S SCREEN (2026-10-22): "New chat with Minerva Development" over
+	 * a body that said the conversation was gone. The header branch keyed on
+	 * `draftKey` alone, so a stable `draft:team:<name>` row that had already
+	 * created a conversation still wore the new-chat sentence.
+	 */
+	assert.equal(
+		resolveChatTitle({
+			draftKey: "draft:team:minerva-development",
+			draftSessionId: "deadbeef0001",
+			draftTarget: "minerva-development",
+			liveTitle: "",
+			catalogueTitle: "An old chat",
+		}),
+		"An old chat",
+		"the row's remembered name is what the deleted conversation wore",
+	);
+	assert.equal(
+		resolveChatTitle({
+			draftKey: "draft:team:minerva-development",
+			draftSessionId: "aaaa11112222",
+			draftTarget: "minerva-development",
+			liveTitle: "Retention sweep notes",
+			catalogueTitle: "",
+		}),
+		"Retention sweep notes",
+		"and a live conversation shows its own title while the draft is still staged",
+	);
+	/*
+	 * THE FIRST SEND'S WINDOW (design review round 1's D1): the create writes
+	 * `sessionId` before the name exists, so the header must not fall to
+	 * "Untitled chat" while the team is a fact.
+	 */
+	assert.equal(
+		resolveChatTitle({
+			draftKey: "draft:team:minerva-development",
+			draftSessionId: "aaaa11112222",
+			draftTarget: "minerva-development",
+			liveTitle: "",
+			catalogueTitle: "",
+		}),
+		"minerva-development",
+	);
+	assert.equal(
+		resolveChatTitle({
+			draftKey: "draft:team:minerva-development",
+			draftSessionId: "aaaa11112222",
+			draftTarget: null,
+			liveTitle: "",
+			catalogueTitle: "",
+		}),
+		t(UNTITLED_CHAT_KEY),
+		"an untargeted draft (⌘N) is named like its sidebar row from the create, so the header swaps once, with the sidebar (send-path design round 1, D1c)",
+	);
+	assert.equal(
+		resolveChatTitle({
+			draftKey: null,
+			liveTitle: "",
+			catalogueTitle: "",
+		}),
+		t(UNTITLED_CHAT_KEY),
+		"and the draft row retiring into its session changes nothing",
 	);
 });
 
@@ -229,7 +297,7 @@ test("a row with no name at all gains none from an empty live title", () => {
 	assert.equal("title" in row, false);
 	assert.equal(
 		resolveChatTitle({ liveTitle: "", catalogueTitle: row.title }),
-		UNTITLED_CHAT,
+		t(UNTITLED_CHAT_KEY),
 	);
 });
 
@@ -239,4 +307,49 @@ test("isBlankTitle is the one definition both rules read", () => {
 	assert.equal(isBlankTitle(""), true);
 	assert.equal(isBlankTitle("  \t\n"), true);
 	assert.equal(isBlankTitle("Named"), false);
+});
+
+/**
+ * The header's second line across a new chat's first send changes once, text
+ * for text, when the identity controls replace it: no "Starting the session"
+ * flash at the press (design D6) and no blank between the create and the
+ * controls (QA Q4). Each case walks the page's arms in order - the draft line
+ * before the press, the press, then the created session before the owner
+ * names an identity - with the inputs each arm reads at that moment.
+ */
+test("a new chat's first send keeps the header's second line on one text until the identity replaces it (D6, Q4)", () => {
+	const starting = t("ui.chat.header.starting_session");
+	// Untargeted, with a staged directory: the path, all the way through.
+	const staged = [
+		resolveFirstSendDescription({ stagedCwd: "~/project" }),
+		resolveFirstSendDescription({ liveCwd: undefined, stagedCwd: "~/project" }),
+	];
+	assert.deepEqual(staged, ["~/project", "~/project"]);
+	// Untargeted, nothing staged: the line it wore before the press (empty), and
+	// never the progress sentence in between.
+	const bare = [
+		resolveFirstSendDescription({}),
+		resolveFirstSendDescription({ liveCwd: "", stagedCwd: "" }),
+	];
+	assert.deepEqual(bare, ["", ""]);
+	assert.ok(![...staged, ...bare].includes(starting));
+	// Targeted: the target from the press until the owner reports, even with a
+	// staged path and a live one available, so no target -> path -> target.
+	assert.equal(
+		resolveFirstSendDescription({ targetDisplay: "coder", stagedCwd: "~/p" }),
+		"coder",
+	);
+	assert.equal(
+		resolveFirstSendDescription({
+			targetDisplay: "coder",
+			liveCwd: "/home/u/p",
+			stagedCwd: "~/p",
+		}),
+		"coder",
+	);
+	// The owner's directory outranks the staged one once it is reported.
+	assert.equal(
+		resolveFirstSendDescription({ liveCwd: "/home/u/p", stagedCwd: "~/p" }),
+		"/home/u/p",
+	);
 });

@@ -45,6 +45,7 @@ import type { FC } from "react";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { DesktopLinkedSession } from "../../../../../shared/desktop-control-contract";
+import { attachableSessions } from "../../chat/chat-temporary";
 import {
 	defaultSendTarget,
 	linkStateMeta,
@@ -65,8 +66,14 @@ type ProjectLinksProps = {
 	 * and its doors stay about the act. `attachments` is the strip's own list
 	 * (pasted images as data URLs), carried through the seam into the body's
 	 * image half and kept as the payload identity the draft row compares.
+	 *
+	 * OPTIONAL, and absence removes the whole quick-send family: the strip AND
+	 * each row's message button (which exists only to aim the strip). The chat
+	 * canvas's embedded detail omits it - the operator is already in a
+	 * conversation with its own composer, so a second composer for "message a
+	 * linked session" would be a duplicate door (operator, 2026-11-15).
 	 */
-	onQuickSend: (
+	onQuickSend?: (
 		sessionId: string,
 		text: string,
 		mode: "prompt" | "steer",
@@ -87,6 +94,9 @@ export const ProjectLinks: FC<ProjectLinksProps> = ({
 	useI18nLocale();
 	const navigate = useNavigate();
 	const sessions = useCanonicalSessionsStore((state) => state.sessions);
+	const temporaryChats = useCanonicalSessionsStore(
+		(state) => state.temporaryChats,
+	);
 	const [pickerOpen, setPickerOpen] = useState(false);
 	/*
 	 * The quick-send target and the focus tick live HERE because two controls
@@ -110,14 +120,16 @@ export const ProjectLinks: FC<ProjectLinksProps> = ({
 
 	const options = useMemo(() => {
 		const linked = new Set(links.map((link) => link.session_id));
-		return sessions
+		// A temporary chat cannot be linked until it is kept (409
+		// `session_temporary`), so the picker never offers one (review R1-1).
+		return attachableSessions(sessions, temporaryChats)
 			.filter((row) => !linked.has(row.session_id))
 			.map((row) => ({
 				id: row.session_id,
 				name: row.title || row.session_id,
 				description: row.cwd ?? undefined,
 			}));
-	}, [sessions, links]);
+	}, [sessions, temporaryChats, links]);
 
 	const openConversation = (sessionId: string) => {
 		void useCanonicalSessionsStore
@@ -201,7 +213,7 @@ export const ProjectLinks: FC<ProjectLinksProps> = ({
 										if (clickable) openConversation(link.session_id);
 									}}
 									className={cn(
-										"flex min-w-0 flex-1 items-center gap-2 text-left",
+										"flex min-w-0 flex-1 items-center gap-2 text-start",
 										clickable ? "cursor-pointer" : "cursor-default opacity-100",
 									)}
 								>
@@ -233,7 +245,7 @@ export const ProjectLinks: FC<ProjectLinksProps> = ({
 									</span>
 								)}
 								<Badge variant={meta.variant}>{meta.label}</Badge>
-								{clickable && (
+								{clickable && onQuickSend && (
 									<Button
 										variant="ghost"
 										size="icon-sm"
@@ -280,7 +292,7 @@ export const ProjectLinks: FC<ProjectLinksProps> = ({
 			 * their own state, and the section header still offers New session and Link
 			 * session, which is what a reader in that state needs.
 			 */}
-			{links.some((link) => link.exists) && (
+			{onQuickSend && links.some((link) => link.exists) && (
 				<ProjectQuickSend
 					links={links}
 					target={resolvedTarget}

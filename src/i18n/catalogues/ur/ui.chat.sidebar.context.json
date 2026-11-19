@@ -1,0 +1,13 @@
+{
+	"ui.chat.sidebar.agents.list_join": {
+		"role": "joiner for the agent-name list inside the built-in installation offer",
+		"tone": "neutral inline Urdu enumeration; preserve agent names verbatim, no sentence punctuation",
+		"length": "Two placeholders plus either spaces around اور or an Urdu comma followed by a space; variable-width names may wrap with the installation sentence.",
+		"note": "pair joins exactly two names with اور and no comma; middle separates preceding names with the Urdu comma ،; other joins the final name with اور and no serial comma. This matches existing Urdu catalogue lists. Keep logical storage order and do not insert manual bidi controls; the renderer owns direction handling. Keep select labels pair, middle and other unchanged.",
+		"placeholders": {
+			"position": "pair for a two-name list, middle for non-final joins, end (the other arm) for the final join of three or more names",
+			"head": "first name or the already joined preceding names; preserve verbatim",
+			"tail": "next agent display name; preserve verbatim"
+		}
+	}
+}

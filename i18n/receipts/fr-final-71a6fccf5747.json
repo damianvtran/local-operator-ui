@@ -1,0 +1,104 @@
+{
+ "schema": 1,
+ "kind": "translation-audit-receipt",
+ "audit_kind": "namespace audit of the final keys wave",
+ "date": "2026-10-25",
+ "locale": "fr",
+ "locale_name": "French",
+ "pr": 1403,
+ "pr_url": "https://github.com/damianvtran/local-operator-ui/pull/1403",
+ "branch": "feat/i18n-key-remaining-copy",
+ "audited_head": "d784571d9017c2958a80c51808b2ace64e3f76ba",
+ "pr_base": "3d0e9010d71c00662902971e4bd6888f7a8f6f1c (PR baseRefOid; origin/main has since moved to 91aa8f5f1079)",
+ "guidance": {
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/fr.md",
+   "sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+  },
+  "contracts": [
+   {
+    "path": "~/local-operator-ui/docs/I18N.md",
+    "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+   },
+   {
+    "path": "~/local-operator-ui/AGENTS.md (read from the working checkout; the head copy differs by unrelated sections, sha256 b05f5fd1472fe1617783e51bc709df8e6f079a87ceda0f2ff97fff539be320af at d784571d)",
+    "sha256": "a259e3cff9de9675176c0f6b03490526762735540e59f4d8255d0e99920a717f"
+   }
+  ]
+ },
+ "method": "Bytes pulled with `git show <head>:<path>` (no checkout) into a scratch tree and SHA-256 hashed there; no catalogue, English, ledger, allowance or generated file was edited. English, French and the English context sidecar were read side by side for the whole namespace, not just the delta. ICU was parsed with @formatjs/icu-messageformat-parser 3.5.21 (argument names, argument types, plural categories and selectors, number skeletons, tags) and rendered with intl-messageformat 12.1.3 under locale fr by a read-only Node probe against the repository's own node_modules. Key sets and order were compared per namespace; every maxCells hint in the sidecar was measured against the French value (code-point cells); register and glossary were checked against the core glossary and the fr style guide, and the locale's key terms were grepped across the whole fr catalogue for drift.",
+ "namespace": "ui.common.errors",
+ "instance": "fr-final-71a6fccf5747",
+ "instance_note": "One run per namespace, unique to this namespace by sha256(en bytes + en context bytes + fr bytes), first 12 hex; distinct from the round-2 extract audit da12aa6ade20 and from the ru auditor's run on the same three namespaces.",
+ "auditor": {
+  "agent": "translation-auditor",
+  "role": "independent translation auditor (team lopdev); authored no catalogue value in this batch",
+  "team": "lopdev",
+  "harness": "Local Operator",
+  "session": "d25a74a9522a",
+  "model": "deepseek/deepseek-flash",
+  "actual_model": "deepseek/deepseek-flash",
+  "actual_model_source": "harness session model (system prompt: Model: deepseek/deepseek-flash); no fallback selected or observed",
+  "fallback": null,
+  "independent_from_translator": true,
+  "independence_basis": "This session d25a74a9522a authored no value in these namespaces and is distinct from the fr round-2 extract auditor da12aa6ade20 (receipt fr-extract-audit-da12aa6ade20-r2) and from the canvas/surfaces auditor d94011de0dc0; the final-keys translation is commit 42c72a8a73, produced by a different session. Every value was read from the catalogue bytes at the audited head, not from the translator's commit summary.",
+  "instance": "fr-final-71a6fccf5747"
+ },
+ "translator": {
+  "agent": "not recorded for the final keys (no translator receipt exists for this wave at the audited head)",
+  "model": "not recorded",
+  "commit": "42c72a8a73 feat(i18n): translate the final eleven keys to French",
+  "ledger_state": "i18n/ledger.json carries a fr ui.common.errors row with pre-final hashes (source 5c86553fecfa, target 0870c5d466c9, auditor 7c40d1c357cf); it is stale for the four new keys and must be re-pointed at this receipt by the implementer.",
+  "commit_note": "The commit message claims: chats -> conversations (ui.chat.sidebar.nav.chats), the counters reuse the house \"{shown} sur {total}\" shape from ui.canvas.files.narrowCount, match -> correspondance, paired -> appairée (ui.projects), built-in agents -> agents intégrés (dismiss_offer), and that the plural arms were rendered in the real ICU formatter at 0,1,2..7,12 and 10^6. The terminology claims hold in the bytes; the 10^6 render does not: only groups.badge carries a `many` arm; the counter and offer messages fall to `other` without the required \"de\" (recorded as FR-FINAL-01/-02 in the ui.chat.sidebar receipt)."
+ },
+ "scope": "All 8 values of ui.common.errors at PR #1403 head d784571d90, read against src/i18n/catalogues/en/ui.common.errors.json and its context sidecar; the final-keys delta is 4 values (desktop_refusal.no_credential, refused, plane_closed, transport_failed). Catalogue-level audit only: no rendered-frame pass, no browser, and no native-speaker sign-off is claimed. The fr bytes are identical at the previous head ae40ebc959 and at d784571d90.",
+ "sha256": {
+  "en": "79e061d415b61aed65c06e6800b379b332048a200d8d88f6cbbf4647eba593db",
+  "fr": "514c5d6f5ea9f90b994f17c9bcc1d2f6d46d0222748c1e41b3456705045386ac",
+  "context": "33432e29556ed7d91eac12edeff1998b623da3fcb48e3515b045e1e0b5c84049"
+ },
+ "keys_total": 8,
+ "keys_in_batch": 4,
+ "checks": {
+  "key_set": "equal to en (0 missing, 0 extra, same order)",
+  "icu_parse": "all 8 values parse; 0 failures",
+  "placeholders": "no placeholders and no number skeletons in this namespace",
+  "identical_to_en": "none",
+  "register": "calm factual sentences with full stops; no second person, no instruction added (the sidecar for plane_closed explicitly forbids one). Matches all four sidecars.",
+  "glossary": "Local Operator kept as the product name; « serveur Local Operator » without an article (the locale's established form); « appairée » matches ui.projects.projects_page and ui.mesh.mesh_page; « identifiant » is the glossary's credentials rendering; « en cours d’exécution » for the running server.",
+  "accuracy": "no_credential matches English and the existing ui.projects sentence nearly verbatim; refused and transport_failed match English; plane_closed is the one defect (FR-FINAL-03).",
+  "typography": "U+2019 apostrophes; no ASCII punctuation defects; NFC-clean."
+ },
+ "width": "No maxCells hints in this namespace.",
+ "rendered_evidence": [],
+ "findings": [
+  {
+   "id": "FR-FINAL-03",
+   "severity": "minor",
+   "key": "ui.common.errors.desktop_refusal.plane_closed",
+   "current": "Le serveur Local Operator en cours d’exécution n’accepte pas les contrôles de bureau de cette application.",
+   "proposed": "Le serveur Local Operator en cours d’exécution n’accepte pas les commandes de cette application de bureau.",
+   "reason": "« contrôles de bureau » is an invented compound: the fr catalogue uses « Bureau » for the OS desktop (the macOS Desktop folder label and the window-glass wallpaper copy), never for the desktop app, and the settled term for a desktop application is « application de bureau ». Read cold, the sentence says the server does not accept the app's office/desktop checks, not that the desktop control plane is closed. « les commandes de cette application de bureau » carries the English sense; « les contrôles de cette application de bureau » is the minimal alternative. The two sibling sentences' « ce contrôle est indisponible » is a different (UI-widget) sense and is correct.",
+   "evidence": [
+    "en: The running Local Operator server does not accept this app's desktop controls.",
+    "sidecar role: diagnosis shown when the running server does not serve the desktop control plane",
+    "fr catalogue: 3 « application de bureau » values; every other « Bureau » is the OS desktop (Desktop folder label, window-glass copy), none is the desktop app",
+    "peers keep a desktop qualifier: es « controles de escritorio », hi « डेस्कटॉप नियंत्रण », zh-CN « 桌面控件 », vi « điều khiển máy tính để bàn »",
+    "the ru auditor rated the analogous missing-qualifier defect RU-FINAL-01 minor; this fr value is a stronger calque but is likewise non-gating"
+   ]
+  }
+ ],
+ "status": "clean-with-findings",
+ "result": "clean-with-findings",
+ "verdict": "clean-with-findings — 8/8 values read, 0 blocker, 0 major, 1 minor (FR-FINAL-03, non-gating). The other three diagnoses are accurate and consistent with the locale's sibling sentences.",
+ "outside_scope_observations": [
+  {
+   "key": "ui.common.errors.desktop_refusal.refused",
+   "observation": "« L’identifiant de cette application auprès du serveur … a été refusé » is correct but « auprès de » is the one word a native reviewer might tighten to « pour le serveur »; not recorded as a finding because the glossary's « identifiant » is right and the sentence reads naturally."
+  }
+ ]
+}

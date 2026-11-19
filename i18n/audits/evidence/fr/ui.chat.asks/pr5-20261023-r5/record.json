@@ -1,0 +1,199 @@
+{
+ "audit_id": "pr5-20261023-r5",
+ "round": 5,
+ "date": "2026-10-23",
+ "locale": "fr",
+ "namespace": "ui.chat.asks",
+ "source_commit": "5de3195e703d76b8ebbb744be1e8e46e5f48faa5",
+ "previous_audited_commit": "dfb45ee7d5474369dcaeba8de893d000da7e810d",
+ "scope": "PR #1363 round-5 delta audit of ui.chat.asks for fr at 5de3195e7: new key dismiss.refused (no placeholders; the panel appends the owner's refusal sentence after it with a space). Key-by-key and raw-line comparison against the prior audited head dfb45ee7d (round 4): the only change is the one added line, and the other 11 values are identical. The en catalogue changed only by the same added key; the en context changed only by the new dismiss.refused entry. ICU/CLDR (messages_since rendered at 1, 2, 5 and 1,000,000), NFC and bidi were re-run over all 12 keys. No rendered-fit claim.",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "keys_read": 12,
+ "keys_substantive": [
+  "ui.chat.asks.dismiss.refused"
+ ],
+ "keys_verified_unchanged": 11,
+ "translator": {
+  "note": "The new key was written by the coder in 5de3195e7. The ledger assembler supplies the row translator. This auditor did not write the catalogue bytes."
+ },
+ "auditors": [
+  {
+   "agent": "task",
+   "model": "anthropic/claude-opus-5-5",
+   "session": "fb125765ab49",
+   "team": "lopdev",
+   "instance": "pr5-20261023-r5-fr",
+   "date": "2026-10-23",
+   "result": "clean-with-findings",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+   },
+   "receipt": "i18n/receipts/pr5-fr-r5.json",
+   "receipt_sha256": "6e2f8634e77023110afc566b8e5b69fd305aaccc66b3556b918daae4c1a74d11"
+  }
+ ],
+ "model_note": "Served model anthropic/claude-opus-5-5 for the whole round-5 pass. No provider fallback occurred. The session runtime restarted at the start of this round (Python kernel reset), but the model did not change.",
+ "independence": "Independent translation audit by the `task` member of team lopdev (session fb125765ab49), delegated by the team manager; the same independent auditor as rounds 1-4. This session produced none of the reviewed copy: the new key was written by the coder in 5de3195e7. It did not edit, commit or push any catalogue, context file or ledger row, and wrote only its own receipts and evidence records. No MT, translation API or SDK was used. ICU parsing ran the worktree's existing intl-messageformat as validation.",
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.chat.asks.json",
+   "sha256": "c89158c597dfcf7fdab1fb7008052ef13f50be9d3f5834ba2b0d0fd9b6e1c292",
+   "previous_sha256": "b5eb54e51a1a9e49ade6dd210c7376a1aaff0c597fb480485e0a47ffdbb9a753"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/fr/ui.chat.asks.json",
+   "sha256": "5d343faf3f9236d29761f12c3a5585403d9933d982e1b1a4f9a4ae3afbc5f38b",
+   "previous_sha256": "dca9ae6d9d4c629d5bdc9c7efa1b3170ff50e670873c097eb6398b66be1e17b6"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.chat.asks.context.json",
+   "sha256": "62e3940bc5374489c12b498d6b4cbee94ee0f3340ef67fc67f1a67ea4ba7697f",
+   "previous_sha256": "218cc05ebbb63f375875be61cd418caa2d0aac8043bcc9346e19b521d3d37d7c",
+   "change": "New entry for dismiss.refused only (parsed comparison); no other entry changed."
+  }
+ },
+ "references": {
+  "glossary": {
+   "path": "~/workspace/repos/lo-stale-ask-dismiss/i18n/glossary.md",
+   "revision": "9969e2907933b1bf87df6c2502332396f36d36ec",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/workspace/repos/lo-stale-ask-dismiss/i18n/style-guides/fr.md",
+   "revision": "9969e2907933b1bf87df6c2502332396f36d36ec",
+   "sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+  },
+  "contract": {
+   "path": "docs/I18N.md",
+   "ref": "origin/main",
+   "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+  },
+  "cross_surface": {
+   "repo": "~/workspace/repos/lo-stale-ask-surfaces",
+   "commit": "93f798ddb284bca3e342112a7fca76c60729e83a",
+   "catalogues": [
+    "local_operator/i18n/catalogues/fr/tui.asks.json",
+    "local_operator/i18n/catalogues/fr/relay.ask.json"
+   ],
+   "note": "Unmerged branch at audit time."
+  }
+ },
+ "findings": [
+  {
+   "id": "fr-r5-m1",
+   "severity": "MINOR",
+   "key": "ui.chat.asks.dismiss.refused",
+   "issue": "An ordinary breaking space (U+0020) precedes « : ». The fr style guide requires the narrow no-break space U+202F before : ; ! ? in prose. The refusal band wraps, so a breaking space can push the colon to the start of the next line. The fr desktop corpus is mixed (401 ordinary spaces, 163 U+202F), which is why this is minor and not major.",
+   "current": "Impossible d’ignorer cette demande : rien n’a été envoyé.",
+   "proposed": "Impossible d’ignorer cette demande : rien n’a été envoyé.",
+   "proposed_note": "Only change: U+0020 → U+202F before the colon. Verified to parse and to be NFC."
+  },
+  {
+   "id": "fr-r5-i1",
+   "severity": "INFO",
+   "key": "ui.chat.asks.dismiss.refused",
+   "issue": "Meaning is right: « Impossible d’ignorer cette demande » reuses « Ignorer » and « demande » (rounds 1/4), and « rien n’a été envoyé » states that nothing was sent. « Impossible de … » is the fr corpus pattern (57 uses). Apostrophes are U+2019. ask-panel.tsx joins this sentence and the owner's refusal sentence with join(\" \"), so a following sentence starts after one ASCII space. That is fine for all locales (zh-CN after 。 reads acceptably; ur sentence order stays logical under dir=rtl). Code-level, not a catalogue defect. Not counted."
+  }
+ ],
+ "validation": {
+  "icu_errors": [],
+  "plural_arms": [
+   "one",
+   "many",
+   "other"
+  ],
+  "cldr_categories": [
+   "one",
+   "many",
+   "other"
+  ],
+  "arms_match_cldr": true,
+  "placeholders_match_en": true,
+  "new_key_placeholders": [],
+  "key_parity": "12/12",
+  "nfc": true,
+  "bidi_controls": 0,
+  "ascii_apostrophes": 0,
+  "plural_samples": {
+   "1": "1 message de votre part depuis cette demande (dernier message à 19:36)",
+   "2": "2 messages de votre part depuis cette demande (dernier message à 19:36)",
+   "5": "5 messages de votre part depuis cette demande (dernier message à 19:36)",
+   "1000000": "1 000 000 de messages de votre part depuis cette demande (dernier message à 19:36)"
+  },
+  "rendered_fit": "Not executed; no rendered-frame or width claim."
+ },
+ "deriveReceiptAudit": {
+  "module_ref": "origin/main (unchanged in the PR)",
+  "module_path": "scripts/i18n/ledger-rules.mjs",
+  "module_sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6",
+  "execution": "Imported exact git-show bytes via in-memory data URL; called pure deriveReceiptAudit with actual en/target SHA-256 from disk; exit 0. No assembler or ledger write executed.",
+  "derived": {
+   "agent": "task",
+   "instance": "pr5-20261023-r5-fr",
+   "model": "anthropic/claude-opus-5-5",
+   "result": "clean-with-findings",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+   },
+   "source_sha256": "c89158c597dfcf7fdab1fb7008052ef13f50be9d3f5834ba2b0d0fd9b6e1c292",
+   "target_sha256": "5d343faf3f9236d29761f12c3a5585403d9933d982e1b1a4f9a4ae3afbc5f38b",
+   "receipt_sha256": "6e2f8634e77023110afc566b8e5b69fd305aaccc66b3556b918daae4c1a74d11"
+  }
+ },
+ "retained_rounds": [
+  {
+   "round": 1,
+   "path": "i18n/receipts/pr5-fr.json",
+   "sha256": "c70e7eff938b7d32dc3681df33dd9605acf5ca61c3dc3f9aa77d527051c28d3f",
+   "instance": "pr5-20261023-fr",
+   "result": "changes_requested",
+   "record": "i18n/audits/evidence/fr/ui.chat.asks/pr5-20261023/record.json"
+  },
+  {
+   "round": 2,
+   "path": "i18n/receipts/pr5-fr-r2.json",
+   "sha256": "5f42a459164a0f6f084d21e49882e5aed384412daf8320b8c03a70d457b1385b",
+   "instance": "pr5-20261023-r2-fr",
+   "result": "clean"
+  },
+  {
+   "round": 3,
+   "path": "i18n/receipts/pr5-fr-r3.json",
+   "sha256": "b7215f44111e4639db7febe8513708fa40442da833f691e928b35d16723c571a",
+   "instance": "pr5-20261023-r3-fr",
+   "result": "clean-with-findings"
+  },
+  {
+   "round": 4,
+   "path": "i18n/receipts/pr5-fr-r4.json",
+   "sha256": "2f3a9d354340adef85a7a4e8491a7390009e549dea594b6f4b7194fe4fa19262",
+   "instance": "pr5-20261023-r4-fr",
+   "result": "clean"
+  },
+  {
+   "round": 5,
+   "path": "i18n/receipts/pr5-fr-r5.json",
+   "sha256": "6e2f8634e77023110afc566b8e5b69fd305aaccc66b3556b918daae4c1a74d11",
+   "instance": "pr5-20261023-r5-fr",
+   "result": "clean-with-findings"
+  }
+ ],
+ "history_records": [
+  "i18n/audits/evidence/fr/ui.chat.asks/pr5-20261023/record.json",
+  "i18n/audits/evidence/fr/ui.chat.asks/pr5-20261023-r2/record.json",
+  "i18n/audits/evidence/fr/ui.chat.asks/pr5-20261023-r3/record.json",
+  "i18n/audits/evidence/fr/ui.chat.asks/pr5-20261023-r4/record.json"
+ ],
+ "limitations": [
+  "Catalogue-only delta audit; no build, test, install, browser, render or activation evidence.",
+  "The 11 unchanged keys inherit the prior round's verdict through value identity; they were not re-judged in this round.",
+  "The round-4 receipt no longer matches the current target bytes; it is retained as history only and cannot back a ledger row."
+ ]
+}

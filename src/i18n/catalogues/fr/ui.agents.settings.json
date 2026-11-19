@@ -1,5 +1,10 @@
 {
+	"ui.agents.settings.chat.generation_settings": "Paramètres de génération",
+	"ui.agents.settings.chat.generation_tooltip": "Paramètres qui contrôlent la génération des réponses de l’agent",
+	"ui.agents.settings.chat.model_hosting_heading": "Modèle et hébergement",
+	"ui.agents.settings.chat.model_hosting_tooltip": "Configurer le modèle et le fournisseur d’hébergement à utiliser",
 	"ui.agents.settings.chat.not_set_yet": "Pas encore défini",
+	"ui.agents.settings.chat.set_custom_values_note": "Vous pouvez personnaliser ces paramètres à l’aide des options ci-dessous. Toute option non définie utilise une valeur par défaut optimisée à partir des tests utilisateurs.",
 	"ui.agents.settings.chat.set_to_default": "Défini à la valeur par défaut ({value})",
 	"ui.agents.settings.chat.advanced_chat_settings": "Paramètres de conversation avancés",
 	"ui.agents.settings.chat.advanced_settings_to_change_how_the_agent": "Paramètres avancés pour modifier la génération des réponses de l’agent",
@@ -56,5 +61,13 @@
 	"ui.agents.settings.security.security_instructions_that_guide_the_agent_s": "Instructions de sécurité qui orientent le comportement et les limites de l’agent. C’est le « prompt système » de l’agent de sécurité.",
 	"ui.agents.settings.system_prompt.system_instructions_that_define_the_agent_s": "Instructions système qui définissent le comportement et les capacités de l’agent. C’est le « prompt système » de l’agent.",
 	"ui.agents.settings.chat.error.invalid_seed": "La graine doit être un nombre valide",
-	"ui.agents.settings.general.error.empty_name": "Le nom de l’agent ne peut pas être vide"
+	"ui.agents.settings.general.error.empty_name": "Le nom de l’agent ne peut pas être vide",
+	"ui.agents.settings.general.profile_picture": "Photo de profil",
+	"ui.agents.settings.general.profile_picture_hint": "Affichée uniquement sur cet ordinateur. Les autres appareils conservent l’icône par défaut de l’agent.",
+	"ui.agents.settings.general.profile_picture_upload": "Téléverser une image",
+	"ui.agents.settings.general.profile_picture_remove": "Retirer l’image",
+	"ui.agents.settings.general.profile_picture_error_type": "Ce fichier n’est pas une image que cette application peut lire. Choisissez un fichier JPEG, PNG, WebP, GIF ou AVIF.",
+	"ui.agents.settings.general.profile_picture_error_size": "Cette image dépasse {size} MB.",
+	"ui.agents.settings.general.profile_picture_error_decode": "Impossible de lire cette image. Essayez un autre fichier.",
+	"ui.agents.settings.general.profile_picture_error_save": "Impossible d’enregistrer cette image sur cet ordinateur. Libérez de l’espace, puis réessayez."
 }

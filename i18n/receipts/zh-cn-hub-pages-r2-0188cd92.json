@@ -1,0 +1,100 @@
+{
+	"schema": 1,
+	"audit_kind": "independent-translation-audit",
+	"auditor": "translation-auditor",
+	"agent": "translation-auditor",
+	"model": "deepseek/deepseek-flash",
+	"instance": "0188cd92-hub-pages-r2-pages",
+	"session": "0188cd9278aa",
+	"locale": "zh-CN",
+	"namespace": "ui.hub.pages",
+	"branch": "i18n/s5-agent-hub",
+	"head": "8d0b4e66f38f1fac8df16767849c7a969a55b72f",
+	"pr": "damianvtran/local-operator-ui (i18n/s5-agent-hub)",
+	"date": "2026-11-08",
+	"round": 2,
+	"scope": "be77d308262..8d0b4e66f38",
+	"scope_note": "Delta round. Round 1 (i18n/receipts/zh-cn-hub-pages-r1-ba884773.json, head be77d308262) audited the 16 pages keys this branch added for zh-CN and filed exactly one finding, N1 (nit): ui.hub.pages.empty.org.body used 将在此显示 where its approved teams sibling uses 会在此显示, breaking the one-voice rule for the pages/teams pair, and proposed 将 -> 会. This round re-reads only that corrected key plus the parallelism and whole-sentence checks the edit was meant to restore; the other 15 keys of the namespace are retained from round 1 against a file that moved by exactly this one line.",
+	"result": "clean",
+	"status": "passed",
+	"result_rationale": "The correction lands exactly what round 1 proposed and nothing more: one character (将 -> 会) in one value, with the pages sentence now verbatim-parallel to its teams sibling and to the same-surface neighbour ui.hub.pages.org.plan_body. Zero blockers, zero majors, zero minors, zero nits: the corrected sentence is grammatical, natural and faithful to the English at this head, the placeholder is byte-exact and in a grammatical slot, and no other key, key set, encoding or shape in the namespace moved. Clean is terminal — no further round is warranted.",
+	"corrected_keys": [
+		"ui.hub.pages.empty.org.body"
+	],
+	"corrected_values": {
+		"ui.hub.pages.empty.org.body": {
+			"before": "发布到{org}的智能体将在此显示，供其成员查看。",
+			"after": "发布到{org}的智能体会在此显示，供其成员查看。",
+			"delta": "single character: 将 (U+5C06) -> 会 (U+4F1A) at position 8; the string is 25 characters before and after, so nothing else moved and no container can reflow",
+			"value_sha256_before_16": "e4c7f6ff6d5fb699",
+			"value_sha256_after_16": "0ef136fd5a97884f"
+		}
+	},
+	"parallelism": {
+		"pair": [
+			"ui.hub.pages.empty.org.body",
+			"ui.hub.teams.org.empty"
+		],
+		"pages_value": "发布到{org}的智能体会在此显示，供其成员查看。",
+		"teams_value": "共享到{org}的团队会在此显示，供其成员查看。",
+		"pages_en": "Agents published into {org} appear here for its members.",
+		"teams_en": "Teams shared into {org} appear here for its members.",
+		"tail_from_modal_to_stop": "会在此显示，供其成员查看。",
+		"verdict": "restored: both sentences are now byte-identical from 会 to the final 。; they differ only in the subject noun the English also differentiates (发布到{org}的智能体 vs 共享到{org}的团队 = 'published into' vs 'shared into'), so the pair reads in one voice without collapsing two distinct meanings"
+	},
+	"paths": {
+		"en": "src/i18n/catalogues/en/ui.hub.pages.json",
+		"target": "src/i18n/catalogues/zh-CN/ui.hub.pages.json",
+		"context": "src/i18n/catalogues/en/ui.hub.pages.context.json",
+		"teams_sibling": "src/i18n/catalogues/zh-CN/ui.hub.teams.json",
+		"render_site": "src/renderer/src/features/agent-hub/agent-hub-page.tsx"
+	},
+	"sha256": {
+		"en": "47793b98059be89eafc26b8aff209b3aed63a9eac26b44ac5da9b87e973c7b5a",
+		"target": "1460736d8cbf2e5250396570680ef130cb29eab9c312c923b09fedf86c8e0d1c",
+		"context": "e78c02114d87f722bd47bb14ea61f5ac3281407581132bd9a715c81d1a112872",
+		"teams_sibling": "e2d4fb7642673a0b5bef52357b91f6fbafdbde85d1bb473999facbe6149b8f90"
+	},
+	"en_sha256": "47793b98059be89eafc26b8aff209b3aed63a9eac26b44ac5da9b87e973c7b5a",
+	"source_sha256": "47793b98059be89eafc26b8aff209b3aed63a9eac26b44ac5da9b87e973c7b5a",
+	"target_sha256": "1460736d8cbf2e5250396570680ef130cb29eab9c312c923b09fedf86c8e0d1c",
+	"sha256_note": "All four hashes recomputed from the on-disk bytes at head 8d0b4e66f38. The English source (47793b98…) and the context sidecar (e78c0211…) are byte-identical to their round-1 values, which confirms this commit is copy-only on the target side and that no English or context edit rides along. The zh-CN target moved dab3af3b… (round 1) -> 1460736d… and the teams sibling (e2d4fb76…) is untouched by this commit.",
+	"changed_lines_in_commit": [
+		"src/i18n/catalogues/hi/ui.hub.pages.json:55 :: ui.hub.pages.empty.search.title :: उस खोज से -> इस खोज से (other locale, outside this audit)",
+		"src/i18n/catalogues/ru/ui.hub.pages.json:52 :: ui.hub.pages.empty.org.body :: для его участников -> для участников этой организации (other locale, outside this audit)",
+		"src/i18n/catalogues/ru/ui.hub.pages.json:53 :: ui.hub.pages.empty.category.title :: Нет агентов в категории {category}. -> В категории «{category}» нет агентов. (other locale, outside this audit)",
+		"src/i18n/catalogues/vi/ui.hub.pages.json:56 :: ui.hub.pages.empty.search.body :: Không tên -> Không có tên (other locale, outside this audit)",
+		"src/i18n/catalogues/zh-CN/ui.hub.pages.json:52 :: ui.hub.pages.empty.org.body :: 将在此显示 -> 会在此显示 (THIS DELTA, the only zh-CN line in the commit)"
+	],
+	"changed_lines_summary": "git show --stat reports 4 files, 5 insertions, 5 deletions, and git diff --name-only lists nothing else: no English catalogue, no context sidecar, no generated src/i18n/keys.gen.ts, no ledger row, no allowance, no test and no renderer source. The zh-CN catalogue contributes exactly one changed line; parsing both revisions and comparing value-by-value confirms 1 changed, 0 added, 0 removed keys in the 59-key file, and 0 changed keys in the 50-key zh-CN ui.hub.teams file.",
+	"verified": [
+		"GRAMMAR AND NATURALNESS: 发布到{org}的智能体会在此显示，供其成员查看。 reads as one uninterrupted clause chain — [the agents published into {org}] [will appear here], [for its members to view]. No missing particle, no doubled subject, no possessive that dangles: 其 takes {org} as its antecedent in the same clause, as in the teams sibling.",
+		"MODAL 会 IS CORRECT HERE, AND THE EDIT DOES NOT TRADE ONE REGISTER FOR ANOTHER: 将 and 会 are both grammatical auxiliaries, so round 1 was right to call the old wording a nit rather than an error. 会 states a standing disposition ('these agents show up here'), which is what the English present tense asserts — 'Agents published into {org} appear here for its members.' — and what the .context.json sidecar asks for ('plain statement of what will appear, third person'); 将 carries a scheduled-future nuance that over-promises to a reader looking at a permanently empty grid until someone publishes. The correction moves the sentence toward the English, not away from it.",
+		"THE FIX RESTORES THE SURFACE'S OWN VOICE, EVIDENCE FROM THE SHIPPED CORPUS (not just the sibling): the same org-scoped surface already says 之后其智能体就会在此列出。 (ui.hub.pages.org.plan_body, line 48) and its teams twin says 之后其团队就会在此列出。 (ui.hub.teams.org.plan_body); the corrected body now speaks with the same auxiliary as the panel it appears in. Across every zh-CN catalogue, 会在此 occurs 7 times and 将在此 twice, and both 将在此 hits are different constructions (在此工作目录中, in ui.canvas; 在此设备上安装, the imperative 'install on this device' — 将 there is a verb, not an auxiliary). Auxiliary 将 does exist elsewhere in the corpus (ui.hub.updates.detail.available_auto, 中心有较新版本，将自动更新。), so the honest claim is narrow and checkable: the corrected key was the only member of its shape and is now in the family its neighbours use.",
+		"SIBLING PARALLELISM RESTORED: ui.hub.pages.empty.org.body and ui.hub.teams.org.empty are now byte-identical from 会 to the final 。 (会在此显示，供其成员查看。) and differ only where the English differs (发布到…的智能体 vs 共享到…的团队). The en pair differs the same way ('published into' / 'shared into'), so the mirror is faithful, not mechanical.",
+		"PLACEHOLDER: {org} is byte-exact against the English (the only placeholder in either value), it sits in a grammatical slot (发布到{org}的智能体 = 'the agents published into {org}'), and the ICU parse is literal + argument(org) + literal for both this key and its teams sibling, using the project's own @formatjs/icu-messageformat-parser. A parse sweep of both catalogues returned 0 errors across 59 + 50 keys, so the edit introduced no malformed brace or stray token.",
+		"RENDERED FORMS, EVERY SHAPE THE CALL SITE CAN PASS: agent-hub-page.tsx:1475 calls t('ui.hub.pages.empty.org.body', { org: orgName ?? t('ui.hub.pages.scope.org_unnamed') }), so {org} is an organization display name or the noun phrase 此组织. Substituting the shipped value 此组织, and representative names Radient Labs / 测试团队, yields 发布到此组织的智能体会在此显示，供其成员查看。 / 发布到Radient Labs的智能体会在此显示，供其成员查看。 / 发布到测试团队的智能体会在此显示，供其成员查看。 — each one natural, with the Latin run flush against 的 per this repo's established CJK/Latin spacing rule (no added space, matching the pre-existing title and sibling).",
+		"WHOLE SENTENCE AFTER THE EDIT, NOT JUST THE FIXED WORDS: the sentence still sits correctly under its heading 此组织尚无共享的智能体。 — heading states the absence, body states what will fill the gap, exactly the split the English has, and the comma-plus-final-stop punctuation (U+FF0C once, U+3002 once) is the sentence-final style the rest of the file uses. Length is unchanged at 25 characters, so the four mutually exclusive empty states that share one slot are no more likely to reflow than before the fix.",
+		"ADVERSARIAL RE-READ, CLEARED: 智能体会 juxtaposes the agent noun with the auxiliary, so a reader could in principle try 智能 + 体会 ('experience') — but 的智能体 already fixes the noun boundary one character earlier, 智能体 is this catalogue's term for 'agent' (742 occurrences), and the shape is house-normal rather than novel: 智能体会 already occurs 9 times across the other zh-CN catalogues, so this edit introduces no construction the locale does not already use. It is not a garden path that survives the clause, so no finding is filed and none is padded in.",
+		"ENCODING AND SHAPE: zh-CN ui.hub.pages.json is valid UTF-8 with no BOM, no CRLF, tab indentation, one trailing newline, 59 raw key lines with no duplicate key, NFC throughout the corrected value, no bidi control characters, and no ASCII space in the corrected value.",
+		"CHANGE SCOPE, PARSED RATHER THAN EYEBALLED: comparing both revisions object-by-object, the zh-CN pages file differs in exactly one value and the zh-CN teams file in none; the English pages file and the pages context sidecar are unchanged, so the sidecar's role/tone/length/note and its 'says who the list is FOR' constraint were re-checked against text that has not moved.",
+		"NO PINNED LITERAL OR GENERATED DRIFT: no test, fixture or snapshot contains the old or the new zh-CN wording (a repo-wide search finds the strings only in catalogues and receipts), and no generated file is affected — scripts/i18n/generate.mjs regenerates src/i18n/keys.gen.ts from the ENGLISH catalogues only, and neither those nor keys.gen.ts changed in this commit, so a value-only edit on a locale cannot open a drift window.",
+		"NOT RUN, BY DESIGN: no app, dev server or browser was started (read-only brief). Every claim above is a static read of bytes at this head, plus one targeted parse run and one repo check script; nothing here is presented as rendered-app evidence."
+	],
+	"findings": [],
+	"out_of_scope": [
+		"The four other changed lines in this commit (hi 1, ru 2, vi 1) are other auditors' scope; they are enumerated above only so the changed-line list is complete, and none of them was audited here.",
+		"Pre-existing ASCII-space joiner in the shared backend error helper (round 1 observation I1) still stands and is untouched by this delta."
+	],
+	"process_observations": [
+		"PUSHED-NESS: at audit time `git ls-remote origin` shows no ref for i18n/s5-agent-hub and no remote ref containing 8d0b4e66f38 — the head is local to the worktree, as are every receipt in this wave. Nothing here is a translation defect, but this round's receipt becomes merge evidence only once the manager pushes the branch and assembles the ledger.",
+		"LEDGER STATE AT THIS HEAD: `node scripts/i18n/ledger-check.mjs` exits 1 with 42 findings across 1078 entries, including zh-CN/ui.hub.pages stale source_sha256 (ledger cf81ba3771a9…, file 47793b98059b…) and stale target_sha256 (ledger 0ad350047370…, file 1460736d8cbf…) plus 'auditor 1: the receipt does not name the English source bytes on disk'. That is the expected pre-assembly state of an audited-but-not-yet-assembled wave, not a finding against the copy: the manager's `ledger-assemble.mjs --locale zh-CN --file src/i18n/catalogues/zh-CN/ui.hub.pages.json --receipt <this receipt> --auditor-instance 0188cd92-hub-pages-r2 --result clean` derives both hashes from disk and appends this run as a distinct auditor. This receipt carries en_sha256 / source_sha256 / sha256.en (47793b98…) and target_sha256 / sha256.target (1460736d…) precisely so that assembly binds."
+	],
+	"verdict": "clean",
+	"note": "Filename uses the lower-cased locale ('zh-cn-') and an 8-hex instance because the brief and the ledger's isRepoReceiptPath (^i18n/receipts/[a-z0-9_-]+\\.json$) both require it; the locale audited is zh-CN and the instance is the run id 0188cd92… + its scope.",
+	"normalised_for_ledger": "auditor and instance rewritten to the ledger contract by the programme manager; original auditor text preserved verbatim inside the parentheses, findings and hashes untouched",
+	"auditor_provenance": "translation-auditor (local-operator-reviewer (session 0188cd9278aa; lopdev reviewer role, independent i18n auditor for zh-CN) — {\"role\": \"independent i18n auditor (team lopdev); read-only, did not write or correct these translations\", \"model\": \"deepseek/deepseek-flash\", \"model_note\": \"Session header opened as anthropic/claude-sonnet-5-5; provider quota failures forced three in-turn fallbacks (anthropic/claude-opus-5-5, then openai/gpt-6.1-sol, then deepseek/deepseek-flash). Every read, diff and check below was executed on the model serving that call, and the verdict was assembled and written on deepseek/deepseek-flash. No check was skipped across a switch, and no other model's summary is quoted as evidence.\", \"fallback\": \"anthropic/claude-sonnet-5-5 -> anthropic/claude-opus-5-5 -> openai/gpt-6.1-sol -> deepseek/deepseek-flash (provider quota)\", \"instance\": \"0188cd92-hub-pages-r2\", \"session\": \"0188cd9278aa\", \"independence\": \"Separate session and role from the PR coder, from the translator, and from the author of the correction under test. This is round 2 on a delta: the corrected value was re-derived from the English source, its .context.json sidecar, the shipped teams sibling and the render site at this head. The correction commit's message was read only as a claim to check, never as evidence. Read-only audit: this session edited no catalogue, ledger, allowance, generated or test file, and wrote only this receipt.\", \"description\": \"local-operator reviewer session 0188cd9278aa (lopdev reviewer role), independent i18n auditor for zh-CN on the Agent Hub publication copy\"})",
+	"identity_provenance": {
+		"agent": "local-operator-reviewer (session 0188cd9278aa; lopdev reviewer role, independent i18n auditor for zh-CN)"
+	}
+}

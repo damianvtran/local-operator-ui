@@ -1,0 +1,12 @@
+{
+	"ui.chat.tag_groups.collapse": {
+		"role": "disclosure button label, group currently open",
+		"tone": "concise imperative, sentence case",
+		"note": "Accessible name and tooltip of the chevron button at the start of a 28px tag group subheader in the conversation sidebar (220px+ wide). The button folds or unfolds that tag's conversations; the header keeps showing the tag name and its count either way. {name} is a user-authored tag name (or the localized word for Untagged) and may be long; keep it intact and unquoted unless the locale requires quotation for an embedded name. Use the same verb pair the app already uses for collapse/expand controls."
+	},
+	"ui.chat.tag_groups.expand": {
+		"role": "disclosure button label, group currently folded",
+		"tone": "concise imperative, sentence case",
+		"note": "Accessible name and tooltip of the chevron button at the start of a 28px tag group subheader in the conversation sidebar (220px+ wide). The button folds or unfolds that tag's conversations; the header keeps showing the tag name and its count either way. {name} is a user-authored tag name (or the localized word for Untagged) and may be long; keep it intact and unquoted unless the locale requires quotation for an embedded name. Use the same verb pair the app already uses for collapse/expand controls."
+	}
+}

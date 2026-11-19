@@ -1,0 +1,8 @@
+{
+	"ui.hub.card.download_named": "Télécharger {name}",
+	"ui.hub.card.downloads_tooltip": "Téléchargements",
+	"ui.hub.card.get": "Obtenir",
+	"ui.hub.card.unknown_author": "Auteur inconnu",
+	"ui.hub.card.updated": "mis à jour il y a {ago}",
+	"ui.hub.card.view_details": "Afficher les détails de {name}"
+}

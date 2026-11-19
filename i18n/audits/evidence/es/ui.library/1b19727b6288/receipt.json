@@ -1,0 +1,573 @@
+{
+  "locale": "es",
+  "mode": "Fresh independent bounded delta audit (fix <2h); no MT or translation service. 20 new ui.library messages fully read and judged; 159 legacy messages not recertified. Read-only repository; scratch handoff only.",
+  "scope": "PR damianvtran/local-operator-ui #1851 @ 8a9ce1f808c266ebe9a0e924094344cea60c2c23; delta 0e12072d2b3..HEAD; 12 kind badges, 7 tag-category headers and standalone unsupported_generic, plus all 20 English metadata entries.",
+  "head_sha": "8a9ce1f808c266ebe9a0e924094344cea60c2c23",
+  "audit_date": "2026-11-10",
+  "key_count": 179,
+  "fully_audited_key_count": 20,
+  "consistency_only_key_count": 159,
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "Translator agent/model supplied in delegation; translator session not supplied. Auditor did not translate or participate in translation."
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "1b19727b6288",
+    "session": "1b19727b6288",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "Served session header for 1b19727b6288: Model openai/gpt-6.1-sol. No model switch or fallback used.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "policy_sources": {
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/es.md",
+      "sha256": "77b9227213802d14c74d4298d6b346ad842bbf2a5ca3b9d46fc6144430d26c3e"
+    },
+    "glossary": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/_s14-audits/8a9ce1f808c266ebe9a0e924094344cea60c2c23/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "note": "Binding manager-provided byte-copy; hash equals supplied 0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8. Live original was outside allowed reads; no independent comparison to it claimed."
+    },
+    "expected_hashes": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/_s14-audits/8a9ce1f808c266ebe9a0e924094344cea60c2c23/expected-hashes.json"
+    }
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "verdict": "passed — no BLOCKER/MAJOR; 3 MINOR (2 approximate-fit risks, 1 English metadata correction). Ledger freshness remains a separate pending integration gate.",
+  "findings": [
+    {
+      "id": "M1",
+      "severity": "minor",
+      "key": "ui.library.kind.spreadsheet",
+      "current_text": "Hoja de cálculo",
+      "english_source": "Spreadsheet",
+      "problem": "14 Unicode characters/cells in ordinary Spanish text; exceeds the approximate 12-character badge hint by 2. Correct singular terminology, not proven clipping: no rendered frame was permitted.",
+      "recommendation": "Retain “Hoja de cálculo” for fidelity and the established word family; verify the constrained badge at narrow widths and accommodate the full label. No equally idiomatic shorter singular is established by this catalogue.",
+      "evidence": [
+        "ui.library.category.spreadsheets = “Hojas de cálculo”",
+        "es style guide lines 90–94: shorter synonyms over truncation; budgets from the English sidecar",
+        "ui.library.kind.spreadsheet context.length: “A truncating badge slot (about 12 characters)”",
+        "library-card.tsx:249–250: kind label inside a truncate span"
+      ],
+      "gates": false
+    },
+    {
+      "id": "M2",
+      "severity": "minor",
+      "key": "ui.library.tag_category.custom",
+      "current_text": "Personalizado",
+      "english_source": "Custom",
+      "problem": "13 Unicode characters/cells, 1 above the approximate 12-character rail-header hint. This is a potential fit risk only; the real rail header has no truncate class, and no actual clipping was observed.",
+      "recommendation": "Prefer retaining “Personalizado” to match existing terminology and check the rail width. If an actual width constraint forces shorter copy, “A medida” (8 characters) is grammatical, but would need a deliberate terminology decision rather than silent shortening.",
+      "evidence": [
+        "ui.canvas.insert_table_popover.custom_size = “Tamaño personalizado”",
+        "es style guide lines 90–94: shorten as budgets demand, avoid truncation",
+        "ui.library.tag_category.custom context.length: “Narrow rail header (about 12 characters)”",
+        "library-filter-rail.tsx:303–307: header span is px-2 pt-1 text-meta text-ink-dim, not a truncating row"
+      ],
+      "gates": false
+    },
+    {
+      "id": "M3",
+      "severity": "minor",
+      "key": "ui.library.kind.other (English context.note)",
+      "current_text": "English source: Other. Catch-all for a file the Library could not classify. Singular adjective/noun, not an action. Rendered inside the sentence ui.library.preview.unsupported ONLY via the generic fallback; see manifest. Short badge beside the file size on a card, list row and the preview header; a single noun, no placeholders. Translate as the locale's ordinary noun for this file kind. The raw machine value (for example 'pptx') is shown only as a data fallback when a newer backend adds a kind this catalogue does not know.",
+      "english_source": "Other",
+      "problem": "The note says this label is rendered inside ui.library.preview.unsupported via the generic fallback. The actual other branch uses unsupported_generic without any kind argument, so the label is never interpolated into that sentence. This misleading explanatory clause does not damage the Spanish badge or sentence.",
+      "recommendation": "Replace that clause with: “Used for the badge only. For kind `other`, the preview uses ui.library.preview.unsupported_generic without interpolating this label.” Retain the rest of the note.",
+      "evidence": [
+        "ui.library.preview.unsupported_generic = “Este archivo no tiene vista previa en la app.” (no placeholder)",
+        "ui.library.preview.unsupported = “Un archivo de tipo {kind} no tiene vista previa en la app.”",
+        "library-viewers.tsx:105–111: asset.kind === “other” ? t(unsupported_generic) : t(unsupported, {kind: libraryKindLabel(asset.kind)})",
+        "src/i18n/catalogues/en/ui.library.context.json:1077"
+      ],
+      "gates": false
+    }
+  ],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 3,
+    "nit": 0
+  },
+  "namespaces": {
+    "ui.library": {
+      "status": "passed",
+      "result": "clean-with-findings",
+      "source_sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71",
+      "target_sha256": "56d0fdd0f7fa73704840093247fa06fb04e1cb0abaaccce7318b9f37b916f099",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.library.json",
+          "sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71"
+        },
+        "es": {
+          "path": "src/i18n/catalogues/es/ui.library.json",
+          "sha256": "56d0fdd0f7fa73704840093247fa06fb04e1cb0abaaccce7318b9f37b916f099"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.library.context.json",
+          "sha256": "2fe63e830b49079dac67c5c4513358d0a8559a94fbf27ac8d437212b13aa2e72"
+        }
+      },
+      "fully_audited_keys": [
+        "ui.library.kind.audio",
+        "ui.library.kind.code",
+        "ui.library.kind.docx",
+        "ui.library.kind.html",
+        "ui.library.kind.image",
+        "ui.library.kind.markdown",
+        "ui.library.kind.other",
+        "ui.library.kind.pdf",
+        "ui.library.kind.pptx",
+        "ui.library.kind.spreadsheet",
+        "ui.library.kind.text",
+        "ui.library.kind.video",
+        "ui.library.preview.unsupported_generic",
+        "ui.library.tag_category.custom",
+        "ui.library.tag_category.format",
+        "ui.library.tag_category.project",
+        "ui.library.tag_category.source",
+        "ui.library.tag_category.status",
+        "ui.library.tag_category.topic",
+        "ui.library.tag_category.type"
+      ],
+      "findings": [
+        {
+          "id": "M1",
+          "severity": "minor",
+          "key": "ui.library.kind.spreadsheet",
+          "current_text": "Hoja de cálculo",
+          "english_source": "Spreadsheet",
+          "problem": "14 Unicode characters/cells in ordinary Spanish text; exceeds the approximate 12-character badge hint by 2. Correct singular terminology, not proven clipping: no rendered frame was permitted.",
+          "recommendation": "Retain “Hoja de cálculo” for fidelity and the established word family; verify the constrained badge at narrow widths and accommodate the full label. No equally idiomatic shorter singular is established by this catalogue.",
+          "evidence": [
+            "ui.library.category.spreadsheets = “Hojas de cálculo”",
+            "es style guide lines 90–94: shorter synonyms over truncation; budgets from the English sidecar",
+            "ui.library.kind.spreadsheet context.length: “A truncating badge slot (about 12 characters)”",
+            "library-card.tsx:249–250: kind label inside a truncate span"
+          ],
+          "gates": false
+        },
+        {
+          "id": "M2",
+          "severity": "minor",
+          "key": "ui.library.tag_category.custom",
+          "current_text": "Personalizado",
+          "english_source": "Custom",
+          "problem": "13 Unicode characters/cells, 1 above the approximate 12-character rail-header hint. This is a potential fit risk only; the real rail header has no truncate class, and no actual clipping was observed.",
+          "recommendation": "Prefer retaining “Personalizado” to match existing terminology and check the rail width. If an actual width constraint forces shorter copy, “A medida” (8 characters) is grammatical, but would need a deliberate terminology decision rather than silent shortening.",
+          "evidence": [
+            "ui.canvas.insert_table_popover.custom_size = “Tamaño personalizado”",
+            "es style guide lines 90–94: shorten as budgets demand, avoid truncation",
+            "ui.library.tag_category.custom context.length: “Narrow rail header (about 12 characters)”",
+            "library-filter-rail.tsx:303–307: header span is px-2 pt-1 text-meta text-ink-dim, not a truncating row"
+          ],
+          "gates": false
+        },
+        {
+          "id": "M3",
+          "severity": "minor",
+          "key": "ui.library.kind.other (English context.note)",
+          "current_text": "English source: Other. Catch-all for a file the Library could not classify. Singular adjective/noun, not an action. Rendered inside the sentence ui.library.preview.unsupported ONLY via the generic fallback; see manifest. Short badge beside the file size on a card, list row and the preview header; a single noun, no placeholders. Translate as the locale's ordinary noun for this file kind. The raw machine value (for example 'pptx') is shown only as a data fallback when a newer backend adds a kind this catalogue does not know.",
+          "english_source": "Other",
+          "problem": "The note says this label is rendered inside ui.library.preview.unsupported via the generic fallback. The actual other branch uses unsupported_generic without any kind argument, so the label is never interpolated into that sentence. This misleading explanatory clause does not damage the Spanish badge or sentence.",
+          "recommendation": "Replace that clause with: “Used for the badge only. For kind `other`, the preview uses ui.library.preview.unsupported_generic without interpolating this label.” Retain the rest of the note.",
+          "evidence": [
+            "ui.library.preview.unsupported_generic = “Este archivo no tiene vista previa en la app.” (no placeholder)",
+            "ui.library.preview.unsupported = “Un archivo de tipo {kind} no tiene vista previa en la app.”",
+            "library-viewers.tsx:105–111: asset.kind === “other” ? t(unsupported_generic) : t(unsupported, {kind: libraryKindLabel(asset.kind)})",
+            "src/i18n/catalogues/en/ui.library.context.json:1077"
+          ],
+          "gates": false
+        }
+      ]
+    }
+  },
+  "entries": [
+    {
+      "key": "ui.library.kind.audio",
+      "source": "Audio",
+      "current_text": "Audio",
+      "findings": [],
+      "assessment": "Audio is a native, settled Spanish media noun (not an untranslated player control); existing ui.canvas.inline_edit.processing_audio = “Procesando audio”. Library category.sounds and canvas.files.audio = “Sonidos” name the broader plural sound group. The different word is justified by the explicitly independent file-media role; no forced “Sonido” change.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "characters": 5,
+      "terminal_cells": 5
+    },
+    {
+      "key": "ui.library.kind.code",
+      "source": "Code",
+      "current_text": "Código",
+      "findings": [],
+      "assessment": "Código matches category.code = “Código” and ui.canvas.file_rows.code = “Código”; English Code is correctly localized, not retained.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "characters": 6,
+      "terminal_cells": 6
+    },
+    {
+      "key": "ui.library.kind.docx",
+      "source": "DOCX",
+      "current_text": "DOCX",
+      "findings": [],
+      "assessment": "DOCX is the format acronym and retains official spelling under glossary §1 technology names and the explicit English context. No DOCX legacy value or alternative localized acronym was found in the existing Spanish catalogue; absence is not evidence of a prior spelling.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "characters": 4,
+      "terminal_cells": 4
+    },
+    {
+      "key": "ui.library.kind.html",
+      "source": "HTML",
+      "current_text": "HTML",
+      "findings": [],
+      "assessment": "HTML matches ui.canvas.create_file_dialog.html_html = “HTML (.html)” and html_preview.html_preview = “Vista previa de HTML: {title}”.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "characters": 4,
+      "terminal_cells": 4
+    },
+    {
+      "key": "ui.library.kind.image",
+      "source": "Image",
+      "current_text": "Imagen",
+      "findings": [],
+      "assessment": "Imagen is the correct singular of category.images = “Imágenes”.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "characters": 6,
+      "terminal_cells": 6
+    },
+    {
+      "key": "ui.library.kind.markdown",
+      "source": "Markdown",
+      "current_text": "Markdown",
+      "findings": [],
+      "assessment": "Markdown matches ui.canvas.create_file_dialog.markdown_md = “Markdown (.md)” and ui.chat.transcript_copy.menu.copy_markdown = “Copiar como Markdown”.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "characters": 8,
+      "terminal_cells": 8
+    },
+    {
+      "key": "ui.library.kind.other",
+      "source": "Other",
+      "current_text": "Otro",
+      "findings": [],
+      "assessment": "Otro is the masculine singular corresponding to category.other = “Otros”, referring to archivo/tipo. No interpolation into the generic preview sentence. English metadata M3 only.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "characters": 4,
+      "terminal_cells": 4
+    },
+    {
+      "key": "ui.library.kind.pdf",
+      "source": "PDF",
+      "current_text": "PDF",
+      "findings": [],
+      "assessment": "PDF matches ui.canvas.pdf_preview.pdf = “PDF: {title}”; standard format acronym remains Latin.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "characters": 3,
+      "terminal_cells": 3
+    },
+    {
+      "key": "ui.library.kind.pptx",
+      "source": "PPTX",
+      "current_text": "PPTX",
+      "findings": [],
+      "assessment": "PPTX is a format acronym retained under glossary §1 and the explicit English context. No pre-existing PPTX literal or translated alternative was found in the Spanish catalogue. category.presentations = “Presentaciones” is the broad file group, not an alternate acronym.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "characters": 4,
+      "terminal_cells": 4
+    },
+    {
+      "key": "ui.library.kind.spreadsheet",
+      "source": "Spreadsheet",
+      "current_text": "Hoja de cálculo",
+      "findings": [
+        "M1"
+      ],
+      "assessment": "Hoja de cálculo is exactly the singular word family of category.spreadsheets = “Hojas de cálculo”. Correct meaning; M1 concerns approximate fit only.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "characters": 15,
+      "terminal_cells": 15
+    },
+    {
+      "key": "ui.library.kind.text",
+      "source": "Text",
+      "current_text": "Texto",
+      "findings": [],
+      "assessment": "Texto matches preview.pptx_text = “Texto”; appropriate plain-text file label.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "characters": 5,
+      "terminal_cells": 5
+    },
+    {
+      "key": "ui.library.kind.video",
+      "source": "Video",
+      "current_text": "Video",
+      "findings": [],
+      "assessment": "Video exactly matches existing ui.library.category.video = “Video”. Canvas already uses “Vídeo”/“Vídeos” (file_rows.video/files.videos), so the existing catalogue is split in accent variant; both Spanish forms are valid. Matching the immediate Library group is justified and does not introduce the split. No demand to recertify or normalize legacy values.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "characters": 5,
+      "terminal_cells": 5
+    },
+    {
+      "key": "ui.library.preview.unsupported_generic",
+      "source": "This file has no in-app preview here.",
+      "current_text": "Este archivo no tiene vista previa en la app.",
+      "findings": [],
+      "assessment": "Grammatical standalone sentence, no kind named and no placeholder. Preserves the existing unsupported sentence’s “no tiene vista previa en la app”; este archivo replaces un archivo de tipo {kind}. The English here is already conveyed by en la app in this UI, not a missing capability qualifier.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "characters": 45,
+      "terminal_cells": 45
+    },
+    {
+      "key": "ui.library.tag_category.custom",
+      "source": "Custom",
+      "current_text": "Personalizado",
+      "findings": [
+        "M2"
+      ],
+      "assessment": "Personalizado naturally labels the masculine grupo/tipo of user-defined tags; existing custom_size = “Tamaño personalizado”. M2 is fit only.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "characters": 13,
+      "terminal_cells": 13
+    },
+    {
+      "key": "ui.library.tag_category.format",
+      "source": "Format",
+      "current_text": "Formato",
+      "findings": [],
+      "assessment": "Formato accurately labels file-format taxonomy; official format names remain unaltered.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "characters": 7,
+      "terminal_cells": 7
+    },
+    {
+      "key": "ui.library.tag_category.project",
+      "source": "Project",
+      "current_text": "Proyecto",
+      "findings": [],
+      "assessment": "Proyecto matches glossary project → proyecto and ui.projects.project_list.project = “Proyecto”.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "characters": 8,
+      "terminal_cells": 8
+    },
+    {
+      "key": "ui.library.tag_category.source",
+      "source": "Source",
+      "current_text": "Origen",
+      "findings": [],
+      "assessment": "Origen is byte-identical to ui.library.filter.source = “Origen”; distinct tag group role is preserved by placement.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "characters": 6,
+      "terminal_cells": 6
+    },
+    {
+      "key": "ui.library.tag_category.status",
+      "source": "Status",
+      "current_text": "Estado",
+      "findings": [],
+      "assessment": "Estado is byte-identical to ui.library.filter.status and ui.projects.project_list.status = “Estado”.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "characters": 6,
+      "terminal_cells": 6
+    },
+    {
+      "key": "ui.library.tag_category.topic",
+      "source": "Topic",
+      "current_text": "Tema",
+      "findings": [],
+      "assessment": "Tema is the ordinary neutral Spanish noun for a subject-matter category; no conflicting established term was found in the scoped neighbouring catalogues.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "characters": 4,
+      "terminal_cells": 4
+    },
+    {
+      "key": "ui.library.tag_category.type",
+      "source": "Type",
+      "current_text": "Tipo",
+      "findings": [],
+      "assessment": "Tipo matches ui.library.sort.kind = “Tipo” and ui.canvas.files.kind = “Tipo”. Two independently placed concepts sharing this Spanish noun is natural and not a semantic defect.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "characters": 4,
+      "terminal_cells": 4
+    }
+  ],
+  "english_metadata_check": {
+    "verdict": "minor correction M3; other role/tone/notes align with named source surfaces",
+    "sources": [
+      "library-card.tsx:221–250,368",
+      "library-preview.tsx:493–494",
+      "library-filter-rail.tsx:102–104,303–307",
+      "library-model.ts:358–383",
+      "library-viewers.tsx:105–111"
+    ],
+    "note": "Fit is an approximate hint, not a measured rendered 12-character hard cap. Custom header is not itself a truncate span."
+  },
+  "mechanical": {
+    "key_count_total": 179,
+    "fully_audited_key_count": 20,
+    "legacy_count": 159,
+    "key_parity": true,
+    "added_only": true,
+    "keys20_match": true,
+    "context_copy_match": true,
+    "no_new_interpolation_markup_code": true,
+    "invisibles": [],
+    "lengths": {
+      "ui.library.kind.audio": 5,
+      "ui.library.kind.code": 6,
+      "ui.library.kind.docx": 4,
+      "ui.library.kind.html": 4,
+      "ui.library.kind.image": 6,
+      "ui.library.kind.markdown": 8,
+      "ui.library.kind.other": 4,
+      "ui.library.kind.pdf": 3,
+      "ui.library.kind.pptx": 4,
+      "ui.library.kind.spreadsheet": 15,
+      "ui.library.kind.text": 5,
+      "ui.library.kind.video": 5,
+      "ui.library.preview.unsupported_generic": 45,
+      "ui.library.tag_category.custom": 13,
+      "ui.library.tag_category.format": 7,
+      "ui.library.tag_category.project": 8,
+      "ui.library.tag_category.source": 6,
+      "ui.library.tag_category.status": 6,
+      "ui.library.tag_category.topic": 4,
+      "ui.library.tag_category.type": 4
+    },
+    "hashes": {
+      "en/ui.library": {
+        "expected": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71",
+        "actual": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71",
+        "matches": true
+      },
+      "en/ui.library.context": {
+        "expected": "2fe63e830b49079dac67c5c4513358d0a8559a94fbf27ac8d437212b13aa2e72",
+        "actual": "2fe63e830b49079dac67c5c4513358d0a8559a94fbf27ac8d437212b13aa2e72",
+        "matches": true
+      },
+      "es/ui.library": {
+        "expected": "56d0fdd0f7fa73704840093247fa06fb04e1cb0abaaccce7318b9f37b916f099",
+        "actual": "56d0fdd0f7fa73704840093247fa06fb04e1cb0abaaccce7318b9f37b916f099",
+        "matches": true
+      }
+    },
+    "repo_validator_exit": 1
+  },
+  "validator_commands_run": [
+    "node scripts/i18n/ledger-check.mjs -> exit 1, stale ui.library ledger/receipts for all seven translated locales. Spanish ledger hashes exactly match base 0e12072d2b3, not the new audited head. This is not a manifest hash-binding mismatch.",
+    "shasum -a 256 en/ui.library.json, en/ui.library.context.json, es/ui.library.json, binding glossary.md and es style-guide -> captured in audit.log",
+    "Python duplicate-aware JSON parse of the three scoped files -> PASS; English/Spanish key parity 179/179; 20 additions only; no legacy values removed/changed; no invisible controls."
+  ],
+  "unverified": [
+    "No build, install, server, test tree, rendered-frame inspection or production ICU formatter execution was run (explicit read-only task). New messages contain no ICU syntax or placeholders.",
+    "No repository write, ledger update, commit, PR comment or canonical evidence retention performed. Manager must retain the handoff and update the ledger.",
+    "159 legacy namespace values were NOT recertified: only parse validity, key parity, no legacy changes, and targeted terminology consistency were checked.",
+    "Translator session identifier was not supplied; independence describes this auditor’s distinct work, not a verified translator-session ID comparison."
+  ],
+  "receipt_contract_review": "Receipt follows supplied fr-ds-e3c562b03258 model with exactly one namespace ui.library; JSON parse-back is performed after writing. No formal external schema validator was supplied.",
+  "audit_notes_not_execution_log": true,
+  "execution_log": "es-sol-1b19727b6288.audit.log"
+}

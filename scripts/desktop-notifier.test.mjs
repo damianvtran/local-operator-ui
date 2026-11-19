@@ -38,6 +38,12 @@ const bundle = await build({
 				}));
 				builder.onLoad({ filter: /.*/, namespace: "fixture" }, () => ({
 					contents: `
+			// Count any future native attention call as well as banner delivery:
+			// regular session notifications must never acquire Bridge urgency.
+			export const app = { dock: {
+				bounce() { globalThis.__dockRequests++; return 1; },
+				cancelBounce() {},
+			} };
 			export class Notification {
 				static isSupported() { return globalThis.__notifySupported; }
 				constructor(options) { this.options = options; globalThis.__toasts.push(options); }
@@ -255,6 +261,7 @@ async function focusWindow(notifier, requests) {
 beforeEach(() => {
 	globalThis.__toasts = [];
 	globalThis.__shown = [];
+	globalThis.__dockRequests = 0;
 	globalThis.__notifySupported = true;
 	/*
 	 * The lifetime probes opt INTO weak capture per test, because a strong
@@ -263,6 +270,22 @@ beforeEach(() => {
 	 */
 	globalThis.__captureWeakRefs = false;
 	globalThis.__weakRefs = [];
+});
+
+test("regular completion and gate banners never request Dock attention", async () => {
+	const { notifier } = harness();
+	notifier.observe(SESSION, completionFrame());
+	notifier.observe(
+		SESSION,
+		completionFrame({
+			kind: "ask",
+			focus_policy: "always",
+			dedupe_key: "gate-negative-control",
+		}),
+	);
+	await new Promise((resolve) => setImmediate(resolve));
+	assert.equal(globalThis.__shown.length, 2);
+	assert.equal(globalThis.__dockRequests, 0);
 });
 
 // T-U1

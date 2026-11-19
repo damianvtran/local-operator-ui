@@ -1,0 +1,8 @@
+{
+	"ui.chat.interrupt.idle": "No turn was running, so there was nothing to stop.",
+	"ui.chat.interrupt.idle_disputed": "The runtime says no turn is running, so nothing was stopped. This view may be out of date.",
+	"ui.chat.interrupt.stopped_both": "Stopped this turn. {children, plural, one {# subagent} other {# subagents}} and {jobs, plural, one {# background job} other {# background jobs}} are still running - open Run details to watch them, and use /stop to end the session and its jobs.",
+	"ui.chat.interrupt.stopped_children": "Stopped this turn. {count, plural, one {# subagent is} other {# subagents are}} still running - open Run details to watch {count, plural, one {it} other {them}}, or use /stop to end the session.",
+	"ui.chat.interrupt.stopped_jobs": "Stopped this turn. {count, plural, one {# background job is still running - it outlived the turn by design, so /stop is what ends it with the session.} other {# background jobs are still running - they outlived the turn by design, so /stop is what ends them with the session.}}",
+	"ui.chat.interrupt.unavailable": "This backend predates the stop control, so this turn cannot be stopped from here - /stop ends the session and everything in it."
+}

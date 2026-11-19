@@ -1,0 +1,428 @@
+{
+	"ui.settings.notifications.section.title": {
+		"role": "Settings section heading and sidebar entry",
+		"tone": "Plain noun, sentence case.",
+		"length": "Heading; one line. English is 13 characters.",
+		"note": "Names the whole destination: banners and their sound."
+	},
+	"ui.settings.notifications.section.description": {
+		"role": "Section description under the heading",
+		"tone": "Plain, friendly statement.",
+		"length": "One line on desktop; may wrap. English is 62 characters.",
+		"note": "\"Local Operator\" is the product name: never translate it."
+	},
+	"ui.settings.notifications.sound.heading": {
+		"role": "Subheading of the sound group",
+		"tone": "Plain noun.",
+		"length": "Short heading. English is 5 characters.",
+		"note": "Groups the sound switch, volume and the list of sounds."
+	},
+	"ui.settings.notifications.sound.enabled_label": {
+		"role": "Switch label",
+		"tone": "Short imperative-like phrase.",
+		"length": "Row label beside a switch; one line. English is 12 characters.",
+		"note": "Turns notification sounds on or off."
+	},
+	"ui.settings.notifications.sound.enabled_description": {
+		"role": "Helper text under the switch",
+		"tone": "Consequence first, short sentences.",
+		"length": "Wraps under the label. English is 52 characters.",
+		"note": "A banner is the desktop notification pop-up."
+	},
+	"ui.settings.notifications.sound.enabled_off_note": {
+		"role": "Status line shown when the switch is off",
+		"tone": "Reassuring, factual.",
+		"length": "One line under the switch. English is 46 characters.",
+		"note": "The selected sound is remembered while sound is off; the list stays usable."
+	},
+	"ui.settings.notifications.sound.gated": {
+		"role": "Info notice when notifications are turned off",
+		"tone": "Calm, explains the consequence first.",
+		"length": "Inline alert, wraps. English is 81 characters.",
+		"note": "Appears above the sound controls, which stay usable."
+	},
+	"ui.settings.notifications.sound.gated_action": {
+		"role": "Button inside the notice",
+		"tone": "Plain imperative.",
+		"length": "Button label, one line. English is 21 characters.",
+		"note": "Turns on the main notifications switch shown just above."
+	},
+	"ui.settings.notifications.volume.label": {
+		"role": "Slider label",
+		"tone": "Plain noun.",
+		"length": "Row label; one line. English is 6 characters.",
+		"note": "Loudness of the notification sound."
+	},
+	"ui.settings.notifications.volume.readout": {
+		"role": "Read-only value beside the volume slider",
+		"tone": "Machine voice; number with percent sign.",
+		"length": "Very short; never wraps.",
+		"note": "{value} is 0-100. Use the locale's normal percent formatting and spacing."
+	},
+	"ui.settings.notifications.volume.readout_default": {
+		"role": "Read-only value when the volume is at its default",
+		"tone": "Machine voice.",
+		"length": "Very short; never wraps. English is 13 characters.",
+		"note": "{value} is the number. \"Default\" means the factory setting. Keep the middle dot separator or the locale's equivalent."
+	},
+	"ui.settings.notifications.volume.reset": {
+		"role": "Link button after the readout",
+		"tone": "Plain imperative.",
+		"length": "One short word.",
+		"note": "Puts the volume back to its default (70)."
+	},
+	"ui.settings.notifications.volume.description": {
+		"role": "Helper text under the slider",
+		"tone": "Short, friendly.",
+		"length": "One line. English is 25 characters.",
+		"note": "When the user releases the slider, the selected sound plays at the new level."
+	},
+	"ui.settings.notifications.volume.muted": {
+		"role": "Helper text when volume is 0",
+		"tone": "Calm, consequence first.",
+		"length": "One line, may wrap. English is 48 characters.",
+		"note": "\"this\" refers to the volume slider."
+	},
+	"ui.settings.notifications.volume.system": {
+		"role": "Helper text when the System sound is selected",
+		"tone": "Factual.",
+		"length": "One line. English is 39 characters.",
+		"note": "The slider is disabled because the operating system plays its own alert."
+	},
+	"ui.settings.notifications.volume.valuetext": {
+		"role": "Screen-reader value of the slider",
+		"tone": "Spoken form.",
+		"length": "Not displayed.",
+		"note": "{value} is 0-100. Read aloud by assistive technology."
+	},
+	"ui.settings.notifications.list.label": {
+		"role": "Accessible name of the list of sounds",
+		"tone": "Plain noun phrase.",
+		"length": "Not displayed (screen readers).",
+		"note": "Names the radio group of sounds."
+	},
+	"ui.settings.notifications.list.builtin": {
+		"role": "Subheading over the built-in sounds",
+		"tone": "Short adjective/noun.",
+		"length": "Small subheading. English is 8 characters.",
+		"note": "Sounds that ship with the app."
+	},
+	"ui.settings.notifications.list.default_tag": {
+		"role": "Small tag beside the default sound",
+		"tone": "One word.",
+		"length": "Badge; never wraps.",
+		"note": "Marks the sound that is selected out of the box."
+	},
+	"ui.settings.notifications.list.system_name": {
+		"role": "Name of the system sound option",
+		"tone": "Plain noun phrase.",
+		"length": "Row label. English is 12 characters.",
+		"note": "Choosing it means the app plays nothing and the OS or terminal alert plays."
+	},
+	"ui.settings.notifications.list.system_description": {
+		"role": "Second line under System sound",
+		"tone": "Plain, factual.",
+		"length": "One line, may wrap. English is 57 characters.",
+		"note": "Explains that the app adds no sound of its own."
+	},
+	"ui.settings.notifications.list.custom": {
+		"role": "Subheading over the user's own sounds",
+		"tone": "Warm, plain.",
+		"length": "Small subheading. English is 11 characters.",
+		"note": "Sounds the user added from their own files."
+	},
+	"ui.settings.notifications.list.custom_count": {
+		"role": "Count beside the subheading",
+		"tone": "Machine voice.",
+		"length": "Very short.",
+		"note": "{count} is how many custom sounds exist; {max} is the limit (50)."
+	},
+	"ui.settings.notifications.preview.play": {
+		"role": "Accessible name of the play button",
+		"tone": "Short imperative.",
+		"length": "Not displayed (tooltip/screen reader).",
+		"note": "{name} is the sound's name; custom names are the user's own text."
+	},
+	"ui.settings.notifications.preview.stop": {
+		"role": "Accessible name of the stop button",
+		"tone": "Short imperative.",
+		"length": "Not displayed.",
+		"note": "{name} is the sound's name."
+	},
+	"ui.settings.notifications.preview.failed": {
+		"role": "Error line under a row",
+		"tone": "Plain, no blame.",
+		"length": "One line. English is 25 characters.",
+		"note": "The preview audio failed to load or play."
+	},
+	"ui.settings.notifications.save.failed": {
+		"role": "Error under the list when a selection failed to save",
+		"tone": "Plain, no blame.",
+		"length": "Wraps. English is 25 characters plus the reason.",
+		"note": "{reason} is a sentence from the server; it may be empty."
+	},
+	"ui.settings.notifications.save.failed_generic": {
+		"role": "Fallback error when the server gave no reason",
+		"tone": "Plain.",
+		"length": "One line. English is 31 characters.",
+		"note": "Shown when there is no server-supplied reason."
+	},
+	"ui.settings.notifications.retry": {
+		"role": "Button that repeats a failed action",
+		"tone": "Plain imperative.",
+		"length": "Button label; one word.",
+		"note": "Used for a failed save, load or upload."
+	},
+	"ui.settings.notifications.custom.empty": {
+		"role": "Empty state of Your sounds",
+		"tone": "Friendly, helpful.",
+		"length": "Wraps. English is 79 characters.",
+		"note": "\"the assistant\" is the AI agent in the app, which can generate sound effects."
+	},
+	"ui.settings.notifications.custom.add": {
+		"role": "Button that opens a file picker",
+		"tone": "Short imperative with ellipsis (opens a dialog).",
+		"length": "Button label. English is 10 characters.",
+		"note": "Keep the ellipsis: it signals a picker opens."
+	},
+	"ui.settings.notifications.custom.hint": {
+		"role": "Hint under Add sound",
+		"tone": "Factual.",
+		"length": "Wraps. English is about 110 characters.",
+		"note": "Format names stay in Latin script. {seconds} is 10, {megabytes} is 10. Loudness matching means the app evens out volume."
+	},
+	"ui.settings.notifications.custom.full": {
+		"role": "Line shown when the limit is reached",
+		"tone": "Plain, gives the remedy.",
+		"length": "Wraps. English is 68 characters.",
+		"note": "{count} is the limit (50)."
+	},
+	"ui.settings.notifications.custom.uploading": {
+		"role": "Progress label on a pending row",
+		"tone": "Machine-ish, short.",
+		"length": "Very short.",
+		"note": "{percent} is 0-100."
+	},
+	"ui.settings.notifications.custom.cancel_upload": {
+		"role": "Accessible name of the cancel button on a pending row",
+		"tone": "Short imperative.",
+		"length": "Not displayed.",
+		"note": "{file} is the file name the user chose."
+	},
+	"ui.settings.notifications.custom.added_one": {
+		"role": "Screen-reader announcement",
+		"tone": "Plain.",
+		"length": "Not displayed.",
+		"note": "{name} is the new sound's name."
+	},
+	"ui.settings.notifications.custom.added_many": {
+		"role": "Screen-reader announcement",
+		"tone": "Plain.",
+		"length": "Not displayed.",
+		"note": "Use the locale's plural categories."
+	},
+	"ui.settings.notifications.custom.more": {
+		"role": "Accessible name of the row's menu button",
+		"tone": "Plain.",
+		"length": "Not displayed.",
+		"note": "{name} is the sound's name."
+	},
+	"ui.settings.notifications.custom.rename": {
+		"role": "Menu item",
+		"tone": "Plain imperative.",
+		"length": "One word.",
+		"note": "Opens a text field to change the sound's name."
+	},
+	"ui.settings.notifications.custom.rename_label": {
+		"role": "Accessible name of the rename field",
+		"tone": "Plain noun phrase.",
+		"length": "Not displayed.",
+		"note": "The user's own name for a sound."
+	},
+	"ui.settings.notifications.custom.rename_empty": {
+		"role": "Inline validation",
+		"tone": "Plain.",
+		"length": "One line.",
+		"note": "Shown when the field is empty on Enter."
+	},
+	"ui.settings.notifications.custom.rename_long": {
+		"role": "Inline validation",
+		"tone": "Plain.",
+		"length": "One line.",
+		"note": "{max} is 40."
+	},
+	"ui.settings.notifications.custom.rename_failed": {
+		"role": "Inline error under the rename field",
+		"tone": "Plain.",
+		"length": "Wraps.",
+		"note": "{reason} is a sentence from the server; may be empty."
+	},
+	"ui.settings.notifications.custom.remove": {
+		"role": "Menu item",
+		"tone": "Plain imperative with ellipsis (asks to confirm).",
+		"length": "One word.",
+		"note": "Keep the ellipsis: a confirmation follows."
+	},
+	"ui.settings.notifications.custom.remove_confirm": {
+		"role": "Inline confirmation",
+		"tone": "Consequence first, calm.",
+		"length": "Wraps.",
+		"note": "{name} is the sound's name."
+	},
+	"ui.settings.notifications.custom.remove_confirm_selected": {
+		"role": "Inline confirmation when removing the selected sound",
+		"tone": "Consequence first, calm.",
+		"length": "Wraps.",
+		"note": "{name} is the sound's name. \"Soft pulse\" is the name of the default built-in sound; use the same translation the built-in list shows."
+	},
+	"ui.settings.notifications.custom.remove_action": {
+		"role": "Destructive button in the confirmation",
+		"tone": "Plain imperative.",
+		"length": "Button label.",
+		"note": "Deletes the sound."
+	},
+	"ui.settings.notifications.custom.cancel": {
+		"role": "Button in the confirmation",
+		"tone": "Plain imperative.",
+		"length": "Button label.",
+		"note": "Keeps the sound."
+	},
+	"ui.settings.notifications.custom.removed": {
+		"role": "Screen-reader announcement",
+		"tone": "Plain.",
+		"length": "Not displayed.",
+		"note": "{name} is the removed sound's name."
+	},
+	"ui.settings.notifications.custom.removed_reset": {
+		"role": "Screen-reader announcement",
+		"tone": "Plain.",
+		"length": "Not displayed.",
+		"note": "\"Soft pulse\" is the default built-in sound's name."
+	},
+	"ui.settings.notifications.custom.remove_failed": {
+		"role": "Inline error",
+		"tone": "Plain.",
+		"length": "Wraps.",
+		"note": "{reason} is a sentence from the server; may be empty."
+	},
+	"ui.settings.notifications.error.too_large": {
+		"role": "Upload error",
+		"tone": "Plain, gives the remedy.",
+		"length": "Wraps.",
+		"note": "{file} is the file name; {megabytes} is 10."
+	},
+	"ui.settings.notifications.error.unsupported_format": {
+		"role": "Upload error",
+		"tone": "Plain, gives the remedy.",
+		"length": "Wraps.",
+		"note": "Format names stay in Latin script."
+	},
+	"ui.settings.notifications.error.unsupported_codec": {
+		"role": "Upload error for Opus/M4A/AAC files",
+		"tone": "Plain, gives the remedy.",
+		"length": "Wraps.",
+		"note": "Format names stay in Latin script."
+	},
+	"ui.settings.notifications.error.too_long": {
+		"role": "Upload error for a long clip",
+		"tone": "Plain, gives the limit.",
+		"length": "Wraps.",
+		"note": "{seconds} is the measured length (e.g. 12.4); {limit} is 10. The clip is refused, not trimmed."
+	},
+	"ui.settings.notifications.error.undecodable": {
+		"role": "Upload error",
+		"tone": "Plain, no blame.",
+		"length": "Wraps.",
+		"note": "{file} is the file name."
+	},
+	"ui.settings.notifications.error.network": {
+		"role": "Upload error when the server did not answer",
+		"tone": "Plain, gives the remedy.",
+		"length": "Wraps.",
+		"note": "\"Local Operator\" is the product name."
+	},
+	"ui.settings.notifications.error.choose_another": {
+		"role": "Link button on an error row",
+		"tone": "Plain imperative.",
+		"length": "Short.",
+		"note": "Opens the file picker again."
+	},
+	"ui.settings.notifications.error.dismiss": {
+		"role": "Accessible name of the close button on an error row",
+		"tone": "Plain imperative.",
+		"length": "Not displayed.",
+		"note": "Removes the error row."
+	},
+	"ui.settings.notifications.test.action": {
+		"role": "Button",
+		"tone": "Plain imperative.",
+		"length": "Button label. English is 22 characters.",
+		"note": "Shows one real desktop notification with the chosen sound."
+	},
+	"ui.settings.notifications.test.sent": {
+		"role": "Status after the test was sent",
+		"tone": "Helpful, short.",
+		"length": "Wraps.",
+		"note": "\"Focus\" and \"Do Not Disturb\" are OS feature names; use the OS's localized names."
+	},
+	"ui.settings.notifications.test.failed": {
+		"role": "Status when the test could not be shown",
+		"tone": "Plain.",
+		"length": "One line.",
+		"note": "Notifications may be unsupported or suppressed."
+	},
+	"ui.settings.notifications.test.banner_title": {
+		"role": "Title of the test desktop notification",
+		"tone": "Plain noun phrase.",
+		"length": "Short.",
+		"note": "Shown by the operating system."
+	},
+	"ui.settings.notifications.test.banner_body": {
+		"role": "Body of the test desktop notification",
+		"tone": "Friendly.",
+		"length": "One line.",
+		"note": "Shown by the operating system."
+	},
+	"ui.settings.notifications.load.failed": {
+		"role": "Warning when the list failed to load",
+		"tone": "Plain.",
+		"length": "Wraps.",
+		"note": "{reason} may be empty."
+	},
+	"ui.settings.notifications.load.loading": {
+		"role": "Loading line",
+		"tone": "Plain.",
+		"length": "One line.",
+		"note": "Shown while the list loads."
+	},
+	"ui.settings.notifications.backend_older": {
+		"role": "Line shown when the backend is too old",
+		"tone": "Plain, gives the remedy.",
+		"length": "Wraps.",
+		"note": "\"Local Operator\" is the product name."
+	},
+	"ui.settings.notifications.missing_rows": {
+		"role": "Diagnostic line when settings are missing",
+		"tone": "Plain.",
+		"length": "Wraps.",
+		"note": "{rows} is a list of setting keys; never translate them."
+	},
+	"ui.settings.notifications.custom.finishing": {
+		"role": "Label while the server matches loudness; the upload can no longer be cancelled",
+		"tone": "Short status.",
+		"length": "Very short, next to a progress bar. English is 10 characters.",
+		"note": "Replaces \"Matching loudness…\": the file has been sent and is being finished. No Cancel is offered in this state."
+	},
+	"ui.settings.notifications.error.silent": {
+		"role": "Upload error for a file with no audible sound",
+		"tone": "Plain, no blame; gives the remedy.",
+		"length": "Wraps in a list row. English is about 45 characters plus the file name.",
+		"note": "{file} is the file name. The file was read successfully but contains only silence. A \"Choose another file\" button follows."
+	},
+	"ui.settings.notifications.search_terms": {
+		"role": "Hidden search keywords for this section (not displayed)",
+		"tone": "Comma-separated words people would type.",
+		"length": "Not displayed.",
+		"note": "Settings search matches these words to the notification sound controls. Translate each into the words a user would search for; keep it a comma-separated list."
+	}
+}

@@ -1,0 +1,56 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "cosh-r2-fr",
+ "session": "fe2f6b5e60d7",
+ "date": "2026-10-22",
+ "locale": "fr",
+ "translator": "translator",
+ "translator_session": "f3e0161ad424",
+ "namespace": "ui.agentMessages.settings",
+ "status": "passed",
+ "keys_audited": 1,
+ "scope": "Scoped round-2 re-check of the round-1 NIT on ui.agentMessages.settings.hold.open (fr) against the coordinator's rendered Storybook frames; no other key re-audited.",
+ "sha256": {
+  "en": "1fb72465d3c05768918f79164bf1c3f8313160c4d05046a50a52046b2e8c1e3b",
+  "fr": "306e842db2d36589a8b6fb764c3097b7c034cc923819af19b3e3c6fa486d5eb0",
+  "context": "0796c27031e5a3b9a600147e67e1341234f6ed0f5adfd3b7c4f7758a5bcff63d"
+ },
+ "findings": [],
+ "previous_round": {
+  "path": "i18n/receipts/cosh-r1-fr.json",
+  "sha256": "cac61d59e70e057a6ac0076f7a09b087f83299a5910f0b879dda4091928b17e2",
+  "target_sha256": "306e842db2d36589a8b6fb764c3097b7c034cc923819af19b3e3c6fa486d5eb0"
+ },
+ "remediation": [
+  {
+   "key": "ui.agentMessages.settings.hold.open",
+   "r1_severity": "NIT",
+   "disposition": "verified-no-change",
+   "verified": true,
+   "value": "Écrire à la cheffe de cabinet",
+   "evidence": "/Users/damian/.local-operator/sessions/03f9951236d0/scratchpad/fit-section-fr.png (sha256 50ca8eba8b9bf21773c6588856ac188158161dfcf607598bba08efe7240a3055, 2560x1440) and /Users/damian/.local-operator/sessions/03f9951236d0/scratchpad/top-fr.png (sha256 913986279da54ee8b0cad45d24b524fe53d2066c044cc8028e0534254c315590, 2560x300), Storybook agent-messages-settings--hold-in-settings-section, locale fr, worktree HEAD 2fb94727d3. Viewed both, plus a zoomed crop of the button region (auditor scratchpad btn-r2-fr.png, cut from top-fr.png). The label « Écrire à la cheffe de cabinet » renders whole on one line inside the info band, with no clipping, ellipsis or overlap with the band edge. The notice (count 7, other arm) « 7 messages attendent votre cheffe de cabinet. Envoyez un message dans sa conversation pour les recevoir. » also fits on one line beside it, with clear space between text and button, so the 29-character label does not squeeze the notice at this width. The button reads as a quiet ghost action, not a primary CTA, and does not out-shout Mettre en pause/Désactiver below. Limit: one viewport width in a Storybook frame, not the 800px minimum window. There the column is narrower and the notice would be expected to wrap, which the context explicitly allows (\"may wrap to two lines beside a button\"). The button is whitespace-nowrap and shrink-0, so it cannot clip, but that width was not observed."
+  }
+ ],
+ "inherited_receipt": {
+  "base": "2fb94727d3",
+  "path": "i18n/receipts/7f3a1c9e-r2.json",
+  "sha256": "3a791ebfb0bc2598474ca59c54b3398ae2eb9cb15277fc0c657ac100d5fac73e",
+  "keys_inherited": 84,
+  "base_target_sha256": "a347df5551387a7e97475865b93656b0ce7648176dcc3e6f14f5a0c17403acd1",
+  "unchanged_values_verified": 84
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+ },
+ "validation": {
+  "independence": "Auditor session fe2f6b5e60d7 is not the translator session f3e0161ad424; the frames were produced by the coordinator, not by the auditor or the translator. Re-verified HEAD 2fb94727d3906e2e2e44cbe91acf95c27aea5105 and the sha256 of en (1fb72465…), context (0796c270…), fr target (306e842d…, unchanged since round 1) and round-1 receipt (cac61d59…).",
+  "semantics": "Out of scope for round 2. The value is unchanged from round 1, where accuracy, terminology and register passed.",
+  "icu": "Out of scope for round 2: hold.open has no arguments and its value is unchanged.",
+  "plurals": "Out of scope for round 2: hold.open carries no plural.",
+  "typography": "Unchanged since round 1 (target bytes identical by sha256).",
+  "overflow": "Round-1 NIT (29 vs 22 characters) checked against the rendered frames. At the captured width the label fits on one line, unclipped, and the notice stays on one line beside it, so the NIT is resolved with no text change. Not observed at the 800px minimum window.",
+  "limitations": "Browser unavailable to the auditor; this verdict relies on coordinator-supplied frames, which were viewed directly. One viewport width only, a Storybook frame, not the 800px minimum window. No catalogue/code edits; no files created in the worktree."
+ }
+}

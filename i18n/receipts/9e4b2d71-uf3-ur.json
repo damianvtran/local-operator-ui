@@ -1,0 +1,48 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "anthropic/claude-sonnet-5-5",
+  "instance": "9e4b2d71-uf3-ur",
+  "locale": "ur",
+  "status": "passed",
+  "scope": "fresh independent re-audit of ur ui.updates.service (39, incl. new global.app_owned.remedy) and ui.installer.setup_cause (7); ui.updates.status excluded (byte-unchanged, already audited); on-disk working-tree files, UI PR #1760 worktree i18n-update-flow @ 7390ee9dc92 + uncommitted translation edits",
+  "evidence": "Read all 46 keys en vs ur side by side with .context.json sidecars and shipped ur copy (ui.updates.panel, ui.installer, ui.common.updates, ui.common.errors). check-coverage.mjs: ok (7 gated languages, 0 allowed keys remain); locale-parity.test.mjs: 44/44 pass; context-parity.mjs: ok. Placeholders/skeletons/backtick tokens compared en vs ur programmatically: identical apart from plural-branch prose (expected); ::group-off preserved in disk_space. intl-messageformat (ur; CLDR one/other, 1=one, 0/2/5/11/21/100=other): minutes branches identical by design (منٹ does not inflect) -> '0 منٹ'..'100 منٹ' all well-formed; fleet.busy.lead 1/0 -> '1 سیشن اس مشین پر ابھی ایک باری چلا رہا ہے: A, B, C۔', 2/1 -> '2 سیشن اس مشین پر ابھی باری چلا رہے ہیں: A, B, C اور 1 مزید۔', 100/97 -> '100 سیشن ... رہے ہیں: A, B, C اور 97 مزید۔'; not_effective -> '0.42.7 کی سرور اپ ڈیٹ مؤثر نہیں ہوئی: تنصیب اب بھی 0.41.0 بتا رہی ہے۔'; fallbacks -> 'نئی ریلیز کی سرور اپ ڈیٹ مؤثر نہیں ہوئی: تنصیب اب بھی اپنا پچھلا ورژن بتا رہی ہے۔' (gender agreement correct); disk_space -> '1234 MB ... 98765 MB' (no grouping). fribidi --rtl: rebuild_unchanged WITHOUT LRM visual `lop-source.`, WITH LRM `.lop-source` -> isolation correct and sufficient (messages reach the UI as plain strings, backticks literal; a dir=ltr paragraph would not need it, an RTL/auto one does). global.app_owned.remedy: meaning faithful (own managed environment, no package manager owns it, no terminal command can update it, app updates only a server it started: stop this one, restart Local Operator, let it start its own), 2 sentences, ratio <1.1 of English, Local Operator verbatim. Previous 8 findings all applied (disk_space 'اس سرور کو چلانے والے ماحول', LRMs, source_rebuild 'زیادہ سے زیادہ آدھا گھنٹہ', legacy_installer relative clause, unknown.body 'غیر فعال', attempt_running restructure x3, credentials 'مسترد کر دیں', clock_or_expired). Width: widest ratio no_server_reference 1.26x (short sentence, narrow-column risk low); none material.",
+  "namespaces": {
+    "ui.updates.service": {
+      "status": "passed",
+      "namespace": "ui.updates.service",
+      "keys_read": 39,
+      "sha256": {
+        "en": "e473e1fcca579cd11a398c7c21b86b4ef5d56efa5a48f09bce6b047170aa5ae2",
+        "ur": "22aa5235a6a44d518d5d96b743465bf3696b58e68d6f4ebc0f0203cea4f0936d"
+      },
+      "summary": "39 keys read; no blocker/major/minor; 1 nit, 1 info. All 8 findings of the previous audit (6f522c60-uf-ur) verified applied and none introduced a defect. New key global.app_owned.remedy: accurate and idiomatic.",
+      "findings": [
+        {
+          "severity": "NIT",
+          "key": "ui.updates.service.fleet.busy.body",
+          "current": "کوئی باری ادھوری کاٹنے کے بجائے رک گئی",
+          "proposed": "کسی باری کو بیچ میں کاٹنے کے بجائے رک گئی",
+          "reason": "'ادھوری کاٹنا' is an unidiomatic collocation for 'cut a turn short'; 'بیچ میں کاٹنا' matches the phrasing already used in fleet.unknown.body ('چلتی ہوئی باری کٹ سکتی ہے'). Optional."
+        },
+        {
+          "severity": "INFO",
+          "key": "ui.updates.service.server_failure.rebuild_unchanged",
+          "current": "اس کی ‎`.lop-source`‎ اب بھی وہی ریویژن بتاتی ہے۔",
+          "proposed": "(unchanged)",
+          "reason": "LRM isolation verified correct and sufficient with fribidi (RTL paragraph): without the marks the dotfile renders as `lop-source.` (leading dot reordered to the end); with them it renders `.lop-source`. Other backticked/Latin runs (lop-update, lop update, uv/pipx/pip, versions) reorder correctly without marks."
+        }
+      ]
+    },
+    "ui.installer.setup_cause": {
+      "status": "passed",
+      "namespace": "ui.installer.setup_cause",
+      "keys_read": 7,
+      "sha256": {
+        "en": "330241db6a55045e62e90042cf26694ff73537c24c50467e117436958a4b610b",
+        "ur": "07a2a099acf5fe417395951eb3984ecfaf0ff7b141a4f2f3ecab135c2b48b91e"
+      },
+      "summary": "7 keys read; clean. Previous clock_or_expired MINOR applied correctly (میعاد ختم شدہ یا ابھی تک غیر درست پایا).",
+      "findings": []
+    }
+  }
+}

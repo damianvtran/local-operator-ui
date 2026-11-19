@@ -1,0 +1,81 @@
+{
+ "audit_id": "l2comb-ur-20261111",
+ "kind": "independent-combined-bytes-audit",
+ "locale": "ur",
+ "namespace": "ui.chat.canonical",
+ "audit_date": "2026-11-11",
+ "key_count": 442,
+ "delta_keys": [
+  "ui.chat.canonical.tool.never_sent_composed",
+  "ui.chat.canonical.tool.never_sent_empty"
+ ],
+ "candidate_commit": "659ef7e44b7ccb4800e9853ef355ea58b49854cc",
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "4b55e20f2c31",
+  "team": "lopdev",
+  "model": "deepseek/deepseek-flash",
+  "actual_model_source": "~/.local-operator/sessions/4b55e20f2c31/tail-anchor.v1.json selection_payloads[-1].details.selector = deepseek/deepseek-flash (boot deepseek/deepseek-flash); no fallback notice in session",
+  "independent_from_translator_session": true
+ },
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+   "sha256": "38f1069648c9241799bb1b316820e0530bf9445dfba3151e1c28df70153916b3"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+   "sha256": "c258ab485de698eec85e81ffed506866e3b1e8caf29cb3ff434901388065b390"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/ur/ui.chat.canonical.json",
+   "sha256": "479f3224402071b5d31024e6b0a44400a7824b784114678f1fc4349536ee80f2"
+  }
+ },
+ "artifacts": {
+  "report": {
+   "path": "scratchpad://audit-1861-ur.md",
+   "sha256": "524b5ef63be8a596a3356aa4d38ae0ec911cbee8aa7d6d114bad01a63a0f9717"
+  },
+  "execution_log": {
+   "path": "scratchpad://au-1861-ur/audit-replication.log"
+  }
+ },
+ "current_report_verdict": {
+  "status": "clean-with-findings",
+  "ledger_status": "passed",
+  "unresolved_blocker_major_count": 0,
+  "counts": {
+   "blocker": 0,
+   "major": 0,
+   "minor": 3,
+   "nit": 4
+  },
+  "finding_ids": [
+   "M1",
+   "M2",
+   "M3",
+   "N1",
+   "N2",
+   "N3",
+   "N4"
+  ],
+  "note": "M1 is in the delta (passive gender consistency); M2/M3 are pre-existing at origin/main; MINORs do not gate."
+ },
+ "mechanical": {
+  "validator_executed": false,
+  "reason": "brief forbids running the repo generator/tests/build under the active memory guard; rules replicated in python",
+  "replicated_from": [
+   "scripts/i18n/ur-activation.test.mjs",
+   "scripts/i18n/check-duplicates.mjs",
+   "scripts/i18n/context-parity.mjs"
+  ],
+  "result": "all PASS"
+ },
+ "rtl_measurement": {
+  "tool": "fribidi --rtl --nobreak",
+  "raw": "paints 'kB 12.4' (reversed)",
+  "isolated": "'12.4 kB' intact via src/i18n/bidi.ts FSI/PDI (needsIsolation true for '12.4 kB')"
+ },
+ "audit_notes_not_execution_log": "Sections 3 and 6 of the report distinguish what was measured (Intl on Node 24.22.1 ICU 78.3/CLDR 48.0; fribidi; python replication) from what was inferred (renderer reaching the helper on every path; no app build or run)."
+}

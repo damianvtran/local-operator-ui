@@ -1,0 +1,55 @@
+{
+  "locale": "hi",
+  "namespace": "ui.chat.canonical",
+  "final_version": "v2",
+  "final_catalogue_sha256": "5ee58b6fadda9ab42a42a58b3f1de681c6fd8d5ba1241696065012bdc33810d2",
+  "en_sha256": "a385671b988e5f03df6f650beb4a06f73c9efaead2316dfa9ab15bf043798765",
+  "chain": [
+    {
+      "instance": "l1verb-hi-r1a",
+      "round": 1,
+      "version": "v1",
+      "model": "deepseek/deepseek-flash",
+      "result": "changes_requested",
+      "counts": {
+        "BLOCKER": 0,
+        "MAJOR": 4,
+        "MINOR": 5,
+        "NIT": 3
+      },
+      "catalogue_sha256": "95d8adb7e1be197078470a7557a789c1179af2c744f65e1cefa553d96846caa9",
+      "receipt": "/Users/damian/local-operator-ui/.worktrees/i18n-l1-tool-verbs/i18n/audits/evidence/hi/ui.chat.canonical/l1verb-hi-wave/l1verb-hi-r1a.receipt.json"
+    },
+    {
+      "instance": "l1verb-hi-r1b",
+      "round": 1,
+      "version": "v1",
+      "model": "anthropic/claude-sonnet-5-5",
+      "result": "changes_requested",
+      "counts": {
+        "BLOCKER": 0,
+        "MAJOR": 3,
+        "MINOR": 5,
+        "NIT": 1
+      },
+      "catalogue_sha256": "95d8adb7e1be197078470a7557a789c1179af2c744f65e1cefa553d96846caa9",
+      "receipt": "/Users/damian/local-operator-ui/.worktrees/i18n-l1-tool-verbs/i18n/audits/evidence/hi/ui.chat.canonical/l1verb-hi-wave/l1verb-hi-r1b.receipt.json"
+    },
+    {
+      "instance": "l1verb-hi-r2",
+      "round": 2,
+      "version": "v2",
+      "model": "deepseek/deepseek-flash",
+      "result": "clean",
+      "counts": {
+        "BLOCKER": 0,
+        "MAJOR": 0,
+        "MINOR": 0,
+        "NIT": 0
+      },
+      "catalogue_sha256": "5ee58b6fadda9ab42a42a58b3f1de681c6fd8d5ba1241696065012bdc33810d2",
+      "receipt": "/Users/damian/local-operator-ui/.worktrees/i18n-l1-tool-verbs/i18n/audits/evidence/hi/ui.chat.canonical/l1verb-hi-wave/l1verb-hi-r2.receipt.json"
+    }
+  ],
+  "note": "Chronological audit chain of the L1 tool-row verb batch. Rounds before the final version audited older staged values and are kept as superseded history in i18n/ledger.json."
+}

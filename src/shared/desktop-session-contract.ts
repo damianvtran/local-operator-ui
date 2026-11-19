@@ -1,4 +1,8 @@
-import type { TagRef } from "./desktop-contract";
+import type {
+	SettingsIntent,
+	SettingsIntentKind,
+	TagRef,
+} from "./desktop-contract";
 // These are the canonical backend wire shapes, not legacy agent/job identities.
 // Owner state revisions and HTTP semantic receipt cursors are independent. See
 // docs/desktop-controls.md before implementing replay or notifications.
@@ -15,6 +19,37 @@ export type CanonicalSessionId = string;
  * unknown rather than to normalise it into a state it does understand. */
 export type SessionCatalogueStatus = { code: string; label: string };
 export type SessionBinding = { agent: string | null; team: string | null };
+/**
+ * Why the core is holding a temporary chat open rather than counting its idle
+ * window down (contract §2.2, a CLOSED enum the copy is keyed off). A code
+ * this build does not know is drawn as "held" without a reason rather than
+ * guessed at.
+ */
+export type TemporaryHoldCode =
+	| "running"
+	| "on_screen"
+	| "open_ask"
+	| "armed_wake"
+	| "armed_monitor"
+	| "unread_mail"
+	| "operator_hold"
+	| "unseen_result"
+	| "unsaved_files"
+	| "linked"
+	| "cannot_verify";
+/**
+ * A temporary chat's state as the core computes it (`features.temporary_chats`,
+ * wire §2.3, frozen). `null` on the row is the explicit "not temporary".
+ */
+export type SessionTemporaryInfo = {
+	/** Epoch seconds. */
+	marked_at: number;
+	/** The idle window in force (15, 30, 120 or 1440). */
+	idle_minutes: number;
+	/** Epoch seconds, or `null` while a hold applies. */
+	deletes_at: number | null;
+	hold: TemporaryHoldCode | string | null;
+};
 /**
  * Who OPENED a conversation, when it was an agent rather than the operator.
  *
@@ -97,6 +132,8 @@ export type SessionCatalogueRow = {
 	pinned: boolean;
 	/** Durable assignments; absence supports backends predating session_tags. */
 	tags?: TagRef[];
+	/** Opaque assignment revision; older cores omit it. Compare only by equality. */
+	tags_revision?: string;
 	/** Explicit primary ID (a member of tags), or null for Untagged. */
 	primary?: string | null;
 	/**
@@ -119,6 +156,13 @@ export type SessionCatalogueRow = {
 	 * by omitting archived rows could do neither.
 	 */
 	archived: boolean;
+	/**
+	 * The TEMPORARY-chat state (`features.temporary_chats`), `null` meaning "not
+	 * temporary". Always present on a capable core, like `archived` and for its
+	 * reason (the merge's "absent key is not a claim" rule); optional here only
+	 * because an older core never sends it, which reads as not temporary.
+	 */
+	temporary?: SessionTemporaryInfo | null;
 	status: SessionCatalogueStatus;
 	binding: SessionBinding;
 	/**
@@ -127,6 +171,18 @@ export type SessionCatalogueRow = {
 	 * inside it may be null.
 	 */
 	opened_by?: SessionOpenedBy | null;
+	/**
+	 * The local agent this conversation is bound to, by ID, and that agent's
+	 * picture digest (agent profile pictures contract, 2026-10-30).
+	 *
+	 * Carried ON THE ROW so the sidebar never fetches per row to learn whether a
+	 * picture exists: `avatar_sha256` null or absent means "draw the glyph", and
+	 * a value is the content address the renderer reads the bytes by. Both are
+	 * optional because a backend that predates the field omits them, which keeps
+	 * every row exactly as it rendered before.
+	 */
+	agent_id?: string | null;
+	avatar_sha256?: string | null;
 	attention?: CompletionAttention;
 	/**
 	 * The feed's stamp for `status`, when the backend served this row knows it.
@@ -161,6 +217,14 @@ export type SessionCatalogueRow = {
 	subagents_running?: number | null;
 	subagents_queued?: number | null;
 	/**
+	 * Whether the session still has work running beside or after its own turn
+	 * (a subagent running or queued, a background job, an armed wait). Core
+	 * derives it from the counts on this row, independent of `status.code` and
+	 * not suppressed by a build drain; absent on a backend older than the
+	 * field, which `hasBackgroundWork` reads as "fall back to the code".
+	 */
+	background_work?: boolean;
+	/**
 	 * -- THE MESH'S FLAT LOCALITY FIELDS, on every row of a listing that asked for
 	 * them (`include_peers`, gated on `features.peers`).
 	 *
@@ -189,6 +253,74 @@ export type SessionCatalogueRow = {
 	/** One sentence when `reachable` is false, in the backend's own words. */
 	unreachable_reason?: string;
 };
+
+/*
+ * `GET /v1/desktop/peers`'s LINK VERDICT, and the evidence behind it.
+ *
+ * WHY THIS LIVES IN THE SHARED CONTRACT rather than only beside the mesh
+ * normaliser (`features/mesh/mesh-types.ts` reads it): these are additive wire
+ * fields on a route every mesh surface consumes, and the distinction they carry
+ * is a transport fact rather than a presentation choice. A refused TCP connection,
+ * a timeout, and a TCP connection whose handshake closes with no reason are three
+ * different observations, and they call for three different operator actions: the
+ * first two mean the peer's relay is not listening or the address is unreachable
+ * (fix the peer's process, or its address), while the third means the peer's
+ * process answered and then refused THIS device (a membership/epoch problem).
+ * Collapsing them into `reachable: false` and one sentence is what made the Mesh
+ * tab tell all three stories with the same words.
+ *
+ * ABSENCE IS "NOT KNOWN", NEVER A DEFAULT. A backend older than these fields
+ * omits them, and every reader must render the older single sentence instead of
+ * inventing a verdict. `attempts` is the per-address evidence (one row per
+ * endpoint actually dialled); `remote_relay` is the backend's DERIVED reading of
+ * the peer's relay (`not_listening` when no endpoint connected AND at least one
+ * refused TCP — the host answered and nothing listened; the property's own doc
+ * carries the measured rule), not a probe this client performs; and `link_state`
+ * is the aggregate verdict.
+ */
+export type PeerLinkState =
+	| "reachable"
+	| "relay_down"
+	| "address_unreachable"
+	| "handshake_refused"
+	| "not_attempted"
+	| "no_endpoint"
+	| "not_a_member"
+	/**
+	 * CLIENT-ONLY, never sent by a conforming backend: the fallback a reader derives
+	 * from the old `reachable` boolean when `link_state` is absent. It deliberately
+	 * says only what the old wire could support, so no surface can present a refused
+	 * connection or a closed handshake as an observed fact this client never saw.
+	 */
+	| "unreachable_legacy";
+
+/** The peer relay's derived state, as the backend saw it on this read. */
+export type PeerRelayState = "running" | "not_listening" | "unknown";
+
+/** One address the relay dialled, and what that attempt observed. */
+export type PeerAttempt = {
+	endpoint: string;
+	/** True only when the wire said the TCP connection was established. */
+	connected: boolean;
+	/**
+	 * The backend's detail token: `ok`, `connect_failed:<Exception>`, `no_answer`,
+	 * `bad_endpoint`, `not_attempted`. An unrecognised token is shown verbatim rather
+	 * than guessed at.
+	 */
+	detail: string;
+	latency_ms: number | null;
+};
+
+/** Optional link facts on a peer row; absent means the backend did not answer. */
+export type PeerLinkFacts = {
+	link_state?: PeerLinkState;
+	/**
+	 * The backend's derived reading of the peer's relay: not_listening when no endpoint connected AND at least one refused TCP (the host was up and nothing listened); unknown otherwise.
+	 */
+	remote_relay?: PeerRelayState;
+	attempts?: PeerAttempt[];
+};
+
 /**
  * One hit from `sessions.search`, returned by the `session_search` capability
  * version 1.
@@ -549,6 +681,20 @@ export type PendingDesktopGate = {
 	 */
 	recommended?: number | null;
 	/**
+	 * Every recommended row of a multi-select ask, as `[0..k-1]`: present only
+	 * when the model recommended TWO OR MORE options (the core hoists them to the
+	 * top in the order it listed them, and `recommended` is then 0, the first of
+	 * them). Absent or null on a single recommendation, on a single-select ask
+	 * and on a backend older than the field.
+	 *
+	 * The rows to mark are this set when it has at least one usable entry
+	 * (a non-negative integer below the option count; each bad entry is dropped,
+	 * never clamped), otherwise `[recommended]`, validated the same way. Read it
+	 * through `ask-recommended.tsx`'s `recommendedIndexes`; it marks rows only
+	 * and pre-ticks nothing.
+	 */
+	recommended_all?: number[] | null;
+	/**
 	 * The `AskQuestion.persist` intent for a `secret: true` ask — whether the
 	 * answer is meant to be saved to the credential store rather than used
 	 * once.
@@ -560,6 +706,60 @@ export type PendingDesktopGate = {
 	 * branch on this yet.
 	 */
 	persist?: boolean;
+	/**
+	 * The session's EFFECTIVE approval mode, for the approval card's policy line.
+	 *
+	 * ADDITIVE and OPTIONAL: a backend older than the effective-policy contract
+	 * omits it, and the card then draws no line rather than guessing from the
+	 * pending request. The request can outlive a policy change, so the provenance
+	 * describes the session's current policy (as stamped by the runtime), not a
+	 * reading derived from this question.
+	 *
+	 * `""` is the core's NOT-STATED stamp (an ask card, an older runtime, or a
+	 * publisher that could not read the policy); it is treated exactly like an
+	 * absent field.
+	 */
+	approval_mode?: "ask" | "auto" | "";
+	/**
+	 * Where `approval_mode` came from: the machine default (`global`), this
+	 * conversation's own recorded choice (`session`), or the run's `--yolo` pin
+	 * (`pin`). Optional for the same version-skew reason as `approval_mode`; the
+	 * card omits its line when either field is absent. `""` is not stated.
+	 */
+	approval_provenance?: "global" | "session" | "pin" | "";
+	/**
+	 * The machine default (`tool_approval_mode`) when it differs from an effective
+	 * `session` override, so the card can name what the conversation overrides
+	 * (`Approvals: Ask — session override; global Auto.`).
+	 *
+	 * ADDITIVE and OPTIONAL: a backend that publishes provenance without the
+	 * default omits it, and the line then says `session override.` without
+	 * inventing a comparison. It is never read as the effective mode. `""` is
+	 * the core's not-stated stamp, like the two fields above.
+	 */
+	approval_global_mode?: "ask" | "auto" | "";
+	/**
+	 * Team Bridge taint, as the host stamps it (the core's `PendingRequest`).
+	 * `bridge_latched`: the conversation holds a teammate agent's message, so no
+	 * mode change from the desktop may answer or loosen this card - the backend
+	 * refuses `approvals auto` here (`approval_reason: "bridge_latched"`) and the
+	 * card must not offer a control that can only fail. `taint_raised`: the taint
+	 * seam is what made this call ask. Both are host-set, never derived from the
+	 * title.
+	 *
+	 * ADDITIVE and OPTIONAL for the same version-skew reason as the fields above:
+	 * an older backend never sends them, and absent reads as false (today's
+	 * unlatched card).
+	 */
+	bridge_latched?: boolean;
+	taint_raised?: boolean;
+	/**
+	 * `"bridge"` when a session auto granted before the conversation latched has
+	 * stopped covering calls, so this gate asks. Sent only in that case; absent
+	 * otherwise. A card carrying it is latched for the purposes of this client
+	 * even if `bridge_latched` were ever missing.
+	 */
+	approval_suspended?: "bridge";
 	/**
 	 * The session's display name, for the notification banner only.
 	 *
@@ -628,8 +828,38 @@ export type PendingAskQuestion = {
 	 * for an absent, null, non-integer or out-of-range value.
 	 */
 	recommended?: number | null;
+	/**
+	 * Every recommended row when a multi-select ask recommends two or more
+	 * options: `[0..k-1]`, with `recommended` still the first of them (0). Absent
+	 * or null for one recommendation, for a single-select ask and on a backend
+	 * older than the field - there `recommended` alone marks exactly one row, so a
+	 * consumer must keep reading it. The rows to mark are this set when it has at
+	 * least one usable entry (a non-negative integer below the option count; each
+	 * bad entry is dropped, never clamped), otherwise `[recommended]`, validated
+	 * the same way by `ask-recommended.tsx`'s `recommendedIndexes`, which marks
+	 * rows and never changes the draft's selection.
+	 */
+	recommended_all?: number[] | null;
 	secret?: boolean;
 	persist?: boolean;
+	/**
+	 * A one-line shell command the agent suggests the user run (core's
+	 * `AskQuestion.command`): stripped, 1..500 characters, no Unicode Cc/Cf/Zl/Zp.
+	 * ADDITIVE and OPTIONAL: absent on older backends and on bridge rows (core
+	 * drops it there, so another team's agent cannot hand the operator a command).
+	 * NEVER read directly: `askCommandOf` (`features/chat/ask-command.ts`)
+	 * re-applies the core rule and answers `null` for a forged or malformed value,
+	 * so no action is ever drawn for a row the core would have refused.
+	 */
+	command?: string;
+	/**
+	 * WHERE `command` is meant to run: `"agent"` (the device the agent works on,
+	 * core's default, stamped whenever `command` is present) or `"user"` (the
+	 * user's own computer - the one showing this UI). Any other value, or its
+	 * absence beside a command, is read as UNKNOWN and fails closed: the card
+	 * offers Insert only, never Run (`askCommandRunnable`).
+	 */
+	command_target?: "agent" | "user";
 	[key: string]: unknown;
 };
 /**
@@ -722,6 +952,34 @@ export type PendingAsk = {
 	 * between a receipt and a promise.
 	 */
 	delivered?: boolean;
+	/**
+	 * How many messages the USER sent in this conversation after this ask was
+	 * queued, and the epoch-ms stamp of the latest one (SA-D7's manager override;
+	 * harness PR #2833).
+	 *
+	 * The pair is the card's honesty about a stale ask: an ask can sit open across
+	 * a conversation that has already moved past it, and a reader deciding whether
+	 * it is still worth answering needs to know the conversation kept going.
+	 *
+	 * ADDITIVE AND OPTIONAL, and absent is "cannot say" rather than zero: an older
+	 * runtime omits both keys, and a card that defaulted them to 0 would claim the
+	 * user had said nothing since the ask when the truth is it never asked. Both
+	 * keys travel together from the queue's projection (`(None, None)` when there
+	 * is no admitted user message to count), so a count without a stamp is a shape
+	 * this client does not render a line for.
+	 */
+	user_messages_since?: number | null;
+	last_user_message_at?: number | null;
+	/**
+	 * WHEN a dismissed ask was put away, and WHY (harness PR-4c, SA-D8). Optional and
+	 * absent on every wire this app could read before that release, INCLUDING the one
+	 * #2833 ships: a dismissal written by an older build carries neither key, and the
+	 * surfaces read absence as the contract's own "no reply was sent" rather than as a
+	 * reason. `dismissed_reason` is the wire's own vocabulary (`moot` |
+	 * `answered_in_chat`), narrowed at the reader (`askDismissReason`).
+	 */
+	dismissed_at?: number | null;
+	dismissed_reason?: string | null;
 	questions: PendingAskQuestion[];
 	/**
 	 * The answers, keyed by question id; each a LIST because a question may be
@@ -1131,6 +1389,8 @@ export type CanonicalSpendChannelRow = {
 
 /** The subagent/forked-children contribution already inside the grand total. */
 export type CanonicalSpendChildren = {
+	/** Additive payment split; absence means the child basis was not recorded. */
+	by_basis?: Record<string, number>;
 	/** Integer micro-USD; always a stated number (0 = stated zero). */
 	total_micro: number;
 	knowledge: "unknown" | "exact" | "partial" | "floor";
@@ -1288,6 +1548,15 @@ export type CanonicalSpendChannels = {
 	vocabulary?: CanonicalSpendVocabulary;
 };
 
+/** See `CanonicalFrontendState.effort_displacement`. Every key is untrusted wire text. */
+export type CanonicalEffortDisplacement = {
+	chosen?: string;
+	effective?: string;
+	selected?: string;
+	serving?: string;
+	note?: string;
+};
+
 export type CanonicalFrontendState = {
 	attention?: CompletionAttention;
 	state_version: number;
@@ -1341,6 +1610,22 @@ export type CanonicalFrontendState = {
 	effective_identity?: CanonicalEffectiveIdentity;
 	selected_model: CanonicalModel | null;
 	effective_model: CanonicalModel | null;
+	/**
+	 * The level the conversation CHOSE when it is NOT the level now serving.
+	 * Published by the backend's `frontend_state.effort_displacement`.
+	 *
+	 * The effort chip reads `effective_model`, so it correctly names the level
+	 * in force. But a fallback route (a chain entry pinning its own level, or a
+	 * ladder that clamps the choice) then makes `Max` read `High` with nothing
+	 * on screen saying why. The operator reported exactly that on a remote
+	 * session (2026-10-21). This block is that "why": `{chosen, effective,
+	 * selected, serving, note}`, where `note` is the backend's own sentence,
+	 * shared with the TUI notice, so no client words the fact differently.
+	 *
+	 * Optional and `{}`-when-nothing: an older host omits it, and both mean
+	 * "no displacement to report". Read it through `effortDisplacementNote`.
+	 */
+	effort_displacement?: CanonicalEffortDisplacement;
 	/**
 	 * Whether the model this session runs can still authenticate (see
 	 * `CanonicalModelAccess`). Optional: an older host omits it, and absence
@@ -1598,14 +1883,44 @@ export type CanonicalFrontendSync = {
  * the next reader of this wire does not have to rediscover it.
  */
 export type CanonicalContentBlock = {
-	/** Absent on durable rows: the encoder drops pydantic defaults. */
-	type?: "text" | "image";
+	/** Absent on durable rows: the encoder drops pydantic defaults. A document
+	 *  block is `type: "document"`; a legacy row that predates the discriminator
+	 *  carries `filename` beside `mime_type` and an `attachment` digest instead
+	 *  (contract v1 §5). */
+	type?: "text" | "image" | "document" | "artifact";
 	text?: string;
 	/** Inline base64. Live events always; durable rows only under 1 KiB. */
 	data?: string;
-	/** Attachment-store digest. Durable rows over 1 KiB. */
+	/** Attachment-store digest. Durable rows over 1 KiB. On an ARTIFACT block
+	 *  this is a declared field (the local copy), not an encoding detail. */
 	attachment?: string;
 	mime_type?: string;
+	// --- document fields (DocumentContent, attachment contract v1 §2/§5) ---
+	/** The file's display name. */
+	filename?: string;
+	/** The origin absolute path, display/provenance only. */
+	path?: string;
+	/** The attachment store's absolute path (the retained copy), when the row
+	 *  carries one. The missing state copies THIS, never the dead origin path. */
+	stored_path?: string;
+	/** Byte size of the original file. */
+	bytes?: number;
+	/** How the turn reached the model; historical metadata only. */
+	injection?: "native" | "extracted" | "reference";
+	// --- output-artifact fields (AttachmentContent) ---
+	/** "image" | "video" | "audio". REQUIRED on an artifact, so it is always
+	 *  present on durable rows (the encoder drops only defaults). */
+	kind?: string;
+	/** MIME of the cached bytes; the artifact's mime_type equivalent. */
+	content_type?: string;
+	/** Provider URL (provenance / re-fetch fallback). */
+	source_url?: string;
+	size_bytes?: number;
+	width?: number;
+	height?: number;
+	duration_s?: number;
+	/** Short display handle. Never a filesystem path. */
+	name?: string;
 };
 /**
  * One durable row as a page, a payload subset or a dependency subset carries
@@ -1822,6 +2137,52 @@ export type DesktopSessionFrame =
 				 * flip re-reads through `/history` as it always did.
 				 */
 				cold?: boolean;
+				/**
+				 * The bridge could not deliver this frame's real delta, and sent a passive
+				 * notice instead.
+				 *
+				 * WHY A FLAG RATHER THAN A NEW FRAME TYPE. The backend replaces any frame
+				 * larger than its 1 MiB socket cap with this notice, and the cap is a
+				 * transport fact about THIS frame rather than a new kind of state: an
+				 * older renderer that ignores the field still folds `changes` exactly as
+				 * before, so the frame stays additive and replay-compatible. A renderer
+				 * that reads it must say the view may be stale instead of silently
+				 * freezing - which is the measured defect this field is for (a long-lived
+				 * session stopped updating with only a quiet trace line to show for it).
+				 *
+				 * ABSENT MEANS HEALTHY: only `true` is a notice, and a daemon that
+				 * predates the field never sets it.
+				 */
+				degraded?: boolean;
+				/**
+				 * The bridge has STOPPED publishing this session's deltas, and a complete
+				 * snapshot is the only thing that will resume them.
+				 *
+				 * Distinct from `degraded` because the reader's action differs: a degraded
+				 * frame is one lost delta the next complete frame may repair, while a
+				 * paused stream stays paused until the client asks for history again. Both
+				 * raise the same banner - the honest claim is identical ("this may be
+				 * stale"); the difference is whether waiting can fix it.
+				 */
+				paused?: boolean;
+				/**
+				 * The live roster's DELTA form, replacing `changes.jobs` on a tick.
+				 *
+				 * WHY THE ROSTER IS NOT IN `changes` ANY MORE. It is the largest bounded
+				 * part of the frontend payload and the backend writes it on every tick;
+				 * re-sending the whole list both costs the socket cap and is the frame
+				 * class that used to be replaced by a passive notice. `changes.jobs`
+				 * remains the full list on a snapshot, and when an update carries BOTH
+				 * the full list wins (a producer that sends everything knows more than a
+				 * delta does). Additive: a daemon that predates the field keeps sending
+				 * `changes.jobs` and an older renderer ignores this one.
+				 */
+				job_deltas?: {
+					upserted?: Array<Record<string, unknown>>;
+					removed?: string[];
+					order?: string[];
+					roster_size?: number;
+				};
 				job_trajectory_appends: Record<string, never>;
 				job_trajectory_replacements: never[];
 			}
@@ -1860,7 +2221,15 @@ export type DesktopSessionFrame =
 				cold: boolean;
 			}
 	  >
-	| Receipt<"event", { type: string; [key: string]: unknown }>
+	/**
+	 * An `event` frame is normally a typed canonical AgentEvent the transcript
+	 * reducer paints. ONE shape is not: a bridge notice carrying
+	 * `action: "reload"`, which tells the viewer its delta stream could not be
+	 * delivered and the conversation should be re-read from history. It is read
+	 * by the same banner as the paused `frontend.update` flags (see
+	 * `use-canonical-session.ts`), never by `applyEvent`.
+	 */
+	| Receipt<"event", { type: string; action?: string; [key: string]: unknown }>
 	// Additive and replay-exempt: an older renderer falls through every branch
 	// of the frame loop, advances its receipt cursor on `seq`, and paints
 	// nothing. Deliberately NOT an `event`, which is a typed canonical
@@ -1893,6 +2262,21 @@ export type DesktopSessionFrame =
 	 */
 	| Receipt<"aside_delta", { aside_id: string; delta: string }>
 	| { session_id: CanonicalSessionId; type: "heartbeat" | "gap" };
+
+/** The `team_bridge_authorize` frame's payload, as the daemon publishes it
+ * (local-operator #4099). The renderer parses it at the feed boundary
+ * (`parseAuthorizeFrame`) rather than trusting this shape. */
+export type TeamBridgeAuthorizeFramePayload = {
+	authorize_id: string;
+	client_ref: string | null;
+	state: "prompting" | "signed" | "dismissed" | "refused";
+	items: Array<{
+		message_id: string;
+		word: "approve" | "deny";
+		sender: string | null;
+		excerpt: string | null;
+	}>;
+};
 
 /**
  * The machine-wide feed's frame family (`GET /v1/desktop/events`).
@@ -1944,6 +2328,32 @@ export type DesktopFeedFrame =
 				 * that predates the `authoring` frame does not publish the frame either.
 				 */
 				authoring_revision: number;
+				/** Existing receipt baseline; no delivery or content history. */
+				attention?: Record<string, CompletionAttention>;
+				/** Same derived status baseline used by session_status deltas.
+				 * Absent on older cores: unknown status is never an unread mark. */
+				attention_status?: Record<string, { code: string; revision: number }>;
+				approvals_pending?: boolean | null;
+				/**
+				 * The one live phone-pairing approval id from the same read
+				 * (`features.phone_pairing`), so a window that connects mid-request can
+				 * raise the pairing card without waiting for a change frame. Null when
+				 * none is live or the read failed; absent on older cores.
+				 */
+				approvals_pair_request?: string | null;
+				/**
+				 * The oldest open MESH pairing card's id (`inviter:<id>` / `joiner:<id>`,
+				 * `features.mesh_pairing`), so the rail badge lights for a pairing on the
+				 * first frame. Null when none is open; absent on older cores.
+				 */
+				approvals_pairing_id?: string | null;
+				/** Null means the inbox store was unreadable, not verified empty. */
+				notifications?: {
+					revision: number;
+					unread_count: number;
+					waiting_count: number;
+					waiting_unread_count: number;
+				} | null;
 			};
 	  }
 	| {
@@ -1987,7 +2397,18 @@ export type DesktopFeedFrame =
 			seq: number;
 			type: "session_status";
 			session_id: CanonicalSessionId;
-			payload: { code: string; label: string; revision: number };
+			/**
+			 * The counts ride the frame beside the code (core: they are in the
+			 * dedupe key, and a 1->0 transition is ONE frame), so the store can
+			 * write code and counts in one update and a row never leaves Running
+			 * a frame before its counts say the work ended. All optional: an
+			 * older backend sends only the derived pair.
+			 */
+			payload: {
+				code: string;
+				label: string;
+				revision: number;
+			} & SessionStatusFrameCounts;
 	  }
 	| {
 			epoch: string;
@@ -2047,6 +2468,50 @@ export type DesktopFeedFrame =
 			session_id: CanonicalSessionId;
 			payload: { revision: number };
 	  }
+	/** Device-local requested approvals, expiry-folded by their existing store. */
+	| {
+			epoch: string;
+			seq: number;
+			type: "approvals";
+			/**
+			 * `pair_request`: the live `pair_phone` approval id, or null
+			 * (`features.phone_pairing`). Published when EITHER level changes, so a
+			 * pairing withdrawn or decided elsewhere arrives as a frame. Absent on
+			 * older cores, which never file a pairing card.
+			 */
+			payload: {
+				pending: boolean;
+				pair_request?: string | null;
+				/**
+				 * The oldest open mesh pairing card's id, or null
+				 * (`features.mesh_pairing`); core ORs open cards into `pending` too.
+				 * Absent on older cores.
+				 */
+				pairing_id?: string | null;
+			};
+	  }
+	/**
+	 * THE NOTIFICATIONS REEL MOVED (notifications contract § 5.3): an item was
+	 * raised, updated, read or dismissed, or an open ask appeared or settled.
+	 *
+	 * A LEVEL, not a notification, like `catalogue`: invalidation only, carrying
+	 * the store's high-water mark as its revision plus the two counts the
+	 * sidebar badge reads, so a renderer can repaint the badge before its
+	 * refetch lands. Machine-wide (no `session_id`), at most once per backend
+	 * tick. Sent only by a backend advertising `features.notifications`; an
+	 * older renderer falls through every branch of its frame loop.
+	 */
+	| {
+			epoch: string;
+			seq: number;
+			type: "notifications";
+			payload: {
+				revision: number;
+				unread_count: number;
+				waiting_count: number;
+				waiting_unread_count: number;
+			};
+	  }
 	| {
 			epoch: string;
 			seq: number;
@@ -2079,7 +2544,54 @@ export type DesktopFeedFrame =
 				active: { session_id: string; enabled_at: number } | null;
 			};
 	  }
+	| {
+			epoch: string;
+			seq: number;
+			type: "agent.avatar.changed";
+			/*
+			 * A local agent's profile picture was written or cleared (agent profile
+			 * pictures contract, frozen 2026-10-30). Published AFTER core commits the
+			 * file and `agent.yml`, so a read on this frame sees the new state.
+			 * `sha256: null` is a removal. Machine-wide like `catalogue`: no session.
+			 *
+			 * A write from the CLI happens in another process and publishes nothing
+			 * here, so this frame is a fast path, not the authority: the agents and
+			 * sessions reads that carry `avatar.sha256` are.
+			 */
+			payload: { agent_id: string; sha256: string | null };
+	  }
 	| { epoch: string; seq: number; type: "heartbeat"; payload: { ts: number } }
+	/**
+	 * A Team Bridge batch Touch ID prompt moved (local-operator #4099, security
+	 * S-6). Machine-wide and live-only: the OS sheet cannot say what it is for and
+	 * any local bearer holder can ask the daemon to raise it, so the daemon
+	 * publishes what each prompt would sign - whoever started it - and the
+	 * desktop shows it. `sender`/`excerpt` are resolved by the daemon from the
+	 * local ask card, `null` for an item with no local ask; never a body.
+	 */
+	| {
+			epoch: string;
+			seq: number;
+			type: "team_bridge_authorize";
+			payload: TeamBridgeAuthorizeFramePayload;
+	  }
+	/**
+	 * ONE SESSION's settings-intent slot moved (`features.settings_intents`).
+	 *
+	 * Live-only, like `notification`: `GET /v1/desktop/settings-intents` is the
+	 * baseline, re-read on every feed reconnect, so a frame missed during an
+	 * outage costs nothing. `intent: null` means the slot was pruned. Applied by
+	 * `settings-intents.ts`'s generation guard, so a frame that arrives once per
+	 * mounted feed hook (several per window) is idempotent. An older renderer
+	 * ignores the type outright.
+	 */
+	| {
+			epoch: string;
+			seq: number;
+			type: "settings_intent";
+			session_id: CanonicalSessionId;
+			payload: { kind: SettingsIntentKind; intent: SettingsIntent | null };
+	  }
 	| {
 			epoch: string;
 			seq: number;
@@ -2089,6 +2601,52 @@ export type DesktopFeedFrame =
 
 /** The outer bridge cursor a desktop frame carries, as the client records it. */
 export type DesktopStreamCursor = { epoch: string; seq: number };
+
+/**
+ * Whether a frame is newer than the receipt high-water mark already accepted
+ * for this session view.
+ *
+ * The bridge assigns `seq` on ONE monotonically increasing receipt clock and
+ * puts replay BEFORE the authoritative snapshot. A late frame at or behind the
+ * mark is therefore already represented by the state the viewer accepted (or is
+ * an out-of-order delivery); it must not become a second, older paint commit.
+ * This is deliberately a RECEIPT check, not an owner `frontend.sequence` check:
+ * the two clocks are independent, and comparing them would reject valid paint.
+ *
+ * `open` is the boundary exception: a new subscription may use a new epoch and
+ * restart the sequence. The caller resets its high-water mark at that boundary;
+ * no comparison is meaningful across epochs. Same-epoch frames, including a
+ * replayed `history_delta(reset: true)`, are strict-greater-only.
+ */
+export function isNewerDesktopFrame(
+	prior: DesktopStreamCursor | null | undefined,
+	frame: DesktopStreamCursor,
+	options: {
+		/**
+		 * Accept a frame at the SAME receipt position. Only an authoritative frame
+		 * may ask for this, and the snapshot is the one that does.
+		 *
+		 * WHY IT IS NEEDED RATHER THAN TIDY. The bridge builds `open` from
+		 * `cutoff = bridge.sequence` and then replays every retained frame with
+		 * `after_seq < seq <= cutoff`, followed by the snapshot whose own `seq` is
+		 * the sequence read while it was built — so a replay can END on `cutoff`
+		 * and the snapshot then carries the very same number (`docs/DESKTOP_API.md`,
+		 * "the snapshot's `seq` is the watermark"). Under a strict `>` the snapshot
+		 * would be refused exactly when the replay had already reached the
+		 * watermark, and the pane would sit on the replay's rows with no
+		 * authoritative state - the "stuck at connecting" failure. Equal is not
+		 * older: the snapshot IS the state at that position.
+		 */
+		allowEqual?: boolean;
+	} = {},
+): boolean {
+	if (!prior) return true;
+	if (prior.epoch !== frame.epoch) return true;
+	return (
+		frame.seq > prior.seq ||
+		(options.allowEqual === true && frame.seq === prior.seq)
+	);
+}
 
 /**
  * Whether a live `frontend.replace` may be applied over the painted projection.
@@ -2221,4 +2779,17 @@ export type DesktopInterruptReceipt = {
 	children_running: number;
 	background_jobs: number;
 	replayed: boolean;
+};
+
+/**
+ * The background-work counts a `session_status` frame carries beside its code
+ * (same names and meaning as the catalogue row's fields). `null` is "this
+ * build does not report", never zero.
+ */
+export type SessionStatusFrameCounts = {
+	subagents_running?: number | null;
+	subagents_queued?: number | null;
+	jobs_running?: number | null;
+	waiting_on?: number | null;
+	background_work?: boolean;
 };

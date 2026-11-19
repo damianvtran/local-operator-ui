@@ -1,0 +1,123 @@
+// One private headless Chrome, every frame of the before/after pairs. Reuses
+// capture-evidence.mjs's CDP approach (raw websocket, --headless=new, throwaway
+// profile, mock keychain) but writes ONLY its own files: no manifest, no sweep.
+import { spawn } from "node:child_process";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+const OUT = process.env.OUT;
+const BEFORE = process.env.BEFORE_ORIGIN;
+const AFTER = process.env.AFTER_ORIGIN;
+const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+const W = 760;
+const H = 960;
+mkdirSync(OUT, { recursive: true });
+const profile = mkdtempSync(join(tmpdir(), "lo-skill-ink-ev-"));
+const chrome = spawn(
+	CHROME,
+	[
+		"--headless=new",
+		"--no-sandbox",
+		"--disable-gpu",
+		"--hide-scrollbars",
+		"--use-mock-keychain",
+		`--user-data-dir=${profile}`,
+		"--remote-debugging-port=0",
+		"about:blank",
+	],
+	{ stdio: ["ignore", "ignore", "pipe"], env: { ...process.env, TZ: "America/New_York" } },
+);
+const stop = () => {
+	chrome.kill("SIGKILL");
+	rmSync(profile, { recursive: true, force: true, maxRetries: 20, retryDelay: 50 });
+};
+process.on("exit", stop);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+try {
+	const ws = await new Promise((resolve, reject) => {
+		let buf = "";
+		const t = setTimeout(() => reject(new Error("no debug port")), 30000);
+		chrome.stderr.on("data", (d) => {
+			buf += d;
+			const m = buf.match(/DevTools listening on (ws:\/\/[^\s]+)/);
+			if (m) {
+				clearTimeout(t);
+				resolve(m[1]);
+			}
+		});
+	});
+	const { host } = new URL(ws);
+	const list = await fetch(`http://${host}/json`).then((r) => r.json());
+	const sock = new WebSocket(list.find((t) => t.type === "page").webSocketDebuggerUrl);
+	await new Promise((res, rej) => {
+		sock.addEventListener("open", res, { once: true });
+		sock.addEventListener("error", rej, { once: true });
+	});
+	let id = 0;
+	const pending = new Map();
+	sock.addEventListener("message", (ev) => {
+		const m = JSON.parse(ev.data);
+		if (m.id && pending.has(m.id)) {
+			const { resolve, reject } = pending.get(m.id);
+			pending.delete(m.id);
+			m.error ? reject(new Error(m.error.message)) : resolve(m.result);
+		}
+	});
+	const send = (method, params = {}) =>
+		new Promise((resolve, reject) => {
+			const n = ++id;
+			pending.set(n, { resolve, reject });
+			sock.send(JSON.stringify({ id: n, method, params }));
+		});
+	const evaluate = async (expression) =>
+		(await send("Runtime.evaluate", { expression, returnByValue: true, awaitPromise: true })).result.value;
+	await send("Page.enable");
+	await send("Runtime.enable");
+	await send("Emulation.setDeviceMetricsOverride", { width: W, height: H, deviceScaleFactor: 2, mobile: false });
+	await send("Emulation.setFocusEmulationEnabled", { enabled: true });
+
+	const measurements = [];
+	const shoot = async (side, origin, story, theme, name) => {
+		await send("Page.navigate", { url: "about:blank" });
+		await sleep(150);
+		await send("Page.navigate", {
+			url: `${origin}/iframe.html?id=chat-canonical-skill-token-ink--${story}&viewMode=story&args=theme:${theme}`,
+		});
+		let ready = "";
+		for (let i = 0; i < 150; i++) {
+			ready = await evaluate(`(document.documentElement.dataset.theme||'') + '|' + document.querySelectorAll('[data-record-id]').length + '|' + (document.body.innerText.includes('and then summarise'))`);
+			const [t, n, txt] = ready.split("|");
+			if (t === theme && Number(n) >= 5 && txt === "true") break;
+			await sleep(200);
+		}
+		if (!ready.startsWith(`${theme}|`) || !ready.endsWith("|true")) { console.log("BODY:", await evaluate("document.body.innerText.slice(0,800)")); throw new Error(`${side} ${story} ${theme}: not ready (${ready})`); }
+		await evaluate(`document.fonts.ready.then(() => true)`);
+		await evaluate(`(() => { const s = document.createElement('style'); s.textContent = '*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}'; document.head.appendChild(s); return true; })()`);
+		await sleep(400);
+		const probe = await evaluate(`(() => {
+			const spans = [...document.querySelectorAll('.lo-skill-token')];
+			const cs = (el) => { const c = getComputedStyle(el); return { color: c.color, weight: c.fontWeight }; };
+			const prose = [...document.querySelectorAll('[data-record-id] p')].find(p => p.textContent.includes('use ') || p.textContent.includes('use')) ;
+			return {
+				tokens: spans.map(s => s.textContent),
+				tokenStyle: spans[0] ? cs(spans[0]) : null,
+				proseStyle: prose ? cs(prose) : null,
+				commandVar: getComputedStyle(document.documentElement).getPropertyValue('--lo-token-command').trim(),
+			};
+		})()`);
+		const { data } = await send("Page.captureScreenshot", { format: "png", clip: { x: 0, y: 0, width: W, height: H, scale: 1 } });
+		writeFileSync(join(OUT, name), Buffer.from(data, "base64"));
+		measurements.push({ file: name, side, story, theme, ...probe });
+		console.log(`${name}: tokens=${JSON.stringify(probe.tokens)} token=${JSON.stringify(probe.tokenStyle)} prose=${JSON.stringify(probe.proseStyle)}`);
+	};
+	for (const theme of ["localOperatorLight", "localOperatorDark", "obsidian"]) {
+		await shoot("before", BEFORE, "by-turn", theme, `before-${theme}.png`);
+		await shoot("after", AFTER, "by-turn", theme, `after-${theme}.png`);
+	}
+	await shoot("after", AFTER, "by-response", "localOperatorLight", "after-by-response-localOperatorLight.png");
+	await shoot("after", AFTER, "by-turn", "localOperatorLight", "after-by-turn-localOperatorLight.png");
+	writeFileSync(join(OUT, "measurements.json"), JSON.stringify(measurements, null, 2));
+} finally {
+	stop();
+}

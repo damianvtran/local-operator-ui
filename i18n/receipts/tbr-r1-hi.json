@@ -1,0 +1,44 @@
+{
+  "auditor": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "tbr-r1-hi",
+  "session": "b9b1d3315c4b",
+  "date": "2026-10-21",
+  "locale": "hi",
+  "translator": "translator",
+  "namespace": "ui.teamBridge",
+  "status": "passed",
+  "keys_audited": 20,
+  "scope": "Twenty-key reaction-picker delta: ui.teamBridge.reactions.* (add, search, categories, all, frequent, tone, toneDefault, empty, failed, category0-category8, choose, noResults). Inherit the base 2e16fb1456 full namespace audit for the other 109 values, all verified unchanged; no new full semantic audit of unchanged copy. Catalogue audit only, not rendered-fit, activation or release approval.",
+  "sha256": {
+    "en": "69f741a64df96b85b00e2f389bcda35bbbcc7cc023c4e2f31c997ef64fc0b50c",
+    "hi": "39e8c6ea5a8f22c406f2c819e9540d72672a9cc28b77e4093abdccb26afef3ef",
+    "context": "ad0eef37d14411e02b07a083f3873518362734fefd8caa930cf4196728b2ef84"
+  },
+  "findings": [],
+  "inherited_receipt": {
+    "base": "2e16fb1456",
+    "path": "i18n/receipts/tbd-r3-hi.json",
+    "sha256": "b0a3d96a6fce52dab28f89094ee16997846e8301cedbe06d90733e8d450b0313",
+    "keys_inherited": 109,
+    "unchanged_values_verified": 109,
+    "base_source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+    "base_target_sha256": "78ff808697020fdde224fe7609a18d4aee9ab63f1f8719d2447d204a39933b7c",
+    "full_coverage_receipt": {
+      "path": "i18n/receipts/tbd-r2-hi.json",
+      "sha256": "ff72f6659121b330fa88f57fc8bf00816c35fd3df56dfaca736655b5cc92eadd"
+    }
+  },
+  "reference_sha256": {
+    "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+  },
+  "validation": {
+    "independence": "This auditor did not translate or edit any catalogue or code; repo worktree used read-only (no stage/commit/stash/checkout). Served as anthropic/claude-opus-5-5 throughout; no model switch or fallback observed.",
+    "semantics": "Read all 20 values against English, frozen context sidecar and the picker/reactions TSX usage. reaction -> प्रतिक्रिया (feminine; failed agrees: सहेजी नहीं गई) and emoji -> इमोजी are used consistently across the delta. search इमोजी खोजें matches टैग खोजें/फ़ाइलें खोजें; failed matches the locale's 'X सहेजी/सहेजे नहीं गई/गए। फिर कोशिश करें।' pattern (ui.teamBridge.notify.error, ui.chat.tags.save_failed); empty/noResults match 'कोई एजेंट नहीं मिला'; categories uses the locale's श्रेणियाँ. Polite imperative (जोड़ें, खोजें, चुनें, कोशिश करें), no तुम/तू. Category labels in Unicode group order are natural Hindi (खान-पान is an idiomatic compression of Food and drink; चिह्न for Symbols is an acceptable common rendering); hi CLDR characterLabels could not be fetched (network handshake failed) so exact CLDR-string identity is not claimed. toneDefault डिफ़ॉल्ट रंग omits त्वचा, accepted because it is the first option of the select labelled त्वचा का रंग beside toned 👍 options and the option is width-constrained. Nukta (डिफ़ॉल्ट) and chandrabindu plurals (श्रेणियाँ, भावनाएँ, गतिविधियाँ, वस्तुएँ) are consistent with the locale; danda only in the sentence-form failed value; labels carry no terminal punctuation, matching English.",
+    "icu": "Parsed each of the 20 actual values with @formatjs/icu-messageformat-parser via node (repo node_modules): every value is a single literal AST node with zero arguments; no {, }, <, > characters. All values NFC (v === v.normalize('NFC')); none contain U+200E/200F/202A-202E/2066-2069/061C or ZWJ/ZWNJ; no leading/trailing whitespace. Python flatten of en/hi/base: 129 en keys = 129 hi keys, no missing/extra; base 2e16fb1456 hi has 109 keys, all 109 byte-identical in target; the 20 new keys are exactly the scoped reactions delta.",
+    "terminology": "Glossary has no emoji/reaction row; style guide has no call for them. Within the delta, इमोजी and प्रतिक्रिया are each used for one English term without drift. Observation only, not a finding: ui.chat.response_actions.label (outside this namespace/delta) also uses प्रतिक्रिया for 'response'; the locale otherwise renders response as जवाब.",
+    "overflow": "Static code-point comparisons (en -> hi): add 12->18 (aria-label only), search 12->11, categories 16->15, all 9->9, frequent 15->21 (14 grapheme clusters; visible 12px heading sharing a flex justify-between row with the tone select in a w-80 picker - rendered check recommended), tone 9->12 (aria-label only), toneDefault 17->12 (visible narrow option, shorter), empty/noResults 14->19 (noResults in a full-width p-4 block, can wrap), failed 39->42 (inline alert, can wrap), category0-8 all <= English (tooltip/aria only), choose 15->11. No value is materially longer in a fixed-width visible slot except frequent, flagged for rendered check only, not a finding.",
+    "limitations": "Browser unavailable by task constraint. No screenshots, glyph metrics, visual-fit or native bidi-rendering claim. No catalogue/code edits."
+  }
+}

@@ -110,7 +110,7 @@ const bundle = await build({
 			export { useConversationInputStore } from "./src/renderer/src/shared/store/conversation-input-store";
 			export * from "./src/renderer/src/shared/store/canonical-sessions-store";
 			export { composerNoticeFor, retryOfferedForFailureCode } from "./src/renderer/src/features/chat/composer-notice";
-			export { ASIDE_ASK_BUSY, ASIDE_NOT_ANSWERED_SENTENCE } from "./src/renderer/src/features/chat/aside";
+			export { asideAskBusy, asideNotAnsweredSentence } from "./src/renderer/src/features/chat/aside";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -521,8 +521,18 @@ test("the send control is pressable while a send is in flight", () => {
 		!code.includes("isLoading"),
 		"the send control is disabled for the whole flight again, so the press the send lock exists to answer cannot reach it",
 	);
+	/*
+	 * The control's predicate is its slot role's `enabled`; a box that refuses input
+	 * reaches the role through `refused`, and an in-flight send reaches it only as
+	 * `sendBusy` (which never disables a Send that has text - see composer-slots).
+	 */
 	assert.ok(
-		code.includes("isInputDisabled"),
+		code.includes("disabled={!slotB.enabled}"),
+		"the send control disables on its slot role",
+	);
+	assert.match(
+		composer,
+		/refused: isInputDisabled \|\| sendRefused,/,
 		"a box that refuses input must still disable the press",
 	);
 });
@@ -599,11 +609,11 @@ test("a stale retry flag cannot add a press the failure's own code withholds", (
 test("the aside refusal rows are the aside module's own sentences", () => {
 	assert.equal(
 		module.SEND_FAILURE_COPY.asideNotAnswered,
-		module.ASIDE_NOT_ANSWERED_SENTENCE,
+		module.asideNotAnsweredSentence(),
 	);
 	assert.equal(
 		module.SEND_FAILURE_COPY.asideStillAnswering,
-		module.ASIDE_ASK_BUSY,
+		module.asideAskBusy(),
 	);
 });
 

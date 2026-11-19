@@ -59,7 +59,7 @@
  *
  * And around the composer's right-hand cluster, where the reported hazard lived:
  * the Stop control's box is held for a grace window after the turn it belonged to
- * ends (`src/renderer/src/features/chat/interrupt-slot-grace.ts`), so the rig
+ * ends (the press guard, `src/renderer/src/features/chat/composer-slots.ts`), so the rig
  * measures BOTH sides of that window in the real app - the box still holding the
  * point the press landed in, and, once the window has passed, the collapsed row
  * with the dictation control beside Send, live at the point it now occupies.
@@ -572,24 +572,27 @@ if (!String(capabilities).includes('"session_interrupt":1')) {
 const STOP = '[aria-label="Stop"]';
 const MIC = '[aria-label="Start recording"]';
 const RECORDING =
-	'[aria-label="Cancel recording"], [aria-label="Confirm recording"]';
+	'[aria-label="Cancel recording"], [aria-label="Insert transcript"]';
 
 /*
- * THE GRACE WINDOW, read from the module the app ships rather than restated
- * here. The wait below has to outlast it, and a rig that carried its own copy of
- * the number would go on passing after the app's own changed - the failure mode
- * being a settled-row measurement taken while the box was still up, which reads
- * as a regression that is not there.
+ * THE PRESS GUARD'S WINDOW, read from the module the app ships rather than
+ * restated here. It was the held-box grace window (`interrupt-slot-grace.ts`,
+ * deleted with the button-slot change): Stop and Send now share one slot, so the
+ * mic never moves and nothing is held. The same 500 ms survives as the guard a
+ * Stop / Cancel / Confirm / Send-recording press is ignored for after its role
+ * arrives. The `slot.*` steps below were written against the held box and have
+ * NOT been re-run against the slot model; the cluster's positions across every
+ * state are measured by `scripts/composer-readings-geometry.mjs --states=...`.
  */
 const INTERRUPT_SLOT_GRACE_MS = (() => {
 	const source = readFileSync(
-		"src/renderer/src/features/chat/interrupt-slot-grace.ts",
+		"src/renderer/src/features/chat/composer-slots.ts",
 		"utf8",
 	);
-	const match = /INTERRUPT_SLOT_GRACE_MS\s*=\s*(\d+)/.exec(source);
+	const match = /ROLE_GUARD_MS\s*=\s*(\d+)/.exec(source);
 	if (!match)
 		throw new Error(
-			"the grace window is not declared in src/renderer/src/features/chat/interrupt-slot-grace.ts",
+			"the press guard window is not declared in src/renderer/src/features/chat/composer-slots.ts",
 		);
 	return Number(match[1]);
 })();
@@ -844,7 +847,7 @@ const probeSlot = async (point) => {
 	const afterPress = await stamp();
 	await sleep(700);
 	const after = await cdp.evaluate(`JSON.stringify({
-		recording: !!document.querySelector('[aria-label="Cancel recording"], [aria-label="Confirm recording"]'),
+		recording: !!document.querySelector('[aria-label="Cancel recording"], [aria-label="Insert transcript"]'),
 		mic: !!document.querySelector('[aria-label="Start recording"]'),
 	})`);
 	return {
@@ -938,7 +941,7 @@ const controlAt = async (selector) => {
 const clusterBoxesAndStamp = async () => {
 	const value = JSON.parse(
 		await cdp.evaluate(`JSON.stringify({
-			boxes: [...document.querySelectorAll('[aria-label="Start recording"], [aria-label="Confirm recording"], [aria-label="Cancel recording"], [aria-label="Stop"], [aria-label="Send message"], [data-interrupt-slot]')]
+			boxes: [...document.querySelectorAll('[aria-label="Start recording"], [aria-label="Insert transcript"], [aria-label="Cancel recording"], [aria-label="Stop"], [aria-label="Send message"], [data-interrupt-slot]')]
 				.flatMap((el) => {
 					const r = el.getBoundingClientRect();
 					const label = el.getAttribute("aria-label") ?? "reserved-slot";
@@ -974,7 +977,7 @@ const clusterBoxesAndStamp = async () => {
 const clusterBoxes = async () =>
 	JSON.parse(
 		await cdp.evaluate(`JSON.stringify(
-			[...document.querySelectorAll('[aria-label="Start recording"], [aria-label="Confirm recording"], [aria-label="Cancel recording"], [aria-label="Stop"], [aria-label="Send message"], [data-interrupt-slot]')]
+			[...document.querySelectorAll('[aria-label="Start recording"], [aria-label="Insert transcript"], [aria-label="Cancel recording"], [aria-label="Stop"], [aria-label="Send message"], [data-interrupt-slot]')]
 				.flatMap((el) => {
 					const r = el.getBoundingClientRect();
 					const label = el.getAttribute("aria-label") ?? "reserved-slot";
@@ -1118,7 +1121,7 @@ const stoppedMeetsTheMeasure = (geometry) => {
  * cannot miss a change.
  *
  * The effect it reports is BOUNDED by construction (one fresh window after the
- * pulse, argued in `interrupt-slot-grace.ts`), so this is recorded and attributed
+ * pulse, argued in the deleted `interrupt-slot-grace.ts`), so this is recorded and attributed
  * rather than gated: see the README's account of what the run found.
  */
 const armSettleSampler = async () =>
@@ -1488,9 +1491,9 @@ try {
 	 * on both sides of the window.
 	 *
 	 * WHY IT IS ITS OWN STEP. While a recording runs the row draws
-	 * `[Confirm recording][Cancel recording]` where the dictation control and Send
+	 * `[Insert transcript][Cancel recording]` where the dictation control and Send
 	 * were, and the box renders AFTER them - so with only the grace term the release
-	 * moved BOTH of them 36px right, putting Confirm recording in the Stop's own
+	 * moved BOTH of them 36px right, putting Insert transcript in the Stop's own
 	 * box, where a press more than a window after the turn ends sends in-flight
 	 * audio. The composer now holds the box while the dictation controls are
 	 * rendered, and this step is the evidence for that: the same boxes in the same
@@ -1531,7 +1534,7 @@ try {
 		verify(
 			"inFlight.holdsTheBox",
 			labelsOf(heldBoxes) ===
-				"Confirm recording|Cancel recording|reserved-slot" &&
+				"Insert transcript|Cancel recording|reserved-slot" &&
 				labelsOf(lateBoxes) === labelsOf(heldBoxes) &&
 				heldBoxes.every(
 					(box, index) =>

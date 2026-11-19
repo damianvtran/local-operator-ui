@@ -1,4 +1,6 @@
 import { Button } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { ArrowDown } from "lucide-react";
 import { useCallback } from "react";
@@ -45,6 +47,7 @@ export const ScrollToBottomButton: FC<ScrollToBottomButtonProps> = ({
 	className,
 	hasNewActivity = false,
 }) => {
+	useI18nLocale();
 	const handleClick = useCallback(() => {
 		onClick();
 	}, [onClick]);
@@ -69,18 +72,38 @@ export const ScrollToBottomButton: FC<ScrollToBottomButtonProps> = ({
 			 */
 			data-lo-scroll-to-bottom=""
 			className={cn(
-				"pointer-events-none absolute right-3 bottom-full z-40 mb-3 flex items-center justify-end",
+				"pointer-events-none absolute end-3 bottom-full z-40 mb-3 flex items-center justify-end",
 				"transition-opacity duration-base ease-out-quart",
 				visible ? "opacity-100" : "opacity-0",
 				className,
 			)}
 			aria-hidden={!visible}
 		>
+			{/*
+			 * `tonal`, not `secondary` (QA round 2, Q3). This control is itself a
+			 * floating surface - it leaves the flow over moving text, wears the one
+			 * shadow and carries the marker - so it separates by ground and shadow
+			 * like every other floating panel, never by a stroke; `secondary` drew a
+			 * 1px `border-control` ring. The ground is `bg-elevated`, overriding
+			 * `tonal`'s `bg-sunken` (twMerge keeps the last `bg-*`; the variant's
+			 * hover `surface` / pressed `hairline` ramp is untouched). `tonal`'s
+			 * sunken face was designed for a button on an `elevated` panel; this
+			 * disc floats over `canvas`, where sunken sits darker than the ground at
+			 * 1.06:1 and read as a hole, not a control (design round 3, D10).
+			 * `elevated` lifts it lighter than the ground, like its sibling floating
+			 * surfaces. It deliberately carries no `data-glass-overlay`: that rule is
+			 * unlayered and sets `background-color`, so on glass it would erase the
+			 * hover/press ramp. It stays opaque `elevated` on glass and is named in
+			 * `DEFERRED_PANELS` (`glass-overlay.test.mjs` O-7) instead. Under forced colors, where the shadow is dropped, the
+			 * `[data-lo-floating]` rule in `styles/index.css` gives it its CanvasText
+			 * edge.
+			 */}
 			<Button
-				variant="secondary"
+				variant="tonal"
 				size={hasNewActivity ? "sm" : "icon"}
+				data-lo-floating=""
 				className={cn(
-					"rounded-full shadow-overlay",
+					"rounded-full bg-elevated shadow-overlay",
 					/*
 					 * Pointer events follow VISIBILITY here, not the wrapper.
 					 *
@@ -112,13 +135,17 @@ export const ScrollToBottomButton: FC<ScrollToBottomButtonProps> = ({
 					visible ? "pointer-events-auto" : "pointer-events-none",
 				)}
 				aria-label={
-					hasNewActivity ? "New activity, scroll to bottom" : "Scroll to bottom"
+					hasNewActivity
+						? t("ui.chat.scroll_to_bottom.label_new_activity")
+						: t("ui.chat.scroll_to_bottom.label")
 				}
 				onClick={handleClick}
 				tabIndex={visible ? 0 : -1}
 			>
 				<ArrowDown aria-hidden="true" />
-				{hasNewActivity ? "New activity" : null}
+				{hasNewActivity
+					? t("ui.chat.page_chrome.scroll_to_bottom.new_activity")
+					: null}
 			</Button>
 		</div>
 	);

@@ -1,0 +1,65 @@
+$ node scripts/i18n/context-parity.mjs
+context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json).
+
+exit_code=0
+
+$ node scripts/i18n/check-duplicates.mjs
+check-duplicates: ok — 1031 file(s) scanned, 0 duplicate key(s)
+
+exit_code=0
+
+$ node scripts/i18n/generate.mjs --check
+/Users/damian/local-operator-ui/.worktrees/i18n-listjoin/src/i18n/keys.gen.ts is byte-identical to a fresh generation.
+
+exit_code=0
+
+$ node --test --test-name-pattern=^\[es\] scripts/i18n/locale-parity.test.mjs
+✔ [es] ships at least one message (not an empty claim) (8.164542ms)
+✔ [es] defines each key in at most one namespace file (7.427375ms)
+✔ [es] carries EVERY key of each namespace file it ships (15.570666ms)
+✔ [es] names only keys the English source defines (8.096542ms)
+✔ [es] preserves every ICU placeholder from the English source (31.116917ms)
+✔ [es] is not an English stub (no value identical to the source) (9.266416ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 152.078125
+
+exit_code=0
+$ node /Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/listjoin-audit/es/format-probe.mjs
+{
+  "status": "passed",
+  "key": "ui.chat.sidebar.agents.list_join",
+  "arms": {
+    "pair": "{head} y {tail}",
+    "middle": "{head}, {tail}",
+    "other": "{head} y {tail}"
+  },
+  "outputs": {
+    "pair": "Coder y Reviewer",
+    "middle": "Coder, Reviewer",
+    "other": "Coder, Reviewer y Designer",
+    "explicit_other": "Coder, Reviewer y Designer",
+    "two_names": "Coder y Reviewer",
+    "three_names": "Coder, Reviewer y Designer",
+    "i_sound_limitation_pair": "Coder y Investigador",
+    "i_sound_limitation_final": "Coder, Reviewer y Investigador"
+  },
+  "checks": [
+    "JSON and namespace key parity",
+    "position/select and pair/middle/other preserved",
+    "head/tail argument names and types preserved in every arm",
+    "real intl-messageformat formatting for every arm",
+    "end and explicit other use the other arm",
+    "two/three-name fold matching caller",
+    "known i-sound limitation reproduced",
+    "malformed ICU and missing-tail negative controls rejected"
+  ],
+  "namespace_key_count": 61
+}
+
+exit_code=0

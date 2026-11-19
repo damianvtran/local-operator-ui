@@ -250,3 +250,54 @@ test("SettingsPage itself subscribes to the locale (static pin, not a render)", 
 		"SettingsPage must call useI18nLocale() as a statement; t() alone is not reactive, so without it a language switch leaves the page in the old language",
 	);
 });
+
+/*
+ * STATIC CONSUMER PINS for the five chat surfaces the extraction added a
+ * subscription to (agent review round 1, m4). The dynamic cases above prove the
+ * MECHANISM, but they cannot fail when a real component drops its subscription:
+ * the probe carries its own. `t()` does not subscribe, so a missing call in any
+ * of these five leaves that surface in the previous language until an unrelated
+ * repaint — the half-language bug this suite exists for, and one no other gate
+ * would see in a file this large.
+ *
+ * The pattern is the same anchored statement the SettingsPage pin uses, for the
+ * same reason recorded there: a comment that MENTIONS the call must not satisfy
+ * the pin, and a refactor that wraps the call (e.g. `const locale =
+ * useI18nLocale();`) fails closed rather than silently passing.
+ */
+const CHAT_LOCALE_SUBSCRIBERS = [
+	{
+		component: "ChatContent",
+		path: ["features", "chat", "components", "chat-content.tsx"],
+	},
+	{
+		component: "ChatPage",
+		path: ["features", "chat", "components", "chat-page.tsx"],
+	},
+	{
+		component: "ComposerStatusRow",
+		path: ["features", "chat", "components", "composer-status-row.tsx"],
+	},
+	{
+		component: "SessionStatusStrip",
+		path: ["features", "chat", "session-status", "session-status-strip.tsx"],
+	},
+	{
+		component: "ReplyPreview",
+		path: ["features", "chat", "components", "reply-preview.tsx"],
+	},
+];
+
+test("the five extracted chat surfaces subscribe to the locale (static pin, not a render)", () => {
+	for (const { component, path } of CHAT_LOCALE_SUBSCRIBERS) {
+		const source = readFileSync(
+			join(import.meta.dirname, "..", "..", "src", "renderer", "src", ...path),
+			"utf8",
+		);
+		assert.match(
+			source,
+			/^\s*useI18nLocale\(\);/m,
+			`${component} must call useI18nLocale() as a statement; t() alone is not reactive, so without it a language switch leaves the surface in the old language`,
+		);
+	}
+});

@@ -1,0 +1,49 @@
+{
+	"auditor": "i18n-auditor",
+	"model": "anthropic/claude-opus-5-5",
+	"instance": "59085d2faf5a",
+	"locale": "zh-CN",
+	"status": "passed",
+	"round": 2,
+	"audit_date": "2026-11-17",
+	"translator_session": "prB1-tr-zh-CN",
+	"translator_model": "openai/gpt-6.1-sol",
+	"independent_from_translator_session": true,
+	"actual_model_source": "harness system prompt of this session (Model: anthropic/claude-opus-5-5); no fallback observed",
+	"english_source_commit": "88d2ad3b7d646cf8fe65412b779e07ae65713d1f",
+	"previous_receipt": { "path": "audit-zh-CN-r1.json (same scratchpad)", "sha256": "24ca1d5a66b52f7c1373a438b3df6c5bb1bd913c3fa5fe3a9ffe5e51a80df9c8" },
+	"scope": "the 24 keys added by 6e4ab9403c..88d2ad3b7d, re-audited in full on the final bytes; all other keys byte-identical to 88d2ad3b7d (diff-stat 25 insertions, 1 deletion = comma)",
+	"round1_dispositions": {
+		"F1": "fixed: open_in_canvas 在画布中打开, too_large_note 文件过大，无法在画布中预览, too_large_title 文件过大，无法在画布中预览，因此“打开”会使用默认应用",
+		"N1": "fixed: 个工具调用 in composing and queued",
+		"N2": "fixed: 正在等待智能体",
+		"N3": "fixed: 此设备上的应用无法访问保存的副本 in broken_unavailable and broken_media_unavailable"
+	},
+	"namespaces": {
+		"ui.chat.canonical": {
+			"status": "passed",
+			"sha256": {
+				"target": "adc13d447565b56bb26a57ffc3ce449e0c7d4fcb0795b6ec1560db83c8a96c17",
+				"source": "dca993aa47b9c7c6287aadf423a750f0c923ff062eaf817f229d6b292a451be5"
+			},
+			"key_count_audited": 21,
+			"findings": [
+				{
+					"id": "I1",
+					"severity": "INFO",
+					"key": "ui.chat.canonical.supplement.file_actions.open_in_canvas",
+					"note": "Pre-existing, outside scope, not gating: still 在Canvas中打开 (also ui.common.file_actions.show_in_canvas 在Canvas中显示); now the only 2 Latin Canvas values vs 31 画布. Same-label sibling of link_actions.open_in_canvas; align in a follow-up."
+				}
+			]
+		},
+		"ui.chat.attachments": {
+			"status": "passed",
+			"sha256": {
+				"target": "94d02ab856d854fa1c1efdbfee79ec74523e6b16680751ecf7ee1d8789fd3166",
+				"source": "1a5709a63c44655e0d96ec39ef87ddfd4715a811b6de2f29e851080a10dd42e7"
+			},
+			"key_count_audited": 3,
+			"findings": []
+		}
+	}
+}

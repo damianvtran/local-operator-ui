@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -110,6 +110,17 @@ test("the rig itself runs, and reports its sample", async (t) => {
 	 * failure mode this catches is a rig that cannot start at all (a broken
 	 * import, a moved flag) - which is invisible while nothing invokes it.
 	 */
+	/*
+	 * The rig samples the CAPTURED frames, which are rig output in an ignored
+	 * tree: without a capture there is nothing for it to start on, and a stack
+	 * trace about a missing directory is not a wiring failure.
+	 */
+	if (!existsSync(join(ROOT, "docs/evidence-frames"))) {
+		t.skip(
+			"no captured frames: docs/evidence-frames is rig output, so run node scripts/capture-evidence.mjs first",
+		);
+		return;
+	}
 	const run = spawnSync(
 		process.execPath,
 		[join(ROOT, "scripts/evidence-histogram-parity.mjs"), "--frames", "1"],
@@ -120,9 +131,21 @@ test("the rig itself runs, and reports its sample", async (t) => {
 	assert.match(run.stdout, /identical readings on 2\/2 frames/);
 });
 
-test("a committed frame decodes to a mode its theme could show", async (t) => {
-	const [first] = frames(join(ROOT, "docs/evidence")).sort();
-	assert.ok(first, "no committed frames found");
+test("a captured frame decodes to a mode its theme could show", async (t) => {
+	/*
+	 * The frames are rig output in an ignored tree, so this case needs a
+	 * captured checkout: `node scripts/capture-evidence.mjs`. It reads the
+	 * same directory the sweep does (`check-evidence.mjs`).
+	 */
+	const dir = join(ROOT, "docs/evidence-frames");
+	if (!existsSync(dir)) {
+		t.skip(
+			"no captured frames: docs/evidence-frames is rig output, so run node scripts/capture-evidence.mjs first",
+		);
+		return;
+	}
+	const [first] = frames(dir).sort();
+	assert.ok(first, "no captured frames found under docs/evidence-frames");
 	const mode = await frameHistogram(first);
 	assert.match(mode.hex, /^#[0-9A-F]{6}$/);
 	assert.ok(mode.count > 0, `${first}: mode count ${mode.count}`);

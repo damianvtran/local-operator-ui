@@ -36,8 +36,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const kanagawaLotus: ThemeDefinition = {
 	id: "kanagawaLotus",
 	name: "Kanagawa Lotus",
-	description:
-		"Hokusai by daylight: yellowed paper under indigo and lotus pink.",
+	descriptionKey: "ui.settings.appearance.theme.kanagawa_lotus",
 	palette: {
 		mode: "light",
 

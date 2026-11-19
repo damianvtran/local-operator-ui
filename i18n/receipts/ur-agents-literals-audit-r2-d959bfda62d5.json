@@ -1,0 +1,1060 @@
+{
+	"schema": 1,
+	"audit_kind": "independent-translation-audit",
+	"audit_id": "lit2-ur-r2-20261026",
+	"locale": "ur",
+	"auditor": "i18n-auditor",
+	"agent": "i18n-auditor (lopdev team)",
+	"session": "d959bfda62d5",
+	"instance": "d959bfda62d5",
+	"model": "radient/auto",
+	"model_fallback": "none",
+	"model_note": "Harness-reported route only: the run header names provider radient and model selector 'auto' (radient/auto); this run exposes no resolved upstream model, so none is claimed. No fallback was used.",
+	"independence": "Independent auditor: I did not translate or remediate this locale and edited no catalogue, English source, context sidecar, ledger, allowance, generated file or test. The files this run adds are this receipt, seven evidence records and the audit log they cite.",
+	"date": "2026-10-26",
+	"round": 2,
+	"scope": {
+		"branch": "i18n-agents-literals-2",
+		"base": "73af0b6855",
+		"round1_head": "a9e536bf892f48ed2a87772658055abfd10caa5e",
+		"head": "29d7805a13e7f240c2d27596cb106635ed83af3c",
+		"namespaces": [
+			"ui.agents.config",
+			"ui.agents.detail",
+			"ui.agents.pages",
+			"ui.agents.upload",
+			"ui.common.actions",
+			"ui.hub.pages",
+			"ui.hub.teams"
+		],
+		"keys": 5,
+		"keys_audited": [
+			"ui.agents.pages.ask.manual_agent",
+			"ui.agents.pages.ask.manual_team",
+			"ui.hub.pages.card.updated",
+			"ui.hub.teams.recency.created",
+			"ui.hub.teams.recency.updated"
+		],
+		"delta": "a9e536bf89..29d7805a13: 5 values in 3 ur catalogue files, the remediation of round 1's F1-F4.",
+		"note": "Round 2 re-judges only the remediation delta plus its direct neighbours. The four unchanged namespaces (ui.agents.config, ui.agents.detail, ui.agents.upload, ui.common.actions) are covered in this receipt at their current bytes, which are byte-identical to the bytes round 1 audited (hashes recorded per block), so round 1's clean verdict carries; they are not re-judged here.",
+		"passes": 2,
+		"second_pass": "A second cold pass re-read all five values against the English source and the context sidecars after the first mechanical pass, and re-derived the bidi spans from a fresh FriBidi run; both passes agree."
+	},
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/ur.md",
+			"sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+		},
+		"ui_doc": {
+			"path": "docs/I18N.md",
+			"sha256": "6fc7bea71643c0dcaeaed697ecd792cfdfeb11b7816b5f8d160011e7c7df2abe"
+		},
+		"round1_receipt": {
+			"path": "i18n/receipts/ur-agents-literals-audit-f98cb709d732.json",
+			"sha256": "2c6fd8ef110e0a09b42c70fef0531cc14032258a2451cee3962d2dcffbdbac2a"
+		}
+	},
+	"key_count": 5,
+	"namespace_count": 7,
+	"status": "passed",
+	"result": "clean",
+	"verdict": "passed: 0 blocker / 0 major / 0 minor / 0 nit. The five remediated values resolve F1-F4: the relative age now precedes the verb in all three recency messages, and the by-hand links use ہاتھ سے, distinct from the roster button's خود. Reading order measured under RTL; no placeholder, punctuation or bidi defect.",
+	"namespaces": {
+		"ui.agents.config": {
+			"namespace": "ui.agents.config",
+			"status": "passed",
+			"verdict": "passed by round-1 audit at unchanged bytes (0 findings over 0 keys re-judged here)",
+			"keys_audited": 0,
+			"namespace_key_count": 31,
+			"en_sha256": "5338f6e229d67bf214a4741224470e82222bd2f04eba9bc9eda7324242393c32",
+			"ur_sha256": "c4e7123c2be0b7353e0e750ba1229ca633fdd3ddc31270f33c66dc52ead39cb2",
+			"context_sha256": "63a7879a771b5aa7732fcfc8848033ba207701aaf1452e2855e8ec2bd52821bf",
+			"sha256": {
+				"en": "5338f6e229d67bf214a4741224470e82222bd2f04eba9bc9eda7324242393c32",
+				"ur": "c4e7123c2be0b7353e0e750ba1229ca633fdd3ddc31270f33c66dc52ead39cb2",
+				"context": "63a7879a771b5aa7732fcfc8848033ba207701aaf1452e2855e8ec2bd52821bf"
+			},
+			"findings": [],
+			"basis": "carried by round 1 (receipt ur-agents-literals-audit-f98cb709d732.json): English and ur bytes are identical to the bytes round 1 audited, so its clean verdict applies unchanged",
+			"keys": [],
+			"round1_hashes": {
+				"en": "5338f6e229d67bf214a4741224470e82222bd2f04eba9bc9eda7324242393c32",
+				"ur": "c4e7123c2be0b7353e0e750ba1229ca633fdd3ddc31270f33c66dc52ead39cb2"
+			},
+			"round1_hashes_match": true,
+			"record": "i18n/audits/evidence/ur/ui.agents.config/lit2-ur-r2-20261026/record.json",
+			"note": "Record: i18n/audits/evidence/ur/ui.agents.config/lit2-ur-r2-20261026/record.json (round-1 verdict carried at identical bytes)."
+		},
+		"ui.agents.detail": {
+			"namespace": "ui.agents.detail",
+			"status": "passed",
+			"verdict": "passed by round-1 audit at unchanged bytes (0 findings over 0 keys re-judged here)",
+			"keys_audited": 0,
+			"namespace_key_count": 50,
+			"en_sha256": "80877db48543e0557cd0a079c8fd2d0c238f1923c2885deae85428e17af1f65b",
+			"ur_sha256": "38f9647ca8cc7f97f1cfef95f305501d939dee3b4ebfe2223625dc5fa24636db",
+			"context_sha256": "a0e40ba7fceccdf78da28d064fd4386cc48d8f1c80127a5721550e879c49b511",
+			"sha256": {
+				"en": "80877db48543e0557cd0a079c8fd2d0c238f1923c2885deae85428e17af1f65b",
+				"ur": "38f9647ca8cc7f97f1cfef95f305501d939dee3b4ebfe2223625dc5fa24636db",
+				"context": "a0e40ba7fceccdf78da28d064fd4386cc48d8f1c80127a5721550e879c49b511"
+			},
+			"findings": [],
+			"basis": "carried by round 1 (receipt ur-agents-literals-audit-f98cb709d732.json): English and ur bytes are identical to the bytes round 1 audited, so its clean verdict applies unchanged",
+			"keys": [],
+			"round1_hashes": {
+				"en": "80877db48543e0557cd0a079c8fd2d0c238f1923c2885deae85428e17af1f65b",
+				"ur": "38f9647ca8cc7f97f1cfef95f305501d939dee3b4ebfe2223625dc5fa24636db"
+			},
+			"round1_hashes_match": true,
+			"record": "i18n/audits/evidence/ur/ui.agents.detail/lit2-ur-r2-20261026/record.json",
+			"note": "Record: i18n/audits/evidence/ur/ui.agents.detail/lit2-ur-r2-20261026/record.json (round-1 verdict carried at identical bytes)."
+		},
+		"ui.agents.pages": {
+			"namespace": "ui.agents.pages",
+			"status": "passed",
+			"verdict": "passed: 0 findings over 2 remediated key(s)",
+			"keys_audited": 2,
+			"namespace_key_count": 30,
+			"en_sha256": "e85765ccb25a8675e64cb8cd1cc37edd86afbe9a77d444f9a1ec8ac9aee45781",
+			"ur_sha256": "fc2f79de720fcb31530eaebfc9572bd9badee6e35312db47bae812040a67e8e7",
+			"context_sha256": "f9690a17e6e7307df154bdc0d71ab8a0d002a07a052e11c0025d2ff874d3dfea",
+			"sha256": {
+				"en": "e85765ccb25a8675e64cb8cd1cc37edd86afbe9a77d444f9a1ec8ac9aee45781",
+				"ur": "fc2f79de720fcb31530eaebfc9572bd9badee6e35312db47bae812040a67e8e7",
+				"context": "f9690a17e6e7307df154bdc0d71ab8a0d002a07a052e11c0025d2ff874d3dfea"
+			},
+			"findings": [],
+			"basis": "audited in this round-2 pass: the remediation delta a9e536bf89..29d7805a13",
+			"keys": [
+				"ui.agents.pages.ask.manual_agent",
+				"ui.agents.pages.ask.manual_team"
+			],
+			"record": "i18n/audits/evidence/ur/ui.agents.pages/lit2-ur-r2-20261026/record.json",
+			"note": "Record: i18n/audits/evidence/ur/ui.agents.pages/lit2-ur-r2-20261026/record.json."
+		},
+		"ui.agents.upload": {
+			"namespace": "ui.agents.upload",
+			"status": "passed",
+			"verdict": "passed by round-1 audit at unchanged bytes (0 findings over 0 keys re-judged here)",
+			"keys_audited": 0,
+			"namespace_key_count": 29,
+			"en_sha256": "52876ab5bfa8b6c1f9170fdb9ea10c991f231d3d9fb103b16842476589083949",
+			"ur_sha256": "f8ae928517294f95c263908e597aa18c59e8eaf9483e6c8457e8aeb3474de3b2",
+			"context_sha256": "3141f45c4b8fc17b96061a4556a66b3133bbfe27345ee7e4d929dfe21ee049f0",
+			"sha256": {
+				"en": "52876ab5bfa8b6c1f9170fdb9ea10c991f231d3d9fb103b16842476589083949",
+				"ur": "f8ae928517294f95c263908e597aa18c59e8eaf9483e6c8457e8aeb3474de3b2",
+				"context": "3141f45c4b8fc17b96061a4556a66b3133bbfe27345ee7e4d929dfe21ee049f0"
+			},
+			"findings": [],
+			"basis": "carried by round 1 (receipt ur-agents-literals-audit-f98cb709d732.json): English and ur bytes are identical to the bytes round 1 audited, so its clean verdict applies unchanged",
+			"keys": [],
+			"round1_hashes": {
+				"en": "52876ab5bfa8b6c1f9170fdb9ea10c991f231d3d9fb103b16842476589083949",
+				"ur": "f8ae928517294f95c263908e597aa18c59e8eaf9483e6c8457e8aeb3474de3b2"
+			},
+			"round1_hashes_match": true,
+			"record": "i18n/audits/evidence/ur/ui.agents.upload/lit2-ur-r2-20261026/record.json",
+			"note": "Record: i18n/audits/evidence/ur/ui.agents.upload/lit2-ur-r2-20261026/record.json (round-1 verdict carried at identical bytes)."
+		},
+		"ui.common.actions": {
+			"namespace": "ui.common.actions",
+			"status": "passed",
+			"verdict": "passed by round-1 audit at unchanged bytes (0 findings over 0 keys re-judged here)",
+			"keys_audited": 0,
+			"namespace_key_count": 51,
+			"en_sha256": "132f60c9d401d804147f29fbe10fca265e2c3b3a5436b9eceb70c544afe8f1b9",
+			"ur_sha256": "2750cf43d61f77f8e5ed4313a53fe816bee86bfbaf937aa640a630991809377b",
+			"context_sha256": "48756cd31d4abbec5d56b3648ffb2fefe578c074645386480c91b4921accf321",
+			"sha256": {
+				"en": "132f60c9d401d804147f29fbe10fca265e2c3b3a5436b9eceb70c544afe8f1b9",
+				"ur": "2750cf43d61f77f8e5ed4313a53fe816bee86bfbaf937aa640a630991809377b",
+				"context": "48756cd31d4abbec5d56b3648ffb2fefe578c074645386480c91b4921accf321"
+			},
+			"findings": [],
+			"basis": "carried by round 1 (receipt ur-agents-literals-audit-f98cb709d732.json): English and ur bytes are identical to the bytes round 1 audited, so its clean verdict applies unchanged",
+			"keys": [],
+			"round1_hashes": {
+				"en": "132f60c9d401d804147f29fbe10fca265e2c3b3a5436b9eceb70c544afe8f1b9",
+				"ur": "2750cf43d61f77f8e5ed4313a53fe816bee86bfbaf937aa640a630991809377b"
+			},
+			"round1_hashes_match": true,
+			"record": "i18n/audits/evidence/ur/ui.common.actions/lit2-ur-r2-20261026/record.json",
+			"note": "Record: i18n/audits/evidence/ur/ui.common.actions/lit2-ur-r2-20261026/record.json (round-1 verdict carried at identical bytes)."
+		},
+		"ui.hub.pages": {
+			"namespace": "ui.hub.pages",
+			"status": "passed",
+			"verdict": "passed: 0 findings over 1 remediated key(s)",
+			"keys_audited": 1,
+			"namespace_key_count": 37,
+			"en_sha256": "c54d0aca4e8047657a61367c667c6ad9351f198a10d7380c1478745152a832b6",
+			"ur_sha256": "e5fd416a3ff17811e57101c1c7b6f916914e7b0f0f01046809fa0287c53eb057",
+			"context_sha256": "d913efa6ea062fe5c04861c6db202d5bf303b7b0c1a6f9c7efbdaa4b5c095d10",
+			"sha256": {
+				"en": "c54d0aca4e8047657a61367c667c6ad9351f198a10d7380c1478745152a832b6",
+				"ur": "e5fd416a3ff17811e57101c1c7b6f916914e7b0f0f01046809fa0287c53eb057",
+				"context": "d913efa6ea062fe5c04861c6db202d5bf303b7b0c1a6f9c7efbdaa4b5c095d10"
+			},
+			"findings": [],
+			"basis": "audited in this round-2 pass: the remediation delta a9e536bf89..29d7805a13",
+			"keys": [
+				"ui.hub.pages.card.updated"
+			],
+			"record": "i18n/audits/evidence/ur/ui.hub.pages/lit2-ur-r2-20261026/record.json",
+			"note": "Record: i18n/audits/evidence/ur/ui.hub.pages/lit2-ur-r2-20261026/record.json."
+		},
+		"ui.hub.teams": {
+			"namespace": "ui.hub.teams",
+			"status": "passed",
+			"verdict": "passed: 0 findings over 2 remediated key(s)",
+			"keys_audited": 2,
+			"namespace_key_count": 49,
+			"en_sha256": "4121cd4fada8986e1c77682c5909ecf8830f3015677ec99a0a5fb547f9040b06",
+			"ur_sha256": "256bb29b71ef571f7652ae455baa8b5f15f731dd0bdb08ab72e22a5d47daa4a6",
+			"context_sha256": "b062f0ca8aed037084233730702e41c6f3ef09aa39bed405e007466716c711a0",
+			"sha256": {
+				"en": "4121cd4fada8986e1c77682c5909ecf8830f3015677ec99a0a5fb547f9040b06",
+				"ur": "256bb29b71ef571f7652ae455baa8b5f15f731dd0bdb08ab72e22a5d47daa4a6",
+				"context": "b062f0ca8aed037084233730702e41c6f3ef09aa39bed405e007466716c711a0"
+			},
+			"findings": [],
+			"basis": "audited in this round-2 pass: the remediation delta a9e536bf89..29d7805a13",
+			"keys": [
+				"ui.hub.teams.recency.created",
+				"ui.hub.teams.recency.updated"
+			],
+			"record": "i18n/audits/evidence/ur/ui.hub.teams/lit2-ur-r2-20261026/record.json",
+			"note": "Record: i18n/audits/evidence/ur/ui.hub.teams/lit2-ur-r2-20261026/record.json."
+		}
+	},
+	"findings": [],
+	"finding_index": [],
+	"finding_counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 0
+	},
+	"remediation": [
+		{
+			"finding": "F1",
+			"key": "ui.hub.pages.card.updated",
+			"before": "اپ ڈیٹ کیا گیا {when}",
+			"after": "{when} اپ ڈیٹ کیا گیا",
+			"ruling": "resolved — age first, passive verb last; matches shipped time-first keys"
+		},
+		{
+			"finding": "F2",
+			"key": "ui.hub.teams.recency.created",
+			"before": "بنایا گیا {when}",
+			"after": "{when} بنایا گیا",
+			"ruling": "resolved — creation stated by بنایا گیا, distinguishable from the updated arm"
+		},
+		{
+			"finding": "F3",
+			"key": "ui.hub.teams.recency.updated",
+			"before": "اپ ڈیٹ کیا گیا {when}",
+			"after": "{when} اپ ڈیٹ کیا گیا",
+			"ruling": "resolved — same shape as F1 on the teams row"
+		},
+		{
+			"finding": "F4",
+			"key": "ui.agents.pages.ask.manual_agent",
+			"keys": [
+				"ui.agents.pages.ask.manual_agent",
+				"ui.agents.pages.ask.manual_team"
+			],
+			"before": "یا خود ایجنٹ شامل کریں / یا خود ٹیم شامل کریں",
+			"after": "یا ایجنٹ ہاتھ سے شامل کریں / یا ٹیم ہاتھ سے شامل کریں",
+			"ruling": "resolved — ہاتھ سے (by hand) no longer duplicates the roster's خود (manually/yourself)"
+		}
+	],
+	"observations": [
+		{
+			"id": "O1",
+			"topic": "bidi: the age's leading numeral merges into the preceding Latin run on the composed card line",
+			"severity": "observation (not counted)",
+			"detail": "Measured with FriBidi under the app's RTL base: on the composed card line 'Damian Tran · 3 دن پہلے اپ ڈیٹ کیا گیا' the digit maps to visual 37 of 38 while the rest of the age maps 15..22 and the verb 0..13, because U+0033 joins the preceding LTR island. The reading order is still correct (the LTR island is read first as 'Damian Tran · 3', then the RTL continuation دن پہلے, then the verb), and the digit's visual place relative to دن is the same as in an all-RTL line. With FSI/PDI around the message the numeral stays contiguous with its unit inside the isolate; agent-card.tsx and org-teams-list.tsx apply no isolate, unlike browser-tab-strip.tsx and hub-skills-library.tsx. Not a copy defect and not a finding: {when} is the shipped age phrase and the call site owns isolation."
+		},
+		{
+			"id": "O2",
+			"topic": "fit: the reorder changes which end a single-line RTL ellipsis cuts",
+			"severity": "observation (not counted)",
+			"detail": "Before the fix the age occupied the leftmost columns of the composed card line (visual 0..8), so an ellipsis cut the age first; now the verb occupies 0..13 and the age 15..37, so a truncation would cut the verb instead. That is the trade both sidecars invite ('ONE whole sentence, so the language can put the time before the verb') and it protects the age, which is the row's information. On the teams row the verb is also the created/updated discriminator, so a truncation there would cost that distinction; no rendered frame was captured, so no truncation is claimed. Follow-up, if ever observed, belongs to the call site (isolation or width), not to this copy."
+		},
+		{
+			"id": "O3",
+			"topic": "clock-skew arm: fronted absolute date without کو",
+			"severity": "observation (not counted)",
+			"detail": "recencyOf() substitutes a formatted short date for {when} when the timestamp is in the future, composing '10 اکتوبر، 2026 اپ ڈیٹ کیا گیا'. Urdu datelines commonly write the bare date before the passive verb; the source is equally clipped ('updated Oct 10, 2026'). Adding کو is impossible inside this template because the relative arm would become '3 دن پہلے کو'. Accepted; the arm is reachable only on a skewed timestamp."
+		},
+		{
+			"id": "O4",
+			"topic": "grammar: impersonal masculine passive in the created arm",
+			"severity": "observation (not counted)",
+			"detail": "'{when} بنایا گیا' uses the impersonal masculine passive although ٹیم is feminine and the agreeing form would be بنائی گئی. The object is elided and the verb is byte-identical to the same expanded row's shipped ui.hub.teams.detail.created (and to ui.library.origin.created / ui.agents.config.summary.created), so this is the surface's established impersonal form; changing it would be a surface-wide style call, not a defect in this delta. Recorded so the next wave does not re-open it as new."
+		}
+	],
+	"limitations": [
+		"Catalogue audit only. No rendered frame, screenshot, pseudo-localization, activation or release evidence is claimed.",
+		"Fit for the five keys is inferred from character counts and the sidecars; none of them carries maxCells, so no cell budget was measured.",
+		"The bidi model is the app's RTL base direction (dir=rtl document root). Per-message FSI/PDI is applied at two call sites only; the hub card and teams row do not isolate, which is why O1 measures the merged LTR island.",
+		"The four unchanged namespaces are covered by hash, not re-judged: their en/ur bytes equal the bytes round 1 audited. Their context sidecars are also unchanged (hashes in the blocks).",
+		"ledger-check currently fails on stale rows for several locales (zh-CN included) because no receipt for this wave has been assembled yet; assembling the rows is the ledger writer's step, not an auditor edit."
+	],
+	"machine_checks": [
+		{
+			"command": "node verify-ur-r2.mjs (reads en/ur/context at HEAD; git show a9e536bf89:<ur file>)",
+			"exit": 0,
+			"output": [
+				"head 29d7805a13e7f240c2d27596cb106635ed83af3c, parent a9e536bf892f48ed2a87772658055abfd10caa5e",
+				"PASS JSON parses — 7/7 en and 7/7 ur files",
+				"PASS key set and key order equal to en — 7/7 files",
+				"PASS ICU argument set equal to en — 0 mismatched across all seven groups",
+				"PASS delta vs a9e536bf89 is exactly the five remediation keys — 5 changed, 0 added, 0 removed",
+				"PASS 272 of the 277 values byte-identical to a9e536bf89; exactly the five remediation keys changed; 0 keys added, 0 removed",
+				"PASS no manual bidi controls (U+200E/200F/202A-202E/2066-2069) — 0 hits",
+				"PASS no zero-width/BOM, no NFC change, no edge/double spaces — 0 hits",
+				"PASS no ASCII . ? , ; : in the five new values or anywhere in the three delta files — 0 hits (10 pre-existing hits exist elsewhere in the seven groups, untouched by this delta)",
+				"PASS IntlMessageFormat parses and formats all five with sample {when} values"
+			]
+		},
+		{
+			"command": "node --test scripts/i18n/locale-parity.test.mjs",
+			"exit": 0,
+			"output_tail": [
+				"tests 44",
+				"pass 44",
+				"fail 0"
+			]
+		},
+		{
+			"command": "node scripts/i18n/check-coverage.mjs",
+			"exit": 0,
+			"output": [
+				"coverage-check: ok — 7 gated language(s) over 94 namespace(s); 0 allowed key(s) remain across 0 pair(s)."
+			]
+		},
+		{
+			"command": "node scripts/i18n/generate.mjs --check",
+			"exit": 0,
+			"output": [
+				"src/i18n/keys.gen.ts is byte-identical to a fresh generation."
+			]
+		},
+		{
+			"command": "node --test scripts/i18n/ur-activation.test.mjs",
+			"exit": 0,
+			"output_tail": [
+				"tests 3",
+				"pass 3",
+				"fail 0"
+			],
+			"note": "includes 'the bundled Urdu catalogue carries no manual bidi controls or forbidden script' over 6048 ur values"
+		},
+		{
+			"command": "node scripts/i18n/check-duplicates.mjs",
+			"exit": 0,
+			"output": [
+				"check-duplicates: ok — 844 file(s) scanned, 0 duplicate key(s)"
+			]
+		},
+		{
+			"command": "node scripts/i18n/context-parity.mjs",
+			"exit": 0,
+			"output": [
+				"context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s)"
+			]
+		},
+		{
+			"command": "node scripts/i18n/ledger-check.mjs",
+			"exit": 1,
+			"output_tail": [
+				"ledger-check: FAILED — 147 finding(s) across 658 ledger entr(ies)"
+			],
+			"note": "stale source/target rows for locales whose receipts for this wave are not assembled yet (zh-CN and ur); it fails before this audit's receipt is in the ledger, and the ledger writer owns those rows. Not caused by the delta and not an auditor edit."
+		},
+		{
+			"command": "python3 (plural-arm check over the five values and the composed age messages)",
+			"exit": 0,
+			"output": [
+				"PASS no remediated value carries plural/select — 0 of 5",
+				"PASS every composed ui.hub.comments.age.* / ui.hub.updates.ago.* message carries exactly one/other (ur CLDR) — 8/8"
+			]
+		},
+		{
+			"command": "fribidi --rtl --nopad --nobreak (+ --ltov) over 15 composed cases recorded here (17 in bidi-ur-r2.log, incl. an empty-value robustness row)",
+			"exit": 0,
+			"output": [
+				"GNU FriBidi 1.0.16",
+				"no age, verb, numeral, quote or punctuation at the wrong end in any case"
+			]
+		},
+		{
+			"command": "node verify-receipt.mjs (ledger-rules deriveReceiptAudit for all seven namespaces)",
+			"exit": 0,
+			"output": [
+				"PASS every ur namespace derives status passed and 0 blocker/major/minor/nit from this receipt"
+			]
+		}
+	],
+	"bidi_review": {
+		"tool": "fribidi (GNU FriBidi) 1.0.16",
+		"base_direction": "RTL (app document root dir=rtl; no per-string isolate at these two call sites)",
+		"method": "Compose each message with the shipped ur {when} phrases read from ui.hub.comments.age.* / ui.hub.updates.ago.now, and with the formatted short date recencyOf() substitutes on a clock-skewed timestamp; reorder with FriBidi as an RTL paragraph and map logical to visual positions with --ltov.",
+		"samples": {
+			"days": "3 دن پہلے",
+			"hours": "2 گھنٹے پہلے",
+			"minutes": "5 منٹ پہلے",
+			"just_now": "ابھی",
+			"absolute_date": "10 اکتوبر، 2026"
+		},
+		"measurements": [
+			{
+				"case": "ui.hub.pages.card.updated when=3 دن پہلے",
+				"logical": "3 دن پہلے اپ ڈیٹ کیا گیا",
+				"rtl_visual": "ﺎﯿﮔ ﺎﯿﮐ ﭧﯾﮈ ﭖﺍ ﮯﻠﮩﭘ ﻥﺩ 3",
+				"length": 24,
+				"when_span": {
+					"logical": [
+						0,
+						8
+					],
+					"visual": [
+						15,
+						23
+					],
+					"positions": [
+						15,
+						16,
+						17,
+						18,
+						19,
+						20,
+						21,
+						22,
+						23
+					]
+				},
+				"when_end": [
+					"right-edge"
+				],
+				"verb_span": {
+					"logical": [
+						10,
+						23
+					],
+					"visual": [
+						0,
+						13
+					],
+					"positions": "discontinuous"
+				},
+				"verb_end": [
+					"left-edge"
+				]
+			},
+			{
+				"case": "ui.hub.pages.card.updated when=2 گھنٹے پہلے",
+				"logical": "2 گھنٹے پہلے اپ ڈیٹ کیا گیا",
+				"rtl_visual": "ﺎﯿﮔ ﺎﯿﮐ ﭧﯾﮈ ﭖﺍ ﮯﻠﮩﭘ ﮯﭩﻨﮭﮔ 2",
+				"length": 27,
+				"when_span": {
+					"logical": [
+						0,
+						11
+					],
+					"visual": [
+						15,
+						26
+					],
+					"positions": [
+						15,
+						16,
+						17,
+						18,
+						19,
+						20,
+						21,
+						22,
+						23,
+						24,
+						25,
+						26
+					]
+				},
+				"when_end": [
+					"right-edge"
+				],
+				"verb_span": {
+					"logical": [
+						13,
+						26
+					],
+					"visual": [
+						0,
+						13
+					],
+					"positions": "discontinuous"
+				},
+				"verb_end": [
+					"left-edge"
+				]
+			},
+			{
+				"case": "ui.hub.pages.card.updated when=5 منٹ پہلے",
+				"logical": "5 منٹ پہلے اپ ڈیٹ کیا گیا",
+				"rtl_visual": "ﺎﯿﮔ ﺎﯿﮐ ﭧﯾﮈ ﭖﺍ ﮯﻠﮩﭘ ﭧﻨﻣ 5",
+				"length": 25,
+				"when_span": {
+					"logical": [
+						0,
+						9
+					],
+					"visual": [
+						15,
+						24
+					],
+					"positions": [
+						15,
+						16,
+						17,
+						18,
+						19,
+						20,
+						21,
+						22,
+						23,
+						24
+					]
+				},
+				"when_end": [
+					"right-edge"
+				],
+				"verb_span": {
+					"logical": [
+						11,
+						24
+					],
+					"visual": [
+						0,
+						13
+					],
+					"positions": "discontinuous"
+				},
+				"verb_end": [
+					"left-edge"
+				]
+			},
+			{
+				"case": "ui.hub.teams.recency.updated when=2 گھنٹے پہلے",
+				"logical": "2 گھنٹے پہلے اپ ڈیٹ کیا گیا",
+				"rtl_visual": "ﺎﯿﮔ ﺎﯿﮐ ﭧﯾﮈ ﭖﺍ ﮯﻠﮩﭘ ﮯﭩﻨﮭﮔ 2",
+				"length": 27,
+				"when_span": {
+					"logical": [
+						0,
+						11
+					],
+					"visual": [
+						15,
+						26
+					],
+					"positions": [
+						15,
+						16,
+						17,
+						18,
+						19,
+						20,
+						21,
+						22,
+						23,
+						24,
+						25,
+						26
+					]
+				},
+				"when_end": [
+					"right-edge"
+				],
+				"verb_span": {
+					"logical": [
+						13,
+						26
+					],
+					"visual": [
+						0,
+						13
+					],
+					"positions": "discontinuous"
+				},
+				"verb_end": [
+					"left-edge"
+				]
+			},
+			{
+				"case": "ui.hub.teams.recency.updated when=ابھی",
+				"logical": "ابھی اپ ڈیٹ کیا گیا",
+				"rtl_visual": "ﺎﯿﮔ ﺎﯿﮐ ﭧﯾﮈ ﭖﺍ ﯽﮭﺑﺍ",
+				"length": 19,
+				"when_span": {
+					"logical": [
+						0,
+						3
+					],
+					"visual": [
+						15,
+						18
+					],
+					"positions": [
+						15,
+						16,
+						17,
+						18
+					]
+				},
+				"when_end": [
+					"right-edge"
+				],
+				"verb_span": {
+					"logical": [
+						5,
+						18
+					],
+					"visual": [
+						0,
+						13
+					],
+					"positions": "discontinuous"
+				},
+				"verb_end": [
+					"left-edge"
+				]
+			},
+			{
+				"case": "ui.hub.teams.recency.updated when=absolute date (clock skew)",
+				"logical": "10 اکتوبر، 2026 اپ ڈیٹ کیا گیا",
+				"rtl_visual": "ﺎﯿﮔ ﺎﯿﮐ ﭧﯾﮈ ﭖﺍ 2026 ،ﺮﺑﻮﺘﮐﺍ 10",
+				"length": 30,
+				"when_span": {
+					"logical": [
+						0,
+						14
+					],
+					"visual": [
+						15,
+						29
+					],
+					"positions": "discontinuous"
+				},
+				"when_end": [
+					"right-edge"
+				],
+				"verb_span": {
+					"logical": [
+						16,
+						29
+					],
+					"visual": [
+						0,
+						13
+					],
+					"positions": "discontinuous"
+				},
+				"verb_end": [
+					"left-edge"
+				]
+			},
+			{
+				"case": "ui.hub.teams.recency.created when=3 دن پہلے",
+				"logical": "3 دن پہلے بنایا گیا",
+				"rtl_visual": "ﺎﯿﮔ ﺎﯾﺎﻨﺑ ﮯﻠﮩﭘ ﻥﺩ 3",
+				"length": 19,
+				"when_span": {
+					"logical": [
+						0,
+						8
+					],
+					"visual": [
+						10,
+						18
+					],
+					"positions": [
+						10,
+						11,
+						12,
+						13,
+						14,
+						15,
+						16,
+						17,
+						18
+					]
+				},
+				"when_end": [
+					"right-edge"
+				],
+				"verb_span": {
+					"logical": [
+						10,
+						18
+					],
+					"visual": [
+						0,
+						8
+					],
+					"positions": [
+						0,
+						1,
+						2,
+						3,
+						4,
+						5,
+						6,
+						7,
+						8
+					]
+				},
+				"verb_end": [
+					"left-edge"
+				]
+			},
+			{
+				"case": "ui.hub.teams.recency.created when=ابھی",
+				"logical": "ابھی بنایا گیا",
+				"rtl_visual": "ﺎﯿﮔ ﺎﯾﺎﻨﺑ ﯽﮭﺑﺍ",
+				"length": 14,
+				"when_span": {
+					"logical": [
+						0,
+						3
+					],
+					"visual": [
+						10,
+						13
+					],
+					"positions": [
+						10,
+						11,
+						12,
+						13
+					]
+				},
+				"when_end": [
+					"right-edge"
+				],
+				"verb_span": {
+					"logical": [
+						5,
+						13
+					],
+					"visual": [
+						0,
+						8
+					],
+					"positions": [
+						0,
+						1,
+						2,
+						3,
+						4,
+						5,
+						6,
+						7,
+						8
+					]
+				},
+				"verb_end": [
+					"left-edge"
+				]
+			},
+			{
+				"case": "ui.hub.teams.recency.created when=absolute date (clock skew)",
+				"logical": "10 اکتوبر، 2026 بنایا گیا",
+				"rtl_visual": "ﺎﯿﮔ ﺎﯾﺎﻨﺑ 2026 ،ﺮﺑﻮﺘﮐﺍ 10",
+				"length": 25,
+				"when_span": {
+					"logical": [
+						0,
+						14
+					],
+					"visual": [
+						10,
+						24
+					],
+					"positions": "discontinuous"
+				},
+				"when_end": [
+					"right-edge"
+				],
+				"verb_span": {
+					"logical": [
+						16,
+						24
+					],
+					"visual": [
+						0,
+						8
+					],
+					"positions": [
+						0,
+						1,
+						2,
+						3,
+						4,
+						5,
+						6,
+						7,
+						8
+					]
+				},
+				"verb_end": [
+					"left-edge"
+				]
+			},
+			{
+				"case": "full hub card line: Author · recency (as rendered: author node + Dot + message)",
+				"logical": "Damian Tran · 3 دن پہلے اپ ڈیٹ کیا گیا",
+				"rtl_visual": "ﺎﯿﮔ ﺎﯿﮐ ﭧﯾﮈ ﭖﺍ ﮯﻠﮩﭘ ﻥﺩ Damian Tran · 3",
+				"length": 38,
+				"when_span": {
+					"logical": [
+						14,
+						22
+					],
+					"visual": [
+						15,
+						37
+					],
+					"positions": [
+						15,
+						16,
+						17,
+						18,
+						19,
+						20,
+						21,
+						22,
+						37
+					]
+				},
+				"when_end": [
+					"right-edge"
+				],
+				"verb_span": {
+					"logical": [
+						24,
+						37
+					],
+					"visual": [
+						0,
+						13
+					],
+					"positions": "discontinuous"
+				},
+				"verb_end": [
+					"left-edge"
+				]
+			},
+			{
+				"case": "full teams provenance line: project · author · recency (absolute date)",
+				"logical": "Pergamon · Damian Tran · 10 اکتوبر، 2026 اپ ڈیٹ کیا گیا",
+				"rtl_visual": "ﺎﯿﮔ ﺎﯿﮐ ﭧﯾﮈ ﭖﺍ 2026 ،ﺮﺑﻮﺘﮐﺍ Pergamon · Damian Tran · 10",
+				"length": 55,
+				"when_span": {
+					"logical": [
+						25,
+						39
+					],
+					"visual": [
+						15,
+						54
+					],
+					"positions": "discontinuous"
+				},
+				"when_end": [
+					"right-edge"
+				],
+				"verb_span": {
+					"logical": [
+						41,
+						54
+					],
+					"visual": [
+						0,
+						13
+					],
+					"positions": "discontinuous"
+				},
+				"verb_end": [
+					"left-edge"
+				]
+			},
+			{
+				"case": "ui.agents.pages.ask.manual_agent",
+				"logical": "یا ایجنٹ ہاتھ سے شامل کریں",
+				"rtl_visual": "ﮟﯾﺮﮐ ﻞﻣﺎﺷ ﮯﺳ ﮫﺗﺎﮨ ﭧﻨﺠﯾﺍ ﺎﯾ",
+				"length": 26
+			},
+			{
+				"case": "ui.agents.pages.ask.manual_team",
+				"logical": "یا ٹیم ہاتھ سے شامل کریں",
+				"rtl_visual": "ﮟﯾﺮﮐ ﻞﻣﺎﺷ ﮯﺳ ﮫﺗﺎﮨ ﻢﯿﭨ ﺎﯾ",
+				"length": 24
+			},
+			{
+				"case": "roster contrast: ui.agents.pages.add_manual.agent",
+				"logical": "خود ایجنٹ شامل کریں",
+				"rtl_visual": "ﮟﯾﺮﮐ ﻞﻣﺎﺷ ﭧﻨﺠﯾﺍ ﺩﻮﺧ",
+				"length": 19
+			},
+			{
+				"case": "roster contrast: ui.agents.pages.add_manual.team",
+				"logical": "خود ٹیم شامل کریں",
+				"rtl_visual": "ﮟﯾﺮﮐ ﻞﻣﺎﺷ ﻢﯿﭨ ﺩﻮﺧ",
+				"length": 17
+			}
+		],
+		"before_after": {
+			"before": {
+				"case": "BEFORE a9e536bf89: Author · card.updated",
+				"logical": "Damian Tran · اپ ڈیٹ کیا گیا 3 دن پہلے",
+				"rtl_visual": "ﮯﻠﮩﭘ ﻥﺩ 3 ﺎﯿﮔ ﺎﯿﮐ ﭧﯾﮈ ﭖﺍ · Damian Tran",
+				"length": 38,
+				"when_span": {
+					"logical": [
+						29,
+						37
+					],
+					"visual": [
+						0,
+						8
+					],
+					"positions": [
+						0,
+						1,
+						2,
+						3,
+						4,
+						5,
+						6,
+						7,
+						8
+					]
+				},
+				"when_end": [
+					"left-edge"
+				],
+				"verb_span": {
+					"logical": [
+						14,
+						27
+					],
+					"visual": [
+						10,
+						23
+					],
+					"positions": "discontinuous"
+				},
+				"verb_end": [
+					"interior"
+				]
+			},
+			"after": {
+				"case": "AFTER 29d7805a13: Author · card.updated",
+				"logical": "Damian Tran · 3 دن پہلے اپ ڈیٹ کیا گیا",
+				"rtl_visual": "ﺎﯿﮔ ﺎﯿﮐ ﭧﯾﮈ ﭖﺍ ﮯﻠﮩﭘ ﻥﺩ Damian Tran · 3",
+				"length": 38,
+				"when_span": {
+					"logical": [
+						14,
+						22
+					],
+					"visual": [
+						15,
+						37
+					],
+					"positions": [
+						15,
+						16,
+						17,
+						18,
+						19,
+						20,
+						21,
+						22,
+						37
+					]
+				},
+				"when_end": [
+					"right-edge"
+				],
+				"verb_span": {
+					"logical": [
+						24,
+						37
+					],
+					"visual": [
+						0,
+						13
+					],
+					"positions": "discontinuous"
+				},
+				"verb_end": [
+					"left-edge"
+				]
+			},
+			"conclusion": "the age moved from the leftmost columns (the end an RTL ellipsis cuts) to the right of the message; the verb now holds the leftmost columns"
+		},
+		"conclusion": "Reading order is correct in every composed case: the age occupies the right end of the message and the verb the left, which is what Urdu word order requires (time phrase then passive verb). The absolute date renders as 10 اکتوبر، 2026 in RTL reading (year leftmost), the Latin author and middle dot stay a single LTR island, and no punctuation, numeral or quote lands at the wrong end. The one measured bidi artefact — the age's leading digit joining the preceding LTR island on the composed card line — is benign (O1)."
+	},
+	"icu_structure": "No value in the delta carries a plural/select: the only ICU argument is {when}, and its name is identical to the English source in all five. The composed age phrases come from shipped ur keys with one/other (ur CLDR categories) — unchanged by this delta.",
+	"terminology_rulings": [
+		{
+			"item": "by hand → ہاتھ سے",
+			"ruling": "pass",
+			"basis": "Idiomatic Urdu for manual work (ہاتھ سے لکھا / ہاتھ سے بنا). Codepoints are the Urdu forms: ہ U+06C1, ھ U+06BE, ے U+06D2, ٹ U+0679; no Arabic heh/yeh/kaf variants. Distinct from the roster button's خود, which mirrors English 'manually' vs 'by hand'."
+		},
+		{
+			"item": "updated → اپ ڈیٹ کیا گیا",
+			"ruling": "pass",
+			"basis": "Same passive as the same surface's shipped ui.hub.teams.detail.updated and ui.agents.config.summary.updated (4 shipped uses). The intransitive اپ ڈیٹ ہوا used on ui.code_review.age.*/ui.hub.updates is a different construction, not a competing term for this surface."
+		},
+		{
+			"item": "created → بنایا گیا",
+			"ruling": "pass",
+			"basis": "Byte-identical verb to the same expanded row's ui.hub.teams.detail.created; keeps the created arm distinguishable from the updated arm, as the sidecar requires."
+		},
+		{
+			"item": "relative age before the passive verb",
+			"ruling": "pass",
+			"basis": "Shipped time-first keys: ui.settings.integrations.integration_model.worked_when_with_tools ('{when} کام کیا · {tools}'), ui.code_review.age.days/hours/minutes ('{amountText} دن پہلے اپ ڈیٹ ہوا'), ui.hub.updates.detail.applied_ago ('{ago} اپ ڈیٹ ہوا۔'). Urdu is verb-final, so a post-verbal age is the marked, source-order calque."
+		}
+	],
+	"evidence": {
+		"root": "i18n/audits/evidence/ur/<namespace>/lit2-ur-r2-20261026/",
+		"records": [
+			"i18n/audits/evidence/ur/ui.agents.config/lit2-ur-r2-20261026/record.json",
+			"i18n/audits/evidence/ur/ui.agents.detail/lit2-ur-r2-20261026/record.json",
+			"i18n/audits/evidence/ur/ui.agents.pages/lit2-ur-r2-20261026/record.json",
+			"i18n/audits/evidence/ur/ui.agents.upload/lit2-ur-r2-20261026/record.json",
+			"i18n/audits/evidence/ur/ui.common.actions/lit2-ur-r2-20261026/record.json",
+			"i18n/audits/evidence/ur/ui.hub.pages/lit2-ur-r2-20261026/record.json",
+			"i18n/audits/evidence/ur/ui.hub.teams/lit2-ur-r2-20261026/record.json"
+		],
+		"execution_log": "i18n/audits/evidence/ur/ui.hub.pages/lit2-ur-r2-20261026/audit.log",
+		"companions": [
+			"i18n/audits/evidence/ur/ui.hub.pages/lit2-ur-r2-20261026/verify-ur-r2.json",
+			"i18n/audits/evidence/ur/ui.hub.pages/lit2-ur-r2-20261026/bidi-ur-r2.log"
+		],
+		"note": "Seven per-namespace record.json files share this audit id; the execution log and the two machine-generated companions live once under ui.hub.pages and each record cites them with their sha256. The receipt itself is the ledger artifact under i18n/receipts/."
+	},
+	"audit_notes_not_execution_log": "This receipt and the seven records are notes and structured claims; audit.log is the captured transcript of the commands this run actually executed, and verify-ur-r2.json / bidi-ur-r2.log are their raw outputs."
+}

@@ -1,0 +1,19 @@
+{
+	"ui.agents.detail.read_state.failed_title": "无法读取“{name}”",
+	"ui.agents.detail.read_state.not_found": "未找到所请求的会话、配置、团队或订阅。",
+	"ui.agents.detail.read_state.failed_meaning": "定义可能已被移除，或后端拒绝了读取请求。",
+	"ui.agents.detail.read_state.request_failed": "请求未能完成。",
+	"ui.agents.detail.read_state.retry": "重试",
+	"ui.agents.detail.read_state.retrying": "正在重试……",
+	"ui.agents.detail.read_state.delegates": "可将工作委派给子智能体。",
+	"ui.agents.detail.read_state.no_delegation": "自行完成工作，不进行委派。",
+	"ui.agents.detail.read_state.class_description": "响应型智能体只会回复消息。主动型智能体还可以先向你发送消息。",
+	"ui.agents.detail.read_state.used_by_description": "将此智能体设为管理者或成员的团队。",
+	"ui.agents.detail.read_state.class_on": "已开启",
+	"ui.agents.detail.read_state.class_off": "已关闭",
+	"ui.agents.detail.read_state.class_switching": "正在切换……",
+	"ui.agents.detail.read_state.effort_inherit": "使用会话档位",
+	"ui.agents.detail.read_state.list_failed_teams": "无法读取团队",
+	"ui.agents.detail.read_state.list_failed_agents": "无法读取智能体",
+	"ui.agents.detail.read_state.list_failed_meaning": "没有内容丢失。这是一次读取失败——后端返回了错误，这与后端版本过旧不同。"
+}

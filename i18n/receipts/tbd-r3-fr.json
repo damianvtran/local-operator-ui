@@ -1,0 +1,22 @@
+{
+  "auditor": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "tbd-r3-fr",
+  "session": "6bec71b1ea82",
+  "date": "2026-10-21",
+  "locale": "fr",
+  "translator": "translator",
+  "namespaces": {
+    "ui.teamBridge": {
+      "status": "passed",
+      "keys_audited": 109,
+      "scope": "Full fr ui.teamBridge catalogue (109 keys, focus on the 9 keys added since round 1 and the 3 round-1 findings, all fixed) against the EN source and context frozen at 7bf957741a, the glossary, the fr style guide and the other fr ui.*/wire.* catalogues; ICU, NFC, bidi and typography checked in the bytes",
+      "sha256": {
+        "en": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+        "fr": "b28cfcd21792bd85822daffe240797f932dbf2c6fa9e11b1917c1c20759438fb",
+        "context": "17b7e1450dc7fa529d8e2e684bb8653fcc4f6cf220bf8261631d078d26545de5"
+      },
+      "findings": []
+    }
+  }
+}

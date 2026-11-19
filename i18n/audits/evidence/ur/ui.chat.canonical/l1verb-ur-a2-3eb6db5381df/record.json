@@ -1,0 +1,115 @@
+{
+  "audit_id": "l1verb-ur-a2-3eb6db5381df",
+  "round": 2,
+  "audit_kind": "independent-translation-audit",
+  "pass": "round-2 delta audit (one auditor; the manager's A/B split applied to round 1)",
+  "date": "2026-11-11",
+  "audit_date": "2026-11-11",
+  "locale": "ur",
+  "namespace": "ui.chat.canonical",
+  "slice": "L1 tool-row verbs",
+  "scope": "Delta scope: the 76 keys the translator changed in .worktrees/_l1-prep/ur.v2.json judged against their en value/context.role/notes, plus the 9 declined findings adjudicated against the shipped ur corpus, plus a full mechanical pass over all 182 values (set/order, empties, bidi controls, English-identical, script inventory, progressive-vs-habitual running forms, widths). The 106 unchanged keys were not re-audited for style; only searched_the_web.running was revisited, as the one unchanged key a changed neighbour now contradicts.",
+  "status": "changes_requested",
+  "result": "changes_requested",
+  "key_count": 182,
+  "keys_read": 182,
+  "keys_changed_in_delta": 76,
+  "pairs": 91,
+  "current_report_verdict": {
+    "status": "changes_requested",
+    "unresolved_blocker_major_count": 1,
+    "finding_ids": ["F-01", "F-02", "F-03", "F-04", "F-05", "F-06", "F-07", "F-08", "F-09"],
+    "severity_counts": {
+      "blocker": 0,
+      "major": 1,
+      "minor": 4,
+      "nit": 4
+    },
+    "report": "report.md"
+  },
+  "auditors": [
+    {
+      "agent": "i18n-auditor",
+      "model": "deepseek/deepseek-flash",
+      "session": "3eb6db5381df",
+      "team": "lopdev",
+      "instance": "3eb6db5381df-l1-ur-a2",
+      "date": "2026-11-11",
+      "result": "changes_requested",
+      "findings": {
+        "blocker": 0,
+        "major": 1,
+        "minor": 4,
+        "nit": 4
+      },
+      "independent_from_translator_session": true,
+      "actual_model_source": "harness session header line 'Model: deepseek/deepseek-flash' for session 3eb6db5381df; no fallback observed, no role or model pin applied",
+      "fallback": null,
+      "receipt": "receipt.json"
+    }
+  ],
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "openai/gpt-6.1-sol",
+    "session": "63cfb8a4238a"
+  },
+  "independence": "Independent i18n-auditor (team lopdev) session 3eb6db5381df; translated nothing and edited no catalogue, context sidecar, ledger, receipt or prep byte. No MT service, translation API or SDK used and no back-translation; judgement is reading-based, every cited count recomputed here over src/i18n/catalogues/ur/*.json. No other round-2 report was read.",
+  "audited_bytes_note": "The verdict covers .worktrees/_l1-prep/ur.v2.json, the translator's round-2 file. The shipped ur catalogue carries 0 of the 182 keys (verified), so ur_shipped_reference below is a consistency reference, not the audited target, and no ledger row can yet be assembled for these bytes.",
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+      "sha256": "a385671b988e5f03df6f650beb4a06f73c9efaead2316dfa9ab15bf043798765"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+      "sha256": "2e755f12e46bb6dded6dbf950eda6402b0a7bcb05e9489fa17f7369543f3ac7f"
+    },
+    "en_keys_prep": {
+      "path": ".worktrees/_l1-prep/keys.json",
+      "sha256": "b3f3bfe3688d1461a061009e98a58802171eb181343fdb8fcfd0af07652ca419"
+    },
+    "ur": {
+      "path": ".worktrees/_l1-prep/ur.v2.json",
+      "sha256": "c71f5e40612dca85cee0d05ddfe4d833d3a68d05fb7c96a3e1519dbed1f904e0"
+    },
+    "ur_previous_pass": {
+      "path": ".worktrees/_l1-prep/ur.json",
+      "sha256": "7525521c04130f6b8182ba941850d0cbe76f0b08bd997aa8a9fe153d05dfb5fd"
+    },
+    "ur_shipped_reference": {
+      "path": "src/i18n/catalogues/ur/ui.chat.canonical.json",
+      "sha256": "e9c5c4e97476439567dd3efa26f14e9257fcfc581b8526d89bb5d05a4e3c9e11"
+    }
+  },
+  "artifacts": [
+    {
+      "path": "i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-a2-3eb6db5381df/audit.log",
+      "sha256": "aa533c64d032f808ad45141019f47f3a03529ba3a7512daf0737fa76c9a00512"
+    },
+    {
+      "path": "i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-a2-3eb6db5381df/checks.py",
+      "sha256": "58ad5b25ad9a0c78532b7c7329e384778cd5961ea30413d9e64a568f5ca2785c"
+    },
+    {
+      "path": "i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-a2-3eb6db5381df/receipt.json",
+      "sha256": "bf675d2e4114ac123e177006264109d147df8b9237bcf2d2c99f8f331ba5a81c"
+    },
+    {
+      "path": "i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-a2-3eb6db5381df/report.md",
+      "sha256": "6995b07c62830f0d94f22b11139cf9d30363d8c9f68266df9fb563345eb871b7"
+    }
+  ],
+  "execution_evidence": "audit.log is a real execution log: the commands of this session and their actual output (shasum, checks.py under the rich-capable interpreter, context-parity, generate --check, ledger-check, the refused ledger-assemble, the shipped-key count). The prose fields of this record and report.md are audit notes, not execution logs.",
+  "audit_notes_not_execution_log": "Scope, independence and method statements here and in report.md are notes written by the auditor; only audit.log carries executed output.",
+  "ledger": {
+    "attempted": true,
+    "command": "node scripts/i18n/ledger-assemble.mjs --locale ur --file src/i18n/catalogues/ur/ui.chat.canonical.json --auditor-instance 3eb6db5381df-l1-ur-a2 --auditor-model deepseek/deepseek-flash --result changes_requested --receipt i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-a2-3eb6db5381df/receipt.json",
+    "exit": 2,
+    "output": "ledger-assemble: refused - ur/ui.chat.canonical is not key-complete against English (182 missing, 0 extra) - an incomplete locale cannot be recorded",
+    "next_step": "The landing PR assembles the ledger row against the landed ur catalogue, with this receipt as the audit it records. No ledger byte was written by this audit."
+  },
+  "original_lost_evidence": null,
+  "new_report_is_original": true,
+  "new_report_is_historical_R2_recreation": false,
+  "backdated": false
+}

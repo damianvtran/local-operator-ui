@@ -1,0 +1,217 @@
+AUDIT LOG — fr, delta tag ds — PR damianvtran/local-operator-ui #1842
+Auditor instance/session: 491f3795f0ee
+Served model (session header): deepseek/deepseek-flash
+Independent from translator session: yes (translator is i18n-translator / anthropic/claude-sonnet-5-5,
+new session per the brief; this auditor did not translate and never saw that session)
+Date: 2026-11-10
+Frozen head audited: b8f0fc3aa922b99c6fad9c32edd36515fbd24e5a
+Prior round: e5fb4310dab638f9cf428779d62539ec039a8990 (receipts in
+  _s12-audits/e5fb4310.../fr-ds-e3c562b03258.{json,record.json,audit.log})
+
+SCOPE
+Exactly ONE changed value, a fresh translator revision of a prior-round audit finding:
+  ui.common.actions.actions_for_name: "Actions sur {name}"  ->  "Actions pour {name}"
+  (English "Actions for {name}"; prior round E3C562B03258 F1 MAJOR asked for "pour".)
+Everything else in the namespace is byte-unchanged since the prior round, verified below.
+The other 53 keys of ui.common.actions are CONSISTENCY-ONLY here (file parses, key set
+equals English, no key removed, cross-file term consistency). I did NOT recertify them,
+and I did not re-audit the other keys certified in the prior round (they live in ui.chat
+and ui.chat.composer_media, which this delta does not touch).
+
+=== WHAT I ACTUALLY RAN (commands, with their real output) ===
+
+1. Head, cleanliness, and the one-line delta
+   $ cd ~/local-operator-ui/.worktrees/i18n-s8 && git rev-parse HEAD
+   b8f0fc3aa922b99c6fad9c32edd36515fbd24e5a
+   -> matches the frozen head named in the brief; stop condition not triggered.
+   $ git status --porcelain
+   (empty — clean)
+   $ git diff e5fb4310dab638f9cf428779d62539ec039a8990..HEAD -- src/i18n/catalogues/fr/ui.common.actions.json
+   @@ -52,5 +52,5 @@
+    "ui.common.actions.system_prompt_updated": "Prompt système mis à jour",
+    "ui.common.actions.credential_updated": "Identifiant « {key} » mis à jour",
+    "ui.common.actions.clear": "Effacer",
+   -	"ui.common.actions.actions_for_name": "Actions sur {name}"
+   +	"ui.common.actions.actions_for_name": "Actions pour {name}"
+   One value replaced, nothing else in the file, no key added or removed in this delta.
+   $ git diff e5fb4310..HEAD -- src/i18n/catalogues/en/ui.common.actions.json src/i18n/catalogues/en/ui.common.actions.context.json
+   (empty — the English source and its context sidecar did not move)
+   $ git diff --stat e5fb4310..HEAD
+   scripts/i18n/check-strings.mjs, scripts/i18n/check-strings.test.mjs,
+   scripts/user-attachments.test.mjs, src/i18n/catalogues/fr/ui.common.actions.json,
+   src/i18n/catalogues/ur/ui.chat.json,
+   src/renderer/src/features/chat/components/message-item/file-attachment.tsx,
+   src/renderer/src/features/team-bridge/team-bridge-staged-upload.ts
+   The ur catalogue row belongs to the ur auditor; the script/TSX rows are PR code, not
+   translation. Neither is audited here.
+
+2. Catalogue hashes, recomputed against the manager's expected-hashes.json
+   $ shasum -a 256 src/i18n/catalogues/en/ui.common.actions.json
+   0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b   (expected same)  OK
+   $ shasum -a 256 src/i18n/catalogues/fr/ui.common.actions.json
+   65357603eec7fb7afabd5d55c786735dc05e89cb36d19ccd4116bdb5bdbc2907   (expected same)  OK
+   $ shasum -a 256 src/i18n/catalogues/en/ui.common.actions.context.json
+   24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d   (expected same)  OK
+   3/3 this-locale entries match; 0 mismatches. (The other 3 entries in that file are
+   ur/ui.chat and the en ui.chat pair, which belong to the ur and chat auditors.)
+   The fr target hash differs from the prior round (1f375db0... -> 65357603...) exactly
+   because the audited value changed; that is the expected delta, not a drift finding.
+
+3. Policy inputs
+   $ shasum -a 256 ~/local-operator/i18n/style-guides/fr.md
+   ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226
+   $ shasum -a 256 ~/local-operator-ui/.worktrees/_s12-audits/b8f0fc3a.../glossary.md \
+                    ~/local-operator/i18n/glossary.md
+   0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8  (b8f0fc3a copy)
+   0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8  (original)
+   Byte-identical, 173 lines. Glossary conformance was checked against the manager-owned
+   b8f0fc3a copy as instructed. The fr style guide and the glossary are both silent on
+   "actions"; the guide's punctuation/register/width rules are the binding part.
+
+4. Repo validators (read-only; no build, install or server; tree clean before and after)
+   $ node scripts/i18n/generate.mjs --check
+   src/i18n/keys.gen.ts is byte-identical to a fresh generation.                    [exit 0]
+   $ node scripts/i18n/check-duplicates.mjs
+   check-duplicates: ok — 1400 file(s) scanned, 0 duplicate key(s)                  [exit 0]
+   $ node scripts/i18n/check-strings.mjs
+   check-strings.mjs: ok — 1649 file(s) scanned, 0 literal(s) at or below the
+   baseline; 40 literal(s) in the data shapes, all listed in
+   i18n/literal-allowance.json (shrink-only)                                        [exit 0]
+   $ node scripts/i18n/context-parity.mjs
+   context-parity: ok — every English key is covered, apart from 131 allowed gap(s)
+   in 4 namespace(s) (shrink-only; see i18n/context-allowance.json).                [exit 0]
+   $ node scripts/i18n/ledger-check.mjs
+   FAILED — 64 finding(s) across 1085 ledger entr(ies)                              [exit 1]
+   Of those 64, 9 concern fr, including three for fr/ui.common.actions:
+     fr/ui.common.actions: stale source_sha256 (ledger 3f9e9a4b0231…, file 0218bb5b748c…)
+     fr/ui.common.actions: stale target_sha256 (ledger 8672c8f71fba…, file 65357603eec7…)
+     fr/ui.common.actions: auditor 1: the receipt does not name the English source
+       bytes on disk - it audited a different file
+   Expected pre-audit state: the ledger row still binds the pre-PR source and the
+   pre-revision target, and this auditor writes no ledger. No ledger write was run.
+   The stale target hash now names the bytes this receipt binds, so the manager's
+   ledger write (ledger-assemble) will clear it once the row is pointed at this audit.
+
+5. Mechanical verification, run as a script (fr-ds-491f3795f0ee-check.py, exit 0,
+   captured output fr-ds-491f3795f0ee-check.out) — actual results:
+   - HEAD matches; worktree clean.
+   - 3/3 sha256 entries match expected-hashes.json.
+   - en/fr both parse as JSON; 54 keys each; fr key set == en key set.
+   - exactly one removed and one added line between prior head and HEAD; English
+     catalogue and context sidecar unchanged.
+   - placeholders: en ['name'] vs fr ['name']; {name} byte-exact once in the fr value.
+   - no ICU plural/select in the value and none in the English -> CLDR categories
+     for fr (one/many/other) are not applicable to this key.
+   - value is pure ASCII: no U+200E/200F/202A-202E/2066-2069, no U+00A0/U+202F,
+     no Cf/Cc characters; 19 characters; no trailing whitespace or punctuation.
+   - corpus sweep of every fr catalogue file for the exact English string
+     "Actions for {name}": 5/5 shipped renderings are exactly "Actions pour {name}"
+     (ui.chat.canonical.link_toolkit.actions_for, ui.library.menu.asset_actions_label,
+      ui.settings.appearance.editor.more, ui.shell.sidebar_navigation.row_actions, and
+      this key). Unanimous after the change; the old "sur" value was the only outlier.
+   - "Actions sur {" in any fr value: 0 matches. Every "Actions sur …" value in the
+     corpus is article-bearing and generic: "Actions sur le fichier" (x4),
+     "Actions sur l’image" (x3), "Actions sur l’élément", "Actions sur le message".
+   - the 117 "sur {placeholder}" values elsewhere are positional / on-target /
+     distributive ("{page} sur {count}", "{loaded} sur {total}", "Basé sur {name}",
+     "Appuyez sur {key}", "s’exécute sur {device}"); swept for any that mention
+     action/menu/button/option: 0 matches, so none competes with "actions for
+     <name>".
+   - style-guide and glossary hashes as recorded in section 3.
+
+6. Targeted consistency greps (the catalogue directory is large; patterns are narrow)
+   $ grep -rn "Actions pour" src/i18n/catalogues/fr   -> 7 matches (this key + 6 others,
+     including "Actions pour {displayName}" and "Actions pour \"{title}\"")
+   $ grep -rn "Actions sur"  src/i18n/catalogues/fr   -> 9 matches, all generic labels
+   $ python sweep for 'pour \{(name|title|label|displayName)\}"' -> 17 matches, e.g.
+     ui.settings.integrations.integration_row.more_actions_for_name = "Autres actions pour {name}",
+     ui.projects.project_updates.file_actions_for_name = "Actions de fichier pour {name}",
+     ui.browser.browser_tab_strip.tab_actions = "Actions de l’onglet pour {title}"
+     -> "phrase pour {name}" is the corpus's settled shape for a name-directed label.
+
+7. Call sites and context (what the string is used as)
+   $ grep -rn "actions_for_name" src --include=*.ts --include=*.tsx
+   src/renderer/src/features/chat/canonical/supplement-file-actions.tsx:181
+     const ariaLabel = label ? t("ui.common.actions.actions_for_name", { name: label })
+                             : t("ui.common.actions.file_actions_menu.file_actions");
+   src/renderer/src/features/chat/components/image-actions-menu.tsx:365
+     (ariaLabel ?? (label != null ? t(...actions_for_name...) : t("ui.chat.image_actions.actions")))
+   Both are aria-label on the overflow trigger's Button, inside a Tooltip that shows the
+   generic "Actions sur le fichier" / "Actions sur l’image". The English and the context
+   sidecar state the same split: this key is the NAMED accessible name, not the generic
+   tooltip and not the unnamed-asset fallback. keys.gen.ts types it { name: string }.
+
+=== JUDGMENT ON THE MERITS (not a rubber stamp of the proposing auditors) ===
+
+I re-derived the question rather than assuming round 1 was right.
+
+Meaning: English "Actions for {name}" is a neutral noun phrase naming the asset whose
+actions menu opens — not a command to act on the name (context sidecar). The fr value
+keeps that: "Actions pour <name>" is the "for <asset>" relation, the same relation the
+English states. No omission, addition, negation or polarity change; no destructive,
+permission or error wording here.
+
+Why "pour" and not the previous "sur": both prepositions are grammatical French with a
+bare inserted name, so this is not a meaning defect — round 1 classified it MAJOR on
+terminology/consistency grounds and that is the honest label for it:
+  - "pour" is the decision the catalogue already made for this exact English sentence:
+    four shipped files carry "Actions pour {name}", plus "Actions pour {displayName}"
+    and "Actions pour \"{title}\"". Before the change this key was the one outlier.
+  - "sur" in this corpus is the article-bearing generic form only ("Actions sur le
+    fichier", "Actions sur l’image", "Actions sur l’élément", "Actions sur le message")
+    — 0 values use "Actions sur <placeholder>". Using it on the named path would ask
+    the reader to hold two prepositions for one concept with no rule behind it.
+  - The gloss is "one term, one decision" (glossary § intro), and the sibling
+    name-directed labels ("Autres actions pour {name}", "Actions de fichier pour {name}",
+    "Actions de l’onglet pour {title}") are all "pour".
+  - Fit for arbitrary inserted text: "pour" takes no article, no gender agreement and no
+    elision (unlike "de", which would need "d’" before a vowel-initial name). Any file or
+    image display name — spaces, «guillemets», apostrophes, dots, CJK, emoji — slots in
+    without a grammar change. "Actions pour Ébauche finale.png" needs nothing extra.
+
+Register and typography: sentence case with a capital "Actions", no trailing punctuation,
+plain ASCII, straight spaces. Nothing in the fr guide applies here beyond that: no
+«…» quoting (the English does not quote the name; the sibling {name} keys do not either),
+no espace fine before a punctuation mark because there is none, no digits, no plural.
+
+Fit: the sidecar carries no maxCells for this namespace (grep -c maxCells = 0 on the whole
+file), and the string is an aria-label, never a truncating container. 19 characters, one
+more than the previous value and shorter than the shipped generic neighbours
+("Actions sur le fichier", 22). No overflow or wide-glyph risk (pure ASCII).
+
+Consistency with the prior round's other certified keys: the changed value does not
+contradict them. Its counterpart in the same component pair, the generic
+ui.chat.image_actions.actions = "Actions sur l’image" (certified clean last round), still
+serves the unnamed fallback and the tooltip, and that generic/named split is exactly what
+the context sidecar prescribes. So the pair now reads "Actions sur l’image" (unlabelled
+image) vs "Actions pour photo.png" (named) — two roles, one rule each, no contradiction.
+The prior round's other nit (ui.chat.audio.position_label) lives in a namespace this delta
+does not touch and is not re-audited here.
+
+Second independent pass: this key sits in a common-actions group, so I re-read the value
+and its neighbours a second time after the mechanical sweep, deliberately asking whether
+"pour" could be the worse choice (benefactive misreading? article missing? elision?) and
+whether an alternative such as "Actions de {name}", "{name} : actions" or
+"Plus d’actions pour {name}" would serve better. None of them survives the corpus check
+(the first two have no precedent here and would split the invariant; the third adds words
+the English does not have), so the second pass agreed with the first. No separate second
+auditor/session was available or requested for this delta; that limitation is recorded
+rather than glossed over.
+
+OUTCOME: no finding. F1 of the prior round is remediated correctly, by a value that is
+grammatical for arbitrary inserted names, native in register, and consistent with every
+other rendering of the same English sentence. Nothing gates.
+
+=== WHAT I DID NOT DO (honest limits) ===
+- No ICU parser/formatter run, no Electron/React run, no screen reader, no rendered frame:
+  read-only, no-build, no-server brief. Register and grammar judgments are native-reader
+  reasoning over the catalogue and its call sites, not runtime output.
+- No ledger write, no tracked evidence retention, no PR comment, no commit: writes were
+  limited to this session's scratchpad ($LOCAL_OPERATOR_SCRATCHPAD), as the brief requires.
+  Retaining these three files under i18n/audits/evidence/fr/ui.common.actions/<audit-id>/
+  and recording the ledger row is the manager's step.
+- The 53 non-delta keys of ui.common.actions were not certified; only parse, key-set
+  parity, no-removal and cross-file term consistency were checked for them.
+- Nothing under ~/.local-operator/sessions other than my own scratchpad was read; no
+  other session's receipts were consulted beyond the prior-round fr receipt named above
+  and a status-level glance at the two ur receipts in the same prior-round directory.

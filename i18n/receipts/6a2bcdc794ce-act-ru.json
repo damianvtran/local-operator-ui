@@ -1,0 +1,127 @@
+{
+  "locale": "ru",
+  "namespace": "ui.common.actions",
+  "scope": "Independent verification of the narrow mechanical deletion of ui.common.actions.check_again (no consumer; ui.chat.device.check_again is the used key) from the English source and all seven locales. Delta audit against the previously audited state 369bb0113f; not a fresh full pass over unchanged, previously approved content.",
+  "checkout_head": "58de30166d",
+  "checkout_head_full": "58de30166d26776166576c134d5456416616285b",
+  "branch": "i18n-final-literals",
+  "worktree": "/Users/damian/lo-literals",
+  "audit_date": "2026-10-29",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "6a2bcdc794ce",
+    "model": "radient/auto",
+    "actual_model_source": "Provider-failure fallback chain during this turn: openai/gpt-6-astra -> kimi/k3.1-pro -> radient/auto. The run's session header still declares anthropic/claude-sonnet-5-5; the model that actually executed and produced this audit is radient/auto.",
+    "independent_from_translator_session": true,
+    "independence_note": "Session 6a2bcdc794ce is this auditor's own subagent session, read from this run's runtime session header. It is not the coordinating session 3ef6295a5545 (the id the discarded record wrongly carried) and not any translator session. Subagent sessions are absent from the top-level `sessions` listing, so the runtime header is the authority for the id."
+  },
+  "baseline": {
+    "commit": "369bb0113f",
+    "meaning": "previously audited state for ru/ui.common.actions"
+  },
+  "input_sha256": {
+    "en": "8dc67dc7c285d2747f4586a5d01a39c23423b10e506f6cfa44c258caed37a412",
+    "target": "b21ee6b70f26a12695056320389585b2d0bddbc125f608d63c26bc628d9b8c09"
+  },
+  "input_paths": {
+    "en": "src/i18n/catalogues/en/ui.common.actions.json",
+    "target": "src/i18n/catalogues/ru/ui.common.actions.json",
+    "tool": "shasum -a 256 (whole files, worktree == HEAD blob verified for both)"
+  },
+  "observed_diff": {
+    "command": "git diff -U3 369bb0113f..HEAD -- src/i18n/catalogues/{en,ru}/ui.common.actions.json",
+    "en": {
+      "removed_lines": [
+        "\t\"ui.common.actions.check_again\": \"Check again\","
+      ],
+      "added_lines": [],
+      "numstat": "0 added / 1 removed"
+    },
+    "target": {
+      "removed_lines": [
+        "\t\"ui.common.actions.check_again\": \"Проверить ещё раз\","
+      ],
+      "added_lines": [],
+      "numstat": "0 added / 1 removed"
+    },
+    "unified": {
+      "en": "--- a/src/i18n/catalogues/en/ui.common.actions.json\n+++ b/src/i18n/catalogues/en/ui.common.actions.json\n@@ -1,6 +1,5 @@\n {\n \t\"ui.common.actions.cancel\": \"Cancel\",\n-\t\"ui.common.actions.check_again\": \"Check again\",\n \t\"ui.common.actions.close\": \"Close\",\n \t\"ui.common.actions.copied\": \"Copied\",\n \t\"ui.common.actions.copy_failed\": \"Could not copy. Select and copy it manually.\",",
+      "target": "--- a/src/i18n/catalogues/ru/ui.common.actions.json\n+++ b/src/i18n/catalogues/ru/ui.common.actions.json\n@@ -1,6 +1,5 @@\n {\n \t\"ui.common.actions.cancel\": \"Отмена\",\n-\t\"ui.common.actions.check_again\": \"Проверить ещё раз\",\n \t\"ui.common.actions.close\": \"Закрыть\",\n \t\"ui.common.actions.copied\": \"Скопировано\",\n \t\"ui.common.actions.copy_failed\": \"Не удалось скопировать. Выделите и скопируйте вручную.\","
+    },
+    "independent_key_level_proof": {
+      "method": "parsed both blobs (369bb0113f vs HEAD) with json and compared key sets and values",
+      "en": "old 53 keys, new 52; removed ['ui.common.actions.check_again']; added []; changed values []; key order preserved",
+      "target": "old 53 keys, new 52; removed ['ui.common.actions.check_again']; added []; changed values []; key order preserved"
+    },
+    "nothing_else_moved": true
+  },
+  "checks_run": {
+    "key_parity_en_target": "pass - 52 en keys, 52 ru keys, identical order, none only-in-one-side",
+    "placeholders": "pass - {label}, {currentmatch}, {matchcount}, {key} identical name-for-name in every surviving key",
+    "icu_plural_select": "pass (vacuous) - this namespace contains zero plural/select messages in either locale; no CLDR category question arises",
+    "context_sidecar_parity": "pass - `node scripts/i18n/context-parity.mjs` -> ok, 131 allowed shrink-only gap(s) in 4 namespaces; the removed check_again context block was dropped from en/ui.common.actions.context.json in the same range (5 lines, 0 added)",
+    "generated_keys_fresh": "pass - `node scripts/i18n/generate.mjs --check` -> src/i18n/keys.gen.ts is byte-identical to a fresh generation",
+    "duplicate_keys": "pass - `node scripts/i18n/check-duplicates.mjs` -> ok, 934 files scanned, 0 duplicate keys",
+    "no_consumer_left": "pass - repo-wide search for `ui.common.actions.check_again` returns only one historical audit receipt (i18n/receipts/d2cc21c7d250-r4-ur.json); no source, test or catalogue reference remains. The keys that are used are ui.chat.device.check_again and the per-namespace check_again keys (mesh/settings/integrations/providers), all untouched",
+    "ledger_check": "FAILS, expectedly and not a translation finding - `node scripts/i18n/ledger-check.mjs` -> FAILED, 23 finding(s) across 728 ledger entries, of which 3 are ru/ui.common.actions: stale source_sha256 (ledger 0c279fc21d17... vs file 8dc67dc7c285...), stale target_sha256 (ledger d888de3e4c42... vs file b21ee6b70f26...), and 'auditor 1: the receipt does not name the English source bytes on disk'. The audited bytes moved by exactly the deletion under test, so the ledger pins must be re-pointed at this receipt's hashes by the coordinating session. Not run: check-strings, check-added-strings, check-coverage (pnpm check-i18n halves)."
+  },
+  "read_public_copy_samples": [
+    {
+      "key": "ui.common.actions.copy_failed",
+      "en": "Could not copy. Select and copy it manually.",
+      "ru": "Не удалось скопировать. Выделите и скопируйте вручную."
+    },
+    {
+      "key": "ui.common.actions.retry",
+      "en": "Retry",
+      "ru": "Повторить"
+    },
+    {
+      "key": "ui.common.actions.find_replace_widget.no_results",
+      "en": "No results",
+      "ru": "Нет результатов"
+    },
+    {
+      "key": "ui.common.actions.find_replace_widget.of",
+      "en": "{currentmatch, number, ::group-off} of {matchcount, number, ::group-off}",
+      "ru": "{currentmatch, number, ::group-off} из {matchcount, number, ::group-off}"
+    },
+    {
+      "key": "ui.common.actions.credential_updated",
+      "en": "Credential \"{key}\" updated successfully",
+      "ru": "Учётные данные «{key}» успешно обновлены"
+    }
+  ],
+  "glossary_and_style_guide": {
+    "style_guide": "/Users/damian/local-operator/i18n/style-guides/ru.md (read as a labelled external doc; outside this worktree)",
+    "conformance_on_surviving_surface": "Sampled and whole-file read against the guide: vy-form and infinitive action labels present (Закрыть, Повторить, Подтвердить, Очистить), impersonal failure phrasing (Не удалось скопировать), ёлочки for the interpolated credential key, ё retained (обновлён, удалён), Latin digits, no Title Case, no politeness padding, no '!'. Glossary terms used consistently: учётные данные (credentials), системный промпт, разговор, конфигурация.",
+    "moved_by_this_change": "none - every surviving ru value is byte-identical to the previously audited state, so no glossary or typography fact could have moved"
+  },
+  "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 0,
+    "NIT": 0
+  },
+  "findings": [],
+  "verdict": "pass",
+  "instance": "6a2bcdc794ce-act-ru",
+  "namespaces": {
+    "ui.common.actions": {
+      "status": "passed",
+      "keys_audited": 52,
+      "sha256": {
+        "en": "8dc67dc7c285d2747f4586a5d01a39c23423b10e506f6cfa44c258caed37a412",
+        "target": "b21ee6b70f26a12695056320389585b2d0bddbc125f608d63c26bc628d9b8c09"
+      },
+      "findings": [],
+      "note": "52 surviving keys re-confirmed key-for-key against English; the only delta in 369bb0113f..58de30166d is the removal of ui.common.actions.check_again from both files."
+    }
+  },
+  "out_of_scope_observed": {
+    "other_namespaces_in_range": "369bb0113f..HEAD also moves ui.chat.canonical and ui.chat.thread_search for all seven locales. Those are separate file groups, not this audit's namespace, and are not covered by this record.",
+    "pre_existing_key_oddity": "ui.common.actions.date_time_picker.set_to_current_time369877 carries a numeric suffix in en and in all seven locales identically. It predates 369bb0113f and is a source key-naming artifact, not a translation defect; reported as an observation only, not scored."
+  },
+  "notes": "Replacement record for the discarded one that recorded the coordinating session (3ef6295a5545) as its auditor. Independent subagent auditor session 6a2bcdc794ce; model that actually executed is radient/auto after a provider-failure fallback chain, recorded honestly above. Repo was not edited. Written to /Users/damian/qa/act-audit/ru/ per the request rather than a tracked i18n/audits/evidence path, so it is not yet durable in-tree.",
+  "evidence_location_note": "This receipt lives outside the repo at the requesting session's instruction; it is not a tracked i18n/audits/evidence bundle and must not be cited as one until ingested."
+}

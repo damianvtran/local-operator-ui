@@ -351,10 +351,18 @@
 	"ui.projects.project_todos.no_to_do_snapshots_from_the_linked_sessions_yet_a_session_publish": "Снимков списка задач от связанных сессий пока нет. Сессия публикует список по ходу работы, и он появится здесь.",
 	"ui.projects.project_todos.to_dos": "Задачи",
 	"ui.projects.project_updates.attachment": "Вложение",
+	"ui.projects.project_updates.attachments": "Вложения",
 	"ui.projects.project_updates.file_actions_for_name": "Действия с файлом {name}",
 	"ui.projects.project_updates.loading": "Загрузка ",
 	"ui.projects.project_updates.no_updates_yet_progress_reported_by_you_or_by_the_sessions_workin": "Обновлений пока нет. Прогресс, о котором сообщили вы или сессии, работающие над проектом, будет добавляться здесь.",
 	"ui.projects.project_updates.open_name": "Открыть {name}",
+	"ui.projects.project_updates.play_name": "Воспроизвести {name}",
+	"ui.projects.project_updates.preview_failed": "Не удалось открыть этот файл.",
+	"ui.projects.project_updates.preview_loading": "Загрузка предпросмотра…",
+	"ui.projects.project_updates.preview_moved": "Возможно, сохранённая копия была перемещена или удалена.",
+	"ui.projects.project_updates.preview_name": "Предпросмотр {name}",
+	"ui.projects.project_updates.preview_unavailable": "Предпросмотр недоступен вне настольного приложения.",
+	"ui.projects.project_updates.show_asset_name": "Показать {name}, элемент {index} из {count}",
 	"ui.projects.project_updates.updates": "Обновления",
 	"ui.projects.projects_page.checking_the_server_s_projects_support": "Проверка поддержки проектов на сервере",
 	"ui.projects.projects_page.clear_all": "Сбросить всё",
@@ -414,5 +422,8 @@
 	"ui.projects.request_update.value1_could_not_be_reached": " Не удалось связаться с {value1}.",
 	"ui.projects.timeline.read_failed": "Не удалось прочитать этапы для {count, plural, one {{count, number, ::group-off} проекта} few {{count, number, ::group-off} проектов} many {{count, number, ::group-off} проектов} other {{count, number, ::group-off} проекта}}.",
 	"ui.projects.use_request_update.could_not_request_updates_endedsentence_message": "Не удалось запросить обновления: {endedSentence_message}",
-	"ui.projects.use_request_update.the_request_could_not_be_confirmed": "Не удалось подтвердить запрос."
+	"ui.projects.use_request_update.the_request_could_not_be_confirmed": "Не удалось подтвердить запрос.",
+	"ui.projects.project_model.milestone_summary": "Завершено: {completed, number, ::group-off} из {total, number, ::group-off}",
+	"ui.projects.project_model.todos_summary": "Открыто: {open, number, ::group-off} из {total, number, ::group-off}",
+	"ui.projects.project_model.done_gate_tail": "завершите или удалите незавершённые этапы, затем отметьте проект готовым"
 }

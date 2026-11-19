@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 import {
 	AllCommunityModule,
 	ModuleRegistry,
@@ -605,6 +606,15 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 	conversationId,
 }) => {
 	const gridRef = useRef<AgGridReact>(null);
+	/*
+	 * A PEER-held workbook (review round 2, R2-1) has no file here to write: its
+	 * save reaches `saveBuffer`, which refuses the `remote-file:` identifier, and
+	 * the grid used to take the edit and drop it without a word. It is read-only
+	 * at the source instead - no editable cell, no autosave, no Ctrl+S - and says
+	 * so with the caption the remote text viewer uses (U1-3).
+	 */
+	const remote = document.remote ?? null;
+	const readOnly = remote !== null;
 	const [sheetsData, setSheetsData] = useState<
 		Record<string, Record<string, unknown>[]>
 	>({});
@@ -837,7 +847,7 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 
 	const saveChanges = useCallback(
 		async (explicit = false) => {
-			if (!document.path || isSaving) return;
+			if (!document.path || isSaving || readOnly) return;
 			setIsSaving(true);
 			try {
 				/*
@@ -851,7 +861,9 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 				const outcome = await saveBuffer(document.id, { explicit });
 				if (outcome.status === "blocked") {
 					showErrorToast(
-						"The file changed on disk, so this save was not written. Use the row above to load it or save over it.",
+						t(
+							"ui.canvas.spreadsheet_preview.the_file_changed_on_disk_so_this_save_was_not_written_use_the_row_above",
+						),
 					);
 					return;
 				}
@@ -874,17 +886,22 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 				 */
 				parseFile(payload.text, document.path);
 				setHasUserChanges(false);
-				showSuccessToast("Spreadsheet saved");
+				showSuccessToast(t("ui.canvas.spreadsheet_preview.spreadsheet_saved"));
 			} catch (error) {
 				console.error("Failed to save file:", error);
 				showErrorToast(
-					`Failed to save spreadsheet: ${error instanceof Error ? error.message : "Unknown error"}`,
+					t("ui.canvas.spreadsheet_preview.failed_to_save_spreadsheet", {
+						value:
+							error instanceof Error
+								? error.message
+								: t("ui.canvas.spreadsheet_preview.unknown_error"),
+					}),
 				);
 			} finally {
 				setIsSaving(false);
 			}
 		},
-		[document.id, document.path, isSaving, parseFile, serialise],
+		[document.id, document.path, isSaving, readOnly, parseFile, serialise],
 	);
 
 	saveChangesRef.current = saveChanges;
@@ -902,6 +919,9 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 	}, [debouncedSheetsData, saveChanges, hasUserChanges]);
 
 	useEffect(() => {
+		// A read-only workbook has nothing to save; the app's own Ctrl+S handling
+		// is left alone rather than swallowed.
+		if (readOnly) return;
 		const handleKeyDown = (event: KeyboardEvent) => {
 			if ((event.metaKey || event.ctrlKey) && event.key === "s") {
 				event.preventDefault();
@@ -915,7 +935,7 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 		return () => {
 			window.removeEventListener("keydown", handleKeyDown);
 		};
-	}, [saveChanges]);
+	}, [saveChanges, readOnly]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: the body reaches this value through the owner and the callback it holds, so the dependency is deliberate: what the hook is watching is named here and nothing else re-registers it.
 	const onCellValueChanged = useCallback(
@@ -998,7 +1018,7 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 			return {
 				field: key,
 				headerName: key,
-				editable: true,
+				editable: !readOnly,
 				sortable: true,
 				filter: true,
 				/*
@@ -1020,10 +1040,23 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 				cellStyle: isProse ? PROSE_CELL_STYLE : undefined,
 			};
 		});
-	}, [activeSheetName, sheetsData]);
+	}, [activeSheetName, sheetsData, readOnly]);
 
 	return (
-		<div className={cn("flex h-full w-full flex-col")}>
+		<div
+			className={cn("flex h-full w-full flex-col")}
+			data-spreadsheet-readonly={readOnly ? "true" : undefined}
+		>
+			{remote ? (
+				/* The remote text viewer's caption, in its slot and classes (U1-3). */
+				<p
+					className={cn(
+						"flex h-8 shrink-0 items-center truncate ps-2.5 pe-2 text-meta text-ink-muted",
+					)}
+				>
+					{t("ui.canvas.files.remoteReadOnly", { device: remote.deviceName })}
+				</p>
+			) : null}
 			<div className={cn("min-h-0 w-full flex-1")}>
 				<AgGridReact
 					ref={gridRef}

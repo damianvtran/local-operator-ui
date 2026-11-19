@@ -1,0 +1,66 @@
+{
+  "schema": 1,
+  "locale": "vi",
+  "namespace": "ui.notifications",
+  "instance": "cfdff5945838",
+  "auditor": {
+    "agent": "translation-auditor (audit-vi, lopdev team)",
+    "instance": "cfdff5945838",
+    "session": "cfdff5945838",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "Host model-switch notice: openai/gpt-6.1-sol after anthropic/claude-opus-5-5 and anthropic/claude-sonnet-5-5 quota failures; substantive audit performed on this fallback.",
+    "date": "2026-10-25",
+    "independence": "Separate auditing agent/context from UI translator tr-vi and L1-core-notify coder; authored none of the translations; did not edit catalogues."
+  },
+  "en_sha256": "ce0c8d6d9af80980667741dd6d289ab7312d04aaea0e717e5cef4cf55c2b37ae",
+  "target_sha256": "1234696a29eb8c99c828a11b2d920f95358f700fb96a32e95d8e031391e86dd6",
+  "context_sha256": "3804068c75073ce9663f73539b508cbb46e495488dc47e5dd97aa80fd1a6918e",
+  "sha256": {
+    "en": "ce0c8d6d9af80980667741dd6d289ab7312d04aaea0e717e5cef4cf55c2b37ae",
+    "vi": "1234696a29eb8c99c828a11b2d920f95358f700fb96a32e95d8e031391e86dd6"
+  },
+  "date": "2026-10-25",
+  "key_count": {
+    "en": 130,
+    "target": 130
+  },
+  "translator": {
+    "agent": "translator tr-vi (separate child)",
+    "model": "anthropic/claude-opus-5-5",
+    "date": "2026-10-25",
+    "source": "delegation brief"
+  },
+  "findings": [
+    {
+      "id": "V1",
+      "key": "ui.notifications.seen.live",
+      "severity": "minor",
+      "current_text": "Đã xem trực tiếp",
+      "proposed_text": "Đã xem khi nhận",
+      "reason": "Trực tiếp reads as direct/live viewing (including a broadcast); the context says this provenance is being present in the conversation when the notification arrived, not watching a live transmission. Khi nhận expresses receipt-time viewing; keep the existing precise tooltip.",
+      "disposition": "unresolved — translator to consider repair"
+    },
+    {
+      "id": "V2",
+      "key": "ui.notifications.read_via.explicit",
+      "severity": "minor",
+      "current_text": "Đã đánh dấu đã đọc",
+      "proposed_text": "Đã đánh dấu là đã đọc",
+      "reason": "The adjacent đã phrases without là make the completed-action provenance label read mechanically; inserting là gives the natural Vietnamese construction for marking something as read.",
+      "disposition": "unresolved — translator to consider repair"
+    }
+  ],
+  "status": "passed",
+  "result": "clean-with-findings",
+  "checks": {
+    "command": "node /Users/damian/.local-operator/sessions/cfdff5945838/scratchpad/notifications-vi-check.mjs",
+    "actual_output": "VI plural count [\"other\"]\nVI plural count [\"other\"]\nVI plural updates [\"other\"]\nVI plural options [\"other\"]\nVI plural repeat [\"=0\",\"=1\",\"other\"]\nVI plural count [\"other\"]\nVI plural count [\"other\"]\nVI plural count [\"other\"]\nVI plural count [\"other\"]\nPASS UI keys=130; parsed=260; argument/type/skeleton/tag parity; NFC; no bidi controls\nPASS target plurals=9; exact-number selectors=2; pound nodes=6; CLDR vi=[\"other\"]\nPASS identical exemptions=[\"ui.notifications.filter.chip\",\"ui.notifications.row.chip.repeat\"]\nSHA256 en/ui.notifications.json ce0c8d6d9af80980667741dd6d289ab7312d04aaea0e717e5cef4cf55c2b37ae\nSHA256 vi/ui.notifications.json 1234696a29eb8c99c828a11b2d920f95358f700fb96a32e95d8e031391e86dd6\nSHA256 en/ui.notifications.context.json 3804068c75073ce9663f73539b508cbb46e495488dc47e5dd97aa80fd1a6918e\nFIT codepoints action.mark_all_read 13 -> 22 \"Đánh dấu tất cả đã đọc\"\nFIT codepoints row.mark_unread 11 -> 17 \"Đánh dấu chưa đọc\"\nFIT codepoints seen.live 9 -> 16 \"Đã xem trực tiếp\"\nFIT codepoints seen.in_view 20 -> 28 \"Đã xem trong cuộc trò chuyện\"\nFIT codepoints drawer.show_in_conversation 20 -> 26 \"Hiện trong cuộc trò chuyện\"\nFIT codepoints time.minutes 8 -> 12 \"{count} phút\"\nFIT codepoints group.week 17 -> 8 \"Tuần này\"\n",
+    "glossary_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide_sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+  },
+  "limitations": [
+    "LLM linguistic review, not human native-speaker certification.",
+    "No browser/rendered fit claimed. Static expansion risks retained for design/QA: action.mark_all_read 13→22 codepoints, row.mark_unread 11→17, seen.live 9→16, seen.in_view 20→28, drawer.show_in_conversation 20→26. These are not measured pixel overflows.",
+    "Other-only CLDR categories verified; exact =0/=1 selectors in row.a11y intentionally retained as count-suppression semantics."
+  ]
+}

@@ -1,5 +1,12 @@
-import type { TranscriptRecord } from "../../canonical/transcript-reducer";
-import type { WorkingLineState } from "../../canonical/working-line-model";
+import { currentLocale, formatDate, formatTime, t } from "@shared/i18n";
+import type {
+	TranscriptRecord,
+	TranscriptState,
+} from "../../canonical/transcript-reducer";
+import type {
+	WorkingActivity,
+	WorkingLineState,
+} from "../../canonical/working-line-model";
 
 /**: the arithmetic behind the header popover.
  *
@@ -266,8 +273,8 @@ const CLAUSE_SEAM = ", ";
  * this one is not, and a control whose name did not flip would tell a reader
  * that pressing it opens something they are already looking at.
  */
-const LABEL_OPEN = "Open run details";
-const LABEL_CLOSE = "Close run details";
+const labelOpen = (): string => t("ui.chat.header.open_run_details");
+const labelClose = (): string => t("ui.chat.header.close_run_details");
 /**
  * The seam between the action and its first clause.
  *
@@ -311,6 +318,18 @@ export type SubagentRow = {
 	 * is withheld rather than guessed onto it.
 	 */
 	jobType: string | null;
+	music?: {
+		/**
+		 * The music job this row carries (`latest_details.music.job`). Differs
+		 * from `id` on a successor observer Core registers after a cancel
+		 * request (see `music-generating-model.ts`); "" when unstated.
+		 */
+		job: string;
+		stage: string;
+		completed: number;
+		total: number;
+		attribution: string;
+	};
 	status: ChildStatus;
 	/** `7m49s`, or `null` when the job has no trustworthy launch clock. */
 	elapsedLabel: string | null;
@@ -571,13 +590,28 @@ export const deriveChildWorkingLine = (
 	// The label the relay would have sent for this state, and the phase the
 	// classification reads: see the docstring on why the fallback is classified
 	// rather than the raw field.
-	const activity = row.activity || "thinking";
+	const wire = row.activity || "thinking";
+	// Only the two words the relay's own constants (`ACTIVITY_THINKING`,
+	// `ACTIVITY_RESPONDING`) put on the wire are KEYED, so the reader speaks the
+	// viewer's language for them exactly as the parent line does. Everything else
+	// the relay can send - a tool's `running <name>`, a batch's `running N tools`,
+	// the model's own intent - is shown as the wire wrote it (`text`): the
+	// roster row above the reader prints the same string, and re-deriving a
+	// translation from English words would be guessing at a vocabulary this side
+	// does not own. The phase classification reads the same two words, so it is
+	// unchanged by the keying.
+	const activity: WorkingActivity =
+		wire === "thinking"
+			? { kind: "thinking" }
+			: wire === "responding"
+				? { kind: "responding" }
+				: { kind: "text", text: wire };
 	return {
 		activity,
 		phase:
-			activity === "thinking"
+			activity.kind === "thinking"
 				? "thinking"
-				: activity === "responding"
+				: activity.kind === "responding"
 					? "responding"
 					: "running",
 		// No anchor for this phase exists on the wire, so this row carries no
@@ -920,7 +954,7 @@ const wireNumber = (value: unknown): number | null => {
  * a single space and control characters are dropped — the same boundary the
  * TUI's `clean_intent` runs before painting intent text.
  */
-const oneLine = (text: string): string =>
+export const oneLine = (text: string): string =>
 	text
 		// biome-ignore lint/suspicious/noControlCharactersInRegex: stripping them is the point
 		.replace(/[\u0000-\u001f\u007f]+/g, " ")
@@ -1343,7 +1377,19 @@ const deriveChild = (
 	 */
 	const cancelledBeforeStart = fullResultText === CANCELLED_BEFORE_START;
 	const launchPrompts = toWireStringMap(job.launch_prompts);
-	const launchMessageId = wireText(job.launch_message_id);
+	// The runtime OMITS `launch_message_id` whenever the job id implies it
+	// (`frontend_state.py` `_elide_derivable_launch_id_in_place`: the launch row
+	// is minted as `subagent-launch:<job id>`), so an absent field means the
+	// derived identity, not "no launch". Without this every task child read as
+	// launch-less, and the reader could never ask for its launch row (R1).
+	// Derived only when `launch_prompts` names that identity: a runtime that
+	// predates both fields keeps `""`, and its reader keeps the old fallback.
+	const derivedLaunchId = id ? `${LAUNCH_MESSAGE_ID_PREFIX}${id}` : "";
+	const launchMessageId =
+		wireText(job.launch_message_id) ||
+		(derivedLaunchId && launchPrompts[derivedLaunchId] !== undefined
+			? derivedLaunchId
+			: "");
 	const rawPrompt = wireText(job.prompt).trim();
 
 	return {
@@ -1351,6 +1397,25 @@ const deriveChild = (
 		label,
 		role,
 		jobType: wireText(job.type) || null,
+		...(wireText(job.type) === "music" &&
+		isRecord(job.latest_details) &&
+		isRecord(job.latest_details.music)
+			? {
+					music: {
+						job: wireText(job.latest_details.music.job),
+						stage: wireText(job.latest_details.music.stage),
+						total: Array.isArray(job.latest_details.music.tracks)
+							? job.latest_details.music.tracks.length
+							: 0,
+						completed: Array.isArray(job.latest_details.music.tracks)
+							? job.latest_details.music.tracks.filter(
+									(track: unknown) => isRecord(track) && track.settled === true,
+								).length
+							: 0,
+						attribution: wireText(job.latest_details.music.attribution),
+					},
+				}
+			: {}),
 		status,
 		// The band's word for a state this model knows; the wire's own word for one
 		// it does not (`SubagentRow.stateWord`) — sanitised, and refused when the
@@ -1396,7 +1461,14 @@ const deriveChild = (
 		// The brief is ABSENT rather than empty when the wire reported neither: an
 		// empty string renders a folded block with one blank row, which claims the
 		// parent delegated nothing in as many words.
-		brief: launchPrompts[launchMessageId] ?? (rawPrompt || null),
+		// The launch entry is clipped to 200 chars on the wire while `prompt` carries
+		// up to 1,000: when the longer one extends the clip, show that, so a reader
+		// that cannot point-read the launch row (an older runtime) still degrades to
+		// the longest text the roster already holds (review round 1, R1).
+		brief:
+			launchPrompts[launchMessageId] !== undefined
+				? recoverClippedBrief(launchPrompts[launchMessageId], rawPrompt)
+				: rawPrompt || null,
 		launchMessageId,
 		launchPrompts,
 	};
@@ -1465,29 +1537,6 @@ const toWireList = (value: unknown): Array<Record<string, unknown>> =>
  * popover shows the SESSION's plan rather than each child's.
  */
 /**
- * The month abbreviations `formatWakeDue` prints.
- *
- * A static table rather than `Intl`, and the port's own reason (see
- * `formatWakeDue`): the label's shape is fixed by the TUI's `%b`, and a locale
- * formatter is free to spell the same month another way in another language,
- * which is precisely the drift this function exists to not have.
- */
-const WAKE_MONTHS = [
-	"Jan",
-	"Feb",
-	"Mar",
-	"Apr",
-	"May",
-	"Jun",
-	"Jul",
-	"Aug",
-	"Sep",
-	"Oct",
-	"Nov",
-	"Dec",
-];
-
-/**
  * The duration units `formatWakeDuration` decomposes over, largest first.
  *
  * Milliseconds, and the ORDER is the algorithm: the walk takes the largest unit
@@ -1553,9 +1602,16 @@ export const formatWakeDuration = (ms: number): string => {
  * implied (`format_wake_time`), and `tzname()` is what it prints. A zone name is
  * what makes that readable; the numeric offset is the same fallback the TUI
  * keeps for a zone that has no name.
+ *
+ * The name is spelled in the ACTIVE locale (`EDT` under `en-US`, `UTC−4` under
+ * `fr`), and the formatter is built here rather than asked of the shared layer
+ * because `formatDate` returns a whole formatted string: with `timeZoneName` as
+ * its only option it prints the DATE beside the zone on every locale measured,
+ * and this label needs the one part. `locale` is a parameter rather than a
+ * second read of the store, so the caller's tag is the only one this can use.
  */
-const wakeZone = (due: Date): string => {
-	const named = new Intl.DateTimeFormat(undefined, { timeZoneName: "short" })
+const wakeZone = (due: Date, locale: string): string => {
+	const named = new Intl.DateTimeFormat(locale, { timeZoneName: "short" })
 		.formatToParts(due)
 		.find((part) => part.type === "timeZoneName")?.value;
 	if (named) return named;
@@ -1576,21 +1632,24 @@ const wakeZone = (due: Date): string => {
  * `toLocaleTimeString(navigator.language, …)`, which spells the same instant
  * differently per machine, and it prints NO ZONE — so a reader in a UTC locale
  * gets a bare `9:30` that implies UTC when the wake fires at 09:30 local. This
- * label exists to answer "when does this actually fire", so it takes the TUI's
- * four rules verbatim:
+ * label exists to answer "when does this actually fire", so it keeps the TUI's
+ * four rules and hands their SPELLING to the locale the app already renders in:
  *
  * - the local clock, converted from the instant rather than from today's offset,
  *   so the label is right across a DST transition;
  * - a date when the due instant is not on today's local date, and a year when it
- *   is not this year;
- * - an explicit `AM`/`PM`, never the locale's `%p` (which can be empty);
- * - the zone, always, as the platform's SHORT zone name.
+ *   is not this year, in the active locale's own month name and element order
+ *   (`Mar 14 2026`, `14 mars 2026`, `2026年3月14日`);
+ * - the clock in that locale's own convention — a day period where it writes one
+ *   (`9:30 AM` under `en`), a 24-hour clock where it does not (`21:30` under
+ *   `fr`) — instead of the TUI's fixed `%I:%M %p`;
+ * - the zone, always, as the platform's SHORT zone name, in the same locale.
  *
  * The last rule is the one this label does not take verbatim, and the difference
  * is stated rather than glossed (agent review round 1's minor 3): the Python
  * prints `due.tzname()`, the tz database's abbreviation (`AEST`, `CET`), while
- * this formats through `Intl.DateTimeFormat(undefined, { timeZoneName: "short" })`,
- * whose answer is the NAVIGATOR'S LOCALE's name for the zone and is frequently an
+ * this formats through `Intl.DateTimeFormat(<locale>, { timeZoneName: "short" })`,
+ * whose answer is the ACTIVE LOCALE's name for the zone and is frequently an
  * offset — measured: `en-US`/Sydney gives `GMT+11` where Python gives `AEST`, and
  * `de-DE`/Berlin gives `MEZ` where Python gives `CET`. An offset is still a zone
  * token and it is the same fallback the Python keeps for a nameless zone, so the
@@ -1599,9 +1658,19 @@ const wakeZone = (due: Date): string => {
  * price this label is worth paying.
  *
  * `24h` is the TUI's `display.time_format` setting and this app has no such
- * setting, so the TUI's own default — 12-hour — is what ships. Stated because a
- * reader who has set the terminal to 24-hour will see the two spellings differ:
- * that is a missing preference in this app, not a disagreement about the instant.
+ * setting, so the LOCALE's default — not the TUI's fixed 12-hour rule — decides
+ * the clock, and the month names and day order come from that same locale.
+ * Stated because a reader who has set the terminal to 24-hour will see the two
+ * spellings differ: that is a missing preference in this app, not a disagreement
+ * about the instant. English is unchanged byte for byte, which
+ * `scripts/run-detail-wake-label-locale.test.mjs` pins next to the French case
+ * that proves the month name and the clock are locale-driven.
+ *
+ * The locale is READ from the one store (`currentLocale`, the same one `t()`
+ * reads) rather than passed in: a parameter would be a second place to get it
+ * wrong, and the components that render this label subscribe through
+ * `useI18nLocale()`, so a language change re-renders it with the rest of the
+ * pane. The signature stays the two instants the model is derived from.
  *
  * `nowMs` is passed rather than read from the clock for the model's own rule:
  * the derivation is a function of the wire FRAME, so a story that pins `nowMs`
@@ -1613,23 +1682,46 @@ const wakeZone = (due: Date): string => {
 export const formatWakeDue = (epochMs: number, nowMs: number): string => {
 	const due = new Date(epochMs);
 	const now = new Date(nowMs);
-	const hour = due.getHours();
-	const clock = `${hour % 12 === 0 ? 12 : hour % 12}:${String(
-		due.getMinutes(),
-	).padStart(2, "0")} ${hour < 12 ? "AM" : "PM"}`;
+	const locale = currentLocale();
 	const sameDay =
 		due.getFullYear() === now.getFullYear() &&
 		due.getMonth() === now.getMonth() &&
 		due.getDate() === now.getDate();
 	const sameYear = due.getFullYear() === now.getFullYear();
-	const date = sameDay
-		? ""
-		: `${WAKE_MONTHS[due.getMonth()]} ${String(due.getDate()).padStart(
-				2,
-				"0",
-			)} ${sameYear ? "" : `${due.getFullYear()} `}`;
-	return `${date}${clock} ${wakeZone(due)}`;
+	const date = sameDay ? "" : `${wakeDate(due, locale, sameYear)} `;
+	return `${date}${wakeClock(due, locale)} ${wakeZone(due, locale)}`;
 };
+
+/**
+ * The date half — the locale's own month name and element order.
+ *
+ * `formatDate` is the shared Intl layer (RFC §2.8: it owns locale resolution and
+ * the formatter cache), so the only thing this helper decides is the comma: the
+ * label is EMBEDDED in a sentence (`Cancel the wake that fires {due}`), and
+ * English's `Mar 14, 2026` would put sentence punctuation inside the
+ * placeholder. Stripping it leaves every locale's own order intact —
+ * `Mar 14 2026`, `14 mars 2026`, `14. März 2026`, `2026年3月14日` — and keeps the
+ * English label byte-identical to the hand-built one it replaces.
+ */
+const wakeDate = (due: Date, locale: string, sameYear: boolean): string =>
+	formatDate(
+		due,
+		sameYear
+			? { month: "short", day: "2-digit" }
+			: { month: "short", day: "2-digit", year: "numeric" },
+		locale,
+	).replace(/,/g, "");
+
+/**
+ * The clock half — the locale's own convention: `9:30 AM` where it writes a day
+ * period, `21:30` where it writes a 24-hour clock.
+ *
+ * No `hour12` is pinned, deliberately: pinning it would carry the TUI's fixed
+ * 12-hour rule into every locale, and this app has no time-format preference of
+ * its own to impose (`formatWakeDue` states the cost).
+ */
+const wakeClock = (due: Date, locale: string): string =>
+	formatTime(due, { hour: "numeric", minute: "2-digit" }, locale);
 
 /**
  * A schedule's recurrence as a reader reads it: `once`, `every 1h30m`, or the
@@ -1666,11 +1758,20 @@ export const formatWakeCadence = (
 	everyMs: number | null,
 	remaining: number | null,
 ): string => {
-	if (everyMs === null) return "once";
-	const cadence = `every ${formatWakeDuration(everyMs)}`;
-	if (remaining === null) return cadence;
-	if (remaining === 0) return `${cadence} · no deliveries left`;
-	return `${cadence} · ${remaining} left`;
+	if (everyMs === null) return t("ui.chat.run_details.wake.cadence_once");
+	// Whole messages per shape rather than `${cadence} · …` glued here, so a
+	// locale can reorder the interval and the remaining count.
+	const duration = formatWakeDuration(everyMs);
+	if (remaining === null)
+		return t("ui.chat.run_details.wake.every", { duration });
+	if (remaining === 0)
+		return t("ui.chat.run_details.wake.cadence_finished", { duration });
+	return t("ui.chat.run_details.wake.cadence_remaining", {
+		duration,
+		remaining,
+		// Raw interpolation, as before: a negative wire count prints as sent.
+		remaining_display: String(remaining),
+	});
 };
 
 /**
@@ -1692,7 +1793,10 @@ export const formatWakeCadence = (
  * wake-delivery row's envelope vocabulary is not the one either surface uses.
  */
 export const wakeClause = (count: number): string =>
-	count === 1 ? "1 wake armed" : `${count} wakes armed`;
+	t("ui.chat.run_details.wake.armed_count", {
+		count,
+		count_display: String(count),
+	});
 
 /**
  * The count clause: `1 monitor armed` / `2 monitors armed`.
@@ -1711,7 +1815,10 @@ export const wakeClause = (count: number): string =>
  * `wakeClause`'s own note about the band's `N scheduled`.
  */
 export const monitorClause = (count: number): string =>
-	count === 1 ? "1 monitor armed" : `${count} monitors armed`;
+	t("ui.chat.run_details.monitor.armed_count", {
+		count,
+		count_display: String(count),
+	});
 
 /**
  * One wire schedule as a row, or `null` when the record carries nothing a user
@@ -1901,20 +2008,29 @@ const deriveMonitor = (
 		name,
 		description: wireText(record.description),
 		whenLabel: disabled
-			? "disabled"
+			? t("ui.chat.run_details.monitor.disabled")
 			: nextDueAt === null
-				? "waiting"
+				? t("ui.chat.run_details.monitor.waiting")
 				: formatWakeDue(nextDueAt, nowMs),
 		interval:
-			everyMs === null ? "once" : `every ${formatWakeDuration(everyMs)}`,
+			everyMs === null
+				? t("ui.chat.run_details.wake.cadence_once")
+				: t("ui.chat.run_details.wake.every", {
+						duration: formatWakeDuration(everyMs),
+					}),
 		lastCheckLabel:
 			lastCheckAt === null
 				? ""
-				: `last check ${formatWakeDue(lastCheckAt, nowMs)}`,
+				: t("ui.chat.run_details.monitor.last_check", {
+						when: formatWakeDue(lastCheckAt, nowMs),
+					}),
 		healthLabel: disabled
 			? oneLine(wireText(record.disabled_reason))
 			: failing
-				? `${failures} failed`
+				? t("ui.chat.run_details.monitor.failed_count", {
+						count: failures,
+						count_display: String(failures),
+					})
 				: "",
 		alerting: disabled || failing,
 		nextDueAt,
@@ -2017,7 +2133,7 @@ export function deriveRunDetails(input: RunDetailsInput): RunDetails {
 	const jobWire: Array<Record<string, unknown>> = [];
 	for (const job of jobs) {
 		const type = wireText(job.type);
-		if (type === "bash" || type === "video") {
+		if (type === "bash" || type === "video" || type === "music") {
 			jobWire.push(job);
 			continue;
 		}
@@ -2356,6 +2472,98 @@ export function hasRunDetails(
 	);
 }
 
+/** `frontend_state.py` `LAUNCH_MESSAGE_ID_PREFIX`: a child's launch row id. */
+const LAUNCH_MESSAGE_ID_PREFIX = "subagent-launch:";
+
+type UserRecord = Extract<TranscriptRecord, { kind: "user" }>;
+
+/**
+ * Whether the reader should point-read the child's launch row
+ * (`subagents.transcript` with `entryId`, review round 1, R1).
+ *
+ * WHY: the reader loads only the newest page (100 rows), so a busy child's
+ * launch row — the one place the WHOLE brief lives — is not on screen, and the
+ * roster only carries a 200-char clip of it. Asked only when the tail is known
+ * to be partial (`hasMore`) and the row is not already loaded: a short child's
+ * first page already holds it, and a finished history without it (a record
+ * that predates `launch_message_id`, or a compacted head) has nothing to find.
+ */
+export function wantsLaunchRow(
+	transcript: Pick<TranscriptState, "hasMore" | "index">,
+	launchMessageId: string,
+): boolean {
+	return (
+		Boolean(launchMessageId) &&
+		transcript.hasMore &&
+		!transcript.index.has(launchMessageId)
+	);
+}
+
+/**
+ * The launch row out of a point-read page, or `null`.
+ *
+ * Matched by id, never by position: a runtime that predates `entry_id`
+ * ignores the parameter and answers its newest row instead, and painting that
+ * as the brief would be the wrong text with the right label.
+ */
+export function launchRecordFrom(
+	records: readonly TranscriptRecord[],
+	launchMessageId: string,
+): UserRecord | null {
+	for (const record of records)
+		if (record.kind === "user" && record.id === launchMessageId) return record;
+	return null;
+}
+
+/**
+ * The reader's transcript with the launch turn placed first when the loaded
+ * pages do not hold it.
+ *
+ * The brief then renders as an ordinary user turn through `CanonicalTranscript`
+ * — the parent's own bubble: 8-line clamp, mask fade, Show more, markdown and
+ * Copy of the painted text — instead of the mono "Delegated with" block. First
+ * is chronologically right: the launch is the child's oldest turn, so older
+ * pages, when loaded, land after it. `launch` is the point-read row when the
+ * runtime served it, else a stand-in carrying the longest text the roster holds
+ * (`row.brief`), so an older runtime degrades to the 1,000-char preview or the
+ * clip rather than to nothing. Once paging reaches the real row it is loaded,
+ * and the transcript is returned untouched.
+ */
+export function withLaunchRecord(
+	transcript: TranscriptState,
+	launch: UserRecord | null,
+): TranscriptState {
+	if (!launch || transcript.index.has(launch.id)) return transcript;
+	const index = new Map<string, number>([[launch.id, 0]]);
+	for (const [id, position] of transcript.index) index.set(id, position + 1);
+	return { ...transcript, records: [launch, ...transcript.records], index };
+}
+
+/**
+ * The stand-in launch turn for `withLaunchRecord`, from the roster's brief.
+ *
+ * `startSeconds` is the job's wire `start_time` in epoch SECONDS (`readClock`),
+ * but a record's `ts` is epoch MILLISECONDS — the reducer scales every durable
+ * entry the same way (`transcript-reducer.ts`, `Math.round(entry.ts * 1000)`).
+ * Passing seconds through stamped the bubble "Jan 21, 1970" (QA Q2 on #1752),
+ * so the stand-in converts with the reducer's exact rounding; no clock keeps
+ * the reducer's own `0` fallback.
+ */
+export function standInLaunchRecord(
+	launchMessageId: string,
+	brief: string | null,
+	startSeconds: number | null,
+): UserRecord | null {
+	if (!launchMessageId || !brief) return null;
+	return {
+		kind: "user",
+		id: launchMessageId,
+		ts: startSeconds === null ? 0 : Math.round(startSeconds * 1000),
+		text: brief,
+		images: [],
+	};
+}
+
 /**
  * Replace the child's durable launch turns with their concise authored prompts.
  *
@@ -2387,11 +2595,54 @@ export function reconcileLaunchTurns(
 	const next = records.map((record) => {
 		if (record.kind !== "user") return record;
 		const concise = launchPrompts[record.id];
-		if (concise === undefined || concise === record.text) return record;
+		if (concise === undefined) return record;
+		const text = recoverClippedBrief(concise, record.text);
+		if (text === record.text) return record;
 		changed = true;
-		return { ...record, text: concise };
+		return { ...record, text };
 	});
 	return changed ? next : records;
+}
+
+/**
+ * The whole authored brief, recovered from the durable launch row when the
+ * wire clipped the concise copy.
+ *
+ * WHY: `launch_prompts` is bounded at the wire (`JOB_LAUNCH_PROMPT_WIRE_CHARS =
+ * 200`, cut as `text[:200] + "…"` by `frontend_state._wire_launch_prompts`), so
+ * reconciling the launch row with it alone left the reader's opening bubble at
+ * ~3 lines ending `…` — under the user bubble's 8-line clamp, so no Show more
+ * ever appeared and the rest of the brief was unreachable (and Copy copied the
+ * prefix). The list frame must stay cheap, so raising that bound is the wrong
+ * fix; the full text already arrives LAZILY, in the child transcript page the
+ * reader fetches anyway: the durable launch row is `preamble + prompt`, and
+ * every branch of `harness/subagent.py::_effective_prompt` (and the resume path
+ * that prepends `effective_resume`) APPENDS the authored prompt last. So the
+ * brief is the suffix of the row starting at the clipped head.
+ *
+ * CONSTRAINTS: only a value carrying the wire's marker is treated as clipped; a
+ * bare `…` is the budget-elided placeholder (`LAUNCH_PROMPT_ELIDED_PLACEHOLDER`)
+ * and has no head to match, so it — like a head under `BRIEF_PREFIX_FLOOR`, or
+ * one the row does not contain — keeps the concise value exactly as before
+ * (never the preamble). The FIRST occurrence is used: preambles are fixed
+ * role/team text that cannot carry a 200-char slice of this prompt, but the
+ * prompt itself can repeat its own opening (a brief that restates the
+ * operator's request later), and the last match would cut it at the
+ * restatement while looking complete (review round 1, R2).
+ *
+ * The same rule recovers from `job.prompt` (the roster's 1,000-char preview),
+ * which is how a runtime without the point read still shows more than the clip.
+ */
+export function recoverClippedBrief(concise: string, durable: string): string {
+	if (!BRIEF_TRAILING_ELLIPSIS.test(concise)) return concise;
+	const head = concise.replace(BRIEF_TRAILING_ELLIPSIS, "");
+	if (head.trim().length < BRIEF_PREFIX_FLOOR) return concise;
+	const at = durable.indexOf(head);
+	if (at < 0) return concise;
+	const full = durable.slice(at);
+	// Recovery must only ever ADD text: a suffix no longer than the head means
+	// the row held nothing past what the wire already sent.
+	return full.length > head.length ? full : concise;
 }
 
 /**
@@ -2440,7 +2691,18 @@ export function briefIsInTranscript(
 		// A short prefix is a coincidence (`Run`, `Check the`), not a copy of the
 		// same instruction: the floor is what stops a two-word record from
 		// silencing a paragraph the reader still needs.
-		return head.length >= BRIEF_PREFIX_FLOOR && wanted.startsWith(head);
+		if (head.length >= BRIEF_PREFIX_FLOOR && wanted.startsWith(head)) {
+			return true;
+		}
+		// The converse: `recoverClippedBrief` now paints the WHOLE brief while
+		// `row.brief` is still the wire's clipped copy, so the painted row is
+		// the longer of the two and the clipped brief is its prefix.
+		const wantedHead = wanted.replace(BRIEF_TRAILING_ELLIPSIS, "").trim();
+		return (
+			wantedHead !== wanted &&
+			wantedHead.length >= BRIEF_PREFIX_FLOOR &&
+			painted.startsWith(wantedHead)
+		);
 	});
 }
 
@@ -2563,7 +2825,11 @@ export type McpRemedy =
  * there, over the same `env`/`headers` map).
  */
 const MCP_WORDS: Record<string, string> = {
-	"auth-required": "Manage this server's credentials in Settings",
+	// A getter so the sentence resolves in the locale active when the row is
+	// derived (per render), not the one active when this module loaded.
+	get "auth-required"() {
+		return t("ui.chat.run_details.mcp.credentials_in_settings");
+	},
 };
 
 /**
@@ -2581,11 +2847,24 @@ const MCP_WORDS: Record<string, string> = {
  * nothing else this surface owns.
  */
 export const MCP_CONTROL_WORD = {
-	grant: "Grant account access",
-	key: "Enter API key",
-	reconnect: "Reconnect",
-	reload: "Reload",
-} as const;
+	/*
+	 * Getters, not values: both surfaces read a word at render, and a value
+	 * resolved at import time would keep the start-up language after a live
+	 * locale switch.
+	 */
+	get grant(): string {
+		return t("ui.chat.run_details.mcp.control.grant");
+	},
+	get key(): string {
+		return t("ui.chat.run_details.mcp.control.key");
+	},
+	get reconnect(): string {
+		return t("ui.chat.run_details.mcp.control.reconnect");
+	},
+	get reload(): string {
+		return t("ui.chat.run_details.mcp.control.reload");
+	},
+};
 
 /**
  * A sign-in this surface started, as the READ carries it (`mcp.list` returns
@@ -3074,6 +3353,17 @@ export function mcpErrorTexts(rows: unknown): Record<string, string> {
 }
 
 /**
+ * A server row's tool count (`1 tool` / `12 tools`), one spelling for the row's
+ * trailing value and its expanded detail line. `count_display` is the raw
+ * `String(count)` the template literal printed, so English stays ungrouped.
+ */
+export const mcpToolCount = (count: number): string =>
+	t("ui.chat.run_details.mcp.tool_count", {
+		count,
+		count_display: String(count),
+	});
+
+/**
  * The MCP section's trailing tally, in the model because the TRIGGER already
  * counts the same servers there and the two must not disagree.
  *
@@ -3096,10 +3386,14 @@ export function mcpTally(
 	rows: readonly McpServerRow[],
 	maxChars?: number,
 ): string {
-	if (mcpServersAreCold(rows)) return MCP_COLD_LINE;
+	if (mcpServersAreCold(rows)) return t(MCP_COLD_LINE);
 	const connected = rows.filter((row) => row.status === "connected").length;
 	const problems = rows.filter((row) => row.problem).length;
-	const base = `${connected} of ${rows.length} connected`;
+	const base = t("ui.chat.run_details.mcp.connected_tally", {
+		total: rows.length,
+		connected_display: String(connected),
+		total_display: String(rows.length),
+	});
 	if (problems === 0) return base;
 	const full = `${base} · ${attentionClause(problems)}`;
 	/*
@@ -3139,8 +3433,7 @@ export function mcpTally(
  * claiming three servers are down when none was asked to be up. It lights no
  * dot, because nothing is wrong.
  */
-export const MCP_COLD_LINE =
-	"No session is running — server status cannot be checked.";
+export const MCP_COLD_LINE = "ui.chat.run_details.mcp.cold_label";
 
 /** Every MCP name that is asking for something right now. */
 export function mcpProblemNames(rows: readonly McpServerRow[]): string[] {
@@ -3296,18 +3589,19 @@ export const tallyFitsInline = (paneWidth: number): boolean => {
 };
 
 /**
- * The fallback for a pane width that is not a usable number at all: 420, one of
- * the three widths the record measures (320/420/640).
+ * The fallback for a pane width that is not a usable number at all: 420, the
+ * rung the record's default state measured (the pane is resizable over a
+ * continuous 320..1200 range, `§ 8`).
  *
  * It USED to mirror the store's run-panel default, which was 420; the slot's one
  * default is 640 now (`DEFAULT_RIGHT_SLOT_WIDTH`, #872 follow-up) and this is
  * deliberately NOT moved with it: a fallback decides how much a pane that has no
- * width sheds, and 420 is the middle rung of the record, whereas a width nobody
- * could measure is not evidence the pane is wide. Duplicated rather than
- * imported for the reason it always was: importing the store here would drag
- * zustand into a module that is otherwise pure arithmetic — the module the model
- * test bundles and runs without a DOM. The real width is passed in by the pane
- * (`chat-content.tsx`).
+ * width sheds, and 420 is the middle of the three widths the record does
+ * measure, whereas a width nobody could measure is not evidence the pane is
+ * wide. Duplicated rather than imported for the reason it always was: importing
+ * the store here would drag zustand into a module that is otherwise pure
+ * arithmetic — the module the model test bundles and runs without a DOM. The
+ * real width is passed in by the pane (`chat-content.tsx`).
  */
 const FALLBACK_PANE_PX = 420;
 
@@ -3315,11 +3609,11 @@ const FALLBACK_PANE_PX = 420;
  * How many characters a section's trailing tally may occupy, from the PANE's own
  * width.
  *
- * The pane is resizable (320/420/640, `§ 8`), so a budget pinned to the default
- * was wrong at the pane's own floor: `subagentTally`'s 48 characters fit 420px
- * and burst 320px, where the CSS `truncate` then cut the value mid-word
- * (`… 1 interr…`) — the failure clause shedding exists to prevent, arriving
- * through the one path shedding does not cover.
+ * The pane is resizable over a continuous 320..1200 range (`§ 8`), so a budget
+ * pinned to the default was wrong at the pane's own floor: `subagentTally`'s 48
+ * characters fit 420px and burst 320px, where the CSS `truncate` then cut the
+ * value mid-word (`… 1 interr…`) — the failure clause shedding exists to
+ * prevent, arriving through the one path shedding does not cover.
  *
  * A width that is not a finite positive number falls back to the design's
  * default rather than propagating: `Math.max(1, NaN)` is `NaN`, and a `NaN`
@@ -3832,15 +4126,19 @@ type TodoClauseCounts = Pick<RunDetails, "openTodos" | "droppedTodos">;
  */
 export const todoClause = (counts: TodoClauseCounts): string => {
 	if (counts.openTodos > 0) {
-		return counts.openTodos === 1
-			? "1 to-do open"
-			: `${counts.openTodos} to-dos open`;
+		// ICU, not a hand-built plural: the arms carry this locale’s CLDR
+		// categories and translators receive the count as an argument.
+		return t("ui.chat.run_details.chip.todos_open", {
+			count: counts.openTodos,
+		});
 	}
-	return counts.droppedTodos > 0 ? "All to-dos closed" : "All to-dos resolved";
+	return counts.droppedTodos > 0
+		? t("ui.chat.run_details.chip.todos_closed")
+		: t("ui.chat.run_details.chip.todos_resolved");
 };
 
 const failureClause = (count: number): string =>
-	`${plural(count, "subagent")} failed`;
+	t("ui.chat.run_details.chip.subagents_failed", { count });
 
 /**
  * The attention GRAMMAR, stated once (`§ 3.4`, `§ 7.2`; round 3's nit).
@@ -3854,16 +4152,13 @@ const failureClause = (count: number): string =>
  * two surfaces a single reader sees together, and nothing but review would have
  * caught it. `needs` for a count of one, `need` otherwise.
  */
-const attentionVerb = (count: number): string =>
-	count === 1 ? "needs" : "need";
-
 /** The clause that names no subject: `1 needs attention`, `3 need attention`. */
 const attentionClause = (count: number): string =>
-	`${count} ${attentionVerb(count)} attention`;
+	t("ui.chat.run_details.chip.attention", { count });
 
 /** The MCP ledger's clause, with the protocol's own name left singular. */
 const mcpClause = (count: number): string =>
-	`${plural(count, "MCP server")} ${attentionVerb(count)} attention`;
+	t("ui.chat.run_details.chip.mcp_attention", { count });
 
 /**
  * The tooltip and `aria-label` copy (`§3.3`, `§6.2`).
@@ -3909,6 +4204,14 @@ export function runDetailTriggerLabel(
 	seen: SeenFailures = NOTHING_SEEN,
 	options: {
 		open?: boolean;
+		/**
+		 * Name the pane instead of the action: the head is the keyed pane label
+		 * (`Run details`) rather than the Open/Close verb. The rail item exposes
+		 * `aria-pressed`, so its accessible name drops the verb (UX round 1, U2) -
+		 * and takes the bare noun from the catalogue rather than by rewriting the
+		 * English verb phrase after the fact, which left it English in every locale.
+		 */
+		name?: boolean;
 		maxChars?: number;
 		/** Problem servers nobody has looked at, from the MCP ledger's own set. */
 		mcpProblems?: number;
@@ -3923,7 +4226,12 @@ export function runDetailTriggerLabel(
 	} = {},
 ): string {
 	const chord = options.cap ?? null;
-	const prefix = `${options.open ? LABEL_CLOSE : LABEL_OPEN}${chord === null ? "" : ` (${chord})`}`;
+	const head = options.name
+		? t("ui.chat.run_details.pane_label")
+		: options.open
+			? labelClose()
+			: labelOpen();
+	const prefix = `${head}${chord === null ? "" : ` (${chord})`}`;
 	if (!details) return prefix;
 	const attention: string[] = [];
 	const counts: string[] = [];
@@ -4088,8 +4396,9 @@ const CHILD_COUNT_LABEL_FLOOR_PX = 92;
  * numbers rule, one element along: a value is dropped whole, never cut) and the
  * label takes all 66px back, reaching 92-118px. At the 420px default the same
  * arithmetic leaves the label 134px, so the mark stays, and 640px is wider
- * still. The pane has exactly three sizes — 320/420/640 (`§ 8`) — so this shed is
- * the floor's state and no other width's.
+ * still. The pane is resizable over a continuous 320..1200 range (`§ 8`), not
+ * three sizes: the mark is drawn from 378px, so the shed above is what every
+ * width under 378 does, and no other width's.
  *
  * A mark that is not drawn also cannot be clipped at the pane's edge: at the app's
  * window floor with the rail expanded (79px pane) the line overflows for other

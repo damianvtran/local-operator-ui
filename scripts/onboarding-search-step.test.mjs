@@ -310,7 +310,7 @@ const settle = async (ms = 60) => {
 	});
 };
 
-test("the step opens on Free, and its copy names the free pool and never Perplexity", async () => {
+test("the step opens on Free, and its copy describes the free option without naming a vendor", async () => {
 	storedKeys = [];
 	updates.length = 0;
 	const mounted = await mount();
@@ -323,18 +323,28 @@ test("the step opens on Free, and its copy names the free pool and never Perplex
 			"the free branch must not ask for a key",
 		);
 		const text = document.body.textContent;
+		/*
+		 * The free option says what it costs the reader (nothing, no key, slower
+		 * when busy) and names NO search vendor (onboarding audit U9): four
+		 * company names in a first-run dialog are vocabulary a new user has no
+		 * use for, and the list goes stale each time the runtime's rotation
+		 * changes. The vendors are still named where they are a choice, in the
+		 * key rows of the other branch.
+		 */
 		assert.ok(
-			text.includes("DuckDuckGo"),
-			"the pool's first leg must be named",
+			text.includes("Uses free search services shared with other users."),
+			"the free option must say it is free and shared",
 		);
 		assert.ok(
-			text.includes("Tavily's free tier"),
-			"the keyless tier must be named",
+			text.includes("No key needed."),
+			"the free option must say no key is needed",
 		);
-		assert.ok(
-			text.includes("Exa and Parallel"),
-			"Exa and Parallel must be named",
-		);
+		for (const vendor of ["DuckDuckGo", "Tavily", "Exa", "Parallel"]) {
+			assert.ok(
+				!text.includes(vendor),
+				`the free option must not name ${vendor}`,
+			);
+		}
 		assert.ok(
 			text.includes("Recommended"),
 			"Free must carry the recommendation cue",

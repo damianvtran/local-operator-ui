@@ -21,6 +21,7 @@
  */
 
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { build } from "esbuild";
@@ -274,6 +275,90 @@ test("the signature probe spawns codesign only for a packaged macOS bundle", asy
 		},
 	});
 	assert.match(broken.unreadable, /codesign -dv failed/);
+});
+
+/*
+ * The REAL shapes, captured from the shipped, notarized Local Operator 0.45.1 on
+ * 2026-10-28 (`codesign -dv --verbose=4 '/Applications/Local Operator.app'`).
+ * Measured on that run: the report is on STDERR and stdout is EMPTY (0 bytes),
+ * while `codesign -d --entitlements - --xml` writes its plist to STDOUT. The
+ * synthetic SIGNED_REPORT above is fed through stdout by the older tests, which
+ * is how the probe shipped reading the wrong stream: a fixture that puts the
+ * report where the code looks proves nothing about where codesign writes it.
+ */
+const REAL_DV_STDERR = readFileSync(
+	join(
+		process.cwd(),
+		"scripts/fixtures/codesign/local-operator-0.45.1-dv-verbose4.stderr.txt",
+	),
+	"utf8",
+);
+const REAL_ENTITLEMENTS_STDOUT = readFileSync(
+	join(
+		process.cwd(),
+		"scripts/fixtures/codesign/local-operator-0.45.1-entitlements.stdout.xml",
+	),
+	"utf8",
+);
+const SHIPPED_EXEC =
+	"/Applications/Local Operator.app/Contents/MacOS/Local Operator";
+
+test("the shipped signature is read from codesign's real streams: report on stderr, plist on stdout", async () => {
+	// Guard the fixtures themselves, so a re-capture that lands on the wrong
+	// stream (or loses the lines) fails here rather than silently weakening the
+	// assertions below.
+	assert.match(REAL_DV_STDERR, /^Identifier=com\.local-operator$/m);
+	assert.match(REAL_DV_STDERR, /^TeamIdentifier=SHA2U6KT7V$/m);
+	assert.equal(
+		parseKeychainAccessGroups(REAL_ENTITLEMENTS_STDOUT).length,
+		0,
+		"the shipped signature carries entitlements but no keychain-access-groups",
+	);
+
+	const run = async (_file, args) =>
+		args[0] === "-dv"
+			? { stdout: "", stderr: REAL_DV_STDERR }
+			: { stdout: REAL_ENTITLEMENTS_STDOUT, stderr: "" };
+	const signature = await readAppSignature({
+		platform: "darwin",
+		packaged: true,
+		execPath: SHIPPED_EXEC,
+		run,
+	});
+	assert.equal(signature.bundleIdentifier, "com.local-operator");
+	assert.equal(signature.teamIdentifier, "SHA2U6KT7V");
+	assert.deepEqual(signature.keychainAccessGroups, []);
+	assert.equal(signature.unreadable, null);
+
+	// The consequence the operator saw in the log: before the fix this read
+	// `no bundle id`, which blamed a field that is present and hid the real
+	// blocker (no entitlement).
+	const gate = decideWebauthnGate(signature);
+	assert.equal(gate.enabled, false);
+	assert.equal(gate.reason, "entitlement absent");
+	assert.equal(gate.group, "SHA2U6KT7V.com.local-operator.webauthn");
+});
+
+test("the report is read from either stream, stderr taking precedence", async () => {
+	const both = (stdout, stderr) => async (_file, args) =>
+		args[0] === "-dv"
+			? { stdout, stderr }
+			: { stdout: ENTITLEMENTS_WITH_GROUP, stderr: "" };
+	const read = (run) =>
+		readAppSignature({
+			platform: "darwin",
+			packaged: true,
+			execPath: SHIPPED_EXEC,
+			run,
+		});
+	// A codesign (or a wrapper) that writes the report to stdout still parses.
+	const onStdout = await read(both(SIGNED_REPORT, ""));
+	assert.equal(onStdout.teamIdentifier, "AB12CD34EF");
+	assert.equal(onStdout.bundleIdentifier, "com.local-operator");
+	// Both streams empty is "no bundle id", the honest reading of no report.
+	const neither = await read(both("", ""));
+	assert.equal(neither.bundleIdentifier, null);
+	assert.equal(neither.teamIdentifier, null);
 });
 
 test("the installer configures the authenticator only when the signature carries the group", async () => {

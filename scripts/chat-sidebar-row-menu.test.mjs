@@ -26,6 +26,14 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
 const SIDEBAR = "src/renderer/src/features/chat/components/chat-sidebar.tsx";
+/**
+ * The menu's copy now lives in the sidebar's own English catalogue: a label
+ * assertion reads the message the user sees AND the key the item renders, so a
+ * keyed row cannot keep passing on a stale literal in this file.
+ */
+const SIDEBAR_COPY = JSON.parse(
+	readFileSync("src/i18n/catalogues/en/ui.chat.sidebar.json", "utf8"),
+);
 const read = (relative) => readFileSync(relative, "utf8");
 /**
  * Comments stripped, so a rule can never be satisfied by prose about the rule -
@@ -127,12 +135,19 @@ test("the menu's items are drawn from the same predicates the pair reads", () =>
 		false,
 		"a menu item is disabled rather than withheld - the row's own rule is that an affordance that cannot act on a row is not drawn at all, and the two Move items state their boundary with `aria-disabled` instead",
 	);
+	/*
+	 * AND `Tags…` ON A REMOTE CONVERSATION (sidebar tags v3, §5 "Remote"): the act
+	 * exists - the row has tags - but this device cannot write them, and the reason
+	 * (`ui.chat.tags.remote`) must be announced BEFORE a write rather than after a
+	 * refused one. That is the Move boundaries' case exactly: a refusal with a
+	 * sentence, not an absent act.
+	 */
 	for (const item of MENU.split("<ContextMenuItem").slice(1)) {
 		if (!item.includes("aria-disabled")) continue;
 		assert.match(
 			item,
-			/Move conversation (?:up|down)/,
-			"`aria-disabled` is on something other than the two boundary-bearing Move items",
+			/ui\.chat\.sidebar\.row_menu\.move_(?:up|down)|ui\.chat\.tags\.remote/,
+			"`aria-disabled` is on something other than the two boundary-bearing Move items and the remote Tags… refusal",
 		);
 	}
 	/*
@@ -141,15 +156,22 @@ test("the menu's items are drawn from the same predicates the pair reads", () =>
 	 * first, so the two surfaces present the same two acts in the same sequence
 	 * however they were opened.
 	 */
+	/*
+	 * AND THE WORDING IS THE CATALOGUE'S, pinned by KEY rather than by the
+	 * English (i18n wave A): the row menu's two paired items read the row-menu
+	 * keys the shipped catalogue owns, so the spelling the frame shows and the
+	 * spelling a translator receives cannot drift apart. A literal here is now
+	 * the defect this assertion exists to catch.
+	 */
 	assert.ok(
-		archiveItem.includes(
-			'{archived ? "Unarchive conversation" : "Archive conversation"}',
-		),
-		"the archive item no longer words its act as the row/palette spelling",
+		archiveItem.includes('t("ui.chat.sidebar.row_menu.unarchive")') &&
+			archiveItem.includes('t("ui.chat.sidebar.row_menu.archive")'),
+		"the archive item no longer words its act through the catalogue's row-menu keys",
 	);
 	assert.ok(
-		pinItem.includes('{pinned ? "Unpin conversation" : "Pin conversation"}'),
-		"the pin item no longer words its act as the pair's control does",
+		pinItem.includes('t("ui.chat.sidebar.row_menu.unpin")') &&
+			pinItem.includes('t("ui.chat.sidebar.row_menu.pin")'),
+		"the pin item no longer words its act through the catalogue's row-menu keys",
 	);
 	assert.ok(
 		MENU.indexOf('pressRowAct(row.session_id, "archive")') <
@@ -169,12 +191,12 @@ test("the menu's items are drawn from the same predicates the pair reads", () =>
 	);
 	assert.ok(
 		MENU.indexOf('pressRowAct(row.session_id, "pin")') <
-			MENU.indexOf("Move conversation up"),
+			MENU.indexOf('t("ui.chat.sidebar.row_menu.move_up")'),
 		"the menu no longer reads Archive, Pin, then the moves",
 	);
 	assert.ok(
-		MENU.indexOf("Move conversation up") <
-			MENU.indexOf("Move conversation down"),
+		MENU.indexOf('t("ui.chat.sidebar.row_menu.move_up")') <
+			MENU.indexOf('t("ui.chat.sidebar.row_menu.move_down")'),
 		"the menu no longer reads Move up then Move down",
 	);
 	/*
@@ -226,23 +248,30 @@ test("Fork is the menu's third row: its order, copy, withheld condition and wiri
 			forkAt < copyAt &&
 			copyAt < renameAt &&
 			renameAt < tagsAt &&
-			tagsAt < moveUpAt &&
+			tagsAt < MENU.indexOf('t("ui.chat.tags.remove_all"') &&
+			MENU.indexOf('t("ui.chat.tags.remove_all"') < moveUpAt &&
+			!MENU.includes('t("ui.chat.tags.move_menu"') &&
 			moveUpAt < moveDownAt,
 		"the menu no longer reads Archive, Pin, Fork, Copy session ID, Rename conversation, Move up, Move down (D2, #893, #920) - the mirrored pair, the unconditional run, then the conditional block",
 	);
 	assert.equal(
 		MENU.split("<ContextMenuItem").length - 1,
-		8,
-		"LOH-11 intentionally adds one capability-gated Tags item before Move: the former seven-row budget (design \u00a77) is #743's four plus #739's Fork plus #893's Copy session ID plus #920's Rename conversation, and each addition passed the rule an eighth would have to pass - the act must be one on THIS row with no other door (the row-scoped id has none: the header's overflow names the PANE's session; so does the row-scoped name: the header's inline editor and /rename write the PANE's conversation), so the number moved rather than a row being replaced",
+		9,
+		"v3 (D4) deletes Move to tag…: Tags… opens the anchored popover and Remove all tags stays, so the widest pinned/tagged menu has nine rows",
 	);
 	/*
 	 * COPY: verb + object, the pair's register, with the icon `aria-hidden` like
 	 * its siblings - and NO chord, because fork has none. A `KeyboardShortcut`
 	 * here would print a hint for a gesture that does nothing.
 	 */
+	assert.equal(
+		SIDEBAR_COPY["ui.chat.sidebar.row_menu.fork"],
+		"Fork conversation",
+		"the fork message moved: it reads `Fork conversation`",
+	);
 	assert.ok(
-		forkItem.includes("<span>Fork conversation</span>"),
-		"the fork item no longer reads `Fork conversation`",
+		forkItem.includes('{t("ui.chat.sidebar.row_menu.fork")}'),
+		"the fork item no longer renders the `Fork conversation` message",
 	);
 	assert.ok(
 		forkItem.includes('<GitFork aria-hidden="true" />'),
@@ -367,9 +396,14 @@ test("Copy session ID is the menu's sixth row, unconditional and chord-free (#89
 	 * `ClipboardCopy`, which the file-actions menu wears - with the `aria-hidden`
 	 * mark every glyph in this menu carries.
 	 */
-	assert.ok(
-		item.includes("<span>Copy session ID</span>"),
+	assert.equal(
+		SIDEBAR_COPY["ui.chat.sidebar.row_menu.copy_id"],
+		"Copy session ID",
 		"the copy item's label moved: it reads `Copy session ID`, the one spelling both of its doors use",
+	);
+	assert.ok(
+		item.includes('{t("ui.chat.sidebar.row_menu.copy_id")}'),
+		"the copy item no longer renders the `Copy session ID` message",
 	);
 	assert.ok(
 		item.includes('<Copy aria-hidden="true" />'),
@@ -452,9 +486,14 @@ test("Rename conversation is the menu's fifth row, and it acts on the row it was
 	 * own dialog, so the label deliberately carries no ellipsis - the spelling the
 	 * header control and that dialog both use.
 	 */
-	assert.ok(
-		item.includes("<span>Rename conversation</span>"),
+	assert.equal(
+		SIDEBAR_COPY["ui.chat.sidebar.row_menu.rename"],
+		"Rename conversation",
 		"the rename item's label moved: it reads `Rename conversation`, the spelling the header control and the dialog both use",
+	);
+	assert.ok(
+		item.includes('{t("ui.chat.sidebar.row_menu.rename")}'),
+		"the rename item no longer renders the `Rename conversation` message",
 	);
 	assert.ok(
 		item.includes('<Pencil aria-hidden="true" />'),
@@ -489,7 +528,7 @@ test("Rename conversation is the menu's fifth row, and it acts on the row it was
 		"the request no longer names the register's rename picker, the row's own button as the invoker, and the row's conversation",
 	);
 	assert.ok(
-		request.includes('{ subjectName: row.title || "Untitled chat" }'),
+		request.includes("{ subjectName: conversationTitleForDisplay(row.title) }"),
 		"the request no longer carries the name the row DRAWS - the presenter holds a pane, not the row that was pointed at",
 	);
 	assert.ok(

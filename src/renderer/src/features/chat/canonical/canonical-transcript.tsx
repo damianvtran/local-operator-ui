@@ -44,16 +44,42 @@
  */
 
 import {
+	FlagLine,
+	FlagLinesProvider,
+	useFlaggedItem,
+} from "@features/notifications/components/flag-line";
+import { useNotificationReveal } from "@features/notifications/drawer-tab-store";
+import {
 	NO_PROVIDER_NOTICE,
 	useConnectProviderStore,
 } from "@features/providers/connect-provider-store";
+import { useProviderStatus } from "@features/providers/use-provider-status";
+import type { AvatarMark } from "@shared/agent-avatar/avatar-presence";
+import {
+	desktopFeatureEnabled,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
+import { SpeechGateScope } from "@shared/components/common/speak-control";
+import { TextSelectionControls } from "@shared/components/common/text-selection-controls";
 import { Button } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
+import { usePassiveDesktopFeature } from "@shared/hooks/display-density";
 import { useCompletionView } from "@shared/hooks/use-completion-view";
-import { t } from "@shared/i18n";
+import { useServerOffline } from "@shared/hooks/use-connectivity-status";
+import { formatDateTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
+import { scrollRegionToTop } from "@shared/lib/scroll";
 import { cn } from "@shared/lib/utils";
-import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import {
+	remoteOwnedId,
+	useCanonicalSessionsStore,
+} from "@shared/store/canonical-sessions-store";
+import { paintMissReason, readPaint } from "@shared/store/paint-cache";
+import {
+	PINNED_SCROLL,
+	type PaintedScroll,
+	writePaintScroll,
+} from "@shared/store/paint-cache";
 import {
 	type InternalEpisodeIdentitySnapshot,
 	captureInternalEpisodeIdentity,
@@ -67,7 +93,7 @@ import {
 	writeWatchedRun,
 } from "@shared/store/turn-collapse-watched";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
-import { showInfoToast } from "@shared/utils/toast-manager";
+import { showErrorToast, showInfoToast } from "@shared/utils/toast-manager";
 import {
 	CircleAlert,
 	Info,
@@ -77,6 +103,7 @@ import {
 import {
 	type FC,
 	type FocusEvent,
+	type KeyboardEvent,
 	type MouseEvent,
 	type PointerEvent,
 	type ReactNode,
@@ -95,18 +122,34 @@ import type {
 	PendingDesktopGate,
 } from "../../../../../shared/desktop-session-contract";
 import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-notice";
+import { parseAgentAvatarSize, turnMarkHeight } from "../agent-avatar-size";
 import { askResponseSummary, askTimeoutSummary } from "../ask-queue";
 import { CHAT_COLUMN_CONTAINER, CHAT_MEASURE } from "../chat-measure";
-import { CHAT_REGION_LABEL } from "../chat-regions";
+import { chatRegionLabel } from "../chat-regions";
 import {
 	MarkdownRenderer,
 	type MarkdownStyleProps,
 	StreamingMarkdown,
 } from "../components/markdown-renderer";
+import type { ImagePathActions } from "../components/message-item/image-attachment";
+import { MessageAvatar } from "../components/message-item/message-avatar";
 import { MessageContainer } from "../components/message-item/message-container";
 import { TurnTimestamp } from "../components/message-item/turn-timestamp";
 import { ReplyPreview } from "../components/reply-preview";
+import {
+	UndeliveredLineView,
+	undeliveredSentence,
+	useSendRecoveryAction,
+} from "../components/send-recovery-action";
+import { skillBlockNames } from "../components/skill-invocation";
 import { DiffBlock, TraceLine } from "../components/trace";
+import { BridgeCardBodySection } from "../components/trace/bridge-card-body";
+import { bridgeReceiptOf } from "../components/trace/bridge-receipt-model";
+import {
+	type BridgeLabelResolver,
+	type BridgeRowView,
+	bridgeRowView as composeBridgeRowView,
+} from "../components/trace/bridge-row-model";
 import {
 	hubIdentity,
 	isInternalReceipt,
@@ -117,17 +160,19 @@ import {
 	wakeReceiptHeadline,
 } from "../components/trace/receipt-row-model";
 import {
+	BridgeDetail as BridgeDetailPane,
 	DETAIL_SECTION_MAX,
 	ToolDetail,
 } from "../components/trace/tool-detail";
 import { hasDetail } from "../components/trace/tool-detail-model";
 import { ToolRow as ToolLedgerRow } from "../components/trace/tool-row";
 import {
-	SEND_DELIVERY_NOTE,
 	type SendDeliveryState,
+	deliveryNote,
 	deliveryRowOutcome,
 	formatBytes,
 	formatDuration,
+	isArchiveOnlyDiffRow,
 	isBareToolName,
 	isDiffBodyRow,
 	isFailedResult,
@@ -139,21 +184,45 @@ import { TraceFold } from "../components/trace/trace-fold";
 import { TurnSummary } from "../components/trace/turn-summary";
 import { WorkingLine } from "../components/trace/working-line";
 import { focusComposer } from "../composer-field";
-import { MISSING_SESSION_NOTICE_ID } from "../missing-session-notice";
+import {
+	MISSING_SESSION_NOTICE_ID,
+	missingSessionNotice,
+} from "../missing-session-notice";
+import {
+	type PanePaintTrace,
+	createPanePaintTrace,
+	openTrace,
+	tracePanePaint,
+} from "../open-trace";
+import {
+	type FailureCause,
+	keepsSendAgain,
+	recoveryForFailure,
+	sendBlockFor,
+} from "../send-recovery";
 import {
 	DEFAULT_TRANSCRIPT_DISPLAY_MODE,
 	type TranscriptDisplayMode,
 	parseTranscriptDisplayMode,
 } from "../transcript-display-mode";
 import { CanvasPaneProvider } from "../utils/canvas-pane";
+import { copyTarget } from "../utils/link-open";
+import { openPathInCanvas } from "../utils/open-in-canvas";
 import { parseReplies } from "../utils/reply-utils";
 import { CanonicalAudio } from "./canonical-audio";
 import { CanonicalImage } from "./canonical-image";
 import { CheckpointRail } from "./checkpoint-rail";
+import { ConversationLoadingIndicator } from "./conversation-loading-indicator";
 import { visibleRecords } from "./cross-session-visibility";
 import { isRecordReachable } from "./failed-row-jump";
 import { FoldMedia } from "./fold-media";
-import { type FoldOpenEntry, foldOpenOf, withFoldOpen } from "./fold-open";
+import {
+	type FoldIdentity,
+	type FoldOpenEntry,
+	foldIdentityFor,
+	foldOpenOf,
+	withFoldOpen,
+} from "./fold-open";
 import { ImageGenCard } from "./image-gen-card";
 import {
 	imageGenCardMountActions,
@@ -163,10 +232,26 @@ import {
 } from "./image-gen-card-model";
 import { LinkToolkit } from "./link-toolkit";
 import type { LoadOlderOutcome } from "./load-older";
+import { attachedImageLabel, imageLabel, soundLabel } from "./media-label";
 import { forkEntryId } from "./message-actions";
 import { AnswerActionRow } from "./message-actions-row";
-import { OLDER_HISTORY_HINT_ID, OlderHistorySlot } from "./older-history-slot";
+import {
+	ConnectedMusicGeneratingCard,
+	useMusicGeneratingView,
+} from "./music-generating-card";
+import {
+	MusicJobSettlementsContext,
+	musicJobSettlementsOf,
+} from "./music-generating-model";
+import { MusicResult } from "./music-result";
+import { noticeText } from "./notice-copy";
+import {
+	OLDER_HISTORY_HINT_ID,
+	OlderHistorySlot,
+	OlderHistorySlotReserve,
+} from "./older-history-slot";
 import type { OpenFrameFacts } from "./open-frame";
+import { paintKeepsTopAnchor } from "./paint-top-anchor";
 import {
 	type ProviderErrorAction,
 	providerErrorGuidance,
@@ -178,7 +263,8 @@ import { QuoteToolkit } from "./quote-toolkit";
 import { RadientCreditsGuidance } from "./radient-credits-guidance";
 import { ensureReachable, jumpToEntry } from "./reveal-record";
 import { SETTLE_MS } from "./scroll-paging";
-import { editTextOf, skillRowOf } from "./skill-row";
+import { SentFileCard } from "./sent-file-card";
+import { displayTextOf, editTextOf } from "./skill-row";
 import { SupplementRow } from "./supplement-row";
 import { THREAD_SEARCH_JUMP_MISS_COPY } from "./thread-search-model";
 import { ThreadSearchOverlay } from "./thread-search-overlay";
@@ -187,13 +273,27 @@ import {
 	type TurnFoot,
 	foldImages,
 	foldRuns,
+	latchFoldedRuns,
+	receiptFoldUnits,
 	turnFeet,
 	workedSecondsOf,
 } from "./trace-fold-model";
 import {
+	copyMarkdownForGroup,
+	copyMarkdownForRecord,
+	copyTextForGroup,
+	copyTextForRecord,
+	transcriptRowActions,
+} from "./transcript-copy";
+import {
+	TranscriptCopyMenu,
+	type TranscriptCopyPayload,
+} from "./transcript-copy-menu";
+import {
 	type EntryDescriptor,
 	candidateSlots,
 	deferAggregateFormation,
+	entrySlotSignature,
 	estimateEntryHeight,
 } from "./transcript-dom-window";
 import { type SlotExtent, TranscriptEntrySlot } from "./transcript-entry-slot";
@@ -211,7 +311,6 @@ import {
 	transcriptPaneCollapses,
 	transcriptPaneHoldsPlaceholder,
 } from "./transcript-pane";
-import { TranscriptPlaceholder } from "./transcript-placeholder";
 import {
 	type TranscriptImage,
 	type TranscriptRecord,
@@ -224,10 +323,12 @@ import {
 import {
 	GAP,
 	type Row,
+	agentTurnHeads,
 	buildRows,
 	ledgerName,
 	paintsSomething,
 	runsOf,
+	slotCarriesTurnHead,
 	splitFirstLine,
 } from "./transcript-rows";
 import {
@@ -249,6 +350,7 @@ import {
 	collapsePlanInputKey,
 	collapseRowsKey,
 	initialAlignWalkState,
+	isTraceFoldable,
 	olderRowsThanWindow,
 	paintedRows,
 	runIsCondensed,
@@ -256,19 +358,35 @@ import {
 	widenTarget,
 	windowTopRun,
 } from "./turn-collapse-model";
-import { isQuietTurnCall } from "./turn-segments";
+import { isFinalResponse, isQuietTurnCall } from "./turn-segments";
 import { useActiveCheckpoint } from "./use-active-checkpoint";
 import type { AttachmentScope } from "./use-attachment-url";
+import { useBridgeConversationNames } from "./use-bridge-conversation-names";
 import { useCheckpoints } from "./use-checkpoints";
 import { useCrossSessionVisibility } from "./use-cross-session-hidden";
 import { useLinkSubject } from "./use-link-subject";
 import { useScrollPaging } from "./use-scroll-paging";
+import {
+	STALE_INDICATOR_DELAY_MS,
+	useStaleIndicatorHold,
+} from "./use-stale-indicator-hold";
 import {
 	type TranscriptMountAdapter,
 	transcriptDomWindowEnabled,
 	useTranscriptDomWindow,
 } from "./use-transcript-dom-window";
 import { useTurnAnswerRail } from "./use-turn-answer-rail";
+import { materialiseUserAttachment } from "./use-user-attachments";
+import {
+	type AttachmentRefusals,
+	NO_REFUSALS,
+	canMaterialiseAttachment,
+	refusalVerdict,
+} from "./user-attachments";
+import {
+	observeUserTurnClamp,
+	overflowsUserTurnClamp,
+} from "./user-turn-clamp";
 import {
 	type WorkingLineState,
 	deriveWorkingLine,
@@ -337,6 +455,22 @@ export const dbgChatEntriesRebuilds = { count: 0 };
  * run unmounts its hidden rows in the same render that plans them.
  */
 const WINDOW_ALIGN_MAX_EXTRA = 300;
+
+/*
+ * The height the agent's turn-head mark adds to the entry it opens is
+ * `turnMarkHeight(size)` (`agent-avatar-size.ts`): the box the setting picks
+ * plus `mb-1`, from the SAME table `message-avatar.tsx` draws its class from, so
+ * the DOM window's estimate cannot keep a 24px belief while the mark is 40. The
+ * estimate is needed because an entry the window has not mounted has no measured
+ * box, and the mark is only there when the turn has a head and the pane has a
+ * mark (review round 1, R-5).
+ */
+
+/**
+ * The head set for a pane with no picture: no mark is drawn, so there is nothing
+ * to elect, and the empty set is what keeps the D11 render byte-identical.
+ */
+const NO_TURN_HEADS: ReadonlySet<string> = new Set();
 
 /* (`ALIGN_WALK_MAX_PAGES`, the walk's bound, lives in `turn-collapse-model.ts`
  * beside the decision that spends it.) */
@@ -407,14 +541,21 @@ function condenseSentence(segment: SegmentPlan): string {
 		if (spanS !== null) parts.push(formatDuration(spanS));
 	} else {
 		if (segment.facts.durationS !== null) {
-			parts.push(`took ${formatDuration(segment.facts.durationS)}`);
+			/* Keyed as one clause with the duration slot, like its sibling
+			 * `worked_for`: the word order is the language's. This sentence is the
+			 * bar's settle announcement and its "Copy" text (never painted). */
+			parts.push(
+				t("ui.chat.canonical.transcript.took_duration", {
+					duration: formatDuration(segment.facts.durationS),
+				}),
+			);
 		}
 		if (segment.facts.actions > 0) {
 			parts.push(
 				minimum(
-					segment.facts.actions === 1
-						? "1 action"
-						: `${segment.facts.actions} actions`,
+					t("ui.chat.canonical.fold.count.actions", {
+						count: segment.facts.actions,
+					}),
 				),
 			);
 		}
@@ -614,6 +755,30 @@ export type CanonicalTranscriptProps = {
 	containerRef: RefObject<HTMLDivElement>;
 	isSmallView: boolean;
 
+	/**
+	 * The agent's picture for THIS conversation, or null when it has none.
+	 *
+	 * WHY IT IS A PROP AND NOT A STORE READ. The picture is keyed by an agent id,
+	 * and a conversation carries its agent's NAME and nothing else
+	 * (`SessionBinding`); the page is the one place that can join the two, holds
+	 * the `useAgentAvatar` subscription, and hands the transcript the URL. The
+	 * pane's rows stay a pure function of their props, so their memo still
+	 * compares a string.
+	 *
+	 * Omitted/nulled is every existing caller and every story: nothing new
+	 * renders, and the transcript is byte-for-byte the one D11 left.
+	 */
+	agentMark?: AvatarMark | null;
+	/**
+	 * The speaking agent's NAME, beside the picture it belongs to.
+	 *
+	 * The image's accessible name is the agent's name, not the role word (review
+	 * round 1, R-3): the row already announces "Agent message", so a mark labelled
+	 * "Assistant" repeated the register and named nobody. Null means the page
+	 * could not resolve a name, and the mark is then decorative.
+	 */
+	agentName?: string | null;
+
 	status: CanonicalTranscriptStatus;
 	/** The published failure state: one product sentence and its action. */
 	failure: SessionFailureNotice | null;
@@ -679,13 +844,68 @@ export type CanonicalTranscriptProps = {
 	 *
 	 * It is a rendered state, not a hint: rows stay at full `ink` (a cached row is
 	 * a real row, and opacity is banned as a state signal in this system), and
-	 * what says "this may be behind" is ONE caption in the pane's own status
-	 * slot — the same slot `Reconnecting` and the failure notice use. It is
-	 * present from the cached paint's first frame and goes in the same commit as
-	 * the reconciled rows, so the reader never sees reconciled rows labelled
-	 * "last saved" or the reverse.
+	 * what says "newer messages may be on the way" is ONE loading indicator in the
+	 * transcript's foot slot (`data-lo-stale-caption`), the row reserved for the
+	 * working line, so its removal moves nothing. The rows PAINT while the page
+	 * is owed - the pane no longer holds a placeholder over them. It is present
+	 * from the cached paint's first frame and goes in the same commit as the
+	 * reconciled rows, so the reader never sees reconciled rows still labelled
+	 * as being checked, or the reverse.
 	 */
 	stale?: boolean;
+	/**
+	 * How long the cached paint stands before `stale` says so, in ms.
+	 *
+	 * The policy lives in `use-stale-indicator-hold.ts` with the measurement that
+	 * chose it; this prop exists because the hold is a policy and a caller can
+	 * honestly have a different one (a zero states the signal at once, which is
+	 * also how the rendered-markup tests reach the post-threshold state without a
+	 * clock). Omitted is the shipped hold.
+	 */
+	staleIndicatorDelayMs?: number;
+	/**
+	 * A turn was running when this paint was stored (the cache's `busy`).
+	 *
+	 * Seeds the working line for the revalidate window, so a return to a running
+	 * session does not paint idle chrome for as long as the page takes. It is
+	 * presentation ONLY: the snapshot withdraws it, and it never reaches the
+	 * composer's send mode or the interrupt path.
+	 */
+	paintRunning?: boolean;
+	/**
+	 * Where the reader was when this paint was stored (the cache's `scroll`).
+	 *
+	 * Applied ONCE, in the mount's layout phase, so the first frame of a return is
+	 * already the reader's own place rather than the bottom. Absent, pinned or a
+	 * row this transcript no longer holds all end at the tail - the scroller's
+	 * default - so a miss costs the reader nothing.
+	 */
+	restoredScroll?: PaintedScroll | null;
+	/**
+	 * Whether the cached paint behind these rows is the WHOLE conversation - the
+	 * cache entry's `complete` - or absent when no paint seeded this pane.
+	 *
+	 * WHY THE COLUMN READS IT (P2 of the session-switch plan). `mb-auto` is this
+	 * column's top anchor, and it is right for a conversation that fits and wrong
+	 * for a cached FRAGMENT: when the taller page lands the column overflows, the
+	 * margin resolves to zero, and every row drops to the bottom in one frame
+	 * (measured: first visible row +200.6 px, last row +212.6 px, 26/26 and 16/16
+	 * runs at 500/700 KB tool results). So the anchor is dropped while such a
+	 * fragment is stale, and only then; the rule and its truth table live in
+	 * `paint-top-anchor.ts`. Absent or null is "no cache entry" - a live pane, or
+	 * a caller that set `stale` itself - which keeps today's layout.
+	 */
+	paintComplete?: boolean | null;
+	/**
+	 * True when this conversation is owned by another device (the catalogue's
+	 * placement fact or row `locality`, `remoteOwnedId`). Changes only the WORDS
+	 * of the loading indicator: for a peer's conversation every wait this pane
+	 * shows before the history is proven is the sync from that device, and
+	 * "Syncing from your other device…" is the one label that says why it can take
+	 * longer than a local open. Optional, defaulting false: absence is not proof of
+	 * remote, and a caller that omits it gets the local labels.
+	 */
+	remote?: boolean;
 	/**
 	 * True when the backend says this conversation is not on this machine (M6).
 	 *
@@ -696,6 +916,12 @@ export type CanonicalTranscriptProps = {
 	 * spent to learn it.
 	 */
 	missing?: boolean;
+	/**
+	 * The `missing` conversation was deleted as a TEMPORARY chat (the core's
+	 * tombstone): the notice becomes the temporary tombstone with "New temporary
+	 * chat" and "Back to chats" (`missingSessionNotice`). Ignored unless `missing`.
+	 */
+	missingTemporary?: boolean;
 
 	/**
 	 * Which conversation's rows this is, for attachment resolution — defaulting
@@ -767,6 +993,19 @@ export type CanonicalTranscriptProps = {
 	 */
 	labelMarked?: ReadonlySet<string>;
 	/**
+	 * What the backend refused to copy out (`materialisable: false` in the
+	 * user-attachment inventory; core PR #3042 QA round 3, Q1), by digest, by
+	 * the inventory's message + kind + position, and by origin path - an inline
+	 * file under 768 B has no digest (QA R5 Q2). The sent-file cards and
+	 * pictures here are painted from loaded records, which carry no verdict, so
+	 * they read it from this (`refusalVerdict`). It also says when a verdict
+	 * is NOT KNOWN yet (QA R6 Q3: the inventory is loading or failed, or a
+	 * just-sent block awaits the re-read), and that withholds every path
+	 * action. Absent = no refusals: the `session_attachments` capability alone
+	 * governs (an older backend, a child reader).
+	 */
+	refusedAttachments?: AttachmentRefusals;
+	/**
 	 * Re-arm the session's stream and history read.
 	 *
 	 * Required rather than optional: every caller of this component has a
@@ -774,6 +1013,78 @@ export type CanonicalTranscriptProps = {
 	 * this surface is being fixed to stop showing.
 	 */
 	onReconnect: () => void;
+	/**
+	 * Where the missing notice's way out goes: the ROUTE move, owned by the page
+	 * that holds `navigate` (agent review round 1 / QA round 1, Q1). The store
+	 * action on the button stages the fresh draft and clears the dead selection;
+	 * this lets the address follow, or a reload would re-open the conversation the
+	 * press just left. Optional because the transcript also renders on surfaces
+	 * with no route (stories, the run panel's child reader).
+	 */
+	onStartNewChat?: () => void;
+};
+
+/**
+ * §F3's line under a message that did not go out, with the fix its cause earns.
+ *
+ * THE FIX IS NEW (D3, onboarding friction 2026-11): 62 external users pressed
+ * "Send again" here, and for three causes a resend cannot work - nothing
+ * connected, no model chosen, the background service not answering - the row
+ * offered only that press. `recoveryForFailure` names the fix from the code and
+ * sentence the store kept, with the composer's LIVE verdict as the tie-breaker
+ * (a row that failed while the service was down is fixed by reconnecting). A
+ * configuration fix REPLACES "Send again" (the resend would fail identically
+ * until it is applied); a reconnect sits BESIDE it.
+ *
+ * A component of its own so the two reads it needs (provider census, server
+ * health) mount only for the one row that is undelivered, never for every
+ * user row in the transcript.
+ */
+export const UndeliveredLine: FC<{ undelivered: UndeliveredTurn }> = ({
+	undelivered,
+}) => {
+	useI18nLocale();
+	const { needsProvider, needsModel, isKnown } = useProviderStatus();
+	const serverOffline = useServerOffline();
+	const block = sendBlockFor({
+		noProvider: needsProvider,
+		noModel: needsModel,
+		serverOffline,
+	});
+	const recovery = recoveryForFailure({
+		code: undelivered.code,
+		message: undelivered.message,
+		cause: undelivered.cause,
+		block,
+		/*
+		 * U2: a configuration cause retires once the live verdict is READ and
+		 * clear. Offline outranks it inside `sendBlockFor`, so a read taken while
+		 * the service is down never counts as "fixed".
+		 */
+		verdictKnown: isKnown && !serverOffline,
+	});
+	const fix = useSendRecoveryAction();
+	return (
+		<UndeliveredLineView
+			sentence={undeliveredSentence({
+				message: undelivered.message,
+				recovery,
+				block,
+				/*
+				 * Q2: the row's Reconnect states its result here, as the composer's
+				 * does; only a reconnect's outcome belongs to this row.
+				 */
+				outcome: recovery === "reconnect" ? fix.outcome : null,
+			})}
+			recovery={recovery}
+			offerSendAgain={undelivered.retry !== false && keepsSendAgain(recovery)}
+			retryDisabled={undelivered.retryDisabled}
+			busy={fix.busy}
+			onFix={fix.run}
+			onSendAgain={undelivered.onSendAgain}
+			onEdit={undelivered.onEdit}
+		/>
+	);
 };
 
 // ---------------------------------------------------------------- rows
@@ -816,6 +1127,18 @@ export type UndeliveredTurn = {
 	 * so every pre-U4 caller keeps the button as it was.
 	 */
 	retryDisabled?: boolean;
+	/**
+	 * The machine code the store kept for this failure (`draft.errorCode`), so
+	 * the row can name the fix its cause earns (`recoveryForFailure`, D3).
+	 * Absent for a claim nothing classified.
+	 */
+	code?: string;
+	/**
+	 * The configuration cause the store classified this failure by
+	 * (`draft.errorCause`, agent review round 1 R1), so the row can name its fix
+	 * although its sentence is this app's own rather than the backend's.
+	 */
+	cause?: FailureCause;
 	onSendAgain: () => void;
 	onEdit: () => void;
 };
@@ -825,13 +1148,49 @@ export type UndeliveredTurn = {
  * file has always labelled those tiles with, hoisted so the carousel's filmstrip
  * and title reuse the same sentence (see `fold-media.tsx`'s twin).
  */
+/**
+ * Open / reveal / copy-path for a picture the PERSON attached.
+ *
+ * A pasted screenshot has no path, only a retained digest; the backend copies
+ * it out under a real name (`materialiseUserAttachment`) at action time, and the
+ * canvas opens that copy - a real path, so the tab survives a restart. Only for
+ * a local conversation whose backend can do it (the route 404s otherwise, which
+ * the menu reports as a failure toast, never silently). Absent, the picture keeps
+ * the actions its blob/data source allows.
+ */
+
+function userImagePathActions(
+	image: TranscriptImage,
+	scope: AttachmentScope | null,
+	conversationId: string | undefined,
+	remote: boolean,
+	capable: boolean,
+): ImagePathActions | undefined {
+	const digest = image.attachment;
+	const sessionId = scope?.sessionId;
+	if (!capable || !digest || !sessionId || remote || scope?.childId)
+		return undefined;
+	const resolvePath = () => materialiseUserAttachment(sessionId, digest);
+	return {
+		resolvePath,
+		onShowInCanvas: conversationId
+			? () => {
+					void resolvePath()
+						.then((path) => openPathInCanvas(conversationId, path))
+						.then((opened) => {
+							if (!opened) showErrorToast(t("ui.canvas.files.prepareError"));
+						})
+						.catch(() => showErrorToast(t("ui.canvas.files.prepareError")));
+				}
+			: undefined,
+	};
+}
+
 const userImageLabel = (
 	image: TranscriptImage,
 	index: number,
 	count: number,
-): string =>
-	image.name ??
-	(count === 1 ? "Attached image" : `Attached image ${index + 1}`);
+): string => attachedImageLabel(image.name, index, count);
 
 /**
  * The tool row's rule, which differs from the user row's in the NOUN only: an
@@ -843,7 +1202,7 @@ const toolImageLabel = (
 	image: TranscriptImage,
 	index: number,
 	count: number,
-): string => image.name ?? (count === 1 ? "Image" : `Image ${index + 1}`);
+): string => image.name ?? imageLabel(index + 1, count);
 
 /**
  * The audio sibling of `toolImageLabel`: the same rule (the wire's own name
@@ -858,18 +1217,22 @@ const toolAudioLabel = (
 	audio: TranscriptImage,
 	index: number,
 	count: number,
-): string => audio.name ?? (count === 1 ? "Sound" : `Sound ${index + 1}`);
+): string => audio.name ?? soundLabel(index + 1, count);
 
 const UserRow = memo(function UserRow({
 	record,
 	isSmallView,
 	scope,
+	capable,
+	refusedAttachments = NO_REFUSALS,
 	conversationId,
 	undelivered = null,
 }: {
 	record: Extract<TranscriptRecord, { kind: "user" }>;
 	isSmallView: boolean;
 	scope: AttachmentScope | null;
+	capable: boolean;
+	refusedAttachments?: AttachmentRefusals;
 	conversationId?: string;
 	/** §F3's per-message failure state, when this row is the one it names. */
 	undelivered?: UndeliveredTurn | null;
@@ -920,13 +1283,14 @@ const UserRow = memo(function UserRow({
 	 * split happens here rather than downstream: this string is what the row paints
 	 * AND what the turn's own Copy and Quote read (`bodyText` below), so a payload
 	 * still standing in for the typed line would be quoted and copied as a wall of
-	 * SKILL.md. `skill-row.ts` is the one derivation; `record.skill` below is the
-	 * seal built from it at record time.
+	 * SKILL.md. `skill-row.ts`'s `displayTextOf` is the one derivation, for both
+	 * payload shapes; `record.skill` below is the legacy seal built from it at
+	 * record time.
 	 */
-	const invocation = useMemo(() => skillRowOf(record.text), [record.text]);
+	const bodyText = useMemo(() => displayTextOf(record.text), [record.text]);
 	const { replies, remainingContent } = useMemo(
-		() => parseReplies(invocation?.text ?? record.text),
-		[invocation, record.text],
+		() => parseReplies(bodyText),
+		[bodyText],
 	);
 	/*
 	 * The seal the reducer stamped beside the text, when this row is an
@@ -936,6 +1300,16 @@ const UserRow = memo(function UserRow({
 	 * reader of the record already share.
 	 */
 	const seal = record.skill;
+	/*
+	 * The skills this turn attached, read off the RECORD's text: `bodyText` above
+	 * has the `<operator-skills>` block stripped, so the painted string no longer
+	 * says which tokens fired. A legacy seal paints its own `seal.token` in the
+	 * same ink, so it passes none - one ink per token, never two.
+	 */
+	const attachedSkills = useMemo(
+		() => (seal ? [] : skillBlockNames(record.text)),
+		[seal, record.text],
+	);
 	const instructionsLabel = t("ui.chat.skill_invocation.instructions_label");
 	/*
 	 * U2: the transcript is BOTTOM-ANCHORED, so opening the last row's body grows
@@ -964,16 +1338,53 @@ const UserRow = memo(function UserRow({
 	 */
 	const pictures = record.images.filter(isPictureRef);
 	/*
-	 * Whether this turn is long enough to need D2's eight-line clamp, MEASURED
-	 * rather than guessed from a character count: the box is clamped first and
-	 * then asked whether it is hiding anything, so a `Show more` can never appear
-	 * on a turn that is already fully visible. Skipped while expanded, where the
-	 * clamp is off and the box would always report itself as fitting.
+	 * Whether this conversation lives on another device. Read from the store
+	 * because the placement fact is not on the transcript row, and a remote
+	 * conversation's file cards make no existence claim (contract v1 §5): the
+	 * path never lived on this machine.
+	 */
+	const remote = useCanonicalSessionsStore((state) =>
+		conversationId
+			? remoteOwnedId(state.sessions, state.placementFacts, conversationId)
+			: false,
+	);
+	/*
+	 * "Not remote" is not "local" until the catalogue has stated where this
+	 * conversation lives: the placement fact or the row's own `locality` is that
+	 * statement, and until one exists the file card must make no existence claim
+	 * (contract §5; agent review round 1, n3).
+	 */
+	const placementKnown = useCanonicalSessionsStore((state) => {
+		if (!conversationId) return false;
+		if (state.placementFacts[conversationId]?.locality) return true;
+		return state.sessions.some(
+			(row) => row.session_id === conversationId && row.locality !== undefined,
+		);
+	});
+	/*
+	 * D2's eight-line clamp. The CAP is a class applied whenever the turn is
+	 * collapsed, from the first paint, so a long turn's first painted height IS
+	 * its settled height; `user-turn-clamp.ts` records why the first build, which
+	 * capped only after measuring an uncapped box, never clamped anything.
+	 *
+	 * What is measured is only whether the `Show more` control EXISTS: a turn that
+	 * fits under the cap must not grow a control that reveals nothing. The answer
+	 * compares the content's height to the cap's constant, so it is the same
+	 * collapsed or expanded (a turn remounted expanded keeps its `Show less`).
 	 */
 	const [expanded, setExpanded] = useTranscriptViewBoolean(record.id);
-	const [clamped, setClamped] = useState(false);
+	const [overflows, setOverflows] = useState(false);
 	const bodyRef = useRef<HTMLDivElement>(null);
+	const intrinsicBodyRef = useRef<HTMLDivElement>(null);
 	/*
+	 * The open-path decision, in the LAYOUT effect so the control is in the first
+	 * painted frame (a later answer lands the 34px control one frame late, the
+	 * height change the cap exists to avoid). The read falls after the commit's
+	 * DOM is complete, so it is answered by the layout the transcript's open pays
+	 * anyway; every row's read is in the same commit, and their setStates batch
+	 * into one synchronous re-render. `user-turn-clamp.ts` records the observer-only
+	 * alternative that was measured and rejected.
+	 *
 	 * The suppression below is one line rather than a block because biome attaches
 	 * an ignore to the NEXT line: a multi-line one leaves the rule unreported and
 	 * active, which is how this arrived as a red lint run with the reason already
@@ -987,15 +1398,26 @@ const UserRow = memo(function UserRow({
 	 */
 	// biome-ignore lint/correctness/useExhaustiveDependencies: `remainingContent` re-measures the clamp; see above
 	useLayoutEffect(() => {
-		if (expanded) return;
 		const el = bodyRef.current;
-		if (el) setClamped(el.scrollHeight > el.clientHeight + 1);
-	}, [expanded, remainingContent]);
+		if (el) setOverflows(overflowsUserTurnClamp(el.scrollHeight));
+	}, [remainingContent]);
+	/*
+	 * Observe intrinsic content, NOT the clipped viewport: at 174/175px the
+	 * control is absent, but later image/font growth leaves the viewport at
+	 * 174px and would deliver no resize. The uncapped flow-root includes child
+	 * margins in its height, so growth and shrink both invalidate the answer
+	 * without a text-prop change or polling on every streamed token.
+	 */
+	useEffect(() => {
+		const content = intrinsicBodyRef.current;
+		return content ? observeUserTurnClamp(content, setOverflows) : undefined;
+	}, []);
 	return (
 		<MessageContainer isUser isSmallView={isSmallView}>
 			{/*
-			 * The turn is a COLUMN - the bubble's row, then its stamp - and the stamp
-			 * is a sibling of the bubble rather than a line inside it.
+			 * The turn is a COLUMN - the bubble's row, then the action line that
+			 * carries the controls and the stamp - and the stamp is a sibling of the
+			 * bubble rather than a line inside it.
 			 *
 			 * `items-end` on the column is what puts the stamp against the BUBBLE's
 			 * right edge: the bubble's row is justified to the same edge, so both
@@ -1059,6 +1481,14 @@ const UserRow = memo(function UserRow({
 							// 10px step, unchanged.
 							"relative rounded-frame bg-message-surface text-ink break-words",
 							/*
+							 * THE MESSAGE'S OWN FOCUS RING. The focusable row wrapper suppresses
+							 * its full-width outline; this box draws the same 2px accent ring the
+							 * app's focus grammar uses, around the bubble the reader focused
+							 * (operator report on the first after-frame: the ring was a
+							 * full-width green rectangle over empty gutter).
+							 */
+							"group-focus-visible:outline-2 group-focus-visible:outline-accent group-focus-visible:outline-offset-2",
+							/*
 							 * The ONE border a bubble takes, and only while it is the message §F3's
 							 * line is about: `a danger 1px leading edge` on the block. D10 removed the
 							 * resting border because the fill is the boundary; this is not a resting
@@ -1084,239 +1514,326 @@ const UserRow = memo(function UserRow({
 							className={cn(
 								"relative",
 								/*
-								 * Eight lines of `text-body` at 1.55 is 8 x 21.7 = 174px (D2).
+								 * Eight lines of `text-body` at 1.55 is 8 x 21.7 = 174px (D2);
+								 * `USER_TURN_CLAMP_PX` is the same number, pinned equal by
+								 * `scripts/user-turn-clamp.test.mjs` (Tailwind needs the literal).
 								 *
-								 * The clamp is on the BLOCK, because a pasted stack trace is
-								 * still one user turn and would otherwise own the pane - and
-								 * the affordance below is rendered only when the clamp is
-								 * actually hiding something, so a turn that fits never grows a
-								 * control that reveals nothing.
+								 * UNCONDITIONAL while collapsed, never gated on a measurement:
+								 * the box paints at its settled height from the first frame. A
+								 * turn that fits is shorter than the cap, so the class changes
+								 * nothing for it. The clamp is on the turn's PROSE block (quote,
+								 * seal, text): a pasted stack trace is one turn and would
+								 * otherwise own the pane. Attachments and the control sit
+								 * outside it - the control must never be what the cap clips,
+								 * and a one-line turn with a screenshot is not a long turn.
+								 * The hidden text stays in the DOM, so selection, copy and
+								 * quoting reach all of it.
 								 */
-								!expanded && clamped ? "max-h-[174px] overflow-hidden" : "",
+								!expanded && "max-h-[174px] overflow-hidden",
 							)}
+							/* Fade only genuinely hidden prose, never the disclosure or
+							 * attachments below. An alpha mask dissolves the actual ink
+							 * over any theme/window glass; an opaque ground overlay would
+							 * paint a false seam on translucent bubbles. The cap remains
+							 * unconditional on first commit; the mask changes no geometry. */
+							style={
+								!expanded && overflows
+									? {
+											maskImage:
+												"linear-gradient(to bottom, black calc(100% - 24px), transparent 100%)",
+										}
+									: undefined
+							}
 						>
-							{/* The quote a quoted turn was sent with, rendered as the same
+							<div
+								ref={intrinsicBodyRef}
+								className="flow-root"
+								data-lo-user-turn-intrinsic
+							>
+								{/* The quote a quoted turn was sent with, rendered as the same
 							    recessed block the composer stages it in - the reader sees one
 							    idiom for "this is quoted" whether it is pending or sent. */}
-							{replies.length > 0 && <ReplyPreview replies={replies} />}
-							{/*
-							 * THE `$skill` SEAL. Without it this bubble IS the payload: the
-							 * header sentence, the `<skill>` tag, the whole SKILL.md body and
-							 * the request, painted at reading weight as though the reader had
-							 * typed them -- the defect the harness repo's
-							 * `docs/design/history-fold-convergence.md` row D8 records.
-							 * The typed line is the row; the instructions the model received
-							 * are one press away.
-							 *
-							 * A `Disclosure` rather than a fold of its own, because branding
-							 * § 7 allows exactly one expand/collapse idiom app-wide. Its
-							 * chevron slot is repainted `text-ink-dim`: the primitive's
-							 * `ink-disabled` is the one role exempt from every contrast floor,
-							 * while this chevron is the surface's only affordance rather than
-							 * chrome beside a trace row.
-							 */}
-							{seal && (
-								/*
-								 * `contents` rather than a box: this wrapper carries the anchor U2
-								 * scrolls to and must not add a flex item beside the bubble the
-								 * disclosure already sits in.
-								 */
-								<div ref={sealAnchor} className={cn("contents")}>
-									<Disclosure
-										className={cn("mb-1.5")}
-										/*
-										 * A NAMED group, because the chevron cannot inherit the trigger's
-										 * own `hover:text-ink-muted` - it pins its own ink - so the hover
-										 * step has to be keyed to the button (design round 1, D3). Named
-										 * rather than bare: an unnamed `group` here would re-key every
-										 * `group-hover:` inside this trigger to it.
-										 */
-										triggerClassName="group/seal"
-										chevronClassName="text-ink-dim group-hover/seal:text-ink-muted"
-										/*
-										 * The trigger's ACCESSIBLE NAME (UX round 1, U3): the summary
-										 * is a token and a purpose sentence, so a screen reader read
-										 * ~150 characters per pass and never said what the control
-										 * opens. The purpose stays visible, and in the `title` behind
-										 * the ellipsis, for sighted readers.
-										 */
-										triggerLabel={t("ui.chat.skill_invocation.trigger_label", {
-											token: seal.token,
-										})}
-										onOpenChange={(open) => {
-											if (open) holdSealTrigger();
-										}}
-										summary={
-											<span className={cn("flex min-w-0 items-center gap-1.5")}>
-												{/*
-												 * The composer's RESOLVED-skill ink, name for name
-												 * (`slash-highlight.ts`'s `RUN_INK`): the token a reader
-												 * sees on the row is the same object they saw in the box
-												 * they typed it in, so the two surfaces cannot drift into
-												 * two opinions about what a `$skill` looks like.
-												 *
-												 * THE CAPTION KEEPS A FLOOR (design round 1, D2): skill
-												 * names reach 64 characters, and a `shrink-0` name at
-												 * the narrowest window left the purpose showing one
-												 * letter and an ellipsis. Both sides ellipsize now
-												 * and the purpose holds 8rem, so a long name cannot
-												 * eat it.
-												 *
-												 * A FLOOR ON THE PURPOSE rather than a cap on the
-												 * name, and expressed in the spacing scale: a cap of
-												 * 60% of the row was this row's first spelling, and it
-												 * trips `tool-row.test.mjs`'s arbitrary-width guard -
-												 * which exists because an arbitrary cap in THIS file
-												 * is what once re-constrained a message column, and
-												 * which is right to be the one place that is
-												 * enumerated rather than described. A floor binds
-												 * only where the defect was measured.
-												 */}
+								{replies.length > 0 && <ReplyPreview replies={replies} />}
+								{/*
+								 * THE `$skill` SEAL. Without it this bubble IS the payload: the
+								 * header sentence, the `<skill>` tag, the whole SKILL.md body and
+								 * the request, painted at reading weight as though the reader had
+								 * typed them -- the defect the harness repo's
+								 * `docs/design/history-fold-convergence.md` row D8 records.
+								 * The typed line is the row; the instructions the model received
+								 * are one press away.
+								 *
+								 * A `Disclosure` rather than a fold of its own, because branding
+								 * § 7 allows exactly one expand/collapse idiom app-wide. Its
+								 * chevron slot is repainted `text-ink-dim`: the primitive's
+								 * `ink-disabled` is the one role exempt from every contrast floor,
+								 * while this chevron is the surface's only affordance rather than
+								 * chrome beside a trace row.
+								 */}
+								{seal && (
+									/*
+									 * `contents` rather than a box: this wrapper carries the anchor U2
+									 * scrolls to and must not add a flex item beside the bubble the
+									 * disclosure already sits in.
+									 */
+									<div ref={sealAnchor} className={cn("contents")}>
+										<Disclosure
+											className={cn("mb-1.5")}
+											/*
+											 * A NAMED group, because the chevron cannot inherit the trigger's
+											 * own `hover:text-ink-muted` - it pins its own ink - so the hover
+											 * step has to be keyed to the button (design round 1, D3). Named
+											 * rather than bare: an unnamed `group` here would re-key every
+											 * `group-hover:` inside this trigger to it.
+											 */
+											triggerClassName="group/seal"
+											chevronClassName="text-ink-dim group-hover/seal:text-ink-muted"
+											/*
+											 * The trigger's ACCESSIBLE NAME (UX round 1, U3): the summary
+											 * is a token and a purpose sentence, so a screen reader read
+											 * ~150 characters per pass and never said what the control
+											 * opens. The purpose stays visible, and in the `title` behind
+											 * the ellipsis, for sighted readers.
+											 */
+											triggerLabel={t(
+												"ui.chat.skill_invocation.trigger_label",
+												{
+													token: seal.token,
+												},
+											)}
+											onOpenChange={(open) => {
+												if (open) holdSealTrigger();
+											}}
+											summary={
 												<span
-													className={cn(
-														"min-w-0 shrink truncate text-token-command slash-run-bold",
-													)}
+													className={cn("flex min-w-0 items-center gap-1.5")}
 												>
-													{seal.token}
+													{/*
+													 * The composer's RESOLVED-skill ink, name for name
+													 * (`slash-highlight.ts`'s `RUN_INK`): the token a reader
+													 * sees on the row is the same object they saw in the box
+													 * they typed it in, so the two surfaces cannot drift into
+													 * two opinions about what a `$skill` looks like.
+													 *
+													 * THE CAPTION KEEPS A FLOOR (design round 1, D2): skill
+													 * names reach 64 characters, and a `shrink-0` name at
+													 * the narrowest window left the purpose showing one
+													 * letter and an ellipsis. Both sides ellipsize now
+													 * and the purpose holds 8rem, so a long name cannot
+													 * eat it.
+													 *
+													 * A FLOOR ON THE PURPOSE rather than a cap on the
+													 * name, and expressed in the spacing scale: a cap of
+													 * 60% of the row was this row's first spelling, and it
+													 * trips `tool-row.test.mjs`'s arbitrary-width guard -
+													 * which exists because an arbitrary cap in THIS file
+													 * is what once re-constrained a message column, and
+													 * which is right to be the one place that is
+													 * enumerated rather than described. A floor binds
+													 * only where the defect was measured.
+													 */}
+													<span
+														className={cn(
+															"min-w-0 shrink truncate text-token-command slash-run-bold",
+														)}
+													>
+														{seal.token}
+													</span>
+													{seal.purpose !== null && (
+														<>
+															<span
+																className={cn("shrink-0 text-ink-dim")}
+																aria-hidden="true"
+															>
+																·
+															</span>
+															{/*
+															 * ONE LINE, ELLIPSIZED, the whole sentence in the
+															 * native `title` rather than in a popper: this sits
+															 * inside every invocation row of a windowed
+															 * transcript, which is the cost `reply-preview.tsx`
+															 * records for the same choice one block away.
+															 */}
+															<span
+																className={cn(
+																	"min-w-32 flex-1 truncate text-ink-muted text-meta",
+																)}
+																title={seal.purpose}
+															>
+																{seal.purpose}
+															</span>
+														</>
+													)}
 												</span>
-												{seal.purpose !== null && (
-													<>
-														<span
-															className={cn("shrink-0 text-ink-dim")}
-															aria-hidden="true"
-														>
-															·
-														</span>
-														{/*
-														 * ONE LINE, ELLIPSIZED, the whole sentence in the
-														 * native `title` rather than in a popper: this sits
-														 * inside every invocation row of a windowed
-														 * transcript, which is the cost `reply-preview.tsx`
-														 * records for the same choice one block away.
-														 */}
-														<span
-															className={cn(
-																"min-w-32 flex-1 truncate text-ink-muted text-meta",
-															)}
-															title={seal.purpose}
-														>
-															{seal.purpose}
-														</span>
-													</>
-												)}
-											</span>
-										}
-									>
-										{/*
-										 * The same recessed ground the quoted turn above takes, and
-										 * the same reason: this block is not the reader's words but
-										 * text the app sent on their behalf, and the ground says so
-										 * without a rule between the two. `role="group"` + the
-										 * trigger's own label ties the panel to the control that
-										 * opened it (UX round 1, U3).
-										 */}
-										<div
-											/* biome-ignore lint/a11y/useSemanticElements: a `<fieldset>` is the semantic element for `group` and the wrong one here - there is no form, and its default box and margin would land inside a message bubble that is measured to the pixel. What the role buys is a LABELLING SCOPE, so the panel a press opened announces itself as the instructions the trigger named (the same trade `session-status-strip.tsx` and `mesh-canvas.tsx` record). */
-											role="group"
-											aria-label={instructionsLabel}
-											className={cn("rounded-sm bg-sunken p-2")}
+											}
 										>
-											<div className={cn("mb-1 text-ink-dim text-meta")}>
-												{instructionsLabel}
-											</div>
 											{/*
-											 * § 7's DETAIL-BLOCK CAP (design round 1, D1): a real
-											 * SKILL.md is 20-160 lines, and an uncapped block grew
-											 * until the row pushed itself - and the reader's own
-											 * request under it - out of the scroller. The cap is the
-											 * trace's own exported number rather than a second one
-											 * free to drift from it, and the block scrolls inside
-											 * itself.
+											 * The same recessed ground the quoted turn above takes, and
+											 * the same reason: this block is not the reader's words but
+											 * text the app sent on their behalf, and the ground says so
+											 * without a rule between the two. `role="group"` + the
+											 * trigger's own label ties the panel to the control that
+											 * opened it (UX round 1, U3).
 											 */}
 											<div
-												/*
-												 * The evidence rig's hook: `renderer-driver.mjs`'s
-												 * `--scene skill-seal` measures THIS element against § 7's
-												 * cap and reads its `scrollHeight` against its
-												 * `clientHeight`, which nothing else in the row can
-												 * answer.
-												 */
-												data-lo-skill-body
-												className={cn(DETAIL_SECTION_MAX, "overflow-auto")}
+												/* biome-ignore lint/a11y/useSemanticElements: a `<fieldset>` is the semantic element for `group` and the wrong one here - there is no form, and its default box and margin would land inside a message bubble that is measured to the pixel. What the role buys is a LABELLING SCOPE, so the panel a press opened announces itself as the instructions the trigger named (the same trade `session-status-strip.tsx` and `mesh-canvas.tsx` record). */
+												role="group"
+												aria-label={instructionsLabel}
+												className={cn("rounded-sm bg-sunken p-2")}
 											>
-												<MarkdownRenderer content={seal.body} />
+												<div className={cn("mb-1 text-ink-dim text-meta")}>
+													{instructionsLabel}
+												</div>
+												{/*
+												 * § 7's DETAIL-BLOCK CAP (design round 1, D1): a real
+												 * SKILL.md is 20-160 lines, and an uncapped block grew
+												 * until the row pushed itself - and the reader's own
+												 * request under it - out of the scroller. The cap is the
+												 * trace's own exported number rather than a second one
+												 * free to drift from it, and the block scrolls inside
+												 * itself.
+												 */}
+												<div
+													/*
+													 * The evidence rig's hook: `renderer-driver.mjs`'s
+													 * `--scene skill-seal` measures THIS element against § 7's
+													 * cap and reads its `scrollHeight` against its
+													 * `clientHeight`, which nothing else in the row can
+													 * answer.
+													 */
+													data-lo-skill-body
+													className={cn(DETAIL_SECTION_MAX, "overflow-auto")}
+												>
+													<MarkdownRenderer content={seal.body} />
+												</div>
 											</div>
-										</div>
-									</Disclosure>
-								</div>
-							)}
-							{/*
-							 * `credentialCitations`, and only on the user's own turn: this is the only
-							 * place in the transcript where a citation is the app's own words rather than
-							 * the agent's prose about one. A message sent with a pasted secret reads in the
-							 * reader's own voice, so the chip the composer showed must survive the send
-							 * (operator report, 2026-09-17: the citation arrived as a wall of technical
-							 * text). What the MODEL receives is unchanged — the sentence is still the
-							 * message's own text; only how it is drawn changes.
-							 */}
-							<MarkdownRenderer
-								content={seal ? seal.request : remainingContent}
-								credentialCitations
-							/>
-							{clamped && (
-								/*
-								 * A 30px full-width row INSIDE the block, with no divider
-								 * (D2, the Raycast idiom): the clamp and its release are one
-								 * object, so the release sits on the block's own ground
-								 * rather than behind a rule between them.
-								 */
-								<button
-									type="button"
-									onClick={() => setExpanded((value) => !value)}
-									aria-expanded={expanded}
-									className={cn(
-										"mt-1 h-[30px] w-full text-center text-ink-muted text-meta",
-										"hover:text-ink",
-									)}
-								>
-									{expanded ? "Show less" : "Show more"}
-								</button>
-							)}
-							{pictures.length > 0 && (
-								<div className={cn("mt-2 flex flex-col gap-2")}>
-									{pictures.map((image, index) => (
-										/*
-										 * The picture's own handle when the wire carried one (an artifact's
-										 * `name`), else the per-message scheme. THE SCHEME KEEPS ITS
-										 * PER-MESSAGE SCOPE (UX round 1, U1): a conversation-wide counter
-										 * is not available to this render — rows mount and unmount with
-										 * the windowed transcript, so a number spanning it would RENUMBER
-										 * as the reader scrolls, and an unstable name is worse for a
-										 * screen reader than a repeated one. Within a message the
-										 * pictures are numbered; across messages the row grouping is the
-										 * context, and the picture's own handle discriminates wherever
-										 * one travelled with it.
-										 */
-										<CanonicalImage
-											key={image.id}
-											image={image}
-											scope={scope}
-											label={userImageLabel(image, index, pictures.length)}
-											/*
-											 * THIS MESSAGE is the group: the reader's own attachments are one
-											 * set, so a press walks the pictures of the turn it belongs
-											 * to and never the conversation's other screenshots.
-											 */
-											group={{
-												images: pictures,
-												index,
-												labelFor: userImageLabel,
-											}}
-										/>
-									))}
-								</div>
-							)}
+										</Disclosure>
+									</div>
+								)}
+								{/*
+								 * `credentialCitations`, and only on the user's own turn: this is the only
+								 * place in the transcript where a citation is the app's own words rather than
+								 * the agent's prose about one. A message sent with a pasted secret reads in the
+								 * reader's own voice, so the chip the composer showed must survive the send
+								 * (operator report, 2026-09-17: the citation arrived as a wall of technical
+								 * text). What the MODEL receives is unchanged — the sentence is still the
+								 * message's own text; only how it is drawn changes.
+								 */}
+								<MarkdownRenderer
+									content={seal ? seal.request : remainingContent}
+									credentialCitations
+									skillNames={attachedSkills}
+								/>
+							</div>
 						</div>
+						{overflows && (
+							/*
+							 * A 30px full-width row INSIDE the bubble, with no divider
+							 * (D2, the Raycast idiom): the clamp and its release are one
+							 * object, so the release sits on the block's own ground
+							 * rather than behind a rule between them. It follows the capped
+							 * box rather than living in it, so the cap cannot clip it.
+							 */
+							<button
+								type="button"
+								onClick={() => setExpanded((value) => !value)}
+								aria-expanded={expanded}
+								className={cn(
+									"mt-1 h-[30px] w-full text-center text-ink-muted text-meta",
+									"hover:text-ink",
+								)}
+							>
+								{expanded
+									? t("ui.chat.user_turn.show_less")
+									: t("ui.chat.user_turn.show_more")}
+							</button>
+						)}
+						{(record.documents?.length ?? 0) > 0 && (
+							<div className={cn("mt-2 flex flex-col gap-1")}>
+								{record.documents?.map((document, index, documents) => {
+									/*
+									 * Judged by position and origin path as well as digest
+									 * (QA R5 Q2): an inline `.env` under 768 B has no digest,
+									 * and its card offered Open on the real file.
+									 */
+									const verdict = refusalVerdict(refusedAttachments, {
+										messageId: record.id,
+										kind: "document",
+										position: index,
+										count: documents.length,
+										digest: document.attachment,
+										path: document.path,
+									});
+									return (
+										<SentFileCard
+											key={document.id}
+											document={document}
+											remote={remote}
+											placementKnown={placementKnown}
+											sessionId={
+												scope &&
+												!scope.childId &&
+												canMaterialiseAttachment(capable, verdict)
+													? scope.sessionId
+													: null
+											}
+											refused={verdict === false}
+											withheld={verdict === "pending"}
+										/>
+									);
+								})}
+							</div>
+						)}
+						{pictures.length > 0 && (
+							<div className={cn("mt-2 flex flex-col gap-2")}>
+								{pictures.map((image, index) => (
+									/*
+									 * The picture's own handle when the wire carried one (an artifact's
+									 * `name`), else the per-message scheme. THE SCHEME KEEPS ITS
+									 * PER-MESSAGE SCOPE (UX round 1, U1): a conversation-wide counter
+									 * is not available to this render — rows mount and unmount with
+									 * the windowed transcript, so a number spanning it would RENUMBER
+									 * as the reader scrolls, and an unstable name is worse for a
+									 * screen reader than a repeated one. Within a message the
+									 * pictures are numbered; across messages the row grouping is the
+									 * context, and the picture's own handle discriminates wherever
+									 * one travelled with it.
+									 */
+									<CanonicalImage
+										key={image.id}
+										image={image}
+										scope={scope}
+										label={userImageLabel(image, index, pictures.length)}
+										/*
+										 * THIS MESSAGE is the group: the reader's own attachments are one
+										 * set, so a press walks the pictures of the turn it belongs
+										 * to and never the conversation's other screenshots.
+										 */
+										group={{
+											images: pictures,
+											index,
+											labelFor: userImageLabel,
+										}}
+										pathActions={userImagePathActions(
+											image,
+											scope,
+											conversationId,
+											remote || !placementKnown,
+											canMaterialiseAttachment(
+												capable,
+												refusalVerdict(refusedAttachments, {
+													messageId: record.id,
+													kind: "image",
+													position: index,
+													count: pictures.length,
+													digest: image.attachment,
+												}),
+											),
+										)}
+									/>
+								))}
+							</div>
+						)}
 					</div>
 					{/*
 					 * `!link.quoteAvailable` is the one-control rule: when the reader's
@@ -1328,7 +1845,11 @@ const UserRow = memo(function UserRow({
 					{conversationId &&
 						isQuotable(record, remainingContent) &&
 						!link.quoteAvailable && (
-							<QuoteToolkit conversationId={conversationId} turnRef={turnRef} />
+							<QuoteToolkit
+								conversationId={conversationId}
+								turnRef={turnRef}
+								allowQuote={false}
+							/>
 						)}
 					{conversationId && link.subject && (
 						<LinkToolkit
@@ -1341,44 +1862,66 @@ const UserRow = memo(function UserRow({
 					)}
 				</div>
 				{/*
-				 * THE USER TURN'S ACTION ROW (the operator's ask on the speak-aloud
-				 * round), mounted from the column and NOT from inside `turnRef`: that
-				 * element is a single flex ROW holding the bubble, and a second flow
-				 * child would sit beside the bubble rather than under it. The row is
-				 * the same component the answer's foot carries, in its `user` role
-				 * (Copy alone - see `message-actions.ts` for why a user turn offers no
-				 * Speak), so the copy press, the reveal and the toolbar semantics are
-				 * one implementation rather than a second one beside it.
+				 * THE USER TURN'S COPY CONTROL, A ROW UNDER THE MESSAGE THAT TAKES LAYOUT
+				 * SPACE (operator, 2026-10-20: "the user message, it should be a row under
+				 * the user's message that takes up space").
 				 *
-				 * Its `group` is the column above, so hovering anywhere on the turn
-				 * reveals it; the row keeps its place at rest (opacity only), which is
-				 * why nothing moves when it appears. `isQuotable` is the same "this
-				 * turn has words to offer" gate the quote control reads - a turn with
-				 * no words has nothing to copy.
+				 * MOUNTED FROM THE COLUMN AND NOT FROM INSIDE `turnRef`: that element is a
+				 * single flex ROW holding the bubble, and a second flow child inside it
+				 * would sit BESIDE the bubble rather than under it. This is the pre-494
+				 * placement restored (`git show 494bd38ee7^`), and the review round's B1
+				 * is what an in-row mount looks like: the control measures 28px wide in the
+				 * bubble's own row. As a child of the `flex-col` column it takes the
+				 * column's `gap-1` (4px) under the bubble and the full row's height.
+				 *
+				 * The row reserves its place at rest and reveals on hover
+				 * (`ACTION_ROW_REVEAL_CLASSES`, opacity-only), so the pointer arriving
+				 * moves nothing and no geometry changes between the idle and hovered
+				 * states - the evidence measures the bubble's and the next row's boxes in
+				 * both.
+				 *
+				 * THE STAMP RIDES THIS LINE AND SITS OUTSIDE THE REVEAL (operator,
+				 * 2026-10-20): every user message carries its own absolute time "at the
+				 * right of the action line, below the message, which is where `10:16 PM`
+				 * already sits", and "the time must not move the icons, and the icons must
+				 * not move the time". `ACTION_ROW_REVEAL_CLASSES` is opacity-only and the
+				 * icons keep their 32px box (`h-8`) and 4px gaps at rest, so the line's
+				 * width is the same before and after the pointer arrives; the wrapper's
+				 * `gap-2` between the icons and the stamp is static for the same reason,
+				 * and the stamps do not animate. The stamp is a SIBLING of the toolbar,
+				 * never inside it, so it is painted at rest and cannot fade with the
+				 * icons.
+				 *
+				 * IT RENDERS FOR EVERY USER MESSAGE WITH A TIME, including one that has no
+				 * words of its own (an attachment-only send): the action row is the
+				 * quotable gate's, the stamp is the message's.
 				 */}
-				{isQuotable(record, remainingContent) && (
-					<AnswerActionRow
-						kind="user"
-						bodyText={remainingContent}
-						revealId={record.id}
-						revealAt={record.ts}
-						/*
-						 * FORK IS OFFERED FROM THE MESSAGE, not only from the sidebar row
-						 * (#739): "fork the conversation from this message on". The entry id
-						 * is `forkEntryId`'s answer for THIS record - the journal entry a
-						 * cut can land at, which is what makes the picker a cut rather than
-						 * a whole-conversation copy. `conversationId` is the picker's
-						 * subject and is deliberately explicit: this transcript can be
-						 * rendered for a conversation that is not the pane's own, and a
-						 * request must never be answered with a substituted conversation.
-						 *
-						 * A transcript mounted with no conversation (the run-details child
-						 * reader) passes neither, so the row offers no Fork there.
-						 */
-						conversationId={conversationId}
-						entryId={forkEntryId(record) ?? undefined}
-					/>
-				)}
+				<span className={cn("flex h-8 items-center gap-2")}>
+					{isQuotable(record, remainingContent) && (
+						<AnswerActionRow
+							kind="user"
+							bodyText={remainingContent}
+							revealId={record.id}
+							revealAt={record.ts}
+							/*
+							 * FORK IS OFFERED FROM THE MESSAGE, not only from the sidebar row
+							 * (#739): "fork the conversation from this message on". The entry id
+							 * is `forkEntryId`'s answer for THIS record - the journal entry a cut
+							 * can land at, which is what makes the picker a cut rather than a
+							 * whole-conversation copy. `conversationId` is the picker's subject and
+							 * is deliberately explicit: this transcript can be rendered for a
+							 * conversation that is not the pane's own, and a request must never be
+							 * answered with a substituted conversation.
+							 *
+							 * A transcript mounted with no conversation (the run-details child
+							 * reader) passes neither, so the row offers no Fork there.
+							 */
+							conversationId={conversationId}
+							entryId={forkEntryId(record) ?? undefined}
+						/>
+					)}
+					<TurnTimestamp timestamp={record.ts} scope="turn" />
+				</span>
 				{/*
 				 * §F3's LINE, ONE ROW UNDER THE BLOCK IT IS ABOUT.
 				 *
@@ -1398,65 +1941,7 @@ const UserRow = memo(function UserRow({
 				 * (`scripts/renderer-driver.mjs`'s `connection-drop` scene reads it), the
 				 * same structural-marker rule the row's own archive press follows.
 				 */}
-				{undelivered !== null && (
-					<div
-						data-undelivered
-						className={cn(
-							"flex w-full items-center justify-end gap-3 text-danger text-meta",
-						)}
-					>
-						<span className={cn("flex items-center gap-1")}>
-							<CircleAlert
-								aria-hidden="true"
-								className={cn("size-3.5 shrink-0")}
-							/>
-							{undelivered.message ?? "Not delivered"}
-						</span>
-						{undelivered.retry !== false && (
-							<button
-								type="button"
-								/*
-								 * DIMMED, NOT GONE, while the composer holds this payload (UX round
-								 * 1, U4): the row keeps its statement and both controls, and the
-								 * box's own Send is the live affordance for this message until the
-								 * text changes. `aria-disabled` rather than `disabled` - see the
-								 * `UndeliveredTurn.retryDisabled` note.
-								 */
-								aria-disabled={undelivered.retryDisabled || undefined}
-								className={cn(
-									undelivered.retryDisabled
-										? "text-ink-muted"
-										: "cursor-pointer underline",
-								)}
-								onClick={(event) => {
-									if (undelivered.retryDisabled) {
-										event.preventDefault();
-										return;
-									}
-									undelivered.onSendAgain();
-								}}
-							>
-								Send again
-							</button>
-						)}
-						<button
-							type="button"
-							className={cn("cursor-pointer underline")}
-							onClick={undelivered.onEdit}
-						>
-							Edit
-						</button>
-					</div>
-				)}
-				{/*
-				 * NO STAMP UNDER THE USER'S BLOCK (§D1; design round 1, D7). The turn's
-				 * one stamp is on its foot line (§E3), at the end of the agent's answer,
-				 * where it dates the exchange rather than one side of it: six stamp lines
-				 * in one 1380 viewport - one under every user block and one under every
-				 * answer - were a third of the rhythm problem the round measured. The
-				 * moment the message was sent is still in the record (`record.ts`), and
-				 * the foot's stamp is read from the reducer's frame time the same way.
-				 */}
+				{undelivered !== null && <UndeliveredLine undelivered={undelivered} />}
 			</div>
 		</MessageContainer>
 	);
@@ -1493,6 +1978,12 @@ const AssistantRow = memo(function AssistantRow({
 	closingLineSuppressed?: boolean;
 	conversationId?: string;
 }) {
+	/*
+	 * A memo row does not re-render for a locale change by itself: its props have
+	 * not moved, so without this subscription the row would keep the language it
+	 * was first painted in (the same reason `UserRow` above subscribes).
+	 */
+	useI18nLocale();
 	const turnRef = useRef<HTMLDivElement>(null);
 	/*
 	 * Which link on this turn the toolbar is about, if any. One subject per row,
@@ -1532,6 +2023,13 @@ const AssistantRow = memo(function AssistantRow({
 	 * call but a second place for the two to drift apart).
 	 */
 	const quotable = isQuotable(record, remainingContent);
+	/*
+	 * THE ONE GATE FOR THE IN-BETWEEN OVERLAY, shared by the prose's reserved
+	 * gutter band and the overlay itself so they cannot drift: commentary is the
+	 * row that carries its own calls (`isFinalResponse` false), is settled, and
+	 * has visible words.
+	 */
+	const commentaryOverlay = !closesTurn && quotable && !isFinalResponse(record);
 	return (
 		<MessageContainer isUser={false} isSmallView={isSmallView}>
 			{/*
@@ -1543,6 +2041,24 @@ const AssistantRow = memo(function AssistantRow({
 				ref={turnRef}
 				className={cn(
 					"relative break-words text-ink",
+					/*
+					 * THE NARROW GUTTER BAND (design round 1, D2; UX U2). Below the wide
+					 * breakpoint the commentary overlay sits INSIDE the column's trailing
+					 * edge, over the prose - the designer measured it covering text at the
+					 * app's 800px minimum. Reserving 40px here (28px bare Copy target +
+					 * 12px clearance) makes the prose wrap BEFORE the control instead of
+					 * under it; at >=900 the overlay moves out into the `-end-10` gutter
+					 * and the padding returns to zero, so the wide layout is unchanged.
+					 * A horizontal band only: no reserved ROW, no pill, no smaller target.
+					 */
+					commentaryOverlay && "pe-10 @min-[900px]/chatcol:pe-0",
+					/*
+					 * THE ANSWER'S FOCUS RING, moved off the full-width row wrapper for the
+					 * user bubble's reason: focus is drawn around the content the reader
+					 * focused, not around the row's empty trailing edge. `rounded-sm` keeps
+					 * the corners on the same ramp as the row's other marks.
+					 */
+					"group-focus-visible:rounded-sm group-focus-visible:outline-2 group-focus-visible:outline-accent group-focus-visible:outline-offset-2",
 					/*
 					 * THE ANSWER'S OWN MARK (issue #665), now an OPT-IN: the backend key
 					 * `display.turn_answer_rail`, default off (operator report, 2026-09-30:
@@ -1592,8 +2108,8 @@ const AssistantRow = memo(function AssistantRow({
 				{record.truncated && (
 					<p className={cn("mb-1 text-ink-dim text-meta")}>
 						{record.truncated === "prefix"
-							? "Earlier text of this answer is not on screen"
-							: "Part of this answer may be missing"}
+							? t("ui.chat.canonical.transcript.earlier_text_offscreen")
+							: t("ui.chat.canonical.transcript.answer_may_be_missing")}
 					</p>
 				)}
 				{/*
@@ -1646,11 +2162,15 @@ const AssistantRow = memo(function AssistantRow({
 						 * block instead of per row.
 						 */
 						linkify
+						// A new message's identity for the link evidence's one re-check,
+						// so a report worded exactly like an earlier message still
+						// re-asks its cached negatives (`claimFirstScan`, review R3-3b).
+						documentId={record.id}
 					/>
 				)}
 				{record.stopReason === "aborted" && (
 					<p className="mt-1 text-ink-dim text-meta">
-						Stopped before finishing
+						{t("ui.chat.canonical.transcript.stopped_before_finishing")}
 					</p>
 				)}
 				{/*
@@ -1702,15 +2222,89 @@ const AssistantRow = memo(function AssistantRow({
 			 * (`scripts/chat-alignment-geometry.mjs`), and the numbers are in
 			 * `docs/evidence/chat-canonical-message-actions/README.md`.
 			 */}
+			{/*
+			 * THE THREE PLACEMENTS, DECIDED BY THE MESSAGE'S ROLE AND NOT ITS
+			 * POSITION (operator, 2026-10-20).
+			 *
+			 * - A FINAL RESPONSE (settled, paints text, carries no `tool_calls` of its
+			 *   own - `turn-segments.ts::isFinalResponse`) gets an IN-FLOW meta row
+			 *   under its prose: the same `mt-1 flex items-center gap-2` rhythm the
+			 *   foot line uses, with the action row at the trailing edge. It reserves
+			 *   its line at rest, exactly as the foot line does, because the reader is
+			 *   being handed something and the control belongs to that handover. No
+			 *   `Worked for` caption: that is the TURN's fact, stated once, on the foot.
+			 *   The message's own time IS stated here (operator, 2026-10-20: "if it is a
+			 *   final response, it has a time" - every one of them, including the
+			 *   in-between responses this row exists for). Placements: a closing answer
+			 *   keeps the stamp on its foot, which is why this row is the NON-closing
+			 *   branch and the two cannot double-paint one message; a mid-turn final
+			 *   states the stamp after the action row inside the same right-aligned span.
+			 *
+			 *   THE STAMP CANNOT MOVE THE ICONS, and the icons cannot move it: the action
+			 *   row is `ACTION_ROW_REVEAL_CLASSES` (opacity-only, width reserved at rest),
+			 *   the stamp is its sibling AFTER the toolbar rather than inside it, and the
+			 *   span's `gap-2` is static. So the pointer arriving fades icons in beside a
+			 *   stamp that was already painted, and the stamp is never part of the reveal.
+			 *   Open PR #1236's opt-in relative-time setting is a separate product
+			 *   decision; this surface states absolute time and adds no setting.
+			 *
+			 * - AN IN-BETWEEN STATUS ROW (an assistant message that carries its own
+			 *   `tool_calls`) is the ONLY class the hover-only overlay was ever for:
+			 *   narration is not a handover, so it reserves no line, and hovering the
+			 *   paragraph raises a bare Copy control in the gutter. The measured
+			 *   reason the overlay exists is still true - the old flow child cost
+			 *   32px per settled paragraph for a control nobody could see - it was
+			 *   just applied to the wrong population.
+			 *
+			 * `quotable` is the settled-and-has-words gate for the ACTION ROW, not
+			 * for the row's time: a reply-only final response (its body is only the
+			 * `<reply-to>` transport markup) has no words to copy and so no toolbar,
+			 * but it is still a final response and still states its own time. The
+			 * meta row therefore renders on `isFinalResponse` alone; the toolbar is
+			 * the optional child (review round 1, C3: "if it is a final response, it
+			 * has a time" has no reply-only exception).
+			 *
+			 * NO `revealId` on either: the one-time arrival flash is the closing
+			 * answer's discoverability cue. Passing it here would flash a control
+			 * under every paragraph a live turn settles - the per-paragraph churn
+			 * #698 removed.
+			 */}
+			{!closesTurn && isFinalResponse(record) && (
+				<div className={cn("mt-1 flex items-center gap-2 text-meta")}>
+					<span className={cn("ms-auto flex shrink-0 items-center gap-2")}>
+						{quotable && (
+							<AnswerActionRow
+								kind="response"
+								bodyText={remainingContent}
+								agentId={conversationId}
+								speechId={record.id}
+								conversationId={conversationId}
+								entryId={forkEntryId(record) ?? undefined}
+							/>
+						)}
+						<TurnTimestamp timestamp={record.ts} scope="answer" />
+					</span>
+				</div>
+			)}
+			{commentaryOverlay && (
+				<AnswerActionRow
+					overlay
+					overlayClassName="@min-[900px]/chatcol:-end-10"
+					kind="commentary"
+					bodyText={remainingContent}
+				/>
+			)}
 			{closesTurn && (
 				/*
 				 * THE TURN-FOOT LINE (§E3), and the one line D9 leaves behind.
 				 *
 				 * `Worked for 1m 12s · 8 actions · 1 failed`, at the turn's own left edge,
-				 * with the stamp at the far end. It REPLACES the per-message and
-				 * per-tool-group stamps the transcript used to carry: D9 found those were
-				 * about a third of a long thread's vertical run, and they said nothing the
-				 * foot does not say once.
+				 * with the stamp at the far end. The stamp dates the CLOSING ANSWER; it
+				 * is not an alternative to the per-message stamps, which are stated on
+				 * every user message and every non-closing final response. What D9
+				 * removed was the PER-TOOL-GROUP clock: those were about a third of a
+				 * long thread's vertical run and said nothing the foot does not say
+				 * once, so the per-call clock stays gone.
 				 *
 				 * THE FAILURE COUNT IS A CONTROL (U14, Cursor 3's `3 Files Edited -
 				 * Review`): it opens the first failed row and scrolls to it, which is the
@@ -1738,7 +2332,7 @@ const AssistantRow = memo(function AssistantRow({
 				 * caption starts at the content's own left edge - the same rail as the prose
 				 * (`scripts/chat-alignment-geometry.mjs` measures it), and the right cluster
 				 * is `[actions][stamp]` with the stamp rightmost, riding the actions'
-				 * `ml-auto` spacer. The reveal stays opacity-only, so nothing moves when
+				 * `ms-auto` spacer. The reveal stays opacity-only, so nothing moves when
 				 * the buttons appear: the idle and hovered frames of the operator's state,
 				 * and the caption/actions/stamp boxes the geometry script reads per state,
 				 * are under `docs/evidence/chat-canonical-message-actions/` and its
@@ -1757,14 +2351,18 @@ const AssistantRow = memo(function AssistantRow({
 						<>
 							<span className={cn("text-ink-dim")}>
 								{foot.durationS !== null
-									? `Worked for ${formatDuration(foot.durationS)}`
-									: "Worked"}
+									? t("ui.chat.canonical.transcript.worked_for", {
+											duration: formatDuration(foot.durationS),
+										})
+									: t("ui.chat.canonical.transcript.worked")}
 							</span>
 							<span aria-hidden={true} className={cn("text-ink-dim")}>
 								·
 							</span>
 							<span className={cn("text-ink-dim")}>
-								{foot.actions === 1 ? "1 action" : `${foot.actions} actions`}
+								{t("ui.chat.canonical.fold.count.actions", {
+									count: foot.actions,
+								})}
 							</span>
 							{/* NO FAILURE TALLY (operator, 2026-09-29, issue #6): the
 							 * foot's `· N failed` control is retired with the bar's —
@@ -1780,14 +2378,14 @@ const AssistantRow = memo(function AssistantRow({
 					 */}
 					{quotable && (
 						/*
-						 * `ml-auto` sits on the WRAPPER rather than the row (the row takes no
+						 * `ms-auto` sits on the WRAPPER rather than the row (the row takes no
 						 * className): it is the first box of the right cluster, so it - and
 						 * the stamp that follows it - ride the line's far end while the
 						 * caption keeps the rail. `shrink-0` because the controls are the
 						 * line's fixed part: the caption is the side with slack (it can
 						 * wrap), and the buttons must never be what a narrow column squeezes.
 						 */
-						<span className={cn("ml-auto flex shrink-0")}>
+						<span className={cn("ms-auto flex shrink-0")}>
 							<AnswerActionRow
 								bodyText={remainingContent}
 								agentId={conversationId}
@@ -1810,7 +2408,7 @@ const AssistantRow = memo(function AssistantRow({
 						</span>
 					)}
 					{!closingLineSuppressed && (
-						<span className={cn(!quotable && "ml-auto")}>
+						<span className={cn(!quotable && "ms-auto")}>
 							<TurnTimestamp timestamp={record.ts} scope="answer" />
 						</span>
 					)}
@@ -1819,6 +2417,26 @@ const AssistantRow = memo(function AssistantRow({
 		</MessageContainer>
 	);
 });
+
+/**
+ * Whether the tool row's summary is a sentence the CATALOGUE wrote (`never sent`,
+ * `composing`, `queued`) rather than text built from the call's arguments.
+ *
+ * The row needs the distinction to pick the summary's direction: arguments are
+ * machine voice (paths, commands) and stay left-to-right in every locale, a keyed
+ * sentence follows the locale's own direction (design review round 1, D1). It is
+ * ONE predicate shared with `toolRecordSummary`, so the words and the direction
+ * they are painted in cannot drift apart.
+ */
+function toolRecordStatusKind(
+	record: Extract<TranscriptRecord, { kind: "tool" }>,
+): "never_sent" | "composing" | "queued" | null {
+	if (record.neverSent === true || Boolean(record.notRunReason))
+		return "never_sent";
+	if (record.phase === "composing") return "composing";
+	if (record.phase === "queued") return "queued";
+	return null;
+}
 
 /**
  * The row's own summary text — the object column before the row's bare-name drop.
@@ -1838,22 +2456,41 @@ const AssistantRow = memo(function AssistantRow({
 function toolRecordSummary(
 	record: Extract<TranscriptRecord, { kind: "tool" }>,
 ): string {
-	const composing = record.phase === "composing";
-	const queued = record.phase === "queued";
-	const neverSent = record.neverSent === true || Boolean(record.notRunReason);
-	if (neverSent)
+	const kind = toolRecordStatusKind(record);
+	const composing = kind === "composing";
+	const queued = kind === "queued";
+	if (kind === "never_sent")
 		// `never sent`, not `failed`: the call produced no result to fail, and the
 		// size is the record of how far the model got before nothing would receive
 		// it (`ToolCard.mark_not_run`). An empty payload is named rather than
 		// rendered as `0 B`, which would claim a measurement.
-		return `never sent · ${record.argumentBytes ? `${formatBytes(record.argumentBytes)} composed` : "nothing composed"}`;
+		return record.argumentBytes
+			? t("ui.chat.canonical.tool.never_sent_composed", {
+					size: formatBytes(record.argumentBytes),
+				})
+			: t("ui.chat.canonical.tool.never_sent_empty");
+	/*
+	 * Whole-line messages, sized and empty, for the same reason `never sent`
+	 * above has two: the separator and the size sit INSIDE the message so a
+	 * language can order them its own way, and no English fragment is glued
+	 * on here. Resolved per call (the row and the fold both re-render on a
+	 * locale change), never at module load.
+	 */
 	if (composing)
-		return `composing${record.argumentBytes ? ` · ${formatBytes(record.argumentBytes)}` : ""}`;
+		return record.argumentBytes
+			? t("ui.chat.canonical.tool.composing_sized", {
+					size: formatBytes(record.argumentBytes),
+				})
+			: t("ui.chat.canonical.tool.composing_empty");
 	if (queued)
 		// Dictation is over and the call has not started: the byte count stays
 		// (it is how far the model got), and the status word stops claiming work
 		// the model finished writing.
-		return `queued${record.argumentBytes ? ` · ${formatBytes(record.argumentBytes)}` : ""}`;
+		return record.argumentBytes
+			? t("ui.chat.canonical.tool.queued_sized", {
+					size: formatBytes(record.argumentBytes),
+				})
+			: t("ui.chat.canonical.tool.queued_empty");
 	return summaryFromArgs(record.toolName, record.args);
 }
 
@@ -1876,8 +2513,14 @@ function toolRecordSummary(
  * `null` for `delivered` and for every row with no stated delivery, so a
  * successful send's expansion is exactly the one it always was.
  */
-function DeliveryNote({ state }: { state: SendDeliveryState }) {
-	const note = SEND_DELIVERY_NOTE[state];
+function DeliveryNote({
+	state,
+	toolName = "",
+}: {
+	state: SendDeliveryState;
+	toolName?: string;
+}) {
+	const note = deliveryNote(state, toolName);
 	if (!note) return null;
 	return <span data-delivery-note={state}>{note}</span>;
 }
@@ -1901,6 +2544,61 @@ function DeliveryNote({ state }: { state: SendDeliveryState }) {
  * shows both the arguments and the intent states two facts where the TUI states
  * one per surface, and the two immediately start restating each other.
  */
+/**
+ * The Team Bridge view of a `bridge` record, or `null` for every other tool.
+ *
+ * A composing or queued row keeps the generic status words (`composing · 1.2
+ * KB`), exactly as every other tool: there are no arguments to name yet.
+ */
+function bridgeRowView(
+	record: Extract<TranscriptRecord, { kind: "tool" }>,
+	resolver: BridgeLabelResolver | null,
+): BridgeRowView | null {
+	if (record.toolName.trim().toLowerCase() !== "bridge") return null;
+	if (record.phase === "composing" || record.phase === "queued") return null;
+	if (record.neverSent === true || record.notRunReason) return null;
+	return composeBridgeRowView(
+		{
+			args: record.args,
+			details: record.bridge ?? null,
+			label: record.bridgeLabel ?? null,
+			output: record.output,
+			failed:
+				record.phase === "done" &&
+				isFailedResult(record.isError, record.delivery),
+		},
+		resolver,
+	);
+}
+
+/**
+ * A settled `bridge` row's expansion: the shared pane, with this row's
+ * delivery note (inbox-only, awaiting acceptance, unconfirmed) as its
+ * outcome sentence when the result stated one.
+ */
+function BridgeDetail({
+	record,
+	view,
+	isError,
+}: {
+	record: Extract<TranscriptRecord, { kind: "tool" }>;
+	view: BridgeRowView;
+	isError: boolean;
+}) {
+	const note = record.delivery
+		? deliveryNote(record.delivery, record.toolName)
+		: null;
+	return (
+		<BridgeDetailPane
+			view={view}
+			isError={isError}
+			note={
+				note ? <span data-delivery-note={record.delivery}>{note}</span> : null
+			}
+		/>
+	);
+}
+
 const ToolRow = memo(function ToolRow({
 	record,
 	isSmallView,
@@ -1911,10 +2609,18 @@ const ToolRow = memo(function ToolRow({
 	stopping = false,
 	settledSound = false,
 	onInterruptTurn,
+	approvalEpoch: _approvalEpoch = null,
 }: {
 	record: Extract<TranscriptRecord, { kind: "tool" }>;
 	isSmallView: boolean;
 	scope: AttachmentScope | null;
+	/**
+	 * The conversation's owner epoch, as a PRIMITIVE (the rows are memoised over
+	 * frontend frames). It is the identity a saved-profile card's revert press
+	 * answers on; without it the card states the change and offers no press,
+	 * because a gate answer with no epoch answers nothing.
+	 */
+	approvalEpoch?: string | null;
 	/** The row's first label read is in flight: hold the stand-in back. */
 	labelPending?: boolean;
 	/** The held column has outlived `LABEL_HOLD_MARK_MS`. */
@@ -1928,6 +2634,36 @@ const ToolRow = memo(function ToolRow({
 	/** The pane's interrupt press, for the card's Cancel; absent = no control. */
 	onInterruptTurn?: () => void;
 }) {
+	// memo compares props, but a locale change arrives through the locale store.
+	// Subscribe here so unchanged tool props cannot retain old-language details.
+	useI18nLocale();
+	/*
+	 * A `notify` CALL THE REEL KNOWS IS ITS FLAG LINE (notifications design
+	 * § 17.2): the item's title and read state, and the anchor the in-view
+	 * reader measures. Looked up by the call id, which is the item's
+	 * `anchor_id`; unknown to the reel (older core, items not loaded, another
+	 * tool) means the ordinary row below, exactly as before.
+	 */
+	const flagged = useFlaggedItem(record.toolCallId);
+	/*
+	 * The Team Bridge cache's conversation names, for a `bridge` row whose call
+	 * addressed a conversation by id. Called for every row (hooks cannot be
+	 * conditional) and cheap when unused: one context read, and a resolver that
+	 * reads nothing until a bridge row asks.
+	 */
+	const resolveConversation = useBridgeConversationNames();
+	/*
+	 * Unconditional like the hooks above; null for every row but a music call
+	 * that registered a detached job (`music-generating-model.ts`).
+	 */
+	const musicView = useMusicGeneratingView(record.toolName, record.details);
+	if (flagged !== null && record.toolName === "notify") {
+		return (
+			<MessageContainer isUser={false} isSmallView={isSmallView}>
+				<FlagLine item={flagged} />
+			</MessageContainer>
+		);
+	}
 	/*
 	 * THE IMAGE-GEN CARD IS THE ROW for a call in the detection set. It owns
 	 * the whole lifecycle - the progress while unsettled, the artifact and its
@@ -1938,6 +2674,19 @@ const ToolRow = memo(function ToolRow({
 	 * constant, adjustable in one place when the harness freezes the tool-name
 	 * set.
 	 */
+	/*
+	 * THE MUSIC GENERATING CARD IS THE ROW for a music call whose detached job
+	 * the chat can follow: the motif, state line and the job's own Cancel at the
+	 * call's place, settling in place when the job's `job_result` row lands (that
+	 * row keeps painting the finished tracks, unchanged).
+	 */
+	if (musicView) {
+		return (
+			<MessageContainer isUser={false} isSmallView={isSmallView}>
+				<ConnectedMusicGeneratingCard view={musicView} />
+			</MessageContainer>
+		);
+	}
 	if (isImageGenTool(record.toolName)) {
 		/*
 		 * The mount's action rule (R4, contract §4.2): a video call's work is a
@@ -1957,6 +2706,10 @@ const ToolRow = memo(function ToolRow({
 			</MessageContainer>
 		);
 	}
+	// Agent/team/skill management stays an ordinary expandable tool trace. Its
+	// receipt is evidence, not an inline approval widget; pending proposals are
+	// reviewed in Agents. In particular do not replace a successful create with
+	// a dark consent card or infer failed execution from a proposed receipt.
 	const running = record.phase !== "done";
 	const composing = record.phase === "composing";
 	/*
@@ -1998,7 +2751,8 @@ const ToolRow = memo(function ToolRow({
 	 * time it reaches the record.
 	 */
 	const partial = deliveryRowOutcome(record.delivery) === "partial";
-	const summary = toolRecordSummary(record);
+	const bridge = bridgeRowView(record, resolveConversation);
+	const summary = bridge?.summary ?? toolRecordSummary(record);
 	// When the arguments taught us nothing, the summary is the tool's own name,
 	// which the row then drops as a stutter and the object column goes empty.
 	// A row that says nothing about its call is the scannability this port
@@ -2078,7 +2832,9 @@ const ToolRow = memo(function ToolRow({
 					interruptedNotRun ? "text-ink-dim" : "text-danger",
 				)}
 			>
-				{interruptedNotRun ? "Interrupted" : "Not run"}
+				{interruptedNotRun
+					? t("ui.chat.canonical.transcript.interrupted")
+					: t("ui.chat.canonical.transcript.not_run")}
 			</span>
 			<div className={cn(DETAIL_SECTION_MAX, "overflow-auto")}>
 				<pre
@@ -2091,8 +2847,27 @@ const ToolRow = memo(function ToolRow({
 				</pre>
 			</div>
 		</div>
-	) : isDiffBodyRow(record) ? (
-		<DiffBlock diff={record.diff} />
+	) : isDiffBodyRow(record) || isArchiveOnlyDiffRow(record) ? (
+		<DiffBlock
+			// `?? []`: an archive-only row (see `isArchiveOnlyDiffRow`) has no
+			// inline rows at all; the well then carries only the archive's offer
+			// or its descriptor notice.
+			diff={record.diff ?? []}
+			truncatedRows={record.diffTruncatedRows}
+			// The row's own scope (parent, or the child reader's) decides which
+			// route pages the archive — the same seam media rows resolve through.
+			history={{
+				scope,
+				callId: record.toolCallId,
+				descriptor: record.diffFull ?? null,
+			}}
+		/>
+	) : bridge && !running ? (
+		<BridgeDetail
+			record={record}
+			view={bridge}
+			isError={isFailedResult(record.isError, record.delivery)}
+		/>
 	) : hasDetail(record.args, record.output) ? (
 		<ToolDetail
 			args={record.args}
@@ -2119,7 +2894,9 @@ const ToolRow = memo(function ToolRow({
 			 * machine result stays below it (see `DeliveryNote`).
 			 */
 			note={
-				record.delivery ? <DeliveryNote state={record.delivery} /> : undefined
+				record.delivery ? (
+					<DeliveryNote state={record.delivery} toolName={record.toolName} />
+				) : undefined
 			}
 		/>
 	) : undefined;
@@ -2159,7 +2936,7 @@ const ToolRow = memo(function ToolRow({
 	);
 	const media =
 		rowMedia.length > 0 ? (
-			<div className={cn("mt-1 ml-5 flex flex-col gap-2")}>
+			<div className={cn("mt-1 ms-5 flex flex-col gap-2")}>
 				{rowMedia.map((ref, index) =>
 					ref.kind === "audio" ? (
 						<CanonicalAudio
@@ -2199,6 +2976,12 @@ const ToolRow = memo(function ToolRow({
 				 */
 				op={toolOp(record.args)}
 				summary={summary}
+				/*
+				 * Keyed status copy (`composing`, `queued`, `never sent`) follows the
+				 * locale's direction; arguments (paths, commands) stay machine voice.
+				 * A bridge row's summary is its own text, never this copy.
+				 */
+				summaryIsCopy={!bridge && toolRecordStatusKind(record) !== null}
 				summaryFallback={derived}
 				summaryHold={
 					/*
@@ -2221,17 +3004,26 @@ const ToolRow = memo(function ToolRow({
 							isInterruptedFault(record.notRunKind)
 							? "interrupted"
 							: "not-run"
-						: running
-							? "running"
-							: partial
-								? "partial"
-								: record.isError
-									? "error"
-									: record.stopped
-										? "interrupted"
-										: "success"
+						: record.captureOnly
+							? /* A row built only from the host's diff binding proves the
+							     CAPTURE, not the executor's completion: it is a quiet
+							     receipt (no success or failure claim, no announcement),
+							     and its body is the full-diff pager. A live record for the
+							     same call never carries the flag (`bindingRecord`). */
+								"receipt"
+							: running
+								? "running"
+								: partial
+									? "partial"
+									: record.isError
+										? "error"
+										: record.stopped
+											? "interrupted"
+											: "success"
 				}
 				deliveryState={record.delivery}
+				settledVerb={bridge?.failedVerb ?? null}
+				failureWord={bridge?.failureWord ?? null}
 				durationS={record.durationS}
 				startedAt={record.startedAt}
 				added={record.added}
@@ -2255,7 +3047,7 @@ const ToolRow = memo(function ToolRow({
  * reuse.
  */
 const ProviderAction: FC<{ action: ProviderErrorAction }> = ({ action }) => (
-	<div className="mt-1 pl-6">
+	<div className="mt-1 ps-6">
 		<Button variant="secondary" size="sm" asChild>
 			<Link to={action.to}>{action.label}</Link>
 		</Button>
@@ -2265,13 +3057,16 @@ const ProviderAction: FC<{ action: ProviderErrorAction }> = ({ action }) => (
 const NoticeRow = memo(function NoticeRow({
 	record,
 	isSmallView,
+	scope,
 }: {
 	record: Extract<
 		TranscriptRecord,
 		{ kind: "notice" | "compaction" | "custom" }
 	>;
 	isSmallView: boolean;
+	scope: AttachmentScope | null;
 }) {
+	useI18nLocale();
 	// A custom row and a notice are two registers, and the difference is what
 	// the row is FOR.
 	//
@@ -2347,6 +3142,7 @@ const NoticeRow = memo(function NoticeRow({
 						<ProviderAction action={providerAction} />
 					)
 				) : null}
+				{record.music && <MusicResult receipt={record.music} scope={scope} />}
 			</MessageContainer>
 		);
 	}
@@ -2381,8 +3177,12 @@ const NoticeRow = memo(function NoticeRow({
 	// notice whose first line IS the whole text now has nothing to disclose and
 	// paints through the static branch, which is the honest affordance: a chevron
 	// that reveals the same bytes promises material it does not add.
-	const { headline, rest } = splitFirstLine(record.text);
-	const providerAction = providerErrorGuidance({ text: record.text });
+	// Re-resolved on every paint: a notice the renderer worded itself carries its
+	// sentence as an id plus arguments (`notice-copy.ts`), so a language change
+	// reaches a record that is already in state. This row subscribes to the locale.
+	const text = record.kind === "notice" ? noticeText(record) : record.text;
+	const { headline, rest } = splitFirstLine(text);
+	const providerAction = providerErrorGuidance({ text });
 	return (
 		<MessageContainer isUser={false} isSmallView={isSmallView}>
 			<TraceLine
@@ -2416,14 +3216,14 @@ const NoticeRow = memo(function NoticeRow({
 			 * the backend's -- and gains the action it describes, which opens the
 			 * connect dialog over this conversation instead of navigating away.
 			 */}
-			{NO_PROVIDER_NOTICE.test(record.text) ? (
-				<div className="mt-1 pl-6">
+			{NO_PROVIDER_NOTICE.test(text) ? (
+				<div className="mt-1 ps-6">
 					<Button
 						variant="secondary"
 						size="sm"
 						onClick={() => useConnectProviderStore.getState().openConnect()}
 					>
-						Connect a provider
+						{t("ui.chat.canonical.transcript.connect_provider")}
 					</Button>
 				</div>
 			) : null}
@@ -2465,6 +3265,120 @@ const NoticeRow = memo(function NoticeRow({
  * collapsed summary verbatim, at the cost of a click (design D5, UX U2).
  */
 /** A structured receipt stays agent-to-agent, including historical reply intent. */
+/** Incoming and outgoing Bridge use the same ledger glyph and detail pane.
+ * A legacy envelope is retained under Details, never reinterpreted as its body.
+ */
+const BridgeIncomingRow = memo(function BridgeIncomingRow({
+	record,
+	isSmallView,
+	scope,
+}: {
+	record: Extract<TranscriptRecord, { kind: "custom" }>;
+	isSmallView: boolean;
+	scope: AttachmentScope | null;
+}) {
+	useI18nLocale();
+	const receipt = record.bridgeReceipt ?? bridgeReceiptOf({});
+	/*
+	 * THE BODY READ'S GATE. Core advertises `team_bridge_card_body` when its
+	 * entry-keyed display-store read exists; without it the pane keeps today's
+	 * sentence and asks nothing. The read is answered by THIS machine's daemon
+	 * for a session it hosts, so a child transcript (the parent route refuses
+	 * child ids) and a conversation hosted on another device (its journal and
+	 * display store live there) keep the old sentence too, rather than rendering
+	 * a refusal as if it were the message's state.
+	 */
+	const bodyCapable = usePassiveDesktopFeature("team_bridge_card_body");
+	const sessionId = scope && !scope.childId ? scope.sessionId : null;
+	const remote = useCanonicalSessionsStore((state) =>
+		sessionId
+			? remoteOwnedId(state.sessions, state.placementFacts, sessionId)
+			: false,
+	);
+	const bodyEnabled = bodyCapable && sessionId !== null && !remote;
+	const sender = receipt.sender.name || t("ui.teamBridge.page.title");
+	const received = t("ui.chat.bridgeReceipt.received", { sender });
+	const target =
+		receipt.conversation.label ||
+		(receipt.conversation.kind === "dm" ? t("ui.teamBridge.kind.dm") : "");
+	const attachments = receipt.attachmentCount
+		? t("ui.teamBridge.attachments.in_message", {
+				count: receipt.attachmentCount,
+			})
+		: "";
+	const summary = [received, target, attachments].filter(Boolean).join(" · ");
+	return (
+		<MessageContainer isUser={false} isSmallView={isSmallView}>
+			<ToolLedgerRow
+				toolName="bridge"
+				verbless
+				summary={summary}
+				outcome="receipt"
+				durationS={null}
+				details={
+					<BridgeDetailPane
+						isError={false}
+						view={{
+							headline: [received, target].filter(Boolean).join(" · "),
+							body: null,
+							/*
+							 * When the read is offered, the body section below owns the
+							 * outcome sentence. When it is not (older backend, child or
+							 * remote transcript), today's sentence stays in this slot, above
+							 * the provenance line, so that pane is unchanged (review R3).
+							 */
+							outcome: bodyEnabled
+								? null
+								: t("ui.chat.bridgeReceipt.unavailable"),
+							internals: [],
+							raw: record.text,
+						}}
+					>
+						<div className="flex flex-wrap items-center justify-between gap-2 text-ink-dim text-meta">
+							<p data-bridge-provenance="">
+								{t("ui.chat.bridgeReceipt.provenance")}
+							</p>
+							{Number.isFinite(record.ts) ? (
+								<time dateTime={new Date(record.ts).toISOString()}>
+									{formatDateTime(record.ts, {
+										year: "numeric",
+										month: "short",
+										day: "numeric",
+										hour: "numeric",
+										minute: "2-digit",
+									})}
+								</time>
+							) : null}
+						</div>
+						{/*
+						 * Under the provenance line on purpose: the label is what frames
+						 * the text that follows as someone else's untrusted words.
+						 */}
+						{bodyEnabled ? (
+							<BridgeCardBodySection
+								sessionId={sessionId}
+								entryId={record.id}
+								enabled
+							/>
+						) : null}
+					</BridgeDetailPane>
+				}
+			/>
+			{(record.images ?? []).filter(isPictureRef).map((image) => (
+				<CanonicalImage
+					key={image.id}
+					image={image}
+					scope={scope}
+					label={
+						image.name ??
+						t("ui.teamBridge.attachments.in_message", { count: 1 })
+					}
+				/>
+			))}
+		</MessageContainer>
+	);
+});
+
 const HubRow = memo(function HubRow({
 	record,
 	isSmallView,
@@ -2474,14 +3388,20 @@ const HubRow = memo(function HubRow({
 	isSmallView: boolean;
 	scope: AttachmentScope | null;
 }) {
+	useI18nLocale();
 	const receipt = record.receipt;
-	if (!receipt) return <NoticeRow record={record} isSmallView={isSmallView} />;
+	if (!receipt)
+		return (
+			<NoticeRow record={record} isSmallView={isSmallView} scope={scope} />
+		);
 	return (
 		<MessageContainer isUser={false} isSmallView={isSmallView}>
 			<ToolLedgerRow
 				toolName="hub"
 				verbless
-				summary={`From ${hubIdentity(receipt)}`}
+				summary={t("ui.chat.canonical.transcript.hub_from", {
+					name: hubIdentity(receipt),
+				})}
 				outcome="receipt"
 				durationS={null}
 				details={
@@ -2489,7 +3409,9 @@ const HubRow = memo(function HubRow({
 						<p className={cn("text-body-sm text-ink-muted")}>
 							{hubIdentity(receipt)}
 							{receipt.direction ? ` · ${receipt.direction}` : ""}
-							{receipt.jobId && receipt.label ? ` · Job ${receipt.jobId}` : ""}
+							{receipt.jobId && receipt.label
+								? ` ${t("ui.chat.canonical.transcript.job_suffix", { id: receipt.jobId })}`
+								: ""}
 						</p>
 						{Object.values(receipt.sender).some(Boolean) ? (
 							<p className={cn("text-body-sm text-ink-muted")}>
@@ -2511,7 +3433,7 @@ const HubRow = memo(function HubRow({
 					key={image.id}
 					image={image}
 					scope={scope}
-					label={image.name ?? "Image"}
+					label={image.name ?? t("ui.chat.canonical.image_label")}
 				/>
 			))}
 		</MessageContainer>
@@ -2633,6 +3555,7 @@ const AskReceiptRow = memo(function AskReceiptRow({
 	record: Extract<TranscriptRecord, { kind: "ask_response" | "ask_timeout" }>;
 	isSmallView: boolean;
 }) {
+	useI18nLocale();
 	if (record.kind === "ask_timeout")
 		return (
 			<MessageContainer isUser={false} isSmallView={isSmallView}>
@@ -2651,13 +3574,27 @@ const AskReceiptRow = memo(function AskReceiptRow({
 			</MessageContainer>
 		);
 	const summary = askResponseSummary(record);
-	if (record.questions.length === 0)
+	/*
+	 * A DISMISSAL HAS NO ANSWER FRAME, and the harness says so in its own words
+	 * (`asks/render.py::response_text`: a dismissed ask "NEVER" goes through the
+	 * report, because the report renders the absence as an empty answer). The row
+	 * still carries the ask's questions, so without this arm an expanded dismissal
+	 * would print each question beside `No answer given` — a receipt that reads as
+	 * a partial answer. The sentence IS the receipt.
+	 */
+	if (record.questions.length === 0 || record.status === "dismissed")
 		return (
 			<MessageContainer isUser={false} isSmallView={isSmallView}>
 				<ToolLedgerRow
 					toolName="ask"
 					verbless
 					summary={summary}
+					/*
+					 * THE DISMISSED SENTENCE WRAPS (UX round 1, U1): it ends in the ask id, and a
+					 * truncated receipt at 1024px read `… no longer needed — …`, losing the one
+					 * token that tells two dismissals in one turn apart.
+					 */
+					summaryWrap={record.status === "dismissed"}
 					outcome="receipt"
 					durationS={null}
 				/>
@@ -2677,7 +3614,7 @@ const AskReceiptRow = memo(function AskReceiptRow({
 					<div className={cn("flex flex-col gap-2 px-3")}>
 						{record.secretLost ? (
 							<p className={cn("text-body-sm text-warning")}>
-								The session no longer holds the credential this answer named.
+								{t("ui.chat.canonical.transcript.credential_lost")}
 							</p>
 						) : null}
 						{record.questions.map((question) => (
@@ -2692,7 +3629,7 @@ const AskReceiptRow = memo(function AskReceiptRow({
 								>
 									{(record.answers[question.id] ?? []).length > 0
 										? (record.answers[question.id] ?? []).join(", ")
-										: "No answer given"}
+										: t("ui.chat.canonical.transcript.no_answer_given")}
 								</p>
 							</div>
 						))}
@@ -2899,6 +3836,8 @@ const TranscriptRow = memo(function TranscriptRow({
 	enter = false,
 	isSmallView,
 	scope,
+	capable,
+	refusedAttachments = NO_REFUSALS,
 	conversationId,
 	/*
 	 * The fold onto `origin/main` that carried #490 (`fix(chat): label every
@@ -2922,14 +3861,28 @@ const TranscriptRow = memo(function TranscriptRow({
 	stopping = false,
 	settledSound = false,
 	supplementCondensed = false,
+	opensTurn = false,
+	agentMark = null,
+	agentName = null,
 	onInterruptTurn,
+	approvalEpoch = null,
 }: {
 	row: Row;
+	/**
+	 * The conversation's owner epoch, as a PRIMITIVE (these rows are memoised over
+	 * frontend frames, so the frame itself is not a prop). It is the identity a
+	 * saved-profile card's revert press answers on: a gate answer with no epoch
+	 * answers nothing, and the card then offers no press.
+	 */
+	approvalEpoch?: string | null;
 	/** Primitive session context keeps memoized rows independent of frontend frames. */
 	sessionCwd?: string | null;
 	enter?: boolean;
 	isSmallView: boolean;
 	scope: AttachmentScope | null;
+	capable: boolean;
+	/** See `CanonicalTranscriptProps.refusedAttachments`. */
+	refusedAttachments?: AttachmentRefusals;
 	conversationId?: string;
 	/**
 	 * The transcript's one read of the rail setting. A BOOLEAN rather than the
@@ -2979,14 +3932,92 @@ const TranscriptRow = memo(function TranscriptRow({
 	 */
 	supplementCondensed?: boolean;
 	/**
+	 * This row is the one that opens an agent turn (`agentTurnHeads`), so the
+	 * agent's picture is drawn above it - once per turn, above the first line,
+	 * never beside it. Deliberately not a property of the row type: the head is
+	 * a fact of the turn the row sits in, and `agentTurnHeads` is its one
+	 * spelling (see `message-avatar.tsx` for why the mark is back at all).
+	 */
+	opensTurn?: boolean;
+	/** The picture to draw when `opensTurn`; null draws nothing (D11). */
+	agentMark?: AvatarMark | null;
+	/** The speaker's name, for the picture's accessible name (R-3). */
+	agentName?: string | null;
+	/**
 	 * The pane's interrupt press (`CanonicalTranscriptProps.onInterruptTurn`),
 	 * for the card's Cancel. Undefined means no control, by rule.
 	 */
 	onInterruptTurn?: () => void;
 }) {
 	rowRenderCount.current += 1;
-	const entered = useRef(enter);
+	/*
+	 * The row's own subscription: the group labels below are translated, and a
+	 * memoised row whose props have not moved would otherwise keep them in the
+	 * language of its first paint.
+	 */
+	useI18nLocale();
 	const { record } = row;
+	const messageRow = transcriptRowActions(record);
+	/*
+	 * The line's two clipboard payloads: the visible words and the source form.
+	 * Both are handed to the menu instead of being read back out of the DOM,
+	 * which is what keeps a fence and a list intact and keeps the selection from
+	 * deciding what "copy this row" means.
+	 *
+	 * DERIVED WHEN THE MENU OPENS, NOT WHEN THE ROW MOUNTS. `copyTextForRecord`
+	 * runs the markdown parser over the record's whole body, and doing it in a
+	 * `useMemo` here put one parse per mounted row inside the transcript's
+	 * single mount task (174 ms inclusive on a long cold open; renderer profile
+	 * §4 L2-a) for a menu that is almost never opened. The getter reads
+	 * `latestRecord` at the press, so a record REPLACED under a mounted row (a
+	 * stream delta, a settle) copies its current text rather than the one the
+	 * row mounted with, and the cache is keyed by record identity so a second
+	 * open of an unchanged record does not parse again. The payload is the same
+	 * function of the same record it always was - only when it is computed moved.
+	 */
+	const latestRecord = useRef(record);
+	latestRecord.current = record;
+	const copyPayloadCache = useRef<{
+		record: TranscriptRecord;
+		payload: TranscriptCopyPayload;
+	} | null>(null);
+	const getCopyPayload = useCallback((): TranscriptCopyPayload => {
+		const current = latestRecord.current;
+		const cached = copyPayloadCache.current;
+		if (cached && cached.record === current) return cached.payload;
+		const payload = {
+			text: copyTextForRecord(current),
+			markdown: copyMarkdownForRecord(current),
+		};
+		copyPayloadCache.current = { record: current, payload };
+		return payload;
+	}, []);
+	/**
+	 * Message rows are the only focusable lines, and the keyboard opener is
+	 * stated rather than left to the browser: Chromium turns Shift+F10 into a
+	 * `contextmenu` event on the focused node, and JSDOM does not - dispatching
+	 * it here makes the documented key work in both, and costs nothing when the
+	 * platform also fires its own (the second open is the same open).
+	 */
+	const handleRowKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+		if (!messageRow) return;
+		if (event.key !== "ContextMenu" && !(event.shiftKey && event.key === "F10"))
+			return;
+		event.preventDefault();
+		const element = event.currentTarget;
+		const view = element.ownerDocument.defaultView;
+		if (view === null) return;
+		const box = element.getBoundingClientRect();
+		element.dispatchEvent(
+			new view.MouseEvent("contextmenu", {
+				bubbles: true,
+				cancelable: true,
+				clientX: box.left + box.width / 2,
+				clientY: box.top + box.height / 2,
+			}),
+		);
+	};
+	const entered = useRef(enter);
 	let body: JSX.Element | null;
 	switch (record.kind) {
 		case "user":
@@ -2995,6 +4026,8 @@ const TranscriptRow = memo(function TranscriptRow({
 					record={record}
 					isSmallView={isSmallView}
 					scope={scope}
+					capable={capable}
+					refusedAttachments={refusedAttachments}
 					conversationId={conversationId}
 					undelivered={undelivered?.recordId === record.id ? undelivered : null}
 				/>
@@ -3038,6 +4071,7 @@ const TranscriptRow = memo(function TranscriptRow({
 					record={record}
 					isSmallView={isSmallView}
 					scope={scope}
+					approvalEpoch={approvalEpoch}
 					labelPending={labelPending}
 					labelHoldLate={labelHoldLate}
 					labelMarked={labelMarked}
@@ -3048,11 +4082,18 @@ const TranscriptRow = memo(function TranscriptRow({
 			);
 			break;
 		case "custom":
-			body = record.receipt ? (
-				<HubRow record={record} isSmallView={isSmallView} scope={scope} />
-			) : (
-				<NoticeRow record={record} isSmallView={isSmallView} />
-			);
+			body =
+				record.customType === "team_bridge_message" ? (
+					<BridgeIncomingRow
+						record={record}
+						isSmallView={isSmallView}
+						scope={scope}
+					/>
+				) : record.receipt ? (
+					<HubRow record={record} isSmallView={isSmallView} scope={scope} />
+				) : (
+					<NoticeRow record={record} isSmallView={isSmallView} scope={scope} />
+				);
 			break;
 		case "peer":
 			body = <PeerRow record={record} isSmallView={isSmallView} />;
@@ -3086,39 +4127,104 @@ const TranscriptRow = memo(function TranscriptRow({
 			);
 			break;
 		default:
-			body = <NoticeRow record={record} isSmallView={isSmallView} />;
+			body = (
+				<NoticeRow record={record} isSmallView={isSmallView} scope={scope} />
+			);
 	}
 	if (body === null) return null;
 	return (
-		<div
-			data-record-id={record.id}
-			// The row's SPEAKER, as a machine-readable marker beside the id. It exists because
-			// nothing in the DOM said which kind a row was: the id names the record, not the
-			// party, so a rig counting user rows had to guess from layout classes - and the
-			// guess one made (two attributes the app has never rendered) read 0 over a
-			// transcript that plainly painted the row (agent review R-5, design D1). The
-			// VALUE is the record's own `kind` (`canonical-transcript-types.ts`), emitted
-			// verbatim rather than mapped, so a new record kind is identifiable the day it
-			// exists instead of the day someone remembers to extend a list.
-			data-record-kind={record.kind}
-			data-completion-anchor={record.id}
-			// Only `"true"` is ever queried, so the attribute is omitted rather
-			// than emitted as `"false"` on every row of a long transcript.
-			data-completion-complete={
-				"complete" in record &&
-				record.complete === true &&
-				(record.kind !== "assistant" ||
-					(!record.streaming && Boolean(record.text)))
-					? "true"
-					: undefined
-			}
-			className={cn(
-				GAP[row.gap][isSmallView ? 1 : 0],
-				entered.current && "lo-transcript-arrival",
-			)}
-		>
-			{body}
-		</div>
+		<TranscriptCopyMenu getPayload={getCopyPayload}>
+			<div
+				data-record-id={record.id}
+				// The row's SPEAKER, as a machine-readable marker beside the id. It exists because
+				// nothing in the DOM said which kind a row was: the id names the record, not the
+				// party, so a rig counting user rows had to guess from layout classes - and the
+				// guess one made (two attributes the app has never rendered) read 0 over a
+				// transcript that plainly painted the row (agent review R-5, design D1). The
+				// VALUE is the record's own `kind` (`canonical-transcript-types.ts`), emitted
+				// verbatim rather than mapped, so a new record kind is identifiable the day it
+				// exists instead of the day someone remembers to extend a list.
+				data-record-kind={record.kind}
+				/*
+				 * MESSAGE-LEVEL ROWS ARE TAB STOPS; every other line is not. The
+				 * affordance and the focusability are the same fact (a message row is
+				 * a thing the reader can act on), so both read `transcriptRowActions`
+				 * and neither can drift into a focusable tool row or a message the
+				 * keyboard cannot reach. `data-lo-message-row` is the address the
+				 * transcript's Mod+Shift+C handler reads to find the focused row's
+				 * record without guessing from layout classes.
+				 */
+				data-lo-message-row={messageRow ? "" : undefined}
+				role={messageRow ? "group" : undefined}
+				aria-label={
+					messageRow
+						? record.kind === "user"
+							? t("ui.chat.transcript_copy.row.your_message")
+							: t("ui.chat.transcript_copy.row.agent_message")
+						: undefined
+				}
+				tabIndex={messageRow ? 0 : undefined}
+				onKeyDown={messageRow ? handleRowKeyDown : undefined}
+				data-completion-anchor={record.id}
+				// Only `"true"` is ever queried, so the attribute is omitted rather
+				// than emitted as `"false"` on every row of a long transcript.
+				data-completion-complete={
+					"complete" in record &&
+					record.complete === true &&
+					(record.kind !== "assistant" ||
+						(!record.streaming && Boolean(record.text)))
+						? "true"
+						: undefined
+				}
+				className={cn(
+					GAP[row.gap][isSmallView ? 1 : 0],
+					/*
+					 * THE FOCUSABLE WRAPPER IS THE GROUP, because focus lands HERE and
+					 * not on the inner message box. Without this class the gutter
+					 * overlay's `group-focus-within` had no ancestor that ever matched:
+					 * the row took focus, the inner `MessageContainer`/turn `group` did
+					 * not, and the control stayed at opacity 0 in the real frame (the
+					 * manager's `focused-gutter` capture). `group` on the focusable
+					 * element is what makes "focus the message" reveal the message's
+					 * control.
+					 *
+					 * The wrapper's own ring is REMOVED and drawn by the message block
+					 * instead (`group-focus-visible:outline-*` on the user bubble and
+					 * the answer's content box): a 2px ring around the full-width row
+					 * read as a green rectangle across empty gutter, not as focus on
+					 * this message. The indicator still exists - it moved to the box
+					 * that is the message - which is the condition the stylesheet sets
+					 * for an `outline-none` in a component (styles/index.css).
+					 */
+					messageRow && "group focus-visible:outline-none",
+					/*
+					 * A live-arriving user row - this window's echo or a message from
+					 * the TUI, a peer or another window - rises into place; every other
+					 * arriving row is ink only (`lo-transcript-arrival-rise` in
+					 * styles/index.css, F4).
+					 * `entered` is fixed at mount, so the class never changes on this
+					 * node and the animation plays exactly once.
+					 */
+					entered.current &&
+						(record.kind === "user"
+							? "lo-transcript-arrival-rise"
+							: "lo-transcript-arrival"),
+				)}
+			>
+				{/*
+				 * THE AGENT'S PICTURE, ONCE PER TURN AND ABOVE THE FIRST LINE (see
+				 * `message-avatar.tsx` for the operator request and the D11 constraints
+				 * it keeps). It is a SIBLING of `body` inside this gapped wrapper, not a
+				 * prefix inside it: a mark in the line's flow would narrow the measure of
+				 * every line in the row, which is the gutter D11 measured and deleted.
+				 * Same wrapper, so the 32px turn gap still sits above the mark.
+				 */}
+				{opensTurn && agentMark ? (
+					<MessageAvatar mark={agentMark} name={agentName} />
+				) : null}
+				{body}
+			</div>
+		</TranscriptCopyMenu>
 	);
 });
 
@@ -3153,6 +4259,28 @@ const CHECKPOINT_JUMP_MISS_COPY =
 	"Could not reach that turn. It is further back than the loaded history — scroll up in the transcript to load more.";
 
 /**
+ * The reader's place in a reversed scroller, as the paint cache stores it.
+ *
+ * Mirrors `use-scroll-paging.ts`'s `sampleAnchor` rule - the first row whose
+ * bottom is still below the scrollport's top is the row the reader is looking
+ * at, including one scrolled halfway off - and states it in the cache's terms
+ * (`PaintedScroll`) rather than the paging hook's. `Math.abs(scrollTop) <= 1` is
+ * the tail: this scroller's origin is the bottom, so a pinned reader is at 0.
+ */
+function measuredScroll(region: HTMLElement): PaintedScroll {
+	if (Math.abs(region.scrollTop) <= 1) return PINNED_SCROLL;
+	const top = region.getBoundingClientRect().top;
+	for (const row of region.querySelectorAll<HTMLElement>("[data-record-id]")) {
+		const rect = row.getBoundingClientRect();
+		if (rect.bottom <= top) continue;
+		const id = row.dataset.recordId;
+		if (!id) continue;
+		return { pinned: false, id, offsetPx: Math.round(rect.top - top) };
+	}
+	return PINNED_SCROLL;
+}
+
+/**
  * A fold group as the aggregation pass hands it on: the partition's own
  * variants unchanged. A run group used to carry a section flag
  * (`isNewestTurn`) for the fold's condense; the condense is retired (the
@@ -3174,7 +4302,37 @@ type SectionGroup =
 	  })
 	| Extract<FoldGroup, { kind: "row" }>;
 
-export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
+/**
+ * The transcript pane, inside the one credential probe its Speak controls share.
+ *
+ * ONE PROBE FOR THE WHOLE PANE (`SpeechGateScope`, `speak-control.tsx`): every
+ * answer row, quote strip and link toolbar below reads the speech gate from the
+ * scope instead of mounting its own credential query observer set per row,
+ * which on a 61-row open was 18-34% of the mount task when those queries were
+ * stale (renderer profile §4 L2-b). The scope hands down the probe's own
+ * memoised answer, so every control renders the same gate and reason it did,
+ * and a credential change still reaches all of them through the one
+ * subscription. A wrapper rather than a provider inside the pane's JSX so the
+ * pane's own render tree, and its diff, are untouched.
+ */
+export const CanonicalTranscript: FC<CanonicalTranscriptProps> = (props) => {
+	/*
+	 * Settled detached jobs by id, for the music generating card: a fact about
+	 * the LIST (the settlement is a later row), so it is derived once here and
+	 * read by context rather than threaded through every row's memo props.
+	 */
+	const records = props.transcript.records;
+	const settlements = useMemo(() => musicJobSettlementsOf(records), [records]);
+	return (
+		<MusicJobSettlementsContext.Provider value={settlements}>
+			<SpeechGateScope>
+				<CanonicalTranscriptPane {...props} />
+			</SpeechGateScope>
+		</MusicJobSettlementsContext.Provider>
+	);
+};
+
+const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	frontend,
 	transcript,
 	gate,
@@ -3196,21 +4354,42 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	openFrame,
 	containerRef,
 	isSmallView,
+	agentMark = null,
+	agentName = null,
 	status,
 	failure,
 	awaitingHydration,
 	hydrationProven = true,
 	historyReadPending = false,
 	stale = false,
+	staleIndicatorDelayMs = STALE_INDICATOR_DELAY_MS,
+	paintRunning = false,
+	restoredScroll = null,
+	paintComplete = null,
+	remote = false,
 	missing = false,
+	missingTemporary = false,
 	attachmentScope,
 	conversationId,
 	labelPending,
 	undelivered = null,
 	labelHoldLate,
 	labelMarked,
+	refusedAttachments = NO_REFUSALS,
 	onReconnect,
+	onStartNewChat,
 }) => {
+	// The pane's own subscription: the notices and status lines below are
+	// translated and the pane must repaint when the locale changes. The value is
+	// also a `rowGroups` dependency: that memo caches `foldLive()` output, which
+	// carries `toolVerb()` text, so a pure locale switch would otherwise leave a
+	// collapsed fold's live clause in the old language until its rows changed.
+	const locale = useI18nLocale();
+	const capabilities = useDesktopCapabilities();
+	const attachmentsCapable = desktopFeatureEnabled(
+		capabilities.data,
+		"session_attachments",
+	);
 	// A crash-recovered outcome has no durable row of its own, so it is
 	// synthesized here rather than in the stream reducer: this is the layer that
 	// decides what is renderable, and an anchor with nothing to hit-test is an
@@ -3224,15 +4403,38 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		anchors: new Set(),
 	});
 	const sessionId = frontend?.session_id ?? null;
+	/*
+	 * THE CONVERSATION KEY THE READER'S STORES ARE KEYED BY (operator report,
+	 * 2026-10-21). `frontend` is null until the owner publishes a snapshot AND
+	 * again for the whole of a reconnect (`use-canonical-session`'s gap arm sets
+	 * `frontend: null` deliberately, so the pane stops claiming a state it cannot
+	 * prove). Reading the stores off the RAW id therefore swapped their key to the
+	 * empty bucket on every gap: the reader's expanded bars collapsed, the settle
+	 * latch was dropped and re-armed, and both came back when the snapshot
+	 * repopulated - a one-to-two-frame repaint of a conversation nobody changed.
+	 *
+	 * A STICKY id is the fix, and it is the one this file already uses one rung
+	 * down for the fold registry (`foldSession`): a non-null id always wins, so a
+	 * real switch still reads the NEW conversation's entries in its first paint,
+	 * and a null frame leaves the key alone. A genuinely ended conversation still
+	 * forgets its entries through `forgetWatchedRun`/`forgetTurnCollapseOpen`,
+	 * which is an explicit event rather than an absent sample.
+	 */
+	const conversationKey = useRef(sessionId);
+	if (sessionId !== null) conversationKey.current = sessionId;
+	const conversation = conversationKey.current;
 	const transcriptEpoch = useRef(transcript.viewEpoch);
 	transcriptEpoch.current = transcript.viewEpoch;
 	const entriesRef = useRef<HTMLDivElement>(null);
+	/** The measured content column, and the scope the selection toolbar acts in. */
+	const contentRef = useRef<HTMLDivElement>(null);
 	const mountAdapter = useRef<TranscriptMountAdapter | null>(null);
 	const virtualCue = useRef<{
 		enabled: boolean;
 		entryIds: ReadonlyMap<string, readonly string[]>;
 		order: ReadonlyMap<string, number>;
 	} | null>(null);
+	const missingNotice = missingSessionNotice(missingTemporary);
 	const [domWindowRequested] = useState(transcriptDomWindowEnabled);
 	const slotExtents = useRef(new Map<string, SlotExtent>());
 	const previousSlotPlan = useRef<{
@@ -3244,6 +4446,8 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	rawRecords.current = transcript.records;
 	const arrivalLedger = useRef<{
 		session: string | null;
+		/** The stated id the ledger was last seeded under (`foldIdentity.session`). */
+		stated: string | null;
 		epoch: number;
 		ids: Set<string>;
 	} | null>(null);
@@ -3339,6 +4543,33 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		previousRows.current = next;
 		return next;
 	}, [shownRecords]);
+	/*
+	 * WHICH ROWS OPEN AN AGENT TURN, derived from the same list the render walk
+	 * consumes (`agentTurnHeads`, whose header carries the operator request and
+	 * the D11 constraints the mark keeps). Its own memo because it is a fact
+	 * about the LIST: `buildRows`' contract is one record's own frames, and a
+	 * per-record flag would be a second spelling of the partition `runsOf` owns.
+	 *
+	 * GATED ON THE PICTURE (review round 1, R-5). With no picture to draw, the set
+	 * is only ever asked `has` and always answers false - but computing it is a
+	 * full `walkTurns` pass over every row, and `rows` changes on every streamed
+	 * token. A picture-less agent is the common case and the one D11 left
+	 * untouched, so it pays nothing: the empty set is the same render.
+	 */
+	/*
+	 * A picture or the plate of a claimed picture holds a box on every head; with
+	 * no mark (every pictureless agent) the set is empty and no head draws
+	 * anything (see `message-avatar.tsx`).
+	 */
+	const hasMark = agentMark !== null;
+	const turnHeads = useMemo(
+		() => (hasMark ? agentTurnHeads(rows) : NO_TURN_HEADS),
+		[rows, hasMark],
+	);
+	const avatarSize = parseAgentAvatarSize(
+		useUiPreferencesStore((state) => state.agentAvatarSize),
+	);
+	const markHeight = turnMarkHeight(avatarSize);
 	/*
 	 * WHICH STOPPED SOUND CALLS HAVE ALREADY SETTLED (design D7, UX U9).
 	 *
@@ -3436,23 +4667,32 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * on every reconnect. The last STATED id is held until a different one
 	 * arrives - a gap keeps the conversation, a switch changes it.
 	 */
+	/*
+	 * `foldIdentity.key` is what the row list and the stores below are keyed on;
+	 * a new chat's null id learning its first stated id keeps it (Q1, see
+	 * `foldIdentityFor`), so the snapshot that names the session does not remount
+	 * the echo the press just painted.
+	 */
+	const foldIdentity = useRef<FoldIdentity | null>(null);
+	foldIdentity.current = foldIdentityFor(foldIdentity.current, sessionId);
+	const foldKey = foldIdentity.current.key;
 	const foldSession = useRef(sessionId);
-	if (sessionId !== null) foldSession.current = sessionId;
+	foldSession.current = foldIdentity.current.session;
 	const viewState = useRef({
-		session: foldSession.current,
+		session: foldKey,
 		store: new TranscriptViewState(),
 	});
-	if (viewState.current.session !== foldSession.current)
+	if (viewState.current.session !== foldKey)
 		viewState.current = {
-			session: foldSession.current,
+			session: foldKey,
 			store: new TranscriptViewState(),
 		};
 	const [foldOpen, setFoldOpen] = useState<{
-		session: string | null;
+		session: string;
 		entries: readonly FoldOpenEntry[];
-	}>(() => ({ session: foldSession.current, entries: [] }));
-	if (foldOpen.session !== foldSession.current) {
-		setFoldOpen({ session: foldSession.current, entries: [] });
+	}>(() => ({ session: foldKey, entries: [] }));
+	if (foldOpen.session !== foldKey) {
+		setFoldOpen({ session: foldKey, entries: [] });
 	}
 	/**
 	 * The reader's press on a fold, recorded against the fold's CURRENT id set.
@@ -3464,10 +4704,11 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 */
 	const setFoldOpenFor = (ids: readonly string[], open: boolean) => {
 		const keep = new Set(rawRecords.current.map((record) => record.id));
+		const key = foldIdentity.current?.key ?? foldKey;
 		setFoldOpen((current) => ({
-			session: foldSession.current,
+			session: key,
 			entries: withFoldOpen(
-				current.session === foldSession.current ? current.entries : [],
+				current.session === key ? current.entries : [],
 				ids,
 				open,
 				keep,
@@ -3558,14 +4799,14 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			evidence: captureInternalEpisodeIdentity([], new Set()),
 		};
 	const [openRuns, setOpenRuns] = useState<ReadonlySet<string>>(() =>
-		expandedRunsOf(sessionId),
+		expandedRunsOf(conversation),
 	);
-	const [openRunsSession, setOpenRunsSession] = useState(sessionId);
+	const [openRunsSession, setOpenRunsSession] = useState(conversation);
 	const [openRunsEpoch, setOpenRunsEpoch] = useState(transcript.viewEpoch);
-	if (openRunsSession !== sessionId) {
-		setOpenRunsSession(sessionId);
+	if (openRunsSession !== conversation) {
+		setOpenRunsSession(conversation);
 		setOpenRunsEpoch(transcript.viewEpoch);
-		setOpenRuns(expandedRunsOf(sessionId));
+		setOpenRuns(expandedRunsOf(conversation));
 	} else if (openRunsEpoch !== transcript.viewEpoch) {
 		// An explicit clear invalidates reader ownership as well as alias evidence.
 		// Stable seg anchors can recur after the clear; retaining their old open
@@ -3576,7 +4817,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			typeof transcript.viewEpoch === "number" &&
 			transcript.viewEpoch > (openRunsEpoch ?? 0)
 		) {
-			forgetTurnCollapseOpen(sessionId);
+			forgetTurnCollapseOpen(conversation);
 			setOpenRuns(new Set());
 		}
 	}
@@ -3589,18 +4830,18 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * the NEW conversation's latch in its first paint.
 	 */
 	const [watchedRun, setWatchedRun] = useState<string | null>(() =>
-		watchedRunOf(sessionId),
+		watchedRunOf(conversation),
 	);
-	const [watchedRunSession, setWatchedRunSession] = useState(sessionId);
-	if (watchedRunSession !== sessionId) {
-		setWatchedRunSession(sessionId);
-		setWatchedRun(watchedRunOf(sessionId));
+	const [watchedRunSession, setWatchedRunSession] = useState(conversation);
+	if (watchedRunSession !== conversation) {
+		setWatchedRunSession(conversation);
+		setWatchedRun(watchedRunOf(conversation));
 	}
 	const setRunOpen = useCallback(
 		(runKey: string, open: boolean) => {
-			setOpenRuns(writeRunExpanded(sessionId, runKey, open));
+			setOpenRuns(writeRunExpanded(conversation, runKey, open));
 		},
-		[sessionId],
+		[conversation],
 	);
 	/*
 	 * Where the pressed bar sat when the reader pressed it, and the bar lookup the
@@ -3668,7 +4909,15 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			// ever moves off raw records, this seam moves with it.
 			deriveWorkingLine(
 				workingLineInputFor({
-					waiting,
+					/*
+					 * THE CACHED PAINT'S CLAIM IS AN INPUT, not a second derivation: a return to
+					 * a session that was running when the reader left must not paint idle chrome
+					 * for the length of the revalidate (UX review, 2026-11-12, U2). The rows
+					 * cannot say it - the in-flight ones are dropped on write - so the cache
+					 * carries the one bit, and the snapshot withdraws it by clearing
+					 * `paintRunning` in the commit that replaces the rows.
+					 */
+					waiting: waiting || paintRunning,
 					// The pass is the transcript's own fact, read here rather than
 					// latched in this view: one source for the rung and the composer's
 					// hint (see `transcript-reducer`'s `compacting`).
@@ -3696,6 +4945,14 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					// rung's number and the sentence cannot disagree about whether
 					// the pane can vouch for a duration.
 					idleDisputed: idleDisputed === true,
+					/*
+					 * AND THE CACHED CLAIM WEARS NO CLOCK (design round 1, D1). The paint's
+					 * `busy` bit says a turn was running, not when it started, so a number
+					 * counted from this mount would be an invented age - `thinking 0s`
+					 * ticking up, then jumping to the snapshot's true age. The label stands
+					 * and only the number is withheld, the disputed idle's shape.
+					 */
+					clockWithheld: paintRunning && stale,
 					gate,
 					// The rung yields to a TERMINAL statement and not to a reconnect
 					// (operator incident, 2026-10-07): a receipt gap drops the
@@ -3714,7 +4971,15 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						status,
 						failure,
 						missing,
-						stale,
+						/*
+						 * A stale pane is terminal because it has not painted the run above it.
+						 * The paint cache's `busy` flag is the exception that proves it: the
+						 * cache DID paint that run's last durable rows and says a turn was in
+						 * flight, so the line is the honest claim for the revalidate window and
+						 * the snapshot withdraws it if the turn has ended. Without it a return
+						 * to a running session reads as idle (UX review, 2026-11-12, U2).
+						 */
+						stale: stale && !paintRunning,
 					}),
 					records: shownRecords,
 				}),
@@ -3748,6 +5013,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			// and a memo that missed them would keep a claim the pane has withdrawn.
 			missing,
 			stale,
+			paintRunning,
 			shownRecords,
 		],
 	);
@@ -3763,6 +5029,63 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	const paneIsLive =
 		(workingLine === undefined ? paneWorking : workingLine) !== null ||
 		gate !== null;
+	/*
+	 * Whether this pane has NO live feed: connecting, reconnecting or
+	 * unavailable. Distinct from `paneIsLive` by exactly the gap, and NOT derived
+	 * from `frontend` (agent review round 3): the run panel's child reader passes
+	 * `frontend: null` for its whole life with `status: "live"`, so a null
+	 * snapshot is not evidence of a gap - and the settle pass there really does
+	 * end the turn. The status is the pane's own statement about its feed (see
+	 * `use-canonical-session`'s reconnect arm), so it is the one that decides.
+	 */
+	const paneGap = status !== "live";
+
+	/*
+	 * WHETHER THE CACHED PAINT ANNOUNCES ITSELF YET (operator report, 2026-11-12).
+	 *
+	 * The rows are already readable when the indicator would appear, so the
+	 * common return - snapshot inside the measured distribution - paints no
+	 * loader at all, and a slow page still says what the view is. The remote
+	 * variant is never held: for a peer's conversation whose history is unproven
+	 * the wait IS the sync, and the pane has nothing readable to hold it for.
+	 * See `use-stale-indicator-hold.ts` for the measurement behind the delay.
+	 */
+	const showStaleCaption = useStaleIndicatorHold(
+		stale,
+		remote && !hydrationProven ? 0 : staleIndicatorDelayMs,
+	);
+
+	/*
+	 * THE LIVE FOLD LATCH (operator report, 2026-10-21: job messages and
+	 * responses "alternate between forcing the tool group open and then closing
+	 * it back again").
+	 *
+	 * A fold is licensed by the run's TRAILING receipt stretch, a positional rule
+	 * that is not monotonic under append: `[t1, j1, j2]` folds, the next call makes
+	 * `[t1, j1, j2, t2]` fail the rule (the stretch has ended), and the next two
+	 * job results fold it again - so the group opened and closed on every job
+	 * response, with no reader action. The latch is the one fact the pure rule
+	 * cannot carry: this pane has already PAINTED that run as a fold. It is read
+	 * only while the turn is live (`foldRuns`'s `latchedFoldIds`), so a live group
+	 * can only grow; the settled shape is still decided by the final rows alone,
+	 * which is why the head-pair negatives (a settled `[peer, peer, tool]` stays
+	 * ordinary rows) are unchanged. Reset per conversation and per clear epoch,
+	 * like every other view registry here.
+	 */
+	const foldLatch = useRef<{
+		session: string | null;
+		epoch: number | undefined;
+		ids: Set<string>;
+	}>({ session: conversation, epoch: transcript.viewEpoch, ids: new Set() });
+	if (
+		foldLatch.current.session !== conversation ||
+		foldLatch.current.epoch !== transcript.viewEpoch
+	)
+		foldLatch.current = {
+			session: conversation,
+			epoch: transcript.viewEpoch,
+			ids: new Set(),
+		};
 
 	/*
 	 * The window's top edge lands on a RUN boundary, not a raw row count (the
@@ -3857,10 +5180,15 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * arithmetic over the row list that a test can ask about without rendering a
 	 * transcript: which runs fold, what a fold says, and what a turn's foot reports.
 	 *
-	 * Action arithmetic is still the tool ledger alone. Incoming peer/hub receipts
-	 * may bridge that ledger in place, with their own message count and historical
-	 * reply/steer indication. Operator asks, prose and notices remain boundaries.
+	 * Action arithmetic is still the tool ledger alone. Internal receipts -
+	 * peer/hub messages, job results, wake deliveries and monitor prompts - may
+	 * bridge that ledger in place, with their own family counts and historical
+	 * reply/steer indication. Operator asks, prose and arbitrary notices remain
+	 * boundaries.
 	 */
+	/* The store's id index, for the latch prune (see `latchFoldedRuns`). */
+	const recordIndex = transcript.index;
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `locale` is read by `foldLive` through `t()`, not as a closure value, so the rule sees it as unnecessary; it is the cache key for the translated words (a collapsed fold's live clause).
 	const rowGroups = useMemo(() => {
 		/*
 		 * `isNewestTurn` used to be computed here for the fold's condense; the
@@ -3910,28 +5238,63 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				row.record.kind === "tool" ? row.record.startedAt : null,
 			endedAtOf: (row) =>
 				row.record.kind === "tool" ? row.record.endedAt : null,
-			isFoldable: (row) =>
-				row.record.kind === "tool" && !isQuietTurnCall(row.record),
+			/*
+			 * `isTraceFoldable` keeps a detached music job OUT of the action fold,
+			 * so its generating card is never hidden behind a closed group (Q-1 on
+			 * #1800); see the predicate for the full rule.
+			 */
+			isFoldable: (row) => isTraceFoldable(row.record),
 			isReceipt: (row) => isInternalReceipt(row.record),
-			receiptSummaryOf: (rows) =>
-				rows.length
-					? [
-							`${rows.length} incoming ${rows.length === 1 ? "message" : "messages"}`,
-							...(rows.some(
-								({ record }) =>
-									record.kind === "custom" && record.receipt?.expectsReply,
-							)
-								? ["Reply requested"]
-								: []),
-							...(rows.some(
-								({ record }) =>
-									record.kind === "custom" && record.receipt?.steer,
-							)
-								? ["Steered"]
-								: []),
-						]
-					: [],
+			/*
+			 * The unit grammar lives in the model (`receiptFoldUnits`): each internal
+			 * family states its own noun, in a fixed order, and a family with no rows
+			 * says nothing. That is what lets a mixed group's header agree with the
+			 * rows expanding it - `3 job results` means exactly three job-result
+			 * rows, never a count that lumped them in as "incoming messages".
+			 */
+			receiptSummaryOf: (rows) => receiptFoldUnits(rows),
+			/*
+			 * A GAP HOLDS THE FOLD TOO (design review round 1, U1). With no
+			 * connection the pane has observed nothing, so the run is judged by
+			 * what it last painted rather than by a re-decision over stale rows -
+			 * the same reading the latch retains one line below.
+			 */
+			liveTurn: paneIsLive || paneGap,
+			latchedFoldIds: foldLatch.current.ids,
 		});
+		/*
+		 * Remember what this pane has painted folded, so a later pass cannot
+		 * dissolve it.
+		 *
+		 * ACCUMULATED, NOT REBUILT FROM THIS PASS'S WINDOW (agent review round 1,
+		 * F1). The window is not the conversation: a snap, a widened page or a
+		 * filter can paint a frame whose slice does not contain a run this pane
+		 * already showed folded, and rebuilding the set from THAT slice dropped the
+		 * ids - so the rows came back and the next frame re-folded them, the same
+		 * open/close pair through another door. The union is pruned against the
+		 * STORE's ids (`rawRecords`, not `visible`), which is what keeps the set
+		 * from pinning a run the conversation no longer holds.
+		 */
+		/*
+		 * A GAP IS NOT A SETTLE (design review round 1, U1). The clear used to run
+		 * on any non-live pass, and a reconnect gap is one: `frontend: null` drops
+		 * `working`, so the group opened for the gap's frames and the next live pass
+		 * folded it again - the same open/close through the door the settle rule was
+		 * meant to hold shut. A pane with NO connection has observed nothing about
+		 * the turn, so it retains the latch (pruned against the store, exactly as a
+		 * live pass does). Only a CONNECTED pane with no live reading - the session
+		 * is really idle - spends the latch, and the settled pass then renders from
+		 * the rows alone.
+		 */
+		if (paneIsLive || paneGap) {
+			foldLatch.current.ids = latchFoldedRuns(
+				foldLatch.current.ids,
+				recordIndex,
+				groups,
+			);
+		} else if (foldLatch.current.ids.size > 0) {
+			foldLatch.current.ids = new Set();
+		}
 		return groups.map((group) =>
 			group.kind === "run"
 				? {
@@ -3949,7 +5312,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					}
 				: group,
 		);
-	}, [visible]);
+	}, [visible, paneIsLive, paneGap, recordIndex, locale]);
 	/*
 	 * KEYED ON THE WINDOW'S SIGNATURE, NOT ON `visible` (UI perf audit P4; PR-6).
 	 * The foot is arithmetic over the same partition the plan builds - counts,
@@ -4111,6 +5474,15 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	};
 	const holdPlaceholder = transcriptPaneHoldsPlaceholder(paneView);
 	const collapsed = transcriptPaneCollapses(paneView);
+	/*
+	 * The column's top anchor, for THIS pane: the ordinary layout unless the rows
+	 * are a stale cached fragment (see `paint-top-anchor.ts`).
+	 */
+	const topAnchor = paintKeepsTopAnchor({
+		stale,
+		complete: paintComplete === true,
+		hasEntry: paintComplete !== null && paintComplete !== undefined,
+	});
 
 	/*
 	 * The END of the click-to-visible trace: the first commit that paints a
@@ -4135,12 +5507,20 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * sample after the app returns to it.
 	 */
 	const tracedSession = useRef<string | null>(null);
+	// The open trace's `routed` stage: the pane committed for this session.
+	// A no-op unless a trace for exactly this id is open.
+	useLayoutEffect(() => {
+		openTrace.note(sessionId, "routed");
+	}, [sessionId]);
 	useLayoutEffect(() => {
 		if (visible.length === 0) return;
 		const key = sessionId ?? "";
 		if (tracedSession.current === key) return;
 		tracedSession.current = key;
 		performance.mark("lop:open:first-row");
+		// The logged open trace's `content` stage; it schedules its own
+		// next-frame `painted` proxy (see `open-trace.ts`).
+		openTrace.note(sessionId, "content");
 		const requested = performance
 			.getEntriesByName("lop:open:requested", "mark")
 			.at(-1);
@@ -4153,6 +5533,76 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		}
 		performance.clearMarks("lop:open:requested");
 	}, [visible.length, sessionId]);
+
+	/*
+	 * THE PAINT FIELDS of the open trace (`paint=`, see `open-trace.ts`): what this
+	 * mount's FIRST committed rows were, and whether they filled the pane.
+	 *
+	 * WHY THIS IS KEYED ON THE TRACE'S TARGET AND NOT ON `sessionId`: the rows a
+	 * seeded paint shows exist while `frontend` is still null, which is exactly
+	 * the window `routed` and `content` above are blind to - they pass
+	 * `frontend?.session_id`, so a cached paint left no mark at all. The trace's
+	 * own target is the id the click named AND the id the paint cache is addressed
+	 * by (`paintSeed` is `readPaint`), so the two agree by construction.
+	 *
+	 * WHY THE CACHE IS READ AT THE PANE'S OWN COMMIT rather than handed down: the
+	 * pane is the only surface that knows when its rows first COMMITTED, and the
+	 * entry it reads was written when that conversation was last left.
+	 *
+	 * THE OLD PANE'S WRITE DOES NOT PRECEDE THIS READ (agent review round 1, R1-4).
+	 * `writePaint` runs from a `useEffect` cleanup ("Cache this conversation's paint
+	 * on the way out", `use-canonical-session.ts`), and in React 18 a deleted
+	 * subtree's passive cleanups run AFTER the new tree's layout effects - so the
+	 * pane being left writes after this reads. The claim that survives, and is the
+	 * one this needs, is narrower: the TARGET's own entry was written when that
+	 * conversation was last left, and no other writer of that key runs between that
+	 * write and this read.
+	 *
+	 * ONE `Map` read is the cost, and it makes the claim checkable against the thing
+	 * it describes: an entry present is a seed, an absent one is no seed.
+	 *
+	 * WHAT IS MEASURED, AND THE ONCE-PER-MOUNT RULE, LIVE IN `tracePanePaint`
+	 * (`open-trace.ts`): they decide what a pane may say, and a source regex cannot
+	 * tell a pane that mounted BEFORE the click from one that mounted FOR it (agent
+	 * review round 1, R1-1/R1-2). In particular `fills` is the content column's own
+	 * box against the scroller's inner box - `open-trace.ts` carries why
+	 * `scrollHeight` cannot be the test there.
+	 */
+	const paintTrace = useRef<PanePaintTrace | null>(null);
+	// React keeps the first initialiser's value; the null check keeps the latch from
+	// being rebuilt on every streaming render.
+	if (paintTrace.current === null) paintTrace.current = createPanePaintTrace();
+	useLayoutEffect(() => {
+		const trace = paintTrace.current;
+		if (trace === null) return;
+		tracePanePaint(trace, {
+			activeSessionId: () => openTrace.activeSessionId(),
+			currentToken: () => openTrace.currentToken(),
+			notePaint: (target, token, stamp) =>
+				openTrace.notePaint(target, token, stamp),
+			readPaint,
+			missReason: paintMissReason,
+			visibleRows: visible.length,
+			boxes: () => {
+				const content = contentRef.current;
+				const scroller = containerRef.current;
+				if (!content || !scroller) return null;
+				let paddingTop = 0;
+				let paddingBottom = 0;
+				if (typeof getComputedStyle === "function") {
+					const style = getComputedStyle(scroller);
+					paddingTop = Number.parseFloat(style.paddingTop);
+					paddingBottom = Number.parseFloat(style.paddingBottom);
+				}
+				return {
+					contentHeight: content.getBoundingClientRect().height,
+					scrollerClientHeight: scroller.clientHeight,
+					paddingTop,
+					paddingBottom,
+				};
+			},
+		});
+	}, [containerRef, visible.length]);
 
 	// Both growth paths now go through one policy. The local window used to
 	// widen from its own raw `scroll` listener, once per EVENT below 320px from
@@ -4271,6 +5721,84 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		// reader furthest. `visible.length` changes on both growth paths.
 		rowCount: visible.length,
 	});
+	/*
+	 * THE READER COMES BACK WHERE THEY LEFT (operator report, 2026-11-12: "when i
+	 * switch between team bridge and session ... it has some sort of loading
+	 * mechanism to load conversation"; QA measured the other half - 0 of 12
+	 * scrolled returns kept their place, because the panel unmounts on the route
+	 * change and this scroller's only resting place is the tail).
+	 *
+	 * A LAYOUT effect so the FIRST painted frame of the return is already the
+	 * reader's place rather than a bottom-anchored frame that the next one
+	 * corrects. The write is acknowledged to the paging hook for the reason the
+	 * pressed-bar correction's is: this scroller's listeners would otherwise read
+	 * it as the reader travelling older-ward and arm a page demand from it.
+	 *
+	 * A row that is not mounted (the render window is the newest 60) widens the
+	 * window to its own distance and re-runs; a row the transcript no longer
+	 * holds - the reconcile dropped it, or the paint is older than the page - is
+	 * a missing anchor, and the tail is the honest fallback rather than a guess
+	 * at the nearest neighbour.
+	 */
+	const restorePending = useRef<PaintedScroll | null>(restoredScroll);
+	useLayoutEffect(() => {
+		const anchor = restorePending.current;
+		if (!anchor || anchor.pinned) return;
+		const region = containerRef.current;
+		if (!region) return;
+		const row = [
+			...region.querySelectorAll<HTMLElement>("[data-record-id]"),
+		].find((element) => element.dataset.recordId === anchor.id);
+		if (!row) {
+			const index = rowsRef.current.findIndex(
+				(entry) => entry.record.id === anchor.id,
+			);
+			if (index === -1) {
+				restorePending.current = null;
+				return;
+			}
+			const distance = rowsRef.current.length - index;
+			if (distance > alignSize) {
+				setWindowSize(distance);
+				return;
+			}
+			restorePending.current = null;
+			return;
+		}
+		const before = region.scrollTop;
+		scrollRegionToTop(region, row, "reversed", anchor.offsetPx);
+		acknowledgeOwnWrite(before, region.scrollTop);
+		restorePending.current = null;
+	}, [acknowledgeOwnWrite, alignSize, containerRef]);
+	/*
+	 * REMEMBER THE READER'S PLACE ON THE WAY OUT.
+	 *
+	 * A LAYOUT cleanup, for two measured reasons: it is the last moment this
+	 * scroller is still in the document (React removes the deleted node after its
+	 * layout destroys run), and it runs BEFORE the session hook's passive cleanup
+	 * writes the paint - `writePaintScroll` hands it the place, and `writePaint`
+	 * carries the value forward for exactly that ordering (including a session's
+	 * first leave, where no paint entry exists yet).
+	 */
+	useLayoutEffect(() => {
+		if (!conversationId) return;
+		return () => {
+			const region = containerRef.current;
+			/*
+			 * A SKIPPED MEASUREMENT RECORDS THE TAIL (agent review C4). Returning
+			 * here left whatever the PREVIOUS visit wrote standing, so a cleanup that
+			 * could not measure (a detached node, a zero-height pane) restored a place
+			 * from two visits ago. The reader is at no measured place, and the tail is
+			 * the honest one; recording it also tells `writePaint` that this visit's
+			 * answer is known rather than absent.
+			 */
+			if (!region?.isConnected || region.clientHeight === 0) {
+				writePaintScroll(conversationId, PINNED_SCROLL);
+				return;
+			}
+			writePaintScroll(conversationId, measuredScroll(region));
+		};
+	}, [conversationId, containerRef]);
 	/*
 	 * A PRESSED BAR STAYS WHERE IT WAS PRESSED (UX review round 1 on #708, U1).
 	 *
@@ -4420,6 +5948,24 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		(id: string) => jumpTo(id, THREAD_SEARCH_JUMP_MISS_COPY),
 		[jumpTo],
 	);
+	/*
+	 * The notifications drawer's "Show in conversation": the same near path, for
+	 * the `notify` call's row (`tool:<call id>`), so a flag line inside a collapsed
+	 * turn or in history not yet loaded is reached instead of silently missed.
+	 */
+	const notificationReveal = useNotificationReveal((state) => state.request);
+	const settleNotificationReveal = useNotificationReveal(
+		(state) => state.settle,
+	);
+	useEffect(() => {
+		if (!notificationReveal || sessionId === null) return;
+		if (notificationReveal.sessionId !== sessionId) return;
+		settleNotificationReveal(notificationReveal.nonce);
+		void jumpTo(
+			`tool:${notificationReveal.anchorId}`,
+			THREAD_SEARCH_JUMP_MISS_COPY,
+		);
+	}, [notificationReveal, sessionId, jumpTo, settleNotificationReveal]);
 	/*
 	 * The rail's naming warm (D2): `onHover` already fires on the CARD's own
 	 * intent-delayed open, not on a fly-over, so each call here is one the
@@ -4901,14 +6447,70 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * a first open of a finished transcript - holding no latch and arriving
 	 * collapsed exactly as today.
 	 */
+	/*
+	 * THE SECOND ARMING CONDITION: A RUN THAT GREW IS BEING WRITTEN (operator
+	 * report, 2026-10-21: the conversation "briefly flicker[s] some different
+	 * text on for a frame or two", captured as the same turn's rows visible and
+	 * then replaced by its bar and back again).
+	 *
+	 * WHY THE FLAG ALONE IS NOT ENOUGH. The model's `anchored` reads
+	 * `live || watched || runStatesItsOwnLiveness`, and in the gap BETWEEN two
+	 * calls a turn has no streaming row and no in-flight call - so the plan falls
+	 * back to the pane's instantaneous `live`. A live turn with settled rows and
+	 * no closing answer then paints as a bar when the flag dips and as rows when
+	 * it returns (`turn-collapse-model.test.mjs`'s dip case), and the latch is
+	 * the only thing that stops it - but the latch is armed by a LIVE pass alone.
+	 * A pane that never caught a live pass for this run (a re-render that missed
+	 * the window, a mount that arrived between calls, a session the pane opened
+	 * with the flag already down) holds no latch, so every dip alternates the
+	 * whole turn for as long as the reader watches.
+	 *
+	 * WHAT ARMS IT. The newest run gaining a row is not a sample of a flag: rows
+	 * are APPENDED to a run only while it is being written, and a finished turn's
+	 * rows never grow under a mounted pane. So growth since the pass this pane
+	 * last saw is a fact about the data, and it licenses the same latch the flag
+	 * does. A run with its closing answer already landed is excluded: a later row
+	 * after a delivered answer opens a new cycle, not a turn still being written.
+	 *
+	 * THE FIRST LOOK NEVER ARMS. The baseline is taken without writing, which is
+	 * what keeps a fresh pane - a reload, a first open of a finished transcript -
+	 * holding no latch and arriving collapsed exactly as before; only growth
+	 * OBSERVED (a later pass on the same conversation) can arm.
+	 */
+	/*
+	 * `seen` is a FIELD, not an inference from `session`: the conversation id is
+	 * itself nullable (the child reader mounts with `frontend: null`), so a
+	 * `session !== conversation` test read a null-conversation mount as a second
+	 * look and armed on its first pass (agent review round 1, M1).
+	 */
+	const latchSeen = useRef<{
+		seen: boolean;
+		session: string | null;
+		tailId: string | null;
+	}>({ seen: false, session: null, tailId: null });
 	useEffect(() => {
-		if (!collapseInputs.live) return;
 		const newest = collapse.runs.at(-1);
 		const runId = newest ? visible[newest.run.openingIndex]?.record.id : null;
-		if (!runId) return;
-		writeWatchedRun(sessionId, runId);
+		if (!newest || !runId) return;
+		/*
+		 * GROWTH AT THE TAIL, not any change of size (QA round 1, Q-F1). A page
+		 * landing ABOVE a head-cut newest run also grows the run, and that is the
+		 * reader loading older history, not the turn being written - counting rows
+		 * armed the latch for a finished, answerless run and kept it expanded after
+		 * "load older". The run's LAST row id moves only when a row is appended to
+		 * its end, which is the append this rule is about; a head prepend leaves it
+		 * unchanged.
+		 */
+		const tailId = newest.recordIds.at(-1) ?? null;
+		const seen = latchSeen.current;
+		const firstLook = !seen.seen || seen.session !== conversation;
+		const grew = !firstLook && tailId !== null && tailId !== seen.tailId;
+		latchSeen.current = { seen: true, session: conversation, tailId };
+		const wrote = grew && newest.answerId === null;
+		if (!collapseInputs.live && !wrote) return;
+		writeWatchedRun(conversation, runId);
 		setWatchedRun((current) => (current === runId ? current : runId));
-	}, [collapse, collapseInputs.live, sessionId, visible]);
+	}, [collapse, collapseInputs.live, conversation, visible]);
 	/*
 	 * THE WALK'S CUT-RUN KEY (UI perf audit A3, corrected by review round 1 R1).
 	 * The completion walk below asks "is there a run whose bar is PAINTED and
@@ -5452,18 +7054,25 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		)
 			deferredFolds.add(group.id);
 	}
+	/*
+	 * THE ROWS A SLOT RENDERS, for the one rule that decides the mark. A bar
+	 * stands for the groups it hides, a run group for its rows, and a single-row
+	 * group for that row - the same partition `entryFacts` measures and the
+	 * render pass draws. Defined once here so the height estimate, the signature
+	 * and both draw sites read one answer.
+	 */
+	type ChatEntryOf = (typeof chatEntries)[number];
+	const entrySlotRows = (entry: ChatEntryOf): Row[] =>
+		entry.kind === "bar"
+			? entry.children.flatMap((child) =>
+					child.kind === "run" ? child.rows : [child.row],
+				)
+			: entry.group.kind === "run"
+				? entry.group.rows
+				: [entry.group.row];
 	const entryFacts = chatEntries.map((entry) => {
 		const group = entry.kind === "group" ? entry.group : null;
-		const entryRows =
-			entry.kind === "bar"
-				? entry.children.flatMap((child) =>
-						child.kind === "run" ? child.rows : [child.row],
-					)
-				: group?.kind === "run"
-					? group.rows
-					: group
-						? [group.row]
-						: [];
+		const entryRows = entrySlotRows(entry);
 		const first = entryRows[0];
 		const key =
 			entry.kind === "bar"
@@ -5534,11 +7143,24 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 							)
 							.join("\n");
 		const bucket = domWindowRequested ? estimateBucket(first.record, text) : 0;
+		/*
+		 * WHETHER THIS ENTRY DRAWS THE MARK (review round 1, R-5). The DOM window's
+		 * estimate has no measured box for an entry it has not mounted, and the mark
+		 * is 24px the estimate did not know about: without this bit, setting or
+		 * removing a picture (or the profiles query resolving after first paint)
+		 * changed the height under an unchanged signature, and the cached estimate
+		 * kept the old number. Read from the same `turnHeads` the render consumes,
+		 * so the signature cannot claim a mark the row does not draw.
+		 */
+		const marksHead =
+			Boolean(agentMark) && slotCarriesTurnHead(entryRows, turnHeads);
 		const userExpanded =
 			first.record.kind === "user" &&
 			viewState.current.store.read(first.record.id);
 		return {
 			key,
+			marksHead,
+			markHeight,
 			renderSignature: entryRows
 				.map((row) => entryRecordRevision(row.record))
 				.join(","),
@@ -5579,7 +7201,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		return {
 			key: slot.key,
 			recordIds: facts.flatMap((fact) => fact.ids),
-			signature: `${facts.map((fact) => `${fact.key}:${fact.ids.join(",")}:${fact.representation}:${fact.gap}:${fact.userExpanded}:${fact.media}:${fact.unsafe}:${fact.renderSignature}`).join("|")}:${isSmallView}`,
+			signature: entrySlotSignature(facts, isSmallView),
 			// Estimates are fixed for each entry regime; actual mounted boxes replace
 			// them before paint. They are not an asserted native measurement.
 			estimate: facts.reduce(
@@ -5592,7 +7214,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 								fact.text,
 								{ first: 0, trace: 2, item: 12, turn: 32 }[fact.gap],
 								containerRef.current?.clientWidth || 810,
-							)),
+							) + (fact.marksHead ? fact.markHeight : 0)),
 				0,
 			),
 			estimateKind: `${facts[0].type}:${facts[0].bucket}:${facts[0].open}:${facts[0].userExpanded}`,
@@ -5610,7 +7232,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		regionRef: containerRef,
 		entriesRef,
 		layout: scrollLayout,
-		sessionKey: `${foldSession.current ?? ""}:${transcript.viewEpoch}`,
+		sessionKey: `${foldKey}:${transcript.viewEpoch}`,
 		requested: domWindowRequested,
 		contentPresent: !holdPlaceholder && !collapsed,
 	});
@@ -5622,11 +7244,12 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	};
 	// Arrival is a model-tail event, never a history prepend or DOM remount.
 	if (
-		arrivalLedger.current?.session !== foldSession.current ||
+		arrivalLedger.current?.session !== foldKey ||
 		arrivalLedger.current?.epoch !== transcript.viewEpoch
 	) {
 		arrivalLedger.current = {
-			session: foldSession.current,
+			session: foldKey,
+			stated: foldIdentity.current.session,
 			epoch: transcript.viewEpoch,
 			ids: new Set(rows.map((row) => row.record.id)),
 		};
@@ -5635,6 +7258,30 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			entries: [],
 			heights: new Map(),
 			representations: new Map(),
+		};
+	} else if (
+		arrivalLedger.current.stated === null &&
+		foldIdentity.current.session !== null
+	) {
+		/*
+		 * THE ID IS LEARNED UNDER A KEPT KEY (R2-1). The key stays at the null
+		 * pane's so a new chat's echo keeps its node (Q1), which means the branch
+		 * above no longer re-seeds when a cold-opened conversation's first
+		 * snapshot lands - and that snapshot carries the whole history in the
+		 * same commit as the id, so on a live turn every history user row would
+		 * rise. History is not an arrival: every row this commit brings is
+		 * seeded as known. Rows painted BEFORE the id (a new chat's own echo) are
+		 * left out so they keep their arrival standing; their class is latched at
+		 * mount, and slot extents and the previous slot plan are untouched, so
+		 * nothing already on screen remounts or re-measures.
+		 */
+		const painted = arrivalLedger.current.ids;
+		arrivalLedger.current = {
+			...arrivalLedger.current,
+			stated: foldIdentity.current.session,
+			ids: new Set(
+				rows.map((row) => row.record.id).filter((id) => !painted.has(id)),
+			),
 		};
 	}
 	const known = arrivalLedger.current.ids;
@@ -5683,16 +7330,27 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		 * opens restores the block in the same commit. False for every other row.
 		 */
 		supplementCondensed = false,
+		/**
+		 * Whether this group's SLOT is the first line of an agent turn, and so
+		 * carries the agent's picture. The caller decides it from `turnHeads`, the
+		 * turn partition's own answer; a group nested under a bar or a fold passes
+		 * false, because those already draw the mark at the turn's head and a
+		 * second copy inside them would be the per-message repetition D11 deleted.
+		 */
+		opensTurn = false,
 	) => {
 		if (group.kind === "run" && deferredFolds.has(group.id))
 			return group.rows.map((row, index) => (
 				<TranscriptRow
 					sessionCwd={frontend?.cwd}
+					approvalEpoch={frontend?.epoch ?? null}
 					key={row.record.id}
 					row={index === 0 ? atTraceTier(row) : row}
 					enter={arriving.has(row.record.id) && row.record.kind !== "assistant"}
 					isSmallView={isSmallView}
 					scope={mediaScope}
+					capable={attachmentsCapable}
+					refusedAttachments={refusedAttachments}
 					conversationId={conversationId}
 					labelPending={
 						row.record.kind === "tool" &&
@@ -5709,116 +7367,156 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					answerRail={answerRail}
 					stopping={stopping === true}
 					settledSound={settledSoundRowIds.has(row.record.id)}
+					opensTurn={opensTurn && index === 0}
+					agentMark={agentMark}
+					agentName={agentName}
 					onInterruptTurn={onInterruptTurn}
 				/>
 			));
 		return group.kind === "run" ? (
-			<TraceFold
+			/*
+			 * THE FOLD HEADER IS A TRANSCRIPT LINE TOO, so its context menu is
+			 * the same one the rows carry. The wrapper is the trigger and holds
+			 * the gap the fold root used to: `ContextMenuTrigger asChild` merges
+			 * onto this element, so the cost is one block box, not a second
+			 * control surface. Nested rows inside an OPEN fold are safe - their
+			 * own trigger prevents the default before this one's composed
+			 * handler sees it (see `transcript-copy-menu.tsx`).
+			 *
+			 * The summary's words come from the model's `units`, the same array
+			 * the header paints, rather than from the DOM text.
+			 */
+			<TranscriptCopyMenu
 				key={group.id}
-				/*
-				 * The fold carries its first row's gap (a turn's 32px when
-				 * the run opens the turn), and every row inside it sits at
-				 * the trace tier - the fold holds the WHOLE run, D8.
-				 */
-				className={GAP[group.gap][isSmallView ? 1 : 0]}
-				recordIds={group.rows.map((row) => row.record.id)}
-				summary={group.summary}
-				actionCount={group.actions.length}
-				span={group.span}
-				live={group.live}
-				/*
-				 * THE READER'S OPEN STATE, held by the conversation rather than by
-				 * the fold (operator report, 2026-09-27): the fold's React key is
-				 * its first row, and the render window's leading edge walks through
-				 * a run as rows arrive, which remounts the fold - state kept on the
-				 * instance cannot survive that, and the fold re-collapsed under the
-				 * reader. The registry answers for the fold's CURRENT id set and
-				 * migrates with it.
-				 */
-				open={foldOpenOf(
-					foldOpen.entries,
-					group.rows.map((row) => row.record.id),
-				)}
-				onOpenChange={(next) =>
-					setFoldOpenFor(
-						group.rows.map((row) => row.record.id),
-						next,
-					)
-				}
-				/*
-				 * The run's images, while the rows that draw them are unmounted.
-				 * Rendered only while the fold is condensed, and not passed at all
-				 * for a run that produced none - the overwhelmingly common case, and
-				 * the reason a group with no images is byte-for-byte the group it was.
-				 */
-				condensedMedia={
-					group.images.length > 0
-						? (expand: () => void) => (
-								<FoldMedia
-									images={group.images}
-									scope={mediaScope}
-									onRevealMore={expand}
-									uncapped={soleImageGroup}
-								/>
-							)
-						: undefined
-				}
-				/*
-				 * The count travels beside the node: the header prints it as text,
-				 * because a 64px tile cannot carry a label and the count is what the
-				 * strip's own accessible name already says. `soleImageGroup` is the
-				 * bar's own children's case, with two effects, both keyed to the same
-				 * fact - this group IS the span's whole image story:
-				 *
-				 * - the clause drops (D3/U6): when its count would repeat the bar's
-				 *   number one line above, the BAR keeps the aggregate and the group
-				 *   omits the duplicate; two image-bearing groups make the numbers
-				 *   differ, and then each level states its own;
-				 * - the strip uncaps (U8): the press that opened the bar asked for
-				 *   `the rest`, so this group's strip shows its whole set rather than
-				 *   charging a second press for pictures the reader already asked for.
-				 */
-				mediaCount={soleImageGroup ? 0 : group.images.length}
+				text={copyTextForGroup(group.summary)}
+				markdown={copyMarkdownForGroup(group.summary)}
 			>
-				<DeferredTranscriptRows
-					render={() =>
-						group.rows.map((row, index) => (
-							<TranscriptRow
-								sessionCwd={frontend?.cwd}
-								key={row.record.id}
-								row={index === 0 ? atTraceTier(row) : row}
-								enter={
-									arriving.has(row.record.id) && row.record.kind !== "assistant"
-								}
-								isSmallView={isSmallView}
-								scope={mediaScope}
-								conversationId={conversationId}
-								labelPending={
-									row.record.kind === "tool" &&
-									labelPending?.has(row.record.toolCallId) === true
-								}
-								labelHoldLate={labelHoldLate === true}
-								labelMarked={
-									row.record.kind === "tool" &&
-									labelMarked?.has(row.record.toolCallId) === true
-								}
-								foot={
-									suppressClosingLine ? null : (feet.get(row.record.id) ?? null)
-								}
-								closingLineSuppressed={suppressClosingLine}
-								undelivered={undelivered}
-								answerRail={answerRail}
-								stopping={stopping === true}
-								settledSound={settledSoundRowIds.has(row.record.id)}
-								onInterruptTurn={onInterruptTurn}
-							/>
-						))
-					}
-				/>
-			</TraceFold>
+				<div className={GAP[group.gap][isSmallView ? 1 : 0]}>
+					{/*
+					 * THE TURN'S HEAD, WHEN THE HEAD IS INSIDE THIS RUN. A folded run
+					 * unmounts the rows it holds, so the head row cannot draw the
+					 * agent's picture itself while the fold is closed - and this bar
+					 * is then the turn's first line. The rows inside never draw it
+					 * (`opensTurn` is not passed to them), so opening the fold does
+					 * not produce a second copy.
+					 */}
+					{opensTurn && agentMark ? (
+						<MessageAvatar mark={agentMark} name={agentName} />
+					) : null}
+					<TraceFold
+						/*
+						 * The fold carries its first row's gap (a turn's 32px when
+						 * the run opens the turn), and every row inside it sits at
+						 * the trace tier - the fold holds the WHOLE run, D8. The gap
+						 * itself is on the menu wrapper above now, which is this
+						 * element's only box-level parent.
+						 */
+						recordIds={group.rows.map((row) => row.record.id)}
+						summary={group.summary}
+						span={group.span}
+						live={group.live}
+						/*
+						 * THE READER'S OPEN STATE, held by the conversation rather than by
+						 * the fold (operator report, 2026-09-27): the fold's React key is
+						 * its first row, and the render window's leading edge walks through
+						 * a run as rows arrive, which remounts the fold - state kept on the
+						 * instance cannot survive that, and the fold re-collapsed under the
+						 * reader. The registry answers for the fold's CURRENT id set and
+						 * migrates with it.
+						 */
+						open={foldOpenOf(
+							foldOpen.entries,
+							group.rows.map((row) => row.record.id),
+						)}
+						onOpenChange={(next) =>
+							setFoldOpenFor(
+								group.rows.map((row) => row.record.id),
+								next,
+							)
+						}
+						/*
+						 * The run's images, while the rows that draw them are unmounted.
+						 * Rendered only while the fold is condensed, and not passed at all
+						 * for a run that produced none - the overwhelmingly common case, and
+						 * the reason a group with no images is byte-for-byte the group it was.
+						 */
+						condensedMedia={
+							group.images.length > 0
+								? (expand: () => void) => (
+										<FoldMedia
+											images={group.images}
+											scope={mediaScope}
+											onRevealMore={expand}
+											uncapped={soleImageGroup}
+										/>
+									)
+								: undefined
+						}
+						/*
+						 * The count travels beside the node: the header prints it as text,
+						 * because a 64px tile cannot carry a label and the count is what the
+						 * strip's own accessible name already says. `soleImageGroup` is the
+						 * bar's own children's case, with two effects, both keyed to the same
+						 * fact - this group IS the span's whole image story:
+						 *
+						 * - the clause drops (D3/U6): when its count would repeat the bar's
+						 *   number one line above, the BAR keeps the aggregate and the group
+						 *   omits the duplicate; two image-bearing groups make the numbers
+						 *   differ, and then each level states its own;
+						 * - the strip uncaps (U8): the press that opened the bar asked for
+						 *   `the rest`, so this group's strip shows its whole set rather than
+						 *   charging a second press for pictures the reader already asked for.
+						 */
+						mediaCount={soleImageGroup ? 0 : group.images.length}
+					>
+						<DeferredTranscriptRows
+							render={() =>
+								group.rows.map((row, index) => (
+									<TranscriptRow
+										sessionCwd={frontend?.cwd}
+										approvalEpoch={frontend?.epoch ?? null}
+										key={row.record.id}
+										row={index === 0 ? atTraceTier(row) : row}
+										enter={
+											arriving.has(row.record.id) &&
+											row.record.kind !== "assistant"
+										}
+										isSmallView={isSmallView}
+										scope={mediaScope}
+										capable={attachmentsCapable}
+										refusedAttachments={refusedAttachments}
+										conversationId={conversationId}
+										labelPending={
+											row.record.kind === "tool" &&
+											labelPending?.has(row.record.toolCallId) === true
+										}
+										labelHoldLate={labelHoldLate === true}
+										labelMarked={
+											row.record.kind === "tool" &&
+											labelMarked?.has(row.record.toolCallId) === true
+										}
+										foot={
+											suppressClosingLine
+												? null
+												: (feet.get(row.record.id) ?? null)
+										}
+										closingLineSuppressed={suppressClosingLine}
+										undelivered={undelivered}
+										answerRail={answerRail}
+										stopping={stopping === true}
+										settledSound={settledSoundRowIds.has(row.record.id)}
+										onInterruptTurn={onInterruptTurn}
+									/>
+								))
+							}
+						/>
+					</TraceFold>
+				</div>
+			</TranscriptCopyMenu>
 		) : (
 			<TranscriptRow
 				sessionCwd={frontend?.cwd}
+				approvalEpoch={frontend?.epoch ?? null}
 				key={group.row.record.id}
 				row={group.row}
 				enter={
@@ -5827,6 +7525,8 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				}
 				isSmallView={isSmallView}
 				scope={mediaScope}
+				capable={attachmentsCapable}
+				refusedAttachments={refusedAttachments}
 				conversationId={conversationId}
 				labelPending={
 					group.row.record.kind === "tool" &&
@@ -5846,6 +7546,9 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				stopping={stopping === true}
 				settledSound={settledSoundRowIds.has(group.row.record.id)}
 				supplementCondensed={supplementCondensed}
+				opensTurn={opensTurn}
+				agentMark={agentMark}
+				agentName={agentName}
 				onInterruptTurn={onInterruptTurn}
 			/>
 		);
@@ -5853,118 +7556,146 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 
 	const renderEntry = (entry: (typeof chatEntries)[number]) =>
 		entry.kind === "bar" ? (
-			<TurnSummary
-				/*
-				 * Prefixed: the segment's key is a ROW ID (`runsOf`: the closing
-				 * answer's, else the run's last row's; later segments append
-				 * `#<row>`), and the run's groups render as their own children
-				 * elsewhere in the same list - an unprefixed key collided with
-				 * one of them (two children, one key) and React silently
-				 * dropped one of the pair. The prefix also states which
-				 * collided: the replaced slot is not the bar.
-				 */
+			/*
+			 * THE TURN BAR IS A LINE TOO (the same rule as the fold header): its
+			 * context menu offers the bar's own words, derived from the segment
+			 * rather than read out of the DOM. `condenseSentence` is the bar's
+			 * existing model sentence - the settle announcement's - so copy and
+			 * speech cannot state different facts about one bar.
+			 *
+			 * The gap moves onto the trigger wrapper with the fold's: the bar's
+			 * root used to carry it. Children rendered below the bar are inside
+			 * the wrapper, and their own row triggers win the default-prevented
+			 * race documented in `transcript-copy-menu.tsx`.
+			 */
+			<TranscriptCopyMenu
 				key={`turn-summary:${entry.segment.key}`}
-				recordIds={entry.runIds}
-				/*
-				 * The ids THIS bar hides. With several bars in a run, the
-				 * run's ids alone cannot say which bar holds a row, and the
-				 * reveal walk (`failed-row-jump.ts`) would open the FIRST bar
-				 * of the run for a row in the second - one unrequested
-				 * expansion per bar in between.
-				 */
-				segmentIds={entry.segment.segmentIds}
-				/*
-				 * The bar stands where the FIRST hidden row stood, so it
-				 * carries that row's identity: a lookup for the row finds the
-				 * bar that replaced its slot.
-				 */
-				anchorRecordId={entry.segment.firstId}
-				className={GAP[entry.segment.gap][isSmallView ? 1 : 0]}
-				durationS={entry.segment.facts.durationS}
-				actionCount={entry.segment.facts.actions}
-				/*
-				 * The count is a minimum while the segment's head is cut
-				 * (`N+ actions`): see `TurnSummaryFacts.partial` - the bar says
-				 * so in its own vocabulary rather than stating a total it
-				 * cannot know.
-				 */
-				partial={entry.segment.facts.partial}
-				title={entry.segment.facts.title}
-				/*
-				 * The quiet group's own clauses, when this bar is one (design §5):
-				 * the family word arrives as `label`, and the count/span here. The
-				 * bar prints them INSTEAD of `Took`/`N actions` - a group
-				 * counts receipts, not work - and the span is null for a
-				 * head-cut group, which states `N+` and no duration.
-				 */
-				group={
-					entry.segment.facts.group === null
-						? null
-						: {
-								count: entry.segment.facts.group.count,
-								spanS: quietGroupSpanS(entry.segment.facts.group),
-							}
-				}
-				stampTs={entry.segment.stampTs}
-				label={entry.segment.label}
-				completed={entry.segment.completed}
-				episode={
-					entry.segment.internal == null
-						? null
-						: {
-								receipts: entry.segment.internal.receipts,
-								active: entry.segment.internal.live,
-								phaseLine: entry.segment.internal.live
-									? internalPhaseLine
-									: null,
-							}
-				}
-				open={openRuns.has(entry.segment.key)}
-				onOpenChange={(next) =>
-					openBar(entry.segment.key, entry.segment.firstId, next)
-				}
-				/*
-				 * The span's pictures, while the rows that draw them are
-				 * unmounted - the same composition and the same rule as
-				 * `renderGroup`'s: rendered only while collapsed, and not
-				 * passed at all for a run that produced none.
-				 */
-				condensedMedia={
-					entry.images.length > 0
-						? (expand: () => void) => (
-								<FoldMedia
-									images={entry.images}
-									scope={mediaScope}
-									onRevealMore={expand}
-									indent="flush"
-								/>
-							)
-						: undefined
-				}
-				mediaCount={entry.images.length}
+				text={condenseSentence(entry.segment)}
+				markdown={condenseSentence(entry.segment)}
 			>
-				{entry.children.map((child, index) =>
-					/*
-					 * The first hidden group drops to the trace tier, the way
-					 * `TraceFold` demotes its first row: the bar replaces the
-					 * group's slot, so the group cannot also keep the turn-tier
-					 * margin it earned as the turn's opener (D2). Every other
-					 * group keeps the gap the unfolded list gave it.
-					 *
-					 * The third argument is the span's sole-image-group fact,
-					 * named with both of its effects at the parameter's own
-					 * comment: D3/U6's duplicate rule for the clause, and
-					 * U8's uncapped strip so one press reaches the rest.
-					 */
-					renderGroup(
-						index === 0 ? atTraceTierGroup(child) : child,
-						true,
-						child.kind === "run" &&
-							entry.images.length > 0 &&
-							child.images.length === entry.images.length,
-					),
-				)}
-			</TurnSummary>
+				<div className={GAP[entry.segment.gap][isSmallView ? 1 : 0]}>
+					{/*
+					 * THE TURN'S HEAD, WHEN THE TURN IS COLLAPSED TO THIS BAR. The bar
+					 * stands in the slot of the first row it hides (`anchorRecordId`), so
+					 * when that row is the turn's head the picture belongs here - and the
+					 * groups rendered inside the bar never draw it, so opening the bar
+					 * does not add a second copy.
+					 */}
+					{slotCarriesTurnHead(entrySlotRows(entry), turnHeads) && agentMark ? (
+						<MessageAvatar mark={agentMark} name={agentName} />
+					) : null}
+					<TurnSummary
+						/*
+						 * Prefixed: the segment's key is a ROW ID (`runsOf`: the closing
+						 * answer's, else the run's last row's; later segments append
+						 * `#<row>`), and the run's groups render as their own children
+						 * elsewhere in the same list - an unprefixed key collided with
+						 * one of them (two children, one key) and React silently
+						 * dropped one of the pair. The prefix also states which
+						 * collided: the replaced slot is not the bar.
+						 */
+						recordIds={entry.runIds}
+						/*
+						 * The ids THIS bar hides. With several bars in a run, the
+						 * run's ids alone cannot say which bar holds a row, and the
+						 * reveal walk (`failed-row-jump.ts`) would open the FIRST bar
+						 * of the run for a row in the second - one unrequested
+						 * expansion per bar in between.
+						 */
+						segmentIds={entry.segment.segmentIds}
+						/*
+						 * The bar stands where the FIRST hidden row stood, so it
+						 * carries that row's identity: a lookup for the row finds the
+						 * bar that replaced its slot.
+						 */
+						anchorRecordId={entry.segment.firstId}
+						durationS={entry.segment.facts.durationS}
+						actionCount={entry.segment.facts.actions}
+						/*
+						 * The count is a minimum while the segment's head is cut
+						 * (`N+ actions`): see `TurnSummaryFacts.partial` - the bar says
+						 * so in its own vocabulary rather than stating a total it
+						 * cannot know.
+						 */
+						partial={entry.segment.facts.partial}
+						title={entry.segment.facts.title}
+						/*
+						 * The quiet group's own clauses, when this bar is one (design §5):
+						 * the family word arrives as `label`, and the count/span here. The
+						 * bar prints them INSTEAD of `Took`/`N actions` - a group
+						 * counts receipts, not work - and the span is null for a
+						 * head-cut group, which states `N+` and no duration.
+						 */
+						group={
+							entry.segment.facts.group === null
+								? null
+								: {
+										count: entry.segment.facts.group.count,
+										spanS: quietGroupSpanS(entry.segment.facts.group),
+									}
+						}
+						stampTs={entry.segment.stampTs}
+						label={entry.segment.label}
+						completed={entry.segment.completed}
+						episode={
+							entry.segment.internal == null
+								? null
+								: {
+										receipts: entry.segment.internal.receipts,
+										active: entry.segment.internal.live,
+										phaseLine: entry.segment.internal.live
+											? internalPhaseLine
+											: null,
+									}
+						}
+						open={openRuns.has(entry.segment.key)}
+						onOpenChange={(next) =>
+							openBar(entry.segment.key, entry.segment.firstId, next)
+						}
+						/*
+						 * The span's pictures, while the rows that draw them are
+						 * unmounted - the same composition and the same rule as
+						 * `renderGroup`'s: rendered only while collapsed, and not
+						 * passed at all for a run that produced none.
+						 */
+						condensedMedia={
+							entry.images.length > 0
+								? (expand: () => void) => (
+										<FoldMedia
+											images={entry.images}
+											scope={mediaScope}
+											onRevealMore={expand}
+											indent="flush"
+										/>
+									)
+								: undefined
+						}
+						mediaCount={entry.images.length}
+					>
+						{entry.children.map((child, index) =>
+							/*
+							 * The first hidden group drops to the trace tier, the way
+							 * `TraceFold` demotes its first row: the bar replaces the
+							 * group's slot, so the group cannot also keep the turn-tier
+							 * margin it earned as the turn's opener (D2). Every other
+							 * group keeps the gap the unfolded list gave it.
+							 *
+							 * The third argument is the span's sole-image-group fact,
+							 * named with both of its effects at the parameter's own
+							 * comment: D3/U6's duplicate rule for the clause, and
+							 * U8's uncapped strip so one press reaches the rest.
+							 */
+							renderGroup(
+								index === 0 ? atTraceTierGroup(child) : child,
+								true,
+								child.kind === "run" &&
+									entry.images.length > 0 &&
+									child.images.length === entry.images.length,
+							),
+						)}
+					</TurnSummary>
+				</div>
+			</TranscriptCopyMenu>
 		) : (
 			/*
 			 * The first group under a bar re-tiers to the item step;
@@ -5986,27 +7717,73 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					runIsCondensed(entry.supplementRun, openRuns, {
 						artifactOwner: entry.group.row.record.anchor,
 					}),
+				/*
+				 * The group's SLOT is the turn's head when the record its slot
+				 * stands at is a head; a row group's content is that row, and a
+				 * run's is its first row (the one the fold unmounts).
+				 */
+				slotCarriesTurnHead(entrySlotRows(entry), turnHeads),
 			)
 		);
 
-	return (
+	/**
+	 * The transcript's copy shortcut: `Mod+Shift+C` copies the FOCUSED message
+	 * row's visible text, or the current selection when no row is focused.
+	 *
+	 * WHY THE ROW WINS. The reader's focus names one message, and a stale or
+	 * accidental highlight elsewhere must not decide what "copy the message I am
+	 * on" means. With no row focused the scroller itself is the stop, and then
+	 * the highlight is the only subject there is. It does not move focus, and it
+	 * announces through the app's existing info toast - the same channel the
+	 * jump refusals use.
+	 */
+	const copyRecordById = useMemo(
+		() =>
+			new Map(transcript.records.map((record) => [record.id, record] as const)),
+		[transcript.records],
+	);
+	const handleTranscriptKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+		if (!(event.metaKey || event.ctrlKey) || !event.shiftKey) return;
+		if (event.key.toLowerCase() !== "c") return;
+		const target = event.target;
+		const row =
+			target instanceof Element
+				? target.closest<HTMLElement>("[data-lo-message-row]")
+				: null;
+		const recordId = row?.dataset.recordId;
+		const record = recordId ? copyRecordById.get(recordId) : undefined;
+		const text = record
+			? copyTextForRecord(record)
+			: (window.getSelection()?.toString().trim() ?? "");
+		if (text.length === 0) return;
+		event.preventDefault();
+		void copyTarget(text).then((ok) => {
+			if (ok) showInfoToast(t("ui.common.actions.copied"));
+		});
+	};
+
+	const transcriptColumn = (
 		/*
 		 * The pane COLUMN, and the scroll box is one child of it.
 		 *
-		 * Why the extra level: the stale caption has to sit OUTSIDE the scrolling
-		 * content (design review round 1, D1). It used to be the first child of the
-		 * measured content box inside a bottom-anchored `flex-col-reverse` scroller,
-		 * which put it at the visual TOP of the content - measured on a 36-row stale
-		 * transcript at 1280x600, its rect was top -2028 in a 560px viewport, i.e.
-		 * 2028px above the fold and unreachable without scrolling the whole
-		 * conversation. The cache is written on unmount, so it only ever holds
-		 * conversations taller than the pane, which makes that the COMMON case
-		 * rather than an edge, and the affordance M2 exists for (the pane is
-		 * distinguishable by being wrong) was invisible exactly when it was needed.
+		 * Why the extra level: the pane's own statements (the failure notice, the
+		 * source-unavailable notice) have to sit OUTSIDE the scrolling content so
+		 * they stay visible while a long transcript scrolls.
 		 *
-		 * `@container/chatcol` moves here with it: the caption uses the shared
-		 * measure, whose variants are written against this container, and a caption
-		 * that sat outside its own container would simply not see them.
+		 * THE STALE CAPTION IS NOT ONE OF THEM ANY MORE. It used to be the column's
+		 * first child, because inside the scroller it was the OLDEST thing in a
+		 * bottom-anchored `flex-col-reverse` box (measured on a 36-row stale
+		 * transcript at 1280x600: top -2028 in a 560px viewport). Hoisting it fixed
+		 * that and cost a layout move: its removal when the page landed grew the
+		 * scroller by its own height (33.4px), moving a short, top-aligned transcript
+		 * and the pane's top edge. It now lives in the FOOT slot, the NEWEST edge of
+		 * the same scroller, which is mounted for every conversation with rows and
+		 * so costs nothing when the caption goes (see the foot slot below). The
+		 * -2028px case does not recur there - the foot is where a tail-pinned reader
+		 * is looking - and the trade is that a reader who scrolls up through the
+		 * cached rows during the snapshot wait scrolls the caption off screen.
+		 *
+		 * `@container/chatcol` lives here for the shared measure the notices use.
 		 *
 		 * `collapsed` still owns the pane's height, one level down, and the wrapper
 		 * collapses with it so a collapsed pane cannot leave the caption behind as
@@ -6023,36 +7800,28 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		<div
 			className={cn(
 				CHAT_COLUMN_CONTAINER,
+				/*
+				 * No transition on this flip (QA round 1, Q3): reduced motion's global
+				 * 0.01 ms cap turns the initial `transition-property: all` into a
+				 * one-frame transition, which painted the first send with this column
+				 * still collapsed (64 px) and the echo under the header - the composer
+				 * band carries the same class for the same reason.
+				 */
+				"transition-none",
 				collapsed
 					? "relative h-0 grow-0 overflow-hidden"
-					: "relative flex min-h-0 grow flex-col",
+					: // `min-h-16`, not `min-h-0`: the docked ask (70% of the column, see
+						// `chat-content.tsx`) may squeeze the transcript, but never to
+						// nothing - a few rows of the conversation stay as context for
+						// the question (ask-card QA round 2, Q1). `basis-0` (via
+						// `flex-1`): the transcript takes only LEFTOVER space and never
+						// competes with the dock by basis. With a content basis the two
+						// shared a deficit in proportion, so the dock's proposal summary
+						// shrank to one line while the transcript still sat 56 px above
+						// its floor (ask-card design round 2, D6/S1).
+						"relative flex min-h-16 flex-1 basis-0 flex-col",
 			)}
 		>
-			{stale && !holdPlaceholder && (
-				/*
-				 * Pinned to the pane's top edge, in the flow rather than over it: it
-				 * takes its own row and no row of the conversation is ever painted
-				 * under it. `shrink-0` so a tall neighbour cannot squeeze it away, and
-				 * the same horizontal inset as the scroller's own padding so the two
-				 * share a centre.
-				 *
-				 * AND IT STANDS DOWN WHILE THE PANE HOLDS. `stale` is still true for
-				 * a cached paint whose page is owed - that is the flag the hold reads
-				 * - and while the hold is up NOTHING of the cached paint is on screen
-				 * (the rows are gated out below), so a caption describing it would be
-				 * the pane talking about a view nobody can see. The two go away
-				 * together, which is the rule this element was introduced under; the
-				 * hold is just the case where "together" means "neither yet".
-				 */
-				<p
-					className={cn(
-						"shrink-0 px-4 pt-4 text-ink-dim text-meta",
-						CHAT_MEASURE,
-					)}
-				>
-					Showing the last saved view — checking for newer messages.
-				</p>
-			)}
 			{/*
 			 * THE SOURCE-UNAVAILABLE NOTICE (design round 1, §1/§2). A polite,
 			 * NON-TERMINAL statement: the conversation is readable, its durable rows
@@ -6083,8 +7852,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						)}
 					>
 						<p className="text-body-sm text-warning">
-							This conversation is readable, but its message order couldn't be
-							confirmed with the source just now.
+							{t("ui.chat.canonical.transcript.source_unavailable")}
 						</p>
 						{/*
 						 * The SAME control the failure notice carries, not a new one: same prop,
@@ -6093,7 +7861,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						 * name. Pressing it clears the flag at once (see `reopen`).
 						 */}
 						<Button variant="outline" size="sm" onClick={onReconnect}>
-							Reconnect
+							{t("ui.chat.canonical.transcript.reconnect")}
 						</Button>
 					</output>
 				)}
@@ -6102,9 +7870,9 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			 * of it — an absolutely-positioned child of an `overflow: auto` box
 			 * scrolls away with the content it is supposed to index. This wrapper
 			 * exists to give the two a box whose height IS the scroller's: the
-			 * column also holds the stale-conversation caption above (when it
-			 * paints), and `inset-y-0` against the column would draw the rail over
-			 * that caption. Layout is the wrapper's only job: it takes the
+			 * column also holds the pane's notices above it (when they
+			 * paint), and `inset-y-0` against the column would draw the rail over
+			 * them. Layout is the wrapper's only job: it takes the
 			 * scroller's place in the column's flex (`min-h-0 grow`) and hands it
 			 * straight back, so the scroll box's own box, its reserved gutter and
 			 * the bottom anchor all behave exactly as before.
@@ -6142,7 +7910,6 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					onJump={jumpToCheckpoint}
 					onHover={handleCheckpointHover}
 				/>
-				{/* biome-ignore lint/a11y/useKeyWithClickEvents: the click is a pointer gesture that hands the caret to the composer, which the keyboard already reaches with Tab; the transcript's own keys are its paging keys (Home/PageUp/ArrowUp), and adding a key that moved focus would take them away. */}
 				<div
 					ref={containerRef}
 					data-lo-canonical-transcript={true}
@@ -6220,7 +7987,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					data-lo-dom-window={domWindow.enabled ? "on" : "off"}
 					data-lo-dom-window-reason={domWindow.reason}
 					data-lo-dom-pinned={domWindow.pinned}
-					aria-label={CHAT_REGION_LABEL.transcript}
+					aria-label={chatRegionLabel("transcript")}
 					// Only the `windowed` branch renders that id, so the description has to
 					// track the branch rather than the looser "history exists" condition it
 					// was derived from: `hasMore` with no hidden rows yields `idle`, whose
@@ -6242,6 +8009,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					onPointerDown={handleTranscriptPointerDown}
 					onWheel={handleTranscriptWheel}
 					onClick={handleTranscriptClick}
+					onKeyDown={handleTranscriptKeyDown}
 					className={cn(
 						// `min-h-0`, not `h-full`: this is the flex child that must absorb
 						// the column's leftover height. `h-full` resolves its flex base to
@@ -6294,7 +8062,29 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						{condenseAnnouncement}
 					</output>
 					<div
+						ref={contentRef}
 						data-lo-transcript-content
+						/*
+						 * THE COLUMN'S ONE SELECTION FACT (operator report, 2026-10-19).
+						 *
+						 * `selectionActive` is already derived here, on `selectionchange`,
+						 * against this scroller - one listener, one answer. Every selection
+						 * toolbar in the transcript reads that same event, but each used to
+						 * act on its own reading, and the row's own cluster acted on none of
+						 * them: a drag therefore painted the selection strip AND the answer's
+						 * Copy/Speak/Fork row at once (measured: 84 of 87 drag frames on the base tree). The
+						 * marker publishes the one answer to the stylesheet, which hides every
+						 * row cluster while it is set - synchronous with this commit, because
+						 * the attribute and the hidden cluster are in the same paint.
+						 *
+						 * It is NOT the same fact as `data-lo-selection-active` on a row: that
+						 * one says "a strip owns THIS row's seat" and drives the inert/
+						 * aria-hidden writes; this one says "a selection exists in the
+						 * transcript, so the row toolbars are not the toolbar". Both are kept,
+						 * and the stylesheet keys the cluster rule off this one because it is
+						 * true for a selection the quote toolkit does not own as well.
+						 */
+						{...(selectionActive ? { "data-lo-selection-live": "" } : {})}
 						/*
 						 * `mb-auto` IS THE TOP ANCHOR, and it is a mechanism rather than a nudge.
 						 *
@@ -6311,13 +8101,25 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						 * `scrollable`-conditioned `justify-end`, which would need a threshold to
 						 * tune and could oscillate around the fill point.
 						 *
+						 * AND IT IS WITHDRAWN WHILE THE ROWS ARE A STALE CACHED FRAGMENT
+						 * (`topAnchor`, from `paint-top-anchor.ts`). "Only while it fits" is the
+						 * defect on that path: a cached suffix often fits the pane, and the page
+						 * that replaces it usually does not, so the margin would resolve to zero
+						 * at the moment the page lands and every row would jump by the leftover
+						 * height. Bottom-packing the fragment from its first frame is the same
+						 * layout the page will leave behind, so the landing moves nothing.
+						 *
 						 * The empty state is untouched by it: a collapsed pane is `h-0` (see
 						 * `collapsed` above), so there is no free space for a margin to absorb
 						 * and the centred splash is unaffected. And a transcript shorter than the
 						 * pane never scrolls, so the mask stays inert (the ramp note in
 						 * `styles/index.css`).
 						 */
-						className={cn("mb-auto flex flex-col", CHAT_MEASURE)}
+						className={cn(
+							"relative flex flex-col",
+							topAnchor && "mb-auto",
+							CHAT_MEASURE,
+						)}
 					>
 						{/* The state this element exists for: the frame BEFORE the conversation's
 				    first page, when there is nothing of it to paint yet - either because
@@ -6327,8 +8129,16 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				    Rendered inside the content column so it lands at the same inset and the
 				    same bottom anchor the rows will, rather than at the pane's centre in
 				    the composer band. */}
+						{/* A peer's conversation says "syncing" only while its history is
+				    unproven, the same gate as the older slot's row below: the hold
+				    can also be the LOCAL settings-filter wait (`holdFiltering`) over
+				    a peer conversation already read, and that is not a sync (code
+				    review round 1, C2). */}
 						{holdPlaceholder && (
-							<TranscriptPlaceholder isSmallView={isSmallView} />
+							<ConversationLoadingIndicator
+								variant={remote && !hydrationProven ? "remote" : "cold"}
+								isSmallView={isSmallView}
+							/>
 						)}
 						{/* Older rows: durable pages, then the local window. One fixed-height
 				    slot for every state of both, so a state change above the oldest
@@ -6350,17 +8160,30 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				    cursor (its rows are trimmed), which the slot reads as `exhausted`
 				    and says "Start of conversation" over a transcript that may be a
 				    thousand messages in. Measured on a captured frame, not inferred.
-				    The caption above already says the view is not authoritative.
+				    The loading indicator in the foot slot below already says the view is
+				    still being checked.
 				    AND NOT WHILE THE FILTER IS HELD (`holdFiltering`): the slot is the
 				    top of a conversation, and a conversation whose rows are withheld for
 				    a settings answer is not a conversation this pane has painted. The
 				    two land in the same commit, which is the whole point of the hold. */}
+						{transcript.records.length > 0 &&
+							stale &&
+							!missing &&
+							!holdFiltering && <OlderHistorySlotReserve />}
 						{transcript.records.length > 0 &&
 							!stale &&
 							!missing &&
 							!holdFiltering && (
 								<OlderHistorySlot
 									state={slotState}
+									/* For a peer's conversation whose history is not yet proven,
+									 * the slot's pending row IS the sync (the `unproven` arm's
+									 * retry, or the warm re-arm's walk), so it says so; once a
+									 * page has proven the history, an earlier page is an ordinary
+									 * older-page load. */
+									loadingVariant={
+										remote && !hydrationProven ? "remote" : "older"
+									}
 									// A retry cannot succeed while the transport is down, and the
 									// transcript's own notice below already explains why. The slot
 									// drops its gesture hint rather than stacking a second claim on
@@ -6378,27 +8201,20 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 							)}
 
 						{/*
-						 * THE STALE CAPTION IS NOT PAINTED IN HERE ANY MORE (design round 2,
-						 * D10). It is hoisted above the scroller — see the `stale` paragraph near
-						 * the top of this component — and the second, legacy copy that used to sit
-						 * at this spot rendered the SAME sentence twice on every short pane: once
-						 * pinned to the pane's top edge, once immediately above the first bubble.
-						 * A long transcript hid it above the fold, which is why only the ordinary
-						 * and narrow fixtures showed the duplication while the overflowing one
-						 * passed.
+						 * THE STALE INDICATOR IS NOT PAINTED IN HERE EITHER (design round 2, D10):
+						 * it is stated ONCE, in the foot slot below, and `stale-caption.test.mjs`
+						 * counts it. An earlier shape painted the same sentence twice on every
+						 * short pane - once pinned above the scroller, once immediately above the
+						 * first bubble - and a long transcript hid the second copy above the
+						 * fold, which is why only the ordinary and narrow fixtures showed it.
 						 *
 						 * This surface's contract is ONE caption for one status, and a status the
-						 * reader has already read is not improved by being repeated, so the
-						 * in-scroll copy is the one that goes. The hoisted one is kept because it
-						 * survives not scrolled to the top, which was the original D1 defect.
+						 * reader has already read is not improved by being repeated.
 						 *
-						 * The loading skeleton is not rendered here either: it is
-						 * `TranscriptPlaceholder`, inside the content column above, because the
-						 * pane's own decision module (`transcript-pane.ts`) is the single
-						 * authority for when a row-less pane holds a placeholder — and because the
-						 * ground the old inline bars used (`sunken`, the weakest adjacent step in
-						 * most palettes) was measured against the pane's `canvas` and replaced
-						 * with `elevated` there.
+						 * The cold loading state is not rendered here either: it is the shared
+						 * `ConversationLoadingIndicator`, inside the content column above, because
+						 * the pane's own decision module (`transcript-pane.ts`) is the single
+						 * authority for when a row-less pane holds a placeholder.
 						 */}
 						{missing ? (
 							/*
@@ -6423,25 +8239,72 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 								<p
 									id={MISSING_SESSION_NOTICE_ID}
 									className="text-body-sm text-ink"
+									data-missing-session-notice={missingNotice.kind}
 								>
-									This conversation is no longer on this machine.
+									{t(missingNotice.title)}
 								</p>
 								<p className="text-ink-dim text-meta">
-									It was deleted, or it belongs to a machine this app is not
-									connected to.
+									{t(missingNotice.detail)}
 								</p>
-								<Button
-									variant="outline"
-									size="sm"
-									className="self-start"
-									onClick={() => {
-										// Read at click time rather than subscribed: this component
-										// must not re-render every time the catalogue does.
-										useCanonicalSessionsStore.getState().setActiveSession(null);
-									}}
-								>
-									Start a new chat
-								</Button>
+								{missingNotice.kind === "temporary" ? (
+									<div className="flex flex-wrap gap-2">
+										{missingNotice.actions.map((action) => (
+											<Button
+												key={action.key}
+												variant="outline"
+												size="sm"
+												data-temporary-tombstone-action={
+													action.temporary ? "new" : "back"
+												}
+												onClick={() => {
+													// The generic press's own path (the draft follows the
+													// reader, the address leaves the dead id), with the
+													// temporary switch on for "New temporary chat".
+													const store = useCanonicalSessionsStore.getState();
+													const key = store.startNewChat(conversationId);
+													if (action.temporary)
+														store.setDraftTemporary(key, true);
+													onStartNewChat?.();
+												}}
+											>
+												{t(action.key)}
+											</Button>
+										))}
+									</div>
+								) : (
+									<Button
+										variant="outline"
+										size="sm"
+										className="self-start"
+										/*
+										 * THE WORDS THE DEAD CONVERSATION'S BOX HELD FOLLOW THE READER
+										 * (the operator's report, 2026-10-23). Clearing the selection alone
+										 * left no draft at all: the pane fell to its residue arm and the text
+										 * stayed filed under the conversation that is gone - present on disk,
+										 * addressed by nothing on screen. `startNewChat` is the store's own
+										 * answer to that rule (a draft follows the user back, or it is
+										 * discarded), and `conversationId` is the identity this pane's composer
+										 * uses - the same value `composerIdentityFor` answers here, threaded as
+										 * the pane's identity, never recomputed from the draft and session ids.
+										 */
+										onClick={() => {
+											// Read at click time rather than subscribed: this component
+											// must not re-render every time the catalogue does.
+											useCanonicalSessionsStore
+												.getState()
+												.startNewChat(conversationId);
+											/*
+											 * AND THE ADDRESS FOLLOWS (agent review round 1 / QA round 1,
+											 * Q1): the store has staged the new chat and cleared the dead
+											 * selection, so leaving the route on the dead id would make a
+											 * reload re-open the conversation this press just left.
+											 */
+											onStartNewChat?.();
+										}}
+									>
+										{t("ui.chat.canonical.transcript.start_new_chat")}
+									</Button>
+								)}
 							</div>
 						) : null}
 
@@ -6477,7 +8340,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 								<p className="text-body-sm text-danger">{failure.statement}</p>
 								{failure.action === "reconnect" && (
 									<Button variant="outline" size="sm" onClick={onReconnect}>
-										Reconnect
+										{t("ui.chat.canonical.transcript.reconnect")}
 									</Button>
 								)}
 							</div>
@@ -6486,16 +8349,18 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 							// Reading register, not the caption step: during the retry window
 							// this is the pane's only statement, and it has to be perceivable
 							// (design round 1, D3).
-							<p className="mb-4 text-body-sm text-ink-dim">Reconnecting</p>
+							<p className="mb-4 text-body-sm text-ink-dim">
+								{t("ui.chat.canonical.transcript.reconnecting")}
+							</p>
 						)}
 
 						{/* Rows are suppressed for a conversation that is not there: the pane
 				    must not paint its last memory of a session the backend says is
 				    gone, because nothing on screen could then be trusted and there is
-				    no state to reconcile to - and for one that is still ARRIVING: a
-				    `holdPlaceholder` pane has the cached paint in state and nothing of
-				    it on screen, so the page that ends the hold brings the rows and the
-				    readings in ONE commit instead of correcting a painted guess. */}
+				    no state to reconcile to - and for one that is still ARRIVING with
+				    nothing to show (`holdPlaceholder`: no records, a page owed) or with
+				    the settings answer owed (`holdFiltering`). A CACHED paint is neither:
+				    its rows paint at once, labelled by the caption in the foot slot. */}
 						{!missing && !holdPlaceholder && !holdFiltering && (
 							/*
 							 * THE PANE THIS CONVERSATION'S LINKS OPEN INTO, provided once for the
@@ -6513,7 +8378,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 							 * they had and nothing about their tree changes shape.
 							 */
 							<TranscriptViewStateContext.Provider
-								key={`${foldSession.current}:${transcript.viewEpoch}`}
+								key={`${foldKey}:${transcript.viewEpoch}`}
 								value={viewState.current.store}
 							>
 								<CanvasPaneProvider conversationId={conversationId}>
@@ -6613,7 +8478,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 													key={slot.key}
 													entryKey={slot.key}
 													signature={descriptor.signature}
-													sessionKey={`${foldSession.current}:${transcript.viewEpoch}`}
+													sessionKey={`${foldKey}:${transcript.viewEpoch}`}
 													expanded={facts[0].open}
 													anchorHeader={
 														facts[0].candidate ||
@@ -6677,32 +8542,64 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						 * older-history slot's reason exactly: a working line speaks for the run
 						 * above it, and this pane has not painted that run yet.
 						 */}
-						{transcript.records.length > 0 &&
-							!stale &&
-							!missing &&
-							!holdFiltering && (
-								<div
-									data-lo-transcript-foot={true}
-									className={cn(
-										// On the `item` tier, not a tier of its own: the working line is
-										// the foot of the run above it and shares that run's rhythm. It
-										// takes slightly more than `trace` because it is the one row that
-										// is not a completed action, and slightly less than a turn
-										// boundary because the turn has not ended.
-										GAP.item[isSmallView ? 1 : 0],
-										"min-h-[1lh] font-mono text-mono-sm",
-									)}
-								>
-									{working && !internalLiveLeaf && (
-										<WorkingLine
-											activity={working.activity}
-											phase={working.phase}
-											startedAt={working.startedAt}
-											clock={working.clock}
+						{transcript.records.length > 0 && !missing && !holdFiltering && (
+							<div
+								data-lo-transcript-foot={true}
+								className={cn(
+									// On the `item` tier, not a tier of its own: the working line is
+									// the foot of the run above it and shares that run's rhythm. It
+									// takes slightly more than `trace` because it is the one row that
+									// is not a completed action, and slightly less than a turn
+									// boundary because the turn has not ended.
+									GAP.item[isSmallView ? 1 : 0],
+									"min-h-[1lh] font-mono text-mono-sm",
+								)}
+							>
+								{working && !internalLiveLeaf ? (
+									/*
+									 * THE WORKING LINE WINS THE SLOT (UX review, 2026-11-12, U4).
+									 * Both claims are true while a cached paint of a running turn
+									 * revalidates, and the run is the one that matters: "the agent is
+									 * working" outranks "this view is being checked", and the
+									 * snapshot withdraws the working line if the turn has ended. The
+									 * slot is the same box either way, so the order costs no layout.
+									 */
+									<WorkingLine
+										activity={working.activity}
+										phase={working.phase}
+										startedAt={working.startedAt}
+										clock={working.clock}
+									/>
+								) : stale && showStaleCaption ? (
+									/*
+									 * The cached paint's revalidation, as the shared loading
+									 * indicator (operator 2026-11-11: the faint `ink-dim`
+									 * sentence that stood here was easy to miss and did not read
+									 * as loading). Its line box is one `text-meta` line, 12px x
+									 * 1.45 = 17.4px, which is exactly this row's `1lh` reserve
+									 * (`text-mono-sm`, also 12px x 1.45), so it fills the slot
+									 * without growing it. `data-lo-stale-caption` stays as the
+									 * probe name the switch-latency rig and the tests read.
+									 * "Remote" behind the same proof gate as the cold slot and
+									 * the older slot, so the three never disagree.
+									 *
+									 * HELD FOR A MOMENT FIRST (operator report, 2026-11-12):
+									 * with the rows already readable, the indicator used to
+									 * flash on every switch to a conversation this window
+									 * already had - it read as a load that was not happening.
+									 * `showStaleCaption` is the hold; if the snapshot lands
+									 * first, this never renders at all.
+									 */
+									<div data-lo-stale-caption={true}>
+										<ConversationLoadingIndicator
+											variant={
+												remote && !hydrationProven ? "remote" : "revalidating"
+											}
 										/>
-									)}
-								</div>
-							)}
+									</div>
+								) : null}
+							</div>
+						)}
 
 						{/*
 						 * NO GATE HERE. The pending question used to render as this list's
@@ -6712,6 +8609,23 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						 * `gate` is still read above, by the working line: a pending question
 						 * outranks the wait line, and that decision is the pane's.
 						 */}
+
+						{/* THE PARTIAL SELECTION'S OWN CONTROL. The shared toolbar, mounted
+						 * once for the whole column: a selection can span rows, and a
+						 * per-row mount would put one strip per row the drag touched. It
+						 * floats over the text (absolute, zero flow height), offers Copy
+						 * and Speak, and deliberately no Reply - the transcript's own
+						 * composer is where a reply belongs, and the quote toolkit above
+						 * already raises that one from a selection. */}
+						<TextSelectionControls
+							targetRef={contentRef}
+							scrollableContainerRef={containerRef}
+							showCopy
+							showSpeech={Boolean(conversationId)}
+							showReply={false}
+							agentId={conversationId}
+							conversationId={conversationId}
+						/>
 
 						{/* No empty state here. The composer already owns it: it renders
 				    "What can I help you with today?" with the suggestion grid on
@@ -6743,5 +8657,17 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				/>
 			)}
 		</div>
+	);
+	/*
+	 * THE FLAG LINES' DATA AND IN-VIEW READER are provided around the whole
+	 * column (notifications contract § 6.4): one read of this conversation's
+	 * items and one input listener per transcript, not per row. Without
+	 * `features.notifications` the provider supplies nothing and every row
+	 * renders exactly as before.
+	 */
+	return (
+		<FlagLinesProvider sessionId={sessionId}>
+			{transcriptColumn}
+		</FlagLinesProvider>
 	);
 };

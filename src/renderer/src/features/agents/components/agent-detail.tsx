@@ -23,7 +23,12 @@
  * focuses the name, and suggests a name that cannot collide.
  */
 
-import { desktopResult } from "@shared/api/local-operator/desktop-api";
+import { AgentMark } from "@shared/agent-avatar/agent-mark";
+import {
+	DesktopControlError,
+	desktopResult,
+	userFacingMessage,
+} from "@shared/api/local-operator/desktop-api";
 import type {
 	ReusableProfile,
 	ReusableTeam,
@@ -33,6 +38,7 @@ import {
 	AlertDescription,
 	AlertTitle,
 } from "@shared/components/ui/alert";
+import { AgentAvatar, AvatarFallback } from "@shared/components/ui/avatar";
 import { Badge } from "@shared/components/ui/badge";
 import { Button } from "@shared/components/ui/button";
 import { Disclosure } from "@shared/components/ui/disclosure";
@@ -53,13 +59,15 @@ import {
 } from "@shared/components/ui/select";
 import { Switch } from "@shared/components/ui/switch";
 import { Textarea } from "@shared/components/ui/textarea";
-import { t } from "@shared/i18n";
+import { USER_TEXT_ALIGN, t, translateRaw, userTextDir } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
-import { LogIn, MoreHorizontal } from "lucide-react";
+import { Bot, LogIn, MoreHorizontal } from "lucide-react";
 import {
 	type FormEvent,
+	type ReactNode,
 	type Ref,
 	useEffect,
 	useId,
@@ -67,6 +75,10 @@ import {
 	useState,
 } from "react";
 import { useNavigate } from "react-router-dom";
+import {
+	DESKTOP_MACHINE_DETAIL,
+	DESKTOP_REFUSAL_CODE,
+} from "../../../../../shared/desktop-contract";
 import {
 	type ActionClass,
 	BUILTIN_SWITCH_DISCLOSURE,
@@ -78,18 +90,19 @@ import {
 	classSwitchFailure,
 	switchAgentClass,
 } from "../utils/agent-class";
+import { agentDescriptionText } from "../utils/agent-description";
 import {
 	type FieldTarget,
 	duplicateNameCandidates,
 	refusalCopy,
 } from "../utils/backend-copy";
+import { AgentAvatarField } from "./agent-avatar-field";
 import {
 	EditFooter,
 	FieldLabel,
 	LINK_HIT_AREA,
 	ReadBlock,
 	Section,
-	TITLE_LINE_HEIGHT,
 	consumeHeadingFocus,
 	requestHeadingFocus,
 	sourceLabel,
@@ -110,6 +123,69 @@ type Draft = {
 };
 
 const TOOL_TOKEN = /^[A-Za-z0-9_.:-]{1,128}$/;
+
+/**
+ * The sentence a failed write hands to `refusalCopy`, in the interface language.
+ *
+ * WHY NOT `caught.message`. When the backend is unreachable main answers with
+ * its own transport sentence (`DESKTOP_MACHINE_DETAIL.transportFailed`, English
+ * by construction: it is a machine vocabulary shared with main, not catalogue
+ * copy), and handing that string on put English on the save alert, the install
+ * alert and the install toast in EVERY language (QA round 1, Q1).
+ *
+ * TWO ARMS, in this order:
+ *  1. The transport failure itself is worded by
+ *     `ui.common.errors.desktop_transport_failed`, the key the sibling read-state
+ *     pane (`missing-definition-error.tsx`) already uses for the same refusal.
+ *     NOT `userFacingMessage`'s own sentence for that code ("The Local Operator
+ *     server did not answer this request."): that key is deliberately worded
+ *     differently (see its context note) and using it would change the English a
+ *     user already reads on this pane.
+ *  2. Every other desktop error goes through `userFacingMessage`: the pairing and
+ *     server-updating refusals become their translated sentences, an authored
+ *     backend refusal (name taken, grammar, instructions...) comes back verbatim
+ *     so `refusalCopy` still recognises and routes it, and a value that is not an
+ *     authored message becomes `fallback` instead of a stack-trace fragment.
+ */
+function writeFailureSentence(caught: unknown, fallback: string): string {
+	if (
+		caught instanceof DesktopControlError &&
+		(caught.code === DESKTOP_REFUSAL_CODE.transportFailed ||
+			(!caught.code &&
+				caught.message === DESKTOP_MACHINE_DETAIL.transportFailed))
+	) {
+		return t("ui.common.errors.desktop_transport_failed");
+	}
+	return userFacingMessage(caught, fallback);
+}
+
+/*
+ * The summary portrait's box: 80px, and borderless - `AgentAvatar` carries a
+ * control border for small marks that the summary's portrait deliberately drops.
+ * Its `bg-sunken` plate is kept, so a picture with transparent pixels and the
+ * empty state sit on the same surface.
+ */
+const SUMMARY_PORTRAIT_CLASS = "size-full border-0";
+
+/**
+ * The summary's plate while there is no picture to paint: no picture saved,
+ * still loading, or bytes that failed to decode. `AgentMark` shows its OWN
+ * `AvatarFallback` only once it has a URL (loading/decode-error), and the
+ * caller's `fallback` before that (no picture). Drawing that same
+ * `AgentAvatar` + `AvatarFallback` here makes all three states one filled,
+ * borderless disc with the local agent glyph (design round 1, D1) - from the
+ * shared surface's tokens, never new colours, and never the owner's photo.
+ * Same pattern as `AgentMarkPlate` in chat-session-avatar.tsx.
+ */
+function SummaryPortraitPlate() {
+	return (
+		<AgentAvatar className={SUMMARY_PORTRAIT_CLASS} data-agent-mark="">
+			<AvatarFallback>
+				<Bot className="size-8" aria-hidden="true" />
+			</AvatarFallback>
+		</AgentAvatar>
+	);
+}
 
 function draftOf(profile: ReusableProfile): Draft {
 	return {
@@ -163,18 +239,20 @@ function changedFields(base: Draft, draft: Draft): Record<string, unknown> {
  * "Proactive" is the roster's word for the class (`CLASS_LABEL`), not a second
  * spelling; reactive is the default and is not said.
  */
-function AgentMeta({ profile }: { profile: ReusableProfile }) {
+export function AgentMeta({ profile }: { profile: ReusableProfile }) {
+	useI18nLocale();
 	const facts = [
 		sourceLabel(profile.source),
 		classOf(profile) === "proactive" ? CLASS_LABEL.proactive : null,
-		profile.delegate ? "Delegates" : null,
-		profile.kind === "specialist" ? "Specialist" : null,
+		profile.delegate ? t("ui.agents.detail.meta.delegates") : null,
+		// One word, one key: the roster's kind label for the same wire value.
+		profile.kind === "specialist" ? t("ui.hub.teams.kind.specialist") : null,
 	].filter(Boolean);
 	return (
 		<div className="flex flex-wrap items-center gap-x-2 gap-y-1">
 			<p className="text-body-sm text-ink-muted">{facts.join(" · ")}</p>
 			{profile.divergent_fields?.length ? (
-				<Badge variant="warning">Modified</Badge>
+				<Badge variant="warning">{t("ui.agents.detail.badge.modified")}</Badge>
 			) : null}
 		</div>
 	);
@@ -245,6 +323,7 @@ function AgentClassControl({
 	/** The record may have moved; re-read it. The same contract `Install` uses. */
 	onChanged: (name: string) => void;
 }) {
+	useI18nLocale();
 	const current = classOf(profile);
 	const [optimistic, setOptimistic] = useState<ActionClass | null>(null);
 	const [pending, setPending] = useState(false);
@@ -298,8 +377,8 @@ function AgentClassControl({
 			onChanged(profile.name);
 			showSuccessToast(
 				next === "proactive"
-					? `${displayedName} is now proactive — it may message you on its own.`
-					: `${displayedName} is now reactive — proactive messaging stopped.`,
+					? t("ui.notices.agents.proactive", { name: displayedName })
+					: t("ui.notices.agents.reactive", { name: displayedName }),
 			);
 		} catch (caught) {
 			/*
@@ -368,10 +447,14 @@ function AgentClassControl({
 				 * the sentence below carries what the state means.
 				 */}
 				<span id={labelId} className="text-ink">
-					Can message me on its own
+					{t("ui.agents.detail.class.label")}
 				</span>
 				<span aria-live="polite" className="text-ink-muted">
-					{pending ? "Switching…" : shown === "proactive" ? "On" : "Off"}
+					{pending
+						? t("ui.agents.detail.read_state.class_switching")
+						: shown === "proactive"
+							? t("ui.agents.detail.read_state.class_on")
+							: t("ui.agents.detail.read_state.class_off")}
 				</span>
 			</div>
 			<p className="text-body-sm text-ink">{CLASS_MEANING[shown]}</p>
@@ -389,7 +472,7 @@ function AgentClassControl({
 					 * complete, and the read above has since put the switch in whatever
 					 * position the backend actually holds.
 					 */}
-					<AlertTitle>The switch did not go through</AlertTitle>
+					<AlertTitle>{t("ui.agents.detail.class.error_title")}</AlertTitle>
 					<AlertDescription>{notice}</AlertDescription>
 				</Alert>
 			) : null}
@@ -418,6 +501,7 @@ function ToolsEditor({
 	onChange: (next: string[] | null) => void;
 	error?: string | null;
 }) {
+	useI18nLocale();
 	const [entry, setEntry] = useState("");
 	const [entryError, setEntryError] = useState<string | null>(null);
 	const inputId = useId();
@@ -426,13 +510,11 @@ function ToolsEditor({
 		const token = entry.trim();
 		if (!token) return;
 		if (!TOOL_TOKEN.test(token)) {
-			setEntryError(
-				"Tool names are letters, digits, dot, underscore, dash or colon.",
-			);
+			setEntryError(t("ui.agents.detail.tools.error_grammar"));
 			return;
 		}
 		if (tools?.includes(token)) {
-			setEntryError("That tool is already listed.");
+			setEntryError(t("ui.agents.detail.tools.error_duplicate"));
 			return;
 		}
 		setEntryError(null);
@@ -446,13 +528,13 @@ function ToolsEditor({
 				<Switch
 					checked={tools === null}
 					onCheckedChange={(checked) => onChange(checked ? null : [])}
-					aria-label="Give this agent every tool"
+					aria-label={t("ui.agents.detail.tools.every_tool_aria")}
 				/>
-				<span>All tools</span>
+				<span>{t("ui.agents.detail.tools.all_label")}</span>
 			</div>
 			{tools === null ? (
 				<p className="text-meta text-ink-muted">
-					This agent may use whatever the session offers.
+					{t("ui.agents.detail.tools.may_use_any")}
 				</p>
 			) : (
 				<>
@@ -465,11 +547,13 @@ function ToolsEditor({
 										<Button
 											variant="ghost"
 											size="sm"
-											aria-label={`Remove ${tool}`}
+											aria-label={t("ui.agents.detail.tools.remove_aria", {
+												tool,
+											})}
 											onClick={() =>
 												onChange(tools.filter((each) => each !== tool))
 											}
-											className="ml-1 h-4 px-1"
+											className="ms-1 h-4 px-1"
 										>
 											×
 										</Button>
@@ -479,21 +563,28 @@ function ToolsEditor({
 						</ul>
 					) : (
 						<p className="text-meta text-ink-muted">
-							No tools yet. Add one below, or turn on All tools.
+							{t("ui.agents.detail.tools.empty")}
 						</p>
 					)}
 					<div className="flex items-end gap-2">
-						<div className="min-w-0 flex-1">
+						{/* `space-y-1`, the create form's field rhythm: flush against the
+						 * input, Urdu's descenders in the label and error ran under the
+						 * input's border and focus ring (ur frames, this fix's round). */}
+						<div className="min-w-0 flex-1 space-y-1">
 							<FieldLabel
-								label="Add a tool"
+								label={t("ui.agents.detail.tools.add_label")}
 								htmlFor={inputId}
 								error={entryError ?? error}
 							/>
+							{/* A tool name is typed Latin text whatever the interface
+							 * language: `userTextDir` keeps "bad name!" from rendering as
+							 * "!bad name" under an RTL locale (see `EditSection`). */}
 							<Input
 								id={inputId}
+								dir={userTextDir(entry)}
 								value={entry}
 								inputSize="md"
-								placeholder="Tool name"
+								placeholder={t("ui.agents.detail.tools.placeholder")}
 								aria-invalid={Boolean(entryError ?? error)}
 								onChange={(event) => {
 									setEntry(event.target.value);
@@ -511,7 +602,7 @@ function ToolsEditor({
 							/>
 						</div>
 						<Button variant="secondary" onClick={add} disabled={!entry.trim()}>
-							Add
+							{t("ui.agents.detail.tools.add")}
 						</Button>
 					</div>
 				</>
@@ -533,6 +624,8 @@ export function AgentDetail({
 	onOpenTeam,
 	onAskAgent,
 	onDirtyChange,
+	belowHeader,
+	openPictureEditor = false,
 }: {
 	profile: ReusableProfile;
 	/**
@@ -546,6 +639,24 @@ export function AgentDetail({
 	onClassNotice: (copy: string | null) => void;
 	teams: readonly ReusableTeam[] | undefined;
 	effortTiers: readonly string[];
+	/**
+	 * Open the pane already in edit mode, on the `?edit=picture` deep link.
+	 *
+	 * WHY THE PANE HAS TO BE TOLD AND NOT LEFT TO THE FIELD (agent review round 1,
+	 * M1). The picture field (`agent-avatar-field.tsx`) is mounted only inside the
+	 * edit branch below, so it cannot be the thing that opens the edit - its own
+	 * reader of `?edit=picture` never runs while the pane draws view mode, and the
+	 * deep link the chat header's pencil ships was therefore a dead end. The page
+	 * reads the parameter and seeds this; the field then keeps doing the part only
+	 * it can do (scroll into view, take focus, drop the parameter).
+	 *
+	 * A SEED, NOT A CONTROLLED FLAG: it is read once, at mount, so the pane's own
+	 * Cancel/Edit controls keep owning `editing` afterwards. Gated on the profile
+	 * having an agent id - the field draws nothing without one, and `agent_id` is
+	 * what the editor uploads against - so a seed that could open nothing does not
+	 * put the pane into a form the link never meant.
+	 */
+	openPictureEditor?: boolean;
 	/** Whether the conversational path is available on this backend (scope B). */
 	askEnabled: boolean;
 	/** Reports an open edit with unsaved typing, so the page can hold the composer. */
@@ -554,8 +665,21 @@ export function AgentDetail({
 	onDuplicate: (profile: ReusableProfile) => void;
 	onOpenTeam: (name: string) => void;
 	onAskAgent: (prompt: string) => void;
+	/**
+	 * THE SLOT BELOW THE RECORD'S TITLE, for a notice that is ABOUT this record.
+	 *
+	 * It renders here, inside the pane, rather than in the page above it: a
+	 * banner drawn before the title describes a record from outside it, and a
+	 * second one would have had a measure of its own. The slot inherits the
+	 * pane's measure and the pane's ground, so whatever the page passes keeps
+	 * the record's left and right edges.
+	 */
+	belowHeader?: ReactNode;
 }) {
-	const [editing, setEditing] = useState(false);
+	useI18nLocale();
+	const [editing, setEditing] = useState(
+		openPictureEditor && Boolean(profile.agent_id),
+	);
 	const [base, setBase] = useState<Draft>(() => draftOf(profile));
 	const [draft, setDraft] = useState<Draft>(() => draftOf(profile));
 	const [pending, setPending] = useState(false);
@@ -582,6 +706,28 @@ export function AgentDetail({
 		profile.definition_revision,
 	);
 	const navigate = useNavigate();
+
+	/*
+	 * AN ALREADY-OPEN PANE REACTS TOO (agent review round 2, m-A). The seed above
+	 * only decides the first render, and the pane is keyed by agent, so the pencil
+	 * for the agent whose pane is on screen (the nav's chat list draws it on every
+	 * route) changed the URL and nothing else - then the next press of Edit
+	 * mounted the field, which consumed the stale `?edit=picture` and took focus.
+	 * Following the prop's rising edge opens the editor for that case as well; it
+	 * never closes it, so Cancel stays the pane's own.
+	 *
+	 * `baseRevisionRef` is captured exactly as the Edit button does, because this
+	 * is the same transition and a save must be based on the revision the editor
+	 * opened on.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: a rising edge of the prop, not a reaction to the profile or `editing`.
+	useEffect(() => {
+		if (!openPictureEditor || !profile.agent_id) return;
+		// Already editing: keep the open edit's base - re-basing a dirty edit would
+		// defeat the compare-and-swap guard (see `baseRevisionRef`).
+		if (!editing) baseRevisionRef.current = profile.definition_revision;
+		setEditing(true);
+	}, [openPictureEditor]);
 
 	const dirty = JSON.stringify(draft) !== JSON.stringify(base);
 
@@ -701,7 +847,7 @@ export function AgentDetail({
 			typeof changed.instructions === "string" &&
 			!changed.instructions.trim()
 		) {
-			setError("Give the agent instructions.");
+			setError(t("ui.agents.detail.create.error_instructions_required"));
 			setErrorField("instructions");
 			return;
 		}
@@ -725,15 +871,13 @@ export function AgentDetail({
 			// the base so a second save in the same session is not a stale compare.
 			baseRevisionRef.current = result.definition_revision;
 			onSaved(result.name);
-			showSuccessToast(`Saved ${result.name}.`);
+			showSuccessToast(t("ui.notices.agents.saved", { name: result.name }));
 			// Focus lands on the pane's heading rather than `body`: the pressed
 			// button unmounts with the edit mode (UX U8).
 			requestAnimationFrame(() => headingRef.current?.focus());
 		} catch (caught) {
 			const copy = refusalCopy(
-				caught instanceof Error
-					? caught.message
-					: "The agent could not be saved.",
+				writeFailureSentence(caught, t("ui.agents.detail.edit.error_generic")),
 			);
 			setError(copy.message);
 			setErrorField(copy.field);
@@ -787,9 +931,7 @@ export function AgentDetail({
 				status < 500;
 			setUnconfirmed(!definitive);
 			if (!definitive) {
-				showErrorToast(
-					"The save could not be confirmed. Check whether it was applied before retrying.",
-				);
+				showErrorToast(t("ui.notices.agents.save_unconfirmed"));
 			}
 		} finally {
 			setPending(false);
@@ -810,13 +952,14 @@ export function AgentDetail({
 			setBase(next);
 			setDraft(next);
 			onSaved(result.name);
-			showSuccessToast(`Installed ${result.name}. It can be edited now.`);
+			showSuccessToast(t("ui.notices.agents.installed", { name: result.name }));
 			requestAnimationFrame(() => headingRef.current?.focus());
 		} catch (caught) {
 			const copy = refusalCopy(
-				caught instanceof Error
-					? caught.message
-					: "The agent could not be installed.",
+				writeFailureSentence(
+					caught,
+					t("ui.agents.detail.install.error_generic"),
+				),
 			);
 			setError(copy.message);
 			showErrorToast(copy.message);
@@ -840,47 +983,79 @@ export function AgentDetail({
 		 */
 		<div className="space-y-8">
 			<header className="space-y-3">
-				<div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
-					<div className="min-w-0 flex-[1_1_16rem] space-y-1">
-						{/* The page's only h1 is the page title; a definition's name is a
-						    second-level heading (design D9). */}
-						<h2
-							ref={headingRef}
-							tabIndex={-1}
-							// A long name truncates instead of wrapping under the actions.
-							title={displayedName}
-							className="truncate text-title focus:outline-none"
-						>
-							{displayedName}
-						</h2>
-						{/*
-						 * THE DESCRIPTION IS SAID ONCE. It sat here AND in the "When to use it"
-						 * box ~130 px below, which is the same sentence twice on one screen
-						 * (design review round 1, D10). The box keeps it, because the box is
-						 * titled by the question the sentence answers.
-						 */}
-						<AgentMeta profile={profile} />
+				<div
+					className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3"
+					data-agent-summary-header=""
+				>
+					<div className="flex min-w-0 flex-[1_1_16rem] items-center gap-4">
+						{/* A summary must identify the selected AGENT, not the signed-in
+						    owner. Use the same local id as the existing picture editor;
+						    an uninstalled seed has no id and keeps the local Bot glyph.
+						    Reserve the same borderless 80px box through missing/loading/
+						    failed bytes so neither the title nor actions jump on arrival. */}
+						{editing ? null : (
+							<span
+								className="size-20 shrink-0"
+								data-agent-summary-portrait=""
+								aria-hidden="true"
+							>
+								<AgentMark
+									agentId={profile.agent_id}
+									className={SUMMARY_PORTRAIT_CLASS}
+									// The `size-20` box this portrait fills: 80 CSS px.
+									cssPx={80}
+									glyph={<Bot className="size-8" aria-hidden="true" />}
+									fallback={<SummaryPortraitPlate />}
+								/>
+							</span>
+						)}
+						<div className="min-w-0 flex-1 space-y-1">
+							{/* The page's only h1 is the page title; a definition's name is a
+							    second-level heading (design D9). */}
+							<h2
+								ref={headingRef}
+								tabIndex={-1}
+								// A long name truncates instead of wrapping under the actions.
+								// `dir="auto"`: the name is the operator's text, so an English
+								// one keeps its first letters under ur instead of losing them
+								// to the ellipsis; the alignment is keyed to the DOCUMENT's direction,
+								// not the name's (see `agents-sidebar.tsx`), so a short name keeps
+								// the locale's start edge in both directions.
+								dir="auto"
+								title={displayedName}
+								className={`truncate text-title focus:outline-none ${USER_TEXT_ALIGN}`}
+							>
+								{displayedName}
+							</h2>
+							{/*
+							 * THE DESCRIPTION IS SAID ONCE. It sat here AND in the "When to use it"
+							 * box ~130 px below, which is the same sentence twice on one screen
+							 * (design review round 1, D10). The box keeps it, because the box is
+							 * titled by the question the sentence answers.
+							 */}
+							<AgentMeta profile={profile} />
+						</div>
 					</div>
 					{/*
 					 * ONE PRIMARY, ONE SECONDARY, ONE QUIET - and none while the form is open
 					 * (design D5; spec D8). The primary while editing is Save changes in the
 					 * footer, and a second accent fill in the same frame split the decision.
-					 * `TITLE_LINE_HEIGHT` is the title's own line box (derived from the type
-					 * token, not copied), so the 32 px buttons centre on the TITLE line and
-					 * not on the title-plus-meta block.
+					 * The identity and actions are sibling flex items centred as whole boxes.
+					 * The identity may include an 80px portrait, or the actions may wrap
+					 * below it on a narrow pane; neither needs a title-specific offset.
+					 * The action cluster can wrap internally too: a narrow pane must not
+					 * turn its existing controls into an overflowing unbroken strip.
 					 *
 					 * THE TRAILING GLYPH SITS ON THE COLUMN EDGE (design review round 1 D1):
 					 * the last control is the ghost "More actions" icon button, 32 px wide
-					 * around a 16 px glyph, so `-mr-2` (the 8 px of box on each side of the
+					 * around a 16 px glyph, so `-me-2` (the 8 px of box on each side of the
 					 * glyph) moves the glyph's edge onto the column edge into the 24 px
 					 * gutter, where only its hover ground reaches.
 					 */}
 					{editing ? null : (
 						<div
-							className={cn(
-								"flex shrink-0 items-center gap-2",
-								TITLE_LINE_HEIGHT,
-							)}
+							className="flex min-w-0 flex-wrap items-center gap-2"
+							data-agent-summary-actions=""
 						>
 							<Button
 								variant="primary"
@@ -891,7 +1066,7 @@ export function AgentDetail({
 									navigate("/chat");
 								}}
 							>
-								New chat
+								{t("ui.agents.detail.action.new_chat")}
 							</Button>
 							{readOnly ? (
 								<Button
@@ -900,7 +1075,9 @@ export function AgentDetail({
 									disabled={pending}
 								>
 									<LogIn className="size-4" />
-									{pending ? "Installing…" : "Install to edit"}
+									{pending
+										? t("ui.agents.detail.install.action.installing")
+										: t("ui.agents.detail.install.action.install_to_edit")}
 								</Button>
 							) : (
 								<Button
@@ -914,17 +1091,27 @@ export function AgentDetail({
 										baseRevisionRef.current = profile.definition_revision;
 									}}
 								>
-									Edit
+									{t("ui.agents.detail.action.edit")}
 								</Button>
 							)}
 							{askEnabled ? (
 								<Button
 									variant="ghost"
 									onClick={() =>
-										onAskAgent(`Change the agent ${profile.name}: `)
+										onAskAgent(
+											// `translateRaw`, NOT `t`: this text is pre-filled into the chat
+											// composer and SENT to the assistant, so it is data. In an RTL
+											// catalogue (ur) `t` wraps the Latin agent name in U+2068/2069
+											// (src/i18n/bidi.ts), and those invisible controls would travel
+											// in the message and could stop the assistant matching the
+											// agent by name. English and every LTR locale are unchanged.
+											translateRaw("ui.agents.detail.ask_change_prefill", {
+												name: profile.name,
+											}),
+										)
 									}
 								>
-									Ask for a change
+									{t("ui.agents.detail.action.ask_change")}
 								</Button>
 							) : null}
 							{/*
@@ -940,15 +1127,15 @@ export function AgentDetail({
 									<Button
 										variant="ghost"
 										size="icon"
-										aria-label="More actions"
-										className="-mr-2"
+										aria-label={t("ui.agents.detail.action.more_actions")}
+										className="-me-2"
 									>
 										<MoreHorizontal aria-hidden="true" />
 									</Button>
 								</DropdownMenuTrigger>
 								<DropdownMenuContent align="end">
 									<DropdownMenuItem onSelect={() => onDuplicate(profile)}>
-										Duplicate as new agent
+										{t("ui.agents.detail.action.duplicate")}
 									</DropdownMenuItem>
 								</DropdownMenuContent>
 							</DropdownMenu>
@@ -957,21 +1144,20 @@ export function AgentDetail({
 				</div>
 				{readOnly ? (
 					<Alert variant="info">
-						<AlertTitle>Built-in agent</AlertTitle>
+						<AlertTitle>{t("ui.agents.detail.alert.builtin_title")}</AlertTitle>
 						<AlertDescription>
-							This one ships with the app and cannot be edited in place. Install
-							it to get an editable copy, or duplicate it as a new agent.
+							{t("ui.agents.detail.alert.builtin_body")}
 						</AlertDescription>
 					</Alert>
 				) : null}
 				{conflict ? (
 					<Alert variant="warning" data-testid="agent-conflict">
-						<AlertTitle>This changed while you were editing</AlertTitle>
+						<AlertTitle>
+							{t("ui.agents.detail.alert.conflict_title")}
+						</AlertTitle>
 						<AlertDescription>
 							<span className="block">
-								Something else — a configuration run, or another window — wrote
-								to this agent after you opened it. Your edits are kept; saving
-								writes only the fields you changed.
+								{t("ui.agents.detail.alert.conflict_body")}
 							</span>
 							<Button
 								variant="secondary"
@@ -979,27 +1165,38 @@ export function AgentDetail({
 								className="mt-2"
 								onClick={cancel}
 							>
-								Reload the saved version
+								{t("ui.agents.detail.alert.conflict_reload")}
 							</Button>
 						</AlertDescription>
 					</Alert>
 				) : null}
 				{unconfirmed ? (
 					<Alert variant="danger" data-testid="agent-unconfirmed">
-						<AlertTitle>The last save was not confirmed</AlertTitle>
+						<AlertTitle>
+							{t("ui.agents.detail.alert.unconfirmed_title")}
+						</AlertTitle>
 						<AlertDescription>
-							The backend did not answer, so the write may or may not have
-							landed. Check the agent below, then edit again.
+							{t("ui.agents.detail.alert.unconfirmed_body")}
 						</AlertDescription>
 					</Alert>
 				) : null}
 				{error && !errorField ? (
 					<Alert variant="danger" role="alert" data-testid="agent-save-error">
-						<AlertTitle>That did not save</AlertTitle>
+						<AlertTitle>
+							{t("ui.agents.detail.alert.save_failed_title")}
+						</AlertTitle>
 						<AlertDescription>{error}</AlertDescription>
 					</Alert>
 				) : null}
 			</header>
+
+			{/*
+			 * THE RECORD'S OWN NOTICE, directly under its title and above the
+			 * form. It is a child of the pane, so it is measured exactly like the
+			 * form is: one column, one pair of edges, no second measure of its
+			 * own.
+			 */}
+			{belowHeader}
 
 			{/* noValidate — the edit form validates in `save()` (D14). */}
 			<form
@@ -1012,10 +1209,28 @@ export function AgentDetail({
 			>
 				{editing ? (
 					<>
+						{/*
+						 * THE PICTURE'S DOOR ON THIS PAGE (UX round 1, U1). The field existed only
+						 * on the legacy `/agents/<id>` page, which the command palette is the only
+						 * way to reach, so a user who opened the agent here had no visible way to
+						 * give it a picture. It sits first, beside the name it accompanies, and is
+						 * keyed by the agent for the reason `general-settings.tsx` gives: a reuse
+						 * across selections must not carry a refusal or a busy state with it.
+						 *
+						 * NO FIELD FOR A PROFILE WITHOUT AN ID: the picture is keyed by the
+						 * agent's own id (see `@shared/agent-avatar/agent-avatar`), and a builtin
+						 * seed that was never installed has none to key on.
+						 */}
+						{profile.agent_id ? (
+							<AgentAvatarField
+								key={profile.agent_id}
+								agentId={profile.agent_id}
+							/>
+						) : null}
 						<EditSection
-							title="When to use it"
-							description="One sentence the model reads to decide when this agent is the right one."
-							label="When to use this agent"
+							title={t("ui.agents.detail.section.when_to_use")}
+							description={t("ui.agents.detail.field.when_to_use_hint")}
+							label={t("ui.agents.detail.field.when_to_use")}
 							value={draft.description}
 							error={errorField === "description" ? error : null}
 							onChange={(value) =>
@@ -1023,9 +1238,9 @@ export function AgentDetail({
 							}
 						/>
 						<EditSection
-							title="Instructions"
-							description="What the agent is told to do. This is the agent's whole behaviour."
-							label="Instructions"
+							title={t("ui.agents.detail.section.instructions")}
+							description={t("ui.agents.detail.field.instructions_hint")}
+							label={t("ui.agents.detail.section.instructions")}
 							value={draft.instructions}
 							rows={12}
 							required
@@ -1034,7 +1249,7 @@ export function AgentDetail({
 								setDraft((current) => ({ ...current, instructions: value }))
 							}
 						/>
-						<Section title="Tools">
+						<Section title={t("ui.agents.detail.section.tools")}>
 							<ToolsEditor
 								tools={draft.tools}
 								error={errorField === "tools" ? error : null}
@@ -1044,8 +1259,8 @@ export function AgentDetail({
 							/>
 						</Section>
 						<Section
-							title="Delegation and effort"
-							description="Whether this agent may hand work to subagents, and which effort tier it runs at."
+							title={t("ui.agents.detail.section.delegation")}
+							description={t("ui.agents.detail.section.delegation_hint")}
 						>
 							<div className="space-y-4">
 								<div className="flex items-center gap-2 text-body-sm">
@@ -1054,34 +1269,44 @@ export function AgentDetail({
 										onCheckedChange={(checked) =>
 											setDraft((current) => ({ ...current, delegate: checked }))
 										}
-										aria-label="May delegate to subagents"
+										aria-label={t("ui.agents.detail.delegate.aria")}
 									/>
-									<span>May delegate to subagents</span>
+									<span>{t("ui.agents.detail.delegate.label")}</span>
 								</div>
 								<div className="space-y-1">
 									<FieldLabel
-										label="Effort tier"
+										label={t("ui.agents.models.override.tier_field")}
 										htmlFor="agent-effort"
 										error={errorField === "effort" ? error : null}
 									/>
 									<SearchableSelect
-										ariaLabel="Effort tier"
+										ariaLabel={t("ui.agents.models.override.tier_field")}
 										showLabel={false}
-										placeholder="Choose an effort tier"
-										busyLabel="Loading effort tiers"
+										placeholder={t("ui.agents.detail.field.effort_placeholder")}
+										busyLabel={t("ui.agents.detail.field.effort_loading")}
+										// Picker labels are copy; ids stay backend tokens for saves.
 										options={["inherit", ...effortTiers].map((tier) => ({
 											id: tier,
-											name: tier,
+											name:
+												tier === "inherit"
+													? t("ui.agents.detail.read_state.effort_inherit")
+													: tier,
 											description:
 												tier === "inherit"
-													? "Use the session's own effort"
+													? t("ui.agents.detail.field.effort_inherit_hint")
 													: undefined,
 										}))}
-										selected={{ id: draft.effort, name: draft.effort }}
+										selected={{
+											id: draft.effort,
+											name:
+												draft.effort === "inherit"
+													? t("ui.agents.detail.read_state.effort_inherit")
+													: draft.effort,
+										}}
 										onSelect={(option) =>
 											setDraft((current) => ({ ...current, effort: option.id }))
 										}
-										helperText="Tiers come from the backend's subagent model settings."
+										helperText={t("ui.agents.detail.field.effort_helper")}
 									/>
 								</div>
 							</div>
@@ -1094,27 +1319,27 @@ export function AgentDetail({
 							pending={pending}
 							onSave={() => void save()}
 							onCancel={cancel}
-							saveLabel="Save changes"
-							dirtyHint="Discard your unsaved changes to this agent?"
+							saveLabel={t("ui.agents.detail.action.save_changes")}
+							dirtyHint={t("ui.agents.pages.discard_bar.agent")}
 						/>
 					</>
 				) : (
 					<>
-						<Section title="When to use it">
+						<Section title={t("ui.agents.detail.section.when_to_use")}>
 							<ReadBlock
-								text={profile.description || ""}
-								empty="No description yet — add one so a model knows when to pick this agent."
+								text={agentDescriptionText(profile) || ""}
+								empty={t("ui.agents.detail.empty.description")}
 							/>
 						</Section>
-						<Section title="Instructions">
+						<Section title={t("ui.agents.detail.section.instructions")}>
 							<ReadBlock
 								text={
 									profile.instructions ?? profile.packaged_instructions ?? ""
 								}
-								empty="No instructions yet."
+								empty={t("ui.agents.detail.empty.instructions")}
 							/>
 						</Section>
-						<Section title="Tools">
+						<Section title={t("ui.agents.detail.section.tools")}>
 							{profile.tools && profile.tools.length > 0 ? (
 								<ul className="flex flex-wrap gap-1.5">
 									{profile.tools.map((tool) => (
@@ -1124,17 +1349,21 @@ export function AgentDetail({
 									))}
 								</ul>
 							) : (
-								<Badge variant="neutral">All tools</Badge>
+								<Badge variant="neutral">
+									{t("ui.agents.detail.tools.all_label")}
+								</Badge>
 							)}
 						</Section>
-						<Section title="Delegation and effort">
+						<Section title={t("ui.agents.detail.section.delegation")}>
 							<p className="text-body-sm text-ink">
 								{profile.delegate
-									? "May hand work to subagents."
-									: "Does its own work; it does not delegate."}
+									? t("ui.agents.detail.read_state.delegates")
+									: t("ui.agents.detail.read_state.no_delegation")}
 							</p>
 							<p className="text-body-sm text-ink-muted">
-								Effort tier: {profile.effort ?? "inherit"}
+								{t("ui.agents.detail.read.effort_label")}{" "}
+								{/* i18n: ignore effort fallback - "inherit" is the wire's tier id, not copy */}
+								{profile.effort ?? "inherit"}
 							</p>
 							{/*
 							 * THE PIN'S REACH, at the pin (design note §4). An agent-level effort
@@ -1171,8 +1400,8 @@ export function AgentDetail({
 							 * the description carries both vocabulary words once, so the badge the
 							 * roster shows and the switch below stay one idea.
 							 */
-							title="Messaging"
-							description="Reactive agents only reply. Proactive agents may also message you first."
+							title={t("ui.agents.detail.section.messaging")}
+							description={t("ui.agents.detail.read_state.class_description")}
 						>
 							<AgentClassControl
 								profile={profile}
@@ -1183,8 +1412,8 @@ export function AgentDetail({
 							/>
 						</Section>
 						<Section
-							title="Used by"
-							description="Teams that name this agent as a manager or a member."
+							title={t("ui.agents.detail.section.used_by")}
+							description={t("ui.agents.detail.read_state.used_by_description")}
 						>
 							{usedBy.length > 0 ? (
 								<ul className="flex flex-wrap gap-x-3 gap-y-1">
@@ -1197,6 +1426,8 @@ export function AgentDetail({
 												// back so the list's pitch stays the one it had.
 												className={cn("-my-0.5", LINK_HIT_AREA)}
 												onClick={() => onOpenTeam(team.name)}
+												// The operator's team name: its own direction (round 1, D1).
+												dir="auto"
 											>
 												{team.name}
 											</Button>
@@ -1205,31 +1436,33 @@ export function AgentDetail({
 								</ul>
 							) : (
 								<p className="text-body-sm text-ink-muted">
-									No team uses it yet.
+									{t("ui.agents.detail.empty.used_by")}
 								</p>
 							)}
 						</Section>
 						<Section
-							title="Where it came from"
+							title={t("ui.agents.detail.section.origin")}
 							description={
 								profile.source === "builtin"
-									? "Shipped with the app."
+									? t("ui.agents.detail.origin.shipped_with_app")
 									: profile.source === "installed"
-										? "Installed from a packaged starter."
-										: "Created on this machine."
+										? t("ui.agents.detail.origin.installed_starter")
+										: t("ui.agents.detail.origin.created_locally")
 							}
 						>
 							<dl className="space-y-1 text-body-sm">
 								{profile.seed_origin ? (
 									<div className="flex gap-2">
-										<dt className="text-ink-muted">Source</dt>
+										<dt className="text-ink-muted">
+											{t("ui.agents.detail.origin.source")}
+										</dt>
 										<dd className="text-ink">{profile.seed_origin}</dd>
 									</div>
 								) : null}
 								{profile.divergent_fields?.length ? (
 									<div className="flex gap-2">
 										<dt className="text-ink-muted">
-											Changed from the packaged copy
+											{t("ui.agents.detail.origin.changed")}
 										</dt>
 										<dd className="text-ink">
 											{profile.divergent_fields.join(", ")}
@@ -1240,7 +1473,7 @@ export function AgentDetail({
 							{profile.packaged_instructions &&
 							profile.divergent_fields?.length ? (
 								<Disclosure
-									summary="Compare with the packaged instructions"
+									summary={t("ui.agents.detail.origin.compare_packaged")}
 									className="mt-2"
 								>
 									<ReadBlock text={profile.packaged_instructions} mono />
@@ -1257,11 +1490,15 @@ export function AgentDetail({
 /**
  * One editable section: a heading, the field, and the refusal beside it.
  *
+ * EXPORTED FOR THE SKILLS TAB'S INLINE EDIT, which is the same machine as this
+ * pane's (design spec §3.5): one editor idiom for a definition's description and
+ * instructions, not a second one that drifts.
+ *
  * The refusal sits WITH THE FIELD (UX U2) rather than in a banner at the top of
  * a 966px form, where the operator pressed Save at y=942 and the error rendered
  * at y=190.
  */
-function EditSection({
+export function EditSection({
 	title,
 	description,
 	label,
@@ -1291,12 +1528,22 @@ function EditSection({
 	fieldRef?: Ref<HTMLTextAreaElement>;
 }) {
 	const id = useId();
+	/*
+	 * `userTextDir` (`dir="auto"` once non-empty) ON EVERY FIELD HERE: the value
+	 * is the operator's own text
+	 * (instructions, a description), and its script is independent of the
+	 * interface language. Inheriting an RTL locale's direction moved an English
+	 * prompt's sentence punctuation to the wrong end (".You implement..." in ur,
+	 * design review on UI #1952); the first strong character decides instead,
+	 * and an Urdu value still reads right-to-left in an English interface.
+	 */
 	return (
 		<Section title={title} description={description}>
 			<FieldLabel label={label} htmlFor={id} error={error} />
 			{rows ? (
 				<Textarea
 					id={id}
+					dir={userTextDir(value)}
 					ref={fieldRef}
 					value={value}
 					rows={rows}
@@ -1308,6 +1555,7 @@ function EditSection({
 			) : (
 				<Input
 					id={id}
+					dir={userTextDir(value)}
 					value={value}
 					aria-invalid={Boolean(error)}
 					onChange={(event) => onChange(event.target.value)}
@@ -1351,6 +1599,7 @@ export function AgentCreate({
 	onSaved: (name: string) => void;
 	onCancel: () => void;
 }) {
+	useI18nLocale();
 	const [name, setName] = useState(() =>
 		initial ? duplicateNameCandidates(initial.name, takenNames) : "",
 	);
@@ -1403,7 +1652,7 @@ export function AgentCreate({
 		event?.preventDefault();
 		if (pending) return;
 		if (!name.trim()) {
-			setError("Give the agent a name.");
+			setError(t("ui.agents.detail.create.error_name_required"));
 			setErrorField("name");
 			nameRef.current?.focus();
 			return;
@@ -1418,21 +1667,21 @@ export function AgentCreate({
 		 * failure on this form, and the only one with no field marked (Q3/U4/D5).
 		 */
 		if (/[\\/\s]/.test(name.trim())) {
-			setError("Names cannot contain spaces or slashes.");
+			setError(t("ui.agents.detail.create.error_name_grammar"));
 			setErrorField("name");
 			nameRef.current?.focus();
 			return;
 		}
 		if (takenNames.includes(name.trim())) {
 			setError(
-				`An agent called “${name.trim()}” already exists. Choose another name, or open the existing one to change it.`,
+				t("ui.agents.detail.create.error_name_taken", { name: name.trim() }),
 			);
 			setErrorField("name");
 			nameRef.current?.focus();
 			return;
 		}
 		if (!draft.instructions.trim()) {
-			setError("Give the agent instructions.");
+			setError(t("ui.agents.detail.create.error_instructions_required"));
 			setErrorField("instructions");
 			instructionsRef.current?.focus();
 			return;
@@ -1458,7 +1707,9 @@ export function AgentCreate({
 					delegate: draft.delegate,
 				},
 			});
-			showSuccessToast(`Created ${result.name}.`);
+			showSuccessToast(
+				t("ui.notices.agents.created_named", { name: result.name }),
+			);
 			/*
 			 * The pane the page is about to open takes the caret (QA round 1, Q7): the
 			 * create form cannot focus a heading that does not exist yet.
@@ -1467,9 +1718,10 @@ export function AgentCreate({
 			onSaved(result.name);
 		} catch (caught) {
 			const copy = refusalCopy(
-				caught instanceof Error
-					? caught.message
-					: "The agent could not be created.",
+				writeFailureSentence(
+					caught,
+					t("ui.agents.detail.create.error_generic"),
+				),
 			);
 			setError(copy.message);
 			setErrorField(copy.field);
@@ -1478,7 +1730,13 @@ export function AgentCreate({
 		}
 	};
 
-	const title = initial ? "Duplicate as a new agent" : "New agent";
+	/*
+	 * The heading is a catalogue message now (S18d): it was the last English on
+	 * this form in every language, sitting directly above translated copy.
+	 */
+	const title = initial
+		? t("ui.agents.detail.create.title_duplicate")
+		: t("ui.agents.detail.create.title_new");
 
 	return (
 		<div className="space-y-8">
@@ -1486,13 +1744,17 @@ export function AgentCreate({
 				<h2 className="text-title">{title}</h2>
 				<p className="text-body-sm text-ink-muted">
 					{initial
-						? `A copy of ${initial.name}. It is a separate agent: changing it does not change the original.`
-						: "Reusable instructions shared by agent commands, subagents and teams. Chats stay separate."}
+						? t("ui.agents.detail.create.description_duplicate", {
+								name: initial.name,
+							})
+						: t("ui.agents.detail.create.description_new")}
 				</p>
 			</header>
 			{error && !errorField ? (
 				<Alert variant="danger" role="alert" data-testid="agent-create-error">
-					<AlertTitle>That did not save</AlertTitle>
+					<AlertTitle>
+						{t("ui.agents.detail.alert.save_failed_title")}
+					</AlertTitle>
 					<AlertDescription>{error}</AlertDescription>
 				</Alert>
 			) : null}
@@ -1514,16 +1776,17 @@ export function AgentCreate({
 				}}
 				className="space-y-8"
 			>
-				<Section title="Name and role">
+				<Section title={t("ui.agents.detail.section.name_role")}>
 					<div className="grid gap-4 sm:grid-cols-2">
 						<div className="space-y-1">
 							<FieldLabel
-								label="Name"
+								label={t("ui.agents.detail.field.name")}
 								htmlFor="agent-create-name"
 								error={errorField === "name" ? error : null}
 							/>
 							<Input
 								id="agent-create-name"
+								dir={userTextDir(name)}
 								ref={nameRef}
 								value={name}
 								required
@@ -1533,7 +1796,7 @@ export function AgentCreate({
 						</div>
 						<div className="space-y-1">
 							<FieldLabel
-								label="How it works with others"
+								label={t("ui.agents.detail.field.how_it_works")}
 								htmlFor="agent-create-kind"
 							/>
 							<Select
@@ -1551,10 +1814,10 @@ export function AgentCreate({
 									 * Specialist` was internal vocabulary — UX NIT 2.)
 									 */}
 									<SelectItem value="role">
-										You can chat with it directly
+										{t("ui.agents.detail.kind.role")}
 									</SelectItem>
 									<SelectItem value="specialist">
-										Other agents can call on it
+										{t("ui.agents.detail.kind.specialist")}
 									</SelectItem>
 								</SelectContent>
 							</Select>
@@ -1562,9 +1825,9 @@ export function AgentCreate({
 					</div>
 				</Section>
 				<EditSection
-					title="When to use it"
-					description="One sentence the model reads to decide when this agent is the right one."
-					label="When to use this agent"
+					title={t("ui.agents.detail.section.when_to_use")}
+					description={t("ui.agents.detail.field.when_to_use_hint")}
+					label={t("ui.agents.detail.field.when_to_use")}
 					value={draft.description}
 					error={errorField === "description" ? error : null}
 					onChange={(value) =>
@@ -1572,9 +1835,9 @@ export function AgentCreate({
 					}
 				/>
 				<EditSection
-					title="Instructions"
-					description="What the agent is told to do. This is the agent's whole behaviour."
-					label="Instructions"
+					title={t("ui.agents.detail.section.instructions")}
+					description={t("ui.agents.detail.field.instructions_hint")}
+					label={t("ui.agents.detail.section.instructions")}
 					value={draft.instructions}
 					rows={12}
 					required
@@ -1584,7 +1847,7 @@ export function AgentCreate({
 						setDraft((current) => ({ ...current, instructions: value }))
 					}
 				/>
-				<Section title="Delegation and effort">
+				<Section title={t("ui.agents.detail.section.delegation")}>
 					<div className="space-y-4">
 						<div className="flex items-center gap-2 text-body-sm">
 							<Switch
@@ -1592,28 +1855,37 @@ export function AgentCreate({
 								onCheckedChange={(checked) =>
 									setDraft((current) => ({ ...current, delegate: checked }))
 								}
-								aria-label="May delegate to subagents"
+								aria-label={t("ui.agents.detail.delegate.aria")}
 							/>
-							<span>May delegate to subagents</span>
+							<span>{t("ui.agents.detail.delegate.label")}</span>
 						</div>
 						<div className="space-y-1">
-							<FieldLabel label="Effort tier" htmlFor="agent-create-effort" />
+							<FieldLabel
+								label={t("ui.agents.models.override.tier_field")}
+								htmlFor="agent-create-effort"
+							/>
 							<SearchableSelect
-								ariaLabel="Effort tier"
+								ariaLabel={t("ui.agents.models.override.tier_field")}
 								showLabel={false}
-								busyLabel="Loading effort tiers"
-								placeholder="Choose an effort tier"
+								busyLabel={t("ui.agents.detail.field.effort_loading")}
+								placeholder={t("ui.agents.detail.field.effort_placeholder")}
 								options={["inherit", ...effortTiers].map((tier) => ({
 									id: tier,
-									name: tier,
+									name:
+										tier === "inherit"
+											? t("ui.agents.detail.read_state.effort_inherit")
+											: tier,
 									description:
 										tier === "inherit"
-											? "Use the session's own effort"
-											: "A tier configured in Settings",
+											? t("ui.agents.detail.field.effort_inherit_hint")
+											: t("ui.agents.detail.field.effort_configured_hint"),
 								}))}
 								selected={{
 									id: draft.effort,
-									name: draft.effort,
+									name:
+										draft.effort === "inherit"
+											? t("ui.agents.detail.read_state.effort_inherit")
+											: draft.effort,
 								}}
 								onSelect={(option) =>
 									setDraft((current) => ({ ...current, effort: option.id }))
@@ -1621,7 +1893,9 @@ export function AgentCreate({
 							/>
 						</div>
 						<div className="space-y-1">
-							<span className="text-body-sm text-ink-muted">Tools</span>
+							<span className="text-body-sm text-ink-muted">
+								{t("ui.agents.detail.section.tools")}
+							</span>
 							<ToolsEditor
 								tools={draft.tools}
 								error={errorField === "tools" ? error : null}
@@ -1636,9 +1910,13 @@ export function AgentCreate({
 					submit
 					dirty={Boolean(name.trim() || draft.instructions)}
 					pending={pending}
-					saveLabel={initial ? "Create the copy" : "Create agent"}
-					pendingLabel="Creating…"
-					dirtyHint="Discard this new agent?"
+					saveLabel={
+						initial
+							? t("ui.agents.detail.action.create_copy")
+							: t("ui.agents.dialogs.create.submit")
+					}
+					pendingLabel={t("ui.agents.detail.action.creating")}
+					dirtyHint={t("ui.agents.detail.action.discard_new_agent")}
 					onSave={() => void save()}
 					onCancel={onCancel}
 				/>

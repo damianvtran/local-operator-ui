@@ -1,0 +1,40 @@
+{
+ "schema": 1,
+ "auditor": "copy-reviewer (lopdev team copy-reviewer session 3454343bfd47; independent i18n auditor, not the translator agent coder of session 568d933e34b1)",
+ "agent": "copy-reviewer (lopdev team copy-reviewer session 3454343bfd47; independent i18n auditor, not the translator agent coder of session 568d933e34b1)",
+ "model": "anthropic/claude-opus-5-5",
+ "model_provenance": "Every read and verdict in this receipt ran on anthropic/claude-opus-5-5 (session header); no fallback occurred.",
+ "fallback": "none",
+ "independence": "Separate session (3454343bfd47) and agent (copy-reviewer) from the translator (agent coder, session 568d933e34b1, anthropic/claude-opus-5-5). Same model family: not a cross-family audit.",
+ "session": "3454343bfd47",
+ "locale": "ru",
+ "pr": "damianvtran/local-operator-ui#1660",
+ "branch": "feat/team-bridge-sidebar-swap",
+ "head": "e2582dbaf5dbc0ec071ee3ad2aaf5f2380a73f45",
+ "worktree_catalogue_state": "uncommitted catalogue changes present; audited by blob hash",
+ "date": "2026-11-04",
+ "status": "passed",
+ "namespace": "ui.teamBridge.leave",
+ "findings": [],
+ "instance": "3454343bfd47-leave-r3-ru",
+ "sha256": {
+  "ru": "814fdd70c041e85be071e5991af7b0cfc35ef1348187b4b495e8d81ad962f627",
+  "en": "e879318bd69be37141ceb9753f1b92a839c3e2db19bcc49164149b2e817a1e87"
+ },
+ "inputs_sha256": {
+  "en_context (ui.teamBridge.leave.context.json)": "7cc916bce247f396c842c007b03e5ef66dc51f26e89f080cc5272bfbfe6cb976",
+  "glossary (local-operator/i18n/glossary.md)": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "style guide (local-operator/i18n/style-guides/ru.md)": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+ },
+ "scope": "ui.teamBridge.leave round 3 (PR #1660 D1/U3/m1, WCAG 2.5.3 Label in Name): name and name_attention re-audited; back/back_shortcut verified unchanged",
+ "previous_receipt": "3454343bfd47-leave-r2-ru",
+ "verified": [
+  "all 15 target/source hashes and both en context hashes in AUDIT-BRIEF-R3 matched the worktree before audit",
+  "name and every plural arm of name_attention begin with this locale's visible label ui.teamBridge.leave.back ('Назад') verbatim, followed by the locale's comma",
+  "byte reconstruction: back + comma + the previously audited name wording reproduces name and every name_attention arm exactly (first letter lower-cased, as the locale does mid-sentence); back and back_shortcut byte-identical to the audited values; key set equals en",
+  "label-then-action order reads naturally as a screen-reader name in this locale; the comma join keeps the imperative register of the audited wording",
+  "CLDR plural arms equal Intl.PluralRules categories; intl-messageformat formats name and name_attention at 1,2,5,21,1000000 without error; {count}/# preserved",
+  "NFC, no bidi/zero-width controls, no edge or double spaces",
+  "design-qa copy_scan.py over all 8 leave files: 'scanned 8 files, 26 candidate strings; 0 findings'"
+ ]
+}

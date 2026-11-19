@@ -283,9 +283,9 @@ async function deriveBrand(root) {
 		if (!definition) {
 			throw new Error(`the palette module did not export ${name}`);
 		}
-		const { id, name: displayName, description, palette } = definition;
+		const { id, name: displayName, descriptionKey, palette } = definition;
 		const { mode, ...values } = palette;
-		palettes[name] = { id, name: displayName, description, mode, values };
+		palettes[name] = { id, name: displayName, descriptionKey, mode, values };
 	}
 	return { members, palettes };
 }
@@ -294,12 +294,35 @@ async function deriveBrand(root) {
 function brandFindings(derived, vendored) {
 	const diffs = [];
 	for (const name of BRAND_PALETTES) {
-		valueDiffs(
-			derived.palettes[name],
-			vendored?.palettes?.[name],
-			`/palettes/${name}`,
-			diffs,
-		);
+		const local = derived.palettes[name];
+		const expected = vendored?.palettes?.[name];
+		/*
+		 * The picker's description is NOT compared. It is app copy now: a
+		 * `descriptionKey` the registry resolves against `src/i18n/catalogues/`,
+		 * translated into every shipped locale, while the kit's `description` is the
+		 * English sentence recorded when the pin was taken. Brand identity is the
+		 * id, the established name, the mode and the values; the key itself is
+		 * typechecked (`MessageKey`) and generated (`generate --check`), so a
+		 * missing or misspelt message fails earlier than this gate.
+		 */
+		const identity = (palette) =>
+			palette
+				? {
+						id: palette.id,
+						name: palette.name,
+						mode: palette.mode,
+						values: palette.values,
+					}
+				: palette;
+		valueDiffs(identity(local), identity(expected), `/palettes/${name}`, diffs);
+		if (
+			typeof local?.descriptionKey !== "string" ||
+			!local.descriptionKey.startsWith("ui.settings.appearance.theme.")
+		) {
+			diffs.push(
+				`/palettes/${name}/descriptionKey: this tree has no theme-picker message key (${JSON.stringify(local?.descriptionKey)})`,
+			);
+		}
 	}
 	const vendoredMembers = vendored?.contract?.members ?? [];
 	const missing = vendoredMembers.filter((m) => !derived.members.includes(m));

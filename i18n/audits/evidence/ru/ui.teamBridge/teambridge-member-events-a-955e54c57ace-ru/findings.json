@@ -1,0 +1,29 @@
+[
+	{
+		"id": "RU-A1",
+		"severity": "major",
+		"key": "ui.teamBridge.events.owner_added_agent",
+		"current": "{actor}: добавлен собственный агент — {targets}",
+		"proposed": "{actor}: добавление собственного агента — {targets}",
+		"reason": "A grouped line can carry two or more agent names, and the passive singular «добавлен … агент» then describes one agent while the dash lists three; «добавление собственного агента» is number-neutral and matches the locale's own verbal-noun pattern in events.removed («удаление из разговора»)."
+	},
+	{
+		"id": "RU-A2",
+		"severity": "minor",
+		"key": "ui.teamBridge.events.declined_self",
+		"related_keys": [
+			"ui.teamBridge.events.declined"
+		],
+		"current": "{actor}: приглашение отклонено",
+		"proposed": "{actor}: отклонено приглашение",
+		"reason": "events.declined opens with the participle («отклонено приглашение — {targets}») while this near-identical line opens with the noun, so the same statement appears in two word orders one row apart; making both participle-first leaves the dash clause as the only difference."
+	},
+	{
+		"id": "RU-A3",
+		"severity": "nit",
+		"key": "ui.teamBridge.events.others",
+		"current": "{count, plural, one {ещё #} few {ещё #} many {ещё #} other {ещё #}}",
+		"proposed": "{count, plural, one {ещё один} few {ещё #} many {ещё #} other {ещё #}}",
+		"reason": "As the last list item, count=1 renders «… и ещё 1», which Russian writes as «и ещё один»; the plural arms are correct and idiomatic."
+	}
+]

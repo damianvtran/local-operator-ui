@@ -1,0 +1,5 @@
+{
+	"ui.teamBridge.threadRow.label": "查看讨论串，{count, plural, other {#条回复}}{unread, plural, =0 {} other {，#条未读}}{hasLast, select, yes {。{last}} other {}}",
+	"ui.teamBridge.threadRow.last": "最后回复于{when, select, today {今天 {time}} yesterday {昨天 {time}} other {{time}}}",
+	"ui.teamBridge.threadRow.unread_badge": "{count, plural, other {{label}条未读}}"
+}

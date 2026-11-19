@@ -1,0 +1,27 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "kimi/k3.1-pro",
+  "instance": "ff24e557ff85-hi-r3",
+  "locale": "hi",
+  "namespace": "ui.settings.shortcuts",
+  "status": "passed",
+  "sha256": {
+    "hi": "ea89779d6b5cf829faf67d9a69b87bdad5cfcf4bdfa861fe0460c93e84f527a8",
+    "en": "47a104b76562850fd36a7c73b5fdfcad92971170b913b384ea8dcc1d24d40e32"
+  },
+  "context_sha256": "70767e196d03cae74b24a43205b89da569fbc223572e8e503525765f378772e3",
+  "scope": "Round 3: the new inactive_claimed warning and direct neighbours. Removing only the added warning line and preceding comma reconstructs the previously audited target bytes exactly; earlier four-key translations remain byte-identical.",
+  "findings": [],
+  "checks": [
+    "Current English, context and target SHA-256 verified from actual bytes; all supplied hashes match.",
+    "Exact full-catalogue key parity and exact one-key-only delta from the previously audited target.",
+    "The {label} placeholder is present exactly once with no other placeholders; JSON and NFC pass.",
+    "Translation states both that recording is inactive and that the localized {label} action owns this shortcut; no sentence added inside the placeholder.",
+    "Locale glossary/style, register, punctuation and one/two-line warning fit reviewed; no prohibited bidi controls present.",
+    "Previously audited four scoped messages and French Esc remediation remain byte-identical."
+  ],
+  "references": {
+    "glossary_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide_sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+  }
+}

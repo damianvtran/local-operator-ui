@@ -1,0 +1,90 @@
+{
+	"auditor": "reviewer",
+	"model": "anthropic/claude-opus-5-5",
+	"instance": "15686088b7ce-ur",
+	"run_id": "15686088b7ce",
+	"status": "passed",
+	"result": "clean-with-findings",
+	"namespace": "ui.chat.canonical",
+	"locale": "ur",
+	"date": "2026-11-12",
+	"head": "c213a0616d0272b53fee8293fbc0a241255b2a52",
+	"key_count": 457,
+	"scope": "whole merged file at c213a0616: #1870's 14 status keys + this PR's 5 loading.* keys; seam review and merge-integrity proof",
+	"merge_integrity": "all 457 values equal origin/main or 10eba3637 (14 #1870 keys = main, 5 loading.* = 10eba3637); only raw-line change is a trailing comma on main's last line; removed vs main = the 4 audited removals",
+	"checks": [
+		"loading.* meaning/register vs en + context (values = 4b8febc34595 audit)",
+		"seam: progressive لوڈ ہو رہی ہے…/ہم آہنگی ہو رہی ہے… with full ہے… matches main's state lines (… جا رہی ہے…); terse tool-row lines drop ہے as tool_row.verb.* do; sync ہم آہنگ as tool_row.verb.synced_agents; گفتگو as elsewhere; feminine ڈیوائس (کی دوسری) agrees with existing کسی دوسری ڈیوائس; glossary device -> ڈیوائس",
+		"ellipsis: single U+2026, no space before, wherever en has one, all 19 keys; no ASCII ...",
+		"ICU args identical to en; no bidi controls; no duplicate loading.* values",
+		"glossary/style guide unchanged since 5079899f0"
+	],
+	"audited_values": {
+		"ui.chat.canonical.loading.cold": "گفتگو لوڈ ہو رہی ہے…",
+		"ui.chat.canonical.loading.revalidating": "نئے پیغامات کی جانچ ہو رہی ہے…",
+		"ui.chat.canonical.loading.older": "پچھلے پیغامات لوڈ ہو رہے ہیں…",
+		"ui.chat.canonical.loading.remote": "آپ کی دوسری ڈیوائس سے ہم آہنگی ہو رہی ہے…",
+		"ui.chat.canonical.loading.region_label": "گفتگو لوڈ ہو رہی ہے"
+	},
+	"findings": [
+		{
+			"id": "b97613446a7a/UR-1",
+			"severity": "MINOR",
+			"origin": "i18n/receipts/b97613446a7a.json",
+			"disposition": "carried from origin (key and detail there): bytes unchanged, still applies, severity concurred; deferred"
+		},
+		{
+			"id": "b97613446a7a/UR-2",
+			"severity": "NIT",
+			"origin": "i18n/receipts/b97613446a7a.json",
+			"disposition": "carried from origin (key and detail there): bytes unchanged, still applies, severity concurred; deferred"
+		},
+		{
+			"id": "b97613446a7a/UR-3",
+			"severity": "NIT",
+			"origin": "i18n/receipts/b97613446a7a.json",
+			"disposition": "carried from origin (key and detail there): bytes unchanged, still applies, severity concurred; deferred"
+		},
+		{
+			"id": "b97613446a7a/UR-4",
+			"severity": "NIT",
+			"origin": "i18n/receipts/b97613446a7a.json",
+			"disposition": "carried from origin (key and detail there): bytes unchanged, still applies, severity concurred; deferred"
+		},
+		{
+			"id": "4b8febc34595-ur/N1",
+			"severity": "NIT",
+			"origin": "i18n/receipts/4b8febc34595-ur.json",
+			"disposition": "carried from origin (key and detail there): bytes unchanged, still applies, severity concurred; deferred"
+		}
+	],
+	"severity_counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 1,
+		"nit": 4
+	},
+	"supersedes": [
+		"b97613446a7a",
+		"4b8febc34595-ur"
+	],
+	"independence": {
+		"translators": [
+			"i18n-translator anthropic/claude-sonnet-5-5 (14 keys)",
+			"coder 6ca5ea22d2ab anthropic/claude-opus-5-5 (loading.*)"
+		],
+		"auditor_agent": "reviewer",
+		"auditor_session": "15686088b7ce",
+		"independent_from_translator": true,
+		"disclosure": "different agent/session from both translators; same model family as coder; no fallback"
+	},
+	"references": {
+		"glossary": "~/local-operator/i18n/glossary.md @ ad910f5da",
+		"style_guide": "~/local-operator/i18n/style-guides/ur.md @ ad910f5da"
+	},
+	"sha256": {
+		"target": "8221d473390d835abadb219470689c01f7e21fd2814ec1faf7177872fc814563",
+		"en": "0c9b709973d3b7769708502491a0d3d81798ac2ac68319967198e53e2d495113",
+		"context": "5eeed243125c66031b335e1dcdf029ce54306db70fb1fb65e69dc53d64e30391"
+	}
+}

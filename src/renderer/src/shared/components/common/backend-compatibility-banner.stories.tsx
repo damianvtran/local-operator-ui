@@ -20,7 +20,7 @@
  * app; a browser-dev renderer hashes no updater and would offer no update
  * anywhere, which is not a state worth twelve frames. The COPY is the shipped
  * tables' - `BACKEND_PAIRING_SENTENCE`, `backendCompatibilityMessage`,
- * `BACKEND_UPDATE_UNEXPLAINED` - never a retyped paraphrase, so a copy change
+ * `backendUpdateUnexplained()` - never a retyped paraphrase, so a copy change
  * moves the frames with it rather than leaving them describing an old app.
  */
 
@@ -30,8 +30,8 @@ import {
 } from "@shared/api/local-operator/backend-error";
 import type { Meta, StoryObj } from "@storybook/react";
 import {
-	BACKEND_UPDATE_UNEXPLAINED,
 	BackendCompatibilityBannerView,
+	backendUpdateUnexplained,
 } from "./backend-compatibility-banner";
 
 const PANE = ({ children }: { children: React.ReactNode }) => (
@@ -161,14 +161,14 @@ export const UnansweredProbe: Story = {
 /**
  * The update-failed suffix: the band keeps its single `Update backend` remedy
  * and states what the updater reported, from the same fallback string the
- * container sets (`BACKEND_UPDATE_UNEXPLAINED`).
+ * container sets (`backendUpdateUnexplained()`).
  */
 export const UpdateFailed: Story = {
 	args: {
 		...base,
 		message: BACKEND_PAIRING_SENTENCE["pre-handshake"],
 		offerUpdate: true,
-		updateError: BACKEND_UPDATE_UNEXPLAINED,
+		updateError: backendUpdateUnexplained(),
 	},
 };
 

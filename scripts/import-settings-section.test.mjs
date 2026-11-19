@@ -123,6 +123,12 @@ const sessions = [
 		parentSourceId: null,
 	},
 ];
+const secondSession = {
+	...sessions[0],
+	sourceId: "omp-two",
+	title: "Second conversation",
+	messageCount: 4,
+};
 const preview = {
 	totalSessions: 1,
 	totalMessages: 4,
@@ -263,7 +269,8 @@ test("preview, acknowledgement and import are a container gate", async () => {
 	assert.equal(buttonContaining("Import 1 session"), undefined);
 	await click(host.querySelector('[role="checkbox"]'));
 	await waitFor(() => text(host).includes("1 selected"), "selection");
-	await click(buttonContaining("Preview"));
+	// The preview is built from the selection, so it arrives on its own.
+	await waitFor(() => calls.preview === 1, "automatic preview");
 	await waitFor(
 		() => text(host).includes("I understand these conversations"),
 		"preview",
@@ -283,6 +290,34 @@ test("preview, acknowledgement and import are a container gate", async () => {
 	assert.equal(calls.preview, 1);
 });
 
+test("a selection change builds the preview without the user asking", async () => {
+	const second = {
+		...sessions[0],
+		sourceId: "omp-two",
+		title: "Second conversation",
+	};
+	const { mock, calls } = makeMock({
+		fetchImportSessions: async () => [sessions[0], second],
+	});
+	await mount(mock);
+	await waitFor(() => text(host).includes("First conversation"), "sessions");
+	assert.equal(calls.preview, 0);
+	await click(host.querySelector('[role="checkbox"]'));
+	await waitFor(() => calls.preview === 1, "automatic preview");
+	// The preview is debounced, so a second row does not ask the core again
+	// for every tick of the selection.
+	await click(host.querySelectorAll('[role="checkbox"]')[1]);
+	await waitFor(() => calls.preview === 2, "rebuilt preview");
+	// An empty selection has nothing to preview, and asking for one is what
+	// used to be a silent no-op at the user.
+	await click(host.querySelectorAll('[role="checkbox"]')[1]);
+	await click(host.querySelectorAll('[role="checkbox"]')[0]);
+	await act(async () => {
+		await sleep(600);
+	});
+	assert.equal(calls.preview, 2);
+});
+
 test("a running job keeps its monitor when a source card is pressed", async () => {
 	const { mock, calls } = makeMock({
 		fetchImportJob: async () => ({ ...running }),
@@ -291,7 +326,7 @@ test("a running job keeps its monitor when a source card is pressed", async () =
 	await waitFor(() => text(host).includes("First conversation"), "sessions");
 	await click(host.querySelector('[role="checkbox"]'));
 	await waitFor(() => text(host).includes("1 selected"), "selection");
-	await click(buttonContaining("Preview"));
+	await waitFor(() => calls.preview === 1, "automatic preview");
 	await waitFor(
 		() => text(host).includes("I understand these conversations"),
 		"preview",
@@ -321,7 +356,7 @@ test("a running job keeps its monitor when a source card is pressed", async () =
 
 test("one failed job read is retried and clears its error on success", async () => {
 	let jobReads = 0;
-	const { mock } = makeMock({
+	const { mock, calls } = makeMock({
 		fetchImportJob: async () => {
 			jobReads += 1;
 			if (jobReads === 1) throw new Error("transient desktop read");
@@ -332,7 +367,7 @@ test("one failed job read is retried and clears its error on success", async () 
 	await waitFor(() => text(host).includes("First conversation"), "sessions");
 	await click(host.querySelector('[role="checkbox"]'));
 	await waitFor(() => text(host).includes("1 selected"), "selection");
-	await click(buttonContaining("Preview"));
+	await waitFor(() => calls.preview === 1, "automatic preview");
 	await waitFor(
 		() => text(host).includes("I understand these conversations"),
 		"preview",
@@ -372,4 +407,237 @@ test("Refresh reloads source cards and the active session list", async () => {
 		calls.sessions.filter((source) => source === "omp").length >= 2,
 		true,
 	);
+});
+
+/*
+ * THE INTERLEAVING THAT WEDGED THE SCREEN. A selection change starts a second
+ * build while the first is in flight (the debounce delays each build's start,
+ * it does not serialize them), and the two responses can land in either order.
+ * Before the request guard, the OLD response overwrote the newer preview and
+ * signature, and the failure marker recorded by the newer attempt then stopped
+ * the effect from ever rebuilding: a permanent "Building the preview..." with
+ * the acknowledgement and Import disabled and no error to retry.
+ */
+test("an out-of-order preview response cannot overwrite the current one", async () => {
+	const { mock, calls } = makeMock({
+		fetchImportSessions: async () => [sessions[0], secondSession],
+		previewImport: async (request) => {
+			calls.preview += 1;
+			const attempt = calls.preview;
+			const ids = request.sessionIds[request.sources[0]] ?? [];
+			// The FIRST request answers LAST.
+			await sleep(attempt === 1 ? 900 : 60);
+			return {
+				...preview,
+				totalSessions: ids.length,
+				totalMessages: ids.length === 2 ? 8 : 154,
+			};
+		},
+	});
+	await mount(mock);
+	await waitFor(() => text(host).includes("First conversation"), "sessions");
+	await click(host.querySelectorAll('[role="checkbox"]')[0]);
+	await waitFor(() => calls.preview === 1, "first preview request");
+	await waitFor(() => text(host).includes("1 selected"), "first selection");
+	// Add the second row while the first build is still in flight.
+	await click(host.querySelectorAll('[role="checkbox"]')[1]);
+	await waitFor(() => calls.preview === 2, "second preview request");
+	// Let the older response land after the newer one.
+	await act(async () => {
+		await sleep(1500);
+	});
+	assert.equal(calls.preview, 2, "exactly one build per settled selection");
+	// The current selection's own numbers, not the superseded request's.
+	assert.match(text(host), /2 sessions · 8 messages/);
+	assert.doesNotMatch(text(host), /1 session · 154 messages/);
+	// `previewStale` is false: the acknowledgement is usable again.
+	const boxes = host.querySelectorAll('[role="checkbox"]');
+	const acknowledgement = boxes.item(boxes.length - 1);
+	assert.equal(acknowledgement.disabled, false);
+	await click(acknowledgement);
+	await waitFor(
+		() => buttonContaining("Import 2 sessions")?.disabled === false,
+		"import enabled",
+	);
+});
+
+/*
+ * THE LATCH THAT OUTLIVED ITS PREVIEW. `onImportAnother` drops the preview but
+ * used to keep the record of the failed attempt; re-selecting the SAME set
+ * produces the same signature, so the build was never scheduled again and the
+ * spinner stood forever. Reachable from the primary flow.
+ */
+test("re-selecting the same set after an import builds a new preview", async () => {
+	const { mock, calls } = makeMock();
+	await mount(mock);
+	await waitFor(() => text(host).includes("First conversation"), "sessions");
+	await click(host.querySelector('[role="checkbox"]'));
+	await waitFor(() => calls.preview === 1, "automatic preview");
+	await waitFor(
+		() => text(host).includes("I understand these conversations"),
+		"preview",
+	);
+	const boxes = host.querySelectorAll('[role="checkbox"]');
+	await click(boxes.item(boxes.length - 1));
+	await waitFor(
+		() => buttonContaining("Import 1 session")?.disabled === false,
+		"enabled",
+	);
+	await click(buttonContaining("Import 1 session"));
+	await waitFor(() => text(host).includes("Import result"), "result", 6000);
+	await click(buttonContaining("Import more conversations"));
+	await waitFor(() => text(host).includes("0 selected"), "reset");
+	// The SAME source and the SAME ids as before: the same selection signature.
+	await click(host.querySelector('[role="checkbox"]'));
+	await waitFor(() => calls.preview === 2, "rebuilt preview");
+	await waitFor(
+		() => text(host).includes("I understand these conversations"),
+		"preview again",
+	);
+	const again = host.querySelectorAll('[role="checkbox"]');
+	await click(again.item(again.length - 1));
+	await waitFor(
+		() => buttonContaining("Import 1 session")?.disabled === false,
+		"enabled again",
+	);
+	assert.equal(calls.preview, 2);
+});
+
+/*
+ * THE SAFETY INVARIANT UNDER AUTO-PREVIEW. A tick stated for one set of
+ * conversations must not authorize a different set once the new preview
+ * arrives: the acknowledgement is a statement about THAT copy.
+ */
+test("a selection change clears the acknowledgement and disables Import", async () => {
+	const { mock, calls } = makeMock({
+		fetchImportSessions: async () => [sessions[0], secondSession],
+		previewImport: async (request) => {
+			calls.preview += 1;
+			const ids = request.sessionIds[request.sources[0]] ?? [];
+			return {
+				...preview,
+				totalSessions: ids.length,
+				totalMessages: ids.length === 2 ? 8 : 154,
+			};
+		},
+	});
+	await mount(mock);
+	await waitFor(() => text(host).includes("First conversation"), "sessions");
+	await click(host.querySelectorAll('[role="checkbox"]')[0]);
+	await waitFor(() => calls.preview === 1, "automatic preview");
+	await waitFor(
+		() => text(host).includes("I understand these conversations"),
+		"preview",
+	);
+	let boxes = host.querySelectorAll('[role="checkbox"]');
+	await click(boxes.item(boxes.length - 1));
+	await waitFor(
+		() => buttonContaining("Import 1 session")?.disabled === false,
+		"enabled",
+	);
+	// Add a row: a different copy, so the acknowledgement must be re-stated.
+	await click(host.querySelectorAll('[role="checkbox"]')[1]);
+	await waitFor(() => calls.preview === 2, "rebuilt preview");
+	await waitFor(
+		() => text(host).includes("2 sessions · 8 messages"),
+		"preview",
+	);
+	boxes = host.querySelectorAll('[role="checkbox"]');
+	assert.equal(
+		boxes.item(boxes.length - 1).getAttribute("data-state"),
+		"unchecked",
+	);
+	assert.equal(
+		buttonContaining("Import 2 sessions")?.disabled,
+		true,
+		"the new preview does not re-arm the acknowledgement",
+	);
+	// Re-stating it is what re-enables the action.
+	await click(boxes.item(boxes.length - 1));
+	await waitFor(
+		() => buttonContaining("Import 2 sessions")?.disabled === false,
+		"enabled again",
+	);
+});
+
+/*
+ * THE FAILURE WAS REPORTED IN THE WRONG PLACE. It lived only in the section
+ * banner, which sits above the source cards and the session list; at the
+ * preview block the operator saw a disabled acknowledgement and a grey Import
+ * with nothing beside them saying why. The preview's failure now renders in
+ * the preview block, next to the controls it explains, and Retry rebuilds.
+ */
+test("a failed preview is stated where it happened and Retry rebuilds it", async () => {
+	let attempts = 0;
+	const { mock, calls } = makeMock({
+		previewImport: async () => {
+			calls.preview += 1;
+			attempts += 1;
+			if (attempts === 1) throw new Error("preview refused");
+			return preview;
+		},
+	});
+	await mount(mock);
+	await waitFor(() => text(host).includes("First conversation"), "sessions");
+	await click(host.querySelector('[role="checkbox"]'));
+	await waitFor(
+		() => text(host).includes("Could not build the preview"),
+		"inline preview failure",
+	);
+	// ONE Retry: the preview failure is no longer duplicated in the section
+	// banner, which stays for source, session and job errors.
+	const retries = [...host.querySelectorAll("button")].filter(
+		(node) => node.textContent?.trim() === "Retry",
+	);
+	assert.equal(retries.length, 1);
+	// The failure and its Retry are in the block that holds the gate.
+	const block = retries[0].closest("div.rounded-lg");
+	assert.ok(block?.contains(retries[0]));
+	assert.match(text(host), /I understand these conversations/);
+	await click(retries[0]);
+	await waitFor(() => calls.preview === 2, "rebuilt preview");
+	await waitFor(
+		() => text(host).includes("1 session · 4 messages"),
+		"preview recovered",
+	);
+	assert.doesNotMatch(text(host), /Could not build the preview/);
+});
+
+/*
+ * ONE CONTROL PER ROW, ONE TOGGLE PER CLICK. The row text used to be a second
+ * button with the same action as the checkbox: two focus stops for one action,
+ * and the second one did not expose the checked state. The text is now the
+ * checkbox's label, so the row has one focusable control and the large pointer
+ * target is preserved.
+ */
+test("a row has one focus stop and its label toggles exactly once", async () => {
+	const { mock } = makeMock();
+	await mount(mock);
+	await waitFor(() => text(host).includes("First conversation"), "sessions");
+	const row = [...host.querySelectorAll("div.rounded-md")].find((node) =>
+		node.querySelector('[role="checkbox"]'),
+	);
+	assert.ok(row);
+	const checkbox = row.querySelector('[role="checkbox"]');
+	const label = row.querySelector("label");
+	assert.ok(checkbox);
+	assert.ok(label, "the row text is a label, not a second button");
+	assert.equal(
+		label.getAttribute("for"),
+		checkbox.id,
+		"the label is associated with the row's checkbox",
+	);
+	// (a) exactly one focusable control in the row.
+	const focusable = row.querySelectorAll(
+		'button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+	);
+	assert.equal(focusable.length, 1);
+	assert.equal(focusable[0], checkbox);
+	// (b) one click on the label toggles exactly once.
+	await click(label);
+	await waitFor(() => text(host).includes("1 selected"), "selected once");
+	assert.equal(text(host).includes("2 selected"), false);
+	// (c) no double toggle: it goes back to empty in one more click.
+	await click(label);
+	await waitFor(() => text(host).includes("0 selected"), "deselected once");
 });

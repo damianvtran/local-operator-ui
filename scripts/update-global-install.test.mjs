@@ -319,7 +319,7 @@ test("a generation install is managed, and the layout is the licence - not the v
 	 * off - a promise the old wording made and the new behaviour cannot incur.
 	 */
 	assert.match(plan.remedy, /installs the new build beside the one in use/);
-	assert.match(plan.remedy, /nothing in flight is cut off/);
+	assert.match(plan.remedy, /^Running sessions aren't interrupted\./);
 	assert.doesNotMatch(plan.remedy, /turn that is in flight is dropped/);
 	assert.doesNotMatch(plan.remedy, /your terminal/);
 	assert.doesNotMatch(plan.remedy, /:$/);

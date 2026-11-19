@@ -1,0 +1,65 @@
+locale ur
+---
+key:   ui.teamBridge.events.invited
+value: {actor} نے {targets} کو مدعو کیا
+  1 target: Ana نے Ben کو مدعو کیا
+  3 targets: Ana نے Ben، Sana، اور Ravi کو مدعو کیا
+
+key:   ui.teamBridge.events.joined
+value: {targets} گفتگو میں شامل
+  1 target: Ben گفتگو میں شامل
+  3 targets: Ben، Sana، اور Ravi گفتگو میں شامل
+
+key:   ui.teamBridge.events.owner_added_agent
+value: {actor} نے اپنا ایجنٹ {targets} شامل کیا
+  1 target: Ana نے اپنا ایجنٹ Ben شامل کیا
+  3 targets: Ana نے اپنا ایجنٹ Ben، Sana، اور Ravi شامل کیا
+
+key:   ui.teamBridge.events.left
+value: {targets} نے گفتگو چھوڑ دی
+  1 target: Ben نے گفتگو چھوڑ دی
+  3 targets: Ben، Sana، اور Ravi نے گفتگو چھوڑ دی
+
+key:   ui.teamBridge.events.removed
+value: {actor} نے {targets} کو ہٹا دیا
+  1 target: Ana نے Ben کو ہٹا دیا
+  3 targets: Ana نے Ben، Sana، اور Ravi کو ہٹا دیا
+
+key:   ui.teamBridge.events.consented
+value: {actor} نے {targets} کو شامل ہونے کی منظوری دی
+  1 target: Ana نے Ben کو شامل ہونے کی منظوری دی
+  3 targets: Ana نے Ben، Sana، اور Ravi کو شامل ہونے کی منظوری دی
+
+key:   ui.teamBridge.events.declined_self
+value: {actor} نے دعوت مسترد کر دی
+  1 target: Ana نے دعوت مسترد کر دی
+  3 targets: Ana نے دعوت مسترد کر دی
+
+key:   ui.teamBridge.events.declined
+value: {actor} نے {targets} کے لیے دعوت مسترد کر دی
+  1 target: Ana نے Ben کے لیے دعوت مسترد کر دی
+  3 targets: Ana نے Ben، Sana، اور Ravi کے لیے دعوت مسترد کر دی
+
+key:   ui.teamBridge.events.withdrawn
+value: {actor} نے {targets} کے لیے دعوت واپس لے لی
+  1 target: Ana نے Ben کے لیے دعوت واپس لے لی
+  3 targets: Ana نے Ben، Sana، اور Ravi کے لیے دعوت واپس لے لی
+
+key:   ui.teamBridge.events.unknown
+value: اراکین میں تبدیلی ہوئی
+  rendered: اراکین میں تبدیلی ہوئی
+
+key:   ui.teamBridge.events.others
+value: {count, plural, one {# دیگر} other {# دیگر}}
+  count=1: 1 دیگر
+  count=2: 2 دیگر
+  count=3: 3 دیگر
+  count=21: 21 دیگر
+  count=22: 22 دیگر
+  count=25: 25 دیگر
+  as last list item: Ana نے Ben، Sana، اور 2 دیگر کو مدعو کیا
+
+key:   ui.teamBridge.members.invitation_note_v3
+value: دعوتیں قبول ہونے تک رسائی نہیں دیتیں۔ آپ کے اپنے ایجنٹ فوراً شامل ہو جاتے ہیں؛ کسی اور کا ایجنٹ اپنے مالک کی رضامندی کے بعد شامل ہوتا ہے۔ رکن ایجنٹ یہاں ہر پیغام پڑھتا ہے اور خود طے کرتا ہے کہ جواب دے یا نہیں، اور @ کے ساتھ ذکر ہونے پر اس سے جواب کی توقع کی جاتی ہے۔ اس کا مالک اسے صرف @ والے ذکر اور ان تھریڈز تک محدود کر سکتا ہے جن میں وہ شریک ہے، یا اسے خاموش کر سکتا ہے۔
+  rendered: دعوتیں قبول ہونے تک رسائی نہیں دیتیں۔ آپ کے اپنے ایجنٹ فوراً شامل ہو جاتے ہیں؛ کسی اور کا ایجنٹ اپنے مالک کی رضامندی کے بعد شامل ہوتا ہے۔ رکن ایجنٹ یہاں ہر پیغام پڑھتا ہے اور خود طے کرتا ہے کہ جواب دے یا نہیں، اور @ کے ساتھ ذکر ہونے پر اس سے جواب کی توقع کی جاتی ہے۔ اس کا مالک اسے صرف @ والے ذکر اور ان تھریڈز تک محدود کر سکتا ہے جن میں وہ شریک ہے، یا اسے خاموش کر سکتا ہے۔
+

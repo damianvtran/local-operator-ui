@@ -6,9 +6,11 @@
  * design needs to hover one, and an edge that swallowed pointer events would sit
  * over the canvas's own pan surface - the background a drag starts on.
  *
- * A REVOKED MEMBERSHIP DRAWS DASHED, not a second colour: the channel that already
- * means "this is not the ordinary case" carries it, so the hue stays free for the
- * link-health axis (§5).
+ * ONE LINE PER LIVE MEMBERSHIP. A revoked membership used to draw dashed here,
+ * which kept a line to a network the device was no longer in and asked the
+ * canvas to explain a membership that is an audit row rather than a link. The
+ * list's revoked count owns that fact now; this layer draws only what is a
+ * membership today.
  */
 
 import type { FC } from "react";
@@ -53,7 +55,6 @@ export const MeshEdgeLayer: FC<MeshEdgeLayerProps> = ({
 					d={edgePath(from, to)}
 					fill="none"
 					strokeWidth={lit ? 2 : 1.5}
-					strokeDasharray={edge.active ? undefined : "4 4"}
 					/*
 					 * A LIGHTNESS step for the selected device's edges, never the accent:
 					 * the accent is spent on "this device" alone, and two meanings for one

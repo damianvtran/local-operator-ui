@@ -1,0 +1,72 @@
+HEAD=f3a758d5da69e11f7cb16148040ac167894769b6 expected=f3a758d5da69e11f7cb16148040ac167894769b6
+PASS worktree HEAD is the audited head
+PASS src/ clean against HEAD (porcelain="")
+PASS src/i18n files changed: ["src/i18n/catalogues/en/ui.mesh.context.json","src/i18n/catalogues/es/ui.mesh.json"]
+PASS fr catalogue tree byte-identical a61bb75e1d480ebab13bc3b1e4885ed9ca89e4db
+PASS hi catalogue tree byte-identical e4402bd912fe415d925800ee4b72eb75b17f1ee0
+PASS ru catalogue tree byte-identical 46265e3b346ce41bf6f192d5346e5a167231fd81
+PASS ur catalogue tree byte-identical f639ee0b486418fcfb4027f6abfc6643f0415cb2
+PASS vi catalogue tree byte-identical 468d74849fa4f6bff32aa5dff5387b59851c5fe4
+PASS zh-CN catalogue tree byte-identical a4e407706f5c050b1348f0e46b15f994d0311ef6
+PASS en ui.mesh.json byte-identical
+PASS es changed keys ["ui.mesh.approval.expires_window","ui.mesh.approval.typed_review_unavailable"]
+PASS es key set == en key set
+PASS context changed ["ui.mesh.approval.could_not_apply"]
+PASS could_not_apply role/tone unchanged (note only)
+  note BEFORE: Approval was signed but the SAME card cannot be applied successfully. No suggestion that waiting/retrying helps. Replaces approved_not_applied and suppresses countdown only when explicit apply_outcome.retryable is false; cancel remains available.
+  note AFTER : Approval was signed but the SAME card cannot be applied successfully. No suggestion that waiting/retrying helps. Replaces approved_not_applied and suppresses countdown when apply_outcome is not retryable (false or absent); cancel remains available.
+sha256 en/ui.mesh.json=4e7d304432abb54b8e7d5eb96fd83d6ba1bbbdeab3a97ba1b07a80faa20ae10e
+sha256 es/ui.mesh.json=7658a8e0b1fba0edf2308e3869df9c69a700c424c09d6f6beadbe6147ceeb0dd
+sha256 en/ui.mesh.context.json=dcfaf736b3daea7df4daf4eada7819869c039504ff5ac6ec3dd07524387f47f9
+  ui.mesh.approval.expires_window
+    en: This card expires in {duration}
+    es BEFORE: Esta solicitud caduca en {duration}
+    es AFTER : Esta tarjeta caduca en {duration}
+PASS ui.mesh.approval.expires_window ICU args es=[duration] en=[duration]
+PASS ui.mesh.approval.expires_window NFC and bidi-control-free
+PASS ui.mesh.approval.expires_window no double/edge space, no "!", no space before : ; ?
+  ui.mesh.approval.typed_review_unavailable
+    en: This request can't be shown safely here. Deny it and ask for a new request.
+    es BEFORE: Esta solicitud no se puede mostrar aquí de forma segura. Recházala y pide una nueva solicitud.
+    es AFTER : Esta solicitud no se puede mostrar aquí de forma segura. Deniégala y pide una nueva.
+PASS ui.mesh.approval.typed_review_unavailable ICU args es=[] en=[]
+PASS ui.mesh.approval.typed_review_unavailable NFC and bidi-control-free
+PASS ui.mesh.approval.typed_review_unavailable no double/edge space, no "!", no space before : ; ?
+PASS typed_review_unavailable: no terminal/CLI/update-the-app wording
+PASS typed_review_unavailable verb Deniégala matches Deny control 'Denegar' (denegar, e->ie, tú imperative + enclitic la)
+PASS typed_review_unavailable no longer says Recházala
+PASS locale set to es
+== es: 352 cases, 4 distinct shapes
+  «Esta tarjeta caduca en menos de un minuto» ×59  e.g. «Esta tarjeta caduca en menos de un minuto»
+  «Esta tarjeta caduca en N minuto» ×1  e.g. «Esta tarjeta caduca en 1 minuto»
+  «Esta tarjeta caduca en N minutos» ×88  e.g. «Esta tarjeta caduca en 2 minutos» «Esta tarjeta caduca en 3 minutos» «Esta tarjeta caduca en 4 minutos» «Esta tarjeta caduca en 5 minutos» «Esta tarjeta caduca en 6 minutos» «Esta tarjeta caduca en 7 minutos» «Esta tarjeta caduca en 8 minutos» «Esta tarjeta caduca en 9 minutos»
+  «Esta tarjeta caduca en N horas» ×204  e.g. «Esta tarjeta caduca en 2 horas» «Esta tarjeta caduca en 3 horas» «Esta tarjeta caduca en 24 horas» «Esta tarjeta caduca en 48 horas» «Esta tarjeta caduca en 4 horas» «Esta tarjeta caduca en 5 horas» «Esta tarjeta caduca en 6 horas» «Esta tarjeta caduca en 7 horas»
+PASS es expires_window grammatical number/agreement in all 352 cases (mismatches=0)
+  control answer_window (unanswered, 5 min / 1 min / 30 s / 3 h): «Responde en un plazo de 5 minutos» «Responde en un plazo de 1 minuto» «Responde en un plazo de menos de un minuto» «Responde en un plazo de 3 horas»
+  none when expired: null null
+  t(typed_review_unavailable): «Esta solicitud no se puede mostrar aquí de forma segura. Deniégala y pide una nueva.»
+  t(mesh_approvals_tray.deny): «Denegar»  t(could_not_apply): «No se pudo aplicar»
+PASS locale set to en
+== en: 352 cases, 4 distinct shapes
+  «This card expires in less than a minute» ×59  e.g. «This card expires in less than a minute»
+  «This card expires in N minute» ×1  e.g. «This card expires in 1 minute»
+  «This card expires in N minutes» ×88  e.g. «This card expires in 2 minutes» «This card expires in 3 minutes» «This card expires in 4 minutes» «This card expires in 5 minutes» «This card expires in 6 minutes» «This card expires in 7 minutes» «This card expires in 8 minutes» «This card expires in 9 minutes»
+  «This card expires in N hours» ×204  e.g. «This card expires in 2 hours» «This card expires in 3 hours» «This card expires in 24 hours» «This card expires in 48 hours» «This card expires in 4 hours» «This card expires in 5 hours» «This card expires in 6 hours» «This card expires in 7 hours»
+  control answer_window (unanswered, 5 min / 1 min / 30 s / 3 h): «Answer within 5 minutes» «Answer within 1 minute» «Answer within less than a minute» «Answer within 3 hours»
+  none when expired: null null
+  t(typed_review_unavailable): «This request can't be shown safely here. Deny it and ask for a new request.»
+  t(mesh_approvals_tray.deny): «Deny»  t(could_not_apply): «Couldn't be applied»
+PASS t() serves the head es value (bundled catalogue, not fallback)
+PASS hasPermanentCredentialOutcome stored retryable:false: true
+PASS hasPermanentCredentialOutcome stored retryable ABSENT (outcome present): true
+PASS hasPermanentCredentialOutcome stored retryable:true: false
+PASS hasPermanentCredentialOutcome NO apply_outcome at all: false
+PASS hasPermanentCredentialOutcome fresh refusal outcome w/o retryable overrides stored true: true
+PASS hasPermanentCredentialOutcome no-outcome refusal keeps stored true: false
+PASS hasPermanentCredentialOutcome approved state, retryable absent: true
+PASS hasPermanentCredentialOutcome requested state never permanent: false
+  canDenyApproval failed/approved (Cancel sharing stays): true/true
+PASS cancel remains available on permanent-outcome states
+
+probe failures=0
+exit=0

@@ -1,0 +1,46 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "2b7d4e9c1a65",
+  "date": "2026-10-18",
+  "locale": "vi",
+  "status": "passed",
+  "namespaces": {
+    "ui.hub": {
+      "namespace": "ui.hub",
+      "status": "passed",
+      "sha256": {
+        "source": "3abae06a0eed97e4e9f6ea93d81a8fb0f5552bc41dc02c87c5825f4126640aca",
+        "target": "d1024f6fffcecfef14ecdf9a0183629b6aa23e093137a76177a73f673e52879a"
+      },
+      "findings": []
+    },
+    "ui.canvas": {
+      "namespace": "ui.canvas",
+      "status": "passed",
+      "sha256": {
+        "source": "6fa13501b59a260373bcb26f212fc6244a3d1219ef1811d2b0c1de05b541f1f5",
+        "target": "a9091b43f9cf925875a0d9ace36cf8852d9ddcfccf61311c5414e0d379ded57a"
+      },
+      "findings": []
+    },
+    "ui.hub.comments": {
+      "namespace": "ui.hub.comments",
+      "status": "passed",
+      "sha256": {
+        "source": "5c20d0e9a7f66f753561ded1d104aa5cf0e1fd0d5a73f7f0a7e3349a28c6f2c4",
+        "target": "12ce03b2a5bcc2f31690288869d35da7e71adf2857a400e95887753ae5352e22"
+      },
+      "findings": []
+    },
+    "ui.hub.taxonomy": {
+      "namespace": "ui.hub.taxonomy",
+      "status": "passed",
+      "sha256": {
+        "source": "4614e6b5eb2c56f0f48ccbee9bf26266193701a79994da4d9cf533386f1d3717",
+        "target": "975b3703304f7e7762a8d8159d3b93e8e12d74ae61f66ffbd834196a6663d556"
+      },
+      "findings": []
+    }
+  }
+}

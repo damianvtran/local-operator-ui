@@ -1,0 +1,80 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "a3b9391a0eab",
+  "date": "2026-10-18",
+  "locale": "zh-CN",
+  "status": "passed",
+  "scope": "full independent pass, every key, at HEAD 1844a072210c29a34ea1462d0ee31333d4407575",
+  "namespaces": {
+    "ui.browser": {
+      "namespace": "ui.browser",
+      "status": "passed",
+      "sha256": {
+        "source": "106e8aff158ee6957bdccf93bbae53e62a0724afdc406e8faa5743ced980d276",
+        "target": "2af4685c224a258ce4100815c2b9ae22faccea4ab55f3d66e0975b484752ce87"
+      },
+      "findings": [
+        {
+          "severity": "NIT",
+          "key": "ui.browser.browser_file_transfer_row.upload_more",
+          "issue": "The compact additional-file suffix drops the explicitly required leading +.",
+          "suggested": "+ {count, plural, other {另有{count, number, ::group-off}个}}",
+          "reason": "The context sidecar explicitly says to keep the leading +; browser-file-transfer-row.tsx:362 renders this as the additional-file suffix after the first filename. The Chinese count remains understandable, so this is formatting, not a meaning or consent defect.",
+          "current": "{count, plural, other {另有{count, number, ::group-off}个}}"
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.browser.browser_consent_request.allow_all_of",
+          "issue": "The source fragment’s trailing boundary space is absent.",
+          "suggested": "允许访问整个域名： ",
+          "reason": "The task explicitly requires fragment-boundary spaces to survive. The context sidecar repeats that requirement; browser-consent-request.tsx:304-305 and :368-369 concatenate this fragment directly with request.broad.key. The added Chinese colon keeps the current text understandable.",
+          "current": "允许访问整个域名："
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.browser.browser_consent_request.every_site_under",
+          "issue": "The source fragment’s trailing boundary space is absent.",
+          "suggested": "以下域名下的所有网站： ",
+          "reason": "The task requires preservation of concatenated fragment boundaries. browser-consent-request.tsx:372-373 places request.broad.key immediately after this fragment. This is a narrow contract/spacing issue; the permission scope itself is correct.",
+          "current": "以下域名下的所有网站："
+        }
+      ]
+    },
+    "ui.browser.chrome": {
+      "namespace": "ui.browser.chrome",
+      "status": "passed",
+      "sha256": {
+        "source": "73793572e5e36b8bbc8df6c1f27fb98083634b3b9e3cbd05ede27da4813c656c",
+        "target": "806233c4963e479eedb06baaac1b3102b5d4a84d4d962c9c5ed4263c6cada455"
+      },
+      "findings": []
+    },
+    "ui.mesh": {
+      "namespace": "ui.mesh",
+      "status": "passed",
+      "sha256": {
+        "source": "6b1a7e7433d1e4650d6bca114a7e6d20af3ea582b33a9c9c4039d22bdbbeb21d",
+        "target": "8373e12b85e553edf5659e19a5f42f6759afdc1fa1cdc96fba19fc14d48f332c"
+      },
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.mesh.mesh_page.copy_receipt",
+          "issue": "ID为 describes the displayed suffix as the complete new ID.",
+          "suggested": "{destination}已获得ID尾号为{suffix}的副本；原对话仍在此处。",
+          "reason": "The context defines suffix as the final six characters, and mesh-page.tsx:951-952 passes receipt.new_session_id.slice(-6). Calling it the ID can mislead a reader who tries to use the six-character display as the full identifier; transfer outcome and retention meaning are otherwise preserved.",
+          "current": "{destination}已获得ID为{suffix}的副本；原对话仍在此处。"
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.mesh.mesh_card.remove_from",
+          "issue": "退出网络 sounds like a leave-network action rather than removing the selected member device.",
+          "suggested": "从网络中移除：",
+          "reason": "mesh-card.tsx:453-457 calls onRemoveMember(device, membership.networkId) for the selected device and appends the network name; mesh-list.tsx also uses this key for member removal. The containing device card and subsequent confirmation preserve the target, so this is an avoidable action-label ambiguity, not an incorrect destructive confirmation.",
+          "current": "退出网络："
+        }
+      ]
+    }
+  }
+}

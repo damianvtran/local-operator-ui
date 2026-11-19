@@ -1,0 +1,111 @@
+{
+	"audit_id": "teambridge-delivery-rebase3-audit-0cf9244bca30-rebase3-fr",
+	"date": "2026-10-31",
+	"locale": "fr",
+	"namespace": "ui.teamBridge",
+	"branch": "feat/team-bridge-delivery-annotation",
+	"source_commit": "PR #1521 head 46cfa0caad8f68f4aea6f1908d145d71de827f6b, rebased onto 98afe56e2655aa05400097b427c18bd12020eaa9 (replayed head 449d42d844bd3be1f41fdc0b2c84db236cb4435a)",
+	"translator": {
+		"agent": "translator",
+		"model": "anthropic/claude-opus-5-5",
+		"date": "2026-10-21",
+		"session": "7f91449c7aa6",
+		"job": "a7380f37ab56",
+		"remediation_job": "b4390a98f09f",
+		"added_key_source": {
+			"key": "ui.teamBridge.notify.unavailable",
+			"job": "job8d4e6d78c133",
+			"model": "not supplied"
+		}
+	},
+	"auditors": [
+		{
+			"agent": "i18n-auditor",
+			"model": "anthropic/claude-opus-5-5",
+			"session": "0cf9244bca30",
+			"instance": "0cf9244bca30-rebase3-fr",
+			"date": "2026-10-31",
+			"result": "clean",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"model_fallback": {
+				"announced": false,
+				"observed": false
+			}
+		}
+	],
+	"independence": "Independent auditor: lopdev team task agent, session 0cf9244bca30; authored none of the audited strings and none of PR #1521; edited no catalogue; wrote only receipts/evidence and rows via ledger-assemble.mjs. Distinct run from the prior branch auditors (4c572bf830c8, 681c3f6ceb10, 7c9c46abac54, b612eedd8ab2) and main's (64e850ffd480, 52ac64c365d2, 7306b7beb00c, f8ec94dc2fc6).",
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "0fa048e0735bfadd4644d099c00b2c336d718814527f63db0d049f554dc25e3d"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "5bcd0e89ea6fc7058fadd6370210572a4b055156619216d6f78b0e18ccdc3db0"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/fr/ui.teamBridge.json",
+			"sha256": "4462d15e3c63c8587b355d88db467154f835416b5177954a95717161fd0c91e2"
+		}
+	},
+	"scope": {
+		"delta_kind": "Third rebase of PR #1521 onto origin/main 98afe56e265 (#1534 built-in #general channel: adds builtin.general_topic, rewords builtin.humans_topic). Mechanical: removing the 13 ui.teamBridge.delivery.* lines and the comma they force from src/i18n/catalogues/fr/ui.teamBridge.json yields bytes identical to origin/main's file; the same holds for en. JSON key diff vs main: 13 added, 0 removed, 0 changed. The 13 delivery lines are byte-identical to the previously audited branch head 46cfa0c.",
+		"base_target_sha256": "8b650cd95fa756f530e49f752ff55d8980f01efbce6c9de6780a1cc01901927d",
+		"base_en_sha256": "83a4a8fe8d9c7a548fbdbd07997708bda9c91d9226c629896c77d61c42b31993",
+		"base_bytes_audited_by": [
+			"64e850ffd480-rebase-fr"
+		],
+		"prior_branch_audit": {
+			"commit": "46cfa0caad8",
+			"target_sha256": "5db5213241c750066a3a20ffb68ae9c262e6fb544c9d80bad3ad17ee3183810c",
+			"en_sha256": "4b1426633f480ff8fca946b64a2f8a1e9d2703dacc52762b697f42d38daff3d0",
+			"instances": [
+				"b612eedd8ab2-rebase2-fr"
+			],
+			"delivery_values_byte_identical": true,
+			"delivery_en_byte_identical": true,
+			"delivery_context_entries_identical": true
+		},
+		"keys_identity_checked": [
+			"ui.teamBridge.delivery.refused",
+			"ui.teamBridge.delivery.refused_manipulation",
+			"ui.teamBridge.delivery.refused_personal_info",
+			"ui.teamBridge.delivery.refused_abusive",
+			"ui.teamBridge.delivery.refused_unsafe_content",
+			"ui.teamBridge.delivery.refused_out_of_scope",
+			"ui.teamBridge.delivery.held",
+			"ui.teamBridge.delivery.held_screening_unavailable",
+			"ui.teamBridge.delivery.held_awaiting_review",
+			"ui.teamBridge.delivery.pending",
+			"ui.teamBridge.delivery.info_refused",
+			"ui.teamBridge.delivery.info_held",
+			"ui.teamBridge.delivery.info_label"
+		],
+		"keys_audited_linguistically": [],
+		"whole_file_review": "Read all 313 values: main-side keys (incl. #1534 builtin.general_topic and reworded builtin.humans_topic) are byte-identical to origin/main and covered by main's audited row; delivery.* values re-read against #1534's channel-topic copy — agent/people/owner terms consistent, no clash with screening/held/refused wording.",
+		"not_audited": "No new linguistic audit of main-side keys beyond consistency re-read: their bytes are main's, audited by base_bytes_audited_by."
+	},
+	"checks": {
+		"placeholders": "@formatjs/icu-messageformat-parser over all 313 values: argument sets equal English per key; all parse.",
+		"key_set": "313 keys, equal to English.",
+		"unicode": "All values NFC; no bidi controls (U+200E/F, U+061C, U+202A-E, U+2066-9).",
+		"rendered_command": "node $LOCAL_OPERATOR_SCRATCHPAD/mech3.mjs plus byte-restore/identity diff in the session eval kernel (repo node_modules parser; Node v24.22.1)",
+		"rendered": [
+			"fr 313 keys issues []",
+			"fr sha 4462d15e3c63c8587b355d88db467154f835416b5177954a95717161fd0c91e2 bytesMinusDeliveryEqMain True deliveryLinesEq46cfa0c True 13 keys othersEqMain True"
+		]
+	},
+	"findings": [],
+	"status": "passed",
+	"artifacts": {
+		"receipt": {
+			"path": "i18n/receipts/0cf9244bca30-rebase3-fr.json"
+		}
+	},
+	"notes_not_execution_log": "scope/whole_file_review are auditor notes; checks.rendered is verbatim command output."
+}

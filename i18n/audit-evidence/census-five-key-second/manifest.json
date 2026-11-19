@@ -1,0 +1,234 @@
+{
+  "schema": 1,
+  "scope": "Second independent high-visibility five-key delta audits; immutable source artifacts, not rendered QA",
+  "entries": [
+    {
+      "locale": "zh-CN",
+      "instance": "6433b7a5b3e9",
+      "receipt": "i18n/receipts/6433b7a5b3e9.json",
+      "receipt_sha256": "3378cfab2ff9554ad49f13e4f9ba0aecdeb7b492d26bcaa541745aba278592f3",
+      "source_receipt": "~/.local-operator/sessions/6433b7a5b3e9/scratchpad/zh-CN-second-census-receipt.json",
+      "companions": [
+        {
+          "path": "i18n/audit-evidence/census-five-key-second/zh-CN/zh-CN-second-census-audit.log",
+          "source": "~/.local-operator/sessions/6433b7a5b3e9/scratchpad/zh-CN-second-census-audit.log",
+          "sha256": "169d52462f7b3cdb5ef6e239eaf679be81fba6e61143d49c64360ee504174f4a"
+        },
+        {
+          "path": "i18n/audit-evidence/census-five-key-second/zh-CN/audit-zh-CN.mjs",
+          "source": "~/.local-operator/sessions/6433b7a5b3e9/scratchpad/audit-zh-CN.mjs",
+          "sha256": "84228323dc81b27ed08fa9384b12ac318a61fae9d5c95c2799800afdd86ff775"
+        }
+      ]
+    },
+    {
+      "locale": "fr",
+      "instance": "35aac0a677bc",
+      "receipt": "i18n/receipts/35aac0a677bc.json",
+      "receipt_sha256": "71d38bf7687638f054dc1faea345a95f9c267bd8a570d465ae009bcc866c7627",
+      "source_receipt": "~/.local-operator/sessions/35aac0a677bc/scratchpad/fr-census-second/record.json",
+      "companions": [
+        {
+          "path": "i18n/audit-evidence/census-five-key-second/fr/mechanical.json",
+          "source": "~/.local-operator/sessions/35aac0a677bc/scratchpad/fr-census-second/mechanical.json",
+          "sha256": "d14c633a9656f85232c1d643554dc3e22842dcef83222b0132d6f27deb0dbd47"
+        },
+        {
+          "path": "i18n/audit-evidence/census-five-key-second/fr/mechanical.mjs",
+          "source": "~/.local-operator/sessions/35aac0a677bc/scratchpad/fr-census-second/mechanical.mjs",
+          "sha256": "b675abf2d3ab8845a9548d4c36fce30b1f0dcfe8b267d18cfde9c10606dc2d2d"
+        },
+        {
+          "path": "i18n/audit-evidence/census-five-key-second/fr/validate-receipt.mjs",
+          "source": "~/.local-operator/sessions/35aac0a677bc/scratchpad/fr-census-second/validate-receipt.mjs",
+          "sha256": "1b17a6d6b0106b3f64aab4f25f3e6ad25c88944f27f57ed6e14918a3c2c64e55"
+        },
+        {
+          "path": "i18n/audit-evidence/census-five-key-second/fr/validator.log",
+          "source": "~/.local-operator/sessions/35aac0a677bc/scratchpad/fr-census-second/validator.log",
+          "sha256": "2e64bcbb98057139f1585d3f7a67d6369419f1ea6b383aad6584995416e4fcac"
+        },
+        {
+          "path": "i18n/audit-evidence/census-five-key-second/fr/receipt-validation.log",
+          "source": "~/.local-operator/sessions/35aac0a677bc/scratchpad/fr-census-second/receipt-validation.log",
+          "sha256": "1f889513b936a6fa9721d549f2c6ad2606b40f7858c6855fc54ec5c6066fbe4a"
+        }
+      ]
+    },
+    {
+      "locale": "es",
+      "instance": "es2-ac9ef02a0918",
+      "receipt": "i18n/receipts/es2-ac9ef02a0918.json",
+      "receipt_sha256": "42d523ee85368f85bf3970512a1df4e11561c40086dea5152535e0e03cf36d84",
+      "source_receipt": "~/.local-operator/sessions/ac9ef02a0918/scratchpad/es-census-r2/receipt.json",
+      "companions": [
+        {
+          "path": "i18n/audit-evidence/census-five-key-second/es/record.json",
+          "source": "~/.local-operator/sessions/ac9ef02a0918/scratchpad/es-census-r2/record.json",
+          "sha256": "a986b06eda68b841e283baf855c5e6e3bc7d57a3af7b1d2adf71d54886a6c3a3"
+        },
+        {
+          "path": "i18n/audit-evidence/census-five-key-second/es/report.md",
+          "source": "~/.local-operator/sessions/ac9ef02a0918/scratchpad/es-census-r2/report.md",
+          "sha256": "437d5854f180dfaf125a28acf77f95dd92201d41d240ccf77726c3935a49077d"
+        },
+        {
+          "path": "i18n/audit-evidence/census-five-key-second/es/mechanical.json",
+          "source": "~/.local-operator/sessions/ac9ef02a0918/scratchpad/es-census-r2/mechanical.json",
+          "sha256": "73f61d1192a14809640560157083cfa8d740bb5b3c6bab234a38d63fceb222b3"
+        },
+        {
+          "path": "i18n/audit-evidence/census-five-key-second/es/audit.log",
+          "source": "~/.local-operator/sessions/ac9ef02a0918/scratchpad/es-census-r2/audit.log",
+          "sha256": "29e40aba3113226cf301222ace1a98ddf391f5863c8728e4af67cd42336c708f"
+        },
+        {
+          "path": "i18n/audit-evidence/census-five-key-second/es/inputs.json",
+          "source": "~/.local-operator/sessions/ac9ef02a0918/scratchpad/es-census-r2/inputs.json",
+          "sha256": "5c2df90a6762e0f233e44179e902b701784402b50a290420fac580bc0ab98303"
+        },
+        {
+          "path": "i18n/audit-evidence/census-five-key-second/es/derivation.log",
+          "source": "~/.local-operator/sessions/ac9ef02a0918/scratchpad/es-census-r2/derivation.log",
+          "sha256": "d9345c44bc373738403850a90fa1b4c326b36bc12a8b30571a5af7845943f6d9"
+        },
+        {
+          "path": "i18n/audit-evidence/census-five-key-second/es/audit-initial-namespace-probe.log",
+          "source": "~/.local-operator/sessions/ac9ef02a0918/scratchpad/es-census-r2/audit-initial-namespace-probe.log",
+          "sha256": "033768a8883093777d2bf7ff76a5c4989b6c50c16fb3941f7dcde69cf737545c"
+        },
+        {
+          "path": "i18n/audit-evidence/census-five-key-second/es/verify.mjs",
+          "source": "~/.local-operator/sessions/ac9ef02a0918/scratchpad/es-census-r2/verify.mjs",
+          "sha256": "c54b3d3ffd79588cad331eaaea8789e38dbfc4aa1005b7d691bb5a728db02a71"
+        },
+        {
+          "path": "i18n/audit-evidence/census-five-key-second/es/derive.mjs",
+          "source": "~/.local-operator/sessions/ac9ef02a0918/scratchpad/es-census-r2/derive.mjs",
+          "sha256": "81d2300e85dde84ab0b97d2367138c2a8126dda06d3aa717ab938fee1e964780"
+        }
+      ]
+    },
+    {
+      "locale": "ru",
+      "instance": "97bb3462a65c-ru-census-r2",
+      "receipt": "i18n/receipts/97bb3462a65c-ru-census-r2.json",
+      "receipt_sha256": "4799e45e81398b982f644011487d6c97cc5fd137aada37afdc7232d7b9ebe9fa",
+      "source_receipt": "~/.local-operator/sessions/97bb3462a65c/scratchpad/ru-census-second/receipt.json",
+      "companions": [
+        {
+          "path": "i18n/audit-evidence/census-five-key-second/ru/report.json",
+          "source": "~/.local-operator/sessions/97bb3462a65c/scratchpad/ru-census-second/report.json",
+          "sha256": "5d85aba2ed5a869c25174b0051691d57c5872798895adab3639979cba684e178"
+        },
+        {
+          "path": "i18n/audit-evidence/census-five-key-second/ru/audit.log",
+          "source": "~/.local-operator/sessions/97bb3462a65c/scratchpad/ru-census-second/audit.log",
+          "sha256": "23187fbabed5eaeb7f76e85950d4c0d0ff4c668c67185b5dcf640c120c981983"
+        },
+        {
+          "path": "i18n/audit-evidence/census-five-key-second/ru/validator.log",
+          "source": "~/.local-operator/sessions/97bb3462a65c/scratchpad/ru-census-second/validator.log",
+          "sha256": "8b77318325a54cf957552e87a29056c237d09c74b088c215a90bd6697fd470c5"
+        },
+        {
+          "path": "i18n/audit-evidence/census-five-key-second/ru/audit.mjs",
+          "source": "~/.local-operator/sessions/97bb3462a65c/scratchpad/ru-census-second/audit.mjs",
+          "sha256": "fff4e919608edc29c2836f59a2c3953e07064d2eb77406c000c9957a6fff18db"
+        }
+      ]
+    },
+    {
+      "locale": "vi",
+      "instance": "6431174917d4-vi-census-r2",
+      "receipt": "i18n/receipts/6431174917d4-vi-census-r2.json",
+      "receipt_sha256": "ba932cc7196aec0beff8fb2a44438238c0f63cccfe1e083f60e4de5b86c769ff",
+      "source_receipt": "~/.local-operator/sessions/6431174917d4/scratchpad/vi-census-second/receipt.json",
+      "companions": [
+        {
+          "path": "i18n/audit-evidence/census-five-key-second/vi/record.json",
+          "source": "~/.local-operator/sessions/6431174917d4/scratchpad/vi-census-second/record.json",
+          "sha256": "840e492f9b8687abb18300b111a74df2021a7749453a98946c8c9a6bccd4ba77"
+        },
+        {
+          "path": "i18n/audit-evidence/census-five-key-second/vi/mechanical.json",
+          "source": "~/.local-operator/sessions/6431174917d4/scratchpad/vi-census-second/mechanical.json",
+          "sha256": "71871b17fded4411f7d2cf1db1284c36dc8ac2064e4294ac1621b1a0bf073242"
+        },
+        {
+          "path": "i18n/audit-evidence/census-five-key-second/vi/audit.log",
+          "source": "~/.local-operator/sessions/6431174917d4/scratchpad/vi-census-second/audit.log",
+          "sha256": "71871b17fded4411f7d2cf1db1284c36dc8ac2064e4294ac1621b1a0bf073242"
+        },
+        {
+          "path": "i18n/audit-evidence/census-five-key-second/vi/inputs.json",
+          "source": "~/.local-operator/sessions/6431174917d4/scratchpad/vi-census-second/inputs.json",
+          "sha256": "891a617ffc943879f90047abb4570d9e7d11b700802d8e67628d10ac0d0b3d0e"
+        },
+        {
+          "path": "i18n/audit-evidence/census-five-key-second/vi/validation.json",
+          "source": "~/.local-operator/sessions/6431174917d4/scratchpad/vi-census-second/validation.json",
+          "sha256": "b9b88255e2c8c3b61e19fe7da3ee4c7133ab29415e0329183d45210f17d715be"
+        },
+        {
+          "path": "i18n/audit-evidence/census-five-key-second/vi/check.mjs",
+          "source": "~/.local-operator/sessions/6431174917d4/scratchpad/vi-census-second/check.mjs",
+          "sha256": "d24b93fbcac18d1601cf4cb021ba7e762938f9257c9f81d256b9c6dc4105ca79"
+        },
+        {
+          "path": "i18n/audit-evidence/census-five-key-second/vi/validate-receipt.mjs",
+          "source": "~/.local-operator/sessions/6431174917d4/scratchpad/vi-census-second/validate-receipt.mjs",
+          "sha256": "1b19fb33ba5af2155eb52b8e7f366ab33936f3ac494b62b2ea249bfecf3a4508"
+        },
+        {
+          "path": "i18n/audit-evidence/census-five-key-second/vi/receipt-validation.log",
+          "source": "~/.local-operator/sessions/6431174917d4/scratchpad/vi-census-second/receipt-validation.log",
+          "sha256": "b9b88255e2c8c3b61e19fe7da3ee4c7133ab29415e0329183d45210f17d715be"
+        }
+      ]
+    },
+    {
+      "locale": "ur",
+      "instance": "25304c88781e-ur-census-second",
+      "receipt": "i18n/receipts/25304c88781e-ur-census-second.json",
+      "receipt_sha256": "11d6d32d6c51defc436d60d24ba69d1d83173122d2b33f394125aacaf6d69177",
+      "source_receipt": "~/.local-operator/sessions/25304c88781e/scratchpad/ur-census-second.receipt.json",
+      "companions": [
+        {
+          "path": "i18n/audit-evidence/census-five-key-second/ur/ur-census-second.execution.log",
+          "source": "~/.local-operator/sessions/25304c88781e/scratchpad/ur-census-second.execution.log",
+          "sha256": "47d23a0099b92c796c4407cdb958152271262f55c1e53c5e5e8e468a664d0959"
+        },
+        {
+          "path": "i18n/audit-evidence/census-five-key-second/ur/ur-second-audit.mjs",
+          "source": "~/.local-operator/sessions/25304c88781e/scratchpad/ur-second-audit.mjs",
+          "sha256": "25de09e7cb7939fc57e05e58f5fb45f4eb689e9bf3ccfe8a41aabcb68c575063"
+        }
+      ]
+    },
+    {
+      "locale": "hi",
+      "instance": "786d3d9ff0bb-hi-census-r2",
+      "receipt": "i18n/receipts/786d3d9ff0bb-hi-census-r2.json",
+      "receipt_sha256": "0e7893e85078c0a4cb231f7da4e9f55b31cfa97ee8dfdfbf11492be71212750a",
+      "source_receipt": "~/.local-operator/sessions/786d3d9ff0bb/scratchpad/hi-census-r2-receipt.json",
+      "companions": [
+        {
+          "path": "i18n/audit-evidence/census-five-key-second/hi/hi-census-r2-record.json",
+          "source": "~/.local-operator/sessions/786d3d9ff0bb/scratchpad/hi-census-r2-record.json",
+          "sha256": "c4587dce73e13db5c9cd2325955255206d6c3e403b1e2a3cf3b5b89259bb7e78"
+        },
+        {
+          "path": "i18n/audit-evidence/census-five-key-second/hi/audit-hi.mjs",
+          "source": "~/.local-operator/sessions/786d3d9ff0bb/scratchpad/audit-hi.mjs",
+          "sha256": "208e5f70f9bf67dc7ff99bc47bffb51a307559e7f632997017e70e2943668f4f"
+        },
+        {
+          "path": "i18n/audit-evidence/census-five-key-second/hi/hi-census-r2-audit.log",
+          "source": "~/.local-operator/sessions/786d3d9ff0bb/scratchpad/hi-census-r2-audit.log",
+          "sha256": "b3b5b565b3e46c6187ab6883480f7cbc9f02f51f45719e2653c9a43198293740"
+        }
+      ]
+    }
+  ]
+}

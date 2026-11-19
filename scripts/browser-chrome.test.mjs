@@ -59,9 +59,13 @@ globalThis.localStorage = {
  * `requestAnimationFrame` on its own. That is enough to call the hook's returned
  * API by hand and watch what it delivers — which is what R4's fix is about.
  */
-/** The surface's own view-registration exclusion list, read as source (LOH-13 B):
- * hoisted per `useTopLevelRegex`, the same as LANDED_CLOSE_CARET below. */
-const SELF_SUPPRESSION_BLOCK = /const SELF_SUPPRESSION_IDS = \[([\s\S]*?)\];/;
+/** The browser's own view-registration exclusion list, read as source (LOH-13 B).
+ * It lives in ONE module since S4a because the chord hook filters the same
+ * snapshot; reading it from there is what keeps the guard coupled to the list
+ * the app actually uses rather than to a copy in the surface. Hoisted per
+ * `useTopLevelRegex`, the same as LANDED_CLOSE_CARET below. */
+const SELF_SUPPRESSION_BLOCK =
+	/export const BROWSER_SELF_SUPPRESSION_PREFIXES = \[([\s\S]*?)\] as const;/;
 
 const PROBE = `
 	import { createElement } from "react";
@@ -75,11 +79,13 @@ const PROBE = `
 	import { BrowserConsentRequest, requesterLabel } from "./src/renderer/src/features/browser/components/browser-consent-request";
 	import { BrowserApprovalsTray, defaultApprovalHeaderLabel, paneApprovalHeaderLabel } from "./src/renderer/src/features/browser/components/browser-approvals-tray";
 	import { BrowserApprovalsDock } from "./src/renderer/src/features/browser/components/browser-approvals-dock";
+	import { approvalsDockFullWidth, approvalsDockClasses, APPROVALS_DOCK_FULL_WIDTH_MAX } from "./src/renderer/src/features/browser/model/approvals-dock-layout";
 	import { BrowserTabStrip, stateChips, tabFloor } from "./src/renderer/src/features/browser/components/browser-tab-strip";
 	import { approvalRows, approvalScopeLabel, liveApprovalCount, liveRequests, originOfUrl, reconcileResolved, remainingLabel, requestsInScope, waitingOrdinals, RESOLVED_KEEP } from "./src/renderer/src/features/browser/model/approval-queue-model";
 	import { closeConversationIntent, closeFailedIntent, closeOthersIntent, closeToTheRightIntent, groupTabsBySession, pooledTabs, scopeFromKey, scopeKey, sessionDisplayName, summariseConversations, tabsBySession, tabsInScope } from "./src/renderer/src/features/browser/model/tab-index-model";
 	import { BrowserLoadFailure, loadFailureSentence } from "./src/renderer/src/features/browser/components/browser-load-failure";
 	import { BrowserNewTab } from "./src/renderer/src/features/browser/components/browser-new-tab";
+	export { countLabel } from "./src/renderer/src/shared/components/ui/badge";
 	import { isStartPageUrl } from "./src/renderer/src/features/browser/model/start-page";
 	import { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
 	import { browserBridgeAvailable, clearBrowserProjectionReadError, publishStagedProjection, readBrowserProjection, refreshBrowserProjection, subscribeBrowserProjection } from "./src/renderer/src/features/browser/model/browser-projection-store";
@@ -106,6 +112,9 @@ const PROBE = `
 		BrowserConsentRequest,
 		BrowserApprovalsTray,
 		BrowserApprovalsDock,
+		approvalsDockFullWidth,
+		approvalsDockClasses,
+		APPROVALS_DOCK_FULL_WIDTH_MAX,
 		BrowserTabStrip,
 		stateChips,
 		tabFloor,
@@ -181,6 +190,10 @@ const bundle = await build({
 			// hook's callbacks and refs exist) without running effects, which is
 			// exactly what the rect scheduler needs to be observable. See the R4 test.
 			PROBE,
+			// The sidebar rows' height budget (PR #1933 design review D1), asserted
+			// against the window's minimum height below.
+			'export { ATTENTION_SECTION_MAX_PX, MAX_ATTENTION_ROWS } from "./src/renderer/src/features/browser/components/browser-attention-rows";',
+			'export { WINDOW_MIN_HEIGHT } from "./src/main/window-mode";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -231,6 +244,9 @@ await writeFile(bundlePath, bundle.outputFiles[0].text);
 const mod = await import(bundlePath.href);
 await unlink(bundlePath);
 const {
+	ATTENTION_SECTION_MAX_PX,
+	MAX_ATTENTION_ROWS,
+	WINDOW_MIN_HEIGHT,
 	renderBrowserChrome,
 	render,
 	el,
@@ -305,6 +321,7 @@ const {
 	browserViewSuppressed,
 	suppressBrowserView,
 	suppressedOverlayIds,
+	countLabel,
 	safeHttpUrl,
 	configurePslRules,
 } = mod;
@@ -366,6 +383,9 @@ class FakeWebContents {
 				this.activeIndex += 1;
 			},
 			length: () => this.historyEntries.length,
+			// The indexed read address suggestions use: bounded access without
+			// allocating the whole stack.
+			getEntryAtIndex: (index) => this.historyEntries[index],
 			getAllEntries: () =>
 				this.historyEntries.map((entry) => ({
 					...entry,
@@ -1239,10 +1259,12 @@ test("revoking one origin takes the broad grant that admitted it, too", () => {
 
 test("the overlay policy is ref-counted, so an inner close cannot clear an outer overlay", () => {
 	assert.equal(browserViewSuppressed(), false);
-	const outer = suppressBrowserView("dialog");
-	const inner = suppressBrowserView("dialog");
+	// S5: an id names its KIND first (`${kind}:${label}:${uid}`). Two registrations
+	// of the same overlay still ref-count; the kind prefix is what the policy reads.
+	const outer = suppressBrowserView("dialog:test:outer");
+	const inner = suppressBrowserView("dialog:test:outer");
 	assert.equal(browserViewSuppressed(), true);
-	assert.deepEqual(suppressedOverlayIds(), ["dialog"]);
+	assert.deepEqual(suppressedOverlayIds(), ["dialog:test:outer"]);
 	inner();
 	assert.equal(
 		browserViewSuppressed(),
@@ -1254,14 +1276,22 @@ test("the overlay policy is ref-counted, so an inner close cannot clear an outer
 });
 
 test("a release is idempotent: a double-release cannot unbalance the count", () => {
-	const release = suppressBrowserView("toast");
+	const release = suppressBrowserView("dialog:test:notice");
 	release();
 	release();
 	assert.equal(browserViewSuppressed(), false);
-	const other = suppressBrowserView("toast");
+	const other = suppressBrowserView("dialog:test:notice");
 	assert.equal(browserViewSuppressed(), true);
 	other();
 	assert.equal(browserViewSuppressed(), false);
+});
+
+test("the approvals badge counts are bounded at 99+ (round-1 D6)", () => {
+	// The badge is `size="count"` and the brief's frames ask for 1 / 9 / 99+.
+	assert.equal(countLabel(1, 99), "1");
+	assert.equal(countLabel(9, 99), "9");
+	assert.equal(countLabel(99, 99), "99");
+	assert.equal(countLabel(120, 99), "99+");
 });
 
 // ---- a bounded, validated restore (review round 1, R5) ----------------------
@@ -2704,7 +2734,7 @@ test("the strip feeds `close others` the list it is showing, and nothing wider (
 	);
 	assert.match(
 		strip,
-		/closeOthersIntent\(tabs, actionsTabId\)/,
+		/closeOthersIntent\(tabs, tab\.tabId\)/,
 		"`Close N other tabs` must be built from the strip's own `tabs`: what it shows is what the label counts and what the press closes",
 	);
 	assert.match(
@@ -2996,9 +3026,9 @@ test("the pinned strip control appears only when a tab is off screen, and counts
 	assert.ok(
 		strip.includes('variant="ghost"') &&
 			strip.includes(
-				'className="ml-2 shrink-0 self-center focus-visible:-outline-offset-2!"',
+				'className="ms-2 shrink-0 self-center focus-visible:-outline-offset-2!"',
 			),
-		"the new-tab control shares toolbar ghost grammar and keeps an eight-pixel gap",
+		"the new-tab control shares toolbar ghost grammar and keeps a logical inline-start gap",
 	);
 	assert.ok(
 		/aria-label=\{t\(\s*"ui\.browser\.browser_tab_strip\.all_tabs_unshown_accessible",\s*\{\s*count: tabsOffScreen,?\s*\},?\s*\)\}/.test(
@@ -3127,9 +3157,9 @@ test("the start page paints the app's own surface, and only the exact start stat
 	assert.equal(isStartPageUrl("https://example.com/"), false);
 
 	const navigated = [];
-	const markup = render(
-		el(BrowserNewTab, { onNavigate: (url) => navigated.push(url) }),
-	);
+	// S5: the start page has no field and no Go — the permanent row is the only
+	// address input (ruling 2). Rendering it takes no navigation props.
+	const markup = render(el(BrowserNewTab, {}));
 	assert.ok(
 		markup.includes("browser-start-page") && markup.includes("data-brand-mark"),
 		"the brand mark leads the surface, not a bare blank rectangle",
@@ -3140,9 +3170,10 @@ test("the start page paints the app's own surface, and only the exact start stat
 		"the wordmark and the one instruction the page gives",
 	);
 	assert.ok(
-		markup.includes("browser-start-page-address") &&
-			markup.includes("browser-start-page-go"),
-		"a way to start a navigation from the page itself",
+		!markup.includes("browser-start-page-address") &&
+			!markup.includes("browser-start-page-go") &&
+			!markup.includes("<input"),
+		"the page owns no second address field; the row above is the one input",
 	);
 	assert.ok(
 		!markup.includes("http") && !markup.includes("<img"),
@@ -3258,21 +3289,32 @@ test("the surface's own view registrations are not read as the overlay that hide
 	// the paused note. The fix is the exclusion list, and its completeness is the
 	// thing to pin: every `useSuppressBrowserView` id this component registers must
 	// appear in it, or that state is invisible and its own registration is why.
+	//
+	// S4a WIDENED THE LIST'S CONSUMERS: main's shortcut ownership and the chord
+	// hook now read the same exclusion, so the list moved to
+	// `model/self-suppression`. The registrations are still read from the surface:
+	// a new self-registration that nobody excluded fails here either way.
 	const surface = shippedSource(
 		"src/renderer/src/features/browser/components/browser-surface.tsx",
 	);
+	// S5: the id is `${kind}:${label}:${uid}`, so the self-suppression list names
+	// the LABEL of a `browser-state` registration.
 	const registered = [
-		...surface.matchAll(/useSuppressBrowserView\([^,]+,\s*"([^"]+)"/g),
+		...surface.matchAll(
+			/useSuppressBrowserView\([^,]+,\s*"browser-state"\s*,\s*"([^"]+)"/g,
+		),
 	].map((match) => match[1]);
 	assert.ok(
 		registered.length >= 2,
 		`both registrations are read: ${registered.join(", ")}`,
 	);
-	const exclusionBlock = surface.match(SELF_SUPPRESSION_BLOCK);
+	const exclusionBlock = shippedSource(
+		"src/renderer/src/features/browser/model/self-suppression.ts",
+	).match(SELF_SUPPRESSION_BLOCK);
 	assert.ok(exclusionBlock, "the exclusion list exists");
 	for (const name of registered) {
 		assert.ok(
-			exclusionBlock[1].includes(`"${name}:"`),
+			exclusionBlock[1].includes(`"browser-state:${name}:"`),
 			`\`${name}\` registers itself for the view, so the overlay filter must exclude it — otherwise the state is hidden by its own registration`,
 		);
 	}
@@ -3389,6 +3431,74 @@ test("each host stamps its own dock tag, so a run can say which dock it drove", 
 		routeTags[0],
 		"the two hosts cannot share one dock tag, or a run could not say which dock its frames show",
 	);
+});
+
+test("the narrow approvals dock is a full-width in-flow panel at 264", () => {
+	// The side-by-side layout gives the dock 320px and the page a 240px floor.
+	// At 264 there is no arithmetic in which both fit, so the dock takes the
+	// whole row and the content element is the thing that yields. The helper is
+	// the one place the threshold lives; the real-app measurement rig checks the
+	// pixels against it.
+	assert.equal(mod.approvalsDockFullWidth(264), true);
+	assert.equal(mod.approvalsDockFullWidth(480), true);
+	assert.equal(mod.approvalsDockFullWidth(520), true);
+	assert.equal(mod.approvalsDockFullWidth(521), false);
+	assert.equal(mod.approvalsDockFullWidth(640), false);
+	assert.equal(mod.approvalsDockFullWidth(0), false);
+	assert.equal(mod.APPROVALS_DOCK_FULL_WIDTH_MAX, 520);
+	const full = mod.approvalsDockClasses(true);
+	assert.match(full, /w-full/);
+	assert.match(full, /max-w-full/);
+	assert.doesNotMatch(full, /w-80/);
+	assert.doesNotMatch(full, /absolute|fixed/);
+	const side = mod.approvalsDockClasses(false);
+	assert.match(side, /w-80/);
+	assert.match(side, /max-w-\[calc\(100%-15rem\)\]/);
+});
+
+test("the dock's full-width state is a rendered state, not a CSS afterthought", () => {
+	const props = {
+		open: true,
+		focusRequest: 0,
+		rows: [],
+		resolved: [],
+		selectedEntryId: null,
+		onSelect: () => {},
+		busy: false,
+		onDecide: () => {},
+		approvals: [],
+		currentOrigin: null,
+		onRevoke: () => {},
+		onRevokeAll: () => {},
+		onForgetSite: () => {},
+		onClearData: () => {},
+		onClose: () => {},
+		surfaceTag: "browser-approvals-dock",
+	};
+	const full = mod.render(
+		mod.el(mod.BrowserApprovalsDock, { ...props, fullWidth: true }),
+	);
+	assert.match(full, /data-dock-layout="full"/);
+	assert.match(full, /w-full/);
+	assert.doesNotMatch(full, /w-80/);
+	const side = mod.render(
+		mod.el(mod.BrowserApprovalsDock, { ...props, fullWidth: false }),
+	);
+	assert.match(side, /data-dock-layout="side"/);
+	assert.match(side, /w-80/);
+});
+
+test("the dock's row observer is a callback ref, so a remount re-measures", () => {
+	// The row exists only on the ready return. The availability branch (cold
+	// start, host retry) unmounts it; a one-shot mount effect would have observed
+	// null and never fired again, leaving a narrow pane on the side form. The
+	// callback ref is the mechanism that re-attaches on the remount.
+	const surface = shippedSource(
+		"src/renderer/src/features/browser/components/browser-surface.tsx",
+	);
+	assert.match(surface, /ref=\{attachDockRow\}/);
+	assert.match(surface, /useApprovalsDockWidth\(\)/);
+	assert.doesNotMatch(surface, /const element = dockRowRef\.current/);
 });
 
 test("the app-wide count includes the requests no conversation owns, and drops the expired", () => {
@@ -3518,6 +3628,183 @@ test("the rail's Browser item draws that count, with the number in its accessibl
 			markup.includes('aria-label="Browser, 3 waiting"'),
 			"and the control's own name carries the count, because the digit is not the only channel (spec 5.1) — including for the request no conversation owns",
 		);
+	} finally {
+		globalThis.window = previousWindow;
+	}
+});
+
+test("the browser's waits are sidebar notification rows and badge counts, not a view switch (operator report 2026-11-15)", async () => {
+	// "the browser is stealing the view": a passkey hold and an agent's popup used to
+	// pull the operator into the Browser. They are now rows under the destinations,
+	// naming what is needed, the site and the conversation, and the Browser badge
+	// counts them with the approvals. Rendering moves nothing: the route stub below is
+	// /chat, and the markup is the rail on that route.
+	const previousWindow = globalThis.window;
+	globalThis.window = {
+		location: { hash: "#/chat", pathname: "/chat" },
+		innerWidth: 1380,
+		api: {
+			browser: {
+				state: async () => ({
+					tabs: [
+						{
+							tabId: 1,
+							url: "https://login.microsoft.com/fido",
+							sessionId: null,
+							owner: "agent",
+							title: "",
+						},
+						{
+							tabId: 3,
+							url: "https://idp.example/authorize",
+							sessionId: null,
+							owner: "agent",
+							title: "",
+						},
+					],
+					pendingConsent: [
+						{ ...PENDING, entryId: "one", requesterSessionId: null },
+					],
+					waitingOnUser: [
+						{ kind: "passkey", tabId: 1, at: 10 },
+						{ kind: "popup", tabId: 3, at: 20 },
+					],
+					approvedGrants: [],
+				}),
+			},
+		},
+	};
+	try {
+		await refreshBrowserProjection();
+		const markup = render(
+			el(
+				QueryClientProvider,
+				{ client: new QueryClient() },
+				el(
+					MemoryRouter,
+					null,
+					el(ChatLayout, { sidebar: el(SidebarNavigation), content: null }),
+				),
+			),
+		);
+		assert.ok(
+			markup.includes('aria-label="Browser, 3 waiting"'),
+			"the badge counts the hold and the held popup with the approval",
+		);
+		// Two rows, then the fold (D1): the approval is the third wait, so it is
+		// counted by the badge and the "more" row rather than drawn.
+		for (const kind of ["passkey", "popup"])
+			assert.ok(
+				markup.includes(`data-browser-attention-row="${kind}"`),
+				`a ${kind} row is drawn`,
+			);
+		assert.ok(
+			!markup.includes('data-browser-attention-row="site-access"'),
+			"the third wait folds",
+		);
+		assert.ok(markup.includes("1 more in Browser"));
+		assert.ok(markup.includes("Password manager needs you"));
+		assert.ok(
+			markup.includes("A page opened a window"),
+			"a held popup is any window a page opened, not only sign-in (U1/D3)",
+		);
+		assert.ok(
+			markup.includes("login.microsoft.com"),
+			"the row names the site as a host",
+		);
+		// D2: a pointer user can read what the 220px column cuts, conversation first.
+		assert.match(
+			markup,
+			/title="Password manager needs you — An agent · login\.microsoft\.com"/,
+		);
+		// U4: the accessible name says the agent is paused for a passkey hold, and
+		// the polite live region is in the tree before anything arrives (a region
+		// only announces changes to a node that already exists).
+		assert.ok(
+			markup.includes(
+				"Password manager needs you on login.microsoft.com. An agent is paused until you respond. Open it.",
+			),
+		);
+		assert.match(
+			markup,
+			/<span data-browser-attention-announcer="" class="sr-only" aria-live="polite" aria-atomic="true">/,
+		);
+	} finally {
+		globalThis.window = previousWindow;
+	}
+});
+
+test("the waiting-on-you section never crowds out the chat list (PR #1933 design review D1)", async () => {
+	// Measured on the round-1 head: three two-line rows came to ~178px and left
+	// the chat list ONE row at a 680px preview, for as long as an agent waited.
+	// The budget is a quarter of the sidebar at the smallest window the app
+	// allows; the rows are single-line at the destinations' 32px pitch.
+	assert.equal(MAX_ATTENTION_ROWS, 2);
+	assert.ok(
+		ATTENTION_SECTION_MAX_PX <= WINDOW_MIN_HEIGHT / 4,
+		`${ATTENTION_SECTION_MAX_PX}px must fit a quarter of ${WINDOW_MIN_HEIGHT}px`,
+	);
+	const previousWindow = globalThis.window;
+	const tabs = [1, 2, 3, 4].map((tabId) => ({
+		tabId,
+		url: `https://site${tabId}.example/`,
+		sessionId: null,
+		owner: "agent",
+		title: "",
+	}));
+	globalThis.window = {
+		location: { hash: "#/chat", pathname: "/chat" },
+		innerWidth: 1380,
+		api: {
+			browser: {
+				state: async () => ({
+					tabs,
+					pendingConsent: [],
+					waitingOnUser: tabs.map(({ tabId }) => ({
+						kind: "popup",
+						tabId,
+						at: tabId,
+					})),
+					approvedGrants: [],
+				}),
+			},
+		},
+	};
+	try {
+		await refreshBrowserProjection();
+		const markup = render(
+			el(
+				QueryClientProvider,
+				{ client: new QueryClient() },
+				el(
+					MemoryRouter,
+					null,
+					el(ChatLayout, { sidebar: el(SidebarNavigation), content: null }),
+				),
+			),
+		);
+		const section = markup.slice(
+			markup.indexOf("<section data-browser-attention"),
+			markup.indexOf(
+				"</section>",
+				markup.indexOf("<section data-browser-attention"),
+			),
+		);
+		assert.match(
+			section,
+			/class="flex max-h-\[25dvh\] shrink-0 flex-col overflow-y-auto/,
+		);
+		assert.equal(
+			section.match(/data-browser-attention-row=/g)?.length,
+			2,
+			"four waits draw two rows",
+		);
+		for (const row of section.match(
+			/<button[^>]*data-browser-attention-row[^>]*>/g,
+		))
+			assert.match(row, /class="flex h-8 w-full items-center/, "one 32px line");
+		assert.match(section, /data-browser-attention-more="" class="flex h-6 /);
+		assert.ok(section.includes("2 more in Browser"));
 	} finally {
 		globalThis.window = previousWindow;
 	}
@@ -3940,17 +4227,20 @@ for (const outcome of [
 			const source = shippedSource(
 				"src/renderer/src/features/browser/components/browser-surface.tsx",
 			);
-			const marker = "onTabAction={(id, action) => {";
-			const start = source.indexOf(marker) + marker.length;
-			assert.ok(start >= marker.length);
-			const end = source.indexOf("\n\t\t\t\t}}", start);
-			assert.ok(end > start);
+			// The callback's indentation moved when S4b nested the strip inside the
+			// surface's popout branch; the END is found by its next sibling prop, not
+			// by a fixed tab count that a re-indent silently shifts.
+			const match =
+				/onTabAction=\{\(id, action\) => \{([\s\S]*?)\n\t*\}\}\n\t*newTabLabel=/.exec(
+					source,
+				);
+			assert.ok(match, "onTabAction callback found");
 			let reveals = 0;
 			const callback = new Function(
 				"chrome",
 				"tabScope",
 				"onShowAllTabs",
-				`return (id,action)=>{${source.slice(start, end)}}`,
+				`return (id,action)=>{${match[1]}}`,
 			)(chrome, "conversation", () => {
 				reveals++;
 			});
@@ -3965,3 +4255,106 @@ for (const outcome of [
 			globalThis.window = previous;
 		}
 	});
+
+test("the unavailable sentence is announced and does not name implementation states (U10, N2)", () => {
+	const bar = readFileSync(
+		"src/renderer/src/features/browser/components/browser-url-bar.tsx",
+		"utf8",
+	);
+	assert.match(bar, /id=\{unavailableId\}/);
+	assert.ok(
+		bar.includes('? "sr-only"'),
+		"below the width it can share, the sentence is description only (U18)",
+	);
+	assert.ok(bar.includes("bg-elevated px-1"));
+	const hint = bar.slice(
+		bar.indexOf("hintShown && ("),
+		bar.indexOf("hintShown && (") + 1200,
+	);
+	assert.ok(
+		!hint.includes("aria-live"),
+		"the hint itself is not a live region",
+	);
+	assert.equal(
+		(bar.match(/role="status"/g) ?? []).length,
+		1,
+		"exactly one polite live region (Q4-2)",
+	);
+	assert.ok(
+		bar.includes("@container/addressfield relative min-w-0 grow"),
+		"the field, not the row, is the measured container (Q5-1)",
+	);
+	const surfaceSource = readFileSync(
+		"src/renderer/src/features/browser/components/browser-surface.tsx",
+		"utf8",
+	);
+	assert.match(
+		surfaceSource,
+		/const onStartPage = browserOwnStateFor\(activeTab, chrome\.pendingUrl\)/,
+		"the surface derives own-state from pendingUrl, not the loading flag",
+	);
+	assert.match(
+		surfaceSource,
+		/ownState=\{browserOwnState\}/,
+		"the field's DOM list reads the same own-state fact (Q5 U27)",
+	);
+	assert.match(
+		surfaceSource,
+		/overlayReason=\{overlayHealth\?\.reason \?\? null\}/,
+		"main's overlay reason reaches the bar so the hint names its cause",
+	);
+	const chordsSource = readFileSync(
+		"src/renderer/src/features/browser/hooks/use-browser-chords.ts",
+		"utf8",
+	);
+	assert.match(
+		chordsSource,
+		/browserOwnState: boolean,/,
+		"the chord hook requires the shared fact, with no fail-open default",
+	);
+	assert.match(
+		bar,
+		/hintPainted &&[\s\S]{0,300}"@\[342px\]\/addressfield:pr-\[min\(378px,max\(0px,calc\(100%-10rem\)\)\)\]"/,
+		"the 218 px pill and its 160 px floor start at field 342 and are clamped; 359/360/420 sit below it, wide above (Q5-1)",
+	);
+	assert.match(
+		bar,
+		/else if \(!autocomplete\.loading\) \{\s*setAnnouncement\(listNotice\)/,
+		"the empty-list fallthrough announces the list's own notice",
+	);
+	assert.doesNotMatch(
+		bar,
+		/suggestionsUnavailable/,
+		"own-state is a DOM list now: nothing says 'unavailable' for a start page",
+	);
+	assert.match(
+		bar,
+		/if \(!hintShown \|\| standingText === null\) return;\s*setAnnouncement\(standingText\)/,
+		"the sentence reaches the existing status region on the transition (U18/U21)",
+	);
+	assert.match(bar, /content=\{t\("ui\.browser\.browser_url_bar\.home"\)\}/);
+	assert.doesNotMatch(bar, /home_destination/);
+});
+
+test("the start/failure page stays non-controllable while an overlay is open (Q3-1)", () => {
+	const surface = readFileSync(
+		"src/renderer/src/features/browser/components/browser-surface.tsx",
+		"utf8",
+	);
+	assert.match(
+		surface,
+		// lop://extensions (internalPage) is an own-state page too: main refuses
+		// page controls under it exactly as under the start/failure page.
+		/const browserOwnState =\s*onStartPage \|\| navFailure !== null \|\| internalPage !== null;/,
+		"own-state is a property of the state, not of the overlay filter",
+	);
+	assert.match(
+		surface,
+		/setViewVisible\(\s*!suppressed,\s*suppressed && !overlaySuppressing,\s*suppressed && browserOwnState,\s*\)/,
+	);
+	assert.match(
+		surface,
+		/approvalsTriggerRef\.current \?\? pageMenuTriggerRef\.current/,
+		"band-empty handoff must reach the folded trigger too",
+	);
+});

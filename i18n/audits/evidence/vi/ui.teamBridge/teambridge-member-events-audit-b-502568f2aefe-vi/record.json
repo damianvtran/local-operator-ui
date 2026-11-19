@@ -1,0 +1,144 @@
+{
+	"audit_id": "teambridge-member-events-audit-b-502568f2aefe-vi",
+	"date": "2026-10-30",
+	"locale": "vi",
+	"namespace": "ui.teamBridge",
+	"branch": "fix/team-bridge-member-events",
+	"source_commit": "1eeb46187ce12fbcb5e13c5f02be0251b8979ee8",
+	"worktree": "~/local-operator-ui/.worktrees/member-events",
+	"catalogue_state": "uncommitted working-tree changes; hashes are of the on-disk bytes",
+	"translator": {
+		"agent": "translator",
+		"model": "anthropic/claude-opus-5-5 (as stated in the audit brief; not independently verifiable)",
+		"method": "LLM translator agent; no MT service or translation API"
+	},
+	"auditors": [
+		{
+			"agent": "translation-auditor",
+			"auditor_role": "auditor B (independent second audit of the same high-visibility group)",
+			"model": "radient/radient-research/radient-ultra",
+			"model_fallback": {
+				"announced": true,
+				"observed": true,
+				"chain": [
+					"anthropic/claude-opus-5-5",
+					"openai/gpt-6-astra",
+					"kimi/k3.1-pro",
+					"radient/radient-research/radient-ultra"
+				],
+				"actual_model": "radient/radient-research/radient-ultra"
+			},
+			"session": "502568f2aefe",
+			"date": "2026-10-30",
+			"result": "clean-with-findings",
+			"instance": "502568f2aefe-vi",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 1,
+				"nit": 2
+			},
+			"receipt": "i18n/receipts/502568f2aefe-vi.json",
+			"receipt_sha256": "0682dcef46cd990447ee005a97b9a90a597f41a3a32d58cd5d46ed345e481ff8",
+			"scope": "New membership-event copy on branch fix/team-bridge-member-events: 11 ui.teamBridge.events.* keys and ui.teamBridge.members.invitation_note_v3 added, invitation_note_v2 removed. Translator's own words not relied on; the key set was read from the files.",
+			"note": "clean-with-findings: 0 blocker, 0 major, 1 minor, 2 nit. invitation_note_v3 fidelity checked clause by clause; ru event lines judged against i18n/style-guides/ru.md and the namespace's existing colon precedent."
+		}
+	],
+	"independence": "Independent auditor B: Local Operator session 502568f2aefe, team lopdev role translation-auditor. It authored none of the audited strings (they came from a separate `translator` agent) and worked without reading the other auditor's receipts before forming its verdicts. It wrote only this receipt, its evidence record and the ledger row through ledger-assemble.mjs; no catalogue was edited.",
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "56810571f7cfe24841940394b0579e28a13616c40da35fe93301f5b66fb7290c"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "adb76e0b6e40573f67398d6d260fbb738686f34f73077b593126cee6d2d0a77e"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/vi/ui.teamBridge.json",
+			"sha256": "ca0a9c774c0bc67eebb8f199493cbd58ea0c5c5a1929d87deb9d7d446dda335a"
+		}
+	},
+	"scope": {
+		"delta_kind": "New membership-event copy on branch fix/team-bridge-member-events: 11 ui.teamBridge.events.* keys and ui.teamBridge.members.invitation_note_v3 added, invitation_note_v2 removed. Translator's own words not relied on; the key set was read from the files.",
+		"keys_audited_linguistically": [
+			"ui.teamBridge.events.invited",
+			"ui.teamBridge.events.joined",
+			"ui.teamBridge.events.owner_added_agent",
+			"ui.teamBridge.events.left",
+			"ui.teamBridge.events.removed",
+			"ui.teamBridge.events.consented",
+			"ui.teamBridge.events.declined_self",
+			"ui.teamBridge.events.declined",
+			"ui.teamBridge.events.withdrawn",
+			"ui.teamBridge.events.unknown",
+			"ui.teamBridge.events.others",
+			"ui.teamBridge.members.invitation_note_v3"
+		],
+		"keys_read_for_context": "The whole 297-key ui.teamBridge namespace in en and in each of the seven locales (term/register/glossary comparison), plus members.title/current/remove/role.owner, member.count, notify.mute/muted/mention, replies.title/action, invitations.declined/declined_unnamed and the consent key bridge_agent_participation_v1.",
+		"state_at_audit": "The seven locale catalogues were uncommitted working-tree changes at HEAD 1eeb46187ce12fbcb5e13c5f02be0251b8979ee8 on fix/team-bridge-member-events; the audited bytes are the bytes on disk, hashed below.",
+		"english_source": "src/i18n/catalogues/en/ui.teamBridge.json at 56810571f7cf"
+	},
+	"mechanical_checks": {
+		"render": "Every ICU value re-rendered with intl-messageformat (the same library the app uses) at 1 and 3 targets, the target list built by Intl.ListFormat(type=conjunction) exactly as team-bridge-member-events.tsx does; events.others also rendered at count 1,2,3,5,11,21,22,1000000. Verbatim output is in renders below.",
+		"placeholders": "AST diff (@formatjs/icu-messageformat-parser) of every audited value against its English source: identical argument set and element types in all 7 locales; no renamed, dropped or added placeholder, no markup token invented. events.others carries {count} and nothing else everywhere; events.declined_self carries no {targets} anywhere.",
+		"plural_arms": "Arms compared with Intl.PluralRules(locale).resolvedOptions().pluralCategories: fr one/many/other, es one/many/other, zh-CN other, ru one/few/many/other, vi other, ur one/other, hi one/other — an exact match to CLDR at every locale, no missing category and no invented one. The fr and es 'many' arm ('# d’autres' / '# más') also renders correctly at 1000000.",
+		"others_no_conjunction": "Scanned for a conjunction inside events.others: no fr 'et', es 'y', ru 'и', vi 'và', zh '和', ur 'اور', hi 'और' — the platform's ListFormat adds the joiner, as required.",
+		"keyset": "All seven target files hold 297 keys, identical to the English key set; invitation_note_v2 is absent from every locale (verified by key scan, not by the translator's summary).",
+		"glossary": "i18n/glossary.md line 46 (agent → agente · 智能体 · агент · tác nhân · ایجنٹ · एजेंट) holds in every audited line; member terms match each locale's members.title/member.count (membres, miembros, 成员, участник, thành viên, ارکان, सदस्य); mute matches notify.mute in all 7; thread matches replies.title in all 7; owner matches members.role.owner in fr/es/zh-CN/ru/vi/ur/hi.",
+		"register": "Address forms match each locale's style guide: fr vous, es tú, zh-CN 你, vi bạn, ur آپ, hi आप, ru вы lowercase. No locale mixes T/V inside the audited group. Capitalisation is sentence case everywhere.",
+		"ru_style": "The ru colon/impersonal construction was judged against i18n/style-guides/ru.md ('prefer impersonal constructions where the English allows') and against the ru namespace's existing precedent — invitations.declined '{agent}: приглашение отклонено.' and invitations.declined_unnamed 'Ваш агент: приглашение отклонено.' — so the pattern reads as an established ru system line, not a calque. Two lines deviate in meaning or shape (RU-B1, RU-B2); the em-dash separator ' — {targets}' is new to this namespace but reads as a structured log line and is not a finding on its own.",
+		"independence": "This auditor read the English source, the context sidecar, all seven target files, the glossary and the style guides directly; no translator summary was taken on trust, and no other auditor's receipt was read before the verdicts above were written."
+	},
+	"renders": "  invited [1]: Dana đã mời Ava\n  invited [3]: Dana đã mời Ava, Ben và Cleo\n  joined [1]: Ava đã tham gia cuộc trò chuyện\n  joined [3]: Ava, Ben và Cleo đã tham gia cuộc trò chuyện\n  owner_added_agent [1]: Dana đã thêm tác nhân Ava của mình\n  owner_added_agent [3]: Dana đã thêm tác nhân Ava, Ben và Cleo của mình\n  left [1]: Ava đã rời cuộc trò chuyện\n  left [3]: Ava, Ben và Cleo đã rời cuộc trò chuyện\n  removed [1]: Dana đã xóa Ava khỏi cuộc trò chuyện\n  removed [3]: Dana đã xóa Ava, Ben và Cleo khỏi cuộc trò chuyện\n  consented [1]: Dana đã đồng ý cho Ava tham gia\n  consented [3]: Dana đã đồng ý cho Ava, Ben và Cleo tham gia\n  declined_self [1]: Dana đã từ chối lời mời\n  declined_self [3]: Dana đã từ chối lời mời\n  declined [1]: Dana đã từ chối lời mời dành cho Ava\n  declined [3]: Dana đã từ chối lời mời dành cho Ava, Ben và Cleo\n  withdrawn [1]: Dana đã rút lại lời mời dành cho Ava\n  withdrawn [3]: Dana đã rút lại lời mời dành cho Ava, Ben và Cleo\n  unknown [1]: Danh sách thành viên đã thay đổi\n  unknown [3]: Danh sách thành viên đã thay đổi\n  ui.teamBridge.events.others n=1: 1 người khác\n  ui.teamBridge.events.others n=2: 2 người khác\n  ui.teamBridge.events.others n=3: 3 người khác\n  ui.teamBridge.events.others n=5: 5 người khác\n  ui.teamBridge.events.others n=11: 11 người khác\n  ui.teamBridge.events.others n=21: 21 người khác\n  ui.teamBridge.events.others n=22: 22 người khác\n  ui.teamBridge.events.others n=1000000: 1.000.000 người khác\n  list: Ben, Sana và 3 người khác | Ben và 1 người khác",
+	"findings": [
+		{
+			"severity": "minor",
+			"id": "VI-B1",
+			"key": "ui.teamBridge.events.owner_added_agent",
+			"current": "{actor} đã thêm tác nhân {targets} của mình",
+			"proposed": "{actor} đã thêm tác nhân của mình là {targets}",
+			"reason": "The reflexive possessive trails the whole name list, so with three targets ('… tác nhân Ava, Ben và Cleo của mình') 'của mình' reads as attaching to the last name and the singular 'tác nhân' + list reads as one agent with three names. Moving the possessive ahead of the list keeps the reflexive reference to the actor unambiguous for one name and for several.",
+			"disposition": "fix recommended"
+		},
+		{
+			"severity": "nit",
+			"id": "VI-B2",
+			"key": "ui.teamBridge.events.joined",
+			"current": "{targets} đã tham gia cuộc trò chuyện",
+			"proposed": "{targets} đã tham gia",
+			"reason": "Adds 'cuộc trò chuyện' where English says only 'joined', taking the line to 2.3x the source in a truncating row. The timeline already sits in the conversation, so the object is inferable; dropping it is both shorter and closer to the source. Meaning is not affected either way.",
+			"disposition": "recorded, not blocking"
+		},
+		{
+			"severity": "nit",
+			"id": "VI-B3",
+			"key": "ui.teamBridge.events.unknown",
+			"current": "Danh sách thành viên đã thay đổi",
+			"proposed": "Thành viên đã thay đổi",
+			"reason": "Says the member *list* changed rather than that the membership changed; 'danh sách' adds a concrete object the English does not have. The shorter form stays calm and generic, which is what this fallback line needs.",
+			"disposition": "recorded, not blocking"
+		}
+	],
+	"invitation_note_v3_fidelity": "clause-by-clause: (1) không cấp quyền cho đến khi được chấp nhận ✓ (2) tác nhân của chính bạn ngay / của người khác khi chủ sở hữu đồng ý ✓ (3) đọc mọi tin nhắn, tự quyết định, 'được kỳ vọng sẽ trả lời' — expectation, not luôn ✓ (4) giới hạn trong @-mentions và các luồng, hoặc tắt tiếng ✓; luồng matches replies.title, tắt tiếng matches notify.mute.",
+	"verdict": "clean-with-findings: 0 blocker, 0 major, 1 minor, 2 nit.",
+	"limitations": "Static audit: no rendered frame was produced, so the fr/es width findings are flagged, not proven or disproven. Native-speaker intuition for vi is the auditor's, not a hired reviewer's; the ru colon form is judged against the style guide and the namespace's own precedent rather than a native informant. Overflow was reasoned from character counts and the row's truncate+tooltip behaviour in team-bridge-member-events.tsx, not measured in cells.",
+	"commands": [
+		"node <scratch>/render-b.mjs (intl-messageformat render of every audited value at 1 and 3 targets via Intl.ListFormat)",
+		"node <scratch>/.audit-b-check.mjs (AST placeholder diff, CLDR plural-arm diff, conjunction scan, bidi-control scan, key-set diff)",
+		"pnpm check-i18n (actual output pasted in the report; ledger-check fails before assembly because the row is stale, expected)"
+	],
+	"notes_not_execution_log": "Findings are linguistic judgement; renders and counts are command output.",
+	"second_look": {
+		"note": "See second-look.json beside this record: findings added after a second look, kept out of the ledger-bound receipt because the assembler forbids replacing a recorded instance with different bytes.",
+		"path": "second-look.json",
+		"added_finding_ids": [],
+		"final_counts": {
+			"blocker": 0,
+			"major": 0,
+			"minor": 1,
+			"nit": 2
+		},
+		"final_verdict": "clean-with-findings: 0 blocker, 0 major, 1 minor, 2 nit."
+	}
+}

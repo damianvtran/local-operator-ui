@@ -54,6 +54,7 @@
  * no runtime code: the registry is built from the palette directory, and the
  * union this file is checked against is erased at compile time.
  */
+import type { WithoutParams } from "../../../../i18n/keys.gen";
 import type { ThemeName } from "../types/theme";
 
 /**
@@ -79,15 +80,19 @@ export type ThemePalette = {
 	 * ## The legibility floors, which bind all four grounds
 	 *
 	 * A page ground is not a taste call. It is the surface the transcript is read
-	 * on for hours, so it is FLOORED at **L\* 12 in a dark theme** - one rung above
-	 * GitHub Dark's `#0D1117` (L\* 4.95) and exactly VS Code Dark+'s `#1E1E1E`, and
-	 * deliberately above GitHub's default - and **CAPPED at L\* 94 in a light one**,
+	 * on for hours, so a dark theme's page sits in a hard BAND of **L\* 9 to 15**
+	 * (target 9-13) - between Discord's 2025 chat ground `#1A1A1E` (L\* 9.42) and
+	 * Slack's dark `#1A1D21` (L\* 10.62) at the floor, and still nearly double
+	 * GitHub Dark's `#0D1117` (L\* 4.95) - and a light one is **CAPPED at L\* 94**,
 	 * because `elevated` at L\* 100 is the end of sRGB's ramp and the minimum
-	 * canvas-to-elevated spread is 2.5 + 2.5 L\*. The top of the ladder is capped at
-	 * **`elevated` L\* 30** (a dark theme's `canvas` also has a hard ceiling of
-	 * L\* 22, past which it stops being off-black), because at `elevated` L\* 34 an
+	 * canvas-to-elevated spread is 2.5 + 2.5 L\*. The band was [12, 22] until the
+	 * 2026-11-03 "dark mode isn't that dark" report; every dark palette was re-lit
+	 * by one proportional map, `L*_new = 9 + 0.6 x (L*_old - 12)`, which preserves
+	 * the fleet's order and spacing rather than stacking it on a clamp (hand
+	 * re-solves move 34 canvases off the map by up to +-1.04 L*). The top of the
+	 * ladder is capped at **`elevated` L\* 22**, because at `elevated` L\* 34 an
 	 * `inkDim` at its floor needs L\* 85 and the ink/hover distinction disappears
-	 * into the top of the ramp.
+	 * into the top of the ramp. `docs/branding.md` § 2 carries the measurements.
 	 *
 	 * The four grounds are then authored as L\* OFFSETS FROM THE CANVAS, and both
 	 * ends of each step are asserted:
@@ -127,7 +132,8 @@ export type ThemePalette = {
 	 * ## The identity band, and the ceiling note this replaces (2026-09-18)
 	 *
 	 * The "some themes feel a lot more grey now" report is real and it is
-	 * measured: the pass above solved 23 palettes onto the same L* 12 floor, so
+	 * measured: the pass above solved 23 palettes onto the same L* 12 floor (the
+	 * floor of the time; the band is now 9-15, see above), so
 	 * 9.47 L* of authored depth came to occupy 0.46 L*, and the dark fleet's
 	 * `canvas` spread fell from 19.5 to 10.0 L*. The previous revision of this
 	 * note recorded that the fleet could not pay to undo it - the band's own
@@ -685,8 +691,20 @@ export type ThemePalette = {
 	 * second category was painted the colour that everywhere else means "here is a
 	 * fact" (`mermaid-diagram.tsx` says so in its own comment). This is the hue
 	 * that was missing. It is spent at exactly two sites — the picker's miniature
-	 * and mermaid's categorical fills — and the may-not list below is what keeps
-	 * it from growing into a second control accent.
+	 * and the diagram renderers' categorical fills (Pele's solid `--pele-series-2`,
+	 * see `pele-theme.ts`, and mermaid's wash cycle when the `diagramEngine` flag
+	 * selects Mermaid) — and the may-not list below is what keeps it from growing
+	 * into a second control accent.
+	 *
+	 * Pele is the default diagram renderer and it does not spend the `fillType0..7`
+	 * wash ramp. Its actor legend and its pie and series colours map to the six
+	 * solid roles (`accent`, `accentAlt`, `warning`, `danger`, `info`, `success`,
+	 * through `--pele-series-1..8`; that order keeps the first four slots at least
+	 * ΔE00 10.08 apart in all 59 themes, including the seven where `accent`
+	 * equals `info` or `success`), and a journey's SECTION fills are not themed
+	 * as a ramp: Pele has no section-fill variable, so every section header takes
+	 * the one `--pele-surface-alt` fill (`sunken`). Only Mermaid, selected through
+	 * the flag, still paints sections from the wash ramp.
 	 *
 	 * ## Where the value comes from: the token the port dropped
 	 *
@@ -792,7 +810,9 @@ export type ThemePalette = {
 	 *
 	 * MAY: the theme picker's miniature (`theme-selector.tsx`'s `ThemeSwatch`, a
 	 * `bg-accent-alt` bar beside the `bg-accent` one), mermaid's categorical fills
-	 * (`accentAltWash` at index 1 of the wash cycle), and the settled trace row's
+	 * when the flag selects Mermaid (`accentAltWash` at index 1 of the wash
+	 * cycle), Pele's categorical series
+	 * (`accentAlt` at `--pele-series-2` and `--pele-series-8`), and the settled trace row's
 	 * IDENTITY ink — `tool-row.tsx`'s `CATEGORY_INK.meta`, the name and glyph of a
 	 * `task`/`agent`/`hub`/`todo`/`send`/`ask`/`wake` row in the shared name column.
 	 * The sibling legibility spec's identity sites — an agent/entity glyph, a
@@ -848,9 +868,9 @@ export type ThemePalette = {
 	 *   and `surface`. That row exists for `accentWash` because a chip is a real
 	 *   component triple; the alt chip is asserted for the same reason.
 	 *
-	 * It is NOT a selection or hover ground, and it is not `accentAlt`'s only
-	 * consumer: mermaid's ramp is the one that ships today. Like its solid
-	 * sibling, it is decorative — a state role that took it would be the defect
+	 * It is NOT a selection or hover ground. Its one consumer is mermaid's wash
+	 * ramp, which ships behind the `diagramEngine` flag now that Pele is the
+	 * default and has no wash role. Like its solid sibling, it is decorative — a state role that took it would be the defect
 	 * the pair exists to avoid.
 	 */
 	accentAltWash: string;
@@ -975,8 +995,21 @@ export type ThemeDefinition = {
 	 * M-1). A type-only import, so the two modules still share no runtime code.
 	 */
 	id: ThemeName;
+	/** Established palette and editor-family names stay verbatim, like other brand names. */
 	name: string;
-	/** One line, shown under the name in the theme picker. */
-	description: string;
+	/**
+	 * The message key of the one line shown under the name in the theme picker.
+	 *
+	 * A KEY rather than the rendered sentence, because a palette file is
+	 * framework-free colour data: it is executed by `check-design-kit`'s esbuild
+	 * bundle and scanned for values by `palette-source.mjs`, and resolving copy
+	 * there froze bootstrap English into the module (and, when the batch first
+	 * wrote it as a `t()` getter here, made the palette unbuildable outside the
+	 * app's module graph). The registry resolves this key at read time in
+	 * `themes/index.ts`, so a live language switch re-renders the picker.
+	 * `WithoutParams` keeps the spelling checked against the generated key map,
+	 * and states what the picker needs: a description carries no arguments.
+	 */
+	descriptionKey: WithoutParams;
 	palette: ThemePalette;
 };

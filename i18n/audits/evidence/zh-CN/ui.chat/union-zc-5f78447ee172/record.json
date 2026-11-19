@@ -1,0 +1,186 @@
+{
+	"schema": 1,
+	"kind": "translation-audit-record",
+	"audit_kind": "independent-union-re-audit-of-the-merged-ui.chat-catalogue",
+	"audit_id": "union-zc-5f78447ee172",
+	"instance": "union-ui-chat-zhcn-20261028-5f78447ee172",
+	"receipt": "i18n/receipts/union-ui-chat-zhcn-20261028-5f78447ee172.json",
+	"receipt_sha256": "472aa11ef67b36fcc76c086b6da0fa3a1f147f252618b723def1f7d0ab874bb3",
+	"evidence_bundle": "i18n/audits/evidence/zh-CN/ui.chat/union-zc-5f78447ee172",
+	"task": "Union re-audit of namespace ui.chat for zh-CN, PR #1449 branch i18n-wave-a at c5e19ecec8: a delta audit over values proven byte-identical to the bytes their own earlier audits read, plus a cross-wave consistency read of the merged file.",
+	"audit_date": "2026-10-28",
+	"locale": "zh-CN",
+	"namespace": "ui.chat",
+	"git": {
+		"head": "c5e19ecec8",
+		"head_full": "c5e19ecec883b45e281d696f06dac86bcb0d90f3",
+		"parents": [
+			"e5f7c8daeaf3bd5a6267c5910288e2b5f1bcc807",
+			"1d631be71fb7a674b117aab61508d6dd822708b4"
+		],
+		"branch": "i18n-wave-a",
+		"subject": "chore(merge): integrate origin/main (1d631be71f) into i18n-wave-a"
+	},
+	"key_count": 142,
+	"groups": {
+		"shared_base": 115,
+		"wave_a": 18,
+		"wave_b": 9
+	},
+	"input_hashes": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.chat.json",
+			"sha256": "d3bc8ec097540b123500005e941093dbc73eaaa46fa1152643a04d51b6f259e4"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.chat.context.json",
+			"sha256": "994de1d3c61cdc19ba61bb8b0995e4e96e17e80c531c9b3dafb4572d3c8bca3e"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/zh-CN/ui.chat.json",
+			"sha256": "ff84b9261a33af1a59c6e90fcc031a9953896938c5c83494a23058c34cfb3f05"
+		}
+	},
+	"earlier_audits": [
+		{
+			"receipt": "f3e86c8bcafb",
+			"head": "80ee119bbd1084ee873994a1f39db0c085c62083",
+			"hash_binding": {
+				"en": "1a1c9329a1a56ffda47b27da91e80fdf454751a4463b76f09ae9138d1ad0bcdc",
+				"zh-CN": "ad47f77e03e43d8b386e8c666bfe090ece03117b07e86e62471e364d64ca5c4b"
+			},
+			"role": "wave A's 18 ui.chat keys; the same 18 key names, and their values byte-identical in the union (parsed-JSON, value by value)."
+		},
+		{
+			"receipt": "wb-zh-cn-delta-20261027-9b3e2c165c87",
+			"head": "a5356ce91c4f37bf4c4d1c4518070e3a9b2505cb",
+			"hash_binding": {
+				"en": "4d07ed6de9382fdf1310fd70bf48be2602952538c1ddf43bda8972834760be04",
+				"zh-CN": "76bdcfd3abb2d67ecc49d87b078bd5a2d367b03d760c0a0ca20db59ebebd4a10"
+			},
+			"role": "wave B's 9 session_status keys; a5356ce91c is byte-identical to origin/main pre-union 1d631be71f, and those nine values are byte-identical in the union."
+		}
+	],
+	"delta": {
+		"method": "parsed-JSON equality, value by value (tools/delta-proof.py), reading committed blobs with `git show` from the object database",
+		"shared_base": "115 keys; union values identical to 1d631be71f (origin/main pre-union) and to 80ee119bbd, so the union inherits one stable base, not two",
+		"wave_a": "18 keys; union values identical to 80ee119bbd",
+		"wave_b": "9 keys; union values identical to a5356ce91c / 1d631be71f",
+		"key_sets": "A and B disjoint; union == base ∪ A ∪ B; union key set == union en key set",
+		"result": "all 142 values in the union are accounted for by a proven-equal earlier read"
+	},
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "5f78447ee172",
+		"model": "radient/auto",
+		"model_provenance": {
+			"route": "radient/auto",
+			"route_source": "the harness system prompt of this session ('Model: radient/auto')",
+			"fallback_used": false,
+			"fallback_chain": [],
+			"actual_model_source": "The harness reports this session's route as radient/auto (an auto-routing alias); no concrete served provider/model id is exposed to this subagent session. No provider fallback, model switch or [session incident] notice appeared or was observed during the run. Recorded as the route, not guessed into a vendor id.",
+			"disclosure": "Every judgement was made in this session under the recorded route; no model change was requested or observed."
+		},
+		"independent_from_translator_session": true
+	},
+	"translator": {
+		"agent": "i18n-translator (the wave lanes; a different agent and session from this audit)",
+		"note": "No translation happened in this scope: every value predates the union and was authored by the wave A and wave B lanes. The auditor wrote nothing."
+	},
+	"artifacts": [
+		{
+			"path": "i18n/audits/evidence/zh-CN/ui.chat/union-zc-5f78447ee172/audit.log",
+			"sha256": "bf33a3786bd65bffd491497d7feb33880838dca07e20a066425dda4fe321d932"
+		},
+		{
+			"path": "i18n/receipts/union-ui-chat-zhcn-20261028-5f78447ee172.json",
+			"sha256": "472aa11ef67b36fcc76c086b6da0fa3a1f147f252618b723def1f7d0ab874bb3"
+		}
+	],
+	"current_report_verdict": {
+		"status": "passed",
+		"result": "clean-with-findings",
+		"unresolved_blocker_major_count": 0,
+		"severity_counts": {
+			"blocker": 0,
+			"major": 0,
+			"minor": 2,
+			"nit": 1
+		},
+		"finding_ids": [
+			"ZH-U1",
+			"ZH-U2",
+			"ZH-U3"
+		],
+		"independent_of_translator": true
+	},
+	"findings": [
+		{
+			"id": "ZH-U1",
+			"severity": "MINOR",
+			"key": "ui.chat.session_status.conversation_starting",
+			"current": "对话开始后即可设置。",
+			"source": "Set once the conversation starts.",
+			"problem": "The English is passive: the choice is made for the reader when the conversation starts. 即可设置 states a permission ('you can then set it'), which moves the agent from the system to the reader and is the only one of the seven locales that is not passive (es Se establece, fr Défini, ru Задаётся, vi Sẽ được thiết lập, hi तय होगा, ur طے ہو جائے گا). The en sidecar for this key says the line 'must not read as an instruction'. Not escalated to MAJOR: the sentence is idiomatic, true of the product once the conversation exists, and asks nothing of the reader.",
+			"suggested": "对话开始后即会设置。",
+			"alternatives": [
+				"对话开始后自动设置。"
+			],
+			"checked": "no placeholders; 20 cells vs EN 33; no maxCells hint on this key."
+		},
+		{
+			"id": "ZH-U2",
+			"severity": "MINOR",
+			"key": "ui.chat.session_status.context_nothing_measured_tooltip",
+			"also_keys": [
+				"ui.chat.session_status.nothing_measured_yet"
+			],
+			"current": "上下文：暂无读数。随着对话进行，上下文窗口会逐渐填充。",
+			"current_also": "暂无读数。随着对话进行，上下文窗口会逐渐填充。",
+			"source": "Context: nothing measured yet. The window fills as the conversation runs.",
+			"problem": "'Nothing measured yet' is a fact about measurement; 暂无读数 is 'no reading yet', the wording the en sidecar records as deliberately rejected because it is equally true of a resumed session. The distinction the English draws (nothing has been measured yet, versus a value that will arrive by itself) is lost and the following sentence has to carry it alone. Both keys use the same opening, so they are consistent with each other and inconsistent with the source.",
+			"suggested": "上下文：尚未测量。随着对话进行，上下文窗口会逐渐填充。",
+			"suggested_also": "尚未测量。随着对话进行，上下文窗口会逐渐填充。",
+			"checked": "no placeholders; 54/46 cells vs EN 73/64; no maxCells hint."
+		},
+		{
+			"id": "ZH-U3",
+			"severity": "NIT",
+			"key": "ui.chat.checkpoint.jump_user",
+			"also_keys": [
+				"ui.chat.checkpoint.jump_user_no_clock"
+			],
+			"current": "跳转到你的消息（第{turn, number}轮，共{total, number}轮），{clock}",
+			"current_also": "跳转到你的消息（第{turn, number}轮，共{total, number}轮）",
+			"problem": "The two user ticks spell the progress pair （第N轮，共M轮） while jump_agent, jump_agent_unnamed and checkpoint.turn spell it （共M轮）. Both forms are idiomatic; three of five agreeing is what makes the fifth visible to a screen-reader user walking the rail. Carried unchanged from the wave A receipt (wavea-zh-d1), which recorded it as a declination rather than a defect; this pass independently agrees and records it so it is not lost.",
+			"suggested": "跳转到你在第{turn, number}轮（共{total, number}轮）的消息，{clock}",
+			"suggested_also": "跳转到你在第{turn, number}轮（共{total, number}轮）的消息",
+			"suggested_note": "optional uniformity only; no change required for a passing verdict.",
+			"checked": "placeholders preserved either way; no maxCells hint."
+		}
+	],
+	"observations_not_findings": [
+		"请 appears in 10 base keys while only one English source says 'please'; base bytes unchanged from origin/main, recorded for a future whole-file pass rather than raised against the union.",
+		"ui.chat.hub_update.update_all_label's `other` branch drops the noun the agent/team/skills branches keep (…项智能体更新 vs 从中心应用全部{count}项) and uses the verb 应用 where the sibling button 全部更新 and ui.agents.navigation's 从中心更新 use 更新. Base value, previously audited, still renders.",
+		"ui.chat.session_status.temporarily_unavailable_description keeps 仍已保存, applied in the wave B remediation to match the shipped ui.settings.integrations string word for word; formal but consistent, recorded so the choice stays visible.",
+		"对话 carries 'Chat' (tabs.chat) and 'conversation' in sentences while 会话 is reserved for session; no collision found, recorded because it is the file's most likely future drift.",
+		"ui.chat.header_identity.aria_agent_assign renders 智能体：无智能体。分配智能体 when the chip shows the no-agent label — the repetition is the English source's own ('Agent: No agent. Assign an agent') and {label} must stay verbatim, so it is correct as written."
+	],
+	"validation": {
+		"delta_proof": "tools/delta-proof.py — 25 checks, all PASS (see audit.log §8.1)",
+		"repo_gates": "generate --check, context-parity, check-coverage, check-duplicates, locale-parity 44/44, zh-CN activation 3/3 — all green in the export (audit.log §8.2)",
+		"ledger_check": "FAILED as expected: the seven ui.chat rows, including zh-CN, are stale until this receipt is assembled (§8.2)",
+		"icu_render": "284 real renders (142 en + 142 zh-CN), 0 findings across argument/select/plural/tag/code-span/token/NFC/bidi/ellipsis/spacing/punctuation/terminal-stop checks (§8.3)",
+		"negative_control": "five planted defects -> six findings raised; the checker fails when it should (§8.3b)",
+		"widths": "0 keys over a maxCells hint, 0 keys over 1.5x English + 10 cells; the three checkpoint labels are +1/+1/+3 cells (§8.4)",
+		"receipt_self_check": "deriveReceiptAudit + validateAuditorEntry + validateAuditSet from the repo's ledger-rules.mjs accept the receipt: result clean-with-findings, counts {0,0,2,1} (§8.8)"
+	},
+	"limitations": [
+		"No browser or rendered frame was available, so no pixel, truncation or overflow claim is made; widths are codepoint cell counts, not measurements.",
+		"No native-speaker sign-off is claimed; the audit is an independent agent read of the locale against its own shipped catalogue, glossary and style guide.",
+		"The English copy was read as the source, not audited as English.",
+		"RTL (ur), digit policy and the other locales are outside this locale's audit.",
+		"The upstream model behind the radient/auto route is not exposed to this session; the recorded route is the harness's own.",
+		"The two earlier receipts were consumed as evidence but their judgements were not re-litigated except where a value is named in a finding."
+	]
+}

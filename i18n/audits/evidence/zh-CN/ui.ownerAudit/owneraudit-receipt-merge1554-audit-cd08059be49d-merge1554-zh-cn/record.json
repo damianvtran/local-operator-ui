@@ -1,0 +1,124 @@
+{
+ "audit_id": "owneraudit-receipt-merge1554-audit-cd08059be49d-merge1554-zh-cn",
+ "date": "2026-11-02",
+ "locale": "zh-CN",
+ "namespace": "ui.ownerAudit",
+ "branch": "conv/legacy-inline-receipts",
+ "source_commit": "PR #1554 remediation bc53982680e (ZH1/ZH2/C1) over audited 738df0eb884; head at audit 671004bcc37d69e8bd00197517c84de6ec518df5",
+ "translator": {
+  "agent": "coder",
+  "job": "cc152b98d7c7",
+  "date": "2026-11-02",
+  "source": "bc53982680e applied auditor 5b6b5bce99e4's suggested ZH1/ZH2 values verbatim; implementer model not recorded in that commit"
+ },
+ "auditors": [
+  {
+   "agent": "reviewer",
+   "model": "anthropic/claude-opus-5-5",
+   "session": "cd08059be49d",
+   "instance": "cd08059be49d-merge1554-zh-cn",
+   "date": "2026-11-02",
+   "result": "clean",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "model_fallback": {
+    "announced": false,
+    "observed": false
+   }
+  }
+ ],
+ "independence": "Independent auditor: lopdev team reviewer, session cd08059be49d; authored none of PR #1554's strings or code, not the implementer (coder job cc152b98d7c7) that applied ZH1/ZH2/C1 in bc53982680e, and not the prior auditors (5b6b5bce99e4 who raised ZH1/ZH2/C1; 840dad30806b; 75830dea2957, pr1533rm, tb1482mg on main). Edited no catalogue or context value. Rows written by ledger-assemble.mjs.",
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.ownerAudit.json",
+   "sha256": "41a736f06c88440a3a662521643aa5b40d43acd83a898053aad74a4122fc7cdd"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.ownerAudit.context.json",
+   "sha256": "c472f866b007c31994b55b632d7562fffcf824b3c48a89cef721c9fc06b44484"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/zh-CN/ui.ownerAudit.json",
+   "sha256": "b22c9a37f6f23f45855905bd1bc606934ca6d39c9dc73b090a1ffa1b10294a8b"
+  }
+ },
+ "style_guide": {
+  "path": "~/local-operator i18n/style-guides/zh-CN.md",
+  "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c",
+  "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "core_commit": "b42471d3935"
+ },
+ "scope": {
+  "delta_kind": "Remediation of 5b6b5bce99e4's ZH1/ZH2 minors (bc53982680e). git diff 738df0eb884 bc53982680e -- src/i18n i18n touches exactly two zh-CN values (chunk_number, inline_image_receipt) and the en context note of inspect_body; 671004bcc37 adds only docs/pr-evidence (empty i18n diff vs bc53982680e). The other 38 zh-CN values and key order are byte-identical to 738df0eb884; en is byte-identical.",
+  "prior_audit": {
+   "commit": "738df0eb884",
+   "target_sha256": "03c6163b6af351b513fe1a87096e79495edc4c5a78a181bbc87f93a2efc265e4",
+   "en_sha256": "41a736f06c88440a3a662521643aa5b40d43acd83a898053aad74a4122fc7cdd",
+   "context_sha256": "23482ab4d02bd5c0eedf526c2760d5bb1d1129e3e6724881e6a4d97f8509c2ff",
+   "instances": [
+    "5b6b5bce99e4-merge1554-zh-cn"
+   ],
+   "receipt_sha256": "76d5ed4ac82f882237afc78f7f5ebd051d2800c2d2dbe2ea94a05072dae210d1"
+  },
+  "keys_audited_linguistically": [
+   "ui.ownerAudit.chunk_number",
+   "ui.ownerAudit.inline_image_receipt"
+  ],
+  "unchanged_bytes_audited_by": [
+   "5b6b5bce99e4-merge1554-zh-cn"
+  ],
+  "not_audited": "No fresh linguistic audit of the 38 unchanged values; their bytes are the ones 5b6b5bce99e4 audited. No rendered/visual check (light review)."
+ },
+ "linguistic_review": "第{page}部分，共{count}部分 / 内嵌图像数据 · {mime} · {count}个字符: meaning unchanged from the audited spaced forms and faithful to en; typography now matches the zh-CN no-space rule.",
+ "resolved_findings": [
+  {
+   "id": "ZH1",
+   "key": "ui.ownerAudit.chunk_number",
+   "old": "第 {page} 部分，共 {count} 部分",
+   "new": "第{page}部分，共{count}部分",
+   "status": "fixed in bc53982680e",
+   "verdict": "No space between Chinese text and placeholder runs (style guide line 67); means 'Part {page} of {count}'; args {count,page} equal en."
+  },
+  {
+   "id": "ZH2",
+   "key": "ui.ownerAudit.inline_image_receipt",
+   "old": "内嵌图像数据 · {mime} · {count} 个字符",
+   "new": "内嵌图像数据 · {mime} · {count}个字符",
+   "status": "fixed in bc53982680e",
+   "verdict": "{count}个 joined per the no-space rule; spaced · separators mirror en and are correct; means 'Inline image data · {mime} · {count} characters'; args {count,mime} equal en."
+  }
+ ],
+ "findings": [],
+ "context_review": {
+  "key": "ui.ownerAudit.inspect_body",
+  "observation": "C1 (5b6b5bce99e4)",
+  "verdict": "accurate",
+  "reason": "At bc53982680e/671004bcc37 the only call site is inline-data-receipt.tsx:133-135, the <summary> of a Receipt <details> for an uncertain span pushed right after an image data-URI span (spans.push({start: cursor, ..., uncertain: true}), ~line 113-119); the file header says such runs are never misrepresented as image bytes and neither path decodes or fetches; opening slices PAGE_SIZE=2048 per page into an inert <pre>. The new note states exactly that. zh-CN 检查消息文本 remains faithful to it.",
+  "ledger_binding": "Context sidecars bind no ledger row: ledger-check.mjs:73 and ledger-assemble.mjs:138 skip *.context.json; only target and en sha256 are row hashes. The change does register in context-parity (ok)."
+ },
+ "checks": {
+  "placeholders": "@formatjs/icu-messageformat-parser over all 40 values: all parse; argument sets equal English per key.",
+  "key_set": "40 keys, equal to English and to 738df0eb884 (same order).",
+  "unicode": "All values NFC; no bidi controls (U+200E/F, U+061C, U+202A-E, U+2066-9).",
+  "convention": "zh-CN catalogues now: '}个' 176 vs '} 个' 3, '第{' 33 vs '第 {' 1, '共{' 47 vs '共 {' 1 (remaining spaced cases are outside these two keys).",
+  "rendered_command": "node $LOCAL_OPERATOR_SCRATCHPAD/i18n1554/verify-zh.mjs (worktree root; Node v24.22.1)",
+  "rendered": [
+   "zh-CN sha b22c9a37f6f23f45855905bd1bc606934ca6d39c9dc73b090a1ffa1b10294a8b prev 03c6163b6af351b513fe1a87096e79495edc4c5a78a181bbc87f93a2efc265e4 en sha 41a736f06c88440a3a662521643aa5b40d43acd83a898053aad74a4122fc7cdd en-unchanged-vs-738 true ctx sha c472f866b007c31994b55b632d7562fffcf824b3c48a89cef721c9fc06b44484",
+   "keys 40 keyset==en true keyset==prev true",
+   "changed [ 'ui.ownerAudit.inline_image_receipt', 'ui.ownerAudit.chunk_number' ] unchanged 38",
+   "all 40 parse/args==en/NFC/no-bidi; bad = 0",
+   "ui.ownerAudit.inline_image_receipt \"内嵌图像数据 · {mime} · {count}个字符\" args count:1,mime:1 en \"Inline image data · {mime} · {count} characters\" cjk-space-placeholder false",
+   "ui.ownerAudit.chunk_number \"第{page}部分，共{count}部分\" args count:1,page:1 en \"Part {page} of {count}\" cjk-space-placeholder false",
+   "ctx entries changed [ 'ui.ownerAudit.inspect_body' ] ctx keyset same true",
+   "  field changed: note"
+  ]
+ },
+ "receipt": {
+  "path": "i18n/receipts/cd08059be49d-merge1554-zh-cn.json",
+  "sha256": "2b50fddb89bf160c9fa9ca5cf340e1c11cd00784320ae497db0402a6bb4173d0"
+ }
+}

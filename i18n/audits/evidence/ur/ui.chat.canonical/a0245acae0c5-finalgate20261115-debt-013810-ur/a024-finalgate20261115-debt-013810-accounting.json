@@ -1,0 +1,614 @@
+{
+  "kind": "S18a inherited-debt accounting only, no new semantic audit",
+  "date": "2026-11-15T01:38:10.014046+00:00",
+  "session": "a0245acae0c5",
+  "model": "openai/gpt-6.1-sol",
+  "snapshot": "759530dba089052f53c4c28da12c9c351cf6c1b4",
+  "source_sha256": "0eb58c851335bcb90a14631b24b0ba330b5d0c80af80e9aa82a0970155dc7d45",
+  "actual_superseded_receipt_refs": {
+    "ru": {
+      "path": "i18n/receipts/ef041c786677.json",
+      "sha256": "9e2a7ebd68ca0bcfb88bc992484227b562ff1a2b908d1ed965838b0ce6893838",
+      "source_snapshot": "759530dba089052f53c4c28da12c9c351cf6c1b4",
+      "source_sha256": "0eb58c851335bcb90a14631b24b0ba330b5d0c80af80e9aa82a0970155dc7d45",
+      "target_sha256": "0348554f4683e8b42f3c80c722be8bde2c931f6255be3037b7ef9c0304f9e1b6",
+      "auditor": {
+        "agent": "i18n-auditor",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-11-13",
+        "result": "clean-with-findings",
+        "instance": "ef041c786677",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 0,
+          "nit": 3
+        },
+        "receipt": "i18n/receipts/ef041c786677.json",
+        "receipt_sha256": "9e2a7ebd68ca0bcfb88bc992484227b562ff1a2b908d1ed965838b0ce6893838",
+        "scope": "landed merge of UI #1874 + #1884 canonical keys (16 new keys), union proven byte-identical",
+        "note": "Independent i18n-auditor audit of the landed ui.chat.canonical bytes after merging main 0de7a69e2 (#1874 temporary_deleted.* + #1884 S16e keys) into PR #1884; prior audits described pre-merge bytes."
+      },
+      "receipt": {
+        "auditor": "i18n-auditor",
+        "model": "deepseek/deepseek-flash",
+        "instance": "ef041c786677",
+        "status": "passed",
+        "namespace": "ui.chat.canonical",
+        "locale": "ru",
+        "date": "2026-11-13",
+        "head": "759530dba089052f53c4c28da12c9c351cf6c1b4",
+        "parents": {
+          "pr": "71bf9ae3e3375bff3e1ce149fe193377c87d984b",
+          "main": "0de7a69e23a493ecacfc15f1346a8dd57a7efc9d"
+        },
+        "sha256": {
+          "ru": "0348554f4683e8b42f3c80c722be8bde2c931f6255be3037b7ef9c0304f9e1b6",
+          "en": "0eb58c851335bcb90a14631b24b0ba330b5d0c80af80e9aa82a0970155dc7d45",
+          "en_context": "97f9e0881655e98fa1df8303feda347ced36377e1b25c9375680a5cedf5ec677",
+          "style_guide_ru": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5",
+          "glossary": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+        },
+        "keys_read": 16,
+        "key_sets": {
+          "A_1874": 4,
+          "B_1884": 12,
+          "total": 16,
+          "union_landed_keys": 483,
+          "carried_byte_identical": 467,
+          "provenance_violations": 0
+        },
+        "counts": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 0,
+          "nit": 3
+        },
+        "findings": [
+          {
+            "severity": "NIT",
+            "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+            "note": "Current 'Лимит аудио' names the object (an audio quota) where the other five class labels state the failed event; the locale's settled 'rate limit' is 'лимит запросов'. Proposed 'Лимит аудио превышен' (21 chars, 3 words). Non-blocking: the label always sits above 'Генерация аудио сейчас перегружена...', which disambiguates it."
+          },
+          {
+            "severity": "NIT",
+            "key": "ui.chat.canonical.temporary_deleted.back",
+            "note": "Two renderings of 'Back to X' now ship in ru: 'Назад к ...' (ui.browser.extensions.action_back, ui.agents.pages.back_to_list) and 'Вернуться к ...' here. No change recommended: the style guide's infinitive action-label rule favours the landed form and it harmonises with the adjacent 'Начать новый чат' in the same slot."
+          },
+          {
+            "severity": "NIT",
+            "key": "ui.chat.canonical.image_gen.error_class.gate_failed",
+            "note": "One ru word carries two English concepts in this namespace: 'Проверка' = 'gate' here and 'Проверка' = 'checking' in image_gen.cancel.checking ('Проверка расчёта'). The rendering itself is accurate for a policy gate; no change proposed, recorded so a future gate surface does not inherit an ambiguous term."
+          }
+        ]
+      }
+    },
+    "ur": {
+      "path": "i18n/receipts/addbe32949b5.json",
+      "sha256": "a7ba9d9e9db2db25e382ecb83718a1cff65fef108dad9a6b3630d6a2ccbdaff6",
+      "source_snapshot": "759530dba089052f53c4c28da12c9c351cf6c1b4",
+      "source_sha256": "0eb58c851335bcb90a14631b24b0ba330b5d0c80af80e9aa82a0970155dc7d45",
+      "target_sha256": "a0518d898cbde5003074cacb1204c1c1d6136e3c2142697b087a22f3cd767e2b",
+      "auditor": {
+        "agent": "i18n-auditor",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-11-13",
+        "result": "clean-with-findings",
+        "instance": "addbe32949b5",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 1,
+          "nit": 3
+        },
+        "receipt": "i18n/receipts/addbe32949b5.json",
+        "receipt_sha256": "a7ba9d9e9db2db25e382ecb83718a1cff65fef108dad9a6b3630d6a2ccbdaff6",
+        "scope": "landed merge of UI #1874 + #1884 canonical keys (16 new keys), union proven byte-identical",
+        "note": "Independent i18n-auditor audit of the landed ui.chat.canonical bytes after merging main 0de7a69e2 (#1874 temporary_deleted.* + #1884 S16e keys) into PR #1884; prior audits described pre-merge bytes."
+      },
+      "receipt": {
+        "auditor": "i18n-auditor",
+        "model": "deepseek/deepseek-flash",
+        "instance": "addbe32949b5",
+        "session": "addbe32949b5",
+        "date": "2026-11-13",
+        "status": "passed",
+        "namespace": "ui.chat.canonical",
+        "locale": "ur",
+        "sha256": {
+          "ur": "a0518d898cbde5003074cacb1204c1c1d6136e3c2142697b087a22f3cd767e2b",
+          "en": "0eb58c851335bcb90a14631b24b0ba330b5d0c80af80e9aa82a0970155dc7d45"
+        },
+        "findings": [
+          {
+            "severity": "MINOR",
+            "key": "ui.chat.canonical.image_gen.error_class.duplicate_id",
+            "note": "Lowercase Latin 'id' where the shipped ur catalogue writes the identifier token uppercase 'ID' in all 25 prose occurrences (سیشن ID، ایجنٹ ID، شیڈول ID) and lowercase 'id' only inside ICU placeholders. Proposed bytes: 'مکرر ID'."
+          },
+          {
+            "severity": "NIT",
+            "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+            "note": "Label construction 'آڈیو کی شرح محدود' is accurate and attested ('درخواستوں کی شرح محدود ہے'); the shipped noun form is cleaner as a one-line label. Optional: 'آڈیو پر شرح کی حد'. No merge impact."
+          },
+          {
+            "severity": "NIT",
+            "key": "ui.chat.canonical.image_gen.cancel.queued",
+            "note": "Correct ('کال' is shipped vocabulary: ٹول کال، کال جاری), but the sibling image_gen.control.stop_hint_queued states the same fact as 'درخواست بھیجے جانے سے پہلے'. Optional harmonisation only."
+          },
+          {
+            "severity": "NIT",
+            "key": "ui.chat.canonical.image_gen.cancel.running",
+            "note": "Same English clause ships as 'لاگت لگے گی' in the frozen out-of-scope sound.stop.warning while this key uses 'چارج لگے گا'. Landed key chose the stronger term (matches حتمی چارج / کوئی چارج نہیں); no change to landed bytes, remedy is a later wave on sound.stop.warning plus a glossary charge/cost row."
+          }
+        ],
+        "severity_counts": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 1,
+          "nit": 3
+        },
+        "keys_read": 16,
+        "keys_in_namespace": 483,
+        "scope": "Independent re-audit against the LANDED merge bytes of local-operator-ui #1884 folded into main, merge commit 759530dba089052f53c4c28da12c9c351cf6c1b4. A = 4 keys absent from PR head 71bf9ae3 (temporary_deleted.*, #1874); B = 12 keys absent from main 0de7a69e (image_gen.state.cancelled_batch, cancel.queued/running/checking, settlement.pending, error.audio_rate_limited, error_class.{audio_rate_limited,unknown_tool,invalid_arguments,duplicate_id,denied,gate_failed}, #1884). The other 467 keys were not re-audited; they are proven byte-identical to their source side (set(landed) == set(PR) ∪ set(main); 0 values differing from main, 0 from PR, in both the ur and en files).",
+        "format_proof": "TAB indent, single trailing newline, no BOM, no CRLF/lone CR, NFC, zero bidi controls (U+200E/RTL marks, U+202A-202E, U+2066-2069, U+061C). biome format exit 0 ('No fixes applied') on a scratch copy with the repo biome.json, negative controls exit 1 (tabs->spaces; double trailing newline).",
+        "inputs_sha256": {
+          "ur landed target": "a0518d898cbde5003074cacb1204c1c1d6136e3c2142697b087a22f3cd767e2b",
+          "en landed source": "0eb58c851335bcb90a14631b24b0ba330b5d0c80af80e9aa82a0970155dc7d45",
+          "en context sidecar": "97f9e0881655e98fa1df8303feda347ced36377e1b25c9375680a5cedf5ec677",
+          "style guide ~/local-operator/i18n/style-guides/ur.md": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60",
+          "glossary ~/local-operator/i18n/glossary.md": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+        },
+        "provenance": {
+          "role": "translation-auditor (lopdev team), fresh and independent",
+          "independence": "Separate session addbe32949b5, separate run from the S16e translator and from the pre-merge auditor 047163c943ad; not the author of any of these bytes; nothing edited in the repo. The pre-merge receipt was read only after the verdict was formed, to record convergence: all four findings re-derive its UR-S16E-01..04 independently, with UR-S16E-02 downgraded MINOR->NIT because the predicate construction it called divergent is itself shipped.",
+          "actual_model": "deepseek/deepseek-flash — session model header; no model-switch card and no [session incident] in this run, so no fallback occurred in this audit.",
+          "method": "Landed bytes only; read-only audit (no tests/tsc/builds/installs). Every term accepted or rejected against the shipped ur catalogues by script, glossary and style guide, plus the real consumer render sites in src/renderer.",
+          "report_path": "/Users/damian/.local-operator/sessions/addbe32949b5/scratchpad/audit-ur-canonical-landed.md"
+        }
+      }
+    },
+    "vi": {
+      "path": "i18n/receipts/3227a8cf0a47.json",
+      "sha256": "0704f083e82d9c810df6a31d6f93790fdd8bc8fab4f7ba89faa7c0d40e3b57cc",
+      "source_snapshot": "759530dba089052f53c4c28da12c9c351cf6c1b4",
+      "source_sha256": "0eb58c851335bcb90a14631b24b0ba330b5d0c80af80e9aa82a0970155dc7d45",
+      "target_sha256": "e829ddaba6a7b3c16dc8213bc836a6c91f4a853057f6a900fd06e90e1d2fed33",
+      "auditor": {
+        "agent": "i18n-auditor",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-11-13",
+        "result": "clean-with-findings",
+        "instance": "3227a8cf0a47",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 1,
+          "nit": 4
+        },
+        "receipt": "i18n/receipts/3227a8cf0a47.json",
+        "receipt_sha256": "0704f083e82d9c810df6a31d6f93790fdd8bc8fab4f7ba89faa7c0d40e3b57cc",
+        "scope": "landed merge of UI #1874 + #1884 canonical keys (16 new keys), union proven byte-identical",
+        "note": "Independent i18n-auditor audit of the landed ui.chat.canonical bytes after merging main 0de7a69e2 (#1874 temporary_deleted.* + #1884 S16e keys) into PR #1884; prior audits described pre-merge bytes."
+      },
+      "receipt": {
+        "auditor": "i18n-auditor",
+        "model": "deepseek/deepseek-flash",
+        "instance": "3227a8cf0a47",
+        "status": "passed",
+        "namespace": "ui.chat.canonical",
+        "sha256": {
+          "vi": "e829ddaba6a7b3c16dc8213bc836a6c91f4a853057f6a900fd06e90e1d2fed33",
+          "en": "0eb58c851335bcb90a14631b24b0ba330b5d0c80af80e9aa82a0970155dc7d45"
+        },
+        "findings": [
+          {
+            "severity": "MINOR",
+            "key": "ui.chat.canonical.image_gen.cancel.checking",
+            "note": "Term drift on EN 'settlement' inside one card: 'khoản phí' here vs 'quyết toán' in ui.chat.canonical.image_gen.settlement.pending (the adjacent note the same fact lands in), and 'Đang xác nhận khoản phí.' additionally asserts a charge exists where EN only states the settlement check is under way. Proposed: 'Đang kiểm tra quyết toán.' — or unify on the charge vocabulary in settlement.pending instead; one term either way, not two. Rendering join verified (running + ' ' + checking)."
+          },
+          {
+            "severity": "NIT",
+            "key": "ui.chat.canonical.temporary_deleted.detail",
+            "note": "Sentence-initial 'Nó' is the odd one out beside the sibling variant of the same notice (transcript.missing_session_detail opens with 'Cuộc trò chuyện'). Both forms have locale precedent and the variants never paint together — preference only, may be declined. 'không hoạt động' for 'went quiet' is correct."
+          },
+          {
+            "severity": "NIT",
+            "key": "ui.chat.canonical.temporary_deleted.back",
+            "note": "Width only, no change required: 29 chars vs EN 13 (+123%). Actions render in flex flex-wrap with no truncate (canonical-transcript.tsx:7846-7870), so buttons wrap rather than clip — flagged for a rendered check at the narrow fixture; shorter option 'Về danh sách trò chuyện' (24) if it clips."
+          },
+          {
+            "severity": "NIT",
+            "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+            "note": "Width only, no change required: 26 chars vs EN 18 (+44%), 5 syllables against a 'one to three words' sidecar budget; error_class.unknown_tool (22 vs 12) and temporary_deleted.new (28 vs 18) share the note. Label is a plain wrapping <p class=\"text-meta text-ink-dim\"> with no truncate — flagged for a rendered check, no change proposed."
+          },
+          {
+            "severity": "NIT",
+            "key": "ui.chat.canonical.image_gen.error_class.duplicate_id",
+            "note": "Casing only, no change required: locale label vocabulary spells the identifier 'ID' (ID tác nhân, ID phiên, ui.agents.settings.general.id) while lowercase 'id' appears in prose; this key is a label, but mirroring the English source's lowercase 'id' is defensible. Recorded for the ledger."
+          }
+        ]
+      }
+    },
+    "zh-CN": {
+      "path": "i18n/receipts/721c5ef683f2.json",
+      "sha256": "784d6fd6cb98e1564f9192713546216c308a8db388eb8b8bddea32f26186cfa9",
+      "source_snapshot": "759530dba089052f53c4c28da12c9c351cf6c1b4",
+      "source_sha256": "0eb58c851335bcb90a14631b24b0ba330b5d0c80af80e9aa82a0970155dc7d45",
+      "target_sha256": "1cf6b5a8113cd587754c4cec8a90a8aad95d9f0b95d189d02c509db76a158f49",
+      "auditor": {
+        "agent": "i18n-auditor",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-11-13",
+        "result": "clean-with-findings",
+        "instance": "721c5ef683f2",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 2,
+          "nit": 0
+        },
+        "receipt": "i18n/receipts/721c5ef683f2.json",
+        "receipt_sha256": "784d6fd6cb98e1564f9192713546216c308a8db388eb8b8bddea32f26186cfa9",
+        "scope": "landed merge of UI #1874 + #1884 canonical keys (16 new keys), union proven byte-identical",
+        "note": "Independent i18n-auditor audit of the landed ui.chat.canonical bytes after merging main 0de7a69e2 (#1874 temporary_deleted.* + #1884 S16e keys) into PR #1884; prior audits described pre-merge bytes."
+      },
+      "receipt": {
+        "auditor": "i18n-auditor",
+        "model": "deepseek/deepseek-flash",
+        "instance": "721c5ef683f2",
+        "status": "passed",
+        "namespace": "ui.chat.canonical",
+        "sha256": {
+          "zh-CN": "1cf6b5a8113cd587754c4cec8a90a8aad95d9f0b95d189d02c509db76a158f49",
+          "en": "0eb58c851335bcb90a14631b24b0ba330b5d0c80af80e9aa82a0970155dc7d45"
+        },
+        "findings": [
+          {
+            "severity": "MINOR",
+            "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+            "note": "EN 'Audio rate limited' is a state; zh-CN '音频速率限制' is the noun for the limit itself, so this one class label names a mechanism where its five siblings (参数无效, 已拒绝, 未知工具, 重复ID, 策略拦截) name an outcome. Proposed: 音频限流 — the locale's established state form (ui.code_review.host.cooling: '{host}已触发限流，将持续到{time}。'). Non-gating: meaning is recoverable, no user is misled."
+          },
+          {
+            "severity": "MINOR",
+            "key": "ui.chat.canonical.image_gen.cancel.checking",
+            "note": "Value is correct in isolation; the defect is its composition with cancel.running. The callsite (image-gen-card.tsx:339-341) joins with a hard ASCII space, painting '…若产出音频则会计费。 正在确认结算。' — a space between two full-width sentences, which is not Chinese typography. Proposed: no catalogue change; make the join locale-aware (no separator when the following value starts full-width/CJK). zh-CN is the only CJK locale in this set."
+          }
+        ]
+      }
+    }
+  },
+  "key_applicability": {
+    "ru": [
+      {
+        "origin_index": 1,
+        "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+        "current": "Лимит аудио",
+        "snapshot_value": "Лимит аудио",
+        "unchanged": true,
+        "original": {
+          "severity": "NIT",
+          "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+          "note": "Current 'Лимит аудио' names the object (an audio quota) where the other five class labels state the failed event; the locale's settled 'rate limit' is 'лимит запросов'. Proposed 'Лимит аудио превышен' (21 chars, 3 words). Non-blocking: the label always sits above 'Генерация аудио сейчас перегружена...', which disambiguates it."
+        },
+        "raw_literal_sha256": "40138f7abc17b6aa4bd6d05a7bd5e03780b626d5c51b14b6f22e7db91bbb1d80",
+        "raw_literal_exact_snapshot": true
+      },
+      {
+        "origin_index": 2,
+        "key": "ui.chat.canonical.temporary_deleted.back",
+        "current": "Вернуться к чатам",
+        "snapshot_value": "Вернуться к чатам",
+        "unchanged": true,
+        "original": {
+          "severity": "NIT",
+          "key": "ui.chat.canonical.temporary_deleted.back",
+          "note": "Two renderings of 'Back to X' now ship in ru: 'Назад к ...' (ui.browser.extensions.action_back, ui.agents.pages.back_to_list) and 'Вернуться к ...' here. No change recommended: the style guide's infinitive action-label rule favours the landed form and it harmonises with the adjacent 'Начать новый чат' in the same slot."
+        },
+        "raw_literal_sha256": "c073ffcf47134c706913b83d18a313d5a5b15f5093fd70dd4b55481732252eaa",
+        "raw_literal_exact_snapshot": true
+      },
+      {
+        "origin_index": 3,
+        "key": "ui.chat.canonical.image_gen.error_class.gate_failed",
+        "current": "Проверка не пройдена",
+        "snapshot_value": "Проверка не пройдена",
+        "unchanged": true,
+        "original": {
+          "severity": "NIT",
+          "key": "ui.chat.canonical.image_gen.error_class.gate_failed",
+          "note": "One ru word carries two English concepts in this namespace: 'Проверка' = 'gate' here and 'Проверка' = 'checking' in image_gen.cancel.checking ('Проверка расчёта'). The rendering itself is accurate for a policy gate; no change proposed, recorded so a future gate surface does not inherit an ambiguous term."
+        },
+        "raw_literal_sha256": "e0358579b544d905b7f64e784f8d1fdc5c6b809a90ed594164cdf031e0cfa826",
+        "raw_literal_exact_snapshot": true
+      }
+    ],
+    "ur": [
+      {
+        "origin_index": 1,
+        "key": "ui.chat.canonical.image_gen.error_class.duplicate_id",
+        "current": "مکرر id",
+        "snapshot_value": "مکرر id",
+        "unchanged": true,
+        "original": {
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.image_gen.error_class.duplicate_id",
+          "note": "Lowercase Latin 'id' where the shipped ur catalogue writes the identifier token uppercase 'ID' in all 25 prose occurrences (سیشن ID، ایجنٹ ID، شیڈول ID) and lowercase 'id' only inside ICU placeholders. Proposed bytes: 'مکرر ID'."
+        },
+        "raw_literal_sha256": "2f270b294aa42b5a06b21c63943bf5b026f80911e3fa45a10bd308b35123c6b2",
+        "raw_literal_exact_snapshot": true
+      },
+      {
+        "origin_index": 2,
+        "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+        "current": "آڈیو کی شرح محدود",
+        "snapshot_value": "آڈیو کی شرح محدود",
+        "unchanged": true,
+        "original": {
+          "severity": "NIT",
+          "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+          "note": "Label construction 'آڈیو کی شرح محدود' is accurate and attested ('درخواستوں کی شرح محدود ہے'); the shipped noun form is cleaner as a one-line label. Optional: 'آڈیو پر شرح کی حد'. No merge impact."
+        },
+        "raw_literal_sha256": "d8435938c7d9b0b9a07a9237a79d0006d66511a59df29305453022a1efb8cd0e",
+        "raw_literal_exact_snapshot": true
+      },
+      {
+        "origin_index": 3,
+        "key": "ui.chat.canonical.image_gen.cancel.queued",
+        "current": "فراہم کنندہ کو کال کیے جانے سے پہلے روک دیا گیا؛ آپ سے کوئی چارج نہیں لیا جائے گا۔",
+        "snapshot_value": "فراہم کنندہ کو کال کیے جانے سے پہلے روک دیا گیا؛ آپ سے کوئی چارج نہیں لیا جائے گا۔",
+        "unchanged": true,
+        "original": {
+          "severity": "NIT",
+          "key": "ui.chat.canonical.image_gen.cancel.queued",
+          "note": "Correct ('کال' is shipped vocabulary: ٹول کال، کال جاری), but the sibling image_gen.control.stop_hint_queued states the same fact as 'درخواست بھیجے جانے سے پہلے'. Optional harmonisation only."
+        },
+        "raw_literal_sha256": "a4be6cfeaa8527fa43edb9b88035a3afb1fd45a82899cf5279e3ade54853c47b",
+        "raw_literal_exact_snapshot": true
+      },
+      {
+        "origin_index": 4,
+        "key": "ui.chat.canonical.image_gen.cancel.running",
+        "current": "روکنے کی درخواست دی گئی۔ فراہم کنندہ کے پاس منسوخی کا endpoint نہیں ہے؛ تخلیق جاری رہے گی اور آڈیو بننے پر چارج لگے گا۔",
+        "snapshot_value": "روکنے کی درخواست دی گئی۔ فراہم کنندہ کے پاس منسوخی کا endpoint نہیں ہے؛ تخلیق جاری رہے گی اور آڈیو بننے پر چارج لگے گا۔",
+        "unchanged": true,
+        "original": {
+          "severity": "NIT",
+          "key": "ui.chat.canonical.image_gen.cancel.running",
+          "note": "Same English clause ships as 'لاگت لگے گی' in the frozen out-of-scope sound.stop.warning while this key uses 'چارج لگے گا'. Landed key chose the stronger term (matches حتمی چارج / کوئی چارج نہیں); no change to landed bytes, remedy is a later wave on sound.stop.warning plus a glossary charge/cost row."
+        },
+        "raw_literal_sha256": "e1c2cf4dc0161e00f98139118cec40a07aa488922b7e8c02e02a607dcd38faaa",
+        "raw_literal_exact_snapshot": true
+      }
+    ],
+    "vi": [
+      {
+        "origin_index": 1,
+        "key": "ui.chat.canonical.image_gen.cancel.checking",
+        "current": "Đang xác nhận khoản phí.",
+        "snapshot_value": "Đang xác nhận khoản phí.",
+        "unchanged": true,
+        "original": {
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.image_gen.cancel.checking",
+          "note": "Term drift on EN 'settlement' inside one card: 'khoản phí' here vs 'quyết toán' in ui.chat.canonical.image_gen.settlement.pending (the adjacent note the same fact lands in), and 'Đang xác nhận khoản phí.' additionally asserts a charge exists where EN only states the settlement check is under way. Proposed: 'Đang kiểm tra quyết toán.' — or unify on the charge vocabulary in settlement.pending instead; one term either way, not two. Rendering join verified (running + ' ' + checking)."
+        },
+        "raw_literal_sha256": "ff83330c4a77cb0770af69495bee0dd0146b67537d07fb25dd5e10bcbc98e87b",
+        "raw_literal_exact_snapshot": true
+      },
+      {
+        "origin_index": 2,
+        "key": "ui.chat.canonical.temporary_deleted.detail",
+        "current": "Nó đã bị xóa sau khi không hoạt động và không thể mở lại. Các tệp nó đã thay đổi trên máy tính của bạn vẫn còn đó.",
+        "snapshot_value": "Nó đã bị xóa sau khi không hoạt động và không thể mở lại. Các tệp nó đã thay đổi trên máy tính của bạn vẫn còn đó.",
+        "unchanged": true,
+        "original": {
+          "severity": "NIT",
+          "key": "ui.chat.canonical.temporary_deleted.detail",
+          "note": "Sentence-initial 'Nó' is the odd one out beside the sibling variant of the same notice (transcript.missing_session_detail opens with 'Cuộc trò chuyện'). Both forms have locale precedent and the variants never paint together — preference only, may be declined. 'không hoạt động' for 'went quiet' is correct."
+        },
+        "raw_literal_sha256": "08836706449a85480e4bb6aa8393149c64178d50a6f59abe12731440568d65f3",
+        "raw_literal_exact_snapshot": true
+      },
+      {
+        "origin_index": 3,
+        "key": "ui.chat.canonical.temporary_deleted.back",
+        "current": "Quay lại danh sách trò chuyện",
+        "snapshot_value": "Quay lại danh sách trò chuyện",
+        "unchanged": true,
+        "original": {
+          "severity": "NIT",
+          "key": "ui.chat.canonical.temporary_deleted.back",
+          "note": "Width only, no change required: 29 chars vs EN 13 (+123%). Actions render in flex flex-wrap with no truncate (canonical-transcript.tsx:7846-7870), so buttons wrap rather than clip — flagged for a rendered check at the narrow fixture; shorter option 'Về danh sách trò chuyện' (24) if it clips."
+        },
+        "raw_literal_sha256": "290b2cf49a440ffea11cf85a2822574a580c1fcb1fff33f7e32de7ab35c7e0d2",
+        "raw_literal_exact_snapshot": true
+      },
+      {
+        "origin_index": 4,
+        "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+        "current": "Giới hạn tần suất âm thanh",
+        "snapshot_value": "Giới hạn tần suất âm thanh",
+        "unchanged": true,
+        "original": {
+          "severity": "NIT",
+          "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+          "note": "Width only, no change required: 26 chars vs EN 18 (+44%), 5 syllables against a 'one to three words' sidecar budget; error_class.unknown_tool (22 vs 12) and temporary_deleted.new (28 vs 18) share the note. Label is a plain wrapping <p class=\"text-meta text-ink-dim\"> with no truncate — flagged for a rendered check, no change proposed."
+        },
+        "raw_literal_sha256": "b45889393928d87613c2d7ae53316e6bf125365482629b4abbdbd4e0bd4e06c6",
+        "raw_literal_exact_snapshot": true
+      },
+      {
+        "origin_index": 5,
+        "key": "ui.chat.canonical.image_gen.error_class.duplicate_id",
+        "current": "Trùng id",
+        "snapshot_value": "Trùng id",
+        "unchanged": true,
+        "original": {
+          "severity": "NIT",
+          "key": "ui.chat.canonical.image_gen.error_class.duplicate_id",
+          "note": "Casing only, no change required: locale label vocabulary spells the identifier 'ID' (ID tác nhân, ID phiên, ui.agents.settings.general.id) while lowercase 'id' appears in prose; this key is a label, but mirroring the English source's lowercase 'id' is defensible. Recorded for the ledger."
+        },
+        "raw_literal_sha256": "d550150ba218191c5cac09d21408506132b2aecf81555e469f458692c70f4563",
+        "raw_literal_exact_snapshot": true
+      }
+    ],
+    "zh-CN": [
+      {
+        "origin_index": 1,
+        "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+        "current": "音频速率限制",
+        "snapshot_value": "音频速率限制",
+        "unchanged": true,
+        "original": {
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+          "note": "EN 'Audio rate limited' is a state; zh-CN '音频速率限制' is the noun for the limit itself, so this one class label names a mechanism where its five siblings (参数无效, 已拒绝, 未知工具, 重复ID, 策略拦截) name an outcome. Proposed: 音频限流 — the locale's established state form (ui.code_review.host.cooling: '{host}已触发限流，将持续到{time}。'). Non-gating: meaning is recoverable, no user is misled."
+        },
+        "raw_literal_sha256": "3bc0dd9cb7042452d5f24e16299ed7ffd10908e175ca5a50882f355462df53f2",
+        "raw_literal_exact_snapshot": true
+      },
+      {
+        "origin_index": 2,
+        "key": "ui.chat.canonical.image_gen.cancel.checking",
+        "current": "正在确认结算。",
+        "snapshot_value": "正在确认结算。",
+        "unchanged": true,
+        "original": {
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.image_gen.cancel.checking",
+          "note": "Value is correct in isolation; the defect is its composition with cancel.running. The callsite (image-gen-card.tsx:339-341) joins with a hard ASCII space, painting '…若产出音频则会计费。 正在确认结算。' — a space between two full-width sentences, which is not Chinese typography. Proposed: no catalogue change; make the join locale-aware (no separator when the following value starts full-width/CJK). zh-CN is the only CJK locale in this set."
+        },
+        "raw_literal_sha256": "bea04b455c5b485bcedc9241b2bf4eb3e07d2344bff7970eef53ac7378f07a2c",
+        "raw_literal_exact_snapshot": true
+      }
+    ]
+  },
+  "author_dispositions": {
+    "ru": [
+      {
+        "origin": "ef041c786677/finding-1",
+        "choice": "retain deferred NIT",
+        "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited"
+      },
+      {
+        "origin": "ef041c786677/finding-2",
+        "choice": "INFO accepted/no-change",
+        "reason": "Parent explicitly recommends no change and endorses the landed rendering; accepted variation/terminology advisory, not an unresolved actionable defect."
+      },
+      {
+        "origin": "ef041c786677/finding-3",
+        "choice": "INFO accepted/no-change",
+        "reason": "Parent explicitly recommends no change and endorses the landed rendering; accepted variation/terminology advisory, not an unresolved actionable defect."
+      }
+    ],
+    "ur": [
+      {
+        "origin": "addbe32949b5/finding-1",
+        "choice": "retain deferred MINOR",
+        "key": "ui.chat.canonical.image_gen.error_class.duplicate_id"
+      },
+      {
+        "origin": "addbe32949b5/finding-2",
+        "choice": "retain deferred NIT",
+        "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited"
+      },
+      {
+        "origin": "addbe32949b5/finding-3",
+        "choice": "retain deferred NIT",
+        "key": "ui.chat.canonical.image_gen.cancel.queued"
+      },
+      {
+        "origin": "addbe32949b5/finding-4",
+        "choice": "retain deferred NIT",
+        "key": "ui.chat.canonical.image_gen.cancel.running"
+      }
+    ],
+    "vi": [
+      {
+        "origin": "3227a8cf0a47/finding-1",
+        "choice": "retain deferred MINOR",
+        "key": "ui.chat.canonical.image_gen.cancel.checking"
+      },
+      {
+        "origin": "3227a8cf0a47/finding-2",
+        "choice": "deduplicated into VI-C1, same pronoun issue; count once"
+      },
+      {
+        "origin": "3227a8cf0a47/finding-3",
+        "choice": "retain deferred NIT",
+        "key": "ui.chat.canonical.temporary_deleted.back"
+      },
+      {
+        "origin": "3227a8cf0a47/finding-4",
+        "choice": "retain deferred NIT",
+        "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited"
+      },
+      {
+        "origin": "3227a8cf0a47/finding-5",
+        "choice": "INFO accepted/no-change",
+        "reason": "Parent explicitly calls source-mirroring lowercase defensible and says no change required; accepted casing choice, retained as advisory rather than unresolved debt."
+      }
+    ],
+    "zh-CN": [
+      {
+        "origin": "721c5ef683f2/finding-1",
+        "choice": "retain deferred MINOR",
+        "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited"
+      },
+      {
+        "origin": "721c5ef683f2/finding-2",
+        "choice": "retain deferred MINOR",
+        "key": "ui.chat.canonical.image_gen.cancel.checking"
+      }
+    ]
+  },
+  "informational_dispositions": {
+    "ru": [
+      {
+        "origin_id_assigned_for_accounting": "ef041c786677/finding-2",
+        "origin_id_note": "Original finding has no id; stable receipt/index locator, not a fabricated historical ID",
+        "original_severity": "NIT",
+        "severity": "INFO",
+        "key": "ui.chat.canonical.temporary_deleted.back",
+        "current": "Вернуться к чатам",
+        "proposed": "Вернуться к чатам",
+        "reason": "Parent explicitly recommends no change and endorses the landed rendering; accepted variation/terminology advisory, not an unresolved actionable defect.",
+        "original_note": "Two renderings of 'Back to X' now ship in ru: 'Назад к ...' (ui.browser.extensions.action_back, ui.agents.pages.back_to_list) and 'Вернуться к ...' here. No change recommended: the style guide's infinitive action-label rule favours the landed form and it harmonises with the adjacent 'Начать новый чат' in the same slot.",
+        "disposition": "Accepted/no change, not counted as an unresolved NIT; original receipt untouched"
+      },
+      {
+        "origin_id_assigned_for_accounting": "ef041c786677/finding-3",
+        "origin_id_note": "Original finding has no id; stable receipt/index locator, not a fabricated historical ID",
+        "original_severity": "NIT",
+        "severity": "INFO",
+        "key": "ui.chat.canonical.image_gen.error_class.gate_failed",
+        "current": "Проверка не пройдена",
+        "proposed": "Проверка не пройдена",
+        "reason": "Parent explicitly recommends no change and endorses the landed rendering; accepted variation/terminology advisory, not an unresolved actionable defect.",
+        "original_note": "One ru word carries two English concepts in this namespace: 'Проверка' = 'gate' here and 'Проверка' = 'checking' in image_gen.cancel.checking ('Проверка расчёта'). The rendering itself is accurate for a policy gate; no change proposed, recorded so a future gate surface does not inherit an ambiguous term.",
+        "disposition": "Accepted/no change, not counted as an unresolved NIT; original receipt untouched"
+      }
+    ],
+    "ur": [],
+    "vi": [
+      {
+        "origin_id_assigned_for_accounting": "3227a8cf0a47/finding-5",
+        "origin_id_note": "Original finding has no id; stable receipt/index locator, not a fabricated historical ID",
+        "original_severity": "NIT",
+        "severity": "INFO",
+        "key": "ui.chat.canonical.image_gen.error_class.duplicate_id",
+        "current": "Trùng id",
+        "proposed": "Trùng id",
+        "reason": "Parent explicitly calls source-mirroring lowercase defensible and says no change required; accepted casing choice, retained as advisory rather than unresolved debt.",
+        "original_note": "Casing only, no change required: locale label vocabulary spells the identifier 'ID' (ID tác nhân, ID phiên, ui.agents.settings.general.id) while lowercase 'id' appears in prose; this key is a label, but mirroring the English source's lowercase 'id' is defensible. Recorded for the ledger.",
+        "disposition": "Accepted/no change, not counted as an unresolved NIT; original receipt untouched"
+      }
+    ],
+    "zh-CN": []
+  },
+  "no_current_mirror_report_read": true,
+  "previous_manifest": {
+    "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/a024-finalgate20261115-012841-final-manifest.json",
+    "sha256": "ad3268b7af21619f7d11191e17bea09afa43f074c175d22d71f19cb9f6f14dda"
+  }
+}

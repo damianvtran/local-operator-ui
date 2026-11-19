@@ -1,0 +1,7 @@
+{
+  "narrow": "viewport320x568; dialog288x536; body350/1516; footer visible; no x overflow",
+  "short": "viewport568x320; dialog420x288; body126/1496; footer visible; no x overflow",
+  "shortLastOption": [
+    "    - Iframe \"V2-2 measured viewport 568x320; dialog 420x288; body 126/1496; footer true; overflowX false; PASS: last of32 options keyboard-reachable and fully inside scroll/focus gutter; footer pinned\""
+  ]
+}

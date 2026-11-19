@@ -84,7 +84,7 @@ globalThis.__canonicalEcho = (event) => {
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {useConversationInputStore, mergeReturnedText, mergeReturnedPayload, composerHoldsExactly, rehydrateInputRows} from "./src/renderer/src/shared/store/conversation-input-store"; export {caughtFailureNotice, composerNoticeFor, lockAnswerOutlived, retryOfferedForFailureCode} from "./src/renderer/src/features/chat/composer-notice"; export {DesktopControlError, UserFacingError} from "@shared/api/local-operator/desktop-api"; export {RUNTIME_BUSY_CODE, RUNTIME_RETIRING_CODE, DESKTOP_DEADLINE_EXCEEDED_CODE} from "./src/shared/desktop-contract";',
+			'export {t} from "./src/i18n"; export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {useConversationInputStore, flushComposerDraftPersist, mergeReturnedText, mergeReturnedPayload, composerHoldsExactly, rehydrateInputRows} from "./src/renderer/src/shared/store/conversation-input-store"; export {caughtFailureNotice, composerNoticeFor, lockAnswerOutlived, retryOfferedForFailureCode} from "./src/renderer/src/features/chat/composer-notice"; export {FAST_UNAVAILABLE_CODE} from "./src/renderer/src/features/chat/draft-selection"; export {DesktopControlError, UserFacingError} from "@shared/api/local-operator/desktop-api"; export {RUNTIME_BUSY_CODE, RUNTIME_RETIRING_CODE, DESKTOP_DEADLINE_EXCEEDED_CODE} from "./src/shared/desktop-contract";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -219,12 +219,15 @@ const module = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
 const {
+	t,
 	admitChatDraft,
 	composerHoldsExactly,
+	flushComposerDraftPersist,
 	composerIdentityFor,
 	caughtFailureNotice,
 	composerNoticeFor,
 	lockAnswerOutlived,
+	FAST_UNAVAILABLE_CODE,
 	migrateHeldClaim,
 	retryOfferedForFailureCode,
 	mergeReturnedPayload,
@@ -404,6 +407,62 @@ test("every failure class resolves once, and the notice says which it is", () =>
 		assert.equal(typeof copy.message, "string");
 		assert.ok(copy.message.length > 0);
 	}
+});
+
+test("the server updating: a fence refusal is not-sent and retryable; a hinted failure keeps its verdict", () => {
+	const updating =
+		"The Local Operator server is updating. It will be back in a moment.";
+	// The fence refused before any handler ran: provably not admitted.
+	const fence = new DesktopControlError(
+		503,
+		"The Local Operator server is updating.",
+		undefined,
+		"transient.server-updating",
+		1000,
+	);
+	assert.equal(sendFailureClass(fence), "not_sent");
+	assert.deepEqual(sendFailureCopy(fence), {
+		message: updating,
+		retry: true,
+		code: "transient.server-updating",
+	});
+	// A transport failure inside the window: same unknown class and Retry as ever,
+	// only the sentence is the update's.
+	const reset = new DesktopControlError(
+		503,
+		"down",
+		undefined,
+		"transport.failed",
+		undefined,
+		{ code: "transport.failed", message: "down", updating: true },
+	);
+	assert.equal(sendFailureClass(reset), "unknown");
+	assert.deepEqual(sendFailureCopy(reset), {
+		message: updating,
+		retry: true,
+		code: "transport.failed",
+	});
+	// A plane-closed refusal inside the window: the update sentence, still no press.
+	const closed = new DesktopControlError(
+		503,
+		"closed",
+		undefined,
+		"pairing.plane-closed",
+		undefined,
+		{ message: "closed", updating: true },
+	);
+	assert.deepEqual(sendFailureCopy(closed), {
+		message: updating,
+		retry: false,
+		code: "pairing.plane-closed",
+	});
+	// Outside the window (no hint) the plane-closed sentence is unchanged.
+	assert.notEqual(
+		sendFailureCopy(
+			new DesktopControlError(503, "closed", undefined, "pairing.plane-closed"),
+		).message,
+		updating,
+	);
 });
 
 test("the copy table is one place, and none of it speaks the app's own vocabulary", () => {
@@ -1155,6 +1214,13 @@ test("a returned payload does not duplicate the image bytes, so a large one stil
 	 * And the persistence the app performs after that write: one copy of the bytes,
 	 * under a quota that a second copy would breach.
 	 */
+	/*
+	 * DRAFT WRITES ARE COALESCED on a 300 ms window (`conversation-input-store.ts`), so
+	 * reading what the app actually persisted means landing the queue first - the seam
+	 * the app uses on a send, a switch and a hidden page. What is asserted below (one
+	 * copy of the bytes, under the browser's quota) is unchanged.
+	 */
+	flushComposerDraftPersist();
 	const persisted = values.get("conversation-input-store") ?? "";
 	assert.ok(persisted.length > 0, "the row was persisted at all");
 	assert.equal(
@@ -1192,6 +1258,13 @@ test("a payload typed inside a masked capture never reaches disk when it comes b
 		volatileText: true,
 	});
 	store.returnInFlight(identity, identity);
+	/*
+	 * DRAFT WRITES ARE COALESCED on a 300 ms window (`conversation-input-store.ts`), so
+	 * reading what the app actually persisted means landing the queue first - the seam
+	 * the app uses on a send, a switch and a hidden page. What is asserted below (one
+	 * copy of the bytes, under the browser's quota) is unchanged.
+	 */
+	flushComposerDraftPersist();
 	const persisted = values.get("conversation-input-store") ?? "";
 	assert.equal(
 		persisted.includes("LOP_SECRET_ABCDEFGH"),
@@ -1333,7 +1406,7 @@ test("the notice offers Retry where a press works, and never over a delivery", (
 	 * words are still in there, so a Send would repeat the sentence the user has
 	 * already sent, and only the copy can say so.
 	 */
-	assert.equal(delivered?.message, SEND_FAILURE_COPY.lateDeliveryOverlap);
+	assert.equal(t(delivered.messageKey), SEND_FAILURE_COPY.lateDeliveryOverlap);
 	assert.equal(delivered?.muted, true);
 	assert.equal(
 		delivered?.retry,
@@ -1490,7 +1563,7 @@ test("a late delivery takes the delivered message out of the box, not the user's
 		rowRetry: undefined,
 		lateDelivered: row.lateDelivered,
 	});
-	assert.equal(lateNotice.message, SEND_FAILURE_COPY.lateDeliveryDraft);
+	assert.equal(t(lateNotice.messageKey), SEND_FAILURE_COPY.lateDeliveryDraft);
 	/*
 	 * AND IT IS ANNOUNCED, NOT ASSERTED (review round 2, NIT). The muted register
 	 * holds two events: the send lock, which answers a press the user just made, and
@@ -2048,6 +2121,50 @@ test("the lock answer outlives exactly the states that hold a flight open", () =
 });
 
 /*
+ * Q1 (QA round 2): the fast-unavailable line is a muted STATEMENT, not the lock
+ * ANSWER, and the retirement may only retire the latter.
+ *
+ * Both are written into the composer's muted register. Keyed on `muted` alone, the
+ * predicate found nothing in flight on a restored draft - the exact state the
+ * sentence exists for - and cleared it in the commit after the pane set it, so the
+ * line never reached the screen in three QA runs of twenty seconds each.
+ */
+test("a muted statement that names its condition outlives the flight rule", () => {
+	const restoredDraft = {
+		rowPending: false,
+		admitting: false,
+		gatePending: false,
+		muted: true,
+	};
+	assert.equal(
+		lockAnswerOutlived({ ...restoredDraft, code: FAST_UNAVAILABLE_CODE }),
+		false,
+		"the fast-unavailable line describes a send no flight will change; retiring it is the silent strip F1 rejected",
+	);
+	/*
+	 * And the lock answer keeps its retirement exactly as before - it is the muted
+	 * notice that names no code - so a term that goes missing still fails here.
+	 */
+	assert.equal(lockAnswerOutlived({ ...restoredDraft, code: undefined }), true);
+	assert.equal(
+		lockAnswerOutlived({ ...restoredDraft, code: undefined, admitting: true }),
+		false,
+	);
+	assert.equal(
+		lockAnswerOutlived({ ...restoredDraft, code: undefined, rowPending: true }),
+		false,
+	);
+	assert.equal(
+		lockAnswerOutlived({
+			...restoredDraft,
+			code: undefined,
+			gatePending: true,
+		}),
+		false,
+	);
+});
+
+/*
  * m5-2 (review round 5): the notice belongs to the attempt that produces it.
  *
  * The pane renders the row's sentence when the row has one, so a row still carrying an
@@ -2214,12 +2331,12 @@ test("a late delivery with no payload to compare says the sentence that claims n
 		lateDelivered: row.lateDelivered,
 	});
 	assert.equal(
-		notice?.message,
+		t(notice.messageKey),
 		SEND_FAILURE_COPY.lateDelivery,
 		"the delivered arm is not rendering the sentence that is true whatever the box holds",
 	);
 	assert.doesNotMatch(
-		notice?.message ?? "",
+		t(notice.messageKey),
 		/What's here now|still in the box/,
 		"the delivered arm's copy is claiming something about a box this arm never read",
 	);

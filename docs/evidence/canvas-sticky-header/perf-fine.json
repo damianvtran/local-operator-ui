@@ -1,0 +1,442 @@
+{
+	"rounds": 5,
+	"samples": 60,
+	"on": [],
+	"off": [],
+	"segments": [
+		{
+			"segment": 0,
+			"variant": "on",
+			"count": 49,
+			"min": 0.3,
+			"p25": 10.9,
+			"median": 39.3,
+			"p75": 144.3,
+			"p95": 240.6,
+			"max": 319.4
+		},
+		{
+			"segment": 1,
+			"variant": "off",
+			"count": 46,
+			"min": 1,
+			"p25": 9.6,
+			"median": 40.9,
+			"p75": 120.8,
+			"p95": 391.8,
+			"max": 592.4
+		},
+		{
+			"segment": 2,
+			"variant": "on",
+			"count": 47,
+			"min": 0.8,
+			"p25": 6.2,
+			"median": 24.9,
+			"p75": 69.1,
+			"p95": 147.8,
+			"max": 560
+		},
+		{
+			"segment": 3,
+			"variant": "off",
+			"count": 46,
+			"min": 0.2,
+			"p25": 8,
+			"median": 21.5,
+			"p75": 83.3,
+			"p95": 247.8,
+			"max": 265
+		},
+		{
+			"segment": 4,
+			"variant": "on",
+			"count": 44,
+			"min": 0.8,
+			"p25": 10.1,
+			"median": 37,
+			"p75": 111.1,
+			"p95": 298.9,
+			"max": 315.5
+		},
+		{
+			"segment": 5,
+			"variant": "off",
+			"count": 43,
+			"min": 1.4,
+			"p25": 7.4,
+			"median": 21.5,
+			"p75": 48.2,
+			"p95": 104.2,
+			"max": 130.2
+		},
+		{
+			"segment": 6,
+			"variant": "on",
+			"count": 43,
+			"min": 1.1,
+			"p25": 28.8,
+			"median": 82.9,
+			"p75": 190.3,
+			"p95": 384.5,
+			"max": 867
+		},
+		{
+			"segment": 7,
+			"variant": "off",
+			"count": 29,
+			"min": 5.3,
+			"p25": 53.6,
+			"median": 137.4,
+			"p75": 422,
+			"p95": 902.2,
+			"max": 2098
+		},
+		{
+			"segment": 8,
+			"variant": "on",
+			"count": 49,
+			"min": 0.3,
+			"p25": 2.6,
+			"median": 10.3,
+			"p75": 23.4,
+			"p95": 57.4,
+			"max": 129.9
+		},
+		{
+			"segment": 9,
+			"variant": "off",
+			"count": 34,
+			"min": 1.5,
+			"p25": 36.2,
+			"median": 133.6,
+			"p75": 282,
+			"p95": 593.7,
+			"max": 1481.6
+		},
+		{
+			"segment": 10,
+			"variant": "on",
+			"count": 41,
+			"min": 3.4,
+			"p25": 27.1,
+			"median": 69,
+			"p75": 152.3,
+			"p95": 645.4,
+			"max": 714.7
+		},
+		{
+			"segment": 11,
+			"variant": "off",
+			"count": 41,
+			"min": 1.6,
+			"p25": 13.9,
+			"median": 28.9,
+			"p75": 63.7,
+			"p95": 226.5,
+			"max": 780.3
+		},
+		{
+			"segment": 12,
+			"variant": "on",
+			"count": 40,
+			"min": 0.3,
+			"p25": 8.3,
+			"median": 25,
+			"p75": 35.3,
+			"p95": 134.7,
+			"max": 142.6
+		},
+		{
+			"segment": 13,
+			"variant": "off",
+			"count": 45,
+			"min": 0.4,
+			"p25": 3.8,
+			"median": 12.8,
+			"p75": 26.3,
+			"p95": 89.8,
+			"max": 128.6
+		},
+		{
+			"segment": 14,
+			"variant": "on",
+			"count": 49,
+			"min": 0.3,
+			"p25": 5.2,
+			"median": 14.4,
+			"p75": 33.8,
+			"p95": 75.7,
+			"max": 103.7
+		},
+		{
+			"segment": 15,
+			"variant": "off",
+			"count": 47,
+			"min": 0.5,
+			"p25": 5.5,
+			"median": 12.5,
+			"p75": 38.5,
+			"p95": 183.7,
+			"max": 477.5
+		},
+		{
+			"segment": 16,
+			"variant": "on",
+			"count": 44,
+			"min": 0.5,
+			"p25": 12.8,
+			"median": 22.2,
+			"p75": 115.5,
+			"p95": 324.5,
+			"max": 389
+		},
+		{
+			"segment": 17,
+			"variant": "off",
+			"count": 53,
+			"min": 0.5,
+			"p25": 13.2,
+			"median": 35.5,
+			"p75": 166.7,
+			"p95": 918.7,
+			"max": 1059
+		},
+		{
+			"segment": 18,
+			"variant": "on",
+			"count": 38,
+			"min": 1.1,
+			"p25": 24,
+			"median": 68.6,
+			"p75": 193.5,
+			"p95": 977.2,
+			"max": 1341.4
+		},
+		{
+			"segment": 19,
+			"variant": "off",
+			"count": 35,
+			"min": 2.4,
+			"p25": 37.5,
+			"median": 151,
+			"p75": 522.1,
+			"p95": 895.5,
+			"max": 1542.2
+		},
+		{
+			"segment": 20,
+			"variant": "on",
+			"count": 43,
+			"min": 0.2,
+			"p25": 20.8,
+			"median": 45.7,
+			"p75": 205.4,
+			"p95": 570.4,
+			"max": 1144.6
+		},
+		{
+			"segment": 21,
+			"variant": "off",
+			"count": 42,
+			"min": 1.5,
+			"p25": 17.9,
+			"median": 91.8,
+			"p75": 307.4,
+			"p95": 635.9,
+			"max": 2298.6
+		},
+		{
+			"segment": 22,
+			"variant": "on",
+			"count": 36,
+			"min": 0.7,
+			"p25": 37.5,
+			"median": 85.8,
+			"p75": 266.5,
+			"p95": 1154.2,
+			"max": 1707.1
+		},
+		{
+			"segment": 23,
+			"variant": "off",
+			"count": 42,
+			"min": 0.6,
+			"p25": 6.2,
+			"median": 34.7,
+			"p75": 280.9,
+			"p95": 1088.5,
+			"max": 2887.5
+		}
+	],
+	"pairs": [
+		{
+			"onMedian": 39.3,
+			"offMedian": 40.9,
+			"delta": -1.6,
+			"p25Delta": 1.3
+		},
+		{
+			"onMedian": 24.9,
+			"offMedian": 40.9,
+			"delta": -16,
+			"p25Delta": -3.4
+		},
+		{
+			"onMedian": 24.9,
+			"offMedian": 21.5,
+			"delta": 3.4,
+			"p25Delta": -1.8
+		},
+		{
+			"onMedian": 37,
+			"offMedian": 21.5,
+			"delta": 15.5,
+			"p25Delta": 2.1
+		},
+		{
+			"onMedian": 37,
+			"offMedian": 21.5,
+			"delta": 15.5,
+			"p25Delta": 2.7
+		},
+		{
+			"onMedian": 82.9,
+			"offMedian": 21.5,
+			"delta": 61.4,
+			"p25Delta": 21.4
+		},
+		{
+			"onMedian": 82.9,
+			"offMedian": 137.4,
+			"delta": -54.5,
+			"p25Delta": -24.8
+		},
+		{
+			"onMedian": 10.3,
+			"offMedian": 137.4,
+			"delta": -127.1,
+			"p25Delta": -51
+		},
+		{
+			"onMedian": 10.3,
+			"offMedian": 133.6,
+			"delta": -123.3,
+			"p25Delta": -33.6
+		},
+		{
+			"onMedian": 69,
+			"offMedian": 133.6,
+			"delta": -64.6,
+			"p25Delta": -9.1
+		},
+		{
+			"onMedian": 69,
+			"offMedian": 28.9,
+			"delta": 40.1,
+			"p25Delta": 13.2
+		},
+		{
+			"onMedian": 25,
+			"offMedian": 28.9,
+			"delta": -3.9,
+			"p25Delta": -5.6
+		},
+		{
+			"onMedian": 25,
+			"offMedian": 12.8,
+			"delta": 12.2,
+			"p25Delta": 4.5
+		},
+		{
+			"onMedian": 14.4,
+			"offMedian": 12.8,
+			"delta": 1.6,
+			"p25Delta": 1.4
+		},
+		{
+			"onMedian": 14.4,
+			"offMedian": 12.5,
+			"delta": 1.9,
+			"p25Delta": -0.3
+		},
+		{
+			"onMedian": 22.2,
+			"offMedian": 12.5,
+			"delta": 9.7,
+			"p25Delta": 7.3
+		},
+		{
+			"onMedian": 22.2,
+			"offMedian": 35.5,
+			"delta": -13.3,
+			"p25Delta": -0.4
+		},
+		{
+			"onMedian": 68.6,
+			"offMedian": 35.5,
+			"delta": 33.1,
+			"p25Delta": 10.8
+		},
+		{
+			"onMedian": 68.6,
+			"offMedian": 151,
+			"delta": -82.4,
+			"p25Delta": -13.5
+		},
+		{
+			"onMedian": 45.7,
+			"offMedian": 151,
+			"delta": -105.3,
+			"p25Delta": -16.7
+		},
+		{
+			"onMedian": 45.7,
+			"offMedian": 91.8,
+			"delta": -46.1,
+			"p25Delta": 2.9
+		},
+		{
+			"onMedian": 85.8,
+			"offMedian": 91.8,
+			"delta": -6,
+			"p25Delta": 19.6
+		},
+		{
+			"onMedian": 85.8,
+			"offMedian": 34.7,
+			"delta": 51.1,
+			"p25Delta": 31.3
+		}
+	],
+	"fineSummary": {
+		"pairs": 23,
+		"medianDelta": -1.6,
+		"p25Delta": 1.3,
+		"deltas": [
+			-1.6,
+			-16,
+			3.4,
+			15.5,
+			15.5,
+			61.4,
+			-54.5,
+			-127.1,
+			-123.3,
+			-64.6,
+			40.1,
+			-3.9,
+			12.2,
+			1.6,
+			1.9,
+			9.7,
+			-13.3,
+			33.1,
+			-82.4,
+			-105.3,
+			-46.1,
+			-6,
+			51.1
+		]
+	}
+}

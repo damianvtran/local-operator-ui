@@ -1,0 +1,24 @@
+{
+	"auditor": "reviewer",
+	"model": "anthropic/claude-sonnet-5-5",
+	"instance": "f89e1c48e249-avatar-size-copy-zh-cn",
+	"locale": "zh-CN",
+	"date": "2026-11-03",
+	"head": "91e5e1418659062181a6301fe41837a50592eb4d",
+	"independence": "Independent auditor (role reviewer, task avatar-i18n-audit-2, session f89e1c48e249); did not write or edit the translations; translator was coder. No fallback model was used.",
+	"reference": {
+		"glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+		"source": "origin/main of damianvtran/local-operator at audit time (i18n/glossary.md, i18n/style-guides/zh-CN.md, i18n/languages.json read here)"
+	},
+	"method": "Read the one changed value (diff a678f6e6c7..91e5e14186) against English, the English context sidecar, the core glossary, the locale style guide and the sibling keys in ui.settings.appearance (transcript display row, agent picture size title/steps) and cross-namespace uses of the header/sidebar/row terms. Mechanically checked: no placeholders/ICU/markup in the value, no stray or bidi control characters (any Cf/non-ASCII-space category), no double or trailing spaces, key parity. No rendered-fit or native-reader claim.",
+	"namespace": "ui.settings.appearance",
+	"status": "passed",
+	"sha256": {
+		"en": "a93e96ba361ee402bf080c9cc79e9971f86634cb4c5607e74cb6597623fee8d1",
+		"zh-CN": "6a84a52bb2285d1748b2aaf695a876cbb41ae8aa5fe99b24e698f2fd926bb605"
+	},
+	"findings": [],
+	"keys_audited": [
+		"ui.settings.appearance.agent_avatar_size_setting.how_large_the_agent_s_picture_appears_in_the_chat_window_and_the_chat"
+	]
+}

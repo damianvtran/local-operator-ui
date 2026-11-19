@@ -80,7 +80,18 @@ export type RadientOperation =
 	 * `desktop_radient.py`'s Literal and `desktop-contract.ts`'s request
 	 * schema, like every op above.
 	 */
-	| "signup.resend";
+	| "signup.resend"
+	/*
+	 * The Radient Team free trial (teams-trial design §3, local-operator PR
+	 * #3386): the eligibility read, the one start call (names the home org and
+	 * records the Terms acceptance; `source: "lop"` is pinned by the backend),
+	 * and the trial-state read behind the Team Bridge paused state. Additive like
+	 * the ops above: an older backend answers with a masked 422, which
+	 * `team-trial-api.ts` reads as "no trial offered".
+	 */
+	| "team_trial.eligibility"
+	| "team_trial.start"
+	| "team_trial.status";
 
 export type RadientProxyArgs = {
 	operation: RadientOperation;

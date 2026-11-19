@@ -1,0 +1,397 @@
+{
+	"instance": "f3dbcf309e0f-agents4-ru",
+	"locale": "ru",
+	"scope": [
+		"ui.agents.routing"
+	],
+	"audit_date": "2026-10-30",
+	"namespace": "ui.agents.routing",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "f3dbcf309e0f",
+		"model": "anthropic/claude-sonnet-5-5",
+		"actual_model_source": "Session primary model anthropic/claude-sonnet-5-5; no fallback occurred in this session. No model performed any translation or back-translation.",
+		"independent_from_translator_session": true,
+		"translator_session": "3ef6295a5545",
+		"independence_note": "This session authored and edited none of these 12 values and did not write the earlier ru receipt. It read the English source, its context sidecar, the ru style guide, the glossary and the sibling ru descriptions family, and judged every key afresh."
+	},
+	"source_hashes": {
+		"en": "d7903758d28335a344ae7a67172859e2ed14103931d64fb0988802ebd1771c11",
+		"context": "src/i18n/catalogues/en/ui.agents.routing.context.json",
+		"ru": "5d127ad1fa2a29a3e3f449243cc567f6b74b1d6d539bda71ed522806c3c0a707"
+	},
+	"namespaces": {
+		"ui.agents.routing": {
+			"status": "passed",
+			"result": "clean-with-findings",
+			"keys_audited": 12,
+			"sha256": {
+				"en": "d7903758d28335a344ae7a67172859e2ed14103931d64fb0988802ebd1771c11",
+				"ru": "5d127ad1fa2a29a3e3f449243cc567f6b74b1d6d539bda71ed522806c3c0a707"
+			},
+			"en_path": "src/i18n/catalogues/en/ui.agents.routing.json",
+			"ru_path": "scratchpad/agents2-i18n/ru/ui.agents.routing.json",
+			"findings": [
+				{
+					"id": "M1",
+					"severity": "MINOR",
+					"keys": [
+						"ui.agents.routing.coder"
+					],
+					"current": "самостоятельный и хорошо описанный кусок работы",
+					"problem": "«кусок» is colloquial for a card; the ru guide steers 'slice'-type nouns to «часть» and the sibling description of the same agent says «одну ограниченную часть работы». Same agent, two registers on two surfaces the operator sees back to back.",
+					"suggested": "самостоятельная и хорошо описанная часть работы, не требующая дополнительных решений"
+				},
+				{
+					"id": "M2",
+					"severity": "MINOR",
+					"keys": [
+						"ui.agents.routing.designer"
+					],
+					"current": "проверить, как что-то ВЫГЛЯДИТ для пользователя: ревью экрана или терминального UI, читаемость компоновки, отступов, цвета и текстов, сделать интерфейс приятнее — …",
+					"problem": "EN 'whether a layout, spacing, colour or copy reads well' is a judgement of quality; «читаемость … цвета» is not Russian (colour has contrast or fit, not legibility) and turns the clause into a list of nouns. The sentence also breaks parallelism: infinitive (проверить) - nouns (ревью, читаемость) - infinitive (сделать).",
+					"suggested": "Когда нужно проверить, как что-то ВЫГЛЯДИТ для пользователя: оценить экран или терминальный UI, удачны ли компоновка, отступы, цвета и тексты, сделать интерфейс приятнее — дизайн- и UX-ревью видимого пользователю изменения."
+				},
+				{
+					"id": "M3",
+					"severity": "MINOR",
+					"keys": [
+						"ui.agents.routing.manager"
+					],
+					"current": "работа распадается на части в нескольких агентах или репозиториях",
+					"problem": "EN 'multi-part work across several agents or repositories': «в нескольких агентах» is the wrong preposition - parts are not located inside agents; the work is spread among them. «в … репозиториях» works, so the pair reads unevenly.",
+					"suggested": "Когда работа из нескольких частей распределена между агентами или репозиториями и её нужно координировать и отслеживать, выяснить, что заблокировано, или собрать сводку статуса либо отчёт о прогрессе."
+				},
+				{
+					"id": "M4",
+					"severity": "MINOR",
+					"keys": [
+						"ui.agents.routing.reviewer"
+					],
+					"current": "…; аудит и разбор чужого кода, в том числе написанного другим агентом.",
+					"problem": "After «Когда нужно …» the second half drops to a bare noun phrase with no verb («аудит и разбор»). EN keeps a participle chain ('auditing or critiquing'). Reads as a note fragment on a card whose first half is sentential.",
+					"suggested": "…; провести аудит или критический разбор чужого кода, в том числе написанного другим агентом."
+				},
+				{
+					"id": "M5",
+					"severity": "MINOR",
+					"keys": [
+						"ui.agents.routing.tui_designer"
+					],
+					"current": "клавиатурные сценарии, компоновка и плотность информации на малых фиксированных экранах, совместимость с цветом и Unicode",
+					"problem": "Three drifts from EN: 'keyboard-first' loses 'first' (primary input path, not merely a keyboard flow); 'small/fixed terminals' becomes «экранах» (screens), dropping the word that tells the operator this is about terminals; «совместимость с цветом» is not idiomatic (support for colour). The agent's trigger words are exactly what search matches.",
+					"suggested": "сценарии с приоритетом клавиатуры, компоновка и плотность информации в малых терминалах фиксированного размера, поддержка цвета и Unicode"
+				},
+				{
+					"id": "M6",
+					"severity": "MINOR",
+					"keys": [
+						"ui.agents.routing.ux_reviewer"
+					],
+					"current": "провести ревью пользовательского опыта (UX) изменения",
+					"problem": "The sidecar says EXPERIENCE is capitalised to contrast with the visual review and to 'keep the emphasis with whatever device the locale uses'. The ru siblings do (КАК, ВЫГЛЯДИТ) but here «опыта» is plain, so the contrast that the closing clause names is carried by «в отличие от» alone. Also '(UX)' is an addition that costs width.",
+					"suggested": "провести ревью ПОЛЬЗОВАТЕЛЬСКОГО ОПЫТА изменения"
+				},
+				{
+					"id": "M7",
+					"severity": "MINOR",
+					"keys": [
+						"ui.agents.routing.copy_reviewer"
+					],
+					"current": "удаление признаков ИИ-текста",
+					"problem": "The sidecar calls 'AI-isms' the house term that 'stays untranslated'; ru renders it as a descriptive phrase and also shifts the meaning slightly (signs of AI-written text vs machine-sounding phrasing). Defensible - the sibling ru description already says «признаки ИИ-текста», so the two surfaces agree and the corpus has no kept-English precedent - but it contradicts the sidecar, so it is recorded rather than waved through.",
+					"suggested": "удаление «AI-измов» (оборотов, выдающих ИИ-текст)  [or keep «признаков ИИ-текста» and record the deviation in the sidecar]"
+				},
+				{
+					"id": "N1",
+					"severity": "NIT",
+					"keys": [
+						"ui.agents.routing.scout"
+					],
+					"current": "отыскать, где объявлена функция или класс, проследить поток выполнения",
+					"problem": "'is defined' is «определена» (the corpus uses it 4x; «объявлена» means declared). 'tracing a flow' is generic in EN; «поток выполнения» narrows it to execution flow.",
+					"suggested": "отыскать, где определена функция или класс, проследить ход работы кода"
+				},
+				{
+					"id": "N2",
+					"severity": "NIT",
+					"keys": [
+						"ui.agents.routing.ux_reviewer"
+					],
+					"current": "можно ли на деле пройти задачу без препятствий",
+					"problem": "«пройти задачу» is a calque of 'go through a task'; ru UX copy says «выполнить» or «завершить» a task.",
+					"suggested": "можно ли на деле без препятствий выполнить задачу"
+				},
+				{
+					"id": "N3",
+					"severity": "NIT",
+					"keys": [
+						"ui.agents.routing.copy_reviewer"
+					],
+					"current": "никогда для инженерной прозы",
+					"problem": "«инженерная проза» is a calque of 'engineering prose'; «технических текстов» is the natural ru.",
+					"suggested": "никогда для технических текстов или комментариев в коде"
+				},
+				{
+					"id": "N4",
+					"severity": "NIT",
+					"keys": [
+						"ui.agents.routing.architect"
+					],
+					"current": "ещё до написания кода",
+					"problem": "EN 'before writing it' - 'it' is the thing being built, not necessarily code. «кода» narrows a little; harmless on a card.",
+					"suggested": "ещё до начала работы"
+				},
+				{
+					"id": "N5",
+					"severity": "NIT",
+					"keys": [
+						"ui.agents.routing.qa_tester"
+					],
+					"current": "новая возможность",
+					"problem": "EN says 'feature'; «новая» is an addition. Coder uses «новую возможность» for 'building a feature', so the pair is at least consistent.",
+					"suggested": "PR, патч или возможность"
+				}
+			]
+		}
+	},
+	"counts": {
+		"BLOCKER": 0,
+		"MAJOR": 0,
+		"MINOR": 7,
+		"NIT": 5
+	},
+	"verdict": "pass",
+	"verdict_reason": "All 12 values carry the English claim (when to pick the agent) with no omission, addition, negation or polarity error, in understandable native ru with vy register implicit, and technical tokens (PR, MR, diff, API, CLI, UI, UX, RFC, Unicode, LinkedIn, X) untouched. Mechanical pass clean. No BLOCKER or MAJOR. Seven MINOR (colloquial 'кусок' vs sibling 'часть'; designer and TUI-designer wording drift; manager 'в агентах'; reviewer fragment; lost UX emphasis; AI-isms sidecar deviation) and five NIT are recorded for the translator, none changes the claim.",
+	"findings": [
+		{
+			"id": "M1",
+			"severity": "MINOR",
+			"keys": [
+				"ui.agents.routing.coder"
+			],
+			"current": "самостоятельный и хорошо описанный кусок работы",
+			"problem": "«кусок» is colloquial for a card; the ru guide steers 'slice'-type nouns to «часть» and the sibling description of the same agent says «одну ограниченную часть работы». Same agent, two registers on two surfaces the operator sees back to back.",
+			"suggested": "самостоятельная и хорошо описанная часть работы, не требующая дополнительных решений"
+		},
+		{
+			"id": "M2",
+			"severity": "MINOR",
+			"keys": [
+				"ui.agents.routing.designer"
+			],
+			"current": "проверить, как что-то ВЫГЛЯДИТ для пользователя: ревью экрана или терминального UI, читаемость компоновки, отступов, цвета и текстов, сделать интерфейс приятнее — …",
+			"problem": "EN 'whether a layout, spacing, colour or copy reads well' is a judgement of quality; «читаемость … цвета» is not Russian (colour has contrast or fit, not legibility) and turns the clause into a list of nouns. The sentence also breaks parallelism: infinitive (проверить) - nouns (ревью, читаемость) - infinitive (сделать).",
+			"suggested": "Когда нужно проверить, как что-то ВЫГЛЯДИТ для пользователя: оценить экран или терминальный UI, удачны ли компоновка, отступы, цвета и тексты, сделать интерфейс приятнее — дизайн- и UX-ревью видимого пользователю изменения."
+		},
+		{
+			"id": "M3",
+			"severity": "MINOR",
+			"keys": [
+				"ui.agents.routing.manager"
+			],
+			"current": "работа распадается на части в нескольких агентах или репозиториях",
+			"problem": "EN 'multi-part work across several agents or repositories': «в нескольких агентах» is the wrong preposition - parts are not located inside agents; the work is spread among them. «в … репозиториях» works, so the pair reads unevenly.",
+			"suggested": "Когда работа из нескольких частей распределена между агентами или репозиториями и её нужно координировать и отслеживать, выяснить, что заблокировано, или собрать сводку статуса либо отчёт о прогрессе."
+		},
+		{
+			"id": "M4",
+			"severity": "MINOR",
+			"keys": [
+				"ui.agents.routing.reviewer"
+			],
+			"current": "…; аудит и разбор чужого кода, в том числе написанного другим агентом.",
+			"problem": "After «Когда нужно …» the second half drops to a bare noun phrase with no verb («аудит и разбор»). EN keeps a participle chain ('auditing or critiquing'). Reads as a note fragment on a card whose first half is sentential.",
+			"suggested": "…; провести аудит или критический разбор чужого кода, в том числе написанного другим агентом."
+		},
+		{
+			"id": "M5",
+			"severity": "MINOR",
+			"keys": [
+				"ui.agents.routing.tui_designer"
+			],
+			"current": "клавиатурные сценарии, компоновка и плотность информации на малых фиксированных экранах, совместимость с цветом и Unicode",
+			"problem": "Three drifts from EN: 'keyboard-first' loses 'first' (primary input path, not merely a keyboard flow); 'small/fixed terminals' becomes «экранах» (screens), dropping the word that tells the operator this is about terminals; «совместимость с цветом» is not idiomatic (support for colour). The agent's trigger words are exactly what search matches.",
+			"suggested": "сценарии с приоритетом клавиатуры, компоновка и плотность информации в малых терминалах фиксированного размера, поддержка цвета и Unicode"
+		},
+		{
+			"id": "M6",
+			"severity": "MINOR",
+			"keys": [
+				"ui.agents.routing.ux_reviewer"
+			],
+			"current": "провести ревью пользовательского опыта (UX) изменения",
+			"problem": "The sidecar says EXPERIENCE is capitalised to contrast with the visual review and to 'keep the emphasis with whatever device the locale uses'. The ru siblings do (КАК, ВЫГЛЯДИТ) but here «опыта» is plain, so the contrast that the closing clause names is carried by «в отличие от» alone. Also '(UX)' is an addition that costs width.",
+			"suggested": "провести ревью ПОЛЬЗОВАТЕЛЬСКОГО ОПЫТА изменения"
+		},
+		{
+			"id": "M7",
+			"severity": "MINOR",
+			"keys": [
+				"ui.agents.routing.copy_reviewer"
+			],
+			"current": "удаление признаков ИИ-текста",
+			"problem": "The sidecar calls 'AI-isms' the house term that 'stays untranslated'; ru renders it as a descriptive phrase and also shifts the meaning slightly (signs of AI-written text vs machine-sounding phrasing). Defensible - the sibling ru description already says «признаки ИИ-текста», so the two surfaces agree and the corpus has no kept-English precedent - but it contradicts the sidecar, so it is recorded rather than waved through.",
+			"suggested": "удаление «AI-измов» (оборотов, выдающих ИИ-текст)  [or keep «признаков ИИ-текста» and record the deviation in the sidecar]"
+		},
+		{
+			"id": "N1",
+			"severity": "NIT",
+			"keys": [
+				"ui.agents.routing.scout"
+			],
+			"current": "отыскать, где объявлена функция или класс, проследить поток выполнения",
+			"problem": "'is defined' is «определена» (the corpus uses it 4x; «объявлена» means declared). 'tracing a flow' is generic in EN; «поток выполнения» narrows it to execution flow.",
+			"suggested": "отыскать, где определена функция или класс, проследить ход работы кода"
+		},
+		{
+			"id": "N2",
+			"severity": "NIT",
+			"keys": [
+				"ui.agents.routing.ux_reviewer"
+			],
+			"current": "можно ли на деле пройти задачу без препятствий",
+			"problem": "«пройти задачу» is a calque of 'go through a task'; ru UX copy says «выполнить» or «завершить» a task.",
+			"suggested": "можно ли на деле без препятствий выполнить задачу"
+		},
+		{
+			"id": "N3",
+			"severity": "NIT",
+			"keys": [
+				"ui.agents.routing.copy_reviewer"
+			],
+			"current": "никогда для инженерной прозы",
+			"problem": "«инженерная проза» is a calque of 'engineering prose'; «технических текстов» is the natural ru.",
+			"suggested": "никогда для технических текстов или комментариев в коде"
+		},
+		{
+			"id": "N4",
+			"severity": "NIT",
+			"keys": [
+				"ui.agents.routing.architect"
+			],
+			"current": "ещё до написания кода",
+			"problem": "EN 'before writing it' - 'it' is the thing being built, not necessarily code. «кода» narrows a little; harmless on a card.",
+			"suggested": "ещё до начала работы"
+		},
+		{
+			"id": "N5",
+			"severity": "NIT",
+			"keys": [
+				"ui.agents.routing.qa_tester"
+			],
+			"current": "новая возможность",
+			"problem": "EN says 'feature'; «новая» is an addition. Coder uses «новую возможность» for 'building a feature', so the pair is at least consistent.",
+			"suggested": "PR, патч или возможность"
+		}
+	],
+	"checks_run": [
+		"python mechanical pass on both files: json.load; key parity 12/12 and identical order; NFC via unicodedata.is_normalized; no BOM, no CR, LF with trailing newline; tab-indented source",
+		"regex sweep for ICU braces, rich/markup tags, backticks and angle brackets across both files: zero constructs, so placeholder name/type parity and CLDR plural category coverage (ru one/few/many/other) are vacuous for this namespace",
+		"typography: em dash spaced both sides; no ASCII quotes; no three-dot ellipsis; no French-style spacing before : ; ! ?",
+		"identical-to-English test: 0/12 values equal English",
+		"length: per-key ru/en character ratio computed from the files on disk - max 1.256 (librarian), none over the 1.3 threshold; style guide expects ru 20-30% longer",
+		"token check: PR, MR, diff, API, CLI, UI, UX, RFC, Unicode, LinkedIn, X present and undeclined; MCP and TUI do not occur in the English values",
+		"sibling-family comparison against scratchpad/agents-i18n/ru/ui.agents.descriptions.json (identical to the shipped catalogue family) for агент, команда, ревью, Библиотека, активы, теги, PR/MR/diff, признаки ИИ-текста, часть работы, UX, обнаруживаемость",
+		"ru file byte-identical to src/i18n/catalogues/ru/ui.agents.routing.json (cmp) - sha256 5d127ad1... both"
+	],
+	"terminology": {
+		"glossary_held": {
+			"agent": "агент",
+			"team": "команда",
+			"session": "сессия (not used here)",
+			"library": "Библиотека (capital kept)"
+		},
+		"kept_english_verified": [
+			"PR",
+			"MR",
+			"diff",
+			"API",
+			"CLI",
+			"UI",
+			"UX",
+			"RFC",
+			"Unicode",
+			"LinkedIn",
+			"X"
+		],
+		"translated_token_flagged": [
+			"AI-isms -> признаки ИИ-текста (sidecar says untranslated; sibling agrees with ru - see M7)"
+		],
+		"sibling_agreement": "агент/агентов, команде, ревью, Библиотека, активы, тегами, PR/MR/diff, признаков ИИ-текста, UX, обнаруживаемость, видимых пользователю all agree with ui.agents.descriptions. Divergence: coder 'кусок работы' vs sibling 'часть работы' (M1).",
+		"register_note": "Routing values are occasion phrases opened with «Когда нужно» + infinitive; the sibling descriptions are third-person verb summaries. That structural difference is the sidecars' design, not an inconsistency. The «Когда нужно» opener is an addition to every value (EN has bare gerund fragments); it is consistent across all 12 and is part of the cost in the ratios."
+	},
+	"fit": {
+		"ui.agents.routing.aida": {
+			"en_chars": 136,
+			"ru_chars": 152,
+			"ratio": 1.1176
+		},
+		"ui.agents.routing.architect": {
+			"en_chars": 169,
+			"ru_chars": 178,
+			"ratio": 1.0533
+		},
+		"ui.agents.routing.coder": {
+			"en_chars": 183,
+			"ru_chars": 215,
+			"ratio": 1.1749
+		},
+		"ui.agents.routing.copy_reviewer": {
+			"en_chars": 354,
+			"ru_chars": 416,
+			"ratio": 1.1751
+		},
+		"ui.agents.routing.designer": {
+			"en_chars": 202,
+			"ru_chars": 226,
+			"ratio": 1.1188
+		},
+		"ui.agents.routing.librarian": {
+			"en_chars": 121,
+			"ru_chars": 152,
+			"ratio": 1.2562
+		},
+		"ui.agents.routing.manager": {
+			"en_chars": 155,
+			"ru_chars": 192,
+			"ratio": 1.2387
+		},
+		"ui.agents.routing.qa_tester": {
+			"en_chars": 170,
+			"ru_chars": 193,
+			"ratio": 1.1353
+		},
+		"ui.agents.routing.reviewer": {
+			"en_chars": 157,
+			"ru_chars": 162,
+			"ratio": 1.0318
+		},
+		"ui.agents.routing.scout": {
+			"en_chars": 258,
+			"ru_chars": 265,
+			"ratio": 1.0271
+		},
+		"ui.agents.routing.tui_designer": {
+			"en_chars": 260,
+			"ru_chars": 287,
+			"ratio": 1.1038
+		},
+		"ui.agents.routing.ux_reviewer": {
+			"en_chars": 257,
+			"ru_chars": 309,
+			"ratio": 1.2023
+		}
+	},
+	"limits": [
+		"No rendered frame: the app cannot be driven from here and the sidecar's width note (one card line / picker row at about 320 px, ellipsis truncation) is judged from character ratios, not a screenshot.",
+		"No glossary entry covers PR/diff/ревью; those are judged against the shipped ru corpus and sibling family, not a recorded call.",
+		"This is one auditor's pass. No second independent auditor was run by me for this group."
+	],
+	"artifacts": {
+		"receipt": "scratchpad/agents2-audit/ru-r2/receipt.json",
+		"verdict": "scratchpad/agents2-audit/ru-r2/verdict.txt",
+		"findings": "scratchpad/agents2-audit/ru-r2/findings.md",
+		"log": "scratchpad/agents2-audit/ru-r2/audit.log"
+	}
+}

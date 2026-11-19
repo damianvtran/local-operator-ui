@@ -1,0 +1,86 @@
+{
+  "audit_id": "agents-literals2-20261026",
+  "audit_date": "2026-10-26",
+  "locale": "ru",
+  "namespace": "ui.agents.config",
+  "round": 1,
+  "batch": "agents-literals-2",
+  "head": "a9e536bf892f48ed2a87772658055abfd10caa5e",
+  "base": "73af0b6855231c8e484bd4097e57fb879e10e9a8",
+  "branch": "i18n-agents-literals-2",
+  "key_count": 3,
+  "keys_in_file": 31,
+  "scope": "Batch agents-literals-2: the 25 new keys only, over seven namespaces. Every other ru value in these files was verified byte-identical to the parent and not re-audited. Catalogue-only: no rendered frame, activation or release claim.",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "d2fba0341c06",
+    "model": "radient/auto",
+    "actual_model_source": "Harness session header for this run: 'Model: radient/auto'; no fallback notice appeared during the audit and no other served model is claimed.",
+    "independent_from_translator_session": true,
+    "instance": "114c8d6e8551"
+  },
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.agents.config.json",
+      "sha256": "5338f6e229d67bf214a4741224470e82222bd2f04eba9bc9eda7324242393c32"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.agents.config.context.json",
+      "sha256": "63a7879a771b5aa7732fcfc8848033ba207701aaf1452e2855e8ec2bd52821bf"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/ru/ui.agents.config.json",
+      "sha256": "20742e63cfb6659de47960cf361b81812e275ef0b0b0e6625d16cc7b7464fc99"
+    }
+  },
+  "artifacts": {
+    "receipt": {
+      "path": "i18n/receipts/ru-agents-literals-audit-114c8d6e8551.json",
+      "sha256": "c7604f6af740f3a2349af3b98cfffb28d0480b88b0767d274668268eb1a40c31"
+    },
+    "execution_log": {
+      "path": "i18n/audits/evidence/ru/ui.agents.config/agents-literals2-20261026/audit.log",
+      "sha256": "092f1cca3cdbf6c1331bda6ccebdeaa8a5e625275bcc334634d597a16922fcbc"
+    },
+    "audit_json": {
+      "path": "i18n/audits/evidence/ru/ui.agents.config/agents-literals2-20261026/record.json",
+      "note": "This file; its sha256 is reported by the audit's final message and by the project record."
+    }
+  },
+  "current_report_verdict": {
+    "status": "passed",
+    "result": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 0,
+      "nit": 1
+    },
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [
+      "RU-AL2-03"
+    ]
+  },
+  "findings": [
+    {
+      "id": "RU-AL2-03",
+      "severity": "NIT",
+      "category": "register",
+      "key": "ui.agents.config.placeholder.about",
+      "source": "Change {name}…",
+      "current": "Изменить «{name}»…",
+      "proposed": "Измените «{name}»… if the three placeholders should share one mood; otherwise keep the infinitive and record it as the house form for 'изменить X' placeholders.",
+      "problem": "Infinitive where the English tone hint says 'imperative' and the two sibling placeholders in the same namespace are imperative ('Запросите изменение или опишите что-то новое…', 'Опишите, что нужно…'). Not an error: the ru guide prescribes the infinitive for action labels, and 'Изменить графику…' (ui.chat.canonical.supplement.adjust_placeholder) already ships in the locale with the same verb, ellipsis and mood. Recorded as taste, not gating.",
+      "evidence": "Survey of all 39 sentence-shaped ru placeholders: both moods ship, with infinitives on 'изменить'/'написать' and imperatives on the invitation-style boxes. The {name} guillemets are a second, separate call (see rulings.quoting).",
+      "disposition": "open"
+    }
+  ],
+  "audit_notes_not_execution_log": "The prose in the receipt and in this record is the auditor's reasoning. The commands and their actual output are in audit.log beside this file; nothing in it was edited or invented.",
+  "original_lost_evidence": {
+    "status": "none",
+    "original_path": null,
+    "expected_original_sha256": null
+  },
+  "new_report_is_original": true,
+  "new_report_is_historical_R2_recreation": false,
+  "backdated": false
+}

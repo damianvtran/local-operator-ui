@@ -1,0 +1,128 @@
+{
+ "audit_id": "mp1843-a1-hi",
+ "round": 1,
+ "audit_kind": "independent first audit of a new namespace",
+ "date": "2026-11-10",
+ "audit_date": "2026-11-10",
+ "locale": "hi",
+ "namespace": "ui.browser.media_permission",
+ "source_commit": "4f0df27743eecae09ccc8c3e69838faa616a3eb2",
+ "pr": "https://github.com/damianvtran/local-operator-ui/pull/1843",
+ "scope": "All 8 keys of ui.browser.media_permission.",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "key_count": 8,
+ "keys_read": 8,
+ "auditors": [
+  {
+   "agent": "task",
+   "model": "anthropic/claude-opus-5-5",
+   "session": "d1da94af17b7",
+   "team": "lopdev",
+   "label": "i18n-audit-1843",
+   "instance": "d1da94af17b7-mp1843-a1-hi",
+   "date": "2026-11-10",
+   "result": "clean-with-findings",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 3
+   },
+   "independent_from_translator_session": true,
+   "actual_model_source": "harness session header 'Model: anthropic/claude-opus-5-5' for session d1da94af17b7; no fallback observed, no role or model pin applied",
+   "fallback": null,
+   "receipt": "i18n/receipts/d1da94af17b7-mp1843-a1-hi.json",
+   "receipt_sha256": "67cfbf168aea17dd602f2e923fcb2dfcc1fdc20a0f9fe2b46667f8dceac4c2c7"
+  }
+ ],
+ "translator": {
+  "agent": "coder",
+  "model": "anthropic/claude-opus-5-5",
+  "date": "2026-11-10"
+ },
+ "independence": "Independent auditor; translated nothing originally. Authored only the corrections listed under resolutions, which are disclosed and recorded against the superseded translator bytes.",
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.browser.media_permission.json",
+   "sha256": "0a898598ac95277bfd9f8a4b502e81b1c0a3d30035bd205978112a83e13835a0"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.browser.media_permission.context.json",
+   "sha256": "361ee18bdb1beb154c2e9c318a88a21ee44285c4f1eeb3d90681e909de222f10"
+  },
+  "hi": {
+   "path": "src/i18n/catalogues/hi/ui.browser.media_permission.json",
+   "sha256": "ff7fe290a3b2b8ae051b636744a3d7b47674239ed010a5d26aad04d42ca1e428",
+   "translator_bytes_sha256": "0995f84fbd461a04c85665cf1cc3801c04e9e6a3d0c66a1a4e9af781e0bc87fa"
+  },
+  "glossary": {
+   "path": "i18n/glossary.md (damianvtran/local-operator origin/main 9372a3a42d0e)",
+   "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+  },
+  "style_guide": {
+   "path": "i18n/style-guides/hi.md (local-operator origin/main 9372a3a42d0e)",
+   "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+  }
+ },
+ "artifacts": [
+  {
+   "path": "i18n/audits/evidence/hi/ui.browser.media_permission/mp1843-a1-hi/audit.log",
+   "sha256": "678383b75efa8000960f46ba4e287e58f6c40771b8090a43449bb59b6724c5e9"
+  },
+  {
+   "path": "i18n/audits/evidence/hi/ui.browser.media_permission/mp1843-a1-hi/negative-control.log",
+   "sha256": "fb7373868a7cf230a4d875668bc9105ed273f14dfe0f35333503c5468e90a70a"
+  },
+  {
+   "path": "i18n/audits/evidence/hi/ui.browser.media_permission/mp1843-a1-hi/report.md",
+   "sha256": "ff38765084af334f27566c4f87e059b47c153b588f286f894cfbe4454f258463"
+  },
+  {
+   "path": "i18n/audits/evidence/hi/ui.browser.media_permission/mp1843-a1-hi/verify.mjs",
+   "sha256": "53eac836053b720ae636cbeffe0cc77461c0b2d03cf88928c8820bafbc6d78e6"
+  }
+ ],
+ "audit_notes_not_execution_log": "report.md is the auditor's notes; audit.log and negative-control.log are actual stdout of verify.mjs. The ledger-check result quoted in report.md was run interactively on the export and is not captured as a file.",
+ "findings": [
+  {
+   "id": "HI-N1",
+   "severity": "nit",
+   "key": "ui.browser.media_permission.system_blocked",
+   "finding": "ऐक्सेस vs UI corpus एक्सेस (21 vs 0). Apple hi Mac help itself spells ऐक्सेस, so no change."
+  },
+  {
+   "id": "HI-N2",
+   "severity": "nit",
+   "key": "ui.browser.media_permission.message",
+   "finding": "Feminine चाहती (implied साइट) vs masculine sibling ui.browser.browser_consent_request.wants_to_open (चाहता). Both grammatical; no change."
+  },
+  {
+   "id": "HI-N3",
+   "severity": "nit",
+   "key": "ui.browser.media_permission.agent_tab_hint",
+   "finding": "Button name अनुमति दें is unquoted; “अनुमति दें” would read clearer. Optional, no change."
+  }
+ ],
+ "resolutions": [
+  {
+   "id": "HI-M1",
+   "original_severity": "minor",
+   "key": "ui.browser.media_permission.system_blocked_hint",
+   "disposition": "corrected in audit patch",
+   "before": "इसे System Settings › Privacy & Security में चालू करें, फिर पेज दोबारा लोड करें।",
+   "after": "इसे सिस्टम सेटिंग्ज़ › गोपनीयता और सुरक्षा में चालू करें, फिर पेज दोबारा लोड करें।",
+   "reason": "Context requires official macOS names where Apple localizes them; macOS ships Hindi and Apple hi Mac help (support.apple.com/hi-in/guide/mac-help/mchl211c911f) writes सिस्टम सेटिंग्ज़ > गोपनीयता और सुरक्षा. Core hi cli.permissions also localizes these labels."
+  },
+  {
+   "id": "HI-M2",
+   "original_severity": "minor",
+   "key": "ui.browser.media_permission.dismiss",
+   "disposition": "corrected in audit patch",
+   "before": "कैमरा और माइक्रोफ़ोन अनुरोध खारिज करें",
+   "after": "कैमरा और माइक्रोफ़ोन अनुरोध ख़ारिज करें",
+   "reason": "hi style guide: keep nukta consistently; खारिज → ख़ारिज."
+  }
+ ],
+ "observations": []
+}

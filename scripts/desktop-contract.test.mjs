@@ -10,14 +10,47 @@ import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, test } from "node:test";
+import { inspect } from "node:util";
 import { build } from "esbuild";
+
+/*
+ * Import an in-memory esbuild bundle WITHOUT letting its `data:` URL reach a
+ * diagnostic.
+ *
+ * Node names a `data:` module by its whole URL, so every stack frame inside the
+ * bundle used to print the entire base64 module: one failing assertion here
+ * emitted a single 11,920,277-byte line (88% of a 25.8 MiB CI shard log), which
+ * is 11x the 1 MiB per-line ceiling `scripts/ci-log-guard.mjs` enforces and the
+ * same class of line that stalled this shard at its job cap before. A constant
+ * `//# sourceURL=` label changes frame DISPLAY only - executed code, error
+ * types, function names and line:column positions are untouched - which is the
+ * pattern onboarding-i18n-contract and console-host already use. Errors thrown
+ * while the module initialises can still carry the native URL before the
+ * directive applies, so those are rewritten to the label and rethrown as the
+ * real error, never swallowed. The label must stay a short constant: anything
+ * derived from the bundle text would reintroduce the payload.
+ */
+async function importBundle(result, label) {
+	const source = `${result.outputFiles[0].text}\n//# sourceURL=${label}\n`;
+	const moduleUrl = `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`;
+	try {
+		return await import(moduleUrl);
+	} catch (error) {
+		if (error instanceof Error) {
+			error.message = error.message.replaceAll(moduleUrl, label);
+			if (typeof error.stack === "string")
+				error.stack = error.stack.replaceAll(moduleUrl, label);
+		}
+		throw error;
+	}
+}
 
 // Bundle in memory so this regression guard uses the shipped TS paths without
 // adding a second app build, dependency tree, or permanent generated fixture.
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/main/desktop-transport"; export * from "./src/main/desktop-ipc"; export * from "./src/main/viewer-record"; export * from "./src/main/picker-directory"; export * from "./src/main/supplement-mounts"; export * from "./src/shared/supplement-frame-url"; export {desktopRequestByteBudget, desktopRequestDeadlineMs, desktopRequestDeadlineDetail, DESKTOP_DEADLINE_EXCEEDED_CODE, MAX_DESKTOP_REQUEST_BYTES, MAX_DESKTOP_ENVELOPE_BYTES, MAX_DESKTOP_ENVELOPE_OVERHEAD_BYTES, DESKTOP_REQUEST_TOO_LARGE_DETAIL, desktopEndpoint, desktopRequestSchema} from "./src/shared/desktop-contract"; export { desktopResult } from "./src/renderer/src/shared/api/local-operator/desktop-api"; export { refusalDetail, JOB_CANCEL_NOT_FOUND_COPY } from "./src/renderer/src/features/chat/components/run-details/job-controls-model"; export { requestDesktopMediaOutcome } from "./src/main/desktop-media"; export { DESKTOP_REFUSAL_CODE } from "./src/shared/desktop-contract";',
+			'export * from "./src/main/desktop-transport"; export * from "./src/main/desktop-ipc"; export * from "./src/main/viewer-record"; export * from "./src/main/picker-directory"; export * from "./src/main/supplement-mounts"; export * from "./src/shared/supplement-frame-url"; export {desktopRequestByteBudget, desktopRequestDeadlineMs, desktopRequestDeadlineDetail, DESKTOP_DEADLINE_EXCEEDED_CODE, MAX_DESKTOP_REQUEST_BYTES, MAX_DESKTOP_ENVELOPE_BYTES, MAX_DESKTOP_ENVELOPE_OVERHEAD_BYTES, DESKTOP_REQUEST_TOO_LARGE_DETAIL, desktopEndpoint, desktopRequestSchema} from "./src/shared/desktop-contract"; export { desktopResult } from "./src/renderer/src/shared/api/local-operator/desktop-api"; export { refusalDetail, jobCancelNotFoundCopy } from "./src/renderer/src/features/chat/components/run-details/job-controls-model"; export { requestDesktopMediaOutcome } from "./src/main/desktop-media"; export { DESKTOP_REFUSAL_CODE } from "./src/shared/desktop-contract";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -58,6 +91,7 @@ const {
 	SupplementFrameMounts,
 	supplementMountUrl,
 	guardForegroundReceipts,
+	desktopEndpoint,
 	rememberPickedDirectory,
 	withRememberedDirectory,
 	requestDesktopMediaOutcome,
@@ -72,15 +106,65 @@ const {
 	DESKTOP_REQUEST_TOO_LARGE_DETAIL,
 	desktopResult,
 	refusalDetail,
-	JOB_CANCEL_NOT_FOUND_COPY,
-	// Aliased: the session-variables bundle below binds the plain names, and a
-	// test registered before that top-level await resolves must not reach them
-	// (measured: TDZ under load when the runner starts tests early).
+	jobCancelNotFoundCopy,
+	// Aliased: the session-variables bundle binds the plain names too. Both
+	// bundles now resolve before the first registration, so this alias keeps two
+	// namespaces from colliding rather than dodging a TDZ window.
 	desktopEndpoint: jobsCancelEndpoint,
 	desktopRequestSchema: jobsCancelSchema,
-} = await import(
-	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+} = await importBundle(bundle, "desktop-contract.test.bundle.mjs");
+
+/*
+ * Built and imported HERE, above the first `test(` registration, rather than
+ * beside the tests that read it.
+ *
+ * `node:test` starts a top-level batch as soon as this module yields, so a
+ * module-level `await` sitting after a `test(` call lets the root `after` hook
+ * close the shared server while the file is still registering tests. Every
+ * registration made after that await then reaches a closed port, and the
+ * transport reports the ECONNREFUSED as a 503 - measured as 4/11 failures here
+ * at 4e2e51da78 against 0/6 at its parent. Hoisting the build takes the await
+ * out of the middle of registration; the tests that read these bindings are
+ * unchanged and still sit where they belong.
+ */
+const rendererBundle = await build({
+	stdin: {
+		contents:
+			'export * from "./src/renderer/src/shared/api/local-operator/session-variables-api"; export { desktopRequestSchema, desktopEndpoint, isWritableVariableKey } from "./src/shared/desktop-contract"; export { desktopFeatureEnabled } from "./src/renderer/src/shared/api/local-operator/desktop-hooks";',
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+	/*
+	 * `desktop-hooks` now reaches the composer's optional-client seam, and the
+	 * renderer's own `@shared` alias is what resolves it - the same aliasing
+	 * every sibling harness carries, and the reason a bare resolveDir is not
+	 * enough. Narrower than the wholesale alias on purpose: this bundle's other
+	 * specifiers are relative and must keep resolving the way they do.
+	 */
+	alias: {
+		"@shared/hooks/use-optional-query-client":
+			"./src/renderer/src/shared/hooks/use-optional-query-client.ts",
+	},
+});
+const {
+	listSessionVariables,
+	createSessionVariable,
+	updateSessionVariable,
+	deleteSessionVariable,
+	isWritableVariableKey,
+	desktopRequestSchema,
+	desktopEndpoint: rendererDesktopEndpoint,
+	// The capability gate the pins tests read: the SAME export the renderer bundle carries, so
+	// the test asks the shipped predicate rather than a restatement of it.
+	desktopFeatureEnabled,
+} = await importBundle(
+	rendererBundle,
+	"desktop-contract.test.renderer-bundle.mjs",
 );
+
 let server;
 let url;
 const seen = [];
@@ -368,7 +452,7 @@ test("the jobs cancel op pins its route, and its refusals land on the frozen sen
 		 */
 		const unknown = await rejection("aaaaaaaaaaaa");
 		assert.equal(unknown.code, "jobs_not_found", "the machine code survives");
-		assert.equal(refusalDetail(unknown), JOB_CANCEL_NOT_FOUND_COPY);
+		assert.equal(refusalDetail(unknown), jobCancelNotFoundCopy());
 
 		const settled = await rejection("job-settled");
 		assert.equal(
@@ -377,7 +461,7 @@ test("the jobs cancel op pins its route, and its refusals land on the frozen sen
 		);
 
 		const bare = await rejection("job-bare");
-		assert.equal(refusalDetail(bare), JOB_CANCEL_NOT_FOUND_COPY);
+		assert.equal(refusalDetail(bare), jobCancelNotFoundCopy());
 	} finally {
 		globalThis.window = priorWindow;
 	}
@@ -456,7 +540,7 @@ test("canonical session operations preserve identity, arguments and main-owned a
 				beforeId: "entry-1",
 				openFrame: true,
 			},
-			`/${sessionId}/history?limit=100&before_id=entry-1&open_frame=1&supplements=1`,
+			`/${sessionId}/history?limit=100&before_id=entry-1&open_frame=1&supplements=1&diff_bindings=1`,
 			"GET",
 			undefined,
 		],
@@ -542,6 +626,50 @@ test("canonical session operations preserve identity, arguments and main-owned a
 				limit: 25,
 			},
 			`/${sessionId}/children/${childId}/transcript?limit=25&before_id=entry-abc`,
+			"GET",
+			undefined,
+		],
+		/*
+		 * Full-diff pages (parent and contained child): the CALL id and the row
+		 * window, nothing else — no digest ever reaches the wire.
+		 */
+		[
+			{
+				op: "sessions.diff",
+				sessionId,
+				callId: "toolu_01AbC",
+				start: 0,
+				limit: 200,
+			},
+			`/${sessionId}/tool-calls/toolu_01AbC/diff?start=0&offset=0&limit=200`,
+			"GET",
+			undefined,
+		],
+		[
+			{
+				op: "subagents.diff",
+				sessionId,
+				childId,
+				callId: "call_9",
+				start: 417,
+				// A continuation cursor: the server-issued offset is echoed as-is.
+				offset: 12_000,
+				limit: 200,
+			},
+			`/${sessionId}/children/${childId}/tool-calls/call_9/diff?start=417&offset=12000&limit=200`,
+			"GET",
+			undefined,
+		],
+		// The launch-row point read (run-details R1): `entry_id`, one row.
+		[
+			{
+				op: "subagents.transcript",
+				sessionId,
+				childId,
+				entryId: "subagent-launch:job-1",
+				limit: 1,
+			},
+			`/${sessionId}/children/${childId}/transcript?limit=1&entry_id=subagent-launch%3Ajob-1`,
 			"GET",
 			undefined,
 		],
@@ -646,6 +774,52 @@ test("canonical session operations preserve identity, arguments and main-owned a
 			beforeId: "e".repeat(129),
 		},
 		{ op: "subagents.transcript", sessionId, childId, path: "/etc/passwd" },
+		// Full-diff pages: no path-shaped call id, the 200-row cap, and no digest.
+		{ op: "sessions.diff", sessionId, callId: "../x", start: 0, limit: 200 },
+		{ op: "sessions.diff", sessionId, callId: "a/b", start: 0, limit: 200 },
+		{ op: "sessions.diff", sessionId, callId: "c", start: 0, limit: 201 },
+		{ op: "sessions.diff", sessionId, callId: "c", start: -1, limit: 1 },
+		{ op: "sessions.diff", sessionId, callId: "c", start: 0.5, limit: 1 },
+		{
+			op: "sessions.diff",
+			sessionId,
+			callId: "c",
+			start: 0,
+			offset: -1,
+			limit: 1,
+		},
+		{
+			op: "sessions.diff",
+			sessionId,
+			callId: "c",
+			start: 0,
+			offset: 1.5,
+			limit: 1,
+		},
+		{
+			op: "sessions.diff",
+			sessionId,
+			callId: "c",
+			start: 0,
+			offset: "3",
+			limit: 1,
+		},
+		{
+			op: "sessions.diff",
+			sessionId,
+			callId: "c",
+			start: 0,
+			limit: 1,
+			digest: "a".repeat(32),
+		},
+		{
+			op: "subagents.diff",
+			sessionId,
+			childId: "../config",
+			callId: "c",
+			start: 0,
+			limit: 1,
+		},
 	])
 		assert.equal((await requestDesktop(input, url, token)).status, 422);
 	assert.equal(seen.length, count);
@@ -985,6 +1159,51 @@ test("control catalogues, lifecycle, MCP and Radient use closed main-owned trans
 			{ op: "usage.get", provider: "openai", live: true },
 			"/v1/desktop/usage?live=true&refresh=false&provider=openai",
 			"GET",
+		],
+		/*
+		 * The redeem route, and the row pins BOTH halves of the hop that a spend
+		 * breaks on silently: the camelCase request fields the schema speaks and the
+		 * snake_case body the route reads, plus the path and method (a POST sent to
+		 * the GET path would answer with a report and never spend, which reads as a
+		 * successful reset until the credits do not move).
+		 */
+		[
+			{
+				op: "usage.reset",
+				provider: "openai",
+				credentialRef: "cred:7",
+				identity: "me@example.com",
+				redeemRequestId: requestId,
+			},
+			"/v1/desktop/usage/reset",
+			"POST",
+			{
+				provider: "openai",
+				credential_ref: "cred:7",
+				identity: "me@example.com",
+				redeem_request_id: requestId,
+			},
+		],
+		/*
+		 * A ref-only body, because it is the shape the desktop panel actually sends:
+		 * it has the ref a report carried and not necessarily the label. `identity`
+		 * is then ABSENT from the body rather than sent as `null`, which the route's
+		 * `min_length=1` would refuse.
+		 */
+		[
+			{
+				op: "usage.reset",
+				provider: "openai",
+				credentialRef: "org_01J8Z3K4",
+				redeemRequestId: requestId,
+			},
+			"/v1/desktop/usage/reset",
+			"POST",
+			{
+				provider: "openai",
+				credential_ref: "org_01J8Z3K4",
+				redeem_request_id: requestId,
+			},
 		],
 		[
 			{ op: "analytics.get", sessionId, days: 7 },
@@ -1907,8 +2126,9 @@ test("receipt revisions converge monotonically across reconnects and reordering"
 		platform: "node",
 		write: false,
 	});
-	const { mergeCompletionAttention } = await import(
-		`data:text/javascript;base64,${Buffer.from(contract.outputFiles[0].text).toString("base64")}`
+	const { mergeCompletionAttention } = await importBundle(
+		contract,
+		"desktop-contract.test.session-contract-bundle.mjs",
 	);
 	const sessionId = "123456abcdef";
 	const at = (published, acknowledged, extra = {}) => ({
@@ -2036,13 +2256,18 @@ test("byte budgets are per operation, and message ops get the backend's real hea
 		"sessions.command",
 		"sessions.fork",
 		"legacy.agent.systemPrompt.update",
+		"legacy.agent.editFile",
 		"config.update",
 	])
 		assert.ok(
 			MAX_DESKTOP_REQUEST_BYTES >= desktopRequestByteBudget(op),
 			`the streamed read bound must cover ${op}`,
 		);
-	assert.equal(MAX_DESKTOP_REQUEST_BYTES, 1100000);
+	// The inline edit's buffer-sized body is now the widest tier.
+	assert.equal(
+		MAX_DESKTOP_REQUEST_BYTES,
+		desktopRequestByteBudget("legacy.agent.editFile"),
+	);
 	// The proxy weighs the ENVELOPE, which is wider than any body budget.
 	assert.ok(MAX_DESKTOP_ENVELOPE_BYTES > MAX_DESKTOP_REQUEST_BYTES);
 	assert.equal(
@@ -2102,6 +2327,87 @@ test("a message just under the budget is sent and just over is refused before an
 		seen.length,
 		count + 1,
 		"the refused body must never reach HTTP",
+	);
+});
+
+test("the inline edit reaches its chat route with the main-owned bearer, a buffer-sized budget and a model-sized deadline", async () => {
+	// The canvas editor's inline edit used to be a renderer fetch with no bearer;
+	// it must now leave from main like every other control, with the body the
+	// backend's `AgentEditFileRequest` reads arriving byte-for-byte.
+	const agentId = "11111111-2222-4333-8444-555555555555";
+	const editRequest = {
+		hosting: "openai",
+		model: "gpt-synthetic",
+		file_path: "notes/draft.md",
+		file_content: "# Title\n\nsome text\n",
+		edit_prompt: "make the title louder",
+		selection: "# Title",
+		attachments: ["data:image/png;base64,iVBORw0KGgo="],
+	};
+	const response = await requestDesktop(
+		{ op: "legacy.agent.editFile", agentId, request: editRequest },
+		url,
+		token,
+	);
+	assert.equal(response.status, 200);
+	const last = seen.at(-1);
+	assert.equal(last.path, `/v1/chat/agents/${agentId}/edit`);
+	assert.equal(last.method, "POST");
+	assert.equal(last.authorization, `Bearer ${token}`);
+	// Key ORDER is the schema's, not the caller's; the object is the same.
+	assert.deepEqual(JSON.parse(last.body), editRequest);
+	assert.ok(!JSON.stringify(response).includes(token));
+
+	// Unpaired: refused before any HTTP, like every other gated op.
+	const count = seen.length;
+	const unpaired = await requestDesktop(
+		{ op: "legacy.agent.editFile", agentId, request: editRequest },
+		url,
+		null,
+	);
+	assert.equal(unpaired.status, 503);
+	assert.equal(unpaired.body.detail.code, DESKTOP_REFUSAL_CODE.noCredential);
+	assert.equal(seen.length, count);
+
+	// BUDGET: derived from the app's own ceilings (see INLINE_EDIT_BYTE_BUDGET):
+	// a buffer and a whole-buffer selection at MAX_FILE_READ_BYTES (64 MiB), one
+	// MAX_ATTACHMENT_UPLOAD_BYTES (32 MiB) attachment as base64, 64 KiB envelope.
+	// Asserted against the named ceilings, so moving either fails here.
+	const { MAX_FILE_READ_BYTES, MAX_ATTACHMENT_UPLOAD_BYTES } =
+		await importBundle(
+			await build({
+				stdin: {
+					contents:
+						'export { MAX_FILE_READ_BYTES } from "./src/shared/desktop-contract"; export { MAX_ATTACHMENT_UPLOAD_BYTES } from "./src/shared/attachment-upload";',
+					resolveDir: process.cwd(),
+				},
+				bundle: true,
+				format: "esm",
+				platform: "node",
+				write: false,
+			}),
+			"desktop-contract.test.ceilings-bundle.mjs",
+		);
+	assert.equal(
+		desktopRequestByteBudget("legacy.agent.editFile"),
+		2 * MAX_FILE_READ_BYTES +
+			Math.ceil((MAX_ATTACHMENT_UPLOAD_BYTES * 4) / 3) +
+			64 * 1024,
+	);
+	// Far above both tiers it would otherwise have fallen into.
+	assert.ok(
+		desktopRequestByteBudget("legacy.agent.editFile") >
+			desktopRequestByteBudget("sessions.message"),
+	);
+
+	// DEADLINE: the route may make three sequential model calls, so the 20 s
+	// control budget is wrong; main's undici gives up on headers at 300 s by
+	// default, so the deadline sits just inside that to end on its own 504.
+	assert.equal(desktopRequestDeadlineMs("legacy.agent.editFile"), 295000);
+	assert.ok(desktopRequestDeadlineMs("legacy.agent.editFile") < 300000);
+	assert.ok(
+		desktopRequestDeadlineMs("legacy.agent.editFile") >
+			3 * desktopRequestDeadlineMs("config.get"),
 	);
 });
 
@@ -2301,43 +2607,6 @@ test("sessions.interrupt reaches the interrupt route with request_id only", asyn
  * the read path and re-flattened the fixture with it.
  * ---------------------------------------------------------------------------
  */
-const rendererBundle = await build({
-	stdin: {
-		contents:
-			'export * from "./src/renderer/src/shared/api/local-operator/session-variables-api"; export { desktopRequestSchema, desktopEndpoint, isWritableVariableKey } from "./src/shared/desktop-contract"; export { desktopFeatureEnabled } from "./src/renderer/src/shared/api/local-operator/desktop-hooks";',
-		resolveDir: process.cwd(),
-	},
-	bundle: true,
-	format: "esm",
-	platform: "node",
-	write: false,
-	/*
-	 * `desktop-hooks` now reaches the composer's optional-client seam, and the
-	 * renderer's own `@shared` alias is what resolves it - the same aliasing
-	 * every sibling harness carries, and the reason a bare resolveDir is not
-	 * enough. Narrower than the wholesale alias on purpose: this bundle's other
-	 * specifiers are relative and must keep resolving the way they do.
-	 */
-	alias: {
-		"@shared/hooks/use-optional-query-client":
-			"./src/renderer/src/shared/hooks/use-optional-query-client.ts",
-	},
-});
-const {
-	listSessionVariables,
-	createSessionVariable,
-	updateSessionVariable,
-	deleteSessionVariable,
-	isWritableVariableKey,
-	desktopRequestSchema,
-	desktopEndpoint: rendererDesktopEndpoint,
-	// The capability gate the pins tests read: the SAME export the renderer bundle carries, so
-	// the test asks the shipped predicate rather than a restatement of it.
-	desktopFeatureEnabled,
-} = await import(
-	`data:text/javascript;base64,${Buffer.from(rendererBundle.outputFiles[0].text).toString("base64")}`
-);
-
 const SESSION = "8fd6c6a40934";
 
 /** Serve fixed bodies through the renderer transport, as a backend would. */
@@ -2731,6 +3000,11 @@ test("long-budget reads get a budget sized for what makes them slow, and control
 	// is the network's and the backend's per-account retries. What the two shapes
 	// have in common is only that neither is bounded by the request.
 	assert.equal(desktopRequestDeadlineMs("usage.get"), 90000);
+	// `usage.reset` is on the SAME budget for the same reason plus one more: its
+	// answer contains the forced live read, and the vendor redeem comes before
+	// it. On the control budget the app would abandon a request that was still
+	// spending a credit.
+	assert.equal(desktopRequestDeadlineMs("usage.reset"), 90000);
 	// Everything else answers from state already in memory, so twenty seconds of
 	// silence is a failure and must stay one. `info.get` and `sessions.failovers`
 	// are deliberately NOT on the long budget: one is a host snapshot whose slow
@@ -3381,4 +3655,878 @@ test("the stream-subscribe IPC forwards the complete peer-source declaration, an
 		/Invalid stream subscription/,
 	);
 	assert.equal(seen.length, 1, "a refused declaration never reaches the relay");
+});
+
+test("team_bridge.conversations.members.add matches the desktop route's body shape", () => {
+	// The route takes the member array AS the body and tenant_id as a query
+	// parameter. Wrapping both in an object (the original mapping) answered 422
+	// before the handler ran; this pins the wire shape the route actually reads.
+	const endpoint = jobsCancelEndpoint({
+		op: "team_bridge.conversations.members.add",
+		conversation_id: "bcv_abc12345",
+		tenant_id: "tnt_1",
+		members: [{ account_id: "acc_b", kind: "human", display_label: "Bea" }],
+	});
+	assert.equal(endpoint.method, "POST");
+	assert.equal(
+		endpoint.path,
+		"/v1/desktop/team-bridge/conversations/bcv_abc12345/members?tenant_id=tnt_1",
+	);
+	assert.deepEqual(endpoint.body, [
+		{ account_id: "acc_b", kind: "human", display_label: "Bea" },
+	]);
+});
+
+test("team_bridge account-scoped reads map scope=account and page on cursor", () => {
+	/*
+	 * The renderer's All organizations view sends `scope: "account"` through the
+	 * desktop op. Before the op schema accepted it, the strict member answered 422
+	 * `Invalid desktop operation.` before any HTTP, so the default view and the
+	 * sidebar badge could never load. These pin the wire shape the route reads:
+	 * the account page pages on `cursor`, while `before` belongs to a tenant page.
+	 */
+	// The op schema admits the account scope before the endpoint sees it; a
+	// strict member that omits it is the 422 this test exists to prevent.
+	assert.equal(
+		jobsCancelSchema.parse({ op: "team_bridge.unread", scope: "account" })
+			.scope,
+		"account",
+	);
+	assert.equal(
+		jobsCancelSchema.parse({
+			op: "team_bridge.conversations.list",
+			scope: "account",
+		}).scope,
+		"account",
+	);
+
+	const list = jobsCancelEndpoint({
+		op: "team_bridge.conversations.list",
+		scope: "account",
+		limit: 20,
+		cursor: "cursor_1",
+	});
+	assert.equal(list.method, "GET");
+	assert.equal(
+		list.path,
+		"/v1/desktop/team-bridge/conversations?scope=account&limit=20&cursor=cursor_1",
+	);
+
+	// The tenant page keeps its own `before`; the two paging parameters are not
+	// interchangeable.
+	const tenantPage = jobsCancelEndpoint({
+		op: "team_bridge.conversations.list",
+		tenant_id: "tnt_1",
+		before: "before_1",
+	});
+	assert.equal(
+		tenantPage.path,
+		"/v1/desktop/team-bridge/conversations?tenant_id=tnt_1&before=before_1",
+	);
+
+	const unread = jobsCancelEndpoint({
+		op: "team_bridge.unread",
+		scope: "account",
+	});
+	assert.equal(unread.method, "GET");
+	assert.equal(unread.path, "/v1/desktop/team-bridge/unread?scope=account");
+
+	// The tenant read keeps its existing shape; the two forms are alternatives.
+	const tenant = jobsCancelEndpoint({
+		op: "team_bridge.unread",
+		tenant_id: "tnt_1",
+	});
+	assert.equal(tenant.path, "/v1/desktop/team-bridge/unread?tenant_id=tnt_1");
+
+	// The account scope is never a tenant selector: both together are refused
+	// at the same boundary, as the route refuses them.
+	assert.throws(
+		() =>
+			jobsCancelSchema.parse({
+				op: "team_bridge.unread",
+				scope: "account",
+				tenant_id: "tnt_1",
+			}),
+		{ message: /An account-scoped read cannot name a tenant/ },
+	);
+	assert.throws(
+		() =>
+			jobsCancelSchema.parse({
+				op: "team_bridge.conversations.list",
+				scope: "account",
+				tenant_id: "tnt_1",
+			}),
+		{ message: /An account-scoped read cannot name a tenant/ },
+	);
+	// `before` beside the account scope is the request shape the route refuses;
+	// the op boundary refuses it too, and the test names the rule rather than
+	// accepting any throw.
+	assert.throws(
+		() =>
+			jobsCancelSchema.parse({
+				op: "team_bridge.conversations.list",
+				scope: "account",
+				before: "before_1",
+			}),
+		{ message: /An account-scoped page uses cursor, not before/ },
+	);
+});
+
+test("team_bridge directory is tenant-scoped and status is the shared status route", () => {
+	/*
+	 * The directory slice's two reads. `directory` names its tenant in the QUERY
+	 * and refuses an op without one: there is no account-wide directory in this
+	 * client, so a missing tenant must be a 422 at this boundary rather than a
+	 * server-default organization the reader never chose. `status` is the
+	 * existing status payload under the bridge namespace; an absent boundary is
+	 * no query at all, not the literal "undefined" the sibling settings op
+	 * emits when its boundary is missing.
+	 */
+	assert.throws(() => jobsCancelSchema.parse({ op: "team_bridge.directory" }));
+	const directory = jobsCancelEndpoint({
+		op: "team_bridge.directory",
+		tenant_id: "tnt_1",
+	});
+	assert.equal(directory.method, "GET");
+	assert.equal(
+		directory.path,
+		"/v1/desktop/team-bridge/directory?tenant_id=tnt_1",
+	);
+	// The tenant is an encoded query VALUE: a crafted id cannot add a second
+	// parameter or a path segment.
+	const crafted = jobsCancelEndpoint({
+		op: "team_bridge.directory",
+		tenant_id: "tnt_1&scope=account",
+	});
+	assert.equal(
+		crafted.path,
+		"/v1/desktop/team-bridge/directory?tenant_id=tnt_1%26scope%3Daccount",
+	);
+
+	const status = jobsCancelEndpoint({
+		op: "team_bridge.status",
+		boundary: "surface_open",
+	});
+	assert.equal(status.method, "GET");
+	assert.equal(
+		status.path,
+		"/v1/desktop/team-bridge/status?boundary=surface_open",
+	);
+	const bareStatus = jobsCancelEndpoint({ op: "team_bridge.status" });
+	assert.equal(bareStatus.path, "/v1/desktop/team-bridge/status");
+});
+
+test("team_bridge join adds the caller and notify rides the read route", () => {
+	/*
+	 * The discoverable-channel slice (agent-server #148) has two writes this
+	 * client owns. Join is the conversation domain's own POST .../join, with the
+	 * row's tenant in the body: in the merged view the rail scope is "all", so a
+	 * join that named no organization would be resolved by the server's default
+	 * — the one way a row could be joined under the wrong tenant.
+	 *
+	 * Notify is a field on the READ route, not a separate route. The op therefore
+	 * sends `notify` and no `seq`: choosing a preference must never advance the
+	 * cursor, and the body shape this test pins is exactly what the route reads.
+	 */
+	const join = jobsCancelEndpoint({
+		op: "team_bridge.conversations.join",
+		conversation_id: "bcv_abc12345",
+		tenant_id: "tnt_2",
+	});
+	assert.equal(join.method, "POST");
+	assert.equal(
+		join.path,
+		"/v1/desktop/team-bridge/conversations/bcv_abc12345/join",
+	);
+	assert.deepEqual(join.body, { tenant_id: "tnt_2" });
+
+	const noTenant = jobsCancelEndpoint({
+		op: "team_bridge.conversations.join",
+		conversation_id: "bcv_abc12345",
+	});
+	assert.equal(noTenant.body, undefined);
+
+	const notify = jobsCancelEndpoint({
+		op: "team_bridge.conversations.notify",
+		conversation_id: "bcv_abc12345",
+		tenant_id: "tnt_2",
+		notify: "mention",
+	});
+	assert.equal(notify.method, "POST");
+	assert.equal(
+		notify.path,
+		"/v1/desktop/team-bridge/conversations/bcv_abc12345/read",
+	);
+	assert.deepEqual(notify.body, { tenant_id: "tnt_2", notify: "mention" });
+	assert.equal(
+		"seq" in notify.body,
+		false,
+		"a preference write carries no seq",
+	);
+	assert.equal(
+		"muted" in notify.body,
+		false,
+		"the legacy flag is not sent beside notify",
+	);
+
+	// The closed set is the op boundary's, so a typo cannot reach the route.
+	assert.throws(() =>
+		jobsCancelSchema.parse({
+			op: "team_bridge.conversations.notify",
+			conversation_id: "bcv_abc12345",
+			notify: "loud",
+		}),
+	);
+	assert.throws(() =>
+		jobsCancelSchema.parse({
+			op: "team_bridge.conversations.notify",
+			conversation_id: "bcv_abc12345",
+		}),
+	);
+});
+
+test("team_bridge agent_notify: the owner's agent level is a PUT on the runtime's agent-notify route", () => {
+	/*
+	 * Wake-on-every-message: the runtime resolves the owner's agent endpoint, so
+	 * the body carries only the level and the owner receipt, never an endpoint id
+	 * or a read-cursor `seq`.
+	 */
+	const write = jobsCancelEndpoint(
+		jobsCancelSchema.parse({
+			op: "team_bridge.conversations.agent_notify",
+			expected_account_id: "acct_1",
+			conversation_id: "bcv_abc12345",
+			tenant_id: "tnt_2",
+			notify: "mute",
+		}),
+	);
+	assert.equal(write.method, "PUT");
+	assert.equal(
+		write.path,
+		"/v1/desktop/team-bridge/conversations/bcv_abc12345/agent-notify",
+	);
+	assert.deepEqual(write.body, {
+		expected_account_id: "acct_1",
+		tenant_id: "tnt_2",
+		notify: "mute",
+	});
+	for (const bad of [
+		{ notify: "loud" },
+		{ notify: undefined },
+		{ notify: "all", endpoint_id: "ep_1" },
+	])
+		assert.throws(() =>
+			jobsCancelSchema.parse({
+				op: "team_bridge.conversations.agent_notify",
+				conversation_id: "bcv_abc12345",
+				...bad,
+			}),
+		);
+});
+
+test("team_bridge archive: the list takes a closed status and delete is a DELETE on the conversation", () => {
+	/*
+	 * Archive -> view archived -> permanent delete (agent-server radient-ml/agent-server#219,
+	 * local-operator #3005). The list's `status` is sent ONLY when asked, so the
+	 * default request is byte-identical to the one an older server already
+	 * answers. Delete is a DELETE on the conversation itself, not an action
+	 * on the lifecycle POST: a method that cannot be reached by mistyping an
+	 * `action`, and one the route's own owner-receipt guard covers.
+	 */
+	const live = jobsCancelEndpoint(
+		desktopRequestSchema.parse({
+			op: "team_bridge.conversations.list",
+			tenant_id: "tnt_2",
+		}),
+	);
+	assert.equal(
+		live.path,
+		"/v1/desktop/team-bridge/conversations?tenant_id=tnt_2",
+	);
+
+	const archived = jobsCancelEndpoint(
+		desktopRequestSchema.parse({
+			op: "team_bridge.conversations.list",
+			scope: "account",
+			status: "archived",
+		}),
+	);
+	assert.equal(archived.method, "GET");
+	assert.equal(
+		archived.path,
+		"/v1/desktop/team-bridge/conversations?scope=account&status=archived",
+	);
+	assert.equal(
+		desktopRequestSchema.safeParse({
+			op: "team_bridge.conversations.list",
+			status: "deleted",
+		}).success,
+		false,
+		"status is a closed set at the op boundary",
+	);
+
+	const del = jobsCancelEndpoint(
+		desktopRequestSchema.parse({
+			op: "team_bridge.conversations.delete",
+			conversation_id: "bcv_abc12345",
+			tenant_id: "tnt_2",
+			expected_account_id: "acc_a",
+		}),
+	);
+	assert.equal(del.method, "DELETE");
+	assert.equal(
+		del.path,
+		"/v1/desktop/team-bridge/conversations/bcv_abc12345?tenant_id=tnt_2&expected_account_id=acc_a",
+	);
+	assert.equal(del.body, undefined, "a delete carries no body");
+	assert.equal(
+		desktopRequestSchema.safeParse({
+			op: "team_bridge.conversations.lifecycle",
+			conversation_id: "bcv_abc12345",
+			action: "delete",
+		}).success,
+		false,
+		"delete is not a lifecycle action",
+	);
+});
+
+test("team_bridge threads: replies maps to the replies route and send carries thread_root_id", () => {
+	/*
+	 * Threads (agent-server #164, local-operator #2757). The replies op reads
+	 * one thread FORWARD (inclusive after_seq), and the send op forwards
+	 * thread_root_id only when set, so a channel-level post's body is byte-for-
+	 * byte what it was before threads and an older runtime never sees the key.
+	 */
+	const replies = jobsCancelEndpoint(
+		jobsCancelSchema.parse({
+			op: "team_bridge.messages.replies",
+			conversation_id: "bcv_abc12345",
+			message_id: "bcmsg_root0001",
+			expected_account_id: "acct_1",
+			tenant_id: "tnt_2",
+			limit: 50,
+			after_seq: 7,
+		}),
+	);
+	assert.equal(replies.method, "GET");
+	assert.equal(
+		replies.path,
+		"/v1/desktop/team-bridge/conversations/bcv_abc12345/messages/bcmsg_root0001/replies?expected_account_id=acct_1&tenant_id=tnt_2&limit=50&after_seq=7",
+	);
+	/*
+	 * Since 29c1bf919ee a thread read binds to the captured account and its
+	 * tenant (local-operator #3149's required receipts), so there is no longer a
+	 * bare, query-less replies read: each receipt missing on its own is refused
+	 * before any HTTP, rather than reaching the hub as whoever signs in next.
+	 */
+	const thread = {
+		op: "team_bridge.messages.replies",
+		conversation_id: "bcv_abc12345",
+		message_id: "bcmsg_root0001",
+		expected_account_id: "acct_1",
+		tenant_id: "tnt_2",
+	};
+	for (const receipt of ["expected_account_id", "tenant_id"]) {
+		const { [receipt]: _dropped, ...withoutReceipt } = thread;
+		assert.throws(
+			() => jobsCancelSchema.parse(withoutReceipt),
+			new RegExp(`"${receipt}"`),
+		);
+	}
+	// Newest-first thread paging forwards its exclusive older cursor without
+	// inventing a forward cursor; strict validation still rejects invalid keys.
+	const older = jobsCancelEndpoint(
+		jobsCancelSchema.parse({ ...thread, before_seq: 3, order: "desc" }),
+	);
+	assert.equal(older.method, "GET");
+	assert.equal(
+		older.path,
+		"/v1/desktop/team-bridge/conversations/bcv_abc12345/messages/bcmsg_root0001/replies?expected_account_id=acct_1&tenant_id=tnt_2&before_seq=3&order=desc",
+	);
+	assert.equal(
+		new URL(older.path, "https://example.invalid").searchParams.has(
+			"after_seq",
+		),
+		false,
+	);
+	assert.throws(() => jobsCancelSchema.parse({ ...thread, before_seq: 0 }));
+	assert.throws(() => jobsCancelSchema.parse({ ...thread, after_seq: -1 }));
+	assert.throws(() => jobsCancelSchema.parse({ ...thread, unknown_key: true }));
+
+	const reply = jobsCancelEndpoint(
+		jobsCancelSchema.parse({
+			op: "team_bridge.messages.send",
+			conversation_id: "bcv_abc12345",
+			expected_account_id: "acct_1",
+			tenant_id: "tnt_2",
+			client_ref: "ref-1",
+			body: "on it",
+			thread_root_id: "bcmsg_root0001",
+		}),
+	);
+	assert.deepEqual(reply.body, {
+		expected_account_id: "acct_1",
+		tenant_id: "tnt_2",
+		client_ref: "ref-1",
+		body: "on it",
+		thread_root_id: "bcmsg_root0001",
+	});
+	// A threaded send without the captured account is refused by the union, so
+	// a caller cannot forget the receipt and post the reply as someone else.
+	assert.throws(
+		() =>
+			jobsCancelSchema.parse({
+				op: "team_bridge.messages.send",
+				conversation_id: "bcv_abc12345",
+				tenant_id: "tnt_2",
+				client_ref: "ref-1",
+				body: "on it",
+				thread_root_id: "bcmsg_root0001",
+			}),
+		/Thread replies require the captured account/,
+	);
+	const plain = jobsCancelEndpoint({
+		op: "team_bridge.messages.send",
+		conversation_id: "bcv_abc12345",
+		client_ref: "ref-2",
+		body: "hi",
+	});
+	assert.equal("thread_root_id" in plain.body, false);
+	/*
+	 * STRUCTURED @-MENTIONS (local-operator #3204's `MentionIn`). Forwarded
+	 * verbatim when present; ABSENT, not `[]`, when the composer has none, so a
+	 * backend without `team_bridge_send_mentions` sees the pre-mention body.
+	 */
+	assert.equal("mentions" in plain.body, false);
+	const mentioned = jobsCancelEndpoint(
+		jobsCancelSchema.parse({
+			op: "team_bridge.messages.send",
+			conversation_id: "bcv_abc12345",
+			client_ref: "ref-3",
+			body: "@Ben Tran @Aida (Ben Tran) look",
+			mentions: [
+				{ kind: "human", account_id: "acct_ben" },
+				{ kind: "agent", account_id: "acct_ben", endpoint_id: "bep_aida" },
+			],
+		}),
+	);
+	assert.deepEqual(mentioned.body.mentions, [
+		{ kind: "human", account_id: "acct_ben" },
+		{ kind: "agent", account_id: "acct_ben", endpoint_id: "bep_aida" },
+	]);
+	const emptyMentions = jobsCancelEndpoint(
+		jobsCancelSchema.parse({
+			op: "team_bridge.messages.send",
+			conversation_id: "bcv_abc12345",
+			client_ref: "ref-4",
+			body: "hi",
+			mentions: [],
+		}),
+	);
+	assert.equal("mentions" in emptyMentions.body, false);
+	// Duplicates and unknown row fields fail here, not as a remote 422.
+	assert.throws(
+		() =>
+			jobsCancelSchema.parse({
+				op: "team_bridge.messages.send",
+				conversation_id: "bcv_abc12345",
+				client_ref: "ref-5",
+				body: "hi",
+				mentions: [
+					{ kind: "human", account_id: "acct_ben" },
+					{ kind: "human", account_id: "acct_ben" },
+				],
+			}),
+		/Duplicate mention/,
+	);
+	assert.throws(() =>
+		jobsCancelSchema.parse({
+			op: "team_bridge.messages.send",
+			conversation_id: "bcv_abc12345",
+			client_ref: "ref-6",
+			body: "hi",
+			mentions: [{ kind: "human", account_id: "acct_ben", label: "Ben" }],
+		}),
+	);
+	assert.throws(() =>
+		jobsCancelSchema.parse({
+			op: "team_bridge.messages.send",
+			conversation_id: "bcv_abc12345",
+			client_ref: "ref-7",
+			body: "hi",
+			mentions: [{ kind: "channel", account_id: "acct_ben" }],
+		}),
+	);
+});
+
+test("a bulk Undo is admitted from a background window while real receipts stay gated", async () => {
+	// THE INVERSE MUST NOT BE STRICTER THAN THE ACTION (QA round 1, Q-1). This
+	// test asserted the opposite until the round that found the defect, and that
+	// assertion is part of why it survived review: the Undo on a bulk dismissal
+	// rides `notifications.read` (a gated op) while the dismissal it inverts rides
+	// `notifications.dismiss` (deliberately ungated). So the gesture could be
+	// performed from a background window and then not taken back - measured as a
+	// real press on the receipt's own Undo leaving every row dismissed and
+	// sending no request at all.
+	//
+	// The undo carries no seen-claim: it names no row as seen, carries no content,
+	// and can only revert the journal its own token identifies. That claim is made
+	// by the read WHICH SET the state, still asserted gated below on this same
+	// sender and these same background states.
+	const request = desktopRequestSchema.parse({
+		op: "notifications.read",
+		verb: "undo",
+		target: { operationToken: "fixture-journal" },
+	});
+	const calls = [];
+	const state = { visible: false, minimized: false, focused: false };
+	const guarded = guardForegroundReceipts(
+		() => ({
+			isDestroyed: () => false,
+			isVisible: () => state.visible,
+			isMinimized: () => state.minimized,
+			isFocused: () => state.focused,
+		}),
+		async (input) => {
+			calls.push(input);
+			return { status: 200, body: { result: {} } };
+		},
+	);
+	for (const background of [
+		{ visible: false, minimized: false, focused: true },
+		{ visible: true, minimized: true, focused: true },
+		{ visible: true, minimized: false, focused: false },
+	]) {
+		Object.assign(state, background);
+		await guarded(request);
+	}
+	assert.equal(
+		calls.length,
+		3,
+		"the Undo must reach transport from every background window state",
+	);
+	/*
+	 * The gate itself is intact, on this same augmented sender and these same
+	 * background states: the read that SETS read state is the seen-claim.
+	 */
+	const read = desktopRequestSchema.parse({
+		op: "notifications.read",
+		verb: "read",
+		target: { items: [{ id: "n_aaaaaaaaaaaaaaaa", revision: 1 }] },
+	});
+	for (const background of [
+		{ visible: false, minimized: false, focused: true },
+		{ visible: true, minimized: true, focused: true },
+		{ visible: true, minimized: false, focused: false },
+	]) {
+		Object.assign(state, background);
+		await assert.rejects(
+			() => guarded(read),
+			(error) => error.message.includes("foreground"),
+		);
+	}
+	await assert.rejects(
+		() =>
+			guarded({
+				op: "sessions.seen",
+				sessionId: "123456abcdef",
+				completionToken: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+			}),
+		/foreground/,
+	);
+	assert.equal(
+		calls.length,
+		3,
+		"nothing but the Undo reached transport from a background window",
+	);
+	assert.equal(
+		desktopRequestSchema.safeParse({ ...request, op: "notifications.dismiss" })
+			.success,
+		false,
+		"the unguarded IPC operation cannot carry a journal Undo",
+	);
+	Object.assign(state, { visible: true, minimized: false, focused: true });
+	await guarded(read);
+	assert.equal(
+		calls.length,
+		4,
+		"mock native state positive; NOT real native foreground evidence",
+	);
+	assert.deepEqual(desktopEndpoint(request).body, {
+		op: "undo",
+		operation_token: "fixture-journal",
+	});
+});
+
+test("a failing contract assertion renders a bounded diagnostic, never the data: bundle", async () => {
+	/*
+	 * Regression guard for the 11,920,277-byte line: a failure inside a bundled
+	 * module must stay readable in a CI shard log whose per-line ceiling is
+	 * 1 MiB (`ci-log-guard.mjs --max-line-bytes 1048576`). The broken case is
+	 * the one that produced that line - a thread read missing its captured
+	 * account, rejected by the shipped schema from inside the bundle - rendered
+	 * the way the test runner renders it (`inspect`, which carries the stack).
+	 *
+	 * The raw import is the negative control: without it, a bound that held
+	 * because the stack happened to omit bundle frames would pass vacuously. It
+	 * must show the payload; the labelled import must not.
+	 */
+	const contractOnly = await build({
+		stdin: {
+			contents:
+				'export { desktopRequestSchema } from "./src/shared/desktop-contract";',
+			resolveDir: process.cwd(),
+		},
+		bundle: true,
+		format: "esm",
+		platform: "node",
+		write: false,
+	});
+	const broken = {
+		op: "team_bridge.messages.replies",
+		conversation_id: "bcv_abc12345",
+		message_id: "bcmsg_root0001",
+		tenant_id: "tnt_2",
+	};
+	const rendered = (schema) => {
+		try {
+			schema.parse(broken);
+		} catch (error) {
+			return inspect(error);
+		}
+		assert.fail("the receipt-less thread read must be refused");
+	};
+	const raw = await import(
+		`data:text/javascript;base64,${Buffer.from(contractOnly.outputFiles[0].text).toString("base64")}`
+	);
+	const rawOutput = rendered(raw.desktopRequestSchema);
+	assert.ok(
+		rawOutput.includes("data:text/javascript;base64,"),
+		"control: an unlabelled bundle's frames carry the data: URL",
+	);
+	const labelled = await importBundle(
+		contractOnly,
+		"desktop-contract.test.guard-bundle.mjs",
+	);
+	const output = rendered(labelled.desktopRequestSchema);
+	assert.match(output, /expected_account_id/);
+	assert.match(output, /desktop-contract\.test\.guard-bundle\.mjs:\d+:\d+/);
+	assert.equal(output.includes("data:"), false);
+	const bytes = Buffer.byteLength(output);
+	assert.ok(
+		bytes < 64 * 1024,
+		`failure rendering is ${bytes} bytes; the raw control was ${Buffer.byteLength(rawOutput)}`,
+	);
+});
+
+test("a usage reset names an account and carries a client-minted UUID", () => {
+	const requestId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+	const parses = (credentialRef) =>
+		desktopRequestSchema.safeParse({
+			op: "usage.reset",
+			provider: "openai",
+			credentialRef,
+			redeemRequestId: requestId,
+		}).success;
+	/*
+	 * EVERY SHAPE THE BACKEND PUBLISHES, because this fixture used to be the one
+	 * string the tests invented ("cred-7") rather than the two forms the backend
+	 * sends: `_credential_ref` answers the row's `identity_key` when it has one
+	 * (an email, an org/account/project id, or `radient-account:[...]`) and
+	 * `cred:<row id>` when it does not. A character class narrow enough to refuse
+	 * the colon or the `@` rejected every REAL ref, so the request never left the
+	 * renderer and the panel reported an unknown fate for a credit that was never
+	 * offered (review round 1, B1). The bound is the route's own
+	 * `max_length=128`, and nothing shorter.
+	 */
+	for (const ref of [
+		"cred:7",
+		"me@example.com",
+		"org_01J8Z3K4",
+		"radient-account:[sub=a1b2]",
+	]) {
+		assert.equal(parses(ref), true, `${ref} is a real credential ref`);
+	}
+	assert.equal(parses("x".repeat(128)), true, "the route's own bound is 128");
+	assert.equal(parses("x".repeat(129)), false, "129 is past the route's bound");
+	assert.equal(parses(""), false, "an empty ref is not an identifier");
+	assert.equal(
+		desktopRequestSchema.safeParse({
+			op: "usage.reset",
+			provider: "openai",
+			identity: "me@example.com",
+			redeemRequestId: requestId,
+		}).success,
+		true,
+		"the backend's compatibility arm: identity alone names the account",
+	);
+	/*
+	 * Neither identifier: refused HERE as well as in the backend's body model, so
+	 * the app never sends the one request shape whose only possible answer is a
+	 * `refused` verdict about a spend it never attempted.
+	 */
+	assert.equal(
+		desktopRequestSchema.safeParse({
+			op: "usage.reset",
+			provider: "openai",
+			redeemRequestId: requestId,
+		}).success,
+		false,
+	);
+	/*
+	 * The id is the vendor's idempotency key, so it has to be a UUID rather than
+	 * any string a caller happened to hold: a free-form label would let a "retry"
+	 * carry a different key and spend a second credit.
+	 */
+	assert.equal(
+		desktopRequestSchema.safeParse({
+			op: "usage.reset",
+			provider: "openai",
+			credentialRef: "cred:7",
+			redeemRequestId: "retry-1",
+		}).success,
+		false,
+	);
+});
+
+/*
+ * Amazon Bedrock's AWS panel ops (bedrock design §7 routes 3-6): each reaches
+ * exactly its route with the backend's snake_case body, and the bounds that
+ * keep a Region out of a hostname and a profile name inside its `[profile …]`
+ * line refuse before any HTTP happens.
+ */
+test("bedrock AWS panel ops reach their routes and refuse malformed connections", async () => {
+	const accessKeyId = ["AKIA", "SYNTHETIC", "0000000"].join("");
+	for (const [request, path, method, body] of [
+		[{ op: "auth.bedrock.context" }, "/v1/auth/providers/bedrock/aws", "GET"],
+		[
+			{
+				op: "auth.bedrock.connect",
+				connection: {
+					method: "profile",
+					profile: "acme.dev",
+					region: "us-west-2",
+				},
+			},
+			"/v1/auth/providers/bedrock/connection",
+			"PUT",
+			{ method: "profile", profile: "acme.dev", region: "us-west-2" },
+		],
+		[
+			{
+				op: "auth.bedrock.connect",
+				connection: {
+					method: "access_key",
+					region: "eu-central-1",
+					access_key_id: accessKeyId,
+					secret_access_key: "synthetic-secret",
+					session_token: null,
+				},
+			},
+			"/v1/auth/providers/bedrock/connection",
+			"PUT",
+			{
+				method: "access_key",
+				region: "eu-central-1",
+				access_key_id: accessKeyId,
+				secret_access_key: "synthetic-secret",
+				session_token: null,
+			},
+		],
+		[
+			{
+				op: "auth.bedrock.connect",
+				connection: { method: "ambient", region: null },
+			},
+			"/v1/auth/providers/bedrock/connection",
+			"PUT",
+			{ method: "ambient", region: null },
+		],
+		[
+			{ op: "auth.bedrock.ssoLogin", profile: "acme-dev-sso" },
+			"/v1/auth/providers/bedrock/sso-login",
+			"POST",
+			{ profile: "acme-dev-sso" },
+		],
+		[
+			{ op: "auth.bedrock.check", credentialId: 12 },
+			"/v1/auth/providers/bedrock/check",
+			"POST",
+			{ credential_id: 12 },
+		],
+	]) {
+		const response = await requestDesktop(request, url, token);
+		assert.equal(response.status, 200, request.op);
+		const last = seen.at(-1);
+		assert.equal(last.path, path);
+		assert.equal(last.method, method);
+		if (body) assert.deepEqual(JSON.parse(last.body), body);
+	}
+
+	const count = seen.length;
+	for (const request of [
+		// A Region that would rewrite the hostname.
+		{
+			op: "auth.bedrock.connect",
+			connection: {
+				method: "api_key",
+				region: "evil.example/",
+				api_key: "secret",
+			},
+		},
+		// A profile name escaping its config section.
+		{
+			op: "auth.bedrock.connect",
+			connection: {
+				method: "profile",
+				profile: "dev]\n[x",
+				region: "us-east-1",
+			},
+		},
+		// Unknown method, and an extra key on a strict arm.
+		{
+			op: "auth.bedrock.connect",
+			connection: { method: "imds", region: "us-east-1" },
+		},
+		{
+			op: "auth.bedrock.connect",
+			connection: { method: "ambient", region: null, api_key: "secret" },
+		},
+		// Access key pair missing its secret.
+		{
+			op: "auth.bedrock.connect",
+			connection: {
+				method: "access_key",
+				region: "us-east-1",
+				access_key_id: accessKeyId,
+				session_token: null,
+			},
+		},
+		{ op: "auth.bedrock.ssoLogin", profile: "" },
+		{ op: "auth.bedrock.check", credentialId: 0 },
+	]) {
+		const response = await requestDesktop(request, url, token);
+		assert.equal(response.status, 422, JSON.stringify(request));
+		assert.ok(!JSON.stringify(response).includes("secret"));
+	}
+	assert.equal(seen.length, count);
+});
+
+/*
+ * Review round 1, R4: Bedrock's connect and check wait on AWS twice - a
+ * credential resolve capped at 15 s (`CREDENTIAL_TIMEOUT_S`) and a probe whose
+ * 15 s httpx timeout bounds each of its four phases - so the daemon's bounded
+ * worst case is 75 s before it stores the row. The transport must wait longer
+ * than that, or it reports a deadline for a connect the backend then saves.
+ */
+test("bedrock connect and check wait longer than the daemon's bounded worst case", () => {
+	const daemonWorstCaseMs = (15 + 4 * 15) * 1000;
+	for (const op of ["auth.bedrock.connect", "auth.bedrock.check"]) {
+		assert.ok(
+			desktopRequestDeadlineMs(op) > daemonWorstCaseMs,
+			`${op}: ${desktopRequestDeadlineMs(op)} ms`,
+		);
+	}
+	// The context read and the SSO start answer without waiting on AWS.
+	assert.equal(desktopRequestDeadlineMs("auth.bedrock.context"), 20000);
 });

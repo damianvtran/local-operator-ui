@@ -1,0 +1,56 @@
+{
+	"scenario": "ask-command",
+	"proves": "#1902 suggested-command ask UI: one question whose command runs for the agent, one meant for the user",
+	"session": {
+		"id": "fa1902000001",
+		"title": "Mac proof: suggested command ask",
+		"cwd": "/tmp",
+		"createdMinutesAgo": 30
+	},
+	"transcript": [
+		{
+			"role": "user",
+			"text": "Check whether the release branch is clean, then tell me what to run to update the desktop app."
+		},
+		{
+			"role": "assistant",
+			"text": "Two quick decisions before I go on: one command I can run for you, and one that has to run on your side.",
+			"askCall": true
+		}
+	],
+	"ask": {
+		"askId": "a-1902",
+		"toolCallId": "call_macproof1902",
+		"timeoutS": 86400,
+		"questions": [
+			{
+				"id": "q-branch",
+				"question": "Run the status check on the release branch now?",
+				"options": [
+					{
+						"label": "Run it",
+						"description": "I run it in this conversation's folder."
+					},
+					{ "label": "Skip", "description": "Leave the branch alone for now." }
+				],
+				"recommended": 0,
+				"command": "git status --short --branch",
+				"commandTarget": "agent"
+			},
+			{
+				"id": "q-update",
+				"question": "Update the desktop app on this Mac?",
+				"options": [
+					{
+						"label": "I ran it",
+						"description": "The update finished on my side."
+					},
+					{ "label": "Not now", "description": "Remind me later." }
+				],
+				"recommended": 0,
+				"command": "brew upgrade --cask local-operator",
+				"commandTarget": "user"
+			}
+		]
+	}
+}

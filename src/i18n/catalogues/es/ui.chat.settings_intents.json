@@ -1,0 +1,23 @@
+{
+	"ui.chat.settings_intents.chips_label": "Cambios de ajustes",
+	"ui.chat.settings_intents.cwd_waiting": "Se moverá a {dir} cuando termine este turno",
+	"ui.chat.settings_intents.effort_queued": "El esfuerzo {level} se aplicará en el siguiente paso",
+	"ui.chat.settings_intents.failed_cwd": "No se pudo cambiar a {dir}: {reason}",
+	"ui.chat.settings_intents.failed_effort": "No se pudo ajustar el esfuerzo a {level}: {reason}",
+	"ui.chat.settings_intents.failed_fast": "No se pudo cambiar el modo rápido: {reason}",
+	"ui.chat.settings_intents.failed_model": "No se pudo cambiar a {model}: {reason}",
+	"ui.chat.settings_intents.fast_queued": "El cambio de modo rápido se aplicará en el siguiente paso",
+	"ui.chat.settings_intents.model_queued": "{model} se aplicará en el siguiente paso",
+	"ui.chat.settings_intents.moving_cwd": "Cambiando a {dir}…",
+	"ui.chat.settings_intents.reason_budget": "la sesión no respondió a tiempo",
+	"ui.chat.settings_intents.reason_unknown": "no se indicó ningún motivo",
+	"ui.chat.settings_intents.row_applying": "Aplicando un cambio de ajustes",
+	"ui.chat.settings_intents.row_failed": "Falló un cambio de ajustes",
+	"ui.chat.settings_intents.setting_effort": "Ajustando el esfuerzo a {level}…",
+	"ui.chat.settings_intents.setting_fast_off": "Desactivando el modo rápido…",
+	"ui.chat.settings_intents.setting_fast_on": "Activando el modo rápido…",
+	"ui.chat.settings_intents.superseded_effort": "El esfuerzo se cambió en otro lugar a {level}",
+	"ui.chat.settings_intents.superseded_model": "El modelo se cambió en otro lugar a {model}",
+	"ui.chat.settings_intents.superseded_other": "Este ajuste se cambió en otro lugar",
+	"ui.chat.settings_intents.switching_model": "Cambiando a {model}…"
+}

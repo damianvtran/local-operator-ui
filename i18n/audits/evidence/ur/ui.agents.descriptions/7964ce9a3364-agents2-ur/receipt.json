@@ -1,0 +1,372 @@
+{
+	"locale": "ur",
+	"instance": "7964ce9a3364-agents2-ur",
+	"round": 2,
+	"scope": [
+		"ui.agents.descriptions",
+		"ui.agents.detail.install"
+	],
+	"audit_date": "2026-10-30",
+	"reaudit_of": {
+		"instance": "6e52b52fd913-agents-ur",
+		"receipt": "scratchpad/agents-audit/ur/receipt.json",
+		"verdict": "changes_requested",
+		"counts": {
+			"BLOCKER": 0,
+			"MAJOR": 2,
+			"MINOR": 9,
+			"NIT": 5
+		}
+	},
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "7964ce9a3364",
+		"model": "radient/auto",
+		"actual_model_source": "session-model-at-audit; the session's primary anthropic/claude-sonnet-5-5 failed on provider quota and fell back openai/gpt-6-astra -> kimi/k3.1-pro -> radient/auto before this audit ran",
+		"independent_from_translator_session": true,
+		"translator_session": "3ef6295a5545",
+		"independent_from_round1_auditor": true,
+		"round1_auditor_session": "6e52b52fd913",
+		"independence_note": "This auditor wrote none of the 14 values and did not run round 1. Round 1's receipt was read only as the claim list the task supplied, and every claim was re-verified against the current bytes rather than trusted."
+	},
+	"input_sha256": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.agents.descriptions.json",
+			"sha256": "ec18513f0ebaa99be4c329a8ea5896631fd2b9e4f4d53febdc5c7acd049b5511"
+		},
+		"en_context": {
+			"path": "src/i18n/catalogues/en/ui.agents.descriptions.context.json",
+			"sha256": "6311128dc89d50d886f3066f9cea2c802482a7db9979d9c5cc4bd93cdd8a7398"
+		},
+		"en_install": {
+			"path": "src/i18n/catalogues/en/ui.agents.detail.install.json",
+			"sha256": "964c83098370d82d74df8c21d6f1f69e74a76f4ea73b3af7bc16ac06981fbcf0"
+		},
+		"en_install_context": {
+			"path": "src/i18n/catalogues/en/ui.agents.detail.install.context.json",
+			"sha256": "f82578e4390f18d396fa229286d5395492618bd93ccbfa43d8d0dbe5a6530307"
+		},
+		"target": {
+			"path": "sessions/3ef6295a5545/scratchpad/agents-i18n/ur/ui.agents.descriptions.json",
+			"sha256": "ff3f4b16e22122c507cb65c87183b415779622f393129fae3c4670b8a995dae0",
+			"note": "shipping bytes as handed over; not yet in src/i18n/catalogues/ur/. Round 1 saw 1fe2de460f53aa6c36d2b4eb2373a3154c83c44abbc12505ec3842b5d393f375 for this file, so the correction changed it."
+		},
+		"target_install": {
+			"path": "sessions/3ef6295a5545/scratchpad/agents-i18n/ur/ui.agents.detail.install.json",
+			"sha256": "560c216f7f70f94ab3c4ee186523105f79b0904b57cedafe64d5bd7faae4ca05",
+			"note": "byte-identical to round 1; the correction did not touch this file."
+		},
+		"handed_over_en_copies": {
+			"ui.agents.descriptions.en.json": "c865345f35a1f50313a2dd6cc6afa4f06d80144a2312ac691bacd1932edf2f1f",
+			"ui.agents.detail.install.en.json": "cb0674b7f65c48806d427a9ed2702c9d77e4bd6ff866f9966bc6f7762b84bcc9",
+			"note": "Re-indented with one space, so the bytes differ from the repo sources above; value-identity was asserted, not assumed: json.load(repo) == json.load(handed_over) is True for both files. The ledger's source_sha256 must be the repo hash."
+		}
+	},
+	"counts": {
+		"BLOCKER": 0,
+		"MAJOR": 0,
+		"MINOR": 3,
+		"NIT": 1
+	},
+	"verdict": "pass",
+	"verdict_reason": "All 16 round-1 findings are fixed on the current bytes, no correction changed a claim, and no BLOCKER or MAJOR remains; three MINOR and one NIT are polish a future edit can take.",
+	"namespaces": {
+		"ui.agents.descriptions": {
+			"status": "passed",
+			"keys_audited": 12,
+			"sha256": {
+				"en": "ec18513f0ebaa99be4c329a8ea5896631fd2b9e4f4d53febdc5c7acd049b5511",
+				"ur": "ff3f4b16e22122c507cb65c87183b415779622f393129fae3c4670b8a995dae0"
+			},
+			"findings": [
+				{
+					"id": "G1",
+					"severity": "MINOR",
+					"keys": [
+						"ui.agents.descriptions.reviewer",
+						"ui.agents.descriptions.qa_tester"
+					],
+					"key": "ui.agents.descriptions.reviewer",
+					"current": "diff، MR یا PR کا آزادانہ کوڈ جائزہ:… / تبدیلی کے اجرا کا آزاد ثبوت:…",
+					"problem": "One English word, two Urdu words, introduced by this round's fix: qa_tester was changed from آزادانہ to آزاد while reviewer kept آزادانہ. The one attributive precedent in the ur catalogues is آزاد (ui.settings.integrations.json:36, '…جو اپنے کرالر کے ساتھ ایک آزاد ویب انڈیکس ہے'); آزادانہ occurs nowhere else in them.",
+					"fix": "Use آزاد in both: 'diff، MR یا PR کا آزاد کوڈ جائزہ:…' — or revert qa_tester to آزادانہ; whichever, one form across the roster.",
+					"introduced_by_correction": true
+				},
+				{
+					"id": "G2",
+					"severity": "MINOR",
+					"keys": [
+						"ui.agents.descriptions.ux_reviewer"
+					],
+					"key": "ui.agents.descriptions.ux_reviewer",
+					"current": "تبدیلی کے حقیقی فلو کو شروع سے آخر تک چلتا ہے:…",
+					"problem": "چلنا is intransitive; کو marks a direct object, so 'فلو کو … چلتا ہے' is ungrammatical. The catalogue's کو + چل forms are all چلانا (running an app or job) or a dative subject ('کام کو … چاہیے'), never 'walks X'. Meaning survives, so this is polish, not a claim error.",
+					"fix": "تبدیلی کے حقیقی فلو میں شروع سے آخر تک چلتا ہے (154 chars, ratio 1.14) — or '…فلو سے شروع سے آخر تک گزرتا ہے'.",
+					"introduced_by_correction": false,
+					"note": "Pre-existing; round 1 did not report it."
+				},
+				{
+					"id": "G3",
+					"severity": "MINOR",
+					"keys": [
+						"ui.agents.descriptions.librarian"
+					],
+					"key": "ui.agents.descriptions.librarian",
+					"current": "آپ کے رکھے اثاثوں کے نام، تفصیل اور ٹیگ بناتا ہے،…",
+					"problem": "نام بنانا is the 'make a name for oneself' idiom, not naming: 'names, describes and tags' compressed under one بنانا puts a reputation phrase where a metadata action belongs (the defect class round 1 raised for کاپی).",
+					"fix": "آپ کے رکھے اثاثوں کو نام اور تفصیل دیتا ہے اور ٹیگ لگاتا ہے (166 chars, ratio 1.11) — or the fuller '…کے نام رکھتا ہے، ان کی تفصیل لکھتا ہے اور ٹیگ لگاتا ہے' (ratio 1.18) if the roster line can take it.",
+					"introduced_by_correction": false,
+					"note": "Pre-existing; round 1 did not report it."
+				},
+				{
+					"id": "G4",
+					"severity": "NIT",
+					"keys": [
+						"ui.agents.descriptions.scout"
+					],
+					"key": "ui.agents.descriptions.scout",
+					"current": "صرف پڑھنے والی تحقیق:…",
+					"problem": "پڑھنے والی also means 'worth reading' (پڑھنے والی کتاب), so the head term flickers between 'read-only' and 'the only research worth reading' before the closing 'کچھ نہیں بدلتا' settles it.",
+					"fix": "صرف پڑھنے تک محدود تحقیق:… — the head grows from 20 to 24 chars and the whole value stays shorter than English (ratio 0.99).",
+					"introduced_by_correction": false
+				}
+			]
+		},
+		"ui.agents.detail.install": {
+			"status": "passed",
+			"keys_audited": 2,
+			"sha256": {
+				"en": "964c83098370d82d74df8c21d6f1f69e74a76f4ea73b3af7bc16ac06981fbcf0",
+				"ur": "560c216f7f70f94ab3c4ee186523105f79b0904b57cedafe64d5bd7faae4ca05"
+			},
+			"findings": []
+		}
+	},
+	"round1_verification": {
+		"method": "Each round-1 finding was turned into a present-token assertion and an absent-token assertion against the current value (e.g. F1: 'پروڈکٹ عبارت' present, 'کاپی' absent), then the whole file was re-read for new faults introduced by the change. All 16 assertions held.",
+		"fixed": 16,
+		"open": 0,
+		"introduced_by_corrections": 1,
+		"items": [
+			{
+				"id": "F1",
+				"severity": "MAJOR",
+				"key": "ui.agents.descriptions.copy_reviewer",
+				"status": "fixed",
+				"evidence": "کاپی gone; 'صارف کو نظر آنے والی پروڈکٹ عبارت' present."
+			},
+			{
+				"id": "F2",
+				"severity": "MAJOR",
+				"key": "ui.agents.descriptions.qa_tester",
+				"status": "fixed",
+				"evidence": "اجرائی gone; 'تبدیلی کے اجرا کا آزاد ثبوت' present. The suggested حقیقی was dropped, which is closer to the English ('Independent execution proof'), not a loss."
+			},
+			{
+				"id": "F3",
+				"severity": "MINOR",
+				"key": "ui.agents.descriptions.architect",
+				"status": "fixed",
+				"evidence": "'موجودہ سورس کبھی تبدیل نہیں کرتا' present."
+			},
+			{
+				"id": "F4",
+				"severity": "MINOR",
+				"key": "ui.agents.descriptions.librarian",
+				"status": "fixed",
+				"evidence": "'لائبریری کا منتظم ایجنٹ (لائبریرین)' present; matches ui.library.librarian.title."
+			},
+			{
+				"id": "F5",
+				"severity": "MINOR",
+				"key": "ui.agents.descriptions.librarian",
+				"status": "fixed",
+				"evidence": "عالمی gone; 'گلوبل کیٹلاگ' present, and کیٹلاگ matches ui.library."
+			},
+			{
+				"id": "F6",
+				"severity": "MINOR",
+				"key": "ui.agents.descriptions.scout",
+				"status": "fixed",
+				"evidence": "'ورک اسپیس میں اور ویب پر' present."
+			},
+			{
+				"id": "F7",
+				"severity": "MINOR",
+				"key": "ui.agents.descriptions.tui_designer",
+				"status": "fixed",
+				"evidence": "'ٹرمینل انٹرفیسز … ان کا' present, number agreement restored."
+			},
+			{
+				"id": "F8",
+				"severity": "MINOR",
+				"key": "ui.agents.descriptions.tui_designer",
+				"status": "fixed",
+				"evidence": "یونیکوڈ gone; Latin 'Unicode' present, per glossary §1."
+			},
+			{
+				"id": "F9",
+				"severity": "MINOR",
+				"key": "ui.agents.descriptions.qa_tester",
+				"status": "fixed",
+				"evidence": "'منفی کیسز' present."
+			},
+			{
+				"id": "F10",
+				"severity": "MINOR",
+				"key": "ui.agents.descriptions.qa_tester",
+				"status": "fixed",
+				"evidence": "'rig' gone; 'ٹیسٹ ماحول کی پیشگی جانچ' present."
+			},
+			{
+				"id": "F11",
+				"severity": "MINOR",
+				"key": "ui.agents.descriptions.ux_reviewer",
+				"status": "fixed",
+				"evidence": "غلطی سے gone; 'غلطیوں سے بحالی' present."
+			},
+			{
+				"id": "F12",
+				"severity": "NIT",
+				"key": "ui.agents.descriptions.aida",
+				"status": "fixed",
+				"evidence": "'رپورٹ کرتی ہیں' present; رپورٹ دیتی gone."
+			},
+			{
+				"id": "F13",
+				"severity": "NIT",
+				"key": "ui.agents.descriptions.architect",
+				"status": "fixed",
+				"evidence": "'کوڈ بیس کو کھنگال کر' present."
+			},
+			{
+				"id": "F14",
+				"severity": "NIT",
+				"key": "ui.agents.descriptions.copy_reviewer",
+				"status": "fixed",
+				"evidence": "'AI کے مخصوص انداز' present."
+			},
+			{
+				"id": "F15",
+				"severity": "NIT",
+				"key": "ui.agents.descriptions.tui_designer",
+				"status": "fixed",
+				"evidence": "'چھوٹے مقررہ ویوپورٹس' present."
+			},
+			{
+				"id": "F16",
+				"severity": "NIT",
+				"key": "ui.agents.descriptions.qa_tester",
+				"status": "fixed",
+				"evidence": "ریپازٹری gone; 'ریپوزٹری' present."
+			}
+		]
+	},
+	"fit": {
+		"ui.agents.descriptions.aida": {
+			"en_chars": 122,
+			"ur_chars": 117,
+			"ratio": 0.96
+		},
+		"ui.agents.descriptions.architect": {
+			"en_chars": 136,
+			"ur_chars": 149,
+			"ratio": 1.1
+		},
+		"ui.agents.descriptions.coder": {
+			"en_chars": 121,
+			"ur_chars": 120,
+			"ratio": 0.99
+		},
+		"ui.agents.descriptions.copy_reviewer": {
+			"en_chars": 177,
+			"ur_chars": 182,
+			"ratio": 1.03
+		},
+		"ui.agents.descriptions.designer": {
+			"en_chars": 123,
+			"ur_chars": 135,
+			"ratio": 1.1
+		},
+		"ui.agents.descriptions.librarian": {
+			"en_chars": 150,
+			"ur_chars": 155,
+			"ratio": 1.03
+		},
+		"ui.agents.descriptions.manager": {
+			"en_chars": 115,
+			"ur_chars": 113,
+			"ratio": 0.98
+		},
+		"ui.agents.descriptions.qa_tester": {
+			"en_chars": 165,
+			"ur_chars": 171,
+			"ratio": 1.04
+		},
+		"ui.agents.descriptions.reviewer": {
+			"en_chars": 126,
+			"ur_chars": 150,
+			"ratio": 1.19
+		},
+		"ui.agents.descriptions.scout": {
+			"en_chars": 133,
+			"ur_chars": 128,
+			"ratio": 0.96
+		},
+		"ui.agents.descriptions.tui_designer": {
+			"en_chars": 178,
+			"ur_chars": 185,
+			"ratio": 1.04
+		},
+		"ui.agents.descriptions.ux_reviewer": {
+			"en_chars": 135,
+			"ur_chars": 153,
+			"ratio": 1.13
+		},
+		"ui.agents.detail.install.action.install_to_edit": {
+			"en_chars": 15,
+			"ur_chars": 24,
+			"ratio": 1.6
+		},
+		"ui.agents.detail.install.action.installing": {
+			"en_chars": 11,
+			"ur_chars": 17,
+			"ratio": 1.55
+		},
+		"note": "Widest description ratio is reviewer at 1.19 (150 chars against 126) and ux_reviewer at 1.13; the sidecar budget is 'one roster line at 256 px, truncated with an ellipsis', and 150 cells fits two lines of the detail page without truncation mid-word. The two install labels are longer than English in cells but smaller than the button's own 256 px header budget; installing is the shorter of the two, so the swap shrinks the row rather than pushing it."
+	},
+	"mechanical": {
+		"json_valid": true,
+		"key_parity": true,
+		"key_order_identical": true,
+		"icu_parse": "pass — every value in both locales is literal ICU (no arguments, plurals, selects or rich-text tags), so placeholder/CLDR parity is vacuous rather than untested",
+		"identical_to_english": 0,
+		"nfc": true,
+		"bidi_controls": "none — no RLM/LRM/FSI/PDI in either file; the render layer applies isolation",
+		"urdu_letter_forms": "pass — no U+064A/U+0643/U+0649/U+0629/U+0640",
+		"punctuation": "U+06D4 on all 12 descriptions, U+2026 on installing, ، and ؛ where the source has them, ASCII ':' as the list colon (the catalogue has no separate Urdu colon and uses ':' throughout), no ASCII full stop or ASCII comma",
+		"latin_tokens": "preserved — AI, C, D, T, U, UX, QA, MR, PR, diff, Unicode; no Latin token added or dropped against English",
+		"line_endings": "LF",
+		"indent": "tab",
+		"commands_run": [
+			"shasum -a 256 on the four handed-over files (hashes recorded above)",
+			"node --input-type=module -e '… @formatjs/icu-messageformat-parser' from the repo root against both target files and both repo English files — exit 0, 12 + 2 keys parsed, zero ICU arguments",
+			"python3 (harness eval): key parity and order, NFC per value, bidi-control scan, Arabic-form letter scan, ASCII punctuation scan, Latin-token inventory diff against English, char counts and ratios",
+			"json.load(repo English) == json.load(handed-over English) — True for both files",
+			"node --input-type=module -e '… deriveReceiptAudit …' (scripts/i18n/ledger-rules.mjs) run against this receipt and the two namespace hash pairs — both namespaces accepted: ui.agents.descriptions clean-with-findings (0/0/3/1), ui.agents.detail.install clean (0/0/0/0), so ledger-assemble can derive rows from it once the catalogues land"
+		],
+		"not_run": [
+			"generate.mjs --check / check-strings / ledger-check / ledger-assemble against these bytes — the ur files are not in src/i18n/catalogues/ur yet, so those gates would report on other files, not on these values; ledger assembly belongs to the requesting session once the files land",
+			"rendered-frame capture — a copy audit of two namespaces does not render them; the roster-line fit above is measured in characters, not pixels"
+		],
+		"audit_notes_not_execution_log": "The judgements in round1_verification and in the findings are audit notes, not command output; the mechanical block is what the commands above actually printed."
+	},
+	"artifacts": {
+		"receipt": "scratchpad/agents-audit2/ur/receipt.json",
+		"verdict": "scratchpad/agents-audit2/ur/verdict.txt",
+		"round1_claims": "scratchpad/agents-audit2/ur/round1-claims.md",
+		"report": "scratchpad/agents-audit2/ur/findings.md",
+		"execution_log": "scratchpad/agents-audit2/ur/auditor.log — written by the harness for this session; it records the tool calls above and was not authored by the auditor as a claim"
+	},
+	"retention_note": "Staged in session scratch for the requesting session. On commit it belongs in tracked i18n/audits/evidence/ur/ui.agents.descriptions/<audit-id>/record.json and .../ui.agents.detail.install/<audit-id>/record.json, with the ledger row citing the path and a note <= 280 chars."
+}

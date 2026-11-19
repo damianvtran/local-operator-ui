@@ -29,7 +29,7 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export { useUiPreferencesStore, persistedUiPreferences, migrateUiPreferences, UI_PREFERENCES_VERSION, resolveRightSlotWidth, resolveRightSlotOccupied, resolveRightSlotYieldsSidebar, resolveDrawnRightSlotPane, EMPTY_RIGHT_SLOT_ROUTE, DEFAULT_RIGHT_SLOT_WIDTH, RUN_PANEL_MIN_PX, BROWSER_PANEL_MIN_PX, CONSOLE_PANEL_MIN_PX } from "./src/renderer/src/shared/store/ui-preferences-store";',
-			'export { CHAT_PANE_MIN_PX, CANVAS_PANE_MIN_PX, canvasDockWidth, resolveSidebarLayout, SIDEBAR_DEFAULT_WIDTH, SIDEBAR_COLLAPSED_WIDTH, SIDEBAR_DOCK_MIN_PX } from "./src/renderer/src/features/chat/chat-sidebar-layout";',
+			'export { CHAT_PANE_MIN_PX, CANVAS_PANE_MIN_PX, RIGHT_SLOT_MAX_PX, canvasDockWidth, resolveSidebarLayout, SIDEBAR_DEFAULT_WIDTH, SIDEBAR_COLLAPSED_WIDTH } from "./src/renderer/src/features/chat/chat-sidebar-layout";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 		loader: "ts",
@@ -65,11 +65,11 @@ const {
 	CONSOLE_PANEL_MIN_PX,
 	CHAT_PANE_MIN_PX,
 	CANVAS_PANE_MIN_PX,
+	RIGHT_SLOT_MAX_PX,
 	canvasDockWidth,
 	resolveSidebarLayout,
 	SIDEBAR_DEFAULT_WIDTH,
 	SIDEBAR_COLLAPSED_WIDTH,
-	SIDEBAR_DOCK_MIN_PX,
 } = mod;
 
 /** The store's state with the shared width set to `width` and one pane open. */
@@ -81,6 +81,7 @@ const withPane = (pane, width) => ({
 	isBrowserPaneOpen: pane === "browser",
 	isConsolePaneOpen: pane === "console",
 	isAskDrawerOpen: pane === "ask",
+	isCodeReviewPaneOpen: pane === "code",
 	/*
 	 * A route every pane is drawable on: the facts the slot's readers take since
 	 * #868. These cells are about the WIDTH arithmetic, so the route is the
@@ -89,55 +90,94 @@ const withPane = (pane, width) => ({
 	rightSlotRoute: { mounted: true, session: true },
 });
 
+/** Every occupant of the right slot, in the resolver's own precedence order. */
+const ALL_PANES = ["canvas", "ask", "run", "browser", "console", "code"];
+
 const ROW = 1400;
 
 test("a dragged width is what every pane renders: switching surfaces stops resizing (#677)", () => {
 	// The reporter's repro, at the resolver: the same row, the same shared 700,
-	// whichever of the three right-slot panes is up.
+	// whichever pane is up - the canvas and the asks drawer included, which the
+	// resolver used to hold to the canvas dock's own 560 cap.
 	const width = 700;
-	const values = ["run", "browser", "console"].map((pane) =>
+	const values = ALL_PANES.map((pane) =>
 		resolveRightSlotWidth(ROW, withPane(pane, width)),
 	);
-	assert.deepEqual(values, [width, width, width]);
-	// The canvas keeps its own dock cap on top of the shared width — its cap is
-	// the pane's maximum, not a fifth memory (see `resolveRightSlotWidth`).
-	assert.equal(
-		resolveRightSlotWidth(ROW, withPane("canvas", width)),
-		Math.min(width, canvasDockWidth(ROW)),
+	assert.deepEqual(
+		values,
+		ALL_PANES.map(() => width),
 	);
 });
 
 test("unset opens every pane at the ONE default, so switching panes never re-sizes the slot (#872 follow-up)", () => {
 	// The defect: with nothing dragged, run opened at 420, browser at 640, the
 	// console at 796 and the canvas at 800, so the slot (and the chat column
-	// beside it) moved on every switch. One number now, for the three panes
-	// that draw it as-is.
-	const values = ["run", "browser", "console"].map((pane) =>
+	// beside it) moved on every switch. One number now for every pane that can
+	// occupy the slot: the canvas and the asks drawer used to open at the dock's
+	// 560 even after the one default landed, which is the mismatch this cell
+	// pins shut.
+	const values = ALL_PANES.map((pane) =>
 		resolveRightSlotWidth(ROW, withPane(pane, 0)),
 	);
-	assert.deepEqual(values, [
-		DEFAULT_RIGHT_SLOT_WIDTH,
-		DEFAULT_RIGHT_SLOT_WIDTH,
-		DEFAULT_RIGHT_SLOT_WIDTH,
-	]);
+	assert.deepEqual(
+		values,
+		ALL_PANES.map(() => DEFAULT_RIGHT_SLOT_WIDTH),
+	);
 	// 640 is the number the browser already shipped and 80 console columns at the
 	// shipped face (`console-pane.test.mjs` pins the column arithmetic); stated
 	// here so a retune is a visible edit to a test, not a drift.
 	assert.equal(DEFAULT_RIGHT_SLOT_WIDTH, 640);
-	// The canvas and the asks drawer start from the same default and are then
-	// capped by the dock (560 at this row), so they are unchanged in practice.
-	for (const pane of ["canvas", "ask"]) {
+});
+
+/*
+ * ONE BAND FOR EVERY PANE (the uniform-widths change): at a row wide enough to
+ * host anything, every pane opens at the one default and every pane can be
+ * dragged to the one ceiling; at a row too narrow to hold a pane beside the
+ * conversation's floor, every pane takes the SAME leftover rather than one pane
+ * keeping a tighter private cap.
+ */
+test("every pane shares one default and one ceiling at a wide row, and the leftover keeps the 480 chat floor at a narrow one", () => {
+	const wide = 2800;
+	for (const pane of ALL_PANES) {
 		assert.equal(
-			resolveRightSlotWidth(ROW, withPane(pane, 0)),
-			Math.min(DEFAULT_RIGHT_SLOT_WIDTH, canvasDockWidth(ROW)),
+			resolveRightSlotWidth(wide, withPane(pane, 0)),
+			DEFAULT_RIGHT_SLOT_WIDTH,
+			`${pane} does not open at the slot's one default`,
 		);
-		assert.equal(resolveRightSlotWidth(ROW, withPane(pane, 0)), 560);
+	}
+	assert.equal(RIGHT_SLOT_MAX_PX, 1200);
+	for (const pane of ALL_PANES) {
+		assert.equal(
+			resolveRightSlotWidth(wide, withPane(pane, RIGHT_SLOT_MAX_PX)),
+			RIGHT_SLOT_MAX_PX,
+			`${pane} cannot be dragged to the slot's one ceiling`,
+		);
+		assert.equal(
+			resolveRightSlotWidth(wide, withPane(pane, RIGHT_SLOT_MAX_PX + 800)),
+			RIGHT_SLOT_MAX_PX,
+			`${pane} draws above the slot's one ceiling`,
+		);
+	}
+	// A row of 700 leaves 220 beside the conversation's 480, and every pane draws
+	// that leftover - the column keeps its floor whichever pane is up.
+	const narrow = CHAT_PANE_MIN_PX + 220;
+	for (const pane of ALL_PANES) {
+		assert.equal(
+			resolveRightSlotWidth(narrow, withPane(pane, 0)),
+			220,
+			`${pane} does not take the row's leftover`,
+		);
+		assert.equal(
+			resolveRightSlotWidth(narrow, withPane(pane, RIGHT_SLOT_MAX_PX)),
+			220,
+			`${pane} pushes the conversation below its floor`,
+		);
 	}
 });
 
 test("the one default is still bounded by the row: the conversation's floor wins (#872 follow-up)", () => {
 	// A row that cannot host 640 beside the 480 chat floor gives the pane the
-	// leftover, identically for the three panes - the default is a preference.
+	// leftover, identically for every pane - the default is a preference.
 	const row = CHAT_PANE_MIN_PX + 560;
 	const values = ["run", "browser", "console"].map((pane) =>
 		resolveRightSlotWidth(row, withPane(pane, 0)),
@@ -174,14 +214,17 @@ test("no pane resolves below its own floor, whatever it was shared from (#677 ro
 });
 
 test("from every floor upwards the one width still holds exactly (#677 round 1, D2)", () => {
-	// A lift, not a rewrite: at and above the highest floor every non-canvas
-	// pane renders the shared value itself — the switch-equality #677 promised
-	// is unchanged there. (The canvas keeps its dock cap on top, as before.)
+	// A lift, not a rewrite: at and above the highest floor every pane renders the
+	// shared value itself - the switch-equality #677 promised, now including the
+	// canvas and the asks drawer, whose dock cap no longer sits below it.
 	for (const width of [480, 700, 900]) {
-		const values = ["run", "browser", "console"].map((pane) =>
+		const values = ALL_PANES.map((pane) =>
 			resolveRightSlotWidth(ROW, withPane(pane, width)),
 		);
-		assert.deepEqual(values, [width, width, width]);
+		assert.deepEqual(
+			values,
+			ALL_PANES.map(() => width),
+		);
 	}
 });
 
@@ -191,10 +234,7 @@ test("the conversation's floor still wins over the shared width", () => {
 	const width = 900;
 	const row = CHAT_PANE_MIN_PX + 300;
 	assert.equal(resolveRightSlotWidth(row, withPane("browser", width)), 300);
-	assert.equal(
-		resolveRightSlotWidth(row, withPane("canvas", width)),
-		Math.min(width, canvasDockWidth(row)),
-	);
+	assert.equal(resolveRightSlotWidth(row, withPane("canvas", width)), 300);
 });
 
 /*
@@ -365,8 +405,9 @@ test("publishing facts that did not move wakes nobody and writes nothing (#868, 
 
 test("a flag that outlived its route does not collapse the docked sidebar (#868, review R2)", () => {
 	/*
-	 * The reporter's window is 1024 wide, inside the band (1024-1139 at the
-	 * default 260px sidebar) where a docked sidebar and a DOCKING canvas cannot
+	 * The reporter's window is 1024 wide, inside the band (980-1183 at the
+	 * default 260px sidebar and 44px rail) where a docked sidebar and a DOCKING
+	 * canvas cannot
 	 * both keep their floors, so a claimed canvas/asks pane steps the sidebar down
 	 * to the strip. That step is right for a pane that is drawn and wrong for a
 	 * flag with no pane behind it - the 1280px frames cannot show the difference.
@@ -375,17 +416,16 @@ test("a flag that outlived its route does not collapse the docked sidebar (#868,
 		resolveSidebarLayout(
 			width,
 			false,
-			false,
 			SIDEBAR_DEFAULT_WIDTH,
 			resolveRightSlotYieldsSidebar(state),
 		);
 	// The control: what the bare flag did. If this stops collapsing, the band
 	// moved and the cells below no longer discriminate.
 	assert.equal(
-		resolveSidebarLayout(1024, false, false, SIDEBAR_DEFAULT_WIDTH, true).mode,
+		resolveSidebarLayout(1024, false, SIDEBAR_DEFAULT_WIDTH, true).mode,
 		"strip",
 	);
-	for (const width of [SIDEBAR_DOCK_MIN_PX, 1100, 1139, 1183]) {
+	for (const width of [1024, 1100, 1139, 1183]) {
 		// Stale: the session drawer's flag on a draft, and a canvas flag on a
 		// route with no chat surface. Both must leave the sidebar docked.
 		for (const stale of [
@@ -418,7 +458,7 @@ test("a flag that outlived its route does not collapse the docked sidebar (#868,
 		}
 	}
 	// Outside the band nothing yields, drawn or not: 1184 keeps both floors (the
-	// band is 1024-1183 since the 44px panel rail joined the row's deficit, #872).
+	// band is 980-1183 since the 44px panel rail joined the row's deficit, #872).
 	assert.equal(
 		layoutFor(1184, claimed("canvas", route(true, false))).mode,
 		"docked",
@@ -555,8 +595,8 @@ test("a blob already at the current version is passed through untouched", () => 
  * would leave a v0 blob's key behind), and it reaches the live store through a
  * real rehydrate rather than only through the pure function.
  */
-test("the persist version is 4, adding user Files preferences after the v3 pane-memory migration", () => {
-	assert.equal(UI_PREFERENCES_VERSION, 4);
+test("the persist version is 6, retiring showAgentReasoning after the v5 appearance layers", () => {
+	assert.equal(UI_PREFERENCES_VERSION, 6);
 });
 
 test("a v1 blob loses only the retired chatMeasureWidth (#895)", () => {
@@ -576,6 +616,11 @@ test("a v1 blob loses only the retired chatMeasureWidth (#895)", () => {
 			closedSections: [],
 			kinds: [],
 		},
+		/* v5 seeds the appearance layers at their identity values. */
+		contrast: { dark: 0, light: 0 },
+		accent: { dark: { kind: "theme" }, light: { kind: "theme" } },
+		customAccents: [],
+		customThemeId: null,
 	});
 });
 
@@ -591,6 +636,10 @@ test("a v1 blob is passed through untouched, apart from the v3 handover", () => 
 			closedSections: [],
 			kinds: [],
 		},
+		contrast: { dark: 0, light: 0 },
+		accent: { dark: { kind: "theme" }, light: { kind: "theme" } },
+		customAccents: [],
+		customThemeId: null,
 	});
 	/*
 	 * AND A v1 BLOB THAT CARRIED A SLOT FLAG IS THE ORDINARY #894 UPGRADE: the step
@@ -653,6 +702,57 @@ test("a stored v1 blob with a customised measure rehydrates to a store without i
 		"the rewritten blob must not carry it forward",
 	);
 	assert.equal(written.state.rightSlotWidth, 640);
+	memory.delete("ui-preferences-storage");
+});
+
+/*
+ * v6: General Settings' "show agent reasoning" switch was removed (it changed
+ * nothing in the shipped app: the canonical transcript has no reasoning record
+ * kind), and with it the `showAgentReasoning` field. These pin that the store no
+ * longer exposes the field or its setter, that a stored v5 blob loses the stale
+ * key through a real rehydrate, and that the persisted projection cannot write it
+ * back.
+ */
+test("the store no longer exposes showAgentReasoning or its setter (v6)", () => {
+	const state = useUiPreferencesStore.getState();
+	assert.equal("showAgentReasoning" in state, false);
+	assert.equal("setShowAgentReasoning" in state, false);
+	assert.equal("showAgentReasoning" in persistedUiPreferences(state), false);
+});
+
+test("a v5 blob loses only the retired showAgentReasoning (v6)", () => {
+	const blob = {
+		showAgentReasoning: true,
+		themeName: "dracula",
+		contrast: { dark: 0, light: 0 },
+	};
+	const migrated = migrateUiPreferences({ ...blob }, 5);
+	assert.equal("showAgentReasoning" in migrated, false);
+	assert.deepEqual(migrated, {
+		themeName: "dracula",
+		contrast: { dark: 0, light: 0 },
+	});
+});
+
+test("a stored v5 blob with showAgentReasoning rehydrates without it, rewritten at the current version (v6)", async () => {
+	memory.set(
+		"ui-preferences-storage",
+		JSON.stringify({
+			state: { showAgentReasoning: true, themeName: "dracula" },
+			version: 5,
+		}),
+	);
+	await useUiPreferencesStore.persist.rehydrate();
+	const state = useUiPreferencesStore.getState();
+	assert.equal(
+		"showAgentReasoning" in state,
+		false,
+		"the stale key must not survive zustand's default merge",
+	);
+	assert.equal(state.themeName, "dracula", "the rest of the blob is kept");
+	const written = JSON.parse(memory.get("ui-preferences-storage"));
+	assert.equal(written.version, UI_PREFERENCES_VERSION);
+	assert.equal("showAgentReasoning" in written.state, false);
 	memory.delete("ui-preferences-storage");
 });
 
@@ -895,7 +995,7 @@ test("v4 Files sort/disclosure/group/type filter are persisted with no search qu
 		kinds: ["images"],
 	});
 	const written = JSON.parse(memory.get("ui-preferences-storage"));
-	assert.equal(written.version, 4);
+	assert.equal(written.version, UI_PREFERENCES_VERSION);
 	assert.deepEqual(written.state.finderFiles, {
 		sort: "size",
 		order: "desc",

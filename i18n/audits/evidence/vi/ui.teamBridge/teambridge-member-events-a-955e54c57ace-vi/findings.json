@@ -1,0 +1,10 @@
+[
+	{
+		"id": "VI-A1",
+		"severity": "minor",
+		"key": "ui.teamBridge.events.owner_added_agent",
+		"current": "{actor} đã thêm tác nhân {targets} của mình",
+		"proposed": "{actor} đã thêm tác nhân của mình: {targets}",
+		"reason": "With the rolled-up three-name list the possessive «của mình» trails the whole list and «tác nhân Ben, Sana và Ravi của mình» reads as one agent with three names; the colon separates the names from the possessive and fixes the single-name case too."
+	}
+]

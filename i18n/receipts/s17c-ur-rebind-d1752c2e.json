@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "convergence-rebind",
+  "locale": "ur",
+  "namespace": "ui.chat.run_details",
+  "pr": 1897,
+  "date": "2026-11-14",
+  "head": "dcfbcdbd0567f72233f5fb19c87b207ab7067aed",
+  "instance": "s17c-ur-rebind-d1752c2e",
+  "auditor": {
+    "agent": "translation-auditor",
+    "role": "independent translation auditor (team lopdev); not the translator, not the draft auditor, not the integrator",
+    "model": "deepseek/deepseek-flash",
+    "independence": "I translated none of these keys, ran no part of the S17c draft audit and integrated nothing; in this session I re-derived every check from the bytes myself (parent prefix, draft equality, key set, ICU parse and per-arm placeholders, format, glossary census), reading the prior records only after forming my own per-key judgment.",
+    "instance": "s17c-ur-rebind-d1752c2e"
+  },
+  "model": "deepseek/deepseek-flash",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": [
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.run_details.mcp.control.reconnect",
+      "note": "EN 'Reconnect' (9 chars, one word) -> 'دوبارہ منسلک کریں' (17, three words); the twin ui.chat.run_details.mcp.control.reload is the same shape, 'Reload' (6) -> 'دوبارہ لوڈ کریں' (15). Urdu has no one-word verb here and both renderings are fixed by the corpus (mcp_key.save 'محفوظ کریں اور دوبارہ منسلک کریں'; ui.browser.chrome.reload 'دوبارہ لوڈ کریں'), so I propose no divergent shorter form. Width read from the components, not from pixels: the shared Button is `whitespace-nowrap shrink-0` (shared/components/ui/button.tsx:132-133) and every row that holds these labels is `flex flex-wrap` (mcp-auth-dialog.tsx:436/490/532; run-detail-mcp.tsx), so an over-wide label wraps to a second line and costs height, never text — and a pre-existing 38-char words remedy (mcp.credentials_in_settings, 'اس سرور کی اسناد ترتیبات میں منظم کریں') already renders on the same action line, so 15-17 chars are within existing practice. Non-gating; still worth one rendered frame, because the sign-in dialog's failure footer now asks one row to hold Grant account access (19) + Enter API key (17) + دوبارہ منسلک کریں (17) together."
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.chat.run_details.job_cancel.cancelling",
+      "note": "EN 'Cancelling…' -> 'منسوخی جاری ہے…', while the two sibling button labels of the same state in this namespace read 'منسوخ ہو رہی ہے…' (wake.cancelling, wake_cancel.cancelling) and monitor_cancel.stopping reads 'روکی جا رہی ہے…'. One panel, two shapes for one button state. Both are grammatical, and the noun form has a real virtue: it asserts no gender for جاب (no corpus string agrees an adjective with جاب; 'جاب کی منسوخی' agrees with منسوخی, not with جاب). Keep as-is unless the sibling labels are being unified anyway; if so, 'منسوخ ہو رہی ہے…' is the shape to converge on."
+    }
+  ],
+  "binding": "Verified on the bytes at head dcfbcdbd0567, with every digest re-hashed before reading anything: merged ur d1752c2e…, en 1f1bf1d0…, sidecar 8a329d4c… and draft 996383ff… all equal to the expected values. (1) PARENT — all 109 parent pairs (git show ec00119944d:…) are present in the merged file, value-for-value equal and in the same order, and the check is byte-exact rather than approximate: the merged file's first 11902 bytes are byte-identical to the parent's (of 11905), the divergence being the parent's trailing '\\n}\\n' after its last value's closing quote, which the merged file replaces with ',\\n\\t\"ui.chat.run_details.mcp_failure.lead.probe\": …' — i.e. the only change to the old text is the comma JSON requires plus the appended pairs. (2) DRAFT — the merged file's last 36 pairs equal ur.v2.json's 36 pairs value-for-value and in the same order, and the merged file's 36 new keys are exactly the draft's keys in the draft's order. (3) KEY SET — the merged key set equals the English 145-key set both ways (no missing, no extra) AND in the same order, and equals the sidecar's key set; the file holds exactly 145 key lines, so no duplicate keys. All 145 ur and 145 en values parse with the repository's own @formatjs/icu-messageformat-parser (resolved read-only from /Users/damian/local-operator-ui/node_modules, v3.5.21): 0 parse failures, 0 argument-name mismatches, 0 tag-set mismatches, 0 select variable/arm mismatches, 0 number/date skeleton mismatches (every '::group-off' style survives exactly), 0 exact-'=N'-arm differences. Disclosure: my first pass fed the parser the English file from the PRIMARY checkout, which is a stale 84-key revision (sha 77471485…); I caught it on the key count, confirmed the 84 shared values are byte-identical to the audited English (so nothing was mis-judged), then re-pointed the harness at the worktree file with its sha256 asserted inside the script and re-ran over all 145. 14 plural keys on each side; the 5 new ones (mcp.tool_count, mcp.connected_tally, wake.cadence_remaining, monitor.armed_count, monitor.failed_count) carry one+other — exactly the two CLDR categories Urdu needs — plus an '=1' arm wherever English had one, every arm is a legal CLDR category, every arm carries the same placeholder set as its English counterpart (extra 'one' arms mirror 'other'), and the count is printed in every arm through the *_display placeholder the sidecars mandate (my script's COUNT_UNUSED flags are artefacts of that indirection, not dropped counts). The 9 pre-existing plural keys (3 of them carrying a '=1' arm: monitors.more, wake.more, wake.armed_count) are outside this delta and are not gated. (4) FORMAT — TAB indent on all 145 value lines, exactly one trailing newline, no BOM, no CRLF, no literal backslash-u escapes, file and every key and value NFC, and json.dumps(ensure_ascii=False, indent='\\t') + '\\n' reproduces the merged file byte-for-byte. (5) CONTENT — I read all 36 new values myself against English and the sidecar and hold them accurate, idiomatic and in the corpus register: the ten lead.* clauses are complete past-tense negatives ending in ہو سکا / کیا جا سکا / ہو سکی / ہوئیں with no terminal punctuation, so they read correctly before each separator the app actually uses ('{lead}۔', '{lead}:', '{lead} کیونکہ'), and mcp_failure.with_reason is byte-different from English because it uses the Urdu full stop. Glossary, censused over the 9,245 string-valued ur entries in 162 namespace files rather than spot-checked: turn→باری (matches ui.chat.checkpoint.turn '…میں سے باری {turn, number}'), monitor→نگرانی/نگرانیاں (0 renders as مانیٹر), wake→بیداری/بیداریاں, job→جاب, tool→ٹول/ٹولز, key→کلید/کلیدیں, connected→منسلک, disconnected→منقطع, Settings→ترتیبات, credentials→اسناد, account→اکاؤنٹ, cancel→منسوخ, check→جانچ, delivery→ترسیل, encrypted secret store→رمز شدہ خفیہ اسٹور, reload→دوبارہ لوڈ, repair→درست کریں (r1's F1 fix: مرمت now has 0 hits in the corpus). No term inside the 36 has two renderings. Register is the locale's own: every imperative is the formal کریں form, 0 informal تم/تیرا/تمہارا anywhere in the corpus, no T/V mix. RTL (ur): sentences close with ۔, the question with ؟, clauses join with ،, quotes are the corpus's own “…” (not mirrored), and placeholders keep English order except mcp.connected_tally, where '{total_display} میں سے {connected_display} منسلک' is the correct Urdu order for 'out of {total}'; no LRM/RLM or bidi isolates were added, and none exist in English. (6) CARRIED FINDINGS — I reached the job_cancel.cancelling shape nit before opening the prior records and agree with it; I re-judged the reconnect/reload width flag myself against the components (which the draft audit left unread) and hold it as a non-gating MINOR to be settled by a rendered frame. r1's F1 is closed in these bytes ('…یا اسے درست کریں…'). (7) OBSERVATION, pre-existing and outside this delta, recorded so it is not lost: mcp_failure.busy renders English 'from the server's row' as «سرور کی قطار سے» (a queue), while the new job_cancel.body uses ردیف for 'row' — the new key is the correct one; the old key is a separate cleanup and does not gate PR #1897. NOT VERIFIED: no rendered frame (both width judgements are component markup plus corpus precedent, not pixels), no TUI/Electron surface, and I did not re-run scripts/i18n/locale-parity.test.mjs (the coder reports it green; I ran no tests, no tsc, no build, no install). ur is RTL and the bidi-specific items above were judged from the bytes and the corpus, not from a screenshot.",
+  "scope": "ui.chat.run_details for ur: 145 keys at PR head dcfbcdbd0567; 109 byte-identical to parent ec00119944d, 36 new read against English and the sidecar",
+  "revisions": {
+    "parent": "ec00119944dabb6a44ed8130f8864280401b1714",
+    "head": "dcfbcdbd0567f72233f5fb19c87b207ab7067aed"
+  },
+  "en_sha256": "1f1bf1d066875db81d4b5728e6a3f88c47a432d75aa8e75b92cdbefc42f2eb66",
+  "context_sha256": "8a329d4c5c6122e35986b8de3d04b6f25dfb3979349cd1675fed1b4cbc2497a6",
+  "target_sha256": "d1752c2e57212145f9305f32e900cb4a621352540abdce5f5fec15cc78eaaa41",
+  "sha256": {
+    "ur": "d1752c2e57212145f9305f32e900cb4a621352540abdce5f5fec15cc78eaaa41",
+    "en": "1f1bf1d066875db81d4b5728e6a3f88c47a432d75aa8e75b92cdbefc42f2eb66"
+  },
+  "draft_sha256": "996383ff1cf7001cd1e8d820c13b10ab09bb0b4c1fe961e2def65c4de3e58187"
+}

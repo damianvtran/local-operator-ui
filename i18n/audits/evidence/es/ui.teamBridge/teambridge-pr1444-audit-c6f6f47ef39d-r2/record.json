@@ -1,0 +1,183 @@
+{
+  "audit_id": "teambridge-pr1444-audit-c6f6f47ef39d-r2",
+  "date": "2026-10-28",
+  "locale": "es",
+  "namespace": "ui.teamBridge",
+  "source_commit": "27d9d0032cb5ef49a9b3ce4d107f4b022ff34a46",
+  "translator": {
+    "agent": "translator",
+    "session": "not recorded in the commit (one translator subagent per locale)",
+    "model": "anthropic/claude-opus-5-5",
+    "fallback": "none recorded",
+    "commit": "27d9d0032cb5ef49a9b3ce4d107f4b022ff34a46",
+    "method": "LLM reasoning, no MT service (commit message of 27d9d0032c)"
+  },
+  "auditors": [
+    {
+      "agent": "i18n-auditor",
+      "model": "anthropic/claude-opus-5-5",
+      "date": "2026-10-28",
+      "result": "clean-with-findings",
+      "instance": "c6f6f47ef39d-r2-es",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 0
+      },
+      "receipt": "i18n/receipts/c6f6f47ef39d-r2-es.json",
+      "receipt_sha256": "493e9cc667e03b3a4b41d0db7db0161035a0c9ba34e4ba7fa91a7e9c7ea9b4cc",
+      "scope": "PR #1444 round 2: 13 ui.teamBridge.schedule edit/conflict keys added in 27d9d0032c; other 241 keys byte-identical to origin/main",
+      "note": "PR #1444 R2 13-key delta (schedule.edit_*/conflict_*); prior N2 resolved; 1 open MINOR M1 (conflict_images_removed eliminar->quitar), see receipt"
+    }
+  ],
+  "independence": "Independent auditor (reviewer role, session c6f6f47ef39d). It authored none of the audited strings and edited no catalogue byte. The translator was the `translator` specialist (one subagent per locale, commit 27d9d0032c). This run wrote only these receipts (via ledger-assemble.mjs), the per-locale evidence records, and the ledger rows (via ledger-assemble.mjs).",
+  "files": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+      "sha256": "15702697617ce227e7fefe665077e28b3a26a7f9190beeb5884f252884ec9e04"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/es/ui.teamBridge.json",
+      "sha256": "efdc4a0c79f5e672e0e9e124d1b5d53ef3539980a824faa557ab0b1f28a5f974"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+      "sha256": "20a50fa1d840c1445aa4afe9320dbc911c47567aa742a51c95a2d695f1fade36"
+    }
+  },
+  "audited": {
+    "ui.teamBridge.schedule.edit_failed": {
+      "en": "Couldn't save your changes. They're still here. Try again.",
+      "target": "No se pudieron guardar tus cambios. Siguen aquí. Vuelve a intentarlo."
+    },
+    "ui.teamBridge.schedule.edit_conflict": {
+      "en": "This message changed on another device.",
+      "target": "Este mensaje cambió en otro dispositivo."
+    },
+    "ui.teamBridge.schedule.edit_gone": {
+      "en": "This message was cancelled or already sent, so it can't be changed.",
+      "target": "Este mensaje se canceló o ya se envió, así que ya no se puede editar."
+    },
+    "ui.teamBridge.schedule.edit_gone_title": {
+      "en": "Message no longer scheduled",
+      "target": "El mensaje ya no está programado"
+    },
+    "ui.teamBridge.schedule.conflict_body_replaced": {
+      "en": "Your text was replaced by the version from the other device.",
+      "target": "Tu texto se reemplazó por la versión del otro dispositivo."
+    },
+    "ui.teamBridge.schedule.conflict_body_changed": {
+      "en": "The text was changed on the other device.",
+      "target": "Se cambió el texto en el otro dispositivo."
+    },
+    "ui.teamBridge.schedule.conflict_time_replaced": {
+      "en": "Your new time was replaced by the time set on the other device.",
+      "target": "Tu nueva hora se reemplazó por la del otro dispositivo."
+    },
+    "ui.teamBridge.schedule.conflict_time_changed": {
+      "en": "The send time was changed on the other device.",
+      "target": "Se cambió la hora de envío en el otro dispositivo."
+    },
+    "ui.teamBridge.schedule.conflict_images_added": {
+      "en": "{count, plural, one {An image was added on the other device.} other {# images were added on the other device.}}",
+      "target": "{count, plural, one {Se añadió una imagen en el otro dispositivo.} many {Se añadieron # de imágenes en el otro dispositivo.} other {Se añadieron # imágenes en el otro dispositivo.}}"
+    },
+    "ui.teamBridge.schedule.conflict_images_removed": {
+      "en": "{count, plural, one {An image was removed on the other device.} other {# images were removed on the other device.}}",
+      "target": "{count, plural, one {Se eliminó una imagen en el otro dispositivo.} many {Se eliminaron # de imágenes en el otro dispositivo.} other {Se eliminaron # imágenes en el otro dispositivo.}}"
+    },
+    "ui.teamBridge.schedule.conflict_review": {
+      "en": "The latest version is shown, with the rest of your changes kept. Review it and try again.",
+      "target": "Se muestra la versión más reciente, con el resto de tus cambios conservados. Revísala y vuelve a intentarlo."
+    },
+    "ui.teamBridge.schedule.conflict_nothing_left": {
+      "en": "The latest version is shown. None of your changes are left to save.",
+      "target": "Se muestra la versión más reciente. No queda ningún cambio tuyo por guardar."
+    },
+    "ui.teamBridge.schedule.conflict_restore_body": {
+      "en": "Use my text instead",
+      "target": "Usar mi texto en su lugar"
+    }
+  },
+  "notes": "Re-checked prior nit N2: edit_gone now reads 'así que ya no se puede editar' — 'ya no' restored, and 'editar' matches schedule.sending's 'ya no se puede editar'; N2 resolved. Accuracy: replaced vs changed pairs keep the 'your edit lost' vs 'you had not edited' split; conflict_nothing_left 'No queda ningún cambio tuyo por guardar' and conflict_review match their notes; edit_gone offers no retry. Overflow: edit_gone_title 32 vs 27 cells, conflict_restore_body 25 vs 19 — inside es's documented 15-25% and the sidecar permits wrapping; no materially long label. Finding M1 is the only defect.",
+  "findings": [
+    {
+      "id": "M1",
+      "severity": "minor",
+      "locale": "es",
+      "key": "ui.teamBridge.schedule.conflict_images_removed",
+      "current": "{count, plural, one {Se eliminó una imagen en el otro dispositivo.} many {Se eliminaron # de imágenes en el otro dispositivo.} other {Se eliminaron # imágenes en el otro dispositivo.}}",
+      "proposed": "{count, plural, one {Se quitó una imagen en el otro dispositivo.} many {Se quitaron # de imágenes en el otro dispositivo.} other {Se quitaron # imágenes en el otro dispositivo.}}",
+      "summary": "Glossary drift: every image 'remove' in this namespace is 'quitar' (attachments.remove_all 'Quitar imágenes', error_upload 'quítala', expired_staged 'Quítala', send_blocked 'Quita', error_quota 'quita'); 'eliminar' appears only here and in invitations.failed.gone, where a conversation is deleted. Removing an image from a message is not deleting it, so the notice should reuse the verb of the Remove action the person knows.",
+      "disposition": "open - minor; one-word fix for the translator, ICU skeleton unchanged; not a merge blocker"
+    }
+  ],
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide_es": {
+      "path": "~/local-operator/i18n/style-guides/es.md",
+      "revision": "95dea370856c5ab99309246b5e41869ea5c69d7a",
+      "sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+    },
+    "style_guide_fr": {
+      "path": "~/local-operator/i18n/style-guides/fr.md",
+      "revision": "24d328a19a8b39ba4d6e824b8bf2ebf1bb629ffe",
+      "sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+    },
+    "style_guide_hi": {
+      "path": "~/local-operator/i18n/style-guides/hi.md",
+      "revision": "14f73c4dcce62d858508fb6313b7f0416999a63b",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    },
+    "style_guide_ru": {
+      "path": "~/local-operator/i18n/style-guides/ru.md",
+      "revision": "24d328a19a8b39ba4d6e824b8bf2ebf1bb629ffe",
+      "sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+    },
+    "style_guide_ur": {
+      "path": "~/local-operator/i18n/style-guides/ur.md",
+      "revision": "24d328a19a8b39ba4d6e824b8bf2ebf1bb629ffe",
+      "sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+    },
+    "style_guide_vi": {
+      "path": "~/local-operator/i18n/style-guides/vi.md",
+      "revision": "6c085b93b6ecc1a27a0daab552302687b059a911",
+      "sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+    },
+    "style_guide_zh-CN": {
+      "path": "~/local-operator/i18n/style-guides/zh-CN.md",
+      "revision": "ad1de332210d47cc01e62393c2d0cd4708e2312b",
+      "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+    },
+    "core_ref": "dadf192382fbce7cb97d8cfbdc99ff1c931d97b6",
+    "docs/I18N.md": {
+      "path": "docs/I18N.md",
+      "sha256": "9a4bde8d1c161286160be4a4ae1c7655615dbf39047052550b725a3da2eb00e2"
+    },
+    "AGENTS.md": {
+      "path": "AGENTS.md",
+      "sha256": "b05f5fd1472fe1617783e51bc709df8e6f079a87ceda0f2ff97fff539be320af"
+    },
+    "scripts/i18n/ledger-rules.mjs": {
+      "path": "scripts/i18n/ledger-rules.mjs",
+      "sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6"
+    },
+    "scripts/i18n/ledger-assemble.mjs": {
+      "path": "scripts/i18n/ledger-assemble.mjs",
+      "sha256": "66ec03de791b515424b8d9a93094315111c179c149b35a5323d80c9c38644657"
+    }
+  },
+  "artifacts": {
+    "receipt": {
+      "path": "i18n/receipts/c6f6f47ef39d-r2-es.json",
+      "sha256": "493e9cc667e03b3a4b41d0db7db0161035a0c9ba34e4ba7fa91a7e9c7ea9b4cc"
+    },
+    "ledger_row": "i18n/ledger.json"
+  },
+  "limitations": "No rendered-fit or screenshot evidence: this audit rendered nothing (no browser capture was run). Widths were measured in cells only; the sidecar allows wrapping for all 13 keys. The translator's per-locale subagent session ids are not in the commit, so translator.session is not recorded."
+}

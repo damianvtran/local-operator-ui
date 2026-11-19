@@ -1,5 +1,8 @@
 import { cn } from "@shared/lib/utils";
-import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import {
+	type CanonicalSessionRow,
+	useCanonicalSessionsStore,
+} from "@shared/store/canonical-sessions-store";
 import type { Meta, StoryObj } from "@storybook/react";
 import { screen, userEvent } from "@storybook/test";
 import { type FC, useEffect, useState, useSyncExternalStore } from "react";
@@ -94,6 +97,9 @@ type WireRow = {
 	 */
 	subagents_running?: number | null;
 	subagents_queued?: number | null;
+	jobs_running?: number | null;
+	waiting_on?: number | null;
+	background_work?: boolean;
 	/**
 	 * The catalogue's archive flag, which the row's leading mark reads. Declared
 	 * here because the acceptance list needs one cell with BOTH conditional marks
@@ -2403,6 +2409,27 @@ export const MarkAllReadNarrowMinimum: Story = {
 	},
 };
 
+/*
+ * THE SIDEBAR'S FLOOR (`SIDEBAR_MIN_WIDTH`, 220), where the label must be
+ * glyph-only in every language. 240 above is the old "minimum" and no longer the
+ * narrowest the user can drag to. Render it per language with
+ * `?args=locale:fr` / `locale:vi`: before the shed was wired onto the row the
+ * control is drawn in, those two lost the section name entirely here. The unit
+ * test can only assert the wiring (jsdom has no layout); this frame is the
+ * rendered check.
+ */
+export const MarkAllReadNarrowFloor: Story = {
+	render: () => {
+		fixtures();
+		roster = pileRoster();
+		return <Page sidebarWidth={220} />;
+	},
+	play: async () => {
+		await catalogueSettled(PILE.length);
+		await sleep(300);
+	},
+};
+
 export const MarkAllReadFiltered: Story = {
 	render: () => {
 		/*
@@ -2894,9 +2921,8 @@ const subagentRunningRoster = (): WireRow[] => [
 		undefined,
 		{ subagents_running: 1, subagents_queued: 0 },
 	),
-	// S8 - no double draw: the primary running mark (the three-bead trio,
-	// `SubagentRunningMark`) plus the queued glyph, and NOTHING of the running
-	// half.
+	// S8 - delegating with a queue: the resting ring plus the running lane
+	// (the trio and the queued Timer are retired, 2026-11-07).
 	wireRow(
 		CELL_DELEG_BOTH,
 		"Audit the vendor list",
@@ -2907,14 +2933,8 @@ const subagentRunningRoster = (): WireRow[] => [
 		undefined,
 		{ subagents_running: 2, subagents_queued: 1 },
 	),
-	// S9 - THE REGRESSION CELL: a delegating row with nothing queued must render
-	// exactly as it does today. Compare against the committed
-	// `delegating-row-default/` frames: the three-bead trio in the accent, 12x12
-	// inside the slot's 16px box, no second glyph and no added clause. Those
-	// frames were re-taken by the trio pass (2026-10-06) - this story's own cell
-	// is one of the nine it re-shot - so they draw the mark this build draws
-	// rather than a glyph three revisions back, and the story's claim about the
-	// SHAPE of the state now has a frame beside it that agrees.
+	// S9 - a delegating row with nothing queued: the resting ring plus the
+	// running lane, no added clause (the label already spells the count).
 	wireRow(
 		CELL_DELEG_RUNNING,
 		"Reconcile the supplier ledger",
@@ -3163,16 +3183,16 @@ export const SubagentSelectedRow: Story = {
 		 * NO DRAFT IS STAGED, and that has to be SAID rather than assumed. The
 		 * canonical store persists `activeDraftKey` (`partialize` names it), so a
 		 * profile that staged a draft in any earlier story hydrates the key here -
-		 * and the row's own definition of current is
-		 * `selectedConversation === row.session_id && !activeDraftKey`
-		 * (`chat-sidebar.tsx`). An inherited key therefore suppresses the
-		 * `rowSelected` ground this frame exists to photograph, while the frame
-		 * still claims "the operator's own selected row": MEASURED, with a hydrated
-		 * `draft:<uuid>` both rows painted resting and this entry's own guard
-		 * (`[data-chat-row][aria-current="page"]`) refused to write the frame.
-		 * Stated in the story rather than fixed in the rig because the app's own
-		 * rule is the thing under test, and a story that needs "no draft" has to
-		 * establish it the way the app does.
+		 * and the row's own definition of current is `currentSessionRowId`
+		 * (`draft-rows.ts`): with a draft active it is that draft's created
+		 * session, never `selectedConversation`. An inherited key therefore
+		 * suppresses the `rowSelected` ground this frame exists to photograph,
+		 * while the frame still claims "the operator's own selected row":
+		 * MEASURED, with a hydrated `draft:<uuid>` both rows painted resting and
+		 * this entry's own guard (`[data-chat-row][aria-current="page"]`)
+		 * refused to write the frame. Stated in the story rather than fixed in
+		 * the rig because the app's own rule is the thing under test, and a story
+		 * that needs "no draft" has to establish it the way the app does.
 		 */
 		useCanonicalSessionsStore.setState({ activeDraftKey: null });
 		entities = null;
@@ -3300,5 +3320,442 @@ export const DelegatingRowMinimum: Story = {
 	play: async () => {
 		await catalogueSettled(5);
 		await sleep(300);
+	},
+};
+
+/** A parked wait is still Running; its hourglass must not borrow busy's motion. */
+export const WaitingRow: Story = {
+	render: () => {
+		fixtures();
+		roster = [
+			wireRow(
+				"b4c5d6e7f809",
+				"Wait for the validation jobs",
+				1_760_003_600,
+				{ code: "waiting", label: "Waiting on 2 jobs · 1 subagent running" },
+				1,
+			),
+		];
+		return <Page sidebarWidth={360} />;
+	},
+	play: async () => {
+		await catalogueSettled(1);
+		const row = screen.getByRole("button", {
+			name: /Waiting on 2 jobs · 1 subagent running.*Wait for the validation jobs/,
+		});
+		if (
+			row.closest("[data-chat-section]")?.getAttribute("data-chat-section") !==
+			"running"
+		)
+			throw new Error("Waiting row must remain under Running");
+		if (
+			!row.querySelector(".lucide-hourglass") ||
+			row.querySelector(".animate-spin")
+		)
+			throw new Error("Waiting row must draw a static hourglass");
+	},
+};
+
+/** Exercise the same settlement seam as the ambient peer read, including a stale reachable row. */
+export const RemoteLinkDown: Story = {
+	render: () => {
+		fixtures();
+		roster = [
+			wireRow("c5d6e7f8091a", "Local comparison", 1_760_003_600, OPEN, 1),
+		];
+		return <Page sidebarWidth={360} />;
+	},
+	play: async () => {
+		await catalogueSettled(1);
+		const store = useCanonicalSessionsStore.getState();
+		const at = store.beginAnswer();
+		store.settlePeerCatalogue(
+			[
+				{
+					session_id: "d6e7f8091a2b",
+					title: "Remote validation",
+					locality: "remote",
+					owner_device: "synthetic-peer",
+					owner_device_name: "Test peer",
+					reachable: true,
+					updated_at: Date.now() / 1000,
+					status: { code: "idle", label: "Idle" },
+				},
+			],
+			at,
+			{
+				"synthetic-peer": {
+					reachable: false,
+					last_seen_at: Date.now() / 1000 - 240,
+					reason: "relay timeout",
+					at,
+				},
+			},
+		);
+		await sleep(100);
+		const row = screen.getByRole("button", {
+			name: /link down · last seen .*ago.*Remote validation/,
+		});
+		if (
+			!row.querySelector(".lucide-wifi-off") ||
+			!row.textContent?.includes("last seen")
+		)
+			throw new Error(
+				"Remote row must expose link loss and last contact visibly and accessibly",
+			);
+	},
+};
+
+/** The backend's remote delegating row uses the same ring + running lane as a local row. */
+export const RemoteDelegating: Story = {
+	render: () => {
+		fixtures();
+		roster = [
+			wireRow("e7f8091a2b3c", "Local comparison", 1_760_003_600, OPEN, 1),
+		];
+		return <Page sidebarWidth={360} />;
+	},
+	play: async () => {
+		await catalogueSettled(1);
+		const store = useCanonicalSessionsStore.getState();
+		store.settlePeerCatalogue(
+			[
+				{
+					session_id: "f8091a2b3c4d",
+					title: "Remote delegated validation",
+					locality: "remote",
+					owner_device: "synthetic-delegating-peer",
+					owner_device_name: "Test peer",
+					reachable: true,
+					updated_at: Date.now() / 1000,
+					status: { code: "delegating", label: "1 subagent running" },
+					subagents_running: 1,
+					subagents_queued: 0,
+				},
+			],
+			store.beginAnswer(),
+		);
+		await sleep(100);
+		const row = screen.getByRole("button", {
+			name: /1 subagent running.*Remote delegated validation/,
+		});
+		if (
+			row.closest("[data-chat-section]")?.getAttribute("data-chat-section") !==
+			"running"
+		)
+			throw new Error("Remote delegating row must remain under Running");
+		if (!row.querySelector("[data-background-work]"))
+			throw new Error(
+				"Remote delegating row must render the running lane under its ring",
+			);
+	},
+};
+
+/**
+ * Same row, four device facts: the shipped legacy symptom, the relay's grace,
+ * its escalation and its recovery. No arbitrary UI timer: the ambient peer
+ * catalogue owns the verdict, exactly as in production (core #2755).
+ */
+const remotePresenceStory = (
+	state: "legacy" | "reconnecting" | "down" | "recovered",
+): Story => ({
+	render: () => {
+		fixtures();
+		roster = [
+			wireRow("a1b2c3d4e5f6", "Local comparison", 1_760_003_600, OPEN, 1),
+		];
+		return <Page sidebarWidth={360} />;
+	},
+	play: async () => {
+		await catalogueSettled(1);
+		const store = useCanonicalSessionsStore.getState();
+		const at = store.beginAnswer();
+		store.settlePeerCatalogue(
+			[
+				{
+					session_id: "b2c3d4e5f6a1",
+					title: "Remote validation",
+					locality: "remote",
+					owner_device: "synthetic-presence-peer",
+					owner_device_name: "Test peer",
+					reachable: true,
+					updated_at: Date.now() / 1000,
+					status: { code: "idle", label: "Idle" },
+				},
+			],
+			at,
+			{
+				"synthetic-presence-peer": {
+					reachable: state === "recovered",
+					last_seen_at: state === "legacy" ? null : Date.now() / 1000 - 180,
+					reason: state === "recovered" ? null : "relay timeout",
+					redial_state:
+						state === "reconnecting" || state === "down" ? state : null,
+					at,
+				},
+			},
+		);
+		await sleep(100);
+	},
+});
+
+export const RemotePresenceBefore = remotePresenceStory("legacy");
+export const RemotePresenceReconnecting = remotePresenceStory("reconnecting");
+export const RemotePresenceDown = remotePresenceStory("down");
+export const RemotePresenceRecovered = remotePresenceStory("recovered");
+
+/*
+ * BACKGROUND WORK AFTER THE TURN (operator report, 2026-11-07): a session whose
+ * turn has ended but whose subagent / job / wait is still running stays under
+ * Running and draws the RUNNING LANE (a static 10x2 accent bar) under whatever
+ * glyph its code draws; the tooltip appends "1 subagent, 1 job running". The
+ * roster is the status matrix of the design spec: every glyph with the lane,
+ * the delegating and queued-only rings, a remote row, and two rows that must
+ * NOT draw it (a stale remote link, and a session with no work). The second
+ * story is the same roster after every child ended - one frame per row, so
+ * each re-files to its time section with the lane gone in the same render.
+ */
+const BG_IDLE = "b1a0c0d0e001";
+const BG_COMPLETE = "b1a0c0d0e002";
+const BG_UNSEEN = "b1a0c0d0e003";
+const BG_APPROVAL = "b1a0c0d0e004";
+const BG_ERROR = "b1a0c0d0e005";
+const BG_BUSY = "b1a0c0d0e006";
+const BG_ATTACHED = "b1a0c0d0e007";
+const BG_DELEGATING = "b1a0c0d0e008";
+const BG_QUEUED = "b1a0c0d0e009";
+const BG_WAIT = "b1a0c0d0e00a";
+const BG_NONE = "b1a0c0d0e00b";
+const BG_REMOTE = "b1a0c0d0e0r1";
+const BG_REMOTE_DOWN = "b1a0c0d0e0r2";
+
+const bgWork = (fields: Partial<WireRow>, active = true): Partial<WireRow> => ({
+	background_work: active,
+	subagents_running: 0,
+	subagents_queued: 0,
+	jobs_running: 0,
+	waiting_on: 0,
+	...(active ? fields : {}),
+});
+
+const backgroundWorkRoster = (active: boolean): WireRow[] => [
+	wireRow(
+		BG_IDLE,
+		"Rebuild the docs site (turn ended, children at work)",
+		1_760_003_900,
+		{ code: "idle", label: "Idle" },
+		20,
+		undefined,
+		undefined,
+		bgWork({ subagents_running: 1, jobs_running: 1 }, active),
+	),
+	wireRow(
+		BG_COMPLETE,
+		"Reconcile the supplier ledger",
+		1_760_003_850,
+		COMPLETE,
+		19,
+		undefined,
+		undefined,
+		bgWork({ jobs_running: 2 }, active),
+	),
+	wireRow(
+		BG_UNSEEN,
+		"Quarterly revenue model",
+		1_760_003_800,
+		COMPLETE,
+		18,
+		undefined,
+		unseenAt(BG_UNSEEN),
+		bgWork({ subagents_running: 2, subagents_queued: 1 }, active),
+	),
+	wireRow(
+		BG_APPROVAL,
+		"Deploy the staging migration",
+		1_760_003_750,
+		{ code: "approval", label: "Approval needed" },
+		17,
+		undefined,
+		undefined,
+		bgWork({ jobs_running: 1 }, active),
+	),
+	wireRow(
+		BG_ERROR,
+		"Backfill the metrics table",
+		1_760_003_700,
+		{ code: "error", label: "Error" },
+		16,
+		undefined,
+		undefined,
+		bgWork({ subagents_running: 1 }, active),
+	),
+	wireRow(
+		BG_BUSY,
+		"Migrate the deploy script",
+		1_760_003_650,
+		BUSY,
+		15,
+		undefined,
+		undefined,
+		bgWork({ subagents_running: 3 }, active),
+	),
+	wireRow(
+		BG_ATTACHED,
+		"Draft the migration runbook",
+		1_760_003_600,
+		OPEN,
+		14,
+		undefined,
+		undefined,
+		bgWork({ jobs_running: 1 }, active),
+	),
+	wireRow(
+		BG_DELEGATING,
+		"Audit the vendor list",
+		1_760_003_550,
+		active ? DELEGATING : { code: "idle", label: "Idle" },
+		13,
+		undefined,
+		undefined,
+		bgWork({ subagents_running: 2, subagents_queued: 1 }, active),
+	),
+	wireRow(
+		BG_QUEUED,
+		"Index the support archive",
+		1_760_003_500,
+		active ? DELEGATING_QUEUED : { code: "idle", label: "Idle" },
+		12,
+		undefined,
+		undefined,
+		bgWork({ subagents_queued: 2 }, active),
+	),
+	wireRow(
+		BG_WAIT,
+		"Watch the nightly build",
+		1_760_003_450,
+		{ code: "idle", label: "Idle" },
+		11,
+		undefined,
+		undefined,
+		bgWork({ waiting_on: 1 }, active),
+	),
+	wireRow(
+		BG_NONE,
+		"Scratch notes on the vendor schema",
+		1_760_003_400,
+		{ code: "idle", label: "Idle" },
+		10,
+		undefined,
+		undefined,
+		bgWork({}, false),
+	),
+];
+
+/** The remote pair: one reachable peer row with work, one whose link is down. */
+const settleBackgroundWorkPeers = (active: boolean) => {
+	const store = useCanonicalSessionsStore.getState();
+	const at = store.beginAnswer();
+	const now = Date.now() / 1000;
+	const remote = (
+		session_id: string,
+		title: string,
+		owner_device: string,
+	): CanonicalSessionRow => ({
+		session_id,
+		title,
+		locality: "remote",
+		owner_device,
+		owner_device_name: "Test peer",
+		reachable: true,
+		updated_at: now - 60,
+		status: { code: "idle", label: "Idle" },
+		background_work: active,
+		subagents_running: active ? 1 : 0,
+		subagents_queued: 0,
+		jobs_running: active ? 1 : 0,
+		waiting_on: 0,
+	});
+	store.settlePeerCatalogue(
+		[
+			remote(BG_REMOTE, "Remote: crawl the pricing pages", "synthetic-bg-peer"),
+			remote(
+				BG_REMOTE_DOWN,
+				"Remote: link down, counts stale",
+				"synthetic-bg-peer-down",
+			),
+		],
+		at,
+		{
+			"synthetic-bg-peer-down": {
+				reachable: false,
+				last_seen_at: now - 240,
+				reason: "relay timeout",
+				at,
+			},
+		},
+	);
+};
+
+/** The section a row is filed under, and whether it draws the lane. */
+const bgRowState = (title: string) => {
+	const row = screen.queryByRole("button", { name: new RegExp(title) });
+	if (row === null) return { section: null, lane: false, tooltip: "" };
+	return {
+		section: row
+			.closest("[data-chat-section]")
+			?.getAttribute("data-chat-section"),
+		lane: row.querySelector("[data-background-work]") !== null,
+		// The row's accessible text carries the clause through its sr-only span;
+		// the hover tooltip reads the same `subagentSentence` value.
+		tooltip: row.textContent ?? "",
+	};
+};
+
+export const BackgroundWorkRunning: Story = {
+	render: () => {
+		fixtures();
+		entities = null;
+		roster = backgroundWorkRoster(true);
+		return <Page sidebarWidth={300} readoutRows={13} />;
+	},
+	play: async () => {
+		await catalogueSettled(11);
+		settleBackgroundWorkPeers(true);
+		await sleep(200);
+		const reported = bgRowState("Rebuild the docs site");
+		if (reported.section !== "running" || !reported.lane)
+			throw new Error(
+				"an idle row with background work must sit under Running with the lane",
+			);
+		if (!reported.tooltip.includes("1 subagent, 1 job running"))
+			throw new Error(`tooltip must name the work, got: ${reported.tooltip}`);
+		const remote = bgRowState("crawl the pricing pages");
+		if (remote.section !== "running" || !remote.lane)
+			throw new Error(
+				"a reachable remote row with work must be Running + lane",
+			);
+		const down = bgRowState("link down, counts stale");
+		if (down.section === "running" || down.lane)
+			throw new Error("a link-down remote row must not claim running work");
+		const none = bgRowState("Scratch notes on the vendor schema");
+		if (none.section === "running" || none.lane)
+			throw new Error("a row with no background work must not draw the lane");
+	},
+};
+
+export const BackgroundWorkFinished: Story = {
+	render: () => {
+		fixtures();
+		entities = null;
+		roster = backgroundWorkRoster(false);
+		return <Page sidebarWidth={300} readoutRows={13} />;
+	},
+	play: async () => {
+		await catalogueSettled(11);
+		settleBackgroundWorkPeers(false);
+		await sleep(200);
+		const reported = bgRowState("Rebuild the docs site");
+		if (reported.section === "running" || reported.lane)
+			throw new Error("once the work ends the row leaves Running, lane gone");
 	},
 };

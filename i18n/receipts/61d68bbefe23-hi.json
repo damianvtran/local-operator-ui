@@ -1,0 +1,217 @@
+{
+  "locale": "hi",
+  "namespaces": {
+    "ui.shell.menubar": {
+      "status": "passed",
+      "keys_audited": 13,
+      "sha256": {
+        "en": "a2950cd3f057ee4641bb12df761ec98d496282e09d69e6150d6dd6edbc74be82",
+        "hi": "ea6d335dd6ef64cdf99a9ba90d7fd2289f3b48a9449a1edcc9c41525dd697cc7"
+      },
+      "findings": [
+        {
+          "severity": "MINOR",
+          "namespace": "ui.shell.menubar",
+          "key": "ui.shell.menubar.close_tab_or_window",
+          "current": "टैब/विंडो बंद करें",
+          "suggestion": "Slash replaces 'or'; menu voice prefers the spelled word and the slash splits poorly in shortcuts column. Use 'टैब या विंडो बंद करें' (4 words, within budget)."
+        },
+        {
+          "severity": "MINOR",
+          "namespace": "ui.shell.menubar",
+          "key": "ui.shell.menubar.force_reload",
+          "current": "ज़बरन फिर से लोड करें",
+          "suggestion": "'ज़बरन' is colloquial for a menu item; prefer 'पूरी तरह फिर से लोड करें' or 'बलपूर्वक फिर से लोड करें' (still 4 words). Reload could also be the shorter 'रीलोड करें' only if applied to both consistently."
+        },
+        {
+          "severity": "MINOR",
+          "namespace": "ui.shell.menubar",
+          "key": "ui.shell.menubar.edit",
+          "current": "संपादन",
+          "suggestion": "Noun form; macOS Hindi and common app menus use the imperative 'संपादित करें'. Low-confidence on Apple's exact string (not verifiable offline); acceptable as is if the team prefers terse nouns for top-level menus (दृश्य/फ़ाइल are nouns)."
+        }
+      ]
+    },
+    "ui.updates.panel": {
+      "status": "passed",
+      "keys_audited": 41,
+      "sha256": {
+        "en": "a94e79256f94128562493e36d8835952e2e78a41cd30382968b942fd6876794a",
+        "hi": "46e743bb2c93ad9e360e32c0c8c5a18b2b52eed3990c1c35d5f3f6735cf4d1f1"
+      },
+      "findings": [
+        {
+          "severity": "MINOR",
+          "namespace": "ui.updates.panel",
+          "key": "ui.updates.panel.disk.remedy",
+          "current": "लगभग {size} जगह खाली करें, फिर फिर से अपडेट जाँचें।",
+          "suggestion": "'फिर फिर से' stutters (reads as 'again and again'). Suggest 'लगभग {size} जगह खाली करें, उसके बाद अपडेट के लिए दोबारा जाँचें।'"
+        },
+        {
+          "severity": "MINOR",
+          "namespace": "ui.updates.panel",
+          "key": "ui.updates.panel.artifact.remedy",
+          "current": "रिलीज़ दोबारा डाउनलोड करने के लिए फिर से अपडेट जाँचें।",
+          "suggestion": "'अपडेट जाँचें' can read as 'inspect the update' rather than 'check for updates'. Suggest 'रिलीज़ दोबारा डाउनलोड करने के लिए अपडेट के लिए फिर से जाँचें।' or 'फिर से अपडेट खोजें'."
+        },
+        {
+          "severity": "MINOR",
+          "namespace": "ui.updates.panel",
+          "key": "ui.updates.panel.server.behind.remedy",
+          "current": "यह चेकआउट अपने रिमोट से पीछे है, और इसी कारण `lop-update` ने इससे बिल्ड करने से मना कर दिया: चेकआउट को अप-टू-डेट करें, फिर यहाँ अगली बार दबाने पर यह बिल्ड हो जाएगा।",
+          "suggestion": "Clunky double 'से' and vague 'दबाने पर'. Suggest '... और इसी कारण `lop-update` ने इसे बिल्ड करने से मना कर दिया: चेकआउट को अप-टू-डेट करें, फिर यहाँ अगली बार बटन दबाने पर यह बिल्ड हो जाएगा।' Backticks preserved."
+        },
+        {
+          "severity": "MINOR",
+          "namespace": "ui.updates.panel",
+          "key": "ui.updates.panel.seal.startup.message",
+          "current": "Local Operator की यह कॉपी अखंडता जाँच में सफल नहीं हुई, इसलिए वह खुद को ठीक नहीं कर सकती।",
+          "suggestion": "'अखंडता' is a Sanskritised, stilted rendering; style guide prefers common words/living loans. Suggest 'इंटीग्रिटी जाँच' (or 'सत्यापन जाँच'), and 'जाँच में पास नहीं हुई'. Not in glossary, so not a violation."
+        },
+        {
+          "severity": "NIT",
+          "namespace": "ui.updates.panel",
+          "key": "ui.updates.panel.seal.remedy",
+          "current": "Local Operator बंद करें, फिर नई कॉपी डाउनलोड करें और Applications में ऐप को उससे बदल दें।",
+          "suggestion": "'Applications' kept Latin, matching the macOS folder name; consider 'Applications फ़ोल्डर में' for readability. Not an error."
+        }
+      ]
+    }
+  },
+  "checkout": "damianvtran/local-operator-ui PR #1464, branch i18n-wave-c1 (/Users/damian/lo-audit-1464)",
+  "checkout_head": "57a725f020853d9cc03ad5d97636fec2380b0ddb",
+  "key_count": 54,
+  "audit_date": "2026-10-28",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "61d68bbefe23",
+    "model": "anthropic/claude-sonnet-5-5"
+  },
+  "input_sha256": {
+    "en/ui.shell.menubar.json": "a2950cd3f057ee4641bb12df761ec98d496282e09d69e6150d6dd6edbc74be82",
+    "hi/ui.shell.menubar.json": "ea6d335dd6ef64cdf99a9ba90d7fd2289f3b48a9449a1edcc9c41525dd697cc7",
+    "en/ui.updates.panel.json": "a94e79256f94128562493e36d8835952e2e78a41cd30382968b942fd6876794a",
+    "hi/ui.updates.panel.json": "46e743bb2c93ad9e360e32c0c8c5a18b2b52eed3990c1c35d5f3f6735cf4d1f1"
+  },
+  "context_docs_via_filesystem_not_catalogue_copy": {
+    "files": [
+      "src/i18n/catalogues/en/ui.shell.menubar.context.json",
+      "src/i18n/catalogues/en/ui.updates.panel.context.json",
+      "~/local-operator/i18n/glossary.md",
+      "~/local-operator/i18n/style-guides/hi.md"
+    ],
+    "sha256_of_context": {
+      "menubar": "29964bf8fd93544fd8d8478324b58170b326139066b2bd063405876a1b4775d1",
+      "panel": "d709c7cc09695b16b271101f2ba25a027e70241cab10a2ac2935aab404aa3a5f"
+    }
+  },
+  "read_provenance": [
+    {
+      "tool": "read_public_copy",
+      "path": "src/i18n/catalogues/en/ui.shell.menubar.json",
+      "key": "(whole file, all keys)"
+    },
+    {
+      "tool": "read_public_copy",
+      "path": "src/i18n/catalogues/en/ui.updates.panel.json",
+      "key": "(whole file, all keys)"
+    },
+    {
+      "tool": "read_public_copy",
+      "path": "src/i18n/catalogues/hi/ui.shell.menubar.json",
+      "key": "(whole file, all keys)"
+    },
+    {
+      "tool": "read_public_copy",
+      "path": "src/i18n/catalogues/hi/ui.updates.panel.json",
+      "key": "(whole file, all keys)"
+    }
+  ],
+  "checks": {
+    "key_sets_match": true,
+    "placeholders_identical": true,
+    "backtick_code_preserved": true,
+    "no_exclamation": true,
+    "danda_on_prose": true,
+    "glossary_conformance": "no violations (Local Operator, lop-update, macOS, Python, Applications kept Latin)",
+    "register": "आप-polite imperatives, no कृपया added",
+    "fit": "menu items 1-4 words; panel sentences mirror English shape",
+    "icu": "no plural/select in these namespaces; only simple {name}{version}{size}{target}{running}",
+    "platform_menu_convention": "Apple Hindi strings not verifiable offline; flagged low-confidence on संपादन",
+    "not_run": "no validator/ledger commands run; no translation service used"
+  },
+  "findings": [
+    {
+      "severity": "MINOR",
+      "namespace": "ui.shell.menubar",
+      "key": "ui.shell.menubar.close_tab_or_window",
+      "current": "टैब/विंडो बंद करें",
+      "suggestion": "Slash replaces 'or'; menu voice prefers the spelled word and the slash splits poorly in shortcuts column. Use 'टैब या विंडो बंद करें' (4 words, within budget)."
+    },
+    {
+      "severity": "MINOR",
+      "namespace": "ui.shell.menubar",
+      "key": "ui.shell.menubar.force_reload",
+      "current": "ज़बरन फिर से लोड करें",
+      "suggestion": "'ज़बरन' is colloquial for a menu item; prefer 'पूरी तरह फिर से लोड करें' or 'बलपूर्वक फिर से लोड करें' (still 4 words). Reload could also be the shorter 'रीलोड करें' only if applied to both consistently."
+    },
+    {
+      "severity": "MINOR",
+      "namespace": "ui.shell.menubar",
+      "key": "ui.shell.menubar.edit",
+      "current": "संपादन",
+      "suggestion": "Noun form; macOS Hindi and common app menus use the imperative 'संपादित करें'. Low-confidence on Apple's exact string (not verifiable offline); acceptable as is if the team prefers terse nouns for top-level menus (दृश्य/फ़ाइल are nouns)."
+    },
+    {
+      "severity": "MINOR",
+      "namespace": "ui.updates.panel",
+      "key": "ui.updates.panel.disk.remedy",
+      "current": "लगभग {size} जगह खाली करें, फिर फिर से अपडेट जाँचें।",
+      "suggestion": "'फिर फिर से' stutters (reads as 'again and again'). Suggest 'लगभग {size} जगह खाली करें, उसके बाद अपडेट के लिए दोबारा जाँचें।'"
+    },
+    {
+      "severity": "MINOR",
+      "namespace": "ui.updates.panel",
+      "key": "ui.updates.panel.artifact.remedy",
+      "current": "रिलीज़ दोबारा डाउनलोड करने के लिए फिर से अपडेट जाँचें।",
+      "suggestion": "'अपडेट जाँचें' can read as 'inspect the update' rather than 'check for updates'. Suggest 'रिलीज़ दोबारा डाउनलोड करने के लिए अपडेट के लिए फिर से जाँचें।' or 'फिर से अपडेट खोजें'."
+    },
+    {
+      "severity": "MINOR",
+      "namespace": "ui.updates.panel",
+      "key": "ui.updates.panel.server.behind.remedy",
+      "current": "यह चेकआउट अपने रिमोट से पीछे है, और इसी कारण `lop-update` ने इससे बिल्ड करने से मना कर दिया: चेकआउट को अप-टू-डेट करें, फिर यहाँ अगली बार दबाने पर यह बिल्ड हो जाएगा।",
+      "suggestion": "Clunky double 'से' and vague 'दबाने पर'. Suggest '... और इसी कारण `lop-update` ने इसे बिल्ड करने से मना कर दिया: चेकआउट को अप-टू-डेट करें, फिर यहाँ अगली बार बटन दबाने पर यह बिल्ड हो जाएगा।' Backticks preserved."
+    },
+    {
+      "severity": "MINOR",
+      "namespace": "ui.updates.panel",
+      "key": "ui.updates.panel.seal.startup.message",
+      "current": "Local Operator की यह कॉपी अखंडता जाँच में सफल नहीं हुई, इसलिए वह खुद को ठीक नहीं कर सकती।",
+      "suggestion": "'अखंडता' is a Sanskritised, stilted rendering; style guide prefers common words/living loans. Suggest 'इंटीग्रिटी जाँच' (or 'सत्यापन जाँच'), and 'जाँच में पास नहीं हुई'. Not in glossary, so not a violation."
+    },
+    {
+      "severity": "NIT",
+      "namespace": "ui.updates.panel",
+      "key": "ui.updates.panel.seal.remedy",
+      "current": "Local Operator बंद करें, फिर नई कॉपी डाउनलोड करें और Applications में ऐप को उससे बदल दें।",
+      "suggestion": "'Applications' kept Latin, matching the macOS folder name; consider 'Applications फ़ोल्डर में' for readability. Not an error."
+    }
+  ],
+  "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 7,
+    "NIT": 1
+  },
+  "verdict": "passed",
+  "instance": "61d68bbefe23-hi",
+  "model": "anthropic/claude-sonnet-5-5",
+  "status": "passed",
+  "sha256": {
+    "src/i18n/catalogues/en/ui.shell.menubar.json": "a2950cd3f057ee4641bb12df761ec98d496282e09d69e6150d6dd6edbc74be82",
+    "src/i18n/catalogues/en/ui.updates.panel.json": "a94e79256f94128562493e36d8835952e2e78a41cd30382968b942fd6876794a",
+    "src/i18n/catalogues/hi/ui.shell.menubar.json": "ea6d335dd6ef64cdf99a9ba90d7fd2289f3b48a9449a1edcc9c41525dd697cc7",
+    "src/i18n/catalogues/hi/ui.updates.panel.json": "46e743bb2c93ad9e360e32c0c8c5a18b2b52eed3990c1c35d5f3f6735cf4d1f1"
+  }
+}

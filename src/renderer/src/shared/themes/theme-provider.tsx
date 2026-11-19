@@ -4,7 +4,8 @@ import { syncGlassScheme } from "@shared/hooks/use-window-glass";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { FC, ReactNode } from "react";
 import { useLayoutEffect } from "react";
-import { applyThemeToDocument, getTheme } from "./index";
+import { applyAppearance } from "./appearance";
+import { useSavedAppearance } from "./use-resolved-appearance";
 
 /**
  * Props for the ThemeProvider component
@@ -25,11 +26,14 @@ type ThemeProviderProps = {
  * element.
  */
 export const ThemeProvider: FC<ThemeProviderProps> = ({ children }) => {
-	// Get the selected theme from the UI preferences store
-	const themeName = useUiPreferencesStore((state) => state.themeName);
-
-	// Get the theme object for the selected theme
-	const themeOption = getTheme(themeName);
+	/*
+	 * One hook owns "what is selected, worth, and derived": the provider, every
+	 * consumer and the mini-view document must resolve a saved theme the same
+	 * way, and two of them re-deriving it separately is how a saved theme paints
+	 * one palette in MUI and another in CSS.
+	 */
+	const { appearance, resolved, savedPalette, savedBase } =
+		useSavedAppearance();
 
 	/*
 	 * Publish the theme id to the document element on mount and on every
@@ -41,7 +45,15 @@ export const ThemeProvider: FC<ThemeProviderProps> = ({ children }) => {
 	 * palette's variables under the new MUI theme on every switch.
 	 */
 	useLayoutEffect(() => {
-		applyThemeToDocument(themeName);
+		/* Injects the composed block (if any) BEFORE setting `data-theme`, so no
+		   frame names a block that does not exist yet. */
+		applyAppearance(
+			appearance,
+			document,
+			savedPalette,
+			savedBase,
+			() => resolved,
+		);
 		/*
 		 * THE SAME FRAME INFORMS THE WINDOW CHROME. On Windows and Linux the OS's
 		 * caption glyphs are drawn by Electron over the renderer, and on Linux the box
@@ -51,12 +63,19 @@ export const ThemeProvider: FC<ThemeProviderProps> = ({ children }) => {
 		 * Reported from the variables the document paints (see the function's note) and
 		 * in THIS effect rather than a second one, so the two cannot disagree.
 		 */
-		reportWindowChromeColors(getTheme(themeName).id);
+		reportWindowChromeColors(resolved.id);
 		/* The glass alphas and the OS material's tone follow the palette's scheme. */
 		syncGlassScheme();
-	}, [themeName]);
+	}, [appearance, resolved, savedPalette, savedBase]);
 
 	return (
-		<MuiThemeProvider theme={themeOption.theme}>{children}</MuiThemeProvider>
+		<MuiThemeProvider theme={resolved.muiTheme}>{children}</MuiThemeProvider>
 	);
 };
+
+/* Kept for the store-shape comment the previous version carried, so a reader
+ * comparing profiles still lands on the same statement: on the identity path
+ * `resolved.muiTheme` is the prebuilt `getTheme(...)` object and `resolved.id`
+ * the built-in id, so this provider renders exactly what it rendered before the
+ * engine existed. `useUiPreferencesStore` is imported for that reason only. */
+void useUiPreferencesStore;

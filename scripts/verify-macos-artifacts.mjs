@@ -30,6 +30,7 @@ import {
 	rmSync,
 	statSync,
 } from "node:fs";
+import { tmpdir } from "node:os";
 import { basename, dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -40,10 +41,23 @@ import {
 	UV_VERSION,
 	seedResourceDir,
 } from "./bundled-runtime-layout.mjs";
+import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
+import {
+	ATTESTATION_EPOCH_KEY,
+	ATTESTATION_EPOCH_VALUE,
+	ELECTRON_FRAMEWORK_BINARY,
+	attestationEpochFromInfoPlist,
+	describeFuseWires,
+	fuseViolations,
+} from "./electron-fuse-policy.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
 import {
 	EMBEDDED_PROVISIONING_PROFILE_PATH,
+	hardeningViolations,
+	plistStringValues,
+	profileAllowlistAuthorizes,
 	profileBackedEntitlementKeys,
+	unauthorizedClaims,
 } from "./macos-entitlement-policy.mjs";
 import {
 	MACH_O_CPUTYPE,
@@ -70,23 +84,99 @@ const XCRUN = "/usr/bin/xcrun";
 const SECURITY = "/usr/bin/security";
 
 /**
- * The bytecode probe `app-bytecode-loadable` runs inside the bundle under test.
- *
- * Resolved from THIS module's own URL rather than from `process.cwd()`, because
- * the gate is invoked through `scripts/require-report.sh` from the repository
- * root on CI and by hand from anywhere else; a relative path would turn a probe
- * that cannot be found into a spawn failure that reads like a brick.
+ * The switch and stdout marker of the app's own launch probe
+ * (`src/main/launch-probe.ts`). Spelled here rather than imported: that module
+ * is TypeScript compiled into the bundle, and this gate runs under the runner's
+ * plain node. `scripts/verify-macos-artifacts.test.mjs` reads the TypeScript
+ * source and fails if the two spellings ever differ.
  */
-const BYTECODE_PROBE = join(
-	dirname(fileURLToPath(import.meta.url)),
-	"bytecode-accepts-probe.cjs",
-);
+export const LAUNCH_PROBE_FLAG = "--lo-launch-probe";
+export const LAUNCH_PROBE_MARKER = "LOCAL_OPERATOR_LAUNCH_PROBE";
+
+/**
+ * The probe's report line, parsed, or null when the output carries none.
+ *
+ * A line that names the marker but does not carry `ok: true` and
+ * `packaged: true` is not a pass: an unpackaged tree answering the flag (a dev
+ * build mistaken for the artifact) must not satisfy a release gate.
+ */
+export function parseLaunchProbe(stdout) {
+	for (const line of String(stdout ?? "").split("\n")) {
+		const at = line.indexOf(`${LAUNCH_PROBE_MARKER} `);
+		if (at === -1) continue;
+		try {
+			return JSON.parse(line.slice(at + LAUNCH_PROBE_MARKER.length + 1));
+		} catch {
+			return null;
+		}
+	}
+	return null;
+}
+
+/**
+ * The verdict on a swapped candidate relaunched with `--lo-launch-probe`, for
+ * `verify-signed-update.mjs`.
+ *
+ * WHY THIS REPLACED `--inspect`. That script used to relaunch the candidate with
+ * `--inspect=127.0.0.1:<port>` and ask the inspector for `app.getVersion()`. F2
+ * turns `EnableNodeCliInspectArguments` off, so a fused candidate never opens
+ * the port: on a runner that has a GUI session the exercise could never pass,
+ * and it reported BLOCKED blaming the incumbent (native QA, PR #1948, Q1). The
+ * probe is the app's own answer from its shipped bytecode, and its line carries
+ * the version.
+ *
+ * Fail-closed, every refusal shape red: a non-zero status, a signal, a timeout,
+ * no marker, a marker without `ok`/`packaged`, a version that is not the
+ * candidate's, and a version equal to the incumbent's (the swap did not happen,
+ * whatever the metadata says).
+ *
+ * Returns `{ passed, detail }`; never throws.
+ */
+export function relaunchProbeVerdict(
+	result,
+	{ candidateVersion, incumbentVersion },
+) {
+	if (result.timedOut)
+		return {
+			passed: false,
+			detail: "launch probe did not exit within its bound",
+		};
+	if (result.signal)
+		return { passed: false, detail: `launch probe killed by ${result.signal}` };
+	if (result.status !== 0)
+		return {
+			passed: false,
+			detail: `launch probe exited ${result.status}: ${String(result.stderr ?? "").trim()}`,
+		};
+	const probe = parseLaunchProbe(result.stdout);
+	if (!probe || probe.ok !== true || probe.packaged !== true)
+		return {
+			passed: false,
+			detail: `no packaged ${LAUNCH_PROBE_MARKER} line on stdout`,
+		};
+	if (!candidateVersion || candidateVersion === incumbentVersion)
+		return {
+			passed: false,
+			detail: `candidate version ${JSON.stringify(candidateVersion)} must differ from incumbent ${JSON.stringify(incumbentVersion)}`,
+		};
+	if (probe.version !== candidateVersion)
+		return {
+			passed: false,
+			detail: `relaunched bundle reports version ${JSON.stringify(probe.version)}, expected candidate ${candidateVersion}`,
+		};
+	return {
+		passed: true,
+		detail: `launch probe: version=${probe.version} electron=${probe.electron} arch=${probe.arch}`,
+	};
+}
+
+let launchProbeProfiles = 0;
 
 /**
  * How long the spawn probe is given before its child counts as never-exited.
  *
- * The probe runs the main executable in Electron's node mode, whose whole job
- * is `process.exit(0)`; on this machine that answers in well under a second.
+ * The probe launches the main executable with `--lo-launch-probe`, which prints
+ * one line and exits before the app sets anything up (`src/main/launch-probe.ts`).
  * The bound is generous because it is not a performance expectation but the
  * third refusal shape: a spawn the OS neither completes nor refuses. Anything
  * the bound catches is red, which is the direction a release gate must fail in.
@@ -227,13 +317,35 @@ export function profileAuthorizes(
 	 * granularities: with a `group` in hand the profile has to authorize THAT
 	 * value (the WebAuthn case, where a profile carrying a different group is a
 	 * passkey feature that can never work), and with only a `key` the profile has
-	 * to carry the entitlement at all (the general case, where the value is not
-	 * something this gate can judge).
+	 * to carry the entitlement at all. The bundle-wide walk no longer asks the
+	 * key-only form: it judges every claimed VALUE through
+	 * `unauthorizedEntitlementKeys` (agent review round 1, R3).
+	 */
+	/*
+	 * Through Apple's matching rule, not `===`: a real Developer ID profile
+	 * authorizes keychain groups as the team wildcard `<TEAM_ID>.*` and never
+	 * lists the WebAuthn group by name, so an exact comparison failed the one
+	 * profile that does authorize it. `profileAllowlistAuthorizes` is the copy the
+	 * renderer uses too (`scripts/macos-entitlement-policy.mjs`), and it still
+	 * refuses another team's wildcard and a bare `*`. The bundle id stays part of
+	 * the question: a group for a different app is a refusal even when a wildcard
+	 * would cover it.
 	 */
 	if (group != null && key === "keychain-access-groups") {
-		return webauthnEntitlementGroup(profileEntitlements, bundleId) === group;
+		if (bundleId && !group.endsWith(`.${bundleId}.webauthn`)) return false;
+		return profileAllowlistAuthorizes(
+			plistStringValues(profileEntitlements, key),
+			group,
+		);
 	}
 	return profileDeclaresKey(profileEntitlements, key);
+}
+
+/** Every `<key>` an entitlements plist names, in order, without values. */
+function entitlementKeyNames(plistText) {
+	return [...String(plistText ?? "").matchAll(/<key>([^<]+)<\/key>/g)].map(
+		([, key]) => key,
+	);
 }
 
 /** Whether a plist declares an entitlement key at all, whatever its value. */
@@ -290,7 +402,10 @@ export function mainExecutablePath(appPath) {
  * keeps the tight bound. `hostArch` is a parameter so the rule can be asserted on
  * a host other than the one running the test.
  */
-export function hostTranslatesExecutable(executable, hostArch = process.arch) {
+export function hostTranslatesExecutable(
+	executable,
+	hostArch = hostArchitecture(),
+) {
 	return (
 		hostArch === "arm64" && machOCpuType(executable) === MACH_O_CPUTYPE.X86_64
 	);
@@ -304,10 +419,150 @@ export function hostTranslatesExecutable(executable, hostArch = process.arch) {
  * so the rule is written once rather than twice as a ternary. Every other check
  * here reads files and needs no bound at all.
  */
-export function execBound(executable, hostArch = process.arch) {
+export function execBound(executable, hostArch = hostArchitecture()) {
 	return hostTranslatesExecutable(executable, hostArch)
 		? SPAWN_PROBE_TRANSLATED_TIMEOUT_MS
 		: SPAWN_PROBE_TIMEOUT_MS;
+}
+
+/**
+ * Why a check that would exec a TRANSLATED child refuses to, off hosted CI.
+ *
+ * EVIDENCE. On 2026-11-02 at 18:35:36 macOS 27.2 showed the operator "App Update
+ * Required: This version of "Local Operator" includes a component that will not
+ * open in macOS 28", and ecosystemd logged `[NOTIFICATION_SENT] decision=launch
+ * name=/Users/<user>/Local Operator.app bundle=com.local-operator`. The shipped arm64
+ * app was clean (0 Intel-only Mach-O; `app-native-components` enforces that). The
+ * launch that fired it was a local QA rig running `pnpm verify-macos-artifacts`
+ * against the x64 0.47.7 bundle on an arm64 Mac: `app-spawn`,
+ * `app-bytecode-loadable` and `app-seed-python-version` exec the bundle's
+ * x86_64 launcher / interpreter, the kernel hands them to Rosetta, and macOS
+ * attributes a Rosetta launch to the bundle's identifier and warns the operator
+ * against Local Operator. The notice is rate-limited to one per 86400 s, so every
+ * such run re-arms it for another day.
+ *
+ * THE RULE. A GitHub-hosted runner (`isGitHubHostedRunner`) has no operator to
+ * warn, so it still runs these probes - that is where the x64 artifact is
+ * proven. `CI=true` alone does not count (see `isGitHubHostedRunner`). Anywhere else the exec needs an explicit
+ * `LOCAL_OPERATOR_ALLOW_ROSETTA_EXEC=1`. A refused probe is a FAILED result, not
+ * a skip: this is a release gate and an unproven check must never read green.
+ * Static checks are unaffected - only the exec is withheld.
+ *
+ * `env` and `hostArch` are parameters so the rule is asserted without touching
+ * the real environment or needing a particular host.
+ */
+export function refusesLocalRosettaExec(
+	executable,
+	{ hostArch = hostArchitecture(), env = process.env } = {},
+) {
+	if (!hostLacksNativeSlice(executable, hostArch)) return false;
+	if (isGitHubHostedRunner(env)) return false;
+	return env.LOCAL_OPERATOR_ALLOW_ROSETTA_EXEC !== "1";
+}
+
+/**
+ * Whether `env` is a GitHub-HOSTED runner, the one place an exec under Rosetta
+ * has no operator to warn.
+ *
+ * The same two-variable test `verify-signed-update.mjs` gates its own launch on
+ * (review round 1, F4): `GITHUB_ACTIONS=true` alone also matches a self-hosted
+ * runner, which may be an operator's own Mac, and `CI=true` alone is set by local
+ * scripts (`asks-app-regression.mjs` exports it for `pnpm install`) and by agent
+ * shells, so neither suffices on its own. Both macOS jobs that run this gate
+ * (`publish.yml`, `signed-update-candidate.yml`) are `runs-on: macos-latest`,
+ * where the runner sets `RUNNER_ENVIRONMENT=github-hosted`, so CI keeps exec'ing.
+ */
+export function isGitHubHostedRunner(env = process.env) {
+	return (
+		env.GITHUB_ACTIONS === "true" && env.RUNNER_ENVIRONMENT === "github-hosted"
+	);
+}
+
+/**
+ * Whether an arm64 host would have to translate `executable`: it is Mach-O and
+ * carries no arm64 slice.
+ *
+ * WHY NOT `hostTranslatesExecutable`. That predicate decides a TIMEOUT and reads
+ * only thin headers, so a fat file answers "not translated" and keeps the tight
+ * bound - the safe direction for a bound. For a refusal the safe direction is the
+ * opposite: a fat launcher whose only slice is x86_64 still runs under Rosetta
+ * and still fires the notice (review round 1, F2), so this reads every slice. An
+ * unreadable file (`null`) is not refused: there is no evidence it is x86_64,
+ * and the gate's other checks already fail a bundle whose launcher is not
+ * Mach-O.
+ */
+function hostLacksNativeSlice(executable, hostArch) {
+	if (hostArch !== "arm64") return false;
+	const slices = machOArchitectures(executable);
+	return slices != null && !slices.includes(MACH_O_CPUTYPE.ARM64);
+}
+
+/**
+ * The architecture of the HARDWARE this verifier runs on, not of its `node`.
+ *
+ * An x64 `node` on Apple silicon reports `process.arch === "x64"` while every
+ * x86_64 child it starts still runs under Rosetta (review round 1, F3), so a
+ * translated process is asked `sysctl.proc_translated`, which is 1 exactly when
+ * Rosetta is running it. The ask is made only when it can change the answer
+ * (darwin, non-arm64 node) and at most once per process, so a native host pays
+ * nothing. Any failure - no sysctl, a non-zero exit, unexpected output - answers
+ * "not translated": on an Intel Mac the key does not exist, and that is the host
+ * where `process.arch` is already right. `arch`, `platform` and
+ * `readTranslated` are parameters so each branch is asserted on any host.
+ */
+export function hostArchitecture({
+	arch = process.arch,
+	platform = process.platform,
+	readTranslated = processIsTranslated,
+} = {}) {
+	if (arch === "arm64" || platform !== "darwin") return arch;
+	return readTranslated() ? "arm64" : arch;
+}
+
+let translatedAnswer = null;
+
+/** `sysctl -n sysctl.proc_translated` is 1, asked once; false on any failure. */
+export function processIsTranslated() {
+	if (translatedAnswer == null) {
+		try {
+			const result = spawnSync(
+				"/usr/sbin/sysctl",
+				["-n", "sysctl.proc_translated"],
+				{ encoding: "utf8", timeout: 5_000 },
+			);
+			translatedAnswer = result.status === 0 && result.stdout.trim() === "1";
+		} catch {
+			translatedAnswer = false;
+		}
+	}
+	return translatedAnswer;
+}
+
+/** The failure a refused exec check reports, written once for all three. */
+export const ROSETTA_EXEC_REFUSAL =
+	"Not executed: exec of an x86_64 bundle on an arm64 host runs under Rosetta and can make macOS show the macOS-28 'App Update Required' notice against Local Operator; run on a GitHub-hosted runner or set LOCAL_OPERATOR_ALLOW_ROSETTA_EXEC=1";
+
+/**
+ * Split one candidate's check rows into the two questions the signed-update
+ * harness asks of it: what the build ASSEMBLED (every row whose id is not in
+ * `signatureIds`, all of which must pass) and which SIGNATURE rows failed.
+ *
+ * WHY THIS LIVES HERE AND NOT IN `verify-signed-update.mjs`: that script runs at
+ * import (it is a one-shot CI harness), so nothing in it can be imported by a
+ * test. Its BLOCKED decision once ran unconditionally - every candidate,
+ * including a fully signed one, stopped at "carries no valid release
+ * signature... ()" with an empty list, so the exact-update swap could never be
+ * reached (QA finding Q3 on PR #1948). The caller must treat an EMPTY
+ * `brokenSignatures` as "signed, carry on"; returning the rows rather than a
+ * boolean keeps the BLOCKED message able to name each failing check.
+ */
+export function partitionCandidateChecks(results, signatureIds) {
+	return {
+		assembly: results.filter((row) => !signatureIds.has(row.id)),
+		brokenSignatures: results.filter(
+			(row) => signatureIds.has(row.id) && !row.passed,
+		),
+	};
 }
 
 /**
@@ -342,7 +597,8 @@ export function artifactChecks({
 	appPath,
 	dmgPath,
 	profile = null,
-	hostArch = process.arch,
+	hostArch = hostArchitecture(),
+	env = process.env,
 }) {
 	const checks = [];
 	const bundleId = appPath ? bundleIdentifierFromInfoPlist(appPath) : null;
@@ -350,6 +606,12 @@ export function artifactChecks({
 	// The launcher the checks exec, resolved once: the spawn probe's bound depends
 	// on the architecture in ITS header, and both are read from one path lookup.
 	const executable = appPath ? mainExecutablePath(appPath) : null;
+	// Decided once for both exec checks; `runChecks` reports a refused check as
+	// failed without running it. See `refusesLocalRosettaExec`.
+	const refusal =
+		executable && refusesLocalRosettaExec(executable, { hostArch, env })
+			? ROSETTA_EXEC_REFUSAL
+			: null;
 	if (appPath) {
 		checks.push(
 			{
@@ -380,7 +642,8 @@ export function artifactChecks({
 				expect: (result) => result.status === 0,
 			},
 			/*
-			 * THE PROBE THAT WOULD HAVE CAUGHT THE 0.29.6 BRICK.
+			 * THE LAUNCH PROBE: the checks that would have caught the 0.29.6 and
+			 * 0.30.10 x64 bricks, now one launch of the real app.
 			 *
 			 * Why executing the binary rather than verifying its signature: the
 			 * refusal that bricked 0.29.6 is decided by amfid AT EXEC, and it is
@@ -393,80 +656,98 @@ export function artifactChecks({
 			 * `RBSRequestErrorDomain Code=5` / `NSPOSIXErrorDomain Code=163
 			 * "Launchd job spawn failed"`). Only a spawn observes what the OS does.
 			 *
-			 * Why node mode: `ELECTRON_RUN_AS_NODE=1 <exe> -p 'process.exit(0)'`
-			 * reaches the same exec — and therefore the same AMFI decision — with
-			 * no window, no display, no user data directory and nothing left
-			 * running, which is what makes it usable as a release gate on a build
-			 * runner. Measured: the broken bundle's executable exits 137 (SIGKILL);
-			 * the same bundle re-signed without `keychain-access-groups` exits 0.
+			 * Why loading the payload too: v0.30.10's x64 DMG shipped the arm64
+			 * runner's V8 bytecode, every launch threw `cachedDataRejected` out of
+			 * `bytecode-loader.cjs`, and six green checks (a bare exec among them)
+			 * passed a bundle that could not start. The marker line below is printed
+			 * FROM the shipped `out/main/index.jsc`, so it exists only if the
+			 * bundle's own V8 accepted its own bytecode — a stronger question than
+			 * the V8 cache probe this replaced, which asked about the cache without
+			 * running anything.
 			 *
-			 * All three refusal shapes are red: a non-zero status, a terminating
-			 * signal, and a child that never exits within the bound (the third
-			 * arrives as `timedOut`, so a hung spawn is not mistaken for a pass).
+			 * WHY NOT NODE MODE ANY MORE (F2). This check and a bytecode probe used
+			 * to run the launcher as `ELECTRON_RUN_AS_NODE=1 <exe> …`. The RunAsNode
+			 * fuse is now OFF (`scripts/electron-fuse-policy.mjs`): node mode ran
+			 * arbitrary JS inside the genuine signed process, which defeats the
+			 * runtime's app-signature attestation. On a fused build that command does
+			 * not run Node at all — it BOOTS THE FULL APP, which on a runner hangs to
+			 * the bound and on a person's Mac raises a window and asks the keychain.
+			 * Hence a flag the app itself answers (`src/main/launch-probe.ts`), before
+			 * its single-instance lock, any window, `whenReady` or the backend. With
+			 * the asar-integrity fuse on, a mismatched `app.asar` header, or tampering
+			 * in any file read before the probe (`out/main/index.jsc`), also dies here
+			 * before the marker. Other files are checked against their block hashes
+			 * only when first read, so a flipped byte in a renderer asset passes this
+			 * row and fails later: a tamper test must hit the header or a start-up file.
+			 *
+			 * The scratch `--user-data-dir` and `MOCK_KEYCHAIN_SWITCH` are belt and
+			 * braces for Chromium's own early start-up (the app reaches nothing of
+			 * the profile before it exits), and `--window-mode=headless` keeps a
+			 * bundle that predates the flag from showing a window while it runs into
+			 * the bound. `ELECTRON_RUN_AS_NODE` and `NODE_OPTIONS` are REMOVED from
+			 * the child's environment: on an un-hardened bundle an inherited value
+			 * would turn the probe back into node mode and the marker would never
+			 * print, which is red anyway but would be red for the wrong reason.
+			 *
+			 * All refusal shapes are red: a non-zero status, a terminating signal
+			 * (an asar integrity failure is a fatal abort), a child that never exits
+			 * within the bound (`timedOut`), and an exit 0 without the marker line —
+			 * the shape of an app that booted and quit for some other reason.
+			 *
+			 * The id stays `app-spawn`: `verify-signed-update.mjs` classifies by id,
+			 * and this is still the candidate's own failure, never the host's.
 			 */
-			{
-				id: "app-spawn",
-				scope: "app",
-				target: executable,
-				description:
-					"the app's main executable really spawns (run in Electron's node mode, which exits immediately unless the OS refuses the exec)",
-				command: executable,
-				args: ["-p", "process.exit(0)"],
-				env: { ELECTRON_RUN_AS_NODE: "1" },
-				// Two bounds, not one: a child this host must translate answers in a
-				// translation's time rather than in its own, and `timedOut` would
-				// otherwise report the translator as an OS refusal. See
-				// `SPAWN_PROBE_TRANSLATED_TIMEOUT_MS` for what was measured.
-				timeoutMs: execBound(executable, hostArch),
-				expect: (result) =>
-					result.status === 0 && !result.signal && !result.timedOut,
-			},
-			/*
-			 * THE PROBE THAT WOULD HAVE CAUGHT THE 0.30.10 x64 BRICK.
-			 *
-			 * `app-spawn` above proves the OS will EXEC the launcher. It does not
-			 * prove the app can LOAD, and those came apart in v0.30.10: the x64 DMG
-			 * shipped the arm64 runner's V8 bytecode (both DMGs carried a
-			 * byte-identical `out/main/index.jsc`, sha256 23a37ddc…) because
-			 * `pnpm dist:mac` compiled bytecode once and packaged it for both
-			 * architectures. Every launch threw `Invalid or incompatible cached data
-			 * (cachedDataRejected)` out of `bytecode-loader.cjs` — the user saw
-			 * Electron's "A JavaScript error occurred in the main process" dialog and
-			 * the app never opened.
-			 *
-			 * Measured on the real broken bundle on an M3: `codesign --verify --deep
-			 * --strict` exits 0, `spctl` answers "accepted / Notarized Developer ID",
-			 * `stapler validate` passes, and `app-spawn` exits 0 — because
-			 * `ELECTRON_RUN_AS_NODE=1 <exe> -p 'process.exit(0)'` evaluates the string
-			 * it is handed and never requires `app.asar`. Six green checks on a bundle
-			 * that cannot start. Nothing here loaded the payload, so this check does.
-			 *
-			 * The probe runs UNDER THE BUNDLE'S OWN ELECTRON, which is what makes the
-			 * verdict meaningful: the x64 bundle answers in x86_64 terms even though
-			 * an arm64 runner is holding the file. It asks V8 for the same
-			 * `cachedDataRejected` flag the loader throws on and never runs the
-			 * compiled wrapper, so it starts no app, writes nothing and leaves nothing
-			 * behind. See `scripts/bytecode-accepts-probe.cjs`.
-			 *
-			 * Exit 1 is REJECTED (the brick). Exit 2 is PROBE-ERROR — unreadable or
-			 * unparseable — and is red too: "could not tell" must never ship.
-			 */
-			{
-				id: "app-bytecode-loadable",
-				scope: "app",
-				target: executable,
-				description:
-					"the app's own Electron accepts the V8 bytecode it ships (arm64 bytecode in an x64 bundle is refused at load, and every signature check passes on it)",
-				command: executable,
-				args: [
-					BYTECODE_PROBE,
-					join(appPath, "Contents/Resources/app.asar/out/main/index.jsc"),
-				],
-				env: { ELECTRON_RUN_AS_NODE: "1" },
-				timeoutMs: execBound(executable, hostArch),
-				expect: (result) =>
-					result.status === 0 && !result.signal && !result.timedOut,
-			},
+			(() => {
+				launchProbeProfiles += 1;
+				const profileDir = join(
+					tmpdir(),
+					`lo-launch-probe-${process.pid}-${launchProbeProfiles}`,
+				);
+				return {
+					id: "app-spawn",
+					scope: "app",
+					target: executable,
+					refusal,
+					description:
+						"the app's main executable really spawns and loads its own app.asar and bytecode (the --lo-launch-probe line is printed from the shipped index.jsc, before any window or profile lock)",
+					command: executable,
+					args: [
+						LAUNCH_PROBE_FLAG,
+						`--user-data-dir=${profileDir}`,
+						MOCK_KEYCHAIN_SWITCH,
+						"--window-mode=headless",
+					],
+					env: {
+						ELECTRON_RUN_AS_NODE: null,
+						NODE_OPTIONS: null,
+						LOCAL_OPERATOR_UI_WINDOW_MODE: "headless",
+						// A bundle built before the probe stopped writing log files
+						// (native QA, PR #1948, Q2) would otherwise append to the real
+						// `~/Library/Application Support/Local Operator/logs`, which a
+						// scratch HOME does not move. Inside the profile dir, so the
+						// row's own cleanup removes it.
+						LOCAL_OPERATOR_LOG_DIR: join(profileDir, "logs"),
+					},
+					// Two bounds, not one: a child this host must translate answers in a
+					// translation's time rather than in its own, and `timedOut` would
+					// otherwise report the translator as an OS refusal. See
+					// `SPAWN_PROBE_TRANSLATED_TIMEOUT_MS` for what was measured.
+					timeoutMs: execBound(executable, hostArch),
+					cleanup: () => rmSync(profileDir, { recursive: true, force: true }),
+					report: (result) => {
+						const probe = parseLaunchProbe(result.stdout);
+						return probe
+							? `launch probe: electron=${probe.electron} arch=${probe.arch} packaged=${probe.packaged}`
+							: null;
+					},
+					expect: (result) => {
+						if (result.status !== 0 || result.signal || result.timedOut)
+							return false;
+						const probe = parseLaunchProbe(result.stdout);
+						return probe?.ok === true && probe?.packaged === true;
+					},
+				};
+			})(),
 			/*
 			 * THE CAUSE, and it is a walk rather than a command.
 			 *
@@ -516,6 +797,13 @@ export function artifactChecks({
 				// default here — the group absent, passkeys inert — and a PASS.
 				command: CODESIGN,
 				args: ["-d", "--entitlements", "-", "--xml", appPath],
+				// Key names only, never the plist: every restricted value embeds the
+				// team id, which the renderer never prints either, and the whole XML
+				// is noise in a CI row (QA round 1, Q2).
+				report: (result) =>
+					result.status === 0
+						? `entitlement keys: ${entitlementKeyNames(result.stdout).join(", ") || "(none)"}`
+						: null,
 				expect: (result) => {
 					// "We could not ask" is not "nothing is claimed", and an empty
 					// plist must not pass just because `[].every()` is true: a read
@@ -1065,7 +1353,7 @@ export function seedBootstrapCheck(appPath) {
  */
 export function seedVersionCheck(
 	appPath,
-	{ run = spawnRunner, hostArch = process.arch } = {},
+	{ run = spawnRunner, hostArch = hostArchitecture(), env = process.env } = {},
 ) {
 	return appCheck(
 		"app-seed-python-version",
@@ -1080,6 +1368,8 @@ export function seedVersionCheck(
 			const python = join(root, "bin", "python3");
 			if (!existsSync(python))
 				throw new Error(`The seed has no bin/python3 to ask: ${python}`);
+			if (refusesLocalRosettaExec(python, { hostArch, env }))
+				throw new Error(ROSETTA_EXEC_REFUSAL);
 			const result = run(
 				python,
 				["-I", "-B", "--version"],
@@ -1256,6 +1546,54 @@ export function nativeComponentsCheck(appPath, { run = spawnRunner } = {}) {
 }
 
 /**
+ * The nested `.app` (relative to the outer bundle) whose MAIN executable
+ * `executable` is, or null — for `ShipIt`, the crashpad handler, the bundled
+ * python and anything else that is not a nested bundle's own launcher.
+ *
+ * Only a bundle's `CFBundleExecutable` is covered by that bundle's embedded
+ * profile, so an executable that merely sits somewhere inside a helper `.app`
+ * is not given the helper's profile: the strict reading, because the lenient one
+ * is how a claim with no profile behind it gets past this gate.
+ */
+export function nestedAppBundle(appPath, executable) {
+	const parts = executable.split("/");
+	for (let index = parts.length - 1; index > 0; index -= 1) {
+		if (!parts[index - 1].endsWith(".app")) continue;
+		const bundle = parts.slice(0, index).join("/");
+		const launcher = mainExecutablePath(join(appPath, bundle));
+		return launcher === join(appPath, executable) ? bundle : null;
+	}
+	return null;
+}
+
+/**
+ * The keys of `keys` (restricted claims read off one signature) that `profile`
+ * does not authorize.
+ *
+ * VALUES, not key presence (agent review round 1, R3; QA round 1, Q1): a string
+ * or array claim is judged value by value through `unauthorizedClaims`, the same
+ * helper the renderer refuses a profile with, so a profile issued for another
+ * app id (the key agent's `<TEAM>.com.local-operator.lopkeyagent` under a
+ * `<TEAM>.com.local-operator` signature) is a failure here too. A claim with no
+ * string value (a boolean, an empty array) has nothing to match, so the profile
+ * has to declare the key — the only question that can be asked of it. No
+ * profile authorizes nothing.
+ */
+export function unauthorizedEntitlementKeys(profile, signature, keys) {
+	if (!profile) return [...keys];
+	return keys.filter((key) => {
+		const values = plistStringValues(signature, key);
+		if (values.length === 0) return !profileDeclaresKey(profile, key);
+		return (
+			unauthorizedClaims(
+				profile,
+				values.map((value) => [key, value]),
+			).length > 0
+		);
+	});
+}
+
+/**
  * Every restricted entitlement ANY executable in the bundle claims, judged
  * against the profile the bundle embeds.
  *
@@ -1278,7 +1616,6 @@ export function profileAuthorizationCheck(
 	{ run = spawnRunner, profile = null } = {},
 ) {
 	const embedded = profile ?? readEmbeddedProfileEntitlements(appPath, run);
-	const bundleId = bundleIdentifierFromInfoPlist(appPath);
 	// A walk that cannot run is a third outcome, and it must not escape as a stack
 	// trace: the gate reports rows, and `require-report.sh` wants a report even when
 	// the thing it was pointed at could not be read.
@@ -1289,8 +1626,22 @@ export function profileAuthorizationCheck(
 	} catch (error) {
 		walkError = error.message ?? String(error);
 	}
+	const mainRelative = mainExecutablePath(appPath).slice(appPath.length + 1);
+	// One `security cms -D` per nested bundle, however many executables it holds.
+	const nestedProfiles = new Map();
+	const nestedBundleProfile = (executable) => {
+		const bundle = nestedAppBundle(appPath, executable);
+		if (bundle == null) return { present: false, entitlements: null };
+		if (!nestedProfiles.has(bundle))
+			nestedProfiles.set(
+				bundle,
+				readEmbeddedProfileEntitlements(join(appPath, bundle), run),
+			);
+		return nestedProfiles.get(bundle);
+	};
 	const unauthorized = [];
 	const unreadable = [];
+	const unhardened = [];
 	for (const relative of executables) {
 		const result = run(CODESIGN, [
 			"-d",
@@ -1303,16 +1654,36 @@ export function profileAuthorizationCheck(
 			unreadable.push(relative);
 			continue;
 		}
-		for (const key of profileBackedEntitlementKeys(result.stdout)) {
-			const group =
-				key === "keychain-access-groups"
-					? webauthnEntitlementGroup(result.stdout, bundleId)
-					: null;
-			if (!profileAuthorizes(embedded.entitlements, key, bundleId, group))
-				unauthorized.push(
-					`${relative} claims ${key}${group ? ` (${group})` : ""}`,
-				);
-		}
+		// The F2 hardening question rides the SAME read: one codesign per
+		// executable answers both rows, so they cannot judge two different reads.
+		const forbidden = hardeningViolations(result.stdout, {
+			isMain: relative === mainRelative,
+		});
+		if (forbidden.length > 0)
+			unhardened.push(`${relative}: ${forbidden.join(", ")}`);
+		const keys = profileBackedEntitlementKeys(result.stdout);
+		if (keys.length === 0) continue;
+		/*
+		 * WHICH profile judges this executable. macOS authorizes a restricted claim
+		 * against the profile of the bundle the executable belongs to, so the main
+		 * bundle's profile covers `CFBundleExecutable` and nothing else: a helper
+		 * `.app` is judged by its OWN `Contents/embedded.provisionprofile`, and
+		 * `ShipIt` (inside `Squirrel.framework`, which no profile can sit in) by
+		 * none. Judging every executable against the main bundle's profile was the
+		 * hole: once a team-wildcard profile is always embedded, the 0.29.6 shape —
+		 * the group on `ShipIt` and the helpers — passed (agent review round 1, R1).
+		 */
+		const owner =
+			relative === mainRelative ? embedded : nestedBundleProfile(relative);
+		const denied = unauthorizedEntitlementKeys(
+			owner.entitlements,
+			result.stdout,
+			keys,
+		);
+		for (const key of denied)
+			unauthorized.push(
+				`${relative} claims ${key}${owner === embedded ? "" : owner.present ? " (its own bundle's profile does not authorize it)" : " (it has no profile of its own; the main bundle's does not extend to it)"}`,
+			);
 	}
 	const reasons = [];
 	if (walkError != null)
@@ -1371,7 +1742,89 @@ export function profileAuthorizationCheck(
 						? "no executable was found to read"
 						: `the entitlements of ${executables.length} executable(s) were read`,
 	};
-	return [authorization, readability];
+	/*
+	 * THE F2 HARDENING ROW. The runtime will count a card answer as the
+	 * operator's when the process attesting it is this signed app; that is
+	 * worthless if same-uid code can run inside it. With
+	 * `allow-dyld-environment-variables` it can (DYLD_INSERT_LIBRARIES, measured
+	 * in the F2 spike on 0.57.8, where main AND every helper carried it), with
+	 * `get-task-allow` a debugger can attach, and `disable-library-validation`
+	 * on main lets it load a planted dylib. Policy: `hardeningViolations` in
+	 * `macos-entitlement-policy.mjs`.
+	 *
+	 * The candidate's own failure (not in `SIGNATURE_CHECK_IDS`): a signing job
+	 * that signed these keys in produced a bundle that must not ship. An
+	 * executable whose signature could not be read is the readability row's to
+	 * report, as it is for the authorization row; an empty walk is red here too.
+	 */
+	const hardening = {
+		id: "app-hardening-entitlements",
+		scope: "app",
+		target: appPath,
+		description:
+			"no executable carries allow-dyld-environment-variables or get-task-allow, and the main executable does not carry disable-library-validation",
+		passed:
+			walkError == null && executables.length > 0 && unhardened.length === 0,
+		output:
+			walkError != null
+				? `the bundle could not be walked for executables: ${walkError}`
+				: executables.length === 0
+					? "no executable was found to judge"
+					: unhardened.length > 0
+						? `${unhardened.length} of ${executables.length} executable(s) carry a forbidden entitlement: ${unhardened.slice(0, 4).join("; ")}${unhardened.length > 4 ? ` (and ${unhardened.length - 4} more)` : ""}`
+						: `${executables.length - unreadable.length} executable(s) read, none carries a forbidden entitlement`,
+	};
+	return [authorization, readability, hardening];
+}
+
+/**
+ * The Electron fuse wire of the bundle's framework, held to
+ * `REQUIRED_FUSES` (`scripts/electron-fuse-policy.mjs`, which says why each).
+ *
+ * Read from the file rather than asked of a running app: the fuses are bytes
+ * electron-builder flipped before signing, and the signature seals them, so the
+ * bytes on disk are the bytes the OS will run. An unreadable framework is red.
+ */
+export function electronFusesCheck(appPath, { readFile = readFileSync } = {}) {
+	return appCheck(
+		"app-electron-fuses",
+		appPath,
+		"the Electron fuse wire has RunAsNode, NODE_OPTIONS and --inspect off, asar integrity and only-load-from-asar on, and cookie encryption on",
+		() => {
+			const binary = readFile(join(appPath, ELECTRON_FRAMEWORK_BINARY));
+			const problems = fuseViolations(binary);
+			if (problems.length > 0) throw new Error(problems.join(" | "));
+			return describeFuseWires(binary);
+		},
+	);
+}
+
+/**
+ * `LOAttestationEpoch` in the app's `Info.plist`: the key the runtime's code
+ * requirement pins so that only hardened builds can attest a card answer (the
+ * downgrade lock; see `ATTESTATION_EPOCH_KEY`). A hardened bundle without it
+ * would never be trusted, and silently so - the answer would just stay
+ * unverified - so its absence is a release failure, not a warning.
+ */
+export function attestationEpochCheck(
+	appPath,
+	{ readFile = readFileSync } = {},
+) {
+	return appCheck(
+		"app-attestation-epoch",
+		appPath,
+		`Info.plist declares ${ATTESTATION_EPOCH_KEY} = "${ATTESTATION_EPOCH_VALUE}"`,
+		() => {
+			const epoch = attestationEpochFromInfoPlist(
+				readFile(join(appPath, "Contents", "Info.plist"), "utf8"),
+			);
+			if (epoch !== ATTESTATION_EPOCH_VALUE)
+				throw new Error(
+					`${ATTESTATION_EPOCH_KEY} is ${epoch === null ? "absent" : `"${epoch}"`}, must be "${ATTESTATION_EPOCH_VALUE}"`,
+				);
+			return `${ATTESTATION_EPOCH_KEY}=${epoch}`;
+		},
+	);
 }
 
 /*
@@ -1390,25 +1843,29 @@ export function profileAuthorizationCheck(
  * Run one check with the check's own `env` applied to THIS process for the call.
  *
  * Why not only hand it to the runner: `env` is the runner's fourth parameter, and
- * a runner that does not forward it drops the switch SILENTLY — and for the spawn
- * probe that switch is `ELECTRON_RUN_AS_NODE=1`, the only thing that makes
- * `app-spawn` a probe instead of a real app launch. QA round 2 measured exactly
- * that from a four-parameter runner in a scratch harness: five stray launches of
- * the app binary, every one of them raising and focusing the operator's window.
+ * a runner that does not forward it drops the switch SILENTLY. When `app-spawn`
+ * still ran in node mode that switch was `ELECTRON_RUN_AS_NODE=1`, and QA round 2
+ * measured the cost from a four-parameter runner in a scratch harness: five stray
+ * launches of the app binary, every one of them raising and focusing the
+ * operator's window. The launch probe's headless window mode and its REMOVAL of
+ * `ELECTRON_RUN_AS_NODE`/`NODE_OPTIONS` (a `null` value) ride the same way.
  * The check owns its environment here, so any runner that inherits the process
  * environment — which is the default for `spawnSync`, and what `spawnRunner`
  * does — applies it whether it forwards the parameter or not.
  *
  * Scoped to the call and restored in a `finally`: these checks run one at a time,
  * so nothing else can observe the variable, and a check that threw cannot leave
- * `ELECTRON_RUN_AS_NODE` behind for the next one.
+ * a switch behind (or missing) for the next one.
  */
 function withCheckEnv(env, work) {
 	if (!env) return work();
 	const saved = new Map();
 	for (const [key, value] of Object.entries(env)) {
 		saved.set(key, process.env[key]);
-		process.env[key] = value;
+		// `null` REMOVES the variable for the call: the launch probe must not
+		// inherit a runner's `ELECTRON_RUN_AS_NODE`/`NODE_OPTIONS`.
+		if (value === null) delete process.env[key];
+		else process.env[key] = value;
 	}
 	try {
 		return work();
@@ -1429,46 +1886,79 @@ function withCheckEnv(env, work) {
  * different reads — which is why the read happens once here when the caller has
  * none to hand in (review round 1, finding 5).
  */
-export function runChecks({ appPath, dmgPath, run, profile = null }) {
+export function runChecks({
+	appPath,
+	dmgPath,
+	run,
+	profile = null,
+	hostArch = hostArchitecture(),
+	env = process.env,
+}) {
 	const embedded = appPath
 		? (profile ?? readEmbeddedProfileEntitlements(appPath, run))
 		: { present: false, entitlements: null };
-	return artifactChecks({ appPath, dmgPath, profile: embedded }).map(
-		(check) => {
-			const result = withCheckEnv(check.env, () =>
+	return artifactChecks({
+		appPath,
+		dmgPath,
+		profile: embedded,
+		hostArch,
+		env,
+	}).map((check) => {
+		// Refused before `run`: the exec itself is what fires the notice, so the
+		// child must never start (see `refusesLocalRosettaExec`).
+		if (check.refusal)
+			return {
+				id: check.id,
+				scope: check.scope,
+				description: check.description,
+				target: check.target,
+				passed: false,
+				output: check.refusal,
+			};
+		let result;
+		try {
+			result = withCheckEnv(check.env, () =>
 				run(check.command, check.args, check.input, check.env, check.timeoutMs),
 			);
-			const passed = check.expect(result);
-			const output = [result.stdout, result.stderr]
+		} finally {
+			// A check that owns scratch state (the launch probe's profile directory)
+			// removes it whether the child passed, failed or the runner threw.
+			check.cleanup?.();
+		}
+		const passed = check.expect(result);
+		// A check that knows what its raw output must not leak says so through
+		// `report`; null falls back to the generic trim below (stderr included).
+		const output =
+			check.report?.(result) ??
+			[result.stdout, result.stderr]
 				.join("\n")
 				.trim()
 				.split("\n")
 				.filter((line) => line.trim().length > 0)
 				.slice(0, 4)
 				.join(" | ");
-			return {
-				id: check.id,
-				scope: check.scope,
-				description: check.description,
-				target: check.target,
-				passed,
-				// A check that died without printing anything — the shape an OS refusal
-				// takes, since the process never ran — would otherwise report an empty
-				// reason, which reads as "no detail" rather than "killed at spawn".
-				output:
-					output ||
-					[
-						result.status === null
-							? "no exit status (the child never ran to an exit)"
-							: `exit ${result.status}`,
-						result.signal ? `killed by ${result.signal}` : null,
-						result.timedOut ? "did not exit within the check's bound" : null,
-					]
-						.filter(Boolean)
-						.join("; "),
-			};
-		},
-	);
+		return {
+			id: check.id,
+			scope: check.scope,
+			description: check.description,
+			target: check.target,
+			passed,
+			// A check that died without printing anything — the shape an OS refusal
+			// takes, since the process never ran — would otherwise report an empty
+			// reason, which reads as "no detail" rather than "killed at spawn".
+			output:
+				output ||
+				[
+					result.status === null
+						? "no exit status (the child never ran to an exit)"
+						: `exit ${result.status}`,
+					result.signal ? `killed by ${result.signal}` : null,
+					result.timedOut ? "did not exit within the check's bound" : null,
+				]
+					.filter(Boolean)
+					.join("; "),
+		};
+	});
 }
 
 export function summarize(results) {
@@ -1567,9 +2057,16 @@ export function spawnRunner(
 		encoding: "utf8",
 		input,
 		// `env` is spread over the inherited environment rather than replacing it:
-		// a check adds one switch (the spawn probe's `ELECTRON_RUN_AS_NODE`), and a
+		// a check adds or removes a switch (the launch probe's window mode), and a
 		// bare `env: {...}` would take PATH away from every tool it spawns.
-		env: env ? { ...process.env, ...env } : process.env,
+		// A `null` value removes that variable from the child (see `withCheckEnv`).
+		env: env
+			? Object.fromEntries(
+					Object.entries({ ...process.env, ...env }).filter(
+						([, value]) => value !== null && value !== undefined,
+					),
+				)
+			: process.env,
 		timeout: timeoutMs,
 	});
 	const timedOut = result.error?.code === "ETIMEDOUT";
@@ -1639,6 +2136,8 @@ export function verifyArtifacts({
 		return [
 			...runChecks({ appPath: path, dmgPath: null, run, profile }),
 			...profileAuthorizationCheck(path, { run, profile }),
+			electronFusesCheck(path),
+			attestationEpochCheck(path),
 			bundledBytecodeCheck(path),
 			bundledPythonCheck(path, { run, expectArch: arch }),
 			privatePythonSeedCheck(path, { expectArch: arch }),
@@ -1672,6 +2171,8 @@ export function verifyArtifacts({
 		);
 		results.push(...runChecks({ appPath, dmgPath: null, run, profile }));
 		results.push(...profileAuthorizationCheck(appPath, { run, profile }));
+		results.push(electronFusesCheck(appPath));
+		results.push(attestationEpochCheck(appPath));
 		// Neither of the next nine is a `codesign` question: all are about what
 		// the build assembled, and they fail with the offending paths so the fix is
 		// obvious.

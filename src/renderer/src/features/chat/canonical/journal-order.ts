@@ -12,6 +12,34 @@ export type JournalPosition = {
 	 * first placed row - not a fabricated own entry coordinate, not a timestamp.
 	 */
 	sourceAdmissionAnchor?: string;
+	/**
+	 * The row this one was LOADED IN FRONT OF: set by a continuation page
+	 * (`applyHistoryPage`'s `pagedBefore`) on the rows it adds, naming the row that
+	 * was at the top of the transcript when the page merged.
+	 *
+	 * WHY A SECOND ANCHOR. `sourceAdmissionAnchor` can only say "after": it is the
+	 * live arrival fact, and a live row does arrive after what is on screen. A
+	 * `before_id` page is the opposite fact - every row in it is older than every
+	 * row the reader holds, because `before_id` is exclusive and is the reader's own
+	 * cursor - and when the owner's index is still building (a long journal that
+	 * keeps growing, `desktop_sessions.py::_journal_page`) that page carries no
+	 * `journal_seq`. Stamped as an arrival, it ranked BEHIND the newest placed row
+	 * and painted yesterday below this afternoon until the correction landed (the
+	 * 2026-10-26 report, `scripts/reconnect-page-gap.test.mjs`). It only places a
+	 * row that has no coordinate yet.
+	 *
+	 * THE INVARIANT THAT MAKES "AN OWN COORDINATE ALWAYS WINS" TRUE: a row that
+	 * carries `sourcePrecedes` carries NO `sourceAdmissionAnchor` - it was
+	 * loaded, not admitted, so `stampArrival` never stamps one and strips any it
+	 * finds. The arrival anchor is what `gapSafeCoordinates` walks before it lets a
+	 * row use its coordinate. A continuation row stamped as "arrived behind the
+	 * tail" was a false fact. After a domain rotation the old tail rows were
+	 * re-stamped behind the continuation rows, which closed a loop (y0 -> t5 ->
+	 * t4 -> y3 -> ... -> y0). Every row on a loop then stayed coordinate-less for
+	 * good, even once each carried a current `journal_seq` (review round 1
+	 * R1-M1). Keep both anchors from ever living on one row.
+	 */
+	sourcePrecedes?: string;
 };
 export type SourceCoordinate = { entryId: string; seq: number };
 /** A dispatch witness, not another source revision or an ordering of domains. */
@@ -277,6 +305,18 @@ function stampArrival(
 			previous = record;
 			continue;
 		}
+		// A LOADED row is not an arrival (`JournalPosition.sourcePrecedes`): it
+		// never takes an arrival anchor, and one it already carries is dropped, so
+		// state written before this rule (a paint cache) heals on its next rank.
+		if (record.sourcePrecedes !== undefined) {
+			if (record.sourceAdmissionAnchor !== undefined) {
+				const { sourceAdmissionAnchor: _arrival, ...loaded } = record;
+				records[i] = loaded;
+				changed = true;
+			}
+			previous = records[i];
+			continue;
+		}
 		if (
 			!placed(record) &&
 			previous &&
@@ -334,6 +374,202 @@ function arrivalPlacement(
 	}
 	for (const id of path) memo.set(id, answer);
 	return answer;
+}
+
+/**
+ * The rank tuple's class for a loaded row ranked BEHIND a placed row of its own
+ * page (`LoadedOrder.page`). It must sort after that row's own (0), owned (1)
+ * and arrival (2) classes, and a row loaded `depth` hops in front of it takes
+ * `BEHIND_PAGE_MATE - depth`, which has to stay above 2 for any chain length a
+ * transcript can hold. That holds only because the value is `MAX_SAFE_INTEGER`:
+ * no realistic chain depth reaches the owned/arrival classes, and a small
+ * constant here would let a deep chain sort into them.
+ */
+const BEHIND_PAGE_MATE = Number.MAX_SAFE_INTEGER;
+
+/**
+ * What the continuation rules (`JournalPosition.sourcePrecedes`) need, built
+ * ONLY when some row was loaded by an older page (review round 2 R2-m2). A cold
+ * open plus live rows carries no `sourcePrecedes`, and building this on every
+ * commit cost a 3,000-row open with 300 live commits about 28% of its wall
+ * time: an O(N) `seqOf` pass for `floor` (each call allocates in
+ * `gapSafeCoordinates`) and an N-entry `position` map, per commit.
+ */
+type LoadedOrder = {
+	/** `precedesPlacement`'s floor: the oldest placed row no continuation loaded. */
+	floor: number | undefined;
+	/** Merge position, for `precedesSuffixSlot`. */
+	position: ReadonlyMap<string, number>;
+	/**
+	 * Unplaced loaded rows that a PLACED row of their own page can place, as the
+	 * rank tuple's `seq` and class (see `pageMatePlacement`).
+	 */
+	page: ReadonlyMap<string, { seq: number; slot: number }>;
+};
+
+let loadedOrderPasses = 0;
+/**
+ * Test seam (review round 2 R2-m2): how many times a ranker built its
+ * `LoadedOrder`. It pins the cold path's zero extra work as a count, not as a
+ * wall-clock assertion that would flake.
+ */
+export function __loadedOrderPasses(): number {
+	return loadedOrderPasses;
+}
+
+/**
+ * Place an unplaced loaded row by the placed rows of ITS OWN PAGE (the rows
+ * that share its `sourcePrecedes`, in merge position), before any chain or
+ * floor rule (review round 2 R2-m1). Behind the nearest placed page-mate
+ * before it, else in front of the nearest one after it.
+ *
+ * WHY. A correction can place only some of a page's rows: the owner sends user
+ * rows first, 128 per event (`transcript_index.py::
+ * journal_order_correction_batches`), or one row is missing from the index.
+ * The chain rule ranked such a row in front of the row the PAGE was loaded
+ * before, i.e. behind every placed row of its own page (`y0 y2 y3 y1 t4`; two
+ * stacked pages after the users-first event: every assistant below its users).
+ * The arrival anchor no longer holds it in place (a loaded row never takes one,
+ * see `JournalPosition.sourcePrecedes`). This reads only merge position and
+ * `seqOf`, never an anchor, so no walk and no loop can come of it, and the
+ * same records give the same order on every commit: once ranked behind its
+ * page-mate, the row stays at that position.
+ */
+function pageMatePlacement(
+	records: readonly TranscriptRecord[],
+	seqOf: (record: TranscriptRecord | undefined) => number | undefined,
+): Map<string, { seq: number; slot: number }> {
+	const page = new Map<string, { seq: number; slot: number }>();
+	const before = new Map<string, number>();
+	const after = new Map<string, number>();
+	for (const record of records) {
+		if (record.sourcePrecedes === undefined) continue;
+		const seq = seqOf(record);
+		if (seq !== undefined) before.set(record.sourcePrecedes, seq);
+		else {
+			const mate = before.get(record.sourcePrecedes);
+			if (mate !== undefined)
+				page.set(record.id, { seq: mate, slot: BEHIND_PAGE_MATE });
+		}
+	}
+	for (let i = records.length - 1; i >= 0; i--) {
+		const record = records[i];
+		if (record.sourcePrecedes === undefined) continue;
+		const seq = seqOf(record);
+		if (seq !== undefined) after.set(record.sourcePrecedes, seq);
+		else if (!page.has(record.id)) {
+			const mate = after.get(record.sourcePrecedes);
+			if (mate !== undefined) page.set(record.id, { seq: mate, slot: -1 });
+		}
+	}
+	return page;
+}
+
+function loadedOrder(
+	records: readonly TranscriptRecord[],
+	seqOf: (record: TranscriptRecord | undefined) => number | undefined,
+): LoadedOrder {
+	loadedOrderPasses += 1;
+	return {
+		floor: precedesFloor(records, seqOf),
+		position: new Map(records.map((record, index) => [record.id, index])),
+		page: pageMatePlacement(records, seqOf),
+	};
+}
+
+/**
+ * Where a continuation-page row ranks, as the rank tuple's `seq` and class
+ * (`slot`). First by its own page's placed rows (`pageMatePlacement`). Else IN
+ * FRONT OF the row its `sourcePrecedes` chain reaches first that is placed,
+ * directly or by its own page-mates (a page loaded in front of an earlier
+ * continuation's rows points at them), `depth` hops away from it - a page
+ * loaded further back has the longer chain and sorts first.
+ *
+ * WHEN THE CHAIN REACHES NO PLACED ROW (it ends at an unplaced row, leaves the
+ * list or loops), the row ranks in front of `floor`: the oldest placed row
+ * that was NOT itself loaded by a continuation. That target is still correct,
+ * because a continuation is older than every row the reader held when it
+ * merged. Two shapes reach it. An open page that was itself `building` (review
+ * R1-m1 / QA Q3) leaves the anchor row with no coordinate. A domain rotation
+ * leaves the old tail rows with the old domain's coordinates, so they count as
+ * unplaced. The arrival rules cannot stand in here, because a loaded row has no
+ * arrival anchor (see `JournalPosition.sourcePrecedes`). Continuation rows are
+ * excluded from `floor` so that a deeper page placed in the new domain cannot
+ * pull a shallower, still-unplaced one above it. Undefined only when no such
+ * row is placed at all; `precedesSuffixSlot` then orders it inside the
+ * unplaced suffix.
+ */
+function precedesPlacement(
+	record: TranscriptRecord,
+	byId: ReadonlyMap<string, TranscriptRecord>,
+	seqOf: (record: TranscriptRecord | undefined) => number | undefined,
+	loaded: LoadedOrder | undefined,
+): { seq: number; slot: number } | undefined {
+	if (loaded === undefined || record.sourcePrecedes === undefined)
+		return undefined;
+	const own = loaded.page.get(record.id);
+	if (own !== undefined) return own;
+	const seen = new Set<string>();
+	let depth = 1;
+	let at = byId.get(record.sourcePrecedes);
+	while (at !== undefined && !seen.has(at.id)) {
+		seen.add(at.id);
+		const seq = seqOf(at);
+		if (seq !== undefined) return { seq, slot: -depth };
+		const mate = loaded.page.get(at.id);
+		if (mate !== undefined) return { seq: mate.seq, slot: mate.slot - depth };
+		depth += 1;
+		at = at.sourcePrecedes ? byId.get(at.sourcePrecedes) : undefined;
+	}
+	return loaded.floor === undefined
+		? undefined
+		: { seq: loaded.floor, slot: -depth };
+}
+
+/**
+ * Where a loaded row sits in the UNPLACED SUFFIX when nothing is placed at all.
+ * This is the shape where the open page was itself `building` (review R1-m1 /
+ * QA Q3). The row is keyed to the suffix slot of the row its `sourcePrecedes`
+ * chain ends at (the first row on it that no continuation loaded), `depth`
+ * hops in front of it, so the page still paints above what the reader held.
+ * Undefined when the chain leaves the list or loops: the row keeps its own
+ * merge position, which is the behaviour before this field existed.
+ */
+function precedesSuffixSlot(
+	record: TranscriptRecord,
+	byId: ReadonlyMap<string, TranscriptRecord>,
+	loaded: LoadedOrder | undefined,
+): { slot: number; depth: number } | undefined {
+	if (loaded === undefined || record.sourcePrecedes === undefined)
+		return undefined;
+	const { position } = loaded;
+	const seen = new Set<string>();
+	let depth = 1;
+	let at = byId.get(record.sourcePrecedes);
+	while (at !== undefined && !seen.has(at.id)) {
+		if (at.sourcePrecedes === undefined) {
+			const slot = position.get(at.id);
+			return slot === undefined ? undefined : { slot, depth };
+		}
+		seen.add(at.id);
+		depth += 1;
+		at = byId.get(at.sourcePrecedes);
+	}
+	return undefined;
+}
+
+/** `precedesPlacement`'s `floor`: the oldest placed row no continuation loaded. */
+function precedesFloor(
+	records: readonly TranscriptRecord[],
+	seqOf: (record: TranscriptRecord | undefined) => number | undefined,
+): number | undefined {
+	let floor: number | undefined;
+	for (const record of records) {
+		if (record.sourcePrecedes !== undefined) continue;
+		const seq = seqOf(record);
+		if (seq !== undefined && (floor === undefined || seq < floor)) floor = seq;
+	}
+	return floor;
 }
 
 /**
@@ -458,7 +694,11 @@ export function journalOrderedRecords(
 	const generation = state.journalGeneration;
 	const positions = state.journalPositions;
 	let changed = false;
+	// Read in the pass this lane already makes, so the cold path (no older
+	// page loaded) pays no extra scan for it (`LoadedOrder`, R2-m2).
+	let anyLoaded = false;
 	const records = input.map((record) => {
+		if (record.sourcePrecedes !== undefined) anyLoaded = true;
 		const candidates = [
 			positions?.get(record.sourceEntryId ?? record.id),
 			positions?.get(record.id),
@@ -516,6 +756,7 @@ export function journalOrderedRecords(
 			: undefined,
 	);
 	const rankPlaced = (record: TranscriptRecord) => seqOf(record) !== undefined;
+	const loaded = anyLoaded ? loadedOrder(records, seqOf) : undefined;
 	const rank = (record: TranscriptRecord, index: number): number[] => {
 		const own = seqOf(record);
 		if (
@@ -533,20 +774,40 @@ export function journalOrderedRecords(
 					: undefined;
 		const owner =
 			typeof anchor === "string" ? seqOf(byId.get(anchor)) : undefined;
+		// A negative class (-depth) sorts the row in front of the row it was loaded
+		// before (class 0 at the same seq) and of that row's calls/arrivals (1, 2),
+		// and an earlier page in front of a later one; `BEHIND_PAGE_MATE` sorts it
+		// after a placed page-mate and everything that row owns. Within one page,
+		// page order holds by `index`, because the merge adds a page's new rows in
+		// page order.
+		const precedes =
+			owner === undefined && own === undefined
+				? precedesPlacement(record, byId, seqOf, loaded)
+				: undefined;
 		const admitted =
-			own === undefined
+			own === undefined && precedes === undefined
 				? arrivalPlacement(record, byId, rankPlaced, seqOf, chain)
 				: undefined;
-		const placement = owner ?? own ?? admitted;
-		return placement === undefined
-			? [1, 0, 0, 0, index]
-			: [
-					0,
-					placement,
-					owner !== undefined ? 1 : own !== undefined ? 0 : 2,
-					own ?? Number.MAX_SAFE_INTEGER,
-					index,
-				];
+		const placement = owner ?? own ?? precedes?.seq ?? admitted;
+		if (placement === undefined) {
+			// The unplaced suffix keeps merge order (`index`), except that a loaded
+			// row goes in front of the row it was loaded before (`precedesSuffixSlot`).
+			const suffix = precedesSuffixSlot(record, byId, loaded);
+			return [1, suffix?.slot ?? index, suffix ? -suffix.depth : 0, 0, index];
+		}
+		return [
+			0,
+			placement,
+			owner !== undefined
+				? 1
+				: own !== undefined
+					? 0
+					: precedes !== undefined
+						? precedes.slot
+						: 2,
+			own ?? Number.MAX_SAFE_INTEGER,
+			index,
+		];
 	};
 	const ranked = records.map((record, index) => ({
 		record,
@@ -605,7 +866,10 @@ function journalOrderedPeerRecords(
 	 * fact is precisely what a not-yet-admitted row must still be ranked by.
 	 */
 	const placement = new Map<string, SourceCoordinate>();
+	// Read in the pass this lane already makes (`LoadedOrder`, R2-m2).
+	let anyLoaded = false;
 	for (const record of input) {
+		if (record.sourcePrecedes !== undefined) anyLoaded = true;
 		const candidates = [
 			positions?.get(record.sourceEntryId ?? record.id),
 			positions?.get(record.id),
@@ -664,6 +928,7 @@ function journalOrderedPeerRecords(
 	const seqOf = gapSafeCoordinates(byId, (record) => factFor(record)?.seq);
 	const hasCoordinate = (record: TranscriptRecord) =>
 		seqOf(record) !== undefined;
+	const loaded = anyLoaded ? loadedOrder(records, seqOf) : undefined;
 	const rank = (record: TranscriptRecord, index: number): number[] => {
 		const own = seqOf(record);
 		if (
@@ -681,20 +946,33 @@ function journalOrderedPeerRecords(
 					: undefined;
 		const owner =
 			typeof anchor === "string" ? seqOf(byId.get(anchor)) : undefined;
+		// The same continuation rule as the local ranker (`precedesPlacement`).
+		const precedes =
+			owner === undefined && own === undefined
+				? precedesPlacement(record, byId, seqOf, loaded)
+				: undefined;
 		const admitted =
-			own === undefined
+			own === undefined && precedes === undefined
 				? arrivalPlacement(record, byId, hasCoordinate, seqOf, chain)
 				: undefined;
-		const placementSeq = owner ?? own ?? admitted;
-		return placementSeq === undefined
-			? [1, 0, 0, 0, index]
-			: [
-					0,
-					placementSeq,
-					owner !== undefined ? 1 : own !== undefined ? 0 : 2,
-					own ?? Number.MAX_SAFE_INTEGER,
-					index,
-				];
+		const placementSeq = owner ?? own ?? precedes?.seq ?? admitted;
+		if (placementSeq === undefined) {
+			const suffix = precedesSuffixSlot(record, byId, loaded);
+			return [1, suffix?.slot ?? index, suffix ? -suffix.depth : 0, 0, index];
+		}
+		return [
+			0,
+			placementSeq,
+			owner !== undefined
+				? 1
+				: own !== undefined
+					? 0
+					: precedes !== undefined
+						? precedes.slot
+						: 2,
+			own ?? Number.MAX_SAFE_INTEGER,
+			index,
+		];
 	};
 	const ranked = records.map((record, index) => ({
 		record,

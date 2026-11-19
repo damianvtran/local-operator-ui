@@ -1,0 +1,17 @@
+{
+  "control_ref": "f4f108294b514abf5fc30647aa19e773e3ec8f83",
+  "control_method": "Untouched git-archive origin/main src/scripts/package/.github control using the same private dependency tree; isolated HOME/config/TMPDIR, no dependency install.",
+  "control_command": "node --test scripts/test-inventory.test.mjs scripts/lane-registration.test.mjs scripts/canvas-tab-close.test.mjs",
+  "head_before_registration_fix": "3f351787e54390d31d6baa0c45bdacdfeefb1012",
+  "head_and_control_exit_code": 1,
+  "actual_failures": {
+    "registration": "four upstream Library files missing from package/workflows: library-markdown, library-model, library-page, library-pptx",
+    "canvas_refused_close": "heldOutcome.keptWords=true but bufferText(document.id) is null instead of the reader\u2019s words at assertion459"
+  },
+  "source_hashes_in_main": {
+    "scripts/canvas-tab-close.test.mjs": "e55bc8f8341e922efcbe75618f945c348bfec68f85d4d0cf297ee7bc0557a52d",
+    "scripts/lane-registration.test.mjs": "57cfcec056c6c31434663110ef106c3044d0bc76eb18fdcaf2bc8f9f260bc322",
+    "scripts/test-inventory.test.mjs": "6a965d3cbd9c89d13bab0ee86c12c91cfb698791d5fac819ada88ec0ee82d03c"
+  },
+  "scope": "Register the four real Library lanes once; no exemptions. No scripts/chat-row-menu.test.mjs exists on the CI head. Canvas is an inherited upstream runtime blocker and is NOT edited/skipped/marked flaky in this PR."
+}

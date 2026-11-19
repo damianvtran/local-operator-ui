@@ -101,6 +101,11 @@ deliberate:
   browse is unchanged, for the reason the Unread pin is: the pins belong to the
   door whose job is finding a conversation.
 
+**The same ring answers a second door**: `Ctrl+Tab` opens the recent-session
+switcher, which offers five rows in the same order with the conversation on
+screen first (`docs/session-switcher.md`). One ring, two ways in, so the keyboard
+and the palette cannot remember different amounts of the same history.
+
 The **rail row** is the third door, and it exists because the chord is invisible:
 a user who never learns `Cmd+K` would use the palette once, if at all. The row is
 the only control the rail carries besides the account row, it is on screen on

@@ -6,6 +6,8 @@
  * version drew is exactly what § 5's "almost certainly not" covers).
  */
 
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import type { FC } from "react";
 
 /**
@@ -17,11 +19,14 @@ export type OutputBlockProps = {
 };
 
 export const OutputBlock: FC<OutputBlockProps> = ({ output }) => {
+	useI18nLocale();
 	if (!output) return null;
 
 	return (
 		<div className="mb-4 w-full">
-			<span className="mb-1 block text-ink-dim text-meta">Output</span>
+			<span className="mb-1 block text-ink-dim text-meta">
+				{t("ui.chat.transcript_copy.block.output")}
+			</span>
 			<pre className="flex max-h-[300px] w-full flex-col-reverse overflow-auto rounded-sm border border-hairline bg-sunken p-3 font-mono text-ink text-mono-sm">
 				{output}
 			</pre>

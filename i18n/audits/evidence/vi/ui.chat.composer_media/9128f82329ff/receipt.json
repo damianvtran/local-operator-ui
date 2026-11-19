@@ -1,0 +1,174 @@
+{
+  "locale": "vi",
+  "mode": "Fresh independent four-key delta audit; read-only frozen worktree. Allocation: fix (<2h), bounded audit only.",
+  "scope": "PR #1842 @ e5fb4310dab638f9cf428779d62539ec039a8990; vi four new keys fully audited; other namespace keys consistency_only (not legacy semantic certification). English pasted_file broadened metadata checked against source.",
+  "head_sha": "e5fb4310dab638f9cf428779d62539ec039a8990",
+  "audit_date": "2026-11-10",
+  "key_count": 271,
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "Delegation supplies translator session 9b4eaf460088 and values verbatim. Auditor did not translate or participate in translation."
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "9128f82329ff",
+    "session": "9128f82329ff",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "Served session header: openai/gpt-6.1-sol; session 9128f82329ff. No fallback used.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "status": "passed",
+  "result": "clean",
+  "verdict": "clean",
+  "findings": [],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "namespaces": {
+    "ui.chat": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15",
+      "target_sha256": "28aefec39d49f6c7cbaa05f15e40383a8e6f38761369f0068d90434dc9511445",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.json",
+          "sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15"
+        },
+        "vi": {
+          "path": "src/i18n/catalogues/vi/ui.chat.json",
+          "sha256": "28aefec39d49f6c7cbaa05f15e40383a8e6f38761369f0068d90434dc9511445"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.context.json",
+          "sha256": "84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf"
+        }
+      },
+      "findings": []
+    },
+    "ui.chat.composer_media": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae",
+      "target_sha256": "8b458ffc96e9b6605c0924b2fdee952998ceed1d27fbd9ab23a6f5a5389445a6",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.composer_media.json",
+          "sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae"
+        },
+        "vi": {
+          "path": "src/i18n/catalogues/vi/ui.chat.composer_media.json",
+          "sha256": "8b458ffc96e9b6605c0924b2fdee952998ceed1d27fbd9ab23a6f5a5389445a6"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.composer_media.context.json",
+          "sha256": "a0fbc1552ef6f27999f3cff365750025627a284faa106d767e22a24d131ae77b"
+        }
+      },
+      "findings": []
+    },
+    "ui.common.actions": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b",
+      "target_sha256": "d89b7dacc9c49f715685e2e6fa0cf04ebd75dee37eb5496c21f73bb00124d4ad",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.json",
+          "sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b"
+        },
+        "vi": {
+          "path": "src/i18n/catalogues/vi/ui.common.actions.json",
+          "sha256": "d89b7dacc9c49f715685e2e6fa0cf04ebd75dee37eb5496c21f73bb00124d4ad"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.context.json",
+          "sha256": "24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d"
+        }
+      },
+      "findings": []
+    }
+  },
+  "per_key_checks": [
+    {
+      "key": "ui.chat.image_actions.actions",
+      "source": "Image actions",
+      "current_text": "Thao tác với ảnh",
+      "findings": [],
+      "assessment": "Thao tác với ảnh is an idiomatic neutral menu label, matching file_actions_menu.file_actions = Thao tác với tệp and image_actions.copy_image = Sao chép ảnh / expand_image = Mở rộng ảnh.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.chat.audio.position_label",
+      "source": "{label} position",
+      "current_text": "Vị trí phát của {label}",
+      "findings": [],
+      "assessment": "Vị trí phát names playback position rather than play/pause; matches attachments.playback_position = Vị trí phát. The invariant connector của takes any verbatim title without case/gender/number agreement; play_label = Phát {label}, pause_label = Tạm dừng {label}.",
+      "placeholder_integrity": {
+        "arguments": [
+          "label"
+        ],
+        "matches_english": true
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.chat.composer_media.pasted_image",
+      "source": "Pasted image",
+      "current_text": "Ảnh đã dán",
+      "findings": [],
+      "assessment": "Ảnh đã dán is a compact accurate fallback noun phrase parallel to pasted_file = Tệp đã dán. No extension, MIME identifier or user-name transformation.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.common.actions.actions_for_name",
+      "source": "Actions for {name}",
+      "current_text": "Thao tác với {name}",
+      "findings": [],
+      "assessment": "Thao tác với {name} names the actions applicable to the asset and matches existing ui.chat.canonical.link_toolkit.actions_for = Thao tác với {name} and file_actions_menu.file_actions = Thao tác với tệp. Invariant với is grammatical for Latin/CJK, punctuation or quoted filenames; no agreement or added quoting.",
+      "placeholder_integrity": {
+        "arguments": [
+          "name"
+        ],
+        "matches_english": true
+      },
+      "plural_select": []
+    }
+  ],
+  "remediation_verification": {
+    "status": "No in-scope findings; fully_audited_key_count = 4; all other keys consistency_only. Glossary conformance checked against manager-provided byte-copy at _s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/glossary.md (SHA-256 0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8).",
+    "prior_findings": [],
+    "policy_sources": [
+      "/Users/damian/local-operator/i18n/style-guides/vi.md",
+      "/Users/damian/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/glossary.md",
+      "docs/I18N.md"
+    ],
+    "executed_checks": [
+      "See companion audit.log: actual shasum, git, Python consistency checks, scoped repository duplicate/context validators and ICU parser/formatter."
+    ],
+    "typography_fit": "Four strings NFC, ordinary spaces only, no invisible/bidi controls, sentence case, no terminal punctuation; no hard length constraint. No rendered fit claimed.",
+    "out_of_scope_pre_existing": [
+      "Six ui.chat context gaps are present on origin/main and explicitly listed in i18n/context-allowance.json; no new gap, no in-scope missing context. First strict helper probe failed on these; corrected allowance-aware probe passes. See audit.log."
+    ]
+  },
+  "unverified": [
+    "No browser, rendered UI, screen-reader or pixel-fit validation.",
+    "Legacy translation values are consistency_only; not certified by this audit.",
+    "No aggregate check-i18n, ledger updates, repository writes, PR comment or tracked retention. Manager must retain scratch deliverables under canonical evidence root."
+  ],
+  "receipt_contract_review": "Root, namespace, auditor, translator and per-key field sets copied from required reference receipt. Python readback/schema-set/hash/identity checks executed.",
+  "audit_notes_not_execution_log": true
+}

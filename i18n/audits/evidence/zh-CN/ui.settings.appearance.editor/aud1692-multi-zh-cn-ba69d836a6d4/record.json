@@ -1,0 +1,103 @@
+{
+  "audit_id": "aud1692-multi-zh-cn-ba69d836a6d4",
+  "audit_kind": "independent-namespace-delta-translation-audit",
+  "audit_date": "2026-11-05",
+  "locale": "zh-CN",
+  "namespace": "ui.settings.appearance.editor",
+  "audited_head": "78d84573cb687bf593a9b2e385d7bf5a9056ca3a",
+  "base": "149615374bfb90b2539c60b1016286c880258d5f",
+  "scope": "11 new multi-accent editor keys only (PR #1692). Previous 160 keys retained from C audit with per-value UTF-8 byte compatibility against base 1496153; no old audit reset.",
+  "keys_audited": [
+    "ui.settings.appearance.editor.accents",
+    "ui.settings.appearance.editor.accent.primary",
+    "ui.settings.appearance.editor.accent.primary_usage",
+    "ui.settings.appearance.editor.accent.secondary",
+    "ui.settings.appearance.editor.accent.secondary_usage",
+    "ui.settings.appearance.editor.accent.variants",
+    "ui.settings.appearance.editor.accent.secondary_help",
+    "ui.settings.appearance.editor.accent.effective",
+    "ui.settings.appearance.editor.preview.identity",
+    "ui.settings.appearance.editor.preview.category",
+    "ui.settings.appearance.editor.preview.meta"
+  ],
+  "key_count": 11,
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "ba69d836a6d4",
+    "instance": "aud1692-multi-zh-cn-ba69d836a6d4",
+    "model": "openai/gpt-6.1-sol",
+    "model_source": "Host session-state on 2026-11-05 identifies openai/gpt-6.1-sol; earlier quota fallback in this session disclosed.",
+    "independent_from_translator_session": true,
+    "independence": "Separate agent/session from translator fd3ba80e8c8f; no audited translations authored or remediated by auditor."
+  },
+  "translator": {
+    "session": "fd3ba80e8c8f",
+    "agent": "task",
+    "model": "openai/gpt-6.1-sol",
+    "model_evidence": {
+      "path": "~/.local-operator/sessions/fd3ba80e8c8f/transcript.jsonl",
+      "event": "session_spend.v1",
+      "observed_calls": [
+        89,
+        90,
+        91
+      ],
+      "last_identity": {
+        "provider": "openai",
+        "model_id": "gpt-6.1-sol"
+      },
+      "note": "Serving identity read from per-call ledger, not inferred from configured model."
+    }
+  },
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.settings.appearance.editor.json",
+      "sha256": "b02c6ea9e8a0854cc3879de025f4e1dc14e940a2b44db04afb75dc42b1711661"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.settings.appearance.editor.context.json",
+      "sha256": "6882beca38567bd97e56a145ed579def86c704316d34116eeaa61ef20acaa3a0"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/zh-CN/ui.settings.appearance.editor.json",
+      "sha256": "9f86c8232f1d0b0c42e781804438049cbac7ecffa339449a5c0323e4ef7c6794"
+    }
+  },
+  "status": "passed",
+  "result": "clean",
+  "findings": [],
+  "linguistic_checks": {
+    "idiom_and_term_consistency": "PASS",
+    "wash_means_subtle_tinted_background": "PASS",
+    "primary_interactions_secondary_identity": "PASS",
+    "global_accent_primary_only_secondary_authored_unless_contrast": "PASS",
+    "no_tertiary_or_secondary_button_states_invented": "PASS",
+    "placeholders_and_ICU": "PASS; none added by these 11 plain-text keys, whole locale parity gate passed",
+    "no_bidi_controls": "PASS",
+    "previous160_retained": "PASS; exact UTF-8 value-byte comparison"
+  },
+  "artifacts": [
+    {
+      "path": "i18n/receipts/aud1692-multi-zh-cn-ba69d836a6d4.json",
+      "sha256": "29f7b5fdd0c2de86497b5d1bf80e7b6cf9d20a2df0eccbc73fb6219ed97bb2f7"
+    },
+    {
+      "path": "i18n/audits/evidence/zh-CN/ui.settings.appearance.editor/aud1692-multi-zh-cn-ba69d836a6d4/compatibility.json",
+      "sha256": "b7d7f21733eacdc9f79597c98c4d756758b9167427ae3d6e1e1071129e6e2422"
+    },
+    {
+      "path": "i18n/audits/evidence/zh-CN/ui.settings.appearance.editor/aud1692-multi-zh-cn-ba69d836a6d4/parity-observation.json",
+      "sha256": "23cdad479b1d452005f48e6faa54f33b7cf3458ba51918e061bdfae0a9a7a8ee"
+    },
+    {
+      "path": "i18n/audits/evidence/zh-CN/ui.settings.appearance.editor/aud1692-multi-zh-cn-ba69d836a6d4/translator-provenance.json",
+      "sha256": "b534315209656c6345b5eaa1b88f3ed47d92f85a060ea3486915677c3c382b02"
+    },
+    {
+      "path": "i18n/audits/evidence/zh-CN/ui.settings.appearance.editor/aud1692-multi-zh-cn-ba69d836a6d4/compatibility-78d845.json",
+      "sha256": "2fc6ac7eb0d3006ee97123156f635c6bc4bac87e28126746adb1288c1b69b4f6"
+    }
+  ],
+  "limitations": "Source-only translation audit; no rendered-fit/native-reader claim. Previous 160 keys retained, not re-audited; whole scanners/types owned by CI.",
+  "initial_source_audit_head": "f043579ec5d1c7aba7eed34703806dc3c75d3b99"
+}

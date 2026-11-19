@@ -1,0 +1,67 @@
+{
+  "schema": 1,
+  "kind": "translation-audit-evidence",
+  "evidence_classification": {
+    "linguistic_notes": "auditor judgments derived from actual en/hi values and prior hi neighborhood",
+    "checks": "captured execution output, not simulated"
+  },
+  "date": "2026-11-09",
+  "locale": "hi",
+  "namespace": "ui.notices",
+  "branch": "feat/i18n-s7",
+  "head": "aba5d0310761cedc384c35847498d4197ce4b107",
+  "base": "0ad5542379a349a98e0a8d602dbd992746fd40a2",
+  "auditor": {
+    "agent": "reviewer",
+    "instance": "9368437cbc2e",
+    "session": "9368437cbc2e",
+    "model": "openai/gpt-6.1-sol",
+    "independent_from_translator_session": true,
+    "independence": "Did not author or remediate any catalogue values; wrote only own receipt and evidence."
+  },
+  "model": "openai/gpt-6.1-sol",
+  "instance": "9368437cbc2e",
+  "status": "passed",
+  "result": "clean",
+  "source": {
+    "path": "src/i18n/catalogues/en/ui.notices.json",
+    "sha256": "043243b66381b6fa1143acb645ce0c83fcb381883038ef88bbcb28e36764b112"
+  },
+  "target": {
+    "path": "src/i18n/catalogues/hi/ui.notices.json",
+    "sha256": "5b33e919a9f21d3d247082b1bc824971d7d3b08d58418b3be3e01869282c1336"
+  },
+  "context": {
+    "path": "src/i18n/catalogues/en/ui.notices.context.json",
+    "sha256": "5c14ca70d2d1df2b22dc169e891143cc5f9e10dd34f4e96eb84a53a18318313b"
+  },
+  "keys_audited": 6,
+  "keys": [
+    "ui.notices.aida.paused_receipt",
+    "ui.notices.aida.resumed_receipt",
+    "ui.notices.aida.paused",
+    "ui.notices.aida.active",
+    "ui.notices.aida.account_required",
+    "ui.notices.aida.open_fallback"
+  ],
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [],
+    "nit": []
+  },
+  "linguistic_notes": [
+    "All six additions inspected against English. Notices are short receipts/statuses and preserve pause-until-resume, normal schedule after resume, account prerequisite, and new-chat fallback with detail.",
+    "Aida is feminine in the English she/her source. रुकी हुई है, पूछेगी, शुरू हो गई है and करेगी correctly agree with Aida (including its user-chosen {name}); सक्रिय is an indeclinable adjective. No need to masculinize Aida because it is an agent.",
+    "open_fallback: {name} की बातचीत नहीं खोली जा सकी uses feminine agreement with बातचीत, not with the person name; उसकी जगह refers to the displaced conversation. नई चैट खुली है is feminine singular throughout. {name} and {detail} are preserved.",
+    "शेड्यूल matches existing wake.managed_note. बैकएंड elsewhere in notices and run-details remains consistent. Aida is an intentional product name; एआई, खाता and चैट are translated/settled terms. No English prose or manual bidi controls."
+  ],
+  "checks": {
+    "path": "i18n/audits/evidence/hi/ui.chat.run_details/s7-hi-9368437cbc2e/checks.json",
+    "sha256": "031e7041cf8bf9b09944ea442e0a6eb0185083e7b278271c0b6d9a70e5efb852"
+  },
+  "report": {
+    "path": "i18n/audits/evidence/hi/ui.chat.run_details/s7-hi-9368437cbc2e/report.md",
+    "sha256": "688edf2dfa08415bc295a83fdbff7f29f29c437ac49bd44c668ad4b2fdd55ce0"
+  }
+}

@@ -1,0 +1,61 @@
+{
+ "schema": 1,
+ "auditor": "translation-auditor (lopdev reviewer role, session 80ddb5783f8e; independent of PR author and translator)",
+ "model": "anthropic/claude-opus-5-5",
+ "fallback": "none observed in this session",
+ "instance": "80ddb5783f8e-draft-target-hi",
+ "session": "80ddb5783f8e",
+ "locale": "hi",
+ "namespace": "ui.chat.draft_target",
+ "branch": "feat/new-chat-agent-team-picker",
+ "head": "27dd4baeed340b34a9cb52a6ee861d52739ebce0",
+ "base": "050469c2d",
+ "pr": null,
+ "pr_note": "no PR open for this branch at audit time (gh pr list --head feat/new-chat-agent-team-picker → [])",
+ "date": "2026-11-11",
+ "audit_kind": "first audit of a newly added namespace (3 keys, all read)",
+ "status": "passed",
+ "result": "clean",
+ "keys_read": 3,
+ "findings_count": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 0,
+  "nit": 0
+ },
+ "sha256": {
+  "en": "9e1d8af469c096d1613e66fad35244fbf3d8f8f37b44f0e78fa3a731fb14c771",
+  "hi": "5371e697808a251cc890e3bed611e26edd4a411a21e00938c97d9d482df422ba",
+  "context": "7efa7c6ff8548c8a868a5089bb54413ef995b4aca6ba0181520677f3b2517117"
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+ },
+ "inputs": {
+  "source": "src/i18n/catalogues/en/ui.chat.draft_target.json",
+  "context": "src/i18n/catalogues/en/ui.chat.draft_target.context.json",
+  "target": "src/i18n/catalogues/hi/ui.chat.draft_target.json",
+  "glossary": "~/local-operator/i18n/glossary.md",
+  "style_guide": "~/local-operator/i18n/style-guides/hi.md"
+ },
+ "translator": {
+  "agent": "coder (lopdev)",
+  "model": "anthropic/claude-opus-5-5",
+  "note": "auditor did not translate or edit these bytes"
+ },
+ "independence": "Separate reviewer session 80ddb5783f8e (different agent instance from the coder translator; same model family, recorded honestly); read only catalogue bytes, context sidecar, glossary, locale style guide, sibling established terminology and the consuming component.",
+ "verified": [
+  "key set equals en (3)",
+  "placeholder names equal en for all keys ({target} only in aria_label)",
+  "all values NFC-normalised",
+  "no bidi control characters in values",
+  "cell widths (rich.cells.cell_len): aria_label 38 (no budget), default_agent 8/20, menu_heading 18/32",
+  "glossary terms agent/team rendered per glossary §2",
+  "consistency checked against ui.chat.header.new_chat, ui.chat.canonical.this_chat, ui.agents.teams.field.member_placeholder and ui.chat.device.* in the same locale",
+  "consumer: chat-header-draft-target.tsx passes the chip label (incl. the translated default_agent) as {target}; label span is max-w-[24ch] truncate",
+  "rendered fit / RTL rendering not exercised by this audit (catalogue-level audit only)"
+ ],
+ "notes": "Statement form 'यह चैट {target} के साथ शुरू होगी।' (feminine चैट consistent with 'नई चैट'); polite imperative 'चुनें' per style guide, identical to member_placeholder; डिफ़ॉल्ट matches 96 existing catalogue uses; heading uses question form without '?' as the context permits.",
+ "findings": []
+}

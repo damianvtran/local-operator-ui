@@ -1,4 +1,3 @@
-import type { HubTeamRow } from "@shared/api/radient/types";
 /**
  * The agent hub: a category rail beside a grid of downloadable community
  * agents, in the states its reads can put it in.
@@ -46,6 +45,8 @@ import type { HubTeamRow } from "@shared/api/radient/types";
  * The fixtures are the wire's SHAPE, verified against the live public endpoint;
  * the values in them are invented.
  */
+import type { HubSkillRow } from "@shared/api/radient/skills-api";
+import type { HubTeamRow } from "@shared/api/radient/types";
 import type { Meta, StoryObj } from "@storybook/react";
 import { configure, expect, screen, userEvent, waitFor } from "@storybook/test";
 import type { DesktopResponse } from "../../../../shared/desktop-contract";
@@ -243,6 +244,22 @@ type BridgeBehaviour = {
 	 * hub with none published — deterministic, and the empty state besides.
 	 */
 	publicTeams?: HubTeamRow[];
+	/**
+	 * The backend advertises `hub_skills`, so the Skills tab and its count exist.
+	 *
+	 * False by default: every frame before this flag modelled a backend that
+	 * predates the skills adapter, and turning the tab on for all of them would
+	 * re-shoot frames that say nothing about skills. The story that exercises it
+	 * names it explicitly.
+	 */
+	skillsCapability?: boolean;
+	/**
+	 * The PUBLIC skill catalogue the `fetch` stub answers with, in
+	 * `GET /v1/skills`'s own shape. The tab's count and the library's count line
+	 * both read the response's `total_records`, so the fixture is what makes the
+	 * number on screen a real answer rather than a loading state.
+	 */
+	publicSkills?: HubSkillRow[];
 	/** Fail the public team listing with a 503 (the retried failure). */
 	failPublicTeams?: boolean;
 	/** Fail the public listing this many times, then answer — the retry's recovery. */
@@ -290,6 +307,8 @@ const installBridge = (behaviour: BridgeBehaviour = {}) => {
 		membershipDelayMs = 0,
 		orgCapability = true,
 		publicTeams = [],
+		skillsCapability = false,
+		publicSkills = [],
 		failPublicTeams = false,
 		failPublicTeamsTimes = 0,
 		holdPublicTeams = false,
@@ -327,6 +346,7 @@ const installBridge = (behaviour: BridgeBehaviour = {}) => {
 				desktop_auth: "bearer",
 				features: {
 					radient: 1,
+					...(skillsCapability ? { hub_skills: 1 } : {}),
 					profile_catalogue: 1,
 					team_catalogue: 1,
 					// Absent means a backend that predates the org operations (M2): the
@@ -627,7 +647,7 @@ const installBridge = (behaviour: BridgeBehaviour = {}) => {
 				: input instanceof URL
 					? input.href
 					: input.url;
-		if (!url.includes("/v1/teams")) {
+		if (!url.includes("/v1/teams") && !url.includes("/v1/skills")) {
 			return originalFetch(input as RequestInfo, init);
 		}
 		const json = (status: number, body: unknown): Response =>
@@ -636,6 +656,33 @@ const installBridge = (behaviour: BridgeBehaviour = {}) => {
 				status,
 				json: async () => body,
 			}) as unknown as Response;
+
+		/*
+		 * THE SKILLS TAB'S COUNT COMES FROM THIS READ. `HubSkillsLibrary` and the
+		 * tab strip both observe page 1 of `/v1/skills`, so the stub answers the
+		 * wire's own `{page, per_page, total_pages, total_records, records,
+		 * sync_contract}` envelope. `total_records` is the catalogue's count, not
+		 * `records.length` - the two differ by design on any page but the last.
+		 */
+		if (url.includes("/v1/skills")) {
+			ledger.push("public_skills.list");
+			const parsed = new URL(url, window.location.origin);
+			const page_ = Number(parsed.searchParams.get("page") ?? "1");
+			const perPage = Number(parsed.searchParams.get("per_page") ?? "20");
+			const start = (Math.max(1, page_) - 1) * perPage;
+			const records = publicSkills.slice(start, start + perPage);
+			return json(200, {
+				msg: "Skills listed successfully",
+				result: {
+					page: Math.max(1, page_),
+					per_page: perPage,
+					records,
+					total_pages: Math.max(1, Math.ceil(publicSkills.length / perPage)),
+					total_records: publicSkills.length,
+					sync_contract: { revision_cas: 1, skills: 1 },
+				},
+			});
+		}
 
 		const detail = url.match(PUBLIC_TEAM_DETAIL_PATH);
 		if (detail) {
@@ -813,6 +860,18 @@ const openTeamsTab = async () => {
 	await userEvent.click(await screen.findByTestId("agent-hub-view-teams"));
 	await waitFor(() =>
 		expect(screen.getByTestId("agent-hub-view-teams")).toHaveAttribute(
+			"aria-selected",
+			"true",
+		),
+	);
+	releaseFocus();
+};
+
+/** Press the Skills tab, and wait until it is the selected one. */
+const openSkillsTab = async () => {
+	await userEvent.click(await screen.findByTestId("agent-hub-view-skills"));
+	await waitFor(() =>
+		expect(screen.getByTestId("agent-hub-view-skills")).toHaveAttribute(
 			"aria-selected",
 			"true",
 		),
@@ -2199,5 +2258,50 @@ export const OrgUnavailable: Story = {
 	play: async () => {
 		await screen.findByTestId("agent-hub-status");
 		await screen.findByTestId("agent-hub-org-unavailable");
+	},
+};
+
+/** Six public skills, in `GET /v1/skills`'s list-row shape. */
+const PUBLIC_HUB_SKILLS: HubSkillRow[] = [
+	"release-notes",
+	"inbox-triage",
+	"meeting-notes",
+	"contract-reader",
+	"data-quality",
+	"weekly-digest",
+].map((name, index) => ({
+	id: `public-skill-${index + 1}`,
+	name,
+	description: "A skill published to the public hub.",
+	document_version: 1 as const,
+	visibility: "public" as const,
+	content_revision: 1,
+	revision: `"rev-${index + 1}"`,
+	sync_contract: { revision_cas: 1, skills: 1 },
+}));
+
+/**
+ * The Skills tab's count, in BOTH the strip and the library's own line.
+ *
+ * The catalogue is a paginated read (`/v1/skills`), and both observers - the tab
+ * strip's page-1 query and the library's page-1 query - share one cache entry,
+ * so a frame of this story can show that the two numbers come from one answer:
+ * six skills, six on the tab, six in the sentence. The bridge advertises
+ * `hub_skills`; without it the tab (and this read) would not exist.
+ */
+export const SkillsCount: Story = {
+	render: () => {
+		installBridge({
+			records: 12,
+			skillsCapability: true,
+			publicSkills: PUBLIC_HUB_SKILLS,
+		});
+		holdShutter('[data-testid="hub-skill-status"]', "6 skills");
+		return <AgentHubPage />;
+	},
+	play: async () => {
+		await screen.findByTestId("agent-hub-status");
+		await openSkillsTab();
+		await screen.findByTestId("hub-skill-status");
 	},
 };

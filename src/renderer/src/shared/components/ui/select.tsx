@@ -1,3 +1,5 @@
+import { useMeasuredBrowserViewPanel } from "@shared/browser-view-policy";
+import { composeRefs } from "@shared/lib/compose-refs";
 import { cn } from "@shared/lib/utils";
 import { type VariantProps, cva } from "class-variance-authority";
 import { Check, ChevronDown, ChevronUp } from "lucide-react";
@@ -6,6 +8,7 @@ import {
 	type ComponentPropsWithoutRef,
 	type ElementRef,
 	forwardRef,
+	useMemo,
 } from "react";
 
 /**
@@ -124,43 +127,54 @@ SelectScrollDownButton.displayName = "SelectScrollDownButton";
 export const SelectContent = forwardRef<
 	ElementRef<typeof SelectPrimitive.Content>,
 	ComponentPropsWithoutRef<typeof SelectPrimitive.Content>
->(({ className, children, position = "popper", ...props }, ref) => (
-	<SelectPrimitive.Portal>
-		<SelectPrimitive.Content
-			ref={ref}
-			/*
-			 * Not a drag surface; see the marker's note in `dialog.tsx` and the rule it is
-			 * read by in `styles/index.css`. A select opened near the top of the window
-			 * can flip its list over the chrome strip, and every row in it is a control.
-			 */
-			data-titlebar-no-drag=""
-			position={position}
-			className={cn(
-				"relative z-50 max-h-96 min-w-32 overflow-hidden rounded-md",
-				// No entrance animation; see the note at the top of `tooltip.tsx`.
-				"border border-hairline bg-elevated shadow-overlay",
-				position === "popper" &&
-					"data-[side=bottom]:mt-1.5 data-[side=top]:mb-1.5",
-				className,
-			)}
-			{...props}
-		>
-			<SelectScrollUpButton />
-			<SelectPrimitive.Viewport
+>(({ className, children, position = "popper", ...props }, ref) => {
+	// A select's list is a measured pause: it is a DOM panel over the content area,
+	// so the native view must yield only where the list actually reaches it.
+	const panelRef = useMeasuredBrowserViewPanel<HTMLDivElement>("select");
+	const composedRef = useMemo(
+		() => composeRefs(ref, panelRef),
+		[ref, panelRef],
+	);
+	return (
+		<SelectPrimitive.Portal>
+			<SelectPrimitive.Content
+				ref={composedRef}
+				/*
+				 * Not a drag surface; see the marker's note in `dialog.tsx` and the rule it is
+				 * read by in `styles/index.css`. A select opened near the top of the window
+				 * can flip its list over the chrome strip, and every row in it is a control.
+				 */
+				data-titlebar-no-drag=""
+				data-glass-overlay=""
+				data-lo-floating=""
+				position={position}
 				className={cn(
-					"p-1",
-					// Match the trigger's width so the panel does not jump narrower
-					// than the control that opened it. Height is left to content.
+					"relative z-50 max-h-96 min-w-32 overflow-hidden rounded-md",
+					// No entrance animation; see the note at the top of `tooltip.tsx`.
+					"bg-elevated shadow-overlay",
 					position === "popper" &&
-						"w-full min-w-(--radix-select-trigger-width)",
+						"data-[side=bottom]:mt-1.5 data-[side=top]:mb-1.5",
+					className,
 				)}
+				{...props}
 			>
-				{children}
-			</SelectPrimitive.Viewport>
-			<SelectScrollDownButton />
-		</SelectPrimitive.Content>
-	</SelectPrimitive.Portal>
-));
+				<SelectScrollUpButton />
+				<SelectPrimitive.Viewport
+					className={cn(
+						"p-1",
+						// Match the trigger's width so the panel does not jump narrower
+						// than the control that opened it. Height is left to content.
+						position === "popper" &&
+							"w-full min-w-(--radix-select-trigger-width)",
+					)}
+				>
+					{children}
+				</SelectPrimitive.Viewport>
+				<SelectScrollDownButton />
+			</SelectPrimitive.Content>
+		</SelectPrimitive.Portal>
+	);
+});
 SelectContent.displayName = "SelectContent";
 
 export const SelectLabel = forwardRef<
@@ -169,7 +183,7 @@ export const SelectLabel = forwardRef<
 >(({ className, ...props }, ref) => (
 	<SelectPrimitive.Label
 		ref={ref}
-		className={cn("px-2 py-1.5 pl-8 text-meta text-ink-dim", className)}
+		className={cn("px-2 py-1.5 ps-8 text-meta text-ink-dim", className)}
 		{...props}
 	/>
 ));
@@ -182,7 +196,7 @@ export const SelectItem = forwardRef<
 	<SelectPrimitive.Item
 		ref={ref}
 		className={cn(
-			"relative flex w-full select-none items-center gap-2 rounded-sm py-1.5 pr-2 pl-8",
+			"relative flex w-full select-none items-center gap-2 rounded-sm py-1.5 pe-2 ps-8",
 			"text-body-sm text-ink transition-colors duration-fast",
 			"data-[highlighted]:bg-accent-wash",
 			"data-[disabled]:pointer-events-none data-[disabled]:text-ink-disabled",
@@ -190,7 +204,7 @@ export const SelectItem = forwardRef<
 		)}
 		{...props}
 	>
-		<span className="absolute left-2 flex size-4 items-center justify-center">
+		<span className="absolute start-2 flex size-4 items-center justify-center">
 			<SelectPrimitive.ItemIndicator>
 				<Check className="size-4 text-accent" aria-hidden="true" />
 			</SelectPrimitive.ItemIndicator>
@@ -206,7 +220,14 @@ export const SelectSeparator = forwardRef<
 >(({ className, ...props }, ref) => (
 	<SelectPrimitive.Separator
 		ref={ref}
-		className={cn("-mx-1 my-1 h-px bg-hairline", className)}
+		/*
+		 * INSET, NOT FULL-BLEED (2026-11-06). Same change, same reason as
+		 * `DropdownMenuSeparator`: `-mx-1` overshot the panel's `p-1` content box and ran
+		 * the rule to the panel's edge, which built a box with the stroke the panel no
+		 * longer has. `mx-2` lands it 12px in, aligned with the item labels, and the
+		 * colour is the same `divider-inset` so the two rules cannot drift apart.
+		 */
+		className={cn("mx-2 my-1 h-px divider-inset", className)}
 		{...props}
 	/>
 ));

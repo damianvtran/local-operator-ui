@@ -1,0 +1,40 @@
+{
+  "locale": "hi",
+  "namespace": "ui.chat",
+  "date": "2026-11-11",
+  "slice": "P7",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "c3a0aa29dee6",
+    "session": "c3a0aa29dee6",
+    "model": "deepseek/deepseek-flash",
+    "independent_from_translator_session": true,
+    "actual_model_source": "as stated in the auditor's own report (companion report); no fallback reported"
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "per delegation and the candidate file model field; translator session id not supplied"
+  },
+  "keys": [
+    "ui.chat.audio.position_value"
+  ],
+  "english_sha256": "8cf1373e329eca7cede84886de8bf7f6323c81f1415abc5bd6f003a8f110ef70",
+  "target_sha256": "d15628927f9a29a55954707d41de16fa5e36e39155c8e5a284b7b55c7b9f94c2",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": [
+    {
+      "severity": "NIT",
+      "id": "NIT-1",
+      "key": "ui.chat.audio.position_value",
+      "detail": "see the auditor report in this bundle (finding id and text live there)"
+    }
+  ],
+  "artifacts": {
+    "p7-round1-audit-hi.md": "861be12fed6f2530c9b067985bea7582c3bab482490ad4bef6f77cf373cc6c1a",
+    "receipt.json": "2633e61feb5efe87d0f16d3fdd34680abb27a40cae918470727b496205370df5",
+    "verify.log": "3827e2423c6b6f826f31437742ca4f9dff5ef0a370c67d2d0af6b35662038f9c"
+  },
+  "note": "record.json written by the integrating coder; verify.log is the coder re-check, not an auditor log."
+}

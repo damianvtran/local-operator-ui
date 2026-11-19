@@ -177,7 +177,7 @@ export function chromeColorsFor(palette: ChromeColorRoles): WindowChromeColors {
  * the installer's own copy of `canvas`.
  */
 export const DEFAULT_WINDOW_CHROME_COLORS: WindowChromeColors = {
-	ground: "#22201c",
+	ground: "#1d1b17",
 	symbol: "#c2bcaf",
 	symbolInactive: "#a6a091",
 };

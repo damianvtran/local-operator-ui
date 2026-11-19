@@ -1,0 +1,128 @@
+{
+	"schema": 1,
+	"kind": "translation-audit",
+	"locale": "es",
+	"branch": "i18n/s5-agent-hub",
+	"head": "be77d308262ce0527c1fd4052ff77207edcac189",
+	"date": "2026-11-08",
+	"instance": "2ff5f985-pages",
+	"auditor": "translation-auditor",
+	"agent": "translation-auditor",
+	"model": "deepseek/deepseek-flash",
+	"model_provenance": "Session started as anthropic/claude-sonnet-5-5; provider quota failures forced three fallbacks (anthropic/claude-opus-5-5, openai/gpt-6.1-sol, deepseek/deepseek-flash), and deepseek/deepseek-flash served every catalogue read and this verdict. Disclosed under the review gate's provenance rule. The mechanical half of this audit is executed, not asserted: the repo's own ICU/key/placeholder guard was run at this head.",
+	"pr": null,
+	"pr_note": "`gh pr list --head i18n/s5-agent-hub --state all --json number` returned no rows at audit time; no PR number exists to record.",
+	"reference_sha256": {
+		"glossary": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+		"style_guide_es": "77b9227213802d14c74d4298d6b346ad842bbf2a5ca3b9d46fc6144430d26c3e",
+		"style_guide_es_rev": "~/local-operator @ b42471d3935 (i18n/ working tree clean for these files)"
+	},
+	"independence": "Separate session from the two commits under audit (c88ad36bbca keying, be77d308262 translation) and from the per-locale translation lanes. Read: the diff, the English source and its context sidecars, the es catalogue's carried values, the es style guide and the glossary, and the render sites, all read-only at the briefed head. Wrote only this receipt and its sibling.",
+	"scope_limits": "Source-level audit at HEAD be77d308262. Per the brief no app was started, no checkout or install was done, and no screenshot is claimed. Other locales and other namespaces are out of scope.",
+	"namespace": "ui.hub.pages",
+	"source": "src/i18n/catalogues/en/ui.hub.pages.json",
+	"target": "src/i18n/catalogues/es/ui.hub.pages.json",
+	"source_context": "src/i18n/catalogues/en/ui.hub.pages.context.json",
+	"key_count": 16,
+	"namespace_key_count": 59,
+	"keys_audited": [
+		"ui.hub.pages.list_unreadable",
+		"ui.hub.pages.org.plan_headline",
+		"ui.hub.pages.org.no_access_headline",
+		"ui.hub.pages.org.plan_body",
+		"ui.hub.pages.org.no_access_body",
+		"ui.hub.pages.org.that_organization",
+		"ui.hub.pages.empty.org.title",
+		"ui.hub.pages.empty.org.body",
+		"ui.hub.pages.empty.category.title",
+		"ui.hub.pages.empty.category.body",
+		"ui.hub.pages.empty.search.title",
+		"ui.hub.pages.empty.search.body",
+		"ui.hub.pages.empty.public.title",
+		"ui.hub.pages.empty.public.body",
+		"ui.hub.pages.clear.filter",
+		"ui.hub.pages.clear.search"
+	],
+	"sha256": {
+		"source": "47793b98059be89eafc26b8aff209b3aed63a9eac26b44ac5da9b87e973c7b5a",
+		"source_context": "e78c02114d87f722bd47bb14ea61f5ac3281407581132bd9a715c81d1a112872",
+		"target": "f01512e7b7d680f3e0edaa3d712d85bfb457bc540bd9751bcbd37159ba2ea0cc"
+	},
+	"audit_kind": "first audit of the 16 keys this commit adds to this namespace (Agent Hub publication-copy wave)",
+	"scope": "Delta c88ad36bbca..be77d308262 for es ui.hub.pages only: the 16 keys commit be77d308262 adds, plus the trailing-comma line the same commit touches (load_failed.title, value unchanged) and the 43 carried values, which were checked for value-level change and used as the register/terminology baseline.",
+	"checks": {
+		"completeness": {
+			"result": "pass",
+			"detail": "16/16 new keys present; es key set equals en exactly (59 = 59, no missing, no extra); no value equals its key id; no es value is byte-identical to en anywhere in the namespace (repo guard's identical-value test re-run: 44/44 node --test scripts/i18n/locale-parity.test.mjs)."
+		},
+		"value_delta": {
+			"result": "pass",
+			"detail": "Parsed both sides of c88ad36bbca..be77d308262: 16 added keys, 0 removed, 0 changed values; the comma-only line (ui.hub.pages.load_failed.title) is byte-identical before and after ('No se pudo cargar el hub')."
+		},
+		"placeholder_fidelity": {
+			"result": "pass",
+			"detail": "{org} kept in org.plan_body, org.no_access_body and empty.org.body, {category} in empty.category.title; no placeholder added, dropped or renamed in either direction (brace scan on all 59 keys) and both sides parse in the repo guard through @formatjs/icu-messageformat-parser. Positions are sensible: 'Un propietario de {org}', 'No eres miembro de {org}', 'Los agentes publicados en {org}', 'No hay agentes en {category}' — all noun slots behind the preposition en/de, so no article contraction can break."
+		},
+		"plural_clrd": {
+			"result": "not-applicable",
+			"detail": "None of the 16 new keys carries a plural, select or number argument, so the es one/many/other CLDR categories are not exercised; no 'few' and no hand-formatted '#' introduced. The plural-bearing keys that already existed (status.count.*) were not touched."
+		},
+		"register": {
+			"result": "pass",
+			"detail": "tú throughout and only tú: 'tienes', 'eres', 'puede invitarte', 'Quita el filtro', 'Borra la búsqueda', 'El tuyo'; no usted, no vosotros — matches the es style guide's recorded address decision and every carried es hub value."
+		},
+		"terminology": {
+			"result": "pass",
+			"detail": "Reuses the shipped family vocabulary without drift: 'organización', 'propietario' (owner), 'miembros', 'consola de Radient', 'plan Team', 'hub' lowercase as a mid-sentence loanword, 'equipo' for team per glossary §team. Action labels are infinitives ('Quitar filtro', 'Borrar búsqueda') as the style guide requires for controls."
+		},
+		"pair_voice": {
+			"result": "pass",
+			"detail": "Pages/teams pairs read as one voice. org.plan_headline, org.no_access_headline, org.that_organization and org.no_access_body are byte-identical to their already-shipped es ui.hub.teams siblings; org.plan_body is parallel to teams org.plan_body ('Un propietario de {org} puede activarlo en la consola de Radient y, a partir de entonces, sus agentes/equipos aparecerán aquí.'); empty.org.body is parallel to teams org.empty ('… aparecen aquí para sus miembros')."
+		},
+		"sidecar_noun_rule": {
+			"result": "pass",
+			"detail": "The sidecars require each empty body to use the same noun as the button under it. empty.category.body says 'Quita el filtro' and clear.filter is 'Quitar filtro' (filtro); empty.search.body says 'Borra la búsqueda' and clear.search is 'Borrar búsqueda' (búsqueda). The search body also keeps the demanded distinction from the category arm: 'contiene eso' (what the reader typed) versus 'no hay nada en esta categoría', so the typed-query arm does not reuse the filter phrasing."
+		},
+		"meaning": {
+			"result": "pass",
+			"detail": "Read key by key: no inversion, no lost clause, no invented remedy. list_unreadable names the list (not the hub) and ends in a full stop, which is what the call-site join with backendLoadErrorMessage requires — joined with the shared sentences it reads 'No se pudo cargar la lista de agentes. <diagnóstico>. <remedio>.'. plan_headline deliberately is not the generic load-failure wording. empty.org.title/body say 'shared with this organization's members' and do not borrow the public arm's 'Yours could be the first'; empty.public.body keeps the second-person invitation."
+		},
+		"residue": {
+			"result": "pass",
+			"detail": "No untranslated English. Only three non-Spanish tokens appear across the 16 values: 'Radient' ×1 and 'Team' ×2 (allowed product names, byte-identical to the shipped family), and 'hub' ×3 — the locale's established loanword, used in 40+ carried es hub values ('el hub', 'Hub de agentes', 'hub público') and not introduced by this commit, so it is terminology, not residue. No 'pull', 'skill' or other English verb appears in the new values."
+		},
+		"typography": {
+			"result": "pass",
+			"detail": "Trailing punctuation matches en key by key across all 59 keys (11 of the 16 new values end in '.', and en does too; the button labels end in none). Spanish accents correct (organización, aún, búsqueda, descripción, ningún, podría). No straight quotes, no dashes, no ellipses were introduced where en has none; “ ” remains the locale pair for the one carried value that quotes."
+		},
+		"whitespace_encoding": {
+			"result": "pass",
+			"detail": "No leading/trailing spaces, no double spaces, no NBSP, no zero-width, no BOM, no U+202A–U+202E / U+2066–U+2069 (stated for completeness; es is LTR). Both files parse as JSON and keep the catalogue's tab indentation."
+		},
+		"neutral_spanish": {
+			"result": "pass",
+			"detail": "No region-marked lexeme in the new values ('ordenador', 'fichero', 'celular', 'computadora', 'acá' absent); 'quitar'/'borrar'/'todavía'/'aún' are neutral on both sides of the Atlantic."
+		},
+		"guard_run": {
+			"result": "pass",
+			"detail": "NODE_OPTIONS=--max-old-space-size=1024 node --test scripts/i18n/locale-parity.test.mjs → 44 tests, 44 pass, 0 fail (2.2 s), covering every shipped locale's key existence, ICU placeholder integrity and English-stub detection. Run serialised, once."
+		}
+	},
+	"per_key_findings": [],
+	"findings_note": "No per-key findings: every key in keys_audited was read against its English value and context sidecar and passes every check below. Had a defect been found it would appear here with {id, severity, key, current, proposed, evidence}.",
+	"findings": [],
+	"counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 0
+	},
+	"status": "passed",
+	"result": "clean",
+	"verdict": "clean",
+	"ship": true,
+	"normalised_for_ledger": "auditor and instance rewritten to the ledger contract by the programme manager; original auditor text preserved verbatim inside the parentheses, findings and hashes untouched",
+	"identity_provenance": {
+		"auditor": "translation-auditor (translation-auditor (independent i18n auditor, lopdev reviewer role, instance 2ff5f985; not the translator of this wave and not the coder of either commit))"
+	}
+}

@@ -1,0 +1,6 @@
+AUDITOR A — round 3 (fix verification), ur
+Auditor: translation-auditor  Session: 4ab583bbf0ca  Model: radient/auto
+
+1. Resolved: UR-D1 and UR-D2. Both lines now end «انکار کر دیا», agreeing with the masculine noun انکار; the namespace's own invitations.declined / declined_unnamed use «انکار کر دیا گیا», and the core's remote_refusal_silent uses «انکار کر دیا».
+2. Census after the fix: «انکار کر دیا» 4 in ui.teamBridge (2 event + 2 invitations), core ur 1; «انکار کر دی» (no alif) 0 in the namespace and 0 across the 1,921 core ur strings.
+3. Renders read correctly at 1 and 3 targets and in the shortened-list composition («Dana نے Ava، Ben، اور مزید 3 کے لیے دعوت سے انکار کر دیا»); ICU parse ok, {actor}/{targets} intact, NFC, zero bidi/zero-width/combining marks.

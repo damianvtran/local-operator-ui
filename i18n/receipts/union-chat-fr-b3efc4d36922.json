@@ -1,0 +1,167 @@
+{
+  "schema": 1,
+  "kind": "audit-receipt",
+  "audit_kind": "union re-audit over unchanged-by-proof bytes",
+  "locale": "fr",
+  "namespace": "ui.chat",
+  "instance": "union-chat-fr-b3efc4d36922",
+  "audit_id": "union-chat-fr-b3efc4d36922",
+  "status": "passed",
+  "verdict": "passed",
+  "auditor": "i18n-auditor",
+  "model": "radient/auto",
+  "model_provenance": {
+    "route": "radient/auto",
+    "route_source": "the harness system prompt of this session ('Model: radient/auto')",
+    "fallback_used": false,
+    "fallback_chain": [],
+    "actual_model_source": "This session's transcript (/Users/damian/.local-operator/sessions/b3efc4d36922/transcript.jsonl) carries message and custom entries only: no [session incident], no provider error, no model-switch notice (the phrase matches are prompt text quoting the guidance and this audit's own tool output). The upstream model behind the route alias is not exposed to this session, so none is invented.",
+    "disclosure": "Every judgement below was made in this session under the recorded route; no model change was requested or observed."
+  },
+  "session": "b3efc4d36922",
+  "team": "lopdev",
+  "origin": {
+    "kind": "subagent",
+    "label": "Union re-audit ui.chat fr (PR #1449)",
+    "delegating_session": "the lopdev manager; the manager's session id is not exposed to this child"
+  },
+  "audit_date": "2026-10-28",
+  "head": "c5e19ecec883b45e281d696f06dac86bcb0d90f3",
+  "head_short": "c5e19ecec8",
+  "branch": "i18n-wave-a",
+  "pr": 1449,
+  "base": "1d631be71fb7a674b117aab61508d6dd822708b4",
+  "base_note": "the main commit the union merged; it already carries wave B",
+  "head_state": "committed; audited from a throwaway `git archive` export at c5e19ecec8 in ~/qa/union-ui-chat-fr-deliver/.work (absolute-symlinked node_modules), never from the shared checkout (HEAD 20225f33d0, left untouched)",
+  "binding": "Binds sha256 a0f70787c5faddb059246b07ed5266374945d6a2da0279ba5d0dae89efdcbe6d for src/i18n/catalogues/fr/ui.chat.json, d3bc8ec097540b123500005e941093dbc73eaaa46fa1152643a04d51b6f259e4 for the English source and 994de1d3c61cdc19ba61bb8b0995e4e96e17e80c531c9b3dafb4572d3c8bca3e for the English context sidecar, all at c5e19ecec883b45e281d696f06dac86bcb0d90f3. The catalogue bytes were hashed on disk in the export and cross-checked against `git show <head>:<path>` (both a0f70787c5fa...). A later commit that changes any bound value voids this receipt.",
+  "source_dir": "src/i18n/catalogues/en",
+  "target_dir": "src/i18n/catalogues/fr",
+  "key_count": 142,
+  "sha256": {
+    "en": "d3bc8ec097540b123500005e941093dbc73eaaa46fa1152643a04d51b6f259e4",
+    "fr": "a0f70787c5faddb059246b07ed5266374945d6a2da0279ba5d0dae89efdcbe6d"
+  },
+  "context_sha256": "994de1d3c61cdc19ba61bb8b0995e4e96e17e80c531c9b3dafb4572d3c8bca3e",
+  "independence": "Independent union re-audit for fr. This session translated none of the reviewed bytes and cannot edit them: the wave-A values were authored on the i18n-wave-a branch (translation lane; the shared git identity does not disclose the coder session) and the wave-B values were authorised by the wave-B translation lane, neither of which this session is. Nothing in src/i18n, i18n/, scripts/ or the ledger was written by this session; it wrote only its own evidence bundle and a throwaway read-only export. No translation API, SDK or MT service was used, and no back-translation service was consulted; intl-messageformat was run only to validate the app's own render path.",
+  "independent_from_translator_session": true,
+  "predecessors": [
+    {
+      "receipt": "i18n/receipts/6c78c3706206.json",
+      "audit_id": "wavea-r2-20261027-fr",
+      "round": "wave A round 2 (post-remediation)",
+      "locale": "fr",
+      "namespace": "ui.chat",
+      "status": "passed",
+      "source_commit": "80ee119bbd1084ee873994a1f39db0c085c62083",
+      "bound_sha256": {
+        "en": "1a1c9329a1a56ffda47b27da91e80fdf454751a4463b76f09ae9138d1ad0bcdc",
+        "fr": "c31f2943acee212ec915c385b5a0d2555e75f9470bb57ea2a29c2b28a8810537"
+      },
+      "carried_here": "18 wave-A keys; values proven byte-identical"
+    },
+    {
+      "receipt": "i18n/receipts/c3a8965266e3.json",
+      "audit_id": "wave-b-delta (fr)",
+      "round": "wave B delta",
+      "locale": "fr",
+      "namespace": "ui.chat",
+      "status": "passed",
+      "source_commit": "a5356ce91c4f37bf4c4d1c4518070e3a9b2505cb",
+      "bound_sha256": {
+        "en": "4d07ed6de9382fdf1310fd70bf48be2602952538c1ddf43bda8972834760be04",
+        "fr": "e9b9512ea3310705de0ca91dc87a644a8aa742ab59a72f04e8216ae01bb256dd"
+      },
+      "carried_here": "9 wave-B keys; values proven byte-identical"
+    }
+  ],
+  "scope": "Union delta audit of fr/ui.chat at c5e19ecec8, the merge of i18n-wave-a with main 1d631be71f (which carries wave B). The union has 142 keys: 115 base keys, 18 wave-A keys and 9 wave-B keys, pairwise disjoint. Delta proof: every one of the 27 wave values is byte-identical to the bytes its wave audit bound, and every base value is byte-identical to main pre-union (1d631be71f) and to the wave-A branch base (6216167f4464). On top of the per-wave verdicts this audit read the union as one file for cross-wave consistency: term collisions between the A keys and the B keys and the base copy, register/punctuation conventions, ICU placeholder parity and CLDR categories with a real intl-messageformat render of all 142 messages, NFC, bidi controls, backtick spans, English-fallback identity and width hints. Catalogue-level audit: no rendered frame, no browser, no native-speaker sign-off claimed.",
+  "delta_proof": {
+    "method": "parsed-JSON diff of whole-file bytes at four refs, exported read-only via `git archive` into ~/qa/union-ui-chat-fr-deliver/.work/versions/ (never the shared checkout)",
+    "base_keys": 115,
+    "wave_a_keys": 18,
+    "wave_b_keys": 9,
+    "union_keys": 142,
+    "disjoint_groups": true,
+    "wave_a_values_identical": true,
+    "wave_b_values_identical": true,
+    "base_values_identical_to_main_pre_union": true,
+    "base_values_identical_to_wave_a_branch_base": true,
+    "en_side_identical": true,
+    "refs": {
+      "union": "c5e19ecec883b45e281d696f06dac86bcb0d90f3",
+      "wave_a_audited": "80ee119bbd1084ee873994a1f39db0c085c62083",
+      "wave_b_head": "a5356ce91c4f37bf4c4d1c4518070e3a9b2505cb",
+      "main_pre_union": "1d631be71fb7a674b117aab61508d6dd822708b4",
+      "wave_a_branch_base": "6216167f4464bd607a6831e9e636820c0d463816"
+    },
+    "context": "The union context sidecar (994de1d3) is the wave-A branch's merge text (e5f7c8daea, 127 entries) plus main's 9 wave-B entries: it agrees with e5f7c8daea on every entry that exists there, and with main pre-union on all 118 of main's entries. Three wave-A entries (ui.chat.checkpoint.turn, ui.chat.header_identity.aria_agent_closed, ui.chat.header_identity.aria_team_closed) differ from the context the wave-A audit bound (1df3ad0e): the branch's own merge with main (e5f7c8daea) had already rewritten those notes, so the union is not the wave-A-audited context for them. The fr values are unchanged (delta proof), and this audit read and judged the union text, so the verdict covers it. The repository's catalogue-union-parity tool reports those three as value differences against the PR side (base has no entry for them) and reports no missing key and no value difference in the en and fr catalogues."
+  },
+  "validation": {
+    "export": "one `git archive c5e19ecec8 src/i18n i18n scripts/i18n package.json tsconfig.json` export under .work/export with an absolute symlink to the checkout's node_modules; no install, no dependency copy; the export was deleted after the run",
+    "node": "v24.22.1",
+    "generate_check": "PASS - node scripts/i18n/generate.mjs --check: 'src/i18n/keys.gen.ts is byte-identical to a fresh generation.'",
+    "check_duplicates": "PASS - 889 file(s) scanned, 0 duplicate key(s)",
+    "context_parity": "PASS - every English key covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only allowance)",
+    "context_union_proof": "PASS as a union, with a disclosed basis change - union context (136 entries) == e5f7c8daea's 127 entries (the wave-A branch's merge text) + main's 9 wave-B entries; all 118 main entries identical; three wave-A entries (checkpoint.turn, aria_agent_closed, aria_team_closed) differ from the 1df3ad0e context the wave-A receipt bound, changed by e5f7c8daea before the union, with the fr values unchanged",
+    "locale_parity": "PASS - node --test scripts/i18n/locale-parity.test.mjs: 44 tests, 44 pass, 0 fail (the fr catalogue is covered by its no-unknown-keys, ICU-placeholder-parity and not-an-English-stub assertions)",
+    "coverage": "PASS - check-coverage: ok - 7 gated language(s) over 99 namespace(s); 0 allowed key(s) remain across 0 pair(s) (shrink-only)",
+    "ledger_check": "EXPECTED, BY DESIGN - ledger-check: FAILED — 21 finding(s) across 693 ledger entr(ies); exactly the 7 locale x ui.chat union rows, 3 diagnostics each, because this union file has no receipt yet. Nothing else failed; this receipt is the missing input.",
+    "icu_parity": "PASS - real @formatjs/icu-messageformat-parser: argument names and types identical for all 142 keys (0 differences)",
+    "plural_categories": "PASS - fr plural uses one/many/other only, every plural-select has `other`; no `few`",
+    "icu_render": "PASS - intl-messageformat rendered all 147 message/argument combinations under 'fr' (each plural category 0/1/2/5/10^6/1.5*10^6 and every select arm); no throw, no leftover ICU",
+    "text_hygiene": "PASS - NFC, no bidi controls, U+2019 apostrophes only, U+202F before ; : ! ? and inside « », no straight quotes, no double spaces, leading/trailing whitespace parity with EN",
+    "backticks": "PASS - backtick spans byte-identical to EN in every key (ui.chat has none, so no code span can drift)",
+    "english_identity": "0 values byte-identical to EN",
+    "union_parity_tool": "en/ui.chat: 124 base + 133 PR -> 142 merged, no missing key, no value difference. fr/ui.chat: same, no missing key, no value difference. en/ui.chat.context: 3 value differences vs the PR side only (both sides had bytes; merged took base's newer notes) - the tool exits FAIL on that report, and it is a merge-time note for the PR, not a key loss: no key is missing from base or PR.",
+    "negative_controls": "A scratch copy with an injected dropped {total}, an injected `few` plural arm and an injected ASCII apostrophe was caught 3/3 by the same checker (ICU parity, category validity, hygiene), so the green run is discriminating rather than vacuous.",
+    "not_run": "check-strings scanned 0 files in the catalogue-only export (it reads the renderer tree); check-added-strings needs a git base. Neither is claimed as evidence."
+  },
+  "evidence_record": "i18n/audits/evidence/fr/ui.chat/union-chat-fr-b3efc4d36922/record.json",
+  "artifacts": [
+    {
+      "path": "i18n/audits/evidence/fr/ui.chat/union-chat-fr-b3efc4d36922/report.md",
+      "role": "narrative report",
+      "sha256": "3b70d22e244f7936834898838970d9be0884ea794c9739a312c11008c274c2e7"
+    },
+    {
+      "path": "i18n/audits/evidence/fr/ui.chat/union-chat-fr-b3efc4d36922/audit.log",
+      "role": "execution log",
+      "sha256": "15285cdb3556a0db98bc563f92b28631966c41d3ccabb058c0bfb7d4cc8e68fc"
+    }
+  ],
+  "findings": [],
+  "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "observations_not_findings": [
+    "ui.chat.region.conversation = « Transcription » was re-checked at union level because the fr tab (ui.chat.tabs.chat) says « Conversation » and the glossary renders transcript as « transcription ». Accepted: the region is the role=log holding the messages, the fr sidebar nav landmark is already « Conversations » (ui.chat.sidebar.nav.chats), and the transcript-display setting on the same surface is « Affichage de la transcription »; a second « Conversation » landmark one letter from the nav name is the worse outcome. Recorded as a reasoned choice, not a defect.",
+    "Context basis note: the union's English context for ui.chat.checkpoint.turn, ui.chat.header_identity.aria_agent_closed and ui.chat.header_identity.aria_team_closed differs from the sidecar the wave-A receipt signed (1df3ad0e). The rewording landed in the wave-A branch's merge commit e5f7c8daea and is an improvement (it stops calling {reason} backend prose and records the cross-repo contract), and the three fr values are byte-identical to the audited bytes, so nothing is re-judged blind - but the earlier receipt's context hash no longer describes these entries, and a ledger that ever binds context hashes should note it.",
+    "ui.chat.composer.status.goal_dismiss = « Ignorer » against three base « Dismiss » keys rendered « Masquer »: not a collision. The fr goal-dismiss family is « ignorer » throughout (ui.chat.pickers '… ignorez-le pour retirer son étiquette', ui.notices 'Impossible d'ignorer l'objectif'), while the three « Masquer » keys dismiss banners that are hidden. The corpus splits the same way outside this namespace (7 ignorer / 8 masquer for EN Dismiss).",
+    "ui.chat.composer.status.monitors_action = « Ouvrir la surveillance » reads singular for EN 'the monitors'; checked against the section it opens, whose fr heading is « Surveillance » (ui.chat.run_details.monitors.title), so the action names its destination exactly.",
+    "ui.chat.question_dock.hint.approval names the card's buttons as « Approve ou Deny »: those are the literal labels the component draws (APPROVAL_OPTIONS in src/renderer/src/features/chat/approval-words.ts, kept English by design so the label doubles as the wire verdict), and the typed tokens yes/no/1/2 must stay English too. The fr sentence is correct about the UI it describes; the English labels are a source-level localization gap, not a catalogue error.",
+    "ui.chat.header_identity.aria_agent_closed / aria_team_closed embed {reason}, which the union context now documents as a UI-composed sentence mirroring core's cross-repo contract in English. The fr value correctly passes it through untranslated; a French AT user hears one English clause there. Product-level, not fixable from the catalogue.",
+    "Base-only, unchanged-by-proof: ui.chat.skill_invocation.instructions_label says « Instructions de compétence envoyées avec ce message » while its sibling trigger_label says « Instructions de la compétence {token} ». Both are pre-existing bytes outside the delta, recorded for a future pass, not counted here.",
+    "Base-only, unchanged-by-proof: ui.chat.session_status.temporarily_unavailable and not_signed_in both carry {label}; the fr values place it first and last respectively, which is correct for each sentence."
+  ],
+  "limitations": [
+    "Copy audit only: no build, no rendered frame, no browser, no native-render claim. Widths are cell counts against the sidecar's maxCells hints, not measurements.",
+    "No native-speaker sign-off is claimed; this is an independent agent read against the locale's own shipped catalogue, the fr style guide and the core glossary.",
+    "The English copy was read as the source, not audited as English.",
+    "The upstream model behind the radient/auto route is not exposed to this session; the recorded route is the harness's own.",
+    "scripts/i18n/check-strings.mjs scanned 0 files in the catalogue-only export (it reads the renderer sources, which the export did not carry), so its pass is NOT evidence here; generate --check, check-duplicates, ledger-check, context-parity, check-coverage, locale-parity and the ICU render are the executed gates. check-added-strings needs a git base and was not run in the export.",
+    "The predecessors' nine-namespace and four-namespace bundles were consumed as evidence (ids and bound hashes) but not re-litigated as audits."
+  ],
+  "totals": {
+    "keys_audited": 142,
+    "values_re_read_in_union": 142,
+    "values_proven_identical_to_a_wave_audit": 27,
+    "base_values_proven_unchanged": 115,
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  }
+}

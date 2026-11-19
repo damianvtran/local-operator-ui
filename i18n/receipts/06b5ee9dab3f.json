@@ -1,0 +1,132 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation re-audit of merged namespace bytes (PR #1957 + #1959 deltas)",
+  "locale": "ur",
+  "namespace": "ui.chat.canonical",
+  "date": "2026-11-17",
+  "head": "412fcf2cd4484cb3d6806eb711a13e097d4e0056 (.worktrees/i18n-identity-footer, clean)",
+  "instance": "06b5ee9dab3f",
+  "agent": "i18n-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "model": "anthropic/claude-opus-5-5",
+    "instance": "06b5ee9dab3f",
+    "session": "6c88c2564349",
+    "independent_from_translator_session": true,
+    "actual_model_source": "harness system prompt of session 6c88c2564349 (Model: anthropic/claude-opus-5-5); no fallback observed",
+    "independence": "Fresh instance; did not translate these strings nor audit PR #1957/#1959 deltas. No MT used. LLM audit, not a native-speaker review."
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "scope": "ur ui.chat.canonical merged bytes: in-depth image_gen.result_label and transcript.took_duration; namespace key/ICU/argument parity, English-left scan, 32-value sample read",
+  "style_guide": {
+    "path": "~/local-operator/i18n/style-guides/ur.md",
+    "sha256": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60"
+  },
+  "glossary": {
+    "path": "~/local-operator/i18n/glossary.md",
+    "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+  },
+  "findings": [
+    {
+      "id": "LOC-CAN-1",
+      "severity": "nit",
+      "key": "ui.chat.canonical.transcript.took_duration",
+      "current": "{duration} لگے",
+      "problem": "Verb fixed in plural agreement; for a one-unit duration (e.g. '1s') idiomatic Urdu is 'لگا'. No count argument exists to select it, and the plural form matches turn_summary.took, so not actionable without a source change.",
+      "suggestion": "Keep; revisit only if the source gains a count/unit argument."
+    },
+    {
+      "id": "LOC-CAN-INFO-1",
+      "severity": "INFO",
+      "key": "ui.chat.canonical.image_gen.result_label",
+      "note": "All 4 material arms x {=1, other} present and complete; args material/count/position match English; =1 covers ur CLDR 'one' for integer counts. Terms match state.done/running (تیار کردہ تصویر/ویڈیو/وائس اوور/صوتی اثر). Splices grammatically into ur ui.chat.attachments broken_media_unavailable/broken_unavailable/broken_moved ('تیار کردہ تصویر 2 کو دکھایا نہیں جا سکا۔'). Numeral follows noun, plain digits, RTL-safe (EN digit in AL context). 3-5 words, within the 2-4 word hint."
+    },
+    {
+      "id": "LOC-CAN-INFO-2",
+      "severity": "INFO",
+      "key": "ui.chat.canonical.transcript.took_duration",
+      "note": "Identical to turn_summary.took ur; SOV clause, no full stop, no English. duration (Latin 'Xm Ys') is FSI-isolated by isolateArguments (needsIsolation: Latin, no RTL) so it cannot reorder in RTL."
+    },
+    {
+      "id": "LOC-CAN-INFO-3",
+      "severity": "INFO",
+      "key": "(code) canonical-transcript.tsx / formatDuration",
+      "note": "OUT OF SCOPE, not counted: lead 'Turn condensed', ': ' / ', ' / '.' joiners and English unit letters from formatDuration remain English in the ur spoken/copied sentence."
+    },
+    {
+      "id": "LOC-CAN-INFO-4",
+      "severity": "INFO",
+      "key": "(namespace scan)",
+      "note": "532/532 keys, ICU parse ok, argument parity ok (3 working_line keys add a 'one' arm beside =1: valid). Latin left: Team Bridge, Local Operator, Canvas, Finder, Python, HTML, Enter, diff/Diff, seq, id, endpoint (glossary wave-2 kept-English). No bidi controls."
+    }
+  ],
+  "namespaces": {
+    "ui.chat.canonical": {
+      "namespace": "ui.chat.canonical",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "source_sha256": "c86dd0552dad4fd582ef9f663cd4fff803ffa2b8b72ac27096d768c222d38cb9",
+      "en_sha256": "c86dd0552dad4fd582ef9f663cd4fff803ffa2b8b72ac27096d768c222d38cb9",
+      "target_sha256": "2f064477ca9ee1964fa4de820216968a31476df2fbb4aabbcea51ebd32d2290e",
+      "ur_sha256": "2f064477ca9ee1964fa4de820216968a31476df2fbb4aabbcea51ebd32d2290e",
+      "context_sha256": "e0c89c912238de89a22ebdbdc28c2462201c6b2bbd28fc3c52a1f0ad8787a04a",
+      "counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 1
+      },
+      "findings": [
+        {
+          "id": "LOC-CAN-1",
+          "severity": "nit",
+          "key": "ui.chat.canonical.transcript.took_duration",
+          "current": "{duration} لگے",
+          "problem": "Verb fixed in plural agreement; for a one-unit duration (e.g. '1s') idiomatic Urdu is 'لگا'. No count argument exists to select it, and the plural form matches turn_summary.took, so not actionable without a source change.",
+          "suggestion": "Keep; revisit only if the source gains a count/unit argument."
+        },
+        {
+          "id": "LOC-CAN-INFO-1",
+          "severity": "INFO",
+          "key": "ui.chat.canonical.image_gen.result_label",
+          "note": "All 4 material arms x {=1, other} present and complete; args material/count/position match English; =1 covers ur CLDR 'one' for integer counts. Terms match state.done/running (تیار کردہ تصویر/ویڈیو/وائس اوور/صوتی اثر). Splices grammatically into ur ui.chat.attachments broken_media_unavailable/broken_unavailable/broken_moved ('تیار کردہ تصویر 2 کو دکھایا نہیں جا سکا۔'). Numeral follows noun, plain digits, RTL-safe (EN digit in AL context). 3-5 words, within the 2-4 word hint."
+        },
+        {
+          "id": "LOC-CAN-INFO-2",
+          "severity": "INFO",
+          "key": "ui.chat.canonical.transcript.took_duration",
+          "note": "Identical to turn_summary.took ur; SOV clause, no full stop, no English. duration (Latin 'Xm Ys') is FSI-isolated by isolateArguments (needsIsolation: Latin, no RTL) so it cannot reorder in RTL."
+        },
+        {
+          "id": "LOC-CAN-INFO-3",
+          "severity": "INFO",
+          "key": "(code) canonical-transcript.tsx / formatDuration",
+          "note": "OUT OF SCOPE, not counted: lead 'Turn condensed', ': ' / ', ' / '.' joiners and English unit letters from formatDuration remain English in the ur spoken/copied sentence."
+        },
+        {
+          "id": "LOC-CAN-INFO-4",
+          "severity": "INFO",
+          "key": "(namespace scan)",
+          "note": "532/532 keys, ICU parse ok, argument parity ok (3 working_line keys add a 'one' arm beside =1: valid). Latin left: Team Bridge, Local Operator, Canvas, Finder, Python, HTML, Enter, diff/Diff, seq, id, endpoint (glossary wave-2 kept-English). No bidi controls."
+        }
+      ]
+    }
+  },
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+      "sha256": "c86dd0552dad4fd582ef9f663cd4fff803ffa2b8b72ac27096d768c222d38cb9"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+      "sha256": "e0c89c912238de89a22ebdbdc28c2462201c6b2bbd28fc3c52a1f0ad8787a04a"
+    },
+    "ur": {
+      "path": "src/i18n/catalogues/ur/ui.chat.canonical.json",
+      "sha256": "2f064477ca9ee1964fa4de820216968a31476df2fbb4aabbcea51ebd32d2290e"
+    }
+  }
+}

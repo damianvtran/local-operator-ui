@@ -9,6 +9,10 @@ import {
 } from "@shared/store/canonical-sessions-store";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+	REMOTE_FILES_UNSUPPORTED_SENTENCE,
+	remoteUnsupportedSentence,
+} from "./remote-files";
+import {
 	type SessionFile,
 	type SessionFilesPage,
 	mergeFilesPage,
@@ -65,6 +69,12 @@ export function useSessionFiles(
 	const capabilities = useDesktopCapabilities();
 	const known = capabilities.data !== undefined;
 	const capable = desktopFeatureEnabled(capabilities.data, "session_files");
+	// A remote session's index is listable only when THIS daemon proxies the
+	// owner's (`features.remote_files`); otherwise today's sentence, unchanged.
+	const remoteListing =
+		remote &&
+		capable &&
+		desktopFeatureEnabled(capabilities.data, "remote_files");
 	const mode: FileIndexState["mode"] = !known
 		? "negotiating"
 		: capable || remote
@@ -119,11 +129,11 @@ export function useSessionFiles(
 		setSnapshot((old) => ({ ...old, state: "loading", error: null }));
 		// An old daemon cannot give a peer index, and its transcript paths name the
 		// OTHER device. Hold the unsupported state instead of probing this disk.
-		if (remote && !capable) {
+		if (remote && !remoteListing) {
 			setSnapshot({
 				...EMPTY,
 				state: "unsupported",
-				error: "Remote files cannot be opened on this device.",
+				error: REMOTE_FILES_UNSUPPORTED_SENTENCE,
 			});
 			return;
 		}
@@ -173,7 +183,7 @@ export function useSessionFiles(
 						setSnapshot({
 							...EMPTY,
 							state: "unsupported",
-							error: "Remote files cannot be opened on this device.",
+							error: remoteUnsupportedSentence(page),
 						});
 						return;
 					}
@@ -272,14 +282,22 @@ export function useSessionFiles(
 		retry,
 		revisionHint,
 		remote,
-		capable,
+		remoteListing,
 		sourceKey,
 	]);
 	return {
 		...snapshot,
 		mode,
 		refresh,
+		// "May the list show rows", despite the name: a remote session's rows are
+		// shown once the daemon lists them for us, and every row action then goes
+		// through `canonical/remote-files.ts`, never this disk.
 		localReadAllowed:
-			!remote && mode !== "negotiating" && snapshot.state !== "unsupported",
+			(!remote || remoteListing) &&
+			mode !== "negotiating" &&
+			snapshot.state !== "unsupported",
+		// The session lives on another device: its `cwd` and every row path are
+		// the OWNER's, so the Files header never reveals them here (Q1-1).
+		remote,
 	};
 }

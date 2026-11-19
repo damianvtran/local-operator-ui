@@ -76,6 +76,8 @@ const skip = !built
 
 /** Effective alpha may differ by float noise only. */
 const TOLERANCE = 0.006;
+/** A backdrop filter that actually blurs: the band's isolating half. */
+const HAS_BLUR = /blur/;
 
 /**
  * Opaque, deliberate grounds that may sit inside a glass region. Each is a
@@ -222,14 +224,25 @@ function childEnv() {
 	return env;
 }
 
-/** Attach to a launched app's page over CDP; the command channel is one ws. */
+/**
+ * Attach to a launched app's page over CDP; the command channel is one ws.
+ *
+ * THE BOOT WAIT IS 90 s, NOT 40 s. The page target really does appear, but not
+ * quickly: measured on this host against a build of this head, `/json` answered
+ * with a page target at ~44 s while the renderer's bundle, the backend dial and
+ * the first glass paint all landed - so a 40 s budget reported "no target", and
+ * the guard that read it concluded the app publishes none. That conclusion is
+ * recorded in this PR's evidence README as a correction: the app publishes a
+ * page target, the budget was too short. 90 s is the same budget the QA lane's
+ * own CDP harness settled on for the same launch.
+ */
 async function connect(port) {
 	const target = await until(
 		async () =>
 			(await (await fetch(`http://127.0.0.1:${port}/json`)).json()).find(
 				(t) => t.type === "page" && /index\.html|localhost/.test(t.url),
 			),
-		40_000,
+		90_000,
 		"cdp page",
 	);
 	const ws = new WebSocket(target.webSocketDebuggerUrl);
@@ -483,6 +496,10 @@ const ROUTES = [
 	{ hash: "#/browser", must: ["sidebar", "chrome"] },
 	{ hash: "#/schedules", must: ["sidebar", "panel"] },
 	{ hash: "#/agent-hub", must: ["sidebar", "panel"] },
+	/* Notifications: the page's own canvas region (it has no page-sidebar), whose
+	 * group header and read-state switch are asserted by the targeted test below.
+	 * It was absent from this list while the whole surface was opaque. */
+	{ hash: "#/notifications", must: ["sidebar", "canvas"] },
 ];
 
 /**
@@ -1145,3 +1162,197 @@ for (const [themeName, label] of [
 		},
 	);
 }
+
+/*
+ * THE NOTIFICATIONS SURFACE (operator report, 2026-11-05: "the group headers paint
+ * as solid dark bars ... the Unread/All switch is equally opaque").
+ *
+ * WHY THIS TEST EXISTS AND WHAT IT CANNOT DO. The route was outside `ROUTES`, so
+ * nothing here read it; and the surface's defect was exactly the class a route
+ * grid cannot see - a header and a switch that keep their FLAT fills on a page
+ * whose own ground is glass. The switch is measured as it really renders (it is
+ * on the page in every state, including the empty one). The group header is
+ * measured on the REAL element too, and that is a change from the first version
+ * of this test (agent review round 1, C2): it used to prepend a `div` carrying
+ * the component's class string into the page and measure that, which meant a
+ * header that LOST its `data-glass-plane` attribute would still pass - the
+ * assertion could never fail for the defect it names.
+ *
+ * WHAT THE REAL-HEADER HALF NEEDS, and why it fails instead of skipping: a group
+ * header exists only when notifications do, so this leg needs a backend with at
+ * least one row (the launch is given `LOCAL_OPERATOR_CONFIG_DIR` by the caller).
+ * Without one there is no header and NOTHING is measured, so the assertion fails
+ * and says why rather than passing on a synthetic stand-in. The frame that shows
+ * the header over real rows is the PR's evidence set
+ * (`docs/pr-evidence/notifications-glass/`, real app, same alphas).
+ */
+test(
+	"the notifications page composes its sticky group header and read-state switch through the window glass",
+	{ skip, timeout: 300_000 },
+	async () => {
+		for (const [themeName, label] of [
+			["localOperatorDark", "dark"],
+			["localOperatorLight", "light"],
+		]) {
+			await loadTheme(themeName);
+			await setGlass({
+				enabled: true,
+				coverage: "full",
+				intensity: 80,
+				material: "window",
+			});
+			await cdp.ev(`location.hash = "#/notifications"`);
+			let present = false;
+			for (let i = 0; i < 40 && !present; i++) {
+				present = await cdp.ev(
+					`!!document.querySelector("[data-notifications-page]")`,
+				);
+				if (!present) await wait(300);
+			}
+			assert.ok(
+				present,
+				`${label}: the notifications page renders (a lazy route that never appears must not read as "nothing to measure")`,
+			);
+			/*
+			 * THE ROWS, BEFORE THE HEADER (agent review round 2, C8). The page root
+			 * appears when the lazy route mounts; the groups appear when the store
+			 * hands over the rows, which is later and is not signalled by anything the
+			 * root's own appearance implies. Reading the header off the root's first
+			 * paint made this leg flaky exactly where it must not be: 4 of 15 runs on a
+			 * correctly seeded lane failed with `{"missing":"header","groups":0}`, and
+			 * the message then sent the reader to fix a lane that was fine.
+			 *
+			 * The budget is the evidence rig's own (`notifications-glass-evidence.mjs`,
+			 * 45 s): both read the same seeded lane, so whatever is enough for the
+			 * frames is what the guard needs, and a shorter wait here would make the
+			 * guard the first thing to give up on a slow but correct app. A timeout is
+			 * caught rather than thrown so the failure names which of the two
+			 * conditions actually failed - no rows, or rows without the header - and
+			 * neither can read as the other.
+			 */
+			let groups = 0;
+			try {
+				groups = await until(
+					() =>
+						cdp.ev(
+							'document.querySelectorAll("[data-notification-group]").length',
+						),
+					45_000,
+					"notification groups",
+				);
+			} catch {
+				groups = 0;
+			}
+			assert.ok(
+				groups > 0,
+				`${label}: NO ROWS EVER APPEARED - not one [data-notification-group] mounted within 45 s, so there is no header to measure and nothing here is a finding about the band. This leg needs a backend holding at least one notification; pass LOCAL_OPERATOR_CONFIG_DIR for a seeded lane.`,
+			);
+			const read = await cdp.ev(`(() => {
+        const alpha = (c) => {
+          if (!c || c === "transparent") return 0;
+          let m = c.match(/^rgba?\\(([^)]+)\\)$/);
+          if (m) { const p = m[1].split(/[,\\/]\\s*|\\s+/).filter(Boolean); return p.length > 3 ? Number(p[3]) : 1; }
+          m = c.match(/^color\\(srgb ([^)]+)\\)$/);
+          if (m) { const p = m[1].split("/"); return p.length > 1 ? Number(p[1]) : 1; }
+          return 1;
+        };
+        const root = getComputedStyle(document.documentElement);
+        const v = (n) => Number(root.getPropertyValue(n).trim() || "NaN");
+        const page = document.querySelector("[data-notifications-page]");
+        /* The read-state switch is the page's only marked well. */
+        const track = page?.querySelector('[class~="bg-sunken"][data-glass-well]');
+        const selected = track?.querySelector('[role="radio"][aria-checked="true"]');
+        return {
+          glass: document.documentElement.dataset.glass,
+          region: page?.getAttribute("data-glass-region") ?? null,
+          field: v("--lo-glass-a-field"),
+          selectedAlpha: v("--lo-glass-a-row-selected"),
+          elevated: v("--lo-glass-a-elevated"),
+          bandBand: v("--lo-glass-a-band-floor"),
+          track: track ? getComputedStyle(track).backgroundColor : null,
+          trackAlpha: track ? alpha(getComputedStyle(track).backgroundColor) : null,
+          selected: selected ? alpha(getComputedStyle(selected).backgroundColor) : null,
+          readToggle: !!document.querySelector("[data-notifications-page] [role=\\"radiogroup\\"]"),
+        };
+      })()`);
+			assert.ok(
+				read.trackAlpha !== null,
+				`${label}: the read-state switch's marked track was found (a switch nobody marked is an opaque slab in a glass column)`,
+			);
+			/*
+			 * THE PAGE'S OWN GROUND MARKER. Without it the page's band and track
+			 * rules have no region to hang off and the surface silently returns to
+			 * flat fills - the defect, one attribute away.
+			 */
+			assert.equal(
+				read.region,
+				"canvas",
+				`${label}: the notifications page must mark its own canvas region`,
+			);
+			assert.ok(
+				read.readToggle,
+				`${label}: the Unread/All switch is on the page`,
+			);
+			assert.ok(
+				Math.abs(read.trackAlpha - read.field) <= 0.006,
+				`${label}: the switch's track paints ${read.trackAlpha}, expected the field overlay ${read.field}`,
+			);
+			assert.ok(
+				read.selected !== null &&
+					Math.abs(read.selected - read.selectedAlpha) <= 0.006,
+				`${label}: the checked segment paints ${read.selected}, expected the selected-row overlay ${read.selectedAlpha} (an opaque pill is a hole in glass)`,
+			);
+			/*
+			 * THE BAND, ON THE REAL HEADER. Found by the group's own marker and the row
+			 * role the component gives it - never by the `data-glass-plane` attribute
+			 * under test, which would make this assertion circular. If the real header
+			 * is absent (no notifications in the backend) the numbers below would be
+			 * `undefined` and the assertion fails saying so; there is deliberately no
+			 * clone to fall back to.
+			 */
+			const band = await cdp.ev(`(() => {
+        const alpha = (c) => {
+          if (!c || c === "transparent") return 0;
+          let m = c.match(/^rgba?\\(([^)]+)\\)$/);
+          if (m) { const p = m[1].split(/[,\\/]\\s*|\\s+/).filter(Boolean); return p.length > 3 ? Number(p[3]) : 1; }
+          m = c.match(/^color\\(srgb ([^)]+)\\)$/);
+          if (m) { const p = m[1].split("/"); return p.length > 1 ? Number(p[1]) : 1; }
+          return 1;
+        };
+        const page = document.querySelector("[data-notifications-page]");
+        if (!page) return { missing: "page" };
+        const header = page.querySelector('[data-notification-group] [role="row"]');
+        if (!header) return { missing: "header", groups: page.querySelectorAll("[data-notification-group]").length };
+        const style = getComputedStyle(header);
+        return {
+          alpha: alpha(style.backgroundColor),
+          bg: style.backgroundColor,
+          backdrop: style.backdropFilter || style.webkitBackdropFilter,
+          position: style.position,
+          groups: page.querySelectorAll("[data-notification-group]").length,
+        };
+      })()`);
+			assert.equal(
+				band.missing,
+				undefined,
+				`${label}: ROWS ARE ON THE PAGE (${groups} groups) BUT THE GROUP'S OWN [role="row"] HEADER IS NOT THERE (${JSON.stringify(band)}). That is a finding about the markup, not about a slow or empty lane - the rows this header must sit on are mounted, so the lane's seeding is NOT what to check. It fails here rather than passing on a clone.`,
+			);
+			assert.ok(
+				Math.abs(band.alpha - Math.max(read.elevated, read.bandBand)) <= 0.006,
+				`${label}: the group header paints ${band.alpha}, expected max(elevated ${read.elevated}, band floor ${read.bandBand}) - an opaque bar is the seam the operator reported`,
+			);
+			assert.ok(
+				HAS_BLUR.test(String(band.backdrop)),
+				`${label}: the group header draws no backdrop blur (${band.backdrop}) - without it a band over moving rows dims them instead of isolating them`,
+			);
+			assert.equal(
+				band.position,
+				"sticky",
+				`${label}: the header must stay pinned (position ${band.position})`,
+			);
+			console.log(
+				`[glass-cdp] ${label}/#/notifications: band ${band.alpha} (floor ${read.bandBand}, elevated ${read.elevated}) blur ${band.backdrop}; ${band.groups} groups; switch track ${read.track}; field overlay ${read.field}`,
+			);
+		}
+	},
+);

@@ -1,0 +1,206 @@
+{
+ "audit_id": "wa-ur-r2-20261027",
+ "audit_kind": "delta",
+ "audit_date": "2026-10-27",
+ "locale": "ur",
+ "namespace": "ui.chat.sidebar",
+ "key_count": 11,
+ "file_key_count": 60,
+ "source_commit": "80ee119bbd1084ee873994a1f39db0c085c62083",
+ "previous_audited_commit": "a81c00cdda2667dc6b094128ff47ec72d0c4d095",
+ "wave_a_base": "6216167f44",
+ "scope": "Delta audit of ur (RTL) wave A at 80ee119bbd, the remediation of the round-1 findings (response_actions M1, header N1). Two of the 38 wave-A values changed - ui.chat.response_actions.answer_label and ui.chat.header.cancel_rename - and both are re-read here in full against the en source, its context sidecar, the core glossary, style-guides/ur.md and their render call sites; the other 36 are proven byte-identical to the audited bytes by a parsed-JSON diff a81c00cdda..80ee119bbd and are carried, with the binding recorded in the receipt. Catalogue audit only: no application build, packaging, browser, rendered-output or release claim; the ur bundle test below exercises the compiled catalogues in Node, not the app.",
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "59ea19dc68ac",
+  "model": "radient/auto",
+  "actual_model_source": "Model route as this session's own harness line reports it: 'Model: radient/auto'. That is a routing alias, not a pinned upstream model id, and the session exposes no per-turn served-model stamp or environment variable naming a served model, so no upstream model or fallback is claimed beyond the declared route. Recorded verbatim rather than guessed.",
+  "independent_from_translator_session": true,
+  "independent_from_previous_auditor_session": true,
+  "independence_basis": "Independent translation audit: this session (59ea19dc68ac) authored none of the 38 wave-A values and edited no catalogue, context file, ledger row or generated key; it wrote only its own receipt, records and evidence bundle. It is a different instance from the round-1 ur auditor (d9139bfa7d4b), so the two values re-read here had a second independent pass rather than the first auditor confirming itself. The amendment (a81c00cdda..80ee119bbd) was authored by the wave's implementer, a different agent whose session id this evidence does not name; independence is claimed on authorship and instance, not on a remembered id. No MT service, translation API or SDK was used to compare or back-translate: the judgement is a native reading, and the only tooling executed is the repository's own gates plus the installed intl-messageformat formatter and GNU fribidi.",
+  "team": "lopdev"
+ },
+ "standards": {
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/ur.md",
+   "sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+  },
+  "contract": {
+   "path": "docs/I18N.md",
+   "sha256": "6fc7bea71643c0dcaeaed697ecd792cfdfeb11b7816b5f8d160011e7c7df2abe"
+  }
+ },
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+   "sha256": "7901d0902c1dff11a5f4aca6138ac1dc05268c82ea1561e4c81bc106fcb00353"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.chat.sidebar.context.json",
+   "sha256": "996e9bf0eda23ee7f56a3d4f979617b2a965cb20cd820f0da67570297030d1be"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/ur/ui.chat.sidebar.json",
+   "sha256": "f2c0d99197af7a28db0d0457d96c3e703a761566ab92690c187b40a4ce06efed"
+  }
+ },
+ "current_report_verdict": {
+  "status": "passed",
+  "result": "clean",
+  "unresolved_blocker_major_count": 0,
+  "finding_ids": [],
+  "finding_counts": {
+   "blocker": 0,
+   "major": 0,
+   "minor": 0,
+   "nit": 0
+  }
+ },
+ "findings": [],
+ "remediated_findings": [],
+ "regression": {
+  "wave_a_keys": 11,
+  "changed_keys": [],
+  "unchanged_key_count": 11,
+  "ur_blob_identical_to_audited": true
+ },
+ "observations": [
+  {
+   "id": "O3",
+   "topic": "fit / width",
+   "answer": "None of the 38 wave-A context entries carries maxCells or maxChars. The 13 entries in these four namespaces that do carry one belong to pre-existing keys this wave never touched (ui.chat.header.conversation_name 24, archived 16, actions 28, copy_id 24, move_device 32, transcript_display 28, delete 28, close_run_details 20, open_run_details 20, new_chat 16, new_chat_with 32, ui.chat.session_status.choose_model 18, last_reading 16), so no audited value can overrun a declared budget. The two amended values measure 24 cells (cancel_rename) and 18 cells (answer_label) by the ur guide's ~1 cell per Arabic-script character rule, against English 13 and 14. Both are an accessible name / tooltip, not a fixed-width caption: cancel_rename is the header rename control's aria-label AND its native title tooltip (chat-header.tsx), answer_label is screen-reader-only (answerActionsLabel in message-actions.ts), so neither sits in a layout that can clip it. No overflow risk claimed or observed, and no rendered-frame measurement is offered - this is a catalogue audit.",
+   "evidence": "evidence-shared/logs/formatter.json",
+   "scored": false
+  },
+  {
+   "id": "O4",
+   "topic": "RTL / bidi of the two amended values",
+   "answer": "Both are pure Urdu: no Latin/digit island, no manual bidi control (ur-activation's hygiene test scans the real bundled catalogue and finds none, and the audit's own scan counts zero U+200E/U+200F/U+2066-U+2069/U+061C). GNU fribidi 1.0.16 at base direction RTL pictures them with the phrase head on the right ('حتمی جواب کے اعمال' -> 'ﻝﺎﻤﻋﺍ ﮯﮐ ﺏﺍﻮﺟ ﯽﻤﺘﺣ'), and reversing the visual run after NFKC restores the logical string exactly for both - the same property holds for all 20 pure-RTL wave-A values. No arrow, mirrored-wrong glyph or bidi hazard arises in either string; the wave's placeholder strings with Latin substitutions keep their round-1 behaviour and are not re-scored.",
+   "evidence": "evidence-shared/logs/fribidi-visual.txt",
+   "scored": false
+  },
+  {
+   "id": "O5",
+   "topic": "carried blocks are not a re-read",
+   "answer": "ui.chat (18 values) and ui.chat.sidebar (11 values) are marked passed by carry-forward, not by a fresh semantic read: the parsed-JSON diff proves every one of those values identical between a81c00cdda and 80ee119bbd and the file blobs unchanged, and the en source plus context sidecars are unchanged too, so the round-1 verdict still describes these bytes. Their records name the prior record and receipt hashes. If the coordinator wants a fresh read of all 38 rather than 2, that is a different (larger) audit and should be asked for explicitly.",
+   "evidence": "evidence-shared/logs/regression.txt",
+   "scored": false
+  }
+ ],
+ "carried_forward": {
+  "from_audit_id": "wa-ur-20261027",
+  "from_record": "i18n/audits/evidence/ur/ui.chat.sidebar/wa-ur-20261027/record.json",
+  "from_record_sha256": "cebd77c2b6dc22d9aa0c070a92410f361d72a828bc3080b3980a2c87bdb2117f",
+  "from_receipt": "i18n/receipts/wa-ur-20261027.json",
+  "from_receipt_sha256": "dee2335d8e0920fff12fec20783b82f5a0499ca3d0aa9c04475efca8440d3af0",
+  "regression_evidence": "evidence-shared/logs/regression.json",
+  "basis": "Same bytes: the parsed-JSON diff a81c00cdda..80ee119bbd shows every wave-A value here identical and the ur file blob unchanged; en source and context sidecar unchanged too. No value in this namespace was re-read for this delta."
+ },
+ "audit_notes_not_execution_log": "The verdict and observations are this auditor's reading. The commands whose output backs them are transcribed verbatim in audit.log beside this record; the raw captures are under evidence-shared/logs/ and are hashed in this record's artifacts.",
+ "artifacts": {
+  "audit_log": {
+   "path": "i18n/audits/evidence/ur/ui.chat.sidebar/wa-ur-r2-20261027/audit.log",
+   "sha256": "6b449f9bf373494aa0f71d62267006055776e1880cf2f7feee926c70be753984"
+  },
+  "record": {
+   "path": "i18n/audits/evidence/ur/ui.chat.sidebar/wa-ur-r2-20261027/record.json",
+   "sha256": "self; the delivered copy is hashed in the bundle manifest.json"
+  },
+  "receipt": {
+   "path": "i18n/receipts/wa-ur-r2-20261027.json",
+   "sha256": "23ff5446c0dc51943eebd37cfe09bd08e912d4c304bda24a9d4e82744c75a6d2"
+  },
+  "shared_captures": [
+   {
+    "path": "evidence-shared/logs/regression.txt",
+    "sha256": "a4d2bacc0d60059560a3f713b5cd0277ce8e53900042847b5cca1e33c37fe7dd"
+   },
+   {
+    "path": "evidence-shared/logs/regression.json",
+    "sha256": "c122cf3b3122e6214c1d6f07875cadd2336dc153b6d0a45234003155e9c8c4f7"
+   },
+   {
+    "path": "evidence-shared/logs/locale-parity.full.txt",
+    "sha256": "58ba905947375b05a8eafb13e6072d7a3e500c87bda56be4ed739d0f63f4b99c"
+   },
+   {
+    "path": "evidence-shared/logs/generate-check.txt",
+    "sha256": "d05fbbaa4b3b49b103edd1f483621f9b4f09332cede2855a503db7b56cf9391a"
+   },
+   {
+    "path": "evidence-shared/logs/ur-activation.txt",
+    "sha256": "b3a5d545568470747d4a6a7f786d889053eef0073e5bcb32ba455289c7e38c6e"
+   },
+   {
+    "path": "evidence-shared/logs/formatter.txt",
+    "sha256": "4902a2f9b45890b60ffac7000b717933f8eb21ae9eb95638d75005f8621544f5"
+   },
+   {
+    "path": "evidence-shared/logs/formatter.json",
+    "sha256": "cd93b59f547464829efdd4ddb0304ff0f8267cc28bdf8ec28eed118ad02cd232"
+   },
+   {
+    "path": "evidence-shared/logs/fribidi-visual.txt",
+    "sha256": "5dd468bae5063688c3d02fb31b4e5bdc809092812ff77334f117f0ae7022ac9e"
+   },
+   {
+    "path": "evidence-shared/logs/fribidi-visual.json",
+    "sha256": "d025c9730f3649e1968054be8a6ab5ad3705a5fc654cf10dc2f2e52a1b2568d7"
+   },
+   {
+    "path": "evidence-shared/logs/ledger-check.txt",
+    "sha256": "cfeedcee412d244e9b5c0168a7c3cb503d38688f73d36b6d6b78818959ce4663"
+   },
+   {
+    "path": "evidence-shared/logs/ur-terms.txt",
+    "sha256": "08afe2d14bb2529e6a7d93288861c3c18ea7f73924223932c4fc7c634dc1d00e"
+   },
+   {
+    "path": "evidence-shared/scripts/regression.py",
+    "sha256": "e69b63c497ea21e1bbf351a785ccfc8da51538fcf81819fe0c03c577c7a668e0"
+   },
+   {
+    "path": "evidence-shared/scripts/fribidi-visual.py",
+    "sha256": "4f08ebcbc23e462adbfb645f500b5f4c871b1a705cc0b89c4ea198a1534504b6"
+   },
+   {
+    "path": "evidence-shared/scripts/formatter.mjs",
+    "sha256": "06bb318eaf55beaa7e3a2b545b406e0436fc68cd52e7eb275cbd5245c784d94a"
+   },
+   {
+    "path": "evidence-shared/scripts/terms.py",
+    "sha256": "1c697a89a156ba16df1c66838b71bedc2d953adcc0182256dc98887659d593f1"
+   },
+   {
+    "path": "evidence-shared/scripts/rule-check.mjs",
+    "sha256": "afedd01edaff2d303173b58c9ed90cfa022f0a61af64ede883430e267373d005"
+   },
+   {
+    "path": "evidence-shared/scripts/ledger-trial.mjs",
+    "sha256": "d1a546d1f73e31f7f6ab67d8f7400d0a125aa7dbea226ce91590e47fef5dc241"
+   },
+   {
+    "path": "evidence-shared/scripts/build.py",
+    "sha256": "ac8a5b10de81218039ca427f214b00db905f8d211f86a7cb737f6683e91b675e"
+   }
+  ],
+  "rule_check": {
+   "path": "evidence-shared/logs/rule-check.txt",
+   "sha256": "17370a8a7f2be5ff491e9b5f4bbd81c80c7fc420e990090e7c5e1301c7f5f174"
+  },
+  "ledger_binding_trial": {
+   "path": "evidence-shared/logs/ledger-trial.txt",
+   "sha256": "7bc168ff2573d81015dd3639d0c233836de86a48dc380f7ae5cf4f2df001b0b5"
+  }
+ },
+ "limitations": [
+  "Catalogue audit only: no application build, packaging, install, browser, rendered-output or release run; the ur bundle test below exercises the compiled catalogue bundle in Node, not the running app.",
+  "No rendered-frame or pixel-width measurement: fit is reasoned from absent sidecar budgets and the cell counts in O3.",
+  "ui.chat and ui.chat.sidebar are carried on proved byte equality, not re-read (O5).",
+  "The ledger rows are the coordinator's to bind from this receipt; this audit wrote no ledger entry and edited no tracked file."
+ ]
+}

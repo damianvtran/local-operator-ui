@@ -43,6 +43,8 @@ const bundle = await build({
 	// with react held external.
 	alias: {
 		"@shared": "./src/renderer/src/shared",
+		"@shared/i18n": "./src/i18n",
+		"@shared/i18n/use-locale": "./src/renderer/src/shared/i18n/use-locale.ts",
 		"@features": "./src/renderer/src/features",
 	},
 	mainFields: ["module", "main"],
@@ -53,15 +55,31 @@ const bundle = await build({
 		{
 			name: "find-transport-fixture",
 			setup(builder) {
-				// Only the network is faked, as `use-thread-search.test.mjs` does.
+				/*
+				 * ONLY `desktopResult` IS REPLACED, NOT THE MODULE. The stub carries the
+				 * real module's whole surface and overrides one export, because
+				 * `desktop-api.ts` is not only the transport: it also owns
+				 * `DesktopControlError` and `isDeadlineExceeded`, which `backend-error.ts`
+				 * imports. A one-export stub is a claim about the bundle's import graph -
+				 * it holds only while nothing else in the graph reads the module - and
+				 * that stopped being true when `chat-regions.ts` gained `t()`: the i18n
+				 * runtime reaches `desktop-hooks.ts`, then `backend-error.ts`, and the
+				 * build failed on a missing export with no product defect behind it. A
+				 * star re-export keeps the error classes this bundle sees identical to
+				 * the ones the app throws, and the explicit export shadows the star, so
+				 * the transport function stays faked - as `use-thread-search.test.mjs`
+				 * fakes it.
+				 */
+				const realTransport = `${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-api.ts`;
 				builder.onResolve({ filter: /desktop-api$/ }, () => ({
 					path: "transport",
 					namespace: "find-fixture",
 				}));
 				builder.onLoad({ filter: /.*/, namespace: "find-fixture" }, () => ({
-					contents:
-						"export const desktopResult = (request) => globalThis.__findRequest(request);",
+					contents: `export * from ${JSON.stringify(realTransport)};
+						export const desktopResult = (request) => globalThis.__findRequest(request);`,
 					loader: "js",
+					resolveDir: process.cwd(),
 				}));
 			},
 		},
@@ -511,9 +529,16 @@ test("the count line splits by tier, and the cut rides it as a suffix", async ()
 		 * One line, both facts (design D2 + UX U3): the split the old count hid,
 		 * and the cut as a suffix rather than "2 matches Showing the first 2
 		 * matches." saying it twice.
+		 *
+		 * Label-first is the catalogue's order (`count.split`), not the model's
+		 * old suffix: a locale inflects each count against its own noun, which a
+		 * shared trailing "exact"/"related" cannot do. This assertion is the
+		 * shipped sentence on purpose — `thread-search-model.test.mjs` holds the
+		 * model's spelling to the same `en` template, so the panel and the model
+		 * cannot drift into two spellings of one line again (R2-1).
 		 */
 		const line = panel.panel().textContent;
-		assert.match(line, /1 exact · 1 related/);
+		assert.match(line, /Exact: 1 · Related: 1/);
 		assert.match(line, /\(first 2 shown\)/);
 		await panel.render({
 			query: "ledger",

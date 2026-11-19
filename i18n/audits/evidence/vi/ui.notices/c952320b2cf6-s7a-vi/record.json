@@ -1,0 +1,162 @@
+{
+  "locale": "vi",
+  "namespace": "ui.notices",
+  "instance": "c952320b2cf6-s7a-vi",
+  "agent": "reviewer",
+  "model": "openai/gpt-6.1-sol",
+  "auditor": {
+    "agent": "reviewer",
+    "instance": "c952320b2cf6-s7a-vi",
+    "model": "openai/gpt-6.1-sol",
+    "independent_of_translator": true
+  },
+  "branch": "feat/i18n-s7",
+  "head": "aba5d0310761cedc384c35847498d4197ce4b107",
+  "base": "0ad5542379a349a98e0a8d602dbd992746fd40a2",
+  "date": "2026-11-09",
+  "scope": "Added values only; not a full namespace re-audit",
+  "source": {
+    "path": "src/i18n/catalogues/en/ui.notices.json",
+    "sha256": "043243b66381b6fa1143acb645ce0c83fcb381883038ef88bbcb28e36764b112"
+  },
+  "target": {
+    "path": "src/i18n/catalogues/vi/ui.notices.json",
+    "sha256": "ecad376314fb6c1d724f417149932eef827ed3cec29c176c790c335aa0e2e2d8"
+  },
+  "context": {
+    "path": "src/i18n/catalogues/en/ui.notices.context.json",
+    "sha256": "5c14ca70d2d1df2b22dc169e891143cc5f9e10dd34f4e96eb84a53a18318313b"
+  },
+  "keys_audited": 6,
+  "keys": [
+    {
+      "key": "ui.notices.aida.account_required",
+      "line": 104,
+      "english": "{name} will say hello once an AI account is connected. Connect one from the chat to start.",
+      "vietnamese": "{name} sẽ chào bạn khi có tài khoản AI được kết nối. Kết nối tài khoản từ cuộc trò chuyện để bắt đầu.",
+      "grammar": "Khi có tài khoản AI được kết nối explicitly retains existential có and connected-account condition; sẽ chào marks future action.",
+      "arguments": [
+        "argument:name"
+      ],
+      "plural_arms": [],
+      "formatted": "Aida sẽ chào bạn khi có tài khoản AI được kết nối. Kết nối tài khoản từ cuộc trò chuyện để bắt đầu.",
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types_and_skeletons": "PASS",
+        "other_only_plural": "PASS",
+        "nfc": "PASS",
+        "bidi": "PASS",
+        "function_words_manual": "PASS",
+        "english_residue_manual": "PASS"
+      }
+    },
+    {
+      "key": "ui.notices.aida.active",
+      "line": 105,
+      "english": "Aida is active.",
+      "vietnamese": "Aida đang hoạt động.",
+      "grammar": "Đang hoạt động expresses current ongoing activity.",
+      "arguments": [],
+      "plural_arms": [],
+      "formatted": "Aida đang hoạt động.",
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types_and_skeletons": "PASS",
+        "other_only_plural": "PASS",
+        "nfc": "PASS",
+        "bidi": "PASS",
+        "function_words_manual": "PASS",
+        "english_residue_manual": "PASS"
+      }
+    },
+    {
+      "key": "ui.notices.aida.open_fallback",
+      "line": 106,
+      "english": "{name}'s conversation could not be opened, so you are in a new chat instead. {detail}",
+      "vietnamese": "Không mở được cuộc trò chuyện của {name}, nên bạn đang ở cuộc trò chuyện mới. {detail}",
+      "grammar": "Không mở được is complete negative potential; nên links the failure to the new-chat fallback; detail remains interpolated.",
+      "arguments": [
+        "argument:detail",
+        "argument:name"
+      ],
+      "plural_arms": [],
+      "formatted": "Không mở được cuộc trò chuyện của Aida, nên bạn đang ở cuộc trò chuyện mới. Thông tin thử nghiệm.",
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types_and_skeletons": "PASS",
+        "other_only_plural": "PASS",
+        "nfc": "PASS",
+        "bidi": "PASS",
+        "function_words_manual": "PASS",
+        "english_residue_manual": "PASS"
+      }
+    },
+    {
+      "key": "ui.notices.aida.paused",
+      "line": 107,
+      "english": "Aida is paused.",
+      "vietnamese": "Aida đang tạm dừng.",
+      "grammar": "Đang tạm dừng expresses current paused state, not completion.",
+      "arguments": [],
+      "plural_arms": [],
+      "formatted": "Aida đang tạm dừng.",
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types_and_skeletons": "PASS",
+        "other_only_plural": "PASS",
+        "nfc": "PASS",
+        "bidi": "PASS",
+        "function_words_manual": "PASS",
+        "english_residue_manual": "PASS"
+      }
+    },
+    {
+      "key": "ui.notices.aida.paused_receipt",
+      "line": 108,
+      "english": "Aida is paused. She will not check in until you resume her.",
+      "vietnamese": "Aida đang tạm dừng. Cô ấy sẽ không hỏi thăm cho đến khi bạn cho tiếp tục.",
+      "grammar": "Sẽ không hỏi thăm cho đến khi bạn cho tiếp tục preserves the until-resumed condition; cho tiếp tục is grammatical causative permission, with Aida recoverable as object.",
+      "arguments": [],
+      "plural_arms": [],
+      "formatted": "Aida đang tạm dừng. Cô ấy sẽ không hỏi thăm cho đến khi bạn cho tiếp tục.",
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types_and_skeletons": "PASS",
+        "other_only_plural": "PASS",
+        "nfc": "PASS",
+        "bidi": "PASS",
+        "function_words_manual": "PASS",
+        "english_residue_manual": "PASS"
+      }
+    },
+    {
+      "key": "ui.notices.aida.resumed_receipt",
+      "line": 109,
+      "english": "Aida is resumed. She will check in on her usual schedule.",
+      "vietnamese": "Aida đã tiếp tục hoạt động. Cô ấy sẽ hỏi thăm theo lịch thường lệ.",
+      "grammar": "Đã tiếp tục hoạt động explicitly marks resumption; sẽ hỏi thăm theo lịch thường lệ retains future usual-schedule check-ins.",
+      "arguments": [],
+      "plural_arms": [],
+      "formatted": "Aida đã tiếp tục hoạt động. Cô ấy sẽ hỏi thăm theo lịch thường lệ.",
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types_and_skeletons": "PASS",
+        "other_only_plural": "PASS",
+        "nfc": "PASS",
+        "bidi": "PASS",
+        "function_words_manual": "PASS",
+        "english_residue_manual": "PASS"
+      }
+    }
+  ],
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [],
+    "nit": []
+  },
+  "status": "passed",
+  "method": "Independent key-by-key English/Vietnamese meaning, function-word, tense/aspect, terminology and residue review; executable ICU AST parity, other-only arms, formatter, NFC and bidi assertions. Latin product/protocol identifiers Aida, AI, OAuth, MCP, NAME and ICU argument tokens are intentional, not English residue. No rendered UI claim.",
+  "style_guide": "/Users/damian/local-operator/i18n/style-guides/vi.md",
+  "glossary": "/Users/damian/local-operator/i18n/glossary.md"
+}

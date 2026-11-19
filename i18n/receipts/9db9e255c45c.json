@@ -1,0 +1,213 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent-namespace-delta-translation-audit",
+  "date": "2026-11-08",
+  "round": 2,
+  "locale": "ru",
+  "namespace": "ui.agents.upload",
+  "branch": "i18n/slice-upload-agent-dialog",
+  "head": "269ef259c0523fd61c9f40b2a700bed27b838055",
+  "base": "2b72db6a56ad8204ec7f30a0ba6ffbc941be3b82",
+  "instance": "9db9e255c45c",
+  "agent": "reviewer",
+  "model": "openai/gpt-6.1-sol",
+  "auditor": {
+    "agent": "reviewer (r2-ru)",
+    "session": "9db9e255c45c",
+    "instance": "9db9e255c45c",
+    "model": "openai/gpt-6.1-sol",
+    "fallback": true,
+    "model_source": "Started anthropic/claude-sonnet-5-5; quota fallback notices to anthropic/claude-opus-5-5 then openai/gpt-6.1-sol; substantive reads/probe/verdict on latter.",
+    "independent_from_translator_session": true,
+    "independence": "Independent reviewer session; no translation/product edits or commits; wrote only own ru audit evidence and receipt."
+  },
+  "status": "clean-with-findings",
+  "result": "clean-with-findings",
+  "source_sha256": "6aff9fbb0706c9852760db60f22cdb075b747cef37dbc3e9130731943babef0b",
+  "target_sha256": "eab2258e22d38391c179067f225b5385f572229962d68a19fb7714c06f9fbd8f",
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [],
+    "nit": [
+      {
+        "id": "RU-UP-02",
+        "severity": "nit",
+        "category": "consistency",
+        "key": "ui.agents.upload.published.org_listed",
+        "related_keys": [
+          "ui.agents.upload.not_leaving.org"
+        ],
+        "source": "Its members can read and install it; nobody outside the organization can. / ...; nobody outside it can.",
+        "current": "…никто за её пределами этого не может. (published.org_listed) against …никто за её пределами этого не сможет. (not_leaving.org)",
+        "problem": "Two sibling 'nobody outside it' clauses in the same namespace differ in aspect: the receipt clause uses 'не может', the pre-submit clause 'не сможет'. Both are grammatical and mean the same thing; the pair reads as drift because the two sentences are otherwise near-identical.",
+        "proposed": "Harmonise on 'не сможет' (the not_leaving.org form) or leave both deliberately; no meaning change either way.",
+        "disposition": "deferred — unchanged round-1 NIT; delta does not modify this wording; terminal approval does not require remediation",
+        "status": "deferred — unchanged round-1 NIT; delta does not modify this wording; terminal approval does not require remediation"
+      },
+      {
+        "id": "RU-UP-03",
+        "severity": "nit",
+        "category": "terminology",
+        "key": "ui.agents.upload.action.publishing",
+        "related_keys": [
+          "ui.agents.upload.action.open_listing",
+          "ui.agents.upload.action.update_listing",
+          "ui.agents.upload.receipt.title_updated"
+        ],
+        "source": "Publishing… (primary button label while the publication request is in flight)",
+        "current": "Публикация…",
+        "problem": "The same namespace uses «публикация» as the noun for a LISTING ('Открыть публикацию', 'Обновить публикацию', 'Публикация обновлена'), so this in-flight label reuses the object noun for an action. The ru guide's tone section prefers impersonal constructions, which gives a form that does not collide.",
+        "proposed": "Публикуется… - impersonal in-flight form, still one word plus U+2026, one character longer than the current label.",
+        "disposition": "deferred — unchanged round-1 NIT; delta does not modify this wording; terminal approval does not require remediation",
+        "status": "deferred — unchanged round-1 NIT; delta does not modify this wording; terminal approval does not require remediation"
+      },
+      {
+        "id": "RU-UP-04",
+        "severity": "nit",
+        "category": "consistency (points at an open prior finding; the new copy is the correct half)",
+        "key": "ui.agents.upload.intro.org",
+        "related_keys": [
+          "ui.agents.upload.title.publish_org",
+          "ui.agents.upload.title.published_org"
+        ],
+        "source": "You are about to publish this agent's instruction set into {destination}, ... / Publish \"{name}\" to {destination}?",
+        "current": "«в организацию {destination}» (intro.org, new) against «в организации {destination}?» (title.publish_org, carried)",
+        "problem": "The new body sentence takes the directional accusative, which is right and matches the locale's shipped publishing phrase (target.orgs_unread '…опубликовать в организацию'; ui.agents.publication.insufficient_role.body). The dialog TITLE on the same screen still takes the locative - that is the still-open MINOR RU-AL2-02 from the previous ru round, not a new defect. Recorded so the title is fixed with it; the body needs no change and must not be re-churned.",
+        "proposed": "When RU-AL2-02 is worked, the title follows 'в организацию {destination}?' and the two agree. receipt.title_org keeps the locative deliberately: «опубликовано в организации X» is a state, not a direction.",
+        "disposition": "deferred — unchanged round-1 NIT; delta does not modify this wording; terminal approval does not require remediation",
+        "status": "deferred — unchanged round-1 NIT; delta does not modify this wording; terminal approval does not require remediation"
+      }
+    ]
+  },
+  "evidence": {
+    "record": "i18n/audits/evidence/ru/ui.agents.upload/ru-upload-r2-9db9e255c45c/record.json",
+    "report": "i18n/audits/evidence/ru/ui.agents.upload/ru-upload-r2-9db9e255c45c/report.md",
+    "renders": "i18n/audits/evidence/ru/ui.agents.upload/ru-upload-r2-9db9e255c45c/renders.txt",
+    "probe": "i18n/audits/evidence/ru/ui.agents.upload/ru-upload-r2-9db9e255c45c/probe.mjs"
+  },
+  "model_provenance": "Started anthropic/claude-sonnet-5-5; quota fallback notices to anthropic/claude-opus-5-5 then openai/gpt-6.1-sol; substantive reads/probe/verdict on latter.",
+  "session": "9db9e255c45c",
+  "independence": "Independent reviewer session; no translation/product edits or commits; wrote only own ru audit evidence and receipt.",
+  "verdict": "clean — terminal",
+  "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 3
+  },
+  "new_findings": [],
+  "resolved_findings": [
+    {
+      "id": "RU-UP-01",
+      "severity": "minor",
+      "disposition": "fixed",
+      "commit": "269ef259c0523fd61c9f40b2a700bed27b838055",
+      "proof": "renders.txt before/after counts 21,31,101; =1 preserves exact singleton"
+    }
+  ],
+  "scope": "Russian remediation delta only: explicit singleton selector and new unnamed fallback across all seven consumers; 45 unchanged upload values retained, prior 3 NITs deferred.",
+  "sha256": {
+    "en": "6aff9fbb0706c9852760db60f22cdb075b747cef37dbc3e9130731943babef0b",
+    "context": "19e0fe920ae831b4e3bb8dcd7750dbdb508640c5cec6ca468c0acc1b853cf768",
+    "ru": "eab2258e22d38391c179067f225b5385f572229962d68a19fb7714c06f9fbd8f"
+  },
+  "inputs_sha256": {
+    "src/i18n/catalogues/en/ui.agents.upload.json": "6aff9fbb0706c9852760db60f22cdb075b747cef37dbc3e9130731943babef0b",
+    "src/i18n/catalogues/en/ui.agents.upload.context.json": "19e0fe920ae831b4e3bb8dcd7750dbdb508640c5cec6ca468c0acc1b853cf768",
+    "src/i18n/catalogues/ru/ui.agents.upload.json": "eab2258e22d38391c179067f225b5385f572229962d68a19fb7714c06f9fbd8f",
+    "src/i18n/catalogues/ru/ui.hub.json": "db2e510d6cbf71d820f951970fbdf9f5f6b73b6c9d4a8b7290ba52455c826e86",
+    "src/renderer/src/features/agents/components/upload-agent-dialog.tsx": "ce84c3b069ebcc06d93d2ac678f176e568bd22fb147df07cf482d4997a57dc2a",
+    "src/renderer/src/features/agents/components/hub-initial-policy-fields.tsx": "c0675c317087926f75b03c05bbc4552992d1d51bed3a0aead4f7c751447b5d2a",
+    "i18n/receipts/ru-upload-r1-3f08e28cd8df.json": "913fa98e08f4bde6359e553b34efdc3cfefd1158b695752f4a3b465e066e9457",
+    "~/local-operator/i18n/glossary.md": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "~/local-operator/i18n/style-guides/ru.md": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+  },
+  "artifacts_sha256": {
+    "i18n/audits/evidence/ru/ui.agents.upload/ru-upload-r2-9db9e255c45c/probe.mjs": "355cac9001855b695d107e60393404882555a0e0ce9498fc60668f1c541c4393",
+    "i18n/audits/evidence/ru/ui.agents.upload/ru-upload-r2-9db9e255c45c/report.md": "a506f070f40ae956895b21faeb5dee26dbb3055cfd4157c105fbd6191575c373",
+    "i18n/audits/evidence/ru/ui.agents.upload/ru-upload-r2-9db9e255c45c/renders.txt": "0623eda5a86b52f4bfa5b0ea8109db3ea2482e1e33cfd50a8e7b02ebb4644709"
+  },
+  "observations": [
+    {
+      "id": "RU-R2-01",
+      "severity": "major",
+      "category": "grammar / new-key consumer compatibility",
+      "key": "ui.agents.upload.target.org_unnamed",
+      "consumer": "ui.hub.subscriptions.enable_private",
+      "path": "src/renderer/src/features/agents/components/hub-initial-policy-fields.tsx:133-135",
+      "problem": "The new descriptive fallback без названия composes as в без названия in the noun-less seventh frame; grammatical correctness of all seven frames is an explicit clarified acceptance criterion.",
+      "actual": "Будущие изменения Помощник могут публиковаться в без названия без отдельного подтверждения. Их получат только те, у кого есть доступ к этой организации.",
+      "proposed": "Keep без названия for the six noun-bearing frames; give enable_private a distinct noun-phrase fallback эту организацию or a complete unnamed-case sentence.",
+      "evidence": "i18n/audits/evidence/ru/ui.agents.upload/ru-upload-r2-9db9e255c45c/renders.txt",
+      "reachability": "Formatter composition reproduced. Confirmation currently cannot open from upload because canEnableAutoPush=false; no visible UI regression claimed. Old composition в this organization was already malformed/untranslated.",
+      "disposition": "deferred — pre-existing malformed frame, not introduced or made reachable by this PR",
+      "classification": "out of scope — pre-existing; non-gating",
+      "provenance": "Before: в this organization. After: в без названия. Both malformed. upload passes canEnableAutoPush=false on both heads; confirmation cannot open through this path.",
+      "fix": "In hub-initial-policy-fields.tsx enable_private composition, use a separate noun-phrase unnamed-organization fallback (эту организацию), not the modifier/name fallback shared by the six noun-bearing frames."
+    }
+  ],
+  "execution": {
+    "command": "NODE_OPTIONS=--max-old-space-size=1024 node i18n/audits/evidence/ru/ui.agents.upload/ru-upload-r2-9db9e255c45c/probe.mjs",
+    "exit_code": 0,
+    "browser_screenshot": false,
+    "native_or_live_app": false
+  },
+  "pr_posted": false,
+  "pr_blocker": null,
+  "pr_delivery": "Manager deliberately has not opened PR; report handed to manager for posting after opening; not blocked on a URL.",
+  "provenance_correction": "RU-R2-01 is a pre-existing major-severity composition defect, non-gating for this PR; previous gating classification was incorrect. No newly reachable path or newly introduced grammatical defect was demonstrated.",
+  "original_auditor": "Independent lopdev reviewer, r2-ru",
+  "findings_detail": [
+    {
+      "id": "RU-UP-02",
+      "severity": "nit",
+      "category": "consistency",
+      "key": "ui.agents.upload.published.org_listed",
+      "related_keys": [
+        "ui.agents.upload.not_leaving.org"
+      ],
+      "source": "Its members can read and install it; nobody outside the organization can. / ...; nobody outside it can.",
+      "current": "…никто за её пределами этого не может. (published.org_listed) against …никто за её пределами этого не сможет. (not_leaving.org)",
+      "problem": "Two sibling 'nobody outside it' clauses in the same namespace differ in aspect: the receipt clause uses 'не может', the pre-submit clause 'не сможет'. Both are grammatical and mean the same thing; the pair reads as drift because the two sentences are otherwise near-identical.",
+      "proposed": "Harmonise on 'не сможет' (the not_leaving.org form) or leave both deliberately; no meaning change either way.",
+      "disposition": "deferred — unchanged round-1 NIT; delta does not modify this wording; terminal approval does not require remediation"
+    },
+    {
+      "id": "RU-UP-03",
+      "severity": "nit",
+      "category": "terminology",
+      "key": "ui.agents.upload.action.publishing",
+      "related_keys": [
+        "ui.agents.upload.action.open_listing",
+        "ui.agents.upload.action.update_listing",
+        "ui.agents.upload.receipt.title_updated"
+      ],
+      "source": "Publishing… (primary button label while the publication request is in flight)",
+      "current": "Публикация…",
+      "problem": "The same namespace uses «публикация» as the noun for a LISTING ('Открыть публикацию', 'Обновить публикацию', 'Публикация обновлена'), so this in-flight label reuses the object noun for an action. The ru guide's tone section prefers impersonal constructions, which gives a form that does not collide.",
+      "proposed": "Публикуется… - impersonal in-flight form, still one word plus U+2026, one character longer than the current label.",
+      "disposition": "deferred — unchanged round-1 NIT; delta does not modify this wording; terminal approval does not require remediation"
+    },
+    {
+      "id": "RU-UP-04",
+      "severity": "nit",
+      "category": "consistency (points at an open prior finding; the new copy is the correct half)",
+      "key": "ui.agents.upload.intro.org",
+      "related_keys": [
+        "ui.agents.upload.title.publish_org",
+        "ui.agents.upload.title.published_org"
+      ],
+      "source": "You are about to publish this agent's instruction set into {destination}, ... / Publish \"{name}\" to {destination}?",
+      "current": "«в организацию {destination}» (intro.org, new) against «в организации {destination}?» (title.publish_org, carried)",
+      "problem": "The new body sentence takes the directional accusative, which is right and matches the locale's shipped publishing phrase (target.orgs_unread '…опубликовать в организацию'; ui.agents.publication.insufficient_role.body). The dialog TITLE on the same screen still takes the locative - that is the still-open MINOR RU-AL2-02 from the previous ru round, not a new defect. Recorded so the title is fixed with it; the body needs no change and must not be re-churned.",
+      "proposed": "When RU-AL2-02 is worked, the title follows 'в организацию {destination}?' and the two agree. receipt.title_org keeps the locative deliberately: «опубликовано в организации X» is a state, not a direction.",
+      "disposition": "deferred — unchanged round-1 NIT; delta does not modify this wording; terminal approval does not require remediation"
+    }
+  ],
+  "normalised_from": {
+    "path": "i18n/receipts/raw/ru-upload-r2-9db9e255c45c.raw.json",
+    "sha256": "320a1c5063f7e55ab1370f55de021f6a25dcd39501e7cd383f391b410890fd54"
+  }
+}

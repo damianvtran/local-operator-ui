@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * Local Operator API - the wake surface (the Schedules page).
  *
@@ -115,9 +116,7 @@ export type WakeCreateBody = {
  */
 export function wakeCreateBody(input: WakeCreateInput): WakeCreateBody {
 	if (!("sessionId" in input) && !input.cwd) {
-		throw new UserFacingError(
-			"A scheduled task needs somewhere to run. Pick a conversation or a new one.",
-		);
+		throw new UserFacingError(t("ui.common.errors.wake_needs_conversation"));
 	}
 	return {
 		requestId: input.requestId,

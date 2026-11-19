@@ -1,5 +1,5 @@
 import { Button } from "@shared/components/ui";
-import { t } from "@shared/i18n";
+import { formatByteQuantity, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { AlertTriangle, Download, Upload, X } from "lucide-react";
 import type { FC } from "react";
@@ -564,11 +564,17 @@ function ageCopy(now: number, at: number): string {
 
 /** A byte count in the unit the caps are stated in (`MiB`), one decimal below ten
  * so a progress line moves, and rounded UP above it so a size is never understated
- * in a sentence that is about a limit. */
+ * in a sentence that is about a limit. The IEC symbols stay as written in every
+ * language (an ISO/IEC 80000-13 standard, see `formatByteQuantity`); the digits
+ * and decimal mark follow the locale. */
 function formatBytes(bytes: number): string {
 	const MiB = 1024 * 1024;
-	if (bytes >= 10 * MiB) return `${Math.round(bytes / MiB)} MiB`;
-	if (bytes >= MiB) return `${(bytes / MiB).toFixed(1)} MiB`;
-	if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KiB`;
+	const oneDecimal = { minimumFractionDigits: 1, maximumFractionDigits: 1 };
+	if (bytes >= 10 * MiB)
+		return formatByteQuantity(Math.round(bytes / MiB), "MiB", {
+			maximumFractionDigits: 0,
+		});
+	if (bytes >= MiB) return formatByteQuantity(bytes / MiB, "MiB", oneDecimal);
+	if (bytes >= 1024) return formatByteQuantity(bytes / 1024, "KiB", oneDecimal);
 	return t("ui.browser.browser_file_transfer_row.byte_count", { count: bytes });
 }

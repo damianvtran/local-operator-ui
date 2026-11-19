@@ -1,0 +1,62 @@
+{
+ "schema": 1,
+ "instance": "64a0e2d3b795",
+ "locale": "vi",
+ "namespace": "ui.chat.canonical",
+ "audit_date": "2026-11-11",
+ "auditor": {
+  "agent": "i18n-auditor",
+  "instance": "64a0e2d3b795",
+  "session": "64a0e2d3b795",
+  "model": "deepseek/deepseek-flash",
+  "independent_from_translator_session": true,
+  "actual_model_source": "as stated in the auditor's own record (session runtime model header deepseek/deepseek-flash); no fallback was reported"
+ },
+ "status": "passed",
+ "result": "clean-with-findings",
+ "scope": "the 14 NEW tool-state / image-generation status keys of ui.chat.canonical for vi (PR #1870, S16a), audited as the translator's draft vi-s16a-v3.json (sha256 a7929d1bb641cafa0a30d22e3ac7262840f1bb57d33e18232cae4ce739916518); the other 442 keys are byte-identical to the origin/main bytes covered by the superseded row audits (verify.log)",
+ "sha256": {
+  "vi": "c3d90f71c4e53d8b96bfb24f9c7e5f7c3d0c2ccda55d3aa3fb0bfee87dbb88c0",
+  "en": "d6d47d31667fe69448cf408f5a4fecf9948782e850506a6141217585de9db1fd",
+  "context": "ef8a12dea1835c241af3a166754322ce093af88592ec625036211458a50accac"
+ },
+ "findings": [
+  {
+   "severity": "NIT",
+   "id": "VI-S16A-1",
+   "key": "ui.chat.canonical.image_gen.state.writing_request",
+   "detail": "`viết` vs `soạn` on the tool row for the same action across two surfaces"
+  },
+  {
+   "severity": "NIT",
+   "id": "VI-S16A-2",
+   "key": "ui.chat.canonical.image_gen.state.queue_ahead",
+   "detail": "grows a noun the English deliberately omits (`yêu cầu trước`)"
+  }
+ ],
+ "provenance": {
+  "kind": "BINDING RECEIPT: verdict, counts, model and session are transcribed from the auditor's own record/report; this file was written by the integrating coder session (agent coder), NOT by the auditor. The auditor audited the 14-key draft fragment, so no auditor-authored file can name the landed catalogue hash; this receipt names it, and verify.log proves the 14 landed values equal the audited draft. Finding ids/keys/headlines are lifted from the auditor record/report (the report is authoritative for detail).",
+  "auditor_record_instance_label": "64a0e2d3b795-v3-vi",
+  "source_report": {
+   "path": "i18n/audits/evidence/vi/ui.chat.canonical/s16a-64a0e2d3b795/report.md",
+   "sha256": "073039a8ff470c6030befe9c67fd1a968b1341640e25c0f66cdea29be4a00a86"
+  },
+  "auditor_record": {
+   "path": "i18n/audits/evidence/vi/ui.chat.canonical/s16a-64a0e2d3b795/record.json",
+   "sha256": "47d2fe92b02ea299b5725eb6c36f40dee13f2c3ccd89793b885315198f6ee6a4"
+  },
+  "auditor_authored_receipt": {
+   "path": "i18n/audits/evidence/vi/ui.chat.canonical/s16a-64a0e2d3b795/auditor-receipt.json",
+   "sha256": "2653447cbcfc4c7658dbf73fcb7ea658cc0e9c29be67225f6e85abfcbe307c25",
+   "note": "the auditor's own receipt, bytes unchanged; it names the draft hash (and a placeholder/draft target), not the landed catalogue, so it cannot back the ledger row"
+  },
+  "audited_draft": {
+   "file": "vi-s16a-v3.json",
+   "sha256": "a7929d1bb641cafa0a30d22e3ac7262840f1bb57d33e18232cae4ce739916518"
+  },
+  "landed_value_proof": {
+   "path": "i18n/audits/evidence/vi/ui.chat.canonical/s16a-64a0e2d3b795/verify.log",
+   "sha256": "b23b95baba3c9655d6644814b9320b9b005e9daf2f2c0bc073760bd3bf7d21e3"
+  }
+ }
+}

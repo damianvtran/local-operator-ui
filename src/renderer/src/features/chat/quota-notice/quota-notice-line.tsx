@@ -37,6 +37,8 @@
  */
 
 import { Button } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { type FC, type RefObject, useEffect, useRef } from "react";
 import type { QuotaNoticeAction } from "../../../../../shared/desktop-contract";
 import type {
@@ -118,6 +120,7 @@ const ActionButton: FC<{
 export const QuotaNoticeLine: FC<{ selection?: QuotaNoticeSelection }> = ({
 	selection = null,
 }) => {
+	useI18nLocale();
 	const model = useQuotaNotice(selection);
 	const resendRef = useRef<HTMLButtonElement>(null);
 	const statusRef = useRef<HTMLOutputElement>(null);
@@ -203,7 +206,7 @@ export const QuotaNoticeLine: FC<{ selection?: QuotaNoticeSelection }> = ({
 					}}
 					data-quota-notice-dismiss=""
 				>
-					Dismiss
+					{t("ui.chat.quota_notice.dismiss")}
 				</Button>
 				{model.statusSentence ? (
 					/*
@@ -218,11 +221,11 @@ export const QuotaNoticeLine: FC<{ selection?: QuotaNoticeSelection }> = ({
 					 * word (no whitespace between the span and the text), so it always
 					 * introduces "Sent."/"Requested…" on whichever line the sentence
 					 * starts; the sentence itself still wraps naturally after later words.
-					 * Decorative, so `aria-hidden`; the sentence's own `mr-2` matches the
+					 * Decorative, so `aria-hidden`; the sentence's own `me-2` matches the
 					 * row's `gap-x-2`.
 					 */
 					<output ref={statusRef} tabIndex={-1} data-quota-notice-status="">
-						<span aria-hidden="true" className="mr-2">
+						<span aria-hidden="true" className="me-2">
 							·
 						</span>
 						{model.statusSentence}

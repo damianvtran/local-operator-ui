@@ -1,0 +1,18 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "4083353c8adf",
+  "locale": "ru",
+  "round": 1,
+  "namespaces": {
+    "ui.browser": {
+      "status": "passed",
+      "keys_audited": 2,
+      "sha256": {
+        "en": "089b5fe5a095c2a37e51c953c57b6e55da59ea9900060dd09d57e93914ad6e94",
+        "ru": "94bd37f1fff8cfc3479fcb7a80eac6c14af5ae0ea4d5923409392210d490c49b"
+      },
+      "findings": []
+    }
+  }
+}

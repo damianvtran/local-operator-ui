@@ -1,0 +1,56 @@
+{
+ "schema": 1,
+ "auditor": {
+  "agent": "reviewer",
+  "session": "7ad736f135f0",
+  "instance": "7ad736f135f0-1867r1-ru",
+  "model": "anthropic/claude-opus-5-5",
+  "model_note": "Model is this session's own header line (anthropic/claude-opus-5-5); no fallback reported. The served provider cannot be independently verified from inside the session.",
+  "independence": "lopdev reviewer session 7ad736f135f0, separate from the PR #1867 coder that wrote the translations. Verdict rebuilt from the committed en/target bytes at fc9e58bfebe, the en context sidecar, the core glossary and locale style guide, and shipped ui.hub catalogue precedent. Disclosure: the MINOR fixes listed below were applied by this auditor in the audit commit, as the brief allowed; those changed values are auditor-authored and a later independent reader should re-check them."
+ },
+ "agent": "reviewer",
+ "model": "anthropic/claude-opus-5-5",
+ "fallback": "none reported",
+ "instance": "7ad736f135f0-1867r1-ru",
+ "session": "7ad736f135f0",
+ "locale": "ru",
+ "namespace": "ui.hub",
+ "pr": "damianvtran/local-operator-ui#1867",
+ "branch_base": "8953f2fa6a8",
+ "audited_head": "fc9e58bfebe + this audit commit's catalogue fixes",
+ "date": "2026-11-11",
+ "translator": "PR #1867 coder (relayed by the manager and the PR body; identity not verified here)",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "scope": "Round-1 independent audit of the 3 keys PR #1867 added to ui.hub (links.unresolved_detail_scope_ambiguous, links.unresolved_detail_scope_unknown, links.unresolved_detail_no_origin), from git diff 8953f2fa6a8..fc9e58bfebe -- src/i18n/catalogues; PR #1867 changed no other ui.hub value; pre-existing keys read only as precedent and carried on the prior audits. Catalogue audit only: not rendered fit, activation or release.",
+ "keys_audited": [
+  "ui.hub.links.unresolved_detail_scope_ambiguous",
+  "ui.hub.links.unresolved_detail_scope_unknown",
+  "ui.hub.links.unresolved_detail_no_origin"
+ ],
+ "sha256": {
+  "ru": "1cd7816b8c31b07f2ca4ce2b8b2f001cf8d3bc13246d81f2d87711d546c6409c",
+  "en": "83dbdf08248fe124d14053d2c9996e2b2b05c2c1c0822e17d9346257488e3351",
+  "context": "a64a8cfe1b558dd47469e4310d30ea2a0d1375b68a27cc636dadc77476bad824",
+  "glossary (damianvtran/local-operator origin/main 23cbbc0259b0:i18n/glossary.md)": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "style_guide (damianvtran/local-operator origin/main 23cbbc0259b0:i18n/style-guides/ru.md)": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+ },
+ "checks": {
+  "icu_parse_and_argument_parity": "PASS (no arguments in en or target; IntlMessageFormat parses and renders each)",
+  "key_set": "identical to en",
+  "bidi_controls": "none (U+061C, U+200E/F, U+202A-E, U+2066-9 scanned)",
+  "negative_control": "appending U+200F to one ur value and breaking one vi value's brace made the same verifier exit 1 with 2 FAILs (bidi control; EXPECT_ARGUMENT_CLOSING_BRACE)",
+  "plurals": "no plural messages in this delta"
+ },
+ "findings": [
+  {
+   "id": "R1867-RU-01",
+   "severity": "MINOR",
+   "disposition": "fixed in this audit commit",
+   "before": "Ни одна проверка ещё не дошла до её источника.",
+   "after": "Ни одна проверка ещё не дошла до источника этой связи.",
+   "note": "'её' has no feminine antecedent: the tooltip's preceding sentence is '{item}: источник не подтверждён. Подтвердите источник.', so 'её' dangles, or binds to the item when it is a команда. The sibling keys say 'Связь сохранена'; naming 'этой связи' (namespace term: ui.hub.links.source_unresolved 'этой связи') restores the referent. The second sentence's 'его' correctly binds to источник.",
+   "key": "ui.hub.links.unresolved_detail_no_origin"
+  }
+ ]
+}

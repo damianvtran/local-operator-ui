@@ -1,0 +1,97 @@
+{
+	"schema": 1,
+	"date": "2026-11-08",
+	"auditor": "translation-auditor",
+	"agent": "translation-auditor",
+	"model": "deepseek/deepseek-flash",
+	"model_provenance": "Session 88dcbe8a59e7 opened on anthropic/claude-sonnet-5-5. Before this audit's first tool call the harness switched the served model on provider quota failures: anthropic/claude-opus-5-5, then openai/gpt-6.1-sol, then deepseek/deepseek-flash. Every catalogue read, render-site trace and verdict in this receipt was formed under deepseek/deepseek-flash.",
+	"fallback": "yes — provider quota; see model_provenance. Disclosed as required.",
+	"independence": "Independent ru auditor. I did not author, translate or edit any value in this commit (author of be77d308262 is Damian Tran; the per-locale translation lanes are not me), I did not read another auditor's ru receipt for this delta before forming this verdict, and I held the worktree read-only: the only files I wrote are the two ru receipts under i18n/receipts/. Verdict rebuilt from the English source, its context sidecar, the render sites, the ru taxonomy labels, the shipped ru ui.hub.* family, the glossary and the ru style guide. The commit message was read as a claim to check, not as evidence.",
+	"instance": "88dcbe8a-teams",
+	"instance_note": "8-hex truncation of this run's session id, per the audit brief's receipt-naming convention; the full id is in `session`.",
+	"session": "88dcbe8a59e7",
+	"locale": "ru",
+	"round": 1,
+	"worktree": "/Users/damian/local-operator-ui/.worktrees/i18n-s4",
+	"branch": "i18n/s5-agent-hub",
+	"head": "be77d308262ce0527c1fd4052ff77207edcac189",
+	"base": "c88ad36bbca",
+	"references": [
+		{
+			"path": "i18n/glossary.md",
+			"repo": "damianvtran/local-operator",
+			"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+			"state": "working-tree bytes at audit time"
+		},
+		{
+			"path": "i18n/style-guides/ru.md",
+			"repo": "damianvtran/local-operator",
+			"sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5",
+			"state": "working-tree bytes at audit time"
+		}
+	],
+	"method": "diff-first: git diff c88ad36bbca..be77d308262 for the ru catalogues, then the en source + en context sidecars for the same keys, then the render sites for every placeholder and fallback slot, then the whole ru ui.hub.pages/teams families and the ru taxonomy labels for register and terminology. Mechanical pass (python, stdlib) over both namespaces: key-set parity, placeholder set equality, plural detection, Latin-script residue, control/bidi characters, NFC, edge and double spaces, trailing punctuation.",
+	"receipt_kind": "independent i18n audit, round 1 (new-key audit of one namespace)",
+	"namespace": "ui.hub.teams",
+	"scope": "The one new ui.hub.teams value added to ru in be77d308262 (ui.hub.teams.unnamed_team, part of a 17-key Agent Hub publication delta: 16 pages + 1 teams). The whole ru teams namespace (50 keys) was read for register and terminology consistency. ui.hub.teams.recency.updated appears in the diff only because a trailing comma was added — its value is unchanged and it is not judged.",
+	"key_count": {
+		"new_keys_audited": 1,
+		"namespace_keys_total": 50,
+		"namespace_keys_read_for_consistency": 50,
+		"delta_keys_in_commit": 17,
+		"ns_other_delta_keys": [
+			"16 ui.hub.pages keys (judged in ru-hub-pages-r1-88dcbe8a.json)"
+		]
+	},
+	"paths": {
+		"source": "src/i18n/catalogues/en/ui.hub.teams.json",
+		"context": "src/i18n/catalogues/en/ui.hub.teams.context.json",
+		"target": "src/i18n/catalogues/ru/ui.hub.teams.json"
+	},
+	"sha256": {
+		"source_en": "b9674e6bb1f862d380d45568204abcd8735eb08782bfb1351f469019b4e583b8",
+		"context_en": "5ff2873c5549724860df39f48eae57585a38dacc5bfdb5ae24758ab58e981fbe",
+		"target_ru": "90494f6a40cad0406bf8d2a0b13527645f4b85e82f6f02c05fc4f6493b514f1f"
+	},
+	"keys_audited": [
+		"ui.hub.teams.unnamed_team"
+	],
+	"checks": {
+		"completeness": "1/1 new key present in ru; ru key set == en key set (50/50, no missing, no extra); the value is not the key id; the key exists in src/i18n/keys.gen.ts.",
+		"placeholders": "Placeholder-free in English and in ru — parity holds trivially; nothing invented or dropped.",
+		"cldr_plurals": "No plural in this key. The plural-bearing keys in this namespace are the pre-existing member_count, org_aria-adjacent match_line and the count keys; no CLDR plural-category check applies to this delta.",
+		"characters": "NFC; no bidi controls, zero-width or BOM characters; no edge or double spaces; lowercase, as the English and its sidecar require of a name fragment.",
+		"english_residue": "None — the value is fully Cyrillic.",
+		"register": "Lowercase noun phrase, matching the sibling fallback ui.agents.publication.subject.unknown 'этого агента' in shape rather than a sentence.",
+		"grammar_in_slot": "'эту команду' is accusative, which is what the one sentence slot this fallback is documented for governs: ui.hub.teams.pull_failed = 'Не удалось загрузить «{name}».' → 'Не удалось загрузить «эту команду».' A nominative ('эта команда') or the pre-existing subject.team form would have been ungrammatical in that slot."
+	},
+	"verified": [
+		"Completeness and parity: the single new value is present, ru == en key sets (50/50), value ≠ key id, key declared in keys.gen.ts.",
+		"The value is a placeholder-free, lowercase noun phrase, and it is Cyrillic-only.",
+		"Case: it is the accusative the sentence demands — 'Не удалось загрузить «{name}».' with {name} = 'эту команду' yields 'Не удалось загрузить «эту команду».' Quoting an accusative phrase is grammatical here; a nominative phrase inside that slot would not be.",
+		"Shape matches the en sidecar's requirement that it read as a name fragment (lowercase, two words, no sentence punctuation) and the ru catalogue's existing fallback style ('этого агента').",
+		"Terminology matches the shipped ru family: 'команда' for team (glossary §2), «ёлочки» quoting as in teams.pull_failed and teams.public.search_miss.",
+		"Reach checked at both call sites: org-teams-list.tsx:187 and public-teams-library.tsx:168 pass it as publicationTreatment's context.name. Every pull-visible arm in the switch (the *_pull bodies and headline_pull, publication-failure.ts:513-610) interpolates no {name}; the {name}-bearing arms are the publication name-claim refusals (name_taken, name_claim_in_flight, name_reserved_builtin, publication-failure.ts:302-397), and org-teams-list.tsx:475 feeds ui.hub.teams.pull_failed the row's own display name. So in the slots this key is documented for, the accusative is right."
+	],
+	"observations": [
+		"The en sidecar describes unnamed_team as substituted inside ui.hub.teams.pull_failed, while the roster feeds that message the row's own name (org-teams-list.tsx:475) and passes the fallback only as publicationTreatment's context.name. If a pull ever surfaced one of the name-claim arms, the sentence would be as odd in English as the accusative is in Russian, so the shape question belongs to the English/code side, not to this locale's copy. Recorded, not a finding.",
+		"ui.hub.teams.recency.updated changed only by the trailing comma the diff shows; not re-judged.",
+		"Source-only audit: no build, no rendered frame (outside this brief's scope)."
+	],
+	"findings": [],
+	"counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 0,
+		"total": 0
+	},
+	"status": "passed",
+	"result": "clean",
+	"verdict": "Clean: 0 BLOCKER, 0 MAJOR, 0 MINOR, 0 NIT. Shippable as-is.",
+	"normalised_for_ledger": "auditor and instance rewritten to the ledger contract by the programme manager; original auditor text preserved verbatim inside the parentheses, findings and hashes untouched",
+	"auditor_provenance": "translation-auditor (translation-auditor (independent; lopdev reviewer role))",
+	"identity_provenance": {
+		"agent": "reviewer — lopdev team, session 88dcbe8a59e7"
+	}
+}

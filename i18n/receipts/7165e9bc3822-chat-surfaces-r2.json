@@ -1,0 +1,266 @@
+{
+	"schema": 1,
+	"kind": "translation-audit",
+	"batch": "chat-surfaces",
+	"round": 2,
+	"locale": "vi",
+	"date": "2026-10-26",
+	"instance": "7165e9bc3822-chat-surfaces-r2",
+	"model": "radient/auto",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"team": "lopdev",
+		"session": "7165e9bc3822",
+		"instance": "7165e9bc3822-chat-surfaces-r2",
+		"model": "radient/auto",
+		"date": "2026-10-26",
+		"independent_from_translator_session": true,
+		"actual_model_source": "Session model header `radient/auto`. No model-switch card and no [session incident] appeared in this run, so no fallback descent is disclosed: every read, validator run, ICU render and judgement recorded here was produced on that route. The round-1 receipt for this locale records an earlier run that did descend; that run is not this one."
+	},
+	"status": "passed",
+	"scope": "Independent round-2 audit of the CURRENT uncommitted bytes of the four vi chat-surface namespaces in worktree ~/local-operator-ui/.worktrees/i18n-chat-surfaces (branch i18n-chat-surfaces, HEAD e1ca500e5abc). The four vi files are modified in the working tree and were bound by sha256, never by commit. All 283 keys were read in both languages; the en context sidecars were consulted for role/tone/width on every ambiguous, high-visibility or remediation key; every ICU message was parsed and every plural/select was rendered by execution; each round-1 finding was re-checked on the current bytes; the new key todos.hidden_summary was verified at 0/1/2/5/1000. No translator report was read before the byte pass, and no catalogue byte was edited.",
+	"translation_provenance": "The translations and their remediation were authored in another session; this auditor did not write, translate or edit them, and made exactly one repository write: this receipt. Independence is from the translator session, not merely from the translation step.",
+	"binding": {
+		"manifest": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/chat-r2-hashes.txt (manager scratchpad, session 3ef6295a5545)",
+		"verified": "All four vi lines and all four en lines were recomputed from disk with shasum -a 256 before reading: exact matches, and the en hashes equal the four hashes named in the round-2 task. vi ui.chat.canonical (9b90d72f…) and vi ui.chat.asks (becca9b6…) are byte-identical to their round-1 hashes, so the remediation changed no byte in those two namespaces; the two that changed are vi ui.chat (57f0dfc0… → ea2ce717…) and vi ui.chat.run_details (5f35fa88… → 760cbb88…). keys_new is counted against the round-1 base 20225f33d00eb4a06e349322dc92e826b29b2e8e (71/13/80/14, the last including the new todos.hidden_summary).",
+		"hashes": {
+			"ui.chat": {
+				"en": "6b6e21835462fccbbdbea4cfcca132344595bf3f14804018de64dbe8d9fbacf0",
+				"vi": "ea2ce7175c288fb6926e975ec18fc8e809e86cfe805d253be385c0f9710f98b4",
+				"context": "da5c303c014c469c6096e6ef2e43b993f3ec2b9430ed6ec97498fc457f494372"
+			},
+			"ui.chat.canonical": {
+				"en": "5a6a30405053c7319b902315bb0a1b38ce1cbd6443ad2d988132d4cbfcb8f2ce",
+				"vi": "9b90d72f2ac9e7753229c1af7d19a044baa5d28c9f3ee82330fcecdfbe68fff1",
+				"context": "f075f08f152c9484f7dd9790a3b60a3c6c82086d3d9361717afa2188f0773a04"
+			},
+			"ui.chat.run_details": {
+				"en": "288ba883ed0c25851fa2025ea9a23ff98bcb7f59724ab5bbb2ed5b212ed85b51",
+				"vi": "760cbb88bffcb11f5d0e3b9d323de2da2e0a6ed79f1cc554378f573b49dd8453",
+				"context": "0f03657304a71236fe9d2bb350a1688dcfd2499624b5d908d80bc2775681a919"
+			},
+			"ui.chat.asks": {
+				"en": "6c42d235f1e326fc0cc0fea91668307d4e551585eef33b5fe1c2173efc2bc9fd",
+				"vi": "becca9b6f55894c37ae32e61610eeae493bd9b4ba98bb97aeac979b90dffb6b0",
+				"context": "9e137d7e8f6227827196c244a9550520cd5ee412ffeaef615a7e33bf0193903c"
+			}
+		}
+	},
+	"required_sources": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/vi.md",
+			"sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+		},
+		"contributor_contract": {
+			"path": "docs/I18N.md (this worktree)",
+			"note": "Read for the receipt/ledger contract (§ Retain checkable audit records) before the byte pass."
+		}
+	},
+	"checks": {
+		"repo_validators_run": "All from the worktree root with its own Node 24: `node scripts/i18n/generate.mjs --check` → 'src/i18n/keys.gen.ts is byte-identical to a fresh generation.' (exit 0); `node scripts/i18n/check-duplicates.mjs` → 'check-duplicates: ok — 763 file(s) scanned, 0 duplicate key(s)' (exit 0); `node scripts/i18n/context-parity.mjs` → 'context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json)' (exit 0).",
+		"key_parity": "Independent JSON parse of the four en/vi pairs: 115/115, 60/60, 82/82, 26/26 keys; zero keys added or dropped; zero vi value byte-identical to its English source (identical_stub_count 0).",
+		"icu": "Every value in both languages parsed with @formatjs/icu-messageformat-parser from the repo's node_modules. Argument names/types, select branch names and plural offsets are identical everywhere except the seven plural messages where en's one+other collapse to vi's single other arm — the collapse the vi style guide requires. No markup/tag nodes, no backtick code spans, and no ICU skeletons differ. Intl.PluralRules('vi').resolvedOptions().pluralCategories = ['other']; every vi plural carries only other (no one/few/many branches).",
+		"plural_renders_run": "Executed with intl-messageformat: todos.hidden_summary at 0 → '0 mục bị ẩn', 1 → '1 mục bị ẩn', 2 → '2 mục bị ẩn', 5 → '5 mục bị ẩn', 1000 → '1000 mục bị ẩn' (::group-off honoured: no '1.000'). All other ICU messages (select and plural) were rendered with test arguments: 0 errors, no unresolved '#', no raw placeholder text.",
+		"typography": "Scanned all 283 vi values: NFC-normalised already (value === value.normalize('NFC')); no manual bidi controls U+202A–U+202E or U+2066–U+2069; no ASCII '...' introduced where the source lacks it (source ASCII '...' is rendered '…' per the guide); curly quotes “ ” balanced; em dash ' — ' with spaces; no space before punctuation; no unintended double spaces or edge-whitespace mismatch against en (the two question-counter strings keep the source's trailing space).",
+		"code_words_and_labels": "Backtick spans byte-identical to source (none in these four namespaces). Product/technical Latin runs preserved: Local Operator, Radient, Radient Pass, Radient Automatic, MCP, API, HTML, JSON, SVG, Mermaid, Canvas, Finder, Runtime, Enter/Esc/Escape, yes/no/1/2, Approve/Deny, id and every placeholder name. Approval words the app prints and parses in English are untouched in both approval hints and the reply-required sentence. Label-in-name pairs checked and contain their visible words: aside.title 'Bên lề' ⊂ close_label 'Đóng khung bên lề'; pane_label/title 'Chi tiết lượt chạy' ⊂ close_label 'Đóng chi tiết lượt chạy'; goal_done 'Xong' ⊂ goal_done_name 'Đánh dấu mục tiêu đã xong'; goal_dismiss 'Ẩn' ⊂ goal_dismiss_name 'Ẩn mục tiêu đã xong'.",
+		"joined_fragments": "Re-read as composed sentences, not keys: error_block before+link+after for provider, model, rate_limit, rate_limit_all, invalid_key, unavailable and schema (invalid_key.after begins with ', ' because the component inserts no space after the link; the vi value does the same); question_dock prefix + body; goalDismissLabel name+kept+goal seams; subagents_of + ownerLabel (flex gap provides the space); todo chip clauses. All read grammatically.",
+		"widths": "Only two keys in the four namespaces carry a maxCells hint: ui.chat choose_model (hint 18, vi 12 cells vs en 14) and last_reading (hint 16, vi 13 vs en 12) — both inside budget. No hint is exceeded; no wide-glyph or combining-mark risk (vi is Latin, NFC). Button/tab candidates were compared in codepoints only; no pixel claim is made and no browser was available to this role.",
+		"adjacent_regression_scan": "Full re-read of all four vi catalogues after remediation (not just the changed keys), plus targeted greps: «khung bên lề» now used by both aside.close_label and the shipped composer.placeholder.aside; «cấu hình của máy chủ» in mcp.refused; «Chỉ dẫn được giao» in reader.delegated_with matches the shipped agent-instruction sense of «chỉ dẫn» (10 shipped uses) rather than the skill-guidance «hướng dẫn» (7 uses); wake strings unchanged; no new inconsistency introduced."
+	},
+	"round1_resolution": [
+		{
+			"id": "vi-cs-01",
+			"severity": "minor",
+			"key": "ui.chat.composer.status.wakes_action",
+			"outcome": "declined, accepted as a guide defect rather than a string defect",
+			"evidence": "vi ui.chat still reads 'Mở lịch đánh thức trong chi tiết lượt chạy'. Re-measured across src/i18n/catalogues/vi: «lịch đánh thức» 27 occurrences, other «đánh thức» 13, «thức dậy» 2 (both intransitive sentences in unrelated surfaces). The shipped product names the scheduled object «lịch đánh thức», so changing only this pane would split one object across surfaces. Carried as vi-r2-01 so the guide action is not lost."
+		},
+		{
+			"id": "vi-cs-02",
+			"severity": "nit",
+			"key": "ui.chat.aside.close_label",
+			"outcome": "fixed",
+			"evidence": "Now 'Đóng khung bên lề', and the shipped ui.chat.composer.placeholder.aside reads 'Hỏi ngoài bản ghi — Esc đóng khung bên lề', so both files name the panel the same way."
+		},
+		{
+			"id": "vi-cs-03",
+			"severity": "minor",
+			"key": "ui.chat.run_details.wakes.title",
+			"outcome": "declined, accepted for the same product-consistency reason as vi-cs-01",
+			"evidence": "vi ui.chat.run_details still reads 'Lịch đánh thức' / 'Hủy lịch đánh thức' / 'Hủy lịch đánh thức: {head}' / 'Hủy lịch đánh thức kích hoạt lúc {due}'. Carried as vi-r2-03."
+		},
+		{
+			"id": "vi-cs-04",
+			"severity": "minor",
+			"key": "ui.chat.run_details.reader.delegated_with",
+			"outcome": "fixed by naming the noun",
+			"evidence": "Now 'Chỉ dẫn được giao' over the folded brief block (run-child-reader.tsx renders it as that block's section label). The passive fragment no longer leaves the reader asking what was handed over, and «chỉ dẫn» is the shipped term for instructions given to an agent."
+		},
+		{
+			"id": "vi-cs-05",
+			"severity": "nit",
+			"key": "ui.chat.run_details.mcp.refused",
+			"outcome": "fixed",
+			"evidence": "Now 'Máy chủ này từ chối đăng nhập. Hãy kiểm tra cấu hình của máy chủ.' — the inanimate pronoun «của nó» is gone."
+		},
+		{
+			"id": "vi-cs-06",
+			"severity": "nit",
+			"key": "ui.chat.asks.close_asks",
+			"outcome": "accepted unchanged",
+			"evidence": "'Đóng bảng câu hỏi' is unchanged. Round 1 itself recorded that keeping «bảng» is acceptable for an accessible name; the addition is a deliberate clarifier, not a meaning error."
+		},
+		{
+			"id": "vi-cs-07",
+			"severity": "nit",
+			"key": "ui.chat.asks.settled_heading",
+			"outcome": "accepted unchanged",
+			"evidence": "'Đã xử lý' is unchanged. It is a heading over the settled half; the longer «đã giải quyết trong cuộc trò chuyện» is a sentence in the receipt line, which is a natural different form, not a contradiction."
+		}
+	],
+	"namespaces": {
+		"ui.chat": {
+			"namespace": "ui.chat",
+			"status": "passed",
+			"keys_audited": 115,
+			"keys_new": 71,
+			"severity_counts": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 1,
+				"nit": 1
+			},
+			"sha256": {
+				"en": "6b6e21835462fccbbdbea4cfcca132344595bf3f14804018de64dbe8d9fbacf0",
+				"vi": "ea2ce7175c288fb6926e975ec18fc8e809e86cfe805d253be385c0f9710f98b4",
+				"context": "da5c303c014c469c6096e6ef2e43b993f3ec2b9430ed6ec97498fc457f494372"
+			},
+			"findings": [
+				{
+					"id": "vi-r2-01",
+					"severity": "minor",
+					"category": "terminology",
+					"key": "ui.chat.composer.status.wakes_action",
+					"related_keys": [
+						"ui.chat.run_details.wakes.title",
+						"ui.chat.run_details.wake.cancel_wake",
+						"ui.chat.run_details.wake.cancel_wake_named",
+						"ui.chat.run_details.wake.cancel_wake_due"
+					],
+					"source": "Open the wakes in run details",
+					"current": "Mở lịch đánh thức trong chi tiết lượt chạy",
+					"problem": "Glossary §2 gives vi wake as «thức dậy» and i18n/style-guides/vi.md says «đánh thức» is wrong, but the shipped vi product names the scheduled wake «lịch đánh thức» in 27 values (ui.schedules, ui.agents.refusals and this pane) against «thức dậy» in 2 intransitive sentences. The new string follows the product majority; the guide is the stale side of the conflict.",
+					"proposed": "Keep the string and record «lịch đánh thức» for the scheduled-wake noun (verb «đánh thức / thức dậy» in prose) in i18n/style-guides/vi.md and in the glossary §2 footnote. If the guide is to be enforced literally instead, change all five wake strings and the schedule surfaces together in a separate wave — never only this pane.",
+					"disposition": "declined/accepted — carried from vi-cs-01; not gating; guide action requested"
+				},
+				{
+					"id": "vi-r2-02",
+					"severity": "nit",
+					"category": "idiom",
+					"key": "ui.chat.aside.off_record",
+					"source": "off the record — nothing here joins the conversation",
+					"current": "ngoài bản ghi — không gì ở đây được thêm vào cuộc trò chuyện",
+					"problem": "«không gì» without «có» is literary/emphatic. The shipped vi catalogues use «không có gì» in 7 values and «không gì» exactly once — this new string. The sub-heading reads slightly stilted, not wrong.",
+					"proposed": "ngoài bản ghi — không có gì ở đây được thêm vào cuộc trò chuyện",
+					"disposition": "open — nit"
+				}
+			]
+		},
+		"ui.chat.canonical": {
+			"namespace": "ui.chat.canonical",
+			"status": "passed",
+			"keys_audited": 60,
+			"keys_new": 13,
+			"severity_counts": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"sha256": {
+				"en": "5a6a30405053c7319b902315bb0a1b38ce1cbd6443ad2d988132d4cbfcb8f2ce",
+				"vi": "9b90d72f2ac9e7753229c1af7d19a044baa5d28c9f3ee82330fcecdfbe68fff1",
+				"context": "f075f08f152c9484f7dd9790a3b60a3c6c82086d3d9361717afa2188f0773a04"
+			},
+			"findings": [],
+			"notes": [
+				"Byte-identical to the round-1 hash; re-read in full anyway. The sound stop warning keeps every safety claim (continues, charged if it produces audio, best-effort stop, no guarantee of cancellation or no charge). The transcript recovery and older-history states are distinct and stay distinct; no destructive instruction was weakened."
+			]
+		},
+		"ui.chat.run_details": {
+			"namespace": "ui.chat.run_details",
+			"status": "passed",
+			"keys_audited": 82,
+			"keys_new": 80,
+			"severity_counts": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 1,
+				"nit": 0
+			},
+			"sha256": {
+				"en": "288ba883ed0c25851fa2025ea9a23ff98bcb7f59724ab5bbb2ed5b212ed85b51",
+				"vi": "760cbb88bffcb11f5d0e3b9d323de2da2e0a6ed79f1cc554378f573b49dd8453",
+				"context": "0f03657304a71236fe9d2bb350a1688dcfd2499624b5d908d80bc2775681a919"
+			},
+			"findings": [
+				{
+					"id": "vi-r2-03",
+					"severity": "minor",
+					"category": "terminology",
+					"key": "ui.chat.run_details.wakes.title",
+					"related_keys": [
+						"ui.chat.run_details.wake.cancel_wake",
+						"ui.chat.run_details.wake.cancel_wake_named",
+						"ui.chat.run_details.wake.cancel_wake_due",
+						"ui.chat.composer.status.wakes_action"
+					],
+					"source": "Wakes",
+					"current": "Lịch đánh thức",
+					"problem": "Same single terminology decision as vi-r2-01, seen in the section this namespace owns: glossary/style guide say «thức dậy», the shipped product says «lịch đánh thức» 27 times.",
+					"proposed": "Same disposition as vi-r2-01: keep the product term, correct the guide; or change the whole wake family and the schedule surfaces in one wave.",
+					"disposition": "declined/accepted — carried from vi-cs-03; not gating; guide action requested"
+				}
+			],
+			"notes": [
+				"todos.hidden_summary (new en key, added by the source fix): vi is `{count, plural, other {{count, number, ::group-off} mục bị ẩn}}`. Intl.PluralRules('vi') = ['other'], and the message was executed at 0, 1, 2, 5 and 1000 → '0 mục bị ẩn', '1 mục bị ẩn', '2 mục bị ẩn', '5 mục bị ẩn', '1000 mục bị ẩn'. The ::group-off skeleton is honoured in both arms (no '1.000'), matching the English intent; the wording matches the sibling todos.hidden note ('· {count} mục bị ẩn') so the folded count cannot read differently in the two places.",
+				"Remediation keys re-read: reader.delegated_with → «Chỉ dẫn được giao»; mcp.refused → «…cấu hình của máy chủ.»; wake family unchanged. No adjacent regression found in the remaining 79 keys."
+			]
+		},
+		"ui.chat.asks": {
+			"namespace": "ui.chat.asks",
+			"status": "passed",
+			"keys_audited": 26,
+			"keys_new": 14,
+			"severity_counts": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"sha256": {
+				"en": "6c42d235f1e326fc0cc0fea91668307d4e551585eef33b5fe1c2173efc2bc9fd",
+				"vi": "becca9b6f55894c37ae32e61610eeae493bd9b4ba98bb97aeac979b90dffb6b0",
+				"context": "9e137d7e8f6227827196c244a9550520cd5ee412ffeaef615a7e33bf0193903c"
+			},
+			"findings": [],
+			"notes": [
+				"Byte-identical to the round-1 hash; re-read in full anyway. The dismiss receipts, the 'agent stops waiting' note (correctly keeps the agent as subject) and the changed-handoff line are accurate; the plural messages_since renders at every count with only the other arm."
+			]
+		}
+	},
+	"identical_values": [],
+	"identical_stub_count": 0,
+	"counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 2,
+		"nit": 1
+	},
+	"verdict": "clean-with-findings",
+	"ledger_note": "r2 vi chat surfaces; record i18n/receipts/vi-chat-surfaces-audit-r2-7165e9bc3822.json; r1 7 findings: 3 fixed, 2 accepted, 2 wake-term declined with guide action; hidden_summary ICU 0/1/2/5/1000; 2 minor + 1 nit, 0 blocker/major."
+}

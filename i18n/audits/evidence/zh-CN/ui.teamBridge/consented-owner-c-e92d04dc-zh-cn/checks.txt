@@ -1,0 +1,12 @@
+# mechanical checks - zh-CN / ui.teamBridge.events.consented_owner @ 14d0b6781ac9
+value              : {actor}已同意自己的智能体{targets}加入
+graphemes          : 27 (sibling 21, event-family max 31 = events.others)
+placeholders       : ["actor","targets"] (source ["actor","targets"])
+sentinel render    : ⟦A⟧已同意自己的智能体⟦T⟧加入
+sentinel counts    : actor 1, targets 1 (each must be 1)
+missing value      : actor -> MISSING_VALUE, targets -> MISSING_VALUE
+ICU node types     : [1,0]   plural/select: false
+leading/trailing   : false
+NFC                : true   bidi controls: 0   ZWNJ/ZWJ: 0
+sha256 en          : 4042a918bc64406c4c24ad5ea68fe3c3f3aaa7228917bc1678547cfb0c20285c
+sha256 target      : 88761fbda9d8de5c7c0253809149ebf3be68e62f42ce8a8a109a754f29ad2f1a

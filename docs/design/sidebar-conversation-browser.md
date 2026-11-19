@@ -892,8 +892,11 @@ in-band list needs no suppression), no new store field, and no change to
 `browser-tab-strip.stories.tsx` (fixtures already carry `sessionId`,
 `:24-58`): `Grouped` (3 conversations + `No conversation`), `GroupedOverflow`
 (20 tabs / 6 conversations at 1160px), `ChipsCollapsed` (the five-state row, the
-successor of `worst-case`), `ActionsExpandedBatch` (the band with the four new
-items), `OverflowList` (the in-band sectioned list, open). New
+successor of `worst-case`), `OverflowList` (the in-band sectioned list, open). The
+tab-actions menu has no story: it is a native Electron menu since 2026-10-25, so
+Storybook cannot render it (the earlier `ActionsExpandedBatch` story is deleted
+with the Radix band), and `scripts/browser-tab-menu-native-proof.mjs` measures the
+live popup against the running app. New
 `browser-conversation-mark.stories.tsx`: no tabs, has tabs, loading, approvals
 (1 and 3), all four simultaneously, focused, and a row-context specimen so the
 mark is judged on the `surface` and `sunken` grounds. The sidebar's own story file

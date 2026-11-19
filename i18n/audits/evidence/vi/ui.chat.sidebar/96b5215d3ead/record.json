@@ -1,0 +1,276 @@
+{
+  "locale": "vi",
+  "mode": "Fresh independent remediation delta audit; five keys fully audited, remaining 81 sidebar keys read for consistency. Read-only shared worktree. Allocation: fix (<2h), bounded translation audit only.",
+  "scope": "PR #1836 @ 89d74581e8e9414e15ddddb5e1db9a38785baee2; vi/ui.chat.sidebar five mark_all_read keys: scope_chats, scope_chats_elsewhere, scope_tokenless, scope_joined, name_suffix_elsewhere. All prior VI findings verified fixed below; no full legacy namespace certification.",
+  "head_sha": "89d74581e8e9414e15ddddb5e1db9a38785baee2",
+  "audit_date": "2026-11-10",
+  "key_count": 86,
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "Translator model from delegation brief; translator session id not supplied. This fresh served openai/gpt-6.1-sol auditor neither translated nor participated in the earlier round."
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "96b5215d3ead",
+    "session": "96b5215d3ead",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "Served session model header: openai/gpt-6.1-sol; session 96b5215d3ead. No fallback used. Instance equals this actual session id; rg found no matches across i18n/receipts, i18n/audits/evidence and ../_s10-audits before writing.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "status": "passed",
+  "result": "clean",
+  "verdict": "clean",
+  "findings": [],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "namespaces": {
+    "ui.chat.sidebar": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "7db9ba5108a62330a1782f775b991ec0483537d2f7d808ae0691e1a6ef8840cd",
+      "target_sha256": "94b03f85d11fe0f788b97950fe8b87338bfed9fe7cf1c4bc4f2b63e4639b11ea",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+          "sha256": "7db9ba5108a62330a1782f775b991ec0483537d2f7d808ae0691e1a6ef8840cd"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.sidebar.context.json",
+          "sha256": "4f1593cc34b395ef8701a60e58e73a0371b3c93730eb7a1f2b2845dc6250d7e3"
+        },
+        "vi": {
+          "path": "src/i18n/catalogues/vi/ui.chat.sidebar.json",
+          "sha256": "94b03f85d11fe0f788b97950fe8b87338bfed9fe7cf1c4bc4f2b63e4639b11ea"
+        }
+      },
+      "findings": []
+    }
+  },
+  "per_key_checks": [
+    {
+      "key": "ui.chat.sidebar.mark_all_read.scope_chats",
+      "source": "{count, plural, one {Mark {count, number, ::group-off} unread chat as read.} other {Mark {count, number, ::group-off} unread chats as read.}}",
+      "current_text": "{count, plural, other {Đánh dấu {count, number, ::group-off} cuộc trò chuyện chưa đọc là đã đọc.}}",
+      "findings": [],
+      "assessment": "Faithful imperative: cuộc trò chuyện chưa đọc / là đã đọc preserves the object and resulting read state. Count is ungrouped; Vietnamese other-only has no agreement difference.",
+      "placeholder_integrity": {
+        "arguments": [
+          [
+            "count",
+            "number",
+            "::group-off"
+          ],
+          [
+            "count",
+            "plural",
+            ""
+          ]
+        ],
+        "matches_english": true,
+        "number_skeleton": "::group-off"
+      },
+      "plural_select": [
+        [
+          "count",
+          [
+            "other"
+          ]
+        ]
+      ],
+      "manual_bidi_controls": false,
+      "static_codepoint_length_without_arguments": 0
+    },
+    {
+      "key": "ui.chat.sidebar.mark_all_read.scope_chats_elsewhere",
+      "source": "{count, plural, one {Mark {count, number, ::group-off} unread chat as read} other {Mark {count, number, ::group-off} unread chats as read}}, including {elsewhere, plural, one {{elsewhere, number, ::group-off} that is not active} other {{elsewhere, number, ::group-off} that are not active}}.",
+      "current_text": "{count, plural, other {Đánh dấu {count, number, ::group-off} cuộc trò chuyện chưa đọc là đã đọc}}, trong đó có {elsewhere, plural, other {{elsewhere, number, ::group-off} cuộc trò chuyện hiện không hoạt động}}.",
+      "findings": [],
+      "assessment": "\"trong đó có\" states a subset, not extra chats. \"cuộc trò chuyện hiện không hoạt động\" is idiomatic prose for the backend !row.active class, not a named section or a claim about Running. The explicit noun agrees with sibling cuộc trò chuyện terminology.",
+      "placeholder_integrity": {
+        "arguments": [
+          [
+            "count",
+            "number",
+            "::group-off"
+          ],
+          [
+            "count",
+            "plural",
+            ""
+          ],
+          [
+            "elsewhere",
+            "number",
+            "::group-off"
+          ],
+          [
+            "elsewhere",
+            "plural",
+            ""
+          ]
+        ],
+        "matches_english": true,
+        "number_skeleton": "::group-off"
+      },
+      "plural_select": [
+        [
+          "count",
+          [
+            "other"
+          ]
+        ],
+        [
+          "elsewhere",
+          [
+            "other"
+          ]
+        ]
+      ],
+      "manual_bidi_controls": false,
+      "static_codepoint_length_without_arguments": 15
+    },
+    {
+      "key": "ui.chat.sidebar.mark_all_read.scope_tokenless",
+      "source": "{count, plural, one {{count, number, ::group-off} unread mark with no completion token cannot be cleared.} other {{count, number, ::group-off} unread marks with no completion token cannot be cleared.}}",
+      "current_text": "{count, plural, other {{count, number, ::group-off} dấu chưa đọc không có token hoàn tất nên không thể xóa.}}",
+      "findings": [],
+      "assessment": "\"dấu chưa đọc\" matches ui.chat.read_ack.description.remote/refusal.*. \"token hoàn tất\" keeps the binding English token, with hoàn tất qualifying the completion receipt rather than authentication/access. \"không có ... nên không thể xóa\" preserves the reason and inability without asking the user for credentials or implying chat deletion.",
+      "placeholder_integrity": {
+        "arguments": [
+          [
+            "count",
+            "number",
+            "::group-off"
+          ],
+          [
+            "count",
+            "plural",
+            ""
+          ]
+        ],
+        "matches_english": true,
+        "number_skeleton": "::group-off"
+      },
+      "plural_select": [
+        [
+          "count",
+          [
+            "other"
+          ]
+        ]
+      ],
+      "manual_bidi_controls": false,
+      "static_codepoint_length_without_arguments": 0
+    },
+    {
+      "key": "ui.chat.sidebar.mark_all_read.scope_joined",
+      "source": "{chats} {tokenless}",
+      "current_text": "{chats} {tokenless}",
+      "findings": [],
+      "assessment": "Exactly {chats} {tokenless}: one space separates two complete translated sentences. No content omitted or added.",
+      "placeholder_integrity": {
+        "arguments": [
+          [
+            "chats",
+            "arg",
+            ""
+          ],
+          [
+            "tokenless",
+            "arg",
+            ""
+          ]
+        ],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "manual_bidi_controls": false,
+      "static_codepoint_length_without_arguments": 1
+    },
+    {
+      "key": "ui.chat.sidebar.mark_all_read.name_suffix_elsewhere",
+      "source": ", including {elsewhere, plural, one {{elsewhere, number, ::group-off} that is not active} other {{elsewhere, number, ::group-off} that are not active}}",
+      "current_text": ", trong đó có {elsewhere, plural, other {{elsewhere, number, ::group-off} cuộc trò chuyện hiện không hoạt động}}",
+      "findings": [],
+      "assessment": "Initial comma-space supplies the join absent from code. Explicit \"cuộc trò chuyện\" gives the accessible continuation its own noun after the nounless numeric visible label. \"trong đó có ... hiện không hoạt động\" matches the tooltip subset/class. For 1, 2 and large counts Vietnamese uses the same other arm; the unchanged visible label remains a literal prefix.",
+      "placeholder_integrity": {
+        "arguments": [
+          [
+            "elsewhere",
+            "number",
+            "::group-off"
+          ],
+          [
+            "elsewhere",
+            "plural",
+            ""
+          ]
+        ],
+        "matches_english": true,
+        "number_skeleton": "::group-off"
+      },
+      "plural_select": [
+        [
+          "elsewhere",
+          [
+            "other"
+          ]
+        ]
+      ],
+      "manual_bidi_controls": false,
+      "static_codepoint_length_without_arguments": 14
+    }
+  ],
+  "remediation_verification": [
+    {
+      "prior_severity": "major",
+      "key": "ui.chat.sidebar.mark_all_read.scope_tokenless",
+      "prior_quote": "mã xác nhận hoàn tất",
+      "current_quote": "token hoàn tất",
+      "status": "fixed",
+      "reason": "Kept-English token now conforms to the binding VI style guide. hoàn tất describes completion (also ui.chat.canonical.turn_summary.completed), not a verification/security code. Surrounding sentence ties it to clearing unread marks. No new semantic or terminology defect found.",
+      "evidence_source": "Delegation prior findings; read-only git diff 28a6127617e..89d74581e8e and current catalogue/context."
+    },
+    {
+      "prior_severity": "minor",
+      "key": "ui.chat.sidebar.mark_all_read.scope_chats_elsewhere",
+      "related_keys": [
+        "ui.chat.sidebar.mark_all_read.name_suffix_elsewhere"
+      ],
+      "prior_quote": "cuộc trò chuyện không đang hoạt động",
+      "current_quote": "cuộc trò chuyện hiện không hoạt động",
+      "status": "fixed",
+      "reason": "The unnatural negation of đang is replaced by ordinary hiện không hoạt động in both tooltip and accessible-name suffix. It reports current inactive classification without inventing a sidebar heading.",
+      "evidence_source": "Delegation prior findings; read-only git diff 28a6127617e..89d74581e8e and current catalogue/context."
+    }
+  ],
+  "unverified": [
+    "Production repository Node validator and deriveReceiptAudit were not executed: the task prohibits Node processes, builds and installs. Scoped Python ICU grammar/argument/plural checks passed but do not replace the production ICU parser. Initial scratch Python call exceeded 30s and lost its kernel; a fresh bounded successful call supplied all reported check results.",
+    "No browser, Electron, compiled runtime, actual accessibility tree, screen-reader pronunciation, font metrics, native tooltip wrapping or rendered fit verified; none claimed. No maxCells/maxChars hints exist for these five keys; tooltip context allows wrapping, suffix is screen-reader-only. NFC and absence of manual bidi controls checked statically.",
+    "Read-only shared worktree: no repository writes, ledger assembler, git writes, commits or PR comments. Only this scratch receipt is written for manager retention/assembly; it is not yet tracked canonical evidence or a ledger update.",
+    "Audit covers Vietnamese only. FR/ES-specific grammar questions were not judged. No out-of-scope pre-existing issue is being used to gate this delta."
+  ],
+  "receipt_contract_review": {
+    "schema_reference": "../_s10-audits/28a6127/fr-sol-2c914de09ac5.json (exact top-level field set), with current UI receipts also inspected for identity/hash conventions.",
+    "rules_read": "scripts/i18n/ledger-rules.mjs: countFindings, receiptScope, receiptIdentity, parseReceipt, scopedHash and deriveReceiptAudit; scripts/i18n/ledger-assemble.mjs assemble reads actual English/target bytes and compares identity.",
+    "manual_derivation": "One namespace block; locale vi; single unambiguous i18n-auditor identity / 96b5215d3ead / openai/gpt-6.1-sol; status passed and result clean normalize consistently. Explicit empty findings arrays derive zero counts and clean. Scoped source/target hashes match disk; context hash included in input_hashes. JSON parsed with duplicate-key rejection. No Node execution claimed.",
+    "mechanical_execution": "Read-only shasum -a 256 verified English/context/VI; key parity 86/86/86, scoped custom Python nested-ICU checks, exact argument/type/::group-off equality, other-only CLDR, NFC and no manual bidi controls passed for five keys. No changed/dropped keys. Diff shows exactly scope_chats_elsewhere, scope_tokenless, name_suffix_elsewhere changed.",
+    "accessible_name_examples": [
+      "Đánh dấu tất cả 3 đã đọc, trong đó có 1 cuộc trò chuyện hiện không hoạt động",
+      "Đánh dấu tất cả 3 đã đọc, trong đó có 2 cuộc trò chuyện hiện không hoạt động"
+    ],
+    "example_provenance": "Read-only Python ICU-subset expansion of current catalogue bytes, not runtime or rendered output.",
+    "language_authority_hashes": {
+      "i18n/style-guides/vi.md": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888",
+      "i18n/glossary.md": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    }
+  },
+  "audit_notes_not_execution_log": true
+}

@@ -9,8 +9,11 @@ import React, { act, useState } from "react";
  * `useTopLevelRegex`, and shared by the assertions that name it). */
 const LANDED_CLOSE_CARET = /^BUTTON role=tab in-tab=\d+$/;
 
-/** The watch row names the tab it belongs to. */
+/** The watch row names the tab it belongs to. The title is bidi-isolated
+ * (design round 2, D7): FSI/PDI are invisible in the rendered row but are real
+ * characters in `textContent`, so the words are read without them. */
 const WATCH_ROW = /Watch "Tab 2"/;
+const withoutIsolates = (text) => text.replace(/[\u2066-\u2069]/g, "");
 
 /*
  * WHERE THE CARET GOES AFTER A CLOSE, INCLUDING A CLOSE THAT NEVER LANDS
@@ -35,7 +38,7 @@ const WATCH_ROW = /Watch "Tab 2"/;
 // React DOM feature-detects input events at import time, so the document has to
 // exist before it is loaded. A real origin, not jsdom's opaque default.
 const dom = new JSDOM(
-	'<!doctype html><html><body><input id="outside"><div id="root"></div></body></html>',
+	'<!doctype html><html><body><input id="outside"><div id="turn-progress">streaming</div><button id="turn-stop">Stop</button><div id="root"></div></body></html>',
 	{ pretendToBeVisual: true, url: "http://localhost/" },
 );
 globalThis.window = dom.window;
@@ -71,9 +74,11 @@ globalThis.IntersectionObserver = class {
 	disconnect() {}
 };
 /*
- * RADIX'S DISMISSABLE LAYER DISPATCHES ITS OWN EVENT ON THE DOCUMENT when a menu
- * layer mounts (`new CustomEvent(...)` + `document.dispatchEvent`), and this file
- * opens one: the row's actions are a Radix popout since 2026-09-28. Node defines
+ * RADIX'S DISMISSABLE LAYER DISPATCHES ITS OWN EVENT ON THE DOCUMENT when a layer
+ * mounts (`new CustomEvent(...)` + `document.dispatchEvent`). The row's actions
+ * are a NATIVE menu since 2026-10-25, so this file no longer opens that layer;
+ * the strip it mounts still renders Radix `Tooltip` children, which take the same
+ * path when one opens. Node defines
  * `Event`/`CustomEvent` as globals of its OWN, and the copy loop above keeps any
  * global that already exists, so without these two rebindings Radix builds a Node
  * event that jsdom's `dispatchEvent` refuses - "parameter 1 is not of type
@@ -83,8 +88,8 @@ globalThis.IntersectionObserver = class {
 globalThis.Event = dom.window.Event;
 globalThis.CustomEvent = dom.window.CustomEvent;
 /*
- * `:modal` IS A JSDOM LANDMINE UNDER FLOATING-UI (measured 2026-09-28). The popout's
- * popper walks its ancestors with floating-ui's `getContainingBlock`, which probes
+ * `:modal` IS A JSDOM LANDMINE UNDER FLOATING-UI (measured 2026-09-28). A Radix
+ * popper's ancestor walk uses floating-ui's `getContainingBlock`, which probes
  * each one with `element.matches(':modal')` (`isTopLayer`, floating-ui.utils.dom).
  * jsdom 26.1.0 answers `:modal` by delegating back into its own selector engine -
  * `nwsapi isModal -> matchesNative(node, ':modal') -> node.matches(':modal')` - and
@@ -119,6 +124,14 @@ after(() => {
  * The entry module is generated rather than committed as a fixture because the
  * subject is a COMPONENT, not a page: it takes the strip's own props and drives
  * the same controls the app's do (the row's menu, then `Close N other tabs`).
+ *
+ * THE MENU IS A NATIVE POPUP NOW (LOH-13 operator report, 2026-10-25), so there
+ * is no panel in this DOM for a test to open. What the component hands to main
+ * is the REQUEST - a plain object - and what main hands back is one item id. The
+ * stub below is that second half: it records the request and leaves the answer
+ * to the test, which is the only way jsdom can model an OS menu. What is NOT
+ * modelled here (the popup's pixels, the page staying visible behind it) belongs
+ * to `scripts/browser-chrome-proof.mjs`, which boots the built app.
  */
 const ENTRY = `
 import { createElement, useState } from "react";
@@ -126,10 +139,13 @@ import { createElement, useState } from "react";
 // test itself imported — after the document existed.
 import { createRoot } from "react-dom/client";
 import { BrowserTabStrip } from "./src/renderer/src/features/browser/components/browser-tab-strip";
-// THE SHIPPED POLICY MODULE, from this bundle's own module graph: the registration
-// the strip makes is readable here and nowhere else, because a second import in the
-// test process would be a second instance with a second store.
+// THE SHIPPED POLICY MODULE, from this bundle's own module graph: the suppression
+// store is readable here and nowhere else, because a second import in the test
+// process would be a second instance with a second store.
 import { suppressedOverlayIds } from "./src/renderer/src/shared/browser-view-policy";
+// THE SHIPPED WIRE VALIDATOR: the request this component builds must be one main
+// would accept, not merely one this test recognises.
+export { tabActionsMenuRequestOrThrow } from "./src/shared/browser-tab-actions-menu";
 
 const view = (tabId, sessionId) => ({
 	tabId,
@@ -154,6 +170,7 @@ const view = (tabId, sessionId) => ({
 export function mount(container, mode) {
 	const INITIAL = [view(1, "conv-a"), view(2, "conv-a"), view(3, null)];
 	let api = null;
+	const menu = { request: null, settle: null };
 	const Harness = () => {
 		const [tabs, setTabs] = useState(INITIAL);
 		const [activeTabId, setActiveTabId] = useState(1);
@@ -168,6 +185,12 @@ export function mount(container, mode) {
 			intent: () => window.__intent,
 			/** The suppressions the SHIPPED policy holds right now. */
 			suppressed: () => suppressedOverlayIds(),
+			/** The ONE request the strip handed main, or null. */
+			menuRequest: () => menu.request,
+			/** Main's answer: the selected item id, or null for a dismissal. */
+			resolveMenu: (id) => menu.settle?.(id),
+			/** The last tab this strip asked its host to activate. */
+			activated: () => window.__activated,
 			/** An unrelated arrival: an agent opening a tab. */
 			addTab: () =>
 				setTabs((current) => [...current, view(9, null)]),
@@ -202,12 +225,20 @@ export function mount(container, mode) {
 			sessions: [],
 			activeTabId,
 			waiting: {},
-			onActivate: () => {},
+			onActivate: (tabId) => {
+				window.__activated = tabId;
+			},
 			onClose: () => Promise.resolve(false),
 			onNewTab: () => {},
 			onCloseTabs: close,
 			onHandOver: () => {},
 			onRevokeHandOver: () => {},
+			onShowTabActionsMenu: (request) => {
+				menu.request = request;
+				return new Promise((resolve) => {
+					menu.settle = resolve;
+				});
+			},
 		});
 	};
 	createRoot(container).render(createElement(Harness));
@@ -248,9 +279,10 @@ const bundlePath = new URL(
  * gitignored, which turns `biome check scripts/` red for whoever stages it next.
  */
 let mount;
+let tabActionsMenuRequestOrThrow;
 try {
 	await writeFile(bundlePath, bundle.outputFiles[0].text);
-	({ mount } = await import(bundlePath.href));
+	({ mount, tabActionsMenuRequestOrThrow } = await import(bundlePath.href));
 } finally {
 	// The import's own failure is the one that matters, so a failed unlink must not
 	// replace it - and there is nothing to remove if the write never happened.
@@ -269,69 +301,38 @@ async function open(mode) {
 		handle = mount(container, mode);
 	});
 	const controls = handle.api();
-	/*
-	 * THE PRESS A REAL POINTER MAKES, delivered as the event the control opens on.
-	 *
-	 * The row's actions are a Radix popout now (2026-09-28): its trigger opens on
-	 * `pointerdown` - the event a real press sends - and a bare `.click()` is not
-	 * one, so the driver sends the pointerdown a press sends. Everything after it
-	 * is unchanged: the menu ITEM still selects on its own click, and the caret
-	 * contract these tests are about is asserted exactly as it was.
+	/** Press one row's menu trigger and wait for the request to reach main. */
+	const openMenu = async (tabId = 2) => {
+		const trigger = document.querySelector(
+			`[data-tab-id="${tabId}"] [data-tour-tag="browser-tab-menu"]`,
+		);
+		await act(() => trigger.click());
+		return trigger;
+	};
+	/** Main's answer, delivered the way the IPC promise delivers it. */
+	const choose = async (itemId) => {
+		await act(async () => {
+			controls.resolveMenu(itemId);
+			await new Promise((resolve) => setTimeout(resolve, 0));
+		});
+	};
+	/**
+	 * The press the caret tests make: open the row's menu and pick `Close 2 other
+	 * tabs`, which is the batch close the old panel test drove.
 	 */
 	const press = async () => {
-		// The band opens from the row's own menu, exactly as a press does in the app.
-		const trigger = document.querySelector(
-			'[data-tab-id="2"] [data-tour-tag="browser-tab-menu"]',
-		);
-		await act(() => {
-			trigger.dispatchEvent(
-				new dom.window.MouseEvent("pointerdown", {
-					bubbles: true,
-					cancelable: true,
-					button: 0,
-				}),
-			);
-		});
-		const item = document.querySelector(
-			'[data-tour-tag="browser-tab-close-others"]',
-		);
-		await act(() => item.click());
-		/*
-		 * RADIX RETURNS FOCUS TO THE TRIGGER WHEN THE MENU CLOSES, AND IT DOES SO OFF A
-		 * MACROTASK: FocusScope's unmount cleanup runs its autofocus on a `setTimeout(0)`
-		 * (focus-scope/dist, the `AUTOFOCUS_ON_UNMOUNT` dispatch), so the caret lands
-		 * back on the trigger one task after the item's click - before any person could
-		 * have moved it themselves. The driver flushes that task here so the tests below
-		 * observe the state a human's next action starts from, not a focus that was still
-		 * in flight when the assertion ran.
-		 */
-		await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+		await openMenu(2);
+		await choose("close-others");
 	};
 	return {
 		controls,
 		press,
-		/**
-		 * Open one row's menu with the pointerdown a press sends, and STOP there: no item
-		 * is pressed, so a scenario can assert the OPEN state (which item it offers, what
-		 * it registers) before anything closes it.
-		 */
-		openMenu: async (tabId = 2) => {
-			const trigger = document.querySelector(
-				`[data-tab-id="${tabId}"] [data-tour-tag="browser-tab-menu"]`,
-			);
-			await act(() => {
-				trigger.dispatchEvent(
-					new dom.window.MouseEvent("pointerdown", {
-						bubbles: true,
-						cancelable: true,
-						button: 0,
-					}),
-				);
-			});
-			return trigger;
-		},
-		/** The suppression ids the shipped policy holds - the registration's own store. */
+		openMenu,
+		choose,
+		/** The suppression ids the shipped policy holds - the store's own reading. */
 		suppressed: () => controls.suppressed(),
+		/** The ONE request main would receive for the last opened menu. */
+		request: () => controls.menuRequest(),
 		/** The caret, described the way a finding describes it. */
 		caret: () => {
 			const el = document.activeElement;
@@ -346,6 +347,10 @@ async function open(mode) {
 				.filter(Boolean)
 				.join(" ");
 		},
+		menuTrigger: (tabId = 2) =>
+			document.querySelector(
+				`[data-tab-id="${tabId}"] [data-tour-tag="browser-tab-menu"]`,
+			),
 		/** Let the harness's own emission land (it is a timer, not an IPC round trip). */
 		settle: () =>
 			act(async () => new Promise((resolve) => setTimeout(resolve, 80))),
@@ -448,117 +453,145 @@ test("a close that DOES land still moves the caret onto the surviving tab", asyn
 	await view.unmount();
 });
 
-test("the menu's tab leaving the list on its own takes the menu AND the suppression with it (review round 1, M-1)", async () => {
+test("opening the tab menu registers NO suppression and hands main one valid request", async () => {
 	const view = await open("landed");
-	await view.openMenu(2);
-	assert.ok(
-		document.querySelector('[data-tour-tag="browser-tab-actions"]'),
-		"the menu is up before the removal",
-	);
-	assert.equal(
-		view.suppressed().some((id) => id.startsWith("browser-tab-actions")),
-		true,
-		`the strip's registration is held while the menu is open: ${JSON.stringify(view.suppressed())}`,
-	);
-
-	/*
-	 * THE REMOVAL THE MENU NEVER HEARD OF: an agent tool closing the tab in main, or any
-	 * close this strip did not initiate. No pointer event reaches the menu; the row (and
-	 * its portalled content) simply leaves the list, which is the shape the reviewer's
-	 * probe measured. Before the guard, `actionsTabId` kept naming the gone tab: the
-	 * suppression stayed up with no menu to dismiss, and the caret dropped to `<body>`.
-	 */
-	await act(() => view.controls.dropOutside(2));
-	// Radix's unmount autofocus runs off a `setTimeout(0)`; flush it so the assertion
-	// reads the settled state rather than a focus still in flight.
-	await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
-
-	assert.equal(
-		document.querySelector('[data-tour-tag="browser-tab-actions"]'),
-		null,
-		"the menu is gone with its row",
-	);
+	const trigger = await view.openMenu(2);
+	const request = view.request();
+	assert.ok(request, "the strip handed main a request");
+	// The request is one the SHIPPED boundary would accept.
+	const validated = tabActionsMenuRequestOrThrow(request);
+	assert.equal(validated.tabId, 2);
+	assert.equal(validated.anchor.x, 0); // jsdom has no layout: the rect is empty
+	// This harness wires the closes and hand-over but not `onReorder`/
+	// `onTabAction`, so the move and per-tab-action items are correctly absent;
+	// the full list is pinned in `browser-tab-actions-menu.test.mjs`.
 	assert.deepEqual(
-		view.suppressed(),
-		[],
-		`the registration released with it: ${JSON.stringify(view.suppressed())}`,
+		validated.items.map((entry) => entry.id),
+		[
+			"header",
+			"watch",
+			"hand-over",
+			"separator",
+			"close",
+			"close-others",
+			"close-right",
+			"close-conversation",
+			"separator",
+			"copy-url",
+		],
+	);
+	const watch = validated.items.find((entry) => entry.id === "watch");
+	assert.equal(withoutIsolates(watch.label), 'Watch "Tab 2"');
+	assert.equal(
+		validated.items.find((entry) => entry.id === "header").enabled,
+		false,
 	);
 	assert.equal(
-		document.activeElement.closest(
-			'[data-tour-tag="browser-tab-strip-row"]',
-		) !== null,
-		true,
-		`the caret parked in the strip rather than on <body>: ${view.caret()}`,
+		validated.items.find((entry) => entry.id === "close-others").label,
+		"Close 2 other tabs",
 	);
-	await view.unmount();
-});
-
-test("the popout opens from an INACTIVE tab and offers `Watch` for it, leaving the active tab alone (UX round 1, U4)", async () => {
-	const view = await open("landed");
-	// The harness mounts with tab 1 active, so tab 2 is exactly the state `Watch this
-	// tab` exists for - and the row the proof harness's own section 7 prefers when the
-	// strip has one (its committed run did not).
-	await view.openMenu(2);
-	const menu = document.querySelector('[data-tour-tag="browser-tab-actions"]');
-	assert.ok(menu, "the menu opened from the inactive row's trigger");
-	const watch = menu.querySelector('[data-tour-tag="browser-tab-watch"]');
-	assert.ok(
-		watch,
-		"and offers the watch row for a tab that is not the one on screen",
-	);
-	assert.match(
-		watch.textContent ?? "",
-		WATCH_ROW,
-		`the watch row names its own tab: ${watch.textContent}`,
-	);
-	assert.equal(
-		document
-			.querySelector('[data-tab-id="1"] [role="tab"]')
-			?.getAttribute("aria-selected"),
-		"true",
-		"and opening a tab's menu is not activating it",
-	);
-	await view.unmount();
-});
-
-test("an outside press dismisses the popout and returns focus to its ⋯ trigger (UX round 1, U4)", async () => {
-	const view = await open("landed");
-	await view.openMenu(2);
-	assert.ok(
-		document.querySelector('[data-tour-tag="browser-tab-actions"]'),
-		"the menu is up",
-	);
-
-	/*
-	 * THE OUTSIDE PRESS. Radix dismisses on a `pointerdown` outside its layer; in the
-	 * browser the modal layer sets `pointer-events: none` on the body so the click a
-	 * person makes lands on the layer and dismisses without reaching the control
-	 * underneath, and a jsdom dispatch to the element directly exercises the same
-	 * dismissal path (`onPointerDownOutside` -> `onDismiss` -> `onOpenChange(false)`).
-	 */
-	await act(() => {
-		document.getElementById("outside")?.dispatchEvent(
-			new dom.window.MouseEvent("pointerdown", {
-				bubbles: true,
-				cancelable: true,
-				button: 0,
-			}),
-		);
-	});
-	// The close-return focus lands one macrotask later (FocusScope's `setTimeout(0)`).
-	await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
-
+	// NOTHING IS SUPPRESSED, and nothing was mounted in the DOM for the menu to
+	// intersect: the native popup draws above the page.
+	assert.deepEqual(view.suppressed(), []);
 	assert.equal(
 		document.querySelector('[data-tour-tag="browser-tab-actions"]'),
 		null,
-		"the menu is gone",
+		"no renderer panel exists",
 	);
+	// The trigger reports its own popup state while main holds the menu.
+	assert.equal(trigger.getAttribute("aria-haspopup"), "menu");
+	assert.equal(trigger.getAttribute("aria-expanded"), "true");
+	await view.choose(null);
+	assert.equal(trigger.getAttribute("aria-expanded"), null);
+	assert.deepEqual(view.suppressed(), []);
+	await view.unmount();
+});
+
+test("the menu opens from an INACTIVE tab, names it, and Watch is what activates it (UX round 1, U4)", async () => {
+	const view = await open("landed");
+	await view.openMenu(2);
+	const request = view.request();
+	assert.ok(
+		request.items.some((entry) => entry.id === "watch"),
+		"an inactive tab offers Watch",
+	);
+	assert.equal(
+		window.__activated,
+		undefined,
+		"opening a menu does not activate",
+	);
+	await view.choose("watch");
+	assert.equal(window.__activated, 2, "the Watch item is the activation");
 	assert.equal(
 		document.activeElement,
-		document.querySelector(
-			'[data-tab-id="2"] [data-tour-tag="browser-tab-menu"]',
-		),
-		`the caret returned to the trigger that opened it: ${view.caret()}`,
+		view.menuTrigger(2),
+		`the caret returns to the trigger: ${view.caret()}`,
 	);
 	await view.unmount();
+});
+
+test("a dismissal returns the caret to the ⋯ trigger", async () => {
+	const view = await open("landed");
+	await view.openMenu(2);
+	// The native menu took the caret while it was up; the renderer puts it back
+	// when main reports the dismissal.
+	view.menuTrigger(2).blur();
+	await view.choose(null);
+	assert.equal(
+		document.activeElement,
+		view.menuTrigger(2),
+		`the caret after dismissal: ${view.caret()}`,
+	);
+	await view.unmount();
+});
+
+test("opening the tab menu leaves the running turn exposed and its Stop control pressable", async () => {
+	const view = await open("landed");
+	const stop = document.getElementById("turn-stop");
+	let stopPresses = 0;
+	const onStop = () => {
+		stopPresses += 1;
+	};
+	stop.addEventListener("click", onStop);
+	try {
+		await view.openMenu(2);
+		/*
+		 * THE NATIVE MENU IS NOT A RENDERER LAYER. The old popout was a Radix
+		 * layer that `aria-hidden`ed every sibling and set `pointer-events: none`
+		 * on the body while it was open; the OS menu paints outside this DOM
+		 * entirely, so none of that may exist here. (Whether the OS menu consumes
+		 * the first outside click is a platform fact the jsdom test cannot see; the
+		 * committed `scripts/browser-tab-menu-native-proof.mjs` records the page's
+		 * pixels and the menu-open state, and the OS popup's own pointer path stays a
+		 * hand check because this host denies the permissions a capture needs.)
+		 */
+		assert.equal(
+			document.body.style.pointerEvents,
+			"",
+			"the menu must not disable the body's pointer events",
+		);
+		assert.equal(
+			stop.closest('[aria-hidden="true"]'),
+			null,
+			"the Stop control is not hidden from assistive tech",
+		);
+		assert.ok(
+			stop.getBoundingClientRect !== undefined,
+			"the Stop control is still in the document",
+		);
+		await act(() => {
+			stop.dispatchEvent(
+				new dom.window.MouseEvent("click", {
+					bubbles: true,
+					cancelable: true,
+					button: 0,
+				}),
+			);
+		});
+		assert.equal(stopPresses, 1, "the press reached the Stop control");
+		await view.choose(null);
+	} finally {
+		stop.removeEventListener("click", onStop);
+		await view.unmount();
+	}
 });

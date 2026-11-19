@@ -1,0 +1,135 @@
+{
+  "schema": 1,
+  "kind": "translation-audit-receipt",
+  "auditor": "translation-auditor",
+  "agent": "translation-auditor",
+  "team": "lopdev",
+  "harness": "Local Operator",
+  "model": "radient/auto",
+  "model_provenance": "Session model header for this R2 audit reports radient/auto; no host fallback was exposed to this run. Disclosed history, not attributed to this audit: the R1 audit's completion fell back to claude-sonnet-5-5 after radient/auto returned HTTP 402 (recorded in the R1 receipt), and the one R2 key change was translated by GPT-6.1-sol after radient/auto returned HTTP 402. No all-radient credit.",
+  "requested_route": "radient/auto",
+  "fallback": "none exposed for this audit run; the changed key's translator ran GPT-6.1-sol after radient/auto HTTP 402",
+  "instance": "c8a0c7b274eb",
+  "session": "c8a0c7b274eb",
+  "locale": "ur",
+  "locale_name": "Urdu",
+  "namespace": "ui.notices",
+  "worktree": ".worktrees/i18n-toasts",
+  "branch": "feat/i18n-toasts",
+  "date": "2026-10-25",
+  "audit_kind": "independent R2 remediation audit of ONE changed key against the R1 receipt; 101 values retained by byte-level inverse replacement, not re-litigated",
+  "audit_round": 2,
+  "result": "clean",
+  "status": "passed",
+  "verdict": "clean",
+  "severity_summary": "0 blocker, 0 major, 0 minor, 0 nit",
+  "keys_read": 102,
+  "delta_keys_audited": 1,
+  "keys_retained_from_prior_audit": 101,
+  "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "findings": [],
+  "sha256": {
+    "en": "c9556d7d6d8b399bc62f3a35b7bb4d01109f118b1ab29fe47ba70b739552a4e0",
+    "ur": "201731e0cf8d02051a88b5f73087cf4111ec95c8d220f05e9e874e65d90dff12",
+    "context": "9a536d75dec597c27281380946b807abdca8ad5c1f7c4e02ba54852a4568c5ee",
+    "languages_manifest": "7fd056b916fc3d56ddf36991a09b29864ea0b0f825d938aead1ed165926f8d63"
+  },
+  "reference_sha256": {
+    "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+  },
+  "inputs": {
+    "source": "src/i18n/catalogues/en/ui.notices.json",
+    "context": "src/i18n/catalogues/en/ui.notices.context.json",
+    "target": "src/i18n/catalogues/ur/ui.notices.json",
+    "style_guide": "~/local-operator/i18n/style-guides/ur.md",
+    "glossary": "~/local-operator/i18n/glossary.md"
+  },
+  "refs": {
+    "source_ref": "7b32fd2704b6168d653e717bfc7fa4ddc58686e5",
+    "source_ref_state": "committed HEAD; English and context clean and unchanged from R1 (c9556d7d…, 9a536d75…)",
+    "target_ref_state": "UNCOMMITTED working-tree candidate; differs from the R1 target f3bff560… only in the one audited key",
+    "prior_target_sha256": "f3bff560ace79b5dc5766467ee314b6e5ee3700b90f40da30c4573bdc97e7f53"
+  },
+  "previous_receipt": {
+    "path": "i18n/receipts/ur-ui-notices-delta-audit-7b32fd2704-c8a0c7b274eb.json",
+    "sha256": "bae818e13cd0d2bea5b64ec0a2e8f5061be8f840568546e623a653a0e236b7e9",
+    "result": "clean-with-findings (0/0/1/0)",
+    "finding": "UR-D8-1 minor, now fixed",
+    "keys_read": 102
+  },
+  "delta": {
+    "changed_keys": [
+      "ui.notices.main.watchdog_app_wait_fallback"
+    ],
+    "old_value": "اپ ڈیٹ اب بھی Local Operator کے بند ہونے کا انتظار کر رہی ہے (گزرا وقت: {elapsed})۔ اگر کچھ نہ ہو تو Local Operator بند کریں (جواب نہ دے تو Force Quit کریں) اور جب تک وہ خود دوبارہ نہ کھلے، اسے بند ہی رہنے دیں۔",
+    "new_value": "اپ ڈیٹ اب بھی Local Operator کے بند ہونے کا انتظار کر رہی ہے (گزرا وقت: {elapsed})۔ اگر کچھ نہ ہو تو Local Operator بند کریں (جواب نہ دے تو زبردستی بند کریں) اور جب تک وہ خود دوبارہ نہ کھلے، اسے بند ہی رہنے دیں۔",
+    "proof": "Replacing the new value with the R1 value once (the value occurs exactly once in the file) reproduces sha256 f3bff560… byte-for-byte, so the other 101 values and all formatting are unchanged from the R1 target."
+  },
+  "resolved": {
+    "finding": "UR-D8-1",
+    "status": "fixed",
+    "old_value": "اپ ڈیٹ اب بھی Local Operator کے بند ہونے کا انتظار کر رہی ہے (گزرا وقت: {elapsed})۔ اگر کچھ نہ ہو تو Local Operator بند کریں (جواب نہ دے تو Force Quit کریں) اور جب تک وہ خود دوبارہ نہ کھلے، اسے بند ہی رہنے دیں۔",
+    "new_value": "اپ ڈیٹ اب بھی Local Operator کے بند ہونے کا انتظار کر رہی ہے (گزرا وقت: {elapsed})۔ اگر کچھ نہ ہو تو Local Operator بند کریں (جواب نہ دے تو زبردستی بند کریں) اور جب تک وہ خود دوبارہ نہ کھلے، اسے بند ہی رہنے دیں۔",
+    "note": "The Latin 'Force Quit' is gone; 'زبردستی بند کریں' is a natural, respectful Urdu description of the force-quit action, and the clause still distinguishes an unresponsive app from an update making no progress. The official macOS Urdu menu wording remains unverified (no OS localisation access in this audit) and is not claimed."
+  },
+  "checks": {
+    "key_set": "102 keys in the changed file, order identical to English (unchanged by the one-value edit)",
+    "icu": "the changed key parses under ur; exactly one {elapsed}, a simple string argument with no plural/count structure; no other ICU or argument change",
+    "unicode": "changed value is NFC; no bidi control characters; Urdu punctuation ۔ and matched ASCII parentheses retained",
+    "allowed_english": "the changed value contains only 'Local Operator' (product name, glossary §1) and the {elapsed} machine token; zero 'Force Quit' occurrences",
+    "elapsed_render": "composed at the single token; prefix ends '(گزرا وقت: ' and suffix begins ')'; no token left"
+  },
+  "renders": {
+    "method": "split at the single {elapsed} as splitElapsed/compose_elapsed do, with the shell's own elapsed_text() shapes; no OS notification, browser or pixel capture",
+    "durations": [
+      "1 s",
+      "2 min 30 s"
+    ],
+    "values": [
+      "اپ ڈیٹ اب بھی Local Operator کے بند ہونے کا انتظار کر رہی ہے (گزرا وقت: 1 s)۔ اگر کچھ نہ ہو تو Local Operator بند کریں (جواب نہ دے تو زبردستی بند کریں) اور جب تک وہ خود دوبارہ نہ کھلے، اسے بند ہی رہنے دیں۔",
+      "اپ ڈیٹ اب بھی Local Operator کے بند ہونے کا انتظار کر رہی ہے (گزرا وقت: 2 min 30 s)۔ اگر کچھ نہ ہو تو Local Operator بند کریں (جواب نہ دے تو زبردستی بند کریں) اور جب تک وہ خود دوبارہ نہ کھلے، اسے بند ہی رہنے دیں۔"
+    ]
+  },
+  "namespace_verdict": "clean (R2 delta) — the single changed key fixes UR-D8-1, carries no unapproved English, and the other 101 values are byte-identical to the R1 target; 0 blocker, 0 major, 0 minor, 0 nit.",
+  "verdicts": {
+    "ui.notices": {
+      "status": "clean",
+      "result": "clean",
+      "keys_read": 102,
+      "keys_in_scope": 1,
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "summary": "UR-D8-1 resolved; 101 retained by inverse-replacement proof; no regression in the changed sentence."
+    }
+  },
+  "overall_verdict": "clean — UR-D8-1 is fixed and verified in the bytes, the unchanged 101 values are proven byte-identical, and nothing new was introduced.",
+  "independence": {
+    "authored_translation": false,
+    "authored_remediation": false,
+    "distinct_from_translator": true,
+    "repo_edits": false,
+    "note": "Read-only on every catalogue, context, code and ledger file; this session wrote only the R2 receipt."
+  },
+  "translator": {
+    "agent": "translator",
+    "requested_route": "radient/auto",
+    "fallback": "GPT-6.1-sol after radient/auto HTTP 402 (per dispatch brief)",
+    "scope": "this one-key R2 change only; the original 8 keys were Sonnet 5.5 after radient 402 (R1 provenance)"
+  },
+  "worktree_state": {
+    "audited_head": "7b32fd2704b6168d653e717bfc7fa4ddc58686e5",
+    "at_audit_start": "English and context clean; ur modified in the working tree; R1 receipt present and untouched"
+  },
+  "limitations": "Catalogue-level audit only: no native-speaker sign-off, no browser, screenshot, rendered frame or actual macOS notification, no build or suite; RTL pixels unverified; official macOS Urdu Force-Quit menu wording unverified and not claimed.",
+  "evidence_provenance": "Executed read-only in .worktrees/i18n-toasts at HEAD 7b32fd27 on 2026-10-25. Hashed source/context/target from disk; proved the one-key delta by inverse unique replacement reproducing f3bff560…; parsed the changed key with @formatjs/icu-messageformat-parser; composed 1 s and 2 min 30 s from the catalogue bytes; ran deriveReceiptAudit on the final receipt bytes."
+}

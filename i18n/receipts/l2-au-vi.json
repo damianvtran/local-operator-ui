@@ -1,0 +1,30 @@
+{
+ "auditor": "i18n-auditor",
+ "model": "anthropic/claude-sonnet-5-5",
+ "instance": "l2-au-vi",
+ "status": "passed",
+ "result": "clean",
+ "namespace": "ui.chat.canonical",
+ "locale": "vi",
+ "key_count": 2,
+ "scope": "l2 file-size wave: the 2 keys ui.chat.canonical.tool.never_sent_composed / never_sent_empty (the rest of the namespace is not re-audited here)",
+ "findings": [],
+ "severity_counts": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 0,
+  "nit": 0
+ },
+ "independence": {
+  "translator_agent": "i18n-translator",
+  "translator_model": "openai/gpt-6.1-sol",
+  "independent_from_translator": true,
+  "independent_auditors_for_this_locale": 1
+ },
+ "sha256": {
+  "vi": "cc8ee8ebd729bc301efdf6967c3051d8c0f85689fa427666479ffb8a00b2fccd",
+  "en": "27ae7327daa34be60b619be551c840e057d61c3d69dc801269e4f389edc0f031"
+ },
+ "assembled_from": "Assembled by the landing coder from the auditor's report audit-vi.md; verdict, severity counts and findings are transcribed from that report, the sha256 values are computed from the catalogue files at the landing commit. The auditor's own evidence bundle, where one exists, is under i18n/audits/evidence/vi/ui.chat.canonical/.",
+ "instance_note": "instance is the audit label from the report header; the auditor report names no 12-hex session id"
+}

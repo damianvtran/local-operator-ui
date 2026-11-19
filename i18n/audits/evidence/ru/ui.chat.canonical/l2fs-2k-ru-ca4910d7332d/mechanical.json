@@ -1,0 +1,68 @@
+{
+ "tool": "python3 mechanical check (locale ru, namespace ui.chat.canonical)",
+ "checks": {
+  "json_parses": true,
+  "key_set_equal_to_en": true,
+  "keys_added": [],
+  "keys_dropped": [],
+  "empty_values": [],
+  "english_identical_values": [],
+  "per_key": {
+   "ui.chat.canonical.tool.never_sent_composed": {
+    "en": "never sent · {size} composed",
+    "ru": "не отправлено · написано {size}",
+    "placeholder_size_count_ru": 1,
+    "placeholder_size_count_en": 1,
+    "placeholders_en": [
+     "{size}"
+    ],
+    "braces_ru": [
+     "{",
+     "}"
+    ],
+    "icu_plural_or_select": false,
+    "middot_u00b7_count": 1,
+    "middot_surrounded_by_spaces": true,
+    "ascii_period_separator": false,
+    "leading_or_trailing_whitespace": false,
+    "trailing_sentence_punctuation": false,
+    "nfc_normalized": true,
+    "latin_tokens": [
+     "{size}"
+    ],
+    "cyrillic_alpha_ratio": 0.83,
+    "width_cells_template": 31,
+    "width_cells_en_template": 28,
+    "rendered_sample_ru": "не отправлено · написано 12,4 кБ",
+    "width_cells_rendered_ru": 32,
+    "width_cells_rendered_en": 29,
+    "value_sha256": "6cc03e25b1ecd19ce8d0ac0ac69d6703471ba25aba4ecbc1f3cad14830a0f057",
+    "context_has_maxCells": false
+   },
+   "ui.chat.canonical.tool.never_sent_empty": {
+    "en": "never sent · nothing composed",
+    "ru": "не отправлено · ничего не написано",
+    "placeholder_size_count_ru": 0,
+    "placeholder_size_count_en": 0,
+    "placeholders_en": [],
+    "braces_ru": [],
+    "icu_plural_or_select": false,
+    "middot_u00b7_count": 1,
+    "middot_surrounded_by_spaces": true,
+    "ascii_period_separator": false,
+    "leading_or_trailing_whitespace": false,
+    "trailing_sentence_punctuation": false,
+    "nfc_normalized": true,
+    "latin_tokens": [],
+    "cyrillic_alpha_ratio": 1.0,
+    "width_cells_template": 34,
+    "width_cells_en_template": 29,
+    "rendered_sample_ru": "не отправлено · ничего не написано",
+    "width_cells_rendered_ru": 34,
+    "width_cells_rendered_en": 29,
+    "value_sha256": "470332be4dc8b7b298d9caba20b19056f4274b56268e578cce3023283a7ddfe5",
+    "context_has_maxCells": false
+   }
+  }
+ }
+}

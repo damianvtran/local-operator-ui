@@ -1,8 +1,16 @@
 import {
+	AgentAvatarSlot,
+	useAgentSlotMark,
+} from "@shared/agent-avatar/agent-avatar-slot";
+import { agentSuggestsPicture } from "@shared/agent-avatar/avatar-presence";
+import {
+	desktopFeatureEnabled,
 	desktopFeatureState,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
+import { useProfiles } from "@shared/api/local-operator/profile-hooks";
 import { Spinner } from "@shared/components/common/spinner";
+import { togglePanelRailItem } from "@shared/components/navigation/panel-rail-actions";
 import {
 	Badge,
 	Button,
@@ -22,7 +30,11 @@ import { useHomeDirectory } from "@shared/hooks";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import { useCanvasStore } from "@shared/store/canvas-store";
+import {
+	resolveDrawnRightSlotPane,
+	useUiPreferencesStore,
+} from "@shared/store/ui-preferences-store";
 import { formatDirectory, middleTruncatePath } from "@shared/utils/path-utils";
 import { showErrorToast, showWarningToast } from "@shared/utils/toast-manager";
 import {
@@ -31,9 +43,12 @@ import {
 	Check,
 	Copy,
 	FileText,
+	FolderKanban,
 	GitPullRequest,
 	Globe,
 	Info,
+	MessageSquare,
+	MessageSquareDashed,
 	MonitorSmartphone,
 	MoreHorizontal,
 	Pencil,
@@ -43,8 +58,15 @@ import {
 	X,
 } from "lucide-react";
 import { type FC, type ReactNode, useEffect, useRef, useState } from "react";
+import type { SessionTemporaryInfo } from "../../../../../shared/desktop-session-contract";
+import { HEADER_AVATAR_BOX, parseAgentAvatarSize } from "../agent-avatar-size";
 import type { AskScope } from "../ask-queue";
 import { archiveControlLabel } from "../chat-archived";
+import {
+	minutesLeft,
+	showCountdown,
+	temporaryMenuAction,
+} from "../chat-temporary";
 /*
  * THE ACT'S OWN WRITE (#893), the same module the sidebar row menu calls: one
  * door per surface, one implementation of what is copied and what it says.
@@ -58,6 +80,7 @@ import {
 	parseTranscriptDisplayMode,
 	transcriptDisplayModeLabel,
 } from "../transcript-display-mode";
+import { useAskClock } from "../use-ask-clock";
 import { AsksScopeIcon } from "./asks/asks-scope-icon";
 import {
 	ChatHeaderIdentity,
@@ -77,6 +100,25 @@ import {
  */
 type ChatHeaderProps = {
 	agentName?: string;
+	/**
+	 * The local agent this conversation is bound to, for the picture left of the
+	 * name (agent profile pictures, 2026-10-30). All three are optional and
+	 * absent means the header draws exactly what it drew before: a backend that
+	 * does not publish them, a draft, and a Team Bridge identity that is not a
+	 * local agent all land here.
+	 */
+	agentAvatar?: {
+		agentId: string;
+		/**
+		 * The BOUND AGENT's name - the editor link's address - never the chat
+		 * title this header shows (QA round 1, Q-1). Null when the row names no
+		 * bound agent; the picture still draws, but with no door (`owned` false).
+		 */
+		agentName: string | null;
+		sha256: string | null;
+		/** Whether the viewer owns the agent, i.e. whether the pencil appears. */
+		owned: boolean;
+	} | null;
 	description?: string;
 	/**
 	 * The panel is mounted on a target whose identity is not known yet, and the
@@ -123,6 +165,13 @@ type ChatHeaderProps = {
 	 */
 	deviceSlot?: ReactNode;
 	/**
+	 * The New chat pane's agent/team chip (`chat-header-draft-target.tsx`): who
+	 * will answer the conversation, chosen before the first send. A node for the
+	 * same reason `deviceSlot` is one - the page owns the draft and the store
+	 * write - and absent on every live pane, where `identity` is the switcher.
+	 */
+	draftTargetSlot?: ReactNode;
+	/**
 	 * The session the inline rename writes to, when this header offers rename.
 	 *
 	 * A session id rather than a callback, because the write path lives HERE now:
@@ -136,6 +185,14 @@ type ChatHeaderProps = {
 	 * draft, the session it would need) instead of rendering a dead pencil.
 	 */
 	renameSessionId?: string;
+	/**
+	 * Hold the pencil's 20px box (plus the group's gap) before `renameSessionId`
+	 * exists, on a pane whose conversation will gain one - a new chat on a
+	 * backend with `commands` (design round 1, D1a). The pencil mounted at the
+	 * create hop and pushed the line beside it 24px right with no visible cause;
+	 * an empty `aria-hidden` box of the same size makes that mount a swap in place.
+	 */
+	renameSlotReserved?: boolean;
 	/**
 	 * The conversation's own id, copied by the overflow menu's "Copy session ID"
 	 * item (#893) - a DIFFERENT prop from `renameSessionId` above, and the two do
@@ -157,6 +214,15 @@ type ChatHeaderProps = {
 	 */
 	sessionId?: string;
 	onOpenOptions?: () => void;
+	/**
+	 * The canvas store's key for this conversation (the chat's `agentId`).
+	 * The canvas and linked-projects rows read it the way the rail's two canvas
+	 * doors do: which door is "lit" is the canvas's VIEW, and both presses go
+	 * through `togglePanelRailItem` so the menu and the rail cannot drift
+	 * (canvas-projects round-1 U1/U2). Absent: the canvas row stays a plain
+	 * toggle and the projects row is not drawn.
+	 */
+	canvasConversationId?: string;
 	/**
 	 * Whether THIS header is the element the OS's caption buttons sit over, and so
 	 * must reserve their width at its trailing end.
@@ -287,6 +353,32 @@ type ChatHeaderProps = {
 	onSetArchived?: (archived: boolean) => void;
 	deleteEnabled?: boolean;
 	onRequestDelete?: () => void;
+	/**
+	 * Temporary chats (`features.temporary_chats`), passed down like the archive
+	 * pair so the header and the sidebar gate on one answer.
+	 *
+	 * `temporary` is the live chat's state (`null`: not temporary). `temporaryDraft`
+	 * is present only on a DRAFT under the capability: the dashed toggle that
+	 * decides whether the chat is created temporary. `onKeepTemporary` writes
+	 * straight through (the safe direction, no confirmation); `onMakeTemporary`
+	 * OPENS the host's confirmation and writes nothing itself.
+	 */
+	temporaryEnabled?: boolean;
+	temporary?: SessionTemporaryInfo | null;
+	temporaryDraft?: {
+		on: boolean;
+		/**
+		 * The draft is aimed at another device: a temporary chat there is contract
+		 * §8 deferred scope (the core answers 422), so the switch is disabled and
+		 * says why rather than offering a create that cannot succeed.
+		 */
+		peerDestination?: boolean;
+		onToggle: (on: boolean) => void;
+	};
+	onKeepTemporary?: () => void;
+	onMakeTemporary?: () => void;
+	/** A fixed clock (epoch ms) for stories and frames; the live header ticks. */
+	temporaryNowMs?: number;
 };
 
 /**
@@ -297,15 +389,200 @@ type ChatHeaderProps = {
  */
 const PATH_CHIP_CHARS = 40;
 
+/**
+ * The header's mark and its door onto the picture editor.
+ *
+ * A COMPONENT RATHER THAN A CONDITIONAL INSIDE THE HEADER, because what it draws
+ * comes from hooks: the bytes and whether a write is in flight. Mounted only when
+ * the header HAS an agent (`agentAvatar` non-null), so a draft, a Team Bridge
+ * identity or a backend that publishes no agent id still touches no query client.
+ *
+ * WHAT IT DRAWS IS `decideAvatarMark`'s ANSWER, shared with the transcript's turn
+ * head so the two cannot disagree:
+ *
+ *  - a picture whose bytes resolved, with the pencil door for an owned agent;
+ *  - NO PICTURE - never had one, a digest whose bytes do not resolve, an agents
+ *    list that could not be read - draws NOTHING for a regular session, owned or
+ *    not, and the title row keeps the 20px line main always had (operator,
+ *    2026-11-04: most sessions are simple tasks delegated to a generic role, and
+ *    an empty mark should not cost them space or attention). There is therefore
+ *    never a pencil door onto an empty plate;
+ *  - THE EXCEPTION: an owned, bound PROACTIVE-class agent or the chief of staff
+ *    (`agentSuggestsPicture`) draws the placeholder door - a dashed ring and a
+ *    camera - because those are the agents the operator relates to as someone.
+ *    This header is the only surface that asks for it;
+ *  - while a claimed picture's bytes are still cold, a plain plate holds the box
+ *    so the title does not move when the face lands;
+ *  - a picture being replaced keeps drawing, door closed; a first picture being
+ *    written under the placeholder keeps its box as a busy plate.
+ *
+ * It is 20px by default and follows the reader's size setting (`agent-avatar-
+ * size.ts`), capped at 32px so the 40px bar never grows.
+ */
+export const ChatHeaderAvatar: FC<{
+	agent: NonNullable<ChatHeaderProps["agentAvatar"]>;
+}> = ({ agent }) => {
+	const { avatar } = useHeaderAvatar(agent);
+	return avatar;
+};
+
+/**
+ * The header's mark and the height of the title row that holds it, decided in
+ * ONE place so the row and the mark cannot disagree (agent review n-2): the row
+ * follows the size table only when a mark is drawn, and keeps the historical
+ * 20px line otherwise. The title block clips to one line (`overflow-clip`) when
+ * no identity controls share it, and that line was exactly the 20px avatar's
+ * height, so a taller mark needs a taller row (the bar stays 40px: the table caps
+ * at 32).
+ */
+const useHeaderAvatar = (
+	agent: NonNullable<ChatHeaderProps["agentAvatar"]>,
+): { avatar: ReactNode; rowClassName: string } => {
+	const size = parseAgentAvatarSize(
+		useUiPreferencesStore((state) => state.agentAvatarSize),
+	);
+	const box = HEADER_AVATAR_BOX[size];
+	/*
+	 * The class lives on the profile, not the session row; the read is the one
+	 * shared `profiles.list` query chat already makes for the turn head, so it
+	 * costs no extra request. Only an owned agent can be suggested to (a claimed
+	 * digest whose bytes fail must draw what an absent one draws, so the digest
+	 * does not gate the read). Until it answers, nothing is suggested.
+	 *
+	 * WHILE IT IS PENDING THE HEADER HOLDS A PLATE (D1 / m2): drawing nothing and
+	 * then the door once `action_class: "proactive"` arrives shifts the title
+	 * 24px on a cold start. The trade is that a regular session's header holds
+	 * the same plate for that read and then drops it - accepted because the key
+	 * is the turn head's shared `["desktop","profiles"]` query (chat-page reads
+	 * it first), so on a warm path it is never pending and no plate is drawn.
+	 * `isPending` is also true for a DISABLED query, hence the same gate as
+	 * `enabled`; the chief of staff is known by name and never waits.
+	 */
+	const capabilities = useDesktopCapabilities();
+	const readsClass =
+		agent.owned &&
+		desktopFeatureEnabled(capabilities.data, "profile_catalogue");
+	const profiles = useProfiles(readsClass);
+	const suggestPicture = agentSuggestsPicture(agent.agentName, profiles.data);
+	const mark = useAgentSlotMark({
+		agentId: agent.agentId,
+		agentName: agent.agentName,
+		sha256Hint: agent.sha256,
+		owned: agent.owned,
+		pictureDoor: true,
+		suggestPicture,
+		suggestPending: readsClass && profiles.isPending && !suggestPicture,
+		// The box below is what the picture is drawn at, so it is what to ask for.
+		cssPx: box.px,
+	});
+	if (!mark) return { avatar: null, rowClassName: NO_MARK_ROW };
+	return {
+		rowClassName: box.rowClassName,
+		avatar: (
+			<span className="me-1 flex shrink-0 items-center">
+				<AgentAvatarSlot
+					mark={mark}
+					boxClassName={box.className}
+					glyphClassName={box.glyphClassName}
+					hitClassName={box.hitClassName}
+					agentName={agent.agentName}
+				/>
+			</span>
+		),
+	};
+};
+
+/** The title row's height with no mark drawn: the line main always had. */
+const NO_MARK_ROW = "h-5";
+
+type HeaderAvatarParts = { avatar: ReactNode; rowClassName: string };
+
+const WithHeaderAvatar: FC<{
+	agent: NonNullable<ChatHeaderProps["agentAvatar"]>;
+	children: (parts: HeaderAvatarParts) => ReactNode;
+}> = ({ agent, children }) => children(useHeaderAvatar(agent));
+
+/**
+ * WHY THIS IS A COMPONENT AND NOT A HOOK CALL IN `ChatHeader` (agent review M1).
+ * The mark's reads go through `useQueryClient`, which throws without a provider,
+ * and a header with NO bound agent (a draft, a packaged profile, every panel
+ * test mount) has no picture to read. A hook called in the header body ran for
+ * every header; a component that owns the hook and renders only when there is an
+ * agent keeps the no-agent header on exactly the code path it always had - no
+ * query client, no store read - while the row class and the mark still come from
+ * one call.
+ */
+const HeaderAvatarScope: FC<{
+	agent: ChatHeaderProps["agentAvatar"];
+	children: (parts: HeaderAvatarParts) => ReactNode;
+}> = ({ agent, children }) =>
+	agent ? (
+		<WithHeaderAvatar agent={agent}>{children}</WithHeaderAvatar>
+	) : (
+		children({ avatar: null, rowClassName: NO_MARK_ROW })
+	);
+
+/**
+ * The live temporary chat's STATE: the archived pill's sibling with a dashed
+ * edge, neutral at rest. In the last five minutes (and never while a hold
+ * applies) it turns to the existing warning badge and counts down, with a Keep
+ * action beside it - the archived pill + restore pair's arrangement. It
+ * re-renders on the ask clock's 30 s cadence; nothing animates.
+ */
+const TemporaryPill: FC<{
+	info: SessionTemporaryInfo;
+	nowMs?: number;
+	onKeep?: () => void;
+}> = ({ info, nowMs, onKeep }) => {
+	const now = useAskClock(true, nowMs) / 1000;
+	const counting = info.hold == null && showCountdown(info.deletes_at, now);
+	const minutes = counting ? minutesLeft(info, now) : null;
+	if (counting && minutes !== null) {
+		return (
+			<>
+				<Badge
+					shape="pill"
+					variant="warning"
+					className="border-dashed"
+					data-session-temporary-pill="countdown"
+				>
+					<MessageSquareDashed aria-hidden="true" />
+					{t("ui.chat.header.temporary_ends_in", { minutes })}
+				</Badge>
+				{onKeep && (
+					<Button variant="ghost" size="sm" onClick={onKeep}>
+						{t("ui.chat.header_menu.keep_chat")}
+					</Button>
+				)}
+			</>
+		);
+	}
+	return (
+		<Badge
+			shape="pill"
+			className="border-control border-dashed"
+			data-session-temporary-pill="live"
+			title={t("ui.chat.header.temporary_hint")}
+		>
+			<MessageSquareDashed aria-hidden="true" />
+			{t("ui.chat.header.temporary")}
+		</Badge>
+	);
+};
+
 export const ChatHeader: FC<ChatHeaderProps> = ({
 	agentName = "Local Operator",
-	description = "Your on-device AI assistant",
+	agentAvatar = null,
+	description = t("ui.chat.header_menu.default_description"),
 	descriptionPending = false,
 	identity,
 	deviceSlot,
+	draftTargetSlot,
 	renameSessionId,
+	renameSlotReserved = false,
 	sessionId,
 	onOpenOptions,
+	canvasConversationId,
 	reserveTrailingChrome = false,
 	onToggleBrowser,
 	archived = false,
@@ -313,6 +590,12 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	onSetArchived,
 	deleteEnabled = false,
 	onRequestDelete,
+	temporaryEnabled = false,
+	temporary = null,
+	temporaryDraft,
+	onKeepTemporary,
+	onMakeTemporary,
+	temporaryNowMs,
 	onOpenConsole,
 	onOpenCodeReview,
 	onToggleAsks,
@@ -354,9 +637,31 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	 * see the menu root's note on why the ask waits for the menu to close.
 	 */
 	const [menuOpen, setMenuOpen] = useState(false);
+	// A draft shows the toggle, never the pill or the menu item: it has no
+	// conversation for either to describe yet.
+	const temporaryInfoShown =
+		temporaryEnabled && !temporaryDraft ? temporary : null;
+	const temporaryAction = temporaryMenuAction(
+		temporaryEnabled &&
+			(onKeepTemporary !== undefined || onMakeTemporary !== undefined),
+		temporaryDraft !== undefined,
+		temporaryInfoShown,
+	);
 	const moveRequestedRef = useRef(false);
-	const setCanvasOpen = useUiPreferencesStore((s) => s.setCanvasOpen);
-	const isCanvasOpen = useUiPreferencesStore((s) => s.isCanvasOpen);
+	/*
+	 * THE CANVAS SLOT'S TWO DOORS, read as the rail reads them (`panel-rail.tsx`):
+	 * Projects is "open" while the canvas is drawn on its Projects view, Canvas
+	 * while it is drawn on any other view, so each row's verb matches what its
+	 * press will do.
+	 */
+	const drawnPane = useUiPreferencesStore(resolveDrawnRightSlotPane);
+	const canvasOnProjects = useCanvasStore((state) =>
+		canvasConversationId
+			? state.conversations[canvasConversationId]?.viewMode === "projects"
+			: false,
+	);
+	const canvasRowOpen = drawnPane === "canvas" && !canvasOnProjects;
+	const projectsRowOpen = drawnPane === "canvas" && canvasOnProjects;
 	/*
 	 * The code review pane's bound, read for the `...` menu's entry (N1): the
 	 * label flips with the SAME store field `onOpenCodeReview` toggles, so the
@@ -418,6 +723,9 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	 */
 	const shownDescription = formatDirectory(description, homeDirectory);
 	const showDescription = shownDescription !== "~" && shownDescription !== "";
+	// Controls in the title block keep the row from wrapping (see the row's
+	// class below): the live identity pair, or a New chat's agent/team chip.
+	const noWrapControls = Boolean(identity) || Boolean(draftTargetSlot);
 	// Read here rather than passed in: the pane is a property of the window's right
 	// slot, so the control that opens it and the slot that renders it have to answer
 	// from ONE field — the same reason the canvas button reads `isCanvasOpen` itself.
@@ -541,7 +849,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 		const { result } = await renameCommand.run(
 			"rename",
 			next,
-			"Could not rename the conversation",
+			t("ui.chat.header_menu.rename_failed"),
 		);
 		if (result.tone === "error") {
 			showErrorToast(result.text);
@@ -644,7 +952,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			 * lets it yield before any control does).
 			 */
 			className={cn(
-				"@container/chathdr flex h-10 shrink-0 items-center gap-3 px-4",
+				"@container/chathdr flex min-h-10 shrink-0 items-center gap-3 px-4",
 			)}
 			data-tour-tag="chat-header"
 			data-titlebar-drag=""
@@ -655,7 +963,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			 * header; the row starts with the conversation's title.
 			 */}
 			{/* `flex-1` as well as `min-w-0`: the block was min-w-0 inside a row
-			 * whose only other content is an `ml-auto` action, so it yielded before
+			 * whose only other content is an `ms-auto` action, so it yielded before
 			 * the empty space did - the description clipped mid-sentence at 760px
 			 * while 220px of bar sat unused to its right. Growing first means the
 			 * text truncates only once there is genuinely no room left. */}
@@ -724,346 +1032,374 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			 * keep the wrap-and-clip unchanged - the path is decoration dropped before
 			 * the title loses a word, the chip is a control and keeps its room.
 			 */}
-			<div
-				className={cn(
-					"flex h-5 min-w-0 flex-1 items-baseline gap-x-2 overflow-clip @[13.5rem]/chathdr:min-w-10",
-					!identity && "flex-wrap",
-					/*
-					 * THE CLIP EARNS FOUR PIXELS OF MARGIN WHILE A DEVICE CONTROL IS INSIDE IT
-					 * (design review round 2, D1). The device chip finished this round sitting
-					 * 2.2px LOWER than the band it lives in: the baseline join the alignment fix
-					 * restores puts its 20px box at y 44.2 against this row's y 42, so the box's
-					 * last two pixels - and with them the bottom stroke of its own inset focus
-					 * ring and the bottom edge of its hover fill - fell under `overflow-clip`
-					 * (measured in `docs/evidence/chat-device-persist/`: the ring's top and side
-					 * strokes present, the bottom stroke absent; the scan lives in the set's
-					 * `harness/drive.mjs`). `overflow-clip` is the right mechanism here (see
-					 * above - it was chosen because `hidden` is a scrollport that scrolled under
-					 * focus); `overflow-clip-margin` is the spec's own knob for keeping it while
-					 * granting an edge a little ink room.
-					 *
-					 * GATED ON WHAT IS ACTUALLY INSIDE THE ROW (`has-[...]`), not on the prop and
-					 * not unconditionally. The margin's reason is the device chip's own box, and
-					 * the chip is rendered by `deviceSlot` INSIDE the flex line rather than as a
-					 * prop (`chat-header.tsx`'s own device-slot comment says so) - so `identity`
-					 * would have missed exactly the draft state this round is fixing (measured:
-					 * the first attempt gated on `identity` and the after arm still read an open
-					 * ring). The `:has()` form keeps the margin off every other composition -
-					 * the plain-title case and any row without a device control keep today's
-					 * exact clip, which is what the wrapped second line needs.
-					 */
-					"has-[[data-device-chip]]:[overflow-clip-margin:4px]",
-				)}
-			>
-				{/* `text-body` (14), not `text-heading` (16) and not `text-title` (20):
-				 * branding.md reserves the 20px step for section and dialog titles and states
-				 * that a desktop app has no hero, and on the name of the conversation the
-				 * reader is already inside the 16px step made the bar's loudest text the
-				 * thing they were looking at anyway. 14 is one step above the rows the bar
-				 * heads, which is what the reference products use. */}
-				{/*
-				 * THE RENAME CONTROL LANDS WHERE THE ACTION IS: on the conversation's own
-				 * name, not on the identity chip beside it (the operator wrote "on the
-				 * team name" and the manager's clarification, 2026-09-26, pinned that
-				 * the title block is the rename's subject; the design round sees this
-				 * note). It OPENS AN INLINE EDITOR rather than the picker - the
-				 * operator's report asks for "inline edit with enter or unfocus to
-				 * save, esc or click x to cancel (pencil turns into an X)", and the
-				 * editor's one write path is the state block above this return.
-				 *
-				 * The slot is RESERVED rather than inserted: opacity is the only thing
-				 * that changes on hover (/motion), so nothing reflows under the pointer,
-				 * and `group-focus-within/title` is what makes it keyboard-reachable -
-				 * tabbing to the pencil makes it visible. `text-ink-dim` and a 12px glyph
-				 * inside a 20px slot: the ramp's rule for anything smaller than a 28px
-				 * control.
-				 *
-				 * THE 20px SLOT IS A RECORDED TRADE (design round 1, D5), not an
-				 * oversight: the slot sits inside the block above, whose one-line clip
-				 * band is 20px, so nothing in it can present a 24x24 target - a hit area
-				 * cannot extend past the ancestor that clips it, and growing the band
-				 * exposes a sliver of the wrapped second line (measured on the fold
-				 * state; see the PR's Judgement calls). The pencil and the two triggers
-				 * are 20px in a 40px desktop toolbar, kept because the alternative
-				 * re-pins the toolbar step this header's rounds fixed - and the
-				 * measurement is what makes it a decision rather than an accident.
-				 */}
-				<span
-					className={cn(
-						"group/title inline-flex min-w-0 max-w-full items-center gap-1",
-					)}
-					/*
-					 * THE TITLE IS A CLIENT-AREA SURFACE, AND THIS IS THE LINE THAT MAKES
-					 * IT ONE (operator's report, 2026-09-26: "the rename interaction ...
-					 * only happens when you hover to the right of the conversation title
-					 * but not on the title itself").
-					 *
-					 * WHY IT WAS NOT: the header row is a drag region (`data-titlebar-drag`
-					 * above) and a point inside a drag region belongs to the OS's
-					 * window-move hit test - the renderer never sees the pointer there (the
-					 * mechanism is written down in `styles/index.css`'s drag vocabulary,
-					 * and `scripts/overlay-drag-zones.test.mjs` F-5 pins this marker so a
-					 * refactor cannot quietly remove it). The pencil beside the title
-					 * worked because it is a `<button>` and the descendant rule opts
-					 * controls out; the title text had no opt-out, so hovering IT was a
-					 * window drag - `group-hover` never fired, the pencil never revealed,
-					 * and a double-click never reached the title at all. The marker
-					 * subtracts the whole block's rect, which is what makes hovering
-					 * anywhere over the title text reveal the pencil and stand the editor's
-					 * entry gestures on client-area ground.
-					 *
-					 * THE TRADE, stated where the marker is (and flagged for the design/UX
-					 * rounds): the title is no longer a window-drag HANDLE. Dragging must
-					 * start beside it - the row's own empty lane, the padding, or the
-					 * strip above - and the `stillDrags` point in the `hit-zones` scene
-					 * measures that lane to prove it.
-					 */
-					data-titlebar-no-drag=""
-				>
-					{renaming ? (
-						<input
-							ref={renameInputRef}
-							data-header-rename-input=""
-							/*
-							 * `outline-none` is deliberate, the second exemption the focus-ring
-							 * rule in `styles/index.css` names: focus moved here
-							 * programmatically as the edit OPENED, and the block's one-line
-							 * clip would cut a ring anyway. What says "editing" is the X in
-							 * the slot, the caret, and the selected text.
-							 */
-							className={cn(
-								"min-w-0 max-w-full border-0 bg-transparent p-0 outline-none",
-								"font-medium text-body text-ink",
-							)}
-							style={renameWidth === null ? undefined : { width: renameWidth }}
-							value={renameDraft}
-							/*
-							 * FROZEN WHILE SAVING, visibly (UX round 1's U3): the command
-							 * already carries the value that was on screen when Enter or the
-							 * blur submitted it, so edits accepted after that point could only
-							 * be text the write silently ignores. `readOnly` rather than
-							 * `disabled`: it blocks edits while keeping focus, caret and
-							 * selection, and the busy spinner in the slot states why nothing
-							 * types rather than the keystrokes simply vanishing.
-							 */
-							readOnly={renameSaving}
-							aria-label={t("ui.chat.header.conversation_name")}
-							onChange={(event) => setRenameDraft(event.target.value)}
-							onKeyDown={(event) => {
-								if (event.key === "Enter") {
-									event.preventDefault();
-									void commitRename(true);
-								} else if (event.key === "Escape") {
-									/* Claimed with `preventDefault`, the way every layer that
-									 * must win claims Escape (the ladder in
-									 * `use-interrupt-on-escape.ts`): the field owns the key,
-									 * so a cancel cannot also reach the turn's interrupt. */
-									event.preventDefault();
-									/* A SUBMITTED SAVE IS COMMITTED (UX round 1's U1): once
-									 * the write is in flight its outcome is the backend's, and
-									 * an exit that only closed the editor would promise an
-									 * abort it cannot make. The no-op is visible - the slot
-									 * shows the busy spinner and the field is read-only - and
-									 * the escape claim above still runs, so the key cannot
-									 * fall through to the turn's interrupt either. */
-									if (renamePhaseRef.current === "saving") return;
-									closeRename(true);
-								}
-							}}
-							onBlur={() => void commitRename(false)}
-							spellCheck={false}
-						/>
-					) : (
-						<h2
-							ref={renameTitleRef}
-							data-header-title=""
-							onDoubleClick={renameSessionId ? startRename : undefined}
-							className={cn(
-								"min-w-0 max-w-full truncate font-medium text-body text-ink",
-								/*
-								 * Client-area now, so the two things such a text needs: no
-								 * native selection (a drag across a window title that
-								 * highlights like a document reads as broken, and a
-								 * double-click's word-select would race the select-all the
-								 * editor opens with), and the arrow cursor - a pointer
-								 * cursor would promise a single click the text does not act
-								 * on (the double-click and the pencil are the affordances).
-								 * `user-select: none` does not stop `dblclick`, which is the
-								 * event the editor opens on.
-								 */
-								"cursor-default select-none",
-							)}
-						>
-							{agentName}
-						</h2>
-					)}
-					{renameSessionId && (
-						<button
-							ref={renameControlRef}
-							type="button"
-							data-header-rename=""
-							/*
-							 * THE LABEL STATES THE TRUE AFFORDANCE OF EACH PHASE: the
-							 * pencil's name, the X's cancel, and - while the write is in
-							 * flight - the busy state itself, because a "Cancel rename"
-							 * label over a no-op would be the same lie the U1 rule exists
-							 * to avoid.
-							 */
-							aria-label={
-								renameSaving
-									? "Saving the conversation name"
-									: renaming
-										? "Cancel rename"
-										: "Rename conversation"
-							}
-							title={
-								renameSaving
-									? "Saving the conversation name"
-									: renaming
-										? "Cancel rename"
-										: "Rename conversation"
-							}
-							/*
-							 * THE BUSY CUE, in the identity trigger's pattern: `aria-busy`
-							 * plus the spinner taking the icon's slot, the 20px box fixed so
-							 * geometry never moves. `aria-disabled`, not `disabled`: the
-							 * button keeps its place and never steals focus back from the
-							 * field; the press guard below is what actually no-ops.
-							 */
-							aria-busy={renameSaving || undefined}
-							aria-disabled={renameSaving || undefined}
-							/*
-							 * The X half of the blur race: consume the press's own
-							 * `mousedown` so the input never blurs on the way to this
-							 * handler (a blur would save first), and let go of a
-							 * multi-click's second press so NOTHING toggles twice in one
-							 * gesture - the guard is symmetric (agent review round 1's
-							 * NIT-1): without it a double-click on the X cancels on the
-							 * first press and RE-OPENS on the second.
-							 */
-							onMouseDown={(event) => {
-								if (renaming) event.preventDefault();
-							}}
-							onClick={(event) => {
-								if (event.detail > 1) return;
-								/* A submitted save is committed (U1): while it is in
-								 * flight this control is the busy indicator, never the
-								 * cancel exit. */
-								if (renamePhaseRef.current === "saving") return;
-								if (!renaming) {
-									startRename();
-									return;
-								}
-								closeRename(true);
-							}}
-							className={cn(
-								"inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-xs",
-								"text-ink-dim",
-								// The duration governs the transition INTO the current state, so
-								// the resting value is the fade-OUT and the hovered value the
-								// fade-IN: quick to appear, gentler to leave (the reveal pattern
-								// `chat-sidebar.tsx`'s entity rows ship). While editing the
-								// reveal gates are dropped: the X is the mode's own control
-								// and must be visible without a pointer.
-								"transition-opacity duration-base ease-out-quart",
-								!renaming &&
-									"opacity-0 group-hover/title:opacity-100 group-hover/title:duration-fast",
-								!renaming &&
-									"group-focus-within/title:opacity-100 group-focus-within/title:duration-fast",
-								"hover:text-ink-muted",
-							)}
-						>
-							{renameSaving ? (
-								/* The spinner takes the X's slot while the write is in
-								 * flight - the identity trigger's busy glyph, one scale
-								 * step up from the 12px icons to match it. */
-								<Spinner size="xs" />
-							) : renaming ? (
-								<X className={cn("size-3")} aria-hidden="true" />
-							) : (
-								<Pencil className={cn("size-3")} aria-hidden="true" />
-							)}
-						</button>
-					)}
-				</span>
-				{/*
-				 * THE QUIET PATH, and the `~` form is the point of it.
-				 *
-				 * This slot used to be the second line of a 56px bar and printed `description`
-				 * RAW - for a live conversation that is the absolute working directory, so
-				 * the row read `/Users/damian/.local-operator/sessions/d81d04d3…` truncated
-				 * from the right, i.e. with the one segment that identifies the directory cut
-				 * off, while the composer's chip abbreviated the same value to `~/.local…`
-				 * (D7). It goes through the chip's own rule now (`formatDirectory`, hoisted to
-				 * `shared/utils/path-utils.ts` so there is one implementation and two
-				 * surfaces), which is safe because that rule returns anything that is not a
-				 * path unchanged - and this slot is not only a path: it holds the draft's
-				 * sentence and a starting run's target name too.
-				 *
-				 * `shrink-[2]` YIELDS BEFORE THE TITLE. Both strings truncate, and which one
-				 * gives first is the whole ordering question in a 40px row: the title is what
-				 * the reader came for, and the directory is a fact they can also read in the
-				 * composer's chip one line below. So the path takes the larger shrink factor
-				 * and disappears into its ellipsis first.
-				 *
-				 * THE TOOLTIP KEEPS THE RAW VALUE, so the fully-resolved path is one hover
-				 * away and nothing about the shortening is lossy.
-				 */}
-				{descriptionPending ? (
-					/* `bg-elevated` for the same measured reason the transcript
-					 * placeholder takes it: the header's ground is `canvas`, where the Skeleton
-					 * default `sunken` is the system's weakest adjacent pair (deltaE00 1.89 in the
-					 * dark brand palette, 1.25 in obsidian). The height matches the `text-mono-sm`
-					 * line it stands in, so holding the slot holds the row's height too. */
-					<Skeleton className={cn("h-3 w-24 shrink-0 bg-elevated")} />
-				) : identity ? (
-					/*
-					 * THE IDENTITY SLOT, WHEN THERE IS SOMETHING TO SWITCH. The two menus
-					 * replace the joined string ("manager · lopdev") in the same slot, so
-					 * the row's wrap-and-clip behaviour is unchanged: at widths the text
-					 * block cannot hold, the control wraps onto the clipped line exactly
-					 * as the chip did. Everything about drawing, gating and the labels
-					 * lives in `chat-header-identity.tsx`; this component only decides
-					 * WHICH content the slot holds.
-					 */
-					<ChatHeaderIdentity {...identity} />
-				) : showDescription ? (
-					<span
-						data-header-path=""
+			<HeaderAvatarScope agent={agentAvatar}>
+				{({ avatar, rowClassName }) => (
+					<div
 						className={cn(
-							// `font-mono` as well as the step: `text-mono-sm` is a SIZE, and
-							// without the family the chip rendered in the sans face (D6).
-							"shrink-0 whitespace-nowrap font-mono text-ink-dim text-mono-sm",
+							// The avatar participates in the title's flex box, so its text baseline
+							// is not the controls' baseline. Centre the sibling boxes instead;
+							// this remains true as fonts scale or optional controls disappear.
+							"flex min-w-0 flex-1 items-center gap-x-2 @[13.5rem]/chathdr:min-w-10",
+							// Interactive rows need their natural height: a larger font or a
+							// multiline title must not have its ink/focus clipped to 20px.
+							// Keep the historical one-line clip only for decorative metadata.
+							// A New chat's agent/team chip is a control too (UX round 1 of
+							// the draft-target PR, U-1): its pick lengthens the title to "New
+							// chat with <name>", and under the wrap both chips folded onto the
+							// clipped line at 900px while staying Tab-reachable. Same ruling as
+							// the identity controls: the line does not wrap, the text yields.
+							noWrapControls
+								? "min-h-5"
+								: cn(rowClassName, "flex-wrap overflow-clip"),
+							// ...but a draft row still stops at its own edge. Below the
+							// app's 800px minimum the two chips outgrow the row once the
+							// title has yielded, and unclipped the device chip painted over
+							// the action cluster's `...` button (measured: a 248px row put
+							// it at x 197-351 across the button at 276-308). Clipping the
+							// x axis only keeps the chips' ink and focus rings whole
+							// vertically; `clip` makes no scrollport for focus to move.
+							!identity && draftTargetSlot && "overflow-x-clip",
 						)}
-						title={description}
 					>
+						{/* `text-body` (14), not `text-heading` (16) and not `text-title` (20):
+						 * branding.md reserves the 20px step for section and dialog titles and states
+						 * that a desktop app has no hero, and on the name of the conversation the
+						 * reader is already inside the 16px step made the bar's loudest text the
+						 * thing they were looking at anyway. 14 is one step above the rows the bar
+						 * heads, which is what the reference products use. */}
 						{/*
-						 * MIDDLE-TRUNCATED, so both informative ends survive: the head says
-						 * where the path is rooted and the tail says which directory it is
-						 * (§B4). It replaced a `dir="rtl"` left-cut, which kept the tail but
-						 * lost the root, and had no bound, so it took the title's room.
-						 * `formatDirectory` returns anything that is not a path unchanged, and
-						 * so does `middleTruncatePath` for a short string - this slot also
-						 * holds a draft's sentence and a starting run's target name.
+						 * THE RENAME CONTROL LANDS WHERE THE ACTION IS: on the conversation's own
+						 * name, not on the identity chip beside it (the operator wrote "on the
+						 * team name" and the manager's clarification, 2026-09-26, pinned that
+						 * the title block is the rename's subject; the design round sees this
+						 * note). It OPENS AN INLINE EDITOR rather than the picker - the
+						 * operator's report asks for "inline edit with enter or unfocus to
+						 * save, esc or click x to cancel (pencil turns into an X)", and the
+						 * editor's one write path is the state block above this return.
+						 *
+						 * The slot is RESERVED rather than inserted: opacity is the only thing
+						 * that changes on hover (/motion), so nothing reflows under the pointer,
+						 * and `group-focus-within/title` is what makes it keyboard-reachable -
+						 * tabbing to the pencil makes it visible. `text-ink-dim` and a 12px glyph
+						 * inside a 20px slot: the ramp's rule for anything smaller than a 28px
+						 * control.
+						 *
+						 * THE 20px SLOT IS A RECORDED TRADE (design round 1, D5), not an
+						 * oversight: the slot sits inside the block above, whose one-line clip
+						 * band is 20px, so nothing in it can present a 24x24 target - a hit area
+						 * cannot extend past the ancestor that clips it, and growing the band
+						 * exposes a sliver of the wrapped second line (measured on the fold
+						 * state; see the PR's Judgement calls). The pencil and the two triggers
+						 * are 20px in a 40px desktop toolbar, kept because the alternative
+						 * re-pins the toolbar step this header's rounds fixed - and the
+						 * measurement is what makes it a decision rather than an accident.
 						 */}
-						{middleTruncatePath(shownDescription, PATH_CHIP_CHARS)}
-					</span>
-				) : null}
-				{/*
-				 * THE DEVICE CONTROL SITS LAST IN THE TITLE BLOCK, which is where the design
-				 * put it: the block already hosts controls of exactly this shape (the team
-				 * and agent chips, 20px `rounded-xs` buttons with a popover), so the chip
-				 * inherits that geometry instead of inventing one. The block clips its own
-				 * second line, so at widths under the app's 800px minimum this chip is the
-				 * first thing to fold - the design's own note, and the reason to move this
-				 * one line above the identity slot if a docked pane's header ever has to
-				 * keep the placement fact and shed the identity pair instead.
-				 */}
-				{deviceSlot}
-			</div>
+						<span
+							className={cn(
+								"group/title inline-flex min-w-0 max-w-full items-center gap-1",
+							)}
+							/*
+							 * THE TITLE IS A CLIENT-AREA SURFACE, AND THIS IS THE LINE THAT MAKES
+							 * IT ONE (operator's report, 2026-09-26: "the rename interaction ...
+							 * only happens when you hover to the right of the conversation title
+							 * but not on the title itself").
+							 *
+							 * WHY IT WAS NOT: the header row is a drag region (`data-titlebar-drag`
+							 * above) and a point inside a drag region belongs to the OS's
+							 * window-move hit test - the renderer never sees the pointer there (the
+							 * mechanism is written down in `styles/index.css`'s drag vocabulary,
+							 * and `scripts/overlay-drag-zones.test.mjs` F-5 pins this marker so a
+							 * refactor cannot quietly remove it). The pencil beside the title
+							 * worked because it is a `<button>` and the descendant rule opts
+							 * controls out; the title text had no opt-out, so hovering IT was a
+							 * window drag - `group-hover` never fired, the pencil never revealed,
+							 * and a double-click never reached the title at all. The marker
+							 * subtracts the whole block's rect, which is what makes hovering
+							 * anywhere over the title text reveal the pencil and stand the editor's
+							 * entry gestures on client-area ground.
+							 *
+							 * THE TRADE, stated where the marker is (and flagged for the design/UX
+							 * rounds): the title is no longer a window-drag HANDLE. Dragging must
+							 * start beside it - the row's own empty lane, the padding, or the
+							 * strip above - and the `stillDrags` point in the `hit-zones` scene
+							 * measures that lane to prove it.
+							 */
+							data-titlebar-no-drag=""
+						>
+							{renaming ? (
+								<input
+									ref={renameInputRef}
+									data-header-rename-input=""
+									/*
+									 * `outline-none` is deliberate, the second exemption the focus-ring
+									 * rule in `styles/index.css` names: focus moved here
+									 * programmatically as the edit OPENED, and the block's one-line
+									 * clip would cut a ring anyway. What says "editing" is the X in
+									 * the slot, the caret, and the selected text.
+									 */
+									className={cn(
+										"min-w-0 max-w-full border-0 bg-transparent p-0 outline-none",
+										"font-medium text-body text-ink",
+									)}
+									style={
+										renameWidth === null ? undefined : { width: renameWidth }
+									}
+									value={renameDraft}
+									/*
+									 * FROZEN WHILE SAVING, visibly (UX round 1's U3): the command
+									 * already carries the value that was on screen when Enter or the
+									 * blur submitted it, so edits accepted after that point could only
+									 * be text the write silently ignores. `readOnly` rather than
+									 * `disabled`: it blocks edits while keeping focus, caret and
+									 * selection, and the busy spinner in the slot states why nothing
+									 * types rather than the keystrokes simply vanishing.
+									 */
+									readOnly={renameSaving}
+									aria-label={t("ui.chat.header.conversation_name")}
+									onChange={(event) => setRenameDraft(event.target.value)}
+									onKeyDown={(event) => {
+										if (event.key === "Enter") {
+											event.preventDefault();
+											void commitRename(true);
+										} else if (event.key === "Escape") {
+											/* Claimed with `preventDefault`, the way every layer that
+											 * must win claims Escape (the ladder in
+											 * `use-interrupt-on-escape.ts`): the field owns the key,
+											 * so a cancel cannot also reach the turn's interrupt. */
+											event.preventDefault();
+											/* A SUBMITTED SAVE IS COMMITTED (UX round 1's U1): once
+											 * the write is in flight its outcome is the backend's, and
+											 * an exit that only closed the editor would promise an
+											 * abort it cannot make. The no-op is visible - the slot
+											 * shows the busy spinner and the field is read-only - and
+											 * the escape claim above still runs, so the key cannot
+											 * fall through to the turn's interrupt either. */
+											if (renamePhaseRef.current === "saving") return;
+											closeRename(true);
+										}
+									}}
+									onBlur={() => void commitRename(false)}
+									spellCheck={false}
+								/>
+							) : (
+								<>
+									{/*
+									 * THE PICTURE, LEFT OF THE NAME (the operator's ask). By default it
+									 * takes the 20px box the identity chips hold, which keeps the avatar
+									 * and the controls on the same centre line; the size setting can
+									 * raise it to 32px at most, the 40px bar's own limit.
+									 *
+									 * NO PICTURE DRAWS THE PLACEHOLDER DOOR for an agent the viewer owns,
+									 * and so does a picture whose bytes do not resolve (`ChatHeaderAvatar`
+									 * asks the bytes, agent review round 1, m3, and draws one state for
+									 * both). An agent the viewer does not own with no picture draws
+									 * nothing, the header main drew.
+									 */}
+									{avatar}
+									<h2
+										ref={renameTitleRef}
+										data-header-title=""
+										onDoubleClick={renameSessionId ? startRename : undefined}
+										className={cn(
+											"min-w-0 max-w-full truncate font-medium text-body text-ink",
+											/*
+											 * Client-area now, so the two things such a text needs: no
+											 * native selection (a drag across a window title that
+											 * highlights like a document reads as broken, and a
+											 * double-click's word-select would race the select-all the
+											 * editor opens with), and the arrow cursor - a pointer
+											 * cursor would promise a single click the text does not act
+											 * on (the double-click and the pencil are the affordances).
+											 * `user-select: none` does not stop `dblclick`, which is the
+											 * event the editor opens on.
+											 */
+											"cursor-default select-none",
+										)}
+									>
+										{agentName}
+									</h2>
+								</>
+							)}
+							{renameSessionId ? (
+								<button
+									ref={renameControlRef}
+									type="button"
+									data-header-rename=""
+									/*
+									 * THE LABEL STATES THE TRUE AFFORDANCE OF EACH PHASE: the
+									 * pencil's name, the X's cancel, and - while the write is in
+									 * flight - the busy state itself, because a "Cancel rename"
+									 * label over a no-op would be the same lie the U1 rule exists
+									 * to avoid.
+									 */
+									aria-label={
+										renameSaving
+											? t("ui.chat.header.saving_conversation_name")
+											: renaming
+												? t("ui.chat.header.cancel_rename")
+												: t("ui.chat.header.rename_conversation")
+									}
+									title={
+										renameSaving
+											? t("ui.chat.header.saving_conversation_name")
+											: renaming
+												? t("ui.chat.header.cancel_rename")
+												: t("ui.chat.header.rename_conversation")
+									}
+									/*
+									 * THE BUSY CUE, in the identity trigger's pattern: `aria-busy`
+									 * plus the spinner taking the icon's slot, the 20px box fixed so
+									 * geometry never moves. `aria-disabled`, not `disabled`: the
+									 * button keeps its place and never steals focus back from the
+									 * field; the press guard below is what actually no-ops.
+									 */
+									aria-busy={renameSaving || undefined}
+									aria-disabled={renameSaving || undefined}
+									/*
+									 * The X half of the blur race: consume the press's own
+									 * `mousedown` so the input never blurs on the way to this
+									 * handler (a blur would save first), and let go of a
+									 * multi-click's second press so NOTHING toggles twice in one
+									 * gesture - the guard is symmetric (agent review round 1's
+									 * NIT-1): without it a double-click on the X cancels on the
+									 * first press and RE-OPENS on the second.
+									 */
+									onMouseDown={(event) => {
+										if (renaming) event.preventDefault();
+									}}
+									onClick={(event) => {
+										if (event.detail > 1) return;
+										/* A submitted save is committed (U1): while it is in
+										 * flight this control is the busy indicator, never the
+										 * cancel exit. */
+										if (renamePhaseRef.current === "saving") return;
+										if (!renaming) {
+											startRename();
+											return;
+										}
+										closeRename(true);
+									}}
+									className={cn(
+										"inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-xs",
+										"text-ink-dim",
+										// The duration governs the transition INTO the current state, so
+										// the resting value is the fade-OUT and the hovered value the
+										// fade-IN: quick to appear, gentler to leave (the reveal pattern
+										// `chat-sidebar.tsx`'s entity rows ship). While editing the
+										// reveal gates are dropped: the X is the mode's own control
+										// and must be visible without a pointer.
+										"transition-opacity duration-base ease-out-quart",
+										!renaming &&
+											"opacity-0 group-hover/title:opacity-100 group-hover/title:duration-fast",
+										!renaming &&
+											"group-focus-within/title:opacity-100 group-focus-within/title:duration-fast",
+										"hover:text-ink-muted",
+									)}
+								>
+									{renameSaving ? (
+										/* The spinner takes the X's slot while the write is in
+										 * flight - the identity trigger's busy glyph, one scale
+										 * step up from the 12px icons to match it. */
+										<Spinner size="xs" />
+									) : renaming ? (
+										<X className={cn("size-3")} aria-hidden="true" />
+									) : (
+										<Pencil className={cn("size-3")} aria-hidden="true" />
+									)}
+								</button>
+							) : renameSlotReserved ? (
+								<span aria-hidden="true" className={cn("size-5 shrink-0")} />
+							) : null}
+						</span>
+						{/*
+						 * THE QUIET PATH, and the `~` form is the point of it.
+						 *
+						 * This slot used to be the second line of a 56px bar and printed `description`
+						 * RAW - for a live conversation that is the absolute working directory, so
+						 * the row read `/Users/damian/.local-operator/sessions/d81d04d3…` truncated
+						 * from the right, i.e. with the one segment that identifies the directory cut
+						 * off, while the composer's chip abbreviated the same value to `~/.local…`
+						 * (D7). It goes through the chip's own rule now (`formatDirectory`, hoisted to
+						 * `shared/utils/path-utils.ts` so there is one implementation and two
+						 * surfaces), which is safe because that rule returns anything that is not a
+						 * path unchanged - and this slot is not only a path: it holds the draft's
+						 * sentence and a starting run's target name too.
+						 *
+						 * `shrink-[2]` YIELDS BEFORE THE TITLE. Both strings truncate, and which one
+						 * gives first is the whole ordering question in a 40px row: the title is what
+						 * the reader came for, and the directory is a fact they can also read in the
+						 * composer's chip one line below. So the path takes the larger shrink factor
+						 * and disappears into its ellipsis first.
+						 *
+						 * THE TOOLTIP KEEPS THE RAW VALUE, so the fully-resolved path is one hover
+						 * away and nothing about the shortening is lossy.
+						 */}
+						{descriptionPending ? (
+							/* `bg-elevated` for the same measured reason the transcript
+							 * placeholder takes it: the header's ground is `canvas`, where the Skeleton
+							 * default `sunken` is the system's weakest adjacent pair (deltaE00 1.89 in the
+							 * dark brand palette, 1.25 in obsidian). The height matches the `text-mono-sm`
+							 * line it stands in, so holding the slot holds the row's height too. */
+							<Skeleton className={cn("h-3 w-24 shrink-0 bg-elevated")} />
+						) : identity ? (
+							/*
+							 * THE IDENTITY SLOT, WHEN THERE IS SOMETHING TO SWITCH. The two menus
+							 * replace the joined string ("manager · lopdev") in the same slot, so
+							 * the row's wrap-and-clip behaviour is unchanged: at widths the text
+							 * block cannot hold, the control wraps onto the clipped line exactly
+							 * as the chip did. Everything about drawing, gating and the labels
+							 * lives in `chat-header-identity.tsx`; this component only decides
+							 * WHICH content the slot holds.
+							 */
+							<ChatHeaderIdentity {...identity} />
+						) : showDescription ? (
+							<span
+								data-header-path=""
+								className={cn(
+									// `font-mono` as well as the step: `text-mono-sm` is a SIZE, and
+									// without the family the chip rendered in the sans face (D6).
+									"whitespace-nowrap font-mono text-ink-dim text-mono-sm",
+									// On a row that does not wrap, the path cannot fold away whole,
+									// so it yields first instead: `shrink-[2]` against the title's 1,
+									// and the chips (shrink-0) keep their room.
+									noWrapControls ? "min-w-0 shrink-[2] truncate" : "shrink-0",
+								)}
+								title={description}
+							>
+								{/*
+								 * MIDDLE-TRUNCATED, so both informative ends survive: the head says
+								 * where the path is rooted and the tail says which directory it is
+								 * (§B4). It replaced a `dir="rtl"` left-cut, which kept the tail but
+								 * lost the root, and had no bound, so it took the title's room.
+								 * `formatDirectory` returns anything that is not a path unchanged, and
+								 * so does `middleTruncatePath` for a short string - this slot also
+								 * holds a draft's sentence and a starting run's target name.
+								 */}
+								{middleTruncatePath(shownDescription, PATH_CHIP_CHARS)}
+							</span>
+						) : null}
+						{/*
+						 * THE DEVICE CONTROL SITS LAST IN THE TITLE BLOCK, which is where the design
+						 * put it: the block already hosts controls of exactly this shape (the team
+						 * and agent chips, 20px `rounded-xs` buttons with a popover), so the chip
+						 * inherits that geometry instead of inventing one. The block clips its own
+						 * second line, so at widths under the app's 800px minimum this chip is the
+						 * first thing to fold - the design's own note, and the reason to move this
+						 * one line above the identity slot if a docked pane's header ever has to
+						 * keep the placement fact and shed the identity pair instead.
+						 */}
+						{/*
+						 * Identity before placement, the live header's order: the draft's
+						 * agent/team chip sits immediately before the device chip.
+						 */}
+						{draftTargetSlot}
+						{deviceSlot}
+					</div>
+				)}
+			</HeaderAvatarScope>
 			{/*
 			 * The header's action cluster: the `...` menu, as one group at the end of the
-			 * bar. The cluster carries the `ml-auto` so the actions sit together instead
+			 * bar. The cluster carries the `ms-auto` so the actions sit together instead
 			 * of being pinned to opposite ends of whatever else the bar holds.
 			 *
 			 * THE FIFTH DOOR LEFT THIS CLUSTER IN #896. Run details, Browser, Console and
@@ -1090,7 +1426,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 				 * surroundings is the CONTAINER's (branding.md section 5), never a margin on
 				 * the control.
 				 */
-				className="ml-auto flex items-center gap-2"
+				className="ms-auto flex items-center gap-2"
 			>
 				{/*
 				 * SESSION VOICE IS NOT HERE ANY MORE (design spec
@@ -1119,6 +1455,47 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 				 * the rule the pin control is written under: a control whose name is a state
 				 * makes a screen reader ask what pressing it would do.
 				 */}
+				{/*
+				 * THE DRAFT'S TEMPORARY SWITCH, at the head of the cluster and only on a
+				 * draft: once the first message is sent the switch becomes the STATE (the
+				 * pill below). The pressed look is the panel rail's lit item (the
+				 * selected-row ground) plus an accent EDGE, so ON differs from OFF by a
+				 * shape and not by hue alone (design round 1, D1: the wash alone measured
+				 * 1.06:1 against the header). The composer's placeholder carries the words.
+				 */}
+				{temporaryEnabled && temporaryDraft && (
+					<Button
+						variant="ghost"
+						size="icon"
+						data-temporary-toggle
+						aria-pressed={temporaryDraft.on}
+						disabled={temporaryDraft.peerDestination === true}
+						onClick={() => temporaryDraft.onToggle(!temporaryDraft.on)}
+						aria-label={
+							temporaryDraft.on
+								? t("ui.chat.header.temporary_toggle_off")
+								: t("ui.chat.header.temporary_toggle_on")
+						}
+						title={
+							temporaryDraft.peerDestination
+								? t("ui.chat.header.temporary_peer_unavailable")
+								: t("ui.chat.header.temporary_hint")
+						}
+						className={cn(
+							temporaryDraft.on &&
+								"bg-row-selected text-accent ring-1 ring-accent ring-inset hover:bg-row-selected hover:text-accent",
+						)}
+					>
+						<MessageSquareDashed aria-hidden="true" />
+					</Button>
+				)}
+				{temporaryEnabled && temporaryInfoShown && (
+					<TemporaryPill
+						info={temporaryInfoShown}
+						nowMs={temporaryNowMs}
+						onKeep={onKeepTemporary}
+					/>
+				)}
 				{archiveEnabled && archived && (
 					<>
 						<Badge
@@ -1161,6 +1538,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 				 * a menu that advertises a feature the backend does not have.
 				 */}
 				{(archiveEnabled ||
+					temporaryAction !== null ||
 					deleteEnabled ||
 					onToggleAsks ||
 					onToggleBrowser ||
@@ -1377,7 +1755,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 												key={option.value}
 												value={option.value}
 											>
-												<span>{option.label}</span>
+												<span>{transcriptDisplayModeLabel(option.value)}</span>
 												{/*
 												 * THE CHECK ON THE CHOSEN ROW (design review round 1, D3). The
 												 * primitive's own mark for a checked radio row is the small status
@@ -1395,14 +1773,14 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 												 * row holds focus, and checked / unchecked / focused stay three
 												 * distinguishable states.
 												 *
-												 * `ml-auto` rather than a spacer, because the panel hugs its
+												 * `ms-auto` rather than a spacer, because the panel hugs its
 												 * content: the mark sits at the row's end and the panel's own
 												 * `min-w-32` still owns its floor.
 												 */}
 												{activeTranscriptDisplayMode === option.value && (
 													<Check
 														aria-hidden="true"
-														className="ml-auto text-accent"
+														className="ms-auto text-accent"
 													/>
 												)}
 											</DropdownMenuRadioItem>
@@ -1410,6 +1788,31 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 									</DropdownMenuRadioGroup>
 								</DropdownMenuSubContent>
 							</DropdownMenuSub>
+							{/*
+							 * KEEP / MAKE TEMPORARY SIT WITH THE CONVERSATION'S STATE ROWS (design
+							 * round 1, D5), above the separator: Keep is the safe direction, and
+							 * stacked between Archive and Delete it read as one of that pair.
+							 */}
+							{temporaryAction === "keep" && (
+								<DropdownMenuItem
+									data-temporary-keep
+									onSelect={() => onKeepTemporary?.()}
+									disabled={!onKeepTemporary}
+								>
+									<MessageSquare aria-hidden="true" />
+									<span>{t("ui.chat.header_menu.keep_chat")}</span>
+								</DropdownMenuItem>
+							)}
+							{temporaryAction === "make" && (
+								<DropdownMenuItem
+									data-temporary-make
+									onSelect={() => onMakeTemporary?.()}
+									disabled={!onMakeTemporary}
+								>
+									<MessageSquareDashed aria-hidden="true" />
+									<span>{t("ui.chat.header_menu.make_temporary")}</span>
+								</DropdownMenuItem>
+							)}
 							<DropdownMenuSeparator />
 							{archiveEnabled && (
 								<DropdownMenuItem
@@ -1428,7 +1831,9 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 										<Archive aria-hidden="true" />
 									)}
 									<span>
-										{archived ? "Restore conversation" : "Archive conversation"}
+										{archived
+											? t("ui.chat.header.restore_conversation")
+											: t("ui.chat.header.archive_conversation")}
 									</span>
 								</DropdownMenuItem>
 							)}
@@ -1516,14 +1921,20 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 								 */
 								<DropdownMenuItem onSelect={() => onToggleAsks()}>
 									<AsksScopeIcon scope={asksScope} aria-hidden={true} />
-									<span>{asksOpen ? "Close asks" : "Open asks"}</span>
+									<span>
+										{asksOpen
+											? t("ui.chat.header_menu.close_asks")
+											: t("ui.chat.header_menu.open_asks")}
+									</span>
 								</DropdownMenuItem>
 							)}
 							{onToggleBrowser && (
 								<DropdownMenuItem onSelect={() => onToggleBrowser()}>
 									<Globe aria-hidden="true" />
 									<span>
-										{isBrowserPaneOpen ? "Close browser" : "Open browser"}
+										{isBrowserPaneOpen
+											? t("ui.chat.header_menu.close_browser")
+											: t("ui.chat.header_menu.open_browser")}
 									</span>
 								</DropdownMenuItem>
 							)}
@@ -1531,7 +1942,9 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 								<DropdownMenuItem onSelect={() => onOpenConsole()}>
 									<SquareTerminal aria-hidden="true" />
 									<span>
-										{isConsolePaneOpen ? "Close console" : "Open console"}
+										{isConsolePaneOpen
+											? t("ui.chat.header_menu.close_console")
+											: t("ui.chat.header_menu.open_console")}
 									</span>
 								</DropdownMenuItem>
 							)}
@@ -1545,9 +1958,17 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 								 * (and for the chord's listener above); the press is the same
 								 * store write the rail's canvas item and the chord make.
 								 */
-								<DropdownMenuItem onSelect={() => setCanvasOpen(!isCanvasOpen)}>
+								<DropdownMenuItem
+									onSelect={() =>
+										togglePanelRailItem("canvas", { canvasConversationId })
+									}
+								>
 									<FileText aria-hidden="true" />
-									<span>{isCanvasOpen ? "Close canvas" : "Open canvas"}</span>
+									<span>
+										{canvasRowOpen
+											? t("ui.chat.header_menu.close_canvas")
+											: t("ui.chat.header_menu.open_canvas")}
+									</span>
 								</DropdownMenuItem>
 							)}
 							{onOpenCodeReview && (
@@ -1560,8 +1981,27 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 									<GitPullRequest aria-hidden="true" />
 									<span>
 										{isCodeReviewPaneOpen
-											? "Close code review"
-											: "Open code review"}
+											? t("ui.chat.header_menu.close_code_review")
+											: t("ui.chat.header_menu.open_code_review")}
+									</span>
+								</DropdownMenuItem>
+							)}
+							{onOpenOptions && canvasConversationId && (
+								/*
+								 * THE LINKED-PROJECTS ROW (round-1 U2), last as the rail's door
+								 * is: every rail door has a row here, and this one is offered
+								 * wherever the canvas row is, because it opens the same pane.
+								 */
+								<DropdownMenuItem
+									onSelect={() =>
+										togglePanelRailItem("projects", { canvasConversationId })
+									}
+								>
+									<FolderKanban aria-hidden="true" />
+									<span>
+										{projectsRowOpen
+											? t("ui.chat.header_menu.close_linked_projects")
+											: t("ui.chat.header_menu.open_linked_projects")}
 									</span>
 								</DropdownMenuItem>
 							)}

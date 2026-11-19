@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "receipt_kind": "locale-audit (remediation key delta, PR #1521 round 2)",
+  "date": "2026-10-30",
+  "auditor": "i18n-auditor",
+  "agent": "i18n-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "tb1521r2-zh-cn-681c3f6ceb10",
+  "model_provenance": "This session's harness preamble reads 'Model: anthropic/claude-opus-5-5'; no fallback or model switch was announced during the audit.",
+  "independence": "The audited strings were authored in PR #1521 remediation commit c8898ecea3a302639bd632ba88461adba37092c8 (team lopdev coder). This auditor run (lopdev team task agent, session 681c3f6ceb10) authored none of them and is a different instance from the round-1 auditor (session 4c572bf830c8). Remediations below were made by this auditor and are recorded per key with before/after values.",
+  "status": "passed",
+  "namespace": "ui.teamBridge",
+  "locale": "zh-CN",
+  "integration": {
+    "pr": 1521,
+    "branch": "feat/team-bridge-delivery-annotation",
+    "branch_head_at_audit": "c8898ecea3a302639bd632ba88461adba37092c8"
+  },
+  "sha256": {
+    "zh-CN": "e13c91217851c6f7b1e32cabce97d0d66c5d0758188ca70338a6d4520ff15571",
+    "en": "ebfddc6934622bc6ce57de0ec5d804e3a8b5de76387858462cbd9ffc13e1868c"
+  },
+  "context_sha256": "b7e03af42b079b1b16d770ad3f617d2cc07cd267391b3cd0ef4755d5ec19288a",
+  "style_guide": "~/local-operator i18n/style-guides/zh-CN.md + i18n/glossary.md (agent term)",
+  "scope": {
+    "keys_audited_linguistically": [
+      "ui.teamBridge.delivery.held",
+      "ui.teamBridge.delivery.held_screening_unavailable",
+      "ui.teamBridge.delivery.held_awaiting_review",
+      "ui.teamBridge.delivery.pending",
+      "ui.teamBridge.delivery.info_refused",
+      "ui.teamBridge.delivery.info_held"
+    ],
+    "checks": [
+      "meaning vs English and translator context (agent is the screener, owner its owner)",
+      "placeholders {agent} {owner} preserved exactly (mechanically verified)",
+      "held line keeps trailing ellipsis; owner-view variants use a spaced dash and no ellipsis",
+      "pending says screening is done and only delivery is outstanding",
+      "info_held does not suggest rephrasing or resending",
+      "neutral, non-accusatory register",
+      "no bidi control characters (mechanically verified)",
+      "terminology carried from round-1 audit (vi Không được chuyển tới, zh-CN 检查/审核, es análisis/revisión, fr U+202F)"
+    ],
+    "not_audited": "Unchanged ui.teamBridge keys (including the six refused* lines and info_label), covered by the round-1 receipt tb1521-zh-cn-4c572bf830c8."
+  },
+  "remediated_in_this_audit": [],
+  "findings": [],
+  "verdict": "No changes needed: 检查 kept for screening and 审核 for review/moderation (prior audit terminology); …… ellipsis, full-width ；（）and ——; no space around Latin placeholders is consistent with the existing refusal lines. Every audited value on these bytes is accurate and idiomatic; all findings were fixed before hashing, so none is open."
+}

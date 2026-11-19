@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "date": "2026-11-04",
+  "locale": "fr",
+  "namespace": "ui.settings.appearance",
+  "instance": "aud1682-ci-fr-ba69d836a6d4",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "ba69d836a6d4",
+    "instance": "aud1682-ci-fr-ba69d836a6d4",
+    "model": "openai/gpt-6.1-sol",
+    "primary_model": "anthropic/claude-opus-5-5",
+    "fallback": "Quota fallback; actual openai/gpt-6.1-sol confirmed by host session-state.",
+    "independent_from_translator_session": true,
+    "independence": "Separate session from translator fd3ba80e8c8f; did not author or remediate translations."
+  },
+  "model": "openai/gpt-6.1-sol",
+  "status": "passed",
+  "result": "clean",
+  "sha256": {
+    "en": "869f7fb3cae2de41496b3e0582009c690961d52dafd006f51bf796e0219d43e3",
+    "fr": "2cbe3c47ec1cf180bf7d9771415a54877c9cb5023e121c7506bf80e7178dbfd5"
+  },
+  "context_sha256": "75db38dd15ae3c1ec3ca9ced1859edea11d999da9bd6fcca1e3286098cd372dd",
+  "scope": "B CI delta only: contrast.standard, accent.title, picker.hex, hue.orange, hue.cyan, hue.indigo, hue.violet; other keys retain audits 63837f8/bcf0760 with unchanged values verified.",
+  "head": "f9297edd67afddfed8c0a4eea53451fc859fda9c",
+  "base": "bcf07606370e26d55e2d26b3667c95292458be64",
+  "key_count": 7,
+  "keys_audited": [
+    "ui.settings.appearance.contrast.standard",
+    "ui.settings.appearance.accent.title",
+    "ui.settings.appearance.picker.hex",
+    "ui.settings.appearance.hue.orange",
+    "ui.settings.appearance.hue.cyan",
+    "ui.settings.appearance.hue.indigo",
+    "ui.settings.appearance.hue.violet"
+  ],
+  "findings": [],
+  "translator": {
+    "session": "fd3ba80e8c8f",
+    "model": "radient/auto",
+    "provenance_source": "Manager delegation for B CI delta at f9297edd67a explicitly states actual translator radient/auto. Underlying provider/model not independently inferred."
+  }
+}

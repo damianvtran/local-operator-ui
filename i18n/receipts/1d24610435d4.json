@@ -1,0 +1,58 @@
+{
+ "auditor": "i18n-auditor",
+ "model": "anthropic/claude-sonnet-5-5",
+ "instance": "1d24610435d4",
+ "date": "2026-11-15",
+ "locale": "es",
+ "round": 1,
+ "status": "changes_requested",
+ "scope": "9 keys added in 7cdf6c27b4 (ui.chat band headings x4; ui.chat.dialogs archive title/message x3; ui.chat.sidebar row archive/unarchive labels x2)",
+ "fallback": "none; served model per session header anthropic/claude-sonnet-5-5",
+ "notes": "One MAJOR (archive_message 'busca sobre' loses 'above'); one MINOR. Mechanical, plural (one/many/other), ¿?, tuteo, Archivar/Desarchivar all pass.",
+ "namespaces": {
+  "ui.chat": {
+   "namespace": "ui.chat",
+   "keys_audited": 4,
+   "status": "passed",
+   "sha256": {
+    "es": "0309484c20f07d79a8f3ac082ff1e1315874d1cf9e2e6e9c92c9f1599401dc3c",
+    "en": "22a6b7e59c047a453e38571fffd3f0b11d9ac929d8c377f2a38f0a90a6f641db"
+   },
+   "findings": []
+  },
+  "ui.chat.dialogs": {
+   "namespace": "ui.chat.dialogs",
+   "keys_audited": 3,
+   "status": "changes_requested",
+   "sha256": {
+    "es": "549de6b6d21abc4f46a6865aa2cbd82d47031f7be16ca252aa6d94cfbee3fd17",
+    "en": "17a1d110fa72efd3a1853e81ff5ed7baad3cfcc796a0b2f92729b6acb7312221"
+   },
+   "findings": [
+    {
+     "severity": "MAJOR",
+     "key": "ui.chat.dialogs.archive_message",
+     "problem": "“busca sobre tus conversaciones” reads as 'search about/across your conversations' (buscar sobre = about); the fact the sidecar requires - the search field sits ABOVE the chat list - is lost.",
+     "expected": "…; después, usa la búsqueda que hay encima de tus conversaciones, activa “{include_archived}” y pulsa Desarchivar.",
+     "evidence": "shipped es uses 'encima de este cuadro' (composer.delivery_remedies_hint) and 'situado sobre el cuadro' (a noun-qualified locative), never bare 'buscar sobre'"
+    },
+    {
+     "severity": "MINOR",
+     "key": "ui.chat.dialogs.archive_message",
+     "problem": "“Sale de tus listas” - 'salir' is colloquial and 'sale en' means 'appears in'; clearer wording matches shipped header.archived_hint register.",
+     "expected": "Desaparece de tus listas."
+    }
+   ]
+  },
+  "ui.chat.sidebar": {
+   "namespace": "ui.chat.sidebar",
+   "keys_audited": 2,
+   "status": "passed",
+   "sha256": {
+    "es": "9d7a6a862a99ef8240ae207f4a6b985c87fbac41d2371557f348b12bd2ccd3b3",
+    "en": "b8c1dc4d3d1b2c567f13f383ad7ed5d0cf3e25ef2d8bb6ae0c5e7f69da5a6ee9"
+   },
+   "findings": []
+  }
+ }
+}

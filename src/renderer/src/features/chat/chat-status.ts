@@ -18,6 +18,7 @@
  * the mapping in both directions is the whole file.
  */
 
+import { t } from "@shared/i18n";
 import {
 	type DaemonPairing,
 	type DaemonPairingCause,
@@ -34,6 +35,7 @@ import {
  * hundred milliseconds of every launch is a strip nobody reads.
  */
 export type ChatStatusKind =
+	| "updating"
 	| "unreachable"
 	| "credential-refused"
 	| "degraded"
@@ -47,7 +49,7 @@ export type ChatStatusDisplay = {
 	 * an offline machine is a fact about the network rather than a fault).
 	 */
 	role: "alert" | "status";
-	wash: "danger-wash" | "warning-wash";
+	wash: "danger-wash" | "warning-wash" | "info-wash";
 	/** One sentence, and the only sentence: §F2's table, verbatim. */
 	title: string;
 	/**
@@ -72,7 +74,12 @@ export type ChatStatusDisplay = {
 	action: "retry" | null;
 	actionLabel: string | null;
 	/** The dot the dismissed pill carries, per cause. */
-	dot: "danger" | "warning";
+	dot: "danger" | "warning" | "info";
+	/**
+	 * Draw a spinner in place of the action: the condition resolves by itself
+	 * and there is nothing to press (today only `updating`).
+	 */
+	busy?: boolean;
 };
 
 /**
@@ -85,13 +92,21 @@ export type ChatStatusDisplay = {
  * mistake `serverBannerCopy` was written to end. The state machine the app reads
  * distinguishes the two (`connectivityIssue`), so the strip must too.
  */
-export const CHAT_STATUS_COPY = {
-	unreachable: "Can't reach the Local Operator server. Sending will wait.",
-	"credential-refused":
-		"The running server refused this app's credential, so sign-in, settings and slash commands are unavailable.",
-	degraded: "The server is answering slowly. Your messages are queued.",
-	"internet-offline": "This machine is offline. Sending will wait.",
+/* Each root cause's sentence is read from the catalogue AT CALL TIME, so this
+ * table is a function rather than a const: a module-level object would freeze the
+ * locale the process started in, and a language switch would leave the strip
+ * speaking the old one until something else repainted it. */
+const CHAT_STATUS_KEY = {
+	updating: "ui.chat.status.updating",
+	unreachable: "ui.chat.status.unreachable",
+	"credential-refused": "ui.chat.status.credential_refused",
+	degraded: "ui.chat.status.degraded",
+	"internet-offline": "ui.chat.status.internet_offline",
 } as const satisfies Record<ChatStatusKind, string>;
+
+/** The one sentence per root cause, in the active locale. */
+export const chatStatusCopy = (kind: ChatStatusKind): string =>
+	t(CHAT_STATUS_KEY[kind]);
 
 /**
  * The shape `serverBannerCopy` reads, filled from the record this module is
@@ -147,6 +162,7 @@ export type ChatStatusInput = {
 	server:
 		| (Pick<DaemonStatusSnapshot, "state"> & {
 				reconnecting?: boolean;
+				updating?: boolean;
 				detail?: string | null;
 				pairing?: DaemonPairing | null;
 		  })
@@ -169,6 +185,36 @@ export function chatStatusDisplay(
 	input: ChatStatusInput,
 ): ChatStatusDisplay | null {
 	const { server, connectivityIssue } = input;
+
+	/*
+	 * 0. THE SERVER IS UPDATING ITSELF, and that outranks every row below.
+	 *
+	 * During `lop update` / `lop-update` the daemon reloads in place: its fence
+	 * refuses requests, its probes go briefly unanswered, and a claimed daemon
+	 * answers plane-closed until it is re-claimed - each of which used to land on
+	 * one of the rows below (a red pairing or "can't reach" alert) for an update
+	 * that finishes by itself in seconds. Main opens a bounded window on the
+	 * fence's own answer (`daemon-status.ts`, `SERVER_UPDATING_*`) and publishes it
+	 * as `updating`; while it is open the strip states the update, neutrally
+	 * (`role=status`, info wash), with a spinner and NO Retry or dismiss: there is
+	 * nothing to press, and a Reconnect during a reload would only race it. When
+	 * the window closes - the update landed, or its cap ran out - the rows below
+	 * apply exactly as before, so a server that does not come back is still
+	 * reported.
+	 */
+	if (server?.updating === true) {
+		return {
+			kind: "updating",
+			role: "status",
+			wash: "info-wash",
+			title: chatStatusCopy("updating"),
+			detail: null,
+			action: null,
+			actionLabel: null,
+			dot: "info",
+			busy: true,
+		};
+	}
 
 	/*
 	 * 1. The server answered and refused THIS APP'S CREDENTIAL. THE GATE IS THE
@@ -213,7 +259,7 @@ export function chatStatusDisplay(
 			cause: "credential-refused",
 			role: "alert",
 			wash: "danger-wash",
-			title: CHAT_STATUS_COPY["credential-refused"],
+			title: chatStatusCopy("credential-refused"),
 			detail: serverBannerCopy(snapshotOf(server))?.detail ?? null,
 			/*
 			 * RETRY, NOT `Sign in`, and this is a departure from §F2's table that the
@@ -226,7 +272,7 @@ export function chatStatusDisplay(
 			 * reader WHY their credential was refused.
 			 */
 			action: "retry",
-			actionLabel: "Retry",
+			actionLabel: t("ui.common.actions.retry"),
 			dot: "danger",
 		};
 	}
@@ -243,10 +289,10 @@ export function chatStatusDisplay(
 			kind: "internet-offline",
 			role: "status",
 			wash: "warning-wash",
-			title: CHAT_STATUS_COPY["internet-offline"],
+			title: chatStatusCopy("internet-offline"),
 			detail: null,
 			action: "retry",
-			actionLabel: "Retry",
+			actionLabel: t("ui.common.actions.retry"),
 			dot: "warning",
 		};
 	}
@@ -275,10 +321,10 @@ export function chatStatusDisplay(
 			kind: "degraded",
 			role: "status",
 			wash: "warning-wash",
-			title: CHAT_STATUS_COPY.degraded,
+			title: chatStatusCopy("degraded"),
 			detail: null,
 			action: "retry",
-			actionLabel: "Retry",
+			actionLabel: t("ui.common.actions.retry"),
 			dot: "warning",
 		};
 	}
@@ -323,12 +369,12 @@ export function chatStatusDisplay(
 			kind: "unreachable",
 			role: "alert",
 			wash: "danger-wash",
-			title: CHAT_STATUS_COPY.unreachable,
+			title: chatStatusCopy("unreachable"),
 			detail: server
 				? (serverBannerCopy(snapshotOf(server))?.detail ?? null)
 				: null,
 			action: "retry",
-			actionLabel: "Retry",
+			actionLabel: t("ui.common.actions.retry"),
 			dot: "danger",
 		};
 	}

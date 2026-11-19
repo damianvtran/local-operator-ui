@@ -1,0 +1,187 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit (post-merge mechanical-union re-audit, ui#1532 x main 3b369d6)",
+	"date": "2026-10-31",
+	"auditor": "task",
+	"agent": "task",
+	"model": "anthropic/claude-opus-5-5",
+	"model_provenance": "Served model as announced by the harness for session 98545305d697 (anthropic/claude-opus-5-5); no fallback announced or observed.",
+	"model_fallback": {
+		"announced": false,
+		"observed": false
+	},
+	"status": "passed",
+	"result": "clean",
+	"namespace": "ui.teamBridge",
+	"locale": "vi",
+	"audit_id": "teambridge-mentions-merge-audit-98545305d697-rebase-vi",
+	"instance": "98545305d697-rebase-vi",
+	"session": "98545305d697",
+	"integration": {
+		"pr": "damianvtran/local-operator-ui#1532",
+		"branch": "feat/tb-mention-autocomplete",
+		"ours_parent": "3f60bbfca22dd274e881fe106cd9822601628fb9",
+		"theirs_parent": "3b369d6341c7eeed159c3bcbb1b1f4db759265d4",
+		"merge_head": "3e987df1630fa067fa495ca393b406723484d820",
+		"worktree": "~/local-operator-ui/.worktrees/tb-mentions"
+	},
+	"independence": "Independent translation auditor: lopdev task member, session 98545305d697; authored none of the audited strings (translator agent 'translator'; mentions delta self-translated by the feature coder), wrote none of the prior audits, edited no catalogue; wrote only receipts/evidence and rows via ledger-assemble.mjs.",
+	"sha256": {
+		"vi": "8ef61cf9c01157f693c911c77c34fe36053f1a195252aaaa3b7cec4f572c54c0",
+		"en": "f0cf04791f4748e82d7e290cdaf1f1c534d65e416dcb0ab480c691d46972fa45"
+	},
+	"context_sha256": "0eb593dce5dc49c2c17c2033ab374a9cd97c65725266b9b9a659ddd3de5eaa28",
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "f0cf04791f4748e82d7e290cdaf1f1c534d65e416dcb0ab480c691d46972fa45"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/vi/ui.teamBridge.json",
+			"sha256": "8ef61cf9c01157f693c911c77c34fe36053f1a195252aaaa3b7cec4f572c54c0"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "0eb593dce5dc49c2c17c2033ab374a9cd97c65725266b9b9a659ddd3de5eaa28"
+		}
+	},
+	"scope": {
+		"delta_kind": "Merge of origin/main 3b369d6 into ui#1532 head 3f60bbf. Mechanical union: JSON key diff of the merged target vs ours (3f60bbf) = 1 key added (ui.teamBridge.reactions.others), 0 removed, 0 changed; vs theirs (3b369d6) = 14 ui.teamBridge.mentions.* keys added, 0 removed, 0 changed. Line-level: merged bytes with the reactions.others line removed are byte-identical to 3f60bbf's file. Same shape for en and en context.",
+		"ours_target_sha256": "c888fd07f4bd280a8d992d75f290d1655ad1870f3ae59aed0a5e06f402f92892",
+		"ours_en_sha256": "872abba111887ee71c0f4f079bdb3747f564b93abc85639b13b43d864a9372cb",
+		"theirs_target_sha256": "cb04cebffbb9fa05956ba23143a3f30d7848c73b99482594764d6ad246b916c1",
+		"theirs_en_sha256": "fa61d01336edd0355d0ce7befde7957ec60457ade37a02b11c0b31eb3b2f3a96",
+		"key_diff_vs_ours": {
+			"added": [
+				"ui.teamBridge.reactions.others"
+			],
+			"removed": [],
+			"changed": []
+		},
+		"key_diff_vs_theirs": {
+			"added": [
+				"ui.teamBridge.mentions.empty",
+				"ui.teamBridge.mentions.listbox_label",
+				"ui.teamBridge.mentions.notice.invite",
+				"ui.teamBridge.mentions.notice.invite_failed",
+				"ui.teamBridge.mentions.notice.invited",
+				"ui.teamBridge.mentions.notice.not_member",
+				"ui.teamBridge.mentions.notice.pending",
+				"ui.teamBridge.mentions.notice.silent",
+				"ui.teamBridge.mentions.section.member_agent",
+				"ui.teamBridge.mentions.section.member_human",
+				"ui.teamBridge.mentions.section.org_agent",
+				"ui.teamBridge.mentions.section.org_human",
+				"ui.teamBridge.mentions.tag.bridge_off",
+				"ui.teamBridge.mentions.tag.not_member"
+			],
+			"removed": [],
+			"changed": []
+		},
+		"base_bytes_audited_by": [
+			"4ad83913bb2a-vi",
+			"f61a774e19eb-vi",
+			"b20548e9b2d9-rebase-vi"
+		],
+		"prior_audit_of_key": {
+			"ui.teamBridge.mentions.*": {
+				"instances": [
+					"4ad83913bb2a-vi",
+					"f61a774e19eb-vi"
+				],
+				"value_byte_identical": true
+			},
+			"ui.teamBridge.reactions.others": {
+				"instance": "b20548e9b2d9-rebase-vi",
+				"value_byte_identical": true
+			}
+		},
+		"keys_audited_linguistically": [],
+		"not_audited": "No value changed beyond the union, so no fresh linguistic audit was owed; every value is byte-identical to bytes audited by the instances in base_bytes_audited_by (moved to superseded by the assembler). Mechanical rechecks below cover the 15 union keys."
+	},
+	"audited": {
+		"ui.teamBridge.mentions.empty": {
+			"en": "No one matches “{query}”",
+			"translation": "Không có ai khớp với “{query}”"
+		},
+		"ui.teamBridge.mentions.listbox_label": {
+			"en": "People and agents to mention",
+			"translation": "Người và tác nhân để nhắc đến"
+		},
+		"ui.teamBridge.mentions.notice.invite": {
+			"en": "Invite them",
+			"translation": "Mời"
+		},
+		"ui.teamBridge.mentions.notice.invite_failed": {
+			"en": "Couldn’t invite {name}. You can still mention them without notifying.",
+			"translation": "Không mời được {name}. Bạn vẫn có thể nhắc đến mà không thông báo."
+		},
+		"ui.teamBridge.mentions.notice.invited": {
+			"en": "{name} has been invited. They won’t be notified until they join.",
+			"translation": "Đã mời {name}. Họ sẽ không nhận được thông báo cho đến khi tham gia."
+		},
+		"ui.teamBridge.mentions.notice.not_member": {
+			"en": "{name} isn’t in this conversation, so they won’t be notified.",
+			"translation": "{name} không có trong cuộc trò chuyện này nên sẽ không nhận được thông báo."
+		},
+		"ui.teamBridge.mentions.notice.pending": {
+			"en": "{name} is invited but hasn’t joined yet, so they won’t be notified.",
+			"translation": "{name} đã được mời nhưng chưa tham gia nên sẽ không nhận được thông báo."
+		},
+		"ui.teamBridge.mentions.notice.silent": {
+			"en": "Mention without notifying",
+			"translation": "Nhắc đến mà không thông báo"
+		},
+		"ui.teamBridge.mentions.section.member_agent": {
+			"en": "Agents in this conversation",
+			"translation": "Tác nhân trong cuộc trò chuyện này"
+		},
+		"ui.teamBridge.mentions.section.member_human": {
+			"en": "People in this conversation",
+			"translation": "Người trong cuộc trò chuyện này"
+		},
+		"ui.teamBridge.mentions.section.org_agent": {
+			"en": "Other agents",
+			"translation": "Tác nhân khác"
+		},
+		"ui.teamBridge.mentions.section.org_human": {
+			"en": "Other people",
+			"translation": "Người khác"
+		},
+		"ui.teamBridge.mentions.tag.bridge_off": {
+			"en": "Team Bridge off",
+			"translation": "Team Bridge đang tắt"
+		},
+		"ui.teamBridge.mentions.tag.not_member": {
+			"en": "not in this conversation",
+			"translation": "không có trong cuộc trò chuyện này"
+		},
+		"ui.teamBridge.reactions.others": {
+			"en": "{others, plural, one {# other} other {# others}}",
+			"translation": "{others, plural, other {# người khác}}"
+		}
+	},
+	"checks": {
+		"value_identity": "python json.load: every mentions.* value == 3f60bbf value; reactions.others == 3b369d6 value; all other keys == both parents.",
+		"placeholders": "@formatjs/icu-messageformat-parser argument sets (type:name) equal en for all 15 union keys: mismatch [].",
+		"unicode": "NFC; no LRM/RLM/FSI-PDI isolates, no NBSP in the 15 union values.",
+		"rendered": [
+			"vi 15 mismatch []"
+		],
+		"rendered_command": "node $LOCAL_OPERATOR_SCRATCHPAD/ph.mjs (repo node_modules @formatjs/icu-messageformat-parser)"
+	},
+	"findings": [],
+	"references": {
+		"docs_I18N": {
+			"path": "docs/I18N.md",
+			"sha256": "9a4bde8d1c161286160be4a4ae1c7655615dbf39047052550b725a3da2eb00e2"
+		},
+		"ledger_assemble": {
+			"path": "scripts/i18n/ledger-assemble.mjs",
+			"sha256": "66ec03de791b515424b8d9a93094315111c179c149b35a5323d80c9c38644657"
+		},
+		"precedent": "i18n/receipts/b20548e9b2d9-rebase-vi.json"
+	},
+	"audit_notes_not_execution_log": "scope/independence are auditor notes; checks.rendered is verbatim command output.",
+	"limitations": "Mechanical union re-audit only: no rendered app frame, no native-speaker sign-off, no fresh linguistic pass (none owed: no value changed)."
+}

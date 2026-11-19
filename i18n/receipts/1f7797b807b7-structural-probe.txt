@@ -1,0 +1,10 @@
+import fs from 'node:fs';
+import cp from 'node:child_process';
+import {createRequire} from 'node:module';
+const require=createRequire(process.cwd()+'/package.json');
+const {parse,TYPE}=require('@formatjs/icu-messageformat-parser');
+const en=JSON.parse(fs.readFileSync('src/i18n/catalogues/en/ui.mesh.json'));
+const base=JSON.parse(cp.execFileSync('git',['show','origin/main:src/i18n/catalogues/en/ui.mesh.json']));
+const keys=Object.keys(en).filter(k=>base[k]!==en[k]);
+function facts(ast,names=new Set(),plurals=[]){for(const a of ast){if(a.type!==TYPE.literal&&a.type!==TYPE.pound){names.add(`${a.value}:${a.type}`);if(a.type===TYPE.number&&JSON.stringify(a.style?.tokens)!==JSON.stringify([{stem:'group-off',options:[]}]))throw Error('unexpected number style');}if(a.options){if(a.type===TYPE.plural)plurals.push(Object.keys(a.options).sort());for(const b of Object.values(a.options))facts(b.value,names,plurals);}}return {names:[...names].sort(),plurals};}
+let n=0;for(const l of ['es','fr','hi','ru','ur','vi','zh-CN']){const target=JSON.parse(fs.readFileSync(`src/i18n/catalogues/${l}/ui.mesh.json`));const allowed=new Intl.PluralRules(l).resolvedOptions().pluralCategories;for(const k of keys){const a=facts(parse(en[k])),b=facts(parse(target[k]));if(JSON.stringify(a.names)!==JSON.stringify(b.names))throw Error(`${l}/${k}: argument mismatch`);for(const arms of b.plurals)if(!arms.includes('other')||arms.some(x=>!allowed.includes(x)))throw Error(`${l}/${k}: plural categories`);if(/[\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/u.test(target[k]))throw Error(`${l}/${k}: manual bidi control`);if(target[k].normalize('NFC')!==target[k])throw Error(`${l}/${k}: not NFC`);n++;}console.log(`${l}: ${keys.length} ICU/placeholder/CLDR/bidi/NFC checks PASS`);}console.log(`TOTAL ${n} messages PASS`);

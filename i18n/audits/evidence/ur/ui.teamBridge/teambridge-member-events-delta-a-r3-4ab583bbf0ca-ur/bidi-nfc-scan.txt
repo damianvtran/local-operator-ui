@@ -1,0 +1,5 @@
+locale ur — encoding scan of the corrected keys
+  NFC: yes
+  bidi controls (U+061C, U+200E/F, U+202A–202E, U+2066–2069): 0
+  zero-width (U+200B–200D, U+FEFF): 0
+  combining marks: 0

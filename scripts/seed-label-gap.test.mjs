@@ -203,6 +203,7 @@ const bundle = await build({
 	write: false,
 	alias: {
 		"@shared": "./src/renderer/src/shared",
+		"@shared/i18n": "./src/i18n",
 		"@features": "./src/renderer/src/features",
 	},
 	plugins: [
@@ -296,7 +297,7 @@ const MARK_ON_SUMMARY_HOLD =
  * settled side of the ternary.
  */
 const SPOKEN_PENDING_ON_SUMMARY_HOLD =
-	/summaryHold\s*\?\s*\(\s*<>\s*<span[^>]*data-label-hold="true"(?:(?!<\/>)[\s\S])*?<span className=\{cn\("sr-only"\)\}>pending<\/span>\s*<\/>/;
+	/summaryHold\s*\?\s*\(\s*<>\s*<span[^>]*data-label-hold="true"(?:(?!<\/>)[\s\S])*?<span className=\{cn\("sr-only"\)\}>\s*\{t\("ui\.chat\.canonical\.tool_row\.pending"\)\}\s*<\/span>\s*<\/>/;
 const TITLE_SUPPRESSED_WHILE_HELD =
 	/title=\{summaryHold\s*\?\s*undefined\s*:\s*summaryText\}/;
 /*
@@ -3080,6 +3081,20 @@ test("the mark's own markup, the constant's reader and the prop's guard are all 
 		row,
 		SPOKEN_PENDING_ON_SUMMARY_HOLD,
 		"and the marked cell SPELLS THE STATE OUT for a reader who cannot see the glyph (UX round 4, U7: an `aria-hidden` ellipsis left the row cue-less for the whole hold - 49.9 s on a wedged owner, 25.0 s on the refusing route), in the same branch so the blank cell announces nothing",
+	);
+	/*
+	 * AND THE WORD IS THE CATALOGUE'S, NOT AN INLINE ONE. The sentence moved
+	 * behind a key when the trace copy was translated; a pin on the key alone
+	 * would let the English become "waiting" (or empty) and still pass, which
+	 * silently un-says the state this cue exists to announce.
+	 */
+	const canonicalCopy = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.chat.canonical.json", "utf8"),
+	);
+	assert.equal(
+		canonicalCopy["ui.chat.canonical.tool_row.pending"],
+		"pending",
+		"the sr-only word is still the lowercase `pending` the context row asks for",
 	);
 	assert.match(
 		row,

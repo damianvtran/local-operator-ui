@@ -1,0 +1,53 @@
+{
+ "auditor": "i18n-auditor",
+ "model": "deepseek/deepseek-flash",
+ "instance": "l1v-zh-cn-a",
+ "status": "changes_requested",
+ "namespace": "ui.chat.canonical",
+ "sha256": {
+  "zh-CN": "d96442be4d7a34decacb52b5133f9ba808c177e01c53261250a51571269cd8bc",
+  "en": "a385671b988e5f03df6f650beb4a06f73c9efaead2316dfa9ab15bf043798765"
+ },
+ "findings": [
+  {
+   "severity": "MAJOR",
+   "key": "ui.chat.canonical.tool_row.verb.steered.settled",
+   "note": "已调整方向 -> 已引导: shipped copy for the same hub steer action is 引导 (fold.receipt.steered 已引导, composer.steer_hint 引导智能体); 方向 also fills the object slot the row appends the child name to. Same for .running 正在调整方向 -> 正在引导."
+  },
+  {
+   "severity": "MINOR",
+   "key": "ui.chat.canonical.tool_row.verb.peeked_at.settled",
+   "note": "已查看进展: mass noun 进展 leaves no slot for the row's object (child label / job id). Suggest 已查看 / 正在查看."
+  },
+  {
+   "severity": "MINOR",
+   "key": "ui.chat.canonical.tool_row.verb.peeked_at_session.settled",
+   "note": "已查看会话进展: same object-slot problem with the session id. Suggest 已查看会话记录 / 正在查看会话记录 (glossary: transcript = 记录; distinct from viewed_session 已查看会话)."
+  },
+  {
+   "severity": "MINOR",
+   "key": "ui.chat.canonical.tool_row.verb.unlinked_session_from.settled",
+   "note": "已将会话移出 drops the 从-relation the sibling keeps (已将会话关联至) and diverges from shipped 解除关联. Suggest 已解除会话关联 / 正在解除会话关联."
+  },
+  {
+   "severity": "MINOR",
+   "key": "ui.chat.canonical.tool_row.verb.typed_in_console.settled",
+   "note": "已输入至控制台: 输入至 is an odd collocation (至 suits 发送/发布/关联). Suggest 已向控制台输入 / 正在向控制台输入."
+  },
+  {
+   "severity": "MINOR",
+   "key": "ui.chat.canonical.tool_row.verb.scheduled.settled",
+   "note": "已设定定时任务 names a wake as a recurring schedule while the same tool's siblings say 唤醒 and 定时任务 is a separate product page. Suggest 已安排唤醒 / 正在安排唤醒."
+  },
+  {
+   "severity": "NIT",
+   "key": "ui.chat.canonical.tool_row.verb.messaged.settled",
+   "note": "已发送消息给 vs shipped 已私信 for the same English Messaged; new wording is clearer for a hub child, no change requested."
+  },
+  {
+   "severity": "NIT",
+   "key": "ui.chat.canonical.tool_row.verb.captured_console.settled",
+   "note": "已截取控制台: 截屏 is the settled word for a screenshot and is 2 cells shorter. Optional."
+  }
+ ]
+}

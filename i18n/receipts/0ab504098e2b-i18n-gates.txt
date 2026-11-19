@@ -1,0 +1,81 @@
+# Actual output, translation audit round 7A (session 0ab504098e2b), worktree at 3705c557424 + ledger/receipt changes, each command run alone with NODE_OPTIONS=--max-old-space-size=2048 timeout 120 (2 GiB heap ceiling, 120 s wall)
+## Pre-audit node scripts/i18n/ledger-check.mjs (head bytes 3705c557424, before re-pinning)
+$ node scripts/i18n/ledger-check.mjs
+ledger-check: es/ui.mesh: stale source_sha256 (ledger 04a6ef2c573f…, file 4e7d304432ab…) — the English source moved since translation
+ledger-check: es/ui.mesh: stale target_sha256 (ledger a280294e5d33…, file f7330e8ec185…) — the translated file changed since it was audited
+ledger-check: es/ui.mesh: auditor 1: the receipt does not name the English source bytes on disk - it audited a different file
+ledger-check: fr/ui.mesh: stale source_sha256 (ledger 04a6ef2c573f…, file 4e7d304432ab…) — the English source moved since translation
+ledger-check: fr/ui.mesh: stale target_sha256 (ledger 310ec4a045b2…, file 7590e3522db5…) — the translated file changed since it was audited
+ledger-check: fr/ui.mesh: auditor 1: the receipt does not name the English source bytes on disk - it audited a different file
+ledger-check: hi/ui.mesh: stale source_sha256 (ledger 04a6ef2c573f…, file 4e7d304432ab…) — the English source moved since translation
+ledger-check: hi/ui.mesh: stale target_sha256 (ledger 15b4b290aea1…, file 19b5ab05bd3b…) — the translated file changed since it was audited
+ledger-check: hi/ui.mesh: auditor 1: the receipt does not name the English source bytes on disk - it audited a different file
+ledger-check: ru/ui.mesh: stale source_sha256 (ledger 04a6ef2c573f…, file 4e7d304432ab…) — the English source moved since translation
+ledger-check: ru/ui.mesh: stale target_sha256 (ledger 45802baf1a57…, file a6872d6c1909…) — the translated file changed since it was audited
+ledger-check: ru/ui.mesh: auditor 1: the receipt does not name the English source bytes on disk - it audited a different file
+ledger-check: ur/ui.mesh: stale source_sha256 (ledger 04a6ef2c573f…, file 4e7d304432ab…) — the English source moved since translation
+ledger-check: ur/ui.mesh: stale target_sha256 (ledger ef55d34be696…, file f7daa7e36d3a…) — the translated file changed since it was audited
+ledger-check: ur/ui.mesh: auditor 1: the receipt does not name the English source bytes on disk - it audited a different file
+ledger-check: vi/ui.mesh: stale source_sha256 (ledger 04a6ef2c573f…, file 4e7d304432ab…) — the English source moved since translation
+ledger-check: vi/ui.mesh: stale target_sha256 (ledger 35019250a120…, file 146a9a6e1d5f…) — the translated file changed since it was audited
+ledger-check: vi/ui.mesh: auditor 1: the receipt does not name the English source bytes on disk - it audited a different file
+ledger-check: zh-CN/ui.mesh: stale source_sha256 (ledger 04a6ef2c573f…, file 4e7d304432ab…) — the English source moved since translation
+ledger-check: zh-CN/ui.mesh: stale target_sha256 (ledger e3c1e7e2e26e…, file e37469d764a6…) — the translated file changed since it was audited
+ledger-check: zh-CN/ui.mesh: auditor 1: the receipt does not name the English source bytes on disk - it audited a different file
+ledger-check: FAILED — 21 finding(s) across 826 ledger entr(ies)
+exit=1
+## node scripts/i18n/ledger-assemble.mjs (per locale, each alone)
+## es
+$ node scripts/i18n/ledger-assemble.mjs --locale es --file src/i18n/catalogues/es/ui.mesh.json --auditor-instance 0ab504098e2b-es --auditor-model [redacted]/claude-opus-5-5 --result clean-with-findings --receipt /Users/damian/.local-operator/sessions/0ab504098e2b/scratchpad/ui1604-r7a/receipts/0ab504098e2b-es.json --scope PR #1604 translation audit round 7A at 3705c55; delta b61f1b4..3705c55 (could_not_apply, typed_review_unavailable, expires_window) --note Round 7A (session 0ab504098e2b) at 3705c557: 2 MINOR open (R7A-ES-01 expires_window names solicitud not card; R7A-ES-02 Recházala vs Denegar). Source-only; rendered fit unverified. --date 2026-11-02
+ledger-assemble: es/ui.mesh -> status audited (prior audits were of older bytes: moved to superseded) | clean-with-findings, 0 blocker, 0 major, 2 minor, 0 nit
+exit=0
+## fr
+$ node scripts/i18n/ledger-assemble.mjs --locale fr --file src/i18n/catalogues/fr/ui.mesh.json --auditor-instance 0ab504098e2b-fr --auditor-model [redacted]/claude-opus-5-5 --result clean --receipt /Users/damian/.local-operator/sessions/0ab504098e2b/scratchpad/ui1604-r7a/receipts/0ab504098e2b-fr.json --scope PR #1604 translation audit round 7A at 3705c55; delta b61f1b4..3705c55 (could_not_apply, typed_review_unavailable, expires_window) --note Round 7A (session 0ab504098e2b) at 3705c557: three changed keys; expires_window rendered for every duration. Source-only; rendered fit unverified. --date 2026-11-02
+ledger-assemble: fr/ui.mesh -> status audited (prior audits were of older bytes: moved to superseded) | clean, 0 blocker, 0 major, 0 minor, 0 nit
+exit=0
+## ru
+$ node scripts/i18n/ledger-assemble.mjs --locale ru --file src/i18n/catalogues/ru/ui.mesh.json --auditor-instance 0ab504098e2b-ru --auditor-model [redacted]/claude-opus-5-5 --result clean --receipt /Users/damian/.local-operator/sessions/0ab504098e2b/scratchpad/ui1604-r7a/receipts/0ab504098e2b-ru.json --scope PR #1604 translation audit round 7A at 3705c55; delta b61f1b4..3705c55 (could_not_apply, typed_review_unavailable, expires_window) --note Round 7A (session 0ab504098e2b) at 3705c557: three changed keys; expires_window rendered for every duration. Source-only; rendered fit unverified. --date 2026-11-02
+ledger-assemble: ru/ui.mesh -> status audited (prior audits were of older bytes: moved to superseded) | clean, 0 blocker, 0 major, 0 minor, 0 nit
+exit=0
+## hi
+$ node scripts/i18n/ledger-assemble.mjs --locale hi --file src/i18n/catalogues/hi/ui.mesh.json --auditor-instance 0ab504098e2b-hi --auditor-model [redacted]/claude-opus-5-5 --result clean --receipt /Users/damian/.local-operator/sessions/0ab504098e2b/scratchpad/ui1604-r7a/receipts/0ab504098e2b-hi.json --scope PR #1604 translation audit round 7A at 3705c55; delta b61f1b4..3705c55 (could_not_apply, typed_review_unavailable, expires_window) --note Round 7A (session 0ab504098e2b) at 3705c557: three changed keys; expires_window rendered for every duration. Source-only; rendered fit unverified. --date 2026-11-02
+ledger-assemble: hi/ui.mesh -> status audited (prior audits were of older bytes: moved to superseded) | clean, 0 blocker, 0 major, 0 minor, 0 nit
+exit=0
+## ur
+$ node scripts/i18n/ledger-assemble.mjs --locale ur --file src/i18n/catalogues/ur/ui.mesh.json --auditor-instance 0ab504098e2b-ur --auditor-model [redacted]/claude-opus-5-5 --result clean --receipt /Users/damian/.local-operator/sessions/0ab504098e2b/scratchpad/ui1604-r7a/receipts/0ab504098e2b-ur.json --scope PR #1604 translation audit round 7A at 3705c55; delta b61f1b4..3705c55 (could_not_apply, typed_review_unavailable, expires_window) --note Round 7A (session 0ab504098e2b) at 3705c557: three changed keys; expires_window rendered for every duration. Source-only; rendered fit unverified. --date 2026-11-02
+ledger-assemble: ur/ui.mesh -> status audited (prior audits were of older bytes: moved to superseded) | clean, 0 blocker, 0 major, 0 minor, 0 nit
+exit=0
+## vi
+$ node scripts/i18n/ledger-assemble.mjs --locale vi --file src/i18n/catalogues/vi/ui.mesh.json --auditor-instance 0ab504098e2b-vi --auditor-model [redacted]/claude-opus-5-5 --result clean --receipt /Users/damian/.local-operator/sessions/0ab504098e2b/scratchpad/ui1604-r7a/receipts/0ab504098e2b-vi.json --scope PR #1604 translation audit round 7A at 3705c55; delta b61f1b4..3705c55 (could_not_apply, typed_review_unavailable, expires_window) --note Round 7A (session 0ab504098e2b) at 3705c557: three changed keys; expires_window rendered for every duration. Source-only; rendered fit unverified. --date 2026-11-02
+ledger-assemble: vi/ui.mesh -> status audited (prior audits were of older bytes: moved to superseded) | clean, 0 blocker, 0 major, 0 minor, 0 nit
+exit=0
+## zh-CN
+$ node scripts/i18n/ledger-assemble.mjs --locale zh-CN --file src/i18n/catalogues/zh-CN/ui.mesh.json --auditor-instance 0ab504098e2b-zh-cn --auditor-model [redacted]/claude-opus-5-5 --result clean --receipt /Users/damian/.local-operator/sessions/0ab504098e2b/scratchpad/ui1604-r7a/receipts/0ab504098e2b-zh-cn.json --scope PR #1604 translation audit round 7A at 3705c55; delta b61f1b4..3705c55 (could_not_apply, typed_review_unavailable, expires_window) --note Round 7A (session 0ab504098e2b) at 3705c557: three changed keys; expires_window rendered for every duration. Source-only; rendered fit unverified. --date 2026-11-02
+ledger-assemble: zh-CN/ui.mesh -> status audited (prior audits were of older bytes: moved to superseded) | clean, 0 blocker, 0 major, 0 minor, 0 nit
+exit=0
+## node scripts/i18n/ledger-check.mjs (after re-pinning)
+$ node scripts/i18n/ledger-check.mjs
+ledger-check: ok — 826 entr(ies) complete, fresh and independently audited
+exit=0
+## pnpm check-i18n, its seven gates run one at a time (each alone: NODE_OPTIONS=--max-old-space-size=2048 timeout 120)
+$ node scripts/i18n/generate.mjs --check
+/Users/damian/local-operator-ui/.worktrees/ui1604-audit-r7a/src/i18n/keys.gen.ts is byte-identical to a fresh generation.
+exit=0
+$ node scripts/i18n/check-duplicates.mjs
+check-duplicates: ok — 1067 file(s) scanned, 0 duplicate key(s)
+exit=0
+$ node scripts/i18n/check-strings.mjs
+check-strings.mjs: ok — 1493 file(s) scanned, 0 literal(s) at or below the baseline
+exit=0
+$ node scripts/i18n/ledger-check.mjs
+ledger-check: ok — 826 entr(ies) complete, fresh and independently audited
+exit=0
+$ node scripts/i18n/context-parity.mjs
+context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json).
+exit=0
+$ node scripts/i18n/check-added-strings.mjs
+PASS: no newly added literal copy in 6 changed file(s) against 2c5c462ab881eb16ad4505108b9cc16d3d72d426.
+exit=0
+$ node scripts/i18n/check-coverage.mjs
+coverage-check: ok — 7 gated language(s) over 118 namespace(s); 0 allowed key(s) remain across 0 pair(s) (shrink-only; see i18n/coverage-allowance.json).
+exit=0

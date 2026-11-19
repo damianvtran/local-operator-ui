@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 2, PR #1928 (fresh auditor)",
+  "locale": "zh-CN",
+  "namespace": "ui.agentMessages.settings",
+  "pr": 1928,
+  "date": "2026-11-15",
+  "head": "5e278359128c56de4faf43398a8b2b2055eb446d",
+  "instance": "pr1928-r2-zh-cn-agentmessages-settings-6187ceeb",
+  "auditor": {
+    "agent": "task",
+    "role": "independent i18n auditor (team radientdev, task role); not the translators (coder jobs 610e98de331a and 4611f0d5274e (manager session 2c6111e02b16) re-drafted the changed/new keys; coder job abe41ec364b7 drafted the unchanged keys; all anthropic/claude-opus-5-5)",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session 619fdcf93ce8, a fresh task-agent instance: not the round-1 auditor (job c5c73f8c6c4b, session 5bbe5f24d420) and not any translator (coder jobs abe41ec364b7, 610e98de331a, 4611f0d5274e). Same served model family anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. Judgement from English, the context sidecar and the shipped ui.teamBridge.delivery.* corpus; no MT used. This audit reviews the round-1 auditor's own fix lines (b083a717ea: vi not_delivered; screening term in es/fr/ru/hi/ur/zh-CN) as the separation step. Disclosure: this auditor's own fix lines (5e27835912, screening.help) are auditor-authored and still need a separate review by a different auditor.",
+    "instance": "pr1928-r2-zh-cn-agentmessages-settings-6187ceeb"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": [
+    {
+      "severity": "MINOR",
+      "id": "I4",
+      "key": "ui.agentMessages.settings.screening.help",
+      "issue": "English says incoming messages are 'held instead' - the contrast that marks the block/internal-error case as NOT falling back. The translation dropped 'instead'.",
+      "fix": "……因内部错误而失败，则会改为暂扣收到的消息，因此……",
+      "fixed_in": "5e27835912",
+      "authored_by": "this auditor (needs separation review)"
+    },
+    {
+      "severity": "INFO",
+      "key": "ui.agentMessages.settings.screening.title",
+      "note": "Screening term '检查' matches shipped held_screening/pending/info_held; title/help/unavailable consistent (round-1 auditor fix b083a717ea reviewed and accepted)."
+    },
+    {
+      "severity": "INFO",
+      "key": "ui.agentMessages.settings.screening.route_provider",
+      "note": "route_provider/route_radient parallel, {provider} intact, Radient untranslated; automatic keeps {model} as one unit; register matches the corpus."
+    }
+  ],
+  "audited_values": {
+    "ui.agentMessages.settings.screening.title": "检查模型",
+    "ui.agentMessages.settings.screening.help": "可选。选择这台机器检查收到的智能体消息时首先尝试的模型。如果该模型无法连接、你的账户无法使用，或配额、额度不足，检查会改用这台机器的默认模型和回退模型，因此 Team Bridge 会继续工作。如果提供商拦截请求或因内部错误而失败，则会改为暂扣收到的消息，因此请选择你的账户有权使用的模型。",
+    "ui.agentMessages.settings.screening.unavailable": "此版本的 Local Operator 不提供检查模型选择。检查仍会使用这台机器的默认模型和回退模型。",
+    "ui.agentMessages.settings.screening.automatic": "自动，首先使用 {model}",
+    "ui.agentMessages.settings.screening.route_provider": "通过你的 {provider} 账户",
+    "ui.agentMessages.settings.screening.route_radient": "通过你的 Radient 账户"
+  },
+  "binding": "Verified at 5e278359128c: target src/i18n/catalogues/zh-CN/ui.agentMessages.settings.json sha256 4f0adb1ae788300b8cf51289d24c441b9a256d963569244224fcf7fd16096e48; English src/i18n/catalogues/en/ui.agentMessages.settings.json sha256 3a69f5d8d73732cf7f0fb7fb09cc9cb28aca83b25499561590336ab5d4b651bf; context sha256 709ec9074196216a43f355474c8f2bf65fe7727a41fbfdc7ea567898d79cd569. Key set equals English; ICU placeholders identical to English.",
+  "scope": "PR #1928 round 2: ui.agentMessages.settings.screening.{title,help,unavailable,automatic,route_provider,route_radient}",
+  "en_sha256": "3a69f5d8d73732cf7f0fb7fb09cc9cb28aca83b25499561590336ab5d4b651bf",
+  "context_sha256": "709ec9074196216a43f355474c8f2bf65fe7727a41fbfdc7ea567898d79cd569",
+  "target_sha256": "4f0adb1ae788300b8cf51289d24c441b9a256d963569244224fcf7fd16096e48",
+  "sha256": {
+    "zh-CN": "4f0adb1ae788300b8cf51289d24c441b9a256d963569244224fcf7fd16096e48",
+    "en": "3a69f5d8d73732cf7f0fb7fb09cc9cb28aca83b25499561590336ab5d4b651bf"
+  }
+}

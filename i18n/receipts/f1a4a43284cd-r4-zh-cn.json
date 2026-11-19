@@ -1,0 +1,345 @@
+{
+  "instance": "f1a4a43284cd-r4-zh-cn",
+  "locale": "zh-CN",
+  "audit_date": "2026-10-29",
+  "head": "a10255813c44112eb49bb5d5d6fe05173e2d21c1",
+  "checkout_head": "a10255813c44112eb49bb5d5d6fe05173e2d21c1",
+  "worktree": "/Users/damian/lo-literals",
+  "branch": "i18n-final-literals",
+  "session": "f1a4a43284cd",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "f1a4a43284cd",
+    "instance": "f1a4a43284cd-r4-zh-cn",
+    "model": "radient/auto",
+    "actual_model_source": "same instance as round 3; runtime header named anthropic/claude-sonnet-5-5 as primary and the turns ran through the provider fallback chain (openai/gpt-6-astra -> kimi/k3.1-pro -> radient/auto). Disclosed, not inferred from a pin.",
+    "independent_from_translator_session": true
+  },
+  "reviewed_previous": "/Users/damian/qa/lit-audit3/zh-CN/receipt.json",
+  "scope": "REMEDIATION CHECK, not a fresh audit: the 9 findings in the round-3 zh-CN receipt (2 MAJOR, 5 MINOR, 2 NIT over 10 keys), plus a byte-identity check that nothing else in the 89-key delta moved at a10255813c. The 89-key delta itself remains the audited set from round 3; no new policy finding is raised here.",
+  "key_count_rechecked": 10,
+  "provenance": {
+    "values": "all 10 filed keys re-read in both locales through read_public_copy (20 calls); no other catalogue value was read",
+    "change_scope": "git diff over 8f1c56a425..a10255813c: catalogue-only, 10 files, zh-CN touched in exactly 2 of them with one changed line each",
+    "byte_identity": "sha256 of all 30 scoped files recomputed and compared with the round-3 receipt: 28 identical, 2 differ (zh-CN ui.hub.detail.json, zh-CN ui.hub.viewer.json)",
+    "repo_edits": "none"
+  },
+  "checks": [
+    {
+      "name": "major-01-back_aria",
+      "result": "resolved",
+      "detail": "返回智能体中心"
+    },
+    {
+      "name": "major-02-like_signed_out",
+      "result": "resolved",
+      "detail": "登录Radient即可点赞智能体"
+    },
+    {
+      "name": "placeholders",
+      "result": "pass",
+      "detail": "none of the 10 filed keys carries a placeholder; the delta's placeholder-bearing keys sit in byte-identical files"
+    },
+    {
+      "name": "no-new-breakage",
+      "result": "pass",
+      "detail": "28/30 files byte-identical; 2 changed files carry one changed key each, both re-read and both within the filed set"
+    },
+    {
+      "name": "source-unchanged",
+      "result": "pass",
+      "detail": "no en catalogue value moved; only the en ui.hub.detail sidecar note was corrected"
+    }
+  ],
+  "findings": [
+    {
+      "id": "ZH-03",
+      "severity": "MINOR",
+      "keys": [
+        "ui.chat.canonical.security_notice.blocked"
+      ],
+      "current": "已阻止高风险操作",
+      "en": "Blocked a risky action",
+      "problem": "'risky' rendered as 高风险 (high-risk) raises the guard's own claim one severity band above what the notice asserts.",
+      "suggestion": "已阻止有风险的操作",
+      "status": "still stands - unchanged at a10255813c"
+    },
+    {
+      "id": "ZH-04",
+      "severity": "MINOR",
+      "keys": [
+        "ui.chat.canonical.security_notice.show_code"
+      ],
+      "current": "显示审核的代码",
+      "en": "Show the reviewed code",
+      "problem": "审核的代码 reads as 'the code of the review' (modifier ambiguity); the reviewed state needs 已审核.",
+      "suggestion": "显示已审核的代码",
+      "status": "still stands - unchanged at a10255813c"
+    },
+    {
+      "id": "ZH-05",
+      "severity": "MINOR",
+      "keys": [
+        "ui.hub.detail.failure.favourite",
+        "ui.hub.detail.failure.like"
+      ],
+      "current": "收藏操作未完成 / 点赞操作未完成",
+      "en": "The favourite did not go through / The like did not go through",
+      "problem": "Alert titles: 未完成 reads as in-flight ('not finished yet'), so a failure wears an in-progress face; 操作 is added material.",
+      "suggestion": "收藏未成功 / 点赞未成功",
+      "status": "still stands - unchanged at a10255813c"
+    },
+    {
+      "id": "ZH-06",
+      "severity": "MINOR",
+      "keys": [
+        "ui.hub.detail.viewer_unknown"
+      ],
+      "current": "无法读取你的点赞和收藏，因此不显示此智能体的相关状态。",
+      "en": "Your likes and favourites could not be read, so this agent's viewer state is not shown.",
+      "problem": "相关状态 is vague: it never names the withheld viewer state (your like/favourite state for this agent).",
+      "suggestion": "因此不显示此智能体的点赞和收藏状态。",
+      "status": "still stands - unchanged at a10255813c"
+    },
+    {
+      "id": "ZH-07",
+      "severity": "MINOR",
+      "keys": [
+        "ui.chat.radient_session.prose.needs_sign_in"
+      ],
+      "current": "重新登录即可恢复Radient模型的使用，并打开浏览器完成授权。",
+      "en": "Signing in again restores Radient models and opens your browser for consent.",
+      "problem": "恢复…的使用 calques 'restores Radient models'; availability returns, not 'the use of' them.",
+      "suggestion": "重新登录即可恢复Radient模型，并打开浏览器完成授权。",
+      "status": "still stands - unchanged at a10255813c"
+    },
+    {
+      "id": "ZH-08",
+      "severity": "NIT",
+      "keys": [
+        "ui.hub.detail.sign_in_tooltip"
+      ],
+      "current": "登录Radient以使用此功能",
+      "en": "Sign in to Radient to use this feature",
+      "problem": "Dated 以-clause. As of a10255813c both sibling tooltips use the 即可 pattern (登录Radient即可收藏智能体 / 登录Radient即可点赞智能体), so this is now the lone holdout.",
+      "suggestion": "登录Radient后即可使用此功能",
+      "status": "still stands - unchanged at a10255813c"
+    },
+    {
+      "id": "ZH-09",
+      "severity": "NIT",
+      "keys": [
+        "ui.chat.radient_session.pointer.sign_in_active"
+      ],
+      "current": "可在“设置”中的“模型提供商”下清除。",
+      "en": "Settings, under Providers, is where it can be cleared.",
+      "problem": "Stacked 的…的…下 is clunky in an otherwise clean sentence.",
+      "suggestion": "可在“设置”的“模型提供商”中清除。",
+      "status": "still stands - unchanged at a10255813c"
+    }
+  ],
+  "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 5,
+    "NIT": 2
+  },
+  "verdict": "pass",
+  "namespaces": {
+    "ui.agents.settings": {
+      "status": "passed",
+      "keys_audited": 5,
+      "sha256": {
+        "en": "3ba270885be69d682183c849436c3e2146bf5c8875cf8a2be1f26528ed20fd4d",
+        "target": "18a9d2ded29acd1095d1286425a0e5d5ce822b9d1ff3fec1c281e49170c1aba1"
+      },
+      "findings": []
+    },
+    "ui.chat.asks": {
+      "status": "passed",
+      "keys_audited": 2,
+      "sha256": {
+        "en": "3399e4015ace811013fb16d9f021016eaecf8ed700e6d34ee2c0d0029068832a",
+        "target": "1313edb4905ad5ed1512d7155fe577fbf15a35746e5dada59ca972ab237a4579"
+      },
+      "findings": []
+    },
+    "ui.chat.attachments": {
+      "status": "passed",
+      "keys_audited": 5,
+      "sha256": {
+        "en": "623a1363260ecbe40393b4424dde4d7b6cc084688ac354483052639a145ce892",
+        "target": "dbc64ff49830426bdecca3f2f533572be1f107b3d80410d29edccde9c7bf8737"
+      },
+      "findings": []
+    },
+    "ui.chat.canonical": {
+      "status": "passed",
+      "keys_audited": 9,
+      "sha256": {
+        "en": "e497effa4c5ba36da6fc3fb4598e5cd7cd2219cae675e94b51d00682e2f90935",
+        "target": "99fccb76a8f2571625ed0a8abd1255092599328f19b8bd5114f8cf12f21ea24c"
+      },
+      "findings": [
+        "ZH-03",
+        "ZH-04"
+      ]
+    },
+    "ui.chat.device": {
+      "status": "passed",
+      "keys_audited": 1,
+      "sha256": {
+        "en": "2be9eaf88f3f95eec4d28b4cc5b6397edbd3173eb2af3713ff2da4f6b0b5fcd6",
+        "target": "61bf36b66cbf246c56c7e5c676b287b91348b28bdd97abc7e13a8c5056109619"
+      },
+      "findings": []
+    },
+    "ui.chat.header": {
+      "status": "passed",
+      "keys_audited": 2,
+      "sha256": {
+        "en": "a2584118fd1ae8da26a27f8e739bbde58c30ec5c7c8c9515d2ab876bc7a82dd8",
+        "target": "c17cdea5fbd886e62cbe5df4fa8d4f7bed918b45a29c9dd6be26bbf2658d393c"
+      },
+      "findings": []
+    },
+    "ui.chat.pickers": {
+      "status": "passed",
+      "keys_audited": 1,
+      "sha256": {
+        "en": "e77e75172487fb154b12ce349fac574cc88516c811acaefd2018208baaf192c1",
+        "target": "5f660abc81dff6dd35f58802edc0646abc8d49feb6cba2e9c2c181cd9f75dfbc"
+      },
+      "findings": []
+    },
+    "ui.chat.radient_session": {
+      "status": "passed",
+      "keys_audited": 8,
+      "sha256": {
+        "en": "3ac15679b3551e879c2d88d11594946ea4307238330e88cee24ba80b07721118",
+        "target": "cb551df2d17b9af469af1e61c1a6deff05635dfafccbc232dd674553f94d45db"
+      },
+      "findings": [
+        "ZH-07",
+        "ZH-09"
+      ]
+    },
+    "ui.chat.thread_search": {
+      "status": "passed",
+      "keys_audited": 3,
+      "sha256": {
+        "en": "aea9f467a5a57775ec7510e09b52800077f8ebd93bf430b7956dd381f1ed3d91",
+        "target": "8119ac4a4a68bbd72081edc9b9c7cd3a4979ce818823eaefd4dcc41e1e1b0f42"
+      },
+      "findings": []
+    },
+    "ui.chat.transcript_copy": {
+      "status": "passed",
+      "keys_audited": 5,
+      "sha256": {
+        "en": "d6f5264ef4cd19ea1a66b10d7dadfd6478ec239973a7a8fca49903b8ae3818dc",
+        "target": "e21c2160cc6c4e97d083f1afc2c8c7b29dc6934784dbf4f38da302ef69310f8d"
+      },
+      "findings": []
+    },
+    "ui.common.actions": {
+      "status": "passed",
+      "keys_audited": 3,
+      "sha256": {
+        "en": "0c279fc21d17c3f1937e4364fac698601ec4304ce7c7055df786bc037a8b12e3",
+        "target": "1d4d4300743f7efab6e2a26ff5e9aa6cc5d1b0738f2ea266dde4ee66e85bbfa6"
+      },
+      "findings": []
+    },
+    "ui.hub.card": {
+      "status": "passed",
+      "keys_audited": 6,
+      "sha256": {
+        "en": "b9459d327a82d48b8607356f857e6a260cc0b46b78a12109d8b843c559abfcbc",
+        "target": "1c6c3b82870a76ca59c8b556fa14209f3b9898bfc6248ee36ceb9dbbdd1c08ed"
+      },
+      "findings": []
+    },
+    "ui.hub.detail": {
+      "status": "passed",
+      "keys_audited": 26,
+      "sha256": {
+        "en": "d6a3fdb30fc5a4c1d8e0e5530f377dfac0e2b1238f2fd3dd32a12f0e082861d4",
+        "target": "ab4fb1931ed9795aebd85e16bcd3abe7ae7edf829b1aaf7b0bde779adf413837"
+      },
+      "findings": [
+        "ZH-05",
+        "ZH-06",
+        "ZH-08"
+      ]
+    },
+    "ui.hub.pages": {
+      "status": "passed",
+      "keys_audited": 3,
+      "sha256": {
+        "en": "9ae73c3aabece832df701ffe1b8c24b01d731a94adeb795103a0215b84fb57bd",
+        "target": "5cb98e1b0f1735b9988c79fca6b9d81ce380c4c1c1c0caf47924b25d36a56e7c"
+      },
+      "findings": []
+    },
+    "ui.hub.viewer": {
+      "status": "passed",
+      "keys_audited": 10,
+      "sha256": {
+        "en": "a6eed998576ef689a2fc011b2f9c64eaf53fe8b007b2efc21cf66118bc206375",
+        "target": "cf96fad259edbd5005d4f12e9839f19fae8ba30cd429db68219258602476ac39"
+      },
+      "findings": []
+    }
+  },
+  "notes": [
+    "ZH-01 (MAJOR, ui.hub.detail.back_aria): RESOLVED at a10255813c - now 返回智能体中心, matching the locale's shipped page title (ui.hub.pages.header.title). The en sidecar note that told every locale to keep 'Agent Hub' Latin was corrected in the same commit.",
+    "ZH-02 (MAJOR, ui.hub.viewer.like_signed_out): RESOLVED at a10255813c - now 登录Radient即可点赞智能体; the 以为 garden path is gone and the wording matches the sibling favourite_signed_out and the bare label ui.hub.viewer.like (点赞智能体).",
+    "ZH-03 (MINOR): still stands, bytes unchanged.",
+    "ZH-04 (MINOR): still stands, bytes unchanged.",
+    "ZH-05 (MINOR, two keys): still stands, bytes unchanged.",
+    "ZH-06 (MINOR): still stands, bytes unchanged.",
+    "ZH-07 (MINOR): still stands, bytes unchanged.",
+    "ZH-08 (NIT): still stands; now the only tooltip of the three 'log in to Radient to ...' strings not using 即可.",
+    "ZH-09 (NIT): still stands, bytes unchanged.",
+    "Verified at the new bytes, not assumed: HEAD a10255813c44112eb49bb5d5d6fe05173e2d21c1; the commit is catalogue-only (10 files, none of them renderer code). 28 of the 30 scoped files are byte-identical to the round-3 record; only zh-CN ui.hub.detail.json and zh-CN ui.hub.viewer.json moved, one line each, and each changed value is one of the two keys re-read above. All other delta keys therefore hold exactly the bytes this auditor already passed, including the ones carrying placeholders ({name}, {ago}, {date}, {author}, {email}, {duration}, {message}, {rate}).",
+    "None of the 10 filed keys carries a placeholder in either locale, so placeholder equality holds trivially for them; the placeholder check for the rest of the delta is carried by the byte-identity above.",
+    "Passed under the same rule as round 3: no BLOCKER and no MAJOR remains. The 5 MINOR and 2 NIT findings are carried open in this record, not waived - none of them blocks on its own."
+  ],
+  "input_sha256": {
+    "en": {
+      "src/i18n/catalogues/en/ui.agents.settings.json": "3ba270885be69d682183c849436c3e2146bf5c8875cf8a2be1f26528ed20fd4d",
+      "src/i18n/catalogues/en/ui.chat.asks.json": "3399e4015ace811013fb16d9f021016eaecf8ed700e6d34ee2c0d0029068832a",
+      "src/i18n/catalogues/en/ui.chat.attachments.json": "623a1363260ecbe40393b4424dde4d7b6cc084688ac354483052639a145ce892",
+      "src/i18n/catalogues/en/ui.chat.canonical.json": "e497effa4c5ba36da6fc3fb4598e5cd7cd2219cae675e94b51d00682e2f90935",
+      "src/i18n/catalogues/en/ui.chat.device.json": "2be9eaf88f3f95eec4d28b4cc5b6397edbd3173eb2af3713ff2da4f6b0b5fcd6",
+      "src/i18n/catalogues/en/ui.chat.header.json": "a2584118fd1ae8da26a27f8e739bbde58c30ec5c7c8c9515d2ab876bc7a82dd8",
+      "src/i18n/catalogues/en/ui.chat.pickers.json": "e77e75172487fb154b12ce349fac574cc88516c811acaefd2018208baaf192c1",
+      "src/i18n/catalogues/en/ui.chat.radient_session.json": "3ac15679b3551e879c2d88d11594946ea4307238330e88cee24ba80b07721118",
+      "src/i18n/catalogues/en/ui.chat.thread_search.json": "aea9f467a5a57775ec7510e09b52800077f8ebd93bf430b7956dd381f1ed3d91",
+      "src/i18n/catalogues/en/ui.chat.transcript_copy.json": "d6f5264ef4cd19ea1a66b10d7dadfd6478ec239973a7a8fca49903b8ae3818dc",
+      "src/i18n/catalogues/en/ui.common.actions.json": "0c279fc21d17c3f1937e4364fac698601ec4304ce7c7055df786bc037a8b12e3",
+      "src/i18n/catalogues/en/ui.hub.card.json": "b9459d327a82d48b8607356f857e6a260cc0b46b78a12109d8b843c559abfcbc",
+      "src/i18n/catalogues/en/ui.hub.detail.json": "d6a3fdb30fc5a4c1d8e0e5530f377dfac0e2b1238f2fd3dd32a12f0e082861d4",
+      "src/i18n/catalogues/en/ui.hub.pages.json": "9ae73c3aabece832df701ffe1b8c24b01d731a94adeb795103a0215b84fb57bd",
+      "src/i18n/catalogues/en/ui.hub.viewer.json": "a6eed998576ef689a2fc011b2f9c64eaf53fe8b007b2efc21cf66118bc206375"
+    },
+    "zh-CN": {
+      "src/i18n/catalogues/zh-CN/ui.agents.settings.json": "18a9d2ded29acd1095d1286425a0e5d5ce822b9d1ff3fec1c281e49170c1aba1",
+      "src/i18n/catalogues/zh-CN/ui.chat.asks.json": "1313edb4905ad5ed1512d7155fe577fbf15a35746e5dada59ca972ab237a4579",
+      "src/i18n/catalogues/zh-CN/ui.chat.attachments.json": "dbc64ff49830426bdecca3f2f533572be1f107b3d80410d29edccde9c7bf8737",
+      "src/i18n/catalogues/zh-CN/ui.chat.canonical.json": "99fccb76a8f2571625ed0a8abd1255092599328f19b8bd5114f8cf12f21ea24c",
+      "src/i18n/catalogues/zh-CN/ui.chat.device.json": "61bf36b66cbf246c56c7e5c676b287b91348b28bdd97abc7e13a8c5056109619",
+      "src/i18n/catalogues/zh-CN/ui.chat.header.json": "c17cdea5fbd886e62cbe5df4fa8d4f7bed918b45a29c9dd6be26bbf2658d393c",
+      "src/i18n/catalogues/zh-CN/ui.chat.pickers.json": "5f660abc81dff6dd35f58802edc0646abc8d49feb6cba2e9c2c181cd9f75dfbc",
+      "src/i18n/catalogues/zh-CN/ui.chat.radient_session.json": "cb551df2d17b9af469af1e61c1a6deff05635dfafccbc232dd674553f94d45db",
+      "src/i18n/catalogues/zh-CN/ui.chat.thread_search.json": "8119ac4a4a68bbd72081edc9b9c7cd3a4979ce818823eaefd4dcc41e1e1b0f42",
+      "src/i18n/catalogues/zh-CN/ui.chat.transcript_copy.json": "e21c2160cc6c4e97d083f1afc2c8c7b29dc6934784dbf4f38da302ef69310f8d",
+      "src/i18n/catalogues/zh-CN/ui.common.actions.json": "1d4d4300743f7efab6e2a26ff5e9aa6cc5d1b0738f2ea266dde4ee66e85bbfa6",
+      "src/i18n/catalogues/zh-CN/ui.hub.card.json": "1c6c3b82870a76ca59c8b556fa14209f3b9898bfc6248ee36ceb9dbbdd1c08ed",
+      "src/i18n/catalogues/zh-CN/ui.hub.detail.json": "ab4fb1931ed9795aebd85e16bcd3abe7ae7edf829b1aaf7b0bde779adf413837",
+      "src/i18n/catalogues/zh-CN/ui.hub.pages.json": "5cb98e1b0f1735b9988c79fca6b9d81ce380c4c1c1c0caf47924b25d36a56e7c",
+      "src/i18n/catalogues/zh-CN/ui.hub.viewer.json": "cf96fad259edbd5005d4f12e9839f19fae8ba30cd429db68219258602476ac39"
+    }
+  }
+}

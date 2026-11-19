@@ -1,0 +1,1028 @@
+{
+	"ui.settings.appearance.editor.customize": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.create": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.custom_group": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.empty": {
+		"role": "Settings help or state description",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.loading": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.load_error": {
+		"role": "Settings help or state description",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.retry": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.edit": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.duplicate": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.more": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.new_name": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.copy_name": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.name": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.name_required": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.name_limit": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.base": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.mode_dark": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.mode_light": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.essentials": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.advanced": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.edited": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.reset_role": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.edit_role": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.limit": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.save": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.saved": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.save_error": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.cancel": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.discard_title": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.discard_description": {
+		"role": "Settings help or state description",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.discard": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.keep_editing": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.delete": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.delete_title": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.delete_description": {
+		"role": "Settings help or state description",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.deleted": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.preview": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.preview_note": {
+		"role": "Settings help or state description",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Custom themes are saved without contrast baked in. Theme → Contrast → Accent stay independent. Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.contrast_note": {
+		"role": "Settings help or state description",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Custom themes are saved without contrast baked in. Theme → Contrast → Accent stay independent. Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.accent_note": {
+		"role": "Settings help or state description",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Custom themes are saved without contrast baked in. Theme → Contrast → Accent stay independent. Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.invalid_hex": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.validation_summary": {
+		"role": "Inline contrast validation reading or summary",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.validation_pass": {
+		"role": "Inline contrast validation reading or summary",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.ratio": {
+		"role": "Inline contrast validation reading or summary",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.floor": {
+		"role": "Inline contrast validation reading or summary",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.pair": {
+		"role": "Inline contrast validation reading or summary",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.adjust": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.adjusted": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.adjust_unavailable": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.pinned_note": {
+		"role": "Settings help or state description",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Custom themes are saved without contrast baked in. Theme → Contrast → Accent stay independent. Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.mode_warning": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.import": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.import_title": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.import_description": {
+		"role": "Settings help or state description",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.import_text": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.import_file": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.import_submit": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.import_error": {
+		"role": "Readable JSON theme import validation error",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.import_invalid_json": {
+		"role": "Readable JSON theme import validation error",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.import_format": {
+		"role": "Readable JSON theme import validation error",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.import_version": {
+		"role": "Readable JSON theme import validation error",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.import_size": {
+		"role": "Readable JSON theme import validation error",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.import_base": {
+		"role": "Readable JSON theme import validation error",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.import_name": {
+		"role": "Readable JSON theme import validation error",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.import_roles": {
+		"role": "Readable JSON theme import validation error",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.import_unsafe": {
+		"role": "Readable JSON theme import validation error",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.import_read": {
+		"role": "Readable JSON theme import validation error",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.export": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.export_title": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.export_copy": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.export_file": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.export_copied": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.export_error": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.clipboard_error": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.file_name": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.picker.area": {
+		"role": "Reusable OKLCH colour picker label, guidance or accessible announcement",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.picker.area_description": {
+		"role": "Reusable OKLCH colour picker label, guidance or accessible announcement",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.picker.area_value": {
+		"role": "Reusable OKLCH colour picker label, guidance or accessible announcement",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.picker.chroma": {
+		"role": "Reusable OKLCH colour picker label, guidance or accessible announcement",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.picker.lightness": {
+		"role": "Reusable OKLCH colour picker label, guidance or accessible announcement",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.picker.rgb": {
+		"role": "Reusable OKLCH colour picker label, guidance or accessible announcement",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.picker.oklch": {
+		"role": "Reusable OKLCH colour picker label, guidance or accessible announcement",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.picker.red": {
+		"role": "Reusable OKLCH colour picker label, guidance or accessible announcement",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.picker.green": {
+		"role": "Reusable OKLCH colour picker label, guidance or accessible announcement",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.picker.blue": {
+		"role": "Reusable OKLCH colour picker label, guidance or accessible announcement",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.picker.format": {
+		"role": "Reusable OKLCH colour picker label, guidance or accessible announcement",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.picker.invalid_channels": {
+		"role": "Reusable OKLCH colour picker label, guidance or accessible announcement",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.picker.theme_swatches": {
+		"role": "Reusable OKLCH colour picker label, guidance or accessible announcement",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.picker.recent": {
+		"role": "Reusable OKLCH colour picker label, guidance or accessible announcement",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.picker.recent_empty": {
+		"role": "Reusable OKLCH colour picker label, guidance or accessible announcement",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.picker.swatch": {
+		"role": "Reusable OKLCH colour picker label, guidance or accessible announcement",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.picker.recent_swatch": {
+		"role": "Reusable OKLCH colour picker label, guidance or accessible announcement",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.picker.eyedropper_error": {
+		"role": "Reusable OKLCH colour picker label, guidance or accessible announcement",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.picker.gamut": {
+		"role": "Reusable OKLCH colour picker label, guidance or accessible announcement",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.group.grounds": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.group.text": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.group.lines": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.group.accent": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.group.status": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.group.overlay": {
+		"role": "Theme editor control label",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.role.canvas": {
+		"role": "Editable colour role label in Essentials or Advanced",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.role.surface": {
+		"role": "Editable colour role label in Essentials or Advanced",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.role.ink": {
+		"role": "Editable colour role label in Essentials or Advanced",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.role.inkMuted": {
+		"role": "Editable colour role label in Essentials or Advanced",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.role.accent": {
+		"role": "Editable colour role label in Essentials or Advanced",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.role.borderControl": {
+		"role": "Editable colour role label in Essentials or Advanced",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.role.elevated": {
+		"role": "Editable colour role label in Essentials or Advanced",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.role.sunken": {
+		"role": "Editable colour role label in Essentials or Advanced",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.role.messageSurface": {
+		"role": "Editable colour role label in Essentials or Advanced",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.role.mediaSurface": {
+		"role": "Editable colour role label in Essentials or Advanced",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.role.rowHover": {
+		"role": "Editable colour role label in Essentials or Advanced",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.role.rowSelected": {
+		"role": "Editable colour role label in Essentials or Advanced",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.role.inkDim": {
+		"role": "Editable colour role label in Essentials or Advanced",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.role.inkDisabled": {
+		"role": "Editable colour role label in Essentials or Advanced",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.role.tokenCommand": {
+		"role": "Editable colour role label in Essentials or Advanced",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.role.hairline": {
+		"role": "Editable colour role label in Essentials or Advanced",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.role.hairlineStrong": {
+		"role": "Editable colour role label in Essentials or Advanced",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.role.accentHover": {
+		"role": "Editable colour role label in Essentials or Advanced",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.role.accentActive": {
+		"role": "Editable colour role label in Essentials or Advanced",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.role.chartBarHover": {
+		"role": "Editable colour role label in Essentials or Advanced",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.role.accentWash": {
+		"role": "Editable colour role label in Essentials or Advanced",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.role.onAccent": {
+		"role": "Editable colour role label in Essentials or Advanced",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.role.accentAlt": {
+		"role": "Editable colour role label in Essentials or Advanced",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.role.accentAltWash": {
+		"role": "Editable colour role label in Essentials or Advanced",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.role.success": {
+		"role": "Editable colour role label in Essentials or Advanced",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.role.successWash": {
+		"role": "Editable colour role label in Essentials or Advanced",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.role.successBorder": {
+		"role": "Editable colour role label in Essentials or Advanced",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.role.warning": {
+		"role": "Editable colour role label in Essentials or Advanced",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.role.warningWash": {
+		"role": "Editable colour role label in Essentials or Advanced",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.role.warningBorder": {
+		"role": "Editable colour role label in Essentials or Advanced",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.role.danger": {
+		"role": "Editable colour role label in Essentials or Advanced",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.role.dangerWash": {
+		"role": "Editable colour role label in Essentials or Advanced",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.role.dangerBorder": {
+		"role": "Editable colour role label in Essentials or Advanced",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.role.info": {
+		"role": "Editable colour role label in Essentials or Advanced",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.role.infoWash": {
+		"role": "Editable colour role label in Essentials or Advanced",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.role.infoBorder": {
+		"role": "Editable colour role label in Essentials or Advanced",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.role.overlayShadow": {
+		"role": "Editable colour role label in Essentials or Advanced",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.role.scrim": {
+		"role": "Editable colour role label in Essentials or Advanced",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.preview.sidebar": {
+		"role": "Non-interactive representative UI preview content",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.preview.selected": {
+		"role": "Non-interactive representative UI preview content",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.preview.normal": {
+		"role": "Non-interactive representative UI preview content",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.preview.user": {
+		"role": "Non-interactive representative UI preview content",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.preview.assistant": {
+		"role": "Non-interactive representative UI preview content",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.preview.composer": {
+		"role": "Non-interactive representative UI preview content",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.preview.send": {
+		"role": "Non-interactive representative UI preview content",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.preview.primary": {
+		"role": "Non-interactive representative UI preview content",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.preview.secondary": {
+		"role": "Non-interactive representative UI preview content",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.preview.disabled": {
+		"role": "Non-interactive representative UI preview content",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.preview.input": {
+		"role": "Non-interactive representative UI preview content",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.preview.menu": {
+		"role": "Non-interactive representative UI preview content",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.preview.menu_item": {
+		"role": "Non-interactive representative UI preview content",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.preview.menu_danger": {
+		"role": "Non-interactive representative UI preview content",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.preview.success": {
+		"role": "Non-interactive representative UI preview content",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.preview.warning": {
+		"role": "Non-interactive representative UI preview content",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.preview.danger": {
+		"role": "Non-interactive representative UI preview content",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.preview.info": {
+		"role": "Non-interactive representative UI preview content",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.preview.bridge": {
+		"role": "Non-interactive representative UI preview content",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.preview.bridge_name": {
+		"role": "Non-interactive representative UI preview content",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.preview.bridge_status": {
+		"role": "Non-interactive representative UI preview content",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.preview.code": {
+		"role": "Non-interactive representative UI preview content",
+		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
+		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
+		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.accents": {
+		"role": "Accent family label or usage guidance in custom theme editor",
+		"tone": "Concise sentence case; Primary and Secondary name colour families, not priority or button variants.",
+		"length": "Wrap naturally in the 560px drawer; never truncate explanatory help.",
+		"note": "Primary is interaction/selection; Secondary is identity/category ink plus an independently edited wash. No tertiary or secondary button states exist. Global accent can be refused if it conflicts with authored secondary; contrast is composed first."
+	},
+	"ui.settings.appearance.editor.accent.primary": {
+		"role": "Accent family label or usage guidance in custom theme editor",
+		"tone": "Concise sentence case; Primary and Secondary name colour families, not priority or button variants.",
+		"length": "Wrap naturally in the 560px drawer; never truncate explanatory help.",
+		"note": "Primary is interaction/selection; Secondary is identity/category ink plus an independently edited wash. No tertiary or secondary button states exist. Global accent can be refused if it conflicts with authored secondary; contrast is composed first."
+	},
+	"ui.settings.appearance.editor.accent.primary_usage": {
+		"role": "Accent family label or usage guidance in custom theme editor",
+		"tone": "Concise sentence case; Primary and Secondary name colour families, not priority or button variants.",
+		"length": "Wrap naturally in the 560px drawer; never truncate explanatory help.",
+		"note": "Primary is interaction/selection; Secondary is identity/category ink plus an independently edited wash. No tertiary or secondary button states exist. Global accent can be refused if it conflicts with authored secondary; contrast is composed first."
+	},
+	"ui.settings.appearance.editor.accent.secondary": {
+		"role": "Accent family label or usage guidance in custom theme editor",
+		"tone": "Concise sentence case; Primary and Secondary name colour families, not priority or button variants.",
+		"length": "Wrap naturally in the 560px drawer; never truncate explanatory help.",
+		"note": "Primary is interaction/selection; Secondary is identity/category ink plus an independently edited wash. No tertiary or secondary button states exist. Global accent can be refused if it conflicts with authored secondary; contrast is composed first."
+	},
+	"ui.settings.appearance.editor.accent.secondary_usage": {
+		"role": "Accent family label or usage guidance in custom theme editor",
+		"tone": "Concise sentence case; Primary and Secondary name colour families, not priority or button variants.",
+		"length": "Wrap naturally in the 560px drawer; never truncate explanatory help.",
+		"note": "Primary is interaction/selection; Secondary is identity/category ink plus an independently edited wash. No tertiary or secondary button states exist. Global accent can be refused if it conflicts with authored secondary; contrast is composed first."
+	},
+	"ui.settings.appearance.editor.accent.variants": {
+		"role": "Accent family label or usage guidance in custom theme editor",
+		"tone": "Concise sentence case; Primary and Secondary name colour families, not priority or button variants.",
+		"length": "Wrap naturally in the 560px drawer; never truncate explanatory help.",
+		"note": "Primary is interaction/selection; Secondary is identity/category ink plus an independently edited wash. No tertiary or secondary button states exist. Global accent can be refused if it conflicts with authored secondary; contrast is composed first."
+	},
+	"ui.settings.appearance.editor.accent.secondary_help": {
+		"role": "Accent family label or usage guidance in custom theme editor",
+		"tone": "Concise sentence case; Primary and Secondary name colour families, not priority or button variants.",
+		"length": "Wrap naturally in the 560px drawer; never truncate explanatory help.",
+		"note": "Primary is interaction/selection; Secondary is identity/category ink plus an independently edited wash. No tertiary or secondary button states exist. Global accent can be refused if it conflicts with authored secondary; contrast is composed first."
+	},
+	"ui.settings.appearance.editor.accent.effective": {
+		"role": "Accent family label or usage guidance in custom theme editor",
+		"tone": "Concise sentence case; Primary and Secondary name colour families, not priority or button variants.",
+		"length": "Wrap naturally in the 560px drawer; never truncate explanatory help.",
+		"note": "Primary is interaction/selection; Secondary is identity/category ink plus an independently edited wash. No tertiary or secondary button states exist. Global accent can be refused if it conflicts with authored secondary; contrast is composed first."
+	},
+	"ui.settings.appearance.editor.preview.identity": {
+		"role": "Inert representative preview sample, not an interactive action",
+		"tone": "Concise sentence case; Primary and Secondary name colour families, not priority or button variants.",
+		"length": "Wrap naturally in the 560px drawer; never truncate explanatory help.",
+		"note": "Primary is interaction/selection; Secondary is identity/category ink plus an independently edited wash. No tertiary or secondary button states exist. Global accent can be refused if it conflicts with authored secondary; contrast is composed first."
+	},
+	"ui.settings.appearance.editor.preview.category": {
+		"role": "Inert representative preview sample, not an interactive action",
+		"tone": "Concise sentence case; Primary and Secondary name colour families, not priority or button variants.",
+		"length": "Wrap naturally in the 560px drawer; never truncate explanatory help.",
+		"note": "Primary is interaction/selection; Secondary is identity/category ink plus an independently edited wash. No tertiary or secondary button states exist. Global accent can be refused if it conflicts with authored secondary; contrast is composed first."
+	},
+	"ui.settings.appearance.editor.preview.meta": {
+		"role": "Inert representative preview sample, not an interactive action",
+		"tone": "Concise sentence case; Primary and Secondary name colour families, not priority or button variants.",
+		"length": "Wrap naturally in the 560px drawer; never truncate explanatory help.",
+		"note": "Primary is interaction/selection; Secondary is identity/category ink plus an independently edited wash. No tertiary or secondary button states exist. Global accent can be refused if it conflicts with authored secondary; contrast is composed first."
+	}
+}

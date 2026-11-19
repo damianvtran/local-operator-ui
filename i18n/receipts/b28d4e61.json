@@ -1,0 +1,101 @@
+{
+  "auditor": "translation-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "b28d4e61",
+  "locale": "es",
+  "round": 1,
+  "namespaces": {
+    "ui.agentMessages.settings": {
+      "status": "passed",
+      "keys_audited": 84,
+      "sha256": {
+        "en": "9f323c46102978c0fa60b8f006e4b380d78c18ab81a7205cd233438d867c5d5d",
+        "es": "fcf432d674366cefc66d5ad31357b06a7e37e3d6884d4b6e8053828753291702"
+      },
+      "findings": [
+        {
+          "severity": "minor",
+          "key": "ui.agentMessages.settings.local.stays_enrolled",
+          "current": "Tu inscripción sigue activa para esta cuenta y tus otros equipos.",
+          "proposed": "Tu inscripción sigue activa para esta cuenta y tus otros dispositivos.",
+          "reason": "«equipo» is the glossary's term for team (ui.teamBridge.page.subtitle, ui.agents.refusals.*), and this sentence, unlike the adjacent switch label «Activado en este equipo», admits the team reading of «tus otros equipos»; «dispositivo» is the glossary's device term and shipped es already uses it for a device (ui.mesh.mesh_actions.this_device_keeps). The switch label itself is acceptable: «este equipo» for a computer is established Spanish UI usage and the same feature's shipped dialog (ui.agentMessages.dialog.local_failure) already uses it."
+        }
+      ]
+    },
+    "ui.agents": {
+      "status": "passed",
+      "keys_audited": 0,
+      "sha256": {
+        "en": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+        "es": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+      },
+      "findings": []
+    },
+    "ui.chat.transcript_copy": {
+      "status": "passed",
+      "keys_audited": 9,
+      "sha256": {
+        "en": "a81115a3e17a63068b79b4c66d86edaa1417a145f0b1fcc14d34deae8cd1734b",
+        "es": "8b61937febd75f137c6f7a789a40710035405b4ee38c18c677b352e38b4dec29"
+      },
+      "findings": []
+    },
+    "ui.library": {
+      "status": "passed",
+      "keys_audited": 152,
+      "sha256": {
+        "en": "009e864f684e85925001346dc382b5b04724d994f5b099a344f70827a2aa2b2a",
+        "es": "0a982c342b569d77b8488b55d959b73334e4df927cb2ab4aaf8576012c2d170c"
+      },
+      "findings": [
+        {
+          "severity": "minor",
+          "key": "ui.library.filter.scope_all",
+          "current": "Todas las inclusiones",
+          "proposed": "Todo el catálogo",
+          "reason": "«inclusión» names the act of including, not the included items, so the label is a literal calque the context note does not support: it defines the option as selecting the whole catalog, and «catálogo» is the term this namespace already uses for it (ui.library.page.building, ui.library.page.load_failed). The shorter form is also 16 characters against the current 21, in a rail that renders a count beside it."
+        },
+        {
+          "severity": "minor",
+          "key": "ui.library.sort.organized",
+          "current": "Organizado por última vez",
+          "proposed": "Organizados por última vez",
+          "reason": "This sort option orders assets by each asset's own organized.at (library-model.ts:289-290), so it must agree with its sibling sort label «Vistos recientemente»; the current singular reads as the library-wide last organize run, which is the separate librarian.last_organized string."
+        },
+        {
+          "severity": "nit",
+          "key": "ui.library.menu.asset_id_copied",
+          "current": "ID del recurso copiado",
+          "proposed": "Se copió el ID del recurso",
+          "reason": "The masculine participle «copiado» agrees with «recurso», so the toast first parses as «ID of the copied asset» rather than «the asset ID was copied»; the sentence form matches the action's actual object."
+        }
+      ]
+    },
+    "ui.presence": {
+      "status": "passed",
+      "keys_audited": 9,
+      "sha256": {
+        "en": "7dc0d4c3bb4c18fb15501b630c7f1b2bc1f2f1ec8dabe131d3a3498b50a142a8",
+        "es": "a319fe571f931e90d92ca8606af0d5071c4389d597da32a57186d86def3b748c"
+      },
+      "findings": [
+        {
+          "severity": "minor",
+          "key": "ui.presence.minutes_ago",
+          "current": "hace {count, number} min",
+          "proposed": "keep the current text; run a rendered check at sidebar width (composed link_down_compact renders «Sin conexión · hace 4 min», 25 cells against 18 in English)",
+          "reason": "The context caps this as a compact fragment for narrow sidebar rows; rendered at 4 it is 10 characters against 6 («4m ago»), and the composed sidebar fact grows from 18 to 25 cells (+39%). No shorter grammatical Spanish form exists («4 min» loses the ago reading), so this is a rendered-check flag rather than a text change."
+        }
+      ]
+    },
+    "ui.teamBridge": {
+      "status": "passed",
+      "keys_audited": 67,
+      "sha256": {
+        "en": "0694bc18d6400d88ea4e84e2d3585a76c55dbfc913da7e53dbed7457e4f0bea2",
+        "es": "229610bc2a3079e167424d7dc273922c86c88d28fcb748ee1a56deabaa6e4371"
+      },
+      "findings": []
+    }
+  }
+}

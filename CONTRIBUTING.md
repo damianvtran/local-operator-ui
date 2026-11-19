@@ -135,6 +135,10 @@ pnpm test:desktop
 node scripts/run-desktop-tests.mjs --test-concurrency=1 scripts/settings-language-row.test.mjs
 ```
 
+A new `scripts/**/*.test.mjs` file joins `pnpm test:desktop` automatically (the
+inventory is derived, not listed in `package.json`); if it must run elsewhere,
+add it to `EXEMPT` in `scripts/desktop-test-inventory.mjs` with the reason.
+
 Run targeted lanes locally and let CI run the complete suite. The weekly
 `Focused flake check` workflow repeats three small DOM lanes in rotating order
 and writes actual exit statuses to its Actions summary; it never retries a red

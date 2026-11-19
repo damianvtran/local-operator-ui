@@ -1,0 +1,75 @@
+{
+  "schema": 1,
+  "auditor": "reviewer",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "d55a45cddcf5-system-prompt-r1-ur",
+  "auditor_session": "d55a45cddcf5",
+  "instance_note": "Locale-scoped receipt identity derived from the actual reviewer session ID; these receipts are one independent reviewer, not separate independent agents.",
+  "date": "2026-11-05",
+  "recorded_at": "2026-11-05T05:59:45Z",
+  "status": "passed",
+  "locale": "ur",
+  "namespace": "ui.settings.model",
+  "sha256": {
+    "en": "a4e80036ccbe9d3e98c15f585648ccc3b83318c708b563b745b82311e2f4b3aa",
+    "ur": "ef4602dcfc68eecbb0b62876a02b1281654cd033e50f59f1e9328dde305f3777"
+  },
+  "paths": {
+    "en": "src/i18n/catalogues/en/ui.settings.model.json",
+    "target": "src/i18n/catalogues/ur/ui.settings.model.json",
+    "context": "src/i18n/catalogues/en/ui.settings.model.context.json"
+  },
+  "context_sha256": "ffc4d68d822fd09650bf2fe51928b026306fe97593a82792b8f62c9b4b02dad2",
+  "base": "cd8590faa35fd28a84ab858fde394af5b509f294",
+  "head": "8caf51aa60e7aaf70836d34b351b7531750468bd",
+  "scope": "Independent round 1 semantic audit of three newly added system-prompt keys; unchanged entries retained from existing base namespace audits, with key/value identity verified. This receipt records the already-performed review, not a new whole-catalogue audit.",
+  "audited_keys": [
+    "ui.settings.model.system_prompt.rich_text",
+    "ui.settings.model.system_prompt.source",
+    "ui.settings.model.system_prompt.source_required"
+  ],
+  "independence": {
+    "author": "Independent reviewer did not implement or translate these changes.",
+    "actual_model": "openai/gpt-6.1-sol",
+    "fallback_used": false
+  },
+  "findings": [],
+  "prior_unchanged_evidence": {
+    "base_target_sha256": "a82d587c8bb5479151d52a0a1ac2fbed2b9c6227fb070e66499126303f589636",
+    "base_source_sha256": "5a09b6ed49e8501d14a6f8052a70ce15ce5104ec8da3756c6b576e6e4d150cf1",
+    "unchanged_entry_count": 32,
+    "unchanged_key_value_identity_verified": true,
+    "prior_namespace_auditors": [
+      {
+        "agent": "i18n-auditor",
+        "model": "openai/gpt-6.1-sol",
+        "date": "2026-10-19",
+        "result": "clean",
+        "instance": "4fef4415bb3f",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 0,
+          "nit": 0
+        },
+        "receipt": "i18n/receipts/4fef4415bb3f.json",
+        "receipt_sha256": "c0d9e6dfc0abb5d4ff312c2a37b75449529b55e7252eea0eb0739dd005608e3c",
+        "scope": "Remediation delta audit: changed keys and direct composition neighbours; zero findings at the final bytes.",
+        "note": "Independent auditor post-dates the translator; all findings remediated and re-audited to zero. Audit model fell back from anthropic/claude-sonnet-5-5 to openai/gpt-6.1-sol due to provider quota."
+      }
+    ]
+  },
+  "review_comment": "https://github.com/damianvtran/local-operator-ui/pull/1691#issuecomment-6650664750",
+  "validation_notes": [
+    "All three new target messages independently read against English context and core glossary/style guides.",
+    "No placeholders, CLDR plural arms or manual bidi controls in the new messages.",
+    "Public web-copy cross-check provenance and limitations are in the review comment.",
+    "No rendered-fit/native coverage is claimed by this textual receipt."
+  ],
+  "style_guide_reference": {
+    "repository": "damianvtran/local-operator",
+    "commit": "b42471d3935cb7e95d64428af27c32626665f4c0",
+    "glossary": "i18n/glossary.md",
+    "locale_style_guide": "i18n/style-guides/ur.md"
+  }
+}

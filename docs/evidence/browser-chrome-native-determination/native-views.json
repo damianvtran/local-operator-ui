@@ -1,0 +1,328 @@
+{
+  "identity": {
+    "checkedOut": "54d68826541596299c33f5f0172901d014e4a81b",
+    "productSourceCommit": "c5503204ed0bc88e20dadb624de949788dc52b80",
+    "productSourceClean": true,
+    "branch": "docs/browser-native-determination-s4b",
+    "dirtySource": "",
+    "electron": "44.3.0",
+    "appVersion": {
+      "app": "0.39.4",
+      "chrome": "152.0.7977.78",
+      "node": "24.20.0"
+    },
+    "sha256": {
+      "mainIndexJs": "9a0e2c5478d7c4b8188f0f9e27b5776453db3b6748d7a3ef735ee37132205046",
+      "mainIndexJsc": "269d88d0c01168ffd62f1844bb7862e5e518b5b3659c7c24f8e362ccbc4c4cbe",
+      "rendererIndexHtml": "a0e2b36ed2ed70fc1c17ea1dfd692293ff990566eb90fdf9a577bcd20df93286",
+      "overlayListHtml": "9c8bf7a57794c54e528aebad72f3b1eba8e226bc76c1eb889531b4a2b096e57e"
+    }
+  },
+  "rest": {
+    "at": "2026-10-22T07:04:07.448Z",
+    "window": {
+      "id": 1,
+      "visible": false,
+      "focused": false,
+      "focusable": false,
+      "bounds": {
+        "x": 174,
+        "y": 45,
+        "width": 1380,
+        "height": 900
+      },
+      "contentBounds": {
+        "x": 174,
+        "y": 45,
+        "width": 1380,
+        "height": 900
+      }
+    },
+    "ownerWcId": 1,
+    "contentView": {
+      "ctor": "View",
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 1380,
+        "height": 900
+      },
+      "visible": true,
+      "isWebContentsView": false
+    },
+    "focusedWebContentsId": null,
+    "zoom": 1,
+    "children": [
+      {
+        "index": 0,
+        "ctor": "WebContentsView",
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "width": 1280,
+          "height": 720
+        },
+        "visible": false,
+        "webContentsId": 3,
+        "url": "about:blank",
+        "type": "window",
+        "title": "about:blank",
+        "focused": false,
+        "isWebContentsView": true
+      },
+      {
+        "index": 1,
+        "ctor": "WebContentsView",
+        "bounds": {
+          "x": 260,
+          "y": 69,
+          "width": 1120,
+          "height": 831
+        },
+        "visible": true,
+        "webContentsId": 4,
+        "url": "http://127.0.0.1:55407/fixture",
+        "type": "window",
+        "title": "native-determination fixture",
+        "focused": false,
+        "isWebContentsView": true
+      }
+    ],
+    "allWebContents": [
+      {
+        "id": 4,
+        "type": "window",
+        "url": "http://127.0.0.1:55407/fixture",
+        "title": "native-determination fixture",
+        "focused": false
+      },
+      {
+        "id": 3,
+        "type": "window",
+        "url": "about:blank",
+        "title": "about:blank",
+        "focused": false
+      },
+      {
+        "id": 2,
+        "type": "window",
+        "url": "about:blank",
+        "title": "about:blank",
+        "focused": false
+      },
+      {
+        "id": 1,
+        "type": "window",
+        "url": "file:///Users/damian/local-operator-ui/.worktrees/browser-native-determination/out/renderer/index.html#/browser",
+        "title": "Local Operator",
+        "focused": false
+      }
+    ]
+  },
+  "open": {
+    "at": "2026-10-22T07:04:10.507Z",
+    "window": {
+      "id": 1,
+      "visible": false,
+      "focused": false,
+      "focusable": false,
+      "bounds": {
+        "x": 174,
+        "y": 45,
+        "width": 1380,
+        "height": 900
+      },
+      "contentBounds": {
+        "x": 174,
+        "y": 45,
+        "width": 1380,
+        "height": 900
+      }
+    },
+    "ownerWcId": 1,
+    "contentView": {
+      "ctor": "View",
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 1380,
+        "height": 900
+      },
+      "visible": true,
+      "isWebContentsView": false
+    },
+    "focusedWebContentsId": null,
+    "zoom": 1,
+    "children": [
+      {
+        "index": 0,
+        "ctor": "WebContentsView",
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "width": 1280,
+          "height": 720
+        },
+        "visible": false,
+        "webContentsId": 3,
+        "url": "about:blank",
+        "type": "window",
+        "title": "about:blank",
+        "focused": false,
+        "isWebContentsView": true
+      },
+      {
+        "index": 1,
+        "ctor": "WebContentsView",
+        "bounds": {
+          "x": 260,
+          "y": 69,
+          "width": 1120,
+          "height": 831
+        },
+        "visible": true,
+        "webContentsId": 4,
+        "url": "http://127.0.0.1:55407/fixture",
+        "type": "window",
+        "title": "native-determination fixture",
+        "focused": false,
+        "isWebContentsView": true
+      },
+      {
+        "index": 2,
+        "ctor": "WebContentsView",
+        "bounds": {
+          "x": 260,
+          "y": 69,
+          "width": 1120,
+          "height": 69
+        },
+        "visible": true,
+        "webContentsId": 5,
+        "url": "file:///Users/damian/local-operator-ui/.worktrees/browser-native-determination/out/renderer/browser-address-overlay-list.html",
+        "type": "window",
+        "title": "Local Operator Address Overlay List",
+        "focused": false,
+        "isWebContentsView": true
+      }
+    ],
+    "allWebContents": [
+      {
+        "id": 5,
+        "type": "window",
+        "url": "file:///Users/damian/local-operator-ui/.worktrees/browser-native-determination/out/renderer/browser-address-overlay-list.html",
+        "title": "Local Operator Address Overlay List",
+        "focused": false
+      },
+      {
+        "id": 4,
+        "type": "window",
+        "url": "http://127.0.0.1:55407/fixture",
+        "title": "native-determination fixture",
+        "focused": false
+      },
+      {
+        "id": 3,
+        "type": "window",
+        "url": "about:blank",
+        "title": "about:blank",
+        "focused": false
+      },
+      {
+        "id": 2,
+        "type": "window",
+        "url": "about:blank",
+        "title": "about:blank",
+        "focused": false
+      },
+      {
+        "id": 1,
+        "type": "window",
+        "url": "file:///Users/damian/local-operator-ui/.worktrees/browser-native-determination/out/renderer/index.html#/browser",
+        "title": "Local Operator",
+        "focused": false
+      }
+    ]
+  },
+  "owner": {
+    "rest": {
+      "content": {
+        "x": 260,
+        "y": 69,
+        "width": 1120,
+        "height": 831
+      },
+      "strip": {
+        "x": 260,
+        "y": 32,
+        "width": 1120,
+        "height": 37
+      },
+      "popout": null,
+      "address": null,
+      "popoutPresent": false,
+      "barCount": 0,
+      "dockCount": 0,
+      "hash": "#/browser",
+      "innerWidth": 1380,
+      "innerHeight": 900,
+      "devicePixelRatio": 2,
+      "activeElement": "BODY"
+    },
+    "open": {
+      "content": {
+        "x": 260,
+        "y": 69,
+        "width": 1120,
+        "height": 831
+      },
+      "strip": {
+        "x": 260,
+        "y": 32,
+        "width": 1120,
+        "height": 37
+      },
+      "popout": {
+        "x": 260,
+        "y": 32,
+        "width": 1120,
+        "height": 37
+      },
+      "address": {
+        "x": 396,
+        "y": 36,
+        "width": 944,
+        "height": 28
+      },
+      "popoutPresent": true,
+      "barCount": 1,
+      "dockCount": 0,
+      "hash": "#/browser",
+      "innerWidth": 1380,
+      "innerHeight": 900,
+      "devicePixelRatio": 2,
+      "activeElement": "browser-address"
+    }
+  },
+  "reRaised": {
+    "listOrder": 3,
+    "visibleIndices": [
+      2,
+      3
+    ],
+    "lastVisible": 3,
+    "pageOrder": 2,
+    "listBounds": {
+      "x": 260,
+      "y": 69,
+      "width": 1120,
+      "height": 69
+    },
+    "pageBounds": {
+      "x": 260,
+      "y": 69,
+      "width": 1120,
+      "height": 831
+    }
+  }
+}

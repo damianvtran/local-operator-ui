@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "agent": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "audit-1747-tag-mode-vi-r2-20261107",
+  "session": "566b1aae9d1b",
+  "locale": "vi",
+  "date": "2026-11-07",
+  "status": "passed",
+  "independence": "lopdev translation-auditor, session 566b1aae9d1b, separate from the PR #1747 coder that translated (coder agent, anthropic/claude-opus-5-5; same served model family disclosed). Verdict rebuilt from the English source and context, renderer call sites (chat-tag-header.tsx, chat-sidebar.tsx, chat-sidebar-view-menu.tsx), sibling keys, the core glossary and the locale style guide. Edited no catalogue.",
+  "pr": "damianvtran/local-operator-ui#1747",
+  "base": "2b2371db5f62",
+  "head": "c9f1cf4183a5e19e1abfa6e57a22a7021bdc4dec",
+  "references": {
+    "glossary": "local-operator origin/main 2d1ff161cdcb i18n/glossary.md sha256 0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "style_guide": "local-operator origin/main 2d1ff161cdcb i18n/style-guides/vi.md sha256 e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888"
+  },
+  "namespaces": {
+    "ui.chat.tag_mode": {
+      "status": "passed",
+      "sha256": {
+        "en": "d0e9e21a0e5c47df740867084d58baeec3ca026cc857fa66c3be6734c3255ac6",
+        "vi": "dcde115668802eda76cfd664735dd450655067dd4c652645844477c03e1306a2",
+        "context": "486de50b381d7ef1546632e29935abf22b523d65df158c01f365a52a82f1064d"
+      },
+      "keys_read": 4,
+      "delta": {
+        "added": [
+          "ui.chat.tag_mode.live",
+          "ui.chat.tag_mode.not_loaded",
+          "ui.chat.tag_mode.mode_hint",
+          "ui.chat.tag_mode.use_tag"
+        ],
+        "changed": []
+      },
+      "findings": [],
+      "checks": "key set == en (4 keys); ICU parse via @formatjs/icu-messageformat-parser: live keeps {count} plural + {count, number, ::group-off} (useGrouping:false) in every arm; plural arms == Intl.PluralRules(locale) categories; zero Unicode Cf; terms checked against Running (ui.chat.sidebar_view.section.running), Time section/Tag option labels, use_time sibling, show_more_chats and the audited ui.chat.tags.mode_hint; rendered agent-mode-offers-tag (ru, fr) and tag-mode-unloaded-tag (es) in Storybook :6247 via the harness browser.",
+      "verdict": "live 'đang chạy' = Running 'Đang chạy', other-only; use_tag 'Dùng Nhãn' mirrors the audited sibling 'Dùng mục Thời gian' (label-word capital kept consistent); mode_hint extends audited ui.chat.tags.mode_hint. Clean."
+    }
+  }
+}

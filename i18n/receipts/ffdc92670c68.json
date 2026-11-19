@@ -1,0 +1,190 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent-namespace-remediation-delta-audit",
+  "date": "2026-11-09",
+  "locale": "es",
+  "branch": "feat/i18n-s7",
+  "head": "aba5d0310761cedc384c35847498d4197ce4b107",
+  "base": "31710e01b6b6e1e0aae6ed56d5e4467de6611740",
+  "main_base": "41c265cbff628f8c6add089f6c042363a131f24c",
+  "instance": "ffdc92670c68",
+  "agent": "reviewer",
+  "model": "anthropic/claude-sonnet-5-5",
+  "fallback": null,
+  "auditor": {
+    "agent": "reviewer",
+    "instance": "ffdc92670c68",
+    "session": "cbebcfe447a3",
+    "model": "anthropic/claude-sonnet-5-5",
+    "independent_from_translator_session": true,
+    "independence": "Independent review of one changed Spanish value; no catalogue/ledger/generator changes. Other namespace blocks copied without modification from round 1 receipt.",
+    "actual_model_source": "Current harness session model declaration"
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "key_count": 29,
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [
+      {
+        "id": "S7-ES-1",
+        "severity": "MINOR",
+        "key": "ui.chat.run_details.mcp_auth.upgrade",
+        "file": "src/i18n/catalogues/es/ui.chat.run_details.json",
+        "line": 103,
+        "problem": "The new accurate term «servidor de Local Operator» differs from «backend de Local Operator» / «backend» already used for the same product component in this run-details surface (children_unopenable, update_backend), and from backend in the notices aida.unreachable and chat.unread_backend_silent. The referent is not wrong, but the requested same-concept naming consistency is not complete.",
+        "evidence": "New mcp_auth.upgrade: «Actualiza el servidor de Local Operator…». Existing children_unopenable: «…un backend de Local Operator más reciente. Actualiza el backend…»; update_backend: «Actualizar el backend». The existing settings configuration upgrade copy already uses «servidor de Local Operator», confirming the new wording is an established accurate alternative rather than an incorrect component.",
+        "suggested_fix": "Defer harmonization of the older adjacent backend labels to the established «servidor de Local Operator» terminology; do not revert this accurate Spanish translation merely to preserve English.",
+        "disposition": "deferred — non-blocking naming consistency; existing labels are outside these 29 additions"
+      }
+    ],
+    "nit": []
+  },
+  "namespaces": {
+    "ui.agents.pages": {
+      "namespace": "ui.agents.pages",
+      "keys_audited": 7,
+      "keys": [
+        "ui.agents.pages.backend.connecting",
+        "ui.agents.pages.backend.loading_capabilities",
+        "ui.agents.pages.change.new",
+        "ui.agents.pages.backend.upgrade_heading",
+        "ui.agents.pages.backend.unreachable",
+        "ui.agents.pages.backend.upgrade_body",
+        "ui.agents.pages.change.updated"
+      ],
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "0b2e8e8a93001604df2d7a49abe57c8070f29ef30b50209bc3a84cbdc43b540f",
+      "target_sha256": "62bebb6ca016cb8a34f8ae7fb9734feae37cd29e53bddd8563d8a78fe0c47fc2",
+      "sha256": {
+        "en": "0b2e8e8a93001604df2d7a49abe57c8070f29ef30b50209bc3a84cbdc43b540f",
+        "es": "62bebb6ca016cb8a34f8ae7fb9734feae37cd29e53bddd8563d8a78fe0c47fc2"
+      },
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      },
+      "evidence": {
+        "path": "i18n/audits/evidence/es/ui.agents.pages/s7-es-cbebcfe447a3/record.json",
+        "sha256": "c49b79dde6792ca63a1f93d876d6295e7a2563aabd1670a83b0967324e197f61"
+      }
+    },
+    "ui.chat.run_details": {
+      "namespace": "ui.chat.run_details",
+      "keys_audited": 16,
+      "keys": [
+        "ui.chat.run_details.child.result.preview",
+        "ui.chat.run_details.child.result.title",
+        "ui.chat.run_details.child.result.unavailable_clipped",
+        "ui.chat.run_details.child.result.unavailable",
+        "ui.chat.run_details.child.brief.show_less",
+        "ui.chat.run_details.child.brief.show_more",
+        "ui.chat.run_details.mcp_auth.upgrade",
+        "ui.chat.run_details.mcp_auth.no_references",
+        "ui.chat.run_details.mcp_auth.unknown_method",
+        "ui.chat.run_details.mcp_auth.waiting",
+        "ui.chat.run_details.mcp_auth.status",
+        "ui.chat.run_details.mcp_auth.status_unavailable",
+        "ui.chat.run_details.mcp_failure.cancel_lead",
+        "ui.chat.run_details.mcp_failure.busy",
+        "ui.chat.run_details.mcp_failure.refused",
+        "ui.chat.run_details.mcp_failure.session"
+      ],
+      "status": "passed",
+      "result": "clean-with-findings",
+      "source_sha256": "02877dbbfba534fb2467008550d55ffd45c928c990b89c3d1a72acbfc76d2d50",
+      "target_sha256": "9c871660a34b9bf8ae6ad960301f5d4029ba5d2533c4ff9a4ddff2347362f2db",
+      "sha256": {
+        "en": "02877dbbfba534fb2467008550d55ffd45c928c990b89c3d1a72acbfc76d2d50",
+        "es": "9c871660a34b9bf8ae6ad960301f5d4029ba5d2533c4ff9a4ddff2347362f2db"
+      },
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [
+          {
+            "id": "S7-ES-1",
+            "severity": "MINOR",
+            "key": "ui.chat.run_details.mcp_auth.upgrade",
+            "file": "src/i18n/catalogues/es/ui.chat.run_details.json",
+            "line": 103,
+            "problem": "The new accurate term «servidor de Local Operator» differs from «backend de Local Operator» / «backend» already used for the same product component in this run-details surface (children_unopenable, update_backend), and from backend in the notices aida.unreachable and chat.unread_backend_silent. The referent is not wrong, but the requested same-concept naming consistency is not complete.",
+            "evidence": "New mcp_auth.upgrade: «Actualiza el servidor de Local Operator…». Existing children_unopenable: «…un backend de Local Operator más reciente. Actualiza el backend…»; update_backend: «Actualizar el backend». The existing settings configuration upgrade copy already uses «servidor de Local Operator», confirming the new wording is an established accurate alternative rather than an incorrect component.",
+            "suggested_fix": "Defer harmonization of the older adjacent backend labels to the established «servidor de Local Operator» terminology; do not revert this accurate Spanish translation merely to preserve English.",
+            "disposition": "deferred — non-blocking naming consistency; existing labels are outside these 29 additions"
+          }
+        ],
+        "nit": []
+      },
+      "evidence": {
+        "path": "i18n/audits/evidence/es/ui.chat.run_details/s7-es-ffdc92670c68/record.json",
+        "sha256": "c5cea7dcf73f4811f1ef848d3e63bcf02a60a9d1f4ec19f11812ec053752fc04"
+      },
+      "delta_keys_audited": [
+        "ui.chat.run_details.children_unopenable"
+      ],
+      "remediation": {
+        "S7-ES-1": {
+          "status": "partially-remediated-with-remainder-deferred",
+          "commit": "aba5d0310761cedc384c35847498d4197ce4b107",
+          "fixed": "children_unopenable now names the same Local Operator server as the new upgrade/waiting copy.",
+          "remaining": "ui.chat.run_details.update_backend still says Actualizar el backend on the immediately adjacent update button; other older backend labels remain deferred. Original MINOR retained, not upgraded and not a new finding."
+        }
+      }
+    },
+    "ui.notices": {
+      "namespace": "ui.notices",
+      "keys_audited": 6,
+      "keys": [
+        "ui.notices.aida.paused_receipt",
+        "ui.notices.aida.resumed_receipt",
+        "ui.notices.aida.paused",
+        "ui.notices.aida.active",
+        "ui.notices.aida.account_required",
+        "ui.notices.aida.open_fallback"
+      ],
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "043243b66381b6fa1143acb645ce0c83fcb381883038ef88bbcb28e36764b112",
+      "target_sha256": "1e8c7890b7f949c852098fd39ad650e627746b2a86d2a6d987b9a06bbffa02d9",
+      "sha256": {
+        "en": "043243b66381b6fa1143acb645ce0c83fcb381883038ef88bbcb28e36764b112",
+        "es": "1e8c7890b7f949c852098fd39ad650e627746b2a86d2a6d987b9a06bbffa02d9"
+      },
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      },
+      "evidence": {
+        "path": "i18n/audits/evidence/es/ui.notices/s7-es-cbebcfe447a3/record.json",
+        "sha256": "41f2bbcde1b0bb3e4db27c2f5158f41f6e2310442846c2094a270e03ec72be0f"
+      }
+    }
+  },
+  "checks": {
+    "icu": "PASS: all 29 new values parse with IntlMessageFormat; English/Spanish argument types, names, plural arms and number-style AST signatures match exactly.",
+    "literal_tokens": "PASS: $'{'NAME'}' byte-identical; both ::group-off occurrences retained. Formatted output renders ${NAME} literally.",
+    "register": "PASS: new imperatives Actualiza/Añade/Revisa/Espera/Conecta and pronouns te/tu agree with existing tú register; no usted/ustedes/vosotros. agente/equipo/subagente/sesión/inicio de sesión remain consistent.",
+    "notices": "PASS: short status notices, concise two-clause receipt/account/fallback notices; faithful action and outcome.",
+    "residue": "PASS: no identical English values, no manual bidi controls in additions; manual reading finds only allowed product/protocol identifiers Local Operator, MCP, OAuth and literal NAME. Retained canonical approval labels and encoder diagnostics excluded as instructed.",
+    "backend": "ACCURATE: capabilities and mcp_auth negotiation are provided by Local Operator desktop APIs, not external MCP servers. All 7 newly translated backend references use servidor de Local Operator. One non-blocking naming drift against existing backend labels (S7-ES-1).",
+    "limitations": "Source/ICU audit only. No rendered screenshot or browser geometry evidence: browser tool unavailable in this role; no second browser stack installed."
+  },
+  "round": 2,
+  "previous_receipt": {
+    "path": "i18n/receipts/s7-es-cbebcfe447a3.json",
+    "sha256": "d8c858be5a27fc30890237d5ec546b256840c0bf7cff6eb5056b3d4888d4bf43"
+  },
+  "retained_namespaces": [
+    "ui.agents.pages",
+    "ui.notices"
+  ],
+  "model_provenance_note": "Round 2 current model: anthropic/claude-sonnet-5-5. Round 1 model provenance remains in the immutable original receipt; retained namespaces were not re-audited."
+}

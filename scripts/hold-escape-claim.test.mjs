@@ -66,7 +66,7 @@ Object.defineProperty(globalThis, "navigator", {
 const bundle = await build({
 	stdin: {
 		contents: `
-			export { SpeechToTextManager, SpeechToTextPriority, resolvePushToTalkBinding } from "./src/renderer/src/shared/hooks/use-speech-to-text-manager";
+			export { SpeechToTextManager, SpeechToTextPriority, resolvePushToTalkBinding, setPushToTalkBinding, refreshPushToTalkBinding } from "./src/renderer/src/shared/hooks/use-speech-to-text-manager";
 			export { interruptEscapeApplies } from "./src/renderer/src/features/chat/hooks/use-interrupt-on-escape";
 		`,
 		resolveDir: process.cwd(),
@@ -97,7 +97,7 @@ const bundle = await build({
 				);
 				builder.onLoad({ filter: /.*/, namespace: "fixture" }, () => ({
 					contents:
-						"export function desktopResult() { return Promise.resolve({ sections: [], settings: [] }); }",
+						"export function desktopResult() { return globalThis.__transport ? globalThis.__transport() : Promise.resolve({ sections: [], settings: [] }); }",
 					loader: "js",
 				}));
 			},
@@ -114,6 +114,8 @@ const {
 	SpeechToTextManager,
 	SpeechToTextPriority,
 	resolvePushToTalkBinding,
+	setPushToTalkBinding,
+	refreshPushToTalkBinding,
 	interruptEscapeApplies,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
@@ -227,4 +229,71 @@ test("a released hold still settles as a release, not an abort", () => {
 	keyup(keyEvent(binding.code === "AltRight" ? "Alt" : "Meta", binding.code));
 	assert.deepEqual(stops, ["release"]);
 	manager.unregister("test");
+});
+
+test("a cleared PTT binding never engages; re-binding the default engages again", () => {
+	listeners.length = 0;
+	setPushToTalkBinding("alt-right-hold");
+	const starts = [];
+	const stops = [];
+	const manager = new SpeechToTextManager();
+	manager.register(
+		"cleared-test",
+		SpeechToTextPriority.MESSAGE_INPUT,
+		{
+			start: () => starts.push("start"),
+			stop: (reason) => stops.push(reason ?? "release"),
+		},
+		() => true,
+	);
+	const onKeyDown = captureKeydown();
+	assert.ok(onKeyDown);
+
+	// Cleared: the default key is no door.
+	setPushToTalkBinding("none");
+	const clearedPress = keyEvent("Alt", "AltRight");
+	onKeyDown(clearedPress);
+	assert.deepEqual(starts, [], "cleared binding must never start");
+	assert.equal(
+		clearedPress.defaultPrevented,
+		false,
+		"and must not claim the press",
+	);
+
+	// Re-bound: the same press engages again.
+	setPushToTalkBinding("alt-right-hold");
+	const boundPress = keyEvent("Alt", "AltRight");
+	onKeyDown(boundPress);
+	// A refresh triggered by register() may have re-applied; set directly.
+	assert.deepEqual(starts, ["start"]);
+	assert.equal(boundPress.defaultPrevented, true);
+	manager.unregister("cleared-test");
+});
+
+test("a stale refresh read that started before a Clear loses to the Clear (generation guard)", async () => {
+	setPushToTalkBinding("alt-right-hold");
+	let release;
+	const answer = {
+		sections: [],
+		settings: [{ key: "keymap.push_to_talk", value: "alt-right-hold" }],
+	};
+	globalThis.__transport = () =>
+		new Promise((resolve) => {
+			release = () => resolve(answer);
+		});
+	try {
+		const flight = refreshPushToTalkBinding();
+		setPushToTalkBinding("none");
+		assert.equal(resolvePushToTalkBinding(), null);
+		release();
+		await flight;
+		// The in-flight read carried the pre-Clear value; it must be dropped.
+		assert.equal(
+			resolvePushToTalkBinding(),
+			null,
+			"a stale read must not undo the Clear",
+		);
+	} finally {
+		globalThis.__transport = undefined;
+	}
 });

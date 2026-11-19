@@ -1,0 +1,1274 @@
+{
+  "width": 900,
+  "theme": "light",
+  "locale": "en",
+  "reviewFixture": true,
+  "facts": {
+    "pending": 2,
+    "requestEntryId": "entry-1",
+    "seq": 17,
+    "explicitOpen": true,
+    "actions": {
+      "dismissed": 1,
+      "decided": 3,
+      "dropped": 3
+    },
+    "presented": true,
+    "contentRect": {
+      "x": 0,
+      "y": 120,
+      "width": 900,
+      "height": 600
+    },
+    "ready": true,
+    "visible": true,
+    "failedReason": null,
+    "bounds": {
+      "view": {
+        "x": 532,
+        "y": 335,
+        "width": 368,
+        "height": 385
+      },
+      "card": {
+        "x": 540,
+        "y": 343,
+        "width": 352,
+        "height": 369
+      },
+      "width": 352,
+      "height": 369,
+      "pad": 8
+    },
+    "childIndex": 1,
+    "childCount": 2,
+    "childWebContentsId": 6,
+    "focusedWebContentsId": null,
+    "documentUrl": "file://~/local-operator-ui/.worktrees/s6d/out/renderer/browser-approvals-overlay.html",
+    "opaque": false
+  },
+  "rows": {
+    "Q2-decisions-above-fold": {
+      "status": "PASS",
+      "detail": {
+        "cardHeight": 380,
+        "cardRectHeight": 381.7734375,
+        "footerTop": 336,
+        "decisions": [
+          {
+            "text": "Allow until the app quits",
+            "top": 199,
+            "bottom": 227
+          },
+          {
+            "text": "Always allow this site",
+            "top": 233,
+            "bottom": 261
+          },
+          {
+            "text": "Allow all of example-company.test",
+            "top": 267,
+            "bottom": 296
+          },
+          {
+            "text": "Don't allow",
+            "top": 302,
+            "bottom": 330
+          }
+        ]
+      }
+    },
+    "A1-auto-present-unfocused": {
+      "status": "PASS",
+      "detail": {
+        "autoSettled": true,
+        "facts": {
+          "pending": 2,
+          "requestEntryId": "entry-0",
+          "seq": 1,
+          "explicitOpen": false,
+          "actions": {
+            "dismissed": 0,
+            "decided": 0,
+            "dropped": 0
+          },
+          "presented": true,
+          "contentRect": {
+            "x": 0,
+            "y": 120,
+            "width": 900,
+            "height": 600
+          },
+          "ready": true,
+          "visible": true,
+          "failedReason": null,
+          "bounds": {
+            "view": {
+              "x": 532,
+              "y": 322,
+              "width": 368,
+              "height": 398
+            },
+            "card": {
+              "x": 540,
+              "y": 330,
+              "width": 352,
+              "height": 382
+            },
+            "width": 352,
+            "height": 382,
+            "pad": 8
+          },
+          "childIndex": 1,
+          "childCount": 2,
+          "childWebContentsId": 4,
+          "focusedWebContentsId": null,
+          "documentUrl": "file://~/local-operator-ui/.worktrees/s6d/out/renderer/browser-approvals-overlay.html",
+          "opaque": false
+        },
+        "pageBefore": {
+          "bounds": {
+            "x": 0,
+            "y": 120,
+            "width": 900,
+            "height": 600
+          },
+          "visible": true,
+          "viewport": {
+            "w": 900,
+            "h": 600
+          },
+          "probe": {
+            "focusEvents": 0,
+            "blurEvents": 0,
+            "clicks": 0,
+            "keys": 0,
+            "activeElement": "",
+            "status": "ready",
+            "innerWidth": 900,
+            "innerHeight": 600
+          }
+        },
+        "pageAfterAuto": {
+          "bounds": {
+            "x": 0,
+            "y": 120,
+            "width": 900,
+            "height": 600
+          },
+          "visible": true,
+          "probe": {
+            "focusEvents": 0,
+            "blurEvents": 0,
+            "clicks": 0,
+            "keys": 0,
+            "activeElement": "",
+            "status": "ready",
+            "innerWidth": 900,
+            "innerHeight": 600
+          }
+        },
+        "focusBefore": null,
+        "focusAfterAuto": null,
+        "focusTargets": [],
+        "doc": {
+          "active": "",
+          "lang": "en",
+          "dir": "ltr",
+          "theme": "localOperatorLight",
+          "card": {
+            "x": 8,
+            "y": 8.2265625,
+            "width": 352,
+            "height": 381.7734375
+          },
+          "origin": "https://docs.example-company.test",
+          "requester": "Fix the login flow on the staging dashboard",
+          "expiry": "expires in 9 minutes",
+          "review": "2 approvals waiting",
+          "close": "Close",
+          "allowOnce": {
+            "text": "Allow once",
+            "disabled": false,
+            "x": 184,
+            "y": 150.21875
+          },
+          "buttons": [
+            {
+              "id": "approvals-close",
+              "text": "Close",
+              "disabled": false
+            },
+            {
+              "id": "approvals-allow-once",
+              "text": "Allow once",
+              "disabled": false
+            },
+            {
+              "id": "",
+              "text": "Allow until the app quits",
+              "disabled": false
+            },
+            {
+              "id": "",
+              "text": "Always allow this site",
+              "disabled": false
+            },
+            {
+              "id": "",
+              "text": "Allow all of example-company.test",
+              "disabled": false
+            },
+            {
+              "id": "",
+              "text": "Don't allow",
+              "disabled": false
+            },
+            {
+              "id": "",
+              "text": "https://docs.example-company.testFix the login flow on the staging dashboard · expires in 9 minutes",
+              "disabled": false
+            },
+            {
+              "id": "",
+              "text": "https://example1.testDraft a release note · expires in 9 minutes",
+              "disabled": false
+            },
+            {
+              "id": "approvals-review",
+              "text": "2 approvals waiting",
+              "disabled": false
+            },
+            {
+              "id": "approvals-back",
+              "text": "Back",
+              "disabled": false
+            }
+          ],
+          "cardHeight": 380,
+          "cardRectHeight": 381.7734375,
+          "footerHeight": 45,
+          "footerTop": 336,
+          "decisionRects": [
+            {
+              "text": "Allow until the app quits",
+              "top": 199,
+              "bottom": 227
+            },
+            {
+              "text": "Always allow this site",
+              "top": 233,
+              "bottom": 261
+            },
+            {
+              "text": "Allow all of example-company.test",
+              "top": 267,
+              "bottom": 296
+            },
+            {
+              "text": "Don't allow",
+              "top": 302,
+              "bottom": 330
+            }
+          ]
+        }
+      }
+    },
+    "I6-shield-toggle": {
+      "status": "PASS",
+      "detail": {
+        "opened": true,
+        "closed": true,
+        "openFocus": [
+          "card"
+        ],
+        "closeFocus": [
+          "card",
+          "page"
+        ],
+        "doc": {
+          "active": "approvals-card",
+          "lang": "en",
+          "dir": "ltr",
+          "theme": "localOperatorLight",
+          "card": {
+            "x": 8,
+            "y": 8.2265625,
+            "width": 352,
+            "height": 381.7734375
+          },
+          "origin": "https://docs.example-company.test",
+          "requester": "Fix the login flow on the staging dashboard",
+          "expiry": "expires in 9 minutes",
+          "review": "2 approvals waiting",
+          "close": "Close",
+          "allowOnce": {
+            "text": "Allow once",
+            "disabled": false,
+            "x": 184,
+            "y": 150.21875
+          },
+          "buttons": [
+            {
+              "id": "approvals-close",
+              "text": "Close",
+              "disabled": false
+            },
+            {
+              "id": "approvals-allow-once",
+              "text": "Allow once",
+              "disabled": false
+            },
+            {
+              "id": "",
+              "text": "Allow until the app quits",
+              "disabled": false
+            },
+            {
+              "id": "",
+              "text": "Always allow this site",
+              "disabled": false
+            },
+            {
+              "id": "",
+              "text": "Allow all of example-company.test",
+              "disabled": false
+            },
+            {
+              "id": "",
+              "text": "Don't allow",
+              "disabled": false
+            },
+            {
+              "id": "",
+              "text": "https://docs.example-company.testFix the login flow on the staging dashboard · expires in 9 minutes",
+              "disabled": false
+            },
+            {
+              "id": "",
+              "text": "https://example1.testDraft a release note · expires in 9 minutes",
+              "disabled": false
+            },
+            {
+              "id": "approvals-review",
+              "text": "2 approvals waiting",
+              "disabled": false
+            },
+            {
+              "id": "approvals-back",
+              "text": "Back",
+              "disabled": false
+            }
+          ],
+          "cardHeight": 380,
+          "cardRectHeight": 381.7734375,
+          "footerHeight": 45,
+          "footerTop": 336,
+          "decisionRects": [
+            {
+              "text": "Allow until the app quits",
+              "top": 199,
+              "bottom": 227
+            },
+            {
+              "text": "Always allow this site",
+              "top": 233,
+              "bottom": 261
+            },
+            {
+              "text": "Allow all of example-company.test",
+              "top": 267,
+              "bottom": 296
+            },
+            {
+              "text": "Don't allow",
+              "top": 302,
+              "bottom": 330
+            }
+          ]
+        }
+      }
+    },
+    "I1-allow-once": {
+      "status": "PASS",
+      "detail": {
+        "responded": [
+          {
+            "entryId": "entry-0",
+            "decision": "once"
+          }
+        ],
+        "actions": {
+          "dismissed": 0,
+          "decided": 1,
+          "dropped": 0
+        }
+      }
+    },
+    "I2-click-outside": {
+      "status": "PASS",
+      "detail": {
+        "outsideBefore": {
+          "focusEvents": 0,
+          "blurEvents": 0,
+          "clicks": 0,
+          "keys": 0,
+          "activeElement": "",
+          "status": "ready",
+          "innerWidth": 900,
+          "innerHeight": 600
+        },
+        "outsideAfter": {
+          "focusEvents": 2,
+          "blurEvents": 0,
+          "clicks": 1,
+          "keys": 0,
+          "activeElement": "click",
+          "status": "clicks:1",
+          "innerWidth": 900,
+          "innerHeight": 600
+        },
+        "outsideHit": {
+          "el": "click",
+          "dpr": 2,
+          "innerWidth": 900,
+          "innerHeight": 600
+        },
+        "focusedWebContentsId": null,
+        "visible": true,
+        "responded": [
+          {
+            "entryId": "entry-0",
+            "decision": "once"
+          }
+        ]
+      }
+    },
+    "I3-ring-click": {
+      "status": "BLOCKED",
+      "detail": {
+        "visible": true,
+        "responded": [
+          {
+            "entryId": "entry-0",
+            "decision": "once"
+          }
+        ],
+        "nativeRouting": "BLOCKED: hidden window, no sibling-view hit testing"
+      }
+    },
+    "I5-page-click-keeps-card": {
+      "status": "PASS",
+      "detail": {
+        "pageClickBefore": {
+          "focusEvents": 2,
+          "blurEvents": 0,
+          "clicks": 1,
+          "keys": 0,
+          "activeElement": "click",
+          "status": "clicks:1",
+          "innerWidth": 900,
+          "innerHeight": 600
+        },
+        "pageClickAfter": {
+          "focusEvents": 2,
+          "blurEvents": 0,
+          "clicks": 2,
+          "keys": 0,
+          "activeElement": "click",
+          "status": "clicks:2",
+          "innerWidth": 900,
+          "innerHeight": 600
+        },
+        "visible": true
+      }
+    },
+    "I7-tab-order": {
+      "status": "PASS",
+      "detail": {
+        "tabOrder": [
+          "approvals-close",
+          "approvals-allow-once",
+          "",
+          "",
+          "",
+          "",
+          "approvals-review"
+        ]
+      }
+    },
+    "I8-stale-seq": {
+      "status": "PASS",
+      "detail": {
+        "staleResult": "sent",
+        "responded": [
+          {
+            "entryId": "entry-0",
+            "decision": "once"
+          }
+        ],
+        "actions": {
+          "dismissed": 0,
+          "decided": 1,
+          "dropped": 1
+        }
+      }
+    },
+    "D1-stale-error-keeps-decisions-visible": {
+      "status": "PASS",
+      "detail": {
+        "errorVisible": true,
+        "errorText": "Expired — the agent has to ask again",
+        "cardHeight": 403.17,
+        "innerHeight": 420,
+        "footerTop": 335.77,
+        "lowestDecisionBottom": 329.77,
+        "overdraw": 0,
+        "bodyOverflow": 0,
+        "gloss": {
+          "allocated": 31,
+          "content": 31,
+          "basis": "31px",
+          "minimum": ""
+        },
+        "footerOutsideBody": true,
+        "intrinsicHeight": 403.171875,
+        "insideCard": true,
+        "rects": [
+          {
+            "text": "Allow once",
+            "top": 127.99,
+            "bottom": 155.99
+          },
+          {
+            "text": "Allow until the app quits",
+            "top": 198.99,
+            "bottom": 227.19
+          },
+          {
+            "text": "Always allow this site",
+            "top": 233.19,
+            "bottom": 261.38
+          },
+          {
+            "text": "Allow all of example-company.test",
+            "top": 267.38,
+            "bottom": 295.58
+          },
+          {
+            "text": "Don't allow",
+            "top": 301.58,
+            "bottom": 329.77
+          }
+        ],
+        "nativeCardHeight": 404,
+        "nativeViewBounds": {
+          "x": 532,
+          "y": 300,
+          "width": 368,
+          "height": 420
+        }
+      }
+    },
+    "D1-unavailable-error-keeps-decisions-visible": {
+      "status": "PASS",
+      "detail": {
+        "errorVisible": true,
+        "errorText": "Browser unavailable",
+        "cardHeight": 403.17,
+        "innerHeight": 420,
+        "footerTop": 335.77,
+        "lowestDecisionBottom": 329.77,
+        "overdraw": 0,
+        "bodyOverflow": 0,
+        "gloss": {
+          "allocated": 31,
+          "content": 31,
+          "basis": "31px",
+          "minimum": ""
+        },
+        "footerOutsideBody": true,
+        "intrinsicHeight": 403.171875,
+        "insideCard": true,
+        "rects": [
+          {
+            "text": "Allow once",
+            "top": 127.99,
+            "bottom": 155.99
+          },
+          {
+            "text": "Allow until the app quits",
+            "top": 198.99,
+            "bottom": 227.19
+          },
+          {
+            "text": "Always allow this site",
+            "top": 233.19,
+            "bottom": 261.38
+          },
+          {
+            "text": "Allow all of example-company.test",
+            "top": 267.38,
+            "bottom": 295.58
+          },
+          {
+            "text": "Don't allow",
+            "top": 301.58,
+            "bottom": 329.77
+          }
+        ],
+        "nativeCardHeight": 404
+      }
+    },
+    "D1-normal-keeps-decisions-visible": {
+      "status": "PASS",
+      "detail": {
+        "errorVisible": false,
+        "errorText": "",
+        "cardHeight": 381.77,
+        "innerHeight": 398,
+        "footerTop": 335.77,
+        "lowestDecisionBottom": 329.77,
+        "overdraw": 0,
+        "bodyOverflow": 0,
+        "gloss": {
+          "allocated": 31,
+          "content": 31,
+          "basis": "31px",
+          "minimum": ""
+        },
+        "footerOutsideBody": true,
+        "intrinsicHeight": 381.7734375,
+        "insideCard": true,
+        "rects": [
+          {
+            "text": "Allow once",
+            "top": 127.99,
+            "bottom": 155.99
+          },
+          {
+            "text": "Allow until the app quits",
+            "top": 198.99,
+            "bottom": 227.19
+          },
+          {
+            "text": "Always allow this site",
+            "top": 233.19,
+            "bottom": 261.38
+          },
+          {
+            "text": "Allow all of example-company.test",
+            "top": 267.38,
+            "bottom": 295.58
+          },
+          {
+            "text": "Don't allow",
+            "top": 301.58,
+            "bottom": 329.77
+          }
+        ],
+        "nativeCardHeight": 382
+      }
+    },
+    "Q1-hover-focus-keeps-decisions-in-place-normal": {
+      "status": "PASS",
+      "detail": {
+        "idle": [
+          [
+            136.22,
+            164.22
+          ],
+          [
+            207.22,
+            235.41
+          ],
+          [
+            241.41,
+            269.61
+          ],
+          [
+            275.61,
+            303.8
+          ],
+          [
+            309.8,
+            338
+          ]
+        ],
+        "moved": [],
+        "overdrawMax": 0,
+        "hitMiss": [],
+        "glossHeights": [
+          31,
+          31,
+          31,
+          31,
+          31,
+          31,
+          31,
+          31,
+          31,
+          31
+        ]
+      }
+    },
+    "Q1-hover-focus-keeps-decisions-in-place-stale": {
+      "status": "PASS",
+      "detail": {
+        "idle": [
+          [
+            136.82,
+            164.82
+          ],
+          [
+            207.82,
+            236.02
+          ],
+          [
+            242.02,
+            270.21
+          ],
+          [
+            276.21,
+            304.41
+          ],
+          [
+            310.41,
+            338.6
+          ]
+        ],
+        "moved": [],
+        "overdrawMax": 0,
+        "hitMiss": [],
+        "glossHeights": [
+          31,
+          31,
+          31,
+          31,
+          31,
+          31,
+          31,
+          31,
+          31,
+          31
+        ]
+      }
+    },
+    "D2-long-requester-keeps-decisions-visible": {
+      "status": "PASS",
+      "detail": {
+        "errorVisible": true,
+        "errorText": "Expired — the agent has to ask again",
+        "cardHeight": 403.17,
+        "innerHeight": 420,
+        "footerTop": 335.77,
+        "lowestDecisionBottom": 329.77,
+        "overdraw": 0,
+        "bodyOverflow": 0,
+        "gloss": {
+          "allocated": 31,
+          "content": 31,
+          "basis": "31px",
+          "minimum": ""
+        },
+        "footerOutsideBody": true,
+        "intrinsicHeight": 403.171875,
+        "insideCard": true,
+        "rects": [
+          {
+            "text": "Allow once",
+            "top": 127.99,
+            "bottom": 155.99
+          },
+          {
+            "text": "Allow until the app quits",
+            "top": 198.99,
+            "bottom": 227.19
+          },
+          {
+            "text": "Always allow this site",
+            "top": 233.19,
+            "bottom": 261.38
+          },
+          {
+            "text": "Allow all of example-company.test",
+            "top": 267.38,
+            "bottom": 295.58
+          },
+          {
+            "text": "Don't allow",
+            "top": 301.58,
+            "bottom": 329.77
+          }
+        ]
+      }
+    },
+    "I4-escape": {
+      "status": "PASS",
+      "detail": {
+        "visible": true,
+        "requestEntryId": "entry-1",
+        "dismissedEntry": "entry-0",
+        "afterEscapeDoc": {
+          "active": "approvals-review",
+          "lang": "en",
+          "dir": "ltr",
+          "theme": "localOperatorLight",
+          "card": {
+            "x": 8,
+            "y": 42.421875,
+            "width": 352,
+            "height": 347.578125
+          },
+          "origin": "https://example1.test",
+          "requester": "Draft a release note",
+          "expiry": "expires in 9 minutes",
+          "review": "2 approvals waiting",
+          "close": "Close",
+          "allowOnce": {
+            "text": "Allow once",
+            "disabled": true,
+            "x": 184,
+            "y": 184.4140625
+          },
+          "buttons": [
+            {
+              "id": "approvals-close",
+              "text": "Close",
+              "disabled": false
+            },
+            {
+              "id": "approvals-allow-once",
+              "text": "Allow once",
+              "disabled": true
+            },
+            {
+              "id": "",
+              "text": "Allow until the app quits",
+              "disabled": true
+            },
+            {
+              "id": "",
+              "text": "Always allow this site",
+              "disabled": true
+            },
+            {
+              "id": "",
+              "text": "Don't allow",
+              "disabled": true
+            },
+            {
+              "id": "",
+              "text": "https://docs.example-company.testFix the login flow on the staging dashboard · expires in 9 minutes",
+              "disabled": false
+            },
+            {
+              "id": "",
+              "text": "https://example1.testDraft a release note · expires in 9 minutes",
+              "disabled": false
+            },
+            {
+              "id": "approvals-review",
+              "text": "2 approvals waiting",
+              "disabled": false
+            },
+            {
+              "id": "approvals-back",
+              "text": "Back",
+              "disabled": false
+            }
+          ],
+          "cardHeight": 346,
+          "cardRectHeight": 347.578125,
+          "footerHeight": 45,
+          "footerTop": 302,
+          "decisionRects": [
+            {
+              "text": "Allow until the app quits",
+              "top": 199,
+              "bottom": 227
+            },
+            {
+              "text": "Always allow this site",
+              "top": 233,
+              "bottom": 261
+            },
+            {
+              "text": "Don't allow",
+              "top": 267,
+              "bottom": 296
+            }
+          ]
+        },
+        "expectedEscape": {
+          "entryId": "entry-1",
+          "origin": "https://example1.test",
+          "displayAuthority": "example1.test",
+          "requester": "session:entry-1",
+          "requesterSessionId": "entry-1",
+          "expiresAt": 1793213272656
+        },
+        "renderedNext": true,
+        "responded": [
+          {
+            "entryId": "entry-0",
+            "decision": "once"
+          }
+        ],
+        "actions": {
+          "dismissed": 1,
+          "decided": 1,
+          "dropped": 3
+        }
+      }
+    },
+    "G-rtl-anchor": {
+      "status": "PASS",
+      "detail": {
+        "bounds": {
+          "view": {
+            "x": 0,
+            "y": 356,
+            "width": 368,
+            "height": 364
+          },
+          "card": {
+            "x": 8,
+            "y": 364,
+            "width": 352,
+            "height": 348
+          },
+          "width": 352,
+          "height": 348,
+          "pad": 8
+        }
+      }
+    },
+    "Q2-hover-centre-deny-normal": {
+      "status": "PASS",
+      "detail": {
+        "target": {
+          "x": 184,
+          "y": 290,
+          "text": "Don't allow"
+        },
+        "geometry": {
+          "errorVisible": false,
+          "errorText": "",
+          "cardHeight": 347.58,
+          "innerHeight": 364,
+          "footerTop": 301.58,
+          "lowestDecisionBottom": 295.58,
+          "overdraw": 0,
+          "bodyOverflow": 0,
+          "gloss": {
+            "allocated": 31,
+            "content": 31,
+            "basis": "31px",
+            "minimum": ""
+          },
+          "footerOutsideBody": true,
+          "intrinsicHeight": 347.578125,
+          "insideCard": true,
+          "rects": [
+            {
+              "text": "Allow once",
+              "top": 127.99,
+              "bottom": 155.99
+            },
+            {
+              "text": "Allow until the app quits",
+              "top": 198.99,
+              "bottom": 227.19
+            },
+            {
+              "text": "Always allow this site",
+              "top": 233.19,
+              "bottom": 261.38
+            },
+            {
+              "text": "Don't allow",
+              "top": 267.38,
+              "bottom": 295.58
+            }
+          ]
+        },
+        "response": {
+          "entryId": "entry-1",
+          "decision": "deny"
+        },
+        "countBefore": 1,
+        "countAfter": 2
+      }
+    },
+    "Q2-hover-centre-deny-stale": {
+      "status": "PASS",
+      "detail": {
+        "target": {
+          "x": 184,
+          "y": 290,
+          "text": "Don't allow"
+        },
+        "geometry": {
+          "errorVisible": true,
+          "errorText": "Expired — the agent has to ask again",
+          "cardHeight": 368.98,
+          "innerHeight": 385,
+          "footerTop": 301.58,
+          "lowestDecisionBottom": 295.58,
+          "overdraw": 0,
+          "bodyOverflow": 0,
+          "gloss": {
+            "allocated": 31,
+            "content": 31,
+            "basis": "31px",
+            "minimum": ""
+          },
+          "footerOutsideBody": true,
+          "intrinsicHeight": 368.9765625,
+          "insideCard": true,
+          "rects": [
+            {
+              "text": "Allow once",
+              "top": 127.99,
+              "bottom": 155.99
+            },
+            {
+              "text": "Allow until the app quits",
+              "top": 198.99,
+              "bottom": 227.19
+            },
+            {
+              "text": "Always allow this site",
+              "top": 233.19,
+              "bottom": 261.38
+            },
+            {
+              "text": "Don't allow",
+              "top": 267.38,
+              "bottom": 295.58
+            }
+          ]
+        },
+        "response": {
+          "entryId": "entry-1",
+          "decision": "deny"
+        },
+        "countBefore": 2,
+        "countAfter": 3
+      }
+    },
+    "R2-focus-not-replayed-after-inert-window": {
+      "status": "PASS",
+      "detail": {
+        "before": "approvals-back",
+        "after": "approvals-back"
+      }
+    }
+  },
+  "autoPresent": {
+    "pageBefore": {
+      "bounds": {
+        "x": 0,
+        "y": 120,
+        "width": 900,
+        "height": 600
+      },
+      "visible": true,
+      "viewport": {
+        "w": 900,
+        "h": 600
+      },
+      "probe": {
+        "focusEvents": 0,
+        "blurEvents": 0,
+        "clicks": 0,
+        "keys": 0,
+        "activeElement": "",
+        "status": "ready",
+        "innerWidth": 900,
+        "innerHeight": 600
+      }
+    },
+    "pageAfterAuto": {
+      "bounds": {
+        "x": 0,
+        "y": 120,
+        "width": 900,
+        "height": 600
+      },
+      "visible": true,
+      "probe": {
+        "focusEvents": 0,
+        "blurEvents": 0,
+        "clicks": 0,
+        "keys": 0,
+        "activeElement": "",
+        "status": "ready",
+        "innerWidth": 900,
+        "innerHeight": 600
+      }
+    },
+    "focusBefore": null,
+    "focusAfterAuto": null,
+    "focusTargets": [
+      "card",
+      "page",
+      "card",
+      "page",
+      "card",
+      "card",
+      "page",
+      "page",
+      "page"
+    ],
+    "doc": {
+      "active": "",
+      "lang": "en",
+      "dir": "ltr",
+      "theme": "localOperatorLight",
+      "card": {
+        "x": 8,
+        "y": 8.2265625,
+        "width": 352,
+        "height": 381.7734375
+      },
+      "origin": "https://docs.example-company.test",
+      "requester": "Fix the login flow on the staging dashboard",
+      "expiry": "expires in 9 minutes",
+      "review": "2 approvals waiting",
+      "close": "Close",
+      "allowOnce": {
+        "text": "Allow once",
+        "disabled": false,
+        "x": 184,
+        "y": 150.21875
+      },
+      "buttons": [
+        {
+          "id": "approvals-close",
+          "text": "Close",
+          "disabled": false
+        },
+        {
+          "id": "approvals-allow-once",
+          "text": "Allow once",
+          "disabled": false
+        },
+        {
+          "id": "",
+          "text": "Allow until the app quits",
+          "disabled": false
+        },
+        {
+          "id": "",
+          "text": "Always allow this site",
+          "disabled": false
+        },
+        {
+          "id": "",
+          "text": "Allow all of example-company.test",
+          "disabled": false
+        },
+        {
+          "id": "",
+          "text": "Don't allow",
+          "disabled": false
+        },
+        {
+          "id": "",
+          "text": "https://docs.example-company.testFix the login flow on the staging dashboard · expires in 9 minutes",
+          "disabled": false
+        },
+        {
+          "id": "",
+          "text": "https://example1.testDraft a release note · expires in 9 minutes",
+          "disabled": false
+        },
+        {
+          "id": "approvals-review",
+          "text": "2 approvals waiting",
+          "disabled": false
+        },
+        {
+          "id": "approvals-back",
+          "text": "Back",
+          "disabled": false
+        }
+      ],
+      "cardHeight": 380,
+      "cardRectHeight": 381.7734375,
+      "footerHeight": 45,
+      "footerTop": 336,
+      "decisionRects": [
+        {
+          "text": "Allow until the app quits",
+          "top": 199,
+          "bottom": 227
+        },
+        {
+          "text": "Always allow this site",
+          "top": 233,
+          "bottom": 261
+        },
+        {
+          "text": "Allow all of example-company.test",
+          "top": 267,
+          "bottom": 296
+        },
+        {
+          "text": "Don't allow",
+          "top": 302,
+          "bottom": 330
+        }
+      ]
+    },
+    "factsAtAuto": {
+      "pending": 2,
+      "requestEntryId": "entry-0",
+      "seq": 1,
+      "explicitOpen": false,
+      "actions": {
+        "dismissed": 0,
+        "decided": 0,
+        "dropped": 0
+      },
+      "presented": true,
+      "contentRect": {
+        "x": 0,
+        "y": 120,
+        "width": 900,
+        "height": 600
+      },
+      "ready": true,
+      "visible": true,
+      "failedReason": null,
+      "bounds": {
+        "view": {
+          "x": 532,
+          "y": 322,
+          "width": 368,
+          "height": 398
+        },
+        "card": {
+          "x": 540,
+          "y": 330,
+          "width": 352,
+          "height": 382
+        },
+        "width": 352,
+        "height": 382,
+        "pad": 8
+      },
+      "childIndex": 1,
+      "childCount": 2,
+      "childWebContentsId": 4,
+      "focusedWebContentsId": null,
+      "documentUrl": "file://~/local-operator-ui/.worktrees/s6d/out/renderer/browser-approvals-overlay.html",
+      "opaque": false
+    }
+  },
+  "voiceOver": "BLOCKED: no automated VoiceOver across a second document; manual gate",
+  "nativeComposite": "BLOCKED: hidden window, no Screen Recording",
+  "ringNativeRouting": "BLOCKED: hidden window, no sibling-view hit testing"
+}

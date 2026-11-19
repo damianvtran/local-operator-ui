@@ -1,0 +1,27 @@
+{
+	"auditor": "i18n-auditor",
+	"agent": "i18n-auditor",
+	"model": "kimi/k3.1-pro",
+	"model_comment": "The active session model after provider fallback; the original launch named anthropic/claude-opus-5-5.",
+	"instance": "tb-invite-20260930-fr",
+	"date": "2026-09-30",
+	"status": "passed",
+	"locale": "fr",
+	"namespace": "ui.teamBridge",
+	"sha256": {
+		"en": "c7b1dc752c9f773df7e116be1d121bec0009c33da52bcd5931cc88c41ce9cbe3",
+		"fr": "54f60c5b61ca74e167b82b661646a8adacf49598b88d90c842fc72e293084975"
+	},
+	"findings": [],
+	"checks": {
+		"key_parity": "283 283 set() set()",
+		"icu_render": "intl-messageformat imported successfully from the repo node_modules; parsed and rendered under fr. 0: Envoyer les invitations; 1: Envoyer 1 invitation; 2: Envoyer 2 invitations; 5: Envoyer 5 invitations; 21: Envoyer 21 invitations. Additional many-arm checks: 1000000: Envoyer 1000000 d’invitations; 2000000: Envoyer 2000000 d’invitations.",
+		"cldr_arms": "Required =0, one, many and other all present. Exact =0 arm has no {count}; each non-zero arm contains {count} exactly once. The many arm uses correct elision d’invitations with U+2019.",
+		"bidi": "No U+200E/U+200F/U+202A–U+202E bidi controls and no zero-width characters in the changed strings or anywhere in the French catalogue.",
+		"apostrophes": "No ASCII apostrophe U+0027 in any ICU message; the elided many arm uses typographic apostrophe U+2019.",
+		"diff": "git diff -- src/i18n/catalogues/fr/ui.teamBridge.json showed only two group-heading insertions after members.invite, the members.add plural modification, the bridge_unavailable modification, and the state.left deletion; no unrelated key changed or moved."
+	},
+	"scope": "Reviewed in depth the four changed keys: members.add, members.reason.bridge_unavailable, members.group.people and members.group.agents, against English, the context catalogue and existing French terminology. Ran key parity, ICU parse/render, CLDR arm and placeholder checks, bidi/zero-width and apostrophe scans, and inspected the French file diff. Deliberately did not re-audit the other 279 keys already passed by a previous audit; no full-file linguistic re-read is claimed.",
+	"independence": "Auditor wrote none of the audited strings; the translator was a separate subagent. No catalogue or ledger edit by the auditor.",
+	"status_vocabulary_note": "Auditor wrote status 'pass' with an empty findings list; the coordinator normalised the vocabulary to the ledger tool's passed | changes_requested. The verdict is the auditor's."
+}

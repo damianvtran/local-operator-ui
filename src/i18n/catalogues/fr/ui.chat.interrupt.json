@@ -1,0 +1,8 @@
+{
+	"ui.chat.interrupt.idle": "Aucun tour n’était en cours, il n’y avait donc rien à arrêter.",
+	"ui.chat.interrupt.idle_disputed": "Le runtime indique qu’aucun tour n’est en cours ; rien n’a donc été arrêté. Cette vue est peut-être obsolète.",
+	"ui.chat.interrupt.stopped_both": "Tour arrêté. {children, plural, one {# sous-agent} many {# de sous-agents} other {# sous-agents}} et {jobs, plural, one {# tâche en arrière-plan} many {# de tâches en arrière-plan} other {# tâches en arrière-plan}} sont toujours en cours — ouvrez les détails de l’exécution pour les suivre, et utilisez /stop pour mettre fin à la session et à ses tâches.",
+	"ui.chat.interrupt.stopped_children": "Tour arrêté. {count, plural, one {# sous-agent est} many {# de sous-agents sont} other {# sous-agents sont}} toujours en cours — ouvrez les détails de l’exécution pour {count, plural, one {le suivre} many {les suivre} other {les suivre}}, ou utilisez /stop pour mettre fin à la session.",
+	"ui.chat.interrupt.stopped_jobs": "Tour arrêté. {count, plural, one {# tâche en arrière-plan est toujours en cours — elle survit volontairement au tour ; /stop y met fin avec la session.} many {# de tâches en arrière-plan sont toujours en cours — elles survivent volontairement au tour ; /stop y met fin avec la session.} other {# tâches en arrière-plan sont toujours en cours — elles survivent volontairement au tour ; /stop y met fin avec la session.}}",
+	"ui.chat.interrupt.unavailable": "Ce backend est antérieur au contrôle d’arrêt ; ce tour ne peut donc pas être arrêté d’ici — /stop met fin à la session et à tout ce qu’elle contient."
+}

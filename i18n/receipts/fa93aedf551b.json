@@ -1,0 +1,40 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "fa93aedf551b",
+  "date": "2026-10-19",
+  "locale": "ur",
+  "round": 2,
+  "section": 5,
+  "status": "changes_requested",
+  "scope": "Remediation delta audit of the changed namespaces in Section 5: changed keys plus direct composition neighbours; unchanged namespaces remained certified from round 1.",
+  "fallback": "Pinned anthropic/claude-sonnet-5-5 was unavailable (provider quota); this run executed on openai/gpt-6.1-sol.",
+  "notes": "All five round-1 findings FIXED; a new MINOR was found in ui.mesh.mesh_card.remove_from and fixed for round 3. ui.onboarding passed.",
+  "namespaces": {
+    "ui.onboarding": {
+      "namespace": "ui.onboarding",
+      "keys_read": 47,
+      "status": "passed",
+      "sha256": {
+        "en": "a04d3feacdef1168af407cb82b94173cb95d37092e8722d46df2cae4e4fc9e53",
+        "ur": "492395836b557d198aacd4b06557f4d7852e99ae3c442fec0264b3d678171110"
+      },
+      "findings": []
+    },
+    "ui.mesh": {
+      "namespace": "ui.mesh",
+      "keys_read": 223,
+      "status": "changes_requested",
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.mesh.mesh_card.remove_from",
+          "problem": "label said remove home rather than remove device from home",
+          "expected": "اس نیٹ ورک سے ہٹائیں: ",
+          "evidence": "composed ہٹائیں: Home Lab…"
+        }
+      ],
+      "note": "Historical round-2 finding; remediated and re-audited in round 3. No hash recorded because the audited bytes were superseded."
+    }
+  }
+}

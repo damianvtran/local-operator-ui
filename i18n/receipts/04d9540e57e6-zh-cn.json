@@ -1,0 +1,106 @@
+{
+ "schema": 1,
+ "auditor": "translation-auditor (lopdev coder-role session 04d9540e57e6, delta re-audit of the #1458 remediation keys; not the PR coder, the translator of bb51820e66 or any previous auditor)",
+ "agent": "translation-auditor (lopdev coder-role session 04d9540e57e6, delta re-audit of the #1458 remediation keys; not the PR coder, the translator of bb51820e66 or any previous auditor)",
+ "model": "anthropic/claude-opus-5-5",
+ "model_provenance": "Every catalogue read, measurement and verdict in this receipt ran on anthropic/claude-opus-5-5; no fallback occurred in this session.",
+ "fallback": "none",
+ "independence": "Separate session (04d9540e57e6) from the PR coder that wrote the English keys in 3f60d506bd, from the translator that wrote these values in bb51820e66 (agent coder, translator step for delta 2), and from the earlier auditors (bf41e95b4e1e, 32ed16b45687 and the ui.agents.config auditors). The translator's commit message was not used as reasoning; every verdict was rebuilt from the English source, the en context files and the locale style guide. Same served model family (anthropic/claude-opus-5-5) as the translator and the 32ed16b45687 auditor, so NOT model-independent; the ledger rule is agent-instance independence.",
+ "instance": "04d9540e57e6-zh-cn",
+ "session": "04d9540e57e6",
+ "locale": "zh-CN",
+ "branch": "feat/skills-tab-redesign",
+ "head": "bb51820e66731b45b95285569bf25f515b3f781c",
+ "pr": "damianvtran/local-operator-ui#1458",
+ "date": "2026-10-28",
+ "status": "passed",
+ "scope": "Delta re-audit of the review-round keys from 3f60d506bd as translated in bb51820e66. The carried keys are byte-identical to the last audited rows: the ledger target_sha256 of every row equals the 7343d63c10 blob, and git diff 7343d63c10..bb51820e66 on each catalogue changes exactly the delta keys (ui.agents.config: +1 line; ui.agents.skills: +13/-3), so earlier findings stand.",
+ "inputs_sha256": {
+  "en_context (ui.agents.config.context.json)": "fa2d7c5768075ba380a4705dc76b8fd340ea6235cadae99193a5a3a0d13a6f6e",
+  "en_context (ui.agents.skills.context.json)": "24c88f02b7f9862dce244e868957bf959744c70d0929ed840583de13f6fef7af",
+  "glossary (local-operator/i18n/glossary.md)": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style guide (local-operator/i18n/style-guides/zh-CN.md)": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+ },
+ "verified": [
+  "key sets equal en in both namespaces; the delta values carry no placeholders or ICU syntax (the English has none), no bidi/zero-width/BOM characters, no edge or double spaces; all NFC",
+  "carried keys byte-identical to the last audited rows: each ledger target_sha256 equals the 7343d63c10 blob, and git diff 7343d63c10..bb51820e66 changes only the delta keys",
+  "flag 1, *_body_no_copy: each is the audited *_body with only its copy clause removed; read alone, each is a whole sentence ending in the locale's full stop (hi/ur ।/۔, zh-CN 。), with no dangling conjunction or comma, and none suggests copying",
+  "flag 2, button label in edit_by_asking*: the en value names 'Ask for a change' and its context says 'quoted by its own label'; the quoted text is byte-equal to ui.agents.detail.action.ask_change in this locale, using full-width “…” (style guide: mainland “ ”, not 「」). Quoting is right: the label is an imperative phrase, and unquoted it would merge into the sentence's own verb",
+  "flag 3, gate_not_installed uses the Download button's verb: 下载 ↔ button 下载 (ui.hub.skills.download, checked in the catalogue and at skills-library.tsx:1533)",
+  "flag 4, did_not_finish against siblings: distinct from the operator's own Stop (stopped.kept / stopped.nothing, action.stop) and from 'Finished'; config-composer.tsx:442 shows it only for run.turnFailed",
+  "flag 5, hub.needs_review chip: 52.55 px before (en 94.40); against the hub's own review mark ui.hub.links.mark_review",
+  "fit, did_not_finish heading (53.05 px after; en 80.05): pdf and code-review fit at 344/404/784. en reference: pdf fits at 344/404/784; code-review TRUNC at 344; a 45-character name truncates en at 404 (17/80 px) - the title is designed to truncate (min-w-0 truncate) beside a shrink-0 about label of up to 224px. (未完成 before: 39.78 px)",
+  "measurement: harness browser (Local Operator desktop browser host, Chromium) on a static CSS replica served from the session scratchpad at 127.0.0.1; no app build, no Electron. Heading: STATUS_ROW (flex, gap 12px, min-h 28px) = 8px StateDot + title span (text-body-sm 13px/1.5, min-w-0 truncate) + right cluster (about label text-meta 12px max-w 224px shrink-0, Watch ghost sm button 12px/500 px-2 with 14px icon, Dismiss ghost sm with -mr-2), gap-1. Row width = CHAT_MEASURE content of the detail scroller: 404px at the narrowest layout that shows the roster (1000px window - 260px default sidebar - 288px roster w-72 - 2x24px gutters), 344px with the sidebar at its 320px maximum, 784px at the 1380px default window. Chip: SkillMarkChip (flex shrink-0, gap 4px, 12px text, 14px icon) in the header meta line (flex-wrap, gap-x 8px) of the 256px (16rem) basis title block. Replica, not the built app.",
+  "consistency: reference-files term equals detail.section.files / files_count; the Details section name equals detail.section.details; path term matches the locale's established catalogue term"
+ ],
+ "namespaces": {
+  "ui.agents.config": {
+   "namespace": "ui.agents.config",
+   "status": "passed",
+   "result": "clean-with-findings",
+   "keys_read": 29,
+   "delta_keys_audited": [
+    "ui.agents.config.state.did_not_finish"
+   ],
+   "sha256": {
+    "zh-CN": "597e24072389b10888109e5e480f1f4f80cd08b312159e5137414d14166bdaec",
+    "en": "cb10c76b64e1308d05d7d3409d0c74ca7c3a3394009a86c1b356c05119ddf80e"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.agents.config.json",
+    "target": "src/i18n/catalogues/zh-CN/ui.agents.config.json",
+    "context": "src/i18n/catalogues/en/ui.agents.config.context.json"
+   },
+   "findings": [
+    {
+     "severity": "minor",
+     "key": "ui.agents.config.state.did_not_finish",
+     "summary": "« 未完成 » is the stock 'not done yet / pending' state of a to-do list, so as the heading of a run that died it reads as still open or in progress rather than as a run that failed to reach its end. « 未能完成 » says the run tried and could not finish: honest, distinct from the operator's own Stop (« 已停止 », stopped.kept/nothing) and from success. 53.05 px; fits at every measured row width.",
+     "before": "未完成",
+     "after": "未能完成",
+     "resolution": "fixed by auditor in this commit"
+    }
+   ]
+  },
+  "ui.agents.skills": {
+   "namespace": "ui.agents.skills",
+   "status": "passed",
+   "result": "clean-with-findings",
+   "keys_read": 111,
+   "delta_keys_audited": [
+    "ui.agents.skills.alert.too_large_title",
+    "ui.agents.skills.alert.too_large_body",
+    "ui.agents.skills.alert.bundle_local_body",
+    "ui.agents.skills.alert.builtin_body_no_copy",
+    "ui.agents.skills.alert.external_body_no_copy",
+    "ui.agents.skills.alert.project_body_no_copy",
+    "ui.agents.skills.detail.edit_off_files",
+    "ui.agents.skills.detail.edit_off_truncated",
+    "ui.agents.skills.edit.description_label",
+    "ui.agents.skills.hub.needs_review",
+    "ui.agents.skills.detail.edit_by_asking",
+    "ui.agents.skills.detail.edit_by_asking_truncated",
+    "ui.agents.skills.composer.gate_not_installed"
+   ],
+   "sha256": {
+    "zh-CN": "6f9ccf805e88dfdec67e7734cdc73f9eca816523d2633564f056f24a752cdcc3",
+    "en": "7a19ee5602f2eaa5085abcd65c7a032ac38ce7899f317b7c0eb3522b0834f2eb"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.agents.skills.json",
+    "target": "src/i18n/catalogues/zh-CN/ui.agents.skills.json",
+    "context": "src/i18n/catalogues/en/ui.agents.skills.context.json"
+   },
+   "findings": [
+    {
+     "severity": "nit",
+     "key": "ui.agents.skills.hub.needs_review",
+     "summary": "The chip is the Agents-tab label for the hub's own `review` mark (SKILL_MARK_LABELS overrides MARK_KEY.review = ui.hub.links.mark_review in sentence case, design r1 D6), so it should say the same words as the Hub page's mark. « 需审核 » is a clipped form of the hub mark « 需要审核 »; aligned. 64.06 px vs 52.55 px; wraps under the meta line in both, as en does, no overflow.",
+     "before": "需审核",
+     "after": "需要审核",
+     "resolution": "fixed by auditor in this commit"
+    }
+   ]
+  }
+ }
+}

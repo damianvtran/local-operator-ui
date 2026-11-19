@@ -45,6 +45,25 @@
 
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
 import { t } from "../../../../i18n/messages";
+import type {
+	PeerAttempt,
+	PeerLinkFacts,
+	PeerLinkState,
+	PeerRelayState,
+} from "../../../../shared/desktop-session-contract";
+
+/*
+ * The peer LINK vocabulary is the shared contract's (see
+ * `desktop-session-contract.ts`), re-exported here because this file is the
+ * feature's public wire-shape module: every mesh consumer imports the shapes from
+ * one place, and a second definition beside the contract is how the two dialects
+ * would drift apart.
+ */
+export type {
+	PeerAttempt,
+	PeerLinkState,
+	PeerRelayState,
+} from "../../../../shared/desktop-session-contract";
 
 /* ------------------------------------------------------------- coercions */
 
@@ -62,6 +81,16 @@ export function textOrNull(value: unknown): string | null {
 /** Epoch seconds, or `null`. Rejects `NaN`/`Infinity`, which `typeof` allows. */
 export function time(value: unknown): number | null {
 	return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+/** A nullable whole count: absence is not a measured zero. */
+export function nullableCount(value: unknown): number | null {
+	return typeof value === "number" &&
+		Number.isFinite(value) &&
+		value >= 0 &&
+		Number.isInteger(value)
+		? value
+		: null;
 }
 
 /** A whole count, or `0`. Negative and fractional answers are not counts. */
@@ -104,7 +133,7 @@ function records(value: unknown): Record<string, unknown>[] {
  * as given, that would draw two React children with one key at every reader of this
  * list.
  */
-export type PeerRow = {
+export type PeerRow = PeerLinkFacts & {
 	device_id: string;
 	name: string;
 	/** True when ANY shared network reached it on this read. */
@@ -118,7 +147,14 @@ export type PeerRow = {
 	 * publishes about a device - `size_class` is unimplemented and `PeerRow` has no
 	 * `kind` - so it is what a node's size may be ranked by, and it is NOT capacity.
 	 */
-	session_count: number;
+	session_count: number | null;
+	/**
+	 * The relay's verdict on a LOST link it is redialling (core `network/redial.py`),
+	 * or absent when the backend predates it or the link is up. `reconnecting` holds
+	 * for the relay's grace window (90 s AND three failed redials); only `down` is an
+	 * escalation. Absent is "no claim", never "connected".
+	 */
+	redial?: PeerRedial;
 	/**
 	 * ALWAYS `null` in this build, and honestly so: no link records a round trip, and
 	 * the backend's own comment explains that the only way to fill this would be a
@@ -126,6 +162,30 @@ export type PeerRow = {
 	 */
 	rtt_ms: number | null;
 };
+
+export type PeerRedial = {
+	state: "reconnecting" | "down";
+	attempts: number;
+	/** The lost link's last frame, epoch seconds: the tooltip's "last seen". */
+	last_frame_at: number | null;
+	next_retry_at: number | null;
+	/** The last redial failure in the backend's words; `""` when none yet. */
+	last_error: string;
+};
+
+/** A redial block, or `undefined` for `connected`/unknown/malformed. */
+function redial(value: unknown): PeerRedial | undefined {
+	if (!isRecord(value)) return undefined;
+	const state = value.state;
+	if (state !== "reconnecting" && state !== "down") return undefined;
+	return {
+		state,
+		attempts: count(value.attempts),
+		last_frame_at: time(value.last_frame_at),
+		next_retry_at: time(value.next_retry_at),
+		last_error: text(value.last_error),
+	};
+}
 
 export type PeerList = {
 	peers: PeerRow[];
@@ -189,6 +249,78 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /**
+ * The link verdicts a CONFORMING backend may send.
+ *
+ * `unreachable_legacy` is deliberately absent: it is this client's fallback for a
+ * backend that predates `link_state`, and accepting it off the wire would let the
+ * backend claim a derivation only this reader is entitled to make.
+ */
+const WIRE_LINK_STATES: readonly PeerLinkState[] = [
+	"reachable",
+	"relay_down",
+	"address_unreachable",
+	"handshake_refused",
+	"not_attempted",
+	"no_endpoint",
+	"not_a_member",
+];
+
+/**
+ * A peer's link verdict, derived ONLY when the wire did not send one.
+ *
+ * The fallback is exactly as strong as the old boolean: reachable, or an
+ * unclassified failure. It deliberately does NOT try to read refused-vs-timeout
+ * out of the aggregate `unreachable_reason` string - that would turn a sentence
+ * into an observed transport fact, and an unrecognised sentence or a new spelling
+ * would silently become a diagnosis. An unrecognised `link_state` from a newer
+ * backend falls back for the same reason: absent and unknown are both "not known".
+ */
+function linkState(value: unknown, reachable: boolean): PeerLinkState {
+	const state = text(value);
+	if ((WIRE_LINK_STATES as readonly string[]).includes(state))
+		return state as PeerLinkState;
+	return reachable ? "reachable" : "unreachable_legacy";
+}
+
+const RELAY_STATES: readonly PeerRelayState[] = [
+	"running",
+	"not_listening",
+	"unknown",
+];
+
+/** The relay reading when the wire sent one; absent stays absent (not a guess). */
+function remoteRelay(value: unknown): PeerRelayState | undefined {
+	const state = text(value);
+	return (RELAY_STATES as readonly string[]).includes(state)
+		? (state as PeerRelayState)
+		: undefined;
+}
+
+/**
+ * The per-address attempts, normalised, or `undefined` when the field is absent.
+ *
+ * AN EMPTY ARRAY IS NOT THE SAME AS AN ABSENT FIELD: the first says the backend
+ * dialled nothing (or reported nothing it dialled), the second says this backend
+ * has no attempts vocabulary at all. The renderer treats both as "no evidence" and
+ * falls back to the older single sentence, but the distinction is preserved so a
+ * future surface can tell the two apart. Entries without an endpoint are dropped -
+ * they name no address and cannot be evidence for one.
+ */
+function linkAttempts(value: unknown): PeerAttempt[] | undefined {
+	if (!Array.isArray(value)) return undefined;
+	return value
+		.filter(isRecord)
+		.map((raw) => ({
+			endpoint: text(raw.endpoint),
+			/* `true` ONLY when the wire said so: a missing flag is not a connection. */
+			connected: raw.connected === true,
+			detail: text(raw.detail),
+			latency_ms: time(raw.latency_ms),
+		}))
+		.filter((attempt) => attempt.endpoint !== "");
+}
+
+/**
  * `GET /v1/desktop/peers`, normalised.
  *
  * DEDUPED BY DEVICE ID, kept from #498 (addendum 2, A) even though the backend now
@@ -208,13 +340,22 @@ export function peerList(value: unknown): PeerList {
 		// claim with it, and neither value is "I do not know".
 		if (typeof raw.reachable !== "boolean") continue;
 		seen.add(deviceId);
+		const relay = remoteRelay(raw.remote_relay);
+		const attempts = linkAttempts(raw.attempts);
+		const redialing = raw.reachable ? undefined : redial(raw.redial);
 		peers.push({
 			device_id: deviceId,
 			name: text(raw.name),
 			reachable: raw.reachable,
+			// Always present on a normalised row: an absent wire verdict is DERIVED as
+			// `reachable`/`unreachable_legacy`, never left as a silent default.
+			link_state: linkState(raw.link_state, raw.reachable),
+			...(relay ? { remote_relay: relay } : {}),
+			...(attempts ? { attempts } : {}),
+			...(redialing ? { redial: redialing } : {}),
 			unreachable_reason: textOrNull(raw.unreachable_reason ?? raw.reason),
 			last_seen_at: time(raw.last_seen_at),
-			session_count: count(raw.session_count),
+			session_count: nullableCount(raw.session_count),
 			rtt_ms: time(raw.rtt_ms),
 		});
 	}
@@ -341,8 +482,13 @@ export type MeshSessionRow = {
 		label: string | null;
 		session: string | null;
 	};
+	active?: boolean;
+	waiting_on?: number | null;
+	jobs_running?: number | null;
 	subagents_running?: number | null;
 	subagents_queued?: number | null;
+	/** Core's derived "work still running" flag; absent on an older peer. */
+	background_work?: boolean;
 };
 
 /**
@@ -440,8 +586,14 @@ export function sessionRows(value: unknown): MeshSessionRow[] {
 			archived: flag(raw.archived, false),
 			created_at: time(raw.created_at),
 			pinned: flag(raw.pinned, false),
-			subagents_running: time(raw.subagents_running),
-			subagents_queued: time(raw.subagents_queued),
+			...(typeof raw.active === "boolean" ? { active: raw.active } : {}),
+			waiting_on: nullableCount(raw.waiting_on),
+			jobs_running: nullableCount(raw.jobs_running),
+			subagents_running: nullableCount(raw.subagents_running),
+			subagents_queued: nullableCount(raw.subagents_queued),
+			...(typeof raw.background_work === "boolean"
+				? { background_work: raw.background_work }
+				: {}),
 			...(status ? { status } : {}),
 			...(binding ? { binding } : {}),
 			...(openedBy ? { opened_by: openedBy } : {}),
@@ -489,6 +641,26 @@ export type TransferReceipt = {
 	mode: "move" | "keep";
 	/** The phases the move reached, in order, as the backend recorded them. */
 	phases: { phase: string; peer: string; progress: number }[];
+	/**
+	 * Whether the destination STARTED the conversation on arrival (core
+	 * `mobility.py` `receipt["engagement"]`: `{engaged, reason, detail}`; an
+	 * active-mid-turn move resumes there with `reason: "active"`). `null` when
+	 * the receipt carries no such block - an older core, or an offload whose
+	 * engage is the destination's own later work - and then no surface claims a
+	 * resume it cannot observe.
+	 */
+	// Optional only so hand-built fixtures predating the field still type-check.
+	engagement?: { engaged: boolean; reason: string } | null;
+	/**
+	 * The source ASKED the destination to resume the conversation (core #4241
+	 * receipt `resume_requested: {reason: "active"|"asked", session_id}`, on an
+	 * offload). Whether it actually started is the destination's later work, so
+	 * `engagement` stays `null` (outcome unknown) - but "nothing is running there"
+	 * is then a claim the receipt contradicts (QA round 1, Q-1). Any record counts
+	 * as present, including a `reason` this build does not know: a newer reason is
+	 * still a request. `null` when absent.
+	 */
+	resume_requested?: { reason: string; session_id: string } | null;
 };
 
 /**
@@ -531,6 +703,20 @@ export function transferReceipt(value: unknown): TransferReceipt | null {
 			peer: text(phase.peer),
 			progress: typeof phase.progress === "number" ? phase.progress : 0,
 		})),
+		engagement:
+			isRecord(value.engagement) &&
+			typeof value.engagement.engaged === "boolean"
+				? {
+						engaged: value.engagement.engaged,
+						reason: text(value.engagement.reason),
+					}
+				: null,
+		resume_requested: isRecord(value.resume_requested)
+			? {
+					reason: text(value.resume_requested.reason),
+					session_id: text(value.resume_requested.session_id),
+				}
+			: null,
 	};
 }
 
@@ -557,15 +743,544 @@ const MOVE_UNCONFIRMED_CODES: ReadonlySet<string> = new Set([
 	"peer_unreachable",
 ]);
 
+/* ------------------------------------------------------------ working set */
+
+/**
+ * The four refusals that carry a FRESH manifest (`working_set` on the refusal
+ * body, design move-working-set §11.1). All are `changed:false`: nothing moved,
+ * and the manifest is what the user has to look at again before re-confirming.
+ */
+export const WORKING_SET_REFUSAL_CODES: ReadonlySet<string> = new Set([
+	"working_set_unconfirmed",
+	"working_set_changed",
+	"working_set_over_cap",
+	"working_set_unsupported",
+	// The owner could not compute the manifest at all; the only way forward is
+	// the explicit "move without working files" consent.
+	"working_set_unknown",
+]);
+
+/** One dependency tree the destination has to recreate, as the core states it. */
+export type WorkingSetRecipe = { kind: string; run: string; cwd: string };
+
+/**
+ * One worktree in the manifest, reduced to what the consent needs.
+ *
+ * WHAT IS DELIBERATELY NOT HERE: file lists, contents, secret values. The
+ * preflight carries metadata only (paths, branch, counts, sizes, withheld
+ * reasons), and this type is the boundary that keeps a future wider answer from
+ * reaching the dialog by accident.
+ */
+export type WorkingSetWorktree = {
+	/** Home-relative (`~/…`) on the source. */
+	path: string;
+	/** Home-relative on the destination; differs from `path` only on a conflict. */
+	destPath: string | null;
+	repo: string;
+	/** `null` on a detached HEAD. */
+	branch: string | null;
+	head: string;
+	unpushedCommits: number;
+	staged: number;
+	unstaged: number;
+	untracked: number;
+	/** Bundle plus snapshot: what crosses the link for this tree. */
+	bytes: number;
+	/** `planned` | `carried` | `restored` | `pending_restore` | `left_behind`. */
+	state: string;
+	/** The machine reason code when `left_behind` (`history_secret`, `contended`, …). */
+	reason: string | null;
+	recipes: WorkingSetRecipe[];
+	/**
+	 * The destination lacks the primary checkout and will CLONE it from origin
+	 * (manager decision Q1: listed, sized, and confirmed like everything else).
+	 * `null` when no clone is planned. Read defensively from either `clone:
+	 * {url, bytes|estimated_bytes}` or `clone_bytes`, because the core contract
+	 * is being written concurrently and the field's final spelling is the core's.
+	 */
+	clone: { url: string; bytes: number | null } | null;
+	/**
+	 * The core's `clone_check`: `pending_destination` means whether the
+	 * destination must (and can) clone the primary is the DESTINATION's answer,
+	 * not known at preflight; the review says so rather than promising a clone.
+	 */
+	cloneCheck: string | null;
+	remoteUrl: string | null;
+	/** This row IS the primary checkout rather than a linked worktree. */
+	primary: boolean;
+	/*
+	 * THE DESTINATION PROBE's per-row answer (`session_transfer_working_set_probe`,
+	 * core `network/workset_probe.py` `apply_probe`). The destination itself ran
+	 * `git ls-remote` and a `push --dry-run` against `remote_url` with ITS OWN
+	 * credentials, so `cloneCheck` becomes `ok` / `destination_cannot_fetch` /
+	 * `destination_cannot_push` / `destination_cannot_clone` / `no_remote` /
+	 * `unknown_destination`. A probe failure FLAGS a row, it never moves it to
+	 * `left_behind` (the gate re-computes without re-probing), which is why these
+	 * are read beside `state`, not instead of it. All four are absent on a backend
+	 * without the probe; the renderer additionally gates on the capability.
+	 */
+	/**
+	 * The probe's FIXED failure code (`url_refused`, `git_missing`, `timeout`, …),
+	 * rendered through `probeDetailSentence`, or `null`. Anything that is not a
+	 * code-shaped token - git's raw stderr, which the first core revision sent - is
+	 * dropped at the parser: peer-authored text never renders inside the consent
+	 * dialog's warnings (agent review round 1, R2 / design D3 / UX U6).
+	 */
+	cloneDetail: string | null;
+	/** The SSH remote failed but its HTTPS twin answered: an offer, never applied here. */
+	httpsRewrite: { url: string; push: boolean } | null;
+	/**
+	 * The exact command that grants access, and where it must run - ONLY when it
+	 * is one of the two shapes the core emits (see `remedyOf`). `kind` picks the
+	 * sentence that says which device runs it (UX round 1, U5).
+	 */
+	remedy: WorkingSetRemedy | null;
+	/** Toolchains this worktree's markers need that the destination's PATH lacks. */
+	missingTools: string[];
+};
+
+/**
+ * A probe remedy the UI will show and copy. `include`: a GitHub share to the
+ * destination exists and the repository must be added to it; `share`: no share
+ * exists yet and one must be created. Both run on a device OTHER than the
+ * destination (the one whose GitHub login is lent).
+ */
+export type WorkingSetRemedy = {
+	runOn: string;
+	command: string;
+	kind: "include" | "share";
+};
+
+/** A path withheld from the transfer because it looks like a secret. */
+export type WorkingSetExclusion = { path: string; why: string };
+
+/** A path the transfer leaves behind on purpose (deps, build output, …). */
+export type WorkingSetLeftBehind = {
+	path: string;
+	kind: string;
+	recipe: WorkingSetRecipe | null;
+};
+
+/** The preflight's manifest, as the move dialog renders it. */
+export type WorkingSet = {
+	/** What the transfer's `confirm_working_set` must echo. */
+	scopeDigest: string;
+	/** `preflight`, or `unsupported` (only `without_working_set` can proceed). */
+	state: string;
+	/**
+	 * Whether this backend actually SENDS the files. False on the first core
+	 * release (the move is gated on consent but the worktrees stay on the source),
+	 * true once the transfer half lands. The review's copy is opposite in the two
+	 * cases, so this is read, never assumed: absent reads as false, because
+	 * claiming files travel when they do not is the exact surprise this exists to
+	 * prevent.
+	 */
+	carriesFiles: boolean;
+	/**
+	 * The route's `confirmation_required` when it sent one (the authority), else
+	 * whether the block lists anything at all.
+	 */
+	confirmationRequired: boolean;
+	destination: { deviceId: string; name: string };
+	/**
+	 * The device that holds the files now (core `Manifest.to_dict` `source`). Named
+	 * where the files STAY, so "stays where it is" says which machine. `null` on a
+	 * block without it.
+	 */
+	source: { deviceId: string; name: string } | null;
+	/**
+	 * The destination probe's block-level answer, `null` when the backend has no
+	 * probe. `state: "unknown_destination"` means the destination could not be
+	 * asked (an older lop there): every row then reads `unknown_destination`, which
+	 * is "could not check", never a failure. `missingTools` is the union of the
+	 * rows'; `teamBridge` is present only when the source saw the conversation use
+	 * Team Bridge. Both prerequisites WARN, they never block the move.
+	 */
+	destinationProbe: {
+		state: string;
+		missingTools: string[];
+		teamBridge: { needed: boolean; enrolled: boolean } | null;
+	} | null;
+	totals: {
+		worktrees: number;
+		unpushedCommits: number;
+		dirtyFiles: number;
+		bytes: number;
+		capBytes: number | null;
+	};
+	worktrees: WorkingSetWorktree[];
+	excluded: WorkingSetExclusion[];
+	leftBehind: WorkingSetLeftBehind[];
+};
+
+const SCOPE_DIGEST = /^sha256:[0-9a-f]{64}$/;
+
+function recipe(value: unknown): WorkingSetRecipe | null {
+	if (!isRecord(value)) return null;
+	const run = peerText(value.run);
+	if (!run) return null;
+	return { kind: text(value.kind) || "none", run, cwd: peerText(value.cwd) };
+}
+
+function cloneOf(raw: Record<string, unknown>): WorkingSetWorktree["clone"] {
+	const held = raw.clone;
+	if (isRecord(held)) {
+		return {
+			url:
+				peerText(held.url) ||
+				peerText(held.remote_url) ||
+				peerText(raw.remote_url),
+			bytes: nullableCount(held.bytes) ?? nullableCount(held.estimated_bytes),
+		};
+	}
+	const bytes = nullableCount(raw.clone_bytes);
+	return bytes === null ? null : { url: peerText(raw.remote_url), bytes };
+}
+
+/** A string array from the wire: non-strings and blanks dropped, never throws. */
+function names(value: unknown): string[] {
+	return Array.isArray(value)
+		? value.filter(
+				(item): item is string => typeof item === "string" && item.length > 0,
+			)
+		: [];
+}
+
+function httpsRewriteOf(value: unknown): WorkingSetWorktree["httpsRewrite"] {
+	if (!isRecord(value)) return null;
+	const url = peerText(value.url);
+	return url ? { url, push: value.push === true } : null;
+}
+
+/*
+ * DISPLAY HYGIENE FOR PEER STRINGS (agent review round 1, R1). Everything in a
+ * working-set block was computed on ANOTHER device, and the review is a consent
+ * screen: a C0/C1 control or a bidi override (U+202A-202E, U+2066-2069, the
+ * marks) can make a rendered path or command read differently from its bytes.
+ * Display fields are stripped of them; the copyable remedy, whose bytes go to a
+ * shell, is REJECTED outright instead (see `remedyOf`).
+ */
+const UNSAFE_DISPLAY = /[\p{Cc}\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069]/gu;
+
+/** `text()` minus control and bidi-override code points, for rendered peer strings. */
+function peerText(value: unknown): string {
+	return text(value).replace(UNSAFE_DISPLAY, "");
+}
+
+/** `peerText()`, or `null` when nothing readable is left. */
+function peerTextOrNull(value: unknown): string | null {
+	return peerText(value) || null;
+}
+
+/*
+ * THE ONLY TWO REMEDIES THE CORE EMITS (`network/workset_probe.py` `_remedy`),
+ * matched whole with a strict charset. The command is shown with a Copy button
+ * under "run this on <your trusted, credentialed device>", and the first core
+ * revision copied the DESTINATION's remedy into the row verbatim - so a hostile
+ * destination could otherwise hand the user `curl … | sh` as "the fix". A token
+ * may not start with `-` (no smuggled flags). Anything else: no remedy at all.
+ */
+const REMEDY_INCLUDE =
+	/^lop network credential github include [A-Za-z0-9_.][A-Za-z0-9_.-]{0,99}\/[A-Za-z0-9_.][A-Za-z0-9_.-]{0,99}$/;
+const REMEDY_SHARE =
+	/^lop network credential share github --with [A-Za-z0-9_.][A-Za-z0-9_.-]{0,127}$/;
+
+export function remedyOf(value: unknown): WorkingSetRemedy | null {
+	if (!isRecord(value) || typeof value.command !== "string") return null;
+	// Checked on the RAW string: `text()` trims, and a trailing control byte is
+	// still a byte the clipboard would carry.
+	if (new RegExp(UNSAFE_DISPLAY.source, "u").test(value.command)) return null;
+	const command = value.command;
+	const kind = REMEDY_INCLUDE.test(command)
+		? "include"
+		: REMEDY_SHARE.test(command)
+			? "share"
+			: null;
+	return kind ? { runOn: text(value.run_on), command, kind } : null;
+}
+
+/** A fixed probe code, or `null` for anything else (raw stderr, class names). */
+const PROBE_DETAIL_CODE = /^[a-z][a-z0-9_]{0,63}$/;
+
+function probeDetailOf(value: unknown): string | null {
+	const code = text(value);
+	return PROBE_DETAIL_CODE.test(code) ? code : null;
+}
+
+function destinationProbeOf(value: unknown): WorkingSet["destinationProbe"] {
+	if (!isRecord(value)) return null;
+	const state = text(value.state);
+	if (!state) return null;
+	const bridge = isRecord(value.team_bridge) ? value.team_bridge : null;
+	return {
+		state,
+		missingTools: names(value.missing_tools),
+		teamBridge:
+			bridge && bridge.needed === true
+				? { needed: true, enrolled: bridge.enrolled === true }
+				: null,
+	};
+}
+
+function worktree(raw: Record<string, unknown>): WorkingSetWorktree | null {
+	const path = peerText(raw.path);
+	if (!path) return null;
+	return {
+		path,
+		destPath: peerTextOrNull(raw.dest_path),
+		repo: peerText(raw.repo),
+		branch: peerTextOrNull(raw.branch),
+		head: text(raw.head),
+		unpushedCommits: count(raw.unpushed_commits),
+		staged: count(raw.staged),
+		unstaged: count(raw.unstaged),
+		untracked: count(raw.untracked),
+		bytes: count(raw.bundle_bytes) + count(raw.snapshot_bytes),
+		state: text(raw.state) || "planned",
+		reason: textOrNull(raw.reason),
+		recipes: (Array.isArray(raw.recipes) ? raw.recipes : [])
+			.map(recipe)
+			.filter((entry): entry is WorkingSetRecipe => entry !== null),
+		clone: cloneOf(raw),
+		cloneCheck: textOrNull(raw.clone_check),
+		remoteUrl: peerTextOrNull(raw.remote_url),
+		primary: raw.primary === true,
+		cloneDetail: probeDetailOf(raw.clone_detail),
+		httpsRewrite: httpsRewriteOf(raw.https_rewrite),
+		remedy: remedyOf(raw.remedy),
+		missingTools: names(raw.missing_tools),
+	};
+}
+
+function rows(value: unknown): Record<string, unknown>[] {
+	return Array.isArray(value) ? value.filter(isRecord) : [];
+}
+
+/**
+ * The working-set block of a preflight answer or a refusal body, or `null`.
+ *
+ * NULL MEANS "NO CONSENT CAN BE ASKED FOR", and that is why a block without a
+ * well-formed `scope_digest` is null rather than a half-parsed object: the
+ * transfer's consent IS the digest, so a manifest without one cannot be
+ * confirmed, and the dialog must not offer a checkbox whose tick sends nothing.
+ * Accepts the block itself, a `{working_set}` wrapper (preflight result, refusal
+ * detail) and a `{result: {working_set}}` envelope, because the three reach
+ * this from different layers. Never throws: the boundary owns the narrowing.
+ */
+export function workingSet(value: unknown): WorkingSet | null {
+	if (!isRecord(value)) return null;
+	if (isRecord(value.result)) return workingSet(value.result);
+	if (isRecord(value.working_set)) {
+		const inner = workingSet(value.working_set);
+		// The preflight's own verdict wins over the block's rows when it is stated.
+		if (inner && typeof value.confirmation_required === "boolean")
+			return { ...inner, confirmationRequired: value.confirmation_required };
+		return inner;
+	}
+	const scopeDigest = text(value.scope_digest);
+	if (!SCOPE_DIGEST.test(scopeDigest)) return null;
+	const destination = isRecord(value.destination) ? value.destination : {};
+	const source = isRecord(value.source) ? value.source : null;
+	const totals = isRecord(value.totals) ? value.totals : {};
+	const worktrees = rows(value.worktrees)
+		.map(worktree)
+		.filter((entry): entry is WorkingSetWorktree => entry !== null);
+	const excluded = rows(value.excluded)
+		.map((raw) => ({ path: peerText(raw.path), why: text(raw.why) }))
+		.filter((entry) => entry.path.length > 0);
+	const leftBehind = rows(value.left_behind)
+		.map((raw) => ({
+			path: peerText(raw.path),
+			kind: text(raw.kind) || "loose_file",
+			recipe: recipe(raw.recipe),
+		}))
+		.filter((entry) => entry.path.length > 0);
+	const state = text(value.state) || "preflight";
+	return {
+		scopeDigest,
+		state,
+		carriesFiles: value.carries_files === true,
+		confirmationRequired:
+			state === "unsupported" ||
+			worktrees.length > 0 ||
+			excluded.length > 0 ||
+			leftBehind.length > 0,
+		destination: {
+			deviceId: text(destination.device_id),
+			name: peerText(destination.name),
+		},
+		source:
+			source && peerText(source.name)
+				? { deviceId: text(source.device_id), name: peerText(source.name) }
+				: null,
+		destinationProbe: destinationProbeOf(value.destination_probe),
+		totals: {
+			worktrees: count(totals.worktrees),
+			unpushedCommits: count(totals.unpushed_commits),
+			dirtyFiles: count(totals.dirty_files),
+			bytes: count(totals.bytes),
+			capBytes: nullableCount(totals.cap_bytes),
+		},
+		worktrees,
+		excluded,
+		leftBehind,
+	};
+}
+
+/**
+ * Whether a manifest has anything to confirm.
+ *
+ * An EMPTY working set (a chat-only session, `confirmation_required: false`)
+ * keeps today's dialog exactly: no warning, no checkbox, no consent sent.
+ * "Anything" includes a withheld or left-behind tree, because telling the user
+ * what will NOT arrive is the half of the operator's requirement that stops "I
+ * moved it and my work is gone".
+ */
+export function workingSetHasFiles(set: WorkingSet | null): boolean {
+	return set?.confirmationRequired ?? false;
+}
+
+/**
+ * A manifest the move dialog must show INSTEAD of asking the preflight: the fresh
+ * one a `working_set_unconfirmed` / `working_set_changed` refusal carried.
+ * `changed` says the user already confirmed an older list, which the review
+ * states before asking again.
+ */
+export type MoveWorkingSetSeed = {
+	/** `null` only for `working_set_unknown`: the owner could not compute one. */
+	workingSet: WorkingSet | null;
+	changed: boolean;
+	/**
+	 * The route refused `working_set_unconfirmed`: the user pressed Move and the
+	 * same title came back, so the review says why it is asking (UX round 1, U2).
+	 */
+	unconfirmed: boolean;
+	/**
+	 * The working set cannot be sent at all (`working_set_unknown`, or an
+	 * `unsupported` manifest): the dialog offers ONLY the explicit "move without
+	 * the working files" consent.
+	 */
+	withoutOnly: boolean;
+};
+
+/**
+ * Whether a move refusal should REOPEN the move dialog, and with what.
+ *
+ * The consent refusals are answered by asking again, not by a notice the user
+ * has to decode:
+ *   - `working_set_unconfirmed` (the move reached the route without a reviewed
+ *     list: a drop the dialog never saw, a failed preflight) and
+ *     `working_set_changed` (the list moved after the tick) reopen with the
+ *     FRESH manifest the refusal carried, un-ticked;
+ *   - `working_set_unsupported` (the manifest says `unsupported`) and
+ *     `working_set_unknown` (the owner could not compute one) reopen offering
+ *     ONLY the explicit "move without the working files" consent.
+ * `working_set_over_cap` is not reopened: no tick makes it succeed, so it stays
+ * an ordinary refusal notice with the route's own sentence and remedy.
+ */
+export function workingSetReopen(
+	refusal: MeshRefusal | null | undefined,
+): MoveWorkingSetSeed | null {
+	if (!refusal) return null;
+	const fresh = refusal.workingSet ?? null;
+	switch (refusal.code) {
+		case "working_set_unknown":
+		case "working_set_unsupported":
+			return {
+				workingSet: fresh,
+				changed: false,
+				unconfirmed: false,
+				withoutOnly: true,
+			};
+		case "working_set_unconfirmed":
+		case "working_set_changed":
+			if (!fresh || !workingSetHasFiles(fresh)) return null;
+			return {
+				workingSet: fresh,
+				changed: refusal.code === "working_set_changed",
+				unconfirmed: refusal.code === "working_set_unconfirmed",
+				withoutOnly: fresh.state === "unsupported",
+			};
+		default:
+			return null;
+	}
+}
+
+/**
+ * Whether a preflight answer says the working set CANNOT be read or sent: a
+ * block in `state: "unknown"` (the owner could not compute a manifest; the core
+ * sends a `failure`, never a `scope_digest`) or `"unsupported"`.
+ *
+ * WHY A SEPARATE READING (QA round 1, Q-2). `workingSet()` is null for such a
+ * block on purpose - there is no digest to consent to - and the dialog used to
+ * read that null as "nothing to carry", so the FIRST dialog was the plain one
+ * and the warning only came after the route refused `working_set_unknown`. The
+ * operator's rule is that the move always warns and asks when working files are
+ * involved, so this tells the dialog to open straight in the move-without state.
+ * An explicit `confirmation_required: false` from the route still wins.
+ */
+function workingSetUnreadable(value: unknown): boolean {
+	if (!isRecord(value)) return false;
+	if (isRecord(value.result)) return workingSetUnreadable(value.result);
+	if (isRecord(value.working_set))
+		return (
+			value.confirmation_required !== false &&
+			workingSetUnreadable(value.working_set)
+		);
+	const state = text(value.state);
+	return state === "unknown" || state === "unsupported";
+}
+
+/**
+ * The preflight's answer, as the move dialog reads it: the same shape as a
+ * refusal's reopen seed, so a first open on an unreadable working set renders
+ * EXACTLY the state a `working_set_unknown` refusal reopens with (no list, the
+ * "couldn't be checked" warning, the move-without consent). `null`: nothing to
+ * confirm, today's dialog.
+ */
+export function workingSetPreflight(value: unknown): MoveWorkingSetSeed | null {
+	const set = workingSet(value);
+	// A readable manifest: `workingSetMode` already reads `unsupported` off it.
+	if (set)
+		return {
+			workingSet: set,
+			changed: false,
+			unconfirmed: false,
+			withoutOnly: false,
+		};
+	return workingSetUnreadable(value)
+		? {
+				workingSet: null,
+				changed: false,
+				unconfirmed: false,
+				withoutOnly: true,
+			}
+		: null;
+}
+
 /** A refusal as the surface must render it: the code, and the author's sentence. */
 export type MeshRefusal = {
 	/** The machine contract: a `MOVE_REFUSAL_CODES` member, or the transport's own. */
 	code: string;
 	/** The route's OWN sentence. Never paraphrased, never composed over. */
 	sentence: string;
+	/**
+	 * The reach word of the device the refusal is about, when this client synthesised
+	 * the refusal with that device in hand (`mesh-drop.ts`'s pre-flight refusals).
+	 * Absent on a refusal from the route: there the sentence is the route's own, and
+	 * this client has no reach reading to add. The notice shows this in place of the
+	 * machine `code` when present, so `relay not running` and `address unreachable`
+	 * do not both arrive as the single word `unreachable`.
+	 */
+	reach?: string;
 	status: number | null;
 	/** True when the outcome is unknown and the request must not be repeated. */
 	unconfirmed: boolean;
+	/**
+	 * The FRESH manifest a `working_set_*` refusal carries, so the dialog can
+	 * re-render what the move would now send and ask again. Absent otherwise.
+	 */
+	workingSet?: WorkingSet;
 };
 
 /**
@@ -587,14 +1302,20 @@ export function meshRefusal(error: unknown): MeshRefusal {
 	} | null;
 	const code = text(held?.code) || "move_refused";
 	const status = typeof held?.status === "number" ? held.status : null;
+	// Read ONLY for the working-set codes: the body is the transport's untyped
+	// `detail`, and no other refusal's manifest-shaped field is this one.
+	const fresh = WORKING_SET_REFUSAL_CODES.has(code)
+		? workingSet((error as { detail?: unknown } | null)?.detail)
+		: null;
 	return {
 		code,
-		sentence: text(held?.message) || "the move was refused",
+		sentence: text(held?.message) || t("ui.mesh.errors.move_refused"),
 		status,
 		// A 503 IS the unconfirmed answer whatever code it carries, and a code with no
 		// status is one this process synthesised (the renderer's own deadline), which is
 		// unconfirmed by definition: nothing here observed the backend.
 		unconfirmed: status === 503 || MOVE_UNCONFIRMED_CODES.has(code),
+		...(fresh ? { workingSet: fresh } : {}),
 	};
 }
 
@@ -618,6 +1339,52 @@ export function deviceLabel(device: {
 	return t("ui.mesh.mesh_types.device_suffix", {
 		suffix: text(device.device_id).slice(-6),
 	});
+}
+
+/**
+ * The name half of the security identity: real names are quoted, absence is not.
+ * JSON quoting also prevents a stored quote or newline from forging a second row.
+ */
+export function deviceDisplayName(device: { name?: string }): string {
+	const name = text(device.name);
+	return name ? JSON.stringify(name) : t("ui.mesh.mesh_types.unnamed_device");
+}
+
+/**
+ * A compact id that is unique within the graph being painted, not merely short.
+ * Eight leading hex digits are the normal budget; a shared prefix widens only the
+ * colliding ids until they differ. Without the displayed graph there is no sound
+ * way to abbreviate, so the full id is the fail-safe rather than a 32-bit guess.
+ */
+export function compactDeviceId(
+	deviceId: string,
+	displayedDeviceIds?: readonly string[],
+): string {
+	const id = text(deviceId);
+	if (!displayedDeviceIds) return id;
+	const others = displayedDeviceIds
+		.map(text)
+		.filter((candidate) => candidate.length > 0 && candidate !== id);
+	let length = Math.min(10, id.length);
+	while (
+		length < id.length &&
+		others.some((candidate) => candidate.startsWith(id.slice(0, length)))
+	) {
+		length += 1;
+	}
+	return length < id.length ? `${id.slice(0, length)}…` : id;
+}
+
+/** The one inline name+id spelling used by sentences, menus and dialogs. */
+export function deviceIdentityText(
+	device: { id: string; name?: string },
+	displayedDeviceIds?: readonly string[],
+	compact = false,
+): string {
+	const id = compact
+		? compactDeviceId(device.id, displayedDeviceIds)
+		: text(device.id);
+	return `${deviceDisplayName(device)} ${id}`;
 }
 
 /** A network's display label: its name, else the id's tail. */

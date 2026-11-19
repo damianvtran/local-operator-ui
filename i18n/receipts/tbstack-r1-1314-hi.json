@@ -1,0 +1,64 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "tbstack-r1-1314-hi",
+ "session": "678669e97293",
+ "job": "c0820d11b867",
+ "date": "2026-10-22",
+ "locale": "hi",
+ "translator": "translator",
+ "translator_session": "632a8fd68227",
+ "namespace": "ui.teamBridge",
+ "status": "passed",
+ "keys_audited": 0,
+ "union_keys_verified": 174,
+ "scope": "PR #1314 ui.teamBridge at head bbf4d1c0cc33ed658d1894d9587983c8111f19cd: union-integrity audit of all 174 hi values after the stack integration merges (merge bbf4d1c0cc = 69c71578b6 (own audited pre-merge head) + 3751b6750b (#1309 = fd926568e3 + 9aa14137de #1296)). Every value equals its audited source side (69c71578b6 (att-r3-hi.json), fd926568e3 (tbh-r1-hi.json), 9aa14137de (tbd-sender-r1-hi.json)); no key dropped, no shared value altered; key set and order equal English (174/174). No key on this head lacks an audited source, so no new translation was audited.",
+ "sha256": {
+  "en": "9da45f3026229bfd8c10f0a09dbc6e52b0d7f82a4c8a20af8feb77ef4c83931c",
+  "hi": "2a9806e351c0318d853a74079b6467173e03e1bc40ed2b1d787b47f47df93d25",
+  "context": "5a18898b0ee57a11b3b67e796f0203248b4371a7e66b8ed11c5eebcc42ad0d13"
+ },
+ "findings": [],
+ "inherited_receipts": [
+  {
+   "base": "69c71578b6",
+   "base_commit": "69c71578b680d6baa44128927f854d0745bca9fa",
+   "path": "i18n/receipts/att-r3-hi.json",
+   "sha256": "fe1e39e87fc29a74670841768e588052737ec222297f38b7507d66f30ce7b8fd",
+   "keys_inherited": 172,
+   "base_target_sha256": "9ad93c48a0e90a7ce640c3db8d1ee1910df73720778f96ba631dc53ddcfd22f3",
+   "unchanged_values_verified": 172
+  },
+  {
+   "base": "fd926568e3",
+   "base_commit": "fd926568e3f0eebe15f8854256fd8731212d1713",
+   "path": "i18n/receipts/tbh-r1-hi.json",
+   "sha256": "e45b8b1e0467ccaab493e77cc2e385d046c15427266f012ae8c3147cea5aaff2",
+   "keys_inherited": 138,
+   "base_target_sha256": "4e453d80c3efcf76bdd6524d149839c0d0016d68f6a1188e578535bf4c4d0e08",
+   "unchanged_values_verified": 138
+  },
+  {
+   "base": "9aa14137de",
+   "base_commit": "9aa14137dec1562dac0ee72a5f056010d5438432",
+   "path": "i18n/receipts/tbd-sender-r1-hi.json",
+   "sha256": "1f188f9cee7eb3e9902398bcaf3622519c588da569424ecb2d9e3d772e7b99f3",
+   "keys_inherited": 111,
+   "base_target_sha256": "4c98c32e473622f9aee3e1241e4b5b4b5085411e18c9d92f7e30a2fdc0ef5b4b",
+   "unchanged_values_verified": 111
+  }
+ ],
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+ },
+ "validation": {
+  "independence": "Auditor is translation-auditor subagent session 678669e97293 (job c0820d11b867, label i18n-audit-hi-ur, parent 687384e07954). all other values were translated and audited in earlier rounds by other sessions. The auditor did not author or edit any catalogue value; all bytes were read with git show from origin refs, never a checkout.",
+  "union_integrity": "Inherited receipts' bytes re-hashed from the source refs equal the ledger receipt_sha256 there, and each source ledger row's target_sha256 equals that ref's hi bytes. Python comparison of every key of the hi catalogue at bbf4d1c0cc against the source sides: 0 untraced keys, 0 value mismatches, 0 dropped, 0 keys on which the sources disagree. scripts/i18n/catalogue-union-parity.mjs (origin/main copy, run from scratch with --repo, git-object reads only) over hi, ur, en and en context: --head bbf4d1c0cc exit 0, 'RESULT: PASS - no English key lost or changed', value differences [] for all 4 files. The only keys a merge added are ui.teamBridge.sender.unknown_person/unknown_agent from #1296 9aa14137de, byte-equal to its audited row.",
+  "icu": "Read-only structural parity with the repo's @formatjs/icu-messageformat-parser over hi and ur at all 5 stack heads: 'checked 1378 (head,locale,key) triples; problems=0' (exit 0). ",
+  "plurals": "hi/ur use one/other per glossary; no plural selector introduced by the merges.",
+  "typography": "hi file NFC, trailing newline; no U+200B–200F, U+202A–202E, U+2066–2069, U+061C or BOM anywhere in the file.",
+  "overflow": "No new visible strings on this head.",
+  "limitations": "No rendered-fit, screenshot, pseudo-localization or native bidi rendering evidence; catalogue audit only."
+ }
+}

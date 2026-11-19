@@ -3,6 +3,7 @@
  */
 import { createLocalOperatorClient } from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config";
+import { t } from "@shared/i18n";
 import { useChatStore } from "@shared/store/chat-store";
 import { useMessageHistoryStore } from "@shared/store/message-history-store";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
@@ -43,12 +44,17 @@ export const useClearAgentConversation = () => {
 			clearMessageHistory(variables.agentId);
 
 			// Show success toast
-			showSuccessToast("Conversation cleared");
+			showSuccessToast(t("ui.notices.sessions.cleared"));
 		},
 		onError: (error) => {
 			console.error("Error clearing agent conversation:", error);
 			showErrorToast(
-				`Failed to clear conversation: ${error instanceof Error ? error.message : "Unknown error"}`,
+				t("ui.notices.sessions.clear_failed", {
+					detail:
+						error instanceof Error
+							? error.message
+							: t("ui.notices.sessions.unknown_error"),
+				}),
 			);
 		},
 	});

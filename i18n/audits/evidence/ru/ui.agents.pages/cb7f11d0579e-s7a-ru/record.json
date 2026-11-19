@@ -1,0 +1,150 @@
+{
+  "locale": "ru",
+  "namespace": "ui.agents.pages",
+  "instance": "cb7f11d0579e-s7a-ru",
+  "agent": "reviewer",
+  "model": "openai/gpt-6.1-sol",
+  "head": "31710e01b6b6e1e0aae6ed56d5e4467de6611740",
+  "base": "0ad5542379a349a98e0a8d602dbd992746fd40a2",
+  "date": "2026-11-09",
+  "scope": "Added values only; existing strings retained",
+  "source": {
+    "path": "src/i18n/catalogues/en/ui.agents.pages.json",
+    "sha256": "0b2e8e8a93001604df2d7a49abe57c8070f29ef30b50209bc3a84cbdc43b540f"
+  },
+  "target": {
+    "path": "src/i18n/catalogues/ru/ui.agents.pages.json",
+    "sha256": "87e71505fa14eed2b26997a5ea753f367c8e110ac67660d000f8e010ed803cc6"
+  },
+  "context": {
+    "path": "src/i18n/catalogues/en/ui.agents.pages.context.json",
+    "sha256": "d17a2e44ddb8bf3d0896cdd6eddd13933ec9cdd804252e4e03c840ab3dca59f1"
+  },
+  "records": [
+    {
+      "key": "ui.agents.pages.backend.connecting",
+      "line": 33,
+      "english": "Connecting to the backend",
+      "russian": "Подключение к бэкенду",
+      "grammar": "к + dative бэкенду.",
+      "arguments": [],
+      "formatted": "Подключение к бэкенду",
+      "latin_tokens": [],
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types": "PASS",
+        "bidi": "PASS",
+        "english_residue": "PASS"
+      }
+    },
+    {
+      "key": "ui.agents.pages.backend.loading_capabilities",
+      "line": 34,
+      "english": "Loading what this backend can do…",
+      "russian": "Загрузка возможностей бэкенда…",
+      "grammar": "Загрузка governs genitive возможностей; dependent бэкенда is genitive.",
+      "arguments": [],
+      "formatted": "Загрузка возможностей бэкенда…",
+      "latin_tokens": [],
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types": "PASS",
+        "bidi": "PASS",
+        "english_residue": "PASS"
+      }
+    },
+    {
+      "key": "ui.agents.pages.change.new",
+      "line": 35,
+      "english": "New",
+      "russian": "Добавлено",
+      "grammar": "Добавлено is a standalone impersonal result badge, not an attributive adjective modifying агент or команда.",
+      "arguments": [],
+      "formatted": "Добавлено",
+      "latin_tokens": [],
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types": "PASS",
+        "bidi": "PASS",
+        "english_residue": "PASS"
+      }
+    },
+    {
+      "key": "ui.agents.pages.backend.upgrade_heading",
+      "line": 36,
+      "english": "Reusable agents need a newer backend",
+      "russian": "Для повторно используемых агентов нужен более новый бэкенд",
+      "grammar": "Для + genitive plural повторно используемых агентов; нужен agrees with nominative masculine бэкенд; более новый agrees with бэкенд.",
+      "arguments": [],
+      "formatted": "Для повторно используемых агентов нужен более новый бэкенд",
+      "latin_tokens": [],
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types": "PASS",
+        "bidi": "PASS",
+        "english_residue": "PASS"
+      }
+    },
+    {
+      "key": "ui.agents.pages.backend.unreachable",
+      "line": 37,
+      "english": "The backend could not be reached",
+      "russian": "Не удалось связаться с бэкендом",
+      "grammar": "связаться с + instrumental бэкендом.",
+      "arguments": [],
+      "formatted": "Не удалось связаться с бэкендом",
+      "latin_tokens": [],
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types": "PASS",
+        "bidi": "PASS",
+        "english_residue": "PASS"
+      }
+    },
+    {
+      "key": "ui.agents.pages.backend.upgrade_body",
+      "line": 38,
+      "english": "Update the backend to manage reusable agents and teams. Saved chats are unchanged.",
+      "russian": "Обновите бэкенд, чтобы управлять командами и агентами, которых можно использовать повторно. Сохранённые чаты не изменятся.",
+      "grammar": "управлять + instrumental командами и агентами; которых refers to animate plural agents in accusative; Сохранённые agrees with plural чаты, не изменятся agrees with plural subject.",
+      "arguments": [],
+      "formatted": "Обновите бэкенд, чтобы управлять командами и агентами, которых можно использовать повторно. Сохранённые чаты не изменятся.",
+      "latin_tokens": [],
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types": "PASS",
+        "bidi": "PASS",
+        "english_residue": "PASS"
+      }
+    },
+    {
+      "key": "ui.agents.pages.change.updated",
+      "line": 39,
+      "english": "Updated",
+      "russian": "Обновлено",
+      "grammar": "Обновлено is a standalone impersonal result badge, valid for both агент and команда.",
+      "arguments": [],
+      "formatted": "Обновлено",
+      "latin_tokens": [],
+      "checks": {
+        "icu_parse": "PASS",
+        "placeholder_types": "PASS",
+        "bidi": "PASS",
+        "english_residue": "PASS"
+      }
+    }
+  ],
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [],
+    "nit": []
+  },
+  "status": "passed",
+  "method": "Manual key-by-key English/Russian meaning and Russian government/agreement review plus executable ICU AST, placeholder/type parity, formatter, Latin allowlist and bidi assertions. No rendered UI claim.",
+  "badge_context": {
+    "path": "src/renderer/src/features/agents/components/agents-page.tsx",
+    "lines": "1975-1997",
+    "conclusion": "Row label is a sibling span and state text sits alone in Badge. Добавлено/Обновлено are impersonal result predicates, not adjectives requiring masculine агент/feminine команда agreement. Both are genuinely gender-neutral here."
+  }
+}

@@ -1,0 +1,372 @@
+{
+ "changed": [
+  {
+   "key": "ui.chat.device.sentence.move_in_flight",
+   "old": "Cuộc trò chuyện này đang chuyển đến {name}. Nó tiếp tục ở đó; mọi thứ gửi từ đây sẽ không được chuyển đến.",
+   "new": "Cuộc trò chuyện này đang chuyển đến {name}. Cuộc trò chuyện tiếp tục ở đó; mọi thứ gửi từ đây sẽ không đến nơi.",
+   "en": "This conversation is moving to {name}. It continues there; nothing sent from here would be delivered.",
+   "cells_en": 101,
+   "cells_vi": 111,
+   "nfc": true,
+   "combining": 0,
+   "bidi": 0,
+   "sha_old": "137e743092934d7634955f27d4cd1e90a806fdb1874c4d2c05c3b71b7fd11bb5",
+   "sha_new": "c31fb94f15c008e33a0d1965de93696178c14e5385507016c4103af1e38d2499"
+  },
+  {
+   "key": "ui.chat.pickers.slash.arguments_region_label",
+   "old": "Đối số lệnh",
+   "new": "Tham số lệnh",
+   "en": "Command arguments",
+   "cells_en": 17,
+   "cells_vi": 12,
+   "nfc": true,
+   "combining": 0,
+   "bidi": 0,
+   "sha_old": "10146aed94c78f52702bd3330a965bf6b2fabcf6849ab677c4197d840e6b07df",
+   "sha_new": "cd99c2c7929c62273172d4fb8e52ba244fb144079375db15784cf30ab114c8e3"
+  },
+  {
+   "key": "ui.chat.pickers.slash.phase.arguments",
+   "old": "Đối số",
+   "new": "Tham số",
+   "en": "Arguments",
+   "cells_en": 9,
+   "cells_vi": 7,
+   "nfc": true,
+   "combining": 0,
+   "bidi": 0,
+   "sha_old": "dbe154e51b1a3312510a5f76c9be5cf28d7678ea2eb23edb6c230685fda01493",
+   "sha_new": "f2f1607c0c07fff09f63121a65e1b95a7975ee2f6f6afdbc5d70738d1d6b659a"
+  },
+  {
+   "key": "ui.chat.canonical.tool_row.outcome.never_ran",
+   "old": "chưa chạy",
+   "new": "không chạy",
+   "en": "never ran",
+   "cells_en": 9,
+   "cells_vi": 10,
+   "nfc": true,
+   "combining": 0,
+   "bidi": 0,
+   "sha_old": "713224b6fbac4ea2d173006495100a840a04bca615ae1724f473db5f4a0b822e",
+   "sha_new": "363c65d6c381163f875649559d7cb11c38975e60b4416fc3859a3e59a9d5ab6a"
+  },
+  {
+   "key": "ui.chat.session_status.context_nothing_measured_tooltip",
+   "old": "Ngữ cảnh: chưa đo được gì. Cửa sổ sẽ đầy dần khi cuộc trò chuyện diễn ra.",
+   "new": "Ngữ cảnh: chưa đo được gì. Cửa sổ ngữ cảnh sẽ đầy dần khi cuộc trò chuyện diễn ra.",
+   "en": "Context: nothing measured yet. The window fills as the conversation runs.",
+   "cells_en": 73,
+   "cells_vi": 82,
+   "nfc": true,
+   "combining": 0,
+   "bidi": 0,
+   "sha_old": "d9a2dc3d93663277cb55bbbe2e324b6c6cdf003962ff2416249d759e873b6106",
+   "sha_new": "181659ebdd918b6b215b292ad59903cb147756691c9a52fb46763905835f586d"
+  },
+  {
+   "key": "ui.chat.session_status.not_signed_in_description",
+   "old": "Phiên này chạy {label} nhưng chưa đăng nhập được, nên sẽ không trả lời cho đến khi bạn kết nối.",
+   "new": "Phiên này chạy {label} nhưng chưa đăng nhập được, nên sẽ không trả lời cho đến khi bạn kết nối lại.",
+   "en": "This session runs {label} without a working sign-in, so it cannot answer until you connect it.",
+   "cells_en": 94,
+   "cells_vi": 99,
+   "nfc": true,
+   "combining": 0,
+   "bidi": 0,
+   "sha_old": "9d05658008e90b8b3f973ff630e73d3b935ff1d283ad06fdbcc67058dbc54dca",
+   "sha_new": "47704ef822a22149b144a85b2b83560e349ba9cd93f78cf09a605d8910cf255a"
+  },
+  {
+   "key": "ui.chat.session_status.nothing_measured_yet",
+   "old": "Chưa đo được gì. Cửa sổ sẽ đầy dần khi cuộc trò chuyện diễn ra.",
+   "new": "Chưa đo được gì. Cửa sổ ngữ cảnh sẽ đầy dần khi cuộc trò chuyện diễn ra.",
+   "en": "Nothing measured yet. The window fills as the conversation runs.",
+   "cells_en": 64,
+   "cells_vi": 72,
+   "nfc": true,
+   "combining": 0,
+   "bidi": 0,
+   "sha_old": "612df49a64363f822b1c2d0717eb6ac9d561e819c8c49f13ffecefa7ceb86291",
+   "sha_new": "9520ac165f29a35e44ef0f0d82536b54c255fa223aa339cf01662766d0f43bbf"
+  }
+ ],
+ "unchanged": [
+  {
+   "key": "ui.chat.device.fact.this_device",
+   "sha": "f7f7476a4c99bb0754ff505f69144c380d409444a1a9d0ae58bd6d77e093466a",
+   "identical": true
+  },
+  {
+   "key": "ui.chat.device.footer.move_deletes_copy",
+   "sha": "e24dc71bc919321462eb45c661fef923ade52293c23d19f8526b8eb890fcade6",
+   "identical": true
+  },
+  {
+   "key": "ui.chat.device.label.this_device",
+   "sha": "8c301e814a74dae40f94558ee0f48bced280f3ab383a401444f257267c286cfa",
+   "identical": true
+  },
+  {
+   "key": "ui.chat.device.notice.move_hold_detail",
+   "sha": "bd143466a34b56cf0785bfe7018039183c9932630ace48b60736ca1125ca010b",
+   "identical": true
+  },
+  {
+   "key": "ui.chat.device.picker.heading.move",
+   "sha": "638f56e58cc7cae43da64232ff0a563b7b72d1805e16019ed51330027457ea35",
+   "identical": true
+  },
+  {
+   "key": "ui.chat.device.picker.heading.start",
+   "sha": "b9e1d5999aa2b6c038f128f49984241fbefe29cfd4ff363dbc2cc9cb9d8a4b42",
+   "identical": true
+  },
+  {
+   "key": "ui.chat.device.row.conversations",
+   "sha": "acc033b38b6c3e36d56c445fbce3b7746db9be3a4d51f13cadeeb126bd6cbfa7",
+   "identical": true
+  },
+  {
+   "key": "ui.chat.device.row.not_here_why",
+   "sha": "27bf835b541970d86cff7ec31b4ef070a2f4b2131adf33c01f518e1b4e2c8a57",
+   "identical": true
+  },
+  {
+   "key": "ui.chat.device.sentence.mesh_read_failure",
+   "sha": "5dd0f75df6b7c6c2f5fd3afc9337faa0d08da7b43ecc26f6165de33b46d5b9d6",
+   "identical": true
+  },
+  {
+   "key": "ui.chat.device.sentence.pairing_guidance",
+   "sha": "d0fc139bf50c6ee9d1f0c3fd3699f958c521d8b4a3ac8ab11bdabe34bfff9260",
+   "identical": true
+  },
+  {
+   "key": "ui.chat.pickers.at_menu.heading.files",
+   "sha": "b3ed274aad9bcab95d3bf5935066ddf6c98c3e1cd570ed671e4f0e7d20d0a1d6",
+   "identical": true
+  },
+  {
+   "key": "ui.chat.pickers.at_menu.heading.projects",
+   "sha": "4f139d43300b752ac2acd1651c674e87c7523a1aa33067c5a2c4006138cdea18",
+   "identical": true
+  },
+  {
+   "key": "ui.chat.pickers.at_menu.region_label",
+   "sha": "b3ed274aad9bcab95d3bf5935066ddf6c98c3e1cd570ed671e4f0e7d20d0a1d6",
+   "identical": true
+  },
+  {
+   "key": "ui.chat.pickers.at_menu.tag.directory",
+   "sha": "954df39859e7d5cf4022ca4d853b654ce913abc6892e71487c3df23004a52516",
+   "identical": true
+  },
+  {
+   "key": "ui.chat.pickers.at_menu.tag.file",
+   "sha": "b3ed274aad9bcab95d3bf5935066ddf6c98c3e1cd570ed671e4f0e7d20d0a1d6",
+   "identical": true
+  },
+  {
+   "key": "ui.chat.pickers.at_menu.tag.project",
+   "sha": "4f139d43300b752ac2acd1651c674e87c7523a1aa33067c5a2c4006138cdea18",
+   "identical": true
+  },
+  {
+   "key": "ui.chat.pickers.slash.click.chooses_name",
+   "sha": "4850186a347308e87f19e9fb8e630c68b39218459f82e282cbfaf7545bbae431",
+   "identical": true
+  },
+  {
+   "key": "ui.chat.pickers.slash.click.completes_label",
+   "sha": "68ce1482d246ac6e14e8d8fd457abfc1b219f6ceb678366237d77a5a66834594",
+   "identical": true
+  },
+  {
+   "key": "ui.chat.pickers.slash.click.completes_value",
+   "sha": "8dbec9b65b7361f789be5020021533a9a89c2b0d8cf4eec2a4ff6e33efb5a37c",
+   "identical": true
+  },
+  {
+   "key": "ui.chat.pickers.slash.click.connects",
+   "sha": "2f5be2436b33f0241d1cda769518097e309dd103c139890150c8a3ed1e67ed11",
+   "identical": true
+  },
+  {
+   "key": "ui.chat.pickers.slash.click.runs",
+   "sha": "0a1bbac0eb5149ada9995638d454e9395fb3f23ebc960eed1b182c02b44899c4",
+   "identical": true
+  },
+  {
+   "key": "ui.chat.pickers.slash.click.runs_command",
+   "sha": "7a1e9407d43e7f08338eb64a23f453ac2210a7d324aa1788f1e4862a63aa38bf",
+   "identical": true
+  },
+  {
+   "key": "ui.chat.pickers.slash.click.runs_with_value",
+   "sha": "2512973bca79a4120086de2b6423347d0eed05f89c7861633fbc099dc80be964",
+   "identical": true
+  },
+  {
+   "key": "ui.chat.pickers.slash.click.stages",
+   "sha": "744c6cce7f68d2c2f92aad731ff1982ae2434d90f49268ea071fa7f7290af20f",
+   "identical": true
+  },
+  {
+   "key": "ui.chat.pickers.slash.enter_needs_a_pick",
+   "sha": "a0949966f1abf8f4b490c8ca2b1f69b2b23418e68cc23885dffb7682d2b8673f",
+   "identical": true
+  },
+  {
+   "key": "ui.chat.pickers.slash.region_label",
+   "sha": "307a324bc0a4cfaec195abe350355b0984b03da0a5953f5fab08bb24a85eb276",
+   "identical": true
+  },
+  {
+   "key": "ui.chat.canonical.placeholder.loading",
+   "sha": "0d003d2eada32e3bb3cd23534fd26a92abdf2fbf3876e1646b76d4ebc6b7d300",
+   "identical": true
+  },
+  {
+   "key": "ui.chat.canonical.placeholder.region_label",
+   "sha": "7ee08012abb80bc8abcdb3bece9e0567999f14b71172f6f205f45431190a5467",
+   "identical": true
+  },
+  {
+   "key": "ui.chat.canonical.tool_row.generic_verb.running",
+   "sha": "0c7a018370ab39f687e5c18debd41231f779c16dca44cf163b5d956fa48a534a",
+   "identical": true
+  },
+  {
+   "key": "ui.chat.canonical.tool_row.generic_verb.settled",
+   "sha": "30429374b0363abcd31c373ed96f2049999e2b3e51b317cf5f9a8b464eb00a6c",
+   "identical": true
+  },
+  {
+   "key": "ui.chat.canonical.tool_row.outcome.failed",
+   "sha": "403114c3aec6353709d2aa5a57ebe2675d9065eb1506e1a258f7669c09bcc3ab",
+   "identical": true
+  },
+  {
+   "key": "ui.chat.canonical.tool_row.outcome.interrupted",
+   "sha": "d631693d90d6b74d51a63131f69bf21101f2c894ac081a433d406b8a17cf2962",
+   "identical": true
+  },
+  {
+   "key": "ui.chat.canonical.tool_row.outcome.succeeded",
+   "sha": "a68b980df605bc8c7e62d404c3ffda740f8438a2853e954a18627137bcc05734",
+   "identical": true
+  },
+  {
+   "key": "ui.chat.session_status.context_heading",
+   "sha": "eec566900d0ad834bf1ce22084b945d6115817cf9b6b95b95ebd115f6c1b64f2",
+   "identical": true
+  },
+  {
+   "key": "ui.chat.session_status.conversation_starting",
+   "sha": "f14e56d453d7dcd9f995851cd007e06d38453dfdd1079de985cb5959418caea1",
+   "identical": true
+  },
+  {
+   "key": "ui.chat.session_status.model_none_resolved_tooltip",
+   "sha": "a2fe06c2ee4a243e3430b7423ae6ae820bf46de86f30fb282216408bfc169169",
+   "identical": true
+  },
+  {
+   "key": "ui.chat.session_status.not_signed_in",
+   "sha": "6899d8dfbe2a0030bcce92d1bc66c5cc94f8a2a626f2a09e9db788546ae0419a",
+   "identical": true
+  },
+  {
+   "key": "ui.chat.session_status.temporarily_unavailable",
+   "sha": "075974476ebc84db7fe386104e01f4639d8e6adb9d162913eeb9f889569706f1",
+   "identical": true
+  },
+  {
+   "key": "ui.chat.session_status.temporarily_unavailable_description",
+   "sha": "3d7ae79b50dbe8d8704b8e3960eb4b1a856e79c7133cb4455b5d56cfdc9f3196",
+   "identical": true
+  },
+  {
+   "key": "ui.chat.status.credential_refused",
+   "sha": "81c07d6d63032506f39b6dad6624035edb6033d16736c64e9ca65b3c2087d54d",
+   "identical": true
+  },
+  {
+   "key": "ui.chat.status.degraded",
+   "sha": "9df2e7e2c073462db9afa5c7ec2e15659b6eca73b15069fd21bb52c23030b871",
+   "identical": true
+  },
+  {
+   "key": "ui.chat.status.internet_offline",
+   "sha": "97b3fab723c6ccf74ab300fec5f84871fd05ef77a07dd0504471198e548cef14",
+   "identical": true
+  },
+  {
+   "key": "ui.chat.status.unreachable",
+   "sha": "8fc821cfb9c97dbe5c75de9aa6a602d44b69daf7796aac1b48982efe01b27864",
+   "identical": true
+  },
+  {
+   "key": "ui.chat.run_details.nothing_in_flight",
+   "sha": "248431867059ffe3e4d305589b9081b58769b7ad3bd3b28dbaaf5aeb32ed179f",
+   "identical": true
+  },
+  {
+   "key": "ui.chat.run_details.nothing_to_show_yet",
+   "sha": "4a2350bf042e67e921b28d1a58a6a5c3b50efcf2e076ee29e13757bbef4d7650",
+   "identical": true
+  },
+  {
+   "key": "ui.common.connection.session_loss.frame_too_large",
+   "sha": "32c81b31e897edfa1ae5e3cf2696af3d197beb7c837c0924d382d427f2d9cb2c",
+   "identical": true
+  },
+  {
+   "key": "ui.common.connection.session_loss.history_unreadable",
+   "sha": "8affd18f120450040597608ed864aa14dc9dd2475f8250002ecd8ca3656c586e",
+   "identical": true
+  },
+  {
+   "key": "ui.common.connection.session_loss.lost",
+   "sha": "a64bd5177a21dc25e5df81aca08b11248429e954b6817214ecea68fdb18fec75",
+   "identical": true
+  },
+  {
+   "key": "ui.common.connection.session_loss.not_paired",
+   "sha": "d07af8c9953c18fc65133516c5f103d1cf7704ef2f29f55f58aa31d234c6af50",
+   "identical": true
+  },
+  {
+   "key": "ui.common.connection.session_loss.server_down",
+   "sha": "3020fa2b46c5f5fa23c13d56a10eb1dbdf86d5001656f664fdbb2d80c7102997",
+   "identical": true
+  },
+  {
+   "key": "ui.common.layout.toasts.dismiss",
+   "sha": "8af6ba927e1fb65299d56263021bbf48fe8291a0dba70049d4028582245e57cc",
+   "identical": true
+  },
+  {
+   "key": "ui.common.layout.toasts.notifications",
+   "sha": "a9b656f50b4edb647d37c4ce076024f0b369f67f38f522a5f0099a4f8fe3b09b",
+   "identical": true
+  },
+  {
+   "key": "ui.agents.config.banner.unavailable",
+   "sha": "538d0224b455d3dde5cafdc2e2b665de8c260503e0b9cc5a135567caac46991c",
+   "identical": true
+  },
+  {
+   "key": "ui.agents.config.disabled_gate",
+   "sha": "14e789c06b06e9289f800e94df347c8c6702828472edea33619c4cd8504c94c0",
+   "identical": true
+  },
+  {
+   "key": "ui.agents.config.run_details_region",
+   "sha": "182b1dc4b8faafa87314c2bf382a123b88fa7f318e42f07816623cae7b23b7c3",
+   "identical": true
+  }
+ ]
+}

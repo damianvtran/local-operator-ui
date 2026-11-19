@@ -1,0 +1,32 @@
+{
+	"auditor": "i18n-auditor",
+	"model": "radient/auto",
+	"instance": "i18n-audit-attachments-20261023-ru",
+	"locale": "ru",
+	"date": "2026-10-23",
+	"status": "passed",
+	"namespace": "ui.chat.attachments",
+	"sha256": {
+		"ru": "dfd0d69f66c3fd0c12873cf922d5b5a15953d1d948dadb5ae2a95e50cef6a333",
+		"en": "fddfa41410b39cbf531ccce64247bcc9aec86eb8623f7f0e143b9efca00dd271"
+	},
+	"context_sha256": "185f3f901f0e2832ab2f433c445f094b99e42385e30b5db4ea86ce3f9c908c59",
+	"scope": "Full independent audit of all 5 keys for ru: English meaning and the en context sidecar, core glossary and the ru style guide, structural parity (key set/order, {type}/{size}/{digest}, ICU parse and format), NFC, manual bidi controls, and sibling terminology in the shipped catalogues.",
+	"model_provenance": "Served model label reported by this session is radient/auto (routed); the underlying provider model is not exposed to the session, so none is invented.",
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+			"revision": "local-operator 24dbccbb78"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/ru.md",
+			"sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+		},
+		"languages_manifest": {
+			"path": "i18n/languages.json",
+			"sha256": "7fd056b916fc3d56ddf36991a09b29864ea0b0f825d938aead1ed165926f8d63"
+		}
+	},
+	"findings": []
+}

@@ -133,7 +133,17 @@ const RE_ROW_MOUNT =
 	/<AnswerActionRow\b[\s\S]{0,200}bodyText=\{remainingContent\}/;
 const RE_CLOSES_TURN_LINE = /\{closesTurn && \(/;
 const RE_ROW_MOUNT_SITES = /<AnswerActionRow\b/g;
-const RE_USER_ROW_MOUNT = /<AnswerActionRow\s+kind="user"/;
+const RE_USER_ROW_MOUNT = /<AnswerActionRow[\s\S]{0,160}kind="user"/;
+const RE_RESPONSE_ROW_MOUNT = /<AnswerActionRow[\s\S]{0,160}kind="response"/;
+const RE_COMMENTARY_ROW_MOUNT =
+	/<AnswerActionRow[\s\S]{0,200}kind="commentary"/;
+/*
+ * THE USER ARM IS A FLOW CHILD AGAIN (operator, 2026-10-20): its tag names its
+ * role immediately, with no `overlay` switch in front of it. The old shape put
+ * `overlay` before `overlayClassName` before `kind`, so the negative is stated
+ * as "the tag starts with the role" rather than as a scan for a word.
+ */
+const RE_USER_ROW_FLOW = /<AnswerActionRow\s+kind="user"/;
 
 /**
  * One in-memory build of the shipped row and its model.
@@ -149,7 +159,8 @@ const bundle = await build({
 	stdin: {
 		contents: `
 			export { AnswerActionRow } from "./src/renderer/src/features/chat/canonical/message-actions-row";
-			export { answerActionsFor, forkEntryId, forkExcerpt, FORK_EXCERPT_MAX_CHARS, ANSWER_ACTIONS_LABEL, COPY_FEEDBACK_MS } from "./src/renderer/src/features/chat/canonical/message-actions";
+			export { answerActionsFor, forkEntryId, forkExcerpt, FORK_EXCERPT_MAX_CHARS, answerActionsLabel, COPY_FEEDBACK_MS } from "./src/renderer/src/features/chat/canonical/message-actions";
+			export { transcriptRowActions } from "./src/renderer/src/features/chat/canonical/transcript-copy";
 			export { parseReplies } from "./src/renderer/src/features/chat/utils/reply-utils";
 			export { EMPTY_TRANSCRIPT, applyHistoryPage } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
 			export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";
@@ -234,6 +245,63 @@ await writeFile(bundlePath, bundle.outputFiles[0].text);
 const mod = await import(bundlePath.href);
 await unlink(bundlePath);
 
+/*
+ * WHICH ROWS OWN A COPY AFFORDANCE, as a rule rather than a frame. The gutter
+ * control and the background menu are different surfaces; only the gutter is
+ * restricted to message-level rows. This asserts the restriction directly so a
+ * later "add the action row to tool rows too" cannot ride in on a screenshot
+ * of the one row it happens to paint.
+ */
+test("only user and assistant rows own the message-level copy affordance", () => {
+	const user = { kind: "user", id: "u1", ts: 0, text: "hi", images: [] };
+	const assistant = {
+		kind: "assistant",
+		id: "a1",
+		ts: 0,
+		text: "there",
+		streaming: false,
+		stopReason: null,
+		error: false,
+	};
+	const tool = {
+		kind: "tool",
+		id: "tool:1",
+		ts: 0,
+		toolCallId: "1",
+		toolName: "bash",
+		intent: null,
+		args: null,
+		phase: "done",
+		argumentBytes: 0,
+		output: "ok",
+	};
+	const receipt = {
+		kind: "custom",
+		id: "c1",
+		ts: 0,
+		customType: "hub_receipt",
+		text: "receipt",
+		level: "info",
+		headline: "Receipt",
+		detail: null,
+		category: null,
+		provider: null,
+		attribution: "system",
+	};
+	assert.equal(mod.transcriptRowActions(user), true);
+	assert.equal(mod.transcriptRowActions(assistant), true);
+	assert.equal(
+		mod.transcriptRowActions(tool),
+		false,
+		"a tool row is a line, not a message",
+	);
+	assert.equal(
+		mod.transcriptRowActions(receipt),
+		false,
+		"a receipt has a context menu but no gutter control",
+	);
+});
+
 /* ------------------------------------------------------------ the rules */
 
 test("copy is always offered, and it is first", () => {
@@ -243,6 +311,16 @@ test("copy is always offered, and it is first", () => {
 		mod.answerActionsFor({ role: "user" }),
 		["copy"],
 		"the reader's own turn offers Copy alone",
+	);
+	assert.deepEqual(
+		mod.answerActionsFor({ role: "commentary" }),
+		["copy"],
+		"the in-between status row is Copy alone",
+	);
+	assert.deepEqual(
+		mod.answerActionsFor({ role: "response" }),
+		["copy", "speak"],
+		"a non-closing final response is a handover, so it carries the answer's set",
 	);
 });
 
@@ -267,15 +345,29 @@ test("fork is offered LAST, and only for a row with a cut point", () => {
 		["copy", "fork"],
 		"the user arm takes fork too, and still never takes speak",
 	);
+	assert.deepEqual(
+		mod.answerActionsFor({ role: "response", forkable: true }),
+		["copy", "speak", "fork"],
+		"a non-closing final response is a handover: it takes the full set, Speak and Fork included (operator, 2026-10-20)",
+	);
+	assert.deepEqual(
+		mod.answerActionsFor({ role: "commentary", forkable: true }),
+		["copy"],
+		"the in-between status row stays Copy alone even at a cut point",
+	);
 });
 
-test("the row is capped at two actions, and Quote is not one of them", () => {
-	for (const role of ["answer", undefined]) {
+test("the row is capped at two unconditional actions, and Quote is not one of them", () => {
+	for (const role of ["answer", "response", undefined]) {
 		assert.ok(
 			mod.answerActionsFor({ role }).length <= 2,
-			"the model caps the row at two",
+			"the model caps the unconditional part of the row at two (Fork is appended, not counted)",
 		);
 	}
+	assert.ok(
+		mod.answerActionsFor({ role: "user", forkable: true }).length <= 2,
+		"and the user arm fits in two with its fork",
+	);
 });
 
 test("which records carry a fork cut point, and which do not", () => {
@@ -517,7 +609,7 @@ test("the row is a toolbar with the actions as its leftmost content", async () =
 	const toolbar = dom.window.document.querySelector("[data-lo-answer-actions]");
 	assert.ok(toolbar, "the toolbar is in the DOM");
 	assert.equal(toolbar.getAttribute("role"), "toolbar");
-	assert.equal(toolbar.getAttribute("aria-label"), mod.ANSWER_ACTIONS_LABEL);
+	assert.equal(toolbar.getAttribute("aria-label"), mod.answerActionsLabel());
 	assert.ok(
 		button("Copy"),
 		"Copy is offered at rest, with no pointer in the frame",
@@ -688,8 +780,8 @@ test("the row rides the turn-closing line and the user row's column, and nothing
 	);
 	assert.equal(
 		(TRANSCRIPT_SOURCE.match(RE_ROW_MOUNT_SITES) ?? []).length,
-		2,
-		"two mount sites: the closing answer's own line, and the user row's copy arm",
+		4,
+		"four mount sites: the closing answer's line, the user row's reserved line, a non-closing final response's meta row, and the in-between commentary overlay",
 	);
 	/*
 	 * And each site names itself: the answer arm hands over the visible text the
@@ -700,6 +792,18 @@ test("the row rides the turn-closing line and the user row's column, and nothing
 	assert.ok(
 		RE_USER_ROW_MOUNT.test(TRANSCRIPT_SOURCE),
 		"the user arm is mounted with its role",
+	);
+	assert.ok(
+		RE_USER_ROW_FLOW.test(TRANSCRIPT_SOURCE),
+		"and IN THE FLOW: the reserved row under the bubble is what the operator asked to restore",
+	);
+	assert.ok(
+		RE_RESPONSE_ROW_MOUNT.test(TRANSCRIPT_SOURCE),
+		"the non-closing final response arm is mounted with its role, which gives it the full answer set",
+	);
+	assert.ok(
+		RE_COMMENTARY_ROW_MOUNT.test(TRANSCRIPT_SOURCE),
+		"and the in-between status arm has a role of its own - the only class that gets the hover-only overlay",
 	);
 });
 
@@ -866,20 +970,20 @@ const compactedTurn = () => {
 	});
 };
 
-test("the closing line keeps the caption at its left and the actions at its right, stamp last", () => {
+test("the closing line keeps the caption at inline-start and the actions at inline-end, stamp last", () => {
 	/*
 	 * THE OPERATOR'S ASK, as a document-order claim (2026-10-01): "rearrange so
 	 * those are on the leftmost extent and the action buttons are to the
 	 * right". The caption used to follow the buttons, so at rest - the buttons
 	 * are opacity-only-hidden but hold their box - it read indented by the
 	 * buttons' own width. The line must now paint caption first, the actions'
-	 * `ml-auto` wrapper after it, and the stamp last; only a markup assertion
+	 * `ms-auto` wrapper after it, and the stamp last; only a markup assertion
 	 * can pin the ORDER, which is what the report was about (the geometry
 	 * script reads the boxes; the frames show them).
 	 */
 	const html = transcriptMarkup(compactedTurn().records);
 	const captionAt = html.indexOf("Worked for");
-	const spacerAt = html.indexOf('class="ml-auto flex shrink-0"');
+	const spacerAt = html.indexOf('class="ms-auto flex shrink-0"');
 	const actionsAt = html.indexOf("data-lo-answer-actions");
 	const stampAt = html.lastIndexOf("<time");
 	assert.ok(
@@ -888,11 +992,11 @@ test("the closing line keeps the caption at its left and the actions at its righ
 	);
 	assert.ok(
 		captionAt < spacerAt && spacerAt < actionsAt,
-		"the caption leads the line and the actions' wrapper is the right cluster's first box (its ml-auto is what pushes the cluster)",
+		"the caption leads the line and the actions' wrapper is the inline-end cluster's first box (its ms-auto is what pushes the cluster)",
 	);
 	assert.ok(
 		stampAt > actionsAt,
-		"and the stamp closes the line, rightmost, exactly as it did before the rearrangement",
+		"and the stamp closes the line at inline-end, exactly as it did before the rearrangement",
 	);
 });
 

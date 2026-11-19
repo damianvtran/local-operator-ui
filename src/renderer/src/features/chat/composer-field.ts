@@ -20,9 +20,38 @@
  * A leaf module on purpose: the escape ladder is bundled on its own by
  * `scripts/interrupt-control.test.mjs`, and a selector reached through a
  * component module would drag that component's whole import graph in with it.
- * `aria-label="Message"` is the same handle the answer options are found by.
+ *
+ * THE ASK CARD AND THE REPLY CHIP ARE FOUND THE SAME WAY, and for the opposite
+ * reason to the field above: their accessible names are TRANSLATED
+ * (`ui.chat.asks.answer_options`, `ui.chat.reply.remove`), so a selector spelled
+ * from the English value stops matching the moment the reader switches language -
+ * which is what made Enter stop answering a focused option and dropped focus out
+ * of the reply strip in `fr` (i18n audit, C2/C3). A `data-` marker is machine
+ * identity: it is never translated, never announced, and never drifts from the
+ * label a reader hears.
  */
 export const COMPOSER_TEXTAREA_SELECTOR = 'textarea[aria-label="Message"]';
+
+/**
+ * The ask-options band, as the keyboard paths outside its component find it.
+ *
+ * `ask-options.tsx` emits the marker on the band; `chat-page.tsx` (the keyboard
+ * press probe, the card-on-screen probe and the focus-restoration query) and
+ * `message-input.tsx` (the first live option) read it. One spelling, one module,
+ * for the reason the textarea selector is here: a second copy is how one reader
+ * quietly stops finding the surface it means.
+ */
+export const ASK_OPTIONS_SELECTOR = "[data-ask-options]";
+
+/**
+ * A staged quote's own remove control, as the removal's focus hand-off finds it.
+ *
+ * `reply-preview.tsx` emits the marker beside the translated accessible name it
+ * announces; the removal in `message-input.tsx` reads it to put focus on the chip
+ * that takes the removed one's place. The name cannot be the handle: after a
+ * locale switch it is no longer the string this module could spell.
+ */
+export const REPLY_CHIP_REMOVE_SELECTOR = "[data-reply-chip-remove]";
 
 /*
  * The composer's own focus hand-off, as surfaces OUTSIDE the composer reach it.
@@ -90,4 +119,40 @@ export function composerField(): HTMLTextAreaElement | null {
 /** Ask the mounted composer to take focus, if there is one. */
 export function focusComposer(): void {
 	composer?.give();
+}
+
+/**
+ * Whether a console `open` reveal may swap the visible conversation.
+ *
+ * Main downgrades `open` to `none` only when the window is unfocused; a FOCUSED
+ * window can still have a caret in the composer (or a paste about to land), and
+ * switching conversations unmounts that field and lets the new composer
+ * self-focus, losing the draft. This is the renderer half of the same rule
+ * `canRetargetWindow` applies to open-conversation requests in main: never
+ * replace the conversation under someone who is typing.
+ *
+ * A reveal for the conversation already on screen swaps nothing, so it is always
+ * allowed. The text-entry test matches the one the composer's own autofocus and
+ * the dictation guard use (INPUT, TEXTAREA, plus contenteditable).
+ */
+export function consoleRevealMayNavigate({
+	targetSessionId,
+	displayedSessionId,
+	activeElement,
+	commandPaletteOpen,
+}: {
+	targetSessionId: string;
+	displayedSessionId: string | null | undefined;
+	activeElement: Element | null;
+	commandPaletteOpen: boolean;
+}): boolean {
+	if (targetSessionId === displayedSessionId) return true;
+	if (commandPaletteOpen) return false;
+	const el = activeElement as HTMLElement | null;
+	const typing =
+		el !== null &&
+		(el.tagName === "INPUT" ||
+			el.tagName === "TEXTAREA" ||
+			el.isContentEditable === true);
+	return !typing;
 }

@@ -11,7 +11,12 @@
  * header and footer from content that scrolls under them.
  */
 
+import {
+	BackendStartupPanel,
+	startupPanelPhase,
+} from "@shared/components/common/backend-startup-panel";
 import { Dialog, DialogContent, DialogTitle } from "@shared/components/ui";
+import { useServerHealth } from "@shared/hooks/use-connectivity-status";
 import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import { type ReactNode, useRef } from "react";
@@ -109,6 +114,23 @@ export type OnboardingDialogProps = {
 	 * the dialog keeps the old non-dismissible behaviour.
 	 */
 	onDismiss?: () => void;
+};
+
+/**
+ * The app's start-up band, inside the modal (UX round 1, U3).
+ *
+ * The band itself lives in the shell (`BackendStartupGate`), and this dialog is
+ * a modal: everything outside it is inert under the scrim. A server that died
+ * while setup was open therefore showed Restart as dimmed, unreachable chrome,
+ * and the 01a170cf replay is a user rage-clicking the step's own Retry in that
+ * window. Drawn here too, the band is reachable; the shell's copy stays behind
+ * the scrim, inert, so only this one can be pressed.
+ */
+const OnboardingStartupBand = () => {
+	const { data } = useServerHealth();
+	const snapshot = data?.snapshot ?? null;
+	if (!snapshot || !startupPanelPhase(snapshot)) return null;
+	return <BackendStartupPanel snapshot={snapshot} />;
 };
 
 /**
@@ -211,6 +233,7 @@ export const OnboardingDialog = ({
 						{stepIndicators}
 					</div>
 				)}
+				<OnboardingStartupBand />
 
 				{/*
 				 * `outline-none!` because this element is focused programmatically on

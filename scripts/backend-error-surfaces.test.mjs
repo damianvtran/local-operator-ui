@@ -139,6 +139,8 @@ await writeFile(bundlePath, bundle.outputFiles[0].text);
 // `window.api.desktop` the renderer takes its browser-dev HTTP branch, which is
 // not the code that ships.
 let bridgeStatus = 503;
+/** The body the fake bridge answers with; null keeps the historical "denied". */
+let bridgeBody = null;
 /**
  * The banner's two main-process reads, faked at the bridge for the same reason the
  * transport is: main's pairing record and the reconnect verb are MAIN's, and a test
@@ -200,7 +202,7 @@ globalThis.window = {
 		desktop: {
 			request: async () => ({
 				status: bridgeStatus,
-				body: { detail: "denied" },
+				body: bridgeBody ?? { detail: "denied" },
 			}),
 		},
 	},
@@ -1475,10 +1477,12 @@ test("the banner's yield call site reads after kind, and presence is the strip's
 		"src/renderer/src/shared/components/common/backend-compatibility-banner.tsx",
 		"utf8",
 	);
-	const kind = source.indexOf("const kind = backendErrorKind(");
+	const kind = source.indexOf("const kind =");
+	const classified = source.indexOf("backendErrorKind(capabilities.error)");
 	const yieldCall = source.indexOf(
-		"bannerYieldsToStrip({ stripPresent, cause, answered, kind })",
+		"bannerYieldsToStrip({ stripPresent, cause, answered, kind, updateStalled })",
 	);
+	assert.ok(classified > 0 && classified < kind, "kind is derived from it");
 	assert.ok(kind > 0, "the banner computes kind");
 	assert.ok(
 		yieldCall > kind,
@@ -1489,4 +1493,103 @@ test("the banner's yield call site reads after kind, and presence is the strip's
 		/useChatStatusStripPresent\(\)/,
 		"presence is the strip's own publication, not a route table",
 	);
+});
+
+/* ------------------------------------------- the server-update window (#1817) */
+
+const pairedSnapshot = (extra = {}) => ({
+	online: true,
+	snapshot: {
+		state: "attached",
+		reconnecting: false,
+		owned: true,
+		url: "http://127.0.0.1:7341",
+		instanceId: "inst-synthetic-a",
+		pid: 4321,
+		version: "0.0.0-synthetic",
+		prefix: "/synthetic/prefix",
+		installKind: "uv-tool",
+		desktopAvailable: true,
+		pairing: { available: true, cause: null },
+		failures: 0,
+		capabilityStatus: null,
+		unanswered: 0,
+		lastTransportAt: null,
+		detail: "Connected to the daemon.",
+		updatedAt: 0,
+		...extra,
+	},
+});
+const UPDATING_BODY = {
+	detail: {
+		code: "transient.server-updating",
+		message: "The Local Operator server is updating.",
+		retry_after_ms: 1000,
+	},
+};
+const STALLED_BODY = {
+	detail: {
+		code: "transport.failed",
+		message:
+			"The backend could not complete this request. Check its connection and try again.",
+		update_stalled: true,
+	},
+};
+const UPDATING_SENTENCE = /back in a moment/;
+
+const renderWith = async (snapshotExtra, body) => {
+	const client = newClient();
+	globalThis.__serverHealth = pairedSnapshot(snapshotExtra);
+	bridgeBody = body;
+	try {
+		await seedCapabilitiesFailure(client, 503);
+	} finally {
+		bridgeBody = null;
+	}
+	return renderBackendCompatibilityBanner(client);
+};
+
+test("updating banner: info tone, the update sentence, no Retry and no Update (D2)", async () => {
+	// Where the strip is not mounted (the static default), on a launch with no
+	// cached capabilities, during an open window.
+	const html = await renderWith({ updating: true }, UPDATING_BODY);
+	const text = renderedText(html);
+	assert.match(text, UPDATING_SENTENCE);
+	assert.match(html, /bg-info-wash/, "nothing is wrong: info, not warning");
+	assert.doesNotMatch(html, /bg-warning-wash/);
+	assert.doesNotMatch(text, /Retry/, "a reconnect would only race the reload");
+	assert.doesNotMatch(text, /Update backend/, "an update is already running");
+});
+
+test("outside the window a cached updating error never promises 'back in a moment' (M2)", async () => {
+	const html = await renderWith({ updating: false }, UPDATING_BODY);
+	const text = renderedText(html);
+	assert.doesNotMatch(text, UPDATING_SENTENCE);
+	assert.ok(
+		text.includes(BACKEND_ERROR_DIAGNOSIS.unreachable),
+		`real outage copy: ${text}`,
+	);
+	assert.match(html, /bg-warning-wash/);
+});
+
+test("past the cap the banner keeps speaking where the strip has no row (M2)", async () => {
+	const html = await renderWith({ updating: false }, STALLED_BODY);
+	const text = renderedText(html);
+	assert.doesNotMatch(text, UPDATING_SENTENCE);
+	assert.ok(text.includes(BACKEND_ERROR_DIAGNOSIS.unreachable), text);
+	// The yield, driven directly (presence cannot be set in a static render):
+	// the daemon still answers /health, the strip has nothing to say, so the
+	// banner must NOT stand down for this failure...
+	const outage = {
+		stripPresent: true,
+		kind: "unreachable",
+		answered: false,
+		cause: null,
+	};
+	assert.equal(bannerYieldsToStrip({ ...outage, updateStalled: true }), false);
+	// ...while the same kind without the hint keeps today's yield (negative).
+	assert.equal(bannerYieldsToStrip(outage), true);
+	// And `updating` yields only to a strip whose row 0 is speaking: the banner
+	// maps it to `updating` only while the window is open.
+	assert.equal(bannerYieldsToStrip({ ...outage, kind: "updating" }), true);
 });

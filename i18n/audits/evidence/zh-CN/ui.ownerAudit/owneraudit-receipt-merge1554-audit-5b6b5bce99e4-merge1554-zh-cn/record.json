@@ -1,0 +1,137 @@
+{
+ "audit_id": "owneraudit-receipt-merge1554-audit-5b6b5bce99e4-merge1554-zh-cn",
+ "date": "2026-11-02",
+ "locale": "zh-CN",
+ "namespace": "ui.ownerAudit",
+ "branch": "conv/legacy-inline-receipts",
+ "source_commit": "PR #1554 merge 9ccbba310167b0e2be99f37762be0f7fe6258be4 of origin/main e8f34569c5b843a0c8050439ff5b10d6c3671969; head at audit 28c4b754c13cc8b4d57df93ee41253de4d1ba833",
+ "translator": {
+  "agent": "coder",
+  "model": "openai/gpt-6.1-terra",
+  "date": "2026-10-31",
+  "source": "840dad30806b-zh-cn receipt"
+ },
+ "auditors": [
+  {
+   "agent": "reviewer",
+   "model": "anthropic/claude-opus-5-5",
+   "session": "5b6b5bce99e4",
+   "instance": "5b6b5bce99e4-merge1554-zh-cn",
+   "date": "2026-11-02",
+   "result": "clean-with-findings",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 2,
+    "nit": 0
+   },
+   "model_fallback": {
+    "announced": false,
+    "observed": false
+   }
+  }
+ ],
+ "independence": "Independent auditor: lopdev team reviewer, session 5b6b5bce99e4; authored none of PR #1554's strings or code, not the implementer (coder job cc152b98d7c7), and none of the prior audits (840dad30806b on this branch; 75830dea2957, pr1533rm, tb1482mg on main). Edited no catalogue or context value. Rows written by ledger-assemble.mjs.",
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.ownerAudit.json",
+   "sha256": "41a736f06c88440a3a662521643aa5b40d43acd83a898053aad74a4122fc7cdd"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.ownerAudit.context.json",
+   "sha256": "23482ab4d02bd5c0eedf526c2760d5bb1d1129e3e6724881e6a4d97f8509c2ff"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/zh-CN/ui.ownerAudit.json",
+   "sha256": "03c6163b6af351b513fe1a87096e79495edc4c5a78a181bbc87f93a2efc265e4"
+  }
+ },
+ "style_guide": {
+  "path": "~/local-operator i18n/style-guides/zh-CN.md",
+  "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c",
+  "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "core_commit": "b42471d3935"
+ },
+ "scope": {
+  "delta_kind": "Merge of origin/main e8f34569c5b (#1533 audit-collapse removal; ui.ownerAudit.reveal/own absent) into PR #1554 (9ccbba31016). Removing the 5 receipt key lines and the comma they force from this file yields bytes identical to origin/main's file (same for en); the 5 values are byte-identical to the audited bbb6cd2952f; the 5 en context entries equal bbb6cd2952f's and all other context entries equal main's.",
+  "base_target_sha256": "240847e1b6fb177418142c05de7d28c2ad3991809d26b97db61591877d23c568",
+  "base_en_sha256": "1be9b36e0201411304198a33f426ee66b41bdd6e2f96372b1c325fb5a1a848ef",
+  "base_bytes_audited_by": [
+   "75830dea2957-owner-audit-reply-delta"
+  ],
+  "prior_branch_audit": {
+   "commit": "bbb6cd2952f",
+   "target_sha256": "ca9bfc7155dcd338f6e41d826042f7171394b10cd3d3ffb7bd93a4959dd0dd16",
+   "en_sha256": "345d5403a39bf3963e64e31965887b58185be091c47c3fe1e9ea471c2591c5c0",
+   "context_sha256": "b7ee4423098a1105e6f276771d4a8d47781c3e9d1fc1a4e8a5cbe9548ec8972c",
+   "instances": [
+    "840dad30806b-zh-cn"
+   ],
+   "receipt_sha256": "d638a457c9d8c09e1e5fe29ae7489eba9e873c5d47362d20f2bd120510d11e94",
+   "receipt_hashes_match_prev_head_bytes": true,
+   "receipt_values_byte_identical": true
+  },
+  "collapse_keys_absent": true,
+  "keys_audited_linguistically": [
+   "ui.ownerAudit.inspect_body",
+   "ui.ownerAudit.inline_image_receipt",
+   "ui.ownerAudit.previous_chunk",
+   "ui.ownerAudit.next_chunk",
+   "ui.ownerAudit.chunk_number"
+  ],
+  "whole_file_review": "Main-side keys are byte-identical to origin/main (audited by base_bytes_audited_by). Receipt values re-read against main's surviving ownerAudit copy: no term clash.",
+  "not_audited": "No fresh linguistic audit of main-side keys; their bytes are main's. No rendered/visual check (light review: no Storybook)."
+ },
+ "linguistic_review": "检查消息文本 / 内嵌图像数据 · {mime} · {count} 个字符 / 上一部分 / 下一部分 / 第 {page} 部分，共 {count} 部分: meaning faithful ('内嵌' = embedded inline; '部分' consistently names the segment). Typography: two values put a space between Chinese text and a digit placeholder (findings ZH1, ZH2).",
+ "findings": [
+  {
+   "id": "ZH1",
+   "severity": "MINOR",
+   "key": "ui.ownerAudit.chunk_number",
+   "value": "第 {page} 部分，共 {count} 部分",
+   "issue": "Spaces between Chinese text and digit placeholders, against the zh-CN style guide (\"No space inserted between Chinese text and Latin/digit runs\") and the catalogue convention (959 direct CJK-placeholder joins vs 36 spaced across zh-CN catalogues, measured this audit).",
+   "suggested": "第{page}部分，共{count}部分",
+   "disposition": "Not edited (auditor is read-only on catalogues); left to the implementer. Meaning is correct; does not block."
+  },
+  {
+   "id": "ZH2",
+   "severity": "MINOR",
+   "key": "ui.ownerAudit.inline_image_receipt",
+   "value": "内嵌图像数据 · {mime} · {count} 个字符",
+   "issue": "Space between the {count} digit placeholder and 个, same style-guide rule as ZH1. The spaces around the · separators mirror English and are fine.",
+   "suggested": "内嵌图像数据 · {mime} · {count}个字符",
+   "disposition": "Not edited; left to the implementer. Meaning is correct; does not block."
+  }
+ ],
+ "source_context_observations": [
+  {
+   "id": "C1",
+   "severity": "MINOR",
+   "scope": "en context (source), not this locale",
+   "key": "ui.ownerAudit.inspect_body",
+   "issue": "Context note says it \"Opens a rejected, unscreened, or unknown audit message as inert plaintext\". After the main merge removed WithheldAuditBody (#1533 collapse), the only call site is inline-data-receipt.tsx:135, the <summary> of a bounded uncertain encoded-text run in any Team Bridge message list (timeline, thread, audit). Translations of \"Inspect message text\" remain faithful to that use.",
+   "suggested_note": "Summary of a collapsed disclosure that hides a long run of text which may be encoded data (it follows an inline image data URI but cannot be confirmed as image bytes). Opening it shows that run as inert plaintext, one bounded segment at a time; it never decodes, downloads or previews anything."
+  }
+ ],
+ "context_review": {
+  "key": "ui.ownerAudit.inline_image_receipt",
+  "context_role": "Collapsed disclosure summary for a legacy inline image data URI",
+  "verdict": "accurate",
+  "reason": "At this head the string renders only as the <summary> of the Receipt component's own <details> (inline-data-receipt.tsx:129-140) for one bounded inline image data URI span; opening it pages that span as inert plaintext. The audit-row collapse (ui.ownerAudit.reveal/own) is gone, so \"collapsed\" can only mean the closed receipt disclosure. No replacement needed."
+ },
+ "checks": {
+  "placeholders": "@formatjs/icu-messageformat-parser over all 40 values: argument sets equal English per key; all parse.",
+  "key_set": "40 keys, equal to English.",
+  "unicode": "All values NFC; no bidi controls (U+200E/F, U+061C, U+202A-E, U+2066-9).",
+  "rendered_command": "node $LOCAL_OPERATOR_SCRATCHPAD/i18n1554/verify.mjs (worktree root; Node v24.22.1)",
+  "rendered": [
+   "en    sha 41a736f06c88440a3a662521643aa5b40d43acd83a898053aad74a4122fc7cdd removedLines 5 strippedEqMain true receiptValsEqPrev(bbb6cd2952f) true collapseKeysPresent [] otherNewKeys [] keys 40/35+5 mainSha 1be9b36e0201 prevSha 345d5403a39b",
+   "zh-CN sha 03c6163b6af351b513fe1a87096e79495edc4c5a78a181bbc87f93a2efc265e4 removedLines 5 strippedEqMain true receiptValsEqPrev(bbb6cd2952f) true collapseKeysPresent [] otherNewKeys [] keys 40/35+5 mainSha 240847e1b6fb prevSha ca9bfc7155dc",
+   "en-context sha 23482ab4d02bd5c0eedf526c2760d5bb1d1129e3e6724881e6a4d97f8509c2ff receiptEntriesEqPrev true otherEntriesEqMain true collapseCtx []"
+  ]
+ },
+ "receipt": {
+  "path": "i18n/receipts/5b6b5bce99e4-merge1554-zh-cn.json",
+  "sha256": "76d5ed4ac82f882237afc78f7f5ebd051d2800c2d2dbe2ea94a05072dae210d1"
+ }
+}

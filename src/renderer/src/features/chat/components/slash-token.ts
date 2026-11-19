@@ -118,7 +118,17 @@ export function pyTrimStart(text: string): string {
 	return text.replace(LEADING_SEPARATORS, "");
 }
 
-function isBoundary(line: string, index: number): boolean {
+/**
+ * Whether `line[index]` (a sigil) begins a fresh token: the line start, or
+ * right after a Python separator.
+ *
+ * THE definition of a word boundary for every sigil on this host. The `/`, `$`
+ * and `@` grammars all read it, and the skill grammar's submit-time resolver in
+ * `skill-invocation.ts` reads this same function rather than a fourth copy —
+ * a boundary rule that holds in the picker but not at submit is a token the
+ * user saw highlighted and the agent never received.
+ */
+export function isBoundary(line: string, index: number): boolean {
 	return index === 0 || SEPARATOR.test(line[index - 1]);
 }
 

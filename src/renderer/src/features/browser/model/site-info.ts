@@ -42,7 +42,6 @@
  */
 
 const SECURITY_FAILURE_DESCRIPTION = /CERT|SSL|TLS/i;
-
 export type SiteInfoKind =
 	| "secure"
 	| "not-secure"

@@ -54,12 +54,24 @@ const bundle = await build({
 	stdin: {
 		contents: `
 			export { WorkingLine } from "./${trace}working-line";
-			export {
-				deriveWorkingLine,
+			/*
+			 * The ladder answers a rung plus arguments (\`WorkingActivity\`); this suite
+			 * pins its ENGLISH, so it reads the state, and the two exported rungs,
+			 * through the shipped resolver (\`scripts/working-line-english.ts\`). The
+			 * literals below are unchanged from before the words were keyed.
+			 */
+			import {
+				deriveWorkingLine as rawDeriveWorkingLine,
 				workingLineInputFor,
-				ADMITTED_SEND_ACTIVITY,
-				STARTING_SESSION_ACTIVITY,
+				ADMITTED_SEND_ACTIVITY as ADMITTED_RUNG,
+				STARTING_SESSION_ACTIVITY as STARTING_RUNG,
 			} from "./${canonical}working-line-model";
+			import { english, englishState } from "./scripts/working-line-english";
+			export { workingLineInputFor };
+			export const deriveWorkingLine = (...args) =>
+				englishState(rawDeriveWorkingLine(...args));
+			export const ADMITTED_SEND_ACTIVITY = english(ADMITTED_RUNG);
+			export const STARTING_SESSION_ACTIVITY = english(STARTING_RUNG);
 		`,
 		loader: "tsx",
 		resolveDir: process.cwd(),
@@ -121,7 +133,7 @@ const transcriptBundle = await build({
 		contents: `
 			export { CanonicalTranscript } from "./${canonical}canonical-transcript";
 			export { EMPTY_TRANSCRIPT } from "./${canonical}transcript-reducer";
-			export { streamFailureNotice } from "./src/shared/desktop-stream-notice";
+			export { streamFailureNotice } from "./src/renderer/src/features/chat/canonical/session-failure-notice";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -361,6 +373,14 @@ test("a fold that disagrees with the derived phase is withheld, never substitute
 	 * so a disagreement means one of them missed events. Substituting a zero
 	 * there is how a `retrying (attempt 2)` row once wore the age of the
 	 * attempt that had just failed.
+	 *
+	 * AND THE ROW KEEPS NO NUMBER EITHER (agent review round 2, U10). The
+	 * disagreement leaves this rung with nothing to count FROM - the row's own
+	 * fallback is its mount age, which is the age of the pane and not of the
+	 * phase - so the number is withheld rather than invented. This assertion used
+	 * to read clock-on because the fallback was the row's documented behaviour; a
+	 * cached return measured it printing `thinking 0s` at 126 ms for a turn 2.1 s
+	 * old, which is why it is now `clock: false`.
 	 */
 	const mismatch = ladder({
 		...base({}),
@@ -369,8 +389,8 @@ test("a fold that disagrees with the derived phase is withheld, never substitute
 	});
 	assert.deepEqual(
 		mismatch,
-		{ activity: "thinking", phase: "thinking" },
-		"a fold for another phase leaves the row on its own zero",
+		{ activity: "thinking", phase: "thinking", clock: false },
+		"a fold for another phase leaves the row with no anchor and no number",
 	);
 
 	// A producer that has no phase at all (`""` between turns) is the same
@@ -387,6 +407,49 @@ test("a fold that disagrees with the derived phase is withheld, never substitute
 			`no usable stamp in ${JSON.stringify(absent)}`,
 		);
 	}
+});
+
+test("U10: a rung the producer's phase contradicts prints no number", async () => {
+	/*
+	 * The measured defect (agent review round 2, U10): a cached return whose
+	 * frontend landed before its running tool rows derives `thinking` while the
+	 * fold says `running`, so the producer's own `activity_phase_started_at` was
+	 * discarded and the row seeded `startedAt ?? Date.now()` - `thinking 0s` at
+	 * 126 ms for a turn 2.1 s old. The assertion that matters is the RENDERED
+	 * label, because a state object saying `clock: false` is only a promise about
+	 * what a reader sees.
+	 */
+	const derived = ladder({
+		...base({}),
+		foldedPhase: "running",
+		foldedPhaseStartedAt: PHASE_STARTED_EPOCH,
+	});
+	assert.deepEqual(derived, {
+		activity: "thinking",
+		phase: "thinking",
+		clock: false,
+	});
+	await fixture(
+		{ startedAt: undefined, now: PHASE_STARTED_MS },
+		async (api) => {
+			await api.render({
+				phase: derived.phase,
+				clock: derived.clock,
+				startedAt: derived.startedAt,
+			});
+			assert.equal(
+				api.label(),
+				"",
+				"no number on a rung nothing can date, rather than a mount age",
+			);
+			await act(() => api.advance(1_000));
+			assert.equal(
+				api.label(),
+				"",
+				"and no timer runs behind it, so none appears on the next tick either",
+			);
+		},
+	);
 });
 
 test("the admitted send is anchored on the press, and the fold cannot reach it", () => {
@@ -576,7 +639,7 @@ async function fixture({ startedAt, now }, run) {
 			await act(() =>
 				root.render(
 					h(WorkingLine, {
-						activity: "running bash",
+						activity: { kind: "text", text: "running bash" },
 						phase: nextPhase,
 						...(anchor === undefined ? {} : { startedAt: anchor }),
 						...(nextClock === undefined ? {} : { clock: nextClock }),
@@ -1001,6 +1064,28 @@ test("a pane whose fold states nothing keeps the local zero", async () => {
 	await paneFixture(PHASE_STARTED_MS, async (api) => {
 		await api.render({ activity_phase: "", activity_phase_started_at: null });
 		assert.equal(api.label(), "0s");
+	});
+});
+
+test("a paint's running claim wears no invented clock", async () => {
+	/*
+	 * DESIGN ROUND 1, D1. The paint carries one bit - a turn was running - and no
+	 * start instant, so a clock counted from this mount is a fabricated age:
+	 * `thinking 0s` ticking up, then jumping to `1h4m` when the snapshot landed.
+	 * The label stands and the number is withheld until the snapshot replaces
+	 * the claim with the turn's own state (`paintRunning && stale`).
+	 */
+	await paneFixture(PHASE_STARTED_MS, async (api) => {
+		await api.render(
+			{ activity_phase: "", activity_phase_started_at: null },
+			{ waiting: false, paintRunning: true, stale: true },
+		);
+		assert.ok(api.line(), "the claim still paints the working line");
+		assert.equal(
+			api.label(),
+			"",
+			"and no number: this pane cannot date a turn it did not see start",
+		);
 	});
 });
 

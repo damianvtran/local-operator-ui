@@ -1,0 +1,179 @@
+{
+  "schema": 1,
+  "date": "2026-10-21T17:05:38.813175+00:00",
+  "instance": "ce76a99d4b27",
+  "auditor": "reviewer",
+  "model": "openai/gpt-6.1-sol",
+  "model_provenance": "Actual served model openai/gpt-6.1-sol after runtime fallback from configured anthropic/claude-opus-5-5 due unavailable credentials. No model pins, tools or defaults changed.",
+  "status": "clean-with-findings",
+  "independence": "Independent second auditor: authored no implementation, translations, first-auditor copy corrections or context. Independently compared origin/main to the frozen working-tree namespace and checked renderer call sites. First auditor ux-reviewer/openai/gpt-6.1-sol is a separate session/instance. Translator of v3 delta coder/anthropic/claude-opus-5-5 as supplied by manager; historic ledger translator fields are retained, not relabelled.",
+  "locales": [
+    "fr",
+    "es",
+    "zh-CN",
+    "ru",
+    "vi",
+    "ur",
+    "hi"
+  ],
+  "namespaces": {
+    "ui.chat.tags": {
+      "status": "clean-with-findings",
+      "findings": [
+        {
+          "id": "I2-1",
+          "severity": "MINOR",
+          "key": "ui.chat.tags.empty_hint",
+          "locales": [
+            "en"
+          ],
+          "file": "src/i18n/catalogues/en/ui.chat.tags.json:68",
+          "issue": "The nearest noun before “create one here” is “chat”, but this footer creates a tag. This allows a first-use reader to infer chat creation. Target translations already explicitly name a tag.",
+          "evidence": [
+            "English context note explicitly says the action creates a TAG, not a conversation.",
+            "chat-tag-header.tsx TagFooter: New tag button enters InlineEdit; empty_hint is directly above that button."
+          ],
+          "recommendation": "Say “Press {chord} on a chat, or create a tag here.”",
+          "disposition": "Unresolved MINOR; reported to manager for unified remediation. No translation or context edited by this auditor."
+        }
+      ],
+      "sha256": {
+        "en": "fcd94edb2c844efd7c14fbbcf477cb427c1a2d920531c83751a4b4cadf6e955d",
+        "fr": "6344e81de0599bdf58d3364bc23262ddbcd1420b6a8b345d04996062903e8f52",
+        "es": "4b571f2e7a178ac92be6245c9ea303445c7317c7e6f5e54508d6b32cedb3d974",
+        "zh-CN": "8eb7048d122c06ed45705612c7a5d4d25cc3986a4b2f3d3c3b3d32841f2f91d5",
+        "ru": "700d1386afcd07441c1820ca6534e1f03eb35bd1b7f9b45f50bd58f9162a9071",
+        "vi": "e394931d20dd6772b135057b75784986aebe096397451f7cd5c049df3a994e73",
+        "ur": "3e541bf0e6fcf1f5245f6cf12478e563ce9da395eeda472028435ac9c9ac9a51",
+        "hi": "952896d0472d6ad0cced66e43e31d27c3cbe6b5976b74470ff499449e0a09a13",
+        "context": "447d9d720043245f6ce216dafe83d185740601b41c51a69706879ca17640997a"
+      },
+      "keys_automatically_checked": 67,
+      "scope": "Semantic/context audit of 19 new/changed English messages and their seven target translations; 23 removals checked. Not a fresh linguistic audit of unchanged baseline messages. Full 67-key namespace checked for ICU formatting, key/argument parity and manual bidi controls."
+    }
+  },
+  "delta": {
+    "base_ref": "origin/main",
+    "base_sha": "1c9910fcdc5d9ad2da5408aae2defdceda01b452",
+    "working_tree_head": "cc16009f8cae2dab2429d03ed129850dee332a97",
+    "added": [
+      "ui.chat.tags.dropped_on",
+      "ui.chat.tags.empty_hint",
+      "ui.chat.tags.empty_title",
+      "ui.chat.tags.header_actions",
+      "ui.chat.tags.header_first",
+      "ui.chat.tags.header_last",
+      "ui.chat.tags.hidden",
+      "ui.chat.tags.moved_tag",
+      "ui.chat.tags.name_placeholder",
+      "ui.chat.tags.new_tag",
+      "ui.chat.tags.show_groups",
+      "ui.chat.tags.show_under",
+      "ui.chat.tags.shown_under",
+      "ui.chat.tags.shown_untagged",
+      "ui.chat.tags.unused"
+    ],
+    "changed": [
+      "ui.chat.tags.delete_description",
+      "ui.chat.tags.discovery",
+      "ui.chat.tags.empty",
+      "ui.chat.tags.selection_status"
+    ],
+    "removed": [
+      "ui.chat.tags.apply",
+      "ui.chat.tags.apply_deletion_first",
+      "ui.chat.tags.clear",
+      "ui.chat.tags.create_pending",
+      "ui.chat.tags.group_under",
+      "ui.chat.tags.manage",
+      "ui.chat.tags.manage_description",
+      "ui.chat.tags.manage_title",
+      "ui.chat.tags.move_description",
+      "ui.chat.tags.move_menu",
+      "ui.chat.tags.move_title",
+      "ui.chat.tags.moved_to",
+      "ui.chat.tags.new",
+      "ui.chat.tags.none_yet",
+      "ui.chat.tags.picker_description",
+      "ui.chat.tags.picker_title",
+      "ui.chat.tags.registry_count",
+      "ui.chat.tags.reorder_filtered",
+      "ui.chat.tags.save",
+      "ui.chat.tags.staged_added",
+      "ui.chat.tags.tag_usage",
+      "ui.chat.tags.updated_grouped",
+      "ui.chat.tags.updated_untagged"
+    ]
+  },
+  "semantic_checks": [
+    "Compared every new/changed target against English plus source context: tag addition retains other tags, grouping changes display primary, deletion removes tag but not conversations, header reorder names refer to tags, first-use creation names tags, keyboard hint retains both literal chords and keyboard-focus prerequisite.",
+    "Verified source call sites in chat-tag-move.ts, use-chat-tag-assignment.ts, chat-tag-popover.tsx, tag-picker-combobox.tsx and chat-tag-header.tsx; these source readings are semantic context, not runtime UI proof.",
+    "Read core glossary and seven locale style guides. No new BLOCKER or MAJOR semantic defect found; source ambiguity I2-1 retained, not silently fixed."
+  ],
+  "validation": [
+    {
+      "command": "Node inline IntlMessageFormat + ICU AST assertions against current ui.chat.tags files",
+      "actual_output": "PASS 3216 ICU formats; 8 locales x 67 keys x 6 count values; key/argument parity; no manual bidi; chords preserved; 9 current hashes match first receipt",
+      "details": "Counts 0,1,2,5,21,1000000; synthetic mixed Latin/CJK/Arabic-script values for named arguments. Initial harness omitted query; corrected by deriving synthetic argument names from the ICU AST. Initial failed attempt is not counted as a pass."
+    },
+    {
+      "command": "IntlMessageFormat hi selection_status with string counts, matching current call site String(nextIds.length)",
+      "actual_output": [
+        "0 चुने गए। Audit समूह में।",
+        "1 चुना गया। Audit समूह में।",
+        "2 चुने गए। Audit समूह में।"
+      ]
+    },
+    {
+      "command": "node scripts/i18n/context-parity.mjs",
+      "actual_output": "ok; 196 allowed gaps in 6 namespaces. Note: 8 ui.mesh allowance keys now covered; unrelated allowance not edited."
+    },
+    {
+      "command": "node scripts/i18n/check-coverage.mjs",
+      "actual_output": "ok; 7 gated languages over 70 namespaces; 1757 allowed keys across 79 pairs."
+    },
+    {
+      "command": "node scripts/i18n/generate.mjs --check",
+      "actual_output": "src/i18n/keys.gen.ts is byte-identical to a fresh generation."
+    }
+  ],
+  "references": {
+    "i18n/glossary.md": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "i18n/style-guides/fr.md": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39",
+    "i18n/style-guides/es.md": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39",
+    "i18n/style-guides/zh-CN.md": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c",
+    "i18n/style-guides/ru.md": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465",
+    "i18n/style-guides/vi.md": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97",
+    "i18n/style-guides/ur.md": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c",
+    "i18n/style-guides/hi.md": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+  },
+  "artifacts": {
+    "english": "src/i18n/catalogues/en/ui.chat.tags.json",
+    "context": "src/i18n/catalogues/en/ui.chat.tags.context.json",
+    "targets": {
+      "fr": "src/i18n/catalogues/fr/ui.chat.tags.json",
+      "es": "src/i18n/catalogues/es/ui.chat.tags.json",
+      "zh-CN": "src/i18n/catalogues/zh-CN/ui.chat.tags.json",
+      "ru": "src/i18n/catalogues/ru/ui.chat.tags.json",
+      "vi": "src/i18n/catalogues/vi/ui.chat.tags.json",
+      "ur": "src/i18n/catalogues/ur/ui.chat.tags.json",
+      "hi": "src/i18n/catalogues/hi/ui.chat.tags.json"
+    },
+    "first_audit": {
+      "path": "i18n/receipts/0ae714016b24.json",
+      "sha256": "90e53eb6361ff65cecee9543c9b5330ef6fec955492b3ab62f2fd7e6720eda03"
+    }
+  },
+  "assembly": {
+    "method": "Repository ledger-assemble.mjs derives source/target/receipt hashes and severity counts, preserving first auditor on byte-identical rows. No hand-written ledger stamps.",
+    "command_template": "node scripts/i18n/ledger-assemble.mjs --locale <locale> --file src/i18n/catalogues/<locale>/ui.chat.tags.json --auditor-instance ce76a99d4b27 --auditor-model openai/gpt-6.1-sol --result clean-with-findings --receipt i18n/receipts/ce76a99d4b27.json --scope <scope> --note <provenance> --date 2026-10-21",
+    "execution_record": "Assembler and final ledger-check output will be reported separately after this immutable receipt is written; this field documents method, not future success."
+  },
+  "limitations": [
+    "Semantic/source-only slice: no browser, rendered fit, native application, geometry, pseudo-localization or Urdu RTL layout execution.",
+    "No native-speaker certification. Unchanged baseline semantic audit is retained, not re-claimed here.",
+    "Current hashes bind this frozen working-tree namespace only, not a future implementation head or modified copy.",
+    "This is second i18n audit, not the later full independent PR code review."
+  ],
+  "verdict": "clean (no BLOCKER/MAJOR); TERMINAL for this semantic audit, with one unresolved MINOR for manager batching."
+}

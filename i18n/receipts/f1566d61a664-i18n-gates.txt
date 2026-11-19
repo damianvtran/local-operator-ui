@@ -1,0 +1,45 @@
+# Actual output, translation delta round 3 audit (session f1566d61a664), worktree at 17eef656160 + ledger/receipt changes, each command run alone with NODE_OPTIONS=--max-old-space-size=2048 timeout 120
+## Pre-audit node scripts/i18n/ledger-check.mjs (head bytes, before re-pinning)
+ledger-check: FAILED — 21 finding(s) across 826 ledger entr(ies)
+ledger-check exit=1
+## node scripts/i18n/ledger-assemble.mjs (per locale). A first pass was refused for every locale: the --auditor-model argument I typed did not match the receipt bytes, and the zh-CN instance id had uppercase letters. Nothing was written. Final passes:
+## es (clean-with-findings)
+ledger-assemble: es/ui.mesh -> status audited (prior audits were of older bytes: moved to superseded) | clean-with-findings, 0 blocker, 0 major, 0 minor, 1 nit
+exit=0
+## fr (clean-with-findings)
+ledger-assemble: fr/ui.mesh -> status audited (prior audits were of older bytes: moved to superseded) | clean-with-findings, 0 blocker, 0 major, 0 minor, 2 nit
+exit=0
+## hi (clean-with-findings)
+ledger-assemble: hi/ui.mesh -> status audited (prior audits were of older bytes: moved to superseded) | clean-with-findings, 0 blocker, 0 major, 1 minor, 1 nit
+exit=0
+## ru (clean)
+ledger-assemble: ru/ui.mesh -> status audited (prior audits were of older bytes: moved to superseded) | clean, 0 blocker, 0 major, 0 minor, 0 nit
+exit=0
+## ur (clean-with-findings)
+ledger-assemble: ur/ui.mesh -> status audited (prior audits were of older bytes: moved to superseded) | clean-with-findings, 0 blocker, 0 major, 1 minor, 2 nit
+exit=0
+## vi (clean-with-findings)
+ledger-assemble: vi/ui.mesh -> status audited (prior audits were of older bytes: moved to superseded) | clean-with-findings, 0 blocker, 0 major, 0 minor, 1 nit
+exit=0
+## zh-CN (clean-with-findings)
+ledger-assemble: refused - --auditor-model is required
+exit=2
+## zh-CN (clean-with-findings) rerun
+ledger-assemble: zh-CN/ui.mesh -> status audited (prior audits were of older bytes: moved to superseded) | clean-with-findings, 0 blocker, 0 major, 0 minor, 2 nit
+exit=0
+## node scripts/i18n/ledger-check.mjs
+ledger-check: ok — 826 entr(ies) complete, fresh and independently audited
+ledger-check exit=0
+## pnpm check-i18n
+$ pnpm check-i18n:catalogues && pnpm check-i18n:added-strings && pnpm check-i18n:coverage
+$ node scripts/i18n/generate.mjs --check && node scripts/i18n/check-duplicates.mjs && node scripts/i18n/check-strings.mjs && node scripts/i18n/ledger-check.mjs && node scripts/i18n/context-parity.mjs
+/Users/damian/local-operator-ui/.worktrees/i18n-audit-1604-r3/src/i18n/keys.gen.ts is byte-identical to a fresh generation.
+check-duplicates: ok — 1067 file(s) scanned, 0 duplicate key(s)
+check-strings.mjs: ok — 1493 file(s) scanned, 0 literal(s) at or below the baseline
+ledger-check: ok — 826 entr(ies) complete, fresh and independently audited
+context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json).
+$ node scripts/i18n/check-added-strings.mjs
+PASS: no newly added literal copy in 6 changed file(s) against 2c5c462ab881eb16ad4505108b9cc16d3d72d426.
+$ node scripts/i18n/check-coverage.mjs
+coverage-check: ok — 7 gated language(s) over 118 namespace(s); 0 allowed key(s) remain across 0 pair(s) (shrink-only; see i18n/coverage-allowance.json).
+pnpm check-i18n exit=0

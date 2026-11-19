@@ -231,7 +231,10 @@ export const BrowserConsentRequest: FC<BrowserConsentRequestProps> = ({
 					className="mt-0.5 size-4 shrink-0 text-warning"
 				/>
 				<div className="min-w-0 grow">
-					<p className="text-body text-ink" data-tour-tag="browser-consent-who">
+					<p
+						className="text-body text-ink [overflow-wrap:anywhere]"
+						data-tour-tag="browser-consent-who"
+					>
 						{who} {t("ui.browser.browser_consent_request.wants_to_open")}{" "}
 						<span className="font-mono text-mono-sm">{request.authority}</span>.
 					</p>
@@ -261,7 +264,7 @@ export const BrowserConsentRequest: FC<BrowserConsentRequestProps> = ({
 			 * hold one line: on the route (1240) nothing changes, because the five do not wrap
 			 * there.
 			 */}
-			<div className="@container/consent-actions flex flex-wrap items-center gap-2 pl-6">
+			<div className="@container/consent-actions flex flex-wrap items-center gap-2 ps-6">
 				<Button
 					variant="primary"
 					size="sm"
@@ -333,8 +336,8 @@ export const BrowserConsentRequest: FC<BrowserConsentRequestProps> = ({
 			<dl
 				className={
 					layout === "stacked"
-						? "ml-6 grid grid-cols-1 gap-y-1.5 text-meta text-ink-dim"
-						: "ml-6 grid grid-cols-[max-content_1fr] gap-x-4 gap-y-0.5 text-meta text-ink-dim"
+						? "ms-6 grid grid-cols-1 gap-y-1.5 text-meta text-ink-dim"
+						: "ms-6 grid grid-cols-[max-content_1fr] gap-x-4 gap-y-0.5 text-meta text-ink-dim"
 				}
 				data-tour-tag="browser-consent-scopes"
 			>

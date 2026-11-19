@@ -1,0 +1,47 @@
+[
+  {
+    "frame": "/Users/damian/.local-operator/sessions/9d3b6d543371/scratchpad/tb-shots/after-01-first-open.png",
+    "selected": "gen_minerva"
+  },
+  {
+    "frame": "/Users/damian/.local-operator/sessions/9d3b6d543371/scratchpad/tb-shots/after-02-dm-selected.png",
+    "selected": "person:acct_ben"
+  },
+  {
+    "frame": "/Users/damian/.local-operator/sessions/9d3b6d543371/scratchpad/tb-shots/after-03-away-in-chat.png",
+    "selected": null
+  },
+  {
+    "returnSamples": [
+      null,
+      "person:acct_ben"
+    ]
+  },
+  {
+    "frame": "/Users/damian/.local-operator/sessions/9d3b6d543371/scratchpad/tb-shots/after-04-returned.png",
+    "selected": "person:acct_ben"
+  },
+  {
+    "restartSamples": [
+      "person:acct_ben",
+      null,
+      "person:acct_ben"
+    ]
+  },
+  {
+    "frame": "/Users/damian/.local-operator/sessions/9d3b6d543371/scratchpad/tb-shots/after-05-after-restart.png",
+    "selected": "person:acct_ben"
+  },
+  {
+    "frame": "/Users/damian/.local-operator/sessions/9d3b6d543371/scratchpad/tb-shots/after-06-northwind-ops.png",
+    "selected": "ops"
+  },
+  {
+    "frame": "/Users/damian/.local-operator/sessions/9d3b6d543371/scratchpad/tb-shots/after-07-switch-back-to-minerva.png",
+    "selected": "person:acct_ben"
+  },
+  {
+    "frame": "/Users/damian/.local-operator/sessions/9d3b6d543371/scratchpad/tb-shots/after-08-switch-back-to-northwind.png",
+    "selected": "ops"
+  }
+]

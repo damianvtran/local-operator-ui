@@ -1,0 +1,16 @@
+{
+	"ui.browser.chrome.approvals": "स्वीकृतियाँ और साइट की पहुँच",
+	"ui.browser.chrome.error_title": "पेज लोड नहीं हुआ",
+	"ui.browser.chrome.move_left": "टैब बाएँ ले जाएँ",
+	"ui.browser.chrome.move_right": "टैब दाएँ ले जाएँ",
+	"ui.browser.chrome.duplicate": "टैब की कॉपी बनाएँ",
+	"ui.browser.chrome.reload": "टैब फिर लोड करें",
+	"ui.browser.chrome.scroll_left": "टैब बाएँ स्क्रॉल करें",
+	"ui.browser.chrome.scroll_right": "टैब दाएँ स्क्रॉल करें",
+	"ui.browser.chrome.accessible_tab": "{title}{loading, select, yes{, लोड हो रहा है} other{}}{failed, select, yes{, लोड नहीं हुआ} other{}}{owner, select, agent{, एजेंट का टैब} shared{, एजेंट के साथ साझा} other{}}{waiting, select, none{} other{, अनुरोध {waiting} इंतज़ार में}}{restored, select, yes{, बहाल किया गया} other{}}",
+	"ui.browser.chrome.invalid_order": "ब्राउज़र टैब का क्रम मान्य नहीं है।",
+	"ui.browser.chrome.duplicate_refused": "सिर्फ़ वेब पेज की कॉपी बनाई जा सकती है।",
+	"ui.browser.chrome.invalid_action": "ब्राउज़र टैब की कार्रवाई मान्य नहीं है।",
+	"ui.browser.chrome.tab_gone": "वह ब्राउज़र टैब अब खुला नहीं है।",
+	"ui.browser.chrome.operation_failed": "{action, select, duplicate{टैब की कॉपी नहीं बनाई जा सकी। उसके मेन्यू से फिर कोशिश करें।} other{टैब दोबारा लोड नहीं हो सका। उसके मेन्यू से फिर कोशिश करें।}}"
+}

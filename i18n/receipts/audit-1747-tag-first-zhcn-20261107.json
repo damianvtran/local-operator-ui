@@ -1,0 +1,100 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "agent": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "audit-1747-tag-first-zhcn-20261107",
+  "session": "0b69810a7f2b",
+  "locale": "zh-CN",
+  "date": "2026-11-07",
+  "status": "passed",
+  "independence": "lopdev translation-auditor, session 0b69810a7f2b, separate from the PR #1747 coder that translated (coder agent, anthropic/claude-opus-5-5); same served model family disclosed. Verdict rebuilt from the English source and context, renderer call sites, sibling keys, the core glossary and the locale style guide. Edited no catalogue.",
+  "pr": "damianvtran/local-operator-ui#1747",
+  "base": "b0328d6",
+  "head": "2b2371db5f62d29076abc7f4102200d951929388",
+  "references": {
+    "glossary": "local-operator origin/main 2d1ff161cdcb i18n/glossary.md sha256 0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "style_guide": "i18n/style-guides/zh-CN.md sha256 8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+  },
+  "namespaces": {
+    "ui.chat.sidebar_view": {
+      "status": "passed",
+      "sha256": {
+        "en": "aa1dd890cfa70b9c0196738e69c57fd45c3bd57f2a2ce36f0e109235d6cd77f2",
+        "zh-CN": "75ebb777c9c252a16121ae534f8b94d117397adba9fb6a3c4dbe267969e2a4f8",
+        "context": "36b48de2824d7596e30f41df947b665c949e6074a16d074fd134e61ddaec8f61"
+      },
+      "keys_read": 26,
+      "delta": {
+        "added": [
+          "ui.chat.sidebar_view.tag"
+        ],
+        "changed": []
+      },
+      "findings": [],
+      "checks": "key set == en; 26/26 ICU argument names/types equal en; plural arms use the locale's CLDR categories; zero Unicode Cf; Tag radio rendered in the 220px View options (fr/hi/ur)",
+      "verdict": "'标签' parallels '时间分区'/'智能体和团队'; same term as ui.chat.tags.label."
+    },
+    "ui.chat.tags": {
+      "status": "passed",
+      "sha256": {
+        "en": "989917b1430ca0e21bf94a62295df8223c7cd2661582047d5156fa565fb06151",
+        "zh-CN": "740a06c71d14fe915ac9bd362b7b57e32ec5aeaa26794d9691c717e71257f7a2",
+        "context": "3e3ce8561ccc69f4f8c3524dc6f0081399243d589668afb841fcb4e10ffc8a1a"
+      },
+      "head_sha256": {
+        "en": "bfad4c06c0adac80c4456458890f5dc0cb16d6de0fe9cfbe937de084804cef8a",
+        "zh-CN": "fde33ab9b53a8b73cc8361b65d1b7c6ef2e66926c1fb09dbd6ccd986a82d42cc",
+        "result": "changes_requested",
+        "finding": "M1"
+      },
+      "keys_read": 67,
+      "delta": {
+        "added": [],
+        "changed": [
+          "ui.chat.tags.group",
+          "ui.chat.tags.empty_title"
+        ],
+        "context_changed": [
+          "ui.chat.tags.discovery"
+        ]
+      },
+      "findings": [
+        {
+          "id": "N-zh-1",
+          "severity": "NIT",
+          "key": "ui.chat.tags.group",
+          "current": "按标签拆分时间分区",
+          "proposed": "按标签细分时间分区",
+          "reason": "The switch adds tag subheaders inside each time section; 细分 (subdivide) says that, 拆分 (split apart) leans toward breaking a section into separate ones. Acceptable as is; non-gating.",
+          "disposition": "optional; taking it changes the target bytes and needs a fresh audit run"
+        }
+      ],
+      "resolved_before_pin": [
+        {
+          "id": "M1",
+          "severity": "MAJOR",
+          "key": "ui.chat.tags.empty_title",
+          "locales": [
+            "en",
+            "zh-CN"
+          ],
+          "head_text": {
+            "en": "Split time sections by tag.",
+            "zh-CN": "按标签拆分时间分区。"
+          },
+          "fixed_text": {
+            "en": "Group chats by tag.",
+            "zh-CN": "按标签对对话分组。"
+          },
+          "issue": "The first-use empty state renders in Tag mode too (chat-sidebar.tsx tagsGrouped includes groupBy==='tag' -> ChatTagFooter total===0 -> empty_title; frame after-s3b-no-categories-dark.png, story tag-mode-no-categories). There it tells the reader to split time sections, which Tag mode does not do and whose switch is hidden in that mode (chat-sidebar-view-menu.tsx drawn !== 'tag').",
+          "fix": "Restore the mode-neutral pre-PR title, byte-identical to b0328d6 in every catalogue (previously audited copy).",
+          "disposition": "resolved in the bytes this receipt binds (sha256 below); the PR head bytes are recorded under head_sha256 as changes_requested"
+        }
+      ],
+      "checks": "key set == en; 67/67 ICU argument parity checked (3 pre-existing unchanged locale adaptations outside the delta, not gating); zero Unicode Cf; discovery target re-read against the new en context (it never named the switch; no change needed)",
+      "verdict": "group '按标签拆分时间分区': accurate, '时间分区' matches radio; nit N-zh-1 on verb choice."
+    }
+  },
+  "verdict": "zh-CN: ui.chat.sidebar_view clean; ui.chat.tags changes_requested at PR head (M1), passed on the M1-reverted bytes bound here."
+}

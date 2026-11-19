@@ -1,0 +1,217 @@
+{
+	"audit_id": "teambridge-pr1446-invitations-audit-6d269032fdc7",
+	"date": "2026-10-27",
+	"locale": "es",
+	"namespace": "ui.teamBridge",
+	"source_commit": "23ddabe8643350b3de4c83f664ef0b798ec3af4d",
+	"translator": {
+		"agent": "translator",
+		"session": "c995ffd759f3",
+		"role": "coder",
+		"model": "anthropic/claude-opus-5-5",
+		"fallback": "none recorded",
+		"commit": "23ddabe8643350b3de4c83f664ef0b798ec3af4d",
+		"method": "LLM reasoning; the translator transcript references no MT service (deepl/googletrans/libretranslate/argos: 0 hits)"
+	},
+	"auditors": [
+		{
+			"agent": "i18n-auditor",
+			"model": "anthropic/claude-opus-5-5",
+			"date": "2026-10-27",
+			"result": "clean-with-findings",
+			"instance": "6d269032fdc7-es",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 1,
+				"nit": 0
+			},
+			"receipt": "i18n/receipts/6d269032fdc7-es.json",
+			"receipt_sha256": "2cb26b7f41bbaf974c935acb69b5c7a6f8c4b3dca23fde3e24d1d4fb643a4471",
+			"scope": "New-key delta: 28 ui.teamBridge.invitations.* keys (PR #1446); other 208 keys inherited on byte identity.",
+			"note": "PR #1446 invitations audit (F2 MINOR). Evidence: i18n/audits/evidence/es/ui.teamBridge/teambridge-pr1446-invitations-audit-6d269032fdc7/record.json"
+		}
+	],
+	"ledger_status": "audited",
+	"independence": "Independent auditor (reviewer role, session 6d269032fdc7). It authored none of the audited strings and edited no catalogue byte. The translator was session c995ffd759f3 (coder role, commit 23ddabe864). This run wrote only these receipts, the per-locale evidence records and the ledger rows (via ledger-assemble.mjs).",
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "6380502638d0ba27f944b327dbc9796ca5dc18aa43bb03682e6847f0df458f9b"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/es/ui.teamBridge.json",
+			"sha256": "dda0ec64c5114847e5cf41e3bf357c3718cc1041a87efe1dc33b02d987693694"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "d0b5a7223fc79264478b8e3b07b6a05b14e548ec388a8a193af3b9ab0db42ef6"
+		}
+	},
+	"audited": {
+		"ui.teamBridge.invitations.title": {
+			"en": "Invitations",
+			"target": "Invitaciones"
+		},
+		"ui.teamBridge.invitations.count": {
+			"en": "{count, plural, one {{count} invitation waiting for you} other {{count} invitations waiting for you}}",
+			"target": "{count, plural, one {{count} invitación te espera} many {{count} de invitaciones te esperan} other {{count} invitaciones te esperan}}"
+		},
+		"ui.teamBridge.invitations.consent.bridge_agent_participation_v1": {
+			"en": "Accepting lets your agent read and post in this conversation from now on. It is woken only when someone @-mentions it.",
+			"target": "Al aceptar, tu agente podrá leer y publicar mensajes en esta conversación a partir de ahora. Solo se despierta cuando alguien lo menciona con @."
+		},
+		"ui.teamBridge.invitations.loading": {
+			"en": "Loading invitations…",
+			"target": "Cargando invitaciones…"
+		},
+		"ui.teamBridge.invitations.load_failed": {
+			"en": "Invitations could not be loaded.",
+			"target": "No se pudieron cargar las invitaciones."
+		},
+		"ui.teamBridge.invitations.empty": {
+			"en": "No invitations are waiting for your agent.",
+			"target": "No hay invitaciones pendientes para tu agente."
+		},
+		"ui.teamBridge.invitations.agent_line": {
+			"en": "{agent} was invited to this conversation",
+			"target": "Se invitó a {agent} a esta conversación"
+		},
+		"ui.teamBridge.invitations.agent_fallback": {
+			"en": "Your agent",
+			"target": "Tu agente"
+		},
+		"ui.teamBridge.invitations.added_by": {
+			"en": "Added by {name}",
+			"target": "Añadido por {name}"
+		},
+		"ui.teamBridge.invitations.added_by_you": {
+			"en": "Added by you",
+			"target": "Añadido por ti"
+		},
+		"ui.teamBridge.invitations.created_by": {
+			"en": "Conversation created by {name}",
+			"target": "Conversación creada por {name}"
+		},
+		"ui.teamBridge.invitations.created_by_you": {
+			"en": "Conversation created by you",
+			"target": "Conversación creada por ti"
+		},
+		"ui.teamBridge.invitations.accept": {
+			"en": "Accept",
+			"target": "Aceptar"
+		},
+		"ui.teamBridge.invitations.accepting": {
+			"en": "Accepting…",
+			"target": "Aceptando…"
+		},
+		"ui.teamBridge.invitations.decline": {
+			"en": "Decline",
+			"target": "Rechazar"
+		},
+		"ui.teamBridge.invitations.declining": {
+			"en": "Declining…",
+			"target": "Rechazando…"
+		},
+		"ui.teamBridge.invitations.accepted": {
+			"en": "Accepted. {agent} is woken only when someone @-mentions it.",
+			"target": "Aceptado. {agent} solo se despierta cuando alguien lo menciona con @."
+		},
+		"ui.teamBridge.invitations.declined": {
+			"en": "Declined for {agent}.",
+			"target": "Rechazado para {agent}."
+		},
+		"ui.teamBridge.invitations.failed.agent_unavailable": {
+			"en": "Your agent can’t join from here: it is paused, turned off or not set up for this organization. Turn it on in Settings, then try again.",
+			"target": "Tu agente no puede unirse desde aquí: está en pausa, desactivado o no está configurado para esta organización. Actívalo en Ajustes e inténtalo de nuevo."
+		},
+		"ui.teamBridge.invitations.failed.already_answered": {
+			"en": "This invitation was already answered elsewhere. Its current state is shown in the conversation.",
+			"target": "Esta invitación ya se respondió en otro lugar. Su estado actual se muestra en la conversación."
+		},
+		"ui.teamBridge.invitations.failed.gone": {
+			"en": "This invitation is no longer available. The conversation or your agent’s place in it was removed.",
+			"target": "Esta invitación ya no está disponible. Se eliminó la conversación o el lugar de tu agente en ella."
+		},
+		"ui.teamBridge.invitations.failed.runtime_outdated": {
+			"en": "This runtime can’t accept invitations. Update Local Operator, then try again.",
+			"target": "Este runtime no puede aceptar invitaciones. Actualiza Local Operator e inténtalo de nuevo."
+		},
+		"ui.teamBridge.invitations.failed.outdated": {
+			"en": "This version of the app can’t accept invitations any more. Update the app, then try again.",
+			"target": "Esta versión de la app ya no puede aceptar invitaciones. Actualiza la app e inténtalo de nuevo."
+		},
+		"ui.teamBridge.invitations.failed.not_available": {
+			"en": "Team Bridge isn’t available for this organization right now.",
+			"target": "Team Bridge no está disponible para esta organización en este momento."
+		},
+		"ui.teamBridge.invitations.failed.sign_in": {
+			"en": "You’re signed out. Sign in, then try again.",
+			"target": "No has iniciado sesión. Inicia sesión e inténtalo de nuevo."
+		},
+		"ui.teamBridge.invitations.failed.unreachable": {
+			"en": "The app couldn’t reach Radient. Nothing was changed. Try again.",
+			"target": "La app no pudo conectar con Radient. No se cambió nada. Inténtalo de nuevo."
+		},
+		"ui.teamBridge.invitations.read_only": {
+			"en": "This organization is read-only for you, so invitations can’t be answered here.",
+			"target": "Esta organización es de solo lectura para ti, así que aquí no se pueden responder invitaciones."
+		},
+		"ui.teamBridge.invitations.failed.unconfirmed": {
+			"en": "Your answer was not confirmed. Try again.",
+			"target": "No se confirmó tu respuesta. Inténtalo de nuevo."
+		}
+	},
+	"special_scrutiny": {
+		"key": "ui.teamBridge.invitations.consent.bridge_agent_participation_v1",
+		"verdict": "faithful and complete",
+		"checked": [
+			"read AND post in this conversation",
+			"from now on",
+			"woken only on an @-mention",
+			"nothing added",
+			"no muted/silent sense"
+		]
+	},
+	"notes": "tú register; agente/Ajustes/conversación per glossary, guide and namespace. plural one/many/other per guide (many = 'de invitaciones'). Consent: 'leer y publicar mensajes' + 'a partir de ahora' + 'Solo se despierta cuando alguien lo menciona con @' - both facts, nothing added, no mute/silencio.",
+	"findings": [
+		{
+			"id": "F2",
+			"severity": "MINOR",
+			"key": "ui.teamBridge.invitations.agent_fallback",
+			"related_keys": [
+				"ui.teamBridge.invitations.agent_line",
+				"ui.teamBridge.invitations.declined"
+			],
+			"issue": "Capitalized fallback lands mid-sentence with an unnamed agent: 'Se invitó a Tu agente a esta conversación', 'Rechazado para Tu agente.' accepted is sentence-initial and fine. Shared root cause with the English source ('Declined for Your agent.').",
+			"evidence": "render-1446.txt",
+			"fix": "Source: give the unnamed case its own wording (ICU select on a named/unnamed argument, or dedicated *_unnamed keys) so the fallback is never composed into a sentence; or restructure the es hosts so {agent} is always sentence-initial."
+		}
+	],
+	"fallback_renders": [
+		"es agent_line => Se invitó a Tu agente a esta conversación",
+		"es accepted => Aceptado. Tu agente solo se despierta cuando alguien lo menciona con @.",
+		"es declined => Rechazado para Tu agente.",
+		"es count 1/2/5/21: 1 invitación te espera | 2 invitaciones te esperan | 5 invitaciones te esperan | 21 invitaciones te esperan"
+	],
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide_es": {
+			"path": "~/local-operator/i18n/style-guides/es.md",
+			"revision": "95dea370856c5ab99309246b5e41869ea5c69d7a",
+			"sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+		},
+		"core_checkout": "dadf192382fbce7cb97d8cfbdc99ff1c931d97b6"
+	},
+	"artifacts": {
+		"receipt": {
+			"path": "i18n/receipts/6d269032fdc7-es.json",
+			"sha256": "2cb26b7f41bbaf974c935acb69b5c7a6f8c4b3dca23fde3e24d1d4fb643a4471"
+		}
+	},
+	"limitations": "No rendered-fit or screenshot evidence: this role has no browser tool. Refusal copy is clipped to one line by design (truncate + title); longer fr/ru/hi/ur sentences rely on the hover title and the accessible name for the full text."
+}

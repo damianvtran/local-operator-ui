@@ -1,0 +1,13 @@
+{
+	"ui.chat.analytics.filters.top_level_only": "Только сессии верхнего уровня",
+	"ui.chat.analytics.search.clear": "Очистить поиск",
+	"ui.chat.analytics.search.sessions": "Поиск сессий",
+	"ui.chat.analytics.sections.by_channel": "По каналам",
+	"ui.chat.analytics.sections.by_model": "По моделям",
+	"ui.chat.analytics.sections.by_provider": "По провайдерам",
+	"ui.chat.analytics.sections.by_session": "По сессиям",
+	"ui.chat.analytics.sections.totals": "Итого",
+	"ui.chat.analytics.title": "Аналитика",
+	"ui.chat.analytics.toolbar.refreshing": "Обновление",
+	"ui.chat.analytics.toolbar.this_session_only": "Только эта сессия"
+}

@@ -1,0 +1,82 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "cosh-r2-vi",
+ "session": "967552f889d4",
+ "date": "2026-10-22",
+ "locale": "vi",
+ "translator": "translator",
+ "translator_session": "e9c81b30ad01",
+ "namespace": "ui.agentMessages.settings",
+ "status": "passed",
+ "keys_audited": 8,
+ "scope": "Round-2 audit at head 2fb94727d3 after the R1-1 English rewrite (hold.chief_of_staff changed, hold.chief_of_staff_unlinked added, hold.open changed; 87 en keys): remediation delta of the 5 round-1 findings over the 84 non-hold keys plus the first audit of the 3 hold keys, which round 1 excluded; catalogue audit only, not rendered-fit/activation/release.",
+ "previous_round": {
+  "path": "i18n/receipts/cosh-r1-vi.json",
+  "sha256": "5d85f14dfe2964f59108587a7442b3944645cf9421eab4e370b60c3065c68040",
+  "target_sha256": "47805e43e52ae61ffe3c086b46a317ec0dbc1eb3c621e06eaed262535a09b614",
+  "en_sha256": "840f0821444e5e70af15435c82c43a1996db8be4f06cb59926a12f537794e2af"
+ },
+ "scope_expansion": {
+  "reason": "vi had no ui.agentMessages.settings catalogue; its 84 pre-existing keys were covered only by i18n/coverage-allowance.json, so adding the PR #1325 hold keys required creating the full namespace file, and all pre-existing keys needed a base audit (round 1) before the allowance pair is removed.",
+  "approved_by": "operator (via coordinator), 2026-10-22",
+  "allowance_pair_removed": "vi/ui.agentMessages.settings (84 keys)"
+ },
+ "sha256": {
+  "en": "1fb72465d3c05768918f79164bf1c3f8313160c4d05046a50a52046b2e8c1e3b",
+  "vi": "eeea2320f5b06e809c9ffce9c477782681bbba01e2c020c49186a8f228d2b151",
+  "context": "0796c27031e5a3b9a600147e67e1341234f6ed0f5adfd3b7c4f7758a5bcff63d"
+ },
+ "excluded_keys": [],
+ "remediation": [
+  {
+   "key": "ui.agentMessages.settings.consent.unavailable",
+   "r1_severity": "MINOR",
+   "disposition": "fixed",
+   "verified": true,
+   "value": "Chưa có nội dung chấp thuận. Tin nhắn tác nhân chưa được bật."
+  },
+  {
+   "key": "ui.agentMessages.settings.local.stays_enrolled",
+   "r1_severity": "MINOR",
+   "disposition": "fixed",
+   "verified": true,
+   "value": "Bạn vẫn tham gia tin nhắn tác nhân trên tài khoản này và các máy khác của bạn."
+  },
+  {
+   "key": "ui.agentMessages.settings.state.d_body",
+   "r1_severity": "MINOR",
+   "disposition": "fixed",
+   "verified": true,
+   "value": "Tin nhắn ngừng gửi và nhận ở cả hai chiều. Tin nhắn trong hàng đợi vẫn được giữ và bạn vẫn có thể trả lời các yêu cầu đang chờ. Khi tiếp tục, bạn không cần chấp thuận lại."
+  },
+  {
+   "key": "ui.agentMessages.settings.consent.via",
+   "r1_severity": "NIT",
+   "disposition": "fixed",
+   "verified": true,
+   "value": "Ghi nhận qua"
+  },
+  {
+   "key": "ui.agentMessages.settings.allowlist.allowed_heading",
+   "r1_severity": "NIT",
+   "disposition": "fixed",
+   "verified": true,
+   "value": "Đã cho phép"
+  }
+ ],
+ "unchanged_values_verified": 79,
+ "findings": [],
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+ },
+ "validation": {
+  "independence": "Separate auditor session 967552f889d4, not the translator (e9c81b30ad01). The current target was read from the bytes on disk at worktree head 2fb94727d3906e2e2e44cbe91acf95c27aea5105 and diffed against the coordinator's round-1 snapshot snap/vi.tr1.json (sha 47805e43…, which equals the round-1 audited target). No translator summary was relied on. Strictly read-only this round: all scripts lived in the auditor scratchpad and resolved modules through NODE_PATH, no file was created in the worktree, and stashes were not touched. git status was unchanged before and after.",
+  "semantics": "English was checked first: the new en/context hashes match, and the 84 non-hold en values and context entries are byte-identical to 359a2f55ec (en 840f0821…, context e51d33d9…). The only English change is the 3 hold keys (1 added). Remediation: all 5 round-1 findings were applied exactly as proposed. consent.unavailable now matches dialog.consent_unavailable byte for byte. stays_enrolled no longer collides with «đăng ký» meaning sign-up or subscription. d_body keeps all three facts the context requires. «Ghi nhận qua» reads correctly before both via values. «Đã cho phép»/«Đã chặn» are now parallel. 79 non-hold values are unchanged, including the knock-on candidate cue_listed_only. hold.chief_of_staff: «Chỉ cần gửi một tin nhắn trong cuộc trò chuyện đó là sẽ nhận được» makes sending one message, not opening the conversation, the release condition. It is calm, and it never says the messages were refused, failed, read or lost; dropping the object of «nhận được» is natural vi pro-drop. hold.chief_of_staff_unlinked: «Tìm cuộc trò chuyện đó trong thanh bên rồi gửi một tin nhắn…» is accurate. «thanh bên» matches 12 sidebar renderings in other vi catalogues, against 1 «bảng bên». hold.open: «Nhắn chánh văn phòng» is a verb-first, natural transitive «nhắn [ai]». It implies navigation only, as in English, and is consistent with this file's «nhắn cho…» family and the locale's «Nhắn tin cho {title}». «chánh văn phòng» equals the vi style-guide/onboarding chief-of-staff term, and the personal name is not used. Register: «bạn» once per notice, sentence case, no «!» or «Vui lòng». Key set and order are identical to en (87 = 87).",
+  "icu": "All 87 en and vi values parsed with @formatjs/icu-messageformat-parser (NODE_PATH to the worktree's node_modules): 0 parse failures and 0 argument-set mismatches. Both hold notices use {count, plural, other {…{count}…}}; Intl.PluralRules('vi') reports categories ['other'] only, so the single arm is correct per glossary §3 and the vi guide. Each arm uses {count}, and Vietnamese has no agreement to check. intl-messageformat 'vi' output at counts 1, 2, 5, 21 and 1000000 renders the count in the sentence for every value. 1000000 prints ungrouped because the source uses a plain {count} rather than {count, number}; that is identical in en and not a translation defect. hold.open has no arguments.",
+  "typography": "UTF-8 without BOM, trailing newline, entire file NFC; no Cf/format or non-ASCII space characters (no bidi controls, ZW or NBSP). The 8 audited values contain no ASCII quotes, no '...', no space before punctuation and no doubled spaces. Orthography is standard.",
+  "overflow": "hold.open «Nhắn chánh văn phòng» is 20 characters against 22 in English. It renders in a ghost sm button that is shrink-0 beside a flex-1 min-w-0 paragraph, so the paragraph absorbs any difference. The hold notices are wrapping body-sm text, about 115–125 characters in vi against about 110–125 in en. Remediated values are no materially longer than round 1, except d_body (+11 chars, wrapping body text) and allowed_heading (+2, a heading). Rendered fit is not verified.",
+  "limitations": "Browser unavailable; no screenshots/rendered-fit claim. No catalogue/code edits."
+ }
+}

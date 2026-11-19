@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "kind": "translation-audit-receipt",
+  "date": "2026-11-02",
+  "pr": "#1580",
+  "branch": "fix/agent-detail-i18n",
+  "locale": "vi",
+  "locale_name": "Vietnamese",
+  "namespace": "ui.agents.detail.read_state",
+  "auditor": {
+    "agent": "translation-auditor",
+    "role": "independent Vietnamese linguistic auditor",
+    "team": "lopdev",
+    "harness": "Local Operator",
+    "session": "ae031ebbd4ab",
+    "job_id": "ae031ebbd4ab",
+    "job_id_basis": "Task session identifier supplied by the host; no separate scheduler job identifier is exposed in this transcript.",
+    "instance": "ae031ebbd4ab-vi-read-state-receipt-20261102",
+    "model": "anthropic/claude-sonnet-5-5",
+    "model_provenance": "Current host session-state identifies anthropic/claude-sonnet-5-5. This resumed receipt and confirmation use that model. Earlier final reports claimed openai/gpt-6.1-sol fallback via anthropic/claude-opus-5-5, but no corresponding host switch or incident record is available in this transcript; those historical model claims cannot be independently substantiated and are not asserted here. No fallback is observed in this resumed run.",
+    "independent_from_translator": true,
+    "independence_basis": "This task did not author or modify translation values. It independently read the English source, context, Vietnamese target, locale style guide and existing terminology, and is writing only its own receipt."
+  },
+  "head": "3553b7ae661a7c92caf04f1d39ed3792ef37ad46",
+  "result": "clean",
+  "status": "passed",
+  "keys_read": 14,
+  "keys_total": 14,
+  "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "findings": [],
+  "sha256": {
+    "en": "0de7ac1bff46dc77b3bbe1f479b60a220361b3e32f673332dbe9eecfb56421f0",
+    "en_context": "e1359d1f5db124d1ca167eb042ca334bc88c1c2895f9442d517d3d9e3efbb9b2",
+    "vi": "a47e3f46777295b1c634b98d05d5ed887507b65f874d1b5116c5a9717f275a3d"
+  },
+  "inputs": {
+    "source": "src/i18n/catalogues/en/ui.agents.detail.read_state.json",
+    "context": "src/i18n/catalogues/en/ui.agents.detail.read_state.context.json",
+    "target": "src/i18n/catalogues/vi/ui.agents.detail.read_state.json",
+    "style_guide": "~/local-operator/i18n/style-guides/vi.md"
+  },
+  "scope": "This clears the 14-message catalogue linguistically, not rendered layout. No browser or rendered-frame validation was performed by this auditor.",
+  "checks": [
+    "The failed read heading identifies the unreadable named definition; the cause text retains removal or backend refusal, while the retry button and ongoing retry label give a concrete recovery action.",
+    "The name placeholder occurs exactly once inside Vietnamese curly quotation marks, matching the locale style guide. Key and placeholder parity and NFC normalization passed.",
+    "Reactive agents only reply; proactive agents may also message first. Existing Vietnamese notice terminology uses the same reactive and proactive mode names.",
+    "Delegation permission and non-delegation remain distinct. The teams note retains both manager and member roles and matches the existing agent/team terminology.",
+    "On/off labels are natural switch statuses in Vietnamese and match existing configured-status labels. The switching label describes an ongoing transition.",
+    "The effort picker label explicitly uses the session effort level, with the existing Vietnamese term for effort. No requirement to translate an underlying wire token is implied.",
+    "Explanatory sentences remain direct and concise; no semantic dilution, padding or additional hedging was found."
+  ]
+}

@@ -17,6 +17,90 @@
 		"note": "Resolved during render; retain the existing control meaning and do not alter key-binding labels. maxCells is an advisory translation target, not measured fit.",
 		"maxCells": 24
 	},
+	"ui.chat.composer.placeholder.answer": {
+		"role": "composer placeholder for one input state",
+		"tone": "short state sentence, sentence case",
+		"length": "",
+		"note": "The composer's placeholder for this state. Shown only while the box is empty; sentence case unless the copy names a keyboard key. maxCells is an advisory translation target, not measured fit.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.placeholder.aside": {
+		"role": "composer placeholder for one input state",
+		"tone": "short state sentence, sentence case",
+		"length": "",
+		"note": "The composer's placeholder for this state. Shown only while the box is empty; sentence case unless the copy names a keyboard key. maxCells is an advisory translation target, not measured fit.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.placeholder.busy": {
+		"role": "composer placeholder for one input state",
+		"tone": "short state sentence, sentence case",
+		"length": "",
+		"note": "The composer's placeholder for this state. Shown only while the box is empty; sentence case unless the copy names a keyboard key. maxCells is an advisory translation target, not measured fit.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.placeholder.idle": {
+		"role": "composer placeholder for one input state",
+		"tone": "short state sentence, sentence case",
+		"length": "",
+		"note": "The composer's placeholder for this state. Shown only while the box is empty; sentence case unless the copy names a keyboard key. maxCells is an advisory translation target, not measured fit.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.placeholder.no_provider": {
+		"role": "composer placeholder for one input state",
+		"tone": "short state sentence, sentence case",
+		"length": "",
+		"note": "The composer's placeholder for this state. Shown only while the box is empty; sentence case unless the copy names a keyboard key. maxCells is an advisory translation target, not measured fit.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.placeholder.recording": {
+		"role": "composer placeholder for one input state",
+		"tone": "short state sentence, sentence case",
+		"length": "",
+		"note": "The composer's placeholder for this state. Shown only while the box is empty; sentence case unless the copy names a keyboard key. maxCells is an advisory translation target, not measured fit.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.placeholder.secret_answer": {
+		"role": "composer placeholder for one input state",
+		"tone": "short state sentence, sentence case",
+		"length": "",
+		"note": "The composer's placeholder for this state. Shown only while the box is empty; sentence case unless the copy names a keyboard key. maxCells is an advisory translation target, not measured fit.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.placeholder.sending": {
+		"role": "composer placeholder for one input state",
+		"tone": "short state sentence, sentence case",
+		"length": "",
+		"note": "The composer's placeholder for this state. Shown only while the box is empty; sentence case unless the copy names a keyboard key. maxCells is an advisory translation target, not measured fit.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.placeholder.stopping": {
+		"role": "composer placeholder for one input state",
+		"tone": "short state sentence, sentence case",
+		"length": "",
+		"note": "The composer's placeholder for this state. Shown only while the box is empty; sentence case unless the copy names a keyboard key. maxCells is an advisory translation target, not measured fit.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.placeholder.temporary": {
+		"role": "composer placeholder while a new chat will be created as a temporary chat",
+		"tone": "short state sentence, sentence case",
+		"length": "",
+		"note": "Replaces the idle invitation on a new chat whose temporary switch is on, before the first message. Says the chat is not kept in the chat list, then invites typing, like the idle line. Use the glossary term for 'temporary chat'. Shown only while the box is empty.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.placeholder.unavailable": {
+		"role": "composer placeholder for one input state",
+		"tone": "short state sentence, sentence case",
+		"length": "",
+		"note": "The composer's placeholder for this state. Shown only while the box is empty; sentence case unless the copy names a keyboard key. maxCells is an advisory translation target, not measured fit.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.placeholder.waiting": {
+		"role": "composer placeholder for one input state",
+		"tone": "short state sentence, sentence case",
+		"length": "",
+		"note": "The composer's placeholder for this state. Shown only while the box is empty; sentence case unless the copy names a keyboard key. maxCells is an advisory translation target, not measured fit.",
+		"placeholders": {}
+	},
 	"ui.chat.composer.start_recording": {
 		"role": "control tooltip and/or accessible name",
 		"tone": "short imperative action, sentence case; no trailing punctuation",
@@ -46,6 +130,36 @@
 		"tone": "short imperative action, sentence case",
 		"note": "Resolved during render; retain the existing control meaning and do not alter key-binding labels. maxCells is an advisory translation target, not measured fit.",
 		"maxCells": 80
+	},
+	"ui.chat.composer.insert_transcript": {
+		"role": "control accessible name",
+		"tone": "short imperative action, sentence case; no trailing punctuation",
+		"note": "Names the control that puts the dictated words into the message box for the user to read before sending. Resolved during render; the control is a check mark. Do not translate as 'confirm'. maxCells is an advisory translation target, not measured fit.",
+		"maxCells": 24
+	},
+	"ui.chat.composer.insert_transcript_hint": {
+		"role": "control tooltip with keyboard binding",
+		"tone": "short imperative action, sentence case",
+		"note": "Tooltip of the insert-transcript control. Keep the key name in parentheses exactly as written (Enter). maxCells is an advisory translation target, not measured fit.",
+		"maxCells": 48
+	},
+	"ui.chat.composer.send_recording": {
+		"role": "control tooltip and/or accessible name",
+		"tone": "short imperative action, sentence case; no trailing punctuation",
+		"note": "Names the control that stops the recording, transcribes it and sends the words as a message in one step. maxCells is an advisory translation target, not measured fit.",
+		"maxCells": 24
+	},
+	"ui.chat.composer.send_recording_hint": {
+		"role": "control tooltip",
+		"tone": "short imperative sentence, sentence case",
+		"note": "Tooltip of the send-recording control: the words are transcribed and sent at once, with no chance to review them. Say plainly that there is no review step. maxCells is an advisory translation target, not measured fit.",
+		"maxCells": 48
+	},
+	"ui.chat.composer.steer_hint": {
+		"role": "tooltip of the send control while an agent turn is running",
+		"tone": "short imperative sentence with one keyboard binding",
+		"note": "Shown on the send control while the agent works and the box holds text: sending steers the running turn, and the Esc key (the only route to Stop while text is typed) stops it. Keep the key names Enter and Esc exactly as written. maxCells is an advisory translation target, not measured fit.",
+		"maxCells": 64
 	},
 	"ui.chat.composer.stop": {
 		"role": "control tooltip and/or accessible name",
@@ -100,6 +214,139 @@
 		"tone": "brief ongoing-state phrase, sentence case",
 		"note": "Resolved during render; retain the existing control meaning and do not alter key-binding labels. maxCells is an advisory translation target, not measured fit.",
 		"maxCells": 24
+	},
+	"ui.chat.composer.suggestion.code_review_agent": {
+		"role": "empty-chat suggestion chip",
+		"tone": "a request the reader could type, sentence case, no trailing punctuation",
+		"length": "",
+		"note": "Resolved during render. A chip on the empty chat; a press fills the composer with this sentence, so it must read as a request the reader would type. Sentence case, no trailing punctuation. The pool's length budget (42 characters) is what keeps a sample of four inside two rows at the narrowest column the row renders in; keep translations short rather than literal.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.suggestion.create_team": {
+		"role": "empty-chat suggestion chip",
+		"tone": "a request the reader could type, sentence case, no trailing punctuation",
+		"length": "",
+		"note": "Resolved during render. A chip on the empty chat; a press fills the composer with this sentence, so it must read as a request the reader would type. Sentence case, no trailing punctuation. The pool's length budget (42 characters) is what keeps a sample of four inside two rows at the narrowest column the row renders in; keep translations short rather than literal.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.suggestion.last_turn": {
+		"role": "empty-chat suggestion chip",
+		"tone": "a request the reader could type, sentence case, no trailing punctuation",
+		"length": "",
+		"note": "Resolved during render. A chip on the empty chat; a press fills the composer with this sentence, so it must read as a request the reader would type. Sentence case, no trailing punctuation. The pool's length budget (42 characters) is what keeps a sample of four inside two rows at the narrowest column the row renders in; keep translations short rather than literal.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.suggestion.linear_mcp": {
+		"role": "empty-chat suggestion chip",
+		"tone": "a request the reader could type, sentence case, no trailing punctuation",
+		"length": "",
+		"note": "Resolved during render. A chip on the empty chat; a press fills the composer with this sentence, so it must read as a request the reader would type. Sentence case, no trailing punctuation. The pool's length budget (42 characters) is what keeps a sample of four inside two rows at the narrowest column the row renders in; keep translations short rather than literal.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.suggestion.phone_access": {
+		"role": "empty-chat suggestion chip",
+		"tone": "a request the reader could type, sentence case, no trailing punctuation",
+		"length": "",
+		"note": "Resolved during render. A chip on the empty chat; a press fills the composer with this sentence, so it must read as a request the reader would type. Sentence case, no trailing punctuation. The pool's length budget (42 characters) is what keeps a sample of four inside two rows at the narrowest column the row renders in; keep translations short rather than literal.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.suggestion.review_repo_pr": {
+		"role": "empty-chat suggestion chip",
+		"tone": "a request the reader could type, sentence case, no trailing punctuation",
+		"length": "",
+		"note": "Resolved during render. A chip on the empty chat; a press fills the composer with this sentence, so it must read as a request the reader would type. Sentence case, no trailing punctuation. The pool's length budget (42 characters) is what keeps a sample of four inside two rows at the narrowest column the row renders in; keep translations short rather than literal.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.suggestion.schedule_mornings": {
+		"role": "empty-chat suggestion chip",
+		"tone": "a request the reader could type, sentence case, no trailing punctuation",
+		"length": "",
+		"note": "Resolved during render. A chip on the empty chat; a press fills the composer with this sentence, so it must read as a request the reader would type. Sentence case, no trailing punctuation. The pool's length budget (42 characters) is what keeps a sample of four inside two rows at the narrowest column the row renders in; keep translations short rather than literal.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.suggestion.wake_with_summary": {
+		"role": "empty-chat suggestion chip",
+		"tone": "a request the reader could type, sentence case, no trailing punctuation",
+		"length": "",
+		"note": "Resolved during render. A chip on the empty chat; a press fills the composer with this sentence, so it must read as a request the reader would type. Sentence case, no trailing punctuation. The pool's length budget (42 characters) is what keeps a sample of four inside two rows at the narrowest column the row renders in; keep translations short rather than literal.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.tip.approvals": {
+		"role": "rotating tip line under the empty-chat composer",
+		"tone": "lowercase action sentence, no trailing period",
+		"length": "",
+		"note": "Resolved during render. Rotates under the empty-chat suggestion chips, one per 12 s; sentence case with no trailing period, and short enough to fit one line in the band. The leading verb is deliberate: every entry names a MOVE the reader can make, and the opening frame of the ring is pinned to the first pool entry.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.tip.ask_for_a_team": {
+		"role": "rotating tip line under the empty-chat composer",
+		"tone": "lowercase action sentence, no trailing period",
+		"length": "",
+		"note": "Resolved during render. Rotates under the empty-chat suggestion chips, one per 12 s; sentence case with no trailing period, and short enough to fit one line in the band. The leading verb is deliberate: every entry names a MOVE the reader can make, and the opening frame of the ring is pinned to the first pool entry.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.tip.attach_a_file": {
+		"role": "rotating tip line under the empty-chat composer",
+		"tone": "lowercase action sentence, no trailing period",
+		"length": "",
+		"note": "Resolved during render. Rotates under the empty-chat suggestion chips, one per 12 s; sentence case with no trailing period, and short enough to fit one line in the band. The leading verb is deliberate: every entry names a MOVE the reader can make, and the opening frame of the ring is pinned to the first pool entry.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.tip.canvas": {
+		"role": "rotating tip line under the empty-chat composer",
+		"tone": "lowercase action sentence, no trailing period",
+		"length": "",
+		"note": "Resolved during render. Rotates under the empty-chat suggestion chips, one per 12 s; sentence case with no trailing period, and short enough to fit one line in the band. The leading verb is deliberate: every entry names a MOVE the reader can make, and the opening frame of the ring is pinned to the first pool entry.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.tip.mcp_tools": {
+		"role": "rotating tip line under the empty-chat composer",
+		"tone": "lowercase action sentence, no trailing period",
+		"length": "",
+		"note": "Resolved during render. Rotates under the empty-chat suggestion chips, one per 12 s; sentence case with no trailing period, and short enough to fit one line in the band. The leading verb is deliberate: every entry names a MOVE the reader can make, and the opening frame of the ring is pinned to the first pool entry.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.tip.mention_file": {
+		"role": "rotating tip line under the empty-chat composer",
+		"tone": "lowercase action sentence, no trailing period",
+		"length": "",
+		"note": "Resolved during render. Rotates under the empty-chat suggestion chips, one per 12 s; sentence case with no trailing period, and short enough to fit one line in the band. The leading verb is deliberate: every entry names a MOVE the reader can make, and the opening frame of the ring is pinned to the first pool entry.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.tip.parallel_work": {
+		"role": "rotating tip line under the empty-chat composer",
+		"tone": "lowercase action sentence, no trailing period",
+		"length": "",
+		"note": "Resolved during render. Rotates under the empty-chat suggestion chips, one per 12 s; sentence case with no trailing period, and short enough to fit one line in the band. The leading verb is deliberate: every entry names a MOVE the reader can make, and the opening frame of the ring is pinned to the first pool entry.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.tip.phone_access": {
+		"role": "rotating tip line under the empty-chat composer",
+		"tone": "lowercase action sentence, no trailing period",
+		"length": "",
+		"note": "Resolved during render. Rotates under the empty-chat suggestion chips, one per 12 s; sentence case with no trailing period, and short enough to fit one line in the band. The leading verb is deliberate: every entry names a MOVE the reader can make, and the opening frame of the ring is pinned to the first pool entry.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.tip.run_panel": {
+		"role": "rotating tip line under the empty-chat composer",
+		"tone": "lowercase action sentence, no trailing period",
+		"length": "",
+		"note": "Resolved during render. Rotates under the empty-chat suggestion chips, one per 12 s; sentence case with no trailing period, and short enough to fit one line in the band. The leading verb is deliberate: every entry names a MOVE the reader can make, and the opening frame of the ring is pinned to the first pool entry.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.tip.schedule": {
+		"role": "rotating tip line under the empty-chat composer",
+		"tone": "lowercase action sentence, no trailing period",
+		"length": "",
+		"note": "Resolved during render. Rotates under the empty-chat suggestion chips, one per 12 s; sentence case with no trailing period, and short enough to fit one line in the band. The leading verb is deliberate: every entry names a MOVE the reader can make, and the opening frame of the ring is pinned to the first pool entry.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.tip.search_past_work": {
+		"role": "rotating tip line under the empty-chat composer",
+		"tone": "lowercase action sentence, no trailing period",
+		"length": "",
+		"note": "Resolved during render. Rotates under the empty-chat suggestion chips, one per 12 s; sentence case with no trailing period, and short enough to fit one line in the band. The leading verb is deliberate: every entry names a MOVE the reader can make, and the opening frame of the ring is pinned to the first pool entry.",
+		"placeholders": {}
 	},
 	"ui.chat.composer.welcome": {
 		"role": "empty conversation heading",
@@ -201,5 +448,103 @@
 		"tone": "plain sentence, second person; says the value is kept and where to choose",
 		"note": "Resolved during render; maxCells is an advisory translation target, not measured fit.",
 		"maxCells": 120
+	},
+	"ui.chat.composer.dictation_failed_transient": {
+		"role": "dictation failure toast",
+		"tone": "failure sentence with one closing action, sentence case",
+		"note": "A transient transcription fault after the automatic retries are spent. The toast has no control, so it names the retry itself. Shown only on surfaces with no retained-take row.",
+		"maxCells": 120
+	},
+	"ui.chat.composer.dictation_failed_transient_take_kept": {
+		"role": "dictation failure row beside a Retry control",
+		"tone": "failure sentence that states the take survived, then names the control",
+		"note": "Rendered in the composer and the canvas inline editor next to a control labelled ui.common.actions.retry. Say that the recording is kept and that this control sends it again; do not repeat the toast's imperative on its own. The control label must stay recognisable in the sentence.",
+		"maxCells": 150
+	},
+	"ui.chat.composer.secret_closure_notice": {
+		"role": "notice rendered above the message box while a secret ask holds the composer paused",
+		"tone": "calm explanatory sentence, sentence case, one em dash before the consequence",
+		"note": "Names where the secret is answered (the asks panel, the same surface ui.chat.asks.* copy names) and the two facts the reader needs: the box is paused until that request is answered, and the draft already typed here is kept. Do not promise security properties (nothing about encryption, safety or where the value is stored) and do not state or imply a limit on attempts or budget — the notice describes the pause, not the secret's handling. Keep the em dash and the two clauses in that order.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.dictated_away.not_sent": {
+		"role": "composer notice: a dictated send refused in a chat the reader is looking at",
+		"tone": "plain sentence; names the chat, the one reason, and says where the text is",
+		"maxCells": 130
+	},
+	"ui.chat.composer.dictated_away.not_sent_body": {
+		"role": "toast body for the same refusal, under the chat's own truncated name line",
+		"tone": "plain sentence; does not repeat the chat name the line above carries",
+		"maxCells": 110
+	},
+	"ui.chat.composer.dictated_away.transcription_failed": {
+		"role": "composer notice: the dictation could not be transcribed after the reader left",
+		"tone": "plain sentence; says the recording is gone and asks for a new one",
+		"maxCells": 130
+	},
+	"ui.chat.composer.dictated_away.transcription_failed_body": {
+		"role": "toast body for the same failure, under the chat's own truncated name line",
+		"tone": "plain sentence; does not repeat the chat name",
+		"maxCells": 110
+	},
+	"ui.chat.composer.dictated_away.reason_edited": {
+		"role": "reason clause inside the refusal sentence: the draft changed during transcription",
+		"tone": "lower-case clause that follows a colon; completes the sentence",
+		"maxCells": 80
+	},
+	"ui.chat.composer.dictated_away.reason_command": {
+		"role": "reason clause: the words would have run as a slash command",
+		"tone": "lower-case clause that follows a colon",
+		"maxCells": 45
+	},
+	"ui.chat.composer.dictated_away.reason_gate": {
+		"role": "reason clause: the words would have answered a pending approval gate",
+		"tone": "lower-case clause that follows a colon",
+		"maxCells": 70
+	},
+	"ui.chat.composer.dictated_away.reason_secret": {
+		"role": "reason clause: the words look like a credential",
+		"tone": "lower-case clause that follows a colon",
+		"maxCells": 40
+	},
+	"ui.chat.composer.dictated_away.reason_no_model": {
+		"role": "reason clause: that chat has no model selected",
+		"tone": "lower-case clause that follows a colon",
+		"maxCells": 55
+	},
+	"ui.chat.composer.dictated_away.reason_unavailable": {
+		"role": "reason clause: the chat could not take the message for any other reason",
+		"tone": "lower-case clause that follows a colon; must not claim a cause",
+		"maxCells": 50
+	},
+	"ui.chat.composer.dictated_away.reason_not_ready": {
+		"role": "reason clause: the chat is still opening or reconnecting",
+		"tone": "lower-case clause that follows a colon",
+		"maxCells": 40
+	},
+	"ui.chat.composer.dictated_away.origin_gone": {
+		"role": "composer notice: a dictated send refused because the chat it belonged to no longer exists",
+		"tone": "plain sentence; names the chat and states that the text is lost, promising nothing",
+		"maxCells": 130
+	},
+	"ui.chat.composer.dictated_away.origin_gone_body": {
+		"role": "toast body for the same refusal, under the chat's own truncated name line",
+		"tone": "plain sentence; does not repeat the chat name",
+		"maxCells": 110
+	},
+	"ui.chat.composer.dictated_away.open_chat": {
+		"role": "toast action that opens the chat the refused dictation belonged to",
+		"tone": "short imperative action",
+		"maxCells": 14
+	},
+	"ui.chat.composer.dictated_away.draft_label": {
+		"role": "name used for a new chat that has no title yet",
+		"tone": "plain noun phrase",
+		"maxCells": 18
+	},
+	"ui.chat.composer.dictated_away.untitled_chat": {
+		"role": "name used for a live conversation that has no title",
+		"tone": "plain noun phrase",
+		"maxCells": 18
 	}
 }

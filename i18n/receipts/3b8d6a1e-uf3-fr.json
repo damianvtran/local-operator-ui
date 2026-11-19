@@ -1,0 +1,72 @@
+{
+	"auditor": "i18n-auditor",
+	"model": "anthropic/claude-sonnet-5-5",
+	"instance": "3b8d6a1e-uf3-fr",
+	"locale": "fr",
+	"audit_date": "2026-11-08",
+	"status": "changes_requested",
+	"scope": "fresh independent from-scratch re-audit of fr ui.updates.service (39, incl. new global.app_owned.remedy) and ui.installer.setup_cause (7); 46 keys, uncommitted working-tree files at branch head 7390ee9dc92 (ui.updates.status excluded: byte-unchanged, already audited); previous receipt fd05d0c1-uf-fr-update-flow-fr.json",
+	"independence_note": "This session (team lopdev, translation-auditor, task s1r-au-fr) authored and edited none of these values. It read the previous receipt only to verify its findings were applied; every key was judged from scratch against English source, .context.json sidecars and shipped fr ui.updates.panel / ui.installer / ui.common.updates.",
+	"evidence": "Bytes on disk hashed at audit time. All 46 keys rendered through intl-messageformat (locale fr; minutes/count 0,1,2,5,11,21,100,1000000; fleet.busy.lead extra 0,1,2,5,11,21,100,1000000; real values for version/group/needed/free/command/code/target/installed/names/closing): no format errors; placeholder name sets identical en vs fr for all keys; fr plurals use one/many/other (e.g. '1 000 000 de minutes', '1 000 000 d’autres'). Rendered fr disk_space as-is: 'environ 1 500 Mo … 12 345 Mo' (grouped) vs EN '1500 MB … 12345 MB' and fr with ASCII space in the argument '1500 Mo … 12345 Mo' -> MAJOR. Verbatim tokens survive (Local Operator, lop-update, .lop-source, uv/pipx/pip, backticked commands, ::group-off text present but inert in disk_space). No English leftovers. Width: fr 1.2-1.58x English, normal for French; sidecars say keep the source's shape (no hard budget); longest ratios fleet.busy.lead 1.55 and server_failure.not_run 1.58 are single short sentences. Read-only gates: check-coverage.mjs ok (7 languages/133 namespaces); locale-parity.test.mjs 44/44 pass (it compares placeholder names only, so it does not catch the skeleton defect); context-parity.mjs ok.",
+	"prior_findings_verification": [
+		"attempt_running.message_unknown_age/moments/minutes: 'une autre' + 'à une heure indéterminée' applied correctly",
+		"disk_space.message: 'il n’y en a que … Mo' applied correctly (but see the MAJOR: the NNBSP pass broke the ICU number skeleton)",
+		"server_failure.not_run/pointer_below/pointer_log: 'installateur' / 'jusqu’à l’obtention d’un résultat' applied; matches shipped ui.updates.panel 'Démarrage de l’installateur'",
+		"fleet.closing: 'la compilation qu’il a chargée' applied; matches shipped 'la nouvelle compilation'",
+		"global.source_rebuild.remedy: 'Recompilation de ce checkout avec `lop-update`.' applied; matches shipped 'Recompilation du serveur depuis…'",
+		"global.legacy_installer.remedy: 'à l’installateur qui n’interrompt pas les sessions' applied",
+		"server_failure.stopped: 'quelque chose qu’il a lancé' applied",
+		"setup_cause.tls_interception: 'auquel cette application fait déjà confiance' applied; clock_or_expired: 'a jugé le certificat … expiré' applied; not_started: 'n’a pas démarré correctement' applied",
+		"NNBSP (U+202F) before ; : applied to all 32 prose occurrences in both files (matches shipped fr convention, 520+251 NNBSP uses) - but also wrongly inside two ICU arguments (the MAJOR)"
+	],
+	"namespaces": {
+		"ui.updates.service": {
+			"status": "changes_requested",
+			"result": "changes_requested",
+			"namespace": "ui.updates.service",
+			"sha256": {
+				"en": "e473e1fcca579cd11a398c7c21b86b4ef5d56efa5a48f09bce6b047170aa5ae2",
+				"fr": "46ef7de2fb31906634495941427b279875aa630133d2197dd847f3447bc2bb2e"
+			},
+			"keys_read": 39,
+			"en_path": "src/i18n/catalogues/en/ui.updates.service.json",
+			"target_path": "src/i18n/catalogues/fr/ui.updates.service.json",
+			"counts": {
+				"BLOCKER": 0,
+				"MAJOR": 1,
+				"MINOR": 0,
+				"NIT": 0
+			},
+			"summary": "39 keys read. Meaning, register (vous), glossary (installateur, compilation/recompilation, version, tour, session, checkout, backend per shipped ui.updates.panel/ui.installer/ui.common.updates), ICU names and fr plural categories (one/many/other) correct; every prior-audit finding applied correctly; new key global.app_owned.remedy is accurate and idiomatic. One MAJOR introduced by the remediation: NNBSP inside the {needed|free, number, ::group-off} arguments disables the skeleton.",
+			"findings": [
+				{
+					"severity": "MAJOR",
+					"key": "ui.updates.service.disk_space.message",
+					"current": "La mise à jour du serveur nécessite environ {needed, number,\\u202f::group-off} Mo d’espace libre sur ce disque, et il n’y en a que {free, number,\\u202f::group-off} Mo\\u202f; l’application a donc laissé intact l’environnement qui sert cette application. Libérez de l’espace, puis réessayez.",
+					"proposed": "La mise à jour du serveur nécessite environ {needed, number, ::group-off} Mo d’espace libre sur ce disque, et il n’y en a que {free, number, ::group-off} Mo\\u202f; l’application a donc laissé intact l’environnement qui sert cette application. Libérez de l’espace, puis réessayez.",
+					"reason": "The NNBSP pass replaced the ASCII space inside the ICU arguments `{needed, number,<U+202F>::group-off}` and `{free, number,<U+202F>::group-off}`; U+202F is not ICU pattern whitespace, so the `::group-off` skeleton is not recognised and the numbers render grouped. Rendered: EN `needed=1500, free=12345` -> `about 1500 MB … 12345 MB`; current fr -> `environ 1 500 Mo … 12 345 Mo`; with the ASCII space restored -> `environ 1500 Mo … 12345 Mo`. The technical token `::group-off` must survive verbatim; locale-parity does not catch it (it compares placeholder names only). Fix: keep U+0020 inside `{…}` and keep NNBSP only before the prose `;`/`:`."
+				}
+			]
+		},
+		"ui.installer.setup_cause": {
+			"status": "passed",
+			"result": "clean",
+			"namespace": "ui.installer.setup_cause",
+			"sha256": {
+				"en": "330241db6a55045e62e90042cf26694ff73537c24c50467e117436958a4b610b",
+				"fr": "64a2e8f0a86610568df694b0a658aae3a5c3fd7b9022d470b5ececec64fafe1c"
+			},
+			"keys_read": 7,
+			"en_path": "src/i18n/catalogues/en/ui.installer.setup_cause.json",
+			"target_path": "src/i18n/catalogues/fr/ui.installer.setup_cause.json",
+			"counts": {
+				"BLOCKER": 0,
+				"MAJOR": 0,
+				"MINOR": 0,
+				"NIT": 0
+			},
+			"summary": "7 keys read; clean. Prior-audit changes (tls_interception, clock_or_expired, not_started) applied and idiomatic; no placeholders; Local Operator verbatim; vous register.",
+			"findings": []
+		}
+	}
+}

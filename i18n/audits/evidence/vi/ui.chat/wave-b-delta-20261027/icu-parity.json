@@ -1,0 +1,754 @@
+{
+ "locale": "vi",
+ "key_count": 62,
+ "plural_categories_vi": [
+  "other"
+ ],
+ "failures": [],
+ "renders": [
+  {
+   "key": "ui.agents.config.banner.unavailable",
+   "loc": "en",
+   "rendered": "The backend could not be reached, so the composer is unavailable for now.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.agents.config.banner.unavailable",
+   "loc": "vi",
+   "rendered": "Không kết nối được với máy chủ nên ô soạn tin tạm thời không dùng được.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.agents.config.disabled_gate",
+   "loc": "en",
+   "rendered": "Configure agents by conversation",
+   "backticks": 0
+  },
+  {
+   "key": "ui.agents.config.disabled_gate",
+   "loc": "vi",
+   "rendered": "Cấu hình tác nhân bằng cuộc trò chuyện",
+   "backticks": 0
+  },
+  {
+   "key": "ui.agents.config.run_details_region",
+   "loc": "en",
+   "rendered": "Run details",
+   "backticks": 0
+  },
+  {
+   "key": "ui.agents.config.run_details_region",
+   "loc": "vi",
+   "rendered": "Chi tiết lượt chạy",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.session_status.context_heading",
+   "loc": "en",
+   "rendered": "Context",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.session_status.context_heading",
+   "loc": "vi",
+   "rendered": "Ngữ cảnh",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.session_status.context_nothing_measured_tooltip",
+   "loc": "en",
+   "rendered": "Context: nothing measured yet. The window fills as the conversation runs.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.session_status.context_nothing_measured_tooltip",
+   "loc": "vi",
+   "rendered": "Ngữ cảnh: chưa đo được gì. Cửa sổ ngữ cảnh sẽ đầy dần khi cuộc trò chuyện diễn ra.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.session_status.conversation_starting",
+   "loc": "en",
+   "rendered": "Set once the conversation starts.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.session_status.conversation_starting",
+   "loc": "vi",
+   "rendered": "Sẽ được thiết lập khi cuộc trò chuyện bắt đầu.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.session_status.model_none_resolved_tooltip",
+   "loc": "en",
+   "rendered": "Model: none resolved yet. Choose the model this conversation will run on.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.session_status.model_none_resolved_tooltip",
+   "loc": "vi",
+   "rendered": "Mô hình: chưa xác định được. Chọn mô hình mà cuộc trò chuyện này sẽ dùng.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.session_status.not_signed_in",
+   "loc": "en",
+   "rendered": "Not signed in to X",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.session_status.not_signed_in",
+   "loc": "vi",
+   "rendered": "Chưa đăng nhập vào X",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.session_status.not_signed_in_description",
+   "loc": "en",
+   "rendered": "This session runs X without a working sign-in, so it cannot answer until you connect it.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.session_status.not_signed_in_description",
+   "loc": "vi",
+   "rendered": "Phiên này chạy X nhưng chưa đăng nhập được, nên sẽ không trả lời cho đến khi bạn kết nối lại.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.session_status.nothing_measured_yet",
+   "loc": "en",
+   "rendered": "Nothing measured yet. The window fills as the conversation runs.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.session_status.nothing_measured_yet",
+   "loc": "vi",
+   "rendered": "Chưa đo được gì. Cửa sổ ngữ cảnh sẽ đầy dần khi cuộc trò chuyện diễn ra.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.session_status.temporarily_unavailable",
+   "loc": "en",
+   "rendered": "X is temporarily unavailable",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.session_status.temporarily_unavailable",
+   "loc": "vi",
+   "rendered": "X tạm thời không khả dụng",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.session_status.temporarily_unavailable_description",
+   "loc": "en",
+   "rendered": "Your saved sign-in is still present. Try again later or choose another model.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.session_status.temporarily_unavailable_description",
+   "loc": "vi",
+   "rendered": "Thông tin đăng nhập đã lưu vẫn còn. Hãy thử lại sau hoặc chọn mô hình khác.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.canonical.placeholder.loading",
+   "loc": "en",
+   "rendered": "Loading conversation…",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.canonical.placeholder.loading",
+   "loc": "vi",
+   "rendered": "Đang tải cuộc trò chuyện…",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.canonical.placeholder.region_label",
+   "loc": "en",
+   "rendered": "Loading conversation",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.canonical.placeholder.region_label",
+   "loc": "vi",
+   "rendered": "Đang tải cuộc trò chuyện",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.canonical.tool_row.generic_verb.running",
+   "loc": "en",
+   "rendered": "Calling",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.canonical.tool_row.generic_verb.running",
+   "loc": "vi",
+   "rendered": "Đang gọi",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.canonical.tool_row.generic_verb.settled",
+   "loc": "en",
+   "rendered": "Called",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.canonical.tool_row.generic_verb.settled",
+   "loc": "vi",
+   "rendered": "Đã gọi",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.canonical.tool_row.outcome.failed",
+   "loc": "en",
+   "rendered": "failed",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.canonical.tool_row.outcome.failed",
+   "loc": "vi",
+   "rendered": "thất bại",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.canonical.tool_row.outcome.interrupted",
+   "loc": "en",
+   "rendered": "interrupted",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.canonical.tool_row.outcome.interrupted",
+   "loc": "vi",
+   "rendered": "bị ngắt",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.canonical.tool_row.outcome.never_ran",
+   "loc": "en",
+   "rendered": "never ran",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.canonical.tool_row.outcome.never_ran",
+   "loc": "vi",
+   "rendered": "không chạy",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.canonical.tool_row.outcome.succeeded",
+   "loc": "en",
+   "rendered": "succeeded",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.canonical.tool_row.outcome.succeeded",
+   "loc": "vi",
+   "rendered": "thành công",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.device.fact.this_device",
+   "loc": "en",
+   "rendered": "this device",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.device.fact.this_device",
+   "loc": "vi",
+   "rendered": "thiết bị này",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.device.footer.move_deletes_copy",
+   "loc": "en",
+   "rendered": "The copy on this device is deleted when the move commits.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.device.footer.move_deletes_copy",
+   "loc": "vi",
+   "rendered": "Bản sao trên thiết bị này sẽ bị xóa khi quá trình chuyển hoàn tất.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.device.label.this_device",
+   "loc": "en",
+   "rendered": "This device",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.device.label.this_device",
+   "loc": "vi",
+   "rendered": "Thiết bị này",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.device.notice.move_hold_detail",
+   "loc": "en",
+   "rendered": "handing off · it continues there; this cannot be stopped from here",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.device.notice.move_hold_detail",
+   "loc": "vi",
+   "rendered": "đang bàn giao · cuộc trò chuyện tiếp tục ở đó; không thể dừng từ đây",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.device.picker.heading.move",
+   "loc": "en",
+   "rendered": "Move this conversation to",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.device.picker.heading.move",
+   "loc": "vi",
+   "rendered": "Chuyển cuộc trò chuyện này đến",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.device.picker.heading.start",
+   "loc": "en",
+   "rendered": "Start the conversation on",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.device.picker.heading.start",
+   "loc": "vi",
+   "rendered": "Bắt đầu cuộc trò chuyện trên",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.device.row.conversations",
+   "loc": "en",
+   "rendered": "2 conversations",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.device.row.conversations",
+   "loc": "vi",
+   "rendered": "2 cuộc trò chuyện",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.device.row.not_here_why",
+   "loc": "en",
+   "rendered": "the conversation is not here to move; recall it here first",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.device.row.not_here_why",
+   "loc": "vi",
+   "rendered": "cuộc trò chuyện không ở đây để chuyển; hãy mang nó về đây trước",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.device.sentence.mesh_read_failure",
+   "loc": "en",
+   "rendered": "The device list could not be read, so this is what the last answer holds.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.device.sentence.mesh_read_failure",
+   "loc": "vi",
+   "rendered": "Không đọc được danh sách thiết bị, nên đây là những gì câu trả lời gần nhất còn giữ.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.device.sentence.move_in_flight",
+   "loc": "en",
+   "rendered": "This conversation is moving to X. It continues there; nothing sent from here would be delivered.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.device.sentence.move_in_flight",
+   "loc": "vi",
+   "rendered": "Cuộc trò chuyện này đang chuyển đến X. Cuộc trò chuyện tiếp tục ở đó; mọi thứ gửi từ đây sẽ không đến nơi.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.device.sentence.pairing_guidance",
+   "loc": "en",
+   "rendered": "This device is in no network. Create one with `lop network init`, or join one with `lop network join <token>`.",
+   "backticks": 4
+  },
+  {
+   "key": "ui.chat.device.sentence.pairing_guidance",
+   "loc": "vi",
+   "rendered": "Thiết bị này chưa ở trong mạng nào. Tạo mạng bằng `lop network init`, hoặc tham gia bằng `lop network join <token>`.",
+   "backticks": 4
+  },
+  {
+   "key": "ui.chat.pickers.at_menu.heading.files",
+   "loc": "en",
+   "rendered": "Files",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.pickers.at_menu.heading.files",
+   "loc": "vi",
+   "rendered": "Tệp",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.pickers.at_menu.heading.projects",
+   "loc": "en",
+   "rendered": "Projects",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.pickers.at_menu.heading.projects",
+   "loc": "vi",
+   "rendered": "Dự án",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.pickers.at_menu.region_label",
+   "loc": "en",
+   "rendered": "Files",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.pickers.at_menu.region_label",
+   "loc": "vi",
+   "rendered": "Tệp",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.pickers.at_menu.tag.directory",
+   "loc": "en",
+   "rendered": "Directory",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.pickers.at_menu.tag.directory",
+   "loc": "vi",
+   "rendered": "Thư mục",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.pickers.at_menu.tag.file",
+   "loc": "en",
+   "rendered": "File",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.pickers.at_menu.tag.file",
+   "loc": "vi",
+   "rendered": "Tệp",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.pickers.at_menu.tag.project",
+   "loc": "en",
+   "rendered": "Project",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.pickers.at_menu.tag.project",
+   "loc": "vi",
+   "rendered": "Dự án",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.pickers.slash.arguments_region_label",
+   "loc": "en",
+   "rendered": "Command arguments",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.pickers.slash.arguments_region_label",
+   "loc": "vi",
+   "rendered": "Tham số lệnh",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.pickers.slash.click.chooses_name",
+   "loc": "en",
+   "rendered": "Click chooses this name.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.pickers.slash.click.chooses_name",
+   "loc": "vi",
+   "rendered": "Nhấp để chọn tên này.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.pickers.slash.click.completes_label",
+   "loc": "en",
+   "rendered": "Click completes /X.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.pickers.slash.click.completes_label",
+   "loc": "vi",
+   "rendered": "Nhấp để hoàn thành /X.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.pickers.slash.click.completes_value",
+   "loc": "en",
+   "rendered": "Click completes this value.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.pickers.slash.click.completes_value",
+   "loc": "vi",
+   "rendered": "Nhấp để hoàn thành giá trị này.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.pickers.slash.click.connects",
+   "loc": "en",
+   "rendered": "Click connects X.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.pickers.slash.click.connects",
+   "loc": "vi",
+   "rendered": "Nhấp để kết nối X.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.pickers.slash.click.runs",
+   "loc": "en",
+   "rendered": "Click runs /X.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.pickers.slash.click.runs",
+   "loc": "vi",
+   "rendered": "Nhấp để chạy /X.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.pickers.slash.click.runs_command",
+   "loc": "en",
+   "rendered": "Click runs the command.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.pickers.slash.click.runs_command",
+   "loc": "vi",
+   "rendered": "Nhấp để chạy lệnh.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.pickers.slash.click.runs_with_value",
+   "loc": "en",
+   "rendered": "Click runs XX.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.pickers.slash.click.runs_with_value",
+   "loc": "vi",
+   "rendered": "Nhấp để chạy XX.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.pickers.slash.click.stages",
+   "loc": "en",
+   "rendered": "Click stages /X.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.pickers.slash.click.stages",
+   "loc": "vi",
+   "rendered": "Nhấp để đưa /X vào bản nháp.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.pickers.slash.enter_needs_a_pick",
+   "loc": "en",
+   "rendered": "Enter needs a row you pick: ↓ then Enter · Tab completes this row.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.pickers.slash.enter_needs_a_pick",
+   "loc": "vi",
+   "rendered": "Enter cần một dòng bạn chọn: ↓ rồi Enter · Tab hoàn thành dòng này.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.pickers.slash.phase.arguments",
+   "loc": "en",
+   "rendered": "Arguments",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.pickers.slash.phase.arguments",
+   "loc": "vi",
+   "rendered": "Tham số",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.pickers.slash.region_label",
+   "loc": "en",
+   "rendered": "Slash commands",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.pickers.slash.region_label",
+   "loc": "vi",
+   "rendered": "Lệnh gạch chéo",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.run_details.nothing_in_flight",
+   "loc": "en",
+   "rendered": "Nothing in flight.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.run_details.nothing_in_flight",
+   "loc": "vi",
+   "rendered": "Không có gì đang chạy.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.run_details.nothing_to_show_yet",
+   "loc": "en",
+   "rendered": "Nothing to show yet.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.run_details.nothing_to_show_yet",
+   "loc": "vi",
+   "rendered": "Chưa có gì để hiển thị.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.status.credential_refused",
+   "loc": "en",
+   "rendered": "The running server refused this app's credential, so sign-in, settings and slash commands are unavailable.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.status.credential_refused",
+   "loc": "vi",
+   "rendered": "Máy chủ đang chạy từ chối thông tin xác thực của ứng dụng, nên đăng nhập, cài đặt và lệnh gạch chéo không khả dụng.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.status.degraded",
+   "loc": "en",
+   "rendered": "The server is answering slowly. Your messages are queued.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.status.degraded",
+   "loc": "vi",
+   "rendered": "Máy chủ đang trả lời chậm. Tin nhắn của bạn đang nằm trong hàng đợi.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.status.internet_offline",
+   "loc": "en",
+   "rendered": "This machine is offline. Sending will wait.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.status.internet_offline",
+   "loc": "vi",
+   "rendered": "Máy này đang ngoại tuyến. Tin nhắn sẽ chờ gửi.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.status.unreachable",
+   "loc": "en",
+   "rendered": "Can't reach the Local Operator server. Sending will wait.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.chat.status.unreachable",
+   "loc": "vi",
+   "rendered": "Không kết nối được với máy chủ Local Operator. Tin nhắn sẽ chờ gửi.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.common.connection.session_loss.frame_too_large",
+   "loc": "en",
+   "rendered": "This conversation's updates were too large to display — reconnect to try again.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.common.connection.session_loss.frame_too_large",
+   "loc": "vi",
+   "rendered": "Cập nhật của cuộc trò chuyện này quá lớn để hiển thị — hãy kết nối lại rồi thử tiếp.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.common.connection.session_loss.history_unreadable",
+   "loc": "en",
+   "rendered": "Could not load this conversation's history — reconnect to try again.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.common.connection.session_loss.history_unreadable",
+   "loc": "vi",
+   "rendered": "Không tải được lịch sử của cuộc trò chuyện này — hãy kết nối lại rồi thử tiếp.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.common.connection.session_loss.lost",
+   "loc": "en",
+   "rendered": "Lost the connection to this conversation — reconnect to keep reading.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.common.connection.session_loss.lost",
+   "loc": "vi",
+   "rendered": "Đã mất kết nối với cuộc trò chuyện này — hãy kết nối lại để đọc tiếp.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.common.connection.session_loss.not_paired",
+   "loc": "en",
+   "rendered": "This app is not paired with the Local Operator server, so this conversation cannot be read yet.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.common.connection.session_loss.not_paired",
+   "loc": "vi",
+   "rendered": "Ứng dụng này chưa ghép nối với máy chủ Local Operator, nên chưa đọc được cuộc trò chuyện này.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.common.connection.session_loss.server_down",
+   "loc": "en",
+   "rendered": "The Local Operator server is not running — reconnect once it is back, or restart the app if it stays down.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.common.connection.session_loss.server_down",
+   "loc": "vi",
+   "rendered": "Máy chủ Local Operator không chạy — hãy kết nối lại khi máy chủ trở lại, hoặc khởi động lại ứng dụng nếu máy chủ vẫn không lên.",
+   "backticks": 0
+  },
+  {
+   "key": "ui.common.layout.toasts.dismiss",
+   "loc": "en",
+   "rendered": "Close toast",
+   "backticks": 0
+  },
+  {
+   "key": "ui.common.layout.toasts.dismiss",
+   "loc": "vi",
+   "rendered": "Đóng thông báo",
+   "backticks": 0
+  },
+  {
+   "key": "ui.common.layout.toasts.notifications",
+   "loc": "en",
+   "rendered": "Notifications",
+   "backticks": 0
+  },
+  {
+   "key": "ui.common.layout.toasts.notifications",
+   "loc": "vi",
+   "rendered": "Thông báo",
+   "backticks": 0
+  }
+ ]
+}

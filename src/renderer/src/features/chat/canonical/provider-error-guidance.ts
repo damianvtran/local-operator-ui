@@ -53,6 +53,8 @@
  * account this app does not manage.
  */
 
+import { t } from "@shared/i18n";
+
 /** The affordance a classified failure earns, and where it opens. */
 export type ProviderErrorAction = {
 	/** The action's own words. */
@@ -152,7 +154,7 @@ export function radientOutOfCreditsWording(row: {
 	if (!radientOutOfCredits(row)) return null;
 	const relayed = /rate limit or quota( exceeded)?\s*/i;
 	if (!relayed.test(row.headline))
-		return { label: "billing", headline: row.headline };
+		return { label: "billing", headline: row.headline }; // i18n: ignore backend failure-class token shown in the ledger verb slot, like the relayed record.category it stands in for; the wire category vocabulary is not localized
 	/*
 	 * The relayed shape is `<label> (HTTP 402): <body>` (`ProviderError.render`
 	 * in the runtime's `providers/failover.py`). The status and the body are the
@@ -163,10 +165,10 @@ export function radientOutOfCreditsWording(row: {
 	const body = (parts ? parts[2] : rest.replace(/^:\s*/, "")).trim();
 	const status = parts ? ` (${parts[1]})` : "";
 	return {
-		label: "billing",
+		label: "billing", // i18n: ignore backend failure-class token shown in the ledger verb slot, like the relayed record.category it stands in for; the wire category vocabulary is not localized
 		headline: body
-			? `Out of credits${status}: ${body}`
-			: `Out of credits${status}: Radient refused the request`,
+			? t("ui.chat.provider_error.headline.out_of_credits", { status, body })
+			: t("ui.chat.provider_error.headline.out_of_credits_refused", { status }),
 	};
 }
 
@@ -219,7 +221,10 @@ export function providerErrorGuidance(row: {
 	 * say) gets the surface named rather than a specific account assumed.
 	 */
 	if (failure === "sign-in" && radientNamed)
-		return { label: "Sign in to Radient", to: RADIENT_PROVIDER_SETTINGS };
+		return {
+			label: t("ui.chat.provider_error.action.sign_in_radient"),
+			to: RADIENT_PROVIDER_SETTINGS,
+		};
 	/*
 	 * The billing class lands on the account section when the failure is
 	 * Radient's: that surface carries the balance, the verify-to-claim callout
@@ -229,9 +234,12 @@ export function providerErrorGuidance(row: {
 	 * honest in-app destination.
 	 */
 	if (failure === "billing" && radientNamed)
-		return { label: "Open Radient account", to: RADIENT_ACCOUNT_SETTINGS };
+		return {
+			label: t("ui.chat.provider_error.action.open_radient_account"),
+			to: RADIENT_ACCOUNT_SETTINGS,
+		};
 	return {
-		label: "Open provider settings",
+		label: t("ui.chat.provider_error.action.open_provider_settings"),
 		to: radientNamed ? RADIENT_PROVIDER_SETTINGS : PROVIDER_SETTINGS,
 	};
 }

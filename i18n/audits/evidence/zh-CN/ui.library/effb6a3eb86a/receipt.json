@@ -1,0 +1,468 @@
+{
+  "locale": "zh-CN",
+  "mode": "Fresh independent delta audit of the 20 new keys of a single namespace (ui.library) against frozen head 8a9ce1f808c266ebe9a0e924094344cea60c2c23; read-only worktree ~/local-operator-ui/.worktrees/i18n-s8 (verified git rev-parse HEAD = the frozen head, clean tree). Allocation: fix (<2 h), bounded audit only, no builds, no servers, no test tree. Glossary conformance checked against the manager-owned byte-copy at _s14-audits/8a9ce1f8.../glossary.md (sha256 0eb34437a8c3d6f5..., verified identical to ~/local-operator/i18n/glossary.md). Fully audited: all 20 delta keys. The namespace's other 159 keys were read only for JSON validity, key-set parity and term consistency; legacy values are NOT certified.",
+  "scope": "PR damianvtran/local-operator-ui #1851 @ 8a9ce1f808c266ebe9a0e924094344cea60c2c23 (0e12072d2b3..HEAD). Audited keys: ui.library.kind.{audio,code,docx,html,image,markdown,other,pdf,pptx,spreadsheet,text,video} (12), ui.library.tag_category.{custom,format,project,source,status,topic,type} (7), ui.library.preview.unsupported_generic (1). No full legacy namespace certification; the English context sidecar (20 entries) was reviewed for accuracy against the render sites.",
+  "head_sha": "8a9ce1f808c266ebe9a0e924094344cea60c2c23",
+  "audit_date": "2026-11-10",
+  "key_count": 179,
+  "fully_audited_key_count": 20,
+  "consistency_only_key_count": 159,
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "Translator agent/model and session (zh-CN 86ce45a242a4) supplied by delegation; values landed verbatim. This auditor did not translate and took no part in translation."
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "effb6a3eb86a",
+    "session": "effb6a3eb86a",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "Served session header for session effb6a3eb86a states deepseek/deepseek-flash; no model switch or fallback occurred in this session.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "policy_sources": {
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/zh-CN.md",
+      "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+    },
+    "glossary": {
+      "path": "~/local-operator-ui/.worktrees/_s14-audits/8a9ce1f808c266ebe9a0e924094344cea60c2c23/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "note": "Manager-owned byte-copy; verified identical to ~/local-operator/i18n/glossary.md by sha256. Glossary conformance was checked against this copy."
+    },
+    "expected_hashes": {
+      "path": "~/local-operator-ui/.worktrees/_s14-audits/8a9ce1f808c266ebe9a0e924094344cea60c2c23/expected-hashes.json"
+    },
+    "keys_delta": {
+      "path": "~/local-operator-ui/.worktrees/_s14-audits/8a9ce1f808c266ebe9a0e924094344cea60c2c23/keys20.json"
+    }
+  },
+  "status": "changes_requested",
+  "result": "changes_requested",
+  "verdict": "changes_requested — 1 MAJOR (ui.library.tag_category.type = 类型 merges the English Kind/Type distinction the sidecar explicitly keeps apart, colliding with ui.library.sort.kind = 类型 and ui.canvas.files.kind = 类型), 1 MINOR (ui.library.kind.spreadsheet = 表格 where the corpus says 电子表格), 1 NIT on the English metadata only. All 20 keys are mechanically sound: placeholders none/none, key sets equal, no invisible or bidi characters, every badge inside the ~12 width budget, and all five hash bindings match byte-for-byte. 18 of 20 keys are clean as written.",
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "major",
+      "key": "ui.library.tag_category.type",
+      "current_text": "类型",
+      "english_source": "Type",
+      "problem": "The corpus's settled Chinese rendering of \"Kind\" is 类型 (ui.library.sort.kind = 类型; ui.canvas.files.kind = 类型), and the English keeps the tag group deliberately apart from that sort key — \"Type\" against \"Kind\" — with the sidecar instructing it outright: \"Keep it distinct from the sort option 'Kind'.\" Rendering the tag heading as 类型 collapses that distinction on one screen: the Library sort control can read 类型 (sorting by kind) while the filter rail heads a tag group 类型 (tags of type `type`), so one string carries two meanings the source separates. 类型 is the right word for \"Kind\"; it is the wrong word for this key precisely because the locale has already spent it — the glossary binds one rendered word per term, and 类型 is bound to Kind.",
+      "recommendation": "种类 — distinct from the corpus's 类型 for \"Kind\", and the ordinary word for a variety/type when naming a taxonomy group. 类别 is NOT available: ui.library.filter.categories = 类别 already carries \"Categories\" in the same rail. 分类 is a weaker second option if 种类 reads too broad above tag rows.",
+      "evidence": [
+        "src/i18n/catalogues/en/ui.library.json: ui.library.sort.kind = \"Kind\"; src/i18n/catalogues/zh-CN/ui.library.json: ui.library.sort.kind = \"类型\"",
+        "src/i18n/catalogues/zh-CN/ui.canvas.json: ui.canvas.files.kind = \"类型\" (\"Kind\" column header) — 类型 is the corpus's word for Kind, not Type",
+        "src/i18n/catalogues/en/ui.library.context.json: ui.library.tag_category.type.note = \"LEGACY tag group id kept by the UI's ordering list; current core ids are format/status, so this is rare. Keep it distinct from the sort option 'Kind'.\"",
+        "src/i18n/catalogues/zh-CN/ui.library.json: ui.library.filter.categories = \"类别\" — the obvious alternative word is already taken by \"Categories\" in the same rail",
+        "i18n/glossary.md (manager byte-copy), line 1 and lines 3-4: \"Glossary — one term, one decision, for every locale\" / \"Translation invariant per term: the SAME rendered word in every locale unless a row says otherwise.\" — 类型 is this corpus's settled rendering of the term Kind (sort.kind, canvas files.kind); spending the same string on the different English term Type breaks that binding instead of applying it."
+      ],
+      "gates": true
+    },
+    {
+      "id": "F2",
+      "severity": "minor",
+      "key": "ui.library.kind.spreadsheet",
+      "current_text": "表格",
+      "english_source": "Spreadsheet",
+      "problem": "Defensible rather than wrong: 表格 matches the legacy rail label ui.library.category.spreadsheets = 表格, and 表格 is a household name for a spreadsheet in Chinese (WPS 表格). The cost is precision and an internal split. The English says Spreadsheet, not Table, and 表格 in this same catalogue is also the plain-table word (ui.canvas.wysiwyg_markdown_editor.insert_table = 插入表格), so the badge is the one place the file kind can be read as \"table\". Meanwhile the rest of the product says 电子表格 for exactly this file kind, including inside the same namespace: ui.library.preview.sheet_unreadable = 无法读取此电子表格。 Width is not the obstacle — 电子表格 is 4 characters / 8 cells against the ~12 badge budget.",
+      "recommendation": "电子表格 for the badge, aligning it with ui.canvas.files.spreadsheets, ui.canvas.file_rows.spreadsheets and this namespace's own preview error. If the rail's legacy ui.library.category.spreadsheets = 表格 is preferred instead, keep 表格 and accept the split — it does not gate on its own.",
+      "evidence": [
+        "src/i18n/catalogues/en/ui.library.json: ui.library.kind.spreadsheet = \"Spreadsheet\" (not \"Table\")",
+        "src/i18n/catalogues/zh-CN/ui.library.json: ui.library.preview.sheet_unreadable = \"无法读取此电子表格。\" (same namespace, same file kind)",
+        "src/i18n/catalogues/zh-CN/ui.canvas.json: ui.canvas.files.spreadsheets = \"电子表格\", ui.canvas.file_rows.spreadsheets = \"电子表格\", ui.canvas.spreadsheet_preview.spreadsheet_saved = \"电子表格已保存\"",
+        "src/i18n/catalogues/zh-CN/ui.library.json: ui.library.category.spreadsheets = \"表格\" (the legacy rail label the badge currently matches)",
+        "src/i18n/style-guides/zh-CN.md: \"Every CJK character and every full-width punctuation mark is 2 cells; ASCII is 1\" — 电子表格 is 8 cells against the ~12 badge budget, so width does not force the shorter 表格."
+      ],
+      "gates": false
+    },
+    {
+      "id": "N1",
+      "severity": "nit",
+      "key": "ui.library.kind.other (English context sidecar, not the translation)",
+      "current_text": "context note: \"Rendered inside the sentence ui.library.preview.unsupported ONLY via the generic fallback; see manifest.\"",
+      "english_source": "ui.library.kind.other = \"Other\"",
+      "problem": "Imprecise rather than wrong, and harmless for zh-CN (其他 is correct either way): the note says the value is rendered inside ui.library.preview.unsupported \"via the generic fallback\", but the code branches before the {kind} slot is filled — kind === \"other\" selects ui.library.preview.unsupported_generic, which has no slot at all. A translator in a language with gender or case agreement could read the note as licence to shape 其他 for embedding into a sentence frame.",
+      "recommendation": "Reword to: \"Never enters the {kind} slot of ui.library.preview.unsupported; the UI shows ui.library.preview.unsupported_generic instead.\" English metadata only; does not gate zh-CN.",
+      "evidence": [
+        "src/renderer/src/features/library/components/library-viewers.tsx:108 — asset.kind === \"other\" ? t(\"ui.library.preview.unsupported_generic\") : t(\"ui.library.preview.unsupported\", { kind: libraryKindLabel(asset.kind) })",
+        "src/i18n/catalogues/en/ui.library.context.json: ui.library.kind.other.note"
+      ],
+      "gates": false
+    }
+  ],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 1,
+    "minor": 1,
+    "nit": 1
+  },
+  "namespaces": {
+    "ui.library": {
+      "status": "changes_requested",
+      "result": "changes_requested",
+      "source_sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71",
+      "target_sha256": "686dfeeaa8ee25abd2815181ea7fe11ff7cd708cd0ea718632f870e5b1d5b857",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.library.json",
+          "sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71"
+        },
+        "zh-CN": {
+          "path": "src/i18n/catalogues/zh-CN/ui.library.json",
+          "sha256": "686dfeeaa8ee25abd2815181ea7fe11ff7cd708cd0ea718632f870e5b1d5b857"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.library.context.json",
+          "sha256": "2fe63e830b49079dac67c5c4513358d0a8559a94fbf27ac8d437212b13aa2e72"
+        }
+      },
+      "findings": [
+        {
+          "id": "F1",
+          "severity": "major",
+          "key": "ui.library.tag_category.type",
+          "current_text": "类型",
+          "english_source": "Type",
+          "problem": "The corpus's settled Chinese rendering of \"Kind\" is 类型 (ui.library.sort.kind = 类型; ui.canvas.files.kind = 类型), and the English keeps the tag group deliberately apart from that sort key — \"Type\" against \"Kind\" — with the sidecar instructing it outright: \"Keep it distinct from the sort option 'Kind'.\" Rendering the tag heading as 类型 collapses that distinction on one screen: the Library sort control can read 类型 (sorting by kind) while the filter rail heads a tag group 类型 (tags of type `type`), so one string carries two meanings the source separates. 类型 is the right word for \"Kind\"; it is the wrong word for this key precisely because the locale has already spent it.",
+          "recommendation": "种类 — distinct from the corpus's 类型 for \"Kind\", and the ordinary word for a variety/type when naming a taxonomy group. 类别 is NOT available: ui.library.filter.categories = 类别 already carries \"Categories\" in the same rail. 分类 is a weaker second option if 种类 reads too broad above tag rows.",
+          "evidence": [
+            "src/i18n/catalogues/en/ui.library.json: ui.library.sort.kind = \"Kind\"; src/i18n/catalogues/zh-CN/ui.library.json: ui.library.sort.kind = \"类型\"",
+            "src/i18n/catalogues/zh-CN/ui.canvas.json: ui.canvas.files.kind = \"类型\" (\"Kind\" column header) — 类型 is the corpus's word for Kind, not Type",
+            "src/i18n/catalogues/en/ui.library.context.json: ui.library.tag_category.type.note = \"LEGACY tag group id kept by the UI's ordering list; current core ids are format/status, so this is rare. Keep it distinct from the sort option 'Kind'.\"",
+            "src/i18n/catalogues/zh-CN/ui.library.json: ui.library.filter.categories = \"类别\" — the obvious alternative word is already taken by \"Categories\" in the same rail",
+            "src/i18n/style-guides/zh-CN.md: \"Prefer settled Chinese where it exists\" and the one-term-one-decision invariant — a distinction the English source maintains must not be merged by the target"
+          ],
+          "gates": true
+        },
+        {
+          "id": "F2",
+          "severity": "minor",
+          "key": "ui.library.kind.spreadsheet",
+          "current_text": "表格",
+          "english_source": "Spreadsheet",
+          "problem": "Defensible rather than wrong: 表格 matches the legacy rail label ui.library.category.spreadsheets = 表格, and 表格 is a household name for a spreadsheet in Chinese (WPS 表格). The cost is precision and an internal split. The English says Spreadsheet, not Table, and 表格 in this same catalogue is also the plain-table word (ui.canvas.wysiwyg_markdown_editor.insert_table = 插入表格), so the badge is the one place the file kind can be read as \"table\". Meanwhile the rest of the product says 电子表格 for exactly this file kind, including inside the same namespace: ui.library.preview.sheet_unreadable = 无法读取此电子表格。 Width is not the obstacle — 电子表格 is 4 characters / 8 cells against the ~12 badge budget.",
+          "recommendation": "电子表格 for the badge, aligning it with ui.canvas.files.spreadsheets, ui.canvas.file_rows.spreadsheets and this namespace's own preview error. If the rail's legacy ui.library.category.spreadsheets = 表格 is preferred instead, keep 表格 and accept the split — it does not gate on its own.",
+          "evidence": [
+            "src/i18n/catalogues/en/ui.library.json: ui.library.kind.spreadsheet = \"Spreadsheet\" (not \"Table\")",
+            "src/i18n/catalogues/zh-CN/ui.library.json: ui.library.preview.sheet_unreadable = \"无法读取此电子表格。\" (same namespace, same file kind)",
+            "src/i18n/catalogues/zh-CN/ui.canvas.json: ui.canvas.files.spreadsheets = \"电子表格\", ui.canvas.file_rows.spreadsheets = \"电子表格\", ui.canvas.spreadsheet_preview.spreadsheet_saved = \"电子表格已保存\"",
+            "src/i18n/catalogues/zh-CN/ui.library.json: ui.library.category.spreadsheets = \"表格\" (the legacy rail label the badge currently matches)",
+            "src/i18n/style-guides/zh-CN.md: \"Prefer a shorter idiomatic wording over truncation\" — but 电子表格 is 8 cells, so brevity does not force 表格 here"
+          ],
+          "gates": false
+        },
+        {
+          "id": "N1",
+          "severity": "nit",
+          "key": "ui.library.kind.other (English context sidecar, not the translation)",
+          "current_text": "context note: \"Rendered inside the sentence ui.library.preview.unsupported ONLY via the generic fallback; see manifest.\"",
+          "english_source": "ui.library.kind.other = \"Other\"",
+          "problem": "Imprecise rather than wrong, and harmless for zh-CN (其他 is correct either way): the note says the value is rendered inside ui.library.preview.unsupported \"via the generic fallback\", but the code branches before the {kind} slot is filled — kind === \"other\" selects ui.library.preview.unsupported_generic, which has no slot at all. A translator in a language with gender or case agreement could read the note as licence to shape 其他 for embedding into a sentence frame.",
+          "recommendation": "Reword to: \"Never enters the {kind} slot of ui.library.preview.unsupported; the UI shows ui.library.preview.unsupported_generic instead.\" English metadata only; does not gate zh-CN.",
+          "evidence": [
+            "src/renderer/src/features/library/components/library-viewers.tsx:108 — asset.kind === \"other\" ? t(\"ui.library.preview.unsupported_generic\") : t(\"ui.library.preview.unsupported\", { kind: libraryKindLabel(asset.kind) })",
+            "src/i18n/catalogues/en/ui.library.context.json: ui.library.kind.other.note"
+          ],
+          "gates": false
+        }
+      ]
+    }
+  },
+  "per_key_checks": [
+    {
+      "key": "ui.library.kind.audio",
+      "source": "Audio",
+      "current_text": "音频",
+      "findings": [],
+      "assessment": "Correct: 音频 is the ordinary noun for an audio file and is the singular of the same family as the rail's Sounds group (ui.library.category.sounds = 音频). The note's \"not a category group\" sentence warns against role confusion, not against shared vocabulary — accepted. 2 chars / 4 cells.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.kind.code",
+      "source": "Code",
+      "current_text": "代码",
+      "findings": [],
+      "assessment": "Correct: 代码 matches ui.library.category.code = 代码 and the note states the two roles are independent but the same word today. 2 chars / 4 cells.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.kind.docx",
+      "source": "DOCX",
+      "current_text": "DOCX",
+      "findings": [],
+      "assessment": "Correct retention: format acronym, Latin uppercase per guide (\"keep Latin acronyms uppercase\"); no localised DOCX exists in the catalogue to contradict it. 4 cells.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.kind.html",
+      "source": "HTML",
+      "current_text": "HTML",
+      "findings": [],
+      "assessment": "Correct retention and consistent with the existing catalogue, which already writes HTML in Latin (ui.canvas.html_preview.html_preview = HTML预览：{title}; ui.chat.canonical.supplement.preview_unavailable = 此HTML依赖…). 4 cells.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.kind.image",
+      "source": "Image",
+      "current_text": "图片",
+      "findings": [],
+      "assessment": "Correct: 图片, the singular of ui.library.category.images = 图片 (Chinese has no plural, so the EN singular/plural pair necessarily converges). 2 chars / 4 cells.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.kind.markdown",
+      "source": "Markdown",
+      "current_text": "Markdown",
+      "findings": [],
+      "assessment": "Correct retention: proper name of the format, and the catalogue already keeps it Latin (ui.chat.transcript_copy.menu.copy_markdown = 复制为Markdown; ui.canvas.create_file_dialog.markdown_md = Markdown (.md)). 8 cells, longest badge in the delta and still inside the ~12 budget.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.kind.other",
+      "source": "Other",
+      "current_text": "其他",
+      "findings": [],
+      "assessment": "Correct: 其他 matches ui.library.category.other and ui.library.origin.other. 2 chars / 4 cells. (Metadata note flagged as N1; the value itself is right.) (The English sidecar note for this key is a separate, non-gating metadata point recorded as N1.)",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.kind.pdf",
+      "source": "PDF",
+      "current_text": "PDF",
+      "findings": [],
+      "assessment": "Correct retention: PDF stays Latin throughout the catalogue (ui.canvas.pdf_preview.pdf = PDF：{title}; ui.canvas.pdf_preview.this_pdf_could_not_be_opened = 无法打开此PDF). 3 cells.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.kind.pptx",
+      "source": "PPTX",
+      "current_text": "PPTX",
+      "findings": [],
+      "assessment": "Correct retention: PPTX is a format acronym and names the format, which is the badge's job; the prose word for the medium is 演示文稿 (ui.library.preview.pptx_opening = 正在打开演示文稿), and using that in a badge would name the category rather than the format. 4 cells.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.kind.spreadsheet",
+      "source": "Spreadsheet",
+      "current_text": "表格",
+      "findings": [
+        "F2"
+      ],
+      "assessment": "Meaning preserved but weaker than the corpus's own word — see F2.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.kind.text",
+      "source": "Text",
+      "current_text": "文本",
+      "findings": [],
+      "assessment": "Correct: 文本 is the plain-text noun already used for the same concept in ui.library.preview.pptx_text = 文本 and ui.onboarding.tour.attachments.body.2 = 文本文件. 2 chars / 4 cells.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.kind.video",
+      "source": "Video",
+      "current_text": "视频",
+      "findings": [],
+      "assessment": "Correct: 视频 matches ui.library.category.video = 视频 and ui.canvas.files.videos = 视频. 2 chars / 4 cells.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.tag_category.custom",
+      "source": "Custom",
+      "current_text": "自定义",
+      "findings": [],
+      "assessment": "Correct: 自定义 is the corpus's word for \"custom\" (ui.settings.appearance.editor.custom_group = 自定义主题). 3 chars / 6 cells.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.tag_category.format",
+      "source": "Format",
+      "current_text": "格式",
+      "findings": [],
+      "assessment": "Correct: 格式 is unambiguous and unused elsewhere in the Library namespace for a different concept. 2 chars / 4 cells.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.tag_category.project",
+      "source": "Project",
+      "current_text": "项目",
+      "findings": [],
+      "assessment": "Correct: 项目 matches the whole Projects feature (ui.projects.*, 61 occurrences) and does not disturb the \"not the Projects page\" role note. 2 chars / 4 cells.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.tag_category.source",
+      "source": "Source",
+      "current_text": "来源",
+      "findings": [],
+      "assessment": "Correct: 来源 duplicates ui.library.filter.source = 来源, exactly as the English duplicates \"Source\" across the two roles; the note asks for role awareness, not a different word. 2 chars / 4 cells.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.tag_category.status",
+      "source": "Status",
+      "current_text": "状态",
+      "findings": [],
+      "assessment": "Correct: 状态 duplicates ui.library.filter.status = 状态, mirroring EN \"Status\"/\"Status\". 2 chars / 4 cells.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.tag_category.topic",
+      "source": "Topic",
+      "current_text": "主题",
+      "findings": [],
+      "assessment": "Correct: 主题 is already the catalogue's word for a topic (ui.teamBridge.create.topic = 主题（可选）) and is the natural heading for subject-matter tags; its other life as \"theme\" in ui.settings.appearance.* is a pre-existing corpus fact, not something this key can avoid. 2 chars / 4 cells.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.tag_category.type",
+      "source": "Type",
+      "current_text": "类型",
+      "findings": [
+        "F1"
+      ],
+      "assessment": "Grammatical and short, but it collides with the corpus's word for \"Kind\" — see F1.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.preview.unsupported_generic",
+      "source": "This file has no in-app preview here.",
+      "current_text": "该文件在此处没有应用内预览。",
+      "findings": [],
+      "assessment": "Correct and well-formed: a full sentence with 。 per the guide, exactly parallel to its sibling ui.library.preview.unsupported = 此处的{kind}文件没有应用内预览。, names no kind, carries no placeholder, 14 chars / 28 cells inside a max-w-90 paragraph.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    }
+  ],
+  "english_metadata_check": {
+    "verdict": "accurate on all 20 delta entries except one imprecise sentence (N1); no wrong render-site claim",
+    "detail": "Roles were checked against the code: KIND_LABEL_KEYS/TAG_CATEGORY_LABEL_KEYS in src/renderer/src/features/library/library-model.ts map the 12 kinds and 7 tag categories, library-card.tsx renders the kind beside the file size in the card caption (library-card.tsx:366-368), library-filter-rail.tsx renders the tag-category heading in the rail, and library-viewers.tsx:105-112 is the preview header/body case. The note \"the raw machine value is shown only as a data fallback\" matches libraryKindLabel()'s Object.hasOwn fallback. The 12-kind and 7-category enumerations match the key list exactly.",
+    "observations": [
+      "N1 (nit, English metadata only): ui.library.kind.other's note says the value is \"Rendered inside the sentence ui.library.preview.unsupported ONLY via the generic fallback\", but library-viewers.tsx branches on kind === \"other\" and calls ui.library.preview.unsupported_generic, so 其他 never enters the {kind} slot. Harmless for zh-CN; stated advice in the note is what a translator would act on in a gendered locale."
+    ]
+  },
+  "mechanical": {
+    "validator_commands_run": [
+      "node scripts/i18n/generate.mjs --check -> src/i18n/keys.gen.ts is byte-identical to a fresh generation. exit 0",
+      "node scripts/i18n/check-duplicates.mjs -> ok — 1419 file(s) scanned, 0 duplicate key(s). exit 0",
+      "node scripts/i18n/context-parity.mjs -> ok — every English key is covered, apart from 129 allowed gap(s) in 4 namespace(s) (shrink-only). exit 0",
+      "node scripts/i18n/check-strings.mjs -> ok — 1653 file(s) scanned, 0 literal(s) at or below the baseline; 40 literal(s) in the data shapes, all listed in i18n/literal-allowance.json (shrink-only). exit 0",
+      "node scripts/i18n/ledger-check.mjs -> FAILED — 21 finding(s) across 1099 ledger entr(ies); the 3 zh-CN/ui.library rows are stale source_sha256/target_sha256 plus a stale-audit note. Expected pre-audit state: the other six locales fail identically. No ledger write was run by this auditor (read-only task).",
+      "python3 zh-CN-ds-effb6a3eb86a-check.py -> digest block reproduced in zh-CN-ds-effb6a3eb86a.audit.log; 0 hash mismatches, 179/179 key parity, 20/20 delta keys, no invisible characters."
+    ],
+    "json_valid": true,
+    "key_sets_identical_to_english": true,
+    "keys_added_or_removed_vs_origin_main": "none removed and none altered: git diff 0e12072d2b3..HEAD -- src/i18n/catalogues/zh-CN/ui.library.json shows 21 added lines and 1 deleted line, and that single deletion is the trailing-comma rewrite of the last pre-existing key (ui.library.time.years_y_ago). 20 keys added, 0 changed.",
+    "placeholder_parity": "n/a — none of the 20 delta values carries a placeholder in English or in the target; ICU/plural/select not needed",
+    "hash_binding": "3/3 recomputed sha256 entries for this locale match expected-hashes.json byte-for-byte (en 065ac47c67e2…, zh-CN 686dfeeaa8ee…, context 2fe63e83…); 0 mismatches. The remaining 6 locale entries belong to their own auditors and were left to them."
+  },
+  "unverified": [
+    "No production ICU parser/formatter, Electron/React run, screen-reader session or rendered-frame check: read-only, no-build, no-server, no-test-tree constraint. Grammar, register and terminology judgments are native-reader reasoning over the catalogue plus the render sites named above, not runtime output.",
+    "No ledger write, tracked evidence retention, PR comment or commit: this task writes only to its own scratchpad. The manager retains these deliverables under i18n/audits/evidence/zh-CN/ui.library/<audit-id>/ and records the ledger row with scripts/i18n/ledger-assemble.mjs.",
+    "No independent UI measurement of CJK truncation: badge lengths are counted in characters and East-Asian cells from the catalogue values, not observed in a painted frame."
+  ],
+  "receipt_contract_review": "Root, per-namespace, auditor and translator field sets mirror the model receipt _s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/fr-ds-e3c562b03258.json; the single ui.library namespace block carries status, result, source_sha256, target_sha256, input_hashes and findings. Every JSON file was re-parsed with json.load after writing. No field-level schema validator exists for receipts, and none was implied.",
+  "audit_notes_not_execution_log": false,
+  "execution_log": "zh-CN-ds-effb6a3eb86a.audit.log"
+}

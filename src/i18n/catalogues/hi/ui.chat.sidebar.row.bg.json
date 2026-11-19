@@ -1,0 +1,8 @@
+{
+	"ui.chat.sidebar.row.bg.subagents": "{count, plural, one {{count, number, ::group-off} उप-एजेंट} other {{count, number, ::group-off} उप-एजेंट}}",
+	"ui.chat.sidebar.row.bg.jobs": "{count, plural, one {{count, number, ::group-off} जॉब} other {{count, number, ::group-off} जॉब}}",
+	"ui.chat.sidebar.row.bg.running": "{items} जारी",
+	"ui.chat.sidebar.row.bg.queued": "{count, plural, one {{count, number, ::group-off} कतार में} other {{count, number, ::group-off} कतार में}}",
+	"ui.chat.sidebar.row.bg.subagents_queued": "{count, plural, one {{count, number, ::group-off} उप-एजेंट कतार में} other {{count, number, ::group-off} उप-एजेंट कतार में}}",
+	"ui.chat.sidebar.row.bg.waiting": "पृष्ठभूमि कार्य की प्रतीक्षा"
+}

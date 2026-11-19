@@ -1,0 +1,192 @@
+{
+ "schema": 1,
+ "kind": "translation-audit-record",
+ "audit_id": "s16f-r3-d29293b5",
+ "locale": "vi",
+ "namespace": "ui.chat.canonical",
+ "file_group": "S16f generation-card labels (10 keys: sound.batch.*, sound.cost.*, media.*_label, supplement.sound_fallback_label)",
+ "audit_date": "2026-11-11",
+ "round": 3,
+ "key_count": 10,
+ "head": "af876eb052db12ec587ef6353aecebd2c769ae22",
+ "worktree": "~/local-operator-ui/.worktrees/i18n-s16a (manager-owned, read-only for this audit)",
+ "authority": {
+  "glossary": "~/local-operator i18n/glossary.md @ origin/main",
+  "style_guide": "~/local-operator i18n/style-guides/vi.md @ origin/main"
+ },
+ "change_vs_round2": [
+  "supplement.sound_fallback_label: 'Âm thanh đã tạo' -> 'Âm thanh được tạo'"
+ ],
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "d29293b521fd",
+  "instance": "d29293b521fd",
+  "model": "deepseek/deepseek-flash",
+  "fallback": false,
+  "actual_model_source": "Harness model header for session d29293b521fd reported deepseek/deepseek-flash for the whole run; no provider fallback notice, no model pin change.",
+  "independent_from_translator_session": true,
+  "independence": "Did not translate or implement anything. Wrote no file inside the repository: no edits, commits, pushes or PR posts. Only this bundle and the receipt, in session scratch."
+ },
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+   "sha256": "12ec2698434dcb39497e288af62d11d70f0fd71d494a9becf3fd611d6568bbdd"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+   "sha256": "95aa203759416c93180b7eb4967e6fcf5bce0dffe20e9d005b431c645e9e11e6"
+  },
+  "vi": {
+   "path": "src/i18n/catalogues/vi/ui.chat.canonical.json",
+   "sha256": "65beedffec6a88924e977f5aadafbf52ed4cfb508d46975481273c7103e12900"
+  }
+ },
+ "landed_pair_hashes": [
+  {
+   "key": "ui.chat.canonical.sound.batch.item_status",
+   "en_sha256": "e358c22c488a70710e7bd3bd9e3c6211286461e1dacb8072367e49e73f559f10",
+   "vi_sha256": "6bbdfdb01cc6426c3f5c025703739683d4f076cdf35c95b4a2e322b9f4297f73"
+  },
+  {
+   "key": "ui.chat.canonical.sound.batch.summary",
+   "en_sha256": "09ae93966cdc6b3aa654ed80309002e7b6fb98d65d8011263b6018544764c6a1",
+   "vi_sha256": "ae3e310730d99bdcb460eb5ef7b4baf91b30763c9a960a66c69906e17ef67286"
+  },
+  {
+   "key": "ui.chat.canonical.sound.batch.latest_update",
+   "en_sha256": "427de0b397f0033745908950e3edcbd4931f51b6d4ee73547a72eb039fba74b2",
+   "vi_sha256": "53172f9764c32c0ca523542de59d1b82d8f34533fecc64e978bc8ee6aa5b5683"
+  },
+  {
+   "key": "ui.chat.canonical.sound.cost.unknown",
+   "en_sha256": "a34c87949511c3c4c516818f52886f4ece1067df07cf37d2ad397695d31bbd77",
+   "vi_sha256": "56c843e8ede7e35ac87a3d109955b4b7aeafef7eef02c42a7addd7eae2a2131a"
+  },
+  {
+   "key": "ui.chat.canonical.sound.cost.no_charge",
+   "en_sha256": "34fb349281118da77d1d41683e46d00f98e4afb1b86a1a80374358f57dc338e7",
+   "vi_sha256": "9d497ca62d1e73bb5b9ac4a2548ee27283c5506f81bb176822dae583a98eb442"
+  },
+  {
+   "key": "ui.chat.canonical.sound.cost.estimated_zero",
+   "en_sha256": "7a339de1c5eb417ab59accd72d89b9d84c7fbc808934bf2a21f6188868e85387",
+   "vi_sha256": "18213dc05daecb3ea08f41298642aaf3f9f217b9a402991592fdb2f790c53dfe"
+  },
+  {
+   "key": "ui.chat.canonical.sound.cost.batch_unknown",
+   "en_sha256": "8aabea74c95580d6499ea0030eb458088b49a68b209ce67334bd30efbf5d48fd",
+   "vi_sha256": "234a8b300784e059ae5c27937c8146912d889e09d26f8206e1daf1ea1e3a76ae"
+  },
+  {
+   "key": "ui.chat.canonical.media.image_label",
+   "en_sha256": "47631358ab381012419b4ee7b6159a1a88df04875314d2e205372f7b8890a78e",
+   "vi_sha256": "034d648845ec64223155559186d2ed69b9d3d59865752253c6685f983145a8ca"
+  },
+  {
+   "key": "ui.chat.canonical.media.sound_label",
+   "en_sha256": "50eaf18785e46954337a6e7c08dab1b016a4cd9bc0d11e03774ed24c33cf44a2",
+   "vi_sha256": "a8fc5d8445eaa46ff7f9d0fde5796f059e735c0630c396d426451613f6a019ca"
+  },
+  {
+   "key": "ui.chat.canonical.supplement.sound_fallback_label",
+   "en_sha256": "553bf2c11939d42e948de5fa4ea288b269eeda0b3090c65f567f625f9938cab1",
+   "vi_sha256": "1caf58a6f041028230fdf0a927f3b5183d5fd08cd9b6a888b683665eab4679f3"
+  }
+ ],
+ "artifacts": {
+  "record.json": {
+   "path": "i18n/audits/evidence/vi/ui.chat.canonical/s16f-r3-d29293b5/record.json",
+   "sha256": "self"
+  },
+  "audit.log": {
+   "path": "i18n/audits/evidence/vi/ui.chat.canonical/s16f-r3-d29293b5/audit.log",
+   "sha256": "8a84b9802cbeab5942633e2a06e0ec2b4fc2654d1eec31305308ce512221713e",
+   "kind": "execution-log",
+   "note": "Commands actually run in a scratch mirror of head af876eb0, with their real output and exit codes."
+  },
+  "report.md": {
+   "path": "i18n/audits/evidence/vi/ui.chat.canonical/s16f-r3-d29293b5/report.md",
+   "sha256": "675042e344f50169fc176d369cb1fa554495df0ef8d3e853f8a93e6880590572",
+   "kind": "audit-notes-not-execution-log"
+  },
+  "receipt.json": {
+   "path": "i18n/receipts/d29293b521fd.json",
+   "sha256": "445c6bb7d6cf81a868de174e3a8b0118bd123d986be20096964587deceb3dcf5",
+   "kind": "binding-receipt",
+   "note": "Copied byte-for-byte by ledger-assemble into i18n/receipts/d29293b521fd.json; hash verified after copy. Amending these receipt bytes is refused by ledger-assemble (one run = one immutable receipt), so record.json binds the receipt, not the reverse."
+  }
+ },
+ "execution": {
+  "gates": [
+   {
+    "command": "node scripts/i18n/generate.mjs --check",
+    "result": "pass",
+    "output": "keys.gen.ts is byte-identical to a fresh generation."
+   },
+   {
+    "command": "node scripts/i18n/check-duplicates.mjs",
+    "result": "pass",
+    "output": "ok - 1428 file(s) scanned, 0 duplicate key(s)"
+   },
+   {
+    "command": "node scripts/i18n/context-parity.mjs",
+    "result": "pass",
+    "output": "ok - every English key covered, 129 allowed gaps in 4 namespaces (shrink-only)"
+   },
+   {
+    "command": "node scripts/i18n/check-coverage.mjs",
+    "result": "pass",
+    "output": "ok - 7 gated languages over 158 namespaces; 0 allowed keys remain"
+   },
+   {
+    "command": "node --test scripts/i18n/locale-parity.test.mjs",
+    "result": "pass",
+    "output": "44 tests, 44 pass, 0 fail"
+   },
+   {
+    "command": "node --test scripts/i18n/generation-card-labels.test.mjs scripts/i18n/generation-card-locale-switch.test.mjs scripts/i18n/vi-activation.test.mjs",
+    "result": "pass",
+    "output": "32 tests, 32 pass, 0 fail (incl. mounted render + locale-switch repaint)"
+   },
+   {
+    "command": "own ICU grid (IntlMessageFormat, locale vi), 761 cases",
+    "result": "pass",
+    "output": "0 throws, 0 leftovers, placeholders and branch names identical to English, vi other-only plurals complete, NFC"
+   },
+   {
+    "command": "negative controls on in-memory mutants",
+    "result": "pass",
+    "output": "missing other -> THREW MISSING_OTHER_CLAUSE; renamed placeholder -> THREW; unclosed brace -> THREW; NFD detected"
+   }
+  ],
+  "ledger_assemble": {
+   "command": "node scripts/i18n/ledger-assemble.mjs --locale vi --file src/i18n/catalogues/vi/ui.chat.canonical.json --auditor-instance d29293b521fd --auditor-model deepseek/deepseek-flash --result clean --receipt receipt-vi-s16f-r3.json --scope <see row> --note '<201 chars>' --date 2026-11-11",
+   "result": "status audited | clean, 0 blocker, 0 major, 0 minor, 0 nit",
+   "prior_audits": "moved to superseded (row had recorded older bytes)"
+  },
+  "ledger_check": {
+   "command": "node scripts/i18n/ledger-check.mjs",
+   "result": "0 findings for vi",
+   "note": "gate reports 18 findings for es/fr/hi/ru/ur/zh-CN ui.chat.canonical rows, whose S16f re-audits have not landed in this checkout; none are vi."
+  }
+ },
+ "current_report_verdict": {
+  "status": "passed",
+  "result": "clean",
+  "unresolved_blocker_major_count": 0,
+  "finding_ids": [],
+  "info_observation_ids": [
+   "vi-s16f-r3-i1"
+  ]
+ },
+ "committed": false,
+ "replacement": null,
+ "original_lost_evidence": {
+  "status": "none-lost",
+  "original_path": null,
+  "expected_original_sha256": null
+ },
+ "backdated": false,
+ "new_report_is_original": true,
+ "new_report_is_historical_R2_recreation": false
+}

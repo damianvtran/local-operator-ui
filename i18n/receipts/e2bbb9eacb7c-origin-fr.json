@@ -1,0 +1,77 @@
+{
+  "schema": 1,
+  "auditor": "i18n-auditor (lopdev team; session e2bbb9eacb7c; independent fr linguistic auditor, not the translator)",
+  "agent": "i18n-auditor (lopdev team; session e2bbb9eacb7c; independent fr linguistic auditor, not the translator)",
+  "model": "anthropic/claude-sonnet-5-5",
+  "model_provenance": "Model as shown in this session's runtime header (anthropic/claude-sonnet-5-5). No fallback used or claimed; not independently verified beyond the runtime header.",
+  "fallback": "none",
+  "session": "e2bbb9eacb7c",
+  "job_id": null,
+  "job_identity_note": "Delegated lopdev i18n-auditor task; no separate background job id was supplied. The session id identifies this auditor.",
+  "role": "i18n-auditor / independent translation auditor",
+  "independence": "I did not author or edit this translation. I read the fr style guide and glossary, the English source with its context sidecar, the committed fr target, and the fr starters, builtin-alert and origin.changed keys for terminology.",
+  "locale": "fr",
+  "branch": "fix/agent-transport-copy",
+  "head": "30bdd7aedbce47dc0c0c1506103368e8225fb839",
+  "audited_at": "82ad0474cf9",
+  "audited_at_note": "The linguistic audit was performed on the committed bytes at 82ad0474cf9. At head 30bdd7aedbc the three input blobs are identical (same git blob ids and sha256); only the es catalogue changed in between.",
+  "pr": "damianvtran/local-operator-ui#1594",
+  "date": "2026-11-02",
+  "status": "passed",
+  "instance": "e2bbb9eacb7c-origin-fr",
+  "namespace": "ui.agents.detail.origin",
+  "result": "clean-with-findings",
+  "source_sha256": "bbb0eeac68c5ccd14988bffab2502698cb14ff6871a0a2b2212dd779fd67efb4",
+  "context_sha256": "470e2004a28b867981fe7ae6bd55ce81bec490cab63553490548503ff181b8f5",
+  "target_sha256": "fe45663c6ee13e62c863417b03a1b991dca5ac54da7c4c42384742a10d60cb55",
+  "paths": {
+    "source": "src/i18n/catalogues/en/ui.agents.detail.origin.json",
+    "context": "src/i18n/catalogues/en/ui.agents.detail.origin.context.json",
+    "target": "src/i18n/catalogues/fr/ui.agents.detail.origin.json"
+  },
+  "keys_read": 3,
+  "keys_in_file": 3,
+  "linguistic_scope_keys": [
+    "ui.agents.detail.origin.shipped_with_app",
+    "ui.agents.detail.origin.installed_starter",
+    "ui.agents.detail.origin.compare_packaged"
+  ],
+  "starter_question": {
+    "choice": "installed_starter renders 'starter' as 'agent intégré' (reuse of the built-in-agent wording).",
+    "existing_word": "fr starters catalogue already names the concept 'agent intégré': ui.agents.starters.action.all_builtins 'Installer tous les agents intégrés'; ui.agents.starters.available '{count} agent intégré disponible'; ui.agents.starters.progress.accessible 'Installation des agents intégrés'; ui.agents.detail.alert.builtin_title 'Agent intégré'. Neither i18n/glossary.md nor i18n/style-guides/fr.md has a starter/packaged/built-in entry.",
+    "verdict": "Defensible and consistent with the sidecar note (keep consistent with the starters catalogue); no change required."
+  },
+  "findings": [
+    {
+      "id": "A-1",
+      "severity": "minor",
+      "key": "ui.agents.detail.origin.installed_starter",
+      "text": "Installé à partir d’un agent intégré.",
+      "note": "'à partir d’un agent' can faintly read as agent-derived-from-agent, and 'packaged' is carried only by 'intégré'. Optional: 'Installé depuis un agent intégré.' Keeping the current text is acceptable because it matches the starters catalogue."
+    },
+    {
+      "id": "A-2",
+      "severity": "minor",
+      "key": "ui.agents.detail.origin.compare_packaged",
+      "text": "Comparer avec les instructions fournies",
+      "note": "'fournies' alone can read as 'instructions you supplied', the opposite of the packaged original. Suggested: 'Comparer avec les instructions d’origine' (or '… fournies avec l’application'). Mirrors origin.changed 'copie fournie', where context disambiguates, so keeping it is defensible."
+    },
+    {
+      "id": "A-3",
+      "severity": "nit",
+      "key": "ui.agents.detail.origin.shipped_with_app",
+      "text": "Fourni avec l’application.",
+      "note": "Correct and idiomatic; consistent with ui.agents.detail.alert.builtin_body. No change suggested."
+    }
+  ],
+  "scope": "WHOLE-NAMESPACE LINGUISTIC AUDIT of the three keys of ui.agents.detail.origin (shipped_with_app, installed_starter, compare_packaged). It clears the catalogue linguistically (mechanical, accuracy, register, terminology, fit by length); it does NOT clear rendered layout, wrapping or live UI, and no rendered frame was inspected.",
+  "verified": [
+    "Valid JSON; key set equals English (3 keys, no adds/drops); no placeholders, plural arms or markup in source or target.",
+    "Apostrophes are U+2019 per the fr style guide; no U+202F needed (no : ; ! ? in the strings); the two sentences end in a full stop, the label has none, as the sidecar asks.",
+    "Gender agreement: 'Installé' (masculine) agrees with the elided subject 'agent'.",
+    "'Packaged' is rendered 'fourni(e)' in origin.changed, builtin_body and compare_packaged, and the agent noun as 'intégré' throughout: no second word for an already-named concept.",
+    "shipped_with_app and installed_starter remain distinguishable: 'Fourni avec l’application' (the agent itself shipped) vs 'Installé à partir d’un agent intégré' (an installed copy of a built-in).",
+    "CORRECTION: the hashes in my earlier prose report were wrong (computed over doubled bytes via tee to stdout). The hashes in this receipt were re-derived from git show 30bdd7aedbc:<path> piped directly to shasum, and equal the on-disk bytes of this worktree; git blob ids are identical at 82ad0474cf9 and 30bdd7aedbc.",
+    "I did not run the repo validator (pnpm check-i18n) or the ledger command for the audit itself; deriveReceiptAudit was run on this receipt afterwards."
+  ]
+}

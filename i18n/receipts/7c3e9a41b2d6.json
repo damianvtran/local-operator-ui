@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "locale": "ru",
+  "date": "2026-10-24",
+  "status": "passed",
+  "audit_kind": "primary-independent-translation-audit",
+  "scope": "31 new failure-panel keys in ui.common.updates; English source + context; full-file key/placeholder mechanics plus semantic audit of the delta. Translator: amazon-bedrock/us.anthropic.claude-sonnet-5-5.",
+  "auditor": {
+    "agent": "translation-auditor",
+    "instance": "7c3e9a41b2d6",
+    "model": "amazon-bedrock/us.anthropic.claude-opus-5-5"
+  },
+  "model_provenance": {
+    "actual_audit_model": "amazon-bedrock/us.anthropic.claude-opus-5-5",
+    "fallback_used": false
+  },
+  "independence": {
+    "translator_agent": "i18n-translator",
+    "translator_model": "amazon-bedrock/us.anthropic.claude-sonnet-5-5",
+    "translator_receipt": "none: CLI run, no portable translator receipt"
+  },
+  "reference_files": {
+    "docs/I18N.md": {
+      "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+    },
+    "src/i18n/catalogues/en/ui.common.updates.json": {
+      "sha256": "41a211c8a83990a9e2c168a44ec706c6462326131ae7d5b3f666595b1b60e69c"
+    },
+    "src/i18n/catalogues/en/ui.common.updates.context.json": {
+      "sha256": "68258a429ca217413a13d43641d1b9642105e802648bc1a99a02a42bf3ee706b"
+    },
+    "scripts/i18n/ledger-rules.mjs": {
+      "sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6"
+    }
+  },
+  "namespaces": {
+    "ui.common.updates": {
+      "status": "passed",
+      "source_sha256": "41a211c8a83990a9e2c168a44ec706c6462326131ae7d5b3f666595b1b60e69c",
+      "target_sha256": "e96e121c8fbc25ab3cd18c6991d2fb90e0c7d485fc89866b20b2edd1ddd3ad25",
+      "context_sha256": "68258a429ca217413a13d43641d1b9642105e802648bc1a99a02a42bf3ee706b",
+      "source_path": "src/i18n/catalogues/en/ui.common.updates.json",
+      "target_path": "src/i18n/catalogues/ru/ui.common.updates.json",
+      "context_path": "src/i18n/catalogues/en/ui.common.updates.context.json",
+      "keys": 158,
+      "semantic_scope": {
+        "mechanical_total": 158,
+        "semantic_mode": "delta audit: all 31 new failure-panel keys read in this locale; unchanged keys covered by the preceding audited row (superseded)."
+      },
+      "findings": [
+        {
+          "severity": "NIT",
+          "key": "ui.common.updates.update_notification.failure_cause_network",
+          "issue": "\"не удался сетевой запрос\" is correct but a little bookish. \"произошла ошибка сетевого запроса\" or \"сетевой запрос не выполнен\" would read more naturally in plain UI voice. This is optional."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.common.updates.update_notification.failure_remedy_ownership",
+          "issue": "\"попросите владельца\" is shorter than the English \"ask that account\" but keeps its meaning, since the clause before it already names the owning account. Fine as written; noted only for traceability."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.common.updates.update_notification.failure_remedy_refused_checkout",
+          "issue": "\"чекаут\" is a borrowed developer term. It matches the ru catalogue's existing usage (ui.common.updates.json lines 92 and 137), so consistency holds and no change is needed."
+        }
+      ]
+    }
+  }
+}

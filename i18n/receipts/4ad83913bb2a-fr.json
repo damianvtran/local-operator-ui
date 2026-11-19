@@ -1,0 +1,113 @@
+{
+	"schema": 1,
+	"date": "2026-10-30",
+	"model": "anthropic/claude-opus-5-5",
+	"model_provenance": "Ran as anthropic/claude-opus-5-5 (the model named in the session's system prompt); no fallback announced or observed.",
+	"locale": "fr",
+	"namespace": "ui.teamBridge",
+	"integration": {
+		"pr": "damianvtran/local-operator-ui#1532",
+		"branch": "feat/tb-mention-autocomplete",
+		"head_at_audit": "2b9c44c6ba3260ec4ed53a63baba8d0d5b5dee17",
+		"round": 2,
+		"worktree": "~/local-operator-ui/.worktrees/tb-mentions"
+	},
+	"scope": {
+		"changed": [
+			"ui.teamBridge.mentions.tag.not_member",
+			"ui.teamBridge.mentions.notice.not_member"
+		],
+		"added": [
+			"ui.teamBridge.mentions.notice.pending",
+			"ui.teamBridge.mentions.notice.invited"
+		],
+		"removed": [
+			"ui.teamBridge.mentions.agent_secondary"
+		],
+		"delta_verified": "Per locale, git diff 9304625..HEAD of ui.teamBridge.json changes exactly these 5 keys (4 values + agent_secondary removed); all other values are byte-identical to the bytes the superseded a72fc22aa8e8/93e37e001a89 audits read. git diff 4a4ea10 2b9c44c -- src/i18n i18n is empty (merge of origin/main touched no i18n file).",
+		"references": [
+			{
+				"path": "~/local-operator/i18n/style-guides/fr.md",
+				"sha256": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226"
+			},
+			{
+				"path": "~/local-operator/i18n/glossary.md",
+				"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+			}
+		]
+	},
+	"sha256": {
+		"fr": "17af0aa71b7a5a00827c67733b568853b7358a395022d54e8cabe15af1b22d77",
+		"en": "872abba111887ee71c0f4f079bdb3747f564b93abc85639b13b43d864a9372cb"
+	},
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "872abba111887ee71c0f4f079bdb3747f564b93abc85639b13b43d864a9372cb"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/fr/ui.teamBridge.json",
+			"sha256": "17af0aa71b7a5a00827c67733b568853b7358a395022d54e8cabe15af1b22d77"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "f6b472c8df1b84cc9611728de26d5fd8776dd36f3aec9f431f12f505ce1fed42"
+		}
+	},
+	"values_audited": {
+		"ui.teamBridge.mentions.tag.not_member": "pas dans cette conversation",
+		"ui.teamBridge.mentions.notice.not_member": "{name} ne fait pas partie de cette conversation et ne recevra donc pas de notification.",
+		"ui.teamBridge.mentions.notice.pending": "{name} a reçu une invitation mais n’a pas encore rejoint la conversation, et ne recevra donc pas de notification.",
+		"ui.teamBridge.mentions.notice.invited": "Invitation envoyée à {name}, qui ne recevra pas de notification avant d’avoir rejoint la conversation."
+	},
+	"mechanical_checks": {
+		"placeholders": "{name} preserved exactly, matching English; tag.not_member has none",
+		"nfc": "all values NFC",
+		"bidi_or_invisible_controls": "none (U+200B-U+200F, U+202A-U+202E, U+2066-U+2069 scan empty)",
+		"key_set": "identical to English; agent_secondary absent",
+		"length": "notice text wraps; tag truncates in the 22rem row; judged in characters, no rendered-frame claim"
+	},
+	"audit_notes_not_execution_log": true,
+	"receipt_kind": "locale-audit, round-2 delta audit of ui#1532 remediation copy (4 mentions.* values)",
+	"auditor": "task",
+	"agent": "task",
+	"session": "4ad83913bb2a",
+	"instance": "4ad83913bb2a-fr",
+	"audit_id": "teambridge-mentions-r2-audit-4ad83913bb2a-fr",
+	"status": "passed",
+	"result": "clean",
+	"independence": "Independent auditor: session 4ad83913bb2a (team lopdev, role task, assignment 'i18n re-audit ui#1532'). The values were self-translated by the lopdev coder in 4a4ea10; this session did not author them.",
+	"remediated_findings": [
+		{
+			"severity": "minor",
+			"id": "RTBM-FR-1",
+			"key": "ui.teamBridge.mentions.notice.not_member",
+			"before": "{name} ne fait pas partie de cette conversation et ne sera donc pas notifié.",
+			"after": "{name} ne fait pas partie de cette conversation et ne recevra donc pas de notification.",
+			"reason": "«ne sera donc pas notifié» assigns masculine gender to an unknown person or agent (the TBM-FR-3 class from round 1); «ne recevra donc pas de notification» is neutral.",
+			"disposition": "fixed in this audit commit (chore(i18n): re-audit team-bridge mention notice copy); the receipt-bound target bytes contain the after value"
+		},
+		{
+			"severity": "minor",
+			"id": "RTBM-FR-2",
+			"key": "ui.teamBridge.mentions.notice.pending",
+			"before": "{name} est invité mais n’a pas encore rejoint la conversation, il ne sera donc pas notifié.",
+			"after": "{name} a reçu une invitation mais n’a pas encore rejoint la conversation, et ne recevra donc pas de notification.",
+			"reason": "«est invité … il ne sera donc pas notifié» is masculine twice; reworded to «a reçu une invitation … et ne recevra donc pas de notification».",
+			"disposition": "fixed in this audit commit (chore(i18n): re-audit team-bridge mention notice copy); the receipt-bound target bytes contain the after value"
+		},
+		{
+			"severity": "minor",
+			"id": "RTBM-FR-3",
+			"key": "ui.teamBridge.mentions.notice.invited",
+			"before": "{name} a été invité. Il ne sera pas notifié tant qu’il n’aura pas rejoint la conversation.",
+			"after": "Invitation envoyée à {name}, qui ne recevra pas de notification avant d’avoir rejoint la conversation.",
+			"reason": "«a été invité. Il … qu’il n’aura pas» is masculine three times; «Invitation envoyée à {name}, qui ne recevra pas de notification avant d’avoir rejoint la conversation» is neutral.",
+			"disposition": "fixed in this audit commit (chore(i18n): re-audit team-bridge mention notice copy); the receipt-bound target bytes contain the after value"
+		}
+	],
+	"remediated_findings_note": "Raised by this auditor and fixed before the receipt was bound; listed for the record, not counted, because the bytes this receipt names no longer contain them.",
+	"findings": [],
+	"verdict": "clean on the bound bytes; 3 finding(s) remediated in-audit",
+	"evidence_record": "i18n/audits/evidence/fr/ui.teamBridge/teambridge-mentions-r2-audit-4ad83913bb2a-fr/record.json"
+}

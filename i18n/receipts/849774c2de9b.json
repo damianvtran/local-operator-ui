@@ -1,0 +1,107 @@
+{
+  "locale": "vi",
+  "branch": "i18n/slice-transcript",
+  "head": "2cf1ea7b5fd95b85d6c8bfaa264f6bd3c4e5c3b9",
+  "base": "6031bc9ad71e1b9fc83e0d1a9714e52a19301913",
+  "instance": "849774c2de9b",
+  "agent": "reviewer",
+  "model": "openai/gpt-6.1-sol",
+  "auditor": {
+    "agent": "reviewer",
+    "instance": "849774c2de9b",
+    "session": "849774c2de9b",
+    "model": "openai/gpt-6.1-sol",
+    "independent_from_translator": true,
+    "authored_translation": false,
+    "requested_model": "anthropic/claude-sonnet-5-5",
+    "fallback": true,
+    "model_source": "Explicit session model-switch notices: quota failure; final served model openai/gpt-6.1-sol"
+  },
+  "audit_id": "s2a-vi-2cf1ea7b5fd-849774c2de9b",
+  "audit_date": "2026-11-09",
+  "status": "passed",
+  "result": "clean",
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [],
+    "nit": []
+  },
+  "namespaces": {
+    "ui.chat.canonical": {
+      "namespace": "ui.chat.canonical",
+      "status": "passed",
+      "result": "clean",
+      "sha256": {
+        "en": "cd755f73444d7acff3e681c35bbf7e0da30bc61851f28ad711904f23c20c693a",
+        "vi": "9dddf80e887fdd631860e64f3dd56796b1babeaf5bbdd9f0e4b7db7fa17e9bbf",
+        "context": "4c2a77ff391e074b4561f71f9ceaf2690362c89880b259cba69e6a58832d80dc"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.canonical.json",
+        "vi": "src/i18n/catalogues/vi/ui.chat.canonical.json",
+        "context": "src/i18n/catalogues/en/ui.chat.canonical.context.json"
+      },
+      "reviewed_keys": [
+        "ui.chat.canonical.transcript.earlier_text_offscreen",
+        "ui.chat.canonical.transcript.interrupted",
+        "ui.chat.canonical.transcript.no_answer_given",
+        "ui.chat.canonical.transcript.not_run",
+        "ui.chat.canonical.transcript.answer_may_be_missing",
+        "ui.chat.canonical.transcript.worked",
+        "ui.chat.canonical.transcript.worked_for",
+        "ui.chat.canonical.transcript.job_suffix"
+      ],
+      "keys_audited": 8,
+      "scope_note": "Delta-only linguistic audit; entire-namespace hashes bind the changed-key review, not a new full-namespace review.",
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      },
+      "record_reference": "i18n/audits/evidence/vi/ui.chat.canonical/s2a-vi-2cf1ea7b5fd-849774c2de9b/record.json",
+      "record_sha256": "941e26550c308826e8e2667ef7f9b27a933c3d1d5d1f4b86cab3da46d22cf1af",
+      "report_reference": "i18n/audits/evidence/vi/ui.chat.canonical/s2a-vi-2cf1ea7b5fd-849774c2de9b/report.md",
+      "report_sha256": "e08b39bb6caf0b1c689b68610f251729dbd43c8fcc8bc90c8e1fa9e9fb0627fa"
+    },
+    "ui.agents.upload": {
+      "namespace": "ui.agents.upload",
+      "status": "passed",
+      "result": "clean",
+      "sha256": {
+        "en": "388f6b2348eb76b3c3f6ac074ce32434fe75a31a9a41aa5eaead59c34caa97ab",
+        "vi": "cbf960f0f8b65894b0bd49b966e4f60b4973ef97e23acd0bed75609020f625fd",
+        "context": "b2cff9fc8975e5bc6c394a39a9cbd464a53304f6be9657f80446801c0072734f"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.agents.upload.json",
+        "vi": "src/i18n/catalogues/vi/ui.agents.upload.json",
+        "context": "src/i18n/catalogues/en/ui.agents.upload.context.json"
+      },
+      "reviewed_keys": [
+        "ui.agents.upload.failure.publish_fallback"
+      ],
+      "keys_audited": 1,
+      "scope_note": "Delta-only linguistic audit; entire-namespace hashes bind the changed-key review, not a new full-namespace review.",
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      },
+      "record_reference": "i18n/audits/evidence/vi/ui.agents.upload/s2a-vi-2cf1ea7b5fd-849774c2de9b/record.json",
+      "record_sha256": "98756fc40c9e36592b7f40f12774bbb1a8d0001c59e4b71578e15be87cceb9b9",
+      "report_reference": "i18n/audits/evidence/vi/ui.agents.upload/s2a-vi-2cf1ea7b5fd-849774c2de9b/report.md",
+      "report_sha256": "e08b39bb6caf0b1c689b68610f251729dbd43c8fcc8bc90c8e1fa9e9fb0627fa"
+    }
+  },
+  "scope": [
+    "ui.chat.canonical",
+    "ui.agents.upload"
+  ],
+  "limitations": [
+    "Delta-only linguistic/source audit.",
+    "No rendered UI-fit evidence."
+  ]
+}

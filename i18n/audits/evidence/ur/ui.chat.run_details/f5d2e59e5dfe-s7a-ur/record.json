@@ -1,0 +1,482 @@
+{
+  "locale": "ur",
+  "namespace": "ui.chat.run_details",
+  "branch": "feat/i18n-s7",
+  "head": "aba5d0310761cedc384c35847498d4197ce4b107",
+  "base": "0ad5542379a349a98e0a8d602dbd992746fd40a2",
+  "instance": "f5d2e59e5dfe-s7a-ur",
+  "agent": "reviewer",
+  "model": "openai/gpt-6.1-sol",
+  "auditor": {
+    "agent": "reviewer",
+    "model": "openai/gpt-6.1-sol",
+    "instance": "f5d2e59e5dfe-s7a-ur",
+    "session": "f5d2e59e5dfe",
+    "independent": true
+  },
+  "date": "2026-11-09",
+  "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.run_details.json",
+    "ur": "src/i18n/catalogues/ur/ui.chat.run_details.json"
+  },
+  "sha256": {
+    "en": "02877dbbfba534fb2467008550d55ffd45c928c990b89c3d1a72acbfc76d2d50",
+    "ur": "4b9b632a3217aefce3505dbef7e83842b839ce09dac63b9629c72730d2c386de"
+  },
+  "status": "passed",
+  "result": "clean",
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [],
+    "nit": []
+  },
+  "keys_audited": 16,
+  "forbidden_bidi_count": 0,
+  "forbidden_bidi_matches": [],
+  "checks": [
+    {
+      "key": "ui.chat.run_details.child.result.preview",
+      "en": "Result preview",
+      "ur": "نتیجے کا پیش منظر",
+      "icu_structure_equal": true,
+      "latin_tokens": [],
+      "outputs": [
+        {
+          "count": 1,
+          "output": "نتیجے کا پیش منظر"
+        },
+        {
+          "count": 2,
+          "output": "نتیجے کا پیش منظر"
+        },
+        {
+          "count": 1000,
+          "output": "نتیجے کا پیش منظر"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.run_details.child.result.title",
+      "en": "Result",
+      "ur": "نتیجہ",
+      "icu_structure_equal": true,
+      "latin_tokens": [],
+      "outputs": [
+        {
+          "count": 1,
+          "output": "نتیجہ"
+        },
+        {
+          "count": 2,
+          "output": "نتیجہ"
+        },
+        {
+          "count": 1000,
+          "output": "نتیجہ"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.run_details.child.result.unavailable_clipped",
+      "en": "This is a shortened copy. This subagent's conversation is not available here.",
+      "ur": "یہ ایک مختصر نقل ہے۔ اس ذیلی ایجنٹ کی گفتگو یہاں دستیاب نہیں ہے۔",
+      "icu_structure_equal": true,
+      "latin_tokens": [],
+      "outputs": [
+        {
+          "count": 1,
+          "output": "یہ ایک مختصر نقل ہے۔ اس ذیلی ایجنٹ کی گفتگو یہاں دستیاب نہیں ہے۔"
+        },
+        {
+          "count": 2,
+          "output": "یہ ایک مختصر نقل ہے۔ اس ذیلی ایجنٹ کی گفتگو یہاں دستیاب نہیں ہے۔"
+        },
+        {
+          "count": 1000,
+          "output": "یہ ایک مختصر نقل ہے۔ اس ذیلی ایجنٹ کی گفتگو یہاں دستیاب نہیں ہے۔"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.run_details.child.result.unavailable",
+      "en": "This subagent's conversation is not available here.",
+      "ur": "اس ذیلی ایجنٹ کی گفتگو یہاں دستیاب نہیں ہے۔",
+      "icu_structure_equal": true,
+      "latin_tokens": [],
+      "outputs": [
+        {
+          "count": 1,
+          "output": "اس ذیلی ایجنٹ کی گفتگو یہاں دستیاب نہیں ہے۔"
+        },
+        {
+          "count": 2,
+          "output": "اس ذیلی ایجنٹ کی گفتگو یہاں دستیاب نہیں ہے۔"
+        },
+        {
+          "count": 1000,
+          "output": "اس ذیلی ایجنٹ کی گفتگو یہاں دستیاب نہیں ہے۔"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.run_details.child.brief.show_less",
+      "en": "Show less",
+      "ur": "کم دکھائیں",
+      "icu_structure_equal": true,
+      "latin_tokens": [],
+      "outputs": [
+        {
+          "count": 1,
+          "output": "کم دکھائیں"
+        },
+        {
+          "count": 2,
+          "output": "کم دکھائیں"
+        },
+        {
+          "count": 1000,
+          "output": "کم دکھائیں"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.run_details.child.brief.show_more",
+      "en": "{count, plural, one {Show {count, number, ::group-off} more line} other {Show {count, number, ::group-off} more lines}}",
+      "ur": "{count, plural, one {مزید {count, number, ::group-off} سطر دکھائیں} other {مزید {count, number, ::group-off} سطریں دکھائیں}}",
+      "icu_structure_equal": true,
+      "latin_tokens": [
+        "count",
+        "plural",
+        "one",
+        "count",
+        "number",
+        "group-off",
+        "other",
+        "count",
+        "number",
+        "group-off"
+      ],
+      "outputs": [
+        {
+          "count": 1,
+          "output": "مزید 1 سطر دکھائیں"
+        },
+        {
+          "count": 2,
+          "output": "مزید 2 سطریں دکھائیں"
+        },
+        {
+          "count": 1000,
+          "output": "مزید 1000 سطریں دکھائیں"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.run_details.mcp_auth.upgrade",
+      "en": "Update the backend for secure MCP key entry. OAuth and the server list remain available.",
+      "ur": "MCP کی کلید محفوظ طریقے سے درج کرنے کے لیے بیک اینڈ اپ ڈیٹ کریں۔ OAuth اور سرور کی فہرست دستیاب رہیں گے۔",
+      "icu_structure_equal": true,
+      "latin_tokens": [
+        "MCP",
+        "OAuth"
+      ],
+      "outputs": [
+        {
+          "count": 1,
+          "output": "MCP کی کلید محفوظ طریقے سے درج کرنے کے لیے بیک اینڈ اپ ڈیٹ کریں۔ OAuth اور سرور کی فہرست دستیاب رہیں گے۔"
+        },
+        {
+          "count": 2,
+          "output": "MCP کی کلید محفوظ طریقے سے درج کرنے کے لیے بیک اینڈ اپ ڈیٹ کریں۔ OAuth اور سرور کی فہرست دستیاب رہیں گے۔"
+        },
+        {
+          "count": 1000,
+          "output": "MCP کی کلید محفوظ طریقے سے درج کرنے کے لیے بیک اینڈ اپ ڈیٹ کریں۔ OAuth اور سرور کی فہرست دستیاب رہیں گے۔"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.run_details.mcp_auth.no_references",
+      "en": "This server does not use OAuth and declares no secret references. Add explicit $'{'NAME'}' references to its MCP environment or headers, then retry.",
+      "ur": "یہ سرور OAuth استعمال نہیں کرتا اور اس میں کسی خفیہ قدر کے حوالے متعین نہیں ہیں۔ اس کے MCP ماحول یا ہیڈرز میں واضح $'{'NAME'}' حوالے شامل کریں، پھر دوبارہ کوشش کریں۔",
+      "icu_structure_equal": true,
+      "latin_tokens": [
+        "OAuth",
+        "MCP",
+        "NAME"
+      ],
+      "outputs": [
+        {
+          "count": 1,
+          "output": "یہ سرور OAuth استعمال نہیں کرتا اور اس میں کسی خفیہ قدر کے حوالے متعین نہیں ہیں۔ اس کے MCP ماحول یا ہیڈرز میں واضح ${NAME} حوالے شامل کریں، پھر دوبارہ کوشش کریں۔"
+        },
+        {
+          "count": 2,
+          "output": "یہ سرور OAuth استعمال نہیں کرتا اور اس میں کسی خفیہ قدر کے حوالے متعین نہیں ہیں۔ اس کے MCP ماحول یا ہیڈرز میں واضح ${NAME} حوالے شامل کریں، پھر دوبارہ کوشش کریں۔"
+        },
+        {
+          "count": 1000,
+          "output": "یہ سرور OAuth استعمال نہیں کرتا اور اس میں کسی خفیہ قدر کے حوالے متعین نہیں ہیں۔ اس کے MCP ماحول یا ہیڈرز میں واضح ${NAME} حوالے شامل کریں، پھر دوبارہ کوشش کریں۔"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.run_details.mcp_auth.unknown_method",
+      "en": "Could not determine this server's sign-in method. Check its connection and MCP setup, then retry.",
+      "ur": "اس سرور کے سائن ان کا طریقہ معلوم نہیں ہو سکا۔ اس کا رابطہ اور MCP کی ترتیب جانچیں، پھر دوبارہ کوشش کریں۔",
+      "icu_structure_equal": true,
+      "latin_tokens": [
+        "MCP"
+      ],
+      "outputs": [
+        {
+          "count": 1,
+          "output": "اس سرور کے سائن ان کا طریقہ معلوم نہیں ہو سکا۔ اس کا رابطہ اور MCP کی ترتیب جانچیں، پھر دوبارہ کوشش کریں۔"
+        },
+        {
+          "count": 2,
+          "output": "اس سرور کے سائن ان کا طریقہ معلوم نہیں ہو سکا۔ اس کا رابطہ اور MCP کی ترتیب جانچیں، پھر دوبارہ کوشش کریں۔"
+        },
+        {
+          "count": 1000,
+          "output": "اس سرور کے سائن ان کا طریقہ معلوم نہیں ہو سکا۔ اس کا رابطہ اور MCP کی ترتیب جانچیں، پھر دوبارہ کوشش کریں۔"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.run_details.mcp_auth.waiting",
+      "en": "Waiting for backend sign-in status…",
+      "ur": "بیک اینڈ سے سائن ان کی حالت کا انتظار ہے…",
+      "icu_structure_equal": true,
+      "latin_tokens": [],
+      "outputs": [
+        {
+          "count": 1,
+          "output": "بیک اینڈ سے سائن ان کی حالت کا انتظار ہے…"
+        },
+        {
+          "count": 2,
+          "output": "بیک اینڈ سے سائن ان کی حالت کا انتظار ہے…"
+        },
+        {
+          "count": 1000,
+          "output": "بیک اینڈ سے سائن ان کی حالت کا انتظار ہے…"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.run_details.mcp_auth.status",
+      "en": "Sign-in {status}.",
+      "ur": "سائن ان کی حالت: {status}۔",
+      "icu_structure_equal": true,
+      "latin_tokens": [
+        "status"
+      ],
+      "outputs": [
+        {
+          "count": 1,
+          "output": "سائن ان کی حالت: STATUS۔"
+        },
+        {
+          "count": 2,
+          "output": "سائن ان کی حالت: STATUS۔"
+        },
+        {
+          "count": 1000,
+          "output": "سائن ان کی حالت: STATUS۔"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.run_details.mcp_auth.status_unavailable",
+      "en": "status unavailable",
+      "ur": "حالت دستیاب نہیں",
+      "icu_structure_equal": true,
+      "latin_tokens": [],
+      "outputs": [
+        {
+          "count": 1,
+          "output": "حالت دستیاب نہیں"
+        },
+        {
+          "count": 2,
+          "output": "حالت دستیاب نہیں"
+        },
+        {
+          "count": 1000,
+          "output": "حالت دستیاب نہیں"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.run_details.mcp_failure.cancel_lead",
+      "en": "The cancellation could not be confirmed",
+      "ur": "منسوخی کی تصدیق نہیں ہو سکی",
+      "icu_structure_equal": true,
+      "latin_tokens": [],
+      "outputs": [
+        {
+          "count": 1,
+          "output": "منسوخی کی تصدیق نہیں ہو سکی"
+        },
+        {
+          "count": 2,
+          "output": "منسوخی کی تصدیق نہیں ہو سکی"
+        },
+        {
+          "count": 1000,
+          "output": "منسوخی کی تصدیق نہیں ہو سکی"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.run_details.mcp_failure.busy",
+      "en": "{lead}: a sign-in is already running for this conversation, and only one can run at a time. Wait for it to finish, or cancel it from the server's row.",
+      "ur": "{lead}: اس گفتگو کے لیے سائن ان پہلے ہی جاری ہے، اور ایک وقت میں صرف ایک سائن ان ہو سکتا ہے۔ اس کے مکمل ہونے کا انتظار کریں، یا سرور کی قطار سے اسے منسوخ کریں۔",
+      "icu_structure_equal": true,
+      "latin_tokens": [
+        "lead"
+      ],
+      "outputs": [
+        {
+          "count": 1,
+          "output": "LEAD: اس گفتگو کے لیے سائن ان پہلے ہی جاری ہے، اور ایک وقت میں صرف ایک سائن ان ہو سکتا ہے۔ اس کے مکمل ہونے کا انتظار کریں، یا سرور کی قطار سے اسے منسوخ کریں۔"
+        },
+        {
+          "count": 2,
+          "output": "LEAD: اس گفتگو کے لیے سائن ان پہلے ہی جاری ہے، اور ایک وقت میں صرف ایک سائن ان ہو سکتا ہے۔ اس کے مکمل ہونے کا انتظار کریں، یا سرور کی قطار سے اسے منسوخ کریں۔"
+        },
+        {
+          "count": 1000,
+          "output": "LEAD: اس گفتگو کے لیے سائن ان پہلے ہی جاری ہے، اور ایک وقت میں صرف ایک سائن ان ہو سکتا ہے۔ اس کے مکمل ہونے کا انتظار کریں، یا سرور کی قطار سے اسے منسوخ کریں۔"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.run_details.mcp_failure.refused",
+      "en": "{lead}: the server refused it without giving a reason, and nothing was changed.",
+      "ur": "{lead}: سرور نے وجہ بتائے بغیر اسے مسترد کر دیا، اور کوئی تبدیلی نہیں ہوئی۔",
+      "icu_structure_equal": true,
+      "latin_tokens": [
+        "lead"
+      ],
+      "outputs": [
+        {
+          "count": 1,
+          "output": "LEAD: سرور نے وجہ بتائے بغیر اسے مسترد کر دیا، اور کوئی تبدیلی نہیں ہوئی۔"
+        },
+        {
+          "count": 2,
+          "output": "LEAD: سرور نے وجہ بتائے بغیر اسے مسترد کر دیا، اور کوئی تبدیلی نہیں ہوئی۔"
+        },
+        {
+          "count": 1000,
+          "output": "LEAD: سرور نے وجہ بتائے بغیر اسے مسترد کر دیا، اور کوئی تبدیلی نہیں ہوئی۔"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.run_details.mcp_failure.session",
+      "en": "{lead} because this conversation's session is not running. Trying again restarts it and repeats this request.",
+      "ur": "{lead} کیونکہ اس گفتگو کا سیشن چل نہیں رہا۔ دوبارہ کوشش کرنے سے سیشن پھر شروع ہو گا اور یہی درخواست دہرائی جائے گی۔",
+      "icu_structure_equal": true,
+      "latin_tokens": [
+        "lead"
+      ],
+      "outputs": [
+        {
+          "count": 1,
+          "output": "LEAD کیونکہ اس گفتگو کا سیشن چل نہیں رہا۔ دوبارہ کوشش کرنے سے سیشن پھر شروع ہو گا اور یہی درخواست دہرائی جائے گی۔"
+        },
+        {
+          "count": 2,
+          "output": "LEAD کیونکہ اس گفتگو کا سیشن چل نہیں رہا۔ دوبارہ کوشش کرنے سے سیشن پھر شروع ہو گا اور یہی درخواست دہرائی جائے گی۔"
+        },
+        {
+          "count": 1000,
+          "output": "LEAD کیونکہ اس گفتگو کا سیشن چل نہیں رہا۔ دوبارہ کوشش کرنے سے سیشن پھر شروع ہو گا اور یہی درخواست دہرائی جائے گی۔"
+        }
+      ]
+    }
+  ],
+  "terminology_baseline": {
+    "بیک اینڈ": {
+      "existing_matches": 87,
+      "examples": [
+        "0ad5542379a349a98e0a8d602dbd992746fd40a2:src/i18n/catalogues/ur/ui.agents.config.json:37:\t\"ui.agents.config.banner.unavailable\": \"بیک اینڈ تک رسائی نہیں ہو سکی، اس لیے کمپوزر فی الحال دستیاب نہیں ہے۔\",",
+        "0ad5542379a349a98e0a8d602dbd992746fd40a2:src/i18n/catalogues/ur/ui.agents.detail.json:19:\t\"ui.agents.detail.alert.unconfirmed_body\": \"بیک اینڈ نے جواب نہیں دیا، اس لیے معلوم نہیں کہ تبدیلی محفوظ ہوئی یا نہیں۔ نیچے ایجنٹ دیکھیں، پھر دوبارہ ترمیم کریں۔\",",
+        "0ad5542379a349a98e0a8d602dbd992746fd40a2:src/i18n/catalogues/ur/ui.agents.detail.json:60:\t\"ui.agents.detail.field.effort_helper\": \"درجے بیک اینڈ کی ذیلی ایجنٹ ماڈل کی ترتیبات سے آتے ہیں۔\","
+      ]
+    },
+    "ذیلی ایجنٹ": {
+      "existing_matches": 50,
+      "examples": [
+        "0ad5542379a349a98e0a8d602dbd992746fd40a2:src/i18n/catalogues/ur/ui.agents.detail.json:24:\t\"ui.agents.detail.delegate.aria\": \"ذیلی ایجنٹس کو تفویض کر سکتا ہے\",",
+        "0ad5542379a349a98e0a8d602dbd992746fd40a2:src/i18n/catalogues/ur/ui.agents.detail.json:25:\t\"ui.agents.detail.delegate.label\": \"ذیلی ایجنٹس کو تفویض کر سکتا ہے\",",
+        "0ad5542379a349a98e0a8d602dbd992746fd40a2:src/i18n/catalogues/ur/ui.agents.detail.json:58:\t\"ui.agents.detail.section.delegation_hint\": \"آیا یہ ایجنٹ ذیلی ایجنٹس کو کام تفویض کر سکتا ہے، اور کس کوشش کے درجے پر چلتا ہے۔\","
+      ]
+    },
+    "گفتگو": {
+      "existing_matches": 453,
+      "examples": [
+        "0ad5542379a349a98e0a8d602dbd992746fd40a2:src/i18n/catalogues/ur/ui.agentMessages.json:28:\t\"ui.agentMessages.banner.turn_off_hint\": \"اسے بند کرنے سے آپ کی Team Bridge گفتگوئیں بھی اس وقت تک پوشیدہ رہیں گی جب تک آپ اسے دوبارہ فعال نہیں کرتے۔\",",
+        "0ad5542379a349a98e0a8d602dbd992746fd40a2:src/i18n/catalogues/ur/ui.agentMessages.json:30:\t\"ui.agentMessages.page_off.body\": \"آپ کا ایجنٹ نہ پیغامات بھیجتا ہے نہ وصول کرتا ہے، اور جب تک آپ اسے دوبارہ فعال نہیں کرتے آپ کی گفتگوئیں پوشیدہ رہتی ہیں۔ فعال کرنے پر پہلے آپ سے رضامندی طلب کی جاتی ہے۔\",",
+        "0ad5542379a349a98e0a8d602dbd992746fd40a2:src/i18n/catalogues/ur/ui.agentMessages.json:32:\t\"ui.agentMessages.page_off.local_body\": \"آپ کا اکاؤنٹ اب بھی سیٹ اپ ہے، لیکن یہ مشین نہ پیغامات بھیجتی ہے نہ وصول کرتی ہے، اور جب تک آپ اسے دوبارہ فعال نہیں کرتے آپ کی گفتگوئیں یہاں پوشیدہ رہتی ہیں۔\","
+      ]
+    },
+    "سائن ان": {
+      "existing_matches": 197,
+      "examples": [
+        "0ad5542379a349a98e0a8d602dbd992746fd40a2:src/i18n/catalogues/ur/ui.agentMessages.settings.json:74:\t\"ui.agentMessages.settings.refusal.sign_in\": \"ایجنٹ پیغامات کے انتظام کے لیے Radient میں سائن ان کریں۔\",",
+        "0ad5542379a349a98e0a8d602dbd992746fd40a2:src/i18n/catalogues/ur/ui.agents.publication.json:9:\t\"ui.agents.publication.action.sign_in\": \"دوبارہ سائن ان کریں\",",
+        "0ad5542379a349a98e0a8d602dbd992746fd40a2:src/i18n/catalogues/ur/ui.agents.publication.json:28:\t\"ui.agents.publication.hub_unauthorized.body\": \"کچھ بھی شائع نہیں ہوا۔ ہب نے جو اسناد مسترد کیں، انہیں بدلنے کے لیے Radient میں دوبارہ سائن ان کریں، پھر شائع کریں۔\","
+      ]
+    },
+    "پیش منظر": {
+      "existing_matches": 60,
+      "examples": [
+        "0ad5542379a349a98e0a8d602dbd992746fd40a2:src/i18n/catalogues/ur/ui.agents.avatar.json:12:\t\"ui.agents.avatar.editor.preview_header\": \"چیٹ ہیڈر کا پیش منظر\",",
+        "0ad5542379a349a98e0a8d602dbd992746fd40a2:src/i18n/catalogues/ur/ui.agents.avatar.json:14:\t\"ui.agents.avatar.editor.preview_roster\": \"ایجنٹ فہرست کا پیش منظر\",",
+        "0ad5542379a349a98e0a8d602dbd992746fd40a2:src/i18n/catalogues/ur/ui.agents.avatar.json:16:\t\"ui.agents.avatar.editor.preview_sidebar\": \"گفتگو کی فہرست کا پیش منظر\","
+      ]
+    },
+    "کم دکھائیں": {
+      "existing_matches": 5,
+      "examples": [
+        "0ad5542379a349a98e0a8d602dbd992746fd40a2:src/i18n/catalogues/ur/ui.agents.detail.json:37:\t\"ui.agents.detail.read.show_less\": \"کم دکھائیں\",",
+        "0ad5542379a349a98e0a8d602dbd992746fd40a2:src/i18n/catalogues/ur/ui.agents.skills.json:60:\t\"ui.agents.skills.detail.show_less\": \"کم دکھائیں\",",
+        "0ad5542379a349a98e0a8d602dbd992746fd40a2:src/i18n/catalogues/ur/ui.chat.canonical.json:187:\t\"ui.chat.canonical.supplement.show_fewer\": \"کم دکھائیں\","
+      ]
+    },
+    "شیڈول": {
+      "existing_matches": 86,
+      "examples": [
+        "0ad5542379a349a98e0a8d602dbd992746fd40a2:src/i18n/catalogues/ur/ui.agents.refusals.json:11:\t\"ui.agents.refusals.class.meaning.proactive\": \"یہ خود آپ کو پیغام بھیج سکتا ہے؛ کچھ بھیجنے کے بعد جواب کے لیے چند منٹ انتظار کرتا ہے، پھر مقررہ تعداد تک بڑھتے وقفوں سے دوبارہ یاد دلاتا ہے، اس کے بعد آپ کا انتظار کرتا ہے — اور اپنے شیڈول پر بھی جاگ سکتا ہے۔\",",
+        "0ad5542379a349a98e0a8d602dbd992746fd40a2:src/i18n/catalogues/ur/ui.agents.refusals.json:12:\t\"ui.agents.refusals.class.meaning.reactive\": \"جب آپ اسے لکھتے ہیں تو یہ جواب دیتا ہے۔ یہ آپ کو یاد دہانی نہیں بھیجتا اور اپنے شیڈول پر نہیں جاگتا۔\",",
+        "0ad5542379a349a98e0a8d602dbd992746fd40a2:src/i18n/catalogues/ur/ui.agents.refusals.json:13:\t\"ui.agents.refusals.class.effect.proactive\": \"اسے بند کرنے سے یاد دہانیاں اور شیڈول کی بیداریاں رک جاتی ہیں۔ آپ لکھیں تو یہ اب بھی جواب دیتا ہے۔\","
+      ]
+    },
+    "چیک اِن": {
+      "existing_matches": 1,
+      "examples": [
+        "0ad5542379a349a98e0a8d602dbd992746fd40a2:src/i18n/catalogues/ur/ui.chat.run_details.json:94:\t\"ui.chat.run_details.wake.managed_note\": \"یہ بیداری {name} کا اپنا شیڈول ہے، اس لیے اسے یہاں منسوخ نہیں کیا جا سکتا۔ ان چیک اِنز کو روکنے کے لیے /aida pause استعمال کریں۔\""
+      ]
+    }
+  },
+  "semantic_notes": [
+    "All additions reviewed against English for meaning, natural polite Urdu and terse notice copy.",
+    "Conversation uses گفتگو; chat uses established loanword چیٹ (baseline already distinguishes them). No new competing term for the eight requested concepts.",
+    "Latin in additions restricted to MCP, OAuth, Aida and ICU placeholders/identifiers; no English prose.",
+    "Both ::group-off markers preserved; literal dollar-brace reference formatted and checked below."
+  ],
+  "limitations": [
+    "Source/ICU execution audit, not a rendered RTL layout or clipping check; browser tool unavailable to this role."
+  ],
+  "literal_reference": {
+    "source_literal": true,
+    "output": "یہ سرور OAuth استعمال نہیں کرتا اور اس میں کسی خفیہ قدر کے حوالے متعین نہیں ہیں۔ اس کے MCP ماحول یا ہیڈرز میں واضح ${NAME} حوالے شامل کریں، پھر دوبارہ کوشش کریں۔",
+    "contains_literal_dollar_brace_NAME": true
+  },
+  "group_off_markers": 2
+}

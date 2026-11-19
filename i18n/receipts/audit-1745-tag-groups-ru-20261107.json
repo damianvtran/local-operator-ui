@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "agent": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "audit-1745-tag-groups-ru-20261107",
+  "locale": "ru",
+  "date": "2026-11-07",
+  "status": "passed",
+  "namespace": "ui.chat.tag_groups",
+  "keys_read": 2,
+  "sha256": {
+    "en": "bb046f0781f89559eeeb9382a8ece731281d58d8872f342e0ca09e2229f7d3ca",
+    "ru": "46fee8cef09883b3d55b60a9007c75b0b999c005663442590500a1e6c5bb2f34"
+  },
+  "findings": [],
+  "scope": "PR #1745 ui.chat.tag_groups at 2209af742306909800ae675df54d8df4dc5b3074: full 2-key namespace (collapse, expand), en catalogue + en context, sibling collapse/expand keys, ui.chat.tags.untagged substitution",
+  "independence": "lopdev translation-auditor, separate session (f015890e4661) from the PR coder that translated; same served model family (anthropic/claude-opus-5-5) disclosed; verdict rebuilt from the English source, the en context, sibling keys, the core glossary and the locale style guide.",
+  "references": "co",
+  "checks": "placeholders {name} exactly once per key, no ICU/plural arms (none in source; CLDR categories not applicable), key set == en, zero Unicode Cf (bidi/format) code points, aria-label + title only (no fixed width budget), Untagged substitution read in-locale",
+  "verdict": "ru: passed — Свернуть/Развернуть matches every existing collapse/expand control; «ёлочки» around the embedded name match the sibling «Свернуть чаты «{name}»» and the ru guide's quote rule, and avoid case-inflecting a user-authored name; {name} intact. Clean."
+}

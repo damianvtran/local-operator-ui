@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "auditor": "i18n-auditor (lopdev team; session 4efa9ff7ea90; independent ru linguistic auditor, not the translator)",
+  "agent": "i18n-auditor (lopdev team; session 4efa9ff7ea90; independent ru linguistic auditor, not the translator)",
+  "model": "anthropic/claude-sonnet-5-5",
+  "model_provenance": "Model as shown in this session's runtime header (anthropic/claude-sonnet-5-5). No fallback used or claimed; not independently verified beyond the runtime header.",
+  "fallback": "none",
+  "session": "4efa9ff7ea90",
+  "job_id": null,
+  "job_identity_note": "Delegated lopdev i18n-auditor task; no separate background job id was supplied. The session id identifies this auditor.",
+  "role": "i18n-auditor / independent translation auditor",
+  "independence": "I did not author or edit this translation. I read the ru style guide, glossary, the English source with its context sidecar, the committed ru target, and neighbouring ru keys (ui.agents.starters, ui.agents.detail) for terminology.",
+  "locale": "ru",
+  "branch": "fix/agent-transport-copy",
+  "head": "30bdd7aedbce47dc0c0c1506103368e8225fb839",
+  "audited_at_head": "82ad0474cf9",
+  "audited_at_head_note": "Audited at 82ad0474cf9; the ru file was re-hashed at 30bdd7aedbc and is byte-identical (only the es file changed between the two commits).",
+  "pr": "damianvtran/local-operator-ui#1594",
+  "date": "2026-11-02",
+  "status": "passed",
+  "instance": "4efa9ff7ea90-origin-ru",
+  "namespace": "ui.agents.detail.origin",
+  "result": "clean-with-findings",
+  "source_sha256": "bbb0eeac68c5ccd14988bffab2502698cb14ff6871a0a2b2212dd779fd67efb4",
+  "context_sha256": "470e2004a28b867981fe7ae6bd55ce81bec490cab63553490548503ff181b8f5",
+  "target_sha256": "222025d8c076f621ca1cf650856d5571df184c698356ca20d1d8609b11df494f",
+  "paths": {
+    "source": "src/i18n/catalogues/en/ui.agents.detail.origin.json",
+    "context": "src/i18n/catalogues/en/ui.agents.detail.origin.context.json",
+    "target": "src/i18n/catalogues/ru/ui.agents.detail.origin.json"
+  },
+  "keys_read": 3,
+  "keys_in_file": 3,
+  "linguistic_scope_keys": [
+    "ui.agents.detail.origin.shipped_with_app",
+    "ui.agents.detail.origin.installed_starter",
+    "ui.agents.detail.origin.compare_packaged"
+  ],
+  "findings": [
+    {
+      "id": "A-1",
+      "severity": "minor",
+      "key": "ui.agents.detail.origin.installed_starter",
+      "text": "Установлен из встроенного шаблона.",
+      "note": "'шаблон' is a new product term for 'starter', recorded in neither i18n/glossary.md nor the ru style guide; ui.agents.starters paraphrases the concept as 'встроенный агент'. The choice is defensible (sidecar defines starter as a packaged template agent; 'встроенного' ties it to the built-in family; 'стартового' would collide with 'стартовая страница'/'стартовый грант'), so the string stays. Suggest recording a ru locale call: starter -> 'встроенный шаблон'. No string change needed."
+    },
+    {
+      "id": "A-2",
+      "severity": "nit",
+      "key": "ui.agents.detail.origin.shipped_with_app",
+      "text": "Поставляется вместе с приложением.",
+      "note": "'вместе' is slightly redundant; 'Поставляется с приложением' or 'Входит в состав приложения' are marginally tighter. Keep the current text for verbatim consistency with ui.agents.detail.alert.builtin_body."
+    }
+  ],
+  "scope": "WHOLE-NAMESPACE LINGUISTIC AUDIT of the three keys of ui.agents.detail.origin (shipped_with_app, installed_starter, compare_packaged): mechanical (key set equals English, valid JSON, no placeholders/plurals/markup, no bidi/zero-width/NBSP characters), accuracy, register, terminology against ru/ui.agents.starters and ru/ui.agents.detail, gender agreement ('Установлен' agrees with 'агент'), form (two sentences end with a full stop, the label does not). This is NOT a rendered-layout audit: no rendered frame, wrapping or live UI was inspected. I did not run the repo validators for the audit itself.",
+  "verified": [
+    "Starter question: ru/ui.agents.starters has no word for 'starter' (it says 'встроенных агентов'); 'шаблон' appears nowhere else in the ru catalogue; the choice contradicts no existing word and does not read as a sample, a server or another agent.",
+    "'Packaged' is rendered consistently: origin.changed 'встроенной копии', compare_packaged 'встроенными инструкциями', alert.builtin_title 'Встроенный агент'; shipped_with_app reuses alert.builtin_body's 'поставляется вместе с приложением'.",
+    "shipped_with_app (present tense, part of the app) and installed_starter (completed action, installed copy) stay distinguishable; parallel to created_locally 'Создан на этом компьютере.'",
+    "Source, context and target SHA-256 re-derived from `git show 30bdd7aedbc:<path>` and equal those reported at 82ad0474cf9.",
+    "deriveReceiptAudit was run on this receipt after writing it (see final report)."
+  ]
+}

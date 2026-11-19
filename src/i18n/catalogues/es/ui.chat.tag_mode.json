@@ -1,0 +1,6 @@
+{
+	"ui.chat.tag_mode.live": "{count, plural, one {{count, number, ::group-off} en curso} many {{count, number, ::group-off} en curso} other {{count, number, ::group-off} en curso}}",
+	"ui.chat.tag_mode.not_loaded": "Los chats más antiguos de esta etiqueta aún no se han cargado.",
+	"ui.chat.tag_mode.mode_hint": "Los grupos de etiquetas usan la sección temporal o la agrupación por etiqueta.",
+	"ui.chat.tag_mode.use_tag": "Agrupar por etiqueta"
+}

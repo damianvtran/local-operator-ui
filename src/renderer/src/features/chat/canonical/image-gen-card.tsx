@@ -76,6 +76,8 @@
  */
 
 import { Button, Progress } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	useCallback,
@@ -93,19 +95,19 @@ import { CanonicalAudio } from "./canonical-audio";
 import { CanonicalImage } from "./canonical-image";
 import { CanonicalVideo } from "./canonical-video";
 import {
-	CANCEL_QUEUED_COPY,
-	CANCEL_RUNNING_COPY,
 	type ImageGenActionKind,
+	type ImageGenCancelFact,
 	type ImageGenCardActions,
 	type ImageGenCardState,
 	type ImageGenCardView,
+	type ImageGenMaterial,
 	imageGenCardControls,
-	imageGenMaterialNoun,
 	withoutSettlementClause,
 } from "./image-gen-card-model";
 import { SoundBatch } from "./sound-batch";
 import { SoundStopConfirmation } from "./sound-stop-confirmation";
 import type { AttachmentScope } from "./use-attachment-url";
+import { BAR_BASE, BAR_WIDTH, waveformBars } from "./waveform-model";
 
 export type ImageGenCardProps = {
 	/** The mapped state, from `imageGenCardView`. The card reads nothing else. */
@@ -203,6 +205,193 @@ function GeneratingTile() {
 	);
 }
 
+/**
+ * The audio generation's tile: a WAVEFORM, not the image loader's rectangle.
+ *
+ * WHY. A voiceover or a sound effect used to wait behind the image card's
+ * 240x160 3:2 picture box with the shimmer sweep, which told the reader a
+ * picture was coming. The artifact is a sound, so the loader wears the same
+ * band the finished `SoundPlayer` will: the recipe's 4px bars, 2px gaps and 2px
+ * radius from `waveform-model.ts`, at the player's own min-height. The card and
+ * its settled clip then read as ONE object resolving rather than two languages.
+ *
+ * INDETERMINATE ONLY, BY CONTRACT. No vendor exposes a progress fraction for
+ * sound, and this app must not invent one: the bars move to answer "alive", not
+ * "60% done", and no fill, percentage or determinate bar is drawn here. The
+ * FOUR STATES are the card's own and differ visibly:
+ *
+ *   queued    a static band at disabled ink - the READER's queue, not the
+ *             provider's work. (The image card draws no tile at all when queued
+ *             because a picture's shape is unknown before it exists; a sound's
+ *             seat is a band by construction, so showing the empty seat borrows
+ *             no running claim.)
+ *   running   the same band pulsing bar-by-bar at `ink-muted` - one indefinite
+ *             element, the surface's whole motion budget.
+ *   failed    the band collapsed to its base line: no shape was produced, and
+ *             the card's verbatim error sentence is the announcement.
+ *   stopped   the band at rest, at `ink-muted`, with the receipt sentence under
+ *             the state line (`soundStopReceipt`) - a stop asked of a provider
+ *             with no cancellation endpoint may still be billed.
+ *
+ * `aria-hidden`: the state line beside it is the announcement, exactly as the
+ * image tile's comment states.
+ */
+/*
+ * THE COMPACT PLAYER'S OWN HEIGHT. `SoundPlayer`'s control box is `min-h-11`
+ * (44px) in both variants, so a taller loader would make the card shrink 12px
+ * the moment the sound settles. The band and the player must occupy the same
+ * box for the "one object resolving" claim to survive the transition.
+ */
+const SOUND_TILE_HEIGHT = 44;
+const SOUND_TILE_WIDTH = 240;
+const SOUND_TILE_PADDING = 12;
+/** A deterministic envelope: the band's shape, never a claim about the sound. */
+const SOUND_LOADER_PEAKS = Array.from({ length: 240 }, (_, index) =>
+	Math.min(
+		1,
+		0.18 + Math.abs(Math.sin(index / 7) * Math.cos(index / 17)) * 0.72,
+	),
+);
+
+function SoundGeneratingTile({
+	state,
+}: {
+	state: "queued" | "running" | "failed" | "stopped";
+}) {
+	const bars = waveformBars(
+		SOUND_LOADER_PEAKS,
+		SOUND_TILE_WIDTH - SOUND_TILE_PADDING * 2,
+		SOUND_TILE_HEIGHT,
+	);
+	return (
+		<div
+			aria-hidden={true}
+			data-sound-loading-tile=""
+			data-sound-loading={state}
+			className={cn(
+				"relative flex w-[240px] max-w-full items-center overflow-hidden rounded-sm bg-sunken",
+			)}
+			style={{ height: SOUND_TILE_HEIGHT }}
+		>
+			<div
+				className={cn("flex w-full items-center")}
+				style={{
+					paddingLeft: SOUND_TILE_PADDING,
+					paddingRight: SOUND_TILE_PADDING,
+				}}
+			>
+				{bars.map((bar, index) => (
+					<span
+						key={bar.x}
+						data-sound-loading-bar=""
+						className={cn(
+							"shrink-0 rounded-[2px]",
+							state === "running"
+								? "animate-pulse-visible bg-ink-muted"
+								: state === "queued"
+									? "bg-ink-disabled"
+									: state === "stopped"
+										? "bg-ink-dim"
+										: "bg-ink-muted",
+						)}
+						style={{
+							width: BAR_WIDTH,
+							height: state === "failed" ? BAR_BASE : bar.height,
+							marginRight: bar === bars.at(-1) ? 0 : 2,
+							animationDelay:
+								state === "running" ? `${(index % 12) * 90}ms` : undefined,
+						}}
+					/>
+				))}
+			</div>
+		</div>
+	);
+}
+
+/**
+ * The ICU `select` token for a material: the wire spells the sound effect
+ * `sound-effect`, but a select branch name cannot carry a hyphen. Every state
+ * message supplies `video`, `voiceover` and `sound_effect` branches and puts
+ * the image wording under `other`, so a material this build does not know yet
+ * degrades to the image sentence exactly like the card's material tokens do.
+ */
+function materialToken(material: ImageGenMaterial): string {
+	return material === "sound-effect" ? "sound_effect" : material;
+}
+
+/**
+ * THE KEYED STOP SENTENCES (S16e, 2026-11-12): STOP IS A REQUEST, GUARANTEED
+ * ONLY WHILE QUEUED.
+ *
+ * The security round's split (2026-10-17) is unchanged in English, byte for
+ * byte; only WHERE the words live moved. They are three catalogue keys —
+ * `cancel.queued`, `cancel.running` (the sentence without the settlement
+ * clause) and `cancel.checking` (the clause as its own sentence) — composed
+ * here AT RENDER TIME, which is what lets a language switch repaint them and
+ * what a module-scope `t()` would have frozen to the boot locale.
+ *
+ * An in-flight stop states the REQUEST and its billing consequence; a stop
+ * pressed before the provider was called is the one case that may claim no
+ * charge. Never the no-charge sentence for an in-flight cancel: that reads as a
+ * promise the frozen contract explicitly does not make.
+ */
+function runningStopSentence(withChecking: boolean): string {
+	const running = t("ui.chat.canonical.image_gen.cancel.running");
+	return withChecking
+		? `${running} ${t("ui.chat.canonical.image_gen.cancel.checking")}`
+		: running;
+}
+
+/**
+ * The keyed stop sentence a record's STRUCTURED cancel fact supports, or null
+ * when it states no such fact.
+ *
+ * `vendorStopped: false` is the in-flight stop and `true` the queued one;
+ * `null` is the server declining to say, which stays on the wire's own sentence
+ * because the same null also covers a stop that was never applied (see the
+ * model's note on `ImageGenCancelFact`) — keying it here would state a fact the
+ * payload does not carry.
+ */
+function keyedStopSentence(
+	cancel: ImageGenCancelFact | undefined,
+	withChecking: boolean,
+): string | null {
+	if (!cancel || cancel.vendorStopped === null) return null;
+	return cancel.vendorStopped
+		? t("ui.chat.canonical.image_gen.cancel.queued")
+		: runningStopSentence(withChecking && cancel.settling);
+}
+
+/**
+ * The failure class label for a wire `error_type` code.
+ *
+ * The code is a SERVER discriminator and an open set, so the catalogue carries
+ * the six the platform names today and an unknown code is humanised (`denied`
+ * -> `Denied`) as it was before: a technical token, not app copy, and never the
+ * raw identifier with its underscores. Keying means a language can translate
+ * the class instead of reading English words built out of a code.
+ */
+function errorClassLabel(code: string): string {
+	switch (code) {
+		case "audio_rate_limited":
+			return t("ui.chat.canonical.image_gen.error_class.audio_rate_limited");
+		case "unknown_tool":
+			return t("ui.chat.canonical.image_gen.error_class.unknown_tool");
+		case "invalid_arguments":
+			return t("ui.chat.canonical.image_gen.error_class.invalid_arguments");
+		case "duplicate_id":
+			return t("ui.chat.canonical.image_gen.error_class.duplicate_id");
+		case "denied":
+			return t("ui.chat.canonical.image_gen.error_class.denied");
+		case "gate_failed":
+			return t("ui.chat.canonical.image_gen.error_class.gate_failed");
+		default: {
+			const words = code.replace(/_/g, " ");
+			return words.charAt(0).toUpperCase() + words.slice(1);
+		}
+	}
+}
+
 /** One state line: the words at body ink, the datum at meta ink beside them. */
 function StateLine({
 	view,
@@ -216,7 +405,9 @@ function StateLine({
 	let emphasis = false;
 	switch (view.state) {
 		case "queued":
-			text = view.composing ? "Writing the request…" : "Queued";
+			text = view.composing
+				? t("ui.chat.canonical.image_gen.state.writing_request")
+				: t("ui.chat.canonical.image_gen.state.queued");
 			/*
 			 * The datum slot, one precedence: a STATED queue depth wins (the
 			 * live field's only render, and the fact a waiting reader wants),
@@ -231,10 +422,16 @@ function StateLine({
 			 * meaning in this card's terse register: the state line already says
 			 * "Queued", so the datum only needs the count and its direction, not
 			 * the noun again.
+			 *
+			 * The count goes in as a NUMBER, 0 included: the message pluralises on
+			 * it per the language's own categories (`0 ahead` is a real reading,
+			 * not a missing one), and writes the digits without grouping.
 			 */
 			detail =
 				view.queuePosition !== null
-					? `${view.queuePosition} ahead`
+					? t("ui.chat.canonical.image_gen.state.queue_ahead", {
+							count: view.queuePosition,
+						})
 					: view.argumentBytes > 0
 						? formatBytes(view.argumentBytes)
 						: null;
@@ -244,24 +441,32 @@ function StateLine({
 			 * THE NOUN IS THE MATERIAL FACT (design spec §4, V2; extended by the
 			 * sound phase): a video call's line says `Generating video…`, a voiceover
 			 * `Generating voiceover…`, a sound effect `Generating sound effect…`, and
-			 * nothing else about the line moves. The noun comes off
-			 * `imageGenMaterialNoun` so the state line, the done receipt and the
-			 * failure fallback cannot spell one material three ways.
+			 * nothing else about the line moves. The noun lives INSIDE each catalogue
+			 * message (one branch per material), so the state line, the done receipt
+			 * and the failure fallback cannot spell one material three ways and every
+			 * language inflects the noun itself.
 			 */
 			text = view.batchProgress
-				? `Generating ${view.batchProgress.total} ${imageGenMaterialNoun(view.material)}${view.batchProgress.total === 1 ? "" : "s"}…`
-				: `Generating ${imageGenMaterialNoun(view.material)}…`;
+				? t("ui.chat.canonical.image_gen.state.running_batch", {
+						material: materialToken(view.material),
+						total: view.batchProgress.total,
+					})
+				: t("ui.chat.canonical.image_gen.state.running", {
+						material: materialToken(view.material),
+					});
 			detail = elapsed === null ? null : formatDuration(elapsed);
 			break;
 		case "cancelling":
 			/*
-			 * THE SECURITY ROUND'S SPLIT (2026-10-17): a stop pressed before the
-			 * provider was called is the one case that may claim no charge; an
-			 * in-flight stop is a REQUEST — there is no vendor cancel endpoint —
-			 * and its line says so, including the settlement check that follows.
-			 * Never the no-charge sentence for an in-flight cancel.
+			 * THE SECURITY ROUND'S SPLIT (2026-10-17), now keyed: a stop pressed
+			 * before the provider was called is the one case that may claim no
+			 * charge; an in-flight stop is a REQUEST — there is no vendor cancel
+			 * endpoint — and its line says so, including the settlement check that
+			 * follows. Never the no-charge sentence for an in-flight cancel.
 			 */
-			text = view.generating ? CANCEL_RUNNING_COPY : CANCEL_QUEUED_COPY;
+			text = view.generating
+				? runningStopSentence(true)
+				: t("ui.chat.canonical.image_gen.cancel.queued");
 			break;
 		case "done":
 			/*
@@ -273,10 +478,14 @@ function StateLine({
 			 */
 			text =
 				view.receipt === "already-finished"
-					? "Already finished."
+					? t("ui.chat.canonical.image_gen.state.already_finished")
 					: view.batch
-						? `${batchMaterialTitle(view.material)} batch`
-						: `Generated ${imageGenMaterialNoun(view.material)}`;
+						? t("ui.chat.canonical.image_gen.state.done_batch", {
+								material: materialToken(view.material),
+							})
+						: t("ui.chat.canonical.image_gen.state.done", {
+								material: materialToken(view.material),
+							});
 			detail =
 				view.receipt === "already-finished" || view.durationS === null
 					? null
@@ -293,31 +502,51 @@ function StateLine({
 			 * (branding section 8).
 			 */
 			text = view.batch
-				? `${batchMaterialTitle(view.material)} batch failed.`
+				? t("ui.chat.canonical.image_gen.state.failed_batch", {
+						material: materialToken(view.material),
+					})
 				: (view.message ??
-					`The ${imageGenMaterialNoun(view.material)} could not be generated.`);
+					(view.errorCode === "audio_rate_limited"
+						? t("ui.chat.canonical.image_gen.error.audio_rate_limited")
+						: t("ui.chat.canonical.image_gen.state.failed", {
+								material: materialToken(view.material),
+							})));
 			emphasis = true;
 			break;
 		case "cancelled": {
 			/*
-			 * The settled receipt prefers the TOOL/SERVER detail (`message`); the
-			 * canned sentence is only the fallback, and it follows the same
-			 * queued/running split the live line does — a settled in-flight stop
-			 * must still not read as a no-charge cancellation.
+			 * THE STRUCTURED FACT OUTRANKS THE WIRE'S SENTENCE (S16e policy ruling):
+			 * when the payload carries `stage: "cancelled"` with `settling` and a
+			 * boolean `vendor_stopped`, those fields state the stop's cost
+			 * consequence exactly, where the sentence beside them is one fixed
+			 * English string — so the card renders KEYED copy chosen from them.
+			 * A record with no such fact (an older durable row, another producer,
+			 * a null `vendor_stopped`) renders the TOOL/SERVER detail (`message`)
+			 * verbatim as before, and the keyed queued/generating sentence is only
+			 * the absence's fallback.
 			 *
 			 * THE PENDING CLAUSE IS RETIRED BY ITS OWN ANSWER: the settlement row
 			 * rendered under this line states the pending fact or the final charge,
-			 * so the sentence that asks "Checking for settlement" would either
-			 * repeat it or contradict it (design D7, UX U8/U9).
+			 * so the clause that asks "Checking for settlement" would either repeat
+			 * it or contradict it (design D7, UX U8/U9). On the keyed path that is
+			 * `settling` minus the answer; on the wire path it is still the trailing
+			 * English clause the server appends, which `withoutSettlementClause`
+			 * strips — server prose is not this app's copy to key.
 			 */
-			const line =
-				view.message ??
-				(view.generating ? CANCEL_RUNNING_COPY : CANCEL_QUEUED_COPY);
+			const answered = Boolean(view.settlementCaption || view.settled);
+			const keyed = keyedStopSentence(view.cancel, !answered);
+			const wire = view.message
+				? answered
+					? withoutSettlementClause(view.message)
+					: view.message
+				: view.generating
+					? runningStopSentence(!answered)
+					: t("ui.chat.canonical.image_gen.cancel.queued");
 			text = view.batch
-				? `${batchMaterialTitle(view.material ?? "sound-effect")} batch stopped.`
-				: view.settlementCaption || view.settled
-					? withoutSettlementClause(line)
-					: line;
+				? t("ui.chat.canonical.image_gen.state.cancelled_batch", {
+						material: materialToken(view.material ?? "sound-effect"),
+					})
+				: (keyed ?? wire);
 			break;
 		}
 	}
@@ -327,8 +556,13 @@ function StateLine({
 				{text}
 			</span>
 			{detail === null ? null : (
+				/* <bdi dir="auto"> around the datum only: it can be a size ("1.9 kB"), and
+				 * an unisolated digit-space-Latin run mirrors to "kB 1.9" in an RTL
+				 * locale. The "· " separator stays OUTSIDE the isolate so it keeps its
+				 * place between the state text and the datum (design D3); isolating it
+				 * with the value let the datum's own direction carry it to the edge. */
 				<span className={cn("shrink-0 text-meta text-ink-dim")}>
-					· {detail}
+					· <bdi dir="auto">{detail}</bdi>
 				</span>
 			)}
 		</p>
@@ -355,13 +589,6 @@ function LogTail({ line }: { line: string }) {
  * live state takes. It wraps rather than truncating, like the failed arm's
  * own sentence: the text is authored to be read whole.
  */
-function batchMaterialTitle(
-	material: Parameters<typeof imageGenMaterialNoun>[0],
-): string {
-	const noun = imageGenMaterialNoun(material);
-	return noun.charAt(0).toUpperCase() + noun.slice(1);
-}
-
 function NoteLine({
 	line,
 	prominent = false,
@@ -392,14 +619,29 @@ function controlLabel(
 	 * vendor is working), and the button's own hint states which promise it can
 	 * keep — the queued case stops before the call, the running case only asks.
 	 * A control labelled "Cancel" would imply a guaranteed stop that the frozen
-	 * contract explicitly does not offer.
+	 * contract explicitly does not offer. The word lives in the catalogue, so the
+	 * reasoning that picked it is in that key's context note.
+	 *
+	 * Resolved per CALL, not at module load: `t()` reads the active locale each
+	 * time, so a card already on screen re-renders in the reader's language when
+	 * they switch it.
 	 */
-	if (kind === "cancel") return "Stop";
-	if (kind === "restart") return state === "failed" ? "Retry" : "Restart";
-	return "Edit and restart";
+	if (kind === "cancel") return t("ui.chat.canonical.image_gen.control.stop");
+	if (kind === "restart") {
+		/*
+		 * The failed case reuses the common action's `Retry`: nothing here failed in
+		 * a way the card owns, the prompt is retained, and a card-private key would
+		 * ship the same word seven more times for no reader's benefit.
+		 */
+		return state === "failed"
+			? t("ui.common.actions.retry")
+			: t("ui.chat.canonical.image_gen.control.restart");
+	}
+	return t("ui.chat.canonical.image_gen.control.edit_and_restart");
 }
 
 export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
+	useI18nLocale();
 	const [confirmStop, setConfirmStop] = useState(false);
 	const keepWaiting = useCallback(() => setConfirmStop(false), []);
 	const root = useRef<HTMLDivElement>(null);
@@ -454,6 +696,59 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 	 */
 	const generatingBody =
 		unsettled && (view.state === "running" || view.generating);
+	/*
+	 * THE SOUND TILE IS ITS OWN FOUR-STATE SEAT (see `SoundGeneratingTile`).
+	 * Image and video keep the rectangular `GeneratingTile`; a sound gets the
+	 * waveform in every state the card can be in, including QUEUED (where the
+	 * image rule draws nothing, because a picture has no shape yet; a sound's
+	 * seat is a band by construction, so the empty seat claims nothing).
+	 */
+	const material = "material" in view ? view.material : undefined;
+	const soundMaterial = material === "voiceover" || material === "sound-effect";
+	const soundTileState = !soundMaterial
+		? null
+		: view.state === "queued"
+			? "queued"
+			: view.state === "cancelling"
+				? view.generating
+					? "stopped"
+					: null
+				: generatingBody
+					? "running"
+					: view.state === "failed"
+						? "failed"
+						: view.state === "cancelled"
+							? "stopped"
+							: null;
+	/*
+	 * THE STOP RECEIPT, IN THE CARD. The state line carries the honest billing
+	 * sentence for a plain cancelled sound, but three paths replace it with
+	 * shorter words: a BATCH receipt's title, a wire-supplied `message`, and a
+	 * FAILED batch after a mid-flight stop. The fact that the provider has no
+	 * cancellation endpoint - and may still bill for audio it produces - must not
+	 * disappear behind those words, so it is rendered as its own note exactly
+	 * when the line does not already state it.
+	 *
+	 * A KEYED CANCELLED LINE DOES STATE IT (S16e): the structured cancel fact's
+	 * sentence already carries the request and its cost consequence, so the note
+	 * would only repeat it - which is why that one path is excluded rather than
+	 * being the fourth way to say the same thing twice.
+	 */
+	const keyedCancelLine =
+		view.state === "cancelled" &&
+		!view.batch &&
+		Boolean(keyedStopSentence(view.cancel, true));
+	const soundStopReceipt =
+		soundMaterial &&
+		!keyedCancelLine &&
+		(view.state === "failed"
+			? Boolean(view.batch?.some((item) => item.status === "cancelled"))
+			: view.state === "cancelled"
+				? Boolean(view.batch?.some((item) => item.status === "cancelled")) ||
+					Boolean(view.message)
+				: false)
+			? runningStopSentence(true)
+			: null;
 	const logTail =
 		unsettled && view.progress.logs.length > 0
 			? view.progress.logs[view.progress.logs.length - 1]
@@ -465,11 +760,17 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 			data-imagegen-card={view.state}
 			className={cn("flex w-full flex-col gap-2")}
 		>
-			{generatingBody ? <GeneratingTile /> : null}
+			{soundTileState ? (
+				<SoundGeneratingTile state={soundTileState} />
+			) : generatingBody ? (
+				<GeneratingTile />
+			) : null}
 			{view.state === "failed" &&
 			(view.material === "voiceover" || view.material === "sound-effect") &&
-			view.errorType ? (
-				<p className={cn("text-meta text-ink-dim")}>{view.errorType}</p>
+			view.errorCode ? (
+				<p className={cn("text-meta text-ink-dim")}>
+					{errorClassLabel(view.errorCode)}
+				</p>
 			) : null}
 			<StateLine view={view} elapsed={elapsed} />
 			{(view.state === "done" ||
@@ -490,6 +791,12 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 			{view.state === "cancelled" && view.settlementCaption ? (
 				<NoteLine line={view.settlementCaption} />
 			) : null}
+			{/* A quote with nothing settled yet (S16e E4): keyed copy, not the
+			    English sentence the view model used to bake into the record. */}
+			{view.state === "cancelled" && view.settlementPending ? (
+				<NoteLine line={t("ui.chat.canonical.image_gen.settlement.pending")} />
+			) : null}
+			{soundStopReceipt ? <NoteLine line={soundStopReceipt} /> : null}
 			{soundRunning && confirmStop ? (
 				<SoundStopConfirmation
 					onKeepWaiting={keepWaiting}
@@ -525,7 +832,7 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 				 * so the card's media column reads as one edge.
 				 */
 				<Progress
-					aria-label="Image generation progress"
+					aria-label={t("ui.chat.canonical.image_gen.progress")}
 					className={cn("max-w-[240px]")}
 					value={Math.round(
 						Math.min(1, Math.max(0, view.progress.fraction)) * 100,
@@ -539,7 +846,13 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 			view.batch ? (
 				<SoundBatch
 					items={view.batch}
-					summary={view.batchSummary ?? `${view.batch.length} items`}
+					summary={
+						view.batchSummary ??
+						t("ui.chat.canonical.image_gen.batch_summary", {
+							count_display: String(view.batch.length),
+							count: view.batch.length,
+						})
+					}
 					scope={scope}
 				/>
 			) : view.state === "done" && view.images.length > 0 ? (
@@ -560,12 +873,25 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 						 * THE NOUN. A sound entry only knows it is audio; whether it is a
 						 * voiceover or a sound effect is the fact `view.material` carries, so
 						 * the label reads `Generated voiceover`, never `Generated audio`.
+						 *
+						 * THE LABEL IS ITS OWN KEY, NOT THE STATUS LINE (2026-11-17). It used
+						 * to be `state.done` with an index appended, which is a finished-state
+						 * STATUS: in a language where that is a clause (`Видео создано`) the
+						 * broken-media sentence `{name} could not be played`, the player's
+						 * accessible name and the image alt all came out ungrammatical. The
+						 * `result_label` message is a bare noun phrase and takes `position`
+						 * and `count` so a locale places the numeral itself. Resolved here at
+						 * render, like its neighbours, so a language switch repaints it.
 						 */
-						const noun = `Generated ${imageGenMaterialNoun(
-							image.kind === "audio" ? view.material : (image.kind ?? "image"),
-						)}`;
-						const label =
-							view.images.length === 1 ? noun : `${noun} ${index + 1}`;
+						const label = t("ui.chat.canonical.image_gen.result_label", {
+							material: materialToken(
+								image.kind === "audio"
+									? view.material
+									: (image.kind ?? "image"),
+							),
+							position: index + 1,
+							count: view.images.length,
+						});
 						return image.kind === "video" ? (
 							<CanonicalVideo
 								key={image.id}
@@ -625,8 +951,8 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 										 */
 										view.state === "queued" ||
 										(view.state === "cancelling" && !view.generating)
-										? "Stops before the provider is called."
-										: "Requests a stop; the provider may finish anyway."
+										? t("ui.chat.canonical.image_gen.control.stop_hint_queued")
+										: t("ui.chat.canonical.image_gen.control.stop_hint_running")
 									: undefined
 							}
 							onClick={

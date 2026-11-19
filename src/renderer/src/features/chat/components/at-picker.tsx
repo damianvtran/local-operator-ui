@@ -15,7 +15,7 @@
  * (`message-input.tsx` mounts both inside one `relative` wrapper), so a second
  * shell would be a second way of doing one thing. Copied deliberately and
  * exactly, from `slash-commands.tsx`: the anchor, the shell's
- * `overflow-hidden rounded-md border border-control bg-elevated shadow-lg`, the
+ * `overflow-hidden rounded-md bg-elevated shadow-overlay`, the
  * scroller split, the 36px row pitch, the `border-hairline` strips, the row inks,
  * the `bg-accent-wash` + 2px accent bar for the active row, the
  * `role="listbox"`/`role="option"` + `aria-activedescendant` contract with the
@@ -37,6 +37,7 @@ import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
+import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { FC, KeyboardEvent } from "react";
@@ -53,7 +54,6 @@ import {
 import type { DesktopProject } from "../../../../../shared/desktop-control-contract";
 import {
 	AT_ROWS_MIN,
-	AT_UNAVAILABLE_REASON,
 	type AtKeyInput,
 	type AtKeyIntent,
 	atCount,
@@ -64,6 +64,7 @@ import {
 	atRowBudget,
 	atRowId,
 	atSectionRuns,
+	atUnavailableReason,
 } from "./at-contract";
 import {
 	type AtRow,
@@ -558,7 +559,7 @@ export function useAtPicker({
 		 * composer that is idle, so an ordinary draft never carries it.
 		 */
 		unavailable:
-			tokenKey !== null && unsupported ? AT_UNAVAILABLE_REASON : null,
+			tokenKey !== null && unsupported ? atUnavailableReason() : null,
 		active: state.active,
 		rows,
 		token,
@@ -752,10 +753,11 @@ export const AtSuggestionsPopup: FC<AtSuggestionsPopupProps> = ({
 		return (
 			<output
 				ref={shellRef}
+				data-lo-floating=""
 				className={cn(
 					"@container/at absolute bottom-full left-0 right-0 z-20 mb-1",
-					"overflow-hidden rounded-md border border-control bg-elevated",
-					"shadow-lg",
+					"overflow-hidden rounded-md bg-elevated",
+					"shadow-overlay",
 				)}
 			>
 				<span
@@ -823,14 +825,15 @@ export const AtSuggestionsPopup: FC<AtSuggestionsPopupProps> = ({
 			// biome-ignore lint/a11y/useFocusableInteractive: the textarea keeps focus; the listbox is reached through aria-activedescendant, so it is not in the tab order.
 			// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox cannot be a native <select>.
 			role="listbox"
-			aria-label="Files"
+			aria-label={t("ui.chat.pickers.at_menu.region_label")}
+			data-lo-floating=""
 			className={cn(
 				"@container/at absolute bottom-full left-0 right-0 z-20 mb-1",
 				// `overflow-hidden`, not `overflow-y-auto`: the SCROLL belongs to the row
 				// region below, so the header and footer stay put and the region's height
 				// can be a whole multiple of the row pitch.
-				"overflow-hidden rounded-md border border-control bg-elevated",
-				"shadow-lg",
+				"overflow-hidden rounded-md bg-elevated",
+				"shadow-overlay",
 			)}
 		>
 			{/*
@@ -902,7 +905,9 @@ export const AtSuggestionsPopup: FC<AtSuggestionsPopupProps> = ({
 											role="presentation"
 											className="px-3 pt-2 pb-1 text-meta text-ink-muted"
 										>
-											{row.section === "project" ? "Projects" : "Files"}
+											{row.section === "project"
+												? t("ui.chat.pickers.at_menu.heading.projects")
+												: t("ui.chat.pickers.at_menu.heading.files")}
 										</li>
 									)}
 								{/* biome-ignore lint/a11y/useFocusableInteractive: focus stays in the composer textarea; the active option is announced through aria-activedescendant. */}
@@ -1008,10 +1013,10 @@ export const AtSuggestionsPopup: FC<AtSuggestionsPopupProps> = ({
 									 */}
 									<span className="shrink-0 text-meta text-ink-dim">
 										{row.section === "project"
-											? "Project"
+											? t("ui.chat.pickers.at_menu.tag.project")
 											: row.directory
-												? "Directory"
-												: "File"}
+												? t("ui.chat.pickers.at_menu.tag.directory")
+												: t("ui.chat.pickers.at_menu.tag.file")}
 									</span>
 								</li>
 							</Fragment>

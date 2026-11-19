@@ -1,0 +1,30 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "61c5125becf8",
+  "date": "2026-10-18",
+  "locale": "zh-CN",
+  "status": "passed",
+  "scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84; ui.schedules byte-identical to round 1. ACCEPT all five typography rejections: ui.projects.project_detail.with_value1 uses a full-width comma as its clause separator; ui.projects.request_update.value1_could_not_be_reached and ui.projects.request_update.delivery_to_value1_could_not_be_confirmed follow a full-width sentence stop, so no ASCII boundary space is necessary; ui.schedules.scheduled_task_dialog.as_a_turn_in_that_conversation and ui.schedules.scheduled_task_dialog.with_your_default_model use a full-width comma after the external span, which supplies the required separator without an English-style space. Context boundary instructions are satisfied semantically by Chinese punctuation under the explicit style contract; no word or token merges. ICU composition samples executed with intl-messageformat, including live=0/1/2/1000; no rendered-browser validation performed in this text audit.",
+  "previous_audit": "i18n/receipts/bcc9be599370.json",
+  "namespaces": {
+    "ui.projects": {
+      "namespace": "ui.projects",
+      "status": "passed",
+      "sha256": {
+        "source": "6b12f695845c3d01500291f5bc4eb50ea9b35e60c68bc69f21ee219c5f9d7f52",
+        "target": "d4599b21ef1c20b07d079d33490c1b81b402c0891347e48def7488524af0022d"
+      },
+      "findings": []
+    },
+    "ui.schedules": {
+      "namespace": "ui.schedules",
+      "status": "passed",
+      "sha256": {
+        "source": "157303c99e3f8aabed9b4d60a00ee9a8ddb21a92df86f962f191aa002533799a",
+        "target": "0326f7e38941588160fcb662a9389f5da3f37f23c9902cc20cdb15e5ce99c08b"
+      },
+      "findings": []
+    }
+  }
+}

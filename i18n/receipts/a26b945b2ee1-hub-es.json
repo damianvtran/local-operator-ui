@@ -1,0 +1,51 @@
+{
+ "schema": 1,
+ "auditor": "translation-auditor (lopdev coder-role session a26b945b2ee1, delta audit of the #1461 check-failed key; not the PR coder, the translator of 1c7e850a58, or any previous ui.hub auditor)",
+ "agent": "translation-auditor (lopdev coder-role session a26b945b2ee1, delta audit of the #1461 check-failed key; not the PR coder, the translator of 1c7e850a58, or any previous ui.hub auditor)",
+ "model": "anthropic/claude-opus-5-5",
+ "model_provenance": "Every catalogue read and verdict in this receipt ran on anthropic/claude-opus-5-5 (session header); no fallback occurred in this session.",
+ "fallback": "none",
+ "independence": "Separate session (a26b945b2ee1) from the PR coder, from the translator of this key (1c7e850a58: agent coder, lopdev translator step, openrouter/deepseek/deepseek-v4.1-flash-1017 after fallback from deepseek/deepseek-flash) and from the previous ui.hub auditors. CROSS-FAMILY: DeepSeek translator, Anthropic auditor. The translator's commit message was read only as claims to check; the verdict was rebuilt from the English source, the en context, sibling keys and the locale style guide.",
+ "instance": "a26b945b2ee1-hub-es",
+ "session": "a26b945b2ee1",
+ "locale": "es",
+ "branch": "fix/hub-check-now-body",
+ "head": "9e3db68582eb3b07f5c8ea2a9d0d19db0e177908",
+ "pr": "damianvtran/local-operator-ui#1461",
+ "date": "2026-10-28",
+ "status": "passed",
+ "scope": "ui.hub: delta audit of ui.hub.links.check_failed (added in 7cb42588d6, translated in 1c7e850a58; 9e3db68582 changes no i18n bytes). The carried keys are byte-identical to the last audited row.",
+ "inputs_sha256": {
+  "en_context (ui.hub.context.json)": "7ce0a0d2f9867c0d5fdea86ab3c837d389b57a93a5d4e7ec2405d0bbda8cab20",
+  "glossary (local-operator/i18n/glossary.md)": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style guide (local-operator/i18n/style-guides/es.md)": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+ },
+ "verified": [
+  "key sets equal en; the delta value keeps exactly {item} and {source} and, as the en context requires, no {direction}; no bidi/zero-width/BOM characters, no edge or double spaces; NFC",
+  "carried ui.hub keys byte-identical to the last audited row: the ledger target_sha256 equals the origin/main (1d631be71f) blob, and parsed origin/main vs this head differs only by the added key (no key changed or removed); en adds exactly that key",
+  "the sentence never implies an update was attempted: its subject is the check (the locale's own check noun, matching ui.hub.subscriptions.check / status.not_checked), not a pull/push, and it borrows nothing from direction_pull/push",
+  "the second sentence equals action_failed's second sentence in this locale byte for byte, so the two failure lines read as one family",
+  "render site: hubActionFailureText (hub-link-copy.ts) for action === 'check', shown in hub-links-panel.tsx and hub-link-sidebar-mark.tsx; a status sentence that wraps"
+ ],
+ "namespaces": {
+  "ui.hub": {
+   "namespace": "ui.hub",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 180,
+   "delta_keys_audited": [
+    "ui.hub.links.check_failed"
+   ],
+   "sha256": {
+    "es": "650678afb78aed5f15cb0823457c078e441f121a181254c0f2f7b28c1cb23a7e",
+    "en": "6d1675960e3fc9246da8ac4e85bbd850ae498de1679c62bb3a3541ac320f57f0"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.hub.json",
+    "target": "src/i18n/catalogues/es/ui.hub.json",
+    "context": "src/i18n/catalogues/en/ui.hub.context.json"
+   },
+   "findings": []
+  }
+ }
+}

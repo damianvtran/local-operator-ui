@@ -1,0 +1,102 @@
+{
+ "schema": 1,
+ "auditor": "translation-auditor (lopdev reviewer-role session 044be7ae2c78, i18n-audit-hi-ru-ur-vi; not the PR coder / translator of 7040c2b761)",
+ "agent": "translation-auditor (lopdev reviewer-role session 044be7ae2c78, i18n-audit-hi-ru-ur-vi; not the PR coder / translator of 7040c2b761)",
+ "model": "anthropic/claude-sonnet-5-5",
+ "model_provenance": "Every catalogue read, finding and in-place fix in this receipt ran on anthropic/claude-sonnet-5-5 (session header); no fallback occurred.",
+ "fallback": "none",
+ "independence": "Separate session (044be7ae2c78) from the PR coder, who wrote and translated 7040c2b761 (its commit message says the 16 keys were translated by that session). The translator's work was audited as claims to check, rebuilt from the English source, the en context, the render sites in the PR diff, sibling shipped keys, the core glossary and the locale style guide.",
+ "instance": "044be7ae2c78-dictated-hi",
+ "session": "044be7ae2c78",
+ "locale": "hi",
+ "branch": "fix/send-instant-and-dictated-send-session",
+ "head": "7040c2b761 (+ uncommitted catalogue edits by this audit)",
+ "pr": "damianvtran/local-operator-ui (send-instant-dictated worktree; PR number not assigned at audit time)",
+ "date": "2026-11-17",
+ "status": "passed",
+ "scope": "ui.chat.composer: delta audit of the 16 new ui.chat.composer.dictated_away.* keys for hi (7040c2b761). The 73 carried keys are unchanged: the en and hi blobs at HEAD~1 hash to the ledger row's last audited source_sha256 (a90cc99706b0…) and target_sha256, and a key-by-key comparison of parsed values shows 0 changed, 0 removed, 16 added (en also gains a trailing comma after secret_closure_notice).",
+ "inputs_sha256": {
+  "en_context (ui.chat.composer.context.json)": "455aa178b828ac259813f6b3435f38852412743aa0f3de108036a35a2557aeb6",
+  "glossary (local-operator/i18n/glossary.md @ origin/main b2312e9f97)": "5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+  "style guide (local-operator/i18n/style-guides/hi.md @ origin/main b2312e9f97)": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+ },
+ "verified": [
+  "key set equals en (89 keys); every ICU argument identical to en: {title}/{reason} appear exactly where en has them, no plural/select arms exist in these keys; no bidi/zero-width/BOM characters; no edge or double spaces; NFC",
+  "the toast/notice wording never claims a send happened: not_sent/not_sent_body say the dictation was NOT sent ('नहीं भेजा गया' / 'Не отправлено' / 'نہیں بھیجا گیا' / 'Chưa gửi'), and say the text sits in that chat's draft; origin_gone(+_body) and transcription_failed(+_body) never promise a draft, only that the text/recording is gone, as the render-site comment in the PR requires",
+  "reason clauses are lower-case clauses that follow a colon and complete the sentence; reason_unavailable names no cause",
+  "terms: glossary credentials/model/session rendering kept; chat/open chat/new chat/untitled chat match shipped strings (ui.library.composer.open_chat, ui.shell.sidebar_navigation.new_chat, ui.chat.canonical.untitled)",
+  "carried ui.chat.composer keys unchanged; en differs from the audited blob only by the 16 added keys (+ the trailing comma after secret_closure_notice)",
+  "fit: untitled_chat measures 19 code points / 14 cells with spacing vowel signs excluded; identical to shipped ui.chat.canonical.untitled"
+ ],
+ "namespaces": {
+  "ui.chat.composer": {
+   "namespace": "ui.chat.composer",
+   "status": "passed",
+   "result": "clean-with-findings",
+   "keys_read": 89,
+   "delta_keys_audited": [
+    "ui.chat.composer.dictated_away.not_sent",
+    "ui.chat.composer.dictated_away.not_sent_body",
+    "ui.chat.composer.dictated_away.transcription_failed",
+    "ui.chat.composer.dictated_away.transcription_failed_body",
+    "ui.chat.composer.dictated_away.reason_edited",
+    "ui.chat.composer.dictated_away.reason_command",
+    "ui.chat.composer.dictated_away.reason_gate",
+    "ui.chat.composer.dictated_away.reason_secret",
+    "ui.chat.composer.dictated_away.reason_no_model",
+    "ui.chat.composer.dictated_away.reason_unavailable",
+    "ui.chat.composer.dictated_away.reason_not_ready",
+    "ui.chat.composer.dictated_away.open_chat",
+    "ui.chat.composer.dictated_away.draft_label",
+    "ui.chat.composer.dictated_away.untitled_chat",
+    "ui.chat.composer.dictated_away.origin_gone",
+    "ui.chat.composer.dictated_away.origin_gone_body"
+   ],
+   "sha256": {
+    "hi": "0cf2c9a6d67aa51c26475b30d509be1815923ed7138e3c65de1dc5f9546211c0",
+    "en": "8f6ad5094234ec5368a86da0b1864ae94debba3fa355ea1920d20956425991e6"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.composer.json",
+    "target": "src/i18n/catalogues/hi/ui.chat.composer.json",
+    "context": "src/i18n/catalogues/en/ui.chat.composer.context.json"
+   },
+   "findings": [
+    {
+     "id": "HI-1",
+     "severity": "minor",
+     "key": "ui.chat.composer.dictated_away.reason_gate",
+     "summary": "Gender slip: चैट is feminine in shipped hi (ui.chat.draft_target 'यह चैट ... शुरू होगी', 'यह चैट शुरू करती है'; and this namespace's own reason_unavailable/reason_not_ready use सकी/रही). 'इंतज़ार कर रहा है' is masculine, so the clause disagreed with its siblings.",
+     "resolution": "fixed by auditor in this round (catalogue edited in place)",
+     "before": "ये शब्द उस सवाल का जवाब देते जिसका वह चैट इंतज़ार कर रहा है",
+     "after": "ये शब्द उस सवाल का जवाब देते जिसका वह चैट इंतज़ार कर रही है"
+    },
+    {
+     "id": "HI-2",
+     "severity": "minor",
+     "key": "ui.chat.composer.dictated_away.reason_command",
+     "summary": "'कमांड की तरह चल जाते' uses the idiom चल जाना ('to pass / be acceptable'), so it can read 'these words would pass as a command'. The English says the words would have been run. Shipped hi uses चलाना for running a command ('/credential चलाता है').",
+     "resolution": "fixed by auditor in this round (catalogue edited in place)",
+     "before": "ये शब्द कमांड की तरह चल जाते",
+     "after": "ये शब्द कमांड के रूप में चलाए जाते"
+    },
+    {
+     "id": "HI-3",
+     "severity": "nit",
+     "key": "ui.chat.composer.dictated_away.reason_unavailable",
+     "summary": "'संदेश नहीं ले सकी' is a literal 'could not take a message'; 'संदेश स्वीकार नहीं कर सकी' is the idiomatic wording. Still names no cause, as the context requires.",
+     "resolution": "fixed by auditor in this round (catalogue edited in place)",
+     "before": "वह चैट संदेश नहीं ले सकी",
+     "after": "वह चैट संदेश स्वीकार नहीं कर सकी"
+    },
+    {
+     "id": "HI-4",
+     "severity": "nit",
+     "key": "ui.chat.composer.dictated_away.transcription_failed",
+     "summary": "'डिक्टेशन का टेक्स्ट नहीं बनाया जा सका' paraphrases 'could not transcribe' where shipped hi composer copy says ट्रांसक्राइब/ट्रांसक्रिप्शन (send_recording_hint, dictation_failed_*). Plain-language and unambiguous, so not changed; the same phrase is in the _body key and reason_edited.",
+     "resolution": "deferred: understandable and correct; recorded, not churned"
+    }
+   ]
+  }
+ }
+}

@@ -1,0 +1,267 @@
+{
+ "schema": 1,
+ "kind": "translation-audit-receipt",
+ "audit_kind": "delta audit of 8 newly localised ui.notices values against frozen English 7b32fd2704; the 94 previously passed values are byte-identical (0 changed, 0 removed)",
+ "date": "2026-10-25",
+ "pr": "#1413",
+ "branch": "feat/i18n-toasts",
+ "locale": "vi",
+ "locale_name": "Vietnamese",
+ "namespace": "ui.notices",
+ "auditor": {
+  "agent": "translation-auditor",
+  "team": "lopdev",
+  "harness": "Local Operator",
+  "session": "690b4cc65158",
+  "instance": "690b4cc65158",
+  "model": "radient/auto",
+  "model_provenance": "Harness system prompt reports Model: radient/auto; no provider fallback was used or observed in this run.",
+  "independent_from_translator": true,
+  "independence_basis": "This run authored no catalogue value, ledger row, generated file or prior receipt. It read the frozen source, context and target bytes from the worktree and git objects; the eight candidate values carry no translation-auditor authorship."
+ },
+ "translator": {
+  "agent": "i18n-translator",
+  "job_id": "job76e5d6175e60",
+  "model": "radient/auto",
+  "provenance": "job id and model as supplied in the assignment brief; this audit did not re-run or re-verify the translator job"
+ },
+ "source": {
+  "commit": "7b32fd2704b6168d653e717bfc7fa4ddc58686e5",
+  "commit_short": "7b32fd2704",
+  "path": "src/i18n/catalogues/en/ui.notices.json",
+  "sha256": "c9556d7d6d8b399bc62f3a35b7bb4d01109f118b1ab29fe47ba70b739552a4e0",
+  "keys": 102,
+  "context_path": "src/i18n/catalogues/en/ui.notices.context.json",
+  "context_sha256": "9a536d75dec597c27281380946b807abdca8ad5c1f7c4e02ba54852a4568c5ee",
+  "context_keys": 102
+ },
+ "base": {
+  "commit": "a32f7349e3efff461cdfa63674b86ddbc21bf955",
+  "commit_short": "a32f7349e3",
+  "prior_receipt": "i18n/receipts/vi-ui-notices-audit-a32f7349e3.json",
+  "prior_receipt_sha256": "d6f9a5962701970cbd0323a2fbdc84ea2e7a4894b7124faa5ba544c399eac323",
+  "prior_result": "clean",
+  "prior_status": "passed",
+  "prior_keys": 94,
+  "carried_findings": 0
+ },
+ "head": {
+  "commit": "7b32fd2704b6168d653e717bfc7fa4ddc58686e5",
+  "commit_short": "7b32fd2704"
+ },
+ "target": {
+  "path": "src/i18n/catalogues/vi/ui.notices.json",
+  "sha256": "3f94db7780caf50f0a291ff001e0783b614c969db0e56640d7cd4958e973e589",
+  "keys": 102,
+  "status": "uncommitted working-tree candidate (git status: '.M'; nothing staged); not part of any commit"
+ },
+ "delta": {
+  "keys_added": [
+   "ui.notices.chat.goal_restore_failed",
+   "ui.notices.chat.loop_clear_failed",
+   "ui.notices.chat.loop_stop_failed",
+   "ui.notices.main.watchdog_app_wait",
+   "ui.notices.main.watchdog_app_wait_fallback",
+   "ui.notices.main.watchdog_installing",
+   "ui.notices.main.watchdog_still_installing",
+   "ui.notices.main.watchdog_taking_longer"
+  ],
+  "keys_changed": 0,
+  "keys_removed": 0,
+  "keys_unchanged_byte_identical": 94,
+  "en_keys_added_since_base": 8,
+  "target_git_blob_sha1": "7b26d06f87c775df44e9c8333ccaf49a4812b26e"
+ },
+ "unchanged_proof": {
+  "blob_identity": "git rev-parse of src/i18n/catalogues/vi/ui.notices.json returns 7b26d06f87c775df44e9c8333ccaf49a4812b26e at both a32f7349e3 and 7b32fd2704",
+  "value_diff": "HEAD vs working tree: 8 keys added, 0 values changed, 0 removed; the other 94 compare equal as parsed JSON and the file hash of HEAD is 5b6a5b143fa3ef1c7d54d2c7d54aba19dd3c5cd84f97a4d0a63e90bd270620b9",
+  "conclusion": "the previously audited 94 values are preserved byte-for-byte; the prior receipt remains their authority and no unchanged value was re-reviewed"
+ },
+ "result": "clean-with-findings",
+ "status": "passed",
+ "keys_read": 8,
+ "keys_total": 102,
+ "keys_semantic_delta": 8,
+ "keys_programmatic_all": 102,
+ "counts": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 1,
+  "nit": 0
+ },
+ "findings": [
+  {
+   "id": "VI-D1",
+   "severity": "minor",
+   "dimension": "glossary consistency",
+   "key": "ui.notices.main.watchdog_app_wait_fallback",
+   "current": "Bản cập nhật vẫn đang chờ Local Operator đóng (đã chờ {elapsed}). Nếu không có gì xảy ra, hãy thoát Local Operator (Buộc thoát nếu ứng dụng không phản hồi) và đừng mở lại cho đến khi ứng dụng tự khởi động lại.",
+   "proposed": "…và đừng mở lại cho đến khi ứng dụng tự mở lại.",
+   "reason": "The same English clause 'until it opens again by itself' is rendered 'tự mở lại' in watchdog_installing and watchdog_still_installing but 'tự khởi động lại' here; one term per concept across the notice family. Non-blocking: both read correctly."
+  }
+ ],
+ "per_key_review": [
+  {
+   "key": "ui.notices.chat.goal_restore_failed",
+   "en": "Could not restore the goal",
+   "vi": "Không khôi phục được mục tiêu",
+   "verdict": "correct",
+   "note": "Matches the audited sibling pattern goal_dismiss_failed / goal_done_failed ('Không … được mục tiêu'); 'mục tiêu' is the locale's term for goal."
+  },
+  {
+   "key": "ui.notices.chat.loop_clear_failed",
+   "en": "Could not clear the loop",
+   "vi": "Không xóa được vòng lặp",
+   "verdict": "correct",
+   "note": "'vòng lặp' is the established term in ui.chat.pickers ('Bắt đầu vòng lặp', 'Hủy vòng lặp'); clear→xóa, stop→dừng kept distinct."
+  },
+  {
+   "key": "ui.notices.chat.loop_stop_failed",
+   "en": "Could not stop the loop",
+   "vi": "Không dừng được vòng lặp",
+   "verdict": "correct",
+   "note": "Distinct from loop_clear_failed exactly as the English pair is; no trailing punctuation, so the caller's ':'-joined backend reason reads as one sentence."
+  },
+  {
+   "key": "ui.notices.main.watchdog_app_wait",
+   "en": "Waiting for Local Operator to close so the update can install (waiting {elapsed}). No action is needed yet.",
+   "vi": "Đang chờ Local Operator đóng để cài bản cập nhật (đã chờ {elapsed}). Bạn chưa cần làm gì.",
+   "verdict": "correct",
+   "note": "Exactly one {elapsed}; no unit word added around it, so the shell's formatted string ('2 min 30 s') reads naturally. Adds 'Bạn' to an impersonal English clause; see residual_notes."
+  },
+  {
+   "key": "ui.notices.main.watchdog_app_wait_fallback",
+   "en": "The update is still waiting for Local Operator to close (waiting {elapsed}). If nothing happens, quit Local Operator (Force Quit if it does not respond) and leave it closed until it opens again by itself.",
+   "vi": "Bản cập nhật vẫn đang chờ Local Operator đóng (đã chờ {elapsed}). Nếu không có gì xảy ra, hãy thoát Local Operator (Buộc thoát nếu ứng dụng không phản hồi) và đừng mở lại cho đến khi ứng dụng tự khởi động lại.",
+   "verdict": "correct-except-VI-D1",
+   "note": "One {elapsed}; the instruction tells the reader to quit and not reopen, never to reopen. 'Buộc thoát' is Apple's Vietnamese rendering of Force Quit (support.apple.com/vi-vn/102586 uses 'bắt buộc thoát'); sentence-case capital matches the vi guide, and Force Quit is not on any keep-English list."
+  },
+  {
+   "key": "ui.notices.main.watchdog_installing",
+   "en": "Installing the update. Keep Local Operator closed until it opens again by itself.",
+   "vi": "Đang cài bản cập nhật. Đừng mở Local Operator cho đến khi ứng dụng tự mở lại.",
+   "verdict": "correct",
+   "note": "'Đừng mở' carries 'keep closed' as the operative instruction without a calque; 'tự mở lại' is the reference rendering for the reopen clause."
+  },
+  {
+   "key": "ui.notices.main.watchdog_still_installing",
+   "en": "The update is still installing. Keep Local Operator closed; it will open again when the install finishes.",
+   "vi": "Bản cập nhật vẫn đang cài. Đừng mở Local Operator; ứng dụng sẽ tự mở lại khi quá trình cài xong.",
+   "verdict": "correct",
+   "note": "'Bản cập nhật vẫn đang cài' matches the already-audited update_hold_body ('Bản cập nhật … vẫn đang cài'); semicolon clause order follows the English."
+  },
+  {
+   "key": "ui.notices.main.watchdog_taking_longer",
+   "en": "The update is taking longer than expected. Local Operator is opening again so you are not left without it — if it says the update is still installing, quit it and leave it closed until the install finishes.",
+   "vi": "Bản cập nhật mất nhiều thời gian hơn dự kiến. Local Operator đang mở lại để bạn vẫn có ứng dụng dùng — nếu ứng dụng báo bản cập nhật vẫn đang cài, hãy thoát ứng dụng và đừng mở lại cho đến khi quá trình cài xong.",
+   "verdict": "correct",
+   "note": "Em dash spaced per the vi guide; 'để bạn vẫn có ứng dụng dùng' carries 'so you are not left without it' idiomatically; makes no promise that the install finished."
+  }
+ ],
+ "checks": [
+  {
+   "check": "frozen source and context hashes",
+   "result": "PASS",
+   "detail": "src/i18n/catalogues/en/ui.notices.json = c9556d7d…a4568c5ee's sibling c9556d7d… and ui.notices.context.json = 9a536d75… exactly as briefed; 102/102 keys in each."
+  },
+  {
+   "check": "target hash and candidate status",
+   "result": "PASS",
+   "detail": "vi/ui.notices.json sha256 = 3f94db7780caf50f0a291ff001e0783b614c969db0e56640d7cd4958e973e589 as briefed; git status '.M', index clean, file absent from HEAD."
+  },
+  {
+   "check": "key-set parity",
+   "result": "PASS",
+   "detail": "102 en keys, 102 vi keys, 102 context entries, no missing and no extra, in both directions."
+  },
+  {
+   "check": "delta containment",
+   "result": "PASS",
+   "detail": "Parsed diff HEAD→worktree: exactly the 8 named keys added, 0 values changed, 0 removed; 94 keys compare equal. git diff of the file is 8 inserted lines only."
+  },
+  {
+   "check": "prior round integrity",
+   "result": "PASS",
+   "detail": "vi file git blob 7b26d06f87 is identical at a32f7349e3 and 7b028fd7cdc; the 94 values therefore match the head whose audit receipt (d6f9a596…) is clean with 0 findings. No carried finding."
+  },
+  {
+   "check": "context alignment",
+   "result": "PASS",
+   "detail": "All 8 keys have an English context entry (role/tone/length/note); the copy obeys each stated role: chat keys are short colon-led prefixes, watchdog keys are two-sentence OS banner bodies."
+  },
+  {
+   "check": "placeholder integrity",
+   "result": "PASS",
+   "detail": "Each of the two wait strings contains exactly one literal {elapsed} and no other token; all five watchdog strings and three chat strings contain no second placeholder; ICU round-trip with elapsed='{elapsed}' reproduces both strings byte-for-byte."
+  },
+  {
+   "check": "ICU validity, all 102",
+   "result": "PASS",
+   "detail": "@formatjs/icu-messageformat-parser parsed all 102 vi values and all 102 en values with 0 failures; intl-messageformat formatted the 8 delta keys without error."
+  },
+  {
+   "check": "elapsed semantics",
+   "result": "PASS",
+   "detail": "Caller passes the literal token through t() and the generated shell printf substitutes the shell's formatted duration ('0 s','2 min 30 s'); source is a duration string, not a plural count, so no plural branch was added — correct for vi (other-only)."
+  },
+  {
+   "check": "printf data-path render",
+   "result": "PASS",
+   "detail": "Applied the repository's printfFormat transformation (%→%%, token→%s) and ran sh printf with 0 s / 1 s / 21 s / 2 min 30 s for both wait strings: exit 0 and the expected complete sentences each time; no stray % conversion."
+  },
+  {
+   "check": "OS-notice instruction reading",
+   "result": "PASS",
+   "detail": "Bodies read as macOS banners: status then one instruction; app_wait says no action yet, fallback says quit and do not reopen, installing/still say keep closed, taking_longer says quit if it reports still installing. None contradicts its context note."
+  },
+  {
+   "check": "copied literals",
+   "result": "PASS",
+   "detail": "'Local Operator' kept as the product name (glossary §1); no other English UI label left untranslated. 'Force Quit' is translated as 'Buộc thoát' rather than exempted: it is an action label with no keep-English entry, and Apple's vi support page uses 'bắt buộc thoát'."
+  },
+  {
+   "check": "register and typography",
+   "result": "PASS",
+   "detail": "Sentence case, no '!', spaced em dash, no space before punctuation, 'bạn' address (2 of 102 notices use it; accepted, see residual_notes), NFC on all 102 values."
+  },
+  {
+   "check": "length and overflow",
+   "result": "PASS",
+   "detail": "vi/en char counts: app_wait 89/107 (budget ~170), fallback 209/204, installing 77/81, still_installing 96/105, taking_longer 212/206 (budget ~250), chat keys 23–29/23–26. No string materially longer than its source; no truncation risk flagged."
+  }
+ ],
+ "render": {
+  "synthetic_elapsed": [
+   "0 s",
+   "1 s",
+   "21 s",
+   "2 min 30 s"
+  ],
+  "path": "intl-messageformat (actual t() formatter) then the generated shell printf data path; no notification was delivered and Notification Center was never touched (LOCAL_OPERATOR_NO_NOTIFICATIONS semantics were not exercised)",
+  "results": "both wait strings render complete, grammatical sentences at all four values; fallback's parenthetical (Buộc thoát …) sits naturally at every value"
+ },
+ "visual_limits": "No rendered banner or UI frame was captured: per the brief, no actual notifications and no browser/build work under host load. Overflow is judged by callers' stated character budgets and measured lengths, not by pixels.",
+ "residual_notes": [
+  {
+   "topic": "'Bạn chưa cần làm gì.' adds a pronoun the English does not have",
+   "note": "The vi guide prefers dropped pronouns but allows 'bạn' where the copy addresses the reader directly; two of 102 notices use it. Judged acceptable, not a finding — the alternative 'Chưa cần làm gì.' is terser but not required."
+  },
+  {
+   "topic": "'vẫn đang cài' in watchdog_still_installing reads intransitively",
+   "note": "Mirrors the previously audited ui.notices.main.update_hold_body ('Bản cập nhật … vẫn đang cài'), so it is established locale style rather than a new defect; no change requested."
+  },
+  {
+   "topic": "public redacted copy route",
+   "note": "read_public_copy refuses paths outside the core repo (local_operator/i18n/...). The UI worktree catalogues were read directly; neither file contains a '[redacted]' literal, and no encoded recovery was attempted."
+  }
+ ],
+ "namespace_verdict": "clean-with-findings — 8 of 8 new keys read semantically against English and context; 94 prior keys proven byte-identical (not re-reviewed). 0 blocker, 0 major, 1 minor (VI-D1 term drift), 0 nit.",
+ "overall_verdict": "PASS (ship-eligible): the five watchdog notices and three chat failure prefixes are accurate, idiomatic, placeholder-exact and length-safe; the 94 audited values are untouched. VI-D1 is a non-blocking consistency polish.",
+ "source_sha256": "c9556d7d6d8b399bc62f3a35b7bb4d01109f118b1ab29fe47ba70b739552a4e0",
+ "target_sha256": "3f94db7780caf50f0a291ff001e0783b614c969db0e56640d7cd4958e973e589",
+ "sha256": {
+  "en": "c9556d7d6d8b399bc62f3a35b7bb4d01109f118b1ab29fe47ba70b739552a4e0",
+  "vi": "3f94db7780caf50f0a291ff001e0783b614c969db0e56640d7cd4958e973e589",
+  "context": "9a536d75dec597c27281380946b807abdca8ad5c1f7c4e02ba54852a4568c5ee"
+ }
+}

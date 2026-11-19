@@ -1,0 +1,266 @@
+{
+  "locale": "ru",
+  "namespace": "ui.chat, ui.chat.composer_media, ui.common.actions",
+  "audit_date": "2026-11-10",
+  "key_count": 271,
+  "fully_audited_key_count": 4,
+  "consistency_only_key_count": 267,
+  "scope": "PR damianvtran/local-operator-ui #1842 @ e5fb4310dab638f9cf428779d62539ec039a8990; Russian four-key delta across ui.chat, ui.chat.composer_media, ui.common.actions. Existing pasted_file English context scope checked against get-file-name.ts and attachment-encode.ts. Legacy consistency only.",
+  "head_sha": "e5fb4310dab638f9cf428779d62539ec039a8990",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "c3a66120522a",
+    "session": "c3a66120522a",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "Served session header: openai/gpt-6.1-sol; session c3a66120522a. No fallback used.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "Delegation supplies translator model and Russian translator session 3b22accb1363; auditor did not translate or participate in translation."
+  },
+  "input_hashes": {
+    "ui.chat": {
+      "en": {
+        "path": "src/i18n/catalogues/en/ui.chat.json",
+        "sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15"
+      },
+      "ru": {
+        "path": "src/i18n/catalogues/ru/ui.chat.json",
+        "sha256": "52fb9cf75ad675dd672935a02c9c5e820938271af6a1dbae44ee7244055d2a2e"
+      },
+      "context": {
+        "path": "src/i18n/catalogues/en/ui.chat.context.json",
+        "sha256": "84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf"
+      }
+    },
+    "ui.chat.composer_media": {
+      "en": {
+        "path": "src/i18n/catalogues/en/ui.chat.composer_media.json",
+        "sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae"
+      },
+      "ru": {
+        "path": "src/i18n/catalogues/ru/ui.chat.composer_media.json",
+        "sha256": "ea15ba6e13dd7b263ce92af68a80dfe8169857677df770d3d1abc3e9ef125d55"
+      },
+      "context": {
+        "path": "src/i18n/catalogues/en/ui.chat.composer_media.context.json",
+        "sha256": "a0fbc1552ef6f27999f3cff365750025627a284faa106d767e22a24d131ae77b"
+      }
+    },
+    "ui.common.actions": {
+      "en": {
+        "path": "src/i18n/catalogues/en/ui.common.actions.json",
+        "sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b"
+      },
+      "ru": {
+        "path": "src/i18n/catalogues/ru/ui.common.actions.json",
+        "sha256": "d76c6dc4da5d49007f52d9f69c6e424b81c4d2a180cdd250973f01c2354d4d98"
+      },
+      "context": {
+        "path": "src/i18n/catalogues/en/ui.common.actions.context.json",
+        "sha256": "24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d"
+      }
+    }
+  },
+  "policy_inputs": {
+    "style_guide": {
+      "path": "/Users/damian/local-operator/i18n/style-guides/ru.md",
+      "sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+    },
+    "glossary": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    }
+  },
+  "artifacts": [
+    {
+      "path": "ru-sol-c3a66120522a.json",
+      "sha256": "2a57a558cfffcaa0e1721cbd5b789689bbad2dfc172c9cb1d19bffd781fc530a",
+      "kind": "audit_notes_not_execution_log",
+      "record_reference": "ru-sol-c3a66120522a.record.json"
+    },
+    {
+      "path": "ru-sol-c3a66120522a.audit.log",
+      "sha256": "9f8e9dacc72a6fa0696bda6749c2d8970bd3200efb38112ef8bbf3c3306a5be2",
+      "kind": "actual_execution_log",
+      "record_reference": "ru-sol-c3a66120522a.record.json"
+    }
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": []
+  },
+  "finding_report": "ru-sol-c3a66120522a.json",
+  "audit_notes_not_execution_log": true,
+  "execution_log": "ru-sol-c3a66120522a.audit.log",
+  "retention": {
+    "state": "scratch_handoff_only_per_explicit_read_only_task",
+    "intended_tracked_directory": "i18n/audits/evidence/ru/<namespace>/s12-sol-c3a66120522a",
+    "manager_action_required": "Retain per-namespace record and companions in canonical root; write ledger rows referencing tracked records. No ledger command run here."
+  },
+  "unverified": [
+    "No production formatter, screen-reader or rendered UI execution; plain-placeholder integrity and identifier samples checked directly with Python. No plural/select structures in the four new messages.",
+    "Context-parity repository validator ran successfully. No full pnpm check-i18n, build, install, server, translation service or suite run.",
+    "No ledger command, repository writes, PR comment or commit: explicitly read-only audit. Manager must retain scratch receipts in the canonical tracked evidence root and write ledger rows.",
+    "267 legacy values are consistency-only (parse, key parity, unchanged against local origin/main), not semantic certification. origin/main was not fetched; frozen/read-only task."
+  ],
+  "namespaces": {
+    "ui.chat": {
+      "locale": "ru",
+      "namespace": "ui.chat",
+      "audit_date": "2026-11-10",
+      "key_count": 208,
+      "fully_audited_key_count": 2,
+      "consistency_only_key_count": 206,
+      "auditor": {
+        "agent": "i18n-auditor",
+        "instance": "c3a66120522a",
+        "session": "c3a66120522a",
+        "model": "openai/gpt-6.1-sol",
+        "actual_model_source": "Served session header: openai/gpt-6.1-sol; session c3a66120522a. No fallback used.",
+        "fallback_used": false,
+        "independent_from_translator_session": true
+      },
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.json",
+          "sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15"
+        },
+        "ru": {
+          "path": "src/i18n/catalogues/ru/ui.chat.json",
+          "sha256": "52fb9cf75ad675dd672935a02c9c5e820938271af6a1dbae44ee7244055d2a2e"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.context.json",
+          "sha256": "84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf"
+        }
+      },
+      "artifacts": [
+        {
+          "path": "ru-sol-c3a66120522a.json",
+          "sha256": "2a57a558cfffcaa0e1721cbd5b789689bbad2dfc172c9cb1d19bffd781fc530a",
+          "kind": "audit_notes_not_execution_log",
+          "record_reference": "ru-sol-c3a66120522a.record.json"
+        },
+        {
+          "path": "ru-sol-c3a66120522a.audit.log",
+          "sha256": "9f8e9dacc72a6fa0696bda6749c2d8970bd3200efb38112ef8bbf3c3306a5be2",
+          "kind": "actual_execution_log",
+          "record_reference": "ru-sol-c3a66120522a.record.json"
+        }
+      ],
+      "current_report_verdict": {
+        "status": "passed",
+        "unresolved_blocker_major_count": 0,
+        "finding_ids": []
+      },
+      "finding_report": "ru-sol-c3a66120522a.json"
+    },
+    "ui.chat.composer_media": {
+      "locale": "ru",
+      "namespace": "ui.chat.composer_media",
+      "audit_date": "2026-11-10",
+      "key_count": 9,
+      "fully_audited_key_count": 1,
+      "consistency_only_key_count": 8,
+      "auditor": {
+        "agent": "i18n-auditor",
+        "instance": "c3a66120522a",
+        "session": "c3a66120522a",
+        "model": "openai/gpt-6.1-sol",
+        "actual_model_source": "Served session header: openai/gpt-6.1-sol; session c3a66120522a. No fallback used.",
+        "fallback_used": false,
+        "independent_from_translator_session": true
+      },
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.composer_media.json",
+          "sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae"
+        },
+        "ru": {
+          "path": "src/i18n/catalogues/ru/ui.chat.composer_media.json",
+          "sha256": "ea15ba6e13dd7b263ce92af68a80dfe8169857677df770d3d1abc3e9ef125d55"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.composer_media.context.json",
+          "sha256": "a0fbc1552ef6f27999f3cff365750025627a284faa106d767e22a24d131ae77b"
+        }
+      },
+      "artifacts": [
+        {
+          "path": "ru-sol-c3a66120522a.json",
+          "sha256": "2a57a558cfffcaa0e1721cbd5b789689bbad2dfc172c9cb1d19bffd781fc530a",
+          "kind": "audit_notes_not_execution_log",
+          "record_reference": "ru-sol-c3a66120522a.record.json"
+        },
+        {
+          "path": "ru-sol-c3a66120522a.audit.log",
+          "sha256": "9f8e9dacc72a6fa0696bda6749c2d8970bd3200efb38112ef8bbf3c3306a5be2",
+          "kind": "actual_execution_log",
+          "record_reference": "ru-sol-c3a66120522a.record.json"
+        }
+      ],
+      "current_report_verdict": {
+        "status": "passed",
+        "unresolved_blocker_major_count": 0,
+        "finding_ids": []
+      },
+      "finding_report": "ru-sol-c3a66120522a.json"
+    },
+    "ui.common.actions": {
+      "locale": "ru",
+      "namespace": "ui.common.actions",
+      "audit_date": "2026-11-10",
+      "key_count": 54,
+      "fully_audited_key_count": 1,
+      "consistency_only_key_count": 53,
+      "auditor": {
+        "agent": "i18n-auditor",
+        "instance": "c3a66120522a",
+        "session": "c3a66120522a",
+        "model": "openai/gpt-6.1-sol",
+        "actual_model_source": "Served session header: openai/gpt-6.1-sol; session c3a66120522a. No fallback used.",
+        "fallback_used": false,
+        "independent_from_translator_session": true
+      },
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.json",
+          "sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b"
+        },
+        "ru": {
+          "path": "src/i18n/catalogues/ru/ui.common.actions.json",
+          "sha256": "d76c6dc4da5d49007f52d9f69c6e424b81c4d2a180cdd250973f01c2354d4d98"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.context.json",
+          "sha256": "24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d"
+        }
+      },
+      "artifacts": [
+        {
+          "path": "ru-sol-c3a66120522a.json",
+          "sha256": "2a57a558cfffcaa0e1721cbd5b789689bbad2dfc172c9cb1d19bffd781fc530a",
+          "kind": "audit_notes_not_execution_log",
+          "record_reference": "ru-sol-c3a66120522a.record.json"
+        },
+        {
+          "path": "ru-sol-c3a66120522a.audit.log",
+          "sha256": "9f8e9dacc72a6fa0696bda6749c2d8970bd3200efb38112ef8bbf3c3306a5be2",
+          "kind": "actual_execution_log",
+          "record_reference": "ru-sol-c3a66120522a.record.json"
+        }
+      ],
+      "current_report_verdict": {
+        "status": "passed",
+        "unresolved_blocker_major_count": 0,
+        "finding_ids": []
+      },
+      "finding_report": "ru-sol-c3a66120522a.json"
+    }
+  }
+}

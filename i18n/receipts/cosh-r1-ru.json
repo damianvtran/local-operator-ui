@@ -1,0 +1,84 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "cosh-r1-ru",
+ "session": "2728570e45a1",
+ "date": "2026-10-22",
+ "locale": "ru",
+ "translator": "translator",
+ "translator_session": "073cc3536c59",
+ "namespace": "ui.agentMessages.settings",
+ "status": "passed",
+ "keys_audited": 84,
+ "scope": "Base audit of the 84 pre-existing keys of a newly created full-namespace ru catalogue (scope expansion from the PR #1325 2-key delta because the locale had no file; coverage-allowance entries to be removed by shrink-only --update); hold.* excluded pending R1-1 English rewrite; catalogue audit only, not rendered-fit/activation/release.",
+ "scope_expansion": {
+  "reason": "ru had no ui.agentMessages.settings catalogue; the 84 pre-existing keys were covered only by i18n/coverage-allowance.json, so the 2-key PR #1325 delta could not land without creating the full file, and the translator created all 86 keys.",
+  "approved_by": "operator (via coordinator), 2026-10-22",
+  "allowance_pair_removed": "ru/ui.agentMessages.settings (84 keys)"
+ },
+ "sha256": {
+  "en": "840f0821444e5e70af15435c82c43a1996db8be4f06cb59926a12f537794e2af",
+  "ru": "b6d469500f277296ff5057d8d8d36eb2b5459bdf2a2a41ec4a7462d0820afd63",
+  "context": "e51d33d9b5ef383755e084f64508c9f08b75cf9c1454faba07e7c03bf5f9c489"
+ },
+ "excluded_keys": [
+  "ui.agentMessages.settings.hold.chief_of_staff",
+  "ui.agentMessages.settings.hold.open"
+ ],
+ "findings": [
+  {
+   "severity": "MINOR",
+   "key": "ui.agentMessages.settings.consent.changed",
+   "current": "Прочитайте актуальный текст согласия ниже, затем выберите «Включить снова».",
+   "proposed": "Прочитайте актуальный текст согласия ниже и включите снова.",
+   "note": "The translation quotes «Включить снова», but this refusal sentence (consent_version_unknown via settingsRefusalSentence) can also appear in state B, where the button is «Включить» (action.enable). It also differs from the existing ru dialog.consent_changed, which reads «снова выберите «Включить»». The English means 'click Enable again' (context: 'a NEW click'), not a button named 'Enable again'. The proposal names no label and matches the wording of consent.renew («…и включите снова»)."
+  },
+  {
+   "severity": "MINOR",
+   "key": "ui.agentMessages.settings.consent.via_dialog",
+   "current": "Окно первоначальной настройки",
+   "proposed": "Вводное окно",
+   "note": "«Первоначальная настройка» is already the ru title of the app's first-time setup wizard (ui.onboarding.modal.title.fallback), so this consent-record value points the reader to the wrong surface. The consent was actually collected in the one-time Agent messages dialog («Сообщения агентов на Radient»). The proposal is also shorter (12 vs 29 chars)."
+  },
+  {
+   "severity": "MINOR",
+   "key": "ui.agentMessages.settings.local.stays_enrolled",
+   "current": "Ваше подключение остаётся активным для этой учётной записи и на других ваших компьютерах.",
+   "proposed": "Ваша регистрация остаётся активной для этой учётной записи и на других ваших компьютерах.",
+   "note": "Elsewhere in ru catalogues «подключение» means a network connection (connectivity banner, mesh «Подключение…»). Under a local on/off switch, «Ваше подключение остаётся активным» reads as 'your connection stays up', not 'your enrollment stays'. «Регистрация» is the usual ru term for enrollment and keeps the intended fact that the account stays enrolled."
+  },
+  {
+   "severity": "NIT",
+   "key": "ui.agentMessages.settings.allowlist.allowed_heading",
+   "current": "Разрешены",
+   "proposed": "Разрешённые",
+   "note": "This is a heading over a list of entries. The short-form predicate «Разрешены» reads as an unfinished sentence ('[they] are allowed'); ru list headings normally use the full adjective."
+  },
+  {
+   "severity": "NIT",
+   "key": "ui.agentMessages.settings.allowlist.blocked_heading",
+   "current": "Заблокированы",
+   "proposed": "Заблокированные",
+   "note": "Same issue as allowed_heading: the short form «Заблокированы» reads as a predicate rather than a list heading. The two headings should change together."
+  },
+  {
+   "severity": "NIT",
+   "key": "ui.agentMessages.settings.allowlist.listed_only",
+   "current": "Только выбранные мной агенты",
+   "proposed": "Только выбранные агенты (if a rendered check shows wrap/overflow; then also update the quoted label in allowlist.cue_listed_only)",
+   "note": "Overflow flag: this segmented-control ghost button (size sm, w-fit row beside «Все в моей организации») is 28 chars against 20 in English (1.4×). The current text is accurate and idiomatic, so change it only if a rendered frame shows the pair wrapping."
+  }
+ ],
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+ },
+ "validation": {
+  "independence": "Separate auditor session 2728570e45a1 (anthropic/claude-opus-5-5); not the translator session 073cc3536c59. Read the catalogue bytes directly; relied on no translator claim.",
+  "semantics": "Read all 84 in-scope en/ru values side by side with their context entries and the render sites (agent-messages-settings.tsx, -settings-model.ts). Glossary: approvals→одобрения, wake→пробуждать, session→сессия, endpoint kept Latin; machine→компьютер and «Сообщения агентов» match ru/ui.agentMessages.json. Examined the translator's invented terms: Reach→«Доступ» is accepted (an allow/deny editor over who can message whom; mesh 'Reach'→«Доступность» is a different concept, network reachability, so this is not drift). Person→«Человек» is accepted (it pairs with «Агент» in the kind select, fits w-32, and is used consistently in kind/ID/help/add/empty strings). Off→«выключено» (B: never on) vs turned off→«отключено»/«Отключить» (E/F/action) mirrors the English off vs turned-off distinction and is used consistently. Enrollment→«подключение» and «Окно первоначальной настройки» are filed as MINOR findings. Register: lowercase вы mid-sentence, infinitive action labels, no '!' or «Пожалуйста», sentence case. hold.chief_of_staff and hold.open are present (positions 85-86) and were not judged.",
+  "icu": "Parsed all 86 en and ru values with @formatjs/icu-messageformat-parser 3.5.21 from the worktree's node_modules (script run from the auditor scratchpad). There were 0 parse failures and 0 argument-set mismatches. The 84 in-scope keys carry no ICU arguments, and ru adds none.",
+  "typography": "The file is UTF-8 with no BOM, has a trailing newline, uses tab indentation and is NFC-normalized. It contains no Cf/bidi controls and no NBSP. It uses «ёлочки» quotes, spaced em dashes and U+2026 ellipses (byte-identical in bep_…/acc_…/«Сохранение…»), and ё consistently. Identifiers bep_, acc_, Radient, endpoint and ID are kept verbatim. Key set and order equal en (86/86, identical order).",
+  "overflow": "Checked the button and label render sites. Buttons in flex-wrap rows («Приостановить», «Возобновить», «Включить снова», «Отключить», «Сохранить настройки доступа», sm «Добавить»/«Удалить») are 1.4-2.6× English by ratio but short in absolute terms and wrap-safe. The fixed-width SelectTrigger w-32 holds «Агент»/«Человек», which fit. The only flag is the segmented pair allowlist.anyone/listed_only (NIT), which needs a rendered check.",
+  "limitations": "Browser unavailable; no screenshots/rendered-fit claim. No catalogue/code edits. One procedural note: a scratch ICU script was briefly copied into the worktree root (untracked) and deleted within the same step before it ran. git status afterwards matches the pre-audit state (only the pre-existing translator changes)."
+ }
+}

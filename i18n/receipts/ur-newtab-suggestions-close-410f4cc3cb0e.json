@@ -1,0 +1,86 @@
+{
+ "schema": 1,
+ "kind": "translation-audit",
+ "audit_kind": "convergence-close",
+ "locale": "ur",
+ "namespace": "ui.browser",
+ "pr": null,
+ "branch": "fix/newtab-address-suggestions",
+ "instance": "ur-newtab-suggestions-close-410f4cc3cb0e",
+ "auditor": {
+  "agent": "translation-auditor",
+  "role": "independent translation auditor (team lopdev); authored no catalogue value and edited no repo file; distinct from predecessor instance 30541ab9ec5c",
+  "instance": "ur-newtab-suggestions-close-410f4cc3cb0e",
+  "model": "anthropic/claude-sonnet-5-5",
+  "model_note": "FALLBACK OBSERVED: session 410f4cc3cb0e started on deepseek/deepseek-flash and the harness switched to anthropic/claude-sonnet-5-5 (provider failure: quota HTTP 402) after the first orientation calls (worktree head/sha256 check, predecessor receipt read, diff stat). The code diff read, the ICU/embedValue runs, the Chromium render, fribidi runs, frame reading, test run and this receipt were all produced on anthropic/claude-sonnet-5-5.",
+  "independence": "Read-only on the worktree (git status clean before and after; node --test only reads). Wrote only under the session scratchpad receipts/ and w/."
+ },
+ "status": "passed",
+ "result": "clean",
+ "verdict": "The predecessor MAJOR is CLOSED. The row range is derived from the ICU argument position, selects exactly the substituted value for every probe on the real ur strings (22/22 on ur, 22/22 on en), and a real Chromium render of the child's actual DOM shape under <html dir=rtl> paints all IP literals in typed order. The implementer's built-app frames and facts are consistent with that render. The range only wraps existing text; U+2066-2069 stripping is intact. No new blocker/major; no findings.",
+ "predecessor": {
+  "instance": "30541ab9ec5c",
+  "receipt": "ur-newtab-suggestions-rerun-30541ab9ec5c.json",
+  "result": "changes_requested",
+  "major": "native child renders IP-literal typed addresses mangled in RTL (dir=auto resolves RTL from the sentence)",
+  "major_closed_by": "6451290126",
+  "verification": "(1) embedValue run verbatim on the ur address_open_row/address_search_row via the app's own intl-messageformat: start/end select exactly the value for 192.168.1.1/, 127.0.0.1:8080/, [::1]:3000/, github.com/, a quote-bearing+Arabic query, bare quote, {x}, a'b. (2) Real Chromium dir=rtl render of <span dir=auto> with before/<bdi dir=ltr>value</bdi>/after: typed order for every probe; OLD plain-text shape reproduces the mangling in the same page. (3) Implementer frames ur-child-bidi-{0,1,2}.png and ur-facts.json agree. (4) HOSTILE_STRING unchanged; range display-only."
+ },
+ "findings": [],
+ "keys_read": 5,
+ "keys": [
+  "ui.browser.browser_url_bar.address_open_row",
+  "ui.browser.browser_url_bar.address_search_row",
+  "ui.browser.browser_url_bar.address_suggestions_unavailable (+_narrow/_platform/_restart variants as in predecessor scope)"
+ ],
+ "verification": {
+  "bytes_unchanged": "git diff 9742c9673d..6451290126 -- src/i18n is empty (0 bytes); sha256 recomputed on disk matches the lead's values; git status clean.",
+  "code_read": {
+   "files": [
+    "src/main/browser/address-overlay-list.ts",
+    "src/renderer/src/address-overlay-list/main.ts",
+    "src/renderer/src/features/browser/model/address-autocomplete.ts (embedValue)",
+    "src/renderer/src/features/browser/components/browser-url-bar.tsx (mirrorRowText)",
+    "overlay/address-overlay-port.ts",
+    "overlay/use-address-overlay-mirror.ts"
+   ],
+   "embedValue": "formats the sentence with the real value and with a private-use sentinel U+E000; start = sentinel index (the ICU argument position, not a search for the user's text); refuses (isolate null, plain text) unless probe length, the value at [start,start+len) and the prefix all agree. Search row passes the same way: {query} -> row.query; open row {address} -> row.address.",
+   "mirrorRowText": "candidate rows -> plain displayText, no range; open/search rows -> embedded.text (PLAIN, no FSI/PDI) + range. Page DOM rows keep isolateBidi."
+  },
+  "range_probe": {
+   "method": "embedValue ported verbatim to node (embed-range-check.cjs), formatted with the app's intl-messageformat 'IntlMessageFormat(ur json value,\"ur\")' - the same class src/i18n/messages.ts uses; results in embed-range-check.json",
+   "result": "ur: address_open_row start=1 (after the opening “), address_search_row start=15 (after 'DuckDuckGo پر \"'); end=start+len; text.slice(start,end)===value in 22/22 cases (11 values x 2 rows); en likewise 22/22. Values: 192.168.1.1/, 127.0.0.1:8080/, [::1]:3000/, github.com/, 'say \"hi\" کھولیں', 'عربی \"نص\" github', DuckDuckGo, کھولیں, bare \", {x}, a'b. The quote and the word DuckDuckGo inside the query do not confuse the range (position from the argument, not text search)."
+  },
+  "chromium_render": {
+   "files": [
+    "ur-child-bidi-close-evidence.html",
+    "ur-child-bidi-close-evidence.png"
+   ],
+   "method": "harness browser (127.0.0.1 static page, server reaped, tab closed); <html dir=rtl>, each cell <div dir=rtl><span dir=auto>; left col NEW = child's real shape (before text node, <bdi dir=ltr>value</bdi>, after text node) with ranges from the probe above; right col OLD = same text plain.",
+   "result": "NEW: 192.168.1.1/, 127.0.0.1:8080/, [::1]:3000/, github.com/ and the quote/Arabic queries all read in typed order with trailing slash last, in both rows. OLD reproduces the MAJOR (“/192.168.1.1”, “/3000:[1::]”) in the same page, so the control discriminates.",
+   "fribidi_cross_check": "NEW (LRI around the range) vs OLD for all probes: NEW keeps typed order, OLD mangles the IP literals; for the search row OLD also flips github.com sentence order, which the isolate fixes."
+  },
+  "implementer_frames": "ur-child-bidi-0/1/2.png (built app, rows for 192.168.1.1/, github.com/, [::1]:3000/): read; the value renders in typed order in both the open and search rows, quote glyphs hugging it on the correct sides, same look as the NEW column. ur-facts.json childBidi[0..2]: child html dir=rtl, each row span dir=auto, exactly one <bdi dir=ltr> whose text is exactly the typed value, textContent = plain sentence (no markup), bidiControls=false. CONSISTENT with the independent render; the DOM shape in the facts is the shape I rendered.",
+  "smuggling": "HOSTILE_STRING /[\\p{Cc}\\u2028\\u2029\\u202A-\\u202E\\u2066-\\u2069]/gu still at address-overlay-list.ts:196, applied by sanitizeOverlayText to text and title (unchanged by the diff). The range is two integers validated (integers, 0<=start<end<=sent text length, only keys start/end; else the whole row is refused). It is dropped when sanitizing changed the text (strip/truncate shifts offsets), so it can never point at different bytes. The child builds the three parts with slice()+createTextNode/textContent of the already-sanitized text and sets bdi.dir to the constant \"ltr\": no new text, no innerHTML, no attacker-chosen dir. It can only wrap existing characters in an LTR isolate; it adds no bidi control characters to the text (textContent has none, per facts).",
+  "tests": "node --test scripts/browser-address-overlay-list-child.test.mjs scripts/browser-address-autocomplete.test.mjs scripts/browser-address-overlay.test.mjs: 77 pass / 0 fail (includes bdi wrap exactness, hostile text inside bdi stays text, out-of-range range -> plain row, malformed range -> refused). Supporting, not the evidence."
+ },
+ "non_findings_noted": [
+  "A malformed range makes main refuse the whole view rather than paint plain; documented in code and tested, consistent with the boundary's existing posture. Not a defect.",
+  "embedValue falls back to plain text (no range) if a locale message dropped or reformatted the argument; the row is then unisolated but correct text - a graceful degradation, not an issue for ur where the argument is present."
+ ],
+ "overall_verdicts": {
+  "ui.browser catalogue bytes (5 keys)": "CLEAN (unchanged since predecessor)",
+  "native child bidi (IP literals, both rows)": "CLOSED",
+  "page-row bidi": "VERIFIED by predecessor, code unchanged",
+  "range/sanitizer boundary": "CLEAN"
+ },
+ "sha256": {
+  "ur": "2a48ee96efe1bfac3f3b45f456f84fedb22da7ca1f2b9c45e7174f04ab55085e",
+  "en": "9c26625772886bffa1392176565485cad451be8f2644519b1a939d863667aa81"
+ },
+ "scope": "Convergence audit on top of predecessor 30541ab9ec5c, not a full re-audit. Catalogue bytes covered: the same five ui.browser keys the predecessor read (address_open_row, address_suggestions_unavailable, _narrow, _platform, _restart), confirmed byte-identical; the verification effort is on the delta 9742c9673d..6451290126 (isolate range path) and the ur address_open_row / address_search_row strings.",
+ "date": "2026-10-26",
+ "head": "6451290126",
+ "head_full": "6451290126eaadf6f3fb5d6cd1186843bab6b6c8",
+ "base": "9742c9673d"
+}

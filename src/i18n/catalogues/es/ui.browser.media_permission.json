@@ -1,0 +1,10 @@
+{
+	"ui.browser.media_permission.label": "Solicitud de cámara y micrófono",
+	"ui.browser.media_permission.message": "{devices, select, audio {{site} quiere usar tu micrófono.} video {{site} quiere usar tu cámara.} other {{site} quiere usar tu cámara y tu micrófono.}}",
+	"ui.browser.media_permission.agent_tab_hint": "Esta pestaña la controla un agente, así que Permitir solo se aplica a esta solicitud.",
+	"ui.browser.media_permission.allow": "Permitir",
+	"ui.browser.media_permission.block": "Bloquear",
+	"ui.browser.media_permission.dismiss": "Descartar la solicitud de cámara y micrófono",
+	"ui.browser.media_permission.system_blocked": "{devices, select, audio {macOS tiene desactivado el acceso al micrófono para Local Operator.} video {macOS tiene desactivado el acceso a la cámara para Local Operator.} other {macOS tiene desactivado el acceso a la cámara y al micrófono para Local Operator.}}",
+	"ui.browser.media_permission.system_blocked_hint": "Actívalo en Ajustes del Sistema › Privacidad y seguridad y vuelve a cargar la página."
+}

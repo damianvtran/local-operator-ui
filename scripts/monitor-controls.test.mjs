@@ -116,6 +116,44 @@ test("the op parses strictly, with no sibling family's keys", () => {
 });
 
 /*
+ * The listing (#1898): the Schedules page's machine-wide read. The mapping is
+ * the wake listing's, one family over - a GET on the collection, snake_case
+ * parameters, and an absent bound sent as an absent parameter so the route's
+ * own default (`MONITOR_LIST_LIMIT_DEFAULT`, `include_dormant=True`) decides.
+ */
+test("the listing maps onto the monitor collection as a GET with snake_case params", () => {
+	assert.deepEqual(desktopEndpoint({ op: "monitors.list" }), {
+		path: "/v1/desktop/monitors",
+		method: "GET",
+	});
+	assert.deepEqual(
+		desktopEndpoint({ op: "monitors.list", limit: 50, includeDormant: true }),
+		{
+			path: "/v1/desktop/monitors?limit=50&include_dormant=true",
+			method: "GET",
+		},
+	);
+});
+
+/*
+ * The schema admits exactly what the route accepts (`ge=1, le=500`), so a
+ * value this client sends is never a 422, and `.strict()` refuses the cancel's
+ * handles riding along on a read.
+ */
+test("the listing parses within the route's bounds, strictly", () => {
+	const parses = (request) => desktopRequestSchema.safeParse(request).success;
+	assert.equal(parses({ op: "monitors.list" }), true);
+	assert.equal(parses({ op: "monitors.list", limit: 500 }), true);
+	assert.equal(parses({ op: "monitors.list", limit: 501 }), false);
+	assert.equal(parses({ op: "monitors.list", limit: 0 }), false);
+	assert.equal(parses({ op: "monitors.list", includeDormant: false }), true);
+	assert.equal(
+		parses({ op: "monitors.list", sessionId: "a1b2c3d4e5f6" }),
+		false,
+	);
+});
+
+/*
  * The retry boundary, and it is NARROWER than the wake family's: a re-send is
  * kept for a request that never got an answer (the `null` status, and the 503
  * main SYNTHESISES when the fetch itself failed) and for the ONE 503 the core

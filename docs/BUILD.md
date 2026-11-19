@@ -64,12 +64,20 @@ The following environment variables are used for code signing across all platfor
 - `CSC_CONTENT`: Base64-encoded signing certificate (p12 file)
 - `CSC_KEY_PASSWORD`: Password for the signing certificate
 
-For macOS notarization, additional variables are required:
+In CI these read the repository secrets `MACOS_DEVID_APP_P12_BASE64` and
+`MACOS_DEVID_APP_P12_PASSWORD` (the Radient Inc. organization's Developer ID
+Application identity); see [CODE_SIGNING.md](./CODE_SIGNING.md).
 
-- `APPLE_ID`: Your Apple ID email
-- `APPLE_ID_PASSWORD`: App-specific password for your Apple ID
+For macOS notarization, an App Store Connect API key:
+
+- `APPLE_API_KEY`: Path to the API key's `.p8` file
+- `APPLE_API_KEY_ID`: The key's id
+- `APPLE_API_ISSUER`: The App Store Connect issuer id (a UUID)
 - `APPLE_TEAM_ID`: Your Apple Developer Team ID
 - `NOTARIZE`: Set to "true" to enable notarization (optional)
+
+`APPLE_ID` / `APPLE_ID_PASSWORD` still work as a local fallback when no API
+key is set; the release workflows no longer use them.
 
 You can set these variables in your CI/CD pipeline or locally in a `.env.build` file before building.
 
@@ -87,20 +95,15 @@ The build process will automatically use the credentials from your `.env.build` 
 
 The project includes GitHub Actions workflows for automated building, testing and publishing:
 
-- `.github/workflows/ci.yml`: Runs lint, type checks, the release-contract scripts and the desktop test suite on pushes to `main` and `dev-*`
-- `.github/workflows/version-bump-guard.yml`: Rejects a `package.json` version bump outside a `chore(release):` PR, on every pull request (any base branch)
+- `.github/workflows/ci.yml`: Runs lint, type checks, `version-bump-guard`, the release-contract scripts, bytecode build checks, and NPX smoke tests on pull requests and pushes to `main` (coalescing non-release `main` pushes into `ci-main`)
+- `.github/workflows/full-suite.yml`: Runs the sharded desktop test suite and macOS native app regression proofs (`native-proofs`) behind `Merge gate (full suite)` when a PR is labeled for the merge gate (or on `main` / nightly / manual dispatch)
 - `.github/workflows/publish.yml`: Builds and publishes distributables for all platforms when a Release is published, and does the whole release from there — nothing else on the pipeline is started or finished by hand
-
-`ci.yml` has no `pull_request` trigger: it runs when a commit lands on `main` or on
-a `dev-*` branch, not when a pull request is opened. A feature branch therefore
-gets no run from it, which is worth knowing before reading an empty checks list
-on a PR as a passing one.
 
 ### Publishing a Release
 
 The version is bumped by the **release owner**, not by feature PRs: `package.json`
 stays at the last released version on every branch, and the `Version Bump Guard`
-workflow rejects a PR that changes the version line unless its title starts with
+job in `ci.yml` (`CI Gate`) rejects a PR that changes the version line unless its title starts with
 `chore(release):`. See `AGENTS.md` § "Releasing: one owner per window, and no
 version bumps inside feature PRs" for the full doctrine, which supersedes the
 step-by-step list that used to live here.
@@ -209,6 +212,30 @@ list would be a component the sweep neither counted nor judged. The per-tree
 checks above (`bundledPythonCheck`, `privatePythonSeedCheck`,
 `bundledUvToolCheck`) each hold one NAMED thing to an architecture; this is the
 sweep that catches the component under a name nobody enumerated.
+
+**Supported architectures, and why the verifier will not exec an x64 bundle
+locally.** Apple silicon gets the arm64 build, native; the x64 build stays only
+for Intel Macs (macOS 26 and earlier), and an Apple-silicon user never receives
+it. The arm64 app must carry no foreign-only Mach-O, which
+`app-native-components` already enforces. The notice an operator saw on
+2026-11-02 (macOS 27.2, "App Update Required: This version of "Local Operator"
+includes a component that will not open in macOS 28", logged by `ecosystemd` as
+`[NOTIFICATION_SENT] decision=launch … bundle=com.local-operator`) did not come
+from the shipped app: a local QA rig ran `pnpm verify-macos-artifacts` against
+the x64 artifact on an arm64 Mac, and its exec checks (`app-spawn`,
+`app-bytecode-loadable` - since F2 folded into `app-spawn`'s launch probe -
+and `app-seed-python-version`) launched the x86_64 launcher
+under Rosetta, which macOS attributes to the bundle and warns about (at most once
+per 86400 s, re-armed by every such launch). So `refusesLocalRosettaExec` now
+withholds any exec this host would translate (a launcher or interpreter with no
+arm64 slice, thin or fat, on Apple silicon - including when the verifier's own
+`node` is x64 under Rosetta, read from `sysctl.proc_translated`) unless the run
+is a GitHub-hosted runner (`GITHUB_ACTIONS=true` and
+`RUNNER_ENVIRONMENT=github-hosted`, the gate `verify-signed-update.mjs` already
+uses; `CI=true` alone, or a self-hosted runner, does not count) or the operator
+sets `LOCAL_OPERATOR_ALLOW_ROSETTA_EXEC=1`; a withheld check reports FAILED
+rather than passing unproven, and every static check still runs. Prove the x64
+artifact's exec checks on the hosted `macos-latest` release jobs.
 
 **What `uv` is doing in the bundle.** The install scripts create the backend venv
 and install `local-operator` into it, and that install is the dominant cost of a

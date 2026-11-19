@@ -1,0 +1,96 @@
+{
+  "schema": 1,
+  "audit_kind": "independent-translation-audit (round 2, post-remediation re-audit of landed bytes)",
+  "locale": "zh-CN",
+  "namespace": "ui.chat.canonical",
+  "auditor": "i18n-auditor",
+  "agent": "i18n-auditor (lopdev team)",
+  "session": "4184f7fa45be",
+  "instance": "zh-cn-s16f-r2",
+  "model": "deepseek/deepseek-flash",
+  "model_fallback": "none",
+  "model_note": "Session model header is deepseek/deepseek-flash; no model switch, fallback or provider substitution occurred during this run. The instance id is a scope label in the lower-case charset the ledger requires (^[a-z0-9_-]+$, so the repo copy is i18n/receipts/zh-cn-s16f-r2.json); the run's session id is 4184f7fa45be.",
+  "independence": "Independent round-2 auditor. I am not the translator (i18n-translator on anthropic/claude-sonnet-5-5) and not the round-1 auditor (session c69a71ac5b59); I read their report and record only as input. I edited no catalogue, English source, context sidecar, ledger, allowance or generated file: every value was read from the manager-owned worktree at the recorded head, and all command runs used a scratch mirror built with `git archive HEAD` and a symlinked node_modules (no install). No translation API, SDK or MT service was used; no back-translation.",
+  "date": "2026-11-11",
+  "round": 2,
+  "scope": {
+    "pr": 1876,
+    "branch": "feat/i18n-s16f-generation-card-labels",
+    "head": "9931d62addf8a0606bb26d32a8bc163dc7c126b3",
+    "worktree": "~/local-operator-ui/.worktrees/i18n-s16a",
+    "keys": [
+      "ui.chat.canonical.sound.batch.item_status",
+      "ui.chat.canonical.sound.batch.summary",
+      "ui.chat.canonical.sound.batch.latest_update",
+      "ui.chat.canonical.sound.cost.unknown",
+      "ui.chat.canonical.sound.cost.no_charge",
+      "ui.chat.canonical.sound.cost.estimated_zero",
+      "ui.chat.canonical.sound.cost.batch_unknown",
+      "ui.chat.canonical.media.image_label",
+      "ui.chat.canonical.media.sound_label",
+      "ui.chat.canonical.supplement.sound_fallback_label"
+    ],
+    "key_count": 10,
+    "remediation": "round 1 (c69a71ac5b59) raised Z1/Z2 (MAJOR: spaced `图片 2`/`声音 2` calques) and Z3 (MINOR: `估算费用为 $0`); the landed bytes carry the round-1 replacements verbatim (第N张图片 / 第N个声音 / $0 with no space before it) and the 10-pair hash of the landed file equals round 1's `candidate_pairs_with_auditor_fixes` (c812d30b…). This round judged the landed bytes only: all 10 values re-read, none carried over from the round-1 verdict.",
+    "note": "Narrow delta: the 10 S16f keys inside an otherwise unchanged namespace file. The pre-slice file's other 456 values are byte-identical to the superseded row's target bytes."
+  },
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/zh-CN.md",
+      "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+    }
+  },
+  "keys_read": 10,
+  "status": "passed",
+  "result": "clean",
+  "verdict": "clean — 0 blocker, 0 major, 0 minor, 0 nit over the 10 S16f keys. The two round-1 MAJOR calques are gone (第{position}张图片 / 第{position}个声音, matching lightbox.show_image and the activation test's 第N步，共M步 pattern); the round-1 MINOR ($0 spacing) is fixed; placeholder names/types, selector arguments, other-only plural arms with the =0 hiding branches, NFC and typography all verified against English.",
+  "sha256": {
+    "en": "12ec2698434dcb39497e288af62d11d70f0fd71d494a9becf3fd611d6568bbdd",
+    "context": "95aa203759416c93180b7eb4967e6fcf5bce0dffe20e9d005b431c645e9e11e6",
+    "zh-CN": "13bbc7ac23ef6f38a92adb0b27c1e2b5fc9593784a1bb0ab1c1a4029cdd4b708"
+  },
+  "pairs": {
+    "canonicalisation": "sorted keys, compact separators, ensure_ascii=false, UTF-8",
+    "en": {
+      "sha256": "bdd1d9d1cfcd327c7445396ad806220fa850fe820c638a59ec6bc195f882e307",
+      "bytes": 1503
+    },
+    "zh-CN": {
+      "sha256": "c812d30be5d1fb914fe157368ff2547c8d594b3aeae8efb499b3612e47f6a4a3",
+      "bytes": 1320
+    }
+  },
+  "checks": {
+    "repo_mechanical": "generate.mjs --check byte-identical; check-coverage ok (7 gated languages, 158 namespaces, 0 allowed keys); locale-parity.test.mjs 44/44 pass; check-duplicates 0 duplicates over 1428 files; context-parity ok (129 allowed gaps, 4 namespaces); generation-card-labels.test.mjs 27/27; generation-card-locale-switch.test.mjs 1/1",
+    "icu_grid": "1620 renders through intl-messageformat at zh-CN: the summary over completed 0/1/2/3/5/11/21/22/100/1000/1000000 x failed 0/1/2/11/100 x cancelled 0/1/2/11 x unknown 0/1/3 x has_attention yes/no (1320 renders), item_status over failed/cancelled/other x 3 labels, latest_update over item 1..1000000 x total 1/3/1000000 x 2 names, the four cost lines and both media labels at every count with positions 1..1000000: no throw, no leftover braces, '#', undefined or NaN, no double space; zero-hiding branches verified (=0 hides the stopped/unknown clauses), attention clause present only when has_attention=yes",
+    "clauses_machine_checked": "placeholders identical to English as a {name:type} set; selector arguments and types identical; plural branches = CLDR categories of zh-CN (other only) plus the exact =0/=1 matches English uses; $0 kept",
+    "typography": "NFC; no bidi controls; no ASCII ellipsis; full-width 。，：；（） in prose; no space between Chinese and Latin/digit runs (第3张图片, 已完成1000项, $0); the ` · ` clause separator is house style (128 occurrences across 31 zh-CN files plus ui.chat.canonical.fold.unit_separator)",
+    "negative_controls": "5 in-memory mutants rejected: English word in copy, unbalanced brace, non-CLDR `one` branch, renamed placeholder, stray `#`",
+    "width": "zh-CN <= English cells for every string except the two numbered media labels (第21张图片 10 vs Image 21 8; 第3个声音 9 vs Sound 3 7), which carry no maxCells hint and are alt text / tile names; longest render (full summary with attention) 74 cells vs 99 English",
+    "english_leftover": "none in the 10 keys; whole namespace scan found only kept-English names (Local Operator, Team Bridge, Canvas, Finder, Python, diff, shell, seq, HTML, Enter) and the unit separator",
+    "rtl": "not applicable (zh-CN is LTR)",
+    "ledger_validation": "The receipt was run through the repo's own writer in the scratch mirror: ledger-assemble -> zh-CN/ui.chat.canonical status audited, clean 0/0/0/0 (prior audits moved to superseded); ledger-check afterwards reports 0 zh-CN findings (its 18 remaining findings are the six other locales' canonical rows awaiting their own round-2 receipts)"
+  },
+  "findings": [],
+  "artifacts": {
+    "report": "audit-s16f-r2-zh-CN.md (audit notes, not an execution log)",
+    "execution_logs": [
+      "repo-checks.log",
+      "check-r2.log"
+    ],
+    "checker": "check.mjs (app's own intl-messageformat + @formatjs/icu-messageformat-parser)",
+    "scratchpad_source": "~/.local-operator/sessions/4184f7fa45be/scratchpad/zh/"
+  },
+  "provenance_notes": [
+    "audit_notes_not_execution_log: the report and this receipt describe the work; repo-checks.log and check-r2.log are actual command output.",
+    "No repository file was edited by the auditor; the tracked evidence bundle for i18n/audits/evidence/zh-CN/ui.chat.canonical/s16f-r2-<instance>/ has to be copied in by the integrator."
+  ],
+  "original_lost_evidence": null,
+  "new_report_is_original": true,
+  "new_report_is_historical_R2_recreation": false,
+  "backdated": false
+}

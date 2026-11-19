@@ -1,0 +1,84 @@
+{
+  "schema": 1,
+  "instance": "l1verb-ur-r2",
+  "round": 2,
+  "locale": "ur",
+  "namespace": "ui.chat.canonical",
+  "audit_date": "2026-11-11",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "l1verb-ur-r2",
+    "model": "deepseek/deepseek-flash",
+    "session": "3eb6db5381df",
+    "independent_from_translator_session": true,
+    "actual_model_source": "as stated in the auditor's own report (companion report below); no fallback was reported"
+  },
+  "status": "changes_requested",
+  "result": "changes_requested",
+  "scope": "tool_row.verb.* batch, 182 keys (91 settled/running pairs); auditor read staged values ur.v2.json (v2); whole-file hashes below bind the catalogue as it stood at that version",
+  "sha256": {
+    "ur": "ee3d4495b711b9dd0c741e811ec5cfb2a4820bebf31c525222d220f152f1f1ec",
+    "en": "a385671b988e5f03df6f650beb4a06f73c9efaead2316dfa9ab15bf043798765"
+  },
+  "findings": [
+    {
+      "severity": "MAJOR",
+      "ordinal": 1,
+      "detail": "see companion report i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-wave/report-r2.md (finding ids and text live there)"
+    },
+    {
+      "severity": "MINOR",
+      "ordinal": 1,
+      "detail": "see companion report i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-wave/report-r2.md (finding ids and text live there)"
+    },
+    {
+      "severity": "MINOR",
+      "ordinal": 2,
+      "detail": "see companion report i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-wave/report-r2.md (finding ids and text live there)"
+    },
+    {
+      "severity": "MINOR",
+      "ordinal": 3,
+      "detail": "see companion report i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-wave/report-r2.md (finding ids and text live there)"
+    },
+    {
+      "severity": "MINOR",
+      "ordinal": 4,
+      "detail": "see companion report i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-wave/report-r2.md (finding ids and text live there)"
+    },
+    {
+      "severity": "NIT",
+      "ordinal": 1,
+      "detail": "see companion report i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-wave/report-r2.md (finding ids and text live there)"
+    },
+    {
+      "severity": "NIT",
+      "ordinal": 2,
+      "detail": "see companion report i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-wave/report-r2.md (finding ids and text live there)"
+    },
+    {
+      "severity": "NIT",
+      "ordinal": 3,
+      "detail": "see companion report i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-wave/report-r2.md (finding ids and text live there)"
+    },
+    {
+      "severity": "NIT",
+      "ordinal": 4,
+      "detail": "see companion report i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-wave/report-r2.md (finding ids and text live there)"
+    }
+  ],
+  "findings_note": "Severity counts are transcribed from the companion report; individual finding ids, keys and text are in that report, not repeated here.",
+  "provenance": {
+    "kind": "BINDING RECEIPT: the verdict, counts, model and session are transcribed from the auditor's own report; this file was written by the integrating coder session 5a80bd7da0fd (agent coder, anthropic/claude-sonnet-5-5), NOT by the auditor. The auditor audited a staging file of the 182 values, never the whole catalogue; the whole-file hashes above were computed from the catalogue bytes after those exact values were inserted.",
+    "source_report": {
+      "path": "i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-wave/report-r2.md",
+      "sha256": "6995b07c62830f0d94f22b11139cf9d30363d8c9f68266df9fb563345eb871b7"
+    },
+    "audited_values": {
+      "file": "i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-wave/values.v2.json",
+      "sha256": "c71f5e40612dca85cee0d05ddfe4d833d3a68d05fb7c96a3e1519dbed1f904e0",
+      "key_count": 182,
+      "identical_in_bound_catalogue": 182
+    }
+  }
+}

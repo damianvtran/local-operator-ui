@@ -1,0 +1,63 @@
+{
+ "schema": 1,
+ "auditor": "i18n-auditor",
+ "agent": "i18n-auditor",
+ "model": "anthropic/claude-sonnet-5-5",
+ "fallback": null,
+ "model_provenance": "Session e95f3f697724 header: anthropic/claude-sonnet-5-5; no provider fallback occurred.",
+ "independence": "Separate session from every translator and earlier reader of these keys; edited no catalogue, context, ledger or receipt.",
+ "instance": "e95f3f697724-cmpmrg1-ur",
+ "session": "e95f3f697724",
+ "date": "2026-11-04",
+ "locale": "ur",
+ "namespace": "ui.chat.composer",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "branch": "fix/i18n-four-flow-defects",
+ "head": "801b1ad29d47bbb89a0768e0ea1f193892db953d",
+ "audit_kind": "delta audit of 6 keys in the merged file",
+ "delta_keys_audited": [
+  "ui.chat.composer.secret_closure_notice",
+  "ui.chat.composer.insert_transcript",
+  "ui.chat.composer.insert_transcript_hint",
+  "ui.chat.composer.send_recording",
+  "ui.chat.composer.send_recording_hint",
+  "ui.chat.composer.steer_hint"
+ ],
+ "scope": "ui.chat.composer: secret_closure_notice, insert_transcript, insert_transcript_hint, send_recording, send_recording_hint, steer_hint",
+ "sha256": {
+  "en": "1abe3bc2730635d6eae484b49bfafa1743dee3be1f0ca60863576632acb95f14",
+  "ur": "8f17e07b180ed3c76c6beb71dba1aa2e241f32c084253a8337205681dd843efe",
+  "context": "de9e346489f6df64bc3ff08abd1f8e0550e95e54e44b7c0ddda47897ff50e2dc"
+ },
+ "evidence": "i18n/audits/evidence/ur/ui.chat.composer/cmpmrg1-ur/record.json",
+ "findings": [
+  {
+   "id": "U-1",
+   "severity": "MINOR",
+   "key": "ui.chat.composer.secret_closure_notice",
+   "current": "جواب ملنے تک یہ خانہ موقوف ہے",
+   "proposed": "جواب ملنے تک پیغام کا خانہ موقوف ہے",
+   "reason": "In this namespace خانہ already names the secret field (secret_confirm_put, secret_fill_*); a bare «یہ خانہ» can be read as that field rather than the message box. Not gating."
+  },
+  {
+   "id": "U-2",
+   "severity": "NIT",
+   "key": "ui.chat.composer.send_recording_hint",
+   "current": "ٹرانسکرائب کر کے ابھی بھیجیں، جانچے بغیر",
+   "proposed": "ٹرانسکرپٹ بنا کر ابھی بھیجیں، جانچے بغیر (optional)",
+   "reason": "Verb stem ٹرانسکرائب vs glossary noun ٹرانسکرپٹ; both in use, optional."
+  },
+  {
+   "id": "U-3",
+   "severity": "NIT",
+   "key": [
+    "ui.chat.composer.insert_transcript_hint",
+    "ui.chat.composer.send_recording_hint"
+   ],
+   "current": "جانچنے کے لیے / جانچے بغیر",
+   "proposed": "no change",
+   "reason": "جانچنا for proofreading dictated words is idiomatic though the catalogue renders code review as جائزہ; the two keys agree."
+  }
+ ]
+}

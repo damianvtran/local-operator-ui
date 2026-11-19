@@ -1,0 +1,106 @@
+{
+ "schema": 1,
+ "date": "2026-10-20",
+ "instance": "099bfdb46faf",
+ "auditor": "i18n-auditor (independent translation auditor; not the translation author)",
+ "model": "deepseek/deepseek-flash",
+ "status": "clean-with-findings",
+ "result": "clean-with-findings",
+ "locales": [
+  "es",
+  "fr",
+  "hi",
+  "ru",
+  "ur",
+  "vi",
+  "zh-CN"
+ ],
+ "findings": [
+  {
+   "id": "I6",
+   "severity": "nit",
+   "locale": "es",
+   "key": "ui.browser.browser_url_bar.address_suggestions_available",
+   "note": "Carried from round 2 unchanged: CLDR es `many` category absent. Only reachable at 1,000,000; the call site caps at 5 rows, so no rendered defect. Recorded rather than churned."
+  },
+  {
+   "id": "O1",
+   "severity": "info",
+   "locale": "all",
+   "key": "ui.browser.browser_url_bar.address_suggestions_label",
+   "note": "Observation, not a defect: the list header still says «From this browser session» while the new empty state says «these tabs»; both are true of the same set (the tabs are in this browser session), and the header is unchanged from the previously audited bytes. Align the header only if the display-scope framing is intended product-wide; that would touch seven locales plus the label context note."
+  }
+ ],
+ "prior_round": {
+  "receipt": "i18n/receipts/804742ec2e1f.json",
+  "head": "35a3bbe740984be683f492e0ba44a592939984f7",
+  "resolved": [
+   "I1",
+   "I2",
+   "I3",
+   "I4",
+   "I5"
+  ],
+  "note": "I1-I5 were fixed at 35a3bbe740 and are certified by that receipt; this round proves their bytes are unchanged and re-verifies the one string this round changed."
+ },
+ "independence": "Did not author, translate, or edit any catalogue value, code or ledger row. Hashes, key comparisons and renders were derived here from the files at the audited head; the worktree was only read (git status clean after every command).",
+ "scope": {
+  "base": "f4813760786c0265ee4a5811b4e24292d0680516",
+  "head": "0498268b36146b70ba604a8a60f38fcb4165c65e",
+  "branch_point": "70356afc91e2f2de8ccb57abeaf32cfcc242253c",
+  "previous_audited_head": "35a3bbe740984be683f492e0ba44a592939984f7",
+  "kind": "independent translation audit, correction round 3 (empty-state copy change)",
+  "namespace": "ui.browser",
+  "keys_reviewed_this_round": 1,
+  "keys_unchanged_since_prior_audit": 229,
+  "delta": "35a3bbe740..0498268b36 changes exactly ui.browser.browser_url_bar.address_suggestions_empty (and its en context note) in all eight catalogues; every other key/value is identical.",
+  "note": "origin/main f481376078 and the branch point 70356afc91 carry byte-identical ui.browser catalogues (verified by sha256), so the base label does not hide a main-side change."
+ },
+ "namespaces": {
+  "ui.browser": {
+   "status": "clean-with-findings",
+   "result": "clean-with-findings",
+   "findings": [
+    {
+     "id": "I6",
+     "severity": "nit",
+     "locale": "es",
+     "key": "ui.browser.browser_url_bar.address_suggestions_available",
+     "note": "Carried from round 2 unchanged: CLDR es `many` category absent; unreachable at the 5-row cap."
+    },
+    {
+     "id": "O1",
+     "severity": "info",
+     "locale": "all",
+     "key": "ui.browser.browser_url_bar.address_suggestions_label",
+     "note": "Header says «this browser session» while the new empty state says «these tabs»; both true, header unchanged. Align only if display-scope framing is intended product-wide."
+    }
+   ],
+   "locales": [
+    "es",
+    "fr",
+    "hi",
+    "ru",
+    "ur",
+    "vi",
+    "zh-CN"
+   ],
+   "keys_checked_per_catalogue": 230,
+   "keys_linguistically_reviewed": 1,
+   "context_keys_verified": 230,
+   "sha256": {
+    "en": "9eb5d2057e3b53ea1da6c6e33fa964269ca0733b3c1cffed1135aeafd95801fd",
+    "es": "01a7c80a541f53cd52f763cac5af1256cc46f3d052e8d1d88fa2e415b033b3cc",
+    "fr": "3cc2e2279741efe7b744a8eed5af40fbe9cef0662835be54baf261e896a2ea09",
+    "hi": "af652fd11970f617d0667060517e2e02220a6c0e239ef21c261a6d21551e1339",
+    "ru": "f4aa678e8c90f3146dc0a7bee1654f27c9623cc84a78d24661569ddecba5e3bd",
+    "ur": "a5408a26963c02b2009dde5a50c0cd51fa38d1504fd74dc1730c4851d373eead",
+    "vi": "5c8680b7874eaeb2da2152223e88879c649460ad73b171e912dd1cae48746149",
+    "zh-CN": "963f08f783336d0f40d0f2f54aa7a73e9235eca70319e38b161b553b74dd9253",
+    "context": "aeb23698ac3cf0535f83878b5a2de53652da95045d692904d2abc29ea4d2dc47"
+   },
+   "note": "The six address_* keys were re-parsed (ICU structure, placeholders, CLDR categories). One of them is plural-bearing (address_suggestions_available) and is unchanged; only address_suggestions_empty changed. No placeholder in address_suggestions_empty in any locale, no ICU hazards, key order unchanged, no duplicates.",
+   "findings_note": "Both entries are shared by all seven rows: I6 is es-only and unreachable, O1 is a cross-locale copy observation with no rendered defect. Per-locale detail is in findings[].locale; counts are 0 blocker, 0 major, 0 minor, 1 nit."
+  }
+ }
+}

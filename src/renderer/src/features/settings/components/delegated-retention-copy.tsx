@@ -49,7 +49,7 @@ export const DelegatedRetentionCopy: FC = () => {
 				)}{" "}
 				<code className="font-mono">
 					{
-						"lop exec" /* Machine command example; preserve exact shell syntax. */
+						"lop exec" /* i18n: ignore machine command example; preserve exact shell syntax. */
 					}
 				</code>
 				{t(

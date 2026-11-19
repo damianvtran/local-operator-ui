@@ -1,0 +1,175 @@
+{
+  "locale": "hi",
+  "branch": "i18n/slice-transcript",
+  "head": "2cf1ea7b5fd95b85d6c8bfaa264f6bd3c4e5c3b9",
+  "base": "6031bc9ad71e1b9fc83e0d1a9714e52a19301913",
+  "instance": "hi-transcript-r1-ab2f2fb6eeff",
+  "session": "ab2f2fb6eeff",
+  "agent": "reviewer",
+  "model": "openai/gpt-6.1-sol",
+  "auditor": {
+    "agent": "reviewer",
+    "role": "independent i18n auditor",
+    "instance": "hi-transcript-r1-ab2f2fb6eeff",
+    "model": "openai/gpt-6.1-sol",
+    "independent": true
+  },
+  "fallback": "Provider quota notices: anthropic/claude-sonnet-5-5 → anthropic/claude-opus-5-5 → openai/gpt-6.1-sol; audit performed with openai/gpt-6.1-sol.",
+  "date": "2026-11-09T10:20:15.023997+00:00",
+  "status": "passed",
+  "result": "clean",
+  "namespaces": {
+    "ui.chat.canonical": {
+      "status": "passed",
+      "result": "clean",
+      "sha256": {
+        "en": "cd755f73444d7acff3e681c35bbf7e0da30bc61851f28ad711904f23c20c693a",
+        "hi": "5eb7691f97e9fdb1b3bdf3bacd7e29467f302563b280a0a948ed74a3c9dac994",
+        "context": "4c2a77ff391e074b4561f71f9ceaf2690362c89880b259cba69e6a58832d80dc"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.canonical.json",
+        "hi": "src/i18n/catalogues/hi/ui.chat.canonical.json",
+        "context": "src/i18n/catalogues/en/ui.chat.canonical.context.json"
+      },
+      "keys_audited": [
+        "ui.chat.canonical.transcript.earlier_text_offscreen",
+        "ui.chat.canonical.transcript.interrupted",
+        "ui.chat.canonical.transcript.no_answer_given",
+        "ui.chat.canonical.transcript.not_run",
+        "ui.chat.canonical.transcript.answer_may_be_missing",
+        "ui.chat.canonical.transcript.worked",
+        "ui.chat.canonical.transcript.worked_for",
+        "ui.chat.canonical.transcript.job_suffix"
+      ],
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      }
+    },
+    "ui.agents.upload": {
+      "status": "passed",
+      "result": "clean",
+      "sha256": {
+        "en": "388f6b2348eb76b3c3f6ac074ce32434fe75a31a9a41aa5eaead59c34caa97ab",
+        "hi": "d8fab0a0c8c2d601ea54233b4bc79b8fef00c9d012ae2af1f428c12834133192",
+        "context": "b2cff9fc8975e5bc6c394a39a9cbd464a53304f6be9657f80446801c0072734f"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.agents.upload.json",
+        "hi": "src/i18n/catalogues/hi/ui.agents.upload.json",
+        "context": "src/i18n/catalogues/en/ui.agents.upload.context.json"
+      },
+      "keys_audited": [
+        "ui.agents.upload.failure.publish_fallback"
+      ],
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      }
+    }
+  },
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [],
+    "nit": []
+  },
+  "evidence": {
+    "record": "i18n/audits/evidence/hi/ui.chat.canonical/hi-transcript-ab2f2fb6eeff/record.json",
+    "report": "i18n/audits/evidence/hi/ui.chat.canonical/hi-transcript-ab2f2fb6eeff/report.md"
+  },
+  "scope": "Nine new Hindi keys only; source-based linguistic and contract audit, no rendered UI claim.",
+  "audited_values": [
+    {
+      "key": "ui.chat.canonical.transcript.earlier_text_offscreen",
+      "en": "Earlier text of this answer is not on screen",
+      "hi": "इस उत्तर का पहले का पाठ स्क्रीन पर नहीं है",
+      "placeholders": [],
+      "placeholder_match": true,
+      "english_or_bidi_residue": false
+    },
+    {
+      "key": "ui.chat.canonical.transcript.interrupted",
+      "en": "Interrupted",
+      "hi": "रोका गया",
+      "placeholders": [],
+      "placeholder_match": true,
+      "english_or_bidi_residue": false
+    },
+    {
+      "key": "ui.chat.canonical.transcript.no_answer_given",
+      "en": "No answer given",
+      "hi": "कोई उत्तर नहीं दिया गया",
+      "placeholders": [],
+      "placeholder_match": true,
+      "english_or_bidi_residue": false
+    },
+    {
+      "key": "ui.chat.canonical.transcript.not_run",
+      "en": "Not run",
+      "hi": "नहीं चला",
+      "placeholders": [],
+      "placeholder_match": true,
+      "english_or_bidi_residue": false
+    },
+    {
+      "key": "ui.chat.canonical.transcript.answer_may_be_missing",
+      "en": "Part of this answer may be missing",
+      "hi": "इस उत्तर का कुछ हिस्सा गायब हो सकता है",
+      "placeholders": [],
+      "placeholder_match": true,
+      "english_or_bidi_residue": false
+    },
+    {
+      "key": "ui.chat.canonical.transcript.worked",
+      "en": "Worked",
+      "hi": "काम किया",
+      "placeholders": [],
+      "placeholder_match": true,
+      "english_or_bidi_residue": false
+    },
+    {
+      "key": "ui.chat.canonical.transcript.worked_for",
+      "en": "Worked for {duration}",
+      "hi": "{duration} तक काम किया",
+      "placeholders": [
+        "duration"
+      ],
+      "placeholder_match": true,
+      "english_or_bidi_residue": false
+    },
+    {
+      "key": "ui.chat.canonical.transcript.job_suffix",
+      "en": "· Job {id}",
+      "hi": "· जॉब {id}",
+      "placeholders": [
+        "id"
+      ],
+      "placeholder_match": true,
+      "english_or_bidi_residue": false
+    },
+    {
+      "key": "ui.agents.upload.failure.publish_fallback",
+      "en": "The agent could not be published. Try again.",
+      "hi": "एजेंट प्रकाशित नहीं किया जा सका। फिर कोशिश करें।",
+      "placeholders": [],
+      "placeholder_match": true,
+      "english_or_bidi_residue": false
+    }
+  ],
+  "checks": {
+    "head_match": true,
+    "keys_checked": 9,
+    "placeholder_contract": true,
+    "middle_dot_preserved": true,
+    "demonstrative_agreement": true,
+    "sibling_vocabulary": true,
+    "english_bidi_scan": true,
+    "rendered_validation": "not attempted — browser unavailable; linguistic audit only"
+  }
+}

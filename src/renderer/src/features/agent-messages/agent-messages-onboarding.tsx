@@ -32,7 +32,7 @@ export function AgentMessagesOnboarding({
 	useLayoutEffect(() => {
 		model.setBlocked(blocked);
 	});
-	useSuppressBrowserView(open, "agent-messages");
+	useSuppressBrowserView(open, "onboarding", "agent-messages");
 	// Unknown/A/G/signed-out have NO nodes, strings, upsell or loading skeleton.
 	// Existing onboarding and credit prompts own priority, without recording an
 	// automatic dismissal merely because another modal temporarily takes over.

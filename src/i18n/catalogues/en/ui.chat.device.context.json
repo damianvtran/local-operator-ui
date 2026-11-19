@@ -1,0 +1,212 @@
+{
+	"ui.chat.device.label.moving_to": {
+		"role": "device chip visible label while a move is in flight",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Four words plus the device name.",
+		"note": "The chip's visible text in the chat header while this pane's move has not been confirmed. It must stay short enough to sit in the title block; keep the device name in the placeholder. The chip truncates at narrow widths; maxCells is an advisory translation target, not measured fit.",
+		"placeholders": {
+			"name": "the other device's display name, as the user gave it. Keep it verbatim; never translate a device name."
+		},
+		"maxCells": 24
+	},
+	"ui.chat.device.label.new_on": {
+		"role": "device chip visible label for a draft created on another device",
+		"tone": "noun phrase with the tense marker `New`, sentence case, no trailing punctuation",
+		"length": "Three words plus the device name.",
+		"note": "The word `New` is the whole defence against reading the chip as a live session: the conversation does not exist yet and WILL be created there. Do not drop or soften the tense marker. The chip truncates at narrow widths; maxCells is an advisory translation target, not measured fit.",
+		"placeholders": {
+			"name": "the other device's display name, as the user gave it. Keep it verbatim; never translate a device name."
+		},
+		"maxCells": 20
+	},
+	"ui.chat.device.label.new_on_this_device": {
+		"role": "device chip visible label for a draft created on this machine",
+		"tone": "noun phrase with the tense marker `New`, sentence case, no trailing punctuation",
+		"length": "Four words.",
+		"note": "Same tense rule as the other draft arm: nothing exists yet. `this device` is the local machine. The chip truncates at narrow widths; maxCells is an advisory translation target, not measured fit.",
+		"placeholders": {},
+		"maxCells": 20
+	},
+	"ui.chat.device.label.on": {
+		"role": "device chip visible label for a live conversation on another device",
+		"tone": "prepositional phrase, sentence case, no trailing punctuation",
+		"length": "Two words plus the device name.",
+		"note": "Contrasts with `New on …`: this conversation exists and runs there. Keep the device name in the placeholder. The chip truncates at narrow widths; maxCells is an advisory translation target, not measured fit.",
+		"placeholders": {
+			"name": "the other device's display name, as the user gave it. Keep it verbatim; never translate a device name."
+		},
+		"maxCells": 20
+	},
+	"ui.chat.device.label.on_this_device": {
+		"role": "device chip visible label for a live conversation on this machine",
+		"tone": "prepositional phrase, sentence case, no trailing punctuation",
+		"length": "Three words.",
+		"note": "This conversation exists and runs here. Must not be used for a draft; the draft arm carries `New`. The chip truncates at narrow widths; maxCells is an advisory translation target, not measured fit.",
+		"placeholders": {},
+		"maxCells": 20
+	},
+	"ui.chat.device.sentence.draft_elsewhere": {
+		"role": "accessible name and tooltip of the device chip on a draft",
+		"tone": "two short sentences: the placement, then what a press does",
+		"length": "Around fifteen words.",
+		"note": "Read by screen readers and shown on hover. Names where the new conversation will be created and the affordance; keep the device name in the placeholder.",
+		"placeholders": {
+			"name": "the other device's display name, as the user gave it. Keep it verbatim; never translate a device name."
+		}
+	},
+	"ui.chat.device.sentence.draft_here": {
+		"role": "accessible name and tooltip of the device chip on a draft created here",
+		"tone": "two short sentences: the placement, then what a press does",
+		"length": "Around fifteen words.",
+		"note": "Same affordance as the other draft arm, naming this machine.",
+		"placeholders": {}
+	},
+	"ui.chat.device.sentence.gone": {
+		"role": "accessible name and tooltip of the chip for a conversation that moved away",
+		"tone": "three short sentences: where it went, what was deleted, what a press does",
+		"length": "Around twenty-five words.",
+		"note": "The local copy of this conversation was deleted by the move, so the chip is a tombstone. The press brings the conversation back here; do not promise opening it on the peer.",
+		"placeholders": {
+			"name": "the other device's display name, as the user gave it. Keep it verbatim; never translate a device name."
+		}
+	},
+	"ui.chat.device.sentence.gone_did_not_answer": {
+		"role": "accessible name and tooltip of the moved-away chip after an unanswered read",
+		"tone": "statement of the unanswered read, then the deletion and the press",
+		"length": "Around thirty words.",
+		"note": "An unanswered read is not an offline device: nobody asked since the move. Do not read it as a failure or a verdict.",
+		"placeholders": {
+			"name": "the other device's display name, as the user gave it. Keep it verbatim; never translate a device name."
+		}
+	},
+	"ui.chat.device.sentence.local": {
+		"role": "accessible name and tooltip of the chip for a local live conversation",
+		"tone": "two sentences: where it runs, then both directions the press offers",
+		"length": "Around twenty words.",
+		"note": "Names both halves of the affordance: move it elsewhere now, or recall it later. Do not shorten to only `move`, which would hide the recall.",
+		"placeholders": {}
+	},
+	"ui.chat.device.sentence.moving": {
+		"role": "accessible name and tooltip of the chip while a move is in flight",
+		"tone": "progress sentence, trailing period",
+		"length": "Six words plus the device name.",
+		"note": "Used as the live-region and tooltip sentence while the backend has not confirmed the move.",
+		"placeholders": {
+			"name": "the other device's display name, as the user gave it. Keep it verbatim; never translate a device name."
+		}
+	},
+	"ui.chat.device.sentence.remote": {
+		"role": "accessible name and tooltip of the chip for a live conversation on another device",
+		"tone": "two sentences: where it runs, then what a press does",
+		"length": "Around twenty words.",
+		"note": "The chip's visible words cannot say this; keep the device name in the placeholder.",
+		"placeholders": {
+			"name": "the other device's display name, as the user gave it. Keep it verbatim; never translate a device name."
+		}
+	},
+	"ui.chat.device.sentence.remote_did_not_answer": {
+		"role": "accessible name and tooltip of the remote chip after an unanswered read",
+		"tone": "one statement, no verdict",
+		"length": "Around fifteen words.",
+		"note": "The last read did not answer; that is not the same as the device being offline, so do not add a failure word.",
+		"placeholders": {
+			"name": "the other device's display name, as the user gave it. Keep it verbatim; never translate a device name."
+		}
+	},
+	"ui.chat.device.sentence.remote_did_not_answer_reason": {
+		"role": "accessible name and tooltip of the remote chip after an unanswered read, with the backend's reason",
+		"tone": "statement plus parenthesised reason",
+		"length": "Around twenty words.",
+		"note": "The parenthesised reason is the backend's own sentence and arrives verbatim; never translate it or drop the parentheses.",
+		"placeholders": {
+			"name": "the other device's display name, as the user gave it. Keep it verbatim; never translate a device name.",
+			"reason": "the backend's own reason sentence for an unanswered read. Keep the parentheses; never translate the reason text."
+		}
+	},
+	"ui.chat.device.fact.this_device": {
+		"role": "trailing fact on this device's own picker row, beside the conversation count",
+		"tone": "noun phrase, lowercase, no punctuation",
+		"length": "Two words.",
+		"note": "The row already prints the machine's name when a read named it; this fact is the fallback marker that the row IS the machine the app runs on. Lowercase because it follows the count in a fact list ('3 conversations, this device'). Dropped when the name cell already says it.",
+		"placeholders": {}
+	},
+	"ui.chat.device.footer.move_deletes_copy": {
+		"role": "picker footer stating what a move deletes, for the default deleting move",
+		"tone": "consequence sentence, sentence case, trailing period",
+		"length": "Eleven words.",
+		"note": "The exact consequence of the default (deleting) move, printed under the picker's rows. Says the copy on THIS device is what goes: the picker runs on the machine whose copy is deleted.",
+		"placeholders": {}
+	},
+	"ui.chat.device.label.this_device": {
+		"role": "the picker's row name for the machine the app is running on, when no read named it",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "The row's name cell when neither read returned a device name. It is the app's own word rather than an id tail: an id tail is machine voice with nothing to act on. Keep it short; the row also prints its conversation count beside it.",
+		"placeholders": {}
+	},
+	"ui.chat.device.notice.move_hold_detail": {
+		"role": "detail line of the in-flight move notice in the chat header",
+		"tone": "lowercase status fragment with a middle dot separating the state from the consequence, no trailing period",
+		"length": "Ten words.",
+		"note": "The detail under the notice that a move is in flight. It must not describe a busy turn: a session with a turn in flight is refused outright, so this branch only ever runs when nothing is running. 'handing off' is the state; everything after the middle dot is what it means for the reader.",
+		"placeholders": {}
+	},
+	"ui.chat.device.picker.heading.move": {
+		"role": "device picker heading when the pick moves an existing conversation",
+		"tone": "imperative-free heading, sentence case, no trailing punctuation",
+		"length": "Four words.",
+		"note": "The picker's heading in the move arm, the sibling of `Start the conversation on` for a conversation that already exists. Both arms are one ternary in the model; a translator should keep them parallel in shape.",
+		"placeholders": {}
+	},
+	"ui.chat.device.picker.heading.start": {
+		"role": "device picker heading when the pick chooses where a new conversation will be created",
+		"tone": "heading, sentence case, no trailing punctuation",
+		"length": "Four words.",
+		"note": "The picker's heading in the draft arm: nothing exists yet, so the pick decides where the new conversation starts. Sibling of `Move this conversation to`.",
+		"placeholders": {}
+	},
+	"ui.chat.device.row.conversations": {
+		"role": "conversation count on this device's own picker row",
+		"tone": "noun phrase with a number, lowercase, no trailing punctuation",
+		"length": "Two words.",
+		"note": "CLDR plural on the count, with grouping switched off so 1000 prints `1000` and not `1,000` (the pre-extraction code printed the bare number). The row draws it inside a fact list, so it carries no capital at the start.",
+		"placeholders": {
+			"count": "how many conversations live on this device; selects the plural arm and is printed as a digit"
+		}
+	},
+	"ui.chat.device.row.not_here_why": {
+		"role": "reason a third device's row stands down in a pane that no longer holds the conversation",
+		"tone": "lowercase clause, no trailing punctuation",
+		"length": "Eleven words.",
+		"note": "It names the remedy rather than the blocker, matching the two other stand-down reasons. The full sentence lives in the mesh drop notice; this is the row's short half of it.",
+		"placeholders": {}
+	},
+	"ui.chat.device.sentence.mesh_read_failure": {
+		"role": "the picker's line when the mesh read did not answer",
+		"tone": "statement plus what is on screen, sentence case, trailing period",
+		"length": "Sixteen words.",
+		"note": "Only drawn when the read FAILED, which is a different fact from 'this device is in no network': nobody answered, so the rows shown are the last answer's. Must not claim anything about membership.",
+		"placeholders": {}
+	},
+	"ui.chat.device.sentence.move_in_flight": {
+		"role": "sentence the picker's pinned band holds while a move is in flight",
+		"tone": "statement plus consequence, sentence case, trailing period",
+		"length": "Eighteen words plus the device name.",
+		"note": "The runtime is retired during the handoff, so a second pick would race the first and anything typed would be delivered nowhere. The same sentence the composer holds with.",
+		"placeholders": {
+			"name": "the other device's display name, as the user gave it. Keep it verbatim; never translate a device name."
+		}
+	},
+	"ui.chat.device.sentence.pairing_guidance": {
+		"role": "pairing line under the device picker when the read answered and this device is in no network",
+		"tone": "statement plus the terminal command that fixes it, sentence case, trailing period",
+		"length": "Twenty-two words, including two commands.",
+		"note": "Network CREATION is CLI-only, so the honest instruction is the command rather than a button. Keep both commands and their arguments verbatim inside backticks: `lop network init` creates one, `lop network join <token>` joins one. Never translate a command, a flag or `<token>`. The angle brackets are ICU-escaped in the English message (`'<token>'`) so the parser reads them as text rather than an unclosed tag; keep that quoting, or an escaped equivalent, in every translation.",
+		"placeholders": {}
+	},
+	"ui.chat.device.check_again": {
+		"role": "menu item",
+		"tone": "plain",
+		"note": "Re-reads the device list; nothing failed, so it is not 'Retry'."
+	}
+}

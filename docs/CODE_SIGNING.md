@@ -24,16 +24,53 @@ The following environment variables are used for code signing:
 
 #### For macOS Specific
 
-- `APPLE_ID`: Your Apple Developer ID
-- `APPLE_ID_PASSWORD`: App-specific password for your Apple ID
+- `APPLE_API_KEY`: Path to an App Store Connect API key (`.p8`) — notarytool's `--key`
+- `APPLE_API_KEY_ID`: That key's id (`--key-id`)
+- `APPLE_API_ISSUER`: The App Store Connect issuer id (`--issuer`)
 - `APPLE_TEAM_ID`: Your Apple Developer Team ID
 - `NOTARIZE`: Set to "true" to enable notarization (optional)
+
+`APPLE_ID` / `APPLE_ID_PASSWORD` remain a local-only fallback, used when no API
+key is set. Under `NOTARIZE=true` on GitHub Actions a missing credential FAILS
+the notarization step instead of skipping it.
+
+#### What the release workflows bind
+
+Both `publish.yml` and `signed-update-candidate.yml` sign with the Radient Inc.
+organization's Developer ID Application identity and notarize with its App
+Store Connect Team API key. Repository secrets (names only):
+
+| Secret | Holds |
+|---|---|
+| `MACOS_DEVID_APP_P12_BASE64` / `MACOS_DEVID_APP_P12_PASSWORD` | the Developer ID Application identity (p12), imported into a job-local keychain, and also the Windows Authenticode signer (see below) |
+| `MACOS_APP_PROFILE_BASE64` | the Developer ID provisioning profile for `com.local-operator`, which authorizes the passkey keychain group |
+| `APPLE_API_KEY_P8_BASE64`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER` | the notary API key; the `.p8` is decoded to a 0600 file under `$RUNNER_TEMP` and removed at job end |
+| `APPLE_TEAM_ID` | the team id the main executable's entitlements are rendered for |
+
+The previous individual-account secrets (`CSC_CONTENT`, `CSC_KEY_PASSWORD`,
+`APPLE_ID`, `APPLE_ID_PASSWORD`) stay in the repository for rollback and are
+read by nothing (`scripts/mac-build-arch.test.mjs` fails a workflow that reads
+one). The comment above `publish.yml`'s staging step is the authority for
+renewal: the certificate expires 2027-12-02, and a new certificate needs a NEW
+profile too, because a Developer ID profile embeds the certificate it was
+issued for. The two dates stop different things: macOS checks a Developer ID
+profile at every launch, so the profile's expiry (2044-10-28) stops installed
+apps from launching, while the certificate's expiry only means future builds
+need a new certificate and a new profile.
+
+**Windows signer change.** Windows is Authenticode-signed with the same p12 as
+macOS, so the move to the organization identity changes the Windows signer from
+the individual account's Developer ID certificate to Radient Inc.'s. It is still
+an Apple Developer ID certificate, so Windows trust is unchanged. Updates are not
+affected: `win.verifyUpdateCodeSignature` is `false`, so `latest.yml` carries no
+`publisherName` and the updater does not compare signers. The first release
+built from this change should say so in its notes.
 
 ### How It Works
 
 1. **Certificate Preparation**:
-   - The CI/CD pipeline decodes the base64-encoded certificate (`CSC_CONTENT`) into a p12 file
-   - The path to this file is set as `CSC_LINK` for electron-builder
+   - The CI/CD pipeline decodes the base64-encoded certificate (`MACOS_DEVID_APP_P12_BASE64`) and imports it into a job-local keychain
+   - On Windows the same p12 is written to a file and passed as `CSC_LINK` (so the Windows signer is the organization identity too)
 
 2. **Build Process**:
    - The application is built using `pnpm dist:mac`, `pnpm dist:win`, or `pnpm dist:linux`
@@ -42,7 +79,7 @@ The following environment variables are used for code signing:
 3. **Notarization (macOS only)**:
    - After signing, the `scripts/notarize.js` script is executed (configured in package.json as `afterSign`)
    - This script submits the **app bundle** to Apple for notarization using `notarytool` (via `@electron/notarize`)
-   - The notarization process requires `APPLE_ID`, `APPLE_ID_PASSWORD`, and `APPLE_TEAM_ID`
+   - The notarization process uses the App Store Connect API key (`APPLE_API_KEY`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`)
    - `@electron/notarize` staples the returned ticket to the app as part of the same call
 
 4. **Disk image signing, notarization and stapling (macOS only)**:
@@ -62,10 +99,14 @@ The following environment variables are used for code signing:
 ### Why `mac.notarize` stays `false`
 
 It is not a second way of doing step 3. electron-builder's built-in
-notarization reads `APPLE_APP_SPECIFIC_PASSWORD`, while this project's secrets
-and `.env.build` carry `APPLE_ID_PASSWORD`; enabling it would make
-`notarizeIfProvided` throw `APPLE_APP_SPECIFIC_PASSWORD env var needs to be set`
-partway through a release. `afterSign` owns app notarization, and
+notarization reads the same `APPLE_API_KEY`/`APPLE_API_KEY_ID`/`APPLE_API_ISSUER`
+names this project now binds (measured in `app-builder-lib` 26.16.1,
+`MacTargetHelper.getNotarizeOptions`), so turning it on would submit every app
+bundle TWICE — once from `notarizeIfProvided`, once from `afterSign` — and
+would bypass the fail-closed credential check `scripts/notarize.js` applies on
+GitHub Actions. (Before the move to the API key it would have thrown
+`APPLE_APP_SPECIFIC_PASSWORD env var needs to be set`, since the Apple ID
+secrets used a different name.) `afterSign` owns app notarization, and
 `dmg.sign: true` plus `scripts/notarize-artifacts.mjs` own the image.
 
 ## Setting Up for Local Development
@@ -76,9 +117,10 @@ partway through a release. `afterSign` owns app notarization, and
    # GitHub Token (for publishing releases)
    GH_TOKEN=your_github_token
 
-   # macOS Code Signing
-   APPLE_ID=your_apple_id@example.com
-   APPLE_ID_PASSWORD=your_app_specific_password
+   # macOS notarization (App Store Connect API key)
+   APPLE_API_KEY=/path/to/AuthKey_XXXXXXXXXX.p8
+   APPLE_API_KEY_ID=XXXXXXXXXX
+   APPLE_API_ISSUER=00000000-0000-0000-0000-000000000000
    APPLE_TEAM_ID=your_team_id
 
    # Code Signing Certificate
@@ -97,7 +139,7 @@ partway through a release. `afterSign` owns app notarization, and
 
 The GitHub Actions workflow is configured to:
 
-1. Decode the certificate from the `CSC_CONTENT` secret
+1. Decode the certificate from the `MACOS_DEVID_APP_P12_BASE64` secret, the provisioning profile from `MACOS_APP_PROFILE_BASE64`, and the notary key from `APPLE_API_KEY_P8_BASE64`
 2. Set up the environment for code signing
 3. Build and sign the application for each platform
 4. Notarize the macOS application
@@ -200,10 +242,12 @@ exit status.
 
 Set up the following secrets in your GitHub repository:
 
-- `CSC_CONTENT`: Base64-encoded signing certificate
-- `CSC_KEY_PASSWORD`: Password for the signing certificate
-- `APPLE_ID`: Your Apple Developer ID
-- `APPLE_ID_PASSWORD`: App-specific password for your Apple ID
+- `MACOS_DEVID_APP_P12_BASE64`: Base64-encoded Developer ID Application identity (p12)
+- `MACOS_DEVID_APP_P12_PASSWORD`: Password for that p12
+- `MACOS_APP_PROFILE_BASE64`: Base64-encoded Developer ID provisioning profile for `com.local-operator`
+- `APPLE_API_KEY_P8_BASE64`: Base64-encoded App Store Connect API key (`.p8`)
+- `APPLE_API_KEY_ID`: That key's id
+- `APPLE_API_ISSUER`: The App Store Connect issuer id
 - `APPLE_TEAM_ID`: Your Apple Developer Team ID
 - `GITHUB_TOKEN`: Automatically provided by GitHub
 - `NPM_TOKEN`: Not required when using npm Trusted Publisher (OIDC) with GitHub Actions
@@ -213,7 +257,7 @@ Set up the following secrets in your GitHub repository:
 ### Common Issues
 
 1. **Certificate not found**:
-   - Ensure `CSC_CONTENT` is properly base64-encoded
+   - Ensure `MACOS_DEVID_APP_P12_BASE64` is properly base64-encoded
    - Check that the certificate decoding step is working correctly
 
 2. **Notarization fails**:

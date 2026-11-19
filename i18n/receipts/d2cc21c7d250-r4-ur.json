@@ -1,0 +1,437 @@
+{
+  "instance": "d2cc21c7d250-r4-ur",
+  "round": 4,
+  "locale": "ur",
+  "checkout_head": "a10255813c44112eb49bb5d5d6fe05173e2d21c1",
+  "checkout_head_short": "a10255813c",
+  "branch": "i18n-final-literals",
+  "worktree": "~/lo-literals",
+  "audit_date": "2026-10-29",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "d2cc21c7d250",
+    "model": "anthropic/claude-sonnet-5-5",
+    "actual_model_source": "session header for this turn; the r3 round of the same session recorded a provider fallback chain after quota failures (-> radient/auto), disclosed rather than assumed",
+    "independent_from_translator_session": true
+  },
+  "scope": "Delta re-audit, round 4, ur only: the same 89 English keys added by 930c8ec2d1 as corrected by 40afea32ff and 8f1c56a425, re-verified at a10255813c. This round checks only (a) the seven findings filed in r3, (b) the keys they concern, and (c) whether anything else in the delta moved. No other locale, no earlier round's artefacts, no new policy question.",
+  "reviewed_previous": "/Users/damian/qa/lit-audit3/ur/receipt.json",
+  "reviewed_previous_head": "8f1c56a4257b23ff5f543b9c0c0edb431df87f08",
+  "carried_forward": {
+    "keys_approved_in_r3": "89",
+    "regressed_or_reopened": 0,
+    "detail": "every value r3 approved is byte-identical at this head except the one key U-01 sent back"
+  },
+  "findings": [
+    {
+      "id": "U-02",
+      "severity": "MINOR",
+      "namespace": "ui.common.actions",
+      "key": "ui.common.actions.check_again; ui.chat.device.check_again",
+      "en": "Check again",
+      "target": "دوبارہ چیک کریں  (both keys, unchanged)",
+      "problem": "Same English phrase as the shipped ui.settings.integrations.integration_model.check_again = دوبارہ جانچیں, so the app shows one phrase two ways.",
+      "suggested": "Standardise on one form and apply it to both sides.",
+      "status": "still_stands",
+      "first_filed": "r3 (lit-audit3/ur)",
+      "evidence": "both ur files byte-identical to 8f1c56a425; value re-read at a10255813c"
+    },
+    {
+      "id": "U-03",
+      "severity": "MINOR",
+      "namespace": "ui.chat.attachments",
+      "key": "ui.chat.attachments.volume",
+      "en": "Volume",
+      "target": "آواز کا حجم",
+      "problem": "Literal calque; حجم is volume in the size/bulk sense, not a loudness slider label.",
+      "suggested": "آواز کی سطح  (or آواز / والیوم)",
+      "status": "still_stands",
+      "first_filed": "r3 (lit-audit3/ur)",
+      "evidence": "ur file byte-identical to 8f1c56a425; value re-read at a10255813c"
+    },
+    {
+      "id": "U-04",
+      "severity": "NIT",
+      "namespace": "ui.chat.thread_search",
+      "key": "ui.chat.thread_search.hint.browse",
+      "en": "browse",
+      "target": "براؤز کریں",
+      "problem": "Loanword calque, one word longer than the terse footer hint wants; the locale renders browse with دیکھیں elsewhere (ui.hub.pages.browse_aria).",
+      "suggested": "دیکھیں",
+      "status": "still_stands",
+      "first_filed": "r3 (lit-audit3/ur)",
+      "evidence": "ur file byte-identical to 8f1c56a425"
+    },
+    {
+      "id": "U-05",
+      "severity": "NIT",
+      "namespace": "ui.hub.viewer",
+      "key": "ui.hub.viewer.unlike; ui.hub.viewer.unfavourite",
+      "en": "Unlike agent; Unfavourite agent",
+      "target": "ایجنٹ سے لائک ہٹائیں; ایجنٹ کو پسندیدہ سے ہٹائیں",
+      "problem": "The pair is not parallel although the two controls sit on the same row.",
+      "suggested": "لائک ہٹائیں and پسندیدہ سے ہٹائیں, or carry the agent object in both.",
+      "status": "still_stands",
+      "first_filed": "r3 (lit-audit3/ur)",
+      "evidence": "ur file byte-identical to 8f1c56a425"
+    },
+    {
+      "id": "U-06",
+      "severity": "NIT",
+      "namespace": "ui.common.actions",
+      "key": "ui.common.actions.dismiss",
+      "en": "Dismiss",
+      "target": "ہٹا دیں",
+      "problem": "Shared common action; shipped dismiss labels are ہٹائیں / نظر انداز کریں / اطلاع بند کریں, so this adds a fourth form to the key every surface reuses.",
+      "suggested": "ہٹائیں",
+      "status": "still_stands",
+      "first_filed": "r3 (lit-audit3/ur)",
+      "evidence": "ur file byte-identical to 8f1c56a425"
+    },
+    {
+      "id": "U-07",
+      "severity": "NIT",
+      "namespace": "ui.agents.settings",
+      "key": "ui.agents.settings.chat.generation_tooltip",
+      "en": "Settings that control how the agent generates responses",
+      "target": "وہ ترتیبات جو یہ کنٹرول کرتی ہیں کہ ایجنٹ جوابات کیسے بناتا ہے",
+      "problem": "Redundant demonstrative یہ inside the relative clause, with no referent of its own.",
+      "suggested": "وہ ترتیبات جو کنٹرول کرتی ہیں کہ ایجنٹ جوابات کیسے بناتا ہے",
+      "status": "still_stands",
+      "first_filed": "r3 (lit-audit3/ur)",
+      "evidence": "ur file byte-identical to 8f1c56a425"
+    }
+  ],
+  "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 2,
+    "NIT": 4
+  },
+  "gate": "passed only when no BLOCKER or MAJOR remains; residual MINOR/NIT do not block, and are listed rather than dropped",
+  "verdict": "pass",
+  "verdict_reason": "U-01 is fixed (اقتباس کریں) and nothing in the delta regressed; 2 MINOR and 4 NIT remain open, none of them blocking under the blocker/major gate.",
+  "namespaces": {
+    "ui.agents.settings": {
+      "status": "passed",
+      "keys_audited": 5,
+      "sha256": {
+        "en": "3ba270885be69d682183c849436c3e2146bf5c8875cf8a2be1f26528ed20fd4d",
+        "target": "22b1277d1c6ecdcef3b51258ad909b8401b2841cf95f91ab5f82dda9efc2c43b"
+      },
+      "findings": [
+        {
+          "id": "U-07",
+          "severity": "NIT",
+          "namespace": "ui.agents.settings",
+          "key": "ui.agents.settings.chat.generation_tooltip",
+          "en": "Settings that control how the agent generates responses",
+          "target": "وہ ترتیبات جو یہ کنٹرول کرتی ہیں کہ ایجنٹ جوابات کیسے بناتا ہے",
+          "problem": "Redundant demonstrative یہ inside the relative clause, with no referent of its own.",
+          "suggested": "وہ ترتیبات جو کنٹرول کرتی ہیں کہ ایجنٹ جوابات کیسے بناتا ہے",
+          "status": "still_stands",
+          "first_filed": "r3 (lit-audit3/ur)",
+          "evidence": "ur file byte-identical to 8f1c56a425"
+        }
+      ]
+    },
+    "ui.chat.asks": {
+      "status": "passed",
+      "keys_audited": 2,
+      "sha256": {
+        "en": "3399e4015ace811013fb16d9f021016eaecf8ed700e6d34ee2c0d0029068832a",
+        "target": "254b710905af8647d4a577091f69fafdce469e9bfea178c507048f2bca78212c"
+      },
+      "findings": []
+    },
+    "ui.chat.attachments": {
+      "status": "passed",
+      "keys_audited": 5,
+      "sha256": {
+        "en": "623a1363260ecbe40393b4424dde4d7b6cc084688ac354483052639a145ce892",
+        "target": "30ca6d0aece68231655313630379783fc2b4c852a1134c7d3499940f234895e9"
+      },
+      "findings": [
+        {
+          "id": "U-03",
+          "severity": "MINOR",
+          "namespace": "ui.chat.attachments",
+          "key": "ui.chat.attachments.volume",
+          "en": "Volume",
+          "target": "آواز کا حجم",
+          "problem": "Literal calque; حجم is volume in the size/bulk sense, not a loudness slider label.",
+          "suggested": "آواز کی سطح  (or آواز / والیوم)",
+          "status": "still_stands",
+          "first_filed": "r3 (lit-audit3/ur)",
+          "evidence": "ur file byte-identical to 8f1c56a425; value re-read at a10255813c"
+        }
+      ]
+    },
+    "ui.chat.canonical": {
+      "status": "passed",
+      "keys_audited": 9,
+      "sha256": {
+        "en": "e497effa4c5ba36da6fc3fb4598e5cd7cd2219cae675e94b51d00682e2f90935",
+        "target": "f8e7e18fa2df69b59c4c062f42dedfd84492f3b1685887aeff68c8731f7424d2"
+      },
+      "findings": []
+    },
+    "ui.chat.device": {
+      "status": "passed",
+      "keys_audited": 1,
+      "sha256": {
+        "en": "2be9eaf88f3f95eec4d28b4cc5b6397edbd3173eb2af3713ff2da4f6b0b5fcd6",
+        "target": "64511456ccc42e18ed889d7d6413f0036be59b89cfba6549d5dcf6db8c5c2be7"
+      },
+      "findings": [
+        {
+          "id": "U-02",
+          "severity": "MINOR",
+          "namespace": "ui.common.actions",
+          "key": "ui.common.actions.check_again; ui.chat.device.check_again",
+          "en": "Check again",
+          "target": "دوبارہ چیک کریں  (both keys, unchanged)",
+          "problem": "Same English phrase as the shipped ui.settings.integrations.integration_model.check_again = دوبارہ جانچیں, so the app shows one phrase two ways.",
+          "suggested": "Standardise on one form and apply it to both sides.",
+          "status": "still_stands",
+          "first_filed": "r3 (lit-audit3/ur)",
+          "evidence": "both ur files byte-identical to 8f1c56a425; value re-read at a10255813c"
+        }
+      ]
+    },
+    "ui.chat.header": {
+      "status": "passed",
+      "keys_audited": 2,
+      "sha256": {
+        "en": "a2584118fd1ae8da26a27f8e739bbde58c30ec5c7c8c9515d2ab876bc7a82dd8",
+        "target": "9a5ea629ded153848232435a8a17690d992ea60fa372feafad6d60073dc9f4f5"
+      },
+      "findings": []
+    },
+    "ui.chat.pickers": {
+      "status": "passed",
+      "keys_audited": 1,
+      "sha256": {
+        "en": "e77e75172487fb154b12ce349fac574cc88516c811acaefd2018208baaf192c1",
+        "target": "294e96b403389fc99ce68122288f70ffdce176df3da2f9e1d491aebe5d348a72"
+      },
+      "findings": []
+    },
+    "ui.chat.radient_session": {
+      "status": "passed",
+      "keys_audited": 8,
+      "sha256": {
+        "en": "3ac15679b3551e879c2d88d11594946ea4307238330e88cee24ba80b07721118",
+        "target": "abb39df550a01526b48c37130378a93f2f492302c317eae69e3ef00c037dff78"
+      },
+      "findings": []
+    },
+    "ui.chat.thread_search": {
+      "status": "passed",
+      "keys_audited": 3,
+      "sha256": {
+        "en": "aea9f467a5a57775ec7510e09b52800077f8ebd93bf430b7956dd381f1ed3d91",
+        "target": "b5642646ccd95fa3bc19c1d0a4d28ccb33f70e1cc34d52823916a79093cba7eb"
+      },
+      "findings": [
+        {
+          "id": "U-04",
+          "severity": "NIT",
+          "namespace": "ui.chat.thread_search",
+          "key": "ui.chat.thread_search.hint.browse",
+          "en": "browse",
+          "target": "براؤز کریں",
+          "problem": "Loanword calque, one word longer than the terse footer hint wants; the locale renders browse with دیکھیں elsewhere (ui.hub.pages.browse_aria).",
+          "suggested": "دیکھیں",
+          "status": "still_stands",
+          "first_filed": "r3 (lit-audit3/ur)",
+          "evidence": "ur file byte-identical to 8f1c56a425"
+        }
+      ]
+    },
+    "ui.chat.transcript_copy": {
+      "status": "passed",
+      "keys_audited": 5,
+      "sha256": {
+        "en": "d6f5264ef4cd19ea1a66b10d7dadfd6478ec239973a7a8fca49903b8ae3818dc",
+        "target": "b7e90b978ce318aae6b5b580b45039168d92f5e55cefb2785ca8df3c16226d00"
+      },
+      "findings": []
+    },
+    "ui.common.actions": {
+      "status": "passed",
+      "keys_audited": 3,
+      "sha256": {
+        "en": "0c279fc21d17c3f1937e4364fac698601ec4304ce7c7055df786bc037a8b12e3",
+        "target": "49cbf7aac8f818ddd7f15fb207b1962e3bb192c4f947888ea58f1e8c26aa58a4"
+      },
+      "findings": [
+        {
+          "id": "U-02",
+          "severity": "MINOR",
+          "namespace": "ui.common.actions",
+          "key": "ui.common.actions.check_again; ui.chat.device.check_again",
+          "en": "Check again",
+          "target": "دوبارہ چیک کریں  (both keys, unchanged)",
+          "problem": "Same English phrase as the shipped ui.settings.integrations.integration_model.check_again = دوبارہ جانچیں, so the app shows one phrase two ways.",
+          "suggested": "Standardise on one form and apply it to both sides.",
+          "status": "still_stands",
+          "first_filed": "r3 (lit-audit3/ur)",
+          "evidence": "both ur files byte-identical to 8f1c56a425; value re-read at a10255813c"
+        },
+        {
+          "id": "U-06",
+          "severity": "NIT",
+          "namespace": "ui.common.actions",
+          "key": "ui.common.actions.dismiss",
+          "en": "Dismiss",
+          "target": "ہٹا دیں",
+          "problem": "Shared common action; shipped dismiss labels are ہٹائیں / نظر انداز کریں / اطلاع بند کریں, so this adds a fourth form to the key every surface reuses.",
+          "suggested": "ہٹائیں",
+          "status": "still_stands",
+          "first_filed": "r3 (lit-audit3/ur)",
+          "evidence": "ur file byte-identical to 8f1c56a425"
+        }
+      ]
+    },
+    "ui.hub.card": {
+      "status": "passed",
+      "keys_audited": 6,
+      "sha256": {
+        "en": "b9459d327a82d48b8607356f857e6a260cc0b46b78a12109d8b843c559abfcbc",
+        "target": "82c79ae59fac904c68a88974740c126d47721ae76e8a24ce8b744362735b85e0"
+      },
+      "findings": []
+    },
+    "ui.hub.detail": {
+      "status": "passed",
+      "keys_audited": 26,
+      "sha256": {
+        "en": "d6a3fdb30fc5a4c1d8e0e5530f377dfac0e2b1238f2fd3dd32a12f0e082861d4",
+        "target": "7db3e268e0f02f347193689ccae3fcd0c95e9139013df87d1a069b8af7bf84c3"
+      },
+      "findings": []
+    },
+    "ui.hub.pages": {
+      "status": "passed",
+      "keys_audited": 3,
+      "sha256": {
+        "en": "9ae73c3aabece832df701ffe1b8c24b01d731a94adeb795103a0215b84fb57bd",
+        "target": "8e6bfbaae61d4539aa004bcd98c2876760ad0d439e6c5a29e6e09dec3e25d930"
+      },
+      "findings": []
+    },
+    "ui.hub.viewer": {
+      "status": "passed",
+      "keys_audited": 10,
+      "sha256": {
+        "en": "a6eed998576ef689a2fc011b2f9c64eaf53fe8b007b2efc21cf66118bc206375",
+        "target": "602aadb49efe2aa32b198f4cdcfd65d4eb554d28e0c28c5d7e8360b795736277"
+      },
+      "findings": [
+        {
+          "id": "U-05",
+          "severity": "NIT",
+          "namespace": "ui.hub.viewer",
+          "key": "ui.hub.viewer.unlike; ui.hub.viewer.unfavourite",
+          "en": "Unlike agent; Unfavourite agent",
+          "target": "ایجنٹ سے لائک ہٹائیں; ایجنٹ کو پسندیدہ سے ہٹائیں",
+          "problem": "The pair is not parallel although the two controls sit on the same row.",
+          "suggested": "لائک ہٹائیں and پسندیدہ سے ہٹائیں, or carry the agent object in both.",
+          "status": "still_stands",
+          "first_filed": "r3 (lit-audit3/ur)",
+          "evidence": "ur file byte-identical to 8f1c56a425"
+        }
+      ]
+    }
+  },
+  "fixed": [
+    {
+      "id": "U-01",
+      "severity": "MAJOR",
+      "namespace": "ui.chat.transcript_copy",
+      "key": "ui.chat.transcript_copy.selection.quote",
+      "en": "Quote",
+      "was": "حوالہ دیں",
+      "now": "اقتباس کریں",
+      "commit": "a10255813c",
+      "verification": "re-read at a10255813c: the term is now the locale's shipped one for quote — ui.chat.pickers.destination_pickers.quote = اقتباس, …as_quote = اقتباس کے طور پر, ui.canvas.wysiwyg_markdown_editor.quote = اقتباس — in the respectful imperative the role (an icon-button action) calls for. English carries no placeholder on this key and neither does the new value; quote is now one term across the app.",
+      "status": "resolved"
+    }
+  ],
+  "input_sha256": {
+    "changed": [
+      {
+        "path": "src/i18n/catalogues/ur/ui.chat.transcript_copy.json",
+        "sha256": "b7e90b978ce318aae6b5b580b45039168d92f5e55cefb2785ca8df3c16226d00"
+      },
+      {
+        "path": "src/i18n/catalogues/en/ui.chat.transcript_copy.json",
+        "sha256": "d6f5264ef4cd19ea1a66b10d7dadfd6478ec239973a7a8fca49903b8ae3818dc"
+      }
+    ],
+    "unchanged_since_r3": "the other 14 en and 14 ur namespace files in the delta are byte-identical to 8f1c56a425, proved with git show <rev>:<path> | shasum -a 256 on both revisions",
+    "en_values_untouched": "no en catalogue value changed between 8f1c56a425 and a10255813c; only en/ui.hub.detail.context.json, a sidecar note, did"
+  },
+  "checks": {
+    "prior_findings": "each of U-01..U-07 re-checked at a10255813c: 1 resolved, 6 still stand",
+    "key_presence": "89/89 still present in ur; transcript_copy keeps its 14 keys, none added or dropped",
+    "placeholders": "0 mismatches across the 89 at the new bytes; the one changed value carries no placeholder and English has none either",
+    "bidi": "0 bidi control characters; the changed value is plain Urdu script",
+    "punctuation": "no ASCII . , ; ? ! in any ur value; the changed button name ends without punctuation",
+    "regression_sweep": "only ur/ui.chat.transcript_copy.json differs from r3 among the delta's ur files, so no value r3 approved could have drifted",
+    "hub_title_policy": "ur ships the hub surface as Latin 'Agent Hub' in both ui.shell.sidebar_navigation.agent_hub and ui.hub.pages.header.title, so ur/hub.detail's back_aria ('Agent Hub پر واپس جائیں') and delist_tooltip already name the surface with this locale's own shipped title, and the corrected en sidecar lists ur among the locales that ship it Latin. No ur change was needed here, and leaving the file untouched was not a gap.",
+    "repo_untouched": "git status --porcelain empty after the audit"
+  },
+  "notes": {
+    "prior_findings": [
+      {
+        "id": "U-01",
+        "severity": "MAJOR",
+        "status": "fixed",
+        "commit": "a10255813c",
+        "detail": "selection.quote: حوالہ دیں -> اقتباس کریں"
+      },
+      {
+        "id": "U-02",
+        "severity": "MINOR",
+        "status": "still_stands",
+        "detail": "check_again keeps دوبارہ چیک کریں in both keys; the shipped integrations string still reads دوبارہ جانچیں"
+      },
+      {
+        "id": "U-03",
+        "severity": "MINOR",
+        "status": "still_stands",
+        "detail": "volume still آواز کا حجم"
+      },
+      {
+        "id": "U-04",
+        "severity": "NIT",
+        "status": "still_stands",
+        "detail": "hint.browse still براؤز کریں"
+      },
+      {
+        "id": "U-05",
+        "severity": "NIT",
+        "status": "still_stands",
+        "detail": "unlike/unfavourite still asymmetric"
+      },
+      {
+        "id": "U-06",
+        "severity": "NIT",
+        "status": "still_stands",
+        "detail": "common dismiss still ہٹا دیں"
+      },
+      {
+        "id": "U-07",
+        "severity": "NIT",
+        "status": "still_stands",
+        "detail": "generation_tooltip still carries the redundant یہ"
+      }
+    ],
+    "hub_surface": "the commit's hub-title correction did not touch ur because ur's own shipped title is already Latin 'Agent Hub' — verified in the sidebar navigation and the hub page header at this head, and the corrected sidecar names ur explicitly in that set",
+    "residual": "2 MINOR and 4 NIT remain open and are non-blocking under the blocker/major gate; the implementer should still record fix or defer for each, and nothing in the delta regressed against r3",
+    "not_reaudited": "no other locale, no earlier round's artefacts, nothing outside the 89 keys and the keys that carry the open findings",
+    "remediation_scope_observed": "a10255813c changes exactly one ur value (selection.quote). If this round intended to settle the other wording findings in ur as well, those edits are not in this commit — the six open items above are absent, not rejected: no rationale for them appears in the tree."
+  }
+}

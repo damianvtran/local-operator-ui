@@ -42,8 +42,9 @@ import { AIDA_DISABLED_SENTENCE } from "@features/aida/aida-control";
 import { gateIsSecret } from "@features/chat/ask-answer";
 import { effectiveGate } from "@features/chat/ask-queue";
 import { formatContextTokens } from "@features/chat/pickers/panels/formatters";
-import { encodeImageAttachments } from "@features/chat/utils/attachment-encode";
+import { encodeAttachments } from "@features/chat/utils/attachment-encode";
 import {
+	fileOverflowRefusal,
 	imageOverflowRefusal,
 	unreadableAttachmentRefusal,
 } from "@features/chat/utils/attachment-read";
@@ -67,6 +68,7 @@ import {
 	classifyRadientAccountFailure,
 } from "@shared/hooks/use-radient-user-query";
 import { useSessionSnapshot } from "@shared/hooks/use-session-snapshot";
+import { refreshPushToTalkBinding } from "@shared/hooks/use-speech-to-text-manager";
 import {
 	type RadientSpeechBlock,
 	radientSpeechBlock,
@@ -78,13 +80,14 @@ import {
 	admitChatDraft,
 	isRefusedBeforeAdmission,
 	paneDraftKey,
+	remoteOwnedId,
 	sendFailureCopy,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
-import { applyThemeToDocument } from "@shared/themes";
+import { appearanceOf, applyAppearance } from "@shared/themes/appearance";
 import {
 	useCallback,
 	useEffect,
@@ -504,11 +507,19 @@ export function MiniComposer() {
 			beforeAdmission?: (sessionId: string) => Promise<string | undefined>,
 			inputMode?: "typed" | "dictated" | "mixed",
 		) => {
-			const { images, unreadable, overflow } = await encodeImageAttachments(
-				attachments,
-				content,
-			);
-			const unreadableRefusal = unreadableAttachmentRefusal(unreadable);
+			const { images, files, failures, overflow, fileOverflow } =
+				await encodeAttachments(attachments, content, {
+					// The seat is the session this pane addresses; a peer-owned seat has a
+					// different attachment store, so files are refused before upload
+					// (contract §6b.2). Unknown seat ids read local, and the core refuses
+					// the send itself if it disagrees.
+					remoteOwned: remoteOwnedId(
+						useCanonicalSessionsStore.getState().sessions,
+						useCanonicalSessionsStore.getState().placementFacts,
+						seatRef.current ?? "",
+					),
+				});
+			const unreadableRefusal = unreadableAttachmentRefusal(failures);
 			if (unreadableRefusal) {
 				setSendError({
 					message: unreadableRefusal,
@@ -520,6 +531,11 @@ export function MiniComposer() {
 			const overflowRefusal = imageOverflowRefusal(overflow);
 			if (overflowRefusal) {
 				setSendError({ message: overflowRefusal, retry: false });
+				return false;
+			}
+			const fileOverflowMessage = fileOverflowRefusal(fileOverflow);
+			if (fileOverflowMessage) {
+				setSendError({ message: fileOverflowMessage, retry: false });
 				return false;
 			}
 			const budgetRefusal = messageBudgetRefusal(content, images);
@@ -566,6 +582,7 @@ export function MiniComposer() {
 						text: content,
 						attachments,
 						images,
+						...(files.length ? { files } : {}),
 						mode: frontendRef.current?.streaming ? "steer" : "prompt",
 						cwd: frontendRef.current?.cwd ?? "",
 						inputMode: inputModeEnabled ? inputMode : undefined,
@@ -676,9 +693,15 @@ export function MiniComposer() {
 	 */
 	useEffect(() => {
 		return window.api?.miniView?.onSummoned?.(() => {
-			applyThemeToDocument(useUiPreferencesStore.getState().themeName);
+			applyAppearance(appearanceOf(useUiPreferencesStore.getState()));
 			update((current) => miniFrameTransitions.summoned(current));
 			closeSheet();
+			/*
+			 * The hold key is read once per registration, and this document stays
+			 * mounted between summons: a change saved in the main window's Settings
+			 * reaches here only if the summon asks again.
+			 */
+			void refreshPushToTalkBinding();
 			/*
 			 * THE HEIGHT RETURNS TO REST WITH THE SUMMON (reviewer M1): a sheet or a
 			 * long draft grown on the last summon is closed here, and the observer
@@ -1076,6 +1099,13 @@ export function MiniComposer() {
 					 */
 					ownGutter
 					transcriptless
+					/*
+					 * THE MINI VIEW IS A SECOND LIVE COMPOSER, so it registers its speech
+					 * handler under its own id: the push-to-talk registry keys handlers by this
+					 * string and keeps one per key, so sharing the chat's would make the two
+					 * silently replace each other depending on mount order.
+					 */
+					speechRegistrationId="mini-composer"
 					placeholderOverride={MINI_COPY.placeholder(seatName)}
 					cwd={frontend?.cwd}
 					cwdReadOnlyReason={MINI_COPY.cwdReadOnly}

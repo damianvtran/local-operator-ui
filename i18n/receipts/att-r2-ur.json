@@ -1,0 +1,77 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "att-r2-ur",
+ "session": "12aab7b684ab",
+ "job": "d8717b64c01a",
+ "date": "2026-10-21",
+ "locale": "ur",
+ "translator": "coder",
+ "translator_session": "03594b2dcc02",
+ "translator_job": "bc0c4b952eaa",
+ "namespace": "ui.teamBridge",
+ "status": "passed",
+ "keys_audited": 7,
+ "scope": "Round-2 delta audit of #1314: git diff cf1d7c616c..8cf05961d6 -- src/i18n/catalogues (ur: 7 values changed/added — error_quota, expired, expired_staged, expired_staged_retry, preview_unavailable, retry, send_blocked). Includes the changed en attachments.expired_staged and new en attachments.expired_staged_retry / attachments.preview_unavailable with their context notes. Every round-1 finding of att-r1-ur re-verified against the bytes. The other 164 ur values are byte-identical to cf1d7c616c (line-level diff shows only these keys plus schedule.discard_attempt gaining a trailing comma, value unchanged) and stay covered by att-r1-ur and its inherited receipts. PR head 8cf05961d6 re-checked via gh. Catalogue audit only, not rendered-fit/activation/release.",
+ "source_head": "8cf05961d64322fe64ebccd6282069c7f52f12f3",
+ "source_base": "cf1d7c616ca36bd48c0bf160d64a08514b7c2b08",
+ "sha256": {
+  "en": "a1e4452d733cee31812938d27106ff5b8cb15a74e4da6eaddbc8d9c1519fe8ed",
+  "ur": "f9b0ae461b2e8cba71e0000e24e37b0f09aa932f65ba77be381a336ce98e411e",
+  "context": "09acfc1ecfb2533c8c340eb706b74b4f3ee68f367ad1bc60e41c06b549ca4f1a"
+ },
+ "findings": [],
+ "round1_dispositions": [
+  {
+   "finding": "r1 MINOR (no id)",
+   "severity": "MINOR",
+   "keys": "retry",
+   "verified": "applied verbatim: '{label} کی دوبارہ کوشش کریں'"
+  },
+  {
+   "finding": "r1 MINOR (no id)",
+   "severity": "MINOR",
+   "keys": "send_blocked",
+   "verified": "applied verbatim: 'خرابی کے نشان والی … ان کی دوبارہ کوشش کریں۔'"
+  },
+  {
+   "finding": "r1 NIT (no id)",
+   "severity": "NIT",
+   "keys": "error_quota",
+   "verified": "applied verbatim: 'آپ کی بہت زیادہ تصاویر …'"
+  },
+  {
+   "finding": "r1 NIT (no id)",
+   "severity": "NIT",
+   "keys": "expired_staged",
+   "verified": "superseded by the D1 rewrite: the 'still shown' clause no longer exists, so the ابھی/اب بھی ambiguity is gone"
+  },
+  {
+   "finding": "r1 NIT (no id)",
+   "severity": "NIT",
+   "keys": "expired",
+   "verified": "applied verbatim: 'تصویر کی میعاد ختم'"
+  }
+ ],
+ "inherited_receipt": {
+  "path": "i18n/receipts/att-r1-ur.json",
+  "sha256": "005c6def2dad56d91fc7bb9e0a4d2fb8daf216093d755239281631ef3905821e",
+  "base": "cf1d7c616c",
+  "target_sha256": "47bccf3a65d5ad9ccba4b375fba35c67d3c00ec689bd209fcb06361a655a6d99",
+  "keys_inherited": 164,
+  "unchanged_values_verified": true
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+ },
+ "validation": {
+  "independence": "Auditor session 12aab7b684ab (job d8717b64c01a, translation-auditor, served model anthropic/claude-opus-5-5 per this session's selected_model record) is a new instance, distinct from translator coder session 03594b2dcc02 (job bc0c4b952eaa, remediation commits 1ffc748e68/cedfe88fc6) and from the round-1 auditor session 5e326caaed53. Values read from working-tree bytes at 8cf05961d6 (equal to git show 8cf05961d6); translator/remediation summaries were checked, not relied on. No catalogue or code edits, no git operations, no ledger-assemble.",
+  "semantics": "New/changed keys: expired_staged 'یہ تصویر اب بھیجنے کے لیے تیار نہیں ہے۔ اسے ہٹا دیں اور دوبارہ شامل کریں۔' matches the new en (شامل کریں = add 'تصاویر شامل کریں'); expired_staged_retry '… دوبارہ کوشش کریں یا اسے ہٹا دیں۔' mirrors error_upload; preview_unavailable 'پیش منظر دستیاب نہیں' = teamBridge.preview.chip پیش منظر and sibling 'تصویر دستیاب نہیں'. آپ imperatives, ۔ full stops.",
+  "icu": "Parsed all 25 attachments.* values in en and ur with @formatjs/icu-messageformat-parser: argument names/types identical (0 mismatches); the 3 new/changed keys are argument-free in en and ur. in_message/limit plural arms unchanged in structure. Formatted with intl-messageformat: position(2,3)/open/remove composed strings render as recorded in the round-1 dispositions.",
+  "typography": "Changed values NFC, no bidi controls, no ASCII apostrophe or '...', no doubled/edge spaces. Sentences end with U+06D4.",
+  "overflow": "expired_staged/expired_staged_retry render in the 12 px wrapping status/alert line under the composer and in the chip's sr-only description; preview_unavailable is a title tooltip plus a hidden aria-describedby node (team-bridge-attachments.tsx:128-132, 761-763, 786-788): no fixed-width visible surface, so no fit risk. expired label 'تصویر کی میعاد ختم' (18 chars) now shorter for the w-36 placeholder.",
+  "rtl": "Changed ur values carry no Latin runs and no placeholders except retry's leading {label} (unchanged position, resolves to an all-Urdu label 'تصویر 2 از 3'); every sentence ends with U+06D4, labels (expired, preview_unavailable) carry no full stop like their siblings; no manual bidi controls (U+200E/F, U+202A-E, U+2066-9, U+061C absent), per the ur guide's FSI/PDI rule.",
+  "limitations": "Browser not used; no rendered-fit, screenshots, glyph metrics, pseudo-localization or activation claim."
+ }
+}

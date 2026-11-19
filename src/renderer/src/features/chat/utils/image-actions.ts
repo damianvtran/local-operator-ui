@@ -1,4 +1,6 @@
+import { t } from "@shared/i18n";
 import { blobAt } from "@shared/lib/blob-url-cache";
+import { isRemoteFilePath } from "@shared/lib/remote-file-path";
 import { isArtifactPath } from "./artifact-identity";
 import { mimeTypeForPath } from "./file-kind";
 
@@ -70,6 +72,9 @@ export const classifyImageSource = (source: string): ImageSourceKind => {
 	if (isArtifactPath(source)) return "artifact";
 	if (source.startsWith("data:")) return "data";
 	if (source.startsWith("blob:")) return "blob";
+	// A peer's file in the canvas (`remote-file:`): its bytes are this window's
+	// blob, and it has no path here for the file-shaped actions (I3-1).
+	if (isRemoteFilePath(source)) return "blob";
 	if (source.startsWith("http://") || source.startsWith("https://")) {
 		return "http";
 	}
@@ -139,25 +144,54 @@ export type ImageActionsOptions = {
 	mediaKind?: "image" | "video" | "audio";
 };
 
-const OPEN_FILE: ImageAction = { id: "open-file", label: "Open file" };
+// Resolve labels when read: these shared action objects outlive locale changes.
+const OPEN_FILE: ImageAction = {
+	id: "open-file",
+	get label() {
+		return t("ui.common.file_actions.open_file");
+	},
+};
 const SHOW_IN_CANVAS: ImageAction = {
 	id: "show-in-canvas",
-	label: "Show in canvas",
+	get label() {
+		return t("ui.common.file_actions.show_in_canvas");
+	},
 };
-const SAVE_AS: ImageAction = { id: "save-as", label: "Save as\u2026" };
-const OPEN_FOLDER: ImageAction = { id: "open-folder", label: "Open folder" };
+const SAVE_AS: ImageAction = {
+	id: "save-as",
+	get label() {
+		return t("ui.chat.image_actions.save_as");
+	},
+};
+const OPEN_FOLDER: ImageAction = {
+	id: "open-folder",
+	get label() {
+		return t("ui.common.file_actions.open_folder");
+	},
+};
 const COPY_FILE_PATH: ImageAction = {
 	id: "copy-file-path",
-	label: "Copy file path",
+	get label() {
+		return t("ui.common.file_actions.copy_file_path");
+	},
 };
-const COPY_IMAGE: ImageAction = { id: "copy-image", label: "Copy image" };
+const COPY_IMAGE: ImageAction = {
+	id: "copy-image",
+	get label() {
+		return t("ui.chat.image_actions.copy_image");
+	},
+};
 const COPY_IMAGE_URL: ImageAction = {
 	id: "copy-image-url",
-	label: "Copy image URL",
+	get label() {
+		return t("ui.chat.image_actions.copy_image_url");
+	},
 };
 const OPEN_IN_BROWSER: ImageAction = {
 	id: "open-in-browser",
-	label: "Open in browser",
+	get label() {
+		return t("ui.chat.image_actions.open_in_browser");
+	},
 };
 
 /**
@@ -181,7 +215,14 @@ export function imageActions(
 	const canvas: ImageAction[] = [
 		...(canShowInCanvas ? [SHOW_IN_CANVAS] : []),
 		...(canExpand
-			? [{ id: "expand-image" as const, label: "Expand image" }]
+			? [
+					{
+						id: "expand-image" as const,
+						get label() {
+							return t("ui.chat.image_actions.expand_image");
+						},
+					},
+				]
 			: []),
 	];
 	switch (kind) {
@@ -232,8 +273,16 @@ export function imageActions(
 			 * durable canvas for digest-backed pictures is a follow-up that needs
 			 * the attachment store's identity on the document, not a path this menu
 			 * may fake.
+			 *
+			 * THE ONE EXCEPTION: a USER ATTACHMENT whose retained bytes the backend
+			 * can copy out under a real name (`materialiseUserAttachment`). Its
+			 * surface passes that resolver (`artifactPathActions`); the path entries
+			 * then act on the copy and the canvas opens the copy - a real path, so
+			 * the persisted tab survives a restart and the reason above holds.
 			 */
-			return [COPY_IMAGE];
+			return artifactPathActions
+				? [...canvas, OPEN_FILE, OPEN_FOLDER, COPY_FILE_PATH, COPY_IMAGE]
+				: [COPY_IMAGE];
 		case "http":
 			/*
 			 * The copy-bytes entry is offered only where the page's own policy lets

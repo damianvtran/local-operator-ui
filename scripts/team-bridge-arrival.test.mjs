@@ -1,0 +1,733 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { test } from "node:test";
+import { build } from "esbuild";
+import { JSDOM } from "jsdom";
+
+/*
+ * Exercise the shipped decision model and the real React list, not a second
+ * copy of its mount logic. The DOM checks prove that the class reaches the
+ * actual row; the model checks pin the stream/identity rules without timing or
+ * a daemon. No animation timing is simulated here: the browser frames cover
+ * the motion itself and its reduced-motion override.
+ */
+const bundle = await build({
+	stdin: {
+		contents: `export {TeamBridgeMessageList} from './src/renderer/src/features/team-bridge/team-bridge-message-list'; export {TeamBridgeThreadPaneView, pagingSettled} from './src/renderer/src/features/team-bridge/team-bridge-thread-pane'; export {teamBridgeArrivalStreamKey, teamBridgeLiveArrivals, teamBridgeObserveArrivals, teamBridgeOpenEmptyArrivals, teamBridgeSuspendArrivals, resetTeamBridgeArrivals} from './src/renderer/src/features/team-bridge/team-bridge-arrival-model'; export {createRoot} from 'react-dom/client'; export {act} from 'react'; export {createElement} from 'react';`,
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	platform: "node",
+	format: "esm",
+	write: false,
+	alias: { "@shared": `${process.cwd()}/src/renderer/src/shared` },
+	external: ["react", "react-dom/server"],
+	packages: "external",
+	jsx: "automatic",
+	loader: { ".css": "empty" },
+});
+const { writeFile, unlink } = await import("node:fs/promises");
+const path = `${process.cwd()}/.arrival-test-${process.pid}.mjs`;
+await writeFile(path, bundle.outputFiles[0].text);
+let mod;
+try {
+	mod = await import(path);
+} finally {
+	await unlink(path);
+}
+
+const {
+	TeamBridgeMessageList,
+	TeamBridgeThreadPaneView,
+	teamBridgeLiveArrivals,
+	teamBridgeArrivalStreamKey,
+	teamBridgeObserveArrivals,
+	teamBridgeOpenEmptyArrivals,
+	teamBridgeSuspendArrivals,
+	resetTeamBridgeArrivals,
+	createRoot,
+	act,
+	createElement,
+} = mod;
+
+function message(id, seq, extra = {}) {
+	return {
+		id,
+		conversation_id: "bcv_arrival",
+		seq,
+		sender: { account_id: "acct_sender", kind: "human", display_label: "Ada" },
+		body: id,
+		origin: "human",
+		created_at: "2026-10-26T10:00:00Z",
+		...extra,
+	};
+}
+
+const key = "tenant/conversation";
+const ids = (result) => [...result].sort();
+
+test("initial load and a refetch do not animate", () => {
+	resetTeamBridgeArrivals();
+	assert.deepEqual(ids(teamBridgeLiveArrivals(key, [message("a", 1)])), []);
+	assert.deepEqual(ids(teamBridgeLiveArrivals(key, [message("a", 1)])), []);
+});
+
+test("an older page stays still, and the newer page above the watermark animates", () => {
+	resetTeamBridgeArrivals();
+	teamBridgeLiveArrivals(key, [message("b", 2), message("c", 3)]);
+	assert.deepEqual(
+		ids(
+			teamBridgeLiveArrivals(key, [
+				message("a", 1),
+				message("b", 2),
+				message("c", 3),
+			]),
+		),
+		[],
+	);
+	teamBridgeLiveArrivals(key, [message("b", 2), message("c", 3)]);
+	assert.deepEqual(
+		ids(
+			teamBridgeLiveArrivals(key, [
+				message("b", 2),
+				message("c", 3),
+				message("history", 4),
+			]),
+		),
+		["history"],
+	);
+});
+
+test("a conversation switch has an independent initial load", () => {
+	resetTeamBridgeArrivals();
+	teamBridgeLiveArrivals("tenant/one", [message("a", 1)]);
+	assert.deepEqual(
+		ids(teamBridgeLiveArrivals("tenant/two", [message("a", 1)])),
+		[],
+	);
+	assert.deepEqual(
+		ids(
+			teamBridgeLiveArrivals("tenant/one", [
+				message("a", 1),
+				message("live", 2),
+			]),
+		),
+		["live"],
+	);
+});
+
+test("a live incoming message and a fresh send animate once", () => {
+	resetTeamBridgeArrivals();
+	teamBridgeLiveArrivals(key, [message("a", 1)]);
+	assert.deepEqual(
+		ids(teamBridgeLiveArrivals(key, [message("a", 1), message("incoming", 2)])),
+		["incoming"],
+	);
+	assert.deepEqual(
+		ids(
+			teamBridgeLiveArrivals(key, [
+				message("a", 1),
+				message("incoming", 2),
+				message("sent", 3),
+			]),
+		),
+		["sent"],
+	);
+	assert.deepEqual(
+		ids(
+			teamBridgeLiveArrivals(key, [
+				message("a", 1),
+				message("incoming", 2),
+				message("sent", 3),
+			]),
+		),
+		[],
+	);
+});
+
+test("an open empty conversation animates its first live message", () => {
+	resetTeamBridgeArrivals();
+	teamBridgeObserveArrivals(key, []);
+	assert.deepEqual(ids(teamBridgeLiveArrivals(key, [message("first", 1)])), [
+		"first",
+	]);
+});
+
+test("a closed stream restores messages learned while away without motion", () => {
+	resetTeamBridgeArrivals();
+	teamBridgeLiveArrivals(key, [message("a", 1)]);
+	teamBridgeSuspendArrivals(key);
+	assert.deepEqual(
+		ids(teamBridgeLiveArrivals(key, [message("a", 1), message("away", 2)])),
+		[],
+	);
+});
+
+test("read does not consume an arrival before a React commit", () => {
+	resetTeamBridgeArrivals();
+	teamBridgeLiveArrivals(key, [message("a", 1)]);
+	const next = [message("a", 1), message("live", 2)];
+	assert.deepEqual(ids(teamBridgeLiveArrivals(key, next, { commit: false })), [
+		"live",
+	]);
+	assert.deepEqual(ids(teamBridgeLiveArrivals(key, next, { commit: false })), [
+		"live",
+	]);
+	teamBridgeObserveArrivals(key, next);
+	assert.deepEqual(ids(teamBridgeLiveArrivals(key, next)), []);
+});
+
+/*
+ * REVIEW ROUND 1 — the three ways the arrival half still animated history. Each
+ * drives the shipped list (or the shipped pane) through the same harness the
+ * happy-path test uses, because all three were decisions made in a component,
+ * not in the model: A1 in the list's token state, A2 in the thread pane's
+ * unmount, A3 in the page's empty-conversation effect.
+ */
+
+test("A1: a conversation switch cannot carry arrival tokens across streams", async () => {
+	const { render, teardown, arrivingIds } = domList();
+	const aKey = teamBridgeArrivalStreamKey("t", "conv_a");
+	const bKey = teamBridgeArrivalStreamKey("t", "conv_b");
+	try {
+		const a1 = message("a1", 1);
+		const a2 = message("a2", 2);
+		await render([a1], aKey);
+		await render([a1, a2], aKey);
+		assert.deepEqual(arrivingIds(), ["a2"]);
+		/*
+		 * Switch inside the motion, exactly as the page does: one list instance,
+		 * a new key. `seq` is numbered per conversation, so B's second message
+		 * shares `a2`'s sequence number - the collision the tokens used to leak on.
+		 */
+		await render([message("b1", 1), message("b2", 2)], bKey);
+		assert.deepEqual(arrivingIds(), []);
+	} finally {
+		await teardown();
+	}
+});
+
+test("A1: a held arrival is released by a bounded timer, not only animationend", async () => {
+	const { render, teardown, arrivingIds } = domList();
+	const held = teamBridgeArrivalStreamKey("t", "conv_held");
+	try {
+		const one = message("h1", 1);
+		await render([one], held);
+		await render([one, message("h2", 2)], held);
+		assert.deepEqual(arrivingIds(), ["h2"]);
+		/*
+		 * `animationend` never fires under `prefers-reduced-motion` and does not
+		 * fire when the row unmounts mid-motion. The timer is what keeps that from
+		 * leaving a token behind, so the test waits it out rather than dispatching
+		 * the event.
+		 */
+		await act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 900));
+		});
+		await render([one, message("h2", 2)]);
+		assert.deepEqual(arrivingIds(), []);
+	} finally {
+		await teardown();
+	}
+});
+
+test("A2: the thread pane's root list is its own stream, and never animates", () => {
+	/*
+	 * SOURCE PIN, and the finding's actual reproduction: at the reviewed head the
+	 * root list passed NO key, so it defaulted to the timeline's own - and because
+	 * the pane is keyed per root, closing a thread unmounted that list and
+	 * suspended the open timeline's stream. The behaviour test below exercises the
+	 * mechanism; this is what refuses the regression.
+	 */
+	const pane = readFileSync(
+		`${process.cwd()}/src/renderer/src/features/team-bridge/team-bridge-thread-pane.tsx`,
+		"utf8",
+	);
+	assert.match(
+		pane,
+		/messages=\{\[root\]\}\s*[\s\S]{0,400}?arrivalKey=\{`\$\{teamBridgeArrivalStreamKey\(tenantId, root\.conversation_id\)\}\/root`\}/,
+		"the thread pane's root list must carry its own arrival key: without one it takes the timeline's, and closing the thread suspends the open timeline",
+	);
+	assert.match(
+		pane,
+		/messages=\{\[root\]\}[\s\S]{0,600}?arrivalsEnabled=\{false\}/,
+		"the root is a single row and must never animate",
+	);
+});
+
+test("A2: opening and closing a thread leaves the open timeline animating", async () => {
+	const { render, renderElement, teardown, arrivingIds } = domList();
+	const timelineKey = teamBridgeArrivalStreamKey("t", "conv_timeline");
+	const timeline = [message("x", 1)];
+	try {
+		await render(timeline, timelineKey);
+		// The pane's root list: its own key, and it never animates.
+		await renderElement(
+			createElement(TeamBridgeMessageList, {
+				messages: [{ ...message("root", 9), id: "root" }],
+				labelFor: (sender) => sender.display_label,
+				arrivalKey: `${timelineKey}/root`,
+				arrivalsEnabled: false,
+			}),
+		);
+		// Closing the thread unmounts that list, then the timeline gets a message.
+		await render(timeline, timelineKey);
+		await render([...timeline, message("y", 2)], timelineKey);
+		assert.deepEqual(arrivingIds(), ["y"]);
+	} finally {
+		await teardown();
+	}
+});
+
+test("A3: an empty conversation visited once does not animate its later history", async () => {
+	const { render, teardown, arrivingIds } = domList();
+	const bKey = teamBridgeArrivalStreamKey("t", "conv_empty");
+	try {
+		/*
+		 * The page's own sequence. While B is ready and empty the page renders the
+		 * empty paragraph, so NO list is mounted to notice anything - the two seams
+		 * below ARE that state: marked open while on screen, suspended on leaving.
+		 * A3 was the missing second half: nothing ever suspended it, so the stream
+		 * stayed live forever and every later message animated on return.
+		 */
+		teamBridgeOpenEmptyArrivals(bKey);
+		teamBridgeSuspendArrivals(bKey);
+		// Back in B, with the three messages written while the reader was away.
+		await render([message("b1", 1), message("b2", 2), message("b3", 3)], bKey);
+		assert.deepEqual(arrivingIds(), []);
+	} finally {
+		await teardown();
+	}
+});
+
+test("A3: the page suspends an empty stream on a key change, not on the read", () => {
+	/*
+	 * SOURCE PIN, because the two seams above are only the page's *contract*: the
+	 * bug was that no caller performed the second one. The cleanup must hang off
+	 * the key (a leave or a switch), not off `messages` - suspending when the
+	 * first message lands would make that message a restore and swallow the one
+	 * arrival this feature exists for.
+	 */
+	const page = readFileSync(
+		`${process.cwd()}/src/renderer/src/features/team-bridge/team-bridge-page.tsx`,
+		"utf8",
+	);
+	assert.match(
+		page,
+		/useLayoutEffect\(\s*\(\) => \(\) => teamBridgeSuspendArrivals\(timelineArrivalKey\),\s*\[timelineArrivalKey\],\s*\)/,
+		"the empty-conversation mark is never suspended: the page must return a cleanup that suspends the key it opened, scoped to the key rather than to the message list",
+	);
+});
+
+/*
+ * M2 — the forward-pagination hold. A thread's "load more" page is restored
+ * history, so the replies list must not animate it; the hold must lift the
+ * moment the read settles, whatever it returned. The hold used to clear only
+ * when the page GREW, which left it stuck on after a failed or empty page and
+ * silently froze every later live reply in that thread.
+ *
+ * The decision is `nextPaging`'s neighbour in production (`nextPagingHold`
+ * below is the pane's own function, imported from it), so these three cases are
+ * the shipped one rather than a re-implementation. The pane itself cannot be
+ * mounted here: `TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD` is false in this
+ * build and the view renders nothing, which is why the wiring is pinned by the
+ * source assertion below instead of by a rendered pane.
+ */
+for (const [outcome, page] of [
+	["grows", { loadingMore: false, replies: 2 }],
+	["fails", { loadingMore: false, loadingFailed: true }],
+	["comes back empty", { loadingMore: false, empty: true }],
+]) {
+	test(`M2: the hold releases when the next page ${outcome}`, () => {
+		// The read was in flight, then it settled with this outcome.
+		const settled = mod.pagingSettled({
+			loadingMore: page.loadingMore,
+			sawInFlight: true,
+			grew: Boolean(page.replies),
+		});
+		assert.equal(
+			settled,
+			true,
+			`${outcome}: a settled read must lift the hold, or every later live reply in the thread stays still`,
+		);
+	});
+}
+
+test("M2: the hold survives the click's own render, before the read reports", () => {
+	// click -> paging true while `loadingMore` is still false and nothing has
+	// arrived: holding here is what stops the page animating when it lands.
+	assert.equal(
+		mod.pagingSettled({ loadingMore: false, sawInFlight: false, grew: false }),
+		false,
+	);
+	assert.equal(
+		mod.pagingSettled({ loadingMore: true, sawInFlight: false, grew: false }),
+		false,
+	);
+});
+
+test("M2: the pane renders the hold and releases it on settle", () => {
+	const pane = readFileSync(
+		`${process.cwd()}/src/renderer/src/features/team-bridge/team-bridge-thread-pane.tsx`,
+		"utf8",
+	);
+	assert.match(
+		pane,
+		/arrivalsEnabled=\{!paging\}/,
+		"the replies list must take its animation from the hold",
+	);
+	assert.match(
+		pane,
+		/pagingSettled\(\{/,
+		"the pane must release the hold through `pagingSettled`",
+	);
+	assert.match(
+		pane,
+		/setTimeout\(\(\) => setPaging\(false\), 10_000\)/,
+		"a read that never reports must not hold the pane forever: keep the backstop",
+	);
+});
+
+/*
+ * A JSDOM + React root with the shipped list mounted, so the arrival decision is
+ * exercised through the component the app renders rather than a model double.
+ * `unmount` tears the tree down; the caller always does it in a `finally`.
+ */
+function domList(initial) {
+	const dom = new JSDOM(
+		"<!doctype html><html><body><div id=root></div></body></html>",
+		{ url: "http://localhost/" },
+	);
+	const previous = new Map();
+	for (const name of [
+		"window",
+		"document",
+		"navigator",
+		"HTMLElement",
+		"Node",
+		"Element",
+		"MutationObserver",
+		"getComputedStyle",
+	]) {
+		if (dom.window[name] !== undefined) {
+			previous.set(name, Object.getOwnPropertyDescriptor(globalThis, name));
+			Object.defineProperty(globalThis, name, {
+				configurable: true,
+				writable: true,
+				value: dom.window[name],
+			});
+		}
+	}
+	globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+	resetTeamBridgeArrivals();
+	const container = dom.window.document.getElementById("root");
+	const root = createRoot(container);
+	const renderElement = async (element) => {
+		await act(async () => {
+			root.render(element);
+		});
+	};
+	const render = (messages, arrivalKey = key, arrivalsEnabled = undefined) =>
+		renderElement(
+			createElement(TeamBridgeMessageList, {
+				messages,
+				labelFor: (sender) => sender.display_label,
+				arrivalKey,
+				arrivalsEnabled,
+			}),
+		);
+	const teardown = async () => {
+		await act(async () => root.unmount());
+		for (const [name, descriptor] of previous) {
+			if (descriptor) Object.defineProperty(globalThis, name, descriptor);
+			else delete globalThis[name];
+		}
+		globalThis.IS_REACT_ACT_ENVIRONMENT = undefined;
+		dom.window.close();
+	};
+	const arrivingIds = () =>
+		[...container.querySelectorAll(".lo-team-bridge-arrival")].map(
+			(row) => row.dataset.messageId,
+		);
+	return { dom, container, render, renderElement, teardown, arrivingIds };
+}
+
+test("the real list puts arrival only on the newly arrived row", async () => {
+	const { dom, container, render, teardown } = domList();
+	try {
+		const first = message("history", 1);
+		await render([first]);
+		assert.equal(
+			container.querySelectorAll(".lo-team-bridge-arrival").length,
+			0,
+		);
+		const live = message("live", 2);
+		await render([first, live]);
+		assert.deepEqual(
+			[...container.querySelectorAll(".lo-team-bridge-arrival")].map(
+				(row) => row.dataset.messageId,
+			),
+			["live"],
+		);
+		/*
+		 * An unrelated re-render during the 240ms window must NOT drop the class:
+		 * that snapped the row to its final state mid-motion before this fix.
+		 */
+		await render([first, { ...live, body: "live body updated" }]);
+		assert.deepEqual(
+			[...container.querySelectorAll(".lo-team-bridge-arrival")].map(
+				(row) => row.dataset.messageId,
+			),
+			["live"],
+		);
+		// The class is released by the browser's own event, then stays released.
+		const row = container.querySelector('[data-message-id="live"]');
+		await act(async () => {
+			row.dispatchEvent(
+				new dom.window.Event("animationend", { bubbles: true }),
+			);
+		});
+		await render([first, { ...live, body: "live body updated" }]);
+		assert.equal(
+			container.querySelectorAll(".lo-team-bridge-arrival").length,
+			0,
+		);
+		/*
+		 * M1 REGRESSION: a re-render must not suspend the stream. With the
+		 * suspend cleanup attached to the messages dependency, the next live
+		 * message arrives as a "restore" and never animates.
+		 */
+		const later = message("later", 3);
+		await render([first, { ...live, body: "live body updated" }, later]);
+		assert.deepEqual(
+			[...container.querySelectorAll(".lo-team-bridge-arrival")].map(
+				(row) => row.dataset.messageId,
+			),
+			["later"],
+		);
+	} finally {
+		await teardown();
+	}
+});
+
+/*
+ * THE UNREAD DIVIDER (visual refresh D10; agent review round 1 on #1668, M1
+ * and m1). The hub's timeline page arrives NEWEST-FIRST and only the list's
+ * own `threadItems` sorts it, so the divider has to be placed by seq, not by
+ * array position: it sat above the last of three unread rows before. The
+ * first unread row also restarts its sender's run, so the row under "N new
+ * messages" always names its author.
+ */
+test("the unread divider sits above the OLDEST unseen row, from a newest-first page", async () => {
+	const { container, renderElement, teardown } = domList();
+	const at = (minute) => `2026-10-26T10:0${minute}:00Z`;
+	const me = { account_id: "me", kind: "human", display_label: "Me" };
+	// Seq 1 is the reader's own; 2-4 are Ada's, one run inside five minutes.
+	const page = [
+		message("m4", 4, { created_at: at(3) }),
+		message("m3", 3, { created_at: at(2) }),
+		message("m2", 2, { created_at: at(1) }),
+		message("m1", 1, { created_at: at(0), sender: me }),
+	];
+	try {
+		for (const messages of [page, [...page].reverse()]) {
+			await renderElement(
+				createElement(TeamBridgeMessageList, {
+					messages,
+					labelFor: (sender) => sender.display_label,
+					arrivalKey: key,
+					accountId: "me",
+					unreadAfterSeq: 1,
+				}),
+			);
+			const order = [
+				...container.querySelectorAll(
+					"[data-message-id], [data-unread-divider]",
+				),
+			].map((node) => node.dataset.messageId ?? "DIVIDER");
+			assert.deepEqual(order, ["m1", "DIVIDER", "m2", "m3", "m4"]);
+			assert.match(
+				container.querySelector("[data-unread-divider]").textContent,
+				/3/,
+			);
+		}
+		// m1: three Ada rows in one run, unread after seq 1, so the divider
+		// falls INSIDE her run.
+		const run = [
+			message("a3", 3, { created_at: at(2) }),
+			message("a2", 2, { created_at: at(1) }),
+			message("a1", 1, { created_at: at(0) }),
+		];
+		await renderElement(
+			createElement(TeamBridgeMessageList, {
+				messages: run,
+				labelFor: (sender) => sender.display_label,
+				arrivalKey: key,
+				accountId: "me",
+				unreadAfterSeq: 1,
+			}),
+		);
+		const named = (id) =>
+			container
+				.querySelector(`[data-message-id="${id}"]`)
+				.textContent.includes("Ada");
+		assert.equal(named("a1"), true);
+		assert.equal(named("a2"), true, "the first unread row restarts the run");
+		assert.equal(named("a3"), false, "the run continues after it");
+	} finally {
+		await teardown();
+	}
+});
+
+/*
+ * ONE STICKY DAY PILL AT A TIME (QA round 1 on #1668, Q2): each day's pill
+ * lives in its own day group, so its containing block ends with its day and a
+ * later pill never stacks on an earlier one.
+ */
+test("each day's sticky pill is scoped to its own day group", async () => {
+	const { container, render, teardown } = domList();
+	try {
+		await render([
+			message("d1", 1, { created_at: "2026-10-24T10:00:00Z" }),
+			message("d2", 2, { created_at: "2026-10-25T10:00:00Z" }),
+			message("d3", 3, { created_at: "2026-10-26T10:00:00Z" }),
+		]);
+		const groups = [...container.querySelectorAll("[data-day-group]")];
+		assert.equal(groups.length, 3);
+		for (const [index, group] of groups.entries()) {
+			assert.equal(group.querySelectorAll("[data-day-divider]").length, 1);
+			assert.deepEqual(
+				[...group.querySelectorAll("[data-message-id]")].map(
+					(row) => row.dataset.messageId,
+				),
+				[`d${index + 1}`],
+			);
+		}
+	} finally {
+		await teardown();
+	}
+});
+
+/*
+ * THE DAY DIVIDER'S RULE STOPS AT THE PILL (operator report, 2026-11-06).
+ *
+ * The windowed strip's divider used to be ONE full-width `absolute` hairline
+ * drawn behind a non-positioned, centred pill row. A positioned element paints
+ * above a non-positioned sibling's background and its inline text (CSS 2.1
+ * Appendix E, steps 3/5/6), so the line crossed the pill's fill AND overwrote the
+ * label's glyph rows - the operator photographed exactly that, and the fix is two
+ * flush rules either side of the pill rather than one rule behind it. Nothing is
+ * painted behind the pill under that shape, so the break cannot depend on the
+ * pill's fill being opaque (window glass, or any translucent `elevated` later).
+ *
+ * SCOPED TO THE WHOLE DAY ITEM, NOT TO THE DIVIDER ROW (agent review round 1):
+ * the defect was a SIBLING of the divider row, so an assertion that only looked
+ * inside `[data-day-divider]` would stay green if the old absolute hairline were
+ * re-added beside it while the two flush spans were kept. The item the strip
+ * mounts is therefore the unit under test, and it must hold exactly two rules,
+ * both INSIDE the divider row, neither positioned.
+ *
+ * jsdom cannot see paint order, so this pins the STRUCTURE that decides it. It
+ * fails on the pre-fix markup (one positioned rule, a sibling of the row) and on
+ * that partial regression (three rules). The grouped list keeps its own mechanism
+ * on purpose - its rule must not travel with a sticky pill - and the second half
+ * pins that it still has it.
+ */
+test("the windowed day divider breaks its rule at the pill, and the grouped one does not", async () => {
+	const { dom, container, renderElement, teardown } = domList();
+	const messages = [
+		message("w1", 1, { created_at: "2026-10-24T10:00:00Z" }),
+		message("w2", 2, { created_at: "2026-10-24T10:01:00Z" }),
+	];
+	try {
+		/* The scroll root the page hands the list; the strip looks for the Radix
+		   viewport inside it. jsdom reports a zero-height viewport, which mounts the
+		   strip's tail - all three items of this fixture, day heading included. */
+		const scrollRoot = dom.window.document.createElement("div");
+		const viewport = dom.window.document.createElement("div");
+		viewport.setAttribute("data-radix-scroll-area-viewport", "");
+		scrollRoot.appendChild(viewport);
+		container.appendChild(scrollRoot);
+
+		await renderElement(
+			createElement(TeamBridgeMessageList, {
+				messages,
+				labelFor: (sender) => sender.display_label,
+				arrivalKey: key,
+				scrollRootRef: { current: scrollRoot },
+			}),
+		);
+
+		/* The windowed day is an ordinary item (`data-window-item`) that also
+		   carries the day-group marker; the grouped list has the marker alone. */
+		const item = container.querySelector("[data-window-item][data-day-group]");
+		assert.ok(item, "the windowed strip mounts the day as an ordinary item");
+		const rules = [...item.querySelectorAll("[data-day-rule]")];
+		assert.equal(
+			rules.length,
+			2,
+			"exactly two rules in the whole day item, not one full-width rule behind the pill",
+		);
+		const divider = item.querySelector("[data-day-divider]");
+		assert.ok(divider, "the day item draws a divider row");
+		for (const rule of rules) {
+			/* `assert.ok(… === …)`, never `assert.equal(node, node)`: on failure
+			   `assert.equal` DIFFS its arguments, and these are React-mounted DOM
+			   nodes whose fiber/owner props serialise into the gigabyte range - the
+			   guard then dies by allocation instead of reporting, which is the one
+			   shape it exists to report. Measured on the two-rules-one-sibling
+			   shape: node diffing ~4.2 GB with no message vs 250 ms with this. */
+			assert.ok(
+				rule.parentElement === divider,
+				"both rules live inside the divider row, not beside it",
+			);
+			assert.equal(
+				rule.className.includes("absolute"),
+				false,
+				`the windowed rule is flush, not positioned over the pill (${rule.className})`,
+			);
+		}
+		const [leading, pill, trailing] = [...divider.children];
+		assert.ok(leading.hasAttribute("data-day-rule"), "a rule leads the pill");
+		assert.ok(trailing.hasAttribute("data-day-rule"), "a rule trails the pill");
+		assert.ok(
+			!pill.hasAttribute("data-day-rule"),
+			"the pill sits between them",
+		);
+		assert.ok(
+			pill.textContent.length > 0,
+			"the middle child is the labelled pill",
+		);
+		assert.equal(
+			divider.className.includes("absolute"),
+			false,
+			"the divider row is in the flow, so no positioned sibling paints over it",
+		);
+
+		/* The same list without a scroll root is the grouped list: its single rule
+		   is absolute and its pill row is sticky above it. */
+		await renderElement(
+			createElement(TeamBridgeMessageList, {
+				messages,
+				labelFor: (sender) => sender.display_label,
+				arrivalKey: key,
+			}),
+		);
+		const group = container.querySelector("[data-day-group]");
+		assert.ok(group, "the grouped list draws a day group");
+		const groupedRules = [...group.querySelectorAll("[data-day-rule]")];
+		assert.equal(groupedRules.length, 1, "the grouped rule is one line");
+		assert.ok(
+			groupedRules[0].className.includes("absolute"),
+			"the grouped rule stays in the group's own flow, behind the pill",
+		);
+		const stickyRow = group.querySelector("[data-day-divider]");
+		assert.ok(
+			stickyRow.className.includes("sticky") &&
+				stickyRow.className.includes("z-[5]"),
+			`the grouped pill sticks above an opaque elevated occluder (${stickyRow.className})`,
+		);
+	} finally {
+		await teardown();
+	}
+});

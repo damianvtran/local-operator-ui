@@ -21,8 +21,8 @@ composer's own folder, so a draft pane answers before any conversation exists �
 and the list gained the four no-rows states (durable / transient / empty /
 miss) plus the `$` token ink. The set is TWENTY-TWO cases across BOTH themes
 now: every case was driven twice (`COMPOSER_PROOF_THEME=localOperatorDark` and
-`localOperatorLight`), and the light twin of every row is committed beside its
-dark frame as `<stem>-after-light.png`. All 22 pass in both themes
+`localOperatorLight`), and the light twin of every row sits beside its dark
+frame as `<stem>-after-light.png`. All 22 pass in both themes
 (`result.json`, `result-light.json`). Two fidelity changes ride with the
 re-shoot and are why the pre-existing after halves were retaken too: the
 harness now passes the composer's `cwd` (the real pages always do — the
@@ -43,6 +43,20 @@ is the longest line the composer paints, photographed at the app's 800px floor
 scrolled by one real wheel event, the landing proven by a `scrollTop > 0`
 readback; `skill-loading-line` — the state that used to open NOTHING, read and
 shot inside the fixture's 900ms `slow` window.
+
+RE-SHOT A FIFTH TIME, for the round-1 REMEDIATION on this PR (agent review
+round 1 B1/M1 and QA Q1): the submit's payload is the typed text VERBATIM plus
+one `<operator-skills>` tail block, the accept gesture replaces the token where
+it sits, and a slash command's line carries no skill ink because Enter
+dispatches the command rather than reaching the send seam. Twenty-five cases
+again, 25/25 in both themes. The asserted readings that move: the renamed
+`skill-accepted-in-place` case (was `skill-accepted-reassembles`) drafts
+`fix this $research `, and `skill-send-expands` / `skill-draft-first-send` now
+send `<typed text> <operator-skills> …` instead of the legacy header and
+`invocation=` attribute. `skill-highlight-slash-claim` keeps its zero-run
+reading, now because the surface gate refuses the ink rather than because a
+leading-only rule did. The shoot ran on the remediation tree whose parent is
+`192e6a6c1`; the records carry its own capture time.
 
 FOLDED ONTO A MOVED `origin/main` AFTER THE SHOOT, AND NOT RE-CAPTURED: the
 fold's one composer change is the optional `deviceHold` node (`{deviceHold}`
@@ -79,8 +93,8 @@ describes), then reads the box, the list, the send the composer dispatched
 | `history-draft-multiline` | type `one\ntwo`, ArrowUp (moves to line 1), ArrowUp | `draft: "run the migration again please"` — the draft is **gone** | `draft: "one\ntwo"` |
 | `skill-list-open` | type `fix this $res` | no list, `rows: 0` | list **Skills**, the `research` row, selected |
 | `skill-list-empty` | type `$zzz` | no listbox at all — the silent unmount (design round 1, D3) | list **Skills**, `rows: 0`, and the miss stated: `No skills match.` |
-| `skill-accepted` | click the `$research` row | nothing to click; `draft: "fix this $res"` | `draft: "$research fix this "` — token to the front, prose kept as its request |
-| `skill-send-expanded` | accept the row, then Enter | `[data-sent]: "fix this $res"` — the literal text | the expansion: header, `<skill name="research" invocation="$research fix this">`, the body, the request last |
+| `skill-accepted` | click the `$research` row | nothing to click; `draft: "fix this $res"` | `draft: "fix this $research "` — the token replaced where it sits, prose untouched |
+| `skill-send-expanded` | accept the row, then Enter | `[data-sent]: "fix this $res"` — the literal text | the typed line + the `<operator-skills>` block carrying the body; no attribute payload |
 | `theme-qualified` | `/theme dracula` + Enter | the confirmation receipt **over the full 59-row grid** | the confirmation: `Theme: Dracula`, **no grid** |
 | `theme-bare` | `/theme` + Enter | the grid | unchanged — the modal keeps the table for a bare `/theme` |
 
@@ -100,13 +114,13 @@ scenario each frame ran under is recorded in its `result.json` entry
 | `skill-highlight-resolved` | type `$research fix this` | the resolved run paints (`data-slash-run="skill"` on `$research`) with a request behind it |
 | `skill-highlight-paints-through` | type `$research`, list open | a RESOLVED token paints THROUGH the open list (the v2 ink rule) |
 | `skill-highlight-inert` | type `$zzz`, read, Escape, read | nothing paints while the miss list owns the token; the dim run (`skill-unknown`) arrives after Escape closes it |
-| `skill-highlight-money-guards` | `costs$5 …`, then `echo $PATH` | zero `$` runs in both: a glued `$5` is not a token, an inline `$PATH` is not leading |
-| `skill-highlight-slash-claim` | `/model $5` | a `$` inside a recognised command's argument paints no skill run |
+| `skill-highlight-money-guards` | `costs$5 …`, then `echo $PATH` | zero `$` runs in both: a glued `$5` is not a token, an inline `$PATH` carries no lowercase evidence |
+| `skill-highlight-slash-claim` | `/model $5` | a `$` on a recognised command's line paints no skill run — the surface gate: Enter dispatches the command, so no skill attaches |
 | `skill-notice-durable` | `skillFixture:old-backend`, type `$` | the update-the-backend sentence in the list shell — and ZERO `skills.list` calls on the wire (`state.skillListCalls = 0`) |
 | `skill-notice-transient` | `skillFixture:broken`, type `$` | "Skills aren't available right now." (a 503 from the bridge) |
 | `skill-notice-empty` | `skillFixture:empty`, session pane, type `$` | "No skills found — see /skills" (the pointer can be followed here) |
 | `skill-notice-empty-draft` | `skillFixture:empty`, draft pane, type `$` | "No skills found." — the pointer clause is dropped where `/skills` would be refused |
-| `skill-draft-first-send` | draft pane, `$research fix this` + Enter | the first-message expansion fires: `[data-sent]` starts with the invocation header and carries `invocation="$research fix this"` — the send the session gate used to forbid |
+| `skill-draft-first-send` | draft pane, `$research fix this` + Enter | the first-message expansion fires: `[data-sent]` starts with the typed line and `<operator-skills>`, carrying the body — the send the session gate used to forbid |
 | `skill-narrow-composer` | `skillFixture:old-backend`, type `$`, **800x900** | the durable sentence (the longest line the composer paints) wraps sanely at the app's narrow floor; `skills.list` calls stay 0 |
 | `skill-many-scroll` | draft pane, `skillFixture:many`, type `$`, wheel 144px | nine rows against the six-row region, and the region really scrolled (`extra.scrolled > 0` — the readback, not the picture) |
 | `skill-loading-line` | draft pane, `skillFixture:slow`, type `$` | the loading arm: `Loading…` in the shell while the sessionless read is in flight (the fixture holds it 900ms so the window is photographable) |
@@ -155,10 +169,13 @@ COMPOSER_PROOF_THEME=localOperatorLight node scripts/composer-cluster-proof.mjs 
 
 `COMPOSER_PROOF_ONLY=<substring>` narrows a rerun to the cases whose name
 contains it (e.g. `COMPOSER_PROOF_ONLY=skill-notice`); the subset still writes
-a complete `result.json` of what ran. Committed frames are the run's PNGs
-renamed `<stem>-after.png` (dark) and `<stem>-after-light.png` (light) — the
-stem is the shipped case name from the tables above, which trims the driver's
-longer names where the original set did.
+a complete `result.json` of what ran. The run writes one PNG per case into its
+output directory; the record's `frame` fields name them `<stem>-after.png`
+(dark) and `<stem>-after-light.png` (light) — the stem is the shipped case name
+from the tables above, which trims the driver's longer names where the original
+set did. Frames are regenerable and are no longer tracked (`.gitignore` under
+`docs/evidence`), so a checkout carries the records and must run the rig to see
+the pixels.
 
 The story is `chat-message-input--composer-cluster`; the palette is whichever
 `COMPOSER_PROOF_THEME` names, seeded into the preview's persisted preferences

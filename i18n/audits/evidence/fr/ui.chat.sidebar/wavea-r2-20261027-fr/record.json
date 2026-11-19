@@ -1,0 +1,266 @@
+{
+  "audit_id": "wavea-r2-20261027-fr",
+  "round": 2,
+  "audit_kind": "delta (round 2): 5 changed fr values audited in full + 33 unchanged wave-A values regression-checked",
+  "date": "2026-10-27",
+  "audit_date": "2026-10-27",
+  "locale": "fr",
+  "namespace": "ui.chat.sidebar",
+  "source_commit": "80ee119bbd1084ee873994a1f39db0c085c62083",
+  "parent_commit": "a81c00cdda2667dc6b094128ff47ec72d0c4d095",
+  "previous_audited_commit": "a81c00cdda2667dc6b094128ff47ec72d0c4d095",
+  "previous_audit": {
+    "audit_id": "wavea-20261027-fr",
+    "receipt": "i18n/receipts/wavea-20261027-fr.json",
+    "receipt_sha256": "581c91f2f9ca8be5e212b070156ab8f4a4dbdb2b966ca4b087832e99525f0d4c",
+    "verdict_summary": "0 blocker / 0 major; 1 minor (fr-wavea-1, sidebar) and 2 nits (fr-wavea-2 composer, fr-wavea-3 checkpoint clock)"
+  },
+  "scope": "ui.chat.sidebar: the 11 wave-A keys. Freshly audited: ui.chat.sidebar.entity.collapse_chats, ui.chat.sidebar.entity.expand_chats (changed by 80ee119bbd). The other 9 keys were regression-checked byte-identical to the bytes the round-1 audit read (per-key comparison of the committed blobs, audit.log §3).",
+  "status": "passed",
+  "result": "clean",
+  "key_count": 11,
+  "keys_read": 11,
+  "keys_freshly_audited": [
+    "ui.chat.sidebar.entity.collapse_chats",
+    "ui.chat.sidebar.entity.expand_chats"
+  ],
+  "keys_reverified_unchanged": [
+    "ui.chat.sidebar.entity.manage",
+    "ui.chat.sidebar.entity.pin",
+    "ui.chat.sidebar.entity.unpin",
+    "ui.chat.sidebar.pins.pin_label",
+    "ui.chat.sidebar.pins.unpin_label",
+    "ui.chat.sidebar.row_menu.archive",
+    "ui.chat.sidebar.row_menu.pin",
+    "ui.chat.sidebar.row_menu.unarchive",
+    "ui.chat.sidebar.row_menu.unpin"
+  ],
+  "keys_audited": [
+    "ui.chat.sidebar.entity.collapse_chats",
+    "ui.chat.sidebar.entity.expand_chats",
+    "ui.chat.sidebar.entity.manage",
+    "ui.chat.sidebar.entity.pin",
+    "ui.chat.sidebar.entity.unpin",
+    "ui.chat.sidebar.pins.pin_label",
+    "ui.chat.sidebar.pins.unpin_label",
+    "ui.chat.sidebar.row_menu.archive",
+    "ui.chat.sidebar.row_menu.pin",
+    "ui.chat.sidebar.row_menu.unarchive",
+    "ui.chat.sidebar.row_menu.unpin"
+  ],
+  "translator": {
+    "agent": "the wave-A translation agent (coder role) that authored a81c00cdda and applied the amendments in 80ee119bbd",
+    "session": "not recorded in the commit (one shared git identity); independence is by agent instance, not by name",
+    "note": "This auditor wrote no catalogue bytes and edited no file; the values were judged only by reading them, their sidecars and their call sites."
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "6c78c3706206",
+    "instance": "6c78c3706206",
+    "model": "radient/auto",
+    "actual_model_source": "harness session context: `Model: radient/auto` (auto-routing alias). No concrete served provider/model id is exposed to this subagent session, and no fallback/switch/failure was reported or observed.",
+    "independent_from_translator_session": true,
+    "independent_from_round1_auditor": true,
+    "round1_auditor_instance": "5ea28832c601",
+    "team": "lopdev",
+    "date": "2026-10-27"
+  },
+  "model_note": "The harness reports this session's model route as `radient/auto` (an auto-routing alias); it exposes no concrete served provider/model id to a subagent session. No provider fallback, switch or failure was reported or observed during the run. Recorded as the route, not guessed into a vendor id.",
+  "independence": "Independent: this audit run (agent i18n-auditor, session 6c78c3706206) did not translate these values and wrote no catalogue bytes; it edited nothing in the repository. The translator was a different agent instance (the wave-A coder that authored a81c00cdda and applied the amendments in 80ee119bbd; the shared git identity does not record its session id). Judgement is by reading the English source, the context sidecars, the call sites and the fr catalogue; no translation API, SDK or MT service was used, and no back-translation service was consulted. This instance is also distinct from the round-1 auditor (5ea28832c601), so the regression read is not self-audit.",
+  "files": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+      "sha256": "7901d0902c1dff11a5f4aca6138ac1dc05268c82ea1561e4c81bc106fcb00353",
+      "parent_sha256": "7901d0902c1dff11a5f4aca6138ac1dc05268c82ea1561e4c81bc106fcb00353",
+      "changed_in_this_commit": false
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.chat.sidebar.context.json",
+      "sha256": "996e9bf0eda23ee7f56a3d4f979617b2a965cb20cd820f0da67570297030d1be",
+      "parent_sha256": "996e9bf0eda23ee7f56a3d4f979617b2a965cb20cd820f0da67570297030d1be",
+      "changed_in_this_commit": false
+    },
+    "target": {
+      "path": "src/i18n/catalogues/fr/ui.chat.sidebar.json",
+      "sha256": "586f75defd2e74d87b4c75da0700daf531bf48f4d156d88f6c22259cbe831f66",
+      "parent_sha256": "8ef2b9258441a3be1cc4836dde3085322c9a2025a7350e95c691de81f01f6d38",
+      "changed_in_this_commit": true
+    }
+  },
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+      "sha256": "7901d0902c1dff11a5f4aca6138ac1dc05268c82ea1561e4c81bc106fcb00353"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.chat.sidebar.context.json",
+      "sha256": "996e9bf0eda23ee7f56a3d4f979617b2a965cb20cd820f0da67570297030d1be"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/fr/ui.chat.sidebar.json",
+      "sha256": "586f75defd2e74d87b4c75da0700daf531bf48f4d156d88f6c22259cbe831f66"
+    }
+  },
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "revision": "dadf192382f",
+      "last_content_commit": "e433b2c54af",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/fr.md",
+      "revision": "dadf192382f",
+      "last_content_commit": "e433b2c54af",
+      "sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+    },
+    "contract": {
+      "path": "docs/I18N.md",
+      "ref": "80ee119bbd1084ee873994a1f39db0c085c62083",
+      "sha256": "6fc7bea71643c0dcaeaed697ecd792cfdfeb11b7816b5f8d160011e7c7df2abe"
+    },
+    "manifest": {
+      "path": "/Users/damian/.local-operator/sessions/6c78c3706206/scratchpad/wave-a-delta-fr/audited-keys.json",
+      "tracked": false,
+      "note": "The 38 audited keys, taken from the round-1 receipt's namespace blocks. Reproduced in this record as keys_audited."
+    }
+  },
+  "findings": [
+    {
+      "id": "fr-wavea-r2-i5",
+      "severity": "INFO",
+      "key": "ui.chat.sidebar.entity.collapse_chats",
+      "also_affects": [
+        "ui.chat.sidebar.entity.expand_chats"
+      ],
+      "issue": "RESOLVED - prior MINOR fr-wavea-1. « le groupe {name} » reuses the noun the same row's count badge already uses (« {n} conversations dans ce groupe »), so one object no longer has two names. Checked for the hazards the round-1 proposal called out: no preposition before the placeholder, so no elision (« le groupe Élodie » / « le groupe d’Artagnan » both read correctly); no agreement to get wrong; masculine « le » is stable. Composed with 11 adversarial display names (vowel-initial, leading apostrophe, embedded guillemets, comma+period, very long, CJK, Arabic, digit-leading, ASCII quote, backslash): no breakage, and the placeholder always substitutes.",
+      "current": "Replier le groupe {name}",
+      "proposed": "(accepted as written)"
+    },
+    {
+      "id": "fr-wavea-r2-i6",
+      "severity": "INFO",
+      "key": "ui.chat.sidebar.entity.collapse_chats",
+      "also_affects": [
+        "ui.chat.sidebar.entity.expand_chats"
+      ],
+      "issue": "PRE-EXISTING, locale-independent, not introduced here. chat-sidebar.tsx:2933 interpolates the resolved label into a CSS attribute selector `[data-disclosure][aria-label=\"${label}\"]` without escaping. The new French template adds no selector-delimiter characters (no ASCII double quote, no backslash, no newline), so it builds the same selector shape as the English one and jsdom parses and MATCHES it for every ordinary name tested, including guillemets and an apostrophe. A DISPLAY NAME containing an ASCII double quote throws \"not a valid selector\" and one containing a backslash silently matches nothing - in English identically. Reported for the owner to escape at the call site; it is not a translation defect and does not gate this value.",
+      "current": "(code) chat-sidebar.tsx:2933",
+      "proposed": "(owner's call) escape the aria-label value, e.g. CSS.escape-style quoting or a data-attribute lookup by name instead of by label"
+    }
+  ],
+  "validation": {
+    "icu_errors": [],
+    "placeholder_parity": "11/11 keys carry an identical argument name/type map to English (parsed with @formatjs/icu-messageformat-parser); 0 render errors through `new IntlMessageFormat(msg, \"fr\")`, the product's own formatter.",
+    "number_rendering": "Not exercised by these keys (no {x, number} in the audited set); the fr formatter's grouping is covered by the namespace files' own messages, unchanged here.",
+    "nfc": true,
+    "bidi_controls": 0,
+    "ascii_apostrophes": 0,
+    "typography_checked": "All five changed values are plain prose with no ':' ';' '!' '?' and no guillemets, so the U+202F rules do not apply to them; checked NFC, no ASCII apostrophe, no C0/C1 or bidi controls, no double or edge whitespace. The unchanged values keep the round-1 typography verdict, and their bytes are identical.",
+    "key_parity": "11/11 wave-A keys present in fr; the delta added and dropped no key in this namespace (parsed key-set comparison, audit.log §2; locale-parity test passes for fr).",
+    "width": {
+      "changed": {
+        "ui.chat.sidebar.entity.collapse_chats": {
+          "en": "Collapse {name} chats",
+          "fr": "Replier le groupe {name}",
+          "en_len": 21,
+          "fr_len": 24,
+          "delta_pct": 14
+        },
+        "ui.chat.sidebar.entity.expand_chats": {
+          "en": "Expand {name} chats",
+          "fr": "Déplier le groupe {name}",
+          "en_len": 19,
+          "fr_len": 24,
+          "delta_pct": 26
+        }
+      },
+      "call_site": "Both changed values are aria-labels on the group's 24px disclosure chevron (chat-sidebar.tsx:6949-6960), never painted. The same label is also interpolated into a CSS attribute selector at chat-sidebar.tsx:2933, which is why its every character is load-bearing.",
+      "note": "The sidecar's `length` fields are descriptions of the English, not maxCells/maxChars budgets, and none of these keys carries a numeric hint. Every changed value is an aria-label / tooltip, never painted text, so the only measured quantity worth recording is relative growth."
+    },
+    "ledger_rows": "The repository's writer (ledger-assemble.mjs) accepts this receipt and derives fr/ui.chat.sidebar: status audited, result clean, counts {'blocker': 0, 'major': 0, 'minor': 0, 'nit': 0}. With the four fr rows so derived, ledger-check drops from 84 findings to 72 and reports none for fr (every other locale the wave touched is still stale - not this audit's scope). See ledger-assemble.log.",
+    "adversarial_names": "11 display names through the two name-bearing keys in this namespace (vowel-initial, leading apostrophe U+2019, embedded guillemets, comma+period, very long, CJK, Arabic RTL, digit-leading, ASCII double quote, backslash): all compose without elision, agreement or punctuation breakage; the placeholder always substitutes (audit.log §6 D).",
+    "rendered_fit": "Not executed: every value audited here is an accessible name or tooltip on a control whose visible content is an icon or a message row. No rendered frame, geometry or activation claim is made.",
+    "plural_select_messages": "None of the 11 audited keys carries a plural or select message. The file's plural messages are outside the wave key set: groups.badge and the three catalogue.total* messages carry one/many/other correctly; ui.chat.sidebar.agents.builtin_offer carries exact-value branches plus one/other but no `many` (pre-existing, unchanged in this commit, unreachable in practice at 10^6 agents) - recorded as an observation, not a finding against this delta (audit.log §8).",
+    "select_messages": "ui.chat.sidebar.pins.failure keeps the English options (pin,unpin,other)."
+  },
+  "delta": {
+    "changed_keys": [
+      "ui.chat.sidebar.entity.collapse_chats",
+      "ui.chat.sidebar.entity.expand_chats"
+    ],
+    "regression": "38 audited keys overall: 33 byte-identical, 5 changed - exactly the five the task named (audit.log §3, regression verdict PASS).",
+    "identical_ok_change": "Not applicable to this namespace.",
+    "english_basis": "The en catalogue and its context sidecar are byte-identical at a81 and 80ee for all four namespaces, so the English the round-1 audit read is still the English these values answer."
+  },
+  "deriveReceiptAudit": {
+    "module_ref": "80ee119bbd1084ee873994a1f39db0c085c62083",
+    "module_path": "scripts/i18n/ledger-rules.mjs",
+    "module_sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6",
+    "execution": "Exported tree of 80ee119bbd; `import * as rules from './scripts/i18n/ledger-rules.mjs'`; `deriveReceiptAudit(receiptBytes, {locale, namespace, sourceHash, targetHash})` called with the SHA-256 of the committed English and fr blobs; `compareReceiptAudit` and `validateAuditSet` run over the auditor entry each row would carry. No ledger write. See audit.log §11.",
+    "derived": {
+      "agent": "i18n-auditor",
+      "instance": "6c78c3706206",
+      "model": "radient/auto",
+      "result": "clean",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "source_sha256": "7901d0902c1dff11a5f4aca6138ac1dc05268c82ea1561e4c81bc106fcb00353",
+      "target_sha256": "586f75defd2e74d87b4c75da0700daf531bf48f4d156d88f6c22259cbe831f66",
+      "receipt_sha256": "007ca7fd244fdff6c0d8939f750a1b514e61aac0037514d11a22bddceae46793"
+    }
+  },
+  "current_report_verdict": {
+    "status": "passed",
+    "result": "clean",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [
+      "fr-wavea-r2-i5",
+      "fr-wavea-r2-i6"
+    ],
+    "counts": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 0,
+      "nit": 0
+    }
+  },
+  "artifacts": [
+    {
+      "path": "i18n/audits/evidence/fr/ui.chat.sidebar/wavea-r2-20261027-fr/record.json",
+      "sha256": null,
+      "note": "this file - a record cannot hash itself inside itself"
+    },
+    {
+      "path": "i18n/audits/evidence/fr/ui.chat.sidebar/wavea-r2-20261027-fr/audit.log",
+      "sha256": "d1d3cd474863d095f13f4437193266e6cd57c7000ff61bfe6a959eae62118457",
+      "note": "verbatim captured stdout/stderr of every command run, with exit codes; identical bytes in all four bundles"
+    },
+    {
+      "path": "i18n/receipts/6c78c3706206.json",
+      "sha256": "007ca7fd244fdff6c0d8939f750a1b514e61aac0037514d11a22bddceae46793",
+      "note": "the namespace-scoped receipt these four blocks come from"
+    },
+    {
+      "path": "i18n/audits/evidence/fr/ui.chat.sidebar/wavea-r2-20261027-fr/ledger-assemble.log",
+      "sha256": "da5fdf08803f7141f4d3e34b7c16924ef42b980e3fc595d19d98dcb2e9a472de",
+      "note": "companion execution log: the four fr rows the repository's own writer derives from this receipt (ledger-assemble.mjs) and the gate result with them in place. Identical bytes in all four bundles."
+    },
+    {
+      "path": "i18n/audits/evidence/fr/ui.chat.sidebar/wavea-r2-20261027-fr/ledger-rows-suggested.json",
+      "sha256": "79a87afaa681d9338584741dc0cd5bf20e865ebe6a3bb3318f307abbd5fcd927",
+      "note": "companion deliverable: the four derived rows, for the implementer to apply; not applied by the auditor."
+    }
+  ],
+  "audit_notes_not_execution_log": "Prose in this receipt (scope, judgement, limitations, suggested wording) is audit reasoning, not command output. Every command claim above corresponds to a verbatim line in the companion audit.log, which carries the real stdout/stderr and exit codes; every hash comes from the committed blobs at 80ee119bbd, re-derived with `git show` and cross-checked against the exported tree.",
+  "limitations": [
+    "Catalogue and call-site evidence only; no compiled or rendered proof.",
+    "ui.chat.header is re-read rather than re-derived: its bytes are unchanged, and the schema offers no carried-forward block, so this receipt records a full 5-key pass instead of referencing round 1.",
+    "fr-wavea-3 (checkpoint clock shape) and fr-wavea-r2-i6 (unescaped selector interpolation) are code-level and cannot be fixed from a catalogue; both are recorded with their evidence rather than resolved.",
+    "ledger-check is red at this head for every locale the wave touched; the rows are the implementer's to rebind, with this receipt as their evidence."
+  ]
+}

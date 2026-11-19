@@ -1,0 +1,38 @@
+{
+ "schema": 1,
+ "auditor": "copy-reviewer (lopdev team copy-reviewer session 3454343bfd47; independent i18n auditor, not the translator agent coder of session 568d933e34b1)",
+ "agent": "copy-reviewer (lopdev team copy-reviewer session 3454343bfd47; independent i18n auditor, not the translator agent coder of session 568d933e34b1)",
+ "model": "anthropic/claude-opus-5-5",
+ "model_provenance": "Every read and verdict in this receipt ran on anthropic/claude-opus-5-5 (session header); no fallback occurred.",
+ "fallback": "none",
+ "independence": "Separate session (3454343bfd47) and agent (copy-reviewer) from the translator (agent coder, session 568d933e34b1, anthropic/claude-opus-5-5). Same model family: not a cross-family audit.",
+ "session": "3454343bfd47",
+ "locale": "ru",
+ "pr": "damianvtran/local-operator-ui#1660",
+ "branch": "feat/team-bridge-sidebar-swap",
+ "head": "e2582dbaf5dbc0ec071ee3ad2aaf5f2380a73f45",
+ "worktree_catalogue_state": "uncommitted catalogue changes present; audited by blob hash",
+ "date": "2026-11-04",
+ "status": "passed",
+ "namespace": "ui.common.layout",
+ "findings": [],
+ "instance": "3454343bfd47-layout-plain-r3-ru",
+ "sha256": {
+  "ru": "eaed7a908ff59c8b7c0200160e0334e1dee171f3ce7144197f87ed5e5f5d6d37",
+  "en": "9801dc7b4e4cd5258b6f9290a4e021d85785d87a2a3e645e5c5a557257cb31a7"
+ },
+ "inputs_sha256": {
+  "en_context (ui.common.layout.context.json)": "44b78ef0ce7d770a49f81223d095ee17ec7366cf4da96c7a3d0d88508e1a1384",
+  "glossary (local-operator/i18n/glossary.md)": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "style guide (local-operator/i18n/style-guides/ru.md)": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+ },
+ "scope": "ui.common.layout delta audit (PR #1660 U1): added key chat_layout.resize_the_sidebar_plain; all other keys verified unchanged against base 34b61d19316",
+ "verified": [
+  "target/source hashes in AUDIT-BRIEF-R3 matched the worktree",
+  "vs base 34b61d19316 (ledger row status audited, target sha256 prefix 59f2c83e74 equals the base blob): exactly one key added, none removed or changed",
+  "resize_the_sidebar_plain 'Изменить ширину боковой панели' equals the audited sibling resize_the_sidebar 'Изменить ширину боковой панели ({sidebartogglecap})' with the ' ({sidebartogglecap})' chord removed, byte for byte; placeholder-free, formats as itself",
+  "en context says keep wording identical to the sibling minus the chord; satisfied",
+  "NFC, no bidi/zero-width controls, no edge or double spaces",
+  "design-qa copy_scan.py over the 8 resize_the_sidebar_plain strings: 'scanned 8 files, 8 candidate strings; 0 findings'"
+ ]
+}

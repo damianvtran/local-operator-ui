@@ -1,0 +1,129 @@
+{
+  "schema": 1,
+  "date": "2026-11-04",
+  "agent": "i18n-auditor",
+  "instance": "ed833173e70f",
+  "model": "openai/gpt-6.1-sol",
+  "model_fallback": null,
+  "translator": {
+    "agent": "coder",
+    "model": "anthropic/claude-opus-5-5",
+    "date": "2026-11-04"
+  },
+  "independence": "Auditor is a distinct agent/session from coder/anthropic/claude-opus-5-5; no translation API used.",
+  "locale": "ru",
+  "namespace": "ui.settings.notifications",
+  "status": "passed",
+  "source_sha256": "4bf3f8ffb1daecc09ac44049245bb85fe4c78b2c45ba19062218accc53782d65",
+  "target_sha256": "d71fc955d24181d5ff1df4c4dd8b0460fc312bcf7d1f0eb33b6601fb95a08917",
+  "context_sha256": "aec944a760fd984421ddb0afcb1135d03cb156b844fc88ff8a32ad250385e554",
+  "scope": "All 69 keys; D2 only against base 8a0e688 at 9080108975ba9beb74bedeb91cb33a969fa24568.",
+  "findings": [
+    {
+      "id": "RU1",
+      "severity": "minor",
+      "disposition": "fixed in supplied audited file",
+      "keys": [
+        "ui.settings.notifications.volume.valuetext"
+      ],
+      "reason": "The spec §4 allows externally set values such as 71/73 before drag snapping; Russian percent must inflect for 1/21/71 and 2–4, not always процентов."
+    }
+  ],
+  "corrections": [
+    {
+      "id": "RU1",
+      "locale": "ru",
+      "key": "ui.settings.notifications.volume.valuetext",
+      "severity": "minor",
+      "disposition": "fixed in supplied audited artifact",
+      "before": "{value, number} процентов",
+      "after": "{value, plural, one {# процент} few {# процента} many {# процентов} other {# процента}}",
+      "reason": "The spec §4 allows externally set values such as 71/73 before drag snapping; Russian percent must inflect for 1/21/71 and 2–4, not always процентов."
+    }
+  ],
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/ru.md",
+      "sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+    }
+  },
+  "core_sound_names": {
+    "path": "/Users/damian/.local-operator/sessions/7c5c172b0e89/scratchpad/notif-sounds/c2-i18n-audit-r1/ru.wire.notification_sound.full.audited.json",
+    "sha256": "d4659fbb1790324abb0ef687626f77fa6c927055ddfdb357adcd57b9785219c4"
+  },
+  "checks": {
+    "locales": [
+      {
+        "locale": "fr",
+        "keys": 69,
+        "pluralMessages": 2,
+        "status": "PASS",
+        "count3of50": "3 sur 50"
+      },
+      {
+        "locale": "es",
+        "keys": 69,
+        "pluralMessages": 2,
+        "status": "PASS",
+        "count3of50": "3 de 50"
+      },
+      {
+        "locale": "zh-CN",
+        "keys": 69,
+        "pluralMessages": 2,
+        "status": "PASS",
+        "count3of50": "3/50"
+      },
+      {
+        "locale": "ru",
+        "keys": 69,
+        "pluralMessages": 3,
+        "status": "PASS",
+        "count3of50": "3 из 50"
+      },
+      {
+        "locale": "vi",
+        "keys": 69,
+        "pluralMessages": 2,
+        "status": "PASS",
+        "count3of50": "3/50"
+      },
+      {
+        "locale": "ur",
+        "keys": 69,
+        "pluralMessages": 2,
+        "status": "PASS",
+        "count3of50": "50 میں سے 3"
+      },
+      {
+        "locale": "hi",
+        "keys": 69,
+        "pluralMessages": 2,
+        "status": "PASS",
+        "count3of50": "50 में से 3"
+      }
+    ],
+    "totalKeys": 483,
+    "formatEvaluations": 4830,
+    "checks": [
+      "exact key parity",
+      "ICU AST argument names and types",
+      "all locale CLDR categories",
+      "no manual bidi controls",
+      "Vietnamese NFC",
+      "sample formatting incl 0,1,2,3,5,21,50,100,0.5,1000000"
+    ],
+    "limitations": [
+      "Text/ICU checks only; no rendered layout or native RTL shaping proof"
+    ]
+  },
+  "limitations": [
+    "One independent LLM linguistic audit, not human-native certification or second high-visibility/safety audit.",
+    "No translated rendered-fit, pseudo-localization, RTL visual/shaping proof or audio/runtime QA claimed. English screenshots supplied by implementer do not prove target fit."
+  ],
+  "evidence_record": "i18n/audits/evidence/ru/ui.settings.notifications/d2-r1-ed833173e70f/record.json"
+}

@@ -1,0 +1,320 @@
+{
+ "schema": 1,
+ "audit_kind": "independent-translation-audit",
+ "round": 2,
+ "locale": "hi",
+ "locale_name": "Hindi",
+ "auditor": "i18n-auditor",
+ "agent": "i18n-auditor (lopdev team)",
+ "session": "9f3c2137fe40",
+ "instance": "9f3c2137fe40",
+ "model": "radient/auto",
+ "model_fallback": "none observed: the session header names radient/auto, and every model value recorded in this session's transcript was 'auto' at the time this receipt was written (87/87 records), so no mid-run model switch is visible. The upstream provider/model behind that alias is not exposed to the agent and is not claimed.",
+ "actual_model_source": "harness session header ('Model: radient/auto') plus the session transcript's own model fields; upstream resolution not visible to the agent and not inferred.",
+ "independence": "Independent round-2 auditor: did not translate or remediate these catalogues, read no translator report, used no translation/MT service, and edited no catalogue, ledger or git state. Only this receipt was written in the repo.",
+ "date": "2026-10-26",
+ "scope": {
+  "worktree": "~/local-operator-ui/.worktrees/i18n-agents-pages",
+  "branch": "i18n-agents-pages",
+  "head": "91231e66c9",
+  "note": "Round 2 over the current working-tree bytes of 8 namespaces, bound by sha256 (target files are untracked candidates in this worktree). English source is tracked at HEAD 91231e66c9. Round-1 receipt read only to check resolution: i18n/receipts/hi-agents-surfaces-audit-cdbc590e1c22.json."
+ },
+ "references": {
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/hi.md",
+   "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+  }
+ },
+ "namespace_count": 8,
+ "keys_read": 321,
+ "mechanical": "All 8 namespaces carry the same key set and order as en (321 keys = 219 round-1 + 102 new). @formatjs/icu-messageformat-parser parsed all 321 hi messages with requiresOtherClause: 0 failures; ICU argument names/types identical to en for every key (0 diffs); 6 plural messages, each with exactly one + other, matching Intl.PluralRules('hi') categories [one, other] (select(0)=one, select(1)=one, select(2)=other); no select or rich-text tags in these namespaces. NFC-clean 321/321; no bidi controls, ZWSP/ZWNJ/ZWJ, Devanagari digits, three-dot ellipsis, trailing/double spaces or straight quotes. Sentence-terminator counts match en for every key (no dropped sentence); danda for full stops, ? kept; curly “ ” pairs balanced; every Latin token (Radient, Local Operator, pull, KiB, Team, release-crew, coder, {kind}) is space-separated from Devanagari. Nukta spelling consistent (सिर्फ़, ज़रूरी, ज़्यादा, ग़लती, फ़ाइल; 0 bare forms). No maxCells/maxChars hints exist in these 8 context sidecars; scope.installed is the widest segment label — estimated ~75 px at text-meta/12 px against the row's ~246 px four-segment text budget (288 px column, w-72, minus px-4/px-2/gaps), so no overflow is claimed; no rendered frame was captured in this audit, and the figure is a layout-budget arithmetic check, not a render. Composition checked in code: hub.pages scope+count (hi reorders the scope phrase first), hub.teams manager_label/member_count colon plus flex gap, publication pull.* × subject.* (the subject carries को/का so every sentence stays whole), invalid.field.* {rule} is server English inserted verbatim, config summary.created/updated followed by ' ({kind}): changes', brief.trigger_aria and pull_target keep their visible labels (ब्रीफ़, pull करें).",
+ "commands": [
+  {
+   "command": "node --test --test-name-pattern='hi' scripts/i18n/locale-parity.test.mjs",
+   "exit": 0,
+   "observed": "tests 18, pass 18, fail 0 — the six [hi] rows: ships at least one message; defines each key in at most one namespace file; carries EVERY key of each namespace file it ships; names only keys the English source defines; preserves every ICU placeholder; is not an English stub"
+  },
+  {
+   "command": "node scripts/i18n/context-parity.mjs",
+   "exit": 0,
+   "observed": "context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json)."
+  },
+  {
+   "command": "node scripts/i18n/check-duplicates.mjs",
+   "exit": 0,
+   "observed": "check-duplicates: ok — 835 file(s) scanned, 0 duplicate key(s)"
+  },
+  {
+   "command": "node scripts/i18n/generate.mjs --check",
+   "exit": 0,
+   "observed": "src/i18n/keys.gen.ts is byte-identical to a fresh generation."
+  },
+  {
+   "command": "node scripts/i18n/check-strings.mjs",
+   "exit": 0,
+   "observed": "check-strings.mjs: ok — 1368 file(s) scanned, 191 literal(s) at or below the baseline (first invocation was killed by the harness's 0.1 GB per-command memory cap before any output; the rerun with a 2 GB budget printed this line)."
+  },
+  {
+   "command": "node <scratch>/mech.mjs (own ICU/typography sweep, @formatjs parser)",
+   "exit": 0,
+   "observed": "hi CLDR plural categories: one,other | select(0)= one select(1)= one select(2)= other; namespaces scanned: 8, keys: 321, hi plural messages: 6; ICU parse failures: 0; issues: 0"
+  },
+  {
+   "command": "node <scratch>/derive-hi.mjs (deriveReceiptAudit from scripts/i18n/ledger-rules.mjs, per namespace, on these receipt bytes with on-disk catalogue hashes)",
+   "exit": 0,
+   "observed": "8 namespaces derived from the final receipt bytes: ui.agents.pages clean-with-findings (0/0/0/1), ui.agents.detail clean (0/0/0/0), ui.hub.pages clean (0/0/0/0), ui.hub.teams clean-with-findings (0/0/3/0), ui.agents.config clean-with-findings (0/0/0/1), ui.agents.teams clean (0/0/0/0), ui.agents.upload clean (0/0/0/0), ui.agents.publication clean-with-findings (0/0/1/0)"
+  }
+ ],
+ "observations": [
+  "Round-1 resolution: all 20 round-1 findings were addressed — 13 use the proposed wording verbatim and 7 carry the same fix in equivalent words (conflict_body “बदलाव कर दिया”, viewer_unknown adds भी, brief.roster takes the suggested alternative टीम संरचना, activity.empty “टूल कॉल”, result.configured takes the colon only, the upload availability pair, terms.tail “इस एजेंट में … नहीं है”, other_harmful “पहुँचाएँगे”). No round-1 blocker or major remains; the two discard_bar majors are now “सहेजे न गए बदलाव”.",
+  "Source gap (unchanged, not a translation defect): ui.agents.config.about receives the raw English {kind} ('agent'/'team') from the caller, so it renders “agent Ravi के बारे में”.",
+  "The 102 new keys follow shipped hi vocabulary: निर्देश-सेट, कैटलॉग, रजिस्ट्री, मशीन-विशिष्ट, सरफ़ेस, क्रेडेंशियल, साइन-इन, हब, कौशल, उप-एजेंट, and एजेंट हब (also in shipped ui.shell/ui.command_palette); the paid tier stays “Team प्लान” per the sidecar's keep-'Team' instruction, and pull stays Latin in every control/state string.",
+  "Label-in-name: delegate.aria == delegate.label; collaboration/project_brief/members aria == the section wording; manager_aria begins with the visible मैनेजर; brief.trigger_aria contains ब्रीफ़; pull_target contains pull करें. tools.all_label (सभी टूल) is not contained in tools.every_tool_aria (इस एजेंट को हर टूल दें) — that pairing mirrors the English source exactly and is not changed here.",
+  "High-visibility coverage: a second read pass over the publication refusal bodies, the hub team refusals and the destructive discard confirmations was done by the SAME auditor (this is not a second independent auditor). No additional blocker or major surfaced; the four minors and two nits above are the whole set.",
+  "check-strings.mjs needed a raised per-command memory budget under this harness (0.1 GB default, killed before output; 2 GB succeeded) — recorded so the ok line is not mistaken for a clean first run.",
+  "No catalogue, ledger, git or build state was touched; the receipt is the only file written in the repo."
+ ],
+ "status": "passed",
+ "verdict": "passed overall: 0 blocker, 0 major, 4 minor, 2 nit. Clean: ui.agents.detail, ui.hub.pages, ui.agents.teams, ui.agents.upload. Clean-with-findings: ui.hub.teams (3 minor), ui.agents.publication (1 minor), ui.agents.pages (1 nit), ui.agents.config (1 nit). Round-1 blockers/majors resolved; all 102 new keys audited against en, its context sidecars and the call sites.",
+ "totals": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 4,
+  "nit": 2
+ },
+ "namespaces": {
+  "ui.agents.pages": {
+   "namespace": "ui.agents.pages",
+   "status": "passed",
+   "keys_audited": 22,
+   "verdict": "passed: 0 blocker, 0 major, 0 minor, 1 nit over 22 keys",
+   "findings": [
+    {
+     "id": "HI-R2-01",
+     "severity": "nit",
+     "category": "idiom",
+     "key": "ui.agents.pages.empty.search",
+     "current": "“{query}” से कुछ मेल नहीं खाता।",
+     "problem": "Negated subject without भी reads flat; the stock emphatic form is कुछ भी. Meaning and quotes are correct.",
+     "proposed": "“{query}” से कुछ भी मेल नहीं खाता।"
+    }
+   ],
+   "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 1
+   },
+   "en_sha256": "38a713b6cc4a63532543924cfdd2093b11c3618c31fc6266d28e20b84572feb5",
+   "hi_sha256": "5093782335d7d2fe23eb50a907a73a902a1e613f53c15d4cb2520cf9f07d5eb7",
+   "context_sha256": "4b761bfa8eeeddf3689a2160e8249b153c095368b6f6fe3df7046052d95d2642",
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.agents.pages.json",
+    "target": "src/i18n/catalogues/hi/ui.agents.pages.json",
+    "context": "src/i18n/catalogues/en/ui.agents.pages.context.json"
+   }
+  },
+  "ui.agents.detail": {
+   "namespace": "ui.agents.detail",
+   "status": "passed",
+   "keys_audited": 47,
+   "verdict": "passed: 0 blocker, 0 major, 0 minor, 0 nit over 47 keys",
+   "findings": [],
+   "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "en_sha256": "9cf3c2f8cbd522ea6e3e2c88b9c65c80bb63d79b7a417992ece92043809ff025",
+   "hi_sha256": "d6edf0c9ebc5395c52b8ed3bde85deb3d7a5637599a3379a04cec4b9a28c41d3",
+   "context_sha256": "f1b0bbf296d01189d64cbdc9bb1bc77d3e7971d8f891c693b94af5741de58cd9",
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.agents.detail.json",
+    "target": "src/i18n/catalogues/hi/ui.agents.detail.json",
+    "context": "src/i18n/catalogues/en/ui.agents.detail.context.json"
+   }
+  },
+  "ui.hub.pages": {
+   "namespace": "ui.hub.pages",
+   "status": "passed",
+   "keys_audited": 35,
+   "verdict": "passed: 0 blocker, 0 major, 0 minor, 0 nit over 35 keys",
+   "findings": [],
+   "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "en_sha256": "ba970e165ed879e7f9968a02302480a86d8002954d514247d633ae54eb7ca139",
+   "hi_sha256": "2fe3a57086e80cf270ce9d3f8d3ef59b88b78f569ba188f54a39463fa1483a6b",
+   "context_sha256": "baa1605388a3892267e503c2e9a2504a7c6ace8d92bbb380a2c72ccb33be4dcc",
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.hub.pages.json",
+    "target": "src/i18n/catalogues/hi/ui.hub.pages.json",
+    "context": "src/i18n/catalogues/en/ui.hub.pages.context.json"
+   }
+  },
+  "ui.hub.teams": {
+   "namespace": "ui.hub.teams",
+   "status": "passed",
+   "keys_audited": 47,
+   "verdict": "passed: 0 blocker, 0 major, 3 minor, 0 nit over 47 keys",
+   "findings": [
+    {
+     "id": "HI-R2-02",
+     "severity": "minor",
+     "category": "terminology",
+     "key": "ui.hub.teams.public.intro",
+     "current": "सार्वजनिक टीमें कोई भी हब पर प्रकाशित कर सकता है और यहाँ बिना साइन इन किए पढ़ी जा सकती हैं। किसी टीम को लाने पर उसकी कॉपी इस मशीन की स्थानीय टीम रजिस्ट्री में आ जाती है।",
+     "problem": "The glossary's wave-2 kept-English set keeps pull Latin for hub/git operations, and this namespace does (pull करें, pull नहीं हो सकी, pull हो रहा है…). The intro paraphrases the operation as किसी टीम को लाने पर, so the sentence explaining the Pull button never names it. Meaning is intact; the defect is vocabulary consistency, so minor rather than a wrong-term major.",
+     "proposed": "सार्वजनिक टीमें कोई भी हब पर प्रकाशित कर सकता है और यहाँ बिना साइन इन किए पढ़ी जा सकती हैं। किसी टीम को pull करने पर उसकी कॉपी इस मशीन की स्थानीय टीम रजिस्ट्री में आ जाती है।"
+    },
+    {
+     "id": "HI-R2-03",
+     "severity": "minor",
+     "category": "terminology",
+     "key": "ui.hub.teams.public.sign_in_hint",
+     "current": "किसी टीम को इस मशीन पर लाने के लिए Radient में साइन इन करें।",
+     "problem": "Same substitution as public.intro: the hint explains why the Pull control needs a sign-in but renders pull as लाना, while pull stays Latin in the six control/state strings of the same block.",
+     "proposed": "किसी टीम को इस मशीन पर pull करने के लिए Radient में साइन इन करें।"
+    },
+    {
+     "id": "HI-R2-04",
+     "severity": "minor",
+     "category": "grammar",
+     "key": "ui.hub.teams.public.match_line",
+     "current": "इस पेज की {total, plural, one {# टीम} other {# टीमों}} में से {visible} “{query}” से मेल खाते हैं",
+     "problem": "The conjugated verb sits outside the ICU arm and is fixed plural, while {visible} is a plain string (call site passes String(visibleTeams.length)), not plural-typed. With exactly one match the line renders “इस पेज की 5 टीमों में से 1 “abc” से मेल खाते हैं”, whose verb should be singular — and one match is a common search outcome. The plural arms themselves are correct (one/other; oblique टीमों after में से). Remedy: a label form that drops the conjugated verb — the same fix the fr round-1 audit used for this key.",
+     "proposed": "“{query}” से मेल: इस पेज की {total, plural, one {# टीम} other {# टीमों}} में से {visible}"
+    }
+   ],
+   "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 3,
+    "nit": 0
+   },
+   "en_sha256": "32d6df8db5c9226cd9a3e4d57f7bf12a14579ad266feaa3a914c4cfdddad9ad5",
+   "hi_sha256": "734157cc9890f1b0ed37dd20a4406d4682bf69fba85c38999a258a75616da967",
+   "context_sha256": "9a6f5f35045687eab48c7491086b759c06d5ad635e93cdfdbcaf2f663acd6651",
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.hub.teams.json",
+    "target": "src/i18n/catalogues/hi/ui.hub.teams.json",
+    "context": "src/i18n/catalogues/en/ui.hub.teams.context.json"
+   }
+  },
+  "ui.agents.config": {
+   "namespace": "ui.agents.config",
+   "status": "passed",
+   "keys_audited": 28,
+   "verdict": "passed: 0 blocker, 0 major, 0 minor, 1 nit over 28 keys",
+   "findings": [
+    {
+     "id": "HI-R2-05",
+     "severity": "nit",
+     "category": "idiom",
+     "key": "ui.agents.config.summary.hidden_changes",
+     "current": "इसकी सेटिंग्स बदलीं। सूची निर्देश नहीं दिखाती, इसलिए क्या लिखा गया यह देखने के लिए इसे खोलें।",
+     "problem": "The embedded question is stacked before its verb (क्या लिखा गया यह देखने के लिए); the clause reads cleaner with देखें कि क्या लिखा गया है. Content is accurate.",
+     "proposed": "इसकी सेटिंग्स बदलीं। सूची निर्देश नहीं दिखाती, इसलिए इसे खोलकर देखें कि क्या लिखा गया है।"
+    }
+   ],
+   "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 1
+   },
+   "en_sha256": "aa4fde04d7db00418387f862d42d547bead44e96c880e8b4e0dc86384eed305b",
+   "hi_sha256": "15243f4d0ef6462afe7a48095d61586f1db77b1aa848a3dc9e0bd1f054ceaad9",
+   "context_sha256": "5dd8f962ad021b0dc4004ea2531257b3fd70904e834f77b5f9b7b2d7266a48db",
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.agents.config.json",
+    "target": "src/i18n/catalogues/hi/ui.agents.config.json",
+    "context": "src/i18n/catalogues/en/ui.agents.config.context.json"
+   }
+  },
+  "ui.agents.teams": {
+   "namespace": "ui.agents.teams",
+   "status": "passed",
+   "keys_audited": 23,
+   "verdict": "passed: 0 blocker, 0 major, 0 minor, 0 nit over 23 keys",
+   "findings": [],
+   "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "en_sha256": "139eca3cd41f62cfea0a97d6a9b40cff8aa446ea761b1f94d42334d1d576fdef",
+   "hi_sha256": "7b6b3e569abca3f2061a21dcf8cb1681ffc3abc333a736801dc8bc2783155145",
+   "context_sha256": "0b3f7f59a37c671813d9a5c9d32b242e04d0fa0b3c5605421c3129cab937bfc1",
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.agents.teams.json",
+    "target": "src/i18n/catalogues/hi/ui.agents.teams.json",
+    "context": "src/i18n/catalogues/en/ui.agents.teams.context.json"
+   }
+  },
+  "ui.agents.upload": {
+   "namespace": "ui.agents.upload",
+   "status": "passed",
+   "keys_audited": 23,
+   "verdict": "passed: 0 blocker, 0 major, 0 minor, 0 nit over 23 keys",
+   "findings": [],
+   "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "en_sha256": "6f1242bae1dcc952a8f3a659a2850fad2af9a3b0834d6a23ddac28fc8be91c11",
+   "hi_sha256": "ffaa3608333e7686077638a6164ec01c5f49ffd5fd8beac6f17c5c3a3741f03d",
+   "context_sha256": "9c8ccc682885383f7aee9f77a1dbbb8c94a5d709e2de4ee9d76b40c7248a277a",
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.agents.upload.json",
+    "target": "src/i18n/catalogues/hi/ui.agents.upload.json",
+    "context": "src/i18n/catalogues/en/ui.agents.upload.context.json"
+   }
+  },
+  "ui.agents.publication": {
+   "namespace": "ui.agents.publication",
+   "status": "passed",
+   "keys_audited": 96,
+   "verdict": "passed: 0 blocker, 0 major, 1 minor, 0 nit over 96 keys",
+   "findings": [
+    {
+     "id": "HI-R2-06",
+     "severity": "minor",
+     "category": "terminology",
+     "key": "ui.agents.publication.agent_not_found.headline (+ agent_not_found.body, name_taken.owned_body, not_owner.body, not_owner.headline, team_not_found.body)",
+     "current": "वह सूची अब मौजूद नहीं है / हो सकता है इसे सूची से हटा दिया गया हो। / …दूसरी सूची प्रकाशित करने के बजाय उसी सूची को अपडेट करें। / यह सूची किसी दूसरे खाते की है। / आप यह सूची अपडेट नहीं कर सकते",
+     "problem": "Round 1 moved the three control labels to लिस्टिंग (action.publish_as_new, action.update_listing, upload.action.open_listing) so listing would stop reading as the roster list. Six body/headline strings still say सूची: the publish-dialog refusals for agent_not_found, name_taken.owned_body and not_owner name the object one way while the remedy button beside them says मौजूदा लिस्टिंग अपडेट करें, and team_not_found.body does the same on the hub-team path. Meaning is preserved in every sentence; the defect is that one object has two names in one namespace.",
+     "proposed": "Use लिस्टिंग in the five strings (वह लिस्टिंग अब मौजूद नहीं है; यह लिस्टिंग किसी दूसरे खाते की है।; आप यह लिस्टिंग अपडेट नहीं कर सकते; दूसरी लिस्टिंग प्रकाशित करने के बजाय उसी लिस्टिंग को अपडेट करें; लिस्टिंग से हटा दिया गया …)."
+    }
+   ],
+   "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+   },
+   "en_sha256": "20056e5654c004bef9318bf91531cb0cbc349d6242f6c49ba4801eb5d4605f39",
+   "hi_sha256": "8ecbc9f842a191f9659fa90730d1f797bac8a10216febe79aee9748b8c73beed",
+   "context_sha256": "69ceeff1e7162764e13c6d5fdee8e7a9f1184f1ab8209839a34e64ce6c486f90",
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.agents.publication.json",
+    "target": "src/i18n/catalogues/hi/ui.agents.publication.json",
+    "context": "src/i18n/catalogues/en/ui.agents.publication.context.json"
+   }
+  }
+ },
+ "audit_date": "2026-10-26",
+ "key_count": 321,
+ "hash_verification": "All 8 hi target hashes recomputed from the working tree match the agents-r2-hashes.txt lines for hi (8/8); all 8 English catalogue hashes recomputed from disk match the source list supplied in the task (8/8). No mismatch, so the audit proceeded. Hashes were recomputed again immediately before this receipt was written."
+}

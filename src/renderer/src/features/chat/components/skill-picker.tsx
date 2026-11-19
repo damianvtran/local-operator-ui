@@ -13,8 +13,8 @@
  * user naming the skill instead of semantic routing guessing it — and the
  * desktop could browse skills (`skills.list`) but not invoke one. The list's
  * rows are the SAME vocabulary that op answers (no hard-coded names, hidden
- * skills included), the accept gesture reassembles the draft exactly as the
- * TUI's picker does, and the SUBMISSION half is `skill-invocation.ts`.
+ * skills included), the accept gesture replaces the token's own span exactly
+ * as the TUI's picker does, and the SUBMISSION half is `skill-invocation.ts`.
  *
  * THE VOCABULARY IS SESSIONLESS (the `skill_catalogue` contract): the read
  * travels with the composer's own FOLDER — the staged cwd on a draft, the
@@ -38,6 +38,8 @@ import {
 } from "@shared/api/local-operator/desktop-hooks";
 import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
 import { usePairingCause } from "@shared/hooks/use-pairing-cause";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { type QueryClient, useQuery } from "@tanstack/react-query";
 import type { KeyboardEvent } from "react";
@@ -50,12 +52,12 @@ import {
 	useState,
 } from "react";
 import {
-	SKILL_PHASE_LABEL,
 	type SkillNotice,
 	skillClickFooter,
 	skillEnterFooter,
 	skillKeyIntent,
 	skillNotice,
+	skillPhaseLabel,
 	skillRowId,
 } from "./skill-contract";
 import { skillSuggestions } from "./skill-rank";
@@ -145,6 +147,10 @@ export function useSkillCompletion({
 	argumentWords,
 	enabled,
 }: SkillListArgs): SkillCompletionState {
+	// The popup's subscription refreshes its chrome, not strings retained by
+	// this hook's memo. Invalidate the notice where skillNotice resolves keys;
+	// a translated getter alone does not invalidate its cached result.
+	const locale = useI18nLocale();
 	const capabilities = useDesktopCapabilities();
 	/*
 	 * THE PROVIDER-OPTIONAL CLIENT (QA round 1, Q-1). The shared composer mounts
@@ -343,6 +349,7 @@ export function useSkillCompletion({
 	 */
 	const hasQuery = token !== null && token.query.trim() !== "";
 	const settled = active && skillsQuery.isSuccess;
+	// biome-ignore lint/correctness/useExhaustiveDependencies: locale is read indirectly by t() inside skillNotice; it must invalidate translated text.
 	const notice = useMemo(
 		() =>
 			token === null || claimed
@@ -365,6 +372,7 @@ export function useSkillCompletion({
 									: "pending",
 					}),
 		[
+			locale,
 			token,
 			claimed,
 			feature,
@@ -465,6 +473,7 @@ export function SkillSuggestionsPopup({
 	state,
 	onPick,
 }: SkillSuggestionsPopupProps) {
+	useI18nLocale();
 	const activeRef = useRef<HTMLLIElement | null>(null);
 	// Keep the active row in view without scrolling the page or transcript,
 	// on the same trigger pattern as the slash popup's.
@@ -482,15 +491,16 @@ export function SkillSuggestionsPopup({
 			// biome-ignore lint/a11y/useFocusableInteractive: the textarea keeps focus.
 			// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox cannot be a native <select>.
 			role="listbox"
-			aria-label="Skills"
+			aria-label={t("ui.chat.pickers.skills.title")}
+			data-lo-floating=""
 			className={cn(
 				"absolute bottom-full left-0 right-0 z-20 mb-1",
-				"overflow-hidden rounded-md border border-control bg-elevated",
-				"shadow-lg",
+				"overflow-hidden rounded-md bg-elevated",
+				"shadow-overlay",
 			)}
 		>
 			<div className="border-b border-hairline px-3 py-1 text-meta text-ink-dim">
-				{SKILL_PHASE_LABEL}
+				{skillPhaseLabel()}
 			</div>
 			<div
 				className="overflow-y-auto"

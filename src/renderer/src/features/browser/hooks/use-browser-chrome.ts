@@ -1,9 +1,27 @@
+import type { WaitingOnUserInput } from "@shared/browser-user-attention";
 import { t } from "@shared/i18n";
 import { unwrapIpcErrorMessage } from "@shared/utils/ipc-error-message";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type {
+	AddressHistoryRequest,
+	AddressHistoryResponse,
+} from "../../../../../shared/browser-address-history";
 import type { BrowserAvailability } from "../../../../../shared/browser-availability";
+import type {
+	MediaPermissionDecision,
+	MediaPermissionView,
+} from "../../../../../shared/browser-media-permission";
+import type {
+	PasskeyCustodyView,
+	PasskeyNoticeView,
+} from "../../../../../shared/browser-passkey-notice";
 import type { HumanTabActionOutcome } from "../../../../../shared/browser-tab-action";
+import {
+	type TabActionsMenuRequest,
+	type TabActionsMenuSelection,
+	tabActionsMenuSelectionOrNull,
+} from "../../../../../shared/browser-tab-actions-menu";
 import {
 	browserBridge as bridge,
 	browserBridgeAvailable,
@@ -118,7 +136,19 @@ export interface ApprovalView {
 	grantedAt: number;
 }
 
+/** What "Return to agent" came to: handed back now, handed back once the
+ * reload commits, or refused (already explained to the user). */
+export type PasskeyCustodyReturnOutcome = "returned" | "reloading" | "refused";
+
 export interface BrowserChromeState {
+	/** S4b: which list presenter the product chrome has. `suspend` is Tier 1 —
+	 * the field works, the native list does not. Absent on a pre-S4b main. */
+	addressOverlay?: { mode: "popout" | "suspend"; reason: string | null };
+	/** The native approvals card (default-on since S6d). `available` is false when
+	 * the launch set the kill switch or the card's child failed after
+	 * construction; the surface then mounts the DOM dock and band as the
+	 * fallback. Absent on a pre-S6b main. */
+	approvalsCard?: { available: boolean; open: boolean };
 	pageControls?: {
 		find: {
 			tabId: number;
@@ -163,9 +193,26 @@ export interface BrowserChromeState {
 	 * then simply never renders, which is the honest degrade for a build that cannot
 	 * transfer anything. */
 	transfers?: TransferActivityView;
+	/** The active tab's "a page is waiting for a passkey this browser cannot
+	 * provide" notice, or null. Main's facts only (origin, owner); see
+	 * `src/shared/browser-passkey-notice.ts`. Optional for a host that predates it. */
+	passkeyNotice?: PasskeyNoticeView | null;
+	/** The active tab's passkey custody (a password manager's prompt is up in an
+	 * agent tab and the agent is paused there), or null. Optional for a host that
+	 * predates it. */
+	passkeyCustody?: PasskeyCustodyView | null;
+	/** The active tab's camera/microphone prompt (or macOS notice), or null. Main's
+	 * facts only; see `src/shared/browser-media-permission.ts`. Optional for a host
+	 * that predates it. */
+	mediaPermission?: MediaPermissionView | null;
 	/** Null while the active tab's last navigation succeeded, is still loading, or
 	 * has no document yet. */
 	navFailure: LoadFailureView | null;
+	/** What agent tabs are waiting on the user for, across ALL tabs: a passkey
+	 * custody hold or a held popup (`main/browser/user-attention.ts`). Drawn as
+	 * sidebar notification rows and counted in the Browser badge; nothing moves
+	 * the view until the user clicks one. Optional for a host that predates it. */
+	waitingOnUser?: WaitingOnUserInput[];
 }
 
 /** One transfer decision, as the host reports it.
@@ -279,9 +326,25 @@ export { browserBridgeAvailable };
  * would put a message there for a transient during a drag.
  */
 function deliverContentRect(rect: ContentRect | null): void {
+	lastDeliveredRect = rect;
 	void bridge()
 		?.setContentRect(rect)
 		.catch(() => {});
+}
+
+/**
+ * The last rectangle this renderer actually SENT main, for S2's projection echo.
+ *
+ * Main refuses a projection whose `pageRect` does not equal the layout it applied,
+ * so the mirror must echo the same value the page reporter sent rather than
+ * measuring the content element a second time: two measurements can disagree by a
+ * frame during a resize, and that disagreement would read as a stale layout. A
+ * reader after an unmount sees null, which is exactly "nowhere to paint".
+ */
+let lastDeliveredRect: ContentRect | null = null;
+
+export function lastDeliveredContentRect(): ContentRect | null {
+	return lastDeliveredRect === null ? null : { ...lastDeliveredRect };
 }
 
 export interface BrowserChrome {
@@ -356,6 +419,22 @@ export interface BrowserChrome {
 		tabId: number,
 		action: "duplicate" | "reload" | "mute" | "unmute",
 	) => Promise<HumanTabActionOutcome | undefined>;
+	/**
+	 * Show the strip's actions menu as a NATIVE menu (LOH-13 operator report).
+	 *
+	 * Resolves with the verb the user selected, or null for a dismissal. The
+	 * STRIP builds the list and runs the handler; this hook only carries the
+	 * validated request and answer, and validates the answer against the shared
+	 * vocabulary so a menu id the strip does not implement can never reach the
+	 * dispatcher.
+	 *
+	 * A refusal is not an action error: a menu that cannot be shown (no window,
+	 * no bridge) is a dismissal, and a toast about it would name nothing the
+	 * user pressed.
+	 */
+	showTabActionsMenu: (
+		request: TabActionsMenuRequest,
+	) => Promise<TabActionsMenuSelection>;
 	newTab: (sessionId?: string | null) => Promise<void>;
 	closeTab: (tabId: number) => Promise<boolean>;
 	/**
@@ -377,7 +456,20 @@ export interface BrowserChrome {
 	 */
 	closeTabs: (intent: CloseTabsIntent) => Promise<boolean>;
 	activateTab: (tabId: number) => Promise<void>;
-	navigate: (url: string) => Promise<void>;
+	/** `expectedTabId` is the tab the address draft belongs to. Main refuses the
+	 * navigation when that is no longer the active tab, so a commit that raced a
+	 * tab switch cannot load the new tab with the old draft. */
+	navigate: (url: string, expectedTabId?: number) => Promise<void>;
+	/** Local address suggestions: the persistent history store plus this host's
+	 * live tab stacks, ranked in main. A failure here is not a navigation failure:
+	 * the field degrades to plain URL editing and `use-address-autocomplete`
+	 * reports its own state. */
+	addressHistory: (
+		request: AddressHistoryRequest,
+	) => Promise<AddressHistoryResponse>;
+	/** Main's projection invalidations, unrefcounted here: the address field is one
+	 * reader and it subscribes only while focused. Returns the unsubscribe. */
+	onStateChanged: (callback: () => void) => () => void;
 	/** Home: return the active tab to the browser's start state. No URL
 	 * travels with it — main owns what the start state is (LOH-13). */
 	home: () => Promise<void>;
@@ -397,7 +489,16 @@ export interface BrowserChrome {
 	retry: () => Promise<void>;
 	history: (direction: "back" | "forward") => Promise<void>;
 	setContentRect: (rect: ContentRect | null) => void;
-	setViewVisible: (visible: boolean) => void;
+	/** Hide/show the native view. `ownPage` names WHY it is hidden when it is: the
+	 * renderer is painting one of the browser's own state pages (start page,
+	 * load failure) rather than an overlay covering the content area. Main keeps
+	 * shortcut ownership for the first and refuses it for the second; see
+	 * `browser-surface.tsx` and `registry.ts:chromeVisible`. */
+	setViewVisible: (
+		visible: boolean,
+		ownPage?: boolean,
+		ownStatePage?: boolean,
+	) => void;
 	respondToConsent: (
 		entryId: string,
 		decision: ConsentDecision,
@@ -423,6 +524,39 @@ export interface BrowserChrome {
 	 * and the message is what a toast has to say.
 	 */
 	revealDownloads: () => Promise<void>;
+	/** Dismiss the passkey notice. Main ignores a stale `at`. */
+	dismissPasskeyNotice: (tabId: number, at: number) => Promise<void>;
+	/** Open the notice's page in the system browser. Reports its own refusal, for
+	 * the reason `revealDownloads` does: the door answers instead of throwing. */
+	openPasskeyNotice: (tabId: number, at: number) => Promise<void>;
+	/** An agent tab's notice: continue the sign-in in a new tab the user owns.
+	 * Reports its own refusal like `openPasskeyNotice`. Resolves true once the
+	 * user's tab exists, so the notice can hand focus on (review U2) instead of
+	 * leaving it on a button that unmounts with the agent tab's notice. */
+	continuePasskeyNoticeInUserTab: (
+		tabId: number,
+		at: number,
+	) => Promise<boolean>;
+	/** "Return to agent" on a passkey custody notice. `trusted` must be the
+	 * click's own `event.isTrusted`: main releases nothing without it. Answers
+	 * what main did, so the band can stay busy through a reload (`reloading`)
+	 * instead of re-enabling a button whose press is still in progress (review
+	 * U2). A refusal has already been shown as a toast. */
+	releasePasskeyCustody: (
+		tabId: number,
+		at: number,
+		trusted: boolean,
+	) => Promise<PasskeyCustodyReturnOutcome>;
+	/** Answer the camera/microphone prompt. `trusted` must be the click's own
+	 * `event.isTrusted`: main grants nothing without it. */
+	decideMediaPermission: (
+		tabId: number,
+		id: string,
+		decision: MediaPermissionDecision,
+		trusted: boolean,
+	) => Promise<void>;
+	/** The system-blocked notice's "Open System Settings" (main picks the pane). */
+	openMediaSystemSettings: (tabId: number, id: string) => Promise<void>;
 }
 
 export interface BrowserProjection {
@@ -698,16 +832,24 @@ export function useBrowserChrome(): BrowserChrome {
 	 * changed every render would re-run the layout effect on every state update,
 	 * and the cleanup would hide the view once per change — a flicker rather than
 	 * a policy.
+	 *
+	 * `ownPage` and `ownStatePage` are forwarded unchanged: they are reasons, not
+	 * visibility flags. `ownPage` drives keyboard ownership (cleared by an
+	 * overlay); `ownStatePage` survives one, so controls stay refused on the start
+	 * page while a menu is open over it (QA Q3-1).
 	 */
-	const setViewVisible = useCallback((visible: boolean) => {
-		void bridge()
-			?.setViewVisible(visible)
-			.catch(() => {
-				// Losing a visibility update corrects itself on the next policy change;
-				// surfacing it would put a message in the band for a race the user cannot
-				// act on.
-			});
-	}, []);
+	const setViewVisible = useCallback(
+		(visible: boolean, ownPage = false, ownStatePage = ownPage) => {
+			void bridge()
+				?.setViewVisible(visible, ownPage, ownStatePage)
+				.catch(() => {
+					// Losing a visibility update corrects itself on the next policy change;
+					// surfacing it would put a message in the band for a race the user cannot
+					// act on.
+				});
+		},
+		[],
+	);
 
 	const api = bridge();
 	return useMemo<BrowserChrome>(
@@ -735,14 +877,27 @@ export function useBrowserChrome(): BrowserChrome {
 				return outcome;
 			},
 			newTab: (sessionId) => runVoid(() => api?.newTab(sessionId ?? null)),
+			showTabActionsMenu: async (request) => {
+				try {
+					return tabActionsMenuSelectionOrNull(
+						await api?.tabActionsMenu(request),
+					);
+				} catch {
+					// A menu that could not be shown is a dismissal, not an action
+					// failure: there is no intent here to refuse.
+					return null;
+				}
+			},
 			closeTab: (tabId) => run(() => api?.closeTab(tabId)),
 			closeTabs: (intent) => run(() => api?.closeTabs(intent)),
 			activateTab: (tabId) => runVoid(() => api?.activateTab(tabId)),
-			navigate: (url) => {
+			navigate: (url, expectedTabId) => {
 				// Recorded before the intent is sent, KEYED TO THE ACTIVE TAB (F3): the reply
 				// may take a while (the tab has to load), the point of the note is to cover
 				// exactly that window, and the tab it is about is the one that is active now.
-				const tabId = state?.activeTabId ?? null;
+				// A caller that names the tab its draft belongs to keeps the note about THAT
+				// tab, which is the same tab main will check before it loads anything.
+				const tabId = expectedTabId ?? state?.activeTabId ?? null;
 				setPending({ tabId, url });
 				setRefused(null);
 				// A REFUSED ATTEMPT ENDS THE NOTE AND REMEMBERS THE ADDRESS (F1, round 2).
@@ -760,7 +915,7 @@ export function useBrowserChrome(): BrowserChrome {
 				// released on a refusal (here) and on a read showing the start state idle
 				// (`refresh`), which is what F1 was missing.
 				return run(async () => {
-					await api?.navigate(url);
+					await api?.navigate(url, expectedTabId);
 				}).then((accepted) => {
 					if (!accepted) {
 						setPending(null);
@@ -789,6 +944,15 @@ export function useBrowserChrome(): BrowserChrome {
 			reload: (hard) => runVoid(() => api?.reload(hard)),
 			pageControl: (tabId, action, query = "", forward = true, next = false) =>
 				runVoid(() => api?.pageControl(tabId, action, query, forward, next)),
+			addressHistory: async (request) => {
+				// NOT `run`: a suggestion read's failure is not an ACTION failure.
+				// Putting it in `actionError` would surface an error band for a field
+				// that still types and navigates perfectly well. The hook owns the
+				// degraded state, which is exactly the proposal's safe fallback.
+				if (!api) throw new Error(t("ui.browser.errors.browser_unavailable"));
+				return api.addressHistory(request);
+			},
+			onStateChanged: (callback) => api?.onStateChanged(callback) ?? (() => {}),
 			reopenTab: (sessionId) =>
 				runVoid(() => api?.reopenTab(sessionId ?? null)),
 			stop: () => {
@@ -813,6 +977,62 @@ export function useBrowserChrome(): BrowserChrome {
 			revokeAllApprovals: () => runVoid(() => api?.revokeAllApprovals()),
 			forgetSite: (origin) => runVoid(() => api?.forgetSite(origin)),
 			clearData: (what) => runVoid(() => api?.clearData(what)),
+			dismissPasskeyNotice: (tabId, at) =>
+				runVoid(() => api?.dismissPasskeyNotice(tabId, at)),
+			releasePasskeyCustody: async (tabId, at, trusted) => {
+				let outcome: PasskeyCustodyReturnOutcome = "refused";
+				await runVoid(async () => {
+					const answer = await api?.releasePasskeyCustody?.(tabId, at, trusted);
+					if (answer?.ok === true) {
+						outcome = answer.reloaded ? "reloading" : "returned";
+						return;
+					}
+					// Main's reasons are codes here, not sentences: each maps to one
+					// catalogue message, and an unknown code gets the generic one.
+					const reason = answer && answer.ok === false ? answer.reason : "";
+					showErrorToast(
+						reason === "stale"
+							? t("ui.browser.browser_passkey_custody.return_refused_stale")
+							: reason === "not_held"
+								? t(
+										"ui.browser.browser_passkey_custody.return_refused_not_held",
+									)
+								: t("ui.browser.browser_passkey_custody.return_failed"),
+					);
+				});
+				return outcome;
+			},
+			decideMediaPermission: (tabId, id, decision, trusted) =>
+				runVoid(() => api?.decideMediaPermission(tabId, id, decision, trusted)),
+			openMediaSystemSettings: (tabId, id) =>
+				runVoid(() => api?.openMediaSystemSettings(tabId, id)),
+			openPasskeyNotice: (tabId, at) =>
+				runVoid(async () => {
+					const answer = await api?.openPasskeyNotice(tabId, at);
+					if (answer && answer.ok === false) {
+						showErrorToast(
+							t("ui.browser.use_browser_chrome.passkey_open_failed", {
+								reason: answer.reason,
+							}),
+						);
+					}
+				}),
+			continuePasskeyNoticeInUserTab: async (tabId, at) => {
+				let continued = false;
+				await runVoid(async () => {
+					const answer = await api?.continuePasskeyNoticeInUserTab?.(tabId, at);
+					if (answer?.ok === true) continued = true;
+					else if (answer && answer.ok === false) {
+						// `reason` is main's own localized sentence (review R2/U3).
+						showErrorToast(
+							t("ui.browser.use_browser_chrome.passkey_continue_failed", {
+								reason: answer.reason,
+							}),
+						);
+					}
+				});
+				return continued;
+			},
 			revealDownloads: () =>
 				runVoid(async () => {
 					const answer = await api?.revealDownloads();

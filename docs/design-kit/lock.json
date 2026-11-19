@@ -1,10 +1,10 @@
 {
   "kit": "damianvtran/local-operator-design",
-  "version": "1.2.0",
-  "ref": "v1.2.0",
+  "version": "1.3.0",
+  "ref": "v1.3.0",
   "files": {
-    "app-family.json": "c6b91c441ee09f70d869881d5c7053c3abb9ce2aa7016a7bb77eed4c5527c6e6",
-    "divergences.json": "d97bfbdb0dd5c2617cba6172de2348fdb58a57cbdb3bcdb0dee97bb25b6d35c7",
+    "app-family.json": "d67ac8424462d4602da67fe3821a071155fad639ec69a869aaf61194ab1b9e23",
+    "divergences.json": "e18ee4c6ee30a8615258664e0de0d1e7554e47c8d5b8adc2885f974e877a6eee",
     "LICENSE": "a6668f1445a2abbecaa08e48d8137b0a691958618c6ce9dd95fb5b77d87653a8"
   }
 }

@@ -1,6 +1,12 @@
+import {
+	BackendStartupPanel,
+	startupPanelPhase,
+} from "@shared/components/common/backend-startup-panel";
 import { NOTICE_BAND } from "@shared/components/common/notice-band";
 import { Alert, Button } from "@shared/components/ui";
 import { useConnectivityStatus } from "@shared/hooks/use-connectivity-status";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	type OfflineConfirmation,
@@ -70,6 +76,7 @@ export const ChatStatusStripView = ({
 	outcome = null,
 	onRetry,
 }: ChatStatusStripViewProps) => {
+	useI18nLocale();
 	const key = chatStatusKey(display);
 	const collapsed = key !== null && dismissedKey === key;
 
@@ -110,18 +117,26 @@ export const ChatStatusStripView = ({
 					 * that answers "did that button do anything". Both lines are in the name now,
 					 * in the order the strip draws them, so collapsing cannot lose one.
 					 */
-					aria-label={`Connection status: ${display.title}${
-						outcome ? ` ${outcome}` : ""
-					} Show details`}
+					aria-label={t("ui.chat.status.pill_aria", {
+						title: display.title,
+						hasOutcome: outcome ? "yes" : "no",
+						outcome: outcome ?? "",
+					})}
 				>
 					<span
 						aria-hidden="true"
 						className={cn(
 							"size-1.5 rounded-full",
-							display.dot === "danger" ? "bg-danger" : "bg-warning",
+							display.dot === "danger"
+								? "bg-danger"
+								: display.dot === "info"
+									? "bg-info"
+									: "bg-warning",
 						)}
 					/>
-					{display.kind === "internet-offline" ? "Offline" : "Connection"}
+					{display.kind === "internet-offline"
+						? t("ui.chat.page_chrome.status_strip.offline")
+						: t("ui.chat.page_chrome.status_strip.connection")}
 				</button>
 			</div>
 		);
@@ -148,7 +163,13 @@ export const ChatStatusStripView = ({
 			onKeyDown={onKeyDown}
 		>
 			<Alert
-				variant={display.wash === "danger-wash" ? "danger" : "warning"}
+				variant={
+					display.wash === "danger-wash"
+						? "danger"
+						: display.wash === "info-wash"
+							? "info"
+							: "warning"
+				}
 				className={NOTICE_BAND}
 				role={display.role}
 			>
@@ -164,6 +185,25 @@ export const ChatStatusStripView = ({
 							<span className="block text-meta text-ink-muted">{outcome}</span>
 						) : null}
 					</span>
+					{display.busy ? (
+						/*
+						 * Progress, not an action: the condition clears by itself. The
+						 * spinner sits in an `h-7` slot - the 28px of the `size="sm"`
+						 * Button every other row carries - so the band keeps the same
+						 * 46px height when the strip moves between this row and a failure
+						 * row (design round 1, D1: it measured 37.5px, an 8.5px jump).
+						 */
+						<span
+							data-lo-status-busy-slot=""
+							className="flex h-7 shrink-0 items-center"
+						>
+							<Loader2
+								aria-hidden="true"
+								data-lo-status-busy=""
+								className="size-4 animate-spin text-info"
+							/>
+						</span>
+					) : null}
 					{display.action === "retry" && (
 						<span className="flex shrink-0 items-center gap-2">
 							<Button
@@ -176,7 +216,10 @@ export const ChatStatusStripView = ({
 								{retrying ? (
 									<Loader2 aria-hidden="true" className="animate-spin" />
 								) : null}
-								{retrying ? "Retrying…" : (display.actionLabel ?? "Retry")}
+								{retrying
+									? t("ui.chat.page_chrome.status_strip.retrying")
+									: (display.actionLabel ??
+										t("ui.chat.page_chrome.status_strip.retry"))}
 							</Button>
 							<button
 								type="button"
@@ -186,7 +229,7 @@ export const ChatStatusStripView = ({
 									"text-ink-muted hover:text-ink",
 									"focus-visible:outline-2 focus-visible:outline-accent",
 								)}
-								aria-label="Dismiss"
+								aria-label={t("ui.chat.status_strip.dismiss")}
 							>
 								<X aria-hidden="true" className="size-3.5" />
 							</button>
@@ -206,6 +249,13 @@ export const ChatStatusStripView = ({
  * reconnect IPC - and nothing about how the strip looks.
  */
 export const ChatStatusStrip = () => {
+	/*
+	 * The sentences in `display` resolve through `t()` inside the memo below, so
+	 * the locale is a DEPENDENCY of that memo and not only a re-render trigger:
+	 * without it a language switch would leave the old sentence on screen until
+	 * the connection changed.
+	 */
+	const locale = useI18nLocale();
 	const { connectivityIssue, serverSnapshot, refetchServerStatus } =
 		useConnectivityStatus();
 
@@ -249,6 +299,7 @@ export const ChatStatusStrip = () => {
 			? connectivityIssue
 			: null;
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `locale` IS read - by `t()` inside the builder, which the linter cannot follow. Without it a language switch leaves the old sentence on screen until the connection changes.
 	const display = useMemo(
 		() =>
 			chatStatusDisplay({
@@ -256,7 +307,7 @@ export const ChatStatusStrip = () => {
 				server: serverSnapshot,
 				internetOffline,
 			}),
-		[cause, serverSnapshot, internetOffline],
+		[cause, serverSnapshot, internetOffline, locale],
 	);
 
 	/*
@@ -269,7 +320,15 @@ export const ChatStatusStrip = () => {
 	 * (§F2) - so presence is `display !== null` and not "expanded". Cleared on
 	 * unmount: a strip that is gone owns nothing.
 	 */
-	const speaking = display !== null;
+	/*
+	 * This app's own server starting or failed to start is stated by the
+	 * start-up band instead (`backend-startup-panel.tsx`): its cause, Restart
+	 * and Copy diagnostics, in place of this strip's generic "stopped" line -
+	 * one voice for one fact. It still counts as the strip speaking, so the
+	 * app-level gate and the sidebar stand down while it is on screen.
+	 */
+	const startupPhase = startupPanelPhase(serverSnapshot);
+	const speaking = display !== null || startupPhase !== null;
 	useEffect(() => {
 		setChatStatusStripPresent(speaking);
 		return () => setChatStatusStripPresent(false);
@@ -322,6 +381,16 @@ export const ChatStatusStrip = () => {
 			 * later. So the sentence names the state rather than a countdown nobody
 			 * measured.
 			 *
+			 * HOW LONG THE SPINNER MAY HONESTLY SPIN, because it is now longer: one
+			 * recovery attempt spends up to three `/health` samples - `2 + 0.15 + 2.5 +
+			 * 0.15 + 2.5 = 7.3 s` (`daemon-status.ts`) - and then possibly a discovery
+			 * sweep, and a press that lands while an attempt is already running waits for
+			 * THAT attempt rather than starting a second one (`recoverFromDetachment`
+			 * joins it). So the honest bound is one attempt, not the ~2 s a single sample
+			 * cost when this was written (design review round 1, D3). No copy change: the
+			 * sentence still names a state, and a bound in the copy would be the countdown
+			 * this comment rejects.
+			 *
 			 * AND IT SPEAKS THE BAND'S OWN VOCABULARY (UX round 1's U2): a refusal's
 			 * answer used to be the reachability sentence, which the refused band's own
 			 * detail line had just refuted ("A daemon is running at …, but it refused
@@ -332,12 +401,16 @@ export const ChatStatusStrip = () => {
 			 */
 			setOutcome(
 				key?.startsWith("credential-refused")
-					? "The server is running, but this app's credential is still refused."
-					: "Still unreachable.",
+					? t("ui.chat.page_chrome.status_strip.outcome_refused")
+					: t("ui.chat.page_chrome.status_strip.outcome_unreachable"),
 			);
 			void refetchServerStatus();
 		}
 	}, [key, refetchServerStatus]);
+
+	if (startupPhase && serverSnapshot) {
+		return <BackendStartupPanel snapshot={serverSnapshot} />;
+	}
 
 	return (
 		<ChatStatusStripView

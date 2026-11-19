@@ -1,0 +1,350 @@
+{
+ "schema": 1,
+ "kind": "translation-audit",
+ "batch": "agents-surfaces",
+ "round": 2,
+ "head": "91231e66c955197e86cec5b1bf7c6f488eff48de",
+ "branch": "i18n-agents-pages",
+ "locale": "vi",
+ "locale_name": "Vietnamese",
+ "date": "2026-10-26",
+ "auditor": {
+  "agent": "i18n-auditor",
+  "harness": "Local Operator",
+  "team": "lopdev",
+  "session": "3d1e9640e5ae",
+  "instance": "3d1e9640e5ae",
+  "model": "radient/auto",
+  "actual_model": "radient/auto",
+  "actual_model_source": "Harness session header, this run: 'Model: radient/auto'. No provider switch, quota incident or fallback event was reported during the audit, so none is asserted; the concrete model behind the auto route is not observable to the auditor.",
+  "model_provenance": "Single route for the whole round: read, gates, key-by-key audit, verdicts and this receipt all ran on the session named in `model`. Disclosed as a route, not a specific served model, because the harness did not name one.",
+  "independence": "Independent of the translator and of the remediation author: different session and agent, no translator report read before judging the bytes. Translations are uncommitted candidates bound by hash; this audit edited no catalogue value and wrote only this receipt."
+ },
+ "agent": "i18n-auditor",
+ "instance": "3d1e9640e5ae",
+ "session": "3d1e9640e5ae",
+ "model": "radient/auto",
+ "reference": {
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/vi.md",
+   "sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+  }
+ },
+ "method": "Round 2 over the current working-tree bytes (bound by hash). Read EN + context sidecar + vi for all 321 keys across the eight namespaces; the 102 keys added since round 1 (pages empty.* 6, config summary.* 3, hub.teams 21, publication 72) were judged against their sidecars and call sites: publication-failure.ts {subject}/body joins, org-team-summary/org-teams-list composition, dates, manager and member_count, public-teams-library brief disclosure (label-in-name), agents-page empty-state slots. Publication refusal copy (high-visibility error surface) had a second full pass. Shipped vi catalogues in HEAD were grepped for term precedent (cấp năng lực, tác nhân tích hợp, quản lý, chỉ dẫn, Được xuất bản bởi, trung tâm, xuất bản, tải về) before any terminology verdict.",
+ "mechanical": {
+  "locale_parity": "node --test --test-name-pattern='vi' scripts/i18n/locale-parity.test.mjs -> 6/6 pass (every key carried, no extra keys, every ICU placeholder preserved, not an English stub).",
+  "context_parity": "node scripts/i18n/context-parity.mjs -> ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only).",
+  "duplicates": "node scripts/i18n/check-duplicates.mjs -> ok — 835 file(s) scanned, 0 duplicate key(s).",
+  "generate": "node scripts/i18n/generate.mjs --check -> src/i18n/keys.gen.ts is byte-identical to a fresh generation.",
+  "check_strings": "node --max-old-space-size=4096 scripts/i18n/check-strings.mjs -> ok — 1368 file(s) scanned, 191 literal(s) at or below the baseline (exit 0).",
+  "own_checks": "321/321 keys present in all eight target files; @formatjs/icu-messageformat-parser parse with requiresOtherClause: 0 failures, argument names identical to source in every key; 6 plural messages, each exactly the `other` arm (Intl.PluralRules('vi').resolvedOptions().pluralCategories = ['other']); ICU render sampled at count 0/1/2/5; all values NFC; no ASCII quotes or '...', no manual bidi isolates, no CJK, no first-person plural left in prose; leading/trailing space, '?', ':' and ellipsis parity with source."
+ },
+ "round1_resolution": [
+  {
+   "key": "ui.agents.detail.origin.changed",
+   "disposition": "resolved",
+   "now": "Khác với bản đi kèm ứng dụng"
+  },
+  {
+   "key": "ui.hub.teams.public.intro",
+   "disposition": "declined",
+   "reason": "Kept «tải về» for the pull: shipped ui.hub.subscriptions.pull reads «Tải về ngay» and this batch is internally consistent. The glossary's kept-English `pull` does not overturn a button label the vi wave already settled; recorded here as a programme-level term question, not a per-key defect."
+  },
+  {
+   "key": "ui.hub.teams.brief.project",
+   "disposition": "resolved by alternative",
+   "now": "Bối cảnh dự án",
+   "reason": "Matches ui.agents.teams.section.project_brief and drops the 'derived summary' reading round 1 objected to; the pair now names its own content («Chỉ dẫn phối hợp» / «Bối cảnh dự án»)."
+  },
+  {
+   "key": "ui.hub.teams.public.published_by",
+   "disposition": "unchanged",
+   "reason": "Round 2 files its own nit (R2-vi-T2) against the shipped «Được xuất bản bởi» rather than round 1's «Người xuất bản:»."
+  },
+  {
+   "key": "ui.agents.config.action.watch",
+   "disposition": "resolved",
+   "now": "Theo dõi"
+  },
+  {
+   "key": "ui.agents.teams.col.member",
+   "disposition": "resolved",
+   "now": "Thành viên"
+  },
+  {
+   "key": "ui.agents.upload.sign_in.needed",
+   "disposition": "resolved",
+   "now": "… lên Trung tâm tác nhân."
+  },
+  {
+   "key": "ui.agents.publication.category.fraud_or_deception",
+   "disposition": "resolved",
+   "now": "Không thể xuất bản chỉ dẫn nhằm lừa dối hoặc lừa đảo người khác."
+  },
+  {
+   "key": "ui.agents.publication.category.other_harmful",
+   "disposition": "resolved",
+   "now": "Tác nhân này bị từ chối vì chỉ dẫn của nó sẽ gây tổn hại."
+  },
+  {
+   "key": "ui.agents.publication.category.unclear_dual_use",
+   "disposition": "resolved",
+   "now": "Chưa xác định được nội dung này nhắm vào hệ thống của bạn hay của người khác. Hãy thêm một câu nêu rõ phạm vi và mục tiêu, rồi xuất bản lại."
+  }
+ ],
+ "not_defects": [
+  "«Tác nhân tích hợp» for 'built-in agent' and «Tích hợp» for the Built-in scope segment: shipped precedent in ui.agents.starters («Cài tất cả tác nhân tích hợp»), ui.chat.sidebar and round 1 cleared it; consistency wins over the integration-feature collision.",
+  "«cấp năng lực» for 'effort tier': shipped ui.agents.refusals.effort_unavailable uses the same term, so detail.read.effort_label, section.delegation, field.effort_placeholder and upload.list.surface agree with it.",
+  "«Tải lại trung tâm» for 'Refresh the hub' is correct; it is the reload sense that R2-vi-P1 asks the pull sentences to stop borrowing.",
+  "English kept per guide: Radient, Team (tier), backend, token, coder, reviewer, shipping, release-crew, KiB; {kind} in ui.agents.config.about still receives raw 'agent'/'team' from the component (source-side gap, not a translation defect)."
+ ],
+ "keys_audited": 321,
+ "namespaces": {
+  "ui.agents.pages": {
+   "namespace": "ui.agents.pages",
+   "status": "passed",
+   "keys_audited": 22,
+   "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "sha256": {
+    "en": "38a713b6cc4a63532543924cfdd2093b11c3618c31fc6266d28e20b84572feb5",
+    "vi": "81140f6a5936d330d7b34b52049b65ff859ec4f977a9c590e6391714210eb9b4"
+   },
+   "context_sha256": "4b761bfa8eeeddf3689a2160e8249b153c095368b6f6fe3df7046052d95d2642",
+   "findings": []
+  },
+  "ui.agents.detail": {
+   "namespace": "ui.agents.detail",
+   "status": "passed",
+   "keys_audited": 47,
+   "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "sha256": {
+    "en": "9cf3c2f8cbd522ea6e3e2c88b9c65c80bb63d79b7a417992ece92043809ff025",
+    "vi": "a70ed0be1e6234612f9dd6b41f02257d0d625508c27337910b94d7aed298be9f"
+   },
+   "context_sha256": "f1b0bbf296d01189d64cbdc9bb1bc77d3e7971d8f891c693b94af5741de58cd9",
+   "findings": []
+  },
+  "ui.hub.pages": {
+   "namespace": "ui.hub.pages",
+   "status": "passed",
+   "keys_audited": 35,
+   "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 1
+   },
+   "sha256": {
+    "en": "ba970e165ed879e7f9968a02302480a86d8002954d514247d633ae54eb7ca139",
+    "vi": "ec9798085400729808cb62d3e4a77dec2b1a09bcc361223b83e4ce033ba5e92a"
+   },
+   "context_sha256": "baa1605388a3892267e503c2e9a2504a7c6ace8d92bbb380a2c72ccb33be4dcc",
+   "findings": [
+    {
+     "id": "R2-vi-H1",
+     "severity": "nit",
+     "category": "terminology",
+     "keys": [
+      "ui.hub.pages.sort.most_liked",
+      "ui.hub.pages.sort.most_favourited"
+     ],
+     "source": "Most liked / Most favourited",
+     "current": "Được thích nhiều nhất / Được yêu thích nhiều nhất",
+     "problem": "Two adjacent options differ by one word, and viewer_unknown in the same namespace names the two objects «lượt thích» (likes) and «mục yêu thích» (favourites), so the shorter form is not the established one.",
+     "proposed": "Nhiều lượt thích nhất / Được yêu thích nhiều nhất"
+    }
+   ]
+  },
+  "ui.hub.teams": {
+   "namespace": "ui.hub.teams",
+   "status": "passed",
+   "keys_audited": 47,
+   "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 1
+   },
+   "sha256": {
+    "en": "32d6df8db5c9226cd9a3e4d57f7bf12a14579ad266feaa3a914c4cfdddad9ad5",
+    "vi": "799e7db8aeffbb017ab089286bb5082c0bdf764dc8d7612ed49dfd71dbf2bc38"
+   },
+   "context_sha256": "9a6f5f35045687eab48c7491086b759c06d5ad635e93cdfdbcaf2f663acd6651",
+   "findings": [
+    {
+     "id": "R2-vi-T1",
+     "severity": "minor",
+     "category": "accuracy / ambiguity",
+     "keys": [
+      "ui.hub.teams.public.pull_no_signin"
+     ],
+     "source": "Sign in on the settings page, then pull again.",
+     "current": "Hãy đăng nhập ở trang cài đặt rồi tải lại.",
+     "problem": "Same root cause as R2-vi-P1: «tải lại» is this batch's wording for a refresh/reload, while the pull control is «Tải về», so the retry step reads as reloading instead of pulling the team again.",
+     "proposed": "Hãy đăng nhập ở trang cài đặt rồi tải về lại."
+    },
+    {
+     "id": "R2-vi-T2",
+     "severity": "nit",
+     "category": "idiom / consistency",
+     "keys": [
+      "ui.hub.teams.public.published_by"
+     ],
+     "source": "Published by",
+     "current": "Xuất bản bởi",
+     "problem": "The shipped sibling ui.hub.skills.published_by renders as «Được xuất bản bởi {publisher}»; the bare «Xuất bản bởi» is the same fact in a different grammatical shape, so the two listings read as two voices.",
+     "proposed": "Được xuất bản bởi"
+    }
+   ]
+  },
+  "ui.agents.config": {
+   "namespace": "ui.agents.config",
+   "status": "passed",
+   "keys_audited": 28,
+   "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "sha256": {
+    "en": "aa4fde04d7db00418387f862d42d547bead44e96c880e8b4e0dc86384eed305b",
+    "vi": "e8725c47645a022feeabd445cf63af137e8b40ebbb0607f26e5560812af8f6d6"
+   },
+   "context_sha256": "5dd8f962ad021b0dc4004ea2531257b3fd70904e834f77b5f9b7b2d7266a48db",
+   "findings": []
+  },
+  "ui.agents.teams": {
+   "namespace": "ui.agents.teams",
+   "status": "passed",
+   "keys_audited": 23,
+   "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "sha256": {
+    "en": "139eca3cd41f62cfea0a97d6a9b40cff8aa446ea761b1f94d42334d1d576fdef",
+    "vi": "1b10ed5b3b39246ece69a5ad878293d5b42d89c860ba070178c83ad16b3b3da4"
+   },
+   "context_sha256": "0b3f7f59a37c671813d9a5c9d32b242e04d0fa0b3c5605421c3129cab937bfc1",
+   "findings": []
+  },
+  "ui.agents.upload": {
+   "namespace": "ui.agents.upload",
+   "status": "passed",
+   "keys_audited": 23,
+   "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "sha256": {
+    "en": "6f1242bae1dcc952a8f3a659a2850fad2af9a3b0834d6a23ddac28fc8be91c11",
+    "vi": "648399bd3c90a2c80465399bd24a7e02e8cceb7f1244a1cb0ab7ed074e95ff90"
+   },
+   "context_sha256": "9c8ccc682885383f7aee9f77a1dbbb8c94a5d709e2de4ee9d76b40c7248a277a",
+   "findings": []
+  },
+  "ui.agents.publication": {
+   "namespace": "ui.agents.publication",
+   "status": "passed",
+   "keys_audited": 96,
+   "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 3
+   },
+   "sha256": {
+    "en": "20056e5654c004bef9318bf91531cb0cbc349d6242f6c49ba4801eb5d4605f39",
+    "vi": "75c9d9dc23518bd85cfac796dfc3e7ddbc3949bb32db5f3726d49bbefc8bde27"
+   },
+   "context_sha256": "69ceeff1e7162764e13c6d5fdee8e7a9f1184f1ab8209839a34e64ce6c486f90",
+   "findings": [
+    {
+     "id": "R2-vi-P1",
+     "severity": "minor",
+     "category": "accuracy / ambiguity",
+     "keys": [
+      "ui.agents.publication.hub_unauthorized.body_pull",
+      "ui.agents.publication.insufficient_role.body_pull",
+      "ui.agents.publication.insufficient_role.body_with_role_pull",
+      "ui.agents.publication.not_a_member.body_pull",
+      "ui.agents.publication.team_plan_required.body_pull"
+     ],
+     "source": "… then pull again. (five pull-surface refusals)",
+     "current": "… rồi tải lại.",
+     "problem": "«tải về» is this catalogue's verb for the pull (ui.hub.teams.pull, shipped ui.hub.subscriptions.pull «Tải về ngay»), but the same file renders 'Refresh the hub' as «Tải lại trung tâm», so «rồi tải lại» reads as reload the hub rather than pull the team again.",
+     "proposed": "… rồi tải về lại."
+    },
+    {
+     "id": "R2-vi-P2",
+     "severity": "nit",
+     "category": "terminology",
+     "keys": [
+      "ui.agents.publication.agent_not_found.body"
+     ],
+     "source": "It may have been delisted.",
+     "current": "Có thể mục này đã bị gỡ khỏi trung tâm.",
+     "problem": "«mục này» is a bare 'item'; the headline directly above it and the sibling listing keys name the object «mục đăng» (listing), so the body does not echo the thing that is gone.",
+     "proposed": "Có thể mục đăng này đã bị gỡ khỏi trung tâm."
+    },
+    {
+     "id": "R2-vi-P3",
+     "severity": "nit",
+     "category": "terminology / product names",
+     "keys": [
+      "ui.agents.publication.team_plan_required.body",
+      "ui.agents.publication.team_plan_required.body_pull"
+     ],
+     "related_keys": [
+      "ui.hub.teams.org.plan_body"
+     ],
+     "source": "… in the Radient console …",
+     "current": "… trong Radient Console …",
+     "problem": "Only «Radient» is a product name in the source, where 'console' is lower-case in all three sentences; capitalising it invents a second product name, and the batch then carries both spellings.",
+     "proposed": "… trong Radient console …"
+    },
+    {
+     "id": "R2-vi-P4",
+     "severity": "nit",
+     "category": "composition / typography",
+     "keys": [
+      "ui.agents.publication.subject.unknown"
+     ],
+     "related_keys": [
+      "ui.agents.publication.pull.busy",
+      "ui.agents.publication.pull.hub_unavailable",
+      "ui.agents.publication.pull.incomplete",
+      "ui.agents.publication.pull.no_reason",
+      "ui.agents.publication.pull.reach_failure",
+      "ui.agents.publication.pull.refused_download",
+      "ui.agents.publication.pull.sign_in_refused",
+      "ui.agents.publication.pull.unreachable"
+     ],
+     "source": "That agent",
+     "current": "Tác nhân đó",
+     "problem": "Eight of the eleven {subject} slots sit mid-sentence in vi, so an unnamed subject composes as «… nên Tác nhân đó chưa được tải về». Latent: pullRefusalMessage is only reached through agentActionFailureMessage, which always passes a non-empty name, so no current caller renders it.",
+     "proposed": "«tác nhân đó» (lower-case) once the two subject-initial templates (pull.prose, pull.not_found) are reworded, or keep the capital only where {subject} opens the sentence."
+    }
+   ]
+  }
+ }
+}

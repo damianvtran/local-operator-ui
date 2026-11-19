@@ -1,0 +1,166 @@
+# S16f au3 — independent translation audit, vi / ui.chat.canonical
+# Audit id: 49c5a10a37b4 · head 8180eff1f705eb79d4df5123d6108c539b585b2e · 2026-11-12
+# Everything below is copied from real command output in this run, in order.
+# Two rigs of my own failed on first use (arithmetic assertion; ESM resolution +
+# two checker bugs); each failure and its fix are kept rather than elided.
+
+## 0. Worktree identity (manager-owned, read-only for this audit)
+$ cd ~/local-operator-ui/.worktrees/i18n-s16a && git rev-parse HEAD && git status --porcelain
+8180eff1f705eb79d4df5123d6108c539b585b2e
+(no output — clean)
+
+$ git rev-parse origin/main
+9ef579fe12abe99409c4ed0b52a3d125afdc1b10
+
+$ git cat-file -t 107ff1dd0bddd0dbefa60e27cb179ee636d923a1
+commit
+
+## 1. Repo validator — the shipped-locale guard, vi only
+$ node --test --test-name-pattern '\[vi\]' scripts/i18n/locale-parity.test.mjs
+✔ [vi] ships at least one message (not an empty claim) (63.500833ms)
+✔ [vi] defines each key in at most one namespace file (161.464583ms)
+✔ [vi] carries EVERY key of each namespace file it ships (168.858834ms)
+✔ [vi] names only keys the English source defines (128.326083ms)
+✔ [vi] preserves every ICU placeholder from the English source (158.526792ms)
+✔ [vi] is not an English stub (no value identical to the source) (102.427667ms)
+ℹ tests 6
+ℹ pass 6
+ℹ fail 0
+ℹ duration_ms 977.179791
+
+## 2. Catalogue-wide gates (cheap, repo-provided)
+$ node scripts/i18n/check-duplicates.mjs
+check-duplicates: ok — 1437 file(s) scanned, 0 duplicate key(s)
+
+$ node scripts/i18n/context-parity.mjs
+context-parity: ok — every English key is covered, apart from 129 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json).
+
+$ node scripts/i18n/generate.mjs --check
+/Users/damian/local-operator-ui/.worktrees/i18n-s16a/src/i18n/keys.gen.ts is byte-identical to a fresh generation.
+
+## 3. Integrity vs origin/main and vs the pre-merge PR head (my script)
+$ python3 $SCRATCH/integrity_vi.py        # RUN 1 — my own arithmetic assertion was wrong
+merged keys      : 467
+origin/main keys : 457
+107ff1dd keys    : 466
+main deleted present in merged?: []
+MAIN_ADDED present in merged   : 5/5
+PR_ADDED  present in merged    : 10/10
+
+unchanged keys byte-identical to origin/main: 452
+changed vs origin/main (outside the 15)     : 0 []
+present in merged but absent from main      : 0 []
+5 loading.* equal to origin/main            : 5/5 []
+10 PR-added equal to 107ff1dd               : 10/10 []
+
+keys in merged not in main and not PR-added : 0 []
+keys in main not in merged and not deleted  : 0 []
+
+RESULT: FAIL
+# The FAIL is mine, not the catalogue's: I asserted
+# len(disk) == len(main) + 10 - 4, but origin/main already excludes the four
+# renamed keys, so merged = 457 + 10. Fixed the assertion, re-ran:
+$ python3 $SCRATCH/integrity_vi.py        # RUN 2 (final)
+merged keys      : 467
+origin/main keys : 457
+107ff1dd keys    : 466
+main deleted present in merged?: []
+MAIN_ADDED present in merged   : 5/5
+PR_ADDED  present in merged    : 10/10
+
+unchanged keys byte-identical to origin/main: 452
+changed vs origin/main (outside the 15)     : 0 []
+present in merged but absent from main      : 0 []
+5 loading.* equal to origin/main            : 5/5 []
+10 PR-added equal to 107ff1dd               : 10/10 []
+
+keys in merged not in main and not PR-added : 0 []
+keys in main not in merged and not deleted  : 0 []
+
+RESULT: PASS
+EXIT=0
+
+## 4. My own ICU check of the 15 keys (args, CLDR branches, exact branches,
+##    select VALUES, NFC, ellipsis/punctuation form)
+$ node $SCRATCH/icu_vi_check.mjs          # RUN 1 — ESM cannot resolve the repo's deps
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package '@formatjs/icu-messageformat-parser'
+imported from /Users/damian/.local-operator/sessions/.../scratchpad/icu_vi_check.mjs
+# Fix: symlink the repo's existing node_modules into my scratch dir (no install).
+$ ln -sfn "$PWD/node_modules" $SCRATCH/node_modules
+
+$ node $SCRATCH/icu_vi_check.mjs          # RUN 2 — three bugs in MY checker
+FAIL ui.chat.canonical.media.image_label: plural count has non-vi CLDR categories 0,1
+FAIL ui.chat.canonical.media.image_label: plural count has no other branch
+FAIL ... (17 such lines)
+checked 15 keys; failures: 17
+RESULT: FAIL
+# Diagnosed against the real AST: my walker stored Object.keys(options) into a
+# field I then re-keyed with Object.keys() (array indices "0","1" read as CLDR
+# categories); the brace-count and space-before-punctuation heuristics tripped on
+# ICU skeletons (::group-off) and on vi's legitimate one-branch plurals. Fixed all
+# three, re-ran:
+$ node $SCRATCH/icu_vi_check.mjs          # RUN 3 (final)
+checked 15 keys; failures: 0
+RESULT: PASS
+EXIT=0
+
+## 5. Number-skeleton parity per argument (::group-off must survive)
+$ node -e '<skeleton parity>'             # RUN 1 — branch duplication read as a diff
+MISMATCH ui.chat.canonical.sound.batch.summary
+number-arg style parity failures: 1
+# The only difference was branch COUNT (en one+other, vi other-only): both sides
+# carry group-off on every number arg. Compared unique (arg, style) pairs instead:
+$ node -e '<skeleton parity, unique sets>' # RUN 2 (final)
+keys checked: 15 | unique number-arg style sets differing: 0
+RESULT: PASS (every vi number arg keeps its en skeleton, incl. ::group-off)
+
+## 6. Input hashes and comparison hashes (computed in this run)
+en       905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e
+ctx      8f56e0d2b384c6b41add57a64e6c863e565cb61d5a7c0de482d42f380be3acfe
+vi(head) a37a5690412c841379ea44d6d63f4a5314579f4a157ff3c7f67be2ee872fe750
+vi@107ff1dd 65beedffec6a88924e977f5aadafbf52ed4cfb508d46975481273c7103e12900
+vi@origin/main 3c6f6097083fd0e921fc5f6c2c436633cb4ce522e35a66d329e4fecfaf9a1b65
+$ sha256sum src/i18n/catalogues/vi/ui.chat.canonical.json src/i18n/catalogues/en/ui.chat.canonical.json
+a37a5690412c841379ea44d6d63f4a5314579f4a157ff3c7f67be2ee872fe750  src/i18n/catalogues/vi/ui.chat.canonical.json
+905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e  src/i18n/catalogues/en/ui.chat.canonical.json
+
+## 7. Prior-audit evidence consulted (read, not re-run)
+- i18n/receipts/d29293b521fd.json — vi delta audit at the SAME vi bytes (65beedff),
+  2026-11-11, deepseek/deepseek-flash, status passed, 0 findings, one INFO note on
+  supplement.sound_fallback_label (noun+passive vs the status line's verb-initial).
+- i18n/receipts/15686088b7ce-vi.json — vi at origin/main bytes (3c6f6097), 2026-11-12,
+  reviewer/anthropic/claude-opus-5-5, passed, 3 carried NITs (none on a key outside
+  loading.older / image_gen.state.*).
+- i18n/receipts/4b8febc34595-vi.json — N1 on loading.older ('trước' also parses
+  'in advance'), disposition: no change, consistent with the audited neighbour.
+- i18n/audits/evidence/vi/ui.chat.canonical/s16f-r3-d29293b5/record.json — r3 record
+  for the 10 PR keys ('Âm thanh đã tạo' -> 'Âm thanh được tạo' in r2).
+
+## 8. Fixture cleanup
+$ rm $SCRATCH/node_modules        # symlink I created in step 4; scratch only
+
+## 9. Receipt validated against the repo's own binding rules (read-only dry run)
+$ node --input-type=module -e 'import { readFileSync } from "node:fs";
+  import { deriveReceiptAudit } from "./scripts/i18n/ledger-rules.mjs";
+  ... deriveReceiptAudit(bytes, {locale:"vi", namespace:"ui.chat.canonical",
+      sourceHash:"905fb4d8…", targetHash:"a37a5690…"})'   # body abbreviated here; the run imported
+                                                              # deriveReceiptAudit from scripts/i18n/ledger-rules.mjs
+{
+ "agent": "i18n-auditor",
+ "instance": "49c5a10a37b4",
+ "model": "deepseek/deepseek-flash",
+ "result": "clean",
+ "findings": { "blocker": 0, "major": 0, "minor": 0, "nit": 0 },
+ "source_sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
+ "target_sha256": "a37a5690412c841379ea44d6d63f4a5314579f4a157ff3c7f67be2ee872fe750",
+ "receipt_sha256": "6aca4373e212ab703b2c3e807fbf025c940d21bed19c324588bf27c98ba8233a"
+}
+# `ledger-assemble` itself was NOT run: the shared worktree is read-only for this
+# audit, and the manager owns the ledger rows for this merged-bytes reset. This
+# dry run proves the receipt satisfies the same derivation the writer applies.
+
+## 10. Final repository state (nothing of mine in the tree)
+$ git -C ~/local-operator-ui/.worktrees/i18n-s16a status --porcelain
+(no output — clean)
+$ git -C ~/local-operator-ui/.worktrees/i18n-s16a rev-parse HEAD
+8180eff1f705eb79d4df5123d6108c539b585b2e

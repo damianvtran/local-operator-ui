@@ -160,12 +160,3 @@ export function progressFraction(current: number, duration: number): number {
 		return 0;
 	return Math.max(0, Math.min(1, current / duration));
 }
-
-/**
- * The slider's `aria-valuetext`. Time-valued, not a bare number: a screen
- * reader announcing "7" under a slider whose range ends at 12 cannot tell
- * seconds from bars, so both ends are stated as clocks.
- */
-export function ariaValueText(current: number, duration: number): string {
-	return `${formatClock(current)} of ${formatClock(duration)}`;
-}

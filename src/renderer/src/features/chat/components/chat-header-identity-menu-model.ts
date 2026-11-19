@@ -35,6 +35,7 @@
  * below the fold.
  */
 
+import { t } from "@shared/i18n";
 import type { ProfileRecencyKind } from "../../../shared/store/ui-preferences-store";
 import type { PickerOption } from "../pickers/picker-host";
 
@@ -100,14 +101,36 @@ export type IdentityMenuView = {
  * The two headings, per menu, in sentence case and plural - the rosters they
  * name are plurally titled in the app's own pickers ("No teams are registered",
  * "No profiles found").
+ *
+ * THE COPY IS RESOLVED PER CALL, NEVER CAPTURED. Each heading is a catalogue
+ * key (`ui.chat.header_identity.band_*`) read through `t()` at the moment the
+ * function runs, so the answer is the ACTIVE locale's - a module-level constant
+ * would freeze whichever locale was live at import and keep the headings in
+ * English after the backend `language` setting changed. The one consequence for
+ * a caller is that it must RE-ASK when the locale changes: the menu component
+ * does, by listing the locale among its `view` memo's inputs. A plain function
+ * on purpose (not a hook), so `scripts/header-identity-menu.test.mjs` pins it
+ * without a DOM.
+ *
+ * Four keys rather than one `{kind, select}` message: the two bands name
+ * different things ("what you switch between" / "what exists"), and a language
+ * may word "recent" differently for agents and for teams, so each heading is a
+ * whole phrase a translator can inflect freely instead of an arm of a shared
+ * sentence.
  */
 export function identityMenuHeadings(kind: ProfileRecencyKind): {
 	recents: string;
 	all: string;
 } {
 	return kind === "team"
-		? { recents: "Recent teams", all: "All teams" }
-		: { recents: "Recent agents", all: "All agents" };
+		? {
+				recents: t("ui.chat.header_identity.band_recent_teams"),
+				all: t("ui.chat.header_identity.band_all_teams"),
+			}
+		: {
+				recents: t("ui.chat.header_identity.band_recent_agents"),
+				all: t("ui.chat.header_identity.band_all_agents"),
+			};
 }
 
 /**
@@ -256,7 +279,7 @@ export function identityMenuSeedActive(rows: readonly PickerOption[]): number {
  * just happened to a specific row.
  */
 export function identityMenuRefusalAnnouncement(label: string): string {
-	return `${label} cannot take the seat.`;
+	return t("ui.chat.header_identity.cannot_take_seat", { label });
 }
 
 /*
@@ -268,10 +291,18 @@ export function identityMenuRefusalAnnouncement(label: string): string {
  * this app's yet. The untyped variant is an edge (a roster carrying no manager
  * row at all), but it is reachable, so it states the one exit that remains.
  */
-export const IDENTITY_MENU_NO_SETTABLE_TYPED =
-	"No profile here can take the seat — clear the search, or switch the team.";
-export const IDENTITY_MENU_NO_SETTABLE =
-	"No profile can take the seat — switch the team.";
+/*
+ * FUNCTIONS, NOT CONSTANTS: a module constant would be resolved once, at load,
+ * in whatever language was active then, and a language switch would leave the
+ * old sentence in the footer. Each call reads the catalogue now, the same rule
+ * `identityMenuBands` follows (the callers subscribe to the locale).
+ */
+export function identityMenuNoSettableTyped(): string {
+	return t("ui.chat.header_identity.no_settable_typed");
+}
+export function identityMenuNoSettable(): string {
+	return t("ui.chat.header_identity.no_settable");
+}
 
 /**
  * What the panel's footer says, or `null` for a list that fits.
@@ -294,7 +325,6 @@ export function identityMenuFooter(input: {
 	hasSettable: boolean;
 }): string | null {
 	const { view, kind, query, overflowing, hasSettable } = input;
-	const noun = kind === "team" ? "teams" : "agents";
 	const typed = query.trim();
 
 	if (typed !== "") {
@@ -305,15 +335,41 @@ export function identityMenuFooter(input: {
 		 * nothing can be picked, and the count is not the answer the user needs.
 		 * The resolution names the exits that exist; see the constants above.
 		 */
-		if (!hasSettable) return IDENTITY_MENU_NO_SETTABLE_TYPED;
-		return view.matches === view.total
-			? `${view.total} ${noun} match`
-			: `${view.matches} of ${view.total} ${noun} match`;
+		if (!hasSettable) return identityMenuNoSettableTyped();
+		/*
+		 * ONE WHOLE SENTENCE PER (KIND, SHAPE), each with its own plural arm on the
+		 * count the noun agrees with, so a language reorders the count and the noun
+		 * freely (Urdu and Hindi put the noun first). The kind is NOT a `select`
+		 * inside one message: the four-band-heading keys set that precedent, and a
+		 * translator should read one complete phrase, not a branching template.
+		 * `1 agent matches` is a deliberate grammar fix over the old `1 agents
+		 * match` concatenation.
+		 */
+		if (view.matches === view.total) {
+			return kind === "team"
+				? t("ui.chat.header_identity.footer_match_teams", {
+						count: view.total,
+					})
+				: t("ui.chat.header_identity.footer_match_agents", {
+						count: view.total,
+					});
+		}
+		return kind === "team"
+			? t("ui.chat.header_identity.footer_partial_teams", {
+					matches: view.matches,
+					total: view.total,
+				})
+			: t("ui.chat.header_identity.footer_partial_agents", {
+					matches: view.matches,
+					total: view.total,
+				});
 	}
 	if (!overflowing) return null;
 	/* The untyped edge: the whole visible roster is refused. See above. */
-	if (!hasSettable) return IDENTITY_MENU_NO_SETTABLE;
-	return `${view.total} ${noun} in all — scroll, or type to filter`;
+	if (!hasSettable) return identityMenuNoSettable();
+	return kind === "team"
+		? t("ui.chat.header_identity.footer_all_teams", { count: view.total })
+		: t("ui.chat.header_identity.footer_all_agents", { count: view.total });
 }
 
 /*
@@ -434,7 +490,7 @@ export type IdentityAgentConstraint = {
  * `delegate`, and nothing in this app says "coordinating".
  */
 export function identityAgentConstraintCaption(teamLabel: string): string {
-	return `${teamLabel} is led by its manager; only the manager and profiles that can delegate may take this seat.`;
+	return t("ui.chat.header_identity.team_led_by_manager", { team: teamLabel });
 }
 
 /**
@@ -489,7 +545,9 @@ export function identityAgentClosedCaption(
  * otherwise announce with no name.
  */
 export function identityAgentClosedTitle(teamLabel: string): string {
-	return `Agent seat closed by ${teamLabel}`;
+	return t("ui.chat.header_identity.agent_seat_closed_title", {
+		team: teamLabel,
+	});
 }
 
 /**
@@ -505,8 +563,9 @@ export function identityAgentClosedTitle(teamLabel: string): string {
  * caption does not - what THIS row would need - while the rule itself keeps
  * one home, the caption.
  */
-export const IDENTITY_AGENT_NOT_SETTABLE_REASON =
-	"Needs a delegating profile here.";
+export function identityAgentNotSettableReason(): string {
+	return t("ui.chat.header_identity.needs_delegating_profile");
+}
 
 /**
  * The constraint a bound team puts on the agent panel, or `null` when there is

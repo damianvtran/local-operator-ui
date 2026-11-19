@@ -1,0 +1,125 @@
+{
+ "audit_id": "mp1843-a3-zh-cn",
+ "round": 3,
+ "audit_kind": "independent re-audit of a new namespace after PR #1843 round-2 remediation",
+ "date": "2026-11-10",
+ "audit_date": "2026-11-10",
+ "locale": "zh-CN",
+ "namespace": "ui.browser.media_access",
+ "source_commit": "748f4c83caf83fb3e497b4a39defeacb85a2932e",
+ "pr": "https://github.com/damianvtran/local-operator-ui/pull/1843",
+ "scope": "All 9 keys of ui.browser.media_access; blocked_hint re-read, 8 keys carried byte-identical from scratch audit mp1843-a2.",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "key_count": 9,
+ "keys_read": 9,
+ "carried_from": {
+  "audit_id": "mp1843-a2-zh-cn",
+  "head": "99d69f364e3ae8ef555d0025d42c1935393f15cc",
+  "committed": false,
+  "proof": "key-by-key JSON compare of en, context and target at both revisions: only ui.browser.media_access.blocked_hint differs"
+ },
+ "auditors": [
+  {
+   "agent": "task",
+   "model": "anthropic/claude-opus-5-5",
+   "session": "73e65f3746d2",
+   "team": "lopdev",
+   "label": "i18n-delta-audit-1843",
+   "instance": "73e65f3746d2-mp1843-a3-zh-cn",
+   "date": "2026-11-10",
+   "result": "clean-with-findings",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 1
+   },
+   "independent_from_translator_session": true,
+   "actual_model_source": "harness session header 'Model: anthropic/claude-opus-5-5' for session 73e65f3746d2; no fallback observed, no role or model pin applied",
+   "fallback": null,
+   "receipt": "i18n/receipts/73e65f3746d2-mp1843-a3-zh-cn.json",
+   "receipt_sha256": "01c58fdc7001af53294368e3aadfdeff9c4003c5d8e60685776cc8279aebae70"
+  }
+ ],
+ "translator": {
+  "agent": "coder",
+  "model": "anthropic/claude-opus-5-5",
+  "date": "2026-11-10"
+ },
+ "independence": "Independent auditor; translated nothing and authored no corrections in this namespace. Distinct from the round-1 auditor instance (d1da94af17b7).",
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.browser.media_access.json",
+   "sha256": "582e847fb0098916363408713df5acfa69720de5df1af2f23913e038e4ce2a42"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.browser.media_access.context.json",
+   "sha256": "edb38694470ca038987734fd1a2b5661bf77db0067ec8537837eb417cea4c58d"
+  },
+  "zh-CN": {
+   "path": "src/i18n/catalogues/zh-CN/ui.browser.media_access.json",
+   "sha256": "9daefb31ce1a892bea9cd16c6157c11c967b0085710d3ad494e5510d9a8e9c6f"
+  },
+  "sibling": {
+   "path": "src/i18n/catalogues/zh-CN/ui.browser.media_permission.json",
+   "sha256": "bb8fe98d7e913de09219f0f103605062efae2da298594949dee9e24df5e8e113"
+  },
+  "glossary": {
+   "path": "i18n/glossary.md (local-operator origin/main dc167abd0ec4, byte-identical to round-1's 9372a3a42d0e)",
+   "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+  },
+  "style_guide": {
+   "path": "i18n/style-guides/zh-CN.md (local-operator origin/main dc167abd0ec4, byte-identical to round-1's 9372a3a42d0e)",
+   "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+  }
+ },
+ "artifacts": [
+  {
+   "path": "i18n/audits/evidence/zh-CN/ui.browser.media_access/mp1843-a3-zh-cn/audit.log",
+   "sha256": "e3b974c24b30eea06c254dbcc82e9fc3a25e68490de39a16a6a3a57e1efbbfb3"
+  },
+  {
+   "path": "i18n/audits/evidence/zh-CN/ui.browser.media_access/mp1843-a3-zh-cn/negative-control.log",
+   "sha256": "cf1872344da1e7c8ce90fe4bc314ed2c9fe971b8a2c92e846da73584eea4cac0"
+  },
+  {
+   "path": "i18n/audits/evidence/zh-CN/ui.browser.media_access/mp1843-a3-zh-cn/report.md",
+   "sha256": "ccca3f76da359685b83b1bf9a43d637246d98ef17b4a0e3b4428b8d3a622806a"
+  },
+  {
+   "path": "i18n/audits/evidence/zh-CN/ui.browser.media_access/mp1843-a3-zh-cn/verify.mjs",
+   "sha256": "19c3ca954bf613f170a5f1c7c062c987acd8dd482102fedc2af8c980efbfa4ee"
+  }
+ ],
+ "audit_notes_not_execution_log": "report.md is the auditor's notes; audit.log is the actual stdout of verify.mjs and negative-control.log its FAIL/summary lines and exit status on the mutated scratch copy. The ledger-check result quoted in report.md was run interactively on the export and is not captured as a file.",
+ "findings": [
+  {
+   "id": "ZH-A3-N1",
+   "severity": "nit",
+   "key": "ui.browser.media_access.blocked",
+   "finding": "Spaces around Latin/placeholder runs (已为 {site} 阻止, macOS 已关闭, 重新打开 Local Operator，) contradict the zh-CN guide (no space) but match the audited ui.browser.media_permission strings shown in the same band ({site} 想要…, macOS 已关闭 Local Operator 的…) — round-1 ZH-N1's corpus-wide call. No change."
+  }
+ ],
+ "resolutions": [],
+ "observations": [
+  {
+   "id": "ZH-A3-I1",
+   "severity": "INFO",
+   "key": "ui.browser.media_access.system_blocked_hint",
+   "finding": "系统设置 › 隐私与安全性 equals the audited media_permission hint. Apple's zh-cn help (support.apple.com/zh-cn/guide/mac-help-cn/mchla1b1e1fe) returned HTTP 429 again; a web search surfaced third-party guides (pconline.com.cn/ask/377980.html, php.cn/faq/1970454.html) naming 系统设置 → 隐私与安全性 for Ventura and later — secondary evidence only. “允许” quoted like agent_tab_hint."
+  },
+  {
+   "id": "ZH-A3-I2",
+   "severity": "INFO",
+   "key": "ui.browser.media_access.blocked_hint",
+   "finding": "Round-2 remediation (748f4c83caf) made blocked_hint a devices select, resolving the a2 source observation (“them” for one device); the component now passes devices (browser-media-permission-prompt.tsx:152). Names the device(s) explicitly (麦克风 / 摄像头 / 摄像头和麦克风), matching the band's terms; “允许” quoted in every arm."
+  },
+  {
+   "id": "ZH-A3-I3",
+   "severity": "INFO",
+   "key": "ui.browser.media_access",
+   "finding": "The other 8 keys are byte-identical to the values audited as mp1843-a2-zh-cn at 99d69f364e3 (JSON key-by-key compare of git show 99d69f364e3: vs 748f4c83caf:; only blocked_hint differs in en, context and this locale); a2 verdicts on them are carried, re-run mechanically here."
+  }
+ ]
+}

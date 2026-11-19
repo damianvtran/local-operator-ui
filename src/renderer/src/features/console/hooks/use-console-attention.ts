@@ -83,10 +83,16 @@ export const useConsoleAttention = (): void => {
 				// The clearing rule, applied at the moment of the completion rather than
 				// later: if the pane is displayed on THIS surface and the window is
 				// focused, the user is looking at it and there is nothing to mark (§12.2).
+				//
+				// "DISPLAYED" IS MAIN'S OWN RECORD, not the stored lens: the lens may be
+				// null while the pane is showing the fallback surface, and comparing
+				// against null marked a completion the user was staring at — the mark the
+				// operator then found on a dead console. `displayed_surface` is written by
+				// the same `showSurface` call that puts the mirror on screen.
 				const preferences = useUiPreferencesStore.getState();
 				const looking =
 					preferences.isConsolePaneOpen &&
-					preferences.consoleActiveSurface === surface.surface &&
+					snapshot.displayedSurface === surface.surface &&
 					typeof document !== "undefined" &&
 					document.hasFocus();
 				if (!looking) mark(surface.sessionId, surface.surface);

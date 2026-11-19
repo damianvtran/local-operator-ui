@@ -135,9 +135,12 @@
  */
 
 import { Button } from "@shared/components/ui/button";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { foldMediaRows, foldMediaSlots } from "../canonical/trace-fold-model";
 import { CanonicalImage } from "./canonical-image";
+import { imageLabel } from "./media-label";
 import type { TranscriptImage } from "./transcript-reducer";
 import type { AttachmentScope } from "./use-attachment-url";
 
@@ -156,7 +159,7 @@ const foldMediaLabel = (
 	_image: TranscriptImage,
 	index: number,
 	count: number,
-): string => (count === 1 ? "Image" : `Image ${index + 1}`);
+): string => imageLabel(index + 1, count);
 
 export type FoldMediaProps = {
 	/** The run's images, in row order (`foldImages`). */
@@ -207,6 +210,7 @@ export const FoldMedia = ({
 	uncapped = false,
 	indent = "content",
 }: FoldMediaProps) => {
+	useI18nLocale();
 	const { shown, more } = foldMediaSlots(images.length, { uncapped });
 	/*
 	 * Row lengths, which only matter once the tiles need more than one row: the
@@ -297,11 +301,10 @@ export const FoldMedia = ({
 			 * this strip exists to index (UX round 1, U4), and the row's own pictures
 			 * take the same noun.
 			 */
-			aria-label={
-				images.length === 1
-					? "1 image from this run"
-					: `${images.length} images from this run`
-			}
+			aria-label={t("ui.chat.canonical.fold.images_aria", {
+				count_display: String(images.length),
+				count: images.length,
+			})}
 			data-fold-media=""
 			className={cn(
 				/*
@@ -321,7 +324,7 @@ export const FoldMedia = ({
 				gridded
 					? "grid grid-cols-[repeat(4,max-content)] items-start"
 					: "flex flex-wrap items-center",
-				indent === "content" ? "ml-5" : "ml-0",
+				indent === "content" ? "ms-5" : "ms-0",
 			)}
 		>
 			{tiles}
@@ -368,13 +371,19 @@ export const FoldMedia = ({
 						 * still travels with the count for a reader who cannot see
 						 * the symbol's position in the row.
 						 */
-						aria-label={`+${more} more image${more === 1 ? "" : "s"}`}
+						aria-label={t("ui.chat.canonical.fold.more_images", {
+							count_display: String(more),
+							count: more,
+						})}
 						/*
 						 * The SAME sentence as the name, `+` included: the pointer reader
 						 * meets the same string a speech user reads off the screen, and the
 						 * visible label is a substring of both (WCAG 2.5.3).
 						 */
-						title={`+${more} more image${more === 1 ? "" : "s"}`}
+						title={t("ui.chat.canonical.fold.more_images", {
+							count: more,
+							count_display: String(more),
+						})}
 					>
 						{`+${more}`}
 					</Button>

@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "auditor": "i18n-auditor",
+  "model": "radient/auto",
+  "instance": "f12bd5c0b78b-vi",
+  "locale": "vi",
+  "namespace": "ui.settings.shortcuts",
+  "date": "2026-10-29",
+  "status": "passed",
+  "sha256": {
+    "vi": "2d15eeea57889e07981e55a9d87a07e4882ee43bf2d707930475bf0bfb332a6f",
+    "en": "5967dfaf152c5ca139a5d33347d94597a1d25b3dd01bb6bd37cdb881858aa7d4"
+  },
+  "findings": [
+    {
+      "severity": "minor",
+      "key": "ui.settings.shortcuts.keyboard_shortcuts_section.browser_shortcuts_answer_only_while_the_browser_has_focus",
+      "issue": "\"bảng trình duyệt\" renders \"browser pane\" with bảng, the word this file uses for a *panel* (\"thanh chọn bảng\" = panel rail). The corpus translates the browser pane itself as ngăn (ui.browser: \"Ngăn này quá hẹp …\" = \"This pane is too narrow …\").",
+      "disposition": "fixed in this audit",
+      "remediation": "Changed bảng trình duyệt -> ngăn trình duyệt (one occurrence)."
+    },
+    {
+      "severity": "nit",
+      "key": "ui.settings.shortcuts.keyboard_shortcuts_section.browser_shortcuts_answer_only_while_the_browser_has_focus",
+      "issue": "\"đang được chọn\" / \"hãy chọn trình duyệt\" render \"has focus\" / \"focus the browser\" with chọn (select/choose). The corpus elsewhere says \"tiêu điểm bàn phím\" for keyboard focus (ui.chat.tags). Selection and focus are not the same thing.",
+      "disposition": "deferred — left as-is",
+      "remediation": "Not changed: this file already uses \"Chọn một ô\" for \"Focus a field\" in shortcuts_for_the_panel_rail…, so changing one string only would make the section internally inconsistent. Raised for a native/UX pass over the file as a whole."
+    }
+  ],
+  "scope": "Changed rows only: 8 keys (1 new paragraph + 7 reserved-sentence tails). Key set == English (64/64), ICU placeholder parity, sentence-by-sentence meaning against the .context.json note, register and terminology against the same file and corpus.",
+  "notes": "The two chọn instances above stay for local consistency; recommended fix is a file-wide pass to tiêu điểm. Native-reader naturalness was NOT verified by a native speaker of the target language; this audit is a semantic/structural read by an agent. Meaning, register, placeholder and terminology consistency were checked against the English source and the existing target-locale corpus."
+}

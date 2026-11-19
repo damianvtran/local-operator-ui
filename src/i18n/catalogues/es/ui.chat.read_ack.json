@@ -1,0 +1,18 @@
+{
+	"ui.chat.read_ack.clause.offscreen": "desplázate hasta el resultado para marcar este chat como leído",
+	"ui.chat.read_ack.clause.pending": "marcando como leído",
+	"ui.chat.read_ack.clause.remote": "está en otro dispositivo y se borra cuando ese dispositivo se actualiza",
+	"ui.chat.read_ack.clause.remote_named": "está en {device} y se borra cuando ese dispositivo se actualiza",
+	"ui.chat.read_ack.description.offscreen": "Desplázate hasta el resultado para marcar este chat como leído.",
+	"ui.chat.read_ack.description.pending": "Marcando este chat como leído.",
+	"ui.chat.read_ack.description.remote": "La marca de mensajes sin leer está en otro dispositivo. Se borra cuando ese dispositivo se actualiza.",
+	"ui.chat.read_ack.description.remote_named": "La marca de mensajes sin leer está en {device}. Se borra cuando ese dispositivo se actualiza.",
+	"ui.chat.read_ack.description.unsettled": "No se marcó como leído. {remedy}",
+	"ui.chat.read_ack.refusal.busy": "El estado de lectura está ocupado, así que no se borró la marca de mensajes sin leer. {remedy}",
+	"ui.chat.read_ack.refusal.refused": "No se pudo escribir el estado de lectura, así que no se borró la marca de mensajes sin leer. {remedy}",
+	"ui.chat.read_ack.refusal.unreachable": "{reason} No se borró la marca de mensajes sin leer. {remedy}",
+	"ui.chat.read_ack.refusal.unreported": "No se borró la marca de mensajes sin leer. {remedy}",
+	"ui.chat.read_ack.retry_remedy": "haz clic en el chat para intentarlo de nuevo",
+	"ui.chat.read_ack.retry_remedy_sentence": "Haz clic en el chat para intentarlo de nuevo.",
+	"ui.chat.read_ack.unreachable_fallback": "La app no pudo comunicarse con el backend."
+}

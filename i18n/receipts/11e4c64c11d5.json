@@ -1,0 +1,72 @@
+{
+	"auditor": "i18n-auditor",
+	"model": "openai/gpt-6.1-sol",
+	"instance": "11e4c64c11d5",
+	"locale": "hi",
+	"round": 1,
+	"namespaces": {
+		"ui.agents": {
+			"status": "passed",
+			"keys_audited": 0,
+			"sha256": {
+				"en": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+				"hi": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+			},
+			"findings": []
+		},
+		"ui.agents.dialogs": {
+			"status": "passed",
+			"keys_audited": 33,
+			"sha256": {
+				"en": "99fc8672fbb4139aa2721542a8fb994506301b0c678d86c21439e939f5dd2bf4",
+				"hi": "df645beab7ac36f9300b0041d5cf29e39b3907c31885aee11bd0a138fc271b05"
+			},
+			"findings": []
+		},
+		"ui.agents.models": {
+			"status": "passed",
+			"keys_audited": 38,
+			"sha256": {
+				"en": "0775863598346b25001f9131bdf4bf207aba0d036858ce08b7cc49b00f44a540",
+				"hi": "468101a0b1dad2a0a9862c006a3db0dbb2a05bd18080b61f75d99c6716e69926"
+			},
+			"findings": []
+		},
+		"ui.agents.navigation": {
+			"status": "passed",
+			"keys_audited": 32,
+			"sha256": {
+				"en": "23f591cd7c2d52c2563e0b5cbb4cbb2164f7cd01c2568b050738b3be976a5729",
+				"hi": "e4976309f63cebc9d73f10ea8921b4e7663d3612f216be98b957a807d0035210"
+			},
+			"findings": []
+		},
+		"ui.agents.settings": {
+			"status": "passed",
+			"keys_audited": 58,
+			"sha256": {
+				"en": "2e2a8a28891db681fd72396a3b8323e8705e4ea9c0397e49237e3ed3f7e1a897",
+				"hi": "a68fe3ea664a9501f28b804c973be035d07e51e9048a6beccfa04a20c4cdb897"
+			},
+			"findings": []
+		},
+		"ui.canvas": {
+			"status": "passed",
+			"keys_audited": 57,
+			"sha256": {
+				"en": "6fa13501b59a260373bcb26f212fc6244a3d1219ef1811d2b0c1de05b541f1f5",
+				"hi": "74af20633ce454cb37119274c48033e640923cbae97a81af6f47d1a77ba33f11"
+			},
+			"findings": []
+		},
+		"ui.code_review": {
+			"status": "passed",
+			"keys_audited": 75,
+			"sha256": {
+				"en": "7344c8694a23662bfe3ae12205685cfa14851209d0685abbe463b9f513565085",
+				"hi": "f09b13bfc53e5d7e9f2c33746f9a0d39212d9542be206fcd7c6b0fc625e9fe48"
+			},
+			"findings": []
+		}
+	}
+}

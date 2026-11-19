@@ -1,0 +1,189 @@
+{
+	"locale": "es",
+	"namespace": "ui.chat.sidebar",
+	"pr": 1836,
+	"base_sha": "debb34cd35688ecbb1c17bf78a16eb4d93636f62",
+	"head_sha": "89d74581e8e9414e15ddddb5e1db9a38785baee2",
+	"prior_head_sha": "28a6127617e4ebe0b6ba47d39fca5d3a22d1ba93",
+	"audit_date": "2026-11-10",
+	"round": 2,
+	"mode": "fresh independent delta audit of the REMEDIATED copy of the five mark-all-read keys in es; PR #1836; worktree ~/local-operator-ui/.worktrees/i18n-s8 at head 89d74581e8e read-only (no edits, no git writes, no node/build/render); the repo's node validator was NOT run, mechanical checks were re-derived in Python",
+	"scope": "the 5 keys PR #1836 adds to ui.chat.sidebar (scope_chats, scope_chats_elsewhere, scope_tokenless, scope_joined, name_suffix_elsewhere); the remaining 81 keys of the file were read for terminology consistency only",
+	"key_count": 86,
+	"keys_audited": [
+		"ui.chat.sidebar.mark_all_read.scope_chats",
+		"ui.chat.sidebar.mark_all_read.scope_chats_elsewhere",
+		"ui.chat.sidebar.mark_all_read.scope_tokenless",
+		"ui.chat.sidebar.mark_all_read.scope_joined",
+		"ui.chat.sidebar.mark_all_read.name_suffix_elsewhere"
+	],
+	"translator": {
+		"agent": "i18n-translator",
+		"model": "anthropic/claude-sonnet-5-5",
+		"date": "2026-11-10",
+		"source_head": "f5053145f949057bd5b99c48d21158869b62ee6a",
+		"remediation_commit": "89d74581e8e9414e15ddddb5e1db9a38785baee2"
+	},
+	"auditor": {
+		"agent": "i18n-auditor",
+		"instance": "528148ddea8c",
+		"session": "6b0e191b8255",
+		"model": "deepseek/deepseek-flash",
+		"actual_model_source": "harness session model header for this run: deepseek/deepseek-flash; no fallback model was served or used",
+		"fallback_used": false,
+		"independent_from_translator_session": true,
+		"review_model_differs_from_translator": true,
+		"native_fluency_basis": "es as a reasoning-and-reading judgement by this auditor; no translation/MT service or back-translation was used to compare"
+	},
+	"input_hashes": {
+		"en": [
+			{
+				"path": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+				"sha256": "7db9ba5108a62330a1782f775b991ec0483537d2f7d808ae0691e1a6ef8840cd"
+			}
+		],
+		"context": [
+			{
+				"path": "src/i18n/catalogues/en/ui.chat.sidebar.context.json",
+				"sha256": "4f1593cc34b395ef8701a60e58e73a0371b3c93730eb7a1f2b2845dc6250d7e3"
+			}
+		],
+		"target": [
+			{
+				"path": "src/i18n/catalogues/es/ui.chat.sidebar.json",
+				"sha256": "ce70155f365ca1eaa6e457e870d42e36bb6aea09cd4331f630938ba63a18e86a"
+			}
+		],
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/es.md",
+			"sha256": "77b9227213802d14c74d4298d6b346ad842bbf2a5ca3b9d46fc6144430d26c3e"
+		},
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+		},
+		"harness_guide": {
+			"path": "docs/I18N.md",
+			"sha256": "d58ad473701f098b3c2c24343c3a7e7236f22db22cc871016c4cb75f25f41f5c"
+		}
+	},
+	"namespaces": {
+		"ui.chat.sidebar": {
+			"status": "passed",
+			"result": "clean-with-findings",
+			"key_count": 86,
+			"severity_counts": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 1
+			},
+			"source_sha256": "7db9ba5108a62330a1782f775b991ec0483537d2f7d808ae0691e1a6ef8840cd",
+			"context_sha256": "4f1593cc34b395ef8701a60e58e73a0371b3c93730eb7a1f2b2845dc6250d7e3",
+			"target_sha256": "ce70155f365ca1eaa6e457e870d42e36bb6aea09cd4331f630938ba63a18e86a",
+			"previous_target_sha256": "819ca98aca0847a3e5452a0fd89fa2e622d8f9442fffb587ca6341ebe3a14694",
+			"findings": [
+				{
+					"id": "ES2-N1",
+					"severity": "nit",
+					"key": "ui.chat.sidebar.mark_all_read.name_suffix_elsewhere, ui.chat.sidebar.mark_all_read.scope_chats_elsewhere",
+					"current": ", {elsewhere, plural, one {incluido {elsewhere, number, ::group-off} que no está activo} many {incluidos {elsewhere, number, ::group-off} de chats que no están activos} other {incluidos {elsewhere, number, ::group-off} chats que no están activos}}",
+					"rendered_current": {
+						"accessible_name_count1_elsewhere1": "Marcar todos como leídos (1), incluido 1 que no está activo",
+						"accessible_name_count5_elsewhere2": "Marcar todos como leídos (5), incluidos 2 chats que no están activos",
+						"tooltip_count1_elsewhere1": "Marcar 1 chat sin leer como leído, incluido 1 que no está activo."
+					},
+					"problem": "The singular arm names no noun while the plural arms do ('incluidos 2 chats que no están activos'), so the two arms are not symmetrical. At the previous head the singular did name it ('incluido {elsewhere, number, ::group-off} chat no activo'), so the remediation dropped the noun from the singular arm only while keeping 'chats' in the plural. In the accessible name a listener hears two adjacent bare numbers ('...leídos (1), incluido 1 ...'). It remains grammatical and idiomatic Spanish - the participle agrees with the implied 'chat', and this catalogue's own notices use bare singular counts ('ui.notices.chat.mark_all_read_unknown': '1 no se pudo borrar y sigue sin leer.') - so this is a preference for symmetry and an explicit referent, not a defect.",
+					"suggested": "one {incluido {elsewhere, number, ::group-off} chat que no está activo} - same substitution in both keys; this keeps the relative clause the prior round asked for, keeps the leading comma so the label stays a prefix, and makes the singular mirror the plural arm.",
+					"evidence": {
+						"renders": "Python ICU render with CLDR es categories (1 -> one; multiples of 10^6 -> many; else other) against the head bytes; the singular renders 'incluido 1 que no está activo', the plural 'incluidos 2 chats que no están activos'.",
+						"sibling_counts": "src/i18n/catalogues/es/ui.notices.json: ui.notices.chat.mark_all_read_unknown '1 no se pudo borrar y sigue sin leer.', mark_all_read_deferred '1 está en otro dispositivo y se borrará cuando ese dispositivo se actualice.' - bare singular counts are the established pattern here.",
+						"provenance": "The remediated singular is the prior round's own suggested text applied verbatim, so this nit refines that wording rather than reversing the remediation.",
+						"previous_singular": "git show 28a6127617e:src/i18n/catalogues/es/ui.chat.sidebar.json - name_suffix_elsewhere one arm 'incluido {elsewhere, number, ::group-off} chat no activo'",
+						"current_singular": "one arm 'incluido {elsewhere, number, ::group-off} que no está activo' at 89d74581e8e (noun removed); plural arms keep 'chats' in both heads"
+					}
+				}
+			],
+			"verdict": "clean-with-findings"
+		}
+	},
+	"findings_severity_counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 1
+	},
+	"severity_counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 1
+	},
+	"verdict": "clean-with-findings",
+	"result": "clean-with-findings",
+	"status": "passed",
+	"current_report_verdict": {
+		"status": "clean-with-findings",
+		"unresolved_blocker_major_count": 0,
+		"finding_ids": [
+			"ES2-N1"
+		]
+	},
+	"prior_round_findings": [
+		{
+			"id": "ES1-F1",
+			"severity": "major",
+			"key": "ui.chat.sidebar.mark_all_read.scope_tokenless",
+			"issue": "'marcas sin leer' drifted from the audited read-ack term 'marca de mensajes sin leer'",
+			"status": "fixed",
+			"evidence": "all three arms now read 'marca de mensajes sin leer' / 'marcas de mensajes sin leer': 'No se puede borrar {count, number, ::group-off} marca de mensajes sin leer que no tiene token de finalización.'; matches src/i18n/catalogues/es/ui.chat.read_ack.json (6 occurrences, e.g. 'La marca de mensajes sin leer está en {device}.') and ui.notices.chat.unread_not_cleared 'No se borraron las marcas de mensajes sin leer.'"
+		},
+		{
+			"id": "ES1-F2",
+			"severity": "minor",
+			"key": "ui.chat.sidebar.mark_all_read.scope_chats_elsewhere, ui.chat.sidebar.mark_all_read.name_suffix_elsewhere",
+			"issue": "appositive 'incluidos N chats no activos' stilted; relative clause suggested; singular fragmented as an accessible-name tail",
+			"status": "fixed",
+			"evidence": "both keys now use the relative clause: 'incluidos {elsewhere, number, ::group-off} chats que no están activos' / 'de chats que no están activos', rendering 'incluidos 2 chats que no están activos'. The cited noun repetition inside the same sentence remains, which is the necessary cost of the relative clause (the singular cannot use 'de los cuales' because the label's antecedent 'todos' is plural); not re-raised as a defect."
+		}
+	],
+	"cleared_checks": [
+		"JSON validity and key parity: 86/86 keys, none added or dropped (Python json.loads on en and es at head).",
+		"Diff scope: only 3 of the 5 keys changed at 89d74581e8e vs 28a6127617e (scope_chats_elsewhere, scope_tokenless, name_suffix_elsewhere); scope_chats and scope_joined are byte-identical to the previous head, and no other es file changed.",
+		"Placeholders: names and kinds identical to en in every key - {count} plural/number, {elsewhere} plural/number, {chats} and {tokenless} simple args; parser consumed every message to its final byte (balanced braces).",
+		"Number skeleton: '{count, number, ::group-off}' / '{elsewhere, number, ::group-off}' present in EVERY branch of every plural, with the style string byte-identical to en (' ::group-off'), and no extra argument inside any branch.",
+		"CLDR es categories: one/many/other present and complete in all four plural messages, no few/zero invented, no '=N' arms (en has none). es one covers 1 only and 0 falls to other.",
+		"Rendered matrix (Python ICU render, CLDR es selection, NOT node/Intl execution): count 1 -> 'Marcar 1 chat sin leer como leído.'; 2/12/999999 -> other; 1000000 -> many with the partitive 'de' the style guide's own example requires ('Marcar 1000000 de chats sin leer como leídos.'); tokenless 1/2/1000000 -> 'No se puede borrar 1 marca ...' / 'No se pueden borrar 2 marcas ...' / 'No se pueden borrar 1000000 de marcas ...'.",
+		"Sentence joining: scope_tokenless carries exactly one full stop in every arm. scope_chats_elsewhere's single '.' sits outside the trailing plural, so the whole message has exactly one full stop and its arms correctly carry none. scope_joined is '{chats} {tokenless}' - a single space, the es separator, adding no words - so the joined output is two clean sentences: 'Marcar 5 chats sin leer como leídos, incluidos 2 chats que no están activos. No se pueden borrar 2 marcas de mensajes sin leer que no tienen token de finalización.' No run-on, no doubled stop.",
+		"Accessible name: label + name_suffix_elsewhere keeps the label an unbroken prefix in every sampled case (verified by string prefix test, e.g. 'Marcar todos como leídos (5), incluidos 2 chats que no están activos'); the tail begins with ', ' (no space before the comma, per es typography) and ends with no punctuation.",
+		"'Not active' stays the backend class and not a section name: es renders it descriptively as 'que no está activo' / 'que no están activos', never as a heading, and never as 'Running'. The catalogue's own class word for the active set is supported by ui.chat.sidebar_view.active_first 'Activos primero'; no sidebar section is called 'Activos' (sections are by time).",
+		"'token' stays English and qualified descriptively in 'token de finalización', so it does not read as a security token; the catalogue keeps English 'token' elsewhere (ui.chat.device.sentence.pairing_guidance, ui.chat.skill_invocation.trigger_label).",
+		"Verb pair: 'marcar como leído' for the action and 'se borró la marca de mensajes sin leer' for clearing are the pair already audited in ui.chat.read_ack.refusal.refused and ui.notices.chat.unread_not_cleared 'No se borraron las marcas de mensajes sin leer.'; the tooltip is internally consistent with the visible label ('Marcar todos como leídos'), and en splits the same two verbs ('Mark ... as read' / 'cannot be cleared').",
+		"Register: infinitive action wording per the es guide ('Marcar'), tú-neutral, no 'usted', no region-marked words, sentence case, no '!', no hand-written punctuation inside code spans; digits Latin; only precomposed accented characters (U+00ED/U+00E1/U+00F3) - no combining marks, no wide-glyph width risk.",
+		"Typography: quotes, em dash and ellipsis rules not engaged by these five keys; no space before punctuation; no double spaces, no leading/trailing whitespace in any of the five values (byte scan)."
+	],
+	"pre_existing_not_gating": [
+		"ui.chat.sidebar.mark_all_read.label 'Marcar todos como leídos ({count, number, ::group-off})' is longer than en 'Mark all {count, number, ::group-off} read' and moves the number into parentheses. It is unchanged by this remediation (byte-identical at 28a6127 and 89d7458), reads correctly, keeps the count inside the label as the sidecar requires, and is not gated here; the section header's own shed behaviour is the component's concern.",
+		"The other 81 keys of es/ui.chat.sidebar.json were read for consistency only, not re-audited; none of their bytes changed in this delta."
+	],
+	"not_verified": [
+		"No rendered frame and no runtime ICU execution (Intl/Node) were used: worktree brief forbids node processes, builds and renders, so every rendered string above is a Python ICU render with CLDR es plural selection, not the app's formatter.",
+		"The repo's node validator (scripts/i18n/check-strings.mjs and sibling tests) was NOT run for the same reason; the mechanical properties it checks were re-derived independently here.",
+		"Screen-reader behaviour was reasoned about, not measured on a live AT stack.",
+		"FR and VI specifics in the brief are outside this receipt's locale: they belong to the fr and vi auditors' own receipts and were not judged here."
+	],
+	"verification": {
+		"tooling": "python3 json + a hand-written ICU message parser/renderer in the session kernel; shasum -a 256 for input hashes; git show/git diff read-only.",
+		"revised_mechanically": "yes - the failure of the first parser attempt (branch selectors mis-split) was corrected and re-run before any conclusion was drawn",
+		"audit_notes_not_execution_log": false,
+		"execution_log": "the commands and their actual output are in the session transcript; rendered samples quoted in cleared_checks are outputs of the Python render, not re-typed by hand"
+	},
+	"artifacts": [
+		{
+			"path": "$LOCAL_OPERATOR_SCRATCHPAD/aud2-es-ds/receipt.json",
+			"role": "this receipt"
+		}
+	],
+	"session": "6b0e191b8255",
+	"scope_note": "Five keys fully audited at head 89d74581e8e; the remaining 81 keys of es/ui.chat.sidebar.json were read for terminology consistency only. Prior round ES1-F1 (major) and ES1-F2 (minor) verified fixed with quotes. No new blocker/major: this remediation applied the prior round's prescription, terminology now matches the audited read-ack/notices terms, and the structure is byte-identical to en modulo the CLDR es 'many' arms. One nit recorded (ES2-N1)."
+}

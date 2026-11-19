@@ -1,0 +1,137 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit (single-key delta)",
+	"audit_id": "teambridge-notavail-merge-audit-tbm-20261029",
+	"date": "2026-10-29",
+	"instance": "tbm-20261029-zh-cn",
+	"instance_note": "Assigned by the delegating parent, not a session id of this agent: one auditor run on 2026-10-29 re-auditing the single-key delta at the merge of origin/main (aafa890e3c98) into feat/team-bridge-owner-audit-ui (branch head 0d793e3f3a89), with a per-locale suffix so every ledger row carries a distinct instance. This run is a delegated subagent and has no session id of its own, so the run id belongs to the parent's run; it is not a placeholder - the seven receipts written under it on this date are the run.",
+	"auditor": "i18n-auditor",
+	"agent": "i18n-auditor",
+	"model": "radient/auto",
+	"model_provenance": "Harness model header at run start read 'Model: anthropic/claude-opus-5-5'. Mid-run the harness announced four sequential provider-quota fallbacks (anthropic/claude-sonnet-5-5, openai/gpt-6-astra, kimi/k3.1-pro, then radient/auto) and its current header line reads 'You are now running as radient/auto'. radient/auto is therefore the model executing the final analysis and writing these receipts; the earlier reading in this run was performed under anthropic/claude-opus-5-5 before the first switch. Where one model must be named it is radient/auto, per the last header the harness issued - not a guess.",
+	"model_fallback": {
+		"announced": true,
+		"observed": true,
+		"chain": [
+			"anthropic/claude-opus-5-5 (start)",
+			"anthropic/claude-sonnet-5-5",
+			"openai/gpt-6-astra",
+			"kimi/k3.1-pro",
+			"radient/auto"
+		],
+		"note": "Four provider-quota switches were announced by the harness during this run; reason given each time: 'provider failure: quota'. The linguistic judgement in these receipts is the delegated run's, but it spans those models, which is why the chain is recorded rather than a single name."
+	},
+	"independence": "Independent auditor (agent role i18n-auditor; delegated subagent of the parent's run teambridge-notavail-merge-audit-tbm-20261029). It authored none of the translated strings: the not_available values were delivered by i18n-translator job 64be94d56ced (per the prior notavail receipts) and this run verified they are byte-identical to the bytes those receipts audited. No finding reached blocker/major, so this run edited no catalogue at all: every target sha256 here names the unmodified merged working-tree bytes. It wrote only its own receipts and evidence records; it did not commit, push, merge, or touch i18n/ledger.json.",
+	"status": "passed",
+	"result": "clean-with-findings",
+	"translator": {
+		"agent": "i18n-translator",
+		"job": "64be94d56ced",
+		"model": "not supplied",
+		"date": "2026-10-28",
+		"method": "LLM translator subagent; no MT service referenced"
+	},
+	"integration": {
+		"branch": "feat/team-bridge-owner-audit-ui",
+		"reviewed_head": "working tree at the merge of origin/main into the branch, uncommitted (branch head 0d793e3f3a89cfaed81b1222e378c2656d5381b8; MERGE_HEAD = origin/main aafa890e3c9825fa1e19c423c022f5a651116c20)",
+		"base": "origin/main aafa890e3c98",
+		"worktree": "~/local-operator-ui/.worktrees/tb-owner-audit-ui",
+		"pr": "not yet opened",
+		"note": "audited bytes are the uncommitted merged working tree; this run wrote receipts and evidence records only - no catalogue edit, no commit, no push, no merge"
+	},
+	"locale": "zh-CN",
+	"namespace": "ui.teamBridge",
+	"scope": {
+		"keys_audited_linguistically": [
+			"ui.teamBridge.thread.not_available"
+		],
+		"inherited_byte_identical": {
+			"previous_receipt": "i18n/receipts/c6f6f47ef39d-r2-zh-cn.json",
+			"previous_receipt_sha256": "4d4d9992fd2578d6a4443f6688ed1c048a3c3ba9492b7a270b5ffb58d9837e5b",
+			"previous_target_sha256": "bbe84d6c472e55b62b256ad0b7bbececc9b1d4354b52012fcf9a4e25edfb9b19",
+			"note": "Proof re-derived here, not taken on trust: removing the single line whose stripped form starts with \"ui.teamBridge.thread.not_available\" from the merged src/i18n/catalogues/zh-CN/ui.teamBridge.json and sha256-ing the remainder gives bbe84d6c472e55b62b256ad0b7bbececc9b1d4354b52012fcf9a4e25edfb9b19, byte-identical to `git show origin/main:src/i18n/catalogues/zh-CN/ui.teamBridge.json` (sha256 bbe84d6c472e55b62b256ad0b7bbececc9b1d4354b52012fcf9a4e25edfb9b19) - which is the target_sha256 this ledger row already records (bbe84d6c472e55b62b256ad0b7bbececc9b1d4354b52012fcf9a4e25edfb9b19). A difflib unified diff of origin/main against the merged file reports exactly 1 added line and 0 removed, so main's audited bytes are inherited intact and only the new key is new."
+		},
+		"english_change": "en adds only thread.not_available (value + context note); no other en key changed."
+	},
+	"sha256": {
+		"en": "5be0c55997d0a97f363ea54652eba52fbe908ae36dd94c5e48129ebf9ae4e470",
+		"zh-CN": "08f1cdd6e93f58d526d491c4d631418f9edb1dab5012b9d29cd6431ec583e809"
+	},
+	"context_sha256": "9f939b02dd8e6433b57c0aa6a7e7c51334869f7490278c2538ce989e54b40b5f",
+	"english": {
+		"ui.teamBridge.thread.not_available": {
+			"value": "This conversation is not open to you. You may not be a member of it, or it may have been archived.",
+			"context_note": "Shown for an addressed conversation id the caller cannot open: the list only carries conversations the caller participates in, so this covers both \"not a member\" and \"archived\" without revealing which. It replaces the draft intro, which wrongly told a reader their history was empty when the conversation actually held messages (2026-10-28). Do not imply the conversation does not exist.",
+			"placeholders": {}
+		}
+	},
+	"audited_strings": {
+		"ui.teamBridge.thread.not_available": "你无法打开此对话。你可能不是对话成员，也可能该对话已归档。"
+	},
+	"checks": {
+		"placeholders": "none in source; target verified to contain no { } < > (no ICU, no Trans tags)",
+		"non_disclosure": "both reasons offered as possibilities, neither asserted",
+		"existence": "access wording only; nothing implies the conversation does not exist",
+		"bidi_controls": "none",
+		"nfc": "NFC",
+		"sentences": "two sentences, both closed with 。 (29 chars ≈ 58 cells; en 98 chars)"
+	},
+	"notes": "你 register (the zh-CN guide rejects 您); '对话' is this namespace's term for conversation (create.title/list.empty) and keeps 会话 free for session per the glossary; '成员' and '归档' match member.count and the archive copy; full-width 。 closes both sentences; no Latin run. One MINOR on 打开 and one NIT on the missing determiner. 29 chars ≈ 58 cells vs en 98.",
+	"findings": [
+		{
+			"id": "m1",
+			"severity": "MINOR",
+			"key": "ui.teamBridge.thread.not_available",
+			"current": "你无法打开此对话。你可能不是对话成员，也可能该对话已归档。",
+			"proposed": "你无法访问此对话。你可能不是对话成员，也可能该对话已归档。",
+			"reason": "'无法打开' renders 'open' as the interface action and reads as a load failure; the source asserts a permission state, and the other six locales all use access wording. '访问' is the locale's access verb (66 uses, including the no-access headline) and matches the two reasons the next sentence offers."
+		},
+		{
+			"id": "n1",
+			"severity": "NIT",
+			"key": "ui.teamBridge.thread.not_available",
+			"current": "你可能不是对话成员",
+			"proposed": "你可能不是该对话的成员",
+			"reason": "'对话成员' is a bare compound where the source says 'a member of it'; adding 该…的 pins the referent to the conversation just named, and also settles the 此/该 mix inside one string (此对话 … 该对话)."
+		}
+	],
+	"resolved_findings": [],
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide_zh-CN": {
+			"path": "~/local-operator/i18n/style-guides/zh-CN.md",
+			"revision": "ad1de332210d47cc01e62393c2d0cd4708e2312b",
+			"sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+		},
+		"core_checkout": "dadf192382fbce7cb97d8cfbdc99ff1c931d97b6"
+	},
+	"execution": [
+		{
+			"command": "python3: drop the line whose stripped form starts with \"ui.teamBridge.thread.not_available\" from each merged catalogue, sha256 the remainder, compare with `git show origin/main:src/i18n/catalogues/<locale>/ui.teamBridge.json | shasum -a 256`",
+			"result": "8/8 match (en 15702697617c, es efdc4a0c79f5, fr 2594f84c91fb, hi a8c25fc63e15, ru b3aced50404c, ur 4bdb9986d5a3, vi 05a8acff0b19, zh-CN bbe84d6c472e); difflib: 1 added line and 0 removed in every file"
+		},
+		{
+			"command": "python3 NFC / bidi / invisible-code-point / placeholder / sentence-stop scan of the merged en and seven locale catalogues",
+			"result": "all NFC; no FSI/PDI/RLM/LRM/ALM, ZWSP, NBSP or stray U+202F; no { } < > tokens; two sentence stops per value in each script's own mark (। / ۔ / 。); no Latin run in hi, ru, ur or zh-CN"
+		},
+		{
+			"command": "python3 JSON-level diff of the merged en ui.teamBridge.context.json against `git show origin/main:...`",
+			"result": "254 -> 255 entries; only ui.teamBridge.thread.not_available added; every other entry identical"
+		},
+		{
+			"command": "git rev-parse HEAD MERGE_HEAD; git log -1 --format=%H -- i18n/glossary.md i18n/style-guides/<locale>.md (in ~/local-operator)",
+			"result": "branch head 0d793e3f3a89cfaed81b1222e378c2656d5381b8, MERGE_HEAD aafa890e3c9825fa1e19c423c022f5a651116c20; glossary e433b2c54afb, core checkout dadf192382fb"
+		},
+		{
+			"command": "sha256 of en, en context and the seven locale catalogues (hashlib, bytes on disk)",
+			"result": "en 5be0c55997d0, context 9f939b02dd8e, targets 08f1cdd6e93f (zh-CN)"
+		}
+	],
+	"audit_notes_not_execution_log": "checks, notes and findings are this auditor's linguistic judgement, not command output. Two corrections to the inherited picture, recorded because they would otherwise be copied forward: the notavail receipts (b393dc8cd01c-notavail-*) are tracked on the branch and the branch side of i18n/ledger.json names them, but they are absent from origin/main, so the working-tree rows read here still point at each locale's r2 receipt (c6f6f47ef39d-r2-*), which audited a 13-key schedule delta and does not name this key at all; and the b393 receipt's limitations call the English string 104 characters when it is 98. The values themselves were verified byte-identical to what those receipts audited.",
+	"limitations": "No rendered evidence: this role has no browser tool and the host is source-only, so fit is judged by character and cell count, not a rendered frame - no maxCells is declared for this key in the en sidecar. fr (117 chars, +19%) and vi (112, +14%) are the two a rendered check should look at first. ur was checked at the code-point level only (no bidi controls, correct Urdu stops, no Latin run); there is no FriBidi or terminal render. Translator provenance (job 64be94d56ced) is inherited from the prior receipts rather than re-verified - what this run did verify is that the delivered strings are byte-identical to those audited. This run is a delegated subagent with no session id of its own, so the instance id is the parent's; and the model changed mid-run under provider quota (see model_provenance), so the judgement spans more than one model. i18n/ledger.json is itself unmerged (UU) at this merge: the working-tree copy read here takes main's rows (c6f6f47ef39d-r2-* with main's target bytes), while the branch side of the conflict names the b393dc8cd01c-notavail-* receipts against the pre-merge branch bytes, so previous_receipt/previous_target_sha256 follow the working tree and the main side - resolving the conflict the other way would change what 'previous' means, not the bytes audited.",
+	"evidence_record": "i18n/audits/evidence/zh-CN/ui.teamBridge/tbm-notavail-merge-20261029-zh-CN/record.json"
+}

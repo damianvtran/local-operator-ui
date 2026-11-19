@@ -1,0 +1,498 @@
+{
+  "instance": "f684e610b106-r4-ru",
+  "locale": "ru",
+  "audit_kind": "verification round (delta re-audit of the prior receipt's findings, not a fresh sweep)",
+  "scope": {
+    "statement": "Verification only, ru, at a10255813c: (a) each BLOCKER/MAJOR/MINOR/NIT filed in the round-3 receipt re-checked one by one; (b) the keys those findings named re-read at the new bytes, with placeholder identity against English; (c) a regression check that nothing else in the 89-key delta moved. No new keys judged, no new policy findings raised.",
+    "branch": "i18n-final-literals",
+    "commits": [
+      "930c8ec2d1",
+      "40afea32ff",
+      "8f1c56a425",
+      "a10255813c"
+    ],
+    "key_list": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/new-keys.txt (docs artefact, 89 keys, unchanged scope)",
+    "key_count": 89,
+    "out_of_scope": "the other six locales; every ru key not on the 89-key list; the wording corrections this commit made in es, zh-CN and ur"
+  },
+  "checkout_head": "a10255813c44112eb49bb5d5d6fe05173e2d21c1",
+  "reviewed_previous": "/Users/damian/qa/lit-audit3/ru/receipt.json",
+  "key_count": 89,
+  "audit_date": "2026-10-29",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "f684e610b106",
+    "model": "radient/auto",
+    "actual_model_source": "runtime session-model records (harness switch notices), not self-report",
+    "model_fallbacks": [
+      "anthropic/claude-sonnet-5-5 (opened)",
+      "openai/gpt-6-astra (provider quota)",
+      "kimi/k3.1-pro (provider quota)",
+      "radient/auto (provider quota; performed the round-3 audit and this verification)"
+    ],
+    "independent_from_translator_session": true,
+    "independence_note": "Same auditor instance that filed the round-3 findings; it wrote none of the audited values and made no repo change (git status clean)."
+  },
+  "input_sha256": {
+    "src/i18n/catalogues/en/ui.agents.settings.json": "3ba270885be69d682183c849436c3e2146bf5c8875cf8a2be1f26528ed20fd4d",
+    "src/i18n/catalogues/ru/ui.agents.settings.json": "bea08ba2866a744a32705732e8f7ae476ba9424283286c319442bdc8e4a754cb",
+    "src/i18n/catalogues/en/ui.chat.asks.json": "3399e4015ace811013fb16d9f021016eaecf8ed700e6d34ee2c0d0029068832a",
+    "src/i18n/catalogues/ru/ui.chat.asks.json": "3fad48d8d827a3a7a8eda38f8b5f8d7d3d8567e26e4fe6c878959443fc68f18c",
+    "src/i18n/catalogues/en/ui.chat.attachments.json": "623a1363260ecbe40393b4424dde4d7b6cc084688ac354483052639a145ce892",
+    "src/i18n/catalogues/ru/ui.chat.attachments.json": "5b0023cad297ff9a4ee5b3e7752ca0bd100ad8cbb0b76a03b6d97063b6e6e77d",
+    "src/i18n/catalogues/en/ui.chat.canonical.json": "e497effa4c5ba36da6fc3fb4598e5cd7cd2219cae675e94b51d00682e2f90935",
+    "src/i18n/catalogues/ru/ui.chat.canonical.json": "122bfa1e90b4a755e2f6b6628e39e56fbf25eb517cc05e822d3cc080877cc991",
+    "src/i18n/catalogues/en/ui.chat.device.json": "2be9eaf88f3f95eec4d28b4cc5b6397edbd3173eb2af3713ff2da4f6b0b5fcd6",
+    "src/i18n/catalogues/ru/ui.chat.device.json": "5e565be39b04368f5a5174355561b479180824d0429f874afe6426e63976d971",
+    "src/i18n/catalogues/en/ui.chat.header.json": "a2584118fd1ae8da26a27f8e739bbde58c30ec5c7c8c9515d2ab876bc7a82dd8",
+    "src/i18n/catalogues/ru/ui.chat.header.json": "1d1a89333884d21f8af2be803b176809af82ced3d002ced2f0c1a7ff9b7474c5",
+    "src/i18n/catalogues/en/ui.chat.pickers.json": "e77e75172487fb154b12ce349fac574cc88516c811acaefd2018208baaf192c1",
+    "src/i18n/catalogues/ru/ui.chat.pickers.json": "e07952dbc8590a673f43e54e737f59352f464da74d27e7130cd8635ce782d00d",
+    "src/i18n/catalogues/en/ui.chat.radient_session.json": "3ac15679b3551e879c2d88d11594946ea4307238330e88cee24ba80b07721118",
+    "src/i18n/catalogues/ru/ui.chat.radient_session.json": "5476f3f8c2118b55f5fec97373504ab9c74605e50cf91ec9631e98cbcee788e2",
+    "src/i18n/catalogues/en/ui.chat.thread_search.json": "aea9f467a5a57775ec7510e09b52800077f8ebd93bf430b7956dd381f1ed3d91",
+    "src/i18n/catalogues/ru/ui.chat.thread_search.json": "d25058ff31e5d24a9316c962fe1f7857170a03db2e7b1fcd42499cf98e3be42c",
+    "src/i18n/catalogues/en/ui.chat.transcript_copy.json": "d6f5264ef4cd19ea1a66b10d7dadfd6478ec239973a7a8fca49903b8ae3818dc",
+    "src/i18n/catalogues/ru/ui.chat.transcript_copy.json": "9c2be929caf15b448a658dd87e0ba1a58ec8f511a986ecfa94ff80f1126ea479",
+    "src/i18n/catalogues/en/ui.common.actions.json": "0c279fc21d17c3f1937e4364fac698601ec4304ce7c7055df786bc037a8b12e3",
+    "src/i18n/catalogues/ru/ui.common.actions.json": "d888de3e4c42934bb1a987f3a60e48a19749d7ed7d5bfb176ad451259a6f01d0",
+    "src/i18n/catalogues/en/ui.hub.card.json": "b9459d327a82d48b8607356f857e6a260cc0b46b78a12109d8b843c559abfcbc",
+    "src/i18n/catalogues/ru/ui.hub.card.json": "11cde946129e6195ac4b37556831b5f277a2615a7ebebc8ecca92d4595258a03",
+    "src/i18n/catalogues/en/ui.hub.detail.json": "d6a3fdb30fc5a4c1d8e0e5530f377dfac0e2b1238f2fd3dd32a12f0e082861d4",
+    "src/i18n/catalogues/ru/ui.hub.detail.json": "26d3880951e3a3401c85af668f058d3f4411bd140b78a1c131003c3cae17a456",
+    "src/i18n/catalogues/en/ui.hub.pages.json": "9ae73c3aabece832df701ffe1b8c24b01d731a94adeb795103a0215b84fb57bd",
+    "src/i18n/catalogues/ru/ui.hub.pages.json": "83e7863d0310840c70d6c4c2f690f65f273e4bbb71bb064b436ca0f76307e3c9",
+    "src/i18n/catalogues/en/ui.hub.viewer.json": "a6eed998576ef689a2fc011b2f9c64eaf53fe8b007b2efc21cf66118bc206375",
+    "src/i18n/catalogues/ru/ui.hub.viewer.json": "03a43f0bd10e6a9fecb9fc55f69d207ef68ec5bce4357735c920d0d706838120",
+    "~/local-operator/i18n/glossary.md": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "~/local-operator/i18n/style-guides/ru.md": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+  },
+  "document_sha256": {
+    "src/i18n/catalogues/en/ui.agents.settings.context.json": "8a5cfe0612d0b531623bb389bc16f2356321d8ce90c9d47f1e1153a9646c9ecc",
+    "src/i18n/catalogues/en/ui.chat.asks.context.json": "7122ffd178e613acab40c943549ce851b784f3516ca9509e20b321276155a12f",
+    "src/i18n/catalogues/en/ui.chat.attachments.context.json": "3f7d551306b599a3562e4160a4e9f4c3891b748f559efa5a59f313c5273b6689",
+    "src/i18n/catalogues/en/ui.chat.canonical.context.json": "24af6084d38efbe4bd8f68cc5278ad9d18ca565b9adaa8d3fcec5c455224c3bb",
+    "src/i18n/catalogues/en/ui.chat.device.context.json": "f0124ac3582c7093a933e1b8c5809118154baca2f7b080fbf8f310af406669ac",
+    "src/i18n/catalogues/en/ui.chat.header.context.json": "bd54e484970b0dd5e67a0401c4356b2e6174c13795418b52417d1fab4bd9babb",
+    "src/i18n/catalogues/en/ui.chat.pickers.context.json": "9a816b69c0e58df1d5acac0ed65bd2c1e35afe7816a4ad90e9c951924cd4f0c4",
+    "src/i18n/catalogues/en/ui.chat.radient_session.context.json": "7ffecc3424bb27fc6ff6c40cfb56adc25c774c0a67a0a5f19bc6616896d4a0b9",
+    "src/i18n/catalogues/en/ui.chat.thread_search.context.json": "bafe51abd1dd42f911a49ac145a4ed11df2f2958aeac0b2b81ab6da6c17d8918",
+    "src/i18n/catalogues/en/ui.chat.transcript_copy.context.json": "ebc8a998df510b368dfefaf49f224165da37a8520c64984e17689ab047755737",
+    "src/i18n/catalogues/en/ui.common.actions.context.json": "5bcb9e2bb50971877dd5b69200a811e9d0a3a7b15285b4fe04900ef0f8545751",
+    "src/i18n/catalogues/en/ui.hub.card.context.json": "9aea8daffaa6002c75f010f602ce28a77ef5f999acdf79fcbdec969d4a1bd9b9",
+    "src/i18n/catalogues/en/ui.hub.detail.context.json": "f30490a77fe7555ff64b2634753e48ea0e6b8947803e0bc0fffb05046d85afba",
+    "src/i18n/catalogues/en/ui.hub.pages.context.json": "264c53349cc2ba949a2348548c7bb84bfaa326aee8ec34cda477778a18b04974",
+    "src/i18n/catalogues/en/ui.hub.viewer.context.json": "004c5c8be08444f9282ac91adfb484ce28a3455b0b8b1779182c44d1fd75ccd7"
+  },
+  "change_surface": {
+    "ru_values_changed_since_review": [
+      "ui.hub.detail.back_aria",
+      "ui.hub.detail.delist_tooltip"
+    ],
+    "ru_files_changed_since_review": [
+      "src/i18n/catalogues/ru/ui.hub.detail.json"
+    ],
+    "en_files_changed_since_review": [
+      "src/i18n/catalogues/en/ui.hub.detail.context.json"
+    ],
+    "en_catalogue_changes": "none - every en catalogue hash in this receipt is byte-identical to the round-3 receipt, so the 89 English keys are the same source text",
+    "how_measured": "git diff --stat 8f1c56a425..HEAD over src/i18n/catalogues/{en,ru}; plus a hash comparison of all 30 in-scope catalogue files against the round-3 receipt"
+  },
+  "read_provenance": {
+    "values": "ru ui.hub.detail.json read whole through read_public_copy at a10255813c; the values of the other filed-on keys were re-verified through the same route or from the unchanged bytes confirmed by hash equality with the round-3 reads",
+    "docs_from_filesystem": "~/local-operator/i18n/glossary.md, ~/local-operator/i18n/style-guides/ru.md, and the 15 en sidecars (hashes in document_sha256; the ui.hub.detail sidecar note was re-read at its corrected text)",
+    "change_evidence": "git show a10255813c for the ru file and the en sidecar; git diff --stat for the change surface",
+    "structural_check": "a read-only script over the 15 en/ru file pairs at the new head reported booleans only: 89/89 keys present, placeholder token sets byte-identical, no problems",
+    "not_read": [
+      "repo edits",
+      "anything outside the paths named above",
+      "translation/MT services"
+    ]
+  },
+  "checks": [
+    {
+      "check": "RU-01 resolved",
+      "result": "resolved",
+      "detail": "back_aria now «Назад в Хаб агентов» and delist_tooltip «Навсегда убрать этого агента из Хаба агентов»; the Latin 'Agent Hub' is gone from the family, inflection is correct (accusative «в Хаб агентов», genitive «из Хаба агентов»), the permanence qualifier survives, and the remaining «из хаба» references are the generic common noun in running sentences - case variation of one term, not a second name"
+    },
+    {
+      "check": "RU-02 resolved",
+      "result": "not resolved",
+      "detail": "ui.hub.detail.delisting still reads «Удаление агента из хаба» at a10255813c"
+    },
+    {
+      "check": "RU-03 resolved",
+      "result": "not resolved",
+      "detail": "ui.hub.detail.failure.like still reads «Не удалось поставить лайк» at a10255813c"
+    },
+    {
+      "check": "RU-04 resolved",
+      "result": "not resolved",
+      "detail": "ui.chat.canonical.raw_information still reads «Исходные данные»; ui.chat.canonical's ru hash is unchanged"
+    },
+    {
+      "check": "RU-05 resolved",
+      "result": "not resolved",
+      "detail": "ui.chat.radient_session.pointer.sign_in_active still reads «Очистить его…»; the namespace's ru hash is unchanged"
+    },
+    {
+      "check": "keys filed on read correctly now",
+      "result": "pass",
+      "detail": "both corrected keys read as native ru in their roles (icon-button name, tooltip); no new defect in either"
+    },
+    {
+      "check": "placeholder identity on the filed-on keys",
+      "result": "pass",
+      "detail": "none of the six keys filed on carries a token; the family's tokenised key delist_body keeps {name} byte-identical to English, and the full 89-key scan found no token mismatch anywhere"
+    },
+    {
+      "check": "regression inside the delta",
+      "result": "pass",
+      "detail": "only two ru values moved in the whole delta and both belong to RU-01; all other 87 ru values and all 89 en values are byte-identical to the round-3 receipt, so nothing already approved was disturbed"
+    },
+    {
+      "check": "a10255813c side effects on approved material",
+      "result": "pass",
+      "detail": "the only other change is the en sidecar note for back_aria, which is documentation; the ru side of the delta carries no collateral edit"
+    },
+    {
+      "check": "status rule",
+      "result": "applied",
+      "detail": "carried from the round-3 receipt: a group is changes_requested only when a BLOCKER or MAJOR remains; MINOR and NIT findings leave it passed and stay listed for the wave"
+    }
+  ],
+  "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 2,
+    "NIT": 2
+  },
+  "verdict": "pass",
+  "verdict_basis": "RU-01, the only finding that could misname a surface, is resolved at a10255813c and nothing else in the delta moved. RU-02 and RU-03 (MINOR) and RU-04, RU-05 (NIT) remain unfixed and are recorded as standing, non-gating recommendations under the severity rule this audit carried in.",
+  "findings": [
+    {
+      "id": "RU-02",
+      "severity": "MINOR",
+      "status": "still stands",
+      "namespace": "ui.hub.detail",
+      "keys": [
+        "ui.hub.detail.delisting"
+      ],
+      "current": {
+        "ui.hub.detail.delisting": "Удаление агента из хаба"
+      },
+      "english": {
+        "ui.hub.detail.delisting": "Delisting agent"
+      },
+      "problem": "Unchanged at a10255813c. The spinner label announced while the delist request is in flight says 'Удаление' (deletion), while the same dialog's body promises the agent can be published again and every sibling key uses 'убрать'. Not a blocker: the action is already confirmed and no consequence is misstated to a user who has not acted.",
+      "suggestion": "«Убираем агента из хаба» (or «Снятие агента с публикации»), keeping the verb family of delist_title / delist_confirm / failure.delist."
+    },
+    {
+      "id": "RU-03",
+      "severity": "MINOR",
+      "status": "still stands",
+      "namespace": "ui.hub.detail",
+      "keys": [
+        "ui.hub.detail.failure.like"
+      ],
+      "current": {
+        "ui.hub.detail.failure.like": "Не удалось поставить лайк"
+      },
+      "english": {
+        "ui.hub.detail.failure.like": "The like did not go through"
+      },
+      "problem": "Unchanged at a10255813c. The English key is direction-agnostic and covers a failed unlike as well (ui.hub.viewer.unlike ships «Убрать лайк с агента»); when unliking fails the alert names the opposite action. Its sibling failure.favourite avoids the problem with «Не удалось обновить избранное».",
+      "suggestion": "Neutral wording: «Лайк не сохранился» or «Не удалось изменить лайк»."
+    },
+    {
+      "id": "RU-04",
+      "severity": "NIT",
+      "status": "still stands",
+      "namespace": "ui.chat.canonical",
+      "keys": [
+        "ui.chat.canonical.raw_information"
+      ],
+      "current": {
+        "ui.chat.canonical.raw_information": "Исходные данные"
+      },
+      "english": {
+        "ui.chat.canonical.raw_information": "Raw information"
+      },
+      "problem": "Unchanged at a10255813c. The heading sits above RawInfoView's monospace dump of unprocessed conversation data; «Исходные данные» reads as source/input data.",
+      "suggestion": "«Необработанные данные» (or «Сырые данные»)."
+    },
+    {
+      "id": "RU-05",
+      "severity": "NIT",
+      "status": "still stands",
+      "namespace": "ui.chat.radient_session",
+      "keys": [
+        "ui.chat.radient_session.pointer.sign_in_active"
+      ],
+      "current": {
+        "ui.chat.radient_session.pointer.sign_in_active": "Очистить его можно в «Настройках», в разделе «Провайдеры»."
+      },
+      "english": {
+        "ui.chat.radient_session.pointer.sign_in_active": "Settings, under Providers, is where it can be cleared."
+      },
+      "problem": "Unchanged at a10255813c. «его» (m./n. sg.) has no antecedent in this locale's own copy: sibling prose.needs_sign_in calls the stored sign-in «данные входа» (neuter plural, which takes «их»). The sentence above this pointer comes from the backend, so the gender is a coin flip.",
+      "suggestion": "Очистить их можно в «Настройках», в разделе «Провайдеры». — or drop the pronoun: Очистить можно в «Настройках», в разделе «Провайдеры»."
+    }
+  ],
+  "namespaces": {
+    "ui.agents.settings": {
+      "status": "passed",
+      "keys_audited": 5,
+      "sha256": {
+        "en": "3ba270885be69d682183c849436c3e2146bf5c8875cf8a2be1f26528ed20fd4d",
+        "target": "bea08ba2866a744a32705732e8f7ae476ba9424283286c319442bdc8e4a754cb"
+      },
+      "findings": []
+    },
+    "ui.chat.asks": {
+      "status": "passed",
+      "keys_audited": 2,
+      "sha256": {
+        "en": "3399e4015ace811013fb16d9f021016eaecf8ed700e6d34ee2c0d0029068832a",
+        "target": "3fad48d8d827a3a7a8eda38f8b5f8d7d3d8567e26e4fe6c878959443fc68f18c"
+      },
+      "findings": []
+    },
+    "ui.chat.attachments": {
+      "status": "passed",
+      "keys_audited": 5,
+      "sha256": {
+        "en": "623a1363260ecbe40393b4424dde4d7b6cc084688ac354483052639a145ce892",
+        "target": "5b0023cad297ff9a4ee5b3e7752ca0bd100ad8cbb0b76a03b6d97063b6e6e77d"
+      },
+      "findings": []
+    },
+    "ui.chat.canonical": {
+      "status": "passed",
+      "keys_audited": 9,
+      "sha256": {
+        "en": "e497effa4c5ba36da6fc3fb4598e5cd7cd2219cae675e94b51d00682e2f90935",
+        "target": "122bfa1e90b4a755e2f6b6628e39e56fbf25eb517cc05e822d3cc080877cc991"
+      },
+      "findings": [
+        {
+          "id": "RU-04",
+          "severity": "NIT",
+          "status": "still stands",
+          "namespace": "ui.chat.canonical",
+          "keys": [
+            "ui.chat.canonical.raw_information"
+          ],
+          "current": {
+            "ui.chat.canonical.raw_information": "Исходные данные"
+          },
+          "english": {
+            "ui.chat.canonical.raw_information": "Raw information"
+          },
+          "problem": "Unchanged at a10255813c. The heading sits above RawInfoView's monospace dump of unprocessed conversation data; «Исходные данные» reads as source/input data.",
+          "suggestion": "«Необработанные данные» (or «Сырые данные»)."
+        }
+      ]
+    },
+    "ui.chat.device": {
+      "status": "passed",
+      "keys_audited": 1,
+      "sha256": {
+        "en": "2be9eaf88f3f95eec4d28b4cc5b6397edbd3173eb2af3713ff2da4f6b0b5fcd6",
+        "target": "5e565be39b04368f5a5174355561b479180824d0429f874afe6426e63976d971"
+      },
+      "findings": []
+    },
+    "ui.chat.header": {
+      "status": "passed",
+      "keys_audited": 2,
+      "sha256": {
+        "en": "a2584118fd1ae8da26a27f8e739bbde58c30ec5c7c8c9515d2ab876bc7a82dd8",
+        "target": "1d1a89333884d21f8af2be803b176809af82ced3d002ced2f0c1a7ff9b7474c5"
+      },
+      "findings": []
+    },
+    "ui.chat.pickers": {
+      "status": "passed",
+      "keys_audited": 1,
+      "sha256": {
+        "en": "e77e75172487fb154b12ce349fac574cc88516c811acaefd2018208baaf192c1",
+        "target": "e07952dbc8590a673f43e54e737f59352f464da74d27e7130cd8635ce782d00d"
+      },
+      "findings": []
+    },
+    "ui.chat.radient_session": {
+      "status": "passed",
+      "keys_audited": 8,
+      "sha256": {
+        "en": "3ac15679b3551e879c2d88d11594946ea4307238330e88cee24ba80b07721118",
+        "target": "5476f3f8c2118b55f5fec97373504ab9c74605e50cf91ec9631e98cbcee788e2"
+      },
+      "findings": [
+        {
+          "id": "RU-05",
+          "severity": "NIT",
+          "status": "still stands",
+          "namespace": "ui.chat.radient_session",
+          "keys": [
+            "ui.chat.radient_session.pointer.sign_in_active"
+          ],
+          "current": {
+            "ui.chat.radient_session.pointer.sign_in_active": "Очистить его можно в «Настройках», в разделе «Провайдеры»."
+          },
+          "english": {
+            "ui.chat.radient_session.pointer.sign_in_active": "Settings, under Providers, is where it can be cleared."
+          },
+          "problem": "Unchanged at a10255813c. «его» (m./n. sg.) has no antecedent in this locale's own copy: sibling prose.needs_sign_in calls the stored sign-in «данные входа» (neuter plural, which takes «их»). The sentence above this pointer comes from the backend, so the gender is a coin flip.",
+          "suggestion": "Очистить их можно в «Настройках», в разделе «Провайдеры». — or drop the pronoun: Очистить можно в «Настройках», в разделе «Провайдеры»."
+        }
+      ]
+    },
+    "ui.chat.thread_search": {
+      "status": "passed",
+      "keys_audited": 3,
+      "sha256": {
+        "en": "aea9f467a5a57775ec7510e09b52800077f8ebd93bf430b7956dd381f1ed3d91",
+        "target": "d25058ff31e5d24a9316c962fe1f7857170a03db2e7b1fcd42499cf98e3be42c"
+      },
+      "findings": []
+    },
+    "ui.chat.transcript_copy": {
+      "status": "passed",
+      "keys_audited": 5,
+      "sha256": {
+        "en": "d6f5264ef4cd19ea1a66b10d7dadfd6478ec239973a7a8fca49903b8ae3818dc",
+        "target": "9c2be929caf15b448a658dd87e0ba1a58ec8f511a986ecfa94ff80f1126ea479"
+      },
+      "findings": []
+    },
+    "ui.common.actions": {
+      "status": "passed",
+      "keys_audited": 3,
+      "sha256": {
+        "en": "0c279fc21d17c3f1937e4364fac698601ec4304ce7c7055df786bc037a8b12e3",
+        "target": "d888de3e4c42934bb1a987f3a60e48a19749d7ed7d5bfb176ad451259a6f01d0"
+      },
+      "findings": []
+    },
+    "ui.hub.card": {
+      "status": "passed",
+      "keys_audited": 6,
+      "sha256": {
+        "en": "b9459d327a82d48b8607356f857e6a260cc0b46b78a12109d8b843c559abfcbc",
+        "target": "11cde946129e6195ac4b37556831b5f277a2615a7ebebc8ecca92d4595258a03"
+      },
+      "findings": []
+    },
+    "ui.hub.detail": {
+      "status": "passed",
+      "keys_audited": 26,
+      "sha256": {
+        "en": "d6a3fdb30fc5a4c1d8e0e5530f377dfac0e2b1238f2fd3dd32a12f0e082861d4",
+        "target": "26d3880951e3a3401c85af668f058d3f4411bd140b78a1c131003c3cae17a456"
+      },
+      "findings": [
+        {
+          "id": "RU-02",
+          "severity": "MINOR",
+          "status": "still stands",
+          "namespace": "ui.hub.detail",
+          "keys": [
+            "ui.hub.detail.delisting"
+          ],
+          "current": {
+            "ui.hub.detail.delisting": "Удаление агента из хаба"
+          },
+          "english": {
+            "ui.hub.detail.delisting": "Delisting agent"
+          },
+          "problem": "Unchanged at a10255813c. The spinner label announced while the delist request is in flight says 'Удаление' (deletion), while the same dialog's body promises the agent can be published again and every sibling key uses 'убрать'. Not a blocker: the action is already confirmed and no consequence is misstated to a user who has not acted.",
+          "suggestion": "«Убираем агента из хаба» (or «Снятие агента с публикации»), keeping the verb family of delist_title / delist_confirm / failure.delist."
+        },
+        {
+          "id": "RU-03",
+          "severity": "MINOR",
+          "status": "still stands",
+          "namespace": "ui.hub.detail",
+          "keys": [
+            "ui.hub.detail.failure.like"
+          ],
+          "current": {
+            "ui.hub.detail.failure.like": "Не удалось поставить лайк"
+          },
+          "english": {
+            "ui.hub.detail.failure.like": "The like did not go through"
+          },
+          "problem": "Unchanged at a10255813c. The English key is direction-agnostic and covers a failed unlike as well (ui.hub.viewer.unlike ships «Убрать лайк с агента»); when unliking fails the alert names the opposite action. Its sibling failure.favourite avoids the problem with «Не удалось обновить избранное».",
+          "suggestion": "Neutral wording: «Лайк не сохранился» or «Не удалось изменить лайк»."
+        }
+      ]
+    },
+    "ui.hub.pages": {
+      "status": "passed",
+      "keys_audited": 3,
+      "sha256": {
+        "en": "9ae73c3aabece832df701ffe1b8c24b01d731a94adeb795103a0215b84fb57bd",
+        "target": "83e7863d0310840c70d6c4c2f690f65f273e4bbb71bb064b436ca0f76307e3c9"
+      },
+      "findings": []
+    },
+    "ui.hub.viewer": {
+      "status": "passed",
+      "keys_audited": 10,
+      "sha256": {
+        "en": "a6eed998576ef689a2fc011b2f9c64eaf53fe8b007b2efc21cf66118bc206375",
+        "target": "03a43f0bd10e6a9fecb9fc55f69d207ef68ec5bce4357735c920d0d706838120"
+      },
+      "findings": []
+    }
+  },
+  "notes": [
+    {
+      "id": "RU-01",
+      "prior_severity": "MINOR",
+      "status": "resolved",
+      "evidence": "a10255813c: ru/ui.hub.detail.json back_aria and delist_tooltip now use «Хаб агентов»/«Хаба агентов»"
+    },
+    {
+      "id": "RU-02",
+      "prior_severity": "MINOR",
+      "status": "still stands",
+      "evidence": "value unchanged at a10255813c"
+    },
+    {
+      "id": "RU-03",
+      "prior_severity": "MINOR",
+      "status": "still stands",
+      "evidence": "value unchanged at a10255813c"
+    },
+    {
+      "id": "RU-04",
+      "prior_severity": "NIT",
+      "prior_status": "open",
+      "status": "still stands",
+      "detail": "carried from the prior receipt's notes; unchanged"
+    },
+    {
+      "id": "RU-05",
+      "prior_severity": "NIT",
+      "detail": "carried from the round-3 findings array; unchanged",
+      "status": "still stands",
+      "evidence": "value unchanged at a10255813c; carried from the round-3 findings array"
+    },
+    {
+      "observation": "documentation, not a finding and not counted: the corrected en sidecar note for ui.hub.detail.back_aria still ends «'Agent Hub' stays Latin only in the locales whose own navigation ships it that way (es/fr/hi/ru/ur/vi)», while this same commit moves es, fr, hi, ru and vi to their own titles and says ur is the Latin exception. The note's parenthetical is stale against its own fix; worth correcting at the source, but it changes no shipped ru value and I raise no policy finding."
+    }
+  ],
+  "evidence": {
+    "record": "/Users/damian/qa/lit-audit4/ru/receipt.json",
+    "verdict_file": "/Users/damian/qa/lit-audit4/ru/verdict.txt",
+    "audit_log": null,
+    "note": "This file records the checks actually run and their readings; it is not a command log."
+  },
+  "deviation": {
+    "ledger": "No audit-ledger row was written: the requesting session asked for no repo edits and named /Users/damian/qa/lit-audit4/ru/ as the record."
+  },
+  "head": "a10255813c44112eb49bb5d5d6fe05173e2d21c1",
+  "head_short": "a10255813c"
+}

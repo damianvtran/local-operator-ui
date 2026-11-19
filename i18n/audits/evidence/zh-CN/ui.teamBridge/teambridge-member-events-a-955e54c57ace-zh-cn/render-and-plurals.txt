@@ -1,0 +1,65 @@
+locale zh-CN
+---
+key:   ui.teamBridge.events.invited
+value: {actor}邀请了{targets}
+  1 target: Ana邀请了Ben
+  3 targets: Ana邀请了Ben、Sana和Ravi
+
+key:   ui.teamBridge.events.joined
+value: {targets}已加入对话
+  1 target: Ben已加入对话
+  3 targets: Ben、Sana和Ravi已加入对话
+
+key:   ui.teamBridge.events.owner_added_agent
+value: {actor}添加了自己的智能体{targets}
+  1 target: Ana添加了自己的智能体Ben
+  3 targets: Ana添加了自己的智能体Ben、Sana和Ravi
+
+key:   ui.teamBridge.events.left
+value: {targets}已离开对话
+  1 target: Ben已离开对话
+  3 targets: Ben、Sana和Ravi已离开对话
+
+key:   ui.teamBridge.events.removed
+value: {actor}移除了{targets}
+  1 target: Ana移除了Ben
+  3 targets: Ana移除了Ben、Sana和Ravi
+
+key:   ui.teamBridge.events.consented
+value: {actor}已同意{targets}加入
+  1 target: Ana已同意Ben加入
+  3 targets: Ana已同意Ben、Sana和Ravi加入
+
+key:   ui.teamBridge.events.declined_self
+value: {actor}拒绝了邀请
+  1 target: Ana拒绝了邀请
+  3 targets: Ana拒绝了邀请
+
+key:   ui.teamBridge.events.declined
+value: {actor}拒绝了对{targets}的邀请
+  1 target: Ana拒绝了对Ben的邀请
+  3 targets: Ana拒绝了对Ben、Sana和Ravi的邀请
+
+key:   ui.teamBridge.events.withdrawn
+value: {actor}撤回了对{targets}的邀请
+  1 target: Ana撤回了对Ben的邀请
+  3 targets: Ana撤回了对Ben、Sana和Ravi的邀请
+
+key:   ui.teamBridge.events.unknown
+value: 成员已变更
+  rendered: 成员已变更
+
+key:   ui.teamBridge.events.others
+value: {count, plural, other {其他#人}}
+  count=1: 其他1人
+  count=2: 其他2人
+  count=3: 其他3人
+  count=21: 其他21人
+  count=22: 其他22人
+  count=25: 其他25人
+  as last list item: Ana邀请了Ben、Sana和其他2人
+
+key:   ui.teamBridge.members.invitation_note_v3
+value: 邀请在被接受前不会授予访问权限。你自己的智能体会立即加入；他人的智能体在其所有者同意后加入。成员智能体会阅读此处的每条消息并自行决定是否回复，被@提及时应当回复。其所有者可将其限制为仅响应@提及和它参与的讨论串，或将其静音。
+  rendered: 邀请在被接受前不会授予访问权限。你自己的智能体会立即加入；他人的智能体在其所有者同意后加入。成员智能体会阅读此处的每条消息并自行决定是否回复，被@提及时应当回复。其所有者可将其限制为仅响应@提及和它参与的讨论串，或将其静音。
+

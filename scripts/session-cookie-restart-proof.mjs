@@ -304,7 +304,10 @@ async function rendererEvaluate(expression) {
 		await fetch(`http://127.0.0.1:${devtoolsPort}/json/list`)
 	).json();
 	const page = list.find(
-		(target) => target.type === "page" && target.url.startsWith("file:"),
+		(target) =>
+			target.type === "page" &&
+			target.url.startsWith("file:") &&
+			target.url.includes("index.html"),
 	);
 	if (!page) throw new Error("no renderer target on the debugging port");
 	const socket = new WebSocket(page.webSocketDebuggerUrl);

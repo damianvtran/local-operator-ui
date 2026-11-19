@@ -1,0 +1,49 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "765ad2515acf-hi-s16f-r2",
+  "locale": "hi",
+  "namespace": "ui.chat.canonical",
+  "status": "passed",
+  "sha256": {
+    "hi": "37bca60d5a5ee2d1f19bbaed857e5294ecdb125f56dfd11170723341c4459063",
+    "en": "12ec2698434dcb39497e288af62d11d70f0fd71d494a9becf3fd611d6568bbdd"
+  },
+  "context_sha256": "95aa203759416c93180b7eb4967e6fcf5bce0dffe20e9d005b431c645e9e11e6",
+  "scope": "Round 2, independent re-audit of the 10 S16f generation-card keys in ui.chat.canonical, read on the LANDED bytes at 9931d62addf8a0606bb26d32a8bc163dc7c126b3: sound.batch.item_status, sound.batch.summary, sound.batch.latest_update, sound.cost.unknown, sound.cost.no_charge, sound.cost.estimated_zero, sound.cost.batch_unknown, media.image_label, media.sound_label, supplement.sound_fallback_label. The other 456 values are unchanged bytes outside this scope.",
+  "findings": [
+    {
+      "severity": "NIT",
+      "id": "H2-1",
+      "key": "ui.chat.canonical.supplement.sound_fallback_label",
+      "current": "बनाया गया साउंड",
+      "issue": "Three words against the sidecar's 'Two words'. Measures 15 cells, exactly the English width, on a truncating control line; no shorter idiomatic form exists (निर्मित is the Sanskritised register the hi guide prefers to avoid, and बनाया गया is the catalogue's own created verb: agents.config.result.created). Accepted as-is, recorded so the deviation is visible.",
+      "suggested": "no change (accepted as-is)"
+    },
+    {
+      "severity": "NIT",
+      "id": "H2-2",
+      "key": "ui.chat.canonical.sound.cost.no_charge",
+      "current": "कोई शुल्क नहीं।",
+      "issue": "Three words against the sidecar's 'One or two words', 15 cells vs English 10. It is the house negation pattern (ui.providers provider_catalog 'कोई अतिरिक्त शुल्क नहीं।'); the two-word alternative 'शुल्क नहीं' is clipped. Also corrects the round-1 fit table, which recorded this string as 10 cells.",
+      "suggested": "no change (accepted as-is)"
+    }
+  ],
+  "checks": [
+    "Hashes recomputed from the landed bytes on disk at 9931d62: en 12ec2698434d…, hi 37bca60d5a5e…, context 95aa20375941…; this receipt names exactly those bytes.",
+    "Ten landed pairs (sorted-key compact UTF-8 JSON) re-hashed: en bdd1d9d1cfcd…, hi c932e7336c1f…; the ten keys are the file's last ten in English order in both files.",
+    "Key parity on the whole namespace: 466 hi keys vs 466 en keys, 0 missing, 0 extra, 0 empty, 0 duplicates; valid JSON.",
+    "Repo validators in a scratch mirror of HEAD: generate.mjs --check (keys.gen.ts byte-identical), check-coverage (ok, 7 gated locales, 0 allowed keys remain), check-duplicates (1428 files, 0 duplicate keys), context-parity (every English key covered), node --test locale-parity.test.mjs (44/44 pass), node --test generation-card-labels.test.mjs (27/27 pass).",
+    "Own ICU grid through the app's formatter (IntlMessageFormat, as src/i18n/messages.ts builds it): counts 0,1,2,3,5,11,21,22,100,1000,1000000 x failed/cancelled/other x has_attention yes/no (594 summary renders), item rows per status, latest_update 1/1..1000000/1000000, both media labels =1 and numbered, all four cost lines. No throw, no stray { } # undefined NaN, no stray FSI.",
+    "Placeholder names and types identical to English for all ten keys (status,label,completed,failed,cancelled,unknown,has_attention,labels,name,item,total,count,position, all number where English uses number); ICU arm sets identical to English key by key.",
+    "hi CLDR categories are one/other and both arms are present wherever the message selects by category; media labels keep the English exact-match =1 / other shape, where =1 is the singular selector.",
+    "NFC checked on every value; no Cf characters, no ZWJ/ZWNJ; $0 kept; ::group-off honoured (1000 renders 1000).",
+    "Negative controls on in-memory mutants: dropped placeholder, missing one arm, English leftover, broken ICU, polarity flip - all five caught (the checker exits 2 if any is missed).",
+    "Full semantic read of all ten values against the English and its sidecar, with the locale style guide (i18n/style-guides/hi.md) and glossary (i18n/glossary.md) as the binding terminology source; hashes in references.",
+    "No Latin text left in any value beyond ICU syntax and the mandated $0."
+  ],
+  "references": {
+    "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "style_guide_sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+  }
+}

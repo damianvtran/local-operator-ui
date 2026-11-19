@@ -63,6 +63,8 @@
 
 import { Button } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { ScanEye } from "lucide-react";
 import type { Ref } from "react";
@@ -105,14 +107,30 @@ import type { MonitorCancelSection } from "./use-monitor-cancel";
  * `data-run-panel-row` is the roster's and the wake row's own hook, on purpose:
  * all of the pane's row lists carry it, so a capture rig or a QA pass that can
  * address a child's row can address a watch's.
+ *
+ * Exported because the Schedules page's Monitors section draws the SAME row
+ * (#1898), with the same cancel interaction, so a watch reads and cancels
+ * identically in the pane and on the page; a second row component there would
+ * be two spellings of one object on surfaces that can be seen together.
  */
-const MonitorRowView = ({
+export const MonitorRowView = ({
 	row,
 	cancel,
+	wrapHealth = false,
 }: {
 	row: MonitorRow;
 	/** The pane body's cancel interaction: the ask, and this row's own state. */
 	cancel: MonitorCancelSection;
+	/**
+	 * Give the health tail its own wrapping line instead of a truncated clause
+	 * on the facts line (UX round 1, U3, PR #1930). On the Schedules page the
+	 * tail - a disabled reason, a blind or never-checked sentence - IS the answer
+	 * to "why is my watch not running", and at 640px a `title`-only remainder
+	 * left keyboard and touch readers with `5 checks in a row fai…`. Off by
+	 * default: the pane's dense one-line rhythm and its measured yield order
+	 * (design round 1, D1) stay exactly as they were.
+	 */
+	wrapHealth?: boolean;
 }) => {
 	/* The row's current cancel state, or undefined for the plain control. */
 	const cancelState = cancel.stateFor(row);
@@ -197,7 +215,7 @@ const MonitorRowView = ({
 							{`· ${row.lastCheckLabel}`}
 						</span>
 					)}
-					{row.healthLabel && (
+					{row.healthLabel && !wrapHealth && (
 						<span
 							className={cn(
 								"min-w-0 shrink-[30] truncate text-meta",
@@ -209,6 +227,17 @@ const MonitorRowView = ({
 						</span>
 					)}
 				</div>
+				{row.healthLabel && wrapHealth && (
+					<span
+						data-monitor-health
+						className={cn(
+							"whitespace-normal break-words text-meta",
+							row.alerting ? "text-warning" : "text-ink-dim",
+						)}
+					>
+						{row.healthLabel}
+					</span>
+				)}
 				{identity && (
 					<>
 						<span
@@ -256,7 +285,7 @@ const MonitorRowView = ({
 						title={cancelState.detail}
 						data-monitor-cancel-state="refused"
 					>
-						Cancel refused
+						{t("ui.chat.run_details.monitors.cancel_refused")}
 					</span>
 				)}
 				<Button
@@ -274,7 +303,9 @@ const MonitorRowView = ({
 					aria-label={
 						cancelState?.kind === "cancelled"
 							? undefined
-							: `Cancel monitor ${row.name}`
+							: t("ui.chat.run_details.monitors.cancel_aria", {
+									name: row.name,
+								})
 					}
 					disabled={cancelState?.kind === "cancelled"}
 					onClick={() => cancel.request(row)}
@@ -291,7 +322,9 @@ const MonitorRowView = ({
 						"disabled:text-ink-dim",
 					)}
 				>
-					{cancelState?.kind === "cancelled" ? "Cancelled" : "Cancel"}
+					{cancelState?.kind === "cancelled"
+						? t("ui.chat.run_details.monitors.cancelled")
+						: t("ui.chat.run_details.monitors.cancel")}
 				</Button>
 			</div>
 		</li>
@@ -323,6 +356,7 @@ export const RunDetailMonitors = ({
 	 */
 	cancel: MonitorCancelSection;
 }) => {
+	useI18nLocale();
 	const { rows, hidden } = visibleMonitors(details.monitors);
 	return (
 		<section ref={sectionRef} className={cn("flex flex-col pb-1.5")}>
@@ -338,7 +372,7 @@ export const RunDetailMonitors = ({
 				)}
 			>
 				<span className={cn("shrink-0 text-meta text-ink-muted")}>
-					Monitors
+					{t("ui.chat.run_details.monitors.title")}
 				</span>
 				<span
 					className={cn(
@@ -365,11 +399,14 @@ export const RunDetailMonitors = ({
 				 * hand-edited index, not through the shipping ceiling.
 				 */}
 				{hidden > 0 && (
-					<li className={cn("pr-3")}>
+					<li className={cn("pe-3")}>
 						<Disclosure
 							disabled={true}
-							summary={`${hidden} more monitor${hidden === 1 ? "" : "s"}`}
-							className={cn("pl-9 text-meta")}
+							summary={t("ui.chat.run_details.monitors.more", {
+								count_display: String(hidden),
+								count: hidden,
+							})}
+							className={cn("ps-9 text-meta")}
 						/>
 					</li>
 				)}

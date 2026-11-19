@@ -1,0 +1,22 @@
+{
+	"why": "Tracked record of the twelve onboarding-value-clarity browser-tool screenshots. The PNGs are rig output and live in the ignored docs/evidence-frames/ tree (see .gitignore and scripts/check-evidence-structure.mjs, which fails on any committed frame); this file keeps what a reader needs to cite and verify them without committing pixels. Moved byte-for-byte from the pre-split tracked path docs/evidence/onboarding-value-clarity/after/ - the sha256 values were taken before and after the move and match.",
+	"source": "Harness browser tool screenshots of real Storybook component renders with synthetic transports/data (not a live backend, billing purchase, auth hand-off or trial activation). Story IDs and theme arguments are listed in README.md beside this file.",
+	"capturedAt": "2026-11-09",
+	"movedFrom": "docs/evidence/onboarding-value-clarity/after",
+	"framesRoot": "docs/evidence-frames/onboarding-value-clarity/after",
+	"format": "PNG, 2560x1440 native (browser body 1280x720 CSS px)",
+	"frames": [
+		{ "path": "docs/evidence-frames/onboarding-value-clarity/after/plan-required-dark.png", "sha256": "4680f7b1343f6ba652826fdcedc2d8554309e67e1a8f61ae2bdc44ddebb2bf1c" },
+		{ "path": "docs/evidence-frames/onboarding-value-clarity/after/plan-required-light.png", "sha256": "4ec67823d7a3afb0dd5f577e68e8d603ae543f6dd7b11d3ce18afed0564f658f" },
+		{ "path": "docs/evidence-frames/onboarding-value-clarity/after/radient-row-dark.png", "sha256": "828c35248f3c8c4a3a3cb7dd47e84beee7c73396509f07ea183393ebc7389c6b" },
+		{ "path": "docs/evidence-frames/onboarding-value-clarity/after/radient-row-light.png", "sha256": "50d4a62238b3e122b2e3adcf74f4ef87e92c69e47a02329e6063f71dc429b3fb" },
+		{ "path": "docs/evidence-frames/onboarding-value-clarity/after/signed-out-dark.png", "sha256": "338f7e58548309be4949739b9781fe7bf08c48ca721be4d44800137e8c25fcb0" },
+		{ "path": "docs/evidence-frames/onboarding-value-clarity/after/signed-out-light.png", "sha256": "f3fb501bd5ed4ca4a642239d6c4fdd791b55369b398de6ea679514ebbbc95ac8" },
+		{ "path": "docs/evidence-frames/onboarding-value-clarity/after/step1-dark.png", "sha256": "9eae104c6df0c53c8c4ca3bb4ac275034afa85bcef38bac8e694df2669b16ad9" },
+		{ "path": "docs/evidence-frames/onboarding-value-clarity/after/step1-light.png", "sha256": "6366f751e873f283cbaf8fc222d20bcc8739caf53efe4fcf06de46d049736f3a" },
+		{ "path": "docs/evidence-frames/onboarding-value-clarity/after/step2-dark.png", "sha256": "b399d1dd7723e52cae1728c0a8269f2757f01fd5f04c85804fe852096cae3a7f" },
+		{ "path": "docs/evidence-frames/onboarding-value-clarity/after/step2-light.png", "sha256": "bc5dd17609ede19247c6d0246e911a3aa4e6d4fa6e2f66adea0207738fbe7553" },
+		{ "path": "docs/evidence-frames/onboarding-value-clarity/after/step3-dark.png", "sha256": "bc183f1f9a868c355d47b3202a881a73ccfb1000ff81b1fe70681ae98ac4dd80" },
+		{ "path": "docs/evidence-frames/onboarding-value-clarity/after/step3-light.png", "sha256": "d6d39b145f87292ec1e042b128160eafbfbff801c83c808d31ab6e517416cbbd" }
+	]
+}

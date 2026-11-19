@@ -32,6 +32,8 @@ interface NavigationEvent {
 	url: string;
 	isMainFrame: boolean;
 	isSameDocument: boolean;
+	frame?: { parent: { url: string } | null } | null;
+	initiator?: { url: string } | null;
 	preventDefault: () => void;
 }
 
@@ -48,13 +50,17 @@ interface NavigationEvent {
  */
 function installNavigationVerdict(
 	contents: WebContents,
-	decide: (url: string, isMainFrame: boolean) => Verdict,
+	decide: (
+		url: string,
+		isMainFrame: boolean,
+		event: NavigationEvent,
+	) => Verdict,
 	log: Log,
 ): void {
 	const onNavigation = (event: NavigationEvent): void => {
 		// Fragment and history-API changes (the HashRouter) replace no document.
 		if (event.isSameDocument) return;
-		const verdict = decide(event.url, event.isMainFrame);
+		const verdict = decide(event.url, event.isMainFrame, event);
 		if (verdict.allowed) return;
 		event.preventDefault();
 		log(
@@ -88,13 +94,21 @@ export function guardNavigation(
 ): void {
 	installNavigationVerdict(
 		contents,
-		(url, isMainFrame) => {
+		(url, isMainFrame, event) => {
 			// The one-shot rule, checked before the general verdict: the mount URL is
 			// a `data:` document, which `frameNavigationVerdict` refuses by design.
 			if (!isMainFrame && supplementMounts?.consume(url)) {
 				return { allowed: true };
 			}
-			return frameNavigationVerdict({ url, isMainFrame }, trustedUrls());
+			return frameNavigationVerdict(
+				{
+					url,
+					isMainFrame,
+					parentUrl: event.frame?.parent?.url,
+					initiatorUrl: event.initiator?.url,
+				},
+				trustedUrls(),
+			);
 		},
 		log,
 	);

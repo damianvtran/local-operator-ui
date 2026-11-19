@@ -1,0 +1,207 @@
+{
+	"audit_id": "teambridge-mentions-merge-audit-d2ccd70111ca-rebase4-ru",
+	"date": "2026-10-31",
+	"locale": "ru",
+	"namespace": "ui.teamBridge",
+	"branch": "feat/tb-mention-autocomplete",
+	"source_commit": "merge 8589791b13f33ba1281f0ff097d58735f84f8f80 of main 7492ec26bb88bddbd8f3e4cb0aa51a51e553f308 into 0e2fdf0ca2d2411fe51f9b78e58e3aede103b440",
+	"translator": {
+		"agent": "translator",
+		"model": "anthropic/claude-opus-5-5",
+		"date": "2026-10-21",
+		"session": "485b723247d7",
+		"job": "764e8ee192fe",
+		"remediation_job": "78daa414c10d",
+		"added_key_source": {
+			"key": "ui.teamBridge.notify.unavailable",
+			"job": "job8d4e6d78c133",
+			"model": "not supplied"
+		}
+	},
+	"auditors": [
+		{
+			"agent": "task",
+			"model": "anthropic/claude-opus-5-5",
+			"instance": "d2ccd70111ca-rebase4-ru",
+			"date": "2026-10-31",
+			"result": "clean",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"session": "d2ccd70111ca",
+			"model_fallback": {
+				"announced": false,
+				"observed": false
+			}
+		}
+	],
+	"independence": "Independent translation auditor: lopdev task member, session d2ccd70111ca; authored none of the audited strings (translator agent 'translator'; mentions delta self-translated by the feature coder 9d9103d82c81; general_topic/humans_topic by #1534's author), wrote none of the prior audits (0b49d8d07426-rebase2, 171d0b58c96a-rebase3, 4ad83913bb2a, 64e850ffd480-rebase, 98545305d697-rebase), edited no catalogue; wrote only receipts/evidence and rows via ledger-assemble.mjs.",
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "906b4ad78c98a497c0a8e9757936d8ce767aa2e72a03dfc439b58d2ae0ef3ffe"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/ru/ui.teamBridge.json",
+			"sha256": "766b6b25f11ecc38f5276cbc861db23bea93e04c285a718c60c98a9a012f563d"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "9b903e768d2460f4f827e34787d1e12d7056d02d48cab78e5b6f7fa4ca77251c"
+		}
+	},
+	"scope": {
+		"delta_kind": "Merge of origin/main 7492ec26bb8 (PR #1536, team-bridge notification clicks) into ui#1532 head 0e2fdf0 (merge-base 98afe56). Main changed no ui.teamBridge catalogue since the merge-base (git show bytes of ru, en and en context at 7492ec26bb8 == 98afe56), so the merged files are byte-identical to ours (0e2fdf0). JSON-level union check against both parents: every non-mentions value == main 7492ec26bb8 (300/300); every mentions.* value == ours 0e2fdf0 (14/14); missing vs main [], missing vs ours [], extra []. en (314 keys: 300/300 main, 14/14 ours) and en context (1334 leaves: 1273/1273 main, 61/61 ours) same shape. Rows went stale only because the evidence-fold merge driver swapped live/superseded on the 7 ui.teamBridge rows back to main's 64e850ffd480-rebase binding (83a4a8fe en); no catalogue byte moved.",
+		"ours_target_sha256": "766b6b25f11ecc38f5276cbc861db23bea93e04c285a718c60c98a9a012f563d",
+		"ours_en_sha256": "906b4ad78c98a497c0a8e9757936d8ce767aa2e72a03dfc439b58d2ae0ef3ffe",
+		"theirs_target_sha256": "b56bbac3473339f17bdba94c06d673f1a69bbaa4e7fc67dba424f6f0f1748cfd",
+		"theirs_en_sha256": "83a4a8fe8d9c7a548fbdbd07997708bda9c91d9226c629896c77d61c42b31993",
+		"key_diff_vs_ours": {
+			"added": [],
+			"removed": [],
+			"changed": []
+		},
+		"key_diff_vs_theirs": {
+			"added": [
+				"ui.teamBridge.mentions.listbox_label",
+				"ui.teamBridge.mentions.empty",
+				"ui.teamBridge.mentions.section.member_human",
+				"ui.teamBridge.mentions.section.member_agent",
+				"ui.teamBridge.mentions.section.org_human",
+				"ui.teamBridge.mentions.section.org_agent",
+				"ui.teamBridge.mentions.tag.not_member",
+				"ui.teamBridge.mentions.tag.bridge_off",
+				"ui.teamBridge.mentions.notice.not_member",
+				"ui.teamBridge.mentions.notice.invite_failed",
+				"ui.teamBridge.mentions.notice.invite",
+				"ui.teamBridge.mentions.notice.silent",
+				"ui.teamBridge.mentions.notice.pending",
+				"ui.teamBridge.mentions.notice.invited"
+			],
+			"removed": [],
+			"changed": []
+		},
+		"base_bytes_audited_by": [
+			"171d0b58c96a-rebase3-ru",
+			"64e850ffd480-rebase-ru",
+			"0b49d8d07426-rebase2-ru",
+			"98545305d697-rebase-ru",
+			"4ad83913bb2a-ru"
+		],
+		"prior_audit_of_key": {
+			"14 mentions.* keys": {
+				"instances": [
+					"0b49d8d07426-rebase2-ru",
+					"98545305d697-rebase-ru",
+					"4ad83913bb2a-ru",
+					"171d0b58c96a-rebase3-ru"
+				],
+				"value_byte_identical": true,
+				"note": "ours 0e2fdf0 live row (target 766b6b25f11e…, en 906b4ad78c98…)"
+			},
+			"all 300 non-mentions keys": {
+				"instances": [
+					"64e850ffd480-rebase-ru",
+					"171d0b58c96a-rebase3-ru"
+				],
+				"value_byte_identical": true,
+				"note": "main 7492ec26bb8 live ui.teamBridge row (target b56bbac34733…) = 64e850ffd480-rebase; also covered by 171d0b58c96a-rebase3 on the merged bytes"
+			}
+		},
+		"keys_audited_linguistically": [],
+		"not_audited": "No value changed (merged bytes == ours byte-for-byte; main touched no catalogue), so no fresh linguistic audit was owed; every value is byte-identical to bytes audited by the instances in base_bytes_audited_by. Mechanical rechecks: value identity per parent, ICU placeholder parity on all 314 keys, unicode hygiene."
+	},
+	"audited": {
+		"ui.teamBridge.mentions.listbox_label": {
+			"en": "People and agents to mention",
+			"translation": "Люди и агенты для упоминания"
+		},
+		"ui.teamBridge.mentions.empty": {
+			"en": "No one matches “{query}”",
+			"translation": "Нет совпадений для «{query}»"
+		},
+		"ui.teamBridge.mentions.section.member_human": {
+			"en": "People in this conversation",
+			"translation": "Люди в этом разговоре"
+		},
+		"ui.teamBridge.mentions.section.member_agent": {
+			"en": "Agents in this conversation",
+			"translation": "Агенты в этом разговоре"
+		},
+		"ui.teamBridge.mentions.section.org_human": {
+			"en": "Other people",
+			"translation": "Другие люди"
+		},
+		"ui.teamBridge.mentions.section.org_agent": {
+			"en": "Other agents",
+			"translation": "Другие агенты"
+		},
+		"ui.teamBridge.mentions.tag.not_member": {
+			"en": "not in this conversation",
+			"translation": "не в этом разговоре"
+		},
+		"ui.teamBridge.mentions.tag.bridge_off": {
+			"en": "Team Bridge off",
+			"translation": "Team Bridge отключён"
+		},
+		"ui.teamBridge.mentions.notice.not_member": {
+			"en": "{name} isn’t in this conversation, so they won’t be notified.",
+			"translation": "{name} не участвует в этом разговоре, поэтому уведомление не придёт."
+		},
+		"ui.teamBridge.mentions.notice.invite_failed": {
+			"en": "Couldn’t invite {name}. You can still mention them without notifying.",
+			"translation": "Не удалось пригласить: {name}. Можно упомянуть без уведомления."
+		},
+		"ui.teamBridge.mentions.notice.invite": {
+			"en": "Invite them",
+			"translation": "Пригласить"
+		},
+		"ui.teamBridge.mentions.notice.silent": {
+			"en": "Mention without notifying",
+			"translation": "Упомянуть без уведомления"
+		},
+		"ui.teamBridge.mentions.notice.pending": {
+			"en": "{name} is invited but hasn’t joined yet, so they won’t be notified.",
+			"translation": "Приглашение для {name} ещё не принято, поэтому уведомление не придёт."
+		},
+		"ui.teamBridge.mentions.notice.invited": {
+			"en": "{name} has been invited. They won’t be notified until they join.",
+			"translation": "Приглашение для {name} отправлено. Пока его не примут, уведомление не придёт."
+		}
+	},
+	"checks": {
+		"value_identity": "python json.load (flattened): every non-mentions value == 7492ec26bb8 value (300/300); every mentions.* value == 0e2fdf0 value (14/14); missing vs main []; missing vs ours []; extra beyond union []; bytes == 0e2fdf0: True; main bytes == merge-base 98afe56: True.",
+		"placeholders": "ICU argument-name sets (plural/select-aware parser, quote-escape aware) equal en for all 314 keys: mismatch []; key set == en: True.",
+		"unicode": "NFC: True; stray code points (U+200B-200F, U+00A0, U+FEFF, U+202A-202E, U+2066-2069): [].",
+		"rendered": [
+			"ru mentions 14 all 314 mismatch []"
+		],
+		"rendered_command": "node $LOCAL_OPERATOR_SCRATCHPAD/ph4.mjs (repo node_modules @formatjs/icu-messageformat-parser)"
+	},
+	"findings": [],
+	"status": "passed",
+	"references": {
+		"docs_I18N": {
+			"path": "docs/I18N.md",
+			"sha256": "9a4bde8d1c161286160be4a4ae1c7655615dbf39047052550b725a3da2eb00e2"
+		},
+		"ledger_assemble": {
+			"path": "scripts/i18n/ledger-assemble.mjs",
+			"sha256": "66ec03de791b515424b8d9a93094315111c179c149b35a5323d80c9c38644657"
+		},
+		"precedent": "i18n/receipts/171d0b58c96a-rebase3-ru.json"
+	},
+	"artifacts": {
+		"receipt": {
+			"path": "i18n/receipts/d2ccd70111ca-rebase4-ru.json",
+			"sha256": "30cf6ced1209a30742b2c7ecdeee7494ec3d1adfbce43fa400cc227a83e8e5e5"
+		},
+		"ledger_row": "i18n/ledger.json#entries[locale=ru,namespace=ui.teamBridge]"
+	},
+	"ledger_history_note": "Merge 8589791 (main 7492ec26bb8, whose ledger is byte-identical to merge-base 98afe56) ran the evidence-fold driver, which on the 7 ui.teamBridge rows swapped live/superseded: live became main's 64e850ffd480-rebase-ru (bound to en 83a4a8fe…) and ours' 171d0b58c96a-rebase3-ru moved to superseded[]. Verified the multiset of auditor instances (live + superseded) equals ours (0e2fdf0) and contains main's, before and after assembly; the assembler moved 64e850ffd480-rebase-ru to superseded.",
+	"limitations": "Mechanical union re-audit only: no rendered app frame, no native-speaker sign-off, no fresh linguistic pass (none owed: no value changed).",
+	"audit_notes_not_execution_log": "scope/independence are auditor notes; checks.rendered is verbatim command output."
+}

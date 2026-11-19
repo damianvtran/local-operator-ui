@@ -1,0 +1,47 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "d890d0154160",
+  "status": "passed",
+  "namespace": "ui.chat.pickers",
+  "sha256": {
+    "en": "88d81780ea0cf598689a73b5b0206da020ccfe1b847631214f87f40791b684c7",
+    "ur": "24f8e2ed74524d4fe6aa8b26dc17c253fe8facdfe0dd9693d35282151a2538d2"
+  },
+  "findings": [],
+  "audit_scope": {
+    "head": "c6f1c9ec23d",
+    "base": "0fd3dc386c2",
+    "semantic_keys": [
+      "ui.chat.pickers.destination_pickers.default_approvals_for_all_sessions_that_follow_it_this_session_follows_i",
+      "ui.chat.pickers.destination_pickers.default_for_all_sessions_that_follow_it"
+    ],
+    "kind": "second independent safety delta audit"
+  },
+  "provenance": {
+    "actual_model_source": "Host model-switch notification: temporary fallback due provider quota; initial anthropic/claude-sonnet-5-5, intermediate anthropic/claude-opus-5-5; all substantive audit work performed using openai/gpt-6.1-sol.",
+    "translator_independence": "No translation performed; no other auditor reports or PR comments read."
+  },
+  "validation": {
+    "repository_parity_tests": "8 passed, 0 failed; committed test and catalogue bytes extracted to session scratch, existing node_modules linked; node --max-old-space-size=512 --test scripts/i18n/locale-parity.test.mjs",
+    "additional_checks": "741 keys; exact key set, unique JSON keys, ICU syntax, argument names/types, NFC passed; 31 plural nodes checked. Two changed values have no plural/select/tags or manual bidi controls.",
+    "out_of_scope_unchanged_cldr_gap": {
+      "key": "ui.chat.pickers.session_report_model.totals_meta",
+      "missing": "one",
+      "present": [
+        "=0",
+        "other"
+      ],
+      "verified_identical_to_base": true,
+      "not_a_delta_finding": true
+    },
+    "harness_correction": "Initial custom placeholder comparison incorrectly required traversal order; corrected to compare sorted name/type pairs. Later CLDR check found the unchanged gap explicitly recorded here.",
+    "rendered_proof": "None. Mixed LTR {string} and Urdu punctuation assessed statically only; no claim about rendered bidi ordering, clipping or fit."
+  },
+  "semantic_notes": [
+    "جو اسے استعمال کرتے ہیں denotes sessions using the saved default, not future/subsequent sessions; thus includes live inheriting sessions.",
+    "The explicit per-session choice exception remains intact: جب تک اس کی اپنی پسند نہ ہو۔",
+    "منظوریاں and سیشن match glossary; سیشنز is the natural oblique plural here. Urdu full stops and comma are used; {string} remains unchanged and caller supplies Latin ask/auto tokens. No manual bidi controls added."
+  ],
+  "audit_date": "2026-11-03T07:58:43.913894+00:00"
+}

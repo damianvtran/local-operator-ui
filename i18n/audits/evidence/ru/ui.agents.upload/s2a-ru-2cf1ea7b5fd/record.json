@@ -1,0 +1,77 @@
+{
+  "locale": "ru",
+  "namespace": "ui.agents.upload",
+  "audit_id": "s2a-ru-2cf1ea7b5fd",
+  "audit_date": "2026-11-09",
+  "audit_kind": "independent_delta_linguistic_audit",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "4c8a43091740",
+    "session": "4c8a43091740",
+    "model": "openai/gpt-6.1-sol",
+    "independent_from_translator_session": true,
+    "authored_translation": false,
+    "requested_model": "anthropic/claude-sonnet-5-5",
+    "fallback": true,
+    "actual_model_source": "Session model-switch notifications: anthropic/claude-opus-5-5 then openai/gpt-6.1-sol, provider failure: quota. All substantive audit and checks executed after gpt-6.1-sol notification."
+  },
+  "frozen_head": "2cf1ea7b5fd95b85d6c8bfaa264f6bd3c4e5c3b9",
+  "base": "6031bc9ad71",
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.agents.upload.json",
+      "sha256": "388f6b2348eb76b3c3f6ac074ce32434fe75a31a9a41aa5eaead59c34caa97ab"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.agents.upload.context.json",
+      "sha256": "b2cff9fc8975e5bc6c394a39a9cbd464a53304f6be9657f80446801c0072734f"
+    },
+    "ru": {
+      "path": "src/i18n/catalogues/ru/ui.agents.upload.json",
+      "sha256": "fd5cf0acdb350da982e667157df051d189405ed78a20158b484705ea4b56941c"
+    }
+  },
+  "style_context": {
+    "i18n/glossary.md": {
+      "repository": "local-operator",
+      "path": "i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "source": "External core checkout read during this audit; not frozen UI source."
+    },
+    "i18n/style-guides/ru.md": {
+      "repository": "local-operator",
+      "path": "i18n/style-guides/ru.md",
+      "sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5",
+      "source": "External core checkout read during this audit; not frozen UI source."
+    }
+  },
+  "reviewed_keys": [
+    "ui.agents.upload.failure.publish_fallback"
+  ],
+  "scope_note": "Fresh review of listed changed keys only; no fresh full-namespace claim.",
+  "status": "passed",
+  "result": "clean",
+  "findings": [],
+  "finding_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "mechanical_results": {
+    "keys_checked": 1,
+    "passed": 1,
+    "failed": 0
+  },
+  "artifacts": {
+    "i18n/audits/evidence/ru/ui.agents.upload/s2a-ru-2cf1ea7b5fd/report.md": "7cfd385383430f4a6c005800b1724d3a46e71ec5d1608b1cc9803d384610de48",
+    "i18n/audits/evidence/ru/ui.chat.canonical/s2a-ru-2cf1ea7b5fd/checks.mjs": "41b69aaddd39c8289ffa4d57b5c7951fc72a1be912ffc0887adf12b6757de2a5",
+    "i18n/audits/evidence/ru/ui.chat.canonical/s2a-ru-2cf1ea7b5fd/checks.json": "90533f71abf3ae71c4dc9341fe9b437c36d4e7658c54d8c6629742cb55cc6191"
+  },
+  "dimensions_not_executed": [
+    "rendered UI fit",
+    "pseudo-localization",
+    "real-app E2E"
+  ],
+  "notes_are_not_execution_log": true
+}

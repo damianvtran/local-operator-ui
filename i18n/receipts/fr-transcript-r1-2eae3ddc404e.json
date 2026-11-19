@@ -1,0 +1,105 @@
+{
+ "auditor": {
+  "agent": "reviewer",
+  "role": "i18n-auditor",
+  "instance": "fr-transcript-r1-2eae3ddc404e",
+  "model": "openai/gpt-6.1-sol",
+  "session": "2eae3ddc404e",
+  "independent": true
+ },
+ "agent": "reviewer",
+ "model": "openai/gpt-6.1-sol",
+ "instance": "fr-transcript-r1-2eae3ddc404e",
+ "session": "2eae3ddc404e",
+ "locale": "fr",
+ "head": "2cf1ea7b5fd95b85d6c8bfaa264f6bd3c4e5c3b9",
+ "base": "6031bc9ad71",
+ "date": "2026-11-09T10:16:38.932747+00:00",
+ "independence": {
+  "independent": true,
+  "statement": "Did not author translations; audited directly from frozen worktree bytes; wrote only own evidence and receipt."
+ },
+ "fallback": "anthropic/claude-sonnet-5-5 → anthropic/claude-opus-5-5 → openai/gpt-6.1-sol (provider quota notices)",
+ "status": "passed",
+ "result": "clean",
+ "namespaces": {
+  "ui.chat.canonical": {
+   "status": "passed",
+   "result": "clean",
+   "sha256": {
+    "en": "cd755f73444d7acff3e681c35bbf7e0da30bc61851f28ad711904f23c20c693a",
+    "fr": "1423095a87c282abd47c2ac723c3cfce17698289460f242aff4fb7d5ee56ee65",
+    "context": "4c2a77ff391e074b4561f71f9ceaf2690362c89880b259cba69e6a58832d80dc"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.canonical.json",
+    "fr": "src/i18n/catalogues/fr/ui.chat.canonical.json",
+    "context": "src/i18n/catalogues/en/ui.chat.canonical.context.json"
+   },
+   "keys_audited": [
+    "ui.chat.canonical.transcript.earlier_text_offscreen",
+    "ui.chat.canonical.transcript.interrupted",
+    "ui.chat.canonical.transcript.no_answer_given",
+    "ui.chat.canonical.transcript.not_run",
+    "ui.chat.canonical.transcript.answer_may_be_missing",
+    "ui.chat.canonical.transcript.worked",
+    "ui.chat.canonical.transcript.worked_for",
+    "ui.chat.canonical.transcript.job_suffix"
+   ],
+   "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [],
+    "nit": []
+   }
+  },
+  "ui.agents.upload": {
+   "status": "passed",
+   "result": "clean",
+   "sha256": {
+    "en": "388f6b2348eb76b3c3f6ac074ce32434fe75a31a9a41aa5eaead59c34caa97ab",
+    "fr": "24f6c4f45242d5dffc5aad356b2750b238dd9db328b259aebcbf1c157421b6ce",
+    "context": "b2cff9fc8975e5bc6c394a39a9cbd464a53304f6be9657f80446801c0072734f"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.agents.upload.json",
+    "fr": "src/i18n/catalogues/fr/ui.agents.upload.json",
+    "context": "src/i18n/catalogues/en/ui.agents.upload.context.json"
+   },
+   "keys_audited": [
+    "ui.agents.upload.failure.publish_fallback"
+   ],
+   "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [],
+    "nit": []
+   }
+  }
+ },
+ "findings": {
+  "blocker": [],
+  "major": [],
+  "minor": [],
+  "nit": []
+ },
+ "findings_counts": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 0,
+  "nit": 0
+ },
+ "evidence": {
+  "record": "i18n/audits/evidence/fr/ui.chat.canonical/fr-transcript-2eae3ddc404e/record.json",
+  "report": "i18n/audits/evidence/fr/ui.chat.canonical/fr-transcript-2eae3ddc404e/report.md"
+ },
+ "reference_sha256": {
+  "/Users/damian/local-operator/i18n/style-guides/fr.md": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226",
+  "/Users/damian/local-operator/i18n/glossary.md": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+ },
+ "normalised_from": {
+  "path": "i18n/receipts/fr-transcript-r1-2eae3ddc404e.json.raw.json",
+  "sha256": "b4b756102c23e151caa0b8ba0494122b3dc83eacb98a7dad5646189b29777c08",
+  "why": "the receipt carried auditor as a bare string AND agent as a separate field; ledger-assemble refuses that as ambiguous. Values preserved: role string kept under auditor.role, agent under auditor.agent, no finding or hash changed."
+ }
+}

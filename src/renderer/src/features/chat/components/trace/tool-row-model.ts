@@ -13,6 +13,8 @@
  * cell grid — but which fact lands in which column, and which fact is dropped
  * first when there is no room, are decisions this file keeps identical.
  */
+import { type WithoutParams, formatByteQuantity, t } from "@shared/i18n";
+import { bridgeRow, bridgeSummary, bridgeVerb } from "./bridge-row-model";
 
 /**
  * Arguments that identify WHAT a call acted on, as opposed to its payload.
@@ -232,7 +234,20 @@ export type SendDeliveryState =
 	| "delivered"
 	| "mailbox"
 	| "unconfirmed"
-	| "failed";
+	| "failed"
+	/*
+	 * The two Team Bridge (`bridge`) states that are neither success nor
+	 * failure, read from the result's own fields rather than `delivery.state`
+	 * (`bridgeDeliveryState` below). `inbox_only`: a pair-lane `send`/`reply`
+	 * the peer accepted into its INBOX - it is not in any conversation and no
+	 * person sees it in Team Bridge, so the plain success the row used to draw
+	 * claimed a visibility the message does not have. `awaiting_acceptance`: a
+	 * DM to an agent whose owner has not accepted it yet, so it will not be
+	 * woken. Both settle with `ok: true`, so they stay out of every failed count
+	 * through `isPartialDelivery`, exactly like `mailbox`.
+	 */
+	| "inbox_only"
+	| "awaiting_acceptance";
 
 const SEND_DELIVERY_STATES: ReadonlySet<string> = new Set([
 	"delivered",
@@ -241,11 +256,53 @@ const SEND_DELIVERY_STATES: ReadonlySet<string> = new Set([
 	"failed",
 ]);
 
-/** The delivery state a result's `details` states, or `null` when it states none. */
+/**
+ * The delivery state a `bridge` result states in its own fields, via the
+ * shared tokens (`bridgeRow`, the port of the core's `bridge_row`), or `null`.
+ *
+ * `unconfirmed` reuses `send`'s state on purpose: `send_unconfirmed` and
+ * `post_failed` both mean the write may have LANDED with its confirmation
+ * lost, which is exactly the hedge `send`'s `unconfirmed` exists to say -
+ * "failed" would invite the duplicate post the hedge prevents.
+ */
+function bridgeDeliveryState(details: unknown): SendDeliveryState | null {
+	if (!details || typeof details !== "object" || Array.isArray(details))
+		return null;
+	const facts = details as Record<string, unknown>;
+	/*
+	 * The op is not on `details`, and only `dm` can carry `recipient_state`, so
+	 * passing `dm` when that field exists is the op-free reading of the same
+	 * rule; every other outcome the tokens decide ignores the op.
+	 */
+	const op = "recipient_state" in facts ? "dm" : "send";
+	const { outcome } = bridgeRow({ op }, facts);
+	if (outcome === "inbox_only") return "inbox_only";
+	if (outcome === "awaiting_acceptance") return "awaiting_acceptance";
+	if (outcome === "unconfirmed") return "unconfirmed";
+	return null;
+}
+
+/**
+ * The delivery state a result's `details` states, or `null` when it states none.
+ *
+ * `toolName` gates the Team Bridge reading: only a `bridge` result's
+ * `destination_type`/`code` fields are read, so no other tool can grow a state
+ * from a field that happens to share a name.
+ *
+ * REQUIRED, with no default (agent review round 1, R4): a defaulted `""` is how
+ * a future `bridge` call site that forgot the name would read `details.delivery`
+ * (absent on a bridge receipt), get `null`, and paint a plain success on a
+ * pair-lane send that was never posted - with nothing failing. A caller with no
+ * tool to name passes `""` explicitly; `scripts/tool-row.test.mjs` pins every
+ * production call site.
+ */
 export function deliveryStateFromDetails(
 	details: unknown,
+	toolName: string,
 ): SendDeliveryState | null {
 	if (!details || typeof details !== "object") return null;
+	if (toolName.trim().toLowerCase() === "bridge")
+		return bridgeDeliveryState(details);
 	const delivery = (details as Record<string, unknown>).delivery;
 	if (!delivery || typeof delivery !== "object") return null;
 	const state = (delivery as Record<string, unknown>).state;
@@ -264,9 +321,11 @@ export function deliveryStateFromDetails(
 export function preferDeliveryState(
 	details: unknown,
 	previous: SendDeliveryState | null | undefined,
+	/** Required for the reason `deliveryStateFromDetails` gives. */
+	toolName: string,
 ): SendDeliveryState | null {
 	if (!details || typeof details !== "object") return previous ?? null;
-	return deliveryStateFromDetails(details);
+	return deliveryStateFromDetails(details, toolName);
 }
 
 /**
@@ -466,11 +525,11 @@ export function preferProgressDetails(
  * or it carries its own (`delivery unconfirmed`).
  */
 export const SEND_DELIVERY_WORD: Readonly<
-	Partial<Record<SendDeliveryState, string>>
+	Partial<Record<SendDeliveryState, WithoutParams>>
 > = {
-	mailbox: "wake unconfirmed",
-	unconfirmed: "delivery unconfirmed",
-	failed: "not delivered",
+	mailbox: "ui.chat.trace.send.delivery.mailbox.word",
+	unconfirmed: "ui.chat.trace.send.delivery.unconfirmed.word",
+	failed: "ui.chat.trace.send.delivery.failed.word",
 };
 
 /**
@@ -486,12 +545,10 @@ export const SEND_DELIVERY_WORD: Readonly<
  * is the whole statement, and a hover would only repeat it.
  */
 export const SEND_DELIVERY_TITLE: Readonly<
-	Partial<Record<SendDeliveryState, string>>
+	Partial<Record<SendDeliveryState, WithoutParams>>
 > = {
-	mailbox:
-		"In their mailbox. The wake got no answer, so they will read it on their next turn.",
-	unconfirmed:
-		"No wake answer and not yet in their transcript — it may still arrive. Check before resending.",
+	mailbox: "ui.chat.trace.send.delivery.mailbox.title",
+	unconfirmed: "ui.chat.trace.send.delivery.unconfirmed.title",
 };
 
 /**
@@ -516,14 +573,11 @@ export const SEND_DELIVERY_TITLE: Readonly<
  * of a delivered send is the row it always was.
  */
 export const SEND_DELIVERY_NOTE: Readonly<
-	Partial<Record<SendDeliveryState, string>>
+	Partial<Record<SendDeliveryState, WithoutParams>>
 > = {
-	mailbox:
-		"Delivered to their mailbox. The wake got no answer, so they will read the message on their next turn. Do not send it again.",
-	unconfirmed:
-		"Not confirmed: there was no answer and the message is not in their transcript. It may still arrive, so check before resending.",
-	failed:
-		"Nothing was delivered. Fix the cause named below, or retry the send.",
+	mailbox: "ui.chat.trace.send.delivery.mailbox.note",
+	unconfirmed: "ui.chat.trace.send.delivery.unconfirmed.note",
+	failed: "ui.chat.trace.send.delivery.failed.note",
 };
 
 /**
@@ -539,11 +593,10 @@ export const SEND_DELIVERY_NOTE: Readonly<
  * would be a string nothing renders (agent review round 1, residue).
  */
 export const SEND_DELIVERY_LABEL: Readonly<
-	Partial<Record<SendDeliveryState, string>>
+	Partial<Record<SendDeliveryState, WithoutParams>>
 > = {
-	mailbox: "delivered, wake unconfirmed",
-	unconfirmed:
-		"delivery unconfirmed — it may still arrive, so check before resending",
+	mailbox: "ui.chat.trace.send.delivery.mailbox.label",
+	unconfirmed: "ui.chat.trace.send.delivery.unconfirmed.label",
 };
 
 /**
@@ -552,8 +605,133 @@ export const SEND_DELIVERY_LABEL: Readonly<
  */
 export function isPartialDelivery(
 	state: SendDeliveryState | null | undefined,
-): state is "mailbox" | "unconfirmed" {
-	return state === "mailbox" || state === "unconfirmed";
+): state is "mailbox" | "unconfirmed" | "inbox_only" | "awaiting_acceptance" {
+	return (
+		state === "mailbox" ||
+		state === "unconfirmed" ||
+		state === "inbox_only" ||
+		state === "awaiting_acceptance"
+	);
+}
+
+/*
+ * THE KEYED DELIVERY COPY, per surface (word / hover / spoken / expansion note).
+ *
+ * The four `SEND_DELIVERY_*` maps above are `send`'s frozen copy, held as
+ * catalogue KEYS (`ui.chat.trace.send.delivery.*`) whose English is the frozen
+ * wording byte for byte (their suites pin it through these accessors). Every
+ * state goes through `t()` - and through a FUNCTION, resolved at render, because
+ * a module-load constant would freeze the language the module first loaded in.
+ * `bridge` also rewords `unconfirmed`: its hedge is about a conversation post
+ * whose confirmation was lost, not about a peer's wake or transcript, so
+ * `send`'s sentences would tell the reader to check the wrong thing.
+ *
+ * Each function falls back to the `send` map for every other state, so the
+ * render sites read ONE accessor per surface.
+ */
+/**
+ * Resolve one `SEND_DELIVERY_*` entry through the catalogue at call time, or
+ * `null` for a state the map has no entry for (a delivered send says nothing).
+ */
+const resolveSendCopy = (key: WithoutParams | undefined): string | null =>
+	key ? t(key) : null;
+
+const isBridge = (toolName: string) =>
+	toolName.trim().toLowerCase() === "bridge";
+
+/** The trailing word a delivery state draws. */
+export function deliveryWord(
+	state: SendDeliveryState | null | undefined,
+	toolName = "",
+): string | null {
+	if (!state) return null;
+	if (state === "inbox_only")
+		return t("ui.chat.canonical.tool_row.bridge.delivery.inbox_only.word");
+	if (state === "awaiting_acceptance")
+		return t(
+			"ui.chat.canonical.tool_row.bridge.delivery.awaiting_acceptance.word",
+		);
+	if (state === "unconfirmed" && isBridge(toolName))
+		return t("ui.chat.canonical.tool_row.bridge.delivery.unconfirmed.word");
+	return resolveSendCopy(SEND_DELIVERY_WORD[state]);
+}
+
+/**
+ * The SHORT trailing word a Team Bridge state draws on a mid-width row, or
+ * `null` for every state that has none (all of `send`'s).
+ *
+ * Design round 1, D1: at 414px the full `not posted to a conversation` took
+ * 54% of the row and cut the summary to `Sent to ` - the row stopped saying
+ * where the message went while spelling the caveat out in full. The caution
+ * degrades BEFORE the summary does: full word on a wide row, this short word
+ * on a mid-width one, the mark alone (with the spoken label) on the narrowest.
+ * The expanded panel keeps the full sentence either way. Only the three bridge
+ * words are long enough to need it; `send`'s words keep their one gate.
+ */
+export function deliveryShortWord(
+	state: SendDeliveryState | null | undefined,
+	toolName: string,
+): string | null {
+	if (state === "inbox_only")
+		return t("ui.chat.canonical.tool_row.bridge.delivery.inbox_only.short");
+	if (state === "awaiting_acceptance")
+		return t(
+			"ui.chat.canonical.tool_row.bridge.delivery.awaiting_acceptance.short",
+		);
+	if (state === "unconfirmed" && isBridge(toolName))
+		return t("ui.chat.canonical.tool_row.bridge.delivery.unconfirmed.short");
+	return null;
+}
+
+/** The hover on that word, for the states whose word under-tells them. */
+export function deliveryTitle(
+	state: SendDeliveryState | null | undefined,
+	toolName = "",
+): string | undefined {
+	if (!state) return undefined;
+	if (state === "inbox_only")
+		return t("ui.chat.canonical.tool_row.bridge.delivery.inbox_only.title");
+	if (state === "awaiting_acceptance")
+		return t(
+			"ui.chat.canonical.tool_row.bridge.delivery.awaiting_acceptance.title",
+		);
+	if (state === "unconfirmed" && isBridge(toolName))
+		return t("ui.chat.canonical.tool_row.bridge.delivery.unconfirmed.title");
+	return resolveSendCopy(SEND_DELIVERY_TITLE[state]) ?? undefined;
+}
+
+/** What assistive tech hears in place of the (then `aria-hidden`) word. */
+export function deliveryLabel(
+	state: SendDeliveryState | null | undefined,
+	toolName = "",
+): string | null {
+	if (!state) return null;
+	if (state === "inbox_only")
+		return t("ui.chat.canonical.tool_row.bridge.delivery.inbox_only.label");
+	if (state === "awaiting_acceptance")
+		return t(
+			"ui.chat.canonical.tool_row.bridge.delivery.awaiting_acceptance.label",
+		);
+	if (state === "unconfirmed" && isBridge(toolName))
+		return t("ui.chat.canonical.tool_row.bridge.delivery.unconfirmed.label");
+	return resolveSendCopy(SEND_DELIVERY_LABEL[state]);
+}
+
+/** The wrapping sentence the expansion prints for a state. */
+export function deliveryNote(
+	state: SendDeliveryState | null | undefined,
+	toolName = "",
+): string | null {
+	if (!state) return null;
+	if (state === "inbox_only")
+		return t("ui.chat.canonical.tool_row.bridge.delivery.inbox_only.note");
+	if (state === "awaiting_acceptance")
+		return t(
+			"ui.chat.canonical.tool_row.bridge.delivery.awaiting_acceptance.note",
+		);
+	if (state === "unconfirmed" && isBridge(toolName))
+		return t("ui.chat.canonical.tool_row.bridge.delivery.unconfirmed.note");
+	return resolveSendCopy(SEND_DELIVERY_NOTE[state]);
 }
 
 /**
@@ -595,7 +773,9 @@ export function deliveryRowOutcome(
 export function deliverySettledVerb(
 	state: SendDeliveryState | null | undefined,
 ): string | null {
-	return state === "failed" ? "Attempted" : null;
+	return state === "failed"
+		? t("ui.chat.trace.send.delivery.failed.verb")
+		: null;
 }
 
 /**
@@ -742,8 +922,29 @@ function sessionsSummary(args: Record<string, unknown>): string | null {
 export function summaryFromArgs(
 	toolName: string,
 	args: Record<string, unknown> | null,
+	/**
+	 * The result's `details`, for the one tool whose object comes partly from
+	 * its RESULT (`bridge`: a DM's label, a count of messages read). Ignored by
+	 * every other tool.
+	 */
+	details?: Record<string, unknown> | null,
+	/** Names a `bcv_` id from the Team Bridge cache; see `BridgeLabelResolver`. */
+	resolveConversation?: ((id: string) => string | null) | null,
 ): string {
 	const name = toolName.trim();
+	if (name.toLowerCase() === "bridge") {
+		/*
+		 * Never the generic scan: its first two scalars are a `bcv_` id and a
+		 * `limit`, the operator's `Called bridge bcv_b0044d… 3`. An empty object is
+		 * honest (`Listed conversations`); an id is not.
+		 */
+		return bridgeSummary(
+			bridgeRow(args, details),
+			args,
+			resolveConversation,
+			details,
+		);
+	}
 	if (!args) return name;
 	if (name === "send") return sendSummary(args) || name;
 	// Case-folded like every other lookup in this module: the name is
@@ -1005,9 +1206,18 @@ function fixed1(value: number): string {
  * at a glance, which is the whole point of the field.
  */
 export function formatBytes(count: number): string {
-	if (count < 1024) return `${count} B`;
-	if (count < 1024 * 1024) return `${fixed1(count / 1024)} KB`;
-	return `${fixed1(count / (1024 * 1024))} MB`;
+	// `fixed1` keeps the TUI's half-even tenth; the shared helper only spells the
+	// already-rounded number and unit for the active locale.
+	const oneDecimal = { minimumFractionDigits: 1, maximumFractionDigits: 1 };
+	if (count < 1024)
+		return formatByteQuantity(count, "B", { maximumFractionDigits: 0 });
+	if (count < 1024 * 1024)
+		return formatByteQuantity(Number(fixed1(count / 1024)), "KB", oneDecimal);
+	return formatByteQuantity(
+		Number(fixed1(count / (1024 * 1024))),
+		"MB",
+		oneDecimal,
+	);
 }
 
 /**
@@ -1089,6 +1299,11 @@ const CATEGORIES: Record<string, ToolCategory> = {
 	team_delete: "meta",
 	project_delete: "meta",
 	sessions: "meta",
+	/*
+	 * Team Bridge is the agent talking to its team: the same coordination axis
+	 * as `send` and `sessions`, and the same category the TUI files it under.
+	 */
+	bridge: "meta",
 };
 
 /**
@@ -1194,6 +1409,15 @@ export function toolOp(
 			if (token === "milestone" && removes) {
 				return "milestone-remove";
 			}
+			/*
+			 * Team Bridge's composites (`react-remove`, `ack-working`, `ack-done`),
+			 * read through the shared tokens rather than re-derived here, so the
+			 * verb and the fold say exactly what the core's `bridge_row` decided -
+			 * including its stricter `remove === true` reading.
+			 */
+			if (key === "op" && (token === "react" || token === "ack")) {
+				return bridgeRow(args).action;
+			}
 			return token;
 		}
 	}
@@ -1222,26 +1446,104 @@ const isOpSelectable = (toolName: string): boolean =>
 		toolName.trim().toLowerCase(),
 	);
 
-const TOOL_VERBS: Record<string, Omit<ToolVerb, "named">> = {
-	bash: { settled: "Ran", running: "Running" },
-	eval: { settled: "Ran Python", running: "Running Python" },
-	read: { settled: "Read", running: "Reading" },
-	write: { settled: "Wrote", running: "Writing" },
-	edit: { settled: "Edited", running: "Editing" },
-	glob: { settled: "Listed", running: "Listing" },
-	grep: { settled: "Searched", running: "Searching" },
-	web_search: { settled: "Searched the web", running: "Searching the web" },
-	web_fetch: { settled: "Fetched", running: "Fetching" },
-	web_read: { settled: "Read", running: "Reading" },
-	browser: { settled: "Browsed", running: "Browsing" },
-	list_variables: { settled: "Listed variables", running: "Listing variables" },
-	read_variable: { settled: "Read variable", running: "Reading variable" },
-	ask: { settled: "Asked", running: "Asking" },
-	send: { settled: "Sent", running: "Sending" },
-	wait: { settled: "Waited for jobs", running: "Waiting for jobs" },
-	team_delete: { settled: "Deleted team", running: "Deleting team" },
-	project_delete: { settled: "Deleted project", running: "Deleting project" },
-	peer: { settled: "Received", running: "Receiving" },
+/**
+ * A verb row stored as catalogue KEYS, never as English words.
+ *
+ * Why keys and not strings: the tables below are module-level constants, and a
+ * `t()` call evaluated at import would freeze the locale in force at load, so a
+ * language switch would repaint everything EXCEPT the verb column (the
+ * French-census bug this closes: `Ran`/`Searching` on a French transcript).
+ * `toolVerb` calls `t()` on these keys at call time instead, which is what
+ * lets the `useI18nLocale` boundary repaint mounted rows without a remount.
+ * Typed as `WithoutParams` (a key with no ICU placeholder, which `t(key)`
+ * accepts bare) so a misspelt or deleted key fails `tsc`, not a runtime
+ * fallback to the raw id.
+ */
+type VerbKeys = { settled: WithoutParams; running: WithoutParams };
+
+/** Resolve one table row through the catalogue, at call time (see `VerbKeys`). */
+const resolveVerb = ({ settled, running }: VerbKeys) => ({
+	settled: t(settled),
+	running: t(running),
+});
+
+const TOOL_VERBS: Record<string, VerbKeys> = {
+	bash: {
+		settled: "ui.chat.canonical.tool_row.verb.ran.settled",
+		running: "ui.chat.canonical.tool_row.verb.ran.running",
+	},
+	eval: {
+		settled: "ui.chat.canonical.tool_row.verb.ran_python.settled",
+		running: "ui.chat.canonical.tool_row.verb.ran_python.running",
+	},
+	read: {
+		settled: "ui.chat.canonical.tool_row.verb.read.settled",
+		running: "ui.chat.canonical.tool_row.verb.read.running",
+	},
+	write: {
+		settled: "ui.chat.canonical.tool_row.verb.wrote.settled",
+		running: "ui.chat.canonical.tool_row.verb.wrote.running",
+	},
+	edit: {
+		settled: "ui.chat.canonical.tool_row.verb.edited.settled",
+		running: "ui.chat.canonical.tool_row.verb.edited.running",
+	},
+	glob: {
+		settled: "ui.chat.canonical.tool_row.verb.listed.settled",
+		running: "ui.chat.canonical.tool_row.verb.listed.running",
+	},
+	grep: {
+		settled: "ui.chat.canonical.tool_row.verb.searched.settled",
+		running: "ui.chat.canonical.tool_row.verb.searched.running",
+	},
+	web_search: {
+		settled: "ui.chat.canonical.tool_row.verb.searched_the_web.settled",
+		running: "ui.chat.canonical.tool_row.verb.searched_the_web.running",
+	},
+	web_fetch: {
+		settled: "ui.chat.canonical.tool_row.verb.fetched.settled",
+		running: "ui.chat.canonical.tool_row.verb.fetched.running",
+	},
+	web_read: {
+		settled: "ui.chat.canonical.tool_row.verb.read.settled",
+		running: "ui.chat.canonical.tool_row.verb.read.running",
+	},
+	browser: {
+		settled: "ui.chat.canonical.tool_row.verb.browsed.settled",
+		running: "ui.chat.canonical.tool_row.verb.browsed.running",
+	},
+	list_variables: {
+		settled: "ui.chat.canonical.tool_row.verb.listed_variables.settled",
+		running: "ui.chat.canonical.tool_row.verb.listed_variables.running",
+	},
+	read_variable: {
+		settled: "ui.chat.canonical.tool_row.verb.read_variable.settled",
+		running: "ui.chat.canonical.tool_row.verb.read_variable.running",
+	},
+	ask: {
+		settled: "ui.chat.canonical.tool_row.verb.asked.settled",
+		running: "ui.chat.canonical.tool_row.verb.asked.running",
+	},
+	send: {
+		settled: "ui.chat.canonical.tool_row.verb.sent.settled",
+		running: "ui.chat.canonical.tool_row.verb.sent.running",
+	},
+	wait: {
+		settled: "ui.chat.canonical.tool_row.verb.waited_for_jobs.settled",
+		running: "ui.chat.canonical.tool_row.verb.waited_for_jobs.running",
+	},
+	team_delete: {
+		settled: "ui.chat.canonical.tool_row.verb.deleted_team.settled",
+		running: "ui.chat.canonical.tool_row.verb.deleted_team.running",
+	},
+	project_delete: {
+		settled: "ui.chat.canonical.tool_row.verb.deleted_project.settled",
+		running: "ui.chat.canonical.tool_row.verb.deleted_project.running",
+	},
+	peer: {
+		settled: "ui.chat.canonical.tool_row.verb.received.settled",
+		running: "ui.chat.canonical.tool_row.verb.received.running",
+	},
 	/*
 	 * `task` keeps `Delegated` and it is the only entry that earns it: `task`
 	 * launches a subagent, which IS delegation. `agent`/`team`/`hub` used to sit
@@ -1250,7 +1552,10 @@ const TOOL_VERBS: Record<string, Omit<ToolVerb, "named">> = {
 	 * painted `Delegated` and folded into `delegated 3 tasks`. They live in
 	 * `TOOL_OP_VERBS` below now, where the operation picks the word.
 	 */
-	task: { settled: "Delegated", running: "Delegating" },
+	task: {
+		settled: "ui.chat.canonical.tool_row.verb.delegated.settled",
+		running: "ui.chat.canonical.tool_row.verb.delegated.running",
+	},
 };
 
 /**
@@ -1276,137 +1581,335 @@ const TOOL_VERBS: Record<string, Omit<ToolVerb, "named">> = {
  * `console`/`lsp` in the builtin tool module), so a row can only say an
  * operation the tool itself accepts.
  */
-const TOOL_OP_VERBS: Record<string, Record<string, Omit<ToolVerb, "named">>> = {
+const TOOL_OP_VERBS: Record<string, Record<string, VerbKeys>> = {
 	agent: {
-		list: { settled: "Listed agents", running: "Listing agents" },
-		show: { settled: "Viewed agent", running: "Viewing agent" },
-		search: { settled: "Searched agents", running: "Searching agents" },
-		install: { settled: "Installed agent", running: "Installing agent" },
-		reset: { settled: "Reset agent", running: "Resetting agent" },
-		create: { settled: "Created agent", running: "Creating agent" },
-		update: { settled: "Updated agent", running: "Updating agent" },
-		sync: { settled: "Synced agents", running: "Syncing agents" },
+		list: {
+			settled: "ui.chat.canonical.tool_row.verb.listed_agents.settled",
+			running: "ui.chat.canonical.tool_row.verb.listed_agents.running",
+		},
+		show: {
+			settled: "ui.chat.canonical.tool_row.verb.viewed_agent.settled",
+			running: "ui.chat.canonical.tool_row.verb.viewed_agent.running",
+		},
+		search: {
+			settled: "ui.chat.canonical.tool_row.verb.searched_agents.settled",
+			running: "ui.chat.canonical.tool_row.verb.searched_agents.running",
+		},
+		install: {
+			settled: "ui.chat.canonical.tool_row.verb.installed_agent.settled",
+			running: "ui.chat.canonical.tool_row.verb.installed_agent.running",
+		},
+		reset: {
+			settled: "ui.chat.canonical.tool_row.verb.reset_agent.settled",
+			running: "ui.chat.canonical.tool_row.verb.reset_agent.running",
+		},
+		create: {
+			settled: "ui.chat.canonical.tool_row.verb.created_agent.settled",
+			running: "ui.chat.canonical.tool_row.verb.created_agent.running",
+		},
+		update: {
+			settled: "ui.chat.canonical.tool_row.verb.updated_agent.settled",
+			running: "ui.chat.canonical.tool_row.verb.updated_agent.running",
+		},
+		sync: {
+			settled: "ui.chat.canonical.tool_row.verb.synced_agents.settled",
+			running: "ui.chat.canonical.tool_row.verb.synced_agents.running",
+		},
 	},
 	team: {
-		list: { settled: "Listed teams", running: "Listing teams" },
-		show: { settled: "Viewed team", running: "Viewing team" },
-		create: { settled: "Created team", running: "Creating team" },
-		update: { settled: "Updated team", running: "Updating team" },
+		list: {
+			settled: "ui.chat.canonical.tool_row.verb.listed_teams.settled",
+			running: "ui.chat.canonical.tool_row.verb.listed_teams.running",
+		},
+		show: {
+			settled: "ui.chat.canonical.tool_row.verb.viewed_team.settled",
+			running: "ui.chat.canonical.tool_row.verb.viewed_team.running",
+		},
+		create: {
+			settled: "ui.chat.canonical.tool_row.verb.created_team.settled",
+			running: "ui.chat.canonical.tool_row.verb.created_team.running",
+		},
+		update: {
+			settled: "ui.chat.canonical.tool_row.verb.updated_team.settled",
+			running: "ui.chat.canonical.tool_row.verb.updated_team.running",
+		},
 	},
 	hub: {
-		list: { settled: "Listed subagents", running: "Listing subagents" },
-		peek: { settled: "Peeked at", running: "Peeking at" },
-		send: { settled: "Messaged", running: "Messaging" },
-		ask: { settled: "Asked", running: "Asking" },
-		steer: { settled: "Steered", running: "Steering" },
-		pause: { settled: "Paused", running: "Pausing" },
-		cancel: { settled: "Cancelled", running: "Cancelling" },
-		resume: { settled: "Resumed", running: "Resuming" },
+		list: {
+			settled: "ui.chat.canonical.tool_row.verb.listed_subagents.settled",
+			running: "ui.chat.canonical.tool_row.verb.listed_subagents.running",
+		},
+		peek: {
+			settled: "ui.chat.canonical.tool_row.verb.peeked_at.settled",
+			running: "ui.chat.canonical.tool_row.verb.peeked_at.running",
+		},
+		send: {
+			settled: "ui.chat.canonical.tool_row.verb.messaged.settled",
+			running: "ui.chat.canonical.tool_row.verb.messaged.running",
+		},
+		ask: {
+			settled: "ui.chat.canonical.tool_row.verb.asked.settled",
+			running: "ui.chat.canonical.tool_row.verb.asked.running",
+		},
+		steer: {
+			settled: "ui.chat.canonical.tool_row.verb.steered.settled",
+			running: "ui.chat.canonical.tool_row.verb.steered.running",
+		},
+		pause: {
+			settled: "ui.chat.canonical.tool_row.verb.paused.settled",
+			running: "ui.chat.canonical.tool_row.verb.paused.running",
+		},
+		cancel: {
+			settled: "ui.chat.canonical.tool_row.verb.cancelled.settled",
+			running: "ui.chat.canonical.tool_row.verb.cancelled.running",
+		},
+		resume: {
+			settled: "ui.chat.canonical.tool_row.verb.resumed.settled",
+			running: "ui.chat.canonical.tool_row.verb.resumed.running",
+		},
 	},
 	secret: {
-		store: { settled: "Stored secret", running: "Storing secret" },
-		retrieve: { settled: "Retrieved secret", running: "Retrieving secret" },
-		list: { settled: "Listed secrets", running: "Listing secrets" },
-		describe: { settled: "Described secret", running: "Describing secret" },
-		update: { settled: "Updated secret", running: "Updating secret" },
-		delete: { settled: "Deleted secret", running: "Deleting secret" },
+		store: {
+			settled: "ui.chat.canonical.tool_row.verb.stored_secret.settled",
+			running: "ui.chat.canonical.tool_row.verb.stored_secret.running",
+		},
+		retrieve: {
+			settled: "ui.chat.canonical.tool_row.verb.retrieved_secret.settled",
+			running: "ui.chat.canonical.tool_row.verb.retrieved_secret.running",
+		},
+		list: {
+			settled: "ui.chat.canonical.tool_row.verb.listed_secrets.settled",
+			running: "ui.chat.canonical.tool_row.verb.listed_secrets.running",
+		},
+		describe: {
+			settled: "ui.chat.canonical.tool_row.verb.described_secret.settled",
+			running: "ui.chat.canonical.tool_row.verb.described_secret.running",
+		},
+		update: {
+			settled: "ui.chat.canonical.tool_row.verb.updated_secret.settled",
+			running: "ui.chat.canonical.tool_row.verb.updated_secret.running",
+		},
+		delete: {
+			settled: "ui.chat.canonical.tool_row.verb.deleted_secret.settled",
+			running: "ui.chat.canonical.tool_row.verb.deleted_secret.running",
+		},
 	},
 	project: {
-		list: { settled: "Listed projects", running: "Listing projects" },
-		show: { settled: "Viewed project", running: "Viewing project" },
-		create: { settled: "Created project", running: "Creating project" },
-		update: { settled: "Updated project", running: "Updating project" },
+		list: {
+			settled: "ui.chat.canonical.tool_row.verb.listed_projects.settled",
+			running: "ui.chat.canonical.tool_row.verb.listed_projects.running",
+		},
+		show: {
+			settled: "ui.chat.canonical.tool_row.verb.viewed_project.settled",
+			running: "ui.chat.canonical.tool_row.verb.viewed_project.running",
+		},
+		create: {
+			settled: "ui.chat.canonical.tool_row.verb.created_project.settled",
+			running: "ui.chat.canonical.tool_row.verb.created_project.running",
+		},
+		update: {
+			settled: "ui.chat.canonical.tool_row.verb.updated_project.settled",
+			running: "ui.chat.canonical.tool_row.verb.updated_project.running",
+		},
 		// `link`/`unlink` act on the session named in the object, so the verb
 		// carries the direction - `Linked session to myproject` reads as the
 		// sentence it is, where a bare `Linked myproject` would not.
-		link: { settled: "Linked session to", running: "Linking session to" },
-		unlink: {
-			settled: "Unlinked session from",
-			running: "Unlinking session from",
+		link: {
+			settled: "ui.chat.canonical.tool_row.verb.linked_session_to.settled",
+			running: "ui.chat.canonical.tool_row.verb.linked_session_to.running",
 		},
-		milestone: { settled: "Updated milestone", running: "Updating milestone" },
+		unlink: {
+			settled: "ui.chat.canonical.tool_row.verb.unlinked_session_from.settled",
+			running: "ui.chat.canonical.tool_row.verb.unlinked_session_from.running",
+		},
+		milestone: {
+			settled: "ui.chat.canonical.tool_row.verb.updated_milestone.settled",
+			running: "ui.chat.canonical.tool_row.verb.updated_milestone.running",
+		},
 		// The remove flag's own verb, composed by `toolOp`: the milestone op
 		// UPDATES when the flag is off and REMOVES when it is on, and the row
 		// says which (operator report follow-up, 2026-09-27: a removal must not
 		// read as an update any more than a read may read as a delegation).
 		"milestone-remove": {
-			settled: "Removed milestone",
-			running: "Removing milestone",
+			settled: "ui.chat.canonical.tool_row.verb.removed_milestone.settled",
+			running: "ui.chat.canonical.tool_row.verb.removed_milestone.running",
 		},
 	},
 	todo: {
 		// `view` is a read; every other op changes the list, which is the claim
 		// the five share.
-		view: { settled: "Read todos", running: "Reading todos" },
-		init: { settled: "Updated todos", running: "Updating todos" },
-		add: { settled: "Updated todos", running: "Updating todos" },
-		done: { settled: "Updated todos", running: "Updating todos" },
-		block: { settled: "Updated todos", running: "Updating todos" },
-		drop: { settled: "Updated todos", running: "Updating todos" },
+		view: {
+			settled: "ui.chat.canonical.tool_row.verb.read_todos.settled",
+			running: "ui.chat.canonical.tool_row.verb.read_todos.running",
+		},
+		init: {
+			settled: "ui.chat.canonical.tool_row.verb.updated_todos.settled",
+			running: "ui.chat.canonical.tool_row.verb.updated_todos.running",
+		},
+		add: {
+			settled: "ui.chat.canonical.tool_row.verb.updated_todos.settled",
+			running: "ui.chat.canonical.tool_row.verb.updated_todos.running",
+		},
+		done: {
+			settled: "ui.chat.canonical.tool_row.verb.updated_todos.settled",
+			running: "ui.chat.canonical.tool_row.verb.updated_todos.running",
+		},
+		block: {
+			settled: "ui.chat.canonical.tool_row.verb.updated_todos.settled",
+			running: "ui.chat.canonical.tool_row.verb.updated_todos.running",
+		},
+		drop: {
+			settled: "ui.chat.canonical.tool_row.verb.updated_todos.settled",
+			running: "ui.chat.canonical.tool_row.verb.updated_todos.running",
+		},
 	},
 	wake: {
-		create: { settled: "Scheduled", running: "Scheduling" },
-		list: { settled: "Listed wakes", running: "Listing wakes" },
-		cancel: { settled: "Cancelled wake", running: "Cancelling wake" },
+		create: {
+			settled: "ui.chat.canonical.tool_row.verb.scheduled.settled",
+			running: "ui.chat.canonical.tool_row.verb.scheduled.running",
+		},
+		list: {
+			settled: "ui.chat.canonical.tool_row.verb.listed_wakes.settled",
+			running: "ui.chat.canonical.tool_row.verb.listed_wakes.running",
+		},
+		cancel: {
+			settled: "ui.chat.canonical.tool_row.verb.cancelled_wake.settled",
+			running: "ui.chat.canonical.tool_row.verb.cancelled_wake.running",
+		},
 	},
 	jobs: {
-		list: { settled: "Listed jobs", running: "Listing jobs" },
-		peek: { settled: "Peeked at", running: "Peeking at" },
-		cancel: { settled: "Cancelled job", running: "Cancelling job" },
+		list: {
+			settled: "ui.chat.canonical.tool_row.verb.listed_jobs.settled",
+			running: "ui.chat.canonical.tool_row.verb.listed_jobs.running",
+		},
+		peek: {
+			settled: "ui.chat.canonical.tool_row.verb.peeked_at.settled",
+			running: "ui.chat.canonical.tool_row.verb.peeked_at.running",
+		},
+		cancel: {
+			settled: "ui.chat.canonical.tool_row.verb.cancelled_job.settled",
+			running: "ui.chat.canonical.tool_row.verb.cancelled_job.running",
+		},
 	},
 	network: {
 		// The reads first, each naming its own subject because the object column
 		// is empty for a call that addresses the whole device or network.
 		status: {
-			settled: "Checked network status",
-			running: "Checking network status",
+			settled: "ui.chat.canonical.tool_row.verb.checked_network_status.settled",
+			running: "ui.chat.canonical.tool_row.verb.checked_network_status.running",
 		},
-		ls: { settled: "Listed networks", running: "Listing networks" },
-		show: { settled: "Viewed network", running: "Viewing network" },
+		ls: {
+			settled: "ui.chat.canonical.tool_row.verb.listed_networks.settled",
+			running: "ui.chat.canonical.tool_row.verb.listed_networks.running",
+		},
+		show: {
+			settled: "ui.chat.canonical.tool_row.verb.viewed_network.settled",
+			running: "ui.chat.canonical.tool_row.verb.viewed_network.running",
+		},
 		peers: {
-			settled: "Listed network peers",
-			running: "Listing network peers",
+			settled: "ui.chat.canonical.tool_row.verb.listed_network_peers.settled",
+			running: "ui.chat.canonical.tool_row.verb.listed_network_peers.running",
 		},
-		log: { settled: "Read network log", running: "Reading network log" },
-		doctor: { settled: "Diagnosed network", running: "Diagnosing network" },
+		log: {
+			settled: "ui.chat.canonical.tool_row.verb.read_network_log.settled",
+			running: "ui.chat.canonical.tool_row.verb.read_network_log.running",
+		},
+		doctor: {
+			settled: "ui.chat.canonical.tool_row.verb.diagnosed_network.settled",
+			running: "ui.chat.canonical.tool_row.verb.diagnosed_network.running",
+		},
 		// Then the trust-changing six, in the CLI's own vocabulary: `init`
 		// creates, `invite` mints a token, `member_rm` removes a device,
 		// `disconnect` leaves, `panic` rotates every member's secret.
-		init: { settled: "Created network", running: "Creating network" },
-		invite: { settled: "Invited device", running: "Inviting device" },
-		join: { settled: "Joined network", running: "Joining network" },
-		member_rm: { settled: "Removed device", running: "Removing device" },
-		disconnect: { settled: "Left network", running: "Leaving network" },
-		panic: { settled: "Raised panic", running: "Raising panic" },
+		init: {
+			settled: "ui.chat.canonical.tool_row.verb.created_network.settled",
+			running: "ui.chat.canonical.tool_row.verb.created_network.running",
+		},
+		invite: {
+			settled: "ui.chat.canonical.tool_row.verb.invited_device.settled",
+			running: "ui.chat.canonical.tool_row.verb.invited_device.running",
+		},
+		join: {
+			settled: "ui.chat.canonical.tool_row.verb.joined_network.settled",
+			running: "ui.chat.canonical.tool_row.verb.joined_network.running",
+		},
+		member_rm: {
+			settled: "ui.chat.canonical.tool_row.verb.removed_device.settled",
+			running: "ui.chat.canonical.tool_row.verb.removed_device.running",
+		},
+		disconnect: {
+			settled: "ui.chat.canonical.tool_row.verb.left_network.settled",
+			running: "ui.chat.canonical.tool_row.verb.left_network.running",
+		},
+		panic: {
+			settled: "ui.chat.canonical.tool_row.verb.raised_panic.settled",
+			running: "ui.chat.canonical.tool_row.verb.raised_panic.running",
+		},
 	},
 	console: {
 		// `console` is the pane's own noun (its aria labels read "Close
 		// console", "New console"), so the rows use it too.
-		list: { settled: "Listed consoles", running: "Listing consoles" },
-		create: { settled: "Opened console", running: "Opening console" },
-		status: { settled: "Checked console", running: "Checking console" },
-		read: { settled: "Read console", running: "Reading console" },
-		screenshot: { settled: "Captured console", running: "Capturing console" },
-		input: { settled: "Typed in console", running: "Typing in console" },
-		keys: { settled: "Sent keys", running: "Sending keys" },
-		resize: { settled: "Resized console", running: "Resizing console" },
+		list: {
+			settled: "ui.chat.canonical.tool_row.verb.listed_consoles.settled",
+			running: "ui.chat.canonical.tool_row.verb.listed_consoles.running",
+		},
+		create: {
+			settled: "ui.chat.canonical.tool_row.verb.opened_console.settled",
+			running: "ui.chat.canonical.tool_row.verb.opened_console.running",
+		},
+		status: {
+			settled: "ui.chat.canonical.tool_row.verb.checked_console.settled",
+			running: "ui.chat.canonical.tool_row.verb.checked_console.running",
+		},
+		read: {
+			settled: "ui.chat.canonical.tool_row.verb.read_console.settled",
+			running: "ui.chat.canonical.tool_row.verb.read_console.running",
+		},
+		screenshot: {
+			settled: "ui.chat.canonical.tool_row.verb.captured_console.settled",
+			running: "ui.chat.canonical.tool_row.verb.captured_console.running",
+		},
+		input: {
+			settled: "ui.chat.canonical.tool_row.verb.typed_in_console.settled",
+			running: "ui.chat.canonical.tool_row.verb.typed_in_console.running",
+		},
+		keys: {
+			settled: "ui.chat.canonical.tool_row.verb.sent_keys.settled",
+			running: "ui.chat.canonical.tool_row.verb.sent_keys.running",
+		},
+		resize: {
+			settled: "ui.chat.canonical.tool_row.verb.resized_console.settled",
+			running: "ui.chat.canonical.tool_row.verb.resized_console.running",
+		},
 		// The switch toggles both ways; `secured` would be a one-way claim, and
 		// `input` is the pane's own word for it ("Secure input").
 		secure: {
-			settled: "Updated secure input",
-			running: "Updating secure input",
+			settled: "ui.chat.canonical.tool_row.verb.updated_secure_input.settled",
+			running: "ui.chat.canonical.tool_row.verb.updated_secure_input.running",
 		},
-		close: { settled: "Closed console", running: "Closing console" },
+		close: {
+			settled: "ui.chat.canonical.tool_row.verb.closed_console.settled",
+			running: "ui.chat.canonical.tool_row.verb.closed_console.running",
+		},
 	},
 	lsp: {
 		// Every lsp action is read-only (`tools/lsp.py`: `rename_preview`
 		// computes the edits a rename WOULD make), so all four are reads.
-		definitions: { settled: "Found definition", running: "Finding definition" },
-		references: { settled: "Found references", running: "Finding references" },
-		symbols: { settled: "Listed symbols", running: "Listing symbols" },
+		definitions: {
+			settled: "ui.chat.canonical.tool_row.verb.found_definition.settled",
+			running: "ui.chat.canonical.tool_row.verb.found_definition.running",
+		},
+		references: {
+			settled: "ui.chat.canonical.tool_row.verb.found_references.settled",
+			running: "ui.chat.canonical.tool_row.verb.found_references.running",
+		},
+		symbols: {
+			settled: "ui.chat.canonical.tool_row.verb.listed_symbols.settled",
+			running: "ui.chat.canonical.tool_row.verb.listed_symbols.running",
+		},
 		rename_preview: {
-			settled: "Previewed rename",
-			running: "Previewing rename",
+			settled: "ui.chat.canonical.tool_row.verb.previewed_rename.settled",
+			running: "ui.chat.canonical.tool_row.verb.previewed_rename.running",
 		},
 	},
 	sessions: {
@@ -1419,12 +1922,30 @@ const TOOL_OP_VERBS: Record<string, Record<string, Omit<ToolVerb, "named">>> = {
 		// object column then never has to say `session` twice; `peek` keeps the
 		// family's act-word (`hub`/`jobs` say `Peeked at`) with the noun beside
 		// it so the row reads as the read it is.
-		list: { settled: "Listed sessions", running: "Listing sessions" },
-		info: { settled: "Viewed session", running: "Viewing session" },
-		spawn: { settled: "Spawned session", running: "Spawning session" },
-		resume: { settled: "Resumed session", running: "Resuming session" },
-		stop: { settled: "Stopped session", running: "Stopping session" },
-		peek: { settled: "Peeked at session", running: "Peeking at session" },
+		list: {
+			settled: "ui.chat.canonical.tool_row.verb.listed_sessions.settled",
+			running: "ui.chat.canonical.tool_row.verb.listed_sessions.running",
+		},
+		info: {
+			settled: "ui.chat.canonical.tool_row.verb.viewed_session.settled",
+			running: "ui.chat.canonical.tool_row.verb.viewed_session.running",
+		},
+		spawn: {
+			settled: "ui.chat.canonical.tool_row.verb.spawned_session.settled",
+			running: "ui.chat.canonical.tool_row.verb.spawned_session.running",
+		},
+		resume: {
+			settled: "ui.chat.canonical.tool_row.verb.resumed_session.settled",
+			running: "ui.chat.canonical.tool_row.verb.resumed_session.running",
+		},
+		stop: {
+			settled: "ui.chat.canonical.tool_row.verb.stopped_session.settled",
+			running: "ui.chat.canonical.tool_row.verb.stopped_session.running",
+		},
+		peek: {
+			settled: "ui.chat.canonical.tool_row.verb.peeked_at_session.settled",
+			running: "ui.chat.canonical.tool_row.verb.peeked_at_session.running",
+		},
 	},
 };
 
@@ -1444,11 +1965,25 @@ const TOOL_OP_VERBS: Record<string, Record<string, Omit<ToolVerb, "named">>> = {
 export function toolVerb(toolName: string, op?: string | null): ToolVerb {
 	const name = toolName.trim().toLowerCase();
 	const token = (op ?? "").trim().toLowerCase();
+	/*
+	 * Team Bridge's verbs are keyed copy with a failure form of their own
+	 * (`bridge-row-model.ts`), and an unknown or absent op still names the
+	 * feature (`Used Team Bridge`) rather than `Called bridge`: the wire name is
+	 * the opaque thing this row exists to replace.
+	 */
+	if (name === "bridge") {
+		const { settled, running } = bridgeVerb(token);
+		return { settled, running, named: true };
+	}
 	const byOp = token ? TOOL_OP_VERBS[name]?.[token] : undefined;
-	if (byOp) return { ...byOp, named: true };
+	if (byOp) return { ...resolveVerb(byOp), named: true };
 	const known = TOOL_VERBS[name];
-	if (known) return { ...known, named: true };
-	return { settled: "Called", running: "Calling", named: false };
+	if (known) return { ...resolveVerb(known), named: true };
+	return {
+		settled: t("ui.chat.canonical.tool_row.generic_verb.settled"),
+		running: t("ui.chat.canonical.tool_row.generic_verb.running"),
+		named: false,
+	};
 }
 
 export type ToolRowLabel = {
@@ -1553,12 +2088,46 @@ export function isDiffBodyRow<
 }
 
 /**
+ * A successful `write`/`edit` whose inline preview holds NO rows but whose
+ * core archived the full diff (`details.diff_full` present).
+ *
+ * Why this exists beside `isDiffBodyRow`: the inline preview is byte-bounded
+ * too, so when the FIRST (or only) row of a diff is longer than the preview's
+ * budget the core cannot keep any row inline — `details.diff` is absent or
+ * empty — yet the archive (larger ceiling, rows continued across pages) holds
+ * the whole change. Without this the row fell through to the arguments body
+ * and the reader never saw the offer, or saw a "legacy" reason that was false.
+ *
+ * Any descriptor state counts, not only `archived`: an `oversized` /
+ * `withheld` / `unavailable` descriptor on an empty preview must still paint
+ * its own truthful notice in the diff well. A row with NO descriptor keeps the
+ * exact `isDiffBodyRow` semantics (null diff -> arguments body).
+ */
+export function isArchiveOnlyDiffRow(row: {
+	toolName: string;
+	diff: readonly string[] | null;
+	isError: boolean;
+	diffFull?: unknown;
+}): boolean {
+	return (
+		isDiffBodyTool(row.toolName) &&
+		!row.isError &&
+		(row.diff === null || row.diff.length === 0) &&
+		row.diffFull !== null &&
+		row.diffFull !== undefined
+	);
+}
+
+/**
  * The unified diff a `write`/`edit` RESULT carries, as view-ready lines.
  *
  * Source of truth: `_diff_details` (tools/builtin.py:4863-4888) puts a
  * `difflib.unified_diff(..., n=2, lineterm="")` line list on `details.diff`,
- * capped at `_DIFF_DETAILS_CAP_LINES = 200` with a literal `…` appended as the
- * LAST element when it truncated. Nothing on this side recomputes a diff — the
+ * capped at `_DIFF_DETAILS_CAP_LINES = 200`. An older core appended a literal
+ * `…` as the LAST element when it truncated (still on disk, rendered as one dim
+ * row); the current contract keeps the list a valid unified diff and reports the
+ * dropped row count on `details.diff_truncated_rows` instead
+ * (`preferDiffTruncatedRows`). Nothing on this side recomputes a diff — the
  * payload is the producer's own bytes, which is what keeps the row's `+N/-N`
  * counters and the body beside them describing one change.
  *
@@ -1676,6 +2245,30 @@ export function preferDiffCounts(
 }
 
 /**
+ * Rendered diff rows the PRODUCER omitted, under `preferDiffCounts`' rule.
+ *
+ * The core caps a stored diff (`_diff_details`, tools/builtin.py) and, under the
+ * contract both repositories share, a truncated diff is still a complete valid
+ * unified diff — no `…` row — with `details.diff_truncated_rows` counting the
+ * rows it dropped (the key is absent when nothing was dropped). Those rows were
+ * never recorded, so the body says so in a footer rather than offering a toggle
+ * that could not reveal them.
+ *
+ * Same "absent vs stated" split as the counters: a frame with no `details`
+ * (stripped by the live-event budget) keeps the row's previous figure, and a
+ * frame with `details` is the producer's statement — a missing key there means
+ * "not truncated" and states 0. `diffCount` supplies the positive-integer rule,
+ * so a malformed value reads as "not truncated" rather than as a number.
+ */
+export function preferDiffTruncatedRows(
+	details: unknown,
+	previous: number,
+): number {
+	if (!details || typeof details !== "object") return previous;
+	return diffCount((details as Record<string, unknown>).diff_truncated_rows);
+}
+
+/**
  * Drop the nameless `---`/`+++` file-header pair, POSITIONALLY.
  *
  * `_append_diff_body` (tool_card.py:2178-2225). The tool diffs one file's
@@ -1751,40 +2344,125 @@ export type DiffBodyLine = {
 
 export type DiffBody = {
 	lines: DiffBodyLine[];
-	/** Lines the cap hid, for the overflow marker. */
+	/**
+	 * Recorded lines the 40-line default hid — what the `… N more diff lines`
+	 * toggle offers to reveal. Always 0 once expanded (every line is shown) and
+	 * on a withheld body (there is nothing to reveal). `expandable` is the
+	 * separate fact "this body has more than the default", which stays true
+	 * while expanded so the toggle can offer `Show less`.
+	 */
 	hidden: number;
+	/** The body has more recorded lines than the collapsed default shows. */
+	expandable: boolean;
+	/**
+	 * The stored diff is the old core's redaction stand-in rather than a diff
+	 * (see `DIFF_WITHHELD_MARKER`): the body paints one notice, never the marker
+	 * and its trail of blank rows.
+	 */
+	withheld: boolean;
 };
+
+/**
+ * The stand-in an older core stored in place of a diff it refused to redact.
+ *
+ * `_redact_diff_detail` (local_operator/harness/loop.py, `_DIFF_DETAIL_WITHHELD`)
+ * parses each stored diff against its `@@` counts before redacting it, and any
+ * diff the producer had capped at 200 rendered rows (with a trailing `…`) failed
+ * that parse — so every large `write`/`edit` was persisted as
+ * `[<this marker>, "", "", ...]`: the first row is replaced and every
+ * other row is blanked; neither file header is preserved.
+ * Those rows are on disk in every transcript written before the core fix and the
+ * diff they stood for is gone, so the honest rendering is one dim notice. The
+ * string is matched EXACTLY: it is the producer's literal constant, and a
+ * looser match could swallow a real diff whose content line mentions it.
+ */
+export const DIFF_WITHHELD_MARKER =
+	"[output withheld: credential redaction requires a complete bounded diff]";
+
+/**
+ * Whether a header-stripped diff is the withheld stand-in: the marker as the
+ * first line and nothing after it but the blank rows the redactor padded with
+ * (or an old producer's trailing `…`). Anything else after the marker means the
+ * line is real content and the body renders normally.
+ */
+function isWithheldDiff(stripped: readonly string[]): boolean {
+	if (stripped.length === 0 || rstrip(stripped[0]) !== DIFF_WITHHELD_MARKER) {
+		return false;
+	}
+	return stripped
+		.slice(1)
+		.every((line) => rstrip(line) === "" || rstrip(line) === "…");
+}
 
 /**
  * The body the expanded row paints: header-stripped, rstripped, classified and
  * capped, so the component below stays presentational.
  *
+ * COLLAPSED (the default) keeps the terminal's 40-line depth so a row opened in
+ * passing stays a glance. EXPANDED shows every RECORDED line — the reader asked
+ * for all of it, and a cap the reader cannot lift is the defect this replaced:
+ * the overflow marker used to be inert text, so lines 41+ of every large diff
+ * were unreachable in the app. "Recorded" is the bound: whatever the producer
+ * itself dropped is reported separately (`diff_truncated_rows`, see
+ * `preferDiffTruncatedRows`) because those lines do not exist on this side.
+ *
  * The cap counts lines AFTER the header strip, as the terminal does, and the
- * overflow count is the number of remaining lines — including the producer's
- * own trailing `…` on a diff truncated at 200, which is ordinary content line
- * 201 rather than this marker. That is why the two are separate ideas here: the
- * producer's `…` is a dim line inside the body, this one is the dim line below
- * it that says how much is not shown.
+ * overflow count is the number of remaining lines — including an OLDER
+ * producer's own trailing `…` on a diff truncated at 200, which is ordinary dim
+ * content line 201 rather than this marker. That is why the two are separate
+ * ideas here: the producer's `…` is a dim line inside the body, this one is the
+ * toggle below it that says how much is not shown.
  */
-export function diffBody(diff: readonly string[]): DiffBody {
+export function diffBody(
+	diff: readonly string[],
+	options: { expanded?: boolean } = {},
+): DiffBody {
 	const stripped = stripDiffHeader(diff);
-	const shown = stripped.slice(0, DIFF_EXPAND_MAX_LINES);
+	if (isWithheldDiff(stripped)) {
+		return { lines: [], hidden: 0, expandable: false, withheld: true };
+	}
+	const expandable = stripped.length > DIFF_EXPAND_MAX_LINES;
+	const shown = options.expanded
+		? stripped
+		: stripped.slice(0, DIFF_EXPAND_MAX_LINES);
 	return {
 		lines: shown.map((raw) => {
 			const text = rstrip(raw);
 			return { text, marker: text.slice(0, 1), kind: diffLineKind(text) };
 		}),
 		hidden: stripped.length - shown.length,
+		expandable,
+		withheld: false,
 	};
 }
 
 /**
- * The overflow marker, spelled exactly as the terminal spells it.
+ * The overflow toggle's label, spelled as the terminal spells its marker.
  *
  * `f"… {hidden} more diff line{'s' if hidden != 1 else ''}"`
  * (tool_card.py:2222-2223) — including the singular case, because "… 1 more
- * diff lines" is the kind of copy a reader notices instead of the number.
+ * diff lines" is the kind of copy a reader notices instead of the number. Keyed
+ * now that it is a control rather than a terminal echo: it is the button's
+ * accessible name, and copy on a control is interface copy.
  */
 export function diffOverflowLabel(hidden: number): string {
-	return `… ${hidden} more diff line${hidden === 1 ? "" : "s"}`;
+	return t("ui.chat.canonical.tool_row.diff.more", { count: hidden });
+}
+
+/** The expanded body's toggle label, collapsing back to the default depth. */
+export function diffShowLessLabel(): string {
+	return t("ui.chat.canonical.tool_row.diff.show_less");
+}
+
+/**
+ * The footer under a diff the PRODUCER cut short: `rows` rendered diff rows it
+ * never recorded, so no toggle can reveal them.
+ */
+export function diffTruncatedLabel(rows: number): string {
+	return t("ui.chat.canonical.tool_row.diff.truncated", { count: rows });
+}
+
+/** The single notice a withheld legacy diff paints instead of its stand-in. */
+export function diffWithheldLabel(): string {
+	return t("ui.chat.canonical.tool_row.diff.withheld");
 }

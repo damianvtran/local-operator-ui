@@ -1,0 +1,230 @@
+{
+	"ui.hub.adoption.review": {
+		"role": "Inline Hub skill adoption review dialog action",
+		"tone": "Calm, factual, explicit consent. No implied install on preview.",
+		"length": "Wrapping dialog copy; actions wrap on narrow screens. No truncation of reviewed content.",
+		"note": "English source: Review and merge. Local means existing authored folder; Hub means remote skill. Snapshot is complete original bytes and remains after cancellation. Preview choices do not apply. Keep identifiers/path/model placeholders unchanged."
+	},
+	"ui.hub.adoption.title": {
+		"role": "Inline Hub skill adoption review dialog label or status",
+		"tone": "Calm, factual, explicit consent. No implied install on preview.",
+		"length": "Wrapping dialog copy; actions wrap on narrow screens. No truncation of reviewed content.",
+		"note": "English source: Review existing skill. Local means existing authored folder; Hub means remote skill. Snapshot is complete original bytes and remains after cancellation. Preview choices do not apply. Keep identifiers/path/model placeholders unchanged."
+	},
+	"ui.hub.adoption.preservation": {
+		"role": "Inline Hub skill adoption review dialog label or status",
+		"tone": "Calm, factual, explicit consent. No implied install on preview.",
+		"length": "Wrapping dialog copy; actions wrap on narrow screens. No truncation of reviewed content.",
+		"note": "English source: Preview saves a complete restorable snapshot without changing your skill or its link. Confirm writes only the reviewed proposal and creates the Hub link with the selected subscription policy. Cancel leaves the skill and link untouched; the snapshot remains.. Local means existing authored folder; Hub means remote skill. Snapshot is complete original bytes and remains after cancellation. Preview choices do not apply. Keep identifiers/path/model placeholders unchanged."
+	},
+	"ui.hub.adoption.model_consent": {
+		"role": "Inline Hub skill adoption review dialog label or status",
+		"tone": "Calm, factual, explicit consent. No implied install on preview.",
+		"length": "Wrapping dialog copy; actions wrap on narrow screens. No truncation of reviewed content.",
+		"note": "English source: Allow the configured model to receive skill text and consolidate overlapping content. Leave off to review without a model.. Local means existing authored folder; Hub means remote skill. Snapshot is complete original bytes and remains after cancellation. Preview choices do not apply. Keep identifiers/path/model placeholders unchanged."
+	},
+	"ui.hub.adoption.loading": {
+		"role": "Inline Hub skill adoption review dialog label or status",
+		"tone": "Calm, factual, explicit consent. No implied install on preview.",
+		"length": "Wrapping dialog copy; actions wrap on narrow screens. No truncation of reviewed content.",
+		"note": "English source: Preparing the review…. Local means existing authored folder; Hub means remote skill. Snapshot is complete original bytes and remains after cancellation. Preview choices do not apply. Keep identifiers/path/model placeholders unchanged."
+	},
+	"ui.hub.adoption.stale": {
+		"role": "Inline Hub skill adoption review dialog label or status",
+		"tone": "Calm, factual, explicit consent. No implied install on preview.",
+		"length": "Wrapping dialog copy; actions wrap on narrow screens. No truncation of reviewed content.",
+		"note": "English source: The local skill, Hub revision, or policy changed. Create a new preview before confirming.. Local means existing authored folder; Hub means remote skill. Snapshot is complete original bytes and remains after cancellation. Preview choices do not apply. Keep identifiers/path/model placeholders unchanged."
+	},
+	"ui.hub.adoption.failed": {
+		"role": "Inline Hub skill adoption review dialog label or status",
+		"tone": "Calm, factual, explicit consent. No implied install on preview.",
+		"length": "Wrapping dialog copy; actions wrap on narrow screens. No truncation of reviewed content.",
+		"note": "English source: The operation did not complete. No adoption is confirmed. Create a new preview to try again.. Local means existing authored folder; Hub means remote skill. Snapshot is complete original bytes and remains after cancellation. Preview choices do not apply. Keep identifiers/path/model placeholders unchanged."
+	},
+	"ui.hub.adoption.snapshot": {
+		"role": "Inline Hub skill adoption review dialog label or status",
+		"tone": "Calm, factual, explicit consent. No implied install on preview.",
+		"length": "Wrapping dialog copy; actions wrap on narrow screens. No truncation of reviewed content.",
+		"note": "English source: Original files preserved at: {path}. Local means existing authored folder; Hub means remote skill. Snapshot is complete original bytes and remains after cancellation. Preview choices do not apply. Keep identifiers/path/model placeholders unchanged."
+	},
+	"ui.hub.adoption.model": {
+		"role": "Inline Hub skill adoption review dialog label or status",
+		"tone": "Calm, factual, explicit consent. No implied install on preview.",
+		"length": "Wrapping dialog copy; actions wrap on narrow screens. No truncation of reviewed content.",
+		"note": "English source: Consolidation model: {model}. Local means existing authored folder; Hub means remote skill. Snapshot is complete original bytes and remains after cancellation. Preview choices do not apply. Keep identifiers/path/model placeholders unchanged."
+	},
+	"ui.hub.adoption.needs_choice": {
+		"role": "Inline Hub skill adoption review dialog label or status",
+		"tone": "Calm, factual, explicit consent. No implied install on preview.",
+		"length": "Wrapping dialog copy; actions wrap on narrow screens. No truncation of reviewed content.",
+		"note": "English source: No complete consolidation is available. Choose which version to use, review its new preview, then confirm. Nothing is chosen automatically.. Local means existing authored folder; Hub means remote skill. Snapshot is complete original bytes and remains after cancellation. Preview choices do not apply. Keep identifiers/path/model placeholders unchanged."
+	},
+	"ui.hub.adoption.local_path": {
+		"role": "Inline Hub skill adoption review dialog label or status",
+		"tone": "Calm, factual, explicit consent. No implied install on preview.",
+		"length": "Wrapping dialog copy; actions wrap on narrow screens. No truncation of reviewed content.",
+		"note": "English source: Original local path: {path}. Local means existing authored folder; Hub means remote skill. Snapshot is complete original bytes and remains after cancellation. Preview choices do not apply. Keep identifiers/path/model placeholders unchanged."
+	},
+	"ui.hub.adoption.proposed": {
+		"role": "Inline Hub skill adoption review dialog label or status",
+		"tone": "Calm, factual, explicit consent. No implied install on preview.",
+		"length": "Wrapping dialog copy; actions wrap on narrow screens. No truncation of reviewed content.",
+		"note": "English source: Full proposed content. Local means existing authored folder; Hub means remote skill. Snapshot is complete original bytes and remains after cancellation. Preview choices do not apply. Keep identifiers/path/model placeholders unchanged."
+	},
+	"ui.hub.adoption.no_proposal": {
+		"role": "Inline Hub skill adoption review dialog label or status",
+		"tone": "Calm, factual, explicit consent. No implied install on preview.",
+		"length": "Wrapping dialog copy; actions wrap on narrow screens. No truncation of reviewed content.",
+		"note": "English source: No text proposal. See the file disposition above; original local bytes remain in the snapshot.. Local means existing authored folder; Hub means remote skill. Snapshot is complete original bytes and remains after cancellation. Preview choices do not apply. Keep identifiers/path/model placeholders unchanged."
+	},
+	"ui.hub.adoption.diff_local": {
+		"role": "Inline Hub skill adoption review dialog label or status",
+		"tone": "Calm, factual, explicit consent. No implied install on preview.",
+		"length": "Wrapping dialog copy; actions wrap on narrow screens. No truncation of reviewed content.",
+		"note": "English source: Changes from local to proposed. Local means existing authored folder; Hub means remote skill. Snapshot is complete original bytes and remains after cancellation. Preview choices do not apply. Keep identifiers/path/model placeholders unchanged."
+	},
+	"ui.hub.adoption.diff_hub": {
+		"role": "Inline Hub skill adoption review dialog label or status",
+		"tone": "Calm, factual, explicit consent. No implied install on preview.",
+		"length": "Wrapping dialog copy; actions wrap on narrow screens. No truncation of reviewed content.",
+		"note": "English source: Changes from Hub to proposed. Local means existing authored folder; Hub means remote skill. Snapshot is complete original bytes and remains after cancellation. Preview choices do not apply. Keep identifiers/path/model placeholders unchanged."
+	},
+	"ui.hub.adoption.no_difference": {
+		"role": "Inline Hub skill adoption review dialog label or status",
+		"tone": "Calm, factual, explicit consent. No implied install on preview.",
+		"length": "Wrapping dialog copy; actions wrap on narrow screens. No truncation of reviewed content.",
+		"note": "English source: No differences. Local means existing authored folder; Hub means remote skill. Snapshot is complete original bytes and remains after cancellation. Preview choices do not apply. Keep identifiers/path/model placeholders unchanged."
+	},
+	"ui.hub.adoption.preview": {
+		"role": "Inline Hub skill adoption review dialog action",
+		"tone": "Calm, factual, explicit consent. No implied install on preview.",
+		"length": "Wrapping dialog copy; actions wrap on narrow screens. No truncation of reviewed content.",
+		"note": "English source: Create preview. Local means existing authored folder; Hub means remote skill. Snapshot is complete original bytes and remains after cancellation. Preview choices do not apply. Keep identifiers/path/model placeholders unchanged."
+	},
+	"ui.hub.adoption.repreview": {
+		"role": "Inline Hub skill adoption review dialog action",
+		"tone": "Calm, factual, explicit consent. No implied install on preview.",
+		"length": "Wrapping dialog copy; actions wrap on narrow screens. No truncation of reviewed content.",
+		"note": "English source: Create new preview. Local means existing authored folder; Hub means remote skill. Snapshot is complete original bytes and remains after cancellation. Preview choices do not apply. Keep identifiers/path/model placeholders unchanged."
+	},
+	"ui.hub.adoption.keep_local": {
+		"role": "Inline Hub skill adoption review dialog action",
+		"tone": "Calm, factual, explicit consent. No implied install on preview.",
+		"length": "Wrapping dialog copy; actions wrap on narrow screens. No truncation of reviewed content.",
+		"note": "English source: Preview keeping local. Local means existing authored folder; Hub means remote skill. Snapshot is complete original bytes and remains after cancellation. Preview choices do not apply. Keep identifiers/path/model placeholders unchanged."
+	},
+	"ui.hub.adoption.take_hub": {
+		"role": "Inline Hub skill adoption review dialog action",
+		"tone": "Calm, factual, explicit consent. No implied install on preview.",
+		"length": "Wrapping dialog copy; actions wrap on narrow screens. No truncation of reviewed content.",
+		"note": "English source: Preview using Hub. Local means existing authored folder; Hub means remote skill. Snapshot is complete original bytes and remains after cancellation. Preview choices do not apply. Keep identifiers/path/model placeholders unchanged."
+	},
+	"ui.hub.adoption.confirm": {
+		"role": "Inline Hub skill adoption review dialog action",
+		"tone": "Calm, factual, explicit consent. No implied install on preview.",
+		"length": "Wrapping dialog copy; actions wrap on narrow screens. No truncation of reviewed content.",
+		"note": "English source: Confirm reviewed adoption. Local means existing authored folder; Hub means remote skill. Snapshot is complete original bytes and remains after cancellation. Preview choices do not apply. Keep identifiers/path/model placeholders unchanged."
+	},
+	"ui.hub.adoption.cancel": {
+		"role": "Inline Hub skill adoption review dialog action",
+		"tone": "Calm, factual, explicit consent. No implied install on preview.",
+		"length": "Wrapping dialog copy; actions wrap on narrow screens. No truncation of reviewed content.",
+		"note": "English source: Cancel. Local means existing authored folder; Hub means remote skill. Snapshot is complete original bytes and remains after cancellation. Preview choices do not apply. Keep identifiers/path/model placeholders unchanged."
+	},
+	"ui.hub.adoption.applied": {
+		"role": "Inline Hub skill adoption review dialog label or status",
+		"tone": "Calm, factual, explicit consent. No implied install on preview.",
+		"length": "Wrapping dialog copy; actions wrap on narrow screens. No truncation of reviewed content.",
+		"note": "English source: Skill adopted. The reviewed content and Hub link are saved; your original files remain in the snapshot.. Local means existing authored folder; Hub means remote skill. Snapshot is complete original bytes and remains after cancellation. Preview choices do not apply. Keep identifiers/path/model placeholders unchanged."
+	},
+	"ui.hub.adoption.done": {
+		"role": "Inline Hub skill adoption review dialog action",
+		"tone": "Calm, factual, explicit consent. No implied install on preview.",
+		"length": "Wrapping dialog copy; actions wrap on narrow screens. No truncation of reviewed content.",
+		"note": "English source: Done. Local means existing authored folder; Hub means remote skill. Snapshot is complete original bytes and remains after cancellation. Preview choices do not apply. Keep identifiers/path/model placeholders unchanged."
+	},
+	"ui.hub.adoption.file_same": {
+		"role": "Inline Hub skill adoption review dialog label or status",
+		"tone": "Calm, factual, explicit consent. No implied install on preview.",
+		"length": "Wrapping dialog copy; actions wrap on narrow screens. No truncation of reviewed content.",
+		"note": "English source: Same content. Local means existing authored folder; Hub means remote skill. Snapshot is complete original bytes and remains after cancellation. Preview choices do not apply. Keep identifiers/path/model placeholders unchanged."
+	},
+	"ui.hub.adoption.file_hub": {
+		"role": "Inline Hub skill adoption review dialog label or status",
+		"tone": "Calm, factual, explicit consent. No implied install on preview.",
+		"length": "Wrapping dialog copy; actions wrap on narrow screens. No truncation of reviewed content.",
+		"note": "English source: Use Hub content. Local means existing authored folder; Hub means remote skill. Snapshot is complete original bytes and remains after cancellation. Preview choices do not apply. Keep identifiers/path/model placeholders unchanged."
+	},
+	"ui.hub.adoption.file_local": {
+		"role": "Inline Hub skill adoption review dialog label or status",
+		"tone": "Calm, factual, explicit consent. No implied install on preview.",
+		"length": "Wrapping dialog copy; actions wrap on narrow screens. No truncation of reviewed content.",
+		"note": "English source: Keep local content. Local means existing authored folder; Hub means remote skill. Snapshot is complete original bytes and remains after cancellation. Preview choices do not apply. Keep identifiers/path/model placeholders unchanged."
+	},
+	"ui.hub.adoption.file_merged": {
+		"role": "Inline Hub skill adoption review dialog label or status",
+		"tone": "Calm, factual, explicit consent. No implied install on preview.",
+		"length": "Wrapping dialog copy; actions wrap on narrow screens. No truncation of reviewed content.",
+		"note": "English source: Consolidate both versions. Local means existing authored folder; Hub means remote skill. Snapshot is complete original bytes and remains after cancellation. Preview choices do not apply. Keep identifiers/path/model placeholders unchanged."
+	},
+	"ui.hub.adoption.file_aside": {
+		"role": "Inline Hub skill adoption review dialog label or status",
+		"tone": "Calm, factual, explicit consent. No implied install on preview.",
+		"length": "Wrapping dialog copy; actions wrap on narrow screens. No truncation of reviewed content.",
+		"note": "English source: Not installed; preserved in snapshot only. Local means existing authored folder; Hub means remote skill. Snapshot is complete original bytes and remains after cancellation. Preview choices do not apply. Keep identifiers/path/model placeholders unchanged."
+	},
+	"ui.hub.adoption.file_choice": {
+		"role": "Inline Hub skill adoption review dialog label or status",
+		"tone": "Calm, factual, explicit consent. No implied install on preview.",
+		"length": "Wrapping dialog copy; actions wrap on narrow screens. No truncation of reviewed content.",
+		"note": "English source: Decision required. Local means existing authored folder; Hub means remote skill. Snapshot is complete original bytes and remains after cancellation. Preview choices do not apply. Keep identifiers/path/model placeholders unchanged."
+	},
+	"ui.hub.adoption.file_review": {
+		"role": "Inline Hub skill adoption review dialog label or status",
+		"tone": "Calm, factual, explicit consent. No implied install on preview.",
+		"length": "Wrapping dialog copy; actions wrap on narrow screens. No truncation of reviewed content.",
+		"note": "English source: Review file disposition. Local means existing authored folder; Hub means remote skill. Snapshot is complete original bytes and remains after cancellation. Preview choices do not apply. Keep identifiers/path/model placeholders unchanged."
+	},
+	"ui.hub.adoption.kept_local": {
+		"role": "Inline Hub skill adoption review dialog label or status",
+		"tone": "Calm, factual, explicit consent. No implied install on preview.",
+		"length": "Wrapping dialog copy; actions wrap on narrow screens. No truncation of reviewed content.",
+		"note": "English source: Kept from local. Local means existing authored folder; Hub means remote skill. Snapshot is complete original bytes and remains after cancellation. Preview choices do not apply. Keep identifiers/path/model placeholders unchanged."
+	},
+	"ui.hub.adoption.kept_hub": {
+		"role": "Inline Hub skill adoption review dialog label or status",
+		"tone": "Calm, factual, explicit consent. No implied install on preview.",
+		"length": "Wrapping dialog copy; actions wrap on narrow screens. No truncation of reviewed content.",
+		"note": "English source: Kept from Hub. Local means existing authored folder; Hub means remote skill. Snapshot is complete original bytes and remains after cancellation. Preview choices do not apply. Keep identifiers/path/model placeholders unchanged."
+	},
+	"ui.hub.adoption.kept_combined": {
+		"role": "Inline Hub skill adoption review dialog label or status",
+		"tone": "Calm, factual, explicit consent. No implied install on preview.",
+		"length": "Wrapping dialog copy; actions wrap on narrow screens. No truncation of reviewed content.",
+		"note": "English source: Combined from both. Local means existing authored folder; Hub means remote skill. Snapshot is complete original bytes and remains after cancellation. Preview choices do not apply. Keep identifiers/path/model placeholders unchanged."
+	},
+	"ui.hub.adoption.kept_unresolved": {
+		"role": "Inline Hub skill adoption review dialog label or status",
+		"tone": "Calm, factual, explicit consent. No implied install on preview.",
+		"length": "Wrapping dialog copy; actions wrap on narrow screens. No truncation of reviewed content.",
+		"note": "English source: Unresolved sections. Local means existing authored folder; Hub means remote skill. Snapshot is complete original bytes and remains after cancellation. Preview choices do not apply. Keep identifiers/path/model placeholders unchanged."
+	},
+	"ui.hub.adoption.file_carried": {
+		"role": "Inline Hub skill adoption review dialog label or status",
+		"tone": "Calm, factual, explicit consent. No implied install on preview.",
+		"length": "Wrapping dialog copy; actions wrap on narrow screens. No truncation of reviewed content.",
+		"note": "English source: Carry original local bytes unchanged. Local means existing authored folder; Hub means remote skill. Snapshot is complete original bytes and remains after cancellation. Preview choices do not apply. Keep identifiers/path/model placeholders unchanged."
+	},
+	"ui.hub.adoption.file_not_adopted": {
+		"role": "Inline Hub skill adoption review dialog label or status",
+		"tone": "Calm, factual, explicit consent. No implied install on preview.",
+		"length": "Wrapping dialog copy; actions wrap on narrow screens. No truncation of reviewed content.",
+		"note": "English source: Hub file not adopted. Local means existing authored folder; Hub means remote skill. Snapshot is complete original bytes and remains after cancellation. Preview choices do not apply. Keep identifiers/path/model placeholders unchanged."
+	},
+	"ui.hub.adoption.file_relocated": {
+		"role": "Per-file disposition in the existing skill adoption review dialog",
+		"tone": "Concise, factual; describes a pending filesystem move, not an applied result.",
+		"length": "One wrapping status label, no fixed width.",
+		"note": "Core action relocated: existing local guidance remains preserved but is moved to the displayed file path so it does not collide with Hub guidance. Local means the authored folder. Path is shown separately; do not add a placeholder. English source: Move local guidance to this path"
+	}
+}

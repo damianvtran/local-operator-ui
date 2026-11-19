@@ -1,0 +1,40 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "tbh-r1-hi",
+ "session": "974acfeecff9",
+ "date": "2026-10-21",
+ "locale": "hi",
+ "translator": "translator",
+ "translator_session": "632a8fd68227",
+ "namespace": "ui.teamBridge",
+ "status": "passed",
+ "keys_audited": 2,
+ "scope": "2-key held-schedule recovery delta (ui.teamBridge.schedule.held, schedule.discard_attempt) per git diff 51dceb5a09..c06b457 of en; 136 other values verified byte-unchanged vs HEAD and inherited from tbs-r2-hi; catalogue audit only, not rendered-fit/activation/release.",
+ "sha256": {
+  "en": "5f67df6c37f34f1f83e4048ad47aef9bd4020fe2ba74c5e8e548b9c4439dc7ee",
+  "hi": "4e453d80c3efcf76bdd6524d149839c0d0016d68f6a1188e578535bf4c4d0e08",
+  "context": "02e7be8fe466cd83941fcead89f234a705d0aa40765d274b9d92390333e4337c"
+ },
+ "findings": [],
+ "inherited_receipt": {
+  "base": "c06b457be9",
+  "path": "i18n/receipts/tbs-r2-hi.json",
+  "sha256": "b6312b60c3b68b2abf8d4a5313b545e80c05ffc72d44e0f905fa3aaa8451049e",
+  "keys_inherited": 136,
+  "base_target_sha256": "ecc9fec207ec0685265caedbb99d3acbc75c3e7285e526c7e78a9b7aa911761b",
+  "unchanged_values_verified": 136
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+ },
+ "validation": {
+  "independence": "Auditor session 974acfeecff9, separate from translator session 632a8fd68227. Read the en catalogue, en context sidecar, working-tree hi catalogue, glossary, hi style guide and team-bridge-page.tsx plus shared Button directly; en/context/glossary hashes match the brief, and the target hash matches the reported 4e453d80…. git show HEAD:hi hashes ecc9fec2…, the same as tbs-r2-hi's target hash. tbs-r2-hi.json hashes b6312b60… (as briefed) and its previous_round tbs-r1-hi.json hashes d3d63d00… (as recorded inside it). git diff numstat for hi is 3 added/1 removed: the two new keys plus the trailing comma on schedule.retry, whose value is unchanged. The en and hi key sets are equal (138) in the same order. All 136 HEAD values are byte-identical. No repo file edited; nothing staged.",
+  "semantics": "held (composer-footer <p id=heldReasonId>): 'हो सकता है पिछला शेड्यूल अब भी मौजूद हो। इस कोशिश को छोड़ने से पहले “शेड्यूल किए गए” देखें और ज़रूरत हो तो उसे रद्द करें। आपका ड्राफ़्ट सुरक्षित है।' keeps the uncertainty (हो सकता है … हो, the same frame as create_uncertain), the order check Scheduled → cancel if needed → before discarding, and draft retention. उसे refers to the previous schedule, and रद्द करें is the server cancellation the reader performs in Scheduled. 'आपका ड्राफ़्ट सुरक्षित है' is the existing rendering in schedule.failed/create_uncertain. discard_attempt (ghost Button): 'मैंने “शेड्यूल किए गए” देख लिया — यह कोशिश छोड़ें' keeps the first-person acknowledgement in the same shape as create_retry ('मैंने “समूह” देख लिया — …'). The verb छोड़ें (abandon) is the local-attempt discard and stays distinct from schedule.cancel 'संदेश रद्द करें', so it does not read as cancelling or deleting the server message, as the context note requires. The Scheduled reference 'शेड्यूल किए गए' equals schedule.list byte-for-byte, uses the same “…” quoting as schedule.failed/success, and keeps the glossary call schedule → शेड्यूल. Address is the polite imperative (देखें, करें, छोड़ें) per the style guide, with no तुम/तू. Nukta is kept (ज़रूरत, ड्राफ़्ट).",
+  "icu": "Both values parsed with @formatjs/icu-messageformat-parser from the repo node_modules: a single literal node each, the same as en (no arguments). Formatting with intl-messageformat for locale hi with no values returns the string unchanged.",
+  "typography": "Both values are NFC. Neither contains a bidi control (U+200E/F, U+202A–E, U+2066–9, U+061C) or ZWJ/ZWNJ. Curly quotes “ ” per the style guide, no ASCII quotes. held ends its three sentences with danda । and has no Latin period. discard_attempt is a button label without terminal punctuation, as in en. The em dash with spaces mirrors en and create_retry. The file ends with a newline.",
+  "overflow": "held is 148 code points / 98 graphemes vs en 128 chars, in a wrapping <p>; the context permits wrapping, so it is not a concern. discard_attempt is 49 code points / 32 graphemes vs en 42 chars. The shared Button base class has whitespace-nowrap, so the label cannot wrap. Its rendered width is expected to be comparable to en and to the already-approved create_retry (54 cp / 36 graphemes) in the same footer, but this was not measured. No finding is raised. A rendered check of the footer at minimum pane width is recommended for both en and hi.",
+  "limitations": "Browser unavailable by task constraint; no screenshots, glyph metrics, visual-fit or rendered bidi claim. No catalogue/code edits."
+ }
+}

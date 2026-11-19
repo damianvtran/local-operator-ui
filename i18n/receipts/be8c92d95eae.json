@@ -1,0 +1,143 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "model": "radient/auto",
+  "instance": "be8c92d95eae",
+  "locale": "vi",
+  "namespace": "ui.onboarding.tour",
+  "date": "2026-10-25",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "keys_read": 123,
+  "sha256": {
+    "en": "81fc4e3b70850e6961092aeb42a9cc12160fe1bd064d47cb28ce548618bcb976",
+    "vi": "c39595f3122ab799a55cdb936e7640da756030f93f6152c9c6801919685cea55"
+  },
+  "context_sha256": "7131faf88213b943cfa7ee0b951a8e0d5fb512728b677c023beec11b677c0906",
+  "source_bytes": 20065,
+  "target_bytes": 23759,
+  "source_ref": "b3dd694c1702e36239cb7da94d636a02318d13ad",
+  "source_ref_basis": "commit named by the delegating manager; this audit verified the English and context bytes by SHA-256 at the worktree, not git ancestry (git commands were held)",
+  "target_state": "uncommitted (untracked) candidate in worktree i18n-onboarding; not contained in the source commit and not part of any commit",
+  "translator": {
+    "agent": "i18n-translator",
+    "job": "1cec7f3afe8e",
+    "model": "radient/auto",
+    "independence": "different agent and job from this auditor"
+  },
+  "scope": "First independent audit of all 123 keys of ui.onboarding.tour (vi) against the frozen English catalogue and its 123-key context sidecar: full-namespace read, structural/ICU/hash checks, cross-namespace term and quoted-control checks, and joined-render samples of the two command-palette shortcut paragraphs with their real keycap positions. No git ancestry verification, no build, no browser/pixel/RTL capture, no native-speaker sign-off.",
+  "checks": [
+    "SHA-256 of en/context/vi equals 81fc4e3b70850e6961092aeb42a9cc12160fe1bd064d47cb28ce548618bcb976 / 7131faf88213b943cfa7ee0b951a8e0d5fb512728b677c023beec11b677c0906 / c39595f3122ab799a55cdb936e7640da756030f93f6152c9c6801919685cea55; sizes 20065 / 61441 / 23759 bytes.",
+    "JSON parse both files: 123 keys each, key sets equal, key order identical, zero duplicate keys, zero empty values.",
+    "Encoding: valid UTF-8, no BOM, LF endings, tab indentation matching en; all 123 target values are NFC (no decomposed combining sequences).",
+    "ICU: no '{' or '}' in the English source or the target; all 123 target messages parsed with @formatjs/icu-messageformat-parser 3.5.21, 123/123 OK and all top-level nodes literal. No arguments and no plural/select arms exist in the source, so CLDR plural categories are N/A (vi is other-only; nothing to add).",
+    "Fragments: all 10 whitespace-sensitive shortcut keys (all body/connector fragments with a structural leading or trailing space) have exactly the English boundary spaces; no glued words and no doubled structural spaces.",
+    "Join render: both paragraphs rebuilt from the tour-copy.ts run order with the real paletteDoorLabel values (⌘P/Ctrl+P; ⌘K/Ctrl+K; ⌘⇧P/Ctrl+Shift+P) and the #/@/,/> prefixes; Vietnamese reads correctly at every join.",
+    "Wiring: all 123 catalogued keys are referenced from tour-copy.ts/tour-steps.ts; 37 step titles, 37 bodies, no orphan key and no referenced-but-missing key.",
+    "Quoted controls checked against the app's own vi labels: View agent settings = Xem cài đặt tác nhân (ui.agents.dialogs.menu.settings); Agent Hub = Trung tâm tác nhân (ui.shell.sidebar_navigation.agent_hub); Search = Tìm kiếm; '+' icon; 'Get' is a hardcoded English button in agent-card.tsx and is correctly kept; Automatic = Tự động (ui.common.models.model_select).",
+    "Terms checked against the vi corpus: theme = giao diện (ui.chat.pickers.theme.title); hosting provider = nhà cung cấp dịch vụ mô hình (ui.common.models.hosting_select.hosting_provider); Schedules = Lịch chạy (ui.shell.sidebar_navigation.schedules); prompt kept English; team = nhóm; tool = công cụ; temperature kept English (ui.agents.settings.chat.temperature).",
+    "Register/typography: address form bạn only (no anh/chị, no Quý khách), no '!', curly quotes, spaced em dashes, no ASCII ellipsis, oa/uy tone marks on the first vowel (xóa, hóa), sentence-case headings.",
+    "Length budgets: longest heading ratio 1.45x (select_provider.title 23->33 chars); the only ratio above 1.5x is action.back (4->8 cells). Character counts only; no rendered cell measurement."
+  ],
+  "findings": [
+    {
+      "severity": "minor",
+      "class": "accuracy",
+      "key": "ui.onboarding.tour.agent_list.body.2",
+      "current": "Dùng nút tạo tác nhân ở đầu thanh công cụ để tạo tác nhân mới bất cứ lúc nào. Bạn cũng có thể nhập tác nhân từ Trung tâm tác nhân; phần này sẽ được đề cập ở cuối bài hướng dẫn.",
+      "proposed": "Dùng nút tạo tác nhân ở đầu thanh công cụ để tạo tác nhân mới bất cứ lúc nào. Bạn cũng có thể nhập tác nhân từ Trung tâm tác nhân; phần này sẽ được đề cập ở phần sau của bài hướng dẫn.",
+      "reason": "\"later in this tour\" is not \"at the end\": the Agent Hub is covered at steps 22-25 of 37, so \"cuối bài hướng dẫn\" misstates where the reader meets it."
+    },
+    {
+      "severity": "minor",
+      "class": "glossary/product-name consistency",
+      "key": "ui.onboarding.tour.integrations_settings.body.1",
+      "current": "Nâng cao khả năng của tác nhân bằng cách kết nối các dịch vụ Google như Gmail, Lịch và Drive. Nhờ vậy tác nhân có thể truy cập và quản lý thông tin của bạn khi bạn cho phép.",
+      "proposed": "Nâng cao khả năng của tác nhân bằng cách kết nối các dịch vụ Google như Gmail, Calendar và Drive. Nhờ vậy tác nhân có thể truy cập và quản lý thông tin của bạn khi bạn cho phép.",
+      "reason": "The same English list renders \"Gmail, Calendar và Drive\" in vi/ui.settings.integrations.json (ui.settings.integrations.credential_manifest.oauth_2_0_access_token_for_google_apis_used_by_local_operator_for); Gmail and Drive stay English, so translating only Calendar drifts from the product-name policy (glossary section 1) and from the sibling string."
+    },
+    {
+      "severity": "nit",
+      "class": "consistency",
+      "key": "ui.onboarding.tour.chat_input.list.1.item.1",
+      "current": "“Tạo bảng tính trong thư mục Documents của tôi với mọi thành phố lớn của Canada.”",
+      "proposed": "“Tạo bảng tính trong thư mục Tài liệu của tôi với mọi thành phố lớn của Canada.”",
+      "reason": "The app labels that folder \"Tài liệu\" (ui.chat.directory.folder.documents, ui.canvas.files.documents) and this namespace renders \"Documents view\" as \"Chế độ xem Tài liệu\"; the example prompt names a folder the reader does not see under that name. Keep \"Documents\" only if the on-disk path is deliberately what the agent must hear."
+    },
+    {
+      "severity": "nit",
+      "class": "idiom",
+      "key": "ui.onboarding.tour.tour_complete.body.1",
+      "current": "Bạn đã xem qua những tính năng chính của Local Operator. Cứ tự do khám phá thêm để thấy mọi cách tác nhân AI có thể hỗ trợ bạn. Chúc bạn tự động hóa vui vẻ.",
+      "proposed": "Bạn đã xem qua những tính năng chính của Local Operator. Cứ tự do khám phá thêm để thấy mọi cách tác nhân AI có thể hỗ trợ bạn. Chúc bạn sớm tự động hóa mọi việc.",
+      "reason": "\"Happy automating\" is a playful sign-off; \"tự động hóa vui vẻ\" calques the English frame and reads translated, because \"vui vẻ\" normally attaches to an activity or occasion, not to an -ing noun."
+    },
+    {
+      "severity": "nit",
+      "class": "accuracy/ellipsis",
+      "key": "ui.onboarding.tour.pre_command_palette_open_canvas.body.2.3",
+      "current": " trên Windows hoặc Linux thì bảng lệnh mở ra và đang tìm ngay trong các cuộc trò chuyện, để bạn nhảy thẳng tới một cuộc — và ",
+      "proposed": " trên Windows hoặc Linux thì bảng lệnh mở ra và đang tìm ngay trong các cuộc trò chuyện, để bạn nhảy thẳng tới một cuộc trò chuyện — và ",
+      "reason": "\"một cuộc\" stands without its head noun; the ellipsis is recoverable but clipped, and the fragment keeps its leading space and trailing \" — và \" so the keycap join is unaffected."
+    },
+    {
+      "severity": "nit",
+      "class": "accessibility description",
+      "key": "ui.onboarding.tour.welcome.image.1.alt",
+      "current": "Cửa sổ trò chuyện có thanh bên, danh sách tin nhắn và ô soạn tin",
+      "proposed": "Cửa sổ trò chuyện có thanh bên, chuỗi tin nhắn và ô soạn tin",
+      "reason": "The context sidecar describes the figure as a \"chat window with a sidebar, message thread and composer\"; \"danh sách tin nhắn\" describes a message list instead, and this string is the figure's only description."
+    },
+    {
+      "severity": "info",
+      "class": "source-side observation",
+      "key": "ui.onboarding.tour.create_schedule.body.1",
+      "current": "Nhấn “Tạo lịch” để nhờ tác nhân làm một việc đều đặn, như gửi báo cáo hằng ngày hoặc kiểm tra tin tức mới.",
+      "proposed": "If the English quote is corrected, render it as the control's own label: Tác vụ theo lịch mới.",
+      "reason": "The step attaches to button[data-tour-tag=\"create-schedule-button\"], whose label is ui.schedules.schedules_page.new_scheduled_task = \"New scheduled task\" / \"Tác vụ theo lịch mới\"; the English copy quotes \"Create schedule\" (the dialog's submit label), so the stale quote is in the source, not introduced by the translator. Vietnamese mirrors the source faithfully."
+    },
+    {
+      "severity": "info",
+      "class": "source-side observation",
+      "key": "ui.onboarding.tour.pre_command_palette_open_canvas.body.1.5",
+      "current": "Hãy xem nhanh một tính năng mạnh mẽ khác: Bảng lệnh. Bạn có thể mở nó ở bất kỳ đâu trong ứng dụng bằng cách nhấn ⌘P trên Mac và Ctrl+P trên Windows hoặc Linux. Đây là một cửa sổ hữu ích mà bạn có thể mở từ bất kỳ đâu trong ứng dụng để truy cập cuộc trò chuyện, tác nhân, cài đặt, trang, thao tác và nhiều thứ khác nữa bằng bàn phím. Cách này thường nhanh hơn việc bấm qua các menu. Gõ một từ để tìm mọi thứ cùng lúc, hoặc bắt đầu bằng tiền tố để thu hẹp: # cho cuộc trò chuyện, @ cho tác nhân và nhóm, , cho cài đặt, và > cho lệnh và trang.",
+      "proposed": "Source-side: drop the trailing \", \" from body.1.5 or the \",\" prefix run.",
+      "reason": "The doubled \", ,\" before the settings prefix comes from the English fragment set itself (body.1.5 ends \", \" and the settings prefix is \",\"); the rendered English has the same sequence, so this is not a target defect."
+    },
+    {
+      "severity": "info",
+      "class": "cross-namespace observation",
+      "key": "ui.hub.updates.error.model_unavailable",
+      "current": "Không có mô hình để merge. Kiểm tra Cài đặt › Agent Hub.",
+      "proposed": "Kiểm tra Cài đặt › Trung tâm tác nhân (if the settings destination is the same Agent Hub).",
+      "reason": "Outside this namespace: the tour, sidebar and palette render Agent Hub as \"Trung tâm tác nhân\", while this hub-update error keeps the English name. Not charged against this namespace's translator; noted for the owner of ui.hub.updates."
+    },
+    {
+      "severity": "info",
+      "class": "typography observation",
+      "key": "ui.onboarding.tour.* (14 English body strings)",
+      "current": "English uses double spaces after sentence periods in 14 body strings; the target uses single spaces.",
+      "proposed": "No change: intentional normalization.",
+      "reason": "The renderer collapses HTML whitespace, so no rendering difference; recorded so a reader does not mistake the missing internal double space for a lost structural space (the 10 fragment-boundary spaces are preserved and checked)."
+    }
+  ],
+  "limitations": [
+    "Resource hold respected for execution: no build, no whole-app bundling, no full test suite, no dependency install, no browser launch. Only lightweight parsing/hashing/rendering of these catalogue bytes plus static reads of tour-copy.ts, tour-steps.ts and related catalogue keys.",
+    "No rendered frames, pixel or cell-width measurement, and no RTL check (vi is LTR). Width risk judged from character counts against the sidecar budgets only; native-speaker sign-off is not claimed.",
+    "Source commit b3dd694c1702e36239cb7da94d636a02318d13ad is the manager's declaration; identity here rests on the SHA-256 of the English and context bytes, not on git ancestry. One read-only `git status --porcelain` was run before the hold was fully read; it changed no file (target mtime and hash unchanged) though it may refresh the index stat cache. No further git commands were used.",
+    "The target is an uncommitted, untracked candidate: it is in no commit, so its SHA-256 is the whole identity recorded here.",
+    "Three English strings containing the term that the glossary records as the vi rendering \"không gian làm việc\" were masked as [redacted] in tool output. The term was fixed from the core glossary (section 2) and the target renders it consistently; no encoded recovery was attempted, and read_public_copy (allowlisted to the core repository's catalogue paths) does not serve this UI catalogue.",
+    "check-i18n, ledger-check, generator freshness and CI gates were not run (repository-wide, outside the hold); this receipt is an audit artifact, not a merge-gate result."
+  ],
+  "verdict": {
+    "namespace": "ui.onboarding.tour",
+    "result": "clean-with-findings",
+    "counts": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 2,
+      "nit": 4
+    },
+    "summary": "Accurate, idiomatic and register-consistent across all 123 keys; no placeholder or ICU exposure. Two minors (a later->at-the-end shift; Calendar vs Lịch drift) and four nits (folder label, sign-off calque, one clipped classifier, one alt-text noun). Observations recorded separately and not charged to the translator."
+  }
+}

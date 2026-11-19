@@ -1,0 +1,29 @@
+{
+	"auditor": "i18n-auditor",
+	"model": "radient/auto",
+	"instance": "tb1482r2-hi-9351e2",
+	"status": "passed",
+	"namespace": "ui.ownerAudit",
+	"sha256": {
+		"hi": "a31b024cca8c2e293940a98ba48cb3d33ede831ef2136d8767e658de89fcc987",
+		"en": "147de29a88573f22b144c09b6f94c8c5310e2e1d773d597a3ff44b2a2214efe1"
+	},
+	"findings": [
+		{
+			"severity": "MINOR",
+			"key": "ui.ownerAudit.viewers_label",
+			"detail": "'ये भी देख सकते हैं' is correct and carries 'also' (भी), but it ends in a finite verb (हैं) so it closes as a sentence instead of opening as a label, and its demonstrative ये points forward to names that render in a separate <ul> block below it (team-bridge-owner-audit.tsx:380-386). The English sidecar also asks for a label of 'three words at most; not a sentence' — this is five words. Suggested replacement: 'अन्य पाठक' (nominal label, reads as other people, no colon, no punctuation), or keep the clause and drop the forward demonstrative. Left open, not fixed."
+		},
+		{
+			"severity": "MINOR",
+			"key": "ui.ownerAudit.disclosure",
+			"detail": "Register drift, meaning correct. 'जिस चीफ़ ऑफ़ स्टाफ़ पर यह लागू होता है' renders 'covers' with लागू होना ('is applicable / comes into force'), which is administrative-legal register; the sidecar's tone field for this key says 'plain, unapologetic, no legal register'. The क्योंकि + जिस…उसके nesting also buries the reader's own basis one clause deep. Suggested replacement for sentence 1: 'आप यह ऑडिट देख सकते हैं क्योंकि जिस चीफ़ ऑफ़ स्टाफ़ का यह ऑडिट है, उसके मालिक आप हैं।' Sentence 2 is correct as written and needs no change. Left open, not fixed."
+		},
+		{
+			"severity": "NIT",
+			"key": "ui.ownerAudit.page_cutoff",
+			"detail": "'इससे पहले के संदेश' anchors इससे on the nearest antecedent, the preceding 'पुराने संदेश', giving a circular 'messages earlier than the older messages'. The discourse-deictic reading ('before what is shown') is available, so this is not a defect, but 'पहले के संदेश पढ़ने के लिए' would be cleaner and would also drop the repeat. The second sentence's verb already matches ui.ownerAudit.older ('पुराने संदेश लोड करें') exactly, as the sidecar requires. Left open, not fixed."
+		}
+	],
+	"scope": "Round 2: the six changed keys only; earlier round out of scope."
+}

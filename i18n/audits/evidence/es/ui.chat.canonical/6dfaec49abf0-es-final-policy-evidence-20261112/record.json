@@ -1,0 +1,952 @@
+{
+  "document_type": "independent-supplemental-evidence-disposition",
+  "not_a_ledger_receipt": true,
+  "date": "2026-11-12T23:47:02.469451+00:00",
+  "locale": "es",
+  "namespace": "ui.chat.canonical",
+  "identity": {
+    "agent": "translation-auditor",
+    "session": "6dfaec49abf0",
+    "model": "openai/gpt-6.1-sol",
+    "model_selection": "parent",
+    "model_override": false,
+    "fallback": null,
+    "fallback_note": "No fallback performed by this auditor; inherited actual served model. Coordinator-only fallback authorization is not claimed as an auditor authorization. No model/profile/default/tool changes made.",
+    "profile_revision": "definition-revision:v1:977d12b70eb8adff7d8b9491e8e59b748a9fac283683abd963fdf586cb596f8a",
+    "independence": "Same original independent auditor instance/session; no translation work, coordinator-authored verdict or verdict copying. Primary evidence was read only as expressly authorized for this evidence disposition; independent decision retained."
+  },
+  "new_instance": "6dfaec49abf0-es-final-policy-evidence-20261112",
+  "authority": {
+    "source": "Direct USER FINAL POLICY DISPOSITION in this session; not inferred from another auditor verdict or unread web comments.",
+    "policy_owner_named_by_user": "3ef6295a5545",
+    "decision": "Actual-locale CLDR adaptation is valid. The es/fr literal-English-selector hold is inapplicable; the four keys are unchanged incoming-main entries outside the 23-key PR group. No catalogue edits or many-arm removal required.",
+    "citations": [
+      "docs/I18N.md:104-106",
+      "docs/I18N.md:206-208",
+      "docs/I18N.md:218-224"
+    ],
+    "accepted_scope": "Retained 23 PR keys including French two-key approved delta, exact 467 main ancestry, accepted captured 22 visible elements + navigation accessible-name evidence, stated limitations.",
+    "remote_comments_not_read": [
+      {
+        "url": "https://github.com/damianvtran/local-operator-ui/pull/1829#issuecomment-6839007319",
+        "read": false,
+        "attribution": "User-supplied citation only; not asserted as independently inspected authority text."
+      },
+      {
+        "url": "https://github.com/damianvtran/local-operator-ui/pull/1829#issuecomment-6839204455",
+        "read": false,
+        "attribution": "User-supplied citation only; not asserted as independently inspected authority text."
+      },
+      {
+        "url": "https://github.com/damianvtran/local-operator-ui/pull/1829#issuecomment-6836069213",
+        "read": false,
+        "attribution": "User-supplied citation only; not asserted as independently inspected authority text."
+      }
+    ]
+  },
+  "terminal_verdict": "clean-with-findings for bounded source-convergence plus accepted captured evidence; terminal for this scope only",
+  "supersession_rule": "New prospective scope-specific disposition; not a retroactive flip or rewrite of any historical report, withhold, changes_requested result, clarification or receipt. Old records retain their original bytes and meanings in their original scope.",
+  "historical_policy_hold_dispositions": [
+    {
+      "id": "CONV-ES-ICU-1",
+      "key": "ui.chat.canonical.fold.images_aria",
+      "prior_severity": "BLOCKER",
+      "new_disposition": "INAPPLICABLE under user final policy interpretation; inherited locale CLDR selector adaptation, no demonstrated semantic defect or new convergence regression. Historical report remains untouched."
+    },
+    {
+      "id": "CONV-ES-ICU-2",
+      "key": "ui.chat.canonical.fold.more_images",
+      "prior_severity": "BLOCKER",
+      "new_disposition": "INAPPLICABLE under user final policy interpretation; inherited locale CLDR selector adaptation, no demonstrated semantic defect or new convergence regression. Historical report remains untouched."
+    },
+    {
+      "id": "CONV-ES-ICU-3",
+      "key": "ui.chat.canonical.image_gen.batch_summary",
+      "prior_severity": "BLOCKER",
+      "new_disposition": "INAPPLICABLE under user final policy interpretation; inherited locale CLDR selector adaptation, no demonstrated semantic defect or new convergence regression. Historical report remains untouched."
+    },
+    {
+      "id": "CONV-ES-ICU-4",
+      "key": "ui.chat.canonical.lightbox.filmstrip_aria",
+      "prior_severity": "BLOCKER",
+      "new_disposition": "INAPPLICABLE under user final policy interpretation; inherited locale CLDR selector adaptation, no demonstrated semantic defect or new convergence regression. Historical report remains untouched."
+    }
+  ],
+  "findings": [
+    {
+      "id": "I-ES-1",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.tool_row.diff.full.withheld",
+      "current": "Diff completo retenido: no se pudo censurar de forma segura",
+      "proposed": "Diff completo retenido: no se pudieron ocultar los datos sensibles de forma segura",
+      "reason": "\"censurar\" (censor) for credential redaction is off-register; es catalogues use \"ocultar\" (20 hits) and \"censur\" appears only here.",
+      "disposition": "deferred — non-gating",
+      "origin_receipt": "i18n/receipts/567a24a88e45-chat-canonical-es-r2.json",
+      "origin_receipt_sha256": "b48040f237a0a2da586d9df6068cfd428b54e85cb05bb6321757ebc3e92ad168",
+      "current_applicability": "Source, target and context key blocks are unchanged from the selected parent; finding remains applicable.",
+      "inherited": true
+    },
+    {
+      "id": "S16F-ES-A3-01",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.sound.batch.summary",
+      "current": "{completed, plural, one {{completed, number, ::group-off} completada} many {{completed, number, ::group-off} de completadas} other {{completed, number, ::group-off} completadas}} · {failed, plural, one {{failed, number, ::group-off} fallida} many {{failed, number, ::group-off} de fallidas} other {{failed, number, ::group-off} fallidas}}{cancelled, plural, =0 {} one { · {cancelled, number, ::group-off} detenida} many { · {cancelled, number, ::group-off} de detenidas} other { · {cancelled, number, ::group-off} detenidas}}{unknown, plural, =0 {} one { · {unknown, number, ::group-off} con estado desconocido} many { · {unknown, number, ::group-off} con estado desconocido} other { · {unknown, number, ::group-off} con estado desconocido}}{has_attention, select, yes {. Atención: {labels}} other {}}",
+      "proposed": "{completed, plural, one {{completed, number, ::group-off} completada} many {# de completadas} other {{completed, number, ::group-off} completadas}} · {failed, plural, one {{failed, number, ::group-off} fallida} many {# de fallidas} other {{failed, number, ::group-off} fallidas}}{cancelled, plural, =0 {} one { · {cancelled, number, ::group-off} detenida} many { · # de detenidas} other { · {cancelled, number, ::group-off} detenidas}}{unknown, plural, =0 {} one { · {unknown, number, ::group-off} con estado desconocido} many { · # con estado desconocido} other { · {unknown, number, ::group-off} con estado desconocido}}{has_attention, select, yes {. Atención: {labels}} other {}}",
+      "reason": "The 'many' arms are es-authored (English has no category arms here) and exist because es CLDR puts exact millions in 'many' ('un millón de completadas'). Each one reuses the sibling arms' '::group-off' skeleton, so the only number that can reach it prints ungrouped: rendering completed=1000000 gives \"1000000 de completadas\". Spanish always groups, and the es style guide's own exemplar for this category is many {# de sesiones}, illustrated as \"1.000.000 de sesiones\". Verified: many {# de completadas} renders \"1.000.000 de completadas\". Real but unreachable in practice (>=1,000,000 requests in one sound batch), and a one-commit fix, hence MINOR rather than MAJOR.",
+      "disposition": "reported; does not gate (no BLOCKER/MAJOR)",
+      "origin_receipt": "i18n/receipts/4d7a5444aa0b.json",
+      "origin_receipt_sha256": "0d53576dd82e8db22742ddcaa18810c5e786cf93d88d15f0d6181de37adfc7c3",
+      "current_applicability": "Source, target and context key blocks are unchanged from the selected parent; finding remains applicable.",
+      "inherited": true
+    },
+    {
+      "id": "S16F-ES-A3-02",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.media.sound_label",
+      "current": "{count, plural, =1 {Sonido} other {Sonido {position, number, ::group-off}}}",
+      "proposed": "{count, plural, =1 {Sonido} other {Sonido {position, number, ::group-off}}}",
+      "reason": "This value is also the audio player's accessible name: media-label.ts documents it, and sound-player.tsx composes it into ui.chat.audio.play_label / pause_label / position_label, producing \"Reproducir Sonido 2\" — a capitalised common noun mid-sentence, an orthography error in Spanish. The visible tile/alt-text surface wants the capital ('Imagen' keeps it for the same reason); the composed accessible name wants lower case. Same trade-off the ru round-3 audit recorded as S16F-RU-R3-01.",
+      "disposition": "accepted, no change requested",
+      "origin_receipt": "i18n/receipts/4d7a5444aa0b.json",
+      "origin_receipt_sha256": "0d53576dd82e8db22742ddcaa18810c5e786cf93d88d15f0d6181de37adfc7c3",
+      "current_applicability": "Source, target and context key blocks are unchanged from the selected parent; finding remains applicable.",
+      "inherited": true
+    },
+    {
+      "id": "S16F-ES-A3-03",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.sound.cost.no_charge",
+      "current": "Sin cargo.",
+      "proposed": "Sin cargo.",
+      "reason": "'Charge' has two renderings inside one card: 'cobro' in sound.cost.estimated_zero ('cobro final sin confirmar') and sound.stop.warning ('se cobrará … el cobro'), and 'cargo' here. Reviewed and downgraded from MINOR: the shipped es catalogue already names an unbilled amount 'sin cargo' (ui.chat.session_spend.plan_clause: '…equivalente a API, sin cargo'), so this follows product precedent rather than inventing a term. 'Sin coste.' would be the alternative if card-internal uniformity is ever wanted.",
+      "disposition": "accepted, no change requested",
+      "origin_receipt": "i18n/receipts/4d7a5444aa0b.json",
+      "origin_receipt_sha256": "0d53576dd82e8db22742ddcaa18810c5e786cf93d88d15f0d6181de37adfc7c3",
+      "current_applicability": "Source, target and context key blocks are unchanged from the selected parent; finding remains applicable.",
+      "inherited": true
+    }
+  ],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 2,
+    "nit": 2
+  },
+  "findings_preservation": "All own inherited MINOR/NIT IDs, proposals and dispositions retained. HI-1 remains alias of I-HI-1 and counted once; no zero-findings claim.",
+  "hash_bindings": {
+    "en": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+    "es": "4074681ab095ccfb3917e0f1e8f31e2d2c92c1c47742153db82dda80502c1e51",
+    "context": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae"
+  },
+  "paths": {
+    "source": "src/i18n/catalogues/en/ui.chat.canonical.json",
+    "target": "src/i18n/catalogues/es/ui.chat.canonical.json",
+    "context": "src/i18n/catalogues/en/ui.chat.canonical.context.json"
+  },
+  "frozen_tree": "2d89bff82f58b84744ddc469e3532377df26d278",
+  "frozen_head": "1bfbe9b42df53a231311ab1731501af2de640810",
+  "frozen_merge_head": "b0edf02e5d37db5c5527cf66465131a4019fed10",
+  "raw_index_sha256": "f51e7673dab7b96a8376cc2393a7505773827724fa9bbcf31bc2b5d37724020d",
+  "retained_basis": {
+    "keys_verified": 23,
+    "all_values_match": true,
+    "default_ref": "21bb3f5dcb5fdabf77f1415480be310b6454d666",
+    "fr_two_key_ref": null
+  },
+  "parent_main_retention": {
+    "keys": 467,
+    "basis": "Own prior independent raw-block provenance proof, unchanged current bindings; not a fresh semantic audit of those 467 keys.",
+    "exceptions": {
+      "obsolete_keys_remain_removed": [
+        "ui.chat.canonical.older_history.loading",
+        "ui.chat.canonical.placeholder.loading",
+        "ui.chat.canonical.placeholder.region_label",
+        "ui.chat.canonical.transcript.stale_caption"
+      ],
+      "hindi_sound_player_failed_incoming_change_retained": true,
+      "not_strict_parent_union": true
+    }
+  },
+  "scope": {
+    "pr_keys": [
+      "ui.chat.canonical.tool_row.diff.full.back",
+      "ui.chat.canonical.tool_row.diff.full.clipped",
+      "ui.chat.canonical.tool_row.diff.full.clipped_row",
+      "ui.chat.canonical.tool_row.diff.full.continued",
+      "ui.chat.canonical.tool_row.diff.full.continues",
+      "ui.chat.canonical.tool_row.diff.full.empty",
+      "ui.chat.canonical.tool_row.diff.full.error",
+      "ui.chat.canonical.tool_row.diff.full.evicted",
+      "ui.chat.canonical.tool_row.diff.full.first",
+      "ui.chat.canonical.tool_row.diff.full.inline",
+      "ui.chat.canonical.tool_row.diff.full.last",
+      "ui.chat.canonical.tool_row.diff.full.loading",
+      "ui.chat.canonical.tool_row.diff.full.nav",
+      "ui.chat.canonical.tool_row.diff.full.next",
+      "ui.chat.canonical.tool_row.diff.full.not_found",
+      "ui.chat.canonical.tool_row.diff.full.not_recorded",
+      "ui.chat.canonical.tool_row.diff.full.oversized",
+      "ui.chat.canonical.tool_row.diff.full.prev",
+      "ui.chat.canonical.tool_row.diff.full.range",
+      "ui.chat.canonical.tool_row.diff.full.retry",
+      "ui.chat.canonical.tool_row.diff.full.unavailable",
+      "ui.chat.canonical.tool_row.diff.full.view",
+      "ui.chat.canonical.tool_row.diff.full.withheld"
+    ],
+    "key_count": 23,
+    "fr_two_key_delta": null,
+    "previous_semantic_read_count": 31,
+    "new_semantic_read_count": 0,
+    "current_namespace_key_count": 490,
+    "previous_mechanical_key_count": 490
+  },
+  "own_original_artifacts_preserved": {
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/convergence-second-es-report.json": "b2e6edb53c39736e887a812ae4af71e918fde4c69aa768ed7ca0fcc0c717d28e",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/convergence-second-fr-report.json": "58d79d209926a2047cd94f04de77ffe42d320acef3dadce0eb946da94d72d280",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/convergence-second-hi-report.json": "65797fe4c4b4f98f71902d244f6f9533bdade5b93691e63795ce3fd95b6cef06",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-hi-convergence-second.json": "ff9756c7f00fe7c3529e5a6501d6b30abd590929111a0beaf4e2e334f10d465f",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/convergence-second-es-fr-hi-summary.md": "9f33a464b216d684f7e7fccbc60533b23044d18a67b666520806779da34a168b",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/convergence-second-es-fr-hi-policy-clarification.md": "8f775f452788ce894c09d6a71f1f1b932534a5ec8ebf9adf3e4638794896a30a",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/independent-convergence-byte-proof.json": "3282778315a287ea36d6deb3233c73c36dc79d7b687e0fcdee83f6f883da75ff",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/independent-convergence-icu-proof.json": "21d8718cc516fabfae07a9d13c001987dbec705a16e68456883865f59b3fdb4b",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/final-readback-verification.json": "ce8503f17ab93a1234bf249ce34ffab923f5b3a30750b33db6f14263e251b320"
+  },
+  "own_prior_proof": {
+    "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/independent-convergence-byte-proof.json",
+    "sha256": "3282778315a287ea36d6deb3233c73c36dc79d7b687e0fcdee83f6f883da75ff"
+  },
+  "parent_receipts": [
+    {
+      "locale": "es",
+      "ref": "1bfbe9b42df53a231311ab1731501af2de640810",
+      "path": "i18n/receipts/567a24a88e45-chat-canonical-es-r2.json",
+      "sha256": "b48040f237a0a2da586d9df6068cfd428b54e85cb05bb6321757ebc3e92ad168",
+      "hash_matches_row": true,
+      "index_exact_parent": true,
+      "source_hash_matches_parent": true,
+      "target_hash_matches_parent": true,
+      "findings": [
+        {
+          "id": "I-ES-1",
+          "severity": "minor",
+          "key": "ui.chat.canonical.tool_row.diff.full.withheld",
+          "codepath": "src/renderer/src/features/chat/components/trace/diff-history-model.ts:473",
+          "message": "\"censurar\" (censor) for credential redaction is off-register; es catalogues use \"ocultar\" (20 hits) and \"censur\" appears only here.",
+          "fix": "Diff completo retenido: no se pudieron ocultar los datos sensibles de forma segura",
+          "disposition": "deferred — non-gating",
+          "origin": "r2"
+        }
+      ],
+      "scope": null,
+      "source_path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+      "target_path": "src/i18n/catalogues/es/ui.chat.canonical.json",
+      "parent_context_sha256": "04bfe86405155bf8437c4f867eea4dc9bfd4c277d2ae6b0aa7d6a1bf20390087",
+      "receipt_context_sha256": "04bfe86405155bf8437c4f867eea4dc9bfd4c277d2ae6b0aa7d6a1bf20390087",
+      "applies_to_current_selected_keys": 23,
+      "whole_file_current_hash_binding": false,
+      "applicability_note": "Historical audit of parent bytes, not itself a fresh current-hash approval. Retained only for exact selected key/source/context blocks; all original parent finding IDs/dispositions retained below."
+    },
+    {
+      "locale": "es",
+      "ref": "1bfbe9b42df53a231311ab1731501af2de640810",
+      "path": "i18n/receipts/c7b72ef216da-es-chat-canonical-r2.json",
+      "sha256": "61f0538e84f988e65260b2e3999b0f94edd3852a27df0f328f717a843c35a587",
+      "hash_matches_row": true,
+      "index_exact_parent": true,
+      "source_hash_matches_parent": true,
+      "target_hash_matches_parent": true,
+      "findings": [],
+      "scope": null,
+      "source_path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+      "target_path": "src/i18n/catalogues/es/ui.chat.canonical.json",
+      "parent_context_sha256": "04bfe86405155bf8437c4f867eea4dc9bfd4c277d2ae6b0aa7d6a1bf20390087",
+      "receipt_context_sha256": null,
+      "applies_to_current_selected_keys": 23,
+      "whole_file_current_hash_binding": false,
+      "applicability_note": "Historical audit of parent bytes, not itself a fresh current-hash approval. Retained only for exact selected key/source/context blocks; all original parent finding IDs/dispositions retained below."
+    },
+    {
+      "locale": "es",
+      "ref": "b0edf02e5d37db5c5527cf66465131a4019fed10",
+      "path": "i18n/receipts/4d7a5444aa0b.json",
+      "sha256": "0d53576dd82e8db22742ddcaa18810c5e786cf93d88d15f0d6181de37adfc7c3",
+      "hash_matches_row": true,
+      "index_exact_parent": true,
+      "source_hash_matches_parent": true,
+      "target_hash_matches_parent": true,
+      "findings": [
+        {
+          "id": "S16F-ES-A3-01",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.sound.batch.summary",
+          "current": "… many {{completed, number, ::group-off} de completadas} … (same shape in the failed, cancelled and unknown plurals)",
+          "problem": "The 'many' arms are es-authored (English has no category arms here) and exist because es CLDR puts exact millions in 'many' ('un millón de completadas'). Each one reuses the sibling arms' '::group-off' skeleton, so the only number that can reach it prints ungrouped: rendering completed=1000000 gives \"1000000 de completadas\". Spanish always groups, and the es style guide's own exemplar for this category is many {# de sesiones}, illustrated as \"1.000.000 de sesiones\". Verified: many {# de completadas} renders \"1.000.000 de completadas\". Real but unreachable in practice (>=1,000,000 requests in one sound batch), and a one-commit fix, hence MINOR rather than MAJOR.",
+          "suggestion": "Use '#' in the four many arms: many {# de completadas}, many {# de fallidas}, many {# de detenidas}, many {# con estado desconocido}. Every other arm keeps the '::group-off' skeleton exactly as English.",
+          "disposition": "reported; does not gate (no BLOCKER/MAJOR)"
+        },
+        {
+          "id": "S16F-ES-A3-02",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.media.sound_label",
+          "current": "{count, plural, =1 {Sonido} other {Sonido {position, number, ::group-off}}}",
+          "problem": "This value is also the audio player's accessible name: media-label.ts documents it, and sound-player.tsx composes it into ui.chat.audio.play_label / pause_label / position_label, producing \"Reproducir Sonido 2\" — a capitalised common noun mid-sentence, an orthography error in Spanish. The visible tile/alt-text surface wants the capital ('Imagen' keeps it for the same reason); the composed accessible name wants lower case. Same trade-off the ru round-3 audit recorded as S16F-RU-R3-01.",
+          "suggestion": "No change requested now (screen-reader-only, invisible, and the sidecar's tone field asks for a capitalised bare noun). If a later wave decides, change 'Sonido'/'Imagen' together with the audio play/pause/position templates in one commit; never flip this key alone.",
+          "disposition": "accepted, no change requested"
+        },
+        {
+          "id": "S16F-ES-A3-03",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.sound.cost.no_charge",
+          "current": "Sin cargo.",
+          "problem": "'Charge' has two renderings inside one card: 'cobro' in sound.cost.estimated_zero ('cobro final sin confirmar') and sound.stop.warning ('se cobrará … el cobro'), and 'cargo' here. Reviewed and downgraded from MINOR: the shipped es catalogue already names an unbilled amount 'sin cargo' (ui.chat.session_spend.plan_clause: '…equivalente a API, sin cargo'), so this follows product precedent rather than inventing a term. 'Sin coste.' would be the alternative if card-internal uniformity is ever wanted.",
+          "suggestion": "No change recommended. Recorded so a later wave does not silently reverse a precedent-backed call, and so my own reversal (MINOR -> NIT on finding the plan_clause precedent) is visible rather than dropped.",
+          "disposition": "accepted, no change requested"
+        }
+      ],
+      "scope": "The 15 keys named by the manager in es/ui.chat.canonical.json: loading.{cold,older,region_label,remote,revalidating}; media.{image_label,sound_label}; sound.batch.{item_status,latest_update,summary}; sound.cost.{batch_unknown,estimated_zero,no_charge,unknown}; supplement.sound_fallback_label. Read in full against the English source + context sidecar, the core glossary and the es style guide; the other 452 values were proven byte-identical to origin/main (and the 10 PR keys to 107ff1dd) rather than re-audited. Catalogue audit only: not rendered fit, activation or release.",
+      "source_path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+      "target_path": "src/i18n/catalogues/es/ui.chat.canonical.json",
+      "parent_context_sha256": "8f56e0d2b384c6b41add57a64e6c863e565cb61d5a7c0de482d42f380be3acfe",
+      "receipt_context_sha256": "8f56e0d2b384c6b41add57a64e6c863e565cb61d5a7c0de482d42f380be3acfe",
+      "applies_to_current_selected_keys": 467,
+      "whole_file_current_hash_binding": false,
+      "applicability_note": "Historical audit of parent bytes, not itself a fresh current-hash approval. Retained only for exact selected key/source/context blocks; all original parent finding IDs/dispositions retained below."
+    }
+  ],
+  "references": {
+    "i18n/glossary.md": {
+      "repository": "/home/ec2-user/local-operator",
+      "git_ref": "ea9f5b0e49758b9fc289bf0ee1a2d61ab0a2e694",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "read_method": "Local file read plus complete HEAD..origin/main amendments read for changed files; hi guide identical. No fetch; origin/main freshness relative to remote not asserted."
+    },
+    "i18n/style-guides/es.md": {
+      "repository": "/home/ec2-user/local-operator",
+      "git_ref": "ea9f5b0e49758b9fc289bf0ee1a2d61ab0a2e694",
+      "sha256": "4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6",
+      "read_method": "Local file read plus complete HEAD..origin/main amendments read for changed files; hi guide identical. No fetch; origin/main freshness relative to remote not asserted."
+    },
+    "i18n/style-guides/fr.md": {
+      "repository": "/home/ec2-user/local-operator",
+      "git_ref": "ea9f5b0e49758b9fc289bf0ee1a2d61ab0a2e694",
+      "sha256": "5315e1ac10c2ce57aac631ba653d08de680ee70c9a022ed3a8345ce2f9902ee7",
+      "read_method": "Local file read plus complete HEAD..origin/main amendments read for changed files; hi guide identical. No fetch; origin/main freshness relative to remote not asserted."
+    },
+    "i18n/style-guides/hi.md": {
+      "repository": "/home/ec2-user/local-operator",
+      "git_ref": "ea9f5b0e49758b9fc289bf0ee1a2d61ab0a2e694",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5",
+      "read_method": "Local file read plus complete HEAD..origin/main amendments read for changed files; hi guide identical. No fetch; origin/main freshness relative to remote not asserted."
+    }
+  },
+  "accepted_evidence": {
+    "accepted_readback_json": {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.json",
+      "sha256": "b9d1b7bfe421c64818856ba500e671fcf51051133314f3c9471c9c43acf27f30",
+      "read": true
+    },
+    "accepted_readback_markdown": {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.md",
+      "sha256": "a8cbf67eef4052484b4bbc1937a7a6b4b1d3328a71cb813bc3a8f0119cc275ac",
+      "read": true
+    },
+    "final_frame_manifest": {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/frames-manifest.json",
+      "sha256": "12babe07d87bb5d193d3fd909919e1645706e06984129055d4547ded21321db5",
+      "entries": 150,
+      "assigned_locale_png_hashes_independently_verified": 57
+    },
+    "browser_source_identity": {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-source.json",
+      "sha256": "011d373b047026492d9ca73f7ec6747df1a90daeb7cb2c805aa9b4dade46ca34",
+      "all_19_source_files_match_current_index": true
+    },
+    "captures": {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/captures.jsonl",
+      "sha256": "e9412edfebff603aa0a4b5f758b91b7175c3abc2001f6a41786b34ec28e1846d",
+      "rows": 92,
+      "error_rows": 14,
+      "successful_rows": 78,
+      "summary": {
+        "es": {
+          "rows": 2,
+          "successful": 2,
+          "successful_states": [
+            "oversized",
+            "split-next"
+          ]
+        },
+        "fr": {
+          "rows": 2,
+          "successful": 2,
+          "successful_states": [
+            "split",
+            "split-next"
+          ]
+        },
+        "hi": {
+          "rows": 12,
+          "successful": 7,
+          "successful_states": [
+            "unavailable",
+            "oversized",
+            "evicted",
+            "clipped",
+            "split",
+            "not_found",
+            "split-next"
+          ]
+        },
+        "ru": {
+          "rows": 17,
+          "successful": 8,
+          "successful_states": [
+            "loading",
+            "oversized",
+            "evicted",
+            "not_recorded",
+            "inline",
+            "split",
+            "unavailable",
+            "split-next"
+          ]
+        },
+        "ur": {
+          "rows": 15,
+          "successful": 15,
+          "successful_states": [
+            "offer",
+            "loading",
+            "error",
+            "empty",
+            "unavailable",
+            "withheld",
+            "oversized",
+            "evicted",
+            "not_recorded",
+            "not_found",
+            "inline",
+            "clipped",
+            "split",
+            "page",
+            "split-next"
+          ]
+        },
+        "vi": {
+          "rows": 15,
+          "successful": 15,
+          "successful_states": [
+            "offer",
+            "loading",
+            "error",
+            "empty",
+            "unavailable",
+            "withheld",
+            "oversized",
+            "evicted",
+            "not_recorded",
+            "not_found",
+            "inline",
+            "clipped",
+            "split",
+            "page",
+            "split-next"
+          ]
+        },
+        "zh-CN": {
+          "rows": 15,
+          "successful": 15,
+          "successful_states": [
+            "offer",
+            "loading",
+            "error",
+            "empty",
+            "unavailable",
+            "withheld",
+            "oversized",
+            "evicted",
+            "not_recorded",
+            "not_found",
+            "inline",
+            "clipped",
+            "split",
+            "page",
+            "split-next"
+          ]
+        },
+        "synthetic-pseudo": {
+          "rows": 14,
+          "successful": 14,
+          "successful_states": [
+            "offer",
+            "page",
+            "split",
+            "clipped",
+            "loading",
+            "error",
+            "empty",
+            "unavailable",
+            "withheld",
+            "oversized",
+            "evicted",
+            "not_recorded",
+            "not_found",
+            "inline"
+          ]
+        }
+      },
+      "interpretation": "AX snapshots, many truncated to 24/30 lines, not DOM geometry. Historical element-not-found rows cannot invalidate replacement final nonblank PNGs; successful snapshots do not prove footer content beyond their returned lines."
+    },
+    "retained_source_records": [
+      {
+        "path": "i18n/audits/evidence/en/ui.chat.canonical/567a24a88e45-1829-sources/source-records/fr2.json",
+        "git_ref": "index",
+        "sha256": "b837e9feb21dda08fcda7df990e40931ca8f444ec9076c1b7566b524fff2cada",
+        "read_scope": "Selected source-audit identity, byte-proof, scope and French delta dispositions; no new whole-catalogue semantic audit."
+      },
+      {
+        "path": "i18n/audits/evidence/en/ui.chat.canonical/567a24a88e45-1829-sources/source-records/r2.json",
+        "git_ref": "index",
+        "sha256": "43c365ffb262cf4d1f486ac9a764b2a09664c9b4395589e2b092a02c4e581f30",
+        "read_scope": "Selected source-audit identity, byte-proof, scope and French delta dispositions; no new whole-catalogue semantic audit."
+      },
+      {
+        "path": "i18n/audits/evidence/en/ui.chat.canonical/c7b72ef216da-1829-sources/source-records/fr_delta.json",
+        "git_ref": "index",
+        "sha256": "6a8ee6855512e1bf519aafacc80ebc824cfb1758346b73aeb8bc55d6b9a3f763",
+        "read_scope": "Selected source-audit identity, byte-proof, scope and French delta dispositions; no new whole-catalogue semantic audit."
+      },
+      {
+        "path": "i18n/audits/evidence/en/ui.chat.canonical/c7b72ef216da-1829-sources/source-records/second_audit.json",
+        "git_ref": "index",
+        "sha256": "08cd91c44e04b55d9222c83f56a77600c294cb39fe33c7a8edd32751b70e58cf",
+        "read_scope": "Selected source-audit identity, byte-proof, scope and French delta dispositions; no new whole-catalogue semantic audit."
+      }
+    ],
+    "primary_clarification": {
+      "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/convergence-primary-es-fr-hi-policy-clarification.md",
+      "sha256": "34ff12fdeac39fa25f1eabcd34fb0b461c74d4dd8ebf20a3a65448eb37c47a1b",
+      "use": "Read for evidence/policy delta, not adopted as this auditor verdict."
+    },
+    "primary_reviewed_scope": {
+      "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/reviewed-key-scope.json",
+      "sha256": "e99e0d24c6b1833470fb73676bb689532f641fc0d130cc78e3faf68bc330eb7d",
+      "use": "Historical scope evidence only; its 49-key count is not mine."
+    }
+  },
+  "personally_viewed_images": [
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-contact.jpg",
+      "sha256": "7de7959cf3994bc634c7f4d70a532164823ce7b1eeacd91583f5a72bec61481f",
+      "observation": "Contact sheet personally opened: overview of retained visible notice/navigation states; downsampled, not measured geometry."
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-offer-focused-360.png",
+      "sha256": "007de621f9fbb07c54f03420533ee5ccdebeeee80670cebdc8591620b77f56fb",
+      "observation": "Focused offer personally opened: localized full-diff button and 598 line count visible; no activation outcome certified."
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-clipped-focused-360.png",
+      "sha256": "926ff12f4c45fb671b9be2519b88843b506fdaa4c17a8e2433dc015260b0cb51",
+      "observation": "Focused clipped frame personally opened: aggregate notice count 1 and bottom range visible; wrapping not obvious cutoff in this shown region; no geometry measurement."
+    }
+  ],
+  "per_key_evidence_mapping": [
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.back",
+      "evidence_class": "visible",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-page-360.png",
+          "sha256": "ca5ac0c23530c499030478cc9a2cf068d951dc70f1ab401f93770397c22e995c"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-error-360.png",
+          "sha256": "fc14ef9fbd2bbe0d910f5c862ba89c5bedd1d85b74e72f83ed15f2fd7515f423"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-empty-360.png",
+          "sha256": "e9d6938aa2b05460d2221d55c1975205faedd3c18324d5556d16d635ba7ab0f8"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-loading-360.png",
+          "sha256": "0b1d7b4cfa537d96503937bcce574975b355acb63e34e2d6c4fd6a59b41d5017"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-unavailable-360.png",
+          "sha256": "80dabd88b682186450cf1631d3ae0d06e3c2e1d69369c7bb5815f573521a4a80"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-withheld-360.png",
+          "sha256": "18f96f229aa89c4dc55d1ac8f59a6ee9a60310fd162945ef42206fa224c406d7"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-oversized-360.png",
+          "sha256": "17354af4a0c4e115007f71841871b427a84cc2cdee1c2cd3b41f85a1c71dd9ee"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-evicted-360.png",
+          "sha256": "5ff18b15c585375aa65fc94f5f570fbe236f35ffea5304ef3483b10adc206c8f"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-not_recorded-360.png",
+          "sha256": "166a2ad57a5261e9bce63fab4b856775065ba88331e3594c49f2bffd064f485e"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-not_found-360.png",
+          "sha256": "93d51ef871b96bea0a4b67c51a98a20fd81b4519362591bf8290f223936d7729"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-inline-360.png",
+          "sha256": "5307d4c0bdd0a3dc66f5bd7ce1b450c04038d53756ad6654b6c539179d1704fe"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-360.png",
+          "sha256": "8d75f84b2ece5c20a2f781a4d93232f42ac8c85a302eeafa094da1f6cebac8a8"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-next-360.png",
+          "sha256": "8698573490b7ae8fdde66c49fab5436e8f2c2af0576358538342730aedcbb42b"
+        }
+      ],
+      "accepted_readback_interpretation": "Button label visible; click-to-preview outcome NOT recorded",
+      "personally_viewed_individual_frame": false
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.clipped",
+      "evidence_class": "visible_legacy_fixture_focused_final",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-clipped-focused-360.png",
+          "sha256": "926ff12f4c45fb671b9be2519b88843b506fdaa4c17a8e2433dc015260b0cb51"
+        }
+      ],
+      "accepted_readback_interpretation": "Late focused image actually exposes the aggregate clipped notice with count 1 and bottom range; legacy synthetic clipped_rows fixture, not current-backend truncation proof.",
+      "personally_viewed_individual_frame": true
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.clipped_row",
+      "evidence_class": "visible_legacy_fixture",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-clipped-360.png",
+          "sha256": "3ebd540c90e66692e12a70ddd57e7cba3722939b6d558df7a812b4880ee60ea9"
+        }
+      ],
+      "accepted_readback_interpretation": "Annotation visible on the first mixed-code row; synthetic clipped_rows=[3], not evidence current backend truncates",
+      "personally_viewed_individual_frame": false
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.continued",
+      "evidence_class": "visible",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-next-360.png",
+          "sha256": "8698573490b7ae8fdde66c49fab5436e8f2c2af0576358538342730aedcbb42b"
+        }
+      ],
+      "accepted_readback_interpretation": "Continuation annotation near end of split-next body; not a new row",
+      "personally_viewed_individual_frame": false
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.continues",
+      "evidence_class": "visible",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-360.png",
+          "sha256": "8d75f84b2ece5c20a2f781a4d93232f42ac8c85a302eeafa094da1f6cebac8a8"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-next-360.png",
+          "sha256": "8698573490b7ae8fdde66c49fab5436e8f2c2af0576358538342730aedcbb42b"
+        }
+      ],
+      "accepted_readback_interpretation": "Continues annotation at split page end (also subsequent continuation page)",
+      "personally_viewed_individual_frame": false
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.empty",
+      "evidence_class": "visible",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-empty-360.png",
+          "sha256": "e9d6938aa2b05460d2221d55c1975205faedd3c18324d5556d16d635ba7ab0f8"
+        }
+      ],
+      "accepted_readback_interpretation": "Empty notice and Back label fit the captured box",
+      "personally_viewed_individual_frame": false
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.error",
+      "evidence_class": "visible",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-error-360.png",
+          "sha256": "fc14ef9fbd2bbe0d910f5c862ba89c5bedd1d85b74e72f83ed15f2fd7515f423"
+        }
+      ],
+      "accepted_readback_interpretation": "Error status visible; Retry label visible",
+      "personally_viewed_individual_frame": false
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.evicted",
+      "evidence_class": "visible",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-evicted-360.png",
+          "sha256": "5ff18b15c585375aa65fc94f5f570fbe236f35ffea5304ef3483b10adc206c8f"
+        }
+      ],
+      "accepted_readback_interpretation": "Notice wraps inside box; no observed clipping",
+      "personally_viewed_individual_frame": false
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.first",
+      "evidence_class": "visible",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-page-360.png",
+          "sha256": "ca5ac0c23530c499030478cc9a2cf068d951dc70f1ab401f93770397c22e995c"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-360.png",
+          "sha256": "8d75f84b2ece5c20a2f781a4d93232f42ac8c85a302eeafa094da1f6cebac8a8"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-next-360.png",
+          "sha256": "8698573490b7ae8fdde66c49fab5436e8f2c2af0576358538342730aedcbb42b"
+        }
+      ],
+      "accepted_readback_interpretation": "First disabled on initial page, enabled on split-next where visible; First click result NOT recorded",
+      "personally_viewed_individual_frame": false
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.inline",
+      "evidence_class": "visible",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-inline-360.png",
+          "sha256": "5307d4c0bdd0a3dc66f5bd7ce1b450c04038d53756ad6654b6c539179d1704fe"
+        }
+      ],
+      "accepted_readback_interpretation": "Notice visible",
+      "personally_viewed_individual_frame": false
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.last",
+      "evidence_class": "visible",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-page-360.png",
+          "sha256": "ca5ac0c23530c499030478cc9a2cf068d951dc70f1ab401f93770397c22e995c"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-360.png",
+          "sha256": "8d75f84b2ece5c20a2f781a4d93232f42ac8c85a302eeafa094da1f6cebac8a8"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-next-360.png",
+          "sha256": "8698573490b7ae8fdde66c49fab5436e8f2c2af0576358538342730aedcbb42b"
+        }
+      ],
+      "accepted_readback_interpretation": "Last label visible; Last click/result NOT recorded",
+      "personally_viewed_individual_frame": false
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.loading",
+      "evidence_class": "visible",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-loading-360.png",
+          "sha256": "0b1d7b4cfa537d96503937bcce574975b355acb63e34e2d6c4fd6a59b41d5017"
+        }
+      ],
+      "accepted_readback_interpretation": "Loading status visible",
+      "personally_viewed_individual_frame": false
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.nav",
+      "evidence_class": "accessible_name_only",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-page-360.png",
+          "sha256": "ca5ac0c23530c499030478cc9a2cf068d951dc70f1ab401f93770397c22e995c"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-360.png",
+          "sha256": "8d75f84b2ece5c20a2f781a4d93232f42ac8c85a302eeafa094da1f6cebac8a8"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-next-360.png",
+          "sha256": "8698573490b7ae8fdde66c49fab5436e8f2c2af0576358538342730aedcbb42b"
+        }
+      ],
+      "accepted_readback_interpretation": "Not a visible label; successful AX snapshots name navigation in all seven actual locales; no screen-reader speech claimed",
+      "personally_viewed_individual_frame": false
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.next",
+      "evidence_class": "visible",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-page-360.png",
+          "sha256": "ca5ac0c23530c499030478cc9a2cf068d951dc70f1ab401f93770397c22e995c"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-360.png",
+          "sha256": "8d75f84b2ece5c20a2f781a4d93232f42ac8c85a302eeafa094da1f6cebac8a8"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-next-360.png",
+          "sha256": "8698573490b7ae8fdde66c49fab5436e8f2c2af0576358538342730aedcbb42b"
+        }
+      ],
+      "accepted_readback_interpretation": "Next label visible, split-next changed cursor body/focus is evidence of next-state only; no full navigation suite",
+      "personally_viewed_individual_frame": false
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.not_found",
+      "evidence_class": "visible",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-not_found-360.png",
+          "sha256": "93d51ef871b96bea0a4b67c51a98a20fd81b4519362591bf8290f223936d7729"
+        }
+      ],
+      "accepted_readback_interpretation": "404 notice text visible",
+      "personally_viewed_individual_frame": false
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.not_recorded",
+      "evidence_class": "visible",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-not_recorded-360.png",
+          "sha256": "166a2ad57a5261e9bce63fab4b856775065ba88331e3594c49f2bffd064f485e"
+        }
+      ],
+      "accepted_readback_interpretation": "Notice text visible",
+      "personally_viewed_individual_frame": false
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.oversized",
+      "evidence_class": "visible",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-oversized-360.png",
+          "sha256": "17354af4a0c4e115007f71841871b427a84cc2cdee1c2cd3b41f85a1c71dd9ee"
+        }
+      ],
+      "accepted_readback_interpretation": "Notice text wraps inside box",
+      "personally_viewed_individual_frame": false
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.prev",
+      "evidence_class": "visible",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-page-360.png",
+          "sha256": "ca5ac0c23530c499030478cc9a2cf068d951dc70f1ab401f93770397c22e995c"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-360.png",
+          "sha256": "8d75f84b2ece5c20a2f781a4d93232f42ac8c85a302eeafa094da1f6cebac8a8"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-next-360.png",
+          "sha256": "8698573490b7ae8fdde66c49fab5436e8f2c2af0576358538342730aedcbb42b"
+        }
+      ],
+      "accepted_readback_interpretation": "Previous disabled at beginning and enabled on split-next; Previous action/result NOT recorded",
+      "personally_viewed_individual_frame": false
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.range",
+      "evidence_class": "visible_with_urdu_order_anomaly",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-page-360.png",
+          "sha256": "ca5ac0c23530c499030478cc9a2cf068d951dc70f1ab401f93770397c22e995c"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-360.png",
+          "sha256": "8d75f84b2ece5c20a2f781a4d93232f42ac8c85a302eeafa094da1f6cebac8a8"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-next-360.png",
+          "sha256": "8698573490b7ae8fdde66c49fab5436e8f2c2af0576358538342730aedcbb42b"
+        }
+      ],
+      "accepted_readback_interpretation": "Initial logical arguments first=1 last=198 total=598; Urdu pixels show the 198–1 run, not a missing number; split pages show 1–1 of 2",
+      "personally_viewed_individual_frame": false
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.retry",
+      "evidence_class": "visible",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-error-360.png",
+          "sha256": "fc14ef9fbd2bbe0d910f5c862ba89c5bedd1d85b74e72f83ed15f2fd7515f423"
+        }
+      ],
+      "accepted_readback_interpretation": "Retry label visible without observed cutoff; retry action/result NOT recorded",
+      "personally_viewed_individual_frame": false
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.unavailable",
+      "evidence_class": "visible",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-unavailable-360.png",
+          "sha256": "80dabd88b682186450cf1631d3ae0d06e3c2e1d69369c7bb5815f573521a4a80"
+        }
+      ],
+      "accepted_readback_interpretation": "Notice text visible",
+      "personally_viewed_individual_frame": false
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.view",
+      "evidence_class": "visible_focused_final",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-offer-focused-360.png",
+          "sha256": "007de621f9fbb07c54f03420533ee5ccdebeeee80670cebdc8591620b77f56fb"
+        }
+      ],
+      "accepted_readback_interpretation": "Late focused image actually exposes View full diff control and count 598, within visible box; activation/click-result NOT recorded.",
+      "personally_viewed_individual_frame": true
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.withheld",
+      "evidence_class": "visible",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-withheld-360.png",
+          "sha256": "18f96f229aa89c4dc55d1ac8f59a6ee9a60310fd162945ef42206fa224c406d7"
+        }
+      ],
+      "accepted_readback_interpretation": "Notice visible; no wording re-audit or disposition change",
+      "personally_viewed_individual_frame": false
+    }
+  ],
+  "limitations": {
+    "fresh_catalogue_key_readings": 0,
+    "fresh_490_key_audit": false,
+    "original_side_by_side_key_readings": "es 31; fr 31; hi 32. Supplemental work reads evidence and verifies retained 23-key value identities; it does not add fresh semantic key readings.",
+    "visible_evidence": "22 visible elements plus .nav accessible-name evidence for 23 keys per assigned actual locale. Full mapping is accepted evidence readback plus own contact-sheet and six focused-frame observations.",
+    "native": "UNPROVEN: no native/full-app integrated execution or screen-reader speech observed by this auditor.",
+    "geometry": "UNPROVEN: no measured DOM geometry, scrollWidth/clientWidth, pixel-coordinate overflow measurement, font-fallback proof, other-theme/width matrix. 360px is a declared fixture setting, not my measured box.",
+    "functional_outcomes": "UNPROVEN in this disposition: no all-23-interactions pass; First/Last/Previous/Back/Retry/offer activation outcomes are not certified. Accepted split-next record shows a next-state/body/focus change only, not a complete functional suite. No exact historical interaction proof plus render-path compatibility is being claimed.",
+    "count_variants": "Only captured offer count 598 and clipped aggregate count 1 personally observed; no all-count/plural-variant runtime pass claimed. Prior structural ICU checks remain structural evidence only.",
+    "pseudo": "Relied on accepted readback for 15 original plus 2 focused synthetic expanded-English frames registered as en; not personally viewed in this supplement, not production pseudo, RTL pseudo, activation, or a whole-namespace pixel review.",
+    "rtl": "Assigned es/fr/hi are LTR. No global RTL approval. User-disposition Urdu code-bidi MINOR is outside these locale receipts and remains deferred in the design thread; no fix round implied.",
+    "release": "No global/native/release/merge/activation approval; only bounded source-convergence and captured-evidence disposition."
+  },
+  "assembly_disposition": {
+    "new_receipt": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-es-final-policy-evidence-20261112-receipt.json",
+    "assembler_may_consume_for_scope": true,
+    "why": "Fresh independently authored current-source/current-target receipt, explicitly scoped to retained substantive convergence plus accepted evidence, with preserved findings and resolved inapplicable policy hold. The namespace hash binding represents the retained 467-key audit ancestry and 23-key reviewed overlay; it is not a fresh 490-key audit.",
+    "not_global_approval": true,
+    "assembler_not_invoked": true
+  }
+}

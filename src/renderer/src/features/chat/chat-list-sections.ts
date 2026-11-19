@@ -48,7 +48,9 @@
  * is that the arrangement may sort - this file's bucketing stays a filter.
  */
 
+import { type WithoutParams, t } from "@shared/i18n";
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
+import { hasBackgroundWork } from "./chat-session-subagents";
 
 export type ChatListSection = "running" | "today" | "week" | "older";
 
@@ -73,12 +75,22 @@ export const CHAT_LIST_SECTIONS: readonly ChatListSection[] = [
 	"older",
 ];
 
-/** The label each section prints (the component sets them in small caps). */
-export const CHAT_LIST_SECTION_LABEL: Record<ChatListSection, string> = {
-	running: "Running",
-	today: "Today",
-	week: "This week",
-	older: "Older",
+/**
+ * The label each section prints (the component sets them in small caps).
+ *
+ * THE TABLE HOLDS KEYS, NOT COPY. A map of English sentences resolves at module
+ * load - once, in whatever locale the renderer started in - so every section
+ * heading would stay English after a language switch. Keys are resolved by `t()`
+ * at the render that draws the heading, which is the only place the active
+ * locale is known. The four keys are the ones the view popover already prints
+ * for these sections, so the popover and the heading cannot name one section two
+ * ways.
+ */
+export const CHAT_LIST_SECTION_LABEL: Record<ChatListSection, WithoutParams> = {
+	running: "ui.chat.sidebar_view.section.running",
+	today: "ui.chat.sidebar_view.section.today",
+	week: "ui.chat.sidebar_view.section.week",
+	older: "ui.chat.sidebar_view.section.older",
 };
 
 /**
@@ -95,7 +107,8 @@ export const CHAT_LIST_SECTION_LABEL: Record<ChatListSection, string> = {
  * AFTER frames it held ten rows with completion ticks - "active" there means
  * "recently in play", not "running".
  */
-const RUNNING_CODES = new Set([
+export const RUNNING_CODES = new Set([
+	"waiting",
 	"busy",
 	"delegating",
 	"approval",
@@ -103,8 +116,19 @@ const RUNNING_CODES = new Set([
 	"wedged",
 ]);
 
+/**
+ * Running = a live code OR work still running after the turn.
+ *
+ * The second arm is the operator's report (2026-11-07): a session whose own
+ * turn had ended but whose subagent and background job were still at work
+ * filed under Today looking idle. `hasBackgroundWork` owns that fact (core's
+ * `background_work` flag, gated off for a stale remote link), so the section,
+ * the lane under the status cell and the tooltip clause read one predicate.
+ * When the last child ends the flag and the code arrive in one frame, so the
+ * row re-files to Today in the same render its lane disappears.
+ */
 export function isRunningRow(row: CanonicalSessionRow): boolean {
-	return RUNNING_CODES.has(row.status?.code ?? "");
+	return RUNNING_CODES.has(row.status?.code ?? "") || hasBackgroundWork(row);
 }
 
 /**
@@ -271,23 +295,33 @@ export function sectionRows(
  * A future time (a clock skewed ahead of the backend's) reads `now` rather than a
  * negative number. No time at all prints nothing.
  */
+// Keep the time facts separate from their copy: parsing a translated compact
+// label to build its accessible sentence would mistake localized units/digits.
+function relativeTimeValue(
+	row: CanonicalSessionRow,
+	now: number,
+	basis: SidebarBasis,
+) {
+	const at = rowTimeMs(row, basis);
+	if (at === null) return null;
+	const minutes = Math.floor(Math.max(0, now - at) / 60_000);
+	if (minutes < 1) return { unit: "now", count: 0 };
+	if (minutes < 60) return { unit: "minute", count: minutes };
+	const hours = Math.floor(minutes / 60);
+	if (hours < 24) return { unit: "hour", count: hours };
+	const days = Math.floor(hours / 24);
+	if (days < 7) return { unit: "day", count: days };
+	if (days < 365) return { unit: "week", count: Math.floor(days / 7) };
+	return { unit: "year", count: Math.floor(days / 365) };
+}
+
 export function relativeTime(
 	row: CanonicalSessionRow,
 	now: number,
 	basis: SidebarBasis,
 ): string {
-	const at = rowTimeMs(row, basis);
-	if (at === null) return "";
-	const minutes = Math.floor(Math.max(0, now - at) / 60_000);
-	if (minutes < 1) return "now";
-	if (minutes < 60) return `${minutes}m`;
-	const hours = Math.floor(minutes / 60);
-	if (hours < 24) return `${hours}h`;
-	const days = Math.floor(hours / 24);
-	if (days < 7) return `${days}d`;
-	const weeks = Math.floor(days / 7);
-	if (days < 365) return `${weeks}w`;
-	return `${Math.floor(days / 365)}y`;
+	const value = relativeTimeValue(row, now, basis);
+	return value ? t("ui.chat.sidebar_view.relative_short", value) : "";
 }
 
 /**
@@ -306,18 +340,9 @@ export function relativeTimeSentence(
 	now: number,
 	basis: SidebarBasis,
 ): string {
-	const short = relativeTime(row, now, basis);
-	if (!short) return "";
-	const prefix = basis === "created" ? "created" : "last active";
-	if (short === "now") return `${prefix} just now`;
-	const unit: Record<string, string> = {
-		m: "minute",
-		h: "hour",
-		d: "day",
-		w: "week",
-		y: "year",
-	};
-	const count = Number.parseInt(short, 10);
-	const word = unit[short.slice(-1)];
-	return `${prefix} ${count} ${word}${count === 1 ? "" : "s"} ago`;
+	const value = relativeTimeValue(row, now, basis);
+	if (!value) return "";
+	return basis === "created"
+		? t("ui.chat.sidebar_view.relative_created", value)
+		: t("ui.chat.sidebar_view.relative_active", value);
 }

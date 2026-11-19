@@ -1,0 +1,149 @@
+{
+  "record_type": "audit_record",
+  "schema": 1,
+  "audit_id": "hi-upload-0a2d35091c2c",
+  "locale": "hi",
+  "namespace": "ui.agents.upload",
+  "audit_date": "2026-11-08",
+  "audit_kind": "round-1 delta audit of the 15 keys this branch added to hi/ui.agents.upload.json at 2b72db6a56a; the 31 pre-existing values of the same file read only for register, glossary and idiom consistency",
+  "key_count": 15,
+  "delta_keys": [
+    "ui.agents.upload.action.publish",
+    "ui.agents.upload.action.publishing",
+    "ui.agents.upload.action.update_listing",
+    "ui.agents.upload.availability.reserved_named",
+    "ui.agents.upload.availability.reserved_unnamed",
+    "ui.agents.upload.intro.org",
+    "ui.agents.upload.intro.public",
+    "ui.agents.upload.not_leaving.org",
+    "ui.agents.upload.not_leaving.public",
+    "ui.agents.upload.published.org_listed",
+    "ui.agents.upload.receipt.title_hub",
+    "ui.agents.upload.receipt.title_org",
+    "ui.agents.upload.receipt.title_updated",
+    "ui.agents.upload.target.blocked_hint",
+    "ui.agents.upload.target.visibility_hint_public"
+  ],
+  "total_keys_in_file": 46,
+  "pre_existing_keys_in_file": 31,
+  "head": "2b72db6a56ad8204ec7f30a0ba6ffbc941be3b82",
+  "base": "b915083bd96f5118c793d26c47d5a1f2afc1f8d9",
+  "branch": "i18n/slice-upload-agent-dialog",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "0a2d35091c2c",
+    "model": "deepseek/deepseek-flash",
+    "model_source": "session model-switch notices: primary anthropic/claude-sonnet-5-5 failed (provider quota), fallback 1 anthropic/claude-opus-5-5 failed (quota), fallback 2 openai/gpt-6.1-sol failed (quota), fallback 3 deepseek/deepseek-flash served this audit. Disclosed per review-economy model provenance.",
+    "fallback": "used - three provider fallbacks after quota failures; the whole audit ran on deepseek/deepseek-flash",
+    "independent_from_translator_session": true
+  },
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.agents.upload.json",
+      "sha256": "3676c1b366cc5159b94be65acdaea925bd193d20c2524ff3f410a8a5ddff514f"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.agents.upload.context.json",
+      "sha256": "76323fe386f9b15d490c3a48feaddbd924f04148f1c893e927c2acde06f11cec"
+    },
+    "hi": {
+      "path": "src/i18n/catalogues/hi/ui.agents.upload.json",
+      "sha256": "1adaf78e8656d3881af6f87c5da387a032601428b5408d32c174933aa8eafbbd"
+    },
+    "hi_base": {
+      "path": "src/i18n/catalogues/hi/ui.agents.upload.json at b915083bd96 (31 pre-existing keys)",
+      "sha256": "f2f8e8d92e05c80efc90fbbbe269fd57c813e2e26e07a25d67f073f8f158fbe6"
+    },
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md (checkout at b42471d3935)",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/hi.md (checkout at b42471d3935)",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    }
+  },
+  "artifacts": [
+    {
+      "path": "i18n/audits/evidence/hi/ui.agents.upload/hi-upload-0a2d35091c2c/report.md",
+      "note": "report written alongside; hash not self-embedded"
+    },
+    {
+      "path": "i18n/receipts/hi-upload-r1-0a2d35091c2c.json",
+      "note": "round-1 receipt with hashes and finding counts"
+    }
+  ],
+  "checks_run": [
+    "python3 json load of en/context/hi at 2b72db6a56a: valid JSON; hi key set == en key set (46 keys), 0 missing, 0 extra; 15 added and 0 removed against b915083bd96",
+    "placeholder scan (regex {param} set per key): 15/15 added keys identical to the English placeholder set; 0 mismatches across all 46 keys",
+    "node @formatjs/icu-messageformat-parser: all 46 hi values parse; plural/select arg + option-key sets identical to English where present; target.blocked_hint keeps one/other only, matching English",
+    "node intl-messageformat render of target.blocked_hint at hi with count 0/1/2/5: one branch at 0 and 1, other branch at 2 and 5 (hi one covers 0 and 1, per the hi style guide's Plurals section); the call site gates on blockedTargets.length > 0 (upload-agent-dialog.tsx:1039-1045), so the {org} branch is never selected for a zero count",
+    "node intl-messageformat render of the four {destination} keys with the same substituted value (destination='Acme Corp'): juxtaposition recorded in the report, the basis of HIU-R1-M1",
+    "unicode: all 15 added values NFC, no Cf/Cc characters (no ZWJ/ZWNJ/BOM), no leading, trailing or double spaces",
+    "corpus scans over src/i18n/catalogues/hi/*.json: 'बिल्ट-इन' (7 pre-existing occurrences), लिस्टिंग agreement ('नई लिस्टिंग', 'मौजूदा लिस्टिंग', 'अपडेट की गई'), 'सीखें' for learnings (3 occurrences), Latin residue inventory, 'उसके/इसके बाहर', 'उसके/इसके सदस्य', precise 'केवल … ही' vs 'सिर्फ़ … ही', colon-terminated lead-ins (50 pre-existing)",
+    "node scripts/i18n/generate.mjs --check: 'src/i18n/keys.gen.ts is byte-identical to a fresh generation' (exit 0) - the hi delta needs no regeneration, the generated halves derive from en",
+    "node --test scripts/i18n/catalogue-locale.test.mjs scripts/i18n/catalogue-duplicates.test.mjs: 11/11 pass, 0 fail, including 'no shipped catalogue contains a duplicate key'"
+  ],
+  "audit_notes_not_execution_log": "Linguistic judgment is the auditor's own Hindi-reading reasoning; no translation or MT service was used and no native-speaker informant was consulted. Only the diff's own tests were run (catalogue validity, generator drift); no tsc, vitest, build or full suite was run, and the app was not rendered.",
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [
+      "HIU-R1-M1",
+      "HIU-R1-N1"
+    ]
+  },
+  "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 1
+  },
+  "findings": [
+    {
+      "id": "HIU-R1-M1",
+      "severity": "MINOR",
+      "keys": [
+        "ui.agents.upload.not_leaving.org",
+        "ui.agents.upload.published.org_listed",
+        "ui.agents.upload.intro.org",
+        "ui.agents.upload.target.visibility_hint_public"
+      ],
+      "problem": "One referent, {destination}, carries two different demonstratives in the org copy of one dialog. Distal उसके: intro.org 'जहाँ केवल उसके सदस्य ही इसे पढ़…' and target.visibility_hint_public 'संगठन के एजेंट केवल उसके सदस्य ही पढ़ सकते हैं'. Proximate इसके: not_leaving.org '… इसके बाहर कोई भी नहीं कर सकता।' and published.org_listed 'इसके सदस्य इसे पढ़ और इंस्टॉल कर सकते हैं'. Both readings are grammatical and unambiguous, so this does not gate; it is the same class as the earlier hi minor (hi receipts hi-hub-pages-r1: two stacked lines of one panel disagreeing उस/इस about the same referent).",
+      "evidence": [
+        "Render with intl-messageformat, hi, destination='Acme Corp': intro.org '… जहाँ केवल उसके सदस्य ही इसे पढ़ और इंस्टॉल कर सकते हैं।' vs not_leaving.org 'Acme Corp के सदस्य … ; इसके बाहर कोई भी नहीं कर सकता।'",
+        "Both are stacked paragraphs of one dialog body and receive the same value: src/renderer/src/features/agents/components/upload-agent-dialog.tsx:949-952 (intro.org, destination: targetDisplayName) and :961-964 (not_leaving.org, same destination: targetDisplayName)",
+        "Corpus idiom for 'outside it' is distal: उसके बाहर 3x (hi/ui.settings.shortcuts.json reserved.browser_reload, reserved.browser_reload_cache, reserved.close); इसके बाहर had 0 occurrences before this key",
+        "Corpus pattern for an organization named in the same sentence is distal: hi/ui.hub.teams.json org.empty '{org} के साथ साझा की गई टीमें यहाँ उसके सदस्यों को दिखती हैं।' and hi/ui.hub.pages.json empty.org.body '{org} में प्रकाशित एजेंट यहाँ उसके सदस्यों को दिखते हैं।'; the existing इसके सदस्य hits (ui.teamBridge thread.not_available, ui.teamBridge.archive thread.forbidden) have a conversation/channel referent, not an organization"
+      ],
+      "suggested": "Use one demonstrative for {destination} across the org keys, distal to match the corpus: not_leaving.org '… कर सकते हैं; उसके बाहर कोई भी नहीं कर सकता।' and published.org_listed 'उसके सदस्य इसे पढ़ और इंस्टॉल कर सकते हैं; संगठन के बाहर कोई भी नहीं कर सकता।' (intro.org and target.visibility_hint_public already use उसके). The proximate reading would instead require changing those two and reads worse after the relative जहाँ.",
+      "gates": false
+    },
+    {
+      "id": "HIU-R1-N1",
+      "severity": "NIT",
+      "keys": [
+        "ui.agents.upload.intro.org",
+        "ui.agents.upload.target.visibility_hint_public"
+      ],
+      "problem": "The exclusive is doubled, 'केवल … ही', in both new strings ('जहाँ केवल उसके सदस्य ही इसे पढ़…', 'केवल उसके सदस्य ही पढ़ सकते हैं'). Grammatical and common in speech, but the corpus has no precedent for this pairing: a precise scan for केवल followed by the word ही finds only these two values, while the established exclusive idiom is सिर्फ़ … ही (4 occurrences, including the closest analogue hi/ui.hub.json subscriptions.enable_private '… सिर्फ़ उस संगठन तक पहुँच की अनुमति वाले लोग ही उन्हें पा सकते हैं।') or केवल alone in adverbial/adjectival uses (केवल पढ़ने के लिए, केवल तब).",
+      "suggested": "Either सिर्फ़ उसके सदस्य ही … in both keys, or drop one marker (केवल उसके सदस्य इसे पढ़ और इंस्टॉल कर सकते हैं).",
+      "gates": false
+    }
+  ],
+  "passes": [
+    "Name-subject re-voicing (the brief's specific question): availability.reserved_named '“{name}” हब के किसी एक बिल्ट-इन एजेंट के लिए आरक्षित है।' and reserved_unnamed 'यह नाम हब के किसी एक बिल्ट-इन एजेंट के लिए आरक्षित है।' The English passives ('The hub reserves \"{name}\" for one of its built-in agents') are re-voiced with the name as subject, matching the siblings in the same group (availability.taken 'यह नाम हब पर पहले से प्रकाशित है।', availability.free 'यह नाम उपलब्ध लगता है।') and the shipped hi of the same proposition in ui.agents.publication.name_reserved_builtin.body '“{name}” बिल्ट-इन एजेंट “{builtin}” के लिए आरक्षित है।'. The proposition is unchanged and no head ('the hub') is lost — 'the hub' survives as the possessive हब के; the two keys differ only in subject, as English does.",
+    "Demonstrative/verb agreement in every stacked sentence is otherwise correct: 'इसके सदस्य … कर सकते हैं' (plural सदस्य), 'कोई भी नहीं कर सकता' (singular कोई भी), 'उसके सदस्य ही पढ़ सकते हैं', intro.org's relative जहाँ … उसके, and 'जो प्रकाशित होता है वही एजेंट का वर्णन करता है' all agree with their own controllers.",
+    "Terminology: बिल्ट-इन is the shipped hi form (7 occurrences across ui.agents.publication, ui.agents.skills, ui.agents.detail, ui.agents.pages, ui.settings.notifications) and is used identically here. लिस्टिंग takes feminine agreement where the participle is involved: receipt.title_updated 'लिस्टिंग अपडेट की गई' matches the pre-existing title.republished '… लिस्टिंग अपडेट की गई'; the imperative keys (action.update_listing, action.open_listing) carry no participle, so no agreement question arises.",
+    "No English residue: the only Latin tokens in the 15 values are the kept-Latin product/brand terms Team (product-plan name, 17 shipped occurrences, and this key's first sentence reproduces the pre-existing ui.agents.publication.team_plan_required.body verbatim) and Radient (brand, as in pre-existing sign_in.needed), plus the {name}/{destination}/{org} placeholders.",
+    "Plurals: one/other only, as the hi style guide requires; option keys identical to English; one value per option; the zero-count branch is unreachable at the call site.",
+    "Register: आप throughout, polite imperative करें for the three controls, danda for full stops, '…' for the progress label, “ ” for the name quotes, nukta preserved (एक्ज़ीक्यूशन, कॉन्फ़िगरेशन), no !, no कृपया where English has none.",
+    "Mechanical: keys inserted in sorted position with the file's tab indentation; keys.gen.ts drift check clean; catalogue validity tests 11/11."
+  ],
+  "not_audited": [
+    "the other six locales of this slice (es, fr, ru, ur, vi, zh-CN)",
+    "the 31 pre-existing values of the file, read only for register/glossary/idiom comparison",
+    "rendered fit and layout in the live dialog",
+    "runtime ICU formatting inside the application (the checks above call intl-messageformat directly)"
+  ]
+}

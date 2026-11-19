@@ -37,6 +37,7 @@ function directionView(
 		retryable:
 			status.error_class !== null &&
 			RETRYABLE_ERRORS.has(status.error_class.split("/")[0]),
+		signInNeeded: status.error_class?.split("/")[0] === "no-credential",
 		canApply,
 		lastSuccess: status.last_success_at,
 		modelUsed: status.model_used,

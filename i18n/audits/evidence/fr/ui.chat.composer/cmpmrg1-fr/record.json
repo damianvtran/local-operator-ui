@@ -1,0 +1,65 @@
+{
+  "audit_id": "cmpmrg1-fr",
+  "audit_date": "2026-11-04",
+  "locale": "fr",
+  "namespace": "ui.chat.composer",
+  "key_count": 6,
+  "namespace_key_count": 72,
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "9a8cf2fffd64",
+    "model": "anthropic/claude-sonnet-5-5",
+    "independent_from_translator_session": true,
+    "actual_model_source": "session system header; no fallback observed"
+  },
+  "head": "801b1ad29d47bbb89a0768e0ea1f193892db953d",
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.chat.composer.json",
+      "sha256": "1abe3bc2730635d6eae484b49bfafa1743dee3be1f0ca60863576632acb95f14"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.chat.composer.context.json",
+      "sha256": "de9e346489f6df64bc3ff08abd1f8e0550e95e54e44b7c0ddda47897ff50e2dc"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/fr/ui.chat.composer.json",
+      "sha256": "d40ca3b6771c39fd126e481f7e4c4b4065edbc68877307441b54336093ac2a93"
+    },
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/fr.md",
+      "sha256": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226"
+    }
+  },
+  "artifacts": [
+    {
+      "path": "i18n/audits/evidence/fr/ui.chat.composer/cmpmrg1-fr/report.md",
+      "sha256": "8d837df758a9e6285d8ea128fa565d492bfa33533332b006a8bc35dbc14a23f8"
+    },
+    {
+      "path": "i18n/audits/evidence/fr/ui.chat.composer/cmpmrg1-fr/receipt.json",
+      "sha256": "f7eefdfe3663586cbba2795348e94a43682d684abea95f202cb8c3af4b411fab"
+    }
+  ],
+  "audit_notes_not_execution_log": "Delta audit of 6 keys (secret_closure_notice + 5 main-added) in the merged fr file. ICU/placeholders: none in any of the six. Fit: insert_transcript 24/24, insert_transcript_hint 48/48, send_recording 24/24, send_recording_hint 48/48, steer_hint 59/64 cells (display-width count); notice has no cap.",
+  "commands_actually_run": [
+    "python key-set/NFC/width checks (inline)",
+    "node scripts/i18n/context-parity.test.mjs (8/8)",
+    "node scripts/i18n/composer-machine-anchors.test.mjs (3/3)",
+    "node scripts/i18n/locale-parity.test.mjs (fr stub check fails on 3 ui.chat.pickers keys, out of scope)",
+    "node scripts/i18n/ledger-check.mjs (read-only; 3 expected fr/ui.chat.composer findings)"
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [
+      "F1",
+      "F2"
+    ]
+  },
+  "original_lost_evidence": null
+}

@@ -1,0 +1,32 @@
+{
+  "auditor": "reviewer",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "tbd-sender-r1-ru",
+  "session": "b2fa9b669196",
+  "date": "2026-10-22",
+  "locale": "ru",
+  "translator": "coder",
+  "translator_session": "51333032ede5",
+  "translator_job": "2cb7c6eb3a49",
+  "namespaces": {
+    "ui.teamBridge": {
+      "status": "passed",
+      "keys_audited": 2,
+      "scope": "PR #1296 two-key delta: ui.teamBridge.sender.unknown_person and sender.unknown_agent (new; placeholder author name when the sender cannot be resolved, also the DM title fallback). Other 109 values verified byte-identical to HEAD f1520f143e, whose ru bytes (cd1c54f380c8e15c394e7dbec468cae2ed1c54073464f841072cdede69702cce) are the audited ledger row; semantic coverage inherited from i18n/receipts/tbd-r3-ru.json (SHA256 7a53ac8b7187dd88eaeca49cc456ba89ee53fc72f441fa894b6fc204fee39445). Checked: reads unmistakably as a placeholder, not a name; core glossary and ru style guide; register vs neighbours scope.unknown, people.title, chief.fallback; agent wording vs audited ui.schedules unknown_agent. Mechanical: 111-key parity with English, no placeholders/ICU, NFC, no bidi or zero-width controls. Values: 'Неизвестный пользователь', 'Неизвестный агент'. Неизвестный пользователь is the idiomatic Russian software placeholder (literal 'неизвестный человек' reads unnatural); masculine agreement correct; matches neighbour scope.unknown 'Неизвестная организация'. Agent string byte-equal to audited ui.schedules unknown_agent; glossary agent=агент. Longest value (24 chars) but the header span truncates and is comparable to a full name. Fit: header span truncates (team-bridge-message-list.tsx); no rendered-fit, screenshot or pseudo-localization evidence is claimed.",
+      "sha256": {
+        "en": "7fd64414c053ab675f35a7aedd1389d30de404b964565207a02173ce9fd4935e",
+        "ru": "090f49174aebbb63085c1d91d54af51c6223e870f53f7052f393b5e3bbb25722",
+        "context": "f27dbb405c98a145cfd610464a1c661f1dd3bf5663c7c7cf3a263c1f9737d968"
+      },
+      "findings": []
+    }
+  },
+  "style_guide": {
+    "path": "~/local-operator/i18n/style-guides/ru.md",
+    "sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465",
+    "glossary_path": "~/local-operator/i18n/glossary.md",
+    "glossary_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "note": "Core repository revision 24dbccbb78; the UI checkout carries no local glossary or style guides (docs/I18N.md points to core)."
+  },
+  "independence": "Auditor is reviewer subagent session b2fa9b669196 (label i18n-1296-audit), spawned by parent 17cd3e74c66f; the delta translator is coder subagent session 51333032ede5 (label ui1296-member-fallback, job 2cb7c6eb3a49). The auditor did not author or edit any catalogue value; catalogues were only read."
+}

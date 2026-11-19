@@ -1,0 +1,19 @@
+{
+  "locale": "ur",
+  "namespace": "ui.chat.composer",
+  "agent": "i18n-auditor",
+  "instance": "175ea85de12c",
+  "model": "radient/auto",
+  "requested_route": "radient/auto",
+  "served_underlying_model": "UNKNOWN",
+  "model_kind": "requested_route_only",
+  "status": "passed",
+  "source_sha256": "67b5bc499440a52a727774876e13ee4ed9eaef20b439c4f5ec97466ae8b238cd",
+  "target_sha256": "cae05ff415a66a5ea03be958a8361700b0a7d798cbe6ff0dcff9d733c6baebe3",
+  "context_sha256": "77c879963392e2e3f202aa689ff5d372946995c76891cc0eabc293fe75097df7",
+  "base_target_sha256": "73b1d6ee3b51609d1571611a2c588171d2be01816dfaea71f1585eb9f568d270",
+  "reviewed_keys": [
+    "ui.chat.composer.secret_closure_notice"
+  ],
+  "findings": []
+}

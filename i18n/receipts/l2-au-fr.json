@@ -1,0 +1,45 @@
+{
+ "auditor": "i18n-auditor",
+ "model": "anthropic/claude-sonnet-5-5",
+ "instance": "l2-au-fr",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "namespace": "ui.chat.canonical",
+ "locale": "fr",
+ "key_count": 2,
+ "scope": "l2 file-size wave: the 2 keys ui.chat.canonical.tool.never_sent_composed / never_sent_empty (the rest of the namespace is not re-audited here)",
+ "findings": [
+  {
+   "id": "M1",
+   "severity": "minor",
+   "key": "ui.chat.canonical.tool.never_sent_composed + ui.chat.canonical.tool.never_sent_empty",
+   "problem": "'texte' is an addition not in the English and slightly mis-describes a tool request (command/arguments/payload, not prose); suggested 'jamais envoyé · rédigé : {size}' / 'jamais envoyé · rien rédigé'; acceptable to ship as is",
+   "disposition": "deferred — wording preference, shippable as written"
+  },
+  {
+   "id": "N1",
+   "severity": "nit",
+   "key": "ui.chat.canonical.tool.never_sent_composed",
+   "problem": "second delimiter ('·' then ' :') reads slightly heavy; colon form kept on purpose to avoid number agreement with the pre-localised {size}",
+   "disposition": "no change"
+  }
+ ],
+ "severity_counts": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 1,
+  "nit": 1
+ },
+ "independence": {
+  "translator_agent": "i18n-translator",
+  "translator_model": "openai/gpt-6.1-sol",
+  "independent_from_translator": true,
+  "independent_auditors_for_this_locale": 1
+ },
+ "sha256": {
+  "fr": "c25b4e522bc7c0f2b4e55229280705dbdffe15fcf69a3ae516840f5582acfb76",
+  "en": "27ae7327daa34be60b619be551c840e057d61c3d69dc801269e4f389edc0f031"
+ },
+ "assembled_from": "Assembled by the landing coder from the auditor's report audit-fr.md; verdict, severity counts and findings are transcribed from that report, the sha256 values are computed from the catalogue files at the landing commit. The auditor's own evidence bundle, where one exists, is under i18n/audits/evidence/fr/ui.chat.canonical/.",
+ "instance_note": "instance is the audit label from the report header; the auditor report names no 12-hex session id"
+}

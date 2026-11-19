@@ -11,7 +11,7 @@ import { join } from "node:path";
 import { app } from "electron";
 import electronLog, { type ElectronLog } from "electron-log";
 import { launchEnv } from "./launch-env";
-import { LOG_DIR_ENV, logDirOverride } from "./log-dir";
+import { LOG_DIR_ENV, logDirOverride, logFilesEnabled } from "./log-dir";
 
 /**
  * Log file types
@@ -75,8 +75,14 @@ export class Logger {
 		this.logPath =
 			logDirOverride(launchEnv[LOG_DIR_ENV]) ?? Logger.defaultLogPath();
 
+		// A `--lo-launch-probe` launch writes no files and creates no directory:
+		// this constructor runs during index.ts's imports, before the probe line can
+		// exit the process, and the probe must leave the operator's real log
+		// directory untouched (see `logFilesEnabled`).
+		const writeFiles = logFilesEnabled(process.argv);
+
 		// Ensure log directory exists
-		if (!fs.existsSync(this.logPath)) {
+		if (writeFiles && !fs.existsSync(this.logPath)) {
 			fs.mkdirSync(this.logPath, { recursive: true });
 		}
 
@@ -93,7 +99,7 @@ export class Logger {
 				join(this.logPath, logFileType);
 
 			// Configure log level and format
-			logger.transports.file.level = "debug";
+			logger.transports.file.level = writeFiles ? "debug" : false;
 			logger.transports.file.format =
 				"[{y}-{m}-{d} {h}:{i}:{s}.{ms}] [{level}] {text}";
 

@@ -1,0 +1,83 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "96a6ba82125a",
+  "locale": "es",
+  "status": "passed",
+  "audit_date": "2026-11-17",
+  "translator_session_label": "prB1-tr-es",
+  "independent_from_translator_session": true,
+  "actual_model_source": "session transcript ~/.local-operator/sessions/96a6ba82125a/transcript.jsonl model_id=claude-opus-5-5 (no fallback observed)",
+  "scope": "24 new keys (working_line x10, link_actions x11, attachments.broken_* x3) on English commit 88d2ad3b7d646cf8fe65412b779e07ae65713d1f + uncommitted translator edits; other keys verified byte-identical to HEAD",
+  "verdict": "clean-with-findings",
+  "namespaces": {
+    "ui.chat.canonical": {
+      "status": "passed",
+      "sha256": {
+        "es": "951f75541904cd585e3ddde7adf09fb5e1968d4d72c0176910d40931f38bb857",
+        "en": "dca993aa47b9c7c6287aadf423a750f0c923ff062eaf817f229d6b292a451be5"
+      },
+      "target": {
+        "path": "src/i18n/catalogues/es/ui.chat.canonical.json",
+        "sha256": "951f75541904cd585e3ddde7adf09fb5e1968d4d72c0176910d40931f38bb857"
+      },
+      "english": {
+        "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+        "sha256": "dca993aa47b9c7c6287aadf423a750f0c923ff062eaf817f229d6b292a451be5"
+      },
+      "english_context": {
+        "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+        "sha256": "a67abe26c757c3a5b514136d61d2223b4a17521b7b5ede4f815a7771b3a4b420"
+      },
+      "key_count_audited": 21,
+      "findings": [
+        {
+          "id": "ES-1",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.link_actions.open_in_canvas",
+          "current": "Abrir en el canvas",
+          "problem": "Same English label 'Open in canvas' in the same file is rendered 'Abrir en Canvas' (ui.chat.canonical.supplement.file_actions.open_in_canvas); ui.common.file_actions.show_in_canvas is 'Mostrar en Canvas'. es catalogue splits 'canvas' (18 occurrences, incl. all Abrir/Cerrar canvas actions) vs 'Canvas' (14). Latin spelling itself is consistent: no translated name exists ('lienzo' appears once, in an unrelated GitHub theme description).",
+          "suggestion": "Keep 'Abrir en el canvas' (majority lowercase form) and align the sibling supplement.file_actions.open_in_canvas in a follow-up, or let the programme glossary settle capitalisation/article; not a blocker."
+        },
+        {
+          "id": "ES-2",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.working_line.compacting",
+          "current": "compactando el contexto",
+          "problem": "Context note asks to match the terminal app's phrase; local-operator cli.exec_runtime.compacting (es) is 'compactando contexto…'.",
+          "suggestion": "compactando contexto"
+        },
+        {
+          "id": "ES-3",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.link_actions.too_large_title",
+          "current": "Demasiado grande para el canvas, por lo que Abrir usa la app predeterminada",
+          "problem": "Drops 'preview' from 'Too large for the canvas preview'; meaning survives (the canvas is the preview pane) and the note (too_large_note) needs the short form for its ~38-char slot, but the tooltip has room.",
+          "suggestion": "Optional: 'Demasiado grande para la vista previa del canvas, así que Abrir usa la app predeterminada' (keep note as is or match)."
+        }
+      ]
+    },
+    "ui.chat.attachments": {
+      "status": "passed",
+      "sha256": {
+        "es": "00783570d9e842956234d76a72c0508375f857bb44f8a34803163e7124da320e",
+        "en": "1a5709a63c44655e0d96ec39ef87ddfd4715a811b6de2f29e851080a10dd42e7"
+      },
+      "target": {
+        "path": "src/i18n/catalogues/es/ui.chat.attachments.json",
+        "sha256": "00783570d9e842956234d76a72c0508375f857bb44f8a34803163e7124da320e"
+      },
+      "english": {
+        "path": "src/i18n/catalogues/en/ui.chat.attachments.json",
+        "sha256": "1a5709a63c44655e0d96ec39ef87ddfd4715a811b6de2f29e851080a10dd42e7"
+      },
+      "english_context": {
+        "path": "src/i18n/catalogues/en/ui.chat.attachments.context.json",
+        "sha256": "d10bc98fc6f0b3337dff3b08f06798d87eb1cdd3fa15c4a85e4fcedf05559c3f"
+      },
+      "key_count_audited": 3,
+      "findings": []
+    }
+  },
+  "not_verified": "No rendered-frame check; no native-speaker review; judged by model reasoning only, no MT used."
+}

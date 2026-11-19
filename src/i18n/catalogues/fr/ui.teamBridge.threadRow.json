@@ -1,0 +1,5 @@
+{
+	"ui.teamBridge.threadRow.label": "Ouvrir le fil, {count, plural, one {# réponse} many {# de réponses} other {# réponses}}{unread, plural, =0 {} one {, # non lue} many {, # de non lues} other {, # non lues}}{hasLast, select, yes {. {last}} other {}}",
+	"ui.teamBridge.threadRow.last": "Dernière réponse {when, select, today {aujourd’hui à {time}} yesterday {hier à {time}} other {le {time}}}",
+	"ui.teamBridge.threadRow.unread_badge": "{count, plural, one {{label} non lue} other {{label} non lues}}"
+}

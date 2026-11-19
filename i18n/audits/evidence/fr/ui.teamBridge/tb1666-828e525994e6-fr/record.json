@@ -1,0 +1,131 @@
+{
+ "schema": 1,
+ "record_kind": "locale-audit evidence record (remediation delta re-audit)",
+ "audit_id": "tb1666-828e525994e6-fr",
+ "locale": "fr",
+ "namespace": "ui.teamBridge",
+ "audit_date": "2026-11-04",
+ "key_count": 342,
+ "auditor": {
+  "agent": "i18n-auditor",
+  "team": "radientdev",
+  "session": "828e525994e6",
+  "instance": "828e525994e6-pr1666-fr",
+  "model": "anthropic/claude-opus-5-5",
+  "independent_from_translator_session": true,
+  "actual_model_source": "Served model as announced by the harness preamble for session 828e525994e6 (anthropic/claude-opus-5-5); no fallback announced or observed.",
+  "model_fallback": {
+   "announced": false,
+   "observed": false
+  },
+  "findings": {
+   "blocker": 0,
+   "major": 0,
+   "minor": 0,
+   "nit": 0
+  }
+ },
+ "independence": "Independent auditor: radientdev team i18n-auditor, session 828e525994e6. Did not translate or edit any catalogue value (the f11ee9d remediation is the team coder’s), wrote none of PR #1666, and is neither the #1643 auditor (66bfac56f929) nor any earlier teamBridge auditor. No MT/translation service used. Row written by ledger-assemble.mjs.",
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+   "sha256": "d06d4b8e8292b006364c800f24719c0f569b36bb86e2c81cba194de9f8b005ab"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+   "sha256": "31535f65e12b7dbb6b907f926be5d60ff80939605d1db538e1160530310ce59c"
+  },
+  "fr": {
+   "path": "src/i18n/catalogues/fr/ui.teamBridge.json",
+   "sha256": "95df579590ef4460dd6073faaa704c7a36b1a41dcba18fc4ef36ec7107f4263c"
+  }
+ },
+ "style_guide": {
+  "path": "~/local-operator i18n/style-guides/fr.md",
+  "sha256": "5315e1ac10c2ce57aac631ba653d08de680ee70c9a022ed3a8345ce2f9902ee7",
+  "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "core_commit": "759aaa8bd16"
+ },
+ "integration": {
+  "pr": 1666,
+  "repo": "damianvtran/local-operator-ui",
+  "branch": "fix/ui1-followups",
+  "base": "649d45cc600db840a3cf40e469b3e947f772e1d7",
+  "audited_head": "f11ee9d8823917d2d2a9955c6e7fd95388d66545",
+  "remediation_commit": "f11ee9d8823917d2d2a9955c6e7fd95388d66545"
+ },
+ "scope": {
+  "delta_kind": "Remediation of the #1643 merge-audit minors. Versus the audited parent (649d45c, target 65e5c4be341d…, audited by 66bfac56f929-merge1643-fr), exactly 2 value(s) changed and the key set and order are identical; the en catalogue and en context are unchanged. The other 340 values are byte-identical to the audited parent.",
+  "parent_target_sha256": "65e5c4be341d0450a4d1eb3a3313af471d0cb648efb65aba8ff391de72d6ee8a",
+  "parent_audited_by": [
+   "66bfac56f929-merge1643-fr"
+  ],
+  "keys_changed": [
+   "ui.teamBridge.builtin.general_topic",
+   "ui.teamBridge.delivery.refused_out_of_scope"
+  ]
+ },
+ "audited": {
+  "ui.teamBridge.builtin.general_topic": {
+   "en": "The whole organization: people and their agents. Agents see every message and reply when @-mentioned or in threads they follow.",
+   "translation": "Toute l’organisation : les personnes et leurs agents. Les agents voient chaque message et répondent quand on les mentionne avec @ ou dans les fils qu’ils suivent."
+  },
+  "ui.teamBridge.delivery.refused_out_of_scope": {
+   "en": "Not delivered to {recipient}: refused by their moderation (looked like a request outside what this agent handles)",
+   "translation": "Non remis à {recipient} : refusé par sa modération (ressemblait à une demande hors du périmètre de cet agent)"
+  }
+ },
+ "prior_findings_disposition": {
+  "FR1": "fixed in f11ee9d: U+202F before the colon (codepoint-verified); no U+0020/U+00A0 remains before : ; ! ? » in any of the 342 fr values.",
+  "FR-N1": "fixed in f11ee9d: ‘hors du périmètre de cet agent’ — idiomatic product French for an agent’s scope; hedge ‘ressemblait à’ and ‘sa modération’ (recipient-owned) kept."
+ },
+ "linguistic_review": "Composed with real recipients: ‘Non remis à Aida (Ben Tran) : refusé par sa modération (ressemblait à une demande hors du périmètre de cet agent)’ and the same with ‘la cheffe de cabinet (Ben Tran)’ read naturally; non-accusatory, hedged, ‘cet agent’ agrees with both label forms. general_topic: ‘Toute l’organisation : …’ — NNBSP correct per fr guide (Punctuation); meaning, vous-neutral register and ‘fils’ (thread) unchanged and consistent with replies.*.",
+ "findings": [],
+ "outside_delta_observations": "Observed outside the delta, not counted: attachmentCard.list and reactions.others (unchanged) have no CLDR `many` arm, so a count of exactly 10^6 would render without ‘de’. That count is unreachable in both, which is the same disposition the prior audits gave attachments.failed_count (ATT-FR-R3-01).",
+ "current_report_verdict": {
+  "status": "passed",
+  "result": "clean",
+  "unresolved_blocker_major_count": 0,
+  "finding_ids": []
+ },
+ "checks": {
+  "icu_command": "node verify.mjs (worktree root; @formatjs/icu-messageformat-parser) — all 342 values parse; argument names equal en; CLDR arms per guide on changed keys",
+  "compose_command": "node compose.mjs (intl-messageformat, real arguments)",
+  "unicode": "All values NFC; no bidi controls (U+200E/F, U+061C, U+202A-E, U+2066-9).",
+  "key_set": "342 keys, equal to English.",
+  "execution_log": "i18n/audits/evidence/fr/ui.teamBridge/tb1666-828e525994e6-fr/audit.log"
+ },
+ "audit_notes_not_execution_log": "linguistic_review, prior_findings_disposition, findings and outside_delta_observations are auditor notes, not command output. audit.log is the actual execution log (commands and their output as run in the worktree at f11ee9d before and after ledger-assemble); scripts/ holds the exact verify.mjs and compose.mjs it ran.",
+ "ledger": {
+  "path": "i18n/ledger.json",
+  "locale": "fr",
+  "namespace": "ui.teamBridge",
+  "note": "PR #1666 f11ee9d delta re-audit, i18n-auditor 828e525994e6; 0 findings; FR1, FR-N1 fixed. Evidence: i18n/audits/evidence/fr/ui.teamBridge/tb1666-828e525994e6-fr/record.json"
+ },
+ "artifacts": [
+  {
+   "path": "i18n/receipts/828e525994e6-pr1666-fr.json",
+   "sha256": "3f95a01789a7edd0b6f934a3411c977f7e5dfd463b85b57a9ba96cb31438b3fd",
+   "role": "receipt (ledger-bound)"
+  },
+  {
+   "path": "i18n/audits/evidence/fr/ui.teamBridge/tb1666-828e525994e6-fr/audit.log",
+   "sha256": "df5e90533f5f618cca0a87c8c3b9f34de8250b91a669da94defc4587f6fe0231",
+   "role": "execution log (companion; record reference in its first line)"
+  },
+  {
+   "path": "i18n/audits/evidence/fr/ui.teamBridge/tb1666-828e525994e6-fr/scripts/verify.mjs",
+   "sha256": "6210cdde84061431b1a7d2dfe0b9e0158d8b6b57dac7edc19100b11074d49434",
+   "role": "check script run"
+  },
+  {
+   "path": "i18n/audits/evidence/fr/ui.teamBridge/tb1666-828e525994e6-fr/scripts/compose.mjs",
+   "sha256": "9da9cbdeec6bf6f200e8a7e7bdb6aaac7e988da86403430fc080a29cb4df0779",
+   "role": "composition script run"
+  }
+ ],
+ "receipt": {
+  "path": "i18n/receipts/828e525994e6-pr1666-fr.json",
+  "sha256": "3f95a01789a7edd0b6f934a3411c977f7e5dfd463b85b57a9ba96cb31438b3fd"
+ }
+}

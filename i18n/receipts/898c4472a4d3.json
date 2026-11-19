@@ -1,0 +1,279 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent-namespace-delta-translation-audit",
+  "date": "2026-11-08",
+  "round": 2,
+  "locale": "es",
+  "namespace": "ui.agents.upload",
+  "branch": "i18n/slice-upload-agent-dialog",
+  "head": "269ef259c0523fd61c9f40b2a700bed27b838055",
+  "base": "2b72db6a56ad8204ec7f30a0ba6ffbc941be3b82",
+  "instance": "898c4472a4d3",
+  "agent": "reviewer",
+  "model": "openai/gpt-6.1-sol",
+  "auditor": {
+    "agent": "reviewer (r2-es)",
+    "session": "898c4472a4d3",
+    "instance": "898c4472a4d3",
+    "model": "openai/gpt-6.1-sol",
+    "fallback": true,
+    "model_source": "Latest harness model-switch banner: openai/gpt-6.1-sol; prior anthropic/claude-sonnet-5-5 and anthropic/claude-opus-5-5 provider quota failures",
+    "independent_from_translator_session": true,
+    "independence": "Did not author or remediate translations; wrote only the three explicitly assigned Spanish round-2 evidence/receipt paths."
+  },
+  "status": "passed",
+  "result": "clean",
+  "key_count": 2,
+  "keys_audited": [
+    "ui.agents.upload.target.blocked_hint",
+    "ui.agents.upload.target.org_unnamed"
+  ],
+  "source_sha256": "6aff9fbb0706c9852760db60f22cdb075b747cef37dbc3e9130731943babef0b",
+  "target_sha256": "a3ecc58f02b9d5cd03fb866f9dbba0c7678264cf3b696d8cc9808a9bfb21baa4",
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.agents.upload.json",
+      "sha256": "6aff9fbb0706c9852760db60f22cdb075b747cef37dbc3e9130731943babef0b"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/es/ui.agents.upload.json",
+      "sha256": "a3ecc58f02b9d5cd03fb866f9dbba0c7678264cf3b696d8cc9808a9bfb21baa4"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.agents.upload.context.json",
+      "sha256": "19e0fe920ae831b4e3bb8dcd7750dbdb508640c5cec6ca468c0acc1b853cf768"
+    },
+    "es_hub": {
+      "path": "src/i18n/catalogues/es/ui.hub.json",
+      "sha256": "2d4624ac033a587d5a7a7e1d2c499c1b88b8292a8e09e6cabb380ac8d90eb0cf"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/es.md",
+      "sha256": "77b9227213802d14c74d4298d6b346ad842bbf2a5ca3b9d46fc6144430d26c3e",
+      "repository": "~/local-operator"
+    },
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "repository": "~/local-operator"
+    }
+  },
+  "namespaces": {
+    "ui.agents.upload": {
+      "namespace": "ui.agents.upload",
+      "status": "passed",
+      "result": "clean",
+      "keys_audited": 2,
+      "keys": [
+        "ui.agents.upload.target.blocked_hint",
+        "ui.agents.upload.target.org_unnamed"
+      ],
+      "source_sha256": "6aff9fbb0706c9852760db60f22cdb075b747cef37dbc3e9130731943babef0b",
+      "target_sha256": "a3ecc58f02b9d5cd03fb866f9dbba0c7678264cf3b696d8cc9808a9bfb21baa4",
+      "context_sha256": "19e0fe920ae831b4e3bb8dcd7750dbdb508640c5cec6ca468c0acc1b853cf768",
+      "sha256": {
+        "en": "6aff9fbb0706c9852760db60f22cdb075b747cef37dbc3e9130731943babef0b",
+        "es": "a3ecc58f02b9d5cd03fb866f9dbba0c7678264cf3b696d8cc9808a9bfb21baa4",
+        "context": "19e0fe920ae831b4e3bb8dcd7750dbdb508640c5cec6ca468c0acc1b853cf768"
+      },
+      "findings": [],
+      "finding_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    }
+  },
+  "findings": [],
+  "finding_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "prior_findings": {
+    "ES-UPL-1": "fixed and independently verified",
+    "ES-UPL-2": "unchanged optional NIT, deferred from round 1; not new in delta"
+  },
+  "evidence": {
+    "record": "i18n/audits/evidence/es/ui.agents.upload/es-upload-r2-898c4472a4d3/record.json",
+    "report": "i18n/audits/evidence/es/ui.agents.upload/es-upload-r2-898c4472a4d3/report.md",
+    "report_sha256": "722964e2421959ec2bbc5cb3429489cc14f5420b7566ac7be6cca35c8d494db4"
+  },
+  "machine_checks": {
+    "head": "269ef259c0523fd61c9f40b2a700bed27b838055",
+    "base": "2b72db6a56ad8204ec7f30a0ba6ffbc941be3b82",
+    "formatter": "intl-messageformat (shared installed dependency)",
+    "node": "v24.22.1",
+    "inputs": {
+      "en": {
+        "path": "src/i18n/catalogues/en/ui.agents.upload.json",
+        "sha256": "6aff9fbb0706c9852760db60f22cdb075b747cef37dbc3e9130731943babef0b"
+      },
+      "target": {
+        "path": "src/i18n/catalogues/es/ui.agents.upload.json",
+        "sha256": "a3ecc58f02b9d5cd03fb866f9dbba0c7678264cf3b696d8cc9808a9bfb21baa4"
+      },
+      "context": {
+        "path": "src/i18n/catalogues/en/ui.agents.upload.context.json",
+        "sha256": "19e0fe920ae831b4e3bb8dcd7750dbdb508640c5cec6ca468c0acc1b853cf768"
+      },
+      "es_hub": {
+        "path": "src/i18n/catalogues/es/ui.hub.json",
+        "sha256": "2d4624ac033a587d5a7a7e1d2c499c1b88b8292a8e09e6cabb380ac8d90eb0cf"
+      },
+      "style_guide": {
+        "path": "~/local-operator/i18n/style-guides/es.md",
+        "sha256": "77b9227213802d14c74d4298d6b346ad842bbf2a5ca3b9d46fc6144430d26c3e",
+        "repository": "~/local-operator"
+      },
+      "glossary": {
+        "path": "~/local-operator/i18n/glossary.md",
+        "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+        "repository": "~/local-operator"
+      }
+    },
+    "changed_keys": [
+      "ui.agents.upload.target.blocked_hint",
+      "ui.agents.upload.target.org_unnamed"
+    ],
+    "unchanged_existing_keys": 45,
+    "spanish_changed_files": [
+      "src/i18n/catalogues/es/ui.agents.upload.json"
+    ],
+    "fallback": "esta organización",
+    "cases": [
+      {
+        "count": 0,
+        "category": "other",
+        "output": "Compartir agentes dentro de una organización forma parte del plan Team. Un propietario de cualquiera de las organizaciones marcadas arriba puede activarlo en la consola de Radient.",
+        "before": "Compartir agentes dentro de una organización forma parte del plan Team. Un propietario de cualquiera de las organizaciones marcadas arriba puede activarlo en la consola de Radient."
+      },
+      {
+        "count": 1,
+        "category": "one",
+        "output": "Compartir agentes dentro de una organización forma parte del plan Team. Un propietario de Minerva Labs puede activarlo en la consola de Radient.",
+        "before": "Compartir agentes dentro de una organización forma parte del plan Team. Un propietario de Minerva Labs puede activarlo en la consola de Radient."
+      },
+      {
+        "count": 2,
+        "category": "other",
+        "output": "Compartir agentes dentro de una organización forma parte del plan Team. Un propietario de cualquiera de las organizaciones marcadas arriba puede activarlo en la consola de Radient.",
+        "before": "Compartir agentes dentro de una organización forma parte del plan Team. Un propietario de cualquiera de las organizaciones marcadas arriba puede activarlo en la consola de Radient."
+      },
+      {
+        "count": 1.1,
+        "category": "other",
+        "output": "Compartir agentes dentro de una organización forma parte del plan Team. Un propietario de cualquiera de las organizaciones marcadas arriba puede activarlo en la consola de Radient.",
+        "before": "Compartir agentes dentro de una organización forma parte del plan Team. Un propietario de cualquiera de las organizaciones marcadas arriba puede activarlo en la consola de Radient."
+      },
+      {
+        "count": 999999,
+        "category": "other",
+        "output": "Compartir agentes dentro de una organización forma parte del plan Team. Un propietario de cualquiera de las organizaciones marcadas arriba puede activarlo en la consola de Radient.",
+        "before": "Compartir agentes dentro de una organización forma parte del plan Team. Un propietario de cualquiera de las organizaciones marcadas arriba puede activarlo en la consola de Radient."
+      },
+      {
+        "count": 1000000,
+        "category": "many",
+        "output": "Compartir agentes dentro de una organización forma parte del plan Team. Un propietario de cualquiera de las organizaciones marcadas arriba puede activarlo en la consola de Radient.",
+        "before": "Compartir agentes dentro de una organización forma parte del plan Team. Un propietario de Minerva Labs puede activarlo en la consola de Radient."
+      },
+      {
+        "count": 1000000.1,
+        "category": "other",
+        "output": "Compartir agentes dentro de una organización forma parte del plan Team. Un propietario de cualquiera de las organizaciones marcadas arriba puede activarlo en la consola de Radient.",
+        "before": "Compartir agentes dentro de una organización forma parte del plan Team. Un propietario de cualquiera de las organizaciones marcadas arriba puede activarlo en la consola de Radient."
+      },
+      {
+        "count": 1000001,
+        "category": "other",
+        "output": "Compartir agentes dentro de una organización forma parte del plan Team. Un propietario de cualquiera de las organizaciones marcadas arriba puede activarlo en la consola de Radient.",
+        "before": "Compartir agentes dentro de una organización forma parte del plan Team. Un propietario de cualquiera de las organizaciones marcadas arriba puede activarlo en la consola de Radient."
+      },
+      {
+        "count": 1500000,
+        "category": "other",
+        "output": "Compartir agentes dentro de una organización forma parte del plan Team. Un propietario de cualquiera de las organizaciones marcadas arriba puede activarlo en la consola de Radient.",
+        "before": "Compartir agentes dentro de una organización forma parte del plan Team. Un propietario de cualquiera de las organizaciones marcadas arriba puede activarlo en la consola de Radient."
+      },
+      {
+        "count": 2000000,
+        "category": "many",
+        "output": "Compartir agentes dentro de una organización forma parte del plan Team. Un propietario de cualquiera de las organizaciones marcadas arriba puede activarlo en la consola de Radient.",
+        "before": "Compartir agentes dentro de una organización forma parte del plan Team. Un propietario de Minerva Labs puede activarlo en la consola de Radient."
+      },
+      {
+        "count": 10000000,
+        "category": "many",
+        "output": "Compartir agentes dentro de una organización forma parte del plan Team. Un propietario de cualquiera de las organizaciones marcadas arriba puede activarlo en la consola de Radient.",
+        "before": "Compartir agentes dentro de una organización forma parte del plan Team. Un propietario de Minerva Labs puede activarlo en la consola de Radient."
+      }
+    ],
+    "frames": [
+      {
+        "key": "ui.agents.upload.intro.org",
+        "params": {
+          "name": "Asistente de prueba",
+          "destination": "esta organización"
+        },
+        "output": "Vas a publicar el conjunto de instrucciones de este agente en esta organización, donde solo sus miembros pueden leerlo e instalarlo. Lo que se publica es lo que describe al agente:"
+      },
+      {
+        "key": "ui.agents.upload.not_leaving.org",
+        "params": {
+          "name": "Asistente de prueba",
+          "destination": "esta organización"
+        },
+        "output": "Nada más sale de esta máquina: ni la conversación, ni el historial de ejecución, ni la memoria ni los aprendizajes, ni el plan, ni la configuración específica de la máquina. Los miembros de esta organización pueden leer e instalar lo que publiques; nadie de fuera puede."
+      },
+      {
+        "key": "ui.agents.upload.title.publish_org",
+        "params": {
+          "name": "Asistente de prueba",
+          "destination": "esta organización"
+        },
+        "output": "¿Publicar “Asistente de prueba” en esta organización?"
+      },
+      {
+        "key": "ui.agents.upload.title.published_org",
+        "params": {
+          "name": "Asistente de prueba",
+          "destination": "esta organización"
+        },
+        "output": "Publicado “Asistente de prueba” en esta organización"
+      },
+      {
+        "key": "ui.agents.upload.receipt.title_org",
+        "params": {
+          "name": "Asistente de prueba",
+          "destination": "esta organización"
+        },
+        "output": "Publicado en esta organización"
+      },
+      {
+        "key": "ui.agents.upload.published.org_listed",
+        "params": {
+          "name": "Asistente de prueba",
+          "destination": "esta organización"
+        },
+        "output": "“Asistente de prueba” está en los agentes compartidos de esta organización como conjunto de instrucciones. Sus miembros pueden leerlo e instalarlo; nadie fuera de la organización puede."
+      },
+      {
+        "key": "ui.hub.subscriptions.enable_private",
+        "params": {
+          "item": "Asistente de prueba",
+          "organization": "esta organización"
+        },
+        "output": "Los cambios futuros de Asistente de prueba pueden publicarse en esta organización sin preguntar cada vez. Solo pueden recibirlos las personas con acceso a esa organización."
+      }
+    ],
+    "assertions": "PASS: exact es delta keys/files; no removed es keys; en addition only; many AST equals other; one remains org; sampled categories/renderings match"
+  },
+  "limitations": [
+    "ICU text output only; no browser/native rendered fit check",
+    "No PR exists; no PR comment or commit made"
+  ]
+}

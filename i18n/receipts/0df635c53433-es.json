@@ -1,0 +1,185 @@
+{
+  "locale": "es",
+  "namespaces": {
+    "ui.shell.menubar": {
+      "status": "passed",
+      "keys_audited": 13,
+      "sha256": {
+        "en": "a2950cd3f057ee4641bb12df761ec98d496282e09d69e6150d6dd6edbc74be82",
+        "es": "999a2841533143a9a2467c13929a46cc604254ad6b18e24bbc14f00baeaaf856"
+      },
+      "findings": []
+    },
+    "ui.updates.panel": {
+      "status": "passed",
+      "keys_audited": 41,
+      "sha256": {
+        "en": "a94e79256f94128562493e36d8835952e2e78a41cd30382968b942fd6876794a",
+        "es": "5f597e018174af50be6d26c0d0728a893fbc5f9cc698861cb577facbf57d757d"
+      },
+      "findings": [
+        {
+          "severity": "MINOR",
+          "namespace": "ui.updates.panel",
+          "key": "ui.updates.panel.artifact.*.message_version (7 keys, e.g. artifact.damaged.message_version)",
+          "current": "La actualización descargada a la versión {version} está dañada, así que no se instaló.",
+          "suggestion": "'descargada a la versión' is an English-order calque; it can read as 'downloaded to version'. Suggest: 'La actualización a la versión {version} que se descargó está dañada, así que no se instaló.' (same pattern in the other six artifact keys and disk-free ones unaffected)."
+        },
+        {
+          "severity": "MINOR",
+          "namespace": "ui.updates.panel",
+          "key": "ui.updates.panel.seal.update.message",
+          "current": "Esta instalación de Local Operator no permite actualizarse en su ubicación actual, así que la actualización se detuvo antes de que la app se cerrara.",
+          "suggestion": "Stiff, 1.43x the English length (149 vs 104 chars; sidecar says keep the source's shape), and 'in place' becomes 'ubicación actual', which is not the same idea. Suggest: 'Esta instalación de Local Operator no se puede actualizar en su sitio, así que la actualización se detuvo antes de cerrar la app.' Apply the same to seal.update.message_version."
+        },
+        {
+          "severity": "MINOR",
+          "namespace": "ui.updates.panel",
+          "key": "ui.updates.panel.server.behind.remedy",
+          "current": "Esta copia de trabajo está por detrás de su remoto, y por eso `lop-update` se negó a compilar desde ella: ponla al día y, la próxima vez que pulses aquí, se compilará.",
+          "suggestion": "'copia de trabajo' is an SVN term and clashes with 'copia' for the app copy elsewhere; 'pulses' is Spain-marked against the neutral-Spanish rule. Suggest: 'Este repositorio local está por detrás de su remoto, y por eso `lop-update` se negó a compilar desde él: actualízalo y, la próxima vez que hagas clic aquí, se compilará.'"
+        },
+        {
+          "severity": "MINOR",
+          "namespace": "ui.updates.panel",
+          "key": "ui.updates.panel.launch.check.message / launch.check.message_version",
+          "current": "No se puede comprobar que la actualización descargada se pueda abrir, así que no se instaló.",
+          "suggestion": "Accurate but wordy (repeated 'se pueda' clause). Tighter: 'No se pudo comprobar si la actualización descargada se puede abrir, así que no se instaló.' Keep the _version variant parallel."
+        },
+        {
+          "severity": "NIT",
+          "namespace": "ui.updates.panel",
+          "key": "ui.updates.panel.launch.keep.message_version",
+          "current": "Sigue usando esta copia y sáltate la versión {version} si descargas una a mano — la próxima versión se ofrecerá aquí como siempre.",
+          "suggestion": "'sáltate' is colloquial for a failure panel, and 'una' has no clear antecedent. Suggest: 'Sigue usando esta copia y omite la versión {version} si descargas una a mano — ...'."
+        },
+        {
+          "severity": "NIT",
+          "namespace": "ui.updates.panel",
+          "key": "ui.updates.panel.artifact.* / seal.*",
+          "current": "la app / esta aplicación",
+          "suggestion": "'app' and 'aplicación' alternate (not_this_app uses 'aplicación'; seal/failure use 'app'). The English also mixes them, but pick one per panel."
+        },
+        {
+          "severity": "NIT",
+          "namespace": "ui.updates.panel",
+          "key": "ui.updates.panel.artifact.metadata_missing.message",
+          "current": "...no figura en los metadatos de la versión publicada...",
+          "suggestion": "'versión' renders both 'release' and 'version' ('la actualización a la versión X no coincide con la versión publicada'). Acceptable usage; 'la publicación' or 'el lanzamiento' would remove the ambiguity."
+        },
+        {
+          "severity": "NIT",
+          "namespace": "ui.updates.panel",
+          "key": "ui.updates.panel.service.no_backend.message",
+          "current": "No hay ninguna referencia al servicio del backend; no se puede actualizar.",
+          "suggestion": "'backend' is not on the style guide's kept-English list; 'servicio de backend' or 'servidor' is defensible. Consistent with check_unavailable ('versión del backend'); confirm it is kept deliberately."
+        }
+      ]
+    }
+  },
+  "checkout": "/Users/damian/lo-audit-1464",
+  "checkout_head": "00cc6d67e5f30e52bf08c241855c8c5fccd53c5d",
+  "key_count": 54,
+  "audit_date": "2026-10-28",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "0df635c53433",
+    "model": "anthropic/claude-sonnet-5-5"
+  },
+  "input_sha256": {
+    "src/i18n/catalogues/en/ui.shell.menubar.json": "a2950cd3f057ee4641bb12df761ec98d496282e09d69e6150d6dd6edbc74be82",
+    "src/i18n/catalogues/es/ui.shell.menubar.json": "999a2841533143a9a2467c13929a46cc604254ad6b18e24bbc14f00baeaaf856",
+    "src/i18n/catalogues/en/ui.updates.panel.json": "a94e79256f94128562493e36d8835952e2e78a41cd30382968b942fd6876794a",
+    "src/i18n/catalogues/es/ui.updates.panel.json": "5f597e018174af50be6d26c0d0728a893fbc5f9cc698861cb577facbf57d757d"
+  },
+  "input_sha256_context_docs_not_catalogue_copy": {
+    "en/ui.shell.menubar.context.json": "29964bf8fd93544fd8d8478324b58170b326139066b2bd063405876a1b4775d1",
+    "en/ui.updates.panel.context.json": "d709c7cc09695b16b271101f2ba25a027e70241cab10a2ac2935aab404aa3a5f",
+    "local-operator/i18n/glossary.md": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "local-operator/i18n/style-guides/es.md": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+  },
+  "read_provenance": "Catalogue en/es text for both namespaces read via read_public_copy (whole-file reads). Context sidecars (.context.json), glossary and es style guide read via filesystem: 'context/docs via filesystem, not catalogue copy'. Nothing under ~/qa read except this output dir. Placeholder/code-span/key-set checks run by a small local python script. No repo validator or ledger command run; repo not edited.",
+  "checks": {
+    "keys_en_es_identical": "both namespaces: key sets equal (13 + 41 = 54), valid JSON",
+    "icu_placeholders": "{name},{version},{size},{target},{running} sets identical per key; no plurals present",
+    "code_spans": "`lop-update` byte-identical; Local Operator verbatim in every string",
+    "sidecar_role_tone_length": "updates: calm/factual/no blame/no exclamation satisfied; length expansion up to 1.47x (longest seal.update.message_version 172 chars) noted as MINOR fit. menubar: sidecar asks Title Case but es style guide (binding) and macOS Spanish menus use sentence case, so the es sentence case is correct, not a defect",
+    "menubar_platform_convention": "Archivo/Edición/Visualización/Ventana and Recargar/Forzar recarga/Tamaño real/Ampliar/Reducir/Acerca de {name}/Más información match macOS and Electron Spanish menu wording; all 1-4 words; 'Visualización' (13 chars) is the longest top-level item and acceptable",
+    "glossary": "~/local-operator/i18n/glossary.md has no entries covering these terms; style guide: tú imperative used throughout, no '!', ellipsis/em-dash typography with spaces OK, Aplicaciones matches macOS",
+    "menubar_findings": "0 (all 13 keys pass)"
+  },
+  "findings": [
+    {
+      "severity": "MINOR",
+      "namespace": "ui.updates.panel",
+      "key": "ui.updates.panel.artifact.*.message_version (7 keys, e.g. artifact.damaged.message_version)",
+      "current": "La actualización descargada a la versión {version} está dañada, así que no se instaló.",
+      "suggestion": "'descargada a la versión' is an English-order calque; it can read as 'downloaded to version'. Suggest: 'La actualización a la versión {version} que se descargó está dañada, así que no se instaló.' (same pattern in the other six artifact keys and disk-free ones unaffected)."
+    },
+    {
+      "severity": "MINOR",
+      "namespace": "ui.updates.panel",
+      "key": "ui.updates.panel.seal.update.message",
+      "current": "Esta instalación de Local Operator no permite actualizarse en su ubicación actual, así que la actualización se detuvo antes de que la app se cerrara.",
+      "suggestion": "Stiff, 1.43x the English length (149 vs 104 chars; sidecar says keep the source's shape), and 'in place' becomes 'ubicación actual', which is not the same idea. Suggest: 'Esta instalación de Local Operator no se puede actualizar en su sitio, así que la actualización se detuvo antes de cerrar la app.' Apply the same to seal.update.message_version."
+    },
+    {
+      "severity": "MINOR",
+      "namespace": "ui.updates.panel",
+      "key": "ui.updates.panel.server.behind.remedy",
+      "current": "Esta copia de trabajo está por detrás de su remoto, y por eso `lop-update` se negó a compilar desde ella: ponla al día y, la próxima vez que pulses aquí, se compilará.",
+      "suggestion": "'copia de trabajo' is an SVN term and clashes with 'copia' for the app copy elsewhere; 'pulses' is Spain-marked against the neutral-Spanish rule. Suggest: 'Este repositorio local está por detrás de su remoto, y por eso `lop-update` se negó a compilar desde él: actualízalo y, la próxima vez que hagas clic aquí, se compilará.'"
+    },
+    {
+      "severity": "MINOR",
+      "namespace": "ui.updates.panel",
+      "key": "ui.updates.panel.launch.check.message / launch.check.message_version",
+      "current": "No se puede comprobar que la actualización descargada se pueda abrir, así que no se instaló.",
+      "suggestion": "Accurate but wordy (repeated 'se pueda' clause). Tighter: 'No se pudo comprobar si la actualización descargada se puede abrir, así que no se instaló.' Keep the _version variant parallel."
+    },
+    {
+      "severity": "NIT",
+      "namespace": "ui.updates.panel",
+      "key": "ui.updates.panel.launch.keep.message_version",
+      "current": "Sigue usando esta copia y sáltate la versión {version} si descargas una a mano — la próxima versión se ofrecerá aquí como siempre.",
+      "suggestion": "'sáltate' is colloquial for a failure panel, and 'una' has no clear antecedent. Suggest: 'Sigue usando esta copia y omite la versión {version} si descargas una a mano — ...'."
+    },
+    {
+      "severity": "NIT",
+      "namespace": "ui.updates.panel",
+      "key": "ui.updates.panel.artifact.* / seal.*",
+      "current": "la app / esta aplicación",
+      "suggestion": "'app' and 'aplicación' alternate (not_this_app uses 'aplicación'; seal/failure use 'app'). The English also mixes them, but pick one per panel."
+    },
+    {
+      "severity": "NIT",
+      "namespace": "ui.updates.panel",
+      "key": "ui.updates.panel.artifact.metadata_missing.message",
+      "current": "...no figura en los metadatos de la versión publicada...",
+      "suggestion": "'versión' renders both 'release' and 'version' ('la actualización a la versión X no coincide con la versión publicada'). Acceptable usage; 'la publicación' or 'el lanzamiento' would remove the ambiguity."
+    },
+    {
+      "severity": "NIT",
+      "namespace": "ui.updates.panel",
+      "key": "ui.updates.panel.service.no_backend.message",
+      "current": "No hay ninguna referencia al servicio del backend; no se puede actualizar.",
+      "suggestion": "'backend' is not on the style guide's kept-English list; 'servicio de backend' or 'servidor' is defensible. Consistent with check_unavailable ('versión del backend'); confirm it is kept deliberately."
+    }
+  ],
+  "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 4,
+    "NIT": 4
+  },
+  "verdict": "passed",
+  "instance": "0df635c53433-es",
+  "model": "anthropic/claude-sonnet-5-5",
+  "status": "passed",
+  "sha256": {
+    "src/i18n/catalogues/en/ui.shell.menubar.json": "a2950cd3f057ee4641bb12df761ec98d496282e09d69e6150d6dd6edbc74be82",
+    "src/i18n/catalogues/en/ui.updates.panel.json": "a94e79256f94128562493e36d8835952e2e78a41cd30382968b942fd6876794a",
+    "src/i18n/catalogues/es/ui.shell.menubar.json": "999a2841533143a9a2467c13929a46cc604254ad6b18e24bbc14f00baeaaf856",
+    "src/i18n/catalogues/es/ui.updates.panel.json": "5f597e018174af50be6d26c0d0728a893fbc5f9cc698861cb577facbf57d757d"
+  }
+}

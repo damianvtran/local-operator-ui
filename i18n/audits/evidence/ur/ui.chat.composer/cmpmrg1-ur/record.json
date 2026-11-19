@@ -1,0 +1,113 @@
+{
+ "audit_id": "cmpmrg1-ur",
+ "round": 1,
+ "audit_kind": "independent-translation-delta-audit",
+ "date": "2026-11-04",
+ "audit_date": "2026-11-04",
+ "locale": "ur",
+ "namespace": "ui.chat.composer",
+ "source_commit": "801b1ad29d47bbb89a0768e0ea1f193892db953d",
+ "scope": "Delta audit of 6 keys in the merged ur file (72 keys; key set equals English): secret_closure_notice (branch key, value byte-identical to the earlier-audited candidate) and main's insert_transcript, insert_transcript_hint, send_recording, send_recording_hint, steer_hint. Other keys read for glossary/register consistency only.",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "key_count": 6,
+ "keys_read": 6,
+ "delta_keys": [
+  "ui.chat.composer.secret_closure_notice",
+  "ui.chat.composer.insert_transcript",
+  "ui.chat.composer.insert_transcript_hint",
+  "ui.chat.composer.send_recording",
+  "ui.chat.composer.send_recording_hint",
+  "ui.chat.composer.steer_hint"
+ ],
+ "auditors": [
+  {
+   "agent": "i18n-auditor",
+   "model": "anthropic/claude-sonnet-5-5",
+   "session": "e95f3f697724",
+   "team": "lopdev",
+   "instance": "e95f3f697724-cmpmrg1-ur",
+   "date": "2026-11-04",
+   "result": "clean-with-findings",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 2
+   },
+   "independent_from_translator_session": true,
+   "actual_model_source": "harness session header line 'Model: anthropic/claude-sonnet-5-5' for session e95f3f697724; no fallback observed, no role or model pin applied",
+   "fallback": null,
+   "receipt": "i18n/receipts/e95f3f697724-cmpmrg1-ur.json"
+  }
+ ],
+ "independence": "Independent i18n-auditor (team lopdev) session e95f3f697724; translated nothing and edited no catalogue, context, ledger or existing receipt byte. No MT service, translation API or SDK used; fribidi (a Unicode bidi implementation) only to inspect bidi ordering of Latin tokens, never to produce or compare copy.",
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.chat.composer.json",
+   "sha256": "1abe3bc2730635d6eae484b49bfafa1743dee3be1f0ca60863576632acb95f14"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.chat.composer.context.json",
+   "sha256": "de9e346489f6df64bc3ff08abd1f8e0550e95e54e44b7c0ddda47897ff50e2dc"
+  },
+  "ur": {
+   "path": "src/i18n/catalogues/ur/ui.chat.composer.json",
+   "sha256": "8f17e07b180ed3c76c6beb71dba1aa2e241f32c084253a8337205681dd843efe"
+  }
+ },
+ "current_bytes_match_audited_hashes": true,
+ "artifacts": [
+  {
+   "path": "i18n/audits/evidence/ur/ui.chat.composer/cmpmrg1-ur/report.md",
+   "sha256": "508abb61dd1da98ddb83cccd12d5f90fb735fd4810e7751d71c33768aed3d921"
+  },
+  {
+   "path": "i18n/audits/evidence/ur/ui.chat.composer/cmpmrg1-ur/audit.log",
+   "sha256": "57ff94dd2b16a5f7a3d94a2bfc0822043eb401e577c4baa5bbf68ef91fa72933"
+  },
+  {
+   "path": "i18n/audits/evidence/ur/ui.chat.composer/cmpmrg1-ur/verify.mjs",
+   "sha256": "ab95d84a51f9d7d31e18aa48cc60bd2a03c39452b1e08340b2125bbbae1166ab"
+  }
+ ],
+ "audit_notes_not_execution_log": "audit.log is the actual stdout of verify.mjs run at HEAD 801b1ad29d4; the bidi inspection and locale-parity.test.mjs ur rows (6/6 pass) were run interactively and are described in report.md, not captured in audit.log.",
+ "current_report_verdict": {
+  "status": "passed",
+  "unresolved_blocker_major_count": 0,
+  "finding_ids": [
+   "U-1",
+   "U-2",
+   "U-3"
+  ]
+ },
+ "findings": [
+  {
+   "id": "U-1",
+   "severity": "MINOR",
+   "key": "ui.chat.composer.secret_closure_notice",
+   "current": "جواب ملنے تک یہ خانہ موقوف ہے",
+   "proposed": "جواب ملنے تک پیغام کا خانہ موقوف ہے",
+   "reason": "In this namespace خانہ already names the secret field (secret_confirm_put, secret_fill_*); a bare «یہ خانہ» can be read as that field rather than the message box. Not gating."
+  },
+  {
+   "id": "U-2",
+   "severity": "NIT",
+   "key": "ui.chat.composer.send_recording_hint",
+   "current": "ٹرانسکرائب کر کے ابھی بھیجیں، جانچے بغیر",
+   "proposed": "ٹرانسکرپٹ بنا کر ابھی بھیجیں، جانچے بغیر (optional)",
+   "reason": "Verb stem ٹرانسکرائب vs glossary noun ٹرانسکرپٹ; both in use, optional."
+  },
+  {
+   "id": "U-3",
+   "severity": "NIT",
+   "key": [
+    "ui.chat.composer.insert_transcript_hint",
+    "ui.chat.composer.send_recording_hint"
+   ],
+   "current": "جانچنے کے لیے / جانچے بغیر",
+   "proposed": "no change",
+   "reason": "جانچنا for proofreading dictated words is idiomatic though the catalogue renders code review as جائزہ; the two keys agree."
+  }
+ ]
+}

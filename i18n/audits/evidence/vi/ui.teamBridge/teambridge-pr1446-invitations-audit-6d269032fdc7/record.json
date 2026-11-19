@@ -1,0 +1,216 @@
+{
+	"audit_id": "teambridge-pr1446-invitations-audit-6d269032fdc7",
+	"date": "2026-10-27",
+	"locale": "vi",
+	"namespace": "ui.teamBridge",
+	"source_commit": "23ddabe8643350b3de4c83f664ef0b798ec3af4d",
+	"translator": {
+		"agent": "translator",
+		"session": "c995ffd759f3",
+		"role": "coder",
+		"model": "anthropic/claude-opus-5-5",
+		"fallback": "none recorded",
+		"commit": "23ddabe8643350b3de4c83f664ef0b798ec3af4d",
+		"method": "LLM reasoning; the translator transcript references no MT service (deepl/googletrans/libretranslate/argos: 0 hits)"
+	},
+	"auditors": [
+		{
+			"agent": "i18n-auditor",
+			"model": "anthropic/claude-opus-5-5",
+			"date": "2026-10-27",
+			"result": "clean-with-findings",
+			"instance": "6d269032fdc7-vi",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 1,
+				"nit": 0
+			},
+			"receipt": "i18n/receipts/6d269032fdc7-vi.json",
+			"receipt_sha256": "64a2542ac1e0b6338c78ceb4b560f50ded59e88da2b152e2741dde2805108be2",
+			"scope": "New-key delta: 28 ui.teamBridge.invitations.* keys (PR #1446); other 208 keys inherited on byte identity.",
+			"note": "PR #1446 invitations audit (F2 MINOR). Evidence: i18n/audits/evidence/vi/ui.teamBridge/teambridge-pr1446-invitations-audit-6d269032fdc7/record.json"
+		}
+	],
+	"ledger_status": "audited",
+	"independence": "Independent auditor (reviewer role, session 6d269032fdc7). It authored none of the audited strings and edited no catalogue byte. The translator was session c995ffd759f3 (coder role, commit 23ddabe864). This run wrote only these receipts, the per-locale evidence records and the ledger rows (via ledger-assemble.mjs).",
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "6380502638d0ba27f944b327dbc9796ca5dc18aa43bb03682e6847f0df458f9b"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/vi/ui.teamBridge.json",
+			"sha256": "7ba403b706c24ab13760bf34663fb403a6a30f406e905e1462735bb7d7424330"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "d0b5a7223fc79264478b8e3b07b6a05b14e548ec388a8a193af3b9ab0db42ef6"
+		}
+	},
+	"audited": {
+		"ui.teamBridge.invitations.title": {
+			"en": "Invitations",
+			"target": "Lời mời"
+		},
+		"ui.teamBridge.invitations.count": {
+			"en": "{count, plural, one {{count} invitation waiting for you} other {{count} invitations waiting for you}}",
+			"target": "{count, plural, other {{count} lời mời đang chờ bạn}}"
+		},
+		"ui.teamBridge.invitations.consent.bridge_agent_participation_v1": {
+			"en": "Accepting lets your agent read and post in this conversation from now on. It is woken only when someone @-mentions it.",
+			"target": "Khi chấp nhận, tác nhân của bạn có thể đọc và đăng tin nhắn trong cuộc trò chuyện này kể từ bây giờ. Tác nhân chỉ thức dậy khi có người nhắc đến nó bằng @."
+		},
+		"ui.teamBridge.invitations.loading": {
+			"en": "Loading invitations…",
+			"target": "Đang tải lời mời…"
+		},
+		"ui.teamBridge.invitations.load_failed": {
+			"en": "Invitations could not be loaded.",
+			"target": "Không tải được lời mời."
+		},
+		"ui.teamBridge.invitations.empty": {
+			"en": "No invitations are waiting for your agent.",
+			"target": "Không có lời mời nào đang chờ tác nhân của bạn."
+		},
+		"ui.teamBridge.invitations.agent_line": {
+			"en": "{agent} was invited to this conversation",
+			"target": "{agent} đã được mời vào cuộc trò chuyện này"
+		},
+		"ui.teamBridge.invitations.agent_fallback": {
+			"en": "Your agent",
+			"target": "Tác nhân của bạn"
+		},
+		"ui.teamBridge.invitations.added_by": {
+			"en": "Added by {name}",
+			"target": "Do {name} thêm"
+		},
+		"ui.teamBridge.invitations.added_by_you": {
+			"en": "Added by you",
+			"target": "Do bạn thêm"
+		},
+		"ui.teamBridge.invitations.created_by": {
+			"en": "Conversation created by {name}",
+			"target": "Cuộc trò chuyện do {name} tạo"
+		},
+		"ui.teamBridge.invitations.created_by_you": {
+			"en": "Conversation created by you",
+			"target": "Cuộc trò chuyện do bạn tạo"
+		},
+		"ui.teamBridge.invitations.accept": {
+			"en": "Accept",
+			"target": "Chấp nhận"
+		},
+		"ui.teamBridge.invitations.accepting": {
+			"en": "Accepting…",
+			"target": "Đang chấp nhận…"
+		},
+		"ui.teamBridge.invitations.decline": {
+			"en": "Decline",
+			"target": "Từ chối"
+		},
+		"ui.teamBridge.invitations.declining": {
+			"en": "Declining…",
+			"target": "Đang từ chối…"
+		},
+		"ui.teamBridge.invitations.accepted": {
+			"en": "Accepted. {agent} is woken only when someone @-mentions it.",
+			"target": "Đã chấp nhận. {agent} chỉ thức dậy khi có người nhắc đến bằng @."
+		},
+		"ui.teamBridge.invitations.declined": {
+			"en": "Declined for {agent}.",
+			"target": "Đã từ chối cho {agent}."
+		},
+		"ui.teamBridge.invitations.failed.agent_unavailable": {
+			"en": "Your agent can’t join from here: it is paused, turned off or not set up for this organization. Turn it on in Settings, then try again.",
+			"target": "Tác nhân của bạn không thể tham gia từ đây: tác nhân đang tạm dừng, đã tắt hoặc chưa được thiết lập cho tổ chức này. Hãy bật tác nhân trong Cài đặt rồi thử lại."
+		},
+		"ui.teamBridge.invitations.failed.already_answered": {
+			"en": "This invitation was already answered elsewhere. Its current state is shown in the conversation.",
+			"target": "Lời mời này đã được trả lời ở nơi khác. Trạng thái hiện tại được hiển thị trong cuộc trò chuyện."
+		},
+		"ui.teamBridge.invitations.failed.gone": {
+			"en": "This invitation is no longer available. The conversation or your agent’s place in it was removed.",
+			"target": "Lời mời này không còn khả dụng. Cuộc trò chuyện, hoặc vị trí của tác nhân của bạn trong đó, đã bị xóa."
+		},
+		"ui.teamBridge.invitations.failed.runtime_outdated": {
+			"en": "This runtime can’t accept invitations. Update Local Operator, then try again.",
+			"target": "Runtime này không thể chấp nhận lời mời. Hãy cập nhật Local Operator rồi thử lại."
+		},
+		"ui.teamBridge.invitations.failed.outdated": {
+			"en": "This version of the app can’t accept invitations any more. Update the app, then try again.",
+			"target": "Phiên bản ứng dụng này không còn chấp nhận được lời mời. Hãy cập nhật ứng dụng rồi thử lại."
+		},
+		"ui.teamBridge.invitations.failed.not_available": {
+			"en": "Team Bridge isn’t available for this organization right now.",
+			"target": "Team Bridge hiện không khả dụng cho tổ chức này."
+		},
+		"ui.teamBridge.invitations.failed.sign_in": {
+			"en": "You’re signed out. Sign in, then try again.",
+			"target": "Bạn đã đăng xuất. Hãy đăng nhập rồi thử lại."
+		},
+		"ui.teamBridge.invitations.failed.unreachable": {
+			"en": "The app couldn’t reach Radient. Nothing was changed. Try again.",
+			"target": "Ứng dụng không kết nối được với Radient. Không có gì thay đổi. Hãy thử lại."
+		},
+		"ui.teamBridge.invitations.read_only": {
+			"en": "This organization is read-only for you, so invitations can’t be answered here.",
+			"target": "Tổ chức này ở chế độ chỉ đọc với bạn nên không thể trả lời lời mời tại đây."
+		},
+		"ui.teamBridge.invitations.failed.unconfirmed": {
+			"en": "Your answer was not confirmed. Try again.",
+			"target": "Câu trả lời của bạn chưa được xác nhận. Hãy thử lại."
+		}
+	},
+	"special_scrutiny": {
+		"key": "ui.teamBridge.invitations.consent.bridge_agent_participation_v1",
+		"verdict": "faithful and complete",
+		"checked": [
+			"read AND post in this conversation",
+			"from now on",
+			"woken only on an @-mention",
+			"nothing added",
+			"no muted/silent sense"
+		]
+	},
+	"notes": "bạn used sparingly per guide; tác nhân, thức dậy (glossary), Cài đặt, runtime kept English (vi guide); plural other only. Consent: 'có thể đọc và đăng tin nhắn trong cuộc trò chuyện này kể từ bây giờ' + 'chỉ thức dậy khi có người nhắc đến nó bằng @' - faithful, no tắt tiếng.",
+	"findings": [
+		{
+			"id": "F2",
+			"severity": "MINOR",
+			"key": "ui.teamBridge.invitations.agent_fallback",
+			"related_keys": [
+				"ui.teamBridge.invitations.declined"
+			],
+			"issue": "Capitalized fallback mid-sentence with an unnamed agent: 'Đã từ chối cho Tác nhân của bạn.' (agent_line and accepted are sentence-initial and fine). Same root cause as the English 'Declined for Your agent.'",
+			"evidence": "render-1446.txt",
+			"fix": "Restructure declined so {agent} leads (e.g. '{agent}: đã từ chối lời mời.') or the source-level select described for es."
+		}
+	],
+	"fallback_renders": [
+		"vi agent_line => Tác nhân của bạn đã được mời vào cuộc trò chuyện này",
+		"vi accepted => Đã chấp nhận. Tác nhân của bạn chỉ thức dậy khi có người nhắc đến bằng @.",
+		"vi declined => Đã từ chối cho Tác nhân của bạn.",
+		"vi count 1/2/5/21: 1 lời mời đang chờ bạn | 2 lời mời đang chờ bạn | 5 lời mời đang chờ bạn | 21 lời mời đang chờ bạn"
+	],
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide_vi": {
+			"path": "~/local-operator/i18n/style-guides/vi.md",
+			"revision": "6c085b93b6ecc1a27a0daab552302687b059a911",
+			"sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+		},
+		"core_checkout": "dadf192382fbce7cb97d8cfbdc99ff1c931d97b6"
+	},
+	"artifacts": {
+		"receipt": {
+			"path": "i18n/receipts/6d269032fdc7-vi.json",
+			"sha256": "64a2542ac1e0b6338c78ceb4b560f50ded59e88da2b152e2741dde2805108be2"
+		}
+	},
+	"limitations": "No rendered-fit or screenshot evidence: this role has no browser tool. Refusal copy is clipped to one line by design (truncate + title); longer fr/ru/hi/ur sentences rely on the hover title and the accessible name for the full text."
+}

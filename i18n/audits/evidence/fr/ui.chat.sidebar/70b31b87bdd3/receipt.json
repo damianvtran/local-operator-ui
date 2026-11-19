@@ -1,0 +1,179 @@
+{
+  "locale": "fr",
+  "mode": "Fresh independent delta pass on one changed key; other 85 keys of the namespace read for term consistency only. Read-only worktree (no edits, no installs, no node, no browser). Allocation: fix (<2h), bounded audit.",
+  "scope": "PR damianvtran/local-operator-ui #1837 @ fd09d8f296318319817edb5a511a42ff6a07868f; delta origin/main..HEAD in src/i18n/catalogues/fr/ui.chat.sidebar.json (1 line, 1 key). Key audited in full: ui.chat.sidebar.agents.builtin_offer, which gains one `many` arm before `other`; all other arms byte-unchanged. Remaining 85 keys read for consistency of agent intégré / installer / modifier, not certified.",
+  "head_sha": "fd09d8f296318319817edb5a511a42ff6a07868f",
+  "audit_date": "2026-11-10",
+  "key_count": 86,
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "Translator identity/model from the delegation brief; translator session id not supplied. This session did not translate and took no part in the change."
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "70b31b87bdd3",
+    "session": "70b31b87bdd3",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "Served session header: deepseek/deepseek-flash; session 70b31b87bdd3. No fallback used.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "status": "passed",
+  "result": "clean",
+  "verdict": "clean",
+  "findings": [],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "namespaces": {
+    "ui.chat.sidebar": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "7db9ba5108a62330a1782f775b991ec0483537d2f7d808ae0691e1a6ef8840cd",
+      "target_sha256": "ec93a140d65cf298bb4252b74f999b83bc7736860d0b7c7dbfe5625e7983e3a3",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+          "sha256": "7db9ba5108a62330a1782f775b991ec0483537d2f7d808ae0691e1a6ef8840cd"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.sidebar.context.json",
+          "sha256": "4f1593cc34b395ef8701a60e58e73a0371b3c93730eb7a1f2b2845dc6250d7e3"
+        },
+        "fr": {
+          "path": "src/i18n/catalogues/fr/ui.chat.sidebar.json",
+          "sha256": "ec93a140d65cf298bb4252b74f999b83bc7736860d0b7c7dbfe5625e7983e3a3"
+        }
+      },
+      "findings": []
+    }
+  },
+  "per_key_checks": [
+    {
+      "key": "ui.chat.sidebar.agents.builtin_offer",
+      "source": "{count, plural, =0 {No built-in agents are ready to install — {list}. You can edit them once installed.} one {One built-in agent is ready to install — {list}. You can edit it once installed.} =2 {Two built-in agents are ready to install — {list}. You can edit them once installed.} =3 {Three built-in agents are ready to install — {list}. You can edit them once installed.} =4 {Four built-in agents are ready to install — {list}. You can edit them once installed.} =5 {Five built-in agents are ready to install — {list}. You can edit them once installed.} =6 {Six built-in agents are ready to install — {list}. You can edit them once installed.} other {{count, number, ::group-off} built-in agents are ready to install — {list}. You can edit them once installed.}}",
+      "current_text": "{count, plural, =0 {Aucun agent intégré n’est prêt à être installé — {list}. Vous pourrez les modifier une fois installés.} one {Un agent intégré est prêt à être installé — {list}. Vous pourrez le modifier une fois installé.} =2 {Deux agents intégrés sont prêts à être installés — {list}. Vous pourrez les modifier une fois installés.} =3 {Trois agents intégrés sont prêts à être installés — {list}. Vous pourrez les modifier une fois installés.} =4 {Quatre agents intégrés sont prêts à être installés — {list}. Vous pourrez les modifier une fois installés.} =5 {Cinq agents intégrés sont prêts à être installés — {list}. Vous pourrez les modifier une fois installés.} =6 {Six agents intégrés sont prêts à être installés — {list}. Vous pourrez les modifier une fois installés.} many {{count, number, ::group-off} d’agents intégrés sont prêts à être installés — {list}. Vous pourrez les modifier une fois installés.} other {{count, number, ::group-off} agents intégrés sont prêts à être installés — {list}. Vous pourrez les modifier une fois installés.}}",
+      "findings": [],
+      "assessment": "The added `many` arm is grammatical, idiomatic and CLDR-correct. It is the `other` arm with the partitive inserted: `many == other.replace('d’','',1)` proved byte-identical otherwise, so the two arms cannot drift in voice, pronoun or second sentence. `de` + vowel elides to `d’` (U+2019) before `agents`, and `de` is obligatory after a bare million (read `1 000 000` as `un million de`), so the only diversion the arm causes is exactly the case it exists for. Verb and adjective agree with the complement (sont prêts / installés), as French does with a collective numeral; `les` resumes agents. Placement before `other` is correct and matches the namespace's four existing many-bearing keys. Terminology: agent intégré matches the sibling key dismiss_offer ('d’agents intégrés'); installer/installés and modifier match the corpus renderings. Register: vous, sentence case, no Veuillez. Typography: U+2019 apostrophes only, no ASCII apostrophe, em dash with ASCII spaces identical to the 8 pre-existing arms, no NBSP/NNBSP/bidi/zero-width, NFC.",
+      "placeholder_integrity": {
+        "arguments": [
+          [
+            "count",
+            "number"
+          ],
+          [
+            "count",
+            "plural"
+          ],
+          [
+            "list",
+            "simple"
+          ]
+        ],
+        "matches_english": true,
+        "number_skeleton": "::group-off"
+      },
+      "plural_select": [
+        [
+          "count",
+          [
+            "=0",
+            "one",
+            "=2",
+            "=3",
+            "=4",
+            "=5",
+            "=6",
+            "many",
+            "other"
+          ]
+        ]
+      ],
+      "expansions": {
+        "0": "Aucun agent intégré n’est prêt à être installé — Alex, Romy et Sage. Vous pourrez les modifier une fois installés.",
+        "1": "Un agent intégré est prêt à être installé — Alex, Romy et Sage. Vous pourrez le modifier une fois installé.",
+        "2": "Deux agents intégrés sont prêts à être installés — Alex, Romy et Sage. Vous pourrez les modifier une fois installés.",
+        "7": "7 agents intégrés sont prêts à être installés — Alex, Romy et Sage. Vous pourrez les modifier une fois installés.",
+        "1000000": "1000000 d’agents intégrés sont prêts à être installés — Alex, Romy et Sage. Vous pourrez les modifier une fois installés.",
+        "1500000": "1500000 agents intégrés sont prêts à être installés — Alex, Romy et Sage. Vous pourrez les modifier une fois installés.",
+        "2000000": "2000000 d’agents intégrés sont prêts à être installés — Alex, Romy et Sage. Vous pourrez les modifier une fois installés."
+      },
+      "arm_selection": {
+        "0": "=0 (explicit literal overrides the one category, which CLDR fr also assigns to 0)",
+        "1": "one",
+        "2": "=2",
+        "7": "other",
+        "1000000": "many (i % 1000000 = 0, i != 0, v = 0)",
+        "1500000": "other (i % 1000000 = 500000)",
+        "2000000": "many"
+      }
+    }
+  ],
+  "remediation_verification": {
+    "status": "No prior findings against this key. The previous round's receipt (fr-sol-8195830a463b.json) recorded the absence of a `many` arm on this key as an out-of-scope pre-existing observation; this delta addresses exactly that observation. Nothing was regressed: the other eight arms are byte-identical to origin/main.",
+    "prior_findings": [
+      {
+        "prior_severity": "observation (out of scope, prior round)",
+        "keys": [
+          "ui.chat.sidebar.agents.builtin_offer"
+        ],
+        "prior_quote": "one {...} =2 {...} =3 {...} =4 {...} =5 {...} =6 {...} other {...}; no many arm",
+        "status": "fixed",
+        "current_quote": "many {{count, number, ::group-off} d’agents intégrés sont prêts à être installés — {list}. Vous pourrez les modifier une fois installés.} other {...}",
+        "assessment": "Verified by expansion against origin/main: before the arm, count=1000000 rendered '1000000 agents intégrés sont prêts à être installés', which drops the partitive French requires after a bare million. It now renders '1000000 d’agents intégrés…'. No count that previously rendered well is diverted: only exact multiples of 10^6 leave `other`."
+      }
+    ],
+    "policy_sources": [
+      "i18n/style-guides/fr.md (Plurals; Punctuation & typography; Kept-English list)",
+      "i18n/glossary.md (§1 surface names, §2 agent)",
+      "src/i18n/catalogues/en/ui.chat.sidebar.context.json (role/tone/note/placeholders for this key)",
+      "CLDR supplemental plurals.json fr: one 'i = 0..1', many 'e = 0 and i != 0 and i % 1000000 = 0 and v = 0 or e != 0..5', other otherwise"
+    ],
+    "executed_checks": [
+      "git rev-parse HEAD = fd09d8f296318319817edb5a511a42ff6a07868f; git status --short empty (read-only confirmed).",
+      "git diff origin/main HEAD -- src/i18n/catalogues/fr/ui.chat.sidebar.json: exactly one added `many` arm; git diff --numstat 1/1; changed-key set computed from git show origin/main:… = exactly this one key.",
+      "shasum -a 256: fr ec93a140d65c…, en 7db9ba5108a6…, context 4f1593cc34b3… — both expected prefixes match.",
+      "Python json load with duplicate-key-rejecting object_pairs_hook: valid; 86 keys fr and en, identical key sets; key order mirrors en; key order unchanged by the commit.",
+      "Hand-written ICU-subset parser (no node): brace depth returns to 0 with max depth 3 and never negative; top-level arg `count` plural; arms in order =0, one, =2…=6, many, other; no duplicate selector; per-arm braces balanced; exactly one {list} per arm; French CLDR visible categories one/many/other all present, `few` absent.",
+      "Argument inventory identical to English: count:number, count:plural, list:simple. Number skeletons: all count references are exactly '::group-off' (2 in fr, 1 in en). An earlier regex reported counts 'without' the skeleton; traced to a backtracking hole in my own pattern (\\s* with a negative lookahead) and re-run correctly — my artifact, not a repo defect.",
+      "Codepoint census of the key: é ×36, ê ×18, à ×9, U+2014 ×9, U+2019 ×2; zero ASCII apostrophes; every em dash is ASCII-space—ASCII-space; no U+00A0, U+202F, U+200B/C/D, U+200E/F, U+202A–E, U+2066–9, U+FEFF; NFC holds for the key and the file. No backticks, no <markup>/Rich tags, no '#'.",
+      "Plural expansion by hand-written formatter over CLDR fr rules (selection: explicit =N first, else category) at 0, 1, 2, 7, 1000000, 1500000, 2000000 with {list} substituted; the same expansion run on the English string as control. Selected arms matched the brief's expectation exactly.",
+      "CLDR fr plural rules fetched from unicode-org/cldr-json supplemental/plurals.json and read directly, not recalled: one = 'i = 0..1', many = 'e = 0 and i != 0 and i % 1000000 = 0 and v = 0 or e != 0..5' (plain integer counts give e = 0).",
+      "Term/register consistency across all 86 fr keys: 'agent intégré(s)' occurs only in this key and dismiss_offer; installer/installé/installés and modifier match the corpus; namespace precedent catalogue.total (many 'de conversations', consonant) and show_more_agents (many 'd’agents de plus', vowel) apply exactly the elision this arm uses.",
+      "many-vs-other diff via difflib: the single opcode is an insert of 'd’' at index 29; many.replace('d’','',1) == other is True.",
+      "Render path read (no execution): builtin-offer-sentence.ts passes count = names.length; chat-sidebar.tsx renders the sentence in a wrapping <p className='text-meta text-ink-muted'> gated on availableBuiltins.length > 0. No maxCells/maxChars in the sidecar for this key.",
+      "Formatter identified as intl-messageformat ^12 / @formatjs/icu-messageformat-parser (package.json); plural selection is therefore Intl.PluralRules/CLDR, matching the rules fetched above. Not executed.",
+      "Instance id scan: 4478 files under i18n/receipts, i18n/audits/evidence, i18n/audit-evidence and i18n/audits contain no '70b31b87bdd3'."
+    ],
+    "typography_fit": "Apostrophe U+2019 in n’est and d’agents everywhere it appears; no ASCII apostrophe. Em dash uses ASCII spaces exactly as the eight pre-existing arms do and as the fr guide states (' — '), with U+202F reserved for : ; ! ? (none in this key). NFC. No bidi isolates needed (LTR). Fit: the string renders in a wrapping paragraph with no maxCells budget; the many arm is ~7 characters longer than other and 1,000,000-item offers are not a real layout case, so no overflow finding is raised and none could be — the guard below also pins the digit form.",
+    "out_of_scope_pre_existing": [
+      {
+        "key": "ui.chat.sidebar.agents.builtin_offer",
+        "quote": "{count, number, ::group-off} — the fr guide's plural example uses '#'",
+        "note": "The fr guide's Plurals example renders '#' and its Numbers rule calls for grouped '1 234,5', while every arm here uses the explicit ::group-off skeleton and the repo's own guard (scripts/i18n/chat-data-copy.test.mjs, changed in this same PR) asserts out.includes('1000000'), i.e. UNGROUPED digits, and fails any digit grouping. So '1 000 000 d’agents' would fail the shipped guard; the ungrouped form is mandated. Pre-existing guide-vs-corpus divergence, unchanged and unrelated to this arm, which correctly copies the en skeleton. Not a finding."
+      },
+      {
+        "key": "ui.chat.sidebar.agents.builtin_offer",
+        "quote": "=0 {…installé — {list}. Vous pourrez les modifier une fois installés.}",
+        "note": "At count 0 {list} is empty, so the arm reads '… — . Vous pourrez les modifier…'. Pre-existing, untouched by this delta, identical in en, and unreachable: chat-sidebar.tsx gates the sentence on availableBuiltins.length > 0. Not a finding."
+      },
+      {
+        "key": "ui.chat.sidebar.agents.builtin_offer",
+        "quote": "many arm reachability",
+        "note": "count = names.length of the backend's available built-ins, and the spelling arms cover 0–6. In practice a 1,000,000-profile backend does not exist, so this arm is CLDR completeness rather than a rendered state. Correct and consistent with the namespace's other many-bearing keys; not a defect, but it means this change has no user-visible rendering path to screenshot. Manager's call, not a finding."
+      }
+    ]
+  },
+  "unverified": [
+    "Node validators (check-strings/context-parity/ledger-check) and the production ICU formatter were not executed: the task forbids node, installs and builds. Python structural checks and code reading are not execution of those tools.",
+    "No browser, rendered sidebar, screenshot, accessibility tree or pixel-fit measurement; no rendered proof claimed, and per the reachability note above there is no rendered state to capture for 10^6 profiles.",
+    "No repo writes: no tracked evidence bundle, no ledger row (ledger-assemble.mjs needs a write), no PR comment, no commit. Scratch receipt/record/log only, per task; the manager must land them under i18n/audits/evidence/fr/ui.chat.sidebar/ if the team wants a tracked record.",
+    "The served model is reported from the session header only; I cannot independently corroborate it from inside the session."
+  ],
+  "receipt_contract_review": "Field set copied from the reference receipt _s10-audits/89d7458/fr-sol-8195830a463b.json (root: locale, mode, scope, head_sha, audit_date, key_count, translator, auditor, status, result, verdict, findings, severity_counts, namespaces, per_key_checks, remediation_verification, unverified, receipt_contract_review, audit_notes_not_execution_log; namespace block: status, result, source_sha256, target_sha256, input_hashes{en,context,fr}, findings). Read scripts/i18n/ledger-assemble.mjs header contract and ledger-rules.mjs deriveReceiptAudit: the receipt covers namespace ui.chat.sidebar, names locale fr, carries both fr and en sha256 that match the bytes on disk, agrees on auditor identity, and derives 0/0/0/0 with status passed. One added field per_key_checks[].expansions / arm_selection is additive detail and is not read by the derivations inspected. JS not executed.",
+  "audit_notes_not_execution_log": true
+}

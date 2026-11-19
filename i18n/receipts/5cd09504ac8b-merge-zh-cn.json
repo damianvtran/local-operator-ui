@@ -1,0 +1,189 @@
+{
+  "locale": "zh-CN",
+  "scope": "ui.hub.pages + ui.common.actions: verification of the #1439 merge resolution",
+  "checkout_head": "2ba58dd71d",
+  "audit_date": "2026-10-29",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "5cd09504ac8b",
+    "model": "kimi/k3.1-pro (temporary fallback from anthropic/claude-sonnet-5-5)"
+  },
+  "instance": "5cd09504ac8b-merge-zh-cn",
+  "input_sha256": {
+    "src/i18n/catalogues/en/ui.hub.pages.json": "f1b0a81c417ad3037e96efb0a6c85ae4588f9d01e9c01a3dbbb357f90dd03d3e",
+    "src/i18n/catalogues/zh-CN/ui.hub.pages.json": "7ef702b7a9637821254d2dd7255d59bf3e92e79504aabe45c251f5edf2577d34",
+    "src/i18n/catalogues/en/ui.common.actions.json": "3f9e9a4b02310980d5ba06a2d4b8f637a8c97a4eebd96a8100d4799f543429ba",
+    "src/i18n/catalogues/zh-CN/ui.common.actions.json": "e7074cf3b2567f6932c02ea5e0f4b360362d382ee740522cf951e382420c512a"
+  },
+  "comparison_input_sha256": {
+    "src/i18n/catalogues/en/ui.hub.pages.json": {
+      "origin/main": "c54d0aca4e8047657a61367c667c6ad9351f198a10d7380c1478745152a832b6",
+      "pre_merge_2ba58dd71d": "9ae73c3aabece832df701ffe1b8c24b01d731a94adeb795103a0215b84fb57bd",
+      "merged": "f1b0a81c417ad3037e96efb0a6c85ae4588f9d01e9c01a3dbbb357f90dd03d3e"
+    },
+    "src/i18n/catalogues/zh-CN/ui.hub.pages.json": {
+      "origin/main": "e1343c5ab21aa0703bc5f9f71d526f7e12cb0b5a4dbe844fe429cd94a63764fa",
+      "pre_merge_2ba58dd71d": "5cb98e1b0f1735b9988c79fca6b9d81ce380c4c1c1c0caf47924b25d36a56e7c",
+      "merged": "7ef702b7a9637821254d2dd7255d59bf3e92e79504aabe45c251f5edf2577d34"
+    },
+    "src/i18n/catalogues/en/ui.common.actions.json": {
+      "origin/main": "132f60c9d401d804147f29fbe10fca265e2c3b3a5436b9eceb70c544afe8f1b9",
+      "pre_merge_2ba58dd71d": "8dc67dc7c285d2747f4586a5d01a39c23423b10e506f6cfa44c258caed37a412",
+      "merged": "3f9e9a4b02310980d5ba06a2d4b8f637a8c97a4eebd96a8100d4799f543429ba"
+    },
+    "src/i18n/catalogues/zh-CN/ui.common.actions.json": {
+      "origin/main": "fc8a26dd106a6ea3ebb9aca6c1939085bac8dc975eadd9ef2d5888ddc5874717",
+      "pre_merge_2ba58dd71d": "890dd9a65ac98544b8fa5954f02d9a3771df4be430c9e6ad7fc2d4ef136543d8",
+      "merged": "e7074cf3b2567f6932c02ea5e0f4b360362d382ee740522cf951e382420c512a"
+    }
+  },
+  "observed_diffs": {
+    "src/i18n/catalogues/en/ui.hub.pages.json": {
+      "origin/main_to_merged": {
+        "added_keys": ["ui.hub.pages.pager.nav_aria", "ui.hub.pages.pager.next", "ui.hub.pages.pager.previous"],
+        "removed_keys": [],
+        "changed_keys": [],
+        "added_key_values": {
+          "ui.hub.pages.pager.nav_aria": "Agent pages",
+          "ui.hub.pages.pager.next": "Next",
+          "ui.hub.pages.pager.previous": "Previous"
+        }
+      },
+      "pre_merge_2ba58dd71d_to_merged": {
+        "added_keys": ["ui.hub.pages.card.get", "ui.hub.pages.card.updated"],
+        "removed_keys": [],
+        "changed_keys": [],
+        "added_key_values": {
+          "ui.hub.pages.card.get": "Get",
+          "ui.hub.pages.card.updated": "updated {when}"
+        }
+      },
+      "proof": "37 main + 38 pre-merge keys, 35 shared with no value conflicts, union = 40 merged keys. Every common raw key/value line is unchanged; every source line occurs in the merged file."
+    },
+    "src/i18n/catalogues/zh-CN/ui.hub.pages.json": {
+      "origin/main_to_merged": {
+        "added_keys": ["ui.hub.pages.pager.nav_aria", "ui.hub.pages.pager.next", "ui.hub.pages.pager.previous"],
+        "removed_keys": [],
+        "changed_keys": [],
+        "added_key_values": {
+          "ui.hub.pages.pager.nav_aria": "智能体分页",
+          "ui.hub.pages.pager.next": "下一页",
+          "ui.hub.pages.pager.previous": "上一页"
+        }
+      },
+      "pre_merge_2ba58dd71d_to_merged": {
+        "added_keys": ["ui.hub.pages.card.get", "ui.hub.pages.card.updated"],
+        "removed_keys": [],
+        "changed_keys": [],
+        "added_key_values": {
+          "ui.hub.pages.card.get": "获取",
+          "ui.hub.pages.card.updated": "{when}更新"
+        }
+      },
+      "proof": "37 main + 38 pre-merge keys, 35 shared with no value conflicts, union = 40 merged keys. Every common raw key/value line is unchanged; every source line occurs in the merged file."
+    },
+    "src/i18n/catalogues/en/ui.common.actions.json": {
+      "origin/main_to_merged": {
+        "added_keys": ["ui.common.actions.dismiss", "ui.common.actions.more_info"],
+        "removed_keys": [],
+        "changed_keys": [],
+        "added_key_values": {
+          "ui.common.actions.dismiss": "Dismiss",
+          "ui.common.actions.more_info": "More info"
+        }
+      },
+      "pre_merge_2ba58dd71d_to_merged": {
+        "added_keys": ["ui.common.actions.retrying"],
+        "removed_keys": [],
+        "changed_keys": [],
+        "added_key_values": {"ui.common.actions.retrying": "Trying…"}
+      },
+      "proof": "51 main + 52 pre-merge keys, 50 shared with no value conflicts, union = 53 merged keys. Every common raw key/value line is unchanged; every source line occurs in the merged file."
+    },
+    "src/i18n/catalogues/zh-CN/ui.common.actions.json": {
+      "origin/main_to_merged": {
+        "added_keys": ["ui.common.actions.dismiss", "ui.common.actions.more_info"],
+        "removed_keys": [],
+        "changed_keys": [],
+        "added_key_values": {
+          "ui.common.actions.dismiss": "忽略",
+          "ui.common.actions.more_info": "更多信息"
+        }
+      },
+      "pre_merge_2ba58dd71d_to_merged": {
+        "added_keys": ["ui.common.actions.retrying"],
+        "removed_keys": [],
+        "changed_keys": [],
+        "added_key_values": {"ui.common.actions.retrying": "正在重试……"}
+      },
+      "proof": "51 main + 52 pre-merge keys, 50 shared with no value conflicts, union = 53 merged keys. Every common raw key/value line is unchanged; every source line occurs in the merged file."
+    }
+  },
+  "counts": {"BLOCKER": 0, "MAJOR": 0, "MINOR": 0, "NIT": 0},
+  "verdict": "pass",
+  "mechanical_checks": {
+    "ui.hub.pages": {
+      "keys_audited": 40,
+      "argument_type_mismatches": [],
+      "number_skeleton_mismatches": [],
+      "plural_category_errors": [],
+      "unbalanced_icu": [],
+      "english_value_copies": [],
+      "ellipsis_errors": [],
+      "ascii_prose_punctuation": [],
+      "control_or_bidi_characters": [],
+      "forbidden_register": []
+    },
+    "ui.common.actions": {
+      "keys_audited": 53,
+      "argument_type_mismatches": [],
+      "number_skeleton_mismatches": [],
+      "plural_category_errors": [],
+      "unbalanced_icu": [],
+      "english_value_copies": [],
+      "ellipsis_errors": [],
+      "ascii_prose_punctuation": [],
+      "control_or_bidi_characters": [],
+      "forbidden_register": []
+    },
+    "plural_policy": "English one/other retained; zh-CN other-only retained. Locale-appropriate arm differences are not mismatches.",
+    "validator_results": [
+      "node scripts/i18n/generate.mjs --check: byte-identical to fresh generation",
+      "node scripts/i18n/context-parity.mjs --list: only unrelated allowed lanes listed; exit 0"
+    ]
+  },
+  "public_copy_reader": {
+    "status": "refused_uncommitted_worktree",
+    "attempted_keys": [
+      "ui.hub.pages.card.updated",
+      "ui.hub.pages.pager.next",
+      "ui.hub.pages.status.count.agents",
+      "ui.common.actions.retrying",
+      "ui.common.actions.dismiss",
+      "ui.common.actions.credential_updated"
+    ],
+    "result": "All six catalogue-key reads and a keys.gen.ts fallback read were refused because the files differ from HEAD. No public-reader read is claimed.",
+    "fallback": "Direct read-only inspection of all 93 zh-CN values, en/source context sidecars, and the labelled zh-CN style guide; no English-value copies and no voice, placeholder, plural, or typography regression found."
+  },
+  "namespaces": {
+    "ui.hub.pages": {
+      "status": "passed",
+      "keys_audited": 40,
+      "sha256": {
+        "en": "f1b0a81c417ad3037e96efb0a6c85ae4588f9d01e9c01a3dbbb357f90dd03d3e",
+        "target": "7ef702b7a9637821254d2dd7255d59bf3e92e79504aabe45c251f5edf2577d34"
+      },
+      "findings": []
+    },
+    "ui.common.actions": {
+      "status": "passed",
+      "keys_audited": 53,
+      "sha256": {
+        "en": "3f9e9a4b02310980d5ba06a2d4b8f637a8c97a4eebd96a8100d4799f543429ba",
+        "target": "e7074cf3b2567f6932c02ea5e0f4b360362d382ee740522cf951e382420c512a"
+      },
+      "findings": []
+    }
+  },
+  "notes": "Read-only verification; no repository files edited. checkout_head is the pre-merge commit because this is an unresolved merge worktree; the audited inputs are its four working-tree files. Comparison hashes were computed from git-show bytes decoded as UTF-8 and re-encoded without newline conversion."
+}

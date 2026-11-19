@@ -1,0 +1,52 @@
+{
+	"audit_id": "teambridge-member-events-union-audit-95c4798301e2-union-a-vi",
+	"date": "2026-10-30",
+	"locale": "vi",
+	"namespace": "ui.teamBridge",
+	"branch": "fix/team-bridge-member-events",
+	"source_commit": "local head 599309fdd9946546fee3138904bdd1f31722623d (not pushed), rebased onto 3b369d6341c7eeed159c3bcbb1b1f4db759265d4",
+	"auditors": [
+		{
+			"agent": "translation-auditor",
+			"model": "anthropic/claude-opus-5-5",
+			"session": "95c4798301e2",
+			"instance": "95c4798301e2-union-a-vi",
+			"date": "2026-10-30",
+			"result": "clean",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"model_fallback": {
+				"announced": false,
+				"observed": false
+			}
+		}
+	],
+	"independence": "Independent auditor: lopdev translation-auditor, session 95c4798301e2; authored none of the audited strings; edited no catalogue or code; wrote only receipts/evidence and rows via ledger-assemble.mjs. Distinct from b20548e9b2d9 and any union auditor B.",
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "124d9c3a342342fd4c67635e95210262f96d28c14260bdfac40ad70665936633"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "47f525ae908445904c507ac9e1386fdaa8181c6a5a6aca8b9f46d22180eea523"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/vi/ui.teamBridge.json",
+			"sha256": "9727d85b73139ab138f8b81939ca185d1054a43ce5e6714185560962bfee3c77"
+		},
+		"receipt": {
+			"path": "i18n/receipts/95c4798301e2-union-a-vi.json",
+			"sha256": "6fd67b2ef3b5a16555099aed7d282daf1d1299b3c3927c1485f996117d26630d"
+		},
+		"rendered": {
+			"path": "i18n/audits/evidence/vi/ui.teamBridge/teambridge-member-events-union-audit-95c4798301e2-union-a-vi/rendered.txt",
+			"sha256": "9e54b1190bef2607eb259c7591b5af8d35a78b97818950244f1db50c3c2a0f12"
+		}
+	},
+	"findings": []
+}

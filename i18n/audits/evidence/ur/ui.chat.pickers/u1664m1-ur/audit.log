@@ -1,0 +1,173 @@
+# Actual command execution log — 2026-11-05
+Auditor instance: 9a864ad9f4fa-u1664m1-ur
+Provenance: record.json auditor; actual model openai/gpt-6.1-sol (quota fallback).
+
+Execution 1: python admission through functions.bash
+Checks: frozen HEAD, manifest SHA, locale packet SHA, EN/context/UR on-disk SHA and git-show byte equality.
+Exit 0. Actual stdout: ADMISSION PASS: frozen HEAD, manifest, locale packet, full EN/context/UR bytes and hashes
+
+Execution 2: node --input-type=module - [via subprocess.run in functions.eval, cwd frozen worktree]
+STDIN:
+
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import {parse,TYPE} from '@formatjs/icu-messageformat-parser';
+import {messageArguments} from './scripts/i18n/generate.mjs';
+import {namespaceGap} from './scripts/i18n/context-parity.mjs';
+const ns='ui.chat.pickers'; const load=l=>JSON.parse(fs.readFileSync(`src/i18n/catalogues/${l}/${ns}.json`,'utf8'));
+const en=load('en'),ur=load('ur'),ctx=JSON.parse(fs.readFileSync(`src/i18n/catalogues/en/${ns}.context.json`,'utf8'));
+assert.deepEqual(Object.keys(en).sort(),Object.keys(ur).sort());assert.deepEqual(Object.keys(en).sort(),Object.keys(ctx).sort());
+const gap=namespaceGap(ns);assert.equal(gap.uncovered.length,0);assert.equal(gap.orphaned.length,0);
+const failures=[],counts={keys:0,plural:0,select:0,tags:0,code_spans:0,manual_bidi_controls:0};
+const signature=(nodes,locale)=>nodes.filter(n=>n.type!==TYPE.literal&&n.type!==TYPE.pound).map(n=>{
+ const out={type:n.type,value:n.value};
+ if(n.style)out.style=n.style;
+ if(n.options){out.options=Object.fromEntries(Object.entries(n.options).sort().map(([k,v])=>[k,signature(v.value,locale)]));
+ if(locale==='ur'&&n.type===TYPE.plural){counts.plural++;const required=new Intl.PluralRules('ur',{type:n.pluralType}).resolvedOptions().pluralCategories;for(const cat of required)assert.ok(n.options[cat],`missing CLDR ${cat}`);}
+ if(locale==='ur'&&n.type===TYPE.select)counts.select++;
+ }
+ if(n.children){out.children=signature(n.children,locale);if(locale==='ur')counts.tags++;}
+ if(n.type===TYPE.plural){out.offset=n.offset;out.pluralType=n.pluralType;}
+ return out;
+}).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b)));
+for(const key of Object.keys(en)){
+ counts.keys++;
+ try{
+ assert.deepEqual(messageArguments(en[key]).sort(),messageArguments(ur[key]).sort(),'repo messageArguments parity');
+ assert.deepEqual(signature(parse(en[key]),'en'),signature(parse(ur[key]),'ur'),'ICU structure/type/style/tag parity');
+ const code=s=>[...s.matchAll(/`[^`]*`/g)].map(m=>m[0]).sort(); assert.deepEqual(code(en[key]),code(ur[key]),'backtick tokens');counts.code_spans+=code(en[key]).length;
+ const bidi=[...ur[key]].filter(c=>/[\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/u.test(c));counts.manual_bidi_controls+=bidi.length;assert.equal(bidi.length,0,'manual bidi controls');
+ }catch(e){failures.push({key,error:e.message});}
+}
+console.log(JSON.stringify({repository_validators:['namespaceGap','messageArguments'],counts,failures},null,2));if(failures.length)process.exitCode=1;
+
+EXIT: 1
+STDOUT:
+{
+  "repository_validators": [
+    "namespaceGap",
+    "messageArguments"
+  ],
+  "counts": {
+    "keys": 752,
+    "plural": 31,
+    "select": 12,
+    "tags": 0,
+    "code_spans": 0,
+    "manual_bidi_controls": 0
+  },
+  "failures": [
+    {
+      "key": "ui.chat.pickers.session_report_model.totals_meta",
+      "error": "missing CLDR one"
+    }
+  ]
+}
+
+STDERR:
+
+Execution 3: node --input-type=module - [via subprocess.run in functions.eval, cwd frozen worktree]
+STDIN:
+
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import {parse,TYPE} from '@formatjs/icu-messageformat-parser';
+import {messageArguments} from './scripts/i18n/generate.mjs';
+import {namespaceGap} from './scripts/i18n/context-parity.mjs';
+const ns='ui.chat.pickers'; const load=l=>JSON.parse(fs.readFileSync(`src/i18n/catalogues/${l}/${ns}.json`,'utf8'));
+const en=load('en'),ur=load('ur'),ctx=JSON.parse(fs.readFileSync(`src/i18n/catalogues/en/${ns}.context.json`,'utf8'));
+assert.deepEqual(Object.keys(en).sort(),Object.keys(ur).sort());assert.deepEqual(Object.keys(en).sort(),Object.keys(ctx).sort());
+const gap=namespaceGap(ns);assert.equal(gap.uncovered.length,0);assert.equal(gap.orphaned.length,0);
+const cldrExceptions=[];const failures=[],counts={keys:0,plural:0,select:0,tags:0,code_spans:0,manual_bidi_controls:0};
+const signature=(nodes,locale)=>nodes.filter(n=>n.type!==TYPE.literal&&n.type!==TYPE.pound).map(n=>{
+ const out={type:n.type,value:n.value};
+ if(n.style)out.style=n.style;
+ if(n.options){out.options=Object.fromEntries(Object.entries(n.options).sort().map(([k,v])=>[k,signature(v.value,locale)]));
+ if(locale==='ur'&&n.type===TYPE.plural){counts.plural++;const required=new Intl.PluralRules('ur',{type:n.pluralType}).resolvedOptions().pluralCategories;for(const cat of required)if(!n.options[cat])cldrExceptions.push({argument:n.value,category:cat});}
+ if(locale==='ur'&&n.type===TYPE.select)counts.select++;
+ }
+ if(n.children){out.children=signature(n.children,locale);if(locale==='ur')counts.tags++;}
+ if(n.type===TYPE.plural){out.offset=n.offset;out.pluralType=n.pluralType;}
+ return out;
+}).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b)));
+for(const key of Object.keys(en)){
+ counts.keys++;
+ try{
+ assert.deepEqual(messageArguments(en[key]).sort(),messageArguments(ur[key]).sort(),'repo messageArguments parity');
+ assert.deepEqual(signature(parse(en[key]),'en'),signature(parse(ur[key]),'ur'),'ICU structure/type/style/tag parity');
+ const code=s=>[...s.matchAll(/`[^`]*`/g)].map(m=>m[0]).sort(); assert.deepEqual(code(en[key]),code(ur[key]),'backtick tokens');counts.code_spans+=code(en[key]).length;
+ const bidi=[...ur[key]].filter(c=>/[\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/u.test(c));counts.manual_bidi_controls+=bidi.length;assert.equal(bidi.length,0,'manual bidi controls');
+ }catch(e){failures.push({key,error:e.message});}
+}
+console.log(JSON.stringify({repository_validators:['namespaceGap','messageArguments'],counts,failures,cldrExceptions},null,2));if(failures.length)process.exitCode=1;
+
+EXIT: 0
+STDOUT:
+{
+  "repository_validators": [
+    "namespaceGap",
+    "messageArguments"
+  ],
+  "counts": {
+    "keys": 752,
+    "plural": 31,
+    "select": 13,
+    "tags": 0,
+    "code_spans": 0,
+    "manual_bidi_controls": 0
+  },
+  "failures": [],
+  "cldrExceptions": [
+    {
+      "argument": "failed",
+      "category": "one"
+    }
+  ]
+}
+
+STDERR:
+
+Execution 4: Python parent/retention/receipt assertions [functions.eval]
+Actual stdout:
+All parent deltas/retained lists matched; verified prior receipt references: 15
+Scope retained outside union: 739
+Width hints on delta: 0
+
+Execution 5: node scripts/i18n/context-parity.mjs [functions.bash, cwd frozen worktree]
+Exit 0. Actual stdout:
+context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json).
+
+# audit_notes_not_execution_log
+Full all-key mechanical traversal plus 13-key linguistic review; retained CLDR observation described in report.md. No rendered evidence. The first read_public_copy context-sidecar attempts were refused (values are objects); context was subsequently read through ordinary approved file read/structured access. No MT service used.
+
+=== ACTUAL EXECUTION: read-only receipt schema validation ===
+Command: node --input-type=module -
+STDIN:
+
+import fs from 'node:fs';
+import {deriveReceiptAudit} from './scripts/i18n/ledger-rules.mjs';
+const p='i18n/audits/evidence/ur/ui.chat.pickers/u1664m1-ur/receipt.json';
+const receipt=JSON.parse(fs.readFileSync(p,'utf8'));
+console.log(JSON.stringify(deriveReceiptAudit(fs.readFileSync(p),{locale:'ur',namespace:'ui.chat.pickers',sourceHash:receipt.source_sha256,targetHash:receipt.target_sha256}),null,2));
+
+Exit: 0
+STDOUT:
+{
+  "agent": "i18n-auditor",
+  "instance": "9a864ad9f4fa-u1664m1-ur",
+  "model": "openai/gpt-6.1-sol",
+  "result": "clean",
+  "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "source_sha256": "ecc10fb18100d4d462f36214c83507a48c7f0f8173cb72f37bf5964a05abb58c",
+  "target_sha256": "75009a4895f30a89cafb136a6448469368e3126ebb862b4566037bc4b2ecd4b7",
+  "receipt_sha256": "94aed1b2f6222931ef9e5c237103927495931bf63a271b2fbe62683696b6ae2e"
+}
+
+STDERR:
+
+Final readback: frozen HEAD and all three inputs reverified; report/receipt/log hashes verified; fresh/retained partition 13 + 739 keys verified; new directory untracked. No assembler invocation.

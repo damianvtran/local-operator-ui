@@ -1,0 +1,90 @@
+{
+  "instance": "audit-zh-cn-bridge-row-r1",
+  "locale": "zh-CN",
+  "namespace": "ui.chat.canonical",
+  "audit_date": "2026-10-30",
+  "checkout_head": "74c36ebf9f",
+  "branch": "feat/bridge-tool-row",
+  "pr": "damianvtran/local-operator-ui#1529",
+  "auditor": {
+    "agent": "translation-auditor",
+    "session": "de593f117137",
+    "instance": "audit-zh-cn-bridge-row-r1",
+    "model": "anthropic/claude-opus-5-5",
+    "actual_model_source": "session runtime header; no provider fallback occurred in this audit",
+    "independent_from_translator_session": true
+  },
+  "translator": {
+    "round_1": "translator agent under radient/auto fallback",
+    "round_2_delta": "translator agent on anthropic/claude-opus-5-5"
+  },
+  "scope": "Re-audit of ui.chat.canonical at its current source hash. The 88 keys added by the Team Bridge row (tool_row.bridge.* 84, fold.bridge*/bridge_post* 4) read in full against English and the context sidecar. The other 80 keys proven value-identical in both en and zh-CN to the bytes the prior row audited (en da2c87f6 at fbf78b5f677, zh-CN d59ec011 at f6e5c3eb62e: 0 removed, 0 changed); 10 of them spot-read.",
+  "key_count": 168,
+  "keys_read_in_full": 88,
+  "reviewed_previous": "i18n/receipts/6752d466406d-ov2-zh-cn.json",
+  "sha256": {
+    "en": "67ea94ac8ebbfb34b5ea71fc1c9c6f633994f2e2e0bf06da66137f85a596646a",
+    "zh-CN": "3465321b006e82f97821262453da892c09b336768dad048f87acd9714a755bd9"
+  },
+  "checks": {
+    "key parity": "168/168, no key added or dropped against English",
+    "placeholders": "argument names identical to English for every key ({target}, {verb}, {code}, {error}, {seq}, {count}); =0 arms kept; number skeleton ::group-off kept on summary.count and posted_at_seq",
+    "ICU and CLDR": "104 renders through intl-messageformat under zh-CN at counts 0/1/2/3/5/11/21/22/1000000 and sentinels: all parse, no placeholder lost; plurals other-only (zh has one category) with 名/条 classifiers",
+    "bidi/NFC": "no Cf code points; all values NFC",
+    "cross-repo": "all 51 verb keys and the shared fallback/outcome/inbox/details keys byte-identical to core wire.tool_rows.bridge zh-CN after fixes",
+    "fold nouns": "fold.bridge* one/other identical by design (项团队操作/条团队消息) as zh has no plural; pre-split fold plural keys deferred per the brief, not reopened",
+    "rendered evidence": "not performed; copy audit only"
+  },
+  "findings": [
+    {
+      "id": "ZH-1",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.tool_row.bridge.verb.channel_thread.settled",
+      "keys": [
+        "ui.chat.canonical.tool_row.bridge.verb.channel_thread.settled",
+        "ui.chat.canonical.tool_row.bridge.verb.channel_thread.running",
+        "ui.chat.canonical.tool_row.bridge.verb.channel_thread.failed"
+      ],
+      "current": "已读取 / 正在读取 / 无法读取",
+      "en": "Read thread in / Reading thread in / Couldn't read thread in",
+      "problem": "drops 'thread' so the row is indistinguishable from channel_history (已读取 #general); the thread is the object the call read",
+      "fixed": "已读取讨论串 / 正在读取讨论串 / 无法读取讨论串",
+      "status": "fixed"
+    },
+    {
+      "id": "ZH-2",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.tool_row.bridge.verb.react.settled",
+      "keys": [
+        "ui.chat.canonical.tool_row.bridge.verb.react.settled",
+        "ui.chat.canonical.tool_row.bridge.verb.react.running",
+        "ui.chat.canonical.tool_row.bridge.verb.react.failed",
+        "ui.chat.canonical.tool_row.bridge.verb.react_remove.settled",
+        "ui.chat.canonical.tool_row.bridge.verb.react_remove.running",
+        "ui.chat.canonical.tool_row.bridge.verb.react_remove.failed"
+      ],
+      "current": "已加表情 / 已移除表情 …",
+      "en": "Reacted in / Removed reaction in …",
+      "problem": "glossary drift: the Team Bridge app names a reaction 表情回应 (ui.teamBridge.reactions.add 添加表情回应); 加表情 is colloquial and reads as 'insert an emoji'",
+      "fixed": "已添加表情回应 / 已移除表情回应 …",
+      "status": "fixed"
+    },
+    {
+      "id": "ZH-3",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.tool_row.bridge.delivery.unconfirmed.label",
+      "current": "送达未确认 — 再次发布前先检查对话",
+      "en": "delivery unconfirmed — check the conversation before posting again",
+      "problem": "spaced half-width em dash in Chinese prose; zh guide wants full-width punctuation and the sibling .note/.title use full-width forms",
+      "fixed": "送达未确认，再次发布前先检查对话",
+      "status": "fixed"
+    }
+  ],
+  "verdict": "pass",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "notes": [
+    "Spot-checked unchanged keys: security_notice.blocked (已阻止高风险操作) and security_notice.show_code (显示审核的代码) still carry the round-3 ZH-03/ZH-04 minors recorded as standing in f1a4a43284cd-r7-zh-cn; out of scope here, not re-filed. The other 8 spot-read keys read correctly.",
+    "Independence: I did not translate these strings; fixes are the auditor's remediation of its own findings, recorded above."
+  ]
+}

@@ -1,12 +1,26 @@
 import type { ElectronAPI } from "@electron-toolkit/preload";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
+import type { PdfViewerStatus } from "../main/pdf-viewer-status";
 import type { UpdateCheckVerdict } from "../main/update-check-verdict";
 import type {
 	BackendUpdateCompletion,
 	BackendUpdateErrorReport,
 } from "../main/update-service";
+import type {
+	AttachmentUploadResult,
+	AttachmentUploadSource,
+} from "../shared/attachment-upload";
 import type { DaemonStatusSnapshot } from "../shared/backend-status";
+import type {
+	AddressHistoryRequest,
+	AddressHistoryResponse,
+} from "../shared/browser-address-history";
+import type { MediaPermissionDecision } from "../shared/browser-media-permission";
 import type { HumanTabActionOutcome } from "../shared/browser-tab-action";
+import type {
+	TabActionsMenuRequest,
+	TabActionsMenuSelection,
+} from "../shared/browser-tab-actions-menu";
 import type {
 	DesktopAPI,
 	DirectoryListing,
@@ -22,6 +36,10 @@ import type {
 	MiniViewRegistrationState,
 	MiniViewSummonedPayload,
 } from "../shared/mini-view";
+import type {
+	ChordClaim,
+	RecordingShortcutState,
+} from "../shared/recording-shortcut";
 import type {
 	WindowChromeColors,
 	WindowChromeFacts,
@@ -103,6 +121,14 @@ declare global {
 			 * main, the preload and this file all import, so a channel or a payload
 			 * shape cannot drift between them.
 			 */
+			recordingShortcut: {
+				get: () => Promise<RecordingShortcutState>;
+				markPending: (value?: string) => void;
+				onChange: (
+					callback: (state: RecordingShortcutState) => void,
+				) => () => void;
+				syncClaims: (rev: number, claims: ChordClaim[]) => void;
+			};
 			miniView: {
 				onSummoned: (
 					callback: (payload: MiniViewSummonedPayload) => void,
@@ -145,12 +171,37 @@ declare global {
 				setChordFocus: (focused: boolean) => Promise<void>;
 				reopenTab: (sessionId?: string | null) => Promise<unknown>;
 				focusPage: () => Promise<void>;
+				/** S6b: the native approvals card. The renderer passes the resolved
+				 * locale and direction; main has no catalogue. */
+				openApprovalsCard: (input: {
+					locale?: string;
+					dir?: "ltr" | "rtl";
+					theme?: "light" | "dark";
+					palette?: string | null;
+					paletteVars?: Record<string, string> | null;
+				}) => Promise<unknown>;
+				closeApprovalsCard: () => Promise<unknown>;
+				setApprovalsCardContext: (input: {
+					locale?: string;
+					dir?: "ltr" | "rtl";
+					theme?: "light" | "dark";
+					palette?: string | null;
+					paletteVars?: Record<string, string> | null;
+					requesterLabels?: Readonly<Record<string, string>>;
+				}) => Promise<unknown>;
 				onChord: (
 					callback: (
 						message: import("../shared/browser-chord").BrowserChordMessage,
 					) => void,
 				) => () => void;
 				state: () => Promise<unknown>;
+				/** S4b's product popout: a display projection in, a validated commit
+				 * or a main-decided dismissal out. Absent on a launch with no
+				 * controller (pre-S4b builds, tests). */
+				addressOverlay: {
+					project: (payload: unknown) => Promise<unknown>;
+					onEvent: (callback: (event: unknown) => void) => () => void;
+				};
 				/** `sessionId` attributes the new tab to the conversation it was opened
 				 * from; `null` (and absent) mean it belongs to no conversation. */
 				reorderTabs: (ids: number[]) => Promise<unknown>;
@@ -158,13 +209,25 @@ declare global {
 					tabId: number,
 					action: "duplicate" | "reload" | "mute" | "unmute",
 				) => Promise<HumanTabActionOutcome>;
+				/** The tab strip's actions menu, popped as a NATIVE menu by main.
+				 * Resolves with the selected item id, or null when the menu was
+				 * dismissed (or cannot be shown, as in a headless run). */
+				tabActionsMenu: (
+					request: TabActionsMenuRequest,
+				) => Promise<TabActionsMenuSelection>;
 				newTab: (sessionId?: string | null) => Promise<unknown>;
 				closeTab: (tabId: number) => Promise<unknown>;
 				/** A bulk close. `{ mode: "ids", tabIds }`, or `{ mode: "conversation",
 				 * sessionId }` which main resolves against the live registry. */
 				closeTabs: (intent: unknown) => Promise<unknown>;
 				activateTab: (tabId: number) => Promise<unknown>;
-				navigate: (url: string) => Promise<unknown>;
+				/** Local address suggestions. The expected tab is the one the field's
+				 * draft belongs to; main refuses a request for a tab that is no longer
+				 * active. */
+				addressHistory: (
+					request: AddressHistoryRequest,
+				) => Promise<AddressHistoryResponse>;
+				navigate: (url: string, expectedTabId?: number) => Promise<unknown>;
 				/** Home: no argument, because main owns the start state. */
 				home: () => Promise<unknown>;
 				reload: (hard?: boolean) => Promise<unknown>;
@@ -176,7 +239,15 @@ declare global {
 				setContentRect: (
 					rect: { x: number; y: number; width: number; height: number } | null,
 				) => Promise<unknown>;
-				setViewVisible: (visible: boolean) => Promise<unknown>;
+				setViewVisible: (
+					visible: boolean,
+					/** Why the view is hidden, when it is: the browser's own state
+					 * page rather than an overlay. See `registry.ts:chromeVisible`. */
+					ownPage?: boolean,
+					/** The browser's own content state even while an overlay hides it;
+					 * controls are refused on it (QA Q3-1). */
+					ownStatePage?: boolean,
+				) => Promise<unknown>;
 				handOver: (tabId: number, sessionId: string) => Promise<unknown>;
 				revokeHandOver: (tabId: number) => Promise<unknown>;
 				respondToConsent: (
@@ -260,6 +331,76 @@ declare global {
 				 * ANSWERS whether it opened: `shell.openPath` returns its failure rather than
 				 * throwing, so the answer is what a caller needs to show one. */
 				revealDownloads: () => Promise<{ opened: boolean; message: string }>;
+				/** Dismiss the passkey notice `at` on `tabId`; false when it was replaced. */
+				dismissPasskeyNotice: (tabId: number, at: number) => Promise<boolean>;
+				/** Answer the camera/microphone prompt `id` on `tabId`; false when it was
+				 * replaced or the click was not trusted. */
+				decideMediaPermission: (
+					tabId: number,
+					id: string,
+					decision: MediaPermissionDecision,
+					trusted: boolean,
+				) => Promise<boolean>;
+				/** Open the macOS Privacy pane for the system-blocked notice `id`;
+				 * false when it was replaced or the platform has no such pane. */
+				openMediaSystemSettings: (
+					tabId: number,
+					id: string,
+				) => Promise<boolean>;
+				/** Extension manager ops; see src/shared/browser-extensions.ts. */
+				extensions: (
+					request: import("../shared/browser-extensions").ExtensionsRequest,
+				) => Promise<import("../shared/browser-extensions").ExtensionsResponse>;
+				/** Open the tab's own page in the system browser through the vetted door.
+				 * Takes no URL: main reads the tab's URL itself. */
+				openPasskeyNotice: (
+					tabId: number,
+					at: number,
+				) => Promise<{ ok: true } | { ok: false; reason: string }>;
+				/** An agent tab's passkey notice: open the same page in a new user tab,
+				 * where password-manager extensions work. Takes no URL. */
+				continuePasskeyNoticeInUserTab: (
+					tabId: number,
+					at: number,
+				) => Promise<{ ok: true } | { ok: false; reason: string }>;
+				/** "Return to agent" on a passkey custody notice. `trusted` is the
+				 * click's `event.isTrusted`; main refuses a release without it. */
+				releasePasskeyCustody: (
+					tabId: number,
+					at: number,
+					trusted: boolean,
+				) => Promise<
+					{ ok: true; reloaded?: boolean } | { ok: false; reason: string }
+				>;
+				/** A sidebar notification row's click (`user-attention.ts`): the tab
+				 * becomes active and its held popups are presented. */
+				openUserAttention: (tabId: number) => Promise<unknown>;
+				/** The hold `{tabId, at}` ended (returned, or its tab closed). */
+				onPasskeyCustodyEnded: (
+					callback: (payload: { tabId: number; at: number }) => void,
+				) => () => void;
+				/** Live composite of an overlay-suppressed page (main's
+				 * `composite-bridge.ts`). Full BGRA frames; display-only. */
+				onCompositeFrame: (
+					callback: (frame: {
+						generation: number;
+						tabId: number;
+						webContentsId: number;
+						documentEpoch: number;
+						frameSeq: number;
+						width: number;
+						height: number;
+						pixels: Uint8Array;
+					}) => void,
+				) => () => void;
+				onCompositeClear: (
+					callback: (clear: { generation: number; reason: string }) => void,
+				) => () => void;
+				ackCompositeFrame: (ack: {
+					generation: number;
+					frameSeq: number;
+				}) => Promise<boolean>;
+				setCompositeConsumer: (ready: boolean) => Promise<void>;
 				onStateChanged: (callback: () => void) => () => void;
 				onConsentChanged: (callback: () => void) => () => void;
 				onConsentAttention: (
@@ -300,7 +441,11 @@ declare global {
 				openPane: (surface: string) => Promise<unknown>;
 				closePane: () => Promise<unknown>;
 				selectSurface: (surface: string) => Promise<unknown>;
-				input: (surface: string, text: string) => Promise<unknown>;
+				input: (
+					surface: string,
+					text: string,
+					options?: { paste?: boolean },
+				) => Promise<unknown>;
 				keys: (surface: string, keys: string[]) => Promise<unknown>;
 				setContentRect: (
 					surface: string,
@@ -403,6 +548,8 @@ declare global {
 			backend: {
 				getStatus: () => Promise<DaemonStatusSnapshot>;
 				reconnect: () => Promise<DaemonStatusSnapshot>;
+				/** Stop and start this app's own server (the start-up panel's Restart). */
+				restart?: () => Promise<DaemonStatusSnapshot>;
 				onStatusChange: (
 					callback: (snapshot: DaemonStatusSnapshot) => void,
 				) => () => void;
@@ -430,6 +577,15 @@ declare global {
 			 */
 			getPathForFile: (file: File) => string;
 			/**
+			 * The clipboard's plain text, synchronously, for a composer `paste`
+			 * handler deciding whether to cancel the browser's insert (issue
+			 * #1573): a macOS file paste omits `text/plain` from the event while
+			 * Chromium still inserts the file's name. Blocks the renderer for one
+			 * main-process read; call it only from inside a paste handler. `""`
+			 * when there is nothing to read or the read failed.
+			 */
+			readPasteTextSync: () => string;
+			/**
 			 * Bytes for the in-app viewers (PDF, image, audio). The failure case is a
 			 * discriminant rather than an `Error`, because structured clone strips a
 			 * custom Error's prototype and `instanceof` would never be true here.
@@ -438,11 +594,25 @@ declare global {
 				filePath: string,
 				maxBytes?: number,
 			) => Promise<ReadFileBytesResponse>;
+			/** Parse status of this app window's already mounted native PDF guest. */
+			pdfViewerStatus: (blobUrl: string) => Promise<PdfViewerStatus>;
+			/**
+			 * Upload one composer attachment to the daemon's attachment store. Main owns
+			 * the read and the multipart POST; the renderer receives the stored record
+			 * or a typed refusal carrying the sentence it renders (contract v1 §1.1).
+			 */
+			uploadAttachment: (
+				source: AttachmentUploadSource,
+			) => Promise<AttachmentUploadResult>;
 			/**
 			 * Resolve and stat a batch of paths, returning the RESOLVED path each one
 			 * maps to. That resolved path is the Files panel's identity for a file.
 			 */
-			probeFiles: (paths: string[], cwd?: string) => Promise<ProbedFile[]>;
+			probeFiles: (
+				paths: string[],
+				cwd?: string,
+				options?: { fresh?: boolean },
+			) => Promise<ProbedFile[]>;
 			/**
 			 * One directory's listable entries, sorted by name, at most
 			 * `DIRECTORY_ENTRY_LIMIT` of them per call.
@@ -462,6 +632,20 @@ declare global {
 			 * first, because `showItemInFolder` returns nothing and will happily
 			 * reveal the parent of a path that does not exist.
 			 */
+			/**
+			 * Subscribe to notification sounds main asks this window to play (its
+			 * fallback when the OS cannot play them). Returns the unsubscribe.
+			 */
+			onNotificationSound?: (
+				callback: (bytes: Uint8Array) => void,
+			) => () => void;
+			/**
+			 * Raise one real banner with the configured notification sound.
+			 * Optional: absent outside Electron (Storybook, browser development).
+			 */
+			sendTestNotification?: () => Promise<
+				{ shown: true } | { shown: false; reason: "unsupported" | "suppressed" }
+			>;
 			showItemInFolder: (filePath: string) => Promise<FileActionOutcome>;
 			systemInfo: {
 				getAppVersion: () => Promise<string>;
@@ -544,6 +728,8 @@ declare global {
 						detail?: string;
 						/** True when the install follows a source tree, not the release. */
 						sourceBuild?: boolean;
+						/** Whether the press cannot interrupt a running session (`entry-point` route only). */
+						nonDisruptive?: boolean;
 						/**
 						 * The version the daemon SERVING this app reports, when it was
 						 * readable. `currentVersion` above is the install on disk, which an

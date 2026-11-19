@@ -1,0 +1,418 @@
+{
+  "schema": 1,
+  "locale": "fr",
+  "branch": "feat/i18n-s7",
+  "head": "31710e01b6b6e1e0aae6ed56d5e4467de6611740",
+  "base": "0ad5542379a349a98e0a8d602dbd992746fd40a2",
+  "main_base": "41c265cbff628f8c6add089f6c042363a131f24c",
+  "instance": "34bf406336f0",
+  "agent": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "34bf406336f0",
+    "model": "openai/gpt-6.1-sol",
+    "independence": "Independent reviewer; did not write translations; no catalogue, ledger, allowance or generator edits.",
+    "fallback": "Provider quota fallback notifications: anthropic/claude-sonnet-5-5 → anthropic/claude-opus-5-5 → openai/gpt-6.1-sol. Audit performed on final served model."
+  },
+  "date": "2026-11-09",
+  "status": "passed",
+  "result": "clean",
+  "scope": "29 additions only: 7 agents.pages, 16 chat.run_details, 6 notices; existing English canonical labels and encoder wire diagnostics excluded.",
+  "namespaces": {
+    "ui.agents.pages": {
+      "status": "passed",
+      "source_sha256": "0b2e8e8a93001604df2d7a49abe57c8070f29ef30b50209bc3a84cbdc43b540f",
+      "target_sha256": "093573d8d95defcc626a7ae7c873e52b50a00487e24092ca1264b777e480abd2",
+      "sha256": {
+        "en": "0b2e8e8a93001604df2d7a49abe57c8070f29ef30b50209bc3a84cbdc43b540f",
+        "fr": "093573d8d95defcc626a7ae7c873e52b50a00487e24092ca1264b777e480abd2"
+      },
+      "keys_audited": [
+        "ui.agents.pages.backend.connecting",
+        "ui.agents.pages.backend.loading_capabilities",
+        "ui.agents.pages.change.new",
+        "ui.agents.pages.backend.upgrade_heading",
+        "ui.agents.pages.backend.unreachable",
+        "ui.agents.pages.backend.upgrade_body",
+        "ui.agents.pages.change.updated"
+      ],
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      }
+    },
+    "ui.chat.run_details": {
+      "status": "passed",
+      "source_sha256": "02877dbbfba534fb2467008550d55ffd45c928c990b89c3d1a72acbfc76d2d50",
+      "target_sha256": "d685ee912431f5f953a4b0179dd8637db63571f75d36f23ddf93a8bfbc6853eb",
+      "sha256": {
+        "en": "02877dbbfba534fb2467008550d55ffd45c928c990b89c3d1a72acbfc76d2d50",
+        "fr": "d685ee912431f5f953a4b0179dd8637db63571f75d36f23ddf93a8bfbc6853eb"
+      },
+      "keys_audited": [
+        "ui.chat.run_details.child.result.preview",
+        "ui.chat.run_details.child.result.title",
+        "ui.chat.run_details.child.result.unavailable_clipped",
+        "ui.chat.run_details.child.result.unavailable",
+        "ui.chat.run_details.child.brief.show_less",
+        "ui.chat.run_details.child.brief.show_more",
+        "ui.chat.run_details.mcp_auth.upgrade",
+        "ui.chat.run_details.mcp_auth.no_references",
+        "ui.chat.run_details.mcp_auth.unknown_method",
+        "ui.chat.run_details.mcp_auth.waiting",
+        "ui.chat.run_details.mcp_auth.status",
+        "ui.chat.run_details.mcp_auth.status_unavailable",
+        "ui.chat.run_details.mcp_failure.cancel_lead",
+        "ui.chat.run_details.mcp_failure.busy",
+        "ui.chat.run_details.mcp_failure.refused",
+        "ui.chat.run_details.mcp_failure.session"
+      ],
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      }
+    },
+    "ui.notices": {
+      "status": "passed",
+      "source_sha256": "043243b66381b6fa1143acb645ce0c83fcb381883038ef88bbcb28e36764b112",
+      "target_sha256": "eddf5f4e45f3f68a3a2413d812af7bd168f44060236ff41d9518af264a5ae354",
+      "sha256": {
+        "en": "043243b66381b6fa1143acb645ce0c83fcb381883038ef88bbcb28e36764b112",
+        "fr": "eddf5f4e45f3f68a3a2413d812af7bd168f44060236ff41d9518af264a5ae354"
+      },
+      "keys_audited": [
+        "ui.notices.aida.paused_receipt",
+        "ui.notices.aida.resumed_receipt",
+        "ui.notices.aida.paused",
+        "ui.notices.aida.active",
+        "ui.notices.aida.account_required",
+        "ui.notices.aida.open_fallback"
+      ],
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      }
+    }
+  },
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [],
+    "nit": []
+  },
+  "checks": [
+    {
+      "key": "ui.agents.pages.backend.connecting",
+      "en": "Connecting to the backend",
+      "fr": "Connexion au backend",
+      "icu_structure": "PASS",
+      "bidi": "PASS",
+      "rendered": "Connexion au backend"
+    },
+    {
+      "key": "ui.agents.pages.backend.loading_capabilities",
+      "en": "Loading what this backend can do…",
+      "fr": "Chargement des capacités de ce backend…",
+      "icu_structure": "PASS",
+      "bidi": "PASS",
+      "rendered": "Chargement des capacités de ce backend…"
+    },
+    {
+      "key": "ui.agents.pages.change.new",
+      "en": "New",
+      "fr": "Nouveau",
+      "icu_structure": "PASS",
+      "bidi": "PASS",
+      "rendered": "Nouveau"
+    },
+    {
+      "key": "ui.agents.pages.backend.upgrade_heading",
+      "en": "Reusable agents need a newer backend",
+      "fr": "Les agents réutilisables nécessitent un backend plus récent",
+      "icu_structure": "PASS",
+      "bidi": "PASS",
+      "rendered": "Les agents réutilisables nécessitent un backend plus récent"
+    },
+    {
+      "key": "ui.agents.pages.backend.unreachable",
+      "en": "The backend could not be reached",
+      "fr": "Impossible de joindre le backend",
+      "icu_structure": "PASS",
+      "bidi": "PASS",
+      "rendered": "Impossible de joindre le backend"
+    },
+    {
+      "key": "ui.agents.pages.backend.upgrade_body",
+      "en": "Update the backend to manage reusable agents and teams. Saved chats are unchanged.",
+      "fr": "Mettez à jour le backend pour gérer les agents réutilisables et les équipes. Les conversations enregistrées restent inchangées.",
+      "icu_structure": "PASS",
+      "bidi": "PASS",
+      "rendered": "Mettez à jour le backend pour gérer les agents réutilisables et les équipes. Les conversations enregistrées restent inchangées."
+    },
+    {
+      "key": "ui.agents.pages.change.updated",
+      "en": "Updated",
+      "fr": "Mis à jour",
+      "icu_structure": "PASS",
+      "bidi": "PASS",
+      "rendered": "Mis à jour"
+    },
+    {
+      "key": "ui.chat.run_details.child.result.preview",
+      "en": "Result preview",
+      "fr": "Aperçu du résultat",
+      "icu_structure": "PASS",
+      "bidi": "PASS",
+      "rendered": "Aperçu du résultat"
+    },
+    {
+      "key": "ui.chat.run_details.child.result.title",
+      "en": "Result",
+      "fr": "Résultat",
+      "icu_structure": "PASS",
+      "bidi": "PASS",
+      "rendered": "Résultat"
+    },
+    {
+      "key": "ui.chat.run_details.child.result.unavailable_clipped",
+      "en": "This is a shortened copy. This subagent's conversation is not available here.",
+      "fr": "Cette copie est abrégée. La conversation de ce sous-agent n’est pas disponible ici.",
+      "icu_structure": "PASS",
+      "bidi": "PASS",
+      "rendered": "Cette copie est abrégée. La conversation de ce sous-agent n’est pas disponible ici."
+    },
+    {
+      "key": "ui.chat.run_details.child.result.unavailable",
+      "en": "This subagent's conversation is not available here.",
+      "fr": "La conversation de ce sous-agent n’est pas disponible ici.",
+      "icu_structure": "PASS",
+      "bidi": "PASS",
+      "rendered": "La conversation de ce sous-agent n’est pas disponible ici."
+    },
+    {
+      "key": "ui.chat.run_details.child.brief.show_less",
+      "en": "Show less",
+      "fr": "Afficher moins",
+      "icu_structure": "PASS",
+      "bidi": "PASS",
+      "rendered": "Afficher moins"
+    },
+    {
+      "key": "ui.chat.run_details.child.brief.show_more",
+      "en": "{count, plural, one {Show {count, number, ::group-off} more line} other {Show {count, number, ::group-off} more lines}}",
+      "fr": "{count, plural, one {Afficher {count, number, ::group-off} ligne de plus} other {Afficher {count, number, ::group-off} lignes de plus}}",
+      "icu_structure": "PASS",
+      "bidi": "PASS",
+      "rendered": "Afficher 2 lignes de plus"
+    },
+    {
+      "key": "ui.chat.run_details.mcp_auth.upgrade",
+      "en": "Update the backend for secure MCP key entry. OAuth and the server list remain available.",
+      "fr": "Mettez à jour le backend pour saisir les clés MCP de manière sécurisée. OAuth et la liste des serveurs restent disponibles.",
+      "icu_structure": "PASS",
+      "bidi": "PASS",
+      "rendered": "Mettez à jour le backend pour saisir les clés MCP de manière sécurisée. OAuth et la liste des serveurs restent disponibles."
+    },
+    {
+      "key": "ui.chat.run_details.mcp_auth.no_references",
+      "en": "This server does not use OAuth and declares no secret references. Add explicit $'{'NAME'}' references to its MCP environment or headers, then retry.",
+      "fr": "Ce serveur n’utilise pas OAuth et ne déclare aucune référence à des secrets. Ajoutez des références explicites $'{'NAME'}' dans son environnement MCP ou ses en-têtes, puis réessayez.",
+      "icu_structure": "PASS",
+      "bidi": "PASS",
+      "rendered": "Ce serveur n’utilise pas OAuth et ne déclare aucune référence à des secrets. Ajoutez des références explicites ${NAME} dans son environnement MCP ou ses en-têtes, puis réessayez."
+    },
+    {
+      "key": "ui.chat.run_details.mcp_auth.unknown_method",
+      "en": "Could not determine this server's sign-in method. Check its connection and MCP setup, then retry.",
+      "fr": "Impossible de déterminer la méthode de connexion de ce serveur. Vérifiez sa connexion et sa configuration MCP, puis réessayez.",
+      "icu_structure": "PASS",
+      "bidi": "PASS",
+      "rendered": "Impossible de déterminer la méthode de connexion de ce serveur. Vérifiez sa connexion et sa configuration MCP, puis réessayez."
+    },
+    {
+      "key": "ui.chat.run_details.mcp_auth.waiting",
+      "en": "Waiting for backend sign-in status…",
+      "fr": "En attente de l’état de connexion du backend…",
+      "icu_structure": "PASS",
+      "bidi": "PASS",
+      "rendered": "En attente de l’état de connexion du backend…"
+    },
+    {
+      "key": "ui.chat.run_details.mcp_auth.status",
+      "en": "Sign-in {status}.",
+      "fr": "Connexion : {status}.",
+      "icu_structure": "PASS",
+      "bidi": "PASS",
+      "rendered": "Connexion : en attente."
+    },
+    {
+      "key": "ui.chat.run_details.mcp_auth.status_unavailable",
+      "en": "status unavailable",
+      "fr": "état indisponible",
+      "icu_structure": "PASS",
+      "bidi": "PASS",
+      "rendered": "état indisponible"
+    },
+    {
+      "key": "ui.chat.run_details.mcp_failure.cancel_lead",
+      "en": "The cancellation could not be confirmed",
+      "fr": "L’annulation n’a pas pu être confirmée",
+      "icu_structure": "PASS",
+      "bidi": "PASS",
+      "rendered": "L’annulation n’a pas pu être confirmée"
+    },
+    {
+      "key": "ui.chat.run_details.mcp_failure.busy",
+      "en": "{lead}: a sign-in is already running for this conversation, and only one can run at a time. Wait for it to finish, or cancel it from the server's row.",
+      "fr": "{lead} : une connexion est déjà en cours pour cette conversation, et une seule est possible à la fois. Attendez qu’elle se termine ou annulez-la depuis la ligne du serveur.",
+      "icu_structure": "PASS",
+      "bidi": "PASS",
+      "rendered": "L’annulation n’a pas pu être confirmée : une connexion est déjà en cours pour cette conversation, et une seule est possible à la fois. Attendez qu’elle se termine ou annulez-la depuis la ligne du serveur."
+    },
+    {
+      "key": "ui.chat.run_details.mcp_failure.refused",
+      "en": "{lead}: the server refused it without giving a reason, and nothing was changed.",
+      "fr": "{lead} : le serveur a refusé sans donner de raison et rien n’a été modifié.",
+      "icu_structure": "PASS",
+      "bidi": "PASS",
+      "rendered": "L’annulation n’a pas pu être confirmée : le serveur a refusé sans donner de raison et rien n’a été modifié."
+    },
+    {
+      "key": "ui.chat.run_details.mcp_failure.session",
+      "en": "{lead} because this conversation's session is not running. Trying again restarts it and repeats this request.",
+      "fr": "{lead} car la session de cette conversation n’est pas en cours d’exécution. Réessayer la redémarre et répète cette requête.",
+      "icu_structure": "PASS",
+      "bidi": "PASS",
+      "rendered": "L’annulation n’a pas pu être confirmée car la session de cette conversation n’est pas en cours d’exécution. Réessayer la redémarre et répète cette requête."
+    },
+    {
+      "key": "ui.notices.aida.paused_receipt",
+      "en": "Aida is paused. She will not check in until you resume her.",
+      "fr": "Aida est en pause. Elle ne fera aucun point de suivi avant que vous ne la repreniez.",
+      "icu_structure": "PASS",
+      "bidi": "PASS",
+      "rendered": "Aida est en pause. Elle ne fera aucun point de suivi avant que vous ne la repreniez."
+    },
+    {
+      "key": "ui.notices.aida.resumed_receipt",
+      "en": "Aida is resumed. She will check in on her usual schedule.",
+      "fr": "Aida a repris. Elle fera ses points de suivi selon sa planification habituelle.",
+      "icu_structure": "PASS",
+      "bidi": "PASS",
+      "rendered": "Aida a repris. Elle fera ses points de suivi selon sa planification habituelle."
+    },
+    {
+      "key": "ui.notices.aida.paused",
+      "en": "Aida is paused.",
+      "fr": "Aida est en pause.",
+      "icu_structure": "PASS",
+      "bidi": "PASS",
+      "rendered": "Aida est en pause."
+    },
+    {
+      "key": "ui.notices.aida.active",
+      "en": "Aida is active.",
+      "fr": "Aida est active.",
+      "icu_structure": "PASS",
+      "bidi": "PASS",
+      "rendered": "Aida est active."
+    },
+    {
+      "key": "ui.notices.aida.account_required",
+      "en": "{name} will say hello once an AI account is connected. Connect one from the chat to start.",
+      "fr": "{name} vous saluera dès qu’un compte IA sera connecté. Connectez-en un depuis la conversation pour commencer.",
+      "icu_structure": "PASS",
+      "bidi": "PASS",
+      "rendered": "Aida vous saluera dès qu’un compte IA sera connecté. Connectez-en un depuis la conversation pour commencer."
+    },
+    {
+      "key": "ui.notices.aida.open_fallback",
+      "en": "{name}'s conversation could not be opened, so you are in a new chat instead. {detail}",
+      "fr": "La conversation de {name} n’a pas pu être ouverte. Une nouvelle conversation a donc été ouverte à la place. {detail}",
+      "icu_structure": "PASS",
+      "bidi": "PASS",
+      "rendered": "La conversation de Aida n’a pas pu être ouverte. Une nouvelle conversation a donc été ouverte à la place. Détail technique."
+    }
+  ],
+  "plural_samples": [
+    {
+      "count": 0,
+      "rendered": "Afficher 0 ligne de plus"
+    },
+    {
+      "count": 1,
+      "rendered": "Afficher 1 ligne de plus"
+    },
+    {
+      "count": 2,
+      "rendered": "Afficher 2 lignes de plus"
+    },
+    {
+      "count": 1000,
+      "rendered": "Afficher 1000 lignes de plus"
+    },
+    {
+      "count": 1000000,
+      "rendered": "Afficher 1000000 lignes de plus"
+    }
+  ],
+  "protocol": {
+    "literal_source": "$'{'NAME'}'",
+    "rendered": "${NAME}",
+    "group_off_occurrences": 2,
+    "status": "PASS"
+  },
+  "terminology_evidence": [
+    {
+      "path": "src/i18n/catalogues/fr/ui.agents.detail.json",
+      "key": "ui.agents.detail.alert.unconfirmed_body",
+      "value": "Le backend n’a pas répondu ; l’écriture a donc pu aboutir ou non. Vérifiez l’agent ci-dessous, puis modifiez à nouveau.",
+      "source": "0ad5542379a349a98e0a8d602dbd992746fd40a2"
+    },
+    {
+      "path": "src/i18n/catalogues/fr/ui.agents.detail.json",
+      "key": "ui.agents.detail.field.effort_helper",
+      "value": "Les niveaux proviennent des paramètres de modèle des sous-agents du backend.",
+      "source": "0ad5542379a349a98e0a8d602dbd992746fd40a2"
+    },
+    {
+      "path": "src/i18n/catalogues/fr/ui.notices.json",
+      "key": "ui.notices.aida.unreachable",
+      "value": "Les contrôles d’Aida n’ont pas pu joindre le backend.",
+      "source": "0ad5542379a349a98e0a8d602dbd992746fd40a2"
+    },
+    {
+      "path": "src/i18n/catalogues/fr/ui.notices.json",
+      "key": "ui.notices.chat.unread_backend_silent",
+      "value": "Le backend n’a pas répondu.",
+      "source": "0ad5542379a349a98e0a8d602dbd992746fd40a2"
+    },
+    {
+      "path": "src/i18n/catalogues/fr/ui.chat.run_details.json",
+      "key": "ui.chat.run_details.mcp_auth.cancel_sign_in",
+      "value": "Annuler la connexion",
+      "source": "0ad5542379a349a98e0a8d602dbd992746fd40a2"
+    },
+    {
+      "path": "src/i18n/catalogues/fr/ui.chat.run_details.json",
+      "key": "ui.chat.run_details.wake.managed_note",
+      "value": "Ce réveil relève de la planification propre à {name} ; il ne peut donc pas être annulé ici. Pour arrêter ces points de suivi, utilisez /aida pause.",
+      "source": "0ad5542379a349a98e0a8d602dbd992746fd40a2"
+    }
+  ],
+  "manual_assessment": {
+    "terminology": "agent/équipe/sous-agent/conversation/connexion preserved; no newly translated organisation concept in these additions.",
+    "backend": "Verified pre-existing French VALUES (not merely keys) use backend in ui.agents.detail and ui.notices; retaining backend is established usage.",
+    "notices": "Terse factual statuses; longer receipts preserve behavioural consequences without verbosity beyond existing notices.",
+    "run_details": "Technical register consistently uses serveur, configuration MCP, références à des secrets, en-têtes, connexion; OAuth/MCP and protocol tokens intentionally retained.",
+    "english": "No unintended untranslated prose among the 29 additions.",
+    "visual": "Not performed: linguistic/ICU audit only; browser tool unavailable in reviewer role."
+  }
+}

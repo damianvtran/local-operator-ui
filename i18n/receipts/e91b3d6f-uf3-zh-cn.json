@@ -1,0 +1,59 @@
+{
+	"auditor": "i18n-auditor",
+	"model": "anthropic/claude-sonnet-5-5",
+	"instance": "e91b3d6f-uf3-zh-cn",
+	"locale": "zh-CN",
+	"audit_date": "2026-11-08",
+	"status": "passed",
+	"scope": "fresh independent from-scratch re-audit of zh-CN ui.updates.service (39, incl. new global.app_owned.remedy) and ui.installer.setup_cause (7) after the remediation wave; ui.updates.status excluded (byte-unchanged, audited in a4d27c58-uf2-zh-cn). Verified each finding of the previous receipt a4d27c58-uf2-zh-cn-update-flow-zh-CN.json was applied correctly.",
+	"independence_note": "This session (team lopdev, translation-auditor, task s1r-au-zh-CN) authored and edited none of these 46 values; it read English source, .context.json sidecars and shipped zh-CN ui.updates.panel / ui.installer / ui.common.updates, and the previous receipt only to verify folded-in findings.",
+	"evidence": "Bytes on disk hashed at audit time (uncommitted working tree of branch i18n/update-flow-keying @ 7390ee9dc92). All 46 keys: placeholder-name sets identical en vs zh-CN, backtick commands identical, verbatim tokens (Local Operator, lop-update, .lop-source, ::group-off) present, no English leftovers (script). Rendered through intl-messageformat locale zh-CN: minutes/count at 0,1,2,5,11,21,100 -> only the 'other' category (CLDR zh has no other categories), no format errors, e.g. 'attempt_running.message_minutes' @21 -> '此应用在21分钟前启动的一次服务器更新仍在运行（进程组4242）…'; fleet.busy.lead count=2 extra=1 -> '本机上仍有2个会话正在执行一轮：alpha, beta，以及另外1个。' and extra=0 hides the clause; disk_space needed=12345 free=1024 -> '服务器更新约需12345 MB可用空间，而此磁盘仅剩1024 MB…' (::group-off ungrouped); new key renders -> '此服务器运行于Local Operator自己的托管环境，没有任何软件包管理器负责该环境——因此没有任何终端命令能正确地更新它。应用只能更新由它自己启动的服务器：请先停止此服务器，然后重新启动Local Operator，让它启动自己的服务器。' Previous-receipt findings verified applied: server_failure.not_run, .stopped, install_not_found, fleet.unknown.credentials_refused/.unreadable, fleet.busy.lead, global.source_build.remedy, global.source_rebuild.remedy, global.legacy_installer.remedy, setup_cause disk_full/locked/file_missing/clock_or_expired (本机 glossary now matches shipped ui.common.updates; 设置→安装 matches shipped ui.installer 'Cancel setup'->取消安装); none introduced a new defect. Length: no value longer than English in characters (new key 98 zh chars vs ~300 en); sidecar note 'keep the shape of the source' respected. Register: 你 / calm factual, matches shipped. Spacing: no space at CJK-Latin boundary, unit 'MB' keeps one space, matching shipped. Ran read-only: check-coverage.mjs ok (7 languages/133 namespaces); locale-parity.test.mjs 44/44 pass; context-parity.mjs ok.",
+	"namespaces": {
+		"ui.updates.service": {
+			"status": "passed",
+			"result": "clean-with-findings",
+			"keys_read": 39,
+			"sha256": {
+				"en": "e473e1fcca579cd11a398c7c21b86b4ef5d56efa5a48f09bce6b047170aa5ae2",
+				"zh-CN": "c1937b4648321d61b27b89f09035620c1b9bbe46e8c0669e128081246c2cc7ca"
+			},
+			"en_path": "src/i18n/catalogues/en/ui.updates.service.json",
+			"target_path": "src/i18n/catalogues/zh-CN/ui.updates.service.json",
+			"counts": {
+				"BLOCKER": 0,
+				"MAJOR": 0,
+				"MINOR": 0,
+				"NIT": 1
+			},
+			"summary": "39 keys read; no blocker/major/minor; 1 nit (optional wording of 'managed environment' in the new global.app_owned.remedy). New key is faithful to the English meaning and idiomatic.",
+			"findings": [
+				{
+					"severity": "NIT",
+					"key": "ui.updates.service.global.app_owned.remedy",
+					"current": "此服务器运行于Local Operator自己的托管环境，没有任何软件包管理器负责该环境——因此没有任何终端命令能正确地更新它。应用只能更新由它自己启动的服务器：请先停止此服务器，然后重新启动Local Operator，让它启动自己的服务器。",
+					"proposed": "此服务器运行于由Local Operator自行管理的环境，没有任何软件包管理器负责该环境——因此没有任何终端命令能正确地更新它。应用只能更新由它自己启动的服务器：请先停止此服务器，然后重新启动Local Operator，让它启动自己的服务器。",
+					"reason": "Shipped zh-CN copy uses 托管 for hosting providers (ui.settings.model, ui.agents.settings); 'managed environment' read as 托管环境 is understandable but borrows that term, whereas 由…管理 matches ui.common.connection ('已由另一个程序管理'). Meaning is already correct; optional."
+				}
+			]
+		},
+		"ui.installer.setup_cause": {
+			"status": "passed",
+			"result": "clean",
+			"keys_read": 7,
+			"sha256": {
+				"en": "330241db6a55045e62e90042cf26694ff73537c24c50467e117436958a4b610b",
+				"zh-CN": "7db85907e836b1b2cec72cabcbbd48e294e6ac409107f14d7d664954da2acac0"
+			},
+			"en_path": "src/i18n/catalogues/en/ui.installer.setup_cause.json",
+			"target_path": "src/i18n/catalogues/zh-CN/ui.installer.setup_cause.json",
+			"counts": {
+				"BLOCKER": 0,
+				"MAJOR": 0,
+				"MINOR": 0,
+				"NIT": 0
+			},
+			"summary": "7 keys read; clean. Previous four minors applied correctly.",
+			"findings": []
+		}
+	}
+}

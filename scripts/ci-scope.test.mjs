@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
 	chmodSync,
 	cpSync,
@@ -23,6 +24,8 @@ import {
 	JOB_FLAGS,
 	KNOWN_LIVE_PREFIXES,
 	LOCAL_EXCLUSIONS,
+	PARITY_MODEL_SOURCES,
+	PARITY_SHAPE_SOURCES,
 	PERMISSIVE_DEPS,
 	ScopeError,
 	UNGATED_JOBS,
@@ -32,8 +35,12 @@ import {
 	flagsFor,
 	isNamedLivePath,
 	isPermissiveDependency,
+	jobMatchesFlags,
+	jobPlan,
 	runJobs,
 } from "./ci-scope.mjs";
+import { OVERRIDE_ENV } from "./desktop-test-concurrency.mjs";
+import { discoverDesktopTests } from "./desktop-test-inventory.mjs";
 
 /*
  * The contract of the change-scope classifier, in the form CI and
@@ -72,6 +79,14 @@ const { load } = appRequire("js-yaml");
 const CI_YML = ".github/workflows/ci.yml";
 const workflow = load(readFileSync(join(repoRoot, CI_YML), "utf8"));
 const jobs = workflow.jobs;
+// The desktop suite's shard workers (`test`) and their aggregate
+// (`desktop-tests-result`) moved VERBATIM from ci.yml to full-suite.yml when the
+// unit suite left pull-request CI; every shape assertion below still binds them,
+// now in the workflow that runs them.
+const FULL_SUITE_YML = ".github/workflows/full-suite.yml";
+const desktopJobs = load(
+	readFileSync(join(repoRoot, FULL_SUITE_YML), "utf8"),
+).jobs;
 const pkg = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"));
 const MODULE = "scripts/ci-scope.mjs";
 
@@ -82,8 +97,8 @@ const jobNeeds = (job) => {
 	return Array.isArray(needs) ? needs : [needs];
 };
 /** Every `run:` body of one job, in order, with the empty ones dropped. */
-const runBlocks = (job) =>
-	(jobs[job]?.steps ?? [])
+const runBlocks = (job, set = jobs) =>
+	(set[job]?.steps ?? [])
 		.map((step) => step.run)
 		.filter((run) => typeof run === "string" && run.trim().length > 0);
 const gatedJobs = Object.keys(JOB_FLAGS);
@@ -170,6 +185,9 @@ test("A2: every gate escapes the implicit success() and names its dependencies",
 		}
 	}
 	for (const job of Object.keys(jobs)) {
+		// `ci-gate` CONSUMES results, it starts no work over a skipped job's
+		// artifacts; A18 pins its shape.
+		if (job === "ci-gate") continue;
 		assert.doesNotMatch(
 			jobIf(job),
 			/always\(\)/,
@@ -237,7 +255,7 @@ test("A3: every gate reads != 'false', and the writer refuses to emit a non-deci
  */
 test("A4: dependency clauses match the implication the module actually guarantees", () => {
 	const vectors = flagVectors();
-	const runs = (job, flags) => JOB_FLAGS[job].every((flag) => flags[flag]);
+	const runs = (job, flags) => jobMatchesFlags(job, flags);
 	for (const job of gatedJobs) {
 		for (const dependency of jobNeeds(job)) {
 			if (dependency === "changes") continue;
@@ -643,6 +661,33 @@ test("A10: a rename out of the inert set keeps the code suite", () => {
 // A11 + A12 - the module, the workflow and the local command are one opinion
 // ---------------------------------------------------------------------------
 
+test("renderer-only and i18n-only signals select the complete language gate", () => {
+	const renderer = classify([
+		"src/renderer/src/features/chat/reviewer-probe.tsx",
+	]);
+	assert.equal(renderer.types, true);
+	assert.equal(renderer.i18n, false);
+	assert.equal(jobPlan(renderer)["i18n-coverage"], "run");
+
+	const catalogueOnly = Object.fromEntries(
+		FLAGS.map((flag) => [flag, flag === "i18n"]),
+	);
+	assert.equal(jobPlan(catalogueOnly)["i18n-coverage"], "run");
+	assert.match(jobIf("i18n-coverage"), /\|\|/);
+	assert.deepEqual(JOB_COMMANDS["i18n-coverage"], [
+		"pnpm check-i18n:catalogues",
+		"pnpm check-i18n:added-strings",
+		"pnpm check-i18n:coverage",
+	]);
+
+	// This suite already runs in CI independently of the new guard suite, so it
+	// is the durable place to prove that guard suite remains enumerated.
+	// The desktop inventory is derived (desktop-test-inventory.mjs), so read
+	// the derivation rather than the package.json line, which no longer lists.
+	const desktop = discoverDesktopTests(repoRoot);
+	assert.ok(desktop.includes("scripts/i18n/check-added-strings.test.mjs"));
+});
+
 /*
  * Defect: `pnpm check-changed` (or a job's own commands) drifting from what CI
  * runs, so the local gate is green about a different set of checks than the one
@@ -665,19 +710,51 @@ test("A11: every job's local commands exist and match the workflow's own steps",
 			`'${job}' has no local command, so it must be in LOCAL_EXCLUSIONS with a reason`,
 		);
 		const blocks = runBlocks(job);
+		if (job === "check-types") assertCheckpointUnitParity(commands, blocks);
 		for (const command of commands) {
-			// The FIRST TWO TOKENS rather than the whole string: the local spelling
-			// of a step may carry a prefix CI does not (`pnpm lint:scripts` is run
-			// in CI with `LINT_SINCE=... ` in front of it), which is exactly the
-			// point of the shared module. Comparing the pair is what catches a
-			// command drifting to a different tool, and two tokens is the
-			// strongest check that the prefix cannot defeat.
-			const [tool, argument] = command.split(/\s+/);
+			/*
+			 * THE WHOLE COMMAND, not its first two tokens (agent review round 1,
+			 * MINOR-2). Two tokens caught a command drifting to a different tool and
+			 * nothing else: the locale job's ten-file `node --test` list is duplicated
+			 * between `JOB_COMMANDS` and `ci.yml`, and `node --test` matched both sides
+			 * while either list could gain or lose a file silently. Containment of the
+			 * whole whitespace-collapsed string is the drift check, and it tolerates
+			 * the one difference the local spelling is allowed to have - a PREFIX CI
+			 * adds (`LINT_SINCE=... pnpm lint:scripts`) - because the command is
+			 * matched inside the block rather than at its start.
+			 *
+			 * THE CONTINUATION CHECK closes the direction containment cannot see: a
+			 * list APPENDED to in `ci.yml` still contains the local string as a
+			 * prefix, so the character following the match must not be another file
+			 * path. A file inserted mid-list already breaks containment.
+			 */
+			const collapsed = (text) => text.replace(/\s+/g, " ").trim();
+			const wanted = collapsed(command);
+			if (job === "test" && command === "pnpm test:desktop") {
+				// The real command moved intact, not out of CI: validate the
+				// supervisor's wired shell and final await before reading it.
+				desktopStepBody();
+				const planner = readFileSync(
+					join(repoRoot, "scripts/desktop-test-shards.mjs"),
+					"utf8",
+				);
+				assert.ok(planner.includes('pkg.scripts?.["test:desktop"]'));
+				assert.ok(planner.includes("[RUNNER, ...expected.shards[index]]"));
+				assert.ok(
+					planner.includes('const RUNNER = "scripts/run-desktop-tests.mjs"'),
+				);
+				continue;
+			}
+			const block = blocks.map(collapsed).find((text) => text.includes(wanted));
 			assert.ok(
-				blocks.some(
-					(block) => block.includes(tool) && block.includes(argument),
-				),
-				`'${job}' claims the local command \`${command}\`, and no \`run:\` block of that job in ${CI_YML} invokes both \`${tool}\` and \`${argument}\`: the local gate and CI have drifted into two opinions`,
+				block !== undefined,
+				`'${job}' claims the local command \`${command}\`, and no \`run:\` block of that job in ${CI_YML} contains it: the local gate and CI have drifted into two opinions`,
+			);
+			const rest = block.slice(block.indexOf(wanted) + wanted.length);
+			assert.doesNotMatch(
+				rest,
+				/^\s+[\w./-]+\.(?:mjs|js|ts|tsx)\b/,
+				`'${job}' claims the local command \`${command}\`, and the \`run:\` block of that job in ${CI_YML} that runs it continues with another file (\`${rest.trim().slice(0, 60)}\`): CI runs a longer list than the local gate, so the local gate is green about a subset of what gates the merge`,
 			);
 		}
 	}
@@ -705,6 +782,59 @@ test("A11: every job's local commands exist and match the workflow's own steps",
  * Mutation: add a flag to the module and not to the `changes` job's `outputs:`;
  * inline a job list in `package.json`.
  */
+test("A11 wiring mutants: extracted command remains reachable once with exact local coverage", () => {
+	const shell = desktopStepBody();
+	for (const mutate of [
+		(job) => {
+			job.steps = job.steps.filter((s) => s.id !== "desktop_launch");
+		},
+		(job) => {
+			job.steps.push(
+				structuredClone(job.steps.find((s) => s.id === "desktop_launch")),
+			);
+		},
+		(job) => {
+			job.steps.find((s) => s.id === "desktop_launch").run =
+				"echo scripts/desktop-suite-step.sh";
+		},
+		(job) => {
+			job.steps.find((s) => s.id === "desktop_launch").run = job.steps
+				.find((s) => s.id === "desktop_launch")
+				.run.replace("scripts/desktop-suite-step.sh", "scripts/unwired.sh");
+		},
+		(job) => {
+			job.steps = job.steps.filter((s) => s.id !== "desktop_suite");
+		},
+		(job) => {
+			job.steps.find((s) => s.id === "desktop_suite").run = "true";
+		},
+		(job) => {
+			job.env.DESKTOP_SHARD_INDEX = "0";
+		},
+	]) {
+		const bad = structuredClone(desktopJobs.test);
+		mutate(bad);
+		assert.throws(() => desktopStepBody(bad, shell));
+	}
+	for (const bad of [
+		shell.replace(DESKTOP_SHARD_COMMAND, ""),
+		`${shell}\n${DESKTOP_SHARD_COMMAND}\n`,
+		shell.replace(DESKTOP_SHARD_COMMAND, `# ${DESKTOP_SHARD_COMMAND}`),
+		shell.replace(DESKTOP_SHARD_COMMAND, `echo '${DESKTOP_SHARD_COMMAND}'`),
+	])
+		assert.throws(() => desktopStepBody(desktopJobs.test, bad));
+	const local = JOB_COMMANDS["check-types"];
+	assertCheckpointUnitParity(local, runBlocks("check-types"));
+	assert.throws(() =>
+		assertCheckpointUnitParity(
+			local.map((c) =>
+				c.replace(" scripts/desktop-suite-checkpoints.test.mjs", ""),
+			),
+			runBlocks("check-types"),
+		),
+	);
+});
+
 test("A12: one module is named by both entry points, and FLAGS is the outputs list", () => {
 	const outputs = Object.keys(jobs.changes.outputs).sort();
 	assert.deepEqual(
@@ -946,17 +1076,28 @@ test("A13: the copied module classifies from the invocation directory, not its o
  * desktop suite on a change to that suite's own input - `evidence-manifest.
  * test.mjs` reads `docs/evidence/manifest.json`, `clear-search.test.mjs`,
  * `new-chat-row-evidence.test.mjs` and `evidence-run-guard.test.mjs` read their
- * captured frames, and `chrome-keychain.test.mjs` walks the tree. A green PR
+ * proof artefacts, and `chrome-keychain.test.mjs` walks the tree. A green PR
  * that tested nothing.
  *
  * It keeps TWO jobs now, and `evidence` was added with the frame sweep for the
- * same reason: `docs/evidence/**` is exactly what `pnpm check-evidence` asserts
- * over, and the flags that stay false are the ones that would compile, build or
- * pack a frame. A21 pins what selects that second job.
+ * same reason: `docs/evidence/**` is exactly what the TRACKED half of evidence
+ * asserts over - the manifest and the proof artefacts - and the flags that stay
+ * false are the ones that would compile, build or pack a frame. A21 pins what
+ * selects that second job.
  *
- * Mutation: return `docs` for `docs/evidence/**`.
+ * THE THIRD CATEGORY, added with the frames split: `docs/evidence-frames/**` is
+ * the rig's IGNORED output. It is not committed evidence (there is nothing
+ * under it for a job to read) and it is not prose an inert skip is safe for
+ * (the only way it appears in a diff is a force-add, which re-materialises the
+ * ~570 MB this change removes from every worktree). So it is `other`: every
+ * code flag true, the unknown-path annotation raised, and `evidence` FALSE -
+ * selecting the frame sweep for a tree the sweep cannot see would let a
+ * force-added frame ride under a green job.
+ *
+ * Mutation: return `docs` for `docs/evidence/**`; or return `docs` for the
+ * frames tree; or fold the frames tree into `CAT_EVIDENCE`.
  */
-test("A16: docs/evidence/** keeps the suite and the frame sweep, and nothing else", () => {
+test("A16: docs/evidence/** keeps the suite and the evidence job, and nothing else", () => {
 	const flags = classify(["docs/evidence/manifest.json"]);
 	assert.equal(
 		flags.unit,
@@ -966,7 +1107,7 @@ test("A16: docs/evidence/** keeps the suite and the frame sweep, and nothing els
 	assert.equal(
 		flags.evidence,
 		true,
-		"a change to committed evidence must run the sweep that asserts over it",
+		"a change to committed evidence must run the evidence job that asserts over it",
 	);
 	assert.equal(flags.pack, false, "committed evidence is not built or packed");
 	assert.equal(flags.lint, false);
@@ -978,6 +1119,39 @@ test("A16: docs/evidence/** keeps the suite and the frame sweep, and nothing els
 	assert.equal(classify(["docs/evidence/usage/01-loaded.png"]).unit, true);
 	assert.equal(classify(["docs/evidence/README.md"]).unit, true);
 	assert.equal(classify(["docs/evidence"]).unit, true);
+
+	/*
+	 * The ignored frames tree is neither of the two above. It is `other`, so the
+	 * suite still runs (a force-add is a real change to the repository) and the
+	 * unknown-path annotation fires, but the frame sweep is NOT selected: there
+	 * are no committed frames there for it to read.
+	 */
+	for (const path of [
+		"docs/evidence-frames",
+		"docs/evidence-frames/live/one/dracula.webp",
+	]) {
+		assert.equal(
+			categoryOf(path),
+			"other",
+			`${path} must be named as unrecognised rather than committed evidence or inert prose`,
+		);
+		assert.equal(
+			isNamedLivePath(path),
+			false,
+			`${path} is not a live source path, so the unknown-path annotation must fire`,
+		);
+		const flags = classify([path]);
+		assert.equal(
+			flags.evidence,
+			false,
+			`${path} selected the frame sweep: nothing under the ignored tree is committed for it to read, so a green job there would be green by absence`,
+		);
+		assert.equal(flags.unit, true, `${path} skipped the suite`);
+		assert.equal(flags.pack, true, `${path} skipped the pack`);
+		// `docs/evidence` must not swallow the sibling by prefix: the two trees
+		// differ by a suffix only, which is exactly how a prefix rule gets it wrong.
+		assert.notEqual(categoryOf(path), "evidence");
+	}
 });
 
 // ---------------------------------------------------------------------------
@@ -1028,20 +1202,25 @@ test("A16: docs/evidence/** keeps the suite and the frame sweep, and nothing els
  * both). Neither is introduced here and neither is closed here.
  */
 test("A17: exactly one desktop-suite invocation, behind a failing-closed step", () => {
-	const invocations = runBlocks("test")
+	const invocations = [...runBlocks("test", desktopJobs), desktopStepBody()]
 		.join("\n")
-		.match(/pnpm test:desktop\b/g);
+		.match(/node scripts\/desktop-test-shards\.mjs run\b/g);
 	assert.equal(
 		invocations?.length ?? 0,
 		1,
 		`the 'test' job invokes \`pnpm test:desktop\` ${invocations?.length ?? 0} times; the suite is the job's dominant cost and one run plus the count assertions is the whole signal`,
 	);
-	const blocks = runBlocks("test");
-	const suite = blocks.find((block) => block.includes("pnpm test:desktop"));
+	const blocks = runBlocks("test", desktopJobs);
+	const suite = desktopStepBody();
 	assert.match(
 		suite,
 		/set -o pipefail/,
-		"the single suite step does not set pipefail, so a red suite would be swallowed by the pipe into tee",
+		"the single suite step must preserve failures in its diagnostic pipelines",
+	);
+	assert.match(
+		suite,
+		/--index "\$DESKTOP_SHARD_INDEX" > \/tmp\/desktop-tests\.log 2>&1 \|\| SUITE_RC=\$\?/,
+		"capture the suite directly: streaming a multi-megabyte stack frame through tee stalled CI before the log guard could run",
 	);
 	// The assertions that stop a renamed script or a glob matching nothing from
 	// reading as a pass have to survive the collapse.
@@ -1087,9 +1266,12 @@ test("A17: exactly one desktop-suite invocation, behind a failing-closed step", 
 		blocks.some((block) => block.includes("git status --porcelain")),
 		"the 'the run left the tree clean' assertion is gone",
 	);
-	assert.ok(
-		JOB_COMMANDS.test.some((command) => command.includes("pnpm test:desktop")),
-		"the module's local command for the 'test' job no longer names the suite CI runs",
+	// The suite left ci.yml, so `pnpm check-changed` runs the guard list for the
+	// classified unit scope, never the whole suite.
+	assert.deepEqual(JOB_COMMANDS.guards, ["pnpm test:guards"]);
+	assert.equal(
+		pkg.scripts["test:desktop"],
+		"node scripts/desktop-test-inventory.mjs run",
 	);
 });
 
@@ -1114,29 +1296,476 @@ test("A17: exactly one desktop-suite invocation, behind a failing-closed step", 
  */
 
 /** The `test` job's desktop-suite step, exactly as the shell will read it. */
-function desktopStepBody() {
-	const step = (jobs.test?.steps ?? []).find(
-		(candidate) =>
-			typeof candidate.run === "string" &&
-			candidate.run.includes("pnpm test:desktop"),
+const DESKTOP_SHARD_COMMAND =
+	'node scripts/desktop-test-shards.mjs run --head "$DESKTOP_REQUESTED_HEAD" --checkout "$CHECKOUT_SHA" --index "$DESKTOP_SHARD_INDEX" > /tmp/desktop-tests.log 2>&1 || SUITE_RC=$?';
+function desktopStepBody(
+	job = desktopJobs.test,
+	shell = readFileSync(join(repoRoot, "scripts/desktop-suite-step.sh"), "utf8"),
+) {
+	assertCheckpointSteps(job);
+	assert.equal(
+		job.steps.find((step) => step.id === "desktop_launch").if,
+		undefined,
+		"the launch cannot become an unreachable ceremonial command",
 	);
-	assert.ok(step, "the `test` job has no step that runs `pnpm test:desktop`");
-	return step.run;
+	const diagnosticPath =
+		"${{ runner.temp }}/desktop-lifecycle-${{ matrix.shard }}.jsonl";
+	for (const id of ["desktop_launch", "desktop_suite"])
+		assert.equal(
+			job.steps.find((step) => step.id === id).env
+				.LOCAL_OPERATOR_UI_LANE_DIAGNOSTICS,
+			diagnosticPath,
+		);
+	assert.equal(job.env.DESKTOP_SHARD_INDEX, "${{ matrix.shard }}");
+	assert.equal(
+		job.env.DESKTOP_REQUESTED_HEAD,
+		"${{ github.event.pull_request.head.sha || github.sha }}",
+	);
+	const lines = shell.split(/\r?\n/).map((line) => line.trim());
+	assert.deepEqual(
+		lines.filter((line) =>
+			/^node scripts\/desktop-test-shards\.mjs run\b/.test(line),
+		),
+		[DESKTOP_SHARD_COMMAND],
+	);
+	assert.deepEqual(
+		lines.filter((line) => line.startsWith("CHECKOUT_SHA=")),
+		["CHECKOUT_SHA=$(git rev-parse HEAD)"],
+	);
+	return shell;
 }
+
+function assertCheckpointUnitParity(commands, blocks) {
+	const unit = "scripts/desktop-suite-checkpoints.test.mjs";
+	const candidates = (values) =>
+		values
+			.flatMap((v) => v.split(/\r?\n/))
+			.map((v) => v.trim())
+			.filter(
+				(v) => v.startsWith("node --test ") && v.split(/\s+/).includes(unit),
+			);
+	const local = candidates(commands);
+	const actual = candidates(blocks);
+	assert.equal(
+		local.length,
+		1,
+		"checkpoint unit must occur in one local release-contract command",
+	);
+	assert.equal(
+		actual.length,
+		1,
+		"checkpoint unit must occur in one actual workflow command, not comments/echo",
+	);
+	assert.equal(
+		local[0],
+		actual[0],
+		"local checkpoint coverage must be the actual workflow command",
+	);
+	assert.equal(local[0].split(/\s+/).filter((v) => v === unit).length, 1);
+}
+
+/**
+ * The suite step SUPERVISES the await rather than wrapping it: the await starts in
+ * the background writing into the state directory, this shell owns the wall
+ * clock, forwards its bytes by offset so TAP reaches the job log exactly once,
+ * emits the census rows where a cancelled job can still see them, and reaps on
+ * expiry. A `timeout` around a single `await` did not end this step in run
+ * 124822720325 - the job was cancelled at its cap with no annotation and no
+ * census - so the shape itself is the guarantee now, and these are its clauses.
+ */
+function assertSupervisingStep(run, state) {
+	const awaitCommand =
+		'node scripts/desktop-suite-checkpoints.mjs await "$state"';
+	const lines = run.split("\n").map((line) => line.trim());
+	const started = lines.filter((line) => line.includes(awaitCommand));
+	assert.equal(started.length, 1, "exactly one desktop-suite invocation");
+	assert.equal(
+		run.split("desktop-suite-checkpoints.mjs await").length - 1,
+		1,
+		"no second await may hide anywhere in the step",
+	);
+	assert.ok(
+		started[0].endsWith("&"),
+		"the await must start in the background, or this shell has no stdout to report with",
+	);
+	assert.ok(
+		run.includes(`state=${state}`),
+		"the step must name the supervisor's state directory",
+	);
+	// The bound is this shell's own clock, and it must be the shipped 2400s.
+	assert.ok(
+		run.includes('bound="${DESKTOP_SUITE_BOUND_S:-2400}"'),
+		"the step must own a 2400s bound",
+	);
+	assert.ok(
+		/while kill -0 "\$await_pid"/u.test(run),
+		"the loop must watch the await rather than block on it",
+	);
+	assert.ok(
+		/\[ \$\(\(now - started\)\) -ge "\$bound" \]/u.test(run),
+		"the loop must measure the wall clock against its own bound",
+	);
+	// TAP NO LONGER REACHES THE LOG BY REPLAY. A measured control withheld the
+	// step's stdout reader and the supervisor still published `completed` in
+	// 406ms while the shell blocked inside this forward and then exited 124 - so
+	// the contract now forbids the forward rather than requiring it. A finite byte
+	// count bounds quantity, not the wait for a consumer. The transcript is a file
+	// the artifact step uploads; the job log carries receipts only.
+	for (const forbidden of [
+		"drain_await",
+		"tail -c +$((offset + 1))",
+		'head -c "$size" "$await_out"',
+	])
+		assert.ok(
+			!run.includes(forbidden),
+			`the step must not replay the await's transcript (${forbidden}): a reader that stops consuming must not be able to block the deadline check`,
+		);
+	assert.ok(
+		run.includes(
+			'echo "desktop suite: supervisor receipt status ${status} after',
+		),
+		"the console keeps one fixed-size receipt naming the verdict and where the transcript lives",
+	);
+	assert.ok(
+		run.includes(
+			'census_file="${LOCAL_OPERATOR_UI_KERNEL_CENSUS:-$state/kernel-census.jsonl}"',
+		),
+		"census discovery must use the path the writer was configured with: the state-directory glob found nothing, so healthy shards logged zero rows",
+	);
+	assert.ok(
+		!run.includes('"$state"/kernel-census-'),
+		"the obsolete state-directory census glob must be gone, not kept beside the real path",
+	);
+	assert.ok(
+		run.includes("census: $row"),
+		"census rows must go into the job log, where a cancelled job still has them",
+	);
+	// The receipt outranks the clock: expiry reaps and exits 124 only when the
+	// supervisor has NOT receipted, so a run that finished as the bound fired is
+	// not turned into a false failure.
+	const grace = run.indexOf("for _ in 1 2 3 4 5");
+	assert.ok(grace >= 0, "expiry must give the receipt a short bounded grace");
+	assert.ok(
+		run.indexOf('if kill -0 "$await_pid"') > grace,
+		"the reaping branch must be guarded by the receipt check, not taken unconditionally",
+	);
+	// Expiry: reap what the launch published, stop the await, fail closed. The
+	// slice ENDS at `exit 124`: a slice running to the end of the step would also
+	// contain the normal path's reap and could not tell the two apart.
+	const expiry = run.indexOf('if [ -n "$bound_hit" ]');
+	assert.ok(expiry >= 0, "the bound must have its own branch");
+	const expiryBody = run.slice(
+		expiry,
+		run.indexOf("exit 124") + "exit 124".length,
+	);
+	assert.ok(
+		expiryBody.includes(
+			'node scripts/desktop-suite-checkpoints.mjs reap "$state"',
+		),
+		"expiry must reap the recorded groups",
+	);
+	assert.ok(
+		expiryBody.includes('kill -9 "$await_pid"'),
+		"expiry must stop the await it gave up on",
+	);
+	assert.ok(
+		expiryBody.includes("exit 124"),
+		"expiry must fail the step closed",
+	);
+	// The verdict stays the supervisor's: the status is the awaited process's.
+	assert.ok(
+		run.includes('wait "$await_pid"'),
+		"the verdict must come from the await, not from this loop",
+	);
+	assert.ok(
+		run.indexOf("status=$?") > run.indexOf('wait "$await_pid"'),
+		"the status must be captured after the await is waited on",
+	);
+	assert.equal(
+		run.trimEnd().split("\n").pop().trim(),
+		'exit "$status"',
+		"the captured status must be the block's last statement, with nothing appended",
+	);
+	assert.deepEqual(
+		lines.filter((line) => line.startsWith("exit ")),
+		["exit 124", 'exit "$status"'],
+		"the step may exit only at expiry (124) and with the verdict it was given",
+	);
+	return run;
+}
+
+function assertCheckpointSteps(job) {
+	assert.equal(job["timeout-minutes"], 50);
+	const steps = job.steps;
+	const state = '"${{ runner.temp }}/desktop-supervisor-${{ matrix.shard }}"';
+	const launch = steps.filter((s) => s.id === "desktop_launch");
+	const final = steps.filter((s) => s.id === "desktop_suite");
+	assert.equal(launch.length, 1);
+	assert.equal(final.length, 1);
+	assert.equal(final[0]["timeout-minutes"], 45);
+	assert.equal(
+		launch[0].run,
+		`node scripts/desktop-suite-checkpoints.mjs launch ${state} scripts/desktop-suite-step.sh "$DESKTOP_SETUP_STARTED_MS"`,
+	);
+	/*
+	 * The step must RETURN for the always() uploads to run, and a `timeout` around
+	 * one `await` did not do that (run 124822720325 was cancelled at its cap with
+	 * no annotation and no census). So the step supervises the await itself, and
+	 * its guarantees are asserted on THAT text: one background invocation, a bound
+	 * this shell reads off the wall clock, byte-offset TAP forwarding, the census
+	 * in the log, reaping on expiry, and the verdict still the supervisor's. The
+	 * mutants below prove the check rejects the defects it was written for rather
+	 * than accepting anything that merely mentions the command.
+	 */
+	assertSupervisingStep(final[0].run, state);
+	for (const mutant of [
+		final[0].run.replace('bound="${DESKTOP_SUITE_BOUND_S:-2400}"', 'bound=""'),
+		final[0].run.replace(
+			'node scripts/desktop-suite-checkpoints.mjs await "$state"',
+			'node scripts/desktop-suite-checkpoints.mjs await "$state"\nnode scripts/desktop-suite-checkpoints.mjs await "$state"',
+		),
+		final[0].run.replace('exit "$status"', "exit 0"),
+		final[0].run.replace(
+			'node scripts/desktop-suite-checkpoints.mjs reap "$state"',
+			"true",
+		),
+		final[0].run.replace(
+			'node scripts/desktop-suite-checkpoints.mjs await "$state" >"$await_out" 2>&1 &',
+			'node scripts/desktop-suite-checkpoints.mjs await "$state" >"$await_out" 2>&1',
+		),
+		// Re-adding the replay, taking expiry unconditionally, and going back to the
+		// state-directory census glob are the three regressions this step was just
+		// repaired for; each must be rejected on its own.
+		final[0].run.replace(
+			'wait "$await_pid"',
+			'head -c "$size" "$await_out"\nwait "$await_pid"',
+		),
+		final[0].run.replace(
+			'if kill -0 "$await_pid" 2>/dev/null; then',
+			"if true; then",
+		),
+		final[0].run.replace(
+			'census_file="${LOCAL_OPERATOR_UI_KERNEL_CENSUS:-$state/kernel-census.jsonl}"',
+			'for file in "$state"/kernel-census-*.jsonl; do :; done',
+		),
+	]) {
+		assert.notEqual(
+			mutant,
+			final[0].run,
+			"each step mutant must actually change the step",
+		);
+		assert.throws(
+			() => assertSupervisingStep(mutant, state),
+			"a step that drops the bound, doubles the await, swallows the status, stops reaping or blocks on the await must fail",
+		);
+	}
+	const condition =
+		"${{ always() && steps.desktop_launch.outcome == 'success' }}";
+	assert.equal(final[0].if, condition);
+	let previous = steps.indexOf(launch[0]);
+	const names = new Set();
+	for (const [label, ms] of [
+		["early", 30000],
+		["later", 180000],
+	]) {
+		const frozen = steps.filter(
+			(s) => s.name === `Freeze ${label} desktop witness checkpoint`,
+		);
+		const upload = steps.filter(
+			(s) => s.name === `Upload ${label} desktop witness checkpoint`,
+		);
+		assert.equal(frozen.length, 1);
+		assert.equal(upload.length, 1);
+		assert.equal(frozen[0].if, condition);
+		assert.equal(upload[0].if, condition);
+		const path = `\${{ runner.temp }}/desktop-checkpoint-${label}-\${{ matrix.shard }}.json`;
+		assert.equal(
+			frozen[0].run,
+			`node scripts/desktop-suite-checkpoints.mjs checkpoint ${state} ${ms} "${path}"`,
+		);
+		assert.equal(upload[0].uses, "actions/upload-artifact@v4");
+		assert.equal(upload[0].with.path, path);
+		assert.equal(
+			upload[0].with.name,
+			`desktop-witness-${label}-\${{ github.run_id }}-\${{ github.run_attempt }}-shard-\${{ matrix.shard }}`,
+		);
+		assert.equal(upload[0].with["if-no-files-found"], "error");
+		assert.ok(!names.has(upload[0].with.name));
+		names.add(upload[0].with.name);
+		assert.ok(steps.indexOf(frozen[0]) > previous);
+		assert.ok(steps.indexOf(upload[0]) > steps.indexOf(frozen[0]));
+		previous = steps.indexOf(upload[0]);
+	}
+	assert.ok(steps.indexOf(final[0]) > previous);
+}
+
+function assertProbeTransport(probe) {
+	assert.deepEqual(Object.keys(probe.on), ["pull_request"]);
+	assert.deepEqual(probe.permissions, { contents: "read" });
+	assert.deepEqual(probe.on.pull_request.paths, [
+		".github/workflows/desktop-checkpoint-probe.yml",
+		".github/workflows/ci.yml",
+		"scripts/desktop-suite-checkpoints*.mjs",
+		"scripts/desktop-suite-step.sh",
+		"scripts/desktop-test-lane-bound*.mjs",
+		"scripts/run-desktop-tests.mjs",
+	]);
+	const job = probe.jobs.checkpoint_transport;
+	assert.equal(job["timeout-minutes"], 3);
+	const steps = job.steps;
+	const launch = steps.find(
+		(s) =>
+			s.name === "Launch release-file subject with a hard original deadline",
+	);
+	assert.ok(launch.run.includes('while [[ ! -f "$SUBJECT_ROOT/release" ]]'));
+	assert.ok(launch.run.includes("SECONDS >= 105"));
+	assert.ok(launch.run.includes("durationMs: 105000"));
+	const release = steps.find(
+		(s) =>
+			s.name ===
+			"Release subject and await its verdict and exact-owned cleanup",
+	);
+	assert.equal(release.if, "${{ always() }}");
+	assert.equal(
+		release.run.trim(),
+		'touch "$RUNNER_TEMP/release"\nnode scripts/desktop-suite-checkpoints.mjs await "$RUNNER_TEMP/probe"',
+	);
+	const uploads = steps.filter((s) => s.uses === "actions/upload-artifact@v4");
+	const downloads = steps.filter(
+		(s) => s.uses === "actions/download-artifact@v4",
+	);
+	assert.equal(uploads.length, 2);
+	assert.equal(downloads.length, 2);
+	for (const [i, label] of ["early", "later"].entries()) {
+		const name = `witness-probe-${label}-\${{ github.run_id }}-\${{ github.run_attempt }}`;
+		assert.equal(uploads[i].with.name, name);
+		assert.equal(downloads[i].with.name, name);
+		assert.equal(
+			uploads[i].with.path,
+			`\${{ runner.temp }}/probe-${label}.json`,
+		);
+		assert.equal(
+			downloads[i].with.path,
+			`\${{ runner.temp }}/downloaded-${label}`,
+		);
+		const proof = steps[steps.indexOf(downloads[i]) + 1];
+		const lines = proof.run.trim().split("\n");
+		assert.equal(
+			lines[0],
+			`cmp "$RUNNER_TEMP/probe-${label}.json" "$RUNNER_TEMP/downloaded-${label}/probe-${label}.json"`,
+		);
+		assert.equal(lines[1], 'test ! -f "$RUNNER_TEMP/probe/terminal.json"');
+		assert.equal(lines[2], 'test ! -f "$RUNNER_TEMP/release"');
+		assert.ok(
+			proof.run.includes(
+				label === "early"
+					? "live.sequence"
+					: "later.witness.sequence <= early.witness.sequence",
+			),
+		);
+		assert.ok(steps.indexOf(downloads[i]) > steps.indexOf(uploads[i]));
+		assert.ok(steps.indexOf(proof) < steps.indexOf(release));
+	}
+}
+
+test("A17probe: PR transport proof downloads bytes while a watchdog-owned subject is blocked", () => {
+	const probe = load(
+		readFileSync(
+			join(repoRoot, ".github/workflows/desktop-checkpoint-probe.yml"),
+			"utf8",
+		),
+	);
+	assertProbeTransport(probe);
+	for (const mutate of [
+		(p) => {
+			p.on = { workflow_dispatch: {} };
+		},
+		(p) => {
+			p.jobs.checkpoint_transport.steps =
+				p.jobs.checkpoint_transport.steps.filter(
+					(s) => s.uses !== "actions/download-artifact@v4",
+				);
+		},
+		(p) => {
+			p.jobs.checkpoint_transport.steps.find(
+				(s) =>
+					s.name ===
+					"Compare transported early bytes and witness progress before release",
+			).run = "true";
+		},
+		(p) => {
+			p.jobs.checkpoint_transport["timeout-minutes"] = 4;
+		},
+		(p) => {
+			const steps = p.jobs.checkpoint_transport.steps;
+			const release = steps.pop();
+			steps.unshift(release);
+		},
+	]) {
+		const bad = structuredClone(probe);
+		mutate(bad);
+		assert.throws(() => assertProbeTransport(bad));
+	}
+});
+
+test("A17e: checkpoint orchestration preserves shell bytes and fail-closed ordering", () => {
+	// R13 reviewed the direct-capture convergence from main's #1572 lineage.
+	// Byte proof: git diff a002e2596ee6..0cde76f4073 -- scripts/desktop-suite-step.sh
+	// Only capture plus its explanatory comments changed; keep every guard pinned.
+	assert.equal(
+		createHash("sha256").update(desktopStepBody()).digest("hex"),
+		"64523231536a4f11fb28489571435f56f5c8cb8233ebe9f27cd7eeacfa06d2a6",
+	);
+	assertCheckpointSteps(desktopJobs.test);
+	for (const mutate of [
+		(j) => {
+			j.steps = j.steps.filter(
+				(s) => s.name !== "Upload early desktop witness checkpoint",
+			);
+		},
+		(j) => {
+			j.steps.push(
+				j.steps.find(
+					(s) => s.name === "Freeze later desktop witness checkpoint",
+				),
+			);
+		},
+		(j) => {
+			const i = j.steps.findIndex((s) => s.id === "desktop_suite");
+			const [s] = j.steps.splice(i, 1);
+			j.steps.unshift(s);
+		},
+		(j) => {
+			j["timeout-minutes"] = 55;
+		},
+		(j) => {
+			j.steps.find((s) => s.id === "desktop_suite").run += " || true";
+		},
+		(j) => {
+			j.steps.find(
+				(s) => s.name === "Upload early desktop witness checkpoint",
+			).with.path = "/tmp/desktop-tests.log";
+		},
+	]) {
+		const bad = structuredClone(desktopJobs.test);
+		mutate(bad);
+		assert.throws(() => assertCheckpointSteps(bad));
+	}
+});
 
 /**
  * Run an extracted step body the way GitHub does - `bash -e` over the step's own
  * text - against a synthetic suite log, and hand back its status and output.
  *
- * The body runs UNCHANGED except for one literal: its `tee /tmp/desktop-tests.log`
+ * The body runs UNCHANGED except for one literal: its `/tmp/desktop-tests.log`
  * (a fixed path every runner on this fleet shares) is rewritten to a file under
  * this case's scratch directory. Nothing else is edited, because asserting
  * against a hand-written paraphrase of the step is how a pin ends up testing the
  * paraphrase instead of the step.
  *
- * The stub `pnpm` writes the synthetic log down the same pipe the real suite
- * writes to and exits with the status the scenario names, so `pipefail`, the
- * `tee` and the capture are all exercised rather than simulated.
+ * The stub `node` writes the synthetic log to the same output the real suite
+ * writes to and exits with the status the scenario names, so direct capture
+ * and status propagation are exercised rather than simulated.
  */
 function runDesktopStep(body, scenario) {
 	const dir = realpathSync(
@@ -1146,22 +1775,52 @@ function runDesktopStep(body, scenario) {
 	mkdirSync(bin, { recursive: true });
 	const synthetic = join(dir, "synthetic.log");
 	writeFileSync(synthetic, scenario.log);
-	const stub = join(bin, "pnpm");
+	const stub = join(bin, "node");
 	writeFileSync(
 		stub,
 		[
 			"#!/usr/bin/env bash",
-			'cat "$CI_SCOPE_STUB_LOG"',
-			'printf "%s" "$CI_SCOPE_STUB_STDERR" >&2',
-			'exit "$CI_SCOPE_STUB_RC"',
+			// Mode-aware, because the step now starts `await` in the background and
+			// calls `reap` in its failure arm. Only `await` is the subject whose
+			// output stands in for the suite's; a `reap` that echoed the same log
+			// would make a duplicated TAP line indistinguishable from forwarded bytes.
+			'case "$2" in',
+			"  reap)",
+			// The step's failure arm reaps by reading the state directory; only the
+			// subject prints the suite's output, so a reap can never contribute a
+			// duplicated TAP line.
+			"    echo '{\"receipts\":[]}'",
+			"    ;;",
+			"  *)",
+			'    cat "$CI_SCOPE_STUB_LOG"',
+			'    printf "%s" "$CI_SCOPE_STUB_STDERR" >&2',
+			'    exit "$CI_SCOPE_STUB_RC"',
+			"    ;;",
+			"esac",
+			"exit 0",
 			"",
 		].join("\n"),
 	);
 	chmodSync(stub, 0o755);
+	// A17 exercises diagnostics, not Git or the planner. Exact synthetic SHA
+	// prevents a real git/keychain lookup under a fixture's environment.
+	const gitStub = join(bin, "git");
+	writeFileSync(
+		gitStub,
+		"#!/bin/sh\nprintf '%s\\n' aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+	);
+	chmodSync(gitStub, 0o755);
 	const script = join(dir, "step.sh");
+	const state = join(dir, "desktop-supervisor-0");
+	mkdirSync(state, { recursive: true });
 	writeFileSync(
 		script,
-		body.replaceAll("/tmp/desktop-tests.log", join(dir, "desktop-tests.log")),
+		body
+			.replaceAll("/tmp/desktop-tests.log", join(dir, "desktop-tests.log"))
+			// The step's state directory is a real directory here, because the step
+			// now redirects the await's output into it and reaps by reading it.
+			.replaceAll("${{ runner.temp }}", dir)
+			.replaceAll("${{ matrix.shard }}", "0"),
 	);
 	const result = spawnSync("bash", ["-e", script], {
 		cwd: dir,
@@ -1173,6 +1832,9 @@ function runDesktopStep(body, scenario) {
 			// attribute when a variable that is already in the environment is
 			// reassigned, so a stub reading `SUITE_RC` would have read the step's
 			// own `SUITE_RC=0` and exited green for every case.
+			GITHUB_OUTPUT: join(dir, "step-output"),
+			DESKTOP_REQUESTED_HEAD: "a".repeat(40),
+			DESKTOP_SHARD_INDEX: "0",
 			CI_SCOPE_STUB_LOG: synthetic,
 			CI_SCOPE_STUB_STDERR: scenario.stderr ?? "",
 			CI_SCOPE_STUB_RC: String(scenario.suiteRc),
@@ -1402,6 +2064,36 @@ function moveDiagnosticsBelowTheExits(body) {
 	return [...lines, ...moved].join("\n");
 }
 
+test("A17: payload output is captured without streaming and the later guard names it", () => {
+	// The measured outage involved two 14.62 MiB lines. Keep that scale here:
+	// a small fixture would not exercise the failure mode that defeated tee.
+	const payload = `# at data:text/javascript;base64,${"A".repeat(15 * 1024 * 1024)}`;
+	const run = runDesktopStep(desktopStepBody(), {
+		log: `${payload}\n# tests 60\n# pass 60\n# fail 0\n`,
+		suiteRc: 0,
+	});
+	try {
+		assert.equal(run.status, 0, run.stdout + run.stderr);
+		assert.ok(run.stdout.length < 4096, "payload leaked into the Actions log");
+		assert.match(run.stdout, /# pass 60/);
+		const scan = spawnSync(
+			process.execPath,
+			[
+				join(repoRoot, "scripts/ci-log-guard.mjs"),
+				"check",
+				join(run.dir, "desktop-tests.log"),
+				"--max-line-bytes",
+				"1048576",
+			],
+			{ encoding: "utf8", timeout: 10000 },
+		);
+		assert.equal(scan.status, 1, scan.stdout + scan.stderr);
+		assert.match(scan.stdout + scan.stderr, /payload|line/i);
+	} finally {
+		rmSync(run.dir, { recursive: true, force: true });
+	}
+});
+
 test("A17b: the desktop step is red, and names the red test, on every red shape", () => {
 	const body = desktopStepBody();
 	const scratch = [];
@@ -1425,27 +2117,198 @@ test("A17b: the desktop step is red, and names the red test, on every red shape"
  * A failing suite therefore needs its COMPLETE tee file as a separate artifact,
  * not a tail that can drop the assertion or a second execution for diagnostics.
  */
-test("A17d: a failed desktop run retains its full log as a failure artifact", () => {
-	const suite = jobs.test.steps.find((step) => step.id === "desktop_suite");
+const DESKTOP_LIFECYCLE_PATH =
+	"${{ runner.temp }}/desktop-lifecycle-${{ matrix.shard }}.jsonl";
+/**
+ * The supervisor's state directory, and the lifecycle files inside it that the
+ * transcript artifact must carry. The step no longer replays that transcript into
+ * the job console (the replay could block on a reader that stopped consuming and
+ * turn a completed run into a 124), so these files are the WHOLE of the evidence
+ * for what the supervisor saw - on a green run as much as a red one.
+ */
+/**
+ * The supervisor's state directory, and the lifecycle files inside it that the
+ * transcript artifact must carry. The step no longer replays that transcript into
+ * the job console (the replay could block on a reader that stopped consuming and
+ * turn a completed run into a 124), so these files are the WHOLE of the evidence
+ * for what the supervisor saw - on a green run as much as a red one.
+ */
+const DESKTOP_SUPERVISOR_DIR =
+	"${{ runner.temp }}/desktop-supervisor-${{ matrix.shard }}";
+/** The only value shapes `parseOverride` honours: a whole number above zero, with
+ * no leading zero and nothing after it. Module scope so the contract below cannot
+ * recompile it per case (biome's `useTopLevelRegex`). */
+const POSITIVE_WORKERS = /^[1-9]\d*$/;
+const OVERRIDE_IGNORED = /positive whole number/;
+const OVERRIDE_OFF_THE_SUITE = /never reach the suite/;
+const GOVERNOR_BYPASSED = /bypasses the governor/;
+
+/**
+ * The desktop suite's worker width, and the one supported way to pin it.
+ *
+ * `LOCAL_OPERATOR_UI_TEST_CONCURRENCY` is the governor's OWN override, so a
+ * diagnostic run can pin the pool without adding a second knob; it is OPTIONAL,
+ * and absent it changes nothing. When the workflow does set one it has to be a
+ * value that actually lands, because a switch that reads as set while the suite
+ * runs at its default width is worse than no switch: the log looks like a
+ * controlled experiment and the run is not one.
+ *
+ * Three shapes lose the value silently, and all three are rejected here:
+ *
+ *   1. it is set on `desktop_suite`, the await step. The suite is spawned by the
+ *      supervisor that `desktop_launch` starts and inherits THAT step's
+ *      environment; the await step's env reaches nothing that runs a test.
+ *   2. the value is not a positive whole number in the spelling the governor
+ *      accepts - `parseOverride` refuses `0`, `01`, `1x` and warns, then takes
+ *      the governed path, so the run is uncapped by the value someone believes
+ *      they set.
+ *   3. the runner is handed an explicit `--test-concurrency`, in the step shell
+ *      or in the shard runner that calls it. That bypasses the governor, which
+ *      leaves the variable dead.
+ */
+function assertDesktopConcurrencyOverride(job, shell) {
+	const launch = job.steps.find((step) => step.id === "desktop_launch");
+	const suite = job.steps.find((step) => step.id === "desktop_suite");
+	const launchValue = launch.env?.[OVERRIDE_ENV];
+	// Job-level env is inherited by every step, so it is a legitimate carrier.
+	const raw = launchValue ?? job.env?.[OVERRIDE_ENV];
+	if (raw === undefined) {
+		assert.equal(
+			suite.env?.[OVERRIDE_ENV],
+			undefined,
+			`${OVERRIDE_ENV} on the desktop_suite step would never reach the suite, so a run that set it there would look pinned and not be`,
+		);
+		return;
+	}
+	// The governor trims and then requires the canonical spelling of a whole
+	// number, so the contract has to accept exactly what it accepts - no stricter
+	// (a trailing space is honoured) and no looser (a leading zero is ignored).
+	assert.match(
+		String(raw).trim(),
+		POSITIVE_WORKERS,
+		`${OVERRIDE_ENV}=${JSON.stringify(raw)} is not a positive whole number the governor honours; it is ignored rather than applied`,
+	);
+	assert.equal(
+		suite.env?.[OVERRIDE_ENV],
+		undefined,
+		`${OVERRIDE_ENV} on the desktop_suite step is a no-op: only the launch step's environment reaches the suite`,
+	);
+	for (const [where, text] of [
+		["the launch step", launch.run],
+		["scripts/desktop-suite-step.sh", shell],
+		[
+			"scripts/desktop-test-shards.mjs",
+			readFileSync(join(repoRoot, "scripts/desktop-test-shards.mjs"), "utf8"),
+		],
+	])
+		assert.ok(
+			!text.includes("--test-concurrency"),
+			`${where} passes --test-concurrency explicitly, which bypasses the governor and leaves ${OVERRIDE_ENV} ignored`,
+		);
+}
+function assertDesktopDiagnosticArtifactPaths(path) {
+	assert.equal(typeof path, "string");
+	// upload-artifact consumes newline-delimited paths, not substrings or a
+	// shell expression. Exact list equality retains both required files and
+	// rejects duplicates, wrong directories, globs, and same-line concatenation.
+	const paths = path
+		.split(/\r?\n/)
+		.map((line) => line.trim())
+		.filter(Boolean);
+	assert.deepEqual(
+		paths.sort(),
+		[
+			"/tmp/desktop-tests.log",
+			"/tmp/desktop-test-diagnostics.jsonl",
+			DESKTOP_LIFECYCLE_PATH,
+			`${DESKTOP_SUPERVISOR_DIR}/console.log`,
+			`${DESKTOP_SUPERVISOR_DIR}/await.out`,
+			`${DESKTOP_SUPERVISOR_DIR}/terminal.json`,
+			`${DESKTOP_SUPERVISOR_DIR}/supervisor.log`,
+		].sort(),
+	);
+}
+
+test("A17d: a desktop run keeps its full transcript as an artifact, green or red", () => {
+	const suite = desktopJobs.test.steps.find(
+		(step) => step.id === "desktop_suite",
+	);
 	assert.ok(
 		suite,
 		"the artifact condition needs the actual suite step outcome",
 	);
-	const artifact = jobs.test.steps.find(
-		(step) => step.name === "Upload failed desktop suite log",
+	const artifact = desktopJobs.test.steps.find(
+		(step) => step.name === "Upload desktop suite transcript",
 	);
-	assert.ok(artifact, "a failed suite has no full-log artifact");
+	assert.ok(artifact, "the suite's transcript has no artifact");
+	// NOT failure-only any more: the step's console replay is gone, so a GREEN
+	// run's transcript exists only here - and a green run's transcript is the
+	// baseline a later hang is compared against. `skipped` still excludes it,
+	// because a suite that never launched has no transcript to upload and the
+	// step's `if-no-files-found: error` would redden the job for it.
 	assert.equal(
 		artifact.if,
-		"${{ always() && (steps.desktop_suite.outcome == 'failure' || steps.desktop_suite.outcome == 'cancelled') }}",
+		"${{ always() && steps.desktop_suite.outcome != 'skipped' }}",
 	);
 	assert.equal(artifact.uses, "actions/upload-artifact@v4");
-	assert.equal(artifact.with.path, "/tmp/desktop-tests.log");
+	assertDesktopDiagnosticArtifactPaths(artifact.with.path);
+	assert.equal(
+		suite.env.LOCAL_OPERATOR_UI_LANE_DIAGNOSTICS,
+		DESKTOP_LIFECYCLE_PATH,
+	);
+	// The census reader has to look where the writer was told to write, or the
+	// inline rows are empty on every healthy shard while the artifact holds them.
+	assert.equal(
+		suite.env.LOCAL_OPERATOR_UI_KERNEL_CENSUS,
+		"${{ runner.temp }}/kernel-census-${{ matrix.shard }}.jsonl",
+		"the step must be handed the same census path as the launch step",
+	);
+	assert.equal(
+		artifact.with.path.includes(suite.env.LOCAL_OPERATOR_UI_KERNEL_CENSUS),
+		false,
+		"the census is collected by its own always() upload, not silently added twice",
+	);
+	// Mutants prove this is a structural contract over the WHOLE list, not a
+	// substring check that accidentally accepts omission or a path elsewhere.
+	for (const bad of [
+		"/tmp/desktop-tests.log",
+		DESKTOP_LIFECYCLE_PATH,
+		`/tmp/wrong-desktop-tests.log\n${DESKTOP_LIFECYCLE_PATH}`,
+		`/tmp/desktop-tests.log\n${DESKTOP_LIFECYCLE_PATH}`,
+		`/tmp/desktop-tests.log ${DESKTOP_LIFECYCLE_PATH}`,
+		`/tmp/desktop-tests.log\n${DESKTOP_LIFECYCLE_PATH}\n/tmp/desktop-tests.log`,
+		`/tmp/desktop-tests.log\n${DESKTOP_LIFECYCLE_PATH}\n${DESKTOP_SUPERVISOR_DIR}/console.log`,
+		artifact.with.path.replace(`${DESKTOP_SUPERVISOR_DIR}/terminal.json\n`, ""),
+	])
+		assert.throws(
+			() => assertDesktopDiagnosticArtifactPaths(bad),
+			`${JSON.stringify(bad)} must not satisfy the transcript contract`,
+		);
+	// Both diagnostic streams must survive convergence; the exact union above
+	// rejects omitted, duplicate or wildcarded receipts from either lineage.
+	assertDesktopDiagnosticArtifactPaths(artifact.with.path);
+	const launch = desktopJobs.test.steps.find(
+		(step) => step.id === "desktop_launch",
+	);
+	assert.equal(String(launch.env.DESKTOP_TEST_DEADLINE_MS), "2400000");
+	assert.equal(
+		launch.env.DESKTOP_TEST_DIAGNOSTICS,
+		"/tmp/desktop-test-diagnostics.jsonl",
+	);
+	assert.equal(String(suite.env.DESKTOP_TEST_DEADLINE_MS), "2400000");
+	assert.equal(
+		suite.env.DESKTOP_TEST_DIAGNOSTICS,
+		"/tmp/desktop-test-diagnostics.jsonl",
+	);
 	assert.equal(artifact.with["retention-days"], 7);
 	assert.equal(artifact.with["if-no-files-found"], "error");
-	assert.ok(jobs.test.steps.indexOf(artifact) > jobs.test.steps.indexOf(suite));
+	assert.ok(
+		desktopJobs.test.steps.indexOf(artifact) >
+			desktopJobs.test.steps.indexOf(suite),
+	);
 	assert.match(artifact.with.name, /github\.run_id/);
 	assert.match(artifact.with.name, /github\.run_attempt/);
+	assert.match(artifact.with.name, /shard-\$\{\{ matrix\.shard \}\}/);
 	// Exercise the unchanged REAL shell body with an intentionally failed
 	// synthetic suite. Byte equality catches a tail-only or dropped stderr log.
 	const scenario = {
@@ -1453,7 +2316,7 @@ test("A17d: a failed desktop run retains its full log as a failure artifact", ()
 		stderr: "last stderr evidence\n",
 		suiteRc: 23,
 	};
-	const run = runDesktopStep(suite.run, scenario);
+	const run = runDesktopStep(desktopStepBody(), scenario);
 	try {
 		assert.equal(run.status, 1);
 		assert.equal(
@@ -1464,6 +2327,70 @@ test("A17d: a failed desktop run retains its full log as a failure artifact", ()
 	} finally {
 		rmSync(run.dir, { recursive: true, force: true });
 	}
+});
+
+test("the desktop concurrency switch is honoured where it is set, or absent", () => {
+	const shell = readFileSync(
+		join(repoRoot, "scripts/desktop-suite-step.sh"),
+		"utf8",
+	);
+	// The LIVE workflow is the subject first: whatever the diagnostic experiment
+	// does today has to pass its own gate.
+	assertDesktopConcurrencyOverride(desktopJobs.test, shell);
+
+	const launchEnv = (job) =>
+		job.steps.find((step) => step.id === "desktop_launch").env;
+	const withLaunchValue = (value) => {
+		const job = structuredClone(desktopJobs.test);
+		const env = launchEnv(job);
+		if (value === undefined) delete env[OVERRIDE_ENV];
+		else env[OVERRIDE_ENV] = value;
+		return job;
+	};
+
+	// OFF is a real shape and must stay legal: the switch exists for one
+	// experiment and the tree is expected to lose it again. The whitespace case is
+	// here because the governor TRIMS before parsing, so ` 1` is honoured rather
+	// than ignored and rejecting it would be a contract that disagrees with the
+	// code it guards.
+	for (const value of [undefined, "1", "3", "12", " 1"])
+		assertDesktopConcurrencyOverride(withLaunchValue(value), shell);
+
+	// Job-level env reaches the launch too, so it is a legal carrier.
+	const jobLevel = withLaunchValue(undefined);
+	jobLevel.env[OVERRIDE_ENV] = "1";
+	assertDesktopConcurrencyOverride(jobLevel, shell);
+
+	// Every shape whose value the governor would IGNORE, and which would
+	// therefore leave a log that looks like a controlled experiment while the pool
+	// ran at its default width.
+	for (const value of ["", "0", "01", "1x", "0x1"])
+		assert.throws(
+			() => assertDesktopConcurrencyOverride(withLaunchValue(value), shell),
+			OVERRIDE_IGNORED,
+			`${JSON.stringify(value)} is ignored by the governor, not honoured`,
+		);
+
+	// The step that READS as set but reaches nothing that runs tests.
+	const suiteOnly = withLaunchValue(undefined);
+	suiteOnly.steps.find((step) => step.id === "desktop_suite").env[
+		OVERRIDE_ENV
+	] = "1";
+	assert.throws(
+		() => assertDesktopConcurrencyOverride(suiteOnly, shell),
+		OVERRIDE_OFF_THE_SUITE,
+	);
+
+	// An explicit flag bypasses the governor outright, which makes the variable
+	// dead rather than wrong - the silent failure this whole assertion exists for.
+	for (const mutated of [
+		`${shell}\n# --test-concurrency=1\n`,
+		`${readFileSync(join(repoRoot, "scripts/desktop-test-shards.mjs"), "utf8")}\n// --test-concurrency=1\n`,
+	])
+		assert.throws(
+			() => assertDesktopConcurrencyOverride(withLaunchValue("1"), mutated),
+			GOVERNOR_BYPASSED,
+		);
 });
 
 test("A17c: every mutation that removes the guarantee changes the outcome", () => {
@@ -1510,10 +2437,9 @@ test("A18: this suite is wired into a CI step and the desktop list", () => {
 		contracts.includes("scripts/ci-scope.test.mjs"),
 		"the release-contract step does not run this suite, so nothing would notice it becoming a guard nothing runs",
 	);
-	const desktopList = String(pkg.scripts["test:desktop"]);
 	assert.ok(
-		desktopList.includes("scripts/ci-scope.test.mjs"),
-		"`test:desktop` does not list this suite",
+		discoverDesktopTests(repoRoot).includes("scripts/ci-scope.test.mjs"),
+		"the derived `test:desktop` inventory does not include this suite (is it in EXEMPT?)",
 	);
 	assert.ok(
 		contracts.includes("node scripts/check-build-env.mjs"),
@@ -1590,19 +2516,25 @@ test("A20: --all writes every flag true", () => {
 // ---------------------------------------------------------------------------
 
 /*
- * Defect: `pnpm check-evidence` ran in NO workflow, so 20 findings sat on `main`
+ * Defect: the evidence gate ran in NO workflow, so 20 findings sat on `main`
  * - 19 frames whose filename named no palette, and one `supplementary` entry
  * with no `why` - under a green CI. The job exists now; this pins what SELECTS
  * it, because a gate nothing sets is the same absence one level up, and a gate
- * set too widely is a whole-tree decode paid on every unrelated diff.
+ * set too widely runs evidence work on every unrelated diff.
  *
- * Mutation: gate the job on `unit` (the sweep then pays its decode on every
- * `src/**` change); or drop `CAT_EVIDENCE` from the predicate (the sweep then
- * never runs on the diff that moves frames, which is the shipped defect); or
- * drop the palette prefix (`palette-source.mjs` reads the grounds out of those
- * files, so moving a ground must re-judge every frame).
+ * WHAT THE JOB CHECKS MOVED (2026-10-20): it asserts the tracked STRUCTURE, and
+ * the pixel sweep it used to run is the release path's step. What selects it is
+ * unchanged, and that is deliberate: a diff that moves the manifest, the rigs,
+ * a palette or the install is still the diff that can invalidate the structure
+ * or the grounds a release-time sweep judges against.
+ *
+ * Mutation: gate the job on `unit` (then every `src/**` change pays for the
+ * structure walk); or drop `CAT_EVIDENCE` from the predicate (the job then never
+ * runs on the diff that moves evidence, which is the shipped defect); or drop
+ * the palette prefix (`palette-source.mjs` reads the grounds out of those
+ * files, so moving a ground must re-judge every frame at the next release).
  */
-test("A21: the frame sweep runs on a frame change and on the inputs it judges", () => {
+test("A21: the evidence job runs on an evidence change and on the inputs it judges", () => {
 	assert.equal(
 		classify([
 			"docs/evidence/chat-older-history-slot/retry-recovery/head/in-transcript-idle/in-transcript-idle--03-t2381ms-idle/localOperatorDark.webp",
@@ -1655,16 +2587,33 @@ test("A21: the frame sweep runs on a frame change and on the inputs it judges", 
  * Mutation: add an import to `check-evidence.mjs` - or to anything it loads -
  * and leave the set alone; or drop an entry from the set.
  */
-test("A22: the sweep's selected sources ARE its derived load path", () => {
+test("A22: the gate's selected sources ARE its derived load path", () => {
+	/*
+	 * TWO entry points since the split: the structural gate CI runs
+	 * (`check-evidence-structure.mjs`, which loads `check-evidence.mjs` for
+	 * `stampFailures`) and the pixel sweep itself, whose closure also carries the
+	 * Python admission guard behind a spawn the import walk cannot see. The union
+	 * is the set: a module either entry point loads can move the job's verdict.
+	 */
+	const entries = [
+		"scripts/check-evidence.mjs",
+		"scripts/check-evidence-structure.mjs",
+	];
 	assert.deepEqual(
 		[...EVIDENCE_SOURCES].sort(),
 		[
 			...new Set([
-				...relativeImportClosure("scripts/check-evidence.mjs"),
-				...spawnedClosure("scripts/check-evidence.mjs"),
+				// The entry points themselves: the walk returns what they LOAD, and
+				// `check-evidence-structure.mjs` is imported by nothing (only the
+				// workflow and this table name it), so it would otherwise drop out.
+				...entries,
+				...entries.flatMap((entry) => [
+					...relativeImportClosure(entry),
+					...spawnedClosure(entry),
+				]),
 			]),
 		].sort(),
-		"EVIDENCE_SOURCES has to be the closure of what `scripts/check-evidence.mjs` LOADS and SPAWNS: a hand-kept list of the modules that produce the verdict lost `capture-evidence.mjs` once already, and an import walk alone cannot see the Python admission guard the sweep forks before it reads a frame",
+		"EVIDENCE_SOURCES has to be the closure of what the gate LOADS and SPAWNS: a hand-kept list of the modules that produce the verdict lost `capture-evidence.mjs` once already, and an import walk alone cannot see the Python admission guard the sweep forks before it reads a frame",
 	);
 });
 
@@ -1680,19 +2629,52 @@ test("A22: the sweep's selected sources ARE its derived load path", () => {
  * to every evidence-touching local run); or delete the exclusion outright (A11
  * refuses that - a gated job needs a local command OR a recorded reason).
  */
-test("A23: the whole-tree sweep is off the local path, with its reason recorded", () => {
-	assert.ok(
-		!Object.hasOwn(JOB_COMMANDS, "evidence"),
-		"`evidence` must not be on the local path: `pnpm check-evidence` is a whole-tree decode (~5 minutes) guarded by a machine-wide lease, so a local `check-changed` would pay it on every evidence-touching diff or be locked out",
+test("A23: local runs the STRUCTURAL gate, and the pixel sweep is the release path's", () => {
+	/*
+	 * Defect: the evidence job's local spelling being the pixel sweep. It decodes
+	 * the whole captured tree (~5 minutes) behind a machine-wide lease, so a local
+	 * `check-changed` would pay it on every evidence-touching diff or be locked
+	 * out of its own gate - and once the frames became rig output in an ignored
+	 * tree, a fresh CI checkout has none, so that spelling cannot be CI's either.
+	 *
+	 * What replaces it is two halves with two homes: the structural gate locally
+	 * and in CI (cheap, no pixels), and the pixel sweep at release on a captured
+	 * checkout. This pins both - the local command IS the structural one, and the
+	 * sweep is not reachable from `check-changed` at all.
+	 */
+	assert.deepEqual(
+		JOB_COMMANDS.evidence,
+		["node scripts/check-evidence-structure.mjs"],
+		"the evidence job's local spelling drifted from the structural gate CI runs (A11 reads the workflow side of this)",
 	);
 	assert.ok(
-		Object.hasOwn(LOCAL_EXCLUSIONS, "evidence"),
-		"and it is excluded WITH a reason rather than silently dropped",
+		!Object.values(JOB_COMMANDS)
+			.flat()
+			.some((command) => /\bcheck-evidence\.mjs\b/.test(command)),
+		"a local command invokes the PIXEL sweep: it is a whole-tree decode behind a machine-wide lease, and it needs a captured checkout - it belongs to the release path, not `check-changed`",
+	);
+	assert.ok(
+		!Object.hasOwn(LOCAL_EXCLUSIONS, "evidence"),
+		"`evidence` is excluded locally, so the cheap structural half never runs where a developer can see it",
+	);
+	/*
+	 * And the release path is DOCUMENTED, not merely intended: the owner's
+	 * procedure names the sweep and its verdict, which is the only record that it
+	 * ran. A code comment cannot be the home for a coverage move.
+	 */
+	const agents = readFileSync(new URL("../AGENTS.md", import.meta.url), "utf8");
+	const release = agents.slice(
+		agents.indexOf("## Releasing: one owner per window"),
 	);
 	assert.match(
-		LOCAL_EXCLUSIONS.evidence,
-		/75/,
-		"the reason names the DEFERRED code, because that is the outcome a reader of a local evidence diff will otherwise read as a failure",
+		release,
+		/node scripts\/check-evidence\.mjs/,
+		"the release-owner procedure does not name the pixel sweep: the check moved from every PR to release-time and must say where it went",
+	);
+	assert.match(
+		release,
+		/regenerated frames|regenerat/i,
+		"the release step does not say the sweep needs a CAPTURED checkout, which is the whole reason it could not stay in CI",
 	);
 });
 
@@ -1799,6 +2781,164 @@ test("A25: the bytecode check follows the main bundle's inputs", () => {
 			`'${path}' cannot change the bytecode-compiled main chunk and must not pay a full build`,
 		);
 	}
+});
+
+// ---------------------------------------------------------------------------
+// A26 - the language-coverage gate cannot be skipped by the diff it gates
+// ---------------------------------------------------------------------------
+
+/*
+ * Defect: `i18n/languages.json` promises every shipped language carries every
+ * English key, but nothing ran `pnpm check-i18n` at merge time - the policy was
+ * a `package.json` script and a paragraph. Adding the job to `ci.yml` is only
+ * half the fix: the classifier must SELECT it for every input the gate reads.
+ * The allowance is the case that matters most, because a change to it is pure
+ * data and looks inert to every category-based rule.
+ *
+ * Mutation: drop `i18n/` from `I18N_PREFIXES`, so an allowance-only change
+ * stops running the gate; or gate the job on `lint` and let a later narrowing
+ * of that predicate take the coverage check with it.
+ */
+test("A26: the language-coverage gate is selected by every path it reads", () => {
+	for (const path of [
+		"src/i18n/catalogues/en/ui.demo.json",
+		"src/i18n/keys.gen.ts",
+		"i18n/languages.json",
+		// Pure data. This is the path that would otherwise be skipped as "no code
+		// changed" while being exactly the file the gate polices.
+		"i18n/coverage-allowance.json",
+		"scripts/i18n/check-coverage.mjs",
+	]) {
+		assert.equal(
+			classify([path]).i18n,
+			true,
+			`'${path}' is an input to the coverage gate, so its job must run`,
+		);
+	}
+	// Its own predicate, not a second name for "source changed": prose and the
+	// suites that read no catalogue must not pay for it.
+	for (const path of ["docs/i18n.md", "README.md", "src/main/app.ts"]) {
+		assert.equal(
+			classify([path]).i18n,
+			false,
+			`'${path}' is not an input to the coverage gate`,
+		);
+	}
+	// Fail open where the classifier itself cannot answer, like every other flag.
+	assert.equal(classify([".github/workflows/ci.yml"]).i18n, true);
+	// The install is an input: `pnpm check-i18n` runs the script definitions in
+	// `package.json` and its parser/compiler come from the lockfile.
+	assert.equal(classify(["package.json"]).i18n, true);
+	assert.equal(classify(["pnpm-lock.yaml"]).i18n, true);
+	// An UNRECOGNISED path does not select it, unlike the code-suite flags: the
+	// gate reads a closed, named set of trees, and a new input tree cannot appear
+	// without a change under `scripts/i18n/**` - which does select it.
+	assert.equal(classify(["newdir/x"]).i18n, false);
+	assert.equal(classify(["newdir/x"]).lint, true);
+});
+
+// ---------------------------------------------------------------------------
+// A27 - the condense parity filter covers everything the pin declares
+// ---------------------------------------------------------------------------
+
+/*
+ * Defect: a filter that names yesterday's model sources - or yesterday's SHAPE
+ * sources. The pin's own claims - `desktop.modelSources`, emitted by esbuild's
+ * `metafile.inputs`, and `desktop.sources`, the suites `harvestShapes()` regexes
+ * shape literals out of - are the only authority on which files the fixture was
+ * generated from, so a hand-written filter that drifts from either SKIPS the job
+ * on exactly the pull request whose change stalened the fixture. That is #1758's
+ * shape: `trace-fold-model.ts` was a model source, no pull-request job read the
+ * fixture, and the stale bytes reached `main`. The shape half is the same defect
+ * one input class over: `turn-segments.test.mjs` supplies 63 of the 116
+ * harvested shapes on its own.
+ * Mutation: drop a model source from `PARITY_MODEL_SOURCES`; drop a shape source
+ * from `PARITY_SHAPE_SOURCES`; add either kind to the pin without the filter
+ * covering it; drop the pin files or the model directory from the predicate;
+ * widen the predicate to prose.
+ */
+test("A27: the condense parity filter covers every source the pin declares", () => {
+	const fixture = JSON.parse(
+		readFileSync(
+			join(repoRoot, "scripts/fixtures/condense.parity.json"),
+			"utf8",
+		),
+	);
+	/*
+	 * EQUALITY, not coverage, and in BOTH directions. Coverage alone passes while
+	 * the module carries a source the pin has stopped declaring (a rename leaves
+	 * the old name behind) and while the pin carries one the module lacks the
+	 * moment the two lists happen to agree on a subset; the reverse check is what
+	 * fails when the fixture is regenerated over a NEW input. The static sets are
+	 * what the predicate reads, so comparing them to the pin IS comparing the
+	 * predicate to the pin.
+	 */
+	const sorted = (paths) => [...paths].sort();
+	for (const [declared, guarded, name] of [
+		[fixture.desktop.modelSources, PARITY_MODEL_SOURCES, "modelSources"],
+		[fixture.desktop.sources, PARITY_SHAPE_SOURCES, "sources"],
+	]) {
+		assert.ok(
+			Array.isArray(declared) && declared.length > 0,
+			`the pin declares no \`${name}\`, so this assertion proves nothing`,
+		);
+		assert.deepEqual(
+			sorted(guarded),
+			sorted(declared),
+			`\`ci-scope.mjs\` and the pin's \`desktop.${name}\` disagree: a pull request that changes a file only one of them names either skips the Condense Parity Fixture job or runs it for nothing`,
+		);
+		// The sets are only authoritative if the PREDICATE actually reads them, so
+		// every declared path is also driven through `classify`.
+		for (const path of declared) {
+			assert.equal(
+				classify([path]).parity,
+				true,
+				`'${path}' is one of the pin's ${name}, so a pull request that changes it must run the Condense Parity Fixture job`,
+			);
+		}
+	}
+	// The pin's own bytes, the generator's inputs, and a module ADDED beside the
+	// model - the change that makes the fixture stale is not always a file the
+	// fixture already names.
+	for (const path of [
+		"scripts/generate-condense-parity.mjs",
+		"scripts/fixtures/condense.parity.json",
+		"scripts/fixtures/condense.parity.manifest.json",
+		"scripts/fixtures/record-tokens.mjs",
+		"scripts/entry-point.mjs",
+		"src/renderer/src/features/chat/canonical/a-model-added-tomorrow.ts",
+	]) {
+		assert.equal(
+			classify([path]).parity,
+			true,
+			`'${path}' can change the fixture's bytes, so the job must run on it`,
+		);
+	}
+	// Its own predicate, not a second name for "source changed": prose, an
+	// unrelated renderer module and the catalogue COPY the pin deliberately does
+	// not cover must not pay for it (the generator drops
+	// `src/i18n/catalogues/**`, so a copy edit moves no decision the pin records).
+	for (const path of [
+		"docs/README.md",
+		"src/renderer/src/features/agent-hub/agent-hub-view.tsx",
+		"src/i18n/catalogues/en/ui.chat.json",
+	]) {
+		assert.equal(
+			classify([path]).parity,
+			false,
+			`'${path}' is not an input to the parity pin`,
+		);
+	}
+	// Fail open where the classifier cannot answer, like every other flag: a
+	// `.github/**` change runs everything rather than narrowing the gates that
+	// judge it, and the INSTALL selects it because the comparison re-runs the
+	// model under the installed toolchain. An UNRECOGNISED path does not select
+	// it, for the reason A26 gives for `i18n`: the pin reads a closed, named set
+	// of files.
+	assert.equal(classify([".github/workflows/ci.yml"]).parity, true);
+	assert.equal(classify(["package.json"]).parity, true);
+	assert.equal(classify(["pnpm-lock.yaml"]).parity, true);
+	assert.equal(classify(["newdir/x"]).parity, false);
 });
 
 // ---------------------------------------------------------------------------
@@ -2094,3 +3234,714 @@ function runClassifier(args, cwd, module = join(repoRoot, MODULE)) {
 		stderr: result.stderr ?? "",
 	};
 }
+
+// A17e owns the one exception to A2/A4's dependency-success admission rule:
+// this job CONSUMES failures, rather than starting work that needs their artifacts.
+test("A17e: four protected workers feed one exact fail-closed Desktop Tests result", () => {
+	const worker = desktopJobs.test;
+	const result = desktopJobs["desktop-tests-result"];
+	assert.deepEqual(worker.strategy, {
+		"fail-fast": false,
+		// The lane list is DERIVED from the planner's SHARD_COUNT rather than listed
+		// here, so a fifth lane is one edit in scripts/desktop-test-shards.mjs and
+		// this matrix cannot drift from it. The assertion that keeps the derivation
+		// honest lives in scripts/desktop-test-shards.test.mjs (it is in
+		// GUARD_TESTS, so it runs on every pull request).
+		matrix: { shard: "${{ fromJSON(needs.changes.outputs.shards) }}" },
+	});
+	// ...and the value it expands comes from the planner, not from a second count:
+	// the `changes` job emits `shards`/`shardcount` in the planner's `matrix` mode,
+	// which derives both from SHARD_COUNT. A matrix that disagreed with that
+	// constant would dispatch a partial suite, which the aggregate reads as green.
+	assert.equal(
+		desktopJobs.changes.outputs.shards,
+		"${{ steps.shards.outputs.shards }}",
+	);
+	assert.equal(
+		desktopJobs.changes.outputs.shardcount,
+		"${{ steps.shards.outputs.shardcount }}",
+	);
+	const emitShards = desktopJobs.changes.steps.find(
+		(step) => step.id === "shards",
+	);
+	assert.ok(emitShards, "the changes job must emit the shard matrix");
+	assert.match(
+		emitShards.run,
+		/desktop-test-shards\.mjs matrix --github-output/,
+	);
+	assert.equal(worker["timeout-minutes"], 50);
+	assert.equal(result.name, "Desktop Tests");
+	assert.deepEqual(result.needs, ["changes", "test"]);
+	assert.equal(
+		result.if.trim().replace(/\s+/g, " "),
+		"always() && (needs.changes.outputs.unit != 'false' || needs.changes.result != 'success')",
+	);
+	assert.equal(result.env.CLASSIFIER_RESULT, "${{ needs.changes.result }}");
+	assert.equal(result.env.WORKER_RESULT, "${{ needs.test.result }}");
+	assert.equal(result.env.UNIT_SCOPE, "${{ needs.changes.outputs.unit }}");
+	const reject = result.steps.find((step) =>
+		step.name.startsWith("Reject unsuccessful"),
+	);
+	for (const variable of ["CLASSIFIER_RESULT", "WORKER_RESULT"])
+		assert.ok(reject.run.includes(`test "$${variable}" = success`));
+	assert.ok(reject.run.includes('test "$UNIT_SCOPE" = true'));
+	assert.ok(!result.steps.some((step) => step["continue-on-error"]));
+	assert.ok(
+		!runBlocks("desktop-tests-result", desktopJobs).some((block) =>
+			/pnpm|npm install/.test(block),
+		),
+	);
+	assert.ok(
+		runBlocks("desktop-tests-result", desktopJobs).some((block) =>
+			block.includes("desktop-test-shards.mjs verify"),
+		),
+	);
+	// Neither job is part of ci.yml's classified job set any more, so neither may
+	// claim a local spelling: `pnpm check-changed` must not run the whole suite.
+	for (const job of ["test", "desktop-tests-result"]) {
+		assert.equal(Object.hasOwn(JOB_COMMANDS, job), false);
+		assert.equal(Object.hasOwn(JOB_FLAGS, job), false);
+		assert.equal(
+			Object.hasOwn(jobs, job),
+			false,
+			`${job} is back in ${CI_YML}`,
+		);
+	}
+	const download = result.steps.find((step) =>
+		step.uses?.startsWith("actions/download-artifact@"),
+	);
+	assert.equal(
+		download.with.pattern,
+		"desktop-shard-proof-${{ github.run_id }}-${{ github.run_attempt }}-*",
+	);
+	assert.equal(download.with["merge-multiple"], false);
+	const proof = worker.steps.find(
+		(step) => step.name === "Record successful shard coverage",
+	);
+	assert.equal(proof.if, "${{ steps.desktop_suite.outcome == 'success' }}");
+	assert.ok(proof.run.includes("desktop-test-shards.mjs receipt"));
+	const upload = worker.steps.find(
+		(step) => step.name === "Upload shard coverage receipt",
+	);
+	assert.equal(upload.if, "${{ always() }}");
+	assert.equal(upload.with["if-no-files-found"], "error");
+	assert.equal(
+		upload.with.name,
+		"desktop-shard-proof-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.shard }}",
+	);
+	assert.equal(
+		worker.steps.filter((step) => step.run === "pnpm test:tag-dialogs").length,
+		1,
+	);
+	assert.equal(
+		worker.steps.find((step) => step.run === "pnpm test:tag-dialogs").if,
+		"${{ matrix.shard == 0 }}",
+	);
+	for (const name of [
+		"Build plain-JS bundle for isolated native QA",
+		"Upload isolated native QA bundle",
+	]) {
+		const step = worker.steps.find((candidate) => candidate.name === name);
+		assert.ok(step.if.includes("matrix.shard == 0"));
+		assert.ok(step.if.includes("!cancelled()"));
+		assert.ok(step.if.includes("github.event_name == 'pull_request'"));
+	}
+	assert.ok(
+		worker.steps
+			.find((step) => step.name === "Upload isolated native QA bundle")
+			.if.includes("steps.qa_bundle.outcome == 'success'"),
+	);
+	/*
+	 * THE LOG-PAYLOAD GUARD: a ceiling cannot name a multi-megabyte line, so the
+	 * scan is the guard and this pins what makes it a guard rather than a note.
+	 * It must read the suite's own tee file, run even when the suite is red
+	 * (`always()` — a red suite's log is exactly the one worth reading), stay
+	 * separate from the extracted suite step, and be allowed to fail the job
+	 * (`continue-on-error` would make a finding advisory).
+	 */
+	const payloadScan = worker.steps.find(
+		(step) => step.name === "Scan the suite log for payload lines",
+	);
+	assert.ok(payloadScan, "the shard job has no step that scans the suite log");
+	assert.match(
+		payloadScan.run,
+		/scripts\/ci-log-guard\.mjs check \/tmp\/desktop-tests\.log/,
+	);
+	assert.ok(payloadScan.if.includes("always()"));
+	assert.ok(
+		payloadScan.if.includes("steps.desktop_suite.outcome != 'skipped'"),
+	);
+	assert.equal("continue-on-error" in payloadScan, false);
+	/*
+	 * ...and the suite step carries its own LOWER ceiling, which is what makes the
+	 * scan reachable: a job cancelled at `timeout-minutes` runs no further steps,
+	 * so without a step ceiling a stall is exactly the case the scan never sees.
+	 */
+	const suiteStep = worker.steps.find((step) => step.id === "desktop_suite");
+	/*
+	 * The step's ceiling only helps if the STEP returns: a job cancelled at its
+	 * own cap runs no further step, so the always() uploads after this one were
+	 * skipped in exactly the hangs they exist for. The await is therefore wrapped
+	 * in an external wall-clock bound, and that bound is the only addition here:
+	 * one invocation, still inside the wrapper, still failing closed, still
+	 * reporting the deadline as its reason.
+	 */
+	const asyncAwaitCommand =
+		'node scripts/desktop-suite-checkpoints.mjs await "$state"';
+	assert.equal(
+		suiteStep.run.split(asyncAwaitCommand).length - 1,
+		1,
+		"exactly one desktop-suite invocation, and it is started by the step",
+	);
+	assert.match(
+		suiteStep.run,
+		/bound="\$\{DESKTOP_SUITE_BOUND_S:-2400\}"/u,
+		"the step must own the external wall-clock bound",
+	);
+	assert.match(
+		suiteStep.run,
+		/status=\$\?[\s\S]*exit "\$status"/u,
+		"the step must still fail closed with the inner status",
+	);
+	assert.match(
+		suiteStep.run,
+		/124/u,
+		"exit 124 must be recorded as the deadline reason",
+	);
+	assert.equal(suiteStep["timeout-minutes"], 45);
+	assert.ok(suiteStep["timeout-minutes"] < worker["timeout-minutes"]);
+});
+
+// ---------------------------------------------------------------------------
+// A18 - the `CI Gate` aggregate and the full-suite safety net
+// ---------------------------------------------------------------------------
+
+/*
+ * Defect: a ruleset requires check NAMES, so the stable required check is one
+ * aggregate. A gate that misses a job lets that job go red unnoticed; a gate
+ * without `always()` is SKIPPED when a dependency fails, and a skipped required
+ * check is not a red one; a gate that counts `skipped` as failure reds every
+ * diff the classifier correctly narrowed. And the suite that left PR CI must
+ * still run where nothing can cancel the record of a `main` commit - it does,
+ * and since 2026-11-08 it ALSO runs on pull requests at the merge gate (the
+ * second test below), which is why `pull_request` is no longer absent here.
+ * And the workflow files NO issue for a red `main` (the red run is the signal;
+ * issues piled up as junk), so no job may hold `issues: write`.
+ * Mutation: drop a job from `ci-gate.needs`; remove `always()`; set
+ * `cancel-in-progress: true` in full-suite.yml; add `issues: write` or a
+ * `gh issue` step back; key the concurrency group by a constant again.
+ */
+test("A18: CI Gate needs every job and reds only on failure or cancellation", () => {
+	const gate = jobs["ci-gate"];
+	assert.equal(gate.name, "CI Gate");
+	assert.equal(String(gate.if).trim(), "always()");
+	assert.deepEqual(
+		[...gate.needs].sort(),
+		Object.keys(jobs)
+			.filter((job) => job !== "ci-gate")
+			.sort(),
+	);
+	const body = gate.steps.map((step) => step.run ?? "").join("\n");
+	assert.ok(
+		gate.steps.some(
+			(step) =>
+				step.env?.NEEDS === "${{ toJSON(needs) }}" &&
+				step.env?.EVENT_NAME === "${{ github.event_name }}",
+		),
+	);
+	assert.match(body, /v\.result === 'success'/);
+	assert.match(body, /process\.exit\(1\)/);
+
+	// Execute the real CI Gate step script to prove fail-closed allowlist behaviour:
+	// - `version-bump-guard` skipped on `pull_request` MUST fail; skipped on `push` passes.
+	// - `changes` skipped or any `abandoned`/`failure`/`cancelled` result MUST fail.
+	const gateScript = body.split("<<'NODE'\n")[1].replace(/\n\s*NODE\s*$/, "");
+	const runCiGate = (needsPayload, eventName) =>
+		spawnSync(process.execPath, ["--input-type=module", "-e", gateScript], {
+			encoding: "utf8",
+			env: {
+				PATH: process.env.PATH,
+				NEEDS: JSON.stringify(needsPayload),
+				EVENT_NAME: eventName,
+			},
+		});
+	const allGreenCi = Object.fromEntries(
+		gate.needs.map((n) => [n, { result: "success" }]),
+	);
+	assert.equal(runCiGate(allGreenCi, "pull_request").status, 0);
+	assert.equal(
+		runCiGate(
+			{ ...allGreenCi, "version-bump-guard": { result: "skipped" } },
+			"push",
+		).status,
+		0,
+		"version-bump-guard legitimately skips on push to main",
+	);
+	assert.equal(
+		runCiGate(
+			{ ...allGreenCi, "version-bump-guard": { result: "skipped" } },
+			"pull_request",
+		).status,
+		1,
+		"a skipped version-bump-guard on a pull request must fail CI Gate",
+	);
+	assert.equal(
+		runCiGate({ ...allGreenCi, changes: { result: "skipped" } }, "pull_request")
+			.status,
+		1,
+		"a skipped changes classifier must fail CI Gate",
+	);
+	assert.equal(
+		runCiGate({ ...allGreenCi, lint: { result: "abandoned" } }, "pull_request")
+			.status,
+		1,
+		"an abandoned or unknown result must fail closed",
+	);
+
+	// Main-push concurrency coalescing: non-release `main` pushes coalesce into
+	// `'ci-main'` with `cancel-in-progress` false on `main`, while release bumps
+	// (`chore(release)`) and `workflow_dispatch` on `main` keep per-SHA records,
+	// and PR `synchronize` still cancels in-progress runs.
+	assert.match(workflow.concurrency.group, /'ci-main'/u);
+	assert.match(
+		workflow.concurrency.group,
+		/startsWith\(github\.event\.head_commit\.message,\s*'chore\(release\)'\)/u,
+	);
+	assert.match(workflow.concurrency.group, /ci-main-release-\{0\}-\{1\}/u);
+	assert.equal(
+		workflow.concurrency["cancel-in-progress"],
+		"${{ github.event_name == 'pull_request' && github.event.action == 'synchronize' }}",
+	);
+	// The existing required check keeps its exact, LITERAL name and no matrix:
+	// a matrix suffixes the rendered name, and an expression name is posted raw
+	// when the job is skipped, so either shape strands the required check
+	// (native-bytecode-artifact.test.mjs guards every required name).
+	assert.equal(jobs["bytecode-build"].name, "Bytecode Build Check");
+	assert.equal(jobs["bytecode-build"].strategy, undefined);
+	// The Mac artifact twin runs on the same trigger and reds this gate (its
+	// membership in `needs` is covered by the deepEqual above).
+	const mac = jobs["bytecode-build-macos"];
+	assert.equal(mac.name, "Bytecode Build Check (macos-15)");
+	assert.equal(mac["runs-on"], "macos-15");
+	assert.equal(String(mac.if).trim(), String(jobs["bytecode-build"].if).trim());
+	assert.deepEqual(mac.needs, jobs["bytecode-build"].needs);
+	assert.ok(gate.needs.includes("bytecode-build-macos"));
+	assert.ok(
+		mac.steps.some((step) => step.uses?.startsWith("actions/upload-artifact@")),
+	);
+	// The QA bundle survived the shard's removal, under the artifact name QA reads.
+	const upload = jobs["qa-bundle"].steps.find((step) =>
+		step.uses?.startsWith("actions/upload-artifact@"),
+	);
+	assert.equal(
+		upload.with.name,
+		"ui-qa-bundle-${{ github.event.pull_request.number }}-${{ github.run_id }}",
+	);
+});
+
+test("A18: the full suite runs on main, nightly and on demand, and files no issues", () => {
+	const full = load(readFileSync(join(repoRoot, FULL_SUITE_YML), "utf8"));
+	const on = full.on ?? full[true];
+	assert.deepEqual(on.push.branches, ["main"]);
+	assert.ok(on.schedule?.length >= 1);
+	assert.ok(Object.hasOwn(on, "workflow_dispatch"));
+	// The merge gate's trigger, and the ONLY pull-request event this workflow
+	// listens for: `opened`/`synchronize` would run the suite on every push of
+	// every PR again, which is the cost that moved it here.
+	assert.deepEqual(on.pull_request, { types: ["labeled"] });
+	assert.deepEqual(full.concurrency, {
+		group: "full-suite-${{ github.ref }}",
+		"cancel-in-progress": false,
+	});
+	assert.deepEqual(full.permissions, { contents: "read" });
+	for (const [id, job] of Object.entries(full.jobs))
+		assert.equal(job.permissions, undefined, `${id} widens permissions`);
+	// Retired: no reporter job, no issue-filing step, no `issues: write` anywhere.
+	assert.equal(full.jobs.report, undefined, "the issue reporter is retired");
+	// Comments may (and do) explain the retirement, so only live YAML is pinned.
+	const text = readFileSync(join(repoRoot, FULL_SUITE_YML), "utf8")
+		.split("\n")
+		.filter((line) => !/^\s*#/u.test(line))
+		.join("\n");
+	assert.doesNotMatch(text, /issues:\s*write/u);
+	assert.doesNotMatch(text, /gh (issue|label)\b/u);
+	assert.doesNotMatch(text, /Full test suite red on main/u);
+});
+
+/*
+ * Defect: the merge gate is the ONE check whose absence a merge cannot survive,
+ * so every way it can report a false PASS is a way a red pipeline reaches
+ * `main`. GitHub counts a `skipped` check as SATISFYING a required status
+ * check, so a label-name `if:` on the gate - the obvious way to narrow
+ * `pull_request: [labeled]`, which fires for EVERY label - would report
+ * `skipped` on a run some other label started and let a red pull request merge.
+ * A gate that does not need every suite job ignores a red one. A gate without
+ * `always()` disappears when a dependency fails, and a check that never reports
+ * is `Expected`, not red. An EVENT GUARD has the same hole from the other side
+ * (round-1 review B1 / QA Q-1): `github.event_name == 'pull_request'` makes the
+ * job SKIP on a `workflow_dispatch` of a pull request's head branch, and the
+ * skipped job still publishes its check NAME on that tip - a pass. So the gate
+ * runs on EVERY run of the workflow and derives its verdict from its own
+ * `needs`, whatever the event. And the ritual has to keep working: a label event
+ * is the only trigger, so re-arming means REMOVE then ADD - `--add-label` on a
+ * label that is already present delivers no event at all, which would leave the
+ * head permanently `Expected` with no way out.
+ * Mutation: add `if: contains(github.event.pull_request.labels.*.name, ...)` to
+ * the gate or to a shard; add `github.event.label.name == 'ready-to-merge'` or
+ * `github.event.action == 'labeled'` to any `if:`; drop a job from
+ * `merge-gate.needs`; replace `always()` with nothing; add any event guard to
+ * the gate; delete the `--remove-label` call or
+ * swap the ritual's two edits; point `pull_request` at `[opened, synchronize]`.
+ */
+test("A18: the merge gate always runs, needs every suite job, and no `if:` is gated on a label", () => {
+	const full = load(readFileSync(join(repoRoot, FULL_SUITE_YML), "utf8"));
+	const on = full.on ?? full[true];
+	const suite = full.jobs;
+	// `labeled` and nothing else: no `opened`, no `synchronize`, no `reopened`.
+	assert.deepEqual(on.pull_request, { types: ["labeled"] });
+
+	const gate = suite["merge-gate"];
+	assert.ok(gate, "full-suite.yml must carry the required merge-gate job");
+	assert.equal(gate.name, "Merge gate (full suite)");
+	// The exact string pins both properties at once: it runs on a FAILED
+	// dependency, and it is the SAME expression on every event - no guard that
+	// could skip the job and publish `skipped` under the required name on some
+	// branch tip (round-1 review B1: a dispatch on a PR head did exactly that).
+	assert.equal(String(gate.if).trim(), "always()");
+	assert.equal(gate["timeout-minutes"], 5);
+	assert.equal(
+		gate.permissions,
+		undefined,
+		"the gate needs contents: read only",
+	);
+	// Every job that produces a suite verdict (all of them but the gate itself).
+	assert.deepEqual(
+		[...gate.needs].sort(),
+		Object.keys(suite)
+			.filter((job) => job !== "merge-gate")
+			.sort(),
+		"a suite job missing from needs is a red suite that cannot red the gate",
+	);
+
+	// No `if:` anywhere in this file is gated on a label. The invariant is the
+	// ABSENCE of a label condition, not one spelling of it: `labels.*.name`,
+	// `github.event.label.name` (singular) and `github.event.action == 'labeled'`
+	// are the same hole in three forms, and the first spelling alone would let the
+	// other two through green (round-1 review M2 - both escaped the old pin).
+	// `contains(` stays pinned as the array-membership form of the same thing.
+	for (const [id, job] of Object.entries(suite))
+		assert.doesNotMatch(
+			String(job.if ?? ""),
+			/label|contains\(/iu,
+			`${id} must not be gated on a label - a skipped required check is a pass`,
+		);
+	// `contains(` is only hostile on a JOB (a step cannot skip its own job's
+	// verdict), so the file-wide sweep pins the label half at every depth.
+	const labelConditions = [];
+	const sweep = (node, path) => {
+		if (Array.isArray(node))
+			return node.forEach((child, index) => sweep(child, `${path}[${index}]`));
+		if (!node || typeof node !== "object") return undefined;
+		for (const [key, value] of Object.entries(node)) {
+			if (key === "if" && /label/iu.test(String(value)))
+				labelConditions.push(`${path}.if = ${value}`);
+			sweep(value, `${path}.${key}`);
+		}
+		return undefined;
+	};
+	sweep(suite, "jobs");
+	assert.deepEqual(
+		labelConditions,
+		[],
+		"no `if:` in this file may mention a label - a skipped required check is a pass",
+	);
+
+	// The aggregate body: fail-closed allowlist. On `pull_request` (or on-demand
+	// `native_proofs=true`), a skipped or failed `native-proofs` MUST fail
+	// `merge-gate` unless `needs.changes.outputs.pack` is literally `'false'`;
+	// on `push` to `main` / `schedule` (and `workflow_dispatch` with
+	// `native_proofs != true`), `native-proofs` legitimately skips.
+	assert.ok(
+		gate.steps.some(
+			(step) =>
+				step.env?.NEEDS === "${{ toJSON(needs) }}" &&
+				step.env?.EVENT_NAME === "${{ github.event_name }}" &&
+				step.env?.PACK_SCOPE === "${{ needs.changes.outputs.pack }}",
+		),
+	);
+	const body = gate.steps.map((step) => step.run ?? "").join("\n");
+	assert.match(body, /v\.result === 'success'/u);
+	assert.match(body, /process\.exit\(1\)/u);
+
+	const mergeGateScript = body
+		.split("<<'NODE'\n")[1]
+		.replace(/\n\s*NODE\s*$/, "");
+	const runMergeGate = (
+		needsPayload,
+		{
+			eventName = "pull_request",
+			packScope = "true",
+			nativeProofsInput = "",
+		} = {},
+	) =>
+		spawnSync(
+			process.execPath,
+			["--input-type=module", "-e", mergeGateScript],
+			{
+				encoding: "utf8",
+				env: {
+					PATH: process.env.PATH,
+					NEEDS: JSON.stringify(needsPayload),
+					EVENT_NAME: eventName,
+					PACK_SCOPE: packScope,
+					NATIVE_PROOFS_INPUT: nativeProofsInput,
+				},
+			},
+		);
+	const allGreenSuite = Object.fromEntries(
+		gate.needs.map((n) => [n, { result: "success" }]),
+	);
+	assert.equal(runMergeGate(allGreenSuite).status, 0);
+	assert.equal(
+		runMergeGate({
+			...allGreenSuite,
+			"native-proofs": { result: "skipped" },
+		}).status,
+		1,
+		"a skipped native-proofs on pull_request when pack != 'false' must fail merge-gate",
+	);
+	assert.equal(
+		runMergeGate({
+			...allGreenSuite,
+			"native-proofs": { result: "failure" },
+		}).status,
+		1,
+		"a failed native-proofs on pull_request must fail merge-gate",
+	);
+	assert.equal(
+		runMergeGate(
+			{ ...allGreenSuite, "native-proofs": { result: "skipped" } },
+			{ eventName: "pull_request", packScope: "false" },
+		).status,
+		0,
+		"native-proofs may skip when pack == 'false'",
+	);
+	assert.equal(
+		runMergeGate(
+			{ ...allGreenSuite, "native-proofs": { result: "skipped" } },
+			{ eventName: "push", packScope: "true" },
+		).status,
+		0,
+		"native-proofs legitimately skips on push to main",
+	);
+	assert.equal(
+		runMergeGate(
+			{ ...allGreenSuite, "native-proofs": { result: "skipped" } },
+			{ eventName: "schedule", packScope: "true" },
+		).status,
+		0,
+		"native-proofs legitimately skips on nightly schedule",
+	);
+	assert.equal(
+		runMergeGate(
+			{ ...allGreenSuite, "native-proofs": { result: "skipped" } },
+			{
+				eventName: "workflow_dispatch",
+				packScope: "true",
+				nativeProofsInput: "true",
+			},
+		).status,
+		1,
+		"a skipped native-proofs when explicitly requested via workflow_dispatch must fail merge-gate",
+	);
+	assert.equal(
+		runMergeGate({
+			...allGreenSuite,
+			changes: { result: "skipped" },
+		}).status,
+		1,
+		"changes must never skip in full-suite.yml",
+	);
+
+	// The ritual is the only way to EXIT the `Expected` state, so it is pinned
+	// here with the workflow: both edits (remove, then add) and the label name.
+	assert.equal(pkg.scripts["merge-gate"], "node scripts/merge-gate.mjs");
+	const ritual = readFileSync(join(repoRoot, "scripts/merge-gate.mjs"), "utf8");
+	assert.match(ritual, /ready-to-merge/u);
+	assert.match(ritual, /"--remove-label"/u);
+	assert.match(ritual, /"--add-label"/u);
+	// ORDER, not just presence (round-1 review M3): on a label that is already
+	// present the add delivers NO event, so an add-first ritual followed by the
+	// remove delivers `unlabeled` - not a trigger - and leaves the head `Expected`
+	// with the label gone. A stranded head is worse than an unarmed one.
+	assert.ok(
+		ritual.indexOf('"--remove-label"') < ritual.indexOf('"--add-label"'),
+		"the ritual must remove BEFORE it adds: an add on a present label starts nothing",
+	);
+	assert.match(ritual, /"label",\s*"create"/u);
+	assert.match(ritual, /full-suite\.yml/u);
+});
+
+/*
+ * The ritual is a COMMAND, so the three ways it can strand a head are STATES, not
+ * strings: a number that names no pull request, a pull request that is not open,
+ * and a label event that starts NO run. Reported as success, each leaves the
+ * operator believing a gate was armed while the head carries no verdict - and
+ * `Expected` (never armed) renders exactly like `Expected` (queued), so there is
+ * nothing to notice. This drives the SHIPPED script against a stub `gh` that
+ * records every call, so "fails loudly" and "failed before mutating" are both
+ * observed rather than read off the source - the core repository's copy of this
+ * ritual shipped a silent success on the no-run path, which is exactly the class
+ * of defect a source-string pin does not catch.
+ * Mutation: return the no-run case to a console.log (status 0); swallow the
+ * `pr view` failure; drop the `state !== "OPEN"` refusal; add before removing.
+ */
+test("A18: the merge-gate ritual fails loudly when nothing was armed", () => {
+	const dir = realpathSync(mkdtempSync(join(tmpdir(), "ci-scope-merge-gate-")));
+	const bin = join(dir, "bin");
+	mkdirSync(bin, { recursive: true });
+	const log = join(dir, "gh-calls.log");
+	const stub = join(bin, "gh");
+	// Records argv, then answers from the environment: the view is a fixture, the
+	// run list is stamped at CALL time so it is always newer than the label event.
+	writeFileSync(
+		stub,
+		[
+			"#!/usr/bin/env bash",
+			'printf "%s\\n" "$*" >> "$MERGE_GATE_STUB_LOG"',
+			'case "$1 $2" in',
+			"  'pr view')",
+			'    if [ "$MERGE_GATE_STUB_VIEW_RC" != "0" ]; then',
+			'      printf "%s\\n" "$MERGE_GATE_STUB_VIEW_STDERR" >&2',
+			'      exit "$MERGE_GATE_STUB_VIEW_RC"',
+			"    fi",
+			'    printf "%s\\n" "$MERGE_GATE_STUB_VIEW_JSON"',
+			"    ;;",
+			"  'run list')",
+			'    if [ "$MERGE_GATE_STUB_RUNS" = none ]; then',
+			'      printf "%s\\n" "[]"',
+			"    else",
+			'      printf \'[{"databaseId":909001,"url":"https://example.test/runs/909001","status":"queued","conclusion":null,"createdAt":"%s"}]\\n\' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"',
+			"    fi",
+			"    ;;",
+			"  *) exit 0 ;;",
+			"esac",
+			"",
+		].join("\n"),
+	);
+	chmodSync(stub, 0o755);
+
+	// The label is PRESENT, which is the state that needs the remove: an add on a
+	// present label delivers no event, so every case below also has to show the
+	// two edits in the right ORDER when they happen at all.
+	const open = {
+		number: 1771,
+		url: "https://github.com/damianvtran/local-operator-ui/pull/1771",
+		state: "OPEN",
+		isDraft: false,
+		headRefName: "ci/merge-gate",
+		headRefOid: "c".repeat(40),
+		labels: [{ name: "ready-to-merge" }],
+	};
+	const runRitual = (args, extra = {}) => {
+		writeFileSync(log, "");
+		const environment = {};
+		for (const [key, value] of Object.entries(process.env)) {
+			// A `CMUX_*` variable would leak this suite's host into the child, and
+			// nothing in the child may answer for GitHub but the stub below.
+			if (key.startsWith("CMUX_")) continue;
+			environment[key] = value;
+		}
+		const result = spawnSync(
+			"node",
+			[join(repoRoot, "scripts/merge-gate.mjs"), ...args],
+			{
+				cwd: dir,
+				encoding: "utf8",
+				env: {
+					...environment,
+					PATH: `${bin}:${process.env.PATH}`,
+					MERGE_GATE_STUB_LOG: log,
+					MERGE_GATE_STUB_VIEW_JSON: JSON.stringify(open),
+					MERGE_GATE_STUB_VIEW_RC: "0",
+					MERGE_GATE_STUB_VIEW_STDERR: "",
+					MERGE_GATE_STUB_RUNS: "one",
+					// The bound is the WAIT, never the acknowledgement: one attempt
+					// makes the failure path observable in a second, not half a minute.
+					MERGE_GATE_POLL_ATTEMPTS: "1",
+					MERGE_GATE_POLL_INTERVAL_MS: "0",
+					...extra,
+				},
+			},
+		);
+		return {
+			status: result.status,
+			stdout: result.stdout ?? "",
+			stderr: result.stderr ?? "",
+			calls: readFileSync(log, "utf8"),
+		};
+	};
+
+	// 1. No such pull request: loud, and nothing was mutated on the way out.
+	const missing = runRitual(["4242"], {
+		MERGE_GATE_STUB_VIEW_RC: "1",
+		MERGE_GATE_STUB_VIEW_STDERR:
+			"no pull requests found for branch ci/merge-gate",
+	});
+	assert.equal(
+		missing.status,
+		1,
+		"a number that names no pull request must exit non-zero",
+	);
+	assert.match(missing.stderr, /no pull request #4242 to arm/u);
+	assert.match(missing.stderr, /no pull requests found/u);
+	assert.doesNotMatch(
+		missing.calls,
+		/--add-label|--remove-label|label create/u,
+	);
+	assert.doesNotMatch(missing.stdout, /Run \d+/u);
+
+	// 2. Present but not OPEN: refused before any label edit.
+	const closed = runRitual(["1771"], {
+		MERGE_GATE_STUB_VIEW_JSON: JSON.stringify({ ...open, state: "MERGED" }),
+	});
+	assert.equal(closed.status, 1, "a merged pull request must exit non-zero");
+	assert.match(closed.stderr, /#1771 is MERGED/u);
+	assert.doesNotMatch(closed.calls, /--add-label|--remove-label|label create/u);
+
+	// 3. The delivered event started no run: this is the defect the core copy had.
+	const stranded = runRitual(["1771"], { MERGE_GATE_STUB_RUNS: "none" });
+	assert.equal(
+		stranded.status,
+		1,
+		"an armed label that starts no run must exit non-zero, not report success",
+	);
+	assert.match(
+		stranded.stderr,
+		/no `full-suite\.yml` pull_request run appeared/u,
+	);
+	assert.match(stranded.stderr, /is now ON #1771/u);
+	assert.doesNotMatch(stranded.stdout, /Run \d+/u);
+
+	// 4. Positive control: the same stub, with a run, still arms and reports it -
+	// a stub that always failed would satisfy rows 1-3 without proving anything.
+	const armed = runRitual(["1771"]);
+	assert.equal(armed.status, 0, armed.stderr);
+	assert.match(
+		armed.stdout,
+		/Run 909001 is queued: https:\/\/example\.test\/runs\/909001/u,
+	);
+	assert.match(armed.stdout, /Merge gate \(full suite\)/u);
+
+	// The order the ritual actually CALLS, in both the failing and the arming
+	// case: remove first, add second, label left ON.
+	for (const scenario of [stranded, armed]) {
+		const remove = scenario.calls.indexOf("--remove-label");
+		const add = scenario.calls.indexOf("--add-label");
+		assert.ok(remove >= 0, "a present label must be removed before re-adding");
+		assert.ok(
+			remove < add,
+			"remove must come BEFORE add: an add on a present label starts nothing",
+		);
+	}
+});

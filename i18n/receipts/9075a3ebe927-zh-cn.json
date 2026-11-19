@@ -1,0 +1,99 @@
+{
+  "locale": "zh-CN",
+  "namespace": "ui.agents.config",
+  "checkout": "/Users/damian/lo-audit-1439c @ ae918aa12a (PR #1439 head)",
+  "key_count": 38,
+  "input_sha256": {
+    "src/i18n/catalogues/en/ui.agents.config.json": "5f06618661e942dd8dc61f2f40dc7894f2048855e624fdc58ffe1aa0f5fcb7a6",
+    "src/i18n/catalogues/zh-CN/ui.agents.config.json": "d337fcc18b3dddbd516d7096f4fe771eb987eb4081afcc4314810d5a2d8794ac",
+    "src/i18n/catalogues/en/ui.agents.config.context.json (context via filesystem, not catalogue copy)": "07de5b1c02c8c64c130da1cc532cf03c13f7ef462c9cdc27e34b1a5cf3215459",
+    "~/local-operator/i18n/glossary.md (docs via filesystem)": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "~/local-operator/i18n/style-guides/zh-CN.md (docs via filesystem)": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+  },
+  "read_provenance": {
+    "catalogue_via_read_public_copy": [
+      {
+        "path": "src/i18n/catalogues/en/ui.agents.config.json",
+        "keys": "whole-file read, all 38 keys"
+      },
+      {
+        "path": "src/i18n/catalogues/zh-CN/ui.agents.config.json",
+        "keys": "whole-file read, all 38 keys"
+      }
+    ],
+    "context_and_docs_via_filesystem_not_catalogue_copy": [
+      "src/i18n/catalogues/en/ui.agents.config.context.json",
+      "~/local-operator/i18n/glossary.md",
+      "~/local-operator/i18n/style-guides/zh-CN.md"
+    ],
+    "baseline_via_git": "git -C ~/local-operator-ui show origin/main:src/i18n/catalogues/zh-CN/ui.agents.config.json (and en for watch/about); origin/main=048090578d; merge-base e6320fbd33",
+    "source_code_read": "src/renderer/src/features/agents/config-run/config-composer.tsx L800-835, L870-910 (+ origin/main copy) to confirm kind substitution",
+    "not_read": "~/qa/union-agents-config-*, ~/qa/reaudit-1439, ~/qa/reaudit3-1439 (own output dir only written), ~/qa/fix-1439-*, ~/qa/kind-1439"
+  },
+  "checks": {
+    "key_set_en_equals_zh": true,
+    "placeholders_identical": true,
+    "plural_definitions": "other-only, per zh-CN guide, valid",
+    "ellipsis": "……  used in placeholder.* and state.sending/stopping; no '...'",
+    "glossary": "agent=智能体, team=团队 consistent across kind.*, composer.label, summary.no_changes, disabled_gate",
+    "kind_words_bare": "智能体 / 团队 are bare nouns with no article/case; about -> '关于智能体 name' / '关于团队 name'; suffix -> '(智能体)' / '(团队)'",
+    "pr_vs_main": "new in PR: kind.agent, kind.team, placeholder.about/docked/hero; changed: action.watch 查看->运行步骤 (matches en 'Run steps'); all correct",
+    "fit_cells": "placeholder.docked 24, hero 14, about(placeholder) 12, watch 8, did_not_finish 8; no maxCells hints in sidecar; docked pane constraint (<=en 45 chars) satisfied",
+    "tone": "你 voice, no 您/particles/！; 请 only in hidden_changes (NIT)"
+  },
+  "findings": [
+    {
+      "severity": "MINOR",
+      "key": "ui.agents.config.examples.reads_code",
+      "current": "一个只读代码的审阅者",
+      "suggestion": "一个只会阅读代码的审阅者",
+      "problem": "'只读代码' parses as 'read-only code' (modifier on 代码) rather than 'only reads code'; the example fills the box and is sent to the model.",
+      "origin": "inherited from origin/main"
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.agents.config.about",
+      "current": "关于{kind} {name}",
+      "suggestion": "keep; optionally drop the space only if the product accepts running {kind} into a Latin name",
+      "problem": "Space between CJK and Latin/data run contradicts style guide 'no space between Chinese and Latin'. Reads correctly with both bare nouns: '关于智能体 coder', '关于团队 shipping'; the space is defensible as a data boundary.",
+      "origin": "inherited from origin/main (template unchanged; the two kind words are introduced by this PR and are correct)"
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.agents.config.summary.hidden_changes",
+      "current": "其设置已变更。列表不显示指令，请打开查看写入内容。",
+      "suggestion": "其设置已变更。列表不显示指令，打开即可查看写入内容。",
+      "problem": "Style guide reserves 请 for English 'please'; English has none.",
+      "origin": "inherited from origin/main"
+    },
+    {
+      "severity": "NIT",
+      "key": "(code) config-composer.tsx ' ({kindWord})' suffix",
+      "current": "已创建foo (智能体)",
+      "suggestion": "not a catalogue string; code assembles ASCII ' (' ')' and ': '. zh-CN would use full-width （智能体） with no space. Cosmetic, not blocking.",
+      "problem": "Half-width parentheses/colon assembled in code around a keyed kind word.",
+      "origin": "inherited from origin/main (suffix code at origin/main L878)"
+    }
+  ],
+  "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 1,
+    "NIT": 3
+  },
+  "verdict": "passed",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "9075a3ebe927",
+    "model": "anthropic/claude-sonnet-5-5",
+    "independent_from_translator_session": true,
+    "note": "single cold pass; no catalogue edited"
+  },
+  "instance": "9075a3ebe927-zh-cn",
+  "model": "anthropic/claude-sonnet-5-5",
+  "status": "passed",
+  "sha256": {
+    "zh-CN": "d337fcc18b3dddbd516d7096f4fe771eb987eb4081afcc4314810d5a2d8794ac",
+    "en": "5f06618661e942dd8dc61f2f40dc7894f2048855e624fdc58ffe1aa0f5fcb7a6"
+  }
+}

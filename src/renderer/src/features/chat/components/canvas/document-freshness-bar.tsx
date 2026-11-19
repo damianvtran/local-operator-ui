@@ -1,5 +1,7 @@
 import type { CanvasDocument } from "@features/chat/types/canvas";
 import { Button, Tooltip } from "@shared/components/ui";
+import { formatTime, t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { formatCalendarDateTime } from "@shared/utils/date-utils";
 import { RefreshCw } from "lucide-react";
@@ -80,6 +82,7 @@ export const DocumentFreshnessBar: FC<{
 	document: CanvasDocument;
 	conversationId?: string;
 }> = ({ document, conversationId }) => {
+	useI18nLocale();
 	const {
 		lastModifiedMs,
 		refreshing,
@@ -101,10 +104,46 @@ export const DocumentFreshnessBar: FC<{
 	 * a build with no local-file bridge stays here, which is true: nothing was
 	 * read from a disk).
 	 */
+	/*
+	 * THE STAMP IS TWO RUNS (design round 1, D4c). `Modified` is app copy and the
+	 * date is the locale's own string; glued into one text node inside an RTL
+	 * paragraph, the two swapped and the localized date's words scattered
+	 * (`AM 4:07 کو 2026 اکتوبر، Modified 24`). Each run is isolated at the render
+	 * site below; this string stays whole for the tooltip, which is one sentence.
+	 */
+	const modifiedAt = lastModifiedMs === null ? null : new Date(lastModifiedMs);
+	const modifiedText =
+		modifiedAt === null ? null : formatCalendarDateTime(modifiedAt);
+	/*
+	 * THE CLOCK IS ITS OWN RUN (design round 2, D4c). `formatCalendarDateTime`
+	 * returns ONE Intl string whose date words are Urdu; inside the date's `<bdi>`
+	 * the paragraph is RTL, and the neutral space before the trailing time let
+	 * the two LTR runs swap (`AM 7:53`). The clock is formatted separately and
+	 * rendered as its own LTR run; the date run keeps everything before it,
+	 * separators included. If a locale ever puts the clock elsewhere, the split
+	 * is skipped and the single run is rendered as before.
+	 */
+	const clock =
+		modifiedAt === null
+			? null
+			: formatTime(modifiedAt, { hour: "numeric", minute: "2-digit" });
+	const clockIsTail =
+		modifiedText !== null &&
+		clock !== null &&
+		clock.length > 0 &&
+		modifiedText.endsWith(clock);
+	const dateText =
+		modifiedText === null
+			? null
+			: clockIsTail
+				? modifiedText.slice(0, -clock.length).trimEnd()
+				: modifiedText;
 	const stamp =
-		lastModifiedMs === null
-			? "Not read from disk yet"
-			: `Modified ${formatCalendarDateTime(new Date(lastModifiedMs))}`;
+		modifiedText === null
+			? t("ui.canvas.document_freshness_bar.not_read_from_disk_yet")
+			: t("ui.canvas.document_freshness_bar.modified", {
+					formatcalendardatetime: modifiedText,
+				});
 
 	/*
 	 * THE NAME FOLLOWS THE STATE (UX round 1 U7, round 2 U1). "Re-read from disk"
@@ -115,10 +154,12 @@ export const DocumentFreshnessBar: FC<{
 	 * file's version wins and their unsaved edits go, which is what the name says.
 	 */
 	const controlLabel = diskChanged
-		? "Load the file's version (your unsaved edits are discarded)"
+		? t(
+				"ui.canvas.document_freshness_bar.load_the_file_s_version_your_unsaved_edits_are_discarded",
+			)
 		: dirty
-			? "Check the file (your edits are kept)"
-			: "Re-read from disk";
+			? t("ui.canvas.document_freshness_bar.check_the_file_your_edits_are_kept")
+			: t("ui.canvas.document_freshness_bar.re_read_from_disk");
 
 	return (
 		<div
@@ -194,7 +235,19 @@ export const DocumentFreshnessBar: FC<{
 						)}
 						data-tour-tag="canvas-document-modified"
 					>
-						{stamp}
+						{dateText === null ? (
+							stamp
+						) : (
+							<>
+								<bdi>{t("ui.canvas.files.modified")}</bdi> <bdi>{dateText}</bdi>
+								{clockIsTail && (
+									<>
+										{" "}
+										<bdi dir="ltr">{clock}</bdi>
+									</>
+								)}
+							</>
+						)}
 					</span>
 					{/*
 					 * THE ANNOUNCEMENT IS A SEPARATE, ALWAYS-MOUNTED REGION (UX round 1,

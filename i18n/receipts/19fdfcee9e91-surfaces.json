@@ -1,0 +1,181 @@
+{
+  "schema": 1,
+  "audit_kind": "independent-namespace-re-audit-after-main-completion-wave",
+  "date": "2026-10-24",
+  "locale": "es",
+  "batch": "surfaces",
+  "pr": "#1389",
+  "branch": "feat/i18n-surfaces-batch",
+  "round": 3,
+  "instance": "19fdfcee9e91-surfaces",
+  "status": "passed",
+  "audited_head": "f0e395ef280ad131b3d960e87058aba0bd63cf30",
+  "previous_audited_head": "7a1fdf200ce785f959b2e140b4a361ebbf8b4b3c",
+  "translation_commit": "03b57b80b2b4dafa5708de6e631143a627b3da49",
+  "base": "d96d68795b1f261b3aac8c65d7ca821f6641c5fa",
+  "ledger_rows_repaired": [
+    "es/ui.chat.canonical",
+    "es/ui.chat.composer",
+    "es/ui.common.viewer"
+  ],
+  "prior_receipts_considered": [
+    {
+      "receipt": "i18n/receipts/es-surfaces-batch-audit-766edc0f038b.json",
+      "relationship": "round-1 es surfaces audit; all three namespaces' en/context/es hashes equal the bytes at this head, so this pass confirms it rather than revising its verdict"
+    },
+    {
+      "receipt": "i18n/receipts/d3918ef5d0bb.json",
+      "relationship": "stale at this head: the es/ui.chat.canonical ledger row was assembled from it, and ledger-check reports it does not name the on-disk bytes"
+    },
+    {
+      "receipt": "i18n/receipts/c1bfed9bf84b.json",
+      "relationship": "stale at this head: second auditor on the same canonical row"
+    },
+    {
+      "receipt": "i18n/receipts/061da45dd19b-es.json",
+      "relationship": "stale at this head: the es/ui.chat.composer row's auditor receipt; its source/target hashes predate the shipped bytes"
+    }
+  ],
+  "auditor": {
+    "agent": "translation-auditor",
+    "session": "19fdfcee9e91",
+    "model": "radient/auto",
+    "actual_model_source": "harness session model (system prompt: Model: radient/auto); no fallback used",
+    "fallback": null,
+    "independent_from_translators": true,
+    "independence_basis": "Separate session from the surfaces translator session 352ac9921511 named in the batch translator receipt; this run read the catalogue bytes at f0e395ef28 and edited no translated value. The round-1 es surfaces receipt (766edc0f038b) was authored by a different auditor session.",
+    "instance": "19fdfcee9e91-surfaces"
+  },
+  "references": {
+    "glossary": {
+      "path": "local_operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "local_operator/i18n/style-guides/es.md",
+      "sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+    },
+    "docs": {
+      "path": "docs/I18N.md",
+      "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+    }
+  },
+  "why_this_receipt": "ledger-check at f0e395ef28 fails on exactly these three es rows (11 findings): each row's source_sha256/target_sha256 is stale and each row's auditor receipt does not name the on-disk bytes. The namespace content is unchanged since the round-1 es surfaces audit (all nine en/context/es hashes match), so this receipt re-binds the evidence to the current bytes after re-reading them; it does not claim a new translation changed.",
+  "scope": "Every value in the three es namespaces at f0e395ef28 (99 keys: ui.chat.canonical 47, ui.chat.composer 47, ui.common.viewer 5), read against the English source and the en context sidecars. This is the full namespace, not a delta: the rows are being re-bound, so a delta-only pass would leave unstated keys backing a fresh hash. No rendered-frame pass and no native-speaker sign-off are claimed.",
+  "method": [
+    "Read all 99 es values side by side with en and en.context.json, judging accuracy, idiom, register and glossary consistency per the es style guide (tú address, infinitive action labels, neutral Spanish).",
+    "Parsed every message with @formatjs/icu-messageformat-parser and compared argument, tag, select, plural-category and number-skeleton structure with English: 98 messages are structurally identical; ui.chat.composer.secret_confirm_chars adds the required es many arm (one/many/other) and no other difference exists.",
+    "Rendered the plural through IntlMessageFormat locale es at 1, 2, 1000, 1234, 1000000, 1500000 and 2000000: 1 carácter / 2 caracteres / 1.000.000 de caracteres (many) / 1.500.000 caracteres (other), and viewer.image_progress renders Imagen 1 de 1234.",
+    "Checked utf-8 hygiene across all 99 values: NFC, no manual bidi controls, no NBSP/NNBSP/ZWSP/BOM/SHY, no leading/trailing whitespace, no duplicate keys, no value identical to its English source.",
+    "Scanned the three namespaces for glossary/register drift: tú throughout (no usted/vosotros), infinitive action labels, endpoint kept English per glossary §2, Canvas kept untranslated, proveedor / [redacted] / panel de consultas / consulta al margen used consistently, Intro and Mayús+Tab used consistently inside the chat surfaces.",
+    "Compared expansion ratios against the sidecar maxCells advisory and the English source; strings over 30% growth without a budget are recorded under overflow_observations, not as defects."
+  ],
+  "namespaces": {
+    "ui.chat.canonical": {
+      "keys": 47,
+      "sha256": {
+        "en": "dfa9cde6984a451b75a22530303197ed8a3c8d9148685231d017299f16cfe0dd",
+        "es": "bcdca68fbcff517dbf96d75173423c08aecf83c06dc03a4e15be74edcfa8cf6e"
+      },
+      "context_sha256": "953ddc573ded81d8f78aec78a81cb89dbdf6fdc6f6adf2b0945b8b4bff71077b",
+      "status": "passed",
+      "verdict": "clean-with-findings"
+    },
+    "ui.chat.composer": {
+      "keys": 47,
+      "sha256": {
+        "en": "9e591f688e8696c77967bccb7961ee15405481f539e633658f8db4ae58f5b800",
+        "es": "b75416b87e787d10ba75eb3fe707bf68097216e85f4f48d44cca176ca5b3a30f"
+      },
+      "context_sha256": "3a45a24f1ce79edec4d13b2c0f11272c3dd3974812f05d8009f04ab787da8e63",
+      "status": "passed",
+      "verdict": "clean"
+    },
+    "ui.common.viewer": {
+      "keys": 5,
+      "sha256": {
+        "en": "9db8efc731cb81ac781c732a3021587434acd26bd03d41ec41156c5672edabfe",
+        "es": "8bbe94a6d0f524249e98748ee4a108b8288615e77775f43f399c0975ecc0c4f7"
+      },
+      "context_sha256": "77232304d3ddc3dbe20151daddc2ee1a3c28271cdcfd7ebc54a302fe6f68f40e",
+      "status": "passed",
+      "verdict": "clean"
+    }
+  },
+  "findings": [
+    {
+      "id": "ES-SURF-R3-1",
+      "severity": "nit",
+      "namespace": "ui.chat.canonical",
+      "key": "ui.chat.canonical.sound.stop.confirm_label",
+      "current": "Confirmación de solicitud de detención",
+      "proposed": "Confirmación de detención",
+      "reason": "20→38 characters (+90%) and five words against the sidecar's three-to-four-word advisory; it is sr-only so nothing overflows visually, but the shorter phrase still names the confirmation group rather than a single action."
+    },
+    {
+      "id": "ES-SURF-R3-2",
+      "severity": "nit",
+      "namespace": "ui.chat.canonical",
+      "key": "ui.chat.canonical.supplement.file_actions.open_in_canvas",
+      "current": "Abrir en Canvas",
+      "proposed": "Abrir en canvas",
+      "reason": "The English source is 'Open in canvas' and the same es catalogue writes the pane lowercase mid-sentence ('Abrir canvas', 'Cerrar canvas', 'en el canvas'); the capital C is the drift."
+    }
+  ],
+  "overflow_observations": [
+    {
+      "key": "ui.chat.canonical.sound.stop.confirm_label",
+      "en_chars": 20,
+      "es_chars": 38,
+      "growth": "+90%",
+      "disposition": "finding ES-SURF-R3-1"
+    },
+    {
+      "key": "ui.chat.canonical.supplement.file_actions.open_in_default_app",
+      "en_chars": 19,
+      "es_chars": 30,
+      "growth": "+58%",
+      "disposition": "context menu sizes to its content and the sidecar sets no budget; 'Abrir en la app predeterminada' is the natural es form. No defect claimed; rendered check optional."
+    },
+    {
+      "key": "ui.common.viewer.reset_view",
+      "en_chars": 10,
+      "es_chars": 17,
+      "growth": "+70%",
+      "disposition": "tooltip/accessible name on an icon control; 'Restablecer vista' is standard es and the sibling controls are single verbs ('Acercar', 'Alejar'). No defect claimed; rendered check optional."
+    },
+    {
+      "key": "ui.chat.composer.secret_confirm_put",
+      "en_chars": 19,
+      "es_chars": 25,
+      "growth": "+32%",
+      "disposition": "one character over the 24-cell advisory ('Poner en el campo secreto'); maxCells is advisory, not measured fit. No defect claimed."
+    },
+    {
+      "key": "ui.chat.composer.secret_fill_locked",
+      "en_chars": 101,
+      "es_chars": 121,
+      "growth": "+20%",
+      "disposition": "one character over the 120-cell advisory; the sentence's length is the point of the message. No defect claimed."
+    }
+  ],
+  "carried_observations": [
+    "Round-1 SU-1 (Enter vs Intro for the same physical key) still stands across the batch: the three audited chat namespaces use 'Intro' consistently, while ui.miniView and ui.teamBridge use 'Enter'. Those namespaces are outside this receipt's scope; nothing in this trio needs changing.",
+    "The es/ui.chat.composer ledger row keeps an Oct-18 audit under 'superseded'; this receipt covers the current bytes only and does not revive that entry."
+  ],
+  "totals": {
+    "keys_read": 99,
+    "namespaces": 3,
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 2,
+    "identical_values": 0
+  },
+  "verdict": "clean-with-findings",
+  "limitations": [
+    "Source-length and maxCells inspections are not measured rendering; no rendered-frame pass was run for these three namespaces.",
+    "No native-speaker sign-off is claimed.",
+    "The three namespaces are hash-identical to the round-1 es surfaces audit (766edc0f038b), so this pass confirms that semantic read rather than re-adjudicating a changed translation; the receipt exists to re-bind the ledger to the current bytes."
+  ]
+}

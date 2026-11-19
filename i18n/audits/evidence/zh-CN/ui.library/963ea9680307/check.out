@@ -1,0 +1,81 @@
+=== A. worktree identity ===
+HEAD = f04035bc3cb6a03644f8776a799e3daad93c7e58
+[PASS] HEAD equals the audited head — f04035bc3cb6a03644f8776a799e3daad93c7e58
+branch = feat/i18n-s14-library-taxonomy
+[PASS] worktree clean (no writes by this auditor) — porcelain empty
+
+=== B. hash binding vs the manager manifest (mismatch = BLOCKER) ===
+[PASS] en/ui.library sha256 — file 065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71 == manifest 065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71
+[PASS] en/ui.library.context sha256 — file f799fe911107aa1f7b83b0c026ee277d5c21ee5eba297e3ae13c2da51135cc8e == manifest f799fe911107aa1f7b83b0c026ee277d5c21ee5eba297e3ae13c2da51135cc8e
+[PASS] zh-CN/ui.library sha256 — file 180a39dfac22bc99603310ce1636212dd1b915551cfbfb782c138911b7c35b89 == manifest 180a39dfac22bc99603310ce1636212dd1b915551cfbfb782c138911b7c35b89
+
+=== C. delta vs the round-1 audited head: exactly ONE changed line ===
+removed: ['-\t"ui.library.tag_category.type": "类型"']
+added:   ['+\t"ui.library.tag_category.type": "种类"']
+[PASS] one removed line
+[PASS] one added line
+[PASS] both lines are the revised key
+
+=== D. round-1 audited bytes are the bytes the round-1 receipts name ===
+git show 8a9ce1f808c2:src/i18n/catalogues/zh-CN/ui.library.json sha256 = 686dfeeaa8ee25abd2815181ea7fe11ff7cd708cd0ea718632f870e5b1d5b857
+[PASS] round-1 head file hashes to 686dfeeaa8ee… (zh-CN round-1 receipt target_sha256)
+=> the other 19 delta values are byte-identical to the audited bytes; their round-1 verdicts carry.
+
+=== E. key sets: English vs zh-CN, and legacy vs base 0e12072d2b3 ===
+[PASS] key count parity — en=179 zh=179
+[PASS] key order identical
+[PASS] no extra keys in zh — set()
+[PASS] no missing keys in zh — set()
+[PASS] every base key still present — []
+[PASS] no base key's value changed — {}
+added vs base: 20 keys -> ['ui.library.preview.unsupported_generic', 'ui.library.kind.audio', 'ui.library.kind.code', 'ui.library.kind.docx', 'ui.library.kind.html', 'ui.library.kind.image', 'ui.library.kind.markdown', 'ui.library.kind.other', 'ui.library.kind.pdf', 'ui.library.kind.pptx', 'ui.library.kind.spreadsheet', 'ui.library.kind.text', 'ui.library.kind.video', 'ui.library.tag_category.custom', 'ui.library.tag_category.format', 'ui.library.tag_category.project', 'ui.library.tag_category.source', 'ui.library.tag_category.status', 'ui.library.tag_category.topic', 'ui.library.tag_category.type']
+
+=== F. mechanical: placeholders / plural / markup on the 20 delta keys ===
+checked 20 keys: no key in this delta carries a placeholder, plural/select or rich tag
+  (regex found placeholders only where en had them: [])
+[PASS] revised value carries no markup/backticks/placeholder
+
+=== G. invisible / bidi characters across the whole zh-CN file ===
+[PASS] no invisible/bidi/control characters — []
+
+=== H. width against the ~12-cell rail header budget ===
+  ui.library.tag_category.custom       '自定义'      cells=6 chars=3
+  ui.library.tag_category.format       '格式'       cells=4 chars=2
+  ui.library.tag_category.project      '项目'       cells=4 chars=2
+  ui.library.tag_category.source       '来源'       cells=4 chars=2
+  ui.library.tag_category.status       '状态'       cells=4 chars=2
+  ui.library.tag_category.topic        '主题'       cells=4 chars=2
+  ui.library.tag_category.type         '种类'       cells=4 chars=2
+  ui.library.sort.kind                 '类型'       cells=4 chars=2
+[PASS] revised value within budget — 4 cells
+
+=== I. same-rail collision matrix (tag heading vs sort/filter control values) ===
+  tag_category.custom   自定义    same string elsewhere in namespace: none
+  tag_category.format   格式     same string elsewhere in namespace: none
+  tag_category.project  项目     same string elsewhere in namespace: none
+  tag_category.source   来源     same string elsewhere in namespace: ['ui.library.filter.source=来源']
+  tag_category.status   状态     same string elsewhere in namespace: ['ui.library.filter.status=状态']
+  tag_category.topic    主题     same string elsewhere in namespace: none
+  tag_category.type     种类     same string elsewhere in namespace: none
+
+=== J. corpus scope: how zh-CN renders English Kind and Type ===
+  occurrences of '种类' across all zh-CN catalogues:
+    ui.library.json:ui.library.tag_category.type = '种类'
+  类型 <- EN 'Kind'   ui.agentMessages.settings.json:ui.agentMessages.settings.allowlist.kind
+  类型 <- EN 'Type'   ui.agents.teams.json:ui.agents.teams.col.type
+  类型 <- EN 'Kind'   ui.canvas.json:ui.canvas.files.kind
+  类型 <- EN 'Type'   ui.canvas.json:ui.canvas.variable_form_dialog.type
+  类型 <- EN 'Kind'   ui.chat.pickers.json:ui.chat.pickers.info_model.kind
+  类型 <- EN 'Kind'   ui.library.json:ui.library.sort.kind
+  类型 <- EN 'Kind'   ui.notifications.json:ui.notifications.filter.kind
+
+=== K. siblings in the same rail (visual parallelism) ===
+  custom                             '自定义'    cells=6
+  format                             '格式'     cells=4
+  project                            '项目'     cells=4
+  source                             '来源'     cells=4
+  status                             '状态'     cells=4
+  topic                              '主题'     cells=4
+  type                               '种类'     cells=4
+
+RESULT: all checks passed

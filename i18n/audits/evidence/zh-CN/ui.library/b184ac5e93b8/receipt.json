@@ -1,0 +1,515 @@
+{
+  "locale": "zh-CN",
+  "mode": "Fresh independent 20-key ui.library delta audit. Allocation: fix (<2h), bounded read-only audit; no translation service. English/context read before translated values; policy read first.",
+  "scope": "PR damianvtran/local-operator-ui #1851 @ 8a9ce1f808c266ebe9a0e924094344cea60c2c23; 20 new ui.library messages vs 0e12072d2b3; read-only worktree ~/local-operator-ui/.worktrees/i18n-s8. Legacy 159 values not recertified.",
+  "head_sha": "8a9ce1f808c266ebe9a0e924094344cea60c2c23",
+  "audit_date": "2026-11-10",
+  "key_count": 179,
+  "fully_audited_key_count": 20,
+  "consistency_only_key_count": 159,
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "Delegation identifies zh-CN translator session 86ce45a242a4; independent auditor did not translate or participate in translation."
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "b184ac5e93b8",
+    "session": "b184ac5e93b8",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "Served system session header for b184ac5e93b8: Model openai/gpt-6.1-sol. No fallback or model switch occurred.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "policy_sources": {
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/zh-CN.md",
+      "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+    },
+    "glossary": {
+      "path": "~/local-operator-ui/.worktrees/_s14-audits/8a9ce1f808c266ebe9a0e924094344cea60c2c23/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "note": "Manager-supplied byte-copy, recomputed SHA matches supplied full 0eb34437... hash. Original core glossary was not read under restricted allowlist."
+    },
+    "expected_hashes": {
+      "path": "~/local-operator-ui/.worktrees/_s14-audits/8a9ce1f808c266ebe9a0e924094344cea60c2c23/expected-hashes.json"
+    }
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "verdict": "PASSED, terminal for zh-CN translation: 0 BLOCKER/MAJOR; 1 non-gating MINOR in English metadata (M1). All 20 translated values are accurate and consistent with their Library vocabulary. No translation edits requested.",
+  "findings": [
+    {
+      "id": "M1",
+      "severity": "minor",
+      "key": "ui.library.kind.other (English context.note, src/i18n/catalogues/en/ui.library.context.json:1077)",
+      "current_text": "Rendered inside the sentence ui.library.preview.unsupported ONLY via the generic fallback; see manifest.",
+      "english_source": "Other",
+      "problem": "The note incorrectly suggests this badge value is rendered inside the unsupported sentence. For asset.kind === other the actual branch selects ui.library.preview.unsupported_generic with no kind argument, so Other/其他 is not interpolated into either sentence. This is misleading English metadata, not a zh-CN translation defect.",
+      "recommendation": "Replace the quoted sentence with: \"This label is not interpolated into the unsupported-preview sentence. When the kind is other, use ui.library.preview.unsupported_generic, which has no kind placeholder.\"",
+      "evidence": [
+        "Existing English catalogue ui.library.preview.unsupported = \"A {kind} file has no in-app preview here.\"; new ui.library.preview.unsupported_generic = \"This file has no in-app preview here.\"",
+        "Existing zh-CN catalogue ui.library.preview.unsupported = \"此处的{kind}文件没有应用内预览。\"; new generic = \"该文件在此处没有应用内预览。\"",
+        "src/renderer/src/features/library/components/library-viewers.tsx:107-111 explicitly branches other -> t(unsupported_generic); only the other branch passes kind: libraryKindLabel(asset.kind)."
+      ],
+      "gates": false
+    }
+  ],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+  },
+  "namespaces": {
+    "ui.library": {
+      "status": "passed",
+      "result": "clean-with-findings",
+      "source_sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71",
+      "target_sha256": "686dfeeaa8ee25abd2815181ea7fe11ff7cd708cd0ea718632f870e5b1d5b857",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.library.json",
+          "sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.library.context.json",
+          "sha256": "2fe63e830b49079dac67c5c4513358d0a8559a94fbf27ac8d437212b13aa2e72"
+        },
+        "zh-CN": {
+          "path": "src/i18n/catalogues/zh-CN/ui.library.json",
+          "sha256": "686dfeeaa8ee25abd2815181ea7fe11ff7cd708cd0ea718632f870e5b1d5b857"
+        }
+      },
+      "fully_audited_keys": [
+        "ui.library.kind.audio",
+        "ui.library.kind.code",
+        "ui.library.kind.docx",
+        "ui.library.kind.html",
+        "ui.library.kind.image",
+        "ui.library.kind.markdown",
+        "ui.library.kind.other",
+        "ui.library.kind.pdf",
+        "ui.library.kind.pptx",
+        "ui.library.kind.spreadsheet",
+        "ui.library.kind.text",
+        "ui.library.kind.video",
+        "ui.library.preview.unsupported_generic",
+        "ui.library.tag_category.custom",
+        "ui.library.tag_category.format",
+        "ui.library.tag_category.project",
+        "ui.library.tag_category.source",
+        "ui.library.tag_category.status",
+        "ui.library.tag_category.topic",
+        "ui.library.tag_category.type"
+      ],
+      "findings": [
+        {
+          "id": "M1",
+          "severity": "minor",
+          "key": "ui.library.kind.other (English context.note, src/i18n/catalogues/en/ui.library.context.json:1077)",
+          "current_text": "Rendered inside the sentence ui.library.preview.unsupported ONLY via the generic fallback; see manifest.",
+          "english_source": "Other",
+          "problem": "The note incorrectly suggests this badge value is rendered inside the unsupported sentence. For asset.kind === other the actual branch selects ui.library.preview.unsupported_generic with no kind argument, so Other/其他 is not interpolated into either sentence. This is misleading English metadata, not a zh-CN translation defect.",
+          "recommendation": "Replace the quoted sentence with: \"This label is not interpolated into the unsupported-preview sentence. When the kind is other, use ui.library.preview.unsupported_generic, which has no kind placeholder.\"",
+          "evidence": [
+            "Existing English catalogue ui.library.preview.unsupported = \"A {kind} file has no in-app preview here.\"; new ui.library.preview.unsupported_generic = \"This file has no in-app preview here.\"",
+            "Existing zh-CN catalogue ui.library.preview.unsupported = \"此处的{kind}文件没有应用内预览。\"; new generic = \"该文件在此处没有应用内预览。\"",
+            "src/renderer/src/features/library/components/library-viewers.tsx:107-111 explicitly branches other -> t(unsupported_generic); only the other branch passes kind: libraryKindLabel(asset.kind)."
+          ],
+          "gates": false
+        }
+      ]
+    }
+  },
+  "per_key_checks": [
+    {
+      "key": "ui.library.kind.audio",
+      "source": "Audio",
+      "current_text": "音频",
+      "findings": [],
+      "assessment": "Matches category.sounds=音频 and Canvas files.audio=音频; ordinary localized noun, not English Audio.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "length": {
+        "characters": 2,
+        "estimated_cells": 4
+      },
+      "invisible_characters": []
+    },
+    {
+      "key": "ui.library.kind.code",
+      "source": "Code",
+      "current_text": "代码",
+      "findings": [],
+      "assessment": "Matches category.code=代码 and Canvas files.code=代码; correct source-code noun, not English Code.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "length": {
+        "characters": 2,
+        "estimated_cells": 4
+      },
+      "invisible_characters": []
+    },
+    {
+      "key": "ui.library.kind.docx",
+      "source": "DOCX",
+      "current_text": "DOCX",
+      "findings": [],
+      "assessment": "DOCX identifies the format, not the broader 文档 group. No existing uppercase DOCX value was found; retaining the format acronym follows source and style-guide uppercase acronyms (line 11), not an invented precedent.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "length": {
+        "characters": 4,
+        "estimated_cells": 4
+      },
+      "invisible_characters": []
+    },
+    {
+      "key": "ui.library.kind.html",
+      "source": "HTML",
+      "current_text": "HTML",
+      "findings": [],
+      "assessment": "Retained HTML matches ui.canvas.create_file_dialog.html_html=HTML (.html) and html_preview.html_preview=HTML预览：{title}.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "length": {
+        "characters": 4,
+        "estimated_cells": 4
+      },
+      "invisible_characters": []
+    },
+    {
+      "key": "ui.library.kind.image",
+      "source": "Image",
+      "current_text": "图片",
+      "findings": [],
+      "assessment": "Matches category.images=图片 and Canvas files.images=图片. Chinese has no singular/plural morphology; the one-file badge is natural.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "length": {
+        "characters": 2,
+        "estimated_cells": 4
+      },
+      "invisible_characters": []
+    },
+    {
+      "key": "ui.library.kind.markdown",
+      "source": "Markdown",
+      "current_text": "Markdown",
+      "findings": [],
+      "assessment": "Retained proper name Markdown matches ui.canvas.create_file_dialog.markdown_md=Markdown (.md) and transcript_copy.menu.copy_markdown=复制为Markdown.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "length": {
+        "characters": 8,
+        "estimated_cells": 8
+      },
+      "invisible_characters": []
+    },
+    {
+      "key": "ui.library.kind.other",
+      "source": "Other",
+      "current_text": "其他",
+      "findings": [
+        "M1"
+      ],
+      "assessment": "Matches category.other=其他 and Canvas files.other=其他; catches unclassified kind. Label itself is correct; M1 concerns English metadata only.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "length": {
+        "characters": 2,
+        "estimated_cells": 4
+      },
+      "invisible_characters": []
+    },
+    {
+      "key": "ui.library.kind.pdf",
+      "source": "PDF",
+      "current_text": "PDF",
+      "findings": [],
+      "assessment": "Retained PDF matches ui.canvas.pdf_preview.pdf=PDF：{title} and this_pdf_could_not_be_opened=无法打开此PDF.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "length": {
+        "characters": 3,
+        "estimated_cells": 3
+      },
+      "invisible_characters": []
+    },
+    {
+      "key": "ui.library.kind.pptx",
+      "source": "PPTX",
+      "current_text": "PPTX",
+      "findings": [],
+      "assessment": "PPTX identifies the PowerPoint file format rather than general 演示文稿. No existing uppercase PPTX value was found; retaining the format acronym follows source and style-guide uppercase-acronym convention, compatible with existing Word/CSV Latin names.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "length": {
+        "characters": 4,
+        "estimated_cells": 4
+      },
+      "invisible_characters": []
+    },
+    {
+      "key": "ui.library.kind.spreadsheet",
+      "source": "Spreadsheet",
+      "current_text": "表格",
+      "findings": [],
+      "assessment": "Matches category.spreadsheets=表格. Canvas files.spreadsheets/file_rows.spreadsheets use 电子表格: an inherited broad-versus-specific abbreviation difference. 表格 is justified here by the established Library family and narrow badge, not a new contradictory taxonomy.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "length": {
+        "characters": 2,
+        "estimated_cells": 4
+      },
+      "invisible_characters": []
+    },
+    {
+      "key": "ui.library.kind.text",
+      "source": "Text",
+      "current_text": "文本",
+      "findings": [],
+      "assessment": "Matches preview.pptx_text=文本; identifies text content/file kind rather than document group 文档.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "length": {
+        "characters": 2,
+        "estimated_cells": 4
+      },
+      "invisible_characters": []
+    },
+    {
+      "key": "ui.library.kind.video",
+      "source": "Video",
+      "current_text": "视频",
+      "findings": [],
+      "assessment": "Matches category.video=视频 and Canvas files.videos=视频. Correct localized noun, not English Video.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "length": {
+        "characters": 2,
+        "estimated_cells": 4
+      },
+      "invisible_characters": []
+    },
+    {
+      "key": "ui.library.preview.unsupported_generic",
+      "source": "This file has no in-app preview here.",
+      "current_text": "该文件在此处没有应用内预览。",
+      "findings": [],
+      "assessment": "该文件在此处没有应用内预览。 is a grammatical complete sentence, preserves here/no-in-app-preview, contains no kind or placeholder, and parallels existing 此处的{kind}文件没有应用内预览。 Full-width final 。 follows style-guide line 14/64; the changed demonstrative is idiomatic, not a register change.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "length": {
+        "characters": 14,
+        "estimated_cells": 28
+      },
+      "invisible_characters": []
+    },
+    {
+      "key": "ui.library.tag_category.custom",
+      "source": "Custom",
+      "current_text": "自定义",
+      "findings": [],
+      "assessment": "自定义 is standard for a freely created custom taxonomy group, not an action; terse and neutral. Empty category fallback confirmed in library-model.ts:314.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "length": {
+        "characters": 3,
+        "estimated_cells": 6
+      },
+      "invisible_characters": []
+    },
+    {
+      "key": "ui.library.tag_category.format",
+      "source": "Format",
+      "current_text": "格式",
+      "findings": [],
+      "assessment": "格式 is ordinary Chinese for file format, distinct from 类型 and consistent with Canvas more_formatting=更多格式; correct tag-group noun.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "length": {
+        "characters": 2,
+        "estimated_cells": 4
+      },
+      "invisible_characters": []
+    },
+    {
+      "key": "ui.library.tag_category.project",
+      "source": "Project",
+      "current_text": "项目",
+      "findings": [],
+      "assessment": "Matches glossary project -> 项目 and ui.projects.project_list.project=项目; taxonomy role does not require a different term from the Projects page.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "length": {
+        "characters": 2,
+        "estimated_cells": 4
+      },
+      "invisible_characters": []
+    },
+    {
+      "key": "ui.library.tag_category.source",
+      "source": "Source",
+      "current_text": "来源",
+      "findings": [],
+      "assessment": "Matches filter.source=来源; reuse across distinct source-filter/group roles is appropriate, no register clash.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "length": {
+        "characters": 2,
+        "estimated_cells": 4
+      },
+      "invisible_characters": []
+    },
+    {
+      "key": "ui.library.tag_category.status",
+      "source": "Status",
+      "current_text": "状态",
+      "findings": [],
+      "assessment": "Matches filter.status=状态; lifecycle-tag heading is grammatical and neutral.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "length": {
+        "characters": 2,
+        "estimated_cells": 4
+      },
+      "invisible_characters": []
+    },
+    {
+      "key": "ui.library.tag_category.topic",
+      "source": "Topic",
+      "current_text": "主题",
+      "findings": [],
+      "assessment": "主题 is standard subject-matter/topic taxonomy wording; not the action to change an appearance theme. Context makes the role clear; no new contradiction found.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "length": {
+        "characters": 2,
+        "estimated_cells": 4
+      },
+      "invisible_characters": []
+    },
+    {
+      "key": "ui.library.tag_category.type",
+      "source": "Type",
+      "current_text": "类型",
+      "findings": [],
+      "assessment": "类型 matches sort.kind=类型 and Canvas files.kind=类型; Chinese naturally uses the same noun for these separately placed semantic roles. No forced alternate wording merely because the English note distinguishes the roles.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "length": {
+        "characters": 2,
+        "estimated_cells": 4
+      },
+      "invisible_characters": []
+    }
+  ],
+  "english_metadata_check": {
+    "verdict": "clean-with-findings",
+    "findings": [
+      "M1"
+    ],
+    "detail": "All 20 role/tone/length entries read; badge, preview and tag heading roles verified in source. M1 is inaccurate interpolation guidance for Other. Type/Kind distinction is conceptual, not a requirement to manufacture different Chinese synonyms."
+  },
+  "mechanical": {
+    "validator_commands_run": [
+      "node \"$LOCAL_OPERATOR_SCRATCHPAD/zh-CN-sol-b184ac5e93b8-check.mjs\" -> exit 0; invokes repository duplicateKeys and namespaceGap validators scoped to ui.library plus production ICU parser; stdout retained in audit.log"
+    ],
+    "json_valid": true,
+    "key_sets_identical_to_english": true,
+    "keys_added_or_removed_vs_origin_main": "Against specified base 0e12072d2b3: exactly 20 additions, no removed/changed legacy values. Trailing comma line edit only.",
+    "placeholder_parity": true,
+    "icu_plural_select_needed": false,
+    "hash_binding": "All 9/9 expected-hashes.json catalogue/context entries recomputed here via shasum -a 256 and matched, plus binding glossary SHA matched."
+  },
+  "unverified": [
+    "No rendered frame, browser, Electron/React, server, build, installation or test tree run; fit is measured character/cell sanity, not actual font geometry.",
+    "No ledger write, repository edits, commit, PR comment or tracked retention; manager must retain the delivered artifacts under canonical root and record ledger.",
+    "159 non-delta legacy values only checked for JSON validity, parity, unchanged values and targeted terminology; not fully semantically/ICU recertified."
+  ],
+  "receipt_contract_review": "Top-level and namespace field sets follow the requested fr-ds-e3c562b03258.json model; one namespace only. Both JSON deliverables re-parsed in Python after writing. No schema validator or ledger write run.",
+  "audit_notes_not_execution_log": true,
+  "execution_log": "zh-CN-sol-b184ac5e93b8.audit.log"
+}

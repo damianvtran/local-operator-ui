@@ -1,0 +1,195 @@
+{
+ "audit_id": "waveb-delta-20261027",
+ "kind": "independent-delta-audit",
+ "date": "2026-10-27",
+ "audit_date": "2026-10-27",
+ "locale": "ur",
+ "namespace": "ui.common.layout",
+ "batch": "wave-b-delta",
+ "head": "a5356ce91c4f37bf4c4d1c4518070e3a9b2505cb",
+ "base": "0559f7f7d830752b0c5d118c2b1049f125b43bbb",
+ "binding": "Binds to the sha256 of the catalogue bytes at a5356ce91c, cross-checked against `git show a5356ce91c:<path> | shasum -a 256` and the export on disk. A later commit that changes any value voids this record.",
+ "instance": "c89cee263ac2-waveb-delta-ur",
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "c89cee263ac2",
+  "team": "lopdev",
+  "model": "radient/auto",
+  "route": "radient/auto",
+  "fallback_used": false,
+  "fallback_note": "No model-switch or fallback notice appeared in this session.",
+  "actual_model_source": "This session's runtime state (.local-operator/sessions/c89cee263ac2/tail-anchor.v1.json -> selection_payloads[0].details.selector = 'radient/auto') and the run's system context, which name the same route. The upstream model behind the router alias is not exposed, so none is invented.",
+  "independent_from_translator_session": true,
+  "independence_basis": "This session translated nothing and edited no catalogue, context file, ledger or generated file; it read the exported tree and wrote only evidence. The Urdu amendments were authored by another session (commit a5356ce91c); this run formed its per-value verdicts before reading that commit message."
+ },
+ "references": {
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/ur.md",
+   "sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+  },
+  "languages_manifest": {
+   "path": "i18n/languages.json",
+   "sha256": "7fd056b916fc3d56ddf36991a09b29864ea0b0f825d938aead1ed165926f8d63"
+  },
+  "contract": {
+   "path": "docs/I18N.md",
+   "sha256": "6fc7bea71643c0dcaeaed697ecd792cfdfeb11b7816b5f8d160011e7c7df2abe"
+  }
+ },
+ "key_count": 2,
+ "keys": [
+  "ui.common.layout.toasts.dismiss",
+  "ui.common.layout.toasts.notifications"
+ ],
+ "changed_values_in_namespace": {
+  "ur": {
+   "ui.common.layout.toasts.dismiss": {
+    "base": "ٹوسٹ بند کریں",
+    "head": "اطلاع بند کریں"
+   }
+  },
+  "en": {}
+ },
+ "scope": "ui.common.layout for ur at a5356ce91c: all 2 wave-B values read against the English source, the en context sidecar entry and the consuming renderer code; the values this commit changed audited in full, the unchanged ones proved byte-identical to the audited base. Mechanical: repo gates, key/ICU/argument/plural parity with the real parser and formatter, backtick and ICU-quote balance. RTL: GNU FriBidi over the namespace's wave-B values. Catalogue-only: no browser, no rendered frame, no native-speaker sign-off.",
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.common.layout.json",
+   "sha256": "1d9f353eb3aa467d22e102aa9459ba7070637c6b2a2ddb17e31b075963df9231"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.common.layout.context.json",
+   "sha256": "cb15214ec6712e3a15bf8cb30918b3720348a7546d773788fe06a69b3575b5f6"
+  },
+  "ur": {
+   "path": "src/i18n/catalogues/ur/ui.common.layout.json",
+   "sha256": "145bc93d2724ea34181b9c14f2c5847c28896a5d131c16b487ecfbc10c5587e1"
+  }
+ },
+ "harness": [
+  {
+   "tool": "icu-delta.mjs - ICU AST/argument/plural-arm parity and real intl-messageformat rendering over all 62 wave-B keys",
+   "path": "wave-b-delta-ur-deliver/evidence-tools/icu-delta.mjs",
+   "sha256": "33336a3650432a6257c76510bc2dc95e521380b2687cb51bc7d534e208dc45c7"
+  },
+  {
+   "tool": "bidi-delta.py - GNU FriBidi visual order, LTR-island and control-character checks over the changed and punctuation-ending strings",
+   "path": "wave-b-delta-ur-deliver/evidence-tools/bidi-delta.py",
+   "sha256": "f1155e93f646e37dcfecdff31ec96b225dbf23a80b79384a0e0dc34fd040f23f"
+  },
+  {
+   "tool": "diff_waveb.py - parsed-JSON value diff of the nine namespaces between base and head, en and ur",
+   "path": "wave-b-delta-ur-deliver/evidence-tools/diff_waveb.py",
+   "sha256": "715ebc6f631d4b8fc73e4a9ea250dc1862000d01ce407d104946e670a704d6f4"
+  },
+  {
+   "tool": "regress.py - per-key 62-key regression proof (identical vs changed) plus per-file byte identity",
+   "path": "wave-b-delta-ur-deliver/evidence-tools/regress.py",
+   "sha256": "1bff63b767f07da88d1d9e00444c34bc7630cbb3171f15a93fc8f9913a6fa590"
+  },
+  {
+   "tool": "hashes.py - git show vs export sha256 cross-check for all 27 files",
+   "path": "wave-b-delta-ur-deliver/evidence-tools/hashes.py",
+   "sha256": "ce45bbf92fbbc901a5e66aa0f6e690d41ceb7e6c2de53dd8c00daba67a042ed8"
+  }
+ ],
+ "artifacts": [
+  {
+   "path": "i18n/audits/evidence/ur/ui.common.layout/waveb-delta-20261027/record.json",
+   "role": "this record (self; no self-referential hash)"
+  },
+  {
+   "path": "i18n/audits/evidence/ur/ui.common.layout/waveb-delta-20261027/audit.log",
+   "role": "execution log: the six repo gates' verbatim output plus this namespace's ICU and FriBidi rows",
+   "sha256": "4b3b45c19dbb6cbc30754338985b5307fb0cc316943a64289cff4e17ff71e9f0"
+  },
+  {
+   "path": "i18n/receipts/c89cee263ac2-waveb-delta-ur.json",
+   "role": "receipt of record (one receipt covers all nine wave-B namespaces)",
+   "sha256": "c46bfc1a6847d8fe54c85f7df5b8bb6116d6d9c543c4aa71665c209c72904cd8"
+  }
+ ],
+ "findings": [],
+ "result_counts": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 0,
+  "nit": 0
+ },
+ "current_report_verdict": {
+  "status": "clean",
+  "unresolved_blocker_major_count": 0,
+  "finding_ids": []
+ },
+ "adjudication_of_previous_findings": [
+  {
+   "id": "UR-WB-01",
+   "major": true,
+   "key": "ui.common.layout.toasts.dismiss",
+   "verdict": "resolved",
+   "detail": "«اطلاع بند کریں» replaces the ٹوسٹ coinage. Checked independently: ٹوسٹ is now 0 across all 6,085 shipped ur values, اطلاع (singular) carries 'notice/notification' in 17 values including the dismiss family («ڈاؤن لوڈ کی اطلاع ہٹائیں», «اپ ڈیٹ کی اطلاع ہٹائیں»), بند کریں is the corpus's close verb (72 values, e.g. ui.agentMessages.dialog.close), and the toast region label in the same component is اطلاعات. Singular noun for one toast, plural region for the region - correct. Accessible name only (themed-toast-container.tsx:95), so this phrase is the whole of what a screen reader announces."
+  },
+  {
+   "id": "UR-WB-02",
+   "major": false,
+   "key": "ui.chat.pickers.slash.click.runs + completes_label + stages + runs_with_value",
+   "keys": [
+    "ui.chat.pickers.slash.click.runs",
+    "ui.chat.pickers.slash.click.completes_label",
+    "ui.chat.pickers.slash.click.stages",
+    "ui.chat.pickers.slash.click.runs_with_value"
+   ],
+   "verdict": "resolved",
+   "detail": "All four placeholder footers are now feminine, and the family is coherent rather than uniform: نام (m) keeps گا in chooses_name, {name} (the MCP server, m) keeps گا in connects, قدر (f) keeps گی in completes_value, and the four command footers now agree feminine with کمانڈ - which the corpus treats as feminine («آرگیومنٹ لینے والی کمانڈز…») and which runs_command already used. Corpus has 6 feminine «ہو جائے گی» values beside 8 masculine ones, so the form is not novel. Meaning unchanged in all four; 'runs' vs 'completes' vs 'stages' stay distinct."
+  },
+  {
+   "id": "UR-WB-03",
+   "major": false,
+   "key": "ui.chat.canonical.tool_row.generic_verb.running + settled",
+   "keys": [
+    "ui.chat.canonical.tool_row.generic_verb.running",
+    "ui.chat.canonical.tool_row.generic_verb.settled"
+   ],
+   "verdict": "resolved",
+   "detail": "Nominal form applied; see UR-WBD-03 for the recorded sidecar-hint deviation."
+  },
+  {
+   "id": "UR-WB-04",
+   "major": false,
+   "key": "ui.chat.status.degraded",
+   "verdict": "resolved",
+   "detail": "سست روی سے replaced; see UR-WBD-02."
+  },
+  {
+   "id": "UR-WB-05",
+   "major": false,
+   "key": "ui.common.connection.session_loss.server_down",
+   "verdict": "resolved",
+   "detail": "«یا اگر وہ بند ہی رہے تو ایپ دوبارہ شروع کریں۔» is the idiomatic 'if it stays shut' and agrees masculine with سرور. Both remedies, their order, the em dash and the 'never state a cause' rule are intact; nothing in the sentence blames the reader."
+  },
+  {
+   "id": "UR-WB-06",
+   "major": false,
+   "key": "ui.chat.pickers.slash.enter_needs_a_pick",
+   "verdict": "not resolved (overruled)",
+   "detail": "The translator declined, following the sidecar's «no trailing period». Overruled on call-site evidence: the line shares one strip with a click line that carries ۔, every English line of that strip carries '.', and Hindi added । for this key in this same commit. See UR-WBD-01."
+  },
+  {
+   "id": "UR-WB-07",
+   "major": false,
+   "key": "ui.chat.status.internet_offline + unreachable",
+   "verdict": "resolved",
+   "detail": "«بھیجنے میں تاخیر ہو گی۔» states what happens to the send instead of putting an obligation on the reader, keeps both keys identical (one fact, one wording), and follows the corpus's own «… میں تاخیر ہو …» construction (ui.schedules.scheduled_task_dialog…). The internet_offline subject is still THIS machine, which the sidecar singles out."
+  }
+ ],
+ "limits": [
+  "No rendered frame, screenshot or pixel measurement was taken; fit statements are call-site reasoning plus codepoint counts, and no sidecar for these 62 keys carries a maxCells/maxChars budget.",
+  "No native-speaker sign-off is claimed: this is one independent agent's read of the locale.",
+  "This record binds to the bytes at a5356ce91c; any commit that changes a value voids it.",
+  "Width: these are Electron surfaces, not terminal cells, so no cell-width model applies. Combining-mark shaping is the renderer font's; no glyph measurement was taken."
+ ],
+ "audit_notes_not_execution_log": "Conclusions only; the commands and their verbatim output are in audit.log beside this file."
+}

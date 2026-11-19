@@ -1,0 +1,150 @@
+{
+	"audit_id": "teambridge-pr1446-invitations-r2-audit-6d269032fdc7",
+	"date": "2026-10-27",
+	"locale": "fr",
+	"namespace": "ui.teamBridge",
+	"source_commit": "d565279900c1002f5f6addb1ccba025ce9c5e4f5",
+	"translator": {
+		"agent": "translator",
+		"session": "839f2593b55e",
+		"role": "coder",
+		"model": "anthropic/claude-opus-5-5",
+		"fallback": "none recorded",
+		"commit": "9200b8ac1f",
+		"method": "LLM reasoning; transcript references no MT service (0 hits)",
+		"round1": {
+			"session": "c995ffd759f3",
+			"commit": "23ddabe864"
+		}
+	},
+	"auditors": [
+		{
+			"agent": "i18n-auditor",
+			"model": "anthropic/claude-opus-5-5",
+			"date": "2026-10-27",
+			"result": "clean",
+			"instance": "6d269032fdc7-r2-fr",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"receipt": "i18n/receipts/6d269032fdc7-r2-fr.json",
+			"receipt_sha256": "11ebf8516b9ffd7070116b799d5eb25f2c43d9a4d9dd84c62a95d8ebf22407d2",
+			"scope": "PR #1446 round 2: remediated invitations keys (agent_fallback, *_unnamed; ur accepted; fr accepting); rest byte-identical to round 1 / #1441 receipts.",
+			"note": "PR #1446 R2 (0 findings). Evidence: i18n/audits/evidence/fr/ui.teamBridge/teambridge-pr1446-invitations-r2-audit-6d269032fdc7/record.json"
+		}
+	],
+	"ledger_status": "audited",
+	"independence": "Independent auditor (reviewer role, session 6d269032fdc7). It authored none of the audited strings and edited no catalogue byte. The remediation translator was session 839f2593b55e (coder role, commit 9200b8ac1f); the round-1 translator was c995ffd759f3. This run wrote only these receipts, the evidence records and the ledger rows (via ledger-assemble.mjs).",
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "fce5422b03052668888a09169a60cabf1a3c963fa760f314f60f65843260c585"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/fr/ui.teamBridge.json",
+			"sha256": "b75cfe24f3983e1047ee6dfeb82285c36a766fcdf4cebf05dcbf5871e2b1f986"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "4f9418c85310a7f809fb7e889fa90116c5ae35e0e257ad26faafdede25b7f3fb"
+		}
+	},
+	"audited": {
+		"ui.teamBridge.invitations.agent_fallback": {
+			"en": "your agent",
+			"target": "votre agent"
+		},
+		"ui.teamBridge.invitations.accepted_unnamed": {
+			"en": "Accepted. Your agent is woken only when someone @-mentions it.",
+			"target": "Accepté. Seule une mention avec @ réveille votre agent."
+		},
+		"ui.teamBridge.invitations.declined_unnamed": {
+			"en": "Declined for your agent.",
+			"target": "Refusé pour votre agent."
+		},
+		"ui.teamBridge.invitations.accepting": {
+			"en": "Accepting…",
+			"target": "Acceptation en cours…"
+		}
+	},
+	"inherited": {
+		"inherited_from_round1_byte_identical": {
+			"receipt": "i18n/receipts/6d269032fdc7-fr.json",
+			"receipt_sha256": "d79c4cff2c8da2088b0c014b57f96a7c66b1dd763b9ff25b6b3f77339f1d4044",
+			"keys": [
+				"ui.teamBridge.invitations.title",
+				"ui.teamBridge.invitations.count",
+				"ui.teamBridge.invitations.consent.bridge_agent_participation_v1",
+				"ui.teamBridge.invitations.loading",
+				"ui.teamBridge.invitations.load_failed",
+				"ui.teamBridge.invitations.empty",
+				"ui.teamBridge.invitations.agent_line",
+				"ui.teamBridge.invitations.added_by",
+				"ui.teamBridge.invitations.added_by_you",
+				"ui.teamBridge.invitations.created_by",
+				"ui.teamBridge.invitations.created_by_you",
+				"ui.teamBridge.invitations.accept",
+				"ui.teamBridge.invitations.decline",
+				"ui.teamBridge.invitations.declining",
+				"ui.teamBridge.invitations.accepted",
+				"ui.teamBridge.invitations.declined",
+				"ui.teamBridge.invitations.failed.agent_unavailable",
+				"ui.teamBridge.invitations.failed.already_answered",
+				"ui.teamBridge.invitations.failed.gone",
+				"ui.teamBridge.invitations.failed.runtime_outdated",
+				"ui.teamBridge.invitations.failed.outdated",
+				"ui.teamBridge.invitations.failed.not_available",
+				"ui.teamBridge.invitations.failed.sign_in",
+				"ui.teamBridge.invitations.failed.unreachable",
+				"ui.teamBridge.invitations.read_only",
+				"ui.teamBridge.invitations.failed.unconfirmed"
+			],
+			"round1_findings_resolution": "F2 MINOR: fixed (lowercase 'votre agent'; *_unnamed); N1 NIT: fixed ('Acceptation en cours…')"
+		},
+		"inherited_from_pr1441_byte_identical_to_main": {
+			"receipt": "i18n/receipts/fe54982cb1b7-fr.json",
+			"receipt_sha256": "c3fdca06f759cd47257934008723ddaf8b3c799759ba20cdca54963058e5a0e8",
+			"keys": [
+				"ui.teamBridge.chief.unnamed",
+				"ui.teamBridge.member.active_count",
+				"ui.teamBridge.member.invited_count"
+			],
+			"note": "Not re-audited: values equal origin/main bytes, carried on #1441's own receipt."
+		},
+		"inherited_base": "the 208 pre-invitations keys inherit e2cc7b3bceb8 on byte identity (unchanged since round 1)"
+	},
+	"notes": "agent_fallback 'votre agent' mid-sentence in agent_line; accepted_unnamed 'Seule une mention avec @ réveille votre agent.' and declined_unnamed 'Refusé pour votre agent.' mirror the named forms; accepting 'Acceptation en cours…' now pairs with 'Refus en cours…'.",
+	"findings": [],
+	"fallback_renders": [
+		"fr | agent_line named   => Invitation à cette conversation pour Robo Damian",
+		"fr | agent_line unnamed => Invitation à cette conversation pour votre agent",
+		"fr | accepted named     => Accepté. Seule une mention avec @ réveille Robo Damian.",
+		"fr | accepted_unnamed   => Accepté. Seule une mention avec @ réveille votre agent.",
+		"fr | declined named     => Refusé pour Robo Damian.",
+		"fr | declined_unnamed   => Refusé pour votre agent.",
+		"fr | accepting          => Acceptation en cours… / declining => Refus en cours…"
+	],
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide_fr": {
+			"path": "~/local-operator/i18n/style-guides/fr.md",
+			"revision": "24d328a19a8b39ba4d6e824b8bf2ebf1bb629ffe",
+			"sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+		},
+		"core_checkout": "dadf192382fbce7cb97d8cfbdc99ff1c931d97b6"
+	},
+	"artifacts": {
+		"receipt": {
+			"path": "i18n/receipts/6d269032fdc7-r2-fr.json",
+			"sha256": "11ebf8516b9ffd7070116b799d5eb25f2c43d9a4d9dd84c62a95d8ebf22407d2"
+		}
+	},
+	"limitations": "No rendered-fit or screenshot evidence: this role has no browser tool."
+}

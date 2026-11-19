@@ -1,0 +1,477 @@
+import "../../../styles/index.css";
+import "@features/chat/components/story-electron-shim";
+import { ChatLayout } from "@shared/components/common/chat-layout";
+import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import type { Meta, StoryObj } from "@storybook/react";
+import { useQueryClient } from "@tanstack/react-query";
+import { type FC, useLayoutEffect, useState } from "react";
+import statusFixture from "../../../../../../scripts/fixtures/agent-messages-status.json";
+import type {
+	DesktopRequest,
+	DesktopResponse,
+} from "../../../../../shared/desktop-contract";
+
+/**
+ * EVERY SIDEBAR ATTENTION COUNT AT ONCE (operator, 2026-10-28).
+ *
+ * The evidence frame for the shared `AttentionBadge`: the REAL rail
+ * (`SidebarNavigation` inside `ChatLayout`, the composition `app.tsx` draws),
+ * fed through each row's REAL data path rather than through props, so a frame
+ * shows what the rows actually render:
+ *
+ *   - Aida: an unseen completion receipt on her catalogue row (the store);
+ *   - Notifications: `notifications.count` (`unread + waiting_unread`);
+ *   - Browser: one live consent request on the browser projection;
+ *   - Mesh: waiting `approvals.list` rows, gated on a `networks.list` membership;
+ *   - Team Bridge: the account-wide `team_bridge.unread` total, gated on a
+ *     signed-in Radient account and a ready Team Bridge status.
+ *
+ * Team Bridge and Mesh live in More by default, so More shows their SUM
+ * (`moreAttentionCount`). The `count` arg scales every number so the `99+` cap
+ * and two-digit widths can be shot from the same story. The payloads are
+ * invented; their shapes are the wire's (the same shapes the notifications,
+ * mesh-page and default-on-container fixtures use).
+ *
+ * What a frame here does NOT prove: that a live backend answers these reads,
+ * or the live poll cadence. Projects and Agents carry no count source today
+ * (see the PR's inventory), so they draw no badge here either.
+ */
+
+const AIDA_ID = "f37a9d713040";
+const ACCOUNT = "acct_story";
+
+type Counts = {
+	aida: number;
+	notifications: number;
+	browser: number;
+	mesh: number;
+	teamBridge: number;
+	/**
+	 * Team Bridge approval requests waiting. Non-zero TAKES OVER the row's one
+	 * badge from the unread total (approvals decision (a), design D1).
+	 */
+	teamBridgeRequests?: number;
+	/**
+	 * Releasable held messages (B4b). Non-zero advertises
+	 * `team_bridge_hold_release` and joins the requests in the one badge.
+	 */
+	teamBridgeHolds?: number;
+	/** Draw a passkey hold and a held popup beside the approvals. */
+	waits?: boolean;
+};
+
+const ok = (result: unknown): DesktopResponse => ({
+	status: 200,
+	body: { status: 200, message: "ok", result },
+});
+
+const route =
+	(counts: Counts) =>
+	async (request: DesktopRequest): Promise<DesktopResponse> => {
+		const op = (request as { op: string }).op;
+		switch (op) {
+			case "capabilities":
+				return ok({
+					desktop_contract: 1,
+					desktop_available: true,
+					desktop_auth: "bearer",
+					features: {
+						aida: 1,
+						notifications: 1,
+						library: 1,
+						projects: 1,
+						peers: 1,
+						approvals: 1,
+						radient: 1,
+						team_bridge: 1,
+						team_bridge_conversations: 1,
+						team_bridge_conversation_owner_guard: 1,
+						...(counts.teamBridgeHolds ? { team_bridge_hold_release: 1 } : {}),
+					},
+				});
+			case "aida.status":
+				return ok({
+					enabled: true,
+					session_id: AIDA_ID,
+					paused: false,
+					greeted: true,
+				});
+			case "notifications.count":
+				return ok({
+					unread_count: counts.notifications,
+					waiting_count: 0,
+					waiting_unread_count: 0,
+					high_water: 1,
+				});
+			case "networks.list":
+				return ok({
+					self_device_id: "dev_self",
+					networks: [
+						{
+							network_id: "net_story",
+							name: "story-mesh",
+							epoch: 3,
+							trust: "active",
+							members: [],
+						},
+					],
+				});
+			case "approvals.list":
+				return ok({
+					approvals: Array.from({ length: counts.mesh }, (_, index) => ({
+						approval_id: `apr_${index}`,
+						state: "requested",
+					})),
+				});
+			case "radient.request":
+				return ok({
+					data: {
+						msg: "ok",
+						result: {
+							account: { id: ACCOUNT, name: "Story", email: "s@x.invalid" },
+							identity: {},
+						},
+					},
+				});
+			case "team_bridge.status":
+			case "agent_messages.status":
+				return ok({
+					...statusFixture,
+					account_id: ACCOUNT,
+					state: "ready",
+					read_only: false,
+					local: { ...statusFixture.local, enabled: true },
+				});
+			case "team_bridge.unread":
+				return ok({
+					total: counts.teamBridge,
+					organizations: [
+						{
+							tenant_id: "tnt_story",
+							tenant_name: "Story org",
+							unread: counts.teamBridge,
+							eligible: true,
+						},
+					],
+				});
+			case "team_bridge.requests.list":
+				return ok({
+					tenant_id: "tnt_story",
+					items: [],
+					pending_count: counts.teamBridgeRequests ?? 0,
+					next_cursor: null,
+					has_more: false,
+				});
+			case "team_bridge.holds.list":
+				return ok({
+					enabled: true,
+					key_protection: "hardware",
+					items: Array.from(
+						{ length: counts.teamBridgeHolds ?? 0 },
+						(_, index) => ({
+							message_id: `bcmsg_story${index}`,
+							conversation_id: "bcv_storyconv",
+							seq: index + 1,
+							held_at: "2026-11-17T09:00:00Z",
+							kind: "owner_decision",
+							hold_code: "model_hold",
+							releasable: true,
+							can_deliver: true,
+							can_discard: true,
+							deliver_until: "2026-11-24T09:00:00Z",
+							decision: null,
+						}),
+					),
+				});
+			case "sidebar_layout.get":
+				return ok({ layout: null });
+			default:
+				return { status: 404, body: { detail: `story bridge: ${op}` } };
+		}
+	};
+
+/** Her catalogue row with an unseen completion receipt per missed message. */
+const aidaRows = (count: number) =>
+	count > 0
+		? [
+				{
+					session_id: AIDA_ID,
+					title: "Aida",
+					name: "Aida",
+					preview: "",
+					mtime: 1790603304,
+					updated_at: 1790603304,
+					pinned: true,
+					archived: false,
+					active: false,
+					live_state: "",
+					pending: null,
+					binding: { agent: "aida", team: null },
+					opened_by: null,
+					status: { code: "complete", label: "Unseen completion" },
+					attention: {
+						conversation_id: `session/${AIDA_ID}`,
+						completion_token: "tok_story",
+						anchor_id: "anchor_story",
+						kind: "complete",
+						unseen: true,
+						revision: [1, 0],
+					},
+				},
+			]
+		: [];
+
+/**
+ * Agent tabs waiting on the user (operator report 2026-11-15, "the browser is
+ * stealing the view"): a passkey custody hold and a held popup, drawn as
+ * sidebar notification rows beside the approvals instead of switching views.
+ */
+const WAITING_TABS = [
+	{
+		tabId: 101,
+		url: "https://login.microsoft.com/consumers/fido/get",
+		title: "Sign in",
+		owner: "agent" as const,
+		sessionId: AIDA_ID,
+	},
+	{
+		tabId: 102,
+		url: "https://accounts.example.com/authorize",
+		title: "Sign in",
+		owner: "agent" as const,
+		sessionId: null,
+	},
+];
+
+const browserState = (count: number, waits = false) => ({
+	tabs: waits ? WAITING_TABS : [],
+	waitingOnUser: waits
+		? [
+				{ kind: "passkey" as const, tabId: 101, at: 1 },
+				{ kind: "popup" as const, tabId: 102, at: 2 },
+			]
+		: [],
+	activeTabId: null,
+	url: "",
+	title: "",
+	loading: false,
+	canGoBack: false,
+	canGoForward: false,
+	pendingConsent: Array.from({ length: count }, (_, index) => ({
+		entryId: `consent_${index}`,
+		origin: "https://example.com",
+		authority: "example.com",
+		broad: null,
+		// Far future: the badge counts only LIVE requests.
+		expiresAt: Date.now() + 24 * 60 * 60 * 1000,
+		requesterSessionId: null,
+	})),
+	approvals: [],
+	navFailure: null,
+});
+
+const Scene: FC<{
+	counts: Counts;
+	collapsed: boolean;
+	moreOpen: boolean;
+}> = ({ counts, collapsed, moreOpen }) => {
+	const client = useQueryClient();
+	const [ready, setReady] = useState(false);
+	useLayoutEffect(() => {
+		/* Installed before the rail mounts, so its first reads find the bridge;
+		   SPREAD over the preview's mock so later stories keep their api. */
+		const host = window as unknown as { api: Record<string, unknown> };
+		const state = browserState(counts.browser, counts.waits);
+		host.api = {
+			...host.api,
+			desktop: { request: route(counts) },
+			browser: new Proxy(
+				{ state: async () => state } as Record<string, unknown>,
+				{
+					get: (target, key: string) =>
+						key in target
+							? target[key]
+							: key.startsWith("on")
+								? () => () => {}
+								: () => Promise.resolve({}),
+				},
+			),
+		};
+		client.clear();
+		useCanonicalSessionsStore.setState({
+			sessions: aidaRows(counts.aida) as never,
+		});
+		useUiPreferencesStore.getState().setSidebarCollapsed(collapsed);
+		useUiPreferencesStore.getState().setSidebarOverflowExpanded(moreOpen);
+		setReady(true);
+		return () => {
+			useCanonicalSessionsStore.setState({ sessions: [] });
+			useUiPreferencesStore.getState().setSidebarCollapsed(false);
+			useUiPreferencesStore.getState().setSidebarOverflowExpanded(false);
+		};
+	}, [client, counts, collapsed, moreOpen]);
+	if (!ready) return null;
+	return (
+		<div className="relative flex h-screen flex-col overflow-hidden">
+			<ChatLayout
+				sidebar={<SidebarNavigation />}
+				content={
+					<main className="panel-top-pad flex min-w-0 grow flex-col overflow-hidden" />
+				}
+			/>
+		</div>
+	);
+};
+
+const meta: Meta = {
+	title: "Shell/Sidebar attention badges",
+	parameters: { layout: "fullscreen" },
+};
+export default meta;
+type Story = StoryObj;
+
+const SMALL: Counts = {
+	aida: 1,
+	notifications: 6,
+	browser: 2,
+	mesh: 1,
+	teamBridge: 3,
+};
+
+/** Every attention row at once; Mesh and Team Bridge folded into More (sum 4). */
+export const Counts: Story = {
+	render: () => <Scene counts={SMALL} collapsed={false} moreOpen={false} />,
+};
+
+/** The browser's waits as sidebar notification rows: a password manager hold
+    in Aida's conversation and a held popup on an unowned tab, each one 32px
+    line; the one approval is the third wait, so it folds into "1 more in
+    Browser" (two rows at most, design review D1). The badge counts all three. */
+export const BrowserWaits: Story = {
+	render: () => (
+		<Scene
+			counts={{ ...SMALL, browser: 1, waits: true }}
+			collapsed={false}
+			moreOpen={false}
+		/>
+	),
+};
+
+/** Past two waits the rest fold into one "more in Browser" row (here 4). */
+export const BrowserWaitsFolded: Story = {
+	render: () => (
+		<Scene
+			counts={{ ...SMALL, browser: 4, waits: true }}
+			collapsed={false}
+			moreOpen={false}
+		/>
+	),
+};
+
+/** More opened: the hidden rows draw their own counts beneath it, and More
+    itself draws none - its sum summarises what is HIDDEN (design D2). */
+export const MoreOpen: Story = {
+	render: () => <Scene counts={SMALL} collapsed={false} moreOpen />,
+};
+
+/**
+ * The Team Bridge row once approval requests wait (design D1): the badge
+ * counts the 2 requests instead of the 3 unread, and the row's accessible name
+ * says "2 requests waiting". Compare `MoreOpen`, the same rail before.
+ */
+export const MoreOpenRequestsWaiting: Story = {
+	render: () => (
+		<Scene
+			counts={{ ...SMALL, teamBridgeRequests: 2 }}
+			collapsed={false}
+			moreOpen
+		/>
+	),
+};
+
+/**
+ * Held messages only (B4b, UX U1): 12 releasable holds and no requests. The
+ * badge counts the holds and the row's accessible name says "12 items
+ * waiting", never "requests".
+ */
+export const MoreOpenHeldWaiting: Story = {
+	render: () => (
+		<Scene
+			counts={{ ...SMALL, teamBridgeHolds: 12 }}
+			collapsed={false}
+			moreOpen
+		/>
+	),
+};
+
+/** The cap: two- and three-digit counts read `99+`, never clipped. */
+export const Overflow: Story = {
+	render: () => (
+		<Scene
+			counts={{
+				aida: 1,
+				notifications: 128,
+				browser: 12,
+				mesh: 40,
+				teamBridge: 75,
+			}}
+			collapsed={false}
+			moreOpen
+		/>
+	),
+};
+
+/** The collapsed strip: the same badge as a corner mark on each icon. */
+export const Collapsed: Story = {
+	render: () => <Scene counts={SMALL} collapsed moreOpen={false} />,
+};
+
+/** The collapsed strip at the cap. */
+export const CollapsedOverflow: Story = {
+	render: () => (
+		<Scene
+			counts={{
+				aida: 1,
+				notifications: 128,
+				browser: 12,
+				mesh: 40,
+				teamBridge: 75,
+			}}
+			collapsed
+			moreOpen={false}
+		/>
+	),
+};
+
+/*
+ * THE CORNER CAP, ONE STORY PER WIDTH (design follow-up to #1465, D1): one, two
+ * and three digits on every corner-marked row at once, so the frames show the
+ * mark at `5`, at the `9+` cap from a two-digit count, and at the same `9+` from
+ * a three-digit one - the case that used to draw a `99+` lid over the Bell. Team
+ * Bridge stays at zero so More's corner shows Mesh's count alone (the same N),
+ * not a doubled sum.
+ */
+const scaled = (n: number): Counts => ({
+	aida: 1,
+	notifications: n,
+	browser: n,
+	mesh: n,
+	teamBridge: 0,
+});
+
+/** The collapsed strip with single-digit counts: drawn exactly. */
+export const Collapsed5: Story = {
+	render: () => <Scene counts={scaled(5)} collapsed moreOpen={false} />,
+};
+
+/** Two digits in the strip: the corner caps at `9+`; the name keeps `12`. */
+export const Collapsed12: Story = {
+	render: () => <Scene counts={scaled(12)} collapsed moreOpen={false} />,
+};
+
+/** Three digits in the strip: still `9+`, never the `99+` lid. */
+export const Collapsed125: Story = {
+	render: () => <Scene counts={scaled(125)} collapsed moreOpen={false} />,
+};

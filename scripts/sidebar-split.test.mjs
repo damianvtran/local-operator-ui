@@ -56,7 +56,9 @@ const {
 	dragTarget,
 	growSign,
 	hideRegion,
+	inlineDragDelta,
 	keyboardTarget,
+	swapHorizontalKey,
 	parseSidebarListHeight,
 	parseSidebarOrder,
 	parseSidebarRegions,
@@ -486,6 +488,53 @@ test("the sign, and the drag arithmetic, for all four sides", () => {
 	assert.equal(dragTarget(100, 5000, "top", 72, 300), 72);
 	assert.equal(dragTarget(100, -5000, "bottom", 72, 300), 72);
 	assert.equal(clampRegion(500, 72, 300), 300);
+});
+
+test("RTL reverses the pointer and arrow travel, and LTR stays as it was", () => {
+	/* The pointer path: the SAME physical travel must move the pane the other way
+	 * in RTL, because the pane lives on the other side of the boundary. */
+	assert.equal(
+		dragTarget(100, inlineDragDelta(40, "ltr"), "right", 0, 1000),
+		140,
+	);
+	assert.equal(
+		dragTarget(100, inlineDragDelta(40, "rtl"), "right", 0, 1000),
+		60,
+	);
+	assert.equal(
+		dragTarget(100, inlineDragDelta(-40, "rtl"), "right", 0, 1000),
+		140,
+	);
+	/* A left-anchored pane (the canvas) is the mirror case: its pointer travel
+	 * grows it under RTL instead of shrinking it. */
+	assert.equal(
+		dragTarget(100, inlineDragDelta(40, "ltr"), "left", 0, 1000),
+		60,
+	);
+	assert.equal(
+		dragTarget(100, inlineDragDelta(40, "rtl"), "left", 0, 1000),
+		140,
+	);
+	/* The key path composes the same flip through the swap, so a vertical handle
+	 * answers the OPPOSITE physical arrow in RTL. */
+	const keyTarget = (key, direction, side) =>
+		keyboardTarget(direction === "rtl" ? swapHorizontalKey(key) : key, {
+			shiftKey: false,
+			value: 100,
+			min: 72,
+			max: 300,
+			side,
+		});
+	assert.equal(keyTarget("ArrowRight", "ltr", "right"), 116);
+	assert.equal(keyTarget("ArrowRight", "rtl", "right"), 84);
+	assert.equal(keyTarget("ArrowLeft", "rtl", "right"), 116);
+	assert.equal(keyTarget("ArrowRight", "ltr", "left"), 84);
+	assert.equal(keyTarget("ArrowRight", "rtl", "left"), 116);
+	/* The swap names only the inline-axis arrows. */
+	assert.equal(swapHorizontalKey("ArrowLeft"), "ArrowRight");
+	assert.equal(swapHorizontalKey("ArrowRight"), "ArrowLeft");
+	assert.equal(swapHorizontalKey("ArrowUp"), "ArrowUp");
+	assert.equal(swapHorizontalKey("Home"), "Home");
 });
 
 test("the boundary sits on the list region's top edge, and follows the order", () => {

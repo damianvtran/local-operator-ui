@@ -1,0 +1,113 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent-namespace-delta-translation-audit",
+  "date": "2026-11-12",
+  "round": 1,
+  "locale": "ru",
+  "namespace": "ui.common.time",
+  "branch": "feat/i18n-s16d-live-locale-formatting",
+  "head": "dcdcb6a9d8c4a80d239fc56498765c2b64417d38",
+  "base": "7c2b6af66486c9e7ec0603141fb4529e10204c7f",
+  "instance": "1d3841078034",
+  "agent": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "1d3841078034",
+    "instance": "1d3841078034",
+    "model": "deepseek/deepseek-flash",
+    "fallback": false,
+    "model_source": "Session model header deepseek/deepseek-flash for the whole run; no fallback notice observed or claimed.",
+    "independent_from_translator_session": true,
+    "independence": "Fresh auditor instance, not i18n-translator (anthropic/claude-sonnet-5-5) and not any earlier auditor. Read-only: no edits, commits, pushes or PR posts; wrote only own scratchpad mirror and evidence."
+  },
+  "candidate_state": "NOT LANDED at audit time: the 4 values live only in the translator draft ru-s16d.json. Pre-landing bytes cannot be bound (ledger-assemble derives target_sha256 from disk and refuses a receipt that does not name them), so target_sha256 below is a PREDICTION for the exact byte form stated in report section 7; the integrator must re-derive it after landing.",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "source_sha256": "bb0b3aa1a71679cc73cb40d73616b5e22057c7dcbc86705c2ec4425984971e13",
+  "target_sha256": "45f4bdfa8813dea770ad0cc6168080034ecad25a9940b42b84726a48621b9819",
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.common.time.json",
+      "sha256": "bb0b3aa1a71679cc73cb40d73616b5e22057c7dcbc86705c2ec4425984971e13"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.common.time.context.json",
+      "sha256": "a9069037edc11c59288a7c2d3171496b1ef44a0982fc28e6a0edb4bcae0f98d2"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/ru/ui.common.time.json",
+      "sha256": "5436047ba2fc7843f2a63605c5ed74d6183ce751d1b5958c9b3850cf2f2243ea",
+      "note": "state on disk at audit time (pre-landing: one key, yesterday_at). The predicted LANDED hash is target_sha256 above."
+    },
+    "candidate": {
+      "path": "s16d-drafts/ru-s16d.json",
+      "sha256": "ed1b7781989c9e0000c73ae33970181a00d1fb594494c3648c50a046be2a0250",
+      "sorted_key_compact_sha256": "1d97aaeb1c2b226b18dd8db8a21ebb7ab09ed0c01bc411b35c01e2a97590a833"
+    },
+    "translator_notes": {
+      "path": "s16d-drafts/ru-s16d-notes.md",
+      "sha256": "a06577bb67fb660e862bad0a49e00b669a8a6e403dcd498ea112a0839e001217"
+    }
+  },
+  "key_count": 4,
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [
+      {
+        "id": "RU-S16D-01",
+        "severity": "minor",
+        "category": "punctuation / idiom",
+        "key": "ui.common.time.weekday_at",
+        "related_keys": [
+          "ui.common.time.date_at",
+          "ui.common.time.today_at"
+        ],
+        "source": "{weekday} {time}",
+        "current": "{weekday}, {time}",
+        "composed": "понедельник, 14:30",
+        "problem": "The sidecar grants joiner freedom for date_at only; weekday_at's tone says 'Terse label, no punctuation' and its note gives no joiner freedom. CLDR ru renders weekday:long + hour + minute as a bare space ('понедельник 14:30'), matching the English joiner; the added comma is unsupported by either authority. Meaning is unaffected and a native reads it acceptably, so this is a minor, not a major.",
+        "proposed": "{weekday} {time} -> 'понедельник 14:30'",
+        "evidence": "Intl.DateTimeFormat('ru',{weekday:'long',hour:'numeric',minute:'2-digit'}).formatToParts -> ['weekday','« »','hour','«:»','minute']",
+        "disposition": "open — minor; may be deferred in the PR thread"
+      },
+      {
+        "id": "RU-S16D-02",
+        "severity": "minor",
+        "category": "typography (app-side; not catalogue-fixable)",
+        "key": "ui.common.time.weekday_at",
+        "related_keys": [],
+        "source": "{weekday} {time}",
+        "current": "{weekday}, {time}",
+        "composed": "понедельник, 14:30",
+        "problem": "The label starts with a lowercase letter because Intl ru returns weekday:long as 'понедельник' and ConversationDivider paints the composed string verbatim (no capitalize class, no first-letter helper in src/i18n). English is unaffected because English weekday names are capitalised. The translator cannot fix this: the placeholder must be inserted unchanged. Reaches users only via formatDividerLabel -> groupMessages -> trace.stories.tsx today; the live transcript states time per turn via TurnTimestamp.",
+        "proposed": "No catalogue change. App-side: capitalise the first character of the composed divider label at the render site.",
+        "disposition": "open — minor, app-side; no catalogue fix exists"
+      }
+    ],
+    "nit": []
+  },
+  "checks_run": {
+    "repo_validator": "node scripts/i18n/generate.mjs --check -> PASS (keys.gen.ts byte-identical to a fresh generation) on a git-archive mirror with the 4 values applied",
+    "parity_validator": "node --test scripts/i18n/locale-parity.test.mjs -> all six [ru] rows PASS; [zh-CN] FAILS for the 4 unapplied keys, which is the live negative control",
+    "icu_grid": "new IntlMessageFormat(msg,'ru') with real arguments (14:30 / понедельник / 5 ноября 2026 г.): no throws, placeholders identical to en, NFC, no bidi controls, no English residue",
+    "negative_controls": "5/5 in-memory mutants detected (dropped placeholder, English left, renamed placeholder, broken ICU, NFD)",
+    "clr_ru_comparison": "date_at composes byte-identical to CLDR ru date+time ('5 ноября 2026 г. в 14:30'); weekday_at differs from CLDR ru by the comma"
+  },
+  "audit_notes_not_execution_log": "Narrative of method and reasoning only; the execution evidence is checks_run plus report sections 2-4. Worktree was shared and read-only, so no repository working tree was executed against: all validator runs used the scratch mirror described in report section 2.",
+  "artifacts": {
+    "report": "audit-s16d-ru.md",
+    "checker": "check-s16d-ru.mjs",
+    "receipt": "receipt.json"
+  },
+  "current_report_verdict": {
+    "status": "clean-with-findings",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [
+      "RU-S16D-01",
+      "RU-S16D-02"
+    ]
+  }
+}

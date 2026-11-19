@@ -47,6 +47,8 @@
  */
 
 import { ImageLightbox } from "@shared/components/common/image-lightbox";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import {
 	clampGroupIndex,
 	wrapGroupIndex,
@@ -62,11 +64,12 @@ import {
 	useState,
 } from "react";
 import {
-	ATTACHMENT_UNAVAILABLE_COPY,
 	AttachmentFrame,
 	BrokenAttachment,
+	RetryableAttachment,
 } from "../components/message-item/attachment-frame";
 import { CanonicalImage } from "./canonical-image";
+import { imageLabel } from "./media-label";
 import type { TranscriptImage } from "./transcript-reducer";
 import { type AttachmentScope, useAttachmentUrl } from "./use-attachment-url";
 
@@ -104,7 +107,15 @@ const defaultLabelFor = (
 	image: TranscriptImage,
 	index: number,
 	count: number,
-): string => image.name ?? (count === 1 ? "Image" : `Image ${index + 1}`);
+): string => image.name ?? imageLabel(index + 1, count);
+
+/**
+ * "Show image N of M": the press's name and tooltip, and the reserved
+ * (not-yet-loaded) tile's name below. One message so the three seats cannot
+ * drift into different wordings. Call at render time only.
+ */
+const showImageLabel = (position: number, count: number): string =>
+	t("ui.chat.canonical.lightbox.show_image", { index: position, count });
 
 /**
  * A picture the group does not have, for the index arithmetic to land on if a
@@ -161,6 +172,7 @@ export const ImageGroupLightbox: FC<ImageGroupLightboxProps> = ({
 	restoreFocusTo,
 	labelFor = defaultLabelFor,
 }) => {
+	useI18nLocale();
 	const count = images.length;
 	const [selected, setSelected] = useState(() => clampGroupIndex(index, count));
 	/*
@@ -217,8 +229,15 @@ export const ImageGroupLightbox: FC<ImageGroupLightboxProps> = ({
 	 * "always": a reader pointing at the frame keeps their focus on the frame.
 	 */
 	const focusFor = (index: number) => {
+		/*
+		 * FOUND BY SLOT, NOT BY NAME. This used to query
+		 * `button[aria-label="Show image N of M"]` - the English accessible name -
+		 * so under any other language the keyed label never matched and focus
+		 * silently fell to the layer. `data-image-slot` is the slot's own
+		 * language-independent position marker (set on the <li> below).
+		 */
 		const tile = stripRef.current?.querySelector<HTMLButtonElement>(
-			`button[aria-label="Show image ${index + 1} of ${count}"]`,
+			`[data-image-slot="${index + 1}"] button`,
 		);
 		if (tile) tile.focus();
 		else layerRef.current?.focus();
@@ -360,7 +379,10 @@ export const ImageGroupLightbox: FC<ImageGroupLightboxProps> = ({
 				/* biome-ignore lint/a11y/useSemanticElements: the element already IS the one the rule suggests - the explicit role is the WebKit fix above, not a substitute for `ul`. */
 				role="list"
 				ref={attachStrip}
-				aria-label={`${count} images`}
+				aria-label={t("ui.chat.canonical.lightbox.filmstrip_aria", {
+					count,
+					count_display: String(count),
+				})}
 				data-image-filmstrip=""
 				/*
 				 * `px-2` rather than `p-1` (design round 1, D1-6): the focus ring needs
@@ -431,16 +453,16 @@ export const ImageGroupLightbox: FC<ImageGroupLightboxProps> = ({
 										 * reader, and "of 3" is what tells this one from its
 										 * neighbours.
 										 */
-										label: `Show image ${tileIndex + 1} of ${count}`,
-										title: `Show image ${tileIndex + 1} of ${count}`,
+										label: showImageLabel(tileIndex + 1, count),
+										title: showImageLabel(tileIndex + 1, count),
 										current: tileIndex === safeIndex,
 									}}
 								/>
 							) : (
 								<button
 									type="button"
-									aria-label={`Show image ${tileIndex + 1} of ${count}`}
-									title={`Show image ${tileIndex + 1} of ${count}`}
+									aria-label={showImageLabel(tileIndex + 1, count)}
+									title={showImageLabel(tileIndex + 1, count)}
 									className="group/tile inline-block max-w-full cursor-zoom-in rounded-sm leading-none"
 									onClick={() => {
 										admit([tileIndex]);
@@ -483,7 +505,11 @@ export const ImageGroupLightbox: FC<ImageGroupLightboxProps> = ({
 			 * moved/renamed/deleted cause a path could honestly carry.
 			 */
 			fallback={
-				<BrokenAttachment name={label} detail={ATTACHMENT_UNAVAILABLE_COPY} />
+				source.state === "retryable" ? (
+					<RetryableAttachment name={label} onRetry={source.retry} />
+				) : (
+					<BrokenAttachment name={label} kind="unavailable" />
+				)
 			}
 			layerRef={layerRef}
 			group={{ index: safeIndex, count, onPrev, onNext, filmstrip }}

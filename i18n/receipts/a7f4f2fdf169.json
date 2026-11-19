@@ -1,0 +1,372 @@
+{
+  "schema": 1,
+  "kind": "translation-audit-receipt",
+  "audit_kind": "independent-translation-audit",
+  "batch": "agents-surfaces",
+  "round": 2,
+  "head": "91231e66c955197e86cec5b1bf7c6f488eff48de",
+  "branch": "i18n-agents-pages",
+  "locale": "ru",
+  "locale_name": "Russian",
+  "date": "2026-10-26",
+  "audit_date": "2026-10-26",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "harness": "Local Operator",
+    "team": "lopdev",
+    "session": "a7f4f2fdf169",
+    "instance": "a7f4f2fdf169",
+    "model": "radient/auto",
+    "actual_model": "radient/auto",
+    "actual_model_source": "Harness session header for this run: 'Model: radient/auto'. The upstream provider/model id the router resolved to is not exposed to the agent, so none is claimed or inferred.",
+    "model_provenance": "Single route for the whole round: reading, gate runs, key-by-key audit, verdicts, receipt authoring and deriveReceiptAudit all ran in this session on radient/auto. No provider error, quota incident or mid-run switch was surfaced in this session. No fallback is claimed and none is hidden.",
+    "independence": "Independent of the translator and of the remediation author: different session, wrote no catalogue value and no remediation. For disposition checking only, this session first read the round-1 audit receipt and the remediation commit message (2907e2f5b4); every verdict on the current bytes was then formed from the English source catalogue and its .context.json sidecar, not from those reports. No translation/MT service was used; no catalogue, ledger or git state was edited; the only repository file written is this receipt.",
+    "independent_from_translator_session": true
+  },
+  "agent": "i18n-auditor",
+  "instance": "a7f4f2fdf169",
+  "session": "a7f4f2fdf169",
+  "model": "radient/auto",
+  "scope": {
+    "worktree": "~/local-operator-ui/.worktrees/i18n-agents-pages",
+    "branch": "i18n-agents-pages",
+    "head": "91231e66c955197e86cec5b1bf7c6f488eff48de",
+    "note": "Round 2 over the CURRENT working-tree bytes of eight namespaces (the ru catalogues are tracked and clean at this head), bound by sha256. The 102 English keys added since round 1 (pages empty.* 6, config summary.* 3, hub.teams 21, publication 72) were audited together with the 219 round-1 keys. The round-1 receipt was read before the re-read to learn the reported findings; the values themselves were then judged independently against the source and sidecars."
+  },
+  "reference": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/ru.md",
+      "sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+    }
+  },
+  "keys_audited": 321,
+  "namespace_count": 8,
+  "input_verification": {
+    "pinned_target_hashes": "read from ~/.local-operator/sessions/3ef6295a5545/scratchpad/agents-r2-hashes.txt and recomputed for all eight ru files from disk: 8/8 match, no mismatch",
+    "pinned_english_hashes": "all eight en catalogue sha256 values match the values supplied in the task: 8/8",
+    "key_sets": "en and ru key sets are identical in all eight namespaces (22/47/35/47/28/23/23/96 = 321)",
+    "added_since_round_1": "102 keys, computed with git show f9243ea0de51:src/i18n/catalogues/en/<ns>.json vs the working tree: pages +6, hub.teams +21, config +3, publication +72, all others +0, none removed"
+  },
+  "method": {
+    "reading": "Read i18n/glossary.md and i18n/style-guides/ru.md from the core checkout first, then each of the eight English catalogues with its .context.json sidecar, then the Russian bytes. Every one of the 321 keys was compared against its source, its sidecar note, and — where the string is joined at the call site — the consuming component under src/renderer/src/features/agents and agent-hub.",
+    "call_sites_read": "publication-failure.ts (whole refusal table: invalidDocumentBody {rule} composition, publicationTreatment arms, pullRefusalMessage {subject} composition at 744-815), upload-agent-dialog.tsx (action footer and terms.lead/link/tail at 1086-1101), config-composer.tsx (RunSummary 779-840, about label, watch toggle), agent-hub-page.tsx (scopePhrase/countPhrase 725-781), org-teams-list.tsx (org aria 225-247, dateParts join 750-804), public-teams-library.tsx (match_line + search_scope 355-381, published_by 546), agents-page.tsx (empty-state table 162-165, roster 786-795).",
+    "plurals": "Six plural messages. Parsed with @formatjs/icu-messageformat-parser (requiresOtherClause) and rendered with intl-messageformat at 0,1,2,3,4,5,11,12,21,22,25,101,111,1.5,1234: every Russian arm (one/few/many/other) reads correctly, including the genitive after 'из' in hub.teams.public.match_line ('из 1 команды', 'из 2 команд', 'из 21 команды', 'из 1,5 команды').",
+    "typography": "Every value checked for NFC, bidi/isolation controls, zero-width characters, ASCII quotes, double spaces, leading/trailing whitespace, '...' vs U+2026 parity with the source, and empty values: 0 problems. Russian guillemets and spaced em dashes throughout; no Title Case mid-sentence beyond the shipped 'Хаб агентов' product name (precedent: ui.agents.dialogs.create.hub_link).",
+    "label_in_name": "Checked each aria-* string against the visible label it names (delegate.aria == delegate.label; every_tool_aria contains 'Все инструменты'; pull_target contains 'Загрузить'; search_aria contains both placeholders; section.members_aria == visible 'Участники'; brief.trigger_aria contains 'Бриф'; teams collaboration/project-brief aria equal their visible headings): all contain the visible label.",
+    "width": "None of the eight .context.json sidecars carries maxCells/maxChars, so fit was judged on glyph count and call-site shape only (longest new string: publication.action.update_listing 31 chars, in a two-action dialog footer). No truncation claim is made; rendered fit remains QA's.",
+    "not_run": "No builds, no test suites beyond the five named gates, no browser/rendered-frame pass, no ledger edit, no ledger-check (the ledger is not to be touched this round), no git writes. No translation/MT service was used at any point.",
+    "notes_vs_log": "The 'mechanical' field quotes commands this session actually ran and their real output; prose in 'method' and 'not_defects' is audit reasoning, not an execution log."
+  },
+  "mechanical": {
+    "locale_parity": "node --test --test-name-pattern='ru' scripts/i18n/locale-parity.test.mjs -> 6/6 pass, 0 fail: ships at least one message; defines each key in at most one namespace file; carries EVERY key; names only keys the English source defines; preserves every ICU placeholder; is not an English stub.",
+    "context_parity": "node scripts/i18n/context-parity.mjs -> 'context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json).' exit 0.",
+    "duplicates": "node scripts/i18n/check-duplicates.mjs -> 'check-duplicates: ok — 835 file(s) scanned, 0 duplicate key(s)' exit 0.",
+    "generate": "node scripts/i18n/generate.mjs --check -> 'src/i18n/keys.gen.ts is byte-identical to a fresh generation.' exit 0.",
+    "check_strings": "node --max-old-space-size=4096 scripts/i18n/check-strings.mjs -> 'check-strings.mjs: ok — 1368 file(s) scanned, 191 literal(s) at or below the baseline' exit 0. (The default heap OOM-killed the first attempt at 0.9 GB; the rerun with a 4 GB heap is the run quoted.)",
+    "own_icu_check": "Parse/compare of all 321 pairs: 0 argument-name, argument-type, selector, tag or '#' differences; 6 plural messages each carry ru's full CLDR set (one/few/many/other); no value identical to English."
+  },
+  "round1_resolution": [
+    {
+      "key": "ui.agents.detail.section.origin",
+      "finding": "RU-AGD-01 nit",
+      "disposition": "resolved",
+      "now": "Происхождение"
+    },
+    {
+      "key": "ui.hub.pages.header.subtitle",
+      "finding": "RU-HUP-01 minor",
+      "disposition": "resolved",
+      "now": "Находите и загружайте агентов, команды и навыки в Radient"
+    },
+    {
+      "key": "ui.hub.pages.search.scope_aria",
+      "finding": "RU-HUP-02 nit",
+      "disposition": "resolved",
+      "now": "Искать по полю"
+    },
+    {
+      "key": "ui.hub.teams.public.sign_in_hint",
+      "finding": "RU-HUT-01 minor (+public.intro)",
+      "disposition": "resolved",
+      "now": "Войдите в Radient, чтобы загрузить команду на этот компьютер; intro 'При загрузке команда копируется…'"
+    },
+    {
+      "key": "ui.agents.config.examples.add_twice",
+      "finding": "RU-AGC-01 nit",
+      "disposition": "partially resolved",
+      "now": "'Добавьте агента coder дважды в release-crew' fixed; the sibling examples.team_shipping still has the bare token — recorded here as ru-r2-agc-02"
+    },
+    {
+      "key": "ui.agents.upload.target.upgrade",
+      "finding": "RU-AGU-01 MAJOR",
+      "disposition": "resolved",
+      "now": "(нужен тариф выше)"
+    },
+    {
+      "key": "ui.agents.upload.published.listed",
+      "finding": "RU-AGU-02 minor",
+      "disposition": "resolved",
+      "now": "«{name}» в хабе как набор инструкций. Прочитать и установить его может любой."
+    },
+    {
+      "key": "ui.agents.upload.availability.checking",
+      "finding": "RU-AGU-03 minor",
+      "disposition": "resolved",
+      "now": "Проверка: свободно ли имя…"
+    },
+    {
+      "key": "ui.agents.upload.sign_in.nothing_left",
+      "finding": "RU-AGU-04 minor",
+      "disposition": "resolved",
+      "now": "…ни разговоров, ни истории выполнения, ни памяти, ни плана, ни конфигурации…"
+    },
+    {
+      "key": "ui.agents.upload.terms.lead",
+      "finding": "RU-AGU-05 minor (advisory)",
+      "disposition": "reasonably declined",
+      "now": "Я принимаю — the round-1 record itself says 'no fix required unless legal wants the read-limb'; the ru consent formula stays gender-neutral and the linked 'условия использования' carries the object."
+    },
+    {
+      "key": "ui.agents.publication.action.update_listing",
+      "finding": "RU-AGP-01 nit",
+      "disposition": "resolved",
+      "now": "Обновить существующую публикацию"
+    }
+  ],
+  "not_defects": [
+    {
+      "key": "ui.agents.publication.subject.unknown",
+      "why": "'этого агента' is genitive, not the capitalised nominative the English stand-in uses: every Russian pull template puts the subject after 'загрузить' or 'не найти', so the genitive is the correct form and no sentence is broken. Verified by rendering all twelve pull sentences with both subject variants."
+    },
+    {
+      "key": "ui.agents.upload.published.listed",
+      "why": "Copula-less present ('«X» в хабе как набор инструкций') is grammatical Russian for a status line and is the exact wording round 1 proposed; no meaning is lost."
+    },
+    {
+      "key": "ui.hub.pages.status.scope.shared_with",
+      "why": "'в хабе {org}' composes correctly with both count phrases and with the 'этой организации' placeholder ('5 агентов в хабе этой организации'), and matches the shipped lowercase 'хаб' for a location."
+    },
+    {
+      "key": "ui.agents.upload.sign_in.needed",
+      "why": "Mid-sentence 'Хаб агентов' is the established product-surface spelling in the shipped ru catalogue (ui.agents.dialogs.create.hub_link), not a Title Case slip."
+    },
+    {
+      "key": "ui.agents.publication.local_failure.headline_pull",
+      "why": "EN 'from this machine' names the failing side; a literal 'загрузить команду с этого компьютера' would read as an upload direction in Russian, so the destination phrasing states the same user-visible outcome. Considered and cleared."
+    },
+    {
+      "key": "ui.hub.teams.detail.created/updated",
+      "why": "The colon is copy (sidecar: the date arrives preformatted); joined with ' · ' it renders 'Создано: 10 окт. 2026 г. · Обновлено: …', which is idiomatic."
+    },
+    {
+      "key": "ui.hub.teams.public.trying",
+      "why": "'Повторная попытка…' is accurate: the sidecar says it replaces 'Try again' while the refetch runs, so every rendering is a retry."
+    }
+  ],
+  "verdict": "ui.agents.config does not pass: one MAJOR (wrong record type in summary.hidden_changes) remains. The other seven namespaces pass; hub.teams carries one MINOR and publication two NITs, all recorded above.",
+  "namespaces": {
+    "ui.agents.pages": {
+      "namespace": "ui.agents.pages",
+      "status": "passed",
+      "keys_audited": 22,
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "sha256": {
+        "en": "38a713b6cc4a63532543924cfdd2093b11c3618c31fc6266d28e20b84572feb5",
+        "ru": "e5130e0f01fefec0274fde626a88d4f9c4981afea6d6beefef579f8fc12e32ba"
+      },
+      "context_sha256": "4b761bfa8eeeddf3689a2160e8249b153c095368b6f6fe3df7046052d95d2642",
+      "findings": []
+    },
+    "ui.agents.detail": {
+      "namespace": "ui.agents.detail",
+      "status": "passed",
+      "keys_audited": 47,
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "sha256": {
+        "en": "9cf3c2f8cbd522ea6e3e2c88b9c65c80bb63d79b7a417992ece92043809ff025",
+        "ru": "8b8adb21d198357101b92a0b58c6402d1cf6013552c92ca4c32c96fc3209676a"
+      },
+      "context_sha256": "f1b0bbf296d01189d64cbdc9bb1bc77d3e7971d8f891c693b94af5741de58cd9",
+      "findings": []
+    },
+    "ui.hub.pages": {
+      "namespace": "ui.hub.pages",
+      "status": "passed",
+      "keys_audited": 35,
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "sha256": {
+        "en": "ba970e165ed879e7f9968a02302480a86d8002954d514247d633ae54eb7ca139",
+        "ru": "953c2f0fe1c77cb9c9f37528e4e1520761b3a2c6ce8a27dfa5969d00ce5bd9cd"
+      },
+      "context_sha256": "baa1605388a3892267e503c2e9a2504a7c6ace8d92bbb380a2c72ccb33be4dcc",
+      "findings": []
+    },
+    "ui.hub.teams": {
+      "namespace": "ui.hub.teams",
+      "status": "passed",
+      "keys_audited": 47,
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 0
+      },
+      "sha256": {
+        "en": "32d6df8db5c9226cd9a3e4d57f7bf12a14579ad266feaa3a914c4cfdddad9ad5",
+        "ru": "b762cc10e20afbd123610b38a1d7497dc196883303020193900118ba3371cc93"
+      },
+      "context_sha256": "9a6f5f35045687eab48c7491086b759c06d5ad635e93cdfdbcaf2f663acd6651",
+      "findings": [
+        {
+          "id": "R2-ru-HUT-01",
+          "severity": "minor",
+          "category": "accuracy / omission in an accessible name",
+          "keys": [
+            "ui.hub.teams.org.aria"
+          ],
+          "source": "Teams shared with {org}",
+          "current": "Команды {org}",
+          "problem": "The org roster section has no visible heading (org-teams-list.tsx:240-247), so this aria-label is the region's only name, and the source names the sharing relation. 'Команды {org}' reads as ownership ('Acme's teams'), while the list holds teams shared INTO the org; the same namespace's org.empty/org.unreadable say 'открытые для …'.",
+          "proposed": "Команды, открытые для {org}"
+        }
+      ]
+    },
+    "ui.agents.config": {
+      "namespace": "ui.agents.config",
+      "status": "changes_requested",
+      "keys_audited": 28,
+      "severity_counts": {
+        "blocker": 0,
+        "major": 1,
+        "minor": 0,
+        "nit": 1
+      },
+      "sha256": {
+        "en": "aa4fde04d7db00418387f862d42d547bead44e96c880e8b4e0dc86384eed305b",
+        "ru": "c062ef236d2a4b20bce24231e923fa6b96d4c95517722489ac9720ed84d47be8"
+      },
+      "context_sha256": "5dd8f962ad021b0dc4004ea2531257b3fd70904e834f77b5f9b7b2d7266a48db",
+      "findings": [
+        {
+          "id": "ru-r2-agc-01",
+          "severity": "major",
+          "key": "ui.agents.config.summary.hidden_changes",
+          "keys": [
+            "ui.agents.config.summary.hidden_changes"
+          ],
+          "problem": "The summary sentence is record-neutral in English: summary.created/updated take an agent OR team {name} (sidecar: '{name} is the agent or team name'), and RunSummary appends this clause to either. 'откройте агента' hard-codes the agent, so a team result reads 'Обновлено release-crew (team): изменены свойства. … откройте агента'. diffCatalogue emits empty-change updates for teams too, so the state is reachable and names the wrong record type.",
+          "source": "its settings changed. The list does not show instructions, so open it to see what was written.",
+          "current": "изменены свойства. Список не показывает инструкции, поэтому откройте агента, чтобы увидеть, что записано.",
+          "proposed": "изменены свойства. Список не показывает инструкции, поэтому откройте запись, чтобы увидеть, что записано."
+        },
+        {
+          "id": "ru-r2-agc-02",
+          "severity": "nit",
+          "key": "ui.agents.config.examples.team_shipping",
+          "keys": [
+            "ui.agents.config.examples.team_shipping"
+          ],
+          "problem": "Round-1 RU-AGC-01 asked for a noun before the bare Latin role token and was applied to examples.add_twice ('Добавьте агента coder …') but not to this sibling; instrumental numeral + undeclined token ('двумя coder') still reads as a stray word.",
+          "source": "A team called shipping with a manager and two coders",
+          "current": "Команда shipping с менеджером и двумя coder",
+          "proposed": "Команда shipping с менеджером и двумя агентами coder"
+        }
+      ]
+    },
+    "ui.agents.teams": {
+      "namespace": "ui.agents.teams",
+      "status": "passed",
+      "keys_audited": 23,
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "sha256": {
+        "en": "139eca3cd41f62cfea0a97d6a9b40cff8aa446ea761b1f94d42334d1d576fdef",
+        "ru": "0c3a7bf87d5e3212820966a1eed05f4888b8c1c23c4559397a0f5667d0d5856c"
+      },
+      "context_sha256": "0b3f7f59a37c671813d9a5c9d32b242e04d0fa0b3c5605421c3129cab937bfc1",
+      "findings": []
+    },
+    "ui.agents.upload": {
+      "namespace": "ui.agents.upload",
+      "status": "passed",
+      "keys_audited": 23,
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "sha256": {
+        "en": "6f1242bae1dcc952a8f3a659a2850fad2af9a3b0834d6a23ddac28fc8be91c11",
+        "ru": "7728206c2d19780227ad9230a03932e179f1266ce6c25da665ee63b3c98b4af2"
+      },
+      "context_sha256": "9c8ccc682885383f7aee9f77a1dbbb8c94a5d709e2de4ee9d76b40c7248a277a",
+      "findings": []
+    },
+    "ui.agents.publication": {
+      "namespace": "ui.agents.publication",
+      "status": "passed",
+      "keys_audited": 96,
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 2
+      },
+      "sha256": {
+        "en": "20056e5654c004bef9318bf91531cb0cbc349d6242f6c49ba4801eb5d4605f39",
+        "ru": "9ab58eaa553a41fb52dce3e164ff2d646c1941b1fc9828adf6d9de6bae94e2c2"
+      },
+      "context_sha256": "69ceeff1e7162764e13c6d5fdee8e7a9f1184f1ab8209839a34e64ce6c486f90",
+      "findings": [
+        {
+          "id": "ru-r2-agp-01",
+          "severity": "nit",
+          "key": "ui.agents.publication.category.unclear_dual_use",
+          "keys": [
+            "ui.agents.publication.category.unclear_dual_use"
+          ],
+          "problem": "'предложение' is the grammar word for 'sentence', but in UI copy it is read first as 'proposal'; the instruction asks the publisher to add one sentence to the description.",
+          "source": "Add a sentence stating the scope and target, then publish again.",
+          "current": "Добавьте предложение об области применения и цели и опубликуйте снова.",
+          "proposed": "Добавьте фразу об области применения и цели и опубликуйте снова."
+        },
+        {
+          "id": "ru-r2-agp-02",
+          "severity": "nit",
+          "key": "ui.agents.publication.pull.not_found",
+          "keys": [
+            "ui.agents.publication.pull.not_found"
+          ],
+          "problem": "The impersonal 'не найти' behind the fronted locative reads clumsy where the sibling pull sentences use plain 'загрузить {subject}'. Both subjects (the quoted name and the genitive placeholder) fit 'не осталось/больше нет'.",
+          "source": "{subject} is no longer on the hub, so nothing was downloaded.",
+          "current": "В хабе {subject} больше не найти, поэтому ничего не загружено.",
+          "proposed": "В хабе больше нет {subject}, поэтому ничего не загружено."
+        }
+      ]
+    }
+  }
+}

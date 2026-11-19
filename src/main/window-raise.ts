@@ -117,7 +117,17 @@ export type RaiseTrigger =
 	 * touch `show*`/`focus` itself, and under the `never` plan this name is the
 	 * one that stays silent unless the visibility fallback fires.
 	 */
-	| "popup-open";
+	| "popup-open"
+	/*
+	 * A popup an agent's page opened was HELD hidden (`browser/user-attention.ts`)
+	 * and the user has just clicked its sidebar notification row. The browser host
+	 * asks for no window on its own any more — the `passkey-custody` raise that
+	 * used to bring a held tab forward was removed (operator report 2026-11-15,
+	 * "the browser is stealing the view") — so this name only ever follows a
+	 * person's click inside the app, and still goes through `presentPopupWindow`
+	 * so the launch plan decides.
+	 */
+	| "popup-attention-open";
 
 /**
  * Who asked for the window, when the caller can say.
@@ -368,6 +378,9 @@ const REFUSABLE_DELIVERY: Record<
 	// may appear at all is `presentPopupWindow`'s own gate, and this table's
 	// question never arises. Declared for the same totality rule as `viewer-focus`.
 	"popup-open": "never",
+	// A held popup the user's own click presents: delivers nothing and can
+	// replace nothing, like `popup-open`; declared for the totality rule.
+	"popup-attention-open": "never",
 };
 
 /**

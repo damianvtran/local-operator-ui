@@ -1,0 +1,55 @@
+Actual output; local worktree path normalized to <worktree>.
+desktop tests: 4 files, concurrency 1 (explicit LOCAL_OPERATOR_UI_TEST_CONCURRENCY; governor bypassed)
+desktop tests: memory bound 2.0 GB for the test process group (explicit LOCAL_OPERATOR_UI_TEST_MEMORY_BUDGET_MB); sampled every 2s on max(footprint, rss)
+desktop tests: per-lane bound 45s (explicit LOCAL_OPERATOR_UI_LANE_BOUND_MS); sampled every 5s over the suite's process group
+no-hardlink-write: guarding 56 fs entry points — a write through a shared inode will be refused
+(node:46790) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ a preview shows the join banner and never a message body (51.861833ms)
+✔ a refused notification write is stated under the header (5.949583ms)
+✔ a refused join is stated above a still-available action (0.2805ms)
+✔ the header menu's trigger names the control (0.399416ms)
+✔ the menu renders the model's levels and toggle, inside Radix's radio group (0.171542ms)
+✔ the notify options restore both cached pages when the write is refused (1.853334ms)
+no-hardlink-write: guarding 56 fs entry points — a write through a shared inode will be refused
+(node:46886) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ the mounted hook bounds the fan-out, orders by unread, filters eligibility, seeds per org and tags each row (170.7835ms)
+✔ a zero-total org's first message before the conversation list resolves still banners (151.101166ms)
+✔ history: a setting change while history is pending is rechecked before IPC (249.985333ms)
+✔ history: a capability change while history is pending is rechecked before IPC (192.413459ms)
+✔ history: a none change while history is pending is rechecked before IPC (191.550125ms)
+✔ history: a setting change while directory is pending is rechecked before IPC (255.4295ms)
+✔ history: a capability change while directory is pending is rechecked before IPC (199.652125ms)
+✔ history: a none change while directory is pending is rechecked before IPC (195.672583ms)
+✔ a reply candidate reads the timeline, never the thread, and opens the conversation (151.508542ms)
+no-hardlink-write: guarding 56 fs entry points — a write through a shared inode will be refused
+(node:47404) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ the build holds the surface: every capability answer is hidden (1.222125ms)
+✔ the return path is the capability, and only `enabled` opens it (0.103ms)
+✔ a notification click lands on the conversation, never on a thread (0.170083ms)
+✔ the page asks the capability and hands the answer to the view (0.241584ms)
+✔ the page's thread state, reply handler and pane mount are all held (0.358666ms)
+✔ a `?thread=` deep link cannot seed a thread target (0.205958ms)
+✔ the message row renders no reply control while held (0.094333ms)
+✔ the toolbar drops a directly-passed onReply while held (0.05825ms)
+✔ both pane exports guard before any hook mounts (0.837417ms)
+✔ no notification path reads thread replies while held (0.35775ms)
+✔ the reactions hold hides every capability answer, `enabled` included (0.139042ms)
+✔ the return path is the shipped flag AND `enabled` (0.081708ms)
+✔ reaction chips and the react control are absent for every answer, `enabled` included (45.177542ms)
+✔ every directly exported reaction entry point honours the hold (1.509292ms)
+✔ the reaction hook is inert while held and issues no toggle (0.207792ms)
+✔ no reaction state is mounted while the hold is on (0.167834ms)
+✔ the toolbar counts no reaction control while held (0.164209ms)
+no-hardlink-write: guarding 56 fs entry points — a write through a shared inode will be refused
+✔ every scripts/*.test.mjs is run by test:desktop or exempt with a reason (7.667ms)
+ℹ tests 33
+ℹ suites 0
+ℹ pass 33
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6195.048042

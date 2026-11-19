@@ -148,10 +148,10 @@ const LIVE = ARGS.includes("--live");
  *   tombstone. The frame therefore asserts the state the design has now: the
  *   view on the refused conversation, the tombstone sentence in the pane, and
  *   the composer disabled under its own "This conversation is gone".
- * - `slow`: the same hydrating state at the pulse TROUGH. At shipped latency
+ * - `slow`: the same hydrating state held on a slow backend. At shipped latency
  *   this state is three frames and invisible; on a slow or remote backend it is
- *   the whole first impression, and it is the frame that exposes a placeholder
- *   whose animation takes it under the contract's floor.
+ *   the whole first impression. (It was shot at a pulse trough while the mark
+ *   pulsed; the spinner that replaced it has no trough.)
  * - `held-press`: a send pressed inside the read window. The state the arm used
  *   to photograph was `refusal` - the composer painting "Sending works once it
  *   is ready" - and the press no longer takes that route on this head: since
@@ -185,17 +185,6 @@ const FRAME_STATES = [
 	"settled",
 	"error",
 ];
-/**
- * The placeholder's pulse floor, as `styles/index.css` defines it.
- *
- * Held here as a number rather than read from the page because BOTH uses need
- * it: the capture waits for the trough, and `shoot` refuses a `slow` frame that
- * is not at it (design round 2, D8 - the floor moved from Tailwind's 0.5 to
- * 0.7 because the light brand palette's trough delivered deltaE00 1.63 against
- * the pane's canvas, under the ~2 the contract records; on the re-captured
- * frames the same measurement is 2.81 light and 4.26 dark).
- */
-const PULSE_TROUGH = 0.7;
 /**
  * WHICH states a `--frames` capture writes: `--states=hydrating,settled`.
  *
@@ -329,6 +318,31 @@ const LEAVE_AFTER = Number(flag("leave-after", "0"));
  * answers - so a fix that stops the leak by dropping every held press fails here.
  */
 const HELD_STAY = ARGS.includes("--held-stay");
+/**
+ * `--cached-paint`: a REVISIT of a conversation this window has already shown,
+ * sampled per animation frame from the click until the snapshot has landed and
+ * the pane has settled.
+ *
+ * The report it exists for: "when you switch sessions you see a full blank
+ * session history ... it feels slow because it's just blank, and then it loads
+ * up after a second or two". The renderer holds the conversation's last rows in
+ * its paint cache (`shared/store/paint-cache.ts`), so the question is how long
+ * the pane is blank AFTER a switch to a conversation it has rows for, and
+ * whether painting those rows moves anything when the authoritative page
+ * replaces them. Needs `--stream=<ms>` long enough to have a window to look
+ * into; the verdict is structural (rows before the snapshot, no movement), so it
+ * carries no millisecond threshold.
+ *
+ * WHAT ITS "NO MOVEMENT" DOES NOT COVER. The scripted owner answers with the same
+ * fixture the cache holds, so a page that adds older rows, changes a row's height
+ * or carries a running turn is never exercised: under `--live` the arm FAILS on
+ * 45px of real content arriving (a running row, a working line, a taller
+ * composer), which is the page replacing the cache rather than the cache's
+ * layout moving. Chrome outside the transcript is not held constant either: at
+ * `--width=760` the composer grows 4px when the snapshot lands and the rows move
+ * with it. The caption check reads the last frame only, 600 ms after painted.
+ */
+const CACHED_PAINT = ARGS.includes("--cached-paint");
 const WIDTH = Number(flag("width", "1280"));
 const HEIGHT = Number(flag("height", "900"));
 
@@ -396,6 +410,75 @@ const RUN = (count) => `(async () => {
 		await probe.settle(target);
 	}
 	return { meta, runs, latency: probe.bridge.log.latency };
+})()`;
+
+/**
+ * A revisit, frame by frame. Visit the target, leave for the other conversation
+ * (which writes the target's paint cache on unmount), then switch back with a
+ * recorder running. A row is "visible" when a `[data-record-id^="<target>-"]`
+ * element has a box; the geometry is the last visible row's bottom edge and the
+ * content column's top edge, which are what a bottom-anchored transcript moves
+ * when something above or below it changes height.
+ */
+const CACHED_RUN = `(async () => {
+	const probe = window.__lopSwitch;
+	const meta = probe.snapshot();
+	const target = meta.incoming;
+	await probe.switchTo(target, "first-visit");
+	await probe.settle(target);
+	await probe.switchTo(meta.outgoing, "leave");
+	await probe.settle(meta.outgoing);
+	const frames = [];
+	let running = true;
+	const origin = performance.now();
+	const sample = () => {
+		const t = performance.now() - origin;
+		const rows = [...document.querySelectorAll('[data-record-id^="' + target + '-"]')].filter((el) => el.getBoundingClientRect().height > 0);
+		const last = rows.at(-1)?.getBoundingClientRect() ?? null;
+		const first = rows.at(0)?.getBoundingClientRect() ?? null;
+		const column = document.querySelector("[data-lo-transcript-content]")?.getBoundingClientRect() ?? null;
+		frames.push({
+			t: Math.round(t * 10) / 10,
+			rows: rows.length,
+			placeholder: document.querySelector('[aria-label="Loading conversation"]') !== null,
+			lastBottom: last ? Math.round(last.bottom * 10) / 10 : null,
+			firstTop: first ? Math.round(first.top * 10) / 10 : null,
+			scroller: (() => {
+				let el = document.querySelector("[data-lo-transcript-content]");
+				while (el && !/(auto|scroll)/.test(getComputedStyle(el).overflowY)) el = el.parentElement;
+				const r = el?.getBoundingClientRect();
+				return r ? [Math.round(r.top * 10) / 10, Math.round(r.bottom * 10) / 10] : null;
+			})(),
+			composerTop: (() => {
+				const r = document.querySelector("textarea")?.closest("form")?.getBoundingClientRect();
+				return r ? Math.round(r.top * 10) / 10 : null;
+			})(),
+			tail: (() => {
+				const col = document.querySelector("[data-lo-transcript-content]");
+				const out = [];
+				let el = col?.lastElementChild;
+				for (let i = 0; el && i < 4; i++, el = el.previousElementSibling) {
+					const r = el.getBoundingClientRect();
+					out.push(el.tagName + "." + String(el.className).slice(0, 50) + "|" + el.getAttribute("data-record-id") + "|h=" + Math.round(r.height * 10) / 10);
+				}
+				return out;
+			})(),
+			captionShown: document.querySelector("[data-lo-stale-caption]") !== null,
+			columnTop: column ? Math.round(column.top * 10) / 10 : null,
+		});
+		if (running) requestAnimationFrame(sample);
+	};
+	requestAnimationFrame(sample);
+	const run = await probe.switchTo(target, "cached-revisit");
+	await new Promise((resolve) => setTimeout(resolve, 600));
+	running = false;
+	return {
+		meta,
+		clickAt: run.clickAt - origin,
+		snapshotAt: run.streamSnapshotAt === null ? null : run.streamSnapshotAt - origin,
+		paintedAt: run.transcriptPaintedAt === null ? null : run.transcriptPaintedAt - origin,
+		frames,
+	};
 })()`;
 
 /**
@@ -992,55 +1075,13 @@ const prepareState = async (cdp, state) => {
 	}
 
 	/*
-	 * THE PULSE'S PHASE, waited for rather than hoped for.
-	 *
-	 * The pulse runs on its own two-second clock, so a frame that claims a phase
-	 * has to be shot AT that phase or it is a picture of an arbitrary moment with
-	 * a measurement beside it describing a state the pixels do not show. Two
-	 * phases are claimed here: `slow` is the TROUGH (the state D2/D8 is about,
-	 * where the bar's step is at its weakest), and the hydrating states are shot
-	 * at REST, which is what the "at rest" numbers beside them are measured
-	 * against. The readback in `shoot` records the opacity that was actually on
-	 * screen, so the frame states the phase it was taken at instead of the
-	 * harness asserting one it hoped for.
+	 * No phase to wait for. The loading mark used to pulse, and this waited for
+	 * the trough (`slow`) or rest (hydrating) before shooting; it is the shared
+	 * spinner now (design review round 1, D-M1), whose rotation changes no
+	 * colour or opacity, so every instant is the same frame as far as contrast is
+	 * concerned.
 	 */
-	if (state !== "settled" && state !== "error")
-		await awaitPulse(
-			cdp,
-			state === "slow" ? `<= ${PULSE_TROUGH + 0.03}` : ">= 0.995",
-		);
 };
-
-/**
- * Wait for the placeholder's first bar to reach a phase of its pulse.
- *
- * `comparison` is the test on the element's rendered opacity, written out
- * rather than passed as a number because the two phases are opposite
- * inequalities: a ceiling for the trough (the animation's floor, plus the same
- * small slack the first version of this wait used, so the sample lands near the
- * floor rather than exactly on it) and a floor for rest. The rest test is
- * 0.995 rather than 0.97 on purpose: both ends of the animation are eased with
- * `cubic-bezier(0.4, 0, 0.6, 1)`, whose slope at the extremes is flat, so near
- * the peak the opacity barely moves across the screenshot round trip - while
- * catching the curve mid-FALL at 0.97 would let the capture land below the
- * rest guard a frame later and fail for being right about a different moment.
- */
-const awaitPulse = (cdp, comparison) =>
-	cdp.send("Runtime.evaluate", {
-		awaitPromise: true,
-		expression: `(async () => {
-			const bar = () =>
-				document.querySelector('[aria-label="Loading conversation"]')
-					?.firstElementChild;
-			const deadline = performance.now() + 20_000;
-			while (performance.now() < deadline) {
-				const el = bar();
-				const opacity = el ? Number(getComputedStyle(el).opacity) : null;
-				if (opacity !== null && opacity ${comparison}) return;
-				await new Promise((r) => requestAnimationFrame(() => r()));
-			}
-		})()`,
-	});
 
 /**
  * Type into the composer and submit, the way the app's own user does it: real
@@ -1136,13 +1177,6 @@ const shoot = async (cdp, path, state, theme) => {
 		if (state === "mark") {
 			if (!seen.rowInView) refuse("the switched-to sidebar row is not in view");
 		}
-		if (
-			state === "slow" &&
-			!((seen.placeholderOpacity ?? 1) <= PULSE_TROUGH + 0.1)
-		)
-			refuse(
-				`the placeholder is not at its pulse trough (opacity ${seen.placeholderOpacity})`,
-			);
 		if (state === "held-press") {
 			/*
 			 * The state is the HELD PRESS, and the frame has to be a picture of both
@@ -1168,18 +1202,13 @@ const shoot = async (cdp, path, state, theme) => {
 				refuse(`a message reached the transport (${seen.sentMessages})`);
 		}
 		/*
-		 * The mirror of the trough guard: the hydrating states are measured as the
-		 * pulse's REST phase (that is what "at rest" means beside those numbers),
-		 * so a frame caught mid-fade is refused rather than published under a
-		 * measurement it does not show.
+		 * The loading mark carries no opacity animation (it is a spinner, not a
+		 * pulse), so anything under full opacity is a regression to a fading mark
+		 * that the frame's "at rest" numbers would not describe.
 		 */
-		if (
-			state !== "slow" &&
-			state !== "settled" &&
-			(seen.placeholderOpacity ?? 1) < 0.99
-		)
+		if (state !== "settled" && (seen.placeholderOpacity ?? 1) < 0.99)
 			refuse(
-				`the placeholder is not at the pulse's rest phase (opacity ${seen.placeholderOpacity})`,
+				`the loading mark is not fully opaque (opacity ${seen.placeholderOpacity})`,
 			);
 	}
 	const { data } = await cdp.send("Page.captureScreenshot", {
@@ -1411,24 +1440,30 @@ const main = async () => {
 			),
 		]);
 
+	if (CACHED_PAINT && !(Number(SCENARIO.stream) >= 500))
+		throw new Error(
+			"--cached-paint needs --stream=<ms, at least 500>: without a snapshot delay there is no window between the click and the authoritative page to look into",
+		);
 	if ((HELD_LEAVE || HELD_STAY) && !(Number(SCENARIO.stream) >= 1000))
 		throw new Error(
 			"--held-leave needs --stream=<ms, at least 1000>: without it the window closes before the press, and the arm would pass without testing anything",
 		);
 	const { result } = await runWithDeadline(
-		HELD_LEAVE || HELD_STAY
-			? HELD_LEAVE_RUN
-			: RACE_STAGE
-				? STAGE_RUN
-				: RACE_PALETTE
-					? PALETTE_RUN
-					: RACE_FUZZ
-						? FUZZ_RUN
-						: RACE
-							? RACE_RUN(RACE_WRITE)
-							: FAIL_GET
-								? FAIL_RUN
-								: RUN(SWITCHES),
+		CACHED_PAINT
+			? CACHED_RUN
+			: HELD_LEAVE || HELD_STAY
+				? HELD_LEAVE_RUN
+				: RACE_STAGE
+					? STAGE_RUN
+					: RACE_PALETTE
+						? PALETTE_RUN
+						: RACE_FUZZ
+							? FUZZ_RUN
+							: RACE
+								? RACE_RUN(RACE_WRITE)
+								: FAIL_GET
+									? FAIL_RUN
+									: RUN(SWITCHES),
 		FAIL_GET ? 90_000 : 60_000 + SWITCHES * 25_000,
 	);
 	if (!result.value)
@@ -1436,6 +1471,89 @@ const main = async () => {
 			`the page threw instead of returning a run table: ${result.description ?? JSON.stringify(result)}`,
 		);
 
+	if (CACHED_PAINT) {
+		const { meta, clickAt, snapshotAt, paintedAt, frames } = result.value;
+		const firstRow = frames.find(
+			(frame) => frame.rows > 0 && frame.t >= clickAt,
+		);
+		const rowsAt = firstRow ? firstRow.t - clickAt : null;
+		const afterRows = firstRow
+			? frames.filter((frame) => frame.t >= firstRow.t && frame.rows > 0)
+			: [];
+		/*
+		 * Movement is measured against the FIRST painted frame of rows, over every
+		 * frame in which rows are present. A frame with no rows (the placeholder)
+		 * carries no edge to compare. The page the snapshot delivers is the same
+		 * fixture the cache holds, so the transcript's own content does not change
+		 * height: anything that moves is the pane's chrome, which is what this
+		 * measures.
+		 */
+		const drift = (key) =>
+			afterRows.length === 0
+				? null
+				: Math.max(
+						...afterRows.map((frame) =>
+							Math.abs((frame[key] ?? 0) - (firstRow[key] ?? 0)),
+						),
+					);
+		const lastBottomDrift = drift("lastBottom");
+		const columnTopDrift = drift("columnTop");
+		const firstTopDrift = drift("firstTop");
+		const snapshotRel = snapshotAt === null ? null : snapshotAt - clickAt;
+		const verdict = {
+			"the revisit saw the target's own rows at all": rowsAt !== null,
+			"rows were on screen BEFORE the authoritative snapshot landed":
+				rowsAt !== null && snapshotRel !== null && rowsAt < snapshotRel,
+			"the last row's bottom edge did not move once painted":
+				lastBottomDrift !== null && lastBottomDrift <= 1,
+			"the stale caption stood while the rows were the cache's":
+				firstRow !== null &&
+				frames.some(
+					(frame) => frame.t >= clickAt && frame.rows > 0 && frame.captionShown,
+				),
+			"the stale caption is gone once the page has landed":
+				frames.length > 0 && !frames.at(-1).captionShown,
+			"the first row's top edge did not move once painted":
+				firstTopDrift !== null && firstTopDrift <= 1,
+			"the transcript column's top edge did not move once painted":
+				columnTopDrift !== null && columnTopDrift <= 1,
+		};
+		const passed = Object.values(verdict).every(Boolean);
+		const loads = loadavg().map((value) => Math.round(value * 100) / 100);
+		if (AS_JSON)
+			console.log(
+				JSON.stringify(
+					{
+						meta,
+						clickAt,
+						snapshotAt,
+						paintedAt,
+						rowsAt,
+						lastBottomDrift,
+						columnTopDrift,
+						verdict,
+						frames,
+					},
+					null,
+					2,
+				),
+			);
+		else {
+			console.log(
+				`cached-paint arm (stream ${SCENARIO.stream} ms)  ·  load average ${loads.join(" ")} on ${cpus().length} cores`,
+			);
+			console.log(
+				`  click -> first row on screen: ${rowsAt === null ? "never" : `${rowsAt.toFixed(1)} ms`}   click -> snapshot: ${snapshotRel === null ? "-" : `${snapshotRel.toFixed(1)} ms`}   click -> painted: ${paintedAt === null ? "-" : `${(paintedAt - clickAt).toFixed(1)} ms`}`,
+			);
+			console.log(
+				`  placeholder frames after the click: ${frames.filter((frame) => frame.t >= clickAt && frame.placeholder).length}   rows-visible frames: ${afterRows.length}   last-row bottom drift: ${lastBottomDrift} px   first-row top drift: ${firstTopDrift} px   column top drift: ${columnTopDrift} px`,
+			);
+			for (const [claim, ok] of Object.entries(verdict))
+				console.log(`  ${ok ? "PASS" : "FAIL"}  ${claim}`);
+		}
+		if (!passed) process.exitCode = 1;
+		return;
+	}
 	if (HELD_LEAVE || HELD_STAY) {
 		const { meta, validatingAtPress, viewAfter, messages, boxAtLeave, ops } =
 			result.value;

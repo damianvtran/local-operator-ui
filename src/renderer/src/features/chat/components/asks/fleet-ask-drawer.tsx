@@ -67,21 +67,78 @@
  * layout (one scroller, no footer, design D1) has nowhere to put.
  */
 
+import {
+	DrawerTabs,
+	useSessionUnreadUpdates,
+} from "@features/notifications/components/drawer-updates";
+import { useNotificationDrawerTab } from "@features/notifications/drawer-tab-store";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
+import {
+	desktopFeatureEnabled,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
 import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
+import { t } from "@shared/i18n";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { AskDrawerCloseOptions } from "@shared/store/ui-preferences-store";
 import { showSuccessToast } from "@shared/utils/toast-manager";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+/** The four receipts this drawer raises on a settled fleet press. */
+type FleetAskReceipt = "answered" | "changed" | "declined" | "dismissed";
+
+/*
+ * Each receipt is two messages rather than one sentence plus a name: the named
+ * form is the sentence, so a translation may put the conversation where its own
+ * grammar needs it instead of inheriting English word order.
+ */
+const FLEET_ASK_RECEIPT = {
+	answered: {
+		plain: "ui.notices.chat.ask_answered",
+		named: "ui.notices.chat.ask_answered_named",
+	},
+	changed: {
+		plain: "ui.notices.chat.ask_changed",
+		named: "ui.notices.chat.ask_changed_named",
+	},
+	declined: {
+		plain: "ui.notices.chat.ask_declined",
+		named: "ui.notices.chat.ask_declined_named",
+	},
+	dismissed: {
+		plain: "ui.notices.chat.ask_dismissed",
+		named: "ui.notices.chat.ask_dismissed_named",
+	},
+} as const;
+
 import {
-	type AnswerOutcome,
+	type MutableRefObject,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
+import {
+	type NavigateFunction,
+	useInRouterContext,
+	useNavigate,
+} from "react-router-dom";
+import {
 	answerQueuedAsk,
-	createSendLock,
 	declineQueuedAsk,
+	dismissQueuedAsk,
 	reviseQueuedAsk,
 } from "../../ask-answer";
-import type { AskDraft, AskOutcome, AskPresentation } from "../../ask-queue";
-import { askRefusalIsOwner, askRefusalSentence } from "../../ask-queue";
+import {
+	fileFleetAskCommand,
+	readAskAgentPlacement,
+} from "../../ask-command-actions";
+import { askRevisionEvidence, askWithLocalSettle } from "../../ask-queue";
+import type {
+	AskDismissReason,
+	AskDraft,
+	AskPresentation,
+} from "../../ask-queue";
 import {
 	FLEET_ASKS_QUERY_KEY,
 	fleetAskConversationLabels,
@@ -89,16 +146,33 @@ import {
 	useFleetAsks,
 } from "../../fleet-asks";
 import { pressLandsOnOverlay } from "../../keyboard-scopes";
+import { useAskOutcomes } from "../../use-ask-outcomes";
 import { AskDrawer } from "./ask-drawer";
+import type { AskCommandRequest } from "./ask-panel";
+
+/**
+ * Hands the router's `navigate` to the drawer through a ref, mounted only
+ * inside a router (`useInRouterContext`). The drawer itself must keep working
+ * where there is none — the fleet suites render it bare — and a hook cannot be
+ * called conditionally, so the one hook that needs a router lives in this child
+ * and a bare render simply offers no terminal doors.
+ */
+const NavigateInto = ({
+	target,
+}: {
+	target: MutableRefObject<NavigateFunction | null>;
+}) => {
+	target.current = useNavigate();
+	return null;
+};
 
 /** No drafts, as one stable object: a fresh `{}` per render would re-key every card. */
 const EMPTY_ASK_DRAFTS: Record<string, AskDraft> = {};
 
-/** One ask's in-flight/refused/last-change record, as the drawer and the panel read it. */
-type AskOutcomes = Record<string, AskOutcome | undefined>;
-
 export const FleetAskDrawer = ({
 	onClose,
+	ground,
+	presentation,
 }: {
 	/*
 	 * THE SAME TWO-KIND SEAM AS THE DRAWER'S (#1079), forwarded untouched: the X inside
@@ -107,14 +181,50 @@ export const FleetAskDrawer = ({
 	 * `AskDrawerCloseOptions`.
 	 */
 	onClose: (options?: AskDrawerCloseOptions) => void;
+	/**
+	 * WHICH GROUND THE SHELL'S SLOT RESOLVED (2026-11-03), forwarded to the drawer:
+	 * `glass` while the pane docks, `solid` while it is the sheet drawn over a row it
+	 * cannot dock in. See `AskDrawerProps.ground`.
+	 */
+	ground?: "glass" | "solid";
+	/**
+	 * WHETHER THE SLOT IS THE SHEET OR THE DOCKED PANE (agent review round 3,
+	 * MINOR-1), forwarded untouched: only the sheet's commit inerts the route content
+	 * it covers, so only there may a press on someone else's control be latched and
+	 * followed. See `AskDrawerProps.presentation`.
+	 */
+	presentation?: "docked" | "overlay";
 }) => {
 	const { rows, frontend } = useFleetAsks();
+	const currentSessionId =
+		useCanonicalSessionsStore((state) => state.activeSessionId) ?? null;
+	const setAskDrawerOpen = useUiPreferencesStore(
+		(state) => state.setAskDrawerOpen,
+	);
+	const setTab = useNotificationDrawerTab((state) => state.setTab);
 	const { client } = useOptionalQueryClient();
-	const lock = useRef(createSendLock()).current;
+	/*
+	 * THE DISMISS DOOR'S GATE (harness PR #2833, SA-D5): a backend that does not
+	 * advertise `features.ask_dismiss` refuses a body carrying `dismiss` with a 422
+	 * (`Answer` is `extra="forbid"`), so the card offers no control there. Fails
+	 * closed while the capabilities read is in flight or errored.
+	 */
+	const capabilities = useDesktopCapabilities();
+	const dismissEnabled = desktopFeatureEnabled(
+		capabilities.data,
+		"ask_dismiss",
+	);
+	const notificationsEnabled = desktopFeatureEnabled(
+		capabilities.data,
+		"notifications",
+		1,
+	);
+	const unreadUpdates = useSessionUnreadUpdates(
+		currentSessionId,
+		notificationsEnabled,
+	);
 	const [drafts, setDrafts] =
 		useState<Record<string, AskDraft>>(EMPTY_ASK_DRAFTS);
-	const [outcomes, setOutcomes] = useState<AskOutcomes>({});
-	const [answering, setAnswering] = useState(false);
 	/*
 	 * WHICH CONVERSATION EACH CARD IS ABOUT: the same name the sessions list gives
 	 * it. The catalogue is the list's own source (`CanonicalSessionsStore`), joined
@@ -204,154 +314,210 @@ export const FleetAskDrawer = ({
 	 * drawer has one scroller and no footer on purpose - design D1's fix).
 	 */
 	const receipt = useCallback(
-		(verb: string, askId: string) => {
+		(kind: FleetAskReceipt, askId: string) => {
 			const name = labels.get(askId);
-			showSuccessToast(name ? `${verb} ${name}` : verb);
+			showSuccessToast(
+				name
+					? t(FLEET_ASK_RECEIPT[kind].named, { name })
+					: t(FLEET_ASK_RECEIPT[kind].plain),
+			);
 		},
 		[labels],
 	);
 
-	const settle = useCallback(
-		(askId: string, outcome: AnswerOutcome, verb: string, changed = false) => {
-			/*
-			 * ONLY THE OWNER'S OWN REFUSAL CLOSES §10's CHANGE DOOR (agent review round 2,
-			 * minor). A transport failure's sentence still lands in the row (the reader is
-			 * told what happened to the press), but `refusedByOwner` stays false so the
-			 * card keeps its door and a second press is possible once the wire answers -
-			 * the outcome record is never cleared, so latching the door shut on a failure
-			 * would withdraw the affordance for the life of the pane.
-			 */
-			const refusal =
-				outcome.status === "failed"
-					? {
-							refused: askRefusalSentence(outcome.error),
-							refusedByOwner: askRefusalIsOwner(outcome.error),
-						}
-					: { refused: null };
-			setOutcomes((current) => ({
-				...current,
-				[askId]: {
-					sending: false,
-					...refusal,
-					/*
-					 * The revision's own receipt (`AskOutcome`'s note): the wire cannot mark an
-					 * accepted change, so this surface records it — and the row leaves this pane
-					 * on the `refresh()` below, which is why the receipt has to exist before the
-					 * card it belonged to is gone.
-					 */
-					...(changed ? { changed: true } : {}),
-				},
-			}));
-			if (outcome.status !== "sent") return;
-			receipt(verb, askId);
+	/*
+	 * THE OUTCOME RECORD IS THE SHARED ONE (`useAskOutcomes`), the same path the
+	 * Notifications detail pane takes: in-flight, the owner/transport split, Retry on
+	 * a transport failure, and the accepted act painted over the aggregate until the
+	 * refresh below lands. Each accepted act still gets this pane's receipt - the
+	 * toast naming the conversation - because the row leaves the pane on the refresh.
+	 */
+	const { lock, outcomes, answering, run } = useAskOutcomes({
+		onAccepted: (act) => {
+			receipt(act.kind, act.askId);
 			refresh();
 		},
-		[receipt, refresh],
-	);
+	});
 
 	const onAnswer = useCallback(
 		(askId: string, answers: Record<string, string[]>) => {
 			const sessionId = fleetAskSessionFor(rows ?? [], askId);
-			if (!sessionId || lock.held) return;
-			setAnswering(true);
-			setOutcomes((current) => ({
-				...current,
-				[askId]: { sending: true, refused: null },
-			}));
-			void (async () => {
-				let outcome: AnswerOutcome;
-				try {
-					outcome = await answerQueuedAsk(
+			const ask = rows?.find((row) => row.ask_id === askId);
+			if (!sessionId || !ask) return;
+			run({
+				askId,
+				kind: "answered",
+				answers,
+				decision: askRevisionEvidence(ask, answers, sessionId),
+				questions: ask.questions,
+				send: () =>
+					answerQueuedAsk(
 						{ taskId: askId, answers, sessionId, lock },
 						(request) => desktopResult(request),
-					);
-				} finally {
-					setAnswering(false);
-				}
-				settle(askId, outcome, "Answer sent to");
-			})();
+					),
+			});
 		},
-		[lock, rows, settle],
+		[lock, rows, run],
 	);
 
 	/*
 	 * THE CHANGE DOOR (design §10, #1936), and the FLEET is exactly the case §10 has in
 	 * mind: the ask may belong to another conversation, and a revision is accepted from
-	 * ANY surface while the answer is undelivered. The body is the same whole-ask map the
-	 * answer door sends, plus the intent — addressed by ask id, to the session the ask
-	 * names (`fleetAskSessionFor`), never to the conversation the user happens to be in.
-	 *
-	 * A refusal is NOT a failed receipt: the delivered sentence is the expected outcome of
-	 * a change that lost its window, so it lands in the row's own outcome line rather than
-	 * as a toast (the `settle` shape every other refusal here takes).
+	 * ANY surface while the answer is undelivered. Addressed by ask id, to the session
+	 * the ask names (`fleetAskSessionFor`), never to the conversation the user is in. A
+	 * refusal lands in the row's own outcome line rather than as a toast.
 	 */
 	const onRevise = useCallback(
 		(askId: string, answers: Record<string, string[]>) => {
 			const sessionId = fleetAskSessionFor(rows ?? [], askId);
-			if (!sessionId || lock.held) return;
-			setAnswering(true);
-			setOutcomes((current) => ({
-				...current,
-				[askId]: { sending: true, refused: null },
-			}));
-			void (async () => {
-				let outcome: AnswerOutcome;
-				try {
-					outcome = await reviseQueuedAsk(
+			const raw = rows?.find((row) => row.ask_id === askId);
+			if (!sessionId || !raw) return;
+			// Edit the SAME decision the card paints, not a still-OPEN aggregate row.
+			const ask = askWithLocalSettle(raw, outcomes[askId], sessionId);
+			run({
+				askId,
+				kind: "changed",
+				answers,
+				decision: askRevisionEvidence(ask, answers, sessionId),
+				questions: ask.questions,
+				send: () =>
+					reviseQueuedAsk(
 						{ taskId: askId, answers, sessionId, lock },
 						(request) => desktopResult(request),
-					);
-				} finally {
-					setAnswering(false);
-				}
-				settle(askId, outcome, "Answer changed for", true);
-			})();
+					),
+			});
 		},
-		[lock, rows, settle],
+		[lock, rows, run, outcomes],
 	);
 
 	const onDecline = useCallback(
 		(askId: string) => {
 			const sessionId = fleetAskSessionFor(rows ?? [], askId);
-			if (!sessionId || lock.held) return;
-			setAnswering(true);
-			setOutcomes((current) => ({
-				...current,
-				[askId]: { sending: true, refused: null },
-			}));
-			void (async () => {
-				let outcome: AnswerOutcome;
-				try {
-					outcome = await declineQueuedAsk(
-						{ taskId: askId, sessionId, lock },
-						(request) => desktopResult(request),
-					);
-				} finally {
-					setAnswering(false);
-				}
-				settle(askId, outcome, "Declined the ask in");
-			})();
+			if (!sessionId) return;
+			run({
+				askId,
+				kind: "declined",
+				send: () =>
+					declineQueuedAsk({ taskId: askId, sessionId, lock }, (request) =>
+						desktopResult(request),
+					),
+			});
 		},
-		[lock, rows, settle],
+		[lock, rows, run],
 	);
 
 	const onDraftChange = useCallback((askId: string, next: AskDraft) => {
 		setDrafts((current) => ({ ...current, [askId]: next }));
 	}, []);
 
+	/*
+	 * THE DISMISS DOOR (harness PR #2833, SA-D5), the decline's sibling. It settles
+	 * a row that belongs to another conversation, so the receipt is the toast
+	 * naming that conversation — the card itself leaves the pane on the refresh.
+	 */
+	const onDismiss = useCallback(
+		(askId: string, reason: AskDismissReason) => {
+			const sessionId = fleetAskSessionFor(rows ?? [], askId);
+			if (!sessionId) return;
+			run({
+				askId,
+				kind: "dismissed",
+				reason,
+				send: () =>
+					dismissQueuedAsk(
+						{ taskId: askId, reason, sessionId, lock },
+						(request) => desktopResult(request),
+					),
+			});
+		},
+		[lock, rows, run],
+	);
+
+	/*
+	 * THE SUGGESTED-COMMAND DOORS FROM THE FLEET (decision D1): the card may
+	 * belong to ANOTHER conversation, so a press opens that conversation and
+	 * then files the console intent for it (`fileFleetAskCommand` holds the
+	 * order and why). Opening the console replaces this drawer in the right slot.
+	 *
+	 * Placement is per row: each card is gated on where ITS conversation's agent
+	 * works (`readAskAgentPlacement`), so a peer's ask never offers Run here.
+	 */
+	const inRouter = useInRouterContext();
+	const navigateRef = useRef<NavigateFunction | null>(null);
+	const onCommand = useCallback(
+		(request: AskCommandRequest): boolean => {
+			const sessionId = fleetAskSessionFor(rows ?? [], request.ask.ask_id);
+			const raw = rows?.find((row) => row.ask_id === request.ask.ask_id);
+			const navigate = navigateRef.current;
+			if (!sessionId || !raw || !navigate) return false;
+			// The order (wave off, open, file) is `fileFleetAskCommand`'s to keep.
+			return fileFleetAskCommand({
+				sessionId,
+				ask: raw,
+				questionId: request.questionId,
+				command: request.command,
+				submit: request.submit,
+				navigate,
+			});
+		},
+		[rows],
+	);
+	const commandPlacementOf = useCallback(
+		(ask: { ask_id: string }) =>
+			readAskAgentPlacement(fleetAskSessionFor(rows ?? [], ask.ask_id)),
+		[rows],
+	);
+
 	return (
-		<AskDrawer
-			frontend={frontend}
-			scope="fleet"
-			onClose={onClose}
-			onAnswer={onAnswer}
-			onDecline={onDecline}
-			onRevise={onRevise}
-			answering={answering}
-			outcomes={outcomes}
-			drafts={drafts}
-			onDraftChange={onDraftChange}
-			conversationOf={conversationOf}
-		/>
+		<>
+			{inRouter ? <NavigateInto target={navigateRef} /> : null}
+			<AskDrawer
+				frontend={frontend}
+				scope="fleet"
+				ground={ground}
+				presentation={presentation}
+				tabs={
+					notificationsEnabled
+						? {
+								strip: (
+									<DrawerTabs
+										tab="all"
+										asks={
+											(rows ?? []).filter(
+												(ask) =>
+													ask.session_id === currentSessionId &&
+													ask.status === "open",
+											).length
+										}
+										unreadUpdates={unreadUpdates}
+										sessionless={!currentSessionId}
+										onTab={(tab) => {
+											if (tab === "all" || !currentSessionId) return;
+											setTab(tab);
+											setAskDrawerOpen(true, "session");
+										}}
+									/>
+								),
+								body: null,
+							}
+						: undefined
+				}
+				onClose={(options) => {
+					setTab(null);
+					onClose(options);
+				}}
+				onAnswer={onAnswer}
+				onDecline={onDecline}
+				onRevise={onRevise}
+				onDismiss={dismissEnabled ? onDismiss : undefined}
+				answering={answering}
+				outcomes={outcomes}
+				drafts={drafts}
+				onDraftChange={onDraftChange}
+				conversationOf={conversationOf}
+				onCommand={inRouter ? onCommand : undefined}
+				commandPlacementOf={commandPlacementOf}
+			/>
+		</>
 	);
 };

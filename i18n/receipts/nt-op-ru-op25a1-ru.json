@@ -1,0 +1,180 @@
+{
+  "schema": 1,
+  "audit_id": "op25a1-ru",
+  "locale": "ru",
+  "namespace": "ui.notifications.operation",
+  "instance": "op25a1-ru",
+  "model": "radient/auto",
+  "status": "passed",
+  "result": "clean",
+  "key_count": 1,
+  "scope": {
+    "key_count": 1,
+    "keys": [
+      "ui.notifications.operation.progress"
+    ],
+    "note": "Only the newly added operation.progress key. The existing 130-key ui.notifications namespace is outside this audit and is proven byte-unchanged below; this receipt must not be read as a re-audit of it."
+  },
+  "auditor": {
+    "agent": "translation-auditor",
+    "instance": "op25a1-ru",
+    "session": "766adb539e6a",
+    "model": "radient/auto",
+    "actual_model": "radient/auto",
+    "actual_model_source": "Runtime [model switch] notices in this session's transcript plus the session header: declared primary openai/gpt-6-astra; provider quota HTTP 429 then switched the serving model through anthropic/claude-sonnet-5-5 and openai/gpt-6.1-sol to radient/auto. `sessions info` exposes no model field, so the runtime notice is the authoritative record.",
+    "primary_model": "openai/gpt-6-astra",
+    "fallback_used": true,
+    "fallback_chain": [
+      {
+        "from": "openai/gpt-6-astra",
+        "to": "anthropic/claude-sonnet-5-5",
+        "reason": "provider quota HTTP 429"
+      },
+      {
+        "from": "anthropic/claude-sonnet-5-5",
+        "to": "openai/gpt-6.1-sol",
+        "reason": "provider quota HTTP 429"
+      },
+      {
+        "from": "openai/gpt-6.1-sol",
+        "to": "radient/auto",
+        "reason": "provider quota HTTP 429"
+      }
+    ],
+    "independence": "Independent auditor/context: I authored none of these translations and took no part in the seven translation runs. The delegation brief says the seven original owners were resumed on openai/gpt-6-astra for this one-key delta; their individual instances and model attribution were not supplied to me and are not independently attested here. All catalogue values were read directly."
+  },
+  "translator": {
+    "agent": "seven distinct original locale owners (per delegation brief)",
+    "model": "openai/gpt-6-astra (per delegation brief; not independently attested by this auditor)",
+    "delta": "one new key, ui.notifications.operation.progress",
+    "prior_work": "the existing 130-key ui.notifications namespace was produced earlier and is outside this audit"
+  },
+  "sha256": {
+    "en": "65ebc87c40dbeaa315f0de192d01be7de8aa6d1c48a4bea25191b34d2742afd3",
+    "ru": "d0846a31ef54f4606cc37c50a7d952dd00c07428bafef16697a0810a0b1326ae"
+  },
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.notifications.operation.json",
+      "sha256": "65ebc87c40dbeaa315f0de192d01be7de8aa6d1c48a4bea25191b34d2742afd3"
+    },
+    "en_context_sidecar": {
+      "path": "src/i18n/catalogues/en/ui.notifications.operation.context.json",
+      "sha256": "3dcade93393d080a081ad0d906842fb25eedbe77d4a353382c1c676c6c845b76"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/ru/ui.notifications.operation.json",
+      "sha256": "d0846a31ef54f4606cc37c50a7d952dd00c07428bafef16697a0810a0b1326ae"
+    }
+  },
+  "guidance": {
+    "glossary": {
+      "path": "i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "i18n/style-guides/ru.md",
+      "sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+    }
+  },
+  "verdict_reason": "Impersonal neuter results Изменено / пропущено / не подтверждено are the standard Russian receipt register and invariant across 1, 2, 5 and 21. пропущено is distinct from Dismiss Скрыть, and не подтверждено keeps the network outcome open instead of saying ошибка, неудача or без изменений. The sentence-initial capital with lowercase after the middle dot reads as one status line, matching the locale's sentence case.",
+  "findings": [],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "mechanical_checks": {
+    "toolchain": {
+      "parser": "@formatjs/icu-messageformat-parser (checkout dependency)",
+      "formatter": "intl-messageformat (checkout dependency)",
+      "script": "scratchpad://notifications-operation-audit/operation-probe.cjs",
+      "script_sha256": "6a53a920353e4563d474d900f67047dbfac47f1801e587392e55bcabed17ac39"
+    },
+    "messages_parsed": 2,
+    "argument_spec": {
+      "changed": "number",
+      "skipped": "number",
+      "pending": "number"
+    },
+    "argument_names_and_types_match_english": true,
+    "select_or_plural_branches_in_target": 0,
+    "formatted_values_checked": [
+      0,
+      1,
+      2,
+      5,
+      21,
+      1000,
+      1000001
+    ],
+    "each_count_rendered_three_times_as_locale_formatted_number": true,
+    "samples": {
+      "at_0": "Изменено: 0 · пропущено: 0 · не подтверждено: 0",
+      "at_1": "Изменено: 1 · пропущено: 1 · не подтверждено: 1"
+    },
+    "sample_at_12_3_1": "Изменено: 12 · пропущено: 3 · не подтверждено: 1",
+    "english_sample_at_12_3_1": "12 changed · 3 skipped · 1 not confirmed",
+    "forbidden_meaning_probe": {
+      "terms": [
+        "ошибк",
+        "неудач",
+        "не изменено",
+        "без изменений",
+        "непрочитан"
+      ],
+      "matches": []
+    },
+    "negative_controls": [
+      "dropped argument",
+      "renamed argument",
+      "number changed to plural",
+      "malformed ICU",
+      "dropped formatted count",
+      "manual bidi control detection"
+    ],
+    "negative_controls_result": "all six failed as required",
+    "static_width": {
+      "metric": "rich.cells.cell_len (terminal cells) plus Unicode code points",
+      "cells": 48,
+      "english_cells": 40,
+      "codepoints": 95,
+      "english_codepoints": 87,
+      "budget": null,
+      "note": "Context declares a wrapping status line, not a fixed-width control, so no maxCells budget applies. These are static wrapping-risk numbers, not rendered fit."
+    },
+    "unicode": {
+      "nfc": true,
+      "manual_bidi_controls": [],
+      "double_spaces": false,
+      "leading_or_trailing_space": false
+    },
+    "punctuation": "No typographic spacing before \":\"; \" · \" separators; sentence-initial capital only, per sentence case."
+  },
+  "retention_of_prior_namespace": {
+    "en_130": {
+      "path": "src/i18n/catalogues/en/ui.notifications.json",
+      "sha256": "ce0c8d6d9af80980667741dd6d289ab7312d04aaea0e717e5cef4cf55c2b37ae",
+      "byte_equal_to_265a335": true
+    },
+    "target_130": {
+      "path": "src/i18n/catalogues/ru/ui.notifications.json",
+      "sha256": "96cf5ec9f86de4dbdf053e17e3ce0862862f0235957849158aec891ac5f195d8",
+      "byte_equal_to_265a335": true
+    },
+    "note": "Both files are byte-identical to 265a335, so the earlier 130-key audit evidence remains bound to unchanged bytes; this audit neither reads nor re-validates those values."
+  },
+  "audit_log": {
+    "path": "/Users/damian/.local-operator/sessions/766adb539e6a/scratchpad/notifications-operation-audit/operation-audit.log",
+    "sha256": "dccfc44d00a72a2afa0e11aeb18701849390d726b9e417f59e3168630249bffe",
+    "note": "Actual combined output of the seven-locale probe, including negative controls."
+  },
+  "limitations": [
+    "Independent LLM audit, not a human/native-speaker review.",
+    "Source and parser/format proof only: no browser, Electron or rendered-frame check, and no activation, whole-locale or release claim.",
+    "The runtime switched serving model mid-audit because of provider quota errors; this is disclosed above and the auditor identity is still one session/context.",
+    "Only receipts were created; no catalogue, context, code, ledger or git write."
+  ],
+  "instance_label_correction": "Instance label corrected from session id 766adb539e6a to op25a1-ru so the ledger can record distinct audits; no audit content changed."
+}

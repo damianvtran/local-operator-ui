@@ -1,17 +1,33 @@
-import type { HubDirectionStatus } from "@shared/api/local-operator/hub-links";
-import { t } from "@shared/i18n";
+import type { HubLinkAction } from "@shared/api/local-operator/hub-link-actions";
+import type {
+	HubDirectionStatus,
+	HubUnresolvedDetail,
+} from "@shared/api/local-operator/hub-links";
+import { formatDateTime, t } from "@shared/i18n";
 
 /**
  * Translate service codes at the point of use. No raw exception or private body
  * belongs in a collapsed tooltip. Unknown code/state degrades to explanatory
  * detail, never a green success or an inferred permission to publish.
  */
-export function hubReasonText(reason: string | null | undefined): string {
+export function hubReasonText(
+	reason: string | null | undefined,
+	/** The sentence for an unknown code; defaults to the cause-neutral pause. */
+	fallback?: string,
+): string {
 	switch (reason?.split("/")[0]) {
 		case "unsupported-precondition":
 			return t("ui.hub.status.unsupported");
 		case "baseline-unknown":
 			return t("ui.hub.status.baseline_unknown");
+		/*
+		 * The publish preview refuses this alias because an UNOWNED local skill
+		 * already holds it, not because two sources diverged - so it must not
+		 * borrow the merge-lineage sentence below. Name the local collision and
+		 * the choice it leaves the user (the existing local_exists copy).
+		 */
+		case "alias-occupied":
+			return t("ui.hub.skills.local_exists");
 		case "mixed-lineage":
 		case "origin-conflict":
 			return t("ui.hub.status.mixed_lineage");
@@ -46,7 +62,127 @@ export function hubReasonText(reason: string | null | undefined): string {
 		case "transport":
 			return t("ui.hub.status.transport_error");
 		default:
-			return t("ui.hub.status.other_error");
+			return fallback ?? t("ui.hub.status.other_error");
+	}
+}
+
+/**
+ * Why an incoming update failed, as one sentence.
+ *
+ * The service's own `safe_message` wins: it is core's scrubbed, bounded,
+ * human-readable reason for THIS failure (core is adding one for transport
+ * failures that today persist only a class). Without it the class is translated;
+ * an unknown class says plainly that no reason was recorded rather than "This
+ * action is paused.", which is false for a failed pull.
+ */
+export function hubFailureReasonText(status: HubDirectionStatus): string {
+	/*
+	 * Core's stored sentence is a lower-case clause ("could not reach the hub: the
+	 * connection timed out", "the hub refused the request (HTTP 500: ...)" from
+	 * core #3095), so it is framed rather than shown bare. It is server prose and
+	 * stays untranslated; the frame around it is ours.
+	 */
+	const stated = status.safe_message?.trim();
+	if (stated)
+		return t("ui.hub.links.incoming_failed_reason", { reason: stated });
+	return hubReasonText(
+		status.error_class,
+		t("ui.hub.links.incoming_failed_no_reason"),
+	);
+}
+
+/**
+ * The reason-and-freshness tail a COLLAPSED mark's tooltip carries for a
+ * direction that holds an error, or "" when it holds none.
+ *
+ * WHY (operator report, 2026-11-11): the sidebar's failed mark read only
+ * "Retry Incoming update for <team> at <source>" - no cause, and no way to tell
+ * a live failure from a snapshot the window had kept since startup. The cause is
+ * the same sentence the popover already shows (`hubFailureReasonText`: core's
+ * scrubbed `safe_message`, else the translated class), and the check time is the
+ * service's own `last_checked_at`, so a stale mark says how old it is. Both are
+ * existing catalogue keys; nothing here is new copy.
+ */
+export function hubMarkFailureDetail(status: HubDirectionStatus): string {
+	if (!status.error_class) return "";
+	const reason = hubFailureReasonText(status);
+	const checked = status.last_checked_at;
+	if (!checked || !Number.isFinite(Date.parse(checked))) return reason;
+	// Date AND time: a same-day stale snapshot is the case this exists for, and
+	// a bare `formatDateTime` renders the date alone.
+	const time = formatDateTime(new Date(checked), {
+		dateStyle: "medium",
+		timeStyle: "short",
+	});
+	return `${reason} ${t("ui.hub.status.last_checked", { time })}`;
+}
+
+/**
+ * Why an unresolved ("?") roster row has no confirmed source, from core's
+ * additive `detail` code on `links_snapshot` unresolved rows (local-operator
+ * PR #3807).
+ *
+ * WHY: the bare "?" read as a fault waiting for a fix, while one of its causes
+ * is a dead end core holds ON PURPOSE (`legacy-scope-ambiguous`: a pre-origin
+ * public pull stored the publisher's tenant, so certifying it as an org link
+ * would bypass public-egress consent). Saying which case it is lets the reader
+ * tell "wait for the next check" from "this needs your confirmation".
+ *
+ * Returns null for an absent code (a core from before the field) and for a code
+ * this build does not know: the mark then keeps its existing label alone rather
+ * than guessing a meaning (the rule `hubOutcomeText` and `hubReasonText` follow).
+ * This only EXPLAINS the state; the scope-confirmation write is a deferred
+ * product decision and is deliberately not offered here.
+ */
+export function hubUnresolvedDetailText(
+	detail: HubUnresolvedDetail | null | undefined,
+): string | null {
+	switch (detail) {
+		case "legacy-scope-ambiguous":
+			return t("ui.hub.links.unresolved_detail_scope_ambiguous");
+		case "scope-unknown":
+			return t("ui.hub.links.unresolved_detail_scope_unknown");
+		case "no-origin":
+			return t("ui.hub.links.unresolved_detail_no_origin");
+		default:
+			return null;
+	}
+}
+
+/**
+ * The WORD for one of core's `ItemOutcome` values (`report.py`), where a sentence
+ * would otherwise interpolate the raw token.
+ *
+ * Design D1 (round 1): the incoming preview ran the machine token straight into
+ * a sentence - "Preview for Coder: would-merge" - and then into the report's own
+ * message with no separator, so a reader had to parse a hyphenated enum and then
+ * find where the English started. A class this app can name gets its own
+ * translated word; the sentence around it terminates (see the catalogue value)
+ * and core's message is a separate line.
+ *
+ * An UNKNOWN class degrades to the raw token rather than to invented copy: a
+ * class this build has never seen must stay visible and legible as data, and
+ * guessing a meaning for it would be a claim the app cannot support (the same
+ * rule `hubReasonText` applies by degrading to a cause-neutral sentence).
+ */
+export function hubOutcomeText(outcome: string): string {
+	switch (outcome) {
+		case "would-merge":
+			return t("ui.hub.links.outcome_would_merge");
+		case "needs-review":
+			return t("ui.hub.links.outcome_needs_review");
+		case "up-to-date":
+			return t("ui.hub.links.outcome_up_to_date");
+		case "unchanged":
+			return t("ui.hub.links.outcome_unchanged");
+		case "failed":
+			return t("ui.hub.links.outcome_failed");
+		case "skipped":
+			return t("ui.hub.links.outcome_skipped");
+		case "unavailable":
+			return t("ui.hub.links.outcome_unavailable");
+		default:
+			return outcome;
 	}
 }
 
@@ -83,4 +219,79 @@ export function hubDirectionStateText(status: HubDirectionStatus): string {
 			// reason text (`hubReasonText`) where one exists.
 			return t("ui.hub.status.other_error");
 	}
+}
+
+/**
+ * The sentence for a failed link action, by the action that failed.
+ *
+ * Q13 (QA round 3 on local-operator-ui #1458): every surface funnelled a failed
+ * CHECK into `ui.hub.links.action_failed`, whose sentence names a PULL or a
+ * PUSH - so a refused check told the reader an incoming update "did not
+ * complete" when no update had been attempted. A check is neither direction:
+ * it asks the hub what changed and applies nothing, so it gets its own
+ * sentence rather than borrowing one that asserts work that never ran.
+ */
+export function hubActionFailureText(
+	action: HubLinkAction["action"] | undefined,
+	context: { item: string; source: string; direction: string },
+): string {
+	if (action === "check")
+		return t("ui.hub.links.check_failed", {
+			item: context.item,
+			source: context.source,
+		});
+	return t("ui.hub.links.action_failed", {
+		direction: context.direction,
+		item: context.item,
+		source: context.source,
+	});
+}
+
+/*
+ * Core's remedy for an org operation with no Radient sign-in (radient_credentials
+ * in core: "... Run `lop login radient`."). It arrives as a 401 with a bare string
+ * detail and NO code, so the transport files it under the desktop plane's own
+ * `pairing.refused` ("This app's credential ... was refused") - the wrong fact.
+ * The plane's 401 says "Desktop authorization is required." and never names the
+ * login command, so the command is the discriminator.
+ */
+const RADIENT_SIGN_IN_REMEDY = /lop login radient/i;
+
+/**
+ * Whether a failed hub action was refused for want of a Radient sign-in.
+ *
+ * Read STRUCTURALLY (an Error with a numeric `status`), not by `instanceof
+ * DesktopControlError`: this is a copy module that unit suites load bare, and the
+ * transport module it would have to import builds the app's configuration at
+ * import time.
+ */
+export function isRadientSignInRefusal(error: unknown): boolean {
+	if (!(error instanceof Error)) return false;
+	const status = (error as { status?: unknown }).status;
+	return (
+		(status === 401 || status === 403) &&
+		RADIENT_SIGN_IN_REMEDY.test(error.message)
+	);
+}
+
+/**
+ * The sentence for a failed link action, in this app's vocabulary.
+ *
+ * WHY: the popover used to show one sentence for every failure - "The Incoming
+ * update for <uuid> at Source unavailable did not complete" - which named the
+ * item by its id, spliced an unknown source in, and dropped core's actual remedy
+ * (sign in). Order: an upgrade refusal states its own fix; a sign-in refusal says
+ * where to sign in (Settings, not the CLI command core names); anything else gets
+ * the caller's sentence. Server prose for other errors is NOT echoed: a 404's
+ * detail names the item by id again.
+ */
+export function hubLinkFailureText(
+	error: unknown,
+	fallback: string,
+	/** `HubMutationUpgradeRequired`, passed in for the same import reason. */
+	upgradeRequired?: abstract new (...args: never[]) => Error,
+): string {
+	if (upgradeRequired && error instanceof upgradeRequired) return error.message;
+	if (isRadientSignInRefusal(error)) return t("ui.hub.links.sign_in_required");
+	return fallback;
 }

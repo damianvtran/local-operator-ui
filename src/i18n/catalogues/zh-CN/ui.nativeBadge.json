@@ -1,0 +1,5 @@
+{
+	"ui.nativeBadge.attention": "{count, plural, other {Local Operator：有#项需要处理}}",
+	"ui.nativeBadge.attentionPending": "{count, plural, other {Local Operator：有#项需要处理；仍有待处理的请求}}",
+	"ui.nativeBadge.pending": "Local Operator：仍有待处理的请求"
+}

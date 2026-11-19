@@ -70,13 +70,15 @@ export interface ConsoleSessionApi {
 	) => void;
 	/** Ask main for a surface the USER owns, with main's own defaults (§6.1).
 	 *
-	 * Resolves `true` when the answer left this conversation with a surface to show, and
-	 * `false` when it did not (refused, or answered with nothing) — and that boolean is
-	 * what the pane arms its caret request on, because a caret request stood up by a
+	 * Resolves the created id when the answer left this conversation with a surface to
+	 * show, and `null` when it did not (refused, or answered with nothing) — and that
+	 * answer is what the pane arms its caret request on, because a caret request stood up by a
 	 * request that produced no terminal is a request with nowhere to land that a LATER
 	 * surface would then inherit (agent review round 3, M1). It is not "did main accept
-	 * the call": the listing is read inside this promise, so the answer is the listing
-	 * after the create rather than the create's own reply.
+	 * the call": the listing is read inside this promise, so the answer is the id main
+	 * replied with (`CreateSurfaceResult.surface`) ONLY when the listing after the create
+	 * holds it, and `null` otherwise. The id is what lets an explicit `+` show the
+	 * surface it made rather than the one the stored lens still names (#1084).
 	 *
 	 * Returns when the request has been ANSWERED AND THE LISTING IS IN HAND, either way.
 	 * The pane needs both halves of that: an open that creates a surface has to hold a
@@ -88,7 +90,7 @@ export interface ConsoleSessionApi {
 	 * is inside this promise so that window does not exist. The rejection is swallowed here
 	 * rather than thrown: a failed create is what `createError` is for, and the pane's own
 	 * create-failed state is what carries it. */
-	createSurface: () => Promise<boolean>;
+	createSurface: () => Promise<string | null>;
 	/** Close or dismiss one surface (design 6.7, 7.3).
 	 *
 	 * `kill: true` ends a running surface's process, which the pane asks about
@@ -115,6 +117,15 @@ export interface ConsoleSessionApi {
 
 /** How long a burst of signals collapses into one read. */
 const REFETCH_COALESCE_MS = 120;
+
+/** The id in main's `console-create-surface` reply (`CreateSurfaceResult.surface`).
+ * The preload types the reply `unknown`, so it is read defensively: a reply without
+ * an id is a create with nothing this pane can name. */
+const createdSurfaceId = (reply: unknown): string | null => {
+	if (!reply || typeof reply !== "object") return null;
+	const id = (reply as { surface?: unknown }).surface;
+	return typeof id === "string" && id ? id : null;
+};
 
 export const useConsoleSession = (
 	sessionId: string | null,
@@ -153,7 +164,7 @@ export const useConsoleSession = (
 			// and saying so is better than an empty list that claims there are none.
 			setLoading(false);
 			setSnapshot({ ...EMPTY_SNAPSHOT });
-			setError("This window cannot reach the console.");
+			setError(t("ui.console.errors.console_unavailable"));
 			return { ...EMPTY_SNAPSHOT };
 		}
 		try {
@@ -245,9 +256,9 @@ export const useConsoleSession = (
 		[],
 	);
 
-	const createSurface = useCallback((): Promise<boolean> => {
+	const createSurface = useCallback((): Promise<string | null> => {
 		const api = window.api?.console;
-		if (!api || sessionId === null) return Promise.resolve(false);
+		if (!api || sessionId === null) return Promise.resolve(null);
 		// Main owns the defaults (the login shell, the session's own cwd, the 100x30
 		// grid, `reveal: "none"`): the pane asks for a surface and does not describe
 		// one, which is what keeps a user's surface and an agent's the same object
@@ -259,24 +270,30 @@ export const useConsoleSession = (
 		setCreateError(null);
 		return api
 			.createSurface({ sessionId })
-			.then(() =>
+			.then((reply) =>
 				// AWAITED, not fired and forgotten (agent review round 1, F-3): the create
 				// has answered but the new surface is not in this pane's listing until the
 				// read lands, and the pane is holding `creating` until this promise
 				// resolves. A `void read()` here left one render with no surface, no
 				// `creating` and no loading — the empty state with a live `+`.
 				//
-				// THE ANSWER IS THE LISTING, not the create's reply (round 3, M1): a call
-				// main accepted but that left nothing to show is not an answer with a
-				// terminal in it.
-				read().then((listing) => listing.surfaces.length > 0),
+				// THE ANSWER IS THE REPLY'S ID, GATED BY THE LISTING (round 3, M1; #1084):
+				// a call main accepted but that left nothing to show is not an answer
+				// with a terminal in it, so an id the re-read does not list is `null`.
+				read().then((listing) => {
+					const id = createdSurfaceId(reply);
+					return id !== null &&
+						listing.surfaces.some((row) => row.surface === id)
+						? id
+						: null;
+				}),
 			)
 			.catch((failure: unknown) => {
 				if (alive.current)
 					setCreateError(
 						failure instanceof Error ? failure.message : String(failure ?? ""),
 					);
-				return false;
+				return null;
 			});
 	}, [sessionId, read]);
 

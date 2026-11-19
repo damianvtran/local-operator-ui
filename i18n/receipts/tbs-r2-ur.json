@@ -1,0 +1,73 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "tbs-r2-ur",
+ "session": "de0dd342e922",
+ "date": "2026-10-21",
+ "locale": "ur",
+ "translator": "translator",
+ "translator_session": "35c1316997af",
+ "namespace": "ui.teamBridge",
+ "status": "passed",
+ "keys_audited": 3,
+ "scope": "Round-2 remediation delta: the 3 keys changed between the round-1 audited bytes (ff558016…) and the current ur file, all of them round-1 finding keys; the other 133 values were verified byte-identical to the round-1 bytes, so the round-1 audit of the other 24 delta keys and the base 109-key audit are inherited; catalogue audit only, not rendered-fit, activation or release.",
+ "sha256": {
+  "en": "145e5d2de5165a0fa6e5ce1cff91f6e6909007e448b4a6e229b47a87a71cb46b",
+  "ur": "4ebc50f4ddd9cf752e84ba73ba632009e1bd8f928c9b9e85a522ff66a082b6be",
+  "context": "cfb426eebee10f1a71310746c4491690a24e2ad6074401115e217d222b9857b2"
+ },
+ "findings": [],
+ "previous_round": {
+  "path": "i18n/receipts/tbs-r1-ur.json",
+  "sha256": "d28c064e5095b4bf622770ba7a36e94f9f304ceac0ec0bbb571ee39da248cfb1",
+  "target_sha256": "ff558016cbf8fbcaaf2b8952e7aad171cee2972c3dd6fed1ad174f634c9360ce"
+ },
+ "remediation": [
+  {
+   "key": "ui.teamBridge.schedule.confirm",
+   "r1_severity": "MINOR",
+   "disposition": "fixed",
+   "verified": true,
+   "value": "کیا یہ پیغام {date} بھیجا جائے؟"
+  },
+  {
+   "key": "ui.teamBridge.schedule.create_retry",
+   "r1_severity": "MINOR",
+   "disposition": "fixed",
+   "verified": true,
+   "value": "میں نے “گروپس” دیکھ لیے ہیں — دوبارہ کوشش کی اجازت دیں"
+  },
+  {
+   "key": "ui.teamBridge.drafts.navigation",
+   "r1_severity": "NIT",
+   "disposition": "fixed",
+   "verified": true,
+   "value": "پیغامات تک فوری رسائی"
+  }
+ ],
+ "inherited_receipt": {
+  "base": "2e16fb1456",
+  "path": "i18n/receipts/tbd-r3-ur.json",
+  "sha256": "84aef64e4d8e735ad57713e54ec6f5b514ad89ba3d02b387e44a67c68b26a0a4",
+  "keys_inherited": 109,
+  "base_source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+  "base_target_sha256": "76bfaa1fa565994bbeeb8c76450042111a405525442a1ba2e0a956e1ba2e5397",
+  "full_coverage_receipt": {
+   "path": "i18n/receipts/tbd-r1-ur.json",
+   "sha256": "93b5f17ca759586da078f4890ab524d5d61ea46a609076273745d6a42b1a44f8"
+  },
+  "unchanged_values_verified": 109
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+ },
+ "validation": {
+  "independence": "Auditor session de0dd342e922 is not the translator session 35c1316997af. I read the remediated bytes directly from the worktree file, diffed them against the round-1 snapshot, and edited, staged and committed nothing. The round-1 receipt was left unmodified.",
+  "semantics": "schedule.confirm: the formatted sample now reads ‘کیا یہ پیغام جمعرات، 22 اکتوبر، 2026 کو 2:30:00 PM GMT +5 بھیجا جائے؟’. The doubled کو is gone, the sentence is a natural polite question, it keeps the meaning ‘send on {date}?’, and it fits next to the review/confirm_action labels, which are unchanged. schedule.create_retry still says the Groups check was done, using “گروپس” exactly as section.groups and create_uncertain do, and it still asks for explicit permission. Its retry wording دوبارہ کوشش matches the file's existing retry verb. The word ‘creation’ comes from the create_uncertain alert shown directly above the button. drafts.navigation (a nav aria-label) no longer uses شارٹ کٹ, which elsewhere in ur means a keyboard shortcut, and correctly describes quick access to messages. None of the three uses تم or تو, and no value is identical to English.",
+  "icu": "All 3 changed en/ur values were parsed with @formatjs/icu-messageformat-parser from the repo node_modules. The argument sets match: schedule.confirm has [date]; the other two have none. Each value was formatted with intl-messageformat (locale ur), using a real ur Intl.DateTimeFormat dateStyle:full/timeStyle:long date for {date}.",
+  "typography": "All 3 values are NFC, contain no manual bidi controls (U+200E/F, U+202A–E, U+2066–9, U+061C) and no Latin sentence punctuation. They use Urdu ؟, “ ” and U+2014. In logical order, the Latin time/GMT run inside {date} now sits mid-clause between Urdu words, where the render layer's FSI isolation keeps it intact.",
+  "overflow": "create_retry is a nowrap ghost button and went from 63 to 54 characters (English is 49). drafts.navigation is an aria-label, so it has no visual width. schedule.confirm is a wrapping aria-live paragraph, 31 characters before date expansion versus 15 in English, and wrapping is allowed there. Rendered fit was not checked.",
+  "limitations": "Browser unavailable by task constraint; no screenshots, glyph metrics, visual-fit or rendered bidi claim. No catalogue/code edits."
+ }
+}

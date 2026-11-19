@@ -1,0 +1,20 @@
+{
+	"ui.updates.status.dev_mode.app": {
+		"role": "Transient message (snackbar or toast) shown after the user presses Check for updates",
+		"tone": "Plain and brief; states the outcome of the check, no exclamation.",
+		"length": "One short line in a snackbar; keep the length of the source.",
+		"note": "English source: Application is running in development mode. Updates are disabled. Only shown in a development build of the app; users of a packaged app never see it."
+	},
+	"ui.updates.status.dev_mode.backend": {
+		"role": "Transient message (snackbar or toast) shown after the user presses Check for updates",
+		"tone": "Plain and brief; states the outcome of the check, no exclamation.",
+		"length": "One short line in a snackbar; keep the length of the source.",
+		"note": "English source: Backend updates are disabled in development mode. Only shown in a development build of the app; users of a packaged app never see it."
+	},
+	"ui.updates.status.up_to_date": {
+		"role": "Transient message (snackbar or toast) shown after the user presses Check for updates",
+		"tone": "Plain and brief; states the outcome of the check, no exclamation.",
+		"length": "One short line in a snackbar; keep the length of the source.",
+		"note": "English source: The application and server are up to date Painted verbatim by the update button."
+	}
+}

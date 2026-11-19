@@ -1,0 +1,164 @@
+# audit.log - hi/ui.teamBridge file-save copy re-audit tb1735-filesave-r1-hi-dd4f3acdbf5d
+# date 2026-11-06 | auditor i18n-auditor session dd4f3acdbf5d | model deepseek/deepseek-flash
+# worktree /Users/damian/local-operator-ui-worktrees/filecard-design/.worktrees/i18n-audit-1735 @ 7d5c59ae1b744cb7d3edabcafe30c4707ac1eb5d
+# branch feat/team-bridge-file-save | PR #1735 | base cff518c3 | evidence i18n/audits/evidence/hi/ui.teamBridge/tb1735-filesave-r1-hi-dd4f3acdbf5d
+# command: python3 i18n/audits/evidence/hi/ui.teamBridge/tb1735-filesave-r1-hi-dd4f3acdbf5d/verify.py hi
+
+== inputs re-hashed from disk ==
+en        d3916ef448133cbdf11c325b2119947a816315b829b9830f1915fc6ab3fd25f5  matches the receipt claim: True
+context   6f217e1196cffa0a63c9434e04601cd1b6fff429d10cb29348730e8dc8dc73f4  matches the receipt claim: True
+hi        25252b2ac8460d02789f842552ee005eb4e5f587bff47623b2d6a8d43e0bf8ea  matches the receipt claim: True
+
+== delta versus the previously audited parent (cff518c3) ==
+parent target sha256      f0fb7911e6a5e9030a5c2efbfd6263e0ba3d0147772db09c922d488ec63ae441
+row auditor at the parent cb9d33604d15-pr1693-r1-hi
+keys changed              []
+keys added                8 True
+keys removed              []
+parent key order kept     True
+added keys sit in en order True
+key order is en's key order                          True
+en adds exactly the 8 keys and changes nothing else  True
+key count target/en equal                            True
+key set equals English                               True
+unchanged-pair projection 535d92c2295d87b164e5bb11ca2665d0728a79535803c3590ff1576d803f5b80  (pairs: 399)
+every pre-existing value byte-identical to the audited parent True
+textual diff              1 removed / 9 added line(s)
+removed line(s) only regained a trailing comma       True
+context keys added        8 True
+context keys reworded     ['ui.teamBridge.files.staged']
+context keys removed      []
+  ui.teamBridge.files.staged: fields changed ['role']
+    role old: heading for the staged-file list and neutral held/ready chip status
+    role new: accessible name for the composer's list of staged files
+
+== the eight added values ==
+
+-- ui.teamBridge.fileCard.save
+   en Save file {index} of {count}
+   hi  कुल {count} में से फ़ाइल {index} सहेजें
+   placeholders preserved (count,index)              True
+   NFC                                               True
+   format/bidi controls     []
+   no manual bidi controls                           True
+   no em/en dash                                     True
+   no ASCII dots                                     True
+   context role             accessible label for the Save button on one generic file card in a message
+   context note             Downloads a copy of a file a teammate attached, through the computer's own save dialog. Named by position on purpose: the file name is message content and must never be put in this label. 'Save' as in save a copy to this computer, not save changes; use the locale's usual download/save-copy verb, matching the image tile's 'Save {label}'. Not open, preview or share.
+
+-- ui.teamBridge.fileCard.saving
+   en Saving…
+   hi  सहेजी जा रही है…
+   placeholders preserved (none)                     True
+   NFC                                               True
+   format/bidi controls     []
+   no manual bidi controls                           True
+   no em/en dash                                     True
+   no ASCII dots                                     True
+   ellipsis is one mark, no space before it          True
+   context role             status line on a file card while the file is being fetched for saving
+   context note             Shown between pressing Save and the save dialog opening. Indeterminate: no percentage is available. Not uploading, sending or a message state.
+
+-- ui.teamBridge.fileCard.save_failed
+   en Couldn’t save. Try again.
+   hi  सहेजी नहीं जा सकी। फिर कोशिश करें।
+   placeholders preserved (none)                     True
+   NFC                                               True
+   format/bidi controls     []
+   no manual bidi controls                           True
+   no em/en dash                                     True
+   no ASCII dots                                     True
+   context role             error status line on a file card after a save could not reach the file
+   context note             A temporary failure (connection or service problem) while fetching the file to save it. The Save button stays next to it, so 'try again' means press Save again. Do not imply the file is gone, the message failed, or anything was deleted.
+
+-- ui.teamBridge.fileCard.too_large
+   en Too large to save
+   hi  फ़ाइल सहेजने के लिए बहुत बड़ी है
+   placeholders preserved (none)                     True
+   NFC                                               True
+   format/bidi controls     []
+   no manual bidi controls                           True
+   no em/en dash                                     True
+   no ASCII dots                                     True
+   context role             error status line on a file card when the file exceeds what this app can save
+   context note             The file is over the app's download size limit, so no Save is offered. A fact about the file's size, not a failure of the reader's connection; do not suggest retrying.
+
+-- ui.teamBridge.fileCard.expired
+   en File expired
+   hi  फ़ाइल की अवधि खत्म हो गई
+   placeholders preserved (none)                     True
+   NFC                                               True
+   format/bidi controls     []
+   no manual bidi controls                           True
+   no em/en dash                                     True
+   no ASCII dots                                     True
+   context role             status line on a file card whose retention period has ended
+   context note             The shared file was removed after its retention period, so it can no longer be saved. Match the image card's 'Image expired' wording pattern. No blame, no retry implied.
+
+-- ui.teamBridge.fileCard.unavailable
+   en File unavailable
+   hi  फ़ाइल उपलब्ध नहीं
+   placeholders preserved (none)                     True
+   NFC                                               True
+   format/bidi controls     []
+   no manual bidi controls                           True
+   no em/en dash                                     True
+   no ASCII dots                                     True
+   context role             status line on a file card the reader cannot get
+   context note             Same wording for every reason (removed, withheld, no longer shared with this reader, unknown state); never reveal which. Match the image card's 'Image unavailable' pattern. No retry, preview or download implied.
+
+-- ui.teamBridge.files.attached
+   en Attached
+   hi  संलग्न
+   placeholders preserved (none)                     True
+   NFC                                               True
+   format/bidi controls     []
+   no manual bidi controls                           True
+   no em/en dash                                     True
+   no ASCII dots                                     True
+   context role             status line on one staged file chip in the composer
+   context note             This one file is attached to the unsent draft and will go with the message. Describes a single file (singular), not the list. Does not claim the message was sent or read.
+
+-- ui.teamBridge.files.not_uploaded
+   en Not uploaded
+   hi  अपलोड नहीं हुई
+   placeholders preserved (none)                     True
+   NFC                                               True
+   format/bidi controls     []
+   no manual bidi controls                           True
+   no em/en dash                                     True
+   no ASCII dots                                     True
+   context role             status line on a staged file chip when files cannot be sent here
+   context note             Files are turned off for this account, so nothing was attempted; the note under the list explains it. Not a failure: do not use the wording of 'Upload failed'.
+
+== sibling copy in the same namespace (the register precedent) ==
+   ui.teamBridge.attachments.position
+     en Image {index} of {count}
+     hi  कुल {count} में से तस्वीर {index}
+   ui.teamBridge.attachments.expired
+     en Image expired
+     hi  तस्वीर की अवधि खत्म हो गई
+   ui.teamBridge.attachments.unavailable
+     en Image unavailable
+     hi  तस्वीर उपलब्ध नहीं
+   ui.teamBridge.files.staged
+     en Attached files
+     hi  संलग्न फ़ाइलें
+   ui.teamBridge.files.uploading
+     en Uploading file…
+     hi  फ़ाइल अपलोड हो रही है…
+   ui.teamBridge.files.failed
+     en Upload failed
+     hi  अपलोड विफल रहा
+
+== whole-file invariants ==
+file is NFC                                          True
+no manual bidi controls anywhere in the file         True
+no ASCII dots anywhere in the file                   True
+no empty values                                      True
+no trailing/leading whitespace in any value          True
+
+== git identity of the audited bytes ==
+7d5c59ae1b744cb7d3edabcafe30c4707ac1eb5d
+git status for the three inputs: ''
+(empty above = the audited bytes are HEAD bytes)

@@ -61,6 +61,8 @@
  * the keyboard handed back to Keep.
  */
 import { Button } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
@@ -95,6 +97,7 @@ export const WakeCancelPopover = ({
 	onConfirm,
 	onCancel,
 }: WakeCancelPopoverProps) => {
+	useI18nLocale();
 	const cardRef = useRef<HTMLDialogElement | null>(null);
 	const keepRef = useRef<HTMLButtonElement | null>(null);
 	/*
@@ -188,8 +191,9 @@ export const WakeCancelPopover = ({
 				bottom: placement.bottom,
 				width: CARD_WIDTH,
 			}}
+			data-lo-floating=""
 			className={cn(
-				"z-50 max-w-[calc(100vw-2rem)] rounded-md border border-hairline bg-elevated p-4",
+				"z-50 max-w-[calc(100vw-2rem)] rounded-md bg-elevated p-4",
 				"text-body-sm text-ink shadow-overlay",
 			)}
 		>
@@ -220,13 +224,15 @@ export const WakeCancelPopover = ({
 				 */}
 				<Button
 					ref={keepRef}
-					variant="secondary"
+					// `tonal`, not `secondary`: this card floats, and a bordered button
+					// inside a borderless floating panel rebuilds the box (branding § 2).
+					variant="tonal"
 					size="sm"
 					data-wake-confirm-keep=""
 					disabled={busy}
 					onClick={() => onCancel()}
 				>
-					Keep
+					{t("ui.chat.run_details.wake_cancel.keep")}
 				</Button>
 				<Button
 					variant="danger"
@@ -235,7 +241,9 @@ export const WakeCancelPopover = ({
 					disabled={busy}
 					onClick={onConfirm}
 				>
-					{busy ? "Cancelling…" : wakeConfirmActionLabel(named)}
+					{busy
+						? t("ui.chat.run_details.wake_cancel.cancelling")
+						: wakeConfirmActionLabel(named)}
 				</Button>
 			</div>
 		</dialog>,

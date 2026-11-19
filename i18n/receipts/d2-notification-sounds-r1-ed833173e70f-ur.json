@@ -1,0 +1,178 @@
+{
+  "schema": 1,
+  "date": "2026-11-04",
+  "agent": "i18n-auditor",
+  "instance": "ed833173e70f",
+  "model": "openai/gpt-6.1-sol",
+  "model_fallback": null,
+  "translator": {
+    "agent": "coder",
+    "model": "anthropic/claude-opus-5-5",
+    "date": "2026-11-04"
+  },
+  "independence": "Auditor is a distinct agent/session from coder/anthropic/claude-opus-5-5; no translation API used.",
+  "locale": "ur",
+  "namespace": "ui.settings.notifications",
+  "status": "passed",
+  "source_sha256": "4bf3f8ffb1daecc09ac44049245bb85fe4c78b2c45ba19062218accc53782d65",
+  "target_sha256": "ee01d73aa30b6338667b86c840a38178425b10f5503021013b3e698a9d6a4353",
+  "context_sha256": "aec944a760fd984421ddb0afcb1135d03cb156b844fc88ff8a32ad250385e554",
+  "scope": "All 69 keys; D2 only against base 8a0e688 at 9080108975ba9beb74bedeb91cb33a969fa24568.",
+  "findings": [
+    {
+      "id": "UR1",
+      "severity": "minor",
+      "disposition": "fixed in supplied audited file",
+      "keys": [
+        "ui.settings.notifications.list.custom_count"
+      ],
+      "reason": "Natural Urdu part-of-whole order; 3 of 50 must mean 50 میں سے 3, not an ambiguous Persian از construction."
+    },
+    {
+      "id": "UR2",
+      "severity": "minor",
+      "disposition": "fixed in supplied audited file",
+      "keys": [
+        "ui.settings.notifications.custom.rename_long"
+      ],
+      "reason": "Character limit includes digits, punctuation and spaces; حروف is letters-only. Match core audit character terminology."
+    },
+    {
+      "id": "UR3",
+      "severity": "minor",
+      "disposition": "fixed in supplied audited file",
+      "keys": [
+        "ui.settings.notifications.list.builtin",
+        "ui.settings.notifications.custom.hint"
+      ],
+      "reason": "Match core notification-sound label/help terminology rather than introduce a second built-in term."
+    }
+  ],
+  "corrections": [
+    {
+      "id": "UR1",
+      "locale": "ur",
+      "key": "ui.settings.notifications.list.custom_count",
+      "severity": "minor",
+      "disposition": "fixed in supplied audited artifact",
+      "before": "{count, number} از {max, number}",
+      "after": "{max, number} میں سے {count, number}",
+      "reason": "Natural Urdu part-of-whole order; 3 of 50 must mean 50 میں سے 3, not an ambiguous Persian از construction."
+    },
+    {
+      "id": "UR2",
+      "locale": "ur",
+      "key": "ui.settings.notifications.custom.rename_long",
+      "severity": "minor",
+      "disposition": "fixed in supplied audited artifact",
+      "before": "{max, number} یا اس سے کم حروف استعمال کریں۔",
+      "after": "{max, number} یا اس سے کم کریکٹر استعمال کریں۔",
+      "reason": "Character limit includes digits, punctuation and spaces; حروف is letters-only. Match core audit character terminology."
+    },
+    {
+      "id": "UR3",
+      "locale": "ur",
+      "key": "ui.settings.notifications.list.builtin",
+      "severity": "minor",
+      "disposition": "fixed in supplied audited artifact",
+      "before": "پہلے سے شامل",
+      "after": "بلٹ اِن",
+      "reason": "Match core notification-sound label/help terminology rather than introduce a second built-in term."
+    },
+    {
+      "id": "UR3",
+      "locale": "ur",
+      "key": "ui.settings.notifications.custom.hint",
+      "severity": "minor",
+      "disposition": "fixed in supplied audited artifact",
+      "before": "WAV، FLAC، MP3 یا OGG، زیادہ سے زیادہ {seconds, number} سیکنڈ اور {megabytes, number} MB۔ آواز کی بلندی پہلے سے شامل آوازوں کے برابر کر دی جاتی ہے۔",
+      "after": "WAV، FLAC، MP3 یا OGG، زیادہ سے زیادہ {seconds, number} سیکنڈ اور {megabytes, number} MB۔ آواز کی بلندی بلٹ اِن آوازوں کے برابر کر دی جاتی ہے۔",
+      "reason": "Use same built-in term as core notification-sound namespace."
+    }
+  ],
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/ur.md",
+      "sha256": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60"
+    }
+  },
+  "core_sound_names": {
+    "path": "/Users/damian/.local-operator/sessions/7c5c172b0e89/scratchpad/notif-sounds/c2-i18n-audit-r1/ur.wire.notification_sound.full.audited.json",
+    "sha256": "7c59a6f93609290252cd75fb5bc320c2d77f15481718b8b9b4f35d8eb3e63144"
+  },
+  "checks": {
+    "locales": [
+      {
+        "locale": "fr",
+        "keys": 69,
+        "pluralMessages": 2,
+        "status": "PASS",
+        "count3of50": "3 sur 50"
+      },
+      {
+        "locale": "es",
+        "keys": 69,
+        "pluralMessages": 2,
+        "status": "PASS",
+        "count3of50": "3 de 50"
+      },
+      {
+        "locale": "zh-CN",
+        "keys": 69,
+        "pluralMessages": 2,
+        "status": "PASS",
+        "count3of50": "3/50"
+      },
+      {
+        "locale": "ru",
+        "keys": 69,
+        "pluralMessages": 3,
+        "status": "PASS",
+        "count3of50": "3 из 50"
+      },
+      {
+        "locale": "vi",
+        "keys": 69,
+        "pluralMessages": 2,
+        "status": "PASS",
+        "count3of50": "3/50"
+      },
+      {
+        "locale": "ur",
+        "keys": 69,
+        "pluralMessages": 2,
+        "status": "PASS",
+        "count3of50": "50 میں سے 3"
+      },
+      {
+        "locale": "hi",
+        "keys": 69,
+        "pluralMessages": 2,
+        "status": "PASS",
+        "count3of50": "50 में से 3"
+      }
+    ],
+    "totalKeys": 483,
+    "formatEvaluations": 4830,
+    "checks": [
+      "exact key parity",
+      "ICU AST argument names and types",
+      "all locale CLDR categories",
+      "no manual bidi controls",
+      "Vietnamese NFC",
+      "sample formatting incl 0,1,2,3,5,21,50,100,0.5,1000000"
+    ],
+    "limitations": [
+      "Text/ICU checks only; no rendered layout or native RTL shaping proof"
+    ]
+  },
+  "limitations": [
+    "One independent LLM linguistic audit, not human-native certification or second high-visibility/safety audit.",
+    "No translated rendered-fit, pseudo-localization, RTL visual/shaping proof or audio/runtime QA claimed. English screenshots supplied by implementer do not prove target fit."
+  ],
+  "evidence_record": "i18n/audits/evidence/ur/ui.settings.notifications/d2-r1-ed833173e70f/record.json"
+}

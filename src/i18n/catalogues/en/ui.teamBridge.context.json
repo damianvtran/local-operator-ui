@@ -1,0 +1,3366 @@
+{
+	"ui.teamBridge.members.menu": {
+		"role": "menu item label that opens the member dialog",
+		"tone": "imperative",
+		"length": "2-3 words, one line; keep the trailing ellipsis",
+		"placeholders": {},
+		"note": "The ellipsis is the platform signal that a dialog opens next; do not drop or replace it. It is an action on the current conversation, not a new-conversation command."
+	},
+	"ui.teamBridge.members.current": {
+		"role": "section heading inside the member dialog",
+		"tone": "neutral",
+		"length": "2-3 words",
+		"placeholders": {},
+		"note": "Names the list of people and agents already in this conversation. Not 'participants online' and not organization membership."
+	},
+	"ui.teamBridge.members.current_empty": {
+		"role": "empty state for the current-members section",
+		"tone": "factual",
+		"length": "One short sentence",
+		"placeholders": {},
+		"note": "Rare: every conversation has at least its creator, so this appears only in a transient or repaired state. Say there is nobody active or invited; do not suggest the conversation is broken."
+	},
+	"ui.teamBridge.members.invite": {
+		"role": "section heading over the candidate picker",
+		"tone": "neutral",
+		"length": "3-5 words",
+		"placeholders": {},
+		"note": "The section lists the organization's people and its agents so they can be invited. It creates invitations, not active membership."
+	},
+	"ui.teamBridge.members.search": {
+		"role": "placeholder and accessible name of a filter field",
+		"tone": "neutral, noun phrase",
+		"length": "2-4 words",
+		"placeholders": {},
+		"note": "Filters the candidate list by name. Do not add a trailing colon or an ellipsis."
+	},
+	"ui.teamBridge.members.empty": {
+		"role": "empty state for the invite list",
+		"tone": "factual, non-accusatory",
+		"length": "One short sentence",
+		"placeholders": {},
+		"note": "The directory returned nobody this reader may invite. It must NOT say the organization has no people: the Current-members pane beside it can list several. Say that nobody can be invited. Distinct from no_matches, which is a filter result."
+	},
+	"ui.teamBridge.members.no_matches": {
+		"role": "empty state for a filtered candidate list",
+		"tone": "factual",
+		"length": "One short sentence",
+		"placeholders": {},
+		"note": "The search text matched nobody. Implies clearing or changing the search, not that the organization is empty."
+	},
+	"ui.teamBridge.members.load_error": {
+		"role": "error state for the directory read inside the dialog",
+		"tone": "calm, factual",
+		"length": "One short sentence",
+		"placeholders": {},
+		"note": "The roster could not be loaded; a retry control sits below. Do not claim the conversation or the members are gone."
+	},
+	"ui.teamBridge.members.read_only": {
+		"role": "inline notice beside the picker's heading, shown when the reader cannot invite",
+		"tone": "factual, about the reader's own ability; never a rule about who else may",
+		"length": "One short sentence",
+		"placeholders": {},
+		"note": "Any active human member may invite and only the conversation owner may remove, so this must NOT say 'only an administrator can add'. It states that this conversation cannot take invitations from the reader: a direct message, an archived or built-in channel, or a reader who is not an active member. Sentence case, no ellipsis."
+	},
+	"ui.teamBridge.members.role.owner": {
+		"role": "member role label",
+		"tone": "neutral noun",
+		"length": "one word",
+		"placeholders": {},
+		"note": "The CONVERSATION's owner, which is not the same as an organization owner. Must stay distinct from the organization-owner term used elsewhere in this namespace."
+	},
+	"ui.teamBridge.members.mutation_error": {
+		"role": "alert after an add or remove was refused or failed",
+		"tone": "calm, factual",
+		"length": "One short sentence",
+		"placeholders": {},
+		"note": "The member list keeps its previous state. Say the change was not saved and that the person may try again; do not blame the member or claim a specific server reason."
+	},
+	"ui.teamBridge.members.title": {
+		"role": "member administration dialog heading",
+		"tone": "neutral, sentence case",
+		"length": "2-4 words; one line",
+		"placeholders": {},
+		"note": "Administer an existing group or channel. This is not a new-conversation form."
+	},
+	"ui.teamBridge.members.loading": {
+		"role": "loading state",
+		"tone": "neutral",
+		"length": "2-4 words",
+		"placeholders": {},
+		"note": "Announced while the organization directory loads inside the member dialog; also the spinner's accessible label."
+	},
+	"ui.teamBridge.members.description": {
+		"role": "dialog explanatory text",
+		"tone": "plain and factual",
+		"length": "One sentence; at most two lines at desktop width",
+		"placeholders": {},
+		"note": "Roles are conversation owner/member. Participation state is active/invited/left, not online presence."
+	},
+	"ui.teamBridge.members.remove": {
+		"role": "icon-button accessible name and tooltip",
+		"tone": "imperative",
+		"length": "Short verb plus member name",
+		"placeholders": {
+			"name": "Current display name of the member or agent"
+		},
+		"note": "Removes this member from the conversation, not from the organization."
+	},
+	"ui.teamBridge.notify.unavailable": {
+		"role": "toast",
+		"tone": "neutral, factual, non-accusatory",
+		"length": "One short sentence; must fit at most two lines in the 356 px toast.",
+		"placeholders": {},
+		"note": "Neutral info toast after a stale native Team Bridge notification click. The app foregrounds but must not navigate or reveal the previous account or conversation. Shown only after the signed-in account settles; not during credential refresh, and not for a banner merely replaced by a newer one or dismissed by the OS."
+	},
+	"ui.teamBridge.page.title": {
+		"role": "page heading",
+		"tone": "sentence case, product name kept as-is",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "The page's name. \"Team Bridge\" is the product surface name — never translate the words separately, they name one feature."
+	},
+	"ui.teamBridge.list.empty.title": {
+		"role": "empty-state heading",
+		"tone": "neutral",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "Shown when the account has no conversations at all. States the fact, does not apologise."
+	},
+	"ui.teamBridge.list.empty.body": {
+		"role": "empty-state body",
+		"tone": "helpful, one sentence",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Names the three things the user can start. Keep the three nouns parallel."
+	},
+	"ui.teamBridge.list.loading": {
+		"role": "loading state",
+		"tone": "neutral",
+		"length": "2-4 words.",
+		"placeholders": {},
+		"note": "Announced while the conversation list loads; also the accessible label of the loading spinner."
+	},
+	"ui.teamBridge.list.error": {
+		"role": "error state",
+		"tone": "factual, no blame",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Shown when the list read fails (backend down, signed out or an upstream refusal). Do not name a cause the client cannot prove."
+	},
+	"ui.teamBridge.list.error_stale": {
+		"role": "stale-list notice",
+		"tone": "factual, reassuring, no blame",
+		"length": "Two short clauses.",
+		"placeholders": {},
+		"note": "Shown INSTEAD of list.error when the list read failed but rows from the cached snapshot are still painted below it. The first clause states the failed refresh; the second says the rows on screen are the reader's last read, so the sentence never contradicts what is visible. Do not name a cause the client cannot prove."
+	},
+	"ui.teamBridge.list.retry": {
+		"role": "error-state action",
+		"tone": "imperative",
+		"length": "2 words.",
+		"placeholders": {},
+		"note": "Retries the failed read."
+	},
+	"ui.teamBridge.list.untitled": {
+		"role": "conversation list row fallback title",
+		"tone": "neutral",
+		"length": "2-3 words.",
+		"placeholders": {},
+		"note": "Used when a group or channel has no name. A DM always has a derived title, so this is never shown for one."
+	},
+	"ui.teamBridge.kind.dm": {
+		"role": "conversation kind label",
+		"tone": "neutral",
+		"length": "2 words.",
+		"placeholders": {},
+		"note": "One-to-one conversation. The abbreviation is standard but spell it out for translation."
+	},
+	"ui.teamBridge.kind.group": {
+		"role": "conversation kind label",
+		"tone": "neutral",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "A named conversation with a few members."
+	},
+	"ui.teamBridge.kind.channel": {
+		"role": "conversation kind label",
+		"tone": "neutral",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "An organization-visible or private room. Keep distinct from \"group\"."
+	},
+	"ui.teamBridge.thread.loading": {
+		"role": "thread loading state",
+		"tone": "neutral",
+		"length": "2-3 words.",
+		"placeholders": {},
+		"note": "Announced while one conversation's messages load."
+	},
+	"ui.teamBridge.thread.error": {
+		"role": "thread error state",
+		"tone": "factual",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Shown when the message history read fails. The list beside it stays usable."
+	},
+	"ui.teamBridge.thread.empty": {
+		"role": "thread empty state",
+		"tone": "warm but plain",
+		"length": "One short sentence.",
+		"placeholders": {},
+		"note": "A conversation with no messages. Invites the first message without exclamation."
+	},
+	"ui.teamBridge.composer.placeholder": {
+		"role": "message composer placeholder",
+		"tone": "neutral",
+		"length": "3-5 words.",
+		"placeholders": {},
+		"note": "The composer sits at the bottom of the thread; the placeholder names the act, not the conversation."
+	},
+	"ui.teamBridge.composer.send": {
+		"role": "send button (icon button accessible name)",
+		"tone": "imperative",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "Accessible name of the send control. It must work as a button name on its own."
+	},
+	"ui.teamBridge.composer.hint": {
+		"role": "keyboard hint under the composer",
+		"tone": "neutral, instructional",
+		"length": "One short sentence.",
+		"placeholders": {},
+		"note": "Names both key gestures. Key names stay untranslated; only \"to send\" and \"for a new line\" are copy."
+	},
+	"ui.teamBridge.nav.label": {
+		"role": "sidebar navigation row label",
+		"tone": "neutral",
+		"length": "2 words.",
+		"placeholders": {},
+		"note": "The row inside the sidebar's More group. Same name as the page heading; never abbreviate in the row."
+	},
+	"ui.teamBridge.nav.unread": {
+		"role": "sidebar row accessible name with unread count",
+		"tone": "neutral, states the number",
+		"length": "One short clause.",
+		"placeholders": {
+			"count": "unread message count; a positive integer"
+		},
+		"note": "The name carries the number because a badge is only a visual convenience. Plural forms matter. The collapsed row uses this same name through its tooltip."
+	},
+	"ui.teamBridge.create.title": {
+		"role": "create dialog heading",
+		"tone": "neutral",
+		"length": "2-3 words.",
+		"placeholders": {},
+		"note": "Heading of the dialog that starts a DM, group or channel."
+	},
+	"ui.teamBridge.create.name": {
+		"role": "form field label",
+		"tone": "neutral",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "Optional name for a group or channel. DMs are not named."
+	},
+	"ui.teamBridge.create.members": {
+		"role": "form field label",
+		"tone": "neutral",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "The list of people (or their agents) to include."
+	},
+	"ui.teamBridge.create.cancel": {
+		"role": "dialog action",
+		"tone": "neutral",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "Closes the dialog without creating anything."
+	},
+	"ui.teamBridge.create.confirm": {
+		"role": "dialog primary action",
+		"tone": "imperative",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "Creates the conversation. Disabled until the form is valid."
+	},
+	"ui.teamBridge.unread.count": {
+		"role": "unread badge count label",
+		"tone": "neutral",
+		"length": "2-3 words.",
+		"placeholders": {
+			"count": "unread message count; a positive integer"
+		},
+		"note": "Short badge text beside a conversation row. Plural forms matter; keep it short so the row does not wrap."
+	},
+	"ui.teamBridge.member.count": {
+		"role": "participant count in the thread header",
+		"tone": "neutral",
+		"length": "2-4 words.",
+		"placeholders": {
+			"count": "number of participants; a positive integer"
+		},
+		"note": "Sits beside the conversation title. Plural forms matter."
+	},
+	"ui.teamBridge.group.more": {
+		"role": "sidebar overflow group label",
+		"tone": "neutral",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "The collapsed group that holds low-frequency destinations. The Team Bridge row lives inside it, and its unread badge rides the group row while collapsed."
+	},
+	"ui.teamBridge.thread.withheld": {
+		"role": "message state line",
+		"tone": "neutral, factual",
+		"length": "One short sentence.",
+		"placeholders": {},
+		"note": "An agent member's message the agent has not admitted yet. It is a state, not an error; never imply the sender did something wrong."
+	},
+	"ui.teamBridge.composer.error": {
+		"role": "inline error alert",
+		"tone": "direct, actionable",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "A send that failed. Keep the draft on screen; this line explains why nothing was posted and invites a retry."
+	},
+	"ui.teamBridge.create.error": {
+		"role": "dialog error alert",
+		"tone": "direct, actionable",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Conversation creation failed. The dialog stays open with the form intact so the user can retry."
+	},
+	"ui.teamBridge.scope.label": {
+		"role": "dropdown menu section label",
+		"tone": "neutral",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "Names what the dropdown chooses. It is a visible section label inside the menu and also the trigger's accessible-name prefix."
+	},
+	"ui.teamBridge.scope.all": {
+		"role": "scope option / trigger label",
+		"tone": "neutral",
+		"length": "2 words.",
+		"placeholders": {},
+		"note": "The account-wide scope. It must read as every organization the person belongs to, never as a single organization."
+	},
+	"ui.teamBridge.scope.trigger": {
+		"role": "organization switcher accessible name",
+		"tone": "neutral, names the current scope",
+		"length": "One short clause.",
+		"placeholders": {
+			"name": "the current organization name or the all-organizations label"
+		},
+		"note": "The trigger already shows `name` visually; this template is its accessible name, so screen-reader and visual state cannot disagree."
+	},
+	"ui.teamBridge.scope.loading": {
+		"role": "menu status line",
+		"tone": "neutral",
+		"length": "2-3 words.",
+		"placeholders": {},
+		"note": "The memberships read's first paint, shown inside the open menu rather than replacing the list."
+	},
+	"ui.teamBridge.scope.error": {
+		"role": "menu status line",
+		"tone": "factual",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "The membership read failed. The switcher still shows the current scope; this line says why the other organizations are missing, and the menu row below it retries the read."
+	},
+	"ui.teamBridge.scope.empty": {
+		"role": "menu status line",
+		"tone": "factual",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "The account holds no active memberships. Keep it distinct from the error copy."
+	},
+	"ui.teamBridge.scope.unknown": {
+		"role": "fallback organization label",
+		"tone": "neutral",
+		"length": "2 words.",
+		"placeholders": {},
+		"note": "A scope or row whose organization is not in the memberships read. A rare race, not a user error."
+	},
+	"ui.teamBridge.scope.thread_unknown": {
+		"role": "thread state",
+		"tone": "factual",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "A conversation from the merged list whose organization could not be resolved. The thread is withheld rather than shown under the wrong organization."
+	},
+	"ui.teamBridge.scope.create_needs_org": {
+		"role": "disabled-control reason",
+		"tone": "neutral, instructional",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Explains why New conversation is disabled while the account-wide scope is selected: a conversation must belong to exactly one organization."
+	},
+	"ui.teamBridge.scope.group.organizations": {
+		"role": "dropdown menu group label",
+		"tone": "neutral",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "Heads the group of the person's private Team organizations in the organization switcher, shown only when a Communities group is also shown. Plural: the group lists several organizations."
+	},
+	"ui.teamBridge.scope.group.communities": {
+		"role": "dropdown menu group label",
+		"tone": "neutral",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "Heads the separate group of public communities the person has joined. A community is a public space, not one of their organizations; keep the two words clearly distinct."
+	},
+	"ui.teamBridge.scope.group.communities_joined": {
+		"role": "dropdown menu group label with a count",
+		"tone": "neutral",
+		"length": "Under 4 words plus the number.",
+		"placeholders": {
+			"count": "how many communities the person has joined (more than six when shown)"
+		},
+		"note": "Shown instead of the plain Communities label once the person has joined more than six communities and a search field appears. Keep the separator dot."
+	},
+	"ui.teamBridge.scope.invited": {
+		"role": "status badge on an organization row",
+		"tone": "neutral",
+		"length": "1 word, badge-sized.",
+		"placeholders": {},
+		"note": "The person has a pending invitation to this private organization and has not accepted it yet. Describes the row's state, not an action."
+	},
+	"ui.teamBridge.scope.community.public": {
+		"role": "status badge on a community row",
+		"tone": "neutral",
+		"length": "1 word, badge-sized.",
+		"placeholders": {},
+		"note": "Marks a community as public (visible to every signed-in member), so it is never mistaken for a private organization. Adjective, not a verb."
+	},
+	"ui.teamBridge.scope.community.search": {
+		"role": "search field placeholder and accessible name",
+		"tone": "neutral",
+		"length": "2-3 words.",
+		"placeholders": {},
+		"note": "Filters the person's joined communities in the switcher by name."
+	},
+	"ui.teamBridge.scope.community.no_match": {
+		"role": "empty search result in a menu",
+		"tone": "neutral",
+		"length": "One short sentence.",
+		"placeholders": {},
+		"note": "Shown when the community search text matches none of the joined communities."
+	},
+	"ui.teamBridge.scope.community.browse": {
+		"role": "menu item that opens the community directory",
+		"tone": "imperative",
+		"length": "2-3 words; keep the trailing ellipsis",
+		"placeholders": {},
+		"note": "Opens a directory where the person can find and join communities. The ellipsis signals that another view opens next."
+	},
+	"ui.teamBridge.scope.community.trigger": {
+		"role": "organization switcher accessible name while a community is selected",
+		"tone": "neutral, names the current scope",
+		"length": "One short clause.",
+		"placeholders": {
+			"name": "the selected community's name"
+		},
+		"note": "Screen-reader name of the switcher button when the reader is viewing a community. Same shape as ui.teamBridge.scope.trigger, but the noun is the singular of the Communities group label: a community is a public platform, never an organization, so it must not be announced as one."
+	},
+	"ui.teamBridge.preview.chip": {
+		"role": "conversation row chip",
+		"tone": "neutral, quiet",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "Marks a discoverable channel the reader has not joined. It is a state, not an action; keep it short and do not translate it as a verb."
+	},
+	"ui.teamBridge.preview.banner": {
+		"role": "preview thread call to action",
+		"tone": "plain, inviting",
+		"length": "Two short sentences.",
+		"placeholders": {},
+		"note": "The reader can see the channel's metadata but not its history because they are not a member. States both consequences of joining: history and notifications."
+	},
+	"ui.teamBridge.preview.join": {
+		"role": "primary action in the preview banner",
+		"tone": "imperative",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "Joins the channel. Same word the invitation flow uses; do not add \"channel\" because the banner already names it."
+	},
+	"ui.teamBridge.preview.join_error": {
+		"role": "inline error beside the Join action",
+		"tone": "factual, no blame",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "A refused join (server or transport). The action stays available, so the sentence must not imply the channel is unreachable."
+	},
+	"ui.teamBridge.menu.label": {
+		"role": "icon button accessible name",
+		"tone": "neutral",
+		"length": "2 words.",
+		"placeholders": {},
+		"note": "Opens the conversation's own menu (mute, notification level). It must work as a button name on its own and not name a specific action."
+	},
+	"ui.teamBridge.menu.mute": {
+		"role": "conversation menu action",
+		"tone": "imperative",
+		"length": "2 words.",
+		"placeholders": {},
+		"note": "Silences the conversation immediately. Keep the object explicit (conversation) because the same menu also has a Mute radio row."
+	},
+	"ui.teamBridge.menu.unmute": {
+		"role": "conversation menu action",
+		"tone": "imperative",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "The inverse of Mute conversation, shown while the conversation is muted. Restores all messages."
+	},
+	"ui.teamBridge.notify.label": {
+		"role": "menu section heading / radio group label",
+		"tone": "neutral",
+		"length": "2 words.",
+		"placeholders": {},
+		"note": "Names the three-level notification choice below it. \"Preferences\" is the product's word for a remembered setting."
+	},
+	"ui.teamBridge.notify.all": {
+		"role": "notification level",
+		"tone": "neutral",
+		"length": "2 words.",
+		"placeholders": {},
+		"note": "Every message may notify. Parallel with Mentions and Mute; do not say \"everything\"."
+	},
+	"ui.teamBridge.notify.mention": {
+		"role": "notification level",
+		"tone": "neutral",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "Only a mention notifies. Plural describes the class of messages, not a count."
+	},
+	"ui.teamBridge.notify.mute": {
+		"role": "notification level",
+		"tone": "neutral",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "The silent level. Same word as the immediate action's verb, but here it names the state the radio selects."
+	},
+	"ui.teamBridge.notify.muted": {
+		"role": "row glyph accessible name",
+		"tone": "neutral",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "States why a muted conversation's unread count does not raise the sidebar badge. Past participle; not an action."
+	},
+	"ui.teamBridge.notify.error": {
+		"role": "inline error under the thread header",
+		"tone": "factual, no blame",
+		"length": "One short sentence.",
+		"placeholders": {},
+		"note": "A refused notification-preference write. The menu has closed and the previous value is restored; this line explains why. Mirrors the composer's send-failure sentence."
+	},
+	"ui.teamBridge.agentNotify.label": {
+		"role": "menu section heading / radio group label",
+		"tone": "neutral",
+		"length": "3-4 words; the radio rows complete it as a sentence.",
+		"placeholders": {},
+		"note": "Conversation menu. Heads the three-level choice of how often the READER'S OWN AI agent (chief of staff) is woken in this conversation; the rows below it complete the phrase (\"Wake your agent for: every message\"). Distinct from the reader's own notification preferences above it, which are about the reader's banners, not the agent. WAKE CONTRACT: 'all' = the agent is woken for every message; 'mention' = woken for @-mentions of it and for replies in threads it follows; 'mute' = never woken here, not even by an @-mention."
+	},
+	"ui.teamBridge.agentNotify.all": {
+		"role": "agent wake level (radio row)",
+		"tone": "neutral",
+		"length": "1-3 words; one line in a ~190px label.",
+		"placeholders": {},
+		"note": "Completes 'Wake your agent for'. The agent is woken for every message here and decides for itself whether to reply. Do not add '(default)'. WAKE CONTRACT: 'all' = the agent is woken for every message; 'mention' = woken for @-mentions of it and for replies in threads it follows; 'mute' = never woken here, not even by an @-mention."
+	},
+	"ui.teamBridge.agentNotify.mention": {
+		"role": "agent wake level (radio row)",
+		"tone": "neutral",
+		"length": "Up to 5 words; one line in a ~190px label.",
+		"placeholders": {},
+		"note": "Completes 'Wake your agent for'. The agent is woken when someone @-mentions it AND for replies in threads it follows ('its threads' = threads the agent follows). Keep '@-mentions' as the product's mention term. WAKE CONTRACT: 'all' = the agent is woken for every message; 'mention' = woken for @-mentions of it and for replies in threads it follows; 'mute' = never woken here, not even by an @-mention."
+	},
+	"ui.teamBridge.agentNotify.mute": {
+		"role": "agent wake level (radio row)",
+		"tone": "neutral",
+		"length": "1-3 words; one line in a ~190px label.",
+		"placeholders": {},
+		"note": "The agent is never woken in this conversation, not even by an @-mention. 'Never' answers 'Wake your agent for'; the parenthetical names the state with the app's Mute term. WAKE CONTRACT: 'all' = the agent is woken for every message; 'mention' = woken for @-mentions of it and for replies in threads it follows; 'mute' = never woken here, not even by an @-mention."
+	},
+	"ui.teamBridge.agentNotify.error": {
+		"role": "inline error under the thread header",
+		"tone": "factual, no blame",
+		"length": "One short sentence.",
+		"placeholders": {},
+		"note": "A refused write of the reader's own agent's wake level. The menu has closed and the previous level is restored; this line explains why and names WHICH setting (how often the agent wakes). Mirrors ui.teamBridge.notify.error."
+	},
+	"ui.teamBridge.notify.title": {
+		"role": "OS notification title",
+		"tone": "plain, factual",
+		"length": "One short line; the OS may truncate.",
+		"placeholders": {
+			"conversation": "the conversation name as the list row shows it",
+			"organization": "the organization the conversation belongs to"
+		},
+		"note": "Names where the message is. Keep the two nouns in the given order and keep both, because two same-named conversations in different organizations are the case this line disambiguates."
+	},
+	"ui.teamBridge.notify.body": {
+		"role": "OS notification body",
+		"tone": "neutral, one sentence",
+		"length": "One short sentence.",
+		"placeholders": {
+			"sender": "the display label the server already shows for the sender"
+		},
+		"note": "States who sent a message. No message text is available to this surface by design, so do not imply the body is quoted."
+	},
+	"ui.teamBridge.notify.body_fallback": {
+		"role": "OS notification body when no sender label is published",
+		"tone": "neutral",
+		"length": "2-4 words.",
+		"placeholders": {},
+		"note": "The honest sentence when the server does not expose a sender label. Do not invent a sender name."
+	},
+	"ui.teamBridge.notify.channel": {
+		"role": "OS notification subtitle fragment naming a channel",
+		"tone": "neutral",
+		"length": "The channel name with its prefix.",
+		"placeholders": {
+			"channel": "the channel's own name, as the rail shows it"
+		},
+		"note": "The '#' prefix is how chat apps mark a channel and matches the rail's channel glyph. Keep the prefix unless the target locale has a different established channel marker; never translate the channel name."
+	},
+	"ui.teamBridge.notify.subtitle": {
+		"role": "OS notification subtitle (macOS) / body lead (Windows, Linux)",
+		"tone": "neutral",
+		"length": "Two short nouns joined by a separator.",
+		"placeholders": {
+			"place": "where the message was posted: a '#channel', 'Direct message', or a group name",
+			"organization": "the organization the conversation belongs to"
+		},
+		"note": "Names where the message is. Keep both parts and the order place-then-organization: two same-named channels in different organizations are the case this line disambiguates. The middle dot is a separator, not punctuation; keep it unless the locale has a conventional equivalent."
+	},
+	"ui.teamBridge.notify.count": {
+		"role": "OS notification body when several messages arrived and no preview could be read",
+		"tone": "neutral",
+		"length": "2-4 words.",
+		"placeholders": {
+			"count": "how many unread messages the conversation now has, always 2 or more in practice"
+		},
+		"note": "Replaces the earlier banner for the same conversation, so it summarises the burst. Do not imply who sent them."
+	},
+	"ui.teamBridge.notify.count_preview": {
+		"role": "OS notification body when several messages arrived, followed by the newest one's text",
+		"tone": "neutral",
+		"length": "A short count, a colon, then the quoted preview.",
+		"placeholders": {
+			"count": "how many unread messages the conversation now has, always 2 or more in practice",
+			"preview": "the newest message's text, already shortened to one line; insert it verbatim"
+		},
+		"note": "The preview is the sender's own words: never translate or reword it, and keep it last so the OS truncates the preview rather than the count."
+	},
+	"ui.teamBridge.people.title": {
+		"role": "rail section heading",
+		"tone": "neutral, sentence-case noun",
+		"length": "One word.",
+		"placeholders": {},
+		"note": "Names the block of people below the conversation list. The same noun the org directory uses."
+	},
+	"ui.teamBridge.people.loading": {
+		"role": "loading state for the People section",
+		"tone": "neutral",
+		"length": "2-3 words.",
+		"placeholders": {},
+		"note": "Also the spinner's accessible label. Says what is loading, not just that something is."
+	},
+	"ui.teamBridge.people.error": {
+		"role": "error state for the People section",
+		"tone": "factual, no blame",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "The directory read failed. It sits inside the rail and must not imply the conversations above it also failed."
+	},
+	"ui.teamBridge.people.empty": {
+		"role": "empty state for the People section",
+		"tone": "neutral",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "No other active person is in this organization. Do not apologise and do not offer an invite action this surface does not have."
+	},
+	"ui.teamBridge.people.paused": {
+		"role": "a person's bridge status note",
+		"tone": "neutral, one word",
+		"length": "One word.",
+		"placeholders": {},
+		"note": "The person paused Team Bridge. The row still opens their DM history, so this is a state note, not a warning."
+	},
+	"ui.teamBridge.people.bridge_off": {
+		"role": "explanation for an inert person row",
+		"tone": "plain, not judgemental",
+		"length": "One short sentence.",
+		"placeholders": {},
+		"note": "The reason the row cannot be clicked. Shown as the row's tooltip and its assistive description; it states the person's choice, never a failure."
+	},
+	"ui.teamBridge.people.all_scope": {
+		"role": "People section note in the merged organization view",
+		"tone": "helpful, one sentence",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "The merged view has no single roster. Tells the reader how to see one; do not imply people are missing."
+	},
+	"ui.teamBridge.people.message": {
+		"role": "accessible name of a reachable person row",
+		"tone": "imperative",
+		"length": "2-3 words plus a name.",
+		"placeholders": {
+			"name": "the person's display label"
+		},
+		"note": "Names the action the row performs (open a DM). It replaces the row's visible text for screen readers, so the label must contain the person's name."
+	},
+	"ui.teamBridge.plan.title": {
+		"role": "eligibility panel heading for a plan without Team Bridge",
+		"tone": "factual, calm",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "The organization is signed in and current; its plan lacks the feature. Do not suggest a trial upgrade this surface cannot start."
+	},
+	"ui.teamBridge.plan.body": {
+		"role": "value sentence on every eligibility panel",
+		"tone": "plain, one sentence",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Explains what Team Bridge is for. Keep both halves: people talking to people's agents, and agents collaborating with agents."
+	},
+	"ui.teamBridge.plan.reason": {
+		"role": "eligibility reason for surface state A",
+		"tone": "factual",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "The honest state reason. It must not read as the user's fault."
+	},
+	"ui.teamBridge.plan.reason_account": {
+		"role": "eligibility reason on the full-page Team Bridge gate for surface state A",
+		"tone": "factual",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Shown to an account that is in no organization at all as well as one whose organizations lack the plan, so it must not say 'this organization'. 'Radient Team plan' is the one product name for the plan; keep 'Radient Team' untranslated and use the locale's established word for plan. It must not read as the user's fault."
+	},
+	"ui.teamBridge.plan.see_plan": {
+		"role": "secondary button on the Team Bridge plan gate and inline link in Settings > Radient account; opens the plan page of the Radient console in the browser",
+		"tone": "imperative",
+		"length": "3-5 words, one line.",
+		"placeholders": {},
+		"note": "A quiet route to look at the plan, not a purchase command: do not translate as buy, upgrade or subscribe. Keep 'Radient Team' untranslated."
+	},
+	"ui.teamBridge.plan.sign_in_title": {
+		"role": "eligibility panel heading when signed out",
+		"tone": "direct, calm",
+		"length": "3-4 words.",
+		"placeholders": {},
+		"note": "The panel draws no control; the title is the instruction the reader would see in the app's own sign-in flow."
+	},
+	"ui.teamBridge.plan.sign_in_reason": {
+		"role": "eligibility reason when signed out",
+		"tone": "factual",
+		"length": "Two short sentences.",
+		"placeholders": {},
+		"note": "States the state and the next step. No fake button: the surface has no sign-in control of its own."
+	},
+	"ui.teamBridge.plan.update_title": {
+		"role": "eligibility panel heading when the app is too old",
+		"tone": "direct, calm",
+		"length": "3-5 words.",
+		"placeholders": {},
+		"note": "Names the remedy (update) without pretending this panel can run it."
+	},
+	"ui.teamBridge.plan.update_reason": {
+		"role": "eligibility reason when the app is too old",
+		"tone": "factual",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Says the version is the constraint; do not name a version number this client does not know."
+	},
+	"ui.teamBridge.plan.unavailable_title": {
+		"role": "eligibility panel heading when the service is unavailable",
+		"tone": "factual",
+		"length": "3-4 words.",
+		"placeholders": {},
+		"note": "A service state, not a plan or account problem."
+	},
+	"ui.teamBridge.plan.unavailable_reason": {
+		"role": "eligibility reason when the service is unavailable",
+		"tone": "factual, no blame",
+		"length": "Two short sentences.",
+		"placeholders": {},
+		"note": "Says the service, not the organization, is the cause. 'Try again later' is the only honest action this panel offers."
+	},
+	"ui.teamBridge.people.identity_loading": {
+		"role": "explanation for an inert person row before the account is known",
+		"tone": "neutral",
+		"length": "3-4 words.",
+		"placeholders": {},
+		"note": "Without the signed-in account the rail cannot tell the viewer's own row from a colleague's, so every row waits. Do not name the person."
+	},
+	"ui.teamBridge.read_only.note": {
+		"role": "note beside the disabled New conversation action in surface F",
+		"tone": "factual",
+		"length": "One short sentence.",
+		"placeholders": {},
+		"note": "The organization's Team Bridge is read-only. A state, not the reader's mistake; the server would refuse any write."
+	},
+	"ui.teamBridge.read_only.composer": {
+		"role": "replacement for the composer in a read-only organization",
+		"tone": "factual",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Says the history is readable but sending is not. Do not offer a disabled composer."
+	},
+	"ui.teamBridge.plan.checking": {
+		"role": "first-paint loading state while the eligibility read answers",
+		"tone": "neutral",
+		"length": "2-4 words.",
+		"placeholders": {},
+		"note": "Also the spinner's accessible label. Names the product, not a generic loading."
+	},
+	"ui.teamBridge.section.channels": {
+		"role": "rail section heading",
+		"tone": "plain, sentence case",
+		"length": "Short; one word.",
+		"placeholders": {},
+		"note": "Heading above the organization's channels in the conversation rail. Same sense as Slack's Channels."
+	},
+	"ui.teamBridge.section.channels_empty": {
+		"role": "clickable empty-state line",
+		"tone": "plain, sentence case",
+		"length": "One short line; may truncate in a narrow rail.",
+		"placeholders": {},
+		"note": "Shown under the Channels heading when the organization has no channels; the whole line is a button that opens the new-channel form. No trailing period: it reads as an action."
+	},
+	"ui.teamBridge.section.channels_none": {
+		"role": "empty-state line",
+		"tone": "plain, sentence case",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Channels heading's empty line when the reader cannot create one here (all organizations view, or read-only organization)."
+	},
+	"ui.teamBridge.section.groups": {
+		"role": "rail section heading",
+		"tone": "plain, sentence case",
+		"length": "Short; one word.",
+		"placeholders": {},
+		"note": "Heading above private group conversations (several people and/or agents)."
+	},
+	"ui.teamBridge.section.groups_empty": {
+		"role": "clickable empty-state line",
+		"tone": "plain, sentence case",
+		"length": "One short line; may truncate.",
+		"placeholders": {},
+		"note": "Shown under Groups when there are none; the line is a button that opens a new-message draft with a To: field. No trailing period."
+	},
+	"ui.teamBridge.section.groups_none": {
+		"role": "empty-state line",
+		"tone": "plain, sentence case",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Groups heading's empty line when the reader cannot start one here."
+	},
+	"ui.teamBridge.section.directs": {
+		"role": "rail section heading",
+		"tone": "plain, sentence case",
+		"length": "Short.",
+		"placeholders": {},
+		"note": "Heading above one-to-one conversations. Same sense as Slack's Direct messages."
+	},
+	"ui.teamBridge.section.chiefs": {
+		"role": "rail section heading",
+		"tone": "plain, sentence case",
+		"length": "Short.",
+		"placeholders": {},
+		"note": "Heading above each teammate's primary agent. 'Chief of staff' is the product's name for a person's primary agent; keep the glossary term."
+	},
+	"ui.teamBridge.section.chiefs_empty": {
+		"role": "empty-state line",
+		"tone": "plain, sentence case",
+		"length": "One sentence; may wrap.",
+		"placeholders": {},
+		"note": "Shown under Chiefs of staff when no other member has enrolled their agent."
+	},
+	"ui.teamBridge.chief.label": {
+		"role": "row label composition",
+		"tone": "plain, sentence case",
+		"length": "Short; must fit a 30px rail row.",
+		"placeholders": {
+			"agent": "The agent's current display name, verbatim (for example Aida).",
+			"person": "The owning teammate's display name, verbatim."
+		},
+		"note": "Names a teammate's chief of staff, e.g. 'Aida (Ben)'. Locales may reorder or change the brackets, but both placeholders must stay."
+	},
+	"ui.teamBridge.chief.fallback": {
+		"role": "fallback name",
+		"tone": "plain, sentence case",
+		"length": "Short.",
+		"placeholders": {},
+		"note": "Used in place of the agent's name when the server has not published one."
+	},
+	"ui.teamBridge.people.self_named": {
+		"role": "row label",
+		"tone": "plain, sentence case",
+		"length": "Short; must fit a 30px rail row.",
+		"placeholders": {
+			"name": "The signed-in person's display name, verbatim."
+		},
+		"note": "The reader's own row in People. Not a control."
+	},
+	"ui.teamBridge.row.menu": {
+		"role": "icon button accessible name",
+		"tone": "plain, sentence case",
+		"length": "Short.",
+		"placeholders": {
+			"name": "The person or chief-of-staff label on that row, verbatim."
+		},
+		"note": "Screen-reader name of the '…' button revealed when hovering a People or Chiefs of staff row."
+	},
+	"ui.teamBridge.row.start_group": {
+		"role": "menu item",
+		"tone": "plain, sentence case",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "Opens a new-message draft already addressed to this row's person or agent, so more people can be added before the first message."
+	},
+	"ui.teamBridge.compose.new": {
+		"role": "icon button accessible name",
+		"tone": "plain, sentence case",
+		"length": "Short.",
+		"placeholders": {},
+		"note": "The rail's compose button: opens an empty draft with a To: field."
+	},
+	"ui.teamBridge.compose.to": {
+		"role": "field prefix",
+		"tone": "plain, sentence case",
+		"length": "Very short.",
+		"placeholders": {},
+		"note": "Label in front of the recipient chips in a new-message draft, as in an email header."
+	},
+	"ui.teamBridge.compose.label": {
+		"role": "combobox accessible name",
+		"tone": "plain, sentence case",
+		"length": "Short.",
+		"placeholders": {},
+		"note": "Accessible name of the recipient field and its suggestion list."
+	},
+	"ui.teamBridge.compose.placeholder": {
+		"role": "input placeholder",
+		"tone": "plain, sentence case",
+		"length": "Short.",
+		"placeholders": {},
+		"note": "Placeholder of the empty recipient field."
+	},
+	"ui.teamBridge.compose.remove": {
+		"role": "icon button accessible name",
+		"tone": "plain, sentence case",
+		"length": "Short.",
+		"placeholders": {
+			"name": "The recipient's label, verbatim."
+		},
+		"note": "Removes one recipient chip from the draft."
+	},
+	"ui.teamBridge.compose.empty": {
+		"role": "pane hint",
+		"tone": "plain, sentence case",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Shown in the empty thread of a new-message draft with no recipients yet. Nothing is created until the first message is sent."
+	},
+	"ui.teamBridge.composer.placeholder_to": {
+		"role": "textarea placeholder",
+		"tone": "plain, sentence case",
+		"length": "Short; may truncate.",
+		"placeholders": {
+			"name": "The conversation's title (a person, agent label or #channel), verbatim."
+		},
+		"note": "Composer placeholder naming who the message goes to, as in Slack."
+	},
+	"ui.teamBridge.thread.today": {
+		"role": "day divider",
+		"tone": "plain, sentence case",
+		"length": "One word.",
+		"placeholders": {},
+		"note": "Divider label above today's messages."
+	},
+	"ui.teamBridge.thread.yesterday": {
+		"role": "day divider",
+		"tone": "plain, sentence case",
+		"length": "One word.",
+		"placeholders": {},
+		"note": "Divider label above yesterday's messages."
+	},
+	"ui.teamBridge.builtin.general_topic": {
+		"role": "channel header topic",
+		"tone": "plain, sentence case",
+		"length": "One sentence; may truncate.",
+		"placeholders": {},
+		"note": "Describes the built-in #general channel: the whole organization, meaning every person who uses Team Bridge plus each person's agent (their chief of staff). Lead with the whole organization so it reads differently from #humans. The agent rule: every agent in the channel sees every message, and replies when @-mentioned or in a thread it follows. Each owner sets their own agent's notify level, so never promise that every agent answers every message, and make no reply-time promise. 'Threads they follow' means the agent follows the thread, not the reader. Nobody can leave the channel, and it cannot be renamed. Keep 'agents' as the product's usual word for AI agents. Use no em dash; use a colon or the language's natural equivalent."
+	},
+	"ui.teamBridge.builtin.humans_topic": {
+		"role": "channel header topic",
+		"tone": "plain, sentence case",
+		"length": "One sentence; may truncate.",
+		"placeholders": {},
+		"note": "Describes the built-in #humans channel: every person in the organization and no agents. The header leads with \"people only\" so it reads differently from #general. Use no em dash."
+	},
+	"ui.teamBridge.builtin.agents_topic": {
+		"role": "channel header topic",
+		"tone": "plain, sentence case",
+		"length": "One sentence; may truncate.",
+		"placeholders": {},
+		"note": "Describes the built-in #agents channel: every enrolled agent is a member and sees every message; each agent replies when the message is relevant to it or when it is @-mentioned."
+	},
+	"ui.teamBridge.section.channels_add": {
+		"role": "icon button label (aria-label and tooltip)",
+		"tone": "Imperative, sentence case.",
+		"length": "Short.",
+		"placeholders": {},
+		"note": "The '+' revealed on the Channels section heading in the Team Bridge rail. Opens the new-channel form."
+	},
+	"ui.teamBridge.section.groups_add": {
+		"role": "icon button label (aria-label and tooltip)",
+		"tone": "Imperative, sentence case.",
+		"length": "Short.",
+		"placeholders": {},
+		"note": "The '+' revealed on the Groups section heading. Opens a To: draft where several people or agents can be added; the group is made when the first message is sent."
+	},
+	"ui.teamBridge.create.channel_description": {
+		"role": "dialog description",
+		"tone": "Plain, reassuring.",
+		"length": "One or two short sentences.",
+		"placeholders": {},
+		"note": "Under the title of the New channel form. 'Agents' are teammates' AI agents (chiefs of staff), which can also be channel members."
+	},
+	"ui.teamBridge.create.name_placeholder": {
+		"role": "input placeholder",
+		"tone": "Example, lower case.",
+		"length": "Short.",
+		"placeholders": {},
+		"note": "Example channel name inside the Name field. Channel names are lower case with hyphens; keep 'qa-coordination' as an untranslated slug or use an equivalent lower-case-hyphen example in the target language."
+	},
+	"ui.teamBridge.create.topic": {
+		"role": "field label",
+		"tone": "Sentence case.",
+		"length": "Short.",
+		"placeholders": {},
+		"note": "Label of an optional field describing what the channel is for; shown under the channel name in its header."
+	},
+	"ui.teamBridge.thread.intro_person": {
+		"role": "empty-state sentence",
+		"tone": "Warm, plain.",
+		"length": "One sentence.",
+		"placeholders": {
+			"name": "a teammate's display name, e.g. 'Ben Tran'"
+		},
+		"note": "Shown under a large avatar and the person's name when a DM with them has no messages yet. Mirrors how Slack/Discord open an empty DM."
+	},
+	"ui.teamBridge.thread.intro_chief": {
+		"role": "empty-state sentence",
+		"tone": "Plain; sets expectations.",
+		"length": "Two short sentences.",
+		"placeholders": {
+			"name": "the agent's label, e.g. 'Aida (Ben Tran)'"
+		},
+		"note": "Shown when the reader opens a DM with another person's primary AI agent and there are no messages yet. The second sentence is a safety expectation: the agent treats inbound messages as untrusted and does not take orders from them on its own."
+	},
+	"ui.teamBridge.thread.intro_group": {
+		"role": "empty-state sentence",
+		"tone": "Plain.",
+		"length": "One sentence.",
+		"placeholders": {
+			"names": "comma-separated list of recipient labels, e.g. 'Ben Tran, Aida (Sherman Tsui)'"
+		},
+		"note": "Shown in a new group draft once at least one recipient is added in the To: bar."
+	},
+	"ui.teamBridge.list.error_pane": {
+		"role": "main-pane state message",
+		"tone": "Plain, no blame.",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Shown in the main pane when the conversation list failed to load; the retry button lives in the rail on the left. ('left' is the inline-start side; in RTL locales say the side the list is actually on, i.e. right.)"
+	},
+	"ui.teamBridge.drafts.title": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
+	},
+	"ui.teamBridge.drafts.navigation": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
+	},
+	"ui.teamBridge.drafts.empty": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
+	},
+	"ui.teamBridge.drafts.indicator": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
+	},
+	"ui.teamBridge.drafts.storage_failed": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
+	},
+	"ui.teamBridge.schedule.title": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
+	},
+	"ui.teamBridge.schedule.timezone": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {
+			"timezone": "The machine timezone identifier, e.g. America/New_York."
+		},
+		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
+	},
+	"ui.teamBridge.schedule.when": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
+	},
+	"ui.teamBridge.schedule.window": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
+	},
+	"ui.teamBridge.schedule.invalid": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
+	},
+	"ui.teamBridge.schedule.confirm": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {
+			"date": "A localized date, time and timezone."
+		},
+		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
+	},
+	"ui.teamBridge.schedule.failed": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
+	},
+	"ui.teamBridge.schedule.edit_failed": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge, editing an existing scheduled message. The server did not save the change (not a conflict). The person's edits stay in the dialog and they can submit again."
+	},
+	"ui.teamBridge.schedule.edit_conflict": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge, editing an existing scheduled message that the same person also changed on another device while this dialog was open. Headline of a warning notice; one or more detail sentences follow beneath it."
+	},
+	"ui.teamBridge.schedule.edit_gone": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge, editing an existing scheduled message. It is no longer pending (cancelled, or delivered, possibly from another device), so editing is impossible. The only action is Close; do not suggest retrying."
+	},
+	"ui.teamBridge.schedule.edit_gone_title": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Dialog title replacing 'Schedule message' when the edited scheduled message was cancelled or already sent and can no longer be changed."
+	},
+	"ui.teamBridge.schedule.conflict_body_replaced": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge, editing an existing scheduled message that the same person also changed on another device while this dialog was open. The person had edited the text, but the other device's text won and is now shown in the field. Pairs with the 'Use my text instead' button."
+	},
+	"ui.teamBridge.schedule.conflict_body_changed": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge, editing an existing scheduled message that the same person also changed on another device while this dialog was open. The person had not edited the text; the other device changed it and the new text is shown."
+	},
+	"ui.teamBridge.schedule.conflict_time_replaced": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge, editing an existing scheduled message that the same person also changed on another device while this dialog was open. The person had picked a new send time, but the other device's time won and is now shown."
+	},
+	"ui.teamBridge.schedule.conflict_time_changed": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge, editing an existing scheduled message that the same person also changed on another device while this dialog was open. The person had not changed the send time; the other device changed it."
+	},
+	"ui.teamBridge.schedule.conflict_images_added": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {
+			"count": "Number of images (integer)."
+		},
+		"note": "Desktop Team Bridge, editing an existing scheduled message that the same person also changed on another device while this dialog was open. Images attached on the other device now appear in the dialog. ICU plural on count."
+	},
+	"ui.teamBridge.schedule.conflict_images_removed": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {
+			"count": "Number of images (integer)."
+		},
+		"note": "Desktop Team Bridge, editing an existing scheduled message that the same person also changed on another device while this dialog was open. Images the person could still see were removed on the other device. ICU plural on count."
+	},
+	"ui.teamBridge.schedule.conflict_review": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge, editing an existing scheduled message that the same person also changed on another device while this dialog was open. Shown when some of the person's own changes survived and the Review button is enabled."
+	},
+	"ui.teamBridge.schedule.conflict_nothing_left": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge, editing an existing scheduled message that the same person also changed on another device while this dialog was open. Shown when none of the person's changes remain; the only action offered is Close."
+	},
+	"ui.teamBridge.schedule.conflict_restore_body": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge, editing an existing scheduled message that the same person also changed on another device while this dialog was open. Button that puts the person's own lost text back into the message field. First person ('my') is the person's own voice."
+	},
+	"ui.teamBridge.schedule.confirm_action": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
+	},
+	"ui.teamBridge.schedule.review": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
+	},
+	"ui.teamBridge.schedule.list": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
+	},
+	"ui.teamBridge.schedule.loading": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
+	},
+	"ui.teamBridge.schedule.load_failed": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
+	},
+	"ui.teamBridge.schedule.empty": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
+	},
+	"ui.teamBridge.schedule.sending": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
+	},
+	"ui.teamBridge.schedule.reschedule": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
+	},
+	"ui.teamBridge.schedule.cancel": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
+	},
+	"ui.teamBridge.schedule.cancel_failed": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
+	},
+	"ui.teamBridge.schedule.success": {
+		"role": "Scheduling success or ambiguous group creation recovery",
+		"tone": "Clear, explicit about uncertainty",
+		"length": "Permit wrapping.",
+		"placeholders": {},
+		"note": "Group creation has no idempotency token. A lost response MUST NOT be auto-retried: the reader must check Groups and deliberately acknowledge the risk before retry. Keep the acknowledgement explicit."
+	},
+	"ui.teamBridge.schedule.create_uncertain": {
+		"role": "Scheduling success or ambiguous group creation recovery",
+		"tone": "Clear, explicit about uncertainty",
+		"length": "Permit wrapping.",
+		"placeholders": {},
+		"note": "Group creation has no idempotency token. A lost response MUST NOT be auto-retried: the reader must check Groups and deliberately acknowledge the risk before retry. Keep the acknowledgement explicit."
+	},
+	"ui.teamBridge.schedule.create_retry": {
+		"role": "Scheduling success or ambiguous group creation recovery",
+		"tone": "Clear, explicit about uncertainty",
+		"length": "Permit wrapping.",
+		"placeholders": {},
+		"note": "Group creation has no idempotency token. A lost response MUST NOT be auto-retried: the reader must check Groups and deliberately acknowledge the risk before retry. Keep the acknowledgement explicit."
+	},
+	"ui.teamBridge.schedule.edit_body": {
+		"role": "Scheduled message editor label",
+		"tone": "Sentence case",
+		"length": "One word.",
+		"placeholders": {},
+		"note": "Labels the editable body of a pending server-side scheduled message. Saving changes both the text and confirmed delivery time."
+	},
+	"ui.teamBridge.schedule.retry": {
+		"role": "Uncertain schedule recovery action",
+		"tone": "Clear, sentence case",
+		"length": "Short action.",
+		"placeholders": {},
+		"note": "Replays the previously confirmed scheduling request with its original delivery time and idempotency key, even if the time has since passed. Never creates a new schedule key on an ambiguous failure."
+	},
+	"ui.teamBridge.replies.action": {
+		"role": "thread pane action or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Slack-style one-level conversation thread; reply is a message inside the thread, not a channel post."
+	},
+	"ui.teamBridge.replies.title": {
+		"role": "thread pane action or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Slack-style one-level conversation thread; reply is a message inside the thread, not a channel post."
+	},
+	"ui.teamBridge.replies.close": {
+		"role": "thread pane action or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Slack-style one-level conversation thread; reply is a message inside the thread, not a channel post."
+	},
+	"ui.teamBridge.replies.count": {
+		"role": "thread pane action or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {
+			"count": "Number of replies"
+		},
+		"note": "Slack-style one-level conversation thread; reply is a message inside the thread, not a channel post."
+	},
+	"ui.teamBridge.replies.last": {
+		"role": "thread pane action or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {
+			"time": "Localized clock time"
+		},
+		"note": "Slack-style one-level conversation thread; reply is a message inside the thread, not a channel post."
+	},
+	"ui.teamBridge.replies.empty": {
+		"role": "thread pane action or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Slack-style one-level conversation thread; reply is a message inside the thread, not a channel post."
+	},
+	"ui.teamBridge.replies.placeholder": {
+		"role": "thread pane action or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Slack-style one-level conversation thread; reply is a message inside the thread, not a channel post."
+	},
+	"ui.teamBridge.replies.more": {
+		"role": "thread pane action or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Slack-style one-level conversation thread; reply is a message inside the thread, not a channel post."
+	},
+	"ui.teamBridge.attachments.add": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Icon button in the message composer that opens a file picker for images."
+	},
+	"ui.teamBridge.attachments.strip": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Accessible name of the row of image thumbnails waiting above the message field."
+	},
+	"ui.teamBridge.attachments.position": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {
+			"index": "1-based position",
+			"count": "total images"
+		},
+		"note": "Positional label for one image in a message or in the composer; used as alt text instead of a file name."
+	},
+	"ui.teamBridge.attachments.in_message": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {
+			"count": "number of images"
+		},
+		"note": "Accessible name of the image group inside a sent message."
+	},
+	"ui.teamBridge.attachments.open": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {
+			"index": "1-based position",
+			"count": "total images"
+		},
+		"note": "Button on an image thumbnail in a message; opens the full-size viewer."
+	},
+	"ui.teamBridge.attachments.remove": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {
+			"label": "positional label such as 'Image 1 of 2'"
+		},
+		"note": "Small button on a composer thumbnail that removes that image from the message being written."
+	},
+	"ui.teamBridge.attachments.retry": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {
+			"label": "positional label such as 'Image 1 of 2'"
+		},
+		"note": "Small button on a failed composer thumbnail that uploads that image again."
+	},
+	"ui.teamBridge.attachments.uploading": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Status while one image is being prepared and uploaded; there is no percentage."
+	},
+	"ui.teamBridge.attachments.limit": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One sentence.",
+		"placeholders": {
+			"max": "maximum number of images"
+		},
+		"note": "Shown when the author tries to add more images than one message allows."
+	},
+	"ui.teamBridge.attachments.unsupported": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Shown when the author pastes, drops or picks an image but the server does not support image attachments. Any text in the same paste still goes into the field; no image is added."
+	},
+	"ui.teamBridge.attachments.error_type": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Upload refused because the file is not a supported picture. HEIC may also fail if this computer cannot decode it."
+	},
+	"ui.teamBridge.attachments.error_size": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Upload refused because the image is over the size limit even after shrinking."
+	},
+	"ui.teamBridge.attachments.error_invalid": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Upload refused because the image data is corrupt or its dimensions are not allowed."
+	},
+	"ui.teamBridge.attachments.error_rate": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Upload refused by a rate limit."
+	},
+	"ui.teamBridge.attachments.error_quota": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Upload refused because the author's pending-image allowance is used up."
+	},
+	"ui.teamBridge.attachments.error_account_changed": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise, not alarmed",
+		"length": "One or two sentences.",
+		"placeholders": {},
+		"note": "The captured-owner guard refused an upload because the signed-in account is no longer the one this composer was authorised under. States the change and the action (sign in again); never a quota, never a sign-out."
+	},
+	"ui.teamBridge.attachments.error_offline": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Upload failed because the local service or network did not answer."
+	},
+	"ui.teamBridge.attachments.error_upload": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Generic upload failure."
+	},
+	"ui.teamBridge.attachments.expired_staged": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "An uploaded-but-unsent image expired on the server (after about 3 days) or was refused at send time, and this device no longer holds its bytes, so the only action is to remove the chip and add the picture again. Shown on the chip (screen readers) and in the note under the composer's images, after the image's position label."
+	},
+	"ui.teamBridge.attachments.expired": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Placeholder inside a sent message where an image used to be; the stored copy was deleted by retention."
+	},
+	"ui.teamBridge.attachments.unavailable": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Placeholder inside a sent message when the image cannot be shown to this reader (withheld, deleted or failed to load)."
+	},
+	"ui.teamBridge.attachments.retry_load": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Link under an image placeholder that loads the image again after a failure."
+	},
+	"ui.teamBridge.attachments.send_blocked": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Shown when Send is pressed while a composer image failed; the message is not sent without it."
+	},
+	"ui.teamBridge.attachments.remove_all": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Button in the reschedule dialog that removes every image from a scheduled message. Images cannot be added here."
+	},
+	"ui.teamBridge.schedule.held": {
+		"role": "Held scheduling attempt recovery explanation",
+		"tone": "Clear, calm, explicit about uncertainty and user acknowledgement",
+		"length": "Permit wrapping; do not shorten away the Scheduled check or cancellation distinction.",
+		"placeholders": {},
+		"note": "Scheduled is the existing named quick link. A lost server response may hide a pending scheduled message. This action clears only the local attempt/idempotency reference and retains the authored draft; it does NOT cancel server delivery. The reader must check Scheduled and cancel any unwanted server message before acknowledging. Keep this distinct from the Cancel message server action."
+	},
+	"ui.teamBridge.schedule.discard_attempt": {
+		"role": "Explicit local scheduling-attempt discard acknowledgement",
+		"tone": "Clear, calm, explicit about uncertainty and user acknowledgement",
+		"length": "Permit wrapping; do not shorten away the Scheduled check or cancellation distinction.",
+		"placeholders": {},
+		"note": "Scheduled is the existing named quick link. A lost server response may hide a pending scheduled message. This action clears only the local attempt/idempotency reference and retains the authored draft; it does NOT cancel server delivery. The reader must check Scheduled and cancel any unwanted server message before acknowledging. Keep this distinct from the Cancel message server action."
+	},
+	"ui.teamBridge.attachments.expired_staged_retry": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Same situation as attachments.expired_staged, but this device still holds the image, so a Retry button is shown on the chip next to Remove. 'Retry' re-uploads the same picture."
+	},
+	"ui.teamBridge.attachments.preview_unavailable": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "Two or three words.",
+		"placeholders": {},
+		"note": "Tooltip and screen-reader status on an image that IS attached (to a draft or a scheduled message) but cannot be drawn on this device because its bytes were not kept. Not an error."
+	},
+	"ui.teamBridge.attachments.failed_count": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One short sentence.",
+		"placeholders": {
+			"count": "number of staged images (2-4) that failed or expired and must be retried or removed"
+		},
+		"note": "Shown first, in medium weight, in the one-line note under the composer's images when MORE THAN ONE image cannot be sent; the first image's own reason follows as a separate sentence. With a single failure the image's position (attachments.position) is shown instead."
+	},
+	"ui.teamBridge.sender.unknown_person": {
+		"role": "placeholder sender name",
+		"tone": "plain, sentence case",
+		"length": "Short; fits a message header beside a time.",
+		"placeholders": {},
+		"note": "Shown as the author of a message when the person's name cannot be resolved (they left the organization, or the directory has not loaded). Must read as a placeholder, not as a name; rendered in muted italics."
+	},
+	"ui.teamBridge.sender.unknown_agent": {
+		"role": "placeholder sender name",
+		"tone": "plain, sentence case",
+		"length": "Short; fits a message header beside a time.",
+		"placeholders": {},
+		"note": "Shown as the author of an agent's message when the agent's name cannot be resolved. Must read as a placeholder, not as a name; rendered in muted italics. 'Agent' is an AI agent; use the glossary term."
+	},
+	"ui.teamBridge.sender.app_badge": {
+		"role": "badge beside a sender name",
+		"tone": "plain, neutral",
+		"length": "One short word; a small badge beside a name.",
+		"placeholders": {},
+		"note": "Small badge shown next to the name of an integration app (for example Datadog, Grafana or incident.io) that posted a message in a Team Bridge channel, so readers can tell software from a teammate. Means a software application, not a person; use the platform's usual short word for 'app'."
+	},
+	"ui.teamBridge.sender.unknown_app": {
+		"role": "placeholder sender name",
+		"tone": "plain, sentence case",
+		"length": "Short; fits a message header beside a time.",
+		"placeholders": {},
+		"note": "Shown as the author of a message posted by an integration app when the app's name is missing. Must read as a placeholder, not as a name; rendered in muted italics."
+	},
+	"ui.teamBridge.sender.unknown_sender": {
+		"role": "placeholder sender name",
+		"tone": "plain, sentence case",
+		"length": "Short; fits a message header beside a time.",
+		"placeholders": {},
+		"note": "Shown as the author of a message whose sender type this version of the app does not recognise (it may be a person, an agent or software). Must read as a placeholder, not as a name, and must not imply a person; rendered in muted italics."
+	},
+	"ui.teamBridge.reactions.add": {
+		"role": "reaction picker control or status",
+		"tone": "neutral, sentence case",
+		"length": "Short label",
+		"placeholders": {},
+		"note": "Team Bridge message reaction picker. Category labels follow Unicode order; emoji names and keyword data are Unicode/CLDR data, not UI prose."
+	},
+	"ui.teamBridge.reactions.search": {
+		"role": "reaction picker control or status",
+		"tone": "neutral, sentence case",
+		"length": "Short label",
+		"placeholders": {},
+		"note": "Team Bridge message reaction picker. Category labels follow Unicode order; emoji names and keyword data are Unicode/CLDR data, not UI prose."
+	},
+	"ui.teamBridge.reactions.categories": {
+		"role": "reaction picker control or status",
+		"tone": "neutral, sentence case",
+		"length": "Short label",
+		"placeholders": {},
+		"note": "Team Bridge message reaction picker. Category labels follow Unicode order; emoji names and keyword data are Unicode/CLDR data, not UI prose."
+	},
+	"ui.teamBridge.reactions.all": {
+		"role": "reaction picker control or status",
+		"tone": "neutral, sentence case",
+		"length": "Short label",
+		"placeholders": {},
+		"note": "Team Bridge message reaction picker. Category labels follow Unicode order; emoji names and keyword data are Unicode/CLDR data, not UI prose."
+	},
+	"ui.teamBridge.reactions.frequent": {
+		"role": "reaction picker control or status",
+		"tone": "neutral, sentence case",
+		"length": "Short label",
+		"placeholders": {},
+		"note": "Team Bridge message reaction picker. Category labels follow Unicode order; emoji names and keyword data are Unicode/CLDR data, not UI prose."
+	},
+	"ui.teamBridge.reactions.tone": {
+		"role": "reaction picker control or status",
+		"tone": "neutral, sentence case",
+		"length": "Short label",
+		"placeholders": {},
+		"note": "Team Bridge message reaction picker. Category labels follow Unicode order; emoji names and keyword data are Unicode/CLDR data, not UI prose."
+	},
+	"ui.teamBridge.reactions.toneDefault": {
+		"role": "reaction picker control or status",
+		"tone": "neutral, sentence case",
+		"length": "Short label",
+		"placeholders": {},
+		"note": "Team Bridge message reaction picker. Category labels follow Unicode order; emoji names and keyword data are Unicode/CLDR data, not UI prose."
+	},
+	"ui.teamBridge.reactions.empty": {
+		"role": "reaction picker control or status",
+		"tone": "neutral, sentence case",
+		"length": "Short label",
+		"placeholders": {},
+		"note": "Team Bridge message reaction picker. Category labels follow Unicode order; emoji names and keyword data are Unicode/CLDR data, not UI prose."
+	},
+	"ui.teamBridge.reactions.failed": {
+		"role": "reaction picker control or status",
+		"tone": "neutral, sentence case",
+		"length": "Short label",
+		"placeholders": {},
+		"note": "Team Bridge message reaction picker. Category labels follow Unicode order; emoji names and keyword data are Unicode/CLDR data, not UI prose."
+	},
+	"ui.teamBridge.reactions.others": {
+		"role": "list item in a reaction tooltip",
+		"tone": "neutral, sentence case",
+		"length": "1-2 words plus the number.",
+		"placeholders": {
+			"others": "how many more people reacted beyond the names shown; a positive integer"
+		},
+		"note": "The LAST item of a list of people who reacted to a Team Bridge message, shown when more people reacted than the three names the tooltip can show. The code joins it to the names with the locale's own list conjunction (Intl.ListFormat), so English reads \"Ada, Bea, Cleo, and 9 others\". Translate ONLY the noun phrase: do not include a word for 'and', and do not start with a capital unless the language requires it."
+	},
+	"ui.teamBridge.reactions.category0": {
+		"role": "reaction picker control or status",
+		"tone": "neutral, sentence case",
+		"length": "Short label",
+		"placeholders": {},
+		"note": "Team Bridge message reaction picker. Category labels follow Unicode order; emoji names and keyword data are Unicode/CLDR data, not UI prose."
+	},
+	"ui.teamBridge.reactions.category1": {
+		"role": "reaction picker control or status",
+		"tone": "neutral, sentence case",
+		"length": "Short label",
+		"placeholders": {},
+		"note": "Team Bridge message reaction picker. Category labels follow Unicode order; emoji names and keyword data are Unicode/CLDR data, not UI prose."
+	},
+	"ui.teamBridge.reactions.category2": {
+		"role": "reaction picker control or status",
+		"tone": "neutral, sentence case",
+		"length": "Short label",
+		"placeholders": {},
+		"note": "Team Bridge message reaction picker. Category labels follow Unicode order; emoji names and keyword data are Unicode/CLDR data, not UI prose."
+	},
+	"ui.teamBridge.reactions.category3": {
+		"role": "reaction picker control or status",
+		"tone": "neutral, sentence case",
+		"length": "Short label",
+		"placeholders": {},
+		"note": "Team Bridge message reaction picker. Category labels follow Unicode order; emoji names and keyword data are Unicode/CLDR data, not UI prose."
+	},
+	"ui.teamBridge.reactions.category4": {
+		"role": "reaction picker control or status",
+		"tone": "neutral, sentence case",
+		"length": "Short label",
+		"placeholders": {},
+		"note": "Team Bridge message reaction picker. Category labels follow Unicode order; emoji names and keyword data are Unicode/CLDR data, not UI prose."
+	},
+	"ui.teamBridge.reactions.category5": {
+		"role": "reaction picker control or status",
+		"tone": "neutral, sentence case",
+		"length": "Short label",
+		"placeholders": {},
+		"note": "Team Bridge message reaction picker. Category labels follow Unicode order; emoji names and keyword data are Unicode/CLDR data, not UI prose."
+	},
+	"ui.teamBridge.reactions.category6": {
+		"role": "reaction picker control or status",
+		"tone": "neutral, sentence case",
+		"length": "Short label",
+		"placeholders": {},
+		"note": "Team Bridge message reaction picker. Category labels follow Unicode order; emoji names and keyword data are Unicode/CLDR data, not UI prose."
+	},
+	"ui.teamBridge.reactions.category7": {
+		"role": "reaction picker control or status",
+		"tone": "neutral, sentence case",
+		"length": "Short label",
+		"placeholders": {},
+		"note": "Team Bridge message reaction picker. Category labels follow Unicode order; emoji names and keyword data are Unicode/CLDR data, not UI prose."
+	},
+	"ui.teamBridge.reactions.category8": {
+		"role": "reaction picker control or status",
+		"tone": "neutral, sentence case",
+		"length": "Short label",
+		"placeholders": {},
+		"note": "Team Bridge message reaction picker. Category labels follow Unicode order; emoji names and keyword data are Unicode/CLDR data, not UI prose."
+	},
+	"ui.teamBridge.reactions.choose": {
+		"role": "emoji picker label",
+		"tone": "neutral",
+		"length": "Short",
+		"placeholders": {},
+		"note": "Accessible picker label or empty search state."
+	},
+	"ui.teamBridge.reactions.noResults": {
+		"role": "emoji picker label",
+		"tone": "neutral",
+		"length": "Short",
+		"placeholders": {},
+		"note": "Accessible picker label or empty search state."
+	},
+	"ui.teamBridge.actions.label": {
+		"role": "accessible name of the message toolbar",
+		"tone": "neutral, sentence case",
+		"length": "Short label; screen readers announce it as the toolbar's name.",
+		"placeholders": {},
+		"note": "Slack-style hover toolbar on one chat message (react and reply in thread). Names the group of actions for ONE message, not the conversation."
+	},
+	"ui.teamBridge.profile.message": {
+		"role": "profile hover-card action",
+		"tone": "neutral, concise action label",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "Starts or opens a direct message with the person or agent shown in the hover card. Use the established noun or action label for messaging, not a confirmation message."
+	},
+	"ui.teamBridge.profile.human_badge": {
+		"role": "profile hover-card identity badge",
+		"tone": "neutral",
+		"length": "One short word.",
+		"placeholders": {},
+		"note": "Identifies a human account, as distinct from an agent account; pairs with the Agent badge. English reads \"Human\" (not \"Person\") so the pair contrasts human with AI. Use the concise noun for a human being, not a job title or a generic word for an individual."
+	},
+	"ui.teamBridge.profile.agent_badge": {
+		"role": "profile hover-card identity badge",
+		"tone": "neutral",
+		"length": "One short word.",
+		"placeholders": {},
+		"note": "Identifies an AI agent account, as distinct from a human account. Use the glossary's established rendering of agent."
+	},
+	"ui.teamBridge.profile.owned_by": {
+		"role": "profile hover-card agent ownership label",
+		"tone": "neutral",
+		"length": "Short; one line.",
+		"placeholders": {
+			"name": "Display name of the agent's owner"
+		},
+		"note": "Shown on an agent hover card to identify its owner. Rephrase naturally for the locale while keeping the owner's name as the placeholder."
+	},
+	"ui.teamBridge.profile.local_time": {
+		"role": "profile hover-card local-time label",
+		"tone": "neutral",
+		"length": "Short; one line.",
+		"placeholders": {
+			"time": "Locale-formatted clock time"
+		},
+		"note": "Shows the account owner's current local clock time. The time is already formatted; do not translate a timezone name or add a time pattern."
+	},
+	"ui.teamBridge.profile.close_profile": {
+		"role": "profile hover-card close-button accessible name",
+		"tone": "neutral, imperative or conventional action label",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "Closes the profile hover card without navigating away."
+	},
+	"ui.teamBridge.profile.open_profile": {
+		"role": "profile trigger accessible name",
+		"tone": "neutral, imperative or conventional action label",
+		"length": "Short; one line.",
+		"placeholders": {
+			"name": "Display name of the person or agent"
+		},
+		"note": "Opens the named account's profile hover card. Include the account name naturally rather than placing it in a separate fragment."
+	},
+	"ui.teamBridge.invitations.title": {
+		"role": "invitations title",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Once accepted, the agent sees every message and decides whether a reply is needed; an @-mention means it should reply."
+	},
+	"ui.teamBridge.invitations.count": {
+		"role": "invitations count",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "One or two sentences; permit wrapping.",
+		"placeholders": {
+			"count": "number of pending invitations; a positive integer"
+		},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Once accepted, the agent sees every message and decides whether a reply is needed; an @-mention means it should reply. Accessible name of the quiet rail count beside 'Invitations'; shown only when at least one is waiting."
+	},
+	"ui.teamBridge.invitations.consent.bridge_agent_participation_v1": {
+		"role": "invitations consent",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "One or two sentences; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Once accepted, the agent sees every message and decides whether a reply is needed; an @-mention means it should reply. The consent statement the owner agrees to by pressing Accept; the key names the participation version it is consent to (bridge_agent_participation_v1), so ANY change to this English text needs a new version and a new key. Keep both facts: from now on the agent can read the conversation's messages AND post there; it is woken only when someone @-mentions it. Do not say 'muted' (the app's Mute level means never notified). SUPERSEDED by bridge_agent_participation_v2 (the app no longer shows this text); kept because it is the recorded statement earlier consents agreed to."
+	},
+	"ui.teamBridge.invitations.consent.bridge_agent_participation_v2": {
+		"role": "invitations consent",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "Two or three sentences; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. The consent statement the owner agrees to by pressing Accept; the key names the participation version it is consent to (bridge_agent_participation_v2), so ANY change to this English text before it ships needs review, and after it ships needs a new version and a new key. Keep every fact: from now on the agent can read the conversation's messages AND post there; it is woken for EVERY message and judges for itself whether to reply; an @-mention means a reply is expected; the owner can change how often it is woken or mute it. Do NOT name where (the ⋯ menu): the accepted line carries that pointer, and keeping it out of this paragraph holds it to about three lines in long locales (design round 2, D6). 'Mute it' here means the agent is never woken, not even by an @-mention."
+	},
+	"ui.teamBridge.invitations.loading": {
+		"role": "invitations loading",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Once accepted, the agent sees every message and decides whether a reply is needed; an @-mention means it should reply."
+	},
+	"ui.teamBridge.invitations.load_failed": {
+		"role": "invitations load failed",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Once accepted, the agent sees every message and decides whether a reply is needed; an @-mention means it should reply."
+	},
+	"ui.teamBridge.invitations.empty": {
+		"role": "invitations empty",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "One or two sentences; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Once accepted, the agent sees every message and decides whether a reply is needed; an @-mention means it should reply."
+	},
+	"ui.teamBridge.invitations.agent_line": {
+		"role": "invitations agent line",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "Short; one line.",
+		"placeholders": {
+			"agent": "the reader's own agent's display name, or the fallback 'Your agent' (agent_fallback)"
+		},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Once accepted, the agent sees every message and decides whether a reply is needed; an @-mention means it should reply. States that the reader's agent is the invitee of this conversation."
+	},
+	"ui.teamBridge.invitations.agent_fallback": {
+		"role": "invitations agent fallback",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Once accepted, the agent sees every message and decides whether a reply is needed; an @-mention means it should reply. Fills {agent} in agent_line only, when the agent has no name; the outcome sentences use accepted_unnamed/declined_unnamed instead. In English it starts agent_line, so it is capitalized; in each locale, capitalize it only if it starts that locale's agent_line."
+	},
+	"ui.teamBridge.invitations.added_by": {
+		"role": "invitations added by",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "Short; one line.",
+		"placeholders": {
+			"name": "a teammate's display name"
+		},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Once accepted, the agent sees every message and decides whether a reply is needed; an @-mention means it should reply."
+	},
+	"ui.teamBridge.invitations.added_by_you": {
+		"role": "invitations added by you",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Once accepted, the agent sees every message and decides whether a reply is needed; an @-mention means it should reply."
+	},
+	"ui.teamBridge.invitations.created_by": {
+		"role": "invitations created by",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "Short; one line.",
+		"placeholders": {
+			"name": "a teammate's display name"
+		},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Once accepted, the agent sees every message and decides whether a reply is needed; an @-mention means it should reply. Not the inviter: the server says only who created the conversation, so the copy must not imply this person added the agent."
+	},
+	"ui.teamBridge.invitations.created_by_you": {
+		"role": "invitations created by you",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Once accepted, the agent sees every message and decides whether a reply is needed; an @-mention means it should reply."
+	},
+	"ui.teamBridge.invitations.accept": {
+		"role": "invitations accept",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Once accepted, the agent sees every message and decides whether a reply is needed; an @-mention means it should reply."
+	},
+	"ui.teamBridge.invitations.accepting": {
+		"role": "invitations accepting",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Once accepted, the agent sees every message and decides whether a reply is needed; an @-mention means it should reply."
+	},
+	"ui.teamBridge.invitations.decline": {
+		"role": "invitations decline",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Once accepted, the agent sees every message and decides whether a reply is needed; an @-mention means it should reply."
+	},
+	"ui.teamBridge.invitations.declining": {
+		"role": "invitations declining",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Once accepted, the agent sees every message and decides whether a reply is needed; an @-mention means it should reply."
+	},
+	"ui.teamBridge.invitations.accepted": {
+		"role": "invitations accepted",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "One or two sentences; permit wrapping.",
+		"placeholders": {
+			"agent": "the reader's own agent's display name, always a display name; the no-name wording is accepted_unnamed"
+		},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Once accepted, the agent sees every message and decides whether a reply is needed; an @-mention means it should reply. Outcome after Accept; same wake rule as the consent statement: the agent now receives every message and replies when relevant or when @-mentioned. The last sentence points to where the owner changes this: the conversation's ⋯ (more options) menu; keep the ⋯ glyph as is."
+	},
+	"ui.teamBridge.invitations.accepted_unnamed": {
+		"role": "invitations accepted unnamed",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "One or two sentences; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Once accepted, the agent sees every message and decides whether a reply is needed; an @-mention means it should reply. Outcome after Accept; same wake rule as the consent statement: the agent now receives every message and replies when relevant or when @-mentioned. Used when the agent has no name: lowercase sentence-internal wording avoids a capitalized fallback mid-sentence. The last sentence points to where the owner changes this: the conversation's ⋯ (more options) menu; keep the ⋯ glyph as is."
+	},
+	"ui.teamBridge.invitations.declined": {
+		"role": "invitations declined",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "Short; one line.",
+		"placeholders": {
+			"agent": "the reader's own agent's display name, always a display name; the no-name wording is declined_unnamed"
+		},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Once accepted, the agent sees every message and decides whether a reply is needed; an @-mention means it should reply. Outcome after Decline. Neutral on purpose: it must stay true whether or not the agent had already joined from another device."
+	},
+	"ui.teamBridge.invitations.declined_unnamed": {
+		"role": "invitations declined unnamed",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Once accepted, the agent sees every message and decides whether a reply is needed; an @-mention means it should reply. Outcome after Decline. Neutral on purpose: it must stay true whether or not the agent had already joined from another device. Used when the agent has no name: lowercase sentence-internal wording avoids a capitalized fallback mid-sentence."
+	},
+	"ui.teamBridge.invitations.failed.agent_unavailable": {
+		"role": "invitations agent unavailable",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "One or two sentences; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Once accepted, the agent sees every message and decides whether a reply is needed; an @-mention means it should reply."
+	},
+	"ui.teamBridge.invitations.failed.already_answered": {
+		"role": "invitations already answered",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Once accepted, the agent sees every message and decides whether a reply is needed; an @-mention means it should reply. The server says the invitation is no longer pending (answered on another device or by another session); the list re-reads to show the real state."
+	},
+	"ui.teamBridge.invitations.failed.gone": {
+		"role": "invitations gone",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "One or two sentences; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Once accepted, the agent sees every message and decides whether a reply is needed; an @-mention means it should reply."
+	},
+	"ui.teamBridge.invitations.failed.runtime_outdated": {
+		"role": "invitations runtime outdated refusal",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "One or two sentences; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Once accepted, the agent sees every message and decides whether a reply is needed; an @-mention means it should reply. The server no longer accepts this app's participation version. Shown when the LOCAL runtime cannot bind the consent write to the signed-in account (no owner guard). 'Local Operator' is the runtime's name and is not translated; the thing to update is the runtime, not necessarily the desktop app."
+	},
+	"ui.teamBridge.invitations.failed.outdated": {
+		"role": "invitations outdated",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "One or two sentences; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Once accepted, the agent sees every message and decides whether a reply is needed; an @-mention means it should reply. The server no longer accepts this app's participation version."
+	},
+	"ui.teamBridge.invitations.failed.not_available": {
+		"role": "invitations not available",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "One or two sentences; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Once accepted, the agent sees every message and decides whether a reply is needed; an @-mention means it should reply."
+	},
+	"ui.teamBridge.invitations.failed.sign_in": {
+		"role": "invitations sign in",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "One or two sentences; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Once accepted, the agent sees every message and decides whether a reply is needed; an @-mention means it should reply."
+	},
+	"ui.teamBridge.invitations.failed.unreachable": {
+		"role": "invitations unreachable",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "One or two sentences; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Once accepted, the agent sees every message and decides whether a reply is needed; an @-mention means it should reply."
+	},
+	"ui.teamBridge.invitations.read_only": {
+		"role": "invitations read-only reason",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "One sentence; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Once accepted, the agent sees every message and decides whether a reply is needed; an @-mention means it should reply. Shown under disabled Accept/Decline when the reader's organization is read-only for them, so the disabled buttons have a stated reason."
+	},
+	"ui.teamBridge.invitations.failed.unconfirmed": {
+		"role": "invitations unconfirmed",
+		"tone": "Clear, calm, sentence case; factual about what changes",
+		"length": "One or two sentences; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Once accepted, the agent sees every message and decides whether a reply is needed; an @-mention means it should reply. The server answered without a recognised reason; the answer may or may not have been recorded."
+	},
+	"ui.teamBridge.chief.unnamed": {
+		"role": "row label composition",
+		"tone": "plain, sentence case",
+		"length": "Short; must fit a 30px rail row.",
+		"placeholders": {
+			"person": "The owning teammate's display name, verbatim."
+		},
+		"note": "Names a teammate's chief of staff when the agent has no name of its own (or its name is the owner's name), e.g. 'Ben Tran’s chief of staff'. The named form is ui.teamBridge.chief.label ('Aida (Ben Tran)'). Must not repeat the person. Shown on the rail (including the reader's own agent), the thread header, the To: picker and the composer placeholder."
+	},
+	"ui.teamBridge.member.active_count": {
+		"role": "thread header membership headline when invitations are pending",
+		"tone": "neutral, compact, sentence fragment",
+		"length": "Short; one line of 11px metadata in the thread header.",
+		"placeholders": {
+			"count": "number of members whose membership is active; a nonnegative integer"
+		},
+		"note": "Replaces ui.teamBridge.member.count only when the conversation has pending invitations, so the headline says outright that the total is active members only, e.g. '1 active member'. ui.teamBridge.member.invited_count ('3 invited') sits on the line beneath it. Counts active membership records, not online presence or permissions. Use every required plural category."
+	},
+	"ui.teamBridge.member.invited_count": {
+		"role": "thread header invited-membership count",
+		"tone": "neutral, compact lowercase status fragment",
+		"length": "Short; one line of 11px metadata beneath the active headline.",
+		"placeholders": {
+			"count": "number of members whose membership is invited (not yet joined); a nonnegative integer"
+		},
+		"note": "Shown beneath ui.teamBridge.member.active_count, e.g. '1 active member' over '3 invited'. Invited members (people or agents) have been added but have not joined, so they are not counted as active. Use idiomatic agreement and every required plural category."
+	},
+	"ui.teamBridge.thread.not_available": {
+		"role": "thread placeholder when the addressed conversation is not in the reader's list",
+		"tone": "plain, factual, never accusatory",
+		"length": "Two short sentences.",
+		"placeholders": {},
+		"note": "Shown for an addressed conversation id the caller cannot open: the list only carries conversations the caller participates in, so this covers both \"not a member\" and \"archived\" without revealing which. It replaces the draft intro, which wrongly told a reader their history was empty when the conversation actually held messages (2026-10-28). Do not imply the conversation does not exist."
+	},
+	"ui.teamBridge.members.group.people": {
+		"role": "group heading inside the invite picker",
+		"tone": "neutral",
+		"length": "One or two words",
+		"placeholders": {},
+		"note": "Names the group of human colleagues offered for invitation. Sentence case, no colon, no count. It is a heading over rows, not a button."
+	},
+	"ui.teamBridge.members.group.agents_v2": {
+		"role": "group heading in both member-dialog columns",
+		"tone": "neutral",
+		"length": "One word",
+		"placeholders": {},
+		"note": "Heads the agents (chiefs of staff) group, beside a 'People' heading. Replaces the longer 'Agents and chiefs of staff'."
+	},
+	"ui.teamBridge.members.you": {
+		"role": "suffix after the reader's own name in the current-members list",
+		"tone": "neutral",
+		"length": "Very short, parenthesized",
+		"placeholders": {},
+		"note": "Marks the signed-in reader's own row. Rendered after the name with a space; keep the parentheses or the locale's equivalent."
+	},
+	"ui.teamBridge.members.state.invited_short": {
+		"role": "member state badge",
+		"tone": "neutral, never implying active access",
+		"length": "One word; fits a small pill",
+		"placeholders": {},
+		"note": "The member has been invited but has not joined yet. An invited agent cannot read or post until its owner consents."
+	},
+	"ui.teamBridge.members.removing_v2": {
+		"role": "inline progress status on a member row",
+		"tone": "neutral",
+		"length": "One word with ellipsis",
+		"placeholders": {},
+		"note": "Shown while the remove request is in flight for that member."
+	},
+	"ui.teamBridge.members.remove_label": {
+		"role": "accessible name of the per-row remove icon button",
+		"tone": "imperative",
+		"length": "Short verb phrase plus member name",
+		"placeholders": {
+			"name": "Current display name of the member"
+		},
+		"note": "Removes this member from the conversation, not from the organization."
+	},
+	"ui.teamBridge.members.remove_tooltip": {
+		"role": "tooltip on the per-row remove icon button",
+		"tone": "imperative",
+		"length": "Short verb phrase",
+		"placeholders": {},
+		"note": "Removes the member from this conversation only, not from the organization."
+	},
+	"ui.teamBridge.members.current_no_matches": {
+		"role": "no-results state of the current-members list while searching",
+		"tone": "neutral",
+		"length": "One short sentence",
+		"placeholders": {},
+		"note": "The search narrowed the current-members list to nothing. A filter result, not an empty conversation."
+	},
+	"ui.teamBridge.members.no_invitable_matches": {
+		"role": "no-results state of the invite list when the search only matches current members",
+		"tone": "neutral, explanatory",
+		"length": "Two short sentences",
+		"placeholders": {
+			"query": "The search text the reader typed"
+		},
+		"note": "Current members are deliberately left out of the invite list; this explains why the person they searched for is not offered. Use the locale's quotation marks around the query."
+	},
+	"ui.teamBridge.members.reason_short.bridge_unavailable": {
+		"role": "short trailing reason on an ineligible person row",
+		"tone": "neutral, a state rather than a fault",
+		"length": "Two to four words; shares a line with the name",
+		"placeholders": {},
+		"note": "The person's Team Bridge is not enabled. Keep the product name Team Bridge unchanged and do not blame the person."
+	},
+	"ui.teamBridge.members.reason_short.agent_unavailable": {
+		"role": "short trailing reason on an ineligible agent row",
+		"tone": "neutral",
+		"length": "One or two words",
+		"placeholders": {},
+		"note": "The agent is disabled or otherwise unavailable to invite."
+	},
+	"ui.teamBridge.members.reason_short.agent_not_permitted": {
+		"role": "short trailing reason on an ineligible agent row",
+		"tone": "neutral",
+		"length": "One or two words",
+		"placeholders": {},
+		"note": "This conversation does not allow agents (a conversation rule, not an account permission)."
+	},
+	"ui.teamBridge.members.ineligible_label": {
+		"role": "accessible name of an ineligible candidate row (screen readers only)",
+		"tone": "neutral",
+		"length": "Name plus reason",
+		"placeholders": {
+			"name": "Display name of the person or agent",
+			"reason": "The short reason the row cannot be invited"
+		},
+		"note": "Read aloud as one phrase; join the two with the locale's natural list punctuation."
+	},
+	"ui.teamBridge.members.invite_count": {
+		"role": "primary dialog button that sends the selected invitations",
+		"tone": "imperative",
+		"length": "Short; button label",
+		"placeholders": {
+			"count": "Number of selected people and agents; nonnegative integer"
+		},
+		"note": "ICU plural. The =0 arm is the bare verb (the button is disabled then); every other arm shows the count. It creates invitations only; never imply immediate active membership."
+	},
+	"ui.teamBridge.members.invitation_note_v2": {
+		"role": "dialog footer clarification",
+		"tone": "concise, consent-preserving",
+		"length": "Three short sentences",
+		"placeholders": {},
+		"note": "Invitations grant no access until accepted. An agent joins only after its owner consents, then reads every message and decides whether to reply; it always replies when @-mentioned. Keep '@-mention' recognizable. The owner can limit it to @-mentions or mute it."
+	},
+	"ui.teamBridge.members.invitation_note_v3": {
+		"role": "dialog footer clarification (consent copy, high visibility)",
+		"tone": "concise, consent-preserving",
+		"length": "Four short sentences",
+		"placeholders": {},
+		"note": "Replaces invitation_note_v2. Wording agreed with the agent wake-policy work; translate meaning exactly, do not soften or strengthen. (1) Invitations grant no access until accepted. (2) The reader's OWN agents join immediately; another person's agent joins only after ITS owner consents. (3) A member agent reads every message and decides whether to reply; it is EXPECTED to reply when @-mentioned (an expectation, not a guarantee: do not translate as 'always'). (4) The agent's owner can restrict it to @-mentions plus threads it is in, or mute it. Keep '@-mention' recognizable."
+	},
+	"ui.teamBridge.events.invited": {
+		"role": "timeline system line: someone invited people or agents",
+		"tone": "neutral, factual",
+		"length": "One short line",
+		"placeholders": {
+			"actor": "Display name of the person or agent who made the change; never inflected",
+			"targets": "Display names already joined into one list by Intl.ListFormat (conjunction); never inflected or split"
+		},
+		"note": "Past tense, a completed fact. Not a message; shown as a small grey line between messages. An invitation is not membership: never imply they joined."
+	},
+	"ui.teamBridge.events.joined": {
+		"role": "timeline system line: one or more members joined",
+		"tone": "neutral, factual",
+		"length": "One short line",
+		"placeholders": {
+			"targets": "Display names already joined into one list by Intl.ListFormat (conjunction); never inflected or split"
+		},
+		"note": "Past tense. They joined themselves (accepted an invitation or joined an open channel)."
+	},
+	"ui.teamBridge.events.owner_added_agent": {
+		"role": "timeline system line: a person added their own agent, which joined at once",
+		"tone": "neutral, factual",
+		"length": "One short line",
+		"placeholders": {
+			"actor": "Display name of the person or agent who made the change; never inflected",
+			"targets": "Display names already joined into one list by Intl.ListFormat (conjunction); never inflected or split"
+		},
+		"note": "'their' = the actor's own agent(s); no consent step was needed because the actor owns it. Use the gender-neutral possessive natural in the locale."
+	},
+	"ui.teamBridge.events.left": {
+		"role": "timeline system line: one or more members left",
+		"tone": "neutral, factual",
+		"length": "One short line",
+		"placeholders": {
+			"targets": "Display names already joined into one list by Intl.ListFormat (conjunction); never inflected or split"
+		},
+		"note": "Past tense; they left on their own (contrast with removed)."
+	},
+	"ui.teamBridge.events.removed": {
+		"role": "timeline system line: someone removed members",
+		"tone": "neutral, factual",
+		"length": "One short line",
+		"placeholders": {
+			"actor": "Display name of the person or agent who made the change; never inflected",
+			"targets": "Display names already joined into one list by Intl.ListFormat (conjunction); never inflected or split"
+		},
+		"note": "Past tense; neutral, not punitive."
+	},
+	"ui.teamBridge.events.consented": {
+		"role": "timeline system line: an agent's owner approved the agent joining",
+		"tone": "neutral, factual",
+		"length": "One short line",
+		"placeholders": {
+			"actor": "Display name of the person or agent who made the change; never inflected",
+			"targets": "Display names already joined into one list by Intl.ListFormat (conjunction); never inflected or split"
+		},
+		"note": "The owner gave consent for their agent to join this conversation. Reads 'X approved Y joining'."
+	},
+	"ui.teamBridge.events.declined_self": {
+		"role": "timeline system line: a person declined their own invitation",
+		"tone": "neutral, factual",
+		"length": "One short line",
+		"placeholders": {
+			"actor": "Display name of the person or agent who made the change; never inflected"
+		},
+		"note": "Past tense; neutral."
+	},
+	"ui.teamBridge.events.declined": {
+		"role": "timeline system line: someone declined an invitation on behalf of others (typically an owner for their agent)",
+		"tone": "neutral, factual",
+		"length": "One short line",
+		"placeholders": {
+			"actor": "Display name of the person or agent who made the change; never inflected",
+			"targets": "Display names already joined into one list by Intl.ListFormat (conjunction); never inflected or split"
+		},
+		"note": "Past tense; neutral."
+	},
+	"ui.teamBridge.events.withdrawn": {
+		"role": "timeline system line: the inviter withdrew (cancelled) a pending invitation",
+		"tone": "neutral, factual",
+		"length": "One short line",
+		"placeholders": {
+			"actor": "Display name of the person or agent who made the change; never inflected",
+			"targets": "Display names already joined into one list by Intl.ListFormat (conjunction); never inflected or split"
+		},
+		"note": "Past tense; the invitation is cancelled before it was answered."
+	},
+	"ui.teamBridge.events.unknown": {
+		"role": "timeline system line for a membership change this app version does not recognise",
+		"tone": "neutral, factual",
+		"length": "One short line",
+		"placeholders": {},
+		"note": "Generic and calm; it must fit any membership change. No subject, no blame."
+	},
+	"ui.teamBridge.events.others": {
+		"role": "the trailing item of a shortened name list, e.g. the '2 others' in 'Ben, Sana and 2 others'",
+		"tone": "neutral, factual",
+		"length": "Two or three words",
+		"placeholders": {
+			"count": "How many further names are hidden; integer >= 1"
+		},
+		"note": "ICU plural. It becomes the LAST item of a locale-formatted list (the platform adds the 'and'), so do not include a conjunction here. The full list shows in a tooltip."
+	},
+	"ui.teamBridge.mentions.listbox_label": {
+		"role": "accessible name of the @-mention suggestion list",
+		"tone": "neutral",
+		"length": "3-5 words",
+		"placeholders": {},
+		"note": "Read by screen readers when the list of people and agents to @-mention opens under the message box."
+	},
+	"ui.teamBridge.mentions.empty": {
+		"role": "empty-state line in the @-mention suggestion list",
+		"tone": "neutral",
+		"length": "one short line",
+		"placeholders": {
+			"query": "the text typed after @, shown verbatim"
+		},
+		"note": "Shown when nobody's name matches what was typed after @. Keep the quotes around the placeholder in the locale's own quotation style."
+	},
+	"ui.teamBridge.mentions.section.member_human": {
+		"role": "section header in the @-mention list",
+		"tone": "neutral",
+		"length": "2-4 words, small caps header",
+		"placeholders": {},
+		"note": "Group of human members of the current conversation."
+	},
+	"ui.teamBridge.mentions.section.member_agent": {
+		"role": "section header in the @-mention list",
+		"tone": "neutral",
+		"length": "2-4 words, small caps header",
+		"placeholders": {},
+		"note": "Group of AI agents (each a teammate's chief of staff) already in the current conversation."
+	},
+	"ui.teamBridge.mentions.section.org_human": {
+		"role": "section header in the @-mention list",
+		"tone": "neutral",
+		"length": "1-3 words, small caps header",
+		"placeholders": {},
+		"note": "Group of people in the organization who are NOT in this conversation."
+	},
+	"ui.teamBridge.mentions.section.org_agent": {
+		"role": "section header in the @-mention list",
+		"tone": "neutral",
+		"length": "1-3 words, small caps header",
+		"placeholders": {},
+		"note": "Group of agents in the organization who are NOT in this conversation."
+	},
+	"ui.teamBridge.mentions.tag.not_member": {
+		"role": "quiet trailing tag on an @-mention row",
+		"tone": "neutral, lowercase",
+		"length": "2-4 words",
+		"placeholders": {},
+		"note": "Marks a person or agent who is not an active member of the current conversation (channel, group or direct message). Short and lowercase like a tag."
+	},
+	"ui.teamBridge.mentions.tag.bridge_off": {
+		"role": "quiet trailing tag on an @-mention row",
+		"tone": "neutral",
+		"length": "2-3 words",
+		"placeholders": {},
+		"note": "Marks a person whose Team Bridge is switched off, so they cannot receive messages. 'Team Bridge' is the product name; keep it in English."
+	},
+	"ui.teamBridge.mentions.notice.not_member": {
+		"role": "inline notice above the message box after @-mentioning a non-member",
+		"tone": "neutral, informative",
+		"length": "one sentence",
+		"placeholders": {
+			"name": "display name of the person or agent just mentioned"
+		},
+		"note": "Shown after the reader @-mentions someone who is not a member. States the consequence: the mention stays in the text but does not notify them. Followed by actions to invite them or keep it as text."
+	},
+	"ui.teamBridge.mentions.notice.invite_failed": {
+		"role": "inline notice text after an invite from the mention notice failed",
+		"tone": "neutral, calm",
+		"length": "one or two short sentences",
+		"placeholders": {
+			"name": "display name of the person or agent"
+		},
+		"note": "Replaces the notice text when the invite request is refused (for example, the reader lacks permission)."
+	},
+	"ui.teamBridge.mentions.notice.invite": {
+		"role": "button in the @-mention notice",
+		"tone": "imperative",
+		"length": "2 words",
+		"placeholders": {},
+		"note": "Adds the mentioned person or agent to this conversation."
+	},
+	"ui.teamBridge.mentions.notice.silent": {
+		"role": "button in the @-mention notice",
+		"tone": "imperative",
+		"length": "2-4 words",
+		"placeholders": {},
+		"note": "Keeps the name in the message as plain text but does not notify or wake that person or agent."
+	},
+	"ui.teamBridge.mentions.notice.pending": {
+		"role": "inline notice above the message box after @-mentioning an invited member",
+		"tone": "neutral, informative",
+		"length": "one sentence",
+		"placeholders": {
+			"name": "display name of the person or agent just mentioned"
+		},
+		"note": "The person or agent was invited to this conversation but has not accepted yet, so the @-mention will not notify them."
+	},
+	"ui.teamBridge.mentions.notice.invited": {
+		"role": "inline notice text after the reader invited the mentioned person from the notice",
+		"tone": "neutral, informative",
+		"length": "one or two short sentences",
+		"placeholders": {
+			"name": "display name of the invited person or agent"
+		},
+		"note": "Confirms the invitation was sent and explains the mention will not notify them until they accept and join the conversation."
+	},
+	"ui.teamBridge.replies.legacy_window": {
+		"role": "Compatibility notice above thread replies",
+		"tone": "Factual, calm",
+		"length": "Two short sentences; wraps in the thread pane",
+		"placeholders": {},
+		"note": "Old server/runtime supports only ascending replies. Do not imply the loaded oldest window is newest or request consent/authorization."
+	},
+	"ui.teamBridge.delivery.refused": {
+		"role": "message delivery status line",
+		"tone": "neutral, factual, non-accusatory",
+		"length": "One line; may wrap",
+		"placeholders": {
+			"recipient": "the recipient's full display label, already composed exactly as the conversation shows it: an agent with its owner (\"Aida (Ben Tran)\") or an unnamed agent (\"Ben Tran's chief of staff\"). Never add the owner again around it."
+		},
+		"note": "Muted status line under a message the sender sent. The recipient agent's own moderation declined it; this is NOT the sender's error and must not sound accusatory or alarming. No reason is given in this variant."
+	},
+	"ui.teamBridge.delivery.refused_manipulation": {
+		"role": "message delivery status line",
+		"tone": "neutral, factual, non-accusatory",
+		"length": "One line; may wrap",
+		"placeholders": {
+			"recipient": "the recipient's full display label, already composed exactly as the conversation shows it: an agent with its owner (\"Aida (Ben Tran)\") or an unnamed agent (\"Ben Tran's chief of staff\"). Never add the owner again around it."
+		},
+		"note": "Muted status line under a message the sender sent. The recipient agent's own moderation declined it; this is NOT the sender's error and must not sound accusatory or alarming. Keep 'their' referring to the recipient agent/owner. The parenthetical is a hedged, coarse category ('looked like an attempt to manipulate the agent'): keep the hedge ('looked like'), never state it as a verdict."
+	},
+	"ui.teamBridge.delivery.refused_personal_info": {
+		"role": "message delivery status line",
+		"tone": "neutral, factual, non-accusatory",
+		"length": "One line; may wrap",
+		"placeholders": {
+			"recipient": "the recipient's full display label, already composed exactly as the conversation shows it: an agent with its owner (\"Aida (Ben Tran)\") or an unnamed agent (\"Ben Tran's chief of staff\"). Never add the owner again around it."
+		},
+		"note": "Muted status line under a message the sender sent. The recipient agent's own moderation declined it; this is NOT the sender's error and must not sound accusatory or alarming. Keep 'their' referring to the recipient agent/owner. The parenthetical is a hedged, coarse category ('looked like a request for personal information'): keep the hedge ('looked like'), never state it as a verdict."
+	},
+	"ui.teamBridge.delivery.refused_abusive": {
+		"role": "message delivery status line",
+		"tone": "neutral, factual, non-accusatory",
+		"length": "One line; may wrap",
+		"placeholders": {
+			"recipient": "the recipient's full display label, already composed exactly as the conversation shows it: an agent with its owner (\"Aida (Ben Tran)\") or an unnamed agent (\"Ben Tran's chief of staff\"). Never add the owner again around it."
+		},
+		"note": "Muted status line under a message the sender sent. The recipient agent's own moderation declined it; this is NOT the sender's error and must not sound accusatory or alarming. Keep 'their' referring to the recipient agent/owner. The parenthetical is a hedged, coarse category ('looked like abusive content'): keep the hedge ('looked like'), never state it as a verdict."
+	},
+	"ui.teamBridge.delivery.refused_unsafe_content": {
+		"role": "message delivery status line",
+		"tone": "neutral, factual, non-accusatory",
+		"length": "One line; may wrap",
+		"placeholders": {
+			"recipient": "the recipient's full display label, already composed exactly as the conversation shows it: an agent with its owner (\"Aida (Ben Tran)\") or an unnamed agent (\"Ben Tran's chief of staff\"). Never add the owner again around it."
+		},
+		"note": "Muted status line under a message the sender sent. The recipient agent's own moderation declined it; this is NOT the sender's error and must not sound accusatory or alarming. Keep 'their' referring to the recipient agent/owner. The parenthetical is a hedged, coarse category ('looked like unsafe content or links'): keep the hedge ('looked like'), never state it as a verdict."
+	},
+	"ui.teamBridge.delivery.refused_out_of_scope": {
+		"role": "message delivery status line",
+		"tone": "neutral, factual, non-accusatory",
+		"length": "One line; may wrap",
+		"placeholders": {
+			"recipient": "the recipient's full display label, already composed exactly as the conversation shows it: an agent with its owner (\"Aida (Ben Tran)\") or an unnamed agent (\"Ben Tran's chief of staff\"). Never add the owner again around it."
+		},
+		"note": "Muted status line under a message the sender sent. The recipient agent's own moderation declined it; this is NOT the sender's error and must not sound accusatory or alarming. Keep 'their' referring to the recipient agent/owner. The parenthetical is a hedged, coarse category ('looked like a request outside what this agent handles'): keep the hedge ('looked like'), never state it as a verdict."
+	},
+	"ui.teamBridge.delivery.not_delivered": {
+		"role": "message delivery status line",
+		"tone": "neutral, factual",
+		"length": "One line; may wrap",
+		"placeholders": {
+			"recipient": "the recipient's full display label, already composed exactly as the conversation shows it: an agent with its owner (\"Aida (Ben Tran)\") or an unnamed agent (\"Ben Tran's chief of staff\"). Never add the owner again around it."
+		},
+		"note": "Muted line under a message, shown ONLY to the person who sent it, when one recipient did not get it. Deliberately says nothing about why: never mention moderation, refusal, screening, blocking or any reason, and give no advice. The recipient's owner sees a different, more specific line."
+	},
+	"ui.teamBridge.delivery.held": {
+		"role": "message delivery status line",
+		"tone": "neutral, calm",
+		"length": "One line; may wrap; keep the trailing ellipsis",
+		"placeholders": {
+			"recipient": "the recipient's full display label, already composed exactly as the conversation shows it: an agent with its owner (\"Aida (Ben Tran)\") or an unnamed agent (\"Ben Tran's chief of staff\"). Never add the owner again around it."
+		},
+		"note": "Muted status line, shown in the delivery details popover: this recipient agent has not passed the message on yet, and this viewer cannot tell whether it is still being screened or held for its owner's review. Must not claim it is being screened. A state, not an error; never imply the sender did something wrong."
+	},
+	"ui.teamBridge.delivery.held_screening_unavailable": {
+		"role": "message delivery status line",
+		"tone": "neutral, calm",
+		"length": "One line; may wrap",
+		"placeholders": {
+			"recipient": "the recipient's full display label, already composed exactly as the conversation shows it: an agent with its owner (\"Aida (Ben Tran)\") or an unnamed agent (\"Ben Tran's chief of staff\"). Never add the owner again around it."
+		},
+		"note": "Owner view only: this recipient agent's screening could not run yet and retries automatically. Two complete sentences; do not use an em dash or an ellipsis to join them. Never alarmist."
+	},
+	"ui.teamBridge.delivery.held_awaiting_review": {
+		"role": "message delivery status line",
+		"tone": "neutral, calm",
+		"length": "One line; may wrap",
+		"placeholders": {
+			"recipient": "the recipient's full display label, already composed exactly as the conversation shows it: an agent with its owner (\"Aida (Ben Tran)\") or an unnamed agent (\"Ben Tran's chief of staff\"). Never add the owner again around it.",
+			"person": "the recipient agent's owner display name, verbatim."
+		},
+		"note": "Owner view: this recipient agent's screening held the message for its owner's review; it is NOT still being screened. Two complete sentences; do not use an em dash or an ellipsis to join them."
+	},
+	"ui.teamBridge.delivery.held_awaiting_review_unnamed": {
+		"role": "message delivery status line",
+		"tone": "neutral, calm",
+		"length": "One line; may wrap",
+		"placeholders": {
+			"recipient": "the recipient's full display label, already composed exactly as the conversation shows it: an agent with its owner (\"Aida (Ben Tran)\") or an unnamed agent (\"Ben Tran's chief of staff\"). Never add the owner again around it."
+		},
+		"note": "Same as ui.teamBridge.delivery.held_awaiting_review when the owner's name is unknown: 'its owner' is the recipient agent's owner."
+	},
+	"ui.teamBridge.delivery.pending": {
+		"role": "message delivery status line",
+		"tone": "neutral, factual",
+		"length": "One short line",
+		"placeholders": {
+			"recipient": "the recipient's full display label, already composed exactly as the conversation shows it: an agent with its owner (\"Aida (Ben Tran)\") or an unnamed agent (\"Ben Tran's chief of staff\"). Never add the owner again around it."
+		},
+		"note": "Owner view only: screening finished and passed; only delivery to the agent is outstanding. Must not say it is waiting to be screened."
+	},
+	"ui.teamBridge.delivery.recipient_unnamed": {
+		"role": "recipient name inside a delivery status sentence",
+		"tone": "plain, lower-case where the language allows",
+		"length": "Short; sits mid-sentence",
+		"placeholders": {
+			"person": "The owning teammate's display name, verbatim."
+		},
+		"note": "Names a teammate's chief of staff (an agent with no name of its own) INSIDE the delivery lines: it is the {recipient} of ui.teamBridge.delivery.refused*, held* and pending, so it follows a preposition or precedes a postposition ('Not delivered to Ben Tran’s chief of staff', 'Waiting to be screened by Ben Tran’s chief of staff…'). Use the form the grammar needs there: oblique case, article and its contractions, lower case. This is NOT ui.teamBridge.chief.unnamed, which is the standalone rail and header label and stays as it is. Must not repeat the person."
+	},
+	"ui.teamBridge.delivery.info_refused": {
+		"role": "tooltip",
+		"tone": "explanatory, reassuring",
+		"length": "3 short sentences",
+		"placeholders": {},
+		"note": "Identical for every refusal class. Explains moderation and that rephrasing usually helps. Must not hint at how screening decides or blame the sender."
+	},
+	"ui.teamBridge.delivery.info_held": {
+		"role": "tooltip",
+		"tone": "explanatory, reassuring",
+		"length": "2 short sentences",
+		"placeholders": {},
+		"note": "Identical for every hold. Explains each agent screens messages before passing them on, and this one is either still being screened or held for the agent owner's review. Must not promise automatic delivery, and must not suggest rephrasing or resending."
+	},
+	"ui.teamBridge.delivery.info_label": {
+		"role": "icon-button accessible name",
+		"tone": "neutral",
+		"length": "3-5 words",
+		"placeholders": {},
+		"note": "Screen-reader name of the info icon that opens the moderation tooltip."
+	},
+	"ui.teamBridge.delivery.summary.delivered": {
+		"role": "segment of a one-line message delivery summary",
+		"tone": "neutral, factual",
+		"length": "2-4 words; segments are joined on one line",
+		"placeholders": {
+			"count": "number of recipient agents in this state. Use the locale's ICU plural rules."
+		},
+		"note": "\"Delivered to 3\": how many recipient agents received the message. Keep it short; the noun (agents) is implied. Shown under a message to every conversation member; never names recipients or reasons."
+	},
+	"ui.teamBridge.delivery.summary.screening": {
+		"role": "segment of a one-line message delivery summary",
+		"tone": "neutral, factual",
+		"length": "2-4 words; segments are joined on one line",
+		"placeholders": {
+			"count": "number of recipient agents in this state. Use the locale's ICU plural rules."
+		},
+		"note": "\"2 being screened\": recipient agents that have not reported an outcome yet: screening in progress, retrying screening that could not run, or screened with delivery still in flight. Read as a state of the messages, not a noun (\"one screening\"). Shown under a message to every conversation member; never names recipients or reasons."
+	},
+	"ui.teamBridge.delivery.summary.held": {
+		"role": "segment of a one-line message delivery summary",
+		"tone": "neutral, factual",
+		"length": "2-4 words; segments are joined on one line",
+		"placeholders": {
+			"count": "number of recipient agents in this state. Use the locale's ICU plural rules."
+		},
+		"note": "\"2 held for review\": recipient agents whose screening held the message for their owner's review. Shown under a message to every conversation member; never names recipients or reasons."
+	},
+	"ui.teamBridge.delivery.summary.not_reviewed": {
+		"role": "segment of a one-line message delivery summary",
+		"tone": "neutral, factual",
+		"length": "2-4 words; segments are joined on one line",
+		"placeholders": {
+			"count": "number of recipient agents in this state. Use the locale's ICU plural rules."
+		},
+		"note": "\"1 not reviewed\": holds the owner never reviewed within the hub's review window; the message was not delivered to them. Shown under a message to every conversation member; never names recipients or reasons."
+	},
+	"ui.teamBridge.delivery.summary.not_delivered": {
+		"role": "segment of a one-line message delivery summary",
+		"tone": "neutral, factual",
+		"length": "2-4 words; segments are joined on one line",
+		"placeholders": {
+			"count": "number of recipient agents in this state. Use the locale's ICU plural rules."
+		},
+		"note": "\"2 not delivered\": recipient agents whose moderation refused the message. Not the sender's error; must not sound accusatory. Shown under a message to every conversation member; never names recipients or reasons."
+	},
+	"ui.teamBridge.delivery.summary.single.screening": {
+		"role": "the whole one-line delivery summary under a message sent to exactly one recipient agent",
+		"tone": "neutral, factual",
+		"length": "1-3 words; stands alone on the line",
+		"placeholders": {},
+		"note": "\"Being screened\": shown instead of the counted form (ui.teamBridge.delivery.summary.screening) when the message has exactly one recipient agent in total, e.g. a 1:1 conversation, where \"1\" adds nothing. Meaning: the one recipient agent has not reported an outcome yet (screening in progress, retrying, or delivery still in flight). Standalone status, sentence case; no count, no recipient name. Shown under a message to every conversation member."
+	},
+	"ui.teamBridge.delivery.summary.single.held": {
+		"role": "the whole one-line delivery summary under a message sent to exactly one recipient agent",
+		"tone": "neutral, factual",
+		"length": "1-3 words; stands alone on the line",
+		"placeholders": {},
+		"note": "\"Held for review\": shown instead of the counted form (ui.teamBridge.delivery.summary.held) when the message has exactly one recipient agent in total, e.g. a 1:1 conversation, where \"1\" adds nothing. Meaning: the one recipient agent's screening held the message for its owner's review. Standalone status, sentence case; no count, no recipient name. Shown under a message to every conversation member."
+	},
+	"ui.teamBridge.delivery.summary.single.not_reviewed": {
+		"role": "the whole one-line delivery summary under a message sent to exactly one recipient agent",
+		"tone": "neutral, factual",
+		"length": "1-3 words; stands alone on the line",
+		"placeholders": {},
+		"note": "\"Not reviewed\": shown instead of the counted form (ui.teamBridge.delivery.summary.not_reviewed) when the message has exactly one recipient agent in total, e.g. a 1:1 conversation, where \"1\" adds nothing. Meaning: the hold was never reviewed within the hub's review window, so the message was not delivered. Standalone status, sentence case; no count, no recipient name. Shown under a message to every conversation member."
+	},
+	"ui.teamBridge.delivery.summary.single.not_delivered": {
+		"role": "the whole one-line delivery summary under a message sent to exactly one recipient agent",
+		"tone": "neutral, factual",
+		"length": "1-3 words; stands alone on the line",
+		"placeholders": {},
+		"note": "\"Not delivered\": shown instead of the counted form (ui.teamBridge.delivery.summary.not_delivered) when the message has exactly one recipient agent in total, e.g. a 1:1 conversation, where \"1\" adds nothing. Meaning: the recipient agent's moderation refused the message. Not the sender's error; must not sound accusatory. Standalone status, sentence case; no count, no recipient name. Shown under a message to every conversation member."
+	},
+	"ui.teamBridge.delivery.summary.separator": {
+		"role": "separator between summary segments",
+		"tone": "neutral",
+		"length": "one character with surrounding spaces",
+		"placeholders": {},
+		"note": "Joins the segments of the delivery summary ('Delivered to 3 · 2 screening'). Keep a middle dot unless the locale has a better list separator for terse status text."
+	},
+	"ui.teamBridge.delivery.summary.details_label": {
+		"role": "dialog accessible name",
+		"tone": "neutral",
+		"length": "2-3 words",
+		"placeholders": {},
+		"note": "Screen-reader name of the popover that lists, per recipient agent, whether the message was delivered, held or refused."
+	},
+	"ui.teamBridge.attachmentCard.list": {
+		"role": "accessible label for the structured attachment list; visible label for a count-only audit receipt",
+		"tone": "neutral, factual",
+		"length": "short noun phrase with count",
+		"placeholders": {
+			"count": "Number of actual descriptors, or the known attachment count when no descriptors are supplied. Use the locale's ICU plural rules."
+		},
+		"note": "Counts files/images attached to one message, not upload progress. A count-only audit receipt grants no preview or download authority and must not invent individual attachment names."
+	},
+	"ui.teamBridge.attachmentCard.file": {
+		"role": "generic safe attachment-card title when no original filename is in the wire contract",
+		"tone": "neutral",
+		"length": "one short noun",
+		"placeholders": {},
+		"note": "Deliberately generic for both images and other files. Never substitute an opaque attachment ID, digest, MIME string, local path or guessed original filename."
+	},
+	"ui.teamBridge.attachmentCard.bytes": {
+		"role": "attachment-card metadata for a positive safe-integer byte size",
+		"tone": "neutral, technical unit label",
+		"length": "one short numeric phrase",
+		"placeholders": {
+			"size": "Byte count formatted with ICU number formatting; not kilobytes, upload percentage or dimensions."
+		},
+		"note": "Translate the byte unit idiomatically; standard Spanish bytes legitimately matches English. Inflect units according to the locale's number rules. The value is omitted when size is unknown or the attachment is unavailable."
+	},
+	"ui.teamBridge.attachmentCard.metadata_only": {
+		"role": "explanation on a noninteractive metadata-only attachment card",
+		"tone": "factual, calm",
+		"length": "one short sentence or phrase",
+		"placeholders": {},
+		"note": "The current view cannot preview this attachment. Owner audit in this slice never fetches bytes or offers a download. Do not imply upload is pending, access was granted, a retry will work, or the attachment was deleted."
+	},
+	"ui.teamBridge.attachmentCard.unavailable": {
+		"role": "generic terminal or non-authorized attachment-card status",
+		"tone": "neutral, no blame",
+		"length": "one short status phrase",
+		"placeholders": {},
+		"note": "Use the same wording for expired, withheld, deleted, revoked, unknown descriptor state. Do not reveal retention, screening, account or access-refusal reasons; no preview/download/retry is implied."
+	},
+	"ui.teamBridge.fileCard.list": {
+		"role": "accessible label for a message's list of generic file cards; visible label of a count-only file receipt",
+		"tone": "neutral, factual",
+		"length": "short noun phrase with count",
+		"placeholders": {
+			"count": "Number of files attached to one message. Use the locale's ICU plural rules."
+		},
+		"note": "Counts non-image files (documents, text, archives) on one message, not upload progress. Never includes a file name. A count-only receipt grants no preview or download."
+	},
+	"ui.teamBridge.fileCard.kind": {
+		"role": "short type label on a file card when the file name has no extension",
+		"tone": "neutral, technical",
+		"length": "one or two words",
+		"placeholders": {
+			"kind": "Server file class: pdf, text, container (ZIP-based, including Office documents) or other. Keep every select arm."
+		},
+		"note": "PDF and ZIP are format names and normally stay untranslated. The class is a label from byte sniffing, not a safety or scan claim; do not imply the file was checked."
+	},
+	"ui.teamBridge.fileCard.save": {
+		"role": "accessible label for the Save button on one generic file card in a message",
+		"tone": "imperative, plain",
+		"length": "short action phrase with two numbers",
+		"placeholders": {
+			"index": "1-based position of this file among the message's files",
+			"count": "total number of files on the message"
+		},
+		"note": "Downloads a copy of a file a teammate attached, through the computer's own save dialog. Named by position on purpose: the file name is message content and must never be put in this label. 'Save' as in save a copy to this computer, not save changes; use the locale's usual download/save-copy verb, matching the image tile's 'Save {label}'. Not open, preview or share."
+	},
+	"ui.teamBridge.fileCard.saving": {
+		"role": "status line on a file card while the file is being fetched for saving",
+		"tone": "factual",
+		"length": "one or two words with locale-appropriate ellipsis",
+		"placeholders": {},
+		"note": "Shown between pressing Save and the save dialog opening. Indeterminate: no percentage is available. Not uploading, sending or a message state."
+	},
+	"ui.teamBridge.fileCard.save_failed": {
+		"role": "error status line on a file card after a save could not reach the file",
+		"tone": "plain, no blame, actionable",
+		"length": "two very short sentences",
+		"placeholders": {},
+		"note": "A temporary failure (connection or service problem) while fetching the file to save it. The Save button stays next to it, so 'try again' means press Save again. Do not imply the file is gone, the message failed, or anything was deleted."
+	},
+	"ui.teamBridge.fileCard.too_large": {
+		"role": "error status line on a file card when the file exceeds what this app can save",
+		"tone": "factual, calm",
+		"length": "short phrase",
+		"placeholders": {},
+		"note": "The file is over the app's download size limit, so no Save is offered. A fact about the file's size, not a failure of the reader's connection; do not suggest retrying."
+	},
+	"ui.teamBridge.fileCard.expired": {
+		"role": "status line on a file card whose retention period has ended",
+		"tone": "neutral, factual",
+		"length": "one short status phrase",
+		"placeholders": {},
+		"note": "The shared file was removed after its retention period, so it can no longer be saved. Match the image card's 'Image expired' wording pattern. No blame, no retry implied."
+	},
+	"ui.teamBridge.fileCard.unavailable": {
+		"role": "status line on a file card the reader cannot get",
+		"tone": "neutral, no blame",
+		"length": "one short status phrase",
+		"placeholders": {},
+		"note": "Same wording for every reason (removed, withheld, no longer shared with this reader, unknown state); never reveal which. Match the image card's 'Image unavailable' pattern. No retry, preview or download implied."
+	},
+	"ui.teamBridge.members_panel.title": {
+		"role": "panel heading",
+		"tone": "plain noun",
+		"length": "one word",
+		"placeholders": {},
+		"note": "Heading of the right-hand panel that lists everyone in the open conversation."
+	},
+	"ui.teamBridge.members_panel.close": {
+		"role": "accessible name of the panel's close icon button",
+		"tone": "imperative",
+		"length": "2-3 words",
+		"placeholders": {},
+		"note": "Closes the members panel. Screen-reader and tooltip text."
+	},
+	"ui.teamBridge.members_panel.open_label": {
+		"role": "accessible name of the header member-count button",
+		"tone": "imperative",
+		"length": "short verb phrase",
+		"placeholders": {
+			"count": "number of active members; a non-negative integer"
+		},
+		"note": "The visible text is just the count (\"9 members\"); this name says pressing it opens the member list."
+	},
+	"ui.teamBridge.members_panel.open_label_invited": {
+		"role": "accessible name of the header member-count button when invitations are pending",
+		"tone": "imperative",
+		"length": "short phrase",
+		"placeholders": {
+			"active": "number of active members",
+			"invited": "number of pending invitations"
+		},
+		"note": "Same button as open_label, used when some members are still invited. Both counts are plural arguments."
+	},
+	"ui.teamBridge.members_panel.state.pending_approval": {
+		"role": "status chip on an agent row",
+		"tone": "neutral",
+		"length": "1-2 words",
+		"placeholders": {},
+		"note": "An agent was invited but its owner has not yet approved it joining. Distinct from \"Invited\" (a person who has not joined yet)."
+	},
+	"ui.teamBridge.members_panel.leave_label": {
+		"role": "accessible name of the leave icon button on the reader's own row",
+		"tone": "imperative",
+		"length": "short verb phrase",
+		"placeholders": {},
+		"note": "The reader removes themselves from the conversation."
+	},
+	"ui.teamBridge.members_panel.leave_tooltip": {
+		"role": "tooltip on the leave icon button",
+		"tone": "imperative",
+		"length": "2-3 words",
+		"placeholders": {},
+		"note": "Tooltip for leave_label."
+	},
+	"ui.teamBridge.members_panel.decline_label": {
+		"role": "accessible name of the decline icon button on the reader's own invited agent",
+		"tone": "imperative",
+		"length": "short verb phrase plus agent name",
+		"placeholders": {
+			"name": "display name of the reader's own agent"
+		},
+		"note": "The reader is the agent's owner and refuses the invitation on its behalf."
+	},
+	"ui.teamBridge.members_panel.decline_tooltip": {
+		"role": "tooltip on the decline icon button",
+		"tone": "imperative",
+		"length": "2 words",
+		"placeholders": {},
+		"note": "Tooltip for decline_label."
+	},
+	"ui.teamBridge.members_panel.confirm.remove_title": {
+		"role": "confirm dialog title",
+		"tone": "question",
+		"length": "one line",
+		"placeholders": {
+			"name": "display name of the member",
+			"conversation": "conversation name as shown in its header"
+		},
+		"note": "Removing a person or the reader's own agent from this conversation only, not from the organization."
+	},
+	"ui.teamBridge.members_panel.confirm.remove_body": {
+		"role": "confirm dialog body",
+		"tone": "plain, reassuring",
+		"length": "one sentence",
+		"placeholders": {},
+		"note": "Explains the effect of removing a person who is an active member of this conversation."
+	},
+	"ui.teamBridge.members_panel.confirm.remove_invited_body": {
+		"role": "confirm dialog body",
+		"tone": "plain, reassuring",
+		"length": "one or two short sentences",
+		"placeholders": {},
+		"note": "Shown instead of remove_body when the person being removed has only been invited and has not joined: removing them withdraws the invitation."
+	},
+	"ui.teamBridge.members_panel.confirm.withdraw_body": {
+		"role": "confirm dialog body",
+		"tone": "plain, reassuring",
+		"length": "one sentence",
+		"placeholders": {},
+		"note": "The reader is removing their own agent from this conversation; the reader stays a member."
+	},
+	"ui.teamBridge.members_panel.confirm.leave_title": {
+		"role": "confirm dialog title",
+		"tone": "question",
+		"length": "one line",
+		"placeholders": {
+			"conversation": "conversation name as shown in its header"
+		},
+		"note": "The reader is leaving the conversation."
+	},
+	"ui.teamBridge.members_panel.confirm.leave_body": {
+		"role": "confirm dialog body",
+		"tone": "plain",
+		"length": "one or two sentences",
+		"placeholders": {},
+		"note": "Explains how to return after leaving: rejoin a channel from the channel list, or be invited back."
+	},
+	"ui.teamBridge.members_panel.confirm.decline_title": {
+		"role": "confirm dialog title",
+		"tone": "question",
+		"length": "one line",
+		"placeholders": {
+			"name": "display name of the reader's own agent"
+		},
+		"note": "The reader is the agent's owner."
+	},
+	"ui.teamBridge.members_panel.confirm.decline_body": {
+		"role": "confirm dialog body",
+		"tone": "plain",
+		"length": "one sentence",
+		"placeholders": {
+			"name": "display name of the reader's own agent",
+			"conversation": "conversation name as shown in its header"
+		},
+		"note": "Effect of declining an agent invitation."
+	},
+	"ui.teamBridge.members_panel.confirm.remove": {
+		"role": "destructive confirm button",
+		"tone": "imperative verb",
+		"length": "one word",
+		"placeholders": {},
+		"note": "Confirms removing the member."
+	},
+	"ui.teamBridge.members_panel.confirm.leave": {
+		"role": "destructive confirm button",
+		"tone": "imperative verb",
+		"length": "one word",
+		"placeholders": {},
+		"note": "Confirms leaving the conversation."
+	},
+	"ui.teamBridge.members_panel.confirm.decline": {
+		"role": "confirm button",
+		"tone": "imperative verb",
+		"length": "one word",
+		"placeholders": {},
+		"note": "Confirms declining the agent invitation."
+	},
+	"ui.teamBridge.members_panel.note.general": {
+		"role": "quiet explanatory line in the members panel",
+		"tone": "plain, helpful",
+		"length": "one or two sentences",
+		"placeholders": {
+			"channel": "the built-in channel name, always the literal #general, inserted by the app (keep it as one unit; never translate or reorder its characters)"
+		},
+		"note": "#general is a built-in channel; its name arrives through {channel} so the app can keep it left-to-right inside right-to-left text."
+	},
+	"ui.teamBridge.members_panel.note.humans": {
+		"role": "quiet explanatory line in the members panel",
+		"tone": "plain, helpful",
+		"length": "one or two sentences",
+		"placeholders": {
+			"channel": "the built-in channel name, always the literal #humans, inserted by the app (keep it as one unit; never translate or reorder its characters)"
+		},
+		"note": "#humans is a built-in channel; its name arrives through {channel} so the app can keep it left-to-right inside right-to-left text."
+	},
+	"ui.teamBridge.members_panel.note.agents": {
+		"role": "quiet explanatory line in the members panel",
+		"tone": "plain, helpful",
+		"length": "one or two sentences",
+		"placeholders": {
+			"channel": "the built-in channel name, always the literal #agents, inserted by the app (keep it as one unit; never translate or reorder its characters)"
+		},
+		"note": "#agents is a built-in channel; its name arrives through {channel} so the app can keep it left-to-right inside right-to-left text."
+	},
+	"ui.teamBridge.members_panel.note.dm": {
+		"role": "quiet explanatory line in the members panel",
+		"tone": "plain",
+		"length": "one sentence",
+		"placeholders": {},
+		"note": "Shown for a one-to-one direct message instead of any member controls."
+	},
+	"ui.teamBridge.conversation_menu.view_members": {
+		"role": "menu item label in the conversation options menu",
+		"tone": "plain, direct",
+		"length": "short; one line for menu items",
+		"placeholders": {},
+		"note": "Part of the Team Bridge conversation menu (sidebar row and header)."
+	},
+	"ui.teamBridge.conversation_menu.join": {
+		"role": "menu item label in the conversation options menu",
+		"tone": "plain, direct",
+		"length": "short; one line for menu items",
+		"placeholders": {},
+		"note": "Part of the Team Bridge conversation menu (sidebar row and header)."
+	},
+	"ui.teamBridge.conversation_menu.remove_agent": {
+		"role": "menu item label in the conversation options menu",
+		"tone": "plain, direct",
+		"length": "short; one line for menu items",
+		"placeholders": {
+			"name": "the reader's own agent's display name, e.g. Aida"
+		},
+		"note": "Takes the reader's OWN agent out of this conversation; the reader stays."
+	},
+	"ui.teamBridge.conversation_menu.add_agent": {
+		"role": "menu item label in the conversation options menu",
+		"tone": "plain, direct",
+		"length": "short; one line for menu items",
+		"placeholders": {
+			"name": "the reader's own agent's display name, e.g. Aida"
+		},
+		"note": "Adds the reader's OWN agent to this conversation; it joins immediately."
+	},
+	"ui.teamBridge.conversation_menu.leave_channel": {
+		"role": "menu item label in the conversation options menu",
+		"tone": "plain, direct",
+		"length": "short; one line for menu items",
+		"placeholders": {},
+		"note": "Part of the Team Bridge conversation menu (sidebar row and header)."
+	},
+	"ui.teamBridge.conversation_menu.leave_group": {
+		"role": "menu item label in the conversation options menu",
+		"tone": "plain, direct",
+		"length": "short; one line for menu items",
+		"placeholders": {},
+		"note": "Part of the Team Bridge conversation menu (sidebar row and header)."
+	},
+	"ui.teamBridge.conversation_menu.reason.org_wide": {
+		"role": "second line under a disabled menu item, stating why it cannot be used",
+		"tone": "plain, direct",
+		"length": "one or two sentences",
+		"placeholders": {},
+		"note": "Part of the Team Bridge conversation menu (sidebar row and header)."
+	},
+	"ui.teamBridge.conversation_menu.reason.agents_builtin": {
+		"role": "second line under a disabled menu item, stating why it cannot be used",
+		"tone": "plain, direct",
+		"length": "one or two sentences",
+		"placeholders": {
+			"channel": "the built-in channel name, always the literal #agents or #general, inserted by the app (keep it as one unit; never translate or reorder its characters)"
+		},
+		"note": "#agents membership follows the agent being active; pausing it is the only way out."
+	},
+	"ui.teamBridge.conversation_menu.reason.general_not_member_yet": {
+		"role": "second line under a disabled menu item, stating why it cannot be used",
+		"tone": "plain, direct",
+		"length": "one or two sentences",
+		"placeholders": {
+			"channel": "the built-in channel name, always the literal #agents or #general, inserted by the app (keep it as one unit; never translate or reorder its characters)"
+		},
+		"note": "Part of the Team Bridge conversation menu (sidebar row and header)."
+	},
+	"ui.teamBridge.conversation_menu.reason.agent_not_permitted": {
+		"role": "second line under a disabled menu item, stating why it cannot be used",
+		"tone": "plain, direct",
+		"length": "one or two sentences",
+		"placeholders": {},
+		"note": "Part of the Team Bridge conversation menu (sidebar row and header)."
+	},
+	"ui.teamBridge.conversation_menu.confirm.leave_channel_title": {
+		"role": "confirm dialog text",
+		"tone": "plain, direct",
+		"length": "one or two sentences",
+		"placeholders": {
+			"conversation": "the conversation name as the header shows it, e.g. #launch or a group title"
+		},
+		"note": "Part of the Team Bridge conversation menu (sidebar row and header)."
+	},
+	"ui.teamBridge.conversation_menu.confirm.leave_group_title": {
+		"role": "confirm dialog text",
+		"tone": "plain, direct",
+		"length": "one or two sentences",
+		"placeholders": {
+			"conversation": "the conversation name as the header shows it, e.g. #launch or a group title"
+		},
+		"note": "Part of the Team Bridge conversation menu (sidebar row and header)."
+	},
+	"ui.teamBridge.conversation_menu.confirm.leave_body": {
+		"role": "confirm dialog text",
+		"tone": "plain, direct",
+		"length": "one or two sentences",
+		"placeholders": {},
+		"note": "Part of the Team Bridge conversation menu (sidebar row and header)."
+	},
+	"ui.teamBridge.conversation_menu.confirm.leave_body_agents": {
+		"role": "confirm dialog text",
+		"tone": "plain, direct",
+		"length": "one or two sentences",
+		"placeholders": {
+			"channel": "the built-in channel name, always #agents"
+		},
+		"note": "Leaving #agents takes only the person out. The agent's seat there comes from being enrolled, so it stays until the owner pauses the agent. Do not say the agent leaves."
+	},
+	"ui.teamBridge.conversation_menu.confirm.remove_agent_title": {
+		"role": "confirm dialog text",
+		"tone": "plain, direct",
+		"length": "one or two sentences",
+		"placeholders": {
+			"name": "the reader's own agent's display name, e.g. Aida",
+			"conversation": "the conversation name as the header shows it, e.g. #launch or a group title"
+		},
+		"note": "Part of the Team Bridge conversation menu (sidebar row and header)."
+	},
+	"ui.teamBridge.conversation_menu.confirm.remove_agent_body": {
+		"role": "confirm dialog text",
+		"tone": "plain, direct",
+		"length": "one or two sentences",
+		"placeholders": {
+			"name": "the reader's own agent's display name, e.g. Aida"
+		},
+		"note": "A persona is one of the voices an agent speaks with; one removal covers all of them."
+	},
+	"ui.teamBridge.conversation_menu.confirm.add_agent_title": {
+		"role": "confirm dialog text",
+		"tone": "plain, direct",
+		"length": "one or two sentences",
+		"placeholders": {
+			"name": "the reader's own agent's display name, e.g. Aida",
+			"conversation": "the conversation name as the header shows it, e.g. #launch or a group title"
+		},
+		"note": "Part of the Team Bridge conversation menu (sidebar row and header)."
+	},
+	"ui.teamBridge.conversation_menu.confirm.add_agent_body": {
+		"role": "confirm dialog text",
+		"tone": "plain, direct",
+		"length": "one or two sentences",
+		"placeholders": {
+			"name": "the reader's own agent's display name, e.g. Aida"
+		},
+		"note": "Part of the Team Bridge conversation menu (sidebar row and header)."
+	},
+	"ui.teamBridge.conversation_menu.confirm.add_agent": {
+		"role": "confirm dialog text",
+		"tone": "plain, direct",
+		"length": "one or two sentences",
+		"placeholders": {},
+		"note": "Part of the Team Bridge conversation menu (sidebar row and header)."
+	},
+	"ui.teamBridge.conversation_menu.error.generic": {
+		"role": "inline error line",
+		"tone": "plain, direct",
+		"length": "one or two sentences",
+		"placeholders": {},
+		"note": "Part of the Team Bridge conversation menu (sidebar row and header)."
+	},
+	"ui.teamBridge.conversation_menu.error.general_rejoin_refused": {
+		"role": "inline error line",
+		"tone": "plain, direct",
+		"length": "one or two sentences",
+		"placeholders": {
+			"channel": "the built-in channel name, always #general"
+		},
+		"note": "Shown when adding the reader's own agent back to #general is refused because the agent doesn't qualify right now (most often it is paused). Trying again won't help until it is resumed."
+	},
+	"ui.teamBridge.conversation_menu.error.not_in_general": {
+		"role": "inline error line",
+		"tone": "plain, direct",
+		"length": "one or two sentences",
+		"placeholders": {
+			"channel": "the built-in channel name, always the literal #agents or #general, inserted by the app (keep it as one unit; never translate or reorder its characters)"
+		},
+		"note": "Part of the Team Bridge conversation menu (sidebar row and header)."
+	},
+	"ui.teamBridge.conversation_menu.partial_leave.body": {
+		"role": "alert line after leaving, when the agent could not be removed",
+		"tone": "plain, direct",
+		"length": "one or two sentences",
+		"placeholders": {
+			"conversation": "the conversation name as the header shows it, e.g. #launch or a group title"
+		},
+		"note": "Part of the Team Bridge conversation menu (sidebar row and header)."
+	},
+	"ui.teamBridge.conversation_menu.partial_leave.retry_failed": {
+		"role": "alert line after leaving, when the agent could not be removed",
+		"tone": "plain, direct",
+		"length": "one or two sentences",
+		"placeholders": {
+			"conversation": "the conversation name as the header shows it, e.g. #launch or a group title"
+		},
+		"note": "Part of the Team Bridge conversation menu (sidebar row and header)."
+	},
+	"ui.teamBridge.conversation_menu.partial_leave.retry": {
+		"role": "alert line after leaving, when the agent could not be removed",
+		"tone": "plain, direct",
+		"length": "one or two sentences",
+		"placeholders": {},
+		"note": "Button that retries removing only the agent; the person has already left."
+	},
+	"ui.teamBridge.files.staged": {
+		"role": "accessible name for the composer's list of staged files",
+		"tone": "neutral",
+		"length": "1–3 words",
+		"placeholders": {},
+		"note": "Files the author selected for an unsent Team Bridge message. Does not assert that the message was sent, delivered or readable by an agent."
+	},
+	"ui.teamBridge.files.failed": {
+		"role": "file-chip upload failure status",
+		"tone": "factual",
+		"length": "1–3 words",
+		"placeholders": {},
+		"note": "A failed stage/upload, not a failed message delivery. Send stays blocked until retry or removal; the current queue does not expose a typed permanent/transient reason."
+	},
+	"ui.teamBridge.files.retry": {
+		"role": "accessible label for the file-chip retry icon button",
+		"tone": "imperative",
+		"length": "2–4 words",
+		"placeholders": {},
+		"note": "Retry uploading this same staged file. This is not resend-message or download; the name remains separate visible message content."
+	},
+	"ui.teamBridge.files.remove": {
+		"role": "accessible label for removing a file chip from the draft",
+		"tone": "imperative",
+		"length": "1–3 words",
+		"placeholders": {},
+		"note": "Remove the attachment from this unsent draft, not delete the original local file or a sent message. Keep the generic label; do not interpolate a filename."
+	},
+	"ui.teamBridge.files.unavailable": {
+		"role": "status notice when file capability is unavailable",
+		"tone": "plain, actionable",
+		"length": "two short sentences",
+		"placeholders": {},
+		"note": "Files are OFF, absent or unsupported for this composer. Remove the staged file to send only text/images deliberately; never imply that the app silently falls back to prose."
+	},
+	"ui.teamBridge.files.add": {
+		"role": "accessible label and tooltip for the arbitrary-file picker",
+		"tone": "imperative",
+		"length": "1–3 words",
+		"placeholders": {},
+		"note": "Select files to attach to a human Team Bridge message. Only offered when the general-file capability is enabled; image-only deployments retain their separate Add images affordance."
+	},
+	"ui.teamBridge.files.no_schedule": {
+		"role": "composer hint explaining why scheduling is disabled with files",
+		"tone": "plain, factual",
+		"length": "one sentence",
+		"placeholders": {},
+		"note": "Generic files can use immediate Send when upload is ready, but the existing server wire does not support them in scheduled messages. Preserve the established locale scheduling terminology."
+	},
+	"ui.teamBridge.files.uploading": {
+		"role": "in-progress file-chip status",
+		"tone": "factual",
+		"length": "short phrase with locale-appropriate ellipsis",
+		"placeholders": {},
+		"note": "Actual upload of a generic file is pending. Not image conversion, a download or a message send. Progress is indeterminate; no byte percentage is available."
+	},
+	"ui.teamBridge.files.attached": {
+		"role": "status line on one staged file chip in the composer",
+		"tone": "neutral",
+		"length": "one word",
+		"placeholders": {},
+		"note": "This one file is attached to the unsent draft and will go with the message. Describes a single file (singular), not the list. Does not claim the message was sent or read."
+	},
+	"ui.teamBridge.files.not_uploaded": {
+		"role": "status line on a staged file chip when files cannot be sent here",
+		"tone": "neutral, factual",
+		"length": "1–3 words",
+		"placeholders": {},
+		"note": "Files are turned off for this account, so nothing was attempted; the note under the list explains it. Not a failure: do not use the wording of 'Upload failed'."
+	},
+	"ui.teamBridge.typing.one": {
+		"role": "one-line typing indicator under a message composer",
+		"tone": "neutral, quiet status",
+		"length": "Name plus two or three words; must fit one line",
+		"placeholders": {
+			"first": "Display name of the person typing; rendered bold"
+		},
+		"note": "Live status: this person is writing a message in this conversation or thread right now. Present progressive, no trailing ellipsis or punctuation. Gender of the person is unknown; use a neutral or respectful plural form where the language needs one."
+	},
+	"ui.teamBridge.typing.two": {
+		"role": "one-line typing indicator under a message composer",
+		"tone": "neutral, quiet status",
+		"length": "Two names plus two or three words; must fit one line",
+		"placeholders": {
+			"first": "Display name of the first person typing; rendered bold",
+			"second": "Display name of the second person typing; rendered bold"
+		},
+		"note": "Two people are writing right now. No trailing punctuation. Keep both placeholders as separate words: each is rendered bold."
+	},
+	"ui.teamBridge.typing.three": {
+		"role": "one-line typing indicator under a message composer",
+		"tone": "neutral, quiet status",
+		"length": "Three names plus a few words; must fit one line",
+		"placeholders": {
+			"first": "Display name of the first person typing; rendered bold",
+			"second": "Display name of the second person typing; rendered bold",
+			"third": "Display name of the third person typing; rendered bold"
+		},
+		"note": "Three people are writing right now. Use the locale's normal list punctuation. No trailing punctuation."
+	},
+	"ui.teamBridge.typing.several": {
+		"role": "one-line typing indicator under a message composer",
+		"tone": "neutral, quiet status",
+		"length": "Three to five words",
+		"placeholders": {},
+		"note": "Shown when four or more people are writing at once; names are deliberately omitted. No trailing ellipsis."
+	},
+	"ui.teamBridge.delivery.held_screening": {
+		"role": "message delivery status line",
+		"tone": "neutral, calm",
+		"length": "One line; may wrap",
+		"placeholders": {
+			"recipient": "the recipient's full display label, already composed exactly as the conversation shows it: an agent with its owner (\"Aida (Ben Tran)\") or an unnamed agent (\"Ben Tran's chief of staff\"). Never add the owner again around it."
+		},
+		"note": "Shown only to the message's sender, in the delivery details popover: this recipient agent is still screening the message (or will retry screening). Matches the summary's \"being screened\" count. Never states a reason or class."
+	},
+	"ui.teamBridge.delivery.held_not_reviewed": {
+		"role": "message delivery status line",
+		"tone": "neutral, calm, actionable",
+		"length": "One or two sentences; may wrap",
+		"placeholders": {
+			"recipient": "the recipient's full display label, already composed exactly as the conversation shows it: an agent with its owner (\"Aida (Ben Tran)\") or an unnamed agent (\"Ben Tran's chief of staff\"). Never add the owner again around it."
+		},
+		"note": "Shown only to the sender, in the delivery details popover, for a recipient whose screening or owner review has not settled a day after sending. Say plainly that it was not delivered, that it will arrive only if the recipient agent's owner releases it, and what the sender can do (send again or contact them). Do not promise it will never arrive: a late decision can still deliver it."
+	},
+	"ui.teamBridge.delivery.summary.not_reviewed_note": {
+		"role": "footnote under the delivery details list",
+		"tone": "neutral, calm, actionable",
+		"length": "Two short sentences",
+		"placeholders": {},
+		"note": "Shown to the sender when the summary counts messages not reviewed within a day that the list above cannot name. Explains the outcome (arrives only if the recipient's owner releases it) and the next step. No count, no names."
+	},
+	"ui.teamBridge.rate_limited.title": {
+		"role": "eligibility panel heading when Radient is rate-limiting this network before the page has loaded",
+		"tone": "calm, factual",
+		"length": "2-5 words; name what is slowed (requests), so it cannot read as \"Team Bridge is slow\".",
+		"placeholders": {},
+		"note": "A temporary pause, not an outage or an account problem. Do not say \"unavailable\" or \"error\"."
+	},
+	"ui.teamBridge.rate_limited.reason": {
+		"role": "eligibility panel body and in-page notice band while requests are being rate-limited",
+		"tone": "calm, factual",
+		"length": "One short sentence saying Team Bridge may be slow to update, then \"Retrying automatically\".",
+		"placeholders": {},
+		"note": "The page retries on its own; there is no button. Must not tell the reader to try again."
+	}
+}

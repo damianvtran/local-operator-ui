@@ -1,0 +1,78 @@
+{
+  "auditor": "reviewer",
+  "agent": "reviewer",
+  "session": "3a3cef56dc0b",
+  "instance": "3a3cef56dc0b",
+  "date": "2026-11-08",
+  "round": 2,
+  "status": "clean-with-findings",
+  "result": "clean-with-findings",
+  "terminal_verdict": "clean",
+  "locale": "vi",
+  "namespace": "ui.agents.upload",
+  "key_count": 2,
+  "branch": "i18n/slice-upload-agent-dialog",
+  "base": "2b72db6a56ad8204ec7f30a0ba6ffbc941be3b82",
+  "head": "269ef259c0523fd61c9f40b2a700bed27b838055",
+  "model": "openai/gpt-6.1-sol",
+  "model_provenance": "Started anthropic/claude-sonnet-5-5; provider quota fallback notices switched to anthropic/claude-opus-5-5 then openai/gpt-6.1-sol before the diff inspection. All substantive inspection, execution, conclusions and artifacts here were produced under openai/gpt-6.1-sol.",
+  "independence": "Did not implement or translate; wrote only this receipt and two own evidence files.",
+  "source": {
+    "path": "src/i18n/catalogues/en/ui.agents.upload.json",
+    "sha256": "6aff9fbb0706c9852760db60f22cdb075b747cef37dbc3e9130731943babef0b"
+  },
+  "context": {
+    "path": "src/i18n/catalogues/en/ui.agents.upload.context.json",
+    "sha256": "19e0fe920ae831b4e3bb8dcd7750dbdb508640c5cec6ca468c0acc1b853cf768"
+  },
+  "target": {
+    "path": "src/i18n/catalogues/vi/ui.agents.upload.json",
+    "sha256": "42bc714694c4cfb62ea4e92ec1ba3d7deae35cab80edf06f45879ece2d048232"
+  },
+  "sha256": {
+    "en": "6aff9fbb0706c9852760db60f22cdb075b747cef37dbc3e9130731943babef0b",
+    "en_context": "19e0fe920ae831b4e3bb8dcd7750dbdb508640c5cec6ca468c0acc1b853cf768",
+    "vi": "42bc714694c4cfb62ea4e92ec1ba3d7deae35cab80edf06f45879ece2d048232"
+  },
+  "findings": [
+    {
+      "id": "vi-r1-n1",
+      "severity": "nit",
+      "status": "deferred",
+      "source": "i18n/receipts/vi-upload-r1-f188ee72259c.json",
+      "reason": "Unchanged published.org_listed wording; round 1 explicitly non-gating. The newly substituted noun phrase remains grammatical."
+    },
+    {
+      "id": "vi-r1-n2",
+      "severity": "nit",
+      "status": "deferred",
+      "source": "i18n/receipts/vi-upload-r1-f188ee72259c.json",
+      "reason": "Unchanged reserved-name width-risk note; no frame rendered in this audit and no new clipping claim."
+    }
+  ],
+  "findings_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 2
+  },
+  "new_findings_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "resolved": [
+    "vi-r1-m1"
+  ],
+  "bundle_companions_paths": {
+    "record.json": "i18n/audits/evidence/vi/ui.agents.upload/vi-upload-r2-3a3cef56dc0b/record.json",
+    "report.md": "i18n/audits/evidence/vi/ui.agents.upload/vi-upload-r2-3a3cef56dc0b/report.md"
+  },
+  "bundle_companions_sha256": {
+    "record.json": "74c745b0c688fa1209808bfcba0527c12a3369f8edcd6da23cc8f5c64ffb58f9",
+    "report.md": "8a8540bbe704ca6a93a0c83575c908089166d2fa5dbe16c976234f6b7c66e375"
+  },
+  "verdict_reason": "Functional MAJOR fixed; exact =1 retains org only for singleton, other is anonymous. Literal placeholder-removed check fails and is disclosed, not hidden. Seven fallback frames pass. Two unchanged prior nits deferred; no new findings.",
+  "committed": false
+}

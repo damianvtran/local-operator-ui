@@ -1,0 +1,55 @@
+{
+ "schema": 1,
+ "auditor": "i18n-auditor",
+ "agent": "i18n-auditor",
+ "model": "anthropic/claude-sonnet-5-5",
+ "model_provenance": "Model as stated in this session's header; not independently verifiable by the auditor. No fallback known.",
+ "fallback": "none",
+ "independence": "New i18n-auditor instance (session 664a4b465807, 'Audit #1625 zh-CN pickers'), independent of the translator and of earlier auditors; earlier audit reports were not read. This is a delta re-audit of my own earlier pass at 8afc03c6ca4.",
+ "instance": "664a4b465807",
+ "session": "664a4b465807",
+ "locale": "zh-CN",
+ "namespace": "ui.chat.pickers",
+ "pr": "damianvtran/local-operator-ui#1625",
+ "head": "3e4aeb5d1a583e55e3c6f7e6f74139a8f97cdcea",
+ "date": "2026-11-03",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "key_count": 741,
+ "scope": "Whole-file mechanical checks at 3e4aeb5d1a5 plus the 3 values changed since 8afc03c6ca4 (native_details, write_and_command_tools_prompt_before_running, opens_the_provider_s_sign_in_methods…); the other 738 values are byte-identical to the previously audited head and the 21 values changed vs base 0fd3dc386c2 were adjudicated at 8afc03c6ca4.",
+ "sha256": {
+  "zh-CN": "badd98404dd38136c143c8aa596c152b2ba88e5c7cc5ae818038437ba1b1e9e4",
+  "en": "88d81780ea0cf598689a73b5b0206da020ccfe1b847631214f87f40791b684c7"
+ },
+ "inputs_sha256": {
+  "en_context (ui.chat.pickers.context.json)": "f2fa6a5ad0fcf63e06016d2038daf782ff6ef878308ce6379cb67d84b2a9eee1"
+ },
+ "verified": [
+  "741/741 keys equal en, same order; 167 brace-bearing messages parse in both locales (@formatjs/icu-messageformat-parser) with identical argument/number-skeleton/select structure; NFC violations 0; ASCII '...' 0; Cf 0; leading/trailing whitespace and newline parity with en",
+  "Z1 fixed: native_details restored to '原生详情 — {name}' (single space each side), as the sidecar requires",
+  "Z2 fixed: sign-in clause now '密钥在设置中的输入框里输入，内容会被隐藏' — Settings location restored and the 'hidden input box' misreading removed",
+  "Z4 fixed: write_and_command_tools_prompt_before_running uses '写入和命令工具', same as the sibling whether_write_and_command_tools_ask_before_running"
+ ],
+ "findings": [
+  {
+   "id": "Z3",
+   "severity": "NIT",
+   "key": "ui.chat.pickers.context_panel.block",
+   "text": "区块",
+   "note": "Improvement over 块, but 区块 carries a blockchain connotation; optional 内容块 or 部分. Unchanged since my first pass."
+  },
+  {
+   "id": "Z5",
+   "severity": "NIT",
+   "key": "ui.chat.pickers.session_panel.plus_its_subagents_where_the_ledger_could_be_walked",
+   "text": "，以及账本可追溯到的子智能体",
+   "note": "追溯 suggests tracing upstream while 'walked' is a downward traversal; optional 账本可遍历到的子智能体. Unchanged since my first pass."
+  }
+ ],
+ "pre_existing_out_of_scope": [
+  "P1 额度 used for credits, allowance and cap (usage_view_model.credits, …allowance… x4, model_cap_exhausted) — not touched by this PR",
+  "P2 session_panel.cost_and_tokens_above_cover_this_session has 仅 with no English source",
+  "P3 code-level punctuation concatenation (chartSummary ', ' / '.' ; session-panel spacing)",
+  "P4 ui.ownerAudit.admitted uses 接收 vs 受理 here (different context)"
+ ]
+}

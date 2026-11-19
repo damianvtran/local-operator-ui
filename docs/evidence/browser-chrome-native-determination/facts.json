@@ -1,0 +1,1270 @@
+{
+  "generatedAt": "2026-10-22T07:04:02.669Z",
+  "durationMs": 21463,
+  "source": "node scripts/browser-native-determination.mjs",
+  "platform": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "release": "27.0.0"
+  },
+  "identity": {
+    "checkedOut": "54d68826541596299c33f5f0172901d014e4a81b",
+    "productSourceCommit": "c5503204ed0bc88e20dadb624de949788dc52b80",
+    "productSourceClean": true,
+    "branch": "docs/browser-native-determination-s4b",
+    "dirtySource": "",
+    "electron": "44.3.0",
+    "appVersion": {
+      "app": "0.39.4",
+      "chrome": "152.0.7977.78",
+      "node": "24.20.0"
+    },
+    "sha256": {
+      "mainIndexJs": "9a0e2c5478d7c4b8188f0f9e27b5776453db3b6748d7a3ef735ee37132205046",
+      "mainIndexJsc": "269d88d0c01168ffd62f1844bb7862e5e518b5b3659c7c24f8e362ccbc4c4cbe",
+      "rendererIndexHtml": "a0e2b36ed2ed70fc1c17ea1dfd692293ff990566eb90fdf9a577bcd20df93286",
+      "overlayListHtml": "9c8bf7a57794c54e528aebad72f3b1eba8e226bc76c1eb889531b4a2b096e57e"
+    }
+  },
+  "states": {
+    "rest": {
+      "native": {
+        "at": "2026-10-22T07:04:07.448Z",
+        "window": {
+          "id": 1,
+          "visible": false,
+          "focused": false,
+          "focusable": false,
+          "bounds": {
+            "x": 174,
+            "y": 45,
+            "width": 1380,
+            "height": 900
+          },
+          "contentBounds": {
+            "x": 174,
+            "y": 45,
+            "width": 1380,
+            "height": 900
+          }
+        },
+        "ownerWcId": 1,
+        "contentView": {
+          "ctor": "View",
+          "bounds": {
+            "x": 0,
+            "y": 0,
+            "width": 1380,
+            "height": 900
+          },
+          "visible": true,
+          "isWebContentsView": false
+        },
+        "focusedWebContentsId": null,
+        "zoom": 1,
+        "children": [
+          {
+            "index": 0,
+            "ctor": "WebContentsView",
+            "bounds": {
+              "x": 0,
+              "y": 0,
+              "width": 1280,
+              "height": 720
+            },
+            "visible": false,
+            "webContentsId": 3,
+            "url": "about:blank",
+            "type": "window",
+            "title": "about:blank",
+            "focused": false,
+            "isWebContentsView": true
+          },
+          {
+            "index": 1,
+            "ctor": "WebContentsView",
+            "bounds": {
+              "x": 260,
+              "y": 69,
+              "width": 1120,
+              "height": 831
+            },
+            "visible": true,
+            "webContentsId": 4,
+            "url": "http://127.0.0.1:55407/fixture",
+            "type": "window",
+            "title": "native-determination fixture",
+            "focused": false,
+            "isWebContentsView": true
+          }
+        ],
+        "allWebContents": [
+          {
+            "id": 4,
+            "type": "window",
+            "url": "http://127.0.0.1:55407/fixture",
+            "title": "native-determination fixture",
+            "focused": false
+          },
+          {
+            "id": 3,
+            "type": "window",
+            "url": "about:blank",
+            "title": "about:blank",
+            "focused": false
+          },
+          {
+            "id": 2,
+            "type": "window",
+            "url": "about:blank",
+            "title": "about:blank",
+            "focused": false
+          },
+          {
+            "id": 1,
+            "type": "window",
+            "url": "file:///Users/damian/local-operator-ui/.worktrees/browser-native-determination/out/renderer/index.html#/browser",
+            "title": "Local Operator",
+            "focused": false
+          }
+        ]
+      },
+      "owner": {
+        "content": {
+          "x": 260,
+          "y": 69,
+          "width": 1120,
+          "height": 831
+        },
+        "strip": {
+          "x": 260,
+          "y": 32,
+          "width": 1120,
+          "height": 37
+        },
+        "popout": null,
+        "address": null,
+        "popoutPresent": false,
+        "barCount": 0,
+        "dockCount": 0,
+        "hash": "#/browser",
+        "innerWidth": 1380,
+        "innerHeight": 900,
+        "devicePixelRatio": 2,
+        "activeElement": "BODY"
+      },
+      "ids": {
+        "page": {
+          "index": 1,
+          "ctor": "WebContentsView",
+          "bounds": {
+            "x": 260,
+            "y": 69,
+            "width": 1120,
+            "height": 831
+          },
+          "visible": true,
+          "webContentsId": 4,
+          "url": "http://127.0.0.1:55407/fixture",
+          "type": "window",
+          "title": "native-determination fixture",
+          "focused": false,
+          "isWebContentsView": true
+        },
+        "otherVisible": []
+      }
+    },
+    "open": {
+      "native": {
+        "at": "2026-10-22T07:04:10.507Z",
+        "window": {
+          "id": 1,
+          "visible": false,
+          "focused": false,
+          "focusable": false,
+          "bounds": {
+            "x": 174,
+            "y": 45,
+            "width": 1380,
+            "height": 900
+          },
+          "contentBounds": {
+            "x": 174,
+            "y": 45,
+            "width": 1380,
+            "height": 900
+          }
+        },
+        "ownerWcId": 1,
+        "contentView": {
+          "ctor": "View",
+          "bounds": {
+            "x": 0,
+            "y": 0,
+            "width": 1380,
+            "height": 900
+          },
+          "visible": true,
+          "isWebContentsView": false
+        },
+        "focusedWebContentsId": null,
+        "zoom": 1,
+        "children": [
+          {
+            "index": 0,
+            "ctor": "WebContentsView",
+            "bounds": {
+              "x": 0,
+              "y": 0,
+              "width": 1280,
+              "height": 720
+            },
+            "visible": false,
+            "webContentsId": 3,
+            "url": "about:blank",
+            "type": "window",
+            "title": "about:blank",
+            "focused": false,
+            "isWebContentsView": true
+          },
+          {
+            "index": 1,
+            "ctor": "WebContentsView",
+            "bounds": {
+              "x": 260,
+              "y": 69,
+              "width": 1120,
+              "height": 831
+            },
+            "visible": true,
+            "webContentsId": 4,
+            "url": "http://127.0.0.1:55407/fixture",
+            "type": "window",
+            "title": "native-determination fixture",
+            "focused": false,
+            "isWebContentsView": true
+          },
+          {
+            "index": 2,
+            "ctor": "WebContentsView",
+            "bounds": {
+              "x": 260,
+              "y": 69,
+              "width": 1120,
+              "height": 69
+            },
+            "visible": true,
+            "webContentsId": 5,
+            "url": "file:///Users/damian/local-operator-ui/.worktrees/browser-native-determination/out/renderer/browser-address-overlay-list.html",
+            "type": "window",
+            "title": "Local Operator Address Overlay List",
+            "focused": false,
+            "isWebContentsView": true
+          }
+        ],
+        "allWebContents": [
+          {
+            "id": 5,
+            "type": "window",
+            "url": "file:///Users/damian/local-operator-ui/.worktrees/browser-native-determination/out/renderer/browser-address-overlay-list.html",
+            "title": "Local Operator Address Overlay List",
+            "focused": false
+          },
+          {
+            "id": 4,
+            "type": "window",
+            "url": "http://127.0.0.1:55407/fixture",
+            "title": "native-determination fixture",
+            "focused": false
+          },
+          {
+            "id": 3,
+            "type": "window",
+            "url": "about:blank",
+            "title": "about:blank",
+            "focused": false
+          },
+          {
+            "id": 2,
+            "type": "window",
+            "url": "about:blank",
+            "title": "about:blank",
+            "focused": false
+          },
+          {
+            "id": 1,
+            "type": "window",
+            "url": "file:///Users/damian/local-operator-ui/.worktrees/browser-native-determination/out/renderer/index.html#/browser",
+            "title": "Local Operator",
+            "focused": false
+          }
+        ]
+      },
+      "owner": {
+        "content": {
+          "x": 260,
+          "y": 69,
+          "width": 1120,
+          "height": 831
+        },
+        "strip": {
+          "x": 260,
+          "y": 32,
+          "width": 1120,
+          "height": 37
+        },
+        "popout": {
+          "x": 260,
+          "y": 32,
+          "width": 1120,
+          "height": 37
+        },
+        "address": {
+          "x": 396,
+          "y": 36,
+          "width": 944,
+          "height": 28
+        },
+        "popoutPresent": true,
+        "barCount": 1,
+        "dockCount": 0,
+        "hash": "#/browser",
+        "innerWidth": 1380,
+        "innerHeight": 900,
+        "devicePixelRatio": 2,
+        "activeElement": "browser-address"
+      },
+      "ids": {
+        "page": {
+          "index": 1,
+          "ctor": "WebContentsView",
+          "bounds": {
+            "x": 260,
+            "y": 69,
+            "width": 1120,
+            "height": 831
+          },
+          "visible": true,
+          "webContentsId": 4,
+          "url": "http://127.0.0.1:55407/fixture",
+          "type": "window",
+          "title": "native-determination fixture",
+          "focused": false,
+          "isWebContentsView": true
+        },
+        "list": {
+          "index": 2,
+          "ctor": "WebContentsView",
+          "bounds": {
+            "x": 260,
+            "y": 69,
+            "width": 1120,
+            "height": 69
+          },
+          "visible": true,
+          "webContentsId": 5,
+          "url": "file:///Users/damian/local-operator-ui/.worktrees/browser-native-determination/out/renderer/browser-address-overlay-list.html",
+          "type": "window",
+          "title": "Local Operator Address Overlay List",
+          "focused": false,
+          "isWebContentsView": true
+        },
+        "otherVisible": []
+      }
+    }
+  },
+  "captures": {
+    "rest": {
+      "owner": {
+        "ok": true,
+        "size": {
+          "width": 2760,
+          "height": 1800
+        },
+        "stats": {
+          "colours": 1092,
+          "offGround": 4956560,
+          "pixels": 4968000
+        },
+        "attempts": 1
+      },
+      "page": {
+        "ok": true,
+        "size": {
+          "width": 2240,
+          "height": 1662
+        },
+        "stats": {
+          "colours": 311,
+          "offGround": 31162,
+          "pixels": 3722880
+        },
+        "attempts": 1
+      }
+    },
+    "open": {
+      "owner": {
+        "ok": true,
+        "size": {
+          "width": 2760,
+          "height": 1800
+        },
+        "stats": {
+          "colours": 1187,
+          "offGround": 4956560,
+          "pixels": 4968000
+        },
+        "attempts": 1
+      },
+      "page": {
+        "ok": true,
+        "size": {
+          "width": 2240,
+          "height": 1662
+        },
+        "stats": {
+          "colours": 311,
+          "offGround": 31162,
+          "pixels": 3722880
+        },
+        "attempts": 1
+      },
+      "list": {
+        "ok": true,
+        "size": {
+          "width": 2240,
+          "height": 138
+        },
+        "stats": {
+          "colours": 460,
+          "offGround": 15771,
+          "pixels": 309120
+        },
+        "attempts": 1
+      }
+    }
+  },
+  "composites": [
+    {
+      "path": "frames/composite-rest.png",
+      "kind": "constructed composite — NOT an OS screenshot",
+      "method": "per-view webContents.capturePage() at measured DIP bounds and measured children order",
+      "scale": 2,
+      "canvas": {
+        "width": 2760,
+        "height": 1800
+      },
+      "layers": [
+        {
+          "label": "owner",
+          "order": 0,
+          "bounds": {
+            "x": 0,
+            "y": 0,
+            "width": 1380,
+            "height": 900
+          },
+          "pixels": {
+            "width": 2760,
+            "height": 1800
+          }
+        },
+        {
+          "label": "page",
+          "order": 1,
+          "bounds": {
+            "x": 260,
+            "y": 69,
+            "width": 1120,
+            "height": 831
+          },
+          "pixels": {
+            "width": 2240,
+            "height": 1662
+          }
+        }
+      ]
+    },
+    {
+      "path": "frames/composite-open.png",
+      "kind": "constructed composite — NOT an OS screenshot",
+      "method": "per-view webContents.capturePage() at measured DIP bounds and measured children order",
+      "scale": 2,
+      "canvas": {
+        "width": 2760,
+        "height": 1800
+      },
+      "layers": [
+        {
+          "label": "owner",
+          "order": 0,
+          "bounds": {
+            "x": 0,
+            "y": 0,
+            "width": 1380,
+            "height": 900
+          },
+          "pixels": {
+            "width": 2760,
+            "height": 1800
+          }
+        },
+        {
+          "label": "page",
+          "order": 1,
+          "bounds": {
+            "x": 260,
+            "y": 69,
+            "width": 1120,
+            "height": 831
+          },
+          "pixels": {
+            "width": 2240,
+            "height": 1662
+          }
+        },
+        {
+          "label": "list",
+          "order": 2,
+          "bounds": {
+            "x": 260,
+            "y": 69,
+            "width": 1120,
+            "height": 69
+          },
+          "pixels": {
+            "width": 2240,
+            "height": 138
+          }
+        }
+      ]
+    }
+  ],
+  "input": {
+    "points": {
+      "popout": {
+        "x": 868,
+        "y": 50
+      },
+      "pageInside": {
+        "x": 460,
+        "y": 269
+      },
+      "listHeader": {
+        "x": 340,
+        "y": 79
+      }
+    },
+    "ids": {
+      "owner": 1,
+      "page": 4,
+      "list": 5
+    },
+    "counters": {
+      "before": {
+        "1": {
+          "mouse": 0,
+          "key": 0,
+          "mouseTypes": {},
+          "keyTypes": {},
+          "lastMouse": null
+        },
+        "4": {
+          "mouse": 0,
+          "key": 0,
+          "mouseTypes": {},
+          "keyTypes": {},
+          "lastMouse": null
+        },
+        "5": {
+          "mouse": 0,
+          "key": 0,
+          "mouseTypes": {},
+          "keyTypes": {},
+          "lastMouse": null
+        }
+      },
+      "afterOwner": {
+        "1": {
+          "mouse": 3,
+          "key": 2,
+          "mouseTypes": {
+            "mouseMove": 1,
+            "mouseDown": 1,
+            "mouseUp": 1
+          },
+          "keyTypes": {
+            "keyDown": 1,
+            "keyUp": 1
+          },
+          "lastMouse": {
+            "type": "mouseUp",
+            "x": 868,
+            "y": 50
+          }
+        },
+        "4": {
+          "mouse": 0,
+          "key": 0,
+          "mouseTypes": {},
+          "keyTypes": {},
+          "lastMouse": null
+        },
+        "5": {
+          "mouse": 0,
+          "key": 0,
+          "mouseTypes": {},
+          "keyTypes": {},
+          "lastMouse": null
+        }
+      },
+      "afterPage": {
+        "1": {
+          "mouse": 3,
+          "key": 2,
+          "mouseTypes": {
+            "mouseMove": 1,
+            "mouseDown": 1,
+            "mouseUp": 1
+          },
+          "keyTypes": {
+            "keyDown": 1,
+            "keyUp": 1
+          },
+          "lastMouse": {
+            "type": "mouseUp",
+            "x": 868,
+            "y": 50
+          }
+        },
+        "4": {
+          "mouse": 3,
+          "key": 2,
+          "mouseTypes": {
+            "mouseMove": 1,
+            "mouseDown": 1,
+            "mouseUp": 1
+          },
+          "keyTypes": {
+            "keyDown": 1,
+            "keyUp": 1
+          },
+          "lastMouse": {
+            "type": "mouseUp",
+            "x": 200,
+            "y": 200
+          }
+        },
+        "5": {
+          "mouse": 0,
+          "key": 0,
+          "mouseTypes": {},
+          "keyTypes": {},
+          "lastMouse": null
+        }
+      },
+      "afterList": {
+        "1": {
+          "mouse": 3,
+          "key": 2,
+          "mouseTypes": {
+            "mouseMove": 1,
+            "mouseDown": 1,
+            "mouseUp": 1
+          },
+          "keyTypes": {
+            "keyDown": 1,
+            "keyUp": 1
+          },
+          "lastMouse": {
+            "type": "mouseUp",
+            "x": 868,
+            "y": 50
+          }
+        },
+        "4": {
+          "mouse": 3,
+          "key": 2,
+          "mouseTypes": {
+            "mouseMove": 1,
+            "mouseDown": 1,
+            "mouseUp": 1
+          },
+          "keyTypes": {
+            "keyDown": 1,
+            "keyUp": 1
+          },
+          "lastMouse": {
+            "type": "mouseUp",
+            "x": 200,
+            "y": 200
+          }
+        },
+        "5": {
+          "mouse": 3,
+          "key": 1,
+          "mouseTypes": {
+            "mouseMove": 1,
+            "mouseDown": 1,
+            "mouseUp": 1
+          },
+          "keyTypes": {
+            "keyDown": 1
+          },
+          "lastMouse": {
+            "type": "mouseUp",
+            "x": 80,
+            "y": 10
+          }
+        }
+      },
+      "afterOwnerAtPagePoint": {
+        "1": {
+          "mouse": 6,
+          "key": 4,
+          "mouseTypes": {
+            "mouseMove": 2,
+            "mouseDown": 2,
+            "mouseUp": 2
+          },
+          "keyTypes": {
+            "keyDown": 2,
+            "keyUp": 2
+          },
+          "lastMouse": {
+            "type": "mouseUp",
+            "x": 460,
+            "y": 269
+          }
+        },
+        "4": {
+          "mouse": 3,
+          "key": 2,
+          "mouseTypes": {
+            "mouseMove": 1,
+            "mouseDown": 1,
+            "mouseUp": 1
+          },
+          "keyTypes": {
+            "keyDown": 1,
+            "keyUp": 1
+          },
+          "lastMouse": {
+            "type": "mouseUp",
+            "x": 200,
+            "y": 200
+          }
+        },
+        "5": {
+          "mouse": 3,
+          "key": 1,
+          "mouseTypes": {
+            "mouseMove": 1,
+            "mouseDown": 1,
+            "mouseUp": 1
+          },
+          "keyTypes": {
+            "keyDown": 1
+          },
+          "lastMouse": {
+            "type": "mouseUp",
+            "x": 80,
+            "y": 10
+          }
+        }
+      }
+    }
+  },
+  "focus": {
+    "atRest": {
+      "windowFocused": false,
+      "focusedWindow": null,
+      "focusedWebContents": null,
+      "views": [
+        {
+          "id": 3,
+          "isFocused": false,
+          "url": "about:blank"
+        },
+        {
+          "id": 4,
+          "isFocused": false,
+          "url": "http://127.0.0.1:55407/seed-1"
+        },
+        {
+          "id": 5,
+          "isFocused": false,
+          "url": "file:///Users/damian/local-operator-ui/.worktrees/browser-native-determination/out/renderer/browser-address-overlay-list.html"
+        }
+      ],
+      "ownerFocused": false
+    },
+    "afterOwnerFocus": {
+      "windowFocused": false,
+      "focusedWindow": null,
+      "focusedWebContents": null,
+      "views": [
+        {
+          "id": 3,
+          "isFocused": false,
+          "url": "about:blank"
+        },
+        {
+          "id": 4,
+          "isFocused": false,
+          "url": "http://127.0.0.1:55407/seed-1"
+        },
+        {
+          "id": 5,
+          "isFocused": false,
+          "url": "file:///Users/damian/local-operator-ui/.worktrees/browser-native-determination/out/renderer/browser-address-overlay-list.html"
+        }
+      ],
+      "ownerFocused": false
+    },
+    "afterPageFocus": {
+      "windowFocused": false,
+      "focusedWindow": null,
+      "focusedWebContents": null,
+      "views": [
+        {
+          "id": 3,
+          "isFocused": false,
+          "url": "about:blank"
+        },
+        {
+          "id": 4,
+          "isFocused": false,
+          "url": "http://127.0.0.1:55407/seed-1"
+        },
+        {
+          "id": 5,
+          "isFocused": false,
+          "url": "file:///Users/damian/local-operator-ui/.worktrees/browser-native-determination/out/renderer/browser-address-overlay-list.html"
+        }
+      ],
+      "ownerFocused": false
+    }
+  },
+  "dismissals": [
+    {
+      "label": "Escape",
+      "before": {
+        "popoutPresent": true,
+        "listVisible": true,
+        "listOrder": 2
+      },
+      "after": {
+        "popoutPresent": false,
+        "listVisible": false,
+        "pageBounds": {
+          "x": 260,
+          "y": 69,
+          "width": 1120,
+          "height": 831
+        }
+      },
+      "lowered": true,
+      "childHidden": true,
+      "pageUnmoved": true
+    },
+    {
+      "label": "page_focus",
+      "before": {
+        "popoutPresent": true,
+        "listVisible": true,
+        "listOrder": 2
+      },
+      "after": {
+        "popoutPresent": false,
+        "listVisible": false,
+        "pageBounds": {
+          "x": 260,
+          "y": 69,
+          "width": 1120,
+          "height": 831
+        }
+      },
+      "lowered": true,
+      "childHidden": true,
+      "pageUnmoved": true
+    },
+    {
+      "label": "navigation",
+      "before": {
+        "popoutPresent": true,
+        "listVisible": true,
+        "listOrder": 2
+      },
+      "after": {
+        "popoutPresent": false,
+        "listVisible": false,
+        "pageBounds": {
+          "x": 260,
+          "y": 69,
+          "width": 1120,
+          "height": 831
+        }
+      },
+      "lowered": true,
+      "childHidden": true,
+      "pageUnmoved": true
+    },
+    {
+      "label": "new_tab",
+      "before": {
+        "popoutPresent": true,
+        "listVisible": true,
+        "listOrder": 2
+      },
+      "after": {
+        "popoutPresent": false,
+        "listVisible": false,
+        "pageBounds": null
+      },
+      "lowered": true,
+      "childHidden": true,
+      "pageUnmoved": null
+    }
+  ],
+  "teardown": {
+    "quitRequested": "quit requested",
+    "natural": {
+      "exited": {
+        "code": 0,
+        "signal": null
+      }
+    },
+    "pid": 63405,
+    "groupAfterQuit": [],
+    "aliveAfter": false,
+    "groupAliveAfter": 0
+  },
+  "isolation": {
+    "before": {
+      "logsDir": {
+        "exists": true,
+        "isDirectory": true,
+        "size": null,
+        "mtimeMs": 1792640905814.0056
+      },
+      "config": {
+        "exists": true,
+        "isDirectory": false,
+        "size": 2771,
+        "mtimeMs": 1792587544023.4482
+      },
+      "profile": {
+        "exists": true,
+        "isDirectory": true,
+        "size": null,
+        "mtimeMs": 1792652591763.4233
+      }
+    },
+    "token": "http://127.0.0.1:55407/fixture",
+    "appPaths": {
+      "home": "/Users/damian",
+      "userData": "/Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792652642668/profile",
+      "sessionData": "/Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792652642668/profile",
+      "electronLogs": "/Users/damian/Library/Logs/Local Operator",
+      "env": {
+        "HOME": "/Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792652642668/home",
+        "config": "/Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792652642668/config",
+        "logs": "/Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792652642668/logs"
+      }
+    },
+    "osHome": "/Users/damian",
+    "pathsUnderRun": {
+      "userData": true,
+      "sessionData": true,
+      "envHome": true,
+      "envConfig": true,
+      "envLogs": true
+    },
+    "logLine": "Log path: /Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792652642668/logs",
+    "noFallback": true,
+    "browserProfileLine": "[browser] host on 127.0.0.1:55450 (proto 1), profile /Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792652642668/profile/Partitions/local-operator-browser,",
+    "browserProfilePath": "/Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792652642668/profile/Partitions/local-operator-browser",
+    "browserProfileUnderRun": true,
+    "b2WaitMs": 111,
+    "profileLineWaitMs": 110,
+    "electronLogsNote": "Electron's default app.getPath('logs'); the app's logger override is the writer (Log path above), so this value is recorded but outside RUN and not gated",
+    "after": {
+      "logsDir": {
+        "exists": true,
+        "isDirectory": true,
+        "size": null,
+        "mtimeMs": 1792640905814.0056
+      },
+      "config": {
+        "exists": true,
+        "isDirectory": false,
+        "size": 2771,
+        "mtimeMs": 1792587544023.4482
+      },
+      "profile": {
+        "exists": true,
+        "isDirectory": true,
+        "size": null,
+        "mtimeMs": 1792652652218.5032
+      }
+    },
+    "unchanged": {
+      "logsDir": true,
+      "config": true,
+      "profile": false
+    },
+    "tokenHits": {
+      "files": 4,
+      "hits": 0
+    },
+    "launcherHits": {
+      "files": 4,
+      "hits": 0
+    }
+  },
+  "rowCommit": {
+    "candidateCount": 1,
+    "rowRect": {
+      "x": 0,
+      "y": 30,
+      "width": 1120,
+      "height": 35.5,
+      "count": 1,
+      "view": "rows",
+      "url": "http://127.0.0.1:55407/seed-1",
+      "notice": "",
+      "body": "From this browser session\nhttp://127.0.0.1:55407/seed-1\nnative-determination fixture",
+      "htmlLength": 186
+    },
+    "rowUrl": "http://127.0.0.1:55407/seed-1",
+    "point": {
+      "x": 560,
+      "y": 48
+    },
+    "lastMouse": {
+      "type": "mouseUp",
+      "x": 560,
+      "y": 48
+    },
+    "popoutPresent": false,
+    "listVisible": false,
+    "url": "http://127.0.0.1:55407/seed-1",
+    "loading": false
+  },
+  "reRaised": {
+    "listOrder": 3,
+    "visibleIndices": [
+      2,
+      3
+    ],
+    "lastVisible": 3,
+    "pageOrder": 2,
+    "listBounds": {
+      "x": 260,
+      "y": 69,
+      "width": 1120,
+      "height": 69
+    },
+    "pageBounds": {
+      "x": 260,
+      "y": 69,
+      "width": 1120,
+      "height": 831
+    }
+  },
+  "rows": [
+    {
+      "id": "B1",
+      "claim": "the launched app is the built tree at the recorded product source commit",
+      "mode": "source+boot",
+      "status": "PASS",
+      "evidence": "{\"checkedOut\":\"54d68826541596299c33f5f0172901d014e4a81b\",\"productSourceCommit\":\"c5503204ed0bc88e20dadb624de949788dc52b80\",\"productSourceClean\":true,\"branch\":\"docs/browser-native-determination-s4b\",\"dirtySource\":\"\",\"electron\":\"44.3.0\",\"appVersion\":{\"app\":\"0.39.4\",\"chrome\":\"152.0.7977.78\",\"node\":\"24.20.0\"},\"productChromeArmed\":true,\"sha256\":{\"mainIndexJs\":\"9a0e2c5478d7c4b8188f0f9e27b5776453db3b6748d7a3ef735ee37132205046\",\"mainIndexJsc\":\"269d88d0c01168ffd62f1844bb7862e5e518b5b3659c7c24f8e362ccbc4c4cbe\",\"rendererIndexHtml\":\"a0e2b36ed2ed70fc1c17ea1dfd692293ff990566eb90fdf9a577bcd20df93286\",\"overlayListHtml\":\"9c8bf7a57794c54e528aebad72f3b1eba8e226bc76c1eb889531b4a2b096e57e\"}}",
+      "at": "2026-10-22T07:04:05.370Z"
+    },
+    {
+      "id": "B2",
+      "claim": "every path the app writes through resolves inside the scratch run, and the logger took the absolute LOG_DIR",
+      "mode": "driven",
+      "status": "PASS",
+      "evidence": "{\"before\":{\"logsDir\":{\"exists\":true,\"isDirectory\":true,\"size\":null,\"mtimeMs\":1792640905814.0056},\"config\":{\"exists\":true,\"isDirectory\":false,\"size\":2771,\"mtimeMs\":1792587544023.4482},\"profile\":{\"exists\":true,\"isDirectory\":true,\"size\":null,\"mtimeMs\":1792652591763.4233}},\"token\":\"http://127.0.0.1:55407/fixture\",\"appPaths\":{\"home\":\"/Users/damian\",\"userData\":\"/Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792652642668/profile\",\"sessionData\":\"/Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792652642668/profile\",\"electronLogs\":\"/Users/damian/Library/Logs/Local Operator\",\"env\":{\"HOME\":\"/Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792652642668/home\",\"config\":\"/Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792652642668/config\",\"logs\":\"/Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792652642668/logs\"}},\"osHome\":\"/Users/damian\",\"pathsUnderRun\":{\"userData\":true,\"sessionData\":true,\"envHome\":true,\"envConfig\":true,\"envLogs\":true},\"logLine\":\"Log path: /Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792652642668/logs\",\"noFallback\":true,\"browserProfileLine\":\"[browser] host on 127.0.0.1:55450 (proto 1), profile /Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792652642668/profile/Partitions/local-operator-browser,\",\"browserProfilePath\":\"/Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792652642668/profile/Partitions/local-operator-browser\",\"browserProfileUnderRun\":true,\"b2WaitMs\":111,\"profileLineWaitMs\":110,\"electronLogsNote\":\"Electron's default app.getPath('logs'); the app's logger override is the writer (Log path above), so this value is recorded but outside RUN and not gated\"}",
+      "at": "2026-10-22T07:04:05.483Z"
+    },
+    {
+      "id": "B3",
+      "claim": "this run wrote nothing into the operator's real log, config or browser profile",
+      "mode": "driven",
+      "status": "PASS",
+      "evidence": "{\"before\":{\"logsDir\":{\"exists\":true,\"isDirectory\":true,\"size\":null,\"mtimeMs\":1792640905814.0056},\"config\":{\"exists\":true,\"isDirectory\":false,\"size\":2771,\"mtimeMs\":1792587544023.4482},\"profile\":{\"exists\":true,\"isDirectory\":true,\"size\":null,\"mtimeMs\":1792652591763.4233}},\"token\":\"http://127.0.0.1:55407/fixture\",\"appPaths\":{\"home\":\"/Users/damian\",\"userData\":\"/Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792652642668/profile\",\"sessionData\":\"/Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792652642668/profile\",\"electronLogs\":\"/Users/damian/Library/Logs/Local Operator\",\"env\":{\"HOME\":\"/Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792652642668/home\",\"config\":\"/Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792652642668/config\",\"logs\":\"/Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792652642668/logs\"}},\"osHome\":\"/Users/damian\",\"pathsUnderRun\":{\"userData\":true,\"sessionData\":true,\"envHome\":true,\"envConfig\":true,\"envLogs\":true},\"logLine\":\"Log path: /Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792652642668/logs\",\"noFallback\":true,\"browserProfileLine\":\"[browser] host on 127.0.0.1:55450 (proto 1), profile /Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792652642668/profile/Partitions/local-operator-browser,\",\"browserProfilePath\":\"/Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792652642668/profile/Partitions/local-operator-browser\",\"browserProfileUnderRun\":true,\"b2WaitMs\":111,\"profileLineWaitMs\":110,\"electronLogsNote\":\"Electron's default app.getPath('logs'); the app's logger override is the writer (Log path above), so this value is recorded but outside RUN and not gated\",\"after\":{\"logsDir\":{\"exists\":true,\"isDirectory\":true,\"size\":null,\"mtimeMs\":1792640905814.0056},\"config\":{\"exists\":true,\"isDirectory\":false,\"size\":2771,\"mtimeMs\":1792587544023.4482},\"profile\":{\"exists\":true,\"isDirectory\":true,\"size\":null,\"mtimeMs\":1792652652218.5032}},\"unchanged\":{\"logsDir\":true,\"config\":true,\"profile\":false},\"tokenHits\":{\"files\":4,\"hits\":0},\"launcherHits\":{\"files\":4,\"hits\":0}}",
+      "at": "2026-10-22T07:04:24.132Z"
+    },
+    {
+      "id": "W1",
+      "claim": "the window is headless: created, never shown, not focusable",
+      "mode": "driven",
+      "status": "PASS",
+      "evidence": "{\"window\":{\"id\":1,\"visible\":false,\"focused\":false,\"focusable\":false,\"bounds\":{\"x\":174,\"y\":45,\"width\":1380,\"height\":900},\"contentBounds\":{\"x\":174,\"y\":45,\"width\":1380,\"height\":900}},\"contentView\":{\"ctor\":\"View\",\"bounds\":{\"x\":0,\"y\":0,\"width\":1380,\"height\":900},\"visible\":true,\"isWebContentsView\":false},\"ownerWcId\":1}",
+      "at": "2026-10-22T07:04:05.526Z"
+    },
+    {
+      "id": "N1",
+      "claim": "the owner's webContents is not in contentView.children; contentView is a plain View at the window's content size",
+      "mode": "driven",
+      "status": "PASS",
+      "evidence": "{\"contentView\":{\"ctor\":\"View\",\"bounds\":{\"x\":0,\"y\":0,\"width\":1380,\"height\":900},\"visible\":true,\"isWebContentsView\":false},\"ownerWcId\":1,\"ownerInChildren\":false,\"childrenCount\":2,\"note\":\"the owner renderer is the contentView's own surface; children are sibling views above it\"}",
+      "at": "2026-10-22T07:04:07.462Z"
+    },
+    {
+      "id": "N2",
+      "claim": "at rest the page view's native rect is the reported content rect and no visible list child is present",
+      "mode": "driven",
+      "status": "PASS",
+      "evidence": "{\"popoutPresent\":false,\"content\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":831},\"pageView\":{\"bounds\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":831},\"visible\":true,\"order\":1},\"children\":[{\"index\":0,\"url\":\"about:blank\",\"bounds\":{\"x\":0,\"y\":0,\"width\":1280,\"height\":720},\"visible\":false},{\"index\":1,\"url\":\"http://127.0.0.1:55407/fixture\",\"bounds\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":831},\"visible\":true}]}",
+      "at": "2026-10-22T07:04:07.463Z"
+    },
+    {
+      "id": "N3",
+      "claim": "at open the popout's DOM rect and the page's native rect are measured on the same stable layout (page rect unchanged before/open/after)",
+      "mode": "driven",
+      "status": "PASS",
+      "evidence": "{\"popout\":{\"x\":260,\"y\":32,\"width\":1120,\"height\":37},\"strip\":{\"x\":260,\"y\":32,\"width\":1120,\"height\":37},\"content\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":831},\"pageView\":{\"bounds\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":831},\"order\":1},\"popoutPresent\":true,\"pageMoved\":false,\"restPageBounds\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":831},\"openPageBounds\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":831},\"readMode\":\"sequential CDP reads on a stable layout; the page rect is identical before/open/after\"}",
+      "at": "2026-10-22T07:04:10.508Z"
+    },
+    {
+      "id": "N4",
+      "claim": "the suggestion list is a native child view, visible, last in children, with native bounds",
+      "mode": "driven",
+      "status": "PASS",
+      "evidence": "{\"child\":{\"webContentsId\":5,\"url\":\"file:///Users/damian/local-operator-ui/.worktrees/browser-native-determination/out/renderer/browser-address-overlay-list.html\",\"bounds\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":69},\"visible\":true,\"order\":2,\"visibleChildren\":[{\"index\":1,\"url\":\"http://127.0.0.1:55407/fixture\"},{\"index\":2,\"url\":\"file:///Users/damian/local-operator-ui/.worktrees/browser-native-determination/out/renderer/browser-address-overlay-list.html\"}],\"childCount\":3},\"pageMoved\":false,\"pageBounds\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":831},\"restPageBounds\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":831},\"lastVisible\":true,\"spanCheck\":{\"listAnchor\":{\"x\":260,\"y\":69,\"width\":1120},\"listBounds\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":69},\"listSpanMatches\":true}}",
+      "at": "2026-10-22T07:04:10.508Z"
+    },
+    {
+      "id": "N5",
+      "claim": "the popout rect and the page rect do not overlap; the list rect does",
+      "mode": "derived",
+      "status": "PASS",
+      "evidence": "{\"popout\":{\"x\":260,\"y\":32,\"width\":1120,\"height\":37},\"page\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":831},\"list\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":69},\"popoutOverlapPage\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":0,\"area\":0},\"listOverlapPage\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":69,\"area\":77280},\"stripBottom\":69,\"pageTop\":69,\"bandPx\":0}",
+      "at": "2026-10-22T07:04:10.509Z"
+    },
+    {
+      "id": "N6",
+      "claim": "each view captures non-blank pixels with its own capturePage()",
+      "mode": "driven",
+      "status": "PASS",
+      "evidence": "{\"rest\":{\"owner\":{\"ok\":true,\"size\":{\"width\":2760,\"height\":1800},\"stats\":{\"colours\":1092,\"offGround\":4956560,\"pixels\":4968000},\"attempts\":1},\"page\":{\"ok\":true,\"size\":{\"width\":2240,\"height\":1662},\"stats\":{\"colours\":311,\"offGround\":31162,\"pixels\":3722880},\"attempts\":1}},\"open\":{\"owner\":{\"ok\":true,\"size\":{\"width\":2760,\"height\":1800},\"stats\":{\"colours\":1187,\"offGround\":4956560,\"pixels\":4968000},\"attempts\":1},\"page\":{\"ok\":true,\"size\":{\"width\":2240,\"height\":1662},\"stats\":{\"colours\":311,\"offGround\":31162,\"pixels\":3722880},\"attempts\":1},\"list\":{\"ok\":true,\"size\":{\"width\":2240,\"height\":138},\"stats\":{\"colours\":460,\"offGround\":15771,\"pixels\":309120},\"attempts\":1}},\"rule\":\"non-blank = >=8 distinct colours and >=32 pixels off the ground pixel; each capture is the view's own webContents.capturePage(), never a composite\"}",
+      "at": "2026-10-22T07:04:13.795Z"
+    },
+    {
+      "id": "N7",
+      "claim": "a composite built from those captures at measured bounds/order is written and labelled constructed",
+      "mode": "constructed",
+      "status": "PASS",
+      "evidence": "{\"path\":\"frames/composite-open.png\",\"kind\":\"constructed composite — NOT an OS screenshot\",\"method\":\"per-view webContents.capturePage() at measured DIP bounds and measured children order\",\"scale\":2,\"canvas\":{\"width\":2760,\"height\":1800},\"layers\":[{\"label\":\"owner\",\"order\":0,\"bounds\":{\"x\":0,\"y\":0,\"width\":1380,\"height\":900},\"pixels\":{\"width\":2760,\"height\":1800}},{\"label\":\"page\",\"order\":1,\"bounds\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":831},\"pixels\":{\"width\":2240,\"height\":1662}},{\"label\":\"list\",\"order\":2,\"bounds\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":69},\"pixels\":{\"width\":2240,\"height\":138}}]}",
+      "at": "2026-10-22T07:04:13.795Z"
+    },
+    {
+      "id": "N8",
+      "claim": "targeted mouse and key delivery is counted by each view's own main-process observer",
+      "mode": "driven",
+      "status": "PASS",
+      "evidence": "{\"owner\":{\"mouse\":3,\"key\":2},\"page\":{\"mouse\":3,\"key\":2},\"list\":{\"mouse\":3,\"key\":1},\"ownerDom\":{\"mousedown\":1,\"mouseup\":1,\"keydown\":1},\"pageDom\":{\"mousedown\":1,\"mouseup\":1,\"keydown\":1},\"ownerElements\":{\"popout\":{\"tag\":\"input\",\"tour\":\"browser-address\"},\"page\":{\"tag\":\"div\",\"tour\":\"browser-content\"},\"list\":{\"tag\":\"div\",\"tour\":\"browser-content\"}},\"pageElement\":{\"tag\":\"section\",\"text\":\"section 5\"},\"dom\":{\"owner\":{\"mousedown\":1,\"mouseup\":1,\"keydown\":1},\"page\":{\"mousedown\":1,\"mouseup\":1,\"keydown\":1},\"ownerElements\":{\"popout\":{\"tag\":\"input\",\"tour\":\"browser-address\"},\"page\":{\"tag\":\"div\",\"tour\":\"browser-content\"},\"list\":{\"tag\":\"div\",\"tour\":\"browser-content\"}},\"pageElement\":{\"tag\":\"section\",\"text\":\"section 5\"}},\"note\":\"targeted sendInputEvent per view; main-process before-mouse/before-input observations plus the renderer DOM counters\"}",
+      "at": "2026-10-22T07:04:14.812Z"
+    },
+    {
+      "id": "N9",
+      "claim": "negative control: sendInputEvent to the owner still lands with the page view covering the point",
+      "mode": "driven",
+      "status": "PASS",
+      "evidence": "{\"ownerAtPointInsidePage\":{\"mouse\":3,\"key\":2},\"pageCounterUnchanged\":{\"mouse\":0,\"key\":0},\"note\":\"the owner accepted a click at a point the page view covers, so sendInputEvent addresses a webContents and does not exercise AppKit hit testing\"}",
+      "at": "2026-10-22T07:04:14.812Z"
+    },
+    {
+      "id": "N8b",
+      "claim": "a targeted click on the list's first row commits through the controller",
+      "mode": "driven",
+      "status": "PASS",
+      "evidence": "{\"candidateCount\":1,\"rowRect\":{\"x\":0,\"y\":30,\"width\":1120,\"height\":35.5,\"count\":1,\"view\":\"rows\",\"url\":\"http://127.0.0.1:55407/seed-1\",\"notice\":\"\",\"body\":\"From this browser session\\nhttp://127.0.0.1:55407/seed-1\\nnative-determination fixture\",\"htmlLength\":186},\"rowUrl\":\"http://127.0.0.1:55407/seed-1\",\"point\":{\"x\":560,\"y\":48},\"lastMouse\":{\"type\":\"mouseUp\",\"x\":560,\"y\":48},\"popoutPresent\":false,\"listVisible\":false,\"url\":\"http://127.0.0.1:55407/seed-1\",\"loading\":false}",
+      "at": "2026-10-22T07:04:17.408Z"
+    },
+    {
+      "id": "N10",
+      "claim": "focus ownership is read before and after programmatic focus moves",
+      "mode": "driven",
+      "status": "MEASURED",
+      "evidence": "{\"windowFocused\":false,\"headlessNote\":\"the window is not key, so native focus ownership cannot be exercised by an OS click here\",\"atRest\":{\"windowFocused\":false,\"focusedWindow\":null,\"focusedWebContents\":null,\"views\":[{\"id\":3,\"isFocused\":false,\"url\":\"about:blank\"},{\"id\":4,\"isFocused\":false,\"url\":\"http://127.0.0.1:55407/seed-1\"},{\"id\":5,\"isFocused\":false,\"url\":\"file:///Users/damian/local-operator-ui/.worktrees/browser-native-determination/out/renderer/browser-address-overlay-list.html\"}],\"ownerFocused\":false},\"afterOwnerFocus\":{\"windowFocused\":false,\"focusedWindow\":null,\"focusedWebContents\":null,\"views\":[{\"id\":3,\"isFocused\":false,\"url\":\"about:blank\"},{\"id\":4,\"isFocused\":false,\"url\":\"http://127.0.0.1:55407/seed-1\"},{\"id\":5,\"isFocused\":false,\"url\":\"file:///Users/damian/local-operator-ui/.worktrees/browser-native-determination/out/renderer/browser-address-overlay-list.html\"}],\"ownerFocused\":false},\"afterPageFocus\":{\"windowFocused\":false,\"focusedWindow\":null,\"focusedWebContents\":null,\"views\":[{\"id\":3,\"isFocused\":false,\"url\":\"about:blank\"},{\"id\":4,\"isFocused\":false,\"url\":\"http://127.0.0.1:55407/seed-1\"},{\"id\":5,\"isFocused\":false,\"url\":\"file:///Users/damian/local-operator-ui/.worktrees/browser-native-determination/out/renderer/browser-address-overlay-list.html\"}],\"ownerFocused\":false}}",
+      "at": "2026-10-22T07:04:18.445Z"
+    },
+    {
+      "id": "D1",
+      "claim": "Escape lowers the popout and hides the native list",
+      "mode": "driven",
+      "status": "PASS",
+      "evidence": "{\"label\":\"Escape\",\"before\":{\"popoutPresent\":true,\"listVisible\":true,\"listOrder\":2},\"after\":{\"popoutPresent\":false,\"listVisible\":false,\"pageBounds\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":831}},\"lowered\":true,\"childHidden\":true,\"pageUnmoved\":true}",
+      "at": "2026-10-22T07:04:19.405Z"
+    },
+    {
+      "id": "D2",
+      "claim": "a page focus event lowers the popout",
+      "mode": "driven",
+      "status": "PASS",
+      "evidence": "{\"label\":\"page_focus\",\"before\":{\"popoutPresent\":true,\"listVisible\":true,\"listOrder\":2},\"after\":{\"popoutPresent\":false,\"listVisible\":false,\"pageBounds\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":831}},\"lowered\":true,\"childHidden\":true,\"pageUnmoved\":true,\"blockedReason\":null}",
+      "at": "2026-10-22T07:04:20.355Z"
+    },
+    {
+      "id": "D3",
+      "claim": "a main-frame navigation lowers the popout",
+      "mode": "driven",
+      "status": "PASS",
+      "evidence": "{\"label\":\"navigation\",\"before\":{\"popoutPresent\":true,\"listVisible\":true,\"listOrder\":2},\"after\":{\"popoutPresent\":false,\"listVisible\":false,\"pageBounds\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":831}},\"lowered\":true,\"childHidden\":true,\"pageUnmoved\":true}",
+      "at": "2026-10-22T07:04:21.338Z"
+    },
+    {
+      "id": "D4",
+      "claim": "opening another tab lowers the popout; the next open re-raises the list above the new page",
+      "mode": "driven",
+      "status": "PASS",
+      "evidence": "{\"label\":\"new_tab\",\"before\":{\"popoutPresent\":true,\"listVisible\":true,\"listOrder\":2},\"after\":{\"popoutPresent\":false,\"listVisible\":false,\"pageBounds\":null},\"lowered\":true,\"childHidden\":true,\"pageUnmoved\":null}",
+      "at": "2026-10-22T07:04:22.903Z"
+    },
+    {
+      "id": "D4b",
+      "claim": "after a later page view is added, the reopened list is last in the view order",
+      "mode": "driven",
+      "status": "PASS",
+      "evidence": "{\"listOrder\":3,\"visibleIndices\":[2,3],\"lastVisible\":3,\"pageOrder\":2,\"listBounds\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":69},\"pageBounds\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":831}}",
+      "at": "2026-10-22T07:04:23.565Z"
+    },
+    {
+      "id": "T1",
+      "claim": "the launch is reaped by exact process group and the app exits",
+      "mode": "driven",
+      "status": "PASS",
+      "evidence": "{\"quitRequested\":\"quit requested\",\"natural\":{\"exited\":{\"code\":0,\"signal\":null}},\"pid\":63405,\"groupAfterQuit\":[],\"aliveAfter\":false,\"groupAliveAfter\":0}",
+      "at": "2026-10-22T07:04:24.067Z"
+    },
+    {
+      "id": "I1",
+      "claim": "paint order follows AppKit's addSubview rule (a subview is displayed above its siblings)",
+      "mode": "inferred",
+      "status": "INFERRED",
+      "evidence": "{\"rule\":\"AppKit NSView.addSubview(_:): a subview is \\\"displayed above its siblings\\\"; the measured order puts the list after the page\",\"measuredInputs\":{\"popout\":{\"x\":260,\"y\":32,\"width\":1120,\"height\":37},\"pageBounds\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":831},\"listBounds\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":69},\"children\":[{\"index\":0,\"url\":\"about:blank\",\"bounds\":{\"x\":0,\"y\":0,\"width\":1280,\"height\":720},\"visible\":false},{\"index\":1,\"url\":\"http://127.0.0.1:55407/fixture\",\"bounds\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":831},\"visible\":true},{\"index\":2,\"url\":\"file:///Users/damian/local-operator-ui/.worktrees/browser-native-determination/out/renderer/browser-address-overlay-list.html\",\"bounds\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":69},\"visible\":true}]},\"whyNotMeasured\":\"no in-process API returns the composited window pixels; capturePage() returns each surface alone\"}",
+      "at": "2026-10-22T07:04:24.132Z"
+    },
+    {
+      "id": "I2",
+      "claim": "click target follows AppKit's last-subview-first hitTest rule",
+      "mode": "inferred",
+      "status": "INFERRED",
+      "evidence": "{\"rule\":\"AppKit hitTest: the farthest descendant containing the point wins; hit testing starts at the last subview and works backwards; hidden views are ignored\",\"points\":{\"fieldRow\":{\"x\":868,\"y\":50},\"listHeader\":{\"x\":340,\"y\":79},\"page\":{\"x\":460,\"y\":269}},\"predictedTargets\":{\"fieldRow\":\"owner renderer (the page view starts at the strip's bottom edge)\",\"listHeader\":\"overlay list child (last visible subview; its bounds contain the point)\",\"page\":\"page view\"},\"whyNotMeasured\":\"synthesising an OS click needs Accessibility permission, which the repository forbids; sendInputEvent addresses one webContents and the N9 control proves it bypasses sibling hit testing\"}",
+      "at": "2026-10-22T07:04:24.132Z"
+    },
+    {
+      "id": "BL1",
+      "claim": "native OS click routing, real IME, AX, Windows and Linux remain unmeasured",
+      "mode": "blocked",
+      "status": "BLOCKED",
+      "evidence": "native OS click routing, real macOS IME, VoiceOver/AX, Windows and Linux are unmeasured; a silent non-composite (F7) cannot be observed from inside the app",
+      "at": "2026-10-22T07:04:24.132Z"
+    }
+  ]
+}

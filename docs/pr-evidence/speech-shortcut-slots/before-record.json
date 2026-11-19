@@ -1,0 +1,17 @@
+{
+  "label": "before",
+  "platform": "MacIntel",
+  "bridge": {
+    "api": "object",
+    "electron": "undefined"
+  },
+  "hasHoldBox": false,
+  "defaultRows": {
+    "primary": {
+      "value": "⌘⇧S",
+      "invalid": null,
+      "text": ""
+    },
+    "secondary": null
+  }
+}

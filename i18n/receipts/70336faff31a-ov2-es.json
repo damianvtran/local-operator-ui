@@ -1,0 +1,140 @@
+{
+  "instance": "70336faff31a-ov2-es",
+  "locale": "es",
+  "review_kind": "delta verification, round 2 (corrections for the round-1 findings)",
+  "scope": "The same 23 keys as round 1, re-verified at commit 58de30166d: 20 under ui.chat.thread_search and 3 under ui.chat.canonical (image_gen.control.edit_and_restart, .restart, .stop). No from-scratch re-audit: this round checks (1) each round-1 finding against the new bytes, (2) the count keys (count.match, count.related, count.split, count.truncated) and the author labels (role.user, role.agent) re-read and actually rendered, (3) proof that nothing else in scope moved. The other 3 thread_search keys (hint.browse, hint.close, hint.jump) and the other 77 canonical keys remain outside this receipt, as in round 1.",
+  "checkout_head": "58de30166d",
+  "key_count": 23,
+  "audit_date": "2026-10-29",
+  "auditor": {
+    "agent": "translation-auditor",
+    "session": "70336faff31a",
+    "model": "radient/auto",
+    "model_provenance": "Same session as round 1, after a runtime restart. Round 1 recorded radient/auto as the model that actually served it, following a provider fallback (claude-sonnet-5-5 -> gpt-6-astra -> k3.1-pro -> radient/auto); the restart superseded the switch notices without a notice switching back, and the served identity is not re-queryable from inside the turn, so radient/auto is carried forward as the best available evidence rather than re-asserted as freshly observed.",
+    "independent_from_translator_session": true
+  },
+  "reviewed_previous": {
+    "receipt": "/Users/damian/qa/ov-audit/es/receipt.json",
+    "receipt_sha256": "f6e555bfd8408bd5c9f46c1e784add65d9841953441d874c1ab62f074f13c090",
+    "verdict_file": "/Users/damian/qa/ov-audit/es/verdict.txt",
+    "verdict_sha256": "aca6a936380219f9cb85f6c6739c435d5f75af120aacf3f60e3f496a2269d7a4",
+    "instance": "70336faff31a-ov-es",
+    "verdict": "changes_requested",
+    "checkout_head": "f6e5c3eb62",
+    "counts": {
+      "BLOCKER": 0,
+      "MAJOR": 1,
+      "MINOR": 1,
+      "NIT": 1
+    }
+  },
+  "input_sha256": {
+    "src/i18n/catalogues/en/ui.chat.thread_search.json": "08bc59d1fe1058d3704800f92ee05afe5a7ffc1c7146683100a1afe5b2fa28e6",
+    "src/i18n/catalogues/es/ui.chat.thread_search.json": "dadb1fce6047b19007566a7bd5c51f1c79454bdfdfd04c7393292e2675363daf",
+    "src/i18n/catalogues/en/ui.chat.canonical.json": "da2c87f6caf8f238997861d850f575a3b3d8328c5d46abfffae4728ed41fb892",
+    "src/i18n/catalogues/es/ui.chat.canonical.json": "224cc318dd5e570f9a25684dd93c94054e01fbc3da996eaed6abbde89b52c807"
+  },
+  "reference_sha256": {
+    "src/i18n/catalogues/en/ui.chat.thread_search.context.json": "bffc3975ecb828e236a87884b7667abbd7b848212e74e8f21d604e7f8df450e3",
+    "src/i18n/catalogues/en/ui.chat.canonical.context.json": "7e17330dbbafa45d8f6e6045d56a57b44d1d6c4cde5cea392618f1a33c677bfc",
+    "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide_es": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+  },
+  "read_provenance": {
+    "values": "All 23 en and all 23 es values were re-read one key at a time through the audited read_public_copy route at this head (46 reads). No catalogue file was opened, catted or grepped for values; whole-file access was sha256 hashing only, and change scope came from git --numstat plus key-line positions.",
+    "docs": "The updated en .context.json sidecar (its count.split diff), ~/local-operator/i18n/glossary.md and i18n/style-guides/es.md read from the filesystem as labelled docs.",
+    "mechanical": "git diff --numstat and -U0 hunk positions f6e5c3eb62..58de30166d; ICU render through the repo's intl-messageformat at locale es and en for counts 0/1/2/5/21 plus the split at 1/1, 1/3 and 7/1; repo gates check-duplicates, context-parity, generate --check and ledger-check run read-only.",
+    "not_read": "Nothing under ~/qa was read except the two .keys artefacts (and the prior receipt/verdict hashed, not re-judged). No translation or MT service used. Repository untouched: git status empty, HEAD 58de30166d."
+  },
+  "change_scope": {
+    "diff": "git diff --numstat f6e5c3eb62..58de30166d: 9 files, 11 insertions and 11 deletions, every change inside ui.chat.thread_search (no canonical file touched).",
+    "es/ui.chat.thread_search.json": "1 line changed. The single hunk is at line 7, and line 7 scans as ui.chat.thread_search.count.split; the file's other 22 key lines are untouched.",
+    "en/ui.chat.thread_search.json": "1 line changed, also line 7 = count.split (English is now 'Exact: {exactText} · Related: {relatedText}').",
+    "en/ui.chat.thread_search.context.json": "2 lines changed: count.split's role and note, which now pin label-first and name the reason (a numeral beside an agreeing adjective cannot satisfy both counts in inflecting locales).",
+    "canonical": "en and es ui.chat.canonical.json are byte-identical to round 1 (da2c87f6… / 224cc318…), so the three image-gen buttons were not re-judged, only re-confirmed unchanged.",
+    "other_locales": "fr, hi, ur, vi, zh-CN carry one changed line each and ru two (count.split plus its result-row label capitalisation). Outside this receipt's es scope and not audited here."
+  },
+  "verification": [
+    {
+      "id": "V1",
+      "check": "Round-1 findings, one by one",
+      "result": "F-1 resolved; F-2 and F-3 unchanged in bytes and recorded as open, non-blocking (see notes)."
+    },
+    {
+      "id": "V2",
+      "check": "Count keys and author labels read and rendered at the new bytes",
+      "result": "count.split es renders 'Exactas: 1 · Relacionadas: 1', 'Exactas: 1 · Relacionadas: 3', 'Exactas: 7 · Relacionadas: 1' - label first, numeral after a colon, so no numeral is ever placed beside an agreeing adjective. count.match and count.related render 0/1/2/5/21 as '0 coincidencias / 1 coincidencia / N coincidencias' and '0 coincidencias relacionadas / 1 coincidencia relacionada / N coincidencias relacionadas'; count.truncated renders '(la primera coincidencia mostrada)' and '(primeras N mostradas)'. role.user 'Tú' and role.agent 'Agente' are unchanged and correct; the round-2 capitalisation change is in ru's label, not es's."
+    },
+    {
+      "id": "V3",
+      "check": "ICU arguments match English",
+      "result": "count.split carries {exactText} then {relatedText} in both locales, one each, same order, middot kept; count.match, count.related and count.truncated carry {count, countText} in both. The only structural difference remains es's extra `many` arm, which is a category of this locale, not a divergence from the English arguments."
+    },
+    {
+      "id": "V4",
+      "check": "Nothing else moved in scope",
+      "result": "Beyond the diff proof (one line per in-scope file, at the count.split key), all 22 non-split values in both locales are byte-identical to the strings the round-1 receipt audited, including the two keys F-2 and F-3 name."
+    },
+    {
+      "id": "V5",
+      "check": "Typography of the new form",
+      "result": "The new split keeps U+00B7 with plain spaces and no NBSP, colon immediately after the label with no space before it, and no new non-ASCII code points. Capitalising the second label after the middot starts a new label segment, which is how Spanish dashboards write label pairs, and it mirrors the English change."
+    },
+    {
+      "id": "V6",
+      "check": "Repo gates at 58de30166d",
+      "result": "check-duplicates ok (934 files, 0 duplicates); context-parity ok (131 allowed gaps, shrink-only); generate --check ok (keys.gen.ts byte-identical). ledger-check still reports stale es source/target hashes for ui.chat.thread_search and ui.chat.canonical - expected, the ledger has not been folded with these delta receipts, and a delta receipt does not refresh a whole-namespace row on its own."
+    }
+  ],
+  "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 1,
+    "NIT": 1
+  },
+  "counts_scope": "Outstanding across the 23 keys after round 2. No new finding was raised in this round: the MAJOR is gone (F-1 resolved), and the MINOR and NIT are the two round-1 items whose bytes did not change (notes F-2, F-3). With no BLOCKER or MAJOR remaining the delta passes; the two open items are polish, and leaving them is a decision the wave may take explicitly.",
+  "verdict": "pass",
+  "namespaces": {
+    "ui.chat.thread_search": {
+      "status": "passed",
+      "keys_audited": 20,
+      "sha256": {
+        "en": "08bc59d1fe1058d3704800f92ee05afe5a7ffc1c7146683100a1afe5b2fa28e6",
+        "target": "dadb1fce6047b19007566a7bd5c51f1c79454bdfdfd04c7393292e2675363daf"
+      },
+      "findings": []
+    },
+    "ui.chat.canonical": {
+      "status": "passed",
+      "keys_audited": 3,
+      "sha256": {
+        "en": "da2c87f6caf8f238997861d850f575a3b3d8328c5d46abfffae4728ed41fb892",
+        "target": "224cc318dd5e570f9a25684dd93c94054e01fbc3da996eaed6abbde89b52c807"
+      },
+      "findings": []
+    }
+  },
+  "notes": [
+    {
+      "finding": "F-1 (MAJOR, round 1) - ui.chat.thread_search.count.split",
+      "prior_text": "{exactText} exactas · {relatedText} relacionadas",
+      "new_text": "Exactas: {exactText} · Relacionadas: {relatedText}",
+      "status": "resolved",
+      "why": "This is the fix round 1 proposed, and it holds up when checked against the reasoning rather than the diff: the line renders whenever both tiers are present, so either number can be 1, and a numeral directly beside an agreeing adjective cannot satisfy both at once. With the label first and the number after a colon, 'Exactas: 1' is a label with a count (the Spanish dashboard form, like 'Pendientes: 1'), not a numeral modifying an adjective, so the singular case no longer breaks anything. Rendered at 1/1, 1/3 and 7/1 with intl-messageformat: 'Exactas: 1 · Relacionadas: 1', 'Exactas: 1 · Relacionadas: 3', 'Exactas: 7 · Relacionadas: 1'. Placeholders, their order and the middot are intact, and the English side changed with it, so both languages now say the same thing in the same shape."
+    },
+    {
+      "finding": "F-2 (MINOR, round 1) - ui.chat.thread_search.count.truncated",
+      "prior_text": "{count, plural, one {(la primera coincidencia mostrada)} many {(primeras {countText} mostradas)} other {(primeras {countText} mostradas)}}",
+      "new_text": "unchanged",
+      "status": "open - not changed, non-blocking",
+      "why": "The es bytes did not move, so the finding is not resolved and is not withdrawn. The counter-consideration is worth naming: the English plural arm is itself article-less ('(first {countText} shown)', while its singular arm has 'the'), so es is mirroring the source shape faithfully, singular 'la' against plural bare. The suggestion stands as polish - '(las primeras {countText} mostradas)' - and it cannot block: it breaks no meaning, no placeholder and no pinned budget."
+    },
+    {
+      "finding": "F-3 (NIT, round 1) - ui.chat.thread_search.partial",
+      "prior_text": "Puede que falten mensajes recientes mientras el índice se pone al día.",
+      "new_text": "unchanged",
+      "status": "open - not changed, non-blocking",
+      "why": "Unchanged, so the comparative is still flattened ('recientes' for 'newer'). Non-blocking by definition of a NIT; 'los mensajes más recientes' would restore it if the wave touches the line again."
+    }
+  ]
+}

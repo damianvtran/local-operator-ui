@@ -1,0 +1,74 @@
+{
+	"auditor": "i18n-auditor",
+	"model": "deepseek/deepseek-flash",
+	"instance": "au1861es-combined-659ef7e4",
+	"status": "passed",
+	"namespace": "ui.chat.canonical",
+	"locale": "es",
+	"date": "2026-11-11",
+	"scope": "Whole combined namespace at 659ef7e44b7ccb4800e9853ef355ea58b49854cc: 258 inherited keys + 182 tool_row.verb.* (#1862) + 2 tool.never_sent_* (#1861). es file is byte-identical to origin/main apart from the two added keys.",
+	"sha256": {
+		"en": "38f1069648c9241799bb1b316820e0530bf9445dfba3151e1c28df70153916b3",
+		"es": "085b359e749d56c159ab7475f4d7461f31bfc1b988df823ade5a7bcf000143ce"
+	},
+	"context_sha256": "c258ab485de698eec85e81ffed506866e3b1e8caf29cb3ff434901388065b390",
+	"independent_from_translator": true,
+	"actual_model_source": "session model header; no pin or role override requested by the auditor",
+	"findings": [
+		{
+			"severity": "MINOR",
+			"key": "ui.chat.canonical.fold.count.todo",
+			"also_keys": ["ui.chat.canonical.fold.count.todo_read"],
+			"current": "actualización de pendientes / lectura de pendientes",
+			"english": "{count} todo update / {count} todo read",
+			"problem": "The todo plan is called 'pendientes' in the fold units but 'tareas' in the same namespace's verb column (read_todos 'Leyendo tareas', updated_todos 'Actualizando tareas'), while the settled corpus calls it 'Tareas pendientes' (ui.chat.run_details.todos.title, ui.projects.project_todos.to_dos). One concept, two names.",
+			"suggestion": "actualización de tareas / lectura de tareas",
+			"provenance": "inherited (origin/main), not introduced by this PR"
+		},
+		{
+			"severity": "MINOR",
+			"key": "ui.chat.canonical.tool_row.verb.unknown.settled",
+			"current": "Usó Team Bridge",
+			"english": "Used Team Bridge",
+			"problem": "Only finite verb among the 91 settled verb forms; every sibling uses a participle ('Liberado', 'Creado', 'Publicado en', 'Mensaje enviado a'), so the fixed-width verb gutter changes register for one tool.",
+			"suggestion": "Se usó Team Bridge",
+			"provenance": "inherited (#1862 batch, previously audited without this finding)"
+		},
+		{
+			"severity": "NIT",
+			"key": "ui.chat.canonical.fold.count.actions_partial",
+			"current": "position 248 (after transcript.job_suffix)",
+			"english": "position 240 (after transcript.not_delivered)",
+			"problem": "Single key out of English order; no functional effect (object lookup) and no gate checks order.",
+			"suggestion": "none — recorded for completeness; pre-existing on origin/main and shared with fr/ru/hi"
+		},
+		{
+			"severity": "NIT",
+			"key": "ui.chat.canonical.tool_row.diff.more",
+			"also_keys": ["ui.chat.canonical.tool_row.diff.truncated"],
+			"current": "one/other arms only",
+			"english": "one/other arms only (complete for en)",
+			"problem": "es has a 'many' CLDR category (exact multiples of 10^6); these two plural keys have no 'many' arm, unlike the other 56 es plurals. Counts are diff line counts, so 10^6 is unreachable and ICU falls back to 'other' with grammatical text.",
+			"suggestion": "add many {… # de líneas …} for completeness",
+			"provenance": "inherited"
+		},
+		{
+			"severity": "NIT",
+			"key": "ui.chat.canonical.tool_row.bridge.delivery.awaiting_acceptance.title",
+			"current": "Publicado, pero el propietario del agente debe aceptar la conversación antes de despertarlo.",
+			"english": "Posted, but the agent's owner must accept before it is woken.",
+			"problem": "'despertarlo' has two masculine singular candidates (el propietario, el agente); readable from context but the clitic is ambiguous.",
+			"suggestion": "…antes de que se despierte el agente.",
+			"provenance": "inherited"
+		},
+		{
+			"severity": "NIT",
+			"key": "ui.chat.canonical.tool_row.outcome.succeeded",
+			"current": "completado",
+			"english": "succeeded",
+			"problem": "'succeeded' and 'completed' (turn_summary.completed = 'completado') collapse to one Spanish word for a screen-reader-only outcome word; the failure words carry the distinction in practice, so this is a nuance loss, not a wrong meaning.",
+			"suggestion": "logrado",
+			"provenance": "inherited"
+		}
+	]
+}

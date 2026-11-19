@@ -1,0 +1,95 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "4fef4415bb3f",
+  "date": "2026-10-19",
+  "locale": "ur",
+  "round": 2,
+  "section": 2,
+  "status": "passed",
+  "scope": "Remediation delta audit of the changed namespaces in Section 2: changed keys plus direct composition neighbours; unchanged namespaces remained certified from round 1.",
+  "fallback": "Pinned anthropic/claude-sonnet-5-5 was unavailable (provider quota); this run executed on openai/gpt-6.1-sol.",
+  "notes": "All round-1 findings verified FIXED.",
+  "namespaces": {
+    "ui.settings.appearance.window_glass": {
+      "namespace": "ui.settings.appearance.window_glass",
+      "keys_read": 28,
+      "status": "passed",
+      "sha256": {
+        "en": "d3c6e272273baab454200c41a25b21c451689ae9bf03329aa776dc1cb9f1b33a",
+        "ur": "073ff3f893b62e70f89054f4da1f9e5904c06c905114d86defefb1490bafd34a"
+      },
+      "findings": []
+    },
+    "ui.settings.configuration": {
+      "namespace": "ui.settings.configuration",
+      "keys_read": 92,
+      "status": "passed",
+      "sha256": {
+        "en": "d11a5170a0336449668b91a2b2aa1013ae36ee38c4b70fc69f90541aea3e5050",
+        "ur": "ba0c896dad49aa00d5db63c169b083a03c7a2a2db2897445a9de34016d180bad"
+      },
+      "findings": []
+    },
+    "ui.settings.imports": {
+      "namespace": "ui.settings.imports",
+      "keys_read": 74,
+      "status": "passed",
+      "sha256": {
+        "en": "1f8b1941bd65b91c84b1b4c41bfb1406f0e4790936c8690b04bfd788b4a1b082",
+        "ur": "6a367aa0b0c70b9e3dbfd8fd759e311370dd85791d735c336b571c9efc58db94"
+      },
+      "findings": []
+    },
+    "ui.settings.model": {
+      "namespace": "ui.settings.model",
+      "keys_read": 32,
+      "status": "passed",
+      "sha256": {
+        "en": "5a09b6ed49e8501d14a6f8052a70ce15ce5104ec8da3756c6b576e6e4d150cf1",
+        "ur": "a82d587c8bb5479151d52a0a1ac2fbed2b9c6227fb070e66499126303f589636"
+      },
+      "findings": []
+    },
+    "ui.settings.speech": {
+      "namespace": "ui.settings.speech",
+      "keys_read": 19,
+      "status": "passed",
+      "sha256": {
+        "en": "36b1321c4660c345b6c40dfa753e0e233228a66868cfe78218c4ce573609574d",
+        "ur": "b29d6dfbe153da98a21a928a2615a9ace5151db35bd7f6c37eebc76ae13b1e6b"
+      },
+      "findings": []
+    },
+    "ui.settings.updates": {
+      "namespace": "ui.settings.updates",
+      "keys_read": 29,
+      "status": "passed",
+      "sha256": {
+        "en": "6597aeea3a3a0495f1ba0d9a7ce8078f455d970b53647dbc8350e00fbc9099b2",
+        "ur": "bbe8065a5369fc1558ec2f081c6b2a4b1926aea1501e109667b63d77f5ca6a8d"
+      },
+      "findings": []
+    },
+    "ui.common.forms": {
+      "namespace": "ui.common.forms",
+      "keys_read": 27,
+      "status": "passed",
+      "sha256": {
+        "en": "28a63a53e5b6c3c4fccb9995eb07637c8521ce9d5019e304f3fedb0ddbc053d9",
+        "ur": "64024546b6e9252f5b8e101f10034ac960a21b36b15500539e4ebd6af9cb92ed"
+      },
+      "findings": []
+    },
+    "ui.common.updates": {
+      "namespace": "ui.common.updates",
+      "keys_read": 127,
+      "status": "passed",
+      "sha256": {
+        "en": "de3e083efe40d06b2947c1ef661ec0328b8984214f015a1133521d9d683cb3cd",
+        "ur": "bad95428f43e47035de7985ca5b4d3e67093ac57c53d5b676c8c81a4867ded45"
+      },
+      "findings": []
+    }
+  }
+}

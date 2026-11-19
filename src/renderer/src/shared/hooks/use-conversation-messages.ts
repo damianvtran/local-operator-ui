@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * Hook for fetching and managing conversation messages with pagination
  * Optimized for performance with virtualization and better scroll handling
@@ -198,7 +199,8 @@ export const useConversationMessages = (
 
 				if (response.status >= 400) {
 					throw new Error(
-						response.message || "Failed to fetch conversation messages",
+						response.message ||
+							t("ui.common.errors.conversation_messages_fetch"),
 					);
 				}
 
@@ -244,7 +246,7 @@ export const useConversationMessages = (
 					const errorMessage =
 						error instanceof Error
 							? error.message
-							: "An unknown error occurred while fetching conversation messages";
+							: t("ui.common.errors.conversation_messages_fetch_unknown");
 
 					showErrorToast(errorMessage);
 				}

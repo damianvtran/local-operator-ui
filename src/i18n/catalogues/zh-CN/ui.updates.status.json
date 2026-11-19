@@ -1,0 +1,5 @@
+{
+	"ui.updates.status.dev_mode.app": "应用正在开发模式下运行，更新已停用。",
+	"ui.updates.status.dev_mode.backend": "开发模式下已停用后端更新。",
+	"ui.updates.status.up_to_date": "应用和服务器均为最新版本"
+}

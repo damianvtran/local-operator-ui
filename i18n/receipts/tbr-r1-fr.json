@@ -1,0 +1,40 @@
+{
+  "auditor": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "tbr-r1-fr",
+  "session": "fe0417e44f09",
+  "date": "2026-10-21",
+  "locale": "fr",
+  "translator": "translator",
+  "namespace": "ui.teamBridge",
+  "status": "passed",
+  "keys_audited": 20,
+  "scope": "Twenty-key reaction-picker delta: ui.teamBridge.reactions.* (add, search, categories, all, frequent, tone, toneDefault, empty, failed, category0-category8, choose, noResults). Inherit the base 2e16fb1456 full namespace audit for the other 109 values, all verified unchanged; no new full semantic audit of unchanged copy. Catalogue audit only, not rendered-fit, activation or release approval.",
+  "sha256": {
+    "en": "69f741a64df96b85b00e2f389bcda35bbbcc7cc023c4e2f31c997ef64fc0b50c",
+    "fr": "7b8e7d3d89956a0b7a7a5553f428f1b88939a7b0a86e5facc314935316bf1219",
+    "context": "ad0eef37d14411e02b07a083f3873518362734fefd8caa930cf4196728b2ef84"
+  },
+  "findings": [],
+  "inherited_receipt": {
+    "base": "2e16fb1456",
+    "path": "i18n/receipts/tbd-r3-fr.json",
+    "sha256": "fe0341dd78a19bfe03e02625f56ec08e77aab77f27123a57b00e3cd4a045fbcd",
+    "keys_inherited": 109,
+    "unchanged_values_verified": 109,
+    "base_source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+    "base_target_sha256": "b28cfcd21792bd85822daffe240797f932dbf2c6fa9e11b1917c1c20759438fb"
+  },
+  "reference_sha256": {
+    "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+  },
+  "validation": {
+    "independence": "This auditor did not translate or edit any catalogue or code; read-only (no stage/commit/stash/checkout). Served as anthropic/claude-opus-5-5 throughout; no model switch or fallback noticed. The fr catalogue is an uncommitted working-tree modification; the audited bytes are pinned by the fr sha256 above, re-hashed at start and immediately before writing this receipt (identical). en, context, glossary, fr style guide and base receipt hashes also re-verified; git show 2e16fb1456 en and fr catalogues hash to base_source_sha256 and base_target_sha256.",
+    "semantics": "Read all 20 fr values against en, the context sidecar and their render sites (team-bridge-emoji-picker.tsx, team-bridge-reactions.tsx; reactions.empty is declared in keys.gen.ts but not rendered, value identical to noResults). Accurate and idiomatic: control labels use the infinitive (Ajouter une réaction, Rechercher un émoji, Choisir un émoji), matching the catalogue's Rechercher des …/Choisir une … pattern; failed = 'La réaction n’a pas été enregistrée. Réessayez.' mirrors the existing 'Votre préférence de notification n’a pas été enregistrée. Réessayez.' (vous imperative per the fr guide); 'Aucun émoji trouvé' matches 'Aucun agent trouvé'; 'Fréquemment utilisés' agrees in the masculine plural with the implied émojis; 'Teint'/'Teint par défaut' is a correct, concise rendering of skin tone. Sentence case throughout; U+2019 apostrophes; no prose colon/;/!/? so no U+202F needed. Category names track CLDR fr characterLabels (fetched from unicode-org/cldr-json: animaux et nature, nourriture et boisson, voyage et lieux, activités, objets, symboles, drapeaux) and common OS usage (Smileys, Personnes et corps); the plural variants (boissons, Voyages, émotions) are natural French for tooltip/aria labels. No findings.",
+    "icu": "node with @formatjs/icu-messageformat-parser (repo node_modules) parsed every one of the 20 fr values and their en sources: each AST is exactly one literal element, zero arguments, matching en. Also checked: no { } < > # or ASCII apostrophe, all NFC, no U+200E/200F/202A–202E/2066–2069/061C, no leading/trailing or doubled whitespace. Key-set equality en vs fr (129 = 129); the 109 non-delta values are byte-identical to git show 2e16fb1456:src/i18n/catalogues/fr/ui.teamBridge.json, with 0 changed and 20 added.",
+    "terminology": "émoji (accented, émojis in the plural) used consistently in all six occurrences across the 20 keys and is the only emoji spelling anywhere in src/i18n/catalogues/fr/ui.*.json; réaction is consistent in add/failed. No glossary §2 term is involved; the style guide's vous/sentence-case/typography rules are met.",
+    "overflow": "Static code-point comparisons only (en→fr): add 12→20, search 12→19, categories 16→19, all 9→15, frequent 15→20, tone 9→5, toneDefault 17→16, empty/noResults 14→18, failed 39→47, category0 19→19, category1 15→18, category2 18→17, category3 14→22, category4 17→16, category5 10→9, category6 7→6, category7 7→8, category8 5→8, choose 15→16. add/categories/all/tone/category*/choose are aria-label/title-only, so they carry no layout width. Visible strings: the search placeholder (19) sits in a w-80 input; the frequent heading (20) shares a justify-between row with the select; toneDefault is shorter than en; noResults (18) is in a 320px block; the failed inline alert is +8 (~20%), within the fr guide's 15-25% expectation. No static overflow finding; a rendered check of the failed alert beside many reaction chips is advisable but not claimed.",
+    "limitations": "Browser unavailable by task constraint. No screenshots, glyph metrics, visual-fit or native bidi-rendering claim. No catalogue/code edits."
+  }
+}

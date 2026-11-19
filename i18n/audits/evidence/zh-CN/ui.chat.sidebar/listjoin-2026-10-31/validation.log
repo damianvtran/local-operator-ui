@@ -1,0 +1,21 @@
+$ node scripts/i18n/context-parity.mjs
+context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json).
+
+$ node scripts/i18n/generate.mjs --check
+/Users/damian/local-operator-ui/.worktrees/i18n-listjoin/src/i18n/keys.gen.ts is byte-identical to a fresh generation.
+
+$ node --test --test-name-pattern=\[zh-CN\] scripts/i18n/locale-parity.test.mjs
+✔ [zh-CN] ships at least one message (not an empty claim) (7.365041ms)
+✔ [zh-CN] defines each key in at most one namespace file (8.195333ms)
+✔ [zh-CN] carries EVERY key of each namespace file it ships (13.13975ms)
+✔ [zh-CN] names only keys the English source defines (5.873042ms)
+✔ [zh-CN] preserves every ICU placeholder from the English source (25.7225ms)
+✔ [zh-CN] is not an English stub (no value identical to the source) (7.233042ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 142.992041

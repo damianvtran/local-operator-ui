@@ -1,0 +1,5307 @@
+{
+ "problems": [],
+ "plurals": [
+  {
+   "key": "ui.chat.composer.status.loop_progress_of_turns",
+   "arg": "total",
+   "cats": [
+    "one",
+    "few",
+    "many",
+    "other"
+   ]
+  },
+  {
+   "key": "ui.chat.composer.status.loop_progress_turns",
+   "arg": "count",
+   "cats": [
+    "one",
+    "few",
+    "many",
+    "other"
+   ]
+  }
+ ],
+ "report": [
+  {
+   "key": "ui.chat.action.stopped",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Stopped",
+     "ru": "Остановлено"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Stopped",
+     "ru": "Остановлено"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Stopped",
+     "ru": "Остановлено"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Stopped",
+     "ru": "Остановлено"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Stopped",
+     "ru": "Остановлено"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.composer.status.goal_collapse",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Collapse the session goal",
+     "ru": "Свернуть цель сессии"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Collapse the session goal",
+     "ru": "Свернуть цель сессии"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Collapse the session goal",
+     "ru": "Свернуть цель сессии"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Collapse the session goal",
+     "ru": "Свернуть цель сессии"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Collapse the session goal",
+     "ru": "Свернуть цель сессии"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.composer.status.goal_dismiss",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Dismiss",
+     "ru": "Скрыть"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Dismiss",
+     "ru": "Скрыть"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Dismiss",
+     "ru": "Скрыть"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Dismiss",
+     "ru": "Скрыть"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Dismiss",
+     "ru": "Скрыть"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.composer.status.goal_dismiss_keep",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "it stays in the goal history",
+     "ru": "останется в истории целей"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "it stays in the goal history",
+     "ru": "останется в истории целей"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "it stays in the goal history",
+     "ru": "останется в истории целей"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "it stays in the goal history",
+     "ru": "останется в истории целей"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "it stays in the goal history",
+     "ru": "останется в истории целей"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.composer.status.goal_dismiss_name",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Dismiss the finished goal",
+     "ru": "Скрыть выполненную цель"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Dismiss the finished goal",
+     "ru": "Скрыть выполненную цель"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Dismiss the finished goal",
+     "ru": "Скрыть выполненную цель"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Dismiss the finished goal",
+     "ru": "Скрыть выполненную цель"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Dismiss the finished goal",
+     "ru": "Скрыть выполненную цель"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.composer.status.goal_done",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Done",
+     "ru": "Готово"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Done",
+     "ru": "Готово"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Done",
+     "ru": "Готово"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Done",
+     "ru": "Готово"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Done",
+     "ru": "Готово"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.composer.status.goal_done_name",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Mark the goal done",
+     "ru": "Отметить цель: готово"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Mark the goal done",
+     "ru": "Отметить цель: готово"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Mark the goal done",
+     "ru": "Отметить цель: готово"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Mark the goal done",
+     "ru": "Отметить цель: готово"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Mark the goal done",
+     "ru": "Отметить цель: готово"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.composer.status.goal_expand",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Expand the session goal",
+     "ru": "Развернуть цель сессии"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Expand the session goal",
+     "ru": "Развернуть цель сессии"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Expand the session goal",
+     "ru": "Развернуть цель сессии"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Expand the session goal",
+     "ru": "Развернуть цель сессии"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Expand the session goal",
+     "ru": "Развернуть цель сессии"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.composer.status.goal_label",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Goal:",
+     "ru": "Цель:"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Goal:",
+     "ru": "Цель:"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Goal:",
+     "ru": "Цель:"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Goal:",
+     "ru": "Цель:"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Goal:",
+     "ru": "Цель:"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.composer.status.jobs_action",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Open the jobs in run details",
+     "ru": "Открыть задания в подробностях запуска"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Open the jobs in run details",
+     "ru": "Открыть задания в подробностях запуска"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Open the jobs in run details",
+     "ru": "Открыть задания в подробностях запуска"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Open the jobs in run details",
+     "ru": "Открыть задания в подробностях запуска"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Open the jobs in run details",
+     "ru": "Открыть задания в подробностях запуска"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.composer.status.loop_clear",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Clear loop",
+     "ru": "Сбросить цикл"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Clear loop",
+     "ru": "Сбросить цикл"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Clear loop",
+     "ru": "Сбросить цикл"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Clear loop",
+     "ru": "Сбросить цикл"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Clear loop",
+     "ru": "Сбросить цикл"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.composer.status.loop_label",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Loop:",
+     "ru": "Цикл:"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Loop:",
+     "ru": "Цикл:"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Loop:",
+     "ru": "Цикл:"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Loop:",
+     "ru": "Цикл:"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Loop:",
+     "ru": "Цикл:"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.composer.status.loop_progress_of_turns",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "0 of 0 turns",
+     "ru": "0 из 0 ходов"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "1 of 1 turns",
+     "ru": "1 из 1 хода"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "2 of 2 turns",
+     "ru": "2 из 2 ходов"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "5 of 5 turns",
+     "ru": "5 из 5 ходов"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "1.5 of 1.5 turns",
+     "ru": "1,5 из 1,5 хода"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.composer.status.loop_progress_turns",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "0 turns",
+     "ru": "0 ходов"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "1 turn",
+     "ru": "1 ход"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "2 turns",
+     "ru": "2 хода"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "5 turns",
+     "ru": "5 ходов"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "1.5 turns",
+     "ru": "1,5 хода"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.composer.status.loop_stop",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Stop loop",
+     "ru": "Остановить цикл"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Stop loop",
+     "ru": "Остановить цикл"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Stop loop",
+     "ru": "Остановить цикл"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Stop loop",
+     "ru": "Остановить цикл"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Stop loop",
+     "ru": "Остановить цикл"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.composer.status.monitors_action",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Open the monitors in run details",
+     "ru": "Открыть мониторинг в подробностях запуска"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Open the monitors in run details",
+     "ru": "Открыть мониторинг в подробностях запуска"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Open the monitors in run details",
+     "ru": "Открыть мониторинг в подробностях запуска"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Open the monitors in run details",
+     "ru": "Открыть мониторинг в подробностях запуска"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Open the monitors in run details",
+     "ru": "Открыть мониторинг в подробностях запуска"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.composer.status.plan_action",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Open the plan in run details",
+     "ru": "Открыть план в подробностях запуска"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Open the plan in run details",
+     "ru": "Открыть план в подробностях запуска"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Open the plan in run details",
+     "ru": "Открыть план в подробностях запуска"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Open the plan in run details",
+     "ru": "Открыть план в подробностях запуска"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Open the plan in run details",
+     "ru": "Открыть план в подробностях запуска"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.composer.status.session_goal",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Session goal",
+     "ru": "Цель сессии"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Session goal",
+     "ru": "Цель сессии"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Session goal",
+     "ru": "Цель сессии"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Session goal",
+     "ru": "Цель сессии"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Session goal",
+     "ru": "Цель сессии"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.composer.status.subagents_action",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Open the subagents in run details",
+     "ru": "Открыть субагентов в подробностях запуска"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Open the subagents in run details",
+     "ru": "Открыть субагентов в подробностях запуска"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Open the subagents in run details",
+     "ru": "Открыть субагентов в подробностях запуска"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Open the subagents in run details",
+     "ru": "Открыть субагентов в подробностях запуска"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Open the subagents in run details",
+     "ru": "Открыть субагентов в подробностях запуска"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.composer.status.wakes_action",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Open the wakes in run details",
+     "ru": "Открыть пробуждения в подробностях запуска"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Open the wakes in run details",
+     "ru": "Открыть пробуждения в подробностях запуска"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Open the wakes in run details",
+     "ru": "Открыть пробуждения в подробностях запуска"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Open the wakes in run details",
+     "ru": "Открыть пробуждения в подробностях запуска"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Open the wakes in run details",
+     "ru": "Открыть пробуждения в подробностях запуска"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.header_identity.loading",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {
+      "kind": "agents"
+     },
+     "en": "Loading agents…",
+     "ru": "Загрузка агентов…"
+    },
+    {
+     "num": 1,
+     "sel": {
+      "kind": "agents"
+     },
+     "en": "Loading agents…",
+     "ru": "Загрузка агентов…"
+    },
+    {
+     "num": 2,
+     "sel": {
+      "kind": "agents"
+     },
+     "en": "Loading agents…",
+     "ru": "Загрузка агентов…"
+    },
+    {
+     "num": 5,
+     "sel": {
+      "kind": "agents"
+     },
+     "en": "Loading agents…",
+     "ru": "Загрузка агентов…"
+    },
+    {
+     "num": 1.5,
+     "sel": {
+      "kind": "agents"
+     },
+     "en": "Loading agents…",
+     "ru": "Загрузка агентов…"
+    },
+    {
+     "num": 0,
+     "sel": {
+      "kind": "teams"
+     },
+     "en": "Loading teams…",
+     "ru": "Загрузка команд…"
+    },
+    {
+     "num": 1,
+     "sel": {
+      "kind": "teams"
+     },
+     "en": "Loading teams…",
+     "ru": "Загрузка команд…"
+    },
+    {
+     "num": 2,
+     "sel": {
+      "kind": "teams"
+     },
+     "en": "Loading teams…",
+     "ru": "Загрузка команд…"
+    },
+    {
+     "num": 5,
+     "sel": {
+      "kind": "teams"
+     },
+     "en": "Loading teams…",
+     "ru": "Загрузка команд…"
+    },
+    {
+     "num": 1.5,
+     "sel": {
+      "kind": "teams"
+     },
+     "en": "Loading teams…",
+     "ru": "Загрузка команд…"
+    },
+    {
+     "num": 0,
+     "sel": {
+      "kind": "other"
+     },
+     "en": "Loading…",
+     "ru": "Загрузка…"
+    },
+    {
+     "num": 1,
+     "sel": {
+      "kind": "other"
+     },
+     "en": "Loading…",
+     "ru": "Загрузка…"
+    },
+    {
+     "num": 2,
+     "sel": {
+      "kind": "other"
+     },
+     "en": "Loading…",
+     "ru": "Загрузка…"
+    },
+    {
+     "num": 5,
+     "sel": {
+      "kind": "other"
+     },
+     "en": "Loading…",
+     "ru": "Загрузка…"
+    },
+    {
+     "num": 1.5,
+     "sel": {
+      "kind": "other"
+     },
+     "en": "Loading…",
+     "ru": "Загрузка…"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.header_identity.no_matches",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Nothing matches “Тест”.",
+     "ru": "По запросу «Тест» ничего не найдено."
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Nothing matches “Тест”.",
+     "ru": "По запросу «Тест» ничего не найдено."
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Nothing matches “Тест”.",
+     "ru": "По запросу «Тест» ничего не найдено."
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Nothing matches “Тест”.",
+     "ru": "По запросу «Тест» ничего не найдено."
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Nothing matches “Тест”.",
+     "ru": "По запросу «Тест» ничего не найдено."
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.header_identity.search",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {
+      "kind": "agents"
+     },
+     "en": "Search agents",
+     "ru": "Поиск агентов"
+    },
+    {
+     "num": 1,
+     "sel": {
+      "kind": "agents"
+     },
+     "en": "Search agents",
+     "ru": "Поиск агентов"
+    },
+    {
+     "num": 2,
+     "sel": {
+      "kind": "agents"
+     },
+     "en": "Search agents",
+     "ru": "Поиск агентов"
+    },
+    {
+     "num": 5,
+     "sel": {
+      "kind": "agents"
+     },
+     "en": "Search agents",
+     "ru": "Поиск агентов"
+    },
+    {
+     "num": 1.5,
+     "sel": {
+      "kind": "agents"
+     },
+     "en": "Search agents",
+     "ru": "Поиск агентов"
+    },
+    {
+     "num": 0,
+     "sel": {
+      "kind": "teams"
+     },
+     "en": "Search teams",
+     "ru": "Поиск команд"
+    },
+    {
+     "num": 1,
+     "sel": {
+      "kind": "teams"
+     },
+     "en": "Search teams",
+     "ru": "Поиск команд"
+    },
+    {
+     "num": 2,
+     "sel": {
+      "kind": "teams"
+     },
+     "en": "Search teams",
+     "ru": "Поиск команд"
+    },
+    {
+     "num": 5,
+     "sel": {
+      "kind": "teams"
+     },
+     "en": "Search teams",
+     "ru": "Поиск команд"
+    },
+    {
+     "num": 1.5,
+     "sel": {
+      "kind": "teams"
+     },
+     "en": "Search teams",
+     "ru": "Поиск команд"
+    },
+    {
+     "num": 0,
+     "sel": {
+      "kind": "other"
+     },
+     "en": "Search",
+     "ru": "Поиск"
+    },
+    {
+     "num": 1,
+     "sel": {
+      "kind": "other"
+     },
+     "en": "Search",
+     "ru": "Поиск"
+    },
+    {
+     "num": 2,
+     "sel": {
+      "kind": "other"
+     },
+     "en": "Search",
+     "ru": "Поиск"
+    },
+    {
+     "num": 5,
+     "sel": {
+      "kind": "other"
+     },
+     "en": "Search",
+     "ru": "Поиск"
+    },
+    {
+     "num": 1.5,
+     "sel": {
+      "kind": "other"
+     },
+     "en": "Search",
+     "ru": "Поиск"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.highlights.file_resolution_failed",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Couldn't resolve this file in the session working directory. Use Copy file path to check its location against this session's workspace before trying again.",
+     "ru": "Не удалось найти этот файл в рабочем каталоге сессии. Скопируйте путь к файлу и сверьте его с рабочим пространством этой сессии, затем повторите попытку."
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Couldn't resolve this file in the session working directory. Use Copy file path to check its location against this session's workspace before trying again.",
+     "ru": "Не удалось найти этот файл в рабочем каталоге сессии. Скопируйте путь к файлу и сверьте его с рабочим пространством этой сессии, затем повторите попытку."
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Couldn't resolve this file in the session working directory. Use Copy file path to check its location against this session's workspace before trying again.",
+     "ru": "Не удалось найти этот файл в рабочем каталоге сессии. Скопируйте путь к файлу и сверьте его с рабочим пространством этой сессии, затем повторите попытку."
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Couldn't resolve this file in the session working directory. Use Copy file path to check its location against this session's workspace before trying again.",
+     "ru": "Не удалось найти этот файл в рабочем каталоге сессии. Скопируйте путь к файлу и сверьте его с рабочим пространством этой сессии, затем повторите попытку."
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Couldn't resolve this file in the session working directory. Use Copy file path to check its location against this session's workspace before trying again.",
+     "ru": "Не удалось найти этот файл в рабочем каталоге сессии. Скопируйте путь к файлу и сверьте его с рабочим пространством этой сессии, затем повторите попытку."
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.hub_update.check_now",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Check the hub for updates now",
+     "ru": "Проверить обновления в хабе сейчас"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Check the hub for updates now",
+     "ru": "Проверить обновления в хабе сейчас"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Check the hub for updates now",
+     "ru": "Проверить обновления в хабе сейчас"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Check the hub for updates now",
+     "ru": "Проверить обновления в хабе сейчас"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Check the hub for updates now",
+     "ru": "Проверить обновления в хабе сейчас"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.hub_update.dismiss",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Dismiss",
+     "ru": "Скрыть"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Dismiss",
+     "ru": "Скрыть"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Dismiss",
+     "ru": "Скрыть"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Dismiss",
+     "ru": "Скрыть"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Dismiss",
+     "ru": "Скрыть"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.hub_update.dismiss_summary",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Dismiss update summary",
+     "ru": "Скрыть сводку обновлений"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Dismiss update summary",
+     "ru": "Скрыть сводку обновлений"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Dismiss update summary",
+     "ru": "Скрыть сводку обновлений"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Dismiss update summary",
+     "ru": "Скрыть сводку обновлений"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Dismiss update summary",
+     "ru": "Скрыть сводку обновлений"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.hub_update.update_all",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Update all (0)",
+     "ru": "Обновить все (0)"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Update all (1)",
+     "ru": "Обновить все (1)"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Update all (2)",
+     "ru": "Обновить все (2)"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Update all (5)",
+     "ru": "Обновить все (5)"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Update all (1.5)",
+     "ru": "Обновить все (1,5)"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.hub_update.update_all_label",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {
+      "kind": "agents"
+     },
+     "en": "Update all 0 agent updates from the hub",
+     "ru": "Обновить все (0) — обновления агентов из хаба"
+    },
+    {
+     "num": 1,
+     "sel": {
+      "kind": "agents"
+     },
+     "en": "Update all 1 agent updates from the hub",
+     "ru": "Обновить все (1) — обновления агентов из хаба"
+    },
+    {
+     "num": 2,
+     "sel": {
+      "kind": "agents"
+     },
+     "en": "Update all 2 agent updates from the hub",
+     "ru": "Обновить все (2) — обновления агентов из хаба"
+    },
+    {
+     "num": 5,
+     "sel": {
+      "kind": "agents"
+     },
+     "en": "Update all 5 agent updates from the hub",
+     "ru": "Обновить все (5) — обновления агентов из хаба"
+    },
+    {
+     "num": 1.5,
+     "sel": {
+      "kind": "agents"
+     },
+     "en": "Update all 1.5 agent updates from the hub",
+     "ru": "Обновить все (1,5) — обновления агентов из хаба"
+    },
+    {
+     "num": 0,
+     "sel": {
+      "kind": "teams"
+     },
+     "en": "Update all 0 team updates from the hub",
+     "ru": "Обновить все (0) — обновления команд из хаба"
+    },
+    {
+     "num": 1,
+     "sel": {
+      "kind": "teams"
+     },
+     "en": "Update all 1 team updates from the hub",
+     "ru": "Обновить все (1) — обновления команд из хаба"
+    },
+    {
+     "num": 2,
+     "sel": {
+      "kind": "teams"
+     },
+     "en": "Update all 2 team updates from the hub",
+     "ru": "Обновить все (2) — обновления команд из хаба"
+    },
+    {
+     "num": 5,
+     "sel": {
+      "kind": "teams"
+     },
+     "en": "Update all 5 team updates from the hub",
+     "ru": "Обновить все (5) — обновления команд из хаба"
+    },
+    {
+     "num": 1.5,
+     "sel": {
+      "kind": "teams"
+     },
+     "en": "Update all 1.5 team updates from the hub",
+     "ru": "Обновить все (1,5) — обновления команд из хаба"
+    },
+    {
+     "num": 0,
+     "sel": {
+      "kind": "skills"
+     },
+     "en": "Update all 0 skill updates from the hub",
+     "ru": "Обновить все (0) — обновления навыков из хаба"
+    },
+    {
+     "num": 1,
+     "sel": {
+      "kind": "skills"
+     },
+     "en": "Update all 1 skill updates from the hub",
+     "ru": "Обновить все (1) — обновления навыков из хаба"
+    },
+    {
+     "num": 2,
+     "sel": {
+      "kind": "skills"
+     },
+     "en": "Update all 2 skill updates from the hub",
+     "ru": "Обновить все (2) — обновления навыков из хаба"
+    },
+    {
+     "num": 5,
+     "sel": {
+      "kind": "skills"
+     },
+     "en": "Update all 5 skill updates from the hub",
+     "ru": "Обновить все (5) — обновления навыков из хаба"
+    },
+    {
+     "num": 1.5,
+     "sel": {
+      "kind": "skills"
+     },
+     "en": "Update all 1.5 skill updates from the hub",
+     "ru": "Обновить все (1,5) — обновления навыков из хаба"
+    },
+    {
+     "num": 0,
+     "sel": {
+      "kind": "other"
+     },
+     "en": "Update all 0 updates from the hub",
+     "ru": "Обновить все (0) — обновления из хаба"
+    },
+    {
+     "num": 1,
+     "sel": {
+      "kind": "other"
+     },
+     "en": "Update all 1 updates from the hub",
+     "ru": "Обновить все (1) — обновления из хаба"
+    },
+    {
+     "num": 2,
+     "sel": {
+      "kind": "other"
+     },
+     "en": "Update all 2 updates from the hub",
+     "ru": "Обновить все (2) — обновления из хаба"
+    },
+    {
+     "num": 5,
+     "sel": {
+      "kind": "other"
+     },
+     "en": "Update all 5 updates from the hub",
+     "ru": "Обновить все (5) — обновления из хаба"
+    },
+    {
+     "num": 1.5,
+     "sel": {
+      "kind": "other"
+     },
+     "en": "Update all 1.5 updates from the hub",
+     "ru": "Обновить все (1,5) — обновления из хаба"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.hub_update.updating",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Updating…",
+     "ru": "Обновление…"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Updating…",
+     "ru": "Обновление…"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Updating…",
+     "ru": "Обновление…"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Updating…",
+     "ru": "Обновление…"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Updating…",
+     "ru": "Обновление…"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.provider_error.action.open_provider_settings",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Open provider settings",
+     "ru": "Открыть настройки провайдера"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Open provider settings",
+     "ru": "Открыть настройки провайдера"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Open provider settings",
+     "ru": "Открыть настройки провайдера"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Open provider settings",
+     "ru": "Открыть настройки провайдера"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Open provider settings",
+     "ru": "Открыть настройки провайдера"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.provider_error.action.open_radient_account",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Open Radient account",
+     "ru": "Открыть учётную запись Radient"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Open Radient account",
+     "ru": "Открыть учётную запись Radient"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Open Radient account",
+     "ru": "Открыть учётную запись Radient"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Open Radient account",
+     "ru": "Открыть учётную запись Radient"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Open Radient account",
+     "ru": "Открыть учётную запись Radient"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.provider_error.action.sign_in_radient",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Sign in to Radient",
+     "ru": "Войти в Radient"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Sign in to Radient",
+     "ru": "Войти в Radient"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Sign in to Radient",
+     "ru": "Войти в Radient"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Sign in to Radient",
+     "ru": "Войти в Radient"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Sign in to Radient",
+     "ru": "Войти в Radient"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.provider_error.headline.out_of_credits",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Out of creditsТест: Тест",
+     "ru": "Кредиты закончилисьТест: Тест"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Out of creditsТест: Тест",
+     "ru": "Кредиты закончилисьТест: Тест"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Out of creditsТест: Тест",
+     "ru": "Кредиты закончилисьТест: Тест"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Out of creditsТест: Тест",
+     "ru": "Кредиты закончилисьТест: Тест"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Out of creditsТест: Тест",
+     "ru": "Кредиты закончилисьТест: Тест"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.provider_error.headline.out_of_credits_refused",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Out of creditsТест: Radient refused the request",
+     "ru": "Кредиты закончилисьТест: Radient отклонил запрос"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Out of creditsТест: Radient refused the request",
+     "ru": "Кредиты закончилисьТест: Radient отклонил запрос"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Out of creditsТест: Radient refused the request",
+     "ru": "Кредиты закончилисьТест: Radient отклонил запрос"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Out of creditsТест: Radient refused the request",
+     "ru": "Кредиты закончилисьТест: Radient отклонил запрос"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Out of creditsТест: Radient refused the request",
+     "ru": "Кредиты закончилисьТест: Radient отклонил запрос"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.question_dock.asking",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "The agent is asking",
+     "ru": "Агент задаёт вопрос"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "The agent is asking",
+     "ru": "Агент задаёт вопрос"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "The agent is asking",
+     "ru": "Агент задаёт вопрос"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "The agent is asking",
+     "ru": "Агент задаёт вопрос"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "The agent is asking",
+     "ru": "Агент задаёт вопрос"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.question_dock.from_agent_label",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Question from the agent",
+     "ru": "Вопрос от агента"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Question from the agent",
+     "ru": "Вопрос от агента"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Question from the agent",
+     "ru": "Вопрос от агента"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Question from the agent",
+     "ru": "Вопрос от агента"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Question from the agent",
+     "ru": "Вопрос от агента"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.question_dock.secret_answer_label",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Secret answer",
+     "ru": "Секретный ответ"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Secret answer",
+     "ru": "Секретный ответ"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Secret answer",
+     "ru": "Секретный ответ"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Secret answer",
+     "ru": "Секретный ответ"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Secret answer",
+     "ru": "Секретный ответ"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.question_dock.secret_note",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Hidden as you type — sent to the agent, not shown in the transcript.",
+     "ru": "Скрыто при вводе — уходит агенту и не попадает в транскрипт."
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Hidden as you type — sent to the agent, not shown in the transcript.",
+     "ru": "Скрыто при вводе — уходит агенту и не попадает в транскрипт."
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Hidden as you type — sent to the agent, not shown in the transcript.",
+     "ru": "Скрыто при вводе — уходит агенту и не попадает в транскрипт."
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Hidden as you type — sent to the agent, not shown in the transcript.",
+     "ru": "Скрыто при вводе — уходит агенту и не попадает в транскрипт."
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Hidden as you type — sent to the agent, not shown in the transcript.",
+     "ru": "Скрыто при вводе — уходит агенту и не попадает в транскрипт."
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.question_dock.secret_placeholder",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Paste the secret",
+     "ru": "Вставьте секрет"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Paste the secret",
+     "ru": "Вставьте секрет"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Paste the secret",
+     "ru": "Вставьте секрет"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Paste the secret",
+     "ru": "Вставьте секрет"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Paste the secret",
+     "ru": "Вставьте секрет"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.question_dock.secret_value_label",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Secret value",
+     "ru": "Значение секрета"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Secret value",
+     "ru": "Значение секрета"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Secret value",
+     "ru": "Значение секрета"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Secret value",
+     "ru": "Значение секрета"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Secret value",
+     "ru": "Значение секрета"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.question_dock.send",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Send",
+     "ru": "Отправить"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Send",
+     "ru": "Отправить"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Send",
+     "ru": "Отправить"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Send",
+     "ru": "Отправить"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Send",
+     "ru": "Отправить"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.question_dock.show",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Show",
+     "ru": "Показать"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Show",
+     "ru": "Показать"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Show",
+     "ru": "Показать"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Show",
+     "ru": "Показать"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Show",
+     "ru": "Показать"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.question_dock.show_question_label",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Show the agent's question",
+     "ru": "Показать вопрос агента"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Show the agent's question",
+     "ru": "Показать вопрос агента"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Show the agent's question",
+     "ru": "Показать вопрос агента"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Show the agent's question",
+     "ru": "Показать вопрос агента"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Show the agent's question",
+     "ru": "Показать вопрос агента"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.quota_notice.dismiss",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Dismiss",
+     "ru": "Скрыть"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Dismiss",
+     "ru": "Скрыть"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Dismiss",
+     "ru": "Скрыть"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Dismiss",
+     "ru": "Скрыть"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Dismiss",
+     "ru": "Скрыть"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.reply.remove",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Remove reply",
+     "ru": "Убрать ответ"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Remove reply",
+     "ru": "Убрать ответ"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Remove reply",
+     "ru": "Убрать ответ"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Remove reply",
+     "ru": "Убрать ответ"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Remove reply",
+     "ru": "Убрать ответ"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.reply.replying_to",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Replying to",
+     "ru": "В ответ на"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Replying to",
+     "ru": "В ответ на"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Replying to",
+     "ru": "В ответ на"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Replying to",
+     "ru": "В ответ на"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Replying to",
+     "ru": "В ответ на"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.session_status.choose_model",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Choose a model",
+     "ru": "Выбрать модель"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Choose a model",
+     "ru": "Выбрать модель"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Choose a model",
+     "ru": "Выбрать модель"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Choose a model",
+     "ru": "Выбрать модель"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Choose a model",
+     "ru": "Выбрать модель"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.session_status.choose_model_tooltip",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Choose the model this conversation will run on",
+     "ru": "Выберите модель, на которой будет работать этот разговор"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Choose the model this conversation will run on",
+     "ru": "Выберите модель, на которой будет работать этот разговор"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Choose the model this conversation will run on",
+     "ru": "Выберите модель, на которой будет работать этот разговор"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Choose the model this conversation will run on",
+     "ru": "Выберите модель, на которой будет работать этот разговор"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Choose the model this conversation will run on",
+     "ru": "Выберите модель, на которой будет работать этот разговор"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.session_status.estimate",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "estimate",
+     "ru": "оценка"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "estimate",
+     "ru": "оценка"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "estimate",
+     "ru": "оценка"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "estimate",
+     "ru": "оценка"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "estimate",
+     "ru": "оценка"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.session_status.last_reading",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Last reading",
+     "ru": "Последний замер"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Last reading",
+     "ru": "Последний замер"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Last reading",
+     "ru": "Последний замер"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Last reading",
+     "ru": "Последний замер"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Last reading",
+     "ru": "Последний замер"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.session_status.no_model_resolved",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "No model resolved yet",
+     "ru": "Модель ещё не определена"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "No model resolved yet",
+     "ru": "Модель ещё не определена"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "No model resolved yet",
+     "ru": "Модель ещё не определена"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "No model resolved yet",
+     "ru": "Модель ещё не определена"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "No model resolved yet",
+     "ru": "Модель ещё не определена"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.skill_invocation.instructions_label",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Skill instructions sent with this message",
+     "ru": "Инструкции навыка, отправленные с этим сообщением"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Skill instructions sent with this message",
+     "ru": "Инструкции навыка, отправленные с этим сообщением"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Skill instructions sent with this message",
+     "ru": "Инструкции навыка, отправленные с этим сообщением"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Skill instructions sent with this message",
+     "ru": "Инструкции навыка, отправленные с этим сообщением"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Skill instructions sent with this message",
+     "ru": "Инструкции навыка, отправленные с этим сообщением"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.skill_invocation.trigger_label",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Тест skill instructions",
+     "ru": "Инструкции навыка Тест"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Тест skill instructions",
+     "ru": "Инструкции навыка Тест"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Тест skill instructions",
+     "ru": "Инструкции навыка Тест"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Тест skill instructions",
+     "ru": "Инструкции навыка Тест"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Тест skill instructions",
+     "ru": "Инструкции навыка Тест"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.status_strip.dismiss",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Dismiss",
+     "ru": "Скрыть"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Dismiss",
+     "ru": "Скрыть"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Dismiss",
+     "ru": "Скрыть"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Dismiss",
+     "ru": "Скрыть"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Dismiss",
+     "ru": "Скрыть"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.tabs.chat",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Chat",
+     "ru": "Чат"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Chat",
+     "ru": "Чат"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Chat",
+     "ru": "Чат"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Chat",
+     "ru": "Чат"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Chat",
+     "ru": "Чат"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.tabs.raw",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Raw",
+     "ru": "Сырые данные"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Raw",
+     "ru": "Сырые данные"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Raw",
+     "ru": "Сырые данные"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Raw",
+     "ru": "Сырые данные"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Raw",
+     "ru": "Сырые данные"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.usage.blocked",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Spend unavailable",
+     "ru": "Расход недоступен"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Spend unavailable",
+     "ru": "Расход недоступен"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Spend unavailable",
+     "ru": "Расход недоступен"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Spend unavailable",
+     "ru": "Расход недоступен"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Spend unavailable",
+     "ru": "Расход недоступен"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.usage.continue",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Included quota used; credits will continue.",
+     "ru": "Включённая квота исчерпана; дальше будут списываться кредиты."
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Included quota used; credits will continue.",
+     "ru": "Включённая квота исчерпана; дальше будут списываться кредиты."
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Included quota used; credits will continue.",
+     "ru": "Включённая квота исчерпана; дальше будут списываться кредиты."
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Included quota used; credits will continue.",
+     "ru": "Включённая квота исчерпана; дальше будут списываться кредиты."
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Included quota used; credits will continue.",
+     "ru": "Включённая квота исчерпана; дальше будут списываться кредиты."
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.usage.eligibility_unknown",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Spend eligibility unknown",
+     "ru": "Доступность расхода неизвестна"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Spend eligibility unknown",
+     "ru": "Доступность расхода неизвестна"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Spend eligibility unknown",
+     "ru": "Доступность расхода неизвестна"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Spend eligibility unknown",
+     "ru": "Доступность расхода неизвестна"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Spend eligibility unknown",
+     "ru": "Доступность расхода неизвестна"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.usage.family_caps",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Model-family caps still apply.",
+     "ru": "Ограничения семейства моделей по-прежнему действуют."
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Model-family caps still apply.",
+     "ru": "Ограничения семейства моделей по-прежнему действуют."
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Model-family caps still apply.",
+     "ru": "Ограничения семейства моделей по-прежнему действуют."
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Model-family caps still apply.",
+     "ru": "Ограничения семейства моделей по-прежнему действуют."
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Model-family caps still apply.",
+     "ru": "Ограничения семейства моделей по-прежнему действуют."
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.usage.unlimited",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Unlimited paid allowance",
+     "ru": "Неограниченный оплаченный лимит"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Unlimited paid allowance",
+     "ru": "Неограниченный оплаченный лимит"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Unlimited paid allowance",
+     "ru": "Неограниченный оплаченный лимит"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Unlimited paid allowance",
+     "ru": "Неограниченный оплаченный лимит"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Unlimited paid allowance",
+     "ru": "Неограниченный оплаченный лимит"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.mermaid.zoom_in",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Zoom in",
+     "ru": "Увеличить"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Zoom in",
+     "ru": "Увеличить"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Zoom in",
+     "ru": "Увеличить"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Zoom in",
+     "ru": "Увеличить"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Zoom in",
+     "ru": "Увеличить"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.mermaid.zoom_out",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Zoom out",
+     "ru": "Уменьшить"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Zoom out",
+     "ru": "Уменьшить"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Zoom out",
+     "ru": "Уменьшить"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Zoom out",
+     "ru": "Уменьшить"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Zoom out",
+     "ru": "Уменьшить"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.mermaid.pan",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Drag to pan",
+     "ru": "Сдвиг перетаскиванием"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Drag to pan",
+     "ru": "Сдвиг перетаскиванием"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Drag to pan",
+     "ru": "Сдвиг перетаскиванием"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Drag to pan",
+     "ru": "Сдвиг перетаскиванием"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Drag to pan",
+     "ru": "Сдвиг перетаскиванием"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.mermaid.pan_hint",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Drag the diagram to pan",
+     "ru": "Перетащите диаграмму, чтобы сдвинуть её"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Drag the diagram to pan",
+     "ru": "Перетащите диаграмму, чтобы сдвинуть её"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Drag the diagram to pan",
+     "ru": "Перетащите диаграмму, чтобы сдвинуть её"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Drag the diagram to pan",
+     "ru": "Перетащите диаграмму, чтобы сдвинуть её"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Drag the diagram to pan",
+     "ru": "Перетащите диаграмму, чтобы сдвинуть её"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.mermaid.reset_view",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Reset view",
+     "ru": "Сбросить вид"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Reset view",
+     "ru": "Сбросить вид"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Reset view",
+     "ru": "Сбросить вид"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Reset view",
+     "ru": "Сбросить вид"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Reset view",
+     "ru": "Сбросить вид"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.mermaid.save_svg",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Save as SVG",
+     "ru": "Сохранить как SVG"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Save as SVG",
+     "ru": "Сохранить как SVG"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Save as SVG",
+     "ru": "Сохранить как SVG"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Save as SVG",
+     "ru": "Сохранить как SVG"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Save as SVG",
+     "ru": "Сохранить как SVG"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.mermaid.copied",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Copied",
+     "ru": "Скопировано"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Copied",
+     "ru": "Скопировано"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Copied",
+     "ru": "Скопировано"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Copied",
+     "ru": "Скопировано"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Copied",
+     "ru": "Скопировано"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.mermaid.copy_text",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Copy mermaid text",
+     "ru": "Копировать текст Mermaid"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Copy mermaid text",
+     "ru": "Копировать текст Mermaid"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Copy mermaid text",
+     "ru": "Копировать текст Mermaid"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Copy mermaid text",
+     "ru": "Копировать текст Mermaid"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Copy mermaid text",
+     "ru": "Копировать текст Mermaid"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.mermaid.error_title",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Mermaid diagram error",
+     "ru": "Ошибка диаграммы Mermaid"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Mermaid diagram error",
+     "ru": "Ошибка диаграммы Mermaid"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Mermaid diagram error",
+     "ru": "Ошибка диаграммы Mermaid"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Mermaid diagram error",
+     "ru": "Ошибка диаграммы Mermaid"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Mermaid diagram error",
+     "ru": "Ошибка диаграммы Mermaid"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.mermaid.unexpected_error",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "An unexpected error occurred while rendering the diagram",
+     "ru": "При отображении диаграммы произошла непредвиденная ошибка"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "An unexpected error occurred while rendering the diagram",
+     "ru": "При отображении диаграммы произошла непредвиденная ошибка"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "An unexpected error occurred while rendering the diagram",
+     "ru": "При отображении диаграммы произошла непредвиденная ошибка"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "An unexpected error occurred while rendering the diagram",
+     "ru": "При отображении диаграммы произошла непредвиденная ошибка"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "An unexpected error occurred while rendering the diagram",
+     "ru": "При отображении диаграммы произошла непредвиденная ошибка"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.mermaid.error_contained",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "The error was contained within the diagram component.",
+     "ru": "Ошибка не вышла за пределы компонента диаграммы."
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "The error was contained within the diagram component.",
+     "ru": "Ошибка не вышла за пределы компонента диаграммы."
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "The error was contained within the diagram component.",
+     "ru": "Ошибка не вышла за пределы компонента диаграммы."
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "The error was contained within the diagram component.",
+     "ru": "Ошибка не вышла за пределы компонента диаграммы."
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "The error was contained within the diagram component.",
+     "ru": "Ошибка не вышла за пределы компонента диаграммы."
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.mermaid.chart_label",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Chart",
+     "ru": "Диаграмма"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Chart",
+     "ru": "Диаграмма"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Chart",
+     "ru": "Диаграмма"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Chart",
+     "ru": "Диаграмма"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Chart",
+     "ru": "Диаграмма"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.mermaid.loading",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Loading diagram...",
+     "ru": "Загрузка диаграммы…"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Loading diagram...",
+     "ru": "Загрузка диаграммы…"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Loading diagram...",
+     "ru": "Загрузка диаграммы…"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Loading diagram...",
+     "ru": "Загрузка диаграммы…"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Loading diagram...",
+     "ru": "Загрузка диаграммы…"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.mermaid.rendering_error",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Rendering error",
+     "ru": "Ошибка отображения"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Rendering error",
+     "ru": "Ошибка отображения"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Rendering error",
+     "ru": "Ошибка отображения"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Rendering error",
+     "ru": "Ошибка отображения"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Rendering error",
+     "ru": "Ошибка отображения"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.mermaid.render_failed",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Failed to render diagram content.",
+     "ru": "Не удалось отобразить содержимое диаграммы."
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Failed to render diagram content.",
+     "ru": "Не удалось отобразить содержимое диаграммы."
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Failed to render diagram content.",
+     "ru": "Не удалось отобразить содержимое диаграммы."
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Failed to render diagram content.",
+     "ru": "Не удалось отобразить содержимое диаграммы."
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Failed to render diagram content.",
+     "ru": "Не удалось отобразить содержимое диаграммы."
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.mermaid.fullscreen",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Fullscreen",
+     "ru": "На весь экран"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Fullscreen",
+     "ru": "На весь экран"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Fullscreen",
+     "ru": "На весь экран"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Fullscreen",
+     "ru": "На весь экран"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Fullscreen",
+     "ru": "На весь экран"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.mermaid.open_fullscreen",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Open diagram fullscreen",
+     "ru": "Открыть диаграмму на весь экран"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Open diagram fullscreen",
+     "ru": "Открыть диаграмму на весь экран"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Open diagram fullscreen",
+     "ru": "Открыть диаграмму на весь экран"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Open diagram fullscreen",
+     "ru": "Открыть диаграмму на весь экран"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Open diagram fullscreen",
+     "ru": "Открыть диаграмму на весь экран"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.mermaid.diagram_title",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Mermaid diagram",
+     "ru": "Диаграмма Mermaid"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Mermaid diagram",
+     "ru": "Диаграмма Mermaid"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Mermaid diagram",
+     "ru": "Диаграмма Mermaid"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Mermaid diagram",
+     "ru": "Диаграмма Mermaid"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Mermaid diagram",
+     "ru": "Диаграмма Mermaid"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.mermaid.close_fullscreen",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Close fullscreen",
+     "ru": "Закрыть полноэкранный режим"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Close fullscreen",
+     "ru": "Закрыть полноэкранный режим"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Close fullscreen",
+     "ru": "Закрыть полноэкранный режим"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Close fullscreen",
+     "ru": "Закрыть полноэкранный режим"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Close fullscreen",
+     "ru": "Закрыть полноэкранный режим"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.aside.question_label",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Question:",
+     "ru": "Вопрос:"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Question:",
+     "ru": "Вопрос:"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Question:",
+     "ru": "Вопрос:"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Question:",
+     "ru": "Вопрос:"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Question:",
+     "ru": "Вопрос:"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.aside.you_label",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "You:",
+     "ru": "Вы:"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "You:",
+     "ru": "Вы:"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "You:",
+     "ru": "Вы:"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "You:",
+     "ru": "Вы:"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "You:",
+     "ru": "Вы:"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.aside.thinking",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "thinking…",
+     "ru": "думает…"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "thinking…",
+     "ru": "думает…"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "thinking…",
+     "ru": "думает…"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "thinking…",
+     "ru": "думает…"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "thinking…",
+     "ru": "думает…"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.aside.title",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Aside",
+     "ru": "Отдельный вопрос"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Aside",
+     "ru": "Отдельный вопрос"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Aside",
+     "ru": "Отдельный вопрос"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Aside",
+     "ru": "Отдельный вопрос"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Aside",
+     "ru": "Отдельный вопрос"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.aside.off_record",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "off the record — nothing here joins the conversation",
+     "ru": "не для протокола — ничего отсюда не попадёт в разговор"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "off the record — nothing here joins the conversation",
+     "ru": "не для протокола — ничего отсюда не попадёт в разговор"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "off the record — nothing here joins the conversation",
+     "ru": "не для протокола — ничего отсюда не попадёт в разговор"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "off the record — nothing here joins the conversation",
+     "ru": "не для протокола — ничего отсюда не попадёт в разговор"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "off the record — nothing here joins the conversation",
+     "ru": "не для протокола — ничего отсюда не попадёт в разговор"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.aside.close_label",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Close the aside",
+     "ru": "Закрыть отдельный вопрос"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Close the aside",
+     "ru": "Закрыть отдельный вопрос"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Close the aside",
+     "ru": "Закрыть отдельный вопрос"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Close the aside",
+     "ru": "Закрыть отдельный вопрос"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Close the aside",
+     "ru": "Закрыть отдельный вопрос"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.aside.exchange_label",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "The aside exchange",
+     "ru": "Обмен репликами в отдельном вопросе"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "The aside exchange",
+     "ru": "Обмен репликами в отдельном вопросе"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "The aside exchange",
+     "ru": "Обмен репликами в отдельном вопросе"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "The aside exchange",
+     "ru": "Обмен репликами в отдельном вопросе"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "The aside exchange",
+     "ru": "Обмен репликами в отдельном вопросе"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.aside.empty",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Type a question in the composer below — the answer lands here.",
+     "ru": "Введите вопрос в поле ниже — ответ появится здесь."
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Type a question in the composer below — the answer lands here.",
+     "ru": "Введите вопрос в поле ниже — ответ появится здесь."
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Type a question in the composer below — the answer lands here.",
+     "ru": "Введите вопрос в поле ниже — ответ появится здесь."
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Type a question in the composer below — the answer lands here.",
+     "ru": "Введите вопрос в поле ниже — ответ появится здесь."
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Type a question in the composer below — the answer lands here.",
+     "ru": "Введите вопрос в поле ниже — ответ появится здесь."
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.aside.add_to_conversation",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Add to conversation",
+     "ru": "Добавить в разговор"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Add to conversation",
+     "ru": "Добавить в разговор"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Add to conversation",
+     "ru": "Добавить в разговор"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Add to conversation",
+     "ru": "Добавить в разговор"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Add to conversation",
+     "ru": "Добавить в разговор"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.error_block.heading",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Error",
+     "ru": "Ошибка"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Error",
+     "ru": "Ошибка"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Error",
+     "ru": "Ошибка"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Error",
+     "ru": "Ошибка"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Error",
+     "ru": "Ошибка"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.error_block.link.settings",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "settings page",
+     "ru": "страницу настроек"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "settings page",
+     "ru": "страницу настроек"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "settings page",
+     "ru": "страницу настроек"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "settings page",
+     "ru": "страницу настроек"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "settings page",
+     "ru": "страницу настроек"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.error_block.link.providers",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Providers section",
+     "ru": "«Провайдеры»"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Providers section",
+     "ru": "«Провайдеры»"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Providers section",
+     "ru": "«Провайдеры»"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Providers section",
+     "ru": "«Провайдеры»"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Providers section",
+     "ru": "«Провайдеры»"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.error_block.provider.before",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "You haven't selected an AI provider yet. Go to the",
+     "ru": "Вы ещё не выбрали провайдера ИИ. Перейдите на"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "You haven't selected an AI provider yet. Go to the",
+     "ru": "Вы ещё не выбрали провайдера ИИ. Перейдите на"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "You haven't selected an AI provider yet. Go to the",
+     "ru": "Вы ещё не выбрали провайдера ИИ. Перейдите на"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "You haven't selected an AI provider yet. Go to the",
+     "ru": "Вы ещё не выбрали провайдера ИИ. Перейдите на"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "You haven't selected an AI provider yet. Go to the",
+     "ru": "Вы ещё не выбрали провайдера ИИ. Перейдите на"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.error_block.provider.after",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "to configure it for all your agents. If you don't have an AI provider, you can sign in to Radient to get access for free to start.",
+     "ru": "и настройте его для всех агентов. Если провайдера ИИ нет, войдите в Radient — на старте доступ бесплатный."
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "to configure it for all your agents. If you don't have an AI provider, you can sign in to Radient to get access for free to start.",
+     "ru": "и настройте его для всех агентов. Если провайдера ИИ нет, войдите в Radient — на старте доступ бесплатный."
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "to configure it for all your agents. If you don't have an AI provider, you can sign in to Radient to get access for free to start.",
+     "ru": "и настройте его для всех агентов. Если провайдера ИИ нет, войдите в Radient — на старте доступ бесплатный."
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "to configure it for all your agents. If you don't have an AI provider, you can sign in to Radient to get access for free to start.",
+     "ru": "и настройте его для всех агентов. Если провайдера ИИ нет, войдите в Radient — на старте доступ бесплатный."
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "to configure it for all your agents. If you don't have an AI provider, you can sign in to Radient to get access for free to start.",
+     "ru": "и настройте его для всех агентов. Если провайдера ИИ нет, войдите в Radient — на старте доступ бесплатный."
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.error_block.model.before",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "You haven't selected an AI model yet. Go to the",
+     "ru": "Вы ещё не выбрали модель ИИ. Перейдите на"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "You haven't selected an AI model yet. Go to the",
+     "ru": "Вы ещё не выбрали модель ИИ. Перейдите на"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "You haven't selected an AI model yet. Go to the",
+     "ru": "Вы ещё не выбрали модель ИИ. Перейдите на"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "You haven't selected an AI model yet. Go to the",
+     "ru": "Вы ещё не выбрали модель ИИ. Перейдите на"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "You haven't selected an AI model yet. Go to the",
+     "ru": "Вы ещё не выбрали модель ИИ. Перейдите на"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.error_block.model.after",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "to select a model for all your agents. If you don't have an AI provider, you can sign in to Radient to get access for free to start.",
+     "ru": "и выберите модель для всех агентов. Если провайдера ИИ нет, войдите в Radient — на старте доступ бесплатный."
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "to select a model for all your agents. If you don't have an AI provider, you can sign in to Radient to get access for free to start.",
+     "ru": "и выберите модель для всех агентов. Если провайдера ИИ нет, войдите в Radient — на старте доступ бесплатный."
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "to select a model for all your agents. If you don't have an AI provider, you can sign in to Radient to get access for free to start.",
+     "ru": "и выберите модель для всех агентов. Если провайдера ИИ нет, войдите в Radient — на старте доступ бесплатный."
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "to select a model for all your agents. If you don't have an AI provider, you can sign in to Radient to get access for free to start.",
+     "ru": "и выберите модель для всех агентов. Если провайдера ИИ нет, войдите в Radient — на старте доступ бесплатный."
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "to select a model for all your agents. If you don't have an AI provider, you can sign in to Radient to get access for free to start.",
+     "ru": "и выберите модель для всех агентов. Если провайдера ИИ нет, войдите в Radient — на старте доступ бесплатный."
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.error_block.rate_limit.before",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "You've hit the rate limit for your AI provider. Please try again later or get Radient Pass in the",
+     "ru": "Вы исчерпали лимит запросов у провайдера ИИ. Повторите попытку позже или перейдите на"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "You've hit the rate limit for your AI provider. Please try again later or get Radient Pass in the",
+     "ru": "Вы исчерпали лимит запросов у провайдера ИИ. Повторите попытку позже или перейдите на"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "You've hit the rate limit for your AI provider. Please try again later or get Radient Pass in the",
+     "ru": "Вы исчерпали лимит запросов у провайдера ИИ. Повторите попытку позже или перейдите на"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "You've hit the rate limit for your AI provider. Please try again later or get Radient Pass in the",
+     "ru": "Вы исчерпали лимит запросов у провайдера ИИ. Повторите попытку позже или перейдите на"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "You've hit the rate limit for your AI provider. Please try again later or get Radient Pass in the",
+     "ru": "Вы исчерпали лимит запросов у провайдера ИИ. Повторите попытку позже или перейдите на"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.error_block.rate_limit.after",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "to access AI models with no rate limits at low prices.",
+     "ru": "и оформите Radient Pass — доступ к моделям ИИ без лимитов и по низким ценам."
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "to access AI models with no rate limits at low prices.",
+     "ru": "и оформите Radient Pass — доступ к моделям ИИ без лимитов и по низким ценам."
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "to access AI models with no rate limits at low prices.",
+     "ru": "и оформите Radient Pass — доступ к моделям ИИ без лимитов и по низким ценам."
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "to access AI models with no rate limits at low prices.",
+     "ru": "и оформите Radient Pass — доступ к моделям ИИ без лимитов и по низким ценам."
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "to access AI models with no rate limits at low prices.",
+     "ru": "и оформите Radient Pass — доступ к моделям ИИ без лимитов и по низким ценам."
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.error_block.rate_limit.all_after",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "to access all AI models with no rate limits at low prices.",
+     "ru": "и оформите Radient Pass — доступ ко всем моделям ИИ без лимитов и по низким ценам."
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "to access all AI models with no rate limits at low prices.",
+     "ru": "и оформите Radient Pass — доступ ко всем моделям ИИ без лимитов и по низким ценам."
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "to access all AI models with no rate limits at low prices.",
+     "ru": "и оформите Radient Pass — доступ ко всем моделям ИИ без лимитов и по низким ценам."
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "to access all AI models with no rate limits at low prices.",
+     "ru": "и оформите Radient Pass — доступ ко всем моделям ИИ без лимитов и по низким ценам."
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "to access all AI models with no rate limits at low prices.",
+     "ru": "и оформите Radient Pass — доступ ко всем моделям ИИ без лимитов и по низким ценам."
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.error_block.invalid_key.before",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Your API key is invalid. Update it in the",
+     "ru": "Ваш ключ API недействителен. Обновите его в разделе"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Your API key is invalid. Update it in the",
+     "ru": "Ваш ключ API недействителен. Обновите его в разделе"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Your API key is invalid. Update it in the",
+     "ru": "Ваш ключ API недействителен. Обновите его в разделе"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Your API key is invalid. Update it in the",
+     "ru": "Ваш ключ API недействителен. Обновите его в разделе"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Your API key is invalid. Update it in the",
+     "ru": "Ваш ключ API недействителен. Обновите его в разделе"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.error_block.invalid_key.after",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": ", or sign in to the provider again.",
+     "ru": ", или снова войдите в учётную запись провайдера."
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": ", or sign in to the provider again.",
+     "ru": ", или снова войдите в учётную запись провайдера."
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": ", or sign in to the provider again.",
+     "ru": ", или снова войдите в учётную запись провайдера."
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": ", or sign in to the provider again.",
+     "ru": ", или снова войдите в учётную запись провайдера."
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": ", or sign in to the provider again.",
+     "ru": ", или снова войдите в учётную запись провайдера."
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.error_block.unavailable.before",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "The model you're trying to use is not available. Go to the",
+     "ru": "Модель, которую вы пытаетесь использовать, недоступна. Перейдите на"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "The model you're trying to use is not available. Go to the",
+     "ru": "Модель, которую вы пытаетесь использовать, недоступна. Перейдите на"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "The model you're trying to use is not available. Go to the",
+     "ru": "Модель, которую вы пытаетесь использовать, недоступна. Перейдите на"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "The model you're trying to use is not available. Go to the",
+     "ru": "Модель, которую вы пытаетесь использовать, недоступна. Перейдите на"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "The model you're trying to use is not available. Go to the",
+     "ru": "Модель, которую вы пытаетесь использовать, недоступна. Перейдите на"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.error_block.unavailable.after",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "to select a different model, or use Radient to get access to hundreds of models with no rate limits",
+     "ru": "и выберите другую модель — или используйте Radient, чтобы получить доступ к сотням моделей без лимитов."
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "to select a different model, or use Radient to get access to hundreds of models with no rate limits",
+     "ru": "и выберите другую модель — или используйте Radient, чтобы получить доступ к сотням моделей без лимитов."
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "to select a different model, or use Radient to get access to hundreds of models with no rate limits",
+     "ru": "и выберите другую модель — или используйте Radient, чтобы получить доступ к сотням моделей без лимитов."
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "to select a different model, or use Radient to get access to hundreds of models with no rate limits",
+     "ru": "и выберите другую модель — или используйте Radient, чтобы получить доступ к сотням моделей без лимитов."
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "to select a different model, or use Radient to get access to hundreds of models with no rate limits",
+     "ru": "и выберите другую модель — или используйте Radient, чтобы получить доступ к сотням моделей без лимитов."
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.error_block.schema.before",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "The model tried to perform an action but was unable to express its intent in the required schema. Typically this happens because the model can't follow the complex instructions required for agentic AI.",
+     "ru": "Модель попыталась выполнить действие, но не смогла описать своё намерение в требуемой схеме. Обычно так бывает, когда модель не справляется со сложными инструкциями, которые нужны агентному ИИ."
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "The model tried to perform an action but was unable to express its intent in the required schema. Typically this happens because the model can't follow the complex instructions required for agentic AI.",
+     "ru": "Модель попыталась выполнить действие, но не смогла описать своё намерение в требуемой схеме. Обычно так бывает, когда модель не справляется со сложными инструкциями, которые нужны агентному ИИ."
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "The model tried to perform an action but was unable to express its intent in the required schema. Typically this happens because the model can't follow the complex instructions required for agentic AI.",
+     "ru": "Модель попыталась выполнить действие, но не смогла описать своё намерение в требуемой схеме. Обычно так бывает, когда модель не справляется со сложными инструкциями, которые нужны агентному ИИ."
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "The model tried to perform an action but was unable to express its intent in the required schema. Typically this happens because the model can't follow the complex instructions required for agentic AI.",
+     "ru": "Модель попыталась выполнить действие, но не смогла описать своё намерение в требуемой схеме. Обычно так бывает, когда модель не справляется со сложными инструкциями, которые нужны агентному ИИ."
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "The model tried to perform an action but was unable to express its intent in the required schema. Typically this happens because the model can't follow the complex instructions required for agentic AI.",
+     "ru": "Модель попыталась выполнить действие, но не смогла описать своё намерение в требуемой схеме. Обычно так бывает, когда модель не справляется со сложными инструкциями, которые нужны агентному ИИ."
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.error_block.schema.after_before",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Change your model in the",
+     "ru": "Смените модель: перейдите на"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Change your model in the",
+     "ru": "Смените модель: перейдите на"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Change your model in the",
+     "ru": "Смените модель: перейдите на"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Change your model in the",
+     "ru": "Смените модель: перейдите на"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Change your model in the",
+     "ru": "Смените модель: перейдите на"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.error_block.schema.after",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "to fix this. We recommend using Radient Automatic to have the best combo of cheap and smart picked for you based on your requests (typically cheaper than bringing your own key), or use one of the recommended models with a star icon.",
+     "ru": "— это исправит ошибку. Рекомендуем Radient Automatic: этот режим сам подберёт под ваши запросы оптимальное сочетание цены и качества (обычно дешевле, чем со своим ключом), либо выберите одну из рекомендованных моделей со значком звезды."
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "to fix this. We recommend using Radient Automatic to have the best combo of cheap and smart picked for you based on your requests (typically cheaper than bringing your own key), or use one of the recommended models with a star icon.",
+     "ru": "— это исправит ошибку. Рекомендуем Radient Automatic: этот режим сам подберёт под ваши запросы оптимальное сочетание цены и качества (обычно дешевле, чем со своим ключом), либо выберите одну из рекомендованных моделей со значком звезды."
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "to fix this. We recommend using Radient Automatic to have the best combo of cheap and smart picked for you based on your requests (typically cheaper than bringing your own key), or use one of the recommended models with a star icon.",
+     "ru": "— это исправит ошибку. Рекомендуем Radient Automatic: этот режим сам подберёт под ваши запросы оптимальное сочетание цены и качества (обычно дешевле, чем со своим ключом), либо выберите одну из рекомендованных моделей со значком звезды."
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "to fix this. We recommend using Radient Automatic to have the best combo of cheap and smart picked for you based on your requests (typically cheaper than bringing your own key), or use one of the recommended models with a star icon.",
+     "ru": "— это исправит ошибку. Рекомендуем Radient Automatic: этот режим сам подберёт под ваши запросы оптимальное сочетание цены и качества (обычно дешевле, чем со своим ключом), либо выберите одну из рекомендованных моделей со значком звезды."
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "to fix this. We recommend using Radient Automatic to have the best combo of cheap and smart picked for you based on your requests (typically cheaper than bringing your own key), or use one of the recommended models with a star icon.",
+     "ru": "— это исправит ошибку. Рекомендуем Radient Automatic: этот режим сам подберёт под ваши запросы оптимальное сочетание цены и качества (обычно дешевле, чем со своим ключом), либо выберите одну из рекомендованных моделей со значком звезды."
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.approval.reply_required",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Reply yes or no to answer the approval request.",
+     "ru": "Чтобы ответить на запрос одобрения, напишите yes или no."
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Reply yes or no to answer the approval request.",
+     "ru": "Чтобы ответить на запрос одобрения, напишите yes или no."
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Reply yes or no to answer the approval request.",
+     "ru": "Чтобы ответить на запрос одобрения, напишите yes или no."
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Reply yes or no to answer the approval request.",
+     "ru": "Чтобы ответить на запрос одобрения, напишите yes или no."
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Reply yes or no to answer the approval request.",
+     "ru": "Чтобы ответить на запрос одобрения, напишите yes или no."
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.question_dock.hint.approval",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Choose Approve or Deny above, type yes, no, 1, or 2 and send, or press Escape in the message box to stop the turn.",
+     "ru": "Выберите «Approve» или «Deny» выше, введите yes, no, 1 или 2 и отправьте — или нажмите Esc в поле сообщения, чтобы остановить ход."
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Choose Approve or Deny above, type yes, no, 1, or 2 and send, or press Escape in the message box to stop the turn.",
+     "ru": "Выберите «Approve» или «Deny» выше, введите yes, no, 1 или 2 и отправьте — или нажмите Esc в поле сообщения, чтобы остановить ход."
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Choose Approve or Deny above, type yes, no, 1, or 2 and send, or press Escape in the message box to stop the turn.",
+     "ru": "Выберите «Approve» или «Deny» выше, введите yes, no, 1 или 2 и отправьте — или нажмите Esc в поле сообщения, чтобы остановить ход."
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Choose Approve or Deny above, type yes, no, 1, or 2 and send, or press Escape in the message box to stop the turn.",
+     "ru": "Выберите «Approve» или «Deny» выше, введите yes, no, 1 или 2 и отправьте — или нажмите Esc в поле сообщения, чтобы остановить ход."
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Choose Approve or Deny above, type yes, no, 1, or 2 and send, or press Escape in the message box to stop the turn.",
+     "ru": "Выберите «Approve» или «Deny» выше, введите yes, no, 1 или 2 и отправьте — или нажмите Esc в поле сообщения, чтобы остановить ход."
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.question_dock.hint.approval_held",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Answer from the composer instead: type yes, no, 1, or 2 and send, or press Escape in the message box to stop the turn.",
+     "ru": "Ответьте через поле ввода: введите yes, no, 1 или 2 и отправьте — или нажмите Esc в поле сообщения, чтобы остановить ход."
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Answer from the composer instead: type yes, no, 1, or 2 and send, or press Escape in the message box to stop the turn.",
+     "ru": "Ответьте через поле ввода: введите yes, no, 1 или 2 и отправьте — или нажмите Esc в поле сообщения, чтобы остановить ход."
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Answer from the composer instead: type yes, no, 1, or 2 and send, or press Escape in the message box to stop the turn.",
+     "ru": "Ответьте через поле ввода: введите yes, no, 1 или 2 и отправьте — или нажмите Esc в поле сообщения, чтобы остановить ход."
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Answer from the composer instead: type yes, no, 1, or 2 and send, or press Escape in the message box to stop the turn.",
+     "ru": "Ответьте через поле ввода: введите yes, no, 1 или 2 и отправьте — или нажмите Esc в поле сообщения, чтобы остановить ход."
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Answer from the composer instead: type yes, no, 1, or 2 and send, or press Escape in the message box to stop the turn.",
+     "ru": "Ответьте через поле ввода: введите yes, no, 1 или 2 и отправьте — или нажмите Esc в поле сообщения, чтобы остановить ход."
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.question_dock.hint.prefix",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Question Тест of Тест. ",
+     "ru": "Вопрос Тест из Тест. "
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Question Тест of Тест. ",
+     "ru": "Вопрос Тест из Тест. "
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Question Тест of Тест. ",
+     "ru": "Вопрос Тест из Тест. "
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Question Тест of Тест. ",
+     "ru": "Вопрос Тест из Тест. "
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Question Тест of Тест. ",
+     "ru": "Вопрос Тест из Тест. "
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.question_dock.hint.secret",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "ТестType or paste the secret above · Enter sends · Esc hides",
+     "ru": "ТестВведите или вставьте секрет выше · Enter отправляет · Esc скрывает"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "ТестType or paste the secret above · Enter sends · Esc hides",
+     "ru": "ТестВведите или вставьте секрет выше · Enter отправляет · Esc скрывает"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "ТестType or paste the secret above · Enter sends · Esc hides",
+     "ru": "ТестВведите или вставьте секрет выше · Enter отправляет · Esc скрывает"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "ТестType or paste the secret above · Enter sends · Esc hides",
+     "ru": "ТестВведите или вставьте секрет выше · Enter отправляет · Esc скрывает"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "ТестType or paste the secret above · Enter sends · Esc hides",
+     "ru": "ТестВведите или вставьте секрет выше · Enter отправляет · Esc скрывает"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.question_dock.hint.secret_held",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "ТестHeld while this answer's fate is unknown — it may have landed, so nothing can send again · Esc in the card hides it",
+     "ru": "ТестОтправка заблокирована, пока неизвестно, дошёл ли ответ: возможно, он уже доставлен, поэтому повторно отправить нельзя · Esc в карточке скрывает"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "ТестHeld while this answer's fate is unknown — it may have landed, so nothing can send again · Esc in the card hides it",
+     "ru": "ТестОтправка заблокирована, пока неизвестно, дошёл ли ответ: возможно, он уже доставлен, поэтому повторно отправить нельзя · Esc в карточке скрывает"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "ТестHeld while this answer's fate is unknown — it may have landed, so nothing can send again · Esc in the card hides it",
+     "ru": "ТестОтправка заблокирована, пока неизвестно, дошёл ли ответ: возможно, он уже доставлен, поэтому повторно отправить нельзя · Esc в карточке скрывает"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "ТестHeld while this answer's fate is unknown — it may have landed, so nothing can send again · Esc in the card hides it",
+     "ru": "ТестОтправка заблокирована, пока неизвестно, дошёл ли ответ: возможно, он уже доставлен, поэтому повторно отправить нельзя · Esc в карточке скрывает"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "ТестHeld while this answer's fate is unknown — it may have landed, so nothing can send again · Esc in the card hides it",
+     "ru": "ТестОтправка заблокирована, пока неизвестно, дошёл ли ответ: возможно, он уже доставлен, поэтому повторно отправить нельзя · Esc в карточке скрывает"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.question_dock.hint.type",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "ТестType your answer below.",
+     "ru": "ТестВведите ответ ниже."
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "ТестType your answer below.",
+     "ru": "ТестВведите ответ ниже."
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "ТестType your answer below.",
+     "ru": "ТестВведите ответ ниже."
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "ТестType your answer below.",
+     "ru": "ТестВведите ответ ниже."
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "ТестType your answer below.",
+     "ru": "ТестВведите ответ ниже."
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.question_dock.hint.options",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "ТестUp/Down choose · Enter or Тест answers · Esc hides · or type your own answer below",
+     "ru": "ТестВверх/вниз — выбор · Enter или Тест — ответ · Esc скрывает · или введите свой ответ ниже"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "ТестUp/Down choose · Enter or Тест answers · Esc hides · or type your own answer below",
+     "ru": "ТестВверх/вниз — выбор · Enter или Тест — ответ · Esc скрывает · или введите свой ответ ниже"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "ТестUp/Down choose · Enter or Тест answers · Esc hides · or type your own answer below",
+     "ru": "ТестВверх/вниз — выбор · Enter или Тест — ответ · Esc скрывает · или введите свой ответ ниже"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "ТестUp/Down choose · Enter or Тест answers · Esc hides · or type your own answer below",
+     "ru": "ТестВверх/вниз — выбор · Enter или Тест — ответ · Esc скрывает · или введите свой ответ ниже"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "ТестUp/Down choose · Enter or Тест answers · Esc hides · or type your own answer below",
+     "ru": "ТестВверх/вниз — выбор · Enter или Тест — ответ · Esc скрывает · или введите свой ответ ниже"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.session_status.context_heading",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Context",
+     "ru": "Контекст"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Context",
+     "ru": "Контекст"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Context",
+     "ru": "Контекст"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Context",
+     "ru": "Контекст"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Context",
+     "ru": "Контекст"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.session_status.context_nothing_measured_tooltip",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Context: nothing measured yet. The window fills as the conversation runs.",
+     "ru": "Контекст: пока ничего не измерено. Контекстное окно заполняется по ходу разговора."
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Context: nothing measured yet. The window fills as the conversation runs.",
+     "ru": "Контекст: пока ничего не измерено. Контекстное окно заполняется по ходу разговора."
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Context: nothing measured yet. The window fills as the conversation runs.",
+     "ru": "Контекст: пока ничего не измерено. Контекстное окно заполняется по ходу разговора."
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Context: nothing measured yet. The window fills as the conversation runs.",
+     "ru": "Контекст: пока ничего не измерено. Контекстное окно заполняется по ходу разговора."
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Context: nothing measured yet. The window fills as the conversation runs.",
+     "ru": "Контекст: пока ничего не измерено. Контекстное окно заполняется по ходу разговора."
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.session_status.conversation_starting",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Set once the conversation starts.",
+     "ru": "Задаётся после начала разговора."
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Set once the conversation starts.",
+     "ru": "Задаётся после начала разговора."
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Set once the conversation starts.",
+     "ru": "Задаётся после начала разговора."
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Set once the conversation starts.",
+     "ru": "Задаётся после начала разговора."
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Set once the conversation starts.",
+     "ru": "Задаётся после начала разговора."
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.session_status.model_none_resolved_tooltip",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Model: none resolved yet. Choose the model this conversation will run on.",
+     "ru": "Модель: ещё не определена. Выберите модель, на которой будет работать этот разговор."
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Model: none resolved yet. Choose the model this conversation will run on.",
+     "ru": "Модель: ещё не определена. Выберите модель, на которой будет работать этот разговор."
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Model: none resolved yet. Choose the model this conversation will run on.",
+     "ru": "Модель: ещё не определена. Выберите модель, на которой будет работать этот разговор."
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Model: none resolved yet. Choose the model this conversation will run on.",
+     "ru": "Модель: ещё не определена. Выберите модель, на которой будет работать этот разговор."
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Model: none resolved yet. Choose the model this conversation will run on.",
+     "ru": "Модель: ещё не определена. Выберите модель, на которой будет работать этот разговор."
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.session_status.not_signed_in",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Not signed in to Тест",
+     "ru": "Вход в Тест не выполнен"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Not signed in to Тест",
+     "ru": "Вход в Тест не выполнен"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Not signed in to Тест",
+     "ru": "Вход в Тест не выполнен"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Not signed in to Тест",
+     "ru": "Вход в Тест не выполнен"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Not signed in to Тест",
+     "ru": "Вход в Тест не выполнен"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.session_status.not_signed_in_description",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "This session runs Тест without a working sign-in, so it cannot answer until you connect it.",
+     "ru": "Эта сессия работает с Тест без входа, поэтому не сможет ответить, пока вы не войдёте."
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "This session runs Тест without a working sign-in, so it cannot answer until you connect it.",
+     "ru": "Эта сессия работает с Тест без входа, поэтому не сможет ответить, пока вы не войдёте."
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "This session runs Тест without a working sign-in, so it cannot answer until you connect it.",
+     "ru": "Эта сессия работает с Тест без входа, поэтому не сможет ответить, пока вы не войдёте."
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "This session runs Тест without a working sign-in, so it cannot answer until you connect it.",
+     "ru": "Эта сессия работает с Тест без входа, поэтому не сможет ответить, пока вы не войдёте."
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "This session runs Тест without a working sign-in, so it cannot answer until you connect it.",
+     "ru": "Эта сессия работает с Тест без входа, поэтому не сможет ответить, пока вы не войдёте."
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.session_status.nothing_measured_yet",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Nothing measured yet. The window fills as the conversation runs.",
+     "ru": "Пока ничего не измерено. Контекстное окно заполняется по ходу разговора."
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Nothing measured yet. The window fills as the conversation runs.",
+     "ru": "Пока ничего не измерено. Контекстное окно заполняется по ходу разговора."
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Nothing measured yet. The window fills as the conversation runs.",
+     "ru": "Пока ничего не измерено. Контекстное окно заполняется по ходу разговора."
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Nothing measured yet. The window fills as the conversation runs.",
+     "ru": "Пока ничего не измерено. Контекстное окно заполняется по ходу разговора."
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Nothing measured yet. The window fills as the conversation runs.",
+     "ru": "Пока ничего не измерено. Контекстное окно заполняется по ходу разговора."
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.session_status.temporarily_unavailable",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Тест is temporarily unavailable",
+     "ru": "Тест временно недоступен"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Тест is temporarily unavailable",
+     "ru": "Тест временно недоступен"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Тест is temporarily unavailable",
+     "ru": "Тест временно недоступен"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Тест is temporarily unavailable",
+     "ru": "Тест временно недоступен"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Тест is temporarily unavailable",
+     "ru": "Тест временно недоступен"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.session_status.temporarily_unavailable_description",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Your saved sign-in is still present. Try again later or choose another model.",
+     "ru": "Ваш вход по-прежнему сохранён. Повторите попытку позже или выберите другую модель."
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Your saved sign-in is still present. Try again later or choose another model.",
+     "ru": "Ваш вход по-прежнему сохранён. Повторите попытку позже или выберите другую модель."
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Your saved sign-in is still present. Try again later or choose another model.",
+     "ru": "Ваш вход по-прежнему сохранён. Повторите попытку позже или выберите другую модель."
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Your saved sign-in is still present. Try again later or choose another model.",
+     "ru": "Ваш вход по-прежнему сохранён. Повторите попытку позже или выберите другую модель."
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Your saved sign-in is still present. Try again later or choose another model.",
+     "ru": "Ваш вход по-прежнему сохранён. Повторите попытку позже или выберите другую модель."
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.checkpoint.generating_name",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Generating name…",
+     "ru": "Создание названия…"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Generating name…",
+     "ru": "Создание названия…"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Generating name…",
+     "ru": "Создание названия…"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Generating name…",
+     "ru": "Создание названия…"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Generating name…",
+     "ru": "Создание названия…"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.checkpoint.jump_agent",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Jump to turn 0 of 0, Тест",
+     "ru": "Перейти к ходу 0 из 0, Тест"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Jump to turn 1 of 1, Тест",
+     "ru": "Перейти к ходу 1 из 1, Тест"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Jump to turn 2 of 2, Тест",
+     "ru": "Перейти к ходу 2 из 2, Тест"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Jump to turn 5 of 5, Тест",
+     "ru": "Перейти к ходу 5 из 5, Тест"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Jump to turn 1.5 of 1.5, Тест",
+     "ru": "Перейти к ходу 1,5 из 1,5, Тест"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.checkpoint.jump_agent_unnamed",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Jump to turn 0 of 0",
+     "ru": "Перейти к ходу 0 из 0"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Jump to turn 1 of 1",
+     "ru": "Перейти к ходу 1 из 1"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Jump to turn 2 of 2",
+     "ru": "Перейти к ходу 2 из 2"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Jump to turn 5 of 5",
+     "ru": "Перейти к ходу 5 из 5"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Jump to turn 1.5 of 1.5",
+     "ru": "Перейти к ходу 1,5 из 1,5"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.checkpoint.jump_user",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Jump to your message in turn 0 of 0, Тест",
+     "ru": "Перейти к вашему сообщению — ход 0 из 0, Тест"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Jump to your message in turn 1 of 1, Тест",
+     "ru": "Перейти к вашему сообщению — ход 1 из 1, Тест"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Jump to your message in turn 2 of 2, Тест",
+     "ru": "Перейти к вашему сообщению — ход 2 из 2, Тест"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Jump to your message in turn 5 of 5, Тест",
+     "ru": "Перейти к вашему сообщению — ход 5 из 5, Тест"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Jump to your message in turn 1.5 of 1.5, Тест",
+     "ru": "Перейти к вашему сообщению — ход 1,5 из 1,5, Тест"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.checkpoint.jump_user_no_clock",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Jump to your message in turn 0 of 0",
+     "ru": "Перейти к вашему сообщению — ход 0 из 0"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Jump to your message in turn 1 of 1",
+     "ru": "Перейти к вашему сообщению — ход 1 из 1"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Jump to your message in turn 2 of 2",
+     "ru": "Перейти к вашему сообщению — ход 2 из 2"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Jump to your message in turn 5 of 5",
+     "ru": "Перейти к вашему сообщению — ход 5 из 5"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Jump to your message in turn 1.5 of 1.5",
+     "ru": "Перейти к вашему сообщению — ход 1,5 из 1,5"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.checkpoint.turn",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Turn 0 of 0",
+     "ru": "Ход 0 из 0"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Turn 1 of 1",
+     "ru": "Ход 1 из 1"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Turn 2 of 2",
+     "ru": "Ход 2 из 2"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Turn 5 of 5",
+     "ru": "Ход 5 из 5"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Turn 1.5 of 1.5",
+     "ru": "Ход 1,5 из 1,5"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.header_identity.aria_agent_assign",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Agent: Тест. Assign an agent",
+     "ru": "Агент: Тест. Назначить агента"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Agent: Тест. Assign an agent",
+     "ru": "Агент: Тест. Назначить агента"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Agent: Тест. Assign an agent",
+     "ru": "Агент: Тест. Назначить агента"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Agent: Тест. Assign an agent",
+     "ru": "Агент: Тест. Назначить агента"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Agent: Тест. Assign an agent",
+     "ru": "Агент: Тест. Назначить агента"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.header_identity.aria_agent_closed",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Agent: Тест. Тест",
+     "ru": "Агент: Тест. Тест"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Agent: Тест. Тест",
+     "ru": "Агент: Тест. Тест"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Agent: Тест. Тест",
+     "ru": "Агент: Тест. Тест"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Agent: Тест. Тест",
+     "ru": "Агент: Тест. Тест"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Agent: Тест. Тест",
+     "ru": "Агент: Тест. Тест"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.header_identity.aria_agent_switch",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Agent: Тест. Switch agent",
+     "ru": "Агент: Тест. Сменить агента"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Agent: Тест. Switch agent",
+     "ru": "Агент: Тест. Сменить агента"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Agent: Тест. Switch agent",
+     "ru": "Агент: Тест. Сменить агента"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Agent: Тест. Switch agent",
+     "ru": "Агент: Тест. Сменить агента"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Agent: Тест. Switch agent",
+     "ru": "Агент: Тест. Сменить агента"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.header_identity.aria_team_assign",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Team: Тест. Assign a team",
+     "ru": "Команда: Тест. Назначить команду"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Team: Тест. Assign a team",
+     "ru": "Команда: Тест. Назначить команду"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Team: Тест. Assign a team",
+     "ru": "Команда: Тест. Назначить команду"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Team: Тест. Assign a team",
+     "ru": "Команда: Тест. Назначить команду"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Team: Тест. Assign a team",
+     "ru": "Команда: Тест. Назначить команду"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.header_identity.aria_team_closed",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Team: Тест. Тест",
+     "ru": "Команда: Тест. Тест"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Team: Тест. Тест",
+     "ru": "Команда: Тест. Тест"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Team: Тест. Тест",
+     "ru": "Команда: Тест. Тест"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Team: Тест. Тест",
+     "ru": "Команда: Тест. Тест"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Team: Тест. Тест",
+     "ru": "Команда: Тест. Тест"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.header_identity.aria_team_switch",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Team: Тест. Switch team",
+     "ru": "Команда: Тест. Сменить команду"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Team: Тест. Switch team",
+     "ru": "Команда: Тест. Сменить команду"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Team: Тест. Switch team",
+     "ru": "Команда: Тест. Сменить команду"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Team: Тест. Switch team",
+     "ru": "Команда: Тест. Сменить команду"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Team: Тест. Switch team",
+     "ru": "Команда: Тест. Сменить команду"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.header_identity.assign_agent",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Assign an agent",
+     "ru": "Назначить агента"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Assign an agent",
+     "ru": "Назначить агента"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Assign an agent",
+     "ru": "Назначить агента"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Assign an agent",
+     "ru": "Назначить агента"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Assign an agent",
+     "ru": "Назначить агента"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.header_identity.assign_team",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Assign a team",
+     "ru": "Назначить команду"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Assign a team",
+     "ru": "Назначить команду"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Assign a team",
+     "ru": "Назначить команду"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Assign a team",
+     "ru": "Назначить команду"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Assign a team",
+     "ru": "Назначить команду"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.header_identity.no_agent",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "No agent",
+     "ru": "Без агента"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "No agent",
+     "ru": "Без агента"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "No agent",
+     "ru": "Без агента"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "No agent",
+     "ru": "Без агента"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "No agent",
+     "ru": "Без агента"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.header_identity.no_team",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "No team",
+     "ru": "Без команды"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "No team",
+     "ru": "Без команды"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "No team",
+     "ru": "Без команды"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "No team",
+     "ru": "Без команды"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "No team",
+     "ru": "Без команды"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.region.composer",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Message composer",
+     "ru": "Ввод сообщения"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Message composer",
+     "ru": "Ввод сообщения"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Message composer",
+     "ru": "Ввод сообщения"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Message composer",
+     "ru": "Ввод сообщения"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Message composer",
+     "ru": "Ввод сообщения"
+    }
+   ]
+  },
+  {
+   "key": "ui.chat.region.conversation",
+   "rows": [
+    {
+     "num": 0,
+     "sel": {},
+     "en": "Conversation",
+     "ru": "Разговор"
+    },
+    {
+     "num": 1,
+     "sel": {},
+     "en": "Conversation",
+     "ru": "Разговор"
+    },
+    {
+     "num": 2,
+     "sel": {},
+     "en": "Conversation",
+     "ru": "Разговор"
+    },
+    {
+     "num": 5,
+     "sel": {},
+     "en": "Conversation",
+     "ru": "Разговор"
+    },
+    {
+     "num": 1.5,
+     "sel": {},
+     "en": "Conversation",
+     "ru": "Разговор"
+    }
+   ]
+  }
+ ]
+}

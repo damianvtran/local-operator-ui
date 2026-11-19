@@ -1,0 +1,41 @@
+[
+  {
+    "command": [
+      "node",
+      "scripts/i18n/context-parity.mjs"
+    ],
+    "exit_code": 0,
+    "stdout": "context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json).\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "node",
+      "scripts/i18n/check-duplicates.mjs"
+    ],
+    "exit_code": 0,
+    "stdout": "check-duplicates: ok — 1031 file(s) scanned, 0 duplicate key(s)\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "node",
+      "scripts/i18n/generate.mjs",
+      "--check"
+    ],
+    "exit_code": 0,
+    "stdout": "/Users/damian/local-operator-ui/.worktrees/i18n-listjoin/src/i18n/keys.gen.ts is byte-identical to a fresh generation.\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "node",
+      "--test",
+      "--test-name-pattern=^\\[es\\]",
+      "scripts/i18n/locale-parity.test.mjs"
+    ],
+    "exit_code": 0,
+    "stdout": "✔ [es] ships at least one message (not an empty claim) (8.164542ms)\n✔ [es] defines each key in at most one namespace file (7.427375ms)\n✔ [es] carries EVERY key of each namespace file it ships (15.570666ms)\n✔ [es] names only keys the English source defines (8.096542ms)\n✔ [es] preserves every ICU placeholder from the English source (31.116917ms)\n✔ [es] is not an English stub (no value identical to the source) (9.266416ms)\nℹ tests 6\nℹ suites 0\nℹ pass 6\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 152.078125\n",
+    "stderr": ""
+  }
+]

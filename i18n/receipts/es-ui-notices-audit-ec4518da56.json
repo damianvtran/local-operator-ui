@@ -1,0 +1,209 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "e41d9d37a686",
+  "locale": "es",
+  "namespace": "ui.notices",
+  "branch": "feat/i18n-toasts",
+  "head": "ec4518da560867e897c290ddf8abc3b2496a4b59",
+  "date": "2026-10-25",
+  "audit_kind": "first audit of a newly translated namespace (not a re-bind)",
+  "result": "clean-with-findings",
+  "status": "passed",
+  "keys_read": 93,
+  "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 6,
+    "nit": 2
+  },
+  "sha256": {
+    "en": "f473fa10e95b24f50ce13647ae50a923b34d8efd31249d99d6c437e183722277",
+    "es": "bbb9a203e918bafd123ace9de59f103da017693d1f04a90114b50b6e4be32aae",
+    "en_context": "acce3fd5c70232afcc3ca2dec3c3bc7d63ab0869485900de3e6b6b03bd4e9379"
+  },
+  "inputs": {
+    "source": "src/i18n/catalogues/en/ui.notices.json",
+    "context": "src/i18n/catalogues/en/ui.notices.context.json",
+    "target": "src/i18n/catalogues/es/ui.notices.json",
+    "style_guide": "~/local-operator/i18n/style-guides/es.md",
+    "glossary": "~/local-operator/i18n/glossary.md",
+    "established_terminology_sampled": [
+      "src/i18n/catalogues/es/ui.chat.asks.json",
+      "src/i18n/catalogues/es/ui.hub.json",
+      "src/i18n/catalogues/es/ui.mesh.json",
+      "src/i18n/catalogues/es/ui.agents.settings.json",
+      "src/i18n/catalogues/es/ui.browser.json",
+      "src/i18n/catalogues/es/ui.teamBridge.json",
+      "src/i18n/catalogues/es/ui.agents.starters.json"
+    ]
+  },
+  "translator": {
+    "agent": "not recorded",
+    "note": "i18n/ledger.json carries no es/ui.notices row at this head, so the translator identity was not available to this audit. Independence is established by role: this audit neither authored nor edited any catalogue byte."
+  },
+  "findings": [
+    {
+      "id": "ES-1",
+      "severity": "minor",
+      "key": "ui.notices.links.open_local_blocked",
+      "current": "No se pudo abrir ese enlace. La app no abre enlaces a tu propio equipo ni a tu red local.",
+      "proposed": "No se pudo abrir ese enlace. La app no abre enlaces a tu propia máquina ni a tu red local.",
+      "reason": "The same English noun “machine” is “máquina” everywhere the locale already says it (ui.mesh: “esta máquina”, “de esta máquina”, “la autoridad de operador en esta máquina”), while “equipo” is the glossary's binding rendering for “team” (glossary §2; ui.agents: “no es un agente ni un equipo de esta máquina”), so “tu propio equipo” drifts from the machine term and momentarily reads as a team."
+    },
+    {
+      "id": "ES-2",
+      "severity": "minor",
+      "key": "ui.notices.chat.unread_not_cleared",
+      "current": "{reason} No se borraron las marcas de no leído.",
+      "proposed": "{reason} No se borraron las marcas de mensajes sin leer.",
+      "reason": "“unread” is rendered “sin leer” in this catalogue — ui.teamBridge.unread.count “mensaje sin leer” — and in this very namespace two sibling arms say “sigue sin leer”, so “no leído” is a second spelling of one term inside the same toast family."
+    },
+    {
+      "id": "ES-3",
+      "severity": "minor",
+      "key": "ui.notices.hub.team_pulled",
+      "current": "Equipo “{name}” incorporado.",
+      "proposed": "Se hizo pull del equipo “{name}”.",
+      "reason": "The hub's own es copy renders this operation as pull (ui.hub.subscriptions.pull “Pull ahora”, “el pull manual sigue disponible”, “hacer pull”) and the glossary's wave-2 kept-English set keeps “pull”, so “incorporado” is a third rendering of one act; it also disagrees in voice with its own sibling team_pulled_collision “Se incorporó “{stored}”” two keys later.",
+      "keys": [
+        "ui.notices.hub.team_pulled",
+        "ui.notices.hub.team_pulled_collision",
+        "ui.notices.hub.team_pulled_renamed"
+      ]
+    },
+    {
+      "id": "ES-4",
+      "severity": "minor",
+      "key": "ui.notices.credentials.stored",
+      "current": "Guardado: {keys}. Se inyecta en cada comando de bash como variable de entorno; el agente no puede leer el valor.",
+      "proposed": "Guardado: {keys}. Se inyectan en cada comando de bash como variables de entorno; el agente no puede leer el valor.",
+      "reason": "{keys} is a comma-joined list of environment-variable names (English sidecar: “The keys are environment variable names … joined with commas”), so the singular “Se inyecta … variable” is ungrammatical as soon as two keys are stored in one toast."
+    },
+    {
+      "id": "ES-5",
+      "severity": "minor",
+      "key": "ui.notices.credentials.unstored",
+      "current": "El guardado de {count, plural, one {1 credencial} many {{count} de credenciales} other {{count} credenciales}} no se ha podido completar ({keys}); se ha avisado al agente. Vuelve a pegar el valor después de /credential para reintentarlo.",
+      "proposed": "El guardado de {count, plural, one {1 credencial} many {{count} de credenciales} other {{count} credenciales}} no se pudo guardar ({keys}); se ha avisado al agente. Vuelve a pegar el valor después de /credential para reintentarlo.",
+      "reason": "English is definite — “could not be stored” — while “no se ha podido completar” says the save did not finish and therefore admits a partial write, which is precisely the ambiguity the sibling unconfirmed toast exists to carry (“no se ha confirmado”); “no se pudo guardar” keeps the pair’s distinction."
+    },
+    {
+      "id": "ES-6",
+      "severity": "minor",
+      "keys": [
+        "ui.notices.agents.config_run_changed",
+        "ui.notices.agents.config_run_updated",
+        "ui.notices.chat.drafts_offered_name",
+        "ui.notices.chat.mark_all_read_cleared",
+        "ui.notices.chat.mark_all_read_deferred",
+        "ui.notices.chat.mark_all_read_superseded",
+        "ui.notices.chat.mark_all_read_unknown",
+        "ui.notices.credentials.unconfirmed",
+        "ui.notices.credentials.unstored"
+      ],
+      "key": "ui.notices.agents.config_run_changed",
+      "current": "…terminó: {count} definiciones cambiadas.",
+      "proposed": "…terminó: {count, number} definiciones cambiadas. (or the style guide's own `#` form: many {# de definiciones cambiadas})",
+      "reason": "A bare {count} is not number-formatted by the renderer this catalogue feeds (measured with the repo's own intl-messageformat: {count} at 1000000 prints “1000000 de definiciones”, while {count, number} and # print “1.000.000”), so the many arm — which exists only for the million case — defeats the es grouping rule its own style guide states, and it drifts from the locale's dominant convention (225 {count, number} uses across the rest of the es catalogues, plus main.consent_body_many in this same file)."
+    },
+    {
+      "id": "ES-7",
+      "severity": "nit",
+      "keys": [
+        "ui.notices.chat.mark_all_read_deferred",
+        "ui.notices.chat.mark_all_read_superseded",
+        "ui.notices.chat.mark_all_read_unknown"
+      ],
+      "key": "ui.notices.chat.mark_all_read_deferred",
+      "current": "{count, plural, one {…} other {…}}",
+      "proposed": "Add the locale's many arm, as the other seven plurals in this file do.",
+      "reason": "These three are the only plurals in the namespace without a many arm, so at an exact million the sibling mark_all_read_cleared says “1.000.000 de chats” while these say “1000000 están…”, dropping the “de” the same toast composes a clause earlier; unreachable in practice, hence a nit."
+    },
+    {
+      "id": "ES-8",
+      "severity": "nit",
+      "key": "ui.notices.credentials.unconfirmed",
+      "current": "… {keys}); se ha avisado al agente …",
+      "proposed": "Match the namespace's preterite: “no se pudo confirmar” / “se avisó al agente”.",
+      "reason": "The same English phrase “could not be confirmed” is preterite in agents.save_unconfirmed (“No se pudo confirmar el guardado.”) and present perfect here, and the namespace's other receipts are preterite throughout (“No se pudo…”, “Se guardó…”, “Se creó…”), so the two credentials toasts read in a different tense register from their neighbours.",
+      "keys": [
+        "ui.notices.credentials.unconfirmed",
+        "ui.notices.credentials.unstored"
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "check": "key-set parity both directions",
+      "result": "PASS",
+      "detail": "93 en keys, 93 es keys, no missing, no extra, identical order."
+    },
+    {
+      "check": "ICU argument integrity",
+      "result": "PASS",
+      "detail": "Brace-matched parse of every message: argument names and types identical to English in all 93 keys ({count}, {name}, {title}, {keys}, {goal}, {index, number}, {origin}, {version}, {relaunch}, {reason}, {detail}, {stored}, {published}, {existing}, {key}). No argument added, dropped or renamed."
+    },
+    {
+      "check": "plural categories are the locale's CLDR set",
+      "result": "PASS",
+      "detail": "Ten es plural messages in the file: seven select from {one, many, other} and three (mark_all_read_deferred / superseded / unknown) from {one, other}, which is a legal subset of the locale's categories. No `few`, no `zero`, no English-shaped count === 1 rule. Intl.PluralRules es confirmed by render: 1→one, 2/5/21→other, 1000000→many."
+    },
+    {
+      "check": "plural category parity vs the English arms",
+      "result": "PASS",
+      "detail": "Every English arm has an es counterpart; the extra many arm in seven messages is the locale's own category, not a substitute for an English arm (the checkout does not use English's count === 1 rule)."
+    },
+    {
+      "check": "kept tokens byte-identical",
+      "result": "PASS",
+      "detail": "/credential, /goal, '<text>', bash, Local Operator, backend, hub, chat, prompt, ID, and every {placeholder} survive unchanged; ASCII single quotes inside /goal '<text>' kept as literal command text rather than converted to es typography."
+    },
+    {
+      "check": "no English left untranslated",
+      "result": "PASS",
+      "detail": "Zero es values equal their English source. Every Latin-script token in the target is a documented kept token (glossary §1/§2 and the es style guide's kept-English list) or a product name."
+    },
+    {
+      "check": "register and address form",
+      "result": "PASS",
+      "detail": "tú throughout (puedes, comprueba, vuelve a pegar, aprueba, abre); no usted and no vosotros. Terse participle confirmations match the style guide's “Guardado, not La sesión se ha guardado correctamente” rule, and 'successfully' is correctly dropped in credentials.updated. Action label Undo → Deshacer is the infinitive the guide asks for."
+    },
+    {
+      "check": "typography and spacing",
+      "result": "PASS",
+      "detail": "No space before : ; ? !; em dash used with spaces (agents.proactive, hub.downloaded_renamed, chat.goal_done); angled quotes “ ” throughout instead of ASCII; the only ASCII quotes are inside the /goal command. No double spaces, no NBSP/ZWSP/bidi controls, no three-dot ellipsis. Terminal punctuation matches English key for key."
+    },
+    {
+      "check": "RTL",
+      "result": "N/A",
+      "detail": "es is left-to-right; no bidi controls present."
+    },
+    {
+      "check": "composed sentences (head + tail joined at runtime)",
+      "result": "PASS",
+      "detail": "Rendered with the repo's intl-messageformat, joining the two spans the component joins with a 4px gap for counts 1/2/5/21: '1 borrador descartado.', '2 borradores descartados.', '5 borradores descartados.', '21 borradores descartados.'; archive offer '“Revisión trimestral de retención” archivada.' and 'Conversación archivada.'; unread failure 'El backend no respondió. No se borraron las marcas de no leído.' All read as sentences, and the participle agrees with the head noun in every arm."
+    },
+    {
+      "check": "wide-count render",
+      "result": "PASS with ES-6",
+      "detail": "0, 1, 2, 5, 21, 1000000 rendered for every plural message; no missing-category fallback, no 'ERROR' arm. The million arm is grammatically correct ('1.000.000 de …' with the many arm, present in six of nine), only the number itself is unformatted where ES-6 records it."
+    },
+    {
+      "check": "overflow",
+      "result": "PASS",
+      "detail": "Total rendered growth 1.22× en→es, inside the style guide's 15–25% expectation. The two non-shrinking tails stay short: archive_offered_verb 'archivada.' 10 chars vs 'archived.' 9; drafts_offered_verb 'descartados.' 12 vs 'discarded.' 10; toast action 'Deshacer' 8 vs 'Undo' 4. Longest es strings are still inside their budgets (credentials.unconfirmed 198 vs 163; hub.downloaded_collision 164 vs 137; main.update_hold_body 160 vs 138 against the OS-banner ~250 budget; main.update_hold_no_relaunch 109 vs 97). No string needs a shorter phrasing to fit; the heads that may ellipsise are the count and the user-supplied name."
+    },
+    {
+      "check": "mechanical gates at this head",
+      "result": "PASS",
+      "detail": "node scripts/i18n/generate.mjs --check: keys.gen.ts byte-identical to a fresh generation (exit 0). node scripts/i18n/context-parity.mjs: ok, every English key covered (exit 0). Ledger rows were not run as a gate: i18n/ledger.json has no es/ui.notices row yet, which is the assembler's step after this receipt, not a defect in the translation."
+    }
+  ],
+  "namespace_verdict": {
+    "ui.notices": "clean-with-findings — 93 of 93 keys read; 0 blocker, 0 major, 6 minor, 2 nit. Meaning, placeholders, plural categories, kept tokens, register, typography and composed sentences all hold; the findings are term-consistency drift (ES-1, ES-2, ES-3), two agreement/accuracy refinements (ES-4, ES-5), one number-formatting convention (ES-6) and two consistency nits (ES-7, ES-8)."
+  },
+  "overall_verdict": "clean-with-findings (0 blocker, 0 major) — the translation is shippable as is; ES-1 to ES-6 are worth one remediation commit, ES-7/ES-8 are recorded, not churned.",
+  "evidence_provenance": "Every check above was executed in this worktree at ec4518da56 with the repository's own node_modules (intl-messageformat 12.1.3) and Python 3; no result is quoted from the translator's report. Catalogue hashes were taken from the worktree bytes with sha256sum. The audit edited no catalogue, ledger or generated file."
+}

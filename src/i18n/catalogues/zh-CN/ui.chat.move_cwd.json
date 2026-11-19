@@ -1,0 +1,10 @@
+{
+	"ui.chat.move_cwd.already_in": "已在{label}中",
+	"ui.chat.move_cwd.failed": "工作目录未更改。",
+	"ui.chat.move_cwd.in_flight": "工作目录正在移动中。",
+	"ui.chat.move_cwd.moved": "已移至{label}",
+	"ui.chat.move_cwd.moved_restarting": "已移至{label}——此会话的运行时正在该处重启",
+	"ui.chat.move_cwd.moved_restarting_lost": "已移至{label}——此会话的运行时正在该处重启，你在eval中设置的所有内容均已丢失",
+	"ui.chat.move_cwd.not_ready": "此会话仍在启动。启动完成后即可移动其工作目录。",
+	"ui.chat.move_cwd.unavailable": "此后端无法移动正在运行的会话。请新建对话以使用其他文件夹，或更新后端。"
+}

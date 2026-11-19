@@ -1,0 +1,61 @@
+{
+  "picker-keyboard-round-trip": {
+    "url": "http://localhost:6044/iframe.html?id=chat-sidebar-tags--picker-keyboard-round-trip&viewMode=story&args=theme:localOperatorDark;locale:en",
+    "actual": "PASS: empty/no-match Enter writes nothing; explicit Create persists; Cancel never assigns"
+  },
+  "manage-search-draft-round-trip": {
+    "url": "http://localhost:6044/iframe.html?id=chat-sidebar-tags--manage-search-draft-round-trip&viewMode=story&args=theme:localOperatorDark;locale:en",
+    "actual": "PASS: filtered reorder blocked; rename stages only; search clears after rename; Cancel restores baseline; zero writes"
+  },
+  "eight-selection-round-trip": {
+    "url": "http://localhost:6044/iframe.html?id=chat-sidebar-tags--eight-selection-round-trip&viewMode=story&args=theme:localOperatorDark;locale:en",
+    "actual": "PASS: cap8 blocks creation; removal enables explicit Create; assignment order/primary preserved; one registry and one assignment write"
+  },
+  "picker-manage-round-trip": {
+    "url": "http://localhost:6044/iframe.html?id=chat-sidebar-tags--picker-manage-round-trip&viewMode=story&args=theme:localOperatorDark;locale:en",
+    "actual": "PASS: picker checks/primary/search/scroll survive Manage Cancel and Apply; refreshed categories; one modal; no assignment; row focus returned"
+  },
+  "management-round-trip": {
+    "url": "http://localhost:6044/iframe.html?id=chat-sidebar-tags--management-round-trip&viewMode=story&args=theme:localOperatorDark;locale:en",
+    "actual": "PASS: local add/rename/reorder/delete; confirmation 0 writes; Cancel 0 writes; Apply 1 desired-state request; 5 chats retained; trigger focus returned"
+  },
+  "management-failure-retry": {
+    "url": "http://localhost:6044/iframe.html?id=chat-sidebar-tags--management-failure-retry&viewMode=story&args=theme:localOperatorDark;locale:en",
+    "actual": "PASS: failed Apply retains draft; Retry repeats one full desired-state request and closes on success"
+  },
+  "picker-loading-focus": {
+    "url": "http://localhost:6044/iframe.html?id=chat-sidebar-tags--picker-loading-focus&viewMode=story&args=theme:localOperatorDark;locale:en",
+    "actual": "PASS: loading input keeps query; completion never steals moved focus; no writes"
+  },
+  "assign-clear-round-trip": {
+    "actual": "PASS: Cancel 0 writes; Clear 1 atomic write; canonical tags []; focus returned"
+  },
+  "picker-pending-create": {
+    "url": "http://localhost:6044/iframe.html?id=chat-sidebar-tags--picker-pending-create&viewMode=story&args=theme:localOperatorDark;locale:en",
+    "actual": "PASS: pending durable Create visibly locks dismissal; Escape does not hide it; completion permits Cancel with zero assignments"
+  },
+  "picker-assignment-conflict": {
+    "url": "http://localhost:6044/iframe.html?id=chat-sidebar-tags--picker-assignment-conflict&viewMode=story&args=theme:localOperatorDark;locale:en",
+    "actual": "PASS: 409 tags_conflict refreshes; no overwrite or generic Retry; Apply disabled until a fresh edit"
+  },
+  "picker-remote-refusal": {
+    "url": "http://localhost:6044/iframe.html?id=chat-sidebar-tags--picker-remote-refusal&viewMode=story&args=theme:localOperatorDark;locale:en",
+    "actual": "PASS: remote refusal is distinct from conflict/transport failure; no retry or overwrite"
+  },
+  "picker-error": {
+    "url": "http://localhost:6044/iframe.html?id=chat-sidebar-tags--picker-error&viewMode=story&args=theme:localOperatorDark;locale:en",
+    "actual": "PASS: assignment 503 shows tag-specific save failure + Retry and preserves draft"
+  },
+  "manage-error": {
+    "url": "http://localhost:6044/iframe.html?id=chat-sidebar-tags--manage-error&viewMode=story&args=theme:localOperatorDark;locale:en",
+    "actual": "PASS: failed Manage Apply keeps staged addition and query; server registry unchanged; operation-specific retry visible"
+  },
+  "picker-last-option": {
+    "url": "http://localhost:6044/iframe.html?id=chat-sidebar-tags--picker-last-option&viewMode=story&args=theme:localOperatorDark;locale:en",
+    "actual": "PASS: last of32 options keyboard-reachable and fully inside scroll/focus gutter; footer pinned"
+  },
+  "manage-name-validation": {
+    "url": "http://localhost:6044/iframe.html?id=chat-sidebar-tags--manage-name-validation&viewMode=story&args=theme:localOperatorDark;locale:en",
+    "actual": "PASS: duplicate name stays in its staged editor; one inline alert; no merge or write"
+  }
+}

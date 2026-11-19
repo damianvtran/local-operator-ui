@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "receipt_kind": "locale-audit (PR #1840 translation audit round 1 at bf774a7ff08, 4 added keys in ui.teamBridge vs base 769a8d8ec7d)",
+  "date": "2026-11-11",
+  "locale": "ru",
+  "instance": "7fe454379bd1-pr1840-r1-ru",
+  "audit_id": "pr1840-single-recipient-r1-ru-7fe454379bd1",
+  "agent": "reviewer",
+  "model": "anthropic/claude-opus-5-5",
+  "auditor": {
+    "agent": "reviewer",
+    "instance": "7fe454379bd1-pr1840-r1-ru",
+    "model": "anthropic/claude-opus-5-5",
+    "session": "7fe454379bd1",
+    "independent_of_translator": true
+  },
+  "model_provenance": "Ran on anthropic/claude-opus-5-5; no fallback observed during the audit.",
+  "status": "passed",
+  "integration": {
+    "repo": "damianvtran/local-operator-ui",
+    "pr": 1840,
+    "branch": "fix/bridge-single-recipient-summary",
+    "translated_head": "bf774a7ff08",
+    "base": "769a8d8ec7d",
+    "brief_scope": "d541a8f2282..bf774a7ff08"
+  },
+  "independence": "Audit by lop session 7fe454379bd1 (reviewer role, i18n audit). Values authored by separate coder agent sessions (a85e507ffdfa / 4a9fa7ac0ad2); this session wrote no product code or catalogue bytes. No MT service used.",
+  "style_inputs": {
+    "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "style_guide_sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5",
+    "source": "damianvtran/local-operator i18n/ @ 93b787d3c15"
+  },
+  "scope": "The 4 ui.teamBridge.delivery.summary.single.{screening,held,not_reviewed,not_delivered} keys added at bf774a7ff08 vs merge-base 769a8d8ec7d (single.delivered removed), read against en values/context notes and the locale's counted ui.teamBridge.delivery.summary.* siblings; checks: key set == en, no placeholders (none in en), no bidi/format controls, no ASCII '...', register/sentence case per style guide.",
+  "findings_total": 0,
+  "namespaces": {
+    "ui.teamBridge": {
+      "status": "passed",
+      "sha256": {
+        "en": "cb5cb8b6388bd7f0977b3b7b9e22d0c7cea1916be860bae4a61f62e44ce73c72",
+        "ru": "fc7dc23e5544da01cb9b89adb4611203fae8d8a56597b7cc7a83a0f64a587086"
+      },
+      "findings": [],
+      "keys_audited": 4,
+      "keys": [
+        "ui.teamBridge.delivery.summary.single.screening",
+        "ui.teamBridge.delivery.summary.single.held",
+        "ui.teamBridge.delivery.summary.single.not_reviewed",
+        "ui.teamBridge.delivery.summary.single.not_delivered"
+      ],
+      "audit_notes": "Neuter short participles agree with implied 'сообщение' ('Не рассмотрено', 'Не доставлено'); identical to the counted siblings' label before ': {count}'; sentence case.",
+      "retained": "424 other pairs byte-identical to merge-base 769a8d8ec7d, whose file sha256 equals the ledger row's audited target_sha256 (mechanically verified)"
+    }
+  }
+}

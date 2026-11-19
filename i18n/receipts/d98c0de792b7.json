@@ -1,0 +1,177 @@
+{
+  "auditor": "i18n-auditor",
+  "agent": "i18n-auditor",
+  "model": "radient/auto",
+  "model_note": "The harness reports the route as `radient/auto` (system prompt 'Model: radient/auto'; transcript selector radient/auto, effort auto). The router does not expose its upstream model, so none is claimed and no provider fallback was observed. The second independent pass ran on anthropic/claude-opus-5-5 (harness-reported job model), disclosed separately.",
+  "model_provenance": {
+    "route": "radient/auto",
+    "route_source": "the harness system prompt of this session ('Model: radient/auto') and its transcript entry details (selector radient/auto, effort auto)",
+    "fallback_used": false,
+    "fallback_chain": [],
+    "actual_model_source": "No [session incident] and no model-switch notice appears in this session's transcript (~/.local-operator/sessions/d98c0de792b7/transcript.jsonl); the only occurrences of those phrases are prompt text that quotes the guidance and this task's own tool output quoting it. The upstream model behind the router alias is not exposed to this session, so none is invented.",
+    "disclosure": "Every judgement below was made in this session under the recorded route; no model change was requested or observed."
+  },
+  "instance": "d98c0de792b7",
+  "session": "d98c0de792b7",
+  "team": "lopdev",
+  "date": "2026-10-28",
+  "locale": "ru",
+  "source_commit": "c5e19ecec883b45e281d696f06dac86bcb0d90f3",
+  "source_branch": "i18n-wave-a",
+  "pr": 1449,
+  "parent_commit": "1d631be71fb7a674b117aab61508d6dd822708b4",
+  "merge_parents": [
+    "e5f7c8daeaf3bd5a6267c5910288e2b5f1bcc807",
+    "1d631be71fb7a674b117aab61508d6dd822708b4"
+  ],
+  "audit_id": "union-20261028-d98c0de792b7",
+  "audit_kind": "independent union delta audit over unchanged-by-proof bytes, plus a whole-file cross-wave consistency read",
+  "scope": "Union of src/i18n/catalogues/ru/ui.chat.json at c5e19ecec8 (merge of origin/main 1d631be71f carrying wave B): 142 keys = 115 base + the 18 wave-A keys audited at 80ee119bbd + the 9 wave-B keys audited at a5356ce91c. Parsed-JSON proof: all 18 wave-A values byte-identical to the wave-A audited bytes, all 9 wave-B values byte-identical to the wave-B audited bytes, all 124 pre-union origin/main values unchanged, the A and B key sets disjoint. Because the two waves were audited separately, this audit also read the union as one file: terms, register, template shape, punctuation and terminal stops across the A and B families and against the 115 precedents; placeholder/select parity and real IntlMessageFormat renders of all 142 values; ru plural categories for every plural; NFC, bidi and typography; width hints. Gates: generate --check, locale-parity, check-coverage, context-parity, check-duplicates, ledger-check (the expected 7 stale ui.chat rows), and the repository's own catalogue-union-parity tool.",
+  "status": "passed",
+  "result": "clean",
+  "keys_read": 142,
+  "wave_keys_read": 27,
+  "namespace_count": 1,
+  "independence": "Independent union audit by the `i18n-auditor` subagent of team lopdev (session d98c0de792b7). This session produced no catalogue byte for this locale, translated nothing, edited no catalogue/context/ledger file and cannot edit the audited file: it read a throw-away git-archive export of c5e19ecec8 and wrote only its own receipt and evidence records. It is not the translator session named in the wave receipts or the ledger row. No translation API, SDK or MT service was used; the only formatter used was the repository's own intl-messageformat. The router hides its upstream model, which is stated rather than guessed.",
+  "delta_proof": {
+    "union": {
+      "commit": "c5e19ecec883b45e281d696f06dac86bcb0d90f3",
+      "path": "src/i18n/catalogues/ru/ui.chat.json",
+      "sha256": "44a0ebe560ad94c5632f7c0f1d357f84ae0924913e05af11e2a368f37f597216",
+      "key_count": 142
+    },
+    "wave_a": {
+      "commit": "80ee119bbd1084ee873994a1f39db0c085c62083",
+      "sha256": "83f3d2beba40e431ca242ac4ef5bcdd12db2439d892ed3c34b589d6a4d9f4545",
+      "key_count": 133,
+      "keys_identical_in_union": 18
+    },
+    "wave_b": {
+      "commit": "a5356ce91c4f37bf4c4d1c4518070e3a9b2505cb",
+      "sha256": "13902f3586f2b5785d63ab6dc31253893960ec86f0730188f37475f3dd446234",
+      "key_count": 124,
+      "keys_identical_in_union": 9
+    },
+    "origin_main_pre_union": {
+      "commit": "1d631be71fb7a674b117aab61508d6dd822708b4",
+      "sha256": "13902f3586f2b5785d63ab6dc31253893960ec86f0730188f37475f3dd446234",
+      "key_count": 124,
+      "base_values_unchanged_in_union": 115,
+      "b_values_unchanged_in_union": 9
+    },
+    "en_union": {
+      "sha256": "d3bc8ec097540b123500005e941093dbc73eaaa46fa1152643a04d51b6f259e4",
+      "key_count": 142
+    },
+    "found": "18 + 9 + 115 = 142; the two wave key sets are disjoint; no value from either earlier state or from origin/main moved.",
+    "context_note": "The English context sidecar is a third byte state: union 994de1d3c61cdc19ba61bb8b0995e4e96e17e80c531c9b3dafb4572d3c8bca3e = wave A's post-audit note remediation (e5f7c8daea, 127 entries) + origin/main's 9 wave-B entries, all 127 shared entries byte-identical. Three wave-A notes (checkpoint.turn, header_identity.aria_agent_closed, aria_team_closed) were improved by cbc7082c53 after the wave-A audit read them; this audit re-read the three and binds the union context hash. The catalogue values involved did not change."
+  },
+  "guidance": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "ru_style_guide": {
+      "path": "~/local-operator/i18n/style-guides/ru.md",
+      "sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+    },
+    "contract": {
+      "path": "docs/I18N.md",
+      "sha256": "9a4bde8d1c161286160be4a4ae1c7655615dbf39047052550b725a3da2eb00e2"
+    }
+  },
+  "namespaces": {
+    "ui.chat": {
+      "namespace": "ui.chat",
+      "status": "passed",
+      "result": "clean",
+      "result_note": "0 blocker, 0 major, 0 minor, 0 nit. Five INFO observations are retained; INFO is an observation, not a defect, and is not counted.",
+      "keys_audited": 142,
+      "wave_keys_audited": 27,
+      "locale": "ru",
+      "sha256": {
+        "en": "d3bc8ec097540b123500005e941093dbc73eaaa46fa1152643a04d51b6f259e4",
+        "ru": "44a0ebe560ad94c5632f7c0f1d357f84ae0924913e05af11e2a368f37f597216"
+      },
+      "context_sha256": "994de1d3c61cdc19ba61bb8b0995e4e96e17e80c531c9b3dafb4572d3c8bca3e",
+      "findings": [],
+      "observations": [
+        {
+          "id": "ru-uoa-i1",
+          "severity": "INFO",
+          "scope": "context-sidecar provenance",
+          "detail": "The union context file is not byte-identical to either wave's audited context: it is wave A's post-audit note remediation (e5f7c8daea; 3 notes changed by cbc7082c53 after the wave-A audit) merged with origin/main's 9 wave-B entries. The repository's catalogue-union-parity tool therefore reports ok=false for the context file with 3 pr-side value differences while both catalogues are ok=true. This audit re-read all three notes; they are translator-facing context only, they do not change what the ru value must say, and the ru values for those keys are byte-identical to the audited wave-A bytes. The union context hash above is what this receipt binds.",
+          "evidence": "logs/delta-proof.log (context section), logs/union-parity.json"
+        },
+        {
+          "id": "ru-uoa-i2",
+          "severity": "INFO",
+          "scope": "prior finding resolved",
+          "detail": "The wave-A INFO about an English AM/PM clock in checkpoint.jump_user is RESOLVED at this head: cbc7082c53 replaced the hand-assembled h:mm AM/PM in checkpointClockLabel with formatTime (locale Intl formatter). Verified by rendering Intl.DateTimeFormat('ru', {hour:'numeric',minute:'2-digit'}) = '15:42' and by reading checkpoint-model.ts at c5e19ecec8. The sidecar's promise of a locale-formatted clock now holds.",
+          "evidence": "src/renderer/src/features/chat/canonical/checkpoint-model.ts:216-221 at c5e19ecec8; node Intl render in audit.log"
+        },
+        {
+          "id": "ru-uoa-o3",
+          "severity": "INFO",
+          "scope": "second-pass suggestion declined",
+          "key": "ui.chat.session_status.temporarily_unavailable_description",
+          "detail": "The second independent pass suggested replacing «Ваш вход по-прежнему сохранён.» with «Данные для входа по-прежнему сохранены.» as less calque-like. DECLINED with evidence: the catalogue already ships the same English fact as ui.settings.integrations.integration_model.the_sign_in_is_still_saved = 'The sign-in is still saved.' / «Вход всё ещё сохранён.», and the wave-B remediation (RU-WB-N1) chose this construction explicitly to match that sibling. Changing it here would make the two disagree; the sidecar's 'credential is still saved' is satisfied by the saved sign-in, and the sentence never implies the sign-in was lost or expired.",
+          "evidence": "src/i18n/catalogues/{en,ru}/ui.settings.integrations.json; wave-B record RU-WB-N1/O3"
+        },
+        {
+          "id": "ru-uoa-o4",
+          "severity": "INFO",
+          "scope": "second-pass suggestion declined",
+          "key": "ui.chat.session_status.not_signed_in_description",
+          "detail": "The second independent pass suggested «без действующего входа» for 'without a working sign-in'. DECLINED: the sidecar defines this arm as 'the sign-in is missing on this machine' and explicitly forbids blaming an expired credential (that is the sibling arm's sentence). «Без входа» states the missing sign-in; «без действующего входа» would imply one exists but does not work, moving this value toward the temporarily-unavailable arm and its 'never imply the sign-in was lost or expired' rule.",
+          "evidence": "en/ui.chat.context.json notes for the two session_status arms"
+        },
+        {
+          "id": "ru-uoa-o5",
+          "severity": "INFO",
+          "scope": "second-pass suggestion declined",
+          "key": "ui.chat.region.composer",
+          "detail": "The second independent pass suggested «Поле сообщения» so the landmark name matches the hints' «поле сообщения»/«поле ввода». DECLINED: the sidecar defines this as the accessible name of the composer LANDMARK ('the form region the message field lives in'), not of the field; «Поле сообщения» would name the field and under-describe the region. «Ввод сообщения» is a two-word noun phrase as the sidecar's length rule asks, and it is screen-reader only.",
+          "evidence": "en/ui.chat.context.json ui.chat.region.composer; base hints hint.approval / hint.approval_held"
+        }
+      ],
+      "validation": {
+        "generate_check": "pass — 'byte-identical to a fresh generation', exit 0",
+        "locale_parity": "pass — 44/44 node:test assertions across the shipped locales, including all ru cases",
+        "check_coverage": "pass — 7 gated languages over 99 namespaces, 0 allowance keys left",
+        "context_parity": "pass — every English key covered apart from 131 allowed gaps in 4 namespaces",
+        "check_duplicates": "pass — 889 files scanned, 0 duplicate keys",
+        "ledger_check": "exit 1 with exactly the expected 21 findings = 7 locales x 3 findings on the stale ui.chat rows (es/fr/hi/ru/ur/vi/zh-CN); no other row failed. This is the state the union receipts are for; this receipt supplies the ru half.",
+        "catalogue_union_parity": "ru and en catalogues ok=true (0 missing, 0 value differences); context ok=false with the 3 explained note differences, see ru-uoa-i1",
+        "placeholder_parity": "all 142 ru messages carry the same distinct placeholder names as English; the only type difference is the ru-side plural on {total} in loop_progress_of_turns, needed for Russian agreement",
+        "select_parity": "3 selects (header_identity.loading, header_identity.search, hub_update.update_all_label), option sets identical to English",
+        "plural_categories": "2 plural messages, both with one/few/many/other; every rendered branch verified",
+        "renders": "142/142 messages formatted by the repository's intl-messageformat at locale ru across 745 argument combinations; 0 format errors",
+        "nfc": true,
+        "bidi_controls": 0,
+        "combining_marks": 0,
+        "quotes": "«» balanced in every value that quotes; no ASCII double quotes",
+        "ellipsis": "U+2026 used in the five values that carry one",
+        "dashes": "em dash spaced in every value that uses one; no ASCII hyphen used as a dash",
+        "identical_to_english": 0,
+        "width_hints": "2 maxCells hints (choose_model 18, last_reading 16), both within budget at 14 and 15 characters",
+        "rendered_fit": "Not executed; no rendered-frame, font or width claim in this record."
+      }
+    }
+  },
+  "second_independent_pass": {
+    "performed": true,
+    "agent": "scout",
+    "job": "58d851f8258c",
+    "model": "anthropic/claude-opus-5-5",
+    "result": "1 minor + 2 nits proposed, all three considered and declined with evidence (ru-uoa-o3, o4, o5); no blocker or major; it independently found the cross-wave terminology, register, punctuation and template shapes consistent",
+    "note": "Independent reading of the same 27 wave keys with the same en/context/guide/glossary inputs, without this session's notes; it is a second reading, not a second translation."
+  },
+  "limitations": [
+    "Catalogue and composition audit only: no Electron launch, no rendered frame, no screen-reader session and no width measurement. 'Fits' is a length/sidecar judgement, not a measurement.",
+    "The closed-seat sentences «Агент: {label}. {reason}» and «Команда: {label}. {reason}» pass the runtime's English closure sentence through unchanged, as the sidecar requires (a cross-repo contract with core's team_owns_the_agent_slot_message). The mixed language is a source constraint, not a translation defect.",
+    "The whole-file read is a semantic pass over the 27 wave keys plus a proof-bound pass over the other 115; it is not a fresh semantic re-audit of every base value, which the ledger's earlier full audits own.",
+    "The second independent pass read the same committed bytes with the same inputs; it is an independent reading, not a produced translation."
+  ],
+  "audit_notes_not_execution_log": "This receipt is a verdict/provenance note, not a command log. The commands and their literal output are in i18n/audits/evidence/ru/ui.chat/union-20261028-d98c0de792b7/audit.log and its logs/ directory; none of those was edited after the run."
+}

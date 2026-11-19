@@ -1,0 +1,55 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "att-r3-es",
+ "session": "57c37248b1be",
+ "job": "8d68b2c4680c",
+ "date": "2026-10-21",
+ "locale": "es",
+ "translator": "coder",
+ "translator_session": "03594b2dcc02",
+ "translator_job": "5084d4f46f6c",
+ "namespace": "ui.teamBridge",
+ "status": "passed",
+ "keys_audited": 1,
+ "scope": "Round-3 delta audit of #1314: git diff 8cf05961d6..b787a8458f -- src/i18n/catalogues (es: 1 value(s) changed/added — failed_count). Covers the new en attachments.failed_count and its context note (count 2-4, shown only when more than one staged image fails, followed by the first image's reason as its own sentence). The other 171 es values are byte-identical to 8cf05961d6 (parsed key-by-key: 0 changed, 0 removed, 0 missing vs en, 0 extra; the line diff shows only these keys plus preview_unavailable gaining a trailing comma) and stay covered by att-r2-es, att-r1-es and their inherited receipts. The en catalogue changed only by adding failed_count. PR head b787a8458f re-checked via gh. Catalogue audit only, not rendered-fit/activation/release.",
+ "source_head": "b787a8458fb1c44a7e479949155c6e32240d6e79",
+ "source_base": "8cf05961d64322fe64ebccd6282069c7f52f12f3",
+ "sha256": {
+  "en": "f982d8a6e7300cee8f36605ae4779eea8c5ec0ebffdd741ca0fc806c8ee807af",
+  "es": "83e665e3cd26a36db5bb0afd203f90d23a1a31de88f6f88d01a0d57813fa6750",
+  "context": "53d21a0cbcb9a35d6ea280dec60aa55225d995e21a87d92ed5cb5f7ff82bcf38"
+ },
+ "findings": [
+  {
+   "id": "ATT-ES-R3-01",
+   "severity": "NIT",
+   "key": "ui.teamBridge.attachments.failed_count",
+   "current": "{count, plural, one {No se puede enviar # imagen.} other {No se pueden enviar # imágenes.}}",
+   "proposed": "{count, plural, one {No se puede enviar # imagen.} many {No se pueden enviar # de imágenes.} other {No se pueden enviar # imágenes.}}",
+   "note": "CLDR es has one/many/other and the es style guide and glossary list many; the sibling plurals in this namespace (attachments.in_message, attachments.limit) carry the « # de imágenes » many arm. Unreachable here (count is 2-4, max 4 attachments), so NIT, for consistency only."
+  }
+ ],
+ "round2_dispositions": [],
+ "inherited_receipt": {
+  "path": "i18n/receipts/att-r2-es.json",
+  "sha256": "c2183c6e7d564c22cf781425d034a1ef06a2a8a96e032352b2704b2df460310c",
+  "base": "8cf05961d6",
+  "target_sha256": "34ebfffbe978805ce0afa8a5e92cbfea3743587485494b3cb86c4cd4af51b8c9",
+  "keys_inherited": 171,
+  "unchanged_values_verified": true
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+ },
+ "validation": {
+  "independence": "Auditor session 57c37248b1be (job 8d68b2c4680c, translation-auditor, served model anthropic/claude-opus-5-5 per this session's selected_model record) is a new instance, distinct from translator coder session 03594b2dcc02 (job 5084d4f46f6c, commit b787a8458f) and from the round-2 auditor session 12aab7b684ab and the round-1 auditor sessions. Values read from working-tree bytes at b787a8458f (equal to git show HEAD; worktree clean); the translator's and remediation comment's summaries were checked, not relied on. No catalogue or code edits, no git operations, no ledger-assemble.",
+  "semantics": "failed_count « No se puede enviar # imagen. » / « No se pueden enviar # imágenes. »: natural passive-reflexive with correct agreement (se pueden … imágenes), the same meaning as en; enviar/imagen match error_size « … para enviarla » and unsupported « … no se pueden enviar imágenes ». No address form, so the tú register is not exposed; the full stop closes the sentence before the reason.",
+  "icu": "Parsed en and es failed_count with @formatjs/icu-messageformat-parser: one plural argument 'count', the same name and type as en; arms present one/other (CLDR es categories via Intl.PluralRules: one/many/other), # in every arm, no other arguments. Formatted with intl-messageformat at 0,1,2,3,4,5,11,21,22,25,1000000: correct branch and agreement at the reachable 2-4 (the many category falls to other, see finding). The call site passes count: failures.length (number), only when >1 (team-bridge-attachments.tsx:316-318).",
+  "typography": "NFC, no bidi controls, no ASCII apostrophe, no doubled or edge spaces; # is in both arms.",
+  "overflow": "Rendered en 'N images can’t be sent.' = 23 chars; es = 31 chars at count=2. It renders as an inline medium-weight span (me-1.5) at the start of the 12 px wrapping alert line under the composer, followed by the reason sentence, so no fixed width and no fit risk.",
+  "rtl": "Not applicable (es is LTR).",
+  "limitations": "Browser not used; no rendered-fit, screenshots, glyph metrics, pseudo-localization or activation claim."
+ }
+}

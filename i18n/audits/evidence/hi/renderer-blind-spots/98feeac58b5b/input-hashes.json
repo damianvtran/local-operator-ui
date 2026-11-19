@@ -1,0 +1,8 @@
+{
+  "src/i18n/catalogues/en/ui.chat.json": "fee31965fc3e93d600333d686af34957fa6467bc3b2ba116b69a0ca5df369dcd",
+  "src/i18n/catalogues/en/ui.chat.context.json": "0edd5927d13dc3d4b30832a351d1a876aab9a396f78ba794ef4f968592c30e7a",
+  "src/i18n/catalogues/hi/ui.chat.json": "e1fff70dd4cb10c02eba69141c91b8591c5b341562a9a7621977937d773f42aa",
+  "src/i18n/catalogues/en/ui.chat.sidebar_view.json": "0873abf83115e1dd479213706a401258369f58a3d9606ebbc12610a64348512e",
+  "src/i18n/catalogues/en/ui.chat.sidebar_view.context.json": "0683c8236d899d43091742a5a097f2afddf22238e49c387b7116f281a9902ac8",
+  "src/i18n/catalogues/hi/ui.chat.sidebar_view.json": "7cc183f109dca3c916040ba544c1268eae4af42ec928abbe34eaa50ef37277aa"
+}

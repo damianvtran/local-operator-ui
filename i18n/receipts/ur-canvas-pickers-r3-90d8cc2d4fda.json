@@ -1,0 +1,218 @@
+{
+  "schema": 1,
+  "audit_kind": "independent-namespace-reaudit",
+  "date": "2026-10-24",
+  "locale": "ur",
+  "locale_name": "Urdu",
+  "batch": "canvas",
+  "pr": "#1388",
+  "branch": "feat/i18n-canvas-batch",
+  "audited_head": "30fa931f77bbd2e6ff9719f3207ecf413aefde2f",
+  "audited_head_short": "30fa931f77",
+  "previous_audit": {
+    "receipt": "i18n/receipts/ur-canvas-audit-9f7efaeab2ef.json",
+    "receipt_sha256": "e4e57d1018cb285a7c9684c344ceb2d8620c99f97570fe8a52bb7dbed2acb4af",
+    "head": "936e3a483b4d675c9827be5f40167da186f86900",
+    "target_sha256": "0b402b9f3db22a687c3c66a0d24d496766deba62bae4fd7a9ee4f795984d3690",
+    "note": "Round 1 audited all 720 keys at the older ur bytes and raised four majors. The remediation commit abb405770d fixed native_inputs/outputs, native_details, goal.title/clear, goal.placeholder and the other minors; the later completion/coverage commit 8f68640625 re-materialised 34 chrome keys from main's branch and reverted four of those remediations, so this re-audit sees the pre-remediation values for models.native_details, goal.title, goal.clear and goal.placeholder again."
+  },
+  "translator": {
+    "agent": "translator",
+    "session": "eaf7a455f71b",
+    "model": "radient/auto",
+    "model_provenance": "Served model tag reported by the harness at translation time (radient/auto); no narrower id exposed and no separate fallback observed.",
+    "date": "2026-10-24",
+    "receipt": "i18n/receipts/ui-ur-canvas-pickers-20261024.json"
+  },
+  "auditor": "translation-auditor",
+  "agent": "translation-auditor",
+  "team_role": "translation-auditor",
+  "instance": "90d8cc2d4fda",
+  "session": "90d8cc2d4fda",
+  "model": "radient/auto",
+  "served_model": "radient/auto",
+  "fallback": null,
+  "independence": "This auditor did not author or translate the lane and is a different session from translator eaf7a455f71b. No catalogue, source, context, ledger, allowance, generated or other repository file was edited; this receipt is the only artefact and it was committed by the audit session. No model fallback was used.",
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/ur.md",
+      "sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+    },
+    "ui_howto": {
+      "path": "docs/I18N.md",
+      "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+    },
+    "receipt_contract": {
+      "path": "scripts/i18n/ledger-assemble.mjs",
+      "note": "receipt contract lines 43-57; ledger-rules.mjs deriveReceiptAudit at the audited head"
+    }
+  },
+  "scope": "ONLY ui.chat.pickers at 30fa931f77, all 720 keys, English source and en context sidecar read side by side with the Urdu catalogue. Every value changed by the remediation since the prior audit was re-checked semantically (20 values); the 34 chrome keys the completion wave re-added were byte-identical to the prior audited values and were also read. RTL islands, bidi controls, punctuation and the locale's one/other plural set were checked for the whole namespace. Catalogue audit only; no rendered RTL frame and no native-speaker sign-off are claimed.",
+  "method": [
+    "Read 720/720 Urdu values against the English catalogue and the en context sidecar.",
+    "Parsed every message as ICU with @formatjs/icu-messageformat-parser: arguments, plural and select arms, number/date skeletons, tags and pound tokens compared branch by branch.",
+    "Rendered all 27 plural messages with IntlMessageFormat at counts 0, 1, 2, 5, 21 and 1.5; checked the tally composition `${term.count} ${term.label}` and table-pager composition.",
+    "Checked Urdu CLDR categories one/other in every plural message; reviewed every locale-added arm.",
+    "RTL pass: no manual bidi controls, Latin islands (code spans, flags, paths, model ids, product names) kept byte-identical and in source order, Urdu punctuation (۔ ، ؟ ؛) in prose, Latin punctuation only inside code/numbers, no Arabic-Indic digits, no Hindi danda.",
+    "Checked NFC, invisible characters, duplicate keys, key-set/order parity, identical values, and glossary/style-guide terminology against other Urdu catalogues.",
+    "Re-checked the prior round-1 open findings (UR-CAN-PICKERS-03 and -17) at the current bytes; re-checked UR-CAN-PICKERS-01's related key after the remediation."
+  ],
+  "delta": {
+    "keys_read": 720,
+    "batch_keys": 686,
+    "values_changed_by_remediation": 20,
+    "chrome_keys_re_added_by_completion_wave": 34,
+    "values_changed_since_prior_audit": 20,
+    "note": "The completion wave re-materialised 34 chrome keys from main's coverage branch. They match the pre-remediation values; four of them had been remediated by abb405770d and were reverted by 8f68640625 (models.native_details: اصل → نیٹو; goal.title/clear: ہدف → مقصد; goal.placeholder: جاری → شپ). The 20 other remediation changes are kept at the current bytes. This audit reports the regressed values; nothing was edited."
+  },
+  "namespaces": {
+    "ui.chat.pickers": {
+      "namespace": "ui.chat.pickers",
+      "status": "changes_requested",
+      "result": "changes_requested",
+      "verdict": "changes_requested — 1 MAJOR, 4 MINOR, 1 NIT, 0 BLOCKER; 720/720 keys read. The MAJOR is the retained NATO false friend in models.native_details; ICU, plurals, RTL islands and bidi are clean.",
+      "keys_read": 720,
+      "keys_audited": 720,
+      "file_keys": 720,
+      "sha256": {
+        "en": "8109df703e1a4901e4d892607dddd875e6a737c9ea8ee7ef41ec28dbe6ac2e58",
+        "ur": "7144a69ac24cd7fab1edd3d090f6173ff297db4878b66b8ad951cd0b4930b109",
+        "context": "c921d3e37ce54288a18e2b45310034a0df0114f15c30e57133422018a00b38d9"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.pickers.json",
+        "target": "src/i18n/catalogues/ur/ui.chat.pickers.json",
+        "context": "src/i18n/catalogues/en/ui.chat.pickers.context.json"
+      },
+      "mechanical": {
+        "key_set_equals_en": true,
+        "missing_keys": [],
+        "extra_keys": [],
+        "exact_en_target_key_order": false,
+        "key_order_note": "The key SETS are equal and locale-parity.test.mjs passes; file order differs from English and is not a gate.",
+        "icu_parse": "720/720 messages parse",
+        "placeholder_argument_mismatches": 0,
+        "number_date_skeleton_mismatches": 0,
+        "markup_tag_mismatches": 0,
+        "select_arm_missing": 0,
+        "plural_categories": "one/other present in all 27 plural messages; the totals_meta =0/other arm is by design and 1 falls to other",
+        "plural_messages_rendered": "27/27 at 0, 1, 2, 5, 21, 1.5",
+        "nfc": true,
+        "manual_bidi_controls": 0,
+        "rtl_latin_islands": "checked; code spans, flags, paths, model ids and product names kept byte-identical and in source order",
+        "urdu_punctuation": "۔ ، ؟ ؛ used in prose; Latin punctuation only inside code/numbers",
+        "arabic_indic_digits": 0,
+        "hindi_danda": 0,
+        "identical_values": 11,
+        "identical_values_note": "All eleven are technical/template values: {value}k, skill://, MY_API_KEY, TERM, COLORTERM, Python {python_version}, pid {pid}, pid {pid} duplicate, {completed}, count_noun (template only, no prose), {runtimecount} · {bound}{trajectorycount}.",
+        "ascii_double_quotes_in_prose": 0,
+        "nbsp_nnbsp_zwsp_bom_shy": 0,
+        "duplicate_keys": 0
+      },
+      "findings": [
+        {
+          "id": "R3-UR-PICKERS-01",
+          "severity": "major",
+          "category": "accuracy/false-friend",
+          "key": "ui.chat.pickers.models.native_details",
+          "prior_id": "UR-CAN-PICKERS-01 (related key)",
+          "prior_receipt": "i18n/receipts/ur-canvas-audit-9f7efaeab2ef.json",
+          "source": "Native details — {name}",
+          "current": "نیٹو تفصیلات — {name}",
+          "proposed": "اصل تفصیلات — {name}",
+          "reason": "«نیٹو» is the Urdu name of NATO, a false friend for «native»; the caption names the model's native facts (context role), not an alliance. The last remediation fixed native_inputs/native_outputs to «مقامی» but left this related key, so the same English «native» now maps to two different terms on adjacent model-detail rows. Prior UR-CAN-PICKERS-01 named this key as related.",
+          "evidence": "abb405770d changed this key to «اصل تفصیلات — {name}» and its commit message names «اصل details» as the intended term; 8f68640625 reverted it to «نیٹو تفصیلات — {name}», and the cb8b9bab6c merge kept the reverted value. native_inputs/native_outputs remain «مقامی».",
+          "status": "open"
+        },
+        {
+          "id": "R3-UR-PICKERS-02",
+          "severity": "minor",
+          "category": "grammar",
+          "key": "ui.chat.pickers.model_catalogue_listing.the_provider_listing_failed_the_rows_below_are_refresh_from_providers_tr",
+          "source": "The provider listing failed. The rows below are {value}; Refresh from providers tries again.",
+          "current": "فراہم کنندہ کی فہرست نہیں مل سکی۔ نیچے والی قطاریں {value} ہیں؛ فراہم کنندگان سے تازہ کریں دوبارہ کوشش کرتا ہے۔",
+          "proposed": "فراہم کنندہ کی فہرست نہیں مل سکی۔ نیچے والی قطاریں {value} ہیں؛ «فراہم کنندگان سے تازہ کریں» دوبارہ کوشش کرے گا۔",
+          "reason": "The sentence uses the button's imperative label as a bare grammatical subject, so it reads «Refresh from providers tries again» with no quote or connector — ungrammatical. Quoting the label (as the Russian does with «…») and using the future «کرے گا» makes it a statement about the control.",
+          "evidence": "Button key destination_pickers.refresh_from_providers = «فراہم کنندگان سے تازہ کریں»; this sentence is the only place that label is quoted, and it is not delimited.",
+          "status": "open"
+        },
+        {
+          "id": "R3-UR-PICKERS-03",
+          "severity": "minor",
+          "category": "grammar/accuracy",
+          "key": "ui.chat.pickers.destination_pickers.copies_this_conversation_up_to_and_including_everything_after_it_is_left",
+          "source": "Copies this conversation up to and including {value}. Everything after it is left behind, and the original keeps running and is not modified.",
+          "current": "یہ گفتگو {value} تک، بشمول اس کے، نقل کرتا ہے۔ اس کے بعد کا سب پیچھے رہ جاتا ہے، اور اصل گفتگو چلتی رہتی ہے اور نہیں بدلتی۔",
+          "proposed": "یہ گفتگو {value} تک، بشمول اس کے، نقل کر دی جاتی ہے۔ اس کے بعد کا سب پیچھے رہ جاتا ہے، اور اصل گفتگو چلتی رہتی ہے اور نہیں بدلتی۔",
+          "reason": "The explicit subject «یہ گفتگو» is feminine but the verb is masculine «کرتا», and the English subject is the fork action rather than the conversation. The passive «نقل کر دی جاتی ہے» fixes both the agreement and the agent.",
+          "evidence": "Catalogue treats گفتگو as feminine throughout (e.g. «گفتگو نہیں بنائی جا سکی», «اصل گفتگو نہیں بدلتی»).",
+          "status": "open"
+        },
+        {
+          "id": "R3-UR-PICKERS-04",
+          "severity": "minor",
+          "category": "glossary-consistency",
+          "key": "ui.chat.pickers.goal.title",
+          "related_keys": [
+            {
+              "key": "ui.chat.pickers.goal.clear",
+              "current": "مقصد صاف کریں",
+              "proposed": "ہدف صاف کریں"
+            }
+          ],
+          "prior_id": "UR-CAN-PICKERS-03",
+          "prior_receipt": "i18n/receipts/ur-canvas-audit-9f7efaeab2ef.json",
+          "source": "Session goal",
+          "current": "سیشن کا مقصد",
+          "proposed": "سیشن کا ہدف",
+          "reason": "Every other goal string uses «ہدف» (goal), while «مقصد» also renders «Purpose» in session_panel.purpose, collapsing two concepts on adjacent screens; the prior round-1 minor remains open at the current bytes.",
+          "evidence": "abb405770d changed both keys to ہدف; 8f68640625 reverted them to مقصد. All other goal strings in the current file use ہدف: destination_pickers.goal = «ہدف», set_goal = «ہدف مقرر کریں», uses_the_standing_goal = «مستقل ہدف استعمال کرتا ہے»; session_panel.purpose = «مقصد».",
+          "status": "open"
+        },
+        {
+          "id": "R3-UR-PICKERS-05",
+          "severity": "minor",
+          "category": "idiom/consistency",
+          "key": "ui.chat.pickers.destination_pickers.sent_once_with_the_attachment_it_becomes_the_first_turn",
+          "source": "Sent once with the attachment; it becomes the first turn.",
+          "current": "درخواست منسلک شے کے ساتھ ایک بار بھیجی جائے گی اور پہلی باری بن جائے گی۔",
+          "proposed": "درخواست منسلکہ کے ساتھ ایک بار بھیجی جائے گی اور پہلی باری بن جائے گی۔",
+          "reason": "«منسلک شے» is a literal «attached thing»; the established catalogue noun is «منسلکہ» (ui.chat.composer_media.remove_attachment) and «منسلکات» (ui.canvas.inline_edit.add_attachments).",
+          "evidence": "ui.chat.composer_media.remove_attachment = «منسلکہ ہٹائیں»; ui.canvas.inline_edit.add_attachments = «منسلکات شامل کریں».",
+          "status": "open"
+        },
+        {
+          "id": "R3-UR-PICKERS-06",
+          "severity": "nit",
+          "category": "idiom",
+          "key": "ui.chat.pickers.goal.placeholder",
+          "prior_id": "UR-CAN-PICKERS-17",
+          "prior_receipt": "i18n/receipts/ur-canvas-audit-9f7efaeab2ef.json",
+          "source": "Ship the release with green gates",
+          "current": "تمام گیٹس کامیاب ہونے پر ریلیز شپ کریں",
+          "proposed": "تمام گیٹس کامیاب ہونے پر ریلیز جاری کریں",
+          "reason": "«شپ» is an English transliteration embedded in otherwise Urdu product copy; «جاری کریں» keeps the release sense without the code-switch (prior UR-CAN-PICKERS-17 nit remains open).",
+          "status": "open",
+          "evidence": "abb405770d changed this placeholder to «تمام گیٹس کامیاب ہونے پر ریلیز جاری کریں»; 8f68640625 reverted it to «ریلیز شپ کریں»."
+        }
+      ]
+    }
+  },
+  "totals": {
+    "blocker": 0,
+    "major": 1,
+    "minor": 4,
+    "nit": 1
+  },
+  "status": "changes_requested",
+  "verdict": "changes_requested — 1 MAJOR, 4 MINOR, 1 NIT, 0 BLOCKER in ui.chat.pickers at 30fa931f77; 720/720 keys read. The MAJOR is the retained «نیٹو» (NATO) rendering of native in models.native_details, which the last remediation missed; ICU, plurals, RTL islands, bidi controls and punctuation are clean.",
+  "notes": [
+    "Catalogue audit only; no rendered RTL frame, no native-speaker sign-off, no design/QA approval. Shaping/fit remains a rendered check for QA.",
+    "The 20 remediation changes were re-checked at the current bytes: native_inputs/native_outputs, top_level_only_off, the plurality fixes, discoverable, shipped models and the rest now read correctly. models.native_details is the one related key the remediation did not carry.",
+    "No source, catalogue, context, ledger, allowance, generated or repository file was edited by this audit."
+  ]
+}

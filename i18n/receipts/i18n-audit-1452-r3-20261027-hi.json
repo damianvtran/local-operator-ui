@@ -1,0 +1,103 @@
+{
+	"auditor": "reviewer",
+	"model": "anthropic/claude-opus-5-5",
+	"fallback": "none — every usage record in auditor session 616a95909ebb names claude-opus-5-5",
+	"instance": "i18n-audit-1452-r3-20261027-hi",
+	"session": "616a95909ebb",
+	"job": "8a1705fdb14f",
+	"parent_session": "65a12b105119",
+	"date": "2026-10-27",
+	"locale": "hi",
+	"round": 3,
+	"translator": {
+		"agent": "coder",
+		"job": "0fc4118bdd37",
+		"session": "43acf20a38da",
+		"parent_session": "65a12b105119",
+		"model": "anthropic/claude-opus-5-5 (usage records in session 43acf20a38da name claude-opus-5-5 177x; roster model_label anthropic/claude-opus-5-5)",
+		"commit": "8cbaff82e62120e38165876da945bf7a4db9575e",
+		"lineage": [
+			{
+				"round": 1,
+				"agent": "task",
+				"job": "7c09e08359e1",
+				"model": "anthropic/claude-opus-5-5",
+				"commit": "0a02713ed4 (rebased as 6da4ebea87)"
+			},
+			{
+				"round": 2,
+				"agent": "coder",
+				"job": "4a907cae19a9",
+				"session": "5f4c49fec12b",
+				"model": "kimi/k3.1-pro via radient/auto",
+				"commit": "752abc1c19 (rebased as 922b9a5a40)"
+			},
+			{
+				"round": 3,
+				"agent": "coder",
+				"job": "0fc4118bdd37",
+				"session": "43acf20a38da",
+				"model": "anthropic/claude-opus-5-5",
+				"commit": "8cbaff82e6"
+			}
+		]
+	},
+	"pr": "damianvtran/local-operator-ui#1452",
+	"source_base": "2690936bc940364fa3ae339ed2d3b3c69b906344",
+	"source_head": "8cbaff82e62120e38165876da945bf7a4db9575e",
+	"scope": "Round-3 audit of ui.canvas after coder job 0fc4118bdd37 remediated round 2 (79e3718852..8cbaff82e6). 2690936bc940 is not an ancestor of the head (the branch was rebased onto 946c75bb7a); range-diff 1fa9fbabc0..2690936bc9 vs 946c75bb7a..79e3718852 shows the seven code commits '=' apart from a package.json scripts union in 534948550c, so the ui.canvas delta is exactly 8cbaff82e6. Audited: the round-2 fixes, emptyDetail, and the five keys whose English context notes 8cbaff82e6 added (attachmentsPartialReason, attachmentsError, attachmentsErrorReason, attachmentTooltip, attachmentGoneRecovery), plus attachmentMeta. Catalogue audit only; no rendered fit, activation or release claim.",
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "local-operator 63a9c6208a6 (origin/main)",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/hi.md",
+			"revision": "local-operator 63a9c6208a6 (origin/main)",
+			"sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+		}
+	},
+	"namespaces": {
+		"ui.canvas": {
+			"status": "passed",
+			"keys_audited": 7,
+			"keys": [
+				"ui.canvas.files.emptyDetail",
+				"ui.canvas.files.attachmentsPartialReason",
+				"ui.canvas.files.attachmentsError",
+				"ui.canvas.files.attachmentsErrorReason",
+				"ui.canvas.files.attachmentTooltip",
+				"ui.canvas.files.attachmentGoneRecovery",
+				"ui.canvas.files.attachmentMeta"
+			],
+			"sha256": {
+				"en": "ab2b9c23f60af19a912ae0230a3b6dc0883d0fd668c9c71c3cc0a1c285ef47f4",
+				"hi": "d38def0ee9e7c802086d0e6e47b67e369632733ae185f03d3942228b5e181bb7"
+			},
+			"context_sha256": "513b0496da917c40396ac7b887950342ea6fd4e316af6c7c1b0531e5d6ed6836",
+			"findings": []
+		}
+	},
+	"round2_findings_verified": [
+		{
+			"id": "I-hi-1",
+			"severity": "MINOR",
+			"what": "attachmentGoneRecovery: पथ -> पाथ (menu label पाथ कॉपी करें)",
+			"value_at_head": "स्थानांतरित या हटाया गया, और कोई सहेजी गई प्रति नहीं बची। खोजने के लिए मेन्यू से पाथ कॉपी करें।",
+			"status": "fixed in 8cbaff82e6"
+		}
+	],
+	"checks": {
+		"independence": "Auditor reviewer session 616a95909ebb (job 8a1705fdb14f): a different agent and session from coder job 0fc4118bdd37 (session 43acf20a38da) and the earlier authors; this auditor edited no catalogue value.",
+		"context": "en ui.canvas.context.json now carries notes for the five keys (sha 513b0496da91); each value judged against its note: role, width, placeholders, 'backend is local', 'name Copy path with the catalogue's own label and menu term'. emptyDetail still has no note (not required by context-parity).",
+		"terminology": "Catalogue-wide counts at head for agent, backend, menu, path, copy-path label, retry; copy_path labels read from ui.chat.attachments.copy_path and ui.library.menu.copy_path.",
+		"icu": "Parsed en and target with @formatjs/icu-messageformat-parser: argument sets identical for all ui.canvas.files.attach* keys and emptyDetail; attachmentTooltip formatted with intl-messageformat (name=shot.png, digest=3f9a1c2b) and keeps '{name} · {digest} · ' byte-exact.",
+		"unchanged": "Versus 2690936bc940 the only ui.canvas keys changed in this locale are the remediated ones; attachmentMeta is '{size} · {when}' and unchanged; key set equals en; keys.gen.ts unchanged.",
+		"typography": "Whole ui.canvas file NFC; no bidi controls (U+200E/F, U+202A-E, U+2066-9, U+061C) in any value.",
+		"tests": "node --test scripts/user-attachments.test.mjs at head: 9 pass, 0 fail (covers attachment.status and the size/when pair).",
+		"clean_values": "आप register; danda throughout. Recovery now names पाथ कॉपी करें (7 uses) and मेन्यू (5 uses, 0 मेनू); पथ survives once elsewhere in the catalogue, outside this scope. बैकएंड matches 66 uses. Tooltip masculine default (अटैच किया गया) is the neutral reading for a file/picture subject."
+	},
+	"limitations": "No app build, browser or Storybook this round: no rendered-fit or RTL layout measurement. Fit judged by character count against the context note.",
+	"status_note": "Passed; all round-2 findings fixed, no new findings."
+}

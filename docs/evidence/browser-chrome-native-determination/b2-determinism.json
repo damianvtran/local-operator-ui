@@ -1,0 +1,42 @@
+{
+  "generatedAt": "2026-10-22T07:04:42.157145+00:00",
+  "trigger": "round-2 QA Q1: B2 read the log once ~1.1-1.3s after logger init while the browser-host profile line landed up to ~1.2s later",
+  "fix": "B2 waits for both the 'Log path:' and '[browser] host on ... profile' lines with the probe's waitForLog helper before evaluating the gate",
+  "runs": [
+    {
+      "run": 1,
+      "b2": "PASS",
+      "b3": "PASS",
+      "profileLineWaitMs": 1,
+      "b2WaitMs": 1,
+      "durationMs": 20738
+    },
+    {
+      "run": 2,
+      "b2": "PASS",
+      "b3": "PASS",
+      "profileLineWaitMs": 0,
+      "b2WaitMs": 0,
+      "durationMs": 20534
+    },
+    {
+      "run": 3,
+      "b2": "PASS",
+      "b3": "PASS",
+      "profileLineWaitMs": 0,
+      "b2WaitMs": 0,
+      "durationMs": 20760
+    },
+    {
+      "run": 4,
+      "b2": "PASS",
+      "b3": "PASS",
+      "profileLineWaitMs": 110,
+      "b2WaitMs": 111,
+      "durationMs": 21463,
+      "evidence": true
+    }
+  ],
+  "note": "Four consecutive runs at checkedOut 54d688265415, all B2/B3 PASS with no FAIL rows. The profile-line wait is the time the gate now spends waiting for the line; the old single-read check had observed margins of -65ms to +265ms on the same machine. Run 4 is the committed evidence set.",
+  "allRunsFails": []
+}

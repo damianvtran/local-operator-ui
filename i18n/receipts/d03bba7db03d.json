@@ -1,0 +1,23 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "anthropic/claude-sonnet-5-5",
+  "instance": "d03bba7db03d",
+  "status": "passed",
+  "namespace": "ui.chat.pickers",
+  "sha256": {
+    "zh-CN": "badd98404dd38136c143c8aa596c152b2ba88e5c7cc5ae818038437ba1b1e9e4",
+    "en": "88d81780ea0cf598689a73b5b0206da020ccfe1b847631214f87f40791b684c7"
+  },
+  "findings": [
+    {
+      "severity": "NIT",
+      "key": "ui.chat.pickers.destination_pickers.default_for_all_sessions_that_follow_it",
+      "note": "Segment label 所有沿用默认设置的会话 is 12 CJK chars (24 cells) next to 此会话; correct meaning (fixes old 后续 misreading) but wide for a PickerSegment; optional shorter 沿用默认的会话. No maxCells hint, so not gating."
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.chat.pickers.destination_pickers.default_approvals_for_all_sessions_that_follow_it_this_session_follows_i",
+      "note": "Second sentence adds 也 (它也沿用该设置) that English lacks; harmless. Optional: 除非此会话自行选择，否则沿用该设置。"
+    }
+  ]
+}

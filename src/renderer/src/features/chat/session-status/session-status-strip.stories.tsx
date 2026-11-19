@@ -1,3 +1,10 @@
+import {
+	estimatedSpend,
+	legacySpend,
+	mixedSpend,
+	paygoSpend,
+	subscriptionSpend,
+} from "./spend-basis-fixtures";
 /**
  * The session status strip in every state it can honestly be in.
  *
@@ -38,10 +45,15 @@ import type { FC } from "react";
 import { useEffect, useRef } from "react";
 import "../../../styles/index.css";
 import type {
+	MirroredIntent,
+	MirroredSlots,
+} from "@shared/store/settings-intents";
+import type {
 	CanonicalFrontendState,
 	CanonicalSpendChannels,
 } from "../../../../../../src/shared/desktop-session-contract";
 import { SessionStatusStrip } from "./session-status-strip";
+import { SettingsIntentChips } from "./settings-intent-chips";
 
 /**
  * A frontend snapshot with only the fields the strip reads populated.
@@ -463,6 +475,165 @@ export const EffortStates: Story = {
 			</Frame>
 		</div>
 	),
+};
+
+/**
+ * The level the conversation CHOSE is not the level now serving (operator
+ * report, 2026-10-21: a remote session set to `Max` read `High` after a send,
+ * with nothing saying why). The chip still names the level IN FORCE, which is
+ * its job; the backend's `effort_displacement.note` adds the reason. A warning
+ * mark on the chip, with the sentence first in the tooltip and in the
+ * accessible name. The first frame is the control: same in-force level, no
+ * displacement, an unchanged chip. 960px wide because the effort chip yields
+ * below a 750px column (`@max-[750px]/chatcol:hidden`).
+ */
+const SONNET_HIGH = {
+	...GPT_5,
+	provider: "anthropic",
+	model_id: "claude-sonnet-5-5",
+	display_name: "Claude Sonnet 5.5",
+	reasoning_effort: "high",
+	reasoning_efforts: ["low", "medium", "high", "max"],
+};
+const DISPLACED = {
+	chosen: "max",
+	effective: "high",
+	selected: "acme/flash-1",
+	serving: "anthropic/claude-sonnet-5-5",
+	note: "Effort: high on anthropic/claude-sonnet-5-5; max resumes on acme/flash-1.",
+};
+// The selected model carries its catalog name, so the frame shows the note
+// with both models' display names rather than their raw slugs.
+const FLASH_MAX = {
+	...SONNET_HIGH,
+	provider: "acme",
+	model_id: "flash-1",
+	display_name: "Acme Flash",
+	reasoning_effort: "max",
+};
+const displacedFrontend = state({
+	selected_model: FLASH_MAX,
+	effective_model: SONNET_HIGH,
+	effort_displacement: DISPLACED,
+	context_tokens: 13_591,
+	context_window: 200_000,
+	cumulative_parent_cost: 0.31,
+	cost_knowledge: "exact",
+});
+
+export const EffortDisplaced: Story = {
+	render: () => (
+		<div className="flex flex-col gap-4 bg-canvas p-2">
+			<Frame
+				width={960}
+				label="Control: the chosen level is the level in force, so no mark"
+			>
+				<SessionStatusStrip
+					frontend={state({
+						effective_model: SONNET_HIGH,
+						effort_displacement: {},
+						context_tokens: 13_591,
+						context_window: 200_000,
+						cumulative_parent_cost: 0.31,
+						cost_knowledge: "exact",
+					})}
+					onCommand={() => undefined}
+				/>
+			</Frame>
+			<Frame
+				width={960}
+				label="Displaced: chose Max, a fallback serves at High; the chip says so"
+			>
+				<SessionStatusStrip
+					frontend={displacedFrontend}
+					onCommand={() => undefined}
+				/>
+			</Frame>
+		</div>
+	),
+};
+
+/** The displaced chip's tooltip, opened by keyboard focus. */
+/**
+ * A narrow composer that still draws the effort chip (it yields below a
+ * 750px content box, `@max-[750px]/chatcol:hidden`): the mark must not push the
+ * readings off the row or truncate the level itself.
+ */
+export const EffortDisplacedNarrow: Story = {
+	render: () => (
+		<div className="flex flex-col gap-4 bg-canvas p-2">
+			<Frame
+				width={800}
+				label="Displaced at 800px outer / 766px content: the chip fits"
+			>
+				<SessionStatusStrip
+					frontend={displacedFrontend}
+					onCommand={() => undefined}
+				/>
+			</Frame>
+		</div>
+	),
+	play: async ({ canvasElement }) => {
+		const box = canvasElement.querySelector<HTMLElement>(
+			'[class*="@container/chatcol"]',
+		);
+		const chip = canvasElement.querySelector<HTMLElement>(
+			'[aria-label^="Reasoning effort:"]',
+		);
+		if (!box || !chip)
+			throw new Error("Narrow evidence lacks its container or effort chip");
+		const css = getComputedStyle(box);
+		const content =
+			box.getBoundingClientRect().width -
+			Number.parseFloat(css.paddingLeft) -
+			Number.parseFloat(css.paddingRight) -
+			Number.parseFloat(css.borderLeftWidth) -
+			Number.parseFloat(css.borderRightWidth);
+		if (
+			content <= 750 ||
+			chip.getBoundingClientRect().width <= 0 ||
+			!chip.querySelector("svg")
+		)
+			throw new Error(`Effort mark hidden at ${content}px content width`);
+		if (box.scrollWidth > box.clientWidth)
+			throw new Error("Narrow composer overflows horizontally");
+		const label = canvasElement.querySelector("p");
+		if (label)
+			label.textContent = `Measured: ${content}px content; effort mark visible; no horizontal overflow`;
+	},
+};
+
+export const EffortDisplacedTooltip: Story = {
+	render: () => {
+		const Focused: FC<{ frontend: CanonicalFrontendState }> = ({
+			frontend,
+		}) => {
+			const host = useRef<HTMLDivElement>(null);
+			useEffect(() => {
+				const effort = Array.from(
+					host.current?.querySelectorAll("button") ?? [],
+				).find((button) =>
+					button.getAttribute("aria-label")?.startsWith("Reasoning effort"),
+				);
+				(effort as HTMLButtonElement | undefined)?.focus();
+			}, []);
+			return (
+				<div ref={host}>
+					<SessionStatusStrip frontend={frontend} onCommand={() => undefined} />
+				</div>
+			);
+		};
+		return (
+			<div className="flex min-h-[320px] flex-col justify-end bg-canvas p-2">
+				<Frame
+					width={960}
+					label="The reason, first after the value, in the backend's own words"
+				>
+					<Focused frontend={displacedFrontend} />
+				</Frame>
+			</div>
+		);
+	},
 };
 
 /**
@@ -2220,6 +2391,188 @@ export const ChannelsZeroStates: Story = {
 					costChannels={true}
 				/>
 			</Frame>
+		</div>
+	),
+};
+
+// All spend surfaces use the same four additive-wire compatibility cases.
+export const PaymentSubscription: Story = {
+	render: () => (
+		<div className="flex min-h-[600px] flex-col justify-end bg-canvas p-2">
+			<Frame width={900}>
+				<FocusedSpend override={{ spend_channels: subscriptionSpend }} />
+			</Frame>
+		</div>
+	),
+};
+export const PaymentMixedSameTurn: Story = {
+	render: () => (
+		<div className="flex min-h-[600px] flex-col justify-end bg-canvas p-2">
+			<Frame width={900}>
+				<FocusedSpend override={{ spend_channels: mixedSpend }} />
+			</Frame>
+		</div>
+	),
+};
+export const PaymentPaygo: Story = {
+	render: () => (
+		<div className="flex min-h-[600px] flex-col justify-end bg-canvas p-2">
+			<Frame width={900}>
+				<FocusedSpend override={{ spend_channels: paygoSpend }} />
+			</Frame>
+		</div>
+	),
+};
+export const PaymentLegacyUntracked: Story = {
+	render: () => (
+		<div className="flex min-h-[600px] flex-col justify-end bg-canvas p-2">
+			<Frame width={900}>
+				<FocusedSpend override={{ spend_channels: legacySpend }} />
+			</Frame>
+		</div>
+	),
+};
+
+export const PaymentEstimated: Story = {
+	render: () => (
+		<div className="flex min-h-[600px] flex-col justify-end bg-canvas p-2">
+			<Frame width={900}>
+				<FocusedSpend override={{ spend_channels: estimatedSpend }} />
+			</Frame>
+		</div>
+	),
+};
+
+/*
+ * DURABLE SETTINGS INTENTS (`features.settings_intents`): the band paints the
+ * TARGET at once (model through `pendingModel`, effort through
+ * `pendingEffort`), and the chip line above the composer row says what the
+ * server is doing with it. Each frame is the strip plus the chips exactly as
+ * `message-input.tsx` stacks them.
+ */
+const intent = (
+	over: Partial<MirroredIntent> & Pick<MirroredIntent, "kind" | "value">,
+): MirroredIntent => ({
+	request_id: "00000000-0000-4000-8000-000000000001",
+	generation: 1,
+	state: "applying",
+	error: null,
+	...over,
+});
+
+const IntentFrame: FC<{
+	label: string;
+	slots: MirroredSlots;
+	pendingModel?: typeof GPT_4O_MINI | null;
+	pendingEffort?: string | null;
+	width?: number;
+}> = ({ label, slots, pendingModel = null, pendingEffort = null, width }) => (
+	<Frame label={label} width={width}>
+		<div className="flex flex-col">
+			<SettingsIntentChips
+				slots={slots}
+				describeModel={(selector) =>
+					selector === "openrouter/openai/gpt-4o-mini"
+						? GPT_4O_MINI.display_name
+						: selector
+				}
+				onRetry={() => undefined}
+				onDismiss={() => undefined}
+			/>
+			<SessionStatusStrip
+				frontend={state({
+					effective_model: GPT_5,
+					context_tokens: 12_000,
+					context_window: 400_000,
+					cost_knowledge: "exact",
+				})}
+				pendingModel={pendingModel}
+				pendingEffort={pendingEffort}
+				pendingModelQueued={slots.model?.state === "queued_next_step"}
+				onCommand={() => {}}
+			/>
+		</div>
+	</Frame>
+);
+
+export const SettingsIntents: Story = {
+	render: () => (
+		<div className="flex flex-col gap-4 bg-canvas p-2">
+			<IntentFrame
+				label="Applying: the model switch is on its way; the band already names it"
+				slots={{
+					model: intent({
+						kind: "model",
+						value: "openrouter/openai/gpt-4o-mini",
+					}),
+				}}
+				pendingModel={GPT_4O_MINI}
+			/>
+			<IntentFrame
+				label="Applying: an effort change, painted on the effort reading"
+				slots={{ effort: intent({ kind: "effort", value: "low" }) }}
+				pendingEffort="low"
+				// Above the band's 750 px shed point, so the effort reading - and its
+				// pending "Low" in the dim register - is on screen (design D3).
+				width={840}
+			/>
+			<IntentFrame
+				label="Queued: the runtime accepted it and applies it at its next step"
+				slots={{
+					model: intent({
+						kind: "model",
+						value: "openrouter/openai/gpt-4o-mini",
+						state: "queued_next_step",
+					}),
+				}}
+				pendingModel={GPT_4O_MINI}
+			/>
+			<IntentFrame
+				label="Failed: the retry budget ran out - Retry and Dismiss; the band is back on the model in force"
+				slots={{
+					model: intent({
+						kind: "model",
+						value: "openrouter/openai/gpt-4o-mini",
+						state: "failed",
+						error: {
+							code: "retry_budget_exhausted",
+							message: "",
+							retryable: true,
+						},
+					}),
+				}}
+			/>
+			<IntentFrame
+				label="Failed terminally: an unknown model - Dismiss only, the server's reason verbatim"
+				slots={{
+					model: intent({
+						kind: "model",
+						value: "acme/no-such-model",
+						state: "failed",
+						error: {
+							code: "model_unknown",
+							message: "The model acme/no-such-model is not in the catalogue.",
+							retryable: false,
+						},
+					}),
+				}}
+			/>
+			<IntentFrame
+				label="Failed, narrow pane: the reason wraps under the sentence instead of clipping behind the buttons"
+				width={360}
+				slots={{
+					model: intent({
+						kind: "model",
+						value: "acme/no-such-model",
+						state: "failed",
+						error: {
+							code: "model_unknown",
+							message: "The model acme/no-such-model is not in the catalogue.",
+							retryable: true,
+						},
+					}),
+				}}
+			/>
 		</div>
 	),
 };

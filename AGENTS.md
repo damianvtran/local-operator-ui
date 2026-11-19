@@ -49,10 +49,27 @@ output. The short version of the parts most often got wrong:
   shipped inputs bounded at 1.25:1.
 - **Elevation is a lightness step, not a shadow.** One shadow exists, only for
   things that leave the flow (menu, dialog, drawer, popover, tooltip, select).
+- **A floating surface never carries a border.** (Operator report, 2026-11-06.)
+  It separates by its ground plus the one shadow, whose contact layer darkens the
+  panel's own edge; a hairline on a leave-flow panel is a regression by
+  construction, and so is a bordered control nested inside one — the panel's
+  action is the `tonal` Button variant (not `primary` by default), quieter ones
+  are `ghost`; chips and badges inside keep their own treatment. Elevation must
+  survive focus (no box-shadow reset may reach `[data-lo-floating]`), and no call
+  site passes another `shadow-*` (tailwind-merge drops `shadow-overlay`). On dark
+  palettes the ground step separates and the shadow supports. On window glass,
+  menus/popovers/tooltips stay translucent behind a blur (#1706) and the contact
+  is darkened, never ink-mixed. Dividers are inset `divider-inset`. The only
+  stroke is `@media (forced-colors: active)`'s 1px `CanvasText`. Primitives wear
+  `data-lo-floating`; `scripts/floating-surface-no-border.test.mjs` enforces it.
+  Full rule: `docs/branding.md` § 2.
 - **Disabled changes colour, never opacity. Focus is `outline`, never
   `box-shadow`** — this app is mostly scroll containers, and box-shadow rings
   get clipped by `overflow: hidden`.
 - **Nothing lifts, scales or translates on hover.** Hover is a colour step.
+- **Attention counts use the shared accent badge; totals use the subtle numeral.**
+  (`AttentionBadge` in `shared/components/ui/attention-badge.tsx`, operator
+  2026-10-28.)
 - **Agent output has a hierarchy** (§ 7): a question for the user is the most
   prominent thing on screen; internal reasoning is hidden by default. A
   completed action is one quiet line, not a card.
@@ -69,8 +86,67 @@ hand-edit `styles/themes.generated.css`.
 `pnpm check-themes` enforces both freshness and the contrast floors, asserting
 over component triples (ground + fill + border + ink) rather than token pairs.
 **Adding a component with its own fill and border means adding a row to
-`CONTROLS` in `scripts/contrast-contract.mjs`** — green output about a
-component nobody listed is not evidence about that component.
+`CONTROLS` in `src/shared/theme-engine/contract-tables.mjs`** (the contract's
+tables live there so the renderer's composition engine holds composed palettes to
+the same floors; `scripts/contrast-contract.mjs` imports them) — green output
+about a component nobody listed is not evidence about that component.
+`pnpm check-themes` also runs the contract at the four non-Standard contrast
+presets (`scripts/check-contrast-presets.mjs`), so a new row must hold on every
+palette at Soft, Gentle, Strong and High too.
+
+### Panels run to the window edge
+
+These are rules with their reason, not a checklist. A surface that understands
+why will get the next case right where a checklist would not name it.
+
+- **A panel is full-height and starts at y0, including under the invisible
+  titlebar.** The mechanism is two utilities in `styles/index.css`:
+  `panel-flush` on a route root that owns the whole window height, and
+  `panel-top-pad` on a full-height panel column. The lane is a single
+  transparent overlay that reserves no height, so there is no route opt-in and
+  no per-route inset to compute. Never inset a panel or give
+  it a top margin to clear the traffic lights. The clearance is **padding inside the panel**, so the panel's own
+  ground reaches the window edge while its content starts below the controls.
+  The difference is visible in one direction only: padding is invisible, an
+  offset panel is a band. This was reported three times (the Library sidebar,
+  the canvas right bar, and Team Bridge) and each time the bug was the same
+  relocation — the space existed, but outside the surface that should own it.
+  **The element that wears `panel-top-pad` must be the same box that paints the
+  panel's ground.** A padded wrapper with no ground of its own is exactly the
+  band this rule forbids; a content column inside a grounded, `panel-flush`
+  ancestor needs no ground of its own, and adding one there is a second tone
+  step where the panel already has one.
+- **Full screen keeps the same rule with a smaller number.** With no OS
+  controls over the window, every OS and chrome mode resolves the top inset to
+  `--chrome-fullscreen-top` (one 8px step, `styles/index.css`) instead of 0, so
+  first rows do not sit hard against the screen edge. It is still **padding
+  inside each panel** — it rides `--chrome-strip-h`, which `panel-top-pad`,
+  `panel-scroll` and the shell's `<main>` already read — never a strip or band:
+  every panel's ground still reaches y0, and the lane and route band are hidden
+  so no drag surface or second inset appears. Windowed layouts (mac lane, WCO
+  insets, native frames) do not change. No transition on the padding; it flips
+  in the frame the `data-chrome-fullscreen` attribute does.
+  `scripts/chrome-fullscreen-inset.test.mjs` resolves the cascade per state.
+- **Separate panels by ground value; a panel's edge may carry one `PanelEdge`
+  seam, never a border.** The tone step is what separates two planes, and the
+  old borders were removed three times, each time because the line started
+  below the titlebar strip and stopped in mid-air. On 2026-10-30 the other half
+  of that trade surfaced: between two full-height planes the step alone (ΔE00
+  2.32 in `localOperatorLight`) is a field-sized difference, so one sanctioned
+  mark was added — `PanelEdge`, a positioned 1px `hairline` at 75%, defined in
+  `panel-edge.tsx` and specified in `docs/branding.md` § Panels. A new
+  `border-l`/`border-r` on a panel is still a regression by construction: the
+  earlier removals were about a border in the wrong place, not about the idea
+  of an edge, and a border costs the panel a pixel while a scroll container
+  cannot spare one.
+- **A translucent panel must still occlude what scrolls beneath it.** A sticky
+  header whose ground lets rows bleed through is not "glass"; it is a
+  readability failure. Use the panel's ground (and its blur, where the theme
+  asks) so the content behind is hidden, not merely dimmed.
+- **Scrollbars sit outside the content constraint.** Size the content column
+  so its scrollbar occupies the gutter rather than narrowing the measure; a
+  scrollbar inside the padding makes text reflow when it appears, which reads
+  as a jump.
 
 ### One trap worth knowing
 
@@ -80,9 +156,33 @@ role in the same call collide and one is dropped **silently** — the component
 still looks right because colour inherits from `body`, until it renders on a
 ground where it does not.
 
-## Internationalization: maintainer pointer
+## Internationalization: mandatory policy
+
+**No new user-facing copy ships unkeyed, and no new feature ships in English
+only.** These rules are gates, not aspirations.
+
+- **All user-facing copy goes through `t()`.** No hardcoded strings in JSX text,
+  props, `aria-label`, `placeholder`, `title`, `alt`, toasts, dialogs, menus or
+  window copy. English is just another catalogue; there is no direct-string path.
+- **Every key, every language.** `i18n/languages.json` is the machine-readable
+  manifest of supported languages, shared byte-for-byte with the core repo;
+  read it, do not infer the set from locale directories. Every new or changed
+  key must exist in every language whose status is `supported` - including
+  languages added later. A feature is not done until it is localized in all of
+  them; English-only is a missing feature, not a follow-up.
+- **Idiomatic, never literal.** Translations are produced by an LLM translator
+  and reviewed by a different, independent auditor agent - never the same agent.
+  Follow the core glossary and each locale's style guide; preserve placeholders,
+  ICU syntax, plural/select arms and `<Trans>` tags exactly. RTL locales follow
+  the direction rules and must never contain manual bidi control characters.
+- **Adding a language** means a manifest row, a style guide and audited ledger
+  rows for every namespace. **Removing one** is a product decision, never a
+  cleanup an agent makes on its own.
+- **Generated files are hands-off.** `src/i18n/keys.gen.ts` and any shipped-locale
+  data are generated; never hand-edit them. Regenerate instead.
 
 Read `docs/I18N.md` for the contributor HOWTO and audit-evidence contract.
+The mechanics:
 
 - **Core:** `src/i18n/` owns the typed catalogue, ICU-message `t()` and locale-aware
   formatters; React bindings live in `src/renderer/src/shared/i18n/`. Use `t()` for
@@ -98,28 +198,47 @@ Read `docs/I18N.md` for the contributor HOWTO and audit-evidence contract.
   use `setLocale()` as a production override; backend choices own availability.
 - **Add a string:** put a stable semantic `ui.<area>.<name>` key in
   `src/i18n/catalogues/en/ui.<area>.json` (for example
-  `ui.settings.language.external_notice` in `ui.settings.json`). Use ICU
-  placeholders for values/plurals rather than concatenated sentences; optional
-  sibling `ui.<area>.context.json` files describe translator context, not keys.
-  Run `node scripts/i18n/generate.mjs` and commit `src/i18n/keys.gen.ts` with the
+  `ui.settings.language.external_notice` in `ui.settings.json`), and translate it
+  into every language whose status is `supported` in `i18n/languages.json`,
+  following the locale's style guide. Use ICU placeholders for values/plurals
+  rather than concatenated sentences; optional sibling
+  `ui.<area>.context.json` files describe translator context, not keys. Run
+  `node scripts/i18n/generate.mjs` and commit `src/i18n/keys.gen.ts` with the
   catalogue change. `t()`'s generated types reject unknown keys and missing,
   extra-on-bare-key or wrongly typed parameters at compile time.
-- **Add a locale:** mirror the namespace files under
-  `src/i18n/catalogues/<locale>/`, preserving English keys and ICU arguments.
-  The generator discovers every present locale directory and emits
-  `bundledCatalogues` (`en` aliases `bundledEnglish`). Regenerate before the
-  backend can select the tag and coordinate backend eligibility/rollout: a
+- **Add a locale:** add its row to `i18n/languages.json` and mirror the
+  namespace files under `src/i18n/catalogues/<locale>/`, preserving English keys
+  and ICU arguments. The generator discovers every present locale directory and
+  emits `bundledCatalogues` (`en` aliases `bundledEnglish`). Regenerate before
+  the backend can select the tag and coordinate backend eligibility/rollout: a
   directory alone is not audited activation. Do not hand-edit generated types
   for translations.
-- **Commands/gate:** `pnpm check-i18n` runs generator freshness (`--check`) plus
-  `scripts/i18n/check-strings.mjs`; `pnpm check-types` checks typed call sites.
-  The scanner ratchets literal JSX text and copy attributes against
-  `i18n/baseline.json`: only its `enforced` prefixes block, other areas remain
-  advisory. Lower ceilings with `node scripts/i18n/check-strings.mjs --update
-  <paths>` when extracting copy; exemptions in `i18n/allowlist.json` or
-  `i18n: ignore` comments require a reason. It does not yet scan every string
-  expression. No locale-management CLI is defined in this UI repo; these are
-  its existing developer commands, not a client-side language-setting command.
+- **Commands/gate:** `pnpm check-i18n` runs generator freshness (`--check`),
+  `scripts/i18n/check-strings.mjs`, the ledger and context gates, and
+  `scripts/i18n/check-coverage.mjs`, which fails when a `supported` manifest
+  language is missing an English key — key by key, so a new key added inside
+  an already-incomplete namespace cannot slip through. Known gaps live in
+  `i18n/coverage-allowance.json`, one `(locale, namespace)` entry per reason
+  with the exact sorted missing key IDs, an owner and a payoff (ticket or ISO
+  date). That list is shrink-only: a listed key that is no longer missing fails
+  until `--update` drops it, and the check fails when the allowance grows
+  relative to the base branch. CI runs this gate in the `Language Coverage` job
+  for any change under `src/i18n/**`, `i18n/**` or `scripts/i18n/**` — including
+  an allowance-only edit — with the comparison base taken from the pull
+  request, so the policy is enforced at merge rather than by convention.
+  `pnpm check-types` checks typed call sites. The
+  scanner ratchets literal JSX text and copy attributes against
+  `i18n/baseline.json`, and every finding blocks: there is no advisory scope.
+  A file with counted literals and no recorded entry fails rather than starting
+  at zero, so a new file is covered from its first commit — capture it with a
+  reviewed `node scripts/i18n/check-strings.mjs --init --force`, whose
+  added/raised/pruned summary is the baseline diff a reviewer reads. Lower
+  ceilings with `node scripts/i18n/check-strings.mjs --update <paths>` when
+  extracting copy; the only exemptions are `i18n/allowlist.json` entries and
+  `i18n: ignore` comments, both of which require a reason. It does not yet scan
+  every string expression. No locale-management CLI is defined in this UI repo;
+  these are its existing developer commands, not a client-side
+  language-setting command.
 
 ## Useful Commands
 
@@ -147,12 +266,36 @@ Read `docs/I18N.md` for the contributor HOWTO and audit-evidence contract.
   cannot drift into two opinions about which jobs apply — the same ethos as
   `pnpm lint:scripts` above, and the same reason this repository states it. See
   *Change scope* below.
+- Targeted tests: never run the full desktop suite for a PR. Start from
+  `pnpm test:affected` (tests the diff reaches, plus the tree-wide guards),
+  then add callers and neighbours it missed by judgement, and run any exempt
+  `pnpm test:*` it names. Record `pnpm test:affected --run --evidence` under
+  the PR's `## Targeted test evidence`, fresh on the current head; cover or
+  state every UNREACHED and BROAD path. The full suite runs in `full-suite.yml`
+  on each `main` push and nightly, and ONCE on a pull request: at the merge gate,
+  from a `ready-to-merge` label event (*The merge gate (full suite)*). It never
+  runs per push on a PR; no issue is filed for a red `main`. After merging, follow
+  `main`'s next full-suite run for your merge commit; if it is red because of
+  your change, fix forward or revert. See `scripts/affected-tests.mjs`.
+- The merge gate: `pnpm merge-gate <n>` removes and re-adds the `ready-to-merge`
+  label - the only trigger the full suite has on a pull request - and prints the
+  run it started. Run it when the review rounds are clean and the head is final,
+  and again after any later push. See *The merge gate (full suite)*.
 - Typecheck: `pnpm check-types`
 - Build: `pnpm build`
 - Theme gates: `pnpm check-themes` (freshness + contrast floors)
 - Regenerate theme CSS: `pnpm gen-themes`
 - Bundle size: `pnpm bundle-size`, `pnpm startup-closure`
 - Component gallery: `pnpm storybook`
+- Storybook cache: Storybook 8.6 never evicts `node_modules/.cache/storybook` (one
+  hash-named dir per config dir, i.e. per worktree; 85 / 6 GiB by `du` in six days), so
+  `.storybook/main.ts` runs `scripts/storybook-cache-prune.mjs` at every start: entries
+  older than 48 h go, then oldest-first down to 40, never one touched in the last 6 h or
+  the current run's. It is all regenerable and fails open. Off: `STORYBOOK_CACHE_PRUNE=off`;
+  tune: `STORYBOOK_CACHE_MAX_AGE_HOURS` / `_MAX_ENTRIES` / `_MIN_KEEP_HOURS`.
+- Storybook for a rig or a QA lane: `node scripts/with-storybook.mjs -- <command>`
+  (see the rig rules below) boots one, exports `STORYBOOK_ORIGIN`, and stops its whole
+  process group on every exit path - do not leave a bare `storybook dev` running.
 - Fold an evidence stamp after a merge: `pnpm evidence:fold` (resolves
   `docs/evidence/manifest.json` per field, re-derives the counts from the merged
   tree, runs the guards and stages the result - one commit per fold).
@@ -162,7 +305,10 @@ Read `docs/I18N.md` for the contributor HOWTO and audit-evidence contract.
   resolves a MERGE and nothing else - a rebase, cherry-pick or stash-pop still stops
   on the manifest, by design (see the evidence section below).
 
-`pnpm check-evidence` admits **one sweep per machine**, across worktrees and
+`pnpm check-evidence` is the PIXEL sweep, and it runs where the frames are: it is
+not in CI (a fresh checkout has no frames tree) and its CI half is
+`node scripts/check-evidence-structure.mjs`; on this fleet it is the release
+path's step 2b. It admits **one sweep per machine**, across worktrees and
 isolated `HOME`/`TMPDIR` runs. It requires Python 3 with POSIX `flock` (macOS/Linux)
 and uses the permanent `/tmp/local-operator-ui-check-evidence.lock` file. A busy
 lease exits **75** with `DEFERRED` and checks no frames; retry after the owner
@@ -261,8 +407,10 @@ resolution may not do, and a green head here is still perishable: a 19-35 minute
 CI wait against a 32-minute merge cadence means it is routinely superseded
 before it can be used. If you need the window, ask the
 current release-window owner to hold merges for one CI cycle - that role exists
-only while a `chore(release): claim release window` PR is open, so if no window is
-claimed, say so in the fold's own lane and take it: announce the hold where lanes
+only while a release PR is open — branch `release-next*` or `release/claim*`, or
+title `chore(release)…` (find it with the lookup in step 1 of the release
+procedure, never a `--search`), so if no
+window is claimed, say so in the fold's own lane and take it: announce the hold where lanes
 read, then fold, push and merge. What the one-at-a-time window was buying is now
 bought by the retirement itself: the churn that made a green head expire was a
 stored hash of a tree the file does not own, and it is gone.
@@ -398,15 +546,7 @@ answered against EVERY local ref, of which this machine carries around a thousan
 branch passes locally and dies in a fresh clone. Five citation failures shipped
 behind a local green for exactly that reason (design review round 2, D2b).
 
-**The sweep's citation half is checked NOWHERE on this fleet today, and the wired job says so.** `ci.yml`'s
-`evidence` job runs on `actions/checkout`'s depth-1 clone, where every citation in
-the manifest reads as missing at once - which says the CLONE is truncated, not that
-the commits are gone. `pnpm check-evidence` therefore judges only the citations
-that clone can answer and prints NOTHING about the rest: a stand-down notice on
-100% of runs is a standing excuse that reads as a covered check, the same
-green-by-absence the job's wiring was added to remove, one level up. The scope is
-declared where a reader meets the gate - the step's own name (`Sweep the committed
-frames (citations unchecked on shallow clones)`) and `citationWalk`'s paragraph.
+**The sweep's citation half is checked NOWHERE on this fleet today, and that is stated where the sweep runs.** `ci.yml`'s `Evidence Structure` job does not run the sweep at all any more (the pixel half moved to the release path, step 2b). When a release owner runs `pnpm check-evidence` on this machine the checkout is SHALLOW - every checkout here is - so every citation in the manifest reads as missing at once, which says the CLONE is truncated, not that the commits are gone. `pnpm check-evidence` therefore judges only the citations that clone can answer and prints NOTHING about the rest: a stand-down notice on 100% of runs is a standing excuse that reads as a covered check, the same green-by-absence the job's wiring was added to remove, one level up. The scope is declared where a reader meets the gate - the release step's own paragraph and `citationWalk`'s - and `git fetch --unshallow` is what answers it.
 
 **"Local-only" would UNDERSTATE that, and this is the trap to hold on to: every
 checkout on this fleet is shallow, not just CI's.** `git rev-parse
@@ -420,9 +560,13 @@ fetch --unshallow` before the run, and the synthetic manifests in
 the citations.
 
 Do not put the whole-tree sweep on the local `check-changed` path either: it is a
-whole-tree decode of every committed frame behind a machine-wide lease, so it is in
-`LOCAL_EXCLUSIONS` with the fast half of the same gate still running under `test`,
-and its lease's exit 75 is a DEFERRAL the runner names rather than a failure.
+whole-tree decode of the captured frame set behind a machine-wide lease, and its
+lease's exit 75 is a DEFERRAL the runner names rather than a failure. What IS on
+that path is the cheap half: `node scripts/check-evidence-structure.mjs` (the
+`evidence` job's own command, so local and CI cannot drift), which asserts the
+tracked structure and never decodes. The pixel sweep lives on the release path -
+step 2b of *The window, and the release owner's procedure* - because that is
+where a checkout with frames exists.
 
 **A frame is judged by its NAME, not by its container - and the rest are COUNTED.**
 `check-evidence.mjs`'s `frames()` judges any frame whose filename names a theme
@@ -532,13 +676,22 @@ the reasoning, probe costs and constants are in
   figure may undercount. Read the figure first: a test that legitimately needs
   more is a reason to raise the budget; one that holds gigabytes is a leak, and
   the budget did its job.
-- **The budget** is `max(8 GB, 25% of RAM)` capped at 50% of RAM. The floor is
-  2.7x the real suite's measured peak: one full `pnpm test:desktop` (330 files,
-  concurrency 7) peaked at **3,041 MB** of `max(footprint, RSS)` across the tree.
-  It stays ACTIVE on CI (unlike the concurrency governor): a runaway there is
-  otherwise a 35-minute timeout and a nameless OOM kill. Override with
-  `LOCAL_OPERATOR_UI_TEST_MEMORY_BUDGET_MB=<MB>` (honoured unclamped) or `=off`
-  (announced on stdout).
+- **The budget** is `max(9.5 GB, 25% of RAM)` capped at 62.5% of RAM. The floor
+  is 2.7x the development host's measured peak: one full `pnpm test:desktop` (330
+  files, concurrency 7) peaked at **3,041 MB** of `max(footprint, RSS)` across the
+  tree. It is sized for the HOSTED runner too, and there the ceiling is what used
+  to decide: at the old 50% a 16 GB runner (15,983 MB) computed
+  `min(max(8,192, 3,995), 7,991)` = **7.8 GB**, below the sharded suite's real
+  peak, so it killed four healthy runs at 7.9 / 8.2 / 8.5 / 9.4 GB (runs
+  40992181176, 40996898976, 41030488151, 41040832734) with no failing test. The
+  floor now clears the highest of those and the 62.5% ceiling keeps the floor
+  reachable on any runner down to 15.2 GB (why 0.625 and not 0.65: a non-binary
+  fraction prints `65.00000000000001` in the evidence line). Small hosts stay
+  capped — an 8 GB box gets 5,120 MB. Green CI is not proof of capacity: a kill
+  names a budget, a failing test name does not. It stays ACTIVE on CI (unlike the
+  concurrency governor): a runaway there is otherwise a 35-minute timeout and a
+  nameless OOM kill. Override with `LOCAL_OPERATOR_UI_TEST_MEMORY_BUDGET_MB=<MB>`
+  (honoured unclamped) or `=off` (announced on stdout).
 - **When the watchdog cannot see the whole tree it says so, and the bound is
   narrower.** A probe that fails or times out skips that tick (unknown never
   kills, and a starved `ps` must not wedge the run). If the process-table read
@@ -570,6 +723,7 @@ the reasoning, probe costs and constants are in
   node_modules` (~0 bytes). pnpm refuses a symlinked `node_modules`, so scripts in
   such a worktree must call `node_modules/.bin/<tool>` directly rather than
   `pnpm <tool>`.
+- **Where worktrees live.** Prefer `<repo>/.worktrees/<name>` sharing the primary dependency tree; a sibling `../<repo>-<topic>` is tolerated with APFS-cloned deps or an absolute link; never session scratchpads, /tmp or `$TMPDIR` dirs, `$HOME` top level or ad-hoc sibling roots. `git worktree remove` (clean only, never discard unpushed work) once the PR merges or the lane closes; `~/local-operator/scripts/worktree_janitor.py --repo ~/local-operator-ui` lists stragglers.
 
 **Anything that spawns `node --test` must drop `NODE_TEST_CONTEXT`.** Node
 exports it into every test-file process, and a nested `node --test` that inherits
@@ -1324,8 +1478,9 @@ Four consequences for how you take evidence:
 
 - **Read the viewport from the page and label frames with it.** A
   `BrowserWindow` size includes the platform's window chrome, so 1380x900 is a
-  1380x872 CSS viewport on macOS **on Electron 35.5.1 and a 1380x868 one on
-  44.3.0** (both measured; the chrome the runtime reserves moved between them), so
+  1380x872 CSS viewport on macOS **on Electron 35.5.1, a 1380x868 one on 44.3.0,
+  and a 1380x900 one on 45.1.0** (all measured; the chrome the runtime reserves
+  moved between them), so
   treat the number as something the run reports rather than a constant to recall —
   a committed frame labelled with the other version's viewport is a caption that
   does not match its bytes. A `--window-size` under the verified 800x600 floor is
@@ -1399,11 +1554,26 @@ an unattended launch can never answer.
 
 ### Capturing the frame
 
-Capture from inside the app — `webContents.capturePage()` or CDP — never with
-macOS `screencapture`, which works only on the frontmost window and so requires
-exactly the focus theft this section exists to remove. Storybook evidence is
-unaffected: `node scripts/capture-evidence.mjs <storybook-origin>` already drives a
-private `--headless=new` Chrome.
+Capture from inside the app — `webContents.capturePage()` or CDP — and never
+with an interactive or full-screen macOS `screencapture`, which photographs
+whatever is in front and so invites exactly the focus theft this section exists
+to remove. Storybook evidence is unaffected: `node scripts/capture-evidence.mjs
+<storybook-origin>` already drives a private `--headless=new` Chrome.
+
+**The one sanctioned window-server capture is the vibrancy path.** An in-app
+capture cannot see macOS vibrancy (the window server composites the blurred
+desktop; the page never paints it), so a frame that must show it is taken by
+`scripts/mac-proof-capture.mjs` ([`docs/mac-proof-capture.md`](docs/mac-proof-capture.md)):
+a window-only `screencapture -x -o -l <windowid>` of an `inactive` window that
+harness launched itself, in one self-contained command that launches, captures
+and reaps. `-l` names one window by its CGWindowID, so nothing is activated,
+raised or focused, and the harness refuses a run whose app reports `normal` or
+`focused=true`. **Claim pending Mac measurement**: that `-l` of a non-front
+`inactive` window carries real vibrancy with no activation or focus change has
+not yet been measured on a Mac; until it has, frames from this path say so
+(receipt method `screencapture -l (real vibrancy, pending Mac measurement)`).
+Run it as a background job or with a caller timeout of at least `--timeout` +
+60 s: a SIGKILLed harness cannot reap the rig's `lop serve`.
 
 **Driving the renderer is a supported path now, not a rig per agent.**
 `scripts/renderer-driver.mjs` boots the built app headless in an isolated
@@ -1512,6 +1682,53 @@ The rule for the class is therefore about the sweep as much as the launch:
   because the interruption is the measurement's side effect rather than its
   subject. If the question genuinely needs focus, measure it once.
 
+### A packaged bundle is never run in node mode (F2 fuses)
+
+Packaged builds flip Electron's fuses (`build.electronFuses` in `package.json`;
+the table and its reasons are in `scripts/electron-fuse-policy.mjs`): RunAsNode,
+`NODE_OPTIONS` and `--inspect` are OFF, asar integrity, only-load-from-asar and
+cookie encryption are ON. They exist so a same-uid process cannot run its own
+code inside the genuine signed app, which the runtime relies on to treat card
+answers from the app as the operator's. For a rig that means:
+
+- **`ELECTRON_RUN_AS_NODE=1 <packaged exe> …` now BOOTS THE WHOLE APP** — a
+  window, the backend, the keychain — instead of running a Node one-liner. Never
+  use node mode against a `dist/` or installed bundle. To ask a packaged bundle
+  "do you start and load your own `app.asar`/bytecode?", run it with
+  `LOCAL_OPERATOR_LOG_DIR=<scratch>/logs <exe> --lo-launch-probe
+  --user-data-dir=<scratch> --use-mock-keychain --window-mode=headless`: it prints one `LOCAL_OPERATOR_LAUNCH_PROBE {...}` line
+  before its lock, window or backend and exits 0 (`src/main/launch-probe.ts`,
+  the release gate's `app-spawn`). The npm `electron` binary is unfused, so dev
+  and CI uses of node mode with `node_modules/.bin/electron` are unaffected.
+- **Pass `--use-mock-keychain` on every packaged launch under a scratch `HOME`.**
+  With cookie encryption on, Chromium encrypts its cookie store with a keychain
+  key, so a scratch `HOME` with no login keychain raises the "Keychain Not Found"
+  prompt class described above.
+- **`NODE_OPTIONS`, `--inspect*` and `ELECTRON_RENDERER_URL` do nothing to a
+  packaged app.** The last is now read only through `devRendererUrl`
+  (`src/main/dev-renderer-url.ts`), which ignores it when packaged; a rig that
+  wants a dev renderer runs the unpackaged app.
+- **Do not edit a built bundle's `app.asar` and expect it to run.** The integrity
+  fuse checks the archive header against the hash in `Info.plist` at launch, and
+  each file against its block hashes when that file is first read; a mismatch
+  aborts (that is the point). A tamper test must change the header or a file
+  read at start-up (`out/main/index.jsc`): a renderer asset only fails later.
+- **The launch probe must not touch the operator's real logs.** The app's log
+  directory is `~/Library/Application Support/Local Operator/logs` under the OS
+  account's home, which neither a scratch `HOME` nor `--user-data-dir` moves. A
+  probe launch writes no log files (`logFilesEnabled` in
+  `src/main/backend/log-dir.ts`), and every rig and gate that launches the probe
+  also sets `LOCAL_OPERATOR_LOG_DIR=<scratch>` so an older bundle cannot write
+  there either (native QA on PR #1948 measured five lines landing in the
+  operator's files from one probe).
+- **Tamper rows use ad-hoc re-signed copies, never a launched Developer ID
+  copy.** Launching a tampered Developer ID–signed bundle makes Gatekeeper show
+  a code-evaluation prompt on the operator's screen, even for a non-quarantined
+  copy (the `com.apple.provenance` xattr is enough). Re-sign the copy ad hoc
+  (`codesign --force --deep --sign -`) before tampering and launching it, and
+  prove the Developer ID signature row statically with `codesign --verify
+  --deep --strict`, without launching that copy.
+
 ### What already opens no window, so a rebase does not re-introduce one
 
 `pnpm test:desktop` bundles modules in process; the CI npx smoke test prints its
@@ -1565,6 +1782,10 @@ pairing rather than to explain it.
 
 What follows for a run:
 
+- **Boot the Storybook through `scripts/with-storybook.mjs`**
+  (`node scripts/with-storybook.mjs -- <command>`): it owns the server's process
+  group and tears it down on exit, failure and SIGINT/SIGTERM/SIGHUP, so no dev
+  server outlives its run.
 - **Open a story through the manager URL that carries the token**, never a bare
   `iframe.html?id=…` as the page's top-level URL: the bare form is the one the server
   channel refuses, and that refusal is what each reload was paired with.
@@ -1976,9 +2197,9 @@ by that setting is said out loud. Full detail and the wiring's failure modes:
   uses, **serially**, because two concurrent `tsc` processes are what this host's
   memory budget cannot take. A prose-only diff, a committed-evidence-only diff and
   a version-only `package.json` bump run nothing at all.
-- **CI remains the authority.** The desktop suite (now 345 files), the build, the
-  pack/launch, the audit and the runtime-dependency allowlist are NOT run here —
-  none is delta-scoped. The gate prints which jobs it is leaving to CI on every
+- **CI remains the authority.** The build, the pack/launch, the audit and the
+  runtime-dependency allowlist are NOT run here — none is delta-scoped — and the
+  desktop suite runs in neither: only `full-suite.yml` on `main` runs it. The gate prints which jobs it is leaving to CI on every
   push, so a green push is never read as a green PR.
 - **The types leg is the one that costs the tree**, because TypeScript has no
   per-file mode; it therefore runs only when the diff touches a TypeScript file.
@@ -2020,6 +2241,17 @@ link this checkout's `node_modules`, so the `scripts/` lint leg runs the
 repository's own biome; the `tsc` leg is out of reach there and rests on the
 classifier's tests and CI.
 
+### Condense parity fixture: conflicts and the pin
+
+`scripts/fixtures/condense.parity.json` and its manifest are GENERATED, and
+`desktop.sourceHash` pins only the bundle inputs that emit code (esbuild
+`bytesInOutput > 0`), not every file the build reads. When a merge of `origin/main`
+conflicts and the fixtures are the only unmerged paths, run
+`node scripts/generate-condense-parity.mjs --resolve-merge`: it takes our side,
+regenerates both from the merged tree, stages them and says to commit. It refuses
+if anything else is unmerged. Never hand-edit either file; the generator header
+explains the invariant and `scripts/condense-parity.test.mjs` enforces it.
+
 ## Releasing: one owner per window, and no version bumps inside feature PRs
 
 **Releasing is a decision a person makes, separately from merging.** Merging
@@ -2032,6 +2264,21 @@ signed-update verification and promotes the Release once its assets are complete
 with no manual step on the pipeline. So **merging is not releasing**: a merged PR
 that has not been released yet is the normal state of `main`, not a problem to fix,
 and a request to *implement* something is not a request to *release* it.
+
+**What the macOS build signs and notarizes with.** Both `publish.yml` and
+`signed-update-candidate.yml` sign with the Radient Inc. organization's Developer ID
+Application identity (`MACOS_DEVID_APP_P12_BASE64` / `_PASSWORD`), embed its
+Developer ID provisioning profile (`MACOS_APP_PROFILE_BASE64`) so the main
+executable can carry the passkey keychain group, and notarize with an App Store
+Connect API key (`APPLE_API_KEY_P8_BASE64`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`).
+The team id did not change in the move off the individual account, so installed
+apps' designated requirements still accept the new signature. The retired secrets
+(`CSC_CONTENT`, `CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_ID_PASSWORD`) stay for
+rollback and nothing may read them (`scripts/mac-build-arch.test.mjs`). Renewal is
+a pair: the certificate expires 2027-12-02, and a Developer ID profile embeds its
+certificate, so a new p12 always ships with a NEW profile — the comment above
+`publish.yml`'s staging step is the runbook. Never put the WebAuthn group on
+`entitlementsInherit` (the 0.29.6 brick; `docs/design/browser-challenges-and-passkeys.md` §3.4).
 
 That used to be the other way round, and the history is worth keeping because it
 explains why the trigger is a *published Release* and nothing else. The deleted
@@ -2053,24 +2300,28 @@ that event's own payload.
 branch. A PR never touches it, and the reviewer round treats a version change
 inside a feature PR as a finding.
 
-**CI checks this**, in the `Version Bump Guard` workflow
-(`.github/workflows/version-bump-guard.yml`, `scripts/version-bump-guard.mjs`). A
+**CI checks this**, in the `version-bump-guard` job of `ci.yml` behind `CI Gate`
+(`.github/workflows/ci.yml`, `scripts/version-bump-guard.mjs`). A
 pull request whose diff changes the `version` line fails unless its title starts
 with `chore(release):`. Dependency and metadata edits to `package.json` are
 unaffected — the guard reads the version line, not the file.
 
 **On a release-bump PR that guard is the only check.** A version-only
-`package.json` diff is classified as a release bump, so every job in `ci.yml` is
-a deliberate skip and that pull request's whole PR-side evidence is
-`Version Bump Guard` plus the `Change Scope` job that decided so (see *Change
-scope*). Do not read those two green checks as a matrix: the review round on the
+`package.json` diff is classified as a release bump, so every scope-flagged job in
+`ci.yml` is a deliberate skip and that pull request's whole PR-side evidence is
+`Version Bump Guard` plus `Change Scope` behind `CI Gate` (see *Change
+scope*). Do not read those green checks as a matrix: the review round on the
 one-line diff is the rest of the assurance.
 
 It makes the violation loud; it does not make it impossible. This repository's
-`main` configures **no required status checks** — so no red check is mechanically
-fatal — but that is not "nothing is required": the same `Main Protection` ruleset
-carries a `pull_request` rule with `required_approving_review_count: 1` (*Who may
-merge: two tiers*). Measured 2026-09-24 on the v0.30.24 bump PR #492: a merge
+`main` DOES configure required status checks - `Main Protection` (ruleset
+`23841604`) requires the `Bytecode Build Check` and `CI Gate` contexts, measured
+2026-11-08 with `gh api repos/<owner>/<repo>/rules/branches/main` - so a red
+required check is mechanically fatal rather than merely loud, and
+`Merge gate (full suite)` joins that list once it is bound (*The merge gate (full
+suite)*). Required checks are not "nothing else is required" either: the same
+ruleset carries a `pull_request` rule with
+`required_approving_review_count: 1` (*Who may merge: two tiers*). Measured 2026-09-24 on the v0.30.24 bump PR #492: a merge
 without `--admin` was refused with `is not mergeable: the base branch policy
 prohibits the merge`, and it completed only through the owner's `always` bypass
 actor with `--admin`, disclosed on the PR. Read a refusal for what it is — **a
@@ -2103,6 +2354,62 @@ Release or artifact had ever been built from, two numbers were consumed without
 ever being published, and the next window had to skip them because a published
 version cannot be reused. A rule that depends on every reviewer remembering to
 look is a rule that fails on the day someone does not.
+
+### The merge gate (full suite)
+
+**The full desktop suite and macOS native app proofs run for a pull request
+EXACTLY ONCE, at the merge gate, and a red gate blocks the merge.** Review rounds
+stay cheap: nothing here runs the suite or the four PR native scenes per push
+(*Targeted tests* above). The trigger is a LABEL EVENT -
+`pull_request: [labeled]` in `.github/workflows/full-suite.yml` - and the check
+carrying the verdict is `Merge gate (full suite)`, reported by that workflow's
+`merge-gate` job from the `changes`, `test`, `desktop-tests-result` and
+`native-proofs` results. Mid-review QA can also run `native-proofs` on demand via
+`gh workflow run full-suite.yml --ref <branch> -f native_proofs=true`.
+
+**The procedure.** When the code, QA, design and UX rounds are clean and the head
+is FINAL, run `pnpm merge-gate <n>` (`scripts/merge-gate.mjs`). It creates
+`ready-to-merge` if the repository has never had one, removes and re-adds it - an
+add on a label that is already present delivers NO event and starts nothing - and
+prints the run URL plus how to follow it. Then read `Merge gate (full suite)`.
+Do not run the desktop suite locally for this: locally it is not run at all, and
+`check-changed` runs the guards in its place.
+
+**A push after the gate ran strands the check on the OLD SHA**, so the new head
+carries no `Merge gate (full suite)` and the pull request is blocked (GitHub shows
+`Expected`). That is the intended block, not a dead end: run the ritual again on
+the final head. Never retry a single job - the gate is the whole suite or it is
+nothing.
+
+**A green gate is a verdict about the PR head, not a promise about `main`.** The
+gate certifies this pull request's head with the base as it stood when it ran
+(`Main Protection` has `strict_required_status_checks_policy: false`, so the
+branch is never forced up to date), and two individually-green pull requests can
+still compose red on `main`. `main`'s own full-suite run after the merge is the
+backstop for that - semantic conflicts between two green diffs are the one thing
+this check cannot see.
+
+**Why a label, and why no label CONDITION on the jobs.** GitHub counts a
+`skipped` check as SATISFYING a required status check, and `pull_request:
+[labeled]` fires for EVERY label. A suite job behind `if: contains(...
+'ready-to-merge')` would therefore report `skipped` - a pass - on a run some
+OTHER label started, and a red pull request would merge. So no job in that
+workflow carries a label condition: any label on a pull request costs one full
+run, and that is the accepted trade.
+
+**Why not the merge queue.** `repository.mergeQueue` is null on this repository
+and the `enableMergeQueue` mutation does not exist there - GitHub limits merge
+queue to organisation-owned public repositories (or private organisation
+repositories on Enterprise Cloud) and this one is owned by a user account.
+Measured, not assumed: the label event is what replaces it.
+
+**The one activation step is not a code change.** `Main Protection` requires the
+`Bytecode Build Check` and `CI Gate` contexts today; `Merge gate (full suite)`
+becomes mechanically blocking once it is added to that list (Settings -> Rules ->
+`Main Protection`, or `gh api -X PUT` on `repos/<owner>/<repo>/rulesets/23841604`
+with the ruleset's full body). Until it is bound the check still runs and still
+reports, but nothing refuses the merge on it - so bind it before treating a red
+gate as fatal.
 
 ### The PR owner merges; nobody queues for a number
 
@@ -2191,14 +2498,29 @@ recording a stop), and two sessions that both look in the same minute each see
 out-of-queue releases in one window. A pull request is observable to every session
 through the forge, so the claim PR is the lock. In order:
 
-1. **Look for the lock.** `gh pr list --search '"chore(release)" in:title'
-   --state open`. An open claim/bump PR means the window is owned: its body names
-   the owning session's pid, so send that session your PR number, merge SHA and
-   `Release:` line and let it aggregate. Do not start a second release. (Quote the
-   phrase: `gh` passes it to GitHub, which reads bare parentheses as syntax and
-   returns nothing.)
+1. **Look for the lock — list and match locally, never `--search`.**
+   ```bash
+   gh pr list --state open --limit 500 --json number,title,headRefName,createdAt \
+     --jq '.[] | select((.headRefName | startswith("release-next") or startswith("release/claim")) or (.title | startswith("chore(release)")))'
+   ```
+   ANY line of output means the window has an owner — claim or bump PR alike: its
+   body names the owning session's pid, so send that session your PR number, merge
+   SHA and `Release:` line and let it aggregate. Do not start a second release.
+   Why not a `--search`: the claim PR is a draft titled `chore(release): claim
+   release window`, and a `--search` on `chore(release)` matches it only when the
+   phrase is quoted exactly right — unquoted, GitHub reads the parentheses as
+   syntax and returns nothing, which reads as "no owner" (measured 2026-11-14:
+   `chore(release)` and `chore(release) in:title` returned nothing while claim PR
+   #1908 was open). Sessions that searched titles nearly claimed the windows #1908
+   and #1878 already held. The branch arm survives the claim→bump retitle; the
+   title arm — a plain local string match in `--jq`, where parentheses are not
+   syntax — catches release PRs pushed from other branch names (#1797
+   `release-0529`, #1649 `release/hub-skill-adoption-window`). `--limit 500`
+   because `gh pr list` stops at 30 by default and the core repo routinely has
+   more than 30 open PRs.
 2. **Take the lock by opening the claim PR** — the owner's *first* act, before
-   collecting anything (step 0 of the procedure below). It starts as one empty
+   collecting anything (step 0 of the procedure below). Its branch MUST start with
+   `release-next`. It starts as one empty
    commit titled `chore(release): claim release window`, opened as a draft PR whose
    body names the owner's session pid from `lop sessions` and carries an empty
    checklist of the window's PRs; only then is it announced with `send` to the
@@ -2243,8 +2565,14 @@ one that ships the wrong tree.
 #    `release-next`, opened as a DRAFT PR; step 2 amends that same commit into the
 #    version change and retitles this same PR, so the lock's number never moves.
 #    Push the branch and open the PR only after step 1 of *The window, and the
-#    release owner's procedure* has found no open chore(release) PR.
-WT="$(mktemp -d)/release-next"   # scratch, and session-unique: nothing else owns it
+#    release owner's procedure* has found no open release-next*/release/claim*
+#    or chore(release) PR (list-and-match lookup, never --search).
+# In-repo and at a STABLE path, never mktemp -d: eight $TMPDIR release cuts were
+# stranded after their releases. No `trap` and no `$$`: this recipe spans many
+# separate shell invocations (claim, edit, review round, merge, publish), so an
+# EXIT trap would fire after the first one and `$$` would differ in each.
+# If the release aborts, run the step-5 removal below (clean tree only) first.
+WT=~/local-operator-ui/.worktrees/release-next
 git fetch origin --tags
 git worktree add "$WT" origin/main
 git -C "$WT" switch -c release-next
@@ -2299,6 +2627,44 @@ gh pr edit <claim-pr-number> --title 'chore(release): bump version to X.Y.Z'
 gh pr ready <claim-pr-number>
 MERGE_SHA=$(gh pr view <claim-pr-number> --json mergeCommit --jq .mergeCommit.oid)
 
+# 2b. THE PIXEL SWEEP, before the tag - on a checkout that HAS the frames.
+#     Frames are rig output in the ignored `docs/evidence-frames/` and are not
+#     committed, so a fresh CI checkout has none: `ci.yml`'s `Evidence Structure`
+#     job checks the tracked structure (no committed frames, the manifest and its
+#     declarations, the proof artefacts) and CANNOT judge a pixel. The pixels are
+#     checked HERE, and this is a MOVE from every-PR CI to release-time, not a
+#     coverage claim.
+#
+#     THE FRAMES TREE IS NOT REGENERABLE FOR MOST SETS. `node
+#     scripts/capture-evidence.mjs` regenerates only the story-covered sets -
+#     111 STORIES prefixes against 230 declared sets - while 205 of the 230 sets
+#     have a top-level directory outside that table (189 distinct directories,
+#     4,319 frame containers): live-app captures, hand-taken PNG pairs and rigs
+#     with no producer in `scripts/` (`schedules-page-before` 300 frames,
+#     `right-slot-memory` 120, `sidebar-tags-v2-2` 46 including its 11 `.jpg`,
+#     which the manifest counts in `unjudgedFrames`). A capture-only tree
+#     therefore fails the sweep's arithmetic; dropping just `sidebar-tags-v2-2`
+#     moves `unjudgedFrames.insideDeclaredSets` 803 -> 757.
+#
+#     SO THE TREE IS SEEDED ONCE, from a checkout that already carries the
+#     frames: a pre-split checkout still has every frame at `docs/evidence/`
+#     (`git rm --cached` leaves the files), and the split's own working tree has
+#     them under `docs/evidence-frames/`. Copy that tree once (APFS clone: no new
+#     bytes) into the release worktree. This is a ONE-TIME migration step, not
+#     part of every release - a worktree that already holds the tree needs only
+#     the sweep below.
+cp -Rc <captured-checkout>/docs/evidence-frames "$WT/docs/evidence-frames"
+cd "$WT" && node scripts/check-evidence.mjs
+#    Record, in the release PR body and the Release notes' evidence section:
+#      `tree under review: src=... scripts=...`
+#      `Evidence holds: <n> frames are pictures of their own theme (worst ...)`
+#    IF THE FRAMES TREE IS ABSENT OR EMPTY, THE SWEEP IS NOT PERFORMED: record
+#    `pixel sweep: not performed (no frames tree)` and do NOT claim the release
+#    was pixel-checked. `check-evidence.mjs` exits 1 and says which it found; that
+#    refusal is the honest reading of "cannot check", not a verdict. The sweep
+#    takes the machine-wide lease and exits 75 when another holds it - retry
+#    rather than reading 75 as a verdict.
+
 # 3. RE-DERIVE the window here, then tag and Release in ONE step on that SHA, notes
 #    hand-written from the template. Anything merged since step 1 rides this tag —
 #    the tag names a SHA and everything reachable from it ships — so this is the
@@ -2332,7 +2698,7 @@ gh run list --workflow=publish.yml --limit 3 && gh run watch <id>
 #    modified inside it — read that before forcing, because it means the tree the
 #    release came out of was not the one the review round read (the commit itself
 #    was still `package.json` only, which `-o` guarantees).
-git worktree remove "$WT"
+git -C ~/local-operator-ui worktree remove "$WT"
 ```
 
 **Why `--target` and not `git tag vX.Y.Z && git push --tags`.** A bare tag
@@ -2530,12 +2896,14 @@ derivation to guard. What remains:
   Read the classification summary (see *Change scope*) before treating either
   shape as evidence.
 - **Never force-push, and never merge on a red required job.** The `Main
-  Protection` ruleset (ruleset `23841604`, attached 2026-09-22) configures **no
-  required status checks** —
-  its rules are `non_fast_forward` and the approval count — so nothing makes a red
-  check fatal: `version-bump-guard` and CI make it *loud*, and the merge is still
-  the agent's to refuse. `non_fast_forward` does then refuse a force-push
-  mechanically, the one violation that stopped being merely loud.
+  Protection` ruleset (ruleset `23841604`, attached 2026-09-22) requires the
+  `Bytecode Build Check` and `CI Gate` contexts and carries `non_fast_forward`
+  and the approval count (measured 2026-11-08 with `gh api
+  repos/<owner>/<repo>/rules/branches/main`), so a red required check refuses the
+  merge mechanically and `non_fast_forward` refuses a force-push the same way.
+  `Merge gate (full suite)` is the merge gate's context once it is bound (*The
+  merge gate (full suite)*). A green check list is still not proof on its own -
+  read the classification, and the stale-head shot above.
 - **Write access to `main` is release authority, and it is the widest control this
   repository has.** `main` is governed by the `Main Protection` ruleset —
   `gh api repos/<owner>/<repo>/rules/branches/main`, the check this file already
@@ -2756,3 +3124,73 @@ only strips it for `@me` and `@copilot`), preferring the owner set recorded in
 `gh api repos/damianvtran/local-operator-ui/collaborators`, since a handle without
 write access is silently ignored by an approval rule. Tagging a person in a
 *comment* is what says the PR is waiting on them, so neither is done casually.
+
+
+### Desktop CI capacity partitions
+
+Pull-request CI no longer runs these shards: `full-suite.yml`'s `test` job does,
+on each `main` push and nightly (see *Targeted tests* under the commands). The
+`test` job uses four deterministic file-count partitions of the desktop
+inventory, which is DERIVED rather than listed: every `*.test.mjs` under
+`scripts/` (recursively) minus the explained `EXEMPT` table in
+`scripts/desktop-test-inventory.mjs` (`node scripts/desktop-test-inventory.mjs
+list` prints it), plus that module's explicit `EXTERNAL_TESTS` registrations
+preserving main's existing colocated desktop coverage. Adding a test file under
+`scripts/` edits nothing shared; a suite that must not
+run in the shared lanes (display-bound, its own CI step, too heavy) is exempted
+in the PR that adds it, with its reason. The old literal `test:desktop` line was
+rewritten by every PR that added a test, so any two conflicted - #1466 was
+re-conflicted seven times in about five hours on 2026-10-31. Local
+`pnpm test:desktop` still runs the whole inventory once through the existing
+guarded runner. CI delegates each
+partition to that same runner with the same concurrency, memory and lane caps;
+four workers are extra capacity and per-shard memory headroom, not measured
+runtime balancing, a hung-lane cure, or a memory-leak fix. The fourth shard was
+added on 2026-10-30 because the 7.8 GB process-group budget sat inside the
+run-to-run distribution of a three-shard lane at concurrency 3 — 7.9 GB (run
+40992181176) and 8.2 GB (run 40996898976) on the same 205-file inventory, both dying
+at `ok 1060` with zero failures — so each partition now carries ~25% fewer files.
+The budget, the concurrency guard, the 50-minute cap and the cancellation policy
+do not change. `scripts/desktop-test-shards.mjs` refuses a plan whose largest
+shard would hold more than `SHARD_FILE_CEILING` (210 files), naming the shard,
+its size, the ceiling, the runway at measured growth and those two runs, so
+growth is answered with another lane instead of silently rebuilding a lane that
+already died; the planner's own test is in `GUARD_TESTS`, so that ceiling fails
+a pull request rather than waiting for a main run to find it.
+
+210 is a PRECAUTION, not a measured threshold, and the comment beside it says
+so in as many words: in both runs cited above the deal was 206 / 206 / 205,
+both 206-file shards PASSED and only the 205-file lane died, and those deaths
+ran under a 7.8 GB budget while `_BUDGET_FLOOR_MB` is 9728 MB (9.5 GB) today —
+22% more headroom than the runs that failed had. An earlier version of that
+comment claimed 199 was "the only measured passing lane" and 204 "the largest
+value the evidence permits"; both were false. The ceiling's blind spot is
+named rather than hidden: 207 through 210 have never been measured at all, and
+the guard permits them — above a size that has already failed twice — so the
+first evidence about that range will be a shard OOM. A lane at or above 200
+warns on stderr without failing — every plan, every lane's log — which is
+additive to the hard failure at ceiling + 1 and never a substitute for it.
+
+The lane count lives only in `SHARD_COUNT`: `partition`, all four modes and
+CI's matrix derive from it (`full-suite.yml` expands
+`fromJSON(needs.changes.outputs.shards)`, emitted by the planner's `matrix`
+mode), so a fifth lane is a one-line change and the planner's test fails if the
+workflow ever lists lanes again — a matrix and a constant that disagree would
+dispatch a partial suite and read green, which is why `run`/`receipt` reject an
+index outside the count and `verify` demands exactly one receipt per lane. The
+other lever, re-picking `SHARD_SALT`, is worth at most 2 files: a 20,000-salt
+sweep over the 786-file inventory bottoms out at 197, the arithmetic floor
+`ceil(786/4)`. Tag-dialog tests are owned by shard 0
+only; the native QA bundle moved to `ci.yml`'s own `qa-bundle` job, which still
+runs on every PR.
+
+The suite's aggregate is still **Desktop Tests** (`desktop-tests-result`), now
+in `full-suite.yml`, where `report` reads it; it is no longer a per-push PR check,
+though the merge gate runs it once per ready head (*The merge gate (full suite)*).
+It consumes every same-head/checkout/inventory receipt, rejects missing,
+failed or cancelled work, and reconstructs the disjoint complete file inventory.
+An explicit false unit scope skips the workers/result; unknown classification or
+failed workers cannot become a green aggregate. The result is a CI-only local
+exclusion: locally the full desktop suite is not run at all, and
+`check-changed` runs the guards (`pnpm test:guards`) in its place.
+Queue demand rises by three runners and no completion-time guarantee is implied.

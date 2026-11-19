@@ -1,0 +1,134 @@
+{
+  "kind": "portable-receipt-manifest",
+  "serialized_at": "2026-11-11T04:31:56Z",
+  "head": "8878d0df62d88defc37684f9898cc38dfaa9c57a",
+  "namespace": "ui.chat.canonical",
+  "auditor_session": "c7b72ef216da",
+  "note": "one auditor session issued all 7 receipts; per-locale instance IDs are scopes, not separate people",
+  "en_sha256": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e",
+  "en_context_sha256": "04bfe86405155bf8437c4f867eea4dc9bfd4c277d2ae6b0aa7d6a1bf20390087",
+  "source_records": {
+    "second_audit": {
+      "path": "/Users/damian/.local-operator/sessions/c7b72ef216da/scratchpad/i18n-audit2/current-head-audit-second.json",
+      "sha256": "08cd91c44e04b55d9222c83f56a77600c294cb39fe33c7a8edd32751b70e58cf",
+      "date": "2026-11-10",
+      "pr_comment": "https://github.com/damianvtran/local-operator-ui/pull/1829#issuecomment-6782913624"
+    },
+    "fr_delta": {
+      "path": "/Users/damian/.local-operator/sessions/c7b72ef216da/scratchpad/i18n-audit2/fr-delta-audit.json",
+      "sha256": "6a8ee6855512e1bf519aafacc80ebc824cfb1758346b73aeb8bc55d6b9a3f763",
+      "date": "2026-11-10"
+    }
+  },
+  "source_findings_en_retained_separately": [
+    "EN-1 minor (unavailable/not_recorded near-synonyms) deferred",
+    "EN-2 nit (Rows vs lines) deferred"
+  ],
+  "receipts": {
+    "es": {
+      "instance": "c7b72ef216da-es-chat-canonical-r2",
+      "expected_result": "clean",
+      "counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "en_sha256": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e",
+      "target_sha256": "db9923d6038ef32906ab0bcfeff99d358d01ec610d50256749f31b360962b22a",
+      "receipt_path": "/Users/damian/.local-operator/sessions/c7b72ef216da/scratchpad/i18n-portable-receipts/c7b72ef216da-es-chat-canonical-r2.json",
+      "receipt_sha256": "61f0538e84f988e65260b2e3999b0f94edd3852a27df0f328f717a843c35a587",
+      "source_audit_record_sha256": "0bf14ab0e977bd2ae65aed24f5db45c14d0e5e9375b5ba13fdb093e24623ee59"
+    },
+    "fr": {
+      "instance": "c7b72ef216da-fr-chat-canonical-r2",
+      "expected_result": "clean",
+      "counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "en_sha256": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e",
+      "target_sha256": "620d4ab2d3db4a9c16b64c62fdd44c4e44ff55fe65b1b7f06e835db435319877",
+      "receipt_path": "/Users/damian/.local-operator/sessions/c7b72ef216da/scratchpad/i18n-portable-receipts/c7b72ef216da-fr-chat-canonical-r2.json",
+      "receipt_sha256": "fd908f5c08759f5fe7041bc5518f6b5618fe49beffda5c1f4bd73ffff9290302",
+      "source_audit_record_sha256": "6a8ee6855512e1bf519aafacc80ebc824cfb1758346b73aeb8bc55d6b9a3f763"
+    },
+    "hi": {
+      "instance": "c7b72ef216da-hi-chat-canonical-r2",
+      "expected_result": "clean-with-findings",
+      "counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 0
+      },
+      "en_sha256": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e",
+      "target_sha256": "3bf3915206f534281383edacf7524d11641b7400dbfea3837be8f8ac1a8fb851",
+      "receipt_path": "/Users/damian/.local-operator/sessions/c7b72ef216da/scratchpad/i18n-portable-receipts/c7b72ef216da-hi-chat-canonical-r2.json",
+      "receipt_sha256": "637da859de3160a4e6207e3d906cf786762d4266486d5a4356a9918a96256e08",
+      "source_audit_record_sha256": "c793aa853f16936a1b735d546ead0b432ed29e601c7b9b1649b2566d51f576de"
+    },
+    "ru": {
+      "instance": "c7b72ef216da-ru-chat-canonical-r2",
+      "expected_result": "clean-with-findings",
+      "counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 0
+      },
+      "en_sha256": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e",
+      "target_sha256": "ad6c5d631d59a8e73189ddb24943c19871b510d6e7928f3286c35de5057feb97",
+      "receipt_path": "/Users/damian/.local-operator/sessions/c7b72ef216da/scratchpad/i18n-portable-receipts/c7b72ef216da-ru-chat-canonical-r2.json",
+      "receipt_sha256": "aba2071cd968d577d97bb45a72c1c28fcefc2a5a94f861c24363bb13faaed383",
+      "source_audit_record_sha256": "95f26af5eee22985c1e2778c756e474eac1a79bf753cc3bf660e9a33a2837b43"
+    },
+    "ur": {
+      "instance": "c7b72ef216da-ur-chat-canonical-r2",
+      "expected_result": "clean-with-findings",
+      "counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 0
+      },
+      "en_sha256": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e",
+      "target_sha256": "447dbfa53dd70eb8148495b2badc03e12ee3fcef935fd98280cd3665f31e655e",
+      "receipt_path": "/Users/damian/.local-operator/sessions/c7b72ef216da/scratchpad/i18n-portable-receipts/c7b72ef216da-ur-chat-canonical-r2.json",
+      "receipt_sha256": "d9b8f3039ebd222389635620350ea4d17ea28c1cac9f5a3c68cb1d6f7a616dc3",
+      "source_audit_record_sha256": "5fd7340ee6a193a2d41576b9a0afad0b0c5c44863b2cb1d985aeea4392ed7615"
+    },
+    "vi": {
+      "instance": "c7b72ef216da-vi-chat-canonical-r2",
+      "expected_result": "clean",
+      "counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "en_sha256": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e",
+      "target_sha256": "c23bbd6bbaa34f4ae660d502f7c5503d565711d9e6fa4faebe506882296c222b",
+      "receipt_path": "/Users/damian/.local-operator/sessions/c7b72ef216da/scratchpad/i18n-portable-receipts/c7b72ef216da-vi-chat-canonical-r2.json",
+      "receipt_sha256": "694bf1359f228ec3bad9dad1622f0d20cd3f5729b94ee5926e86300118141577",
+      "source_audit_record_sha256": "13ac5b5a725cf9b504fdac7c7f013468994651709a773890d82a119536924381"
+    },
+    "zh-CN": {
+      "instance": "c7b72ef216da-zh-cn-chat-canonical-r2",
+      "expected_result": "clean-with-findings",
+      "counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 0
+      },
+      "en_sha256": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e",
+      "target_sha256": "8db6da0aab5182efae83c3287758ba820dbdea60458d9c34dc384698d912d67b",
+      "receipt_path": "/Users/damian/.local-operator/sessions/c7b72ef216da/scratchpad/i18n-portable-receipts/c7b72ef216da-zh-cn-chat-canonical-r2.json",
+      "receipt_sha256": "08fc27c49450b779c82e83bc912c7bdb9360cec5b3bb6efd2ca8949eab9df23d",
+      "source_audit_record_sha256": "29c736a189ec262af4ef2d80a407ec6419ab4672590daa4cacba946eaddd54f6"
+    }
+  }
+}

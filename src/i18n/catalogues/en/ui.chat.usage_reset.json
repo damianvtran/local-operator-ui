@@ -1,0 +1,15 @@
+{
+	"ui.chat.usage_reset.chip": "Reset · {count}",
+	"ui.chat.usage_reset.chip_label": "Reset the rate limits for {account}. {count, plural, one {# reset credit left} other {# reset credits left}}.",
+	"ui.chat.usage_reset.confirm_title": "Reset {account}?",
+	"ui.chat.usage_reset.confirm_cost": "{count, plural, one {Uses 1 of # reset credit; clears this account's rate-limit windows.} other {Uses 1 of # reset credits; clears this account's rate-limit windows.}}",
+	"ui.chat.usage_reset.busy": "Waiting for {account} to answer. This can take a moment.",
+	"ui.chat.usage_reset.busy_action": "Resetting…",
+	"ui.chat.usage_reset.outcome_reset": "{count, plural, one {Cleared # rate-limit window for {account}.} other {Cleared # rate-limit windows for {account}.}}",
+	"ui.chat.usage_reset.outcome_already_redeemed": "The reset for {account} had already been redeemed. No second credit was spent.",
+	"ui.chat.usage_reset.outcome_no_credit": "{account} has no reset credits left. Nothing was spent.",
+	"ui.chat.usage_reset.outcome_nothing_to_reset": "No rate-limit window for {account} needed clearing. Nothing was spent.",
+	"ui.chat.usage_reset.outcome_failed": "The reset for {account} did not report a result, so the credit's fate is unknown. Asking again reuses the same request, so it will not spend a second credit.",
+	"ui.chat.usage_reset.outcome_refused": "Nothing was spent: the reset for {account} was refused before it reached the provider.",
+	"ui.chat.usage_reset.outcome_unknown": "The reset for {account} returned an outcome this app does not recognise: {outcome}."
+}

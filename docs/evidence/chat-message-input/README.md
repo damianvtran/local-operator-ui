@@ -208,7 +208,7 @@ which is what a reader follows to tell a narrowed re-take from a sweep.
 | `credential-masked/` | The space has opened the span and every character since is ONE MASK CELL. Nineteen cells against a nineteen-character value: the length is the receipt the pill will carry, and it is the operator's only integrity check once the value can never be displayed again. |
 | `credential-pill-mid-prose/` | Enter minted the pill rather than sending, and the sentence continues after it — the gesture's whole shape ("hand over a secret, then describe it"). |
 | `credential-pill-at-line-start/` | The same pill at the head of the line. The token was consumed at mint time, so this is prose and not a slash command: the leading-slash path cannot fire on it. |
-| `credential-escaped/` | Esc cancelled and the characters came back as ORDINARY TEXT — the one exit that leaves a secret in the composer, with the warning sentence that says so. The canary reads `sk-live-CANARY-4417`. |
+| `credential-escaped/` | One Esc on a span with characters: the capture is HELD, still masked, and the sentence says the next Esc discards it. Until 2026-10-22 this state was the characters back as ORDINARY TEXT, which the draft store then persisted in plaintext; the current story asserts the canary is NOT in the document. The paragraphs below about the escaped canary describe that earlier state. |
 
 **These frames are driven by real keystrokes**, not by a prop that fakes the
 state: each story's `play` types into the shipped composer with `userEvent.type`

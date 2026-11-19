@@ -14,18 +14,37 @@ import { ThemeProvider as MuiThemeProvider } from "@mui/material/styles";
 // @ts-ignore Path aliases don't work for Storybook root
 import { config } from "@renderer/shared/config";
 // @ts-ignore Path aliases don't work for Storybook root
+import { applyGlassFacts } from "@renderer/shared/hooks/use-window-glass";
+// @ts-ignore Path aliases don't work for Storybook root
 import { AuthProviders } from "@renderer/shared/providers/auth";
 // @ts-ignore Path aliases don't work for Storybook root
 import { FeatureFlagProvider } from "@renderer/shared/providers/feature-flags";
 // @ts-ignore Path aliases don't work for Storybook root
 import { useUiPreferencesStore } from "@renderer/shared/store/ui-preferences-store";
+import { ThemeProvider as AppearanceThemeProvider } from "@shared/themes/theme-provider";
+import { BACKDROP_GRAY } from "../src/shared/glass-derivation.mjs";
+/*
+ * RELATIVE, NOT `@shared`. The alias in `.storybook/main.ts` maps `@shared` to
+ * `src/renderer/src/shared`, and this module lives at REPO-ROOT `src/shared/` -
+ * so an aliased specifier resolves to nothing, Vite fails the import, the iframe
+ * never mounts and every story in the repository becomes unreachable. The
+ * neighbouring derivation import is relative for the same reason, and so is
+ * `use-window-glass.ts`'s own `../../../../shared/window-glass`.
+ *
+ * The `@ts-ignore` comments this file carries on its ALIASED imports are why a
+ * broken specifier here is invisible to every local gate: `.storybook/` is in no
+ * tsconfig `include` at all (`tsconfig.app.json` starts at `src/renderer/**`), so
+ * `pnpm check-types` never sees this file, and the ignores would silence the
+ * module-resolution error even if it did. A blank Storybook is the only symptom.
+ */
+import { GLASS_COVERAGES } from "../src/shared/window-glass";
+import type { GlassCoverage } from "../src/shared/window-glass";
 // @ts-ignore Path aliases don't work for Storybook root
 import "@renderer/styles/index.css";
 // @ts-ignore Path aliases don't work for Storybook root
 import { defaultQueryOptions } from "@renderer/shared/api/query-client";
 import {
 	DEFAULT_THEME,
-	applyThemeToDocument,
 	getTheme,
 	themes,
 	// @ts-ignore Path aliases don't work for Storybook root
@@ -41,6 +60,10 @@ import {
 	setLocale,
 	subscribeLocale,
 } from "@shared/i18n";
+// @ts-ignore Path aliases don't work for Storybook root
+import { LocaleDirectionProvider } from "@shared/i18n/locale-direction";
+// @ts-ignore Path aliases don't work for Storybook root
+import { applyDocumentDirection } from "@shared/i18n/use-document-direction";
 import type { Preview } from "@storybook/react";
 import {
 	QueryClient,
@@ -56,6 +79,13 @@ if (typeof window !== "undefined") {
 	// Mock window.api for Storybook
 	// biome-ignore lint/suspicious/noExplicitAny: Necessary for mocking the window object
 	(window as any).api = {
+		// Query-backed stories install only this current-protocol method. An
+		// unconfigured story must refuse, never inherit a live daemon fallback.
+		desktop: {
+			request: async () => {
+				throw new Error("Storybook desktop request transport is unconfigured");
+			},
+		},
 		// Mock session storage methods with window variable
 		session: {
 			getSession: async () => {
@@ -164,11 +194,15 @@ const THEME_IDS = Object.keys(themes) as ThemeName[];
  * Moving only one of the three is what produced dark ink on light paper in
  * earlier evidence runs and read as a contrast defect in the product.
  */
+
 const ThemeFrame = ({
 	theme,
+	glassContrast,
 	children,
 }: {
 	theme: ThemeName;
+	/** Optional evidence input, never a default that overrides a story's seed. */
+	glassContrast?: number;
 	children: ReactNode;
 }) => {
 	/*
@@ -178,17 +212,119 @@ const ThemeFrame = ({
 	 * screenshot run is fast enough to catch.
 	 */
 	useLayoutEffect(() => {
-		useUiPreferencesStore.setState({ themeName: theme });
-		applyThemeToDocument(theme);
-	}, [theme]);
+		useUiPreferencesStore.setState({
+			themeName: theme,
+			...(glassContrast === undefined
+				? {}
+				: {
+						contrast: { dark: glassContrast, light: glassContrast },
+					}),
+		});
+	}, [theme, glassContrast]);
 
 	/* No teardown restoring the previous theme: every story mounts through this
 	   frame and sets its own, so a restore would only ever paint a palette
 	   nothing asked for between two stories. */
 	return (
-		<div className="min-h-screen bg-canvas font-sans text-body text-ink">
+		<AppearanceThemeProvider>
+			{/* Without a region marker this preview-only canvas masks every
+			    translucent story, even when the actual app's grounds are clear. */}
+			<div
+				data-glass-region="canvas"
+				className="min-h-screen bg-canvas font-sans text-body text-ink"
+			>
+				{children}
+			</div>
+		</AppearanceThemeProvider>
+	);
+};
+
+/**
+ * THE GLASS FRAME, applied to every story.
+ *
+ * The window glass is an Electron capability: MAIN resolves it before a window
+ * exists, and the renderer paints its answer as `data-glass` plus the
+ * `--lo-glass-*` alphas. Storybook has neither process, so before this frame a
+ * surface that only reveals its defects under glass - the Projects board's
+ * lane and column strip are the case that found this - could not be captured
+ * at all. The frame writes the SAME paint the shipped hook writes
+ * (`applyGlassFacts`), with the scheme read from the theme `ThemeFrame` has
+ * just applied, so the alphas are the shipped derivation rather than a
+ * hand-picked alpha.
+ *
+ * OFF BY DEFAULT, like `applyGlassFacts(null)`: every existing story keeps the
+ * flat frame it has always painted. An evidence run asks for glass through the
+ * preview's own `glass` arg (`?args=glass:on`), the same URL seam the theme
+ * and locale pins use. It sits OUTSIDE `ThemeFrame` on purpose: React runs a
+ * child's layout effect first, so the outer frame reads `classlist` and the
+ * palette AFTER the theme commit rather than one frame late.
+ */
+const GlassFrame = ({
+	glass,
+	glassIntensity,
+	glassCoverage,
+	ownsGlass,
+	theme,
+	children,
+}: {
+	glass: boolean;
+	glassIntensity: number;
+	/**
+	 * WHICH COLUMNS THE MATERIAL COVERS (`sidebars` or `full`), so an evidence run
+	 * can photograph the Sidebars-only path - QA round 1's row 15, which had no seam
+	 * to reach it at all: this frame hard-coded `full`. The SCHEME is deliberately
+	 * not an argument: it follows `theme`, because a scheme that disagreed with the
+	 * palette would measure the solver's answer against a palette it was not derived
+	 * for, and pinning `theme:` in the same URL sets both.
+	 */
+	glassCoverage: GlassCoverage;
+	/** The story's own meta decorator paints the document (Library's harness). */
+	ownsGlass: boolean;
+	theme: ThemeName;
+	children: ReactNode;
+}) => {
+	useLayoutEffect(() => {
+		/* Do not clear a paint a child decorator made on purpose. Storybook's
+		 * global decorator is OUTERMOST and React runs layout effects child-first,
+		 * so the off path would otherwise erase the Library harness's glass one
+		 * effect after it painted. */
+		if (!glass && ownsGlass) return;
+		const scheme =
+			getTheme(theme).theme.palette.mode === "dark" ? "dark" : "light";
+		applyGlassFacts(
+			glass
+				? {
+						mechanism: "vibrancy",
+						coverage: glassCoverage,
+						intensity: Math.min(100, Math.max(0, glassIntensity)),
+						material: "window",
+						scheme,
+					}
+				: null,
+		);
+	}, [glass, glassIntensity, glassCoverage, ownsGlass, theme]);
+	/* A browser document has no OS material. A labelled fixture backdrop uses
+	 * the SAME measured worst under-window tone as the solver; otherwise a
+	 * transparent light story is read over the browser host's arbitrary black
+	 * base and looks like a contrast failure. This is DOM proof, not native. */
+	const tone =
+		BACKDROP_GRAY["under-window"][getTheme(theme).theme.palette.mode];
+	return (
+		<>
+			{glass && (
+				<div
+					aria-hidden="true"
+					data-story-glass-backdrop="measured-material-model"
+					style={{
+						position: "fixed",
+						inset: 0,
+						zIndex: -1,
+						backgroundColor: `rgb(${tone}, ${tone}, ${tone})`,
+					}}
+				/>
+			)}
 			{children}
-		</div>
+		</>
 	);
 };
 
@@ -281,6 +417,75 @@ const LocaleFrame = ({
 		});
 	}, [locale]);
 
+	/*
+	 * THE DOCUMENT ROOT'S `dir` AND `lang`, from the SAME shipped writer the app
+	 * mounts (`useDocumentDirection` -> `applyDocumentDirection`).
+	 *
+	 * WHY THIS FRAME WRITES IT: the preview wrote only Radix's `Direction`
+	 * context below, so `<html dir>` stayed `ltr` and an `?args=locale:ur`
+	 * capture was URDU TEXT LAID OUT LTR: lines left-aligned with the info glyph
+	 * trailing on the right, which made two evidence frames claim an RTL reading
+	 * they did not have (design review round 1, D1 on #1666). The shipped app
+	 * writes the attribute once, from its own locale store; a capture that does
+	 * not write it is a frame of a document the product never renders.
+	 *
+	 * KEYED ON THE REQUESTED LOCALE, not on the store: this frame already
+	 * re-asserts `setLocale(locale)` against a story whose own bridge stub
+	 * answers with a fixed `language`, and the root attribute must obey the same
+	 * pin rather than whatever the stub left behind. A `lang` write is part of
+	 * the same shipped call and changes glyph selection for CJK locales - that is
+	 * the app's own behaviour, not a capture-only tweak.
+	 */
+	useLayoutEffect(() => {
+		applyDocumentDirection(document.documentElement, locale);
+	}, [locale]);
+
+	return <>{children}</>;
+};
+
+/**
+ * THE CHROME FRAME: one story arg that puts the document in a platform's chrome
+ * geometry, so a shell frame can be captured at the macOS lane the product
+ * actually ships instead of at `--chrome-strip-h: 0`.
+ *
+ * WHY IT IS AN ARG AND NOT A STORY DECORATOR. The lane, the sidebar pad and the
+ * route body are shell decisions; a story that wants the 32px strip must not
+ * re-spell the attributes the app's `main.tsx` writes. This is the one writer
+ * in Storybook, and it writes exactly the four facts `useWindowChrome` writes
+ * (mode, platform, leading, trailing) plus fullscreen=false. The CSS derives
+ * `--chrome-strip-h: 32px` from that pair, so the frame measures the same
+ * variable the window does.
+ *
+ * DRIVEN BY `?args=chrome:mac32`; `native` clears the attributes so every
+ * existing story keeps the geometry it had before this existed.
+ */
+const CHROME_ATTRS = [
+	"chromeMode",
+	"chromePlatform",
+	"chromeLeading",
+	"chromeTrailing",
+	"chromeFullscreen",
+] as const;
+
+const ChromeFrame = ({
+	chrome,
+	children,
+}: {
+	chrome: string;
+	children: ReactNode;
+}) => {
+	useLayoutEffect(() => {
+		const root = document.documentElement;
+		if (chrome !== "mac32") return;
+		root.dataset.chromeMode = "integrated";
+		root.dataset.chromePlatform = "mac";
+		root.dataset.chromeLeading = "false";
+		root.dataset.chromeTrailing = "false";
+		root.dataset.chromeFullscreen = "false";
+		return () => {
+			for (const name of CHROME_ATTRS) delete root.dataset[name];
+		};
+	}, [chrome]);
 	return <>{children}</>;
 };
 
@@ -304,14 +509,32 @@ const preview: Preview = {
 	argTypes: {
 		theme: { control: { type: "select" }, options: THEME_IDS },
 		locale: { control: { type: "select" }, options: LOCALE_IDS },
+		glass: { control: { type: "select" }, options: ["off", "on"] },
+		glassIntensity: { control: { type: "range", min: 0, max: 100, step: 1 } },
+		glassCoverage: { control: { type: "select" }, options: GLASS_COVERAGES },
+		glassContrast: { control: { type: "range", min: -100, max: 100, step: 1 } },
+		chrome: { control: { type: "select" }, options: ["native", "mac32"] },
 	},
-	args: { theme: DEFAULT_THEME, locale: DEFAULT_LOCALE },
+	args: {
+		theme: DEFAULT_THEME,
+		locale: DEFAULT_LOCALE,
+		glass: "off",
+		glassIntensity: 80,
+		glassCoverage: "full",
+		chrome: "native",
+	},
 	decorators: [
 		(Story, context) => {
 			const queryClient = queryClientFor(context.id);
 			const theme = (context.args.theme as ThemeName) ?? DEFAULT_THEME;
 			const locale =
 				(context.args.locale as string | undefined) ?? DEFAULT_LOCALE;
+			const glass = context.args.glass === "on";
+			const glassIntensity = Number(context.args.glassIntensity ?? 80);
+			const glassCoverage = (context.args.glassCoverage ??
+				"full") as GlassCoverage;
+			const chrome = (context.args.chrome as string | undefined) ?? "native";
+			const storyOwnsGlass = Boolean(context.parameters?.glass) && !glass;
 			const muiTheme = getTheme(theme).theme;
 
 			return (
@@ -333,11 +556,42 @@ const preview: Preview = {
 								>
 									<MuiThemeProvider theme={muiTheme}>
 										<CssBaseline />
-										<ThemeFrame theme={theme}>
-											<LocaleFrame locale={locale}>
-												<Story />
-											</LocaleFrame>
-										</ThemeFrame>
+										<GlassFrame
+											glass={glass}
+											glassIntensity={glassIntensity}
+											glassCoverage={glassCoverage}
+											ownsGlass={storyOwnsGlass}
+											theme={theme}
+										>
+											<ThemeFrame
+												theme={theme}
+												glassContrast={
+													context.args.glassContrast === undefined
+														? undefined
+														: Number(context.args.glassContrast)
+												}
+											>
+												<LocaleFrame locale={locale}>
+													{/*
+													 * RADIX'S DIRECTION COMES FROM THIS CONTEXT, NOT FROM `<html dir>`: a
+													 * menu's content is portalled out of the subtree that inherits the root
+													 * attribute, so without this provider every portalled surface measures
+													 * `ltr` in Urdu and every logical inset lands on the physical wrong edge
+													 * - measured on the device picker (design review round 1, D5): `ltr`,
+													 * `rect 747,38 320x416` before; `rtl`, `rect 537.5,38 320x416` after.
+													 * The app mounts the same provider around `App` in `main.tsx`, inside its
+													 * router. Here it sits INSIDE `LocaleFrame`, so the locale store is
+													 * already written when this provider reads it and the first frame is not
+													 * one frame of LTR.
+													 */}
+													<LocaleDirectionProvider>
+														<ChromeFrame chrome={chrome}>
+															<Story />
+														</ChromeFrame>
+													</LocaleDirectionProvider>
+												</LocaleFrame>
+											</ThemeFrame>
+										</GlassFrame>
 										<ThemedToastContainer
 											duration={context.parameters.toastDuration}
 										/>

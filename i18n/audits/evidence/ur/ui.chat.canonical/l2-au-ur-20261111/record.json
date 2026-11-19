@@ -1,0 +1,131 @@
+{
+  "audit_id": "l2-au-ur-20261111",
+  "kind": "independent-slice-audit",
+  "audit_date": "2026-11-11",
+  "locale": "ur",
+  "namespace": "ui.chat.canonical",
+  "slice": "L2 — file-size status lines (2 new keys)",
+  "key_count": 2,
+  "keys": [
+    "ui.chat.canonical.tool.never_sent_composed",
+    "ui.chat.canonical.tool.never_sent_empty"
+  ],
+  "translated_values_under_audit": {
+    "ui.chat.canonical.tool.never_sent_composed": "نہیں بھیجا گیا · {size} لکھا گیا",
+    "ui.chat.canonical.tool.never_sent_empty": "نہیں بھیجا گیا · کچھ نہیں لکھا گیا"
+  },
+  "translator": {
+    "agent": "translation agent (openai/gpt-6.1-sol per the slice brief)",
+    "session": "not disclosed to this auditor",
+    "note": "Identity taken from the assignment brief, not independently verified here."
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "fcba1aa9e0c1",
+    "team": "lopdev",
+    "model": "deepseek/deepseek-flash",
+    "route": "deepseek/deepseek-flash",
+    "fallback_used": false,
+    "fallback_note": "No model-switch, fallback or provider-degradation notice appeared in this session.",
+    "actual_model_source": "This session's own runtime state: ~/.local-operator/sessions/fcba1aa9e0c1/tail-anchor.v1.json selection_payloads[-1].details.selector = 'deepseek/deepseek-flash', which matches the harness-declared session model. No model name beyond that selector is invented.",
+    "independent_from_translator_session": true,
+    "independence_basis": "This session translated nothing and edited no translation: it read the prep values, the en source + context sidecar, both style guides, the glossary, the shipped ur catalogue and the consuming code, and wrote only this evidence plus the report. It did not use any translation/MT service or back-translation."
+  },
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+      "sha256": "27ae7327daa34be60b619be551c840e057d61c3d69dc801269e4f389edc0f031"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+      "sha256": "c0aff0d8bd80304e063b55f80875e3f8b5f50ad201e9b51770f570eb8dd253e4"
+    },
+    "target": {
+      "path": "_l2-prep/ur.json",
+      "sha256": "8fd740fb10c8d3c7aeae7323e312219c5b716806afde22bbd735a94296c6d69f"
+    },
+    "slice_source": {
+      "path": "_l2-prep/keys.json",
+      "sha256": "a8cd6e7d8adbc43a55bf2b812ba32eafa9f32931830e45f84b12d8ceb60ec71b"
+    },
+    "consistency_reference": {
+      "path": "src/i18n/catalogues/ur/ui.chat.canonical.json",
+      "sha256": "e9c5c4e97476439567dd3efa26f14e9257fcfc581b8526d89bb5d05a4e3c9e11"
+    },
+    "consuming_code": {
+      "path": "src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+      "sha256": "5b0386a44678f64696011fbfb26d100938417b689e4bf5f796b3b482d83a7d44"
+    },
+    "bidi_layer": {
+      "path": "src/i18n/bidi.ts",
+      "sha256": "ced8c95bda235f672d391c92c528c5819669b053e13e5e2a6fceae9761ded674"
+    },
+    "style_guide_ur": {
+      "path": "~/local-operator/i18n/style-guides/ur.md",
+      "sha256": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60"
+    },
+    "style_guide_en": {
+      "path": "~/local-operator/i18n/style-guides/en.md",
+      "sha256": "c967c91037be79a7b184b3288b8c0326a261e4adae95b7db06d83e96f8ea6ec7"
+    },
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    }
+  },
+  "artifacts": {
+    "report": {
+      "path": "_l2-prep/audit-ur.md",
+      "sha256": "ac3a4154e5943343e44a4448578e2de2bddda5a814a2e1d898aaf5cafdf40fa7",
+      "note": "Untracked slice report in the shared prep directory (outside the repo tree)."
+    },
+    "execution_log": {
+      "path": "i18n/audits/evidence/ur/ui.chat.canonical/l2-au-ur-20261111/audit.log"
+    },
+    "record": {
+      "path": "i18n/audits/evidence/ur/ui.chat.canonical/l2-au-ur-20261111/record.json"
+    }
+  },
+  "current_report_verdict": {
+    "status": "clean",
+    "unresolved_blocker_major_count": 0,
+    "counts": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 0,
+      "nit": 1
+    },
+    "finding_ids": [
+      "NIT-1"
+    ],
+    "note": "NIT-1 is informational width growth; no change requested."
+  },
+  "mechanical": {
+    "validator": "scripts/i18n/ur-activation.test.mjs rules (MANUAL_BIDI, FORBIDDEN_SCRIPT) applied to the prep bytes: both keys false/false; the shipped-bundle test itself passes 3/3 on this tree.",
+    "icu_parse": "both values parse with @formatjs/icu-messageformat-parser (requiresOtherClause): composed = [literal, argument:size, literal]; empty = [literal].",
+    "placeholders": "{size} exactly once in the composed key, absent in the empty key, name unchanged.",
+    "key_set": "equal to the source; nothing added or dropped.",
+    "separator": "U+00B7 present exactly once per value, U+0020 on both sides.",
+    "json": "valid UTF-8, no BOM, LF, trailing newline, no duplicate keys.",
+    "script": "Farsi yeh U+06CC, keheh U+06A9, heh goal U+06C1, heh doachashmee U+06BE; no Arabic-only yeh/kaf/teh-marbuta, no Devanagari, no bidi controls."
+  },
+  "rtl_measurement": {
+    "tool": "fribidi --rtl --nobreak (Homebrew /opt/homebrew/bin/fribidi)",
+    "raw_composed_without_isolation": "reverses the size token to 'kB 12.4' (the defect the bidi layer prevents)",
+    "composed_with_runtime_isolation": "keeps '12.4 kB' intact; visual order is status -> U+00B7 -> 12.4 kB -> detail",
+    "conclusion": "The runtime FSI/PDI isolation of {size} is load-bearing for this exact key and is supplied by src/i18n/bidi.ts; the catalogue correctly carries no marks."
+  },
+  "ledger": {
+    "row_written": false,
+    "reason": "scripts/i18n/ledger-assemble.mjs derives target_sha256 from a catalogue file that contains the audited keys; both keys are absent from the shipped ur catalogue on this branch, so the row belongs to the wave that lands the values.",
+    "instruction": "That wave should cite this record path in its ledger note."
+  },
+  "audit_notes_not_execution_log": "This record's descriptive fields are notes. The commands and their observed outputs are in audit.log, which is an actual execution log for this session.",
+  "original_lost_evidence": {
+    "status": "none",
+    "note": "No original was lost; this is a first-run record."
+  },
+  "new_report_is_original": true,
+  "new_report_is_historical_R2_recreation": false,
+  "backdated": false
+}

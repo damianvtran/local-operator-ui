@@ -1,12 +1,38 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { build, transform } from "esbuild";
+import { build, transform, transformSync } from "esbuild";
 
 const SHARED_MENU_OWNER = /ownsChrome,/;
 const GUARDED_CHROME_INPUT = /chords\.chromeInput\(event, input\)/;
 const BLUR_RESETS_SUPPRESSION_ONLY =
 	/window\.on\("blur", resetMenuShortcutSuppression\)/;
+const RAW_KEY_EVENT_DISPATCH = /Input\.dispatchKeyEvent/;
+const TYPE_ENTRY = /^async function type\(/m;
+const TYPE_INTO_ENTRY = /^async function typeInto\(/m;
+const PRESS_BODY = /^async function press\([^\n]*\) \{\n[\s\S]*?^\}/m;
+const TYPE_INTO_BODY = /^async function typeInto\([^\n]*\) \{\n[\s\S]*?^\}/m;
+
+function compiledInput(source) {
+	// esbuild parses TypeScript and emits canonical indentation: only the outer
+	// closing brace starts at column zero. This bounds the exception by function,
+	// not a following declaration, even when source braces/strings are reformatted.
+	return transformSync(source, { loader: "ts", format: "esm" }).code;
+}
+
+function assertTextTypingUsesNoRawKeyEvents(source) {
+	const code = compiledInput(source);
+	// Pin both entries independently; a rename/removal must not silently retire
+	// coverage. Exempt only press(), guarding all other code regardless of order.
+	assert.match(code, TYPE_ENTRY, "type() must exist");
+	assert.match(code, TYPE_INTO_ENTRY, "typeInto() must exist");
+	assert.match(
+		code,
+		PRESS_BODY,
+		"press() must have an explicitly bounded body",
+	);
+	assert.doesNotMatch(code.replace(PRESS_BODY, ""), RAW_KEY_EVENT_DISPATCH);
+}
 
 // In-memory compilation exercises shipped TypeScript without writing generated
 // modules into a checkout or allocating another dependency tree.
@@ -25,6 +51,7 @@ async function moduleAt(file) {
 const { browserChordIntent } = await moduleAt("src/shared/browser-chord.ts");
 const {
 	browserChromeOwnsChord,
+	browserPageOwnsChord,
 	createBrowserChordRouter,
 	runBrowserMenuAction,
 } = await moduleAt("src/main/browser/browser-chord.ts");
@@ -208,6 +235,55 @@ test("R1 actual earlier zoom door and later chrome handler share guarded ownersh
 	}
 });
 
+test("layout snapshots distinguish visible empty/start chrome from a presented page", () => {
+	const snapshots = [];
+	const registry = new TabRegistry(
+		() => {
+			throw new Error("empty/start canvas must not allocate a page");
+		},
+		() => {},
+		() => {},
+		(snapshot) => snapshots.push(snapshot),
+	);
+	const rect = { x: 0, y: 0, width: 400, height: 300 };
+	registry.setContentRect(rect);
+	assert.equal(snapshots.at(-1).activeTabId, null);
+	assert.equal(snapshots.at(-1).presented, false);
+	assert.equal(snapshots.at(-1).chromeVisible, true);
+	const first = snapshots.at(-1);
+	registry.setViewVisible(false, true);
+	assert.equal(
+		snapshots.at(-1).chromeVisible,
+		true,
+		"own/start DOM retains browser chrome",
+	);
+	assert.equal(snapshots.at(-1).presented, false);
+	registry.setViewVisible(false, false);
+	assert.equal(
+		snapshots.at(-1).chromeVisible,
+		false,
+		"dialog/menu suppresses chrome",
+	);
+	registry.setViewVisible(false, true);
+	assert.equal(
+		snapshots.at(-1).chromeVisible,
+		true,
+		"closing dialog restores own page",
+	);
+	registry.setContentRect(null);
+	assert.equal(
+		snapshots.at(-1).chromeVisible,
+		false,
+		"route teardown suppresses chrome",
+	);
+	assert.equal(snapshots.at(-1).contentRect, null);
+	assert.equal(
+		first.chromeVisible,
+		true,
+		"later passes cannot mutate old snapshots",
+	);
+});
+
 test("RT-only visibility uses actual registry setters, not absence of an active page", () => {
 	const registry = new TabRegistry(() => {
 		throw new Error("No native view may be created by this source control");
@@ -234,6 +310,93 @@ test("RT-only visibility uses actual registry setters, not absence of an active 
 		false,
 		"unmounted chrome never owns a shortcut",
 	);
+});
+
+test("the browser's own state page hides the VIEW but keeps its shortcuts; an overlay takes them", () => {
+	const registry = new TabRegistry(() => {
+		throw new Error("No native view may be created by this source control");
+	});
+	registry.setContentRect({ x: 0, y: 0, width: 400, height: 300 });
+	/*
+	 * THE TWO FACTS THIS PINS APART. The browser surface hides the native view
+	 * for its OWN state pages (start page, load-failure panel) so their DOM can
+	 * paint, and reports `ownPage: true` with that hide. The chrome band is still
+	 * on screen and still the browser, so the keys are the browser's. An overlay
+	 * (`ownPage: false`) covers the chrome too, so they are not.
+	 *
+	 * Before this distinction existed the surface sent only `false`, main read
+	 * it as "no chrome", and Cmd+L/T/R fell through to the app menu - where
+	 * `app-reload` reloaded the WHOLE APP WINDOW from the start page.
+	 */
+	registry.setViewVisible(false, true);
+	assert.equal(
+		registry.chromeVisible,
+		true,
+		"a state page is the browser the user is looking at",
+	);
+	const effects = [];
+	const router = createBrowserChordRouter({
+		platform: "darwin",
+		ownsChrome: () =>
+			browserChromeOwnsChord({
+				logicalFocus: true,
+				chromeVisible: registry.chromeVisible,
+				window: {
+					isDestroyed: () => false,
+					isVisible: () => true,
+					isFocused: () => true,
+				},
+			}),
+		ownsPage: () => false,
+		reload: (hard) => effects.push(["reload", hard]),
+		history: () => {},
+		send: (m) => effects.push([m.intent, m.origin]),
+		focusChrome: () => {},
+	});
+	for (const key of ["l", "t", "r"]) {
+		const event = {
+			defaultPrevented: false,
+			preventDefault() {
+				this.defaultPrevented = true;
+			},
+		};
+		assert.equal(router.chromeInput(event, input(key)), true, key);
+		assert.equal(
+			event.defaultPrevented,
+			true,
+			`${key}: consumed, so the app menu accelerator never receives it`,
+		);
+	}
+	assert.deepEqual(effects, [
+		["focus-address", "chrome"],
+		["new-tab", "chrome"],
+		["reload", false],
+	]);
+
+	// NEGATIVE CONTROL: a real overlay still refuses every one of them.
+	registry.setViewVisible(false, false);
+	assert.equal(registry.chromeVisible, false);
+	const before = effects.length;
+	for (const key of ["l", "t", "r"]) {
+		const event = {
+			defaultPrevented: false,
+			preventDefault() {
+				this.defaultPrevented = true;
+			},
+		};
+		assert.equal(router.chromeInput(event, input(key)), false, key);
+		assert.equal(event.defaultPrevented, false, `${key}: not consumed`);
+	}
+	assert.deepEqual(effects.slice(before), []);
+	assert.equal(router.menu("reload"), false);
+
+	// A visible view with the reason still set is still just the browser.
+	registry.setViewVisible(true);
+	assert.equal(registry.chromeVisible, true);
+	// ...and an unmounted surface owns nothing whatever the reason said.
+	registry.setViewVisible(false, true);
+	registry.setContentRect(null);
+	assert.equal(registry.chromeVisible, false);
 });
 
 const { chordTarget } = await moduleAt(
@@ -507,6 +670,86 @@ test("router menu fallback ownership and rapid genuine presses have no debounce"
 		false,
 	);
 });
+test("page ownership accepts the view's own focus fact when getFocusedWebContents answers null", () => {
+	const activeTab = { tabId: 7, webContentsId: 21, presented: true };
+	const foreground = (overrides = {}) => ({
+		isDestroyed: () => false,
+		isVisible: () => true,
+		isFocused: () => true,
+		...overrides,
+	});
+	assert.equal(
+		browserPageOwnsChord({
+			activeTab,
+			focusedContents: () => 21,
+			focusedViewTabId: null,
+			window: foreground(),
+		}),
+		true,
+		"the documented focused-contents fact still owns the page",
+	);
+	// Measured on Electron 44.3.0: page.focus() emits the view's focus event while
+	// getFocusedWebContents() stays null in a not-yet-activated window.
+	assert.equal(
+		browserPageOwnsChord({
+			activeTab,
+			focusedContents: () => null,
+			focusedViewTabId: 7,
+			window: foreground(),
+		}),
+		true,
+		"a view's tracked focus owns the page when the getter is null",
+	);
+	assert.equal(
+		browserPageOwnsChord({
+			activeTab,
+			focusedContents: () => null,
+			focusedViewTabId: 8,
+			window: foreground(),
+		}),
+		false,
+		"a stale focus fact for another tab never routes into the active page",
+	);
+	assert.equal(
+		browserPageOwnsChord({
+			activeTab: { ...activeTab, presented: false },
+			focusedContents: () => 21,
+			focusedViewTabId: 7,
+			window: foreground(),
+		}),
+		false,
+		"a hidden/suppressed page is never the accelerator owner",
+	);
+	assert.equal(
+		browserPageOwnsChord({
+			activeTab: null,
+			focusedContents: () => 21,
+			focusedViewTabId: 7,
+			window: foreground(),
+		}),
+		false,
+		"no active tab is no page owner",
+	);
+	// THE SAME WINDOW FLOOR AS CHROME OWNERSHIP (review M1): a stale focus fact is
+	// never authorization for a destroyed, hidden or unfocused window.
+	for (const [label, windowFacts] of [
+		["destroyed", foreground({ isDestroyed: () => true })],
+		["hidden", foreground({ isVisible: () => false })],
+		["unfocused", foreground({ isFocused: () => false })],
+	]) {
+		assert.equal(
+			browserPageOwnsChord({
+				activeTab,
+				focusedContents: () => 21,
+				focusedViewTabId: 7,
+				window: windowFacts,
+			}),
+			false,
+			`a ${label} window never routes a page accelerator`,
+		);
+	}
+});
+
 test("menu fallback respects actual popup/mini target even with stale main chrome focus", () => {
 	const calls = [];
 	const window = (name) => ({
@@ -529,9 +772,48 @@ test("menu fallback respects actual popup/mini target even with stale main chrom
 	assert.equal(calls.at(-1), "browser:reload");
 	runBrowserMenuAction("close-tab", main, main, () => false);
 	assert.equal(calls.at(-1), "main:close");
-	const count = calls.length;
+	/*
+	 * NO CALLBACK WINDOW IS NOT "NO OWNER". A focused WebContentsView can reach an
+	 * accelerator with `target` undefined; the browser's native route is asked
+	 * first, and only when it declines does the missing target mean no action.
+	 */
 	runBrowserMenuAction("reload", null, main, route);
+	assert.equal(calls.at(-1), "browser:reload");
+	const count = calls.length;
+	runBrowserMenuAction("reload", null, main, () => false);
 	assert.equal(calls.length, count);
+});
+
+test("Cmd+T has a native menu route that never falls through to a window action", () => {
+	const calls = [];
+	const main = {
+		webContents: {
+			reload: () => calls.push("main:reload"),
+			reloadIgnoringCache: () => calls.push("main:hard"),
+		},
+		close: () => calls.push("main:close"),
+	};
+	assert.equal(
+		runBrowserMenuAction("new-tab", main, main, (intent) => {
+			calls.push(`browser:${intent}`);
+			return true;
+		}),
+		undefined,
+	);
+	assert.deepEqual(calls, ["browser:new-tab"]);
+	// Outside browser ownership, Cmd+T must do nothing: the old fallback branch
+	// would have closed the window for any intent that was not reload/close-tab.
+	calls.length = 0;
+	runBrowserMenuAction("new-tab", main, main, () => false);
+	assert.deepEqual(calls, []);
+	// With no callback window the browser route still wins when it owns the key.
+	const nullTargetRoutes = [];
+	runBrowserMenuAction("new-tab", null, main, (intent) => {
+		nullTargetRoutes.push(intent);
+		return true;
+	});
+	assert.deepEqual(nullTargetRoutes, ["new-tab"]);
+	assert.deepEqual(calls, []);
 });
 
 test("tab digits fall back to the physical key on layouts whose digit row types symbols (review R11)", () => {
@@ -587,8 +869,19 @@ test("owned menu aliases replace destructive roles; suppression is per input and
 	const browser = readFileSync("src/main/browser/index.ts", "utf8");
 	for (const role of ["reload", "forceReload", "close"])
 		assert.ok(!app.includes(`role: "${role}"`));
-	for (const id of ["app-reload", "app-force-reload", "app-close"])
+	for (const id of [
+		"app-new-tab",
+		"app-reload",
+		"app-force-reload",
+		"app-close",
+	])
 		assert.ok(app.includes(`id: "${id}"`));
+	// Cmd+T now has a native menu route, and it goes through the browser owner
+	// predicate rather than a window role (the missing item was the T gap).
+	assert.match(
+		app,
+		/id: "app-new-tab",[\s\S]{0,900}?accelerator: "CmdOrCtrl\+T"[\s\S]{0,900}?runBrowserMenuAction\(\s*"new-tab"/,
+	);
 	assert.match(browser, /setIgnoreMenuShortcuts\(handled\)/);
 	assert.match(browser, /host\.clearChordState\(\)/);
 	assert.match(
@@ -600,11 +893,51 @@ test("owned menu aliases replace destructive roles; suppression is per input and
 		helper,
 		/show !== "focus"\s*\|\|\s*window\.isDestroyed\(\)\s*\|\|\s*!window\.isFocused\(\)/,
 	);
-	assert.ok(
-		!readFileSync("src/main/browser/actions/input.ts", "utf8").includes(
-			'"Input.dispatchKeyEvent"',
-		),
+	// Raw key events can invoke browser shortcuts instead of inserting text.
+	// The named-key press body is the only exception, regardless of declaration
+	// order; typing and every other helper remain behind the whole-file guard.
+	assertTextTypingUsesNoRawKeyEvents(
+		readFileSync("src/main/browser/actions/input.ts", "utf8"),
 	);
+});
+
+test("typing key-event guard fails closed under renames and helper reordering", async () => {
+	const source = readFileSync("src/main/browser/actions/input.ts", "utf8");
+	assertTextTypingUsesNoRawKeyEvents(source);
+	for (const name of ["type", "typeInto"]) {
+		assert.throws(
+			() =>
+				assertTextTypingUsesNoRawKeyEvents(
+					source.replace(`function ${name}(`, `function renamed_${name}(`),
+				),
+			{ code: "ERR_ASSERTION" },
+			`renaming ${name} must fail closed`,
+		);
+	}
+	const code = compiledInput(source);
+	const helper = code.match(TYPE_INTO_BODY)?.[0];
+	assert.ok(helper, "the mutation must find the complete typeInto() body");
+	const dispatch =
+		'\nawait ctx.cdp.send(contents, "Input.dispatchKeyEvent", { type: "keyDown", key: text });\n';
+	const bodyStart = helper.indexOf("{\n") + 2;
+	const helperSource =
+		helper.slice(0, bodyStart) + dispatch + helper.slice(bodyStart);
+	// Remove the helper first, then relocate it by the entry's name rather than
+	// offsets that would change when declarations move.
+	const reordered = code
+		.replace(TYPE_INTO_BODY, "")
+		.replace(TYPE_ENTRY, `${helperSource}\nasync function type(`);
+	assert.ok(helperSource.includes(dispatch));
+	assert.ok(
+		reordered.indexOf("function typeInto(") <
+			reordered.indexOf("function type("),
+	);
+	// Keep the attack syntactically valid; a parser rejection is not evidence
+	// that the raw-dispatch invariant caught a reordered typing helper.
+	await transform(reordered, { loader: "ts" });
+	assert.throws(() => assertTextTypingUsesNoRawKeyEvents(reordered), {
+		code: "ERR_ASSERTION",
+	});
 });
 
 test("find/zoom share focus classifier with platform/Alt/IME/repeat negatives", () => {

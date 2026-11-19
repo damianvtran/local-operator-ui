@@ -1,4 +1,5 @@
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
+import { t } from "../../../../../i18n";
 
 /**
  * Creates a new file with the given details.
@@ -20,7 +21,7 @@ export const createFile = async (
 		if (!overwrite) {
 			const exists = await window.api.fileExists(filePath);
 			if (exists) {
-				showErrorToast("File already exists. Creation cancelled.");
+				showErrorToast(t("ui.notices.files.already_exists"));
 				return;
 			}
 		}
@@ -29,7 +30,9 @@ export const createFile = async (
 
 		const fileWasCreated = await window.api.fileExists(filePath);
 		if (fileWasCreated) {
-			showSuccessToast(`File "${name}.${type}" created.`);
+			showSuccessToast(
+				t("ui.notices.files.created", { name: `${name}.${type}` }),
+			);
 		} else {
 			throw new Error("File creation failed.");
 		}

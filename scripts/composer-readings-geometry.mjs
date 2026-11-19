@@ -5,6 +5,7 @@
  *
  *     node scripts/composer-readings-geometry.mjs [--json] [--out=<dir>]
  *         [--label=<tree>] [--only=<case>] [--themes=dark|both]
+ *         [--measure=<px>]
  *
  * WHY THIS EXISTS. Issue #788 is a geometry defect with a number in it: the
  * duration reading's shed band
@@ -65,6 +66,35 @@ const LABEL = flag("label") ?? "tree";
 const OUT_DIR = flag("out");
 const THEME_MODE = flag("themes") ?? "dark";
 const PORT = Number(flag("port") ?? 5431);
+/*
+ * THE MEASURE OVERRIDE, in px, or null for the shipped 810px cap.
+ *
+ * The composer box is capped at `--lo-chat-measure`, so the row's width is
+ * `min(column - 48, measure)`: at the shipped 810 the row is 778px at every
+ * column from 858 up, while the operator's own composer box measures 918px and
+ * their row ~886px at the same column. A run that wants the operator's row
+ * names the measure here; the value rides the harness URL and the case id, so
+ * a widened capture can never overwrite or be mistaken for a default-810 one.
+ */
+const MEASURE = flag("measure") ?? null;
+/**
+ * `--crop=form` photographs the whole composer card instead of the control row,
+ * for the states whose evidence is OUTSIDE the row: the "Processing audio"
+ * caption and waveform under the field, the recording lane above the controls.
+ */
+const CROP = flag("crop") === "form" ? "form" : "row";
+/*
+ * THE ROW'S DIRECTION, for the locale case. `dir="rtl"` mirrors which edge the
+ * duration's anchor and gap are measured from, and a physical rule passes every
+ * LTR frame while hiding the reading in `ur`. `--dir=rtl` names the harness's
+ * direction and the case id carries the suffix, so the two directions can never
+ * overwrite each other's numbers.
+ */
+const DIR = flag("dir") === "rtl" ? "rtl" : null;
+/** `--locale=fr`: the composer copy in that language (see the harness). */
+const LOCALE = flag("locale") ?? null;
+/** `--anchor=top`: mount the composer from the top of the pane (see the harness). */
+const ANCHOR = flag("anchor") === "top" ? "top" : null;
 const ORIGIN = `http://127.0.0.1:${PORT}`;
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 
@@ -95,10 +125,29 @@ const WIDTHS = flag("widths")
 	: [700, 800, 840, 860, 880, 900, 1024];
 
 /** The two states the row can be photographed in. */
-const STATES = ["idle", "running"];
+/** States whose presses the page scripts; the driver waits for the page to say it is done. */
+const SCRIPTED = [
+	"stop-cleared",
+	"stop-after-send",
+	"preparing",
+	"recording",
+	"sendrec-ok",
+	"sendrec-empty",
+	"sendrec-error",
+	"sendrec-hang",
+	"sendrec-running",
+];
+const STATES = flag("states") ? flag("states").split(",") : ["idle", "running"];
 
-/** The two readings fixtures: the cheaper state and the one that sets the threshold. */
-const READING_FIXTURES = ["plain", "issue", "fullest"];
+/**
+ * The readings fixtures: the cheap end (`plain`), the issue #788 repro and its
+ * widest superset (`issue`, `fullest`), and the operator's own row from the
+ * duration report (`reported`). Keep this list in step with
+ * `READINGS_FIXTURES` in the harness - a name here the page does not know
+ * throws on mount, which is loud rather than a blank row, but still a wasted run.
+ */
+/* `borrowed` is `fullest` plus the borrowed-access `i` readout (PR #1871). */
+const READING_FIXTURES = ["plain", "issue", "fullest", "reported", "borrowed"];
 
 const THEMES =
 	THEME_MODE === "both"
@@ -161,6 +210,9 @@ const PROBE = `(() => {
 		return out;
 	};
 	const strip = document.querySelector("[data-lo-session-strip]");
+	/* The row's inline direction, resolved the way the strip's own measurement
+	   resolves it: \`dir="rtl"\` mirrors which edge is "last". */
+	const direction = strip ? getComputedStyle(strip).direction : "ltr";
 	const row = strip ? strip.parentElement : null;
 	const items = row ? dissolve(row) : [];
 	/*
@@ -170,23 +222,36 @@ const PROBE = `(() => {
 	const controls =
 		items.find((el) =>
 			el.querySelector(
-				'button[aria-label="Send message"], button[aria-label="Stop"], button[aria-label="Stop agent"]',
+				'button[aria-label="Send message"], button[aria-label="Send recording"], button[aria-label="Confirm recording"], button[aria-label="Stop"], button[aria-label="Stop agent"], button[aria-label="Sending your message"]',
 			),
 		) ?? null;
 	const attach = items.find((el) => el !== strip && el !== controls) ?? null;
 	const chip = document.querySelector("[data-lo-cwd-chip]");
 	/*
-	 * The DURATION reading, by its accessible name - the one label only it carries.
-	 * A reading is VISIBLE when it has a box at all: the shed is \`display: none\`
-	 * (\`hidden\`), so a shed reading is not laid out and measures 0x0.
+	 * The DURATION reading, by its own marker when the fix is present and by its
+	 * accessible name on the base tree (where it has no marker). A reading is
+	 * VISIBLE when its box exists at all AND its computed visibility is not
+	 * hidden: the fix keeps the reading laid out and toggles visibility, while
+	 * the base tree's shed is a display:none, so both halves answer the same
+	 * question the same way.
 	 */
-	const duration = document.querySelector('[aria-label^="Active time:"]');
+	const durationElement = document.querySelector("[data-lo-duration]");
+	const duration =
+		durationElement ?? document.querySelector('[aria-label^="Active time:"]');
 	const readings = strip
 		? [...strip.children]
 				.filter((el) => el.nodeType === 1)
 				.map((el) => {
-					const label = el.getAttribute("aria-label") ?? "";
-					const kind = label.startsWith("Active time:")
+					/* The fix wraps the reading in its positioned element; the base tree
+					   does not, so the label is read off the child when it has one. */
+					const reading =
+						el.getAttribute("aria-label") !== null
+							? el
+							: (el.querySelector("[aria-label]") ?? el);
+					const label = reading.getAttribute("aria-label") ?? "";
+					const kind = el.querySelector("[data-lo-model-access]")
+						? "access"
+						: label.startsWith("Active time:")
 						? "duration"
 						: label.startsWith("Model:")
 							? "model"
@@ -195,14 +260,32 @@ const PROBE = `(() => {
 								: label.startsWith("Context")
 									? "context"
 									: "cost";
+					const box = el.getBoundingClientRect();
 					return {
 						kind,
 						text: (el.textContent ?? "").trim().slice(0, 40),
-						shown: isBox(el),
+						shown:
+							box.width > 0.5 &&
+							box.height > 0.5 &&
+							getComputedStyle(reading).visibility !== "hidden",
 						box: rect(el),
 					};
 				})
 		: [];
+	/* The anchor invariant the duration's absolute placement relies on: the
+	   strip's own right edge is the last visible non-duration reading's. */
+	const nonDurationRight = readings
+		.filter((r) => r.shown && r.kind !== "duration")
+		.map((r) => r.box.right);
+	const nonDurationLeft = readings
+		.filter((r) => r.shown && r.kind !== "duration")
+		.map((r) => r.box.left);
+	const lastNonDurationRight = nonDurationRight.length
+		? Math.max(...nonDurationRight)
+		: null;
+	const lastNonDurationLeft = nonDurationLeft.length
+		? Math.min(...nonDurationLeft)
+		: null;
 	/*
 	 * THE CONTAINER THE SHED QUERY ACTUALLY RESOLVES AGAINST.
 	 *
@@ -243,7 +326,13 @@ const PROBE = `(() => {
 	 * client box.
 	 */
 	const gap =
-		stripBox && controlsBox ? round(controlsBox.left - stripBox.right) : null;
+		stripBox && controlsBox
+			? round(
+					direction === "rtl"
+						? stripBox.left - controlsBox.right
+						: controlsBox.left - stripBox.right,
+				)
+			: null;
 	return {
 		containerBox: rect(document.querySelector("[data-lo-geometry-column]")),
 		queryContainer,
@@ -271,6 +360,15 @@ const PROBE = `(() => {
 					].length,
 				}
 			: null,
+		formBox: rect(form),
+		// The lane (preparing or recording) and the field, so a card-height delta can
+		// be attributed to the block the press opens or to the field's own height.
+		laneBox: rect(
+			document.querySelector(
+				"[data-recording-indicator], [data-preparing-lane]",
+			),
+		),
+		fieldBox: rect(form ? form.querySelector("textarea") : null),
 		form: form
 			? {
 					scrollWidth: form.scrollWidth,
@@ -295,18 +393,74 @@ const PROBE = `(() => {
 		 * rightmost READING box against the controls' left edge: \`glyphOverlap > 0\`
 		 * means the last reading's own box is inside the controls group.
 		 */
+		direction,
 		readingsRight: readings.length
 			? Math.max(...readings.filter((r) => r.shown).map((r) => r.box.right))
 			: null,
+		readingsLeft: readings.length
+			? Math.min(...readings.filter((r) => r.shown).map((r) => r.box.left))
+			: null,
+		lastReadingRight: lastNonDurationRight,
+		lastReadingLeft: lastNonDurationLeft,
+		/* 0 when the strip's inline-END edge is the last reading's, which is the
+		   invariant \`insetInlineStart: calc(100% + 4px)\` assumes: the strip's right
+		   in LTR, its left in RTL. */
+		anchorDelta:
+			stripBox && lastNonDurationRight !== null && lastNonDurationLeft !== null
+				? round(
+						direction === "rtl"
+							? stripBox.left - lastNonDurationLeft
+							: stripBox.right - lastNonDurationRight,
+					)
+				: null,
+		durationVisible:
+			duration !== null &&
+			isBox(duration) &&
+			getComputedStyle(duration).visibility !== "hidden",
 		glyphOverlap:
 			readings.filter((r) => r.shown).length && controlsBox
 				? round(
-						Math.max(...readings.filter((r) => r.shown).map((r) => r.box.right)) -
-							controlsBox.left,
+						direction === "rtl"
+							? controlsBox.right -
+									Math.min(
+										...readings.filter((r) => r.shown).map((r) => r.box.left),
+									)
+							: Math.max(
+									...readings.filter((r) => r.shown).map((r) => r.box.right),
+								) - controlsBox.left,
 					)
 				: null,
 		readings,
-		durationShown: isBox(duration),
+		durationShown: duration !== null && isBox(duration),
+		durationBox: rect(duration),
+		/*
+		 * THE SLOT POSITIONS, which are the claim of the button-slot change: the
+		 * mic's press point (slot A) and the primary slot (B) hold the same x in every
+		 * state. Left edges and widths, in document order = visual order.
+		 */
+		slots: controls
+			? [...controls.querySelectorAll("button")].map((b) => {
+					const r = b.getBoundingClientRect();
+					return {
+						// null on a tree that predates the slot markers (the BEFORE run).
+						slot: b.getAttribute("data-composer-slot"),
+						label: b.getAttribute("aria-label"),
+						left: round(r.left),
+						right: round(r.right),
+						width: round(r.width),
+						height: round(r.height),
+						disabled: b.disabled || b.getAttribute("aria-disabled") === "true",
+					};
+				})
+			: [],
+		bOpacity: (() => {
+			const b = controls?.querySelector('[data-composer-slot="b"]');
+			return b ? Number(getComputedStyle(b).opacity) : null;
+		})(),
+		sent: window.__sent ?? null,
+		bTimeline: window.__bTimeline ?? null,
+		transcriptionCalls: window.__transcriptionCalls ?? null,
+		boxValue: document.querySelector("textarea")?.value ?? null,
 		controlNames: controls
 			? [...controls.querySelectorAll("button")].map(
 					(b) => b.getAttribute("aria-label") ?? "(unnamed)",
@@ -474,10 +628,18 @@ const waitForRow = async (cdp) => {
 				const strip = document.querySelector("[data-lo-session-strip]");
 				if (!strip) return false;
 				const row = strip.parentElement;
+				// Base trees carry no slot markers: fall back to the labelled primary.
 				const send = row.querySelector(
-					'button[aria-label="Send message"], button[aria-label="Stop"], button[aria-label="Stop agent"]',
+					'[data-composer-slot="b"], button[aria-label="Send message"], button[aria-label="Stop"], button[aria-label="Confirm recording"]',
 				);
-				return !!send && send.getBoundingClientRect().width > 0;
+				if (!send || send.getBoundingClientRect().width <= 0) return false;
+				// The scripted states (recording, send-recording) mark themselves
+				// ready when their presses are done; "error: ..." is a failed script.
+				const ready = document.documentElement.dataset.loReady;
+				if (ready && ready.startsWith("error")) throw new Error(ready);
+				return (${JSON.stringify(SCRIPTED)}).includes(new URLSearchParams(location.search).get("state"))
+					? ready === "1"
+					: true;
 			})()`,
 		});
 		if (result.value === true) return;
@@ -502,9 +664,19 @@ const main = async () => {
 	for (const state of STATES) {
 		for (const readings of READING_FIXTURES) {
 			for (const width of WIDTHS) {
-				const id = `${state}-${readings}-w${width}`;
+				const id = `${state}-${readings}-w${width}${MEASURE ? `-m${MEASURE}` : ""}${DIR ? `-${DIR}` : ""}${LOCALE ? `-${LOCALE}` : ""}${ANCHOR ? `-${ANCHOR}` : ""}`;
 				if (ONLY && !ONLY.some((needle) => id.includes(needle))) continue;
-				cases.push({ id, state, readings, width });
+				// `fixture` is the readings fixture's NAME: the probe's own `readings` (an
+				// array of what rendered) overwrites the entry's field of that name below.
+				cases.push({
+					id,
+					state,
+					readings,
+					fixture: readings,
+					width,
+					measure: MEASURE,
+					dir: DIR,
+				});
 			}
 		}
 	}
@@ -522,7 +694,7 @@ const main = async () => {
 			await cdp.send("Page.navigate", { url: "about:blank" });
 			await sleep(120);
 			await cdp.send("Page.navigate", {
-				url: `${ORIGIN}/composer-readings-geometry.html?w=${entry.width}&state=${entry.state}&readings=${entry.readings}&theme=${theme}`,
+				url: `${ORIGIN}/composer-readings-geometry.html?w=${entry.width}&state=${entry.state}&readings=${entry.readings}&theme=${theme}${MEASURE ? `&measure=${MEASURE}` : ""}${DIR ? `&dir=${DIR}` : ""}${LOCALE ? `&locale=${LOCALE}` : ""}${ANCHOR ? `&anchor=${ANCHOR}` : ""}`,
 			});
 			await waitForRow(cdp);
 			await sleep(180);
@@ -548,7 +720,12 @@ const main = async () => {
 				 * layout rather than two.
 				 */
 				const column = probe.containerBox;
-				const rowBox = probe.row ? probe.row.box : null;
+				const rowBox =
+					CROP === "form" && probe.formBox
+						? probe.formBox
+						: probe.row
+							? probe.row.box
+							: null;
 				const shot = await cdp.send("Page.captureScreenshot", {
 					format: "png",
 					clip: {
@@ -560,7 +737,10 @@ const main = async () => {
 					},
 				});
 				writeFileSync(
-					join(OUT_DIR, `${LABEL}-${entry.id}-${theme}.png`),
+					join(
+						OUT_DIR,
+						`${LABEL}-${entry.id}${CROP === "form" ? "-card" : ""}-${theme}.png`,
+					),
 					Buffer.from(shot.data, "base64"),
 				);
 			}
@@ -623,7 +803,7 @@ const main = async () => {
 					String(r.row ? r.row.overflow : "?").padStart(8),
 					String(r.gap).padStart(8),
 					String(r.row ? r.row.lines : "?").padStart(8),
-					(r.durationShown ? "yes" : "no").padStart(8),
+					(r.durationVisible ? "yes" : "no").padStart(8),
 					String(r.strip ? r.strip.width : "?").padStart(8),
 					String(r.chip ? r.chip.width : "?").padStart(8),
 					String(r.controls ? r.controls.width : "?").padStart(8),

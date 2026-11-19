@@ -1,0 +1,90 @@
+// Structural + render probe for PR #1604 i18n audit round 7A (session 0ab504098e2b).
+// Scope b61f1b4396b..3705c557424: per locale, the ui.mesh delta must be exactly the two added
+// keys plus expires_window; English context delta exactly expires_window (note only) plus the
+// two new entries. Structural checks (ICU args, NFC, bidi controls, no terminal/CLI words in
+// typed_review_unavailable, Deny-control term match). expires_window is rendered for EVERY
+// duration approvalAnswerWindowLabel (mesh-approvals.ts) can produce: under a minute,
+// minutes 1..89, hours ceil(m/60) 2..200; distinct renders printed per (unit, CLDR category).
+// Run from the worktree root: node <this file>
+import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { createRequire } from "node:module";
+import { resolve } from "node:path";
+const require = createRequire(resolve("package.json"));
+const { IntlMessageFormat } = require("intl-messageformat");
+const { parse, TYPE } = require("@formatjs/icu-messageformat-parser");
+const BASE = "b61f1b4396b4146b74bd8970b916e5f62d15285f";
+const HEAD = "3705c5574248ce4d280a8fa09d7b84c682ac73ef";
+const L = ["es", "fr", "hi", "ru", "ur", "vi", "zh-CN"];
+const K = ["ui.mesh.approval.could_not_apply", "ui.mesh.approval.expires_window", "ui.mesh.approval.typed_review_unavailable"];
+const show = (rev, p) => execFileSync("git", ["show", `${rev}:${p}`]);
+const sha = (b) => createHash("sha256").update(b).digest("hex");
+const BIDI = /[\u200E\u200F\u202A-\u202E\u2066-\u2069]/;
+let fail = 0;
+const disk = (p) => execFileSync("git", ["hash-object", p]).toString().trim();
+const blob = (p) => execFileSync("git", ["rev-parse", `${HEAD}:${p}`]).toString().trim();
+const args = (v) => { const s = new Set(); const walk = (ns) => { for (const n of ns) { if (n.type === TYPE.argument || n.type === TYPE.plural || n.type === TYPE.select) s.add(n.value); if (n.options) for (const o of Object.values(n.options)) walk(o.value); } }; walk(parse(v, { ignoreTag: true })); return [...s].sort().join(","); };
+const enp = "src/i18n/catalogues/en/ui.mesh.json";
+const enB = JSON.parse(show(BASE, enp)), en = JSON.parse(show(HEAD, enp));
+const enChanged = Object.keys({ ...enB, ...en }).filter((k) => enB[k] !== en[k]).sort();
+console.log(`en ui.mesh head=${sha(show(HEAD, enp))} worktree_matches_head=${disk(enp) === blob(enp)} changed=${JSON.stringify(enChanged)}`);
+if (JSON.stringify(enChanged) !== JSON.stringify(K)) fail++;
+const ctxp = "src/i18n/catalogues/en/ui.mesh.context.json";
+const cB = JSON.parse(show(BASE, ctxp)), cH = JSON.parse(show(HEAD, ctxp));
+const ctxChanged = Object.keys({ ...cB, ...cH }).filter((k) => JSON.stringify(cB[k]) !== JSON.stringify(cH[k])).sort();
+console.log(`context head=${sha(show(HEAD, ctxp))} changed=${JSON.stringify(ctxChanged)}`);
+if (JSON.stringify(ctxChanged) !== JSON.stringify(K)) fail++;
+const ew = "ui.mesh.approval.expires_window";
+console.log(`  expires_window role/tone unchanged=${cB[ew].role === cH[ew].role && cB[ew].tone === cH[ew].tone}; note appended only=${cH[ew].note.startsWith(cB[ew].note)}`);
+const cat = {};
+console.log("\nlocale delta BASE -> HEAD");
+for (const l of L) {
+  const p = `src/i18n/catalogues/${l}/ui.mesh.json`;
+  const B = JSON.parse(show(BASE, p)), H = JSON.parse(show(HEAD, p));
+  cat[l] = H;
+  const changed = Object.keys({ ...B, ...H }).filter((k) => B[k] !== H[k]).sort();
+  const keysEq = JSON.stringify(Object.keys(H).sort()) === JSON.stringify(Object.keys(en).sort());
+  const ok = keysEq && JSON.stringify(changed) === JSON.stringify(K) && disk(p) === blob(p);
+  console.log(`${ok ? "PASS" : "FAIL"} ${l}: head=${sha(show(HEAD, p))} worktree_matches_head=${disk(p) === blob(p)} keyset_matches_en=${keysEq} changed=${changed.length}`);
+  if (!ok) fail++;
+  for (const k of K) {
+    const v = H[k];
+    const okS = args(v) === args(en[k]) && v === v.normalize("NFC") && !BIDI.test(v);
+    console.log(`    ${okS ? "ok " : "BAD"} ${k.replace("ui.mesh.approval.", "")} args=[${args(v)}] en_args=[${args(en[k])}] nfc=${v === v.normalize("NFC")} bidi_free=${!BIDI.test(v)}\n        ${v}`);
+    if (!okS) fail++;
+  }
+  const tr = H["ui.mesh.approval.typed_review_unavailable"];
+  const cliWords = /terminal|command|commande|comando|consola|ligne|línea|командн|терминал|कमांड|टर्मिनल|کمانڈ|ٹرمینل|dòng lệnh|terminal|命令|终端|CLI|lop\b/i;
+  console.log(`    typed_review_unavailable cli/terminal-free=${!cliWords.test(tr)}; Deny control label = ${H["ui.mesh.mesh_approvals_tray.deny"]}`);
+  if (cliWords.test(tr)) fail++;
+}
+const fmt = (l, k, a) => new IntlMessageFormat(cat[l][k], l).format(a);
+function windowLabel(l, seconds, outer = ew) {
+  const minutes = Math.ceil(seconds / 60);
+  const duration = seconds < 60 ? fmt(l, "ui.mesh.approval.duration_under_minute")
+    : minutes < 90 ? fmt(l, "ui.mesh.approval.duration_minutes", { count: minutes })
+    : fmt(l, "ui.mesh.approval.duration_hours", { count: Math.ceil(minutes / 60) });
+  return fmt(l, outer, { duration });
+}
+console.log("\nexpires_window, every reachable duration: distinct render per (unit, CLDR category) with the counts that produce it");
+for (const l of L) {
+  const pr = new Intl.PluralRules(l);
+  console.log(`== ${l}`);
+  console.log(`  under-minute (1..59 s): ${windowLabel(l, 30)}`);
+  const seen = new Map();
+  const add = (u, n, s) => { const shape = s.replace(/\d+/g, "N"); const key = `${u}:${pr.select(n)}:${shape}`; if (!seen.has(key)) seen.set(key, { ex: s, ns: [] }); seen.get(key).ns.push(n); };
+  for (let m = 1; m <= 89; m++) add("min", m, windowLabel(l, m * 60));
+  for (let h = 2; h <= 200; h++) add("hour", h, windowLabel(l, h * 3600));
+  for (const [k, { ex, ns }] of seen) console.log(`  ${k.split(":").slice(0, 2).join(":")} e.g. «${ex}» counts=${ns.length > 10 ? ns.slice(0, 10).join(",") + ",…(" + ns.length + ")" : ns.join(",")}`);
+  console.log(`  boundary 89 min + 1 s: ${windowLabel(l, 89 * 60 + 1)}`);
+}
+// ru: each noun after "в течение" must be genitive for its category.
+const GEN = { "min:one": "минуты", "min:few": "минут", "min:many": "минут", "hour:one": "часа", "hour:few": "часов", "hour:many": "часов" };
+const prr = new Intl.PluralRules("ru");
+let ruBad = 0;
+for (let m = 1; m <= 89; m++) { const n = windowLabel("ru", m * 60).split(" ").pop(); if (GEN[`min:${prr.select(m)}`] !== n) ruBad++; }
+for (let h = 2; h <= 200; h++) { const n = windowLabel("ru", h * 3600).split(" ").pop(); if (GEN[`hour:${prr.select(h)}`] !== n) ruBad++; }
+console.log(`\nru genitive-after-"в течение" mismatches across 1..89 min and 2..200 h: ${ruBad}`);
+if (ruBad) fail += ruBad;
+console.log(`\nprobe failures=${fail}`);
+process.exit(fail ? 1 : 0);

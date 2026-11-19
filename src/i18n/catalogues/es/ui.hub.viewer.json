@@ -1,0 +1,12 @@
+{
+	"ui.hub.viewer.favourite": "Marcar agente como favorito",
+	"ui.hub.viewer.favourite_signed_out": "Inicia sesión en Radient para marcar agentes como favoritos",
+	"ui.hub.viewer.favourite_unavailable": "Estado de favorito no disponible",
+	"ui.hub.viewer.favourite_unknown": "No se pudieron leer tus favoritos, así que no se asume que este agente no sea favorito.",
+	"ui.hub.viewer.like": "Me gusta",
+	"ui.hub.viewer.like_signed_out": "Inicia sesión en Radient para dar “me gusta” a los agentes",
+	"ui.hub.viewer.like_unavailable": "Estado de “me gusta” no disponible",
+	"ui.hub.viewer.like_unknown": "No se pudieron leer tus “me gusta”, así que no se asume que este agente no te guste.",
+	"ui.hub.viewer.unfavourite": "Quitar agente de favoritos",
+	"ui.hub.viewer.unlike": "Quitar el “me gusta” del agente"
+}

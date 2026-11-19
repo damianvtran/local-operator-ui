@@ -1,0 +1,109 @@
+{
+	"audit_id": "teambridge-delivery-rebase-audit-7c9c46abac54-rebase-hi",
+	"date": "2026-10-31",
+	"locale": "hi",
+	"namespace": "ui.teamBridge",
+	"branch": "feat/team-bridge-delivery-annotation",
+	"source_commit": "PR #1521 head 4529702157a1a0fe090aef52f1b6533622bfb47c, rebased onto 3b369d6341c7eeed159c3bcbb1b1f4db759265d4",
+	"translator": {
+		"agent": "translator",
+		"model": "anthropic/claude-opus-5-5",
+		"date": "2026-10-21",
+		"session": "632a8fd68227",
+		"job": "4ca9e8a81d54",
+		"added_key_source": {
+			"key": "ui.teamBridge.notify.unavailable",
+			"job": "job8d4e6d78c133",
+			"model": "not supplied"
+		}
+	},
+	"auditors": [
+		{
+			"agent": "i18n-auditor",
+			"model": "anthropic/claude-opus-5-5",
+			"session": "7c9c46abac54",
+			"instance": "7c9c46abac54-rebase-hi",
+			"date": "2026-10-31",
+			"result": "clean",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"model_fallback": {
+				"announced": false,
+				"observed": false
+			}
+		}
+	],
+	"independence": "Independent auditor: lopdev team task agent, session 7c9c46abac54; authored none of the audited strings and none of PR #1521; edited no catalogue; wrote only receipts/evidence and rows via ledger-assemble.mjs. Distinct run from the prior branch auditors (4c572bf830c8, 681c3f6ceb10) and main's (b20548e9b2d9).",
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "df45d40a3124cb58fcb82638d02b22d474ecc5c47b6e8b8d780df0ace538b6cf"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "e02966c49f96dcc6ad23d48d2d41494c265a239bb165ae5f8ed32598ab32e23b"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/hi/ui.teamBridge.json",
+			"sha256": "800e139729822822a56f3aae50f88598ce589f40b56fedccab6c55ad6f497306"
+		}
+	},
+	"scope": {
+		"delta_kind": "Rebase of PR #1521 onto origin/main 3b369d6341c (#1523 members dialog, #1535 reaction pills). Mechanical: git diff origin/main -- src/i18n/catalogues/hi/ui.teamBridge.json is 14+/1- (main's last line gains a comma; 13 ui.teamBridge.delivery.* lines appended). Removing those 13 lines and that comma yields bytes identical to origin/main's file; the same holds for en. JSON key diff vs main: 13 added, 0 removed, 0 changed.",
+		"base_target_sha256": "d729a6f2655bdb72faba93daaaa925cc109b514336366c8fa39bf35528e57fae",
+		"base_en_sha256": "fa61d01336edd0355d0ce7befde7957ec60457ade37a02b11c0b31eb3b2f3a96",
+		"base_bytes_audited_by": [
+			"b20548e9b2d9-rebase-hi"
+		],
+		"prior_branch_audit": {
+			"commit": "0bbdcd952c5",
+			"target_sha256": "0d76a2000cfbf7894d758036ffb4746056cfdd7fd890cd8005f6faa6ddb1f328",
+			"en_sha256": "ebfddc6934622bc6ce57de0ec5d804e3a8b5de76387858462cbd9ffc13e1868c",
+			"instances": [
+				"tb1521r2-hi-681c3f6ceb10"
+			],
+			"delivery_values_byte_identical": true,
+			"delivery_en_byte_identical": true,
+			"delivery_context_entries_identical": true
+		},
+		"keys_identity_checked": [
+			"ui.teamBridge.delivery.refused",
+			"ui.teamBridge.delivery.refused_manipulation",
+			"ui.teamBridge.delivery.refused_personal_info",
+			"ui.teamBridge.delivery.refused_abusive",
+			"ui.teamBridge.delivery.refused_unsafe_content",
+			"ui.teamBridge.delivery.refused_out_of_scope",
+			"ui.teamBridge.delivery.held",
+			"ui.teamBridge.delivery.held_screening_unavailable",
+			"ui.teamBridge.delivery.held_awaiting_review",
+			"ui.teamBridge.delivery.pending",
+			"ui.teamBridge.delivery.info_refused",
+			"ui.teamBridge.delivery.info_held",
+			"ui.teamBridge.delivery.info_label"
+		],
+		"keys_audited_linguistically": [],
+		"whole_file_review": "Read all 300 values: main-side keys (incl. #1523 members.* and #1535 reactions.others) are byte-identical to origin/main and covered by main's audited row; delivery.* values re-read for interaction with main's new copy — no shared terms (moderation/screening/held/refused) appear outside delivery.*, agent term consistent with the rest of the file.",
+		"not_audited": "No new linguistic audit of main-side keys beyond consistency re-read: their bytes are main's, audited by base_bytes_audited_by."
+	},
+	"checks": {
+		"placeholders": "@formatjs/icu-messageformat-parser over all 300 values: argument sets equal English per key; all parse.",
+		"key_set": "300 keys, equal to English.",
+		"unicode": "All values NFC; no Cc or bidi controls (U+200E/F, U+202A-E, U+2066-9).",
+		"rendered_command": "node $LOCAL_OPERATOR_SCRATCHPAD/tbmech.mjs (repo node_modules parser; Node v24.22.1)",
+		"rendered": [
+			"hi sha 800e139729822822a56f3aae50f88598ce589f40b56fedccab6c55ad6f497306 bytesMinusDeliveryEqMain true deliveryLinesEq0bbdcd9 true 13 keys 300 issues []"
+		]
+	},
+	"findings": [],
+	"status": "passed",
+	"artifacts": {
+		"receipt": {
+			"path": "i18n/receipts/7c9c46abac54-rebase-hi.json"
+		}
+	},
+	"notes_not_execution_log": "scope/whole_file_review are auditor notes; checks.rendered is verbatim command output."
+}

@@ -1,4 +1,6 @@
 import { useMediaQuery } from "@shared/hooks/use-media-query";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Info } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -64,6 +66,13 @@ export const ComposerTipRow = ({
 	suspended,
 	mentionsEnabled = false,
 }: Props) => {
+	/*
+	 * `t()` reads the active locale at CALL time, but nothing else in this row
+	 * changes when the language does - the 12 s tick would eventually repaint it,
+	 * and "eventually" is a sentence stuck in the old language. Subscribing makes
+	 * the current sentence re-resolve on the switch.
+	 */
+	useI18nLocale();
 	const pool = useMemo(() => composerTips(mentionsEnabled), [mentionsEnabled]);
 	const order = useMemo(() => tipRotationOrder(pool), [pool]);
 	const [index, setIndex] = useState(0);
@@ -127,7 +136,7 @@ export const ComposerTipRow = ({
 			 */}
 			<Info size={12} aria-hidden="true" className="shrink-0 text-ink-dim" />
 			<span className="truncate text-body-sm text-ink-dim">
-				{tipAt(order, index)}
+				{t(tipAt(order, index))}
 			</span>
 		</div>
 	);

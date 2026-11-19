@@ -1,0 +1,192 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "6b6868c6f100",
+  "date": "2026-10-18",
+  "locale": "zh-CN",
+  "status": "passed",
+  "scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+  "previous_audit": "i18n/receipts/aa7505fa89e9.json",
+  "namespaces": {
+    "ui.common.updates": {
+      "namespace": "ui.common.updates",
+      "status": "passed",
+      "sha256": {
+        "source": "de3e083efe40d06b2947c1ef661ec0328b8984214f015a1133521d9d683cb3cd",
+        "target": "de8f039bdb657ec4922cf714bf120366e2a269f76bf30760c4b354ef6b5fc541"
+      },
+      "findings": []
+    },
+    "ui.common.forms": {
+      "namespace": "ui.common.forms",
+      "status": "passed",
+      "sha256": {
+        "source": "28a63a53e5b6c3c4fccb9995eb07637c8521ce9d5019e304f3fedb0ddbc053d9",
+        "target": "5f9200058da5be61679bc6956b8195cc9ad0ad328856badc9ac819b3d9f23466"
+      },
+      "findings": []
+    },
+    "ui.common.models": {
+      "namespace": "ui.common.models",
+      "status": "passed",
+      "sha256": {
+        "source": "561e39a0105425d66cac7d7497306d740d79f7b2e3921424b1993f3405e08d77",
+        "target": "1d45fe28e4cfc2993c0370aef091738e4a2b266dbd32e71560432701e6adcca1"
+      },
+      "findings": []
+    },
+    "ui.common.account": {
+      "namespace": "ui.common.account",
+      "status": "passed",
+      "sha256": {
+        "source": "72e2a848a2aa4b46ecdc0ede34ed5f59b280b73e3fc544d5e563ce22ab2743e0",
+        "target": "b6311b899769a6cbbd35e4077c784b6a7857ab286addab93cd6444429e5dc253"
+      },
+      "findings": []
+    },
+    "ui.common.connection": {
+      "namespace": "ui.common.connection",
+      "status": "passed",
+      "sha256": {
+        "source": "d1acb6a1fae70e3f85255d880a91d9e35ed49a8bf7d04ef14722ce115d7c69bb",
+        "target": "9494258b3ed1c606702fdb1c6e1aea99545a191f62aa0b232754f022de8b7316"
+      },
+      "findings": []
+    },
+    "ui.common.actions": {
+      "namespace": "ui.common.actions",
+      "status": "passed",
+      "sha256": {
+        "source": "bf151da8ad56c3b32b05be1d505764d3f4cfb72e9792f9ec68b8a570239f6976",
+        "target": "f3eafaf35e91d4ed3660931fa94060fa4ee3fbe345d4dc9cc45db9ffcd0a78b5"
+      },
+      "findings": []
+    },
+    "ui.common.errors": {
+      "namespace": "ui.common.errors",
+      "status": "passed",
+      "sha256": {
+        "source": "5c86553fecfa353e53b31d69a27ce1523a26681660a2923e8601279ad36672e6",
+        "target": "abaa7006d3acf97c27a0612db81a6e1c328ba66d8ce3622ada0b65cf3c76c390"
+      },
+      "findings": []
+    },
+    "ui.common.editing": {
+      "namespace": "ui.common.editing",
+      "status": "passed",
+      "sha256": {
+        "source": "e7ddf3b75f3e46d6900aacab976f1180eb10fdb121b5f46d2dc231fd6b4f5bb5",
+        "target": "85b1dcb4551902fc877683c63f75d30461d81556e58b672bb9debfaef8f5bb5c"
+      },
+      "findings": []
+    },
+    "ui.common.loading": {
+      "namespace": "ui.common.loading",
+      "status": "passed",
+      "sha256": {
+        "source": "e629186e32cd51d7eb98dcd3e8f6587765447bd1da9bdba5c5d327ad2bdcd87e",
+        "target": "f3f0ed1e3ac9d6d279966ce1ffa4182c1edef8da897cbf97890e336c20c32ced"
+      },
+      "findings": []
+    },
+    "ui.chat.tags": {
+      "namespace": "ui.chat.tags",
+      "status": "passed",
+      "sha256": {
+        "source": "ffb1c6b985fd1ab521a2a5fc49955978d76cabc5671437dc2bc6b31cfa1ada74",
+        "target": "f55f1e8abdf819f48a0f77c09e3864dc8363ef0a752f8eed2b2dad76e83facbe"
+      },
+      "findings": []
+    },
+    "ui.chat.composer": {
+      "namespace": "ui.chat.composer",
+      "status": "passed",
+      "sha256": {
+        "source": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
+        "target": "1fae5e2a5ed42aa616d2c6e80cc91e4f68c2168bcff9e0de55a513c0fb3b0059"
+      },
+      "findings": []
+    },
+    "ui.chat.sidebar_view": {
+      "namespace": "ui.chat.sidebar_view",
+      "status": "passed",
+      "sha256": {
+        "source": "62f5807d9a6c90b84ea88d6665d18568b568f59b5e68f80f038f73fb502ef834",
+        "target": "bfae15169232e85dc7d346da0c1906652b61d8716b2760910a5f315ba866a372"
+      },
+      "findings": []
+    },
+    "ui.chat.header": {
+      "namespace": "ui.chat.header",
+      "status": "passed",
+      "sha256": {
+        "source": "1e395f1110147c45fea1182e26542cfdb44c966eaed0966d2fefcade11d161aa",
+        "target": "cb3016cb9651db9ce7d0eb57db27e712bd948daef0cbfc21351b1f98cf4dd195"
+      },
+      "findings": []
+    },
+    "ui.chat.composer_media": {
+      "namespace": "ui.chat.composer_media",
+      "status": "passed",
+      "sha256": {
+        "source": "47ec03f574b6665bafaf900f15067ef522fbf8b7fe665402b0bb4be03d0aa0ff",
+        "target": "dd0f8662fdc5b1b996b9cd65c1ce8282cf870b5bdfec05c72c626d2d82b8232b"
+      },
+      "findings": []
+    },
+    "ui.chat.dialogs": {
+      "namespace": "ui.chat.dialogs",
+      "status": "passed",
+      "sha256": {
+        "source": "783d72141bae3491cc1ecfbdfc983339e327406cd4385e7ce8f9dfa1360997fc",
+        "target": "2433556664b8e7c370e6405a3200f22c5776ed318120869c66c04d79617828f5"
+      },
+      "findings": []
+    },
+    "ui.chat": {
+      "namespace": "ui.chat",
+      "status": "passed",
+      "sha256": {
+        "source": "29169c4c0801689781d503f724d457757275416c49e975bfb6ae4872d90c2c46",
+        "target": "7332f8a833c0d746c81ab563dbe1b913a6d16e10a27b8d0b5153c52a886ad668"
+      },
+      "findings": []
+    },
+    "ui.shell": {
+      "namespace": "ui.shell",
+      "status": "passed",
+      "sha256": {
+        "source": "a36a75e15ce94632bad00e774e7f6211ca58d95a2b6f6f50a85e687d64a5b1ea",
+        "target": "df7feb98c6f4b3328055f7be3955f88ad3b43939eb67506085d472e19ea3902d"
+      },
+      "findings": []
+    },
+    "ui.shell.rail": {
+      "namespace": "ui.shell.rail",
+      "status": "passed",
+      "sha256": {
+        "source": "82f946fe2d2944d03100d85263ff5e9e595dc34f953a0d57aa9794ea0879f3eb",
+        "target": "944c9c5dcfca42aa48c1d5cb9b7204655439afb1f0f77735e824759786731937"
+      },
+      "findings": []
+    },
+    "ui.installer": {
+      "namespace": "ui.installer",
+      "status": "passed",
+      "sha256": {
+        "source": "35b34093f3d065acf26e96a4e9601cb2906bd9439230a7fa7f9fc9a43784f7a3",
+        "target": "ff804d5dbf37d2bccdcf2bbfedc77288d3a25a2145b166dae657cdd48797c6ff"
+      },
+      "findings": []
+    },
+    "ui.agentMessages": {
+      "namespace": "ui.agentMessages",
+      "status": "passed",
+      "sha256": {
+        "source": "065cbea39ca4df33aa114fc027e5f75bcc6e74e9cb21d4f14e42628d3795cbcb",
+        "target": "b4074f74723df9cd128d1e85764b1b38d9a2053ad405ca75819797dd70bcf80e"
+      },
+      "findings": []
+    }
+  }
+}

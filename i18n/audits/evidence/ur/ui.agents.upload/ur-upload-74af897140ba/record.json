@@ -1,0 +1,281 @@
+{
+	"audit_id": "ur-upload-r1-74af897140ba",
+	"date": "2026-11-08",
+	"audit_date": "2026-11-08",
+	"locale": "ur",
+	"namespace": "ui.agents.upload",
+	"round": 1,
+	"key_count": 15,
+	"keys_audited": [
+		"ui.agents.upload.action.publish",
+		"ui.agents.upload.action.publishing",
+		"ui.agents.upload.action.update_listing",
+		"ui.agents.upload.availability.reserved_named",
+		"ui.agents.upload.availability.reserved_unnamed",
+		"ui.agents.upload.intro.org",
+		"ui.agents.upload.intro.public",
+		"ui.agents.upload.not_leaving.org",
+		"ui.agents.upload.not_leaving.public",
+		"ui.agents.upload.published.org_listed",
+		"ui.agents.upload.receipt.title_hub",
+		"ui.agents.upload.receipt.title_org",
+		"ui.agents.upload.receipt.title_updated",
+		"ui.agents.upload.target.blocked_hint",
+		"ui.agents.upload.target.visibility_hint_public"
+	],
+	"namespace_key_count": 46,
+	"source_commit": "2b72db6a56ad8204ec7f30a0ba6ffbc941be3b82",
+	"source_parent": "b915083bd96f5118c793d26c47d5a1f2afc1f8d9",
+	"source_base": "e9fef11640364c9e55e68fc84eac89af45886279",
+	"branch": "i18n/slice-upload-agent-dialog",
+	"worktree": "/Users/damian/local-operator-ui/.worktrees/i18n-s4",
+	"scope": "ur ui.agents.upload round 1: the 15 keys this commit adds (action.publish, action.publishing, action.update_listing, availability.reserved_named, availability.reserved_unnamed, intro.org, intro.public, not_leaving.org, not_leaving.public, published.org_listed, receipt.title_hub, receipt.title_org, receipt.title_updated, target.blocked_hint, target.visibility_hint_public), judged for naturalness, RTL word order, terminology consistency with ur/, one/other plurals, placeholder identity and English residue. Catalogue audit only, not rendered-frame, activation or release approval.",
+	"status": "passed",
+	"result": "clean-with-findings",
+	"verdict": "passed: 0 blocker / 0 major / 0 minor / 1 nit (N1, wording preference on target.visibility_hint_public). Every one of the translator's four terminology claims verified against ur/: اندراج for the hub-listing sense (11 values), Team پلان, Radient کنسول (the same clause already ships in ui.hub.pages.org.plan_body), and Agent Hub left in Latin exactly as ui.hub.pages.header.title renders it. No manual bidi control in any of the 46 values; placeholders byte-identical; the plural frame renders correctly at count=1 and count>1.",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "74af897140ba",
+		"model": "deepseek/deepseek-flash",
+		"model_fallback": "anthropic/claude-sonnet-5-5 -> anthropic/claude-opus-5-5 -> openai/gpt-6.1-sol -> deepseek/deepseek-flash",
+		"actual_model_source": "harness model-switch notes in this run's transcript; the last switch names deepseek/deepseek-flash as the model serving the request, and every audit step ran after it",
+		"fallback": "yes - three switches, each attributed by the harness to 'provider failure: quota'; the served model is the one named above and the audit ran entirely on it",
+		"independent_from_translator_session": true,
+		"translator_session": "The ur values are commit 2b72db6a56a by the branch implementer; this auditor is a different session, wrote none of these translations, and edited no catalogue, English source, context sidecar, ledger, allowance, generated file or test."
+	},
+	"auditors": [
+		{
+			"agent": "i18n-auditor",
+			"model": "deepseek/deepseek-flash",
+			"date": "2026-11-08",
+			"result": "clean-with-findings",
+			"instance": "74af897140ba",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 1
+			},
+			"receipt": "i18n/receipts/ur-upload-r1-74af897140ba.json",
+			"receipt_sha256": "08bc17ffe737fc07b06aeb4a152c9b1fce9e1b500a4555900f4660e955480b86",
+			"scope": "round-1 independent audit of the 15 ur keys added at 2b72db6a56a",
+			"note": "Record: i18n/audits/evidence/ur/ui.agents.upload/ur-upload-74af897140ba/record.json"
+		}
+	],
+	"input_hashes": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.agents.upload.json",
+			"sha256": "3676c1b366cc5159b94be65acdaea925bd193d20c2524ff3f410a8a5ddff514f"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.agents.upload.context.json",
+			"sha256": "76323fe386f9b15d490c3a48feaddbd924f04148f1c893e927c2acde06f11cec"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/ur/ui.agents.upload.json",
+			"sha256": "89fe14994a64d7eba37f789a7ca5debc6503beb42ee99eabfe7f5256ef135c62"
+		}
+	},
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.agents.upload.json",
+			"sha256": "3676c1b366cc5159b94be65acdaea925bd193d20c2524ff3f410a8a5ddff514f"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.agents.upload.context.json",
+			"sha256": "76323fe386f9b15d490c3a48feaddbd924f04148f1c893e927c2acde06f11cec"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/ur/ui.agents.upload.json",
+			"sha256": "89fe14994a64d7eba37f789a7ca5debc6503beb42ee99eabfe7f5256ef135c62"
+		}
+	},
+	"artifacts": [
+		{
+			"path": "i18n/receipts/ur-upload-r1-74af897140ba.json",
+			"sha256": "08bc17ffe737fc07b06aeb4a152c9b1fce9e1b500a4555900f4660e955480b86",
+			"kind": "audit receipt (ledger artifact)"
+		},
+		{
+			"path": "i18n/audits/evidence/ur/ui.agents.upload/ur-upload-74af897140ba/bidi-ur-upload.log",
+			"sha256": "0630ac0f353316ababea8509563d8d618da526b766736456df8c783e3ea546ab",
+			"kind": "bidi composition output (raw)"
+		},
+		{
+			"path": "i18n/audits/evidence/ur/ui.agents.upload/ur-upload-74af897140ba/bidi-ur-upload.py",
+			"sha256": "2b6bc9b0bae56469658925d2b9ad3ae0b8d5db1b3547b4b6c9c1b3b77464bce9",
+			"kind": "bidi composition script (GNU FriBidi)"
+		},
+		{
+			"path": "i18n/audits/evidence/ur/ui.agents.upload/ur-upload-74af897140ba/render-ur-upload.log",
+			"sha256": "6ce7d00c421d43ab19df74bdb07a79771159844df2da2de0abe855134b65f604",
+			"kind": "real-path render output (raw)"
+		},
+		{
+			"path": "i18n/audits/evidence/ur/ui.agents.upload/ur-upload-74af897140ba/render-ur-upload.mjs",
+			"sha256": "4f913cf2b2e7a6bc60e4d620a5a5e3bc649ab9cf0c37b86cc2837754a7faf09d",
+			"kind": "real-path render script (bundles src/i18n/messages + locale)"
+		},
+		{
+			"path": "i18n/audits/evidence/ur/ui.agents.upload/ur-upload-74af897140ba/report.md",
+			"sha256": "391c9e588ef08b67a71f865137f803fa062356d5153ab437fb0ad4eaa0886298",
+			"kind": "audit report (human-readable)"
+		},
+		{
+			"path": "i18n/audits/evidence/ur/ui.agents.upload/ur-upload-74af897140ba/transcript.log",
+			"sha256": "6d1c7ecab8269fc2549c83a4b2d713e47a50ebbb8c0a6a78f8fa4a3953978391",
+			"kind": "command transcript with exits"
+		},
+		{
+			"path": "i18n/audits/evidence/ur/ui.agents.upload/ur-upload-74af897140ba/verify-receipt.json",
+			"sha256": "791cf385c0d8da88743e5ebd0a0176fe4e8b5cb03e3cf18dbd75a8557546db99",
+			"kind": "receipt verification output (raw JSON)"
+		},
+		{
+			"path": "i18n/audits/evidence/ur/ui.agents.upload/ur-upload-74af897140ba/verify-receipt.mjs",
+			"sha256": "855f8336e15c2aa03b89faeb6ee8e576651b30da4ae349627a94f07c703b73f9",
+			"kind": "receipt verifier (ledger-rules deriveReceiptAudit)"
+		},
+		{
+			"path": "i18n/audits/evidence/ur/ui.agents.upload/ur-upload-74af897140ba/verify-ur-upload.json",
+			"sha256": "351e276bb7b576de72f24d20ec1b0a880fec7d9ba5a8a6e2c6633c6d32c7119b",
+			"kind": "machine verification output (raw JSON)"
+		},
+		{
+			"path": "i18n/audits/evidence/ur/ui.agents.upload/ur-upload-74af897140ba/verify-ur-upload.mjs",
+			"sha256": "43ac6f1a7690c5d3b82d082c9afa190cf979356db8077d271b5931311d68d2a3",
+			"kind": "machine verification script"
+		}
+	],
+	"current_report_verdict": {
+		"status": "passed",
+		"unresolved_blocker_major_count": 0,
+		"finding_ids": [
+			"N1"
+		]
+	},
+	"findings": [
+		{
+			"id": "N1",
+			"severity": "nit",
+			"key": "ui.agents.upload.target.visibility_hint_public",
+			"line": 39,
+			"issue": "EN 'Public hub publications are readable by anyone.' is rendered عوامی ہب پر شائع ہونے والی چیزیں ('the things published on the public hub'). The referent is exactly the hub listings the locale already names اندراج — the same noun this file's own action.open_listing / action.update_listing / published.* values use, and the one ui.agents.publication uses for 'listing' in 11 ur values. The generic چیزیں is clear, but the settled noun would read as the same surface the dialog is about.",
+			"evidence": "11 ur values render an EN 'listing' with اندراج (ui.agents.publication.action.publish_as_new, action.update_listing, agent_not_found.headline, name_taken.owned_body, not_owner.body, not_owner.headline + this file's action.open_listing, action.update_listing, receipt.title_updated, title.republished, title.update_listing); grep over EN values containing 'listing' in i18n/audits/evidence/ur/ui.agents.upload/ur-upload-74af897140ba/archive.log",
+			"fix": "عوامی ہب پر شائع شدہ اندراجات کوئی بھی پڑھ سکتا ہے۔ تنظیم کے ایجنٹس صرف اس کے ارکان پڑھ سکتے ہیں۔ (second sentence unchanged).",
+			"impact": "None on correctness: the shipped sentence is accurate, grammatical and natural. This is a wording preference, not a defect."
+		}
+	],
+	"observations": [
+		{
+			"id": "O1",
+			"severity": "observation (not counted)",
+			"topic": "bidi: two data islands in one sentence are separated by the runtime, not the catalogue",
+			"detail": "published.org_listed places {name} and {destination} with only a quote and a space between them. Spliced raw they merge into ONE 20-byte LTR island (fribidi --rtl, level-2 run 'fleet-ops\" Acme Corp'); through translate() each Latin-led argument is FSI/PDI-isolated (src/i18n/bidi.ts isolateArguments) and the level map shows two separate islands, so the RTL base orders them name-then-destination as the sentence reads. The catalogue correctly adds no controls of its own."
+		},
+		{
+			"id": "O2",
+			"severity": "observation (not counted)",
+			"topic": "wording: not_leaving.org/.public reuse the sibling sign_in.nothing_left's 'مشین سے مخصوص ترتیب'",
+			"detail": "The context calls sign_in.nothing_left the past-tense sibling, so identical wording is the intended behaviour. The wider ur locale also renders 'configuration' as کنفیگریشن in 28 EN values; that split is pre-existing and out of scope for this round."
+		},
+		{
+			"id": "O3",
+			"severity": "observation (not counted)",
+			"topic": "fit: action.publishing is four Urdu words against the sidecar's 'one word plus a single-character ellipsis' hint",
+			"detail": "شائع کیا جا رہا ہے… is 19 characters against شائع کریں (9) and اندراج اپ ڈیٹ کریں (18), so the footer's widest submit state changes from the update label to the progress label; the English spread is 7/11/14, so the width behaviour is comparable and no maxCells budget exists for these keys. U+2026 is used, never three periods."
+		},
+		{
+			"id": "O4",
+			"severity": "observation (not counted)",
+			"topic": "hub naming: ہب and Agent Hub are not interchangeable in this slice, and the values follow the English",
+			"detail": "ہب appears exactly where the English says 'the hub' / 'public hub' (receipt.title_hub, availability.reserved_*, target.visibility_hint_public); Agent Hub appears exactly where the English says 'Agent Hub' (intro.public, title.publish_public, title.published_public, title.republished, title.update_listing). Both agree with ui.hub.pages.header.title = 'Agent Hub' and with the pre-existing sign_in.needed/published.listed in the same file."
+		}
+	],
+	"checks": [
+		{
+			"id": "C1",
+			"what": "key parity",
+			"result": "46/46 en keys present in ur, no extra, exactly 15 added by this commit"
+		},
+		{
+			"id": "C2",
+			"what": "context sidecar parity",
+			"result": "46/46 entries, none stale"
+		},
+		{
+			"id": "C3",
+			"what": "ICU parse + skeleton equality (argument names, plural/select option keys)",
+			"result": "all 15 parse; skeleton identical to English; blocked_hint plural carries one/other as CLDR ur requires"
+		},
+		{
+			"id": "C4",
+			"what": "manual bidi controls (U+200E, U+200F, U+061C, U+202A-U+202E, U+2066-U+2069)",
+			"result": "0 across all 46 ur values"
+		},
+		{
+			"id": "C5",
+			"what": "repo forbidden-script gate class (Devanagari, Arabic-only kaf/yeh/teh-marbuta/alef-maksura)",
+			"result": "0"
+		},
+		{
+			"id": "C6",
+			"what": "invisible characters (NBSP, ZWSP, ZWNJ, ZWJ, SHY, BOM, WJ, line/para separators)",
+			"result": "0"
+		},
+		{
+			"id": "C7",
+			"what": "Latin residue outside ICU syntax",
+			"result": "only Agent Hub, Radient, Team - all product names the ur style guide keeps Latin"
+		},
+		{
+			"id": "C8",
+			"what": "Urdu punctuation",
+			"result": "۔ ، ؛ ؟ “ ” throughout; no Latin period/comma/semicolon/question mark; U+2026 for the ellipsis"
+		},
+		{
+			"id": "C9",
+			"what": "real rendering path (translate() with locale ur, bundled)",
+			"result": "22 renderings; 0 keys echoed back; runtime emits only U+2068/U+2069; plural correct at count=1 and count=3"
+		},
+		{
+			"id": "C10",
+			"what": "bidi composition (fribidi --rtl --levels, calibrated)",
+			"result": "published.org_listed keeps two separate LTR islands through the shipping path; single-token islands elsewhere; reading order preserved"
+		},
+		{
+			"id": "C11",
+			"what": "receipt derivability",
+			"result": "deriveReceiptAudit -> clean-with-findings {0,0,0,1}, hashes match the files on disk"
+		}
+	],
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/ur.md",
+			"sha256": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60"
+		},
+		"ui_doc": {
+			"path": "docs/I18N.md",
+			"sha256": "d58ad473701f098b3c2c24343c3a7e7236f22db22cc871016c4cb75f25f41f5c"
+		},
+		"languages": {
+			"path": "i18n/languages.json",
+			"sha256": "7fd056b916fc3d56ddf36991a09b29864ea0b0f825d938aead1ed165926f8d63"
+		},
+		"receipt": {
+			"path": "i18n/receipts/ur-upload-r1-74af897140ba.json",
+			"sha256": "08bc17ffe737fc07b06aeb4a152c9b1fce9e1b500a4555900f4660e955480b86"
+		}
+	},
+	"independence": "Independent auditor: I did not translate or remediate ur and edited no catalogue, English source, context sidecar, ledger, allowance, generated file or test. Every value was read from the shared worktree at the head above; the files this run adds are the receipt and the companions in this directory. Nothing was committed.",
+	"limitations": [
+		"Catalogue audit only: no rendered frame, screenshot, activation or release evidence is claimed, and no native-speaker review beyond this auditor's own reading.",
+		"No maxCells budget exists for any of the 15 keys, so fit is inferred from character counts and the sidecar's length_hint, not measured in the component.",
+		"The bidi model measured here is the app's RTL base direction with the runtime's own FSI/PDI isolation (dir=rtl document root, src/i18n/bidi.ts); the audit did not re-verify the isolation for call sites that bypass translate()."
+	],
+	"audit_notes_not_execution_log": "This record is a set of structured claims; verify-ur-upload.json, bidi-ur-upload.log, render-ur-upload.log, verify-receipt.json and transcript.log are the raw outputs of the commands it names, run at this head. No output is recorded that was not actually produced."
+}

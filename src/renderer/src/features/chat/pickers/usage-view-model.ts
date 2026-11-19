@@ -22,6 +22,14 @@
  */
 
 import { t } from "../../../../../i18n";
+import {
+	META_MUSE_ALLOWANCE_NOTE,
+	META_MUSE_NO_OBSERVATION_NOTE,
+	META_MUSE_PASSIVE_NOTE,
+	META_MUSE_STALE_NOTE,
+	type MetaMuseUsageNote,
+	isMetaMuseUsageNote,
+} from "./muse-usage-notes";
 
 export type UsageUnit =
 	| "usd"
@@ -78,6 +86,25 @@ export type UsageReport = {
 	/** Server clock minus `fetched_at`, computed server-side. */
 	age_ms: number;
 	state: UsageState;
+	/**
+	 * Reset credits the vendor says are still on this login, or null/absent.
+	 *
+	 * `null` means the provider has no reset-credit product OR the payload
+	 * omitted the field; `0` means the product exists and nothing is left. The
+	 * distinction is why the chip is offered on this number and not on "not
+	 * unavailable": a provider without the product must not grow an affordance
+	 * that can only ever refuse.
+	 */
+	resets_available?: number | null;
+	/**
+	 * The stable ref of the credential this report was fetched with, or null.
+	 *
+	 * `identity` cannot do this job: it is a display label (email, then account
+	 * id), and two legitimately stored logins can share one. A reset resolves to
+	 * a credential ROW, so the request is built from this where the backend
+	 * supplied it -- and an absent ref is what makes a report unspendable.
+	 */
+	credential_ref?: string | null;
 };
 
 export type UsageState =
@@ -97,23 +124,18 @@ export type UsagePayload = {
 // serving reply, never a quota probe. Keep a finite vocabulary so diagnostics
 // from other providers (or a malformed payload) cannot become user-facing copy.
 export const MUSE_OBSERVATION_TTL_MS = 5 * 60 * 1000;
-const MUSE_PASSIVE_NOTE =
-	"Last response allowance; refresh does not query Muse.";
-const MUSE_STALE_NOTE =
-	"Stale response allowance; current usage unknown; refresh does not query Muse.";
-const MUSE_NO_OBSERVATION_NOTE =
-	"No allowance observation recorded; refresh does not query Muse.";
-const MUSE_USAGE_NOTES = new Set([
-	MUSE_PASSIVE_NOTE,
-	MUSE_STALE_NOTE,
-	MUSE_NO_OBSERVATION_NOTE,
-	"Stale sign-in allowance; current usage unknown; refresh does not query Muse.",
-]);
 
-export const hasMuseAllowanceNote = (report: UsageReport): boolean =>
-	report.provider === "meta-muse" &&
-	typeof report.notes === "string" &&
-	MUSE_USAGE_NOTES.has(report.notes);
+/**
+ * Whether this report carries one of the backend's fixed Muse provenance
+ * statements. The comparison set is the server vocabulary in
+ * `muse-usage-notes.ts`, NOT `t()` output: `notes` is protocol data that the
+ * route emits in English, and deciding behaviour from localized copy made the
+ * same payload age differently in `en` than in `ru`/`es`.
+ */
+export const hasMuseAllowanceNote = (
+	report: UsageReport,
+): report is UsageReport & { notes: MetaMuseUsageNote } =>
+	report.provider === "meta-muse" && isMetaMuseUsageNote(report.notes);
 
 /** Age an open pane without mutating the shared query payload or buying inference. */
 export const currentUsageReport = (
@@ -124,7 +146,7 @@ export const currentUsageReport = (
 		return report;
 	const dated = Number.isFinite(report.fetched_at) && report.fetched_at > 0;
 	const expired =
-		report.notes === MUSE_PASSIVE_NOTE &&
+		report.notes === META_MUSE_PASSIVE_NOTE &&
 		(!dated ||
 			nowMs - report.fetched_at > MUSE_OBSERVATION_TTL_MS ||
 			report.limits.some(
@@ -133,15 +155,15 @@ export const currentUsageReport = (
 					Number.isFinite(limit.resets_at_ms) &&
 					limit.resets_at_ms <= nowMs,
 			));
-	if (report.notes === MUSE_PASSIVE_NOTE && !expired) return report;
+	if (report.notes === META_MUSE_PASSIVE_NOTE && !expired) return report;
 	return {
 		...report,
 		limits: [],
 		state: "unavailable",
 		notes: expired
 			? dated
-				? MUSE_STALE_NOTE
-				: MUSE_NO_OBSERVATION_NOTE
+				? META_MUSE_STALE_NOTE
+				: META_MUSE_NO_OBSERVATION_NOTE
 			: report.notes,
 	};
 };
@@ -198,9 +220,15 @@ export const statusTone = (status: ReportedStatus): StatusTone =>
 export const UNIT_LABELS: Record<string, string> = {
 	usd: "USD",
 	percent: "%",
-	tokens: "tokens",
-	requests: "req",
-	credits: "credits",
+	get tokens() {
+		return t("ui.chat.pickers.usage_view_model.tokens");
+	},
+	get requests() {
+		return t("ui.chat.pickers.usage_view_model.requests");
+	},
+	get credits() {
+		return t("ui.chat.pickers.usage_view_model.credits");
+	},
 	unknown: "",
 };
 
@@ -447,6 +475,24 @@ const generalFormat = (value: number): string => {
 	return `${sign}${point}`;
 };
 
+/**
+ * A percent for a row, without rounding a real reading down to nothing.
+ * `_format_percent()` in `usage_panel.py`.
+ *
+ * Percent rows print integers because the vendors quote `2.0` and `100.0`, and
+ * a trailing `.0` on every row costs width to say nothing. Kimi's monthly
+ * window is the counter-example: it arrives as a ratio like `0.0006` — 0.06% —
+ * and zero-places rounding renders that `0%`, which claims a window that has
+ * started is untouched. Anything strictly between 0 and 1 prints `<1` so the
+ * number stays honest and narrow; zero and whole percentages keep the integer
+ * form. Half-even is preserved elsewhere (`toFixedHalfEven`) — this replaces
+ * ONLY the zero-places rounding of a sub-1 value, never the rounding mode.
+ */
+export const formatPercentValue = (value: number): string => {
+	if (value > 0 && value < 1) return "<1";
+	return toFixedHalfEven(value, 0);
+};
+
 const withUnit = (value: number, unit: UsageUnit): string => {
 	const label = UNIT_LABELS[unit] ?? unit;
 	const text =
@@ -455,7 +501,7 @@ const withUnit = (value: number, unit: UsageUnit): string => {
 			: unit === "percent"
 				? // Percent rows are integers: the endpoints quote `2.0` and `100.0`,
 					// and a trailing `.0` on every row costs width to say nothing.
-					toFixedHalfEven(value, 0)
+					formatPercentValue(value)
 				: generalFormat(value);
 	if (!label) return text;
 	// "%" is a suffix; every other label is a separate word.
@@ -482,19 +528,30 @@ export const formatAmount = (amount: UsageAmount): string => {
 		return withUnit(amount.used, unit);
 	}
 	if (amount.remaining !== null)
-		return `${withUnit(amount.remaining, unit)} left`;
-	if (amount.limit !== null) return `${withUnit(amount.limit, unit)} limit`;
+		return t("ui.chat.pickers.usage_view_model.left", {
+			withunit: withUnit(amount.remaining, unit),
+		});
+	if (amount.limit !== null)
+		return t("ui.chat.pickers.usage_view_model.limit", {
+			withunit: withUnit(amount.limit, unit),
+		});
 	if (amount.used_fraction !== null)
-		return `${toFixedHalfEven(amount.used_fraction * 100, 0)}% used`;
+		// The number keeps main's sub-1 guard: a 0.06% window must read `<1`,
+		// not `0`, which would claim a started window is untouched. Only the
+		// copy around it is localized.
+		return t("ui.chat.pickers.usage_view_model.used", {
+			tofixedhalfeven: formatPercentValue(amount.used_fraction * 100),
+		});
 	return "";
 };
 
 /** What a row shows when the vendor reported no number at all. */
-export const NOT_REPORTED = "not reported";
+export const NOT_REPORTED = () =>
+	t("ui.chat.pickers.usage_view_model.not_reported");
 
 /** `format_amount` with the TUI's own fallback applied. */
 export const amountText = (amount: UsageAmount): string =>
-	formatAmount(amount) || NOT_REPORTED;
+	formatAmount(amount) || NOT_REPORTED();
 
 /**
  * `3h24m` / `2d11h` / `45m` — time until a window rolls over.
@@ -525,11 +582,16 @@ export const formatCountdown = (ms: number | null): string => {
  */
 export const formatAge = (ms: number): string => {
 	const seconds = Math.max(0, ms / 1000);
-	if (seconds < 60) return "just now";
+	if (seconds < 60) return t("ui.chat.pickers.usage_view_model.just_now");
 	const minutes = Math.trunc(seconds / 60);
-	if (minutes < 60) return `${minutes}m ago`;
+	if (minutes < 60)
+		return t("ui.chat.pickers.usage_view_model.m_ago", { minutes: minutes });
 	const hours = Math.trunc(minutes / 60);
-	return hours < 24 ? `${hours}h ago` : `${Math.trunc(hours / 24)}d ago`;
+	return hours < 24
+		? t("ui.chat.pickers.usage_view_model.h_ago", { hours: hours })
+		: t("ui.chat.pickers.usage_view_model.d_ago", {
+				trunc: Math.trunc(hours / 24),
+			});
 };
 
 /**
@@ -694,25 +756,47 @@ export type StatsTerm = { count: number; label: string };
 export const statsTerms = (stats: UsageStats): StatsTerm[] => {
 	if (!stats.windows) return [];
 	const terms: StatsTerm[] = [
-		{ count: stats.windows, label: `window${stats.windows === 1 ? "" : "s"}` },
+		{
+			count: stats.windows,
+			label: t("ui.chat.pickers.usage_view_model.window", {
+				count: stats.windows,
+			}),
+		},
 	];
 	if (stats.exhausted)
-		terms.push({ count: stats.exhausted, label: "exhausted" });
+		terms.push({
+			count: stats.exhausted,
+			label: t("ui.chat.pickers.usage_view_model.exhausted"),
+		});
 	if (stats.tierExhausted)
 		terms.push({
 			count: stats.tierExhausted,
-			label: `model cap${stats.tierExhausted === 1 ? "" : "s"} exhausted`,
+			label: t("ui.chat.pickers.usage_view_model.model_cap_exhausted", {
+				count: stats.tierExhausted,
+			}),
 		});
-	if (stats.warning) terms.push({ count: stats.warning, label: "near limit" });
+	if (stats.warning)
+		terms.push({
+			count: stats.warning,
+			label: t("ui.chat.pickers.usage_view_model.near_limit"),
+		});
 	if (stats.reportedBalances)
 		terms.push({
 			count: stats.reportedBalances,
-			label: `reported balance${stats.reportedBalances === 1 ? "" : "s"}`,
+			label: t("ui.chat.pickers.usage_view_model.reported_balance", {
+				count: stats.reportedBalances,
+			}),
 		});
 	if (stats.withoutLimit)
-		terms.push({ count: stats.withoutLimit, label: "without a limit" });
+		terms.push({
+			count: stats.withoutLimit,
+			label: t("ui.chat.pickers.usage_view_model.without_a_limit"),
+		});
 	if (stats.unreported)
-		terms.push({ count: stats.unreported, label: "not reported" });
+		terms.push({
+			count: stats.unreported,
+			label: t("ui.chat.pickers.usage_view_model.not_reported"),
+		});
 	return terms;
 };
 
@@ -820,6 +904,36 @@ export const isStale = (report: UsageReport, headerMs: number): boolean =>
 	Boolean(report.fetched_at) && headerMs - report.fetched_at >= STALE_BEHIND_MS;
 
 /**
+ * The catalogue sentence for a server Muse provenance note.
+ *
+ * This is the display half of the vocabulary in `muse-usage-notes.ts`: the
+ * switch runs on the SERVER's English constant, and `t()` only supplies the
+ * sentence printed for it. Keying a lookup BY `t()` output (the round-1 shape)
+ * made the same payload render differently in every locale, and a locale with
+ * a stale or missing catalogue could silently lose the note.
+ */
+const museNoteText = (note: MetaMuseUsageNote): string => {
+	switch (note) {
+		case META_MUSE_ALLOWANCE_NOTE:
+			return t(
+				"ui.chat.pickers.usage_view_model.stale_sign_in_allowance_current_usage_unknown_refresh_does_not_query_mus",
+			);
+		case META_MUSE_STALE_NOTE:
+			return t(
+				"ui.chat.pickers.usage_view_model.stale_response_allowance_current_usage_unknown_refresh_does_not_query_mu",
+			);
+		case META_MUSE_NO_OBSERVATION_NOTE:
+			return t(
+				"ui.chat.pickers.usage_view_model.no_allowance_observation_recorded_refresh_does_not_query_muse",
+			);
+		case META_MUSE_PASSIVE_NOTE:
+			return t(
+				"ui.chat.pickers.usage_view_model.last_response_allowance_refresh_does_not_query_muse",
+			);
+	}
+};
+
+/**
  * The per-account note, or `""` when the block is live. `_account_status_note()`.
  *
  * Load-bearing rather than decorative: the age in the view's description
@@ -847,41 +961,55 @@ export const accountNote = (
 	const report = currentUsageReport(input, nowMs);
 	const fetchedAt = report.fetched_at || 0;
 	if (hasMuseAllowanceNote(report) && report.state !== "reauth_required") {
-		const observed =
-			Number.isFinite(fetchedAt) && fetchedAt > 0
-				? ` Observed ${formatAge(Math.max(0, nowMs - fetchedAt))}.`
-				: "";
-		return `${report.notes}${observed}`;
+		const note = museNoteText(report.notes);
+		return Number.isFinite(fetchedAt) && fetchedAt > 0
+			? t("ui.chat.pickers.usage_view_model.observed_with_note", {
+					notes: note,
+					formatage: formatAge(Math.max(0, nowMs - fetchedAt)),
+				})
+			: note;
 	}
-	const age =
-		fetchedAt && report.limits.length
-			? formatAge(Math.max(0, nowMs - fetchedAt))
-			: "";
+	const ageMs = Math.max(0, nowMs - fetchedAt);
+	const age = fetchedAt && report.limits.length ? formatAge(ageMs) : "";
 	if (report.state === "reauth_required") {
 		// The provider is named because the view lists several accounts and the
 		// note sits under one block; `/login kimi` is runnable as printed, which
 		// "sign in again" would not be. `sign-in expired` deliberately does not
 		// reuse the "needs login" vocabulary: the user HAS logged in, and what
 		// they need to know is that it stopped working.
-		const note = `Sign-in expired — run /login ${report.provider}`;
+		const note = t(
+			"ui.chat.pickers.usage_view_model.sign_in_expired_run_login",
+			{ provider: report.provider },
+		);
 		// The second clause is a provenance caveat, not a peer of the remedy, and
 		// its siblings teach `last known` — a bare `· numbers 2d ago` is
 		// telegraphic in a way no other copy in this view is.
-		return age ? `${note}. Last known ${age}.` : `${note}.`;
+		return age
+			? t("ui.chat.pickers.usage_view_model.last_known1c1a43", {
+					note: note,
+					age: age,
+				})
+			: t("ui.chat.pickers.usage_view_model.note_with_period", {
+					note: note,
+				});
 	}
 	if (report.state === "unavailable") {
 		// The age rides along only when it would misdate the numbers. A
 		// sub-minute report renders `just now` — exactly what the description
 		// already says — so appending it produced a self-contradictory
 		// "usage unavailable — last known just now".
-		return age && age !== "just now"
-			? `Usage unavailable — last known ${age}`
-			: "Usage unavailable";
+		return age && ageMs >= 60_000
+			? t("ui.chat.pickers.usage_view_model.usage_unavailable_last_known", {
+					age: age,
+				})
+			: t("ui.chat.pickers.usage_view_model.usage_unavailable");
 	}
 	if (isStale(report, headerMs)) {
 		// `headerMs - fetched_at >= STALE_BEHIND_MS` by construction, so the age
 		// can never be `just now` here.
-		return age ? `Last known ${age}` : "Last known";
+		return age
+			? t("ui.chat.pickers.usage_view_model.last_known63737e", { age: age })
+			: t("ui.chat.pickers.usage_view_model.last_known");
 	}
 	// A probe miss after a fresh confirmation misdates nothing, so a bare
 	// `consecutive_failures > 0` is deliberately NOT a trigger (SPEC rule 10).
@@ -909,7 +1037,7 @@ export const bindingSummary = (
 	const limit = bindingLimit(report);
 	if (!limit) return null;
 	const fraction = fractionOf(limit.amount) ?? 0;
-	const percent = `${toFixedHalfEven(fraction * 100, 0)}%`;
+	const percent = `${formatPercentValue(fraction * 100)}%`;
 	return {
 		limit,
 		status: effectiveStatus(limit),
@@ -927,6 +1055,12 @@ export type LimitRow = {
 	/** 0..1 clamped, or null when unmeasurable — a null bar draws NO fill. */
 	fraction: number | null;
 	amount: string;
+	/**
+	 * Whether the vendor reported a number at all, before `amount` fell back to
+	 * the localized `not reported` sentence. Behaviour reads this flag; the
+	 * rendered sentence is catalogue copy and must never be compared.
+	 */
+	reported: boolean;
 	eligibilityNote: string;
 	countdown: string;
 	/** A per-model cap is subordinate to the shared rows (SPEC rule 8). */
@@ -935,15 +1069,17 @@ export type LimitRow = {
 
 export const limitRow = (limit: UsageLimit, nowMs: number): LimitRow => {
 	const fraction = fractionOf(limit.amount);
+	const formatted = formatAmount(
+		limit.paid_fallback && limit.amount.remaining !== null
+			? { ...limit.amount, used: null }
+			: limit.amount,
+	);
 	return {
 		limit,
 		status: effectiveStatus(limit),
 		fraction: fraction === null ? null : Math.max(0, Math.min(1, fraction)),
-		amount: amountText(
-			limit.paid_fallback && limit.amount.remaining !== null
-				? { ...limit.amount, used: null }
-				: limit.amount,
-		),
+		amount: formatted || NOT_REPORTED(),
+		reported: formatted !== "",
 		eligibilityNote: !limit.paid_fallback
 			? ""
 			: limit.available === false
@@ -961,7 +1097,8 @@ export const limitRow = (limit: UsageLimit, nowMs: number): LimitRow => {
 };
 
 /** What a block says instead of rows when the vendor answered with no windows. */
-export const NO_WINDOWS = "No windows reported.";
+export const NO_WINDOWS = () =>
+	t("ui.chat.pickers.usage_view_model.no_windows_reported");
 
 /** One provider block, fully derived. The view renders this and nothing else. */
 export type ProviderBlock = {
@@ -1043,7 +1180,7 @@ export const providerBlocks = (
 				report.limits.length ||
 				(hasMuseAllowanceNote(report) && report.state !== "reauth_required")
 					? ""
-					: NO_WINDOWS,
+					: NO_WINDOWS(),
 		}));
 
 /**
@@ -1063,4 +1200,311 @@ export const describeSource = (
 	confirmedAtMs: number,
 	nowMs: number,
 ): string =>
-	`${source === "live" ? "Live" : "Cached"} report, ${formatAge(Math.max(0, nowMs - confirmedAtMs))}.`;
+	t("ui.chat.pickers.usage_view_model.report", {
+		value:
+			source === "live"
+				? t("ui.chat.pickers.usage_view_model.live")
+				: t("ui.chat.pickers.usage_view_model.cached"),
+		formatage: formatAge(Math.max(0, nowMs - confirmedAtMs)),
+	});
+
+/* -------------------------------------------------------------------------
+ * Redeeming a reset credit
+ *
+ * The TUI owns the same machine (`usage_panel.py`'s reset action): one attempt
+ * at a time PER ACCOUNT, a confirmation before anything is spent, and — the
+ * property this port exists to keep — the CLIENT-MINTED `redeem_request_id`
+ * retained across a result or a close until an outcome is definitive.
+ *
+ * WHY THE ID SURVIVES THE RESULT. A `failed` outcome means the credit's fate is
+ * unknown, and the vendor's rule is that a retry carrying the SAME id joins the
+ * first attempt instead of spending a second credit. A view that minted a fresh
+ * id per click would turn "we do not know" into "we spent twice" on the one
+ * action in this app that cannot be undone. `refused` is not definitive either:
+ * nothing reached the vendor, so the id is still unspent and still the right one
+ * to carry into a retry.
+ *
+ * React-free and exported as plain transitions, like the rest of this file: the
+ * stories and `scripts/usage-view.test.mjs` drive the state machine without a
+ * renderer, and there is no second copy of the rule in the JSX.
+ * ---------------------------------------------------------------------- */
+
+/** The account a reset spends against: provider plus the credential ref. */
+export type ResetAccount = { provider: string; credentialRef: string };
+
+/**
+ * The account a report can spend on, or null when it cannot name one.
+ *
+ * A report with no `credential_ref` is NOT spendable even when it advertises
+ * credits: the label is not a key, and the backend would have to guess which
+ * stored login to charge. Returning null here is what keeps that guess from
+ * ever being sent.
+ */
+export const resetAccountOf = (report: UsageReport): ResetAccount | null => {
+	const ref = report.credential_ref;
+	if (typeof ref !== "string" || ref.length === 0) return null;
+	return { provider: report.provider, credentialRef: ref };
+};
+
+/**
+ * The map key for one account.
+ *
+ * `\u0000` because neither half can contain it: a provider id and a credential
+ * ref are both single tokens, so a separator that cannot occur in either is
+ * what keeps `a:b` + `c` from colliding with `a` + `b:c`.
+ */
+export const resetAccountKey = (account: ResetAccount): string =>
+	`${account.provider}\u0000${account.credentialRef}`;
+
+/**
+ * Fold a reset answer's rows into the payload already on screen.
+ *
+ * WHY NOT REPLACE. The redeem route refreshes ONLY the provider it spent
+ * (`fetch_usage([body.provider], force_refresh=True)`), so its `usage` is a
+ * PARTIAL answer: writing it over the cached set deleted every other provider's
+ * block from an unscoped `/usage` until the next read (review round 1, M1).
+ *
+ * The merge is by PROVIDER, not by appended list: every provider the answer
+ * carries replaces that provider's cached rows IN PLACE, so a block does not
+ * jump down the panel when it is refreshed, and a provider the answer does not
+ * mention keeps the rows it had. The payload's `source`/`fetched_at` come from
+ * the answer — its confirmation is the newest in the set, which is what the
+ * dialog's age line reads (`newestConfirmedMs`) — while each block's own rows
+ * still carry their own `fetched_at`.
+ */
+export const mergeResetUsage = (
+	cached: UsagePayload | undefined,
+	refreshed: UsagePayload,
+): UsagePayload => {
+	if (!cached) return refreshed;
+	const replaced = new Set(refreshed.reports.map((report) => report.provider));
+	const reports: UsageReport[] = [];
+	let inserted = false;
+	for (const report of cached.reports) {
+		if (!replaced.has(report.provider)) {
+			reports.push(report);
+			continue;
+		}
+		// First row of a replaced provider: its whole refreshed block takes this
+		// slot. Later rows of the same provider are the stale ones being dropped.
+		if (inserted) continue;
+		reports.push(...refreshed.reports);
+		inserted = true;
+	}
+	if (!inserted) reports.push(...refreshed.reports);
+	return {
+		reports,
+		source: refreshed.source,
+		fetched_at: refreshed.fetched_at,
+	};
+};
+
+/**
+ * Whether the chip is offered at all.
+ *
+ * BOTH halves are required, and each is a separate fact the report states:
+ * a positive integer `resets_available` (a provider with no reset product
+ * reports null, and 0 reports a spent one) AND a `credential_ref` the request
+ * can name. `Number.isInteger` rather than a truthiness test because a backend
+ * summing credits must not turn `0.5` into a spendable account.
+ */
+export const canReset = (report: UsageReport): boolean => {
+	const credits = report.resets_available;
+	return (
+		resetAccountOf(report) !== null &&
+		typeof credits === "number" &&
+		Number.isInteger(credits) &&
+		credits > 0
+	);
+};
+
+/** The outcome vocabulary the backend publishes today. */
+export const RESET_OUTCOMES = [
+	"reset",
+	"already_redeemed",
+	"no_credit",
+	"nothing_to_reset",
+	"failed",
+	"refused",
+] as const;
+
+/** A vendor answer this app has not heard of is still an answer. */
+export type UsageResetOutcome = (typeof RESET_OUTCOMES)[number] | (string & {});
+
+const DEFINITIVE_RESET_OUTCOMES: ReadonlySet<string> = new Set([
+	// The credit is spent, or the server established that spending it was
+	// pointless: in every one of these the id has served its purpose.
+	"reset",
+	"already_redeemed",
+	"no_credit",
+	"nothing_to_reset",
+]);
+
+/**
+ * Whether an outcome settles the attempt.
+ *
+ * `failed` and `refused` deliberately answer false: the id must survive them,
+ * and so must the result line the user reads.
+ */
+export const isDefinitiveResetOutcome = (outcome: string): boolean =>
+	DEFINITIVE_RESET_OUTCOMES.has(outcome);
+
+/** What a settle carries, narrowed from the route's answer in the view. */
+export type UsageResetResultView = {
+	outcome: UsageResetOutcome;
+	windowsReset: number;
+	/** The backend's own diagnostic sentence; never rendered as app copy. */
+	detail: string;
+	refused: boolean;
+};
+
+/**
+ * One account's reset state.
+ *
+ * `idle` carries the pending id rather than dropping it, because "dismissed the
+ * result" is not "the attempt is over" — the user may still retry, and that
+ * retry has to carry the id the vendor already saw.
+ */
+export type AccountResetState =
+	| { phase: "idle"; pendingRedeemRequestId: string | null }
+	| { phase: "confirm"; redeemRequestId: string }
+	| { phase: "busy"; redeemRequestId: string }
+	| {
+			phase: "result";
+			/** The id a retry would carry; null once the outcome is definitive. */
+			redeemRequestId: string | null;
+			result: UsageResetResultView;
+	  };
+
+/** An account with no history, and no id owed to the vendor. */
+export const IDLE_RESET_STATE: AccountResetState = {
+	phase: "idle",
+	pendingRedeemRequestId: null,
+};
+
+/** The reset states of every account the view has asked about, by `resetAccountKey`. */
+export type ResetStates = Readonly<Record<string, AccountResetState>>;
+
+export const resetStateFor = (
+	states: ResetStates,
+	account: ResetAccount | null,
+): AccountResetState =>
+	(account ? states[resetAccountKey(account)] : undefined) ?? IDLE_RESET_STATE;
+
+/** Immutably replace one account's state, leaving every other account's alone. */
+export const withResetState = (
+	states: ResetStates,
+	account: ResetAccount,
+	next: AccountResetState,
+): ResetStates => ({ ...states, [resetAccountKey(account)]: next });
+
+/** The id this account's next attempt must carry, or null when it owes none. */
+export const pendingRedeemRequestId = (
+	state: AccountResetState,
+): string | null =>
+	state.phase === "idle" ? state.pendingRedeemRequestId : state.redeemRequestId;
+
+/**
+ * Open the confirmation, minting an id only when this account owes none.
+ *
+ * A `busy` account refuses to move: one attempt at a time per account is the
+ * backend's concurrency rule AND this machine's, so the second click on a
+ * spending account is inert rather than a second request.
+ */
+export const askReset = (
+	state: AccountResetState,
+	mint: () => string,
+): AccountResetState => {
+	if (state.phase === "busy") return state;
+	return {
+		phase: "confirm",
+		redeemRequestId: pendingRedeemRequestId(state) ?? mint(),
+	};
+};
+
+/** Confirm -> busy. Anything else is left exactly as it was. */
+export const confirmReset = (state: AccountResetState): AccountResetState =>
+	state.phase === "confirm"
+		? { phase: "busy", redeemRequestId: state.redeemRequestId }
+		: state;
+
+/**
+ * Cancel a confirmation. The minted id is kept as the pending one: it was never
+ * sent, so it is not spent, and reusing it on the next attempt is indistinguishable
+ * from the fresh id it saves the caller from minting.
+ */
+export const cancelReset = (state: AccountResetState): AccountResetState =>
+	state.phase === "confirm"
+		? { phase: "idle", pendingRedeemRequestId: state.redeemRequestId }
+		: state;
+
+/** Record an answer, keeping the id whenever the outcome is not definitive. */
+export const settleReset = (
+	state: AccountResetState,
+	result: UsageResetResultView,
+): AccountResetState => ({
+	phase: "result",
+	redeemRequestId: isDefinitiveResetOutcome(result.outcome)
+		? null
+		: pendingRedeemRequestId(state),
+	result,
+});
+
+/** Hide the result line without forgetting what a retry still owes. */
+export const dismissReset = (state: AccountResetState): AccountResetState =>
+	state.phase === "result"
+		? { phase: "idle", pendingRedeemRequestId: state.redeemRequestId }
+		: state;
+
+/**
+ * The line a result prints, one per outcome.
+ *
+ * EVERY OUTCOME HAS ITS OWN SENTENCE, including the ones that spent nothing:
+ * "the reset did not work" would be a claim about the credit in a case where
+ * the credit is provably untouched, and "it worked" would be a claim in a case
+ * where nobody knows. `failed` is the only arm that is allowed to say the
+ * credit's fate is unknown, and it says the second half too — that the retry
+ * reuses the same request id, so asking again cannot spend a second credit.
+ *
+ * `detail` is NOT printed: it is the backend's own diagnostic prose, and an
+ * English server sentence inside a localized panel is a second copy source the
+ * catalogue cannot reach.
+ */
+export const resetOutcomeText = (
+	result: UsageResetResultView,
+	account: string,
+): string => {
+	switch (result.outcome) {
+		case "reset":
+			return t("ui.chat.usage_reset.outcome_reset", {
+				count: result.windowsReset,
+				account,
+			});
+		case "already_redeemed":
+			return t("ui.chat.usage_reset.outcome_already_redeemed", { account });
+		case "no_credit":
+			return t("ui.chat.usage_reset.outcome_no_credit", { account });
+		case "nothing_to_reset":
+			return t("ui.chat.usage_reset.outcome_nothing_to_reset", { account });
+		case "failed":
+			return t("ui.chat.usage_reset.outcome_failed", { account });
+		case "refused":
+			return t("ui.chat.usage_reset.outcome_refused", { account });
+		default:
+			// Additive vocabulary: name the word rather than inventing a verdict.
+			return t("ui.chat.usage_reset.outcome_unknown", {
+				outcome: result.outcome,
+				account,
+			});
+	}
+};
+
+/** The tint a result line may claim, from the outcome alone. */
+export type ResetTone = "ok" | "muted" | "danger";
+
+export const resetOutcomeTone = (outcome: string): ResetTone =>
+	outcome === "reset" ? "ok" : outcome === "failed" ? "danger" : "muted";
+
+/** The account as the confirmation and the result lines name it. */
+export const resetAccountLabel = (report: UsageReport): string =>
+	report.identity ? `${report.provider} · ${report.identity}` : report.provider;

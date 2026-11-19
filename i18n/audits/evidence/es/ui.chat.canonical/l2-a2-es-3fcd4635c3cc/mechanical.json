@@ -1,0 +1,158 @@
+{
+ "tool": "python3 mechanical check (locale es, namespace ui.chat.canonical, L2 delta round 2)",
+ "inputs": {
+  "en_keys_sidecar": {
+   "path": "/Users/damian/local-operator-ui/.worktrees/_l2-prep/keys.json",
+   "sha256": "a8cd6e7d8adbc43a55bf2b812ba32eafa9f32931830e45f84b12d8ceb60ec71b"
+  },
+  "en_catalogue": {
+   "path": "/Users/damian/local-operator-ui/.worktrees/i18n-l2-file-sizes/src/i18n/catalogues/en/ui.chat.canonical.json",
+   "sha256": "27ae7327daa34be60b619be551c840e057d61c3d69dc801269e4f389edc0f031"
+  },
+  "en_context_catalogue": {
+   "path": "/Users/damian/local-operator-ui/.worktrees/i18n-l2-file-sizes/src/i18n/catalogues/en/ui.chat.canonical.context.json",
+   "sha256": "c0aff0d8bd80304e063b55f80875e3f8b5f50ad201e9b51770f570eb8dd253e4"
+  },
+  "es_shipped_catalogue": {
+   "path": "/Users/damian/local-operator-ui/.worktrees/i18n-l2-file-sizes/src/i18n/catalogues/es/ui.chat.canonical.json",
+   "sha256": "7735932bf45197226c40366421862f9596d224f06f463e84eadfe8bf020682d1"
+  },
+  "es_candidate_v2": {
+   "path": "/Users/damian/local-operator-ui/.worktrees/_l2-prep/es.v2.json",
+   "sha256": "ed6a86779fa26d6678f4b1d7622fde385dd2994085909c2b0aed2219eccf531b"
+  },
+  "es_previous_v1": {
+   "path": "/Users/damian/local-operator-ui/.worktrees/_l2-prep/es.json",
+   "sha256": "8b2dd7bcb015b2301adf0da0fb539c87d27397e17253098fe61fa3c5be75cc64"
+  },
+  "revision_note": {
+   "path": "/Users/damian/local-operator-ui/.worktrees/_l2-prep/es.v2-changes.md",
+   "sha256": "3906b667d3e226303d6913c01aaf0c812113f702660853b7d685a1732b0dca51"
+  },
+  "style_guide": {
+   "path": "/Users/damian/local-operator/i18n/style-guides/es.md",
+   "sha256": "77b9227213802d14c74d4298d6b346ad842bbf2a5ca3b9d46fc6144430d26c3e"
+  },
+  "glossary": {
+   "path": "/Users/damian/local-operator/i18n/glossary.md",
+   "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+  }
+ },
+ "checks": {
+  "json_parses": true,
+  "key_set_equal_to_en": true,
+  "keys_added": [],
+  "keys_dropped": [],
+  "keys_already_in_shipped_es_catalogue": {
+   "ui.chat.canonical.tool.never_sent_composed": false,
+   "ui.chat.canonical.tool.never_sent_empty": false
+  },
+  "en_sidecar_matches_en_catalogue": true,
+  "empty_values": [],
+  "english_identical_values": [],
+  "per_key": {
+   "ui.chat.canonical.tool.never_sent_composed": {
+    "en": "never sent · {size} composed",
+    "es_v2": "nunca enviado · redactado: {size}",
+    "es_v1": "nunca enviado · {size} redactados",
+    "changed_from_v1": true,
+    "placeholders_en": [
+     "size"
+    ],
+    "placeholders_es": [
+     "size"
+    ],
+    "placeholder_names_and_types_identical": true,
+    "placeholder_size_count_es": 1,
+    "placeholder_size_count_en": 1,
+    "icu_plural_or_select": false,
+    "clrd_categories_required": false,
+    "unicode_braces_balance": true,
+    "rich_markup_or_tags": false,
+    "backticks": 0,
+    "middot_u00b7_count": 1,
+    "middot_well_spaced": true,
+    "ascii_period_used_as_separator": false,
+    "leading_or_trailing_whitespace": false,
+    "control_chars": [],
+    "invisible_or_nbsp_chars": [],
+    "nfc_normalized": true,
+    "non_ascii_chars": [
+     "U+00B7 MIDDLE DOT"
+    ],
+    "trailing_sentence_punctuation": false,
+    "lowercase_initial": true,
+    "space_before_colon": false,
+    "space_after_colon": true,
+    "width_cells_template": 33,
+    "width_cells_en_template": 28,
+    "context_has_maxCells": false,
+    "value_sha256": "faf937346644e9cc2f91bd22737c037d5021bb5d879a9a45ce25e028c0772e3c"
+   },
+   "ui.chat.canonical.tool.never_sent_empty": {
+    "en": "never sent · nothing composed",
+    "es_v2": "nunca enviado · nada redactado",
+    "es_v1": "nunca enviado · nada redactado",
+    "changed_from_v1": false,
+    "placeholders_en": [],
+    "placeholders_es": [],
+    "placeholder_names_and_types_identical": true,
+    "placeholder_size_count_es": 0,
+    "placeholder_size_count_en": 0,
+    "icu_plural_or_select": false,
+    "clrd_categories_required": false,
+    "unicode_braces_balance": true,
+    "rich_markup_or_tags": false,
+    "backticks": 0,
+    "middot_u00b7_count": 1,
+    "middot_well_spaced": true,
+    "ascii_period_used_as_separator": false,
+    "leading_or_trailing_whitespace": false,
+    "control_chars": [],
+    "invisible_or_nbsp_chars": [],
+    "nfc_normalized": true,
+    "non_ascii_chars": [
+     "U+00B7 MIDDLE DOT"
+    ],
+    "trailing_sentence_punctuation": false,
+    "lowercase_initial": true,
+    "space_before_colon": false,
+    "space_after_colon": false,
+    "width_cells_template": 30,
+    "width_cells_en_template": 29,
+    "context_has_maxCells": false,
+    "value_sha256": "53c2092ca9412ff14376d8b7c09ba14ef60d75352e21e02e25ede18d4568d4ae"
+   }
+  },
+  "rendered_samples": {
+   "note": "sizes rendered by the shipped formatBytes ladder (SI 1000) + es Intl narrow unit label, replayed in node; see audit.log section 2",
+   "samples": [
+    "0 B",
+    "1 B",
+    "340 B",
+    "512 B",
+    "1 kB",
+    "1,1 kB",
+    "10 kB",
+    "12 kB",
+    "1000 kB",
+    "1 MB",
+    "1,5 MB",
+    "12 GB"
+   ],
+   "lines": [
+    "nunca enviado · redactado: 0 B",
+    "nunca enviado · redactado: 1 B",
+    "nunca enviado · redactado: 340 B",
+    "nunca enviado · redactado: 12,4 kB",
+    "nunca enviado · redactado: 1,1 kB",
+    "nunca enviado · redactado: 12 GB"
+   ],
+   "v1_lines": [
+    "nunca enviado · 1 kB redactados",
+    "nunca enviado · 12,4 kB redactados",
+    "nunca enviado · 340 B redactados"
+   ]
+  }
+ }
+}

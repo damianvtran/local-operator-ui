@@ -149,6 +149,44 @@ function mergeCheckout() {
 	return { ...repo, frozenBase };
 }
 
+/** Explicit branch targets may themselves be stacked PR branches, not main. */
+test("branch comparison uses the named stacked target's fork point, not the last commit", () => {
+	const repo = scratch();
+	try {
+		repo.write("target-only.mjs", DIRTY);
+		repo.git("add", "-A");
+		repo.git("commit", "-qm", "feat: parent PR");
+		repo.git("branch", "parent-pr");
+		repo.write("early.mjs", INDENTED);
+		repo.git("add", "-A");
+		repo.git("commit", "-qm", "feat: early child PR violation");
+		repo.git("checkout", "-q", "-b", "side", "parent-pr");
+		repo.write("merged.mjs", CLEAN);
+		repo.git("add", "-A");
+		repo.git("commit", "-qm", "feat: merged side");
+		repo.git("checkout", "-q", "feature");
+		repo.git("merge", "--no-ff", "-qm", "Merge side", "side");
+		const result = gate(repo.dir, "--branch", "--since", "parent-pr");
+		assert.equal(result.status, 1, result.err);
+		assert.match(result.out, /scripts\/early\.mjs/);
+		assert.doesNotMatch(result.out, /target-only/);
+		assert.match(result.err, /FAILED/);
+		repo.write("early.mjs", CLEAN);
+		assert.equal(gate(repo.dir, "--branch", "--since", "parent-pr").status, 0);
+		assert.equal(
+			gate(repo.dir, "--branch", "--since", "missing-target").status,
+			1,
+		);
+		assert.equal(gate(repo.dir, "--branch", "--since=").status, 1);
+		// Valid but unrelated refs must fail too, not become an empty comparison.
+		repo.git("checkout", "--orphan", "unrelated");
+		repo.git("commit", "-qm", "unrelated root");
+		assert.equal(gate(repo.dir, "--branch", "--since", "parent-pr").status, 1);
+	} finally {
+		repo.done();
+	}
+});
+
 test("a clean change under scripts/ passes, and says what it read", () => {
 	const repo = scratch();
 	try {

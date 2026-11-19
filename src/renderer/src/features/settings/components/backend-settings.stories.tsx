@@ -410,7 +410,7 @@ const setTextareaValue = (el: HTMLTextAreaElement, value: string) => {
 
 const typeSearch = async (text: string) => {
 	const input = document.querySelector<HTMLInputElement>(
-		'input[aria-label="Search settings"]',
+		'input[aria-label="Search settings by name, description or key"]',
 	);
 	if (!input) throw new Error("no search field rendered");
 	input.focus();

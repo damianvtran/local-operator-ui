@@ -1,0 +1,85 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit, targeted RE-AUDIT (auditor B of two) of the A2-RU-M1 remediation: members-dialog consent note",
+	"date": "2026-10-30",
+	"auditor": "translation-auditor",
+	"agent": "translation-auditor",
+	"model": "anthropic/claude-opus-5-5",
+	"model_provenance": "Session d5ed40af1448 ran as anthropic/claude-opus-5-5 (the model named in this session's system prompt); no fallback announced or observed.",
+	"session": "d5ed40af1448",
+	"instance": "d5ed40af1448-ru",
+	"audit_id": "teambridge-members-polish-reaudit-d5ed40af1448-ru",
+	"status": "passed",
+	"result": "clean",
+	"locale": "ru",
+	"namespace": "ui.teamBridge",
+	"independence": "Auditor B (team lopdev, role translation-auditor, session d5ed40af1448), run independently of the concurrent auditor A; distinct from the translator and from prior auditor sessions b5610aecd5f2 and e49c0ab64b49 (whose A2-RU-M1 proposal this remediation applies). Verdict formed from the catalogue bytes, context sidecar and ru style guide. No catalogue edited.",
+	"integration": {
+		"pr": "damianvtran/local-operator-ui#1523",
+		"branch": "fix/team-bridge-members-dialog-polish",
+		"head_at_audit": "d71058ce222f96b09168fb267af7e05ef5cf5a6b",
+		"previous_audited_commit": "90bb4c7d4e2",
+		"worktree": "~/local-operator-ui/.worktrees/members-dialog-polish"
+	},
+	"scope": {
+		"primary": [
+			"ui.teamBridge.members.invitation_note_v2"
+		],
+		"keys_read_for_consistency": [
+			"ui.teamBridge.notify.mute",
+			"ui.teamBridge.notify.muted",
+			"ui.teamBridge.notify.mention",
+			"ui.teamBridge.notify.all",
+			"ui.teamBridge.notify.label",
+			"ui.teamBridge.menu.mute",
+			"ui.teamBridge.menu.unmute"
+		],
+		"delta": "git diff 90bb4c7d4e2..d71058ce222 on the ru catalogue changes exactly one line (invitation_note_v2: «или выключить для него звук» -> «или перевести его в режим «Без звука»»); en catalogue unchanged. Pre-change ru bytes hash 425881bf26885bbf... = the target hash the existing row audited.",
+		"call_site": "src/renderer/src/features/team-bridge/team-bridge-add-members.tsx:814 (dialog footer note); notify.mute label used via team-bridge-model.ts:166",
+		"references": [
+			"~/local-operator/i18n/style-guides/ru.md",
+			"~/local-operator/i18n/glossary.md"
+		]
+	},
+	"sha256": {
+		"ru": "d7c706a137f2f6d7734372442f8ee305c61373542a7bb7167329e2fb446270b8",
+		"en": "20a8960b411dbff3dc7a8b6e029a4a17091e95980bd1bab946445597aff3277f"
+	},
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "20a8960b411dbff3dc7a8b6e029a4a17091e95980bd1bab946445597aff3277f"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/ru/ui.teamBridge.json",
+			"sha256": "d7c706a137f2f6d7734372442f8ee305c61373542a7bb7167329e2fb446270b8"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "abbf67496bc6fecdd4d5795e2fb6b15d4d6a1cefad59ba69b303656b88c8b4cd"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/ru.md",
+			"sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+		},
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+		}
+	},
+	"judgement": {
+		"mute_clause": "«перевести его в режим «Без звука»» (switch it to 'Mute' mode) names the exact ru label of the silent notification level (notify.mute «Без звука», context: 'the silent level ... names the state the radio selects'). It is idiomatic, glossary-consistent and resolves the A2-RU-M1 calque; the infinitive parallels «ограничить» under «может».",
+		"quotes": "Style guide line 66: «ёлочки» in prose, „лапки“ nested inside them. The quoted label sits at the top level of the sentence (no enclosing quotation), so «» is the correct level; „“ would be wrong here. Bytes verified: U+00AB / U+00BB, one pair, balanced.",
+		"fidelity": "Clauses: (1) Приглашения не дают доступа, пока их не примут = no access until accepted; (2) присоединяется после согласия владельца = joins once owner consents; (3) затем он читает все сообщения здесь = then reads every message here; (4) сам решает, отвечать ли = decides whether to reply; (5) при упоминании через @ отвечает всегда = always replies when @-mentioned; (6) Владелец может ограничить его упоминаниями через @ или перевести его в режим «Без звука» = owner can limit to @-mentions or mute. All six present, nothing added. '@' kept recognizable per context note.",
+		"register": "Impersonal/neutral third person, no T/V address; consistent with the namespace.",
+		"placeholders": "None in en or ru; none introduced.",
+		"overflow": "302 chars vs en 243 (+24%), +10 vs the previous ru text; footer is a wrapping <p className=max-w-sm>, so no truncation risk; not a finding."
+	},
+	"findings": [],
+	"prior_findings_resolved": [
+		{
+			"id": "A2-RU-M1",
+			"resolution": "applied verbatim as proposed; verified in bytes at d71058ce222"
+		}
+	]
+}

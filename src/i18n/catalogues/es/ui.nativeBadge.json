@@ -1,0 +1,5 @@
+{
+	"ui.nativeBadge.attention": "{count, plural, one {Local Operator: # elemento requiere atención} many {Local Operator: # de elementos requieren atención} other {Local Operator: # elementos requieren atención}}",
+	"ui.nativeBadge.attentionPending": "{count, plural, one {Local Operator: # elemento requiere atención; aún hay solicitudes pendientes} many {Local Operator: # de elementos requieren atención; aún hay solicitudes pendientes} other {Local Operator: # elementos requieren atención; aún hay solicitudes pendientes}}",
+	"ui.nativeBadge.pending": "Local Operator: aún hay solicitudes pendientes"
+}

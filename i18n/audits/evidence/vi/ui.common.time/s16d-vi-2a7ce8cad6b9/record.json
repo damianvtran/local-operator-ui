@@ -1,0 +1,85 @@
+{
+	"schema": 1,
+	"audit_id": "s16d-vi-2a7ce8cad6b9",
+	"audit_date": "2026-11-12",
+	"locale": "vi",
+	"namespace": "ui.common.time",
+	"key_count": 4,
+	"pr": 1877,
+	"base": "7c2b6af66486",
+	"head": "dcdcb6a9d8c4a80d239fc56498765c2b64417d38",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "2a7ce8cad6b9",
+		"instance": "2a7ce8cad6b9",
+		"model": "deepseek/deepseek-flash",
+		"actual_model_source": "session model header: deepseek/deepseek-flash; no model-switch notice in this session, so no fallback is claimed",
+		"independent_from_translator_session": true,
+		"translator": {
+			"agent": "i18n-translator",
+			"model": "anthropic/claude-sonnet-5-5"
+		}
+	},
+	"input_hashes": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.common.time.json",
+			"sha256": "bb0b3aa1a71679cc73cb40d73616b5e22057c7dcbc86705c2ec4425984971e13"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.common.time.context.json",
+			"sha256": "a9069037edc11c59288a7c2d3171496b1ef44a0982fc28e6a0edb4bcae0f98d2"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/vi/ui.common.time.json",
+			"sha256": "f87b908a4add8d24d3f52e8663b3f9198a20d77d93f6817ec413375d62a7b4fb",
+			"status": "predicted_pre_landing",
+			"pre_landing_sha256": "c0bed5df041a72992031e574f0f3a59cd29608a4c6dd13cb1d41186e05d1b60a"
+		},
+		"candidate": {
+			"path": "s16d-drafts/vi-s16d.json (translator drafts, not landed)",
+			"sha256": "303a1bc3a27a886027516399574f2c9965e956965cd8526ddacab0237d3cf489"
+		}
+	},
+	"artifacts": {
+		"report": {
+			"path": "audit-s16d-vi.md",
+			"sha256": "fd9672d40d8e778974ba8379bfdae00e1c33f96550db356e2802bce97f9746f1"
+		},
+		"receipt": {
+			"path": "receipt-s16d-vi.json",
+			"sha256": "0543cea94b39e86fbc0f2d59b3aeb9bf8d3707090bbd64f177303ab48a26207c"
+		},
+		"checker": {
+			"path": "check-s16d-vi.mjs",
+			"sha256": "ce5d5c2eafbe6866c4163149ac8c5379e509690e45314cf1de6134f830805710"
+		}
+	},
+	"current_report_verdict": {
+		"status": "passed",
+		"result": "clean",
+		"unresolved_blocker_major_count": 0,
+		"finding_ids": []
+	},
+	"execution": {
+		"commands_run": [
+			"node check-s16d-vi.mjs — ICU formatter grid for the 4 keys with real vi Intl args; placeholder/NFC/Cf/English-token checks; 5 negative controls on in-memory mutants (all caught, after fixing a harness gap in the English-token check)",
+			"node _rulecheck.mjs — deriveReceiptAudit() from scripts/i18n/ledger-rules.mjs: receipt ACCEPTED against the predicted landed target hash, REFUSED against the pre-landing and a wrong hash (proves the hash binding is real)"
+		],
+		"audit_notes_not_execution_log": "Observations in the report (ICU-supplied comma in the long date, CLDR-capitalised weekday) are reasoning notes, not command output. Repo catalogue validators were NOT run: generate.mjs --check validates en->keys.gen only, and catalogue-locale.test.mjs needs an esbuild build of the whole tree under resource holds.",
+		"limits": [
+			"No landed bytes exist yet: the target hash is a prediction, verified mechanically by reproducing 4 existing catalogue files byte-for-byte with the same serializer.",
+			"No translation/MT service was consulted; judgement is by reasoning per the style guide and glossary."
+		]
+	},
+	"kind": "independent_delta_i18n_audit",
+	"audit_kind": "linguistic_and_mechanical_delta",
+	"round": 1,
+	"new_report_is_original": true,
+	"new_report_is_historical_R2_recreation": false,
+	"backdated": false,
+	"original_lost_evidence": {
+		"status": "not_applicable",
+		"original_path": null,
+		"expected_original_sha256": null
+	}
+}

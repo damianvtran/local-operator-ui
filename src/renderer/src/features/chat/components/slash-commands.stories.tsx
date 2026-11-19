@@ -40,19 +40,25 @@
  *     (`free`, `usage-based`, the current-row mark).
  */
 
+import { t } from "@shared/i18n";
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, screen, userEvent, waitFor } from "@storybook/test";
 
 const MODEL_DEFAULT_LABEL = /Set current model as default/;
 import type { FC } from "react";
+import type { TagCategory } from "../../../../../shared/desktop-contract";
 import "../../../styles/index.css";
 import { writeModelDefaultSettings } from "../pickers/model-default-settings";
 import { DESTINATIONS } from "../pickers/picker-registry";
 import {
 	type ArgumentRow,
 	type ArgumentSource,
+	TAG_INLINE_ARGUMENT,
+	appliedFirstTagIds,
 	argumentRows,
 	modelDefaultActionRow,
+	tagArgumentRows,
+	tagCreateRow,
 } from "./slash-argument-rows";
 import {
 	type CompletionRow,
@@ -369,6 +375,68 @@ const argumentRowsFor = (
 		({ choice }) => ({ kind: "argument", row: choice as ArgumentRow }),
 	);
 
+/**
+ * Tag registry rows, REAL-SHAPED (`TagRegistry.tags`): `id`, `name`, `order`
+ * and the conversation count the sidebar uses.
+ *
+ * `/tag` is the one inline source `argumentRows` cannot shape: membership, the
+ * primary flag and the frozen order are three inputs that function does not
+ * carry, which is why the switch there answers it with an empty list. These
+ * fixtures therefore feed the PRODUCTION `tagArgumentRows` / `tagCreateRow`,
+ * so the `[x]`/`[ ]` marker, the `Primary` slot and the create row in these
+ * frames are the strings the composer draws rather than a hand-built list that
+ * happens to look right.
+ */
+const TAGS: TagCategory[] = [
+	{ id: "tag-release", name: "release", order: 0, conversations: 12 },
+	{ id: "tag-research", name: "research", order: 1, conversations: 7 },
+	{ id: "tag-invoice", name: "invoice", order: 2, conversations: 4 },
+	{ id: "tag-ops", name: "ops", order: 3, conversations: 2 },
+	{
+		id: "tag-criminal-law",
+		name: "criminal-law",
+		order: 4,
+		conversations: 3,
+	},
+	{
+		id: "tag-criminal-justice",
+		name: "criminal-justice",
+		order: 5,
+		conversations: 1,
+	},
+];
+
+/**
+ * The composer's own two steps for a tag list: the applied-first order it
+ * freezes when the registry or the conversation changes (`freezeTagOrder`'s
+ * `appliedFirstTagIds`), then the rows `tagArgumentRows` shapes from it.
+ */
+const tagRowsFor = (
+	selected: readonly string[],
+	primary: string | null,
+): ArgumentRow[] =>
+	tagArgumentRows(TAGS, selected, primary, appliedFirstTagIds(TAGS, selected));
+
+/** The create-and-apply row, through the same shaper and the same translated
+ *  label/description the composer passes (`slash-commands.tsx:1418`). */
+const tagCreateFor = (
+	selected: readonly string[],
+	query: string,
+): ArgumentRow | null =>
+	tagCreateRow(
+		TAGS,
+		selected,
+		query,
+		t("ui.chat.tags.create_name", { name: query.trim() }),
+		t("ui.chat.tags.create_helper"),
+	);
+
+const tagMatches = (query: string, rows: ArgumentRow[]): CompletionRow[] =>
+	matchChoices(query, rows).map(({ choice }) => ({
+		kind: "argument" as const,
+		row: choice,
+	}));
+
 /* ------------------------------------------------------------- harness */
 
 /** No-ops: the popup is presentational, and these frames do not interact. */
@@ -395,6 +463,14 @@ const state = (over: Partial<SlashCompletionState>): SlashCompletionState => ({
 	argumentQuery: "",
 	commandQuery: "",
 	argumentList: { rows: [], loading: false, error: null, needsSession: false },
+	/* `/tag`'s live state: these frames exercise the shared list, not the tag
+	   surface, so the defaults are inert and no write can be reached. */
+	tagSelectedCount: 0,
+	tagError: null,
+	tagNotice: "",
+	tagPending: false,
+	actOnTagRow: async () => {},
+	reopen: noop,
 	close: noop,
 	setActive: noopIndex,
 	setActiveHover: noopIndex,
@@ -1127,6 +1203,124 @@ export const ArgumentPhaseNoMatch: Story = {
 			/>
 		</Box>
 	),
+};
+
+/**
+ * `/tag ` with two applied tags, one of them primary, and the registry's rest
+ * unapplied.
+ *
+ * DESIGN ROUND 1, D1: the shared slash-completion stories covered every other
+ * inline source and left `/tag` out, so the marker set the design had to sign
+ * off had no rendered frame — `[x]`/`[ ]` instead of the `●` bullet (a value
+ * list's “current” is membership, not a navigation cursor), the `Primary` slot
+ * on the right edge, and the `2 of 8` selection count in the phase label.
+ *
+ * The two cases are the two Enter meanings a tag row carries: active on the
+ * applied primary, the line says `Enter Remove release`; active on an
+ * unapplied row it says `Enter Add “invoice”`. Both are arrowed onto the row
+ * (`chosenByHand`), because that explicit move is what makes the action
+ * unambiguous for a list of values rather than a matcher's first guess.
+ */
+export const TagRowsApplied: Story = {
+	render: () => {
+		const selected = ["tag-release", "tag-research"];
+		const rows = tagRowsFor(selected, "tag-release");
+		// By VALUE, not by index: the row order is the production order, and a
+		// fixture edit must not silently move which footer this frame shows.
+		const addIndex = rows.findIndex((row) => row.value === "invoice");
+		return (
+			<Board caption="Applied rows first with the primary marked on the right edge. Enter removes the applied tag on the active row, or adds the unapplied one.">
+				<Case width={720} draft="/tag " rows={rows.length}>
+					<SlashSuggestionsPopup
+						state={state({
+							phase: "argument",
+							argumentCommand: "tag",
+							inline: TAG_INLINE_ARGUMENT,
+							argumentQuery: "",
+							argumentList: {
+								rows,
+								loading: false,
+								error: null,
+								needsSession: false,
+							},
+							tagSelectedCount: selected.length,
+							matches: tagMatches("", rows),
+							chosenByHand: true,
+						})}
+						onPick={noop}
+					/>
+				</Case>
+				<Case width={720} draft="/tag " rows={rows.length}>
+					<SlashSuggestionsPopup
+						state={state({
+							phase: "argument",
+							argumentCommand: "tag",
+							inline: TAG_INLINE_ARGUMENT,
+							argumentQuery: "",
+							argumentList: {
+								rows,
+								loading: false,
+								error: null,
+								needsSession: false,
+							},
+							tagSelectedCount: selected.length,
+							matches: tagMatches("", rows),
+							active: addIndex,
+							chosenByHand: true,
+						})}
+						onPick={noop}
+					/>
+				</Case>
+			</Board>
+		);
+	},
+};
+
+/**
+ * The partial-query state that mixes the three row kinds: one applied primary
+ * tag, one unapplied tag, and the explicit create-and-apply row below them.
+ *
+ * The create row is PRODUCED, not written: `tagCreateRow` suppresses it when
+ * the query exactly names an existing tag or breaks the name rules, so a frame
+ * that shows it is a frame where the composer would really offer it. Its
+ * label and helper are the translated copies the popup passes; the row is
+ * last because that is where `slash-commands.tsx` appends it, below every
+ * catalogue match. Active on the create row, the footer names that write:
+ * `Enter Create “crim”`.
+ */
+export const TagRowsPartialCreate: Story = {
+	render: () => {
+		const selected = ["tag-criminal-law"];
+		const rows = tagRowsFor(selected, "tag-criminal-law");
+		const matches = tagMatches("crim", rows);
+		const create = tagCreateFor(selected, "crim");
+		return (
+			<Box width={720} draft="/tag crim">
+				<SlashSuggestionsPopup
+					state={state({
+						phase: "argument",
+						argumentCommand: "tag",
+						inline: TAG_INLINE_ARGUMENT,
+						argumentQuery: "crim",
+						argumentList: {
+							rows,
+							loading: false,
+							error: null,
+							needsSession: false,
+						},
+						tagSelectedCount: selected.length,
+						matches: create
+							? [...matches, { kind: "argument" as const, row: create }]
+							: matches,
+						// The last row is the create action when it exists; the frame
+						// shows its footer instead of a catalogue row's.
+						active: create ? matches.length : 0,
+					})}
+					onPick={noop}
+				/>
+			</Box>
+		);
+	},
 };
 
 /**

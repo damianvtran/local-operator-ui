@@ -1,0 +1,186 @@
+{
+ "instance": "96084d0b566f-agents3-es",
+ "locale": "es",
+ "namespace": "ui.agents.routing",
+ "scope": "Full namespace: 12 agent routing sentences (the seed 'when to use' text an installed agent shows on its card and in the destination pickers), judged against src/i18n/catalogues/en/ui.agents.routing.json and cross-checked for family vocabulary against es src/i18n/catalogues/es/ui.agents.descriptions.json.",
+ "audit_date": "2026-10-30",
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "96084d0b566f",
+  "model": "radient/auto",
+  "actual_model_source": "This session started on anthropic/claude-sonnet-5-5 and was moved by provider quota (HTTP 429) through openai/gpt-6-astra and kimi/k3.1-pro to radient/auto, which the harness reports as this session's serving model (sessions info). radient/auto is a provider router whose backend id the harness does not expose, so none is claimed. These reads, checks and this receipt were produced on that chain; no model performed a translation, back-translation or any MT/AI-assisted comparison.",
+  "independent_from_translator_session": true,
+  "translator_session": "3ef6295a5545",
+  "independence_note": "This session authored none of the 12 es values. They were handed over as bytes; the English source, the context sidecar and the sibling family were re-read and the judgement formed here."
+ },
+ "status": "passed",
+ "verdict": "pass",
+ "verdict_reason": "No BLOCKER or MAJOR on the bytes. All 12 values keep the English claim: what each agent is for and when to reach for it, with no omission, addition or polarity error, and the one restriction in the file (copy to user-visible text, never engineering prose or code comments) and the one constraint (scout is read-only, nothing is modified) survive intact. Register and terminology hold: infinitive openings and tu address per the es guide, 'agente', 'equipo', 'Biblioteca', 'solo lectura', 'porcion' and 'resumen del estado' agree with the sibling descriptions family. Kept-English tokens untouched: RFC, diff, pull request, merge request, ticket, CLI, daemon/daemons (es guide W2 amendment), unicode, and the C/D/T/U finding prefixes in the sibling. Both files are literal sentences with no ICU arguments, plurals, selects or markup, so placeholder and CLDR parity are vacuous; key parity is 12/12 in identical order; all targets NFC; three deliberate caps (COMO, ASPECTO, EXPERIENCIA) survive the emphasis the source carries. Length 1.05-1.21x English, inside the guide's 15-25% band, and the card truncates with an ellipsis by contract, so no overflow finding. The three MINORs and five NITs are wording improvements, not meaning faults.",
+ "counts": {
+  "BLOCKER": 0,
+  "MAJOR": 0,
+  "MINOR": 3,
+  "NIT": 5
+ },
+ "namespaces": {
+  "ui.agents.routing": {
+   "status": "passed",
+   "result": "clean-with-findings",
+   "keys_audited": 12,
+   "sha256": {
+    "en": "d7903758d28335a344ae7a67172859e2ed14103931d64fb0988802ebd1771c11",
+    "es": "3bc39227dbca14ac4d7b93b72295fb70534a06bc6328f8b10ee61ec6f1a0ab1e"
+   },
+   "findings": [
+    {
+     "id": "MINOR-1",
+     "severity": "MINOR",
+     "key": "ui.agents.routing.ux_reviewer",
+     "current": "… descubribilidad, respuesta y mensajes de error, …",
+     "problem": "Calque of 'discoverability' that no es catalogue has used before, while the sibling family renders the same concept as 'descubrimiento' (ui.agents.descriptions.ux_reviewer). One concept, two words across two shipped agent surfaces; 'facilidad de descubrimiento' is the settled non-calque phrasing.",
+     "suggestion": "… facilidad de descubrimiento, respuesta y mensajes de error, … (or 'descubrimiento' to match the sibling blurb)"
+    },
+    {
+     "id": "MINOR-2",
+     "severity": "MINOR",
+     "key": "ui.agents.routing.designer",
+     "current": "Comprobar el ASPECTO de algo para el usuario: … — una ronda de diseño y UX sobre un cambio visible.",
+     "problem": "'para el usuario' dangles after 'algo' and can be read as 'something made for the user' rather than 'how it looks TO the user'; the closing 'un cambio visible' also drops the 'para el usuario' qualifier the English carries.",
+     "suggestion": "Comprobar el ASPECTO que algo tiene para el usuario: … — una ronda de diseño y UX sobre un cambio visible para el usuario."
+    },
+    {
+     "id": "MINOR-3",
+     "severity": "MINOR",
+     "key": "ui.agents.routing.qa_tester",
+     "current": "Comprobar de forma independiente si un pull request, un parche o una funcionalidad funciona de verdad de principio a fin; …",
+     "problem": "This sentence is what search embeds, and the key's sidecar asks that the test trigger stay recognisable, but the value carries no 'probar/prueba' token (only 'funciona', 'error', 'regresiones') while the sibling blurb opens 'Prueba independiente'; it also reuses the designer's opening verb where English keeps 'testing' and 'checking' apart.",
+     "suggestion": "Probar de forma independiente si un pull request, un parche o una funcionalidad funciona de verdad de principio a fin; …"
+    },
+    {
+     "id": "NIT-1",
+     "severity": "NIT",
+     "key": "ui.agents.routing.tui_designer",
+     "current": "… compatibilidad de color y unicode, …",
+     "problem": "Lowercase 'unicode' where the technology name is officially 'Unicode'. Both families share the lowercase, so this is recorded rather than churned.",
+     "suggestion": "… compatibilidad de color y Unicode, …"
+    },
+    {
+     "id": "NIT-2",
+     "severity": "NIT",
+     "key": "ui.agents.routing.ux_reviewer",
+     "current": "… a diferencia de una revisión visual o de diseño de cómo se ve.",
+     "problem": "Two prepositional attachments ('de … de cómo se ve') hang off 'revisión'; understandable, but it is the card's last line and reads slightly tangled.",
+     "suggestion": "… a diferencia de una revisión visual o de diseño de su aspecto."
+    },
+    {
+     "id": "NIT-3",
+     "severity": "NIT",
+     "key": "ui.agents.routing.copy_reviewer",
+     "current": "… respaldo de las afirmaciones y tics de IA.",
+     "problem": "English 'stripping AI-isms' names an action; as a bare noun in the list the value says the agent is concerned with AI-isms rather than that it removes them. It mirrors the sibling blurb, so low priority.",
+     "suggestion": "… respaldo de las afirmaciones y eliminación de tics de IA."
+    },
+    {
+     "id": "NIT-4",
+     "severity": "NIT",
+     "key": "ui.agents.routing.manager",
+     "current": "Coordinar y seguir trabajo de varias partes entre agentes o repositorios, …",
+     "problem": "'partes' most often means parties or stakeholders in Spanish, so 'trabajo de varias partes' can read as 'work from several parties' instead of the English multi-part work.",
+     "suggestion": "Coordinar y seguir trabajo repartido en varias partes entre agentes o repositorios, …"
+    },
+    {
+     "id": "NIT-5",
+     "severity": "NIT",
+     "key": "ui.agents.routing.coder",
+     "current": "… crear una funcionalidad, corregir un error o añadir una función — …",
+     "problem": "'una funcionalidad' and 'una función' sit two clauses apart and differ by a suffix, so 'añadir una función' (a code function) can be read back as one more feature.",
+     "suggestion": "… crear una funcionalidad, corregir un error o añadir una función al código — …"
+    }
+   ]
+  }
+ },
+ "findings": [
+  {
+   "id": "MINOR-1",
+   "severity": "MINOR",
+   "key": "ui.agents.routing.ux_reviewer",
+   "current": "… descubribilidad, respuesta y mensajes de error, …",
+   "problem": "Calque of 'discoverability' that no es catalogue has used before, while the sibling family renders the same concept as 'descubrimiento' (ui.agents.descriptions.ux_reviewer). One concept, two words across two shipped agent surfaces; 'facilidad de descubrimiento' is the settled non-calque phrasing.",
+   "suggestion": "… facilidad de descubrimiento, respuesta y mensajes de error, … (or 'descubrimiento' to match the sibling blurb)"
+  },
+  {
+   "id": "MINOR-2",
+   "severity": "MINOR",
+   "key": "ui.agents.routing.designer",
+   "current": "Comprobar el ASPECTO de algo para el usuario: … — una ronda de diseño y UX sobre un cambio visible.",
+   "problem": "'para el usuario' dangles after 'algo' and can be read as 'something made for the user' rather than 'how it looks TO the user'; the closing 'un cambio visible' also drops the 'para el usuario' qualifier the English carries.",
+   "suggestion": "Comprobar el ASPECTO que algo tiene para el usuario: … — una ronda de diseño y UX sobre un cambio visible para el usuario."
+  },
+  {
+   "id": "MINOR-3",
+   "severity": "MINOR",
+   "key": "ui.agents.routing.qa_tester",
+   "current": "Comprobar de forma independiente si un pull request, un parche o una funcionalidad funciona de verdad de principio a fin; …",
+   "problem": "This sentence is what search embeds, and the key's sidecar asks that the test trigger stay recognisable, but the value carries no 'probar/prueba' token (only 'funciona', 'error', 'regresiones') while the sibling blurb opens 'Prueba independiente'; it also reuses the designer's opening verb where English keeps 'testing' and 'checking' apart.",
+   "suggestion": "Probar de forma independiente si un pull request, un parche o una funcionalidad funciona de verdad de principio a fin; …"
+  },
+  {
+   "id": "NIT-1",
+   "severity": "NIT",
+   "key": "ui.agents.routing.tui_designer",
+   "current": "… compatibilidad de color y unicode, …",
+   "problem": "Lowercase 'unicode' where the technology name is officially 'Unicode'. Both families share the lowercase, so this is recorded rather than churned.",
+   "suggestion": "… compatibilidad de color y Unicode, …"
+  },
+  {
+   "id": "NIT-2",
+   "severity": "NIT",
+   "key": "ui.agents.routing.ux_reviewer",
+   "current": "… a diferencia de una revisión visual o de diseño de cómo se ve.",
+   "problem": "Two prepositional attachments ('de … de cómo se ve') hang off 'revisión'; understandable, but it is the card's last line and reads slightly tangled.",
+   "suggestion": "… a diferencia de una revisión visual o de diseño de su aspecto."
+  },
+  {
+   "id": "NIT-3",
+   "severity": "NIT",
+   "key": "ui.agents.routing.copy_reviewer",
+   "current": "… respaldo de las afirmaciones y tics de IA.",
+   "problem": "English 'stripping AI-isms' names an action; as a bare noun in the list the value says the agent is concerned with AI-isms rather than that it removes them. It mirrors the sibling blurb, so low priority.",
+   "suggestion": "… respaldo de las afirmaciones y eliminación de tics de IA."
+  },
+  {
+   "id": "NIT-4",
+   "severity": "NIT",
+   "key": "ui.agents.routing.manager",
+   "current": "Coordinar y seguir trabajo de varias partes entre agentes o repositorios, …",
+   "problem": "'partes' most often means parties or stakeholders in Spanish, so 'trabajo de varias partes' can read as 'work from several parties' instead of the English multi-part work.",
+   "suggestion": "Coordinar y seguir trabajo repartido en varias partes entre agentes o repositorios, …"
+  },
+  {
+   "id": "NIT-5",
+   "severity": "NIT",
+   "key": "ui.agents.routing.coder",
+   "current": "… crear una funcionalidad, corregir un error o añadir una función — …",
+   "problem": "'una funcionalidad' and 'una función' sit two clauses apart and differ by a suffix, so 'añadir una función' (a code function) can be read back as one more feature.",
+   "suggestion": "… crear una funcionalidad, corregir un error o añadir una función al código — …"
+  }
+ ],
+ "mechanical": {
+  "json_valid": true,
+  "key_parity": "12/12, identical order and key set to the English source",
+  "placeholders": "none in source or target (no ICU arguments, plurals, selects or markup in either file)",
+  "nfc": "all 12 target values NFC",
+  "typography": "spaced U+2014 em dashes, no stray U+202F/U+2019, no invented ellipsis, colon-then-semicolon restructure in ux_reviewer is idiomatic es",
+  "length_ratio": "aida 1.12, architect 1.12, coder 1.07, copy_reviewer 1.19, designer 1.17, librarian 1.06, manager 1.06, qa_tester 1.21, reviewer 1.17, scout 1.05, tui_designer 1.09, ux_reviewer 1.09 (chars, es/en)",
+  "sibling_consistency": "agent=agente, team=equipo, contact/copy=textos, read-only=solo lectura, Library=Biblioteca, asset=recurso, defects=defectos, found the discoverability split reported as MINOR-1; no other vocabulary disagreement (MR/PR abbreviations in the sibling vs spelled-out pull/merge request here are both correct and not a term conflict)",
+  "validator_note": "The candidate is not in src/i18n/catalogues/es/ yet, so pnpm check-i18n's generator and ledger gates cannot see it and no green is claimed from them. The checks above were run directly on the bytes, and this receipt was validated with the repository's own deriveReceiptAudit (scripts/i18n/ledger-rules.mjs)."
+ },
+ "artifacts": {
+  "receipt": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/agents2-audit/es/receipt.json",
+  "verdict": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/agents2-audit/es/verdict.txt",
+  "execution_log": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/agents2-audit/es/auditor.log (harness-written run log, not an authored note)",
+  "input_candidate": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/agents2-i18n/es/ui.agents.routing.json",
+  "english_source": "/Users/damian/lo-agents-i18n/src/i18n/catalogues/en/ui.agents.routing.json",
+  "sibling_family": "/Users/damian/lo-agents-i18n/src/i18n/catalogues/es/ui.agents.descriptions.json"
+ }
+}

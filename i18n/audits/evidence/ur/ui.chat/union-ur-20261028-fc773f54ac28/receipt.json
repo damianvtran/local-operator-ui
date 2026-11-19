@@ -1,0 +1,256 @@
+{
+	"schema": 1,
+	"kind": "i18n-audit-receipt",
+	"audit_kind": "union-delta-audit of two independently audited wave deltas over unchanged-by-proof bytes",
+	"audit_id": "union-ur-20261028-fc773f54ac28",
+	"instance": "union-ur-20261028-fc773f54ac28",
+	"locale": "ur",
+	"namespace": "ui.chat",
+	"audit_date": "2026-10-28",
+	"branch": "i18n-wave-a",
+	"pr": 1449,
+	"head": "c5e19ecec8",
+	"head_full": "c5e19ecec883b45e281d696f06dac86bcb0d90f3",
+	"merge_parents": [
+		"e5f7c8daeaf3bd5a6267c5910288e2b5f1bcc807",
+		"1d631be71fb7a674b117aab61508d6dd822708b4"
+	],
+	"auditor": "i18n-auditor",
+	"session": "fc773f54ac28",
+	"team": "lopdev",
+	"model": "radient/auto",
+	"model_provenance": {
+		"route": "radient/auto",
+		"route_source": "this session's harness system prompt: 'Model: radient/auto'",
+		"fallback_used": false,
+		"fallback_chain": [],
+		"actual_model_source": "No [session incident] record and no model-switch notice exists anywhere in this session's transcript (~/.local-operator/sessions/fc773f54ac28/transcript.jsonl: every event is of type message or custom - 317 events at the time of this check - and the phrases appear there only inside quoted prompt text, quoted earlier audit evidence, and this session's own commands and output). The upstream model behind the router alias is not exposed to this session, so none is invented.",
+		"disclosure": "Every judgement in this audit was made in this session under the recorded route; no model change was requested or observed."
+	},
+	"status": "passed",
+	"verdict": "passed",
+	"result": "clean-with-findings",
+	"key_count": 142,
+	"sha256": {
+		"en": "d3bc8ec097540b123500005e941093dbc73eaaa46fa1152643a04d51b6f259e4",
+		"ur": "e71815d9b12e38a2b327a551bd105b58937a613963119edae0db169dad1b7ea6"
+	},
+	"context_sha256": "994de1d3c61cdc19ba61bb8b0995e4e96e17e80c531c9b3dafb4572d3c8bca3e",
+	"findings": [
+		{
+			"id": "UUR-1",
+			"severity": "minor",
+			"key": "ui.chat.composer.status.loop_progress_of_turns",
+			"source": "{completed, number, ::group-off} of {total, number, ::group-off} turns",
+			"current": "{total, number, ::group-off} میں سے {completed, number, ::group-off} باریاں",
+			"problem": "The counted noun is fixed as the plural باریاں, but Urdu agrees a counted noun with the number that precedes it in the clause: 1 باری, 2 باریاں. The chip prints the noun straight after {completed}, so the first completed turn of any running loop reads 10 میں سے 1 باریاں (proved by real render, not by inspection). English reads correctly at every value because its noun agrees with of {total}. The English argument is a number and locale-parity pins the type, so no plural arm can be added to fix it here. Meaning is never in doubt and nothing unsafe follows, which is why this is minor rather than major.",
+			"suggested": "{total, number, ::group-off} میں سے باری {completed, number, ::group-off}",
+			"fix_note": "The classifier form this same file already uses in ui.chat.checkpoint.turn and checkpoint.jump_* (باری {turn}), grammatical at every count and still carrying both numbers. If the noun must stay a count noun, {total, number} باریوں میں سے {completed, number} keeps agreement with the total instead, which is correct for the total >= 2 a running loop reaches."
+		}
+	],
+	"findings_summary": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 1,
+		"nit": 0
+	},
+	"scope": "DELTA + WHOLE-FILE union audit of one catalogue (src/i18n/catalogues/ur/ui.chat.json, 142 keys) at c5e19ecec8. Delta: prove, by parsed-JSON and raw-line comparison, that the 18 wave-A keys equal the bytes receipt 59ea19dc68ac read (80ee119bbd), the 9 wave-B keys equal the bytes receipt c89cee263ac2 read (a5356ce91c = origin/main 1d631be71f), and the 115 base keys equal origin/main's and the pre-wave file (81f286ee5c); then read the union as one text for cross-wave term/register/punctuation consistency, ICU placeholder and CLDR parity with real renders, Urdu typography, RTL/bidi reordering, fit and terminology.",
+	"delta": {
+		"base_pre_union": {
+			"commit": "81f286ee5c",
+			"ur_sha256": "4739504b6a02d0d750f6b3f7198567b477aba36776f461b91c0e21a3d512d394",
+			"en_sha256": "6b6e21835462fccbbdbea4cfcca132344595bf3f14804018de64dbe8d9fbacf0"
+		},
+		"wave_a_audited_bytes": {
+			"commit": "80ee119bbd",
+			"receipt": "59ea19dc68ac",
+			"ur_sha256": "f7aaa99d5737272bba0f862d657e1947c670448b6352082100aed208abf86a5d",
+			"en_sha256": "1a1c9329a1a56ffda47b27da91e80fdf454751a4463b76f09ae9138d1ad0bcdc",
+			"context_sha256": "1df3ad0e7054c77b2cc59971eae3a9387059be42839a271d80f70e754e542426"
+		},
+		"wave_b_audited_bytes": {
+			"commit": "a5356ce91c",
+			"also_at": "1d631be71f",
+			"receipt": "c89cee263ac2",
+			"ur_sha256": "f426744c3577e192c66c94f3dcad22918fd7ebf38361cc0a83ff1f6ca201a643",
+			"en_sha256": "4d07ed6de9382fdf1310fd70bf48be2602952538c1ddf43bda8972834760be04",
+			"context_sha256": "f300190022daa1e49a200072b29501cfc6a5be7c542a57ef741873c14bfa6164"
+		},
+		"key_counts": {
+			"base": 115,
+			"wave_a_head": 133,
+			"origin_main_after_wave_b": 124,
+			"union": 142
+		},
+		"wave_a_keys": [
+			"ui.chat.checkpoint.generating_name",
+			"ui.chat.checkpoint.jump_agent",
+			"ui.chat.checkpoint.jump_agent_unnamed",
+			"ui.chat.checkpoint.jump_user",
+			"ui.chat.checkpoint.jump_user_no_clock",
+			"ui.chat.checkpoint.turn",
+			"ui.chat.header_identity.aria_agent_assign",
+			"ui.chat.header_identity.aria_agent_closed",
+			"ui.chat.header_identity.aria_agent_switch",
+			"ui.chat.header_identity.aria_team_assign",
+			"ui.chat.header_identity.aria_team_closed",
+			"ui.chat.header_identity.aria_team_switch",
+			"ui.chat.header_identity.assign_agent",
+			"ui.chat.header_identity.assign_team",
+			"ui.chat.header_identity.no_agent",
+			"ui.chat.header_identity.no_team",
+			"ui.chat.region.composer",
+			"ui.chat.region.conversation"
+		],
+		"wave_b_keys": [
+			"ui.chat.session_status.context_heading",
+			"ui.chat.session_status.context_nothing_measured_tooltip",
+			"ui.chat.session_status.conversation_starting",
+			"ui.chat.session_status.model_none_resolved_tooltip",
+			"ui.chat.session_status.not_signed_in",
+			"ui.chat.session_status.not_signed_in_description",
+			"ui.chat.session_status.nothing_measured_yet",
+			"ui.chat.session_status.temporarily_unavailable",
+			"ui.chat.session_status.temporarily_unavailable_description"
+		],
+		"shared_key_names": [],
+		"proof": "Parsed-JSON comparison over five snapshots (git show into a throw-away dir, never the shared checkout): 0 value mismatches in en and ur for all 142 keys; 0 raw-line mismatches after allowing only the JSON member separator (the last member of a file has no trailing comma), so every audited key's stored text is byte-identical to the file the earlier receipt bound. Key order in the union is exactly origin/main's 124 keys followed by wave A's 18, so the merge moved no base line; en and ur key sets and order are identical to each other; the 27 wave keys share no key name. See audits/evidence/ur/ui.chat/union-ur-20261028-fc773f54ac28/audit.log section 2.",
+		"sha256_cross_check": {
+			"wave_a_receipt_ur": "f7aaa99d5737272bba0f862d657e1947c670448b6352082100aed208abf86a5d",
+			"observed_ur_at_80ee119bbd": "f7aaa99d5737272bba0f862d657e1947c670448b6352082100aed208abf86a5d",
+			"wave_b_receipt_ur": "f426744c3577e192c66c94f3dcad22918fd7ebf38361cc0a83ff1f6ca201a643",
+			"observed_ur_at_a5356ce91c": "f426744c3577e192c66c94f3dcad22918fd7ebf38361cc0a83ff1f6ca201a643",
+			"observed_ur_at_1d631be71f": "f426744c3577e192c66c94f3dcad22918fd7ebf38361cc0a83ff1f6ca201a643",
+			"observed_union_ur": "e71815d9b12e38a2b327a551bd105b58937a613963119edae0db169dad1b7ea6"
+		}
+	},
+	"gates": [
+		{
+			"gate": "node scripts/i18n/ledger-check.mjs",
+			"result": "fails exactly 7 rows / 21 findings, all */ui.chat stale-source + stale-target + receipt-vs-bytes",
+			"note": "Expected: the union bytes have no receipt yet. This audit is the missing ur row."
+		},
+		{
+			"gate": "node scripts/i18n/generate.mjs --check",
+			"result": "src/i18n/keys.gen.ts is byte-identical to a fresh generation"
+		},
+		{
+			"gate": "node scripts/i18n/context-parity.mjs",
+			"result": "ok - every English key covered apart from 131 allowed gaps in 4 namespaces"
+		},
+		{
+			"gate": "node scripts/i18n/check-coverage.mjs",
+			"result": "ok - 7 gated languages over 99 namespaces; 0 allowed keys remain"
+		},
+		{
+			"gate": "node --test scripts/i18n/locale-parity.test.mjs",
+			"result": "44/44 pass (ur included: every key, no unknown key, placeholder parity, not an English stub)"
+		},
+		{
+			"gate": "node --test scripts/i18n/ur-activation.test.mjs",
+			"result": "3/3 pass, including the rule that the bundled Urdu catalogue carries no manual bidi control or forbidden script"
+		},
+		{
+			"gate": "node scripts/i18n/check-duplicates.mjs",
+			"result": "ok - 889 files, 0 duplicate keys (the merge hazard specifically)"
+		},
+		{
+			"gate": "independent mechanical sweep (this audit: @formatjs/icu-messageformat-parser + intl-messageformat)",
+			"result": "142/142 keys parsed; 158 real renders; 0 render failures; 0 arg/type diffs; ur plural categories one/other with other present; 0 value identical to English; NFC; no bidi control, zero-width or NBSP; terminal-stop parity 0 mismatches; width hints 15<=18 and 11<=16"
+		},
+		{
+			"gate": "RTL/bidi reordering (GNU FriBidi 1.0.16 run analysis over the 158 rendered strings)",
+			"result": "0 catalogue defects; 2 argument-boundary hazards recorded as observations UUR-O1 and UUR-O2"
+		}
+	],
+	"independence": "Independent union audit for ur. This session wrote no catalogue byte, no context sidecar, no ledger row and no generated file, and could not edit the audited file: it read the committed bytes through a read-only git archive export and read the shared checkout only with git show/grep/log. It did not translate or amend anything for ur, and it is not the session that produced either wave (wave A audited by 59ea19dc68ac, wave B by c89cee263ac2, translations by the translator lane). No translation or MT service was used to compare or back-translate anything: the judgement is a native reading, and the only tooling executed is the repository's own gates, the installed intl-messageformat formatter and GNU FriBidi.",
+	"auditor_continuity": "Fresh session (fc773f54ac28), distinct from both predecessor auditors and from the translator lane. The error, approval and secret copy was re-read in a second internal pass from the text rather than from either predecessor's reasoning; that is a same-session re-read and is NOT claimed as an independent second audit. No separate second-pass auditor session was requested for this union.",
+	"predecessors": [
+		{
+			"receipt": "59ea19dc68ac",
+			"namespace": "ui.chat",
+			"status": "passed",
+			"findings": "none in ui.chat (18 keys, result clean; the earlier 1 minor and 2 nits belong to the wave-B receipt's other namespaces, not here)",
+			"use": "Supplies the wave-A audited bytes: its en/ur/context ui.chat hashes equal the files at 80ee119bbd, re-verified here."
+		},
+		{
+			"receipt": "c89cee263ac2",
+			"namespace": "ui.chat",
+			"status": "passed",
+			"findings": "none in ui.chat (9 keys, result clean; all severity counts 0)",
+			"use": "Supplies the wave-B audited bytes: its en/ur/context ui.chat hashes equal the files at a5356ce91c and at origin/main 1d631be71f, re-verified here."
+		}
+	],
+	"observations_not_findings": [
+		{
+			"id": "UUR-O1",
+			"topic": "RTL hazard: {digits} range reverses inside the Urdu sentence",
+			"detail": "ui.chat.question_dock.hint.options passes digits = 1-3 (question-dock.tsx:225-227). Rendered with real intl-messageformat and reordered by FriBidi under an RTL base direction, the line shows the range as 3-1: the hyphen is a neutral between two number runs, takes the paragraph direction, and splits the range (measured with fribidi; the shaped visual line reads ... جواب دیتا ہے 3-1 ... Enter). The catalogue text is correct and shaped like the English; the fix belongs at the call site, exactly as src/renderer/src/features/agent-hub/components/hub-skills-library.tsx:631 does it (FSI/PDI around the interpolated value, reason recorded there). Reported for the renderer lane; it does not change this catalogue verdict."
+		},
+		{
+			"id": "UUR-O2",
+			"topic": "RTL hazard: the pass-through {body} sentence keeps its final stop at the far left",
+			"detail": "ui.chat.provider_error.headline.out_of_credits ends with {body}, the provider's own English sentence (sample: Top up to continue.). Under an RTL paragraph the final full stop is a trailing neutral that takes the paragraph direction and lands at the visual left edge, detached from the sentence (measured with fribidi). Same class and same remedy as UUR-O1; the provider sentence itself is never translated, so no catalogue wording can fix it."
+		},
+		{
+			"id": "UUR-O3",
+			"topic": "ASCII ellipsis in mermaid.loading mirrors the English source",
+			"detail": "ui.chat.mermaid.loading is the only one of the file's five ellipsis values that uses three ASCII dots - and the English source uses three ASCII dots there too ('Loading diagram...'), while the other four are U+2026 in both files. The ur value is therefore a faithful copy, not a typography slip introduced by translation; if the programme wants one ellipsis convention it should change the English source, which will then move this key in every locale."
+		},
+		{
+			"id": "UUR-O4",
+			"topic": "secret, job and section vocabulary is house style, but the job row is unrecorded",
+			"detail": "راز for secret is used across 4 ur files (راز کا خانہ, راز کی درخواست), so secret_answer_label (راز کا جواب) and secret_value_label (راز کی قدر) are consistent rather than novel. جابز for jobs appears in 3 ur files; the core glossary's ur cell is '-' and glossary footnote 6 says the wave that translates it records the endorsed rendering in the locale guide, while style-guides/ur.md records no job call. That is a documentation gap for the glossary/style-guide owners, not a defect in this catalogue. حصہ for a settings section matches the corpus (سیکشن appears in no ur file)."
+		},
+		{
+			"id": "UUR-O5",
+			"topic": "the kept-English literals are the words the UI actually uses",
+			"detail": "yes/no/1/2 stay Latin because a typed approval answer resolves through the shipped English word lists; Approve/Deny stay Latin because they are APPROVAL_OPTIONS' own labels (src/renderer/src/features/chat/approval-words.ts:49-50), printed on the buttons the hint names; Enter/Esc/Escape/Up/Down are physical keys. فائل کا راستہ نقل کریں, quoted inside highlights.file_resolution_failed, is byte-identical to the real control label ui.common.file_actions.copy_file_path in ur, so the instruction names a control the reader can find."
+		},
+		{
+			"id": "UUR-O6",
+			"topic": "no English fallback and no exemption needed",
+			"detail": "No value in ur/ui.chat.json is identical to its English source (0 of 142). چیٹ (Chat tab) and خام (Raw tab) are Urdu-script renderings, so unlike es this file needs no locale-parity identical-value exemption."
+		}
+	],
+	"limitations": [
+		"Catalogue-level audit: proves strings, ICU structure, rendering and bidi reordering; it does not render the Electron UI and claims no screenshot (design/QA lanes own visual proof).",
+		"Base and wave-B keys are carried by the delta proof rather than re-derived from a second source; every whole-file mechanical and narrative check was nevertheless re-run over all 142 keys.",
+		"The audit reads catalogue files, the en context sidecar and the call sites it cites; no network and no MT."
+	],
+	"references": {
+		"glossary": {
+			"repo": "local-operator (core)",
+			"path": "i18n/glossary.md",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide": {
+			"repo": "local-operator (core)",
+			"path": "i18n/style-guides/ur.md",
+			"sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+		},
+		"contract": {
+			"repo": "local-operator-ui",
+			"path": "docs/I18N.md",
+			"sha256": "9a4bde8d1c161286160be4a4ae1c7655615dbf39047052550b725a3da2eb00e2"
+		},
+		"evidence_root": {
+			"repo": "local-operator-ui",
+			"path": "i18n/audits/evidence/ur/ui.chat/union-ur-20261028-fc773f54ac28/"
+		}
+	},
+	"inputs": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.chat.json",
+			"sha256": "d3bc8ec097540b123500005e941093dbc73eaaa46fa1152643a04d51b6f259e4"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.chat.context.json",
+			"sha256": "994de1d3c61cdc19ba61bb8b0995e4e96e17e80c531c9b3dafb4572d3c8bca3e"
+		},
+		"ur": {
+			"path": "src/i18n/catalogues/ur/ui.chat.json",
+			"sha256": "e71815d9b12e38a2b327a551bd105b58937a613963119edae0db169dad1b7ea6"
+		}
+	}
+}

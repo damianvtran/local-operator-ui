@@ -1,0 +1,53 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "ef041c786677",
+  "status": "passed",
+  "namespace": "ui.chat.canonical",
+  "locale": "ru",
+  "date": "2026-11-13",
+  "head": "759530dba089052f53c4c28da12c9c351cf6c1b4",
+  "parents": {
+    "pr": "71bf9ae3e3375bff3e1ce149fe193377c87d984b",
+    "main": "0de7a69e23a493ecacfc15f1346a8dd57a7efc9d"
+  },
+  "sha256": {
+    "ru": "0348554f4683e8b42f3c80c722be8bde2c931f6255be3037b7ef9c0304f9e1b6",
+    "en": "0eb58c851335bcb90a14631b24b0ba330b5d0c80af80e9aa82a0970155dc7d45",
+    "en_context": "97f9e0881655e98fa1df8303feda347ced36377e1b25c9375680a5cedf5ec677",
+    "style_guide_ru": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5",
+    "glossary": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+  },
+  "keys_read": 16,
+  "key_sets": {
+    "A_1874": 4,
+    "B_1884": 12,
+    "total": 16,
+    "union_landed_keys": 483,
+    "carried_byte_identical": 467,
+    "provenance_violations": 0
+  },
+  "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 3
+  },
+  "findings": [
+    {
+      "severity": "NIT",
+      "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+      "note": "Current 'Лимит аудио' names the object (an audio quota) where the other five class labels state the failed event; the locale's settled 'rate limit' is 'лимит запросов'. Proposed 'Лимит аудио превышен' (21 chars, 3 words). Non-blocking: the label always sits above 'Генерация аудио сейчас перегружена...', which disambiguates it."
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.chat.canonical.temporary_deleted.back",
+      "note": "Two renderings of 'Back to X' now ship in ru: 'Назад к ...' (ui.browser.extensions.action_back, ui.agents.pages.back_to_list) and 'Вернуться к ...' here. No change recommended: the style guide's infinitive action-label rule favours the landed form and it harmonises with the adjacent 'Начать новый чат' in the same slot."
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.chat.canonical.image_gen.error_class.gate_failed",
+      "note": "One ru word carries two English concepts in this namespace: 'Проверка' = 'gate' here and 'Проверка' = 'checking' in image_gen.cancel.checking ('Проверка расчёта'). The rendering itself is accurate for a policy gate; no change proposed, recorded so a future gate surface does not inherit an ambiguous term."
+    }
+  ]
+}

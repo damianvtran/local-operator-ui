@@ -1,0 +1,5 @@
+{
+	"ui.common.editing.conflict": "此内容在你编辑期间已被更改",
+	"ui.common.editing.keep_mine": "保留我的修改",
+	"ui.common.editing.use_theirs": "使用对方的修改"
+}

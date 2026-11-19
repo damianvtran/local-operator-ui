@@ -1,0 +1,297 @@
+ru delta audit — PR damianvtran/local-operator-ui #1842 @ e5fb4310dab638f9cf428779d62539ec039a8990
+Auditor: i18n-auditor, instance bcfbdd468d00 (session bcfbdd468d00)
+Served model: deepseek/deepseek-flash (session header). No fallback used.
+Date: 2026-11-10
+Locale: ru. Namespaces: ui.chat, ui.chat.composer_media, ui.common.actions.
+Fully audited: 4 keys. Consistency-only: 267 keys (not certified).
+Read-only: no repository file written, no build, no install, no server started.
+No translation/MT service was consulted; every judgement below is my own reading
+of Russian against the shown English, the context sidecars and the binding guide.
+
+This file is an ACTUAL execution log: every command listed was run in this
+session and its real output is quoted. It is not audit notes dressed as
+execution, and it does not claim any command I did not run.
+
+---------------------------------------------------------------------------
+0. CONSTRAINTS AND WHAT I DELIBERATELY DID NOT RUN
+---------------------------------------------------------------------------
+Not run, and not claimed:
+  - node scripts/i18n/check-strings.mjs — it imports writeFileSync and has a
+    baseline-save path (scripts/i18n/check-strings.mjs:936, :1497); the worktree
+    is read-only for this audit, so I did not take the risk of a write.
+  - node scripts/i18n/ledger-assemble.mjs — it WRITES i18n/ledger.json and
+    i18n/receipts/. I only read its source to learn the row/receipt contract.
+  - Any test suite, any build, any ICU/CLDR runtime formatter, any browser or
+    accessibility-tree capture, any screenshot. All four values are accessible
+    names/tooltips or a synthetic filename; no rendered-frame claim is made.
+
+---------------------------------------------------------------------------
+1. HEAD, WORKTREE, INPUT HASHES
+---------------------------------------------------------------------------
+cd ~/local-operator-ui/.worktrees/i18n-s8
+git rev-parse HEAD
+  -> e5fb4310dab638f9cf428779d62539ec039a8990
+git status --porcelain | wc -l
+  -> 0   (empty; verified clean again after every node command below)
+
+shasum -a 256 src/i18n/catalogues/{en,ru}/{ns}.json and en/{ns}.context.json
+for the three namespaces, then compared in Python against
+~/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/expected-hashes.json:
+
+  en/ui.chat                    ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15  MATCH
+  ru/ui.chat                    52fb9cf75ad675dd672935a02c9c5e820938271af6a1dbae44ee7244055d2a2e  MATCH
+  context/ui.chat               84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf  MATCH
+  en/ui.chat.composer_media     79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae  MATCH
+  ru/ui.chat.composer_media     ea15ba6e13dd7b263ce92af68a80dfe8169857677df770d3d1abc3e9ef125d55  MATCH
+  context/ui.chat.composer_media a0fbc1552ef6f27999f3cff365750025627a284faa106d767e22a24d131ae77b  MATCH
+  en/ui.common.actions          0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b  MATCH
+  ru/ui.common.actions          d76c6dc4da5d49007f52d9f69c6e424b81c4d2a180cdd250973f01c2354d4d98  MATCH
+  context/ui.common.actions     24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d  MATCH
+  ALL MATCH: True   (0 hash mismatches -> no BLOCKER on hash binding)
+
+Policy inputs, hashed by me:
+  shasum -a 256 ~/local-operator/i18n/style-guides/ru.md
+    -> f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5
+  shasum -a 256 ~/local-operator/i18n/glossary.md
+    -> 0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8
+  shasum -a 256 ~/local-operator-ui/.worktrees/_s12-audits/e5fb4310.../glossary.md
+    -> 0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8
+  cmp -s <manager byte-copy> ~/local-operator/i18n/glossary.md
+    -> BYTE-IDENTICAL  (glossary conformance was checked against the manager
+       copy named in the manager's note; 173 lines, identical to the repo file)
+
+---------------------------------------------------------------------------
+2. THE DELTA (what is actually under audit)
+---------------------------------------------------------------------------
+git diff origin/main HEAD -- src/i18n/catalogues/ru/ui.chat.json \
+  src/i18n/catalogues/ru/ui.chat.composer_media.json \
+  src/i18n/catalogues/ru/ui.common.actions.json \
+  src/i18n/catalogues/en/ui.chat.composer_media.context.json
+
+  + "ui.chat.image_actions.actions": "Действия с изображением",
+  + "ui.chat.audio.position_label": "Позиция воспроизведения: {label}"
+  + "ui.chat.composer_media.pasted_image": "Вставленное изображение"
+  + "ui.common.actions.actions_for_name": "Действия для «{name}»"
+  ...plus the broadened English note of ui.chat.composer_media.pasted_file.
+  Four added lines, zero removed, zero changed. No legacy ru value moved.
+
+git diff origin/main HEAD --name-only -- src/i18n/catalogues/ru/
+  -> src/i18n/catalogues/ru/ui.chat.composer_media.json
+     src/i18n/catalogues/ru/ui.chat.json
+     src/i18n/catalogues/ru/ui.common.actions.json
+  (three files, all three namespaces in scope; no other ru file touched)
+
+---------------------------------------------------------------------------
+3. MECHANICAL CHECKS I RAN (real output)
+---------------------------------------------------------------------------
+a) Python json.load with object_pairs_hook rejecting duplicate keys, on all six
+   catalogue files: parsed, no duplicate key. Valid strict JSON.
+b) Key-set parity: en==ru for ui.chat 208/208, ui.chat.composer_media 9/9,
+   ui.common.actions 54/54  -> no key added or dropped.
+c) Placeholder inventory, source vs target:
+     ui.chat.audio.position_label   en [('label','')]  ru [('label','')]  identical
+     ui.common.actions.actions_for_name en [('name','')] ru [('name','')] identical
+     ui.chat.image_actions.actions  none / none
+     ui.chat.composer_media.pasted_image none / none
+   Braces balanced; no plural/select anywhere in the four values; no numeric
+   skeleton; no %s token; no <tag>; no backtick.
+d) Invisible/format characters: scanned each value for U+00A0, U+202F, U+2009,
+   U+200A, U+200B/U+200C/U+200D, U+2066-U+2069, U+202A-U+202E, U+FEFF.
+   -> none in all four values.  unicodedata.is_normalized('NFC', v) -> True ×4.
+e) Single-line values, sentence case, no trailing period, no "!" — all four.
+f) node scripts/i18n/check-duplicates.mjs
+   -> "check-duplicates: ok — 1400 file(s) scanned, 0 duplicate key(s)"  exit 0
+g) node scripts/i18n/context-parity.mjs
+   -> "context-parity: ok — every English key is covered, apart from 131 allowed
+       gap(s) in 4 namespace(s) (shrink-only; ...)"  exit 0
+   i.e. the three sidecars agree with their catalogues; the four new keys all
+   carry a context block.
+h) node scripts/i18n/generate.mjs --check
+   -> "src/i18n/keys.gen.ts is byte-identical to a fresh generation."  exit 0
+i) node scripts/i18n/ledger-check.mjs   (read-only; verified no write)
+   -> "ledger-check: FAILED — 64 finding(s) across 1085 ledger entr(ies)"
+      The nine ru lines at this head:
+      ru/ui.chat: stale source_sha256 (ledger 270fc752791e…, file ee4e2a9eeb84…)
+      ru/ui.chat: stale target_sha256 (ledger 4ea150feba10…, file 52fb9cf75ad6…)
+      ru/ui.chat: auditor 1: receipt does not name the English source bytes on disk
+      ru/ui.chat.composer_media: stale source_sha256 (c1ddfc211ada… vs 79e7d18ff960…)
+      ru/ui.chat.composer_media: stale target_sha256 (3ea45f5e8abd… vs ea15ba6e13dd…)
+      ru/ui.chat.composer_media: auditor 1: receipt does not name the English bytes
+      ru/ui.common.actions: stale source_sha256 (3f9e9a4b0231… vs 0218bb5b748c…)
+      ru/ui.common.actions: stale target_sha256 (bc4285607954… vs d76c6dc4da5d…)
+      ru/ui.common.actions: auditor 1: receipt does not name the English bytes
+   This is the expected pre-landing state for every locale in this PR (64
+   findings span all seven), NOT a copy defect: the ru rows must be re-bound to
+   the new source/target bytes with this receipt. Exact commands in §7.
+   git status --porcelain after it: 0 lines changed.
+
+---------------------------------------------------------------------------
+4. TERMINOLOGY CORPUS I READ (grep, not memory)
+---------------------------------------------------------------------------
+grep -n "позиц|Позиц|воспроизвед|Действия" src/i18n/catalogues/ru/*.json
+  ui.chat.attachments.playback_position      "Позиция воспроизведения"   (en "Playback position", role "slider name", note "The audio attachment's seek bar.")
+  ui.canvas.files.imageActions               "Действия с изображением"
+  ui.canvas.files.fileActions                "Действия с файлом"
+  ui.common.actions.file_actions_menu.file_actions "Действия с файлом"
+  ui.chat.canonical.link_toolkit.actions_for "Действия для {name}"
+  ui.shell.sidebar_navigation.row_actions    "Действия для {name}"
+  ui.projects.project_board.actions_for_displayname "Действия для {displayName}"
+  ui.settings.appearance.editor.more         "Действия для {name}"
+  ui.browser.browser_tab_strip.actions_for   "Действия для «{title}»"
+  ui.browser.browser_tab_strip.tab_actions   "Действия с вкладкой {title}"
+  ui.chat.tags.header_actions                "Действия с тегом: {name}"
+  ui.common.actions.credential_updated       "Учётные данные «{key}» успешно обновлены"
+For "Actions for {name}" specifically:
+  ui.settings.integrations.integration_row.more_actions_for_name (from grep of
+  the file, all locales) -> ru "Другие действия для {name}"  (no quotes)
+  ui.library.menu.asset_actions_label        "Действия с файлом {name}"  (file name, no quotes)
+  ui.projects.project_updates.file_actions_for_name "Действия с файлом {name}"  (file name, no quotes; its three aria-label sites are project-update-assets.tsx:302,361,429)
+
+Style guide lines I am bound by (i18n/style-guides/ru.md):
+  "Address: вы — lowercase..." / "Action labels: infinitive"
+  "Quotes: «ёлочки» in prose, „лапки“ nested inside them."
+  "Em dash " — " with spaces; ellipsis …; no typographic spacing before : ; ! ?"
+  "Digits: Latin (v1). Decimal comma."
+
+---------------------------------------------------------------------------
+5. CODE I READ (for role and inserted-text behaviour; read-only)
+---------------------------------------------------------------------------
+src/renderer/src/features/chat/canonical/sound-player.tsx
+  :455  const sliderLabel = t("ui.chat.audio.position_label", { label });
+  :504-509  <div role="slider" ... aria-label={sliderLabel} aria-valuetext=...>
+  -> the key is an aria-label on the seek slider; `label` is the clip display label.
+src/renderer/src/features/chat/canonical/supplement-file-actions.tsx
+  :180-183  const ariaLabel = label ? t("ui.common.actions.actions_for_name",{name:label})
+                                    : t("ui.common.actions.file_actions_menu.file_actions");
+  -> truthiness test: an empty label falls back, never renders the frame bare.
+src/renderer/src/features/chat/components/image-actions-menu.tsx
+  :204  tooltip = t("ui.chat.image_actions.actions")
+  :363-366  ariaLabel ?? (label != null ? t(actions_for_name,{name:label}) : t(image_actions.actions))
+  -> NOTE the `!= null` test here (not truthiness): an empty-string label reaches
+     actions_for_name with {name} = "". English renders "Actions for " ; ru renders
+     "Действия для «»". Source-side, identical in English, pre-existing.
+src/renderer/src/features/chat/components/markdown-image.tsx:90
+  label={alt}   -> markdown ![](url) can supply alt = ""
+src/renderer/src/features/chat/components/canvas/image-preview.tsx:108,211
+  label={document.title} -> non-empty in practice
+src/renderer/src/features/chat/utils/get-file-name.ts
+  -> data:image/* with no `name=` or a decodeURIComponent throw -> pasted_image;
+     any other data:* -> pasted_file; everything else -> path basename verbatim.
+src/renderer/src/features/chat/utils/attachment-encode.ts
+  -> const name = getFileName(attachment) becomes AttachmentUploadSource.name and
+     stored.name; comments state valid decoded names stay verbatim and the
+     original dataUrl (bytes/MIME) is passed untouched.
+
+---------------------------------------------------------------------------
+6. THE BROADENED ENGLISH CONTEXT SENTENCE (in scope)
+---------------------------------------------------------------------------
+diff of src/i18n/catalogues/en/ui.chat.composer_media.context.json, key pasted_file:
+  before: "Fallback when the pasted data URI has no name or MIME type. A 100px
+           tile caption may truncate; maxCells is advisory, not measured fit."
+  after:  "Fallback for non-image data URIs with no usable name, including invalid
+           percent encoding, whether or not a MIME type is present. Also used as
+           synthetic upload metadata; valid names and attachment bytes stay
+           unchanged. A 100px tile caption may truncate; maxCells is advisory, not
+           measured fit."
+Checked clause by clause against get-file-name.ts and attachment-encode.ts:
+  - "non-image data URIs" .. only `data:` paths that are not `data:image/` reach
+    pasted_file (get-file-name.ts:30-42). ✓
+  - "no usable name, including invalid percent encoding" .. both the missing
+    `name=` branch and the decodeURIComponent catch return pasted_file. ✓
+  - "whether or not a MIME type is present" .. MIME is irrelevant on this branch;
+    `data:application/pdf;base64,…` silently pasted still yields pasted_file. ✓
+    (The old "no name or MIME type" was the inaccurate half.)
+  - "Also used as synthetic upload metadata" .. getFileName() is assigned to
+    AttachmentUploadSource.name and stored.name. ✓
+  - "valid names and attachment bytes stay unchanged" .. decoded names are
+    returned verbatim, the dataUrl/original path is passed untouched, stored
+    metadata wins. ✓
+Verdict: the broadened sentence is accurate; no finding.
+
+---------------------------------------------------------------------------
+7. LEDGER: EXACT ROWS/CALLS THIS AUDIT BACKS (not run by me)
+---------------------------------------------------------------------------
+ledger-assemble.mjs copies the receipt to i18n/receipts/<instance>.json and
+derives source/target hashes and counts; per-namespace result comes from the
+receipt's namespace block (scripts/i18n/ledger-rules.mjs receiptScope), so:
+  ru/ui.chat            -> --result clean
+  ru/ui.chat.composer_media -> --result clean
+  ru/ui.common.actions  -> --result clean-with-findings   (1 MINOR, ru-1)
+Every call: --auditor-instance bcfbdd468d00 --auditor-model deepseek/deepseek-flash
+--translator fields not required (all three rows exist; the ru rows are stale, so
+the prior audits move to `superseded` automatically).
+Proposed note (<=280 chars) per row:
+  "passed; clean-with-findings (1 minor, ru-1). Evidence:
+   i18n/audits/evidence/ru/<ns>/bcfbdd468d00/record.json"
+I did NOT run ledger-assemble: it writes i18n/ledger.json and i18n/receipts/.
+
+---------------------------------------------------------------------------
+7b. ASSEMBLER PROBE — the receipt tested against the REAL ledger tool
+---------------------------------------------------------------------------
+I did not run ledger-assemble against the repository (it writes
+i18n/ledger.json and i18n/receipts/). Instead I built a scratch tree holding
+byte copies of the six catalogue files and ran the real assembler with --repo
+pointed at it, so the tool's own validation ran on my receipt with no repo
+write:
+
+  SC="$LOCAL_OPERATOR_SCRATCHPAD"; R="$SC/assemble-probe/repo"
+  mkdir -p "$R/src/i18n/catalogues/en" "$R/src/i18n/catalogues/ru"
+  cp <worktree>/src/i18n/catalogues/{en,ru}/<ns>.json into the same paths
+  node <worktree>/scripts/i18n/ledger-assemble.mjs --repo "$R" --locale ru \
+    --file src/i18n/catalogues/ru/<ns>.json \
+    --auditor-instance bcfbdd468d00 --auditor-model deepseek/deepseek-flash \
+    --result <clean|clean|clean-with-findings> --date 2026-11-10 \
+    --translator-agent i18n-translator \
+    --translator-model anthropic/claude-sonnet-5-5 \
+    --note "passed; evidence i18n/audits/evidence/ru/<ns>/bcfbdd468d00/record.json" \
+    --receipt "$SC/ru-ds-bcfbdd468d00.json"
+
+Actual output, all three accepted:
+  ledger-assemble: ru/ui.chat -> status audited | clean, 0 blocker, 0 major, 0 minor, 0 nit
+  ledger-assemble: ru/ui.chat.composer_media -> status audited | clean, 0 blocker, 0 major, 0 minor, 0 nit
+  ledger-assemble: ru/ui.common.actions -> status audited | clean-with-findings, 0 blocker, 0 major, 1 minor, 0 nit
+
+The scratch ledger rows it derived carried exactly the hashes this audit names:
+  ru ui.chat               ee4e2a9eeb84… 52fb9cf75ad6…  clean
+  ru ui.chat.composer_media 79e7d18ff960… ea15ba6e13dd…  clean
+  ru ui.common.actions     0218bb5b748c… d76c6dc4da5d…  clean-with-findings (1 minor)
+Read-back of the real worktree after the probe: git status --porcelain -> 0.
+What this proves: the receipt satisfies the contract the gate enforces, and the
+per-namespace results I declare are the ones the tool derives. What it does not
+prove: that the real ledger landed (it did not), or who authored the receipt.
+
+---------------------------------------------------------------------------
+8. SECOND INDEPENDENT READING PASS (same auditor, re-derived)
+---------------------------------------------------------------------------
+The manager asks for a second pass on high-visibility groups. These three
+namespaces are chat chrome / generic actions, not the named onboarding-errors-
+settings set, but accessible names are read by every user who uses a screen
+reader, so I re-derived all four values from scratch after finishing §3-§7:
+re-read the English, the four context notes and the ru guide without reusing the
+first pass's reasoning, then tested each against "does this survive an arbitrary
+inserted name/title?".
+  pasted_image  "Вставленное изображение" — nominative synthetic filename,
+                neuter agreement (изображение), exact parallel to the accepted
+                pasted_file "Вставленный файл". Holds. No finding.
+  image_actions.actions "Действия с изображением" — byte-identical to the
+                existing ru ui.canvas.files.imageActions; instrumental after с
+                is correct. Holds. No finding.
+  actions_for_name "Действия для «{name}»" — grammatical for any inserted string
+                (guillemets make the inserted token undeclined, which is safe);
+                meaning preserved; not imperative. Still the one divergence:
+                quotes vs the six unquoted siblings. Confirmed as MINOR only.
+  audio.position_label "Позиция воспроизведения: {label}" — colon-then-label
+                avoids needing a genitive of arbitrary user text, and the term
+                is the corpus's own "Позиция воспроизведения". Holds. No finding.
+Second pass found no additional issue and did not change any severity.
+It is a second pass by the SAME auditor, not a second independent auditor.
+
+---------------------------------------------------------------------------
+9. VERDICT
+---------------------------------------------------------------------------
+ui.chat                 passed / clean              (2 keys audited)
+ui.chat.composer_media  passed / clean              (1 key audited)
+ui.common.actions       passed / clean-with-findings (1 key audited, 1 MINOR)
+Overall: status passed, result clean-with-findings, 0 blocker, 0 major, 1 minor,
+0 nit. Hashes: all nine exact. Actual served model: deepseek/deepseek-flash.
+Deliverables: ru-ds-bcfbdd468d00.json, ru-ds-bcfbdd468d00.record.json, this log.

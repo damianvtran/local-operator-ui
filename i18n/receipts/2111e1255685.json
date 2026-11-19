@@ -1,0 +1,350 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "batch": "chat-surfaces",
+  "round": 2,
+  "pr": null,
+  "head": "e1ca500e5abcce535f8eabeb899197014dd7b787",
+  "base": "20225f33d00eb4a06e349322dc92e826b29b2e8e",
+  "tree": "uncommitted working tree of .worktrees/i18n-chat-surfaces (branch i18n-chat-surfaces); bound by sha256, not by commit",
+  "locale": "ur",
+  "auditor": "i18n-auditor",
+  "agent": "i18n-auditor",
+  "model": "radient/auto",
+  "session": "2111e1255685",
+  "instance": "2111e1255685",
+  "date": "2026-10-26",
+  "audit_date": "2026-10-26",
+  "key_count": 283,
+  "independence": "Independent round-2 audit: I did not translate these files, did not see the translator's run and did not read any translator report. I read the current bytes, the English source, each namespace's en context sidecar, the join and consumption sites under src/renderer, and the core glossary and ur style guide. I edited no catalogue. The round-1 receipt was opened only after forming my own reading of the bytes, and only to confirm each finding had been resolved or reasonably declined.",
+  "actual_model_source": "Requested and routed model radient/auto (session selector radient/auto, boot radient/auto, effort auto, recorded in this session's transcript). No provider error, quota descent or fallback event occurred during this audit; if the provider silently served another model, this session could not observe it, so no fallback is claimed either way.",
+  "source_dir": "src/i18n/catalogues/en",
+  "target_dir": "src/i18n/catalogues/ur",
+  "glossary_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide_sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c",
+  "input_hashes": [
+    {
+      "kind": "en",
+      "namespace": "ui.chat",
+      "path": "src/i18n/catalogues/en/ui.chat.json",
+      "sha256": "6b6e21835462fccbbdbea4cfcca132344595bf3f14804018de64dbe8d9fbacf0"
+    },
+    {
+      "kind": "context",
+      "namespace": "ui.chat",
+      "path": "src/i18n/catalogues/en/ui.chat.context.json",
+      "sha256": "da5c303c014c469c6096e6ef2e43b993f3ec2b9430ed6ec97498fc457f494372"
+    },
+    {
+      "kind": "target",
+      "namespace": "ui.chat",
+      "path": "src/i18n/catalogues/ur/ui.chat.json",
+      "sha256": "4739504b6a02d0d750f6b3f7198567b477aba36776f461b91c0e21a3d512d394"
+    },
+    {
+      "kind": "en",
+      "namespace": "ui.chat.canonical",
+      "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+      "sha256": "5a6a30405053c7319b902315bb0a1b38ce1cbd6443ad2d988132d4cbfcb8f2ce"
+    },
+    {
+      "kind": "context",
+      "namespace": "ui.chat.canonical",
+      "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+      "sha256": "f075f08f152c9484f7dd9790a3b60a3c6c82086d3d9361717afa2188f0773a04"
+    },
+    {
+      "kind": "target",
+      "namespace": "ui.chat.canonical",
+      "path": "src/i18n/catalogues/ur/ui.chat.canonical.json",
+      "sha256": "fc2952c842d7db3241a61833a0d966bbd8cbdf48f9c067d0c5dd6f813813b15e"
+    },
+    {
+      "kind": "en",
+      "namespace": "ui.chat.run_details",
+      "path": "src/i18n/catalogues/en/ui.chat.run_details.json",
+      "sha256": "288ba883ed0c25851fa2025ea9a23ff98bcb7f59724ab5bbb2ed5b212ed85b51"
+    },
+    {
+      "kind": "context",
+      "namespace": "ui.chat.run_details",
+      "path": "src/i18n/catalogues/en/ui.chat.run_details.context.json",
+      "sha256": "0f03657304a71236fe9d2bb350a1688dcfd2499624b5d908d80bc2775681a919"
+    },
+    {
+      "kind": "target",
+      "namespace": "ui.chat.run_details",
+      "path": "src/i18n/catalogues/ur/ui.chat.run_details.json",
+      "sha256": "68d3762ebcb5e775f40a917cb5794fd4ec06106fbdb000a52536a51f73872f0e"
+    },
+    {
+      "kind": "en",
+      "namespace": "ui.chat.asks",
+      "path": "src/i18n/catalogues/en/ui.chat.asks.json",
+      "sha256": "6c42d235f1e326fc0cc0fea91668307d4e551585eef33b5fe1c2173efc2bc9fd"
+    },
+    {
+      "kind": "context",
+      "namespace": "ui.chat.asks",
+      "path": "src/i18n/catalogues/en/ui.chat.asks.context.json",
+      "sha256": "9e137d7e8f6227827196c244a9550520cd5ee412ffeaef615a7e33bf0193903c"
+    },
+    {
+      "kind": "target",
+      "namespace": "ui.chat.asks",
+      "path": "src/i18n/catalogues/ur/ui.chat.asks.json",
+      "sha256": "10d9e1e9b04d1d81014c5b339368309fdcb4cf0b453bcd9a60496761bdf1103b"
+    }
+  ],
+  "route_note": "Target hashes were recomputed from disk before reading and matched the assigned bindings for all four namespaces (ui.chat 4739504b…, canonical fc2952c8…, run_details 68d3762e…, asks 10d9e1e9…), and the four English hashes matched the brief, including run_details 288ba883… that carries todos.hidden_summary.",
+  "round1_receipt": {
+    "path": "i18n/receipts/ur-chat-surfaces-audit-360d964a9f0b.json",
+    "sha256": "1ea7668059002ce7327de833a15bcff36d45e883b1ae0c228638e16e6c06eb5f",
+    "instance": "360d964a9f0b"
+  },
+  "round1_bytes_recoverability": "The round-1 target bytes are not recoverable from git: the receipt recorded ui.chat 93631127…, canonical 0bf7c913…, run_details 995abc40…, asks 10d9e1e9…, while the recorded round-1 head 732c568cdd carries c6d08385…, 82def537…, 4c39c815…, 47d63894…, and ledger-check still binds those same 732c568 hashes. Only the asks file is byte-identical to round 1 (10d9e1e9… on both sides), so round-1 resolution was verified by re-reading each named key on the current bytes rather than by diffing a stored copy. The hashes quoted here are the ones printed by the commands in execution_log and by ledger-check, not estimates.",
+  "method": "All 283 keys of the four namespaces read in full against the English source and its context sidecar: 115 ui.chat, 60 ui.chat.canonical, 82 ui.chat.run_details (including the new todos.hidden_summary) and 26 ui.chat.asks. Mechanical pass by script: key parity and order per namespace (0 missing, 0 extra, order identical); @formatjs/icu-messageformat-parser AST fingerprint of every message with literals collapsed, so argument names/types, select and plural option sets, # counts and tag names were compared (0 structural differences across 283 keys); ur CLDR categories taken from Intl.PluralRules('ur') rather than assumed (one, other; 0→other, 1→one, 2,5,1000→other) and every plural site checked against them; rendered every plural message through IntlMessageFormat 12.1.3 with the ur locale at 0/1/2/5/1000. Byte pass: no RLM/LRM/FSI/PDI or U+202A-E/U+2066-9 characters, all values NFC, no edge whitespace except the deliberate trailing space in question_dock.hint.prefix, no Arabic-form letters (U+064A/0643/0647/0629/0649), no ASCII terminal punctuation after Urdu prose, no arrow glyphs, ellipsis form matches the source, kept-Latin tokens (AI, API, MCP, SVG, Mermaid, Canvas, Finder, Local Operator, Radient, Enter, Esc, yes/no/1/2, endpoint) untouched. Adjacency: read the join sites that concatenate fragments (error-block.tsx …before/link/…after with explicit spaces, question_dock prefix + body, composer-status-row jobs_action + code-owned jobClause) and the approval words module (approval-words.ts prints Approve/Deny and resolves yes/no/1/2), so the Latin approval words in ur are correct rather than untranslated. Fit: the two maxCells hints in the sidecars (session_status.choose_model 18, last_read 16) hold at 15 and 12 cells; no rendered frame or pixel measurement was taken in this run.",
+  "execution_log": {
+    "kind": "actual commands run in this audit, with their observed output",
+    "entries": [
+      {
+        "command": "shasum -a 256 src/i18n/catalogues/ur/ui.chat{,.canonical,.run_details,.asks}.json src/i18n/catalogues/en/ui.chat{,.canonical,.run_details,.asks}.json",
+        "observed": "target and English hashes matched the assigned bindings; see route_note",
+        "exit": 0
+      },
+      {
+        "command": "node scripts/i18n/generate.mjs --check",
+        "observed": "src/i18n/keys.gen.ts is byte-identical to a fresh generation.",
+        "exit": 0
+      },
+      {
+        "command": "node scripts/i18n/check-duplicates.mjs",
+        "observed": "check-duplicates: ok — 763 file(s) scanned, 0 duplicate key(s)",
+        "exit": 0
+      },
+      {
+        "command": "node scripts/i18n/check-strings.mjs",
+        "observed": "check-strings.mjs: ok — 1368 file(s) scanned, 262 literal(s) at or below the baseline",
+        "exit": 0
+      },
+      {
+        "command": "node scripts/i18n/context-parity.mjs",
+        "observed": "context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only)",
+        "exit": 0
+      },
+      {
+        "command": "node scripts/i18n/check-coverage.mjs",
+        "observed": "coverage-check: ok — 7 gated language(s) over 85 namespace(s); 0 allowed key(s) remain across 0 pair(s)",
+        "exit": 0
+      },
+      {
+        "command": "node scripts/i18n/ledger-check.mjs",
+        "observed": "FAILED — 91 finding(s) across 595 ledger entries; 13 per locale for each of es/fr/hi/ru/ur/vi/zh-CN, all of them stale source_sha256 (ledger 346506195ffc…, file 6b6e21835462…) plus stale target hashes. Wave-wide and pre-existing: the ledger still binds the 732c568 committed bytes while every locale's working tree has moved. My receipt is not registered in the ledger (this audit was told to make no ledger edit), so it neither causes nor clears these rows.",
+        "exit": 1
+      },
+      {
+        "command": "custom node script: ICU AST fingerprint comparison over all 283 en/ur pairs",
+        "observed": "ui.chat 115 keys 0 diffs, ui.chat.canonical 60 0 diffs, ui.chat.run_details 82 0 diffs, ui.chat.asks 26 0 diffs",
+        "exit": 0
+      },
+      {
+        "command": "custom node script: Intl.PluralRules('ur') categories and IntlMessageFormat render at 0/1/2/5/1000",
+        "observed": "categories [one, other]; todos.hidden_summary → 0 پوشیدہ ہیں / 1 پوشیدہ ہے / 2 پوشیدہ ہیں / 5 پوشیدہ ہیں / 1000 پوشیدہ ہیں (group-off preserved); loop_progress_of_turns completed=1,total=5 → «5 میں سے 1 باریاں»; update_all_label count=1,agents → «ہب سے 1 ایجنٹوں کی اپ ڈیٹس سب اپ ڈیٹ کریں»",
+        "exit": 0
+      }
+    ]
+  },
+  "audit_notes_not_execution_log": [
+    "This audit was scoped to catalogue bytes and ran no build and no app launch, so it took no rendered frame, pixel measurement or screenshot: every fit statement here is a codepoint count against the sidecar maxCells hints and the consuming component's own layout, never observed layout.",
+    "The TUI's bidi stance is treated as the documented render-layer limitation the ur guide records, not as a copy defect. In this app the document root and Radix provider take dir=rtl from i18n/languages.json, so strings that begin with a kept-Latin name (MCP …, Radient …, Local Operator …, Mermaid …, Canvas …, Finder …, SVG …) keep the source's order and are laid out by the RTL container; the per-string FSI/PDI isolation the guide describes applies to the terminal path, where 'legible-but-unordered' strings are a known degraded stance.",
+    "No manual bidi control was added by any translator: the byte scan found none in any of the four files."
+  ],
+  "namespaces": {
+    "ui.chat": {
+      "namespace": "ui.chat",
+      "status": "passed",
+      "keys_audited": 115,
+      "sha256": {
+        "en": "6b6e21835462fccbbdbea4cfcca132344595bf3f14804018de64dbe8d9fbacf0",
+        "ur": "4739504b6a02d0d750f6b3f7198567b477aba36776f461b91c0e21a3d512d394"
+      },
+      "context_sha256": "da5c303c014c469c6096e6ef2e43b993f3ec2b9430ed6ec97498fc457f494372",
+      "findings": [
+        {
+          "id": "UR2-01",
+          "severity": "minor",
+          "category": "grammar",
+          "key": "ui.chat.composer.status.loop_progress_of_turns",
+          "source": "{completed, number, ::group-off} of {total, number, ::group-off} turns",
+          "current": "{total, number, ::group-off} میں سے {completed, number, ::group-off} باریاں",
+          "rendered": "completed=1, total=5 renders «5 میں سے 1 باریاں»; completed=1, total=1 renders «1 میں سے 1 باریاں»",
+          "problem": "The message carries no plural arm, so باریاں is fixed, yet the noun follows the completed count and Urdu agreement takes the nearest numeral: at completed=1 the clause pairs a singular numeral with a plural noun («5 میں سے 1 باریاں», «1 میں سے 1 باریاں») — wrong agreement at the first turn of any loop, in a clause that is also the chip's accessible name.",
+          "suggested": "{completed, plural, one {{total, number, ::group-off} میں سے {completed, number, ::group-off} باری} other {{total, number, ::group-off} میں سے {completed, number, ::group-off} باریاں}} — needs an arm on completed in the English message; a ur-only workaround is a noun-free clause such as {total, number, ::group-off} میں سے {completed, number, ::group-off} مکمل.",
+          "in_remediation_diff": true,
+          "disposition": "reported, non-gating (a minor does not block a passed round)"
+        },
+        {
+          "id": "UR2-02",
+          "severity": "minor",
+          "category": "grammar",
+          "key": "ui.chat.hub_update.update_all_label",
+          "source": "{kind, select, agents {Update all {count, number, ::group-off} agent updates from the hub} teams {…team updates…} skills {…skill updates…} other {…updates…}}",
+          "current": "{kind, select, agents {ہب سے {count, number, ::group-off} ایجنٹوں کی اپ ڈیٹس سب اپ ڈیٹ کریں} teams {ہب سے {count, number, ::group-off} ٹیموں کی اپ ڈیٹس سب اپ ڈیٹ کریں} skills {ہب سے {count, number, ::group-off} مہارتوں کی اپ ڈیٹس سب اپ ڈیٹ کریں} other {ہب سے {count, number, ::group-off} اپ ڈیٹس سب اپ ڈیٹ کریں}}",
+          "rendered": "count=1, kind=agents renders «ہب سے 1 ایجنٹوں کی اپ ڈیٹس سب اپ ڈیٹ کریں»; kind=teams renders «… 1 ٹیموں کی …»",
+          "problem": "The English message has no plural arm and the ur uses an oblique plural after the bare count, so count=1 reads «1 ایجنٹوں کی اپ ڈیٹس» / «1 ٹیموں کی اپ ڈیٹس» — a plural noun after a singular numeral, in an accessible name, at the most common single-update state. Not introduced by this round's remediation (round 1 passed the key).",
+          "suggested": "{count} ایجنٹ اپ ڈیٹس (compound noun, agreement-free) or «…کی تمام اپ ڈیٹس اپ ڈیٹ کریں»; the durable fix is plural arms on the English message.",
+          "in_remediation_diff": false,
+          "disposition": "reported, non-gating; pre-existing, may be deferred to a later catalogue pass"
+        }
+      ],
+      "result_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 2,
+        "nit": 0
+      },
+      "round1_findings": [
+        {
+          "id": "U-01",
+          "namespace": "ui.chat",
+          "severity": "major",
+          "key": "ui.chat.composer.status.session_goal",
+          "round1_current": "سیشن کا مقصد",
+          "now": "سیشن کا ہدف",
+          "verdict": "resolved",
+          "note": "Now matches goal_label ہدف:, goal_expand اور goal_collapse; the region name and its two disclosure controls use one noun, and ہدف is a substring of the region name so label-in-name still holds."
+        },
+        {
+          "id": "U-02",
+          "namespace": "ui.chat",
+          "severity": "nit",
+          "key": "ui.chat.composer.status.loop_progress_of_turns",
+          "round1_current": "{completed, number, ::group-off} / {total, number, ::group-off} باریاں",
+          "now": "{total, number, ::group-off} میں سے {completed, number, ::group-off} باریاں",
+          "verdict": "resolved",
+          "note": "Adopted round 1's میں سے counting idiom, the same one the ask prefix uses; the slash that read as 'slash' aloud is gone and both placeholders are intact."
+        }
+      ],
+      "result": "clean-with-findings"
+    },
+    "ui.chat.canonical": {
+      "namespace": "ui.chat.canonical",
+      "status": "passed",
+      "keys_audited": 60,
+      "sha256": {
+        "en": "5a6a30405053c7319b902315bb0a1b38ce1cbd6443ad2d988132d4cbfcb8f2ce",
+        "ur": "fc2952c842d7db3241a61833a0d966bbd8cbdf48f9c067d0c5dd6f813813b15e"
+      },
+      "context_sha256": "f075f08f152c9484f7dd9790a3b60a3c6c82086d3d9361717afa2188f0773a04",
+      "findings": [],
+      "result_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "round1_findings": [
+        {
+          "id": "C-01",
+          "namespace": "ui.chat.canonical",
+          "severity": "minor",
+          "key": "ui.chat.canonical.older_history.unproven.short",
+          "round1_current": "پرانے لوڈ نہیں ہوئے / اوپر مزید تاریخ / پرانے کے لیے اوپر سکرول",
+          "now": "پچھلے لوڈ نہیں ہوئے / اوپر پچھلی تاریخ / پچھلے کے لیے اوپر سکرول",
+          "verdict": "resolved",
+          "note": "All six narrow and full older-history forms now say پچھلے/پچھلی for 'earlier'; پرانے and مزید are gone from the delta."
+        }
+      ],
+      "result": "clean"
+    },
+    "ui.chat.run_details": {
+      "namespace": "ui.chat.run_details",
+      "status": "passed",
+      "keys_audited": 82,
+      "sha256": {
+        "en": "288ba883ed0c25851fa2025ea9a23ff98bcb7f59724ab5bbb2ed5b212ed85b51",
+        "ur": "68d3762ebcb5e775f40a917cb5794fd4ec06106fbdb000a52536a51f73872f0e"
+      },
+      "context_sha256": "0f03657304a71236fe9d2bb350a1688dcfd2499624b5d908d80bc2775681a919",
+      "findings": [],
+      "result_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "round1_findings": [
+        {
+          "id": "R-01",
+          "namespace": "ui.chat.run_details",
+          "severity": "major",
+          "key": "ui.chat.run_details.jobs",
+          "round1_current": "کام",
+          "now": "جابز",
+          "verdict": "resolved",
+          "note": "جابز now also carries ui.chat.composer.status.jobs_action and matches the already-shipped ur words in ui.common.errors.jobs_list/jobs_cleanup, so the pane heading and the chip's accessible name speak one word; کام stays the to-do word (کاموں کی فہرست, کام باقی)."
+        },
+        {
+          "id": "R-02",
+          "namespace": "ui.chat.run_details",
+          "severity": "minor",
+          "key": "ui.chat.run_details.mcp_auth.checking",
+          "round1_current": "اس سرور کا سائن ان طریقہ جانچا جا رہا ہے…",
+          "now": "اس سرور کے سائن ان کا طریقہ جانچا جا رہا ہے…",
+          "verdict": "resolved",
+          "note": "The ezafe is in place and the wording matches the neighbouring possessive forms."
+        },
+        {
+          "id": "R-03",
+          "namespace": "ui.chat.run_details",
+          "severity": "minor",
+          "key": "ui.chat.run_details.reader.error_shortened",
+          "round1_current": "رن ٹائم کسی خرابی کے زیادہ سے زیادہ پہلے 2,000 حروف محفوظ کرتا ہے۔",
+          "now": "رن ٹائم کسی خرابی کے صرف پہلے 2,000 حروف تک محفوظ کرتا ہے۔",
+          "verdict": "resolved",
+          "note": "The stacked modifiers are replaced by صرف … تک, which carries the 'at most' limit where Urdu puts it; 2,000 keeps the locale's comma grouping."
+        },
+        {
+          "id": "R-04",
+          "namespace": "ui.chat.run_details",
+          "severity": "nit",
+          "key": "ui.chat.run_details.todos.hidden",
+          "round1_current": "· {count} چھپے ہوئے",
+          "now": "· {count} پوشیدہ",
+          "verdict": "resolved",
+          "note": "Took round 1's count-neutral option: پوشیدہ does not inflect, so the source's single arm is correct at every count and no arm was invented."
+        },
+        {
+          "id": "R-05",
+          "namespace": "ui.chat.run_details",
+          "severity": "nit",
+          "key": "ui.chat.run_details.reader.no_session_id",
+          "round1_current": "اس ذیلی ایجنٹ کی قطار میں کوئی سیشن آئی ڈی نہیں…",
+          "now": "اس ذیلی ایجنٹ کی ردیف میں کوئی سیشن آئی ڈی نہیں…",
+          "verdict": "resolved",
+          "note": "ردیف is the row of a list or table; قطار (a queue) is gone."
+        }
+      ],
+      "result": "clean"
+    },
+    "ui.chat.asks": {
+      "namespace": "ui.chat.asks",
+      "status": "passed",
+      "keys_audited": 26,
+      "sha256": {
+        "en": "6c42d235f1e326fc0cc0fea91668307d4e551585eef33b5fe1c2173efc2bc9fd",
+        "ur": "10d9e1e9b04d1d81014c5b339368309fdcb4cf0b453bcd9a60496761bdf1103b"
+      },
+      "context_sha256": "9e137d7e8f6227827196c244a9550520cd5ee412ffeaef615a7e33bf0193903c",
+      "findings": [],
+      "result_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "round1_findings": [],
+      "result": "clean"
+    }
+  }
+}

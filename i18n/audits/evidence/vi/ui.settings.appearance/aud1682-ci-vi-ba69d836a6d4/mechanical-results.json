@@ -1,0 +1,15 @@
+{
+  "changed_keys": [
+    "ui.settings.appearance.picker.hex",
+    "ui.settings.appearance.hue.cyan"
+  ],
+  "changed_values": {
+    "ui.settings.appearance.picker.hex": "Mã hex",
+    "ui.settings.appearance.hue.cyan": "xanh cyan"
+  },
+  "unchanged_keys_retained": 160,
+  "icu_parse": "PASS",
+  "placeholders": "PASS (no placeholders on changed keys)",
+  "bidi": "PASS",
+  "technical_command_and_exemption": "PASS"
+}

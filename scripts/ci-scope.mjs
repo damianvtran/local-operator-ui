@@ -178,6 +178,20 @@ const LOCK_PATHS = new Set(["pnpm-lock.yaml", "pnpm-workspace.yaml"]);
 const EVIDENCE_PREFIX = "docs/evidence/";
 
 /**
+ * `docs/evidence-frames/**` - the capture rig's IGNORED output tree.
+ *
+ * Frames are regenerable and are not committed (`.gitignore`), so a path here
+ * is never "committed evidence": there is nothing under it for a job to read,
+ * and classifying it as the evidence category would claim the suite had an
+ * input it does not have. It is not prose either. The only way it can appear in
+ * a diff is a force-add - a deliberate act that re-materialises a whole capture
+ * set per worktree (955 MB at origin/main, measured 2026-10-20) - so it is
+ * classified `other`, which runs everything and prints the unknown-path
+ * warning. Fail-closed, and loud rather than inert.
+ */
+const FRAMES_PREFIX = "docs/evidence-frames/";
+
+/**
  * The scripts the `runtime-deps` job's own step runs. Named so that a change to
  * either keeps that job selected: the check is the allowlist (`pnpm
  * check-runtime-deps`) executed through `scripts/require-report.sh` so a silent
@@ -221,6 +235,7 @@ const RUNTIME_DEP_SCRIPTS = new Set([
  */
 export const EVIDENCE_SOURCES = new Set([
 	"scripts/capture-evidence.mjs",
+	"scripts/check-evidence-structure.mjs",
 	"scripts/check-evidence.mjs",
 	"scripts/chrome-keychain.mjs",
 	"scripts/color.mjs",
@@ -229,6 +244,8 @@ export const EVIDENCE_SOURCES = new Set([
 	"scripts/evidence-tz.mjs",
 	"scripts/palette-source.mjs",
 	"scripts/python-child-env.mjs",
+	/* `scripts/color.mjs` re-exports the shared colour maths from here. */
+	"src/shared/theme-engine/color.mjs",
 ]);
 
 /** Every palette file, because the palettes ARE the grounds a frame is judged
@@ -311,6 +328,113 @@ const MAIN_BUNDLE_ROOT_FILES = new Set([
 ]);
 
 /**
+ * Everything the language-coverage gate reads, and therefore everything whose
+ * change must re-run it.
+ *
+ * `src/i18n/**` is the catalogue tree and the generated key types;
+ * `i18n/**` is the shared language manifest plus `coverage-allowance.json` - the
+ * allowance is the one file the gate exists to police, so a diff that touches
+ * ONLY it (pure data, no code) must still run the growth comparison;
+ * `scripts/i18n/**` is the checker itself and the sibling gates `pnpm check-i18n`
+ * chains beside it. All three classify as `other`, which is why this is a path
+ * predicate rather than a category.
+ */
+const I18N_PREFIXES = ["src/i18n/", "i18n/", "scripts/i18n/"];
+
+/**
+ * Every repository file the condense parity pin covers, copied from its own
+ * `desktop.modelSources` (2026-11-13: only inputs that emit code into the bundle,
+ * so a file the build merely reads no longer selects the job).
+ *
+ * THE LIST IS THE FIXTURE'S CLAIM, NOT A SECOND OPINION ABOUT IT. A regenerated
+ * pin that names a file this set does not is a FAILING TEST (`ci-scope.test.mjs`
+ * A27 asserts SET EQUALITY, in both directions), so the job cannot silently skip
+ * the pull request that staled the fixture - the exact drift that shipped a stale
+ * `scripts/fixtures/condense.parity.json` to `main` in #1758.
+ *
+ * STATIC RATHER THAN READ FROM THE FIXTURE, for the reason A13 exists: this
+ * module runs as a COPY under `$RUNNER_TEMP`, outside the checkout. A module that
+ * resolved the fixture from its own path reads nothing there, and one that read
+ * the DEFAULT branch's copy would let a pull request disarm the gate that judges
+ * it. Equality with the pin is proved by the test instead.
+ */
+export const PARITY_MODEL_SOURCES = new Set([
+	"i18n/languages.json",
+	"src/i18n/bidi.ts",
+	"src/i18n/catalogue-locale.ts",
+	"src/i18n/direction.ts",
+	"src/i18n/locale.ts",
+	"src/i18n/messages.ts",
+	"src/renderer/src/features/chat/canonical/harness-chrome.ts",
+	"src/renderer/src/features/chat/canonical/image-gen-card-model.ts",
+	"src/renderer/src/features/chat/canonical/journal-order.ts",
+	// The fold model's music-job predicates; dependency-free by design (R16-1).
+	"src/renderer/src/features/chat/canonical/music-gen-tool.ts",
+	"src/renderer/src/features/chat/canonical/profile-history-replacement.ts",
+	"src/renderer/src/features/chat/canonical/record-immutability.ts",
+	"src/renderer/src/features/chat/canonical/trace-fold-model.ts",
+	"src/renderer/src/features/chat/canonical/transcript-reducer.ts",
+	"src/renderer/src/features/chat/canonical/transcript-rows.ts",
+	"src/renderer/src/features/chat/canonical/turn-collapse-model.ts",
+	"src/renderer/src/features/chat/canonical/turn-segments.ts",
+	"src/renderer/src/features/chat/components/skill-invocation.ts",
+	"src/renderer/src/features/chat/components/slash-token.ts",
+	// Inbound Bridge card facts (sender, conversation, admitted body); transcript-reducer
+	// imports it, so an edit here regrows the fixture.
+	"src/renderer/src/features/chat/components/trace/bridge-receipt-model.ts",
+	"src/renderer/src/features/chat/components/trace/bridge-row-model.ts",
+	"src/renderer/src/features/chat/components/trace/receipt-row-model.ts",
+	"src/renderer/src/features/chat/components/trace/tool-row-model.ts",
+	"src/renderer/src/features/chat/transcript-display-mode.ts",
+	"src/shared/profile-consent.ts",
+]);
+
+/**
+ * The SHAPE SOURCES the pin harvests its case list FROM, copied from its own
+ * `desktop.sources`.
+ *
+ * THE CASE LIST IS NOT ONLY THE MODEL. `harvestShapes()` regexes shape literals
+ * out of these suites and `generate()` emits one case per harvested shape per
+ * option permutation, so an edit to a shape literal regrows the fixture's bytes
+ * with no model source touched. Leaving them out is #1758 one input class over:
+ * a pull request that edits a shape literal skips the job, and `main` reds. At
+ * the fixture this list was copied from, `turn-segments.test.mjs` alone supplies
+ * 63 of the 116 harvested shapes - 315 of the 700 committed cases.
+ *
+ * A SEPARATE SET FROM `PARITY_MODEL_SOURCES` because it is a separate claim in
+ * the fixture (`desktop.sources`), and A27 asserts each against its own list:
+ * one equality check over a union of the two would let a file move from one list
+ * to the other unnoticed.
+ */
+export const PARITY_SHAPE_SOURCES = new Set([
+	"scripts/trace-fold-model.test.mjs",
+	"scripts/turn-collapse-model.test.mjs",
+	"scripts/turn-segments.test.mjs",
+]);
+
+/**
+ * The pin's own files and the inputs of its GENERATOR: change any of these and
+ * the committed fixture's bytes can move without a single model source being
+ * touched. `record-tokens.mjs` is the token grammar every case is driven over and
+ * `entry-point.mjs` decides whether the generator's `main()` runs at all.
+ */
+const PARITY_PIN_FILES = new Set([
+	"scripts/entry-point.mjs",
+	"scripts/fixtures/condense.parity.json",
+	"scripts/fixtures/condense.parity.manifest.json",
+	"scripts/fixtures/record-tokens.mjs",
+	"scripts/generate-condense-parity.mjs",
+]);
+
+/**
+ * The directory the model itself lives in. A module ADDED beside the model is a
+ * file the next regeneration will name in `modelSources`, and the pull request
+ * that adds it is exactly the one that must run the pin - before any list can
+ * know its name. Cheap: 14 of the 32 declared sources live here.
+ */
+const PARITY_MODEL_PREFIX = "src/renderer/src/features/chat/canonical/";
+
+/**
  * Whether the category table NAMED this path's tree, rather than reaching its
  * answer through the `other` catch-all. See `KNOWN_LIVE_PREFIXES`.
  */
@@ -349,6 +473,8 @@ export function categoryOf(path) {
 	const p = normalise(path);
 	if (!p) return CAT_OTHER;
 	if (p === ".github" || p.startsWith(".github/")) return CAT_CI;
+	if (p === "docs/evidence-frames" || p.startsWith(FRAMES_PREFIX))
+		return CAT_OTHER;
 	if (p === "docs/evidence" || p.startsWith(EVIDENCE_PREFIX))
 		return CAT_EVIDENCE;
 	if (p.startsWith("docs/")) return CAT_DOCS;
@@ -374,9 +500,11 @@ export const FLAGS = [
 	"unit",
 	"bytecode",
 	"evidence",
+	"i18n",
 	"runtime_deps",
 	"audit",
 	"pack",
+	"parity",
 ];
 
 /**
@@ -384,21 +512,42 @@ export const FLAGS = [
  * also the order the summary prints). Every flag here must be one of `FLAGS`
  * and the job's `if:` must read each of them (asserted A1).
  *
- * `version-bump-guard` is deliberately absent: it is a job of its own workflow
- * (`version-bump-guard.yml`), gated on the EVENT rather than on a scope flag,
- * so that a PR cannot influence whether the guard that reads its own version
- * line runs. It is not part of this workflow's job set.
+ * `version-bump-guard` is in `UNGATED_JOBS` below rather than here: it is gated
+ * on the EVENT (`pull_request`) rather than on a scope flag, so that a PR
+ * cannot influence whether the guard that reads its own version line runs.
  */
 export const JOB_FLAGS = {
 	lint: ["lint"],
+	"condense-parity": ["parity"],
+	"locale-activation": ["i18n"],
+	"i18n-coverage": ["i18n", "types"],
 	"runtime-deps": ["runtime_deps"],
 	"check-types": ["types"],
-	test: ["unit"],
+	// The desktop suite's shard matrix and its aggregate left this workflow for
+	// full-suite.yml (main, nightly); pull requests keep the tree-wide guards
+	// and the native-QA bundle the first shard used to build.
+	guards: ["unit"],
+	"qa-bundle": ["unit"],
 	"bytecode-build": ["bytecode"],
+	// The Mac arm64 native-bytecode artifact leg, split from `bytecode-build`
+	// so the required `Bytecode Build Check` keeps a literal name (ci.yml); it
+	// runs on exactly the same flag.
+	"bytecode-build-macos": ["bytecode"],
 	evidence: ["evidence"],
 	audit: ["audit"],
 	"npx-sanity-check": ["pack"],
 };
+
+/** Jobs whose CI condition is OR; every other job retains the original AND. */
+const JOB_FLAG_OPERATORS = {
+	"i18n-coverage": "some",
+};
+
+/** The single local equivalent of each job's CI flag predicate. */
+export function jobMatchesFlags(job, flags) {
+	const operator = JOB_FLAG_OPERATORS[job] ?? "every";
+	return JOB_FLAGS[job][operator]((flag) => flags[flag]);
+}
 
 /**
  * Jobs in `ci.yml` that take no scope flag, each with the reason. Everything in
@@ -411,6 +560,14 @@ export const UNGATED_JOBS = {
 		"event condition here would collaterally skip the whole workflow on a push " +
 		"to `main` (D7). The event-conditional behaviour lives inside this module, " +
 		"which returns every flag true for anything that is not a `pull_request`.",
+	"version-bump-guard":
+		"PR-only event guard (`if: github.event_name == 'pull_request'`), node " +
+		"builtins only (~15s): a PR must never influence whether the guard reading " +
+		"its own version line runs, and `CI Gate` fails closed if it skips on a PR.",
+	"ci-gate":
+		"always runs: it is the ONE stable check name a ruleset requires, and it " +
+		"reads every other job's result, so a scope flag here would let a skipped " +
+		"gate stand in for a failed one. It costs a few seconds and runs no suite.",
 };
 
 /**
@@ -452,6 +609,23 @@ export const PERMISSIVE_DEPS = [
  */
 export const JOB_COMMANDS = {
 	lint: ["pnpm lint", "pnpm lint:scripts"],
+	// The three halves of `pnpm check-i18n`, in the order CI runs them. The local
+	// added-copy and coverage halves resolve their base to `origin/main`; CI alone
+	// supplies `HEAD^1`, which is the only difference between the two runs.
+	"i18n-coverage": [
+		"pnpm check-i18n:catalogues",
+		"pnpm check-i18n:added-strings",
+		"pnpm check-i18n:coverage",
+	],
+	// The same command the job runs, with the same argument order: a local
+	// spelling that regenerated instead of checking would write the fixture it
+	// was supposed to judge.
+	"condense-parity": ["node scripts/generate-condense-parity.mjs --check"],
+	// The locale bundle tests the desktop suite owns, minus the ones
+	// `pnpm check-i18n:catalogues` already runs on every pull request.
+	"locale-activation": [
+		"node --test scripts/i18n/activation.test.mjs scripts/i18n/absent-locale.test.mjs scripts/i18n/device-tag-activation.test.mjs scripts/i18n/es-activation.test.mjs scripts/i18n/hi-activation.test.mjs scripts/i18n/ru-activation.test.mjs scripts/i18n/ur-activation.test.mjs scripts/i18n/vi-activation.test.mjs scripts/i18n/zh-CN-activation.test.mjs scripts/i18n/locale-parity.test.mjs",
+	],
 	"runtime-deps": [
 		// The CI spelling, wrapper and all, because the wrapper is part of what the
 		// job verifies: `require-report.sh` refuses to read a silent success as a
@@ -462,22 +636,30 @@ export const JOB_COMMANDS = {
 	"check-types": [
 		"pnpm check-types",
 		"pnpm check-edit-diffs",
-		// The release-contract step of that job, as one plain run and two
-		// `node --test` invocations, in the order ci.yml runs them.
+		// The release-contract spellings must retain the checkpoint unit in
+		// the same real command as CI, or local check-changed silently omits it.
 		// `ci-scope.test.mjs` rides in the first list so this classifier's own
 		// assertions CANNOT stop running: a suite that leaves the job list and is
 		// not noticed is the "guard nothing runs" defect this change is about.
 		"node scripts/test-validate-release.mjs",
-		"node --test scripts/test-release-safety.mjs scripts/test-publish-workflow.mjs scripts/test-version-bump-guard.mjs scripts/ci-scope.test.mjs",
+		"node --test scripts/test-release-safety.mjs scripts/test-publish-workflow.mjs scripts/test-version-bump-guard.mjs scripts/ci-scope.test.mjs scripts/native-bytecode-artifact.test.mjs",
 		"node --test scripts/appimage-update-info.test.mjs",
-		"node --test scripts/release-baseline.test.mjs scripts/release-candidate.test.mjs scripts/entry-point.test.mjs scripts/require-report.test.mjs",
+		"node --test scripts/release-baseline.test.mjs scripts/release-candidate.test.mjs scripts/entry-point.test.mjs scripts/require-report.test.mjs scripts/desktop-suite-checkpoints.test.mjs",
 		'bash scripts/require-report.sh "Build environment contracts" node scripts/check-build-env.mjs',
 	],
-	test: ["pnpm test:desktop"],
+	// The guard list, not the suite: a pull request's unit evidence is the
+	// targeted `pnpm test:affected --run --evidence`, chosen from the diff.
+	guards: ["pnpm test:guards"],
 	// The same command the job runs, with the developer's own `.env` supplying
 	// the four `VITE_*` values the build config refuses to start without. CI
 	// substitutes placeholders; neither set ends up in a shipped artifact.
 	"bytecode-build": ["pnpm build"],
+	// The STRUCTURAL half of the evidence gate - the command CI's `Evidence
+	// Structure` job runs. It is cheap (a git listing, the manifest and one
+	// guard call) because the pixel sweep is NOT here: `pnpm check-evidence`
+	// decodes the captured frames tree, which is rig output in an ignored tree,
+	// so it runs at release on a captured checkout (AGENTS.md).
+	evidence: ["node scripts/check-evidence-structure.mjs"],
 };
 
 /**
@@ -486,6 +668,15 @@ export const JOB_COMMANDS = {
  * quietly narrower than it looks.
  */
 export const LOCAL_EXCLUSIONS = {
+	"bytecode-build-macos":
+		"its local spelling is `bytecode-build`'s `pnpm build`, which already runs; " +
+		"what this job adds is an artifact for another machine - built on a macOS " +
+		"arm64 runner, hash-manifested and uploaded for native QA - not a check a " +
+		"developer's second `pnpm build` would tell them anything new about.",
+	"qa-bundle":
+		"it builds and uploads the plain-JS bundle isolated native QA downloads from " +
+		"the run. That is an artifact for another machine, not a check: a local " +
+		"`pnpm build` produces the same tree and proves nothing a developer reads.",
 	audit:
 		"no faithful local spelling. CI reads the critical-severity COUNT out of " +
 		"`pnpm audit --json` and tolerates every other advisory; a bare local " +
@@ -500,20 +691,6 @@ export const LOCAL_EXCLUSIONS = {
 		"launch leg installs the tarball through `npx` on a macOS runner. Neither " +
 		"belongs in a default local pass; `pnpm pack` and `node " +
 		"scripts/npx-smoke-test.mjs <tarball>` remain the manual spellings.",
-	evidence:
-		"the sweep pays a WHOLE-TREE DECODE of the committed frames - 15,553 of " +
-		"them, ~5 minutes locally and 11m27s on the runner - and admits ONE run " +
-		"per MACHINE through a permanent lease, exiting 75 DEFERRED (not failing) " +
-		"when another check holds it. On a fleet of concurrent sessions a local " +
-		"`check-changed` would therefore either spend five minutes on every " +
-		"evidence-touching diff or be locked out of its own gate. Excluded rather " +
-		"than kept as a gate that cries wolf, and the fast half of the SAME gate " +
-		"still runs locally and in CI: `scripts/evidence-manifest.test.mjs` binds " +
-		"the counts, the stamps and the declarations against the shipped manifest " +
-		"in under a second, under the `test` job. `pnpm check-evidence` remains the " +
-		"manual spelling - its 75 is the DEFERRED code `runJobs` reports as a " +
-		"deferral rather than a failure - and `ci.yml`'s `evidence` job is the " +
-		"whole-tree gate.",
 };
 
 /**
@@ -526,11 +703,14 @@ export const FLAG_REASONS = {
 	unit: "a changed path that is neither prose nor committed evidence, or a `docs/evidence/**` change (the desktop suite reads committed evidence at runtime)",
 	bytecode:
 		"a path compiled into the main bundle (`src/main/**`, `src/shared/**`, `src/i18n/**`, `scripts/vite-plugins/**`, `electron.vite.config.js`, `tsconfig.json`, `tsconfig.node.json`), the install (`package.json` or a lockfile), an unrecognised path, or `.github/**` (every flag is true there)",
-	evidence: `a \`docs/evidence/**\` change, one of the modules that produce the sweep's verdict (${[...EVIDENCE_SOURCES].join(", ")}), a palette change (the palettes ARE the grounds a frame is judged against), or a change to the install (\`package.json\` or a lockfile): \`sharp\`, the decoder the verdict is produced with, is a devDependency`,
+	evidence: `a \`docs/evidence/**\` change (the STRUCTURAL gate reads the tracked tree; the pixel sweep runs at release), one of the modules that produce the gate's verdict (${[...EVIDENCE_SOURCES].join(", ")}), a palette change (the palettes ARE the grounds a frame is judged against, so a ground that moves must be swept before the next tag), or a change to the install (\`package.json\` or a lockfile): \`sharp\`, the decoder the sweep uses at release, is a devDependency`,
 	runtime_deps:
 		"`package.json` or one of the scripts the runtime-dependency step executes (`scripts/check-runtime-deps.mjs`, `scripts/require-report.sh`)",
+	i18n: "a path under `src/i18n/**` (catalogues and generated key types), `i18n/**` (the language manifest or `coverage-allowance.json` — an allowance-only change is data and must still re-run the growth comparison) or `scripts/i18n/**` (the checker)",
 	audit: "`package.json` or a lockfile change",
 	pack: "a changed path that is neither prose nor committed evidence",
+	parity:
+		"a source the condense parity pin declares in its own `modelSources` or `sources` (the model files it bundles and the suites it harvests shape literals from), the pin's fixture, manifest and generator inputs, or a file in the model's own directory `src/renderer/src/features/chat/canonical/` (a module added beside the model is a source the next regeneration names)",
 };
 
 /** A flag could not be rendered as `true`/`false`. See `flagValue`. */
@@ -674,6 +854,38 @@ export function flagsFor(categories, paths, releaseBump) {
 	const evidence = [...pathSet].some(
 		(path) => EVIDENCE_SOURCES.has(path) || path.startsWith(PALETTE_PREFIX),
 	);
+	/*
+	 * The language-coverage gate's selection (see `I18N_PREFIXES`). Fails closed
+	 * for the one diff that looks inert: an allowance-only change is data, sets no
+	 * other flag differently, and is exactly the change the gate must judge.
+	 * The install is in the predicate too: `pnpm check-i18n` executes script
+	 * definitions from `package.json` and its parser/compiler come from the
+	 * lockfile, so a manifest or lock change can change what the gate runs.
+	 */
+	const i18nPaths = [...pathSet].some((path) =>
+		I18N_PREFIXES.some((prefix) => path.startsWith(prefix)),
+	);
+	/*
+	 * The condense parity pin's selection: the sources the fixture was generated
+	 * FROM, the files that generate and carry it, and the model's own directory.
+	 * Fails closed on every one of them for the reason the i18n predicate does -
+	 * a missing term makes the job skip exactly when its verdict could have
+	 * changed. The INSTALL is in the predicate too: the comparison RE-RUNS the
+	 * model under the installed `esbuild` and TypeScript, so a dependency or
+	 * lockfile edit is the change most able to move the bytes it compares even
+	 * though no model source moved. Deliberately NOT fail-open on an unrecognised
+	 * path: the pin reads a closed, named set of files, so a new tree can only
+	 * become an input through a change to one of those files or to the canonical
+	 * directory.
+	 */
+	const parityPaths = [...pathSet].some(
+		(path) =>
+			PARITY_MODEL_SOURCES.has(path) ||
+			PARITY_SHAPE_SOURCES.has(path) ||
+			PARITY_PIN_FILES.has(path) ||
+			path.startsWith(PARITY_MODEL_PREFIX),
+	);
+	const parity = manifest || cats.has(CAT_LOCK) || parityPaths;
 
 	return {
 		lint: live,
@@ -682,6 +894,8 @@ export function flagsFor(categories, paths, releaseBump) {
 		bytecode: manifest || cats.has(CAT_LOCK) || mainBundleInput,
 		evidence:
 			cats.has(CAT_EVIDENCE) || evidence || manifest || cats.has(CAT_LOCK),
+		i18n: manifest || cats.has(CAT_LOCK) || i18nPaths,
+		parity,
 		runtime_deps:
 			manifest || [...pathSet].some((path) => RUNTIME_DEP_SCRIPTS.has(path)),
 		audit: manifest || cats.has(CAT_LOCK),
@@ -842,15 +1056,16 @@ function warn(message, title) {
  * job id -> 'run' | 'skip' for the whole workflow, in `ci.yml` order.
  *
  * Every gated job is gated on all of its flags, so a job with two flags runs
- * only when both are true. Nothing in this workflow inherits a skip: each
+ * only when its flag predicate matches (AND by default, OR where CI uses `||`).
+ * Nothing in this workflow inherits a skip: each
  * gated job's `if:` carries its own `!cancelled()` and its own result clauses,
  * so a skipped `lint` cannot silently skip `npx-sanity-check`.
  */
 export function jobPlan(flags) {
 	const plan = {};
 	for (const job of Object.keys(UNGATED_JOBS)) plan[job] = "run";
-	for (const [job, jobFlags] of Object.entries(JOB_FLAGS)) {
-		plan[job] = jobFlags.every((flag) => flags[flag]) ? "run" : "skip";
+	for (const job of Object.keys(JOB_FLAGS)) {
+		plan[job] = jobMatchesFlags(job, flags) ? "run" : "skip";
 	}
 	return plan;
 }

@@ -1,0 +1,247 @@
+Auditor's account - ur (Urdu) - four-key delta audit for PR damianvtran/local-operator-ui #1842
+audit id / instance: 75c30f92d238        locale: ur        filename tag: ds
+pinned head: e5fb4310dab638f9cf428779d62539ec039a8990
+worktree (read-only): /Users/damian/local-operator-ui/.worktrees/i18n-s8
+date: 2026-11-10
+served model: deepseek/deepseek-flash (session header, session 75c30f92d238; no fallback notice)
+
+This file is an account of what I RAN and what I only READ. Every command below is
+transcribed with its actual response. Nothing here is a reconstruction: where I did not
+run something, the line says so.
+
+================================================================================
+1. PINNED HEAD AND WORKTREE CLEANLINESS                              [RAN]
+================================================================================
+$ cd ~/local-operator-ui/.worktrees/i18n-s8 && git rev-parse HEAD
+e5fb4310dab638f9cf428779d62539ec039a8990
+$ git status --porcelain
+(no output - clean)
+
+Matches the frozen head in the brief, so the audit proceeded. No file in the worktree
+was written, staged or reverted by me.
+
+================================================================================
+2. BINDING POLICY INPUTS                                            [READ]
+================================================================================
+Read (not run):
+  ~/local-operator/i18n/style-guides/ur.md ................ entire file, 94 lines
+  ~/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/
+    glossary.md ........................................... manager byte-copy, entire file
+  src/i18n/catalogues/en/{ui.chat,ui.chat.composer_media,ui.common.actions}.context.json
+  src/i18n/catalogues/en/{ui.chat,ui.chat.composer_media,ui.common.actions}.json
+  src/i18n/catalogues/ur/{ui.chat,ui.chat.composer_media,ui.common.actions}.json
+  neighbouring ur values in ui.chat.attachments.json, ui.settings.integrations.json,
+  ui.projects.json, plus a grep of the whole ur catalogue directory
+
+Glossary conformance was checked against the manager-owned byte-copy, not the original:
+$ shasum -a 256 /Users/.../_s12-audits/e5fb4310.../glossary.md ~/local-operator/i18n/glossary.md
+0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8  .../_s12-audits/.../glossary.md
+0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8  /Users/damian/local-operator/i18n/glossary.md
+173 lines in each; byte-identical.
+
+$ shasum -a 256 ~/local-operator/i18n/style-guides/ur.md
+c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60
+
+================================================================================
+3. HASH BINDING vs expected-hashes.json                             [RAN]
+================================================================================
+$ shasum -a 256 src/i18n/catalogues/{en,ur}/<ns>.json src/i18n/catalogues/en/<ns>.context.json
+compared with ~/local-operator-ui/.worktrees/_s12-audits/e5fb4310.../expected-hashes.json
+
+en/ui.chat            ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15  MATCH
+ur/ui.chat            46ddbd89585ba5d057b61bf90a83dfdca7b42fb2135ce18db940deed41794fdd  MATCH
+en/ui.chat.context    84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf  MATCH
+en/ui.chat.composer_media          79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae  MATCH
+ur/ui.chat.composer_media          0b92eb10a96ac3e94f3acabe554e3e429cee150094ad333bb3c0f1bd0243e3fb  MATCH
+en/ui.chat.composer_media.context  a0fbc1552ef6f27999f3cff365750025627a284faa106d767e22a24d131ae77b  MATCH
+en/ui.common.actions      0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b  MATCH
+ur/ui.common.actions      06ed5d8326b11d74df3891e15a1e9290c3893f03be43b79fa91f9d168058e7f7  MATCH
+en/ui.common.actions.context 24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d  MATCH
+ALL NINE HASHES MATCH. No BLOCKER on hash binding.
+
+================================================================================
+4. REPO VALIDATOR (read-only Node scripts, no build, no server)      [RAN]
+================================================================================
+$ node scripts/i18n/generate.mjs --check            => exit 0
+  ".../src/i18n/keys.gen.ts is byte-identical to a fresh generation."
+$ node scripts/i18n/check-duplicates.mjs            => exit 0
+  "check-duplicates: ok - 1400 file(s) scanned, 0 duplicate key(s)"
+$ node scripts/i18n/context-parity.mjs              => exit 0
+  "context-parity: ok - every English key is covered, apart from 131 allowed gap(s)
+   in 4 namespace(s) (shrink-only; see i18n/context-allowance.json)."
+$ node scripts/i18n/ledger-check.mjs                => exit 1
+  "ledger-check: FAILED - 64 finding(s) across 1085 ledger entr(ies)"
+
+The ledger-check failure is the pending-re-audit state, not a defect in these values.
+Filtered to ur it reports nine lines, three per namespace - the shape ledger-assemble
+resets when a namespace's bytes move past its audited row:
+
+  ledger-check: ur/ui.chat: stale source_sha256 (ledger 270fc752791e..., file ee4e2a9eeb84...)
+  ledger-check: ur/ui.chat: stale target_sha256 (ledger ff3a28460b50..., file 46ddbd89585b...)
+  ledger-check: ur/ui.chat: auditor 1: the receipt does not name the English source bytes on disk - it audited a different file
+  ledger-check: ur/ui.chat.composer_media: stale source_sha256 (ledger c1ddfc211ada..., file 79e7d18ff960...)
+  ledger-check: ur/ui.chat.composer_media: stale target_sha256 (ledger ff5d51690b3c..., file 0b92eb10a96a...)
+  ledger-check: ur/ui.chat.composer_media: auditor 1: the receipt does not name the English source bytes on disk ...
+  ledger-check: ur/ui.common.actions: stale source_sha256 (ledger 3f9e9a4b0231..., file 0218bb5b748c...)
+  ledger-check: ur/ui.common.actions: stale target_sha256 (ledger 3ec87bb6883a..., file 06ed5d8326b1...)
+  ledger-check: ur/ui.common.actions: auditor 1: the receipt does not name the English source bytes on disk ...
+The other 55 findings are the same rule on the other locales in this wave; the fix is the
+wave's ledger write, which I did not perform (see section 9).
+
+================================================================================
+5. STRUCTURAL / MECHANICAL CHECKS                                    [RAN]
+================================================================================
+Script: $ python3 $LOCAL_OPERATOR_SCRATCHPAD/ur-ds-75c30f92d238.check.py
+        (kept beside this log; reads only, writes nothing)
+Full transcript also saved as check-output.txt beside this log. Results:
+
+$ git diff --numstat origin/main HEAD -- src/i18n/catalogues/ur/<ns>.json
+3	1	src/i18n/catalogues/ur/ui.chat.json
+2	1	src/i18n/catalogues/ur/ui.chat.composer_media.json
+2	1	src/i18n/catalogues/ur/ui.common.actions.json
+-> additions only; the single deletion in each file is the previous last line re-emitted
+   with a trailing comma. No ur value was removed or altered. No key added or dropped:
+   ui.chat 208/208, ui.chat.composer_media 9/9, ui.common.actions 54/54, key sets equal
+   to English, missing=[] extra=[] in all three. Every file parses as JSON.
+
+Per key (codepoints, placeholders, invisible characters):
+  ui.chat.image_actions.actions        'Image actions'    -> 'تصویر کے اعمال'
+      placeholders en=[] ur=[] identical; no Cf/Zs control characters
+      U+062A U+0635 U+0648 U+06CC U+0631 U+0020 U+06A9 U+06D2 U+0020 U+0627 U+0639 U+0645 U+0627 U+0644 (14 chars)
+  ui.chat.audio.position_label         '{label} position' -> '{label} کی پوزیشن'
+      placeholders en=['{label}'] ur=['{label}'] identical; {label} byte-exact, plain
+      U+007B..U+007D U+0020 U+06A9 U+06CC U+0020 U+067E U+0648 U+0632 U+06CC U+0634 U+0646 (17 chars)
+  ui.chat.composer_media.pasted_image  'Pasted image'     -> 'چسپاں کردہ تصویر'
+      placeholders en=[] ur=[] identical; no controls (16 chars)
+  ui.common.actions.actions_for_name   'Actions for {name}' -> '{name} کے اعمال'
+      placeholders en=['{name}'] ur=['{name}'] identical; {name} byte-exact, plain
+      U+007B..U+007D U+0020 U+06A9 U+06D2 U+0020 U+0627 U+0639 U+0645 U+0627 U+0644 (15 chars)
+
+  No ICU plural/select in any of the four (source has none), so no CLDR category work
+  applies. No markup/Rich tags, backticks, commands, flags, identifiers or URLs in the
+  source of these four, so nothing of that class could be altered. (The neighbouring
+  values share the same constraint; nothing to preserve was touched.)
+
+Bidi / zero-width scan over EVERY file in src/i18n/catalogues/ur/ (not just these three):
+for each character, category Cf or a NBSP/narrow-NBSP - 0 hits across the locale.
+The four new values contain no NBSP, ZW*, RLM/LRM, FSI/PDI: the ur guide requires the
+render layer to apply FSI/PDI isolation and forbids manual bidi controls, so this is the
+required outcome, not an omission.
+
+================================================================================
+6. TERM CONSISTENCY                                              [RAN grep]
+================================================================================
+$ grep -o '<term>' src/i18n/catalogues/ur/*.json | wc -l
+  اعمال      28 occurrences in 13 files
+  اقدامات    15 occurrences in 11 files
+  پوزیشن      1 occurrence  in  1 file  (this new key - first use in the catalogue)
+  مقام       64 occurrences in 24 files
+
+Existing sibling values quoted (read from the ur catalogue at this head):
+  ui.chat.composer_media.pasted_file                      = 'چسپاں کردہ فائل'
+  ui.chat.composer_media.pasted_type                      = 'چسپاں کردہ {mimeType}'
+  ui.chat.attachments.playback_position                   = 'پلے بیک کا مقام'
+  ui.chat.audio.play_label                                = '{label} چلائیں'
+  ui.chat.audio.pause_label                               = '{label} کو وقفہ دیں'
+  ui.chat.image_actions.copy_image                        = 'تصویر نقل کریں'
+  ui.common.actions.file_actions_menu.file_actions        = 'فائل کے اعمال'
+  ui.projects.project_updates.file_actions_for_name       = '{name} فائل کے اقدامات'
+  ui.settings.integrations.integration_row.more_actions_for_name = '{name} کے مزید اقدامات'
+
+Style-guide lines the findings cite (ur.md):
+  "Prefer the settled Urdu term where one exists: ترتیبات (settings), محفوظ کریں (save),
+   استعمال (usage)."
+  "Settled loanwords take Urdu script: سیشن، ٹوکن، فائل، ریموٹ، ورک اسپیس."
+  "do not insert manual bidi control characters (RLM/LRM/FSI/PDI) into translations"
+  "Never wrap them in Urdu punctuation or reorder them."
+
+================================================================================
+7. SOURCE CODE READ TO CHECK MEANING AND THE SIDECAR CLAIM      [READ only]
+================================================================================
+Read (no build, no execution):
+  src/renderer/src/features/chat/utils/get-file-name.ts
+     - data:image/ + no name, or decodeURIComponent throws  -> pasted_image
+     - data: non-image + no name, or decodeURIComponent throws -> pasted_file
+     - anything else -> the path basename verbatim
+  src/renderer/src/features/chat/utils/attachment-encode.ts (lines 128-200 and the
+    module header): "Synthetic names for unnamed data URLs follow the active locale and
+    become upload metadata. Valid decoded names stay verbatim; the original dataUrl (and
+    therefore its bytes/MIME) is passed untouched, and stored metadata wins."
+  src/renderer/src/features/chat/components/attachments-preview.tsx (getFileName at 173,
+    pasted_type/pasted_file at 185-194, locale rebuild trigger at 500-507)
+  src/renderer/src/features/chat/canonical/supplement-file-actions.tsx:181
+  src/renderer/src/features/chat/components/image-actions-menu.tsx:204, 365-366
+  src/renderer/src/features/chat/canonical/sound-player.tsx:455
+  src/renderer/src/features/chat/components/message-item/audio-attachment.tsx:189
+
+Conclusion on the broadened ui.chat.composer_media.pasted_file scope sentence (English
+metadata, in scope): ACCURATE against both call sites it describes - it is the fallback
+for non-image data URIs with no usable name including invalid percent encoding, it can
+apply with or without a MIME type (get-file-name.ts ignores the MIME type;
+attachments-preview.tsx prefers pasted_type when one is present), and it is used as
+synthetic upload metadata while valid names and attachment bytes stay unchanged
+(attachment-encode.ts). No change requested.
+
+================================================================================
+8. LINGUISTIC PASS (two independent reads of each value)         [READ only]
+================================================================================
+First pass and second pass were run separately on all four values. Second pass re-opened
+the same key against its sidecar note and the neighbouring catalogue values; it confirmed
+three of four and sharpened UR-1. No translation or MT service was used at any point and
+no back-translation was performed - the judgements are readings of the English source,
+the sidecar and the existing catalogue.
+
+Findings (detail in the receipt):
+  UR-1 MINOR   ui.chat.audio.position_label  "{label} کی پوزیشن"
+       پوزیشن is the catalogue's first use of that word; the same control concept is
+       already "پلے بیک کا مقام" (ur/ui.chat.attachments.json:16). Suggested: "{label} کا
+       مقام" (مقام is masculine -> کا).
+  UR-2 NIT     ui.common.actions.actions_for_name  "{name} کے اعمال"
+       Pre-existing اعمال/اقدامات split in the ur catalogue. The new keys follow the
+       nearest sibling "فائل کے اعمال" - keep as is; recorded, no change requested.
+
+Accepted as correct with the evidence recorded in the receipt: pasted_image (mirrors
+"چسپاں کردہ فائل"), image_actions.actions (mirrors "فائل کے اعمال"), and the
+"{name} کے اعمال" genitive construction, which stays grammatical for any inserted user
+string because Urdu marks the genitive on the possessed noun and never on the inserted
+name - the same shape as the existing "{name} کے مزید اقدامات".
+
+================================================================================
+9. WHAT I DID NOT DO
+================================================================================
+- No ledger write and no repository edit. `node scripts/i18n/ledger-assemble.mjs` writes
+  i18n/ledger.json and copies the receipt into i18n/receipts/ - both inside the audited
+  checkout, which this task places out of bounds. It was NOT executed. The receipt is
+  shaped for it (per namespace: status, result, source_sha256, target_sha256, findings;
+  severity counts that agree with the findings) so the manager can run it unchanged.
+- No tracked evidence directory created: retention under
+  i18n/audits/evidence/ur/<namespace>/ is a repository commit and therefore the manager's
+  step; the record names the intended paths.
+- No builds, installs, servers, Electron, browser or screenshot runs. No rendered-frame or
+  screen-reader verification: the RTL judgement is a reading of storage-order strings plus
+  the render layer's documented FSI/PDI isolation, and it is claimed as nothing more.
+- scripts/i18n/*.test.mjs (locale-parity, ur-activation, bidi-isolation, rtl-code-tokens)
+  and the check-i18n:added-strings base-aware gate were NOT run - CI's remit, and the
+  latter needs a base ref. The four validator scripts in section 4 were run.
+- Legacy values in the three namespaces were not certified. Consistency-only: file parses,
+  key set equals English, no key removed versus origin/main.
+
+================================================================================
+10. RECEIPT CONTRACT CHECK - run AFTER the receipt was written     [RAN]
+================================================================================
+$ node receipt-contract-check.mjs ur-ds-75c30f92d238.json
+  (scratch script; imports deriveReceiptAudit from
+   /Users/damian/local-operator-ui/.worktrees/i18n-s8/scripts/i18n/ledger-rules.mjs,
+   the same module ledger-assemble.mjs validates with, and passes the three namespace
+   source/target hashes)
+
+ACCEPTED ui.chat: {"agent":"i18n-auditor","instance":"75c30f92d238","model":"deepseek/deepseek-flash","result":"clean-with-findings","findings":{"blocker":0,"major":0,"minor":1,"nit":0},"source_sha256":"ee4e2a9e...","target_sha256":"46ddbd89...","receipt_sha256":"..."}
+ACCEPTED ui.chat.composer_media: {"result":"clean","findings":{"blocker":0,"major":0,"minor":0,"nit":0},"source_sha256":"79e7d18f...","target_sha256":"0b92eb10...","receipt_sha256":"..."}
+ACCEPTED ui.common.actions: {"result":"clean-with-findings","findings":{"blocker":0,"major":0,"minor":0,"nit":1},"source_sha256":"0218bb5b...","target_sha256":"06ed5d83...","receipt_sha256":"..."}
+
+Full untruncated output is the companion file receipt-contract-check.out, captured with tee.
+What this proves: the receipt satisfies the repo's own writer contract - per-namespace
+result derived from its own findings, both hashes named, identity/model consistent, no
+assumption. What it does NOT prove: that any ledger row was written. `ledger-assemble.mjs`
+itself was still not run, because it writes i18n/ledger.json and i18n/receipts/ inside the
+checkout (section 9).

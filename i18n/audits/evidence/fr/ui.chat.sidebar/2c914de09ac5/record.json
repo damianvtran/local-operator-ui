@@ -1,0 +1,302 @@
+{
+  "locale": "fr",
+  "mode": "Fresh independent scoped pass; five new keys fully audited; remaining 81 sidebar keys read for terminology consistency. Read-only shared worktree. Allocation: fix (<2h), bounded translation audit only.",
+  "scope": "PR #1836 @ 28a6127617e4ebe0b6ba47d39fca5d3a22d1ba93; fr/ui.chat.sidebar five mark_all_read keys: scope_chats, scope_chats_elsewhere, scope_tokenless, scope_joined, name_suffix_elsewhere. No full legacy namespace certification.",
+  "head_sha": "28a6127617e4ebe0b6ba47d39fca5d3a22d1ba93",
+  "audit_date": "2026-11-10",
+  "key_count": 86,
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "Delegation brief and ../_s10-translations/fr.json; translator session id not supplied."
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "2c914de09ac5",
+    "session": "8122ca807f5e",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "Served session model header: openai/gpt-6.1-sol. No fallback used. Fresh auditor session 8122ca807f5e.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "status": "changes_requested",
+  "result": "changes_requested",
+  "verdict": "changes_requested",
+  "findings": [
+    {
+      "id": "FR-S10-SOL-F1",
+      "severity": "major",
+      "key": "ui.chat.sidebar.mark_all_read.scope_chats_elsewhere",
+      "related_keys": [
+        "ui.chat.sidebar.mark_all_read.name_suffix_elsewhere"
+      ],
+      "current": "many {{elsewhere, number, ::group-off} de non actives} (identical elsewhere arm in both keys)",
+      "problem": "The many arm inserts de before an adjective-only ellipsis without its noun. This yields « dont 1000000 de non actives », an unidiomatic nominalization instead of counting conversations. The French million de construction needs the counted noun here; completeness of CLDR labels alone does not make this arm grammatical. Both tooltip and accessible-name suffix contain the same defect. This is a grammatical/idiomatic defect at the required many category, not a wrong subset or unsafe action.",
+      "suggested": "In both keys replace the many arm with many {{elsewhere, number, ::group-off} de conversations non actives}. For a fully explicit accessible-name continuation (the label itself contains no feminine plural noun), use one {{elsewhere, number, ::group-off} conversation non active} and other {{elsewhere, number, ::group-off} conversations non actives} in name_suffix_elsewhere as well. Preserve its initial comma and space.",
+      "evidence": {
+        "tooltip_quote": "Marquer 1000000 de conversations non lues comme lues, dont 1000000 de non actives.",
+        "accessible_name_quote": "Tout marquer comme lu (1000000), dont 1000000 de non actives",
+        "derivation": "Read-only Python ICU-subset expansion of shipped bytes, count=elsewhere=1000000; no runtime or rendered output claimed.",
+        "code_path": "markAllReadCopy chooses scope_chats_elsewhere when elsewhere > 0 and supplies name_suffix_elsewhere independently; each receives elsewhere=ackable.filter(row => !row.active).length. There is no upper bound in that function.",
+        "scope_note": "One shared finding for the same grammar defect in two new keys; no legacy finding included in its count."
+      }
+    }
+  ],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 1,
+    "minor": 0,
+    "nit": 0
+  },
+  "namespaces": {
+    "ui.chat.sidebar": {
+      "status": "changes_requested",
+      "result": "changes_requested",
+      "source_sha256": "7db9ba5108a62330a1782f775b991ec0483537d2f7d808ae0691e1a6ef8840cd",
+      "target_sha256": "6291afdab108ca3ff165e045aeaf43e7f8956595889a8379e4a14575b00bd90a",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+          "sha256": "7db9ba5108a62330a1782f775b991ec0483537d2f7d808ae0691e1a6ef8840cd"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.sidebar.context.json",
+          "sha256": "4f1593cc34b395ef8701a60e58e73a0371b3c93730eb7a1f2b2845dc6250d7e3"
+        },
+        "fr": {
+          "path": "src/i18n/catalogues/fr/ui.chat.sidebar.json",
+          "sha256": "6291afdab108ca3ff165e045aeaf43e7f8956595889a8379e4a14575b00bd90a"
+        }
+      },
+      "findings": [
+        {
+          "id": "FR-S10-SOL-F1",
+          "severity": "major",
+          "key": "ui.chat.sidebar.mark_all_read.scope_chats_elsewhere",
+          "related_keys": [
+            "ui.chat.sidebar.mark_all_read.name_suffix_elsewhere"
+          ],
+          "current": "many {{elsewhere, number, ::group-off} de non actives} (identical elsewhere arm in both keys)",
+          "problem": "The many arm inserts de before an adjective-only ellipsis without its noun. This yields « dont 1000000 de non actives », an unidiomatic nominalization instead of counting conversations. The French million de construction needs the counted noun here; completeness of CLDR labels alone does not make this arm grammatical. Both tooltip and accessible-name suffix contain the same defect. This is a grammatical/idiomatic defect at the required many category, not a wrong subset or unsafe action.",
+          "suggested": "In both keys replace the many arm with many {{elsewhere, number, ::group-off} de conversations non actives}. For a fully explicit accessible-name continuation (the label itself contains no feminine plural noun), use one {{elsewhere, number, ::group-off} conversation non active} and other {{elsewhere, number, ::group-off} conversations non actives} in name_suffix_elsewhere as well. Preserve its initial comma and space.",
+          "evidence": {
+            "tooltip_quote": "Marquer 1000000 de conversations non lues comme lues, dont 1000000 de non actives.",
+            "accessible_name_quote": "Tout marquer comme lu (1000000), dont 1000000 de non actives",
+            "derivation": "Read-only Python ICU-subset expansion of shipped bytes, count=elsewhere=1000000; no runtime or rendered output claimed.",
+            "code_path": "markAllReadCopy chooses scope_chats_elsewhere when elsewhere > 0 and supplies name_suffix_elsewhere independently; each receives elsewhere=ackable.filter(row => !row.active).length. There is no upper bound in that function.",
+            "scope_note": "One shared finding for the same grammar defect in two new keys; no legacy finding included in its count."
+          }
+        }
+      ]
+    }
+  },
+  "per_key_checks": [
+    {
+      "key": "ui.chat.sidebar.mark_all_read.scope_chats",
+      "source": "{count, plural, one {Mark {count, number, ::group-off} unread chat as read.} other {Mark {count, number, ::group-off} unread chats as read.}}",
+      "current_text": "{count, plural, one {Marquer {count, number, ::group-off} conversation non lue comme lue.} many {Marquer {count, number, ::group-off} de conversations non lues comme lues.} other {Marquer {count, number, ::group-off} conversations non lues comme lues.}}",
+      "findings": [],
+      "assessment": "Faithful action; conversation/non lue/lue agrees in one and conversations/non lues/lues in many/other. many has required de. Count>=1 code path avoids French zero agreement concerns.",
+      "placeholder_integrity": {
+        "arguments": [
+          [
+            "count",
+            "::group-off"
+          ],
+          [
+            "count",
+            "plural"
+          ]
+        ],
+        "matches_english": true,
+        "number_skeleton": "::group-off"
+      },
+      "plural_select": [
+        [
+          "count",
+          [
+            "one",
+            "many",
+            "other"
+          ]
+        ]
+      ],
+      "manual_bidi_controls": false,
+      "static_codepoint_length_without_arguments": 0
+    },
+    {
+      "key": "ui.chat.sidebar.mark_all_read.scope_chats_elsewhere",
+      "source": "{count, plural, one {Mark {count, number, ::group-off} unread chat as read} other {Mark {count, number, ::group-off} unread chats as read}}, including {elsewhere, plural, one {{elsewhere, number, ::group-off} that is not active} other {{elsewhere, number, ::group-off} that are not active}}.",
+      "current_text": "{count, plural, one {Marquer {count, number, ::group-off} conversation non lue comme lue} many {Marquer {count, number, ::group-off} de conversations non lues comme lues} other {Marquer {count, number, ::group-off} conversations non lues comme lues}}, dont {elsewhere, plural, one {{elsewhere, number, ::group-off} non active} many {{elsewhere, number, ::group-off} de non actives} other {{elsewhere, number, ::group-off} non actives}}.",
+      "findings": [
+        "FR-S10-SOL-F1"
+      ],
+      "assessment": "Meaning/subset and backend class preserved by dont and non active(s), without substituting a sidebar section. Count arms agree; elsewhere one/other ellipsis is understandable after conversations; many has F1.",
+      "placeholder_integrity": {
+        "arguments": [
+          [
+            "count",
+            "::group-off"
+          ],
+          [
+            "count",
+            "plural"
+          ],
+          [
+            "elsewhere",
+            "::group-off"
+          ],
+          [
+            "elsewhere",
+            "plural"
+          ]
+        ],
+        "matches_english": true,
+        "number_skeleton": "::group-off"
+      },
+      "plural_select": [
+        [
+          "count",
+          [
+            "one",
+            "many",
+            "other"
+          ]
+        ],
+        [
+          "elsewhere",
+          [
+            "one",
+            "many",
+            "other"
+          ]
+        ]
+      ],
+      "manual_bidi_controls": false,
+      "static_codepoint_length_without_arguments": 8
+    },
+    {
+      "key": "ui.chat.sidebar.mark_all_read.scope_tokenless",
+      "source": "{count, plural, one {{count, number, ::group-off} unread mark with no completion token cannot be cleared.} other {{count, number, ::group-off} unread marks with no completion token cannot be cleared.}}",
+      "current_text": "{count, plural, one {{count, number, ::group-off} marque non lue sans accusé d’achèvement ne peut pas être effacée.} many {{count, number, ::group-off} de marques non lues sans accusé d’achèvement ne peuvent pas être effacées.} other {{count, number, ::group-off} marques non lues sans accusé d’achèvement ne peuvent pas être effacées.}}",
+      "findings": [],
+      "assessment": "Negative cannot-be-cleared polarity intact; marque non lue and effacée match shipped ui.chat.read_ack descriptions/refusals. accusé d’achèvement is understandable descriptive completion receipt: context expressly forbids treating it as a security token; ui.chat.canonical.fold.receipt.other uses accusé de réception. Generic kept-English token rule does not require inventing a security-token term here. one/many/other noun, adjective and verb agreement correct; many de present.",
+      "placeholder_integrity": {
+        "arguments": [
+          [
+            "count",
+            "::group-off"
+          ],
+          [
+            "count",
+            "plural"
+          ]
+        ],
+        "matches_english": true,
+        "number_skeleton": "::group-off"
+      },
+      "plural_select": [
+        [
+          "count",
+          [
+            "one",
+            "many",
+            "other"
+          ]
+        ]
+      ],
+      "manual_bidi_controls": false,
+      "static_codepoint_length_without_arguments": 0
+    },
+    {
+      "key": "ui.chat.sidebar.mark_all_read.scope_joined",
+      "source": "{chats} {tokenless}",
+      "current_text": "{chats} {tokenless}",
+      "findings": [],
+      "assessment": "A single U+0020 between complete period-terminated sentences is appropriate French. Both arguments preserved in source order; no extra sentence punctuation or words.",
+      "placeholder_integrity": {
+        "arguments": [
+          [
+            "chats",
+            "plain"
+          ],
+          [
+            "tokenless",
+            "plain"
+          ]
+        ],
+        "matches_english": true,
+        "number_skeleton": "::group-off"
+      },
+      "plural_select": [],
+      "manual_bidi_controls": false,
+      "static_codepoint_length_without_arguments": 1
+    },
+    {
+      "key": "ui.chat.sidebar.mark_all_read.name_suffix_elsewhere",
+      "source": ", including {elsewhere, plural, one {{elsewhere, number, ::group-off} that is not active} other {{elsewhere, number, ::group-off} that are not active}}",
+      "current_text": ", dont {elsewhere, plural, one {{elsewhere, number, ::group-off} non active} many {{elsewhere, number, ::group-off} de non actives} other {{elsewhere, number, ::group-off} non actives}}",
+      "findings": [
+        "FR-S10-SOL-F1"
+      ],
+      "assessment": "Leading comma and U+0020 join directly to Tout marquer comme lu (N), leaving label a byte-identical prefix. Non active(s) counts the intended subset. Short one/other ellipsis is interpretable from sidebar Conversations, though an explicit noun improves the standalone accessible name. many has shared F1.",
+      "placeholder_integrity": {
+        "arguments": [
+          [
+            "elsewhere",
+            "::group-off"
+          ],
+          [
+            "elsewhere",
+            "plural"
+          ]
+        ],
+        "matches_english": true,
+        "number_skeleton": "::group-off"
+      },
+      "plural_select": [
+        [
+          "elsewhere",
+          [
+            "one",
+            "many",
+            "other"
+          ]
+        ]
+      ],
+      "manual_bidi_controls": false,
+      "static_codepoint_length_without_arguments": 7
+    }
+  ],
+  "remediation_verification": {
+    "status": "Initial fresh pass; no remediation implemented or audited by this auditor.",
+    "policy_sources": [
+      "~/local-operator/i18n/style-guides/fr.md",
+      "~/local-operator/i18n/glossary.md",
+      "docs/I18N.md, Retain checkable audit records"
+    ],
+    "executed_checks": [
+      "git rev-parse HEAD matches requested head; git diff for the three bound inputs is empty; git show HEAD:<path> byte comparison confirms the files match that head.",
+      "shasum -a 256 on English/context/French sidebar files; Python hashlib independently agrees; target prefix matches supplied 6291afdab108ca3f.",
+      "Python json.loads on source/context/target and sample receipts; en/fr 86 keys each with exact key-set parity; top-level pair count 86 confirms no duplicate sidebar JSON keys.",
+      "Read-only custom Python ICU-subset parser on all five source and target messages: braces parse, same typed arguments, every numeric formatter is ::group-off, every French plural one/many/other. Expanded counts 1,2,1000000 to inspect agreement and composed label suffix. This is NOT the repository validator.",
+      "grep -R -l -F on i18n/receipts and i18n/audits/evidence found no occurrence of instance 2c914de09ac5.",
+      "Python scan of sibling English/French namespaces found no other completion token translation; targeted canonical receipt and read_ack wording read as precedents."
+    ],
+    "typography_fit": "New keys have ASCII commas/full stops and U+2019 apostrophe; none contain : ; ! ? or guillemets requiring French NBSP insertion. Plain-space sentence join is correct. No introduced code/markup/flags/identifiers to preserve. No bidi controls. Context supplies no maxCells/maxChars; native tooltip may wrap, so length alone is not a finding.",
+    "out_of_scope_pre_existing": [
+      {
+        "key": "ui.chat.sidebar.agents.builtin_offer",
+        "quote": "one {...} =2 {...} =3 {...} =4 {...} =5 {...} =6 {...} other {...}; no many arm",
+        "note": "Outside the five-key scope and unchanged legacy content; observed missing French many category is excluded from this audit verdict and severity counts."
+      }
+    ]
+  },
+  "unverified": [
+    "Repository Node validator and deriveReceiptAudit were NOT executed: task explicitly forbids Node processes, builds and installs. Custom Python syntax/structure checks do not replace the production ICU parser.",
+    "No rendered tooltip, browser, Electron, real accessibility tree, screen-reader pronunciation, or pixel fit verified; none claimed.",
+    "Read-only shared worktree: no ledger assembler, repository edits, git writes, commit, tracked evidence bundle or PR comment was made. Scratch receipt is a temporary handoff for manager retention under repository contract."
+  ],
+  "receipt_contract_review": "Field sets match committed i18n/receipts/2bbf16af14ee.json (root and namespace block); also read _s9-audits/second/fr.json and committed 92b74137fc35.json. Read ledger-rules.mjs deriveReceiptAudit and ledger-assemble.mjs caller: nested auditor identity, namespace-owned status/result, source/target hash aliases, namespace-owned explicit findings, severity normalization and result derivation checked manually and with Python assertions. No JavaScript execution claimed.",
+  "audit_notes_not_execution_log": true
+}

@@ -1,0 +1,20 @@
+{
+	"ui.settings.search.field.label": "Rechercher des paramètres",
+	"ui.settings.search.field.placeholder": "Rechercher des paramètres",
+	"ui.settings.search.empty.summary": "Cherche dans tous les paramètres de cette page et dans ceux que le service connecté fournit.",
+	"ui.settings.search.empty.shortcut": "Appuyez sur {shortcut} pour rechercher depuis n’importe où sur cette page.",
+	"ui.settings.search.no_results.title": "Aucun résultat pour « {query} ».",
+	"ui.settings.search.no_results.hint": "Essayez un autre mot, ou effacez le champ pour continuer à parcourir la page.",
+	"ui.settings.search.no_results.clear": "Effacer la recherche",
+	"ui.settings.search.results.count": "{count, plural, one {# résultat} many {# de résultats} other {# résultats}}",
+	"ui.settings.search.results.more": "{count, plural, one {# autre résultat non affiché} many {# d’autres résultats non affichés} other {# autres résultats non affichés}}",
+	"ui.settings.search.panel.label": "Résultats des paramètres",
+	"ui.settings.search.reason.label": "correspond au nom",
+	"ui.settings.search.reason.synonym": "correspond à un terme associé",
+	"ui.settings.search.reason.key": "correspond à la clé du paramètre",
+	"ui.settings.search.reason.choice": "correspond à une option",
+	"ui.settings.search.reason.section": "correspond à la section",
+	"ui.settings.search.reason.description": "correspond à la description",
+	"ui.settings.search.jump.missing": "Ce paramètre n’est pas affiché à l’écran pour le moment.",
+	"ui.settings.search.row.section_hint": "Dans {section}"
+}

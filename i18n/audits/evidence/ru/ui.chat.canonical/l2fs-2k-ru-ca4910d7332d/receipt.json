@@ -1,0 +1,38 @@
+{
+ "auditor": "i18n-auditor",
+ "model": "deepseek/deepseek-flash",
+ "model_source": "session runtime model header; no provider fallback was used",
+ "instance": "ca4910d7332d",
+ "status": "passed",
+ "result": "clean",
+ "namespace": "ui.chat.canonical",
+ "locale": "ru",
+ "key_count": 2,
+ "findings": [],
+ "severity_counts": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 0,
+  "nit": 0
+ },
+ "independence": {
+  "translator_model": "openai/gpt-6.1-sol",
+  "independent_from_translator_session": true
+ },
+ "sha256": {
+  "en": "27ae7327daa34be60b619be551c840e057d61c3d69dc801269e4f389edc0f031",
+  "en_context": "c0aff0d8bd80304e063b55f80875e3f8b5f50ad201e9b51770f570eb8dd253e4",
+  "ru_audited_values": "f1c0c9854e67ab59ae7b102cc8c1bb8ee5118f1b61f103ee09885b456b6d3c7a",
+  "ru_shipped_catalogue_baseline": "ea9eff38bfa4c9fcea0fa519aaa37fc890ac09977df535940494aa92194a61e3"
+ },
+ "key_values_sha256": {
+  "ui.chat.canonical.tool.never_sent_composed": "6cc03e25b1ecd19ce8d0ac0ac69d6703471ba25aba4ecbc1f3cad14830a0f057",
+  "ui.chat.canonical.tool.never_sent_empty": "470332be4dc8b7b298d9caba20b19056f4274b56268e578cce3023283a7ddfe5"
+ },
+ "audited_values": {
+  "ui.chat.canonical.tool.never_sent_composed": "не отправлено · написано {size}",
+  "ui.chat.canonical.tool.never_sent_empty": "не отправлено · ничего не написано"
+ },
+ "not_an_assemblable_ledger_receipt": "The ru catalogue on disk does not yet carry these two keys, so its sha256 cannot be named without writing a hash the ledger gate would later fail. ledger-assemble.mjs refuses the row today ('not key-complete against English (2 missing, 0 extra)'). After the landing commit puts these values in src/i18n/catalogues/ru/ui.chat.canonical.json, assemble the row with target_sha256 derived from that file and re-check the two values against key_values_sha256 above; the verdict here applies to those value bytes.",
+ "scope": "l2 file-size wave: ui.chat.canonical.tool.never_sent_composed and ui.chat.canonical.tool.never_sent_empty, audited at the candidate in .worktrees/_l2-prep/ru.json"
+}

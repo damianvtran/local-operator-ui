@@ -1,0 +1,134 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit (merge-delta at a fold, PR #1482)",
+	"date": "2026-10-30",
+	"auditor": "i18n-auditor",
+	"agent": "i18n-auditor",
+	"model": "radient/auto",
+	"model_provenance": "This session's harness preamble read 'Model: anthropic/claude-opus-5-5'. Four sequential provider-quota fallbacks were then announced in-session (anthropic/claude-sonnet-5-5, openai/gpt-6-astra, kimi/k3.1-pro, radient/auto; reason each time 'provider failure: quota'), and radient/auto is the last model the harness announced, so that is what is recorded here rather than a guess. The judgement recorded below spans the whole chain; no further switch notice was seen before these receipts were written.",
+	"model_fallback": {
+		"announced": true,
+		"observed": true,
+		"chain": [
+			"anthropic/claude-opus-5-5",
+			"anthropic/claude-sonnet-5-5",
+			"openai/gpt-6-astra",
+			"kimi/k3.1-pro",
+			"radient/auto"
+		],
+		"reason": "provider failure: quota"
+	},
+	"status": "passed",
+	"namespace": "ui.teamBridge",
+	"integration": {
+		"pr": 1482,
+		"branch": "feat/team-bridge-owner-audit-ui",
+		"worktree": "~/local-operator-ui/.worktrees/1482-fold",
+		"branch_head_at_fold": "bb41165ae09a5032a7f23e5953e5a5bbc0758ffa",
+		"origin_main_at_fold": "85971d8b44b57aabfee209a45e6646eb6b62a150",
+		"merge_base": "a36e9e165c22376d297368fdd2ebd378206de6c8",
+		"merge_state": "merge of origin/main into the branch, uncommitted at audit time. The fold's three conflicts were resolved before this audit (package.json: per-key three-way with scripts.test:desktop as the token union; en/ui.teamBridge.context.json: pure union, no shared key disagrees; i18n/ledger.json: per-row three-way with both-moved rows left at the branch for re-derivation). This run wrote only receipts, their evidence records and the ledger rows, and those rows only through scripts/i18n/ledger-assemble.mjs."
+	},
+	"independence": "The strings audited here were authored by agent `translator` (the branch's ledger row for this locale records model anthropic/claude-opus-5-5, date 2026-10-21); this run authored none of them and is a different agent, so the audit is independent. Nothing in this receipt was transcribed by hand: every sha256 is computed from the file bytes in this worktree, and the ledger rows are derived from this receipt by scripts/i18n/ledger-assemble.mjs.",
+	"scope": {
+		"delta_kind": "Merge delta: what this fold adds to origin/main, in one namespace.",
+		"added_relative_to_origin_main": [
+			"ui.teamBridge.thread.not_available"
+		],
+		"inherited_from_origin_main": "origin/main contributes 27 keys of its own to this namespace in the same fold (ui.teamBridge.members.*). They are inherited byte-identically: this audit compared every key present on both sides and found no value changed (282 merged keys = 255 branch keys + 281 main keys, a pure union at 282 in every one of the eight catalogues). They stay covered by their own receipts; this is not a re-audit of them.",
+		"key_sets": "282 English keys; this locale is key-complete at 282 and ledger-assemble.mjs re-checks that before writing the row.",
+		"keys_audited_linguistically": [
+			"ui.teamBridge.thread.not_available"
+		],
+		"keys_read_for_consistency": [
+			"ui.teamBridge.member.count",
+			"ui.teamBridge.members.role.member",
+			"ui.teamBridge.members.read_only",
+			"ui.teamBridge.archive.banner.plain",
+			"ui.teamBridge.thread.intro_chief",
+			"ui.teamBridge.thread.withheld",
+			"ui.teamBridge.members.title",
+			"ui.teamBridge.members.description"
+		],
+		"not_audited": "The 281 other English keys and their translations: unchanged by this fold and covered by their own receipts. Nothing here re-audits them."
+	},
+	"context_sha256": "a32ec9180bc93f3ac602c1fa95c08bf68134e02e8560c5599e923a62d31af0ea",
+	"english": {
+		"ui.teamBridge.thread.not_available": {
+			"value": "This conversation is not open to you. You may not be a member of it, or it may have been archived.",
+			"clause_1": "This conversation is not open to you - the state, not a verdict on the reader.",
+			"clause_2": "You may not be a member of it, or it may have been archived - both reasons, which one is not revealed.",
+			"context_role": "thread placeholder when the addressed conversation is not in the reader's list",
+			"context_tone": "plain, factual, never accusatory",
+			"context_length": "Two short sentences.",
+			"context_note": "Shown for an addressed conversation id the caller cannot open: the list only carries conversations the caller participates in, so this covers both \"not a member\" and \"archived\" without revealing which. It replaces the draft intro, which wrongly told a reader their history was empty when the conversation actually held messages (2026-10-28). Do not imply the conversation does not exist.",
+			"placeholders": []
+		}
+	},
+	"checks": {
+		"placeholders": "The English source takes no interpolation arguments; this locale declares none either, so placeholder parity is 0 = 0.",
+		"unicode": "NFC verified; no bidi control characters; no NBSP; no double or edge spaces.",
+		"structure": "Two sentences in the target, as the sidecar's length field asks, with the two candidate reasons in the second.",
+		"meaning": "Accurate. Both reasons, no disclosure of which, no claim that the conversation does not exist.",
+		"register": "Vouvoiement throughout (vous, en soyez), matching 'votre conversation' and 'Vous ne pouvez pas inviter'.",
+		"terminology": "membre = member.count and members.role.member. archivée = ui.teamBridge.archive.banner.plain, with feminine agreement on conversation.",
+		"punctuation": "Two sentences ending in ASCII full stops; the elision uses the typographic apostrophe ’ (U+2019), so no ASCII quote can open an ICU literal.",
+		"length": "117 characters against 98 English; two sentences.",
+		"consistent_with": "ui.teamBridge.archive.banner.plain; ui.teamBridge.thread.intro_chief; ui.teamBridge.members.read_only",
+		"method": "Read against the English value and the full sidecar entry, then against members.role.member / member.count (membre), ui.teamBridge.archive.banner.plain ('Ce canal a été archivé.'), thread.intro_chief (register) and members.read_only (vouvoiement).",
+		"sidecar": "The English sidecar entry was read in full and each target was checked against its four requirements individually rather than against the English wording: the reader is told they cannot open this conversation, both possible reasons are offered, which one it is stays unrevealed, and nothing suggests the conversation does not exist."
+	},
+	"audit_notes_not_execution_log": "The notes and findings are this auditor's reading of the bytes, not a script's output. The mechanical properties (encoding, placeholders, script, punctuation, length) and every sha256 were computed from the catalogue files on disk; the linguistic judgement is written per key so a native reviewer can check the reasoning instead of trusting a verdict.",
+	"audit_id": "teambridge-pr1482-merge-delta-20261030-fr",
+	"instance": "tb1482m3-fr-2d47856c6ee9",
+	"instance_note": "One auditor run (2026-10-30) with a per-locale suffix. Each locale's receipt bytes differ, and a ledger row may not record one instance against two different receipts, so the instance carries the locale. This is one run auditing seven locales, not seven independent auditors.",
+	"locale": "fr",
+	"result": "clean",
+	"translator": {
+		"agent": "translator",
+		"model": "anthropic/claude-opus-5-5 (per the branch's ledger row for this locale)",
+		"date": "2026-10-21",
+		"source": "the branch's ledger row for this locale/ui.teamBridge, carried into the fold unchanged",
+		"method": "LLM reasoning in the translation sessions; no MT service or translation API is involved"
+	},
+	"sha256": {
+		"en": "ed1be56fa3b8ebefebc758a03a0c6ce69cec6d2aa92208725eb875dd1e89a1ca",
+		"fr": "90bfe86a1e9987325b6ef51dd5cf5cbf6277e9e14f486d15e3a7adf2b0894b34"
+	},
+	"translation": {
+		"value": "Cette conversation ne vous est pas accessible. Il se peut que vous n’en soyez pas membre ou qu’elle ait été archivée.",
+		"clause_map": "Clause 1 = 'this conversation is not accessible to you'. Clause 2 = 'it may be that you are not a member of it, or that it has been archived' - the pronoun en carries 'of it'."
+	},
+	"findings": [
+		{
+			"severity": "info",
+			"id": "FR-I1",
+			"detail": "'ne vous est pas accessible' is a passive construal of 'is not open to you'; 'ne vous est pas ouverte' would mirror the source's metaphor more literally. 'Accessible' is the plainer UI form and matches how this namespace talks about access, so no change is proposed."
+		}
+	],
+	"prior_findings_rechecked": "This key's bytes are unchanged by the fold: the merged value equals the branch's value in all eight catalogues, and origin/main never carried this key. What changed is the whole-file hash, because origin/main added 27 keys to the same file. So this receipt re-earns the judgement at merged-file scope instead of inheriting the earlier verdict; the earlier audits stay under `superseded` on the row and are not deleted.",
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+		},
+		"docs_I18N": {
+			"path": "docs/I18N.md",
+			"sha256": "9a4bde8d1c161286160be4a4ae1c7655615dbf39047052550b725a3da2eb00e2"
+		},
+		"ledger_rules": {
+			"path": "scripts/i18n/ledger-rules.mjs",
+			"sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6"
+		},
+		"ledger_assemble": {
+			"path": "scripts/i18n/ledger-assemble.mjs",
+			"sha256": "66ec03de791b515424b8d9a93094315111c179c149b35a5323d80c9c38644657"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/fr.md",
+			"sha256": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226"
+		}
+	},
+	"evidence_record": "i18n/audits/evidence/fr/ui.teamBridge/tb1482-merge-delta-20261030-fr/record.json",
+	"limitations": "Auditor competence: strong (can read and judge fr product copy directly). Verdict confidence: high on meaning, grammar, register and terminology. Not claimed: rendered fit (no frame captured for this key) and a native fr register sign-off."
+}

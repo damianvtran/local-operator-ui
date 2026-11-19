@@ -1,0 +1,192 @@
+{
+  "audit_id": "s16a-ru-toolstate",
+  "locale": "ru",
+  "namespace": "ui.chat.canonical",
+  "audit_date": "2026-11-11",
+  "pr": 1870,
+  "source_commit": "93a61605b059ada503d75da6e9e38e8ef14e1b67",
+  "branch": "feat/i18n-s16a-tool-state-words",
+  "audit_kind": "delta",
+  "key_count": 14,
+  "scope": "S16a delta, 14 new ui.chat.canonical keys (tool.composing_sized, tool.composing_empty, tool.queued_sized, tool.queued_empty, image_gen.state.{queued,writing_request,queue_ahead,running,running_batch,done,done_batch,already_finished,failed,failed_batch}) audited in full against English, the en context sidecar, the shipped ru catalogue, the core glossary and the ru style guide. The translator's draft (sha256 40ed4f6b…) was audited; the ru catalogue at head does not yet carry these keys, so no committed target bytes exist.",
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "draft_path": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/s16a-drafts/ru-s16a.json",
+    "draft_sha256": "40ed4f6b7baf948daaabee2b3e3b902fc443d8eb9a2b9d2df7917f55914e2e5d"
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "db260f728ba9",
+    "instance": "db260f728ba9",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "harness session header `Model: deepseek/deepseek-flash` (session db260f728ba9); the resolved backend model id is not separately exposed to the session",
+    "fallback": "none used, none declared",
+    "independent_from_translator_session": true,
+    "review_model_differs_from_translator": true,
+    "authored_translation": false,
+    "edited_catalogues": false,
+    "repo_edits": false
+  },
+  "independence": {
+    "authored_translation": false,
+    "translated_these_namespaces": false,
+    "translator_identity": "i18n-translator / anthropic/claude-sonnet-5-5, supplied by the requesting session; that agent and model are neither mine nor used by me.",
+    "distinct_from_translator": true,
+    "catalogue_bytes_unchanged_by_this_audit": true,
+    "no_translation_or_mt_service_used": true,
+    "no_back_translation": true
+  },
+  "guidance": {
+    "glossary": {
+      "path": "/Users/damian/local-operator/i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "ru_style_guide": {
+      "path": "/Users/damian/local-operator/i18n/style-guides/ru.md",
+      "sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+    }
+  },
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+      "sha256": "d6d47d31667fe69448cf408f5a4fecf9948782e850506a6141217585de9db1fd"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+      "sha256": "ef8a12dea1835c241af3a166754322ce093af88592ec625036211458a50accac"
+    },
+    "target": {
+      "path": "s16a-drafts/ru-s16a.json (translator draft; NOT yet src/i18n/catalogues/ru/ui.chat.canonical.json)",
+      "sha256": "40ed4f6b7baf948daaabee2b3e3b902fc443d8eb9a2b9d2df7917f55914e2e5d",
+      "note": "Proved: this auditor's working copy differs from the draft file only by one trailing newline; sha256 of the copy minus its final newline equals the draft hash above, so the ICU runs used the draft's exact bytes."
+    },
+    "target_on_disk_at_head": {
+      "path": "src/i18n/catalogues/ru/ui.chat.canonical.json",
+      "sha256": "a84811e9c087aa79873ef756a2a268e298ebe4b6789d7dd834f4f51a127b4acb",
+      "note": "Reference only: 442 keys, carries 0 of the 14 (en has 456). No committed target bytes exist to audit yet."
+    }
+  },
+  "method": "Static reading plus executed ICU/AST checks. Read: core glossary and ru style guide, docs/I18N.md, the en values and per-key en context sidecar (role/tone/length/note/placeholders), the ru draft and its translator notes, and the shipped ru catalogues for every term the notes claim to reuse (file:key cited per claim). Read-only call sites: renderer/src/features/chat/canonical/image-gen-card.tsx, image-gen-card-model.ts, canonical-transcript.tsx (fit and register), scripts/i18n/tool-state-copy.test.mjs (which exceptions the PR itself pins). No translation or MT API, no back-translation.",
+  "executed_checks": [
+    "node ast-ru.mjs (worktree's @formatjs/icu-messageformat-parser 3.5.21): per-key AST diff against en — argument names identical (size; count; material+total), select branch sets identical ({video,voiceover,sound_effect,other} in all six select messages), plural categories in both plural messages = one,few,many,other (= Intl.PluralRules('ru').resolvedOptions().pluralCategories), ::group-off preserved on {count, number}, # present in every ru branch, middle dot and ellipsis parity",
+    "node fmt-ru.mjs (worktree's intl-messageformat 12.1.3): 64 formatted lines — counts 0,1,2,3,5,11,21,22,100,1000000 across the four materials plus every material state; read for noun-case/number/gender agreement; 0 errors, 0 leftover braces, 0 Latin runs",
+    "hygiene scan of the 14 values: no Latin letters in copy, no double spaces, no edge whitespace, no NBSP, no bidi controls, no ASCII ellipsis, U+00B7 x2 and U+2026 x21 only",
+    "key-set parity against en: 14/14, nothing added or dropped; JSON parses",
+    "shipped-term verification for every reuse the translator's notes claim, by file:key over src/i18n/catalogues/ru/*.json",
+    "fit read from source: the card state line has no truncate/whitespace-nowrap and wraps (image-gen-card.tsx:461-470); the tool-row object column does truncate (canonical-transcript.tsx)",
+    "node scripts/i18n/check-strings.mjs at head 93a6160 (the repo's own literal gate, runnable without the uncommitted draft): ok — 1664 file(s) scanned, 0 literal(s) at or below the baseline, 40 data-shape literals all listed in i18n/literal-allowance.json"
+  ],
+  "checks_not_performed": [
+    "pnpm check-i18n's catalogue-wide gates other than check-strings (generate --check, context-parity, ledger-check): they validate in-tree catalogues and the ru values are uncommitted; this session is read-only with a memory guard (no builds, no installs, no CI)",
+    "pseudo-localisation run",
+    "rendered frame: no browser, no window, no screenshot; width statements are code plus character arithmetic, not measured pixels",
+    "native-speaker review: this is one careful non-native reading; the second pass for this high-visibility group was run by the same auditor, not a second independent auditor"
+  ],
+  "findings": [
+    {
+      "id": "ru-N1",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.tool.composing_sized",
+      "current": "формируется · {size}",
+      "problem": "Its stated sibling is a past participle («не отправлено · написано {size}»), while this is a reflexive present: the pair reads slightly unalike, and «пишется» would pair with «написано» in 3 fewer cells in a truncating column.",
+      "suggestion": "пишется · {size} (optional)",
+      "judgement": "defensible as drafted — same stem as writing_request; not a change request"
+    },
+    {
+      "id": "ru-N2",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.image_gen.state.queue_ahead",
+      "current": "впереди: {count}",
+      "problem": "The English carries no punctuation; the ru adds a colon. It matches house precedent (ui.chat.pickers.info_model.queued = «в очереди: {formatcount}») and disambiguates 0, so it reads fine.",
+      "suggestion": "none required",
+      "judgement": "defensible; not a change request"
+    },
+    {
+      "id": "ru-N3",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.image_gen.state.running / running_batch / done / done_batch / failed / failed_batch",
+      "current": "озвучка / озвучки / озвучек",
+      "problem": "First use of «озвучка» anywhere in ru (0 shipped hits) while the settings surface names the feature «Озвучивание» (ui.settings.speech.speech_section.speech_voicing). The countable need justifies the coinage, but it is recorded nowhere.",
+      "suggestion": "keep as drafted; record «озвучка» as the settled countable term in the ru style guide (glossary §4)",
+      "judgement": "accept as drafted"
+    },
+    {
+      "id": "ru-N4",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.image_gen.state.done_batch / failed_batch",
+      "current": "Набор видео / Набор озвучек / Набор звуковых эффектов / Набор изображений",
+      "problem": "«набор» ships elsewhere meaning a set of instructions or tools («набор инструкций»); reused here for a generated batch.",
+      "suggestion": "keep as drafted (the notes reject «пакет» as software-package); «набор» reads naturally as a generated set",
+      "judgement": "accept as drafted"
+    }
+  ],
+  "finding_ids": [
+    "ru-N1",
+    "ru-N2",
+    "ru-N3",
+    "ru-N4"
+  ],
+  "finding_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 4
+  },
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [
+      "ru-N1",
+      "ru-N2",
+      "ru-N3",
+      "ru-N4"
+    ],
+    "unresolved_findings": []
+  },
+  "result": "clean-with-findings",
+  "answers_to_the_managers_question": {
+    "question": "Verify genitive agreement after «Генерация» per plural category with real formatted output.",
+    "answer": "Correct in all four categories, in all four materials. «Генерация» governs the genitive, so one takes the genitive singular (Генерация 1 изображения / 1 озвучки / 1 звукового эффекта / 1 видео) and few, many and other all take the genitive plural (2/22 изображений, озвучек, звуковых эффектов; видео invariant; 21 and 1 stay singular: Генерация 21 озвучки, 21 звукового эффекта, 21 изображения). The shipped counting-position plural (few → «изображения», ui.chat.attachment_refusal.images_many) is a different construction and is not the right form here; the draft does not copy it.",
+    "evidence": "report.md §2 table, 64 formatted lines in fmt-run-1.log"
+  },
+  "observations": [
+    {
+      "id": "RU-S16A-O1",
+      "scope": "out-of-scope, pre-existing, all locales",
+      "key": "image-gen-card cancelled branch",
+      "detail": "A cancelled generation still prints model-layer English: CANCEL_QUEUED_COPY / CANCEL_RUNNING_COPY (image-gen-card-model.ts:217-221) and the template `${batchMaterialTitle(...)} batch stopped.` (image-gen-card.tsx:456). Both are byte-identical on origin/main and this PR does not add them; scripts/i18n/tool-state-copy.test.mjs:42-45 pins the batch sentence as belonging to a later cancel-copy slice. So it does not gate this PR — but under the operator's «NO English anywhere» acceptance a ru user who cancels still reads English there, on every locale. Candidate follow-up key round.",
+      "evidence": "git show origin/main:src/renderer/src/features/chat/canonical/image-gen-card.tsx | grep 'batch stopped'"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "/Users/damian/.local-operator/sessions/db260f728ba9/scratchpad/au/report.md",
+      "sha256": "96abde3356452e645491d383ab6baeea75e2932e8aa888362ff1fccfe255c6c9",
+      "kind": "audit report (judgement prose, findings, formatted-output evidence)"
+    },
+    {
+      "path": "/Users/damian/.local-operator/sessions/db260f728ba9/scratchpad/au/fmt-run-1.log",
+      "sha256": "57eb275fe8253ea4a21da566ed37bb81b59f0ee31b967fa08470ccd975ffcf65",
+      "kind": "execution log (intl-messageformat output, CLDR category map)"
+    },
+    {
+      "path": "/Users/damian/.local-operator/sessions/db260f728ba9/scratchpad/au/ast-run.log",
+      "sha256": "ab67f05d13f19e7ff2c1ed6c90ee30b8b76c912fc0f9095a22787531fd2d3f10",
+      "kind": "execution log (AST parity: arguments, select branches, plural categories)"
+    },
+    {
+      "path": "/Users/damian/.local-operator/sessions/db260f728ba9/scratchpad/au/fmt-ru.mjs",
+      "sha256": "4193432cbd1d337174b0162aaf549144df9971a4557f42bc67a02d2c6caa9489",
+      "kind": "script (formatting harness)"
+    },
+    {
+      "path": "/Users/damian/.local-operator/sessions/db260f728ba9/scratchpad/au/ast-ru.mjs",
+      "sha256": "5c594a6c4a262eb54fec175e9301b6842c0884f2913330fb6cc126dd8bb69311",
+      "kind": "script (AST parity harness)"
+    }
+  ],
+  "landing_note": "This auditor is read-only: the tracked bundle is NOT on a branch. The manager/implementer must land report.md + record.json + the two logs at i18n/audits/evidence/ru/ui.chat.canonical/s16a-ru-toolstate/ and assemble the ledger row with node scripts/i18n/ledger-assemble.mjs --auditor-instance db260f728ba9 --auditor-model deepseek/deepseek-flash --result clean-with-findings --receipt <receipt.json>. ledger-assemble will refuse until the ru translations are committed, because it requires the target sha256 to name bytes on disk. The scratchpad copies above are the unique staging originals: do not delete them before the tracked commit exists.",
+  "ledger_note": "s16a tool state words 14 keys: 0 blocker / 0 major / 4 nit (composing verb, ahead colon, ozvuchka + nabor coinages). Genitive after «Генерация» verified by formatting all four ru categories. Record: i18n/audits/evidence/ru/ui.chat.canonical/s16a-ru-toolstate/record.json",
+  "audit_notes_not_execution_log": "The prose fields (method, findings, observations) are this auditor's judgement. The commands and their output are in the two logs named under artifacts, which are execution output, not prose. No translated value was edited and no repo file was written by this audit."
+}

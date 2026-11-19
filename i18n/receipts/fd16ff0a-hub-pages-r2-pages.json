@@ -1,0 +1,24 @@
+{
+	"auditor": "i18n-auditor",
+	"model": "deepseek/deepseek-flash",
+	"instance": "fd16ff0a-hub-pages-r2-pages",
+	"namespace": "ui.hub.pages",
+	"status": "passed",
+	"result": "clean-with-findings",
+	"sha256": {
+		"en": "47793b98059be89eafc26b8aff209b3aed63a9eac26b44ac5da9b87e973c7b5a",
+		"vi": "04590db6c40efc1c3c3f31f1ad9d5bc25f6b2d51c33363f4a00dc9cb77777c82"
+	},
+	"findings": [
+		{
+			"severity": "nit",
+			"id": "VI-HUB-R2-1",
+			"text": "Residual two-word ambiguity, pre-existing word order, not introduced or worsened by this correction: 'tên hay mô tả tác nhân' can momentarily parse as 'tên hay' ('a good name', hay as adjective) before 'mô tả tác nhân' forces the coordination reading (hay = 'or'). The 'nào' resolves it on the second pass, so no meaning is lost and no reader is left in a wrong reading; it is materially shallower than the clipped-'có' garden path this round confirms fixed. Suggested one-line fix if a later copy pass touches the line: 'Không có tên tác nhân hay mô tả nào chứa nội dung đó.' keeps 'tên tác nhân' together and removes the 'good name' reading."
+		}
+	],
+	"locale": "vi",
+	"provenance": {
+		"original_receipt": "i18n/receipts/vi-hub-pages-r2-fd16ff0a.json",
+		"note": "receipt normalised into the ledger contract by the programme manager; findings and identity text carried unchanged"
+	}
+}

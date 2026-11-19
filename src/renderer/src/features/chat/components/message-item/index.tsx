@@ -11,8 +11,9 @@
  *     the line itself, closed by default. No avatar, no card.
  *  4. security   — `execution_type === "security_check"`: retrospective
  *     warning notice, never a prompt.
- *  5. reasoning  — `plan` / `reflection` turns: hidden unless the
- *     `showAgentReasoning` preference is on (default off).
+ *  5. reasoning  — `plan` / `reflection` turns: behind `AgentReasoning`'s
+ *     closed disclosure. (Once gated by a `showAgentReasoning` preference,
+ *     removed with its inert Settings switch; this component is Storybook-only.)
  *
  * The suppressed record keeps its old suppression: `ASK`/`DONE` with
  * `execution_type === "action"` and `task_classification === "conversation"`
@@ -24,10 +25,15 @@
 import type { AgentExecutionRecord } from "@shared/api/local-operator";
 import { Disclosure } from "@shared/components/ui/disclosure";
 import {
-	previewFailureReason,
+	// Its RETURN TYPE is what `UnavailableMedia`'s prop is; the function itself is
+	// no longer called at this site, so the import is a type one (biome's
+	// `useImportType`, which the plain value import tripped once the sentence
+	// moved into the catalogue).
+	type previewFailureReason,
 	useFileBlobUrl,
 } from "@shared/hooks/use-file-blob-url";
-import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import { isolateLtr, t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { type FC, memo, useCallback } from "react";
 import type { Message } from "../../types/message";
@@ -196,7 +202,17 @@ const UnavailableMedia: FC<{
 	return (
 		<InvalidAttachment
 			file={file}
-			reason={`is ${previewFailureReason(code)?.toLowerCase()}`}
+			/*
+			 * ONE message, name included. This used to be `is ${reason.toLowerCase()}`
+			 * glued to the name by the card: `toLowerCase()` is an English-only
+			 * assumption and the copula is the language's business, so the sentence is
+			 * a catalogue message with the name as its placeholder instead (S18d).
+			 * The name is isolated HERE, where it is interpolated (the card does the
+			 * same for its tooltip), so a neutral-edged name stays in its own run.
+			 */
+			reason={t("ui.chat.attachments.not_viewable_too_large", {
+				name: isolateLtr(getFileName(file)),
+			})}
 			onOpen={() => {
 				void window.api.openFile(normalizedPath);
 			}}
@@ -272,9 +288,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 		currentExecution,
 		isSmallView,
 	}) => {
-		const showAgentReasoning = useUiPreferencesStore(
-			(state) => state.showAgentReasoning,
-		);
+		useI18nLocale();
 
 		/*
 		 * There used to be an effect here that mapped `message.files` into
@@ -321,7 +335,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 				// exactly what a toast is for; see `error-view` for the other half
 				// of the policy.
 				showErrorToast(
-					`Could not open ${getFileName(filePath)}. The file may have been moved, renamed, or deleted.`,
+					t("ui.notices.files.open_failed", { name: getFileName(filePath) }),
 				);
 			}
 		}, []);
@@ -337,7 +351,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 		// The suppression rules live with the grouping pass, because the two
 		// have to agree exactly: a record that renders nothing here must not
 		// consume the turn's avatar or leave its gap behind in the list.
-		if (isMessageHidden(message, showAgentReasoning)) {
+		if (isMessageHidden(message)) {
 			return null;
 		}
 
@@ -446,14 +460,14 @@ export const MessageItem: FC<MessageItemProps> = memo(
 						<CodeBlock
 							code={message.content}
 							isUser={isUser}
-							header="Content"
+							header={t("ui.chat.message_controls.content_header")}
 						/>
 					)}
 					{message.replacements && (
 						<CodeBlock
 							code={message.replacements}
 							isUser={isUser}
-							header="Replacements"
+							header={t("ui.chat.message_controls.replacements_header")}
 						/>
 					)}
 					{stdout && <OutputBlock output={stdout} isUser={isUser} />}
@@ -586,7 +600,11 @@ export const MessageItem: FC<MessageItemProps> = memo(
 					{!isUser && hasTechnicalBlocks && (
 						<Disclosure
 							className="mt-2"
-							summary={<span className="text-meta">Technical details</span>}
+							summary={
+								<span className="text-meta">
+									{t("ui.chat.transcript_copy.technical_details")}
+								</span>
+							}
 						>
 							{technicalBlocks}
 						</Disclosure>

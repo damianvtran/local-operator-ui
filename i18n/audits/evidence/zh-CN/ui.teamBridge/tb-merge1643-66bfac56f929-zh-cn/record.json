@@ -1,0 +1,178 @@
+{
+ "schema": 1,
+ "record_kind": "locale-audit evidence record (post-merge re-audit)",
+ "audit_id": "tb-merge1643-66bfac56f929-zh-cn",
+ "locale": "zh-CN",
+ "namespace": "ui.teamBridge",
+ "audit_date": "2026-11-04",
+ "key_count": 342,
+ "auditor": {
+  "agent": "i18n-auditor",
+  "team": "radientdev",
+  "session": "66bfac56f929",
+  "instance": "66bfac56f929-merge1643-zh-cn",
+  "model": "anthropic/claude-opus-5-5",
+  "independent_from_translator_session": true,
+  "actual_model_source": "Served model as announced by the harness preamble for session 66bfac56f929 (anthropic/claude-opus-5-5); no fallback announced or observed.",
+  "model_fallback": {
+   "announced": false,
+   "observed": false
+  },
+  "findings": {
+   "blocker": 0,
+   "major": 0,
+   "minor": 2,
+   "nit": 0
+  }
+ },
+ "independence": "Independent auditor: radientdev team i18n-auditor, session 66bfac56f929. Translated none of these strings, wrote none of PR #1643's code or the merge commit 8f18b76d44d, and is none of the prior teamBridge auditors (7fc20c1e3809, 2fd8346bf635, 122b7f54cbdc on the branch; f93eb129057e, 06af958924d2 on main). Edited no catalogue or context value; no MT/translation service used. Row written by ledger-assemble.mjs.",
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+   "sha256": "d06d4b8e8292b006364c800f24719c0f569b36bb86e2c81cba194de9f8b005ab"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+   "sha256": "31535f65e12b7dbb6b907f926be5d60ff80939605d1db538e1160530310ce59c"
+  },
+  "zh-CN": {
+   "path": "src/i18n/catalogues/zh-CN/ui.teamBridge.json",
+   "sha256": "365c5b2503d6111f9a0811cbd93f6d5463b40875b3cf5faf64178eb7500593ba"
+  }
+ },
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+   "sha256": "d06d4b8e8292b006364c800f24719c0f569b36bb86e2c81cba194de9f8b005ab"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+   "sha256": "31535f65e12b7dbb6b907f926be5d60ff80939605d1db538e1160530310ce59c"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/zh-CN/ui.teamBridge.json",
+   "sha256": "365c5b2503d6111f9a0811cbd93f6d5463b40875b3cf5faf64178eb7500593ba"
+  }
+ },
+ "style_guide": {
+  "path": "~/local-operator i18n/style-guides/zh-CN.md",
+  "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c",
+  "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "core_commit": "b42471d3935"
+ },
+ "integration": {
+  "pr": 1643,
+  "repo": "damianvtran/local-operator-ui",
+  "branch": "fix/delivery-recipient-label",
+  "merge_commit": "8f18b76d44dd1230c315b49e05f2004f9765b391",
+  "merge_parents": {
+   "ours": "1f66d899f30181e29636964cf2593bb541cf25e2",
+   "theirs": "81df7db084489569910888efbfd92d07212ec097"
+  },
+  "merge_base": "2ff3187db64d36fa42bd0b97b24ef5f184ac8145"
+ },
+ "scope": {
+  "delta_kind": "Merge of origin/main 81df7db into PR #1643 (8f18b76). No key changed on both sides: 11 keys changed only by the branch (1f66d89), 3 only by main (81df7db); every merged value equals its changing side and the file equals `git merge-file` of ours/base/theirs byte-for-byte (same for en and the en context).",
+  "ours_target_sha256": "e899700354282b668e7f998a70f3e7614b7b8140193db87f0a166bcee71d81d0",
+  "ours_audited_by": [
+   "2fd8346bf635-zh-cn"
+  ],
+  "theirs_target_sha256": "806cf1da72801d0c5b725d09e95d6a522b53d42d41541b7dc51d5431cf74e852",
+  "theirs_audited_by": [
+   "06af958924d2-gt2-zh-cn"
+  ],
+  "keys_from_ours": [
+   "ui.teamBridge.delivery.held",
+   "ui.teamBridge.delivery.held_awaiting_review",
+   "ui.teamBridge.delivery.held_screening_unavailable",
+   "ui.teamBridge.delivery.pending",
+   "ui.teamBridge.delivery.recipient_unnamed",
+   "ui.teamBridge.delivery.refused",
+   "ui.teamBridge.delivery.refused_abusive",
+   "ui.teamBridge.delivery.refused_manipulation",
+   "ui.teamBridge.delivery.refused_out_of_scope",
+   "ui.teamBridge.delivery.refused_personal_info",
+   "ui.teamBridge.delivery.refused_unsafe_content"
+  ],
+  "keys_from_theirs": [
+   "ui.teamBridge.builtin.general_topic",
+   "ui.teamBridge.fileCard.kind",
+   "ui.teamBridge.fileCard.list"
+  ],
+  "keys_audited_linguistically": [
+   "ui.teamBridge.delivery.held",
+   "ui.teamBridge.delivery.held_awaiting_review",
+   "ui.teamBridge.delivery.held_screening_unavailable",
+   "ui.teamBridge.delivery.pending",
+   "ui.teamBridge.delivery.recipient_unnamed",
+   "ui.teamBridge.delivery.refused",
+   "ui.teamBridge.delivery.refused_abusive",
+   "ui.teamBridge.delivery.refused_manipulation",
+   "ui.teamBridge.delivery.refused_out_of_scope",
+   "ui.teamBridge.delivery.refused_personal_info",
+   "ui.teamBridge.delivery.refused_unsafe_content",
+   "ui.teamBridge.builtin.general_topic",
+   "ui.teamBridge.fileCard.kind",
+   "ui.teamBridge.fileCard.list"
+  ],
+  "whole_file_review": "Keys changed by neither side are byte-identical to base and to both audited parents. The 14 delta values were re-read against English and the merged context, in their composed delivery sentences (named 'Aida (Ben Tran)' and unnamed recipient forms), and against the namespace's surviving copy for term clashes.",
+  "not_audited": "No fresh linguistic audit of the 328 keys neither side changed. No rendered/visual or runtime ICU execution check; no pseudo-localization."
+ },
+ "linguistic_review": "Delta values faithful. No space around placeholders in the delivery lines; …… ellipsis; full-width punctuation. '正在等待Ben Tran的首席助理检查……', '未送达…：已被其审核拒绝（看起来像是…）' keep the hedge and the recipient's moderation; 你-free phrasing. fileCard.kind keeps PDF/ZIP. Findings ZH1 (thread term), ZH2 (digit spacing).",
+ "findings": [
+  {
+   "id": "ZH1",
+   "severity": "MINOR",
+   "key": "ui.teamBridge.builtin.general_topic",
+   "value_excerpt": "在其关注的话题中回复",
+   "issue": "'thread' is '讨论串' in the other 6 thread strings of this file; '话题' in a channel-topic header can be read as the channel topic itself. Raised first by 06af958924d2-gt2-zh-cn and still unresolved at the merged bytes.",
+   "suggested": "整个组织：所有人及其智能体。智能体会看到每条消息，并在被@提及时或在其关注的讨论串中回复。",
+   "origin": "theirs (81df7db)",
+   "disposition": "Not edited; left to the implementer. Meaning correct."
+  },
+  {
+   "id": "ZH2",
+   "severity": "MINOR",
+   "key": "ui.teamBridge.fileCard.list",
+   "value_excerpt": "{count, number} 个文件",
+   "issue": "Space between the digit placeholder and 个, against the zh-CN style guide ('No space inserted between Chinese text and Latin/digit runs'); same class as #1554 ZH1/ZH2. The sibling attachmentCard.list/attachmentCard.bytes carry the same space (unchanged keys, out of this delta; noted, not counted).",
+   "suggested": "{count, number}个文件",
+   "origin": "theirs (81df7db); audited clean by f93eb129057e-u1-zh-cn",
+   "disposition": "Not edited; left to the implementer. Meaning correct."
+  }
+ ],
+ "current_report_verdict": {
+  "status": "passed",
+  "result": "clean-with-findings",
+  "unresolved_blocker_major_count": 0,
+  "finding_ids": [
+   "ZH1",
+   "ZH2"
+  ]
+ },
+ "checks": {
+  "merge_proof_command": "python3 $LOCAL_OPERATOR_SCRATCHPAD/tb1643/verify_merge.py (worktree root, HEAD 8f18b76)",
+  "icu_command": "node $LOCAL_OPERATOR_SCRATCHPAD/tb1643/verify.mjs (worktree root; Node v24.22.1; @formatjs/icu-messageformat-parser)",
+  "placeholders": "All 342 values parse; argument names per key equal English. Argument kind differs from en only where the locale uses {count, number} for an other-only count (vi, zh-CN: attachmentCard.list, fileCard.list).",
+  "key_set": "342 keys, equal to English.",
+  "unicode": "All values NFC; no bidi controls (U+200E/F, U+061C, U+202A-E, U+2066-9)."
+ },
+ "audit_notes_not_execution_log": "linguistic_review and findings are auditor notes, not command output. checks.*_command name the scripts actually run at 8f18b76; their output is not reproduced here beyond the hashes and counts stated.",
+ "ledger": {
+  "path": "i18n/ledger.json",
+  "locale": "zh-CN",
+  "namespace": "ui.teamBridge",
+  "note": "Post-merge re-audit (#1643 + main 81df7db), i18n-auditor session 66bfac56f929; 14 delta keys re-read, rest byte-identical. Evidence: i18n/audits/evidence/zh-CN/ui.teamBridge/tb-merge1643-66bfac56f929-zh-cn/record.json"
+ },
+ "artifacts": [
+  {
+   "path": "i18n/receipts/66bfac56f929-merge1643-zh-cn.json",
+   "sha256": "5d57740082acc1b44e774f23c0542704d8f68376faf29761b60db938991a5a75",
+   "role": "receipt (ledger-bound)"
+  }
+ ],
+ "receipt": {
+  "path": "i18n/receipts/66bfac56f929-merge1643-zh-cn.json",
+  "sha256": "5d57740082acc1b44e774f23c0542704d8f68376faf29761b60db938991a5a75"
+ }
+}

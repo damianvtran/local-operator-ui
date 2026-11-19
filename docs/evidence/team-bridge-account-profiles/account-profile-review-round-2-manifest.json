@@ -1,0 +1,45 @@
+{
+  "round": 2,
+  "reviewer": {
+    "session": "832baed7aef4",
+    "model": "openai/gpt-6-astra",
+    "independent": true
+  },
+  "base": "acc6a5bc9c20ae9c92cfa3cf322271610b72c0b6",
+  "head": "workingtree",
+  "scope": {
+    "previous_manifest_sha256": "576c96967847d46868a452b5a65b3df3e3ac90d19dbba429185d293dec3ee278",
+    "current_manifest_sha256": "444baf427d9591198b9d62645a8b4bf0352890b5ec0f5763b8364b2bb92074dc",
+    "changed_files": [
+      "scripts/team-bridge-avatar.test.mjs",
+      "src/renderer/src/features/team-bridge/use-team-bridge-avatar.ts"
+    ]
+  },
+  "worktree": "~/local-operator-ui/.worktrees/account-profile",
+  "manifest_sha256": "444baf427d9591198b9d62645a8b4bf0352890b5ec0f5763b8364b2bb92074dc",
+  "hash_algorithm": "SHA-256",
+  "manifest_encoding": "UTF-8, path-sorted lines: <file SHA-256><two spaces><relative path><LF>; final LF included",
+  "files": {
+    "scripts/team-bridge-avatar.test.mjs": "4505fe784fd87578ab947e3584e3f835bba05f97ceb316e680ef4e28442a70b6",
+    "scripts/team-bridge-directory.test.mjs": "5c95b7ec726aeb3abac6c5242cd7098aa50453e2dbb56837c672e32e0125f3cd",
+    "src/main/desktop-media.ts": "1c474bc39034fee9b87b62079da626844f699e1cdf4eb0cc8d703d6f4f6aa8cd",
+    "src/renderer/src/features/team-bridge/team-bridge-compose-bar.tsx": "5662d41119d7dbb15ed6587a21321423a8b766a065db528d8d2a9022ec4e7ef2",
+    "src/renderer/src/features/team-bridge/team-bridge-message-list.tsx": "e2001fb273f0b555c053badc5fac146045e6563092bc34cc953988a34d2c994b",
+    "src/renderer/src/features/team-bridge/team-bridge-page.stories.tsx": "510fd4e8383d767f3c21372b4eaed054228e122dd02c8755793cb78aeda81793",
+    "src/renderer/src/features/team-bridge/team-bridge-page.tsx": "4a76d4274ef51f184710ff6978e45b22c7ecdfb92378c1b6bb0f2f73991b5512",
+    "src/renderer/src/features/team-bridge/team-bridge-profile-card.tsx": "a6644e695a4c0e3a58ee8b68b9409ee7cda525b7e3e1a084ac17e20a0191018e",
+    "src/renderer/src/features/team-bridge/team-bridge-rail.tsx": "79ad1d028164515803626b6123504173c5503557eab4bffad89f0a26ecdb48a5",
+    "src/renderer/src/features/team-bridge/team-bridge-thread-pane.tsx": "dc55f596d582b718c864806d183473abd77b3a14730768abb707442cb9812df1",
+    "src/renderer/src/features/team-bridge/use-team-bridge-avatar.ts": "9d39f156aab85aad9b5de043815d0b76645e00969613aa0963af67e416836d46",
+    "src/renderer/src/shared/api/local-operator/team-bridge-api.ts": "b519b45414b58e420f5b22d119f1004c1da1fc1f224e6e8e031346c46997e58d",
+    "src/shared/desktop-contract.ts": "9e72b9d322318d13d59e3e338d42d76b167c9220c428ad4b3b976b5040df3753",
+    "src/shared/team-bridge-contract.ts": "f785fa45414d8cd0003eb0ad3cc1e2bf8fc77c27192607adc03d9d69ef06ef78"
+  },
+  "excluded_prefixes": [
+    "src/i18n/",
+    "scripts/i18n/",
+    "i18n/"
+  ],
+  "provenance": "Materialized from the completed review transcript; no source reread or review rerun",
+  "verdict": "clean; TERMINAL"
+}

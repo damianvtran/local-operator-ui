@@ -1,0 +1,16 @@
+{
+	"ui.chat.composer_notes.default_not_saved": "La valeur par défaut n’a pas été enregistrée : {reason}",
+	"ui.chat.composer_notes.default_not_saved_fallback": "le backend l’a refusée",
+	"ui.chat.composer_notes.default_saved": "Valeur par défaut des nouvelles sessions : {model}",
+	"ui.chat.composer_notes.goal.done_tag": "— terminé",
+	"ui.chat.composer_notes.goal.stalled.breaker": "objectif interrompu : le juge n’a pas pu trancher — envoyez un message pour continuer",
+	"ui.chat.composer_notes.goal.stalled.cap": "objectif interrompu : arrêt après {count, plural, one {# continuation} many {# de continuations} other {# continuations}} — envoyez un message pour continuer",
+	"ui.chat.composer_notes.goal.stalled.cap_fallback": "objectif interrompu : limite de continuations atteinte — envoyez un message pour continuer",
+	"ui.chat.composer_notes.goal.stalled.unknown": "objectif interrompu : la continuation automatique s’est arrêtée — envoyez un message pour continuer",
+	"ui.chat.composer_notes.hint.choose_model": "Choisissez un modèle pour cette conversation avant d’envoyer.",
+	"ui.chat.composer_notes.hint.connect_provider": "Connectez un fournisseur pour envoyer.",
+	"ui.chat.composer_notes.outside_mentions": "{count, plural, one {# référence pointe en dehors du dossier de travail de cette session ; l’agent vous demandera de l’approuver avant de la lire.} many {# de références pointent en dehors du dossier de travail de cette session ; l’agent vous demandera de les approuver avant de les lire.} other {# références pointent en dehors du dossier de travail de cette session ; l’agent vous demandera de les approuver avant de les lire.}}",
+	"ui.chat.composer_notes.skill_empty_body": "le contenu de la compétence `{name}` est vide — votre message est envoyé tel quel",
+	"ui.chat.composer_notes.skill_load_failed": "impossible de charger la compétence `{name}` — votre message est envoyé tel quel",
+	"ui.chat.composer_notes.slash_needs_name": "Saisissez un nom après /{command}, ou choisissez-en un dans la liste."
+}

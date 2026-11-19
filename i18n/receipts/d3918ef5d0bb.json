@@ -1,0 +1,655 @@
+{
+  "schema": 1,
+  "locale": "es",
+  "date": "2026-10-23",
+  "commit": "f8523794527b4d69fdf9a0b20db593156a982aa1",
+  "base": "f6b9aae9ce5594e79dddb0d654edc4b4a0862331",
+  "auditor": {
+    "agent": "translation-auditor",
+    "session": "d3918ef5d0bb",
+    "model": "openrouter/moonshotai/kimi-k3.1-pro",
+    "served_model": "openrouter/moonshotai/kimi-k3.1-pro",
+    "fallback_used": false
+  },
+  "agent": "translation-auditor",
+  "instance": "d3918ef5d0bb",
+  "model": "openrouter/moonshotai/kimi-k3.1-pro",
+  "served_model": "openrouter/moonshotai/kimi-k3.1-pro",
+  "independence": {
+    "translator_session": "9ab86eade0cc",
+    "independent": true,
+    "statement": "This auditor session did not author or edit the translation, source, ledger or catalogues; all verdicts were derived from the named commit bytes and side-by-side en/es/context reads."
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "keys_read": 134,
+  "finding_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+  },
+  "references": {
+    "contributor_contract": {
+      "path": "docs/I18N.md @ f8523794527b4d69fdf9a0b20db593156a982aa1"
+    },
+    "receipt_contract": {
+      "path": "scripts/i18n/ledger-assemble.mjs + scripts/i18n/ledger-rules.mjs @ f8523794527b4d69fdf9a0b20db593156a982aa1"
+    },
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/es.md",
+      "sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+    }
+  },
+  "evidence": {
+    "semantic_register_glossary": "Read every English value, Spanish value and English context entry for all 134 keys; checked tú register, infinitive action labels, sentence case, glossary terms and exact-English-string mappings across the existing es catalogue. No T/V mismatch or English leakage found.",
+    "key_order": "All nine en/es files have identical ordered key lists and identical key sets; counts total 134.",
+    "icu": "Parser AST comparison passed for all 134 keys: argument identities/types, select arms, number skeletons and plural structure preserved; Spanish plural categories are one/many/other. Mechanical errors: [].",
+    "spanish_cldr_samples": [
+      {
+        "count": 0,
+        "category": "other",
+        "ungrouped": "0",
+        "formatted": "Detener 0 sesiones ahora"
+      },
+      {
+        "count": 1,
+        "category": "one",
+        "ungrouped": "1",
+        "formatted": "Detener esta sesión ahora"
+      },
+      {
+        "count": 2,
+        "category": "other",
+        "ungrouped": "2",
+        "formatted": "Detener 2 sesiones ahora"
+      },
+      {
+        "count": 1000000,
+        "category": "many",
+        "ungrouped": "1000000",
+        "formatted": "Detener 1000000 de sesiones ahora"
+      },
+      {
+        "count": 1500000,
+        "category": "other",
+        "ungrouped": "1500000",
+        "formatted": "Detener 1500000 sesiones ahora"
+      }
+    ],
+    "select_samples": [
+      {
+        "action": "pin",
+        "formatted": "No se pudo fijar “Informe”."
+      },
+      {
+        "action": "unpin",
+        "formatted": "No se pudo desfijar “Informe”."
+      },
+      {
+        "action": "other",
+        "formatted": "No se pudo actualizar “Informe”."
+      }
+    ],
+    "group_off_samples": [
+      {
+        "key": "ui.chat.pickers.stop.all_sessions",
+        "formatted": "Todas las sesiones (1234)"
+      },
+      {
+        "key": "ui.chat.canonical.supplement.details.attempts",
+        "formatted": "Intentos: 1234"
+      },
+      {
+        "key": "ui.chat.sidebar.search.too_long",
+        "formatted": "Las búsquedas tienen un límite de 1234 caracteres. Esta lo supera, así que solo se busca en los nombres de los chats."
+      }
+    ],
+    "pseudo_localization": {
+      "method": "Accent/expand English literal AST nodes only, wrap with ⟦⟧, reparse and compare ICU structure; no repository writes.",
+      "keys_generated_and_reparsed": 134,
+      "errors": []
+    },
+    "typography": {
+      "errors": [],
+      "ascii_ellipsis_exception": "ui.chat.pickers.fork.search_placeholder retains ... because its English context explicitly requires the shipped ASCII ellipsis. All other shipped ellipses, curly quotes and spaced em dashes match the es guide."
+    },
+    "rtl": "Not applicable to LTR Spanish; zero bidi-control characters found.",
+    "allowed_or_established_english_tokens": {
+      "chats": 8,
+      "chat": 2,
+      "backend": 1,
+      "Esc": 1,
+      "ID": 1,
+      "Local": 1,
+      "Operator": 1,
+      "token": 1,
+      "harness_masked_kept_english_technical_token": 1,
+      "Canvas": 2,
+      "app": 2,
+      "Finder": 1,
+      "HTML": 1
+    },
+    "english_leakage": [],
+    "overflow": {
+      "method": "Static visible-literal Unicode code-point comparison; ICU variables excluded and longest select/plural branch used. Watch threshold: delta >=5 and es/en ratio >=1.25. This is not a pixel or rendered-overflow claim.",
+      "candidate_count": 33,
+      "disposition": "Every listed candidate is named for a rendered check if its role paints text; no overflow severity is assigned from static lengths alone.",
+      "priority_visible_keys": [
+        "ui.chat.pickers.goal.mark_done",
+        "ui.chat.sidebar.list.retry_refresh",
+        "ui.chat.sidebar.search.unavailable",
+        "ui.chat.pickers.goal.placeholder",
+        "ui.chat.canonical.transcript.stale_caption",
+        "ui.chat.pickers.models.set_as_default"
+      ]
+    },
+    "non_findings": [
+      {
+        "keys": [
+          "ui.chat.canonical.transcript.missing_session",
+          "ui.chat.canonical.transcript.missing_session_detail"
+        ],
+        "reason": "Equipo is established computer/machine wording in the existing es catalogue and the connection clause supplies that meaning here; not reported as team/machine mistranslation."
+      }
+    ],
+    "mechanical_artifact": {
+      "path": "/Users/damian/.local-operator/sessions/d3918ef5d0bb/scratchpad/es-completion-mechanical-evidence.json",
+      "sha256": "75ac20ce0f7cc0b6334b0d72cacac74855766aac73d0a52da968cd45ff0585d0"
+    },
+    "probe": {
+      "path": "/Users/damian/.local-operator/sessions/d3918ef5d0bb/scratchpad/es-completion-audit.mjs",
+      "sha256": "92d7ebc70902bb82e8c9f26031ed2a7f10918fbad5a7cb1b9eda15796e48d41e",
+      "command": "env -u CMUX_API_KEY -u CMUX_SOCKET -u CMUX_TAB_ID -u CMUX_WORKSPACE_ID -u CMUX_PANEL_ID node /Users/damian/.local-operator/sessions/d3918ef5d0bb/scratchpad/es-completion-audit.mjs",
+      "actual_result": "exit 0; totalKeys=134; pseudoCount=134; errors=[]; overflowCandidates=33"
+    },
+    "rendered": "No browser, Electron, screenshot, pixel-fit, activation or rendered claim. No server or browser process started.",
+    "repository": "Source worktree was read only; no catalogue, ledger, receipt, source, PR or generated-file writes."
+  },
+  "namespaces": {
+    "ui.chat.sidebar": {
+      "status": "passed",
+      "result": "clean-with-findings",
+      "keys_read": 43,
+      "sha256": {
+        "en": "bd0bf045b2aa5a4495695592dcd3ccad76ec5bdea23cfda37460ce751479965f",
+        "es": "797a6f9b45b98829d4d332a512fb9cf42e7456e29d2d0a8d589f8abcd877502a",
+        "context": "fe5dc2a0fa4cb9b95ef5c1a30d57aee030fa5edf2b6b54b323562a1c63b8eb3a"
+      },
+      "findings": [
+        {
+          "id": "ES-COMPLETION-001",
+          "severity": "MINOR",
+          "namespace": "ui.chat.sidebar",
+          "key": "ui.chat.sidebar.nav.chats",
+          "current_text": "Conversaciones",
+          "proposed_text": "Chats",
+          "reason": "The same standalone English label is “Chats” in ui.command_palette.palette_search.chats and this namespace otherwise retains chat/chats, so “Conversaciones” introduces avoidable navigation terminology drift.",
+          "evidence": {
+            "existing_key": "ui.command_palette.palette_search.chats",
+            "existing_es": "Chats",
+            "new_file_line": "src/i18n/catalogues/es/ui.chat.sidebar.json:23"
+          }
+        }
+      ],
+      "evidence": {
+        "semantic": "All keys read side by side with en and context; accuracy, idiom, register, glossary and typography reviewed.",
+        "ordered_key_parity": true,
+        "icu_errors": [],
+        "pseudo_errors": [],
+        "overflow_candidates": [
+          {
+            "key": "ui.chat.sidebar.nav.chats",
+            "en": "Chats",
+            "es": "Conversaciones",
+            "en_static_codepoints": 5,
+            "es_static_codepoints": 14,
+            "delta": 9,
+            "ratio": 2.8
+          },
+          {
+            "key": "ui.chat.sidebar.list.retry_refresh",
+            "en": "Retry refresh",
+            "es": "Reintentar actualización",
+            "en_static_codepoints": 13,
+            "es_static_codepoints": 24,
+            "delta": 11,
+            "ratio": 1.846
+          },
+          {
+            "key": "ui.chat.sidebar.drafts.clear_all_label",
+            "en": "Clear all drafts",
+            "es": "Borrar todos los borradores",
+            "en_static_codepoints": 16,
+            "es_static_codepoints": 27,
+            "delta": 11,
+            "ratio": 1.688
+          },
+          {
+            "key": "ui.chat.sidebar.search.unavailable",
+            "en": "Conversation search is unavailable, so these are name matches.",
+            "es": "La búsqueda en las conversaciones no está disponible, así que estas coincidencias son solo de nombres.",
+            "en_static_codepoints": 62,
+            "es_static_codepoints": 102,
+            "delta": 40,
+            "ratio": 1.645
+          },
+          {
+            "key": "ui.chat.sidebar.agents.no_match",
+            "en": "No agents match",
+            "es": "Ningún agente coincide",
+            "en_static_codepoints": 15,
+            "es_static_codepoints": 22,
+            "delta": 7,
+            "ratio": 1.467
+          },
+          {
+            "key": "ui.chat.sidebar.header.view_options",
+            "en": "View options",
+            "es": "Opciones de vista",
+            "en_static_codepoints": 12,
+            "es_static_codepoints": 17,
+            "delta": 5,
+            "ratio": 1.417
+          },
+          {
+            "key": "ui.chat.sidebar.agents.empty",
+            "en": "No agents yet",
+            "es": "Aún no hay agentes",
+            "en_static_codepoints": 13,
+            "es_static_codepoints": 18,
+            "delta": 5,
+            "ratio": 1.385
+          },
+          {
+            "key": "ui.chat.sidebar.agents.clear_filter",
+            "en": "Clear agent filter",
+            "es": "Borrar filtro de agentes",
+            "en_static_codepoints": 18,
+            "es_static_codepoints": 24,
+            "delta": 6,
+            "ratio": 1.333
+          },
+          {
+            "key": "ui.chat.sidebar.pins.drag_title",
+            "en": "Drag to reorder · Esc cancels",
+            "es": "Arrastrar para reordenar · Esc cancela",
+            "en_static_codepoints": 29,
+            "es_static_codepoints": 38,
+            "delta": 9,
+            "ratio": 1.31
+          },
+          {
+            "key": "ui.chat.sidebar.search.searching",
+            "en": "Searching conversations…",
+            "es": "Buscando en las conversaciones…",
+            "en_static_codepoints": 24,
+            "es_static_codepoints": 31,
+            "delta": 7,
+            "ratio": 1.292
+          },
+          {
+            "key": "ui.chat.sidebar.list.connecting",
+            "en": "Connecting to chats…",
+            "es": "Conectando con los chats…",
+            "en_static_codepoints": 20,
+            "es_static_codepoints": 25,
+            "delta": 5,
+            "ratio": 1.25
+          },
+          {
+            "key": "ui.chat.sidebar.pins.failure",
+            "en": "{action, select, pin {Could not pin “{title}”.} unpin {Could not unpin “{title}”.} other {Could not update “{title}”.}}",
+            "es": "{action, select, pin {No se pudo fijar “{title}”.} unpin {No se pudo desfijar “{title}”.} other {No se pudo actualizar “{title}”.}}",
+            "en_static_codepoints": 20,
+            "es_static_codepoints": 25,
+            "delta": 5,
+            "ratio": 1.25
+          }
+        ]
+      }
+    },
+    "ui.chat.pickers": {
+      "status": "passed",
+      "result": "clean",
+      "keys_read": 34,
+      "sha256": {
+        "en": "65f926679cefe21229f8d755f71d64381c5d6706c2d33c62cb63141e8f01352d",
+        "es": "f25d5baa979025cc55b2efada9e3b372f2c71e68396b58adacaf614b4b18bbba",
+        "context": "8d3fa914cd52768c98a75c4f41b903b86553335b27e406f98500eab7ff576e64"
+      },
+      "findings": [],
+      "evidence": {
+        "semantic": "All keys read side by side with en and context; accuracy, idiom, register, glossary and typography reviewed.",
+        "ordered_key_parity": true,
+        "icu_errors": [],
+        "pseudo_errors": [],
+        "overflow_candidates": [
+          {
+            "key": "ui.chat.pickers.goal.mark_done",
+            "en": "Mark done",
+            "es": "Marcar como completado",
+            "en_static_codepoints": 9,
+            "es_static_codepoints": 22,
+            "delta": 13,
+            "ratio": 2.444
+          },
+          {
+            "key": "ui.chat.pickers.approvals.title",
+            "en": "Tool approvals",
+            "es": "Aprobaciones de herramientas",
+            "en_static_codepoints": 14,
+            "es_static_codepoints": 28,
+            "delta": 14,
+            "ratio": 2
+          },
+          {
+            "key": "ui.chat.pickers.skills.title",
+            "en": "Skills",
+            "es": "Habilidades",
+            "en_static_codepoints": 6,
+            "es_static_codepoints": 11,
+            "delta": 5,
+            "ratio": 1.833
+          },
+          {
+            "key": "ui.chat.pickers.goal.placeholder",
+            "en": "Ship the release with green gates",
+            "es": "Publica la versión con todas las comprobaciones en verde",
+            "en_static_codepoints": 33,
+            "es_static_codepoints": 56,
+            "delta": 23,
+            "ratio": 1.697
+          },
+          {
+            "key": "ui.chat.pickers.logout.title",
+            "en": "Sign out",
+            "es": "Cerrar sesión",
+            "en_static_codepoints": 8,
+            "es_static_codepoints": 13,
+            "delta": 5,
+            "ratio": 1.625
+          },
+          {
+            "key": "ui.chat.pickers.effort.title",
+            "en": "Reasoning effort",
+            "es": "Esfuerzo de razonamiento",
+            "en_static_codepoints": 16,
+            "es_static_codepoints": 24,
+            "delta": 8,
+            "ratio": 1.5
+          },
+          {
+            "key": "ui.chat.pickers.goal.title",
+            "en": "Session goal",
+            "es": "Objetivo de sesión",
+            "en_static_codepoints": 12,
+            "es_static_codepoints": 18,
+            "delta": 6,
+            "ratio": 1.5
+          },
+          {
+            "key": "ui.chat.pickers.goal.clear",
+            "en": "Clear goal",
+            "es": "Borrar objetivo",
+            "en_static_codepoints": 10,
+            "es_static_codepoints": 15,
+            "delta": 5,
+            "ratio": 1.5
+          },
+          {
+            "key": "ui.chat.pickers.login.title",
+            "en": "Sign in to a provider",
+            "es": "Iniciar sesión en un proveedor",
+            "en_static_codepoints": 21,
+            "es_static_codepoints": 30,
+            "delta": 9,
+            "ratio": 1.429
+          },
+          {
+            "key": "ui.chat.pickers.stop.all_sessions",
+            "en": "All sessions ({count, number, ::group-off})",
+            "es": "Todas las sesiones ({count, number, ::group-off})",
+            "en_static_codepoints": 15,
+            "es_static_codepoints": 21,
+            "delta": 6,
+            "ratio": 1.4
+          },
+          {
+            "key": "ui.chat.pickers.models.set_as_default",
+            "en": "Set current model as default",
+            "es": "Hacer predeterminado el modelo actual",
+            "en_static_codepoints": 28,
+            "es_static_codepoints": 37,
+            "delta": 9,
+            "ratio": 1.321
+          }
+        ]
+      }
+    },
+    "ui.chat.canonical": {
+      "status": "passed",
+      "result": "clean",
+      "keys_read": 30,
+      "sha256": {
+        "en": "771482d2bdef4f9d40bfbdaa35e8eebed300b0e6f9a477318557c26d1770e5a7",
+        "es": "5b189a86ad2da2e4b63f4ecb1eb4534905e5f903c07410d3545fb00c4bbc1a77",
+        "context": "53145be31fe46bde6578d114653466dc5c6c932947460c10a0022c9e190d9a34"
+      },
+      "findings": [],
+      "evidence": {
+        "semantic": "All keys read side by side with en and context; accuracy, idiom, register, glossary and typography reviewed.",
+        "ordered_key_parity": true,
+        "icu_errors": [],
+        "pseudo_errors": [],
+        "overflow_candidates": [
+          {
+            "key": "ui.chat.canonical.sound.stop.confirm_label",
+            "en": "Confirm stop request",
+            "es": "Confirmación de solicitud de detención",
+            "en_static_codepoints": 20,
+            "es_static_codepoints": 38,
+            "delta": 18,
+            "ratio": 1.9
+          },
+          {
+            "key": "ui.chat.canonical.sound.stop.request_stop",
+            "en": "Request stop",
+            "es": "Solicitar detención",
+            "en_static_codepoints": 12,
+            "es_static_codepoints": 19,
+            "delta": 7,
+            "ratio": 1.583
+          },
+          {
+            "key": "ui.chat.canonical.supplement.file_actions.open_in_default_app",
+            "en": "Open in default app",
+            "es": "Abrir en la app predeterminada",
+            "en_static_codepoints": 19,
+            "es_static_codepoints": 30,
+            "delta": 11,
+            "ratio": 1.579
+          },
+          {
+            "key": "ui.chat.canonical.transcript.send_again",
+            "en": "Send again",
+            "es": "Enviar de nuevo",
+            "en_static_codepoints": 10,
+            "es_static_codepoints": 15,
+            "delta": 5,
+            "ratio": 1.5
+          },
+          {
+            "key": "ui.chat.canonical.transcript.stale_caption",
+            "en": "Showing the last saved view — checking for newer messages.",
+            "es": "Se muestra la última vista guardada — comprobando si hay mensajes más recientes.",
+            "en_static_codepoints": 58,
+            "es_static_codepoints": 80,
+            "delta": 22,
+            "ratio": 1.379
+          },
+          {
+            "key": "ui.chat.canonical.transcript.start_new_chat",
+            "en": "Start a new chat",
+            "es": "Iniciar un chat nuevo",
+            "en_static_codepoints": 16,
+            "es_static_codepoints": 21,
+            "delta": 5,
+            "ratio": 1.313
+          }
+        ]
+      }
+    },
+    "ui.chat.analytics": {
+      "status": "passed",
+      "result": "clean",
+      "keys_read": 11,
+      "sha256": {
+        "en": "6ac0bbfb50c8ef8c772f229868614aa8d07dfd9f659311d5d396cea5c4611159",
+        "es": "174b4be548b4d7494c5da54c4c54b867ca0cafa902b45bfb57fe6e47367ffb02",
+        "context": "7c25af7f391fbaac6a1718a81b8b258c0b313ba46411f16e95691446828640ff"
+      },
+      "findings": [],
+      "evidence": {
+        "semantic": "All keys read side by side with en and context; accuracy, idiom, register, glossary and typography reviewed.",
+        "ordered_key_parity": true,
+        "icu_errors": [],
+        "pseudo_errors": [],
+        "overflow_candidates": []
+      }
+    },
+    "ui.common.file_actions": {
+      "status": "passed",
+      "result": "clean",
+      "keys_read": 5,
+      "sha256": {
+        "en": "edac3001910c5ba03d5c0552f07c19baeb1bd1e8e9d3c0a6c178a693f9351233",
+        "es": "95cbcbb27f865bb9d15b0a5f4053fba263a3147ea5729a93449a09d05703c4ff",
+        "context": "147274f1e573608ac78a0dc45aa14d14a5d2cf89efa953d4f4e012a7fae8d04b"
+      },
+      "findings": [],
+      "evidence": {
+        "semantic": "All keys read side by side with en and context; accuracy, idiom, register, glossary and typography reviewed.",
+        "ordered_key_parity": true,
+        "icu_errors": [],
+        "pseudo_errors": [],
+        "overflow_candidates": [
+          {
+            "key": "ui.common.file_actions.preview",
+            "en": "Preview",
+            "es": "Vista previa",
+            "en_static_codepoints": 7,
+            "es_static_codepoints": 12,
+            "delta": 5,
+            "ratio": 1.714
+          },
+          {
+            "key": "ui.common.file_actions.copy_file_path",
+            "en": "Copy file path",
+            "es": "Copiar ruta del archivo",
+            "en_static_codepoints": 14,
+            "es_static_codepoints": 23,
+            "delta": 9,
+            "ratio": 1.643
+          }
+        ]
+      }
+    },
+    "ui.common.viewer": {
+      "status": "passed",
+      "result": "clean",
+      "keys_read": 4,
+      "sha256": {
+        "en": "660c7e185ebc22d37ecc9b5d02807428f87c477f86431f5cdb07fdec888b78bb",
+        "es": "a7b773b4b329b7ba68c3f2d62c6bb417633eb9507a31128844c997553752d56e",
+        "context": "cd11be98d1d94cba927141b2b6b390af7fdc59a8519ea3ed18361cfd4930c2c9"
+      },
+      "findings": [],
+      "evidence": {
+        "semantic": "All keys read side by side with en and context; accuracy, idiom, register, glossary and typography reviewed.",
+        "ordered_key_parity": true,
+        "icu_errors": [],
+        "pseudo_errors": [],
+        "overflow_candidates": [
+          {
+            "key": "ui.common.viewer.reset_view",
+            "en": "Reset view",
+            "es": "Restablecer vista",
+            "en_static_codepoints": 10,
+            "es_static_codepoints": 17,
+            "delta": 7,
+            "ratio": 1.7
+          }
+        ]
+      }
+    },
+    "ui.chat.tag_dialogs": {
+      "status": "passed",
+      "result": "clean",
+      "keys_read": 4,
+      "sha256": {
+        "en": "140fb44d94388706e24ba37c6910a6b753ce0f0701f44e78390a1fffb13c1506",
+        "es": "5fd755f73ac6d67c9929fcd1e69984602c36e558b6cddb97c2ecf74184902448",
+        "context": "8f4cc8ca17d926c4f85f4226ff92e7c291babbe7e9868ebb8d9fceb5a8841987"
+      },
+      "findings": [],
+      "evidence": {
+        "semantic": "All keys read side by side with en and context; accuracy, idiom, register, glossary and typography reviewed.",
+        "ordered_key_parity": true,
+        "icu_errors": [],
+        "pseudo_errors": [],
+        "overflow_candidates": []
+      }
+    },
+    "ui.chat.run_details": {
+      "status": "passed",
+      "result": "clean",
+      "keys_read": 2,
+      "sha256": {
+        "en": "7eea05d7c5b371e7969214abc7bd2961bf6c38fd3e5886e0957493b787878094",
+        "es": "cc95b9c0545c0686fd10dd9b277141c557d45fadde0b708aea4c3406b824d61f",
+        "context": "eae93350935a597d66fe4931a40fed2fa9d40d0b01e03925d2cef22985f628d6"
+      },
+      "findings": [],
+      "evidence": {
+        "semantic": "All keys read side by side with en and context; accuracy, idiom, register, glossary and typography reviewed.",
+        "ordered_key_parity": true,
+        "icu_errors": [],
+        "pseudo_errors": [],
+        "overflow_candidates": []
+      }
+    },
+    "ui.chat.commentary_actions": {
+      "status": "passed",
+      "result": "clean",
+      "keys_read": 1,
+      "sha256": {
+        "en": "77d6babd2e9fac04e95a550d25f4428e113144c160c34009b89e06608b812868",
+        "es": "3633c6cbd80323c7c8e9a6cae0f328d733e0930a5969b6d6c5fe88855116c408",
+        "context": "20901db281f82c025243d688a14bfc490d1b5c01c7fd03e7d8788f35411c3ad1"
+      },
+      "findings": [],
+      "evidence": {
+        "semantic": "All keys read side by side with en and context; accuracy, idiom, register, glossary and typography reviewed.",
+        "ordered_key_parity": true,
+        "icu_errors": [],
+        "pseudo_errors": [],
+        "overflow_candidates": [
+          {
+            "key": "ui.chat.commentary_actions.label",
+            "en": "Commentary actions",
+            "es": "Acciones de la narración",
+            "en_static_codepoints": 18,
+            "es_static_codepoints": 24,
+            "delta": 6,
+            "ratio": 1.333
+          }
+        ]
+      }
+    }
+  }
+}

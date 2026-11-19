@@ -1,0 +1,501 @@
+en base=edf18f0d32404972428c4bfcc107f835d170df6e2f6c800d10681d1a1e6e4fd1 head=7acc3ea2a00d63aa3b68aadf7e42007e19d3de9e4cef9b72beafdbe73e351359
+context base=79b22ab6e83a0d8675409f9673a452928b77cee22e47c52930ea0c2127f269f5 head=469d7b985ed12cf1c72f6c5f59eea6783cd2861ba8fb96ca7cd99e4089fcb6cf
+en changed=17 added=15
+
+es: base=7296820ce00ec1524f6141741705124733c88ffcfddd94b12c192682f9ff62f6 head=2fa9466fdca70ef9dafd1b415f5df324aadaae5a2b45f4227f6972c8a46e42c9 keyset_matches_en=true changed=17 delta_matches_en=true cldr=one/many/other
+  PASS ui.mesh.approval.head_inheritance
+    base: Permitir que {device} use tu cuenta de {provider} {account}
+    head: Permitir que {device} use tu cuenta de {provider} ({account})
+    {"parse":true,"args_match":true,"args":"account,device,provider","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.file_key_disclosure
+    base: Esta máquina firma con un archivo de clave, no con Touch ID, así que esta aprobación no puede demostrar que la hizo una persona.
+    head: Aquí se firma con un archivo de clave, no con Touch ID, por lo que no se puede demostrar que una persona aprobó la solicitud.
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.technical_request (added)
+    base: -
+    head: Solicitud firmada exacta (técnica)
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.needs_attention (added)
+    base: -
+    head: Requieren atención: {count, number, ::group-off}
+    {"parse":true,"args_match":true,"args":"count","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.shared_count (added)
+    base: -
+    head: Compartidos: {count, number, ::group-off}
+    {"parse":true,"args_match":true,"args":"count","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.shared (added)
+    base: -
+    head: Compartido
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.result_status (added)
+    base: -
+    head: Compartidos: {shared, number, ::group-off}. Requieren atención: {attention, number, ::group-off}.
+    {"parse":true,"args_match":true,"args":"attention,shared","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.duration_under_minute (added)
+    base: -
+    head: menos de un minuto
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.duration_minutes (added)
+    base: -
+    head: {count, plural, one {{count, number, ::group-off} minuto} many {{count, number, ::group-off} minutos} other {{count, number, ::group-off} minutos}}
+    {"parse":true,"args_match":true,"args":"count","plural_ok":true,"plural_selectors":"one/many/other","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.duration_hours (added)
+    base: -
+    head: {count, plural, one {{count, number, ::group-off} hora} many {{count, number, ::group-off} horas} other {{count, number, ::group-off} horas}}
+    {"parse":true,"args_match":true,"args":"count","plural_ok":true,"plural_selectors":"one/many/other","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.answer_window (added)
+    base: -
+    head: Responde en {duration}
+    {"parse":true,"args_match":true,"args":"duration","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.file_key_recorded (added)
+    base: -
+    head: Esta aprobación se firmó con un archivo de clave, no con Touch ID. No puede demostrar que una persona la aprobó.
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.cancel_sharing (added)
+    base: -
+    head: Cancelar el uso compartido
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.cancel_hint (added)
+    base: -
+    head: Cancelar el uso compartido detiene esta solicitud. No retira el acceso ya compartido.
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.signing_applying (added)
+    base: -
+    head: Firmando y aplicando…
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.retry_hint (added)
+    base: -
+    head: Elige Reintentar para aplicar esta solicitud aprobada.
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.named_refusal (added)
+    base: -
+    head: Solicitud «{request}»: {reason}
+    {"parse":true,"args_match":true,"args":"reason,request","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+
+fr: base=1420691a03f466060e2f3d003777214ffc4e97b9880b3ebe769a376a86d0ef1f head=527832b560bdc4a8a816eb2189e510263ba7de3c189929f891228829619baa99 keyset_matches_en=true changed=17 delta_matches_en=true cldr=one/many/other
+  PASS ui.mesh.approval.head_inheritance
+    base: Autoriser {device} à utiliser votre compte {provider} {account}
+    head: Autoriser {device} à utiliser votre compte {provider} ({account})
+    {"parse":true,"args_match":true,"args":"account,device,provider","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.file_key_disclosure
+    base: Cette machine signe avec un fichier de clé, pas avec Touch ID : cette approbation ne peut donc pas prouver qu’une personne l’a donnée.
+    head: La signature ici utilise un fichier de clé, pas Touch ID : elle ne peut pas prouver qu’une personne a approuvé la demande.
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.technical_request (added)
+    base: -
+    head: Demande signée exacte (technique)
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.needs_attention (added)
+    base: -
+    head: À traiter : {count, number, ::group-off}
+    {"parse":true,"args_match":true,"args":"count","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.shared_count (added)
+    base: -
+    head: Partagés : {count, number, ::group-off}
+    {"parse":true,"args_match":true,"args":"count","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.shared (added)
+    base: -
+    head: Partagé
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.result_status (added)
+    base: -
+    head: Partagés: {shared, number, ::group-off}. À traiter: {attention, number, ::group-off}.
+    {"parse":true,"args_match":true,"args":"attention,shared","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+    SIGNAL: fr: missing U+202F before : ; ! ?
+  PASS ui.mesh.approval.duration_under_minute (added)
+    base: -
+    head: moins d’une minute
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.duration_minutes (added)
+    base: -
+    head: {count, plural, one {{count, number, ::group-off} minute} many {{count, number, ::group-off} minutes} other {{count, number, ::group-off} minutes}}
+    {"parse":true,"args_match":true,"args":"count","plural_ok":true,"plural_selectors":"one/many/other","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.duration_hours (added)
+    base: -
+    head: {count, plural, one {{count, number, ::group-off} heure} many {{count, number, ::group-off} heures} other {{count, number, ::group-off} heures}}
+    {"parse":true,"args_match":true,"args":"count","plural_ok":true,"plural_selectors":"one/many/other","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.answer_window (added)
+    base: -
+    head: Répondre sous {duration}
+    {"parse":true,"args_match":true,"args":"duration","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.file_key_recorded (added)
+    base: -
+    head: Cette approbation a été signée avec un fichier de clé, pas avec Touch ID. Elle ne peut pas prouver qu’une personne l’a approuvée.
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.cancel_sharing (added)
+    base: -
+    head: Annuler le partage
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.cancel_hint (added)
+    base: -
+    head: Annuler le partage arrête cette demande, sans retirer les accès déjà partagés.
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.signing_applying (added)
+    base: -
+    head: Signature et application…
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.retry_hint (added)
+    base: -
+    head: Choisissez Réessayer pour appliquer cette demande approuvée.
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.named_refusal (added)
+    base: -
+    head: Pour « {request} » : {reason}
+    {"parse":true,"args_match":true,"args":"reason,request","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+    SIGNAL: fr: « » without U+202F
+
+hi: base=9e06377a6acc6fd928f21ede8cd6e9820b2f1e3404f4b1be8634d95abae21014 head=0dec3965667ab042bfb7a357053292b6de41126802780c2d5f74df1be3c49e00 keyset_matches_en=true changed=17 delta_matches_en=true cldr=one/other
+  PASS ui.mesh.approval.head_inheritance
+    base: {device} को अपना {provider} खाता {account} इस्तेमाल करने दें
+    head: {device} को अपना {provider} खाता ({account}) इस्तेमाल करने दें
+    {"parse":true,"args_match":true,"args":"account,device,provider","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.file_key_disclosure
+    base: यह मशीन Touch ID से नहीं, कुंजी फ़ाइल से हस्ताक्षर करती है, इसलिए यह स्वीकृति साबित नहीं कर सकती कि इसे किसी व्यक्ति ने दिया।
+    head: यहाँ Touch ID से नहीं, कुंजी फ़ाइल से हस्ताक्षर होते हैं, इसलिए यह साबित नहीं कर सकते कि अनुरोध किसी व्यक्ति ने स्वीकृत किया।
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.technical_request (added)
+    base: -
+    head: हस्ताक्षरित अनुरोध का सटीक डेटा (तकनीकी)
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.needs_attention (added)
+    base: -
+    head: ध्यान देना ज़रूरी: {count, number, ::group-off}
+    {"parse":true,"args_match":true,"args":"count","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.shared_count (added)
+    base: -
+    head: साझा किए गए: {count, number, ::group-off}
+    {"parse":true,"args_match":true,"args":"count","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.shared (added)
+    base: -
+    head: साझा किया गया
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.result_status (added)
+    base: -
+    head: साझा किए गए: {shared, number, ::group-off}. ध्यान देना ज़रूरी: {attention, number, ::group-off}.
+    {"parse":true,"args_match":true,"args":"attention,shared","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+    SIGNAL: hi: ASCII period after argument
+  PASS ui.mesh.approval.duration_under_minute (added)
+    base: -
+    head: एक मिनट से कम
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.duration_minutes (added)
+    base: -
+    head: {count, plural, one {{count, number, ::group-off} मिनट} other {{count, number, ::group-off} मिनट}}
+    {"parse":true,"args_match":true,"args":"count","plural_ok":true,"plural_selectors":"one/other","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.duration_hours (added)
+    base: -
+    head: {count, plural, one {{count, number, ::group-off} घंटे} other {{count, number, ::group-off} घंटे}}
+    {"parse":true,"args_match":true,"args":"count","plural_ok":true,"plural_selectors":"one/other","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.answer_window (added)
+    base: -
+    head: {duration} के भीतर जवाब दें
+    {"parse":true,"args_match":true,"args":"duration","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.file_key_recorded (added)
+    base: -
+    head: यह स्वीकृति Touch ID से नहीं, कुंजी फ़ाइल से हस्ताक्षरित हुई थी। यह साबित नहीं कर सकती कि इसे किसी व्यक्ति ने दिया।
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.cancel_sharing (added)
+    base: -
+    head: साझा करना रद्द करें
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.cancel_hint (added)
+    base: -
+    head: साझा करना रद्द करने से यह अनुरोध रुक जाता है। पहले से साझा एक्सेस वापस नहीं लिया जाता।
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.signing_applying (added)
+    base: -
+    head: हस्ताक्षर और लागू हो रहा है…
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.retry_hint (added)
+    base: -
+    head: इस स्वीकृत अनुरोध को लागू करने के लिए फिर से कोशिश करें चुनें।
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.named_refusal (added)
+    base: -
+    head: अनुरोध “{request}”: {reason}
+    {"parse":true,"args_match":true,"args":"reason,request","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+
+ru: base=55a359112656f0458efb0f76edf5a073ea0fb962b43afbc9f4e58119b57f0f49 head=043539358f5956a2bb3be3f4f096b5d39563c78b68a5db2f54f63885b2ce283d keyset_matches_en=true changed=17 delta_matches_en=true cldr=one/few/many/other
+  PASS ui.mesh.approval.head_inheritance
+    base: Разрешить {device} использовать ваш аккаунт {provider} {account}
+    head: Разрешить {device} использовать ваш аккаунт {provider} ({account})
+    {"parse":true,"args_match":true,"args":"account,device,provider","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.file_key_disclosure
+    base: Эта машина подписывает файлом ключа, а не Touch ID, поэтому одобрение не может доказать, что его дал человек.
+    head: Здесь для подписи используется файл ключа, а не Touch ID, поэтому она не доказывает, что запрос одобрил человек.
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.technical_request (added)
+    base: -
+    head: Точный подписанный запрос (технические данные)
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.needs_attention (added)
+    base: -
+    head: Требуют внимания: {count, number, ::group-off}
+    {"parse":true,"args_match":true,"args":"count","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.shared_count (added)
+    base: -
+    head: Предоставлено: {count, number, ::group-off}
+    {"parse":true,"args_match":true,"args":"count","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.shared (added)
+    base: -
+    head: Доступ предоставлен
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.result_status (added)
+    base: -
+    head: Предоставлено: {shared, number, ::group-off}. Требуют внимания: {attention, number, ::group-off}.
+    {"parse":true,"args_match":true,"args":"attention,shared","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.duration_under_minute (added)
+    base: -
+    head: менее минуты
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.duration_minutes (added)
+    base: -
+    head: {count, plural, one {{count, number, ::group-off} минуты} few {{count, number, ::group-off} минут} many {{count, number, ::group-off} минут} other {{count, number, ::group-off} минуты}}
+    {"parse":true,"args_match":true,"args":"count","plural_ok":true,"plural_selectors":"one/few/many/other","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.duration_hours (added)
+    base: -
+    head: {count, plural, one {{count, number, ::group-off} часа} few {{count, number, ::group-off} часов} many {{count, number, ::group-off} часов} other {{count, number, ::group-off} часа}}
+    {"parse":true,"args_match":true,"args":"count","plural_ok":true,"plural_selectors":"one/few/many/other","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.answer_window (added)
+    base: -
+    head: Ответьте в течение {duration}
+    {"parse":true,"args_match":true,"args":"duration","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.file_key_recorded (added)
+    base: -
+    head: Это одобрение подписано файлом ключа, а не Touch ID. Оно не доказывает, что его одобрил человек.
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.cancel_sharing (added)
+    base: -
+    head: Отменить предоставление доступа
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.cancel_hint (added)
+    base: -
+    head: Отмена останавливает этот запрос, но не отзывает уже предоставленный доступ.
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.signing_applying (added)
+    base: -
+    head: Подписание и применение…
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.retry_hint (added)
+    base: -
+    head: Выберите «Повторить», чтобы применить этот одобренный запрос.
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.named_refusal (added)
+    base: -
+    head: Запрос «{request}»: {reason}
+    {"parse":true,"args_match":true,"args":"reason,request","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+
+ur: base=b244c0297ff7cbf03f07b0b6f744631a72d7cfb0a82815215baf76fdd6dd0961 head=cdce6e7f28e59bb6461f92a875e338957e912d0a2a7cfba7247c0cfcfe71c568 keyset_matches_en=true changed=17 delta_matches_en=true cldr=one/other
+  PASS ui.mesh.approval.head_inheritance
+    base: {device} کو اپنا {provider} اکاؤنٹ {account} استعمال کرنے دیں
+    head: {device} کو اپنا {provider} اکاؤنٹ ({account}) استعمال کرنے دیں
+    {"parse":true,"args_match":true,"args":"account,device,provider","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.file_key_disclosure
+    base: یہ مشین Touch ID کے بجائے کلید کی فائل سے دستخط کرتی ہے، اس لیے یہ منظوری ثابت نہیں کر سکتی کہ یہ کسی شخص نے دی۔
+    head: یہاں Touch ID کے بجائے کلید کی فائل سے دستخط ہوتے ہیں، اس لیے یہ ثابت نہیں ہو سکتا کہ کسی شخص نے درخواست منظور کی۔
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.technical_request (added)
+    base: -
+    head: دستخط شدہ درخواست کا عین ڈیٹا (تکنیکی)
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.needs_attention (added)
+    base: -
+    head: توجہ درکار: {count, number, ::group-off}
+    {"parse":true,"args_match":true,"args":"count","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.shared_count (added)
+    base: -
+    head: شیئر کیے گئے: {count, number, ::group-off}
+    {"parse":true,"args_match":true,"args":"count","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.shared (added)
+    base: -
+    head: شیئر ہو گیا
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.result_status (added)
+    base: -
+    head: شیئر کیے گئے: {shared, number, ::group-off}. توجہ درکار: {attention, number, ::group-off}.
+    {"parse":true,"args_match":true,"args":"attention,shared","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+    SIGNAL: ur: ASCII period, not ۔
+  PASS ui.mesh.approval.duration_under_minute (added)
+    base: -
+    head: ایک منٹ سے کم
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.duration_minutes (added)
+    base: -
+    head: {count, plural, one {{count, number, ::group-off} منٹ} other {{count, number, ::group-off} منٹ}}
+    {"parse":true,"args_match":true,"args":"count","plural_ok":true,"plural_selectors":"one/other","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.duration_hours (added)
+    base: -
+    head: {count, plural, one {{count, number, ::group-off} گھنٹے} other {{count, number, ::group-off} گھنٹے}}
+    {"parse":true,"args_match":true,"args":"count","plural_ok":true,"plural_selectors":"one/other","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.answer_window (added)
+    base: -
+    head: {duration} کے اندر جواب دیں
+    {"parse":true,"args_match":true,"args":"duration","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.file_key_recorded (added)
+    base: -
+    head: اس منظوری پر Touch ID کے بجائے کلید کی فائل سے دستخط ہوئے تھے۔ یہ ثابت نہیں کر سکتی کہ اسے کسی شخص نے منظور کیا۔
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.cancel_sharing (added)
+    base: -
+    head: شیئر کرنا منسوخ کریں
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.cancel_hint (added)
+    base: -
+    head: شیئر کرنا منسوخ کرنے سے یہ درخواست رک جاتی ہے۔ پہلے سے شیئر کی گئی رسائی واپس نہیں لی جاتی۔
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.signing_applying (added)
+    base: -
+    head: دستخط اور اطلاق جاری ہے…
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.retry_hint (added)
+    base: -
+    head: اس منظور شدہ درخواست کو لاگو کرنے کے لیے دوبارہ کوشش کریں منتخب کریں۔
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.named_refusal (added)
+    base: -
+    head: درخواست «{request}»: {reason}
+    {"parse":true,"args_match":true,"args":"reason,request","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+
+vi: base=cd3d7ccbb509c78a99a758b31fb4e6dc35fba9fbd228cab0400665f7a9ded2f7 head=657657becd93a3c37729be0823dc024f682a7830e55bd02b6031a394c04e50f3 keyset_matches_en=true changed=17 delta_matches_en=true cldr=other
+  PASS ui.mesh.approval.head_inheritance
+    base: Cho phép {device} dùng tài khoản {provider} {account} của bạn
+    head: Cho phép {device} dùng tài khoản {provider} ({account}) của bạn
+    {"parse":true,"args_match":true,"args":"account,device,provider","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.file_key_disclosure
+    base: Máy này ký bằng tệp khóa, không phải Touch ID, nên phê duyệt này không thể chứng minh là do một người thực hiện.
+    head: Ở đây dùng tệp khóa để ký, không phải Touch ID, nên không thể chứng minh một người đã phê duyệt yêu cầu.
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.technical_request (added)
+    base: -
+    head: Yêu cầu đã ký chính xác (kỹ thuật)
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.needs_attention (added)
+    base: -
+    head: Cần chú ý: {count, number, ::group-off}
+    {"parse":true,"args_match":true,"args":"count","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.shared_count (added)
+    base: -
+    head: Đã chia sẻ: {count, number, ::group-off}
+    {"parse":true,"args_match":true,"args":"count","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.shared (added)
+    base: -
+    head: Đã chia sẻ
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.result_status (added)
+    base: -
+    head: Đã chia sẻ: {shared, number, ::group-off}. Cần chú ý: {attention, number, ::group-off}.
+    {"parse":true,"args_match":true,"args":"attention,shared","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.duration_under_minute (added)
+    base: -
+    head: chưa đến một phút
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.duration_minutes (added)
+    base: -
+    head: {count, plural, other {{count, number, ::group-off} phút}}
+    {"parse":true,"args_match":true,"args":"count","plural_ok":true,"plural_selectors":"other","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.duration_hours (added)
+    base: -
+    head: {count, plural, other {{count, number, ::group-off} giờ}}
+    {"parse":true,"args_match":true,"args":"count","plural_ok":true,"plural_selectors":"other","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.answer_window (added)
+    base: -
+    head: Trả lời trong {duration}
+    {"parse":true,"args_match":true,"args":"duration","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.file_key_recorded (added)
+    base: -
+    head: Phê duyệt này đã được ký bằng tệp khóa, không phải Touch ID. Nó không thể chứng minh là do một người phê duyệt.
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.cancel_sharing (added)
+    base: -
+    head: Hủy chia sẻ
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.cancel_hint (added)
+    base: -
+    head: Hủy chia sẻ dừng yêu cầu này, không thu hồi quyền truy cập đã chia sẻ.
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.signing_applying (added)
+    base: -
+    head: Đang ký và áp dụng…
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.retry_hint (added)
+    base: -
+    head: Chọn Thử lại để áp dụng yêu cầu đã phê duyệt này.
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.named_refusal (added)
+    base: -
+    head: Yêu cầu “{request}”: {reason}
+    {"parse":true,"args_match":true,"args":"reason,request","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+
+zh-CN: base=518c657ae34c377ccefbc2e13682cc90bf7fd79772acc2509bc7eb4b2ce1353d head=6bd3118d6a07d813a21a37aacf06b0e2e6bf1fe0d07aa10b314e500edcf1d299 keyset_matches_en=true changed=17 delta_matches_en=true cldr=other
+  PASS ui.mesh.approval.head_inheritance
+    base: 允许{device}使用你的{provider}账号{account}
+    head: 允许{device}使用你的{provider}账号({account})
+    {"parse":true,"args_match":true,"args":"account,device,provider","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+    SIGNAL: zh-CN: ASCII : ( ) . beside CJK
+  PASS ui.mesh.approval.file_key_disclosure
+    base: 这台机器使用密钥文件签名，而不是Touch ID，因此此批准无法证明是由人做出的。
+    head: 此处使用密钥文件而非Touch ID签名，因此无法证明是由人批准了请求。
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.technical_request (added)
+    base: -
+    head: 完整签名请求（技术数据）
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.needs_attention (added)
+    base: -
+    head: 需要处理：{count, number, ::group-off}
+    {"parse":true,"args_match":true,"args":"count","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.shared_count (added)
+    base: -
+    head: 已共享：{count, number, ::group-off}
+    {"parse":true,"args_match":true,"args":"count","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.shared (added)
+    base: -
+    head: 已共享
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.result_status (added)
+    base: -
+    head: 已共享: {shared, number, ::group-off}. 需要处理: {attention, number, ::group-off}.
+    {"parse":true,"args_match":true,"args":"attention,shared","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+    SIGNAL: zh-CN: ASCII : ( ) . beside CJK
+  PASS ui.mesh.approval.duration_under_minute (added)
+    base: -
+    head: 不到一分钟
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.duration_minutes (added)
+    base: -
+    head: {count, plural, other {{count, number, ::group-off}分钟}}
+    {"parse":true,"args_match":true,"args":"count","plural_ok":true,"plural_selectors":"other","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.duration_hours (added)
+    base: -
+    head: {count, plural, other {{count, number, ::group-off}小时}}
+    {"parse":true,"args_match":true,"args":"count","plural_ok":true,"plural_selectors":"other","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.answer_window (added)
+    base: -
+    head: 请在{duration}内答复
+    {"parse":true,"args_match":true,"args":"duration","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.file_key_recorded (added)
+    base: -
+    head: 此批准使用密钥文件而非Touch ID签名，无法证明是由人批准的。
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.cancel_sharing (added)
+    base: -
+    head: 取消共享
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.cancel_hint (added)
+    base: -
+    head: 取消共享会停止此请求，但不会撤回已经共享的访问权限。
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.signing_applying (added)
+    base: -
+    head: 正在签名并应用……
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.retry_hint (added)
+    base: -
+    head: 选择“重试”以应用此已批准的请求。
+    {"parse":true,"args_match":true,"args":"","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+  PASS ui.mesh.approval.named_refusal (added)
+    base: -
+    head: 请求“{request}”：{reason}
+    {"parse":true,"args_match":true,"args":"reason,request","plural_ok":true,"plural_selectors":"-","nfc":true,"bidi_free":true}
+
+probe structural failures=0 punctuation signals=6

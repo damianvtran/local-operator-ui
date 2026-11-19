@@ -1,0 +1,346 @@
+{
+  "instance": "e67567d1d626-r4-fr",
+  "locale": "fr",
+  "scope": {
+    "kind": "delta",
+    "audited_keys": 89,
+    "branch": "i18n-final-literals",
+    "source_commit": "930c8ec2d1",
+    "corrected_by": [
+      "40afea32ff",
+      "8f1c56a425",
+      "a10255813c"
+    ],
+    "namespaces": 15,
+    "statement": "Audit des 89 clés anglaises ajoutées par 930c8ec2d1 dans la branche i18n-final-literals, telles que corrigées par 40afea32ff, 8f1c56a425 et a10255813c ; côté fr uniquement. Toute autre clé des mêmes fichiers est hors périmètre.",
+    "out_of_scope": "all other keys in the 15 files, all other locales, all other namespaces"
+  },
+  "checkout_head": "a10255813c",
+  "key_count": 89,
+  "audit_date": "2026-10-29",
+  "auditor": {
+    "agent": "i18n-auditor (Local Operator harness agent)",
+    "session": "e67567d1d626",
+    "model": "radient/auto",
+    "model_note": "Session opened on anthropic/claude-sonnet-5-5 and fell back on provider quota to openai/gpt-6-astra, then kimi/k3.1-pro, then radient/auto before any audit work began; the audit was performed as radient/auto. No second independent pass is claimed for the settings/errors groups.",
+    "independent_from_translator": true
+  },
+  "input_sha256": {
+    "method": "shasum -a 256, whole file",
+    "en": {
+      "src/i18n/catalogues/en/ui.agents.settings.json": "3ba270885be69d682183c849436c3e2146bf5c8875cf8a2be1f26528ed20fd4d",
+      "src/i18n/catalogues/en/ui.chat.asks.json": "3399e4015ace811013fb16d9f021016eaecf8ed700e6d34ee2c0d0029068832a",
+      "src/i18n/catalogues/en/ui.chat.attachments.json": "623a1363260ecbe40393b4424dde4d7b6cc084688ac354483052639a145ce892",
+      "src/i18n/catalogues/en/ui.chat.canonical.json": "e497effa4c5ba36da6fc3fb4598e5cd7cd2219cae675e94b51d00682e2f90935",
+      "src/i18n/catalogues/en/ui.chat.device.json": "2be9eaf88f3f95eec4d28b4cc5b6397edbd3173eb2af3713ff2da4f6b0b5fcd6",
+      "src/i18n/catalogues/en/ui.chat.header.json": "a2584118fd1ae8da26a27f8e739bbde58c30ec5c7c8c9515d2ab876bc7a82dd8",
+      "src/i18n/catalogues/en/ui.chat.pickers.json": "e77e75172487fb154b12ce349fac574cc88516c811acaefd2018208baaf192c1",
+      "src/i18n/catalogues/en/ui.chat.radient_session.json": "3ac15679b3551e879c2d88d11594946ea4307238330e88cee24ba80b07721118",
+      "src/i18n/catalogues/en/ui.chat.thread_search.json": "aea9f467a5a57775ec7510e09b52800077f8ebd93bf430b7956dd381f1ed3d91",
+      "src/i18n/catalogues/en/ui.chat.transcript_copy.json": "d6f5264ef4cd19ea1a66b10d7dadfd6478ec239973a7a8fca49903b8ae3818dc",
+      "src/i18n/catalogues/en/ui.common.actions.json": "0c279fc21d17c3f1937e4364fac698601ec4304ce7c7055df786bc037a8b12e3",
+      "src/i18n/catalogues/en/ui.hub.card.json": "b9459d327a82d48b8607356f857e6a260cc0b46b78a12109d8b843c559abfcbc",
+      "src/i18n/catalogues/en/ui.hub.detail.json": "d6a3fdb30fc5a4c1d8e0e5530f377dfac0e2b1238f2fd3dd32a12f0e082861d4",
+      "src/i18n/catalogues/en/ui.hub.pages.json": "9ae73c3aabece832df701ffe1b8c24b01d731a94adeb795103a0215b84fb57bd",
+      "src/i18n/catalogues/en/ui.hub.viewer.json": "a6eed998576ef689a2fc011b2f9c64eaf53fe8b007b2efc21cf66118bc206375"
+    },
+    "target": {
+      "src/i18n/catalogues/fr/ui.agents.settings.json": "219bb8b893b4591a8f1ab38aecd798ea8ef6d11e25044a2113d9585514b2cb7e",
+      "src/i18n/catalogues/fr/ui.chat.asks.json": "a4a2c94653fa803259966ad1c1a37516dd6a23cfaceb1bfb70c57e526da93694",
+      "src/i18n/catalogues/fr/ui.chat.attachments.json": "5b85a8ae171915f57a078bf83aec5da918fef62e03c650c46cac14821b076a60",
+      "src/i18n/catalogues/fr/ui.chat.canonical.json": "8a4c0c46a5dbaf9e22f2835d2a8c2b80985452a552db81bcac9e40ee2155297c",
+      "src/i18n/catalogues/fr/ui.chat.device.json": "06ebc91eed2eecf809a0bd1a4b4d42192138f142f5317beb5e78637494dfd562",
+      "src/i18n/catalogues/fr/ui.chat.header.json": "f0393e1512cd5ffd8e748121bcb244e494da7098de6f9cf3d0d1399a02cbd108",
+      "src/i18n/catalogues/fr/ui.chat.pickers.json": "54007ce045c687a8d5e49a3c4b1ff2e0f3659ebc7e6fd3d3fa51599e692d0dcf",
+      "src/i18n/catalogues/fr/ui.chat.radient_session.json": "8aaf0aaad58e696e82a11e43e4887e5ba16064f796585397af626d0a79b417d2",
+      "src/i18n/catalogues/fr/ui.chat.thread_search.json": "4e9bc59ea40bd9624bbc5eb1698cdc5063bd6f950cd77c6d15328a290df3303e",
+      "src/i18n/catalogues/fr/ui.chat.transcript_copy.json": "69f5d7ce8aeb641d8cff05676d7ab51725eeadb76a25496aebd8454af27af7e9",
+      "src/i18n/catalogues/fr/ui.common.actions.json": "80326f2a88214d074a869ab533d78e09dc4f7162c2ad742bbf6ba46b10a26184",
+      "src/i18n/catalogues/fr/ui.hub.card.json": "ecced49798d9e9ca5377d7845ca180a2b7e63672c5cef5e01d86a5ba4cac9151",
+      "src/i18n/catalogues/fr/ui.hub.detail.json": "eff8e5bcf9cda0745ccd62fdf1a0ae47f2470fbaaff9e93ee91caa30ac3aaa19",
+      "src/i18n/catalogues/fr/ui.hub.pages.json": "949a30eb0e7bb7a8a0c8800f476bd06ee84d559043fb3569a40f63db59d55df9",
+      "src/i18n/catalogues/fr/ui.hub.viewer.json": "71ed65d298169118cf49c595cc0c2e9cc06d819d0c41166f6a90f8432698e09e"
+    }
+  },
+  "read_provenance": {
+    "values": "read_public_copy only, repository-relative src/i18n/catalogues/{en,fr}/<ns>.json. The tool returns the whole catalogue when no key is given, so 29 whole-file reads (15 en, 14 fr) covered all 89 ids; the fr ui.chat.pickers file was not read whole (75,602 bytes) and its single in-scope id was read by key; ui.agents.settings.chat.set_custom_values_note and ui.chat.pickers.slash.action_kind were additionally re-read by key.",
+    "sidecars": "src/i18n/catalogues/en/<ns>.context.json, read from the filesystem as docs",
+    "style_guide": "~/local-operator/i18n/style-guides/fr.md, read from the filesystem as docs",
+    "glossary": "~/local-operator/i18n/glossary.md, read from the filesystem as docs",
+    "shipped_navigation": "grep sweep over src/i18n/catalogues/fr/*.json for Fournisseur/Paramètres/Hub, used only to confirm the fr app's own navigation labels (Paramètres, Fournisseurs de modèles, Hub des agents). No in-scope value was taken from that sweep.",
+    "mechanical": "repo gates run in the worktree (scripts/i18n/generate.mjs --check, check-duplicates, context-parity) plus a byte-level scan of the 89 in-scope fr strings for placeholders, ICU structure and fr typography",
+    "not_read": "nothing under ~/qa, no translator session artefacts, no other locale's output, no MT/back-translation service"
+  },
+  "checks": {
+    "keys_present_no_additions_no_drops": {
+      "result": "pass",
+      "detail": "89/89 in-scope ids present in fr; no key added or missing"
+    },
+    "valid_json": {
+      "result": "pass"
+    },
+    "placeholders_byte_identical": {
+      "result": "pass",
+      "detail": "89/89 — placeholder names and sets identical to en; no renamed or reordered token"
+    },
+    "icu_structure_and_cldr": {
+      "result": "pass",
+      "detail": "no plural/select/rich structure inside the 89-key delta, so no CLDR category can be missing; fr categories elsewhere in these files are one/many/other"
+    },
+    "markup_and_code_spans": {
+      "result": "pass",
+      "detail": "no backtick code, flag, path or rich tag inside the delta"
+    },
+    "repo_gates": {
+      "result": "pass",
+      "detail": "keys.gen.ts byte-identical to fresh generation; check-duplicates 0 of 934 files; context-parity ok (131 allowed gaps in 4 namespaces)"
+    },
+    "fr_typography": {
+      "result": "pass",
+      "detail": "U+202F before : ; ! ? everywhere required, « » with U+202F inside, U+2019 apostrophes only, … not ..., 0 violations across the 89"
+    },
+    "glossary": {
+      "result": "pass",
+      "detail": "agent/agent, device/appareil, prompt/prompt, session/connexion in the sign-in sense, Markdown and Radient/Local Operator kept; no contradicted term"
+    },
+    "surface_names_policy": {
+      "result": "pass",
+      "detail": "Paramètres and Fournisseurs de modèles match the fr sidebar labels the app ships (ui.settings.navigation.settings_sidebar.model_providers = « Fournisseurs de modèles »); Hub des agents for the hub; Radient Latin. Settled policy applied, not filed."
+    },
+    "fit": {
+      "result": "pass_with_note",
+      "detail": "one fit note (F-03, ui.hub.card.get pill); longest additions are dialog body (wraps) and tooltip (wraps); no button or tab label exceeds its role's budget"
+    },
+    "rtl": {
+      "result": "n/a",
+      "detail": "fr is LTR"
+    }
+  },
+  "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 3,
+    "NIT": 2
+  },
+  "verdict": "PASS",
+  "verdict_reason": "No BLOCKER or MAJOR in the 89-key fr delta; 3 MINOR and 2 NIT filed for the next polish round.",
+  "findings": [
+    {
+      "id": "F-01",
+      "severity": "MINOR",
+      "namespace": "ui.chat.radient_session",
+      "key": "ui.chat.radient_session.title.input_required",
+      "current": "La connexion à Radient nécessite un code collé",
+      "english": "Radient sign-in needs a pasted code",
+      "problem": "« code collé » est un participe passé qui décrit un état déjà advenu, alors que le titre s'affiche avant que l'utilisateur ait collé quoi que ce soit. L'anglais impose la même exigence mais le français naturel l'exprime par un infinitif.",
+      "suggestion": "La connexion à Radient nécessite un code à coller"
+    },
+    {
+      "id": "F-02",
+      "severity": "MINOR",
+      "namespace": "ui.hub.detail",
+      "key": "ui.hub.detail.viewer_unknown",
+      "current": "Vos j’aime et vos favoris n’ont pas pu être lus ; vos interactions avec cet agent ne sont donc pas affichées.",
+      "english": "Your likes and favourites could not be read, so this agent's viewer state is not shown.",
+      "problem": "« vos interactions » élargit le sens à toute interaction (téléchargements, historique) et abandonne le cadrage « état » que portent les clés sœurs du même écran ; l'anglais parle précisément de l'état de l'auteur pour cet agent.",
+      "suggestion": "Vos j’aime et vos favoris n’ont pas pu être lus ; cet agent n’affiche donc pas d’état vous concernant."
+    },
+    {
+      "id": "F-03",
+      "severity": "MINOR",
+      "namespace": "ui.hub.card",
+      "key": "ui.hub.card.get",
+      "current": "Obtenir",
+      "english": "Get",
+      "problem": "Le sidecar fixe « Get » comme délibérément court parce que la pastille bordée du pied de carte (grille à quatre colonnes) rognait un mot anglais plus long. « Obtenir » fait 7 caractères contre 3, dans une pastille dimensionnée sur l'anglais ; la contrainte documentée n'est pas re-vérifiée par la traduction.",
+      "suggestion": "Conserver « Obtenir » (déjà le plus court rendu exact) si la pastille se dimensionne au contenu ; sinon, c'est la pastille qui doit s'élargir — à vérifier au rendu, pas à raccourcir."
+    },
+    {
+      "id": "N-01",
+      "severity": "NIT",
+      "namespace": "ui.chat.thread_search",
+      "key": "ui.chat.thread_search.hint.jump",
+      "current": "aller",
+      "english": "jump",
+      "problem": "Indication de pied de panneau à côté d'Entrée : « aller » est un calque de « jump » et appelle un complément, alors que la touche ouvre la conversation surlignée.",
+      "suggestion": "ouvrir"
+    },
+    {
+      "id": "N-02",
+      "severity": "NIT",
+      "namespace": "ui.chat.asks",
+      "key": "ui.chat.asks.recommended",
+      "current": "Recommandée",
+      "english": "Recommended",
+      "problem": "Le marqueur est autonome (glyphe + mot). L'accord féminin avec « option » est défendable, mais l'application livre ailleurs le marqueur autonome au masculin (« Recommandé : Automatique », ui.agents.settings.general.select_a_hosting_provider_first_and_then) ; deux formes pour une même pastille.",
+      "suggestion": "Recommandé — ou garder « Recommandée » si le marqueur est soudé à un nom féminin à l'écran"
+    }
+  ],
+  "namespaces": {
+    "ui.agents.settings": {
+      "status": "passed",
+      "keys_audited": 5,
+      "sha256": {
+        "en": "3ba270885be69d682183c849436c3e2146bf5c8875cf8a2be1f26528ed20fd4d",
+        "target": "219bb8b893b4591a8f1ab38aecd798ea8ef6d11e25044a2113d9585514b2cb7e"
+      },
+      "findings": []
+    },
+    "ui.chat.asks": {
+      "status": "passed",
+      "keys_audited": 2,
+      "sha256": {
+        "en": "3399e4015ace811013fb16d9f021016eaecf8ed700e6d34ee2c0d0029068832a",
+        "target": "a4a2c94653fa803259966ad1c1a37516dd6a23cfaceb1bfb70c57e526da93694"
+      },
+      "findings": [
+        {
+          "id": "N-02",
+          "severity": "NIT",
+          "key": "ui.chat.asks.recommended"
+        }
+      ]
+    },
+    "ui.chat.attachments": {
+      "status": "passed",
+      "keys_audited": 5,
+      "sha256": {
+        "en": "623a1363260ecbe40393b4424dde4d7b6cc084688ac354483052639a145ce892",
+        "target": "5b85a8ae171915f57a078bf83aec5da918fef62e03c650c46cac14821b076a60"
+      },
+      "findings": []
+    },
+    "ui.chat.canonical": {
+      "status": "passed",
+      "keys_audited": 9,
+      "sha256": {
+        "en": "e497effa4c5ba36da6fc3fb4598e5cd7cd2219cae675e94b51d00682e2f90935",
+        "target": "8a4c0c46a5dbaf9e22f2835d2a8c2b80985452a552db81bcac9e40ee2155297c"
+      },
+      "findings": []
+    },
+    "ui.chat.device": {
+      "status": "passed",
+      "keys_audited": 1,
+      "sha256": {
+        "en": "2be9eaf88f3f95eec4d28b4cc5b6397edbd3173eb2af3713ff2da4f6b0b5fcd6",
+        "target": "06ebc91eed2eecf809a0bd1a4b4d42192138f142f5317beb5e78637494dfd562"
+      },
+      "findings": []
+    },
+    "ui.chat.header": {
+      "status": "passed",
+      "keys_audited": 2,
+      "sha256": {
+        "en": "a2584118fd1ae8da26a27f8e739bbde58c30ec5c7c8c9515d2ab876bc7a82dd8",
+        "target": "f0393e1512cd5ffd8e748121bcb244e494da7098de6f9cf3d0d1399a02cbd108"
+      },
+      "findings": []
+    },
+    "ui.chat.pickers": {
+      "status": "passed",
+      "keys_audited": 1,
+      "sha256": {
+        "en": "e77e75172487fb154b12ce349fac574cc88516c811acaefd2018208baaf192c1",
+        "target": "54007ce045c687a8d5e49a3c4b1ff2e0f3659ebc7e6fd3d3fa51599e692d0dcf"
+      },
+      "findings": []
+    },
+    "ui.chat.radient_session": {
+      "status": "passed",
+      "keys_audited": 8,
+      "sha256": {
+        "en": "3ac15679b3551e879c2d88d11594946ea4307238330e88cee24ba80b07721118",
+        "target": "8aaf0aaad58e696e82a11e43e4887e5ba16064f796585397af626d0a79b417d2"
+      },
+      "findings": [
+        {
+          "id": "F-01",
+          "severity": "MINOR",
+          "key": "ui.chat.radient_session.title.input_required"
+        }
+      ]
+    },
+    "ui.chat.thread_search": {
+      "status": "passed",
+      "keys_audited": 3,
+      "sha256": {
+        "en": "aea9f467a5a57775ec7510e09b52800077f8ebd93bf430b7956dd381f1ed3d91",
+        "target": "4e9bc59ea40bd9624bbc5eb1698cdc5063bd6f950cd77c6d15328a290df3303e"
+      },
+      "findings": [
+        {
+          "id": "N-01",
+          "severity": "NIT",
+          "key": "ui.chat.thread_search.hint.jump"
+        }
+      ]
+    },
+    "ui.chat.transcript_copy": {
+      "status": "passed",
+      "keys_audited": 5,
+      "sha256": {
+        "en": "d6f5264ef4cd19ea1a66b10d7dadfd6478ec239973a7a8fca49903b8ae3818dc",
+        "target": "69f5d7ce8aeb641d8cff05676d7ab51725eeadb76a25496aebd8454af27af7e9"
+      },
+      "findings": []
+    },
+    "ui.common.actions": {
+      "status": "passed",
+      "keys_audited": 3,
+      "sha256": {
+        "en": "0c279fc21d17c3f1937e4364fac698601ec4304ce7c7055df786bc037a8b12e3",
+        "target": "80326f2a88214d074a869ab533d78e09dc4f7162c2ad742bbf6ba46b10a26184"
+      },
+      "findings": []
+    },
+    "ui.hub.card": {
+      "status": "passed",
+      "keys_audited": 6,
+      "sha256": {
+        "en": "b9459d327a82d48b8607356f857e6a260cc0b46b78a12109d8b843c559abfcbc",
+        "target": "ecced49798d9e9ca5377d7845ca180a2b7e63672c5cef5e01d86a5ba4cac9151"
+      },
+      "findings": [
+        {
+          "id": "F-03",
+          "severity": "MINOR",
+          "key": "ui.hub.card.get"
+        }
+      ]
+    },
+    "ui.hub.detail": {
+      "status": "passed",
+      "keys_audited": 26,
+      "sha256": {
+        "en": "d6a3fdb30fc5a4c1d8e0e5530f377dfac0e2b1238f2fd3dd32a12f0e082861d4",
+        "target": "eff8e5bcf9cda0745ccd62fdf1a0ae47f2470fbaaff9e93ee91caa30ac3aaa19"
+      },
+      "findings": [
+        {
+          "id": "F-02",
+          "severity": "MINOR",
+          "key": "ui.hub.detail.viewer_unknown"
+        }
+      ]
+    },
+    "ui.hub.pages": {
+      "status": "passed",
+      "keys_audited": 3,
+      "sha256": {
+        "en": "9ae73c3aabece832df701ffe1b8c24b01d731a94adeb795103a0215b84fb57bd",
+        "target": "949a30eb0e7bb7a8a0c8800f476bd06ee84d559043fb3569a40f63db59d55df9"
+      },
+      "findings": []
+    },
+    "ui.hub.viewer": {
+      "status": "passed",
+      "keys_audited": 10,
+      "sha256": {
+        "en": "a6eed998576ef689a2fc011b2f9c64eaf53fe8b007b2efc21cf66118bc206375",
+        "target": "71ed65d298169118cf49c595cc0c2e9cc06d819d0c41166f6a90f8432698e09e"
+      },
+      "findings": []
+    }
+  }
+}

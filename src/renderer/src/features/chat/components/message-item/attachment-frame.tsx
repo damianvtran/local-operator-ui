@@ -24,9 +24,32 @@
  * here".
  */
 
+import { Spinner } from "@shared/components/common/spinner";
+import { isolateLtr, t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { ImageOff } from "lucide-react";
-import type { ComponentPropsWithoutRef, ReactNode } from "react";
+import { ImageOff, RotateCw } from "lucide-react";
+import {
+	type ComponentPropsWithoutRef,
+	type ReactNode,
+	useEffect,
+	useRef,
+} from "react";
+
+/**
+ * Take focus once on mount when asked: a Retry press swaps the pressed button
+ * for the waiting state and back, and each swap would otherwise drop keyboard
+ * focus to the document (UX round 2, U2-2). `preventScroll`, because the
+ * reader did not ask to move.
+ */
+function useFocusOnMount<T extends HTMLElement>(enabled: boolean) {
+	const ref = useRef<T>(null);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: once per mount, by design - a later prop flip is not a new swap.
+	useEffect(() => {
+		if (enabled) ref.current?.focus({ preventScroll: true });
+	}, []);
+	return ref;
+}
 
 export type AttachmentFrameProps = {
 	/**
@@ -123,65 +146,65 @@ export type BrokenAttachmentProps = {
 	 */
 	compact?: boolean;
 	/**
-	 * The sentence after the name.
+	 * WHICH sentence says what failed (a catalogue key, never English).
 	 *
-	 * A parameter because the two callers know different amounts, and a single
-	 * sentence cannot be true for both. `BrokenAttachment`'s original caller is
-	 * the LEGACY message view, which reads image FILE PATHS off disk: for it, a
-	 * failed read really is usually a name that moved, so `ATTACHMENT_MOVED_COPY`
-	 * is the honest default. A canonical image is not a path at all — it is a
-	 * digest in a content-addressed store — and asserting the moved/renamed/
-	 * deleted cause there is asserting something the reader cannot know (the
-	 * store is written by the app and pruned by the app; a missing digest means
-	 * a pruned or never-written entry, and the route's 404 does not say which).
-	 * That is why the canonical caller overrides it.
+	 * A parameter because the callers know different amounts, and a single
+	 * sentence cannot be true for all of them. `BrokenAttachment`'s original caller
+	 * is the LEGACY message view, which reads image FILE PATHS off disk: for it, a
+	 * failed read really is usually a name that moved, so `moved` is the honest
+	 * default. A canonical image is not a path at all - it is a digest in a
+	 * content-addressed store - and asserting the moved/renamed/deleted cause there
+	 * is asserting something the reader cannot know (the store is written by the
+	 * app and pruned by the app; a missing digest means a pruned or never-written
+	 * entry, and the route's 404 does not say which). That is why the canonical
+	 * callers override it with `unavailable`, and a video or audio row with
+	 * `media_unavailable` (the same fact with the player's verb, "played" for
+	 * "displayed": design spec §4, V7, the only copy delta the video seam adds).
+	 *
+	 * Each is ONE WHOLE sentence with the name inside it (`{name}` is isolated for
+	 * RTL by `isolateLtr`), because "<name> <predicate>" glued in code cannot be
+	 * reordered by a language that does not open a sentence with a file name. The
+	 * visible text, the tooltip and the accessible name are the same message.
 	 */
-	detail?: string;
+	kind?: BrokenAttachmentKind;
 	className?: string;
 };
 
 /**
- * The default sentence: the cause a legacy on-disk path usually has.
- */
-export const ATTACHMENT_MOVED_COPY =
-	"could not be displayed. It may have been moved, renamed, or deleted.";
-
-/**
- * What a digest-backed row can honestly say when its bytes do not arrive.
+ * The three receipts a broken attachment can show.
  *
- * It states the fact (the read failed) and stops, because the two causes the
- * wire can produce — an entry the store never held and one it pruned — are
- * indistinguishable from a 404, and no third-party "may have" clause makes a
- * cause this code cannot observe honest.
+ * `moved`: the cause a legacy on-disk path usually has. `unavailable`: what a
+ * digest-backed row can honestly say when its bytes do not arrive - it states the
+ * fact (the read failed) and stops, because the two causes the wire can produce
+ * (an entry the store never held, one it pruned) are indistinguishable from a
+ * 404 and no "may have" clause makes a cause this code cannot observe honest.
+ * `media_unavailable`: the same fact for a video or audio row, in the player's
+ * material verb; the two players share one sentence deliberately, because the
+ * differing word is the VERB ("played" for both) and a second sentence that
+ * differed would be two spellings of one fact.
  */
-export const ATTACHMENT_UNAVAILABLE_COPY =
-	"could not be displayed. Its stored copy is not available to this reader.";
+export type BrokenAttachmentKind =
+	| "moved"
+	| "unavailable"
+	| "media_unavailable";
 
-/**
- * What a digest-backed VIDEO row can honestly say when its bytes do not arrive
- * or do not decode.
- *
- * The same fact as `ATTACHMENT_UNAVAILABLE_COPY`, in the player's own material
- * verb — "played" for "displayed" (design spec §4, V7: the only copy delta the
- * video seam adds). Everything the sibling's comment argues applies unchanged:
- * the two causes a 404 can mean (an entry never written, one the store pruned)
- * are indistinguishable from it, and no "may have" clause makes a cause this
- * code cannot observe honest.
- */
-export const VIDEO_UNAVAILABLE_COPY =
-	"could not be played. Its stored copy is not available to this reader.";
-
-/**
- * What a digest-backed AUDIO row says when its bytes do not arrive or do not
- * decode.
- *
- * The same sentence as the video receipt, deliberately: the differing word is
- * the VERB, and "played" is the verb of both player materials — the copy delta
- * the design spec enumerates (§4, V7) is between a displayed picture and a
- * played clip, not between the two things a playhead plays. A second sentence
- * that differed would be two spellings of one fact.
- */
-export const AUDIO_UNAVAILABLE_COPY = VIDEO_UNAVAILABLE_COPY;
+const brokenAttachmentText = (
+	kind: BrokenAttachmentKind,
+	name: string,
+): string => {
+	/* The name is a file name: LTR content inside a sentence that may be RTL. */
+	const shown = isolateLtr(name);
+	switch (kind) {
+		case "unavailable":
+			return t("ui.chat.attachments.broken_unavailable", { name: shown });
+		case "media_unavailable":
+			return t("ui.chat.attachments.broken_media_unavailable", {
+				name: shown,
+			});
+		default:
+			return t("ui.chat.attachments.broken_moved", { name: shown });
+	}
+};
 
 /**
  * What the reader sees instead of a torn-page glyph.
@@ -191,14 +214,26 @@ export const AUDIO_UNAVAILABLE_COPY = VIDEO_UNAVAILABLE_COPY;
  * happens. It is the neutral ground rather than a `danger` wash — a file that
  * moved is not an error the user made, and painting it red would put it above
  * the agent's own output in the § 7 hierarchy.
+ *
+ * THE WHOLE SENTENCE IS ONE PLAIN MUTED RUN, the name included. The name used to
+ * sit in its own monospace span, which is a file-name treatment; but the name a
+ * user attachment passes here is very often the generic "Attached image" label
+ * (a picture that travelled with no file name), and setting a noun phrase in
+ * mono reads as if it were a file name. It also could not survive translation:
+ * the sentence is one message so a language can reorder it, and a styled span
+ * would need the message split around the name. Design accepted this (round 1,
+ * D3). The name is still bidi-isolated inside the sentence (`isolateLtr`).
  */
 export const BrokenAttachment = ({
 	name,
-	detail = ATTACHMENT_MOVED_COPY,
+	kind = "moved",
 	className,
 	compact = false,
-}: BrokenAttachmentProps) =>
-	compact ? (
+}: BrokenAttachmentProps) => {
+	// Subscribed so a live language switch repaints a receipt already on screen.
+	useI18nLocale();
+	const message = brokenAttachmentText(kind, name);
+	return compact ? (
 		<div
 			className={cn(
 				/*
@@ -231,7 +266,7 @@ export const BrokenAttachment = ({
 			 * reader gets to walk past.
 			 */
 			role="img"
-			aria-label={`${name} ${detail}`}
+			aria-label={message}
 			/*
 			 * The title is the SAME sentence for the pointer reader: at 78px there is no
 			 * room for it as prose and the glyph alone reads as "still loading", so the
@@ -240,7 +275,7 @@ export const BrokenAttachment = ({
 			 * produce it; what failed is this reader's copy, and that is what the
 			 * sentence says.
 			 */
-			title={`${name} ${detail}`}
+			title={message}
 		>
 			<ImageOff className="size-4 shrink-0 text-ink-dim" aria-hidden={true} />
 		</div>
@@ -252,9 +287,174 @@ export const BrokenAttachment = ({
 			)}
 		>
 			<ImageOff className="size-4 shrink-0 text-ink-dim" aria-hidden={true} />
-			<span className="min-w-0 text-body-sm text-ink-muted">
-				<span className="truncate font-mono text-ink text-mono-sm">{name}</span>
-				{` ${detail}`}
-			</span>
+			<span className="min-w-0 text-body-sm text-ink-muted">{message}</span>
 		</div>
 	);
+};
+
+/**
+ * The receipt for a PEER-held attachment whose owner did not answer through
+ * the whole backoff (`AttachmentSource` `retryable`).
+ *
+ * The same box as `BrokenAttachment` - the same 117x78 tile when compact, the
+ * same sunken well in the flow - so a slot does not change size between the
+ * two states, but it is a BUTTON: the bytes exist on a device that may come
+ * back, and the reader's click starts a fresh fetch cycle. The glyph is the
+ * retry arrow rather than the torn picture, because the picture is not gone,
+ * and the compact tile captions it "Retry" (design round 1, D1-2): a lone
+ * arrow beside loaded pictures read as "still loading".
+ *
+ * `device` names the owner when the transcript knows it, in the sentence every
+ * remote surface shares (U1-6); without it, the device-less fragment.
+ */
+export const RetryableAttachment = ({
+	name,
+	onRetry,
+	className,
+	compact = false,
+	device = null,
+	focusOnMount = false,
+}: {
+	name: string;
+	onRetry: () => void;
+	className?: string;
+	compact?: boolean;
+	device?: string | null;
+	/** Mounting after this tile's own Retry press: keep the reader's focus here. */
+	focusOnMount?: boolean;
+}) => {
+	const focusRef = useFocusOnMount<HTMLButtonElement>(focusOnMount);
+	const sentence = device
+		? t("ui.canvas.files.remoteUnreachable", { device })
+		: null;
+	const detail = sentence ?? t("ui.chat.attachments.owner_unreachable");
+	const action = t("ui.chat.attachments.retry_fetch");
+	return compact ? (
+		<button
+			ref={focusRef}
+			type="button"
+			onClick={(event) => {
+				// A tile sits inside a clickable fold; retrying must not open it.
+				event.stopPropagation();
+				onRetry();
+			}}
+			className={cn(
+				"flex h-[78px] w-[117px] flex-col items-center justify-center gap-1 rounded-sm border border-control bg-sunken hover:bg-row-hover",
+				className,
+			)}
+			aria-label={`${name} ${detail} ${action}`}
+			title={`${name} ${detail} ${action}`}
+			data-attachment-retryable=""
+		>
+			<RotateCw className="size-4 shrink-0 text-ink-dim" aria-hidden={true} />
+			<span className="text-ink-muted text-meta" aria-hidden={true}>
+				{action}
+			</span>
+		</button>
+	) : (
+		<div
+			className={cn(
+				"flex w-fit max-w-full items-center gap-2.5 rounded-sm border border-hairline bg-sunken px-3 py-2",
+				className,
+			)}
+			data-attachment-retryable=""
+		>
+			<RotateCw className="size-4 shrink-0 text-ink-dim" aria-hidden={true} />
+			<span className="min-w-0 text-body-sm text-ink-muted">
+				<span className="truncate font-mono text-ink text-mono-sm">{name}</span>
+				{sentence ? (
+					<>
+						<span aria-hidden={true}> · </span>
+						{sentence}
+					</>
+				) : (
+					` ${detail}`
+				)}
+			</span>
+			<button
+				ref={focusRef}
+				type="button"
+				onClick={(event) => {
+					event.stopPropagation();
+					onRetry();
+				}}
+				className="shrink-0 rounded-sm px-1 text-accent text-body-sm hover:underline"
+			>
+				{action}
+			</button>
+		</div>
+	);
+};
+
+/**
+ * The waiting state of a PEER-held attachment whose owner has answered 504 at
+ * least once (`AttachmentSource` `resolving` + `pending`).
+ *
+ * Seconds, not a frame: the backoff runs up to 30 s, so the bare reserved box
+ * read as "broken" (UX round 1, U1-1) and, in the flow, as an empty text field
+ * the width of the column (design D1-3). It keeps the slot's own box - the
+ * 117x78 tile when compact, a fitted sunken well otherwise - and centres the
+ * shared spinner with "Fetching from <device>…". The tile has no room for the
+ * sentence, so it carries it as its name and `title`.
+ *
+ * A VIDEO well reserves the player's box (design round 2, D2-2): a 38 px pill
+ * that grew ~200 px when the clip landed pushed the transcript down. Its
+ * aspect is unknown until the bytes arrive, so it reserves 16:9 at the player's
+ * 240 px ceiling (`canonical-video`'s `max-h-[240px]`), the largest box a 16:9
+ * clip takes there.
+ *
+ * `focusOnMount` (U2-2): after a Retry press the wait takes focus
+ * (`tabIndex={-1}`: reachable by script, not a Tab stop), so the keyboard
+ * reader is not dropped to the document while the owner is asked again.
+ */
+export const PendingAttachment = ({
+	device,
+	compact = false,
+	video = false,
+	focusOnMount = false,
+}: {
+	device: string;
+	compact?: boolean;
+	video?: boolean;
+	focusOnMount?: boolean;
+}) => {
+	const focusRef = useFocusOnMount<HTMLOutputElement>(focusOnMount);
+	const label = t("ui.canvas.files.remoteFetching", { device });
+	const focusProps = focusOnMount
+		? { ref: focusRef, tabIndex: -1, "aria-busy": true as const }
+		: {};
+	return compact ? (
+		<output
+			{...focusProps}
+			aria-label={label}
+			title={label}
+			className="flex h-[78px] w-[117px] items-center justify-center rounded-sm border border-control bg-sunken"
+			data-attachment-pending=""
+		>
+			<Spinner size="sm" className="text-ink-dim" />
+		</output>
+	) : video ? (
+		<output
+			{...focusProps}
+			className="flex aspect-video w-[427px] max-w-full flex-col items-center justify-center gap-2 self-start rounded-sm border border-hairline bg-sunken px-3"
+			data-attachment-pending=""
+			data-attachment-pending-video=""
+		>
+			<Spinner size="sm" className="text-ink-dim" />
+			<span className="min-w-0 max-w-full truncate text-body-sm text-ink-muted">
+				{label}
+			</span>
+		</output>
+	) : (
+		<output
+			{...focusProps}
+			className="flex w-fit max-w-full items-center gap-2.5 rounded-sm border border-hairline bg-sunken px-3 py-2"
+			data-attachment-pending=""
+		>
+			<Spinner size="sm" className="text-ink-dim" />
+			<span className="min-w-0 truncate text-body-sm text-ink-muted">
+				{label}
+			</span>
+		</output>
+	);
+};

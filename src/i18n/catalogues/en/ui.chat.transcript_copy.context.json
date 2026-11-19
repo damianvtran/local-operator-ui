@@ -1,0 +1,70 @@
+{
+	"ui.chat.transcript_copy.menu.copy_text": {
+		"role": "context-menu item that copies the pointed transcript line as plain text",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"note": "Plain text means the visible words: markdown fences, list markers and emphasis are stripped. It must read as different from the Markdown item beside it."
+	},
+	"ui.chat.transcript_copy.menu.copy_markdown": {
+		"role": "context-menu item that copies the pointed transcript line's original Markdown source",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"note": "This keeps fences, lists, headings and links. The distinction from Copy text is the point of offering both."
+	},
+	"ui.chat.transcript_copy.menu.copy_selection": {
+		"role": "context-menu item that copies the reader's current text highlight",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"note": "Disabled when there is no highlight. Its accessible name is also used by the selection toolbar's Copy button."
+	},
+	"ui.chat.transcript_copy.toast.copied_markdown": {
+		"role": "success toast after Copy as Markdown writes the clipboard",
+		"tone": "short confirmation, sentence case, no trailing punctuation",
+		"note": "Names the form that was copied so the reader can tell the two copy actions apart."
+	},
+	"ui.chat.transcript_copy.toast.copied_selection": {
+		"role": "success toast after Copy selection writes the clipboard",
+		"tone": "short confirmation, sentence case, no trailing punctuation",
+		"note": "Confirms the highlight, not the whole row, was copied."
+	},
+	"ui.chat.transcript_copy.row.your_message": {
+		"role": "accessible name of a focusable user message row in the transcript",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"note": "Screen-reader only. The row is a group and the read message follows; this names whose message it is."
+	},
+	"ui.chat.transcript_copy.row.agent_message": {
+		"role": "accessible name of a focusable assistant message row in the transcript",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"note": "Screen-reader only. Must differ from the user row's name so a turn's two sides are distinguishable."
+	},
+	"ui.chat.transcript_copy.selection.copy": {
+		"role": "accessible name of the Copy button on the floating selection toolbar",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"note": "Acts on the highlight, not the whole message. Keep it distinct from the row's own Copy control."
+	},
+	"ui.chat.transcript_copy.selection.toolbar": {
+		"role": "accessible name of the floating toolbar that appears when the reader highlights transcript text, naming the group rather than any one action",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"note": "Screen-reader only: it labels the group that holds the selection's actions (Quote, Copy). Do not name a single action here, or the group and its button announce the same thing."
+	},
+	"ui.chat.transcript_copy.block.logs": {
+		"role": "block heading",
+		"tone": "plain",
+		"note": "Above a tool's log output; the output itself is not translated."
+	},
+	"ui.chat.transcript_copy.block.output": {
+		"role": "block heading",
+		"tone": "plain"
+	},
+	"ui.chat.transcript_copy.role.assistant": {
+		"role": "avatar name",
+		"tone": "plain"
+	},
+	"ui.chat.transcript_copy.selection.quote": {
+		"role": "icon-button name",
+		"tone": "plain",
+		"note": "Adds the selected text to the composer as a quotation."
+	},
+	"ui.chat.transcript_copy.technical_details": {
+		"role": "disclosure summary",
+		"tone": "plain",
+		"note": "Opens the transcript's technical blocks (logs, raw output)."
+	}
+}

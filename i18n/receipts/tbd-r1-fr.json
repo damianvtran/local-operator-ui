@@ -1,0 +1,33 @@
+{
+  "auditor": "translation-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "tbd-r1-fr",
+  "locale": "fr",
+  "namespaces": {
+    "ui.teamBridge": {
+      "status": "passed",
+      "keys_audited": 93,
+      "sha256": {
+        "en": "e91f2bf2629014cb458bb30d2c92cf5083644d8709317527c50b84909274a22c",
+        "fr": "cf750ae869a97b1c248d89f1e8ff55d74201e25f7bafba583eb00700b5445237"
+      },
+      "findings": [
+        {
+          "severity": "NIT",
+          "key": "ui.teamBridge.unread.count",
+          "note": "The many arm reads « {count} de non-lus » with a hyphen, while the one/other arms of the same message read « non lu »/« non lus » and the six other occurrences of this word across the fr catalogue are unhyphenated. Same word, two spellings in one message; drop the hyphen for consistency."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.teamBridge.people.list_error",
+          "note": "« depuis ici » is understandable but heavy; the idiomatic French for \"from here\" (this surface) is « d’ici ». No meaning change."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.teamBridge.people.bridge_off",
+          "note": "« N’a pas encore activé Team Bridge » is a subjectless verb phrase used as a tooltip and assistive description. Understandable in a row context, but the namespace's other fragments are noun/adjective phrases (« En pause », « En lecture seule »); a noun phrase (e.g. stating Team Bridge is not yet enabled) would read more evenly. Style only."
+        }
+      ]
+    }
+  }
+}

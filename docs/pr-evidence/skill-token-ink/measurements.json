@@ -1,0 +1,141 @@
+[
+  {
+    "file": "before-localOperatorLight.png",
+    "side": "before",
+    "story": "by-turn",
+    "theme": "localOperatorLight",
+    "tokens": [],
+    "tokenStyle": null,
+    "proseStyle": {
+      "color": "rgb(33, 30, 24)",
+      "weight": "400"
+    },
+    "commandVar": "#2368a8"
+  },
+  {
+    "file": "after-localOperatorLight.png",
+    "side": "after",
+    "story": "by-turn",
+    "theme": "localOperatorLight",
+    "tokens": [
+      "$research",
+      "$code-review",
+      "$research"
+    ],
+    "tokenStyle": {
+      "color": "rgb(35, 104, 168)",
+      "weight": "600"
+    },
+    "proseStyle": {
+      "color": "rgb(33, 30, 24)",
+      "weight": "400"
+    },
+    "commandVar": "#2368a8"
+  },
+  {
+    "file": "before-localOperatorDark.png",
+    "side": "before",
+    "story": "by-turn",
+    "theme": "localOperatorDark",
+    "tokens": [],
+    "tokenStyle": null,
+    "proseStyle": {
+      "color": "rgb(241, 238, 230)",
+      "weight": "400"
+    },
+    "commandVar": "#86b3f2"
+  },
+  {
+    "file": "after-localOperatorDark.png",
+    "side": "after",
+    "story": "by-turn",
+    "theme": "localOperatorDark",
+    "tokens": [
+      "$research",
+      "$code-review",
+      "$research"
+    ],
+    "tokenStyle": {
+      "color": "rgb(134, 179, 242)",
+      "weight": "600"
+    },
+    "proseStyle": {
+      "color": "rgb(241, 238, 230)",
+      "weight": "400"
+    },
+    "commandVar": "#86b3f2"
+  },
+  {
+    "file": "before-obsidian.png",
+    "side": "before",
+    "story": "by-turn",
+    "theme": "obsidian",
+    "tokens": [],
+    "tokenStyle": null,
+    "proseStyle": {
+      "color": "rgb(250, 250, 250)",
+      "weight": "400"
+    },
+    "commandVar": "#FAFAFA"
+  },
+  {
+    "file": "after-obsidian.png",
+    "side": "after",
+    "story": "by-turn",
+    "theme": "obsidian",
+    "tokens": [
+      "$research",
+      "$code-review",
+      "$research"
+    ],
+    "tokenStyle": {
+      "color": "rgb(250, 250, 250)",
+      "weight": "600"
+    },
+    "proseStyle": {
+      "color": "rgb(250, 250, 250)",
+      "weight": "400"
+    },
+    "commandVar": "#FAFAFA"
+  },
+  {
+    "file": "after-by-response-localOperatorLight.png",
+    "side": "after",
+    "story": "by-response",
+    "theme": "localOperatorLight",
+    "tokens": [
+      "$research",
+      "$code-review",
+      "$research"
+    ],
+    "tokenStyle": {
+      "color": "rgb(35, 104, 168)",
+      "weight": "600"
+    },
+    "proseStyle": {
+      "color": "rgb(33, 30, 24)",
+      "weight": "400"
+    },
+    "commandVar": "#2368a8"
+  },
+  {
+    "file": "after-by-turn-localOperatorLight.png",
+    "side": "after",
+    "story": "by-turn",
+    "theme": "localOperatorLight",
+    "tokens": [
+      "$research",
+      "$code-review",
+      "$research"
+    ],
+    "tokenStyle": {
+      "color": "rgb(35, 104, 168)",
+      "weight": "600"
+    },
+    "proseStyle": {
+      "color": "rgb(33, 30, 24)",
+      "weight": "400"
+    },
+    "commandVar": "#2368a8"
+  }
+]

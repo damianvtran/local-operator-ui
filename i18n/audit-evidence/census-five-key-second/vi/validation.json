@@ -1,0 +1,32 @@
+{
+  "ui.chat": {
+    "agent": "i18n-auditor",
+    "instance": "6431174917d4-vi-census-r2",
+    "model": "openai/gpt-6.1-sol",
+    "result": "clean",
+    "findings": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 0,
+      "nit": 0
+    },
+    "source_sha256": "270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27",
+    "target_sha256": "40ba9c3761d9e5fed84b2a1bb5289cfd2baf402984f351559dee348511fe24ea",
+    "receipt_sha256": "ba932cc7196aec0beff8fb2a44438238c0f63cccfe1e083f60e4de5b86c769ff"
+  },
+  "ui.chat.run_details": {
+    "agent": "i18n-auditor",
+    "instance": "6431174917d4-vi-census-r2",
+    "model": "openai/gpt-6.1-sol",
+    "result": "clean",
+    "findings": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 0,
+      "nit": 0
+    },
+    "source_sha256": "f8184d5f41b359364e47747871988bbb731d79c12bc3b9ec755f3db73e5db6ab",
+    "target_sha256": "a7ff21ae3033644e02cb029ae6382222a13cc79e7026a4d202e63c55ef0da5c8",
+    "receipt_sha256": "ba932cc7196aec0beff8fb2a44438238c0f63cccfe1e083f60e4de5b86c769ff"
+  }
+}

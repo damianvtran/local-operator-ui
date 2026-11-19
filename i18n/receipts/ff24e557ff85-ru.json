@@ -1,0 +1,28 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "kimi/k3.1-pro",
+  "instance": "ff24e557ff85-ru",
+  "locale": "ru",
+  "namespace": "ui.settings.shortcuts",
+  "status": "passed",
+  "sha256": {
+    "ru": "9eecce34fabb66d8f1672bc5ba76a4dea2bd40b4916c5b41db2c321200fc55f5",
+    "en": "cdc8d66af4e558046072d06df97e638feab4b7579b6f3abba097c30949d7835c"
+  },
+  "context_sha256": "7873c3c486821688257a22f7b13d1c28f36017d7865fd3a6a72a7740861f64d9",
+  "scope": "The three keys added for recording shortcuts; pre-existing catalogue bytes checked only for matching control terminology.",
+  "findings": [],
+  "checks": [
+    "Current-byte SHA-256 matches the supplied English, context and Russian hashes.",
+    "Exact full-catalogue key parity; the diff adds exactly the three scoped keys.",
+    "Placeholder parity (none in scoped keys), JSON validity and NFC normalization.",
+    "Russian glossary/style, formal register, natural inflection, sentence case and guillemets.",
+    "Speech-to-text heading denotes recognition of speech input, not spoken output.",
+    "Esc and Сбросить match existing controls; immediate save, cue-only clearing and visible last-working fallback are preserved.",
+    "Wrapping-paragraph and one/two-line semantic fit reviewed against context; no bidi controls present."
+  ],
+  "references": {
+    "glossary_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide_sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+  }
+}

@@ -2,7 +2,7 @@
 
 `docs/design-kit/` is this app's pinned slice of the Local Operator design kit —
 [`damianvtran/local-operator-design`](https://github.com/damianvtran/local-operator-design)
-(public, MIT), tag `v1.2.0`. The kit is the **home of record** for the brand: a
+(public, MIT), tag `v1.3.0`. The kit is the **home of record** for the brand: a
 colour or role change lands there first, with its measurement, and arrives here
 by a deliberate pin bump. This directory records exactly which kit revision
 this app is built against, and lets `pnpm check-themes` prove it.

@@ -1,0 +1,40 @@
+REVERSE-APPLY PROOF - ur - namespace ui.teamBridge - auditor B session 94934cc4a6fd
+
+Method: take the working-tree bytes, swap each delta value back to its round-1 text as an exact
+JSON-string byte substitution, hash the result. The round-1 hash comes from the first-round audit
+record (i18n/receipts/955e54c57ace-ur.json and 502568f2aefe-ur.json), not from my own reconstruction.
+
+now      sha256 a2e6c102ee41badf587ea1afc4d0ca3d911f0f97979f0be2c3c60881694018a7
+rebuilt  sha256 60e3a2aaa4b063e3d0b60c9b37d1c33747343cd925f2c328738dd9792126bb98
+recorded sha256 60e3a2aaa4b063e3d0b60c9b37d1c33747343cd925f2c328738dd9792126bb98
+MATCH: True
+
+edits reversed: 4
+
+  ui.teamBridge.events.declined_self
+    working tree : {actor} نے دعوت سے انکار کر دی
+    round 1      : {actor} نے دعوت مسترد کر دی
+    occurrences of the working-tree text in the file: 1
+
+  ui.teamBridge.events.declined
+    working tree : {actor} نے {targets} کے لیے دعوت سے انکار کر دی
+    round 1      : {actor} نے {targets} کے لیے دعوت مسترد کر دی
+    occurrences of the working-tree text in the file: 1
+
+  ui.teamBridge.events.unknown
+    working tree : ارکان میں تبدیلی ہوئی
+    round 1      : اراکین میں تبدیلی ہوئی
+    occurrences of the working-tree text in the file: 1
+
+  ui.teamBridge.events.others
+    working tree : {count, plural, one {مزید #} other {مزید #}}
+    round 1      : {count, plural, one {# دیگر} other {# دیگر}}
+    occurrences of the working-tree text in the file: 1
+
+Reading: a hash that reproduces the round-1 record means the file differs from round 1 ONLY at the
+values listed above - no other byte moved. All five files reproduce.
+
+Cross-check, not input: delta-round auditor A (session 4ab583bbf0ca) independently reconstructed the
+same pre-delta bytes; my rebuilt files are byte-identical to theirs except where my own first attempt
+used the abbreviated quote «其他#人» instead of the round-1 value «{count, plural, other {其他#人}}».
+That correction is why this proof is reproducible rather than a repeat of A's number.

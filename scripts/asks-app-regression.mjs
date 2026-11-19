@@ -4,7 +4,7 @@
  * Only the backend's synthetic HTTP data is a fixture; no injected UI/bridge.
  */
 import assert from "node:assert/strict";
-import { execFile, execFileSync } from "node:child_process";
+import { execFile, execFileSync, spawnSync } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import {
 	cpSync,
@@ -15,13 +15,29 @@ import {
 	symlinkSync,
 	writeFileSync,
 } from "node:fs";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { ASK_SESSION_IDS, startAsksAppFixture } from "./asks-app-fixture.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
+import {
+	modelUncertaintyCase,
+	runOwnedModelCase,
+	startModelBackend,
+	verifyModelBuild,
+} from "./model-uncertainty-native.mjs";
 const execute = promisify(execFile);
+// Hosted macOS arm64 has 7 GB RAM, but Node 22 defaults this isolated builder
+// to ~2 GB: run 39671897399 aborted in control-renderer chunk generation at
+// that V8 limit. Bound only this serial build to 4 GiB; global NODE_OPTIONS
+// would also enlarge Electron/fixture processes and defeat their own budgets.
+// This is a V8 heap allowance, not a replacement for process-group ceilings.
+export const CONTROL_BUILD_NODE_ARGS = [
+	"--max-old-space-size=4096",
+	"--input-type=module",
+];
 /**
  * The pristine revision the control leg renders: the BASE THE CANDIDATE WAS BUILT
  * FROM, resolved per run rather than fixed at one commit.
@@ -42,8 +58,9 @@ const execute = promisify(execFile);
  * (`CONTROL_REUSE_PARTS`, proved by the property test) the byte-identity assertion
  * holds and main/preload are reused. When it DOES touch main, preload or the vite
  * config, the control builds its own main/preload from its own source instead
- * (`controlReusePlan`); only a differing lockfile stays a hard stop. The identical
- * case is not weakened - the rebuild is the branch for a change that has to differ.
+ * (`controlReusePlan`); a differing lockfile installs the control's own dependencies
+ * from its own lockfile. The identical case is not weakened - the rebuild is the
+ * branch for a change that has to differ.
  *
  * WHAT IS LOST, STATED PLAINLY. A pinned commit let the control be any historical
  * revision at all, including one whose renderer predates this line of work. The
@@ -56,24 +73,356 @@ const execute = promisify(execFile);
 export const ASKS_CONTROL_PINNED = "2461cfa3f3beaa1124727a9de93dfe01c4381b0d";
 
 /**
- * The control revision this run will boot: `ASKS_CONTROL_OVERRIDE` when CI passes
- * one, else the merge-base of `origin/main` and `HEAD`, else - when neither can be
- * resolved, as in a clone with no `origin/main` - the pinned revision, so a shallow
- * or detached tree degrades to the old behaviour instead of failing.
+ * The single fetch `resolveAsksControl` may make, bounded so a stalled or slow
+ * remote degrades to the pinned revision instead of hanging the producer. It is a
+ * FALLBACK on a path that must also work offline, never a requirement.
+ *
+ * WHERE THE NUMBER COMES FROM. MEASURED: `spawnSync`'s timeout is enforced on the
+ * process group, not decorative - a 1000 ms cap returned at 1003 ms with `ETIMEDOUT`
+ * even with a grandchild holding the inherited stdout pipe (review round 1), so this
+ * bound really does end the fetch. CHOSEN, NOT MEASURED: 20 s. One ref at depth 1 on a
+ * warm runner is seconds, and an optional fallback must stay far below the step's own
+ * timeout rather than consume a macOS leg; there is no distribution of real fetch
+ * times behind the exact value, so it is a policy ceiling and says so.
+ */
+const CONTROL_FETCH_TIMEOUT_MS = 20000;
+
+/**
+ * The control revision this run will boot, derived in an EXPLICIT order where every
+ * branch is named in the log - including the degraded one.
+ *
+ * WHY THE PROBE AND NOT A TRY/CATCH. `git()` is `execFileSync`, which throws on git's
+ * non-zero exit, and the catch here used to turn that into the pin. Two consequences,
+ * both measured: (1) `execFileSync` INHERITS stderr, so a shallow checkout still
+ * printed `fatal: Not a valid object name origin/main` into the CI log while the run
+ * went on to succeed - run 42509070327 (job 128818578250, GREEN, 18:26:05Z) and run
+ * 42512944112 (job 128830450208, RED, 19:14:16Z) both carry that exact line, so it is
+ * a log defect and NOT what fails a step; (2) the degraded pin was swapped in
+ * SILENTLY, so nothing in the log said which baseline was compared against. Asking
+ * `rev-parse --verify --quiet` makes absence an ANSWER (exit 1, no output) instead of
+ * an exception, and every branch below reports itself.
+ *
+ * WHY THE MERGE PARENT COMES BEFORE ANY FETCH. In CI this job checks out GitHub's
+ * recomputed `refs/pull/N/merge`, and THAT COMMIT'S FIRST PARENT is main as of the
+ * run - the base the candidate was built from, and the one baseline a fork PR cannot
+ * mislead: on a fork PR the remote's `main` is the FORK's, which is why the sibling
+ * asks step in ci.yml derives `HEAD^1` rather than consulting `origin/main`. Same rule
+ * here, no network.
+ *
+ * WHY THAT PARENT IS NOT A PROPERTY OF THE CHECKOUT, AND WHAT SUPPLIES IT. This branch
+ * does NOT fire on the raw checkout. MEASURED here: a depth-1 fetch of a merge commit
+ * leaves BOTH parents unresolvable (`HEAD^1` and `HEAD^2` absent, `.git/shallow`
+ * naming the merge commit), which is what ci.yml:1167-1171 states - "a depth-1
+ * checkout carries neither". The parent exists only because the earlier asks step in
+ * the same workspace runs `git fetch --no-tags --depth=2 origin $(git rev-parse HEAD)`
+ * (ci.yml:1171) and the model-case step inherits the deepened clone. So this branch is
+ * correct AND it DEPENDS on that fetch: delete the `--depth=2` line and the resolver
+ * silently drops to the pinned baseline. The regression test builds the real depth-1
+ * shape and then deepens it, so it fails for that deletion instead of describing it.
+ *
+ * WHY EVERY PROVENANCE LINE IS ON STDERR. This module is a release script with a
+ * contract: `scripts/entry-point.test.mjs` pins its refusal path to `stdout: /^$/`,
+ * and the resolution below runs at IMPORT time (`ASKS_CONTROL`), before the permission
+ * door can refuse. Printing there turned that contract red on run 42515867037 (job
+ * 128838711899) with 255 bytes of the DEGRADED line on stdout. stderr is where this
+ * script's other diagnostics already go, and the contract's stderr assertion is a
+ * SEARCH, so the branch stays named and stdout stays silent. The tests capture the two
+ * streams separately and assert the split, so a line moving back to stdout fails a
+ * source test rather than a required check.
  */
 export function resolveAsksControl() {
 	const override = process.env.ASKS_CONTROL_OVERRIDE;
 	if (override) return override;
-	try {
-		return git("merge-base", "origin/main", "HEAD");
-	} catch {
-		return ASKS_CONTROL_PINNED;
+
+	const onMain = probeCommit("origin/main");
+	if (onMain) {
+		const merged = probeMergeBase("origin/main", "HEAD");
+		if (merged) {
+			console.error(
+				`asks-app-regression: control derived from the merge base of origin/main and HEAD (${merged})`,
+			);
+			return merged;
+		}
+		console.error(
+			`asks-app-regression: origin/main (${onMain}) shares no history with HEAD; falling through to the next control source`,
+		);
 	}
+
+	/*
+	 * The merge ref's first parent. Only when HEAD really is a MERGE COMMIT (`HEAD^2`
+	 * exists): on a developer's ordinary branch `HEAD^1` is the previous commit, not
+	 * main, so accepting it there would compare the change against itself.
+	 *
+	 * Both parents are present only because ci.yml deepened this clone before this step
+	 * ran (`git fetch --depth=2 origin $(git rev-parse HEAD)`, ci.yml:1171). The `HEAD^2`
+	 * guard is what keeps that from misfiring on an ordinary branch.
+	 */
+	if (probeCommit("HEAD^2")) {
+		const parent = probeCommit("HEAD^1");
+		if (parent) {
+			console.error(
+				`asks-app-regression: origin/main unavailable in this clone; comparing against the merge ref's first parent ${parent}`,
+			);
+			return parent;
+		}
+	}
+
+	/*
+	 * One bounded, best-effort fetch of the remote's main into a PRIVATE ref, for a bare
+	 * depth-1 branch clone that has neither `origin/main` nor a merge parent. Never
+	 * mandatory: `ASKS_CONTROL_NO_FETCH` opts out, a tree with no `origin` remote skips
+	 * it, and a failure falls through to the pinned revision below. Only the PRODUCER
+	 * fetches - `isEntryPoint` (or an explicit `ASKS_CONTROL_ALLOW_FETCH=1`, which the
+	 * tests use to drive this branch against a local remote) keeps an importing suite
+	 * off the network.
+	 *
+	 * NON-DESTRUCTIVE BY CONSTRUCTION (review round 1, R1-4). The fetch goes to `origin`'s
+	 * URL rather than the remote name, writes only the private ref (see `fetchMainOnce`),
+	 * and takes a depth only where the clone is already shallow - so a developer's
+	 * `origin/main`, `FETCH_HEAD` and non-shallow history all survive the run. The
+	 * alternative the reviewer offered - refuse to fetch at all in a developer checkout
+	 * and take the pin - was rejected: it throws away the only real base available on
+	 * that path, whereas a disposable ref answers the same question without the mutation.
+	 */
+	if (
+		(process.env.ASKS_CONTROL_ALLOW_FETCH === "1" ||
+			isEntryPoint(import.meta.url)) &&
+		fetchMainOnce()
+	) {
+		const merged = probeMergeBase(ASKS_CONTROL_FETCH_REF, "HEAD");
+		if (merged) {
+			console.error(
+				`asks-app-regression: origin/main was absent; fetched it once into ${ASKS_CONTROL_FETCH_REF} and comparing against the merge base ${merged}`,
+			);
+			return merged;
+		}
+	}
+
+	console.error(
+		`asks-app-regression: origin/main unavailable; comparing against pinned ${ASKS_CONTROL_PINNED} (DEGRADED: this clone has no origin/main, no merge parent and no usable fetch, so the control is the historical pin rather than this PR's base)`,
+	);
+	return ASKS_CONTROL_PINNED;
+}
+
+/**
+ * The commit `rev` names in this clone, or null when it names none.
+ *
+ * `--verify --quiet` exits 1 and prints NOTHING for an absent revision, so this is
+ * the probe the resolution above asks its questions with: a missing ref is an answer
+ * here, never an exception to be caught (see `resolveAsksControl`).
+ */
+export function probeCommit(rev) {
+	const out = spawnSync(
+		"git",
+		["rev-parse", "--verify", "--quiet", `${rev}^{commit}`],
+		{
+			encoding: "utf8",
+		},
+	);
+	/*
+	 * A SPAWN FAILURE IS NOT AN ANSWER ABOUT THE REVISION (review NIT R1-6). If `git`
+	 * itself cannot be launched, every probe would read as "absent" and the real cause
+	 * would surface much later as `assertControlPresent`'s "the control revision ... is
+	 * not in this clone", which is the wrong reason and sends the reader to the wrong
+	 * fix. Only a NON-ZERO EXIT means absent; an unlaunchable git is an environment
+	 * failure and is named as one.
+	 */
+	if (out.error)
+		throw new Error(
+			`asks-app-regression: could not run git to probe ${rev}: ${out.error.message}`,
+		);
+	return out.status === 0 ? out.stdout.trim() || null : null;
+}
+
+/** The merge base of two revisions, or null when they have none (unrelated history). */
+function probeMergeBase(left, right) {
+	const out = spawnSync("git", ["merge-base", left, right], {
+		encoding: "utf8",
+	});
+	return out.status === 0 ? out.stdout.trim() || null : null;
+}
+
+/**
+ * The branch-private ref the fallback fetch writes.
+ *
+ * NOT `refs/remotes/origin/main` (review round 1, R1-4): that ref is read by people
+ * and by other tools, and a `--depth=1` fetch through it both MOVES it - masking the
+ * developer's own `origin/main` - and shallow-marks the clone. A ref under
+ * `refs/asks-control/` is disposable, shadows nothing, and `--no-write-fetch-head`
+ * keeps `FETCH_HEAD` from being replaced under a concurrent `git pull`.
+ */
+export const ASKS_CONTROL_FETCH_REF = "refs/asks-control/main";
+
+/** Whether this repository is ALREADY shallow, per git itself. */
+function repositoryIsShallow() {
+	const out = spawnSync("git", ["rev-parse", "--is-shallow-repository"], {
+		encoding: "utf8",
+	});
+	return out.status === 0 && out.stdout.trim() === "true";
+}
+
+/** `origin`'s URL, or null when this clone has no such remote. */
+function remoteOriginUrl() {
+	const out = spawnSync("git", ["remote", "get-url", "origin"], {
+		encoding: "utf8",
+	});
+	return out.status === 0 ? out.stdout.trim() || null : null;
+}
+
+/**
+ * Bounded, single, best-effort fetch of `origin`'s main into a PRIVATE ref. Returns
+ * the fetched commit, or null. Never throws and never hangs: a missing remote, an
+ * offline tree or `ASKS_CONTROL_NO_FETCH` all answer null.
+ *
+ * WHY IT FETCHES BY URL AND NOT BY REMOTE NAME. Naming the remote does not confine the
+ * write to the refspec given: MEASURED here, `git fetch origin +refs/heads/main:refs/asks-control/main`
+ * ALSO updated `refs/remotes/origin/main`, because the clone's `remote.origin.fetch`
+ * mapping is applied on top of the command-line refspec - so a private refspec alone
+ * still mutates the developer's clone. Fetching the URL writes no remote-tracking ref
+ * at all, because there is no remote to update.
+ *
+ * WHY `--depth` IS CONDITIONAL, WHICH IS THE OTHER HALF OF R1-4. `--depth=1` SHALLOWS
+ * the local repository whatever ref it lands in: MEASURED here, a full clone that
+ * fetched one ref at depth 1 gained a `.git/shallow` naming that tip, and the file
+ * outlives the process. A depth is only meaningful, and only harmless, where the clone
+ * is already shallow; a full clone gets a normal fetch, which transfers nothing it does
+ * not already have and keeps its history intact.
+ */
+function fetchMainOnce() {
+	if (process.env.ASKS_CONTROL_NO_FETCH) return null;
+	const url = remoteOriginUrl();
+	if (!url) return null;
+	const fetched = spawnSync(
+		"git",
+		[
+			"fetch",
+			"--no-tags",
+			"--no-write-fetch-head",
+			...(repositoryIsShallow() ? ["--depth=1"] : []),
+			url,
+			`+refs/heads/main:${ASKS_CONTROL_FETCH_REF}`,
+		],
+		{
+			encoding: "utf8",
+			timeout: CONTROL_FETCH_TIMEOUT_MS,
+			/*
+			 * A private or expired-credential https remote would otherwise block on an
+			 * interactive username/password prompt until the cap expired (review R1-5).
+			 * This script only ever runs unattended - on a hosted runner, or by a developer
+			 * who is not watching a background step - so no prompt may survive.
+			 */
+			env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
+		},
+	);
+	return fetched.status === 0 ? probeCommit(ASKS_CONTROL_FETCH_REF) : null;
+}
+
+/**
+ * Fail with the REASON when the control revision is not this clone, instead of the
+ * bare `fatal: Not a valid object name <sha>` the caller would otherwise get from the
+ * `rev-parse`/`archive` calls that consume `ASKS_CONTROL`. A shallow clone can hold
+ * the merge base's commit object and still lack the pinned historical revision - and
+ * a mis-spelled `ASKS_CONTROL_OVERRIDE` lands here too - so the message names the
+ * revision and the two ways to supply it.
+ */
+export function assertControlPresent(control) {
+	if (probeCommit(control)) return control;
+	throw new Error(
+		`asks-app-regression: the control revision ${control} is not in this clone, so its source cannot be read. Fetch it (git fetch --depth=1 origin ${control}) or name one with ASKS_CONTROL_OVERRIDE.`,
+	);
 }
 
 const sha = (value) => createHash("sha256").update(value).digest("hex");
 const git = (...args) => execFileSync("git", args, { encoding: "utf8" }).trim();
 export const ASKS_CONTROL = resolveAsksControl();
+
+/**
+ * Whether the control's renderer already carries #1901's long-ask-scroll fix
+ * (`fix(asks): let a long ask scroll and keep its actions reachable`, merge
+ * e6122214, first parent 789b013d = the last pre-fix main).
+ *
+ * WHY THIS EXISTS. The `asks-scroll` control leg asserts the DEFECT: a wheel over
+ * the question text must NOT move the drawer's list. That reading is only true of a
+ * build from before #1901. The control is the merge base with main, so once #1901
+ * landed every PR based on main >= e6122214 got a post-fix control and the negative
+ * assertion could never hold (run 43664741238 / job 132678106327, `asks-scroll`,
+ * "the pre-fix build's list must NOT move from a wheel over the question text").
+ * The marker is the `data-lo-ask-list` attribute (`ASK_LIST_ATTR` in
+ * ask-bounds.tsx), which exists only with the fix. Detected from the control's own
+ * tree, not by comparing SHAs, so it holds for any control (override, merge base,
+ * fetched main, pin) without a list of commits to maintain.
+ *
+ * Reproduce: `git grep -c data-lo-ask-list <rev> -- src` (exit 1 = pre-fix).
+ *
+ * Returns true when the control is PRE-fix and the negative assertion is valid.
+ * Exit 1 from `git grep` means "no match"; anything else (unknown rev) throws
+ * rather than silently skipping the assertion.
+ */
+export function controlPredatesAskScrollFix(
+	rev = ASKS_CONTROL,
+	cwd = undefined,
+) {
+	const result = spawnSync(
+		"git",
+		["grep", "-q", "data-lo-ask-list", rev, "--", "src"],
+		{ encoding: "utf8", cwd },
+	);
+	if (result.status === 0) return false;
+	if (result.status === 1) return true;
+	// execFileSync's own message dropped git's exit status and stderr, which is what
+	// made the first CI failure unreadable (run 43673011929); name both.
+	throw new Error(
+		`controlPredatesAskScrollFix: git grep on ${rev} failed (exit ${result.status}, signal ${result.signal}): ${String(result.stderr).trim() || result.error?.message || "no stderr"}`,
+	);
+}
+
+/**
+ * The leg-side reading of the parent's verdict.
+ *
+ * WHY AN ENV VAR AND NOT `git grep` IN THE LEG. Each leg is a child process whose cwd
+ * is the control's EXTRACTED tree (`git archive | tar -x`, no `.git`), so a `git grep`
+ * there exits 128 "not a git repository" - measured: that is the CI failure of run
+ * 43673011929 / job 132700258286 (the clone shape itself is fine: a depth-1 merge
+ * plus a depth-2 fetch holds the parent's tree and blobs, exit 1 on a pre-fix tree).
+ * Only the parent has the repository, so it decides once and hands the answer down;
+ * a missing value throws instead of defaulting, so the negative assertion is never
+ * silently skipped or silently run against the wrong control.
+ */
+export function controlPredatesFixFromEnv(env = process.env) {
+	const value = env.ASKS_CONTROL_PREDATES_FIX;
+	if (value === "1") return true;
+	if (value === "0") return false;
+	throw new Error(
+		`ASKS_CONTROL_PREDATES_FIX must be "1" or "0" (set by the parent run), got ${JSON.stringify(value)}`,
+	);
+}
+
+/**
+ * Which pre-fix-only claims the asks-scroll CONTROL leg may assert.
+ *
+ * WHY A TABLE. The control leg asserts the DEFECT, and every such claim is false
+ * by construction on a control that already carries #1901 (the merge base of any
+ * PR cut after e6122214). CI attempt 1 failed on the wheel claim, attempt 2 on the
+ * next one (`containment.body === "contain"`), because the claims were gated one at
+ * a time. They are listed here together so one verdict decides all of them:
+ *   wheel      - a wheel over the question text/option/list must NOT move the list
+ *   body       - the question body computes overscroll-behavior-y `contain`
+ *   stickyTop  - `Send answer` is OUTSIDE the port at the top of the scroll
+ *   chromeTab  - Tab from the drawer's chrome does NOT land on the list
+ * A pre-fix control (pinned/override) keeps every claim; a post-fix control keeps
+ * none (nothing pre-fix-specific is true of it) and the run logs the skip loudly.
+ * The candidate's own assertions are a separate branch and never read this table.
+ */
+export function askScrollControlClaims(controlIsPreFix) {
+	assert.equal(typeof controlIsPreFix, "boolean");
+	return {
+		wheel: controlIsPreFix,
+		body: controlIsPreFix,
+		stickyTop: controlIsPreFix,
+		chromeTab: controlIsPreFix,
+	};
+}
+
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /*
@@ -231,11 +580,10 @@ function files(root) {
  * photographs it. Now it takes the other branch: the control's main and preload are
  * BUILT from the control's own source, so the pair still differs by the change only.
  *
- * TWO PARTS STAY HARD STOPS, and they are not part of "reuse":
- *  - `pnpm-lock.yaml`: the control boots against the candidate's `node_modules`
- *    (symlinked, never duplicated), so a differing lockfile means the control would
- *    run on dependencies it was not built for. That is a different experiment, and
- *    it stops dispatch rather than producing frames that look comparable.
+ * TWO PARTS ARE NOT PART OF "REUSE":
+ *  - `pnpm-lock.yaml`: a differing lockfile means the control cannot share the
+ *    candidate's `node_modules`; it installs its own from its own lockfile, so the
+ *    comparison stays "base tree with base dependencies".
  *  - a missing tree: a revision whose source cannot be read stops dispatch.
  * The byte-identical case keeps its original assertion; only the mismatch of the
  * three build INPUTS (`src/main`, `src/preload`, `electron.vite.config.js`) is
@@ -247,6 +595,25 @@ export const CONTROL_REUSE_PARTS = [
 	"electron.vite.config.js",
 	"pnpm-lock.yaml",
 ];
+/**
+ * THE END CLAIM, IN ONE PLACE (agent review round 3, m2 + m3): "End reached the
+ * maximum" only means something on a list that has somewhere to go, and a failure
+ * has to show both readings - the one the retry replaced and the one it settled on -
+ * or a key dropped twice is indistinguishable from one short scroll. Exported so the
+ * failure shape can be driven without an assembled app; `entry` is one size's
+ * summary record, so the caller passes exactly what the run measured.
+ */
+export function assertEndReached(size, entry) {
+	const { keys } = entry;
+	assert(
+		keys.endMax > 0,
+		`${size}: the End check needs a list with somewhere to scroll (its own read: max ${keys.endMax}, client ${keys.endClient}); on a collapsed list "End reached the maximum" is true with no scroll at all`,
+	);
+	assert(
+		Math.abs(keys.end - keys.endMax) <= 1,
+		`${size}: End on the list must reach its maximum (end read scrollTop ${keys.end} of max ${keys.endMax} at client ${keys.endClient}, settled ${keys.endSettled}, quiet ${keys.endQuiet}, retry used ${keys.endRetried}; the first read was scrollTop ${keys.endFirst.scrollTop} of max ${keys.endFirst.max}; the open read was scrollTop ${entry.list.scrollTop} of max ${entry.list.max}; the 1 px slack is sub-pixel layout, not a short scroll)`,
+	);
+}
 export function controlReusePlan(revParse, control, head) {
 	const differing = CONTROL_REUSE_PARTS.filter(
 		(part) => revParse(`${control}:${part}`) !== revParse(`${head}:${part}`),
@@ -259,11 +626,154 @@ export function controlReusePlan(revParse, control, head) {
 }
 /** The provenance line for a plan: the manifest's `mainPreloadReuse`. */
 export function describeMainPreloadReuse(plan) {
-	return plan.reuse
-		? "byte-identical source/config/lock"
-		: `rebuilt from control source (main/preload differ: ${plan.differing.join(", ")})`;
+	if (plan.reuse) return "byte-identical source/config/lock";
+	if (plan.lockDiffers) {
+		return "rebuilt from control source (lockfile differs; control dependencies installed from its own lockfile)";
+	}
+	return `rebuilt from control source (main/preload differ: ${plan.differing.join(", ")})`;
+}
+/**
+ * HOW A LOCKFILE-DIFFERING CONTROL GETS ITS ELECTRON EXECUTABLE.
+ *
+ * The control's own install (`prepareControl`, `lockDiffers`) runs with
+ * `--ignore-scripts` so a base-revision dependency tree cannot execute arbitrary
+ * lifecycle scripts on the runner. That also skips Electron's postinstall, so the
+ * control's `node_modules/electron` has neither `dist/` nor `path.txt`, and the
+ * control's `renderer-driver.mjs` -> `installedElectronBinary` refuses with
+ * "native executable absent; proof harnesses never bootstrap Electron". Measured
+ * on PR #1821 (CI run 42710783768, job 129481850011, NPX Sanity Check macOS):
+ * any dependency-adding PR tripped it, while lockfile-identical PRs take the
+ * symlink branch and never see it.
+ *
+ * Decision (pure, so it is unit-tested without launching anything):
+ * - SAME Electron version on both sides: the control's JS stays "base tree with
+ *   base deps", and the native runtime is the candidate's already-installed
+ *   binary - byte-for-byte the runtime the control's own installer would fetch.
+ *   It is handed to the control leg ONLY through that child's env
+ *   (`ELECTRON_OVERRIDE_DIST_PATH`, the npm-documented override the pinned
+ *   control's `installedElectronBinary` already honours), never via the global
+ *   `process.env`, plus the candidate's `path.txt` marker, because the resolver
+ *   needs the platform-relative executable path (`Electron.app/Contents/MacOS/
+ *   Electron` on macOS) and would otherwise guess a bare `electron`.
+ * - DIFFERENT versions: run ONLY Electron's own installer in the control root
+ *   (CI feeds it from the restored Electron cache); every other dependency keeps
+ *   `--ignore-scripts`. If that leaves no executable, fail naming both versions.
+ */
+export function controlElectronPlan({
+	controlVersion,
+	candidateVersion,
+	candidateDist,
+}) {
+	if (controlVersion === candidateVersion) {
+		return {
+			action: "reuse-candidate-binary",
+			env: { ELECTRON_OVERRIDE_DIST_PATH: candidateDist },
+			describe: `candidate Electron ${candidateVersion} binary (same version as control)`,
+		};
+	}
+	return {
+		action: "run-electron-installer",
+		installer: ["node_modules/electron/install.js"],
+		env: {},
+		describe: `control Electron ${controlVersion} via its own installer (candidate has ${candidateVersion})`,
+	};
+}
+async function provisionControlElectron(root) {
+	const electronDir = (base) =>
+		dirname(
+			createRequire(join(base, "package.json")).resolve(
+				"electron/package.json",
+			),
+		);
+	const controlDir = electronDir(root);
+	const candidateDir = electronDir(process.cwd());
+	const version = (dir) =>
+		JSON.parse(readFileSync(join(dir, "package.json"), "utf8")).version;
+	const controlVersion = version(controlDir);
+	const candidateVersion = version(candidateDir);
+	const plan = controlElectronPlan({
+		controlVersion,
+		candidateVersion,
+		candidateDist: join(candidateDir, "dist"),
+	});
+	const marker = join(candidateDir, "path.txt");
+	if (plan.action === "reuse-candidate-binary") {
+		if (!existsSync(marker))
+			throw new Error(
+				`control Electron ${controlVersion} = candidate ${candidateVersion}, but the candidate has no installed runtime (${marker} missing)`,
+			);
+		// Written into the control's own scratch install only; the candidate's
+		// tree and the shared store copies are never touched.
+		writeFileSync(join(controlDir, "path.txt"), readFileSync(marker));
+	} else {
+		try {
+			await execute(process.execPath, plan.installer, {
+				cwd: root,
+				env: { ...process.env, CI: "true" },
+				timeout: 300000,
+				maxBuffer: 8 * 1024 * 1024,
+			});
+		} catch (error) {
+			throw new Error(
+				`control Electron ${controlVersion} differs from candidate ${candidateVersion} and its installer failed: ${error.message}`,
+			);
+		}
+		if (!existsSync(join(controlDir, "path.txt")))
+			throw new Error(
+				`control Electron ${controlVersion} differs from candidate ${candidateVersion} and its installer left no executable (${controlDir}/path.txt missing)`,
+			);
+	}
+	return plan;
+}
+/** Tree paths every control revision carries; `git archive` fails on a missing one. */
+const CONTROL_ARCHIVE_PATHS = [
+	"src",
+	"scripts",
+	"resources",
+	"build",
+	"i18n",
+	"package.json",
+	"pnpm-lock.yaml",
+	"pnpm-workspace.yaml",
+	"electron.vite.config.js",
+	"tsconfig.node.json",
+	"tsconfig.app.json",
+	"tsconfig.web.json",
+	"tsconfig.json",
+];
+/*
+ * Paths shipped only when the control revision has them. `patches/` holds the
+ * files pnpm's `patchedDependencies` points at: when the lockfile differs the
+ * control runs its own `pnpm install --frozen-lockfile`, and pnpm aborts with
+ * ENOENT on a declared patch file that is not in the tree (seen on the first
+ * lock-changing PR after `electron-chrome-extensions` was patched). It is
+ * optional, not unconditional, because an older control revision predating
+ * `patches/` would otherwise make `git archive` fail on the missing pathspec.
+ */
+const CONTROL_ARCHIVE_OPTIONAL_PATHS = ["patches"];
+/**
+ * The pathspec list `git archive` receives for the control source tree.
+ * `hasPath(path)` reports whether the control revision contains `path`; it is
+ * injected so the selection is testable without a repository.
+ */
+export function controlArchivePaths(hasPath) {
+	return [
+		...CONTROL_ARCHIVE_PATHS,
+		...CONTROL_ARCHIVE_OPTIONAL_PATHS.filter((path) => hasPath(path)),
+	];
+}
+/** Whether `rev` has a tree entry at `path` (`git cat-file -e rev:path`). */
+function revisionHasPath(rev, path) {
+	return (
+		spawnSync("git", ["cat-file", "-e", `${rev}:${path}`], { stdio: "ignore" })
+			.status === 0
+	);
 }
 async function prepareControl(root, output) {
+	// The control's source is read from its own revision; ask for it up front so a
+	// clone that does not hold it fails with the reason instead of a bare
+	// `fatal: Not a valid object name` out of the rev-parse/archive calls below.
+	assertControlPresent(ASKS_CONTROL);
 	// Real historical source, not a callback mutation. Main/preload are reused
 	// from the candidate only when the source identities agree (`controlReusePlan`);
 	// otherwise they are built from the control's own source below.
@@ -272,34 +782,43 @@ async function prepareControl(root, output) {
 		ASKS_CONTROL,
 		"HEAD",
 	);
-	assert.equal(
-		plan.lockDiffers,
-		false,
-		"control reuse mismatch pnpm-lock.yaml: the control shares the candidate's node_modules, so a differing lockfile is a different experiment, not a rebuild",
-	);
 	const tar = join(output, "control-source.tar");
 	execFileSync("git", [
 		"archive",
 		"--format=tar",
 		`--output=${tar}`,
 		ASKS_CONTROL,
-		"src",
-		"scripts",
-		"resources",
-		"build",
-		"i18n",
-		"package.json",
-		"pnpm-lock.yaml",
-		"pnpm-workspace.yaml",
-		"electron.vite.config.js",
-		"tsconfig.node.json",
-		"tsconfig.app.json",
-		"tsconfig.web.json",
-		"tsconfig.json",
+		...controlArchivePaths((path) => revisionHasPath(ASKS_CONTROL, path)),
 	]);
 	mkdirSync(root);
 	execFileSync("tar", ["-xf", tar, "-C", root]);
-	symlinkSync(resolve("node_modules"), join(root, "node_modules"), "dir");
+	/*
+	 * A DEPENDENCY-ADDING PR IS STILL A VALID EXPERIMENT. The control normally
+	 * shares the candidate's node_modules, which is only honest when the lockfile
+	 * is byte-identical. When the lockfile differs, sharing would boot the control
+	 * on dependencies it was not built for, so the control gets its OWN install
+	 * from its own lockfile instead. That preserves the comparison (the control is
+	 * the base tree with base dependencies) and lets a reviewed dependency addition
+	 * run through the same gate rather than being forced to bypass it.
+	 */
+	if (plan.lockDiffers) {
+		await execute(
+			"pnpm",
+			["install", "--frozen-lockfile", "--ignore-scripts"],
+			{
+				cwd: root,
+				env: { ...process.env, CI: "true" },
+				timeout: 300000,
+				maxBuffer: 8 * 1024 * 1024,
+			},
+		);
+	}
+	const electron = plan.lockDiffers
+		? await provisionControlElectron(root)
+		: null;
+	if (!plan.lockDiffers) {
+		symlinkSync(resolve("node_modules"), join(root, "node_modules"), "dir");
+	}
 	if (plan.reuse) {
 		for (const part of ["main", "preload"])
 			cpSync(join("out", part), join(root, "out", part), { recursive: true });
@@ -313,7 +832,7 @@ async function prepareControl(root, output) {
 		? "renderer"
 		: "main, c.config.preload, c.config.renderer";
 	const code = `import {resolveConfig} from 'electron-vite';import {build} from 'vite';const c=await resolveConfig({},'build','production');for (const cfg of [c.config.${targets}]) await build(cfg);`;
-	await execute(process.execPath, ["--input-type=module", "-e", code], {
+	await execute(process.execPath, [...CONTROL_BUILD_NODE_ARGS, "-e", code], {
 		cwd: root,
 		env: { ...process.env, LOCAL_OPERATOR_UI_NO_BYTECODE: "true" },
 		// A rebuild adds two bundles (main, preload) to the renderer build.
@@ -324,6 +843,9 @@ async function prepareControl(root, output) {
 		commit: ASKS_CONTROL,
 		srcTree: git("rev-parse", `${ASKS_CONTROL}:src`),
 		mainPreloadReuse: describeMainPreloadReuse(plan),
+		electronRuntime: electron?.describe ?? "shared candidate node_modules",
+		// Not provenance: the control leg's child env, consumed (and removed) by main().
+		legEnv: electron?.env ?? {},
 		rendererOutputs: Object.fromEntries(
 			files(join(root, "out/renderer")).map((p) => [
 				p.slice(root.length + 1),
@@ -433,6 +955,7 @@ async function waitForDevtoolsPort(handle, api, timeoutMs = 60_000) {
  * binary is resolved.
  */
 export const CASES = {
+	"model-uncertainty": modelUncertaintyCase,
 	asks: {
 		purpose:
 			"The asks rail's open/close policy, driven through every door the user has (rail item, drawer X, Escape, header menu, composer chip) with the browser pane underneath it. The first case, and the one the 1107 rounds were reviewed against.",
@@ -641,6 +1164,797 @@ export const CASES = {
 			}
 		},
 	},
+	/*
+	 * THE LONG-ASK SCROLL CASE: the wheel, the page keys and Tab, on a four-decision
+	 * ask whose every scroller overflows.
+	 *
+	 * WHAT IT IS FOR. A card taller than the drawer's scrollport did not scroll from a
+	 * wheel over its own text: the question body and the option list carried
+	 * `overscroll-behavior: contain`, and Chromium 156 stops the chain at such a box
+	 * even when it has nothing left to scroll - so the drawer's LIST, the only thing
+	 * that owns the scroll, never moved, and `Send answer` sat below the fold with
+	 * nothing pinned to reach it from.
+	 *
+	 * THE LEGS ARE THE EVIDENCE PAIR, which is why the assertions are per-leg: the
+	 * control leg IS this repository's derived pre-fix build, so asserting THERE that
+	 * the list does not move and that `Send answer` is outside the port is the negative
+	 * control running in CI forever; the candidate leg asserts the remedy. One fixture,
+	 * one case, two revisions - no hand-run comparison that can go stale.
+	 */
+	"asks-scroll": {
+		purpose:
+			"A four-decision ask whose bodies and option lists all overflow: a wheel over the question text, an option row and the option list, and PageDown/Home/End/Space, have to move the drawer's LIST; each card's action row has to stay inside that list's port at the top of the scroll and at its maximum; and a Tab walk through the card must never leave a focused control covered by that pinned row. Wheel and key events go through Chromium's own input pipeline (CDP), never scrollIntoView.",
+		route: "/chat",
+		frames: {
+			control: [
+				"long-ask-440x1024",
+				"long-ask-440x700",
+				"long-ask-440x1400",
+				"long-ask-440x600",
+			],
+			candidate: [
+				"long-ask-440x1024",
+				"long-ask-440x700",
+				"long-ask-440x1400",
+				"long-ask-440x600",
+				/* The D4 frame: at the maximum, where the band's bottom edge is readable. */
+				"long-ask-max-scroll-440x1024",
+				/* The m3 frame: the region's ring, focused by the keyboard, inside its port. */
+				"long-ask-focused-440x1024",
+			],
+		},
+		coverage:
+			"real assembled app renderer/handlers/store; wheel and key events through Chromium's input pipeline, not scrollIntoView",
+		drive: async (ctx) => {
+			const {
+				kind,
+				cdp,
+				wait,
+				press,
+				pressEscape,
+				facts,
+				frame,
+				fixtureMode,
+				session,
+				stamp,
+			} = ctx;
+			/*
+			 * THE LIST, FOUND THE SAME WAY ON BOTH LEGS. The candidate marks the drawer's
+			 * scroller (`data-lo-ask-list`, the contract the pinned row publishes its height
+			 * to), and the control build predates the mark - so the control leg reads the same
+			 * element by what it IS: inside the drawer, the first `overflow-y: auto` box whose
+			 * content actually overflows. That is the list and not a card's body, because the
+			 * list precedes every card in DOM order.
+			 */
+			const LIST = `(document.querySelector("[data-lo-ask-list]") ?? [...document.querySelectorAll("[data-ask-drawer] div")].find((el) => /^(auto|scroll)$/.test(getComputedStyle(el).overflowY) && el.scrollHeight > el.clientHeight))`;
+			const READ = `(() => {
+				const list = ${LIST};
+				if (!list) return { present: false };
+				const box = (el) => { const r = el.getBoundingClientRect(); return { top: Math.round(r.top), bottom: Math.round(r.bottom), left: Math.round(r.left), right: Math.round(r.right), height: Math.round(r.height) }; };
+				const listBox = box(list);
+				const body = document.querySelector("[data-lo-ask-scroll]");
+				const opts = document.querySelector("[data-lo-ask-options-scroll]");
+				const send = [...document.querySelectorAll("[data-lo-ask-row] button")].find((b) => /^(Send answer|Update answer)$/.test((b.textContent ?? "").trim())) ?? null;
+				const active = document.activeElement;
+				const labelled = list.getAttribute("aria-labelledby");
+				return {
+					present: true,
+					list: {
+						scrollTop: Math.round(list.scrollTop),
+						max: list.scrollHeight - list.clientHeight,
+						client: list.clientHeight,
+						box: listBox,
+						tabIndex: list.getAttribute("tabindex"),
+						role: list.getAttribute("role"),
+						ariaLabel: list.getAttribute("aria-label"),
+						/* The EFFECTIVE name: aria-label on the candidate, aria-labelledby before it. */
+						name:
+							list.getAttribute("aria-label") ??
+							(labelled
+								? (document.getElementById(labelled)?.textContent ?? "").trim()
+								: null),
+						scope:
+							(document.querySelector("[data-ask-scope]")?.textContent ?? "").trim() ||
+							null,
+						padding: getComputedStyle(list).scrollPaddingBottom,
+						actionsVar: list.style.getPropertyValue("--lo-ask-actions-h"),
+					},
+					body: body ? { scrollTop: Math.round(body.scrollTop), max: body.scrollHeight - body.clientHeight, contain: getComputedStyle(body).overscrollBehaviorY } : null,
+					options: opts ? { scrollTop: Math.round(opts.scrollTop), max: opts.scrollHeight - opts.clientHeight, contain: getComputedStyle(opts).overscrollBehaviorY } : null,
+					pinned: document.querySelector("[data-lo-ask-actions]") ? box(document.querySelector("[data-lo-ask-actions]")) : null,
+					send: send ? (() => { const b = box(send); return { box: b, disabled: send.disabled, inPort: b.top >= listBox.top - 1 && b.bottom <= listBox.bottom + 1 }; })() : null,
+					active: active === null ? null : {
+						isList: active === list,
+						isBody: active === body,
+						inDrawer: !!active.closest("[data-lo-ask-surfaces]"),
+						what: active.tagName.toLowerCase() + "|" + (active.textContent ?? "").trim().slice(0, 24),
+						box: active.getBoundingClientRect ? box(active) : null,
+					},
+				};
+			})()`;
+			const read = () => cdp.evaluate(READ);
+			const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+			const resetScroll = () =>
+				cdp.evaluate(
+					`(() => { const l = ${LIST}; if (l) l.scrollTop = 0; const b = document.querySelector("[data-lo-ask-scroll]"); if (b) b.scrollTop = 0; const o = document.querySelector("[data-lo-ask-options-scroll]"); if (o) o.scrollTop = 0; })()`,
+				);
+			const focusOn = (selector) =>
+				cdp.evaluate(
+					`(() => { const el = document.querySelector(${JSON.stringify(selector)}); if (!el) return false; el.focus(); return document.activeElement === el; })()`,
+				);
+			/* The list is an EXPRESSION, not a selector (see `LIST`), so it focuses itself. */
+			const focusList = () =>
+				cdp.evaluate(
+					`(() => { const el = ${LIST}; if (!el) return false; el.focus(); return document.activeElement === el; })()`,
+				);
+			/*
+			 * A POINT INSIDE THE TARGET'S VISIBLE PART OF THE PORT. `getBoundingClientRect`
+			 * of a target that runs past the port is clipped to the port, so the wheel lands
+			 * on a part of the target a reader can actually see - and the hit test is
+			 * recorded, because a wheel aimed at "the question text" that really landed on
+			 * the pinned bar would be measuring the wrong door.
+			 */
+			const pointOn = (selector) =>
+				cdp.evaluate(`(() => {
+					const el = document.querySelector(${JSON.stringify(selector)});
+					const list = ${LIST};
+					if (!el || !list) return null;
+					const r = el.getBoundingClientRect();
+					const l = list.getBoundingClientRect();
+					const top = Math.max(r.top, l.top + 10);
+					const bottom = Math.min(r.bottom, l.bottom - 10);
+					if (bottom - top < 8) return null;
+					const x = Math.round(Math.max(r.left, l.left) + Math.min(r.width, l.width) / 2);
+					const y = Math.round((top + bottom) / 2);
+					const hit = document.elementFromPoint(x, y);
+					return { x, y, hit: hit ? hit.tagName.toLowerCase() + (hit.closest("[data-ask-option]") ? "[option-row]" : "") + (hit.closest("[data-lo-ask-actions]") ? "[pinned]" : "") : "nothing" };
+				})()`);
+			const WHEEL_DELTA = 240;
+			const WHEEL_NOTCHES = 12;
+			const wheelOver = async (target, selector) => {
+				await resetScroll();
+				await pause(150);
+				const before = await read();
+				const point = await pointOn(selector);
+				if (point === null)
+					throw Error(
+						`${target}: ${selector} is not visible inside the drawer's port`,
+					);
+				for (let i = 0; i < WHEEL_NOTCHES; i += 1)
+					await cdp.send("Input.dispatchMouseEvent", {
+						type: "mouseWheel",
+						x: point.x,
+						y: point.y,
+						deltaX: 0,
+						deltaY: WHEEL_DELTA,
+					});
+				await pause(250);
+				return { target, point, before, after: await read() };
+			};
+			const KEYS = {
+				PageDown: {
+					key: "PageDown",
+					code: "PageDown",
+					windowsVirtualKeyCode: 34,
+				},
+				End: { key: "End", code: "End", windowsVirtualKeyCode: 35 },
+				Home: { key: "Home", code: "Home", windowsVirtualKeyCode: 36 },
+				Tab: { key: "Tab", code: "Tab", windowsVirtualKeyCode: 9 },
+				Space: { key: " ", code: "Space", windowsVirtualKeyCode: 32 },
+				/*
+				 * SHIFT+SPACE IS THE UPSIDE-DOWN SPACE (agent review round 1, m2). `modifiers: 8`
+				 * is Shift in the DevTools protocol's bitmask, so the key arrives with
+				 * `shiftKey` true and the region has to page BACK rather than forward.
+				 */
+				ShiftSpace: {
+					key: " ",
+					code: "Space",
+					windowsVirtualKeyCode: 32,
+					modifiers: 8,
+				},
+			};
+			/*
+			 * A KEY'S READING, POLLED UNTIL IT SETTLES. Chromium animates keyboard scrolling
+			 * on macOS even without `scroll-behavior: smooth` in the CSS, so a reading taken
+			 * 180 ms after `Home` caught the tail of a 2220 px jump at 6 px (measured). The
+			 * assertions are about where the key lands, not how fast the animation is, so
+			 * each one polls its own destination and reports the settled numbers.
+			 */
+			const settle = async (predicate, timeoutMs = 2500) => {
+				const deadline = Date.now() + timeoutMs;
+				let state = await read();
+				while (!predicate(state)) {
+					/*
+					 * THE BOUND IS REPORTED, NOT HIDDEN (review round 2, finding 3): returning the
+					 * last reading silently made a key that never arrived indistinguishable from
+					 * one that settled, so the failing assertion blamed the product without saying
+					 * the measurement itself had given up.
+					 */
+					if (Date.now() > deadline) return { ...state, settled: false };
+					await pause(120);
+					state = await read();
+				}
+				return { ...state, settled: true };
+			};
+			/*
+			 * THE NEXT KEY IS PRESSED ON A STILL SCROLLER. Chromium animates keyboard scrolling
+			 * (measured), and a key delivered while that animation is in flight is DROPPED rather
+			 * than queued: `End` after a PageDown landed short of the maximum on 1 of 24 measured
+			 * runs at 440x700, on the base build too, and re-pressing on a still scroller landed it
+			 * every time. Waiting for the list's reading (and the card's own scrollers') to hold
+			 * still across two polls bounds that race; it cannot mask a real shortfall, because a
+			 * key that lands short once everything is still fails exactly as before.
+			 */
+			const QUIET_POLLS = 2;
+			const QUIET_WINDOW_MS = 700;
+			const awaitQuiet = async (timeoutMs = QUIET_WINDOW_MS) => {
+				const deadline = Date.now() + timeoutMs;
+				let last = await read();
+				let steady = 0;
+				while (Date.now() < deadline) {
+					await pause(120);
+					const next = await read();
+					if (!next.list) return { ...next, quiet: false };
+					/*
+					 * A PREVIOUS READ WITH NO LIST CANNOT PROVE STILLNESS (agent review round 3, m5):
+					 * the first read can land before the card's own scroller mounts, and indexing
+					 * `last.list` there threw a TypeError out of a wait that exists to measure
+					 * stillness. An absent baseline counts as movement, so the next pair is what
+					 * gets to hold still.
+					 */
+					const moved =
+						!last.list ||
+						next.list.scrollTop !== last.list.scrollTop ||
+						(next.body?.scrollTop ?? 0) !== (last.body?.scrollTop ?? 0) ||
+						(next.options?.scrollTop ?? 0) !== (last.options?.scrollTop ?? 0);
+					last = next;
+					steady = moved ? 0 : steady + 1;
+					if (steady >= QUIET_POLLS) return { ...last, quiet: true };
+				}
+				return { ...last, quiet: false };
+			};
+			const pressAndSettle = async (names, predicate) => {
+				await keyPress(names);
+				/*
+				 * THE STILLNESS IS CARRIED OUT OF `awaitQuiet` (agent review round 3, m4): it was
+				 * awaited for its side effect only, so a scroller that never went still before the
+				 * key was pressed reported a plain "not settled" and hid the fact that the
+				 * measurement itself was still moving.
+				 */
+				const still = await awaitQuiet();
+				const state = await settle(predicate);
+				return { ...state, quiet: still.quiet === true };
+			};
+			const keyPress = async (names) => {
+				for (const [index, name] of names.entries()) {
+					await cdp.send("Input.dispatchKeyEvent", {
+						type: "rawKeyDown",
+						...KEYS[name],
+					});
+					await cdp.send("Input.dispatchKeyEvent", {
+						type: "keyUp",
+						...KEYS[name],
+					});
+					await pause(180);
+					/* BETWEEN SEVERAL PRESSES OF ONE GESTURE, EACH ONE HAS TO LAND. */
+					if (index < names.length - 1) await awaitQuiet();
+				}
+			};
+			/*
+			 * THE WALK'S OWN READING: what the browser scrolled to (the focus scroll
+			 * honours `scroll-padding-bottom`), whether the focused control is still covered by
+			 * the pinned row (a hit test at its centre - the claim, not the geometry that
+			 * could agree with a covered control), and whether it ended up wholly inside the
+			 * port.
+			 */
+			const tabWalk = async (limit) => {
+				const path = [];
+				let left = null;
+				for (let i = 0; i < limit; i += 1) {
+					await keyPress(["Tab"]);
+					const step = await cdp.evaluate(`(() => {
+						const el = document.activeElement;
+						const list = ${LIST};
+						if (!el || el === document.body || !list) return null;
+						if (!el.closest("[data-lo-ask-surfaces]"))
+							return {
+								left: true,
+								what:
+									el.tagName.toLowerCase() +
+									"|" +
+									(el.textContent ?? "").trim().slice(0, 40),
+							};
+						const r = el.getBoundingClientRect();
+						const l = list.getBoundingClientRect();
+						const x = Math.round(r.left + Math.min(r.width / 2, 16));
+						const y = Math.round(r.top + r.height / 2);
+						const at = document.elementFromPoint(x, y);
+						return {
+							what: el.tagName.toLowerCase() + "|" + (el.textContent ?? "").trim().slice(0, 24),
+							covered: !(at === el || el.contains(at)),
+							under: at ? at.tagName.toLowerCase() + (at.closest("[data-lo-ask-actions]") ? "[pinned]" : "") : "nothing",
+							inside: r.top >= l.top - 1 && r.bottom <= l.bottom + 1,
+							top: Math.round(r.top),
+							bottom: Math.round(r.bottom),
+							portTop: Math.round(l.top),
+							portBottom: Math.round(l.bottom),
+							scrollTop: Math.round(list.scrollTop),
+						};
+					})()`);
+					if (step === null) break;
+					if (step.left) {
+						left = step;
+						break;
+					}
+					path.push(step);
+				}
+				return { path, left };
+			};
+			const readings = {};
+			await fixtureMode("long");
+			await session(0);
+			await wait(
+				'Boolean(document.querySelector("[data-panel-rail-item=ask]"))',
+			);
+			if ((await facts()).dom.ask) {
+				await pressEscape();
+				await wait('!document.querySelector("[data-ask-drawer]")');
+			}
+			const dpr = await cdp.evaluate("window.devicePixelRatio");
+			/*
+			 * FOUR VIEWPORTS. 440 is the width the operator's own report came from - below the
+			 * family's dock breakpoint the drawer is a right-anchored sheet - and 600 is the
+			 * app's WINDOW FLOOR, the shortest a sheet can ever be. 700/1024/1400 are the
+			 * short, laptop and tall ends the same question has to work at. The device scale
+			 * factor is the window's own, so a frame's pixels and its `viewport` reading
+			 * agree.
+			 */
+			for (const [width, height] of [
+				[440, 1024],
+				[440, 700],
+				[440, 1400],
+				/* THE APP'S WINDOW FLOOR (800x600): a sheet can never be shorter than this. */
+				[440, 600],
+			]) {
+				const size = `${width}x${height}`;
+				await cdp
+					.send("Emulation.setDeviceMetricsOverride", {
+						width,
+						height,
+						deviceScaleFactor: dpr,
+						mobile: false,
+					})
+					.catch(() => null);
+				await pause(400);
+				if (!(await facts()).dom.ask)
+					await press('[data-panel-rail-item="ask"]');
+				await wait('Boolean(document.querySelector("[data-lo-ask-row]"))');
+				/*
+				 * THE FRAME IS OF THE UNTOUCHED SCROLL POSITION: the previous size's Tab walk
+				 * leaves the keyboard (and the browser's focus scroll) deep inside the card, and
+				 * a frame taken there shows the middle of a question rather than the state the
+				 * pair is about - the top of the list, where the actions are out of the port on
+				 * one revision and pinned inside it on the other.
+				 */
+				await cdp.evaluate(
+					"(() => { if (document.activeElement instanceof HTMLElement) document.activeElement.blur(); })()",
+				);
+				await resetScroll();
+				await pause(250);
+				await frame(`long-ask-${size}`);
+				const open = await read();
+				if (!open.present) throw Error(`${size}: the drawer's list is absent`);
+				if (!(open.list.max > 0))
+					throw Error(
+						`${size}: the drawer's list does not overflow (scrollHeight ${open.list.client} vs client ${open.list.client}), so this case would prove nothing`,
+					);
+				const wheels = [
+					await wheelOver("question text", "[data-lo-ask-scroll]"),
+					await wheelOver("option row", "[data-ask-option]"),
+					await wheelOver("option list", "[data-lo-ask-options-scroll]"),
+				];
+				/* The action row, at both ends of the scroll. */
+				await resetScroll();
+				await pause(200);
+				const stickyTop = await read();
+				await cdp.evaluate(
+					`(() => { const l = ${LIST}; l.scrollTop = l.scrollHeight - l.clientHeight; })()`,
+				);
+				await pause(250);
+				const stickyMax = await read();
+				/*
+				 * THE MAX-SCROLL FRAME (design round 1, D4), captured at the one scroll
+				 * position the D3 reading is about: the card's own bottom is the port's, so a
+				 * band that bleeds to the card's edge is flush with the port and one that does
+				 * not leaves a strip. CANDIDATE ONLY - the control draws no pinned row at all
+				 * (its `Send answer` sits ~2200 px down the card), so a "before" frame here
+				 * would photograph an absence.
+				 */
+				if (kind === "candidate" && size === "440x1024")
+					await frame("long-ask-max-scroll-440x1024");
+				/*
+				 * THE PAGE KEYS, from the LIST first - the stop the keyboard lands on - and then
+				 * from the QUESTION BODY, which is where a reader who tabbed into the card
+				 * actually is.
+				 */
+				await resetScroll();
+				await pause(150);
+				const listFocus = await focusList();
+				const beforeKeys = await read();
+				const afterPageDown = await pressAndSettle(
+					["PageDown", "PageDown"],
+					(state) => state.list.scrollTop > 0,
+				);
+				/*
+				 * END IS READ AGAINST THE MAXIMUM FROM ITS OWN READING, and on the candidate leg a
+				 * short landing gets ONE re-press that is recorded in the summary
+				 * (`keys.endRetried`), never hidden. Both exist because the assertion used to compare
+				 * this reading with the maximum taken before any key was pressed: the list's
+				 * scrollable height is not constant across a run (a reflow changes it), so that pair
+				 * could disagree even when End had reached the maximum of its own reading - and a key
+				 * pressed while the previous scroll was still animating could be dropped. A retry
+				 * that still falls short fails the assertion below, and the control leg has no End
+				 * claim to retry for: its list is not a keyboard stop at all.
+				 */
+				const atListEnd = (state) =>
+					Math.abs(state.list.scrollTop - state.list.max) <= 1;
+				const afterEndFirst = await pressAndSettle(["End"], atListEnd);
+				const afterEndRetry =
+					kind === "candidate" && afterEndFirst.settled === false
+						? { ...(await pressAndSettle(["End"], atListEnd)), retried: true }
+						: { ...afterEndFirst, retried: false };
+				/*
+				 * THE RETRY KEEPS THE READING IT REPLACED (agent review round 3, m2): it used to
+				 * overwrite the short first read, so a failure showed only the second landing and
+				 * could not say whether End was dropped once or twice. `first` is always recorded,
+				 * so a non-retried run reads as first == final rather than as a missing field.
+				 */
+				const afterEnd = {
+					...afterEndRetry,
+					first: {
+						scrollTop: afterEndFirst.list.scrollTop,
+						max: afterEndFirst.list.max,
+						settled: afterEndFirst.settled === true,
+						quiet: afterEndFirst.quiet === true,
+					},
+				};
+				const afterHome = await pressAndSettle(
+					["Home"],
+					(state) => state.list.scrollTop === 0,
+				);
+				const afterSpace = await pressAndSettle(
+					["Space"],
+					(state) => state.list.scrollTop > 0,
+				);
+				/*
+				 * AND BACK UP WITH SHIFT (agent review round 1, m2): the region answered Space
+				 * with a forward page whatever the modifiers were, so the platform's
+				 * page-up gesture did nothing here. The reading is taken from where Space
+				 * settled, not from the top, so it cannot pass on a no-op.
+				 */
+				const afterShiftSpace = await pressAndSettle(
+					["ShiftSpace"],
+					(state) => state.list.scrollTop < afterSpace.list.scrollTop,
+				);
+				const bodyFocus = await focusOn("[data-lo-ask-scroll]");
+				await resetScroll();
+				await pause(150);
+				/*
+				 * SIX PRESSES, not three: a page key chains to the list only once the body is
+				 * ALREADY at its end when the key is pressed, so the count has to cover the
+				 * body's own pages (measured: three reached its end at 440x700 and chained
+				 * nothing, 878 px at 440x1024 where the body is shorter than their reach).
+				 */
+				const afterBodyPageDown = await pressAndSettle(
+					[
+						"PageDown",
+						"PageDown",
+						"PageDown",
+						"PageDown",
+						"PageDown",
+						"PageDown",
+					],
+					(state) => state.list.scrollTop > 0,
+				);
+				const afterBodyEnd = await pressAndSettle(
+					["End"],
+					(state) =>
+						Math.abs(state.list.scrollTop - state.list.max) <= 1 ||
+						(state.active?.isBody === false && state.list.scrollTop > 0),
+				);
+				/* And the walk: Tab from the drawer's own chrome, then through the card. */
+				await resetScroll();
+				await pause(150);
+				const chromeFocus = await focusOn(
+					'[data-tour-tag="close-asks-button"]',
+				);
+				await keyPress(["Tab"]);
+				const afterChromeTab = await read();
+				/*
+				 * THE FOCUSED FRAME (m3 = UX's U2), taken on the keyboard path: Tab from the
+				 * drawer's chrome lands on the list, so `:focus-visible` is what put the ring
+				 * on it (a programmatic `focus()` after a wheel does not always match). The
+				 * ring is drawn INSET by its own width and offset now, and the claim the frame
+				 * is here to make is geometric: all four of its edges paint inside the
+				 * scrollport, where the outset ring lost two pixels a side to the clip.
+				 * CANDIDATE ONLY: the control leg's ring IS the outset one, so its clipped
+				 * corners are the defect rather than evidence of the fix.
+				 */
+				if (kind === "candidate" && size === "440x1024")
+					await frame("long-ask-focused-440x1024");
+				const tab = await tabWalk(40);
+				readings[size] = {
+					open,
+					wheels,
+					stickyTop,
+					stickyMax,
+					keys: {
+						listFocus,
+						bodyFocus,
+						chromeFocus,
+						beforeKeys,
+						afterPageDown,
+						afterEnd,
+						afterHome,
+						afterSpace,
+						afterShiftSpace,
+						afterBodyPageDown,
+						afterBodyEnd,
+					},
+					afterChromeTab,
+					tab,
+				};
+			}
+			await cdp.send("Emulation.clearDeviceMetricsOverride").catch(() => null);
+			const summary = Object.fromEntries(
+				Object.entries(readings).map(([size, entry]) => [
+					size,
+					{
+						list: {
+							client: entry.open.list.client,
+							max: entry.open.list.max,
+							scrollTop: entry.open.list.scrollTop,
+							tabIndex: entry.open.list.tabIndex,
+							role: entry.open.list.role,
+							name: entry.open.list.name,
+							ariaLabel: entry.open.list.ariaLabel,
+							scope: entry.open.list.scope,
+							padding: entry.open.list.padding,
+							actionsVar: entry.open.list.actionsVar,
+						},
+						containment: {
+							body: entry.open.body?.contain,
+							options: entry.open.options?.contain,
+						},
+						wheels: entry.wheels.map((wheel) => ({
+							target: wheel.target,
+							hit: wheel.point.hit,
+							list: [wheel.before.list.scrollTop, wheel.after.list.scrollTop],
+							body: [
+								wheel.before.body?.scrollTop ?? null,
+								wheel.after.body?.scrollTop ?? null,
+							],
+							options: [
+								wheel.before.options?.scrollTop ?? null,
+								wheel.after.options?.scrollTop ?? null,
+							],
+						})),
+						sticky: {
+							top: entry.stickyTop.send,
+							max: entry.stickyMax.send,
+							pinnedTop: entry.stickyTop.pinned,
+							pinnedMax: entry.stickyMax.pinned,
+							port: entry.stickyTop.list.box,
+							portMax: entry.stickyMax.list.box,
+						},
+						keys: {
+							listFocus: entry.keys.listFocus,
+							bodyFocus: entry.keys.bodyFocus,
+							pageDown: entry.keys.afterPageDown.list.scrollTop,
+							end: entry.keys.afterEnd.list.scrollTop,
+							/* THE SAME READ AS `end`, so the pair cannot disagree about the height. */
+							endMax: entry.keys.afterEnd.list.max,
+							endClient: entry.keys.afterEnd.list.client,
+							endSettled: entry.keys.afterEnd.settled === true,
+							/* BESIDE `settled`: a key pressed on a still-moving scroller is a dropped key. */
+							endQuiet: entry.keys.afterEnd.quiet === true,
+							endRetried: entry.keys.afterEnd.retried === true,
+							endFirst: entry.keys.afterEnd.first,
+							home: entry.keys.afterHome.list.scrollTop,
+							space: entry.keys.afterSpace.list.scrollTop,
+							shiftSpace: entry.keys.afterShiftSpace.list.scrollTop,
+							bodyPageDown: entry.keys.afterBodyPageDown.list.scrollTop,
+							bodyEnd: entry.keys.afterBodyEnd.list.scrollTop,
+						},
+						chromeTab: {
+							focus: entry.keys.chromeFocus,
+							landedOnList: entry.afterChromeTab.active?.isList === true,
+							landedOn: entry.afterChromeTab.active?.what ?? null,
+						},
+						tabWalk: {
+							steps: entry.tab.path.length,
+							covered: entry.tab.path.filter((step) => step.covered).length,
+							outsidePort: entry.tab.path.filter((step) => !step.inside).length,
+							sample: entry.tab.path.slice(0, 4),
+							tail: entry.tab.path.slice(-4),
+							/*
+							 * THE FOCUS SCROLL ITSELF: the deepest scrollTop the walk reached, which
+							 * is the list moving to bring a focused control into view (a walk that
+							 * never moved it proves only that the card happened to fit).
+							 */
+							maxScroll: entry.tab.path.reduce(
+								(max, step) => Math.max(max, step.scrollTop ?? 0),
+								0,
+							),
+							leftAfter: entry.tab.left,
+						},
+					},
+				]),
+			);
+			stamp("longAskScroll", summary);
+			/*
+			 * THE ASSERTIONS, per leg. The candidate has to show the remedy on every door; the
+			 * control has to show the defect, or the pair has stopped proving anything.
+			 */
+			/*
+			 * The control's negative wheel reading is valid only for a PRE-#1901 control
+			 * (`controlPredatesAskScrollFix`). A post-fix control is skipped LOUDLY and
+			 * recorded in the summary; the candidate assertions are never relaxed.
+			 */
+			const controlIsPreFix =
+				kind === "candidate" || controlPredatesFixFromEnv();
+			const controlClaims = askScrollControlClaims(controlIsPreFix);
+			if (!controlIsPreFix)
+				console.warn(
+					`asks-scroll/control: SKIPPING ALL pre-fix negative assertions (wheel, body containment, Send-answer clipping, chrome Tab) - control ${ASKS_CONTROL} already carries #1901 (data-lo-ask-list); candidate assertions still run`,
+				);
+			for (const [size, entry] of Object.entries(summary)) {
+				for (const wheel of entry.wheels) {
+					const [before, after] = wheel.list;
+					if (kind === "control" && !controlClaims.wheel) continue;
+					if (kind === "candidate")
+						assert(
+							after > before,
+							`${size}: a wheel over the ${wheel.target} must move the drawer's list (was ${before}, now ${after}; the nearest box is ${wheel.hit})`,
+						);
+					else
+						assert.equal(
+							after,
+							before,
+							`${size}: the pre-fix build's list must NOT move from a wheel over the ${wheel.target} - this reading is the defect the case exists for`,
+						);
+				}
+				if (kind === "candidate") {
+					assert.equal(
+						entry.containment.body,
+						"auto",
+						`${size}: the question body must hand the gesture up (computed overscroll-behavior-y auto)`,
+					);
+					assert.equal(
+						entry.containment.options,
+						"auto",
+						`${size}: the option list must hand the gesture up`,
+					);
+					assert.equal(
+						entry.list.tabIndex,
+						"0",
+						`${size}: the drawer's list must be in the Tab walk while it overflows`,
+					);
+					assert.equal(
+						entry.list.role,
+						"region",
+						`${size}: the stop must be a region`,
+					);
+					assert(
+						entry.list.name !== null && entry.list.name.length > 0,
+						`${size}: the stop must carry an accessible name`,
+					);
+					/*
+					 * THE NAME IS THE CONTENT'S, NOT THE STATUS LINE (agent review round 1, U3):
+					 * naming the region from the bar made it announce "1 question waiting" as if
+					 * that were the box. It now reads the rail door's register, so it differs
+					 * from the bar's own line above it and agrees with the control that opened
+					 * the pane.
+					 */
+					assert.notEqual(
+						entry.list.name,
+						entry.list.scope,
+						`${size}: the region's name must not be the status line (both read ${JSON.stringify(entry.list.name)})`,
+					);
+					assert(
+						Number.parseFloat(entry.list.padding) > 0,
+						`${size}: the list needs a scroll-padding-bottom that clears the pinned row (got ${entry.list.padding})`,
+					);
+					assert.equal(
+						entry.sticky.top?.inPort,
+						true,
+						`${size}: Send answer must be inside the port at the top of the scroll`,
+					);
+					assert.equal(
+						entry.sticky.max?.inPort,
+						true,
+						`${size}: Send answer must be inside the port at the maximum`,
+					);
+					/*
+					 * FLUSH AT THE MAXIMUM (design round 1, D3): the card's own bottom IS the
+					 * port's at that scroll position, so the band must reach it. `-my-2 py-2`
+					 * stopped 4 px short and left a strip of question text under the bar; the
+					 * 1 px slack is sub-pixel rounding, not the defect.
+					 */
+					assert(
+						Math.abs(
+							entry.sticky.pinnedMax.bottom - entry.sticky.portMax.bottom,
+						) <= 1,
+						`${size}: the pinned row must be flush with the port's bottom at the maximum (row bottom ${entry.sticky.pinnedMax.bottom}, port bottom ${entry.sticky.portMax.bottom})`,
+					);
+					assert(
+						entry.keys.pageDown > 0,
+						`${size}: PageDown on the list must scroll it (got ${entry.keys.pageDown})`,
+					);
+					assertEndReached(size, entry);
+					assert.equal(
+						entry.keys.home,
+						0,
+						`${size}: Home on the list must return to its top`,
+					);
+					assert(
+						entry.keys.space > entry.keys.home,
+						`${size}: Space on the list must page it down`,
+					);
+					assert(
+						entry.keys.shiftSpace < entry.keys.space,
+						`${size}: Shift+Space on the list must page it back up (Space settled at ${entry.keys.space}, Shift+Space at ${entry.keys.shiftSpace})`,
+					);
+					assert(
+						entry.keys.bodyPageDown > 0,
+						`${size}: PageDown from the question body must reach the drawer's list (got ${entry.keys.bodyPageDown})`,
+					);
+					assert(
+						entry.chromeTab.landedOnList,
+						`${size}: Tab from the drawer's chrome must land on the list region (landed on ${entry.chromeTab.landedOn})`,
+					);
+					assert(
+						entry.tabWalk.steps > 8,
+						`${size}: the Tab walk left the card after ${entry.tabWalk.steps} stops, so it proved nothing`,
+					);
+					assert(
+						entry.tabWalk.maxScroll > 0,
+						`${size}: the Tab walk never scrolled the list, so it never carried focus past the fold`,
+					);
+					assert.equal(
+						entry.tabWalk.covered,
+						0,
+						`${size}: ${entry.tabWalk.covered} focused control(s) ended up under the pinned row`,
+					);
+					assert.equal(
+						entry.tabWalk.outsidePort,
+						0,
+						`${size}: ${entry.tabWalk.outsidePort} focused control(s) were not scrolled wholly into the port`,
+					);
+				} else if (kind === "control") {
+					/* Pre-fix claims only (see askScrollControlClaims); none hold post-fix. */
+					if (controlClaims.body)
+						assert.equal(
+							entry.containment.body,
+							"contain",
+							`${size}: the pre-fix build's question body must still contain the gesture`,
+						);
+					if (controlClaims.stickyTop)
+						assert.equal(
+							entry.sticky.top?.inPort,
+							false,
+							`${size}: the pre-fix build cannot have Send answer inside the port at the top - that is the clipping this case exists for`,
+						);
+					if (controlClaims.chromeTab)
+						assert.equal(
+							entry.chromeTab.landedOnList,
+							false,
+							`${size}: the pre-fix list is not a Tab stop`,
+						);
+				}
+			}
+		},
+	},
 	palette: {
 		purpose:
 			"The command palette: an INTERACTIVE surface with a real state, opened from its own sidebar row and closed with Escape, with commandPaletteOpen read from the store at each end so the pair shows one state reached and one left.",
@@ -765,7 +2079,15 @@ export const CASES = {
  * onboarding-script reload, the readiness waits, the frame/measurement store, and
  * a finally that reaps exactly the app this run started.
  */
-async function runCase(scenarioName, kind, root, output, records) {
+async function runCase(
+	scenarioName,
+	kind,
+	root,
+	output,
+	records,
+	realBackend = null,
+	verifiedElectronBinary = undefined,
+) {
 	process.chdir(root);
 	process.argv.push(
 		"--backend",
@@ -788,11 +2110,47 @@ async function runCase(scenarioName, kind, root, output, records) {
 	let rc = 1;
 	const frames = [];
 	const failures = [];
+	let appDrain;
+	const drainModelApp = (why) => {
+		if (!appDrain)
+			appDrain = (async () => {
+				const receipt = await api.drainLiveBoots({ why });
+				assert.equal(
+					receipt.clean,
+					true,
+					"owned app exit/descendants not settled",
+				);
+				writeFileSync(
+					join(output, "owned-app-exit.json"),
+					JSON.stringify(receipt),
+				);
+			})();
+		return appDrain;
+	};
 	for (const name of ["SIGTERM", "SIGINT"])
-		process.once(
-			name,
-			() => void api.reapLiveBoots({ code: 143, why: `CI ${name}` }),
-		);
+		process.once(name, () => {
+			if (!realBackend) {
+				void api.reapLiveBoots({ code: 143, why: `CI ${name}` });
+				return;
+			}
+			void (async () => {
+				try {
+					try {
+						try {
+							cdp?.close();
+						} finally {
+							await drainModelApp(`CI ${name}`);
+						}
+					} finally {
+						await realBackend.close();
+					}
+				} catch (error) {
+					console.error("owned model case interruption cleanup failed", error);
+				} finally {
+					process.exit(143);
+				}
+			})();
+		});
 	const save = () =>
 		writeFileSync(
 			join(output, "measurements.json"),
@@ -964,6 +2322,7 @@ async function runCase(scenarioName, kind, root, output, records) {
 	const ctx = {
 		kind,
 		api,
+		realBackend,
 		get cdp() {
 			return cdp;
 		},
@@ -978,11 +2337,23 @@ async function runCase(scenarioName, kind, root, output, records) {
 		session,
 	};
 	try {
+		if (realBackend)
+			assert.equal(
+				typeof api.drainLiveBoots,
+				"function",
+				"real-core case requires a non-exiting owned app drain",
+			);
+		if (realBackend)
+			assert(
+				verifiedElectronBinary,
+				"model launch needs the preflight-verified executable",
+			);
 		api.prepareDriverContext({ apiUrl: "http://127.0.0.1:8080" });
 		const app = await api.launchApp({
 			armed: true,
 			apiUrl: "http://127.0.0.1:8080",
 			tag: `asks-ci-${kind}`,
+			verifiedElectronBinary,
 		});
 		writeFileSync(
 			join(output, "owned-app.json"),
@@ -1046,26 +2417,142 @@ async function runCase(scenarioName, kind, root, output, records) {
 				frames.some((entry) => entry.label === label),
 				`${scenarioName} ${kind}: promised frame ${JSON.stringify(label)} was not captured (have ${JSON.stringify(frames.map((entry) => entry.label))})`,
 			);
-		frames.push({
-			label: "acceptance",
-			verdict: "PASS",
-			coverage: scenario.coverage,
-		});
+		if (!realBackend)
+			frames.push({
+				label: "acceptance",
+				verdict: "PASS",
+				coverage: scenario.coverage,
+			});
 		save();
 		rc = 0;
 	} catch (error) {
-		failures.push(error.stack);
+		/*
+		 * THE STACK GOES TO THE LOG AS WELL AS THE ARTIFACT. `rc` stays 1 here, so
+		 * this catch is the only place a failing case can say why, and it used to
+		 * say nothing: the stacks went into `measurements.json`, the process exited
+		 * 1 from `reapLiveBoots`, and CI kept only whatever the caller printed. For
+		 * the model-uncertainty case that caller is `runOwnedModelCase`, which
+		 * re-throws the exit status as a bare `model case failed (1)`
+		 * (`scripts/model-uncertainty-native.mjs:57-63`), so the real cause - an
+		 * `AssertionError: required genuine carrier not captured` - had to be
+		 * recovered by downloading the artifact and diffing two runs. Reading it
+		 * off the CI log is the whole point of this line.
+		 *
+		 * STDERR, NEVER STDOUT. `scripts/entry-point.test.mjs` pins `stdout: /^$/`
+		 * for this script's refusal, and stdout is the channel a case's own
+		 * acceptance reading could be mistaken for. The artifact keeps the stacks
+		 * unchanged: it is the durable evidence, and this only makes the log
+		 * self-sufficient. Nothing parses this script's stderr - `ci.yml` runs it
+		 * with no redirection - so the emission cannot move a verdict elsewhere.
+		 */
+		const stack = error?.stack ?? String(error);
+		// Before `save()`: a failing artifact write must not swallow the reason.
+		console.error(
+			`asks-app-regression: runCase ${scenarioName} ${kind} failed; the stack below is also saved in ${join(output, "measurements.json")}\n${stack}`,
+		);
+		failures.push(stack);
 		save();
 	} finally {
-		cdp?.close();
-		await api.reapLiveBoots({
-			code: rc,
-			why: `CI ${scenarioName} ${kind} case complete`,
-		});
+		const why = `CI ${scenarioName} ${kind} case complete`;
+		if (realBackend) {
+			try {
+				cdp?.close();
+			} finally {
+				await drainModelApp(why);
+			}
+		} else {
+			cdp?.close();
+			await api.reapLiveBoots({ code: rc, why });
+		}
 	}
+	return rc;
 }
 
 async function main() {
+	// This explicit opt-in never starts/widens the read-only asks fixture.
+	if (
+		process.argv[process.argv.indexOf("--case") + 1] === "model-uncertainty"
+	) {
+		assert.equal(
+			process.argv[process.argv.indexOf("--leg") + 1],
+			"candidate",
+			"model case currently admits the reviewed candidate leg only",
+		);
+		assert(
+			process.env.CI && process.platform === "darwin",
+			"existing macOS native producer owns model-case execution",
+		);
+		const root = process.env.ASKS_APP_ROOT;
+		const output = process.env.ASKS_OUTPUT;
+		assert(root && output, "model case needs its frozen app root/output");
+		// Carry the strict preflight's actual executable through to spawn. Merely
+		// scrubbing the child env cannot constrain the parent's Electron resolver.
+		const verifiedElectronBinary = verifyModelBuild(
+			root,
+			process.env.MODEL_CASE_BUILD_RECEIPT,
+		);
+		mkdirSync(output, { recursive: true });
+		const backend = await startModelBackend({
+			output,
+			scratchParent: tmpdir(),
+		});
+		process.env.LOCAL_OPERATOR_DESKTOP_TOKEN = backend.token;
+		return runOwnedModelCase({
+			backend,
+			run: async () => {
+				writeFileSync(
+					join(output, "provenance.json"),
+					JSON.stringify(
+						{
+							build: JSON.parse(
+								readFileSync(process.env.MODEL_CASE_BUILD_RECEIPT),
+							),
+							core: (await backend.state()).identity,
+							expectedPublishedTarget:
+								"a8c96c2ac1d71b776f40ed68ae5a2322bbe3c1ed",
+							coverage:
+								"candidate compiled app with published real core; no historical native control or WCV compositor claim",
+						},
+						null,
+						2,
+					),
+				);
+				return await runCase(
+					"model-uncertainty",
+					"candidate",
+					root,
+					output,
+					backend.records,
+					backend,
+					verifiedElectronBinary,
+				);
+			},
+			accept: async () => {
+				const receipt = JSON.parse(
+					readFileSync(join(output, "owned-core-exit.json")),
+				);
+				assert.equal(
+					receipt.clean,
+					true,
+					"required joined backend exit receipt missing",
+				);
+				const appExit = JSON.parse(
+					readFileSync(join(output, "owned-app-exit.json")),
+				);
+				assert.equal(appExit.clean, true);
+				assert.equal(appExit.stopped, 1, "single native app was not joined");
+				const path = join(output, "measurements.json");
+				const measurement = JSON.parse(readFileSync(path));
+				measurement.frames.push({
+					label: "acceptance",
+					verdict: "PASS",
+					coverage: modelUncertaintyCase.coverage,
+					cleanup: receipt,
+				});
+				writeFileSync(path, JSON.stringify(measurement, null, 2));
+			},
+		});
+	}
 	if (process.argv.includes("--case")) {
 		const i = process.argv.indexOf("--case");
 		const scenario = process.argv[i + 1];
@@ -1126,7 +2613,7 @@ async function main() {
 			]),
 		),
 		control: ASKS_CONTROL,
-		cases: Object.keys(CASES),
+		cases: Object.keys(CASES).filter((name) => !CASES[name].optInOnly),
 		captures: [],
 		physical1106:
 			"NOT COVERED: capturePage excludes sibling native WebContentsView/compositor",
@@ -1134,16 +2621,20 @@ async function main() {
 	};
 	let primaryError = null;
 	try {
-		manifest.controlIdentity = await prepareControl(
+		const { legEnv: controlLegEnv, ...controlIdentity } = await prepareControl(
 			join(scratch, "control-app"),
 			output,
 		);
+		const controlPredates = controlPredatesAskScrollFix(ASKS_CONTROL);
+		manifest.controlIdentity = controlIdentity;
 		const controlArchive = join(output, "control-source.tar");
 		manifest.controlSourceArchive = {
 			path: "control-source.tar",
 			sha256: sha(readFileSync(controlArchive)),
 		};
-		for (const [scenarioName, scenario] of Object.entries(CASES)) {
+		for (const [scenarioName, scenario] of Object.entries(CASES).filter(
+			([, entry]) => !entry.optInOnly,
+		)) {
 			for (const kind of ["control", "candidate"]) {
 				fixture.setMode("loading");
 				const root =
@@ -1175,10 +2666,26 @@ async function main() {
 							LOCAL_OPERATOR_NO_NOTIFICATIONS: "1",
 							LOCAL_OPERATOR_UI_TELEMETRY: "off",
 							ASKS_APP_ROOT: root,
+							// Decided here, where the repository is; see controlPredatesFixFromEnv.
+							ASKS_CONTROL_PREDATES_FIX: controlPredates ? "1" : "0",
 							ASKS_OUTPUT: dir,
 							ASKS_RECORDS: fixture.records,
+							// Only the control leg gets its Electron runtime override.
+							...(kind === "control" ? controlLegEnv : {}),
 						},
-						timeout: 150000,
+						/*
+						 * 210 s PER LEG, up from 150 s (agent review round 3, m1): the long-ask
+						 * control leg measures ~120 s (115, 120 and 122 s on three runs) and round 3's
+						 * awaitQuiet waits add ~16 s of polling, so 150 s left about 9% margin and a
+						 * slow runner would have failed on the ceiling rather than on the product.
+						 * The step runs four cases x two legs, so 8 x 210 s = 1680 s is MORE than its
+						 * own timeout-minutes: 15 (900 s in ci.yml, "Exercise assembled asks and
+						 * capture regression frames"). That is deliberate: the per-leg ceiling makes a
+						 * hung leg fail under its own name instead of the step being killed opaquely,
+						 * and the step bound stays the outer stop. It is a ceiling, not a wait - the
+						 * three measured runs took 271-294 s for all eight legs.
+						 */
+						timeout: 210000,
 						maxBuffer: 4 * 1024 * 1024,
 					},
 				);

@@ -1,0 +1,174 @@
+{
+	"schema": 1,
+	"date": "2026-10-22",
+	"instance": "837ea3f0157c",
+	"auditor": "i18n-auditor (independent translation auditor; not the translation author)",
+	"agent": "i18n-auditor",
+	"model": "deepseek/deepseek-flash",
+	"fallback": "none — the configured model deepseek/deepseek-flash was served for the whole audit; no provider fallback was used",
+	"status": "clean-with-findings",
+	"result": "clean-with-findings",
+	"independence": "I did not author, translate, edit or review-to-completion any of the eight catalogues under audit, and I hold no write path to them: this receipt is the only file this run wrote. Every claim below was derived here — hashes from the files on disk with sha256sum, the delta from git diff 87b2eb12b5..3e887bb3b4 over src/i18n, placeholder and key-set facts by parsing the eight JSON catalogues, typographic facts by codepoint inventory of each catalogue against its own base revision, and the sibling-term comparisons by grepping the same locale's existing ui.browser strings rather than trusting recollection. Where a language judgement could have gone either way I checked a native-usage source before reporting it (vi 'Thẻ' is confirmed legitimate for a tab in Chrome's Vietnamese UI, so the vi finding is filed as a consistency break at minor, not as a mistranslation; ur 'سرگزشت' is attested in Urdu writing for browsing/search history, so no finding is filed against it). No catalogue byte was modified by this audit, and the receipt says nothing about rendered output, which it did not observe.",
+	"locales": [
+		"es",
+		"fr",
+		"hi",
+		"ru",
+		"ur",
+		"vi",
+		"zh-CN"
+	],
+	"scope": {
+		"base": "origin/feat/browser-chrome-s4b @ 87b2eb12b5",
+		"head": "3e887bb3b40f0b498d40a2141b3d3bd8cb68e3c3",
+		"branch": "feat/browser-history-search",
+		"delta": "6 English keys and their 6 context entries: 3 added (address_search_row, address_suggestion_open_tab, address_suggestion_open_tab_untitled) and 3 changed values (address_suggestions_label, address_suggestions_empty, address_suggestions_no_match), mirrored into the 7 target catalogues; keys.gen.ts gains exactly the 3 matching parameter entries. No other key in any of the 8 catalogues changed.",
+		"note": "The brief described seven English keys but enumerated six; the diff carries six. Verified rather than assumed: git diff over src/i18n shows 3 insertions + 3 deletions/insertions per catalogue (9 changed lines: 6 added, 3 removed), three added keys.gen.ts entries, and context.json with 3 added + 3 rewritten notes. Also verified: origin/feat/browser-chrome-s4b has since advanced from 87b2eb12b5 to 1e52d32b88, but git diff 87b2eb12b5..origin/feat/browser-chrome-s4b -- src/i18n scripts/i18n i18n is empty, so the base named in the brief still describes exactly these bytes."
+	},
+	"references": {
+		"contract": {
+			"docs/I18N.md": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca",
+			"scripts/i18n/ledger-rules.mjs": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6"
+		},
+		"core": {
+			"local-operator/docs/design/i18n.md": "a597416937a2440de7bf82a8eb7ba110eac5afb03274200648a166b027e70e50"
+		},
+		"glossary": "No native per-locale glossary or style guide is present in this repository or in the linked core checkout (checked docs/I18N.md's references, local-operator/docs/design/i18n.md, and the absence of a docs/i18n/ tree), so terminology was checked against each locale's own existing ui.browser catalogue, as recorded per finding."
+	},
+	"checks": {
+		"key_parity": {
+			"result": "pass",
+			"detail": "234 keys in every one of the 8 catalogues; per-locale set difference against en_u.browser is empty in both directions, so no key is dropped-and-hidden-by-fallback and none is extra",
+			"keys": 234
+		},
+		"placeholders": {
+			"result": "pass",
+			"detail": "address_search_row carries exactly {query} and address_suggestion_open_tab exactly {title} in all 8 catalogues, _untitled carries none, no other brace token appears, braces balance, and no machine token is translated — DuckDuckGo stays verbatim in all 7 targets"
+		},
+		"icu_plural": {
+			"result": "pass",
+			"detail": "the only ICU message in scope, address_suggestions_available, is byte-identical to the previously audited bytes in all 8 catalogues, so CLDR categories are unchanged: one/other in en, es, hi, ur; one/many/other in fr; one/few/many/other in ru; other only in vi and zh-CN"
+		},
+		"byte_identity": {
+			"result": "pass",
+			"detail": "for every locale, all 228 carried keys are byte-identical to 87b2eb12b5 (parsed-value equality plus a raw diff whose only hunks are the six in-scope lines); no \\u escape was introduced, no CRLF or BOM appeared, every file still ends in a newline"
+		},
+		"meaning_and_register": {
+			"result": "pass",
+			"detail": "all 7 targets render the search row as an action on the query with DuckDuckGo named as destination; all 7 render the marker as an open tab ('Pestaña abierta', 'Onglet ouvert', 'खुला टैब', 'Открытая вкладка', 'کھلا ٹیب', 'Thẻ đang mở', '已打开的标签页'); the header now means browsing history in every locale (historial / historique / इतिहास / истории / سرگزشت / lịch sử / 历史记录); no empty or no-match string still claims tabs or a session; register matches each catalogue (es tú, fr vous, hi आप, ru вы, ur آپ, zh 你)"
+		},
+		"rtl": {
+			"result": "pass-with-finding",
+			"detail": "ur word order and sentence direction are correct; the delimiter choice is M4"
+		},
+		"cjk": {
+			"result": "pass-with-finding",
+			"detail": "zh-CN spacing around the Latin brand is correct and the full stop/quote marks match the catalogue; the separator dash is M3"
+		},
+		"fit": {
+			"result": "pass",
+			"detail": "no string exceeds 49 characters (fr no_match), the longest single-row marker is ru's 16-character 'Открытая вкладка' against en's 8, and every length stays within the ranges this catalogue already ships in the same rows; no pixel measurement is claimed. fr's guillemet padding is the only line-break risk and is M1"
+		}
+	},
+	"namespaces": {
+		"ui.browser": {
+			"namespace": "ui.browser",
+			"status": "clean-with-findings",
+			"result": "clean-with-findings",
+			"locales": [
+				"es",
+				"fr",
+				"hi",
+				"ru",
+				"ur",
+				"vi",
+				"zh-CN"
+			],
+			"keys_checked_per_catalogue": 234,
+			"keys_unchanged_since_prior_audit": 228,
+			"keys_unchanged_note": "prior audit instance 53c8b35e20a6 covered 231 keys at b3cbb89; 228 of those are byte-identical here, 3 new keys are added and 3 carried keys changed value",
+			"sha256": {
+				"en": "92fbc04ad54924928e912a9d4bf2b930d19049e1dbdf7dc1bdba846d08a692bd",
+				"es": "deac25c1f2592634880f14e913064a263c1131212fdd741305a007f098146a72",
+				"fr": "ddd283fa13dbaa72629c4d7d06e27e174092505074680217eba02527f05d183f",
+				"hi": "91b158f9bc776ae4fc540679655b898ff65d79c0391f7bc1f671d189e59e1ce7",
+				"ru": "107983521cb4108dae7be6ce2c66c54a7756fb50c00d944e7cc159b23a5af86e",
+				"ur": "9920669a4490b5bcfbefc2b9356a00ff167d2ee6a872296799688439b7181229",
+				"vi": "253b14bc1cb1bdeb38983a8c9b78328bfd265c458b6108f181d192808fde101a",
+				"zh-CN": "013c7ea57dc9f343619ebdf277150a896aed1260d6c62807fdb2537834167bec"
+			},
+			"findings": [
+				{
+					"id": "M1",
+					"severity": "minor",
+					"locale": "fr",
+					"key": "ui.browser.browser_url_bar.address_search_row",
+					"observation": "The guillemets are padded with ordinary spaces (U+0020) on both sides of the placeholder. Every other guillemet pair in this catalogue pads with NARROW NO-BREAK SPACE (U+202F): consent_request.agent_in, consent_request.the_agent_in_untitled_chat and webauthn_chooser.requesting_page. French typography wants a non-breaking space there, and in a narrow, ellipsised address row a plain space lets a line break strand the opening guillemet at the end of the line.",
+					"evidence": "value bytes: ...Rechercher <U+00AB><U+0020>{query}<U+0020><U+00BB> sur DuckDuckGo; the three existing pairs read <U+00AB><U+202F> ... <U+202F><U+00BB> (grep of the catalogue: 24 x U+202F, this key contributes none)",
+					"suggested": "Rechercher « {query} » sur DuckDuckGo",
+					"disposition": "fix with the suggested bytes; no meaning change"
+				},
+				{
+					"id": "M2",
+					"severity": "minor",
+					"locale": "fr",
+					"key": "ui.browser.browser_url_bar.address_suggestions_empty",
+					"observation": "d'historique uses the ASCII apostrophe (U+0027), the only one in the whole fr ui.browser catalogue. The catalogue writes 125 typographic apostrophes (U+2019) across 86 keys, including its own neighbouring strings. ASCII apostrophe is also ICU MessageFormat's quoting character, so it is the one apostrophe form to keep out of message templates.",
+					"evidence": "counts over src/i18n/catalogues/fr/ui.browser.json: U+0027 = 1 occurrence in 1 key (this one); U+2019 = 125 occurrences in 86 keys",
+					"suggested": "Pas encore d’historique de navigation.",
+					"disposition": "fix with the suggested bytes"
+				},
+				{
+					"id": "M3",
+					"severity": "minor",
+					"locale": "zh-CN",
+					"key": "ui.browser.browser_url_bar.address_suggestion_open_tab",
+					"observation": "The 'marker — value' separator is a spaced single em dash (U+2014 with U+0020 on both sides). All six other em-dash strings in this catalogue use the Chinese double em dash '——' with no spaces, including the same pattern in browser_tab_strip.all_tabs_unshown ('所有标签页——{count…}') and browser_url_bar.home_destination. A spaced single Latin dash is visibly not Chinese typography in a row that renders constantly.",
+					"evidence": "dash inventory of zh-CN/ui.browser.json: 12 unspaced U+2014 (six '——' pairs) vs 1 spaced pair — the new key; see browser_tab_strip.all_tabs_unshown, browser_url_bar.home_destination, browser_url_bar.latest_download",
+					"suggested": "已打开的标签页——{title}",
+					"disposition": "fix with the suggested bytes"
+				},
+				{
+					"id": "M4",
+					"severity": "minor",
+					"locale": "ur",
+					"key": "ui.browser.browser_url_bar.address_search_row",
+					"observation": "The query is wrapped in ASCII straight quotes (U+0022). This is the only ASCII-quoted string in the ur catalogue: its eight other quoted insertions all use curly quotes “…” (browser_tab_strip.*, browser_consent_request.*, webauthn_chooser.requesting_page). ASCII quotes are bidi-neutral and take direction from their neighbours, so around an arbitrary user query inside an RTL run the pair is the least stable delimiter available; the curly pair is the form the rest of the locale already uses.",
+					"evidence": "counts over src/i18n/catalogues/ur/ui.browser.json: U+0022 = 2 occurrences in 1 key (this one); U+201C/U+201D = 8 pairs in 8 keys",
+					"suggested": "DuckDuckGo پر “{query}” تلاش کریں",
+					"disposition": "fix with the suggested bytes; the word order itself is correct and stays"
+				},
+				{
+					"id": "M5",
+					"severity": "minor",
+					"locale": "vi",
+					"key": "ui.browser.browser_url_bar.address_suggestion_open_tab, ui.browser.browser_url_bar.address_suggestion_open_tab_untitled",
+					"observation": "'Thẻ' is the only use of that word for a browser tab in the catalogue: 35 keys render tab as 'tab', including the tab strip itself (browser_tab_strip.new_tab = 'Tab mới', browser_tab_strip.close_tab = 'Đóng tab') and the hand-over dialog that names the same open tab (browser_hand_over_dialog.let_an_agent_use_this_tab = 'Cho tác nhân dùng tab này'). 'Thẻ' is a legitimate Vietnamese word for a tab (Chrome's own vi locale uses 'Thẻ mới'), so this is a same-product terminology split rather than a mistranslation: the row would say 'open card/tab' next to chrome that says 'tab'. Kept at minor for that reason.",
+					"evidence": "grep of vi/ui.browser.json: 'thẻ' = 2 occurrences, both new keys; 'tab' = 35 keys",
+					"suggested": "Tab đang mở — {title} / Tab đang mở",
+					"disposition": "fix by adopting the catalogue's established 'tab'; both new keys change together so the marker pair stays parallel"
+				},
+				{
+					"id": "N1",
+					"severity": "nit",
+					"locale": "es",
+					"key": "ui.browser.browser_url_bar.address_search_row",
+					"observation": "Guillemets «» are used nowhere else in this catalogue, which quotes user-supplied titles with ASCII double quotes in the five browser_tab_strip keys and with “” in the two consent/webauthn keys. Guillemets are RAE-correct as primary quotes, so this is a third-style consistency nit, not an error.",
+					"evidence": "es quote inventory: «» = 1 pair (this key), \"…\" = 5 keys, “…” = 2 keys",
+					"suggested": "Buscar \"{query}\" en DuckDuckGo — only if the catalogue wants one style for quoted user text",
+					"disposition": "no change required; record and leave to the implementer's judgement"
+				},
+				{
+					"id": "N2",
+					"severity": "nit",
+					"locale": "vi",
+					"key": "ui.browser.browser_url_bar.address_search_row",
+					"observation": "'Tìm' is the find verb this locale already uses for find-in-page ('Tìm trong trang', browser_url_bar.find_in_page and browser_find_row). 'Tìm kiếm' is the unambiguous web-search verb. The current text is idiomatic and understood, so this is wording only, and the alternative costs four more characters in a narrow row.",
+					"evidence": "vi/ui.browser.json: find-in-page keys render 'Tìm trong trang'; the search row is the only web-search string",
+					"suggested": "Tìm kiếm \"{query}\" trên DuckDuckGo",
+					"disposition": "optional; accept as-is if row width is tight"
+				}
+			]
+		}
+	}
+}

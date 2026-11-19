@@ -1,0 +1,180 @@
+{
+  "locale": "zh-CN",
+  "namespaces": {
+    "ui.shell.menubar": {
+      "status": "passed",
+      "keys_audited": 13,
+      "sha256": {
+        "en": "a2950cd3f057ee4641bb12df761ec98d496282e09d69e6150d6dd6edbc74be82",
+        "zh-CN": "9f2cd7dece537013e6c02a537596209869832c6eca834f9c957acf39f230e733"
+      },
+      "findings": []
+    },
+    "ui.updates.panel": {
+      "status": "passed",
+      "keys_audited": 41,
+      "sha256": {
+        "en": "a94e79256f94128562493e36d8835952e2e78a41cd30382968b942fd6876794a",
+        "zh-CN": "703a915fb02d490feeb286d85e10d5cd1c608d1f8e1529350c249ac1583b601a"
+      },
+      "findings": [
+        {
+          "severity": "MINOR",
+          "namespace": "ui.updates.panel",
+          "key": "ui.updates.panel.artifact.mismatch.message_version",
+          "current": "已下载的版本{version}更新与已发布的版本不一致，因此未安装。",
+          "suggestion": "已下载的更新（版本{version}）与已发布的版本不一致，因此未安装。",
+          "note": "Same \"版本{version}更新\" run-on in 9 keys: artifact.{metadata_missing,mismatch,unreadable,missing_on_disk,not_this_app,damaged}.message_version, disk.message_version, launch.check.message_version, launch.open.message_version. The version digits abut 更新 and read as \"version-X-update\"; use 更新（版本{version}） or 更新至版本{version}. Legible, so MINOR."
+        },
+        {
+          "severity": "MINOR",
+          "namespace": "ui.updates.panel",
+          "key": "ui.updates.panel.disk.message",
+          "current": "可用磁盘空间不足，无法安装更新，因此未安装。",
+          "suggestion": "可用磁盘空间不足，更新未安装。",
+          "note": "\"无法安装……因此未安装\" is tautological in Chinese; same fix in disk.message_version (e.g. 可用磁盘空间不足，版本{version}更新未安装。)."
+        },
+        {
+          "severity": "MINOR",
+          "namespace": "ui.updates.panel",
+          "key": "ui.updates.panel.server.behind.remedy",
+          "current": "此检出的源码落后于其远程仓库，`lop-update`因此拒绝从中构建：将检出的源码更新到最新，下次在此操作时便会进行构建。",
+          "suggestion": "本地源码仓库落后于其远程仓库，`lop-update`因此拒绝构建：先将其更新到最新，再点按此处即可构建。",
+          "note": "\"此检出的源码\" is a calque of \"this checkout\"; \"next press here\" (a button) is flattened to 在此操作时; sentence is long for the narrow body column."
+        },
+        {
+          "severity": "NIT",
+          "namespace": "ui.updates.panel",
+          "key": "ui.updates.panel.server.norestart.remedy",
+          "current": "没有重启任何内容：原先提供服务的构建仍在提供服务。",
+          "suggestion": "未重启任何内容：原先提供服务的构建仍在运行。",
+          "note": "提供服务 repeated; 仍在运行 avoids the echo (and 未 matches the 未安装/未完成 register used elsewhere)."
+        },
+        {
+          "severity": "NIT",
+          "namespace": "ui.updates.panel",
+          "key": "ui.updates.panel.seal.remedy",
+          "current": "退出Local Operator，然后重新下载安装包，并替换“应用程序”文件夹中的应用。",
+          "suggestion": "退出Local Operator，重新下载一份副本，并替换“应用程序”文件夹中的应用。",
+          "note": "安装包 presumes a package format; source says \"a fresh copy\" (also the term used by the sibling 副本 strings)."
+        }
+      ]
+    }
+  },
+  "checkout": "damianvtran/local-operator-ui PR #1464, branch i18n-wave-c1 (local worktree /Users/damian/lo-audit-1464, branch wip-1464)",
+  "checkout_head": "41dae5a3d45916fc2d1a75ffb97c8aed420a1008",
+  "key_count": 54,
+  "audit_date": "2026-10-28",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "1c3aa4863a38",
+    "model": "anthropic/claude-sonnet-5-5"
+  },
+  "input_sha256": {
+    "src/i18n/catalogues/en/ui.shell.menubar.json": "a2950cd3f057ee4641bb12df761ec98d496282e09d69e6150d6dd6edbc74be82",
+    "src/i18n/catalogues/zh-CN/ui.shell.menubar.json": "9f2cd7dece537013e6c02a537596209869832c6eca834f9c957acf39f230e733",
+    "src/i18n/catalogues/en/ui.updates.panel.json": "a94e79256f94128562493e36d8835952e2e78a41cd30382968b942fd6876794a",
+    "src/i18n/catalogues/zh-CN/ui.updates.panel.json": "703a915fb02d490feeb286d85e10d5cd1c608d1f8e1529350c249ac1583b601a"
+  },
+  "read_provenance": {
+    "via_read_public_copy": [
+      {
+        "path": "src/i18n/catalogues/en/ui.shell.menubar.json",
+        "key": "(whole file, no key argument; every key returned)"
+      },
+      {
+        "path": "src/i18n/catalogues/zh-CN/ui.shell.menubar.json",
+        "key": "(whole file, no key argument; every key returned)"
+      },
+      {
+        "path": "src/i18n/catalogues/en/ui.updates.panel.json",
+        "key": "(whole file, no key argument; every key returned)"
+      },
+      {
+        "path": "src/i18n/catalogues/zh-CN/ui.updates.panel.json",
+        "key": "(whole file, no key argument; every key returned)"
+      }
+    ],
+    "context_and_docs_via_filesystem_not_catalogue_copy": [
+      "src/i18n/catalogues/en/ui.shell.menubar.context.json (13 keys)",
+      "src/i18n/catalogues/en/ui.updates.panel.context.json (41 keys)",
+      "~/local-operator/i18n/glossary.md",
+      "~/local-operator/i18n/style-guides/zh-CN.md"
+    ],
+    "not_read": [
+      "~/qa/c1b",
+      "~/qa/c1-translations",
+      "~/qa/c1-fix",
+      "~/qa/c1-audit",
+      "~/qa/c1-audit2 (other than this output)"
+    ]
+  },
+  "checks": {
+    "placeholders": "PASS (read by eye, no validator run): {name} in menubar.about; {version} in all 20 *_version/version keys; {size} in disk.remedy; {target}/{running} in failure.cancelled.message and failure.unfinished.message; names and counts identical to source; no ICU plural/select in either namespace, so none required for zh-CN.",
+    "key_parity": "PASS by inspection: same 13 and 41 keys, same order, as en (counts match the sidecars).",
+    "accuracy": "PASS: no negation, polarity or omission errors; every failure string says \"not installed/not finished\" and the remedy step matches source.",
+    "platform_menu_convention": "PASS: 文件/编辑/显示/窗口 and 重新载入, 实际大小, 放大, 缩小, 了解更多 match macOS zh-Hans menu wording; no trailing full stop; longest label 新建浏览器标签页 = 14 cells, within \"one to four words\".",
+    "glossary": "PASS: 服务器, 文件夹, 设置-class terms per guide; Local Operator, macOS, Python and `lop-update` kept as Latin runs with no inserted spaces, per style guide. No glossary term mis-rendered.",
+    "register": "PASS: no 您/你, no particles, no !, headings and labels without 。, full sentences with 。; quotes are mainland “ ”; dash is ——.",
+    "fit": "PASS with note: several update sentences exceed \"one or two sentences\" shape only via length (server.behind.remedy longest); no hard maxCells in these sidecars.",
+    "not_run": "Repo validator and audit-ledger command were not run (task: run nothing heavy; deliverables only). This is a human-style read, not a validator receipt."
+  },
+  "findings": [
+    {
+      "severity": "MINOR",
+      "namespace": "ui.updates.panel",
+      "key": "ui.updates.panel.artifact.mismatch.message_version",
+      "current": "已下载的版本{version}更新与已发布的版本不一致，因此未安装。",
+      "suggestion": "已下载的更新（版本{version}）与已发布的版本不一致，因此未安装。",
+      "note": "Same \"版本{version}更新\" run-on in 9 keys: artifact.{metadata_missing,mismatch,unreadable,missing_on_disk,not_this_app,damaged}.message_version, disk.message_version, launch.check.message_version, launch.open.message_version. The version digits abut 更新 and read as \"version-X-update\"; use 更新（版本{version}） or 更新至版本{version}. Legible, so MINOR."
+    },
+    {
+      "severity": "MINOR",
+      "namespace": "ui.updates.panel",
+      "key": "ui.updates.panel.disk.message",
+      "current": "可用磁盘空间不足，无法安装更新，因此未安装。",
+      "suggestion": "可用磁盘空间不足，更新未安装。",
+      "note": "\"无法安装……因此未安装\" is tautological in Chinese; same fix in disk.message_version (e.g. 可用磁盘空间不足，版本{version}更新未安装。)."
+    },
+    {
+      "severity": "MINOR",
+      "namespace": "ui.updates.panel",
+      "key": "ui.updates.panel.server.behind.remedy",
+      "current": "此检出的源码落后于其远程仓库，`lop-update`因此拒绝从中构建：将检出的源码更新到最新，下次在此操作时便会进行构建。",
+      "suggestion": "本地源码仓库落后于其远程仓库，`lop-update`因此拒绝构建：先将其更新到最新，再点按此处即可构建。",
+      "note": "\"此检出的源码\" is a calque of \"this checkout\"; \"next press here\" (a button) is flattened to 在此操作时; sentence is long for the narrow body column."
+    },
+    {
+      "severity": "NIT",
+      "namespace": "ui.updates.panel",
+      "key": "ui.updates.panel.server.norestart.remedy",
+      "current": "没有重启任何内容：原先提供服务的构建仍在提供服务。",
+      "suggestion": "未重启任何内容：原先提供服务的构建仍在运行。",
+      "note": "提供服务 repeated; 仍在运行 avoids the echo (and 未 matches the 未安装/未完成 register used elsewhere)."
+    },
+    {
+      "severity": "NIT",
+      "namespace": "ui.updates.panel",
+      "key": "ui.updates.panel.seal.remedy",
+      "current": "退出Local Operator，然后重新下载安装包，并替换“应用程序”文件夹中的应用。",
+      "suggestion": "退出Local Operator，重新下载一份副本，并替换“应用程序”文件夹中的应用。",
+      "note": "安装包 presumes a package format; source says \"a fresh copy\" (also the term used by the sibling 副本 strings)."
+    }
+  ],
+  "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 3,
+    "NIT": 2
+  },
+  "verdict": "passed",
+  "instance": "1c3aa4863a38-zh-cn",
+  "model": "anthropic/claude-sonnet-5-5",
+  "status": "passed",
+  "sha256": {
+    "src/i18n/catalogues/en/ui.shell.menubar.json": "a2950cd3f057ee4641bb12df761ec98d496282e09d69e6150d6dd6edbc74be82",
+    "src/i18n/catalogues/en/ui.updates.panel.json": "a94e79256f94128562493e36d8835952e2e78a41cd30382968b942fd6876794a",
+    "src/i18n/catalogues/zh-CN/ui.shell.menubar.json": "9f2cd7dece537013e6c02a537596209869832c6eca834f9c957acf39f230e733",
+    "src/i18n/catalogues/zh-CN/ui.updates.panel.json": "703a915fb02d490feeb286d85e10d5cd1c608d1f8e1529350c249ac1583b601a"
+  }
+}

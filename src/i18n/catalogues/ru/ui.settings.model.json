@@ -30,5 +30,10 @@
 	"ui.settings.model.system_prompt.save_changes": "Сохранить изменения",
 	"ui.settings.model.system_prompt.saving": "Сохранение…",
 	"ui.settings.model.system_prompt.system_prompt": "Системный промпт",
-	"ui.settings.model.system_prompt.unknown_error": "Неизвестная ошибка"
+	"ui.settings.model.system_prompt.unknown_error": "Неизвестная ошибка",
+	"ui.settings.model.system_prompt.rich_text": "Форматированный текст",
+	"ui.settings.model.system_prompt.source": "Исходный Markdown",
+	"ui.settings.model.system_prompt.source_required": "Этот документ использует синтаксис Markdown, который визуальный редактор не может сохранить. Редактируйте исходный текст, чтобы сохранить все инструкции.",
+	"ui.settings.model.system_prompt.source_edit": "Редактировать исходный текст",
+	"ui.settings.model.system_prompt.source_stale": "Эта часть изменилась во время редактирования. Отмените правки и откройте её снова, чтобы сохранить актуальные инструкции."
 }

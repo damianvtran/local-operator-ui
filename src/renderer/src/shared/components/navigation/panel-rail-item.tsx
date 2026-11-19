@@ -1,4 +1,5 @@
-import { Button, Tooltip } from "@shared/components/ui";
+import { BrowserSafeTooltip, Button } from "@shared/components/ui";
+import { useTextDirection } from "@shared/i18n/use-document-direction";
 import { cn } from "@shared/lib/utils";
 import {
 	type ButtonHTMLAttributes,
@@ -57,21 +58,27 @@ export type PanelRailItemProps = Omit<
  * carries that channel for a text row; an icon-only rail has no weight to change,
  * so the bar is what survives a theme whose `rowSelected` sits close to `surface`.
  * The bar is a `before:` pseudo-element so it costs no layout, and it sits ON
- * THE RAIL'S LEADING EDGE (design round 1, D2 and D7; re-seated when the rail's
- * hairline came out): 6px outside the 32px control - the item is centred in the
- * 44px rail, so the gutter is 6px a side - and 2px wide, so its outer column IS
- * the rail's leading-edge column; it ends 4px outside the control, clear of the
- * keyboard focus ring, which is drawn at a 1px offset on this rail
- * (`focus-visible:outline-offset-1!`, below) and so occupies 1px-3px outside the
- * control. The offset was 6.5px while the rail wore a leading `border-l
- * border-hairline`: 6.5 = the 5.5px gutter the 1px border left, plus the border,
- * and the bar covered the hairline's column. With the border gone the gutter is
- * 6px, so an untouched 6.5 would have put the bar half a pixel OUTSIDE the rail,
- * straddling the pane; the re-seat keeps the bar's measured position identical
- * (pageX = the rail's leading edge, verified against the before/after frames).
- * Before that, the bar was at 2px-4px and the default 2px-offset ring at 2px-4px:
- * the same pixels, both `accent`, so a focused lit item showed ring only and lost
- * its non-colour "lit" signal in exactly the state a keyboard user is in.
+ * THE RAIL'S LEADING EDGE (design round 1, D2 and D7): 6px outside the 32px
+ * control - the item is centred in the 44px rail, so the gutter is 6px a side -
+ * and 2px wide, so its outer column IS the rail's leading-edge column; it ends
+ * 4px outside the control, clear of the keyboard focus ring, which is drawn at
+ * a 1px offset on this rail (`focus-visible:outline-offset-1!`, below) and so
+ * occupies 1px-3px outside the control. The offset was 6.5px while the rail
+ * wore a leading `border-l border-hairline`: 6.5 = the 5.5px gutter the 1px
+ * border left, plus the border, and the bar covered the hairline's column.
+ * With the border gone the gutter is 6px, so an untouched 6.5 would have put
+ * the bar half a pixel OUTSIDE the rail, straddling the pane; the re-seat keeps
+ * the bar's measured position identical (pageX = the rail's leading edge,
+ * verified against the before/after frames). Before that, the bar was at
+ * 2px-4px and the default 2px-offset ring at 2px-4px: the same pixels, both
+ * `accent`, so a focused lit item showed ring only and lost its non-colour
+ * "lit" signal in exactly the state a keyboard user is in.
+ *
+ * THE SEAM SHARES THAT COLUMN AND THE BAR PAINTS OVER IT (2026-10-30). The
+ * rail's `PanelEdge` is `z-20` and its 1px is the bar's outer column, so the
+ * bar carries `before:z-25`: the seam is decoration, the lit mark is state, and
+ * a bar cut to 1px of accent plus 1px of hairline blend is what design review
+ * round 1 (D2) and agent review round 1 (M3) found on the frame.
  *
  * The ghost variant's own `hover:bg-accent-wash` is overridden on both states:
  * the wash is the transient "a pointer is here" idiom and `rowSelected` must keep
@@ -79,58 +86,39 @@ export type PanelRailItemProps = Omit<
  * comment records (design round 2, D2-1).
  */
 const LIT =
-	"bg-row-selected text-accent hover:bg-row-selected hover:text-accent active:bg-row-selected active:text-accent before:absolute before:inset-y-1 before:-left-[6px] before:w-0.5 before:rounded-full before:bg-accent";
+	"bg-row-selected text-accent hover:bg-row-selected hover:text-accent active:bg-row-selected active:text-accent before:absolute before:inset-y-1 before:-start-[6px] before:z-25 before:w-0.5 before:rounded-full before:bg-accent";
 const IDLE =
 	"text-ink-muted hover:bg-row-hover hover:text-ink active:bg-row-hover active:text-ink";
 
 export const PanelRailItem = forwardRef<HTMLButtonElement, PanelRailItemProps>(
 	({ id, label, ariaLabel, pressed, children, className, ...props }, ref) => {
+		const direction = useTextDirection();
 		const rail = useContext(PanelRailRovingContext);
 		const register = rail?.register;
 		useLayoutEffect(() => register?.(id), [register, id]);
 		/*
-		 * A RAIL TOOLTIP IS PAINTED OVER THE NATIVE BROWSER VIEW (design D1). The
-		 * tooltips open `left`, into the pane, and with the Browser pane open that is
-		 * the `WebContentsView`'s rect: a native view paints above ALL DOM, so the
-		 * only visible label of three icon-only controls would vanish in the most-used
-		 * state. The repo's own answer is the policy registry (`browser-view-policy`,
-		 * the same call the pickers and the tab strip's menu make for a popover opened
-		 * inside the pane area): hide the view for the span the tooltip is open.
-		 * Scoped to that span and to this item (`useId`-suffixed, ref-counted), so a
-		 * stray hover blanks the page for the tooltip's lifetime only and nothing is
-		 * ever left suppressed - the registration is released by the effect cleanup
-		 * on close, on unmount, and when the item goes absent. The cost is the page
-		 * flash the policy header names as unmeasured (probe P11).
+		 * THE LABEL IS CONDITIONAL ON A VIEW BEING MOUNTED (S5 round 1, D2/U2).
 		 *
-		 * AND ONLY WHEN IT REACHES THE VIEW (design round 2, D11). At the 1280x900
-		 * geometry the round measured (the four-item rail), only the LAST item's tooltip
-		 * (Canvas) overlapped the view's rect; the others ended above it, and on a draft
-		 * none does, so registering for all of them blanked the page for a hint that never
-		 * touched it. #896 added a FIFTH item above the lower three, which shifts each
-		 * lower tooltip down by one pitch: which items cross the view's top edge is the
-		 * measurement's to say (the evidence pass re-derives the numbers), and the
-		 * mechanism never assumed a fixed count. `useSuppressBrowserViewWhileReaching`
-		 * measures the open tooltip's painted box against the rect the browser surface
-		 * reports to main, and ends the registration on pointer-leave / window blur as
-		 * well as on close (a tooltip left open by an exit through the window edge would
-		 * otherwise hold the page blank until the pointer returned).
-		 *
-		 * The shared `Tooltip` now makes that measured registration for every tooltip that
-		 * reaches the view (the sidebar's conversation flyout had the same occlusion,
-		 * opening `right`); this item only names its registrations, so the paused page and
-		 * the tests can still tell a rail tooltip from the rest.
+		 * The rail is a 44px column at the window's trailing edge, so the only place
+		 * a label can open is LEFT — into the pane, which WITH THE BROWSER OPEN is
+		 * the native view's rect. A tooltip may not pause the page, and nothing can
+		 * be repositioned inside 44px, so on that route the `aria-label` is the
+		 * channel. On every other route there is no view under the pane at all, and
+		 * the label is exactly what it always was; deleting it globally regressed
+		 * every chat, schedule and settings screen (round-1 D2).
 		 */
 		return (
-			/* Tooltips open TOWARD the pane (`left`): the rail is at the window's edge, so
-			   the other three sides either leave the window or cover a sibling item. */
-			<Tooltip content={label} side="left" overlayName="panel-rail-tooltip">
+			<BrowserSafeTooltip
+				content={label}
+				side={direction === "rtl" ? "right" : "left"}
+			>
 				<Button
 					ref={ref}
 					variant="ghost"
 					size="icon"
 					data-panel-rail-item={id}
 					data-titlebar-no-drag=""
-					aria-label={ariaLabel}
+					aria-label={ariaLabel ?? label}
 					aria-pressed={pressed}
 					tabIndex={rail ? (rail.roving === id ? 0 : -1) : undefined}
 					className={cn(
@@ -142,7 +130,7 @@ export const PanelRailItem = forwardRef<HTMLButtonElement, PanelRailItemProps>(
 				>
 					{children}
 				</Button>
-			</Tooltip>
+			</BrowserSafeTooltip>
 		);
 	},
 );

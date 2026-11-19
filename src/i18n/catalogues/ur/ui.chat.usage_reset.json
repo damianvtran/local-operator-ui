@@ -1,0 +1,15 @@
+{
+	"ui.chat.usage_reset.chip": "ری سیٹ · {count}",
+	"ui.chat.usage_reset.chip_label": "{account} کی شرح کی حدیں ری سیٹ کریں۔ {count, plural, one {# ری سیٹ کریڈٹ باقی ہے۔} other {# ری سیٹ کریڈٹس باقی ہیں۔}}",
+	"ui.chat.usage_reset.confirm_title": "{account} ری سیٹ کریں؟",
+	"ui.chat.usage_reset.confirm_cost": "{count, plural, one {# میں سے 1 ری سیٹ کریڈٹ استعمال کرتا ہے؛ اس اکاؤنٹ کی شرح کی حد کی مدتیں صاف کرتا ہے۔} other {# میں سے 1 ری سیٹ کریڈٹ استعمال کرتا ہے؛ اس اکاؤنٹ کی شرح کی حد کی مدتیں صاف کرتا ہے۔}}",
+	"ui.chat.usage_reset.busy": "{account} کے جواب کا انتظار ہے۔ اس میں کچھ وقت لگ سکتا ہے۔",
+	"ui.chat.usage_reset.busy_action": "ری سیٹ ہو رہا ہے…",
+	"ui.chat.usage_reset.outcome_reset": "{count, plural, one {{account} کی # شرح کی حد کی مدت صاف ہو گئی۔} other {{account} کی # شرح کی حد کی مدتیں صاف ہو گئیں۔}}",
+	"ui.chat.usage_reset.outcome_already_redeemed": "{account} کی ری سیٹ پہلے ہی استعمال ہو چکی تھی۔ کوئی دوسرا کریڈٹ استعمال نہیں ہوا۔",
+	"ui.chat.usage_reset.outcome_no_credit": "{account} کے پاس کوئی ری سیٹ کریڈٹ باقی نہیں ہے۔ کچھ استعمال نہیں ہوا۔",
+	"ui.chat.usage_reset.outcome_nothing_to_reset": "{account} کی کسی شرح کی حد کی مدت کو صاف کرنے کی ضرورت نہیں تھی۔ کچھ استعمال نہیں ہوا۔",
+	"ui.chat.usage_reset.outcome_failed": "{account} کی ری سیٹ نے کوئی نتیجہ نہیں بتایا، اس لیے کریڈٹ کا انجام معلوم نہیں۔ دوبارہ کوشش وہی درخواست استعمال کرتی ہے، اس لیے دوسرا کریڈٹ استعمال نہیں ہوگا۔",
+	"ui.chat.usage_reset.outcome_refused": "کچھ استعمال نہیں ہوا: {account} کی ری سیٹ فراہم کنندہ تک پہنچنے سے پہلے مسترد ہو گئی۔",
+	"ui.chat.usage_reset.outcome_unknown": "{account} کی ری سیٹ نے ایسا نتیجہ دیا جو یہ ایپ نہیں پہچانتی: {outcome}۔"
+}

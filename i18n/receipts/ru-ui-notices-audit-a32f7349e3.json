@@ -1,0 +1,247 @@
+{
+	"schema": 1,
+	"auditor": "translation-auditor",
+	"model": "deepseek/deepseek-flash",
+	"instance": "2c18e073d16f",
+	"locale": "ru",
+	"namespace": "ui.notices",
+	"status": "clean",
+	"result": "clean",
+	"date": "2026-10-25",
+	"round": 2,
+	"audit_type": "remediation_delta",
+	"branch": "feat/i18n-toasts",
+	"head": "a32f7349e3efff461cdfa63674b86ddbc21bf955",
+	"head_short": "a32f7349e3",
+	"previous_head": "ec4518da560867e897c290ddf8abc3b2496a4b59",
+	"previous_receipt": {
+		"path": "i18n/receipts/ru-ui-notices-audit-ec4518da56.json",
+		"sha256": "ea5d83e1019ecca5623ffffcd6b7bffe87ba482352143971d72e3725d6ab8931"
+	},
+	"scope": "Delta re-audit of ui.notices/ru over ec4518da56..a32f7349e3: the 11 changed/new values (10 RU-NOT remediation keys plus the new ui.notices.chat.archive_offered_title), the sentences those values compose (mark-all-read receipt, credential toasts, archive offer, consent banner), and a full-namespace structural re-check that the remediation did not break the 83 unchanged values. Not a fresh full review: unchanged copy already passed at ec4518da56 is retained on that verdict, re-checked for arguments, plural categories, register and typography.",
+	"keys_audited": 94,
+	"changed_keys_reviewed": [
+		"ui.notices.agents.config_run_changed",
+		"ui.notices.agents.config_run_updated",
+		"ui.notices.chat.archive_offered_title",
+		"ui.notices.chat.mark_all_read_cleared",
+		"ui.notices.chat.mark_all_read_deferred",
+		"ui.notices.chat.mark_all_read_superseded",
+		"ui.notices.chat.mark_all_read_unknown",
+		"ui.notices.credentials.stored",
+		"ui.notices.credentials.unconfirmed",
+		"ui.notices.credentials.unstored",
+		"ui.notices.main.consent_body_many"
+	],
+	"retained_unchanged_keys": 83,
+	"sha256": {
+		"en": "f806e02def13361717f2db882ab91f407ca7f7b023da7be9e19b26f0e9c4302a",
+		"ru": "6c1877b58d5f839b830039094525d2462565fbd70f3e9574d1b0059f3acafd0e"
+	},
+	"context_sha256": "2980f9d4a5d99d7b32c1a752ac462a4f503488ac0d49e2465e10ce7f99ee0859",
+	"provenance": {
+		"independent_of_translator": true,
+		"previous_round": "i18n/receipts/ru-ui-notices-audit-ec4518da56.json (round 1, changes_requested, 3 major / 1 minor / 1 nit)",
+		"note": "Independent remediation delta. Every claim below was re-derived from the bytes of the head catalogue and from the repository's installed @formatjs/icu-messageformat-parser 3.5.21 and intl-messageformat 12.1.3 under Intl.PluralRules('ru'); nothing is taken from a translator's or implementer's summary, and no catalogue file was edited by this audit.",
+		"model_provenance": "The session header reports deepseek/deepseek-flash; the routing provider behind it is not exposed to this session, so none is invented."
+	},
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/ru.md",
+			"sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+		},
+		"languages_manifest": {
+			"path": "i18n/languages.json",
+			"sha256": "7fd056b916fc3d56ddf36991a09b29864ea0b0f825d938aead1ed165926f8d63"
+		},
+		"context_sidecar": {
+			"path": "src/i18n/catalogues/en/ui.notices.context.json",
+			"sha256": "2980f9d4a5d99d7b32c1a752ac462a4f503488ac0d49e2465e10ce7f99ee0859"
+		}
+	},
+	"resolved_findings": [
+		{
+			"id": "RU-NOT-01",
+			"original_severity": "major",
+			"keys": [
+				"ui.notices.agents.config_run_changed",
+				"ui.notices.agents.config_run_updated",
+				"ui.notices.chat.mark_all_read_cleared",
+				"ui.notices.chat.mark_all_read_deferred",
+				"ui.notices.chat.mark_all_read_superseded",
+				"ui.notices.chat.mark_all_read_unknown",
+				"ui.notices.credentials.unstored",
+				"ui.notices.credentials.unconfirmed"
+			],
+			"status": "FIXED",
+			"verification": "All eight `one` arms now interpolate `{count}`; a scan of every `one` arm in the namespace finds no literal digit 1 outside the three intentional `=1` arms. Formatting under ru (where `one` also selects 21, 31, 101) now reports the real number, e.g. «Запуск конфигурации завершён: 21 определение изменено.», «…101 определение изменено.», «21 чат отмечен как прочитанный.», «21 отметка остаётся на других устройствах и снимется, когда они обновятся.», «21 отметка получила более новые результаты и остаётся непрочитанной.», «21 отметка не снята и остаётся непрочитанной.», «Не удалось сохранить 21 запись учётных данных …», «Не удалось подтвердить сохранение 21 записи учётных данных …»."
+		},
+		{
+			"id": "RU-NOT-02",
+			"original_severity": "major",
+			"key": "ui.notices.credentials.unstored",
+			"status": "FIXED",
+			"verification": "The `few` arm is now accusative «{count} записи» (was genitive plural «записей»). Rendered at the counts that select it: count=2 → «Не удалось сохранить 2 записи учётных данных (API_KEY); агенту сообщено об этом. …», count=3 and 22 identical in shape, count=5 (many) → «5 записей …» and count=1 → «1 запись …», both already correct and unchanged."
+		},
+		{
+			"id": "RU-NOT-03",
+			"original_severity": "major",
+			"key": "ui.notices.credentials.stored",
+			"status": "FIXED",
+			"verification": "The plural predicate «Сохранены {keys}» is now the count-neutral «Сохранено: {keys}.». Rendered for the common single-key path: «Сохранено: API_KEY. Каждый подставляется в каждую команду bash как переменная окружения; агент не может прочитать значение.» and for a list: «Сохранено: API_KEY, DB_URL, TOKEN. …». The second sentence is unchanged and still reads for one key."
+		},
+		{
+			"id": "RU-NOT-04",
+			"original_severity": "minor",
+			"key": "ui.notices.main.consent_body_many",
+			"status": "FIXED",
+			"verification": "Now «Запросов на одобрение сайтов: {count, number}. Одобрите или отклоните их во вкладке браузера.» — the round-1 proposal verbatim. Rendered at 5 → «Запросов на одобрение сайтов: 5. …»; at 1234 the `{count, number}` argument groups with an NBSP → «1 234». 93 characters against the sidecar's ~170-character OS-banner budget."
+		},
+		{
+			"id": "RU-NOT-05",
+			"original_severity": "nit",
+			"key": "ui.notices.chat.archive_offered_title (renderer: src/renderer/src/features/chat/archive-undo.ts)",
+			"status": "FIXED",
+			"verification": "The English curly quotes were removed from code and the quoting moved into the catalogue: ru supplies «{title}» and archiveOfferedName() now calls t() for it. Composed as the toast joins the truncating head to the shrink-0 tail: «Отчёт за квартал» — в архиве. No English curly quotes remain in any of the 94 ru values; the guillemet pair is the one the rest of the namespace uses (archive_failed, unarchive_failed)."
+		}
+	],
+	"verification": {
+		"tooling": "Node v24.22.1; @formatjs/icu-messageformat-parser 3.5.21 and intl-messageformat 12.1.3 as installed in the worktree (the library src/i18n/messages.ts constructs). Intl.PluralRules('ru').resolvedOptions().pluralCategories = ['one','few','many','other']; select(): 0 many, 1 one, 2-4 few, 5/11/25/111 many, 21/101 one, 22 few, 1234 few, 1.5 other.",
+		"commands": [
+			"node --input-type=module (stdin script) from the worktree root: JSON.parse of src/i18n/catalogues/{en,ru}/ui.notices.json; parse() of every message with @formatjs/icu-messageformat-parser; argument name+type sets compared; plural arms enumerated; new IntlMessageFormat(msg,'ru').format({count, keys}) at 0,1,2,3,4,5,6,11,21,22,25,101,111,1234; every `one` arm scanned for a literal digit 1.",
+			"node --input-type=module (stdin script): composed the mark-all-read receipts in mark-all-read.ts's join(' ') order at six cleared/superseded/unknown/deferred mixes, the archive offer (titled, untitled, long title), credentials.stored for one and three keys, and the consent bodies at 1/5/21/1234.",
+			"node -e 'new Intl.PluralRules(\"ru\").resolvedOptions().pluralCategories' -> one,few,many,other, and select() at 0,1,2,3,4,5,11,21,22,25,101,111,1234,1.5.",
+			"git diff ec4518da56..a32f7349e3 -- src/i18n/catalogues/ru/ui.notices.json, plus a Python load of both revisions, to establish the changed-key set (11) from the bytes rather than from the commit message, and a grep of scripts/i18n/locale-parity.test.mjs for the plural-arm rules the new `=1` arms must satisfy."
+		],
+		"key_set": "94 EN keys and 94 ru keys, no missing and no extra; order preserved.",
+		"placeholder_integrity": "Argument sets (name and argument type, with plural/select options walked) compared key by key for all 94 messages: identical, no mismatches. The new key carries {title} as a string in both catalogues; main.consent_body_many carries {count, number} in both; credentials.unstored/unconfirmed carry {count} and {keys} in both.",
+		"plural_categories": "10 plural messages, each with the full ru CLDR set one/few/many/other and no EN-only or extra category; the three non-count-neutral messages (mark_all_read_deferred, mark_all_read_superseded, mark_all_read_unknown) additionally carry exactly one `=1` arm each, and at count 1 the exact arm wins in intl-messageformat's resolution.",
+		"literal_one_scan": "No `one` arm in ui.notices/ru prints a literal digit 1 any more; the only literal 1s in plural syntax are inside the three `=1` arms, where they are count-exact by construction.",
+		"arm_selection": "10 plural messages x counts 1/2/5/21/101 = 50/50: each rendered message contains exactly the arm selected by an exact `=1` match first, else Intl.PluralRules('ru').select(count), with {count} substituted. The three non-count-neutral messages pick `=1` at 1 and `one` at 21 and 101; the other seven pick `one` at 1/21/101, `few` at 2, `many` at 5.",
+		"render_matrix": {
+			"ui.notices.agents.config_run_changed": {
+				"1": "Запуск конфигурации завершён: 1 определение изменено.",
+				"2": "Запуск конфигурации завершён: 2 определения изменены.",
+				"5": "Запуск конфигурации завершён: 5 определений изменено.",
+				"21": "Запуск конфигурации завершён: 21 определение изменено.",
+				"101": "Запуск конфигурации завершён: 101 определение изменено."
+			},
+			"ui.notices.agents.config_run_updated": {
+				"1": "Запуск конфигурации завершён: 1 определение обновлено.",
+				"2": "Запуск конфигурации завершён: 2 определения обновлены.",
+				"5": "Запуск конфигурации завершён: 5 определений обновлено.",
+				"21": "Запуск конфигурации завершён: 21 определение обновлено.",
+				"101": "Запуск конфигурации завершён: 101 определение обновлено."
+			},
+			"ui.notices.chat.drafts_offered_name": {
+				"1": "1 черновик",
+				"2": "2 черновика",
+				"5": "5 черновиков",
+				"21": "21 черновик",
+				"101": "101 черновик"
+			},
+			"ui.notices.chat.drafts_offered_verb": {
+				"1": "удалён.",
+				"2": "удалены.",
+				"5": "удалено.",
+				"21": "удалён.",
+				"101": "удалён."
+			},
+			"ui.notices.chat.mark_all_read_cleared": {
+				"1": "1 чат отмечен как прочитанный.",
+				"2": "2 чата отмечены как прочитанные.",
+				"5": "5 чатов отмечены как прочитанные.",
+				"21": "21 чат отмечен как прочитанный.",
+				"101": "101 чат отмечен как прочитанный."
+			},
+			"ui.notices.chat.mark_all_read_deferred": {
+				"1": "1 отметка остаётся на другом устройстве и снимется, когда это устройство обновится.",
+				"2": "2 отметки остаются на других устройствах и снимаются, когда те обновятся.",
+				"5": "5 отметок остаются на других устройствах и снимаются, когда те обновятся.",
+				"21": "21 отметка остаётся на других устройствах и снимется, когда они обновятся.",
+				"101": "101 отметка остаётся на других устройствах и снимется, когда они обновятся."
+			},
+			"ui.notices.chat.mark_all_read_superseded": {
+				"1": "1 отметка получила более новый результат и остаётся непрочитанной.",
+				"2": "2 отметки получили более новые результаты и остаются непрочитанными.",
+				"5": "5 отметок получили более новые результаты и остаются непрочитанными.",
+				"21": "21 отметка получила более новые результаты и остаётся непрочитанной.",
+				"101": "101 отметка получила более новые результаты и остаётся непрочитанной."
+			},
+			"ui.notices.chat.mark_all_read_unknown": {
+				"1": "1 отметку не удалось снять — она остаётся непрочитанной.",
+				"2": "2 отметки не удалось снять — они остаются непрочитанными.",
+				"5": "5 отметок не удалось снять — они остаются непрочитанными.",
+				"21": "21 отметка не снята и остаётся непрочитанной.",
+				"101": "101 отметка не снята и остаётся непрочитанной."
+			},
+			"ui.notices.credentials.unconfirmed": {
+				"1": "Не удалось подтвердить сохранение 1 записи учётных данных (API_KEY); агенту сказано проверить их перед использованием. Вставьте значение ещё раз после /credential, чтобы сохранить его снова.",
+				"2": "Не удалось подтвердить сохранение 2 записей учётных данных (API_KEY); агенту сказано проверить их перед использованием. Вставьте значение ещё раз после /credential, чтобы сохранить его снова.",
+				"5": "Не удалось подтвердить сохранение 5 записей учётных данных (API_KEY); агенту сказано проверить их перед использованием. Вставьте значение ещё раз после /credential, чтобы сохранить его снова.",
+				"21": "Не удалось подтвердить сохранение 21 записи учётных данных (API_KEY); агенту сказано проверить их перед использованием. Вставьте значение ещё раз после /credential, чтобы сохранить его снова.",
+				"101": "Не удалось подтвердить сохранение 101 записи учётных данных (API_KEY); агенту сказано проверить их перед использованием. Вставьте значение ещё раз после /credential, чтобы сохранить его снова."
+			},
+			"ui.notices.credentials.unstored": {
+				"1": "Не удалось сохранить 1 запись учётных данных (API_KEY); агенту сообщено об этом. Вставьте значение ещё раз после /credential, чтобы повторить.",
+				"2": "Не удалось сохранить 2 записи учётных данных (API_KEY); агенту сообщено об этом. Вставьте значение ещё раз после /credential, чтобы повторить.",
+				"5": "Не удалось сохранить 5 записей учётных данных (API_KEY); агенту сообщено об этом. Вставьте значение ещё раз после /credential, чтобы повторить.",
+				"21": "Не удалось сохранить 21 запись учётных данных (API_KEY); агенту сообщено об этом. Вставьте значение ещё раз после /credential, чтобы повторить.",
+				"101": "Не удалось сохранить 101 запись учётных данных (API_KEY); агенту сообщено об этом. Вставьте значение ещё раз после /credential, чтобы повторить."
+			}
+		},
+		"composed": {
+			"composed_receipts": {
+				"cleared21_superseded1_unknown2_deferred1": "21 чат отмечен как прочитанный. 1 отметка получила более новый результат и остаётся непрочитанной. 2 отметки не удалось снять — они остаются непрочитанными. 1 отметка остаётся на другом устройстве и снимется, когда это устройство обновится.",
+				"cleared1_superseded1": "1 чат отмечен как прочитанный. 1 отметка получила более новый результат и остаётся непрочитанной.",
+				"cleared101_unknown21_deferred22": "101 чат отмечен как прочитанный. 21 отметка не снята и остаётся непрочитанной. 22 отметки остаются на других устройствах и снимаются, когда те обновятся.",
+				"cleared5_deferred5": "5 чатов отмечены как прочитанные. 5 отметок остаются на других устройствах и снимаются, когда те обновятся.",
+				"cleared0_unknown3_deferred1": "Ничего не снято. 3 отметки не удалось снять — они остаются непрочитанными. 1 отметка остаётся на другом устройстве и снимется, когда это устройство обновится.",
+				"cleared1234_superseded2": "1234 чата отмечены как прочитанные. 2 отметки получили более новые результаты и остаются непрочитанными."
+			},
+			"archive_offer": {
+				"titled": "«Отчёт за квартал»",
+				"composed_titled": "«Отчёт за квартал» — в архиве.",
+				"composed_no_name": "Разговор — в архиве.",
+				"composed_long_title": "«Очень длинное название разговора про квартальный отчёт и план на следующий год» — в архиве."
+			},
+			"credentials_stored": {
+				"single": "Сохранено: API_KEY. Каждый подставляется в каждую команду bash как переменная окружения; агент не может прочитать значение.",
+				"three": "Сохранено: API_KEY, DB_URL, TOKEN. Каждый подставляется в каждую команду bash как переменная окружения; агент не может прочитать значение."
+			},
+			"consent_bodies": {
+				"one_at_1": "Агент хочет открыть example.com. Одобрите или отклоните это во вкладке браузера.",
+				"many_at_5": "Запросов на одобрение сайтов: 5. Одобрите или отклоните их во вкладке браузера.",
+				"many_at_1234": "Запросов на одобрение сайтов: 1 234. Одобрите или отклоните их во вкладке браузера.",
+				"many_at_21": "Запросов на одобрение сайтов: 21. Одобрите или отклоните их во вкладке браузера."
+			}
+		},
+		"typography": "All 94 ru values: guillemets « » in prose and no “ ”/straight quotes anywhere; every em dash spaced on both sides; no space before : ; ! ?; no double, leading or trailing whitespace; no NBSP or bidi controls in the source; no exclamation marks. The new value carries no space inside its guillemets, matching the ru house style (fr's narrow-space pair is fr's own).",
+		"register": "No ты/тебя/твой form anywhere in the namespace (word-boundary scan); the changed values keep the impersonal вы-register (Одобрите или отклоните; Вставьте значение ещё раз) and sentence case.",
+		"widths": "Changed strings against EN source length: consent_body_many 93/84, credentials.stored 122/108, credentials.unconfirmed 331/215, credentials.unstored 282/171, archive_offered_title 9/9 (ICU syntax included in the plural figures). No changed string is materially longer than its EN source; the only rendered-budget surface is the OS banner (consent_body_many, ~170 budget). The archive head is the truncating half and the verb tail is unchanged at 11 characters."
+	},
+	"findings": [],
+	"observations": [
+		"OBS-01: the `other` (fraction) arms keep plural predicates («1,5 отметки остаются …»). Every call site passes an integer — mark-all-read counts come from store counts, credentials from the captured key list length, config runs from a definition count — so `other` is unreachable in practice. Unchanged from round 1 and not a defect.",
+		"OBS-02: mark_all_read_unknown's `one` arm uses a different construction from its `=1`/few/many arms («не снята и остаётся» versus «не удалось снять — она/они остаются»). Both are grammatical and count-correct, and the implementer's wording differs from the round-1 proposal while addressing the same defect (no singular pronoun asserting one mark at 21). No action.",
+		"OBS-03: mark_all_read_superseded's `one` arm puts a plural object after the distributive singular subject («21 отметка получила более новые результаты»). That is idiomatic Russian for a numeral subject and matches the English plural 'have newer results'; no action.",
+		"OBS-04: the plural messages interpolate `{count}` as a plain argument, not `{count, number}`, so a four-digit count renders ungrouped («1234»). That mirrors the English source's own pattern, is unchanged by this delta, and only main.consent_body_many uses `{count, number}` (which groups with an NBSP).",
+		"OBS-05: no rendered frame was captured for this delta; it is a source-and-formatter audit, so no clipping claim is made at a specific window width. The archival tail remains a shrink-0 flex item and the new head stays the truncating half."
+	],
+	"summary": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 0,
+		"note": "All three round-1 majors are resolved with the required shape, and the minor and nit are resolved too; the remaining 83 unchanged values re-check clean. 94 keys read, 11 changed values reviewed, 0 findings of any severity."
+	},
+	"verdict": {
+		"namespace": "clean",
+		"clean": true,
+		"reason": "0 blocker, 0 major, 0 minor, 0 nit. Every `one` arm in the eight RU-NOT-01 keys prints {count} (verified at 21 and 101, where ru's `one` selects); the three non-count-neutral messages carry exactly one `=1` arm; credentials.unstored's `few` arm is accusative «записи»; credentials.stored is count-neutral; the consent banner calque is gone; the archive quotes are the locale's own. Placeholder integrity, plural categories, register and typography hold across the namespace."
+	}
+}

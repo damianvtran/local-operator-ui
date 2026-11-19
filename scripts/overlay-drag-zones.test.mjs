@@ -46,6 +46,7 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
+import { openingTags } from "./jsx-opening-tags.mjs";
 
 const ROOT = process.cwd();
 const UI_DIR = "src/renderer/src/shared/components/ui";
@@ -72,56 +73,6 @@ const NOT_INTERACTIVE = {
 };
 
 const MARKED = PORTAL_RENDERERS.filter((name) => !(name in NOT_INTERACTIVE));
-
-/**
- * Every opening tag in a source file, as `{ name, text }` pairs, in order.
- *
- * A parser this is not; it is the smallest walk that can say WHICH element an
- * attribute is on, which the round-1 regex could not. Block comments are
- * stripped first so a marker named in prose does not count as a marker on an
- * element. From a `<`, the tag ends at the first `>` at brace depth zero - so
- * `[&>div]` inside a className does not end it - and quotes are honoured so a
- * `>` inside a string does not either. TypeScript generics like
- * `forwardRef<HTMLDivElement, ...>` are taken as tags too; their names never end
- * in `Content` or `Overlay`, so they are inert here, and the walk resumes after
- * them.
- */
-const openingTags = (source) => {
-	const stripped = source.replace(/\/\*[\s\S]*?\*\//g, "");
-	const tags = [];
-	for (let i = 0; i < stripped.length; i++) {
-		if (stripped[i] !== "<") continue;
-		const next = stripped[i + 1];
-		if (!(next !== undefined && /[A-Za-z]/.test(next))) continue;
-		let depth = 0;
-		let quote = null;
-		let end = -1;
-		for (let j = i + 1; j < stripped.length; j++) {
-			const ch = stripped[j];
-			if (quote !== null) {
-				if (ch === quote && stripped[j - 1] !== "\\") quote = null;
-				continue;
-			}
-			if (ch === '"' || ch === "'" || ch === "`") {
-				quote = ch;
-				continue;
-			}
-			if (ch === "{") depth += 1;
-			else if (ch === "}") depth -= 1;
-			else if (ch === ">" && depth === 0) {
-				end = j;
-				break;
-			}
-		}
-		if (end === -1) continue;
-		const text = stripped.slice(i, end + 1);
-		const name = /^<([A-Za-z][\w.]*)/.exec(text)?.[1];
-		if (name === undefined) continue;
-		tags.push({ name, text });
-		i = end - 1;
-	}
-	return tags;
-};
 
 test("F-1 the opt-out stands on its own, not only inside a drag row", () => {
 	const css = read("src/renderer/src/styles/index.css").replace(
@@ -219,7 +170,7 @@ test("F-3 the marker is on the panel a click lands in, never on the scrim", () =
  * F-4 - the one named surface, because the derivation cannot see it.
  *
  * The scan above only finds portalled primitives, and that is its stated limit:
- * `UpdateContainer` is `fixed top-4 right-4 z-50`, mounted on every route, and
+ * `UpdateContainer` is `fixed top-4 end-4 z-50`, mounted on every route, and
  * its top row sits inside a drag surface wherever one is drawn - while reaching
  * the top layer through no portal at all, so neither half of the scan sees it
  * (round 1, R3). It is named rather than derived, because "everything fixed near
@@ -232,11 +183,11 @@ test("F-4 the fixed surface mounted above the strip carries the opt-out", () => 
 		"src/renderer/src/shared/components/common/update-notification.tsx";
 	const source = read(path);
 	const pinned = openingTags(source).filter((tag) =>
-		tag.text.includes("fixed top-4 right-4 z-50"),
+		tag.text.includes("fixed top-4 end-4 z-50"),
 	);
 	assert.ok(
 		pinned.length > 0,
-		`${path}: the card is no longer pinned at the window's top-right (its \`fixed top-4 right-4 z-50\` geometry is gone); if it moved out of the strip, re-read this entry's reason rather than keeping it silently`,
+		`${path}: the card is no longer pinned at the window's top-inline-end (its \`fixed top-4 end-4 z-50\` geometry is gone); if it moved out of the strip, re-read this entry's reason rather than keeping it silently`,
 	);
 	for (const tag of pinned) {
 		assert.ok(

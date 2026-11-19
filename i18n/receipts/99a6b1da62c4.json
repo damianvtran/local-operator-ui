@@ -1,0 +1,238 @@
+{
+ "auditor": "i18n-auditor",
+ "agent": "i18n-auditor",
+ "model": "radient/auto",
+ "served_model": "not exposed by this harness build",
+ "actual_model_source": "harness session header `Model: radient/auto` (session 99a6b1da62c4); the resolved backend model id is not exposed to the session",
+ "fallback": "none observed",
+ "instance": "99a6b1da62c4",
+ "session": "99a6b1da62c4",
+ "date": "2026-10-27",
+ "locale": "ru",
+ "status": "passed",
+ "commit": "a5356ce91c4f37bf4c4d1c4518070e3a9b2505cb",
+ "delta_base": "0559f7f7d830752b0c5d118c2b1049f125b43bbb",
+ "scope": "wave B delta audit, 9 namespaces, 62 wave-B keys in scope: 6 changed ru values audited in full, 56 unchanged values proved byte-identical to the audited bytes at 0559f7f7d8, plus the changed English pairing_guidance render",
+ "keys_read": 62,
+ "namespace_count": 9,
+ "independence": {
+  "authored_translation": false,
+  "translator_session": "not identified to this auditor (the wave owner holds it)",
+  "distinct_from_translator": true,
+  "repo_edits": false
+ },
+ "guidance": {
+  "glossary": {
+   "path": "/Users/damian/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "ru_style_guide": {
+   "path": "/Users/damian/local-operator/i18n/style-guides/ru.md",
+   "sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+  }
+ },
+ "namespaces": {
+  "ui.chat.device": {
+   "status": "passed",
+   "scope": "wave B delta at a5356ce91c: no ru value changed; all 11 wave-B ru values proved byte-identical to the audited bytes at 0559f7f7d8; the English source changed here (pairing_guidance code span closed) and the ru render was re-checked through intl-messageformat",
+   "keys_read": 11,
+   "namespace_key_count": 25,
+   "changed_values_audited": [
+    "en:ui.chat.device.sentence.pairing_guidance"
+   ],
+   "unchanged_wave_b_values": 11,
+   "namespace_keys_identical_to_audited_bytes": 25,
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.device.json",
+    "context": "src/i18n/catalogues/en/ui.chat.device.context.json",
+    "target": "src/i18n/catalogues/ru/ui.chat.device.json"
+   },
+   "sha256": {
+    "en": "0d4c357edbb9a67d015301f263e3892f752aca9ee63a3d5c737bf12a9ac6375a",
+    "context": "b3f41c2c587de6559aa52fe15ab2cfdda521df44b770b76ac8160855fd5c4a7a",
+    "target": "f07dc132a7453e5c67fafcaca1af98d4daf6e429dc67466688d6c3681638d32f"
+   },
+   "findings": []
+  },
+  "ui.chat.pickers": {
+   "status": "passed",
+   "scope": "wave B delta at a5356ce91c: no ru value changed; all 18 wave-B ru values proved byte-identical to the audited bytes at 0559f7f7d8",
+   "keys_read": 18,
+   "namespace_key_count": 738,
+   "changed_values_audited": [],
+   "unchanged_wave_b_values": 18,
+   "namespace_keys_identical_to_audited_bytes": 738,
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.pickers.json",
+    "context": "src/i18n/catalogues/en/ui.chat.pickers.context.json",
+    "target": "src/i18n/catalogues/ru/ui.chat.pickers.json"
+   },
+   "sha256": {
+    "en": "d91585397b3314c5ffd81d93c3fd7d9fdb1e0a54cc6ddd57ba082f55d666522c",
+    "context": "6861dbfbdbc9af23c8c09332670a6f7d77c2a12b5724afc91d0054660ef904d0",
+    "target": "797ab14787fc2a55d545b469a92da5d337809d2b3093e96b530e335c7137d047"
+   },
+   "findings": []
+  },
+  "ui.chat.canonical": {
+   "status": "passed",
+   "scope": "wave B delta at a5356ce91c: no ru value changed; all 8 wave-B ru values proved byte-identical to the audited bytes at 0559f7f7d8",
+   "keys_read": 8,
+   "namespace_key_count": 68,
+   "changed_values_audited": [],
+   "unchanged_wave_b_values": 8,
+   "namespace_keys_identical_to_audited_bytes": 68,
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.canonical.json",
+    "context": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+    "target": "src/i18n/catalogues/ru/ui.chat.canonical.json"
+   },
+   "sha256": {
+    "en": "5bb6a6fe5dd64f70a4caf0812d3fa4b95c70bd49c12bd556ab0d827176ac4477",
+    "context": "ea13112039dfed41998801904ccc88531f87452a7e3d7138ab09a5f48f9e65b2",
+    "target": "61d7b8bd8557978ed46e9787af4b02c1ec083cf098993a9d13a29889940340aa"
+   },
+   "findings": []
+  },
+  "ui.chat": {
+   "status": "passed",
+   "scope": "wave B delta at a5356ce91c: 3 changed ru value(s) audited in full against English, context, call site, glossary and locale precedent; the other 6 wave-B ru values proved byte-identical to the audited bytes at 0559f7f7d8",
+   "keys_read": 9,
+   "namespace_key_count": 124,
+   "changed_values_audited": [
+    "ui.chat.session_status.context_nothing_measured_tooltip",
+    "ui.chat.session_status.nothing_measured_yet",
+    "ui.chat.session_status.temporarily_unavailable_description"
+   ],
+   "unchanged_wave_b_values": 6,
+   "namespace_keys_identical_to_audited_bytes": 121,
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.json",
+    "context": "src/i18n/catalogues/en/ui.chat.context.json",
+    "target": "src/i18n/catalogues/ru/ui.chat.json"
+   },
+   "sha256": {
+    "en": "4d07ed6de9382fdf1310fd70bf48be2602952538c1ddf43bda8972834760be04",
+    "context": "f300190022daa1e49a200072b29501cfc6a5be7c542a57ef741873c14bfa6164",
+    "target": "13902f3586f2b5785d63ab6dc31253893960ec86f0730188f37475f3dd446234"
+   },
+   "findings": [
+    {
+     "id": "RU-WBD-N1",
+     "severity": "NIT",
+     "key": "ui.chat.session_status.context_nothing_measured_tooltip",
+     "current": "Контекст: пока ничего не измерено. Контекстное окно заполняется по ходу разговора.",
+     "problem": "Accessible name only: the one utterance repeats the root «Контекст… Контекстное» inside a single sentence, because the lead word and the term now come from the same stem. The two-line visual tooltip does not suffer the same stutter (the heading is a separate line), so this is scoped to the aria-label form. Advisory, not gating: the meaning is right and the term is the catalogue's.",
+     "proposed": "Контекст: пока ничего не измерено. Окно заполняется по ходу разговора.",
+     "disposition": "advisory - recorded, does not block the ledger row"
+    }
+   ]
+  },
+  "ui.chat.status": {
+   "status": "passed",
+   "scope": "wave B delta at a5356ce91c: 1 changed ru value(s) audited in full against English, context, call site, glossary and locale precedent; the other 3 wave-B ru values proved byte-identical to the audited bytes at 0559f7f7d8",
+   "keys_read": 4,
+   "namespace_key_count": 4,
+   "changed_values_audited": [
+    "ui.chat.status.credential_refused"
+   ],
+   "unchanged_wave_b_values": 3,
+   "namespace_keys_identical_to_audited_bytes": 3,
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.status.json",
+    "context": "src/i18n/catalogues/en/ui.chat.status.context.json",
+    "target": "src/i18n/catalogues/ru/ui.chat.status.json"
+   },
+   "sha256": {
+    "en": "c11e619f13f9c40637a33cbafc40442d61c1bf2eed5e4c0c7d667db55f4b65cb",
+    "context": "a62b34dde0f22e95c34793f1f87791fc38385c68c840a0f6c60adf304aaec561",
+    "target": "0ea601ffd6de50d7cd07abe00cc3fdcd59d5a977b0b4330367033cbd1cb5f374"
+   },
+   "findings": []
+  },
+  "ui.chat.run_details": {
+   "status": "passed",
+   "scope": "wave B delta at a5356ce91c: no ru value changed; all 2 wave-B ru values proved byte-identical to the audited bytes at 0559f7f7d8",
+   "keys_read": 2,
+   "namespace_key_count": 84,
+   "changed_values_audited": [],
+   "unchanged_wave_b_values": 2,
+   "namespace_keys_identical_to_audited_bytes": 84,
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.run_details.json",
+    "context": "src/i18n/catalogues/en/ui.chat.run_details.context.json",
+    "target": "src/i18n/catalogues/ru/ui.chat.run_details.json"
+   },
+   "sha256": {
+    "en": "77471485df0fccb4a29541d98949d5e21e8e541099cbe602e540c5848b96db61",
+    "context": "6e25843e49db6d20254d7593cbfe06c81dd8ba305c369351b4a9e374c6e4e526",
+    "target": "833160793af79bdc69cd155b4d15dc3dde3c1cfb1cc3f903fdd3eefd5b70a9b5"
+   },
+   "findings": []
+  },
+  "ui.common.connection": {
+   "status": "passed",
+   "scope": "wave B delta at a5356ce91c: 1 changed ru value(s) audited in full against English, context, call site, glossary and locale precedent; the other 4 wave-B ru values proved byte-identical to the audited bytes at 0559f7f7d8",
+   "keys_read": 5,
+   "namespace_key_count": 42,
+   "changed_values_audited": [
+    "ui.common.connection.session_loss.server_down"
+   ],
+   "unchanged_wave_b_values": 4,
+   "namespace_keys_identical_to_audited_bytes": 41,
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.common.connection.json",
+    "context": "src/i18n/catalogues/en/ui.common.connection.context.json",
+    "target": "src/i18n/catalogues/ru/ui.common.connection.json"
+   },
+   "sha256": {
+    "en": "0e69a319b56d967cc012d15c6480ae1cf2084092ac0c98d130a9412047fcc681",
+    "context": "99f458fecbeae8ea58c45f171d7ccbc465cc9a717255553aaadc3c1927f875ae",
+    "target": "b9afb4e95e90b6fff71b968baaadcaffb77e640fc4d94e7b098527153f6c0004"
+   },
+   "findings": []
+  },
+  "ui.common.layout": {
+   "status": "passed",
+   "scope": "wave B delta at a5356ce91c: no ru value changed; all 2 wave-B ru values proved byte-identical to the audited bytes at 0559f7f7d8",
+   "keys_read": 2,
+   "namespace_key_count": 9,
+   "changed_values_audited": [],
+   "unchanged_wave_b_values": 2,
+   "namespace_keys_identical_to_audited_bytes": 9,
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.common.layout.json",
+    "context": "src/i18n/catalogues/en/ui.common.layout.context.json",
+    "target": "src/i18n/catalogues/ru/ui.common.layout.json"
+   },
+   "sha256": {
+    "en": "1d9f353eb3aa467d22e102aa9459ba7070637c6b2a2ddb17e31b075963df9231",
+    "context": "cb15214ec6712e3a15bf8cb30918b3720348a7546d773788fe06a69b3575b5f6",
+    "target": "008705e2cbe7bd8314cf8f88a38c249072720aa95e9f9cab56781c34f87221bc"
+   },
+   "findings": []
+  },
+  "ui.agents.config": {
+   "status": "passed",
+   "scope": "wave B delta at a5356ce91c: 1 changed ru value(s) audited in full against English, context, call site, glossary and locale precedent; the other 2 wave-B ru values proved byte-identical to the audited bytes at 0559f7f7d8",
+   "keys_read": 3,
+   "namespace_key_count": 31,
+   "changed_values_audited": [
+    "ui.agents.config.disabled_gate"
+   ],
+   "unchanged_wave_b_values": 2,
+   "namespace_keys_identical_to_audited_bytes": 30,
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.agents.config.json",
+    "context": "src/i18n/catalogues/en/ui.agents.config.context.json",
+    "target": "src/i18n/catalogues/ru/ui.agents.config.json"
+   },
+   "sha256": {
+    "en": "534c035edf33e60c142f0106306cd2ce8c6250f6516a321a12ae5c0a6a5621bc",
+    "context": "d55725ee860cc40539b200ab0d0018e4f1062d6ade08c16c169520a4f3625db0",
+    "target": "3d60a66713eaf3102dd80ffa63d23956d15156fd9dfabb2a754d0c0585a99b5a"
+   },
+   "findings": []
+  }
+ }
+}

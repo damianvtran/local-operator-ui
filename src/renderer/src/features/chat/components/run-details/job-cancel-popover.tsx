@@ -34,6 +34,8 @@
  * the keyboard handed back to Keep.
  */
 import { Button } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
@@ -47,6 +49,7 @@ import type { JobCancelPopoverProps } from "./use-job-cancel";
 export const JobCancelPopover = ({
 	open,
 	label,
+	jobType,
 	anchor,
 	refusal,
 	refusalSeq,
@@ -54,6 +57,7 @@ export const JobCancelPopover = ({
 	onConfirm,
 	onCancel,
 }: JobCancelPopoverProps) => {
+	useI18nLocale();
 	const cardRef = useRef<HTMLDialogElement | null>(null);
 	const keepRef = useRef<HTMLButtonElement | null>(null);
 	/*
@@ -126,7 +130,7 @@ export const JobCancelPopover = ({
 		width: window.innerWidth,
 		height: window.innerHeight,
 	});
-	const title = "Cancel this job?";
+	const title = t("ui.chat.run_details.job_cancel.title");
 	return createPortal(
 		/*
 		 * A native `<dialog>` with `open` set: it carries the role the card
@@ -146,14 +150,19 @@ export const JobCancelPopover = ({
 				bottom: placement.bottom,
 				width: CARD_WIDTH,
 			}}
+			data-lo-floating=""
 			className={cn(
-				"z-50 max-w-[calc(100vw-2rem)] rounded-md border border-hairline bg-elevated p-4",
+				"z-50 max-w-[calc(100vw-2rem)] rounded-md bg-elevated p-4",
 				"text-body-sm text-ink shadow-overlay",
 			)}
 		>
 			<p className={cn("text-ink")}>{title}</p>
 			<p className={cn("pt-1.5 text-ink-muted")}>
-				{`The runtime asks the provider to stop “${label}”. The row says “Cancelled” only when the job settles.`}
+				{jobType === "music"
+					? t("ui.music.cancel_warning", {
+							label: label ?? t("ui.music.label"),
+						})
+					: t("ui.chat.run_details.job_cancel.body", { label })}
 			</p>
 			{refusal !== null && (
 				/*
@@ -178,13 +187,15 @@ export const JobCancelPopover = ({
 				 */}
 				<Button
 					ref={keepRef}
-					variant="secondary"
+					// `tonal`, not `secondary`: this card floats, and a bordered button
+					// inside a borderless floating panel rebuilds the box (branding § 2).
+					variant="tonal"
 					size="sm"
 					data-job-confirm-keep=""
 					disabled={busy}
 					onClick={() => onCancel()}
 				>
-					Keep
+					{t("ui.chat.run_details.keep")}
 				</Button>
 				<Button
 					variant="danger"
@@ -193,7 +204,9 @@ export const JobCancelPopover = ({
 					disabled={busy}
 					onClick={onConfirm}
 				>
-					{busy ? "Cancelling…" : "Cancel"}
+					{busy
+						? t("ui.chat.run_details.job_cancel.cancelling")
+						: t("ui.chat.run_details.job_cancel.confirm")}
 				</Button>
 			</div>
 		</dialog>,

@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * The FAST picker's rows, with the CURRENT dial marked — and only this picker's.
  *
@@ -26,15 +27,16 @@ export function fastPickerOptions(state: FastModeState): PickerOption[] {
 	return [
 		{
 			value: "on",
-			label: "On",
-			description:
-				"Priority processing. Billed at premium rates where the provider offers it.",
+			label: t("ui.chat.pickers.fast_picker_options.on"),
+			description: t(
+				"ui.chat.pickers.fast_picker_options.priority_processing_billed_at_premium_rates_where_the_provider_offers_it",
+			),
 			current: state === "on",
 		},
 		{
 			value: "off",
-			label: "Off",
-			description: "Standard processing.",
+			label: t("ui.chat.pickers.fast_picker_options.off"),
+			description: t("ui.chat.pickers.fast_picker_options.standard_processing"),
 			current: state === "off",
 		},
 	];

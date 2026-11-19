@@ -10,9 +10,11 @@ import {
 	SearchableSelect,
 } from "@shared/components/hosting/searchable-select";
 import { Input, Label } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Code, File, Folder } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import type { FC } from "react";
 import { DirectoryIndicator } from "../directory-indicator";
 
@@ -29,41 +31,157 @@ const FIELD_LABEL_CLASS =
  * `SearchableSelect` emits a heading whenever the group changes and does not
  * sort.
  */
-const fileTypeOptions: SearchableOption[] = [
+const fileTypeOptions = (): SearchableOption[] => [
 	// General
-	{ id: "md", name: "Markdown (.md)", group: "General" },
-	{ id: "txt", name: "Plain text (.txt)", group: "General" },
+	{
+		id: "md",
+		name: t("ui.canvas.create_file_dialog.markdown_md"),
+		group: t("ui.canvas.create_file_dialog.general"),
+	},
+	{
+		id: "txt",
+		name: t("ui.canvas.create_file_dialog.plain_text_txt"),
+		group: t("ui.canvas.create_file_dialog.general"),
+	},
 	// Web development
-	{ id: "html", name: "HTML (.html)", group: "Web development" },
-	{ id: "css", name: "CSS (.css)", group: "Web development" },
-	{ id: "js", name: "JavaScript (.js)", group: "Web development" },
-	{ id: "jsx", name: "JSX (.jsx)", group: "Web development" },
-	{ id: "ts", name: "TypeScript (.ts)", group: "Web development" },
-	{ id: "tsx", name: "TSX (.tsx)", group: "Web development" },
+	{
+		id: "html",
+		name: t("ui.canvas.create_file_dialog.html_html"),
+		group: t("ui.canvas.create_file_dialog.web_development"),
+	},
+	{
+		id: "css",
+		name: t("ui.canvas.create_file_dialog.css_css"),
+		group: t("ui.canvas.create_file_dialog.web_development"),
+	},
+	{
+		id: "js",
+		name: t("ui.canvas.create_file_dialog.javascript_js"),
+		group: t("ui.canvas.create_file_dialog.web_development"),
+	},
+	{
+		id: "jsx",
+		name: t("ui.canvas.create_file_dialog.jsx_jsx"),
+		group: t("ui.canvas.create_file_dialog.web_development"),
+	},
+	{
+		id: "ts",
+		name: t("ui.canvas.create_file_dialog.typescript_ts"),
+		group: t("ui.canvas.create_file_dialog.web_development"),
+	},
+	{
+		id: "tsx",
+		name: t("ui.canvas.create_file_dialog.tsx_tsx"),
+		group: t("ui.canvas.create_file_dialog.web_development"),
+	},
 	// Backend and scripting
-	{ id: "py", name: "Python (.py)", group: "Backend and scripting" },
-	{ id: "go", name: "Go (.go)", group: "Backend and scripting" },
-	{ id: "java", name: "Java (.java)", group: "Backend and scripting" },
-	{ id: "cs", name: "C# (.cs)", group: "Backend and scripting" },
-	{ id: "php", name: "PHP (.php)", group: "Backend and scripting" },
-	{ id: "rb", name: "Ruby (.rb)", group: "Backend and scripting" },
-	{ id: "rs", name: "Rust (.rs)", group: "Backend and scripting" },
-	{ id: "sh", name: "Shell script (.sh)", group: "Backend and scripting" },
+	{
+		id: "py",
+		name: t("ui.canvas.create_file_dialog.python_py"),
+		group: t("ui.canvas.create_file_dialog.backend_and_scripting"),
+	},
+	{
+		id: "go",
+		name: t("ui.canvas.create_file_dialog.go_go"),
+		group: t("ui.canvas.create_file_dialog.backend_and_scripting"),
+	},
+	{
+		id: "java",
+		name: t("ui.canvas.create_file_dialog.java_java"),
+		group: t("ui.canvas.create_file_dialog.backend_and_scripting"),
+	},
+	{
+		id: "cs",
+		name: t("ui.canvas.create_file_dialog.c_cs"),
+		group: t("ui.canvas.create_file_dialog.backend_and_scripting"),
+	},
+	{
+		id: "php",
+		name: t("ui.canvas.create_file_dialog.php_php"),
+		group: t("ui.canvas.create_file_dialog.backend_and_scripting"),
+	},
+	{
+		id: "rb",
+		name: t("ui.canvas.create_file_dialog.ruby_rb"),
+		group: t("ui.canvas.create_file_dialog.backend_and_scripting"),
+	},
+	{
+		id: "rs",
+		name: t("ui.canvas.create_file_dialog.rust_rs"),
+		group: t("ui.canvas.create_file_dialog.backend_and_scripting"),
+	},
+	{
+		id: "sh",
+		name: t("ui.canvas.create_file_dialog.shell_script_sh"),
+		group: t("ui.canvas.create_file_dialog.backend_and_scripting"),
+	},
 	// Configuration
-	{ id: "json", name: "JSON (.json)", group: "Configuration" },
-	{ id: "yaml", name: "YAML (.yaml)", group: "Configuration" },
-	{ id: "yml", name: "YAML (.yml)", group: "Configuration" },
-	{ id: "xml", name: "XML (.xml)", group: "Configuration" },
-	{ id: "toml", name: "TOML (.toml)", group: "Configuration" },
-	{ id: "ini", name: "INI (.ini)", group: "Configuration" },
-	{ id: "env", name: ".env", group: "Configuration" },
-	{ id: "dockerfile", name: "Dockerfile", group: "Configuration" },
+	{
+		id: "json",
+		name: t("ui.canvas.create_file_dialog.json_json"),
+		group: t("ui.canvas.create_file_dialog.configuration"),
+	},
+	{
+		id: "yaml",
+		name: t("ui.canvas.create_file_dialog.yaml_yaml"),
+		group: t("ui.canvas.create_file_dialog.configuration"),
+	},
+	{
+		id: "yml",
+		name: t("ui.canvas.create_file_dialog.yaml_yml"),
+		group: t("ui.canvas.create_file_dialog.configuration"),
+	},
+	{
+		id: "xml",
+		name: t("ui.canvas.create_file_dialog.xml_xml"),
+		group: t("ui.canvas.create_file_dialog.configuration"),
+	},
+	{
+		id: "toml",
+		name: t("ui.canvas.create_file_dialog.toml_toml"),
+		group: t("ui.canvas.create_file_dialog.configuration"),
+	},
+	{
+		id: "ini",
+		name: t("ui.canvas.create_file_dialog.ini_ini"),
+		group: t("ui.canvas.create_file_dialog.configuration"),
+	},
+	{
+		id: "env",
+		name: t("ui.canvas.create_file_dialog.env"),
+		group: t("ui.canvas.create_file_dialog.configuration"),
+	},
+	{
+		id: "dockerfile",
+		name: t("ui.canvas.create_file_dialog.dockerfile"),
+		group: t("ui.canvas.create_file_dialog.configuration"),
+	},
 	// Other languages
-	{ id: "c", name: "C (.c)", group: "Other languages" },
-	{ id: "cpp", name: "C++ (.cpp)", group: "Other languages" },
-	{ id: "swift", name: "Swift (.swift)", group: "Other languages" },
-	{ id: "kt", name: "Kotlin (.kt)", group: "Other languages" },
-	{ id: "scala", name: "Scala (.scala)", group: "Other languages" },
+	{
+		id: "c",
+		name: t("ui.canvas.create_file_dialog.c_c"),
+		group: t("ui.canvas.create_file_dialog.other_languages"),
+	},
+	{
+		id: "cpp",
+		name: t("ui.canvas.create_file_dialog.c_cpp"),
+		group: t("ui.canvas.create_file_dialog.other_languages"),
+	},
+	{
+		id: "swift",
+		name: t("ui.canvas.create_file_dialog.swift_swift"),
+		group: t("ui.canvas.create_file_dialog.other_languages"),
+	},
+	{
+		id: "kt",
+		name: t("ui.canvas.create_file_dialog.kotlin_kt"),
+		group: t("ui.canvas.create_file_dialog.other_languages"),
+	},
+	{
+		id: "scala",
+		name: t("ui.canvas.create_file_dialog.scala_scala"),
+		group: t("ui.canvas.create_file_dialog.other_languages"),
+	},
 ];
 
 export type CreateFileDialogProps = {
@@ -92,6 +210,7 @@ export const CreateFileDialog: FC<CreateFileDialogProps> = ({
 	isSaving,
 	currentWorkingDirectory = "~",
 }) => {
+	useI18nLocale();
 	const [fileName, setFileName] = useState("");
 	const [fileType, setFileType] = useState("md");
 	const [isConfirmingOverwrite, setConfirmingOverwrite] = useState(false);
@@ -132,12 +251,9 @@ export const CreateFileDialog: FC<CreateFileDialogProps> = ({
 	 * choice, so it is shown back as its own row rather than clearing the
 	 * field.
 	 */
-	const selectedFileType = useMemo(
-		() =>
-			fileTypeOptions.find((option) => option.id === fileType) ??
-			(fileType ? { id: fileType, name: fileType } : null),
-		[fileType],
-	);
+	const selectedFileType =
+		fileTypeOptions().find((option) => option.id === fileType) ??
+		(fileType ? { id: fileType, name: fileType } : null);
 
 	const canSave = fileName.trim() !== "" && !isSaving;
 
@@ -165,14 +281,16 @@ export const CreateFileDialog: FC<CreateFileDialogProps> = ({
 	const dialogActions = (
 		<>
 			<SecondaryButton onClick={onClose} disabled={isSaving}>
-				Cancel
+				{t("ui.canvas.create_file_dialog.cancel")}
 			</SecondaryButton>
 			<PrimaryButton
 				onClick={() => void handleSave()}
 				disabled={!canSave}
 				startIcon={isSaving ? <Spinner /> : null}
 			>
-				{isSaving ? "Creating..." : "Create file"}
+				{isSaving
+					? t("ui.canvas.create_file_dialog.creating")
+					: t("ui.canvas.create_file_dialog.create_file")}
 			</PrimaryButton>
 		</>
 	);
@@ -182,7 +300,7 @@ export const CreateFileDialog: FC<CreateFileDialogProps> = ({
 			<BaseDialog
 				open={open && !isConfirmingOverwrite}
 				onClose={onClose}
-				title="Create new file"
+				title={t("ui.canvas.create_file_dialog.create_new_file")}
 				actions={dialogActions}
 				maxWidth="sm"
 				fullWidth
@@ -197,7 +315,7 @@ export const CreateFileDialog: FC<CreateFileDialogProps> = ({
 					<div>
 						<Label htmlFor="create-file-name" className={cn(FIELD_LABEL_CLASS)}>
 							<File size={16} aria-hidden="true" />
-							File name
+							{t("ui.canvas.create_file_dialog.file_name")}
 						</Label>
 						<Input
 							id="create-file-name"
@@ -206,7 +324,9 @@ export const CreateFileDialog: FC<CreateFileDialogProps> = ({
 							required
 							autoFocus
 							disabled={isSaving}
-							placeholder="Enter file name (e.g., my-new-script)"
+							placeholder={t(
+								"ui.canvas.create_file_dialog.enter_file_name_e_g_my_new_script",
+							)}
 							onKeyDown={(e) => {
 								if (e.key === "Enter" && canSave) {
 									void handleSave();
@@ -216,22 +336,26 @@ export const CreateFileDialog: FC<CreateFileDialogProps> = ({
 					</div>
 
 					<SearchableSelect
-						label="File type"
+						label={t("ui.canvas.create_file_dialog.file_type")}
 						icon={<Code size={16} aria-hidden="true" />}
-						labelTooltip="Pick an extension, or type one that is not listed."
-						placeholder="Select or type an extension"
-						options={fileTypeOptions}
+						labelTooltip={t(
+							"ui.canvas.create_file_dialog.pick_an_extension_or_type_one_that_is_not_listed",
+						)}
+						placeholder={t(
+							"ui.canvas.create_file_dialog.select_or_type_an_extension",
+						)}
+						options={fileTypeOptions()}
 						selected={selectedFileType}
 						onSelect={(option) => setFileType(option.id)}
 						onCustomSubmit={(text) => setFileType(text)}
-						busyLabel="Loading file types"
+						busyLabel={t("ui.canvas.create_file_dialog.loading_file_types")}
 						disabled={isSaving}
 					/>
 
 					<div>
 						<p className={cn(FIELD_LABEL_CLASS, "text-body-sm")}>
 							<Folder size={16} aria-hidden="true" />
-							Location
+							{t("ui.canvas.create_file_dialog.location")}
 						</p>
 						{/*
 						 * Read-only, and for THIS dialog's own reason rather than a claim about
@@ -248,19 +372,26 @@ export const CreateFileDialog: FC<CreateFileDialogProps> = ({
 						 */}
 						<DirectoryIndicator
 							currentWorkingDirectory={currentWorkingDirectory}
-							readOnlyReason="Change the working directory from the composer to create the file elsewhere."
+							readOnlyReason={t(
+								"ui.canvas.create_file_dialog.change_the_working_directory_from_the_composer_to_create_the_file_elsewh",
+							)}
 						/>
 						<p className={cn("mt-2 text-ink-muted text-meta")}>
-							The file will be created in this working directory.
+							{t(
+								"ui.canvas.create_file_dialog.the_file_will_be_created_in_this_working_directory",
+							)}
 						</p>
 					</div>
 				</div>
 			</BaseDialog>
 			<ConfirmationModal
 				open={isConfirmingOverwrite}
-				title="File already exists"
-				message={`A file named "${fileName}.${fileType}" already exists. Do you want to overwrite it?`}
-				confirmText="Overwrite"
+				title={t("ui.canvas.create_file_dialog.file_already_exists")}
+				message={t(
+					"ui.canvas.create_file_dialog.a_file_named_already_exists_do_you_want_to_overwrite_it",
+					{ filename: fileName, filetype: fileType },
+				)}
+				confirmText={t("ui.canvas.create_file_dialog.overwrite")}
 				onConfirm={() => {
 					setConfirmingOverwrite(false);
 					void handleSave(true);

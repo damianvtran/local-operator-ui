@@ -1,0 +1,245 @@
+{
+  "auditor": "i18n-auditor",
+  "agent": "i18n-auditor",
+  "instance": "a478f43b9cae",
+  "model": "radient/auto",
+  "locale": "hi",
+  "audit_date": "2026-10-26",
+  "round": 2,
+  "branch": "i18n-chat-surfaces",
+  "head": "e1ca500e5a",
+  "scope": "Round-2 independent audit of the four chat-surface catalogues for hi, bound by sha256 to the uncommitted working tree at HEAD e1ca500e5a (no hi bytes committed yet). All 283 current keys read: the 178 keys added by this wave (ui.chat 71, ui.chat.canonical 13, ui.chat.run_details 80, ui.chat.asks 14) plus every pre-existing key in the four files, checked for consistency with the shipped hi catalogue set. Sources: English catalogue and context sidecar per key, the consuming code (error-block join, question-dock prefix/hint arms, run-detail-todos shedding, run-detail-model chip clauses, run-child-subagents owner row, ask-panel rows, approval-words APPROVAL_OPTIONS), the shipped hi catalogues, the core glossary and the hi style guide. Round-2 brief: verify each round-1 blocker/major resolved, verify the new todos.hidden_summary plural at 0/1/2/5/1000, and check the remediation's adjacency (label-in-name, joined fragments, English approval words, typography, NFC, no manual bidi).",
+  "independence": "Auditor is not the translator: this session did not translate these files, never read a translator report, and does not edit them. Round-1 findings were re-judged from the current bytes first; i18n/receipts/hi-chat-surfaces-audit-d366b03a4dfe.json was read afterwards only to confirm each item was resolved or reasonably declined (it was not used to decide any round-2 finding's severity).",
+  "model_provenance": "Task pinned radient/auto; the harness banner for this run reports the same label, radient/auto. No provider-level model id and no fallback notice were reported to this session, so the receipt records the label the session actually carried rather than inventing a provider id. Contrast round 1 (instance d366b03a4dfe), which disclosed a quota-402 cross-vendor descent reaching openrouter/deepseek/deepseek-v4.1-flash-1017.",
+  "inputs": {
+    "en": {
+      "ui.chat": {
+        "path": "src/i18n/catalogues/en/ui.chat.json",
+        "sha256": "6b6e21835462fccbbdbea4cfcca132344595bf3f14804018de64dbe8d9fbacf0"
+      },
+      "ui.chat.canonical": {
+        "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+        "sha256": "5a6a30405053c7319b902315bb0a1b38ce1cbd6443ad2d988132d4cbfcb8f2ce"
+      },
+      "ui.chat.run_details": {
+        "path": "src/i18n/catalogues/en/ui.chat.run_details.json",
+        "sha256": "288ba883ed0c25851fa2025ea9a23ff98bcb7f59724ab5bbb2ed5b212ed85b51"
+      },
+      "ui.chat.asks": {
+        "path": "src/i18n/catalogues/en/ui.chat.asks.json",
+        "sha256": "6c42d235f1e326fc0cc0fea91668307d4e551585eef33b5fe1c2173efc2bc9fd"
+      }
+    },
+    "context": {
+      "ui.chat": {
+        "path": "src/i18n/catalogues/en/ui.chat.context.json",
+        "sha256": "da5c303c014c469c6096e6ef2e43b993f3ec2b9430ed6ec97498fc457f494372"
+      },
+      "ui.chat.canonical": {
+        "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+        "sha256": "f075f08f152c9484f7dd9790a3b60a3c6c82086d3d9361717afa2188f0773a04"
+      },
+      "ui.chat.run_details": {
+        "path": "src/i18n/catalogues/en/ui.chat.run_details.context.json",
+        "sha256": "0f03657304a71236fe9d2bb350a1688dcfd2499624b5d908d80bc2775681a919"
+      },
+      "ui.chat.asks": {
+        "path": "src/i18n/catalogues/en/ui.chat.asks.context.json",
+        "sha256": "9e137d7e8f6227827196c244a9550520cd5ee412ffeaef615a7e33bf0193903c"
+      }
+    },
+    "target": {
+      "ui.chat": {
+        "path": "src/i18n/catalogues/hi/ui.chat.json",
+        "sha256": "27e9651711db634d6199f409e85754068a584cb1fb686aed402d0fa2346bdb43"
+      },
+      "ui.chat.canonical": {
+        "path": "src/i18n/catalogues/hi/ui.chat.canonical.json",
+        "sha256": "e6183d9af90e08bf1dde35ab6759c83e428e355a7dbb52a2408b0a0133bb4c5d"
+      },
+      "ui.chat.run_details": {
+        "path": "src/i18n/catalogues/hi/ui.chat.run_details.json",
+        "sha256": "7b858f514e2cc9d76da5aaa26ff840513a43f2bf1eb127b128318a3fd9f650ca"
+      },
+      "ui.chat.asks": {
+        "path": "src/i18n/catalogues/hi/ui.chat.asks.json",
+        "sha256": "3451a4efede78e11ed1eb7471110109abff2f8d808189c472438c76fe0b30538"
+      }
+    }
+  },
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/hi.md",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    },
+    "languages_manifest": {
+      "path": "i18n/languages.json",
+      "sha256": "7fd056b916fc3d56ddf36991a09b29864ea0b0f825d938aead1ed165926f8d63"
+    }
+  },
+  "gates_run": [
+    "node scripts/i18n/generate.mjs --check -> src/i18n/keys.gen.ts is byte-identical to a fresh generation (exit 0)",
+    "node scripts/i18n/check-duplicates.mjs — ok, 763 file(s) scanned, 0 duplicate key(s) (exit 0)",
+    "node scripts/i18n/check-strings.mjs (memory_mb 6000) — ok, 1368 file(s) scanned, 262 literal(s) at or below the baseline (exit 0)",
+    "node scripts/i18n/check-added-strings.mjs — PASS: no newly added literal copy in 23 changed file(s) against 20225f33d00eb4a06e349322dc92e826b29b2e8e (exit 0)",
+    "node scripts/i18n/context-parity.mjs — ok, every English key covered apart from 131 allowed gap(s) in 4 namespace(s) (exit 0)",
+    "node scripts/i18n/check-coverage.mjs — ok, 7 gated language(s) over 85 namespace(s); 0 allowed key(s) remain (exit 0)",
+    "node scripts/i18n/ledger-check.mjs — FAILED, 91 finding(s) across 595 ledger entries; 13 of them name hi. NOT used as a pass signal: every one is the expected pre-receipt state for these uncommitted candidates (stale source/target hashes plus 'receipt does not name the English source bytes on disk'), e.g. hi/ui.chat: stale target_sha256 (ledger 74c236de7e8a…, file 27e9651711db…).",
+    "structural parity (own script, @formatjs/icu-messageformat-parser + intl-messageformat from the repo's node_modules): 115/60/82/26 keys, key sets equal to en, 0 argument issues (names, types and number styles identical), 0 plural/select arm issues, every hi plural carries all hi CLDR categories [one, other] and no arm outside them, 0 code-span or markup differences",
+    "typing (own script): all hi values NFC, no U+202A-202E/2066-2069/200E/200F/061C, no ZWJ/ZWNJ, no Devanagari digits, no NBSP, no straight quotes, leading/trailing spaces match en except the intentional seam in ui.chat.error_block.invalid_key.after (before + ' ' + link + after, error-block.tsx:124-132)",
+    "todos.hidden_summary render, IntlMessageFormat('hi'): count 0 -> \"0 छिपा\", 1 -> \"1 छिपा\", 2 -> \"2 छिपे\", 5 -> \"5 छिपे\", 1000 -> \"1000 छिपे\"; Intl.PluralRules('hi') selects one at 0 and 1, other at 2/5/1000 — matches the hi style guide's '0 is one' rule",
+    "width: cell widths (Devanagari base glyphs, combining marks zero-width) computed for every key; the only hi strings above 1.5x their en width are short single-word controls (run_details.retry 9 vs 5, transcript.edit 7 vs 4, aside.title 8 vs 5, mcp_key.saving 11 vs 7); the largest absolute growth is error_block.provider.before at +13 cells inside an ordinary paragraph; the two maxCells hints are 6/18 (session_status.choose_model) and 7/16 (session_status.last_reading) — no overflow finding",
+    "adjacency: label-in-name verified for every visible-label/accessible-name pair in the new copy (goal_dismiss/बंद करें, goal_done/पूर्ण, fullscreen/पूरी स्क्रीन, question_dock.show/दिखाएँ, asks.dismiss.trigger/हटाएँ, hub_update.dismiss/बंद करें); every split sentence rendered as its component joins it (error_block as before + ' ' + link + ' ' + after for provider/model/rate_limit/unavailable/schema, and before + ' ' + link + after for invalid_key, which is why that key's value starts with a space; question_dock as {prefix} + hint; phase header as '· {count}'); the approval answer tokens stay Latin (yes, no, 1, 2, Escape) in all three hints; typography: danda for sentence ends, ellipsis mirroring en per key, quotation marks only in the U+201C/U+201D pair, no straight quotes, no space before danda, comma or stop"
+  ],
+  "audit_notes_not_execution_log": "This field is reasoning, not an execution log; the commands above were run in this session and their outputs are quoted. Judgements recorded rather than filed: (1) the named args in composer.status.loop_progress_of_turns are reordered ({total} में से {completed}) — required by Hindi postpositional order, names/types/styles identical, ICU arms unchanged; (2) question_dock.hint.approval paraphrases the two buttons ('स्वीकृति दें या अस्वीकार करें') instead of quoting the client's literal English labels from APPROVAL_OPTIONS — accepted, because the literal answer tokens yes/no/1/2 and Escape are kept byte-identical and the paraphrase is the only Hindi guidance a reader who cannot read the English labels gets; (3) mermaid.unexpected_error now ends in a danda where en has no stop — the round-1 fix, and the joined sentence ('…त्रुटि हुई। त्रुटि डायग्राम कंपोनेंट तक ही रही।') reads correctly; the missing English stop is a source defect, not a hi one; (4) chip.attention's subject-less '# को ध्यान चाहिए' mirrors the source's own subject-less clause and is understood in its tooltip context; (5) run_details.subagents_of 'उप-एजेंट — मूल एजेंट' is the round-1 auditor's own suggestion and composes correctly as a shrink-0 prefix before the owner name; (6) `todos.hidden` (header) passes a formatNumber() string while `todos.hidden_summary` (list) uses ::group-off, so at >=1000 the two counts also differ in grouping — the same divergence exists in English, so it is reported as a source observation, not a hi finding. (7) 'साइन-इन' vs 'साइन इन' hyphenation was checked and accepted: the wider hi corpus uses both spellings in attributive position ('साइन-इन तरीका' but also 'साइन इन पेज', 'साइन इन पूरा'), so mcp.grant.failed / mcp.grant.cancelled are variance rather than a rule violation — no finding.",
+  "namespaces": {
+    "ui.chat": {
+      "status": "passed",
+      "keys_audited": 115,
+      "new_keys_audited": 71,
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 1
+      },
+      "sha256": {
+        "en": "6b6e21835462fccbbdbea4cfcca132344595bf3f14804018de64dbe8d9fbacf0",
+        "target": "27e9651711db634d6199f409e85754068a584cb1fb686aed402d0fa2346bdb43",
+        "context": "da5c303c014c469c6096e6ef2e43b993f3ec2b9430ed6ec97498fc457f494372"
+      },
+      "findings": [
+        {
+          "id": "chat-r2-1",
+          "severity": "minor",
+          "key": "ui.chat.error_block.schema.before",
+          "current": "…मॉडल एजेंटिक AI के लिए ज़रूरी जटिल निर्देश नहीं निभा पाता।",
+          "problem": "'निर्देश निभाना' is not a Hindi collocation: निभाना takes a duty, promise or role (ज़िम्मेदारी / वादा / भूमिका निभाना), while instructions are माने जाते हैं or their पालन किया जाता है. The clause reads as a calque of 'follow the instructions' in the paragraph that explains a failed turn.",
+          "suggestion": "…मॉडल एजेंटिक AI के लिए ज़रूरी जटिल निर्देश मान नहीं पाता। (or '…निर्देशों का पालन नहीं कर पाता।')",
+          "evidence": "read in full against error-block.tsx:148-160 (schema arm) and en ui.chat.error_block.schema.before; no placeholder or join change"
+        },
+        {
+          "id": "chat-r2-2",
+          "severity": "nit",
+          "key": "ui.chat.question_dock.hint.prefix",
+          "current": "सवाल {index} / {total}। ",
+          "problem": "Hindi sets a slash closed ('1/2'); the spaces around it are an English habit, and this prefix is prepended to four long hint sentences, so it also costs two cells of width in each.",
+          "suggestion": "सवाल {index}/{total}। ",
+          "evidence": "question-dock.tsx:185-192 prepends it verbatim; trailing space and danda must stay"
+        }
+      ]
+    },
+    "ui.chat.canonical": {
+      "status": "passed",
+      "keys_audited": 60,
+      "new_keys_audited": 13,
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 1
+      },
+      "sha256": {
+        "en": "5a6a30405053c7319b902315bb0a1b38ce1cbd6443ad2d988132d4cbfcb8f2ce",
+        "target": "e6183d9af90e08bf1dde35ab6759c83e428e355a7dbb52a2408b0a0133bb4c5d",
+        "context": "f075f08f152c9484f7dd9790a3b60a3c6c82086d3d9361717afa2188f0773a04"
+      },
+      "findings": [
+        {
+          "id": "canonical-r2-1",
+          "severity": "nit",
+          "key": "ui.chat.canonical.transcript.credential_lost",
+          "also": "ui.chat.canonical.transcript.stale_caption",
+          "current": "इस उत्तर में बताया क्रेडेंशियल अब सत्र के पास नहीं है।",
+          "problem": "The participial adjective drops its गया, so inside a full sentence it reads as headline compression rather than prose; transcript.stale_caption has the same shape ('अंतिम सहेजा दृश्य').",
+          "suggestion": "इस उत्तर में बताया गया क्रेडेंशियल अब सत्र के पास नहीं है। — and in stale_caption 'आख़िरी सहेजा गया दृश्य दिखाया जा रहा है — नए संदेशों की जाँच हो रही है।'",
+          "evidence": "both keys read with their en source and roles (warning line inside an ask receipt; caption above a cached transcript)"
+        }
+      ]
+    },
+    "ui.chat.run_details": {
+      "status": "passed",
+      "keys_audited": 82,
+      "new_keys_audited": 80,
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 2,
+        "nit": 0
+      },
+      "sha256": {
+        "en": "288ba883ed0c25851fa2025ea9a23ff98bcb7f59724ab5bbb2ed5b212ed85b51",
+        "target": "7b858f514e2cc9d76da5aaa26ff840513a43f2bf1eb127b128318a3fd9f650ca",
+        "context": "0f03657304a71236fe9d2bb350a1688dcfd2499624b5d908d80bc2775681a919"
+      },
+      "findings": [
+        {
+          "id": "run_details-r2-1",
+          "severity": "minor",
+          "key": "ui.chat.run_details.mcp_key.replace",
+          "current": "इन साझा कुंजियों की मौजूदा वैल्यू बदलें।",
+          "problem": "'वैल्यू' is the only occurrence of the loan in the whole Hindi catalogue set (1 occurrence) while the settled 'मान' carries the same sense in 29 messages (31 occurrences) — including the secret-value field this dialog family reuses ('गोपनीय मान', ui.chat.question_dock.secret_value_label). One English term now has two renderings.",
+          "suggestion": "इन साझा कुंजियों का मौजूदा मान बदलें।",
+          "evidence": "count over src/i18n/catalogues/hi/*.json: 'वैल्यू' 1 occurrence (this key), standalone 'मान' 31 occurrences across 29 messages; read with mcp_key.replace's role (checkbox under the shared-key note)"
+        },
+        {
+          "id": "run_details-r2-2",
+          "severity": "minor",
+          "key": "ui.chat.run_details.todos.hidden",
+          "current": "· {count} छिपे",
+          "problem": "The adjective is fixed plural and this header slot still receives a preformatted string (run-detail-todos.tsx:290-292), so the ICU repair that landed for todos.hidden_summary cannot reach it. fullyShed (line 231) is true when every row of a phase was shed; with TODO_ITEM_CAP 10 and shedding oldest-first across the plan (run-detail-model.ts:3673-3691), a plan of 11 closed rows sheds exactly the first one, so a phase whose only row is that row renders '· 1 छिपे' — wrong agreement for one hidden to-do.",
+          "suggestion": "Pass the number and a plural key here as the sibling slot now does, e.g. {count, plural, one {· {count, number, ::group-off} छिपा} other {· {count, number, ::group-off} छिपे}}. If the slot must stay a formatted string, '· छिपे: {count}' is number-neutral.",
+          "evidence": "code-derived from run-detail-todos.tsx:231,283-296 and run-detail-model.ts:3654-3699 (read, not executed: the module's @shared/i18n alias blocks a standalone import). Round-1 run_details-M3 covered both slots; the source fix closed only the list slot."
+        }
+      ]
+    },
+    "ui.chat.asks": {
+      "status": "passed",
+      "keys_audited": 26,
+      "new_keys_audited": 14,
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "sha256": {
+        "en": "6c42d235f1e326fc0cc0fea91668307d4e551585eef33b5fe1c2173efc2bc9fd",
+        "target": "3451a4efede78e11ed1eb7471110109abff2f8d808189c472438c76fe0b30538",
+        "context": "9e137d7e8f6227827196c244a9550520cd5ee412ffeaef615a7e33bf0193903c"
+      },
+      "findings": []
+    }
+  },
+  "round_1_check": {
+    "receipt": "i18n/receipts/hi-chat-surfaces-audit-d366b03a4dfe.json",
+    "result": "every round-1 BLOCKER/MAJOR resolved; every minor and nit resolved or reasonably handled",
+    "items": [
+      "chat-N1 (error_block connective) — resolved: all five pre-link clauses now use के लिए (provider/model/rate_limit/invalid_key/unavailable/schema)",
+      "chat-N2 (mermaid danda) — resolved: ui.chat.mermaid.unexpected_error now ends '…त्रुटि हुई।' and the joined sentence reads correctly",
+      "chat-N3 (rate_limit.all_after comma) — resolved: 'खोलें — बिना रेट सीमा के सभी AI मॉडल कम दाम पर पाने के लिए।'",
+      "canonical-M1 (short labels without copula) — resolved: लोड नहीं हुआ / पहले लोड नहीं हुआ / लोड नहीं हो सका",
+      "run_details-M1 (subagents_of) — resolved as suggested: 'उप-एजेंट — मूल एजेंट' (renders as a shrink-0 prefix before the owner name, run-child-subagents.tsx:223-235)",
+      "run_details-M2 (reader.delegated_with) — resolved: 'सौंपे गए निर्देश' names the block below it",
+      "run_details-M3 (todos.hidden agreement) — partly resolved: the list slot now uses the new ICU key todos.hidden_summary; the fully-shed header slot still takes a preformatted string and remains run_details-r2-2",
+      "run_details-N1 (wake_cancel.keep) — resolved: 'रहने दें', with 'चलने दें' kept for the job/monitor keeps",
+      "run_details-N2 (reader.error_shortened) — resolved: 'ट्रांसपोर्ट पर छोटा किया गया।'"
+    ]
+  },
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [
+      "chat-r2-1",
+      "chat-r2-2",
+      "canonical-r2-1",
+      "run_details-r2-1",
+      "run_details-r2-2"
+    ],
+    "note": "Four namespaces pass; two minors and two nits are recorded, not gating. No blocker or major remains, and no round-1 blocker/major is outstanding."
+  }
+}

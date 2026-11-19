@@ -1,0 +1,5 @@
+{
+	"ui.library.errors.preview_load": "Не удалось загрузить предпросмотр.",
+	"ui.library.errors.asset_read": "Не удалось прочитать содержимое ресурса.",
+	"ui.library.errors.empty_bytes": "Байты отсутствуют."
+}

@@ -1,0 +1,128 @@
+{
+  "schema": 1,
+  "locale": "fr",
+  "branch": "feat/i18n-s7",
+  "head": "31710e01b6b6e1e0aae6ed56d5e4467de6611740",
+  "base": "0ad5542379a349a98e0a8d602dbd992746fd40a2",
+  "main_base": "41c265cbff628f8c6add089f6c042363a131f24c",
+  "instance": "34bf406336f0",
+  "agent": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "34bf406336f0",
+    "model": "openai/gpt-6.1-sol",
+    "independence": "Independent reviewer; did not write translations; no catalogue, ledger, allowance or generator edits.",
+    "fallback": "Provider quota fallback notifications: anthropic/claude-sonnet-5-5 → anthropic/claude-opus-5-5 → openai/gpt-6.1-sol. Audit performed on final served model."
+  },
+  "date": "2026-11-09",
+  "status": "passed",
+  "result": "clean",
+  "scope": "29 additions only: 7 agents.pages, 16 chat.run_details, 6 notices; existing English canonical labels and encoder wire diagnostics excluded.",
+  "namespaces": {
+    "ui.agents.pages": {
+      "status": "passed",
+      "source_sha256": "0b2e8e8a93001604df2d7a49abe57c8070f29ef30b50209bc3a84cbdc43b540f",
+      "target_sha256": "093573d8d95defcc626a7ae7c873e52b50a00487e24092ca1264b777e480abd2",
+      "sha256": {
+        "en": "0b2e8e8a93001604df2d7a49abe57c8070f29ef30b50209bc3a84cbdc43b540f",
+        "fr": "093573d8d95defcc626a7ae7c873e52b50a00487e24092ca1264b777e480abd2"
+      },
+      "keys_audited": [
+        "ui.agents.pages.backend.connecting",
+        "ui.agents.pages.backend.loading_capabilities",
+        "ui.agents.pages.change.new",
+        "ui.agents.pages.backend.upgrade_heading",
+        "ui.agents.pages.backend.unreachable",
+        "ui.agents.pages.backend.upgrade_body",
+        "ui.agents.pages.change.updated"
+      ],
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      }
+    },
+    "ui.chat.run_details": {
+      "status": "passed",
+      "source_sha256": "02877dbbfba534fb2467008550d55ffd45c928c990b89c3d1a72acbfc76d2d50",
+      "target_sha256": "d685ee912431f5f953a4b0179dd8637db63571f75d36f23ddf93a8bfbc6853eb",
+      "sha256": {
+        "en": "02877dbbfba534fb2467008550d55ffd45c928c990b89c3d1a72acbfc76d2d50",
+        "fr": "d685ee912431f5f953a4b0179dd8637db63571f75d36f23ddf93a8bfbc6853eb"
+      },
+      "keys_audited": [
+        "ui.chat.run_details.child.result.preview",
+        "ui.chat.run_details.child.result.title",
+        "ui.chat.run_details.child.result.unavailable_clipped",
+        "ui.chat.run_details.child.result.unavailable",
+        "ui.chat.run_details.child.brief.show_less",
+        "ui.chat.run_details.child.brief.show_more",
+        "ui.chat.run_details.mcp_auth.upgrade",
+        "ui.chat.run_details.mcp_auth.no_references",
+        "ui.chat.run_details.mcp_auth.unknown_method",
+        "ui.chat.run_details.mcp_auth.waiting",
+        "ui.chat.run_details.mcp_auth.status",
+        "ui.chat.run_details.mcp_auth.status_unavailable",
+        "ui.chat.run_details.mcp_failure.cancel_lead",
+        "ui.chat.run_details.mcp_failure.busy",
+        "ui.chat.run_details.mcp_failure.refused",
+        "ui.chat.run_details.mcp_failure.session"
+      ],
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      }
+    },
+    "ui.notices": {
+      "status": "passed",
+      "source_sha256": "043243b66381b6fa1143acb645ce0c83fcb381883038ef88bbcb28e36764b112",
+      "target_sha256": "eddf5f4e45f3f68a3a2413d812af7bd168f44060236ff41d9518af264a5ae354",
+      "sha256": {
+        "en": "043243b66381b6fa1143acb645ce0c83fcb381883038ef88bbcb28e36764b112",
+        "fr": "eddf5f4e45f3f68a3a2413d812af7bd168f44060236ff41d9518af264a5ae354"
+      },
+      "keys_audited": [
+        "ui.notices.aida.paused_receipt",
+        "ui.notices.aida.resumed_receipt",
+        "ui.notices.aida.paused",
+        "ui.notices.aida.active",
+        "ui.notices.aida.account_required",
+        "ui.notices.aida.open_fallback"
+      ],
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      }
+    }
+  },
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [],
+    "nit": []
+  },
+  "protocol": {
+    "literal_source": "$'{'NAME'}'",
+    "rendered": "${NAME}",
+    "group_off_occurrences": 2,
+    "status": "PASS"
+  },
+  "manual_assessment": {
+    "terminology": "agent/équipe/sous-agent/conversation/connexion preserved; no newly translated organisation concept in these additions.",
+    "backend": "Verified pre-existing French VALUES (not merely keys) use backend in ui.agents.detail and ui.notices; retaining backend is established usage.",
+    "notices": "Terse factual statuses; longer receipts preserve behavioural consequences without verbosity beyond existing notices.",
+    "run_details": "Technical register consistently uses serveur, configuration MCP, références à des secrets, en-têtes, connexion; OAuth/MCP and protocol tokens intentionally retained.",
+    "english": "No unintended untranslated prose among the 29 additions.",
+    "visual": "Not performed: linguistic/ICU audit only; browser tool unavailable in reviewer role."
+  },
+  "evidence": {
+    "record": "i18n/audits/evidence/fr/ui.agents.pages/s7-fr-34bf406336f0/record.json",
+    "report": "i18n/audits/evidence/fr/ui.agents.pages/s7-fr-34bf406336f0/report.md"
+  }
+}

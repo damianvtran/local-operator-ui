@@ -1,0 +1,83 @@
+{
+	"auditor": "i18n-auditor",
+	"model": "deepseek/deepseek-flash",
+	"instance": "51f78513d13c",
+	"locale": "fr",
+	"namespace": "ui.common.time",
+	"date": "2026-11-12",
+	"round": 1,
+	"kind": "landed-bytes confirmation of the four live-locale time words (first audit of these keys; values audited pre-landing were proven byte-identical after landing)",
+	"status": "passed",
+	"sha256": {
+		"en": "bb0b3aa1a71679cc73cb40d73616b5e22057c7dcbc86705c2ec4425984971e13",
+		"fr": "61934e35bbc1451f100d5935e061d3ad869b3c5cf679dd23f933c6ac5c5684b4"
+	},
+	"head": "b2110ea9cd9fd0c103891a4a77b65ba741012cf4",
+	"scope": "ui.common.time, the 4 keys English adds over the previously landed fr file (today_at, yesterday, weekday_at, date_at), at PR #1877 head b2110ea9; sibling yesterday_at read for consistency, not re-audited. English source, its context sidecar, the fr style guide and the core glossary.",
+	"method": "Landed-bytes confirmation: re-hashed the merged fr catalogue (61934e35…, equal to the manager's recorded value) and proved each of the 4 values byte-identical to the audited candidate (per-value sha256 and the 4-pair sorted-key compact hash 263069ff… both unchanged), then re-ran the auditor's own checker against the FILE on disk rather than the pre-landing draft: esbuild-bundled the head's src/i18n/messages.ts + format.ts + message-grouping.ts + date-utils.ts (write:false, data: URL import), registered the landed catalogue as fr, set the locale to fr, and rendered formatDividerLabel / formatMessageDateTime for today, yesterday, a weekday and an old date. Composed output: 'Aujourd’hui à 14:30', 'Hier à 18:07', 'mardi à 14:30', '4 novembre 2026 à 14:30', standalone 'Hier'. Mechanical: ICU AST placeholder parity against English, NFC, no bidi controls, no U+0027, negative controls (dropped/renamed/added placeholder, English left, NFD) all caught. Repository validators in a scratch mirror of the head: generate.mjs --check byte-identical, check-coverage ok (7 gated languages, 0 allowances), locale-parity 44/44, activation 8/8 (includes the shipped fr catalogue rendering in French), context-parity 8/8.",
+	"keys_read": 5,
+	"keys_audited": [
+		"ui.common.time.today_at",
+		"ui.common.time.yesterday",
+		"ui.common.time.weekday_at",
+		"ui.common.time.date_at"
+	],
+	"input_hashes": {
+		"en": "bb0b3aa1a71679cc73cb40d73616b5e22057c7dcbc86705c2ec4425984971e13",
+		"context": "a9069037edc11c59288a7c2d3171496b1ef44a0982fc28e6a0edb4bcae0f98d2",
+		"fr": "61934e35bbc1451f100d5935e061d3ad869b3c5cf679dd23f933c6ac5c5684b4",
+		"candidate_sorted_key_compact": "263069ffcecb4a0fdda89001350b9de46d42a3062010da5a7422d2aa4551b3ef",
+		"landed_sorted_key_compact": "263069ffcecb4a0fdda89001350b9de46d42a3062010da5a7422d2aa4551b3ef",
+		"values": {
+			"ui.common.time.today_at": "d393e65581522d8b5caf4f11bb19c9dc4385c039153f35bbcfd1a1ee14a31d3d",
+			"ui.common.time.yesterday": "477a18d2c0f6cf2b814bf5afa44cd1da6ba83c0a0fe3f972899750f9af8b18d6",
+			"ui.common.time.weekday_at": "4bba8cf8dc63bf51dd88b6f32fb79c20b82648ff54be0c720d7967acf3356360",
+			"ui.common.time.date_at": "95c67b754f8e8bd7f2f66b8430a9c8d4c0faa2aeac154d9c14abc467a57a4cb0"
+		}
+	},
+	"findings": [],
+	"observations": [
+		{
+			"severity": "info",
+			"id": "OBS-1",
+			"topic": "lowercase weekday at the start of the composed divider label",
+			"note": "fr composes 'mardi à 14:30': {weekday} is formatDate(date,{weekday:'long'}) i.e. CLDR fr, lowercase by definition, and it lands at the start of a label where French capitalises. No catalogue spelling can fix it (the placeholder is inserted unchanged) and no text-transform:capitalize exists in the chat components (it would give 'Lundi À 14:30'). Formatter/component fix: capitalise the composed line's first character — harmless in en, whose weekdays already are. The same artifact reaches production via formatMessageDateTime's within-week branch, outside this key group. Not a defect of these four values."
+		},
+		{
+			"severity": "info",
+			"id": "OBS-2",
+			"topic": "single-digit hour in fr",
+			"note": "{hour:'numeric'} is pinned for English byte-identity ('3:42 PM'), so fr prints '9:05' where the locale's own timeStyle:'short' is '09:05'. French time-of-day notation tolerates a one-digit hour ('9 h 05'), so this is a preference, not an error, and it is not a property of these keys (the sibling yesterday_at inherits it). Any fix is a locale-conditional 2-digit hour in src/i18n/format.ts."
+		}
+	],
+	"audit_notes_not_execution_log": "Composed outputs quoted here were produced by running the app's own bundled formatter against the landed file; the run log is a companion artifact (audit.log, ALL PASS). No translation or MT service was used for comparison or back-translation. Judgement is the auditor's reading against the style guide, glossary and the locale's shipped copy.",
+	"commands_actually_run": [
+		"shasum -a 256 src/i18n/catalogues/fr/ui.common.time.json -> 61934e35bbc1451f100d5935e061d3ad869b3c5cf679dd23f933c6ac5c5684b4",
+		"node check-s16d-fr-landed.mjs (worktree root, esbuild bundle of head's messages/format/message-grouping/date-utils + intl-messageformat, landed catalogue registered) -> ALL PASS, exit 0",
+		"node scripts/i18n/generate.mjs --check (mirror) -> keys.gen.ts byte-identical, exit 0",
+		"node scripts/i18n/check-coverage.mjs (mirror) -> ok, 7 gated languages / 158 namespaces / 0 allowances, exit 0",
+		"node --test scripts/i18n/locale-parity.test.mjs (mirror) -> 44/44 pass",
+		"node --test scripts/i18n/context-parity.test.mjs (mirror) -> 8/8 pass",
+		"node --test scripts/i18n/activation.test.mjs (mirror) -> 8/8 pass, incl. 'the shipped fr catalogue renders the report's strings in French' (no fr-activation.test.mjs exists; fr is covered by this generic test)",
+		"node scripts/i18n/ledger-check.mjs (mirror, pre-assemble) -> 21 findings / 1106 rows, exactly 3 for fr (stale source, stale target, receipt names other bytes)",
+		"node scripts/i18n/ledger-assemble.mjs (mirror) -> row written, status audited; node scripts/i18n/ledger-check.mjs -> exit 0, 0 findings"
+	],
+	"verdicts": {
+		"ui.common.time": {
+			"status": "passed",
+			"blocker": 0,
+			"major": 0,
+			"minor": 0,
+			"nit": 0,
+			"keys_read": 4
+		}
+	},
+	"overall": {
+		"status": "passed",
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 0,
+		"keys_read": 4
+	}
+}

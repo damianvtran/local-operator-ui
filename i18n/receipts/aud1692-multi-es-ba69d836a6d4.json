@@ -1,0 +1,64 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "date": "2026-11-05",
+  "locale": "es",
+  "namespace": "ui.settings.appearance.editor",
+  "instance": "aud1692-multi-es-ba69d836a6d4",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "ba69d836a6d4",
+    "instance": "aud1692-multi-es-ba69d836a6d4",
+    "model": "openai/gpt-6.1-sol",
+    "model_source": "Host session-state on 2026-11-05 identifies openai/gpt-6.1-sol; earlier quota fallback in this session disclosed.",
+    "independent_from_translator_session": true,
+    "independence": "Separate agent/session from translator fd3ba80e8c8f; no audited translations authored or remediated by auditor."
+  },
+  "model": "openai/gpt-6.1-sol",
+  "status": "passed",
+  "result": "clean",
+  "sha256": {
+    "en": "b02c6ea9e8a0854cc3879de025f4e1dc14e940a2b44db04afb75dc42b1711661",
+    "es": "76f7076c423553986ddca101975f9dcb1214782147f0b997bb719c3e19057a6b"
+  },
+  "context_sha256": "6882beca38567bd97e56a145ed579def86c704316d34116eeaa61ef20acaa3a0",
+  "scope": "11 new multi-accent editor keys only (PR #1692). Previous 160 keys retained from C audit with per-value UTF-8 byte compatibility against base 1496153; no old audit reset.",
+  "head": "78d84573cb687bf593a9b2e385d7bf5a9056ca3a",
+  "base": "149615374bfb90b2539c60b1016286c880258d5f",
+  "key_count": 11,
+  "keys_audited": [
+    "ui.settings.appearance.editor.accents",
+    "ui.settings.appearance.editor.accent.primary",
+    "ui.settings.appearance.editor.accent.primary_usage",
+    "ui.settings.appearance.editor.accent.secondary",
+    "ui.settings.appearance.editor.accent.secondary_usage",
+    "ui.settings.appearance.editor.accent.variants",
+    "ui.settings.appearance.editor.accent.secondary_help",
+    "ui.settings.appearance.editor.accent.effective",
+    "ui.settings.appearance.editor.preview.identity",
+    "ui.settings.appearance.editor.preview.category",
+    "ui.settings.appearance.editor.preview.meta"
+  ],
+  "findings": [],
+  "translator": {
+    "session": "fd3ba80e8c8f",
+    "agent": "task",
+    "model": "openai/gpt-6.1-sol",
+    "model_evidence": {
+      "path": "~/.local-operator/sessions/fd3ba80e8c8f/transcript.jsonl",
+      "event": "session_spend.v1",
+      "observed_calls": [
+        89,
+        90,
+        91
+      ],
+      "last_identity": {
+        "provider": "openai",
+        "model_id": "gpt-6.1-sol"
+      },
+      "note": "Serving identity read from per-call ledger, not inferred from configured model."
+    }
+  },
+  "initial_source_audit_head": "f043579ec5d1c7aba7eed34703806dc3c75d3b99",
+  "source_compatibility": "All 171 English/locale values, whole catalogue bytes, English context, and locale-parity gate are byte-identical to f043579; 11-key source audit retained."
+}

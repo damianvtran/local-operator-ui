@@ -1,0 +1,62 @@
+{
+  "auditor": "i18n-auditor-es",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "c3e8a1f72b95",
+  "locale": "es",
+  "namespace": "ui.chat.tags",
+  "status": "clean-with-findings",
+  "keys_audited": 54,
+  "sha256": {
+    "en": "2d300213e1eb2712e757fa820867fc50c58ef98c4dcf5ca540ad593cf450d0fe",
+    "es": "68ec44a83e066bf7e303ba7699edcafd7e97062e8e0e6e7606076fa6adaea943"
+  },
+  "independence": "Independent linguistic review; no application/catalogue edits. Actual fallback model disclosed by session model-switch notice.",
+  "findings": [
+    {
+      "id": "ES-1",
+      "severity": "MINOR",
+      "key": "ui.chat.tags.delete_description",
+      "file": "src/i18n/catalogues/es/ui.chat.tags.json:30",
+      "description": "The many branch renders \"1000000 de conversaciones\". With a numeric digit string rather than the noun millón/millones, the extra de is ungrammatical. Ordinary one/other counts are correct.",
+      "recommendation": "Remove de in the many branch when rendering the full numeric count, or render millón/millones as words with the appropriate number formatter.",
+      "evidence": "IntlMessageFormat(es message, es), count=1000000 => Quita esta etiqueta de 1000000 de conversaciones."
+    },
+    {
+      "id": "ES-2",
+      "severity": "MINOR",
+      "key": "ui.chat.tags.remove_all",
+      "related_keys": [
+        "ui.chat.tags.removed_all",
+        "ui.chat.tags.move_description",
+        "ui.chat.tags.clear",
+        "ui.chat.tags.delete_tag"
+      ],
+      "file": "src/i18n/catalogues/es/ui.chat.tags.json:45-46,54",
+      "description": "Assignment removal uses Eliminar, the same verb as deleting a tag globally, while clear uses Quitar. The conversation-menu context prevents a blocking misunderstanding, but the distinction between removing a conversation assignment and deleting the tag entity is weaker than in English.",
+      "recommendation": "Use Quitar consistently for removing tag assignments (including the success toast and move description); retain Eliminar for deleting tag entities.",
+      "evidence": "chat-sidebar.tsx:6377-6386 invokes moveChatToTag(row, untagged) for remove_all; chat-tag-move.ts emits removed_all after assignSessionTags, not tag deletion."
+    },
+    {
+      "id": "ES-3",
+      "severity": "NIT",
+      "key": "ui.chat.tags.move_title",
+      "related_keys": [
+        "ui.chat.tags.picker_title",
+        "ui.chat.tags.delete_title",
+        "ui.chat.tags.moved_to",
+        "ui.chat.tags.move_armed"
+      ],
+      "file": "src/i18n/catalogues/es/ui.chat.tags.json:9,29,44,49,53",
+      "description": "The V2-1 strings use Spanish angle quotation marks «…», while existing strings use curly double quotation marks “…”. Both are understandable; the namespace is typographically inconsistent.",
+      "recommendation": "Use a single quotation style throughout the Spanish namespace, preferably «…»."
+    }
+  ],
+  "checks": {
+    "coverage": "Read and compared all 54 English/Spanish pairs, including all 12 V2-1 keys; checked meaning, informal tú register, grammar, plurals, interpolation, typography, movement, assignment removal, Undo, Untagged and changed-elsewhere semantics. No English-fallback substitutions accepted.",
+    "icu": "Executed @formatjs/icu-messageformat-parser and IntlMessageFormat across all 54 messages; identical key and argument sets, all messages parsed/formatted. Exercised delete_description and remove_all at count 0, 1, 2, 1000000.",
+    "register": "Informal tú imperatives are consistent (Haz, elige, pulsa, Crea, Inténtalo, Aplica); infinitive action labels do not conflict.",
+    "length_risk": "Static source-code-point lengths: move_description EN 64 / ES 92; discovery 87 / 110; picker_description 56 / 77. Long descriptions may wrap. No measured clipping finding: this role has no browser tool and did not render the UI.",
+    "limitations": "Linguistic and ICU audit only, not a rendered layout or independent application-flow QA pass."
+  },
+  "verdict": "clean; TERMINAL with nonblocking minor/nit findings; zero blocker/major"
+}

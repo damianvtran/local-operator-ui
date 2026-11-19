@@ -30,6 +30,7 @@ import {
 } from "node:path";
 import { after, afterEach, before, test } from "node:test";
 import { build } from "esbuild";
+import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
 
 /**
  * Contract checks for the update path.
@@ -81,6 +82,7 @@ const {
 	appBundleFromExecutable,
 	buildPipUpgradeCommand,
 	buildWatchdogPlan,
+	watchdogMessages,
 	classifyGlobalInstall,
 	clearPendingInstallMarker,
 	compareVersions,
@@ -213,7 +215,7 @@ const notarizeStepBundle = await build({
 					loader: "js",
 					contents: `
 							export const notarize = async (opts) => {
-								globalThis.__loNotarizeCalls.push({ appPath: opts.appPath, tool: opts.tool });
+								globalThis.__loNotarizeCalls.push({ appPath: opts.appPath, tool: opts.tool, appleApiKey: opts.appleApiKey, appleApiKeyId: opts.appleApiKeyId, appleApiIssuer: opts.appleApiIssuer, appleId: opts.appleId });
 								const behavior = globalThis.__loNotarizeBehavior;
 								if (behavior) await behavior(opts);
 							};
@@ -237,6 +239,8 @@ const {
 	discoverDmg,
 	discoverArtifacts,
 	hostTranslatesExecutable,
+	LAUNCH_PROBE_FLAG,
+	LAUNCH_PROBE_MARKER,
 	mainExecutablePath,
 	profileAuthorizationCheck,
 	profileAuthorizes,
@@ -244,9 +248,12 @@ const {
 	seedVersionCheck,
 	SPAWN_PROBE_TIMEOUT_MS,
 	SPAWN_PROBE_TRANSLATED_TIMEOUT_MS,
+	spawnRunner,
 	summarize,
 	verifyArtifacts,
 } = await import("./verify-macos-artifacts.mjs");
+/** What a healthy packaged bundle prints for `--lo-launch-probe`. */
+const HEALTHY_LAUNCH_PROBE = `${LAUNCH_PROBE_MARKER} {"ok":true,"electron":"45.1.0","node":"24","v8":"14","arch":"arm64","packaged":true}\n`;
 // The Mach-O cpu types the gate's translation rule compares against, imported
 // rather than spelled out here so the fixture and the rule cannot drift apart.
 const { MACH_O_CPUTYPE } = await import("./prune-python-seed.mjs");
@@ -983,6 +990,56 @@ test("pending marker survives a write, detects failure or success, and clears", 
 	writeFileSync(pendingInstallMarkerPath(dir), "{not json", "utf8");
 	assert.equal(readPendingInstallMarker(dir), null);
 	assert.equal(parsePendingInstallMarker('{"targetVersion":""}'), null);
+});
+
+test("the marker's language is optional, validated, and invisible to an older reader", () => {
+	const dir = tempDir("lo-marker-language-");
+	const written = writePendingInstallMarker(dir, {
+		targetVersion: "0.42.0",
+		artifactPath: "/tmp/LO-0.42.0.zip",
+		startedAt: "2026-10-25T10:00:00.000Z",
+		watchdogPid: 1234,
+		installerPid: null,
+		language: "fr",
+	});
+	// Round-trips: the hold can read the tag the quitting process recorded.
+	assert.equal(readPendingInstallMarker(dir)?.language, "fr");
+	assert.equal(written.language, "fr");
+
+	/*
+	 * A marker written by the app before this field existed is still VALID - the
+	 * absence is what tells the hold to fall back to the device reading, and an
+	 * older reader ignores the key it does not know (rollback-safe).
+	 */
+	const legacy = parsePendingInstallMarker(
+		JSON.stringify({
+			targetVersion: "0.42.0",
+			artifactPath: "/tmp/LO-0.42.0.zip",
+			startedAt: "2026-10-25T10:00:00.000Z",
+			watchdogPid: null,
+			installerPid: null,
+		}),
+	);
+	assert.ok(legacy, "a pre-language marker must still parse");
+	assert.equal("language" in legacy, false);
+
+	// The file is writable by anything, so the parser is the gate: an unusable
+	// tag is treated exactly like an absent one rather than reaching ICU.
+	for (const bad of ["fr/../../etc", "", "en US", 42, null]) {
+		const parsed = parsePendingInstallMarker(
+			JSON.stringify({
+				targetVersion: "0.42.0",
+				language: bad,
+			}),
+		);
+		assert.ok(parsed);
+		assert.equal(
+			"language" in parsed,
+			false,
+			`${JSON.stringify(bad)} was accepted as a language`,
+		);
+	}
+	rmSync(dir, { recursive: true, force: true });
 });
 
 /**
@@ -1934,12 +1991,41 @@ test("the watchdog is built from the app's pid and the ShipIt job, not a name pa
 	);
 	assert.match(
 		plan.script,
-		/\$app_wait_notice" -eq 0 \] && \[ "\$_waited" -ge 15 \]; then\n\t\tapp_wait_notice=1\n\t\tnotify "Waiting for Local Operator to close so the update can install \(waiting \$\(elapsed_text\)\)\. No action is needed yet\."/,
+		/\$app_wait_notice" -eq 0 \] && \[ "\$_waited" -ge 15 \]; then\n\t\tapp_wait_notice=1\n\t\tnotify "\$\(compose_elapsed "\$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_PREFIX" "\$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_ELAPSED" "\$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_SUFFIX"\)"/,
 	);
 	assert.match(
 		plan.script,
-		/\$app_wait_fallback" -eq 0 \] && \[ "\$_waited" -ge 160 \]; then\n\t\tapp_wait_fallback=1\n\t\tnotify "The update is still waiting for Local Operator to close \(waiting \$\(elapsed_text\)\)\. If nothing happens, quit Local Operator \(Force Quit if it does not respond\) and leave it closed until it opens again by itself\."/,
+		/\$app_wait_fallback" -eq 0 \] && \[ "\$_waited" -ge 160 \]; then\n\t\tapp_wait_fallback=1\n\t\tnotify "\$\(compose_elapsed "\$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK_PREFIX" "\$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK_ELAPSED" "\$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK_SUFFIX"\)"/,
 	);
+	/*
+	 * The copy itself is DATA in the plan's environment now (agent review round 1,
+	 * R1-1/R1-3): a translation must never become shell source. Since R2 M2-1 the
+	 * elapsed sentences are SPLIT around the token and composed by a fixed
+	 * `printf '%s%s%s'` whose arguments are the sentence halves and the shell's
+	 * reading - so the sentence is never a format, and a leading hyphen, a
+	 * backslash or a percent in it cannot be interpreted.
+	 */
+	assert.equal(
+		plan.env.LO_UPDATE_WATCHDOG_MSG_APP_WAIT_PREFIX,
+		"Waiting for Local Operator to close so the update can install (waiting ",
+	);
+	assert.equal(
+		plan.env.LO_UPDATE_WATCHDOG_MSG_APP_WAIT_SUFFIX,
+		"). No action is needed yet.",
+	);
+	assert.equal(plan.env.LO_UPDATE_WATCHDOG_MSG_APP_WAIT_ELAPSED, "1");
+	assert.equal(
+		plan.env.LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK_PREFIX,
+		"The update is still waiting for Local Operator to close (waiting ",
+	);
+	assert.match(
+		plan.env.LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK_SUFFIX,
+		/If nothing happens, quit Local Operator \(Force Quit if it does not respond\) and leave it closed until it opens again by itself\./,
+	);
+	assert.equal(plan.env.LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK_ELAPSED, "1");
+	assert.match(plan.script, /compose_elapsed\(\) \{/);
+	assert.match(plan.script, /printf '%s%s%s' "\$1" "\$\(elapsed_text\)" "\$3"/);
+	assert.match(plan.script, /printf '%s' "\$1"/);
 	/*
 	 * The hard bound's notice tells the truth on BOTH arms (2026-10-11): the arm
 	 * where the app is STILL RUNNING is the arm that exits without launching
@@ -1950,7 +2036,7 @@ test("the watchdog is built from the app's pid and the ShipIt job, not a name pa
 	 */
 	assert.match(
 		plan.script,
-		/if app_running; then\n\t\t\t\tnotify "The update is still waiting for Local Operator to close/,
+		/if app_running; then\n\t\t\t\tnotify "\$\(compose_elapsed "\$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK_PREFIX"/,
 	);
 	assert.match(plan.script, /hard_deadline=\$\(\( \$\(now\) \+ 1800 \)\)/);
 	// The hold is keyed on `install_live`, which is the installer's own pid for an
@@ -1961,11 +2047,15 @@ test("the watchdog is built from the app's pid and the ShipIt job, not a name pa
 	// wait/fallback copy, app gone -> the stay-closed copy.
 	assert.match(
 		plan.script,
-		/&& install_live; then\n\t\t\tholding=1\n(?:\t\t\t# [^\n]*\n)*\t\t\tif app_running; then\n\t\t\t\tnotify "The update is still waiting for Local Operator to close/,
+		/&& install_live; then\n\t\t\tholding=1\n(?:\t\t\t# [^\n]*\n)*\t\t\tif app_running; then\n\t\t\t\tnotify "\$\(compose_elapsed "\$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK_PREFIX"/,
 	);
 	assert.match(
 		plan.script,
-		/\t\t\telse\n\t\t\t\tnotify "The update is still installing\. Keep Local Operator closed; it will open again when the install finishes\."/,
+		/\t\t\telse\n\t\t\t\tnotify "\$LO_UPDATE_WATCHDOG_MSG_STILL_INSTALLING"/,
+	);
+	assert.equal(
+		plan.env.LO_UPDATE_WATCHDOG_MSG_STILL_INSTALLING,
+		"The update is still installing. Keep Local Operator closed; it will open again when the install finishes.",
 	);
 	/*
 	 * And the script's own reader of the installer's pid asks the same second
@@ -2060,9 +2150,22 @@ test("the watchdog is built from the app's pid and the ShipIt job, not a name pa
 		/value\.length/,
 		"the hold guard must not fall back to a non-empty test: that is the split round 3 unified",
 	);
-	// Backgrounded with its status dropped, so a notifier that fails, hangs or
-	// does not exist cannot decide anything or hold the script open.
-	assert.match(plan.script, /"Local Operator" >\/dev\/null 2>&1 &/);
+	/*
+	 * Backgrounded with its status dropped, so a notifier that fails, hangs or
+	 * does not exist cannot decide anything or hold the script open. The fixed
+	 * title is the FIRST operand and the translated body the second (R3-1):
+	 * osascript parses a leading "-" argument as its own option, so the title is
+	 * what ends option parsing before the translator-authored sentence; the body
+	 * must stay the second argument and the mapping must swap accordingly.
+	 */
+	assert.match(
+		plan.script,
+		/-e 'end run' "Local Operator" "\$1" >\/dev\/null 2>&1 &/,
+	);
+	assert.match(
+		plan.script,
+		/display notification \(item 2 of argv\) with title \(item 1 of argv\)/,
+	);
 
 	const bounded = buildWatchdogPlan({
 		appBundlePath: "/Applications/Local Operator.app",
@@ -2359,7 +2462,12 @@ tr -d '\\n\\t' < "$plist" | sed -n 's|.*<key>CFBundleShortVersionString</key><st
 	const setNotifierExit = (exitCode = 0) => {
 		writeFileSync(
 			notifierShim,
-			`#!/bin/sh\necho "$*" >> "${notifyLog}"\nexit ${exitCode}\n`,
+			/*
+			 * printf, not echo: `/bin/sh` echo interprets backslash escapes and `\c`
+			 * stops the line, which would silently truncate the very sentences this
+			 * shim exists to record. The watchdog passes its text as one argument.
+			 */
+			`#!/bin/sh\nprintf '%s\\n' "$*" >> "${notifyLog}"\nexit ${exitCode}\n`,
 			"utf8",
 		);
 	};
@@ -3336,6 +3444,107 @@ test(
 			before,
 			"the watchdog started the app into an install while the app was still running",
 		);
+		app.kill();
+		installer.kill();
+	},
+);
+
+test(
+	"a translated watchdog sentence is data, not shell syntax",
+	{ skip: process.platform !== "darwin" },
+	async () => {
+		const dir = tempDir("lo-watchdog-copy-escape-");
+		const fixture = makeWatchdogFixture(dir);
+		const pwned = join(dir, "pwned-by-a-translation");
+		const hostile = [
+			"-n leading option",
+			"quote \"double\" and 'single'",
+			"backslash \\c and literal \\ inside",
+			`tick \`touch ${pwned}\``,
+			`sub $(touch ${pwned})`,
+			"Unicode ✓ عربى",
+			"percent 100% and elapsed {elapsed} end",
+		].join("\n");
+		const app = startProcess("/bin/sleep", ["60"]);
+		const installer = startProcess("/bin/sleep", ["60"]);
+		const plan = buildWatchdogPlan({
+			appBundlePath: fixture.bundle,
+			executableName: "Fixture",
+			appPid: app.pid,
+			installerPid: installer.pid,
+			shipItJob: "com.local-operator.ShipIt",
+			platform: "darwin",
+			signals: fixture.probes,
+			timeoutSeconds: 2,
+			hardTimeoutSeconds: 3,
+			intervalSeconds: 1,
+			settleSeconds: 1,
+			appearSeconds: 1,
+			announceSeconds: 1,
+			/*
+			 * Raise on the FIRST poll. This case is about the sentence's bytes, not
+			 * about the one-second threshold; with a two-second deadline a loaded
+			 * host can sleep past the threshold and break before it fires, which
+			 * made the assertion intermittently see only the fallbacks. Threshold
+			 * timing is covered by the wait/hard-bound case below.
+			 */
+			appWaitNoticeSeconds: 0,
+			appWaitFallbackSeconds: 2,
+			messages: {
+				...watchdogMessages(),
+				appWait: hostile,
+			},
+		});
+		const watchdog = runWatchdog({
+			plan,
+			binDir: fixture.binDir,
+			env: { LOCAL_OPERATOR_NO_NOTIFICATIONS: undefined },
+		});
+		const deadline = Date.now() + 8000;
+		while (Date.now() < deadline) {
+			if (
+				fixture
+					.notifications()
+					.some((line) => line.includes("percent 100% and elapsed"))
+			)
+				break;
+			await new Promise((resolve) => setTimeout(resolve, 100));
+		}
+		const notices = fixture.notifications();
+		/*
+		 * The stub logs one argv string; the hostile sentence contains newlines, so
+		 * the log file has several lines for ONE notification. Join before reading
+		 * it, or the assertion sees only the sentence's last line.
+		 */
+		const painted = notices.join("\n");
+		assert.ok(
+			painted.includes("percent 100% and elapsed"),
+			`the hostile sentence never reached the notifier: ${JSON.stringify(notices)}`,
+		);
+		// The sentence is printed literally: the substitution happened, and the
+		// shell never executed what the "translation" contained.
+		// Each hostile fragment is present EXACTLY as written (the lines between
+		// them are independent sentences, so no adjacency is implied).
+		assert.match(painted, /quote "double" and 'single'/);
+		assert.match(painted, /tick `touch [^`]+`/);
+		assert.match(painted, /sub \$\(touch /);
+		/*
+		 * FORMAT-HOSTILE REGRESSION SET (R2 M2-1): a leading `-n` must not be read
+		 * as a printf option, `\c` must not truncate, a literal backslash and a
+		 * percent must print, and non-ASCII must survive. The elapsed reading is
+		 * still substituted exactly once, between the split halves.
+		 */
+		assert.match(painted, /-n leading option/);
+		assert.match(painted, /backslash \\c and literal \\ inside/);
+		assert.match(painted, /Unicode ✓ عربى/);
+		assert.match(painted, /percent 100% and elapsed \d+ s end/);
+		assert.doesNotMatch(painted, /\{elapsed\}/);
+		assert.equal(
+			existsSync(pwned),
+			false,
+			"a translation executed as shell code",
+		);
+		await watchdog.exit;
 		app.kill();
 		installer.kill();
 	},
@@ -4497,16 +4706,13 @@ test("the artifact assertions are the ones a user's Gatekeeper runs", () => {
 			// bricked 0.29.6: will macOS actually spawn what we are about to ship?
 			// Honoured only by executing the binary — amfid's refusal is invisible to
 			// codesign, spctl and stapler alike (both measured on the real bundle).
+			//
+			// Since F2 it also answers the 0.30.10 x64 question (the OS execs the
+			// launcher and the app cannot LOAD its bytecode): the row is now the
+			// app's own `--lo-launch-probe`, whose line is printed from the shipped
+			// `index.jsc`, so the separate node-mode `app-bytecode-loadable` row is
+			// gone with the RunAsNode fuse that made it possible.
 			"app-spawn",
-			// The question `app-spawn` does NOT ask, and the one that bricked the
-			// 0.30.10 x64 DMG: the OS execs the launcher, and then the app cannot
-			// LOAD. `ELECTRON_RUN_AS_NODE=1 <exe> -p 'process.exit(0)'` evaluates the
-			// string it is given and never requires `app.asar`, so arm64 bytecode in
-			// an x64 bundle passed every check above it (measured on the shipped
-			// artifact: codesign, spctl, stapler and the spawn probe all green on a
-			// bundle that threw cachedDataRejected at every launch). This row loads
-			// the payload the others skip, under the bundle's own Electron.
-			"app-bytecode-loadable",
 			// The cause behind it — a restricted entitlement with no profile to
 			// authorize it — is NOT in this list: it is `profileAuthorizationCheck`,
 			// which walks every executable in the bundle rather than reading the
@@ -4561,65 +4767,127 @@ test("the artifact assertions are the ones a user's Gatekeeper runs", () => {
 	);
 });
 
-test("the bytecode gate asks the bundle's own Electron and refuses 'could not tell'", () => {
-	const app = gateFixtureBundle("lo-gate-bytecode-");
+test("the launch probe asks the bundle itself, never in node mode, and refuses 'could not tell'", () => {
+	const app = gateFixtureBundle("lo-gate-launch-probe-");
 	const launcher = join(app, "Contents", "MacOS", "Local Operator");
-	const check = artifactChecks({ appPath: app, dmgPath: null }).find(
-		(row) => row.id === "app-bytecode-loadable",
-	);
+	const checks = artifactChecks({ appPath: app, dmgPath: null });
+	const check = checks.find((row) => row.id === "app-spawn");
 
-	// THE PROBE MUST RUN UNDER THE ARTIFACT, NOT UNDER THE RUNNER'S NODE. That is
-	// the entire mechanism: V8 accepts cached data only from its own
-	// architecture, so only the x64 bundle's own Electron can answer for the x64
-	// bundle while an arm64 runner holds the file. A probe spawned with
-	// `process.execPath` would answer for the RUNNER and pass the broken artifact.
-	assert.equal(check.command, launcher);
-	assert.deepEqual(check.env, { ELECTRON_RUN_AS_NODE: "1" });
-	assert.equal(check.args.length, 2);
-	assert.match(check.args[0], /scripts\/bytecode-accepts-probe\.cjs$/);
-	// Absolute, so the gate is invocable from any cwd (CI runs it through
-	// require-report.sh from the repo root; a human runs it from anywhere).
-	assert.ok(isAbsolute(check.args[0]));
-	assert.ok(existsSync(check.args[0]));
+	// The node-mode checks are GONE (F2). With the RunAsNode fuse off,
+	// `ELECTRON_RUN_AS_NODE=1 <exe> …` boots the full app instead of a Node
+	// one-liner, so no check may ask for it any more - not this one, and not a
+	// separate bytecode probe.
 	assert.equal(
-		check.args[1],
-		join(app, "Contents/Resources/app.asar/out/main/index.jsc"),
+		checks.some((row) => row.id === "app-bytecode-loadable"),
+		false,
 	);
+	for (const row of checks)
+		assert.notEqual(row.env?.ELECTRON_RUN_AS_NODE, "1", row.id);
 
-	// A translated child gets the longer bound here for the same reason
-	// `app-spawn` does: on an arm64 runner the x64 probe pays Rosetta's one-time
-	// cost, and `timedOut` must not report the translator as a broken bundle.
+	// THE PROBE RUNS THE ARTIFACT, NOT THE RUNNER'S NODE: only the bundle's own
+	// V8 can say whether it loads its own bytecode.
+	assert.equal(check.command, launcher);
+	assert.equal(check.args[0], LAUNCH_PROBE_FLAG);
+	assert.ok(check.args.includes(MOCK_KEYCHAIN_SWITCH));
+	assert.ok(check.args.includes("--window-mode=headless"));
+	const profileArg = check.args.find((arg) =>
+		arg.startsWith("--user-data-dir="),
+	);
+	assert.ok(profileArg, "the probe runs without a scratch profile");
+	assert.ok(isAbsolute(profileArg.slice("--user-data-dir=".length)));
+	// An inherited node-mode switch is REMOVED, not merely not added.
+	// The log directory is the scratch profile's, never the operator's real
+	// `~/Library/Application Support/Local Operator/logs` (native QA, PR #1948,
+	// Q2): a bundle that predates the probe's own log suppression still writes
+	// nothing there.
+	assert.deepEqual(check.env, {
+		ELECTRON_RUN_AS_NODE: null,
+		NODE_OPTIONS: null,
+		LOCAL_OPERATOR_UI_WINDOW_MODE: "headless",
+		LOCAL_OPERATOR_LOG_DIR: join(
+			profileArg.slice("--user-data-dir=".length),
+			"logs",
+		),
+	});
+
+	// A translated child gets the longer bound (Rosetta's one-time cost).
 	writeThinMachO(launcher, MACH_O_CPUTYPE.X86_64);
 	const translated = artifactChecks({
 		appPath: app,
 		dmgPath: null,
 		hostArch: "arm64",
-	}).find((row) => row.id === "app-bytecode-loadable");
+	}).find((row) => row.id === "app-spawn");
 	assert.equal(translated.timeoutMs, SPAWN_PROBE_TRANSLATED_TIMEOUT_MS);
 
-	// ACCEPTED is the only pass. The three refusal shapes are each red, and the
-	// third one is the point: exit 2 is the probe saying it COULD NOT TELL
-	// (unreadable .jsc, unparseable header), which must never ship as a pass.
+	const line = (report) =>
+		`${LAUNCH_PROBE_MARKER} ${JSON.stringify({ ok: true, electron: "45.1.0", arch: "arm64", ...report })}\n`;
+	const ok = { status: 0, signal: null, timedOut: false };
+	// The ONLY pass: exit 0 AND the probe's line, from a packaged app.
+	assert.equal(check.expect({ ...ok, stdout: line({ packaged: true }) }), true);
+	// Exit 0 with no line is red: the shape of the OLD node-mode command on a
+	// fused build, where the app boots instead (here its smoke path's marker)
+	// and quits for a reason that is not the probe.
 	assert.equal(
-		check.expect({ status: 0, signal: null, timedOut: false }),
-		true,
+		check.expect({
+			...ok,
+			stdout: "LOCAL_OPERATOR_UI_READY electron=45.1.0\n",
+		}),
+		false,
 	);
+	assert.equal(check.expect({ ...ok, stdout: "" }), false);
+	// An unpackaged tree answering the flag is not the artifact.
 	assert.equal(
-		check.expect({ status: 1, signal: null, timedOut: false }),
+		check.expect({ ...ok, stdout: line({ packaged: false }) }),
+		false,
+	);
+	// A marker whose JSON does not parse could not tell: red.
+	assert.equal(
+		check.expect({ ...ok, stdout: `${LAUNCH_PROBE_MARKER} {not json\n` }),
+		false,
+	);
+	// A tampered `app.asar` under the integrity fuse: Electron aborts before
+	// any JS runs (a fatal signal, no line).
+	assert.equal(
+		check.expect({ status: null, signal: "SIGTRAP", timedOut: false }),
+		false,
+	);
+	// foreign bytecode throws cachedDataRejected: non-zero, no line.
+	assert.equal(
+		check.expect({ status: 1, signal: null, timedOut: false, stdout: "" }),
 		false,
 	);
 	assert.equal(
-		check.expect({ status: 2, signal: null, timedOut: false }),
+		check.expect({
+			status: 0,
+			signal: null,
+			timedOut: true,
+			stdout: line({ packaged: true }),
+		}),
 		false,
 	);
-	assert.equal(
-		check.expect({ status: null, signal: "SIGKILL", timedOut: false }),
-		false,
+});
+
+test("the launch probe's scratch profile is removed whether the child passed or the runner threw", () => {
+	const app = gateFixtureBundle("lo-gate-launch-cleanup-");
+	const seen = [];
+	const run = (command, args) => {
+		if (args[0] === LAUNCH_PROBE_FLAG) {
+			const dir = args
+				.find((arg) => arg.startsWith("--user-data-dir="))
+				.slice("--user-data-dir=".length);
+			// What Chromium's early start-up may leave behind.
+			mkdirSync(join(dir, "Default"), { recursive: true });
+			seen.push(dir);
+			throw new Error("runner died");
+		}
+		return { status: 0, signal: null, timedOut: false, stdout: "", stderr: "" };
+	};
+	assert.throws(
+		() => runChecks({ appPath: app, dmgPath: null, run, env: {} }),
+		/runner died/,
 	);
-	assert.equal(
-		check.expect({ status: 0, signal: null, timedOut: true }),
-		false,
-	);
+	assert.equal(seen.length, 1);
+	assert.equal(existsSync(seen[0]), false);
 });
 
 test("an unsigned or unnotarized disk image fails the release assertions", () => {
@@ -4627,25 +4895,15 @@ test("an unsigned or unnotarized disk image fails the release assertions", () =>
 	// notarized and stapled, and the image itself is none of those.
 	const shippedV0170 = (command, args) => {
 		const joined = args.join(" ");
-		// The spawn probe executes the bundle's own main executable; a stub has to
-		// answer for it like any other command this file runs.
-		if (joined === "-p process.exit(0)") {
+		// The launch probe executes the bundle's own main executable; a stub has
+		// to answer for it like any other command this file runs. This release's
+		// fault is its disk image, so the bundle launches and loads its bytecode.
+		if (args[0] === LAUNCH_PROBE_FLAG) {
 			return {
 				status: 0,
 				signal: null,
 				timedOut: false,
-				stdout: "",
-				stderr: "",
-			};
-		}
-		// So does the bytecode probe, which runs under that same executable. This
-		// release's fault is its disk image, so the bundle loads its own bytecode.
-		if (joined.includes("bytecode-accepts-probe.cjs")) {
-			return {
-				status: 0,
-				signal: null,
-				timedOut: false,
-				stdout: "ACCEPTED",
+				stdout: HEALTHY_LAUNCH_PROBE,
 				stderr: "",
 			};
 		}
@@ -4679,7 +4937,9 @@ test("an unsigned or unnotarized disk image fails the release assertions", () =>
 	};
 
 	const failing = summarize(
-		runChecks({ appPath: APP, dmgPath: DMG, run: shippedV0170 }),
+		// `env` is explicit so the result cannot depend on the shell's CI variables
+		// (the local-Rosetta exec guard reads them; see `refusesLocalRosettaExec`).
+		runChecks({ appPath: APP, dmgPath: DMG, run: shippedV0170, env: {} }),
 	);
 	assert.equal(failing.ok, false);
 	assert.deepEqual(
@@ -4700,12 +4960,12 @@ test("an unsigned or unnotarized disk image fails the release assertions", () =>
 	// profile exists, and what a user can actually launch.
 	const fixed = (command, args) => {
 		const joined = args.join(" ");
-		if (joined === "-p process.exit(0)") {
+		if (args[0] === LAUNCH_PROBE_FLAG) {
 			return {
 				status: 0,
 				signal: null,
 				timedOut: false,
-				stdout: "",
+				stdout: HEALTHY_LAUNCH_PROBE,
 				stderr: "",
 			};
 		}
@@ -4732,7 +4992,8 @@ test("an unsigned or unnotarized disk image fails the release assertions", () =>
 		};
 	};
 	assert.equal(
-		summarize(runChecks({ appPath: APP, dmgPath: DMG, run: fixed })).ok,
+		summarize(runChecks({ appPath: APP, dmgPath: DMG, run: fixed, env: {} }))
+			.ok,
 		true,
 	);
 });
@@ -4758,6 +5019,19 @@ test("an unsigned or unnotarized disk image fails the release assertions", () =>
  * have to ask a different question than the ones already in this file.
  */
 const V0296_SIGNATURE_ENTITLEMENTS = `<plist version="1.0"><dict><key>com.apple.security.cs.allow-dyld-environment-variables</key><true/><key>com.apple.security.cs.allow-jit</key><true/><key>com.apple.security.cs.allow-unsigned-executable-memory</key><true/><key>com.apple.security.cs.disable-library-validation</key><true/><key>com.apple.security.device.audio-input</key><true/><key>com.apple.security.device.camera</key><true/><key>com.apple.security.device.microphone</key><true/><key>com.apple.security.device.screen-capture</key><true/><key>com.apple.security.files.bookmarks.app-scope</key><true/><key>com.apple.security.files.downloads.read-write</key><true/><key>com.apple.security.files.user-selected.read-write</key><true/><key>com.apple.security.network.client</key><true/><key>com.apple.security.network.server</key><true/><key>keychain-access-groups</key><array><string>AB12CD34EF.com.local-operator.webauthn</string></array></dict></plist>`;
+
+/** What this PR signs the MAIN executable with: the group plus the app's
+ * identity claims, rendered by `render-mac-entitlements.mjs --profile`. */
+const ORG_SIGNATURE_ENTITLEMENTS = V0296_SIGNATURE_ENTITLEMENTS.replace(
+	"</dict></plist>",
+	"<key>com.apple.application-identifier</key><string>AB12CD34EF.com.local-operator</string><key>com.apple.developer.team-identifier</key><string>AB12CD34EF</string></dict></plist>",
+);
+
+/** The shape of the real Radient Inc. desktop profile's `Entitlements` (measured
+ * with `security cms -D`): the app id for THIS bundle, the team, and the team
+ * wildcard for keychain groups — never the WebAuthn group by name. */
+const ORG_PROFILE_DUMP =
+	"<plist><dict><key>Entitlements</key><dict><key>com.apple.application-identifier</key><string>AB12CD34EF.com.local-operator</string><key>keychain-access-groups</key><array><string>AB12CD34EF.*</string></array><key>com.apple.developer.team-identifier</key><string>AB12CD34EF</string></dict></dict></plist>";
 
 /** A bundle laid out enough for the gate: an Info.plist naming the executable and
  * the bundle id, and a file where that executable would be.
@@ -4833,7 +5107,11 @@ function gateRunner({ entitlements, profileDump = null, spawnFails = false }) {
 		typeof entitlements === "function" ? entitlements(path) : entitlements;
 	return (command, args) => {
 		const joined = args.join(" ");
-		if (joined === "-p process.exit(0)") {
+		// The launch probe. These fixtures model ENTITLEMENT and spawn faults,
+		// where the bundle's bytecode matches its own runtime, so a launch the OS
+		// allows prints the probe line — keeping each test's failure set the one
+		// thing it is about.
+		if (args[0] === LAUNCH_PROBE_FLAG) {
 			return spawnFails
 				? {
 						status: null,
@@ -4842,20 +5120,13 @@ function gateRunner({ entitlements, profileDump = null, spawnFails = false }) {
 						stdout: "",
 						stderr: "",
 					}
-				: { status: 0, signal: null, timedOut: false, stdout: "", stderr: "" };
-		}
-		// The bytecode probe runs under the same executable as the spawn probe.
-		// These fixtures model ENTITLEMENT and spawn faults, where the bundle's
-		// bytecode matches its own runtime, so it answers ACCEPTED — keeping each
-		// test's failure set the one thing it is about.
-		if (joined.includes("bytecode-accepts-probe.cjs")) {
-			return {
-				status: 0,
-				signal: null,
-				timedOut: false,
-				stdout: "ACCEPTED",
-				stderr: "",
-			};
+				: {
+						status: 0,
+						signal: null,
+						timedOut: false,
+						stdout: HEALTHY_LAUNCH_PROBE,
+						stderr: "",
+					};
 		}
 		if (command.endsWith("/security")) {
 			return {
@@ -4935,20 +5206,78 @@ test("every executable's claim is judged, not only the launcher's", () => {
 	assert.equal(groupFree.passed, true);
 	assert.match(groupFree.output, /2 executable\(s\) inspected/);
 
-	// A profile that authorizes the claim: the passkey arrangement done right, and
-	// the one state in which `ShipIt` may carry the group.
-	const authorized = gateFixtureBundle("lo-gate-auth-", {
-		helpers: [helper],
+	// The main bundle's profile does NOT extend to nested code: macOS judges a
+	// restricted claim against the profile of the bundle the executable belongs to,
+	// and `ShipIt` (inside `Squirrel.framework`) and a helper `.app` with no
+	// embedded profile of their own have none. So the 0.29.6 shape — the group on
+	// ShipIt and the helpers — is red even when the main bundle embeds the real
+	// team-wildcard Developer ID profile, which this PR now always does (agent
+	// review round 1, R1: before this, the walk judged every executable against
+	// the main bundle's profile and passed exactly that bundle).
+	const helperApp =
+		"Contents/Frameworks/Local Operator Helper.app/Contents/MacOS/Local Operator Helper";
+	const everywhere = gateFixtureBundle("lo-gate-auth-", {
+		helpers: [helper, helperApp],
 		profile: "synthetic\n",
 	});
-	const [withProfile] = profileAuthorizationCheck(authorized, {
+	const [nestedClaims] = profileAuthorizationCheck(everywhere, {
 		run: gateRunner({
-			entitlements: V0296_SIGNATURE_ENTITLEMENTS,
-			profileDump:
-				"<plist><dict><key>Entitlements</key><dict><key>keychain-access-groups</key><array><string>AB12CD34EF.com.local-operator.webauthn</string></array></dict></dict></plist>",
+			entitlements: ORG_SIGNATURE_ENTITLEMENTS,
+			profileDump: ORG_PROFILE_DUMP,
 		}),
 	});
-	assert.equal(withProfile.passed, true);
+	assert.equal(nestedClaims.passed, false);
+	assert.match(
+		nestedClaims.output,
+		/ShipIt claims keychain-access-groups \(it has no profile of its own/,
+	);
+	assert.match(
+		nestedClaims.output,
+		/Local Operator Helper claims keychain-access-groups \(it has no profile of its own/,
+	);
+	assert.doesNotMatch(nestedClaims.output, /MacOS\/Local Operator claims/);
+	// No value is printed: every one embeds the team id.
+	assert.doesNotMatch(nestedClaims.output, /AB12CD34EF/);
+
+	// The arrangement this PR ships: the claims on the main executable ONLY,
+	// authorized by the main bundle's profile, and nested code group-free.
+	const [mainOnly] = profileAuthorizationCheck(everywhere, {
+		run: gateRunner({
+			entitlements: (path) =>
+				path.endsWith("MacOS/Local Operator")
+					? ORG_SIGNATURE_ENTITLEMENTS
+					: clean,
+			profileDump: ORG_PROFILE_DUMP,
+		}),
+	});
+	assert.equal(mainOnly.passed, true, mainOnly.output);
+	assert.match(mainOnly.output, /3 executable\(s\) inspected/);
+
+	// A nested bundle that embeds its OWN profile authorizing the value is the
+	// one state in which nested code may carry a restricted claim — judged by
+	// that profile, not the main bundle's.
+	writeFileSync(
+		join(
+			everywhere,
+			"Contents/Frameworks/Local Operator Helper.app/Contents/Info.plist",
+		),
+		"<key>CFBundleIdentifier</key><string>com.local-operator.helper</string><key>CFBundleExecutable</key><string>Local Operator Helper</string>",
+	);
+	writeFileSync(
+		join(
+			everywhere,
+			"Contents/Frameworks/Local Operator Helper.app/Contents/embedded.provisionprofile",
+		),
+		"synthetic\n",
+	);
+	const [helperOwnProfile] = profileAuthorizationCheck(everywhere, {
+		run: gateRunner({
+			entitlements: (path) =>
+				path.endsWith("ShipIt") ? clean : V0296_SIGNATURE_ENTITLEMENTS,
+			profileDump: ORG_PROFILE_DUMP,
+		}),
+	});
+	assert.equal(helperOwnProfile.passed, true, helperOwnProfile.output);
 
 	// "We could not ask" is not "nothing is claimed": a signature whose
 	// entitlements cannot be read is red here rather than an empty plist that
@@ -4999,45 +5328,92 @@ test("every executable's claim is judged, not only the launcher's", () => {
 	assert.match(unwalkableRead.output, /could not be walked for executables/);
 });
 
-test("the spawn probe owns its env, whatever signature the runner has", () => {
+test("the launch probe owns its env, whatever signature the runner has", () => {
 	/*
 	 * Why this is asserted here rather than left to the runner: `env` is a parameter
-	 * the runner has to forward, and a runner that does not forward it drops
-	 * `ELECTRON_RUN_AS_NODE` SILENTLY — which turns the probe into a real app launch.
-	 * QA round 2 measured that from a scratch harness: five stray executions of the
-	 * app binary, every one of them raising and FOCUSING the operator's window (the
-	 * app's own `[window-raise]` line for each). The check applies its own
-	 * environment, so a runner of any signature — including one that ignores the
-	 * parameters it is handed and inherits the process environment, which is what
-	 * `spawnSync` does by default — sees the switch the probe depends on.
+	 * the runner has to forward, and a runner that does not forward it drops the
+	 * check's switches SILENTLY. QA round 2 measured the old shape of that from a
+	 * scratch harness (the node-mode switch dropped: five stray launches of the app
+	 * binary, each raising and FOCUSING the operator's window). Since F2 the probe
+	 * carries the reverse obligation as well: an inherited `ELECTRON_RUN_AS_NODE`
+	 * or `NODE_OPTIONS` must be REMOVED for the child, and the headless window mode
+	 * applied, even through a runner that ignores the parameter and inherits the
+	 * process environment (what `spawnSync` does by default).
 	 */
 	const app = gateFixtureBundle("lo-gate-env-");
 	const probeSaw = [];
-	// A runner that takes the first three arguments and nothing else: the shape that
-	// dropped the switch. It reads the process environment, which is what a
-	// `spawnSync`-based runner does by default.
-	const threeArgumentRunner = (command, args, input) => {
-		void command;
-		void input;
-		if (args.join(" ").includes("process.exit(0)"))
-			probeSaw.push(process.env.ELECTRON_RUN_AS_NODE ?? null);
-		return { status: 0, signal: null, timedOut: false, stdout: "", stderr: "" };
+	const saved = {
+		run: process.env.ELECTRON_RUN_AS_NODE,
+		opts: process.env.NODE_OPTIONS,
+		mode: process.env.LOCAL_OPERATOR_UI_WINDOW_MODE,
 	};
-	const rows = runChecks({
-		appPath: app,
-		dmgPath: null,
-		run: threeArgumentRunner,
-	});
-	assert.ok(rows.length > 0, "the checks did not run at all");
-	// Exactly once, and with the switch: the probe is the only check that carries it,
-	// so a null here is the switch being dropped on the way to the child.
-	assert.deepEqual(
-		probeSaw,
-		["1"],
-		"ELECTRON_RUN_AS_NODE did not reach the runner: a drop-in runner would launch the real app",
-	);
-	// And it is restored afterwards, so no later check inherits node mode.
-	assert.equal(process.env.ELECTRON_RUN_AS_NODE, undefined);
+	// A runner shell that had node mode armed.
+	process.env.ELECTRON_RUN_AS_NODE = "1";
+	process.env.NODE_OPTIONS = "--require /tmp/x.js";
+	Reflect.deleteProperty(process.env, "LOCAL_OPERATOR_UI_WINDOW_MODE");
+	try {
+		const threeArgumentRunner = (command, args, input) => {
+			void command;
+			void input;
+			if (args[0] === LAUNCH_PROBE_FLAG)
+				probeSaw.push([
+					process.env.ELECTRON_RUN_AS_NODE ?? null,
+					process.env.NODE_OPTIONS ?? null,
+					process.env.LOCAL_OPERATOR_UI_WINDOW_MODE ?? null,
+				]);
+			return {
+				status: 0,
+				signal: null,
+				timedOut: false,
+				stdout: "",
+				stderr: "",
+			};
+		};
+		const rows = runChecks({
+			appPath: app,
+			dmgPath: null,
+			run: threeArgumentRunner,
+			// Explicit, so the probe's run cannot depend on the shell's CI variables.
+			env: {},
+		});
+		assert.ok(rows.length > 0, "the checks did not run at all");
+		assert.deepEqual(
+			probeSaw,
+			[[null, null, "headless"]],
+			"the launch probe inherited a node-mode switch or lost its window mode",
+		);
+		// And restored afterwards, both ways.
+		assert.equal(process.env.ELECTRON_RUN_AS_NODE, "1");
+		assert.equal(process.env.NODE_OPTIONS, "--require /tmp/x.js");
+		assert.equal(process.env.LOCAL_OPERATOR_UI_WINDOW_MODE, undefined);
+	} finally {
+		for (const [key, value] of [
+			["ELECTRON_RUN_AS_NODE", saved.run],
+			["NODE_OPTIONS", saved.opts],
+			["LOCAL_OPERATOR_UI_WINDOW_MODE", saved.mode],
+		]) {
+			if (value === undefined) Reflect.deleteProperty(process.env, key);
+			else process.env[key] = value;
+		}
+	}
+});
+
+test("spawnRunner drops a null-valued variable from the child's environment", () => {
+	const saved = process.env.LO_GATE_NULL_PROBE;
+	process.env.LO_GATE_NULL_PROBE = "inherited";
+	try {
+		const result = spawnRunner(
+			process.execPath,
+			["-p", "process.env.LO_GATE_NULL_PROBE ?? 'absent'"],
+			undefined,
+			{ LO_GATE_NULL_PROBE: null },
+		);
+		assert.equal(result.stdout.trim(), "absent");
+	} finally {
+		if (saved === undefined)
+			Reflect.deleteProperty(process.env, "LO_GATE_NULL_PROBE");
+		else process.env.LO_GATE_NULL_PROBE = saved;
+	}
 });
 
 test("the spawn bound covers a translation, and only where there IS one", () => {
@@ -5102,12 +5478,12 @@ test("the artifact gate hands a translated launcher the longer bound", () => {
 	assert.equal(row("arm64").timeoutMs, SPAWN_PROBE_TRANSLATED_TIMEOUT_MS);
 	assert.equal(row("x64").timeoutMs, SPAWN_PROBE_TIMEOUT_MS);
 
-	// And the row is otherwise the probe it was: same id, same command, same one
-	// switch that keeps it out of a real launch, same predicate.
+	// And the row is otherwise the probe it was: same id, same command, the
+	// launch probe's flag, same predicate.
 	assert.equal(row("arm64").command, launcher);
 	assert.equal(row("arm64").target, launcher);
-	assert.deepEqual(row("arm64").args, ["-p", "process.exit(0)"]);
-	assert.deepEqual(row("arm64").env, { ELECTRON_RUN_AS_NODE: "1" });
+	assert.equal(row("arm64").args[0], LAUNCH_PROBE_FLAG);
+	assert.equal(row("arm64").env.ELECTRON_RUN_AS_NODE, null);
 	assert.equal(
 		row("arm64").expect({ status: null, signal: "SIGKILL", timedOut: false }),
 		false,
@@ -5117,7 +5493,12 @@ test("the artifact gate hands a translated launcher the longer bound", () => {
 		false,
 	);
 	assert.equal(
-		row("arm64").expect({ status: 0, signal: null, timedOut: false }),
+		row("arm64").expect({
+			status: 0,
+			signal: null,
+			timedOut: false,
+			stdout: HEALTHY_LAUNCH_PROBE,
+		}),
 		true,
 	);
 });
@@ -5146,6 +5527,10 @@ test("the seed's version ask is bounded by the same rule as the probe", () => {
 		const seen = [];
 		const row = seedVersionCheck(app, {
 			hostArch,
+			// The x86_64 ask on an arm64 host is exactly what the local-Rosetta guard
+			// withholds off a GitHub-hosted runner; this case measures the BOUND, so it
+			// opts in explicitly rather than depending on the shell's CI variables.
+			env: { LOCAL_OPERATOR_ALLOW_ROSETTA_EXEC: "1" },
 			run: (command, args, input, env, timeoutMs) => {
 				void input;
 				void env;
@@ -5451,6 +5836,81 @@ test("the gate refuses the 0.29.6 signature and passes the group-free one", () =
 		profileAuthorizes("", "com.apple.developer.associated-domains"),
 		false,
 	);
+});
+
+test("the gate judges every claimed VALUE, not only that the profile declares the key", () => {
+	/*
+	 * QA round 1, Q1 / agent review round 1, R3. The key agent's real profile has
+	 * app id `<TEAM>.com.local-operator.lopkeyagent` and the same `<TEAM>.*`
+	 * keychain wildcard as the desktop app's. Embedded under a signature claiming
+	 * `<TEAM>.com.local-operator`, every KEY is declared and the group is covered,
+	 * so a key-presence check passed it; amfid does not (`-413`, measured), and
+	 * passkeys would silently never work. The renderer already refuses that pair
+	 * through `unauthorizedClaims`; the gate now asks the same question with the
+	 * same helper.
+	 */
+	const keyagentProfile = ORG_PROFILE_DUMP.replace(
+		"AB12CD34EF.com.local-operator</string>",
+		"AB12CD34EF.com.local-operator.lopkeyagent</string>",
+	);
+	assert.notEqual(keyagentProfile, ORG_PROFILE_DUMP);
+	const app = gateFixtureBundle("lo-gate-appid-", { profile: "synthetic\n" });
+	const [mismatched] = profileAuthorizationCheck(app, {
+		run: gateRunner({
+			entitlements: ORG_SIGNATURE_ENTITLEMENTS,
+			profileDump: keyagentProfile,
+		}),
+	});
+	assert.equal(mismatched.passed, false);
+	assert.match(
+		mismatched.output,
+		/MacOS\/Local Operator claims com\.apple\.application-identifier/,
+	);
+	// Only the claim the profile does not cover: the team and the group are fine.
+	assert.doesNotMatch(
+		mismatched.output,
+		/team-identifier|keychain-access-groups/,
+	);
+	assert.doesNotMatch(mismatched.output, /AB12CD34EF/);
+
+	// Another team's id, by value, is the same refusal for the team claim.
+	const [otherTeam] = profileAuthorizationCheck(app, {
+		run: gateRunner({
+			entitlements: ORG_SIGNATURE_ENTITLEMENTS,
+			profileDump: ORG_PROFILE_DUMP.replace(
+				"<string>AB12CD34EF</string>",
+				"<string>ZZ99YY88XX</string>",
+			),
+		}),
+	});
+	assert.equal(otherTeam.passed, false);
+	assert.match(
+		otherTeam.output,
+		/claims com\.apple\.developer\.team-identifier/,
+	);
+
+	// The correctly paired profile passes, so the refusals above are about the
+	// values and not about the keys.
+	const [paired] = profileAuthorizationCheck(app, {
+		run: gateRunner({
+			entitlements: ORG_SIGNATURE_ENTITLEMENTS,
+			profileDump: ORG_PROFILE_DUMP,
+		}),
+	});
+	assert.equal(paired.passed, true, paired.output);
+
+	// QA round 1, Q2: the WebAuthn row reports key NAMES, never the plist (each
+	// restricted value embeds the team id).
+	const webauthn = runChecks({
+		appPath: app,
+		dmgPath: null,
+		run: gateRunner({
+			entitlements: ORG_SIGNATURE_ENTITLEMENTS,
+			profileDump: ORG_PROFILE_DUMP,
+		}),
+	}).find((row) => row.id === "app-webauthn-entitlement");
+	assert.match(webauthn.output, /^entitlement keys: .*keychain-access-groups/);
+	assert.doesNotMatch(webauthn.output, /AB12CD34EF|<plist|<string>/);
 });
 
 test("the update pre-flight refuses the artifact macOS would not launch", () => {
@@ -6025,9 +6485,9 @@ test("the notarization step hands the notarizer an absolute path", async () => {
 	const platform = Object.getOwnPropertyDescriptor(process, "platform");
 	const savedEnv = {
 		NOTARIZE: process.env.NOTARIZE,
-		APPLE_ID: process.env.APPLE_ID,
-		APPLE_ID_PASSWORD: process.env.APPLE_ID_PASSWORD,
-		APPLE_TEAM_ID: process.env.APPLE_TEAM_ID,
+		APPLE_API_KEY: process.env.APPLE_API_KEY,
+		APPLE_API_KEY_ID: process.env.APPLE_API_KEY_ID,
+		APPLE_API_ISSUER: process.env.APPLE_API_ISSUER,
 	};
 	try {
 		// The step is darwin-only and `test:desktop` runs on Linux CI, but the bug
@@ -6038,9 +6498,11 @@ test("the notarization step hands the notarizer an absolute path", async () => {
 			configurable: true,
 		});
 		process.env.NOTARIZE = "true";
-		process.env.APPLE_ID = "test@example.invalid";
-		process.env.APPLE_ID_PASSWORD = "test-app-specific-password";
-		process.env.APPLE_TEAM_ID = "TESTTEAM01";
+		// The App Store Connect API key form, which is what both release workflows
+		// bind since the move to the organization identity.
+		process.env.APPLE_API_KEY = "/nonexistent/AuthKey_TEST.p8";
+		process.env.APPLE_API_KEY_ID = "TESTKEY001";
+		process.env.APPLE_API_ISSUER = "00000000-0000-0000-0000-000000000000";
 		globalThis.__loNotarizeCalls = [];
 		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
 		delete globalThis.__loNotarizeBehavior;
@@ -6051,6 +6513,18 @@ test("the notarization step hands the notarizer an absolute path", async () => {
 		await notarizeArtifacts({ dist: relativeDist, log: () => {} });
 		assert.equal(globalThis.__loNotarizeCalls.length, 1);
 		assert.equal(globalThis.__loNotarizeCalls[0].tool, "notarytool");
+		// The API key reached the notarizer in the option names @electron/notarize
+		// 2.x reads (`isNotaryToolApiKeyCredentials`), and no Apple ID did.
+		assert.equal(
+			globalThis.__loNotarizeCalls[0].appleApiKey,
+			"/nonexistent/AuthKey_TEST.p8",
+		);
+		assert.equal(globalThis.__loNotarizeCalls[0].appleApiKeyId, "TESTKEY001");
+		assert.equal(
+			globalThis.__loNotarizeCalls[0].appleApiIssuer,
+			"00000000-0000-0000-0000-000000000000",
+		);
+		assert.equal(globalThis.__loNotarizeCalls[0].appleId, undefined);
 		assert.equal(
 			isAbsolute(globalThis.__loNotarizeCalls[0].appPath),
 			true,
@@ -6125,9 +6599,9 @@ test("a rejected notarization fails the step and exits non-zero", async () => {
 	const platform = Object.getOwnPropertyDescriptor(process, "platform");
 	const savedEnv = {
 		NOTARIZE: process.env.NOTARIZE,
-		APPLE_ID: process.env.APPLE_ID,
-		APPLE_ID_PASSWORD: process.env.APPLE_ID_PASSWORD,
-		APPLE_TEAM_ID: process.env.APPLE_TEAM_ID,
+		APPLE_API_KEY: process.env.APPLE_API_KEY,
+		APPLE_API_KEY_ID: process.env.APPLE_API_KEY_ID,
+		APPLE_API_ISSUER: process.env.APPLE_API_ISSUER,
 	};
 	try {
 		Object.defineProperty(process, "platform", {
@@ -6135,9 +6609,11 @@ test("a rejected notarization fails the step and exits non-zero", async () => {
 			configurable: true,
 		});
 		process.env.NOTARIZE = "true";
-		process.env.APPLE_ID = "test@example.invalid";
-		process.env.APPLE_ID_PASSWORD = "test-app-specific-password";
-		process.env.APPLE_TEAM_ID = "TESTTEAM01";
+		// The App Store Connect API key form, which is what both release workflows
+		// bind since the move to the organization identity.
+		process.env.APPLE_API_KEY = "/nonexistent/AuthKey_TEST.p8";
+		process.env.APPLE_API_KEY_ID = "TESTKEY001";
+		process.env.APPLE_API_ISSUER = "00000000-0000-0000-0000-000000000000";
 		globalThis.__loNotarizeCalls = [];
 		globalThis.__loNotarizeBehavior = async () => {
 			throw new Error("stubbed notarization rejected");
@@ -6220,9 +6696,9 @@ test("a rejected notarization fails the step and exits non-zero", async () => {
 			env: {
 				...process.env,
 				NOTARIZE: "true",
-				APPLE_ID: "test@example.invalid",
-				APPLE_ID_PASSWORD: "test-app-specific-password",
-				APPLE_TEAM_ID: "TESTTEAM01",
+				APPLE_API_KEY: "/nonexistent/AuthKey_TEST.p8",
+				APPLE_API_KEY_ID: "TESTKEY001",
+				APPLE_API_ISSUER: "00000000-0000-0000-0000-000000000000",
 				LO_NOTARIZE_PROBE_FILE: probeFile,
 			},
 		},
@@ -7024,6 +7500,35 @@ const loadUpdateServiceModule = async ({
 			js: 'import { createRequire as __loCreateRequire } from "node:module"; const require = __loCreateRequire(import.meta.url);',
 		},
 		plugins: [
+			/*
+			 * WHY THE NON-ENGLISH CATALOGUES ARE EMPTIED HERE. This loader runs ~140 times in
+			 * one process and Node's ESM loader never evicts a module it has imported, so every
+			 * bundle written and imported below stays resident for the life of the file. The
+			 * graph reaches `src/i18n/keys.gen.ts`, which imports every catalogue of every
+			 * locale eagerly: 944 JSON modules, 9.26 of the bundle's 10.4 MB, measured at
+			 * ~28 MB retained per load against ~8 MB when the seven locale folders are empty.
+			 * 140 x 28 MB sits on V8's default 4,144 MB old-space ceiling, so a few KB of new
+			 * catalogue text tips the file into `FATAL ERROR: Reached heap limit` (PR #1603).
+			 *
+			 * NOTHING HERE ASSERTS ON A TRANSLATION: the update service runs under the default
+			 * locale (`en`) and its sentences are read from `catalogues/en`, which stays whole.
+			 * Raising the heap would move the cliff, not remove it; the next catalogue wave
+			 * would meet it again.
+			 */
+			{
+				name: "english-only-catalogues",
+				setup(builder) {
+					builder.onLoad(
+						{
+							filter: /[\\/]i18n[\\/]catalogues[\\/][^\\/]+[\\/][^\\/]+\.json$/,
+						},
+						(args) =>
+							/[\\/]catalogues[\\/]en[\\/]/.test(args.path)
+								? undefined
+								: { contents: "{}", loader: "json" },
+					);
+				},
+			},
 			{
 				name: "electron-fixture",
 				setup(builder) {
@@ -8175,6 +8680,28 @@ const loadVerdictRule = async () => {
 		format: "esm",
 		platform: "node",
 		write: false,
+		/*
+		 * The rule now resolves its sentence through `t()`, so the graph reaches
+		 * `src/i18n/keys.gen.ts` and every locale's catalogue. Emptied here for the
+		 * reason `loadUpdateServiceModule` empties them (resident-heap budget of this
+		 * file); nothing in this loader asserts on a translation.
+		 */
+		plugins: [
+			{
+				name: "english-only-catalogues",
+				setup(builder) {
+					builder.onLoad(
+						{
+							filter: /[\\/]i18n[\\/]catalogues[\\/][^\\/]+[\\/][^\\/]+\.json$/,
+						},
+						(args) =>
+							/[\\/]catalogues[\\/]en[\\/]/.test(args.path)
+								? undefined
+								: { contents: "{}", loader: "json" },
+					);
+				},
+			},
+		],
 	});
 	const dir = mkdtempSync(join(tmpdir(), "lo-verdict-rule-"));
 	const file = join(dir, "update-check-verdict.mjs");
@@ -8258,7 +8785,7 @@ test("a check that proved both channels current earns the affirmation", async ()
 
 		assert.equal(verdict.app, "current");
 		assert.equal(verdict.server, "current");
-		assert.equal(verdict.affirmation, rule.UP_TO_DATE_AFFIRMATION);
+		assert.equal(verdict.affirmation, rule.upToDateAffirmation());
 		// Both channels' own "nothing newer" events are still emitted (the
 		// notification panel clears a stale offer on them), so the sentence and
 		// the events cannot have been the same mechanism by accident.
@@ -9045,7 +9572,7 @@ test("an invoke through the aggregate handler emits both channels' events unless
 				channels.includes("backend-update-not-available"),
 				`options=${JSON.stringify(options)}: ${JSON.stringify(channels)}`,
 			);
-			assert.equal(verdict.affirmation, rule.UP_TO_DATE_AFFIRMATION);
+			assert.equal(verdict.affirmation, rule.upToDateAffirmation());
 		}
 
 		const { verdict, sent } = await loAggregateCheck({
@@ -9066,7 +9593,7 @@ test("an invoke through the aggregate handler emits both channels' events unless
 		// Silence is about the EVENTS, not the answer: the check still proved both
 		// channels current, so the invoke that asked for it still resolves the one
 		// sentence such a check earns.
-		assert.equal(verdict.affirmation, rule.UP_TO_DATE_AFFIRMATION);
+		assert.equal(verdict.affirmation, rule.upToDateAffirmation());
 	} finally {
 		rmSync(dir, { recursive: true, force: true });
 	}
@@ -9179,7 +9706,7 @@ test("an unreadable server version reading cannot earn the affirmation", async (
 			publishedVersion: "0.54.44",
 		});
 		assert.equal(npxCurrent.verdict.app, "current");
-		assert.equal(npxCurrent.verdict.affirmation, rule.UP_TO_DATE_AFFIRMATION);
+		assert.equal(npxCurrent.verdict.affirmation, rule.upToDateAffirmation());
 	} finally {
 		rmSync(dir, { recursive: true, force: true });
 	}
@@ -9472,7 +9999,7 @@ test("the check judges the install that serves the app, not the one the shim nam
 	});
 	assert.equal(serving.verdict.server, "current");
 	/*
-	 * The literal rather than `UP_TO_DATE_AFFIRMATION`: this case never loads the
+	 * The literal rather than `upToDateAffirmation()`: this case never loads the
 	 * rule module, and the sentence is the thing on screen - a value import here
 	 * would make the assertion a comparison of the module with itself.
 	 */
@@ -10087,6 +10614,13 @@ const driveGlobalUpdate = async ({
 	exitCode = 0,
 	ran = true,
 	target = "0.56.0",
+	/*
+	 * THE UPDATER'S STREAMS, scriptable for the case that drives the structured
+	 * report: the failing branch reads the cause from STDOUT (one report line at
+	 * exit) while the diagnosis fallback still comes from stderr's head.
+	 */
+	stdout = "",
+	stderr = null,
 	external = false,
 	daemonReports = null,
 	/*
@@ -10435,11 +10969,12 @@ const driveGlobalUpdate = async ({
 			if (runGate) await runGate({ markerPath });
 			return {
 				exitCode,
-				stdout: "",
+				stdout,
 				stderr:
-					exitCode === 0
+					stderr ??
+					(exitCode === 0
 						? ""
-						: "error: Failed to install: the index is unreachable\n\n  Caused by: network unreachable",
+						: "error: Failed to install: the index is unreachable\n\n  Caused by: network unreachable"),
 				ran,
 				command: command.path,
 			};
@@ -10850,7 +11385,7 @@ test("the readable-version grammar keeps every comparison it always made", async
 			publishedVersion: "0.54.44",
 		});
 		assert.equal(equal.verdict.server, "current");
-		assert.equal(equal.verdict.affirmation, rule.UP_TO_DATE_AFFIRMATION);
+		assert.equal(equal.verdict.affirmation, rule.upToDateAffirmation());
 
 		const newer = await loAggregateCheck({
 			appCheck: loAppCurrent,
@@ -11020,9 +11555,10 @@ test("the affirmation is earned by both channels current and by nothing else", a
 		const {
 			updateCheckVerdict: verdictFor,
 			updateCheckAffirmation: affirmationFor,
-			UP_TO_DATE_AFFIRMATION: sentence,
+			upToDateAffirmation,
 		} = rule;
 
+		const sentence = upToDateAffirmation();
 		const statuses = ["available", "current", "unavailable"];
 		let earned = 0;
 		for (const app of statuses) {
@@ -16352,6 +16888,221 @@ test("every server-update failure sentence reaches the panel verbatim, and the f
 });
 
 /**
+ * THE LEGACY SENTENCE IS UNCHANGED, and the raw fallback drops the duplicate cause.
+ *
+ * WHY THESE TWO TOGETHER. The renderer owns the structured cause (translated keys);
+ * the main-process sentence is now used only for an older backend, so it must stay
+ * byte-for-byte what it was. Review F2's invariant lives beside it: the updater can
+ * print its verdict to stderr as well as into the report, and the panel's primary
+ * line already shows it, so the producer strips that exact sentence from the raw
+ * block rather than repeating it there.
+ */
+test("the legacy sentence is unchanged, and the raw fallback drops the duplicated cause", () => {
+	const base = {
+		rebuildRoute: false,
+		ran: true,
+		exitCode: 1,
+		groupSurvived: false,
+		diagnosis: "[startup advisories and PyPI lines]",
+		target: "0.89.0",
+		after: "0.88.4",
+		before: "0.88.4",
+		updateCommand: "lop update",
+	};
+	assert.equal(
+		install.serverUpdateFailureSentence(base),
+		"The server update did not install: `lop update` exited 1. Nothing was restarted: the build that was serving is the build still serving. The installer's own output is below.",
+	);
+
+	const error = "fresh PyPI latest is 0.88.4, not 0.89.0; retry lop update";
+	const output = [
+		"2026-10-24 16:42:26,743 - WARNING - config.yml lost a setting",
+		error,
+		`2026-10-24 16:42:27,000 - WARNING - the serve check quoted "${error}" while waiting`,
+		"2026-10-24 16:42:27,272 - INFO - HTTP Request: GET https://pypi.org/pypi/local-operator/json",
+	].join("\n");
+	assert.equal(
+		install.stripFailureSentence(output, error),
+		[
+			"2026-10-24 16:42:26,743 - WARNING - config.yml lost a setting",
+			`2026-10-24 16:42:27,000 - WARNING - the serve check quoted "${error}" while waiting`,
+			"2026-10-24 16:42:27,272 - INFO - HTTP Request: GET https://pypi.org/pypi/local-operator/json",
+		].join("\n"),
+		"only the whole duplicate line is dropped; a warning that quotes it survives",
+	);
+	// A stream that carried nothing but the cause leaves no raw block at all.
+	assert.equal(install.stripFailureSentence(error, error), "");
+	// No structured cause is the older-backend path: the output is untouched.
+	assert.equal(install.stripFailureSentence(output, null), output);
+	assert.equal(install.stripFailureSentence(output, ""), output);
+});
+
+/**
+ * THE SERVICE'S HALF OF THE STRUCTURED CAUSE (contract 2026-10-24), driven through
+ * `updateBackend` rather than composed by the test.
+ *
+ * WHY THIS CASE IS SEPARATE FROM THE COMPOSER'S. The composer can be correct while
+ * the failing branch never reads the report, or reads the wrong stream, or drops
+ * the block on its way into the payload - and every one of those leaves the panel
+ * showing the stream head, which is the incident. So this drives the shipped
+ * service with the updater's real shape: the verdict on stdout, the advisories on
+ * stderr, and the failure block in the report.
+ */
+test("the failing branch puts the report's structured cause on backend-update-error", async () => {
+	const failure = {
+		step: "publish",
+		kind: "publication",
+		exit_code: 1,
+		error: "fresh PyPI latest is 0.88.4, not 0.89.0; retry lop update",
+	};
+	const report = JSON.stringify({
+		update_report: {
+			schema: "update.report.v1",
+			ok: false,
+			install_version: "0.88.4",
+			target: "0.89.0",
+			serve: [],
+			daemons: [],
+			failure,
+		},
+	});
+	/*
+	 * THE STREAM HEAD THE PANEL USED TO SHOW: two advisories long enough to consume
+	 * `installDiagnosisLines`' 800-character budget, with the verdict on stdout where
+	 * the diagnosis fallback cannot reach it.
+	 */
+	const stderr = [
+		`2026-10-24 16:42:26,743 - WARNING - ${"config.yml lost 1 setting(s); ".repeat(10)}restore from a backup`,
+		`2026-10-24 16:42:27,154 - WARNING - ${"the project store carries 2 duplicate rows; ".repeat(9)}rename one`,
+		"2026-10-24 16:42:27,154 - WARNING - the LOADED page of the project store carries 2 duplicate rows",
+		/*
+		 * THE BY-HAND SHAPE REVIEW F2 FOUND: the updater also prints its verdict to
+		 * stderr, so the old panel quoted the cause and repeated it in the raw block.
+		 */
+		failure.error,
+	].join("\n");
+	const seam = await driveGlobalUpdate({
+		before: "0.88.4",
+		after: "0.88.4",
+		exitCode: 1,
+		target: "0.89.0",
+		stdout: report,
+		stderr,
+	});
+	try {
+		const result = await seam.updateService.updateBackend("0.89.0");
+		assert.equal(result, false);
+		const event = seam.sent.find(
+			({ channel }) => channel === "backend-update-error",
+		);
+		assert.ok(event, JSON.stringify(seam.sent.map(({ channel }) => channel)));
+		assert.equal(event.payload.phase, "update");
+		/*
+		 * THE STRUCTURED HALF the renderer composes from. The version readings and
+		 * ownership flags travel with it, so the serve arm can offer a restart only
+		 * when the app really may bounce the daemon.
+		 */
+		assert.equal(event.payload.failure.step, "publish");
+		assert.equal(event.payload.failure.kind, "publication");
+		assert.equal(event.payload.failure.exitCode, 1);
+		assert.equal(event.payload.failure.error, failure.error);
+		assert.equal(event.payload.failure.target, "0.89.0");
+		assert.equal(event.payload.failure.installVersion, "0.88.4");
+		assert.equal(typeof event.payload.failure.command, "string");
+		assert.equal(typeof event.payload.failure.restartable, "boolean");
+		assert.equal(typeof event.payload.failure.appOwnedEnvironment, "boolean");
+		assert.equal(event.payload.failure.groupSurvived, false);
+		/*
+		 * THE LEGACY SENTENCE IS WHAT `message` CARRIES, unchanged: the structured arm
+		 * does not read it, and an older backend still gets the pre-change wording.
+		 */
+		assert.equal(
+			event.payload.message,
+			serverUpdateFailureSentence({
+				rebuildRoute: false,
+				ran: true,
+				exitCode: 1,
+				groupSurvived: false,
+				diagnosis: event.payload.installerOutput ?? "",
+				target: "0.89.0",
+				after: "0.88.4",
+				before: "0.88.4",
+				updateCommand: "lop update",
+			}),
+		);
+		/*
+		 * THE STRUCTURED RAW RECORD IS VERBATIM (QA round 2 decision): it keeps the
+		 * updater's exact sentence, because the primary block paraphrases rather than
+		 * quotes it and the record is collapsed. The duplicate invariant moved to the
+		 * primary sentence: the legacy `message` must not quote the verdict.
+		 */
+		assert.match(event.payload.installerOutput, /config\.yml lost 1 setting/);
+		assert.match(
+			event.payload.installerOutput,
+			/fresh PyPI latest is 0\.88\.4, not 0\.89\.0; retry lop update/,
+			"the expanded record must carry the updater's own sentence",
+		);
+		assert.doesNotMatch(
+			event.payload.message,
+			/fresh PyPI latest/,
+			"the composed primary sentence is a paraphrase, not a quote",
+		);
+	} finally {
+		seam.dispose();
+	}
+});
+
+/**
+ * THE UNKNOWN ARM KEEPS THE UPDATER'S OWN SENTENCE in the raw record.
+ *
+ * WHY THIS IS ITS OWN CASE. Review F2's filter removes the updater's line when the
+ * primary block paraphrases it; the unknown and refused arms have only a generic
+ * primary line, and the unknown remedy tells the reader to copy the details. A
+ * blanket filter would empty the one block that sentence names, which is the
+ * incident's failure in a new place.
+ */
+test("an unknown failure keeps the updater's sentence in the raw record", async () => {
+	const error = "unexpected state while installing 0.89.0";
+	const report = JSON.stringify({
+		update_report: {
+			schema: "update.report.v1",
+			ok: false,
+			install_version: "0.88.4",
+			target: "0.89.0",
+			serve: [],
+			daemons: [],
+			failure: { step: "install", kind: "unknown", exit_code: 1, error },
+		},
+	});
+	const seam = await driveGlobalUpdate({
+		before: "0.88.4",
+		after: "0.88.4",
+		exitCode: 1,
+		target: "0.89.0",
+		stdout: report,
+		stderr: [
+			"2026-10-24 16:42:26,743 - WARNING - config.yml drift",
+			error,
+		].join("\n"),
+	});
+	try {
+		await seam.updateService.updateBackend("0.89.0");
+		const event = seam.sent.find(
+			({ channel }) => channel === "backend-update-error",
+		);
+		assert.ok(event);
+		assert.equal(event.payload.failure.kind, "unknown");
+		assert.match(
+			event.payload.installerOutput,
+			/unexpected state while installing 0\.89\.0/,
+			"the unknown arm's remedy points at this sentence; it must survive",
+		);
+	} finally {
+		seam.dispose();
+	}
+});
+
+/**
  * ONE IDENTITY FOR ONE PRESS, asserted in both directions.
  *
  * WHY THIS CASE EXISTS. The fold that moved the CHECK onto the serving install's identity
@@ -18085,4 +18836,87 @@ test("the offer carries whether this press restarts the server", async () => {
 	} finally {
 		inPlace.dispose();
 	}
+});
+
+/**
+ * A missing notarization credential under NOTARIZE=true FAILS on GitHub Actions
+ * and stays a skip locally.
+ *
+ * The skip used to be the only behaviour: one line, exit 0, and only the
+ * skip-refusing gate (`require-notarized-dmg.sh`) or the artifact verification
+ * noticed. On a release runner that is a misbound secret, and the move to the App
+ * Store Connect API key changed every credential name at once, which is exactly
+ * when a binding is most likely to be wrong. So on Actions both hooks throw at
+ * the step that cannot do its job; a developer's ad-hoc build keeps the skip.
+ * Through the real entrypoint, with the same module-hook stub as the test above,
+ * so the exit status is the one the workflow reads.
+ */
+test("a missing notarization credential fails on Actions and skips locally", () => {
+	const root = tempDir("lo-notarize-missing-");
+	const dist = join(root, "dist");
+	mkdirSync(dist, { recursive: true });
+	writeFileSync(join(dist, "local-operator-ui-0.18.0-arm64.dmg"), "disk image");
+	const hookDir = join(root, "hook");
+	mkdirSync(hookDir);
+	writeFileSync(
+		join(hookDir, "register.mjs"),
+		[
+			'import { register } from "node:module";',
+			'Object.defineProperty(process, "platform", { value: "darwin", configurable: true });',
+			'register("./resolve.mjs", import.meta.url);',
+			"",
+		].join("\n"),
+	);
+	writeFileSync(
+		join(hookDir, "resolve.mjs"),
+		[
+			"export async function resolve(specifier, context, next) {",
+			'\tif (specifier === "@electron/notarize") {',
+			'\t\treturn { url: new URL("./stub.mjs", import.meta.url).href, shortCircuit: true };',
+			"\t}",
+			"\treturn next(specifier, context);",
+			"}",
+			"",
+		].join("\n"),
+	);
+	writeFileSync(
+		join(hookDir, "stub.mjs"),
+		'export async function notarize() { throw new Error("must not be reached"); }\n',
+	);
+	const env = { ...process.env, NOTARIZE: "true" };
+	for (const key of [
+		"APPLE_API_KEY",
+		"APPLE_API_KEY_ID",
+		"APPLE_API_ISSUER",
+		"APPLE_ID",
+		"APPLE_ID_PASSWORD",
+		"APPLE_TEAM_ID",
+	])
+		delete env[key];
+	const run = (extra) =>
+		spawnSync(
+			process.execPath,
+			[
+				"--import",
+				join(hookDir, "register.mjs"),
+				join(process.cwd(), "scripts", "notarize-artifacts.mjs"),
+				"--dist",
+				dist,
+			],
+			// cwd is the fixture root, so no developer's `.env.build` is loaded.
+			{ cwd: root, encoding: "utf8", env: { ...env, ...extra } },
+		);
+	// Two of three API-key values is still "missing": a partial binding is the
+	// misbound-secret case this exists for.
+	const onActions = run({
+		GITHUB_ACTIONS: "true",
+		APPLE_API_KEY_ID: "TESTKEY001",
+		APPLE_API_ISSUER: "00000000-0000-0000-0000-000000000000",
+	});
+	assert.notEqual(onActions.status, 0, onActions.stdout);
+	assert.match(onActions.stderr, /notarization credentials missing/);
+	assert.doesNotMatch(onActions.stderr, /must not be reached/);
+	const local = run({ GITHUB_ACTIONS: "" });
+	assert.equal(local.status, 0, local.stderr);
+	assert.match(local.stdout, /^Skipping disk image notarization: /m);
 });

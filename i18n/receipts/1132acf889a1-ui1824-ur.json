@@ -1,0 +1,56 @@
+{
+ "schema": 1,
+ "auditor": {
+  "agent": "reviewer",
+  "session": "1132acf889a1",
+  "instance": "1132acf889a1-ui1824-ur",
+  "model": "anthropic/claude-opus-5-5",
+  "model_note": "Session header model line (anthropic/claude-opus-5-5); no fallback reported or observed.",
+  "independence": "lopdev reviewer session 1132acf889a1 (ui-i18n-audit-r1), separate from the PR #1824 coder that translated these keys (ledger translator: coder). Verdict rebuilt from committed bytes, en context, core glossary/style guides and shipped precedent."
+ },
+ "agent": "reviewer",
+ "model": "anthropic/claude-opus-5-5",
+ "fallback": "none",
+ "instance": "1132acf889a1-ui1824-ur",
+ "session": "1132acf889a1",
+ "locale": "ur",
+ "namespace": "ui.chat.canonical",
+ "pr": "damianvtran/local-operator-ui#1824",
+ "branch": "feat/diff-block-show-all",
+ "head": "d592e766678af72912f18b43431f763bfbdfe895",
+ "date": "2026-11-09",
+ "status": "passed",
+ "result": "clean",
+ "scope": "Round-1 independent audit of the 4 keys PR #1824 added (tool_row.diff.more/show_less/truncated/withheld); other keys byte-identical to prior audited bytes; source-only audit (no rendered-fit evidence)",
+ "keys_audited": [
+  "ui.chat.canonical.tool_row.diff.more",
+  "ui.chat.canonical.tool_row.diff.show_less",
+  "ui.chat.canonical.tool_row.diff.truncated",
+  "ui.chat.canonical.tool_row.diff.withheld"
+ ],
+ "sha256": {
+  "ur": "e81ca81801140aa071f17baa15c85e8de393b35ce0de5a4131c8cd8b3ae5cc4d",
+  "en": "98e250d1df25a57e5b23bbb75d06f64e996d0c6f8149dfb4983c1ff50f16907e"
+ },
+ "paths": {
+  "en": "src/i18n/catalogues/en/ui.chat.canonical.json",
+  "target": "src/i18n/catalogues/ur/ui.chat.canonical.json",
+  "context": "src/i18n/catalogues/en/ui.chat.canonical.context.json"
+ },
+ "inputs_sha256": {
+  "en_context": "aa8367ea86b453bcb1a8d7642eb369f72822ce9b2b60e007c4a47e9d60b8fc06",
+  "glossary (local-operator/i18n/glossary.md)": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "style guide (local-operator/i18n/style-guides/ur.md)": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60"
+ },
+ "verified": [
+  "ICU: all 4 keys parse with intl-messageformat in every locale; rendered counts 0,1,2,5,21,22,1000000 through each locale's CLDR rules; `#`/{count} preserved; no extra or missing placeholders",
+  "plural arms: ru one/few/many/other with correct case and verb agreement; hi one covers 0 (guide); ur one = 1 only; vi/zh-CN other only (guides)",
+  "typography: NFC, no Cf/bidi controls (ur guide forbids manual RLM/LRM/FSI), no edge/double spaces; em dash ' — ' spaced per fr/es/ru/vi guides",
+  "terminology: 'diff' kept Latin in all 7 locales, matching shipped ui.agents.descriptions/routing.reviewer precedent; grammatical gender masculine (fr/es/ru) consistent with 'un diff'/'diff' precedent",
+  "show_less matches shipped show_less/show_fewer precedent per locale (Afficher moins, Mostrar menos, Свернуть, Hiện ít hơn, 收起, कम दिखाएँ, کم دکھائیں)",
+  "semantics vs en context: more = button revealing remaining recorded lines (leading ellipsis kept); truncated = lines never recorded (no blame); withheld = diff unavailable, no full stop",
+  "ur RTL: Latin-led strings ('Diff …', 'diff …') follow 421 shipped Latin-led ur strings; render layer owns isolation",
+  "unchanged keys: every other key byte-identical to the previously audited bytes (HEAD~1 target sha256 == prior ledger target_sha256 for all 7 locales; en base sha == prior source_sha256)"
+ ],
+ "findings": []
+}

@@ -1,0 +1,42 @@
+duplicate keys en: {}
+duplicate keys ur: {}
+ur keys 442 en keys 442 set equal True order equal True
+MANUAL_BIDI hits: []
+FORBIDDEN_SCRIPT hits: []
+non-NFC: []
+control chars: []
+plain-arg mismatches: []
+{size} count in composed: 1
+{size} in empty: 0
+ICU arm diffs: []
+cats used: ['=0', '=1', 'one', 'other']
+empty values: []
+identical to en: ['ui.chat.canonical.tool_row.bridge.summary.count', 'ui.chat.canonical.fold.count.named', 'ui.chat.canonical.fold.unit_separator']
+sidecar entries 442 catalogue keys 442
+keys missing context: []
+phantom context: []
+ui.chat.canonical.tool.never_sent_composed -> role: one-line status of a tool call that never reached a tool, af | tone: terse lower-case status line, no trailin | length: Short; shares one row with the tool name | maxCells: None
+ui.chat.canonical.tool.never_sent_empty -> role: one-line status of a tool call that never reached a tool and | tone: terse lower-case status line, no trailin | length: Short; shares one row with the tool name | maxCells: None
+en sha256 38f1069648c9241799bb1b316820e0530bf9445dfba3151e1c28df70153916b3
+ur sha256 479f3224402071b5d31024e6b0a44400a7824b784114678f1fc4349536ee80f2
+context sha256 c258ab485de698eec85e81ffed506866e3b1e8caf29cb3ff434901388065b390
+=== 2026-11-11T14:48:23Z bidi measurement (ur) ===
+cmd: fribidi --rtl --nobreak on the catalogue value with {size}=12.4 kB, raw vs FSI/PDI-isolated
+  raw       12.4 kB  -> 'ﺎﯿﮔ ﺎﮭﮑﻟ kB 12.4 · ﺎﯿﮔ ﺎﺠﯿﮭﺑ ﮟﯿﮩﻧ'
+  isolated  12.4 kB  -> 'ﺎﯿﮔ ﺎﮭﮑﻟ \u206912.4 kB\u2068 · ﺎﯿﮔ ﺎﺠﯿﮭﺑ ﮟﯿﮩﻧ'
+  raw       1,008 B  -> 'ﺎﯿﮔ ﺎﮭﮑﻟ B 1,008 · ﺎﯿﮔ ﺎﺠﯿﮭﺑ ﮟﯿﮩﻧ'
+  isolated  1,008 B  -> 'ﺎﯿﮔ ﺎﮭﮑﻟ \u20691,008 B\u2068 · ﺎﯿﮔ ﺎﺠﯿﮭﺑ ﮟﯿﮩﻧ'
+=== Intl unit symbols (node v24.22.1, ICU 78.3, CLDR 48.0) ===
+  ur narrow byte       "1.5B" sep=undefined
+  ur short  byte       "1.5byte" sep=" "
+  ur narrow kilobyte   "1.5kB" sep=" "
+  ur short  kilobyte   "1.5kB" sep=" "
+  ur narrow megabyte   "1.5MB" sep=" "
+  ur short  megabyte   "1.5MB" sep=" "
+  ur narrow gigabyte   "1.5GB" sep=" "
+  ur short  gigabyte   "1.5GB" sep=" "
+  ur narrow terabyte   "1.5TB" sep=" "
+  ur short  terabyte   "1.5TB" sep=" "
+  ur narrow petabyte   "1.5پی بی" sep=" "
+  ur short  petabyte   "1.5پی بی" sep=" "
+  digits: 1,234.5 latn

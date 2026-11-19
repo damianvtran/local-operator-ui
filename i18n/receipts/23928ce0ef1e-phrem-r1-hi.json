@@ -1,0 +1,65 @@
+{
+  "auditor": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "model_fallback": null,
+  "instance": "23928ce0ef1e-phrem-r1-hi",
+  "date": "2026-11-14",
+  "locale": "hi",
+  "independence": "Independent of the translator (lopdev coder subagent of host session 25fe8dfbf610; its served model was not confirmed by this auditor — the host session runs anthropic/claude-opus-5-5, so a same-model pairing is possible and disclosed). lopdev translation-auditor session 23928ce0ef1e read nothing from the translator’s session or scratchpad; verdicts come from this session’s own reading of the catalogue bytes.",
+  "translator": {
+    "agent": "coder",
+    "instance": "host session 25fe8dfbf610 (coder subagent)",
+    "keys": "14 new ui.providers.phone.* keys and the changed ui.settings.account.settings_page.add_credits value added by UI #1910"
+  },
+  "references": {
+    "glossary": "damianvtran/local-operator@9c2bbb3b6863 i18n/glossary.md",
+    "glossary_sha256": "a576d5a4b2718ba79a70a42600e3b6233ea28d716b1e2d996a208ac8dd7fabdb",
+    "style_guide": "damianvtran/local-operator@9c2bbb3b6863 i18n/style-guides/hi.md",
+    "style_guide_sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5",
+    "context_sha256": {
+      "ui.providers": "2eff513a0b987f8a57b592d5a5e552dcaa913b8d4868833cb9e80f65aa8236fa",
+      "ui.settings.account": "866b976edf768b0d006be08dd56def1fd7b8c7d77074c6b2c423ac63635176b9"
+    },
+    "core_wire_copy": "damianvtran/local-operator@9c2bbb3b6863 local_operator/i18n/catalogues/hi/{mobile.setup,wire.radient_saver,cli.mobile_help}.json"
+  },
+  "repo": "damianvtran/local-operator-ui",
+  "pr": 1910,
+  "head": "d0912f37538a76677a64d896356b0609ef87232f",
+  "base": "e2d980d217ec4c72e409ef8a21a8aed9602b57a2",
+  "scope": "Delta audit of PR #1910 copy: the 14 new ui.providers.phone.* keys (action.add_credit, action.open_console, action.turn_on, action.reconnect, action.copy_diagnostics, stopped, last_checked, next_step_app, next_step_app_no_email, address_alternative, diagnostics_failed, offer.title, offer.body, offer.not_now) and ui.settings.account.settings_page.add_credits (“Add credits” → “Add credit”), read against en values, en .context.json, glossary, hi style guide and core wire copy. All other values are byte-identical to base e2d980d217ec (verified) and keep their prior audits. ui.settings.account: target bytes unchanged; only the English source value moved, and the existing translation already reads as singular “add credit”.",
+  "namespaces": {
+    "ui.providers": {
+      "status": "passed",
+      "sha256": {
+        "en": "70b5e4b3348848a8b3eca926cf9ac566b04432f79900d1b9335480d3107785d4",
+        "hi": "a3e418b6def05bc3670af8e2eba21d30867868baef7b0bf13852bd72de4980e7"
+      },
+      "findings": [
+        {
+          "id": "T-hi-1",
+          "severity": "MINOR",
+          "key": "ui.providers.phone.action.reconnect",
+          "current": "फिर से कनेक्ट करें",
+          "proposed": "फिर कनेक्ट करें",
+          "reason": "Glossary consistency: the other hi “Reconnect” labels (8 corpus uses of “फिर कनेक्ट”, incl. ui.chat.canonical.transcript.reconnect and reconnect_radient) drop “से”; shorter, matching the “one word” length hint."
+        }
+      ]
+    },
+    "ui.settings.account": {
+      "status": "passed",
+      "sha256": {
+        "en": "c50a2bcdcd5dcdcc863541707b22da622992b79e5d0d51bc60e83a00b3a89ab3",
+        "hi": "cd9122e7f9c7549d76ec766799d7533ab09e6b6ad8c61ea75f797f317f923c46"
+      },
+      "findings": []
+    }
+  },
+  "checks": {
+    "mechanical": "Key parity with en (ui.providers 205, ui.settings.account 35); {when} and {email} preserved byte-exactly; no ICU plural/select in scope; no bidi controls (U+200E/F, U+202A-E, U+2066-9); NFC; locale punctuation verified by codepoint (danda ।); no shell command in any value; offer.body keeps the promise that any monthly price is shown before anything is billed.",
+    "overflow": "Settings-panel buttons are whitespace-nowrap in a desktop-width panel; the longest in-scope labels (vi copy_diagnostics 28 chars, fr add_credit 17 chars) fit. Offer-card title/body wrap (break-words). Not in scope but flagged for a rendered check: the pre-existing set_up label reused in the narrow sidebar offer card (nowrap button).",
+    "terms": {
+      "phone_access_term": "INFO (not counted): the UI ui.providers namespace has its own established “phone access” term that differs slightly from core wire copy in fr (accès depuis un téléphone vs accès téléphone), es (acceso desde el teléfono vs acceso telefónico; core cli.mobile_help also says desde el teléfono), vi (truy cập từ điện thoại vs truy cập điện thoại) and ur (فون کی رسائی vs فون رسائی). The new keys follow the panel’s existing term (set_up, connector_not_needed, failure.*), which is the right call for one screen; the cross-repo split is pre-existing and not gated here. ru (доступ с телефона), hi (फ़ोन एक्सेस) and zh-CN (手机访问) match core exactly.",
+      "add_credit_term": "“Add credit” matches core wire copy (mobile.setup.balance, wire.radient_saver.notice.no_credit) in every locale: fr Ajouter du crédit · es Añadir crédito · zh-CN 充值 · ru Пополнить баланс · vi Nạp tín dụng · ur کریڈٹ شامل کریں · hi क्रेडिट जोड़ें; the phone button and the Settings button agree byte-for-byte."
+    }
+  }
+}

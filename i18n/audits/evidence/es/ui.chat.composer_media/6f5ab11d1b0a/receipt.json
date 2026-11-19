@@ -1,0 +1,210 @@
+{
+  "locale": "es",
+  "mode": "Fresh independent four-key delta audit; read-only worktree; allocation fix (<2h).",
+  "scope": "PR #1842 @ e5fb4310dab638f9cf428779d62539ec039a8990; four new Spanish messages fully audited; 267 legacy keys consistency-only, no legacy semantic certification. Broadened pasted_file English metadata checked by source inspection.",
+  "head_sha": "e5fb4310dab638f9cf428779d62539ec039a8990",
+  "audit_date": "2026-11-10",
+  "key_count": 271,
+  "fully_audited_key_count": 4,
+  "consistency_only_key_count": 267,
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "Delegation supplied model and Spanish translator session fdf0610daa17. This auditor did not translate or participate in translation."
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "6f5ab11d1b0a",
+    "session": "6f5ab11d1b0a",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "Served session header: openai/gpt-6.1-sol; session 6f5ab11d1b0a. No fallback used.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "status": "passed",
+  "result": "clean",
+  "verdict": "clean",
+  "findings": [],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "namespaces": {
+    "ui.chat": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15",
+      "target_sha256": "73e79f400865c43fd43bd3ce7dbc3e5979e53c8bc7986930d7441e01d9859c46",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.json",
+          "sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15"
+        },
+        "es": {
+          "path": "src/i18n/catalogues/es/ui.chat.json",
+          "sha256": "73e79f400865c43fd43bd3ce7dbc3e5979e53c8bc7986930d7441e01d9859c46"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.context.json",
+          "sha256": "84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf"
+        }
+      },
+      "findings": []
+    },
+    "ui.chat.composer_media": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae",
+      "target_sha256": "82d113f5948cf0d3d12bfe3fff081dbf99339489324057c7017a4ca37c3e79dc",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.composer_media.json",
+          "sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae"
+        },
+        "es": {
+          "path": "src/i18n/catalogues/es/ui.chat.composer_media.json",
+          "sha256": "82d113f5948cf0d3d12bfe3fff081dbf99339489324057c7017a4ca37c3e79dc"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.composer_media.context.json",
+          "sha256": "a0fbc1552ef6f27999f3cff365750025627a284faa106d767e22a24d131ae77b"
+        }
+      },
+      "findings": []
+    },
+    "ui.common.actions": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b",
+      "target_sha256": "297982c56ead7383ca4bd8ea94c2c961f7532785957f648287a335e7168dd2a8",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.json",
+          "sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b"
+        },
+        "es": {
+          "path": "src/i18n/catalogues/es/ui.common.actions.json",
+          "sha256": "297982c56ead7383ca4bd8ea94c2c961f7532785957f648287a335e7168dd2a8"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.context.json",
+          "sha256": "24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d"
+        }
+      },
+      "findings": []
+    }
+  },
+  "per_key_checks": [
+    {
+      "key": "ui.chat.image_actions.actions",
+      "source": "Image actions",
+      "current_text": "Acciones de la imagen",
+      "findings": [],
+      "assessment": "Acciones de la imagen is a natural noun phrase, consistent with Acciones del archivo and Copiar imagen / Ampliar imagen. Fixed la agrees with imagen, not user data.",
+      "placeholder_integrity": {
+        "matches_english": true,
+        "tokens": []
+      },
+      "plural_select": [],
+      "invisible_characters": [],
+      "derived_expansions_not_production_render": {}
+    },
+    {
+      "key": "ui.chat.audio.position_label",
+      "source": "{label} position",
+      "current_text": "Posición de {label}",
+      "findings": [],
+      "assessment": "Posición de {label} names the seek position for the particular clip; consistent with Posición de reproducción and Reproducir {label} / Pausar {label}. de introduces a verbatim title, not an inflected common noun; arbitrary titles need no article/gender/number agreement or contraction.",
+      "placeholder_integrity": {
+        "matches_english": true,
+        "tokens": [
+          "{label}"
+        ]
+      },
+      "plural_select": [],
+      "invisible_characters": [],
+      "derived_expansions_not_production_render": {
+        "report.pdf": "Posición de report.pdf",
+        "图像.png": "Posición de 图像.png",
+        "El mar": "Posición de El mar",
+        "Los audios": "Posición de Los audios",
+        "“A”, B: prueba": "Posición de “A”, B: prueba",
+        "audio-01": "Posición de audio-01"
+      }
+    },
+    {
+      "key": "ui.chat.composer_media.pasted_image",
+      "source": "Pasted image",
+      "current_text": "Imagen pegada",
+      "findings": [],
+      "assessment": "Imagen pegada correctly describes a pasted-image fallback filename, not a paste action. Feminine pegada agrees with fixed imagen and parallels existing Archivo pegado; no extension or punctuation added.",
+      "placeholder_integrity": {
+        "matches_english": true,
+        "tokens": []
+      },
+      "plural_select": [],
+      "invisible_characters": [],
+      "derived_expansions_not_production_render": {}
+    },
+    {
+      "key": "ui.common.actions.actions_for_name",
+      "source": "Actions for {name}",
+      "current_text": "Acciones de {name}",
+      "findings": [],
+      "assessment": "Acciones de {name} naturally names the asset-specific actions menu, parallel to Acciones del archivo. Existing Acciones para {name} is also valid; de versus para is a contextual relation choice, not a conflicting translation of acciones. The inserted proper title is not declined, translated or made to agree.",
+      "placeholder_integrity": {
+        "matches_english": true,
+        "tokens": [
+          "{name}"
+        ]
+      },
+      "plural_select": [],
+      "invisible_characters": [],
+      "derived_expansions_not_production_render": {
+        "report.pdf": "Acciones de report.pdf",
+        "图像.png": "Acciones de 图像.png",
+        "El mar": "Acciones de El mar",
+        "Los audios": "Acciones de Los audios",
+        "“A”, B: prueba": "Acciones de “A”, B: prueba",
+        "audio-01": "Acciones de audio-01"
+      }
+    }
+  ],
+  "remediation_verification": {
+    "status": "No in-scope findings. Terminal clean audit.",
+    "prior_findings": [],
+    "policy_sources": {
+      "style_guide": {
+        "path": "/Users/damian/local-operator/i18n/style-guides/es.md",
+        "sha256": "77b9227213802d14c74d4298d6b346ad842bbf2a5ca3b9d46fc6144430d26c3e"
+      },
+      "glossary": {
+        "path": "/Users/damian/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/glossary.md",
+        "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+      }
+    },
+    "executed_checks": [
+      "See companion audit.log and audit_es.py: shasum, scoped repository context validator, Python duplicate/JSON/key-set/legacy/placeholder/control checks."
+    ],
+    "typography_fit": "All four values use sentence case, ordinary spaces, no trailing punctuation or invisible characters. Imagen pegada is 13 characters, compact as a filename caption. Others are accessible names/tooltips with no hard width budget. No visual-fit claim.",
+    "glossary_conformance": "Checked against manager-owned byte-copy in _s12-audits; SHA-256 verified. No product names, commands or kept-English terms are changed.",
+    "metadata_accuracy": "get-file-name.ts uses pasted_file for non-image data: URIs with absent or undecodable name regardless of MIME. attachment-encode.ts uses getFileName for upload name metadata and passes original dataUrl unchanged; valid decoded names stay verbatim. Note is accurate.",
+    "out_of_scope_pre_existing": [
+      "ui.chat.highlights.file_resolution_failed",
+      "ui.chat.usage.blocked",
+      "ui.chat.usage.continue",
+      "ui.chat.usage.eligibility_unknown",
+      "ui.chat.usage.family_caps",
+      "ui.chat.usage.unlimited"
+    ]
+  },
+  "unverified": [
+    "No builds, installs, servers, browser, rendered/pixel-fit or actual screen-reader execution. Arbitrary-title expansions are derived text, not production formatting.",
+    "No whole-suite gates or ledger command/writes, PR comments, commits or tracked retention: explicit read-only/scratch-only assignment. Manager must retain companions and record ledger rows.",
+    "Scoped repository context validator namespaceGap executed. Six ui.chat legacy context gaps are also present on origin/main; not new findings or a claim that full context-parity CLI passed."
+  ],
+  "receipt_contract_review": "Reference receipt root/auditor/namespace/input-hash structures followed, expanded for three namespaces and explicit full-versus-consistency counts. JSON roundtrip and hashes verified with Python.",
+  "audit_notes_not_execution_log": true
+}

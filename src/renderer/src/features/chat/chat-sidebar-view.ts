@@ -61,6 +61,8 @@
  * claim, which is why there is no wire field.
  */
 
+import { t } from "@shared/i18n";
+import type { WithoutParams } from "@shared/i18n";
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
 import {
 	SIDEBAR_BASES,
@@ -101,15 +103,22 @@ export const SIDEBAR_SECTIONS: readonly SidebarSectionKey[] = [
 	"teams",
 ];
 
-/** The label each section prints. Sentence case; CSS sets the capitals. */
-export const SIDEBAR_SECTION_LABEL: Record<SidebarSectionKey, string> = {
-	pinned: "Pinned",
-	running: "Running",
-	today: "Today",
-	week: "This week",
-	older: "Older",
-	agents: "Agents",
-	teams: "Teams",
+/**
+ * The label each section prints. Sentence case; CSS sets the capitals.
+ *
+ * KEYS, NOT COPY, for the reason `CHAT_LIST_SECTION_LABEL` beside it states: a
+ * module-scope English table cannot follow a language switch, and it is the
+ * second place a section's name would be spelled. Resolved by `t()` where the
+ * heading is drawn.
+ */
+export const SIDEBAR_SECTION_LABEL: Record<SidebarSectionKey, WithoutParams> = {
+	pinned: "ui.chat.sidebar_view.section.pinned",
+	running: "ui.chat.sidebar_view.section.running",
+	today: "ui.chat.sidebar_view.section.today",
+	week: "ui.chat.sidebar_view.section.week",
+	older: "ui.chat.sidebar_view.section.older",
+	agents: "ui.chat.sidebar_view.section.agents",
+	teams: "ui.chat.sidebar_view.section.teams",
 };
 
 /**
@@ -262,6 +271,84 @@ export function toggleSectionDisclosure(
 }
 
 /**
+ * A TAG GROUP'S DISCLOSURE (issue #1639): the key it is recorded under in the same
+ * `localStorage['chat-sidebar-disclosures']` map the section headings write.
+ *
+ * WHY THAT MAP AND NOT A `collapsedTags` FIELD ON `SidebarView`. The view record is
+ * the reader's choice of LENS (what is grouped, what is shown); the disclosure map
+ * already means "this group is folded" and is already persisted, migrated and reset
+ * by the stories/evidence rigs as one blob. A second home for the same kind of fact
+ * is the drift this file's header warns about.
+ *
+ * WHY KEYED BY TAG ID, NOT BY (section, tag). One tag can draw a header in `Pinned`
+ * AND in a time section; folding one and leaving the other open would make a single
+ * press mean two different things depending on where it landed, so one key folds
+ * every header of that tag. The `tag:` prefix keeps the namespace apart from the
+ * section keys (`pinned`, `today`, `agents`, ...), which are plain words.
+ */
+export function tagDisclosureKey(tagId: string): string {
+	return `tag:${tagId}`;
+}
+
+/**
+ * Whether a tag group's body is folded. ABSENT MEANS OPEN: a tag nobody has pressed
+ * shows its rows, which is how every group drew before this control existed, so an
+ * old profile's map (no `tag:` keys) renders exactly as it did.
+ */
+export function tagGroupCollapsed(
+	expanded: Record<string, boolean>,
+	tagId: string,
+): boolean {
+	return expanded[tagDisclosureKey(tagId)] === false;
+}
+
+/**
+ * THE CHEVRON PRESS on a tag group header: the disclosure map in, the next map out.
+ *
+ * Pure for the reason `toggleSectionDisclosure` is: the transition is reachable by
+ * `scripts/chat-sidebar-view.test.mjs` rather than being a condition inside JSX. It
+ * deliberately has NO cap or query argument. A tag group has no row cap of its own
+ * (the section's cap bounds it), and under a LIST QUERY grouping is suspended
+ * altogether (`groupChatsByTag(..., !query.trim())` returns null and the flat path
+ * draws every match), so there is no header to press and nothing for a fold to hide -
+ * the stored fold simply waits for the query to clear.
+ *
+ * NOTHING ELSE WRITES THIS KEY. In particular a drop onto a folded group's header
+ * leaves it folded: the header's count rising is the confirmation the row landed,
+ * and springing the group open under the pointer would move every row below it
+ * mid-gesture (the v2 rule that keeps drag targets from shifting).
+ */
+export function toggleTagDisclosure(
+	expanded: Record<string, boolean>,
+	tagId: string,
+): Record<string, boolean> {
+	const key = tagDisclosureKey(tagId);
+	/*
+	 * AN UNFOLD REMOVES THE KEY rather than writing `true` (UX round 1, U6): absent
+	 * already means open, so the blob only ever holds the folds in force and does
+	 * not accumulate one entry per tag ever pressed. A deleted tag's fold still
+	 * lingers until pruned; harmless, as tag ids are never reused (uuid4).
+	 */
+	if (tagGroupCollapsed(expanded, tagId)) {
+		const { [key]: _open, ...rest } = expanded;
+		return rest;
+	}
+	return { ...expanded, [key]: false };
+}
+
+/**
+ * The rows a tag group's body draws: none while folded. The header (name + count) is
+ * drawn either way by the caller, so the count stays the group's whole size.
+ */
+export function tagGroupBodyRows<T>(
+	rows: readonly T[],
+	expanded: Record<string, boolean>,
+	tagId: string,
+): readonly T[] {
+	return tagGroupCollapsed(expanded, tagId) ? [] : rows;
+}
+
+/**
  * WHETHER THE ROSTER'S FIELD IS DRAWN - and with it whether the filter it carries may
  * NARROW anything, because the two move together (design round 1's D2, agent review's
  * B3, UX round 1's U2 and U3 are one defect seen four ways).
@@ -373,10 +460,11 @@ export const sectionGrownHintId = (key: string) => `section-grown-hint-${key}`;
  * THE SECTION FOOT'S VISIBLE LABEL, in one spelling (the singular was inline in
  * the component and the plural was its template). `Show 1 more` is its own
  * sentence rather than a pluralised one because that is what the panel's other
- * remainders say.
+ * remainders say. The count selects the locale's CLDR category inside the
+ * keyed message, never in this branch.
  */
 export const sectionMoreLabel = (hidden: number) =>
-	hidden === 1 ? "Show 1 more" : `Show ${hidden} more`;
+	t("ui.chat.sidebar.catalogue.show_more", { hidden });
 
 /**
  * THE SECTION FOOT'S ACCESSIBLE NAME (UX round 1's N1): the visible label names
@@ -393,11 +481,63 @@ export const sectionMoreLabel = (hidden: number) =>
  * which is the string `data-sidebar-section-more` already carries: one word for the
  * section, not a second vocabulary beside it.
  */
-export function sectionMoreName(hidden: number, unit: string): string {
-	return `${sectionMoreLabel(hidden)} ${unit}`;
+export function sectionMoreName(
+	hidden: number,
+	unit: "agents" | "teams",
+): string {
+	// One keyed plural PHRASE per section, noun inside, not the label with the
+	// section word appended: a sentence that ends in an English noun cannot be
+	// translated (it painted as "再显示4条 agents" in the census).
+	return unit === "agents"
+		? t("ui.chat.sidebar.catalogue.show_more_agents", { count: hidden })
+		: t("ui.chat.sidebar.catalogue.show_more_teams", { count: hidden });
 }
 
-export type SidebarGroupBy = "section" | "agent" | "flat";
+/**
+ * How the chats list is grouped.
+ *
+ * `tag` (issue #1733, `docs/design/sidebar-tag-first-grouping.md`) draws the
+ * occupied PRIMARY tags as the top-level groups across all dates - the second
+ * of the two tag arrangements. It is not a modifier of `section`: there are no
+ * time headings under it, and pinned/running rows lead their tag group instead
+ * of owning a section. It is only drawable on a backend that advertises
+ * `session_tags`; `drawnGroupBy` is the one place that decides what a stored
+ * `tag` draws where it cannot be.
+ */
+export type SidebarGroupBy = "section" | "tag" | "agent" | "flat";
+
+/**
+ * The grouping the list actually DRAWS for a stored view.
+ *
+ * A stored `tag` meeting a backend without the tag registry (an older daemon)
+ * draws `section` for that render, and the stored value is deliberately NOT
+ * rewritten: the reader chose Tag, and reconnecting to a capable backend must
+ * give it back. A mode change is never silent (sidebar-tags.md §2), so every
+ * write the sidebar makes keeps spreading the STORED view, never this answer.
+ */
+export function drawnGroupBy(
+	view: Pick<SidebarView, "groupBy">,
+	tagsAvailable: boolean,
+): SidebarGroupBy {
+	return view.groupBy === "tag" && !tagsAvailable ? "section" : view.groupBy;
+}
+
+/**
+ * Whether the tag surface is on: tag subheaders inside Time sections
+ * (`tagsEnabled`) or tags as the top-level groups (`groupBy: "tag"`).
+ *
+ * ONE PREDICATE because three things follow the SURFACE rather than the switch
+ * (design §2.2): auto-tagging forks, the auto-tag row in the popover, and the
+ * tag footer / `Shown under` line. Tag mode is tags-on by definition and never
+ * writes `tagsEnabled` - writing it would make a later return to Time section
+ * show subheaders the reader had turned off - so reading the switch alone would
+ * turn auto-tagging off in exactly the mode that is most about tags.
+ */
+export function tagSurfaceOn(
+	view: Pick<SidebarView, "groupBy" | "tagsEnabled">,
+): boolean {
+	return view.tagsEnabled || view.groupBy === "tag";
+}
 
 /**
  * How the chats list is ordered - the two meanings, restated on 2026-10-08
@@ -437,6 +577,21 @@ export type SidebarView = {
 	/** Display-only: disabling grouping never removes durable assignments. */
 	tagsEnabled: boolean;
 	/**
+	 * Whether a DESKTOP fork asks the backend to name itself with a tag
+	 * (`docs/design/sidebar-tags-v2.md` §5.4). Default ON and persisted with the
+	 * rest of the view, because the preference is about the next fork, not about
+	 * what the tags list draws - which is why it is a sibling of `tagsEnabled`
+	 * rather than of `groupBy`.
+	 *
+	 * IT IS AN INTENT, NOT A PROMISE: a backend that predates the fork field is
+	 * never sent `auto_tag` (`chat-auto-tag.ts` owns the gate), and turning tags
+	 * off stops the flag at the request even while this stays true, so a reader
+	 * who re-enables tags gets their choice back rather than a silent reset.
+	 * Changing it later never rewrites an existing fork's sidecar - the backend
+	 * captures the intent at fork time.
+	 */
+	autoTagForks: boolean;
+	/**
 	 * Which clock the time sections and the row labels read.
 	 *
 	 * Declared beside `groupBy`/`orderBy` because it is a third, independent axis
@@ -466,6 +621,7 @@ export const DEFAULT_SIDEBAR_VIEW: SidebarView = {
 	pins: [],
 	groupBy: "section",
 	tagsEnabled: false,
+	autoTagForks: true,
 	basis: "active",
 	orderBy: "active-first",
 	loads: 0,
@@ -513,6 +669,32 @@ export const CHAT_PAGE_MAX = 500;
  */
 export const PINNED_AGENTS_MAX = 64;
 
+/**
+ * The ladder rung a view draws at, which differs from `view.loads` in one mode.
+ *
+ * TAG MODE STARTS ON THE HELD HEAD, rung 2 (50 rows), not on 10 (design §2.6):
+ * ten rows spread over six tags leaves most groups one row deep and defeats the
+ * mode, and fifty is the catalogue head the client already holds
+ * (`CATALOGUE_HEAD_PAGE`), so starting there costs no fetch. Folds (#1639) are
+ * the vertical-space answer, not a short page.
+ *
+ * A MODE SWITCH NEVER REWRITES `view.loads`: the page cut, the foot label and
+ * the foot press all read this instead, so switching to Tag and back without
+ * pressing restores the reader's own rung. A foot PRESS in Tag mode does write
+ * it - from the drawn rung, so the first press is 50 -> 100 - and Time section
+ * then honours that larger page: the reader asked for more chats, and quietly
+ * dropping them on a mode switch would be the surprise (PR #1747 round 1, R2). Pass the DRAWN grouping (`drawnGroupBy`), so a stored `tag`
+ * that draws as `section` also pages as `section`.
+ */
+export const TAG_MODE_MIN_LOADS = 2;
+export function effectiveLoads(
+	view: Pick<SidebarView, "groupBy" | "loads">,
+): number {
+	return view.groupBy === "tag"
+		? Math.max(view.loads, TAG_MODE_MIN_LOADS)
+		: view.loads;
+}
+
 /** How many rows a list that has been "load more"-ed `loads` times draws. */
 export function pageLimit(loads: number): number {
 	const steps = Math.max(0, Math.floor(loads));
@@ -532,12 +714,14 @@ export function pageLimit(loads: number): number {
  * prints `Show 4 more sessions`, not the ladder's next rung. And `remaining`
  * now comes from `pageReveal` where the list can compute it (follow-up a,
  * 2026-10-08), because a live row inside the next slice is already drawn: the
- * sentence names the rows the press ADDS, never the rows that merely exist.
+ * sentence names the rows the press ADDS, never the rows that merely exist. The
+ * count selects the locale's CLDR category inside the keyed message, so the
+ * singular branch is not a second English template here.
  */
 export function pageMoreLabel(loads: number, remaining: number): string {
 	const step = pageLimit(loads + 1) - pageLimit(loads);
 	const add = Math.max(0, Math.min(step, remaining));
-	return add === 1 ? "Show 1 more chat" : `Show ${add} more chats`;
+	return t("ui.chat.sidebar.catalogue.show_more_chats", { add });
 }
 
 /**
@@ -573,6 +757,30 @@ export function pageReveal(
 	const add = Math.max(0, to - from - live);
 	if (add > 0) return add;
 	return Math.max(0, Math.min(step, remaining));
+}
+
+/**
+ * The live cue a FOLDED Tag-mode group owes its header (PR #1747 round 1, U1/D2).
+ *
+ * WHY: Tag mode has no Running section (design §2.4), so a fold is the one place
+ * a running chat - or one stopped waiting on the reader - can vanish with no
+ * trace; in Time section the RUNNING label stays above any fold. The cue is the
+ * row the header should show the existing status glyph of, plus the live count
+ * for its accessible suffix. A row stopped on the reader wins over a merely busy
+ * one, because it is the one the reader must act on (the lift's own first lane).
+ * Null when the group is open (its rows already say it) or holds nothing live.
+ */
+export function foldedLiveCue<T extends CanonicalSessionRow>(
+	rows: readonly T[],
+	collapsed: boolean,
+): { row: T; count: number } | null {
+	if (!collapsed) return null;
+	const live = rows.filter((row) => isActiveRow(row));
+	if (live.length === 0) return null;
+	return {
+		row: live.find((row) => isStoppedOnReader(row)) ?? (live[0] as T),
+		count: live.length,
+	};
 }
 
 /**
@@ -944,8 +1152,9 @@ export function entityMore(args: {
 	total: number;
 }): { label: string; aria: string } | null {
 	if (args.add <= 0) return null;
-	const label =
-		args.add === 1 ? "Show 1 more chat" : `Show ${args.add} more chats`;
+	const label = t("ui.chat.sidebar.catalogue.show_more_chats", {
+		add: args.add,
+	});
 	/*
 	 * The position appears exactly while the badge states more than the reader is
 	 * looking at, and not otherwise - so it can never contradict the badge, and a
@@ -961,7 +1170,12 @@ export function entityMore(args: {
 		 * comma - the visible string is then a prefix of the name, and
 		 * `chat-sidebar.tsx` appends only the group's name (`… shown in minervadev`).
 		 */
-		aria: `${label} · ${position} shown`,
+		/*
+		 * No catalogue key exists for the old trailing " shown" word. Keeping the
+		 * keyed label as the prefix and the position as the suffix preserves WCAG
+		 * 2.5.3 without inventing untranslated copy; the position is self-describing.
+		 */
+		aria: `${label} · ${position}`,
 	};
 }
 
@@ -1059,7 +1273,10 @@ export type SidebarRowGroup = {
  * WEEK/OLDER rules live and the only place they should: a second implementation
  * of "which section is this row in" is how the labels and the lift disagree.
  * `agent` groups by the row's binding - its team, else its agent - and `flat`
- * is one unlabelled group.
+ * is one unlabelled group. `tag` also returns null: its partition is
+ * `chat-tag-groups.ts`'s `groupChatsByTag`, the same bucketing the Time section
+ * subheaders use, so the two tag arrangements cannot disagree about which tag a
+ * row is under (one bucketing implementation, design §2.3).
  *
  * UNGROUPED IS A REAL GROUP rather than a leftover, and it is drawn rather than
  * dropped: an untargeted chat, a chat whose agent was deleted, and a chat opened
@@ -1070,7 +1287,7 @@ export function groupRows(
 	rows: readonly CanonicalSessionRow[],
 	groupBy: SidebarGroupBy,
 ): SidebarRowGroup[] | null {
-	if (groupBy === "section") return null;
+	if (groupBy === "section" || groupBy === "tag") return null;
 	if (groupBy === "flat") return [{ key: "all", label: "", rows: [...rows] }];
 	const groups = new Map<string, SidebarRowGroup>();
 	for (const row of rows) {
@@ -1078,7 +1295,10 @@ export function groupRows(
 		const key = name || "ungrouped";
 		const group = groups.get(key) ?? {
 			key,
-			label: name || "Ungrouped",
+			// Resolved here, on each call: `groupRows` runs inside the sidebar's render
+			// (which subscribes to the locale), so the heading follows the language
+			// picker. `key` stays the machine token `ungrouped` that the sort below keys on.
+			label: name || t("ui.chat.sidebar_view.ungrouped"),
 			rows: [],
 		};
 		group.rows.push(row);
@@ -1230,7 +1450,7 @@ export function canMoveSection(
 	return draws ? draws(target) : true;
 }
 
-const GROUP_BY: readonly SidebarGroupBy[] = ["section", "agent", "flat"];
+const GROUP_BY: readonly SidebarGroupBy[] = ["section", "tag", "agent", "flat"];
 const ORDER_BY: readonly SidebarOrderBy[] = ["active-first", "recent"];
 
 /**
@@ -1341,6 +1561,16 @@ export function parseSidebarView(value: unknown): SidebarView {
 		order,
 		groupBy,
 		tagsEnabled: typeof raw.tagsEnabled === "boolean" ? raw.tagsEnabled : false,
+		/*
+		 * A stored non-boolean reads as the DEFAULT rather than as `false`: this
+		 * setting is opt-out, and the tampered-storage edge must not silently
+		 * disable the behaviour a fresh install has. `false` is only ever the
+		 * value a reader chose, which is what makes `off` durable.
+		 */
+		autoTagForks:
+			typeof raw.autoTagForks === "boolean"
+				? raw.autoTagForks
+				: DEFAULT_SIDEBAR_VIEW.autoTagForks,
 		basis,
 		orderBy,
 		loads,

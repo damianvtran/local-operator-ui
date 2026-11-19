@@ -1,0 +1,311 @@
+{
+  "instance": "acd53e2cf056-r4-es",
+  "locale": "es",
+  "scope": "Round-4 verification of the SAME 89-key es delta audited in round 3 (keys added by 930c8ec2d1, corrected by 40afea32ff and 8f1c56a425), re-checked at a10255813c. Only the round-3 findings, the keys they name, their placeholders, and the values this commit actually changed were re-examined; the delta was not re-audited from scratch and no new policy was assessed.",
+  "head": "a10255813c44112eb49bb5d5d6fe05173e2d21c1",
+  "head_short": "a10255813c",
+  "key_count": 89,
+  "audit_date": "2026-10-29",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "acd53e2cf056",
+    "model": "radient/auto",
+    "actual_model_source": "live session model read from the sessions store for acd53e2cf056; the session fell back to it on provider quota after anthropic/claude-sonnet-5-5 via openai/gpt-6-astra and kimi/k3.1-pro. No translation or MT service was used."
+  },
+  "reviewed_previous": "/Users/damian/qa/lit-audit3/es/receipt.json",
+  "diff_reviewed": "8f1c56a425..a10255813c — 10 files, 15 insertions, 15 deletions. In es exactly two files and three values changed: ui.hub.detail.back_aria, ui.hub.detail.delist_tooltip, ui.hub.viewer.like. The en catalogues did not change at all; the only en change is a docs-only note in ui.hub.detail.context.json.",
+  "findings": [
+    {
+      "id": "es-D3-002",
+      "severity": "MINOR",
+      "status": "still_standing",
+      "namespace": "ui.hub.viewer",
+      "key": "ui.hub.viewer.favourite_unknown",
+      "also_affects": [
+        "ui.hub.viewer.like_unknown"
+      ],
+      "en": "Your favourites could not be read, so this is not shown as unfavourited.",
+      "es": "No se pudieron leer tus favoritos, así que no se asume que este agente no sea favorito.",
+      "problem": "Unchanged at a10255813c, byte-identical to round 3. Double negative plus 'asumir' used for 'assume/infer' (calque; Spanish prefers 'dar por hecho' or 'suponer'). like_unknown repeats the construction: 'no se asume que este agente no te guste'. Not filed as blocking: the meaning is recoverable and the copy is not unsafe.",
+      "suggestion": "No se pudieron leer tus favoritos, así que este agente no se muestra como no favorito."
+    },
+    {
+      "id": "es-D3-003",
+      "severity": "NIT",
+      "status": "still_standing",
+      "namespace": "ui.chat.canonical",
+      "key": "ui.chat.canonical.security_notice.blocked",
+      "en": "Blocked a risky action",
+      "es": "Se bloqueó una acción de riesgo",
+      "problem": "Unchanged at a10255813c. 'de riesgo' is an established Spanish pattern (conducta de riesgo) but reads clinical in a security-notice title.",
+      "suggestion": "Se bloqueó una acción arriesgada"
+    },
+    {
+      "id": "es-D3-004",
+      "severity": "NIT",
+      "status": "still_standing",
+      "namespace": "ui.chat.radient_session",
+      "key": "ui.chat.radient_session.title.input_required",
+      "en": "Radient sign-in needs a pasted code",
+      "es": "Radient necesita un código pegado para iniciar sesión",
+      "problem": "Unchanged at a10255813c. Moves the English subject (Radient sign-in) onto the product name and leaves 'un código pegado' as a bare calque.",
+      "suggestion": "El inicio de sesión de Radient necesita un código"
+    },
+    {
+      "id": "es-D3-005",
+      "severity": "NIT",
+      "status": "still_standing",
+      "namespace": "ui.chat.radient_session",
+      "key": "ui.chat.radient_session.prose.input_required",
+      "en": "{message} This surface cannot take the pasted code, so finish the sign-in from Settings, under Providers.",
+      "es": "{message} Esta pantalla no acepta el código pegado, así que termina de iniciar sesión en Ajustes, dentro de Proveedores de modelos.",
+      "problem": "Unchanged at a10255813c. 'from Settings' rendered as 'en Ajustes' (in), so the sentence can read as logging in inside Settings rather than finishing from there. Surface names are correct and match the shipped es navigation.",
+      "suggestion": "...así que termina de iniciar sesión desde Ajustes, dentro de Proveedores de modelos."
+    }
+  ],
+  "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 1,
+    "NIT": 3
+  },
+  "verdict": "pass",
+  "verdict_reason": "The single MAJOR (es-D3-001) is resolved at a10255813c and no BLOCKER or MAJOR remains; the one MINOR and three NITs still stand but do not withhold a pass under the programme rule.",
+  "namespaces": {
+    "ui.agents.settings": {
+      "status": "passed",
+      "keys_audited": 5,
+      "sha256": {
+        "en": "3ba270885be69d682183c849436c3e2146bf5c8875cf8a2be1f26528ed20fd4d",
+        "target": "2a8e636b90d576938d6b512d33c20a13a96309724457aa9ae65ec4d3ea139586"
+      },
+      "findings": []
+    },
+    "ui.chat.asks": {
+      "status": "passed",
+      "keys_audited": 2,
+      "sha256": {
+        "en": "3399e4015ace811013fb16d9f021016eaecf8ed700e6d34ee2c0d0029068832a",
+        "target": "bb141b4c3f53b0e8b0c0d657ebb16bcc42b083d2ab69e2c545e6233dea1b6d21"
+      },
+      "findings": []
+    },
+    "ui.chat.attachments": {
+      "status": "passed",
+      "keys_audited": 5,
+      "sha256": {
+        "en": "623a1363260ecbe40393b4424dde4d7b6cc084688ac354483052639a145ce892",
+        "target": "dda45dbcffcfd6577195a0303ca866075c7f18130b58c70636d2b2153f2f6c07"
+      },
+      "findings": []
+    },
+    "ui.chat.canonical": {
+      "status": "passed",
+      "keys_audited": 9,
+      "sha256": {
+        "en": "e497effa4c5ba36da6fc3fb4598e5cd7cd2219cae675e94b51d00682e2f90935",
+        "target": "6c2fbd740d35b78f5bf19a5479eced5b42f568f62484e46273bea6f622f7d021"
+      },
+      "findings": [
+        {
+          "id": "es-D3-003",
+          "severity": "NIT",
+          "status": "still_standing",
+          "namespace": "ui.chat.canonical",
+          "key": "ui.chat.canonical.security_notice.blocked",
+          "en": "Blocked a risky action",
+          "es": "Se bloqueó una acción de riesgo",
+          "problem": "Unchanged at a10255813c. 'de riesgo' is an established Spanish pattern (conducta de riesgo) but reads clinical in a security-notice title.",
+          "suggestion": "Se bloqueó una acción arriesgada"
+        }
+      ]
+    },
+    "ui.chat.device": {
+      "status": "passed",
+      "keys_audited": 1,
+      "sha256": {
+        "en": "2be9eaf88f3f95eec4d28b4cc5b6397edbd3173eb2af3713ff2da4f6b0b5fcd6",
+        "target": "c5f30ef8e83fac1d4df7bb625c58434a67bf9ac8c0cca499a9e4b2a6b8fddd48"
+      },
+      "findings": []
+    },
+    "ui.chat.header": {
+      "status": "passed",
+      "keys_audited": 2,
+      "sha256": {
+        "en": "a2584118fd1ae8da26a27f8e739bbde58c30ec5c7c8c9515d2ab876bc7a82dd8",
+        "target": "65ab134278cdd399873a6202f0ee4a8f5f48854f646b4324a3dc42199accd392"
+      },
+      "findings": []
+    },
+    "ui.chat.pickers": {
+      "status": "passed",
+      "keys_audited": 1,
+      "sha256": {
+        "en": "e77e75172487fb154b12ce349fac574cc88516c811acaefd2018208baaf192c1",
+        "target": "cf7f95692fc6abc8fe826cbb2d218210c08905ee7c721bd905bbff3d8ec65244"
+      },
+      "findings": []
+    },
+    "ui.chat.radient_session": {
+      "status": "passed",
+      "keys_audited": 8,
+      "sha256": {
+        "en": "3ac15679b3551e879c2d88d11594946ea4307238330e88cee24ba80b07721118",
+        "target": "c7df130f0ef8968157787b13c9848053e04aa8d8599f7950d471054b2e68d3aa"
+      },
+      "findings": [
+        {
+          "id": "es-D3-004",
+          "severity": "NIT",
+          "status": "still_standing",
+          "namespace": "ui.chat.radient_session",
+          "key": "ui.chat.radient_session.title.input_required",
+          "en": "Radient sign-in needs a pasted code",
+          "es": "Radient necesita un código pegado para iniciar sesión",
+          "problem": "Unchanged at a10255813c. Moves the English subject (Radient sign-in) onto the product name and leaves 'un código pegado' as a bare calque.",
+          "suggestion": "El inicio de sesión de Radient necesita un código"
+        },
+        {
+          "id": "es-D3-005",
+          "severity": "NIT",
+          "status": "still_standing",
+          "namespace": "ui.chat.radient_session",
+          "key": "ui.chat.radient_session.prose.input_required",
+          "en": "{message} This surface cannot take the pasted code, so finish the sign-in from Settings, under Providers.",
+          "es": "{message} Esta pantalla no acepta el código pegado, así que termina de iniciar sesión en Ajustes, dentro de Proveedores de modelos.",
+          "problem": "Unchanged at a10255813c. 'from Settings' rendered as 'en Ajustes' (in), so the sentence can read as logging in inside Settings rather than finishing from there. Surface names are correct and match the shipped es navigation.",
+          "suggestion": "...así que termina de iniciar sesión desde Ajustes, dentro de Proveedores de modelos."
+        }
+      ]
+    },
+    "ui.chat.thread_search": {
+      "status": "passed",
+      "keys_audited": 3,
+      "sha256": {
+        "en": "aea9f467a5a57775ec7510e09b52800077f8ebd93bf430b7956dd381f1ed3d91",
+        "target": "872eac4ceb2468b50c56c8734e22c4b956d244b347170ce6c5db3817c2e0d913"
+      },
+      "findings": []
+    },
+    "ui.chat.transcript_copy": {
+      "status": "passed",
+      "keys_audited": 5,
+      "sha256": {
+        "en": "d6f5264ef4cd19ea1a66b10d7dadfd6478ec239973a7a8fca49903b8ae3818dc",
+        "target": "7fbe5ef9ac19b02941e4efa23708e8fcb1f406b6e33cc61480d45c01e126bf00"
+      },
+      "findings": []
+    },
+    "ui.common.actions": {
+      "status": "passed",
+      "keys_audited": 3,
+      "sha256": {
+        "en": "0c279fc21d17c3f1937e4364fac698601ec4304ce7c7055df786bc037a8b12e3",
+        "target": "cf93fd6c66908de795f0a5fa7acb08b76957b7f0782082609d9c85371dc8269c"
+      },
+      "findings": []
+    },
+    "ui.hub.card": {
+      "status": "passed",
+      "keys_audited": 6,
+      "sha256": {
+        "en": "b9459d327a82d48b8607356f857e6a260cc0b46b78a12109d8b843c559abfcbc",
+        "target": "a121d60cb8f0bb2bdba5932393527e3af8e74598ac1c7a3f06771a0f97a5bf08"
+      },
+      "findings": []
+    },
+    "ui.hub.detail": {
+      "status": "passed",
+      "keys_audited": 26,
+      "sha256": {
+        "en": "d6a3fdb30fc5a4c1d8e0e5530f377dfac0e2b1238f2fd3dd32a12f0e082861d4",
+        "target": "822a95181976286070e28003ee687781e4a3427066e9d201200c62d3953c6314"
+      },
+      "findings": []
+    },
+    "ui.hub.pages": {
+      "status": "passed",
+      "keys_audited": 3,
+      "sha256": {
+        "en": "9ae73c3aabece832df701ffe1b8c24b01d731a94adeb795103a0215b84fb57bd",
+        "target": "c6de82c391873f4ba3734a3f2fb77039454ef4a242c033b786ac2f8784dee697"
+      },
+      "findings": []
+    },
+    "ui.hub.viewer": {
+      "status": "passed",
+      "keys_audited": 10,
+      "sha256": {
+        "en": "a6eed998576ef689a2fc011b2f9c64eaf53fe8b007b2efc21cf66118bc206375",
+        "target": "1761e4b1766ef588a8783ffefa8b7401a0c2fc6c2d595e549999697a513afde1"
+      },
+      "findings": [
+        {
+          "id": "es-D3-002",
+          "severity": "MINOR",
+          "status": "still_standing",
+          "namespace": "ui.hub.viewer",
+          "key": "ui.hub.viewer.favourite_unknown",
+          "also_affects": [
+            "ui.hub.viewer.like_unknown"
+          ],
+          "en": "Your favourites could not be read, so this is not shown as unfavourited.",
+          "es": "No se pudieron leer tus favoritos, así que no se asume que este agente no sea favorito.",
+          "problem": "Unchanged at a10255813c, byte-identical to round 3. Double negative plus 'asumir' used for 'assume/infer' (calque; Spanish prefers 'dar por hecho' or 'suponer'). like_unknown repeats the construction: 'no se asume que este agente no te guste'. Not filed as blocking: the meaning is recoverable and the copy is not unsafe.",
+          "suggestion": "No se pudieron leer tus favoritos, así que este agente no se muestra como no favorito."
+        }
+      ]
+    }
+  },
+  "verified_resolved": [
+    {
+      "id": "es-D3-001",
+      "severity": "MAJOR",
+      "status": "resolved",
+      "namespace": "ui.hub.viewer",
+      "key": "ui.hub.viewer.like",
+      "before": "Marcar que me gusta este agente",
+      "after": "Me gusta",
+      "matches_english": "Like agent",
+      "evidence": "Idiomatic Spanish button name; the ungrammatical marcar+que-clause is gone; 8 characters against the English 10, so the 3.1x width outlier is gone too; and it now coheres with the sibling term set, which reads unlike 'Quitar el «me gusta» del agente', like_signed_out 'dar «me gusta» a los agentes', like_unavailable 'Estado de «me gusta» no disponible'."
+    },
+    {
+      "id": "previously-approved-change",
+      "severity": null,
+      "status": "approved_at_new_bytes",
+      "namespace": "ui.hub.detail",
+      "keys": [
+        "ui.hub.detail.back_aria",
+        "ui.hub.detail.delist_tooltip"
+      ],
+      "before": [
+        "Volver a Agent Hub",
+        "Retirar permanentemente este agente de Agent Hub"
+      ],
+      "after": [
+        "Volver al Hub de agentes",
+        "Retirar permanentemente este agente del Hub de agentes"
+      ],
+      "evidence": "Not one of my findings; these two values changed in this commit. They now match what es actually ships for the surface: ui.shell.sidebar_navigation.agent_hub and ui.hub.pages.header.title both read 'Hub de agentes' in es, read fresh at this head. Contraction is correct (al / del), the words 'Volver' and 'permanentemente' survive, and the English 'Agent Hub' remains the label on the en side. Reading correctly; nothing broken in what I approved."
+    }
+  ],
+  "checks": {
+    "findings_reverified_one_by_one": "done — all five round-3 findings re-read at a10255813c by key, not inferred from the diff",
+    "placeholders_on_filed_keys": "pass — the three changed values carry no placeholders in either locale; ui.chat.radient_session.prose.input_required still opens with {message}, byte-identical to English",
+    "nothing_else_moved": "pass — es hash unchanged for ui.chat.canonical and ui.chat.radient_session (6c2fbd74..., c7df130f...); en hash unchanged for all four namespaces recorded here; the other 12 namespaces in the delta were untouched by this commit and keep their round-3 approval",
+    "changed_values_read_at_new_bytes": "done — back_aria, delist_tooltip and like read through read_public_copy; the es shipped hub title read through read_public_copy rather than assumed",
+    "no_residual_latin_hub": "pass — the only two in-scope es values that carried 'Agent Hub' in round 3 are exactly the two this commit changed, so no in-scope es string still names the surface in Latin",
+    "no_new_policy_assessed": "confirmed — the settled surface-name policy was applied only to verify the two changed hub values against es's own shipped navigation; it was not re-litigated or filed"
+  },
+  "notes": [
+    "es-D3-001 (MAJOR) — RESOLVED at a10255813c: 'Marcar que me gusta este agente' became 'Me gusta'.",
+    "es-D3-002 (MINOR) — STILL STANDS, bytes unchanged at a10255813c; recorded above, not blocking.",
+    "es-D3-003 (NIT) — STILL STANDS, bytes unchanged at a10255813c.",
+    "es-D3-004 (NIT) — STILL STANDS, bytes unchanged at a10255813c.",
+    "es-D3-005 (NIT) — STILL STANDS, bytes unchanged at a10255813c.",
+    "Values outside my findings that changed in this commit: ui.hub.detail.back_aria and ui.hub.detail.delist_tooltip. Both verified against es's own shipped hub title and approved at the new bytes; they are not filed.",
+    "Observation for the operator, NOT a finding and NOT counted: the corrected note in en/ui.hub.detail.context.json names es's shipped title as 'Hub de agentes' and then also lists es among the locales where 'Agent Hub' stays Latin, so the note contradicts itself. es in fact ships 'Hub de agentes' in both the sidebar and the page title at this head, so the new es values follow the shipped strings and the note's own first clause. Flagged only because a future translator reading the second clause could revert these two values; filing the policy itself is out of scope for this round.",
+    "Repo not edited. This record and verdict.txt are the only artefacts written."
+  ]
+}

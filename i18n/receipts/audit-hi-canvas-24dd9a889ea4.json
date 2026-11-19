@@ -1,0 +1,863 @@
+{
+ "schema": 1,
+ "kind": "translation-audit",
+ "locale": "hi",
+ "locale_name": "Hindi",
+ "batch": "canvas (PR #1388)",
+ "pr": 1388,
+ "branch": "feat/i18n-canvas-batch",
+ "audited_heads": {
+  "base": "40462495827dfb0e1bfacb8643da805912493a5b",
+  "canvas": "936e3a483b4d675c9827be5f40167da186f86900"
+ },
+ "date": "2026-10-24",
+ "auditor": {
+  "agent": "translation-auditor",
+  "role": "independent translation auditor (team lopdev); authored no catalogue value in either batch",
+  "team": "lopdev",
+  "instance": "24dd9a889ea4",
+  "session": "24dd9a889ea4",
+  "model": "radient/auto",
+  "served_model": "radient/auto",
+  "fallback_used": false,
+  "model_provenance": "Harness-reported model for this session is radient/auto; the routed provider model is not exposed to the session and is not claimed. No fallback was reported or observed.",
+  "independence": "Auditor session 24dd9a889ea4 is distinct from the canvas translator session cb9b2869b58b and the surfaces translator session 37f772843d10; this session authored no value in either batch. Findings were read from the catalogue bytes at the audited heads, not from translator summaries."
+ },
+ "model": "radient/auto",
+ "instance": "24dd9a889ea4",
+ "translator": {
+  "agent": "translator (profile i18n-translator)",
+  "team": "lopdev",
+  "session": "cb9b2869b58b",
+  "instance": "cb9b2869b58b",
+  "translation_run_model": "openrouter/moonshotai/kimi-k3.1-pro",
+  "final_run_model": "radient/auto",
+  "fallback_used": false,
+  "provenance": "Receipt i18n/receipts/canvas-picker-1041-hi-translator.json: 1,041 initial translations on kimi-k3.1-pro; 20 values later revised on radient/auto; no automatic fallback reported."
+ },
+ "guidance": {
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/hi.md",
+   "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+  },
+  "contracts": [
+   "~/local-operator-ui/docs/I18N.md (sha256 34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca)",
+   "~/local-operator-ui/AGENTS.md § Internationalization"
+  ]
+ },
+ "scope": "8 hi namespace files at head 936e3a483b4d675c9827be5f40167da186f86900; every hi value added or changed by the batch (1,079: 1,041 manifest keys + 38 pre-existing keys backfilled in ui.chat.pickers (34) and ui.common.viewer (4)) read against the English source and its context sidecar. Full namespace key sets checked: 0 missing, 0 extra.",
+ "method": [
+  "Read every scoped hi value with its English source and the English context sidecar (role/tone/note/placeholders/length) at the audited head.",
+  "Byte-compared en and hi; every exact match among the scoped values classified as IDENTICAL_OK with a technical/product reason, or as a stub. Stubs: 0.",
+  "Parsed every scoped value with @formatjs/icu-messageformat-parser; compared argument names, number/date skeletons, plural/select option sets, tag names and pound nodes; then rendered every plural/select message through intl-messageformat at hi counts 0, 1, 2 and 5 (260 renders, 0 errors).",
+  "Checked hi CLDR categories: one/other with 0 selecting one; every plural has one and other; no locale-inappropriate few/two/zero.",
+  "Checked NFC, manual bidi controls, Devanagari digits, danda/ASCII period usage, space-before-punctuation, register (आप only, कृपया only where English says please, no तुम/तू, no !).",
+  "Compared key sets per namespace (0 missing, 0 extra); read call sites for values whose meaning, gender or referent depended on composition (inline-edit status, session date range, emitted/excluded metric, pager range, image lightbox, find/replace switch, import naming).",
+  "Read the translator receipts but did not treat their summaries as evidence; the findings above were verified from catalogue bytes and code at the audited heads."
+ ],
+ "identical_summary": {
+  "count": 45,
+  "stubs": 0,
+  "note": "Counts only exact matches among the batch’s own values; each has a suggested IDENTICAL_OK reason in namespaces[*].identical_to_en."
+ },
+ "totals": {
+  "keys_audited": 1079,
+  "namespaces": 8,
+  "blocker": 0,
+  "major": 6,
+  "minor": 9,
+  "nit": 2
+ },
+ "observations": [
+  "Shared namespaces with the surfaces batch: ui.common.actions, ui.common.speech, ui.common.updates and ui.common.viewer carry 6, 0, 127 and 4 common keys; 0 common keys differ in value, so a hand-union is semantically safe. The merged files will contain more keys than either head, so these four hashes will not bind the post-merge bytes; re-hash after the union before the ledger binds them.",
+  "The canvas translator receipt's per-namespace target hashes name an uncommitted worktree snapshot (worktree_head eb963e1baa63 has no committed hi files) and do not bind this head; this audit records the actual head hashes above. Its unresolved_issues also lists the 38 backfill keys as absent, but commit 5d094c59d8 restored them at this head, so they were audited here.",
+  "ui.chat.pickers.stop.confirm adds an exact `=0` arm not present in English: without it hi CLDR selects `one` for 0 and reads 'इस सत्र को रोकें' (stop this session) for zero. The branch is deliberate and renders correctly at 0/1/2; recorded as an observation, not a finding.",
+  "Key order in the newly created ui.chat.pickers and ui.common.viewer hi files does not follow the English key order, though the key sets are equal. Not a translation defect; flagging it for merge/union handling.",
+  "Quote style: batch prose keeps ASCII quotes (e.g. \"{filename}.{filetype}\") while the hi style guide prefers “ ”. The existing hi catalogue is mixed (64 ASCII double quotes vs 25 curly), so this is a locale-wide typography inconsistency, not counted as a per-key finding."
+ ],
+ "verdict": "changes_requested — 0 blocker, 6 major, 9 minor, 2 nit across 8 namespace(s); 1,079 values read; 45 exact matches classified IDENTICAL_OK; 0 untranslated stubs.",
+ "namespaces": {
+  "ui.canvas": {
+   "namespace": "ui.canvas",
+   "status": "changes_requested",
+   "verdict": "changes requested",
+   "keys_total": 347,
+   "keys_in_batch_delta": 290,
+   "sha256": {
+    "en": "be8acd20add01188abed4985d0aad11325a7ebd8cdbc3bd5c9376be65543563f",
+    "hi": "246abbbc2bb843cd03ca472ddee4cbcefcd99ff399fd724ba8a37f48273e8aaf",
+    "context": "4bc0f2bc47d4b0e826ebb10ba78ff965c550debef54f47c912b9e257fd1784f8"
+   },
+   "findings": [
+    {
+     "id": "HI-CA-01",
+     "severity": "major",
+     "key": "ui.canvas.tabs.open_documents",
+     "proposed": "खुले दस्तावेज़",
+     "reason": "This is the aria-label of the tab strip's role=tablist (canvas-tabs.tsx), a list of open document tabs; the imperative दस्तावेज़ खोलें names an action and misdescribes the control to screen-reader users. The fr/es catalogues both use the noun phrase (Documents ouverts / Documentos abiertos).",
+     "batch": "canvas",
+     "namespace": "ui.canvas",
+     "current": "दस्तावेज़ खोलें",
+     "english": "Open documents",
+     "keys": [
+      "ui.canvas.tabs.open_documents"
+     ],
+     "current_by_key": {
+      "ui.canvas.tabs.open_documents": "दस्तावेज़ खोलें"
+     },
+     "proposed_by_key": {
+      "ui.canvas.tabs.open_documents": "खुले दस्तावेज़"
+     }
+    },
+    {
+     "id": "HI-CA-02",
+     "severity": "major",
+     "key": "ui.canvas.inline_edit.change",
+     "proposed": "बदलाव",
+     "reason": "Rendered as {change} {index} {of} {total} in the review bar (inline-edit.tsx), so बदलें 1 / 3 reads as an imperative command; the key is the status noun, matching change_125665's बदलाव.",
+     "batch": "canvas",
+     "namespace": "ui.canvas",
+     "current": "बदलें",
+     "english": "Change",
+     "keys": [
+      "ui.canvas.inline_edit.change"
+     ],
+     "current_by_key": {
+      "ui.canvas.inline_edit.change": "बदलें"
+     },
+     "proposed_by_key": {
+      "ui.canvas.inline_edit.change": "बदलाव"
+     }
+    },
+    {
+     "id": "HI-CA-03",
+     "severity": "major",
+     "key": "ui.canvas.variable_form_dialog.name_key",
+     "proposed": "नाम (key)",
+     "reason": "की is the Hindi genitive particle, not the technical English key; the label reads नाम (का/की) and hides that the field is the variable's key, so keep the machine-facing word key Latin as glossary §1 does for keys and identifiers.",
+     "batch": "canvas",
+     "namespace": "ui.canvas",
+     "current": "नाम (की)",
+     "english": "Name (key)",
+     "keys": [
+      "ui.canvas.variable_form_dialog.name_key"
+     ],
+     "current_by_key": {
+      "ui.canvas.variable_form_dialog.name_key": "नाम (की)"
+     },
+     "proposed_by_key": {
+      "ui.canvas.variable_form_dialog.name_key": "नाम (key)"
+     }
+    },
+    {
+     "id": "HI-CA-04",
+     "severity": "minor",
+     "key": "ui.canvas.code_editor_diff.remove",
+     "related_keys": [
+      "ui.canvas.code_editor_diff.add",
+      "ui.canvas.wysiwyg_markdown_editor.remove",
+      "ui.canvas.wysiwyg_markdown_editor.add"
+     ],
+     "proposed": "- हटाया गया: / + जोड़ा गया: (wysiwyg: - हटाया गया / + जोड़ा गया)",
+     "reason": "These four values label deleted and added diff blocks (code-editor-diff.ts, wysiwyg-markdown-editor.tsx), not buttons; the imperative हटाएँ/जोड़ें reads as a command to the reader.",
+     "batch": "canvas",
+     "namespace": "ui.canvas",
+     "current": "- हटाएँ:",
+     "english": "- Remove:",
+     "keys": [
+      "ui.canvas.code_editor_diff.remove",
+      "ui.canvas.code_editor_diff.add",
+      "ui.canvas.wysiwyg_markdown_editor.remove",
+      "ui.canvas.wysiwyg_markdown_editor.add"
+     ],
+     "current_by_key": {
+      "ui.canvas.code_editor_diff.remove": "- हटाएँ:",
+      "ui.canvas.code_editor_diff.add": "+ जोड़ें:",
+      "ui.canvas.wysiwyg_markdown_editor.remove": "- हटाएँ",
+      "ui.canvas.wysiwyg_markdown_editor.add": "+ जोड़ें"
+     },
+     "proposed_by_key": {
+      "ui.canvas.code_editor_diff.remove": "- हटाया गया:",
+      "ui.canvas.code_editor_diff.add": "+ जोड़ा गया:",
+      "ui.canvas.wysiwyg_markdown_editor.remove": "- हटाया गया",
+      "ui.canvas.wysiwyg_markdown_editor.add": "+ जोड़ा गया"
+     }
+    },
+    {
+     "id": "HI-CA-05",
+     "severity": "nit",
+     "key": "ui.canvas.use_file_freshness.your_save_replaced_the_change_on_disk",
+     "related_keys": [
+      "ui.canvas.wysiwyg_markdown_editor.file_saved_replacing_the_change"
+     ],
+     "proposed": "आपके सेव ने डिस्क पर हुए बदलाव को अधिलेखित कर दिया। / फ़ाइल सहेजी गई और डिस्क पर हुआ बदलाव अधिलेखित कर दिया गया",
+     "reason": "बदलाव को बदल दिया is circular and डिस्क का बदलाव attributes the change to the disk; अधिलेखित is the term already used for overwrite in this file.",
+     "batch": "canvas",
+     "namespace": "ui.canvas",
+     "current": "आपके सेव ने डिस्क पर हुए बदलाव को बदल दिया।",
+     "english": "Your save replaced the change on disk.",
+     "keys": [
+      "ui.canvas.use_file_freshness.your_save_replaced_the_change_on_disk",
+      "ui.canvas.wysiwyg_markdown_editor.file_saved_replacing_the_change"
+     ],
+     "current_by_key": {
+      "ui.canvas.use_file_freshness.your_save_replaced_the_change_on_disk": "आपके सेव ने डिस्क पर हुए बदलाव को बदल दिया।",
+      "ui.canvas.wysiwyg_markdown_editor.file_saved_replacing_the_change": "फ़ाइल सहेजी गई और डिस्क का बदलाव बदल दिया गया"
+     },
+     "proposed_by_key": {
+      "ui.canvas.use_file_freshness.your_save_replaced_the_change_on_disk": "आपके सेव ने डिस्क पर हुए बदलाव को अधिलेखित कर दिया।",
+      "ui.canvas.wysiwyg_markdown_editor.file_saved_replacing_the_change": "फ़ाइल सहेजी गई और डिस्क पर हुआ बदलाव अधिलेखित कर दिया गया"
+     }
+    }
+   ],
+   "identical_to_en": [
+    {
+     "key": "ui.canvas.create_file_dialog.markdown_md",
+     "value": "Markdown (.md)",
+     "class": "file-type-label",
+     "suggested_reason": "File-type display name: the language/product name and its extension are technical tokens kept byte-identical (glossary §1, technology names and extensions); no prose to translate."
+    },
+    {
+     "key": "ui.canvas.create_file_dialog.html_html",
+     "value": "HTML (.html)",
+     "class": "file-type-label",
+     "suggested_reason": "File-type display name: the language/product name and its extension are technical tokens kept byte-identical (glossary §1, technology names and extensions); no prose to translate."
+    },
+    {
+     "key": "ui.canvas.create_file_dialog.css_css",
+     "value": "CSS (.css)",
+     "class": "file-type-label",
+     "suggested_reason": "File-type display name: the language/product name and its extension are technical tokens kept byte-identical (glossary §1, technology names and extensions); no prose to translate."
+    },
+    {
+     "key": "ui.canvas.create_file_dialog.javascript_js",
+     "value": "JavaScript (.js)",
+     "class": "file-type-label",
+     "suggested_reason": "File-type display name: the language/product name and its extension are technical tokens kept byte-identical (glossary §1, technology names and extensions); no prose to translate."
+    },
+    {
+     "key": "ui.canvas.create_file_dialog.jsx_jsx",
+     "value": "JSX (.jsx)",
+     "class": "file-type-label",
+     "suggested_reason": "File-type display name: the language/product name and its extension are technical tokens kept byte-identical (glossary §1, technology names and extensions); no prose to translate."
+    },
+    {
+     "key": "ui.canvas.create_file_dialog.typescript_ts",
+     "value": "TypeScript (.ts)",
+     "class": "file-type-label",
+     "suggested_reason": "File-type display name: the language/product name and its extension are technical tokens kept byte-identical (glossary §1, technology names and extensions); no prose to translate."
+    },
+    {
+     "key": "ui.canvas.create_file_dialog.tsx_tsx",
+     "value": "TSX (.tsx)",
+     "class": "file-type-label",
+     "suggested_reason": "File-type display name: the language/product name and its extension are technical tokens kept byte-identical (glossary §1, technology names and extensions); no prose to translate."
+    },
+    {
+     "key": "ui.canvas.create_file_dialog.python_py",
+     "value": "Python (.py)",
+     "class": "file-type-label",
+     "suggested_reason": "File-type display name: the language/product name and its extension are technical tokens kept byte-identical (glossary §1, technology names and extensions); no prose to translate."
+    },
+    {
+     "key": "ui.canvas.create_file_dialog.go_go",
+     "value": "Go (.go)",
+     "class": "file-type-label",
+     "suggested_reason": "File-type display name: the language/product name and its extension are technical tokens kept byte-identical (glossary §1, technology names and extensions); no prose to translate."
+    },
+    {
+     "key": "ui.canvas.create_file_dialog.java_java",
+     "value": "Java (.java)",
+     "class": "file-type-label",
+     "suggested_reason": "File-type display name: the language/product name and its extension are technical tokens kept byte-identical (glossary §1, technology names and extensions); no prose to translate."
+    },
+    {
+     "key": "ui.canvas.create_file_dialog.c_cs",
+     "value": "C# (.cs)",
+     "class": "file-type-label",
+     "suggested_reason": "File-type display name: the language/product name and its extension are technical tokens kept byte-identical (glossary §1, technology names and extensions); no prose to translate."
+    },
+    {
+     "key": "ui.canvas.create_file_dialog.php_php",
+     "value": "PHP (.php)",
+     "class": "file-type-label",
+     "suggested_reason": "File-type display name: the language/product name and its extension are technical tokens kept byte-identical (glossary §1, technology names and extensions); no prose to translate."
+    },
+    {
+     "key": "ui.canvas.create_file_dialog.ruby_rb",
+     "value": "Ruby (.rb)",
+     "class": "file-type-label",
+     "suggested_reason": "File-type display name: the language/product name and its extension are technical tokens kept byte-identical (glossary §1, technology names and extensions); no prose to translate."
+    },
+    {
+     "key": "ui.canvas.create_file_dialog.rust_rs",
+     "value": "Rust (.rs)",
+     "class": "file-type-label",
+     "suggested_reason": "File-type display name: the language/product name and its extension are technical tokens kept byte-identical (glossary §1, technology names and extensions); no prose to translate."
+    },
+    {
+     "key": "ui.canvas.create_file_dialog.json_json",
+     "value": "JSON (.json)",
+     "class": "file-type-label",
+     "suggested_reason": "File-type display name: the language/product name and its extension are technical tokens kept byte-identical (glossary §1, technology names and extensions); no prose to translate."
+    },
+    {
+     "key": "ui.canvas.create_file_dialog.yaml_yaml",
+     "value": "YAML (.yaml)",
+     "class": "file-type-label",
+     "suggested_reason": "File-type display name: the language/product name and its extension are technical tokens kept byte-identical (glossary §1, technology names and extensions); no prose to translate."
+    },
+    {
+     "key": "ui.canvas.create_file_dialog.yaml_yml",
+     "value": "YAML (.yml)",
+     "class": "file-type-label",
+     "suggested_reason": "File-type display name: the language/product name and its extension are technical tokens kept byte-identical (glossary §1, technology names and extensions); no prose to translate."
+    },
+    {
+     "key": "ui.canvas.create_file_dialog.xml_xml",
+     "value": "XML (.xml)",
+     "class": "file-type-label",
+     "suggested_reason": "File-type display name: the language/product name and its extension are technical tokens kept byte-identical (glossary §1, technology names and extensions); no prose to translate."
+    },
+    {
+     "key": "ui.canvas.create_file_dialog.toml_toml",
+     "value": "TOML (.toml)",
+     "class": "file-type-label",
+     "suggested_reason": "File-type display name: the language/product name and its extension are technical tokens kept byte-identical (glossary §1, technology names and extensions); no prose to translate."
+    },
+    {
+     "key": "ui.canvas.create_file_dialog.ini_ini",
+     "value": "INI (.ini)",
+     "class": "file-type-label",
+     "suggested_reason": "File-type display name: the language/product name and its extension are technical tokens kept byte-identical (glossary §1, technology names and extensions); no prose to translate."
+    },
+    {
+     "key": "ui.canvas.create_file_dialog.env",
+     "value": ".env",
+     "class": "file-type-label",
+     "suggested_reason": "File-type display name: the language/product name and its extension are technical tokens kept byte-identical (glossary §1, technology names and extensions); no prose to translate."
+    },
+    {
+     "key": "ui.canvas.create_file_dialog.dockerfile",
+     "value": "Dockerfile",
+     "class": "file-type-label",
+     "suggested_reason": "File-type display name: the language/product name and its extension are technical tokens kept byte-identical (glossary §1, technology names and extensions); no prose to translate."
+    },
+    {
+     "key": "ui.canvas.create_file_dialog.c_c",
+     "value": "C (.c)",
+     "class": "file-type-label",
+     "suggested_reason": "File-type display name: the language/product name and its extension are technical tokens kept byte-identical (glossary §1, technology names and extensions); no prose to translate."
+    },
+    {
+     "key": "ui.canvas.create_file_dialog.c_cpp",
+     "value": "C++ (.cpp)",
+     "class": "file-type-label",
+     "suggested_reason": "File-type display name: the language/product name and its extension are technical tokens kept byte-identical (glossary §1, technology names and extensions); no prose to translate."
+    },
+    {
+     "key": "ui.canvas.create_file_dialog.swift_swift",
+     "value": "Swift (.swift)",
+     "class": "file-type-label",
+     "suggested_reason": "File-type display name: the language/product name and its extension are technical tokens kept byte-identical (glossary §1, technology names and extensions); no prose to translate."
+    },
+    {
+     "key": "ui.canvas.create_file_dialog.kotlin_kt",
+     "value": "Kotlin (.kt)",
+     "class": "file-type-label",
+     "suggested_reason": "File-type display name: the language/product name and its extension are technical tokens kept byte-identical (glossary §1, technology names and extensions); no prose to translate."
+    },
+    {
+     "key": "ui.canvas.create_file_dialog.scala_scala",
+     "value": "Scala (.scala)",
+     "class": "file-type-label",
+     "suggested_reason": "File-type display name: the language/product name and its extension are technical tokens kept byte-identical (glossary §1, technology names and extensions); no prose to translate."
+    },
+    {
+     "key": "ui.canvas.pdf_preview.pdf",
+     "value": "PDF: {title}",
+     "class": "technical-token",
+     "suggested_reason": "PDF is the file-format token; the only translatable content is the {title} placeholder."
+    },
+    {
+     "key": "ui.canvas.variable_form_dialog.example_key_example_value",
+     "value": "'{ \"example_key\": \"example_value\" }'",
+     "class": "literal-example",
+     "suggested_reason": "Literal sample value shown as example input; translating it would change the example the dialog teaches."
+    },
+    {
+     "key": "ui.canvas.variable_form_dialog.item1_item2",
+     "value": "[ \"item1\", \"item2\" ]",
+     "class": "literal-example",
+     "suggested_reason": "Literal sample value shown as example input; translating it would change the example the dialog teaches."
+    },
+    {
+     "key": "ui.canvas.insert_image_dialog.users_eren_documents_image_png",
+     "value": "/Users/eren/Documents/image.png",
+     "class": "literal-example",
+     "suggested_reason": "Literal sample value shown as example input; translating it would change the example the dialog teaches."
+    },
+    {
+     "key": "ui.canvas.insert_link_dialog.url",
+     "value": "URL",
+     "class": "technical-token",
+     "suggested_reason": "Technical or machine-facing token (URL / environment variable / key name / UA token / URI scheme); glossary §1 and the style guide keep identifiers and technical tokens Latin."
+    },
+    {
+     "key": "ui.canvas.insert_link_dialog.https_example_com",
+     "value": "https://example.com",
+     "class": "literal-example",
+     "suggested_reason": "Literal sample value shown as example input; translating it would change the example the dialog teaches."
+    }
+   ],
+   "keys_audited": 290
+  },
+  "ui.chat.pickers": {
+   "namespace": "ui.chat.pickers",
+   "status": "changes_requested",
+   "verdict": "changes requested",
+   "keys_total": 720,
+   "keys_in_batch_delta": 720,
+   "sha256": {
+    "en": "8109df703e1a4901e4d892607dddd875e6a737c9ea8ee7ef41ec28dbe6ac2e58",
+    "hi": "7728b27b2c7918e7102b896965ab6f2efa78ef442ad3d2eecd8a51eadc4fd358",
+    "context": "c921d3e37ce54288a18e2b45310034a0df0114f15c30e57133422018a00b38d9"
+   },
+   "findings": [
+    {
+     "id": "HI-CA-06",
+     "severity": "major",
+     "key": "ui.chat.pickers.session_panel.to",
+     "related_keys": [
+      "ui.chat.pickers.session_panel.records_run_from"
+     ],
+     "proposed": "records_run_from → रिकॉर्ड की अवधि: ; to → –",
+     "reason": "session-panel.tsx composes {records_run_from} {first} {to} {last}; with रिकॉर्ड की शुरुआत + से the result is रिकॉर्ड की शुरुआत 1 नव॰ से 5 नव॰, which marks only the start and reads as 'beginning … from', never as a closed range.",
+     "batch": "canvas",
+     "namespace": "ui.chat.pickers",
+     "current": "से",
+     "english": "to",
+     "keys": [
+      "ui.chat.pickers.session_panel.to",
+      "ui.chat.pickers.session_panel.records_run_from"
+     ],
+     "current_by_key": {
+      "ui.chat.pickers.session_panel.to": "से",
+      "ui.chat.pickers.session_panel.records_run_from": "रिकॉर्ड की शुरुआत"
+     },
+     "proposed_by_key": {
+      "ui.chat.pickers.session_panel.to": "–",
+      "ui.chat.pickers.session_panel.records_run_from": "रिकॉर्ड की अवधि:"
+     }
+    },
+    {
+     "id": "HI-CA-07",
+     "severity": "major",
+     "key": "ui.chat.pickers.session_panel.emitted_excluded",
+     "proposed": "{formatcount} जारी किए गए · {formatcount2} बाहर रखे गए",
+     "reason": "emitted is the count of tool calls produced (session-panel.tsx passes rates.emitted); निकाले गए means removed and collides with the excluded column, so the numerator is mislabelled.",
+     "batch": "canvas",
+     "namespace": "ui.chat.pickers",
+     "current": "{formatcount} निकाले गए · {formatcount2} बाहर रखे गए",
+     "english": "{formatcount} emitted · {formatcount2} excluded",
+     "keys": [
+      "ui.chat.pickers.session_panel.emitted_excluded"
+     ],
+     "current_by_key": {
+      "ui.chat.pickers.session_panel.emitted_excluded": "{formatcount} निकाले गए · {formatcount2} बाहर रखे गए"
+     },
+     "proposed_by_key": {
+      "ui.chat.pickers.session_panel.emitted_excluded": "{formatcount} जारी किए गए · {formatcount2} बाहर रखे गए"
+     }
+    },
+    {
+     "id": "HI-CA-08",
+     "severity": "major",
+     "key": "ui.chat.pickers.session_panel.what_this_session_has_used_from_one_read_of_the_local_ledger",
+     "proposed": "इस सत्र ने क्या उपयोग किया, यह स्थानीय लेजर को एक बार पढ़ने से पता चलता है।",
+     "reason": "पता चला इस सत्र का उपयोग has no finite link and is ungrammatical; the status explanation needs the clause in the order इस सत्र ने क्या उपयोग किया … पता चलता है.",
+     "batch": "canvas",
+     "namespace": "ui.chat.pickers",
+     "current": "स्थानीय लेजर को एक बार पढ़ने से पता चला इस सत्र का उपयोग।",
+     "english": "What this session has used, from one read of the local ledger.",
+     "keys": [
+      "ui.chat.pickers.session_panel.what_this_session_has_used_from_one_read_of_the_local_ledger"
+     ],
+     "current_by_key": {
+      "ui.chat.pickers.session_panel.what_this_session_has_used_from_one_read_of_the_local_ledger": "स्थानीय लेजर को एक बार पढ़ने से पता चला इस सत्र का उपयोग।"
+     },
+     "proposed_by_key": {
+      "ui.chat.pickers.session_panel.what_this_session_has_used_from_one_read_of_the_local_ledger": "इस सत्र ने क्या उपयोग किया, यह स्थानीय लेजर को एक बार पढ़ने से पता चलता है।"
+     }
+    },
+    {
+     "id": "HI-CA-09",
+     "severity": "minor",
+     "key": "ui.chat.pickers.destination_pickers.fixed_number_of_turns",
+     "proposed": "टर्न की तय संख्या",
+     "reason": "तय संख्या में टर्न means 'turns in a fixed number', not 'a fixed number of turns'; Hindi takes the counted noun in the oblique before the quantity.",
+     "batch": "canvas",
+     "namespace": "ui.chat.pickers",
+     "current": "तय संख्या में टर्न",
+     "english": "Fixed number of turns",
+     "keys": [
+      "ui.chat.pickers.destination_pickers.fixed_number_of_turns"
+     ],
+     "current_by_key": {
+      "ui.chat.pickers.destination_pickers.fixed_number_of_turns": "तय संख्या में टर्न"
+     },
+     "proposed_by_key": {
+      "ui.chat.pickers.destination_pickers.fixed_number_of_turns": "टर्न की तय संख्या"
+     }
+    },
+    {
+     "id": "HI-CA-10",
+     "severity": "minor",
+     "key": "ui.chat.pickers.destination_pickers.the_standing_goal_is_prepended_to_every_turn_clear_it_to_remove_it",
+     "proposed": "इसे हटाने के लिए साफ़ करें।",
+     "reason": "इसे हटाने के लिए मिटाएँ uses two synonyms for the same operation ('to remove it, erase it'); साफ़ करें is the established clear action and removes the circularity.",
+     "batch": "canvas",
+     "namespace": "ui.chat.pickers",
+     "current": "स्थायी लक्ष्य हर टर्न के आगे जोड़ा जाता है। इसे हटाने के लिए मिटाएँ।",
+     "english": "The standing goal is prepended to every turn. Clear it to remove it.",
+     "keys": [
+      "ui.chat.pickers.destination_pickers.the_standing_goal_is_prepended_to_every_turn_clear_it_to_remove_it"
+     ],
+     "current_by_key": {
+      "ui.chat.pickers.destination_pickers.the_standing_goal_is_prepended_to_every_turn_clear_it_to_remove_it": "स्थायी लक्ष्य हर टर्न के आगे जोड़ा जाता है। इसे हटाने के लिए मिटाएँ।"
+     },
+     "proposed_by_key": {
+      "ui.chat.pickers.destination_pickers.the_standing_goal_is_prepended_to_every_turn_clear_it_to_remove_it": "इसे हटाने के लिए साफ़ करें।"
+     }
+    },
+    {
+     "id": "HI-CA-11",
+     "severity": "minor",
+     "key": "ui.chat.pickers.destination_pickers.no_models_are_signed_in_yet",
+     "proposed": "अभी कोई मॉडल साइन इन नहीं है।",
+     "reason": "किसी मॉडल में साइन इन says signing into a model; sign-in belongs to a provider/account, and the English sentence is about models being unavailable.",
+     "batch": "canvas",
+     "namespace": "ui.chat.pickers",
+     "current": "अभी किसी मॉडल में साइन इन नहीं किया गया है।",
+     "english": "No models are signed in yet.",
+     "keys": [
+      "ui.chat.pickers.destination_pickers.no_models_are_signed_in_yet"
+     ],
+     "current_by_key": {
+      "ui.chat.pickers.destination_pickers.no_models_are_signed_in_yet": "अभी किसी मॉडल में साइन इन नहीं किया गया है।"
+     },
+     "proposed_by_key": {
+      "ui.chat.pickers.destination_pickers.no_models_are_signed_in_yet": "अभी कोई मॉडल साइन इन नहीं है।"
+     }
+    },
+    {
+     "id": "HI-CA-12",
+     "severity": "minor",
+     "key": "ui.chat.pickers.destination_pickers.show_all_supported_models_sign_in",
+     "proposed": "{scopecount, plural, one {सभी समर्थित मॉडल दिखाएँ ({scopecount, number, ::group-off} मॉडल के लिए साइन इन ज़रूरी है)} other {सभी समर्थित मॉडल दिखाएँ ({scopecount, number, ::group-off} मॉडलों के लिए साइन इन ज़रूरी है)}}",
+     "reason": "{scopecount} के लिए drops the counted noun, so the parenthetical reads 'for 5' rather than '5 models need sign-in'; the English count refers to models.",
+     "batch": "canvas",
+     "namespace": "ui.chat.pickers",
+     "current": "{scopecount, plural, one {सभी समर्थित मॉडल दिखाएँ ({scopecount, number, ::group-off} के लिए साइन इन करना होगा)} other {सभी समर्थित मॉडल दिखाएँ ({scopecount, number, ::group-off} के लिए साइन इन करना होगा)}}",
+     "english": "{scopecount, plural, one {Show all supported models ({scopecount, number, ::group-off} needs sign-in)} other {Show all supported models ({scopecount, number, ::group-off} need sign-in)}}",
+     "keys": [
+      "ui.chat.pickers.destination_pickers.show_all_supported_models_sign_in"
+     ],
+     "current_by_key": {
+      "ui.chat.pickers.destination_pickers.show_all_supported_models_sign_in": "{scopecount, plural, one {सभी समर्थित मॉडल दिखाएँ ({scopecount, number, ::group-off} के लिए साइन इन करना होगा)} other {सभी समर्थित मॉडल दिखाएँ ({scopecount, number, ::group-off} के लिए साइन इन करना होगा)}}"
+     },
+     "proposed_by_key": {
+      "ui.chat.pickers.destination_pickers.show_all_supported_models_sign_in": "{scopecount, plural, one {सभी समर्थित मॉडल दिखाएँ ({scopecount, number, ::group-off} मॉडल के लिए साइन इन ज़रूरी है)} other {सभी समर्थित मॉडल दिखाएँ ({scopecount, number, ::group-off} मॉडलों के लिए साइन इन ज़रूरी है)}}"
+     }
+    },
+    {
+     "id": "HI-CA-13",
+     "severity": "minor",
+     "key": "ui.chat.pickers.session_report_model.subagent_spend_not_measured",
+     "proposed": "उप-एजेंट का खर्च मापा नहीं गया",
+     "reason": "The compound उप-एजेंट खर्च needs the genitive का; without it the phrase reads as a type name rather than 'the subagents' spend'.",
+     "batch": "canvas",
+     "namespace": "ui.chat.pickers",
+     "current": "उप-एजेंट खर्च मापा नहीं गया",
+     "english": "subagent spend not measured",
+     "keys": [
+      "ui.chat.pickers.session_report_model.subagent_spend_not_measured"
+     ],
+     "current_by_key": {
+      "ui.chat.pickers.session_report_model.subagent_spend_not_measured": "उप-एजेंट खर्च मापा नहीं गया"
+     },
+     "proposed_by_key": {
+      "ui.chat.pickers.session_report_model.subagent_spend_not_measured": "उप-एजेंट का खर्च मापा नहीं गया"
+     }
+    },
+    {
+     "id": "HI-CA-14",
+     "severity": "nit",
+     "key": "ui.chat.pickers.session_panel.timings",
+     "proposed": "समय-विवरण",
+     "reason": "Timings is the request-timing breakdown, not the general word for time; समय alone is indistinguishable from the duration column and its sibling request_timings.",
+     "batch": "canvas",
+     "namespace": "ui.chat.pickers",
+     "current": "समय",
+     "english": "Timings",
+     "keys": [
+      "ui.chat.pickers.session_panel.timings"
+     ],
+     "current_by_key": {
+      "ui.chat.pickers.session_panel.timings": "समय"
+     },
+     "proposed_by_key": {
+      "ui.chat.pickers.session_panel.timings": "समय-विवरण"
+     }
+    }
+   ],
+   "identical_to_en": [
+    {
+     "key": "ui.chat.pickers.destination_pickers.k",
+     "value": "{value, number, ::group-off}k",
+     "class": "placeholder-only",
+     "suggested_reason": "Compact thousands suffix over a formatted number; k is the conventional unit with no prose to translate."
+    },
+    {
+     "key": "ui.chat.pickers.destination_pickers.skill",
+     "value": "skill://",
+     "class": "technical-token",
+     "suggested_reason": "Technical or machine-facing token (URL / environment variable / key name / UA token / URI scheme); glossary §1 and the style guide keep identifiers and technical tokens Latin."
+    },
+    {
+     "key": "ui.chat.pickers.destination_pickers.my_api_key",
+     "value": "MY_API_KEY",
+     "class": "technical-token",
+     "suggested_reason": "Technical or machine-facing token (URL / environment variable / key name / UA token / URI scheme); glossary §1 and the style guide keep identifiers and technical tokens Latin."
+    },
+    {
+     "key": "ui.chat.pickers.info_model.term",
+     "value": "TERM",
+     "class": "technical-token",
+     "suggested_reason": "Technical or machine-facing token (URL / environment variable / key name / UA token / URI scheme); glossary §1 and the style guide keep identifiers and technical tokens Latin."
+    },
+    {
+     "key": "ui.chat.pickers.info_model.colorterm",
+     "value": "COLORTERM",
+     "class": "technical-token",
+     "suggested_reason": "Technical or machine-facing token (URL / environment variable / key name / UA token / URI scheme); glossary §1 and the style guide keep identifiers and technical tokens Latin."
+    },
+    {
+     "key": "ui.chat.pickers.info_model.python",
+     "value": "Python {python_version}",
+     "class": "technical-token",
+     "suggested_reason": "Product/process token (Python, pid) plus its placeholder; the Latin token and skeleton must survive exactly."
+    },
+    {
+     "key": "ui.chat.pickers.info_model.pid",
+     "value": "pid {pid, number, ::group-off}",
+     "class": "technical-token",
+     "suggested_reason": "Product/process token (Python, pid) plus its placeholder; the Latin token and skeleton must survive exactly."
+    },
+    {
+     "key": "ui.chat.pickers.info_model.pid_7837d5",
+     "value": "pid {pid, number, ::group-off}",
+     "class": "technical-token",
+     "suggested_reason": "Product/process token (Python, pid) plus its placeholder; the Latin token and skeleton must survive exactly."
+    },
+    {
+     "key": "ui.chat.pickers.destination_pickers.completed_only",
+     "value": "{completed, number, ::group-off}",
+     "class": "placeholder-only",
+     "suggested_reason": "Number-only message: {completed} is the entire content."
+    },
+    {
+     "key": "ui.chat.pickers.info_model.count_noun",
+     "value": "{count, plural, one {{count, number, ::group-off} {noun}} other {{count, number, ::group-off} {pluralnoun}}}",
+     "class": "placeholder-only",
+     "suggested_reason": "Composition helper: ICU plural skeleton over caller-supplied {noun}/{pluralnoun}; both locales use one/other and the callers pass localized nouns, so no untranslated prose is present."
+    },
+    {
+     "key": "ui.chat.pickers.info_model.runtime_trajectories",
+     "value": "{runtimecount} · {bound}{trajectorycount}",
+     "class": "placeholder-only",
+     "suggested_reason": "Separator-only template joining two caller-formatted counts; no prose."
+    }
+   ],
+   "keys_audited": 720
+  },
+  "ui.common.actions": {
+   "namespace": "ui.common.actions",
+   "status": "passed",
+   "verdict": "clean-with-findings",
+   "keys_total": 36,
+   "keys_in_batch_delta": 30,
+   "sha256": {
+    "en": "d65be7beac66c209a55db5d8a672ff8a8a743eea49ba21593120d4b8664603b2",
+    "hi": "de06b007034dfc6b33ea572d8d0eda8ebf1ae62149bd6c177a69b71829f55532",
+    "context": "29a6cc54f8605ab2612775708bf5eb202a89e6708167d8a7c3f329a536b339db"
+   },
+   "findings": [
+    {
+     "id": "HI-CA-15",
+     "severity": "minor",
+     "key": "ui.common.actions.find_replace_widget.switch_to_replace",
+     "proposed": "बदलें मोड पर जाएँ",
+     "reason": "The control switches the find/replace widget into replace mode; बदलाव पर जाएँ means 'go to the change', not 'switch to replace', while its pair खोज पर जाएँ names its mode.",
+     "batch": "canvas",
+     "namespace": "ui.common.actions",
+     "current": "बदलाव पर जाएँ",
+     "english": "Switch to replace",
+     "keys": [
+      "ui.common.actions.find_replace_widget.switch_to_replace"
+     ],
+     "current_by_key": {
+      "ui.common.actions.find_replace_widget.switch_to_replace": "बदलाव पर जाएँ"
+     },
+     "proposed_by_key": {
+      "ui.common.actions.find_replace_widget.switch_to_replace": "बदलें मोड पर जाएँ"
+     }
+    }
+   ],
+   "keys_audited": 30
+  },
+  "ui.common.forms": {
+   "namespace": "ui.common.forms",
+   "status": "passed",
+   "verdict": "clean",
+   "keys_total": 37,
+   "keys_in_batch_delta": 10,
+   "sha256": {
+    "en": "c87c16b1169f32105e017fd27eb80047446938b1b45046c28bcf693856898238",
+    "hi": "a335138452363b574e0ae47579620081f7d15f3bbf067ee5325f7269cc1c159e",
+    "context": "c11472cc390fe7771e08dcd34bb633e63797f979a113feaa47d70d06daea38b4"
+   },
+   "findings": [],
+   "keys_audited": 10
+  },
+  "ui.common.layout": {
+   "namespace": "ui.common.layout",
+   "status": "passed",
+   "verdict": "clean-with-findings",
+   "keys_total": 8,
+   "keys_in_batch_delta": 8,
+   "sha256": {
+    "en": "c4efaa88bba85706ac9fb976bc3d3d009f3bb08fc762a90dfeb73d90d0c14db6",
+    "hi": "46c5067d3e83e5033998ea54cca2da3ce02eba787015ab1d25b9db55ec96b0d8",
+    "context": "318673c640a31e11f5249127c8ef5a76d63c16c3c191960824391d934766bd39"
+   },
+   "findings": [
+    {
+     "id": "HI-CA-16",
+     "severity": "minor",
+     "key": "ui.common.layout.chat_layout.resize_asks_double_click_resets_the_shared_pane_width",
+     "proposed": "सवाल पैन का आकार बदलें। साझा पेन की चौड़ाई रीसेट करने के लिए डबल-क्लिक करें।",
+     "reason": "साझा पेन चौड़ाई is missing the genitive की; the noun compound needs साझा पेन की चौड़ाई.",
+     "batch": "canvas",
+     "namespace": "ui.common.layout",
+     "current": "सवाल पैन का आकार बदलें। साझा पेन चौड़ाई रीसेट करने के लिए डबल-क्लिक करें।",
+     "english": "Resize asks. Double-click resets the shared pane width.",
+     "keys": [
+      "ui.common.layout.chat_layout.resize_asks_double_click_resets_the_shared_pane_width"
+     ],
+     "current_by_key": {
+      "ui.common.layout.chat_layout.resize_asks_double_click_resets_the_shared_pane_width": "सवाल पैन का आकार बदलें। साझा पेन चौड़ाई रीसेट करने के लिए डबल-क्लिक करें।"
+     },
+     "proposed_by_key": {
+      "ui.common.layout.chat_layout.resize_asks_double_click_resets_the_shared_pane_width": "सवाल पैन का आकार बदलें। साझा पेन की चौड़ाई रीसेट करने के लिए डबल-क्लिक करें।"
+     }
+    },
+    {
+     "id": "HI-CA-17",
+     "severity": "minor",
+     "key": "ui.common.layout.sidebar_header.import_agent",
+     "related_keys": [
+      "ui.common.layout.sidebar_header.import_an_agent_from_a_zip_file"
+     ],
+     "proposed": "एजेंट इम्पोर्ट करें; align ui.settings.imports.title to बातचीत इम्पोर्ट करें (and its error_start/error_job/error_cancel values).",
+     "reason": "The same English import is इम्पोर्ट here and in ui.agents.dialogs, but the existing audited ui.settings.imports.title/error_start use आयात; one locale must map import to one term, and इम्पोर्ट is the living software loan.",
+     "batch": "canvas",
+     "namespace": "ui.common.layout",
+     "current": "एजेंट इम्पोर्ट करें",
+     "english": "Import agent",
+     "keys": [
+      "ui.common.layout.sidebar_header.import_agent",
+      "ui.common.layout.sidebar_header.import_an_agent_from_a_zip_file",
+      "ui.settings.imports.title"
+     ],
+     "current_by_key": {
+      "ui.common.layout.sidebar_header.import_agent": "एजेंट इम्पोर्ट करें",
+      "ui.common.layout.sidebar_header.import_an_agent_from_a_zip_file": "ZIP फ़ाइल से एजेंट इम्पोर्ट करें",
+      "ui.settings.imports.title": "बातचीत आयात करें"
+     },
+     "proposed_by_key": {
+      "ui.common.layout.sidebar_header.import_agent": "एजेंट इम्पोर्ट करें",
+      "ui.common.layout.sidebar_header.import_an_agent_from_a_zip_file": "ZIP फ़ाइल से एजेंट इम्पोर्ट करें",
+      "ui.settings.imports.title": "बातचीत इम्पोर्ट करें"
+     }
+    }
+   ],
+   "identical_to_en": [
+    {
+     "key": "ui.common.layout.chat_layout.mac",
+     "value": "MAC",
+     "class": "technical-token",
+     "suggested_reason": "Technical or machine-facing token (URL / environment variable / key name / UA token / URI scheme); glossary §1 and the style guide keep identifiers and technical tokens Latin."
+    }
+   ],
+   "keys_audited": 8
+  },
+  "ui.common.speech": {
+   "namespace": "ui.common.speech",
+   "status": "passed",
+   "verdict": "clean",
+   "keys_total": 5,
+   "keys_in_batch_delta": 5,
+   "sha256": {
+    "en": "fa6a973f1a6a36f25218e884174299ba154e124baaddc87594bd516c8d07d8f6",
+    "hi": "45cf7b7de19829fb4ebb38fa8578f2c1fae7ba9838bf77ebf9e4a456ca89ab2a",
+    "context": "740828525702d67b6ee0ecf7eb0a3f1582167989355bd12d0579d698b982267a"
+   },
+   "findings": [],
+   "keys_audited": 5
+  },
+  "ui.common.updates": {
+   "namespace": "ui.common.updates",
+   "status": "passed",
+   "verdict": "clean",
+   "keys_total": 135,
+   "keys_in_batch_delta": 8,
+   "sha256": {
+    "en": "1f81721263fa4c7d74219bd2c0af82b908bf2fb4491df074e99e2215ad00d667",
+    "hi": "4d64ea0fe9e275e1544fa6b4433261a9467e63e42b69c42810356615fe4407e8",
+    "context": "cb4a160ef62b1760d4622b29c90e130cff1b4165ac770dab200ebc54eca38bee"
+   },
+   "findings": [],
+   "keys_audited": 8
+  },
+  "ui.common.viewer": {
+   "namespace": "ui.common.viewer",
+   "status": "passed",
+   "verdict": "clean",
+   "keys_total": 8,
+   "keys_in_batch_delta": 8,
+   "sha256": {
+    "en": "c0ffdd08058b062c88c6fad428db0e33c4162bcee1094dd5dd16890fe4e9705f",
+    "hi": "c84afbfc57b0ae35a8aa90aa23fa874382ebfc29c1d0a577f3581880d2fe0be5",
+    "context": "8b324e966ddb4aaef92ec3b3465f8ac6a80982529bcbd3b45a3c1cf1f9b28dd8"
+   },
+   "findings": [],
+   "observations": [
+    {
+     "severity": "INFO",
+     "kind": "out-of-scope extraction gap",
+     "keys": [
+      "ui.common.viewer.image_lightbox.previous",
+      "ui.common.viewer.image_lightbox.next"
+     ],
+     "detail": "image-lightbox.tsx passes {medialabel} as the raw literals \"image\"/\"asset\" (mediaLabel is typed \"image\" | \"asset\", not localized), so the Hindi message renders \"पिछला image\" / \"अगला asset\". The catalogue cannot fix the Latin noun; localize the argument at the call site (or pass a t() value). Not counted as a translation finding."
+    }
+   ],
+   "keys_audited": 8
+  }
+ }
+}

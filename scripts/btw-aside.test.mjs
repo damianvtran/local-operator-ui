@@ -91,9 +91,9 @@ const bundle = await build({
 				asideAnnouncement,
 				asideAnnounceableText,
 				asideModelDeclined,
-				ASIDE_ASK_BUSY,
-				ASIDE_CONTINUATION_ESCAPE,
-				ASIDE_DECLINED_OPTIONS,
+				asideAskBusy,
+				asideContinuationEscape,
+				asideDeclinedOptions,
 				ASIDE_OFF_PANEL_MAX_CHARS,
 				ASIDE_ADOPT_CONFIRM_FLOOR_MS,
 				reportUncarriedAsideRefusal,
@@ -107,12 +107,12 @@ const bundle = await build({
 				asideAdoptFailure,
 				queuedAdoptionStep,
 				settleQueuedAdoption,
-				ASIDE_ADOPT_QUEUED,
+				asideAdoptQueued,
 				ASIDE_ADOPT_REFUSED_SENTENCES,
-				ASIDE_ASK_QUEUED,
+				asideAskQueued,
 				ASIDE_QUEUED_RETRY_MS,
-				ASIDE_ADOPT_NOT_LANDED,
-				ASIDE_ADOPT_UNCONFIRMED,
+				asideAdoptNotLanded,
+				asideAdoptUnconfirmed,
 			} from "./src/renderer/src/features/chat/aside";
 			/*
 			   The canonical hook rides this bundle because adoptAside re-reads the
@@ -218,7 +218,8 @@ const composerBundle = await build({
 				settleOffRecordPayload,
 				composerPlaceholder,
 				COMPOSER_PLACEHOLDER,
-			} from "./src/renderer/src/shared/hooks/use-message-input";`,
+			} from "./src/renderer/src/shared/hooks/use-message-input";
+			export { t } from "@shared/i18n";`,
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -260,9 +261,9 @@ const {
 	asideAnnouncement,
 	asideAnnounceableText,
 	asideModelDeclined,
-	ASIDE_ASK_BUSY,
-	ASIDE_CONTINUATION_ESCAPE,
-	ASIDE_DECLINED_OPTIONS,
+	asideAskBusy,
+	asideContinuationEscape,
+	asideDeclinedOptions,
 	ASIDE_OFF_PANEL_MAX_CHARS,
 	ASIDE_ADOPT_CONFIRM_FLOOR_MS,
 	reportUncarriedAsideRefusal,
@@ -276,12 +277,12 @@ const {
 	asideAdoptFailure,
 	queuedAdoptionStep,
 	settleQueuedAdoption,
-	ASIDE_ADOPT_QUEUED,
+	asideAdoptQueued,
 	ASIDE_ADOPT_REFUSED_SENTENCES,
-	ASIDE_ASK_QUEUED,
+	asideAskQueued,
 	ASIDE_QUEUED_RETRY_MS,
-	ASIDE_ADOPT_NOT_LANDED,
-	ASIDE_ADOPT_UNCONFIRMED,
+	asideAdoptNotLanded,
+	asideAdoptUnconfirmed,
 	__registerCanonicalResync,
 	resyncCanonicalSession,
 	batchMovesView,
@@ -300,6 +301,7 @@ const {
 	settleOffRecordPayload,
 	composerPlaceholder,
 	COMPOSER_PLACEHOLDER,
+	t,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(composerBundle.outputFiles[0].text).toString("base64")}`
 );
@@ -364,6 +366,20 @@ const RE_ASIDE_BODY_SUBSCRIPTION = /subscription_id: request\.subscriptionId,/;
 const RE_ASIDE_FIRE_AND_FORGET = /const ask = askAside\(/;
 const RE_ASIDE_AWAITED = /await askAside\(/;
 const RE_ASIDE_OUTCOME = /return \{ offRecord: ask \};/;
+/*
+ * THE ASIDE TAKES THE COMPOSED QUESTION (bug 1). On a pane whose host honours
+ * `beforeAdmission` a `$skill` message carries its typed line at the press and
+ * its `<operator-skills>` block through the seam (`message-input.tsx`), and an
+ * aside is the one door that never enters `admitChatDraft` - it registers its
+ * turn through `askAside` - so the door has to ask the seam itself. Without
+ * these three the question reaches the owner with `$name` as prose, which is
+ * worse than the wait the change removes: the expansion LOOKED like it fired.
+ */
+const RE_ASIDE_SEAM_COMPOSED =
+	/asideContent = \(await beforeAdmission\(sessionId\)\) \?\? content;/;
+const RE_ASIDE_SENDS_COMPOSED =
+	/const ask = askAside\(\s*sessionId,\s*asideContent,/;
+const RE_ASIDE_SENDS_TYPED = /const ask = askAside\(\s*sessionId,\s*content,/;
 /*
  * What a `open` frame hands the renderer is what the ask must name, so the id's
  * origin is asserted rather than assumed: the routing fix is only correct if the
@@ -450,7 +466,7 @@ const RE_PANEL_REASON_ID = /<p id=\{blockedId\}/;
  * comment sits between the brace and the expression, hence the optional block.
  */
 const RE_SEND_VERB =
-	/content=\{\s*(?:\/\*[\s\S]*?\*\/\s*)?aside !== null && !awaitingAnswer\s*\?\s*t\("ui\.chat\.composer\.ask_aside"\)\s*:\s*t\("ui\.chat\.composer\.send_message"\)\s*\}/;
+	/content=\{\s*(?:\/\*[\s\S]*?\*\/\s*)?aside !== null && !awaitingAnswer\s*\?\s*t\("ui\.chat\.composer\.ask_aside"\)\s*:\s*slotB\.role === "steer"\s*\?\s*(?:\/\*[\s\S]*?\*\/\s*)?t\("ui\.chat\.composer\.steer_hint"\)\s*:\s*t\("ui\.chat\.composer\.send_message"\)\s*\}/;
 const RE_SEND_LABEL =
 	/aria-label=\{\s*aside !== null && !awaitingAnswer\s*\?\s*t\("ui\.chat\.composer\.ask_aside"\)\s*:\s*t\("ui\.chat\.composer\.send_message"\)\s*\}/;
 /*
@@ -517,7 +533,7 @@ const RE_PAGE_RAISES_THE_BUSY_CODE =
 const RE_PAGE_RETIRES_THE_BUSY_LINE =
 	/if \(sendErrorCode !== ASIDE_STILL_ANSWERING_CODE\) return;\s*if \(asideBusy\) return;\s*clearError\(\);/;
 const RE_PANEL_REGION_FOCUSABLE =
-	/tabIndex=\{0\}\s+aria-label="The aside exchange"/;
+	/tabIndex=\{0\}\s+aria-label=\{t\("ui\.chat\.aside\.exchange_label"\)\}/;
 /*
  * F11's effect trigger, pinned by F12: `retireRequest` is bumped by
  * `retireAcceptedPayload` and read by the effect's dependency list, and only those
@@ -1156,7 +1172,7 @@ test("a queued adopt keeps the panel up, read-only, until the pair lands", async
 		// Read-only: a follow-up ask is refused in the app with its own sentence.
 		assert.equal(
 			asideAskBlockedReason(useAsideStore.getState(), SESSION),
-			ASIDE_ASK_QUEUED,
+			asideAskQueued(),
 		);
 		// The turn is still running and the rows are not there: it waits.
 		settleQueuedAdoption(SESSION, () => false, true);
@@ -1176,11 +1192,14 @@ test("a queued adopt keeps the panel up, read-only, until the pair lands", async
 		"src/renderer/src/features/chat/components/aside-panel.tsx",
 	);
 	assert.equal(
-		ASIDE_ADOPT_QUEUED,
+		asideAdoptQueued(),
 		"Queued \u2014 this aside joins the conversation when the current turn finishes.",
 	);
-	assert.match(panel, /const blocked = queued\s*\?\s*ASIDE_ADOPT_QUEUED/);
-	assert.match(panel, /const announcement = queued\s*\?\s*ASIDE_ADOPT_QUEUED/);
+	assert.match(panel, /const blocked = queued\s*\?\s*asideAdoptQueued\(\)/);
+	assert.match(
+		panel,
+		/const announcement = queued\s*\?\s*asideAdoptQueued\(\)/,
+	);
 	assert.match(
 		panel,
 		/!queued && asideAdoptReady\(stream, sessionStreaming, adoptQueueSupported\)/,
@@ -1251,7 +1270,7 @@ test("a queued pair that never lands leaves the panel up, says so, and re-enable
 		const attached = useAsideStore.getState().attached[SESSION];
 		assert.notEqual(attached, undefined, "the panel is NOT detached");
 		assert.equal(attached.queued, undefined, "and is no longer read-only");
-		assert.equal(attached.notice, ASIDE_ADOPT_NOT_LANDED);
+		assert.equal(attached.notice, asideAdoptNotLanded());
 		assert.equal(attached.turns.length, 1);
 		// The exchange is still there to add, and the control is live for it.
 		const stream = useAsideStore.getState().streams.t1;
@@ -1274,7 +1293,7 @@ test("a queued pair that never lands leaves the panel up, says so, and re-enable
 		await settleFor(2 * ASIDE_QUEUED_RETRY_MS + 100);
 		assert.equal(
 			useAsideStore.getState().attached[SESSION].notice,
-			ASIDE_ADOPT_UNCONFIRMED,
+			asideAdoptUnconfirmed(),
 		);
 	} finally {
 		unregister();
@@ -1345,7 +1364,7 @@ test("a queued panel stays read-only when the aside reads back as adoptable", as
 	assert.notEqual(attached.queued, undefined);
 	assert.equal(
 		asideAskBlockedReason(useAsideStore.getState(), SESSION),
-		ASIDE_ASK_QUEUED,
+		asideAskQueued(),
 	);
 	const panel = read(
 		"src/renderer/src/features/chat/components/aside-panel.tsx",
@@ -1617,27 +1636,33 @@ test("the placeholder names the destination the press actually reaches", () => {
 		sendingUnsettled: false,
 		awaitingReply: false,
 	};
+	/*
+	 * THE TABLE HOLDS KEYS: `t()` resolves the sentence the box actually shows.
+	 * Comparing the key to the English sentence would pin a copy the catalogue
+	 * owns; comparing the resolved sentence to the ladder's return value is what
+	 * proves the two agree on ONE message.
+	 */
 	assert.equal(
-		COMPOSER_PLACEHOLDER.aside,
+		t(COMPOSER_PLACEHOLDER.aside),
 		"Ask off the record — Esc closes the aside",
 	);
 	assert.equal(
 		composerPlaceholder({ ...idle, asideAttached: true }),
-		COMPOSER_PLACEHOLDER.aside,
+		t(COMPOSER_PLACEHOLDER.aside),
 	);
 	assert.equal(
 		composerPlaceholder({ ...idle, asideAttached: true, awaitingAnswer: true }),
-		COMPOSER_PLACEHOLDER.answer,
+		t(COMPOSER_PLACEHOLDER.answer),
 		"the gate's placeholder term must precede the aside's: while a gate is unanswered the press answers the GATE",
 	);
 	// A box that takes no keystrokes is not invited to take one.
 	assert.equal(
 		composerPlaceholder({ ...idle, asideAttached: true, inputDisabled: true }),
-		COMPOSER_PLACEHOLDER.busy,
+		t(COMPOSER_PLACEHOLDER.busy),
 	);
 	assert.equal(
 		composerPlaceholder({ ...idle, asideAttached: true, unavailable: true }),
-		COMPOSER_PLACEHOLDER.unavailable,
+		t(COMPOSER_PLACEHOLDER.unavailable),
 	);
 	/*
 	 * And the attached aside outranks BOTH send-state sentences: the next Enter
@@ -1652,7 +1677,7 @@ test("the placeholder names the destination the press actually reaches", () => {
 			sendingUnsettled: true,
 			awaitingReply: true,
 		}),
-		COMPOSER_PLACEHOLDER.aside,
+		t(COMPOSER_PLACEHOLDER.aside),
 	);
 	// The wiring: the composer hands the attached panel to the function.
 	assert.match(
@@ -2210,7 +2235,7 @@ test("a refused continuation is told the panel's own way out, and a fresh refusa
 	const continued = useAsideStore.getState().streams[calls[1].requestId];
 	assert.equal(
 		continued.error,
-		`This aside is no longer available ${ASIDE_CONTINUATION_ESCAPE}`,
+		`This aside is no longer available ${asideContinuationEscape()}`,
 	);
 
 	/*
@@ -2254,7 +2279,7 @@ test("a refused continuation is told the panel's own way out, and a fresh refusa
 		 */
 		assert.equal(
 			refused.error,
-			`${declined.message.replace(/\s+ask again\.$/, "")} ${ASIDE_DECLINED_OPTIONS}`,
+			`${declined.message.replace(/\s+ask again\.$/, "")} ${asideDeclinedOptions()}`,
 			`a ${code} refusal keeps the owner's sentence and states both roads: the panel still continues`,
 		);
 		assert.equal(
@@ -2267,7 +2292,7 @@ test("a refused continuation is told the panel's own way out, and a fresh refusa
 		assert.match(refused.error, /Ask again here to keep this exchange/);
 		assert.match(refused.error, /press Esc to close the aside and discard it/);
 		assert.equal(
-			(refused.error ?? "").includes(ASIDE_CONTINUATION_ESCAPE),
+			(refused.error ?? "").includes(asideContinuationEscape()),
 			false,
 			"the escape clause would send the user away from a working panel",
 		);
@@ -2308,14 +2333,14 @@ test("a refused continuation is told the panel's own way out, and a fresh refusa
 	); // The panel keeps the owner's own sentence, and nothing else.
 	assert.equal(
 		asidePanelRefusal(new DesktopControlError(409, "gone"), true),
-		`gone ${ASIDE_CONTINUATION_ESCAPE}`,
+		`gone ${asideContinuationEscape()}`,
 	);
 	assert.equal(
 		asidePanelRefusal(
 			new DesktopControlError(409, "gone", undefined, "aside_unanswered"),
 			true,
 		),
-		`gone ${ASIDE_DECLINED_OPTIONS}`,
+		`gone ${asideDeclinedOptions()}`,
 		"continued, but the model declined: the exchange is still continuable",
 	);
 	// A FRESH ask the model declined has no exchange above it for Esc to cost, so the
@@ -2328,7 +2353,7 @@ test("a refused continuation is told the panel's own way out, and a fresh refusa
 		"gone",
 	);
 	// The lost-prefix clause says what Esc costs as well, since it sends the user there.
-	assert.match(ASIDE_CONTINUATION_ESCAPE, /discards this exchange/);
+	assert.match(asideContinuationEscape(), /discards this exchange/);
 });
 
 /*
@@ -2368,7 +2393,7 @@ test("an ask is refused in the app while the exchange is still answering", () =>
 		"no exchange: nothing to wait for",
 	);
 	store().beginAsk(SESSION, "turn-1", "asked");
-	assert.equal(asideAskBlockedReason(store(), SESSION), ASIDE_ASK_BUSY);
+	assert.equal(asideAskBlockedReason(store(), SESSION), asideAskBusy());
 	store().settleAside("turn-1", "answered");
 	assert.equal(asideAskBlockedReason(store(), SESSION), null);
 	store().beginAsk(SESSION, "turn-2", "asked again");
@@ -2382,10 +2407,10 @@ test("an ask is refused in the app while the exchange is still answering", () =>
 
 	// The sentence names the press that does work at the moment it starts working.
 	assert.equal(
-		ASIDE_ASK_BUSY,
+		asideAskBusy(),
 		"The aside is still answering. Press Enter again once the answer is in.",
 	);
-	assert.equal(ASIDE_ASK_BUSY.includes("\u2014"), false);
+	assert.equal(asideAskBusy().includes("\u2014"), false);
 
 	const page = read("src/renderer/src/features/chat/components/chat-page.tsx");
 	const dispatch = read(
@@ -2938,7 +2963,11 @@ test("the panel names its chord's verb, describes its blocked control, and annou
 	// term (R5-3).
 	assert.match(input, RE_SEND_VERB);
 	assert.match(input, RE_SEND_LABEL);
-	assert.match(panel, /content="Add the aside to the conversation"/);
+	// The sentence is a catalogue message now; the tooltip must still be that one.
+	assert.match(
+		panel,
+		/content=\{t\("ui\.chat\.aside\.add_to_conversation_tooltip"\)\}/,
+	);
 
 	// The announcement: one sentence per phase, and the answer ONCE, at settle.
 	assert.equal(asideAnnouncement(undefined), null);
@@ -3511,7 +3540,7 @@ test("the panel renders a staged quote instead of the payload's markup", () => {
 	assert.match(panel, /\(\) => parseReplies\(question\)/);
 	// The quote keeps the transcript's own shape, and the typed words are the
 	// question — so the two surfaces cannot describe one payload two ways.
-	assert.match(panel, /border-hairline border-l-2 py-0\.5 pl-2/);
+	assert.match(panel, /border-hairline border-s-2 py-0\.5 ps-2/);
 	assert.match(panel, /\{remainingContent\}/);
 	// The question reaches the renderer through the reader, not as a string.
 	assert.match(panel, /<AsideQuestion question=\{turn\.question\} \/>/);
@@ -3538,25 +3567,30 @@ test("the question side names its speaker, visibly and for assistive tech", () =
 	const panel = read(
 		"src/renderer/src/features/chat/components/aside-panel.tsx",
 	);
-	// The assistive half stays: `Question: ` is the label a reader hears.
-	assert.match(panel, /<span className="sr-only">Question: <\/span>/);
+	// The assistive half stays: `Question: ` is the label a reader hears. The
+	// words now come from the catalogue, so this pins the key that supplies them
+	// rather than the literal (i18n extraction: it was never keyed).
+	assert.match(
+		panel,
+		/<span className="sr-only">\{t\("ui\.chat\.aside\.question_label"\)\} <\/span>/,
+	);
 	// The sighted half: a visible speaker marker, `aria-hidden` so the two
 	// labels do not both reach a screen reader.
 	assert.match(
 		panel,
-		/aria-hidden=\{true\} className="mr-1 text-meta text-ink-dim">\s*You:\s*<\/span>/,
+		/aria-hidden=\{true\} className="me-1 text-meta text-ink-dim">\s*\{t\("ui\.chat\.aside\.you_label"\)\}\{" "\}\s*<\/span>/,
 	);
 	/*
 	 * And it stays box-neutral: no block, no ground, no padding, no vertical
 	 * margin, no `leading-*`, and no type step other than the two the marker
 	 * uses (`text-meta`, the shared line box, and an `ink-*` colour) - every
-	 * one of those moves the measured box the cap is built on. `mr-1` is
+	 * one of those moves the measured box the cap is built on. `me-1` is
 	 * horizontal-only, which is why a margin is allowed here where the
 	 * vertical ones are not. An unrecognised `text-*` token fails too: the two
 	 * spellings proved safe on this line box are the only ones admitted.
 	 */
 	const marker = panel.match(
-		/<span aria-hidden=\{true\} className="([^"]*)">\s*You:/,
+		/<span aria-hidden=\{true\} className="([^"]*)">\s*\{t\("ui\.chat\.aside\.you_label"\)\}/,
 	);
 	assert.ok(marker, "the visible marker is one span with its own classes");
 	for (const token of marker[1].split(/\s+/)) {
@@ -3565,4 +3599,40 @@ test("the question side names its speaker, visibly and for assistive tech", () =
 			`the marker must not carry ${token}: it would move the measured box the exchange cap reads`,
 		);
 	}
+});
+
+test("an aside's question is composed through the seam before it is asked (bug 1)", () => {
+	/*
+	 * SOURCE-LEVEL, AND IT SAYS SO. The aside door lives in `chat-page.tsx`, a
+	 * component whose module graph cannot be mounted in a node test (this file's
+	 * header), so what is pinned here is the WIRING: the branch asks the seam for
+	 * its text, asks BEFORE it registers the turn, and asks with the answer rather
+	 * than with the typed line. The composer's half - that the block arrives
+	 * through the seam at all - is executed in `scripts/shared-composer.test.mjs`.
+	 *
+	 * The seam is undefined whenever nothing is left to compose (a plain attached
+	 * send, a host that ignores it), so this door is byte-identical to today's
+	 * whenever there is no `$skill` in the message.
+	 */
+	const page = read("src/renderer/src/features/chat/components/chat-page.tsx");
+	assert.match(
+		page,
+		RE_ASIDE_SEAM_COMPOSED,
+		"the aside's question is replaced by the seam's answer when there is one",
+	);
+	assert.match(
+		page,
+		RE_ASIDE_SENDS_COMPOSED,
+		"and the composed text is what `askAside` receives",
+	);
+	assert.doesNotMatch(
+		page,
+		RE_ASIDE_SENDS_TYPED,
+		"the typed line alone must not reach the aside once the press has deferred its block",
+	);
+	assert.ok(
+		page.indexOf("asideContent = (await beforeAdmission(sessionId))") <
+			page.indexOf("const ask = askAside("),
+		"the composition happens before the turn is registered, so the panel paints the question it will carry",
+	);
 });

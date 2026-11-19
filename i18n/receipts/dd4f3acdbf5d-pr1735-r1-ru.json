@@ -1,0 +1,148 @@
+{
+  "schema": 1,
+  "receipt_kind": "locale-audit (round-1 audit of 8 added keys)",
+  "date": "2026-11-06",
+  "auditor": "i18n-auditor",
+  "agent": "i18n-auditor",
+  "team_role": "coder",
+  "session": "dd4f3acdbf5d",
+  "instance": "dd4f3acdbf5d-pr1735-r1-ru",
+  "audit_id": "tb1735-filesave-r1-ru-dd4f3acdbf5d",
+  "model": "deepseek/deepseek-flash",
+  "model_provenance": "Model provenance: this run started on anthropic/claude-opus-5-5 and took two harness-announced quota fallbacks mid-run (openai/gpt-6.1-sol, then deepseek/deepseek-flash). The value-by-value judgement was drafted on the primary model; the final pass, every hash, both gate runs and these artefacts were produced on deepseek/deepseek-flash. No model pin was changed by this audit.",
+  "model_fallback": {
+    "announced": true,
+    "observed": true
+  },
+  "status": "passed",
+  "result": "clean",
+  "namespace": "ui.teamBridge",
+  "locale": "ru",
+  "sha256": {
+    "en": "d3916ef448133cbdf11c325b2119947a816315b829b9830f1915fc6ab3fd25f5",
+    "ru": "da1d89d99c266e938373f65b209a4e2bf3dc259a695495dec2b5e08c36bebdbf"
+  },
+  "context_sha256": "6f217e1196cffa0a63c9434e04601cd1b6fff429d10cb29348730e8dc8dc73f4",
+  "style_guide": {
+    "path": "~/local-operator i18n/style-guides/ru.md",
+    "sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5",
+    "glossary_path": "~/local-operator i18n/glossary.md",
+    "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "core_commit": "f2e042c820b",
+    "note": "Both hashes are of the files at origin/main of damianvtran/local-operator (commit f2e042c820b), read there rather than from the shared checkout, whose working tree carries older copies of the es and fr guides."
+  },
+  "integration": {
+    "repo": "damianvtran/local-operator-ui",
+    "branch": "feat/team-bridge-file-save",
+    "worktree": "local-operator-ui-worktrees/filecard-design/.worktrees/i18n-audit-1735",
+    "head": "7d5c59ae1b744cb7d3edabcafe30c4707ac1eb5d",
+    "base": "cff518c3",
+    "pr": 1735
+  },
+  "independence": "Independent Local Operator instance, session dd4f3acdbf5d (team role coder, acting as the i18n auditor for PR #1735). The catalogue values were written by a different session (translator session ab57176c7b2a); this session did not translate, author or edit any catalogue value, wrote none of the PR's product files, and its only commits touch i18n/receipts, i18n/ledger.json and i18n/audits/evidence. No translation API or MT service was used. Row written by ledger-assemble.mjs from this receipt.",
+  "translator": {
+    "agent": "translator",
+    "session": "ab57176c7b2a",
+    "model": "not supplied in the manager brief for this PR",
+    "method": "Authored in the PR branch (feat/team-bridge-file-save); no MT service in the tree",
+    "keys": 8,
+    "row_translator_note": "i18n/ledger.json's row translator block still names the last full-namespace pass (2026-10-21) because ledger-assemble.mjs writes that field only when it creates a row. It describes the 399 pre-existing pairs this audit re-binds; the 8 added values audited here were authored by the session named above."
+  },
+  "scope": {
+    "delta_kind": "8 added keys; the other 391 pairs are byte-identical to the previously audited version",
+    "previous_row_target_sha256": "f9c50a9c071c6cf67af598afe4de4dc7fbf2c0da59d0eff48d30916f8eb37eac",
+    "previous_row_audited_by": [
+      "cb9d33604d15-pr1693-r1-ru"
+    ],
+    "added": [
+      "ui.teamBridge.fileCard.save",
+      "ui.teamBridge.fileCard.saving",
+      "ui.teamBridge.fileCard.save_failed",
+      "ui.teamBridge.fileCard.too_large",
+      "ui.teamBridge.fileCard.expired",
+      "ui.teamBridge.fileCard.unavailable",
+      "ui.teamBridge.files.attached",
+      "ui.teamBridge.files.not_uploaded"
+    ],
+    "keys_changed": [],
+    "removed": [],
+    "key_count": 407,
+    "key_set_equals_english": true,
+    "unchanged_pair_projection_sha256": "1ce8a4e4560951db1d676daad6a2c21938311deebe2db26e628f268656a65240"
+  },
+  "audited": {
+    "ui.teamBridge.fileCard.save": {
+      "en": "Save file {index} of {count}",
+      "translation": "Сохранить файл {index} из {count}",
+      "context_role": "accessible label for the Save button on one generic file card in a message",
+      "context_note": "Downloads a copy of a file a teammate attached, through the computer's own save dialog. Named by position on purpose: the file name is message content and must never be put in this label. 'Save' as in save a copy to this computer, not save changes; use the locale's usual download/save-copy verb, matching the image tile's 'Save {label}'. Not open, preview or share."
+    },
+    "ui.teamBridge.fileCard.saving": {
+      "en": "Saving…",
+      "translation": "Сохранение…",
+      "context_role": "status line on a file card while the file is being fetched for saving",
+      "context_note": "Shown between pressing Save and the save dialog opening. Indeterminate: no percentage is available. Not uploading, sending or a message state."
+    },
+    "ui.teamBridge.fileCard.save_failed": {
+      "en": "Couldn’t save. Try again.",
+      "translation": "Не удалось сохранить. Повторите попытку.",
+      "context_role": "error status line on a file card after a save could not reach the file",
+      "context_note": "A temporary failure (connection or service problem) while fetching the file to save it. The Save button stays next to it, so 'try again' means press Save again. Do not imply the file is gone, the message failed, or anything was deleted."
+    },
+    "ui.teamBridge.fileCard.too_large": {
+      "en": "Too large to save",
+      "translation": "Файл слишком большой для сохранения",
+      "context_role": "error status line on a file card when the file exceeds what this app can save",
+      "context_note": "The file is over the app's download size limit, so no Save is offered. A fact about the file's size, not a failure of the reader's connection; do not suggest retrying."
+    },
+    "ui.teamBridge.fileCard.expired": {
+      "en": "File expired",
+      "translation": "Срок хранения файла истёк",
+      "context_role": "status line on a file card whose retention period has ended",
+      "context_note": "The shared file was removed after its retention period, so it can no longer be saved. Match the image card's 'Image expired' wording pattern. No blame, no retry implied."
+    },
+    "ui.teamBridge.fileCard.unavailable": {
+      "en": "File unavailable",
+      "translation": "Файл недоступен",
+      "context_role": "status line on a file card the reader cannot get",
+      "context_note": "Same wording for every reason (removed, withheld, no longer shared with this reader, unknown state); never reveal which. Match the image card's 'Image unavailable' pattern. No retry, preview or download implied."
+    },
+    "ui.teamBridge.files.attached": {
+      "en": "Attached",
+      "translation": "Прикреплён",
+      "context_role": "status line on one staged file chip in the composer",
+      "context_note": "This one file is attached to the unsent draft and will go with the message. Describes a single file (singular), not the list. Does not claim the message was sent or read."
+    },
+    "ui.teamBridge.files.not_uploaded": {
+      "en": "Not uploaded",
+      "translation": "Не загружен",
+      "context_role": "status line on a staged file chip when files cannot be sent here",
+      "context_note": "Files are turned off for this account, so nothing was attempted; the note under the list explains it. Not a failure: do not use the wording of 'Upload failed'."
+    }
+  },
+  "findings": [],
+  "checks": {
+    "inputs_rehashed_from_disk": [
+      "en",
+      "context",
+      "target"
+    ],
+    "delta_keys_added_is_the_eight": true,
+    "delta_no_value_changed": true,
+    "pre_existing_pairs_byte_identical_to_parent": true,
+    "key_order_equals_english": true,
+    "key_count": 407,
+    "placeholders_preserved_in_all_eight": true,
+    "nfc": true,
+    "bidi_controls_absent_file_wide": true,
+    "em_dash_absent": true,
+    "ascii_dots_absent": true,
+    "zh_cn_two_mark_ellipsis": true,
+    "context_delta": "8 entries added for the 8 new keys; ui.teamBridge.files.staged role narrowed to an accessible name (tone, length and note unchanged) and its value is unchanged, so the audited translations still hold as an accessible name",
+    "command": "python3 i18n/audits/evidence/ru/ui.teamBridge/tb1735-filesave-r1-ru-dd4f3acdbf5d/verify.py ru | node scripts/i18n/ledger-assemble.mjs --locale ru | node scripts/i18n/ledger-check.mjs | node scripts/i18n/check-coverage.mjs",
+    "execution_log": "i18n/audits/evidence/ru/ui.teamBridge/tb1735-filesave-r1-ru-dd4f3acdbf5d/audit.log"
+  },
+  "linguistic_review": "'Сохранить файл {index} из {count}' uses the infinitive action label the ru guide requires and the image tile's own counter ('Изображение {index} из {count}'). 'Сохранение…' is the noun-form progress status that mirrors 'Загрузка файла…' in the same namespace. 'Не удалось сохранить. Повторите попытку.' matches 'Не удалось сохранить настройку пробуждения агента. Повторите попытку.' exactly in shape and register, and 'Повторите попытку' is the settled ru retry form in this namespace. 'Файл слишком большой для сохранения' states the limit without implying failure or a retry; 'Срок хранения файла истёк' mirrors 'Срок хранения изображения истёк'; 'Файл недоступен' mirrors 'Изображение недоступно'; 'Прикреплён' mirrors 'Прикреплённые файлы'; 'Не загружен' uses the same загруз- verb the namespace uses for upload ('Загрузка файла…', 'Не удалось загрузить').\n\nCONSIDERED AND REJECTED: 'Не загружен' -> 'Не загружено' (impersonal neuter). The chip's subject is the file, and 'Прикреплён' in the sibling chip is likewise a masculine short form agreeing with файл; switching one to the impersonal form would make the two chips disagree about their own subject for no gain.\nCONSIDERED AND REJECTED: 'Сохранение…' -> 'Сохраняется…'. The namespace's progress statuses are noun forms ('Загрузка файла…', and the fr/es/vi siblings likewise use progress nouns), so the noun keeps four locales on one pattern.\n\nSentences are capitalised and end-stopped per the ru guide, with no em dash in any of the eight values and a single-mark ellipsis.\n\nTHE PREVIOUSLY AUDITED 391 PAIRS: every pre-existing key/value pair in this file is byte-identical to its last audited version (unchanged-pair projection above; the textual diff is the parent's last line regaining a trailing comma plus the 8 added lines). The English context rewords only the role of ui.teamBridge.files.staged, from a heading for the staged-file list to the accessible name for the composer's list; tone, length and note are unchanged and the string itself did not change, so the existing translation still describes the same words and needs no re-audit for that edit.",
+  "terminal": true,
+  "verdict": "ru clean: all eight values are correct Russian, idiomatic for a status line, and reuse the namespace's settled save and upload verbs; nothing needed correcting."
+}

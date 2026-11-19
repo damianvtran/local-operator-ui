@@ -1,0 +1,112 @@
+{
+ "schema": 1,
+ "locale": "zh-CN",
+ "auditor": "qa-tester (lopdev QA role, session 4ad01a6b10df; independent i18n union auditor - authored no catalogue value in ui.chat.asks, is not the translator 'coder' recorded on these rows, and is not any earlier auditor of this row)",
+ "agent": "qa-tester (lopdev QA role, session 4ad01a6b10df; independent i18n union auditor - authored no catalogue value in ui.chat.asks, is not the translator 'coder' recorded on these rows, and is not any earlier auditor of this row)",
+ "model": "radient/auto",
+ "model_provenance": "Runtime header pinned anthropic/claude-opus-5-5, which served the opening reads (worktree state, hash derivation) before a quota failure; the declared cross-vendor chain then descended openai/gpt-6-astra -> kimi/k3.1-pro -> radient/auto, and radient/auto served the audit's verdicts and the authoring of this receipt. Disclosed from the session's own model-switch notices, not inferred from a pin.",
+ "fallback": "anthropic/claude-opus-5-5 (pinned, quota failure) -> openai/gpt-6-astra (quota) -> kimi/k3.1-pro (quota) -> radient/auto (served)",
+ "team": "lopdev",
+ "role": "qa-tester",
+ "session": "4ad01a6b10df",
+ "instance": "4ad01a6b10df-1466-union-zh-cn",
+ "instance_scope": "Artifact-scoped receipt instance, not a separate auditor session. All eight ui.chat.asks union receipts were authored in real session 4ad01a6b10df; they do not represent eight independent reviewers.",
+ "date": "2026-10-30",
+ "status": "passed",
+ "scope": "ui.chat.asks: verification of the hand-union of 2 branch keys (status.withdrawn, status.withdrawn_label) and 2 main keys (answer_options, recommended) onto the 26-key base, for zh-CN - all 30 keys read side by side against the English source and its context sidecar, every value attributed by raw bytes to main, the branch, or both. Catalogue-level only; not a native-fit, activation or release approval.",
+ "pr": "damianvtran/local-operator-ui#1466",
+ "branch": "merge-1466-main",
+ "merge": {
+  "head": "d302f4aa33aca2e8b08e08a3ca86649a0d96f1c7",
+  "tree": "c6c36732bf6e6bb18f0a86beebbd9dfb1332abfa",
+  "parents": {
+   "pr_1466_head": "cf1f53f38bd63ecf52c78e9690be246b05848bba",
+   "origin_main": "db81ff48a44c177c971f6b7d8d9e047959adaebc"
+  },
+  "merge_base": "2d13419f2257f89f944a6077f40918b1c70de528",
+  "worktree": "/Users/damian/local-operator-ui/.worktrees/1466-merge-main",
+  "tree_binding": "This audit is bound to TREE c6c36732bf6e6bb18f0a86beebbd9dfb1332abfa, not to the commit message. HEAD moved from ec695cb5f2b to d302f4aa33a mid-audit (a message amend) with an identical tree, and the catalogue bytes never changed; a further message-only amend keeps this receipt valid, a change to the tree does not - re-audit if the tree moves.",
+  "state": "clean worktree; the catalogue files on disk are the hand-union under audit"
+ },
+ "independence": "qa-tester session 4ad01a6b10df, a separate session from the translator recorded on these rows (translator.agent = 'coder', model radient/auto) and from the earlier auditors of this row (i18n-auditor, sessions 8bb03406c9fd / 8f79f63fcb). This run wrote no catalogue, English, context, ledger, allowance or generated file, edited no repository file at all, and did not author or approve any value under audit. Every value was read from the worktree and from git objects at the merge head and both parents; no translator summary was used as evidence. Same-family caveat: nothing here proves model independence - the pins differ, the served model does not.",
+ "inputs_sha256": {
+  "src/i18n/catalogues/en/ui.chat.asks.context.json": "d72523d885ef42e6ec5c65fb85c7a7598de2d415a2b2b6d6fad6a978d4a4ce79",
+  "src/i18n/catalogues/en/ui.chat.asks.json": "4b13cadb9306d3040154d7f8caaf771a299d6603d206fecec4e9392d1dd249f6",
+  "src/i18n/catalogues/zh-CN/ui.chat.asks.json": "05acadb11ca1f9351eef9d5e5e0c26b03115c629e9408de9892546e7f560eb73"
+ },
+ "side_sha256": {
+  "en": {
+   "merge_base": "6c42d235f1e326fc0cc0fea91668307d4e551585eef33b5fe1c2173efc2bc9fd",
+   "pr_1466_head": "4b81cb96606b6bc647c5d3020b64346c5a3f48d757b8b2990ec47ec42c33c5ee",
+   "origin_main": "3399e4015ace811013fb16d9f021016eaecf8ed700e6d34ee2c0d0029068832a",
+   "merged": "4b13cadb9306d3040154d7f8caaf771a299d6603d206fecec4e9392d1dd249f6"
+  },
+  "zh-CN": {
+   "merge_base": "1454fe351a52d1ecccca08a27cc4f7b9d95cf4b0569ca4a51efcbfacf16fdc52",
+   "pr_1466_head": "c0a606c86f2689638152e22e9d74852c5d1feba3f2a9f2e953f370f9d9deae4b",
+   "origin_main": "1313edb4905ad5ed1512d7155fe577fbf15a35746e5dada59ca972ab237a4579",
+   "merged": "05acadb11ca1f9351eef9d5e5e0c26b03115c629e9408de9892546e7f560eb73"
+  }
+ },
+ "provenance": {
+  "method": "values compared as their raw JSON string tokens, not decoded round-trips, so byte identity is proven rather than semantic equality; the whole-file check reconstructs this file from main's git object plus the branch's two key lines and requires the result to equal the on-disk bytes",
+  "key_counts": {
+   "merged": 30,
+   "merge_base": 26,
+   "main_only_new": 2,
+   "branch_only_new": 2,
+   "carried_by_both": 26
+  },
+  "attribution_keys": {
+   "added_by_main": [
+    "ui.chat.asks.answer_options",
+    "ui.chat.asks.recommended"
+   ],
+   "added_by_branch": [
+    "ui.chat.asks.status.withdrawn",
+    "ui.chat.asks.status.withdrawn_label"
+   ]
+  },
+  "values_byte_identical_to_a_side": 30,
+  "values_on_neither_side": []
+ },
+ "verified": [
+  "key set is the exact union: 30 keys = 26 carried by both sides + 2 added by main + 2 added by the branch; 30 total against a 26-key base",
+  "carried keys byte-identical: the merged file is byte-for-byte main's file with the branch's two keys appended before the closing brace (reconstructed from git objects and compared with the on-disk bytes), so every one of the 26 pre-existing values equals its pre-merge value on the side that authored it - no drift, no silent edit",
+  "the four new keys read against English and the en context sidecar: answer_options is the fieldset group name, recommended is an option marker whose glyph is outside the sentence, status.withdrawn is the settled-card status sentence and status.withdrawn_label the separate compact badge",
+  "structure: none of the four keys carries a placeholder in English and none carries a brace, ICU plural, or stray brace in this locale; no double space, no edge whitespace, no control/zero-width/bidi character, NFC-stable",
+  "punctuation: the status sentence uses the same em dash convention as every other value in this file, and its terminal punctuation matches the English source (the source has none and neither does this locale); the badge carries none, as a badge",
+  "meaning: the agent withdrew its own question and no longer needs an answer - the agent is the subject or beneficiary, never the user, and the status word is distinct from this namespace's dismissed and changed words",
+  "the badge is not extracted from the sentence by splitting on English punctuation: they are two keys, and they read as two strings here",
+  "agent term is «智能体», the glossary's zh-CN rendering; «已撤回» parallels «已更改»/«已关闭», and the double em dash «——» follows this file's Chinese convention rather than the spaced Latin dash"
+ ],
+ "observations": [
+  "the status sentence carries no sentence-final 。, matching the English source, which has none; full zh sentences in this file («已更改——尚未交给智能体。») keep theirs because their source does."
+ ],
+ "limitations": "Read-only catalogue audit at merge head d302f4aa33: no repository file was edited, no ledger assembly, no push, no test suite or build. Catalogue-level only - no rendered frame, no browser and no native-speaker sign-off is claimed, so the width notes are code-point arithmetic, not measured pixels. The earlier per-side receipts audited the branch's two keys in an 28-key file and could not see this union; they are cited where they bear on a finding, never treated as this union's audit.",
+ "namespaces": {
+  "ui.chat.asks": {
+   "namespace": "ui.chat.asks",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 30,
+   "keys_audited": 30,
+   "new_keys_audited": [
+    "ui.chat.asks.answer_options",
+    "ui.chat.asks.recommended",
+    "ui.chat.asks.status.withdrawn",
+    "ui.chat.asks.status.withdrawn_label"
+   ],
+   "sha256": {
+    "en": "4b13cadb9306d3040154d7f8caaf771a299d6603d206fecec4e9392d1dd249f6",
+    "zh-CN": "05acadb11ca1f9351eef9d5e5e0c26b03115c629e9408de9892546e7f560eb73"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.asks.json",
+    "target": "src/i18n/catalogues/zh-CN/ui.chat.asks.json",
+    "context": "src/i18n/catalogues/en/ui.chat.asks.context.json"
+   },
+   "findings": []
+  }
+ }
+}

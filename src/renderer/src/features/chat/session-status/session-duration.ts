@@ -110,26 +110,22 @@ export function durationReading(
 	return { banked, startedAt: running === null ? null : running * 1000 };
 }
 
-/**
- * The tooltip's second line, and the sentence the `aria-label` carries.
- *
- * It names what the number is NOT, because that is the misreading available:
- * a figure beside a context window and a spend reads as "how long this
- * conversation has been open", and it is not — a conversation left open
- * overnight banks nothing.
+/*
+ * The tooltip's second line (`ui.chat.session_spend.duration_explanation`) is
+ * resolved in `session-status-strip.tsx`, not here: this module is loaded by the
+ * node test harness directly, with no alias map, and is deliberately free of the
+ * i18n core. It names what the number is NOT - a figure beside a context window
+ * and a spend reads as "how long this conversation has been open", and it is not;
+ * a conversation left open overnight banks nothing.
  */
-export const DURATION_EXPLANATION =
-	"Time the agent has spent working in this conversation. Time waiting between turns is not counted.";
 
-/**
- * The same fact, shorter, for the `aria-label`.
- *
- * Two strings rather than one because they are read in different conditions.
- * The tooltip is read at leisure beside the value it explains, so it can afford
- * the full sentence; the label is spoken in one breath after the number and is
+/*
+ * The shorter sentence for the `aria-label` is NOT exported from here: it is
+ * the catalogue message `ui.chat.session_status.duration_explanation`, resolved
+ * at the call site in `session-status-strip.tsx`. This module stays a pure,
+ * import-free port (the tests load it straight from source), so it cannot
+ * reach `t()`. Why two sentences and not one: the tooltip is read at leisure
+ * beside the value, the label is spoken in one breath after the number and
  * re-read on every focus, so design decision 2.5 (D17) spells it with a
- * semicolon and no repetition. Keeping one string for both, which is what
- * round 2 shipped, makes the screen-reader case pay for the tooltip's leisure.
+ * semicolon and no repetition.
  */
-export const DURATION_LABEL_EXPLANATION =
-	"Time spent working; waiting is not counted.";

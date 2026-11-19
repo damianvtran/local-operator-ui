@@ -1,0 +1,15 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "868dc5da7584",
+  "status": "passed",
+  "namespace": "ui.hub",
+  "sha256": {
+    "fr": "388e1c44a535e0852c16ca52f98923e2ed67839e69efb7bb8de1cfadab9ede68",
+    "en": "1bc091755e451fb19f186c68367e243762ab6135c04e024e82b96e90776bae7b"
+  },
+  "findings": [],
+  "scope": "Four new ui.hub source-confirmation strings; semantic, placeholder, terminology and register audit",
+  "review_notes": "Independently read all four added values against English and the English context sidecar; checked source, publish-scope and updates terminology against existing locale entries. All preserve the linked-but-unconfirmed state, update hold and deliberate source/scope choice. Placeholder names and counts match. Hub and ID forms are established technical/product terms, not untranslated sentence fragments. Existing catalogue values compared with origin/main: unchanged. This receipt covers the four added strings, not a fresh full-namespace linguistic or rendered-fit audit.",
+  "date": "2026-10-19"
+}

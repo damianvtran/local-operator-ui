@@ -32,6 +32,7 @@ import { memo } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { MarkdownTable } from "../chat/components/markdown-table";
+import { remarkTableHtml } from "../chat/utils/remark-table-html";
 import "../chat/components/markdown.css";
 
 const EXTERNAL_HREF = /^(https?:|mailto:)/i;
@@ -77,7 +78,10 @@ export type ProjectMarkdownProps = {
 export const ProjectMarkdown: FC<ProjectMarkdownProps> = memo(
 	({ children, className }) => (
 		<div className={cn("lo-markdown", className)}>
-			<ReactMarkdown remarkPlugins={[remarkGfm]} components={COMPONENTS}>
+			<ReactMarkdown
+				remarkPlugins={[remarkGfm, remarkTableHtml]}
+				components={COMPONENTS}
+			>
 				{children}
 			</ReactMarkdown>
 		</div>

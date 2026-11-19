@@ -6,38 +6,45 @@
  * different questions and are seen at different moments. That one is the hover
  * meta row's stamp: it appears among copy and speak, only while the reader is
  * hovering the row, and it is formatted for someone already looking at the
- * message. This one is on screen for every user turn, under a turn's closing
- * answer and inside every expanded tool call, so it has to name the day itself
- * (`formatTurnTimestamp`) rather than a bare clock time.
+ * message. This one is on screen at rest: every user message carries it on its
+ * action line, every final response carries it on its meta row or foot line,
+ * and the `tool` scope survives as a contract though no surface mounts it any
+ * more (the collapsed ledger keeps its quiet; §E2 removed the per-call clock).
  *
  * THIS REVERSES A DELIBERATE DECISION, and the record of the old one is in that
  * file's header, so the reason it was reversed belongs here. The hover-only
  * model removed a stamp printed under EVERY row of the legacy list, where a
  * nine-row conversation carried the same date nine times. What the operator
- * asked for back is narrower than what was removed: ONE stamp per user turn,
- * under the bubble, plus one inside a tool call the reader has chosen to open.
- * A user turn is one block on the page and it is the reader's own words, so a
- * single stamp under it is the anchor the hover model was missing — and the
- * collapsed ledger rows keep the quiet they were given, because their stamp
- * lives inside the disclosure and a run of twenty calls therefore stays twenty
- * lines. The agent's answer was added to that list a report later (the operator,
- * 2026-09-17: "the agent responses (just the final responses, not the in-progress
- * tool intent/response) don't have a time displayed on them"), which is why the
- * in-progress half of that sentence is a rule here rather than a detail.
+ * asked for back is narrower than what was removed: one stamp per USER MESSAGE
+ * on its action line, one per FINAL RESPONSE (the closing answer on the turn's
+ * foot, every non-closing final response on its own meta row), and none for
+ * in-progress narration or collapsed ledger rows. A user message is one block on
+ * the page and it is the reader's own words, so a stamp under it is the anchor
+ * the hover model was missing. The agent's answer was added to that list a
+ * report later (the operator, 2026-09-17: "the agent responses (just the final
+ * responses, not the in-progress tool intent/response) don't have a time
+ * displayed on them"), and the operator widened "final responses" to every one
+ * of them, including in-between, on 2026-10-20 - which is why the in-progress
+ * half of that sentence is a rule here rather than a detail.
  *
- * IT SITS IN EXACTLY THREE PLACES, and the container decides which: `scope="turn"`
- * under a user turn's bubble (one per turn, the anchor the hover model was
- * missing), `scope="answer"` under a turn's CLOSING answer on the agent rail, and
- * `scope="tool"` at the foot of an OPEN tool disclosure (the collapsed ledger
- * keeps the quiet it was given, so a run of twenty calls stays twenty lines). The
- * turn's closing answer is the narrower reading of the operator's sentence above
- * and the one this module implements: "just the final responses, not the
- * in-progress tool intent/response" is about the prose an agent writes BETWEEN
- * calls, so a turn that narrates between calls carries ONE caption on the answer
- * it ends on rather than one clock per paragraph (design round 1, D1; QA round 1,
- * Q-2). `closingAnswerIds` in `canonical/transcript-rows.ts` is the rule, and it
- * is a rule about a TURN rather than about a record — `!record.streaming` alone
- * is a fact about a record, which is what painted the four identical stamps.
+ * IT SITS IN TWO PLACES IN THE TRANSCRIPT, and the container decides which:
+ * `scope="turn"` on a user message's action line (one per message, the anchor
+ * the hover model was missing), and `scope="answer"` under EVERY final response
+ * on the agent rail - the closing answer on the turn's foot line, and every
+ * non-closing final response on its own meta row. `scope="tool"` survives as a
+ * contract (the union, the verb, and the accessible name a disclosure would
+ * need) but no surface mounts it any more: §E2 removed the per-call clock, so a
+ * run of twenty calls stays twenty lines.
+ *
+ * THE ANSWER PLACEMENT WAS WIDENED (operator, 2026-10-20: "The timestamp must
+ * appear on ALL final responses and on user messages ... If it is a final
+ * response, it has a time"). The earlier reading stamped only the CLOSING answer
+ * ("just the final responses, not the in-progress tool intent/response"), which
+ * is still what keeps the overlay population quiet: narration that carries its
+ * own `tool_calls` is in-progress and gets none, while a settled text-only
+ * response gets one wherever it lands in the turn. `closingAnswerIds` in
+ * `canonical/transcript-rows.ts` still decides the closing foot; the mid-turn
+ * placement rides the final response's own meta row.
  *
  * THE FOOTER LINE IS GONE. It was a carrier only in the sense that this
  * component owned it: it stated when the last thing in the conversation
@@ -92,14 +99,17 @@
  * `aria-label` above is the accessible path rather than a second way to the same
  * panel (design round 2, D2-4; the scope of the keyboard claim corrected for
  * the bar carrier in the cursor sweep's design review, D1). The full date and
- * time come from `formatCalendarDateTime` with `hour12` forced, so the tooltip
- * and the label agree with the 12-hour text the operator asked for rather than
- * taking the locale's own clock — on a 24-hour machine the two halves of one
- * element used to state the same instant in two conventions (review round 1, R3).
+ * time come from `formatCalendarDateTime`, and the visible text from
+ * `formatTurnTimestamp`: BOTH take the active language's own hour cycle, so the
+ * two halves of one element state the instant in one convention (review round
+ * 1, R3) and a French reader gets `21:28`, not an English `9:28 PM` inside a
+ * French date. English keeps its 12-hour `9:28 PM` because that IS the `en`
+ * cycle, not because anything forces it.
  */
 
 import { Tooltip } from "@shared/components/ui";
 import { useStampNow } from "@shared/hooks/use-calendar-day";
+import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import {
 	formatCalendarDateTime,
@@ -133,17 +143,29 @@ export type TurnTimestampProps = {
 };
 
 /**
- * The verb each carrier's accessible name is built from.
+ * The accessible name each carrier's stamp is read out with.
  *
  * A stamp's visible text is a bare time, so the NAME is the only place the fact
  * it states is spelled out - and it has to be the right fact. `Sent` was
  * hardcoded while every stamp was a turn's own; it is false on an answer the
  * agent wrote and on a call that ran, which is what the three variants fix.
+ *
+ * Each is a WHOLE keyed phrase with a `{date}` placeholder rather than a verb
+ * glued to the date, so a language can put the date first or inflect the verb
+ * for it; the date inside is already formatted for the active locale.
  */
-const STAMP_VERB: Record<TurnTimestampProps["scope"], string> = {
-	turn: "Sent",
-	answer: "Answered",
-	tool: "Ran",
+const stampName = (
+	scope: TurnTimestampProps["scope"],
+	date: string,
+): string => {
+	switch (scope) {
+		case "turn":
+			return t("ui.chat.user_turn.stamp.sent", { date });
+		case "answer":
+			return t("ui.chat.user_turn.stamp.answered", { date });
+		case "tool":
+			return t("ui.chat.user_turn.stamp.ran", { date });
+	}
 };
 
 export const TurnTimestamp: FC<TurnTimestampProps> = ({
@@ -174,11 +196,12 @@ export const TurnTimestamp: FC<TurnTimestampProps> = ({
 	 * The same string for the tooltip and for the accessible name, built once:
 	 * they answer the same question (what instant is this, spelled out) and the
 	 * tooltip is the app's shared idiom here rather than a native `title`
-	 * (design round 1, D5). `hour12` is forced because the visible text is
-	 * 12-hour by the operator's request, and a title in the locale's own cycle
-	 * disagreed with it on a 24-hour machine (review round 1, R3).
+	 * (design round 1, D5). Neither this string nor the visible text forces a
+	 * clock: both follow the active language's hour cycle, so they cannot
+	 * disagree (review round 1, R3) and neither prints an English `PM` inside
+	 * another language's date.
 	 */
-	const full = formatCalendarDateTime(date, { hour12: true });
+	const full = formatCalendarDateTime(date);
 	return (
 		<Tooltip content={full} side="bottom" delayDuration={1200}>
 			<time
@@ -191,7 +214,7 @@ export const TurnTimestamp: FC<TurnTimestampProps> = ({
 				 * from `scope`, so the name is truthful per carrier - a turn was sent,
 				 * an answer was written, a call ran.
 				 */
-				aria-label={`${STAMP_VERB[scope]} ${full}`}
+				aria-label={stampName(scope, full)}
 				/*
 				 * `text-ink-dim` + `text-meta` is the contract's own pair for a
 				 * caption (§ 4: `text-meta` is "captions, timestamps, counts"; § 2:
@@ -210,7 +233,14 @@ export const TurnTimestamp: FC<TurnTimestampProps> = ({
 					className,
 				)}
 			>
-				{formatTurnTimestamp(date, now)}
+				{/*
+				 * THE STAMP IS TWO RUNS, EACH ISOLATED (design round 1, D4a). In Urdu the
+				 * `<time>` sat in an RTL paragraph with no isolation, so the neutral space
+				 * between the digits and the Latin `AM` took the paragraph's level and the
+				 * two LTR runs swapped (`AM 4:07`). `<bdi>` gives the formatted stamp its own
+				 * base direction without changing the locale's format.
+				 */}
+				<bdi>{formatTurnTimestamp(date, now)}</bdi>
 			</time>
 		</Tooltip>
 	);

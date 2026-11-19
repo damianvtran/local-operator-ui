@@ -1,0 +1,9 @@
+{
+	"ui.chat.quota_resend.failed": "Could not send. Try again.",
+	"ui.chat.quota_resend.rate_limited": "Requested recently. Try again in about 2 minutes.",
+	"ui.chat.quota_resend.refresh_checking": "Checking…",
+	"ui.chat.quota_resend.refresh_failed": "Could not check. Try again.",
+	"ui.chat.quota_resend.refresh_unchanged": "Checked just now — no change yet.",
+	"ui.chat.quota_resend.sending": "Sending…",
+	"ui.chat.quota_resend.sent": "Sent. Check your inbox and spam folder."
+}

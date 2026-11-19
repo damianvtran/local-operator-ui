@@ -1,0 +1,18 @@
+{
+	"ui.agents.refusals.name_taken": "Đã có tác nhân tên “{name}”. Chọn tên khác hoặc mở tác nhân hiện có để chỉnh sửa.",
+	"ui.agents.refusals.name_grammar": "Tên không được chứa dấu cách hoặc dấu gạch chéo.",
+	"ui.agents.refusals.effort_unavailable": "“{tier}” chưa được cấu hình là cấp năng lực. Dùng inherit hoặc thêm cấp trong Cài đặt.",
+	"ui.agents.refusals.team_name_bound": "Tên nhóm phải dài 1-64 ký tự.",
+	"ui.agents.refusals.missing_manager": "“{name}” không phải tác nhân hay nhóm trên máy này.",
+	"ui.agents.refusals.missing_member": "“{name}” không phải tác nhân hay nhóm trên máy này.",
+	"ui.agents.refusals.team_nesting": "Nhóm đó sẽ lồng quá sâu hoặc chứa chính nó. Hãy kiểm tra các thành viên.",
+	"ui.agents.refusals.class.label.proactive": "Chủ động",
+	"ui.agents.refusals.class.label.reactive": "Phản hồi",
+	"ui.agents.refusals.class.meaning.proactive": "Tác nhân có thể tự nhắn cho bạn: sau khi gửi tin nhắn, tác nhân chờ vài phút để bạn trả lời, rồi nhắc lại tối đa số lần đã định với khoảng chờ tăng dần, sau đó chờ bạn — và cũng có thể tự đánh thức theo lịch chạy riêng.",
+	"ui.agents.refusals.class.meaning.reactive": "Tác nhân trả lời khi bạn nhắn. Tác nhân không nhắc bạn và không tự đánh thức theo lịch chạy riêng.",
+	"ui.agents.refusals.class.effect.proactive": "Tắt tùy chọn này sẽ dừng nhắc và đánh thức theo lịch chạy. Tác nhân vẫn trả lời khi bạn nhắn.",
+	"ui.agents.refusals.class.effect.reactive": "Bật tùy chọn này cho phép tác nhân nhắn trước: tác nhân sẽ chờ vài phút để bạn trả lời, nhắc lại tối đa số lần đã định và có thể tự đánh thức theo lịch chạy riêng. Tác nhân vẫn trả lời khi bạn nhắn.",
+	"ui.agents.refusals.class.install_disclosure": "Tác nhân này có sẵn trong ứng dụng nhưng chưa có bản sao riêng, nên thao tác chuyển sẽ cài đặt trước — vẫn là tác nhân và chỉ dẫn đó, giờ có thể chỉnh sửa — rồi mới đặt loại hoạt động.",
+	"ui.agents.refusals.class.error.no_reason": "Máy chủ không gửi lý do. Thử chuyển lại.",
+	"ui.agents.refusals.class.error.install_landed": "{reason} Cài đặt đã thành công nên giờ bạn có thể chỉnh sửa tác nhân."
+}

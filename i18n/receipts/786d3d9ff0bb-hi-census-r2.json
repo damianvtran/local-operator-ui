@@ -1,0 +1,122 @@
+{
+  "locale": "hi",
+  "audit_date": "2026-11-03",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "786d3d9ff0bb",
+    "model": "openai/gpt-6.1-sol",
+    "instance": "786d3d9ff0bb-hi-census-r2",
+    "independent_from_translator_session": true,
+    "actual_model_source": "Host model-switch notice: current fallback openai/gpt-6.1-sol after provider quota failure; originally anthropic/claude-sonnet-5-5, intermediate switch notice anthropic/claude-opus-5-5. Audit reasoning and execution completed under current fallback."
+  },
+  "instance": "786d3d9ff0bb-hi-census-r2",
+  "model": "openai/gpt-6.1-sol",
+  "status": "passed",
+  "source_commit": "19868532b9cd2bca0eca468dbf22572d8dd78a5b",
+  "comparison_base": "6dd43fd7494",
+  "key_count": 5,
+  "namespaces": {
+    "ui.chat": {
+      "status": "passed",
+      "sha256": {
+        "en": "270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27",
+        "hi": "7baae2daa30893954e19d0b3465f539bf8053c2aed8dbac4beb4ed9266ec939a"
+      },
+      "key_count": 3,
+      "namespace_total_keys": 206,
+      "audited_keys": [
+        "ui.chat.session_status.effort_level.low",
+        "ui.chat.session_status.effort_level.medium",
+        "ui.chat.session_status.effort_level.high"
+      ],
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.json",
+          "sha256": "270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.context.json",
+          "sha256": "efcf4d1872974b6fc7456e753a2e10010ab896fffede262ae7c19d96c35ecee1"
+        },
+        "hi": {
+          "path": "src/i18n/catalogues/hi/ui.chat.json",
+          "sha256": "7baae2daa30893954e19d0b3465f539bf8053c2aed8dbac4beb4ed9266ec939a"
+        }
+      },
+      "findings": []
+    },
+    "ui.chat.run_details": {
+      "status": "passed",
+      "sha256": {
+        "en": "f8184d5f41b359364e47747871988bbb731d79c12bc3b9ec755f3db73e5db6ab",
+        "hi": "af866c4e536679f7445e8c5c2cb748590f1fe56dc5313c22ebda82a0482a9b4e"
+      },
+      "key_count": 2,
+      "namespace_total_keys": 91,
+      "audited_keys": [
+        "ui.chat.run_details.wake.armed_count",
+        "ui.chat.run_details.wake.cadence_once"
+      ],
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.run_details.json",
+          "sha256": "f8184d5f41b359364e47747871988bbb731d79c12bc3b9ec755f3db73e5db6ab"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.run_details.context.json",
+          "sha256": "da588f521188a2bcba1d0aeb7a265c3474b16673b8f653a021fa7e9e7075e911"
+        },
+        "hi": {
+          "path": "src/i18n/catalogues/hi/ui.chat.run_details.json",
+          "sha256": "af866c4e536679f7445e8c5c2cb748590f1fe56dc5313c22ebda82a0482a9b4e"
+        }
+      },
+      "findings": []
+    }
+  },
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": []
+  },
+  "findings": [],
+  "audit_notes_not_execution_log": [
+    "Independent second pass; no first-audit findings or receipts read. No translation/MT service used.",
+    "कम / मध्यम / उच्च are distinct, idiomatic effort-scale labels. एक बार is natural Hindi for once; the English one-word hint cannot literally apply to this idiom. जागृति follows the binding glossary and सक्रिय accurately conveys enabled/armed, not fired.",
+    "Consumers preserve raw effort wire values; only names/labels call effortDisplay. wakeClause passes numeric count and raw String(count).",
+    "Cadence is displayed after a due-time separator. Schedule keepRepeatLabel bypasses formatWakeCadence on null and uses its own keep_as_once translation; repeating cadence templates only receive non-null intervals. No new embedded-once grammar defect found."
+  ],
+  "limits": [
+    "Five-key delta only, not a fresh audit of entire namespaces or all UI.",
+    "No native app/browser/TUI execution, screenshot, pseudo-locale or rendered-pixel proof; no font/shaping/geometry/overflow guarantee.",
+    "No builds, installs, worktrees, tsc, string scanner, repository edits, ledger writes, posts, commits or pushes. Receipt must be retained and assembled by manager using the same byte-identical file for both rows.",
+    "No numeric maxCells/maxChars supplied in these five context entries. Source inspection only for display/wire and embedding paths."
+  ],
+  "input_hashes": [
+    {
+      "path": "src/i18n/catalogues/en/ui.chat.json",
+      "sha256": "270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27"
+    },
+    {
+      "path": "src/i18n/catalogues/en/ui.chat.context.json",
+      "sha256": "efcf4d1872974b6fc7456e753a2e10010ab896fffede262ae7c19d96c35ecee1"
+    },
+    {
+      "path": "src/i18n/catalogues/hi/ui.chat.json",
+      "sha256": "7baae2daa30893954e19d0b3465f539bf8053c2aed8dbac4beb4ed9266ec939a"
+    },
+    {
+      "path": "src/i18n/catalogues/en/ui.chat.run_details.json",
+      "sha256": "f8184d5f41b359364e47747871988bbb731d79c12bc3b9ec755f3db73e5db6ab"
+    },
+    {
+      "path": "src/i18n/catalogues/en/ui.chat.run_details.context.json",
+      "sha256": "da588f521188a2bcba1d0aeb7a265c3474b16673b8f653a021fa7e9e7075e911"
+    },
+    {
+      "path": "src/i18n/catalogues/hi/ui.chat.run_details.json",
+      "sha256": "af866c4e536679f7445e8c5c2cb748590f1fe56dc5313c22ebda82a0482a9b4e"
+    }
+  ],
+  "artifacts": []
+}

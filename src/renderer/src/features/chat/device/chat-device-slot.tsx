@@ -36,8 +36,14 @@ import {
 	desktopFeatureState,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { type FC, useCallback, useMemo } from "react";
+import {
+	type WorkingSetConsent,
+	workingSetConsent,
+} from "../../mesh/mesh-drop";
 import {
 	useMeshNetworks,
 	useMeshPeers,
@@ -119,7 +125,10 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 	 * device control from becoming a background poller on every conversation - the
 	 * defect the rail's own always-mounted observer caused (review round 2, R2-1).
 	 */
-	const peers = useMeshPeers(peersEnabled, { poll: false });
+	const peers = useMeshPeers(peersEnabled, {
+		poll: false,
+		stamp: () => useCanonicalSessionsStore.getState().beginAnswer(),
+	});
 	const networks = useMeshNetworks(peersEnabled, { poll: false });
 	const transfer = useMeshTransfer();
 	const draft = useCanonicalSessionsStore((state) =>
@@ -139,6 +148,16 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 	const move = useChatDeviceStore((state) =>
 		sessionId ? state.moves[sessionId] : undefined,
 	);
+	/*
+	 * THE LOCALE THE PICKER'S COPY IS RESOLVED IN. `devicePickerModel` words its
+	 * heading, row facts, footer and guidance through `t()`, which reads the locale
+	 * store WITHOUT subscribing (see `scripts/i18n/locale-reactivity.test.mjs`), so
+	 * the component has to subscribe and the model memo has to depend on the tag it
+	 * read. Without both, a live language switch left an open picker speaking the
+	 * old language until one of its other inputs changed identity (agent review
+	 * round 1, M3). Same pattern as `chat-status-strip.tsx`'s display memo.
+	 */
+	const locale = useI18nLocale();
 	/*
 	 * THE LIVE CONVERSATION'S OWN ROW, for the one fact the pane cannot carry
 	 * itself: where it was created. The row is where `createSession` landed the
@@ -241,6 +260,7 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 		],
 	);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `locale` IS read - by `t()` inside `devicePickerModel`, which the linter cannot follow. Without it a language switch leaves the picker's copy in the old language until another input changes.
 	const model = useMemo(
 		() =>
 			devicePickerModel({
@@ -263,13 +283,14 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 			canTransfer,
 			meshRead,
 			move,
+			locale,
 		],
 	);
 
 	const onPick = useCallback(
-		(deviceId: string | null, keep: boolean) => {
+		(deviceId: string | null, keep: boolean, consent?: WorkingSetConsent) => {
 			const row = deviceId ? findRow(model, deviceId) : null;
-			const name = row ? row.name : "this device";
+			const name = row ? row.name : t("ui.mesh.mesh_drop.this_device");
 			/*
 			 * A DRAFT'S PICK IS A SETTING, EXERCISED ON THE FIRST SEND: it rides the
 			 * draft row (and from there the create route's own `peer`) rather than
@@ -323,7 +344,13 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 				destination: { deviceId: to, name },
 				source: from,
 			});
-			const plan = keep ? (pair.alternatives[0] ?? pair.plan) : pair.plan;
+			const chosen = keep ? (pair.alternatives[0] ?? pair.plan) : pair.plan;
+			/*
+			 * THE WORKING-SET CONSENT RIDES THE RECORDED PLAN too, so the refusal's
+			 * `Wait for the turn to finish` re-issues the move WITH the consent the user
+			 * gave rather than a consent-less one the route would refuse.
+			 */
+			const plan = { ...chosen, ...workingSetConsent(consent) };
 			beginMove(key, { deviceId: to, name, from });
 			transfer.mutate(
 				/*
@@ -331,7 +358,12 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 				 * (`movePair`, `MoveConfirmDialog`): the destructive default deletes the copy,
 				 * and the copy arm is what makes the alternative real (SPEC §3.4).
 				 */
-				{ sessionId, to, keep },
+				{
+					sessionId,
+					to,
+					keep,
+					...workingSetConsent(consent),
+				},
 				{
 					onSuccess: (outcome) => {
 						if (outcome.kind === "moved") {
@@ -349,17 +381,14 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 								from,
 								receipt: outcome.receipt,
 								/*
-								 * `engaged: null` IS THE HONEST VALUE TODAY, and this is the one line that
-								 * changes when the wire publishes the fact: the receipt the desktop route
-								 * returns (`TransferReceipt`) carries phases, locality, owner_device,
-								 * source_retired, session_id, new_session_id, mode and replayed - and no
-								 * field that says whether the destination STARTED the conversation. So
-								 * every arrival renders the cold sentence, which is what every peer that
-								 * predates `engage_on_arrival` actually does - and neither the client
-								 * nor this comment invents a guess from the peer's build (per-peer
-								 * feature version is not on the wire).
+								 * `engaged` IS THE RECEIPT'S OWN FACT or `null`. The core's receipt now
+								 * carries an `engagement` block when the destination started (or did
+								 * not start) the conversation - a move made mid-turn resumes there - and
+								 * a receipt without one (an older core) keeps `null`, which renders the
+								 * cold sentence: true of every peer that predates the block, and no
+								 * guess from the peer's build (per-peer version is not on the wire).
 								 */
-								engaged: null,
+								engaged: outcome.receipt.engagement?.engaged ?? null,
 							});
 							return;
 						}

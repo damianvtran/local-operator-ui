@@ -1,0 +1,128 @@
+{
+	"schema": 1,
+	"instance": "3316c580ef05",
+	"locale": "fr",
+	"namespace": "ui.chat.canonical",
+	"audit_date": "2026-11-12",
+	"pr": 1876,
+	"branch": "feat/i18n-s16f-generation-card-labels",
+	"head": "8180eff1f705eb79d4df5123d6108c539b585b2e",
+	"worktree": "~/local-operator-ui/.worktrees/i18n-s16a",
+	"audit_kind": "delta — fresh independent audit of the 15 keys on the MERGED bytes (main's 5 loading.* keys + the PR's 10 generation-card keys), after the ledger row was reset to pending; plus merge-integrity proof for the other 452 values, which were not re-read",
+	"status": "passed",
+	"result": "clean-with-findings",
+	"keys_read": 15,
+	"scope": "fr, ui.chat.canonical: every one of the 15 keys read in full (mechanical, accuracy, idiom, register, glossary, fit, typography). The other 452 values were not re-audited: a script proved all 457 non-PR values byte-identical to origin/main and all 10 PR-added values byte-identical to 107ff1dd, so the surviving audits on those bytes stand.",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"instance": "3316c580ef05",
+		"session": "9d5e5bb1a1d4",
+		"model": "deepseek/deepseek-flash",
+		"independent_from_translator_session": true,
+		"actual_model_source": "this session's own runtime model header (deepseek/deepseek-flash), reported as served; no model pin or fallback was requested, observed or used. The auditor did not translate these files and cannot edit them; the S16f keys were translated by i18n-translator and the 5 loading.* keys landed on main with their own audit history.",
+		"second_pass": "not performed: the manager's brief assigned this group as a delta audit (15 keys) with no second independent pass requested for fr"
+	},
+	"sha256": {
+		"fr": "99f7c0b27d6c75b16935cc58874477cab24da430284576defaacf19e209c88f6",
+		"en": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
+		"context": "8f56e0d2b384c6b41add57a64e6c863e565cb61d5a7c0de482d42f380be3acfe"
+	},
+	"reference_sha256": {
+		"glossary": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+		"style_guide": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226"
+	},
+	"inputs": {
+		"source": "src/i18n/catalogues/en/ui.chat.canonical.json",
+		"context": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+		"target": "src/i18n/catalogues/fr/ui.chat.canonical.json",
+		"glossary": "~/local-operator/i18n/glossary.md",
+		"style_guide": "~/local-operator/i18n/style-guides/fr.md"
+	},
+	"integrity_script": {
+		"what": "every merged value compared against git show origin/main:src/i18n/catalogues/fr/ui.chat.canonical.json, and the 10 PR-added values against git show 107ff1dd0bddd0dbefa60e27cb179ee636d923a1:<same path>",
+		"key_counts": { "merged": 467, "origin_main": 457, "pr_head": 466, "pr_added": 10 },
+		"identical_to_origin_main": 457,
+		"identical_to_pr_head": 10,
+		"main_deleted_renames_absent": 4,
+		"main_deleted_renames_present": 0,
+		"unexpected_differences": 0
+	},
+	"key_hashes": {
+		"definition": "sha256 over UTF-8 of json.dumps({key: value}, ensure_ascii=False, sort_keys=True, separators=(',',':')), first 16 hex; the same definition 5f26f5727a24 used, reproduced here to show the 10 PR bytes are unchanged (image_label 47631358ab381012 and estimated_zero 0c7f9fff71e4231c match that receipt)",
+		"ui.chat.canonical.loading.cold": { "fr": "d04ab90893c76289", "en": "d9c23b02c9a2b1f4" },
+		"ui.chat.canonical.loading.older": { "fr": "c620b958907111e3", "en": "25ee19aed06e0a38" },
+		"ui.chat.canonical.loading.region_label": { "fr": "b75e99f33289d541", "en": "080dcc14ce3983ed" },
+		"ui.chat.canonical.loading.remote": { "fr": "4053ab0240beb15f", "en": "577105ad956c4002" },
+		"ui.chat.canonical.loading.revalidating": { "fr": "4b7e9ece0146b7fb", "en": "347373b54a390d78" },
+		"ui.chat.canonical.media.image_label": { "fr": "47631358ab381012", "en": "47631358ab381012" },
+		"ui.chat.canonical.media.sound_label": { "fr": "896840e3a17fe2e6", "en": "50eaf18785e46954" },
+		"ui.chat.canonical.sound.batch.item_status": { "fr": "baf91da58de738da", "en": "e358c22c488a7071" },
+		"ui.chat.canonical.sound.batch.latest_update": { "fr": "0d1f2b6f787b994e", "en": "427de0b397f00337" },
+		"ui.chat.canonical.sound.batch.summary": { "fr": "e7a58def97a3c606", "en": "09ae93966cdc6b3a" },
+		"ui.chat.canonical.sound.cost.batch_unknown": { "fr": "6633f156ace5ed40", "en": "8aabea74c95580d6" },
+		"ui.chat.canonical.sound.cost.estimated_zero": { "fr": "0c7f9fff71e4231c", "en": "7a339de1c5eb417a" },
+		"ui.chat.canonical.sound.cost.no_charge": { "fr": "dd7eb405d3b14c53", "en": "34fb349281118da7" },
+		"ui.chat.canonical.sound.cost.unknown": { "fr": "6234473a4f9b57ed", "en": "a34c87949511c3c4" },
+		"ui.chat.canonical.supplement.sound_fallback_label": { "fr": "c707d0bf8f62a342", "en": "553bf2c11939d42e" }
+	},
+	"findings_count": { "blocker": 0, "major": 0, "minor": 1, "nit": 1 },
+	"findings": [
+		{
+			"severity": "MINOR",
+			"id": "M1",
+			"key": "ui.chat.canonical.sound.cost.estimated_zero",
+			"current": "Coût estimé à 0\u00a0$\u202f; frais finaux non confirmés.",
+			"problem": "Bare `$` is the only MONEY rendering in the shipped fr corpus (the three other fr values that contain a `$` are JavaScript template/code tokens — `${name}`, `$'{'NAME'}'` — not amounts; counted in audit.log). The corpus writes the currency as the ISO code after the amount (`ui.common.account.low_credits_dialog.detail` « {detail} USD », `ui.providers.phone.action.activate` « Activer pour {amount} USD par mois », `ui.providers.phone.consent` « … à {amount} USD par mois … »), and the runtime's own fr money formatter renders USD as `0,00 $US` (Intl.NumberFormat('fr', {style:'currency', currency:'USD'}).format(0) = \"0,00\\u00a0$US\"). An unqualified `$` is read as CAD in a Canadian reading, while this is a USD billing sentence. Not MAJOR: the amount is zero, so no charge can be misread, and the sentence's real claim (estimate, not a confirmed bill) survives.",
+			"replacement": "Coût estimé à 0\u00a0$US\u202f; frais finaux non confirmés.",
+			"replacement_note": "U+00A0 between `0` and `$US`, U+202F before `;`. If the integrator prefers the corpus prose form over the symbol, « Coût estimé à 0\u00a0USD\u202f; frais finaux non confirmés. » is equally correct and is the more consistent choice with the three shipped USD strings. Either keeps the sentence the sidecar forbids shortening to « Sans frais ».",
+			"required": false,
+			"prior_finding": "same defect raised as M1 by instance 5f26f5727a24 (deepseek/deepseek-flash, 2026-11-11); re-derived here from the corpus and the Intl output rather than taken on trust, and it still stands unremediated on the merged bytes"
+		},
+		{
+			"severity": "NIT",
+			"id": "N1",
+			"key": "ui.chat.canonical.media.sound_label",
+			"current": "{count, plural, =1 {Son} other {Son {position, number, ::group-off}}}",
+			"problem": "`Son` is correct French and matches the namespace's prose (« Impossible de lire ce son », « Son généré »), but as a standalone label it is homographic with the possessive determiner `son`, and it is always read after a verb: `ui.chat.audio.play_label` is « Lire {label} », so the accessible names become « Lire Son » / « Lire Son 2 ». The namespace's own noun for the media type in a name position is `audio` (« Pièce jointe audio indisponible », « … sera facturée si elle produit un audio »). « Audio » is unambiguous there and costs no width (5 characters, shorter than English's « Sound »).",
+			"replacement": "{count, plural, =1 {Audio} other {Audio {position, number, ::group-off}}}",
+			"replacement_note": "Non-gating and a judgement call: a sighted reader is not misled by « Son 2 » in the player, and a screen-reader listener hears it in an audio context. Change only if the integrator wants the accessible-name composition to stand alone; if changed, keep « Son généré » and « ce son » as they are (prose, where the homograph does not arise).",
+			"required": false
+		}
+	],
+	"cleared_observations": [
+		"media.image_label is byte-identical to English and that is correct: « Image » is the French noun. It is already recorded in locale-parity.test.mjs IDENTICAL_OK as « fr:ui.chat.canonical.media.image_label », so the English-stub guard still fires for the other seven locales.",
+		"plural categories: fr is one/many/other (Intl.PluralRules('fr'); `few` must never appear and does not). sound.batch.summary carries one+many+other for completed and failed and =0+one+many+other for cancelled and unknown, matching the fr style guide's recorded `many` rule for exact multiples of 10^6. media.image_label/media.sound_label key only =1 and other, exactly like English; the fr `many` value falls through to `other` and renders « Son 1000000 », which is correct for a numbered label (the `de` form would be wrong there). Not a defect, not a finding.",
+		"zero counts render singular, which is French CLDR and the style guide's recorded rule: « 0 terminé · 0 échoué », « 1 arrêté » (verified by rendering, not assumed).",
+		"sound.batch.summary collapses English's « cancelled/stopped » to « arrêté ». Not an omission: the fr stop action has one vocabulary throughout the namespace (« Arrêter cette génération ? », « Demander l'arrêt », « · Arrêté »), so the second English word is disambiguation for English readers, not extra meaning.",
+		"« · Échoué » capitalised after the middle dot: this file also has lower-case middle-dot clauses (`tool_row.bridge.outcome.failed` « échoué · {code} », `tool.composing_sized` « rédaction · {size} »), but capitalisation is precedented for a trailing STATE label and English capitalises here. Instance 5f26f5727a24 filed this as NIT N1 with 'no change requested'; I re-read the precedents and would not file it at all — it is consistent within the message family (Échoué / Arrêté / Statut inconnu) and a status word after a separator is a label, not a clause.",
+		"« élément » for 'item' matches existing fr house use (`image_gen.batch_summary` renders « {count_display} élément(s) »), and latest_update/item_status agree with each other.",
+		"espace fine insécable (U+202F) is present before « : » (latest_update, summary's « À examiner : ») and before « ; » (estimated_zero), as the fr style guide requires; no U+202F inside code spans (none exist in these values).",
+		"measured lengths (chars incl. ICU-free value): loading.cold 30 (en 21, +43%), older 35 (en 25, +40%), region_label 29 (+45%), remote 44 (en 31, +42%), revalidating 31 (+19%), latest_update 52 (en 40, +30%), summary up to 87 en vs 73 fr on the widest sampled receipt. No maxCells/maxChars appears in the en context sidecar for any of the 15 keys (the hints are word counts), and the four loading labels are full-width transcript status lines, so no overflow is claimed or observed; older is the longest of the four and stays inside its 'three or four words' hint. Rendered fit was not exercised by this audit (catalogue-level)."
+	],
+	"verified": [
+		"validator: node --test scripts/i18n/locale-parity.test.mjs → 44 tests, 44 pass, 0 fail (key set equals en, ICU placeholder parity, no English stub, for all 8 locales)",
+		"own ICU comparison with the repo's parser (@formatjs/icu-messageformat-parser): every argument name and type identical to en for all 15 keys; select branches identical (item_status cancelled/failed/other; has_attention yes/other); plural branches superset-by-`many` only, and `many` is required in fr",
+		"rendered every message through the engine the app itself imports (intl-messageformat, see src/i18n/messages.ts) for en and fr across a matrix incl. count 1 / 3 / 2 of 3 / 1000000 / 1000001, status failed/cancelled/unrecognised, item 2 of 5, and zero/one/many summary receipts; no message threw",
+		"no markup tags, backticks, %s, < >, flags, paths or identifiers in any of the 15 values; no bidi control characters; all values NFC; no ASCII '...' and no straight apostrophe (U+2019 only); single U+2026 wherever en has one, and none where en has none",
+		"merge integrity: 467 merged keys = 457 origin/main + 10 PR-added; 457/457 identical to origin/main, 10/10 identical to 107ff1dd, the 4 main-deleted renames absent, 0 unexpected differences",
+		"glossary: session/agent/approvals not present in these keys; device → appareil honoured in loading.remote; cost → coût; media label kept as a plain noun; no kept-English term over-translated (no 'endpoint', 'token' or 'prompt' in the 15)"
+	],
+	"independence": {
+		"translator_agent": "i18n-translator (10 S16f keys, per the ledger row's translator field); the 5 loading.* keys were translated under main's own audit history",
+		"translator_model": "not re-stated here; see i18n/ledger.json and i18n/receipts for the rows this audit supersedes",
+		"auditor_agent": "i18n-auditor",
+		"auditor_session": "9d5e5bb1a1d4",
+		"independent_from_translator": true,
+		"disclosure": "a different agent and session from the translator; the served model is deepseek/deepseek-flash, the same family some earlier fr audits used — disclosed rather than presented as a different family"
+	},
+	"references": {
+		"glossary": "~/local-operator/i18n/glossary.md",
+		"style_guide": "~/local-operator/i18n/style-guides/fr.md",
+		"policy": "docs/I18N.md; AGENTS.md 'Internationalization: mandatory policy'"
+	},
+	"artifacts": {
+		"report": "s16f-au3-fr/report.md (session scratchpad; to be copied into tracked evidence by the integrator)",
+		"audit_log": "s16f-au3-fr/audit.log (actual commands and their actual output)"
+	},
+	"note": "Delta audit on merged bytes after the ledger row was reset to pending. 0 BLOCKER, 0 MAJOR → passed. M1 is unremediated from the earlier round and is a corpus-consistency defect, not a meaning defect; N1 is a preference with a reason."
+}

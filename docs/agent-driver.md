@@ -44,11 +44,115 @@ new-chat` drives the app-wide `⌘N` with a real CDP key chord
 plus the two presses that are deliberately not it (`⌘⇧N`, a bare `n`); without,
 the gate — the same press changing nothing, because the shortcut takes the New
 chat row's own `session_catalogue` gate and a driver run has no backend.
+**`--scene stale-team-draft` photographs the team New-chat defect (2026-10-22):**
+a page whose header says "New chat with <team>" while the body says the
+conversation is gone. It seeds the persisted pair that produces it — the team's
+stable `draft:team:<name>` row carrying the `sessionId` its create wrote,
+`activeDraftKey` naming that row, and a tombstone for the id — then reloads and
+asserts the three things one click must end with: no missing-session notice, an
+editable composer, and the dead pointer retired before the first paint. It needs
+`--backend`, because the composer it measures replaces the capability refusal a
+backend-less run paints. The press itself is the store's own rule and is driven
+by `scripts/team-new-chat-stale-draft.test.mjs`; a run-owned daemon has no
+authored team for the sidebar to list. Its before/after pair is committed under
+`docs/pr-evidence/team-new-chat-stale-draft/`.
+
+**`--scene team-newchat` photographs TWO team New-chat defects, in four
+modes.** (2026-10-23). *Draft modes:* a REPLAYED draft receipt. The stable team
+row's `draftRequestId` persists across launches, and a daemon that restarted (or
+a draft that expired) replays the id it minted the first time — an id its
+registry no longer serves. The pane streams on `sessionId ?? draft.warmId`, so
+its bridge 404s; the base tree read that as a missing conversation and painted
+"This conversation is no longer on this machine" under a header that says "New
+chat with <team>". The scene seeds the operator's persisted row (a stable
+`draft:team:<name>` with the request id, no `sessionId`), reloads, types a single
+`C` through CDP's input pipeline, and reports the route, the header, the notice,
+the composer, the row's own state and the id the daemon answered for the seeded
+request. `--expect broken` (the base tree) asserts the notice appeared, the row
+still holds the request id, and an in-page probe catches the notice being painted
+and the box refused; `--expect fresh` (the fix) asserts no notice, the `C` still
+in an editable box with the caret, a re-minted request id, and a first send that
+reaches the transcript with the entered-to-rendered milliseconds reported. It
+also installs the probe over the 404 → retire → next-mint window (DOM mutations,
+animation frames and the store's own persisted writes) and holds the first frame
+after the answer beside the settled one, so "no notice" is a statement about the
+window rather than about one screenshot. `--expect immediate` races a send into
+that window and reports the outcome. *Carry mode:* `--expect carry` drives a
+GENUINELY missing conversation (a real route to a 12-hex id the daemon does not
+serve) whose composer holds text and a chip, presses the notice's own
+**Start a new chat** (keyboard first, pointer fallback, both reported), and reads
+back the new chat's route, composer, caret, chip and the dead identity's row;
+then it reloads to prove the way out survives and sends the carried text once.
+The draft modes need `--backend`, `--backend-records`, `--team <name>`,
+`--draft-request-id <uuid>` and `--seed-onboarding-complete`; `carry` needs the
+same except the receipt, and the daemon's 404 in the draft modes must be real:
+the precondition minted the receipt, materialised a conversation on it, deleted
+that conversation and restarted the daemon.
+
 `--scene none` boots and arms the driver without running a
 scene. `--window-size WxH` sets the window (default 1380x900, the app's own
 default). The scratch tree is kept and its path printed; `--clean` removes it,
 `--out <dir>` puts frames somewhere you choose.
 
+**`--scene sidebar-docking` exercises #1077 against a populated synthetic
+conversation on an isolated daemon.** It drives the real Cmd/Ctrl+B chord and
+the strip/dock pointer controls through CDP at 1380, 1023 and 800 CSS px, checks
+the persisted preference and the absence of a sheet, and reads sidebar/chat/rail
+boxes plus document overflow. At 800 with a stored 320px width the drawn dock is
+capped to 276px so the 480px chat floor and 44px rail still fit; widening
+restores 320 without rewriting storage. It also checks the separate canvas
+fit-yield and captures settled dark/light frames. The base tree is the negative
+control: the same scene records its forced strip and overlay failures before the
+head-only matrix continues. Viewport changes use `Emulation.setDeviceMetricsOverride`,
+so the recorded CSS viewport is the asserted size; native-window resize and
+process-restart persistence are independent QA's lanes. The scene requires
+`--backend`, `--backend-records`, `--session <id>`,
+`--seed-onboarding-complete`, and the mock transcript marker named in
+`scripts/sidebar-docking-scene.mjs`.
+
+**`--scene attach` presses the composer's paperclip and proves what it stages
+(`--attach <absolute-path>`, repeatable).** The attach path is `handleAttachFile`
+-> `show-open-dialog` -> `addAttachment`; the one step a headless CDP scene cannot
+perform is the native picker's answer, so an armed launch that was given
+`--attach` has main return those queued paths from `show-open-dialog`
+(`src/main/dev-driver-attach.ts`) and **only that answer is replaced** — the
+press, the IPC round trip, the store write and the rendered chips are the app's
+own. The scene opens a conversation on its own daemon, presses
+`[data-tour-tag="chat-input-attach-file-button"]`, and asserts: the persisted
+`conversation-input-store` row holds exactly the paths given, in order; one
+`[data-attachment-id]` chip is on screen per path; the row carries the pending
+caption; and the app log names the queue-answered dialog. It does not prove that
+the OS picker opens or that a person can choose a file through it — say so beside
+the frame rather than implying it. `--attach` is refused for a relative path, and
+the queue is read only when the dev-driver bridge is armed.
+
+**`--attach-prompt "<text>"` sends after staging, so the scene proves the
+paperclip reaches an answer.** The prompt is typed into the composer's real field
+and the real `Send message` control is pressed; the run then waits for the
+daemon's own transcript (not the painted echo) to carry the prompt as a user row.
+It waits for the turn to SETTLE - the snapshot's `streaming` and
+`last_turn_outcome`, not the first assistant row with text, which a tool-using
+turn can emit mid-turn - then reports the session id, the row's `document`
+block(s) and the settled final text, and asserts that each staged file arrived
+as a document block and that the assistant turn completed. `--attach-expect-answer "<substring>"` adds a
+substring check on that final text. This path needs a daemon that serves
+`POST /v1/desktop/attachments` **and** a provider that can answer; a daemon
+without either is refused by the send, and the scene reports that refusal rather
+than a staged-only pass.
+
+```bash
+pnpm build
+node scripts/renderer-driver.mjs --scene attach \
+  --backend http://127.0.0.1:<port> --attach /abs/path/report.pdf \
+  --seed-onboarding-complete --out /tmp/frames
+
+# the answer path QA runs
+node scripts/renderer-driver.mjs --scene attach \
+  --backend http://127.0.0.1:<port> --attach /abs/path/report.pdf \
+  --attach-prompt "Summarise this PDF in one line." \
+  --attach-expect-answer "<expected substring>" \
+  --seed-onboarding-complete --out /tmp/frames
+```
 **`--scene authoring-refresh` is the one scene whose write comes from OUTSIDE the
 app.** Its subject is an agent creating a team or a profile on the backend, so
 the write is an HTTP request from this script's own Node process to the
@@ -202,8 +306,9 @@ It prints `[refusing] this tree is not on the pinned runtime …` and exits 1 wi
 nothing booted and no frame written, so a worktree inheriting a stale shared
 `node_modules` cannot populate a frames directory at all — which is what makes
 the pin worth stating: a committed frame is only reproducible on the runtime that
-produced it (a 35.x build renders this window as a 1380x872 viewport against
-44.3.0's 1380x868, and every pixel hash differs). With `--keep` the scratch tree
+produced it (a 35.x build renders this window as a 1380x872 viewport, Electron
+44.3.0 as 1380x868 and 45.1.0 as 1380x900, and every pixel hash differs). With
+`--keep` the scratch tree
 is named rather than removed; otherwise the refusal removes the tree it had just
 created, since nothing has run in it.
 
@@ -216,8 +321,9 @@ The frames below came from exactly that command —
 
 ## The CI producer's case table
 
-`scripts/asks-app-regression.mjs` runs in `ci.yml`'s macOS NPX leg on every pull
-request, and it is what supplies the frames a design or UX round reads for a
+`scripts/asks-app-regression.mjs` runs in `full-suite.yml`'s `native-proofs` job
+at the merge gate (and on demand via `workflow_dispatch` with `native_proofs=true`),
+and it is what supplies the frames a design or UX round reads for a
 CHANGE (the scenes above are how a surface is photographed deliberately, by
 hand). It boots the real assembled app once per case per leg — a **candidate** leg
 built from the checkout, and a **control** leg built from a real historical revision
@@ -328,6 +434,73 @@ Two mistakes are recorded here because they are the two ways this gate fails:
   *different* profiles do coexist — a peer session measured that, on different
   `HOME`/config as well as on the same config — so the requirement is one profile
   per launch, which is what the harness does, and not serialisation of runs.
+
+## The address-overlay probe's own opt-ins
+
+The browser's address-overlay child (`src/main/browser/address-overlay.ts`) is not
+the dev driver and is not armed by it: it has its own exact-`1` opt-ins, each an
+increment on the one before, and every refusal prints
+`[address-overlay] not armed: <reason>` on stdout.
+
+| Variable | Arms | Extra requirements |
+| --- | --- | --- |
+| `LOCAL_OPERATOR_UI_BROWSER_ADDRESS_OVERLAY_S1` | the inert native child | armed dev driver, `headless` |
+| `…_S2` | the mirror list inside that child | S1, armed driver, `headless` |
+| `…_VISIBLE` | one **visible** probe run of that mirror | S1 + S2, armed driver, `--window-mode=inactive`, unpackaged |
+
+`…_VISIBLE` is the only one that puts anything on the operator's screen, so it
+is also the only one with containment of its own:
+
+- **never a default and never product surface** — absent on every ordinary
+  launch, refused in `normal` (the product's own mode), refused in `headless`
+  (a headless run labelled “visible” would misattribute its evidence), refused in
+  a packaged build;
+- **launcher-bound** — `inactive` is normally not watched (`resolveLauncherWatchPlan`
+  treats a visible window as closeable by a person), but a visible probe passes
+  `boundedVisibleProbe: true` and quits when its launcher goes;
+- **capped at 120 s** — `ADDRESS_OVERLAY_VISIBLE_MAX_MS`, `unref`'d, ending in the
+  same bounded `endHeadlessRun` quit every other non-product run takes;
+- **one self-contained command.** `node scripts/browser-address-overlay-probe.mjs
+  --s3-visible --window-mode=inactive --out <dir>` refuses to start without that
+  argv, without its own environment opt-in, or without a TTY. It proves the
+  headless/normal refusals first, opens one `inactive` window, asks five
+  numbered questions, then reaps its exact pid tree and writes `teardown.json`.
+  Nothing here calls `screencapture`, `desktopCapturer` or any other capture API
+  that could raise a TCC prompt: a composite-pixel claim is the operator's eyes
+  or an operator-supplied screenshot, and an unattended run marks those rows
+  BLOCKED rather than passing them.
+
+The headless half is `--s3` (and `--s2` for the mirror alone). `--s3` re-runs the
+S2 matrix on the current head as its regression surface and adds the focus, IME
+and accessibility rows; `docs/design/browser-address-overlay.md` holds what those
+rows do and do not establish.
+
+## The approvals card's kill switch (S6d)
+
+The native approvals card is a **product surface and on by default**. Exactly
+`LOCAL_OPERATOR_UI_BROWSER_APPROVALS_OVERLAY_DISABLE=1` restores the DOM dock and
+band for that launch; an absent value or any other value (`0`, `true`, empty)
+leaves the card on. The old opt-in (`..._OVERLAY_S6A=1`) is gone and is ignored.
+The switch is read once in the browser host (`approvalsOverlayEnabled`), so a
+disabled launch creates **no card controller and no `WebContentsView` child at
+all**; it is not a hidden view. A rig that measures the dock (the narrow-panel
+proof) must therefore set the switch, or the dock is not mounted.
+
+Fallback rules: the child is opaque on non-darwin (the opaque-square fallback),
+and if the child cannot be created, fails to load, or its renderer process goes
+away after construction, the host latches the card off and pushes
+`approvalsCard.available: false`, which mounts the dock and band again.
+
+Routes with the card available: the toolbar Approvals control opens the card
+(explicit open, may focus; a second press closes it) while a request is pending,
+and opens the **Approvals dialog** (grants, revoke, revoke all, forget this
+site, clear browsing data) when nothing is pending; the page menu's Approvals
+item always opens the dialog. The dialog is a `BaseDialog`, so the overlay policy
+hides the page view and the card while it is up. The dock component and the
+consent band are not mounted while the card is available.
+
+The card is **not** claimed at native-composite, ring-hit-routing or VoiceOver
+parity (see `docs/design/browser-approvals-card.md`, BLOCKED list).
 
 ## Isolation: what the run cannot reach
 
@@ -481,7 +654,8 @@ rule:
   claim: that the chord moves the app to `/chat` and stages a fresh draft, and
   that with no catalogue answering the press changes nothing at all.
 - **`floors`** — §I's pane floors, measured rather than argued: the chat column's
-  480px floor, the canvas docking at `min(560, available - 480)`, and the `overlay`
+  480px floor, the canvas docking at `min(1200, available - 480)` (the slot's one ceiling,
+  `RIGHT_SLOT_MAX_PX`; 640 is the width it opens at), and the `overlay`
   literal it falls back to where the row cannot give the pane its own 400px floor
   (a flex dock beside the column, not a cover: the mode's positioning was removed
   with the PaneSlot refactor - `canvasPaneMode` carries the note). It is run at
@@ -491,7 +665,8 @@ rule:
   instead of passing on a reading it could not take. It captures the frame BEFORE it
   reads the boxes, because the canvas's wrapper carries `transition-[width]` and a
   reading taken mid-transition describes a layout that was never on screen - measured:
-  chat 942 / canvas 179 at 1380 in one run against the settled 560/560 the frame shows.
+  chat 942 / canvas 179 at 1380 in one run against the settled 560/560 the frame showed (the
+  shape the pane drew before it took the slot's one 1200 ceiling).
 
 
 - **`route-tops`** — the top of every route the shell draws: `/chat` as the control
@@ -590,6 +765,22 @@ rule:
   the dirty-suppression half is covered against the shipped module by
   `scripts/canvas-file-freshness.test.mjs`.
 
+- **`mesh-tab`** — the Mesh tab's device census against a live daemon, and the
+  one scene that reads its expectation from the DAEMON rather than from a
+  fixture. `--mesh-expect tombstones` is the base tree, which drew every member
+  id as a device node, so a revoked membership (`active: false`, a tombstone the
+  relay keeps for audit) appeared as a peer that had not answered;
+  `--mesh-expect collapsed` is the fixed tree, which draws only devices with an
+  active membership and carries the revoked memberships in one inspectable
+  count. The scene asks `/v1/desktop/networks` for the same rows the app renders,
+  derives the live ids and the tombstone ids, and refuses to run on a mesh with
+  no revoked membership: a pair photographed on a clean mesh would not be
+  evidence about this defect. It captures the canvas and the list in the
+  `--theme` this run claims, then opens the revoked count with a real press and
+  photographs the audit rows. What it cannot prove: that a tombstone was created
+  through this UI (the daemon's fixture predates the run), and that the relay's
+  90-day retention pruned anything.
+
 - **It is isolated from the operator's state, not from the network.** The run
   reaches no backend — the scratch `.env` points the app at a port the script
   verified dead, and the run asserts the app holds no connection to the URL the
@@ -638,6 +829,62 @@ rule:
   light frame captured mid-transition (the rail's pill at 46% of its colour
   change in a run that reported a settled frame), and a dark frame carrying the
   app's own `List agents request failed: 503` toast in one run out of two.
+
+## Opt-in real-core model uncertainty case
+
+`scripts/asks-app-regression.mjs --case model-uncertainty --leg candidate`
+adds one explicitly selected case to the existing macOS producer, not to its
+three default fixture-backed cases. The native CI job owns execution after source
+review; missing compiled outputs, build receipt, pinned Electron or published core
+refuse setup. Do not install/download a local Electron or substitute the operator's
+daemon. There is no historical native-control claim for this case.
+
+The canonical build seals input/output hashes, checkout, lock and runtime pin.
+Core is the published 0.94.15 native wheel; CI verifies its release target and
+wheel digest before reusing the now-idle core environment. The real CLI owns port
+8080, authentication, lifespan and its truthful serve record. A case-only ASGI
+wrapper sits **inside** that listener: an external proxy is rejected by production
+discovery or bypassed in favour of the real upstream. Main/preload are unchanged.
+
+Only initial cached A/B rows are seeded, with the production capture stamp and
+model serialization. Live discovery remains genuinely empty and its response is
+held. Native chat's initial live-A SSE is captured before subscription delivery,
+released ONCE, and correlated with its processed consumer receipt and DOM baseline.
+After the one B intent loses its ACK, genuine post-B SSE and the independent
+POST-ACK ModelPicker GET stay held through both unknown frames. Only B-SSE is
+released first: the default remains fenced while the picker GET is pending; that
+GET then releases live B for DOM settlement. The `model-b-sse-get-pending` frame
+replaces the former stale-A caption. **Delayed native stale-A delivery is NOT
+covered**; prior backend/component stale-projection proofs are not native pixels. The model
+picker cannot issue that GET before the awaited command: no pre-B native GET is
+invented. Cold HTTP remains separately labelled backend/component proof, **not a
+native cold-state caption or claim**. Original messages keep epoch/sequence and
+request causality; no old JSON becomes a fresh read. Settlement uncertainty is scoped to the active model dialog: the historical transcript notice remains attributed to the lost reply and does not contradict a separately reconciled picker. Active-dialog uncertainty still blocks settlement. The B command reaches the real
+owner exactly once; independent live-owner and journal-B verification precedes
+loss of its success ACK through a 504 transport fault. All attempts are recorded
+before forwarding, and the backend does **not** enforce the candidate's default
+write fence. An explicit final save must send hosting then model_name and persist B
+in the real isolated YAML. A private parent pipe controls delivery, never an HTTP
+route available to the renderer; losing that pipe stops only its owned daemon.
+
+The existing armed driver exposes a bounded metadata-only observer, disabled in
+ordinary launches. Canonical receipts are emitted after the actual flush; model
+GET receipts after real interpretation/finally. Receipt cursors precede release,
+so a previously consumed duplicate epoch/seq cannot certify a new delivery. Only
+then does the driver observe React/CSS settlement, post-frame neutral/disabled
+controls and actual default gestures with zero invocations/attempts. Fresh B must
+appear in the dialog's rendered current-model description before unlock/save.
+The app drains without exiting, then the real backend and recorded descendants
+join. Both exit receipts and acceptance written AFTER cleanup are mandatory; CI
+rejects a zero process status without those artifacts. Old default-case reapers
+keep their existing standalone exit behavior.
+
+This case uses the asks producer's hit-tested CDP input and `capturePage`, including
+consecutive frames and geometry. It claims neither focused/foreground behaviour
+nor WCV compositor pixels. Pure contract tests and backend-only loopback proofs
+are prerequisites, **not** evidence that the native flow passed. Failed setup
+stops dispatch; native evidence remains outstanding until the reviewed CI case
+actually runs.
 
 ## What it cannot prove, and what it is not for
 
@@ -721,3 +968,113 @@ The same position holds for `docs/evidence/projects-inline-edit/` (the
 `project-inline-edit` scene's frames, nine per palette) and for
 `docs/evidence/project-open-no-autofocus/` (the `project-open` pair, four frames
 per palette per tree).
+
+## Fixed owner-audit startup scene (isolated native QA only)
+
+`LOCAL_OPERATOR_UI_DEV_DRIVER_SCENE=team-bridge-owner-audit` selects exactly one
+startup scene through the existing armed dev-driver preload bridge. It is not a
+route/JS input, new IPC executor, synthetic notification or export-dialog driver.
+The scene waits for the **actual** Team Bridge capability and settled account
+journal before navigating once to `/team-bridge`. A startup hash alone is not
+sufficient: the route's catch-all can redirect it to chat before capability loads.
+
+Admission is main-process-only and uses the captured launch environment, not
+`.env`. It requires all of: existing driver armed; unpackaged checkout; resolved
+window mode `headless`; `LOCAL_OPERATOR_UI_DEV_DRIVER_ROOT` explicitly naming an
+isolated rig root; canonical HOME/config/requested userData/actual Electron
+userData all beneath that root; requested and actual userData equal; backend
+manager disabled in both launch controls and effective settings; explicitly
+configured HTTP loopback stub selected by discovery. Missing, noncanonical or
+escaping paths fail closed. Default port 1111, remote URLs, credentials in URLs,
+paths/query/hash, a different selected daemon and absent/unknown scenes refuse.
+Normal/inactive/packaged negative cases are pure tests, never visible launches.
+
+QA owns one bounded candidate build and native run. After the candidate is built
+and an isolated stub is listening, this is the startup portion of that bounded
+rig (the rig must supervise/reap the entire exact process tree on exit):
+
+```sh
+# RIG is an absolute session-scratch directory, STUB_PORT its isolated daemon's
+# non-default loopback port, REPO the absolute candidate worktree path.
+mkdir -p "$RIG/home" "$RIG/config" "$RIG/profile" "$RIG/frames" "$RIG/home/Library/Application Support/Local Operator/logs"
+env -u XPC_FLAGS \
+  HOME="$RIG/home" LOCAL_OPERATOR_CONFIG_DIR="$RIG/config" \
+  LOCAL_OPERATOR_LOG_DIR="$RIG/home/Library/Application Support/Local Operator/logs" LOCAL_OPERATOR_UI_TELEMETRY=off \
+  VITE_DISABLE_BACKEND_MANAGER=true \
+  VITE_LOCAL_OPERATOR_API_URL="http://127.0.0.1:$STUB_PORT" \
+  LOCAL_OPERATOR_UI_DEV_DRIVER=1 \
+  LOCAL_OPERATOR_UI_DEV_DRIVER_OUT="$RIG/frames" \
+  LOCAL_OPERATOR_UI_DEV_DRIVER_ROOT="$RIG" \
+  LOCAL_OPERATOR_UI_DEV_DRIVER_SCENE=team-bridge-owner-audit \
+  "$REPO/node_modules/.bin/electron" "$REPO/out/main/index.js" \
+  --window-mode=headless --user-data-dir="$RIG/profile" --use-mock-keychain
+```
+
+Strip inherited `CMUX_*` variables as well. No remote-debugging port or external
+browser is needed or permitted by this recipe. The absolute app entry must
+exist; never start Electron with switches alone. The stub supplies real daemon
+capability/account/status/audit protocol responses; no fake answers are installed
+in the application. Deliberately delay capability/account settlement and confirm
+ordinary Team Bridge requests arrive only after readiness. A disabled capability
+must produce no forced navigation or owner-audit requests.
+
+Verify actual selected daemon, hidden/unfocused state, source/compiled identity,
+real hook rejection, real durable Logger records, strict documented Python export
+and exact-process-tree reap. Export remains the strict metadata-only command in
+[owner-audit-read-diagnostics.md](owner-audit-read-diagnostics.md), reading the
+run's real log under the recipe's HOME. Execute that command unchanged with
+`HOME="$RIG/home"`; the explicit log override above uses its exact standard path. No export UI automation is added. Source and
+pure-hook tests do not replace this full-candidate native evidence; the original
+production first-open cause remains unknown until its real exception is captured.
+
+## The step runner (S1): driving the verbs without CDP
+
+`LOCAL_OPERATOR_UI_DEV_DRIVER_SCRIPT=<absolute steps.json>` makes MAIN walk a
+JSON step list through the same verbs a CDP driver calls, and print one line per
+step to stdout. It exists for `scripts/mac-proof-capture.mjs`
+([`docs/mac-proof-capture.md`](mac-proof-capture.md)), which photographs a shown
+`inactive` window with the window server - the only capture that carries macOS
+vibrancy - on the operator's own desktop, where CDP is banned.
+
+**The gate** (`resolveDevDriverScript`, `src/main/dev-driver.ts`, read from the
+launch environment so a checkout `.env` cannot supply it). Honoured only when the
+driver is armed (`LOCAL_OPERATOR_UI_DEV_DRIVER=1` + an absolute frames dir), the
+window mode is `headless` or `inactive`, the script path is absolute, and the
+realpath of the profile is not the app's default userData (any of `Local
+Operator`, `local-operator-ui`, `Electron` under appData), not inside one and not
+containing one. Unset is silent; any refusal prints
+`[dev-driver-script] refused: <reason>`. Unlike the owner-audit startup scene,
+packaged builds are allowed: driving the shipped bundle is the point, and the
+isolation comes from the scratch profile rule instead.
+
+**The steps.** `{"steps": [{"verb", "payload"?, "optional"?, "timeoutMs"?}]}`,
+at most 64 steps and 64 KB. Verbs: `navigate`, `setTheme`, `press`, `state`,
+`waitFor`, `openCanvas`, `skipOnboarding`, `shutter`. A `shutter` payload is
+`{"label", "capture": "external" | "capturepage"}`; it cannot be optional (a
+frame is a claim). Main sends each step on `dev-driver-script-step` once the page
+has loaded and the renderer's verbs are installed; the preload answers on
+`dev-driver-script-result`. Both exist only in a launch whose gate passed.
+
+**The protocol** (each line prefixed `[dev-driver-script]`): `ARMED`, `ready
+verbs=<n>`, `step=<n> verb=<v> ok <json>` | `skipped (optional): <why>` |
+`error: <why>`, `SHUTTER label=<l> media=window:<CGWindowID>:0 visible=<b>
+focused=<b> ack=<frames>/<l>.ack` (the runner waits, bounded, for the harness to
+write the ack after its capture) or `SHUTTER label=<l> capture=capturepage
+path=<png> ...`, then `DONE steps=<n>` or `FAILED step=<n>`, after which the app
+quits itself.
+
+**While a script runs:** native banners are off (the notifier's `never` plan,
+`inactive` included); the run is launcher-bound like a headless one and capped at
+300 s (`DEV_DRIVER_SCRIPT_CAP_MS`), so a dead or hung harness cannot leave a
+window up; and the updater is quiet for any armed boot (S3: no start-up seal
+repair inside the bundle, no scheduled, wake or app-initiated update check -
+a manual check still works).
+
+**New verbs (S2):** `waitFor({selector, gone?, timeoutMs?})` is `press` without
+the click; `openCanvas({view: "files" | "documents"})` / `openCanvas({open:
+false})` makes the canvas door's own store writes on the active conversation;
+`skipOnboarding()` completes setup the way the wizard's "Skip for now" does,
+which the CDP rigs do with a pre-paint localStorage seed the runner cannot write.
+
+Tests: `scripts/dev-driver-script-gate.test.mjs` (gate, parser, runner, wiring
+pins), and the harness's own `scripts/mac-proof-capture.test.mjs`.

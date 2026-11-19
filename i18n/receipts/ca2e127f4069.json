@@ -1,0 +1,183 @@
+{
+  "schema": 1,
+  "auditor": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "actual_model_source": "harness session model shown in the run prompt (deepseek/deepseek-flash); no fallback used",
+  "instance": "ca2e127f4069",
+  "instance_source": "generated 12-hex audit-run id; run as an in-process team subagent without a separate session id",
+  "independent_from_translator_session": true,
+  "independence_basis": "A different agent translated this 22-key delta. This auditor only read the catalogue and edited no catalogue value.",
+  "date": "2026-10-19",
+  "locale": "fr",
+  "namespace": "ui.mesh",
+  "round": 1,
+  "audit_kind": "namespace-delta",
+  "key_count": 245,
+  "new_key_count": 22,
+  "worktree": "~/local-operator-ui/.worktrees/mesh-link-states (branch fix/mesh-link-states, HEAD 4406017d5ffd931fa3f6e4c99cd8de3c5d014dfd + uncommitted working-tree translation as audited)",
+  "scope": "ui.mesh fr: the 22 new keys (mesh_drop.reach_refusal, mesh_drop.owner_reach_refusal, mesh_graph.handshake_refused_count, mesh_graph.relay_down_count, mesh_graph.address_unreachable_count, mesh_graph.no_endpoint_count, mesh_graph.not_a_member_count, and the 15 mesh_reach.* keys) audited in depth; the remaining 223 unchanged values read for whole-file consistency and terminology. The catalogue was not edited.",
+  "style_guide": {
+    "path": "~/local-operator/i18n/style-guides/fr.md",
+    "sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39",
+    "glossary_path": "~/local-operator/i18n/glossary.md",
+    "glossary_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "note": "The UI checkout has no local i18n/glossary.md or i18n/style-guides/; docs/I18N.md points to the core repository's binding glossary and per-locale guide, which were used. The UI ledger/receipt contract is followed."
+  },
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.mesh.json",
+      "sha256": "876ba5b9c176f2ae3070894f90f2da2bff6e707cc85b61fea5f53f3bf74825ad"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.mesh.context.json",
+      "sha256": "4ceb0a871d50757e49e8079b0446a91fe7fc4ad571f54479a056632cd1f1d533"
+    },
+    "fr": {
+      "path": "src/i18n/catalogues/fr/ui.mesh.json",
+      "sha256": "f7e8a7f1d214ce8e5025fac7c80547ab8d6da4b782f23fbf5dc2036bd448b740"
+    }
+  },
+  "artifacts": [
+    {
+      "path": "i18n/receipts/ca2e127f4069.json",
+      "role": "immutable audit receipt; the ledger row records its sha256"
+    }
+  ],
+  "namespaces": {
+    "ui.mesh": {
+      "status": "passed",
+      "keys_audited": 245,
+      "new_keys_audited": 22,
+      "sha256": {
+        "en": "876ba5b9c176f2ae3070894f90f2da2bff6e707cc85b61fea5f53f3bf74825ad",
+        "fr": "f7e8a7f1d214ce8e5025fac7c80547ab8d6da4b782f23fbf5dc2036bd448b740"
+      },
+      "context_sha256": "4ceb0a871d50757e49e8079b0446a91fe7fc4ad571f54479a056632cd1f1d533",
+      "findings": [
+        {
+          "id": "FR-M1",
+          "severity": "MINOR",
+          "gating": false,
+          "namespace": "ui.mesh",
+          "keys": [
+            "ui.mesh.mesh_reach.no_endpoint",
+            "ui.mesh.mesh_graph.no_endpoint_count"
+          ],
+          "actual": "aucune adresse à contacter / sans adresse à contacter",
+          "expected": "aucune adresse à joindre / sans adresse à joindre",
+          "reason": "« contacter une adresse » is a loose, metonymic rendering of « dial »; the catalogue's established verb for reaching is « joindre » (« Impossible de joindre {failed} des … », « peuvent vous joindre ») and its antonym « injoignable » is used one key above for address_unreachable. Meaning is clear and nothing is unsafe; consistency and idiom only. Keep every ICU arm and ::group-off unchanged."
+        }
+      ],
+      "dimensions": {
+        "mechanical": "PASS. Valid JSON, 245 unique keys, 245/245 key parity with en, no added or dropped keys, no duplicate members. @formatjs/icu-messageformat-parser parsed all 22 new values; argument sets are identical to the English source: {device}/{reach}/{reason} strings and {count} number. All five count keys carry one/many/other — the complete CLDR French set (Intl.PluralRules('fr') resolves one,many,other; 0→one, 1→one, 2→other, 1000000→many, 1500000→other). ::group-off survives in all 15 arms. No markup, backtick code, commands, flags, paths or identifiers. No manual bidi/Cf controls; all values NFC; no leading/trailing or double spaces.",
+        "accuracy": "PASS. Every new key preserves the English meaning: both refusal sentences keep the reach word, the caller's parenthesised {reason} and the same consequence; the count chips name the same mutually exclusive reach classes; the hint keeps the source's check-not-asserted-cause stance (removed membership or epoch disagreement can lead to a refusal, without claiming which one happened). No omissions, additions, negation or polarity errors, and the refusal/membership copy is safe.",
+        "idiom_and_register": "PASS. vous address in the only finite-verb sentence ('Vérifiez'), matching the fr guide; sentence case for the two headlines and the section label, lowercase status fragments, no 'Veuillez…'. The refusal shape '{device} : {reach}{reason}, …' deliberately mirrors the already-audited mesh_drop.no_answer / owner_no_answer sentences, and 'rien n'a donc été déplacé' / 'il n'a donc pas pu céder cette conversation' are the house renderings.",
+        "terminology": "PASS except FR-M1. relay=relais (glossary), peer=pair (pre-existing in mesh_list.answered_the_peer_read_but_is_in), handshake=poignée de main (pre-existing in mesh_actions.is_locked_out_on_its_next_handshake), epoch=époque d'appartenance (pre-existing in mesh_actions.removed_the_membership_epoch_is_now and mesh_list.epoch), member=membre, device=appareil, network=réseau, address=adresse. FR-M1 is the new verb 'contacter' where the catalogue already uses 'joindre' for reaching.",
+        "fit": "PASS by source inspection; the sidecar defines no maxCells/maxChars for these keys. The hint is 243 characters vs 197 in English (+23%, inside the guide's 15-25% band) and renders in a full-width wrapping <p> under the headline. The longest new per-address label, 'poignée de main refusée' (22 chars vs 17), renders in a 320px card row where the endpoint span is min-w-0 truncate and the label is shrink-0, so the endpoint truncates and the ~121px label fits; 'Le relais du pair est arrêté' is a wrapping headline. No button/tab/status-line cap is defined for the new keys. This is length/geometry reasoning, not a rendered-frame proof.",
+        "rtl": "N/A for fr (LTR). No bidirectional controls are present.",
+        "nfc": "PASS. Every new value is NFC-normalised; the only format characters are three U+202F (two before ': ', one before ';'), required French typography; apostrophes are U+2019; zero manual bidi controls and no U+00A0."
+      },
+      "decisions_scrutinised": {
+        "count_arms": "PASS. one/many/other is the correct and complete CLDR French set; `one` covers 0 and 1 ('0 poignée de main refusée', '1 relais arrêté', '1 non membre'), `many` is reached only at exact multiples of 10^6, and `other` covers 2/1 500 000. Rendering every arm at 0/1/2/1000000/1500000 produced grammatical French for all five keys; no `few` arm and no `=0` arm were introduced. The many arms use de/d’ correctly: 'de poignées de main refusées', 'de relais arrêtés', 'd’adresses injoignables', 'de non membres'.",
+        "group_off": "PASS. The `::group-off` skeleton is present in all 15 plural arms (3 arms × 5 count keys); it was not dropped or moved to a different arm.",
+        "poignee_de_main": "PASS. 'poignée de main' is the standard French rendering for a protocol handshake and is already the term in this audited catalogue (mesh_actions.is_locked_out_on_its_next_handshake); 'refusée' and 'fermé la poignée de main' follow it. The label is 22 chars vs 17 in English, but no width cap is defined and the render row truncates the endpoint, not the label.",
+        "non_essayee": "PASS. The per-address evidence row prints the endpoint as its left-hand value (mesh-card.tsx), so the elided noun is 'adresse' (feminine): 'non essayée' agrees correctly, and it also matches the 'Adresses essayées' heading. It does not agree with 'appareil' and does not present the absence of a transport fact as a device failure.",
+        "contacter": "MINOR — FR-M1. 'contacter' is not wrong, but 'contacter une adresse' is less idiomatic than 'joindre une adresse' and breaks the catalogue's established 'joindre'/'injoignable' family. Suggested: 'aucune adresse à joindre' and 'sans adresse à joindre' in all three arms (also shorter).",
+        "refusal_sentences": "PASS. {device} + U+202F + ':' is correct French spacing; the reach word is lowercase after the colon as a classification label, and {reason} already carries its own space/parentheses from the caller. 'céder cette conversation' matches the existing owner_no_answer sentence.",
+        "addresses_tried_heading": "PASS. 'Adresses essayées' is a sentence-case section label (first word capital), matching the fr guide's no-Title-Case rule and the 'non essayée' item beneath it."
+      },
+      "new_keys": [
+        "ui.mesh.mesh_drop.reach_refusal",
+        "ui.mesh.mesh_drop.owner_reach_refusal",
+        "ui.mesh.mesh_graph.handshake_refused_count",
+        "ui.mesh.mesh_graph.relay_down_count",
+        "ui.mesh.mesh_graph.address_unreachable_count",
+        "ui.mesh.mesh_graph.no_endpoint_count",
+        "ui.mesh.mesh_graph.not_a_member_count",
+        "ui.mesh.mesh_reach.relay_not_running",
+        "ui.mesh.mesh_reach.handshake_refused",
+        "ui.mesh.mesh_reach.address_unreachable",
+        "ui.mesh.mesh_reach.no_endpoint",
+        "ui.mesh.mesh_reach.not_a_member",
+        "ui.mesh.mesh_reach.attempt_bad_address",
+        "ui.mesh.mesh_reach.attempt_could_not_connect",
+        "ui.mesh.mesh_reach.addresses_tried",
+        "ui.mesh.mesh_reach.attempt_answered",
+        "ui.mesh.mesh_reach.attempt_nothing_listening",
+        "ui.mesh.mesh_reach.attempt_no_answer",
+        "ui.mesh.mesh_reach.attempt_not_tried",
+        "ui.mesh.mesh_reach.peer_relay_not_running",
+        "ui.mesh.mesh_reach.peer_closed_handshake",
+        "ui.mesh.mesh_reach.handshake_refused_hint"
+      ]
+    }
+  },
+  "mechanical": {
+    "json": "valid JSON; 245 unique keys; no duplicate members",
+    "parity": "245/245 English keys present; no added or dropped keys; values differ from English (not a stub)",
+    "placeholders": "all 22 new keys checked with @formatjs/icu-messageformat-parser: argument names and types identical to en, no reordering/renaming; {device}, {reach}, {reason} strings; {count} number",
+    "icu": "all 22 values parse; all five count keys use one/many/other, the complete CLDR fr set; every arm keeps {count, number, ::group-off}; no few/select/offset/style drift",
+    "markup": "no markup, backtick code, commands, flags, paths or identifiers in the new copy",
+    "unicode": "all new values NFC; zero Cf/bidi controls; no leading/trailing/double spaces; U+2019 apostrophes; U+202F only at the required punctuation points",
+    "execution": [
+      {
+        "command": "node scripts/i18n/generate.mjs --check",
+        "exit": 1,
+        "result": "keys.gen.ts is stale globally; the only generated delta is the untracked ur/ locale (zero 'catalogues/ur/' imports in the current keys.gen.ts), not fr/ui.mesh drift. Not edited by this audit."
+      },
+      {
+        "command": "node --test scripts/i18n/locale-parity.test.mjs",
+        "exit": 0,
+        "result": "43/43 tests passed across all locales, including fr key parity, placeholder integrity and non-stub checks."
+      },
+      {
+        "command": "node scripts/i18n/context-parity.mjs",
+        "exit": 0,
+        "result": "ok: every English key covered, apart from 196 allowed gaps in 6 namespaces; note: 8 ui.mesh allowance keys are now covered and can be dropped with --update (not an fr delta defect)."
+      },
+      {
+        "command": "node scripts/i18n/check-strings.mjs",
+        "exit": 0,
+        "result": "ok: 1260 files scanned, 762 literals at or below baseline, 16 advisory findings; zero advisories mentioning ui.mesh."
+      },
+      {
+        "command": "node scripts/i18n/ledger-check.mjs",
+        "exit": 1,
+        "result": "pre-audit state, expected: fr/ui.mesh (and the other five modified locales) point at the older source hash 6b1a7e… while the current English is 876ba5…; ur/ui.mesh has no ledger entry. This receipt is the fr delta record; the ledger row still needs assembling with it (scripts/i18n/ledger-assemble.mjs)."
+      }
+    ]
+  },
+  "out_of_delta_observations": [
+    {
+      "keys": [
+        "ui.mesh.mesh_graph.conversation_unit",
+        "ui.mesh.mesh_graph.reached_count",
+        "ui.mesh.mesh_graph.unknown_count",
+        "ui.mesh.mesh_list.revoked_count",
+        "ui.mesh.mesh_list.show_all_panel"
+      ],
+      "observation": "Pre-existing (byte-identical to HEAD, not in the 22-key delta): the many arms omit 'de' after a million — '1000000 conversations', '1000000 joints', '1000000 inconnus', '1000000 révoqués', and 'les 1000000 conversations' in show_all_panel. Standard French wants '1 000 000 de conversations / de joints / d'inconnus / de révoqués'. Only the many category is affected; no meaning change. Recorded for the manager, not counted in this delta verdict.",
+      "severity": "minor",
+      "counted_in_findings": false
+    }
+  ],
+  "second_pass": {
+    "performed": true,
+    "independent": false,
+    "detail": "At the manager's request, the same instance re-read all 22 new values after the whole-file consistency read, re-derived the plural categories from Intl.PluralRules('fr'), re-parsed and re-rendered every count key at 0/1/2/1000000/1500000, re-checked the three named items against the render sites (mesh-reach.ts, mesh-card.tsx) and re-checked the refusal/error copy against its safety context. This is a second pass, not a second independent auditor; commission another instance if the gate requires independence."
+  },
+  "limits": [
+    "Source-only translation audit; no rendered-frame or pseudo-localization fit proof. Fit conclusions are length/geometry reasoning from the sidecar and the 320px card, not a screenshot.",
+    "Out-of-delta pre-existing many-arm observations are recorded for the manager but are NOT counted in this delta verdict; they do not block the 22 new keys.",
+    "The generated keys.gen.ts staleness is caused by the untracked ur locale, not by fr/ui.mesh; it must still be regenerated before merge.",
+    "The ledger row for fr/ui.mesh was not rewritten by this audit (task footprint: one receipt); it must be assembled from this receipt before the release gate reads it."
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [
+      "FR-M1"
+    ]
+  },
+  "note": "Receipt i18n/receipts/ca2e127f4069.json. 22-key fr ui.mesh delta: 0 BLOCKER/MAJOR; 1 MINOR (no_endpoint 'contacter'), 0 NIT counted. Whole file read; pre-existing many-arm 'de' omissions recorded out of delta, not counted."
+}

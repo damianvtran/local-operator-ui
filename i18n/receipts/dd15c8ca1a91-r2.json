@@ -1,0 +1,244 @@
+{
+  "auditor": "translation-auditor",
+  "model": "openrouter/moonshotai/kimi-k3.1-pro",
+  "instance": "dd15c8ca1a91-r2",
+  "session": "dd15c8ca1a91",
+  "date": "2026-10-23",
+  "locale": "ru",
+  "round": 2,
+  "status": "passed",
+  "verdict": "clean — scoped round 2 passed; 118 keys in four changed namespaces mechanically verified, six remediations and direct neighbors semantically reviewed; 0 BLOCKER / 0 MAJOR / 0 MINOR / 0 NIT",
+  "audited_commit": "2798a774b2a179fd4f8c68bc5a4e1db59751a704",
+  "base_commit": "a2c5ce5871ff338585020382c610f8a00f0293ec",
+  "scope": "ONLY ui.chat.pickers, ui.chat.canonical, ui.chat.sidebar, ui.chat.analytics and direct regression neighbors. The seven unchanged round-1 namespaces were not re-audited.",
+  "translator": {
+    "agent": "translator",
+    "session": "a259c592a9b8",
+    "model": "openrouter/moonshotai/kimi-k3.1-pro"
+  },
+  "independence": "Independent translation-auditor session dd15c8ca1a91; translator session a259c592a9b8 is different. This auditor did not author or remediate the lane and made no source, catalogue, ledger, allowance, generated-file or repository edits. No model fallback was used.",
+  "round_1_receipt": "ru-completion-audit-r1-dd15c8ca1a91.json (same session scratchpad)",
+  "glossary": {
+    "path": "~/local-operator/i18n/glossary.md",
+    "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+    "path": "~/local-operator/i18n/style-guides/ru.md",
+    "sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+  },
+  "namespaces": {
+    "ui.chat.sidebar": {
+      "status": "passed",
+      "verdict": "clean — round-2 scoped audit of 43 keys in this changed namespace; no findings",
+      "keys_audited": 43,
+      "semantic_scope": "remediation keys and direct regression neighbors only",
+      "sha256": {
+        "en": "bd0bf045b2aa5a4495695592dcd3ccad76ec5bdea23cfda37460ce751479965f",
+        "ru": "5f4701d6cb99cbbce5d0a3a849c6ca11b3b1051e1b73051cd15714a691cf44ce",
+        "context": "fe5dc2a0fa4cb9b95ef5c1a30d57aee030fa5edf2b6b54b323562a1c63b8eb3a"
+      },
+      "findings": [],
+      "checks": {
+        "exact_key_order": true,
+        "missing_keys": [],
+        "extra_keys": [],
+        "icu_runtime_rendered": 43,
+        "pseudo_localized_rendered": 43
+      }
+    },
+    "ui.chat.pickers": {
+      "status": "passed",
+      "verdict": "clean — round-2 scoped audit of 34 keys in this changed namespace; no findings",
+      "keys_audited": 34,
+      "semantic_scope": "remediation keys and direct regression neighbors only",
+      "sha256": {
+        "en": "65f926679cefe21229f8d755f71d64381c5d6706c2d33c62cb63141e8f01352d",
+        "ru": "bea805be75cf3ebebaf945a847428b88da764f8073d2cd4ea66eac9df7a5ee26",
+        "context": "8d3fa914cd52768c98a75c4f41b903b86553335b27e406f98500eab7ff576e64"
+      },
+      "findings": [],
+      "checks": {
+        "exact_key_order": true,
+        "missing_keys": [],
+        "extra_keys": [],
+        "icu_runtime_rendered": 34,
+        "pseudo_localized_rendered": 34
+      }
+    },
+    "ui.chat.canonical": {
+      "status": "passed",
+      "verdict": "clean — round-2 scoped audit of 30 keys in this changed namespace; no findings",
+      "keys_audited": 30,
+      "semantic_scope": "remediation keys and direct regression neighbors only",
+      "sha256": {
+        "en": "771482d2bdef4f9d40bfbdaa35e8eebed300b0e6f9a477318557c26d1770e5a7",
+        "ru": "fd38208862ebfa072462076ab08526981541dafe73ecff370db16c1a73c44f97",
+        "context": "53145be31fe46bde6578d114653466dc5c6c932947460c10a0022c9e190d9a34"
+      },
+      "findings": [],
+      "checks": {
+        "exact_key_order": true,
+        "missing_keys": [],
+        "extra_keys": [],
+        "icu_runtime_rendered": 30,
+        "pseudo_localized_rendered": 30
+      }
+    },
+    "ui.chat.analytics": {
+      "status": "passed",
+      "verdict": "clean — round-2 scoped audit of 11 keys in this changed namespace; no findings",
+      "keys_audited": 11,
+      "semantic_scope": "remediation keys and direct regression neighbors only",
+      "sha256": {
+        "en": "6ac0bbfb50c8ef8c772f229868614aa8d07dfd9f659311d5d396cea5c4611159",
+        "ru": "7ea62307418e52ebf125bb0cb5b07fdda629407cb6c79ec50e1d80b7248408f2",
+        "context": "7c25af7f391fbaac6a1718a81b8b258c0b313ba46411f16e95691446828640ff"
+      },
+      "findings": [],
+      "checks": {
+        "exact_key_order": true,
+        "missing_keys": [],
+        "extra_keys": [],
+        "icu_runtime_rendered": 11,
+        "pseudo_localized_rendered": 11
+      }
+    }
+  },
+  "evidence": {
+    "delta": "git diff --name-only a2c5ce5871ff338585020382c610f8a00f0293ec..2798a774b2a179fd4f8c68bc5a4e1db59751a704 listed only the translator receipt and the four scoped ru catalogues. Worktree status was empty and HEAD matched the remediation commit.",
+    "semantic_review": "Read current English, Russian and context for all six remediated keys plus direct stop/login/logout/model, sound-confirmation, row-menu and analytics neighbors. All six are resolved; no new semantic, grammatical-case, register or glossary findings.",
+    "resolutions": [
+      {
+        "key": "ui.chat.pickers.stop.confirm",
+        "current": "Остановить {count, plural, =1 {эту сессию} one {{count, number, ::group-off} сессию} few {{count, number, ::group-off} сессии} many {{count, number, ::group-off} сессий} other {{count, number, ::group-off} сессии}} сейчас",
+        "result": "resolved — exact =1 preserves «эту сессию» only for one target; Russian one/few/many/other are count-bearing with correct case"
+      },
+      {
+        "key": "ui.chat.pickers.login.title",
+        "current": "Войти в учётную запись провайдера",
+        "result": "resolved — now means signing in to the provider account, not authenticating via an intermediary; consistent with neighboring «этой учётной записи»"
+      },
+      {
+        "key": "ui.chat.pickers.models.native_details",
+        "current": "Сведения о модели — {name}",
+        "result": "resolved — idiomatic model-facts caption; em dash and {name} preserved"
+      },
+      {
+        "key": "ui.chat.canonical.sound.stop.confirm_label",
+        "current": "Подтверждение запроса на остановку",
+        "result": "resolved — noun phrase names the best-effort stop-request confirmation group and remains distinct from «Запросить остановку»"
+      },
+      {
+        "key": "ui.chat.sidebar.row_menu.copy_id",
+        "current": "Копировать ID сессии",
+        "result": "resolved — action-label infinitive now matches neighboring menu commands; ID remains an allowed technical token"
+      },
+      {
+        "key": "ui.chat.analytics.filters.top_level_only",
+        "current": "Только сессии верхнего уровня",
+        "result": "resolved — explicitly names sessions, preserves the load-bearing «Только», and fits the by-session table context"
+      }
+    ],
+    "deferred_terminology": "Reasoning-effort drift remains deliberately deferred. The delta does not touch pre-existing ui.agents.models; it was not re-audited and is not a new finding.",
+    "structural_probe": {
+      "command": "node ru-audit-r2.mjs (session scratchpad; repository dependencies only)",
+      "actual": "118 keys in four changed namespaces; failures: []; exact key order 4/4; missing/extra keys 0/0; argument types and number skeletons preserved; select arms unchanged; NFC/typography failures 0; normal ICU renders 118/118; 30% pseudo-expanded renders 118/118."
+    },
+    "cldr_plural": {
+      "key": "ui.chat.pickers.stop.confirm",
+      "runtime": "intl-messageformat with Intl.PluralRules('ru')",
+      "categories_present": [
+        "=1",
+        "one",
+        "few",
+        "many",
+        "other"
+      ],
+      "samples": [
+        {
+          "count": 1,
+          "cldr_category": "one",
+          "output": "Остановить эту сессию сейчас"
+        },
+        {
+          "count": 21,
+          "cldr_category": "one",
+          "output": "Остановить 21 сессию сейчас"
+        },
+        {
+          "count": 101,
+          "cldr_category": "one",
+          "output": "Остановить 101 сессию сейчас"
+        },
+        {
+          "count": 2,
+          "cldr_category": "few",
+          "output": "Остановить 2 сессии сейчас"
+        },
+        {
+          "count": 5,
+          "cldr_category": "many",
+          "output": "Остановить 5 сессий сейчас"
+        },
+        {
+          "count": 1.5,
+          "cldr_category": "other",
+          "output": "Остановить 1,5 сессии сейчас"
+        }
+      ]
+    },
+    "pseudo_localization": {
+      "method": "Wrap in ⟦⟧ and lengthen every Cyrillic word by 30% with Я; leave Latin ICU syntax/placeholders untouched; render through intl-messageformat with representative values.",
+      "rendered": 118,
+      "failures": 0
+    },
+    "static_overflow": {
+      "criterion": "same representative values; Russian code-point length >1.30× English AND delta >=4; static candidates only, not rendered defects",
+      "candidate_count": 5,
+      "candidates": [
+        {
+          "key": "ui.chat.sidebar.row_menu.copy_id",
+          "current": "Копировать ID сессии",
+          "en_codepoints": 15,
+          "ru_codepoints": 20,
+          "ratio": 1.33,
+          "disposition": "rendered-check"
+        },
+        {
+          "key": "ui.chat.pickers.login.title",
+          "current": "Войти в учётную запись провайдера",
+          "en_codepoints": 21,
+          "ru_codepoints": 33,
+          "ratio": 1.57,
+          "disposition": "rendered-check"
+        },
+        {
+          "key": "ui.chat.pickers.stop.confirm",
+          "current": "Остановить 2 сессии сейчас",
+          "en_codepoints": 19,
+          "ru_codepoints": 26,
+          "ratio": 1.37,
+          "disposition": "rendered-check"
+        },
+        {
+          "key": "ui.chat.canonical.sound.stop.confirm_label",
+          "current": "Подтверждение запроса на остановку",
+          "en_codepoints": 20,
+          "ru_codepoints": 34,
+          "ratio": 1.7,
+          "disposition": "rendered-check"
+        },
+        {
+          "key": "ui.chat.analytics.filters.top_level_only",
+          "current": "Только сессии верхнего уровня",
+          "en_codepoints": 14,
+          "ru_codepoints": 29,
+          "ratio": 2.07,
+          "disposition": "rendered-check"
+        }
+      ],
+      "note": "Five of six remediated messages meet the static >30%/+4-codepoint screening threshold and are flagged for the separate real-app rendered check. No maxCells budgets or rendered defects are asserted."
+    },
+    "unverified": "Real-app rendered fit, clipping and interaction were not exercised in this audit; no rendered claim is made. Unchanged namespaces outside the four-name scope were not re-audited."
+  }
+}

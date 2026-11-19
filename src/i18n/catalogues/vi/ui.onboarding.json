@@ -1,5 +1,5 @@
 {
-	"ui.onboarding.connect.intro": "Local Operator cần tài khoản AI để hoạt động. Radient đơn giản nhất: đăng nhập một lần qua trình duyệt, không cần dán gì. Bạn đã trả phí cho ChatGPT hoặc Claude? Hãy đăng nhập bằng tài khoản đó. Mở danh sách nhà cung cấp bên dưới để xem các lựa chọn khác.",
+	"ui.onboarding.connect.intro": "Chọn Radient để dùng nhiều mô hình, tính năng chuyển giọng nói thành văn bản và chia sẻ tác nhân chỉ với một lần đăng nhập qua trình duyệt. Hoặc dùng gói Claude hay ChatGPT đang có, khóa API hoặc một mô hình trên máy tính của bạn. Tài khoản Radient mới đủ điều kiện có thể nhận tín dụng miễn phí sau khi xác minh email và qua bước kiểm tra bảo mật.",
 	"ui.onboarding.default_model.block.loading_models": "Đang tải danh sách mô hình…",
 	"ui.onboarding.default_model.block.pick_a_model": "Chọn mô hình để tiếp tục.",
 	"ui.onboarding.default_model.change": "Đổi",
@@ -33,7 +33,7 @@
 	"ui.onboarding.search.each_key_saved": "Mỗi khóa được lưu trên thiết bị ngay khi bạn rời ô nhập khóa đó.",
 	"ui.onboarding.search.intro": "Tác nhân có thể tra cứu khi làm việc — giá hôm nay, tin tức tuần này — thay vì chỉ dựa vào những gì mô hình đã biết.",
 	"ui.onboarding.search.mode.free": "Miễn phí",
-	"ui.onboarding.search.mode.free_detail": "Luân phiên dùng các nhà cung cấp miễn phí — DuckDuckGo, gói miễn phí của Tavily, Exa và Parallel. Không cần khóa; tài nguyên dùng chung nên tìm kiếm có thể chậm hơn khi đông người dùng.",
+	"ui.onboarding.search.mode.free_detail": "Dùng các dịch vụ tìm kiếm miễn phí, chung với những người dùng khác. Không cần khóa. Tìm kiếm có thể chậm hơn khi đông người dùng.",
 	"ui.onboarding.search.mode.keys": "Thêm khóa API",
 	"ui.onboarding.search.mode.keys_detail": "Dùng khóa riêng cho các nhà cung cấp tìm kiếm bạn sử dụng.",
 	"ui.onboarding.search.mode.label": "Thiết lập tìm kiếm",

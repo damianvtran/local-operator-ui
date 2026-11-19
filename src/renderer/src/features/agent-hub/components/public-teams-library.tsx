@@ -18,6 +18,8 @@ import {
 } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { TEXT_SURFACE_PROPS } from "@shared/components/ui/text-surface";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Search } from "lucide-react";
 import { type FC, useEffect, useMemo, useRef, useState } from "react";
@@ -85,6 +87,7 @@ export const PublicTeamsLibrary: FC<{
 	signedIn: boolean;
 	onOpenSettings: () => void;
 }> = ({ signedIn, onOpenSettings }) => {
+	const locale = useI18nLocale();
 	const [page, setPage] = useState(1);
 	const [searchText, setSearchText] = useState("");
 
@@ -152,6 +155,9 @@ export const PublicTeamsLibrary: FC<{
 	 * credential refusal names the sign-in, and the body's verb comes from the
 	 * `pull` surface rather than the publish dialog's.
 	 */
+	// A subscription repaints the library, but useMemo compares dependencies;
+	// the treatment table's already-resolved refusal must invalidate as well.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: locale invalidates translations inside the treatment table.
 	const pullTreatment = useMemo(() => {
 		if (!isPublicationError(pull.error)) return null;
 		const failed = teams.find((team) => team.id === failedTeamId);
@@ -161,9 +167,13 @@ export const PublicTeamsLibrary: FC<{
 				message: pull.error.message,
 				details: pull.error.details,
 			},
-			{ name: failed?.name ?? "this team", hubAgentId: null, surface: "pull" },
+			{
+				name: failed?.name ?? t("ui.hub.teams.unnamed_team"),
+				hubAgentId: null,
+				surface: "pull",
+			},
 		);
-	}, [pull.error, failedTeamId, teams]);
+	}, [pull.error, failedTeamId, teams, locale]);
 
 	/*
 	 * WHAT A FAILED PULL SAYS.
@@ -195,8 +205,8 @@ export const PublicTeamsLibrary: FC<{
 				 * because a reader of this window can act on the settings page and not on a
 				 * CLI.
 				 */
-				"The team could not be pulled: this machine has no Radient sign-in for the hub. Sign in on the settings page, then pull again."
-			: "The team could not be pulled.");
+				t("ui.hub.teams.public.pull_no_signin")
+			: t("ui.hub.teams.public.pull_failed"));
 
 	const [reauthenticating, setReauthenticating] = useState(false);
 	const runTreatmentAction = (action: PublicationAction, team: HubTeamRow) => {
@@ -242,11 +252,11 @@ export const PublicTeamsLibrary: FC<{
 			 * fixes the outline (`h1 -> h2 -> h3`); the label keeps the landmark, which
 			 * the sibling `org-teams-list.tsx` also keeps.
 			 */
-			aria-label="Public teams"
+			aria-label={t("ui.hub.teams.public.aria")}
 			className="flex flex-col"
 			data-testid="agent-hub-public-teams"
 		>
-			<h2 className="sr-only">Public teams</h2>
+			<h2 className="sr-only">{t("ui.hub.teams.public.aria")}</h2>
 			{/*
 			 * WHAT THE PUBLIC LIBRARY IS, in the app's own voice: published teams
 			 * anyone can read, and the one act this surface owns. It replaces the
@@ -254,9 +264,7 @@ export const PublicTeamsLibrary: FC<{
 			 * the thing that stopped being true.
 			 */}
 			<p className="mb-3 max-w-3xl text-body-sm text-ink-muted">
-				Public teams are published to the hub by anyone and can be read here
-				without signing in. Pulling one copies it into this machine's local team
-				registry.
+				{t("ui.hub.teams.public.intro")}
 			</p>
 
 			{signedIn ? null : (
@@ -265,10 +273,10 @@ export const PublicTeamsLibrary: FC<{
 					data-testid="agent-hub-public-teams-signed-out"
 				>
 					<span className="text-meta text-ink-dim">
-						Sign in to Radient to pull a team into this machine.
+						{t("ui.hub.teams.public.sign_in_hint")}
 					</span>
 					<Button variant="secondary" size="sm" onClick={onOpenSettings}>
-						Open settings to sign in
+						{t("ui.hub.teams.public.open_settings")}
 					</Button>
 				</div>
 			)}
@@ -282,14 +290,14 @@ export const PublicTeamsLibrary: FC<{
 						"has-[:focus-visible]:outline-accent has-[:focus-visible]:outline-offset-2",
 					)}
 				>
-					<Search aria-hidden="true" className="ml-2 shrink-0 text-ink-dim" />
+					<Search aria-hidden="true" className="ms-2 shrink-0 text-ink-dim" />
 					<Input
 						ref={searchRef}
 						type="search"
 						value={searchText}
 						onChange={(event) => handleSearchChange(event.target.value)}
-						placeholder="Search teams"
-						aria-label="Search teams"
+						placeholder={t("ui.hub.teams.public.search_placeholder")}
+						aria-label={t("ui.hub.teams.public.search_aria")}
 						className="h-8 min-w-0 flex-1 border-0 bg-transparent outline-none"
 						data-testid="agent-hub-public-teams-search"
 					/>
@@ -314,10 +322,10 @@ export const PublicTeamsLibrary: FC<{
 					className="w-auto max-w-2xl"
 					data-testid="agent-hub-public-teams-error"
 				>
-					<AlertTitle>Public teams could not be loaded</AlertTitle>
+					<AlertTitle>{t("ui.hub.teams.public.load_failed")}</AlertTitle>
 					<AlertDescription>
 						{publicHubFailureMessage(
-							"The public team catalogue could not be read.",
+							t("ui.hub.teams.public.catalogue_unreadable"),
 							error,
 						)}
 					</AlertDescription>
@@ -329,7 +337,9 @@ export const PublicTeamsLibrary: FC<{
 							disabled={isFetching}
 							aria-busy={isFetching}
 						>
-							{isFetching ? "Trying…" : "Try again"}
+							{isFetching
+								? t("ui.hub.teams.public.trying")
+								: t("ui.common.actions.retry_again")}
 						</Button>
 					</div>
 				</Alert>
@@ -340,7 +350,7 @@ export const PublicTeamsLibrary: FC<{
 					className="max-w-2xl text-body-sm text-ink-muted"
 					data-testid="agent-hub-public-teams-empty"
 				>
-					No teams have been published to the public hub yet.
+					{t("ui.hub.teams.public.empty")}
 				</p>
 			)}
 
@@ -360,12 +370,19 @@ export const PublicTeamsLibrary: FC<{
 							data-testid="agent-hub-public-teams-status"
 						>
 							{query
-								? `${visibleTeams.length} of ${teams.length} teams on this page match "${searchText.trim()}"`
-								: `${totalRecords} ${totalRecords === 1 ? "team" : "teams"} in the public hub`}
+								? t("ui.hub.teams.public.match_line", {
+										visible: String(visibleTeams.length),
+										total: teams.length,
+										query: searchText.trim(),
+									})
+								: t("ui.hub.pages.status.count.teams", {
+										count: totalRecords,
+										scope: t("ui.hub.pages.status.scope.public"),
+									})}
 							{query ? (
 								<span className="text-ink-dim">
 									{" "}
-									· search covers the teams loaded here
+									{t("ui.hub.teams.public.search_scope")}
 								</span>
 							) : null}
 						</p>
@@ -375,7 +392,9 @@ export const PublicTeamsLibrary: FC<{
 							className="max-w-2xl text-body-sm text-ink-muted"
 							data-testid="agent-hub-public-teams-search-miss"
 						>
-							{`No team on this page matches "${searchText.trim()}".`}
+							{t("ui.hub.teams.public.search_miss", {
+								query: searchText.trim(),
+							})}
 						</p>
 					) : (
 						<ul className="flex max-w-4xl flex-col gap-3">
@@ -456,6 +475,7 @@ const PublicTeamCard: FC<{
 	onReauthenticated,
 	pullButtonRef,
 }) => {
+	useI18nLocale();
 	const [open, setOpen] = useState(false);
 	const detail = usePublicTeamQuery({ teamId: open ? team.id : undefined });
 	const displayName = hubDisplayName(team.name);
@@ -478,7 +498,8 @@ const PublicTeamCard: FC<{
 							{displayName}
 						</h3>
 						{version ? (
-							<span className="ml-2 shrink-0 text-ink-dim text-meta">
+							<span className="ms-2 shrink-0 text-ink-dim text-meta">
+								{/* i18n: ignore version prefix - "v" + a version number is a technical token, not copy */}
 								v{version}
 							</span>
 						) : null}
@@ -496,21 +517,27 @@ const PublicTeamCard: FC<{
 							{description}
 						</p>
 					) : (
-						<p className="mt-1 text-body-sm text-ink-dim">No description</p>
+						<p className="mt-1 text-body-sm text-ink-dim">
+							{t("ui.hub.teams.no_description")}
+						</p>
 					)}
 					<p className="mt-2 flex flex-wrap items-baseline gap-x-2 text-meta">
 						{manager ? (
 							<>
-								<span className="text-ink-dim">Manager:</span>
+								<span className="text-ink-dim">
+									{t("ui.hub.teams.manager_label")}
+								</span>
 								<span className="text-ink-muted">{manager}</span>
 							</>
 						) : null}
 						{team.members.length === 0 ? (
-							<span className="text-ink-dim">No members</span>
+							<span className="text-ink-dim">
+								{t("ui.hub.teams.no_members")}
+							</span>
 						) : (
 							<>
 								<span className="text-ink-dim">
-									{count} {count === 1 ? "member" : "members"}:
+									{t("ui.hub.teams.member_count", { count })}
 								</span>
 								{/* The elastic tail: one clipped line, and the whole roster is one press away. */}
 								<Tooltip content={slotList(team)}>
@@ -523,7 +550,8 @@ const PublicTeamCard: FC<{
 					</p>
 					{author ? (
 						<p className="mt-1 text-ink-dim text-meta">
-							Published by <span className="text-ink-muted">{author}</span>
+							{t("ui.hub.teams.public.published_by")}{" "}
+							<span className="text-ink-muted">{author}</span>
 						</p>
 					) : null}
 				</div>
@@ -551,16 +579,18 @@ const PublicTeamCard: FC<{
 						size="sm"
 						onClick={() => onPull(team)}
 						disabled={pullPending}
-						aria-label={`Pull team ${displayName}`}
+						aria-label={t("ui.hub.teams.pull_target", {
+							name: displayName,
+						})}
 					>
-						{pulling ? "Pulling…" : "Pull"}
+						{pulling ? t("ui.hub.teams.pulling") : t("ui.hub.teams.pull")}
 					</Button>
 					{failed && (
 						<div
 							className="flex max-w-56 flex-col items-end gap-1"
 							data-testid="agent-hub-public-team-pull-error"
 						>
-							<output className="text-right text-meta text-danger">
+							<output className="text-end text-meta text-danger">
 								{failureBody}
 							</output>
 							{treatment?.actions
@@ -578,7 +608,7 @@ const PublicTeamCard: FC<{
 							{reauthenticating && (
 								<div data-testid="agent-hub-public-team-pull-reauth">
 									<RadientAuthButtons
-										titleText="Sign in again"
+										titleText={PUBLICATION_ACTION_LABEL["sign-in"]}
 										descriptionText=""
 										onSignInSuccess={onReauthenticated}
 									/>
@@ -595,12 +625,14 @@ const PublicTeamCard: FC<{
 				 * the word the reader is choosing; the accessible name says which team's.
 				 */}
 				<Disclosure
-					summary="Brief"
+					summary={t("ui.hub.teams.brief.trigger")}
 					open={open}
 					onOpenChange={setOpen}
 					className="w-full"
 					triggerClassName="w-full"
-					triggerLabel={`View the brief for ${displayName}`}
+					triggerLabel={t("ui.hub.teams.brief.trigger_aria", {
+						name: displayName,
+					})}
 					chevronClassName="text-ink-dim"
 				>
 					<TeamBrief detail={detail} />
@@ -618,6 +650,7 @@ const PublicTeamCard: FC<{
 const TeamBrief: FC<{
 	detail: ReturnType<typeof usePublicTeamQuery>;
 }> = ({ detail }) => {
+	useI18nLocale();
 	if (detail.isLoading) {
 		return (
 			<div
@@ -634,7 +667,7 @@ const TeamBrief: FC<{
 			<div className="flex flex-col items-start gap-1">
 				<output className="text-meta text-danger">
 					{publicHubFailureMessage(
-						"This team's brief could not be read.",
+						t("ui.hub.teams.brief.unreadable"),
 						detail.error,
 					)}
 				</output>
@@ -645,7 +678,9 @@ const TeamBrief: FC<{
 					disabled={detail.isFetching}
 					aria-busy={detail.isFetching}
 				>
-					{detail.isFetching ? "Trying…" : "Try again"}
+					{detail.isFetching
+						? t("ui.hub.teams.public.trying")
+						: PUBLICATION_ACTION_LABEL.retry}
 				</Button>
 			</div>
 		);
@@ -660,7 +695,9 @@ const TeamBrief: FC<{
 			data-testid="agent-hub-public-team-brief"
 		>
 			<div className="flex flex-col gap-1">
-				<p className="text-ink-dim text-meta">Collaboration brief</p>
+				<p className="text-ink-dim text-meta">
+					{t("ui.hub.teams.brief.collaboration")}
+				</p>
 				{brief ? (
 					<p
 						{...TEXT_SURFACE_PROPS}
@@ -669,11 +706,15 @@ const TeamBrief: FC<{
 						{brief}
 					</p>
 				) : (
-					<p className="text-ink-dim">This team has no collaboration brief.</p>
+					<p className="text-ink-dim">
+						{t("ui.hub.teams.brief.collaboration_empty")}
+					</p>
 				)}
 			</div>
 			<div className="flex flex-col gap-1">
-				<p className="text-ink-dim text-meta">Project brief</p>
+				<p className="text-ink-dim text-meta">
+					{t("ui.hub.teams.brief.project")}
+				</p>
 				{project ? (
 					<p
 						{...TEXT_SURFACE_PROPS}
@@ -682,22 +723,28 @@ const TeamBrief: FC<{
 						{project}
 					</p>
 				) : (
-					<p className="text-ink-dim">This team has no project brief.</p>
+					<p className="text-ink-dim">
+						{t("ui.hub.teams.brief.project_empty")}
+					</p>
 				)}
 			</div>
 			<div className="flex flex-col gap-1">
-				<p className="text-ink-dim text-meta">Roster</p>
+				<p className="text-ink-dim text-meta">
+					{t("ui.hub.teams.brief.roster")}
+				</p>
 				<ul className="flex flex-col gap-0.5">
 					{team.manager?.trim() ? (
 						<li className="flex items-baseline gap-1.5">
 							<span className="text-body-sm text-ink-muted">
 								{team.manager.trim()}
 							</span>
-							<span className="text-ink-dim text-meta">Manager</span>
+							<span className="text-ink-dim text-meta">
+								{t("ui.hub.teams.manager")}
+							</span>
 						</li>
 					) : null}
 					{team.members.length === 0 ? (
-						<li className="text-ink-dim">No members</li>
+						<li className="text-ink-dim">{t("ui.hub.teams.no_members")}</li>
 					) : (
 						team.members.map((slot) => (
 							<li

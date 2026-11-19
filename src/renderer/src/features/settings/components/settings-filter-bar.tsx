@@ -93,7 +93,7 @@ export const SettingsFilterBar: FC<SettingsFilterBarProps> = ({
 				<div className={cn("relative", FIELD_WIDTH)}>
 					<Search
 						size={16}
-						className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-dim"
+						className="pointer-events-none absolute top-1/2 start-3 -translate-y-1/2 text-ink-dim"
 						aria-hidden="true"
 					/>
 					<Input
@@ -112,16 +112,24 @@ export const SettingsFilterBar: FC<SettingsFilterBarProps> = ({
 						placeholder={t(
 							"ui.settings.configuration.settings_filter_bar.search_settings_by_name_description_or_key",
 						)}
+						/*
+						 * This field and the page header's search are two different
+						 * things, and they shared one accessible name: a screen-reader
+						 * user could not tell which "Search settings" they had landed
+						 * on (UX round 1, U3). The placeholder already describes THIS
+						 * field — it filters the list in place — so its catalogue
+						 * string is the name.
+						 */
 						aria-label={t(
-							"ui.settings.configuration.settings_filter_bar.search_settings",
+							"ui.settings.configuration.settings_filter_bar.search_settings_by_name_description_or_key",
 						)}
-						className="pl-9"
+						className="ps-9"
 					/>
 					{query && (
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							className="absolute top-1/2 right-1 -translate-y-1/2"
+							className="absolute top-1/2 end-1 -translate-y-1/2"
 							onClick={() => onQueryChange("")}
 							aria-label={t(
 								"ui.settings.configuration.settings_filter_bar.clear_search",
@@ -172,7 +180,7 @@ export const SettingsFilterBar: FC<SettingsFilterBarProps> = ({
 					</div>
 				</fieldset>
 
-				<div className="ml-auto flex items-center gap-2">
+				<div className="ms-auto flex items-center gap-2">
 					{/* The unsaved state, which is the whole of what changed about the
 				    save model. Both affordances act on every draft the section
 				    holds, including the ones inside a section the reader has

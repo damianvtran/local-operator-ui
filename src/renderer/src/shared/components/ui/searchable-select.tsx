@@ -681,9 +681,9 @@ export const SearchableSelect = forwardRef<
 							aria-describedby={describedBy}
 							autoComplete="off"
 							// The trailing slot holds the clear button beside the chevron,
-							// so the field has to reserve both: `pr-8` is one affordance's
+							// so the field has to reserve both: `pe-8` is one affordance's
 							// width and would put long text under the second one.
-							className={cn(clearable ? "pr-14" : "pr-8")}
+							className={cn(clearable ? "pe-14" : "pe-8")}
 							placeholder={placeholder}
 							disabled={disabled}
 							value={query}
@@ -703,7 +703,7 @@ export const SearchableSelect = forwardRef<
 							onClick={() => setOpenState(true)}
 							onKeyDown={handleKeyDown}
 						/>
-						<span className="pointer-events-none absolute top-1/2 right-2 flex -translate-y-1/2 items-center gap-1">
+						<span className="pointer-events-none absolute top-1/2 end-2 flex -translate-y-1/2 items-center gap-1">
 							{clearable ? (
 								/* A real button, not a decorative icon: clearing is a
 								   WRITE — it commits the empty value through the row's own

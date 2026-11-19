@@ -28,6 +28,8 @@ export const ShellStoryRail: FC<{
 	railProps: {
 		browserAttentionCount?: number;
 		consoleUnseenCount?: number;
+		/** Whether the story's conversation has a running console (the item's lit state). */
+		consoleLiveCount?: number;
 		fileCount?: number;
 		/** The outstanding asks the badge counts; the name keeps the exact number. */
 		askCount?: number;
@@ -47,6 +49,7 @@ export const ShellStoryRail: FC<{
 			askScope={details ? "session" : "fleet"}
 			consoleUnseenCount={railProps.consoleUnseenCount ?? 0}
 			consoleUnseenPulsing={false}
+			consoleLiveCount={railProps.consoleLiveCount ?? 0}
 			fileCount={railProps.fileCount ?? 0}
 			codeOpened={0}
 			codeMentioned={0}

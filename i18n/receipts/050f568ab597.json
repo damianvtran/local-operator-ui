@@ -1,0 +1,198 @@
+{
+ "schema": 1,
+ "auditor": {
+  "agent": "translation-auditor",
+  "instance": "050f568ab597",
+  "model": "anthropic/claude-sonnet-5-5",
+  "model_note": "Every catalogue read and verdict in this receipt ran on anthropic/claude-sonnet-5-5 as named in the session header; no fallback model was reported or used in this session.",
+  "independence": "Separate lopdev session (050f568ab597) from the PR coder, from the translator of these keys and from the round-1 and delta re-audit auditors; I wrote none of the translations or remediation. The verdict was rebuilt from the English source, the en .context.json sidecars, shipped hi catalogues (precedent quoted by key), the glossary and the hi style guide; prior audit and remediation claims were treated only as items to re-verify in the bytes."
+ },
+ "agent": "translation-auditor",
+ "model": "anthropic/claude-sonnet-5-5",
+ "fallback": "none",
+ "instance": "050f568ab597",
+ "session": "050f568ab597",
+ "locale": "hi",
+ "branch": "i18n/key-census-literals",
+ "head": "bd17b456e079c761013c580ea4263b5c4bc57f5d",
+ "pr": "damianvtran/local-operator-ui#1753",
+ "date": "2026-11-07",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "scope": "Final independent audit of the 86 keys PR #1753 added in 7 namespaces (key list = git diff 874446c2c80e8c3849c20ed72780d1455e7752a9^..874446c2c80e8c3849c20ed72780d1455e7752a9 -- src/i18n/catalogues/en): ui.chat.canonical 55, ui.chat.asks 8, ui.chat.sidebar 7, ui.chat.pickers 8, ui.chat.run_details 2, ui.chat.user_turn 3, ui.hub.pages 3. Prior round-1 and delta findings re-judged on the final committed hi bytes; known-fixed items fold.receipt.incoming (प्राप्त संदेश) and run_details.wake.managed_note confirmed present.",
+ "inputs_sha256": {
+  "en_context (ui.chat.canonical.context.json)": "88a491a6e91758d1cd956d458a341717c878a8b3d61caf003b7a9f1ed1a4593a",
+  "en_context (ui.chat.asks.context.json)": "f61b397ea87067d1792983c3a1d904d1f88ee92ca98539a7335eaa2cbb3b8c3e",
+  "en_context (ui.chat.sidebar.context.json)": "8e06707ca7184110e9599e1d4acaa5ad4f4409e3034dabfb4d861244a07c4cbb",
+  "en_context (ui.chat.pickers.context.json)": "39138377d3df864dfcb9f64e084110244a40abce650f3c0837e1d31e45fa1df9",
+  "en_context (ui.chat.run_details.context.json)": "be214f5b36ae7cd9c131b4372d0537321d7a22c6d35555883e8ca3f149c4bdb7",
+  "en_context (ui.chat.user_turn.context.json)": "83dc1782e60b76208d1baacc6bbfbcc49acb8ea10421ae17ff7acd5f44c9637f",
+  "en_context (ui.hub.pages.context.json)": "a767550cecb7c9469be395ece18098651441441777713e5f9101045f5df58ce5",
+  "glossary (local-operator/i18n/glossary.md)": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "style guide (local-operator/i18n/style-guides/hi.md)": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+ },
+ "verified": [
+  "all 86 keys present in hi with the same key set as en; every ICU argument set, number skeleton (::group-off) and plural-arm structure equals English via @formatjs/icu-messageformat-parser; hi plural arms are exactly one/other and Intl.PluralRules(\"hi\") maps 0 and 1 to one and 2,3,5,11,21,22,25,100,1000 to other",
+  "every plural rendered with intl-messageformat at 0,1,2,3,5,11,21,22,25,100,1000: count and verb/noun agreement correct (e.g. 0/1 फ़ाइल संपादित की vs 2+ फ़ाइलें संपादित कीं; जवाब ... पहुँचा नहीं vs पहुँचे नहीं; सवाल की vs सवालों की समय-सीमा खत्म हो गई)",
+  "NFC on all seven hi files; no Cf or control characters; no edge or double spaces; the middle-dot separators and the {first}, {second} join are byte-identical to English; commands (/aida pause, /login-style tokens, /{command}, Esc, Enter) and {placeholders} stay Latin and intact",
+  "meaning and safety: clause.delivering keeps \"not yet delivered\" (अभी पहुँचा नहीं) and \"you can still change\" (अब भी बदल सकते हैं); transcript.not_delivered = पहुँचा नहीं matches shipped delivery.refused (तक नहीं पहुँचा); timed_out, outstanding, waiting never read as settled; clause.settled is the only \"done\" clause; Sent/Answered/Ran stamps are past-tense with {date}",
+  "terminology vs precedent: सवाल (asks/questions), निपटे, बाकी, जवाब (ui.chat.asks, ui.chat.question_dock); दिशा देना for steer (composer.steer_hint, mesh_approvals); कार्य सूची for to-dos (run_details.todos.title); जागृति for wake (glossary); संग्रहित भी शामिल करें quoted exactly from sidebar.search.include_archived; ड्राफ़्ट ... मिटाएँ matches notices.chat.drafts_offered_verb; फिर कोशिश करें and सेटिंग्स पेज match errors.* and teams.public.pull_no_signin; क्रेडेंशियल matches the glossary; उप-एजेंट, मॉनिटर, एजेंट शेल match the style guide and ui.settings",
+  "register: आप throughout, no तुम; imperatives polite (दिखाएँ, मिटाएँ, खोलें, टाइप करें); danda । for full stops; “ ” quotes",
+  "node scripts/i18n/check-coverage.mjs: ok - 7 gated language(s) over 129 namespace(s); 0 allowed key(s) remain"
+ ],
+ "observations": [
+  "fold.receipt.incoming = प्राप्त संदेश (prior major fix) is confirmed resolved and accurate as a count of arrived-message receipts; it differs from the आने वाले संदेश used for moderation/hub \"incoming\" (ui.hub, ui.messages delivery.info_*) deliberately and is not counted as a finding."
+ ],
+ "namespaces": {
+  "ui.chat.canonical": {
+   "namespace": "ui.chat.canonical",
+   "status": "passed",
+   "result": "clean-with-findings",
+   "keys_read": 55,
+   "sha256": {
+    "hi": "5334774dd61a2931998d41c607d845d8aa554484cdbc817784bd79767739b563",
+    "en": "c5f286f8f88ec52c722e6b3eebd0c41f7969a47b6f496473f692ae3e4f500885"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.canonical.json",
+    "target": "src/i18n/catalogues/hi/ui.chat.canonical.json",
+    "context": "src/i18n/catalogues/en/ui.chat.canonical.context.json"
+   },
+   "findings": [
+    {
+     "key": "ui.chat.canonical.fold.count.secret",
+     "severity": "nit",
+     "current": "{count} गोपनीय जानकारी",
+     "proposed": "{count} सीक्रेट",
+     "reason": "Shipped hi renders the tool noun \"secret\" as सीक्रेट in ui.chat.pickers.destination_pickers (stores_a_secret_for_this_session_s_tools_...) and ui.chat.run_details.mcp_key.saved_note, but गोपनीय जानकारी in ui.chat.question_dock.secret_placeholder; this count unit names the secret tool, so the tool-side term is the closer match. Both are shipped precedent, so polish only."
+    },
+    {
+     "key": "ui.chat.canonical.fold.count.todo_read",
+     "severity": "nit",
+     "current": "{count} कार्य सूचियाँ पढ़ी गईं",
+     "proposed": "keep; flag for a rendered narrow-width check",
+     "reason": "Five words at count>=2 against the sidecar length budget of two to four words, in a unit painted unbreakable at narrow widths; no shorter natural wording was found, so verify visually rather than rewrite."
+    }
+   ]
+  },
+  "ui.chat.asks": {
+   "namespace": "ui.chat.asks",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 8,
+   "sha256": {
+    "hi": "1f1ce6ec602ce98b4567bb65bc8505e1933e79b1e53099a63527335c3429576e",
+    "en": "36346bf6a1422f090b306be21eebe034b0a9ee071725c94f7296d1d1322e9e0e"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.asks.json",
+    "target": "src/i18n/catalogues/hi/ui.chat.asks.json",
+    "context": "src/i18n/catalogues/en/ui.chat.asks.context.json"
+   },
+   "findings": []
+  },
+  "ui.chat.sidebar": {
+   "namespace": "ui.chat.sidebar",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 7,
+   "sha256": {
+    "hi": "87e4b268de250ef7c774af1e44c59a5970e598f052076062372d40e4a798752c",
+    "en": "da4e961e7f19619d98860565be68e0edf65d26ebd8eef4eac2a48e8e6aa8b3df"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+    "target": "src/i18n/catalogues/hi/ui.chat.sidebar.json",
+    "context": "src/i18n/catalogues/en/ui.chat.sidebar.context.json"
+   },
+   "findings": []
+  },
+  "ui.chat.pickers": {
+   "namespace": "ui.chat.pickers",
+   "status": "passed",
+   "result": "clean-with-findings",
+   "keys_read": 8,
+   "sha256": {
+    "hi": "d19dd1ae12e424fb14e887fce63d2ddb0a24228257fee3a896d4b3723c25f8e3",
+    "en": "fc24432940fa342e87f169992f8f9bf00d2d73a06ee654a29a62b547bcb6be37"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.pickers.json",
+    "target": "src/i18n/catalogues/hi/ui.chat.pickers.json",
+    "context": "src/i18n/catalogues/en/ui.chat.pickers.context.json"
+   },
+   "findings": [
+    {
+     "key": "ui.chat.pickers.at_menu.footer.inserts",
+     "severity": "minor",
+     "current": "Enter से {reference} जोड़ें · Esc बंद करें",
+     "proposed": "Enter से {reference} डालें · Esc बंद करें",
+     "reason": "Shipped hi renders English \"insert\" as डालें in every other place (ui.chat.composer.insert_transcript, ui.canvas.wysiwyg_markdown_editor.insert_link, ui.canvas.insert_image_dialog.insert, ui.canvas.insert_link_dialog.insert: 11 keys); जोड़ें means add and drifts from that term, though it reads naturally."
+    },
+    {
+     "key": "ui.chat.pickers.at_menu.footer.nothing",
+     "severity": "minor",
+     "current": "जोड़ने के लिए कुछ नहीं · Esc बंद करें",
+     "proposed": "डालने के लिए कुछ नहीं · Esc बंद करें",
+     "reason": "Same insert -> डालें drift as at_menu.footer.inserts; the two footers sit in one menu and should use one verb."
+    }
+   ]
+  },
+  "ui.chat.run_details": {
+   "namespace": "ui.chat.run_details",
+   "status": "passed",
+   "result": "clean-with-findings",
+   "keys_read": 2,
+   "sha256": {
+    "hi": "938e1040e9c7cdd2afe7d9c8b67ef2aa660182e881523ed69adee3bc6eb6a608",
+    "en": "92fb1e13c99204304e7f567f29be4983416d7eddd3c5ff092a3abf4716dbf5e4"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.run_details.json",
+    "target": "src/i18n/catalogues/hi/ui.chat.run_details.json",
+    "context": "src/i18n/catalogues/en/ui.chat.run_details.context.json"
+   },
+   "findings": [
+    {
+     "key": "ui.chat.run_details.wake.managed_note",
+     "severity": "minor",
+     "current": "...इसे यहाँ से रद्द नहीं किया जा सकता। इन्हें रोकने के लिए /aida pause चलाएँ।",
+     "proposed": "...इसे यहाँ से रद्द नहीं किया जा सकता। इन चेक-इन को रोकने के लिए /aida pause चलाएँ।",
+     "reason": "The prior fix (इन्हें रोकने के लिए ... /aida pause चलाएँ) is present and the command is intact, but the plural इन्हें follows a singular यह जागृति/इसे with no plural antecedent and the English \"these check-ins\" noun is dropped; naming the noun removes the ambiguity. Meaning and safety are not harmed."
+    }
+   ]
+  },
+  "ui.chat.user_turn": {
+   "namespace": "ui.chat.user_turn",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 3,
+   "sha256": {
+    "hi": "5f087955136d7c85679fe926eb61c90854f95cb3c53bc426a47ff04c17138764",
+    "en": "5447e7d6963609e2769747e31b64beec7b7957e1f2c92126d281b21f5dbf78e8"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.user_turn.json",
+    "target": "src/i18n/catalogues/hi/ui.chat.user_turn.json",
+    "context": "src/i18n/catalogues/en/ui.chat.user_turn.context.json"
+   },
+   "findings": []
+  },
+  "ui.hub.pages": {
+   "namespace": "ui.hub.pages",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 3,
+   "sha256": {
+    "hi": "7c8111633ed43fa7315fd79ea9235a3199fa90147680dfcb702aee7df670ab3b",
+    "en": "cf81ba3771a985ac8dbe5d992df409977d792b836f1e48fb335f65f253837a20"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.hub.pages.json",
+    "target": "src/i18n/catalogues/hi/ui.hub.pages.json",
+    "context": "src/i18n/catalogues/en/ui.hub.pages.context.json"
+   },
+   "findings": []
+  }
+ }
+}

@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "receipt_kind": "locale-audit (delta audit of three added keys)",
+  "date": "2026-11-06",
+  "auditor": "reviewer",
+  "agent": "reviewer",
+  "session": "a95ac1ad0cc7",
+  "instance": "a95ac1ad0cc7-pr1732-r1-hi",
+  "audit_id": "rs1732-hi-r1-a95ac1ad0cc7",
+  "model": "anthropic/claude-opus-5-5",
+  "model_provenance": "Session-declared model anthropic/claude-opus-5-5; no provider fallback was announced during this run.",
+  "status": "passed",
+  "result": "clean",
+  "namespace": "ui.chat.radient_session",
+  "locale": "hi",
+  "sha256": {
+    "hi": "1fc5aa4a49851998670fae717578dc046fd4fe6f7335c5603c4ca3c81536bad3",
+    "en": "49d5e57f39c27fc5c3dbaea99519cacb2ef739f9c3c88e1df8169fd349ccb8a1"
+  },
+  "context_sha256": "4a6f942d3bcbea56d180e0ff40463f84916d58748cba2ec3b11670107ed1ca04",
+  "style_guide": {
+    "path": "~/local-operator i18n/style-guides/hi.md",
+    "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5",
+    "glossary_path": "~/local-operator i18n/glossary.md",
+    "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "core_commit": "e21f92fa4ee"
+  },
+  "integration": {
+    "repo": "damianvtran/local-operator-ui",
+    "pr": 1732,
+    "branch": "fix/radient-callout-no-terminal",
+    "head": "088881be3e494d1b5f9de2cfecc5861d4e8638e1",
+    "base": "ec09bc17aff"
+  },
+  "independence": "Independent Local Operator reviewer subagent, session a95ac1ad0cc7, dispatched as translation auditor for PR #1732. The values were translated by the PR's coder session (anthropic/claude-opus-5-5, per the PR body); this auditor translated nothing, edited no catalogue value and wrote only audit artifacts. Same model family as the translator, distinct instance. No translation API or MT service used. Row written by ledger-assemble.mjs.",
+  "scope": {
+    "delta_kind": "Delta audit: exactly the three keys added at e5248bff6be; every other value is byte-identical to base ec09bc17aff (proved in audit.log) and keeps its prior verdict.",
+    "keys": [
+      "ui.chat.radient_session.action.open_console",
+      "ui.chat.radient_session.prose.not_cleared",
+      "ui.chat.radient_session.title.not_cleared"
+    ],
+    "key_count_file": 11,
+    "out_of_scope": "unchanged keys, other namespaces, rendered fit and screenshots"
+  },
+  "audited": {
+    "ui.chat.radient_session.action.open_console": "Radient कंसोल खोलें",
+    "ui.chat.radient_session.prose.not_cleared": "साइन-इन पूरा हो गया, लेकिन यह मशीन जिस साइन-इन का इस्तेमाल करती है, उसे Radient अब भी स्वीकार नहीं करता। सेटिंग्स के मॉडल प्रोवाइडर सेक्शन में Radient खाता जाँचें, या Radient कंसोल खोलें।",
+    "ui.chat.radient_session.title.not_cleared": "Radient में साइन इन करने से यह ठीक नहीं हुआ"
+  },
+  "findings": [],
+  "checks": {
+    "mechanical": "key parity, delta = three keys, unchanged values byte-identical, placeholders, NFC, bidi controls, Radient in Latin, no terminal/command advice, shipped nav labels",
+    "execution_log": "i18n/audits/evidence/hi/ui.chat.radient_session/rs1732-hi-r1-a95ac1ad0cc7/audit.log",
+    "semantic": "आप register; सेटिंग्स / मॉडल प्रोवाइडर match shipped navigation; danda full stops; «Radient कंसोल» matches ui.common.account usage; noun साइन-इन vs verb साइन इन करें consistent with siblings."
+  },
+  "not_verified": "native-speaker naturalness (agent semantic read only), rendered fit in the callout, RTL layout proof (ur), screenshots.",
+  "terminal": true,
+  "verdict": "clean: no BLOCKER or MAJOR; zero findings. Round 1 is TERMINAL for this locale."
+}

@@ -1,0 +1,150 @@
+{
+  "locale": "ur",
+  "mode": "Fresh independent high-visibility audit of all five new sidebar keys; all remaining 81 keys read for terminology consistency. Not a full semantic re-audit of the pre-existing namespace.",
+  "scope": "PR #1836 at 28a6127617e4ebe0b6ba47d39fca5d3a22d1ba93; five new ui.chat.sidebar.mark_all_read keys: scope_chats, scope_chats_elsewhere, scope_tokenless, scope_joined, name_suffix_elsewhere.",
+  "head_sha": "28a6127617e4ebe0b6ba47d39fca5d3a22d1ba93",
+  "audit_date": "2026-11-10",
+  "key_count": 86,
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "Delegation brief and ../_s10-translations/ur.json; translator session id not supplied."
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "87b635e56bda",
+    "session": "6193a9c71d15",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "Actual served model named in this session runtime header: openai/gpt-6.1-sol. No fallback served or used.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "status": "passed",
+  "result": "clean",
+  "verdict": "clean",
+  "findings": [],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "namespaces": {
+    "ui.chat.sidebar": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "7db9ba5108a62330a1782f775b991ec0483537d2f7d808ae0691e1a6ef8840cd",
+      "target_sha256": "63d00e932600a42550f418845640696ce6f62005e166984503497c50a8b46e2a",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+          "sha256": "7db9ba5108a62330a1782f775b991ec0483537d2f7d808ae0691e1a6ef8840cd"
+        },
+        "ur": {
+          "path": "src/i18n/catalogues/ur/ui.chat.sidebar.json",
+          "sha256": "63d00e932600a42550f418845640696ce6f62005e166984503497c50a8b46e2a"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.sidebar.context.json",
+          "sha256": "4f1593cc34b395ef8701a60e58e73a0371b3c93730eb7a1f2b2845dc6250d7e3"
+        }
+      },
+      "findings": []
+    }
+  },
+  "per_key_checks": [
+    {
+      "key": "ui.chat.sidebar.mark_all_read.scope_chats",
+      "source": "{count, plural, one {Mark {count, number, ::group-off} unread chat as read.} other {Mark {count, number, ::group-off} unread chats as read.}}",
+      "current_text": "{count, plural, one {{count, number, ::group-off} نہ پڑھی گئی چیٹ کو پڑھا ہوا نشان زد کریں۔} other {{count, number, ::group-off} نہ پڑھی گئی چیٹس کو پڑھا ہوا نشان زد کریں۔}}",
+      "findings": [],
+      "assessment": "Faithful respectful imperative and correct object marker کو. Feminine chat agrees with نہ پڑھی گئی; the چیٹ/چیٹس loanword forms match groups.badge and catalogue.show_more_chats. پڑھا ہوا نشان زد کریں is the existing label’s fixed mark-as-read phrase, not a newly introduced inflection. Both one/other arms have the exact count number skeleton and Urdu full stop ۔.",
+      "placeholder_integrity": "Python recursive scoped-ICU structural check: argument names/types and every ::group-off number style match English exactly.",
+      "plural_select": "one/other complete for Urdu in each plural node; no plural in scope_joined",
+      "manual_bidi_controls": false,
+      "static_codepoint_length_without_arguments": null
+    },
+    {
+      "key": "ui.chat.sidebar.mark_all_read.scope_chats_elsewhere",
+      "source": "{count, plural, one {Mark {count, number, ::group-off} unread chat as read} other {Mark {count, number, ::group-off} unread chats as read}}, including {elsewhere, plural, one {{elsewhere, number, ::group-off} that is not active} other {{elsewhere, number, ::group-off} that are not active}}.",
+      "current_text": "{count, plural, one {{count, number, ::group-off} نہ پڑھی گئی چیٹ کو پڑھا ہوا نشان زد کریں} other {{count, number, ::group-off} نہ پڑھی گئی چیٹس کو پڑھا ہوا نشان زد کریں}}، {elsewhere, plural, one {بشمول {elsewhere, number, ::group-off} غیر فعال چیٹ} other {بشمول {elsewhere, number, ::group-off} غیر فعال چیٹس}}۔",
+      "findings": [],
+      "assessment": "بشمول expresses inclusion/subset, not additional chats. غیر فعال plainly names an inactive class, not Running or a section title; the same wording occurs in ui.common.updates.completion.sessions. Both count arms have appropriate feminine unread wording and both elsewhere arms distinguish چیٹ/چیٹس. One Urdu comma and one final Urdu full stop. No unsupported implication that tokenless marks are included in count.",
+      "placeholder_integrity": "Python recursive scoped-ICU structural check: argument names/types and every ::group-off number style match English exactly.",
+      "plural_select": "one/other complete for Urdu in each plural node; no plural in scope_joined",
+      "manual_bidi_controls": false,
+      "static_codepoint_length_without_arguments": null
+    },
+    {
+      "key": "ui.chat.sidebar.mark_all_read.scope_tokenless",
+      "source": "{count, plural, one {{count, number, ::group-off} unread mark with no completion token cannot be cleared.} other {{count, number, ::group-off} unread marks with no completion token cannot be cleared.}}",
+      "current_text": "{count, plural, one {تکمیل کی رسید کے بغیر {count, number, ::group-off} نہ پڑھا گیا نشان صاف نہیں کیا جا سکتا۔} other {تکمیل کی رسید کے بغیر {count, number, ::group-off} نہ پڑھے گئے نشان صاف نہیں کیے جا سکتے۔}}",
+      "findings": [],
+      "assessment": "تکمیل کی رسید is a descriptive completion receipt, authorized by the context explanation of the technical token as the receipt enabling clearance. This does not mean a security token; sibling canonical.fold.receipt.wake/other and chat.pickers destination secret helper use رسید for receipt. No other pre-existing English completion-token occurrence was found in paired UI catalogues. Singular نہ پڑھا گیا نشان ... کیا جا سکتا and plural نہ پڑھے گئے نشان ... کیے جا سکتے agree. The inability/negation صاف نہیں ... preserved. The mark wording uses the same unread participle family as row.unread_suffix; this is not a recommendation to remove marks without a receipt.",
+      "placeholder_integrity": "Python recursive scoped-ICU structural check: argument names/types and every ::group-off number style match English exactly.",
+      "plural_select": "one/other complete for Urdu in each plural node; no plural in scope_joined",
+      "manual_bidi_controls": false,
+      "static_codepoint_length_without_arguments": null
+    },
+    {
+      "key": "ui.chat.sidebar.mark_all_read.scope_joined",
+      "source": "{chats} {tokenless}",
+      "current_text": "{chats} {tokenless}",
+      "findings": [],
+      "assessment": "Exactly {chats} {tokenless}. An ordinary space between Urdu sentences, each already ending ۔, is correct. Both argument names/order preserved; no manual bidi controls.",
+      "placeholder_integrity": "Python recursive scoped-ICU structural check: argument names/types and every ::group-off number style match English exactly.",
+      "plural_select": "No plural/select; chats and tokenless are plain string arguments.",
+      "manual_bidi_controls": false,
+      "static_codepoint_length_without_arguments": null
+    },
+    {
+      "key": "ui.chat.sidebar.mark_all_read.name_suffix_elsewhere",
+      "source": ", including {elsewhere, plural, one {{elsewhere, number, ::group-off} that is not active} other {{elsewhere, number, ::group-off} that are not active}}",
+      "current_text": "، {elsewhere, plural, one {بشمول {elsewhere, number, ::group-off} غیر فعال چیٹ} other {بشمول {elsewhere, number, ::group-off} غیر فعال چیٹس}}",
+      "findings": [],
+      "assessment": "Starts with Urdu comma U+060C plus ordinary space, so direct append to سب {count, number, ::group-off} پڑھا ہوا نشان زد کریں yields a natural explanatory inclusion tail: سب 5 پڑھا ہوا نشان زد کریں، بشمول 2 غیر فعال چیٹس. The complete visible label remains a literal prefix. No terminal punctuation. Both elsewhere branches use the right chat number; no verb-agreement issue in nominal بشمول phrase.",
+      "placeholder_integrity": "Python recursive scoped-ICU structural check: argument names/types and every ::group-off number style match English exactly.",
+      "plural_select": "one/other complete for Urdu in each plural node; no plural in scope_joined",
+      "manual_bidi_controls": false,
+      "static_codepoint_length_without_arguments": null
+    }
+  ],
+  "remediation_verification": {},
+  "unverified": [
+    "Repository pnpm/node validators and deriveReceiptAudit execution intentionally NOT run: this assignment explicitly forbids node processes, builds and installs. Python scoped checks are not represented as repository-validator output.",
+    "No browser, Electron, native tooltip rendering, font/shaping/geometry measurement, screen-reader speech or visual bidi order was exercised. Logical stored order/punctuation, Latin-digit policy, absent bidi controls and prefix composition were checked in source.",
+    "Native tooltip wraps; no numeric maxCells/maxChars hint exists for these five keys. No rendered fit or wrapping claim.",
+    "Receipt remains scratch for the requesting manager to retain through the approved tracked receipt/evidence workflow; no ledger row or repository file was written."
+  ],
+  "receipt_contract_review": {
+    "method": "Read scripts/i18n/ledger-rules.mjs deriveReceiptAudit, scopedHash, receiptScope and identity/status derivation, plus ledger-assemble.mjs callers and both named committed receipt precedents. Matched the top-level field set of i18n/receipts/2bbf16af14ee.json.",
+    "derived_expected": {
+      "agent": "i18n-auditor",
+      "instance": "87b635e56bda",
+      "model": "openai/gpt-6.1-sol",
+      "result": "clean",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "source_sha256": "7db9ba5108a62330a1782f775b991ec0483537d2f7d808ae0691e1a6ef8840cd",
+      "target_sha256": "63d00e932600a42550f418845640696ce6f62005e166984503497c50a8b46e2a"
+    },
+    "execution": "Not executed in JavaScript. Python validates JSON, identity aliases, passed/clean normalization, scoped hashes and explicit empty findings against the read derivation rules."
+  },
+  "audit_notes_not_execution_log": {
+    "nature": "Audit notes summarizing actual commands and reasoning, not a saved stdout execution log.",
+    "executed": [
+      "git rev-parse HEAD returned the requested 40-character SHA.",
+      "shasum -a 256 returned the English, context and Urdu hashes recorded above; Urdu matches the expected prefix 63d00e932600a425.",
+      "Python duplicate-rejecting JSON load and exact en/ur key parity: 86/86.",
+      "Python recursive scoped ICU grammar checker: all five keys balanced; complete one/other per plural; names/types and every ::group-off skeleton equal English. No format-control characters or native Urdu/Arabic digits in the five stored values.",
+      "Python logical composition for (count,elsewhere)=(1,1),(5,2),(2,1),(1000000,1000000) produced grammatical first/second sentences and direct label+tail names. This was a scoped Python evaluator, not the production formatter.",
+      "Fresh instance checked against filenames and file contents in i18n/receipts and i18n/audits/evidence; subsequent grep of both roots found no matches.",
+      "Read Urdu style guide and glossary from core repo (UI has no local copies), English/context, all 86 Urdu sidebar keys, canonical receipt terms and sibling inactive/receipt entries, translator notes, composition source, docs retention policy and receipt derivation source."
+    ],
+    "pre_existing_findings": []
+  }
+}

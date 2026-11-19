@@ -99,6 +99,8 @@ import {
 	type TargetSpan,
 	allowsProsePathAfter,
 	isAmbiguousCandidate,
+	listedEntryFor,
+	listingDirectoryIn,
 	targetsIn,
 } from "@features/chat/utils/link-grammar";
 
@@ -171,7 +173,7 @@ type MdastNode = {
 	 * (`predecessorOf`). Only `start.offset` is used; nothing here is rendered, and
 	 * a tree without positions simply keeps the pre-existing behaviour.
 	 */
-	position?: { start?: { offset?: number } };
+	position?: { start?: { offset?: number }; end?: { offset?: number } };
 };
 
 /**
@@ -370,6 +372,108 @@ const continuation = (
 };
 
 /**
+ * The directory a paragraph INTRODUCES a list with, read from its last SOURCE line.
+ *
+ * The directory-anchored listing rule (`link-grammar.ts`, "directory-anchored
+ * listing") is asked about the raw line rather than about the mdast's inline
+ * children, because the raw line is what the Files panel asks the same question
+ * of: one answer to "is this an introducer" for both surfaces, including the
+ * closing backtick of `` `~/x/`: `` that the mdast has already turned into a
+ * node boundary. No source (a harness that ran the plugin on a bare tree) or no
+ * offsets means no introducer - the fail-safe direction, a missed link.
+ */
+function introducedDirectory(
+	paragraph: MdastNode,
+	source: string | undefined,
+): string | null {
+	const start = paragraph.position?.start?.offset;
+	const end = paragraph.position?.end?.offset;
+	if (source === undefined || typeof start !== "number") return null;
+	if (typeof end !== "number") return null;
+	/*
+	 * The WHOLE source line the paragraph ends on, from column 0 - not from the
+	 * paragraph's own start, which for a one-line paragraph inside a quote sits
+	 * past the `> `. `listingDirectoryIn` refuses a quoted line on both walkers
+	 * (round 1, review F3), so it has to see the marker the panel sees.
+	 */
+	return listingDirectoryIn(
+		source.slice(source.lastIndexOf("\n", end - 1) + 1, end),
+	);
+}
+
+/**
+ * Link each item of a list a paragraph introduced as `<directory>:`, in place.
+ *
+ * Only the list's OWN items, and only an item whose first block is a paragraph
+ * that is, inline, either the NAME alone (one `text` or one `inlineCode` node) or
+ * an ANNOTATED name (`<name><separator><description>`: one `text` node, or an
+ * `inlineCode` head followed by `text` that opens with the separator) - with
+ * nothing after the paragraph but nested lists (a new context, left to the
+ * ordinary walk, where a bare name stays plain). The contract for what resolves
+ * is `listedEntryFor` in `link-grammar.ts`, which the Files panel's line walker
+ * (`listedTargetsIn`) calls too, so the two surfaces resolve the same items.
+ *
+ * The anchor is the SAME atom the rest of this plugin builds, under the same
+ * evidenced policy. EVERY listed name - a whole item or an annotated head - is
+ * admitted only when the disk says `<directory>/<name>` exists (the pre-scan in
+ * `ambiguousTargetsIn` asks about each one; round 1, review F1 / QA Q1), so a
+ * sentence item, a missing deliverable and an unprobed name all render plain.
+ * Only the head of an annotated item is linked - never the description.
+ */
+function linkListedItems(list: MdastNode, directory: string): void {
+	for (const item of list.children ?? []) {
+		if (item.type !== "listItem") continue;
+		const [paragraph, ...rest] = item.children ?? [];
+		if (paragraph?.type !== "paragraph") continue;
+		if (rest.some((block) => block.type !== "list")) continue;
+		const inlines = paragraph.children ?? [];
+		const [first, second] = inlines;
+		if (!first || typeof first.value !== "string") continue;
+		if (first.type !== "text" && first.type !== "inlineCode") continue;
+		/*
+		 * `[inlineCode, text]` is the code-wrapped annotated shape; anything else
+		 * with more than one inline (emphasis, a link, a second code span) is prose
+		 * and is left alone.
+		 */
+		const codeHead =
+			first.type === "inlineCode" &&
+			inlines.length === 2 &&
+			second?.type === "text" &&
+			typeof second.value === "string";
+		if (inlines.length !== 1 && !codeHead) continue;
+		const text = codeHead
+			? `${first.value}${second?.value ?? ""}`
+			: first.value;
+		const entry = listedEntryFor(directory, text, LINK_POLICY_EVIDENCED);
+		if (!entry) continue;
+		if (first.type === "inlineCode") {
+			// A code-wrapped name is the WHOLE code span, or the head of an
+			// annotated item: anything else (a separator inside the code) is not one.
+			if (entry.length !== first.value.trim().length) continue;
+			paragraph.children = [
+				codeLinkAtom(entry.target, first),
+				...inlines.slice(1),
+			];
+			continue;
+		}
+		/*
+		 * The anchor covers the NAME: not the description after a separator, and
+		 * not the sentence punctuation an item may end with (`- a.pdf.`), the rule
+		 * every other span in this plugin keeps.
+		 */
+		const at = first.value.length - first.value.trimStart().length;
+		const name = first.value.slice(at, at + entry.length);
+		if (!entry.target.endsWith(`/${name}`)) continue;
+		const atoms: MdastNode[] = [];
+		if (at > 0) atoms.push({ type: "text", value: first.value.slice(0, at) });
+		atoms.push(linkAtom(entry.target, name));
+		const after = first.value.slice(at + entry.length);
+		if (after) atoms.push({ type: "text", value: after });
+		paragraph.children = atoms;
+	}
+}
+
+/**
  * Rewrite every child list in the tree, once.
  *
  * Depth-first and in place: the walker recurses through `children` for every
@@ -387,6 +491,18 @@ function walk(node: MdastNode, source: string | undefined): void {
 	const rewritten: MdastNode[] = [];
 	let changed = false;
 	for (const [index, child] of children.entries()) {
+		/*
+		 * A list straight after a paragraph that ends `<directory>:` is a
+		 * directory-anchored listing. Its items are linked BEFORE the ordinary walk
+		 * descends into it, so the walk then meets `link` nodes it never enters and
+		 * cannot double-process a name. `children[index - 1]` is the ORIGINAL
+		 * sibling, whose `position` survives its own rewrite.
+		 */
+		const previous = index > 0 ? children[index - 1] : undefined;
+		if (child.type === "list" && previous?.type === "paragraph") {
+			const directory = introducedDirectory(previous, source);
+			if (directory) linkListedItems(child, directory);
+		}
 		if (child.type === "text" && typeof child.value === "string") {
 			const atoms = atomsFor(
 				child.value,

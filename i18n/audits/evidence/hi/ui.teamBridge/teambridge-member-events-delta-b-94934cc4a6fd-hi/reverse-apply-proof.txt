@@ -1,0 +1,25 @@
+REVERSE-APPLY PROOF - hi - namespace ui.teamBridge - auditor B session 94934cc4a6fd
+
+Method: take the working-tree bytes, swap each delta value back to its round-1 text as an exact
+JSON-string byte substitution, hash the result. The round-1 hash comes from the first-round audit
+record (i18n/receipts/955e54c57ace-hi.json and 502568f2aefe-hi.json), not from my own reconstruction.
+
+now      sha256 57b7bc7207eba05879dada197dea46a8ed03f145d506c903521e64fa35e2411d
+rebuilt  sha256 c51c89590c7f0e00f01f6128fdc2acc05e32aa773ea7da36dd909103d35ecb60
+recorded sha256 c51c89590c7f0e00f01f6128fdc2acc05e32aa773ea7da36dd909103d35ecb60
+MATCH: True
+
+edits reversed: 1
+
+  ui.teamBridge.events.others
+    working tree : {count, plural, one {# अन्य व्यक्ति} other {# अन्य लोग}}
+    round 1      : {count, plural, one {# अन्य} other {# अन्य}}
+    occurrences of the working-tree text in the file: 1
+
+Reading: a hash that reproduces the round-1 record means the file differs from round 1 ONLY at the
+values listed above - no other byte moved. All five files reproduce.
+
+Cross-check, not input: delta-round auditor A (session 4ab583bbf0ca) independently reconstructed the
+same pre-delta bytes; my rebuilt files are byte-identical to theirs except where my own first attempt
+used the abbreviated quote «其他#人» instead of the round-1 value «{count, plural, other {其他#人}}».
+That correction is why this proof is reproducible rather than a repeat of A's number.

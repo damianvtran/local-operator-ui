@@ -1,0 +1,59 @@
+{
+  "locale": "hi",
+  "namespace": "ui.chat.canonical",
+  "scope": "Existing S18a debt applicability/disposition only; zero new semantic keys",
+  "source_parent": {
+    "locale": "hi",
+    "receipt_path": "i18n/receipts/2d5628992cf1.json",
+    "receipt_sha256": "a97247db95c065e502d788dad7abb7f1dbea84b19bdfb55fe80d68b805cd2efe",
+    "receipt_git_ref": "e6122214503b9fc52841e119c060eabb7650391b",
+    "audited_snapshot": "759530dba089052f53c4c28da12c9c351cf6c1b4",
+    "audited_source_sha256": "0eb58c851335bcb90a14631b24b0ba330b5d0c80af80e9aa82a0970155dc7d45",
+    "audited_target_sha256": "f403a8b1941e366197ddb17393e068847d47ba5ef42f670eb3c6bf26f704943c",
+    "agent": "i18n-auditor",
+    "model": "deepseek/deepseek-flash",
+    "instance": "2d5628992cf1",
+    "counts": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 1,
+      "nit": 1
+    }
+  },
+  "decisions": [
+    {
+      "source_finding_ref": "i18n/receipts/2d5628992cf1.json#/findings/0",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+      "same_current_snapshot_bytes": true,
+      "snapshot_current": "ऑडियो दर सीमा",
+      "current": "ऑडियो दर सीमा",
+      "decision": "Retained at original recorded severity, deferred; no independently assigned ID existed in source, so JSON-pointer provenance identifies it without fabricating an original finding ID."
+    },
+    {
+      "source_finding_ref": "i18n/receipts/2d5628992cf1.json#/findings/1",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.temporary_deleted.back",
+      "same_current_snapshot_bytes": true,
+      "snapshot_current": "चैट पर वापस जाएँ",
+      "current": "चैट पर वापस जाएँ",
+      "decision": "Deduplicated into HI-C1: same already-counted NIT about chat-list destination ambiguity. Preserve original note and alternative proposal as alias; not a second NIT.",
+      "counted_as": "HI-C1"
+    }
+  ],
+  "old_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 2,
+    "nit": 1
+  },
+  "amended_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 3,
+    "nit": 1
+  },
+  "fr_zero_findings_explicit": false,
+  "own_choice": "Carry genuine unremediated parent risks; deduplicate same Hindi NIT, do not equate no-change proposals with absence of findings. Latest S18b clean3-key delta never resolves earlier S18a debt.",
+  "no_other_auditor_verdict_read": true
+}

@@ -1,0 +1,104 @@
+{
+  "audit_id": "teambridge-pr1442-audit-dedc59c2f981",
+  "date": "2026-10-27",
+  "locale": "ur",
+  "namespace": "ui.agentMessages.settings",
+  "source_commit": "09fc87ace32625db46c852c05ce8340aaf133fd3",
+  "translator": {
+    "agent": "translator",
+    "role_label": "Local Operator task subagent (translator record: 'same session as implementer')",
+    "model": "anthropic/claude-sonnet-5-5",
+    "record": "i18n-1442-translations.json (coordinating session 17cd3e74c66f scratchpad)",
+    "commits": [
+      "cf11ca73ff25c8f53edffd3678e0ea7be172e62a",
+      "09fc87ace32625db46c852c05ce8340aaf133fd3"
+    ],
+    "fallback": "none recorded"
+  },
+  "auditors": [
+    {
+      "agent": "i18n-auditor",
+      "model": "anthropic/claude-opus-5-5",
+      "date": "2026-10-27",
+      "result": "clean",
+      "instance": "dedc59c2f981",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "receipt": "i18n/receipts/dedc59c2f981.json",
+      "receipt_sha256": "a4dc8016e50cff1a08bb53593c2f1c3413f1f48c7167325a6db94114abe29e6b"
+    }
+  ],
+  "files": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.agentMessages.settings.json",
+      "sha256": "dc4d78d84cd84092cc3f67d10dbf733f2ef0bea5eb3011250b39fa78637e6a74"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/ur/ui.agentMessages.settings.json",
+      "sha256": "7a567a0d98955ad324f91fff0a332e46127f3172c0f641bfbd06cdc8d4f96704"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.agentMessages.settings.context.json",
+      "sha256": "a2ef251885d17fea571c6ff698557b449a01f9d9dba29da435b828920931e10a"
+    }
+  },
+  "audited": [
+    {
+      "key": "ui.agentMessages.settings.default_on.b_title",
+      "en": "Team Bridge is not set up yet",
+      "target": "Team Bridge ابھی سیٹ اپ نہیں ہوا",
+      "verdict": "PASS. 'Not set up yet', with no Enable offer. Setup terms follow catalogue/guide: configuré / configurado / 设置 / настроен / thiết lập (vi guide: setup → thiết lập) / سیٹ اپ / सेटअप."
+    },
+    {
+      "key": "ui.agentMessages.settings.default_on.b_body",
+      "en": "Team Bridge turns on for you automatically once your organization is ready. Nothing is sent when it does.",
+      "target": "آپ کی تنظیم تیار ہوتے ہی Team Bridge آپ کے لیے خودکار طور پر فعال ہو جائے گا۔ فعال ہونے پر کچھ نہیں بھیجا جاتا۔",
+      "verdict": "PASS. Says it turns on automatically when the organization is ready and that nothing is sent when it does; no call to action. Future tense used where natural (s’activera / se activará / включится / sẽ / ہو جائے گا / हो जाएगा)."
+    },
+    {
+      "key": "ui.agentMessages.settings.default_on.e_body",
+      "en": "Team Bridge is off for this account. Read the consent text below, then turn it on again if you want it back.",
+      "target": "اس اکاؤنٹ کے لیے Team Bridge بند ہے۔ نیچے رضامندی کا متن پڑھیں، پھر اگر آپ اسے واپس چاہتے ہیں تو دوبارہ فعال کریں۔",
+      "verdict": "PASS. Points to the consent text below and to turning it on again, and avoids each locale's Enable word (ui.agentMessages.settings.action.enable). ur uses فعال, which is its Settings 'on' word throughout this namespace (state.c_title فعال) and stays distinct from the Enable button label 'فعال کریں' by sentence context; acceptable."
+    },
+    {
+      "key": "ui.agentMessages.settings.action.turn_on_again",
+      "en": "Turn on again",
+      "target": "دوبارہ فعال کریں",
+      "verdict": "PASS. Renders 'turn on again'. In fr/es/ru/vi/ur/hi its bytes equal action.enable_again (Activer à nouveau, Volver a activar, Включить снова, Bật lần nữa, دوبارہ فعال کریں, फिर चालू करें), because those locales already used their plain on-verb for Enable; no distinct non-'Enable' verb exists there. The two keys never render together (default-on vs opt-in branches in agent-messages-settings.tsx), so there is no collision. zh-CN distinguishes 重新开启 from 重新启用. Recorded as INFO O1, not a finding."
+    },
+    {
+      "key": "ui.agentMessages.settings.consent.via_default_on",
+      "en": "Turned on by default",
+      "target": "ڈیفالٹ طور پر فعال",
+      "verdict": "PASS. Short noun phrase for the 'Collected in' grid, symmetric with off_by_default in each locale (Activé par défaut / Activado de forma predeterminada / 默认开启 / Включено по умолчанию / Bật theo mặc định / ڈیفالٹ طور پر فعال / डिफ़ॉल्ट रूप से चालू)."
+    }
+  ],
+  "resolved_findings": [],
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "revision": "c011c16ead3e6278ef77dfb7f40fccf44bcc29e3",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/ur.md",
+      "revision": "c011c16ead3e6278ef77dfb7f40fccf44bcc29e3",
+      "sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+    }
+  },
+  "independence": "Independent auditor (reviewer role). This run wrote none of the audited strings and edited no catalogue byte; remediation commits were authored by a separate translator subagent. This run wrote only this receipt, the per-locale evidence records, and (via ledger-assemble.mjs) the ledger rows.",
+  "limitations": [
+    "No rendered frame, pseudo-localization or RTL layout inspection (this auditor session has no browser tool). ur bidi safety was judged from the strings: no manual controls, plus the render layer's FSI/PDI isolation and dir handling (src/i18n/direction.ts, use-document-direction.ts).",
+    "No second independent audit.",
+    "Inherited keys were not re-read (byte identity to already-audited rows)."
+  ],
+  "named_receipt": {
+    "path": "i18n/receipts/teambridge-pr1442-audit-dedc59c2f981.json",
+    "sha256": "a4dc8016e50cff1a08bb53593c2f1c3413f1f48c7167325a6db94114abe29e6b"
+  }
+}

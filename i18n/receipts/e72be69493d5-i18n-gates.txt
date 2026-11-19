@@ -1,0 +1,51 @@
+# Actual output, translation audit round 6 (session e72be69493d5), worktree at 318ce5c4804 + ledger/receipt changes, each command run alone with NODE_OPTIONS=--max-old-space-size=2048 timeout 120 (2 GiB heap ceiling, 120 s wall)
+## Pre-audit node scripts/i18n/ledger-check.mjs (head bytes 318ce5c4804, before re-pinning)
+ledger-check: FAILED — 21 finding(s) across 826 ledger entr(ies)
+ledger-check exit=1
+## node scripts/i18n/ledger-assemble.mjs (per locale, each alone)
+## es
+ledger-assemble: es/ui.mesh -> status audited (prior audits were of older bytes: moved to superseded) | clean, 0 blocker, 0 major, 0 minor, 0 nit
+exit=0
+## fr
+ledger-assemble: fr/ui.mesh -> status audited (prior audits were of older bytes: moved to superseded) | clean, 0 blocker, 0 major, 0 minor, 0 nit
+exit=0
+## ru
+ledger-assemble: ru/ui.mesh -> status audited (prior audits were of older bytes: moved to superseded) | clean, 0 blocker, 0 major, 0 minor, 0 nit
+exit=0
+## hi
+ledger-assemble: hi/ui.mesh -> status audited (prior audits were of older bytes: moved to superseded) | clean, 0 blocker, 0 major, 0 minor, 0 nit
+exit=0
+## ur
+ledger-assemble: ur/ui.mesh -> status audited (prior audits were of older bytes: moved to superseded) | clean, 0 blocker, 0 major, 0 minor, 0 nit
+exit=0
+## vi
+ledger-assemble: vi/ui.mesh -> status audited (prior audits were of older bytes: moved to superseded) | clean, 0 blocker, 0 major, 0 minor, 0 nit
+exit=0
+## zh-CN
+ledger-assemble: zh-CN/ui.mesh -> status audited (prior audits were of older bytes: moved to superseded) | clean, 0 blocker, 0 major, 0 minor, 0 nit
+exit=0
+## node scripts/i18n/ledger-check.mjs (after re-pinning)
+ledger-check: ok — 826 entr(ies) complete, fresh and independently audited
+ledger-check exit=0
+## pnpm check-i18n, its seven gates run one at a time (each alone: NODE_OPTIONS=--max-old-space-size=2048 timeout 120)
+$ node scripts/i18n/generate.mjs --check
+/Users/damian/local-operator-ui/.worktrees/ui1604-audit-r6/src/i18n/keys.gen.ts is byte-identical to a fresh generation.
+exit=0
+$ node scripts/i18n/check-duplicates.mjs
+check-duplicates: ok — 1067 file(s) scanned, 0 duplicate key(s)
+exit=0
+$ node scripts/i18n/check-strings.mjs
+check-strings.mjs: ok — 1493 file(s) scanned, 0 literal(s) at or below the baseline
+exit=0
+$ node scripts/i18n/ledger-check.mjs
+ledger-check: ok — 826 entr(ies) complete, fresh and independently audited
+exit=0
+$ node scripts/i18n/context-parity.mjs
+context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json).
+exit=0
+$ node scripts/i18n/check-added-strings.mjs
+PASS: no newly added literal copy in 6 changed file(s) against 2c5c462ab881eb16ad4505108b9cc16d3d72d426.
+exit=0
+$ node scripts/i18n/check-coverage.mjs
+coverage-check: ok — 7 gated language(s) over 118 namespace(s); 0 allowed key(s) remain across 0 pair(s) (shrink-only; see i18n/coverage-allowance.json).
+exit=0

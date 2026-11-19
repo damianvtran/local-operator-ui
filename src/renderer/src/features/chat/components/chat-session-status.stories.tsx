@@ -79,7 +79,7 @@ const PAIR: [string, string][] = [
  * converging under deuteranopia, so colour alone separates nothing here.
  */
 const AMBER_CLASS: [string, string, string][] = [
-	["approval", "Approval needed", "needs you — CircleAlert, warning"],
+	["approval", "Approval needed", "needs you — MessageCircleQuestion, warning"],
 	["interrupted", "Interrupted", "interrupted — Pause, warning"],
 	["wedged", WEDGED_LABEL, "not answering — EqualApproximately, warning"],
 	["error", "Failed", "error — CircleAlert, danger"],

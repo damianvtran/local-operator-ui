@@ -52,14 +52,21 @@ import {
 	TableRow,
 } from "@shared/components/ui/table";
 import { Textarea } from "@shared/components/ui/textarea";
-import { t } from "@shared/i18n";
+import { USER_TEXT_ALIGN, t, userTextDir } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { useQueryClient } from "@tanstack/react-query";
 import { Minus, Plus } from "lucide-react";
-import { type FormEvent, Fragment, useEffect, useRef, useState } from "react";
+import {
+	type FormEvent,
+	Fragment,
+	type ReactNode,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import { type FieldTarget, refusalCopy } from "../utils/backend-copy";
 import {
@@ -192,8 +199,7 @@ export function memberCountOf(member: Pick<TeamMember, "count">): number {
 export function memberCountLabel(
 	members: readonly TeamMember[] | undefined,
 ): string {
-	const total = memberCount(members);
-	return total === 1 ? "1 member" : `${total} members`;
+	return t("ui.agents.teams.member_count", { count: memberCount(members) });
 }
 
 /**
@@ -321,8 +327,10 @@ function captionCell(
 function readingCell(facts: { value: string; layer: string | null }) {
 	return (
 		<>
+			{/* An agent name or model selector: its own direction (round 1, D1). */}
 			<span
-				className="block truncate text-body-sm text-ink"
+				dir="auto"
+				className={`block truncate text-body-sm text-ink ${USER_TEXT_ALIGN}`}
 				title={facts.value}
 			>
 				{facts.value}
@@ -384,6 +392,7 @@ export function TeamDetail({
 	onOpenAgent,
 	onAskAgent,
 	onDirtyChange,
+	belowHeader,
 }: {
 	/** Absent = creating a new team. */
 	team?: ReusableTeam;
@@ -396,7 +405,18 @@ export function TeamDetail({
 	onAskAgent: (prompt: string) => void;
 	/** Reports an open edit with unsaved typing, so the page can hold the composer. */
 	onDirtyChange?: (dirty: boolean) => void;
+	/**
+	 * THE SLOT BELOW THE RECORD'S TITLE, for a notice that is ABOUT this record.
+	 *
+	 * It renders here, inside the pane, rather than in the page above it: a
+	 * banner drawn before the title describes a record from outside it, and a
+	 * second one would have had a measure of its own. The slot inherits the
+	 * pane's measure and the pane's ground, so whatever the page passes keeps
+	 * the record's left and right edges.
+	 */
+	belowHeader?: ReactNode;
 }) {
+	useI18nLocale();
 	const creating = !team;
 	const [editing, setEditing] = useState(creating);
 	const [name, setName] = useState(team?.name ?? "");
@@ -644,7 +664,11 @@ export function TeamDetail({
 			 * "CREATED" FOR A CREATE, "SAVED" FOR AN EDIT (review round 1, UX nit):
 			 * the agent form already said Created, so the same act had two names.
 			 */
-			showSuccessToast(`${creating ? "Created" : "Saved"} ${result.name}.`);
+			showSuccessToast(
+				creating
+					? t("ui.notices.agents.created_named", { name: result.name })
+					: t("ui.notices.agents.saved", { name: result.name }),
+			);
 			if (creating) requestHeadingFocus();
 			requestAnimationFrame(() => headingRef.current?.focus());
 		} catch (caught) {
@@ -724,9 +748,11 @@ export function TeamDetail({
 							ref={headingRef}
 							tabIndex={-1}
 							// A long name truncates rather than wrapping under the actions; the
-							// full name stays reachable as the tooltip.
+							// full name stays reachable as the tooltip. `dir="auto"` and the
+							// document-keyed alignment: see the agent pane's heading.
+							dir="auto"
 							title={displayName}
-							className="truncate text-title focus:outline-none"
+							className={`truncate text-title focus:outline-none ${USER_TEXT_ALIGN}`}
 						>
 							{/*
 							 * The heading reads the team the way every other human-read
@@ -760,7 +786,7 @@ export function TeamDetail({
 					 *
 					 * THE TRAILING GHOST BUTTON IS PULLED OUT BY ITS OWN PADDING (design
 					 * review round 1 D1). A ghost button has no edge, so its box was flush
-					 * with the column but its LABEL ended 12 px inside it; `-mr-3` (the
+					 * with the column but its LABEL ended 12 px inside it; `-me-3` (the
 					 * `md` button's `px-3`) puts the label's last glyph on the column edge
 					 * that the box and the count are on. It moves into the 24 px scroller
 					 * gutter, where nothing is clipped (the hover ground is the only thing
@@ -772,7 +798,7 @@ export function TeamDetail({
 							className={cn(
 								"flex shrink-0 items-center gap-2",
 								TITLE_LINE_HEIGHT,
-								askEnabled && "-mr-3",
+								askEnabled && "-me-3",
 							)}
 						>
 							<Button
@@ -784,7 +810,7 @@ export function TeamDetail({
 									navigate("/chat");
 								}}
 							>
-								New team chat
+								{t("ui.agents.teams.action.new_chat")}
 							</Button>
 							<HubTeamPublication team={team} />
 							<Button
@@ -795,14 +821,14 @@ export function TeamDetail({
 									setEditing(true);
 								}}
 							>
-								Edit
+								{t("ui.agents.detail.action.edit")}
 							</Button>
 							{askEnabled ? (
 								<Button
 									variant="ghost"
 									onClick={() => onAskAgent(`Change the team ${team.name}: `)}
 								>
-									Ask for a change
+									{t("ui.agents.detail.action.ask_change")}
 								</Button>
 							) : null}
 						</div>
@@ -818,11 +844,21 @@ export function TeamDetail({
 				 */}
 				{error && !errorField ? (
 					<Alert variant="danger" role="alert" data-testid="team-save-error">
-						<AlertTitle>That did not save</AlertTitle>
+						<AlertTitle>
+							{t("ui.agents.detail.alert.save_failed_title")}
+						</AlertTitle>
 						<AlertDescription>{error}</AlertDescription>
 					</Alert>
 				) : null}
 			</header>
+
+			{/*
+			 * THE RECORD'S OWN NOTICE, directly under its title and above the
+			 * form. It is a child of the pane, so it is measured exactly like the
+			 * form is: one column, one pair of edges, no second measure of its
+			 * own.
+			 */}
+			{belowHeader}
 
 			{/*
 			 * THE CONFLICT BANNER, the team half of the agent pane's.
@@ -866,17 +902,20 @@ export function TeamDetail({
 					<>
 						{creating ? (
 							<Section
-								title="Name"
-								description="How you and your chats will refer to this team."
+								title={t("ui.agents.detail.field.name")}
+								description={t("ui.agents.teams.field.name_hint")}
 							>
 								<FieldLabel
-									label="Team name"
+									label={t("ui.agents.teams.field.name_label")}
 									htmlFor="team-name"
 									error={errorField === "name" ? error : null}
 								/>
 								<Input
 									ref={teamNameRef}
 									id="team-name"
+									// The operator's own text: direction from its content, not
+									// the locale (same reason as `EditSection` in agent-detail).
+									dir={userTextDir(name)}
 									data-testid="team-name-input"
 									value={name}
 									required
@@ -888,20 +927,20 @@ export function TeamDetail({
 							</Section>
 						) : null}
 						<Section
-							title="Manager"
-							description="The agent that leads the chat and decides who works on what."
+							title={t("ui.agents.teams.section.manager")}
+							description={t("ui.agents.teams.section.manager_hint")}
 						>
 							<div className="space-y-2">
 								<FieldLabel
-									label="Manager agent"
+									label={t("ui.agents.teams.field.manager_label")}
 									htmlFor="team-manager"
 									error={errorField === "manager" ? error : null}
 								/>
 								<SearchableSelect
-									ariaLabel="Manager agent"
+									ariaLabel={t("ui.agents.teams.field.manager_label")}
 									showLabel={false}
-									placeholder="Choose a manager"
-									busyLabel="Loading agents"
+									placeholder={t("ui.agents.teams.field.manager_placeholder")}
+									busyLabel={t("ui.agents.teams.field.loading_agents")}
 									options={managerOptions(agents, teams)}
 									selected={
 										managerOptions(agents, teams).find(
@@ -914,20 +953,22 @@ export function TeamDetail({
 									onCustomSubmit={(text) =>
 										setDraft((current) => ({ ...current, manager: text }))
 									}
-									listNotice="Agents and teams on this machine"
+									listNotice={t("ui.agents.teams.field.manager_list_notice")}
 								/>
 								{!managerOptions(agents, teams).some(
 									(option) => option.id === draft.manager,
 								) ? (
 									<Badge variant="warning" data-testid="team-manager-missing">
-										Not found: {draft.manager}
+										{t("ui.agents.teams.empty.not_found_name", {
+											name: draft.manager,
+										})}
 									</Badge>
 								) : null}
 							</div>
 						</Section>
 						<Section
-							title="Members"
-							description="Who the manager can delegate to, how many of each, and the model each runs on."
+							title={t("ui.agents.teams.section.members")}
+							description={t("ui.agents.teams.section.members_hint")}
 						>
 							{/*
 							 * THE SCOPE AND THE PRECEDENCE, at the point of choice (UX round 1,
@@ -1012,10 +1053,14 @@ export function TeamDetail({
 										>
 											<div className="min-w-0">
 												<SearchableSelect
-													ariaLabel={`Member ${index + 1}`}
+													ariaLabel={t("ui.agents.teams.field.member_aria", {
+														index: index + 1,
+													})}
 													showLabel={false}
-													placeholder="Choose an agent or team"
-													busyLabel="Loading agents"
+													placeholder={t(
+														"ui.agents.teams.field.member_placeholder",
+													)}
+													busyLabel={t("ui.agents.teams.field.loading_agents")}
 													options={[
 														...managerOptions(agents, teams).filter((option) =>
 															member.kind === "team"
@@ -1048,14 +1093,23 @@ export function TeamDetail({
 												}
 											>
 												<SelectTrigger
-													aria-label={`Member ${index + 1} kind`}
+													aria-label={t(
+														"ui.agents.teams.field.member_kind_aria",
+														{
+															index: index + 1,
+														},
+													)}
 													className="w-full"
 												>
 													<SelectValue />
 												</SelectTrigger>
 												<SelectContent>
-													<SelectItem value="agent">Agent</SelectItem>
-													<SelectItem value="team">Team</SelectItem>
+													<SelectItem value="agent">
+														{t("ui.agents.teams.kind.agent")}
+													</SelectItem>
+													<SelectItem value="team">
+														{t("ui.agents.teams.kind.team")}
+													</SelectItem>
 												</SelectContent>
 											</Select>
 											{/*
@@ -1067,7 +1121,9 @@ export function TeamDetail({
 												<Button
 													variant="secondary"
 													size="icon-sm"
-													aria-label={`One fewer ${member.role}`}
+													aria-label={t("ui.agents.teams.action.fewer_aria", {
+														role: member.role,
+													})}
 													disabled={member.count <= 1}
 													onClick={() =>
 														updateMember(index, { count: member.count - 1 })
@@ -1077,14 +1133,19 @@ export function TeamDetail({
 												</Button>
 												<span
 													className="min-w-6 text-center text-body-sm tabular-nums"
-													aria-label={`${member.count} of ${member.role}`}
+													aria-label={t("ui.agents.teams.field.count_aria", {
+														count: member.count,
+														role: member.role,
+													})}
 												>
 													{member.count}
 												</span>
 												<Button
 													variant="secondary"
 													size="icon-sm"
-													aria-label={`One more ${member.role}`}
+													aria-label={t("ui.agents.teams.action.more_aria", {
+														role: member.role,
+													})}
 													disabled={member.count >= 16}
 													onClick={() =>
 														updateMember(index, { count: member.count + 1 })
@@ -1104,7 +1165,7 @@ export function TeamDetail({
 													}))
 												}
 											>
-												Remove
+												{t("ui.agents.teams.action.remove")}
 											</Button>
 											{missing ? (
 												// Own grid row, so the warning never pushes a column.
@@ -1112,7 +1173,9 @@ export function TeamDetail({
 													variant="warning"
 													className="col-span-full w-fit"
 												>
-													Not found: {member.role}
+													{t("ui.agents.teams.empty.not_found_name", {
+														name: member.role,
+													})}
 												</Badge>
 											) : null}
 											{/*
@@ -1300,18 +1363,19 @@ export function TeamDetail({
 										}));
 									}}
 								>
-									Add member
+									{t("ui.agents.teams.action.add_member")}
 								</Button>
 							</div>
 						</Section>
-						<Section title="Description">
+						<Section title={t("ui.agents.teams.section.description")}>
 							<FieldLabel
-								label="What this team is for"
+								label={t("ui.agents.teams.field.what_for_label")}
 								htmlFor="team-description"
 								error={errorField === "description" ? error : null}
 							/>
 							<Input
 								id="team-description"
+								dir={userTextDir(draft.description)}
 								value={draft.description}
 								onChange={(event) =>
 									setDraft((current) => ({
@@ -1321,7 +1385,7 @@ export function TeamDetail({
 								}
 							/>
 						</Section>
-						<Section title="Collaboration instructions">
+						<Section title={t("ui.agents.teams.section.collaboration")}>
 							{/*
 							 * THE REFUSAL LANDS ON THE FIELD (design review round 3, D16).
 							 * The sentence used to live only in the top banner, 300-plus px
@@ -1340,7 +1404,8 @@ export function TeamDetail({
 							) : null}
 							<Textarea
 								ref={teamInstructionsRef}
-								aria-label="Collaboration instructions"
+								dir={userTextDir(draft.instructions)}
+								aria-label={t("ui.agents.teams.action.collaboration_aria")}
 								aria-invalid={errorField === "instructions"}
 								className="min-h-36"
 								maxLength={8000}
@@ -1353,9 +1418,10 @@ export function TeamDetail({
 								}
 							/>
 						</Section>
-						<Section title="Project brief">
+						<Section title={t("ui.agents.teams.section.project_brief")}>
 							<Textarea
-								aria-label="Project brief"
+								aria-label={t("ui.agents.teams.action.project_brief_aria")}
+								dir={userTextDir(draft.project)}
 								className="min-h-36"
 								maxLength={8000}
 								value={draft.project}
@@ -1373,16 +1439,24 @@ export function TeamDetail({
 							onConfirmingChange={setConfirmDiscard}
 							dirty={dirty}
 							pending={pending}
-							saveLabel={creating ? "Create team" : "Save changes"}
-							pendingLabel={creating ? "Creating…" : "Saving…"}
-							dirtyHint="Discard this team?"
+							saveLabel={
+								creating
+									? t("ui.agents.teams.action.create")
+									: t("ui.agents.detail.action.save_changes")
+							}
+							pendingLabel={
+								creating
+									? t("ui.agents.teams.action.creating")
+									: t("ui.agents.detail.action.saving")
+							}
+							dirtyHint={t("ui.agents.teams.action.discard_question")}
 							onSave={() => void save()}
 							onCancel={cancel}
 						/>
 					</>
 				) : (
 					<>
-						<Section title="Manager">
+						<Section title={t("ui.agents.teams.section.manager")}>
 							{/*
 							 * THE MANAGER ROW IS THE MEMBERS' ROW (design spec s4; design review
 							 * round 1 D5). Same `<colgroup>`, same `py-2` cells, same sr-only head:
@@ -1398,14 +1472,14 @@ export function TeamDetail({
 							 */}
 							<Table
 								className="table-fixed"
-								aria-label="Manager: the agent that leads the chat"
+								aria-label={t("ui.agents.teams.field.manager_aria")}
 							>
 								<MemberCols />
 								<TableHeader className="sr-only">
 									<TableRow>
-										<TableHead>Member</TableHead>
-										<TableHead>Type</TableHead>
-										<TableHead>Count</TableHead>
+										<TableHead>{t("ui.agents.teams.col.member")}</TableHead>
+										<TableHead>{t("ui.agents.teams.col.type")}</TableHead>
+										<TableHead>{t("ui.agents.teams.col.count")}</TableHead>
 									</TableRow>
 								</TableHeader>
 								<TableBody>
@@ -1421,6 +1495,8 @@ export function TeamDetail({
 														LINK_HIT_AREA,
 													)}
 													onClick={() => onOpenAgent(draft.manager)}
+													// The manager's agent name (round 1, D1).
+													dir="auto"
 												>
 													{draft.manager}
 												</Button>
@@ -1438,21 +1514,21 @@ export function TeamDetail({
 														variant="warning"
 														data-testid="team-manager-missing"
 													>
-														Not found
+														{t("ui.agents.teams.empty.not_found")}
 													</Badge>
 												) : null}
 											</div>
 										</TableCell>
 										<TableCell className="px-2 py-2 text-ink-dim text-meta">
 											{/* The type is a fact about the row; the manager is an agent. */}
-											Agent
+											{t("ui.agents.teams.kind.agent")}
 										</TableCell>
 										<TableCell />
 									</TableRow>
 								</TableBody>
 							</Table>
 						</Section>
-						<Section title="Members">
+						<Section title={t("ui.agents.teams.section.members")}>
 							{/*
 							 * A REAL TABLE (design spec D7): the three columns are the same on
 							 * every row, so the type word and the count share an x whatever the
@@ -1462,13 +1538,16 @@ export function TeamDetail({
 							 * five-row list. Rows are separated by the hairline, which is the
 							 * token's stated job; the last row drops it.
 							 */}
-							<Table className="table-fixed" aria-label="Members">
+							<Table
+								className="table-fixed"
+								aria-label={t("ui.agents.teams.section.members_aria")}
+							>
 								<MemberCols />
 								<TableHeader className="sr-only">
 									<TableRow>
-										<TableHead>Member</TableHead>
-										<TableHead>Type</TableHead>
-										<TableHead>Count</TableHead>
+										<TableHead>{t("ui.agents.teams.col.member")}</TableHead>
+										<TableHead>{t("ui.agents.teams.col.type")}</TableHead>
+										<TableHead>{t("ui.agents.teams.col.count")}</TableHead>
 									</TableRow>
 								</TableHeader>
 								<TableBody>
@@ -1479,7 +1558,10 @@ export function TeamDetail({
 										>
 											<TableCell className="px-0 py-2 text-ink">
 												<div className="flex min-w-0 items-center gap-2">
-													<span className="min-w-0 truncate">
+													<span
+														dir="auto"
+														className={`min-w-0 truncate ${USER_TEXT_ALIGN}`}
+													>
 														{member.role}
 													</span>
 													{!memberResolution(member, agents, teams) ? (
@@ -1487,16 +1569,20 @@ export function TeamDetail({
 															variant="warning"
 															data-testid="team-member-missing"
 														>
-															Not found
+															{t("ui.agents.teams.empty.not_found")}
 														</Badge>
 													) : null}
 												</div>
 											</TableCell>
 											<TableCell className="px-2 py-2 text-ink-dim text-meta">
-												{member.kind === "team" ? "Team" : "Agent"}
+												{/* Catalogue words, not literals: the scanner does not read a
+												 * string expression, so these two printed English in fr and ur. */}
+												{member.kind === "team"
+													? t("ui.agents.teams.kind.team")
+													: t("ui.agents.teams.kind.agent")}
 											</TableCell>
 											{/* Right-aligned so every count shares an x; the glyph is kept. */}
-											<TableCell className="px-0 py-2 text-right text-ink-muted tabular-nums">
+											<TableCell className="px-0 py-2 text-end text-ink-muted tabular-nums">
 												{`×${memberCountOf(member)}`}
 											</TableCell>
 										</TableRow>
@@ -1638,7 +1724,8 @@ export function TeamDetail({
 													<TableCell className="px-0 py-2">
 														{/* D13: the full role is readable even when it clips. */}
 														<span
-															className="block truncate text-body-sm text-ink"
+															dir="auto"
+															className={`block truncate text-body-sm text-ink ${USER_TEXT_ALIGN}`}
 															title={memberReading.role}
 														>
 															{memberReading.role}
@@ -1687,19 +1774,19 @@ export function TeamDetail({
 								</Table>
 							</Section>
 						) : null}
-						<Section title="What it is for">
+						<Section title={t("ui.agents.teams.section.what_for")}>
 							<ReadBlock
 								text={team?.description ?? ""}
-								empty="No description yet."
+								empty={t("ui.agents.teams.empty.description")}
 							/>
 						</Section>
 						{team?.instructions ? (
-							<Section title="Collaboration instructions">
+							<Section title={t("ui.agents.teams.section.collaboration")}>
 								<ReadBlock text={team.instructions} />
 							</Section>
 						) : null}
 						{team?.project ? (
-							<Disclosure summary="Project brief">
+							<Disclosure summary={t("ui.agents.teams.section.project_brief")}>
 								<ReadBlock text={team.project} />
 							</Disclosure>
 						) : null}

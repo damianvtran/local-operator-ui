@@ -250,16 +250,17 @@ const STUB_FILTERS = STUB_PATHS.map((path) => new RegExp(`^${path}$`));
  * store's error copy and the failure receipt both read them.
  */
 const STUB_CONTENTS = {
-	"@shared/api/local-operator/desktop-api": `export {DESKTOP_REFUSAL_PLACEHOLDER, DesktopControlError, UserFacingError, userFacingMessage, isRemoteReceiptDeferral} from ${JSON.stringify(
+	"@shared/api/local-operator/desktop-api": `export {DESKTOP_REFUSAL_PLACEHOLDER, DesktopControlError, UserFacingError, userFacingMessage, isRemoteReceiptDeferral, mediaError} from ${JSON.stringify(
 		`${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-api.ts`,
 	)}
 /*
- * The header's voice marker (chat-sidebar -> voice-indicator) imports these three
- * through qwen-voice-controller and voice-stream. Re-exported as the SHIPPED ones,
- * like the names above, so the bundle links; nothing here presses the marker, so
- * none of them is called.
+ * The header's voice marker (chat-sidebar -> voice-indicator) imports
+ * subscribeDesktopStream through qwen-voice-controller and voice-stream.
+ * Re-exported as the SHIPPED one, like the names above, so the bundle links;
+ * nothing here presses the marker, so it is never called. desktopMedia and
+ * mediaError, which the marker also imports, are exported once, above and below.
  */
-export {desktopMedia, mediaError, subscribeDesktopStream} from ${JSON.stringify(
+export {subscribeDesktopStream} from ${JSON.stringify(
 		`${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-api.ts`,
 	)}
 /*
@@ -276,7 +277,17 @@ export {desktopResult as realDesktopResult} from ${JSON.stringify(
 export {DESKTOP_FOREGROUND_REQUIRED_CODE, DESKTOP_FOREGROUND_REQUIRED_MESSAGE} from ${JSON.stringify(
 		`${process.cwd()}/src/shared/desktop-contract.ts`,
 	)}
-export const desktopResult = request => globalThis.__ack(request);`,
+export const desktopResult = request => globalThis.__ack(request);
+/*
+ * Agent pictures: the shipped sidebar/status graph now imports the avatar
+ * hooks, which read the roster through desktopControlResponse and picture
+ * bytes through desktopMedia. This fixture is not about pictures, so both
+ * answer without IO (an empty roster means no picture, so no byte read is
+ * attempted) and stay off the case's own request seam, which keeps the request
+ * log about the control under test. mediaError is the shipped, pure one.
+ */
+export const desktopControlResponse = async () => new Response(JSON.stringify({ result: { agents: [] } }), { status: 200, headers: { "Content-Type": "application/json" } });
+export const desktopMedia = async () => ({ status: 404, kind: "error", detail: "no media in this fixture" });`,
 	/*
 	 * Capabilities: the one the CONTROL's own gate reads, so its key is present at
 	 * 1 — the absent-capability state is a frame of its own rather than a case
@@ -328,7 +339,8 @@ export const useTeams = () => ({ data: [], error: null, isLoading: false, refetc
 	// `/chat` (#739), and a missing export fails the bundle, not an assertion.
 	"react-router-dom":
 		'export const useNavigate = () => () => undefined;\nexport const useLocation = () => ({ pathname: "/chat" });\nexport const Link = ({ children }) => children;',
-	"@shared/themes": `export const DEFAULT_THEME = "localOperatorDark";`,
+	"@shared/themes": `export const DEFAULT_THEME = "localOperatorDark";
+export const isThemeName = (id) => id === "localOperatorDark";`,
 	"@shared/hooks/use-canonical-session": `export const echoPendingUser = () => undefined;
 export const retractPendingUser = () => undefined;
 export const retractLocalEcho = () => "retracted";
@@ -389,7 +401,9 @@ const bundle = await build({
 			 * rendered conditionally. The app supplies the provider app-wide; a harness
 			 * that mounts the shipped sidebar bare has to supply it itself.
 			 */
-			' export { QueryClient, QueryClientProvider } from "@tanstack/react-query";',
+			' export { QueryClient, QueryClientProvider } from "@tanstack/react-query";' +
+			' export { registerCatalogue, setLocale } from "./src/i18n";' +
+			' export { markAllReadShedWidth } from "./src/renderer/src/features/chat/mark-all-read";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -448,6 +462,9 @@ const {
 	DESKTOP_FOREGROUND_REQUIRED_MESSAGE,
 	QueryClient,
 	QueryClientProvider,
+	registerCatalogue,
+	setLocale,
+	markAllReadShedWidth,
 } = await import(bundlePath.href);
 const { createRoot } = await import("react-dom/client");
 
@@ -706,6 +723,66 @@ const PILE = [
 		attention: unread(OTHER),
 	},
 ];
+
+test("ordinary and held sidebar rows localize empty titles without writing them into state", async () => {
+	const ordinaryId = "111111111111";
+	const heldId = "333333333333";
+	registerCatalogue("fr", { "ui.chat.canonical.untitled": "fixture untitled" });
+	store.setState({
+		pinFacts: {
+			[heldId]: {
+				pinned: true,
+				title: "",
+				updated_at: "2026-01-01T00:00:00Z",
+			},
+		},
+	});
+	const rows = [
+		{
+			session_id: ordinaryId,
+			title: "",
+			updated_at: "2026-01-01T00:00:00Z",
+		},
+	];
+	const previousAck = globalThis.__ack;
+	globalThis.__ack = (request) =>
+		request.op === "sessions.list"
+			? Promise.resolve({
+					status: 200,
+					body: { result: { sessions: rows, truncated: false } },
+				})
+			: Promise.resolve({ read: [], superseded: [], unknown: [] });
+	const harness = await mount(rows);
+	const assertRenderedTitles = (expected, locale) => {
+		const text = harness.container.textContent;
+		assert.equal(
+			text.split(expected).length - 1,
+			2,
+			`ordinary and held rows did not both present ${expected} in ${locale}: ${text}`,
+		);
+	};
+	try {
+		for (const [locale, expected] of [
+			["en", "Untitled chat"],
+			["fr", "fixture untitled"],
+			["en", "Untitled chat"],
+		]) {
+			await act(async () => {
+				setLocale(locale);
+			});
+			assertRenderedTitles(expected, locale);
+		}
+		assert.equal(store.getState().sessions[0].title, "");
+		assert.equal(store.getState().pinFacts[heldId].title, "");
+	} finally {
+		await act(async () => {
+			setLocale("en");
+		});
+		store.setState({ pinFacts: {} });
+		globalThis.__ack = previousAck;
+		harness.unmount();
+	}
+});
 
 test("the control is a stop in the ↑/↓ walk, before the section's first row", async () => {
 	/*
@@ -1954,5 +2031,85 @@ test("a remount cannot leave the receipt's sentence standing", async () => {
 	} finally {
 		globalThis.__ack = undefined;
 		await second.unmount();
+	}
+});
+
+test("the label sheds on the section-heading row the control is actually drawn in", async () => {
+	/*
+	 * WHY THIS TEST EXISTS (PR #1827, rendered evidence at the 220px sidebar floor).
+	 * The shed class keys on a CONTAINER named `chatheading`, and for a long time
+	 * only `heading()` declared it while the control is drawn through
+	 * `sectionLabel()` - so the query matched nothing, the label never shed in ANY
+	 * language, and a longer translated label (fr, vi) took its width from the
+	 * section name, which vanished. jsdom has no layout, so this asserts the WIRING
+	 * (the label span sits inside a `chatheading` container and carries a
+	 * `chatheading` shed class) plus the arithmetic that picks the class; the
+	 * rendered check is the MarkAllReadNarrowMinimum story frame.
+	 *
+	 * The two numeric facts below are measured, not guessed: the row's content box
+	 * is the panel minus 56px (frame at 220: text starts at x=20 and the action's
+	 * right padding edge is x=184, so 164 = 220 - 56), the sidebar range is
+	 * 220..320 with 260 as the default (`chat-sidebar-layout.ts`), and the shortest
+	 * English two-digit label ("Mark all 12 read", 16 chars) must still be spelled
+	 * at the default while every label must shed at the floor.
+	 */
+	const CONTENT_OFFSET = 56;
+	const FLOOR = 220 - CONTENT_OFFSET;
+	const DEFAULT = 260 - CONTENT_OFFSET;
+	assert.ok(
+		markAllReadShedWidth("Mark all 12 read") <= DEFAULT,
+		"English two-digit label must be spelled at the default width",
+	);
+	assert.ok(markAllReadShedWidth("Mark all 1 read") > 0);
+	for (const len of [3, 16, 26, 40]) {
+		assert.ok(
+			markAllReadShedWidth("x".repeat(len)) > FLOOR,
+			`a ${len}-char label must shed at the 220px floor`,
+		);
+	}
+	assert.ok(
+		markAllReadShedWidth("x".repeat(26)) > markAllReadShedWidth("x".repeat(16)),
+		"a longer label needs a wider row before it may be spelled",
+	);
+	const harness = await mount(PILE);
+	try {
+		for (const locale of ["en", "fr", "vi"]) {
+			await act(async () => {
+				setLocale(locale);
+			});
+			const control = harness.control();
+			assert.ok(control, `[${locale}] control missing`);
+			const span = [...control.querySelectorAll("span")].find((node) =>
+				node.className.includes("truncate"),
+			);
+			assert.ok(span, `[${locale}] label span missing`);
+			const shed = span.className.match(
+				/@max-\[(\d+)px\]\/chatheading:sr-only/,
+			);
+			assert.ok(
+				shed,
+				`[${locale}] the label carries no chatheading shed class: ${span.className}`,
+			);
+			assert.equal(
+				Number(shed[1]),
+				markAllReadShedWidth(span.textContent ?? ""),
+				`[${locale}] the shed width must follow the label actually drawn`,
+			);
+			const row = control.parentElement;
+			assert.ok(
+				row.className.includes("@container/chatheading"),
+				`[${locale}] the row the control is drawn in does not declare the chatheading container, so the shed can never fire: ${row.className}`,
+			);
+			const heading = row.querySelector("h3");
+			assert.ok(
+				heading?.textContent?.trim(),
+				`[${locale}] the section heading text node is missing`,
+			);
+		}
+	} finally {
+		await act(async () => {
+			setLocale("en");
+		});
+		await harness.unmount();
 	}
 });

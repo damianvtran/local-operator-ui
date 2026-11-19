@@ -1,0 +1,44 @@
+{
+  "auditor": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "tbd-r1-ru",
+  "session": "6b368b5dece7",
+  "date": "2026-10-21",
+  "locale": "ru",
+  "translator": "translator",
+  "namespaces": {
+    "ui.teamBridge": {
+      "status": "passed",
+      "keys_audited": 113,
+      "scope": "All 113 ru ui.teamBridge values vs the 113-key en snapshot sha256 0dfc0c5e… and context 267fc189… (ICU/placeholder/CLDR-plural/NFC/bidi checked in bytes, terminology vs other ru ui.*.json); NOT valid for en 92f6c40f… (109 keys), which replaced the source during the audit.",
+      "sha256": {
+        "en": "0dfc0c5ed780b7b6e2cf2a560f007350ce4d17d512c39cce001a182bf43a09a7",
+        "ru": "8ae40c80e99784cfdf6bd6d16cf879571c001dbf27ecacbffc4f12c4a301bfda",
+        "context": "267fc1892bb84cd4d7dbab1ff86a8120e5ec07069d3437241cf45391c9fb2291"
+      },
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.teamBridge.people.bridge_off",
+          "current": "Team Bridge ещё не включён",
+          "proposed": "У этого участника Team Bridge ещё не включён",
+          "note": "The English names the person as the one who has not turned it on (context: it states the person’s choice), but the impersonal Russian drops the person and, as a tooltip, can read as the reader’s own Team Bridge being off; naming the participant keeps it gender-free and unambiguous."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.teamBridge.plan.sign_in_reason",
+          "current": "Вы вышли из учётной записи. Войдите, чтобы пользоваться Team Bridge.",
+          "proposed": "Вы не вошли в учётную запись. Войдите, чтобы пользоваться Team Bridge.",
+          "note": "«Вы вышли» asserts a sign-out action that may never have happened (fresh install), while the English states only the state; «не вошли» is accurate in both cases."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.teamBridge.preview.chip",
+          "current": "Предпросмотр",
+          "proposed": "Предпросмотр (keep; confirm in a rendered rail frame)",
+          "note": "12 characters against 7 in a shrink-0 badge in a 30px rail row, so it squeezes the channel name; the term matches the product’s established «Предпросмотр», so verify truncation in a render before considering a shorter word such as «Просмотр»."
+        }
+      ]
+    }
+  }
+}

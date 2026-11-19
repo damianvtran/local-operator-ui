@@ -1,0 +1,232 @@
+{
+  "locale": "zh-CN",
+  "scope": "ui.chat.attachments: verification of the hand-union of 5 branch keys and 1 main key onto the 12-key base",
+  "checkout_head": "36b88a45fe",
+  "audit_date": "2026-10-29",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "34af2b7856f8",
+    "model": "radient/auto",
+    "actual_model_source": "runtime header: primary anthropic/claude-sonnet-5-5 failed on quota; this run executed through the fallback chain openai/gpt-6-astra -> kimi/k3.1-pro -> radient/auto. Disclosed from the session notices, not inferred from a pin.",
+    "independent_from_translator_session": true
+  },
+  "instance": "34af2b7856f8-union-zh-cn",
+  "worktree": "/Users/damian/lo-literals",
+  "branch": "i18n-final-literals",
+  "merge": {
+    "head": "36b88a45fe",
+    "merge_head": "9a767426fe",
+    "merge_head_is": "origin/main",
+    "merge_base": "aafa890e3c",
+    "state": "unmerged — the two catalogue files and i18n/ledger.json carry index stages 1/2/3; the working-tree catalogues are the hand-union under audit"
+  },
+  "input_sha256": {
+    "src/i18n/catalogues/en/ui.chat.attachments.json": "5e99fd052e7a24dc2715d7de1332b378c1c964f801cdc1c241c7068569de41a0",
+    "src/i18n/catalogues/zh-CN/ui.chat.attachments.json": "1f4cb98f8ef41defc1618ee176c9da7d501f227b726e2b179837f3d8b7fbc4cf"
+  },
+  "side_sha256": {
+    "en": {
+      "base": "845e53ef71cbd579f34ca7589d91fc180b98ca08cebf3b2da33a13fbba507f78",
+      "branch": "623a1363260ecbe40393b4424dde4d7b6cc084688ac354483052639a145ce892",
+      "main": "1f476ef54a5fb470d00da5e66e7f2ccd2665d4d22f07ff11f20a3e00acfeadc5",
+      "union": "5e99fd052e7a24dc2715d7de1332b378c1c964f801cdc1c241c7068569de41a0"
+    },
+    "zh-CN": {
+      "base": "0bfefc5bf853732d9972b5c9469a982c5855f93ab45edd5748b2100ea190bcc2",
+      "branch": "dbc64ff49830426bdecca3f2f533572be1f107b3d80410d29edccde9c7bf8737",
+      "main": "a29d3b3c59a88cc85c74615ac6590228366968a0c82dca4b6ef0f6a60b11b46b",
+      "union": "1f4cb98f8ef41defc1618ee176c9da7d501f227b726e2b179837f3d8b7fbc4cf"
+    }
+  },
+  "diffs": {
+    "companion": "diffs.patch",
+    "companion_sha256": "ddc8492c190ecea9ef1367fbff0befc99a22e2039ec54488aeb037d38e885a9b",
+    "method": "git show :1:/:2:/:3: plus the working-tree file, compared as parsed maps and as raw source lines, for both locales",
+    "union_vs_base": {
+      "added": [
+        "ui.chat.attachments.file_and_copy_missing",
+        "ui.chat.attachments.open",
+        "ui.chat.attachments.playback_position",
+        "ui.chat.attachments.playback_rate",
+        "ui.chat.attachments.playback_rate_option",
+        "ui.chat.attachments.volume"
+      ],
+      "removed": [],
+      "changed": []
+    },
+    "counts_by_side": {
+      "base": 12,
+      "branch_stage2": 17,
+      "main_stage3": 13,
+      "union_worktree": 18
+    },
+    "added_by_branch": [
+      "ui.chat.attachments.open",
+      "ui.chat.attachments.playback_position",
+      "ui.chat.attachments.playback_rate",
+      "ui.chat.attachments.playback_rate_option",
+      "ui.chat.attachments.volume"
+    ],
+    "added_by_main": [
+      "ui.chat.attachments.file_and_copy_missing"
+    ],
+    "added_by_both": [],
+    "per_locale": {
+      "en": {
+        "union_equals_base_plus_additions": true,
+        "missing_in_union": [],
+        "extra_in_union": [],
+        "pre_existing_values_byte_identical_to_base": true,
+        "raw_source_lines_identical_to_base": true,
+        "branch_keys_preserved": "all 17 branch-side entries keep their exact value in the union",
+        "main_keys_preserved": "all 13 main-side entries keep their exact value in the union"
+      },
+      "zh-CN": {
+        "union_equals_base_plus_additions": true,
+        "missing_in_union": [],
+        "extra_in_union": [],
+        "pre_existing_values_byte_identical_to_base": true,
+        "raw_source_lines_identical_to_base": true,
+        "branch_keys_preserved": "all 17 branch-side entries keep their exact value in the union",
+        "main_keys_preserved": "all 13 main-side entries keep their exact value in the union"
+      }
+    },
+    "raw_hunks": "see diffs.patch — base->branch, base->main, union-vs-branch and union-vs-main for en and zh-CN"
+  },
+  "spot_checks": [
+    {
+      "what": "the five branch keys' zh-CN values are the ones this PR audited",
+      "how": "whole-file hash equality with the audit receipt that bound them, not an eye check",
+      "detail": "i18n/receipts/f1a4a43284cd-r7-zh-cn.json records ui.chat.attachments keys_audited 5 at sha256 en 623a1363… / target dbc64ff4… — those are exactly the branch-side (stage 2) bytes; every branch-side line survives unchanged in the union. Values in the working tree: playback_rate_option '{rate}x', volume '音量', playback_position '播放位置', playback_rate '播放速度', open '打开'.",
+      "result": "confirmed"
+    },
+    {
+      "what": "main's new key file_and_copy_missing in zh-CN",
+      "how": "read through read_public_copy against its English sibling and the en .context.json note; cross-checked against the PR #1452 round-1 audit that already bound it",
+      "detail": "zh-CN '保存的副本也已不存在。' for en 'The saved copy is gone too.'; main-side hashes a29d3b3c… (zh) / 1f476ef5… (en) match i18n/receipts/i18n-audit-1452-20261027-zh-cn.json, which passed it with no findings.",
+      "result": "confirmed, no finding"
+    }
+  ],
+  "checks": [
+    {
+      "name": "key-set parity en vs zh-CN",
+      "result": "pass",
+      "detail": "same 18 keys, same order in both files"
+    },
+    {
+      "name": "union completeness",
+      "result": "pass",
+      "detail": "base + 5 branch keys + 1 main key = 18 = union, in both locales; nothing missing, nothing extra"
+    },
+    {
+      "name": "no key added by both sides",
+      "result": "pass",
+      "detail": "branch additions and main additions are disjoint"
+    },
+    {
+      "name": "no conflicting values",
+      "result": "pass",
+      "detail": "every key on either side keeps its exact value in the union (0 disagreements for en and for zh-CN)"
+    },
+    {
+      "name": "pre-existing values unchanged",
+      "result": "pass",
+      "detail": "all 12 base entries are byte-identical in the union, in the branch side and in the main side; compared on parsed values and on raw source lines (escape drift would show)"
+    },
+    {
+      "name": "JSON validity and formatting",
+      "result": "pass",
+      "detail": "both files parse; two-space-tab indentation and the trailing newline kept"
+    },
+    {
+      "name": "placeholders",
+      "result": "pass",
+      "detail": "{type} {size} {digest} {rate} identical in name, count and position in both locales; no ICU plural/select anywhere in the file, so no CLDR category question"
+    },
+    {
+      "name": "check-duplicates",
+      "result": "pass",
+      "detail": "934 files scanned, 0 duplicate keys — the silent-duplicate risk a JSON union can introduce"
+    },
+    {
+      "name": "context-parity",
+      "result": "pass",
+      "detail": "every English key covered; union sidecar carries all 18 entries"
+    },
+    {
+      "name": "generate --check",
+      "result": "pass",
+      "detail": "src/i18n/keys.gen.ts byte-identical to a fresh generation — key order in the union does not disturb generated types"
+    },
+    {
+      "name": "typography (zh-CN style guide)",
+      "result": "pass",
+      "detail": "no space between CJK and Latin/digit runs; no half-width punctuation inside Chinese prose; full-width （） only where the source has parens; no 。 on short labels/verdicts, full sentences keep it; no 您, no 啦/哦/呀, no ！, no 「」, no three-dot ellipsis"
+    },
+    {
+      "name": "width",
+      "result": "pass",
+      "detail": "widest zh-CN string is file_retained at 30 cells (a tooltip line); no sidecar maxCells budget exists for this namespace and no control string exceeds its English equivalent in cells except file_retained, which is shorter"
+    },
+    {
+      "name": "terminology",
+      "result": "pass",
+      "detail": "保存的副本 / 复制路径 / 附件 / 路径已复制 consistent with siblings and the zh-CN style-guide locale calls; Latin runs untouched"
+    },
+    {
+      "name": "meaning and register (all 18)",
+      "result": "pass",
+      "detail": "every zh-CN value preserves the English sense; verdict lines read as facts about the file, not errors about the message; accessibles names stay imperatives; 'too' in file_and_copy_missing is carried by 也 with correct scope"
+    },
+    {
+      "name": "ledger-check",
+      "result": "fail — expected, bookkeeping not copy",
+      "detail": "zh-CN/ui.chat.attachments: stale source_sha256 (ledger 623a1363… vs file 5e99fd05…) and stale target_sha256 (ledger dbc64ff4… vs file 1f4cb98f…); FAILED with 23 findings across 728 entries, the same two rows failing for all 8 locales"
+    }
+  ],
+  "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 0,
+    "NIT": 0
+  },
+  "verdict": "pass",
+  "namespaces": {
+    "ui.chat.attachments": {
+      "status": "passed",
+      "keys_audited": 18,
+      "sha256": {
+        "en": "5e99fd052e7a24dc2715d7de1332b378c1c964f801cdc1c241c7068569de41a0",
+        "target": "1f4cb98f8ef41defc1618ee176c9da7d501f227b726e2b179837f3d8b7fbc4cf"
+      },
+      "findings": []
+    }
+  },
+  "observations": [
+    {
+      "id": "OBS-1",
+      "blocking_before_commit": true,
+      "counted": false,
+      "what": "the ledger rows for ui.chat.attachments still bind the pre-union bytes",
+      "detail": "ledger-check fails for zh-CN and for the other seven locales because the union moved both the English file (623a1363… -> 5e99fd05…) and each target file. Not a copy defect and not counted as a finding: the union is byte-identical for every pre-existing key, so the existing audit still describes every audited value. The rows need rebinding to the union hashes, with this receipt (and its per-locale siblings) standing as the audit for the union file.",
+      "owner": "the commit being prepared"
+    },
+    {
+      "id": "OBS-2",
+      "counted": false,
+      "what": "en sidecar boilerplate on main's entry",
+      "detail": "ui.chat.attachments.file_and_copy_missing carries role 'status' and tone 'Plain, concise product language; preserve placeholders exactly.' where the 17 siblings describe the surface and the constraint ('two-word verdict, sentence case', 'line under the missing verdict ...'). The string has no placeholder, so 'preserve placeholders exactly' is vacuous. English-side metadata, outside this locale's copy audit; worth a tighter note if the sidecar is touched again.",
+      "owner": "the en sidecar owner"
+    }
+  ],
+  "companions": {
+    "diffs.patch": "ddc8492c190ecea9ef1367fbff0befc99a22e2039ec54488aeb037d38e885a9b",
+    "checks.log": "450496e5f1eb08356e155d89bccdb97ac1a9e54796a89066f086b9c7ed3d1df0"
+  },
+  "notes": [
+    "Read route: the sanctioned public-copy reader refused both files with 'differs from HEAD; commit the public copy before auditing it' — correct, since the union is uncommitted in an unmerged worktree. The copy under audit was therefore read from the working tree at the hashes above, and every value quoted here was read directly from those bytes.",
+    "Translated copy read from the working tree, not from a receipt: all 18 zh-CN values were read and judged here.",
+    "Independence: this session did not translate these files and edited neither the repo nor the catalogue; nothing in /Users/damian/lo-literals was modified.",
+    "Corroboration only, not a substitute for reading: the branch-side hashes match records left by earlier audits (r4/r7 zh-CN at 623a1363…/dbc64ff4…), and main's key matches the PR #1452 round-1 zh-CN audit (a29d3b3c…/1f476ef5…)."
+  ]
+}

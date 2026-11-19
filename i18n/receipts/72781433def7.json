@@ -1,0 +1,31 @@
+{
+  "auditor": "independent-translation-reviewer",
+  "model": "openai/gpt-6-astra",
+  "instance": "72781433def7",
+  "status": "passed",
+  "namespace": "ui.teamBridge",
+  "sha256": {
+    "en": "0a082e0ab636531c0454f92aa68134541708ae934c005fe4e27c6e884b431fe5",
+    "fr": "2353fdd4ff5081955c43c02fe2c3de319cfc8029d9f00344bd3de9ffb636e499",
+    "es": "0397e7e85fad33cf327c6ac2519d62a32397229053dde6f74cbeaa5b06dda1fe",
+    "zh-CN": "e4d7fe1f9e91e0f2d15f394f7c8a2fef6efed0ce457f9766df20a40eba955c22",
+    "ru": "341930f1c0b6429e05e29567586ec0e20eac00fab0d0e8c6bc92793bb8610f04",
+    "vi": "0aae7643133ed86074f0961481b18dd8361ef0374874767a1f5cdd05a074fe7f",
+    "ur": "47638fd708e1720f668809246e92fba50af859ed890c2e3928cb26f04cd7e1c0",
+    "hi": "c96c5ab6bb27c6633aebff16f12408ca6ef82b595b894f3dc4fb19e5a9cb3596"
+  },
+  "findings": [],
+  "scope": "Independently audited only added key ui.teamBridge.notify.unavailable in fr, es, zh-CN, ru, vi, ur and hi against EN and supplied notification-click context. All seven translator submissions accepted unchanged. Against published d1e6d3f5, removing the sole added key line reproduces each prior catalogue byte-for-byte (200 existing entries in each of eight catalogues); prior context bytes are likewise unchanged. Existing namespace audits are inherited: published audited ledger rows match base catalogue hashes and their immutable receipt hashes were verified. This is not a fresh linguistic audit of the 200 unchanged entries or a whole-catalogue fresh review.",
+  "base": "d1e6d3f5",
+  "context_sha256": "9520956eaddaecb87ca47a3565b84733874e5c6ba023a022f221898cc17704d1",
+  "translator": {
+    "job": "job8d4e6d78c133",
+    "model": "not supplied"
+  },
+  "newly_audited_keys": [
+    "ui.teamBridge.notify.unavailable"
+  ],
+  "verdict": "clean",
+  "terminal": true,
+  "limitations": "Text-only translation audit and static additive/hash/provenance checks. No rendered RTL/layout validation, executable tests, builds or services. No catalogue or ledger edits."
+}

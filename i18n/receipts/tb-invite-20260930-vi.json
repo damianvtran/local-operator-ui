@@ -1,0 +1,25 @@
+{
+	"auditor": "i18n-auditor",
+	"agent": "i18n-auditor",
+	"model": "kimi/k3.1-pro",
+	"instance": "tb-invite-20260930-vi",
+	"date": "2026-09-30",
+	"status": "passed",
+	"locale": "vi",
+	"namespace": "ui.teamBridge",
+	"sha256": {
+		"en": "c7b1dc752c9f773df7e116be1d121bec0009c33da52bcd5931cc88c41ce9cbe3",
+		"vi": "9e8010699c811a39bc39550400cd44b3cd6e23dff3930493ef26b06e13330374"
+	},
+	"findings": [],
+	"checks": {
+		"key_parity": "283 283 set() set(); ui.teamBridge.members.state.left is absent from vi.",
+		"icu_render": "Parsed and rendered with intl-messageformat from the repository node_modules under locale vi: 0 → Gửi lời mời; 1 → Gửi 1 lời mời; 2 → Gửi 2 lời mời; 5 → Gửi 5 lời mời; 21 → Gửi 21 lời mời.",
+		"cldr_arms": "Required =0 and other are both present. =0 contains no {count}; other contains exactly one {count}. The =0 arm Gửi lời mời exactly matches the previous button label in the diff.",
+		"bidi": "No U+200E/U+200F/U+202A–U+202E bidi controls and no checked zero-width characters anywhere in the locale catalogue.",
+		"apostrophes": "No ASCII apostrophe in any ICU message in the locale catalogue."
+	},
+	"scope": "Independently reviewed the four changed keys in depth: the counted members.add plural, the bridge_unavailable disabled-row reason, and the People and Agents and chiefs of staff group headings. Checked Vietnamese terminology against the existing catalogue; confirmed the People heading denotes human colleagues rather than including agents, and the agents heading uses the established agent and chief-of-staff terms. Ran key parity, ICU parse/render, CLDR arm and placeholder checks, whole-file bidi/zero-width/apostrophe checks, and inspected the git diff: only the two intended heading insertions after members.invite, the intended add and reason modifications, and deletion of state.left occurred. Deliberately did not re-audit the other 279 keys already passed by the previous audit.",
+	"independence": "Auditor wrote none of the audited strings; the translator was a separate subagent. No catalogue or ledger edit by the auditor.",
+	"status_vocabulary_note": "Auditor wrote status 'pass' with an empty findings list; the coordinator normalised the vocabulary to the ledger tool's passed | changes_requested. The verdict is the auditor's."
+}

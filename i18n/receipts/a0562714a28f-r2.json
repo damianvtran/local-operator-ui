@@ -1,0 +1,303 @@
+{
+	"schema": 1,
+	"kind": "translation-audit",
+	"audit_kind": "independent-round-2-audit-of-uncommitted-working-tree-candidates",
+	"batch": "chat-surfaces",
+	"round": 2,
+	"locale": "zh-CN",
+	"audit_date": "2026-10-26",
+	"branch": "i18n-chat-surfaces",
+	"head": "e1ca500e5a",
+	"binding": "The four zh-CN chat-surface catalogues are UNCOMMITTED working-tree candidates. This round-2 audit binds to the sha256 of the bytes on disk under head e1ca500e5a, recomputed and matched against the round-2 manifest before any judgement; a later commit or edit that changes any of these four files voids this receipt.",
+	"instance": "a0562714a28f-r2",
+	"auditor": "i18n-auditor",
+	"session": "a0562714a28f",
+	"team": "lopdev",
+	"model": "radient/auto",
+	"model_provenance": {
+		"route": "radient/auto",
+		"route_source": "Session boot record `selected_model` (selector: radient/auto, boot: radient/auto, effort: auto) in this session's transcript, plus the harness system prompt's `Model: radient/auto`.",
+		"fallback_used": false,
+		"fallback_evidence": "No [model switch] or provider-failure event exists in this session's transcript. The string `model switch` appears only twice and both occurrences are my own quotation of the round-1 receipt's disclosure text (read as tool output), not harness notices.",
+		"actual_model": "radient/auto",
+		"actual_model_source": "Session transcript custom event `selected_model` at boot; no switch notice followed. The served backend model is not independently observable from inside the run, so this receipt reports the declared route and claims no other.",
+		"disclosure": "No fallback is used or claimed. Round 1's descent (radient/auto -> claude-sonnet-5-5 -> gpt-6.1-sol -> deepseek-flash -> deepseek-v4.1-flash) did not recur here; that chain is recorded in the round-1 receipt, not in this one."
+	},
+	"independence": "Independent round-2 audit for zh-CN. This session translated none of these values and wrote no catalogue byte: no key added, dropped or edited, no git write, no build, no test suite. Judgements come from the English source, the en context sidecars, the consuming renderer code (read-only), the current zh-CN catalogues, and the core glossary plus zh-CN style guide. No translation/MT service, API or SDK was used to produce or check any wording, and nothing was back-translated.",
+	"source_dir": "src/i18n/catalogues/en",
+	"target_dir": "src/i18n/catalogues/zh-CN",
+	"references": {
+		"glossary": {
+			"path": "i18n/glossary.md",
+			"repo": "local-operator (core)",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide": {
+			"path": "i18n/style-guides/zh-CN.md",
+			"repo": "local-operator (core)",
+			"sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+		},
+		"contract": {
+			"path": "docs/I18N.md",
+			"repo": "local-operator-ui"
+		},
+		"round1_receipt": {
+			"path": "i18n/receipts/zh-cn-chat-surfaces-audit-8e6e444eddc0.json",
+			"used_for": "resolution check only, after my own read of the bytes"
+		}
+	},
+	"scope": "Round 2 over the CURRENT bytes of the four zh-CN chat-surface namespaces: ui.chat 115 keys, ui.chat.canonical 60, ui.chat.run_details 82, ui.chat.asks 26 = 283 keys, each read against its English source, its en context sidecar entry and the consuming component. The delta since round 1 is four values: ui.chat.canonical supplement.details.attempts and .model (half-width ':' -> full-width '：'), ui.chat.run_details chip.todos_closed (待办已全部取消 -> 待办已全部结束), ui.chat.asks close_asks (关闭请求 -> 关闭请求面板), plus one key the source fix added, ui.chat.run_details.todos.hidden_summary. ui.chat is byte-identical to the round-1 target hash, so it carries no delta; the three changed namespaces were re-read in full, not only at the changed keys.",
+	"method": [
+		"Bound to the bytes first: recomputed sha256 for all four en files and all four zh-CN files from disk and compared them with the round-2 manifest (four zh-CN rows) and the task brief (four en values). All eight matched before any judgement; the recomputation is in execution_log.",
+		"Mechanical, by running the repository's own catalogue gates (generate --check, check-duplicates, check-strings, context-parity) and then verifying independently with a script of my own: key-set equality in both directions, key order identical to the English source, ICU argument names and argument types identical, every select arm identical (agents/teams/other, agents/teams/skills/other), balanced ICU braces, no backtick code spans or Rich/JSX tags added or dropped, JSON parses.",
+		"Plurals against the locale, not against English: Intl.PluralRules('zh-CN').resolvedOptions().pluralCategories is ['other'], so every zh plural carrying only `other` is the guide's mandated shape and not a dropped arm; the new todos.hidden_summary was rendered through the repo's own IntlMessageFormat at 0/1/2/5/1000, and so were the four neighbouring run_details chips.",
+		"Accuracy read against source context: meaning, omissions, additions, negation and polarity (a script listed every source string with a negation and checked the Chinese carries one, and the reverse direction for invented negation), plus safe wording for the destructive and permission-bearing strings (sound.stop.*, monitors/wakes cancel, dismiss.refused, approve/deny answers). The error, provider-error, send-failure, transcript and ask copy that a reader meets when something has gone wrong was read a second time, independently of the first pass.",
+		"Idiom/register against the zh-CN guide: 你 only (0 occurrences of 您), verb-forward terse labels, no 。 on short status words that the source leaves bare, full-width punctuation in prose, …… for ellipsis, no 啦/哦/呀, no ！.",
+		"Terminology against i18n/glossary.md and the shipped zh-CN catalogues for every glossary term these four namespaces actually use: 会话 session, 智能体 agent, 子智能体 subagent, 记录/会话记录 transcript, 唤醒 wake, 监控 monitor, 审批 approvals, 工作区 workspace, 后台任务 job, 运行详情 run details, 待办事项 to-dos, 敏感信息 secret, 凭据 credentials, 授权 grant, plus the kept-Latin runs Local Operator, Radient, Radient Pass, Radient Automatic, MCP, SVG, Enter, Esc, yes/no, Approve/Deny.",
+		"Fit: the only two sidecar width budgets in these four namespaces were counted by cell width (choose_model maxCells 18 -> 8 cells; last_reading maxCells 16 -> 8 cells), and every string was measured for cell width; one short-slot string exceeds 1.8x its English (jobs 4 -> 8 cells, a section header). No pixel or rendered-frame claim is made.",
+		"Adjacent-breakage checks of the kind the remediation could plausibly disturb: label-in-name (the changed close_asks feeds both aria-label and tooltip of one icon button, so no visible/accessible mismatch), joined fragments (error_block before/after pairs, question_dock prefix+body, the composer chip LABEL_SEAM, the new hidden_summary standing alone), client-owned approval words (APPROVAL_OPTIONS prints the Latin Approve/Deny and the typed answers yes/no/1/2, and the zh hints keep exactly those tokens), typography, NFC and manual bidi controls, over all 283 values.",
+		"Round-1 resolution checked last: the round-1 receipt was opened only after my own read, and each of its three findings (one blocker, two minors) was compared with the current bytes. No round-1 finding was declined; all three were fixed in the bytes audited here."
+	],
+	"round1_resolution": [
+		{
+			"id": "ZH-CS-2",
+			"severity_at_round1": "blocker",
+			"namespace": "ui.chat.run_details",
+			"key": "ui.chat.run_details.chip.todos_closed",
+			"round1_text": "待办已全部取消",
+			"current_text": "待办已全部结束",
+			"resolution": "fixed-as-proposed",
+			"check": "Re-read the consumer: run-detail-model.ts todoClause() returns this key when openTodos === 0 and droppedTodos > 0, so at least one item was abandoned but the rest may have been completed. 取消 is this namespace's own word for a dropped item (todos.dropped = ——已取消, the inline settled tag), so the round-1 text claimed every item was cancelled and repeated the dropped tag beside it. 结束 keeps the neutral settled reading and does not collide with 待办已全部解决 (todos_resolved)."
+		},
+		{
+			"id": "ZH-CS-1",
+			"severity_at_round1": "minor",
+			"namespace": "ui.chat.canonical",
+			"key": "ui.chat.canonical.supplement.details.attempts (+ .model)",
+			"round1_text": "尝试次数: {count, number, ::group-off} / 模型: {name}",
+			"current_text": "尝试次数：{count, number, ::group-off} / 模型：{name}",
+			"resolution": "fixed-as-proposed",
+			"check": "Both now use the full-width colon and match the third label of the same details block (来源：{name}) and the shipped ui.agents.models.reading.model_cell (模型：{value}). A punctuation scan over all 283 values finds no half-width colon, comma, semicolon or question mark directly after a CJK character."
+		},
+		{
+			"id": "ZH-CS-3",
+			"severity_at_round1": "minor",
+			"namespace": "ui.chat.asks",
+			"key": "ui.chat.asks.close_asks",
+			"round1_text": "关闭请求",
+			"current_text": "关闭请求面板",
+			"resolution": "fixed-as-proposed",
+			"check": "The drawer's close button now reads one CJK cell apart from the ask's own dismiss heading 关闭此请求 (dismiss.heading) and from the chooser trigger 关闭……; it follows the shipped 关闭审批面板 pattern for the same control class. ask-drawer.tsx:1042-1046 uses this key for both the tooltip and the aria-label of one icon-only button, so the two cannot disagree."
+		}
+	],
+	"validation": {
+		"json_parsed": true,
+		"binding_verified": "8/8 sha256 matched (4 en + 4 zh-CN) before judgement",
+		"keys_read": 283,
+		"keys_match_source": "283/283; every namespace key set equal in both directions; key order identical to en",
+		"placeholder_parity": true,
+		"icu_structure_parity": true,
+		"select_arms_preserved": true,
+		"plural_categories_zh": [
+			"other"
+		],
+		"plural_categories_source": "Intl.PluralRules('zh-CN').resolvedOptions().pluralCategories",
+		"plural_render_checked": "todos.hidden_summary at 0/1/2/5/1000 -> 已隐藏0项 / 已隐藏1项 / 已隐藏2项 / 已隐藏5项 / 已隐藏1000项",
+		"tags_preserved": true,
+		"identical_to_english": 0,
+		"nfc": true,
+		"bidi_controls": 0,
+		"nbsp_or_zero_width": 0,
+		"ascii_ellipsis": 0,
+		"single_mark_ellipsis": 0,
+		"ascii_quotes_in_cjk_prose": 0,
+		"halfwidth_punctuation_after_cjk": 0,
+		"cjk_latin_space_inserted": 0,
+		"nihon_you": 0,
+		"width_hint_overruns": 0,
+		"width_budgeted_keys": 2,
+		"repository_gates_run": [
+			"node scripts/i18n/generate.mjs --check -> exit 0",
+			"node scripts/i18n/check-duplicates.mjs -> exit 0",
+			"node scripts/i18n/check-strings.mjs -> exit 0",
+			"node scripts/i18n/context-parity.mjs -> exit 0"
+		],
+		"rendered_fit": "Not executed. No browser, Electron window or rendered frame was used in this run; widths are codepoint cell counts against the sidecar budgets and the component's own slot, not pixel measurements. No activation or native-speaker sign-off is claimed."
+	},
+	"execution_log": [
+		{
+			"command": "bash capture.sh (node scripts/i18n/generate.mjs --check; check-duplicates; check-strings; context-parity; auditor parity script; auditor typography script)",
+			"exit": 0,
+			"output": "### generate --check\n$ node scripts/i18n/generate.mjs --check\n/Users/damian/local-operator-ui/.worktrees/i18n-chat-surfaces/src/i18n/keys.gen.ts is byte-identical to a fresh generation.\nexit=0\n\n### check-duplicates\n$ node scripts/i18n/check-duplicates.mjs\ncheck-duplicates: ok — 763 file(s) scanned, 0 duplicate key(s)\nexit=0\n\n### check-strings\n$ node scripts/i18n/check-strings.mjs\ncheck-strings.mjs: ok — 1368 file(s) scanned, 262 literal(s) at or below the baseline\nexit=0\n\n### context-parity\n$ node scripts/i18n/context-parity.mjs\ncontext-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json).\nexit=0\n\n### mechanical parity/ICU/typography (auditor script)\n$ node /Users/damian/.local-operator/sessions/a0562714a28f/scratchpad/mech.mjs\n\n=== ui.chat: 115 keys, extra 0, issues 2, identical-en 0\n  PLURAL-CATEGORIES ui.chat.composer.status.loop_progress_turns: en[one,other] zh[other]\n  RICH ui.chat.composer.status.loop_progress_turns: en[{# turn}|{# turns}] zh[{#轮}]\n\n=== ui.chat.canonical: 60 keys, extra 0, issues 0, identical-en 0\n\n=== ui.chat.run_details: 82 keys, extra 0, issues 9, identical-en 0\n  PLURAL-CATEGORIES ui.chat.run_details.chip.attention: en[one,other] zh[other]\n  RICH ui.chat.run_details.chip.attention: en[{# needs attention}|{# need attention}] zh[{#项需要处理}]\n  PLURAL-CATEGORIES ui.chat.run_details.chip.mcp_attention: en[one,other] zh[other]\n  RICH ui.chat.run_details.chip.mcp_attention: en[{# MCP server needs attention}|{# MCP servers need attention}] zh[{#个MCP服务器需要处理}]\n  PLURAL-CATEGORIES ui.chat.run_details.chip.subagents_failed: en[one,other] zh[other]\n  RICH ui.chat.run_details.chip.subagents_failed: en[{# subagent failed}|{# subagents failed}] zh[{#个子智能体失败}]\n  PLURAL-CATEGORIES ui.chat.run_details.chip.todos_open: en[one,other] zh[other]\n  RICH ui.chat.run_details.chip.todos_open: en[{# to-do open}|{# to-dos open}] zh[{#项待办未完成}]\n  PLURAL-CATEGORIES ui.chat.run_details.todos.hidden_summary: en[one,other] zh[other]\n\n=== ui.chat.asks: 26 keys, extra 0, issues 2, identical-en 0\n  PLURAL-CATEGORIES ui.chat.asks.context.messages_since: en[one,other] zh[other]\n  RICH ui.chat.asks.context.messages_since: en[{# message from you since this was asked}|{# messages from you since this was asked}] zh[]\n\nTOTAL: 283 | locale pluralCategories: other\nexit=0\n\n### typography scan (auditor script)\n$ node /Users/damian/.local-operator/sessions/a0562714a28f/scratchpad/typo.mjs\nvalues scanned: 283\nWIDE(255) ui.chat.hub_update.update_all_label\nWIDE(143) ui.chat.error_block.schema.after\n\nissue lines: 2\nexit=0",
+			"reading_note": "This is actual captured output, not a note. Two classes of line in the auditor parity script are EXPECTED and are not defects: (1) the six PLURAL-CATEGORIES lines are English one/other against zh `other`, which is exactly what the zh-CN guide mandates ('other only - Chinese has no plural agreement; never add one/other branches'); (2) the RICH lines come from my own extractor treating the plural `#` placeholder as markup - it is the ICU number placeholder, not a Rich tag. The typography scan's two WIDE lines are long sentences with no budget, not overruns."
+		},
+		{
+			"command": "node r2_check.mjs (hash recomputation, then IntlMessageFormat renders)",
+			"exit": 0,
+			"output": "ui.chat target=67b4b59a6ef55a99cd9a2aa9b56407a0ffdb05542ff6184620e4a193ed51316a MATCH  en=6b6e21835462fccbbdbea4cfcca132344595bf3f14804018de64dbe8d9fbacf0 MATCH\nui.chat.canonical target=2a7ae7a84372c96701069055ab624ef491fab7565d27246b3e3ad57809e94ee8 MATCH  en=5a6a30405053c7319b902315bb0a1b38ce1cbd6443ad2d988132d4cbfcb8f2ce MATCH\nui.chat.run_details target=23389e87f6e8908bfe59b1bff4e47fea195d89658a1fb4a95fe90153b6cf5f44 MATCH  en=288ba883ed0c25851fa2025ea9a23ff98bcb7f59724ab5bbb2ed5b212ed85b51 MATCH\nui.chat.asks target=1454fe351a52d1ecccca08a27cc4f7b9d95cf4b0569ca4a51efcbfacf16fdc52 MATCH  en=6c42d235f1e326fc0cc0fea91668307d4e551585eef33b5fe1c2173efc2bc9fd MATCH\nbinding: all eight hashes match the round-2 manifest and the task brief\ntodos.hidden_summary bytes: {count, plural, other {已隐藏{count, number, ::group-off}项}}\nIntl.PluralRules('zh-CN').resolvedOptions().pluralCategories = [\"other\"]\n  count=0 category=other renders: 已隐藏0项\n  count=1 category=other renders: 已隐藏1项\n  count=2 category=other renders: 已隐藏2项\n  count=5 category=other renders: 已隐藏5项\n  count=1000 category=other renders: 已隐藏1000项\nui.chat.run_details.chip.todos_open: 0=0项待办未完成 | 1=1项待办未完成 | 2=2项待办未完成 | 5=5项待办未完成 | 1000=1,000项待办未完成\nui.chat.run_details.chip.attention: 0=0项需要处理 | 1=1项需要处理 | 2=2项需要处理 | 5=5项需要处理 | 1000=1,000项需要处理\nui.chat.run_details.chip.mcp_attention: 0=0个MCP服务器需要处理 | 1=1个MCP服务器需要处理 | 2=2个MCP服务器需要处理 | 5=5个MCP服务器需要处理 | 1000=1,000个MCP服务器需要处理\nui.chat.run_details.chip.subagents_failed: 0=0个子智能体失败 | 1=1个子智能体失败 | 2=2个子智能体失败 | 5=5个子智能体失败 | 1000=1,000个子智能体失败",
+			"reading_note": "Actual captured output. The hash lines are the binding check the brief required; the render lines exercise the new key and its four neighbour chips in the same component."
+		}
+	],
+	"input_hashes": {
+		"en": [
+			{
+				"path": "src/i18n/catalogues/en/ui.chat.json",
+				"sha256": "6b6e21835462fccbbdbea4cfcca132344595bf3f14804018de64dbe8d9fbacf0"
+			},
+			{
+				"path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+				"sha256": "5a6a30405053c7319b902315bb0a1b38ce1cbd6443ad2d988132d4cbfcb8f2ce"
+			},
+			{
+				"path": "src/i18n/catalogues/en/ui.chat.run_details.json",
+				"sha256": "288ba883ed0c25851fa2025ea9a23ff98bcb7f59724ab5bbb2ed5b212ed85b51"
+			},
+			{
+				"path": "src/i18n/catalogues/en/ui.chat.asks.json",
+				"sha256": "6c42d235f1e326fc0cc0fea91668307d4e551585eef33b5fe1c2173efc2bc9fd"
+			}
+		],
+		"context": [
+			{
+				"path": "src/i18n/catalogues/en/ui.chat.context.json",
+				"sha256": "da5c303c014c469c6096e6ef2e43b993f3ec2b9430ed6ec97498fc457f494372"
+			},
+			{
+				"path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+				"sha256": "f075f08f152c9484f7dd9790a3b60a3c6c82086d3d9361717afa2188f0773a04"
+			},
+			{
+				"path": "src/i18n/catalogues/en/ui.chat.run_details.context.json",
+				"sha256": "0f03657304a71236fe9d2bb350a1688dcfd2499624b5d908d80bc2775681a919"
+			},
+			{
+				"path": "src/i18n/catalogues/en/ui.chat.asks.context.json",
+				"sha256": "9e137d7e8f6227827196c244a9550520cd5ee412ffeaef615a7e33bf0193903c"
+			}
+		],
+		"target": [
+			{
+				"path": "src/i18n/catalogues/zh-CN/ui.chat.json",
+				"sha256": "67b4b59a6ef55a99cd9a2aa9b56407a0ffdb05542ff6184620e4a193ed51316a"
+			},
+			{
+				"path": "src/i18n/catalogues/zh-CN/ui.chat.canonical.json",
+				"sha256": "2a7ae7a84372c96701069055ab624ef491fab7565d27246b3e3ad57809e94ee8"
+			},
+			{
+				"path": "src/i18n/catalogues/zh-CN/ui.chat.run_details.json",
+				"sha256": "23389e87f6e8908bfe59b1bff4e47fea195d89658a1fb4a95fe90153b6cf5f44"
+			},
+			{
+				"path": "src/i18n/catalogues/zh-CN/ui.chat.asks.json",
+				"sha256": "1454fe351a52d1ecccca08a27cc4f7b9d95cf4b0569ca4a51efcbfacf16fdc52"
+			}
+		]
+	},
+	"artifacts": {
+		"record": "this file (i18n/receipts/zh-cn-chat-surfaces-audit-r2-a0562714a28f.json) - the round-2 brief allows exactly one written file, so no companion record.json or receipt.json was created under i18n/audits/evidence/",
+		"hashes_note": "The receipt cannot hash itself; its sha256 is reported to the requesting session and is what the ledger row's receipt_sha256 must carry once the coordinator derives it.",
+		"round_1_bundle": "i18n/audits/evidence/zh-CN/{ui.chat,ui.chat.canonical,ui.chat.run_details,ui.chat.asks}/cs-20261025/record.json (unchanged by this round)"
+	},
+	"namespaces": {
+		"ui.chat": {
+			"namespace": "ui.chat",
+			"keys": 115,
+			"keys_new_in_wave_vs_head": 71,
+			"sha256": {
+				"en": "6b6e21835462fccbbdbea4cfcca132344595bf3f14804018de64dbe8d9fbacf0",
+				"zh-CN": "67b4b59a6ef55a99cd9a2aa9b56407a0ffdb05542ff6184620e4a193ed51316a"
+			},
+			"context_sha256": "da5c303c014c469c6096e6ef2e43b993f3ec2b9430ed6ec97498fc457f494372",
+			"severity_counts": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"status": "passed",
+			"result": "clean",
+			"findings": []
+		},
+		"ui.chat.canonical": {
+			"namespace": "ui.chat.canonical",
+			"keys": 60,
+			"keys_new_in_wave_vs_head": 13,
+			"sha256": {
+				"en": "5a6a30405053c7319b902315bb0a1b38ce1cbd6443ad2d988132d4cbfcb8f2ce",
+				"zh-CN": "2a7ae7a84372c96701069055ab624ef491fab7565d27246b3e3ad57809e94ee8"
+			},
+			"context_sha256": "f075f08f152c9484f7dd9790a3b60a3c6c82086d3d9361717afa2188f0773a04",
+			"severity_counts": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"status": "passed",
+			"result": "clean",
+			"findings": []
+		},
+		"ui.chat.run_details": {
+			"namespace": "ui.chat.run_details",
+			"keys": 82,
+			"keys_new_in_wave_vs_head": 80,
+			"sha256": {
+				"en": "288ba883ed0c25851fa2025ea9a23ff98bcb7f59724ab5bbb2ed5b212ed85b51",
+				"zh-CN": "23389e87f6e8908bfe59b1bff4e47fea195d89658a1fb4a95fe90153b6cf5f44"
+			},
+			"context_sha256": "0f03657304a71236fe9d2bb350a1688dcfd2499624b5d908d80bc2775681a919",
+			"severity_counts": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"status": "passed",
+			"result": "clean",
+			"findings": []
+		},
+		"ui.chat.asks": {
+			"namespace": "ui.chat.asks",
+			"keys": 26,
+			"keys_new_in_wave_vs_head": 14,
+			"sha256": {
+				"en": "6c42d235f1e326fc0cc0fea91668307d4e551585eef33b5fe1c2173efc2bc9fd",
+				"zh-CN": "1454fe351a52d1ecccca08a27cc4f7b9d95cf4b0569ca4a51efcbfacf16fdc52"
+			},
+			"context_sha256": "9e137d7e8f6227827196c244a9550520cd5ee412ffeaef615a7e33bf0193903c",
+			"severity_counts": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"status": "passed",
+			"result": "clean",
+			"findings": []
+		}
+	},
+	"findings": [],
+	"findings_note": "findings is explicitly empty at the root because each namespace block carries its own (also empty) findings array, which is what attribution and severity counting use. Totals over the current bytes: blocker 0, major 0, minor 0, nit 0; this round adds no new gating or non-gating finding. Round 1's three findings are resolved in these bytes and are recorded under round1_resolution rather than as open findings.",
+	"totals": {
+		"keys_read": 283,
+		"keys_new_in_wave_vs_head": 178,
+		"keys_added_since_round_1": 1,
+		"namespaces": 4,
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 0,
+		"namespaces_passed": 4,
+		"namespaces_changes_requested": 0,
+		"round1_findings_resolved": 3,
+		"round1_findings_declined": 0
+	},
+	"observations_not_findings": [
+		"PRE-EXISTING and unchanged, declined or carried by round 1 rather than actioned; recorded here so the next wave can decide: ui.chat.canonical.sound.stop.warning renders EN 'The provider has no cancellation endpoint.' as 提供商没有取消接口。 The glossary's wave-2 kept-English set keeps `endpoint` Latin in every locale, while shipped zh-CN has both 接口 (here) and 端点 (ui.agentMessages.settings.consent.no_record). Real, small, and outside this round's remediation scope; the rephrase that avoids the term entirely is 提供商无法取消生成。生成仍会继续，若产出音频则会计费。系统只能尽力停止，不保证取消成功或免于计费。",
+		"PRE-EXISTING and unchanged: ui.chat.canonical.supplement.file_actions.open_in_canvas renders as 在Canvas中打开 while every other shipped zh-CN string naming that pane says 画布 (画布视图, 打开画布, 在画布中打开文档). One Latin sibling survives (ui.common.file_actions.show_in_canvas -> 在Canvas中显示), so the family is the pane owner's call, not this round's.",
+		"CODE-OWNED typography, not catalogue defects: (a) the error_block family joins `{before} {link}{' '}{after}` with literal JSX spaces, so zh readers see an ASCII space on each side of the Latin link label; (b) LABEL_SEAM is ' — ' (U+2014 with ASCII spaces), so every composer chip renders 在运行详情中打开计划 — 3项待办未完成 with Western dash spacing instead of the zh —— with no spaces; (c) provider_error.headline.out_of_credits places {status} after 额度已用尽, and that argument arrives carrying its own leading ASCII space before ' (HTTP 402)'. Nothing in the catalogue can remove punctuation the component or the wire inserts.",
+		"CONSIDERED AND ACCEPTED on the second pass, not findings: ui.chat.asks.dismiss.moot.note reads 无需继续等待 for EN 'stop waiting on it', whose sidecar says the actor is the agent and never a second-person address to the operator - the Chinese is subjectless rather than second-person and states the consequence the button produces, so it does not invert the actor. ui.chat.question_dock.secret_answer_label names the secret-answer form 填写敏感信息, a verb phrase where the sidecar asks for a noun phrase; it is understandable in place and was cleared in round 1, so it is not reopened here.",
+		"Widths: the new todos.hidden_summary uses ICU ::group-off on purpose (sidecar says a bare # would group 1000 as 1,000), which is why it renders 已隐藏1000项 while the header sibling ui.chat.run_details.todos.hidden, whose count is pre-formatted by formatNumber in run-detail-todos.tsx:290, renders 已隐藏1,234项. The mismatch is inherited from the English pair (1000 hidden vs 1,234 hidden) and is not a translation defect."
+	]
+}

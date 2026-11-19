@@ -1,0 +1,134 @@
+{
+  "schema": 1,
+  "kind": "translation-audit-receipt",
+  "audit_kind": "current-byte-rebind",
+  "locale": "ur",
+  "locale_name": "Urdu",
+  "namespace": "ui.chat.sidebar",
+  "pr": 1403,
+  "branch": "feat/i18n-key-remaining-copy",
+  "head": "0adbb37b9429e2c70cbe64ea149cb091432c8dd6",
+  "merge": "ab9bd739c21ebc24c22b9d4fb25ce78a43c4fede",
+  "merge_parents": {
+    "branch": "d784571d9017c2958a80c51808b2ace64e3f76ba",
+    "main": "91aa8f5f10797184d01c41143d1a3645176b566b"
+  },
+  "date": "2026-10-25",
+  "auditor": {
+    "agent": "translation-auditor",
+    "harness": "Local Operator",
+    "team": "lopdev",
+    "session": "99a1b4247dd3",
+    "instance": "ur-bind-a8f887acc20d",
+    "model": "deepseek/deepseek-flash",
+    "model_provenance": "Harness session model tag deepseek/deepseek-flash; no fallback was observed or reported and no role or default pin was changed. No other model is claimed.",
+    "independence": "Independent auditor: this session authored no catalogue, ledger, allowance or code change for PR #1403 and made no commit. It read the bytes from git objects at the recorded head, wrote only this receipt, and edited no catalogue, ledger or existing receipt. Different session from both the translator and the prior auditor of this namespace.",
+    "date": "2026-10-25"
+  },
+  "instance": "ur-bind-a8f887acc20d",
+  "model": "deepseek/deepseek-flash",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": [
+    {
+      "severity": "minor",
+      "key": "ui.chat.sidebar.catalogue.total",
+      "current": "{total, number, ::group-off} چیٹس میں سے {shown, number, ::group-off} دکھائی جا رہی ہیں",
+      "proposed": "{total, plural, one {{total, number, ::group-off} چیٹ} other {{total, number, ::group-off} چیٹس}} میں سے {shown, plural, one {{shown, number, ::group-off} دکھائی جا رہی ہے} other {{shown, number, ::group-off} دکھائی جا رہی ہیں}}",
+      "rendered_at_one": {
+        "shown": 1,
+        "total": 1,
+        "output": "1 چیٹس میں سے 1 دکھائی جا رہی ہیں"
+      },
+      "reason": "The 1-count agreement is wrong in both places: total=1 renders the plural noun 'چیٹس' and shown=1 renders the plural verb 'دکھائی جا رہی ہیں'. The one-row result is a real state (sidebar-scope-paging.ts documents 'Showing 1 match of 120 chats'), and the UR CLDR categories are one/other. The two search variants render the denominator the same way and need the same one/other arm on total; their shown clause already pluralises correctly.",
+      "related_keys": [
+        "ui.chat.sidebar.catalogue.total_search",
+        "ui.chat.sidebar.catalogue.total_search_clipped"
+      ]
+    }
+  ],
+  "findings_count": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+  },
+  "observations": [
+    "Merged bytes are byte-identical to the branch parent d784571d90; six keys are new versus main (agents.builtin_offer, catalogue.total, catalogue.total_search, catalogue.total_search_clipped, groups.badge, section.current_chat). Key order equals English.",
+    "groups.badge: English uses # in both arms; Urdu uses an explicit {badge, number, ::group-off} in each arm. Rendered 0/1/2/1000 -> '0 چیٹس' / '1 چیٹ' / '2 چیٹس' / '1000 چیٹس'. The 1-count agreement is correct; ungrouped formatting matches the file's counters.",
+    "agents.builtin_offer: rendered count 0/1/2/6/7; spelled arms through six and a digit in other, matching the context contract; the one arm uses singular 'ایجنٹ … ہے' and 'اس میں', the plural arms 'ایجنٹس … ہیں' and 'ان میں'."
+  ],
+  "sha256": {
+    "en": "ef1e1be1e56216cbace31a229d20979c2fc00fb43d15559a93605e33e900b171",
+    "ur": "a8f887acc20d6048affe143677c0c5be993a3c3494e4c500dd59caaceb6f676e"
+  },
+  "context_sha256": "0a5a1fc27e8d0cab8dfe9b086144a19969268403afded5a7a68036eaf5485339",
+  "reference": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/ur.md",
+      "sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+    }
+  },
+  "supersedes": {
+    "recorded_source_sha256": "b20a2e81d766857b5694b4f20333254e9c599b700b138e7312082bcec0270be5",
+    "recorded_target_sha256": "b0f865f4a7dbbb405a2fcdfa1676659ed6544ce33f9396002836bff1faeaf19c",
+    "auditor_instance": "ur-extract-d082bd9595-r2",
+    "receipt": "i18n/receipts/ur-extract-d082bd9595-r2.json",
+    "why": "The merged bytes no longer match the recorded pair; this receipt names the current bytes so ledger-assemble can move the old audit to superseded and bind the new one."
+  },
+  "scope": "All 49 keys at the merged bytes, read against the English source and the en context sidecar. The merged ur file is byte-identical to branch parent d784571d90 and adds six keys versus main.",
+  "method": "Manual side-by-side read of every ur value against its en value and context; mechanical checks: key parity both directions and key order, ICU parse and normalised placeholder/select/plural/skeleton comparison with @formatjs, bidi-control and punctuation scan, byte hashes from git objects, and for the sidebar rendered outputs at counts 0/1/2/1000 with intl-messageformat. For the viewer, per-key union provenance against both merge parents.",
+  "checks": {
+    "keys_read": 49,
+    "key_parity": {
+      "missing_vs_english": [],
+      "extra_vs_english": [],
+      "key_set_equals_english": true,
+      "key_order_equals_english": true
+    },
+    "icu": {
+      "messages_parsed_both_locales": 98,
+      "parser": "@formatjs/icu-messageformat-parser 3.5.21",
+      "placeholders_and_arms_preserved": true,
+      "keys_with_mismatch": 0,
+      "mismatches": [],
+      "exceptions": [
+        "ui.chat.sidebar.groups.badge: en uses # in both plural arms; ur uses an explicit {badge, number, ::group-off} in each arm. Same value and arm structure; the number formatting is deliberately ungrouped and matches the file's counters."
+      ],
+      "ur_plural_categories": "one/other",
+      "skeletons_preserved": true,
+      "note": "Normalised comparison: an en # inside a plural arm and an ur {arg, number, ::group-off} of that plural's own argument are the same value; the only such substitution is groups.badge. Executed with @formatjs/icu-messageformat-parser 3.5.21; output recorded in this receipt."
+    },
+    "rtl": {
+      "manual_bidi_controls": 0,
+      "ascii_exclamation_question_semicolon_danda": 0,
+      "ellipsis_u2026": true
+    },
+    "bytes": {
+      "branch_parent_byte_identical": true,
+      "branch_parent": "d784571d9017c2958a80c51808b2ace64e3f76ba"
+    },
+    "renders": {
+      "groups.badge": {
+        "0": "0 چیٹس",
+        "1": "1 چیٹ",
+        "2": "2 چیٹس",
+        "1000": "1000 چیٹس"
+      },
+      "catalogue.total": {
+        "shown=1,total=1": "1 چیٹس میں سے 1 دکھائی جا رہی ہیں",
+        "shown=1,total=2": "2 چیٹس میں سے 1 دکھائی جا رہی ہیں",
+        "shown=2,total=5": "5 چیٹس میں سے 2 دکھائی جا رہی ہیں"
+      },
+      "catalogue.total_search": {
+        "shown=1,total=1": "1 چیٹس میں سے 1 نتیجہ دکھایا جا رہا ہے",
+        "shown=2,total=5": "5 چیٹس میں سے 2 نتائج دکھائے جا رہے ہیں"
+      },
+      "engine": "intl-messageformat 12.1.3, locale ur"
+    }
+  }
+}

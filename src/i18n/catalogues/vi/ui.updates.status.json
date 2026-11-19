@@ -1,0 +1,5 @@
+{
+	"ui.updates.status.dev_mode.app": "Ứng dụng đang chạy ở chế độ phát triển. Tính năng cập nhật bị tắt.",
+	"ui.updates.status.dev_mode.backend": "Cập nhật backend bị tắt ở chế độ phát triển.",
+	"ui.updates.status.up_to_date": "Ứng dụng và máy chủ đã được cập nhật"
+}

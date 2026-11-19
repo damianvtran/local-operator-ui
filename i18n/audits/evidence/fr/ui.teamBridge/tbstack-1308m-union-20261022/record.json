@@ -1,0 +1,198 @@
+{
+ "audit_id": "tbstack-r1-1308m-fr",
+ "date": "2026-10-22",
+ "locale": "fr",
+ "namespace": "ui.teamBridge",
+ "source_commit": "2908b0a9f1ad0c7be87553cd2c12b20008ad0c31",
+ "merge_parents": [
+  "2156430ae280ba2e368db32a51242927c72057fb",
+  "3269107dbd8582ab07a6fddba55b271ad0a6c076"
+ ],
+ "status": "passed",
+ "result": "clean",
+ "keys_read": 144,
+ "keys_substantive": 4,
+ "auditors": [
+  {
+   "agent": "translation-auditor",
+   "model": "openai/gpt-6.1-sol",
+   "session": "5cbc583203b9",
+   "job": "163c5616675a",
+   "instance": "tbstack-r1-1308m-fr"
+  }
+ ],
+ "model_note": "Session began on anthropic/claude-opus-5-5 for required skill reading; announced quota fallback to openai/gpt-6.1-sol before repository-contract and catalogue audit work. All linguistic review, comparisons, ICU validation and artifacts in this pass used openai/gpt-6.1-sol.",
+ "independence": "Independent translation-auditor child audit-stackm-fr-es-vi; produced none of the reviewed copy. Read Git objects only; no repository edits, builds, tests, installs, worktrees or pushes. Pure receipt derivation and catalogue parsing are validation, not app test/render evidence.",
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+   "sha256": "f9d6aa7afa46fd6b877e5fe1b3e8a276657445bf929f237a51b0726f6860d214"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/fr/ui.teamBridge.json",
+   "sha256": "07241a949b415cc7f3175a7d6a07302fe4349d9f46f513b022d232364df2de99"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+   "sha256": "be847e5b61705864af0972446332cbed327f98f2d7f591c4a4de0d86f39e6f7b"
+  }
+ },
+ "references": {
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/fr.md",
+   "sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+  },
+  "contract": {
+   "path": "docs/I18N.md",
+   "ref": "origin/main",
+   "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+  }
+ },
+ "union_integrity": {
+  "own": 140,
+  "integrated": 123,
+  "shared": 119,
+  "own_only": 21,
+  "integrated_only": 4,
+  "head": 144,
+  "dropped": 0,
+  "altered": 0,
+  "conflicts": 0,
+  "extra": 0
+ },
+ "inherited_chain_verification": [
+  {
+   "path": "i18n/receipts/tbstack-r1-1308-fr.json",
+   "located_at": "/Users/damian/workspace/tb-i18n-audit/tb-reactions/i18n/receipts/tbstack-r1-1308-fr.json",
+   "receipt_sha256": "c0b37604af9d439f1d7fcfebe56850ce4d3204b55667bffa670f4110ef07cd1b",
+   "snapshot": "36b7a7ad880156fd104be82fed6df61914d02c4b",
+   "instance": "tbstack-r1-1308-fr",
+   "keys_inherited": 140,
+   "verified_source_target": true
+  },
+  {
+   "path": "i18n/receipts/tbstack-r1-1304-fr.json",
+   "located_at": "3269107dbd8582ab07a6fddba55b271ad0a6c076:i18n/receipts/tbstack-r1-1304-fr.json",
+   "receipt_sha256": "e9012773034610692c7afcadcb52aac24eb376308877070bca4a37186d03718d",
+   "snapshot": "b5b80ea4b44754b9f0fd482b0d7f920a8127889e",
+   "instance": "tbstack-r1-1304-fr",
+   "keys_inherited": 119,
+   "verified_source_target": true
+  },
+  {
+   "path": "i18n/receipts/tbstack-r1-1298-fr.json",
+   "located_at": "3269107dbd8582ab07a6fddba55b271ad0a6c076:i18n/receipts/tbstack-r1-1298-fr.json",
+   "receipt_sha256": "c7939a354a53840baf015aa629bdb68cef5b4da09a12e44799c8b42a32a0bd6c",
+   "snapshot": "dbe16bcd4a91c1a7f65f220ffb8be9b76e4ee4e3",
+   "instance": "tbstack-r1-1298-fr",
+   "keys_inherited": 4,
+   "verified_source_target": true
+  }
+ ],
+ "findings": [],
+ "retained_rounds": [
+  {
+   "path": "i18n/receipts/tbstack-r1-1308m-fr.json",
+   "sha256": "6a2ba6b1d0d87033fbc15155ace22c2a571bb07b47fd427d1909b049260906dc"
+  }
+ ],
+ "deriveReceiptAudit": {
+  "module_commit": "2908b0a9f1ad0c7be87553cd2c12b20008ad0c31",
+  "module_path": "scripts/i18n/ledger-rules.mjs",
+  "module_sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6",
+  "execution": "Imported exact git-show module bytes via in-memory data URL; called pure deriveReceiptAudit with actual source/target catalogue SHA-256; exit 0. No assembler write was executed.",
+  "derived": {
+   "agent": "translation-auditor",
+   "instance": "tbstack-r1-1308m-fr",
+   "model": "openai/gpt-6.1-sol",
+   "result": "clean",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "source_sha256": "f9d6aa7afa46fd6b877e5fe1b3e8a276657445bf929f237a51b0726f6860d214",
+   "target_sha256": "07241a949b415cc7f3175a7d6a07302fe4349d9f46f513b022d232364df2de99",
+   "receipt_sha256": "6a2ba6b1d0d87033fbc15155ace22c2a571bb07b47fd427d1909b049260906dc"
+  }
+ },
+ "substantive_assessment": {
+  "banner": "channel preserves literal # and channel; subtitle preserves place · organization in that order. count and count_preview accurately describe new messages, never who sent them; count remains rendered in every plural arm, and preview remains verbatim and last. French colon uses narrow no-break space; Spanish and Vietnamese colon spacing is idiomatic. fr/es one/many/other, vi other-only.",
+  "terminology": "Notifications agree with message/messages elsewhere: fr message(s), es mensaje(s), vi tin nhắn. Thread/reply vocabulary remains fr fil/réponse, es hilo/respuesta, vi luồng/câu trả lời; #1308 reactions remain fr réaction/émoji, es reacción/emoji, vi cảm xúc/biểu tượng cảm xúc. Scheduling remains fr planification/planifier, es programación/programar, vi lịch/lên lịch. #1314 image attachment terminology remains fr image, es imagen, vi hình ảnh. Features absent at a particular head are not being claimed present.",
+  "register": "vous in instructional copy; impersonal compact banners introduce no address-form mismatch.",
+  "width": "No fixed pixel budget or rendered measurements claimed. New banner fragments are short and natural; count_preview leaves preview last so OS truncation does not consume the count first. Context permits 2–4 words for the count (French many is four with de). Rendered fit remains unverified.",
+  "rtl": "Not applicable for fr/es/vi; values are NFC and contain no bidi controls."
+ },
+ "limitations": [
+  "Catalogue-only union audit; no builds/tests/installs/browser/render/activation/release evidence.",
+  "Unchanged inherited feature values were read for context and traceability, not claimed as a fresh full linguistic re-audit.",
+  "Prior rejected nits remain recorded where still present; prior MR-comment disposition supplied by task, not independently fetched."
+ ],
+ "inherited_receipts": [
+  {
+   "parent": "2156430ae280ba2e368db32a51242927c72057fb",
+   "path": "i18n/receipts/tbstack-r2-1308-fr.json",
+   "sha256": "f6a7fbc96e5855aabe2031bd3913e67fe6ae7b814c2abf0183fba09f2c65a5be",
+   "instance": "tbstack-r2-1308-fr",
+   "result": "clean",
+   "keys_verified_unchanged": 140,
+   "source_sha256": "f940f0c6b7bd896e49c691c1afa4cdb21a0c7dcf8179b81e3c9071503f168448",
+   "target_sha256": "607c19eb57e813e849639bbe93f19583d5580a83e9a5d9c1d0376dacf2cee515",
+   "context_sha256": "2c60cbbbf0164f2a888809eeb8e3eddb11dc6c8bf9bbb2176b3687542acb4843"
+  },
+  {
+   "parent": "3269107dbd8582ab07a6fddba55b271ad0a6c076",
+   "path": "i18n/receipts/tbstack-r1-1304m-fr.json",
+   "sha256": "96946ca7fea27373abbc8c43470f78c8d7deb509f54e5213d6bee43b5c7d6442",
+   "instance": "tbstack-r1-1304m-fr",
+   "result": "clean",
+   "keys_verified_unchanged": 123,
+   "source_sha256": "281cb8adcc75e5bb4fcebf5c9112ab260bcf8ed2fbcf6bbcd6d04bfc3cfff41c",
+   "target_sha256": "00f25eaca02107324037d83ead2c21144298d4cb704c31efb86e5cade2ea69a5",
+   "context_sha256": "f5cf60d75f5e8b8ecc378174bc9f9e5e158b14afb80cda504e1b61e921b5cafd"
+  }
+ ],
+ "union_integrity_by_file": {
+  "en": {
+   "own": 140,
+   "integrated": 123,
+   "shared": 119,
+   "own_only": 21,
+   "integrated_only": 4,
+   "head": 144,
+   "dropped": 0,
+   "altered": 0,
+   "conflicts": 0,
+   "extra": 0
+  },
+  "fr": {
+   "own": 140,
+   "integrated": 123,
+   "shared": 119,
+   "own_only": 21,
+   "integrated_only": 4,
+   "head": 144,
+   "dropped": 0,
+   "altered": 0,
+   "conflicts": 0,
+   "extra": 0
+  },
+  "context": {
+   "own": 140,
+   "integrated": 123,
+   "shared": 119,
+   "own_only": 21,
+   "integrated_only": 4,
+   "head": 144,
+   "dropped": 0,
+   "altered": 0,
+   "conflicts": 0,
+   "extra": 0
+  }
+ }
+}

@@ -1,0 +1,105 @@
+{
+  "schema": 1,
+  "head": "59d88d72dbc5577deca43ce4528654e9b965febd",
+  "scope": "Two fileCard keys; static independent linguistic audit with inherited unchanged namespace coverage. NOT runtime/rendered evidence.",
+  "records": [
+    {
+      "locale": "es",
+      "namespace": "ui.teamBridge",
+      "receipt": "i18n/receipts/f93eb129057e-u1-es.json",
+      "receipt_sha256": "22bf197426ac053a87d1d716dd58eb1d2b95a89e7077b8db0f5e20dd7f2b3814",
+      "record": "i18n/audits/evidence/es/ui.teamBridge/f93eb129057e-u1-es/record.json",
+      "record_sha256": "22bf197426ac053a87d1d716dd58eb1d2b95a89e7077b8db0f5e20dd7f2b3814",
+      "companions": [
+        {
+          "path": "i18n/audits/evidence/es/ui.teamBridge/f93eb129057e-u1-es/notes.json",
+          "sha256": "7df9337719a2df287eaabd893a0eee8394cf1d07995fbccc4d42c3b1e07d0463"
+        }
+      ]
+    },
+    {
+      "locale": "fr",
+      "namespace": "ui.teamBridge",
+      "receipt": "i18n/receipts/f93eb129057e-u1-fr.json",
+      "receipt_sha256": "68918cc0458c574dd6f973c196dfc1a2e4c69d3311714e2898b24197b6afde58",
+      "record": "i18n/audits/evidence/fr/ui.teamBridge/f93eb129057e-u1-fr/record.json",
+      "record_sha256": "68918cc0458c574dd6f973c196dfc1a2e4c69d3311714e2898b24197b6afde58",
+      "companions": [
+        {
+          "path": "i18n/audits/evidence/fr/ui.teamBridge/f93eb129057e-u1-fr/notes.json",
+          "sha256": "c8aa74085ea160bae414fadebeed2f0b2ca957f777246fbe8383b099fc28b687"
+        }
+      ]
+    },
+    {
+      "locale": "hi",
+      "namespace": "ui.teamBridge",
+      "receipt": "i18n/receipts/f93eb129057e-u1-hi.json",
+      "receipt_sha256": "c0788d5e2117b5d424258aee42a38674e62bd6c8a3bbd16e42a793d51350f47f",
+      "record": "i18n/audits/evidence/hi/ui.teamBridge/f93eb129057e-u1-hi/record.json",
+      "record_sha256": "c0788d5e2117b5d424258aee42a38674e62bd6c8a3bbd16e42a793d51350f47f",
+      "companions": [
+        {
+          "path": "i18n/audits/evidence/hi/ui.teamBridge/f93eb129057e-u1-hi/notes.json",
+          "sha256": "c5bc56b39a598faa34f46896d7525bc02dc753231fc5e2d46508ec1519940865"
+        }
+      ]
+    },
+    {
+      "locale": "ru",
+      "namespace": "ui.teamBridge",
+      "receipt": "i18n/receipts/f93eb129057e-u1-ru.json",
+      "receipt_sha256": "e3151712cb2989574630823d245f78bb629072bc9f6679275671815d3b444675",
+      "record": "i18n/audits/evidence/ru/ui.teamBridge/f93eb129057e-u1-ru/record.json",
+      "record_sha256": "e3151712cb2989574630823d245f78bb629072bc9f6679275671815d3b444675",
+      "companions": [
+        {
+          "path": "i18n/audits/evidence/ru/ui.teamBridge/f93eb129057e-u1-ru/notes.json",
+          "sha256": "65bfca9c1c6dfa28cbc1ea93326ca782361822b8bad99ad68ce508ae7d5ad213"
+        }
+      ]
+    },
+    {
+      "locale": "ur",
+      "namespace": "ui.teamBridge",
+      "receipt": "i18n/receipts/f93eb129057e-u1-ur.json",
+      "receipt_sha256": "3388b95708635b10b8ffa04fe522247549ad1f5f3feec9913cb815ffdfacf35f",
+      "record": "i18n/audits/evidence/ur/ui.teamBridge/f93eb129057e-u1-ur/record.json",
+      "record_sha256": "3388b95708635b10b8ffa04fe522247549ad1f5f3feec9913cb815ffdfacf35f",
+      "companions": [
+        {
+          "path": "i18n/audits/evidence/ur/ui.teamBridge/f93eb129057e-u1-ur/notes.json",
+          "sha256": "cba77d48c45b2c9fdcc3e7b4bf8ff3ccc7146cd7f03f64f7969ffb996ab4d09f"
+        }
+      ]
+    },
+    {
+      "locale": "vi",
+      "namespace": "ui.teamBridge",
+      "receipt": "i18n/receipts/f93eb129057e-u1-vi.json",
+      "receipt_sha256": "ca59fa2ef6081f281831fe9c96447e28e2576bb36264d95e5748fd8bee159e46",
+      "record": "i18n/audits/evidence/vi/ui.teamBridge/f93eb129057e-u1-vi/record.json",
+      "record_sha256": "ca59fa2ef6081f281831fe9c96447e28e2576bb36264d95e5748fd8bee159e46",
+      "companions": [
+        {
+          "path": "i18n/audits/evidence/vi/ui.teamBridge/f93eb129057e-u1-vi/notes.json",
+          "sha256": "4993f0daf8950c0562a3f27da138deff2e695a89681ebc79a58da2742b0f0c2f"
+        }
+      ]
+    },
+    {
+      "locale": "zh-CN",
+      "namespace": "ui.teamBridge",
+      "receipt": "i18n/receipts/f93eb129057e-u1-zh-cn.json",
+      "receipt_sha256": "5dc4d3200e6e1ed19ae0b3864829be2db2e6a34191f8c09d846c9b2ebead32e4",
+      "record": "i18n/audits/evidence/zh-CN/ui.teamBridge/f93eb129057e-u1-zh-cn/record.json",
+      "record_sha256": "5dc4d3200e6e1ed19ae0b3864829be2db2e6a34191f8c09d846c9b2ebead32e4",
+      "companions": [
+        {
+          "path": "i18n/audits/evidence/zh-CN/ui.teamBridge/f93eb129057e-u1-zh-cn/notes.json",
+          "sha256": "990169fa791c82c596552e23c3e0d9f013f334c46da66fcf81e0caf6d8279e33"
+        }
+      ]
+    }
+  ]
+}

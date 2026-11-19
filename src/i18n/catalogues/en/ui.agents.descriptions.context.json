@@ -1,0 +1,74 @@
+{
+	"ui.agents.descriptions.aida": {
+		"role": "agent description",
+		"tone": "plain third-person summary of what the agent does; one sentence, no marketing adjectives",
+		"note": "The shipped description of the Aida agent: the second line of its row in the Agents roster, and the opening block of its detail page. It travels inside the agent definition, so it is product copy rather than user data. This is the assistant's own seat: 'chief of staff' is her role, not a job title in a hierarchy; keep the register warm and professional.",
+		"width": "one roster line at 256 px, truncated with an ellipsis; the detail page wraps the same sentence."
+	},
+	"ui.agents.descriptions.architect": {
+		"role": "agent description",
+		"tone": "plain third-person summary of what the agent does; one sentence, no marketing adjectives",
+		"note": "The shipped description of the Architect agent: the second line of its row in the Agents roster, and the opening block of its detail page. It travels inside the agent definition, so it is product copy rather than user data. 'Trade-offs' and drafting documents are the settled ideas: it proposes a design, it never edits existing source.",
+		"width": "one roster line at 256 px, truncated with an ellipsis; the detail page wraps the same sentence."
+	},
+	"ui.agents.descriptions.coder": {
+		"role": "agent description",
+		"tone": "plain third-person summary of what the agent does; one sentence, no marketing adjectives",
+		"note": "The shipped description of the Coder agent: the second line of its row in the Agents roster, and the opening block of its detail page. It travels inside the agent definition, so it is product copy rather than user data. 'Bounded slice' is the harness's own phrase for one scoped task; keep it concrete rather than metaphorical.",
+		"width": "one roster line at 256 px, truncated with an ellipsis; the detail page wraps the same sentence."
+	},
+	"ui.agents.descriptions.copy_reviewer": {
+		"role": "agent description",
+		"tone": "plain third-person summary of what the agent does; one sentence, no marketing adjectives",
+		"note": "The shipped description of the Copy Reviewer agent: the second line of its row in the Agents roster, and the opening block of its detail page. It travels inside the agent definition, so it is product copy rather than user data. 'MR' and 'PR' keep their English abbreviations; 'C-prefixed findings' are finding IDs it prints (C1, C17) and the letter must survive.",
+		"width": "one roster line at 256 px, truncated with an ellipsis; the detail page wraps the same sentence."
+	},
+	"ui.agents.descriptions.designer": {
+		"role": "agent description",
+		"tone": "plain third-person summary of what the agent does; one sentence, no marketing adjectives",
+		"note": "The shipped description of the Designer agent: the second line of its row in the Agents roster, and the opening block of its detail page. It travels inside the agent definition, so it is product copy rather than user data. 'Rendered frames' means captured screenshots of the real UI; 'D-prefixed findings' keeps the D.",
+		"width": "one roster line at 256 px, truncated with an ellipsis; the detail page wraps the same sentence."
+	},
+	"ui.agents.descriptions.librarian": {
+		"role": "agent description",
+		"tone": "plain third-person summary of what the agent does; one sentence, no marketing adjectives",
+		"note": "The shipped description of the Librarian agent: the second line of its row in the Agents roster, and the opening block of its detail page. It travels inside the agent definition, so it is product copy rather than user data. 'The Library' is the product's own asset catalogue and keeps that capital; 'tags' and 'vocabulary' are literal.",
+		"width": "one roster line at 256 px, truncated with an ellipsis; the detail page wraps the same sentence."
+	},
+	"ui.agents.descriptions.manager": {
+		"role": "agent description",
+		"tone": "plain third-person summary of what the agent does; one sentence, no marketing adjectives",
+		"note": "The shipped description of the Manager agent: the second line of its row in the Agents roster, and the opening block of its detail page. It travels inside the agent definition, so it is product copy rather than user data. 'In flight' means work currently running; 'blocked and on whom' names the person or agent it waits for.",
+		"width": "one roster line at 256 px, truncated with an ellipsis; the detail page wraps the same sentence."
+	},
+	"ui.agents.descriptions.qa_tester": {
+		"role": "agent description",
+		"tone": "plain third-person summary of what the agent does; one sentence, no marketing adjectives",
+		"note": "The shipped description of the QA tester agent: the second line of its row in the Agents roster, and the opening block of its detail page. It travels inside the agent definition, so it is product copy rather than user data. 'Rig' is the test environment it stands up; the 'QA matrix' is the table of surface, check and result rows it reports.",
+		"width": "one roster line at 256 px, truncated with an ellipsis; the detail page wraps the same sentence."
+	},
+	"ui.agents.descriptions.reviewer": {
+		"role": "agent description",
+		"tone": "plain third-person summary of what the agent does; one sentence, no marketing adjectives",
+		"note": "The shipped description of the Reviewer agent: the second line of its row in the Agents roster, and the opening block of its detail page. It travels inside the agent definition, so it is product copy rather than user data. 'Diff', 'MR' and 'PR' keep their English forms; 'severity' names its finding classes (blocker, major, minor, nit).",
+		"width": "one roster line at 256 px, truncated with an ellipsis; the detail page wraps the same sentence."
+	},
+	"ui.agents.descriptions.scout": {
+		"role": "agent description",
+		"tone": "plain third-person summary of what the agent does; one sentence, no marketing adjectives",
+		"note": "The shipped description of the Scout agent: the second line of its row in the Agents roster, and the opening block of its detail page. It travels inside the agent definition, so it is product copy rather than user data. 'Workspace' is the operator's own project directory; the agent reads and reports, it changes nothing.",
+		"width": "one roster line at 256 px, truncated with an ellipsis; the detail page wraps the same sentence."
+	},
+	"ui.agents.descriptions.tui_designer": {
+		"role": "agent description",
+		"tone": "plain third-person summary of what the agent does; one sentence, no marketing adjectives",
+		"note": "The shipped description of the TUI Designer agent: the second line of its row in the Agents roster, and the opening block of its detail page. It travels inside the agent definition, so it is product copy rather than user data. 'Viewport' is the terminal's fixed character grid; 'unicode fallbacks' means glyphs substituted when a font lacks a glyph; 'T-prefixed findings' keeps the T.",
+		"width": "one roster line at 256 px, truncated with an ellipsis; the detail page wraps the same sentence."
+	},
+	"ui.agents.descriptions.ux_reviewer": {
+		"role": "agent description",
+		"tone": "plain third-person summary of what the agent does; one sentence, no marketing adjectives",
+		"note": "The shipped description of the UX Reviewer agent: the second line of its row in the Agents roster, and the opening block of its detail page. It travels inside the agent definition, so it is product copy rather than user data. A 'real flow' is a user path walked end to end; 'U-prefixed findings' keeps the U.",
+		"width": "one roster line at 256 px, truncated with an ellipsis; the detail page wraps the same sentence."
+	}
+}

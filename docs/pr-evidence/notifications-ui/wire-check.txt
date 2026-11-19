@@ -1,0 +1,37 @@
+$ GET /v1/capabilities
+  -> 200
+  features.notifications = 1
+$ GET /v1/desktop/notifications?state=all&limit=100
+  -> 200
+  items: n_geocp5rybtgnxiex low read=true via=watching rev=1 x1 anchor=- session=bbbbbbbbbbb2/Aida
+         n_kd25p3qdkxre3pyc normal read=false via=null rev=1 x1 anchor=- session=bbbbbbbbbbb2/Aida
+         n_qex6e5nbmz47x6ry high read=false via=null rev=4 x4 anchor=toolu_live_1 session=aaaaaaaaaaa1/radient fraud watch
+  unread_count=2 waiting_count=0 high_water=6 waiting=0
+$ GET /v1/desktop/notifications/count
+  -> 200
+  count: {"unread_count":2,"waiting_count":0,"high_water":6} badge(unread+waiting) = 2
+$ GET /v1/desktop/notifications/n_qex6e5nbmz47x6ry
+  -> 200
+  detail: history=3 anchor=null session.title=radient fraud watch body_md starts="tick 2"
+$ PATCH /v1/desktop/notifications {"op":"read","ids":[{"id":"n_qex6e5nbmz47x6ry","revision":4}]}
+  -> 200
+  read: {"changed":["n_qex6e5nbmz47x6ry"],"skipped":[],"unread_count":1,"high_water":7}
+$ PATCH /v1/desktop/notifications {"op":"unread","ids":[{"id":"n_qex6e5nbmz47x6ry","revision":3}]}
+  -> 200
+  stale-token unread: {"changed":[],"skipped":[{"id":"n_qex6e5nbmz47x6ry","reason":"stale_revision"}],"unread_count":1,"high_water":7}
+$ PATCH /v1/desktop/notifications {"op":"dismiss","ids":[{"id":"n_kd25p3qdkxre3pyc","revision":1}]}
+  -> 200
+  dismiss: {"changed":["n_kd25p3qdkxre3pyc"],"skipped":[],"unread_count":0,"high_water":8}
+$ PATCH /v1/desktop/notifications {"op":"undismiss","ids":[{"id":"n_kd25p3qdkxre3pyc","revision":1}]}
+  -> 200
+  undo (undismiss): {"changed":["n_kd25p3qdkxre3pyc"],"skipped":[],"unread_count":1,"high_water":9}
+$ PATCH /v1/desktop/notifications {"op":"read","all":true,"through_seq":6}
+  -> 200
+  mark-all through high_water: {"changed":[],"skipped":[],"unread_count":1,"high_water":9}
+$ POST /v1/desktop/notifications/seen {"items":[{"id":"n_qex6e5nbmz47x6ry","revision":4,"anchor_id":"toolu_live_1"}],"evidence":{"surface":"desktop","session_id":"aaaaaaaaaaa1","input_kind":"keydown","input_at_ms":1792949011500,"visible_since_ms":1792949010000}}
+  -> 200
+  seen: {"changed":[],"skipped":[{"id":"n_qex6e5nbmz47x6ry","reason":"already"}],"unread_count":1,"high_water":9}
+$ GET /v1/desktop/notifications (no bearer)
+  -> 401
+$ PATCH /v1/desktop/notifications {"op":"read","all":true}  (no through_seq)
+  -> 422

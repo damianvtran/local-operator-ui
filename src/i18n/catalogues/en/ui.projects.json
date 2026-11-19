@@ -351,10 +351,18 @@
 	"ui.projects.project_todos.no_to_do_snapshots_from_the_linked_sessions_yet_a_session_publish": "No to-do snapshots from the linked sessions yet. A session publishes its list as it works, and it appears here once it has.",
 	"ui.projects.project_todos.to_dos": "To-dos",
 	"ui.projects.project_updates.attachment": "Attachment",
+	"ui.projects.project_updates.attachments": "Attachments",
 	"ui.projects.project_updates.file_actions_for_name": "File actions for {name}",
 	"ui.projects.project_updates.loading": "Loading ",
 	"ui.projects.project_updates.no_updates_yet_progress_reported_by_you_or_by_the_sessions_workin": "No updates yet. Progress reported by you or by the sessions working on this project is appended here.",
 	"ui.projects.project_updates.open_name": "Open {name}",
+	"ui.projects.project_updates.play_name": "Play {name}",
+	"ui.projects.project_updates.preview_failed": "This file could not be opened.",
+	"ui.projects.project_updates.preview_loading": "Loading preview…",
+	"ui.projects.project_updates.preview_moved": "Its stored copy may have moved or was deleted.",
+	"ui.projects.project_updates.preview_unavailable": "Preview is unavailable outside the desktop app.",
+	"ui.projects.project_updates.preview_name": "Preview {name}",
+	"ui.projects.project_updates.show_asset_name": "Show {name}, asset {index} of {count}",
 	"ui.projects.project_updates.updates": "Updates",
 	"ui.projects.projects_page.checking_the_server_s_projects_support": "Checking the server's Projects support",
 	"ui.projects.projects_page.clear_all": "Clear all",
@@ -414,5 +422,8 @@
 	"ui.projects.request_update.value1_could_not_be_reached": " {value1} could not be reached.",
 	"ui.projects.timeline.read_failed": "Milestones could not be read for {count, plural, one {{count, number, ::group-off} project} other {{count, number, ::group-off} projects}}.",
 	"ui.projects.use_request_update.could_not_request_updates_endedsentence_message": "Could not request updates: {endedSentence_message}",
-	"ui.projects.use_request_update.the_request_could_not_be_confirmed": "The request could not be confirmed."
+	"ui.projects.use_request_update.the_request_could_not_be_confirmed": "The request could not be confirmed.",
+	"ui.projects.project_model.milestone_summary": "{completed, number, ::group-off} of {total, number, ::group-off} complete",
+	"ui.projects.project_model.todos_summary": "{open, number, ::group-off} open of {total, number, ::group-off}",
+	"ui.projects.project_model.done_gate_tail": "complete or remove the incomplete milestones, then mark it done"
 }

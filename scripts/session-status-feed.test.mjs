@@ -94,7 +94,7 @@ const storeBundle = await build({
 	stdin: {
 		contents:
 			'export * from "./src/renderer/src/shared/store/canonical-sessions-store";' +
-			' export {useDesktopFeed} from "./src/renderer/src/shared/hooks/use-desktop-feed";',
+			' export {useDesktopFeed, notificationsFrameRecord} from "./src/renderer/src/shared/hooks/use-desktop-feed";',
 		resolveDir: process.cwd(),
 	},
 	alias: {
@@ -142,10 +142,20 @@ const storeBundle = await build({
 					{ filter: ANY_MODULE_RE, namespace: "session-status-fixture" },
 					(args) => ({
 						contents: {
-							transport: `export {DesktopControlError, UserFacingError, userFacingMessage} from ${JSON.stringify(
+							transport: `export {DesktopControlError, UserFacingError, userFacingMessage, mediaError} from ${JSON.stringify(
 								`${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-api.ts`,
 							)}
-export const desktopResult = request => globalThis.__statusRequest(request);`,
+export const desktopResult = request => globalThis.__statusRequest(request);
+/*
+ * Agent pictures: the shipped sidebar/status graph now imports the avatar
+ * hooks, which read the roster through desktopControlResponse and picture
+ * bytes through desktopMedia. This fixture is not about pictures, so both
+ * answer without IO (an empty roster means no picture, so no byte read is
+ * attempted) and stay off the case's own request seam, which keeps the request
+ * log about the control under test. mediaError is the shipped, pure one.
+ */
+export const desktopControlResponse = async () => new Response(JSON.stringify({ result: { agents: [] } }), { status: 200, headers: { "Content-Type": "application/json" } });
+export const desktopMedia = async () => ({ status: 404, kind: "error", detail: "no media in this fixture" });`,
 							/*
 							 * `desktopKeys` and the query cache join this stub because the store now
 							 * reads the CATALOGUE capability out of that cache to size an unnamed
@@ -195,7 +205,11 @@ export const discardPendingEchoes = () => undefined;`,
 		},
 	],
 });
-const { useCanonicalSessionsStore: store, useDesktopFeed } = await import(
+const {
+	useCanonicalSessionsStore: store,
+	useDesktopFeed,
+	notificationsFrameRecord,
+} = await import(
 	`data:text/javascript;base64,${Buffer.from(storeBundle.outputFiles[0].text).toString("base64")}`
 );
 // The hook's recorded effects, and the frame handler its subscription installs.
@@ -708,6 +722,81 @@ test("the subagent counts ride the list response and keep a null as null", async
 });
 
 /*
+ * BACKGROUND WORK (2026-11-07): a `session_status` frame carries the counts and
+ * core's `background_work` flag beside the code, and the store writes them in
+ * ONE update - so a row never sits in Running by its code while its counts say
+ * the work ended (or vice versa). A staler list cannot replace the counts of a
+ * fresher frame either: they are held with the code they arrived beside.
+ */
+test("a status frame writes code and background-work counts in one update", async () => {
+	seeded({
+		status: { code: "idle", label: "Idle" },
+		background_work: true,
+		subagents_running: 1,
+		jobs_running: 1,
+	});
+	const seen = [];
+	const stop = store.subscribe((state) => {
+		const r = state.sessions.find((item) => item.session_id === SESSION);
+		seen.push([r.status.code, r.background_work, r.subagents_running]);
+	});
+	store
+		.getState()
+		.applySessionStatus(SESSION, { code: "idle", label: "Idle" }, 6, EPOCH, {
+			background_work: false,
+			subagents_running: 0,
+			subagents_queued: 0,
+			jobs_running: 0,
+			waiting_on: 0,
+		});
+	stop();
+	// Exactly one state change for the 1 -> 0 transition, and it carries both.
+	assert.deepEqual(seen, [["idle", false, 0]]);
+	assert.equal(row().jobs_running, 0);
+	assert.equal(row().status_revision, 6);
+
+	// A list computed before that frame (lower revision) cannot put the work back.
+	const rows = await list([
+		wire({
+			status: { code: "idle", label: "Idle" },
+			status_revision: 5,
+			status_epoch: EPOCH,
+			background_work: true,
+			subagents_running: 1,
+			jobs_running: 1,
+		}),
+	]);
+	const held = rows.find((item) => item.session_id === SESSION);
+	assert.equal(held.background_work, false);
+	assert.equal(held.subagents_running, 0);
+	assert.equal(held.jobs_running, 0);
+
+	// A fresher list carries the flag through the list path.
+	const fresh = await list([
+		wire({
+			status: { code: "complete", label: "Complete" },
+			status_revision: 7,
+			status_epoch: EPOCH,
+			background_work: true,
+			jobs_running: 2,
+		}),
+	]);
+	const moved = fresh.find((item) => item.session_id === SESSION);
+	assert.equal(moved.background_work, true);
+	assert.equal(moved.jobs_running, 2);
+});
+
+test("an older backend's frame (no flag) leaves the row's counts alone", async () => {
+	seeded({ subagents_running: 2, subagents_queued: 1 });
+	store
+		.getState()
+		.applySessionStatus(SESSION, { code: "delegating", label: "x" }, 6, EPOCH);
+	assert.equal(row().subagents_running, 2);
+	assert.equal(row().subagents_queued, 1);
+	assert.equal(row().background_work, undefined);
+});
+
+/*
  * The other half of the same division: what a `catalogue` frame HANDS the client.
  *
  * The frame is the refetch trigger, and its payload is a revision rather than a
@@ -990,4 +1079,81 @@ test("a frame for a row that is not loaded is dropped, and the page's own value 
 		3,
 		"and its stamp is the page's, which is how the next frame supersedes it",
 	);
+});
+
+/*
+ * THE NOTIFICATIONS FRAME IS ONE RECORD, HOWEVER MANY SUBSCRIPTIONS SEE IT.
+ *
+ * The reel's consumers (rail badge, page, drawer tab, every transcript's flag
+ * lines) read a module-scope record instead of opening their own feed
+ * subscription, because the collapsed strip is pinned to exactly one
+ * subscription and the transcript is server-rendered by its paint tests. What
+ * that record must still guarantee, driven through the shipped hook:
+ * - two subscriptions delivering the SAME frame publish it once;
+ * - a frame whose store `revision` did not move but whose identity did still
+ *   publishes (an ask-queue change can carry an unchanged revision: R1/Q1);
+ * - a server render reads no frame, so nothing there touches `window`.
+ */
+test("a notifications frame is published once per frame identity, not per subscriber or revision", () => {
+	globalThis.__effects.length = 0;
+	const handlers = [];
+	globalThis.window = {
+		api: {
+			desktop: {
+				feed: {
+					subscribe: (onFrame) => {
+						handlers.push(onFrame);
+						return () => {};
+					},
+					watchState: () => () => {},
+				},
+			},
+		},
+	};
+	// Two mounts, as the app has (the locale sync and the rail's feed consumer).
+	useDesktopFeed();
+	useDesktopFeed();
+	for (const effect of globalThis.__effects) effect();
+	assert.equal(handlers.length, 2, "both mounts subscribed");
+
+	let notified = 0;
+	const off = notificationsFrameRecord.subscribe(() => {
+		notified += 1;
+	});
+	try {
+		const frame = (seq, revision) => ({
+			epoch: EPOCH,
+			seq,
+			type: "notifications",
+			payload: {
+				revision,
+				unread_count: 2,
+				waiting_count: 1,
+				waiting_unread_count: 1,
+			},
+		});
+		for (const handler of handlers) handler(frame(40, 12));
+		assert.equal(notified, 1, "one frame, two subscribers, one publication");
+		assert.deepEqual(notificationsFrameRecord.snapshot(), {
+			key: `${EPOCH}:40`,
+			revision: 12,
+			unreadCount: 2,
+			waitingCount: 1,
+			waitingUnreadCount: 1,
+		});
+		for (const handler of handlers) handler(frame(41, 12));
+		assert.equal(
+			notified,
+			2,
+			"an unchanged store revision on a new frame is still a new frame",
+		);
+		assert.equal(notificationsFrameRecord.snapshot().key, `${EPOCH}:41`);
+		assert.equal(
+			notificationsFrameRecord.serverSnapshot(),
+			null,
+			"a server render has received no frame",
+		);
+	} finally {
+		off();
+	}
 });

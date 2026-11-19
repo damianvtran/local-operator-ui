@@ -1,0 +1,18 @@
+{
+	"ui.agents.refusals.name_taken": "已存在名为“{name}”的智能体。请换个名称，或打开已有智能体进行修改。",
+	"ui.agents.refusals.name_grammar": "名称不能包含空格或斜杠。",
+	"ui.agents.refusals.effort_unavailable": "尚未配置能力档位“{tier}”。请使用inherit，或在设置中添加此档位。",
+	"ui.agents.refusals.team_name_bound": "团队名称长度须为1-64个字符。",
+	"ui.agents.refusals.missing_manager": "本机没有名为“{name}”的智能体或团队。",
+	"ui.agents.refusals.missing_member": "本机没有名为“{name}”的智能体或团队。",
+	"ui.agents.refusals.team_nesting": "此团队的嵌套层级过深，或包含了自身。请检查成员配置。",
+	"ui.agents.refusals.class.label.proactive": "主动型",
+	"ui.agents.refusals.class.label.reactive": "响应型",
+	"ui.agents.refusals.class.meaning.proactive": "它可以主动向你发送消息：发送后会等待几分钟，若未收到回复，会再次提醒，提醒间隔逐次延长，达到限定次数后便等待你回复。它也可以按自己的定时任务唤醒。",
+	"ui.agents.refusals.class.meaning.reactive": "你发消息时，它会回复。它不会主动提醒你，也不会按自己的定时任务唤醒。",
+	"ui.agents.refusals.class.effect.proactive": "关闭后，将停止主动提醒和定时唤醒。你发消息时，它仍会回复。",
+	"ui.agents.refusals.class.effect.reactive": "开启后，它可以主动向你发送消息：先等待几分钟，若未收到回复，会再次提醒，但不会超过限定次数。它也可以按自己的定时任务唤醒。你发消息时，它仍会回复。",
+	"ui.agents.refusals.class.install_disclosure": "此智能体随应用提供，目前尚无本地副本。切换时会先安装同一智能体的可编辑副本，保留原有指令，再设置其行为类型。",
+	"ui.agents.refusals.class.error.no_reason": "后端未提供原因。请重试切换。",
+	"ui.agents.refusals.class.error.install_landed": "{reason} 不过安装已成功，现在可以编辑此智能体。"
+}

@@ -1,0 +1,65 @@
+Audit execution log: fr-sol-ceaae4db2925; record reference: fr-sol-ceaae4db2925.record.json
+
+$ git rev-parse HEAD
+b8f0fc3aa922b99c6fad9c32edd36515fbd24e5a
+
+$ git diff e5fb4310dab..HEAD -- src/i18n/catalogues/fr/ui.common.actions.json
+diff --git a/src/i18n/catalogues/fr/ui.common.actions.json b/src/i18n/catalogues/fr/ui.common.actions.json
+index 8abacba58b0..fc32133a84f 100644
+--- a/src/i18n/catalogues/fr/ui.common.actions.json
++++ b/src/i18n/catalogues/fr/ui.common.actions.json
+@@ -52,5 +52,5 @@
+ 	"ui.common.actions.system_prompt_updated": "Prompt système mis à jour",
+ 	"ui.common.actions.credential_updated": "Identifiant « {key} » mis à jour",
+ 	"ui.common.actions.clear": "Effacer",
+-	"ui.common.actions.actions_for_name": "Actions sur {name}"
++	"ui.common.actions.actions_for_name": "Actions pour {name}"
+ }
+
+$ node scripts/i18n/check-duplicates.mjs --dir src/i18n/catalogues/fr
+check-duplicates: ok — 156 file(s) scanned, 0 duplicate key(s)
+exit=0
+
+$ node scripts/i18n/context-parity.mjs
+context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json).
+exit=0
+
+$ shasum -a 256 [assigned inputs and policy]
+0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b  src/i18n/catalogues/en/ui.common.actions.json
+65357603eec7fb7afabd5d55c786735dc05e89cb36d19ccd4116bdb5bdbc2907  src/i18n/catalogues/fr/ui.common.actions.json
+24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d  src/i18n/catalogues/en/ui.common.actions.context.json
+0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8  ../_s12-audits/b8f0fc3aa922b99c6fad9c32edd36515fbd24e5a/glossary.md
+ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226  /Users/damian/local-operator/i18n/style-guides/fr.md
+
+Actual Python checks (this session):
+{
+  "head": "b8f0fc3aa922b99c6fad9c32edd36515fbd24e5a",
+  "manifest_hash_checks": {
+    "en/ui.common.actions": true,
+    "fr/ui.common.actions": true,
+    "en/ui.common.actions.context": true
+  },
+  "json_valid": true,
+  "en_target_prior_key_sets_equal": true,
+  "namespace_key_count": 54,
+  "changed_values": [
+    "ui.common.actions.actions_for_name"
+  ],
+  "english_and_context_diff_empty": true,
+  "placeholder_tokens": [
+    "{name}"
+  ],
+  "placeholder_parity": true,
+  "invisible_control_characters": [],
+  "fixed_prefix_cells": 13
+}
+
+$ rg -n "Actions (pour|sur) " [five targeted French catalogue files]
+src/i18n/catalogues/fr/ui.common.actions.json:17:	"ui.common.actions.file_actions_menu.file_actions": "Actions sur le fichier",
+src/i18n/catalogues/fr/ui.common.actions.json:55:	"ui.common.actions.actions_for_name": "Actions pour {name}"
+src/i18n/catalogues/fr/ui.shell.json:28:	"ui.shell.sidebar_navigation.row_actions": "Actions pour {name}",
+src/i18n/catalogues/fr/ui.library.json:60:	"ui.library.menu.asset_actions": "Actions sur l’élément",
+src/i18n/catalogues/fr/ui.library.json:61:	"ui.library.menu.asset_actions_label": "Actions pour {name}",
+src/i18n/catalogues/fr/ui.chat.canonical.json:259:	"ui.chat.canonical.link_toolkit.actions_for": "Actions pour {name}"
+src/i18n/catalogues/fr/ui.settings.appearance.editor.json:11:	"ui.settings.appearance.editor.more": "Actions pour {name}",
+exit=0

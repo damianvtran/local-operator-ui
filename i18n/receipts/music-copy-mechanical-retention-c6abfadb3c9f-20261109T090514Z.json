@@ -1,0 +1,411 @@
+{
+  "schema": 1,
+  "audit_kind": "mechanical_json_value_retention",
+  "namespace": "ui.music",
+  "date_utc": "2026-11-09T09:05:14.213550+00:00",
+  "auditor": {
+    "agent": "reviewer",
+    "instance": "c6abfadb3c9f",
+    "model": "openai/gpt-6.1-sol",
+    "fallback": "none",
+    "original_independent_linguistic_auditor": true
+  },
+  "repository": "damianvtran/local-operator-ui",
+  "worktree": "/Users/damian/local-operator-ui/.worktrees/music",
+  "old_audited_ref": "e424b07dfe79e7f90c6efb66add751167eecb87f",
+  "observed_worktree_head": "baeb621a32dbfa6e33f577085da5e2f42d6d8ba4",
+  "source_state": "Uncommitted formatted files; approval is bound to exact raw digests below, not to a pushed commit",
+  "method": "Read each old Git blob and current file independently; reject duplicate JSON members; compare complete decoded JSON values, all six keys/placeholder strings and complete context objects; recompute raw and canonical SHA-256; verify old receipts and seven target ledger bindings",
+  "verdict": "approved",
+  "status": "passed",
+  "findings": [],
+  "retained_linguistic_audit": true,
+  "new_translation_audit": false,
+  "native_rtl_or_flow_validation": false,
+  "secondary_warning_audit": "Original independent warning-only audit retained solely because complete catalogue strings/context values are identical; not reissued or newly claimed here",
+  "old_source_sha256": "e4bfc1ac870036a1efd34cbd0b79e9c23cf92f360eb6325fdaa8451a1c25f1af",
+  "new_source_sha256": "3bb58635be3fd3b69d25fba7a87eba51add3c5042c89d887c8d1aa9d0c9cbc19",
+  "old_context_sha256": "6bd4f8752a91f6df0bdbcdaf01bb0b83035f580852a6cc55e4a4a53f811f9a0e",
+  "new_context_sha256": "9c8ac243da9ea8f8566455f4ec16d5c870970dcc3de4035c84506342f3b69d77",
+  "files": [
+    {
+      "path": "src/i18n/catalogues/en/ui.music.json",
+      "old_raw_sha256": "e4bfc1ac870036a1efd34cbd0b79e9c23cf92f360eb6325fdaa8451a1c25f1af",
+      "new_raw_sha256": "3bb58635be3fd3b69d25fba7a87eba51add3c5042c89d887c8d1aa9d0c9cbc19",
+      "canonical_json_sha256": "63bc3aa642cca304ee7ec539803463ddb67931e8c7b5af611191397cb5d1adcb",
+      "json_values_identical": true,
+      "key_count": 6,
+      "keys": [
+        "ui.music.label",
+        "ui.music.progress",
+        "ui.music.cancel_warning",
+        "ui.music.track",
+        "ui.music.failed",
+        "ui.music.empty"
+      ],
+      "placeholders": {
+        "ui.music.label": [],
+        "ui.music.progress": [
+          "completed",
+          "total"
+        ],
+        "ui.music.cancel_warning": [
+          "label"
+        ],
+        "ui.music.track": [
+          "index"
+        ],
+        "ui.music.failed": [],
+        "ui.music.empty": []
+      }
+    },
+    {
+      "path": "src/i18n/catalogues/fr/ui.music.json",
+      "old_raw_sha256": "8b33521b964c26260e52bf793bc9c86ac9710001797864110f935a20033d16bf",
+      "new_raw_sha256": "a9922a77729e4fbe69d1a6a98cb1816f738b1189c70bbd71472c09989e0f5913",
+      "canonical_json_sha256": "683c27374d7b8d502e31ae211662bfd62c35e0e2e5b0dc768015615f756ddc4b",
+      "json_values_identical": true,
+      "key_count": 6,
+      "keys": [
+        "ui.music.label",
+        "ui.music.progress",
+        "ui.music.cancel_warning",
+        "ui.music.track",
+        "ui.music.failed",
+        "ui.music.empty"
+      ],
+      "placeholders": {
+        "ui.music.label": [],
+        "ui.music.progress": [
+          "completed",
+          "total"
+        ],
+        "ui.music.cancel_warning": [
+          "label"
+        ],
+        "ui.music.track": [
+          "index"
+        ],
+        "ui.music.failed": [],
+        "ui.music.empty": []
+      }
+    },
+    {
+      "path": "src/i18n/catalogues/es/ui.music.json",
+      "old_raw_sha256": "e18186c45fe5a0922b29ddb2016358b56db79f7d9180225067a15dc0c466dc7e",
+      "new_raw_sha256": "704f98572dcfa93b9efa7566df3ba124f1e3c9c8c99b3343d3baeca6f6eced0d",
+      "canonical_json_sha256": "d72a8c0a3e115c71a105b0ca9430d5b4e57dccbcd2e1dbfd6e2fb27962a6855e",
+      "json_values_identical": true,
+      "key_count": 6,
+      "keys": [
+        "ui.music.label",
+        "ui.music.progress",
+        "ui.music.cancel_warning",
+        "ui.music.track",
+        "ui.music.failed",
+        "ui.music.empty"
+      ],
+      "placeholders": {
+        "ui.music.label": [],
+        "ui.music.progress": [
+          "completed",
+          "total"
+        ],
+        "ui.music.cancel_warning": [
+          "label"
+        ],
+        "ui.music.track": [
+          "index"
+        ],
+        "ui.music.failed": [],
+        "ui.music.empty": []
+      }
+    },
+    {
+      "path": "src/i18n/catalogues/zh-CN/ui.music.json",
+      "old_raw_sha256": "eefa96f3854ef64790aa4e2266b40f5b1379708023b4c3caee85c94eea6c3a7f",
+      "new_raw_sha256": "93b8b71789d4953407815bdb11f7e2632e01422505fb81437be5e28550c5d9bc",
+      "canonical_json_sha256": "89a0dbd352884a5b4a38dbf4a8950b7423c07e87d8569f4b60ea2d628510d1b3",
+      "json_values_identical": true,
+      "key_count": 6,
+      "keys": [
+        "ui.music.label",
+        "ui.music.progress",
+        "ui.music.cancel_warning",
+        "ui.music.track",
+        "ui.music.failed",
+        "ui.music.empty"
+      ],
+      "placeholders": {
+        "ui.music.label": [],
+        "ui.music.progress": [
+          "completed",
+          "total"
+        ],
+        "ui.music.cancel_warning": [
+          "label"
+        ],
+        "ui.music.track": [
+          "index"
+        ],
+        "ui.music.failed": [],
+        "ui.music.empty": []
+      }
+    },
+    {
+      "path": "src/i18n/catalogues/ru/ui.music.json",
+      "old_raw_sha256": "36bf0442156598f4c858a2d06b1e58101abf0dfcd0484be562b0b369bc4ea040",
+      "new_raw_sha256": "999793f8d1b8b4dfcc126bccefa158c3466737e54dbe297603e87e066c2493c9",
+      "canonical_json_sha256": "420e9722c6a48656e6d054868c1d4a35456c1f3cf9b4650d68c7bb9f6864c7dd",
+      "json_values_identical": true,
+      "key_count": 6,
+      "keys": [
+        "ui.music.label",
+        "ui.music.progress",
+        "ui.music.cancel_warning",
+        "ui.music.track",
+        "ui.music.failed",
+        "ui.music.empty"
+      ],
+      "placeholders": {
+        "ui.music.label": [],
+        "ui.music.progress": [
+          "completed",
+          "total"
+        ],
+        "ui.music.cancel_warning": [
+          "label"
+        ],
+        "ui.music.track": [
+          "index"
+        ],
+        "ui.music.failed": [],
+        "ui.music.empty": []
+      }
+    },
+    {
+      "path": "src/i18n/catalogues/vi/ui.music.json",
+      "old_raw_sha256": "0c0b58cd2851b72ab711d0574083b0fdd67e9f8bbf8d23bd91ca6267d3ec7423",
+      "new_raw_sha256": "57a280f70c700ca6eb8a592d9b91ae530bfcf8f13c8078915bf823e6d1c8748c",
+      "canonical_json_sha256": "93f58ef6744800d1ef8c2b632fe56d325f310b9cc3fdc10e092f0f0f97378386",
+      "json_values_identical": true,
+      "key_count": 6,
+      "keys": [
+        "ui.music.label",
+        "ui.music.progress",
+        "ui.music.cancel_warning",
+        "ui.music.track",
+        "ui.music.failed",
+        "ui.music.empty"
+      ],
+      "placeholders": {
+        "ui.music.label": [],
+        "ui.music.progress": [
+          "completed",
+          "total"
+        ],
+        "ui.music.cancel_warning": [
+          "label"
+        ],
+        "ui.music.track": [
+          "index"
+        ],
+        "ui.music.failed": [],
+        "ui.music.empty": []
+      }
+    },
+    {
+      "path": "src/i18n/catalogues/ur/ui.music.json",
+      "old_raw_sha256": "355efb29e8d89fd2cb09192379e82e9ab273b626f548b4fefa9c6e8c2f072ff5",
+      "new_raw_sha256": "5242a42f207c9a85d0843d0b8b3cbb07e3c302701a5fa054b441cd0f9a39887c",
+      "canonical_json_sha256": "a2fee308c20b25e97e3483980b850cded17a0a3cf7d9bfb345a76fe5bd952a5e",
+      "json_values_identical": true,
+      "key_count": 6,
+      "keys": [
+        "ui.music.label",
+        "ui.music.progress",
+        "ui.music.cancel_warning",
+        "ui.music.track",
+        "ui.music.failed",
+        "ui.music.empty"
+      ],
+      "placeholders": {
+        "ui.music.label": [],
+        "ui.music.progress": [
+          "completed",
+          "total"
+        ],
+        "ui.music.cancel_warning": [
+          "label"
+        ],
+        "ui.music.track": [
+          "index"
+        ],
+        "ui.music.failed": [],
+        "ui.music.empty": []
+      }
+    },
+    {
+      "path": "src/i18n/catalogues/hi/ui.music.json",
+      "old_raw_sha256": "032c95246831de66bf5e8e55179cd6b7f27ed240ce4df92dc9043da11ee89ada",
+      "new_raw_sha256": "26ec304c0d2c25dd1402a83d4ee3e9826056b50650c3afa1197b7c9a9ef8c0b9",
+      "canonical_json_sha256": "77ad8bc6be7d049726b485e7ff90cc0c28bb2286df4502f37bcdbef3f82d58f9",
+      "json_values_identical": true,
+      "key_count": 6,
+      "keys": [
+        "ui.music.label",
+        "ui.music.progress",
+        "ui.music.cancel_warning",
+        "ui.music.track",
+        "ui.music.failed",
+        "ui.music.empty"
+      ],
+      "placeholders": {
+        "ui.music.label": [],
+        "ui.music.progress": [
+          "completed",
+          "total"
+        ],
+        "ui.music.cancel_warning": [
+          "label"
+        ],
+        "ui.music.track": [
+          "index"
+        ],
+        "ui.music.failed": [],
+        "ui.music.empty": []
+      }
+    },
+    {
+      "path": "src/i18n/catalogues/en/ui.music.context.json",
+      "old_raw_sha256": "6bd4f8752a91f6df0bdbcdaf01bb0b83035f580852a6cc55e4a4a53f811f9a0e",
+      "new_raw_sha256": "9c8ac243da9ea8f8566455f4ec16d5c870970dcc3de4035c84506342f3b69d77",
+      "canonical_json_sha256": "6af25bfaaf702d6390c5d48562a620a9da018c2e6b7b93ae03afabf9c5796c9e",
+      "json_values_identical": true,
+      "key_count": 6,
+      "keys": [
+        "ui.music.label",
+        "ui.music.progress",
+        "ui.music.cancel_warning",
+        "ui.music.track",
+        "ui.music.failed",
+        "ui.music.empty"
+      ]
+    }
+  ],
+  "original_receipts": [
+    {
+      "locale": "en",
+      "path": "i18n/receipts/music-c6abfadb3c9f-en.json",
+      "receipt_sha256": "64a5f5185b3238287f3af431281cc8620f1eb96e1822b5149ba32cb56388f03c",
+      "source_sha256": "e4bfc1ac870036a1efd34cbd0b79e9c23cf92f360eb6325fdaa8451a1c25f1af",
+      "target_sha256": "e4bfc1ac870036a1efd34cbd0b79e9c23cf92f360eb6325fdaa8451a1c25f1af",
+      "context_sha256": "6bd4f8752a91f6df0bdbcdaf01bb0b83035f580852a6cc55e4a4a53f811f9a0e",
+      "auditor": {
+        "agent": "reviewer",
+        "instance": "c6abfadb3c9f",
+        "model": "openai/gpt-6.1-sol",
+        "date": "2026-11-09"
+      }
+    },
+    {
+      "locale": "fr",
+      "path": "i18n/receipts/music-c6abfadb3c9f-fr.json",
+      "receipt_sha256": "847e9b84144cde5cd0c55e8f2d38a4fe59c38930e6ac80fb43a20b426872e56d",
+      "source_sha256": "e4bfc1ac870036a1efd34cbd0b79e9c23cf92f360eb6325fdaa8451a1c25f1af",
+      "target_sha256": "8b33521b964c26260e52bf793bc9c86ac9710001797864110f935a20033d16bf",
+      "context_sha256": "6bd4f8752a91f6df0bdbcdaf01bb0b83035f580852a6cc55e4a4a53f811f9a0e",
+      "auditor": {
+        "agent": "reviewer",
+        "instance": "c6abfadb3c9f",
+        "model": "openai/gpt-6.1-sol",
+        "date": "2026-11-09"
+      }
+    },
+    {
+      "locale": "es",
+      "path": "i18n/receipts/music-c6abfadb3c9f-es.json",
+      "receipt_sha256": "b3eac0eeb76c0ee573fb2d6e82e0b46eb26eba34e954cdc5cf42f56f4f78d093",
+      "source_sha256": "e4bfc1ac870036a1efd34cbd0b79e9c23cf92f360eb6325fdaa8451a1c25f1af",
+      "target_sha256": "e18186c45fe5a0922b29ddb2016358b56db79f7d9180225067a15dc0c466dc7e",
+      "context_sha256": "6bd4f8752a91f6df0bdbcdaf01bb0b83035f580852a6cc55e4a4a53f811f9a0e",
+      "auditor": {
+        "agent": "reviewer",
+        "instance": "c6abfadb3c9f",
+        "model": "openai/gpt-6.1-sol",
+        "date": "2026-11-09"
+      }
+    },
+    {
+      "locale": "zh-CN",
+      "path": "i18n/receipts/music-c6abfadb3c9f-zh-cn.json",
+      "receipt_sha256": "9b67cbdc5a2445ca1fe50bdd6138c354cbe2921f6ce439bc46e96463aa0e7d6d",
+      "source_sha256": "e4bfc1ac870036a1efd34cbd0b79e9c23cf92f360eb6325fdaa8451a1c25f1af",
+      "target_sha256": "eefa96f3854ef64790aa4e2266b40f5b1379708023b4c3caee85c94eea6c3a7f",
+      "context_sha256": "6bd4f8752a91f6df0bdbcdaf01bb0b83035f580852a6cc55e4a4a53f811f9a0e",
+      "auditor": {
+        "agent": "reviewer",
+        "instance": "c6abfadb3c9f",
+        "model": "openai/gpt-6.1-sol",
+        "date": "2026-11-09"
+      }
+    },
+    {
+      "locale": "ru",
+      "path": "i18n/receipts/music-c6abfadb3c9f-ru.json",
+      "receipt_sha256": "d341986f858f81e23ba356666c7f8f2e65ba1926399bc0a5a7e0cc377aaa2466",
+      "source_sha256": "e4bfc1ac870036a1efd34cbd0b79e9c23cf92f360eb6325fdaa8451a1c25f1af",
+      "target_sha256": "36bf0442156598f4c858a2d06b1e58101abf0dfcd0484be562b0b369bc4ea040",
+      "context_sha256": "6bd4f8752a91f6df0bdbcdaf01bb0b83035f580852a6cc55e4a4a53f811f9a0e",
+      "auditor": {
+        "agent": "reviewer",
+        "instance": "c6abfadb3c9f",
+        "model": "openai/gpt-6.1-sol",
+        "date": "2026-11-09"
+      }
+    },
+    {
+      "locale": "vi",
+      "path": "i18n/receipts/music-c6abfadb3c9f-vi.json",
+      "receipt_sha256": "bc5771330d975efc72ea09238e2e4d5edd602d3b73dc0d0317304cbc2ff8aee3",
+      "source_sha256": "e4bfc1ac870036a1efd34cbd0b79e9c23cf92f360eb6325fdaa8451a1c25f1af",
+      "target_sha256": "0c0b58cd2851b72ab711d0574083b0fdd67e9f8bbf8d23bd91ca6267d3ec7423",
+      "context_sha256": "6bd4f8752a91f6df0bdbcdaf01bb0b83035f580852a6cc55e4a4a53f811f9a0e",
+      "auditor": {
+        "agent": "reviewer",
+        "instance": "c6abfadb3c9f",
+        "model": "openai/gpt-6.1-sol",
+        "date": "2026-11-09"
+      }
+    },
+    {
+      "locale": "ur",
+      "path": "i18n/receipts/music-c6abfadb3c9f-ur.json",
+      "receipt_sha256": "b4b5d3fad65a852968d7beb89011adfab5a894e6379920c79cb8ef228e880bf0",
+      "source_sha256": "e4bfc1ac870036a1efd34cbd0b79e9c23cf92f360eb6325fdaa8451a1c25f1af",
+      "target_sha256": "355efb29e8d89fd2cb09192379e82e9ab273b626f548b4fefa9c6e8c2f072ff5",
+      "context_sha256": "6bd4f8752a91f6df0bdbcdaf01bb0b83035f580852a6cc55e4a4a53f811f9a0e",
+      "auditor": {
+        "agent": "reviewer",
+        "instance": "c6abfadb3c9f",
+        "model": "openai/gpt-6.1-sol",
+        "date": "2026-11-09"
+      }
+    },
+    {
+      "locale": "hi",
+      "path": "i18n/receipts/music-c6abfadb3c9f-hi.json",
+      "receipt_sha256": "b819da02a05475ee1ac1a5b5cd44b7800302cfa4f90c3e433a28e01cb55ebb6f",
+      "source_sha256": "e4bfc1ac870036a1efd34cbd0b79e9c23cf92f360eb6325fdaa8451a1c25f1af",
+      "target_sha256": "032c95246831de66bf5e8e55179cd6b7f27ed240ce4df92dc9043da11ee89ada",
+      "context_sha256": "6bd4f8752a91f6df0bdbcdaf01bb0b83035f580852a6cc55e4a4a53f811f9a0e",
+      "auditor": {
+        "agent": "reviewer",
+        "instance": "c6abfadb3c9f",
+        "model": "openai/gpt-6.1-sol",
+        "date": "2026-11-09"
+      }
+    }
+  ],
+  "authorized_portable_attestation_path": "i18n/receipts/music-copy-mechanical-retention-c6abfadb3c9f-20261109T090514Z.json"
+}

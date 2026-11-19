@@ -1,0 +1,168 @@
+{
+	"schema": 1,
+	"locale": "fr",
+	"namespace": "ui.settings",
+	"audit_id": "human-profile-1593-round1",
+	"reviewer": {
+		"agent": "independent reviewer",
+		"instance": "394f46fcc3fc",
+		"model": "openai/gpt-6.1-sol",
+		"independent_of_implementer": "6d6c12b793e0"
+	},
+	"source_sha256": "867c7c09701d09d39abd4bf8fb5033689d69a32929c6222b6abae9307099b377",
+	"target_sha256": "c19d9099562c5562853ccf9f4a66c56a4fbb6216bc28148082b3e1d7964d6e15",
+	"context_sha256": "ef772148ff0e66bf3110902885a4068c10aeec3d8ccedb79b43a96feefaad920",
+	"wrapper": "i18n/receipts/human-profile-1593-fr-394f46fcc3fc.json",
+	"wrapper_sha256": "e44218cb1e9efa098217fe7007ca4c4618f5f69d1d1e4712c63bafff29a44dd5",
+	"independent_evidence": [
+		{
+			"path": "i18n/receipts/human-profile-1593-independent-source-audit.json",
+			"sha256": "659edeb2d60fcd278e750016c16c87e43ea12beb36b603a4c3105a9bec61611f"
+		},
+		{
+			"path": "i18n/receipts/human-profile-1593-independent-delta-addendum.json",
+			"sha256": "a3a18c6e5b4c92146348f9aaabd1eecda4db907c2661e8988708aef9f5dea0b0"
+		}
+	],
+	"scope": {
+		"keys_audited": [
+			"ui.settings.personal_profile.heading",
+			"ui.settings.personal_profile.display_name",
+			"ui.settings.personal_profile.title",
+			"ui.settings.personal_profile.description",
+			"ui.settings.personal_profile.timezone",
+			"ui.settings.personal_profile.timezone_placeholder",
+			"ui.settings.personal_profile.timezone_clear",
+			"ui.settings.personal_profile.loading",
+			"ui.settings.personal_profile.load_error",
+			"ui.settings.personal_profile.save",
+			"ui.settings.personal_profile.saving",
+			"ui.settings.personal_profile.saved",
+			"ui.settings.personal_profile.save_error",
+			"ui.settings.personal_profile.validation",
+			"ui.settings.personal_profile.choose",
+			"ui.settings.personal_profile.replace",
+			"ui.settings.personal_profile.photo_help",
+			"ui.settings.personal_profile.remove",
+			"ui.settings.personal_profile.remove_uploaded",
+			"ui.settings.personal_profile.remove_provider",
+			"ui.settings.personal_profile.photo_error",
+			"ui.settings.personal_profile.photo_invalid",
+			"ui.settings.personal_profile.photo_saved",
+			"ui.settings.personal_profile.photo_removed",
+			"ui.settings.personal_profile.crop_area",
+			"ui.settings.personal_profile.crop_instructions",
+			"ui.settings.personal_profile.zoom",
+			"ui.settings.personal_profile.zoom_in",
+			"ui.settings.personal_profile.zoom_out",
+			"ui.settings.personal_profile.zoom_value",
+			"ui.settings.personal_profile.recenter",
+			"ui.settings.personal_profile.previews",
+			"ui.settings.personal_profile.preview",
+			"ui.settings.personal_profile.preview_caption",
+			"ui.settings.personal_profile.save_photo",
+			"ui.settings.personal_profile.crop_error",
+			"ui.settings.personal_profile.manage",
+			"ui.settings.personal_profile.discard",
+			"ui.settings.personal_profile.discard_action",
+			"ui.settings.personal_profile.keep_editing",
+			"ui.settings.personal_profile.edit"
+		],
+		"unchanged_keys_inherited": [
+			"ui.settings.language.dialog.description",
+			"ui.settings.language.dialog.loading",
+			"ui.settings.language.dialog.retry",
+			"ui.settings.language.dialog.retrying",
+			"ui.settings.language.dialog.save",
+			"ui.settings.language.dialog.saved",
+			"ui.settings.language.dialog.title",
+			"ui.settings.language.dialog.unavailable",
+			"ui.settings.language.effective",
+			"ui.settings.language.external_notice",
+			"ui.settings.language.general.description",
+			"ui.settings.language.general.effective",
+			"ui.settings.language.general.last_known",
+			"ui.settings.language.general.no_resolution",
+			"ui.settings.language.general.pending",
+			"ui.settings.language.general.readback_error",
+			"ui.settings.language.general.saved",
+			"ui.settings.language.general.system",
+			"ui.settings.language.general.unavailable_choice",
+			"ui.settings.language.general.write_error",
+			"ui.settings.language.palette_action",
+			"ui.settings.page.title",
+			"ui.settings.profile.account_checking",
+			"ui.settings.profile.account_read_failed_refused",
+			"ui.settings.profile.account_read_failed_retry",
+			"ui.settings.profile.description_anonymous",
+			"ui.settings.profile.description_authenticated",
+			"ui.settings.profile.display_name.label",
+			"ui.settings.profile.display_name.placeholder",
+			"ui.settings.profile.email.label",
+			"ui.settings.profile.email.placeholder",
+			"ui.settings.profile.retry",
+			"ui.settings.profile.retrying",
+			"ui.settings.profile.title",
+			"ui.settings.section.delegated_enabled.gate_label",
+			"ui.settings.section.delegated_enabled.help",
+			"ui.settings.section.delegated_enabled.label",
+			"ui.settings.section.delegated_max_age.help",
+			"ui.settings.section.delegated_max_age.label",
+			"ui.settings.section.interface_language.help",
+			"ui.settings.section.interface_language.label",
+			"ui.settings.section.session_delegated.title",
+			"ui.settings.tour.action",
+			"ui.settings.tour.description",
+			"ui.settings.tour.title"
+		],
+		"base": "afb0f7de9194f6432beb63b11b2dbada5fb61752",
+		"boundary": "41 new keys semantically audited, plus 41 English contexts and fr3/zh-CN6 typography delta. Existing45 keys retained on proved exact values and matching previous file hashes; no whole-namespace re-audit."
+	},
+	"historical_findings": [
+		{
+			"id": "L1",
+			"severity": "NIT",
+			"keys": [
+				"ui.settings.personal_profile.remove_uploaded",
+				"ui.settings.personal_profile.remove_provider",
+				"ui.settings.personal_profile.discard"
+			],
+			"description": "French style guide requires U+202F before ? and ;. New confirmation strings use ordinary U+0020. Use narrow nonbreaking spaces to retain French punctuation across wraps."
+		}
+	],
+	"dispositions": [
+		{
+			"id": "L1",
+			"status": "fixed in reviewed dirty localization delta; not yet commit-pinned"
+		}
+	],
+	"previous_provenance": {
+		"source_sha256": "3a4316b07423741b3a5bb670a82cb07ae260ef247c40fd039f5ad74213efd625",
+		"target_sha256": "5452293e28cbf1d77eb0979122425a0c1369767927c73acf7c6b29ef606a0353",
+		"translator": {
+			"agent": "i18n-translator",
+			"model": "openai/gpt-6.1-sol",
+			"date": "2026-10-13",
+			"note": "34 keys. 5 keys (ui.settings.profile.account_checking, account_read_failed_retry, account_read_failed_refused, retry, retrying) were authored by the implementing coder for PR #1017, not a translator; both passes below audited them in depth."
+		},
+		"auditors": [
+			{
+				"agent": "translation-auditor",
+				"model": "radient/auto",
+				"date": "2026-10-24",
+				"result": "clean-with-findings",
+				"instance": "d94011de0dc0",
+				"findings": {
+					"blocker": 0,
+					"major": 0,
+					"minor": 0,
+					"nit": 1
+				},
+				"receipt": "i18n/receipts/d94011de0dc0-surfaces.json",
+				"receipt_sha256": "cdab18d3bc3b8c91215c07a178c64af0c5a1b44bf181c0b6d31e4bad14be3e8f"
+			}
+		],
+		"status": "audited"
+	},
+	"limits": "Source-only independent semantic/context/typography audit. No executed gate, rendered fit, second auditor or whole-namespace re-audit claimed."
+}

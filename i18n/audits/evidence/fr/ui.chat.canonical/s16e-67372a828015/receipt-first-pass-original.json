@@ -1,0 +1,123 @@
+{
+  "audit_id": "s16e-au-fr-2",
+  "slice": "S16e-renderer",
+  "locale": "fr",
+  "namespace": "ui.chat.canonical",
+  "status": "passed",
+  "verdict": "passed",
+  "result_supported": "clean-with-findings",
+  "auditor": "i18n-auditor",
+  "instance": "s16e-au-fr-2",
+  "model": "deepseek/deepseek-flash",
+  "actual_model_source": "harness session c25b8a640092 reported model deepseek/deepseek-flash; no fallback model was used for this audit",
+  "session": "c25b8a640092",
+  "independent_from_translator_session": true,
+  "independence_statement": "Fresh auditor instance. I did not translate, edit or produce these strings and I did not read the translator's notes until after I had formed my own per-key view and run the mechanical pass; no translation/MT service was used to compare or back-translate. Every key was judged by reasoning about the English source, the call site and the shipped fr corpus.",
+  "audit_date": "2026-11-12",
+  "key_count": 12,
+  "sha256": {
+    "fr": "a46fdb56c6007dd225382a8f94f4972d7a4dfc6aaaab790dca2d7cdf27b4da62",
+    "en": "b967adc33296c5ef0264a8a3ffd698fdfc5a50e4a3ebc8de99114a599b837e17"
+  },
+  "draft": {
+    "path": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/s16e/fr/draft-fr-s16e.json",
+    "sha256": "a46fdb56c6007dd225382a8f94f4972d7a4dfc6aaaab790dca2d7cdf27b4da62",
+    "verified_against_task_hash": true,
+    "note": "Draft-only audit: the 12 keys are absent from the shipped fr catalogue (verified: English has 479 keys, fr 467, the 12-key difference is exactly this slice, 0 extra keys)."
+  },
+  "input_hashes": {
+    "en": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/i18n-s16e/src/i18n/catalogues/en/ui.chat.canonical.json",
+      "sha256": "b967adc33296c5ef0264a8a3ffd698fdfc5a50e4a3ebc8de99114a599b837e17"
+    },
+    "context": {
+      "path": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/s16e-brief.json",
+      "sha256": "a0326137bff43ed38fc4a1c63d4a26e1887cfd56d4826df0e615df28055bef0c"
+    },
+    "context_repo_sidecar": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/i18n-s16e/src/i18n/catalogues/en/ui.chat.canonical.context.json",
+      "sha256": "ec598772089552ace910c857a38b364bdfa83a32c76c62b752b761527531e7b7"
+    },
+    "fr_shipped_catalogue": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/i18n-s16e/src/i18n/catalogues/fr/ui.chat.canonical.json",
+      "sha256": "99f7c0b27d6c75b16935cc58874477cab24da430284576defaacf19e209c88f6"
+    },
+    "glossary": {
+      "path": "/Users/damian/local-operator/i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "style_guide": {
+      "path": "/Users/damian/local-operator/i18n/style-guides/fr.md",
+      "sha256": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226"
+    },
+    "manifest": {
+      "path": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/s16e/manifest.json",
+      "sha256": "8896921994fbd8c5f1c75983df805c9e09a1c4dabcdfcbc0a4c9c2f900733392"
+    },
+    "worktree_head": "bd8e90542506e8bec4a98862b868095409b28329"
+  },
+  "axes": {
+    "1_mechanical": {
+      "result": "pass",
+      "detail": "JSON valid, 12/12 keys present with no additions or drops; ICU parsed with @formatjs/icu-messageformat-parser from the repo's own dependency; AST shape identical to English for all 12 (only argument is {material} in state.cancelled_batch, select with exactly video|voiceover|sound_effect|other, each branch a non-empty complete sentence); open/close brace counts equal and no brace leak; no ICU plural in this slice so fr CLDR categories (one/many/other, never few) are vacuous here; no markup/Rich tags, backticks, commands, flags or identifiers to preserve; 4 negative controls each failed as required (drop the other branch -> MISSING_OTHER_CLAUSE; rename {material}->{media} -> STRUCTURE mismatch; ASCII space before ';' + straight apostrophe -> 2 TYPO failures; English left in error_class.unknown_tool -> ENGLISH byte-identical)."
+    },
+    "2_accuracy": {
+      "result": "pass",
+      "detail": "cancel.queued keeps the flat, unhedged no-charge promise of the one case allowed to make it; cancel.running keeps the request framing, the missing endpoint and the CONDITIONAL charge ('sera facturée si elle produit un audio'), adding no guarantee and no softening; settlement.pending states an outstanding charge and never an amount or zero; cancel.checking is a complete sentence with its own full stop (rendered space-joined after cancel.running at image-gen-card.tsx:341); denied (Refusé) vs gate_failed (Échec du contrôle) and unknown_tool vs invalid_arguments stay distinguishable; no negation, polarity, omission or addition found."
+    },
+    "3_idiom_register": {
+      "result": "pass",
+      "detail": "vous throughout, lowercase mid-sentence; imperative for the action ('Patientez un instant et réessayez.'); terse participles for statuses per the style guide, no 'Veuillez…', no padded 'a bien été'; sentence case everywhere, labels carry no full stop, sentences do; reads as native product copy rather than calque. The feminine participle in cancel.queued matches the grammatical subject (la génération) and the shipped precedent transcript.stopped_before_finishing = 'Arrêtée avant la fin'; the masculine in state.cancelled_batch agrees with 'lot' — both correct, and the two are different subjects, not an inconsistency."
+    },
+    "4_terminology": {
+      "result": "pass-with-nit",
+      "detail": "Matches the shipped fr corpus and the glossary: fournisseur (stop_hint_queued, sound.stop.warning), endpoint kept Latin (guide kept-English list), facturée + frais finaux (sound.stop.warning, sound.cost.estimated_zero 'frais finaux non confirmés'), arrêt/arrêté (not annulation) for the stop, lot + the four material nouns reused verbatim from shipped done_batch/failed_batch ('Lot de vidéos', 'Lot de voix off', 'Lot d’effets sonores', 'Lot d’images'), ID uppercase (ui.agents.settings.general.id), audio kept, tool->outil per glossary. Two decisions are new to the corpus and are recorded as F1/F2 nits, not violations: 'règlement' (0 of 467 shipped keys) and 'contrôle' for a policy gate (corpus precedent exists for contrôle as a check: ui.updates.panel.seal.startup.message)."
+    },
+    "5_fit": {
+      "result": "pass",
+      "detail": "Measured cells (U+202F counts one): labels 6/12/13/17/18/19 vs English 6/12/11/17/18/18 — no label exceeds 19 cells and none is near a wrap point; the six wrapping sentences run +1 to +37% over English inside the card, which carries no maxChars/maxCells hint in the sidecar; state.cancelled_batch branches 21/23/28/20 cells vs English 20/24/27/20. No wide-glyph or combining-mark risk: every value is NFC-stable with no CJK/Devanagari. No overflow finding."
+    },
+    "6_rtl": {
+      "result": "n/a",
+      "detail": "Locale fr is LTR; bidi isolation at the call site is unaffected."
+    }
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+      "current": "Débit audio limité",
+      "problem": "In an audio card 'débit audio' is the settled fr phrase for audio bitrate, so the compound reads first as 'audio bitrate limited'; the corpus spells the rate-limit concept 'limite de débit' (ui.chat.error_block.rate_limit.before) and 'limité en débit' (ui.code_review.host.cooling). Wording ambiguity only — the error sentence under the label disambiguates, and the class stays distinct from the other five.",
+      "suggested": "Limite de débit audio (23 cells, still a short label) — or keep as is, given the corpus's own 'débit' term."
+    },
+    {
+      "id": "F2",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.image_gen.settlement.pending + ui.chat.canonical.image_gen.cancel.checking",
+      "current": "Règlement en attente — les frais finaux apparaîtront dès que le fournisseur les aura communiqués. / Vérification du règlement.",
+      "problem": "'règlement' is new to the shipped fr corpus (0 of 467 keys) and has no glossary row; the corpus states the same pending-charge fact as 'frais finaux non confirmés' (sound.cost.estimated_zero). The two keys use it consistently, so nothing collides — this is a term decision for the programme, and both keys must move together if it changes.",
+      "suggested": "Keep 'règlement' (correct fr billing for settlement) and add a glossary row; otherwise align with the corpus: 'Frais finaux en attente — …' / 'Vérification des frais.'"
+    }
+  ],
+  "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 2
+  },
+  "ledger": {
+    "recorded": false,
+    "reason": "The ledger writer refuses the current bytes by construction: node scripts/i18n/ledger-assemble.mjs requires the receipt to name the TARGET bytes on disk and refuses 'a locale file whose key set differs from English' (ledger-assemble.mjs:35). The shipped fr catalogue is 12 keys short of English — exactly this slice (en 479, fr 467, 0 extra) — so no honest row can be assembled for the draft.",
+    "next_step": "After the 12 keys land in src/i18n/catalogues/fr/ui.chat.canonical.json: node scripts/i18n/ledger-assemble.mjs --locale fr --namespace ui.chat.canonical --file src/i18n/catalogues/fr/ui.chat.canonical.json --auditor-instance s16e-au-fr-2 --auditor-model deepseek/deepseek-flash --result clean-with-findings --receipt <receipt.json> (copy to i18n/receipts/s16e-au-fr-2.json); then re-read the landed bytes and record the target sha256 in the audit evidence record.",
+    "stale_row_note": "The existing fr/ui.chat.canonical row carries source_sha256 905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e and target_sha256 99f7c0b27d6c75b16935cc58874477cab24da430284576defaacf19e209c88f6; the English on disk is b967adc33296c5ef0264a8a3ffd698fdfc5a50e4a3ebc8de99114a599b837e17, so the row is stale for this slice and needs the re-audit this receipt backs."
+  },
+  "audit_notes_not_execution_log": "report.md is auditor notes and reasoning; audit.log is the literal transcript of the commands run in this audit, with their actual output.",
+  "artifacts": [
+    "/Users/damian/.local-operator/sessions/c25b8a640092/scratchpad/s16e-au-fr-2/receipt.json",
+    "/Users/damian/.local-operator/sessions/c25b8a640092/scratchpad/s16e-au-fr-2/report.md",
+    "/Users/damian/.local-operator/sessions/c25b8a640092/scratchpad/s16e-au-fr-2/audit.log",
+    "/Users/damian/.local-operator/sessions/c25b8a640092/scratchpad/s16e-au-fr-2/checker.mjs"
+  ],
+  "retention_note": "Held in this auditor session's scratchpad by instruction (the machine has ~444 MB free; no repo writes, no tree copies). The tracked canonical home once the block lands is i18n/audits/evidence/fr/ui.chat.canonical/s16e-au-fr-2/{record.json,audit.log,receipt.json}; i18n/audits/evidence/README.md does not exist in this worktree, so the contract referenced by the task is not present to copy into."
+}

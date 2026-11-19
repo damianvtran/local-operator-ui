@@ -184,13 +184,25 @@ for (const count of [0, 1, 2]) {
 }
 
 test("display headings read current locale without translating scope identifiers", () => {
+	/*
+	 * A SYNTHETIC TAG, deliberately — this is `keyed-copy-behaviour.test.mjs`'s
+	 * pattern, and the reason is that the fallback assertion below must be REAL.
+	 * The shipped `fr` catalogue now carries
+	 * `palette_search.no_conversations_yet`, so registering a partial `fr` map
+	 * would still find the bundled French value
+	 * on a miss and "falls back to English" would only be re-reading fr's own
+	 * completeness. `xx` has no bundled catalogue at all, which is the one state
+	 * in which "this locale has no message for this key" is true.
+	 */
 	try {
-		runtime.registerCatalogue("fr", {
+		runtime.registerCatalogue("xx", {
 			"ui.command_palette.palette_search.chats": "fixture chats",
 			"ui.command_palette.palette_search.commands_and_pages":
 				"fixture commands",
+			"ui.command_palette.palette_search.no_conversations_yet":
+				"fixture no conversations",
 		});
-		runtime.setLocale("fr");
+		runtime.setLocale("xx");
 		assert.equal(runtime.PALETTE_SECTION_TITLES.chats, "fixture chats");
 		assert.equal(runtime.SCOPE_LEGEND[0].label, "fixture commands");
 		assert.equal(runtime.parsePaletteQuery("#retention").scope, "chat");
@@ -202,7 +214,7 @@ test("display headings read current locale without translating scope identifiers
 				awaiting: false,
 				catalogue: "ready",
 			}).line,
-			"No conversations yet",
+			"fixture no conversations",
 		);
 	} finally {
 		runtime.clearRegisteredCatalogues();

@@ -1,0 +1,59 @@
+{
+ "schema": 1,
+ "authored_by": "integrating coder session (agent coder), NOT the auditor",
+ "purpose": "Lands the independent audit of the 14 S16a tool-state words (PR #1870) as portable evidence; the auditor's own files are untouched copies.",
+ "locale": "zh-CN",
+ "namespace": "ui.chat.canonical",
+ "pr": "damianvtran/local-operator-ui#1870",
+ "audited_head": "93a61605b059ada503d75da6e9e38e8ef14e1b67",
+ "auditor_session": "07b0fc8f8d80",
+ "auditor_agent": "i18n-auditor",
+ "auditor_model": "deepseek/deepseek-flash",
+ "translator": {
+  "agent": "i18n-translator",
+  "model": "anthropic/claude-sonnet-5-5",
+  "draft": "zh-CN-s16a.json",
+  "draft_sha256": "cbc586651c9e1f37b57a85a84701a213dad5b1761f9bab4e41b70012cfdc83cf"
+ },
+ "ledger_receipt": "i18n/receipts/07b0fc8f8d80.json",
+ "landed_target_sha256": "d8c6e5cec877feabe15133d4e1391f295d45920d050528005b242b8029958a29",
+ "receipt_origin": "INTEGRATOR-TRANSCRIBED binding receipt (receipt.json == i18n/receipts/07b0fc8f8d80.json). The auditor ALSO wrote its own receipt (auditor-receipt.json, bytes unchanged); it names the draft, not the landed file.",
+ "files": {
+  "auditor-files/audit.log": {
+   "sha256": "82d6f2dbc038d96de1c2c1d0fbba50366e8b488de4d6cab60d23d9a07da77da3",
+   "origin": "auditor-authored, copied byte-for-byte from the auditor session scratchpad (staged in the manager session scratchpad)"
+  },
+  "auditor-files/checks.mjs": {
+   "sha256": "5e25749c1b9c29fe649568c571d1692d7be9de25e1533f1dfc19a3a0661e3adb",
+   "origin": "auditor-authored, copied byte-for-byte from the auditor session scratchpad (staged in the manager session scratchpad)"
+  },
+  "auditor-files/fmt-zh-CN.mjs": {
+   "sha256": "f2d7f53fa8a04b193fc8ddd1804899a4ab929105f69495a7f52eca98f73bd4c7",
+   "origin": "auditor-authored, copied byte-for-byte from the auditor session scratchpad (staged in the manager session scratchpad)"
+  },
+  "auditor-files/run-audit.sh": {
+   "sha256": "6f7bd0ab359b95532d6e6e83dcd15f75aed0a2058634d0b197749c60e1a7a03a",
+   "origin": "auditor-authored, copied byte-for-byte from the auditor session scratchpad (staged in the manager session scratchpad)"
+  },
+  "auditor-receipt.json": {
+   "sha256": "76e0b63190f77f633022d161de3b9ebe1a59074e2a4b1196d472a45f15ff7c5f",
+   "origin": "auditor-authored, copied byte-for-byte from the auditor session scratchpad (staged in the manager session scratchpad)"
+  },
+  "record.json": {
+   "sha256": "f7f255db8fe222113e44fa698b91d976c3dc19ea199262a526d385b98c7c36de",
+   "origin": "auditor-authored, copied byte-for-byte from the auditor session scratchpad (staged in the manager session scratchpad)"
+  },
+  "report.md": {
+   "sha256": "6f980676c0b5ccc6bdaaa434446e3b178c9fe0c656359da2c9d15df29ac1de61",
+   "origin": "auditor-authored, copied byte-for-byte from the auditor session scratchpad (staged in the manager session scratchpad)"
+  },
+  "receipt.json": {
+   "sha256": "9253c5dd7d9761b7cfb6e87ec842586378be519166b7a91efc9fd0b3e631f74f",
+   "origin": "INTEGRATOR-transcribed binding receipt"
+  },
+  "verify.log": {
+   "sha256": "74905230b6feac926d504f3b6eddd456dd6700e884ed56b011ef8f9ac6226f4e",
+   "origin": "INTEGRATOR re-check, not the auditor"
+  }
+ }
+}

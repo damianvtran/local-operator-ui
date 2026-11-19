@@ -1,0 +1,26 @@
+{
+ "kind": "bundle-companion-hashes",
+ "audit_id": "wave-b-delta-8bbe685ce56d",
+ "locale": "es",
+ "namespace": "ui.chat.canonical",
+ "note": "Hash manifest of this bundle's companions, per the canonical evidence contract. The AUDIT receipt the ledger row names is i18n/receipts/8bbe685ce56d.json (listed under audit_receipt), not this file.",
+ "companions": [
+  {
+   "file": "record.json",
+   "sha256": "2086a632853d2047dba4e359c2ed5c58c649f4d4912d458f0c0408bc8b0c7127"
+  },
+  {
+   "file": "audit.log",
+   "sha256": "2a6ae42cfe6d1694eefe5d6a6ee216ffbec78cadad121fd79a084716ce478dba"
+  },
+  {
+   "file": "report.md",
+   "sha256": "4a2e03262b7ac34c8f7f48c7bf3ce6491f5f42fb0a7e2f6807e8c88d5d1ce366"
+  }
+ ],
+ "audit_receipt": {
+  "path": "i18n/receipts/8bbe685ce56d.json",
+  "sha256": "ae29c068108f4283eed63edd201ef7fec65ff90763c5fd70f2b04b9f94623baa",
+  "size": 11579
+ }
+}

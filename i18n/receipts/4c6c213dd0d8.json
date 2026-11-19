@@ -1,0 +1,380 @@
+{
+  "schema": 1,
+  "auditor": "reviewer",
+  "model": "deepseek/deepseek-flash",
+  "instance": "4c6c213dd0d8",
+  "date": "2026-10-18",
+  "status": "passed",
+  "scope": "Register-correction audit at 46420b7eb2 against ab1ab8e65e: all 141 changed zh-CN strings across 30 namespaces read natively; 158 您 occurrences -> 0; mechanical verification of key sets, ICU AST/placeholders, punctuation, whitespace and scope; ledger supersede shape verified against committed bytes.",
+  "head": "46420b7eb274714d103c1805176494e29c128b07",
+  "base": "ab1ab8e65e9aee0835d72672a90cd12a082d4ecc",
+  "locale": "zh-CN",
+  "namespaces": {
+    "ui.agentMessages": {
+      "namespace": "ui.agentMessages",
+      "status": "passed",
+      "sha256": {
+        "en": "065cbea39ca4df33aa114fc027e5f75bcc6e74e9cb21d4f14e42628d3795cbcb",
+        "zh-CN": "adf885da3589a1f24cfa9028921dc617a956b78c43f4903b7efb6d0c217635ee"
+      },
+      "keys": 16,
+      "changed_strings": 5,
+      "findings": []
+    },
+    "ui.agents.dialogs": {
+      "namespace": "ui.agents.dialogs",
+      "status": "passed",
+      "sha256": {
+        "en": "99fc8672fbb4139aa2721542a8fb994506301b0c678d86c21439e939f5dd2bf4",
+        "zh-CN": "ed4301e56b542b11a52cd8cdde6d76ba80ff4a220e527e6ae1b437784ed5ce6e"
+      },
+      "keys": 33,
+      "changed_strings": 2,
+      "findings": []
+    },
+    "ui.agents.navigation": {
+      "namespace": "ui.agents.navigation",
+      "status": "passed",
+      "sha256": {
+        "en": "23f591cd7c2d52c2563e0b5cbb4cbb2164f7cd01c2568b050738b3be976a5729",
+        "zh-CN": "4277aee01b9c06916456d9ef1512acc4d69a9e532da5d14662ad01fc29512e25"
+      },
+      "keys": 32,
+      "changed_strings": 5,
+      "findings": []
+    },
+    "ui.agents.refusals": {
+      "namespace": "ui.agents.refusals",
+      "status": "passed",
+      "sha256": {
+        "en": "457cb86efa40d800d2adf711ec2b4289d22b4b9013fd48189082c4b8808d3f20",
+        "zh-CN": "03f9e9ce8e1e0f43cacd287173fe2142995137a9b31d6e49450981637c2d6095"
+      },
+      "keys": 16,
+      "changed_strings": 9,
+      "findings": []
+    },
+    "ui.agents.settings": {
+      "namespace": "ui.agents.settings",
+      "status": "passed",
+      "sha256": {
+        "en": "2e2a8a28891db681fd72396a3b8323e8705e4ea9c0397e49237e3ed3f7e1a897",
+        "zh-CN": "e5d626c0bffcb97a1f51ffe911e2cc5941dec0e4fff0d186d5202682bf578170"
+      },
+      "keys": 58,
+      "changed_strings": 4,
+      "findings": []
+    },
+    "ui.agents.starters": {
+      "namespace": "ui.agents.starters",
+      "status": "passed",
+      "sha256": {
+        "en": "7d7170328807a0ae0018bb69c4cd5fe49f6d5e47f7ca34484cf71b2a74612cec",
+        "zh-CN": "bd13ba6e47cc2c87024e889671a9e71b251b24021528efd84576107d2a859e0f"
+      },
+      "keys": 16,
+      "changed_strings": 1,
+      "findings": []
+    },
+    "ui.browser.chrome": {
+      "namespace": "ui.browser.chrome",
+      "status": "passed",
+      "sha256": {
+        "en": "73793572e5e36b8bbc8df6c1f27fb98083634b3b9e3cbd05ede27da4813c656c",
+        "zh-CN": "82e8e5143c64608245d928134d932e4c37f0f4513cf9e39b66d32bcf2702c87c"
+      },
+      "keys": 14,
+      "changed_strings": 1,
+      "findings": []
+    },
+    "ui.browser": {
+      "namespace": "ui.browser",
+      "status": "passed",
+      "sha256": {
+        "en": "106e8aff158ee6957bdccf93bbae53e62a0724afdc406e8faa5743ced980d276",
+        "zh-CN": "0f142341790400798724cda45da3ed91c9da66535eecffbaff9f7a145af08e0f"
+      },
+      "keys": 224,
+      "changed_strings": 11,
+      "findings": []
+    },
+    "ui.chat.composer": {
+      "namespace": "ui.chat.composer",
+      "status": "passed",
+      "sha256": {
+        "en": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
+        "zh-CN": "0c79e441c7bd7521c2b6bb119d6dfcabc1a685833a14d5c7475e393fbd70cd0d"
+      },
+      "keys": 34,
+      "changed_strings": 7,
+      "findings": []
+    },
+    "ui.code_review": {
+      "namespace": "ui.code_review",
+      "status": "passed",
+      "sha256": {
+        "en": "7344c8694a23662bfe3ae12205685cfa14851209d0685abbe463b9f513565085",
+        "zh-CN": "95640b8498f7b19805837c6dca554f8986c063a3d4f71e8ed23107164c3a776d"
+      },
+      "keys": 75,
+      "changed_strings": 1,
+      "findings": []
+    },
+    "ui.common.account": {
+      "namespace": "ui.common.account",
+      "status": "passed",
+      "sha256": {
+        "en": "72e2a848a2aa4b46ecdc0ede34ed5f59b280b73e3fc544d5e563ce22ab2743e0",
+        "zh-CN": "1ce49c726d4787e0aba30aca99662b2f210f2d8daeeea1953a441cc805d018f7"
+      },
+      "keys": 18,
+      "changed_strings": 2,
+      "findings": []
+    },
+    "ui.common.connection": {
+      "namespace": "ui.common.connection",
+      "status": "passed",
+      "sha256": {
+        "en": "d1acb6a1fae70e3f85255d880a91d9e35ed49a8bf7d04ef14722ce115d7c69bb",
+        "zh-CN": "ff47665785334934a685ccf64f0271ece35acf1d6376c259262c32654bc64106"
+      },
+      "keys": 10,
+      "changed_strings": 2,
+      "findings": []
+    },
+    "ui.common.editing": {
+      "namespace": "ui.common.editing",
+      "status": "passed",
+      "sha256": {
+        "en": "e7ddf3b75f3e46d6900aacab976f1180eb10fdb121b5f46d2dc231fd6b4f5bb5",
+        "zh-CN": "985405dbabc66b30e249133d03ff1b935a640cefa841c77e8f170a142919430a"
+      },
+      "keys": 3,
+      "changed_strings": 1,
+      "findings": []
+    },
+    "ui.common.models": {
+      "namespace": "ui.common.models",
+      "status": "passed",
+      "sha256": {
+        "en": "561e39a0105425d66cac7d7497306d740d79f7b2e3921424b1993f3405e08d77",
+        "zh-CN": "ad14b505c5d7da2230483b06bba035f97ab0fb7affa710ee54473714046a22be"
+      },
+      "keys": 24,
+      "changed_strings": 2,
+      "findings": []
+    },
+    "ui.common.updates": {
+      "namespace": "ui.common.updates",
+      "status": "passed",
+      "sha256": {
+        "en": "de3e083efe40d06b2947c1ef661ec0328b8984214f015a1133521d9d683cb3cd",
+        "zh-CN": "cec4f1e0b222131f6e531648e989720e0f6eb58e0560ddb56f77a142bf75d4d4"
+      },
+      "keys": 127,
+      "changed_strings": 6,
+      "findings": []
+    },
+    "ui.hub.comments": {
+      "namespace": "ui.hub.comments",
+      "status": "passed",
+      "sha256": {
+        "en": "5c20d0e9a7f66f753561ded1d104aa5cf0e1fd0d5a73f7f0a7e3349a28c6f2c4",
+        "zh-CN": "789b5685910d6dd7e3b9072f87d4dcff844fb58feb1acd646ffa2116f2a7a27e"
+      },
+      "keys": 29,
+      "changed_strings": 2,
+      "findings": []
+    },
+    "ui.hub": {
+      "namespace": "ui.hub",
+      "status": "passed",
+      "sha256": {
+        "en": "3abae06a0eed97e4e9f6ea93d81a8fb0f5552bc41dc02c87c5825f4126640aca",
+        "zh-CN": "e0b99d1e701e9831e6a2089ce6b6e1739e36fac29064904723cc856b0a2bf32c"
+      },
+      "keys": 150,
+      "changed_strings": 8,
+      "findings": []
+    },
+    "ui.installer": {
+      "namespace": "ui.installer",
+      "status": "passed",
+      "sha256": {
+        "en": "35b34093f3d065acf26e96a4e9601cb2906bd9439230a7fa7f9fc9a43784f7a3",
+        "zh-CN": "5a30c66ab16eaa7641ee299a8faa10fdaa3d68b793fccc926049223c8571cb9b"
+      },
+      "keys": 18,
+      "changed_strings": 2,
+      "findings": []
+    },
+    "ui.mesh": {
+      "namespace": "ui.mesh",
+      "status": "passed",
+      "sha256": {
+        "en": "6b1a7e7433d1e4650d6bca114a7e6d20af3ea582b33a9c9c4039d22bdbbeb21d",
+        "zh-CN": "69a4bf8618cc9395760ee8432153257afefb761c2e8f062ee8c0b6851d6e7c1e"
+      },
+      "keys": 223,
+      "changed_strings": 7,
+      "findings": []
+    },
+    "ui.projects": {
+      "namespace": "ui.projects",
+      "status": "passed",
+      "sha256": {
+        "en": "6b12f695845c3d01500291f5bc4eb50ea9b35e60c68bc69f21ee219c5f9d7f52",
+        "zh-CN": "d0bb0e229e3065414830d06f5895c2e28faa1045a84e9c43408e5129a34165e5"
+      },
+      "keys": 416,
+      "changed_strings": 3,
+      "findings": []
+    },
+    "ui.providers": {
+      "namespace": "ui.providers",
+      "status": "passed",
+      "sha256": {
+        "en": "9981637a98afbcbc166d889b461795bae7685e42274f4d607b711f4b0f9085f2",
+        "zh-CN": "57b2fb3a14792550ec27736490306d76c1599ee16ee9b5abd5519629d367caaf"
+      },
+      "keys": 189,
+      "changed_strings": 14,
+      "findings": []
+    },
+    "ui.schedules": {
+      "namespace": "ui.schedules",
+      "status": "passed",
+      "sha256": {
+        "en": "157303c99e3f8aabed9b4d60a00ee9a8ddb21a92df86f962f191aa002533799a",
+        "zh-CN": "bcb78c29b85d2f3403b3afc2be0329fe814504832102f1ffde143656df17e163"
+      },
+      "keys": 164,
+      "changed_strings": 7,
+      "findings": []
+    },
+    "ui.settings.account": {
+      "namespace": "ui.settings.account",
+      "status": "passed",
+      "sha256": {
+        "en": "90960d5e885e5b617af91b7249b64828a049c0b9631bf5da4562a8f8c2f5c066",
+        "zh-CN": "2ae5b69bb932ed2be1ed8dadf096f1346452063fe4ac6f759618ebcb66d4ae50"
+      },
+      "keys": 34,
+      "changed_strings": 8,
+      "findings": []
+    },
+    "ui.settings.configuration": {
+      "namespace": "ui.settings.configuration",
+      "status": "passed",
+      "sha256": {
+        "en": "d11a5170a0336449668b91a2b2aa1013ae36ee38c4b70fc69f90541aea3e5050",
+        "zh-CN": "061a139a3e96fb3a98b8798a75ec5e7c877bd9a8ac6468ad0e10d7f789dc1e01"
+      },
+      "keys": 92,
+      "changed_strings": 3,
+      "findings": []
+    },
+    "ui.settings.integrations": {
+      "namespace": "ui.settings.integrations",
+      "status": "passed",
+      "sha256": {
+        "en": "36b3507993a0466100ca099c3c1c2b2852d66a81b14f3685031f0a35dfa0f5b3",
+        "zh-CN": "8daa6efac6083ddf38beb224444fb3131a4c8234905fb4219e979e9b004bc61b"
+      },
+      "keys": 218,
+      "changed_strings": 15,
+      "findings": []
+    },
+    "ui.settings.model.default_effort": {
+      "namespace": "ui.settings.model.default_effort",
+      "status": "passed",
+      "sha256": {
+        "en": "5a4a01952b8a4242730e336cf082dc926085ac126a147d8b44197e9f04fc3b29",
+        "zh-CN": "3e68ddb04223b360479754e5c466e2e1fa0ed10a26a6193b66d42b7e03bc032e"
+      },
+      "keys": 19,
+      "changed_strings": 4,
+      "findings": []
+    },
+    "ui.settings.model": {
+      "namespace": "ui.settings.model",
+      "status": "passed",
+      "sha256": {
+        "en": "5a09b6ed49e8501d14a6f8052a70ce15ce5104ec8da3756c6b576e6e4d150cf1",
+        "zh-CN": "f62e5f024fb9d28978250c26fdaa59ed93865b973cf59ccb5d89388d7ad5dd4a"
+      },
+      "keys": 32,
+      "changed_strings": 4,
+      "findings": []
+    },
+    "ui.settings.model.provider_callout": {
+      "namespace": "ui.settings.model.provider_callout",
+      "status": "passed",
+      "sha256": {
+        "en": "8d1871aa2d087f99694b77e9f946b33b549a9541525023347b78124f42bbf82f",
+        "zh-CN": "0c54c0ab47061fad246d2579ba7367a7620c89b10a277a460cdc0837ed397235"
+      },
+      "keys": 2,
+      "changed_strings": 1,
+      "findings": []
+    },
+    "ui.settings.navigation": {
+      "namespace": "ui.settings.navigation",
+      "status": "passed",
+      "sha256": {
+        "en": "b0db379acf4e4c13bed8f4fb3f7e551c0b1ebc3dd52ef4508a9797c5fdcf3dbc",
+        "zh-CN": "eec78923f15b66c4aa65cb4d50e2b104f7ae444539ef81e817384ae12e354975"
+      },
+      "keys": 22,
+      "changed_strings": 3,
+      "findings": []
+    },
+    "ui.settings.updates": {
+      "namespace": "ui.settings.updates",
+      "status": "passed",
+      "sha256": {
+        "en": "6597aeea3a3a0495f1ba0d9a7ce8078f455d970b53647dbc8350e00fbc9099b2",
+        "zh-CN": "1c356a01feaf9021cc671f3246d649c63b178b90636a85c1215d79449f8c4be1"
+      },
+      "keys": 29,
+      "changed_strings": 1,
+      "findings": []
+    }
+  },
+  "findings": [],
+  "locales": [
+    "zh-CN"
+  ],
+  "observations": [
+    {
+      "severity": "INFO",
+      "key": "i18n/ledger.json",
+      "note": "The 30 re-derived zh-CN rows are status=pending with auditors=[] by design (commit message states this): scripts/i18n/ledger-check.mjs therefore fails 60 checks at this head. This receipt is the input for the follow-up ledger-assemble step that returns the rows to audited; until that step lands, check-i18n cannot pass. Not a defect in the register correction.",
+      "topic": "i18n/ledger.json"
+    },
+    {
+      "severity": "INFO",
+      "key": "ui.agentMessages.dialog.later",
+      "note": "Three strings compress 您可以 -> 可 (also ui.agents.settings.chat.set_custom_values_for_any_of_these and ui.settings.model.system_prompt.every_local_operator_agent_receives_this_prompt_in_addition_to_it). Grammar-preserving; no meaning change."
+    },
+    {
+      "severity": "INFO",
+      "key": "ui.agents.settings.system_prompt.define_the_agent_s_role_personality_or",
+      "note": "Reproduced the implementer's 75 drop / 65 swap / 1 mixed split exactly: this string drops 您 but retains a pre-existing 你 inside the quoted example “你是一位研究专家”, so a naive occurrence count reads it as a swap."
+    },
+    {
+      "severity": "INFO",
+      "key": "ui.providers.provider_catalog.you_cancelled_sign_in",
+      "note": "“您已取消登录。” -> “已取消登录。” loses the subject; read as a status after the user's own cancel action, it stays clear. Minor register choice, accepted rather than churned."
+    }
+  ],
+  "evidence": {
+    "occurrences": "158 您 across 141 strings in 30 catalogues at ab1ab8e65e -> 0 您 and 0 您 in keys at 46420b7eb2; 96 你 corpus-wide (82 in the changed strings).",
+    "scope": "git diff --name-status ab1ab8e65e..46420b7eb2 = 30 zh-CN catalogues (M) + i18n/ledger.json (M); no other file.",
+    "keys": "Key arrays identical (same order, same set) in all 30 files; no key added or removed.",
+    "icu": "All 55 zh-CN catalogue files parse with @formatjs/icu-messageformat-parser (0 errors); per-key AST skeletons identical old vs new, so plural/select branches and argument names are unchanged.",
+    "punctuation": "Non-CJK/non-Latin/non-digit residue multiset identical for every changed string (includes ，。：；？！“”…→); edge whitespace identical.",
+    "ledger": "30 changed rows, all zh-CN; target_sha256 equals sha256 of committed file; source_sha256 unchanged; status pending, auditors []; superseded[-1] carries the prior target_sha256 and the byte-identical prior auditor list (receipt paths and receipt_sha256 intact); pre-existing superseded history preserved (28 rows 1 block, 2 rows 2 blocks); no other ledger entry changed.",
+    "native_read": "Every changed string read in context against the English source; no subjectless sentence reads as an app instruction, no meaning shift, no lost object. 74 pronoun-free strings + 67 retaining 你."
+  }
+}

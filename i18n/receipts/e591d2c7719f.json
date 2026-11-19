@@ -1,0 +1,66 @@
+{
+  "locale": "vi",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "e591d2c7719f",
+    "model": "openai/gpt-6.1-sol"
+  },
+  "scope": "ONLY ui.chat.sidebar.agents.list_join (one added key); NOT a fresh whole-namespace audit. Namespace hashes bind bytes, not linguistic scope.",
+  "adaptation": {
+    "by_session": "0c0f0786d917",
+    "model": "openai/gpt-6.1-sol",
+    "kind": "Mechanical receipt-shape adapter, not a new audit",
+    "record": "record.json",
+    "record_sha256": "3401f20c3ac5e46ebf511a2ac60140d9815a3aec5221cd401629111b9f8b7840",
+    "original_verdict": "verdict.txt",
+    "independence": {
+      "agent": "i18n-auditor",
+      "session": "e591d2c7719f",
+      "model": "openai/gpt-6.1-sol",
+      "independent_from_translator_session": true,
+      "translator_session": "not provided in task",
+      "actual_model_source": "Host model-switch record: temporary quota fallback from anthropic/claude-sonnet-5-5 via anthropic/claude-opus-5-5 to openai/gpt-6.1-sol"
+    }
+  },
+  "artifacts": [
+    {
+      "path": "SCOPE.md",
+      "sha256": "27658627b897825c275ce8eff5dd91087bda151f4d0c35d7f6b9b9ca9ffaad62"
+    },
+    {
+      "path": "catalogue-validity.log",
+      "sha256": "87359b4e903252bc8a89756bf380655f7d71a1a455164f52dc554051012c2eb5"
+    },
+    {
+      "path": "context-parity.log",
+      "sha256": "7bfd6da14a35d5292a687f95b29b3da0850babfce1d99d04ebeb11ed0a3cff35"
+    },
+    {
+      "path": "findings.jsonl",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "formatter-results.json",
+      "sha256": "acceae9b7b7913d7754858cea462578a3747238cee99edb0fce423eadccea8ad"
+    },
+    {
+      "path": "record.json",
+      "sha256": "3401f20c3ac5e46ebf511a2ac60140d9815a3aec5221cd401629111b9f8b7840"
+    },
+    {
+      "path": "verdict.txt",
+      "sha256": "2b3290b695edcccb5f62eae47bae6c8788187034d0e4bfef868e4b0d8e7f4022"
+    }
+  ],
+  "namespaces": {
+    "ui.chat.sidebar": {
+      "status": "passed",
+      "sha256": {
+        "en": "0928091b1241792f86f7fe2fafb9895d0c9d8f75341f59513f7d720a9acb477b",
+        "vi": "ce316d397e94d9fed2ccaae9db98042bb51674c054cf78a3c05554a5705dba4f"
+      },
+      "scope": "ONLY ui.chat.sidebar.agents.list_join (one added key); NOT a fresh whole-namespace audit. Namespace hashes bind bytes, not linguistic scope.",
+      "findings": []
+    }
+  }
+}

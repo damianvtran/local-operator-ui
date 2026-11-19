@@ -1,0 +1,47 @@
+{
+ "schema": 1,
+ "authored_by": "integrating coder session (agent coder), NOT the auditor",
+ "purpose": "Lands the independent audit of the 14 S16a tool-state words (PR #1870) as portable evidence; the auditor's own files are untouched copies.",
+ "locale": "hi",
+ "namespace": "ui.chat.canonical",
+ "pr": "damianvtran/local-operator-ui#1870",
+ "audited_head": "93a61605b059ada503d75da6e9e38e8ef14e1b67",
+ "auditor_session": "2bc153cbf350",
+ "auditor_agent": "i18n-auditor",
+ "auditor_model": "deepseek/deepseek-flash",
+ "translator": {
+  "agent": "i18n-translator",
+  "model": "anthropic/claude-sonnet-5-5",
+  "draft": "hi-s16a.json",
+  "draft_sha256": "2b7d98192ccbe13deb01e0b24c2cad296c21fcdb1514cf50a56924f0dd685db6"
+ },
+ "ledger_receipt": "i18n/receipts/2bc153cbf350.json",
+ "landed_target_sha256": "4678c723a8aba6c2d1ef63cb3bb9255967f0a02107baa99da2129480dff750c4",
+ "receipt_origin": "INTEGRATOR-TRANSCRIBED binding receipt (receipt.json == i18n/receipts/2bc153cbf350.json). The auditor wrote no receipt of its own (record.json + report.md only).",
+ "files": {
+  "auditor-files/icu-check.mjs": {
+   "sha256": "8f0679d0abdd3216059e45cb7fce1453b37ecb4ab3a36051a667b39e1d2ac437",
+   "origin": "auditor-authored, copied byte-for-byte from the auditor session scratchpad (staged in the manager session scratchpad)"
+  },
+  "auditor-files/icu-matrix.log": {
+   "sha256": "eef8537af58e03c86c7cb02c5fb9dc08e213340f54532634d9f5e77ab5ad6c2a",
+   "origin": "auditor-authored, copied byte-for-byte from the auditor session scratchpad (staged in the manager session scratchpad)"
+  },
+  "record.json": {
+   "sha256": "de0c739f71e2dd68f6ca5ef42afd2533796e59273cf935cb49327d20c429728f",
+   "origin": "auditor-authored, copied byte-for-byte from the auditor session scratchpad (staged in the manager session scratchpad)"
+  },
+  "report.md": {
+   "sha256": "068d94fdb4aab296265074cdf1b26720d73d92e1c87e6a95ae794944c91b62f4",
+   "origin": "auditor-authored, copied byte-for-byte from the auditor session scratchpad (staged in the manager session scratchpad)"
+  },
+  "receipt.json": {
+   "sha256": "0bb1887c8f4b2c2ba8f3b4af8130166a93b86beadc8abc00eb2d197a360bd671",
+   "origin": "INTEGRATOR-transcribed binding receipt"
+  },
+  "verify.log": {
+   "sha256": "9e90bcffb0214e1c2430663f9e63298dae27707951f09cbda9a7dca98dd2a91c",
+   "origin": "INTEGRATOR re-check, not the auditor"
+  }
+ }
+}

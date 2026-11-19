@@ -26,7 +26,12 @@ import type {
 	ReusableTeam,
 } from "@shared/api/local-operator/profile-hooks";
 import { classOf } from "../utils/agent-class";
-import type { RunChange, RunResult, RunTarget } from "./config-run-store";
+import type {
+	RunChange,
+	RunResult,
+	RunTarget,
+	RunTargetKind,
+} from "./config-run-store";
 
 /**
  * The tool rows this feature reads, and nothing else on the wire is consulted.
@@ -35,7 +40,16 @@ import type { RunChange, RunResult, RunTarget } from "./config-run-store";
  * inventory holds (`agent`, `team`); a row for anything else is a tool the run
  * should not have and is deliberately not projected.
  */
-export const RUN_TOOL_NAMES: ReadonlySet<string> = new Set(["agent", "team"]);
+export const RUN_TOOL_NAMES: ReadonlySet<string> = new Set([
+	"agent",
+	"team",
+	/*
+	 * A core with `agents_config_skills` declares a third registry tool, `skill`
+	 * (`list`/`show`/`create`/`update`, seam note §2), whose verbs are the agent
+	 * and team verbs, so the same projection classifies its reads and writes.
+	 */
+	"skill",
+]);
 
 /** One tool row of the run's own transcript, as this projection reads it. */
 export type RunToolRow = {
@@ -89,7 +103,14 @@ export function projectRunToolRow(row: RunToolRow): {
 } {
 	const op = typeof row.args?.op === "string" ? row.args.op : null;
 	const name = typeof row.args?.name === "string" ? row.args.name : null;
-	const kind: "agent" | "team" = row.toolName === "team" ? "team" : "agent";
+	// Derived from all three tool names, not a binary: a `skill` row named as an
+	// agent would mark and diff a definition the run never touched (seam note §4).
+	const kind: RunTargetKind =
+		row.toolName === "team"
+			? "team"
+			: row.toolName === "skill"
+				? "skill"
+				: "agent";
 	const target = name ? { kind, name } : null;
 	/*
 	 * Landed, not merely attempted. `phase` is the transcript's own compose →
@@ -112,6 +133,17 @@ export function projectRunToolRow(row: RunToolRow): {
 		case "update":
 			return {
 				verb: name ? `Updating ${kind} ${name}` : `Updating a ${kind}`,
+				target,
+				...write(true),
+			};
+		/*
+		 * The skill tool's exact old_text -> new_text edit (core #3055 review: a
+		 * config-run tool result is cut to 8 KiB, so a large SKILL.md is read
+		 * line-paged and changed by `edit` rather than resent whole). A write.
+		 */
+		case "edit":
+			return {
+				verb: name ? `Editing ${kind} ${name}` : `Editing a ${kind}`,
 				target,
 				...write(true),
 			};
@@ -150,7 +182,43 @@ type Signature = Record<string, string>;
 export type CatalogueSnapshot = {
 	agents: Record<string, Signature>;
 	teams: Record<string, Signature>;
+	/**
+	 * The skills dimension, or null when it was not read (a core without the
+	 * skill run, or a `skills.list` that failed). NULL IS "NOT DIFFED", never an
+	 * empty catalogue: an empty `before` would report every skill as created
+	 * (seam note §4). Optional so a snapshot from an agents/teams-only caller
+	 * keeps its shape.
+	 */
+	skills?: Record<string, Signature> | null;
 };
+
+/** The `skills.list` row fields a skill run can change, as the diff reads them. */
+export type SkillListRow = {
+	name: string;
+	description?: string | null;
+	fingerprint?: string | null;
+};
+
+/**
+ * A skill's diffable signature. `fingerprint` is core's hash of the whole
+ * folder, so it moves on an instruction-only edit too: that is the skill twin of
+ * the agent edit the list cannot show, and here it CAN be told apart
+ * (`describeField`).
+ */
+export function snapshotSkills(
+	rows: readonly SkillListRow[] | null | undefined,
+): Record<string, Signature> | null {
+	if (!rows) return null;
+	return Object.fromEntries(
+		rows.map((row) => [
+			row.name,
+			{
+				description: row.description ?? "",
+				fingerprint: row.fingerprint ?? "",
+			},
+		]),
+	);
+}
 
 /** The operator's words for a field, so the summary never says `tools`. */
 const FIELD_LABEL: Record<string, string> = {
@@ -243,6 +311,9 @@ function describeTools(before: string, after: string): string {
 
 function describeField(field: string, before: string, after: string): string {
 	if (field === "tools") return describeTools(before, after);
+	// A skill's fingerprint is its file set; the operator's word for a change to
+	// it is the instructions (the description has its own field, diffed apart).
+	if (field === "fingerprint") return "instructions changed";
 	if (field === "delegate")
 		return after === "true" ? "delegation turned on" : "delegation turned off";
 	/*
@@ -260,6 +331,16 @@ function describeField(field: string, before: string, after: string): string {
 		return `members changed (${count(before)} to ${count(after)})`;
 	}
 	return `${FIELD_LABEL[field] ?? field} changed`;
+}
+
+/** One kind's rows in a snapshot; null when that dimension was not read. */
+function rowsOf(
+	snapshot: CatalogueSnapshot,
+	kind: RunTargetKind,
+): Record<string, Signature> | null {
+	if (kind === "agent") return snapshot.agents;
+	if (kind === "team") return snapshot.teams;
+	return snapshot.skills ?? null;
 }
 
 /**
@@ -285,10 +366,21 @@ export function diffCatalogue(
 		const key = `${target.kind}:${target.name}`;
 		if (seen.has(key)) continue;
 		seen.add(key);
-		const beforeRow =
-			before[target.kind === "agent" ? "agents" : "teams"][target.name];
-		const afterRow =
-			after[target.kind === "agent" ? "agents" : "teams"][target.name];
+		const beforeRows = rowsOf(before, target.kind);
+		const afterRows = rowsOf(after, target.kind);
+		/*
+		 * A SKILL THE RUN WROTE WHOSE LIST COULD NOT BE READ (either side) is still
+		 * reported, as an update with no field it can name: the touched set is the
+		 * run's own transcript, so the write landed, and "changed, details
+		 * unavailable" beats saying nothing (seam note §4). Agents and teams are
+		 * always read, so this never fires for them.
+		 */
+		if (!beforeRows || !afterRows) {
+			results.push({ target, created: false, changes: [] });
+			continue;
+		}
+		const beforeRow = beforeRows[target.name];
+		const afterRow = afterRows[target.name];
 		if (!afterRow) continue; // Deleted, or a name the run only read.
 		if (!beforeRow) {
 			results.push({ target, created: true, changes: [] });
@@ -312,15 +404,15 @@ export function diffCatalogue(
 	 * is still a change the operator must be told about. Reported after the named
 	 * ones, and never a duplicate of them.
 	 */
-	for (const [kind, rows] of [
-		["agent", after.agents],
-		["team", after.teams],
-	] as const) {
+	for (const kind of ["agent", "team", "skill"] as const) {
+		const rows = rowsOf(after, kind);
+		const prior = rowsOf(before, kind);
+		// Both sides must have been READ: a null side is "not diffed", and
+		// treating it as empty would report every skill as created.
+		if (!rows || !prior) continue;
 		for (const name of Object.keys(rows)) {
 			if (seen.has(`${kind}:${name}`)) continue;
-			const existedBefore =
-				kind === "agent" ? before.agents[name] : before.teams[name];
-			if (existedBefore) continue;
+			if (prior[name]) continue;
 			results.push({ target: { kind, name }, created: true, changes: [] });
 		}
 	}

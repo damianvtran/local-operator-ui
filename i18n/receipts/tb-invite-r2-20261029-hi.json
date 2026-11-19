@@ -1,0 +1,24 @@
+{
+	"auditor": "i18n-auditor",
+	"agent": "i18n-auditor",
+	"model": "kimi/k3.1-pro",
+	"model_comment": "The current session reports this model after a temporary provider-failure fallback from the launch model.",
+	"instance": "tb-invite-r2-20261029-hi",
+	"date": "2026-10-29",
+	"status": "passed",
+	"locale": "hi",
+	"namespace": "ui.teamBridge",
+	"sha256": {
+		"en": "1516974c44681940753862f9735f0b3c19c7815ca4e68eab7fd343f1f1ed53f3",
+		"hi": "781496e80125cc4ea61185c07d27d4409c284eeac7443943671d5e77078f8570"
+	},
+	"findings": [],
+	"checks": {
+		"key_parity": "Ran the prescribed Python set comparison: 281 281 set() set(). Confirmed ui.teamBridge.members.agent_invitation and ui.teamBridge.members.human_invitation are absent from both the Hindi and English catalogues.",
+		"bidi": "Scanned the complete Hindi file for U+200E, U+200F, U+202A-U+202E and zero-width characters (U+200B-U+200D, U+2060, U+FEFF, U+180E); none found.",
+		"apostrophes": "Scanned all Hindi values for ASCII U+0027; none found, so no ICU quoted literal can be opened by an ASCII apostrophe.",
+		"diff": "Ran git diff for the Hindi catalogue: exactly the two intended value changes and the two intended key deletions; no other changes or reordering. The unchanged plural key was not re-audited; no ICU issue was observed in the diff."
+	},
+	"scope": "Reviewed the current Hindi translations of ui.teamBridge.members.read_only and ui.teamBridge.members.empty against their English text and rendering context, including accurate reader-focused inability to invite, no administrator-authority claim or blame, and an invite-list empty state that does not claim the organization has no people. Confirmed both removed invitation keys are absent. Mechanically checked the complete Hindi file for parity, bidi/zero-width characters and ASCII apostrophes, and inspected its git diff. Did not re-litigate the other translations or ICU safety of unchanged keys passed by the earlier audit; no Vietnamese text was present in this Hindi locale audit.",
+	"independence": "Auditor wrote none of the audited strings; the translator was a separate subagent. No catalogue or ledger edit by the auditor."
+}

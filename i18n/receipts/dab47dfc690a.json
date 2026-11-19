@@ -1,0 +1,837 @@
+{
+	"schema": 1,
+	"kind": "translation-audit",
+	"round": 2,
+	"locale": "hi",
+	"locale_name": "Hindi",
+	"batch": "canvas (PR #1388)",
+	"pr": 1388,
+	"branch": "feat/i18n-canvas-batch",
+	"head": "82209cab3a9eeee4d6649d4b0015b73501b122e8",
+	"previous_head": "936e3a483b4d675c9827be5f40167da186f86900",
+	"base": "40462495827dfb0e1bfacb8643da805912493a5b",
+	"audited_heads": {
+		"base": "40462495827dfb0e1bfacb8643da805912493a5b",
+		"round1": "936e3a483b4d675c9827be5f40167da186f86900",
+		"round2": "82209cab3a9eeee4d6649d4b0015b73501b122e8"
+	},
+	"date": "2026-10-24",
+	"auditor": {
+		"agent": "translation-auditor",
+		"role": "independent translation auditor (team lopdev); authored no catalogue value in either batch",
+		"team": "lopdev",
+		"instance": "dab47dfc690a",
+		"session": "dab47dfc690a",
+		"model": "radient/auto",
+		"served_model": "radient/auto",
+		"fallback_used": false,
+		"model_provenance": "Harness-reported model for this session is radient/auto; the routed provider model is not exposed to the session and is not claimed. No fallback was reported or observed.",
+		"independence": "Auditor session dab47dfc690a is distinct from the canvas translator session cb9b2869b58b, the surfaces translator session 37f772843d10, and the round-1 auditor session 24dd9a889ea4. This session authored no catalogue value in either batch; every applied value was read from the catalogue bytes at the audited heads."
+	},
+	"model": "radient/auto",
+	"instance": "dab47dfc690a",
+	"prior_receipt": {
+		"path": "i18n/receipts/audit-hi-canvas-24dd9a889ea4.json",
+		"sha256": "af2754bbc3c04d57e06a5d22573cddc6d64466818a753e464c02376a6b2f602f",
+		"verdict": "changes_requested — 0 blocker, 6 major, 9 minor, 2 nit across 8 namespace(s); 1,079 values read; 45 exact matches classified IDENTICAL_OK; 0 untranslated stubs."
+	},
+	"guidance": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/hi.md",
+			"sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+		},
+		"contracts": [
+			"~/local-operator-ui/docs/I18N.md (sha256 34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca)",
+			"~/local-operator-ui/AGENTS.md § Internationalization"
+		]
+	},
+	"scope": "Delta-only re-audit of the 17 canvas findings (6 major, 9 minor, 2 nit) raised in audit-hi-canvas-24dd9a889ea4; 21 hi values changed across 4 of the 8 namespaces at head 82209cab3a (from 936e3a483b). No unchanged key was re-read; every namespace block below records the new head's en/hi/context hashes, and the unchanged hi files are byte-identical to round 1.",
+	"method": [
+		"Read the hi remediation commit 0d04ec4e1b and the canvas head 82209cab3a; re-checked every prior finding's key(s) against the applied bytes rather than the translator summary.",
+		"Parsed all 21 changed values with @formatjs/icu-messageformat-parser and compared argument names/types, number/date skeletons, plural/select option sets, tag names and pound nodes with the English values; 0 structural differences, 0 key differences.",
+		"Rendered the one plural value in the delta at hi counts 0, 1, 2 and 5 through intl-messageformat; all four render with the intended one/other branch and no placeholder residue.",
+		"Checked the delta for ICU/placeholder changes, key removals or additions, unbalanced tags, non-one/other plural categories, and for the house rules: nukta, no stray ASCII punctuation in Hindi text, no तुम/तू, no exclamation marks, no Devanagari digits.",
+		"Read the affected call sites: session-panel.tsx (records_run_from/to composition), canvas-tabs.tsx (tabs heading), inline_edit context; verified the changed to value is used only in the session-panel range sentence.",
+		"Re-derived SHA-256 for en/hi/context at the new head for every namespace in the batch; compared with the round-1 receipt. All en and context hashes are unchanged; the four remediated hi files changed; the other four canvas hi files are byte-identical.",
+		"Did not edit any catalogue, ledger, allowance, shipped or generated file; the only files written are this receipt and the matching surfaces receipt."
+	],
+	"self_corrections": [
+		"HI-CA-17: the round-1 direction (standardise on इम्पोर्ट) is not supported by the corpus, which uses आयात in 30+ ui.settings.imports values versus 8 agent-import इम्पोर्ट values; deferred for a recorded locale decision rather than silently extended."
+	],
+	"delta": [
+		{
+			"id": "HI-CA-01",
+			"prior_severity": "major",
+			"keys": [
+				"ui.canvas.tabs.open_documents"
+			],
+			"status": "fixed",
+			"applied": {
+				"ui.canvas.tabs.open_documents": "खुले दस्तावेज़"
+			},
+			"expected": {
+				"ui.canvas.tabs.open_documents": "खुले दस्तावेज़"
+			},
+			"note": "This is the aria-label of the tab strip's role=tablist (canvas-tabs.tsx), a list of open document tabs; the imperative दस्तावेज़ खोलें names an action and misdescribes the control to screen-reader users. The fr/es catalogues both use the noun phrase (Documents ouverts / Documentos abiertos)."
+		},
+		{
+			"id": "HI-CA-02",
+			"prior_severity": "major",
+			"keys": [
+				"ui.canvas.inline_edit.change"
+			],
+			"status": "fixed",
+			"applied": {
+				"ui.canvas.inline_edit.change": "बदलाव"
+			},
+			"expected": {
+				"ui.canvas.inline_edit.change": "बदलाव"
+			},
+			"note": "Rendered as {change} {index} {of} {total} in the review bar (inline-edit.tsx), so बदलें 1 / 3 reads as an imperative command; the key is the status noun, matching change_125665's बदलाव."
+		},
+		{
+			"id": "HI-CA-03",
+			"prior_severity": "major",
+			"keys": [
+				"ui.canvas.variable_form_dialog.name_key"
+			],
+			"status": "fixed",
+			"applied": {
+				"ui.canvas.variable_form_dialog.name_key": "नाम (key)"
+			},
+			"expected": {
+				"ui.canvas.variable_form_dialog.name_key": "नाम (key)"
+			},
+			"note": "की is the Hindi genitive particle, not the technical English key; the label reads नाम (का/की) and hides that the field is the variable's key, so keep the machine-facing word key Latin as glossary §1 does for keys and identifiers."
+		},
+		{
+			"id": "HI-CA-04",
+			"prior_severity": "minor",
+			"keys": [
+				"ui.canvas.code_editor_diff.remove",
+				"ui.canvas.code_editor_diff.add",
+				"ui.canvas.wysiwyg_markdown_editor.remove",
+				"ui.canvas.wysiwyg_markdown_editor.add"
+			],
+			"status": "fixed",
+			"applied": {
+				"ui.canvas.code_editor_diff.remove": "- हटाया गया:",
+				"ui.canvas.code_editor_diff.add": "+ जोड़ा गया:",
+				"ui.canvas.wysiwyg_markdown_editor.remove": "- हटाया गया",
+				"ui.canvas.wysiwyg_markdown_editor.add": "+ जोड़ा गया"
+			},
+			"expected": {
+				"ui.canvas.code_editor_diff.remove": "- हटाया गया:",
+				"ui.canvas.code_editor_diff.add": "+ जोड़ा गया:",
+				"ui.canvas.wysiwyg_markdown_editor.remove": "- हटाया गया",
+				"ui.canvas.wysiwyg_markdown_editor.add": "+ जोड़ा गया"
+			},
+			"note": "These four values label deleted and added diff blocks (code-editor-diff.ts, wysiwyg-markdown-editor.tsx), not buttons; the imperative हटाएँ/जोड़ें reads as a command to the reader."
+		},
+		{
+			"id": "HI-CA-05",
+			"prior_severity": "nit",
+			"keys": [
+				"ui.canvas.use_file_freshness.your_save_replaced_the_change_on_disk",
+				"ui.canvas.wysiwyg_markdown_editor.file_saved_replacing_the_change"
+			],
+			"status": "fixed",
+			"applied": {
+				"ui.canvas.use_file_freshness.your_save_replaced_the_change_on_disk": "आपके सेव ने डिस्क पर हुए बदलाव को अधिलेखित कर दिया।",
+				"ui.canvas.wysiwyg_markdown_editor.file_saved_replacing_the_change": "फ़ाइल सहेजी गई और डिस्क पर हुआ बदलाव अधिलेखित कर दिया गया"
+			},
+			"expected": {
+				"ui.canvas.use_file_freshness.your_save_replaced_the_change_on_disk": "आपके सेव ने डिस्क पर हुए बदलाव को अधिलेखित कर दिया।",
+				"ui.canvas.wysiwyg_markdown_editor.file_saved_replacing_the_change": "फ़ाइल सहेजी गई और डिस्क पर हुआ बदलाव अधिलेखित कर दिया गया"
+			},
+			"note": "बदलाव को बदल दिया is circular and डिस्क का बदलाव attributes the change to the disk; अधिलेखित is the term already used for overwrite in this file."
+		},
+		{
+			"id": "HI-CA-06",
+			"prior_severity": "major",
+			"keys": [
+				"ui.chat.pickers.session_panel.to",
+				"ui.chat.pickers.session_panel.records_run_from"
+			],
+			"status": "fixed",
+			"applied": {
+				"ui.chat.pickers.session_panel.to": "–",
+				"ui.chat.pickers.session_panel.records_run_from": "रिकॉर्ड की अवधि:"
+			},
+			"expected": {
+				"ui.chat.pickers.session_panel.to": "–",
+				"ui.chat.pickers.session_panel.records_run_from": "रिकॉर्ड की अवधि:"
+			},
+			"note": "session-panel.tsx composes {records_run_from} {first} {to} {last}; with रिकॉर्ड की शुरुआत + से the result is रिकॉर्ड की शुरुआत 1 नव॰ से 5 नव॰, which marks only the start and reads as 'beginning … from', never as a closed range."
+		},
+		{
+			"id": "HI-CA-07",
+			"prior_severity": "major",
+			"keys": [
+				"ui.chat.pickers.session_panel.emitted_excluded"
+			],
+			"status": "fixed",
+			"applied": {
+				"ui.chat.pickers.session_panel.emitted_excluded": "{formatcount} जारी किए गए · {formatcount2} बाहर रखे गए"
+			},
+			"expected": {
+				"ui.chat.pickers.session_panel.emitted_excluded": "{formatcount} जारी किए गए · {formatcount2} बाहर रखे गए"
+			},
+			"note": "emitted is the count of tool calls produced (session-panel.tsx passes rates.emitted); निकाले गए means removed and collides with the excluded column, so the numerator is mislabelled."
+		},
+		{
+			"id": "HI-CA-08",
+			"prior_severity": "major",
+			"keys": [
+				"ui.chat.pickers.session_panel.what_this_session_has_used_from_one_read_of_the_local_ledger"
+			],
+			"status": "fixed",
+			"applied": {
+				"ui.chat.pickers.session_panel.what_this_session_has_used_from_one_read_of_the_local_ledger": "इस सत्र ने क्या उपयोग किया, यह स्थानीय लेजर को एक बार पढ़ने से पता चलता है।"
+			},
+			"expected": {
+				"ui.chat.pickers.session_panel.what_this_session_has_used_from_one_read_of_the_local_ledger": "इस सत्र ने क्या उपयोग किया, यह स्थानीय लेजर को एक बार पढ़ने से पता चलता है।"
+			},
+			"note": "पता चला इस सत्र का उपयोग has no finite link and is ungrammatical; the status explanation needs the clause in the order इस सत्र ने क्या उपयोग किया … पता चलता है."
+		},
+		{
+			"id": "HI-CA-09",
+			"prior_severity": "minor",
+			"keys": [
+				"ui.chat.pickers.destination_pickers.fixed_number_of_turns"
+			],
+			"status": "fixed",
+			"applied": {
+				"ui.chat.pickers.destination_pickers.fixed_number_of_turns": "टर्न की तय संख्या"
+			},
+			"expected": {
+				"ui.chat.pickers.destination_pickers.fixed_number_of_turns": "टर्न की तय संख्या"
+			},
+			"note": "तय संख्या में टर्न means 'turns in a fixed number', not 'a fixed number of turns'; Hindi takes the counted noun in the oblique before the quantity."
+		},
+		{
+			"id": "HI-CA-10",
+			"prior_severity": "minor",
+			"keys": [
+				"ui.chat.pickers.destination_pickers.the_standing_goal_is_prepended_to_every_turn_clear_it_to_remove_it"
+			],
+			"status": "fixed",
+			"applied": {
+				"ui.chat.pickers.destination_pickers.the_standing_goal_is_prepended_to_every_turn_clear_it_to_remove_it": "स्थायी लक्ष्य हर टर्न के आगे जोड़ा जाता है। इसे हटाने के लिए साफ़ करें।"
+			},
+			"expected": {
+				"ui.chat.pickers.destination_pickers.the_standing_goal_is_prepended_to_every_turn_clear_it_to_remove_it": "इसे हटाने के लिए साफ़ करें।"
+			},
+			"note": "इसे हटाने के लिए मिटाएँ uses two synonyms for the same operation ('to remove it, erase it'); साफ़ करें is the established clear action and removes the circularity."
+		},
+		{
+			"id": "HI-CA-11",
+			"prior_severity": "minor",
+			"keys": [
+				"ui.chat.pickers.destination_pickers.no_models_are_signed_in_yet"
+			],
+			"status": "fixed",
+			"applied": {
+				"ui.chat.pickers.destination_pickers.no_models_are_signed_in_yet": "अभी कोई मॉडल साइन इन नहीं है।"
+			},
+			"expected": {
+				"ui.chat.pickers.destination_pickers.no_models_are_signed_in_yet": "अभी कोई मॉडल साइन इन नहीं है।"
+			},
+			"note": "किसी मॉडल में साइन इन says signing into a model; sign-in belongs to a provider/account, and the English sentence is about models being unavailable."
+		},
+		{
+			"id": "HI-CA-12",
+			"prior_severity": "minor",
+			"keys": [
+				"ui.chat.pickers.destination_pickers.show_all_supported_models_sign_in"
+			],
+			"status": "fixed",
+			"applied": {
+				"ui.chat.pickers.destination_pickers.show_all_supported_models_sign_in": "{scopecount, plural, one {सभी समर्थित मॉडल दिखाएँ ({scopecount, number, ::group-off} मॉडल के लिए साइन इन ज़रूरी है)} other {सभी समर्थित मॉडल दिखाएँ ({scopecount, number, ::group-off} मॉडलों के लिए साइन इन ज़रूरी है)}}"
+			},
+			"expected": {
+				"ui.chat.pickers.destination_pickers.show_all_supported_models_sign_in": "{scopecount, plural, one {सभी समर्थित मॉडल दिखाएँ ({scopecount, number, ::group-off} मॉडल के लिए साइन इन ज़रूरी है)} other {सभी समर्थित मॉडल दिखाएँ ({scopecount, number, ::group-off} मॉडलों के लिए साइन इन ज़रूरी है)}}"
+			},
+			"note": "{scopecount} के लिए drops the counted noun, so the parenthetical reads 'for 5' rather than '5 models need sign-in'; the English count refers to models."
+		},
+		{
+			"id": "HI-CA-13",
+			"prior_severity": "minor",
+			"keys": [
+				"ui.chat.pickers.session_report_model.subagent_spend_not_measured"
+			],
+			"status": "fixed",
+			"applied": {
+				"ui.chat.pickers.session_report_model.subagent_spend_not_measured": "उप-एजेंट का खर्च मापा नहीं गया"
+			},
+			"expected": {
+				"ui.chat.pickers.session_report_model.subagent_spend_not_measured": "उप-एजेंट का खर्च मापा नहीं गया"
+			},
+			"note": "The compound उप-एजेंट खर्च needs the genitive का; without it the phrase reads as a type name rather than 'the subagents' spend'."
+		},
+		{
+			"id": "HI-CA-14",
+			"prior_severity": "nit",
+			"keys": [
+				"ui.chat.pickers.session_panel.timings"
+			],
+			"status": "fixed",
+			"applied": {
+				"ui.chat.pickers.session_panel.timings": "समय-विवरण"
+			},
+			"expected": {
+				"ui.chat.pickers.session_panel.timings": "समय-विवरण"
+			},
+			"note": "Timings is the request-timing breakdown, not the general word for time; समय alone is indistinguishable from the duration column and its sibling request_timings."
+		},
+		{
+			"id": "HI-CA-15",
+			"prior_severity": "minor",
+			"keys": [
+				"ui.common.actions.find_replace_widget.switch_to_replace"
+			],
+			"status": "fixed",
+			"applied": {
+				"ui.common.actions.find_replace_widget.switch_to_replace": "बदलें मोड पर जाएँ"
+			},
+			"expected": {
+				"ui.common.actions.find_replace_widget.switch_to_replace": "बदलें मोड पर जाएँ"
+			},
+			"note": "The control switches the find/replace widget into replace mode; बदलाव पर जाएँ means 'go to the change', not 'switch to replace', while its pair खोज पर जाएँ names its mode."
+		},
+		{
+			"id": "HI-CA-16",
+			"prior_severity": "minor",
+			"keys": [
+				"ui.common.layout.chat_layout.resize_asks_double_click_resets_the_shared_pane_width"
+			],
+			"status": "fixed",
+			"applied": {
+				"ui.common.layout.chat_layout.resize_asks_double_click_resets_the_shared_pane_width": "सवाल पैन का आकार बदलें। साझा पेन की चौड़ाई रीसेट करने के लिए डबल-क्लिक करें।"
+			},
+			"expected": {
+				"ui.common.layout.chat_layout.resize_asks_double_click_resets_the_shared_pane_width": "सवाल पैन का आकार बदलें। साझा पेन की चौड़ाई रीसेट करने के लिए डबल-क्लिक करें।"
+			},
+			"note": "साझा पेन चौड़ाई is missing the genitive की; the noun compound needs साझा पेन की चौड़ाई."
+		},
+		{
+			"id": "HI-CA-17",
+			"prior_severity": "minor",
+			"keys": [
+				"ui.common.layout.sidebar_header.import_agent",
+				"ui.common.layout.sidebar_header.import_an_agent_from_a_zip_file",
+				"ui.settings.imports.title"
+			],
+			"status": "deferred",
+			"applied": {
+				"ui.common.layout.sidebar_header.import_agent": "एजेंट इम्पोर्ट करें",
+				"ui.common.layout.sidebar_header.import_an_agent_from_a_zip_file": "ZIP फ़ाइल से एजेंट इम्पोर्ट करें",
+				"ui.settings.imports.title": "बातचीत आयात करें"
+			},
+			"expected": "n/a — deferred, no in-batch value change",
+			"note": "Deferred out of batch scope; corpus direction needs a locale decision (आयात dominates)."
+		}
+	],
+	"namespaces": {
+		"ui.canvas": {
+			"namespace": "ui.canvas",
+			"status": "passed",
+			"result": "clean",
+			"verdict": "clean — 9 delta key(s) verified against the source; no new findings",
+			"keys_audited_in_delta": 9,
+			"file_keys": 347,
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.canvas.json",
+				"target": "src/i18n/catalogues/hi/ui.canvas.json",
+				"context": "src/i18n/catalogues/en/ui.canvas.context.json"
+			},
+			"sha256": {
+				"en": "be8acd20add01188abed4985d0aad11325a7ebd8cdbc3bd5c9376be65543563f",
+				"hi": "4061e935e0ce2645b2375602ef3245e3e9278db3c27077134ea91465a4dff2bf",
+				"context": "4bc0f2bc47d4b0e826ebb10ba78ff965c550debef54f47c912b9e257fd1784f8"
+			},
+			"findings": [],
+			"applied": {
+				"ui.canvas.tabs.open_documents": "खुले दस्तावेज़",
+				"ui.canvas.inline_edit.change": "बदलाव",
+				"ui.canvas.use_file_freshness.your_save_replaced_the_change_on_disk": "आपके सेव ने डिस्क पर हुए बदलाव को अधिलेखित कर दिया।",
+				"ui.canvas.variable_form_dialog.name_key": "नाम (key)",
+				"ui.canvas.wysiwyg_markdown_editor.file_saved_replacing_the_change": "फ़ाइल सहेजी गई और डिस्क पर हुआ बदलाव अधिलेखित कर दिया गया",
+				"ui.canvas.code_editor_diff.remove": "- हटाया गया:",
+				"ui.canvas.code_editor_diff.add": "+ जोड़ा गया:",
+				"ui.canvas.wysiwyg_markdown_editor.remove": "- हटाया गया",
+				"ui.canvas.wysiwyg_markdown_editor.add": "+ जोड़ा गया"
+			},
+			"round1_findings_verified": [
+				{
+					"id": "HI-CA-01",
+					"prior_severity": "major",
+					"keys": [
+						"ui.canvas.tabs.open_documents"
+					],
+					"status": "fixed",
+					"applied": {
+						"ui.canvas.tabs.open_documents": "खुले दस्तावेज़"
+					},
+					"expected": {
+						"ui.canvas.tabs.open_documents": "खुले दस्तावेज़"
+					},
+					"note": "This is the aria-label of the tab strip's role=tablist (canvas-tabs.tsx), a list of open document tabs; the imperative दस्तावेज़ खोलें names an action and misdescribes the control to screen-reader users. The fr/es catalogues both use the noun phrase (Documents ouverts / Documentos abiertos)."
+				},
+				{
+					"id": "HI-CA-02",
+					"prior_severity": "major",
+					"keys": [
+						"ui.canvas.inline_edit.change"
+					],
+					"status": "fixed",
+					"applied": {
+						"ui.canvas.inline_edit.change": "बदलाव"
+					},
+					"expected": {
+						"ui.canvas.inline_edit.change": "बदलाव"
+					},
+					"note": "Rendered as {change} {index} {of} {total} in the review bar (inline-edit.tsx), so बदलें 1 / 3 reads as an imperative command; the key is the status noun, matching change_125665's बदलाव."
+				},
+				{
+					"id": "HI-CA-03",
+					"prior_severity": "major",
+					"keys": [
+						"ui.canvas.variable_form_dialog.name_key"
+					],
+					"status": "fixed",
+					"applied": {
+						"ui.canvas.variable_form_dialog.name_key": "नाम (key)"
+					},
+					"expected": {
+						"ui.canvas.variable_form_dialog.name_key": "नाम (key)"
+					},
+					"note": "की is the Hindi genitive particle, not the technical English key; the label reads नाम (का/की) and hides that the field is the variable's key, so keep the machine-facing word key Latin as glossary §1 does for keys and identifiers."
+				},
+				{
+					"id": "HI-CA-04",
+					"prior_severity": "minor",
+					"keys": [
+						"ui.canvas.code_editor_diff.remove",
+						"ui.canvas.code_editor_diff.add",
+						"ui.canvas.wysiwyg_markdown_editor.remove",
+						"ui.canvas.wysiwyg_markdown_editor.add"
+					],
+					"status": "fixed",
+					"applied": {
+						"ui.canvas.code_editor_diff.remove": "- हटाया गया:",
+						"ui.canvas.code_editor_diff.add": "+ जोड़ा गया:",
+						"ui.canvas.wysiwyg_markdown_editor.remove": "- हटाया गया",
+						"ui.canvas.wysiwyg_markdown_editor.add": "+ जोड़ा गया"
+					},
+					"expected": {
+						"ui.canvas.code_editor_diff.remove": "- हटाया गया:",
+						"ui.canvas.code_editor_diff.add": "+ जोड़ा गया:",
+						"ui.canvas.wysiwyg_markdown_editor.remove": "- हटाया गया",
+						"ui.canvas.wysiwyg_markdown_editor.add": "+ जोड़ा गया"
+					},
+					"note": "These four values label deleted and added diff blocks (code-editor-diff.ts, wysiwyg-markdown-editor.tsx), not buttons; the imperative हटाएँ/जोड़ें reads as a command to the reader."
+				},
+				{
+					"id": "HI-CA-05",
+					"prior_severity": "nit",
+					"keys": [
+						"ui.canvas.use_file_freshness.your_save_replaced_the_change_on_disk",
+						"ui.canvas.wysiwyg_markdown_editor.file_saved_replacing_the_change"
+					],
+					"status": "fixed",
+					"applied": {
+						"ui.canvas.use_file_freshness.your_save_replaced_the_change_on_disk": "आपके सेव ने डिस्क पर हुए बदलाव को अधिलेखित कर दिया।",
+						"ui.canvas.wysiwyg_markdown_editor.file_saved_replacing_the_change": "फ़ाइल सहेजी गई और डिस्क पर हुआ बदलाव अधिलेखित कर दिया गया"
+					},
+					"expected": {
+						"ui.canvas.use_file_freshness.your_save_replaced_the_change_on_disk": "आपके सेव ने डिस्क पर हुए बदलाव को अधिलेखित कर दिया।",
+						"ui.canvas.wysiwyg_markdown_editor.file_saved_replacing_the_change": "फ़ाइल सहेजी गई और डिस्क पर हुआ बदलाव अधिलेखित कर दिया गया"
+					},
+					"note": "बदलाव को बदल दिया is circular and डिस्क का बदलाव attributes the change to the disk; अधिलेखित is the term already used for overwrite in this file."
+				}
+			]
+		},
+		"ui.chat.pickers": {
+			"namespace": "ui.chat.pickers",
+			"status": "passed",
+			"result": "clean",
+			"verdict": "clean — 10 delta key(s) verified against the source; no new findings",
+			"keys_audited_in_delta": 10,
+			"file_keys": 720,
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.chat.pickers.json",
+				"target": "src/i18n/catalogues/hi/ui.chat.pickers.json",
+				"context": "src/i18n/catalogues/en/ui.chat.pickers.context.json"
+			},
+			"sha256": {
+				"en": "8109df703e1a4901e4d892607dddd875e6a737c9ea8ee7ef41ec28dbe6ac2e58",
+				"hi": "f718644b2e0d279388e04a65ea063e76c571b508b9d1e6ac5e7e5d452d1e6189",
+				"context": "c921d3e37ce54288a18e2b45310034a0df0114f15c30e57133422018a00b38d9"
+			},
+			"findings": [],
+			"applied": {
+				"ui.chat.pickers.destination_pickers.no_models_are_signed_in_yet": "अभी कोई मॉडल साइन इन नहीं है।",
+				"ui.chat.pickers.destination_pickers.the_standing_goal_is_prepended_to_every_turn_clear_it_to_remove_it": "स्थायी लक्ष्य हर टर्न के आगे जोड़ा जाता है। इसे हटाने के लिए साफ़ करें।",
+				"ui.chat.pickers.destination_pickers.fixed_number_of_turns": "टर्न की तय संख्या",
+				"ui.chat.pickers.session_panel.emitted_excluded": "{formatcount} जारी किए गए · {formatcount2} बाहर रखे गए",
+				"ui.chat.pickers.session_panel.what_this_session_has_used_from_one_read_of_the_local_ledger": "इस सत्र ने क्या उपयोग किया, यह स्थानीय लेजर को एक बार पढ़ने से पता चलता है।",
+				"ui.chat.pickers.session_panel.timings": "समय-विवरण",
+				"ui.chat.pickers.session_panel.records_run_from": "रिकॉर्ड की अवधि:",
+				"ui.chat.pickers.session_panel.to": "–",
+				"ui.chat.pickers.session_report_model.subagent_spend_not_measured": "उप-एजेंट का खर्च मापा नहीं गया",
+				"ui.chat.pickers.destination_pickers.show_all_supported_models_sign_in": "{scopecount, plural, one {सभी समर्थित मॉडल दिखाएँ ({scopecount, number, ::group-off} मॉडल के लिए साइन इन ज़रूरी है)} other {सभी समर्थित मॉडल दिखाएँ ({scopecount, number, ::group-off} मॉडलों के लिए साइन इन ज़रूरी है)}}"
+			},
+			"round1_findings_verified": [
+				{
+					"id": "HI-CA-06",
+					"prior_severity": "major",
+					"keys": [
+						"ui.chat.pickers.session_panel.to",
+						"ui.chat.pickers.session_panel.records_run_from"
+					],
+					"status": "fixed",
+					"applied": {
+						"ui.chat.pickers.session_panel.to": "–",
+						"ui.chat.pickers.session_panel.records_run_from": "रिकॉर्ड की अवधि:"
+					},
+					"expected": {
+						"ui.chat.pickers.session_panel.to": "–",
+						"ui.chat.pickers.session_panel.records_run_from": "रिकॉर्ड की अवधि:"
+					},
+					"note": "session-panel.tsx composes {records_run_from} {first} {to} {last}; with रिकॉर्ड की शुरुआत + से the result is रिकॉर्ड की शुरुआत 1 नव॰ से 5 नव॰, which marks only the start and reads as 'beginning … from', never as a closed range."
+				},
+				{
+					"id": "HI-CA-07",
+					"prior_severity": "major",
+					"keys": [
+						"ui.chat.pickers.session_panel.emitted_excluded"
+					],
+					"status": "fixed",
+					"applied": {
+						"ui.chat.pickers.session_panel.emitted_excluded": "{formatcount} जारी किए गए · {formatcount2} बाहर रखे गए"
+					},
+					"expected": {
+						"ui.chat.pickers.session_panel.emitted_excluded": "{formatcount} जारी किए गए · {formatcount2} बाहर रखे गए"
+					},
+					"note": "emitted is the count of tool calls produced (session-panel.tsx passes rates.emitted); निकाले गए means removed and collides with the excluded column, so the numerator is mislabelled."
+				},
+				{
+					"id": "HI-CA-08",
+					"prior_severity": "major",
+					"keys": [
+						"ui.chat.pickers.session_panel.what_this_session_has_used_from_one_read_of_the_local_ledger"
+					],
+					"status": "fixed",
+					"applied": {
+						"ui.chat.pickers.session_panel.what_this_session_has_used_from_one_read_of_the_local_ledger": "इस सत्र ने क्या उपयोग किया, यह स्थानीय लेजर को एक बार पढ़ने से पता चलता है।"
+					},
+					"expected": {
+						"ui.chat.pickers.session_panel.what_this_session_has_used_from_one_read_of_the_local_ledger": "इस सत्र ने क्या उपयोग किया, यह स्थानीय लेजर को एक बार पढ़ने से पता चलता है।"
+					},
+					"note": "पता चला इस सत्र का उपयोग has no finite link and is ungrammatical; the status explanation needs the clause in the order इस सत्र ने क्या उपयोग किया … पता चलता है."
+				},
+				{
+					"id": "HI-CA-09",
+					"prior_severity": "minor",
+					"keys": [
+						"ui.chat.pickers.destination_pickers.fixed_number_of_turns"
+					],
+					"status": "fixed",
+					"applied": {
+						"ui.chat.pickers.destination_pickers.fixed_number_of_turns": "टर्न की तय संख्या"
+					},
+					"expected": {
+						"ui.chat.pickers.destination_pickers.fixed_number_of_turns": "टर्न की तय संख्या"
+					},
+					"note": "तय संख्या में टर्न means 'turns in a fixed number', not 'a fixed number of turns'; Hindi takes the counted noun in the oblique before the quantity."
+				},
+				{
+					"id": "HI-CA-10",
+					"prior_severity": "minor",
+					"keys": [
+						"ui.chat.pickers.destination_pickers.the_standing_goal_is_prepended_to_every_turn_clear_it_to_remove_it"
+					],
+					"status": "fixed",
+					"applied": {
+						"ui.chat.pickers.destination_pickers.the_standing_goal_is_prepended_to_every_turn_clear_it_to_remove_it": "स्थायी लक्ष्य हर टर्न के आगे जोड़ा जाता है। इसे हटाने के लिए साफ़ करें।"
+					},
+					"expected": {
+						"ui.chat.pickers.destination_pickers.the_standing_goal_is_prepended_to_every_turn_clear_it_to_remove_it": "इसे हटाने के लिए साफ़ करें।"
+					},
+					"note": "इसे हटाने के लिए मिटाएँ uses two synonyms for the same operation ('to remove it, erase it'); साफ़ करें is the established clear action and removes the circularity."
+				},
+				{
+					"id": "HI-CA-11",
+					"prior_severity": "minor",
+					"keys": [
+						"ui.chat.pickers.destination_pickers.no_models_are_signed_in_yet"
+					],
+					"status": "fixed",
+					"applied": {
+						"ui.chat.pickers.destination_pickers.no_models_are_signed_in_yet": "अभी कोई मॉडल साइन इन नहीं है।"
+					},
+					"expected": {
+						"ui.chat.pickers.destination_pickers.no_models_are_signed_in_yet": "अभी कोई मॉडल साइन इन नहीं है।"
+					},
+					"note": "किसी मॉडल में साइन इन says signing into a model; sign-in belongs to a provider/account, and the English sentence is about models being unavailable."
+				},
+				{
+					"id": "HI-CA-12",
+					"prior_severity": "minor",
+					"keys": [
+						"ui.chat.pickers.destination_pickers.show_all_supported_models_sign_in"
+					],
+					"status": "fixed",
+					"applied": {
+						"ui.chat.pickers.destination_pickers.show_all_supported_models_sign_in": "{scopecount, plural, one {सभी समर्थित मॉडल दिखाएँ ({scopecount, number, ::group-off} मॉडल के लिए साइन इन ज़रूरी है)} other {सभी समर्थित मॉडल दिखाएँ ({scopecount, number, ::group-off} मॉडलों के लिए साइन इन ज़रूरी है)}}"
+					},
+					"expected": {
+						"ui.chat.pickers.destination_pickers.show_all_supported_models_sign_in": "{scopecount, plural, one {सभी समर्थित मॉडल दिखाएँ ({scopecount, number, ::group-off} मॉडल के लिए साइन इन ज़रूरी है)} other {सभी समर्थित मॉडल दिखाएँ ({scopecount, number, ::group-off} मॉडलों के लिए साइन इन ज़रूरी है)}}"
+					},
+					"note": "{scopecount} के लिए drops the counted noun, so the parenthetical reads 'for 5' rather than '5 models need sign-in'; the English count refers to models."
+				},
+				{
+					"id": "HI-CA-13",
+					"prior_severity": "minor",
+					"keys": [
+						"ui.chat.pickers.session_report_model.subagent_spend_not_measured"
+					],
+					"status": "fixed",
+					"applied": {
+						"ui.chat.pickers.session_report_model.subagent_spend_not_measured": "उप-एजेंट का खर्च मापा नहीं गया"
+					},
+					"expected": {
+						"ui.chat.pickers.session_report_model.subagent_spend_not_measured": "उप-एजेंट का खर्च मापा नहीं गया"
+					},
+					"note": "The compound उप-एजेंट खर्च needs the genitive का; without it the phrase reads as a type name rather than 'the subagents' spend'."
+				},
+				{
+					"id": "HI-CA-14",
+					"prior_severity": "nit",
+					"keys": [
+						"ui.chat.pickers.session_panel.timings"
+					],
+					"status": "fixed",
+					"applied": {
+						"ui.chat.pickers.session_panel.timings": "समय-विवरण"
+					},
+					"expected": {
+						"ui.chat.pickers.session_panel.timings": "समय-विवरण"
+					},
+					"note": "Timings is the request-timing breakdown, not the general word for time; समय alone is indistinguishable from the duration column and its sibling request_timings."
+				}
+			]
+		},
+		"ui.common.actions": {
+			"namespace": "ui.common.actions",
+			"status": "passed",
+			"result": "clean",
+			"verdict": "clean — 1 delta key(s) verified against the source; no new findings",
+			"keys_audited_in_delta": 1,
+			"file_keys": 36,
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.common.actions.json",
+				"target": "src/i18n/catalogues/hi/ui.common.actions.json",
+				"context": "src/i18n/catalogues/en/ui.common.actions.context.json"
+			},
+			"sha256": {
+				"en": "d65be7beac66c209a55db5d8a672ff8a8a743eea49ba21593120d4b8664603b2",
+				"hi": "788a58b0abbb2f8fe3b8bca0b5d4f577785934076291a7591e8f5aa338939b5f",
+				"context": "29a6cc54f8605ab2612775708bf5eb202a89e6708167d8a7c3f329a536b339db"
+			},
+			"findings": [],
+			"applied": {
+				"ui.common.actions.find_replace_widget.switch_to_replace": "बदलें मोड पर जाएँ"
+			},
+			"round1_findings_verified": [
+				{
+					"id": "HI-CA-15",
+					"prior_severity": "minor",
+					"keys": [
+						"ui.common.actions.find_replace_widget.switch_to_replace"
+					],
+					"status": "fixed",
+					"applied": {
+						"ui.common.actions.find_replace_widget.switch_to_replace": "बदलें मोड पर जाएँ"
+					},
+					"expected": {
+						"ui.common.actions.find_replace_widget.switch_to_replace": "बदलें मोड पर जाएँ"
+					},
+					"note": "The control switches the find/replace widget into replace mode; बदलाव पर जाएँ means 'go to the change', not 'switch to replace', while its pair खोज पर जाएँ names its mode."
+				}
+			]
+		},
+		"ui.common.forms": {
+			"namespace": "ui.common.forms",
+			"status": "passed",
+			"result": "clean",
+			"verdict": "clean — no delta change; head hash byte-identical to round 1, round-1 coverage stands",
+			"keys_audited_in_delta": 0,
+			"file_keys": 37,
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.common.forms.json",
+				"target": "src/i18n/catalogues/hi/ui.common.forms.json",
+				"context": "src/i18n/catalogues/en/ui.common.forms.context.json"
+			},
+			"sha256": {
+				"en": "c87c16b1169f32105e017fd27eb80047446938b1b45046c28bcf693856898238",
+				"hi": "a335138452363b574e0ae47579620081f7d15f3bbf067ee5325f7269cc1c159e",
+				"context": "c11472cc390fe7771e08dcd34bb633e63797f979a113feaa47d70d06daea38b4"
+			},
+			"findings": [],
+			"applied": {},
+			"round1_findings_verified": []
+		},
+		"ui.common.layout": {
+			"namespace": "ui.common.layout",
+			"status": "passed",
+			"result": "clean-with-findings",
+			"verdict": "clean-with-findings — HI-CA-17 minor (deferred)",
+			"keys_audited_in_delta": 1,
+			"file_keys": 8,
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.common.layout.json",
+				"target": "src/i18n/catalogues/hi/ui.common.layout.json",
+				"context": "src/i18n/catalogues/en/ui.common.layout.context.json"
+			},
+			"sha256": {
+				"en": "c4efaa88bba85706ac9fb976bc3d3d009f3bb08fc762a90dfeb73d90d0c14db6",
+				"hi": "a907ed6e267dd2a569abb0015e662a35b220197579f1a35d80be92cce547f941",
+				"context": "318673c640a31e11f5249127c8ef5a76d63c16c3c191960824391d934766bd39"
+			},
+			"findings": [
+				{
+					"id": "HI-CA-17",
+					"severity": "minor",
+					"key": "ui.common.layout.sidebar_header.import_agent",
+					"current": "एजेंट इम्पोर्ट करें",
+					"disposition": "deferred",
+					"reason": "Cross-namespace alignment to ui.settings.imports is outside this batch's eight audited files. On re-check the corpus is not predominantly इम्पोर्ट: ui.settings.imports uses आयात in more than 30 values and ui.settings.integrations adds two more, while agent-import copy uses इम्पोर्ट in eight values. The round-1 proposal to standardise on इम्पोर्ट is not supported by the corpus; the direction needs a recorded locale decision before any edit."
+				}
+			],
+			"applied": {
+				"ui.common.layout.chat_layout.resize_asks_double_click_resets_the_shared_pane_width": "सवाल पैन का आकार बदलें। साझा पेन की चौड़ाई रीसेट करने के लिए डबल-क्लिक करें।"
+			},
+			"round1_findings_verified": [
+				{
+					"id": "HI-CA-16",
+					"prior_severity": "minor",
+					"keys": [
+						"ui.common.layout.chat_layout.resize_asks_double_click_resets_the_shared_pane_width"
+					],
+					"status": "fixed",
+					"applied": {
+						"ui.common.layout.chat_layout.resize_asks_double_click_resets_the_shared_pane_width": "सवाल पैन का आकार बदलें। साझा पेन की चौड़ाई रीसेट करने के लिए डबल-क्लिक करें।"
+					},
+					"expected": {
+						"ui.common.layout.chat_layout.resize_asks_double_click_resets_the_shared_pane_width": "सवाल पैन का आकार बदलें। साझा पेन की चौड़ाई रीसेट करने के लिए डबल-क्लिक करें।"
+					},
+					"note": "साझा पेन चौड़ाई is missing the genitive की; the noun compound needs साझा पेन की चौड़ाई."
+				}
+			]
+		},
+		"ui.common.speech": {
+			"namespace": "ui.common.speech",
+			"status": "passed",
+			"result": "clean",
+			"verdict": "clean — no delta change; head hash byte-identical to round 1, round-1 coverage stands",
+			"keys_audited_in_delta": 0,
+			"file_keys": 5,
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.common.speech.json",
+				"target": "src/i18n/catalogues/hi/ui.common.speech.json",
+				"context": "src/i18n/catalogues/en/ui.common.speech.context.json"
+			},
+			"sha256": {
+				"en": "fa6a973f1a6a36f25218e884174299ba154e124baaddc87594bd516c8d07d8f6",
+				"hi": "45cf7b7de19829fb4ebb38fa8578f2c1fae7ba9838bf77ebf9e4a456ca89ab2a",
+				"context": "740828525702d67b6ee0ecf7eb0a3f1582167989355bd12d0579d698b982267a"
+			},
+			"findings": [],
+			"applied": {},
+			"round1_findings_verified": []
+		},
+		"ui.common.updates": {
+			"namespace": "ui.common.updates",
+			"status": "passed",
+			"result": "clean",
+			"verdict": "clean — no delta change; head hash byte-identical to round 1, round-1 coverage stands",
+			"keys_audited_in_delta": 0,
+			"file_keys": 135,
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.common.updates.json",
+				"target": "src/i18n/catalogues/hi/ui.common.updates.json",
+				"context": "src/i18n/catalogues/en/ui.common.updates.context.json"
+			},
+			"sha256": {
+				"en": "1f81721263fa4c7d74219bd2c0af82b908bf2fb4491df074e99e2215ad00d667",
+				"hi": "4d64ea0fe9e275e1544fa6b4433261a9467e63e42b69c42810356615fe4407e8",
+				"context": "cb4a160ef62b1760d4622b29c90e130cff1b4165ac770dab200ebc54eca38bee"
+			},
+			"findings": [],
+			"applied": {},
+			"round1_findings_verified": []
+		},
+		"ui.common.viewer": {
+			"namespace": "ui.common.viewer",
+			"status": "passed",
+			"result": "clean",
+			"verdict": "clean — no delta change; head hash byte-identical to round 1, round-1 coverage stands",
+			"keys_audited_in_delta": 0,
+			"file_keys": 8,
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.common.viewer.json",
+				"target": "src/i18n/catalogues/hi/ui.common.viewer.json",
+				"context": "src/i18n/catalogues/en/ui.common.viewer.context.json"
+			},
+			"sha256": {
+				"en": "c0ffdd08058b062c88c6fad428db0e33c4162bcee1094dd5dd16890fe4e9705f",
+				"hi": "c84afbfc57b0ae35a8aa90aa23fa874382ebfc29c1d0a577f3581880d2fe0be5",
+				"context": "8b324e966ddb4aaef92ec3b3465f8ac6a80982529bcbd3b45a3c1cf1f9b28dd8"
+			},
+			"findings": [],
+			"applied": {},
+			"round1_findings_verified": []
+		}
+	},
+	"hash_verification": {
+		"changed_namespaces": [
+			"ui.canvas",
+			"ui.chat.pickers",
+			"ui.common.actions",
+			"ui.common.layout"
+		],
+		"en_context_unchanged_from_round1": true,
+		"non_remediated_hi_files_byte_identical_to_round1": "4 of 8 canvas namespaces (ui.common.forms, ui.common.speech, ui.common.updates, ui.common.viewer)",
+		"key_parity": "4/4 changed namespaces have identical en/hi key sets at 82209cab3a (0 missing, 0 extra).",
+		"shared_namespaces_with_surfaces_batch": "ui.common.actions, ui.common.speech, ui.common.updates and ui.common.viewer are additive across the two batch branches, with 0 common-key value conflicts. The merged file will be the union (50/16/146/9 keys), not either branch head; those target hashes will not bind the post-merge bytes, so re-hash the union before the ledger binds them."
+	},
+	"observations": [
+		"All 6 majors are fixed in the bytes: open_documents is the noun phrase खुले दस्तावेज़; inline_edit.change is बदलाव; name_key keeps key Latin; the date range composes as रिकॉर्ड की अवधि: … – …; emitted is जारी किए गए; and the ledger-coverage sentence now has a finite clause.",
+		"HI-CA-04/05/09/10/11/12/13/14/15/16 match the proposed wording. No applied value is a word-for-word calque or a dropped placeholder.",
+		"HI-CA-06 changes the key from a sentence fragment to a label plus an en dash. The call site inserts the spaces, so the rendered line is 'रिकॉर्ड की अवधि: <first> – <last>'; the key is used at exactly one call site.",
+		"HI-CA-12's plural keeps one/other, the scopecount argument and the ::group-off number skeleton. At hi counts 0 and 1 the one branch renders '0/1 मॉडल के लिए साइन इन ज़रूरी है'; at 2 and 5 the other branch renders 'मॉडलों के लिए'. All four renders are complete.",
+		"Pre-existing, not introduced here: the emitted/excluded note uses plural participles without an ICU plural, so a count of 1 would read '1 जारी किए गए'. The sibling dispatched note has the same pattern; recorded as an observation, not a finding.",
+		"HI-CA-17 remains deferred. On re-check, the locale corpus uses आयात in more than 30 ui.settings.imports values and two ui.settings.integrations values, versus इम्पोर्ट in eight agent-import values. The round-1 proposal to standardise on इम्पोर्ट is not supported by the corpus; the direction needs a recorded locale decision before any cross-namespace edit.",
+		"No blocker or major remains in the canvas delta. The one deferred minor is out of the batch's eight audited files and does not gate this batch."
+	],
+	"totals": {
+		"keys_audited": 21,
+		"namespaces": 8,
+		"blocker": 0,
+		"major": 0,
+		"minor": 1,
+		"nit": 0,
+		"prior_findings_reaudited": 17,
+		"fixed": 16,
+		"deferred": 1
+	},
+	"status": "passed",
+	"result": "clean-with-findings",
+	"verdict": "passed — 0 blocker, 0 major, 1 minor (deferred, out of batch), 0 nit; 21 changed values read, 16 of 17 prior findings fixed, 1 deferred. Round-2 canvas delta is clean."
+}

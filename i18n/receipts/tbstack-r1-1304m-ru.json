@@ -1,0 +1,78 @@
+{
+ "auditor": "translation-auditor",
+ "model": "openai/gpt-6.1-sol",
+ "model_note": "Actual served-model sequence in this auditor session: anthropic/claude-opus-5-5 → anthropic/claude-sonnet-5-5 → openai/gpt-6.1-sol. Receipts, final review and hash verification written/completed with openai/gpt-6.1-sol.",
+ "instance": "tbstack-r1-1304m-ru",
+ "session": "1ee462b9ea70",
+ "job": "c68a7d888143",
+ "date": "2026-10-22",
+ "locale": "ru",
+ "translator": "translator",
+ "translator_session": null,
+ "namespace": "ui.teamBridge",
+ "status": "passed",
+ "keys_audited": 4,
+ "keys_read": 123,
+ "union_keys_verified": 123,
+ "scope": "PR #1304 integration merge 12dddf52f7 (e3c24e98eb + de047d49e3): 123 keys read side by side; all 123 English/target/context values verified as the unchanged union of audited sides (119 from #1304 plus 4 OS-banner keys from #1298). Fresh substantive review of the 4 OS-banner keys, contextual comparison with 8 replies.* keys, whole-namespace thread/reply/message/reaction terminology, and ICU integrity of every value. Catalogue-only, not rendered-fit/activation/release.",
+ "sha256": {
+  "en": "281cb8adcc75e5bb4fcebf5c9112ab260bcf8ed2fbcf6bbcd6d04bfc3cfff41c",
+  "ru": "fb1be86084c6881b20ed04b944ed83ff8267cc77dc3384f2b6361b78e3a5b43a",
+  "context": "f5cf60d75f5e8b8ecc378174bc9f9e5e158b14afb80cda504e1b61e921b5cafd"
+ },
+ "findings": [],
+ "union_integrity": {
+  "method": "Read-only git show of head and both parents; repo parity script exported from the head and run with --repo; independent Python key-set/value comparison for en, target and context against BOTH parents, including shared keys. The inherited receipts and ledger rows were read from actual refs and their source/target/context/receipt hashes checked against those refs, rather than accepting summaries.",
+  "merge": {
+   "head": "12dddf52f78bd30704b48a8c856f2b69e1bef6e3",
+   "parents": [
+    "e3c24e98ebeba1b3ddcf1751c1ea68a30acf2d50",
+    "de047d49e3818abdfc0cc8e64c0b6d59f5e4af40"
+   ],
+   "merge_base": "15e92f342c38571b2738d72dcf651e28f524c270"
+  },
+  "keys_merged": 123,
+  "keys_dropped": 0,
+  "shared_keys_altered": 0,
+  "keys_unsourced": [],
+  "parity_tool": {
+   "command": "node scripts/i18n/catalogue-union-parity.mjs --pr 1304 --head 12dddf52f7 --old-head e3c24e98eb --base de047d49e3 --repo ~/local-operator-ui --file src/i18n/catalogues/en/ui.teamBridge.json --file src/i18n/catalogues/ru/ui.teamBridge.json --file src/i18n/catalogues/en/ui.teamBridge.context.json",
+   "result": "exit 0, RESULT: PASS - no English key lost or changed; each file has 123 union keys and empty missing-from-base, missing-from-PR and value-differences arrays."
+  }
+ },
+ "inherited_receipts": [
+  {
+   "base": "e3c24e98eb",
+   "path": "i18n/receipts/tbstack-r1-1304-ru.json",
+   "sha256": "be184b140162a302a183ca0e3dc40649c02894a67d355d664af7b8feea168ed9",
+   "instance": "tbstack-r1-1304-ru",
+   "keys_inherited": 119,
+   "base_target_sha256": "b89c93c1046bacdce43547c7e21cbf8d5f22db02e8274bccb3c3083b8ac30aab",
+   "base_en_sha256": "966671be592ecd97389f9675637f3d2acd0f402e123c9732f157035dba809c99",
+   "unchanged_values_verified": 119
+  },
+  {
+   "base": "de047d49e3",
+   "path": "i18n/receipts/tbstack-r1-1298-ru.json",
+   "sha256": "80e5718db27cceb8107fef74bf825591b00956a40b71cb6103a53f79d0c409ea",
+   "instance": "tbstack-r1-1298-ru",
+   "keys_inherited": 4,
+   "base_target_sha256": "df463fc9d2800eb9e455a934b4876a2f2b077d070f3a2b6530eda9f50b8c005a",
+   "base_en_sha256": "b8236cf905c6083ca9b2450611d0083c8a96d990c6c548e4091d0b99266bd333",
+   "unchanged_values_verified": 4
+  }
+ ],
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+ },
+ "validation": {
+  "independence": "Auditor role translation-auditor, session 1ee462b9ea70, job c68a7d888143; none of the catalogue strings were produced or edited by this auditor. No repo edits, worktrees, pushes, human tags, builds, installs or tests.",
+  "icu": "All 123 English and 123 target values parsed with the installed @formatjs/icu-messageformat-parser: argument names/types match English; all 6 plural blocks preserve count usage and branch-local arguments (including preview); offsets and plural type preserved; no number/date skeletons, select blocks or markup tags occur. ru uses one/few/many/other, zh-CN other only.",
+  "terminology": "thread → ветка (inflected ветке/ветку), reply → ответ (ответа/ответов; action Ответить), message → сообщение (сообщения/сообщений). Conversation → разговор is a distinct entity, not glossary drift. No reaction strings exist at this head: reaction terminology is not applicable.",
+  "os_banner": "New-message counts use natural forms: one новое сообщение, few новых сообщения, many новых сообщений, other нового сообщения; count and preview appear in every arm. No address-form shift from lowercase вы / impersonal copy; preview remains last after colon. notify.channel preserves the literal # and {channel}; notify.subtitle preserves {place} · {organization} in that order. Existing notify.title/body/body_fallback were also read as context.",
+  "typography": "Target is NFC with no BOM, U+200E/F, U+202A–E, U+2066–9, U+200B–D, or NBSP. Both audited locales are LTR; no RTL claim. Embedded channel/name/organization/preview arguments remain unchanged.",
+  "overflow": "The 4 incoming keys add no expanded action label: channel/subtitle are unchanged token templates; ru count wording is 3 words, zh-CN is compact. Dynamic names/previews remain unbounded and OS-truncated as in English. No new catalogue-level overflow defect found; rendered fit was not exercised.",
+  "limitations": "No browser, screenshots, rendered-fit, screen-reader, pseudo-localization, activation or release validation. Prior 119-key linguistic audits are inherited only after verifying identical values/English/context; this is not a claim of a new full-product locale audit."
+ }
+}

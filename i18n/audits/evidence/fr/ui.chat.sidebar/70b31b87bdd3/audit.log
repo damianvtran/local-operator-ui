@@ -1,0 +1,163 @@
+# Audit execution log — s11-aud-fr-ds
+# Locale fr · namespace ui.chat.sidebar · PR damianvtran/local-operator-ui #1837
+# Auditor instance 70b31b87bdd3 · served model deepseek/deepseek-flash · 2026-11-10
+# Worktree ~/local-operator-ui/.worktrees/i18n-s8 @ fd09d8f296318319817edb5a511a42ff6a07868f (read-only)
+# This is an execution log: every command below was run in this session; outputs quoted are the
+# lines actually observed. Lines marked [observation] are my readings, not command output.
+
+## 1. Worktree state (read-only precondition)
+$ cd ~/local-operator-ui/.worktrees/i18n-s8 && git rev-parse HEAD
+fd09d8f296318319817edb5a511a42ff6a07868f
+$ git status --short
+<empty>                                   # confirmed clean, no local modifications
+
+## 2. Input hashes (expected prefixes from the brief)
+$ shasum -a 256 src/i18n/catalogues/fr/ui.chat.sidebar.json \
+               src/i18n/catalogues/en/ui.chat.sidebar.json \
+               src/i18n/catalogues/en/ui.chat.sidebar.context.json
+ec93a140d65cf298bb4252b74f999b83bc7736860d0b7c7dbfe5625e7983e3a3  fr/ui.chat.sidebar.json
+7db9ba5108a62330a1782f775b991ec0483537d2f7d808ae0691e1a6ef8840cd  en/ui.chat.sidebar.json
+4f1593cc34b395ef8701a60e58e73a0371b3c93730eb7a1f2b2845dc6250d7e3  en/ui.chat.sidebar.context.json
+[observation] fr begins ec93a140d65c — matches; en begins 7db9ba5108a6 — matches. Proceed.
+
+## 3. The delta
+$ git diff origin/main HEAD -- src/i18n/catalogues/fr/ui.chat.sidebar.json
+-one {Un agent ... =6 {Six agents ... other {{count, number, ::group-off} agents intégrés ...
++one {Un agent ... =6 {Six agents ... many {{count, number, ::group-off} d’agents intégrés ...
++     ... autres installés.} other {{count, number, ::group-off} agents intégrés ...
+[observation] exactly one added `many` arm before `other`; the other eight arms are byte-identical.
+
+$ git diff --numstat origin/main HEAD -- src/i18n/catalogues/fr/ui.chat.sidebar.json
+1       1       src/i18n/catalogues/fr/ui.chat.sidebar.json
+
+$ python3 (git show origin/main:<fr> vs working file, key-by-key equality)
+key sets equal: True
+changed keys: 1
+   ui.chat.sidebar.agents.builtin_offer
+
+$ git show --stat --oneline HEAD
+fd09d8f2963 test(i18n): make the grouped-digit guard locale-independent
+ scripts/i18n/chat-data-copy.test.mjs | 25 ++++++++++++++++++++++---
+[observation] the head commit itself touches only a test script; the fr line landed in an earlier
+              commit of the same PR. Delta vs origin/main is still 1 line / 1 key.
+
+## 4. Policy sources read (not executed)
+$ cat ~/local-operator/i18n/style-guides/fr.md
+[read] Formality vous; Plurals one/many/other with "1 000 000 de sessions", 1 500 000 -> other,
+       few never; typography U+2019, " — " spaced em dash, U+202F before : ; ! ?; width budgets.
+$ sed -n '1,80p' ~/local-operator/i18n/glossary.md
+[read] §1 surface names / kept-English; §2 agent -> agent (fr).
+$ python3 (context sidecar entry for the key)
+[read] role "sentence offering the packaged built-in agent profiles for installation";
+       note "counts above six print as a digit"; placeholders count + list ("keep verbatim").
+
+## 5. Mechanical checks (Python only — node validator not run, per the task)
+$ python3 (json.load with duplicate-key-rejecting object_pairs_hook)
+JSON valid, dup-free. fr keys: 86 en keys: 86 same set: True
+file key order == en order: True
+
+$ python3 (brace depth walk + ICU-subset parser)
+FR braces: final depth=0 max depth=3 negative=[]
+FR plural arg: count | EN plural arg: count | same: True
+FR arms order: ['=0','one','=2','=3','=4','=5','=6','many','other']
+EN arms order: ['=0','one','=2','=3','=4','=5','=6','other']
+missing French CLDR categories: none
+forbidden few: False
+duplicate selectors: False
+per-arm {list} counts: {'=0':1,'one':1,'=2':1,'=3':1,'=4':1,'=5':1,'=6':1,'many':1,'other':1}
+per-arm brace balance: all 0
+
+$ python3 (argument inventory)
+FR arguments: [('count','number'),('count','plural'),('list','simple')]
+EN arguments: [('count','number'),('count','plural'),('list','simple')]
+FR count/number skeletons: ['::group-off','::group-off'] — non-conforming: none
+EN count/number skeletons: ['::group-off'] — non-conforming: none
+[observation] an earlier version of this regex reported "without ::group-off" counts of 2 (fr) / 1 (en);
+              the cause was a backtracking hole in MY pattern (\s* followed by a negative lookahead).
+              The corrected check above shows every count reference is exactly ::group-off. My artifact,
+              not a repository defect.
+
+$ python3 (codepoint census, whole key)
+U+00E9 x36  U+00EA x18  U+00E0 x9  U+2014 x9  U+2019 x2
+Risky controls: none           (no U+00A0, U+202F, U+200B/C/D, U+200E/F, U+202A-E, U+2066-9, U+FEFF)
+ASCII apostrophe count: 0 | U+2019 count: 2
+em dash count: 9 | occurrences of ' — ' (ASCII spaces): 9
+backticks: 0 | markup <...>: 0 | '#' chars: 0
+NFC of key: True | NFC of file text: True
+
+## 6. Plural expansion (hand-written formatter, CLDR fr rules; node not used)
+Selection = explicit =N first, else CLDR category. {list} substituted with a sample verbatim list,
+count rendered as plain digits per ::group-off.
+count     category  arm    rendered French
+0         one       =0     Aucun agent intégré n’est prêt à être installé — Alex, Romy et Sage. Vous pourrez les modifier une fois installés.
+1         one       one    Un agent intégré est prêt à être installé — Alex, Romy et Sage. Vous pourrez le modifier une fois installé.
+2         other     =2     Deux agents intégrés sont prêts à être installés — Alex, Romy et Sage. Vous pourrez les modifier une fois installés.
+7         other     other  7 agents intégrés sont prêts à être installés — Alex, Romy et Sage. Vous pourrez les modifier une fois installés.
+1000000   many      many   1000000 d’agents intégrés sont prêts à être installés — Alex, Romy et Sage. Vous pourrez les modifier une fois installés.
+1500000   other     other  1500000 agents intégrés sont prêts à être installés — Alex, Romy et Sage. Vous pourrez les modifier une fois installés.
+2000000   many      many   2000000 d’agents intégrés sont prêts à être installés — Alex, Romy et Sage. Vous pourrez les modifier une fois installés.
+English control, same expansion: 1000000 -> arm `other` -> "1000000 built-in agents are ready to install …"
+[observation] arm selection matches the brief's expectation exactly at all seven counts.
+
+## 7. CLDR authority (fetched, not recalled)
+$ web_fetch https://raw.githubusercontent.com/unicode-org/cldr-json/main/cldr-json/cldr-core/supplemental/plurals.json
+  "fr": {
+    "pluralRule-count-one":  "i = 0..1 @integer 0, 1 @decimal 0.0~1.5",
+    "pluralRule-count-many": "e = 0 and i != 0 and i % 1000000 = 0 and v = 0 or e != 0..5
+                              @integer 1000000, 1c6, 2c6, …",
+    "pluralRule-count-other": " @integer 2~17, 100, 1000, 10000, 100000, 1c3, …"
+  }
+[observation] plain integer counts have e = 0, so `many` is exactly the non-zero multiples of 10^6,
+              and French exposes only one/many/other. 1500000 -> other by the rule.
+
+## 8. The change against the pre-change rendering
+$ python3 (origin/main text, other arm substituted)
+origin/main arms: ['=0','one','=2','=3','=4','=5','=6','other']
+origin/main at count=1000000 -> "1000000 agents intégrés sont prêts à être installés — A, B. …"
+[observation] missing the partitive: the defect this arm fixes is real and reproducible from the repo.
+
+## 9. Arm-to-arm consistency
+$ python3 (difflib many vs other)
+insert: other[29:29]='' -> many[29:31]='d’'
+many == other with "d’" inserted: True
+second sentences: identical in =0/=2..=6/many/other; singular in `one`.
+
+## 10. Terminology consistency across the 86 fr keys
+$ python3 (regex sweep of all fr catalogues)
+'intégré' forms: 15/19/5/2 … ; 'install' forms: installer 25, installation 63, installé 23, installée 32, installés 17 …
+namespace hits: agents.builtin_offer (this key), agents.dismiss_offer = "Ignorer la suggestion d’agents intégrés"
+[observation] "agent intégré" is the settled rendering; installer/installés and modifier are consistent
+              with the corpus. Precedent: catalogue.total many "de conversations" (consonant),
+              show_more_agents many "d’agents de plus" (vowel elision) — the same rule as this arm.
+
+## 11. Render path and fit (read, not executed)
+$ head -60 src/renderer/src/features/chat/components/builtin-offer-sentence.ts
+[read] t("ui.chat.sidebar.agents.builtin_offer", { count: names.length, list })
+$ sed -n '9300,9345p' src/renderer/src/features/chat/components/chat-sidebar.tsx
+[read] {availableBuiltins.length > 0 && (<p className="text-meta text-ink-muted">{builtinOfferSentence(availableBuiltins)}</p>)}
+[observation] wrapping paragraph, no maxCells/maxChars budget in the sidecar; count is the number of
+              packaged built-ins (spelling arms cover 0-6), so the `many` arm is CLDR completeness and
+              has no realistic rendered state. No length-only finding raised.
+
+$ grep intl-messageformat package.json
+166:  "@formatjs/icu-messageformat-parser": "^3.5.21",
+204:  "intl-messageformat": "^12.1.3",
+[observation] formatting goes through intl-messageformat, i.e. Intl.PluralRules/CLDR — the same rules
+              fetched in §7. Not executed.
+
+$ git diff origin/main HEAD -- scripts/i18n/chat-data-copy.test.mjs
+[read] the shipped guard now asserts out.includes("1000000") and rejects /\\d{1,3}(?:[,.\u00a0\u202f\u066c ]\\d{2,3}){2,}/
+[observation] ungrouped digits are mandated by the repo's own guard, so the `::group-off` skeleton is
+              required and "1 000 000" would fail it. This settles the guide-vs-corpus divergence in
+              favour of the shipped arms; recorded as a pre-existing observation, not a finding.
+
+## 12. Instance-id uniqueness
+$ python3 (walk i18n/receipts, i18n/audits/evidence, i18n/audit-evidence, i18n/audits)
+files scanned: 4478
+hits for 70b31b87bdd3 : NONE
+
+## 13. Not run (by task constraint or out of reach)
+- node scripts/i18n/check-strings.mjs / context-parity.mjs / ledger-check.mjs / ledger-assemble.mjs
+- intl-messageformat / Intl.PluralRules execution
+- browser, screenshots, accessibility tree, pixel fit
+- any repository write: this worktree is read-only for this audit

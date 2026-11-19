@@ -1,0 +1,1420 @@
+/**
+ * The remaining English on the Agents page and the Agent Hub, refused in the
+ * languages the app actually ships (not in `en`, where a literal is invisible).
+ *
+ *     node --test scripts/agents-remaining-literals.test.mjs
+ *
+ * WHY THIS SUITE EXISTS. The rendered audit in the sibling PR (`rendered-1432`)
+ * found copy that stayed English in every non-English locale although its page
+ * was translated around it:
+ *
+ *   1. the Agents page's ask pane — heading, description, the composer's two
+ *      placeholders, the hand-add button and the roster's own add button;
+ *   2. the detail pane's `Delegates` fact and its `Show all` / `Show less`
+ *      expander;
+ *   3. the public hub card's `updated {age}` line and its `Get` button, and the
+ *      viewer-state notice's `Try again`;
+ *   4. the publish dialog's title, in all six of its states;
+ *   5. the organization team row's `updated` prefix, which was concatenated in
+ *      front of a localized relative time (`updated il y a 2 jours`).
+ *
+ * WHAT IS MEASURED, and with which instrument.
+ *
+ * A. THE PRODUCTION COMPONENT IS MOUNTED, not a probe that re-states its JSX.
+ *    Each surface below is the shipped component (`AskPaneCopy`,
+ *    `AddManuallyButton`, `ConfigComposer`, `AgentMeta`, `ReadBlock`, `AgentCard`,
+ *    `TeamProvenance`), mounted in jsdom through `react-dom/client`. The publish
+ *    title is a pure function the dialog renders into its heading; mounting the
+ *    whole dialog (its transport, credential probe and review states) would test
+ *    the fakes rather than the sentence, so its six arms are called directly.
+ *
+ * B. THE WORDS ARE SENTINELS, NOT THE SHIPPED TRANSLATIONS. All seven locales
+ *    now ship values for these keys (independently audited; see i18n/ledger.json),
+ *    but an assertion against the shipped catalogue would pin one translator's
+ *    wording and would still pass if `t()` silently fell back to a value that
+ *    happened to match. Each locale's catalogue is therefore registered over the
+ *    real one with a marker per key (`FR …` / `UR …`), and the assertion is that
+ *    the marker is what rendered: it proves the call site routes through `t()`,
+ *    which is the one thing this file owns.
+ *    That proves the call site reads the key instead of a literal.
+ *
+ * C. THE AGE IS THE HUB'S LOCALIZED PHRASE. `updated {when}` passes
+ *    `commentAge()`, the repository's settled distance formatter, so the French
+ *    and Urdu expectations below carry the real `il y a 3 jours` / `3 دن پہلے`
+ *    from `ui.hub.comments.age.days`. The old shape printed date-fns' English
+ *    `3 days ago` and appended `updated` by concatenation.
+ *
+ * D. THE NEGATIVE CONTROL IS EXECUTED. The bundle is rebuilt once with ONE call
+ *    site — the ask heading — reverted to its English literal, and the positive
+ *    assertion is shown to fail against it. A test that cannot fail is not
+ *    evidence.
+ *
+ * WHAT IT DOES NOT PROVE: pixels. Wrapping, truncation and the 288 px roster
+ * button's budget are layout, covered by the frames and the context sidecars.
+ */
+
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { unlink, writeFile } from "node:fs/promises";
+import { after, test } from "node:test";
+import { build } from "esbuild";
+import { JSDOM } from "jsdom";
+
+const DOM = new JSDOM("<!doctype html><html><body></body></html>", {
+	url: "http://localhost/agents",
+});
+const FORCE_FROM_JSDOM = [
+	"Event",
+	"CustomEvent",
+	"UIEvent",
+	"MouseEvent",
+	"PointerEvent",
+	"KeyboardEvent",
+	"FocusEvent",
+	"InputEvent",
+	"CompositionEvent",
+	"HTMLElement",
+	"Element",
+	"Node",
+	"DocumentFragment",
+	"Range",
+	"Selection",
+	"DOMRect",
+	"DOMRectReadOnly",
+	"getComputedStyle",
+	"requestAnimationFrame",
+	"cancelAnimationFrame",
+];
+for (const key of Object.getOwnPropertyNames(DOM.window)) {
+	if (key === "window" || key === "self" || key === "globalThis") continue;
+	if (key in globalThis && !FORCE_FROM_JSDOM.includes(key)) continue;
+	try {
+		globalThis[key] = DOM.window[key];
+	} catch {
+		// jsdom's own accessors refuse to be read out of scope.
+	}
+}
+globalThis.window = DOM.window;
+globalThis.document = DOM.window.document;
+globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+/*
+ * NO SOCKETS. The agents/hub module graph reaches the app's connectivity probe,
+ * whose query fetches the server's health endpoint; in this rig there is no
+ * server, and a real fetch leaves keep-alive sockets that outlive the suite. The
+ * answer below is inert and never consulted by the copy under test.
+ */
+const inertResponse = {
+	ok: true,
+	status: 200,
+	json: async () => ({ result: { data: { msg: "ok", result: null } } }),
+	text: async () => "",
+	headers: { get: () => null },
+};
+globalThis.fetch = async () => inertResponse;
+DOM.window.fetch = globalThis.fetch;
+const storage = new Map();
+Object.defineProperty(DOM.window, "localStorage", {
+	configurable: true,
+	value: {
+		getItem: (key) => storage.get(key) ?? null,
+		setItem: (key, value) => storage.set(key, String(value)),
+		removeItem: (key) => storage.delete(key),
+		clear: () => storage.clear(),
+		key: (index) => [...storage.keys()][index] ?? null,
+		get length() {
+			return storage.size;
+		},
+	},
+});
+globalThis.localStorage = DOM.window.localStorage;
+DOM.window.matchMedia = (query) => ({
+	media: query,
+	matches: false,
+	addEventListener: () => {},
+	removeEventListener: () => {},
+	dispatchEvent: () => false,
+});
+globalThis.requestAnimationFrame = (callback) =>
+	setTimeout(() => callback(Date.now()), 0);
+globalThis.cancelAnimationFrame = (handle) => clearTimeout(handle);
+globalThis.ResizeObserver = class {
+	observe() {}
+	unobserve() {}
+	disconnect() {}
+};
+DOM.window.HTMLCanvasElement.prototype.getContext = () => ({
+	measureText: (text) => ({ width: String(text).length * 8 }),
+	font: "",
+	fillText: () => {},
+	clearRect: () => {},
+	save: () => {},
+	restore: () => {},
+});
+DOM.window.electron = {
+	ipcRenderer: {
+		on: () => () => {},
+		removeListener: () => {},
+		send: () => {},
+		invoke: async (channel) =>
+			channel === "get-platform-info"
+				? { platform: "darwin" }
+				: { canceled: true, filePaths: [] },
+	},
+};
+DOM.window.api = DOM.window.api ?? {};
+DOM.window.api.ipcRenderer = DOM.window.api.ipcRenderer ?? {
+	invoke: async () => ({}),
+	send: () => {},
+	on: () => {},
+	once: () => {},
+	removeListener: () => {},
+	removeAllListeners: () => {},
+};
+DOM.window.api.platform = "darwin";
+globalThis.api = DOM.window.api;
+
+/*
+ * A READABLE BOX FOR THE EXPANDER. jsdom has no layout engine, so
+ * `scrollHeight`/`clientHeight` are both 0 and `ReadBlock` would never decide its
+ * prose overflows. Both are pinned here to the relationship a clamped block has
+ * (content taller than the box); the SHIPPED component still makes the decision
+ * from those two numbers, and the negative control below proves the label is not
+ * painted from a constant.
+ */
+Object.defineProperty(DOM.window.HTMLElement.prototype, "scrollHeight", {
+	configurable: true,
+	get: () => 240,
+});
+Object.defineProperty(DOM.window.HTMLElement.prototype, "clientHeight", {
+	configurable: true,
+	get: () => 60,
+});
+
+const ROOT = process.cwd();
+
+/* English shapes the pre-fix code printed; hoisted for `useTopLevelRegex`. */
+const AGENTS_PAGE_SOURCE = /features\/agents\/components\/agents-page\.tsx$/;
+const AGENT_DETAIL_SOURCE = /features\/agents\/components\/agent-detail\.tsx$/;
+const MISSING_DEFINITION_SOURCE =
+	/features\/agents\/components\/missing-definition-error\.tsx$/;
+const ENGLISH_ASK_HEADING = /Ask for an agent/;
+const ENGLISH_DELEGATES = /Delegates/;
+const ENGLISH_UPDATED = /updated/;
+const ENGLISH_UPDATED_3_DAYS = /updated 3 days ago/;
+/*
+ * Render-time RTL isolation is PRODUCT behaviour (`src/i18n/bidi.ts`,
+ * `isolateArguments` + `isolateSigils`): when an RTL catalogue answers a key,
+ * every plain-spliced Latin-led value is wrapped in FSI...PDI (U+2068...U+2069)
+ * so a name cannot drag the sentence around it. An expectation for such a
+ * sentence therefore spells the wrapper out - comparing against the bare name
+ * would assert the isolation ABSENT, which is the opposite of what ships.
+ *
+ * The direction comes from the language manifest rather than a `locale === "ur"`
+ * test, for the reason `src/i18n/direction.ts` gives: a second hardcoded RTL
+ * list is a copy that goes stale silently the day an Arabic or Hebrew catalogue
+ * lands.
+ */
+const LANGUAGES = JSON.parse(
+	readFileSync("i18n/languages.json", "utf8"),
+).languages;
+const isolatedText = (locale, value) =>
+	LANGUAGES.find((entry) => entry.code === locale)?.dir === "rtl"
+		? `\u2068${value}\u2069`
+		: value;
+
+/** One build per mutation; the default bundle is shared. */
+const bundles = new Map();
+/** Query clients this file created, so their timers do not outlive the run. */
+const clients = [];
+
+function seamPlugin(mutation) {
+	const sites = {
+		"revert-heading": {
+			filter: AGENTS_PAGE_SOURCE,
+			call: 't("ui.agents.pages.ask.heading_agent")',
+			literal: '"Ask for an agent"',
+		},
+		"revert-origin": {
+			filter: AGENT_DETAIL_SOURCE,
+			call: 't("ui.agents.detail.origin.created_locally")',
+			literal: '"Created on this machine."',
+		},
+		"revert-origin-builtin": {
+			filter: AGENT_DETAIL_SOURCE,
+			call: 't("ui.agents.detail.origin.shipped_with_app")',
+			literal: '"Shipped with the app."',
+		},
+		"revert-origin-installed": {
+			filter: AGENT_DETAIL_SOURCE,
+			call: 't("ui.agents.detail.origin.installed_starter")',
+			literal: '"Installed from a packaged starter."',
+		},
+		"revert-origin-compare": {
+			filter: AGENT_DETAIL_SOURCE,
+			call: 't("ui.agents.detail.origin.compare_packaged")',
+			literal: '"Compare with the packaged instructions"',
+		},
+		"revert-effort-tier": {
+			filter: AGENT_DETAIL_SOURCE,
+			// Two call sites carry this key; the create form's is the 8-tab one, so the
+			// anchor includes its indentation and the revert hits exactly that one.
+			call: 'ariaLabel={t("ui.agents.models.override.tier_field")}\n\t\t\t\t\t\t\t\tshowLabel={false}',
+			literal: 'ariaLabel="Effort tier"\n\t\t\t\t\t\t\t\tshowLabel={false}',
+		},
+		"revert-transport": {
+			filter: MISSING_DEFINITION_SOURCE,
+			call: 't("ui.common.errors.desktop_transport_failed")',
+			literal:
+				'"The backend could not complete this request. Check its connection and try again."',
+		},
+		"revert-not-found": {
+			filter: MISSING_DEFINITION_SOURCE,
+			call: 't("ui.agents.detail.read_state.not_found")',
+			literal: '"Requested session, profile, team or subscription not found"',
+		},
+	};
+	const site = sites[mutation];
+	if (!site) return undefined;
+	return {
+		name: "agents-literals-negative-control",
+		setup(builder) {
+			builder.onLoad({ filter: site.filter }, (args) => {
+				const source = readFileSync(args.path, "utf8");
+				assert.equal(
+					source.split(site.call).length - 1,
+					1,
+					"the negative control must revert exactly one call site",
+				);
+				return {
+					contents: source.replace(site.call, site.literal),
+					loader: "tsx",
+				};
+			});
+		},
+	};
+}
+
+async function load(mutation) {
+	const cached = bundles.get(mutation);
+	if (cached) return cached;
+	const result = await build({
+		stdin: {
+			contents: [
+				'export * as React from "react";',
+				'export { AskPaneCopy, AddManuallyButton } from "../src/renderer/src/features/agents/components/agents-page";',
+				'export { AgentMeta, AgentDetail, AgentCreate } from "../src/renderer/src/features/agents/components/agent-detail";',
+				'export { MissingDefinitionError } from "../src/renderer/src/features/agents/components/missing-definition-error";',
+				'export { DesktopControlError } from "../src/renderer/src/shared/api/local-operator/desktop-api";',
+				'export { DESKTOP_REFUSAL_CODE } from "../src/shared/desktop-contract";',
+				'export { ReadBlock } from "../src/renderer/src/features/agents/components/detail-parts";',
+				'export { ConfigComposer } from "../src/renderer/src/features/agents/config-run/config-composer";',
+				'export { publishDialogTitle } from "../src/renderer/src/features/agents/components/upload-agent-dialog";',
+				'export { AgentCard } from "../src/renderer/src/features/agent-hub/components/agent-card";',
+				'export { TeamProvenance } from "../src/renderer/src/features/agent-hub/components/org-teams-list";',
+				'export * as summary from "../src/renderer/src/features/agent-hub/components/org-team-summary";',
+				'export { MemoryRouter } from "react-router-dom";',
+				'export { createRoot } from "react-dom/client";',
+				'export { QueryClient, QueryClientProvider } from "@tanstack/react-query";',
+				'export * as i18n from "../src/i18n";',
+			].join("\n"),
+			resolveDir: `${ROOT}/scripts`,
+		},
+		bundle: true,
+		format: "esm",
+		platform: "node",
+		write: false,
+		mainFields: ["module", "main"],
+		conditions: ["import"],
+		jsx: "automatic",
+		external: ["react", "react-dom", "react-dom/client", "react/jsx-runtime"],
+		alias: {
+			"@shared": `${ROOT}/src/renderer/src/shared`,
+			"@features": `${ROOT}/src/renderer/src/features`,
+			"@assets": `${ROOT}/src/renderer/src/assets`,
+		},
+		loader: {
+			".css": "empty",
+			".svg": "text",
+			".png": "dataurl",
+			".webp": "dataurl",
+			".ttf": "empty",
+			".woff": "empty",
+			".woff2": "empty",
+			".eot": "empty",
+		},
+		define: { "import.meta.env": "{}" },
+		banner: {
+			js: 'import { createRequire } from "node:module"; const require = createRequire(import.meta.url);',
+		},
+		plugins: [seamPlugin(mutation)].filter(Boolean),
+	});
+	const bundlePath = new URL(
+		`./_agents-remaining-${process.pid}-${mutation ?? "base"}.mjs`,
+		import.meta.url,
+	);
+	/*
+	 * A FILE, not a `data:` URL: the bundle keeps React external, and a bare
+	 * specifier cannot resolve from a data URL (the first version of this file did
+	 * that and every case failed with ERR_INVALID_URL before rendering anything).
+	 */
+	await writeFile(bundlePath, result.outputFiles[0].text);
+	const module = await import(bundlePath.href);
+	await unlink(bundlePath).catch(() => {});
+	bundles.set(mutation, module);
+	return module;
+}
+
+/** Every key this branch extracted, with a marker per locale. */
+const copy = (marker) => ({
+	"ui.agents.pages.ask.heading_agent": `${marker} heading agent`,
+	"ui.agents.pages.ask.heading_team": `${marker} heading team`,
+	"ui.agents.pages.ask.body_agent": `${marker} body agent`,
+	"ui.agents.pages.ask.body_team": `${marker} body team`,
+	"ui.agents.pages.ask.manual_agent": `${marker} manual agent`,
+	"ui.agents.pages.ask.manual_team": `${marker} manual team`,
+	"ui.agents.pages.add_manual.agent": `${marker} add agent`,
+	"ui.agents.pages.add_manual.team": `${marker} add team`,
+	"ui.agents.config.placeholder.hero": `${marker} hero placeholder`,
+	"ui.agents.config.placeholder.docked": `${marker} docked placeholder`,
+	"ui.agents.config.placeholder.about": `${marker} about {name}`,
+	"ui.agents.detail.meta.delegates": `${marker} delegates`,
+	"ui.agents.detail.read.show_all": `${marker} show all`,
+	"ui.agents.detail.read.show_less": `${marker} show less`,
+	"ui.hub.pages.card.updated": `${marker} changed {when}`,
+	"ui.hub.pages.card.get": `${marker} get`,
+	"ui.hub.teams.recency.updated": `${marker} changed {when}`,
+	"ui.hub.teams.recency.created": `${marker} created {when}`,
+	"ui.agents.upload.title.publish_public": `${marker} publish {name} public?`,
+	"ui.agents.upload.title.publish_org": `${marker} publish {name} to {destination}?`,
+	"ui.agents.upload.title.update_listing": `${marker} update {name}?`,
+	"ui.agents.upload.title.published_public": `${marker} published {name}`,
+	"ui.agents.upload.title.published_org": `${marker} published {name} to {destination}`,
+	"ui.agents.upload.title.republished": `${marker} republished {name}`,
+	"ui.agents.models.override.tier_field": `${marker} effort tier`,
+	"ui.agents.detail.field.effort_loading": `${marker} loading tiers`,
+	"ui.common.actions.retry_again": `${marker} retry`,
+	"ui.common.actions.retrying": `${marker} retrying`,
+});
+
+let prepared;
+function prepare(lib) {
+	if (prepared) return prepared;
+	/*
+	 * French and Urdu only. `en` is deliberately NOT registered: leaving the
+	 * shipped English in place is what lets the last test prove the store returns
+	 * to it, and a sentinel registered over `en` would make every other assertion
+	 * pass without touching the real fallback.
+	 */
+	i18nRegister(lib, "fr", "FR");
+	i18nRegister(lib, "ur", "UR");
+	prepared = true;
+	return prepared;
+}
+function i18nRegister(lib, locale, marker) {
+	lib.i18n.registerCatalogue(locale, copy(marker));
+}
+const useLocale = (lib, locale) => lib.i18n.setLocale(locale);
+
+/** Mount a production component and return its text plus a teardown. */
+async function mount(lib, element) {
+	const container = document.createElement("div");
+	document.body.append(container);
+	const root = lib.createRoot(container);
+	await lib.React.act(async () => root.render(element));
+	return {
+		container,
+		text: () => container.textContent ?? "",
+		async unmount() {
+			await lib.React.act(async () => root.unmount());
+			container.remove();
+		},
+	};
+}
+
+/* The fake run handle: the composer's contract is with this object. */
+const composerRun = (overrides = {}) => ({
+	enabled: true,
+	disabledReason: null,
+	status: "idle",
+	sessionId: null,
+	frontend: null,
+	topic: "",
+	error: null,
+	stopError: null,
+	about: null,
+	touched: [],
+	step: null,
+	elapsed: "0s",
+	activity: [],
+	results: [],
+	answer: "",
+	canRetry: false,
+	starting: false,
+	attached: false,
+	start: async () => true,
+	stop: async () => undefined,
+	retry: async () => undefined,
+	dismiss: () => undefined,
+	...overrides,
+});
+
+const PROFILE = {
+	name: "fixture-agent",
+	source: "custom",
+	kind: "role",
+	delegate: true,
+	divergent_fields: [],
+};
+
+const AGENT = {
+	id: "synthetic-agent",
+	name: "release-readiness-reviewer",
+	description: "Checks a release against its checklist.",
+	visibility: "public",
+	tags: [],
+	categories: [],
+	account_metadata: { name: "QA Author" },
+	updated_at: new Date(Date.now() - 3 * 86_400_000).toISOString(),
+	like_count: 3,
+	favourite_count: 1,
+	download_count: 12,
+};
+
+const TEAM = {
+	id: "synthetic-team",
+	name: "Release readiness",
+	project: "Onboarding",
+	description: "Screens onboarding subjects.",
+	manager: "lead-screener",
+	members: [{ role: "screener", kind: "role", count: 3 }],
+	version: "1.2.0",
+	created_date: new Date(Date.now() - 41 * 86_400_000).toISOString(),
+	updated_at: new Date(Date.now() - 3 * 86_400_000).toISOString(),
+	account_metadata: { name: "Ana Perez", email: "ana@example.com" },
+};
+
+const ANSWERED_PUBLIC = {
+	name: "aida",
+	hubAgentId: "hub-1",
+	republished: false,
+	orgName: null,
+	localPolicies: null,
+};
+const ANSWERED_ORG = { ...ANSWERED_PUBLIC, orgName: "QA Organisation" };
+const ANSWERED_REPUBLISHED = { ...ANSWERED_PUBLIC, republished: true };
+
+/* ------------------------------------------------------- the Agents page */
+
+test("the ask pane paints the catalogue, in French and Urdu", async () => {
+	const lib = await load();
+	prepare(lib);
+	for (const [locale, marker] of [
+		["fr", "FR"],
+		["ur", "UR"],
+	]) {
+		useLocale(lib, locale);
+		const agent = await mount(
+			lib,
+			lib.React.createElement(lib.AskPaneCopy, { teamMode: false }),
+		);
+		const agentText = agent.text();
+		assert.match(agentText, new RegExp(`${marker} heading agent`));
+		assert.match(agentText, new RegExp(`${marker} body agent`));
+		assert.doesNotMatch(agentText, ENGLISH_ASK_HEADING);
+		await agent.unmount();
+
+		const team = await mount(
+			lib,
+			lib.React.createElement(lib.AskPaneCopy, { teamMode: true }),
+		);
+		const teamText = team.text();
+		assert.match(teamText, new RegExp(`${marker} heading team`));
+		assert.match(teamText, new RegExp(`${marker} body team`));
+		await team.unmount();
+	}
+});
+
+test("both hand-add controls paint their keys", async () => {
+	const lib = await load();
+	prepare(lib);
+	for (const [locale, marker] of [
+		["fr", "FR"],
+		["ur", "UR"],
+	]) {
+		useLocale(lib, locale);
+		for (const teamMode of [false, true]) {
+			const button = await mount(
+				lib,
+				lib.React.createElement(lib.AddManuallyButton, {
+					teamMode,
+					disabled: false,
+					onClick: () => {},
+				}),
+			);
+			assert.match(
+				button.text(),
+				new RegExp(`${marker} add ${teamMode ? "team" : "agent"}`),
+			);
+			await button.unmount();
+		}
+	}
+});
+
+test("the composer's three placeholders are catalogue messages", async () => {
+	const lib = await load();
+	prepare(lib);
+	const mountComposer = async (props) => {
+		const queryClient = new lib.QueryClient({
+			defaultOptions: { queries: { retry: false } },
+		});
+		return mount(
+			lib,
+			lib.React.createElement(
+				lib.QueryClientProvider,
+				{ client: queryClient },
+				lib.React.createElement(lib.ConfigComposer, {
+					run: composerRun(),
+					about: null,
+					onClearAbout: () => {},
+					...props,
+				}),
+			),
+		);
+	};
+	for (const [locale, marker] of [
+		["fr", "FR"],
+		["ur", "UR"],
+	]) {
+		useLocale(lib, locale);
+		const hero = await mountComposer({ hero: true });
+		assert.equal(
+			hero.container.querySelector("textarea")?.getAttribute("placeholder"),
+			`${marker} hero placeholder`,
+		);
+		await hero.unmount();
+
+		const docked = await mountComposer({});
+		assert.equal(
+			docked.container.querySelector("textarea")?.getAttribute("placeholder"),
+			`${marker} docked placeholder`,
+		);
+		await docked.unmount();
+
+		const about = await mount(
+			lib,
+			lib.React.createElement(
+				lib.QueryClientProvider,
+				{ client: new lib.QueryClient() },
+				lib.React.createElement(lib.ConfigComposer, {
+					run: composerRun(),
+					about: { kind: "agent", name: "aida" },
+					onClearAbout: () => {},
+				}),
+			),
+		);
+		assert.equal(
+			about.container.querySelector("textarea")?.getAttribute("placeholder"),
+			`${marker} about ${isolatedText(locale, "aida")}`,
+		);
+		await about.unmount();
+	}
+});
+
+/* ------------------------------------------------------ the detail pane */
+
+test("the detail meta fact and the expander paint their keys", async () => {
+	const lib = await load();
+	prepare(lib);
+	for (const [locale, marker] of [
+		["fr", "FR"],
+		["ur", "UR"],
+	]) {
+		useLocale(lib, locale);
+		const meta = await mount(
+			lib,
+			lib.React.createElement(lib.AgentMeta, { profile: PROFILE }),
+		);
+		assert.match(meta.text(), new RegExp(`${marker} delegates`));
+		assert.doesNotMatch(meta.text(), ENGLISH_DELEGATES);
+		await meta.unmount();
+
+		const block = await mount(
+			lib,
+			lib.React.createElement(lib.ReadBlock, { text: "A".repeat(400) }),
+		);
+		const all = block.container.querySelector("button");
+		assert.ok(all, "the overflowing prose renders the expander");
+		assert.equal(all.textContent, `${marker} show all`);
+		await lib.React.act(async () =>
+			all.dispatchEvent(new DOM.window.MouseEvent("click", { bubbles: true })),
+		);
+		assert.equal(
+			block.container.querySelector("button")?.textContent,
+			`${marker} show less`,
+		);
+		await block.unmount();
+	}
+});
+
+/* --------------------------------------------------------- the hub card */
+
+test("the hub card's provenance, Get and retry paint their keys, with a localized age", async () => {
+	const lib = await load();
+	prepare(lib);
+	const expectations = {
+		fr: { when: "il y a 3 jours", marker: "FR" },
+		ur: { when: "3 دن پہلے", marker: "UR" },
+	};
+	for (const [locale, { when, marker }] of Object.entries(expectations)) {
+		useLocale(lib, locale);
+		const client = new lib.QueryClient({
+			defaultOptions: { queries: { retry: false } },
+		});
+		clients.push(client);
+		const card = await mount(
+			lib,
+			lib.React.createElement(
+				lib.QueryClientProvider,
+				{ client },
+				lib.React.createElement(
+					lib.MemoryRouter,
+					null,
+					lib.React.createElement(lib.AgentCard, {
+						agent: AGENT,
+						isLiked: false,
+						isFavourited: false,
+						onLikeToggle: () => {},
+						onFavouriteToggle: () => {},
+						onDownload: () => {},
+						actionError: "The download failed.",
+						onRetryAction: () => {},
+					}),
+				),
+			),
+		);
+		const text = card.text();
+		assert.match(text, new RegExp(`${marker} changed ${when}`));
+		assert.doesNotMatch(text, ENGLISH_UPDATED_3_DAYS);
+		assert.match(text, new RegExp(`${marker} get`));
+		assert.match(text, new RegExp(`${marker} retry`));
+		await card.unmount();
+	}
+});
+
+test("the org-team row's recency is one sentence, reorderable, never concatenated", async () => {
+	const lib = await load();
+	prepare(lib);
+	/*
+	 * WHAT THIS BRANCH OWNS IS THE SENTENCE: the row renders the catalogue message
+	 * with the clock's phrase inside it, never `updated` concatenated in front of
+	 * it, so the rendered text is pinned to `t(key, { when })` rather than to the
+	 * label plus a space. The phrase itself is already the hub's localized one
+	 * (`teamRecency().when`, from the sibling agents-pages work merged to this
+	 * base), so pinning it proves the row passes it through whole instead of
+	 * re-deriving an English distance beside a localized sentence.
+	 */
+	for (const [locale, marker, when] of [
+		["fr", "FR", "il y a 3 jours"],
+		["ur", "UR", "3 دن پہلے"],
+	]) {
+		useLocale(lib, locale);
+		const row = await mount(
+			lib,
+			lib.React.createElement(lib.TeamProvenance, { team: TEAM }),
+		);
+		const text = row.text().trim();
+		assert.equal(
+			lib.summary.teamRecency(TEAM).when,
+			when,
+			"the hub's localized age phrase",
+		);
+		assert.equal(text, `Onboarding·, Ana Perez·, ${marker} changed ${when}`);
+		assert.doesNotMatch(text, ENGLISH_UPDATED);
+		await row.unmount();
+	}
+});
+
+/* ------------------------------------------------------ the publish dialog */
+
+test("all six publish-dialog titles come from their keys", async () => {
+	const lib = await load();
+	prepare(lib);
+	for (const [locale, marker] of [
+		["fr", "FR"],
+		["ur", "UR"],
+	]) {
+		useLocale(lib, locale);
+		/*
+		 * Only the EXPECTED sentence carries the isolates: the input keeps the bare
+		 * `agentName`, because that is what the caller holds and what the message
+		 * splices; the wrapper is applied by the render path under test.
+		 */
+		const aida = isolatedText(locale, "aida");
+		const org = isolatedText(locale, "QA Organisation");
+		const states = [
+			[
+				{
+					agentName: "aida",
+					published: null,
+					targetIsOrg: false,
+					targetDisplayName: "",
+					hasListing: false,
+				},
+				`${marker} publish ${aida} public?`,
+			],
+			[
+				{
+					agentName: "aida",
+					published: null,
+					targetIsOrg: true,
+					targetDisplayName: "QA Organisation",
+					hasListing: false,
+				},
+				`${marker} publish ${aida} to ${org}?`,
+			],
+			[
+				{
+					agentName: "aida",
+					published: null,
+					targetIsOrg: false,
+					targetDisplayName: "",
+					hasListing: true,
+				},
+				`${marker} update ${aida}?`,
+			],
+			[
+				{
+					agentName: "aida",
+					published: ANSWERED_PUBLIC,
+					targetIsOrg: false,
+					targetDisplayName: "",
+					hasListing: false,
+				},
+				`${marker} published ${aida}`,
+			],
+			[
+				{
+					agentName: "aida",
+					published: ANSWERED_ORG,
+					targetIsOrg: true,
+					targetDisplayName: "QA Organisation",
+					hasListing: false,
+				},
+				`${marker} published ${aida} to ${org}`,
+			],
+			[
+				{
+					agentName: "aida",
+					published: ANSWERED_REPUBLISHED,
+					targetIsOrg: false,
+					targetDisplayName: "",
+					hasListing: true,
+				},
+				`${marker} republished ${aida}`,
+			],
+		];
+		for (const [input, want] of states) {
+			assert.equal(lib.publishDialogTitle(input), want);
+		}
+	}
+});
+
+/* ---------------------------------------------------- the negative control */
+
+test("negative control: reverting one call site to its literal defeats the same assertion", async () => {
+	const lib = await load("revert-heading");
+	prepare(lib);
+	useLocale(lib, "fr");
+	const pane = await mount(
+		lib,
+		lib.React.createElement(lib.AskPaneCopy, { teamMode: false }),
+	);
+	const text = pane.text();
+	assert.match(
+		text,
+		ENGLISH_ASK_HEADING,
+		"the reverted literal is what painted",
+	);
+	assert.throws(
+		() => assert.doesNotMatch(text, ENGLISH_ASK_HEADING),
+		assert.AssertionError,
+		"the positive assertion must fail against the literal",
+	);
+	await pane.unmount();
+});
+
+/**
+ * Mount the actual detail components against bundled translations, not just key
+ * existence or injected catalogues. A fallback to English must fail even when
+ * the renderer is otherwise subscribed to the right locale.
+ */
+test("missing and populated detail follow the selected non-English locale", async () => {
+	const lib = await load();
+	const h = lib.React.createElement;
+	const source = JSON.parse(
+		readFileSync(
+			"src/i18n/catalogues/en/ui.agents.detail.read_state.json",
+			"utf8",
+		),
+	);
+	lib.i18n.clearRegisteredCatalogues();
+	for (const locale of ["fr", "ur"]) {
+		const messages = JSON.parse(
+			readFileSync(
+				`src/i18n/catalogues/${locale}/ui.agents.detail.read_state.json`,
+				"utf8",
+			),
+		);
+		for (const key of Object.keys(source))
+			assert.notEqual(
+				messages[key],
+				source[key],
+				`${locale}/${key} must not fall back to English`,
+			);
+		useLocale(lib, locale);
+		const prefix = "ui.agents.detail.read_state.";
+		for (const error of [
+			new lib.DesktopControlError(
+				404,
+				source[`${prefix}not_found`],
+				undefined,
+				"wire.errors.desktop.requested_not_found",
+			),
+			new lib.DesktopControlError(404, source[`${prefix}not_found`]),
+		]) {
+			const view = await mount(
+				lib,
+				h(lib.MissingDefinitionError, {
+					name: "census-agent",
+					error,
+					retrying: false,
+					onRetry: () => {},
+				}),
+			);
+			for (const suffix of [
+				"failed_title",
+				"not_found",
+				"failed_meaning",
+				"retry",
+			]) {
+				assert.ok(
+					view
+						.text()
+						.includes(
+							messages[`${prefix}${suffix}`].replace(
+								"{name}",
+								isolatedText(locale, "census-agent"),
+							),
+						),
+					view.text(),
+				);
+			}
+			assert.ok(!view.text().includes("could not be read"));
+			await view.unmount();
+		}
+		const client = new lib.QueryClient({
+			defaultOptions: { queries: { retry: false } },
+		});
+		const view = await mount(
+			lib,
+			h(
+				lib.QueryClientProvider,
+				{ client },
+				h(
+					lib.MemoryRouter,
+					null,
+					h(lib.AgentDetail, {
+						profile: {
+							...PROFILE,
+							name: "census-agent",
+							agent_id: null,
+							description: "",
+							instructions: "",
+							tools: null,
+							effort: null,
+							delegate: false,
+							action_class: "reactive",
+						},
+						displayedName: "census-agent",
+						classNotice: null,
+						onClassNotice: () => {},
+						teams: [],
+						effortTiers: [],
+						onOpenTeam: () => {},
+						onAskAgent: () => {},
+					}),
+				),
+			),
+		);
+		for (const suffix of [
+			"no_delegation",
+			"class_description",
+			"used_by_description",
+			"class_off",
+		]) {
+			assert.ok(
+				view.text().includes(messages[`${prefix}${suffix}`]),
+				`${locale}/${suffix}: ${view.text()}`,
+			);
+		}
+		// The read-view tier is the raw backend token, not a translated config value.
+		assert.ok(view.text().includes("inherit"));
+		assert.ok(!view.text().includes("Does its own work"));
+		const edit = [...view.container.querySelectorAll("button")].find(
+			(button) =>
+				button.textContent === lib.i18n.t("ui.agents.detail.action.edit"),
+		);
+		assert.ok(edit, "the real detail exposes its edit transition");
+		await lib.React.act(async () => edit.click());
+		assert.equal(
+			view.container.querySelector('input[role="combobox"]').value,
+			messages[`${prefix}effort_inherit`],
+			"the picker shows human copy, not its raw inherit id",
+		);
+		await view.unmount();
+		client.clear();
+	}
+	useLocale(lib, "en");
+});
+
+test("missing detail preserves unknown diagnostics and localizes pending retry", async () => {
+	const lib = await load();
+	lib.i18n.clearRegisteredCatalogues();
+	useLocale(lib, "fr");
+	for (const error of [
+		new lib.DesktopControlError(
+			404,
+			"Diagnostic fixture: unknown route",
+			undefined,
+			"route_not_found",
+		),
+		new Error("Diagnostic fixture: network"),
+		new lib.DesktopControlError(
+			503,
+			"The backend could not complete this request. Check its connection and try again.",
+			undefined,
+			"other_category",
+		),
+		// A declared category must win even if the legacy prose happens to match.
+		new lib.DesktopControlError(
+			404,
+			"Requested session, profile, team or subscription not found",
+			undefined,
+			"other_category",
+		),
+	]) {
+		let retried = false;
+		const view = await mount(
+			lib,
+			lib.React.createElement(lib.MissingDefinitionError, {
+				name: "agent-{name}",
+				error,
+				retrying: false,
+				onRetry: () => {
+					retried = true;
+				},
+			}),
+		);
+		assert.ok(view.text().includes(error.message));
+		assert.ok(
+			view.text().includes("agent-{name}"),
+			"an ICU-looking name is data, not a nested message",
+		);
+		await lib.React.act(async () =>
+			view.container.querySelector("button").click(),
+		);
+		assert.equal(retried, true);
+		await view.unmount();
+	}
+	const pending = await mount(
+		lib,
+		lib.React.createElement(lib.MissingDefinitionError, {
+			name: "census-agent",
+			error: null,
+			retrying: true,
+			onRetry: () => {
+				throw new Error("disabled retry fired");
+			},
+		}),
+	);
+	assert.equal(pending.container.querySelector("button").disabled, true);
+	assert.ok(
+		pending.text().includes(lib.i18n.t("ui.agents.detail.read_state.retrying")),
+	);
+	assert.ok(
+		pending
+			.text()
+			.includes(lib.i18n.t("ui.agents.detail.read_state.request_failed")),
+	);
+	await pending.unmount();
+});
+
+test("negative control: English backend fallback defeats the visible-detail locale assertion", async () => {
+	const lib = await load("revert-not-found");
+	lib.i18n.registerCatalogue("fr", {
+		"ui.agents.detail.read_state.not_found": "FR not_found",
+	});
+	useLocale(lib, "fr");
+	const view = await mount(
+		lib,
+		lib.React.createElement(lib.MissingDefinitionError, {
+			name: "census-agent",
+			error: new lib.DesktopControlError(
+				404,
+				"wire fallback",
+				undefined,
+				"wire.errors.desktop.requested_not_found",
+			),
+			retrying: false,
+			onRetry: () => {},
+		}),
+	);
+	assert.ok(
+		view
+			.text()
+			.includes("Requested session, profile, team or subscription not found"),
+	);
+	assert.throws(
+		() => assert.ok(view.text().includes("FR not_found")),
+		assert.AssertionError,
+	);
+	await view.unmount();
+});
+
+/**
+ * The rendered census found two more English leaks. Exercise the production
+ * panes with unmistakable markers, not translations authored by this test. The
+ * English pass pins exact copy; mutations prove both locale assertions fail
+ * when the old literal is restored. Native layout remains the census's remit.
+ */
+async function censusCopyViews(lib, profile = PROFILE) {
+	const h = lib.React.createElement;
+	const client = new lib.QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
+	clients.push(client);
+	const origin = await mount(
+		lib,
+		h(
+			lib.QueryClientProvider,
+			{ client },
+			h(
+				lib.MemoryRouter,
+				null,
+				h(lib.AgentDetail, {
+					profile,
+					displayedName: profile.name,
+					classNotice: null,
+					onClassNotice: () => {},
+					teams: [],
+					effortTiers: [],
+					onOpenTeam: () => {},
+					onAskAgent: () => {},
+				}),
+			),
+		),
+	);
+	return { origin, client };
+}
+
+const CENSUS_ORIGIN_KEY = "ui.agents.detail.origin.created_locally";
+/*
+ * The other two origin descriptions and the Disclosure summary share the slot
+ * `created_locally` fills, so a custom agent's origin was translated while a
+ * built-in or installed agent's stayed English beside it (design review D1). The
+ * three live in their own namespace file so the audited bytes of
+ * `ui.agents.detail` stay untouched. One profile per branch: `source` picks the
+ * description, and the summary needs an installed copy that diverges from its
+ * packaged original with the packaged text to compare against.
+ */
+const ORIGIN_BRANCHES = [
+	{
+		mutation: "revert-origin-builtin",
+		key: "ui.agents.detail.origin.shipped_with_app",
+		english: "Shipped with the app.",
+		profile: { ...PROFILE, source: "builtin" },
+	},
+	{
+		mutation: "revert-origin-installed",
+		key: "ui.agents.detail.origin.installed_starter",
+		english: "Installed from a packaged starter.",
+		profile: { ...PROFILE, source: "installed" },
+	},
+	{
+		mutation: "revert-origin-compare",
+		key: "ui.agents.detail.origin.compare_packaged",
+		english: "Compare with the packaged instructions",
+		profile: {
+			...PROFILE,
+			source: "installed",
+			divergent_fields: ["instructions"],
+			packaged_instructions: "Packaged instruction fixture.",
+		},
+	},
+];
+
+async function assertOriginBranchCopy(lib, locale, branch, expected) {
+	useLocale(lib, locale);
+	const { origin, client } = await censusCopyViews(lib, branch.profile);
+	try {
+		assert.ok(origin.text().includes(expected), origin.text());
+	} finally {
+		await origin.unmount();
+		client.clear();
+	}
+}
+
+const CENSUS_TRANSPORT_KEY = "ui.common.errors.desktop_transport_failed";
+const CENSUS_TRANSPORT_ENGLISH =
+	"The backend could not complete this request. Check its connection and try again.";
+
+async function assertCensusCopy(
+	lib,
+	locale,
+	expectedOrigin,
+	expectedTransport,
+) {
+	useLocale(lib, locale);
+	const { origin, client } = await censusCopyViews(lib);
+	try {
+		assert.ok(origin.text().includes(expectedOrigin), origin.text());
+	} finally {
+		await origin.unmount();
+		client.clear();
+	}
+	// Main's declared code and the legacy proxy's uncoded sentinel both carry
+	// the same display copy, while a foreign declared category must still win.
+	for (const code of [lib.DESKTOP_REFUSAL_CODE.transportFailed, undefined]) {
+		const error = new lib.DesktopControlError(
+			503,
+			CENSUS_TRANSPORT_ENGLISH,
+			undefined,
+			code,
+		);
+		const view = await mount(
+			lib,
+			lib.React.createElement(lib.MissingDefinitionError, {
+				name: PROFILE.name,
+				error,
+				retrying: false,
+				onRetry: () => {},
+			}),
+		);
+		try {
+			assert.ok(view.text().includes(expectedTransport), view.text());
+			assert.equal(
+				error.message,
+				CENSUS_TRANSPORT_ENGLISH,
+				"the machine sentinel must remain English even after presentation",
+			);
+		} finally {
+			await view.unmount();
+		}
+	}
+}
+
+test("census origin and generic transport refusal render keyed copy in seven locales, with identical English", async () => {
+	const lib = await load();
+	lib.i18n.clearRegisteredCatalogues();
+	await assertCensusCopy(
+		lib,
+		"en",
+		"Created on this machine.",
+		CENSUS_TRANSPORT_ENGLISH,
+	);
+	for (const locale of ["fr", "es", "ru", "vi", "hi", "zh-CN", "ur"]) {
+		const origin = `${locale} origin marker`;
+		const transport = `${locale} transport marker`;
+		lib.i18n.registerCatalogue(locale, {
+			[CENSUS_ORIGIN_KEY]: origin,
+			[CENSUS_TRANSPORT_KEY]: transport,
+		});
+		await assertCensusCopy(lib, locale, origin, transport);
+	}
+	lib.i18n.clearRegisteredCatalogues();
+	useLocale(lib, "en");
+});
+
+test("negative controls: restoring either census literal defeats keyed rendering", async () => {
+	for (const mutation of ["revert-origin", "revert-transport"]) {
+		const lib = await load(mutation);
+		lib.i18n.registerCatalogue("fr", {
+			[CENSUS_ORIGIN_KEY]: "FR origin marker",
+			[CENSUS_TRANSPORT_KEY]: "FR transport marker",
+		});
+		await assert.rejects(
+			assertCensusCopy(lib, "fr", "FR origin marker", "FR transport marker"),
+			assert.AssertionError,
+		);
+		lib.i18n.clearRegisteredCatalogues();
+		useLocale(lib, "en");
+	}
+});
+
+test("the built-in, installed and compare-instructions origin copy render identical English and keyed copy in seven locales", async () => {
+	const lib = await load();
+	lib.i18n.clearRegisteredCatalogues();
+	for (const branch of ORIGIN_BRANCHES) {
+		await assertOriginBranchCopy(lib, "en", branch, branch.english);
+	}
+	for (const locale of ["fr", "es", "ru", "vi", "hi", "zh-CN", "ur"]) {
+		lib.i18n.registerCatalogue(
+			locale,
+			Object.fromEntries(
+				ORIGIN_BRANCHES.map((b) => [b.key, `${locale} ${b.key} marker`]),
+			),
+		);
+		for (const branch of ORIGIN_BRANCHES) {
+			await assertOriginBranchCopy(
+				lib,
+				locale,
+				branch,
+				`${locale} ${branch.key} marker`,
+			);
+		}
+	}
+	lib.i18n.clearRegisteredCatalogues();
+	useLocale(lib, "en");
+});
+
+test("negative controls: restoring any of the three origin literals defeats keyed rendering", async () => {
+	for (const branch of ORIGIN_BRANCHES) {
+		const lib = await load(branch.mutation);
+		lib.i18n.registerCatalogue("fr", { [branch.key]: "FR origin marker" });
+		await assert.rejects(
+			assertOriginBranchCopy(lib, "fr", branch, "FR origin marker"),
+			assert.AssertionError,
+		);
+		lib.i18n.clearRegisteredCatalogues();
+		useLocale(lib, "en");
+	}
+});
+
+/*
+ * THE EFFORT-TIER CONTROL (the `label`, `ariaLabel`, `busyLabel` and section
+ * `description` props the scanner did not count). The create form is the shipped
+ * `AgentCreate`; the combobox's accessible name is read off the real input.
+ */
+async function effortTierView(lib) {
+	const h = lib.React.createElement;
+	const client = new lib.QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
+	clients.push(client);
+	const view = await mount(
+		lib,
+		h(
+			lib.QueryClientProvider,
+			{ client },
+			h(
+				lib.MemoryRouter,
+				null,
+				h(lib.AgentCreate, {
+					takenNames: [],
+					effortTiers: ["low", "high"],
+					onSaved: () => {},
+					onCancel: () => {},
+				}),
+			),
+		),
+	);
+	return { view, client };
+}
+
+async function assertEffortTierCopy(lib, locale, marker) {
+	useLocale(lib, locale);
+	const { view, client } = await effortTierView(lib);
+	try {
+		const combo = view.container.querySelector('input[role="combobox"]');
+		assert.ok(combo, "the effort-tier combobox did not render");
+		assert.equal(combo.getAttribute("aria-label"), `${marker} effort tier`);
+		assert.ok(view.text().includes(`${marker} effort tier`), view.text());
+	} finally {
+		await view.unmount();
+		client.clear();
+	}
+}
+
+test("the effort-tier control follows the locale", async () => {
+	const lib = await load();
+	// Earlier cases clear the registry, so the markers are registered afresh.
+	lib.i18n.clearRegisteredCatalogues();
+	for (const [locale, marker] of [
+		["fr", "FR"],
+		["ur", "UR"],
+	])
+		lib.i18n.registerCatalogue(locale, copy(marker));
+	for (const [locale, marker] of [
+		["fr", "FR"],
+		["ur", "UR"],
+	]) {
+		await assertEffortTierCopy(lib, locale, marker);
+	}
+	// English is the source: the catalogue value is the literal it replaced.
+	lib.i18n.clearRegisteredCatalogues();
+	useLocale(lib, "en");
+	const { view, client } = await effortTierView(lib);
+	try {
+		assert.equal(
+			view.container
+				.querySelector('input[role="combobox"]')
+				.getAttribute("aria-label"),
+			"Effort tier",
+		);
+	} finally {
+		await view.unmount();
+		client.clear();
+	}
+});
+
+test("negative control: reverting the combobox name to its literal defeats the locale assertion", async () => {
+	const lib = await load("revert-effort-tier");
+	lib.i18n.registerCatalogue("fr", copy("FR"));
+	await assert.rejects(
+		assertEffortTierCopy(lib, "fr", "FR"),
+		assert.AssertionError,
+	);
+	lib.i18n.clearRegisteredCatalogues();
+	useLocale(lib, "en");
+});
+
+/*
+ * The team pane's member table printed its kind column as a string EXPRESSION
+ * (`kind === "team" ? "Team" : "Agent"`), which the literal scanner does not
+ * read, so "Agent" stayed English in a ur frame (RTL follow-up to UI #1952). A
+ * source contract rather than a mount: the table needs the whole team pane and
+ * its queries, and what is owned here is only that the cell reads the keys.
+ */
+test("the team member table's kind column reads its catalogue keys, not literals", () => {
+	const pane = readFileSync(
+		"src/renderer/src/features/agents/components/team-detail.tsx",
+		"utf8",
+	);
+	assert.doesNotMatch(pane, /\? "Team" : "Agent"/);
+	assert.match(
+		pane,
+		/member\.kind === "team"\s*\?\s*t\("ui\.agents\.teams\.kind\.team"\)\s*:\s*t\("ui\.agents\.teams\.kind\.agent"\)/,
+	);
+});
+
+test("teardown: the store is back to English, and the suite closes what it opened", async () => {
+	const lib = await load();
+	useLocale(lib, "en");
+	assert.equal(
+		lib.i18n.t("ui.agents.pages.ask.heading_agent"),
+		"Ask for an agent",
+	);
+	for (const client of clients) {
+		client.clear();
+		client.unmount();
+	}
+	DOM.window.close();
+	/*
+	 * The app's module graph (the connectivity probe, the esbuild service) keeps
+	 * sockets open beyond the suite; node then reports the FILE as cancelled even
+	 * though every case reported a verdict. Exit from the LAST case, scheduled so the
+	 * runner records this one first — never from module scope, where an exit once ran
+	 * before any case (the lesson `agents-composer-mount.test.mjs` records).
+	 */
+	setImmediate(() => process.exit(0));
+});

@@ -63,6 +63,7 @@ import type {
 } from "../shared/desktop-session-contract";
 import type { ConsoleCompletionNotice } from "./console/completion";
 import { NotificationLifetime } from "./notification-lifetime";
+import { notificationSoundOptions } from "./notification-sound";
 import type { WindowShow } from "./window-mode";
 import { type RaiseReport, raiseWindow } from "./window-raise";
 
@@ -1136,9 +1137,11 @@ export class DesktopNotifier {
 			notice.sessionId,
 			notice.surfaceName,
 			"",
-			notice.exitCode === null
-				? "Console finished"
-				: `Console exited with code ${notice.exitCode}`,
+			notice.exitSignal
+				? `Console killed by ${notice.exitSignal}`
+				: notice.exitCode === null
+					? "Console finished"
+					: `Console exited with code ${notice.exitCode}`,
 			false,
 			false,
 			notice.surface,
@@ -1264,7 +1267,8 @@ export class DesktopNotifier {
 		const notification = new Notification({
 			title,
 			body: `${lead}${body}`.slice(0, MAX_BODY_CHARS),
-			silent: false,
+			// The configured sound (or none); see `notification-sound.ts`.
+			...notificationSoundOptions(),
 		});
 		/*
 		 * RETAINED AND WIRED BY THE SAME CALL (see `notification-lifetime.ts`): an

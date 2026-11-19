@@ -1,0 +1,134 @@
+{
+  "audit_id": "teambridge-pr1442-audit-dedc59c2f981",
+  "date": "2026-10-27",
+  "locale": "vi",
+  "namespace": "ui.agentMessages",
+  "source_commit": "09fc87ace32625db46c852c05ce8340aaf133fd3",
+  "translator": {
+    "agent": "translator",
+    "role_label": "Local Operator task subagent (translator record: 'same session as implementer')",
+    "model": "anthropic/claude-sonnet-5-5",
+    "record": "i18n-1442-translations.json (coordinating session 17cd3e74c66f scratchpad)",
+    "commits": [
+      "cf11ca73ff25c8f53edffd3678e0ea7be172e62a",
+      "09fc87ace32625db46c852c05ce8340aaf133fd3"
+    ],
+    "fallback": "none recorded"
+  },
+  "auditors": [
+    {
+      "agent": "i18n-auditor",
+      "model": "anthropic/claude-opus-5-5",
+      "date": "2026-10-27",
+      "result": "clean",
+      "instance": "dedc59c2f981",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "receipt": "i18n/receipts/dedc59c2f981.json",
+      "receipt_sha256": "a4dc8016e50cff1a08bb53593c2f1c3413f1f48c7167325a6db94114abe29e6b"
+    }
+  ],
+  "files": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.agentMessages.json",
+      "sha256": "f1de50d192ed3935d5f1eaffae182986653e2fd703c33dd1804f05aa9de3cc71"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/vi/ui.agentMessages.json",
+      "sha256": "f0c2a55a11a81df1d08a7cba5914df1e812c5126f834aaca61b10b1cc711c460"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.agentMessages.context.json",
+      "sha256": "16cb7b83431bd14dc73059bdc07d6dde2c8ca19e4fa241232912ae982d6e0c89"
+    }
+  },
+  "audited": [
+    {
+      "key": "ui.agentMessages.banner.title",
+      "en": "Team Bridge is on for you",
+      "target": "Team Bridge đã được bật cho bạn",
+      "verdict": "PASS all locales. 'Team Bridge' kept in Latin, as a statement of fact (est activé / está activado / 已为你开启 / включён / đã được bật / فعال ہے / चालू है), not a question or an offer. Registers: vous / tú / 你 / вы / bạn / آپ / आप, as in the namespace. zh-CN has no space between Latin and CJK, per guide."
+    },
+    {
+      "key": "ui.agentMessages.banner.body",
+      "en": "Your agent can exchange messages with other members' agents in your organization. Nothing was sent when this turned on.",
+      "target": "Tác nhân của bạn có thể trao đổi tin nhắn với tác nhân của các thành viên khác trong tổ chức. Không có gì được gửi khi tính năng này được bật.",
+      "verdict": "PASS all locales. 'agent' per glossary row (agent · agente · 智能体 · агент · tác nhân · ایجنٹ · एजेंट); 'member' per catalogue (membres / miembros / 成员 / участников / thành viên / ارکان / सदस्यों); 'organization' matches ui.teamBridge.scope.label. Second sentence states that nothing was sent when it turned on. No marketing tone, and nothing implies an enable step."
+    },
+    {
+      "key": "ui.agentMessages.banner.turn_off",
+      "en": "Turn off",
+      "target": "Tắt",
+      "verdict": "PASS. Byte-identical to ui.agentMessages.settings.action.turn_off in every locale, as the context requires (same verb as Settings)."
+    },
+    {
+      "key": "ui.agentMessages.banner.turning_off",
+      "en": "Turning off…",
+      "target": "Đang tắt…",
+      "verdict": "PASS. The progressive/nominal busy form of the same verb as turn_off; ellipsis is … (zh-CN …… per guide)."
+    },
+    {
+      "key": "ui.agentMessages.banner.read",
+      "en": "Read what this means",
+      "target": "Đọc ý nghĩa của việc này",
+      "verdict": "PASS. Framed as understanding rather than legal acknowledgement (ce que cela signifie / qué significa esto / 这意味着什么 / что это значит / ý nghĩa / کیا مطلب ہے / क्या मतलब है)."
+    },
+    {
+      "key": "ui.agentMessages.banner.hide",
+      "en": "Hide details",
+      "target": "Ẩn chi tiết",
+      "verdict": "PASS. Standard 'hide details' labels; zh-CN 收起详情 is the idiomatic collapse verb."
+    },
+    {
+      "key": "ui.agentMessages.banner.dismiss",
+      "en": "Dismiss",
+      "target": "Ẩn",
+      "verdict": "PASS. 'Dismiss for good' rather than 'close': Ignorer / Descartar / 忽略 / Скрыть / Ẩn / ہٹائیں / हटाएँ, each matching an existing catalogue dismiss rendering (ui.chat.composer.status.goal_dismiss and peers)."
+    },
+    {
+      "key": "ui.agentMessages.banner.consent_unavailable",
+      "en": "The full text is not available right now. Try again in a moment.",
+      "target": "Hiện chưa có toàn văn. Hãy thử lại sau giây lát.",
+      "verdict": "PASS (zh-CN after B2). Calm; not phrased as an error. zh-CN '再试一次' replaced with guide verb 重试 at 09fc87ace3."
+    },
+    {
+      "key": "ui.agentMessages.banner.turn_off_failed",
+      "en": "Team Bridge could not be turned off. Nothing was changed. Try again.",
+      "target": "Không thể tắt Team Bridge. Chưa có gì thay đổi. Hãy thử lại.",
+      "verdict": "PASS (zh-CN after B2). Says the turn-off failed, that nothing changed, and to retry; never says 'error' or blames the reader. 'Team Bridge' kept Latin; verbs match turn_off in each locale."
+    },
+    {
+      "key": "ui.agentMessages.banner.dismiss_failed",
+      "en": "This notice could not be dismissed. Try again.",
+      "target": "Không thể ẩn thông báo này. Hãy thử lại.",
+      "verdict": "PASS (zh-CN after B1/B2). zh-CN used 关闭 (this banner's turn-off verb) for dismiss; fixed to 忽略, matching banner.dismiss, and 重试. Other locales use their banner.dismiss verb (ignorer / descartar / скрыть / ẩn / ہٹائی / हटाई)."
+    }
+  ],
+  "resolved_findings": [],
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "revision": "c011c16ead3e6278ef77dfb7f40fccf44bcc29e3",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/vi.md",
+      "revision": "c011c16ead3e6278ef77dfb7f40fccf44bcc29e3",
+      "sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+    }
+  },
+  "independence": "Independent auditor (reviewer role). This run wrote none of the audited strings and edited no catalogue byte; remediation commits were authored by a separate translator subagent. This run wrote only this receipt, the per-locale evidence records, and (via ledger-assemble.mjs) the ledger rows.",
+  "limitations": [
+    "No rendered frame, pseudo-localization or RTL layout inspection (this auditor session has no browser tool). ur bidi safety was judged from the strings: no manual controls, plus the render layer's FSI/PDI isolation and dir handling (src/i18n/direction.ts, use-document-direction.ts).",
+    "No second independent audit.",
+    "Inherited keys were not re-read (byte identity to already-audited rows)."
+  ],
+  "named_receipt": {
+    "path": "i18n/receipts/teambridge-pr1442-audit-dedc59c2f981.json",
+    "sha256": "a4dc8016e50cff1a08bb53593c2f1c3413f1f48c7167325a6db94114abe29e6b"
+  }
+}

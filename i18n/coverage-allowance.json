@@ -1,0 +1,5 @@
+{
+	"schema": 1,
+	"note": "Shrink-only coverage allowance. Each entry records the exact, sorted, duplicate-free set of English key IDs that its (locale, namespace) does not yet carry, plus the owner and payoff date for that debt. scripts/i18n/check-coverage.mjs fails on any missing key NOT listed here — including a new key added to an already-incomplete namespace — and on any listed key that is no longer missing, so this file can only shrink. The gate also fails when this file grows relative to the base branch. Adding an entry is a reviewed decision: it must name an owner and a payoff (ticket reference or ISO date) and reviewers must reject growth not tied to a real plan. See i18n/languages.json for the gated languages.",
+	"pairs": []
+}

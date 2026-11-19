@@ -1,0 +1,208 @@
+{
+  "schema": 1,
+  "instance": "ed052586f8fb-1603r2-ru",
+  "locale": "ru",
+  "pr": "damianvtran/local-operator-ui#1603",
+  "branch": "feat/i18n-uncounted-props",
+  "head": "011c0f4f4caaf5a388a67ba2eda3f615ac676d3c",
+  "date": "2026-11-02",
+  "status": "passed",
+  "model": "anthropic/claude-sonnet-5-5",
+  "audit_kind": "round-1 full review at ab45351362a + round-2 delta re-audit at 011c0f4f4ca",
+  "author": "Written by coder session 92f609a7042a (lopdev team, PR #1603 receipts slice) on the auditors' behalf, transcribed from each auditor session's final report (the auditors wrote no receipt and no ledger row). Hashes were re-derived by the coder from git objects (git show <rev>:<path> | sha256) and every full hash an auditor reported was matched against them; the writer re-derives them again from disk. The coder did not translate or remediate any string and is not the auditor.",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "ed052586f8fb",
+    "model": "anthropic/claude-sonnet-5-5",
+    "model_note": "Instance is the ROUND-2 delta auditor's session; the round-1 full auditor is the separate session e74efd41e786. Both are agent i18n-auditor, model anthropic/claude-sonnet-5-5 per their session headers; neither auditor can verify the runtime provider and neither claims a fallback; none was verified or ruled out.",
+    "independent_from_translator": true,
+    "role": "round-2 delta auditor (second pass on the final bytes); round-1 full auditor = e74efd41e786"
+  },
+  "sessions": {
+    "round1_auditor": "e74efd41e786",
+    "round2_auditor": "ed052586f8fb",
+    "round2_job": "d9ee374f2d15"
+  },
+  "independence": "The auditor(s) are separate i18n-auditor sessions from the translator (session 74a8df6e024e, job edb91c63ad6a) and from the remediation translator (session 2a835d4a8c42, job bf4831b9c2ca); neither auditor translated, edited or remediated any string, and neither wrote a receipt or ledger row. The translator, remediator and auditors share one model (anthropic/claude-sonnet-5-5), so independence is by agent and session, not by model family; a shared blind spot is possible (the hi round-1 auditor states this explicitly). Independence is attested by the auditors' own reports and the session transcripts; it is not provable from this file alone. Job-to-session mapping for round 2 (job -> auditor session) was read from the parent transcript, where each delta report follows its launching job id; round-1 jobs are identified by session id only.",
+  "locale_level_round1_verdict": {
+    "verdict": "changes_requested",
+    "pin": "ab45351362a",
+    "majors": [
+      "A-1 (ui.common.layout)"
+    ],
+    "note": "Locale-level verdict covered all 17 namespaces of the locale. Each namespace block below carries its own status derived from its own findings."
+  },
+  "round2_delta": {
+    "pin": "011c0f4f4ca",
+    "verdict": "passed",
+    "blocker": 0,
+    "major": 0,
+    "job": "d9ee374f2d15",
+    "session": "ed052586f8fb",
+    "range": "5af81c6b78a..011c0f4f4ca"
+  },
+  "reported_hash_check": "Every full sha256 the round-2 delta auditor reported for this locale matched the git-object hash recomputed by the coder; round-1 auditors reported 16-hex prefixes that matched at ab45351362a.",
+  "finding_attribution": "Findings are split per namespace and key so each ledger row counts its own; one auditor finding spanning several namespaces is counted once per namespace it touches, so the sum can exceed the auditor's headline totals. Only OPEN findings (unapplied at 011c0f4f4ca, or raised by the round-2 auditor on the new text) are counted; fixed ones are listed under resolved_findings.",
+  "namespaces": {
+    "ui.agents.teams": {
+      "ledger_scope": "Round-1 full review (e74efd41e786) at ab45351362a of the 17 keys PR #1603 added + round-2 delta re-audit (ed052586f8fb) at 011c0f4f4ca of the 4 changed key(s). No round-1 MAJOR here (changed for MINOR/NIT wording). Counts are open findings only.",
+      "status": "passed",
+      "audit_kind": "round-1 full review at ab45351362a + round-2 delta re-audit at 011c0f4f4ca",
+      "scope": "round-1 full review at ab45351362a (session e74efd41e786, covered the 17 keys PR #1603 added; everything except the remediated keys is reviewed there) + round-2 delta re-audit at 011c0f4f4ca (session ed052586f8fb, scoped to the 4 changed key(s) of this file: teams.field.name_hint, teams.action.fewer_aria, teams.action.more_aria, teams.field.count_aria). Round-1 MAJOR(s) in this namespace: none (the namespace was changed for MINOR/NIT wording only) - verified FIXED by the delta auditor. Only OPEN findings are counted. Pre-existing keys not touched by the PR were not re-reviewed (earlier audits are in superseded).",
+      "keys_added_by_pr": 17,
+      "sha256": {
+        "en": "6a05f539a9a7f3157fe42b5ed9bc5ec89f9a94f86df64b3c752a1bc115335220",
+        "ru": "2343b1201ab547915a079ac07a724c5a90713d6fd1345318ff5e7fcee3989716"
+      },
+      "context_sha256": "cc6a3a4797479595fe6aceea348b88b79e6aaa62d8169097cc833efd6c9918e0",
+      "bytes_checked_at": "011c0f4f4ca",
+      "findings": [
+        {
+          "id": "A-5b",
+          "severity": "MINOR",
+          "keys": [
+            "ui.agents.teams.action.discard_question"
+          ],
+          "round": 1,
+          "text": "Same for the team confirm, teams half; sibling uses \"Сбросить\" (original A-5)."
+        },
+        {
+          "id": "B-1",
+          "severity": "NIT",
+          "keys": [
+            "ui.agents.teams.field.name_hint"
+          ],
+          "round": 2,
+          "text": "Round 2 on NEW text \"Имя, по которому вы и ваши чаты будете называть эту команду.\": follows the English literally; acceptable."
+        }
+      ],
+      "resolved_findings": [
+        {
+          "id": "A-3",
+          "severity": "MINOR",
+          "keys": [
+            "ui.agents.teams.field.count_aria",
+            "ui.agents.teams.action.fewer_aria",
+            "ui.agents.teams.action.more_aria"
+          ],
+          "round": 1,
+          "text": "Accessible names say \"Количество\" but the visible column header is \"Число\"; fewer/more drop \"by one\".",
+          "resolution": {
+            "state": "fixed",
+            "fixed_in": "011c0f4f4ca",
+            "remediation_translator_job": "bf4831b9c2ca",
+            "verified_by_round2_session": "ed052586f8fb"
+          }
+        },
+        {
+          "id": "A-6",
+          "severity": "MINOR",
+          "keys": [
+            "ui.agents.teams.field.name_hint"
+          ],
+          "round": 1,
+          "text": "Drops \"you and\" from the English subject.",
+          "resolution": {
+            "state": "fixed",
+            "fixed_in": "011c0f4f4ca",
+            "remediation_translator_job": "bf4831b9c2ca",
+            "verified_by_round2_session": "ed052586f8fb"
+          }
+        }
+      ]
+    },
+    "ui.agents.upload": {
+      "ledger_scope": "Round-1 full review (e74efd41e786) at ab45351362a of the 2 keys PR #1603 added + round-2 delta re-audit (ed052586f8fb) at 011c0f4f4ca of the 1 changed key(s). No round-1 MAJOR here (changed for MINOR/NIT wording). Counts are open findings only.",
+      "status": "passed",
+      "audit_kind": "round-1 full review at ab45351362a + round-2 delta re-audit at 011c0f4f4ca",
+      "scope": "round-1 full review at ab45351362a (session e74efd41e786, covered the 2 keys PR #1603 added; everything except the remediated keys is reviewed there) + round-2 delta re-audit at 011c0f4f4ca (session ed052586f8fb, scoped to the 1 changed key(s) of this file: upload.sign_in.title_again). Round-1 MAJOR(s) in this namespace: none (the namespace was changed for MINOR/NIT wording only) - verified FIXED by the delta auditor. Only OPEN findings are counted. Pre-existing keys not touched by the PR were not re-reviewed (earlier audits are in superseded).",
+      "keys_added_by_pr": 2,
+      "sha256": {
+        "en": "45760232c7ac18c922119c361494d03c1e8bf2d5d0e9704c6d4f776e58a76a88",
+        "ru": "1d9d177aae8f86da73ff7d25ba58948ff8e9f6918c008b7394d5794776dacb0c"
+      },
+      "context_sha256": "040555d2198605d9c3da89ffb4f2b42f5a1c64be6f67c80d626dc42c83c357ab",
+      "bytes_checked_at": "011c0f4f4ca",
+      "findings": [],
+      "resolved_findings": [
+        {
+          "id": "A-4",
+          "severity": "MINOR",
+          "keys": [
+            "ui.agents.upload.sign_in.title_again"
+          ],
+          "round": 1,
+          "text": "Heading \"Войти снова\" is an infinitive beside the imperative \"Войдите, чтобы продолжить\".",
+          "resolution": {
+            "state": "fixed",
+            "fixed_in": "011c0f4f4ca",
+            "remediation_translator_job": "bf4831b9c2ca",
+            "verified_by_round2_session": "ed052586f8fb"
+          }
+        }
+      ]
+    },
+    "ui.chat.asks": {
+      "ledger_scope": "Round-1 full review (e74efd41e786) at ab45351362a of the 3 keys PR #1603 added + round-2 delta re-audit (ed052586f8fb) at 011c0f4f4ca of the 1 changed key(s). No round-1 MAJOR here (changed for MINOR/NIT wording). Counts are open findings only.",
+      "status": "passed",
+      "audit_kind": "round-1 full review at ab45351362a + round-2 delta re-audit at 011c0f4f4ca",
+      "scope": "round-1 full review at ab45351362a (session e74efd41e786, covered the 3 keys PR #1603 added; everything except the remediated keys is reviewed there) + round-2 delta re-audit at 011c0f4f4ca (session ed052586f8fb, scoped to the 1 changed key(s) of this file: asks.outstanding_aria). Round-1 MAJOR(s) in this namespace: none (the namespace was changed for MINOR/NIT wording only) - verified FIXED by the delta auditor. Only OPEN findings are counted. Pre-existing keys not touched by the PR were not re-reviewed (earlier audits are in superseded).",
+      "keys_added_by_pr": 3,
+      "sha256": {
+        "en": "e90c900ed4f7908f7e14ae634217d5ee52fee6ed960628f8dd4396168d7bc1ef",
+        "ru": "b38c7ee2b6cc345076c75aaa450af851591f085025c875c9d07b443ea2bbe59f"
+      },
+      "context_sha256": "3d31528868c080170aef5aa92217e402aa623ebfc881996b0926651606524c1f",
+      "bytes_checked_at": "011c0f4f4ca",
+      "findings": [],
+      "resolved_findings": [
+        {
+          "id": "A-7",
+          "severity": "MINOR",
+          "keys": [
+            "ui.chat.asks.outstanding_aria"
+          ],
+          "round": 1,
+          "text": "\"не блокируется\" calque and an added \"продолжает работу\".",
+          "resolution": {
+            "state": "fixed",
+            "fixed_in": "011c0f4f4ca",
+            "remediation_translator_job": "bf4831b9c2ca",
+            "verified_by_round2_session": "ed052586f8fb"
+          }
+        }
+      ]
+    },
+    "ui.common.layout": {
+      "ledger_scope": "Round-1 full review (e74efd41e786) at ab45351362a of the 5 keys PR #1603 added + round-2 delta re-audit (ed052586f8fb) at 011c0f4f4ca of the 1 changed key(s). Round-1 MAJOR here: A-1, verified fixed. Counts are open findings only.",
+      "status": "passed",
+      "audit_kind": "round-1 full review at ab45351362a + round-2 delta re-audit at 011c0f4f4ca",
+      "scope": "round-1 full review at ab45351362a (session e74efd41e786, covered the 5 keys PR #1603 added; everything except the remediated keys is reviewed there) + round-2 delta re-audit at 011c0f4f4ca (session ed052586f8fb, scoped to the 1 changed key(s) of this file: layout.chat_layout.resize_run_details_double_click_resets_the_shared_pane_width). Round-1 MAJOR(s) in this namespace: A-1 ui.common.layout.chat_layout.resize_run_details_double_click_resets_the_shared_pane_width - verified FIXED by the delta auditor. Only OPEN findings are counted. Pre-existing keys not touched by the PR were not re-reviewed (earlier audits are in superseded).",
+      "keys_added_by_pr": 5,
+      "sha256": {
+        "en": "5ee5ed0fe580ce6b2e1e7bde71a3d19da3c84f26422e9ae37666a55fb13dd961",
+        "ru": "59f2c83e74d9a453aba0f5326d313dc6c63a128b3f7c5950886cd9de5d6da0c1"
+      },
+      "context_sha256": "2ad8219724003301b14109eb76ee586941ced9a7c948ee9f890e78372d8cdcda",
+      "bytes_checked_at": "011c0f4f4ca",
+      "findings": [],
+      "resolved_findings": [
+        {
+          "id": "A-1",
+          "severity": "MAJOR",
+          "keys": [
+            "ui.common.layout.chat_layout.resize_run_details_double_click_resets_the_shared_pane_width"
+          ],
+          "round": 1,
+          "text": "\"сведений о запуске\" is a second word for the pane's own title \"Подробности запуска\".",
+          "resolution": {
+            "state": "fixed",
+            "fixed_in": "011c0f4f4ca",
+            "remediation_translator_job": "bf4831b9c2ca",
+            "verified_by_round2_session": "ed052586f8fb"
+          }
+        }
+      ]
+    }
+  }
+}

@@ -394,6 +394,14 @@ export type AgentListResult = {
  * Detailed information about an AI agent
  * Contains all properties needed to identify, display, and interact with an agent
  */
+/** An agent's stored picture: the record core keeps in `agent.yml`. */
+export type AgentAvatarMeta = {
+	sha256: string;
+	mime: "image/png" | "image/jpeg" | string;
+	bytes: number;
+	updated_at: string;
+};
+
 export type AgentDetails = {
 	/** Unique identifier for the agent */
 	id: string;
@@ -403,6 +411,13 @@ export type AgentDetails = {
 	categories?: string[];
 	/** Display name of the agent */
 	name: string;
+	/**
+	 * The agent's profile picture, as `agent.yml` records it, or null when it has
+	 * none (agent profile pictures contract, 2026-10-30). `sha256` is the digest
+	 * of the stored file and is how every surface addresses the bytes; absent on
+	 * a backend that predates the field, which reads exactly as null.
+	 */
+	avatar?: AgentAvatarMeta | null;
 	/** ISO timestamp when the agent was created */
 	created_date: string;
 	/** Version string of the agent software */

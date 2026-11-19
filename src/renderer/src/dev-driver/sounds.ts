@@ -106,22 +106,65 @@ export const soundDriverVerbs = {
 		slider.releasePointerCapture = () => {};
 		fire("pointerdown", rect.left + 1);
 		fire("pointermove", rect.left + rect.width * request.fraction);
-		return new Promise((resolve) =>
-			requestAnimationFrame(() => {
-				const during = slider
-					.closest("[data-sound-player]")
-					?.getAttribute("data-sound-status");
+		/*
+		 * THE STATUS IS SAMPLED AFTER IT COMMITS, NOT ON THE NEXT FRAME. The
+		 * pointermove's `setScrubbing(true)` is a React state update, so the
+		 * `data-sound-status` attribute lands on the commit that follows the
+		 * event - which is not guaranteed to be the very next rAF. That is the
+		 * one-frame-early read QA measured as `{"during":"playing",
+		 * "seconds":7.799999}` on two of two runs while the seek itself had
+		 * committed. Poll a bounded window for the user-visible state; on
+		 * timeout resolve with what was seen, so a scrub that never starts
+		 * still fails the scene's strict `during === "scrubbing"` assertion
+		 * rather than being papered over.
+		 */
+		const statusNow = () =>
+			slider.closest("[data-sound-player]")?.getAttribute("data-sound-status");
+		const deadline = performance.now() + 1500;
+		return new Promise((resolve) => {
+			const sample = () => {
+				const during = statusNow();
+				if (during !== "scrubbing" && performance.now() < deadline) {
+					requestAnimationFrame(sample);
+					return;
+				}
 				finishScrub = () => {
 					fire("pointerup", rect.left + rect.width * request.fraction);
 					slider.setPointerCapture = capture;
 					slider.releasePointerCapture = release;
 				};
+				/*
+				 * REPORT THE SCRUB POSITION THE USER SEES, NOT THE MOVING PLAYHEAD.
+				 * A drag over a playing track only `fastSeek`s; the element keeps
+				 * playing by design (sound-player.tsx header: the visual playhead
+				 * follows the pointer), so `currentTime` drifts by however many
+				 * frames the status commit took - native run 42923977889 read
+				 * 2.049982 s (68%) on a 3 s track where two runs on the same bytes
+				 * read 1.949999. The painted `--sound-progress` on the slider's box
+				 * is the pointer-driven position. It is already written here: the
+				 * player's seek rAF was registered during the pointermove, before
+				 * this sampler's first rAF, so it runs earlier in the same frame.
+				 * `playhead` stays in the result as evidence of the drift.
+				 */
+				const element = useAudioEngineStore.getState().element;
+				const painted = Number.parseFloat(
+					slider
+						.querySelector<HTMLElement>(":scope > div")
+						?.style.getPropertyValue("--sound-progress") ?? "",
+				);
+				const duration = element?.duration;
 				resolve({
 					during,
-					seconds: useAudioEngineStore.getState().element?.currentTime,
+					seconds:
+						Number.isFinite(painted) && duration && Number.isFinite(duration)
+							? (painted / 100) * duration
+							: null,
+					progressPercent: Number.isFinite(painted) ? painted : null,
+					playhead: element?.currentTime ?? null,
 				});
-			}),
-		);
+			};
+			requestAnimationFrame(sample);
+		});
 	},
 	soundsScrubFinish: () => {
 		finishScrub?.();

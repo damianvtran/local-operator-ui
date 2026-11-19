@@ -23,10 +23,14 @@ export {
 	currentLocale,
 	currentLocaleState,
 	DEFAULT_LOCALE,
+	formatByteQuantity,
+	FULL_NUMERIC_STAMP,
 	formatBytes,
 	formatDate,
 	formatDateTime,
 	formatDuration,
+	formatClauses,
+	formatList,
 	formatNumber,
 	formatRelativeTime,
 	formatTime,
@@ -38,7 +42,16 @@ export {
 	subscribeLocale,
 	t,
 	translate,
+	translateRaw,
 } from "../../../../i18n";
+
+/* Direction is a property of the language (see `i18n/direction.ts`), and the
+ * native card document needs the same `lang`/`dir` pair the app root carries. */
+export {
+	resolveLanguage,
+	textDirectionFor,
+} from "../../../../i18n/direction";
+export type { TextDirection } from "../../../../i18n/direction";
 
 /*
  * The renderer-half's own module (not part of the core: it holds the query
@@ -50,3 +63,13 @@ export {
 	renegotiateLanguage,
 	withinLocalLanguageWrite,
 } from "./language-writes";
+
+/* A shortcut glyph run kept left-to-right inside RTL copy; renderer-half, like
+ * the writes module above, because it is a presentation rule and not catalogue
+ * machinery. */
+export { isolateLtr } from "./isolate-ltr";
+
+/* The `dir` of a field holding the operator's own text: `auto` once it has a
+ * value, the locale's direction while empty (see the module for why); and the
+ * document-keyed alignment for a dir=auto display. */
+export { USER_TEXT_ALIGN, userTextDir } from "./user-text-dir";

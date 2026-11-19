@@ -1,6 +1,21 @@
 {
-	"ui.chat.dialogs.delete_title": "Delete this conversation?",
-	"ui.chat.dialogs.delete_action": "Delete",
 	"ui.chat.dialogs.archive_action": "Archive",
-	"ui.chat.dialogs.cancel": "Cancel"
+	"ui.chat.dialogs.archive_title_named": "Archive “{title}”?",
+	"ui.chat.dialogs.archive_title_unnamed": "Archive this conversation?",
+	"ui.chat.dialogs.archive_message": "It leaves your lists. You can undo for {seconds, plural, one {# second} other {# seconds}}; after that, search above your chats, turn on “{include_archived}”, then Unarchive it.",
+	"ui.chat.dialogs.cancel": "Cancel",
+	"ui.chat.dialogs.delete_action": "Delete",
+	"ui.chat.dialogs.delete_title": "Delete this conversation?",
+	"ui.chat.dialogs.options.clear_confirm": "Clear",
+	"ui.chat.dialogs.options.clear_conversation": "Clear conversation",
+	"ui.chat.dialogs.options.clear_message": "Every message in it is deleted from this computer, and there is no undo. The agent itself is not affected.",
+	"ui.chat.dialogs.options.clear_title": "Clear this conversation?",
+	"ui.chat.dialogs.options.description": "Customize settings for this agent",
+	"ui.chat.dialogs.options.title": "Chat options",
+	"ui.chat.dialogs.make_temporary_title": "Make this chat temporary?",
+	"ui.chat.dialogs.make_temporary_deleted": "It leaves your chats now. Once it has been idle for its set time (30 min by default), this chat, its messages and its attachments are deleted.",
+	"ui.chat.dialogs.make_temporary_kept": "Kept: files it changed on your computer.",
+	"ui.chat.dialogs.make_temporary_confirm": "Make temporary",
+	"ui.chat.dialogs.keep_and_link": "Keep and link",
+	"ui.chat.dialogs.keep_and_pin": "Keep and pin"
 }

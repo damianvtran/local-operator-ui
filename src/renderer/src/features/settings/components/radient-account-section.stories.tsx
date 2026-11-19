@@ -32,6 +32,8 @@ type BridgeRequest = { op?: string; control?: { operation?: string } };
 type DesktopResponse = { status: number; body: unknown };
 
 type GrantState = "pending" | "expired" | "none" | "claimed";
+type MediaRequest = { op?: string; expectedAccountId?: string };
+type MediaResponse = { status: number; kind: "json"; body: unknown };
 
 const ACCOUNT = {
 	id: "acct_storybook_verify",
@@ -86,6 +88,33 @@ const accountBody = (grant: GrantState) => ({
 
 let bridge: ((request: BridgeRequest) => Promise<DesktopResponse>) | null =
 	null;
+/** Whether the daemon advertises `account_profile` (the human editor). */
+let profileEnabled = false;
+
+/**
+ * The human profile read, for the `account_profile` frame (design round 1 on
+ * #1593, D5). Same account id as `ACCOUNT`, so the editor's owner check and
+ * the authority settled by the account read agree; the scope is the opaque
+ * 64-hex token the relay returns. No photo, so the frame shows the initial and
+ * "Choose photo" without needing an image request.
+ */
+const profileBody = (): MediaResponse => ({
+	status: 200,
+	kind: "json",
+	body: {
+		result: {
+			scope: "c".repeat(64),
+			profile: {
+				account_id: ACCOUNT.id,
+				display_label: ACCOUNT.name,
+				display_name: ACCOUNT.name,
+				title: "Operations lead",
+				description: "Keeps the agents pointed at the right problems.",
+				timezone: "America/Los_Angeles",
+			},
+		},
+	},
+});
 
 const installBridge = (grant: GrantState) => {
 	const ok = (result: unknown): DesktopResponse => ({
@@ -99,8 +128,11 @@ const installBridge = (grant: GrantState) => {
 					desktop_contract: 1,
 					desktop_available: true,
 					desktop_auth: "bearer",
-					// `radient` is the feature gate the account read sits behind.
-					features: { radient: 1 },
+					// `radient` is the feature gate the account read sits behind;
+					// `account_profile` mounts the human profile editor above it.
+					features: profileEnabled
+						? { radient: 1, account_profile: 1 }
+						: { radient: 1 },
 				});
 			case "radient.request":
 				if (request?.control?.operation === "account")
@@ -139,7 +171,20 @@ if (typeof window !== "undefined") {
 			if (!bridge) throw new Error("no bridge installed for this story");
 			return bridge(request);
 		},
-	};
+		// The profile editor reads through the media channel, not `request`.
+		media: async (request: MediaRequest): Promise<MediaResponse> => {
+			if (
+				request?.op === "account.profile" &&
+				request.expectedAccountId === ACCOUNT.id
+			)
+				return profileBody();
+			return {
+				status: 404,
+				kind: "json",
+				body: { detail: { code: "not_implemented" } },
+			};
+		},
+	} as unknown as typeof api.desktop;
 }
 
 /**
@@ -150,7 +195,11 @@ if (typeof window !== "undefined") {
  * before a parent layout effect runs, and a delegate that throws "no bridge
  * installed" would turn that race into a transport error in the frame.
  */
-const Section: FC<{ grant: GrantState }> = ({ grant }) => {
+const Section: FC<{ grant: GrantState; profile?: boolean }> = ({
+	grant,
+	profile = false,
+}) => {
+	profileEnabled = profile;
 	installBridge(grant);
 	return (
 		<div className="min-h-screen bg-canvas p-8">
@@ -204,4 +253,16 @@ export const VerifyNone: Story = {
 export const Claimed: Story = {
 	args: { grant: "claimed" },
 	render: (args) => <Section grant={args.grant} />,
+};
+
+/**
+ * Claimed, on a daemon that advertises `account_profile`: the Personal profile
+ * editor in its real home, above Status, Name and Email (design round 1 on
+ * #1593, D5). This is the arrangement the editor ships in - the heading tier,
+ * the gap to the account details and the editor's Display name beside the
+ * account's read-only Name - which the editor-only stories cannot show.
+ */
+export const ClaimedWithProfile: Story = {
+	args: { grant: "claimed" },
+	render: (args) => <Section grant={args.grant} profile />,
 };

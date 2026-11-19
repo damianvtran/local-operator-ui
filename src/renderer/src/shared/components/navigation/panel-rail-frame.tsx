@@ -1,4 +1,5 @@
 import { PANEL_RAIL_WIDTH_PX } from "@features/chat/chat-sidebar-layout";
+import { PanelEdge } from "@shared/components/common/panel-edge";
 import {
 	EMPTY_RIGHT_SLOT_ROUTE,
 	useUiPreferencesStore,
@@ -38,13 +39,17 @@ export const PanelRailFrame: FC<Partial<PanelRailProps>> = ({
 	/* The scope defaults to `session` because the frame's own route default has a
 	   conversation, exactly as `sessionId` does. */
 	askCount = 0,
+	askUpdates = 0,
 	askScope = "session",
 	consoleUnseenCount = 0,
 	consoleUnseenPulsing = false,
+	consoleLiveCount = 0,
 	fileCount = 0,
 	codeOpened = 0,
 	codeMentioned = 0,
 	codeAttention = null,
+	canvasConversationId = null,
+	linkedProjectCount = 0,
 }) => {
 	const setRightSlotRoute = useUiPreferencesStore((s) => s.setRightSlotRoute);
 	const hasSession = sessionId !== null;
@@ -56,7 +61,14 @@ export const PanelRailFrame: FC<Partial<PanelRailProps>> = ({
 		<div
 			data-panel-rail-host=""
 			data-glass-region="sidebar"
-			className="h-full shrink-0 bg-surface"
+			/*
+			 * THE SEAM IS ON THE FRAME'S HOST, exactly as it is on the shell's (agent
+			 * review round 1, B1): the host is the full-height box that paints the
+			 * ground, so `inset-y-0` resolves to y0. `relative` is load-bearing -
+			 * without it the seam would resolve against the page and photograph a
+			 * different geometry from the app's.
+			 */
+			className="relative h-full shrink-0 bg-surface"
 			style={{ width: PANEL_RAIL_WIDTH_PX }}
 		>
 			<PanelRail
@@ -67,14 +79,19 @@ export const PanelRailFrame: FC<Partial<PanelRailProps>> = ({
 				readerChildId={readerChildId}
 				browserAttentionCount={browserAttentionCount}
 				askCount={askCount}
+				askUpdates={askUpdates}
 				askScope={askScope}
 				consoleUnseenCount={consoleUnseenCount}
 				consoleUnseenPulsing={consoleUnseenPulsing}
+				consoleLiveCount={consoleLiveCount}
 				fileCount={fileCount}
 				codeOpened={codeOpened}
 				codeMentioned={codeMentioned}
 				codeAttention={codeAttention}
+				canvasConversationId={canvasConversationId}
+				linkedProjectCount={linkedProjectCount}
 			/>
+			<PanelEdge side="start" />
 		</div>
 	);
 };

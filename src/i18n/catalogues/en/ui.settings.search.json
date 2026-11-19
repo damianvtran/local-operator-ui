@@ -1,0 +1,20 @@
+{
+	"ui.settings.search.field.label": "Search settings",
+	"ui.settings.search.field.placeholder": "Search settings",
+	"ui.settings.search.empty.summary": "Searches every setting on this page and in the connected service's registry.",
+	"ui.settings.search.empty.shortcut": "Press {shortcut} to search from anywhere on this page.",
+	"ui.settings.search.no_results.title": "Nothing matches “{query}”.",
+	"ui.settings.search.no_results.hint": "Try another word, or clear the field to keep browsing the page.",
+	"ui.settings.search.no_results.clear": "Clear search",
+	"ui.settings.search.results.count": "{count, plural, one {# result} other {# results}}",
+	"ui.settings.search.results.more": "{count, plural, one {# more result not shown} other {# more results not shown}}",
+	"ui.settings.search.panel.label": "Settings results",
+	"ui.settings.search.reason.label": "matched the name",
+	"ui.settings.search.reason.synonym": "matched a related term",
+	"ui.settings.search.reason.key": "matched the setting key",
+	"ui.settings.search.reason.choice": "matched an option",
+	"ui.settings.search.reason.section": "matched the section",
+	"ui.settings.search.reason.description": "matched the description",
+	"ui.settings.search.jump.missing": "That setting is not on screen right now.",
+	"ui.settings.search.row.section_hint": "In {section}"
+}

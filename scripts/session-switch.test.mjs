@@ -820,37 +820,35 @@ test("the pane's single claim, over every combination of the rule's inputs", asy
 	}
 });
 
-test("the pane paints nothing of a CACHED conversation until its page lands", async (t) => {
+test("the pane paints a CACHED conversation's rows at once, and holds only when it has nothing", async (t) => {
 	/*
-	 * The sixth axis, and the operator's report that made it one: opening a
-	 * conversation this window had already seen painted the cached rows in the
-	 * click's own frame, the readings strip ~67 ms later and the caption's removal
-	 * with it - "things seem to load at different times ... everything should load
-	 * in one solid paint instead of incrementally". Rows that are the cache's while
-	 * a page is owed are therefore held, not painted:
+	 * The sixth axis, REVERSED (operator report, 2026-11-10: "when you switch
+	 * sessions ... you actually see the full blank session history ... it feels
+	 * slow because it's just blank, and then it loads up after a second or
+	 * two"). The earlier ruling (2026-09-26, "everything should load in one solid
+	 * paint") held a cached conversation's rows behind the placeholder until the
+	 * snapshot landed. Measured on the shipped app the snapshot takes a median
+	 * of 0.96 s (283 switches, p90 1.9 s), so the hold turned every revisit into
+	 * a second of nothing, for a pane whose rows the window already had. The
+	 * rule now:
 	 *
-	 * - the hold is TRUE for a quiet pane at any status, owed, with cached rows;
-	 * - it is FALSE the moment the page lands (no page owed), which is when the
-	 *   rows, the readings and the caption-less transcript arrive in ONE commit;
-	 * - it is FALSE while the pane has a send of its own admitted (the wait line
-	 *   outranks it) or a statement of its own (the notice, the reconnecting
-	 *   line) - the same two exclusions every other row of the matrix has;
-	 * - and a pane with records never collapses out of the layout, so the band
-	 *   cannot take the free height for a greeting while anything is held.
-	 *
-	 * `stale` with no page owed is a store-unreachable pair (the page's own commit
-	 * clears the flag, `use-canonical-session.ts:3128`) and is asserted anyway, for
-	 * the same reason the failure rows are: the decision is total. It must paint
-	 * the rows - a pane that has an answer and still holds would be a spinner over
-	 * content nobody is waiting for.
+	 * - a cached paint is PAINTED while its page is owed, at every status the
+	 *   pane would otherwise hold at; the caption says what it is, and the
+	 *   page's own commit replaces it;
+	 * - the placeholder is for the pane with NOTHING to paint: no records at all
+	 *   and a page owed (asserted in the matrix above, unchanged);
+	 * - the two exclusions every other row has stand: a send of the pane's own
+	 *   admitted, and a statement of its own (the notice, the reconnecting
+	 *   line), neither of which ever held here;
+	 * - and a pane with records never collapses out of the layout.
 	 */
 	const CACHED = [
 		// status, owed, admitted, hold
-		["connecting", true, false, true],
+		["connecting", true, false, false],
 		["connecting", true, true, false],
 		["connecting", false, false, false],
 		["connecting", false, true, false],
-		["live", true, false, true],
+		["live", true, false, false],
 		["live", true, true, false],
 		["live", false, false, false],
 		["live", false, true, false],
@@ -858,7 +856,7 @@ test("the pane paints nothing of a CACHED conversation until its page lands", as
 		["reconnecting", true, true, false],
 		["reconnecting", false, false, false],
 		["reconnecting", false, true, false],
-		["unavailable", true, false, true],
+		["unavailable", true, false, false],
 		["unavailable", true, true, false],
 		["unavailable", false, false, false],
 		["unavailable", false, true, false],
@@ -897,47 +895,50 @@ test("the pane paints nothing of a CACHED conversation until its page lands", as
 					false,
 					"a pane with cached records never collapses out of the layout",
 				);
-				// The invariant the matrix above states, on this axis too: the
-				// placeholder never accompanies the pane's own STATEMENT. (The stale
-				// caption is not a statement for this rule - it is the flag the hold
-				// reads - which is why `speaks` is not the term here.)
-				if (hold)
-					assert.ok(
-						status !== "reconnecting" && !view.missing,
-						"a placeholder beside the pane's own statement",
-					);
 			},
 		);
 	}
 });
 
-test("the cached paint's rows and caption are withheld in the component, not only in the rule", () => {
-	// Two facts, one file: the rule above decides, and these two gates are what
-	// makes the decision paint nothing. Both are single expressions at the sites
-	// the comment above each names, so a later edit that drops the hold from one of
-	// them fails HERE - the rule tests would stay green while the pane went back to
-	// painting its guess under a caption.
+test("the cached paint's rows paint at once and the page's arrival moves nothing", () => {
+	// The rule above decides that cached rows paint; these assertions pin what
+	// keeps that from moving the conversation when the page lands. Each is a
+	// single expression at one site, so a later edit that drops one fails HERE
+	// while the rule tests stay green. The rig that measures the movement itself
+	// is `session-switch-latency.mjs --cached-paint`.
 	const transcript = readFileSync(
 		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
 		"utf8",
 	);
-	assert.match(
+	assert.doesNotMatch(
 		transcript,
 		/\{stale && !holdPlaceholder && \(/,
-		"the stale caption must stand down while the pane holds",
+		"the stale caption must not be an in-flow row above the scroller: its removal moved the pane's top edge (33.4 px) when the page landed",
 	);
-	// The rows site carries a THIRD term since the first-paint settle
-	// (`!holdFiltering`, the window in which the record filter's own answer is
-	// owed): the expression is still one line at the one site, which is what this
-	// assertion is for - a hold dropped from the gate fails here whether it is the
-	// cached paint's or the settings read's.
+	assert.match(
+		transcript,
+		/data-lo-stale-caption=\{true\}/,
+		"the stale caption lives in the reserved foot slot",
+	);
+	// The foot slot is mounted for a stale pane: dropping `!stale` from its gate
+	// is what let the working line's 29.4 px mount push the rows up at the page.
+	assert.match(
+		transcript,
+		/\{transcript\.records\.length > 0 &&\s+!missing &&\s+!holdFiltering && \(\s+<div\s+data-lo-transcript-foot=\{true\}/,
+		"the foot slot is reserved while the paint is cached",
+	);
+	assert.match(
+		transcript,
+		/stale &&\s+!missing &&\s+!holdFiltering && <OlderHistorySlotReserve \/>/,
+		"the older-history box is reserved while the paint is cached",
+	);
+	// The rows site still carries its own gate: `holdPlaceholder` is now false for
+	// a pane with rows, and the filter hold is the term that remains.
 	assert.match(
 		transcript,
 		/\{!missing && !holdPlaceholder && !holdFiltering && \(/,
-		"the rows must be suppressed while the pane holds",
+		"the rows are still withheld for the placeholder and the settings hold",
 	);
-	// And the stop stays keyed on the painted rows, which is what the cached case
-	// needs on top of the record count.
 	assert.match(
 		transcript,
 		/transcript\.records\.length === 0 \|\| holdPlaceholder \? -1 : 0/,
@@ -974,30 +975,81 @@ test("a switch re-windows in the same render, and never from an effect again", (
 
 test("the loading indicator stays one small quiet mark", () => {
 	// The operator's shape for this state (2026-09-26): "a small loading indicator
-	// that is non-intrusive". Three pulse bars were the old shape and a regression
-	// to a skeleton would pass every behavioural test in this file, so the shape
-	// has a cheap structural pin too: no `Skeleton` bars, and exactly ONE
-	// indeterminate element (branding.md's "one such element per surface").
-	const placeholder = readFileSync(
-		"src/renderer/src/features/chat/canonical/transcript-placeholder.tsx",
+	// that is non-intrusive"; and (2026-11-11) one consistent, clearly visible
+	// indicator for every conversation-loading case. Three pulse bars were the
+	// old shape and a regression to a skeleton would pass every behavioural test
+	// in this file, so the shape has a cheap structural pin too: no `Skeleton`
+	// bars, and exactly ONE indeterminate element (branding.md's "one such
+	// element per surface").
+	const indicator = readFileSync(
+		"src/renderer/src/features/chat/canonical/conversation-loading-indicator.tsx",
 		"utf8",
 	);
 	assert.ok(
-		!placeholder.includes("<Skeleton"),
-		"the placeholder is a mark and a sentence, not a content sketch",
+		!indicator.includes("<Skeleton"),
+		"the indicator is a mark and a sentence, not a content sketch",
 	);
 	assert.equal(
 		// On the class strings rather than the bare token: the docstring names the
 		// keyframes in prose, and a count over the whole file would be counting the
 		// argument for the rule instead of the element it governs.
-		(placeholder.match(/className="[^"]*animate-pulse-visible/g) ?? []).length,
+		// The mark is the shared `Spinner` (design review round 1, D-M1: the
+		// pulsing accent dot read as presence, not loading), and it is the only
+		// animated element - no pulse beside it.
+		(indicator.match(/<Spinner\b/g) ?? []).length,
 		1,
 		"one indeterminate element per surface",
 	);
+	assert.equal(
+		(indicator.match(/className="[^"]*(lo-intent-pulse|animate-pulse)/g) ?? [])
+			.length,
+		0,
+		"no pulsing dot alongside the spinner",
+	);
 	assert.match(
-		placeholder,
-		/aria-label="Loading conversation"/,
-		"the live region keeps its name",
+		indicator,
+		/variant === "cold"\s*\?\s*t\("ui\.chat\.canonical\.loading\.region_label"\)/,
+		"the cold live region keeps its name",
+	);
+	// Every conversation-loading site renders THE shared indicator, not a local
+	// copy of it: a second idiom at a call site is how the faint caption and the
+	// separate spinner shipped side by side.
+	const transcript = readFileSync(
+		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+		"utf8",
+	);
+	const slot = readFileSync(
+		"src/renderer/src/features/chat/canonical/older-history-slot.tsx",
+		"utf8",
+	);
+	assert.equal(
+		(transcript.match(/<ConversationLoadingIndicator\b/g) ?? []).length,
+		2,
+		"the cold placeholder and the stale foot slot both render the shared indicator",
+	);
+	assert.match(
+		slot,
+		/<ConversationLoadingIndicator\s+variant=\{loadingVariant\}/,
+		"the older-history busy arm renders the shared indicator",
+	);
+	assert.ok(!slot.includes("<Spinner"), "and no spinner of its own");
+	// The mesh case's labels are decided by ONE prop at the pane's real call
+	// site: the transcript tests pass `remote: true` straight to the component,
+	// so dropping it here would keep them green while a peer's conversation fell
+	// back to the local labels (code review round 1, C1).
+	const chatContent = readFileSync(
+		"src/renderer/src/features/chat/components/chat-content.tsx",
+		"utf8",
+	);
+	assert.match(
+		chatContent,
+		/<CanonicalTranscript\b[\s\S]*?\sremote=\{remoteFiles\}/,
+		"the chat pane tells the transcript when the conversation is a peer's",
+	);
+	assert.match(
+		chatContent,
+		/const remoteFiles = useCanonicalSessionsStore\(\(state\) =>\s+sessionId\s+\? remoteOwnedId\(/,
+		"from the placement-aware ownership read",
 	);
 });
 
@@ -1074,6 +1126,10 @@ const CHAT_URL_BUILDERS = {
 	"src/renderer/src/features/projects/components/project-links.tsx": {
 		count: 1,
 		why: "the Projects detail's linked-session row, which opens the conversation a project links to - the Schedules row's own case, one surface over: the session the row names may never have been opened in this window, so the row that names it has to be able to reach it",
+	},
+	"src/renderer/src/features/agents/components/profile-proposal-panel.tsx": {
+		count: 1,
+		why: "the Agents proposal card's own 'Open conversation' link to the session that filed the proposal - the Projects and Schedules rows' case: the filing session may never have been opened in this window, so the card that names it has to be able to reach it",
 	},
 	"src/renderer/src/features/voice/qwen-voice-controller.tsx": {
 		count: 1,
@@ -1172,7 +1228,18 @@ const ENTRANCE_FILES = {
 	"use-aida-target.ts": "src/renderer/src/features/aida/use-aida-target.ts",
 	"slash-dispatch.ts":
 		"src/renderer/src/features/chat/components/slash-dispatch.ts",
+	/*
+	 * TEAM BRIDGE REQUESTS' "OPEN IN CHAT" IS AN ENTRANCE (ui#1954, code review
+	 * round 5, M2). A request row opens the conversation its ask card sits in, and
+	 * it once did so as "open the session, then route on the answer" - the
+	 * deferred write this table exists to catch. The row's button reaches the rule
+	 * through the file's one `useOpenCard` hook, so the file is named here.
+	 */
+	"team-bridge-approvals.tsx":
+		"src/renderer/src/features/team-bridge/team-bridge-approvals.tsx",
 };
+const OPEN_CARD_HOOK = /const openCard = useOpenCard\(\);/;
+const OPEN_CARD_WIRED = /onOpenCard=\{openCard\}/;
 const readSource = (path) =>
 	readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
@@ -1267,6 +1334,17 @@ test("every entrance writes the switch's URL with the commit, through one rule",
 		1,
 		"the composer's `/aida` is the other entrance, and it is this file's one call of the rule",
 	);
+	assert.equal(
+		readSource(ENTRANCE_FILES["team-bridge-approvals.tsx"]).split(
+			"openConversation(",
+		).length - 1,
+		1,
+		'the Requests rows\' "Open in chat" reaches the rule through `useOpenCard` alone; a second call here is a second write rule',
+	);
+	/* ...and the container hands that hook to the rows' button, so the button is what calls it. */
+	const requests = readSource(ENTRANCE_FILES["team-bridge-approvals.tsx"]);
+	assert.match(requests, OPEN_CARD_HOOK);
+	assert.match(requests, OPEN_CARD_WIRED);
 });
 
 test("U5: a pane reached by the session's own route resolves the staged draft's row", () => {

@@ -1,0 +1,55 @@
+# audit.log - vi/ui.teamBridge key-level re-audit tb1666-vi-r1-20ee46d7281d
+# date 2026-11-06 | auditor copy-reviewer session 20ee46d7281d | model radient/auto
+# worktree /Users/damian/local-operator-ui/.worktrees/d1-d2-vi-r1 @ f19fe5145fc235c63529df6bed2c5f3d8d8fe533
+# command: python3 i18n/audits/evidence/vi/ui.teamBridge/tb1666-vi-r1-20ee46d7281d/verify.py
+
+== inputs re-hashed from disk ==
+en      cea7787980b2d37643b0be8f8d1b0ab268dc7de71b268e18f5c2e6d65d7696a0  matches author claim: True
+vi      bf8089bab58648ac2463194754d025acf8a376fbd5c14ac00549a6ec5fae68e9  matches author claim: True
+context a53286f062f4480c18963a6e4dfab55d3f528a9ac4c09e6642a920d00160030a  matches author claim: True
+
+== delta versus the previously audited parent (ed33e22c23b) ==
+parent target sha256 631d3a66320ea238dba36fdbaa7ada6b247dbdbe399281e0272f7512f38c12ce
+keys changed: ['ui.teamBridge.builtin.general_topic']
+keys added:   []
+keys removed: []
+key order identical: True
+en catalogue unchanged vs parent: True
+en context unchanged vs parent:   True
+key count target/en: 399/399  set equal: True
+unchanged-pair projection sha256: 973eca251e62aa3829bb706eefc5fa2777495eaff3735405c3cc547d506f05b2  (pairs: 398)
+
+== the audited value ==
+EN : The whole organization: people and their agents. Agents see every message and reply when @-mentioned or in threads they follow.
+VI : Toàn bộ tổ chức: mọi người và tác nhân của họ. Tác nhân xem mọi tin nhắn và trả lời khi được nhắc đến bằng @ hoặc trong các luồng mà tác nhân theo dõi.
+previous VI : Toàn bộ tổ chức: mọi người và tác nhân của họ. Tác nhân xem mọi tin nhắn và trả lời khi được nhắc đến bằng @ hoặc trong các luồng họ theo dõi.
+chars 142 -> 151
+NFC (file): True   NFC (value): True
+format/bidi controls: []
+brace placeholders: []
+em/en dash present: False
+term 'tác nhân' occurrences: 3
+
+== namespace precedent for the '... mà tác nhân ...' construction ==
+values repeating 'tác nhân' 3+ times: 7
+same construction in: ui.teamBridge.members.invitation_note_v3
+same construction in: ui.teamBridge.builtin.general_topic
+
+# git identity of the audited bytes
+f19fe5145fc235c63529df6bed2c5f3d8d8fe533
+(empty status above = catalogue tracked clean, so the audited bytes are HEAD bytes)
+
+# == mechanical copy scan (design-qa copy_scan.py) ==
+# command: python3 ~/.local-operator/skills/design-qa/scripts/copy_scan.py src/i18n/catalogues/vi/ui.teamBridge.json --top 20
+# exit 0
+scanned 1 files, 540 candidate strings; 0 findings
+
+# == repo string baseline check ==
+# command: node scripts/i18n/check-strings.mjs
+# exit 0
+check-strings.mjs: ok — 1615 file(s) scanned, 0 literal(s) at or below the baseline
+
+# == repo ledger gate (whole ledger, read-only) ==
+# command: node scripts/i18n/ledger-check.mjs
+# exit 0
+ledger-check: ok — 882 entr(ies) complete, fresh and independently audited

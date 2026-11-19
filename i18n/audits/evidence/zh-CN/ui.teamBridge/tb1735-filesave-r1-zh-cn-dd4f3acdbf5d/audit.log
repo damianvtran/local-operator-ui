@@ -1,0 +1,164 @@
+# audit.log - zh-CN/ui.teamBridge file-save copy re-audit tb1735-filesave-r1-zh-cn-dd4f3acdbf5d
+# date 2026-11-06 | auditor i18n-auditor session dd4f3acdbf5d | model deepseek/deepseek-flash
+# worktree /Users/damian/local-operator-ui-worktrees/filecard-design/.worktrees/i18n-audit-1735 @ 7d5c59ae1b744cb7d3edabcafe30c4707ac1eb5d
+# branch feat/team-bridge-file-save | PR #1735 | base cff518c3 | evidence i18n/audits/evidence/zh-CN/ui.teamBridge/tb1735-filesave-r1-zh-cn-dd4f3acdbf5d
+# command: python3 i18n/audits/evidence/zh-CN/ui.teamBridge/tb1735-filesave-r1-zh-cn-dd4f3acdbf5d/verify.py zh-CN
+
+== inputs re-hashed from disk ==
+en        d3916ef448133cbdf11c325b2119947a816315b829b9830f1915fc6ab3fd25f5  matches the receipt claim: True
+context   6f217e1196cffa0a63c9434e04601cd1b6fff429d10cb29348730e8dc8dc73f4  matches the receipt claim: True
+zh-CN     1853320cbab133ac79bcb749b8cd4c1a54796693a1620487edea6b7b3d4ec94c  matches the receipt claim: True
+
+== delta versus the previously audited parent (cff518c3) ==
+parent target sha256      f6905d3ef2230c0d7caae04172c21ecf95438c3d2925775ad22ae098682f7d5e
+row auditor at the parent cb9d33604d15-pr1693-r1-zh-cn
+keys changed              []
+keys added                8 True
+keys removed              []
+parent key order kept     True
+added keys sit in en order True
+key order is en's key order                          True
+en adds exactly the 8 keys and changes nothing else  True
+key count target/en equal                            True
+key set equals English                               True
+unchanged-pair projection 511e43ed87d7df2c405de1deb864fccbd7ee0a8ffdd7aec2e2fff0f4514a2e12  (pairs: 399)
+every pre-existing value byte-identical to the audited parent True
+textual diff              1 removed / 9 added line(s)
+removed line(s) only regained a trailing comma       True
+context keys added        8 True
+context keys reworded     ['ui.teamBridge.files.staged']
+context keys removed      []
+  ui.teamBridge.files.staged: fields changed ['role']
+    role old: heading for the staged-file list and neutral held/ready chip status
+    role new: accessible name for the composer's list of staged files
+
+== the eight added values ==
+
+-- ui.teamBridge.fileCard.save
+   en Save file {index} of {count}
+   zh-CN 保存第{index}个文件（共{count}个）
+   placeholders preserved (count,index)              True
+   NFC                                               True
+   format/bidi controls     []
+   no manual bidi controls                           True
+   no em/en dash                                     True
+   no ASCII dots                                     True
+   context role             accessible label for the Save button on one generic file card in a message
+   context note             Downloads a copy of a file a teammate attached, through the computer's own save dialog. Named by position on purpose: the file name is message content and must never be put in this label. 'Save' as in save a copy to this computer, not save changes; use the locale's usual download/save-copy verb, matching the image tile's 'Save {label}'. Not open, preview or share.
+
+-- ui.teamBridge.fileCard.saving
+   en Saving…
+   zh-CN 正在保存……
+   placeholders preserved (none)                     True
+   NFC                                               True
+   format/bidi controls     []
+   no manual bidi controls                           True
+   no em/en dash                                     True
+   no ASCII dots                                     True
+   ellipsis is the two-mark form ……                  True
+   context role             status line on a file card while the file is being fetched for saving
+   context note             Shown between pressing Save and the save dialog opening. Indeterminate: no percentage is available. Not uploading, sending or a message state.
+
+-- ui.teamBridge.fileCard.save_failed
+   en Couldn’t save. Try again.
+   zh-CN 无法保存，请重试。
+   placeholders preserved (none)                     True
+   NFC                                               True
+   format/bidi controls     []
+   no manual bidi controls                           True
+   no em/en dash                                     True
+   no ASCII dots                                     True
+   context role             error status line on a file card after a save could not reach the file
+   context note             A temporary failure (connection or service problem) while fetching the file to save it. The Save button stays next to it, so 'try again' means press Save again. Do not imply the file is gone, the message failed, or anything was deleted.
+
+-- ui.teamBridge.fileCard.too_large
+   en Too large to save
+   zh-CN 文件过大，无法保存
+   placeholders preserved (none)                     True
+   NFC                                               True
+   format/bidi controls     []
+   no manual bidi controls                           True
+   no em/en dash                                     True
+   no ASCII dots                                     True
+   context role             error status line on a file card when the file exceeds what this app can save
+   context note             The file is over the app's download size limit, so no Save is offered. A fact about the file's size, not a failure of the reader's connection; do not suggest retrying.
+
+-- ui.teamBridge.fileCard.expired
+   en File expired
+   zh-CN 文件已过期
+   placeholders preserved (none)                     True
+   NFC                                               True
+   format/bidi controls     []
+   no manual bidi controls                           True
+   no em/en dash                                     True
+   no ASCII dots                                     True
+   context role             status line on a file card whose retention period has ended
+   context note             The shared file was removed after its retention period, so it can no longer be saved. Match the image card's 'Image expired' wording pattern. No blame, no retry implied.
+
+-- ui.teamBridge.fileCard.unavailable
+   en File unavailable
+   zh-CN 文件不可用
+   placeholders preserved (none)                     True
+   NFC                                               True
+   format/bidi controls     []
+   no manual bidi controls                           True
+   no em/en dash                                     True
+   no ASCII dots                                     True
+   context role             status line on a file card the reader cannot get
+   context note             Same wording for every reason (removed, withheld, no longer shared with this reader, unknown state); never reveal which. Match the image card's 'Image unavailable' pattern. No retry, preview or download implied.
+
+-- ui.teamBridge.files.attached
+   en Attached
+   zh-CN 已附加
+   placeholders preserved (none)                     True
+   NFC                                               True
+   format/bidi controls     []
+   no manual bidi controls                           True
+   no em/en dash                                     True
+   no ASCII dots                                     True
+   context role             status line on one staged file chip in the composer
+   context note             This one file is attached to the unsent draft and will go with the message. Describes a single file (singular), not the list. Does not claim the message was sent or read.
+
+-- ui.teamBridge.files.not_uploaded
+   en Not uploaded
+   zh-CN 未上传
+   placeholders preserved (none)                     True
+   NFC                                               True
+   format/bidi controls     []
+   no manual bidi controls                           True
+   no em/en dash                                     True
+   no ASCII dots                                     True
+   context role             status line on a staged file chip when files cannot be sent here
+   context note             Files are turned off for this account, so nothing was attempted; the note under the list explains it. Not a failure: do not use the wording of 'Upload failed'.
+
+== sibling copy in the same namespace (the register precedent) ==
+   ui.teamBridge.attachments.position
+     en Image {index} of {count}
+     zh-CN 第{index}张图片（共{count}张）
+   ui.teamBridge.attachments.expired
+     en Image expired
+     zh-CN 图片已过期
+   ui.teamBridge.attachments.unavailable
+     en Image unavailable
+     zh-CN 图片不可用
+   ui.teamBridge.files.staged
+     en Attached files
+     zh-CN 已附加文件
+   ui.teamBridge.files.uploading
+     en Uploading file…
+     zh-CN 正在上传文件…
+   ui.teamBridge.files.failed
+     en Upload failed
+     zh-CN 上传失败
+
+== whole-file invariants ==
+file is NFC                                          True
+no manual bidi controls anywhere in the file         True
+no ASCII dots anywhere in the file                   True
+no empty values                                      True
+no trailing/leading whitespace in any value          True
+
+== git identity of the audited bytes ==
+7d5c59ae1b744cb7d3edabcafe30c4707ac1eb5d
+git status for the three inputs: ''
+(empty above = the audited bytes are HEAD bytes)

@@ -1,0 +1,103 @@
+{
+ "audit_id": "mp1843-a1-ru",
+ "round": 1,
+ "audit_kind": "independent first audit of a new namespace",
+ "date": "2026-11-10",
+ "audit_date": "2026-11-10",
+ "locale": "ru",
+ "namespace": "ui.browser.media_permission",
+ "source_commit": "4f0df27743eecae09ccc8c3e69838faa616a3eb2",
+ "pr": "https://github.com/damianvtran/local-operator-ui/pull/1843",
+ "scope": "All 8 keys of ui.browser.media_permission.",
+ "status": "passed",
+ "result": "clean",
+ "key_count": 8,
+ "keys_read": 8,
+ "auditors": [
+  {
+   "agent": "task",
+   "model": "anthropic/claude-opus-5-5",
+   "session": "d1da94af17b7",
+   "team": "lopdev",
+   "label": "i18n-audit-1843",
+   "instance": "d1da94af17b7-mp1843-a1-ru",
+   "date": "2026-11-10",
+   "result": "clean",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "independent_from_translator_session": true,
+   "actual_model_source": "harness session header 'Model: anthropic/claude-opus-5-5' for session d1da94af17b7; no fallback observed, no role or model pin applied",
+   "fallback": null,
+   "receipt": "i18n/receipts/d1da94af17b7-mp1843-a1-ru.json",
+   "receipt_sha256": "a6be392fe87ba6ed45dcfbc0ced632f9fdead6a2d86a5b4e6f06ce2ec2a318ee"
+  }
+ ],
+ "translator": {
+  "agent": "coder",
+  "model": "anthropic/claude-opus-5-5",
+  "date": "2026-11-10"
+ },
+ "independence": "Independent auditor; translated nothing originally. Authored only the corrections listed under resolutions, which are disclosed and recorded against the superseded translator bytes.",
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.browser.media_permission.json",
+   "sha256": "0a898598ac95277bfd9f8a4b502e81b1c0a3d30035bd205978112a83e13835a0"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.browser.media_permission.context.json",
+   "sha256": "361ee18bdb1beb154c2e9c318a88a21ee44285c4f1eeb3d90681e909de222f10"
+  },
+  "ru": {
+   "path": "src/i18n/catalogues/ru/ui.browser.media_permission.json",
+   "sha256": "d810589fa10ad5e4211bd8405e127ff5c21cd8f357d3643fb20f86620c06e6bd",
+   "translator_bytes_sha256": "d810589fa10ad5e4211bd8405e127ff5c21cd8f357d3643fb20f86620c06e6bd"
+  },
+  "glossary": {
+   "path": "i18n/glossary.md (damianvtran/local-operator origin/main 9372a3a42d0e)",
+   "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+  },
+  "style_guide": {
+   "path": "i18n/style-guides/ru.md (local-operator origin/main 9372a3a42d0e)",
+   "sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+  }
+ },
+ "artifacts": [
+  {
+   "path": "i18n/audits/evidence/ru/ui.browser.media_permission/mp1843-a1-ru/audit.log",
+   "sha256": "678383b75efa8000960f46ba4e287e58f6c40771b8090a43449bb59b6724c5e9"
+  },
+  {
+   "path": "i18n/audits/evidence/ru/ui.browser.media_permission/mp1843-a1-ru/negative-control.log",
+   "sha256": "fb7373868a7cf230a4d875668bc9105ed273f14dfe0f35333503c5468e90a70a"
+  },
+  {
+   "path": "i18n/audits/evidence/ru/ui.browser.media_permission/mp1843-a1-ru/report.md",
+   "sha256": "6cef58d7d416f72b5ddbf06c0b1552e0e0a6543d5f9d68c7f48a23130ab230de"
+  },
+  {
+   "path": "i18n/audits/evidence/ru/ui.browser.media_permission/mp1843-a1-ru/verify.mjs",
+   "sha256": "53eac836053b720ae636cbeffe0cc77461c0b2d03cf88928c8820bafbc6d78e6"
+  }
+ ],
+ "audit_notes_not_execution_log": "report.md is the auditor's notes; audit.log and negative-control.log are actual stdout of verify.mjs. The ledger-check result quoted in report.md was run interactively on the export and is not captured as a file.",
+ "findings": [],
+ "resolutions": [],
+ "observations": [
+  {
+   "id": "RU-I1",
+   "severity": "INFO",
+   "key": "ui.browser.media_permission.system_blocked_hint",
+   "finding": "«Системные настройки › Конфиденциальность и безопасность» matches core ru cli.permissions; «ёлочки» per guide; его agrees with доступ."
+  },
+  {
+   "id": "RU-I2",
+   "severity": "INFO",
+   "key": "ui.browser.media_permission.block",
+   "finding": "Блокировать/Разрешить are the standard browser permission-prompt pair; Закрыть for the dismiss control is common in the ru corpus (71)."
+  }
+ ]
+}

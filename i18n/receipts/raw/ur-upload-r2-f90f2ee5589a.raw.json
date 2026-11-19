@@ -1,0 +1,129 @@
+{
+  "schema": 1,
+  "audit_kind": "independent-translation-audit",
+  "audit_id": "ur-upload-r2-f90f2ee5589a",
+  "locale": "ur",
+  "namespace": "ui.agents.upload",
+  "auditor": "reviewer",
+  "agent": "independent reviewer (lopdev)",
+  "session": "f90f2ee5589a",
+  "instance": "f90f2ee5589a",
+  "model": "openai/gpt-6.1-sol",
+  "model_fallback": "anthropic/claude-sonnet-5-5 -> anthropic/claude-opus-5-5 -> openai/gpt-6.1-sol",
+  "independence": "Did not author or remediate translations. Only own Urdu round-2 evidence and receipt written; no product, ledger, allowance or generated files edited.",
+  "date": "2026-11-08",
+  "round": 2,
+  "scope": {
+    "branch": "i18n/slice-upload-agent-dialog",
+    "base": "2b72db6a56ad8204ec7f30a0ba6ffbc941be3b82",
+    "head": "269ef259c0523fd61c9f40b2a700bed27b838055",
+    "namespaces": [
+      "ui.agents.upload"
+    ],
+    "keys": 1,
+    "keys_audited": [
+      "ui.agents.upload.target.org_unnamed"
+    ],
+    "note": "Remediation delta only; six upload frames and the directly consuming ui.hub.subscriptions.enable_private frame checked."
+  },
+  "key_count": 1,
+  "namespace_count": 1,
+  "status": "passed",
+  "result": "clean",
+  "verdict": "clean — terminal: no new BLOCKER, MAJOR, MINOR or NIT. Prior round N1 remains deferred by design, not reopened.",
+  "findings": [],
+  "finding_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "deferred_prior_findings": [
+    {
+      "id": "N1",
+      "severity": "nit",
+      "status": "deferred by design",
+      "source": "i18n/receipts/ur-upload-r1-74af897140ba.json",
+      "note": "No new finding; visibility_hint_public byte-identical."
+    }
+  ],
+  "namespaces": {
+    "ui.agents.upload": {
+      "namespace": "ui.agents.upload",
+      "status": "passed",
+      "result": "clean",
+      "keys_audited": 1,
+      "namespace_key_count": 47,
+      "en_sha256": "6aff9fbb0706c9852760db60f22cdb075b747cef37dbc3e9130731943babef0b",
+      "target_sha256": "85886c70dad735c2133757c52a30a3522c34cbb4ab2fb6864f3baa792dd48ce3",
+      "context_sha256": "19e0fe920ae831b4e3bb8dcd7750dbdb508640c5cec6ca468c0acc1b853cf768",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    }
+  },
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.agents.upload.json",
+      "sha256": "6aff9fbb0706c9852760db60f22cdb075b747cef37dbc3e9130731943babef0b"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.agents.upload.context.json",
+      "sha256": "19e0fe920ae831b4e3bb8dcd7750dbdb508640c5cec6ca468c0acc1b853cf768"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/ur/ui.agents.upload.json",
+      "sha256": "85886c70dad735c2133757c52a30a3522c34cbb4ab2fb6864f3baa792dd48ce3"
+    }
+  },
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/ur.md",
+      "sha256": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60"
+    },
+    "prior_receipt": {
+      "path": "i18n/receipts/ur-upload-r1-74af897140ba.json",
+      "sha256": "08bc17ffe737fc07b06aeb4a152c9b1fce9e1b500a4555900f4660e955480b86"
+    },
+    "ur_hub": {
+      "path": "src/i18n/catalogues/ur/ui.hub.json",
+      "sha256": "741605b3722fb858cb2f897a59dc70e72b9519a6efbdf4d97c163a6a39f15edc"
+    }
+  },
+  "observations": [
+    "اس تنظیم is the natural oblique demonstrative noun phrase required before میں and کے. All seven receiving messages supply these postpositions rather than an extra organization noun, so no duplicated noun or case mismatch results.",
+    "Grammatical composition checked in all seven real translate() outputs: intro.org (اس تنظیم میں), not_leaving.org (اس تنظیم کے ارکان), title.published_org (اس تنظیم میں), receipt.title_org (اس تنظیم میں), published.org_listed (اس تنظیم کے مشترک ایجنٹس میں), title.publish_org (اس تنظیم میں), ui.hub.subscriptions.enable_private (اس تنظیم میں).",
+    "Fallback contains no manual bidi controls; all 47 Urdu upload values are control-free. Runtime translate() still applies FSI/PDI to Latin-led arguments, not to this Urdu-led fallback. Named-organization positive controls and translateRaw negative controls pass in every receiver. Existing runtime files are byte-unchanged across the delta.",
+    "All 46 existing Urdu upload values, including target.visibility_hint_public and every target sibling, are unchanged. No other Urdu catalogue file changed. Round-1 wording N1 is retained deferred, with no correctness regression.",
+    "Round-1 receipt is cited only for its deferred N1/history; round-2 invariants and seven runtime outputs were derived independently in this session."
+  ],
+  "artifacts": [
+    {
+      "path": "i18n/audits/evidence/ur/ui.agents.upload/ur-upload-r2-f90f2ee5589a/verify.json",
+      "sha256": "98a883c7d45dd9f8254c6f12bec027d878873053b983d471e2e64177355b5e2b"
+    },
+    {
+      "path": "i18n/audits/evidence/ur/ui.agents.upload/ur-upload-r2-f90f2ee5589a/runtime.json",
+      "sha256": "4bac433f3a3268d7c86491f3c0cb3917f2f756d5515639012d16352959869ec2"
+    },
+    {
+      "path": "i18n/audits/evidence/ur/ui.agents.upload/ur-upload-r2-f90f2ee5589a/runtime.mjs",
+      "sha256": "979cb504304c7c45b8bc7fdf99e1d61ae6f118c17dab94f8d16c6542fbd3706c"
+    },
+    {
+      "path": "i18n/audits/evidence/ur/ui.agents.upload/ur-upload-r2-f90f2ee5589a/report.md",
+      "sha256": "3c16ab3b6b9e6e91d460e5821b618bba8f259dbff3c949650083b63747ca9a8c"
+    }
+  ],
+  "limitations": [
+    "Text/runtime audit, not rendered-browser or native-speaker certification; no screenshot tool available."
+  ],
+  "audit_notes_not_execution_log": "report.md is judgement; runtime.json contains actual command output and verify.json records independently executed assertions."
+}

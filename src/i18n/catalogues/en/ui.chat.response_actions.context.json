@@ -1,0 +1,35 @@
+{
+	"ui.chat.response_actions.label": {
+		"role": "accessible name of the hover-revealed toolbar under a settled agent response that does not close its turn (Copy alone)",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"note": "Screen-reader only. Must differ from the closing answer's \"Answer actions\" toolbar, so a turn with several responses does not announce several identical toolbars."
+	},
+	"ui.chat.response_actions.answer_label": {
+		"role": "group name for the toolbar of actions on an agent's answer",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Screen-reader only: it labels the icon row revealed on the answer, and the buttons inside are icons. It names what the actions act on, not who wrote the row.",
+		"placeholders": {}
+	},
+	"ui.chat.response_actions.copied": {
+		"role": "accessible name and tooltip of the copy control immediately after it copied the message",
+		"tone": "plain past-tense statement, sentence case, no trailing punctuation",
+		"length": "One word.",
+		"note": "The confirmed state of the copy control; it returns to the imperative 'Copy' after a short delay.",
+		"placeholders": {}
+	},
+	"ui.chat.response_actions.copy": {
+		"role": "accessible name and tooltip of the control that copies the whole message",
+		"tone": "verb, sentence case, no trailing punctuation",
+		"length": "One word.",
+		"note": "Copies the message's plain text to the clipboard. It sits in the row of icon actions on a message, not in the transcript's text-selection toolbar.",
+		"placeholders": {}
+	},
+	"ui.chat.response_actions.yours_label": {
+		"role": "group name for the toolbar of actions on the reader's own message",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "Three words.",
+		"note": "Screen-reader only: the same icon row as the answer's, on a row the reader wrote. The possessive makes the subject plain without repeating the message text.",
+		"placeholders": {}
+	}
+}

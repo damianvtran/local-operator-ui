@@ -1,0 +1,24 @@
+{
+  "auditor": "i18n-auditor-ur-c",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "ee3004a9b83d-ur-join-c",
+  "status": "passed",
+  "namespace": "ui.chat.sidebar",
+  "locale": "ur",
+  "scope": "one-key delta: ui.chat.sidebar.agents.list_join only",
+  "sha256": {
+    "en": "0928091b1241792f86f7fe2fafb9895d0c9d8f75341f59513f7d720a9acb477b",
+    "ur": "19f6faef2fa4e496b7f430ea7373866dfd7289dadb299c322e0c37dc45111189"
+  },
+  "findings": [],
+  "provenance": {
+    "agent": "i18n-auditor-ur-c",
+    "session": "ee3004a9b83d",
+    "model": "openai/gpt-6.1-sol",
+    "independent_from_translator_session": true,
+    "translator_session": "not supplied; auditor did not translate these files",
+    "actual_model_source": "host model-switch notification: provider quota fallback sonnet-5-5 -> opus-5-5 -> openai/gpt-6.1-sol",
+    "fallback": true
+  },
+  "record_reference": "i18n/audits/evidence/ur/ui.chat.sidebar/join-c-ee3004/record.json"
+}

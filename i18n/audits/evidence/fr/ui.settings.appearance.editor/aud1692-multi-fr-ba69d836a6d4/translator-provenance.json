@@ -1,0 +1,74 @@
+{
+  "translator_instance": "fd3ba80e8c8f",
+  "translator_agent": "task",
+  "served_model": "openai/gpt-6.1-sol",
+  "date": "2026-11-05",
+  "model_evidence": {
+    "path": "~/.local-operator/sessions/fd3ba80e8c8f/transcript.jsonl",
+    "event": "session_spend.v1",
+    "observed_calls": [
+      89,
+      90,
+      91
+    ],
+    "last_identity": {
+      "provider": "openai",
+      "model_id": "gpt-6.1-sol"
+    },
+    "note": "Serving identity read from per-call ledger, not inferred from configured model."
+  },
+  "scope": "11 exact new editor keys × 7 supported locales, 77 values. Translation proposal only.",
+  "terminology_source": "Original 160-key custom-theme-editor.<locale>.json scratch maps, read this turn; core glossary and locale style requirements retained from prior task.",
+  "semantics": {
+    "wash": "A subtly tinted background from the secondary accent, not literal washing.",
+    "authored": "The selected theme’s saved secondary colours, retained unless contrast adjustment is necessary.",
+    "overlay": "Global accent replaces primary family only; secondary persists."
+  },
+  "source": "/Users/damian/.local-operator/sessions/fd3ba80e8c8f/scratchpad/multi-accent-editor.en.json",
+  "source_sha256": "a575f7dbdd28c8844eced96a69713a99ec084279c606d8ed3066aa3387fc1dbe",
+  "outputs": {
+    "fr": {
+      "keys": 11,
+      "sha256": "461912210ccc2d06d736c01dfe23c186b03371de74ce6e19ad28b8e62082911f",
+      "path": "/Users/damian/.local-operator/sessions/fd3ba80e8c8f/scratchpad/multi-accent-editor.fr.json"
+    },
+    "es": {
+      "keys": 11,
+      "sha256": "da62b73066ef5c08fe8564d7f0a55b912879825fff7db200e3ea15db71731f1a",
+      "path": "/Users/damian/.local-operator/sessions/fd3ba80e8c8f/scratchpad/multi-accent-editor.es.json"
+    },
+    "zh-CN": {
+      "keys": 11,
+      "sha256": "171a12d8dcc4b54e67d1ddccf6e203915c3f9ded3360b970d21ec0cfcd741954",
+      "path": "/Users/damian/.local-operator/sessions/fd3ba80e8c8f/scratchpad/multi-accent-editor.zh-CN.json"
+    },
+    "ru": {
+      "keys": 11,
+      "sha256": "7af8c344cf2ab513e0c02ea4ab90117b5cd607301e362f0ee66b29e2cd2a5809",
+      "path": "/Users/damian/.local-operator/sessions/fd3ba80e8c8f/scratchpad/multi-accent-editor.ru.json"
+    },
+    "vi": {
+      "keys": 11,
+      "sha256": "c7bb4b3b6776f3bf44ff7012035ff186bd8d1b3490aa2d7d54189a5f864ec5a8",
+      "path": "/Users/damian/.local-operator/sessions/fd3ba80e8c8f/scratchpad/multi-accent-editor.vi.json"
+    },
+    "ur": {
+      "keys": 11,
+      "sha256": "d76aa4070e781bbb400637a0180f376a39b7bc479b1d471f8f40540b1f22b2ae",
+      "path": "/Users/damian/.local-operator/sessions/fd3ba80e8c8f/scratchpad/multi-accent-editor.ur.json"
+    },
+    "hi": {
+      "keys": 11,
+      "sha256": "13291571b1e33e3dfc76616d7139e726ef5e8c51cd7d260d00d750c74bab7094",
+      "path": "/Users/damian/.local-operator/sessions/fd3ba80e8c8f/scratchpad/multi-accent-editor.hi.json"
+    }
+  },
+  "validation": {
+    "result": "PASS 11 keys per locale; mechanical checks only",
+    "artifact": "/Users/damian/.local-operator/sessions/fd3ba80e8c8f/scratchpad/multi-accent-editor.validation.json",
+    "memory_budget_mb": 768,
+    "exit_code": 0
+  },
+  "repository_writes": "None; scratch files only. No worktrees/dependency installs/commits.",
+  "audit_status": "NOT AUDITED; independent auditor follows on incorporated bytes."
+}

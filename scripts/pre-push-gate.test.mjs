@@ -41,7 +41,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
@@ -49,6 +49,80 @@ const REPO = dirname(dirname(fileURLToPath(import.meta.url)));
 const INSTALLER = join(REPO, "scripts", "hooks-install.mjs");
 const GATE = join(REPO, "scripts", "pre-push-gate.mjs");
 const HOOK = join(REPO, ".githooks", "pre-push");
+
+/**
+ * noEmit is not read-only for composite/incremental projects. A dependency
+ * lender can be lock-compatible but must never receive another worktree's
+ * build-info writes; assert the configured destination, not a hook-only override.
+ */
+function ownedTypecheckCache(source, expected) {
+	const entries = [...source.matchAll(/"tsBuildInfoFile"\s*:\s*"([^"]+)"/g)];
+	assert.equal(
+		entries.length,
+		1,
+		"each project must declare exactly one cache path",
+	);
+	const configured = entries[0][1];
+	assert.equal(
+		isAbsolute(configured),
+		false,
+		"cache must be worktree-relative",
+	);
+	assert.equal(
+		configured,
+		expected,
+		"cache destination must stay explicitly owned",
+	);
+	const destination = resolve(REPO, configured);
+	const insideCache = relative(resolve(REPO, ".cache/typecheck"), destination);
+	assert.equal(isAbsolute(insideCache), false);
+	assert.ok(insideCache !== ".." && !insideCache.startsWith(`..${sep}`));
+	assert.equal(destination.split(sep).includes("node_modules"), false);
+	return destination;
+}
+
+test("typecheck build-info stays in distinct ignored worktree-owned caches", () => {
+	const destinations = ["node", "app"].map((project) =>
+		ownedTypecheckCache(
+			readFileSync(join(REPO, `tsconfig.${project}.json`), "utf8"),
+			`./.cache/typecheck/${project}.tsbuildinfo`,
+		),
+	);
+	assert.equal(
+		new Set(destinations).size,
+		2,
+		"projects must not overwrite each other",
+	);
+	const ignored = readFileSync(join(REPO, ".gitignore"), "utf8").split(/\r?\n/);
+	assert.ok(
+		ignored.includes("/.cache/typecheck/"),
+		"owned metadata must stay untracked",
+	);
+});
+
+test("typecheck build-info rejects borrowed, escaping and ambiguous destinations", () => {
+	const expected = "./.cache/typecheck/node.tsbuildinfo";
+	for (const unsafe of [
+		"./node_modules/.tmp/tsconfig.node.tsbuildinfo",
+		"../foreign/node.tsbuildinfo",
+		"/foreign/node.tsbuildinfo",
+		"./.cache/typecheck/app.tsbuildinfo",
+	]) {
+		assert.throws(() =>
+			ownedTypecheckCache(
+				JSON.stringify({ tsBuildInfoFile: unsafe }),
+				expected,
+			),
+		);
+	}
+	assert.throws(() => ownedTypecheckCache("{}", expected));
+	assert.throws(() =>
+		ownedTypecheckCache(
+			`{"tsBuildInfoFile":"${expected}","tsBuildInfoFile":"${expected}"}`,
+			expected,
+		),
+	);
+});
 
 /**
  * The files a fixture needs to BE this gate: the tracked hook, the gate itself,
@@ -223,6 +297,65 @@ const VIOLATION = "export const thing = {a:1}\n";
 
 /** The same file as the repository's formatter would print it: lint-clean. */
 const CLEAN_FILE = "export const thing = { a: 1 };\n";
+
+/**
+ * A local merge's first parent is FEATURE history, not the PR target. Keep an
+ * early script outside the final merge delta: checking HEAD^1 would lose it.
+ * Twenty-nine commits reproduce the reported topology without a large fixture.
+ */
+for (const topology of ["stacked", "main-merged"]) {
+	for (const dirty of [false, true]) {
+		test(`branch merge coverage: ${topology}, early script ${dirty ? "violates" : "clean"}`, () => {
+			const f = fixture();
+			try {
+				const g = (...args) => git(f.worktree, args, { env: f.env });
+				f.commit("feat: early script", () =>
+					writeFileSync(
+						join(f.worktree, "scripts/early.mjs"),
+						dirty ? VIOLATION : CLEAN_FILE,
+					),
+				);
+				for (let index = 1; index < 29; index += 1) {
+					f.commit(`docs: stack ${index}`, () =>
+						writeFileSync(join(f.worktree, "NOTES.md"), `${index}\n`),
+					);
+				}
+				const target = topology === "stacked" ? "side" : "upstream-update";
+				g("checkout", "-q", "-b", target, "origin/main");
+				f.commit("feat: merged script", () =>
+					writeFileSync(join(f.worktree, "scripts/merged.mjs"), CLEAN_FILE),
+				);
+				if (topology === "main-merged") {
+					// Advance the ACTUAL target ref, not a fabricated comparison base.
+					assert.equal(f.push(["origin", "HEAD:refs/heads/main"]).status, 0);
+				}
+				g("checkout", "-q", "feature");
+				g("merge", "--no-ff", "-q", "-m", "Merge target into feature", target);
+				assert.equal(f.install().status, 0);
+				const pushed = f.push(["origin", "HEAD:refs/heads/feature"]);
+				const report = `${pushed.stdout}${pushed.stderr}`;
+				assert.doesNotMatch(report, /Name the first parent/);
+				assert.match(report, /scripts\/early\.mjs/);
+				if (dirty) {
+					assert.notEqual(pushed.status, 0, report);
+					assert.match(report, /FAILED/);
+					assert.equal(
+						git(
+							f.worktree,
+							["ls-remote", "--exit-code", "origin", "refs/heads/feature"],
+							{ env: f.env, allow: true },
+						).status,
+						2,
+					);
+				} else {
+					assert.equal(pushed.status, 0, report);
+				}
+			} finally {
+				f.cleanup();
+			}
+		});
+	}
+}
 
 test("an inert push succeeds through the real dispatcher and the real hook", () => {
 	// THE REGRESSION THIS FILE WAS MISSING. The launcher used to forward git's own

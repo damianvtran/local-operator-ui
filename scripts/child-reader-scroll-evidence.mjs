@@ -1277,7 +1277,7 @@ async function main() {
 					await wheel(-600);
 					await sleep(350);
 					const reading = await evaluate("window.__childScroll.measure()");
-					if (/^Loading earlier messages$/.test(reading?.slot?.text ?? "")) {
+					if (/^Loading earlier messages…$/.test(reading?.slot?.text ?? "")) {
 						await revealSlot();
 						slotLoading = await step(
 							"S1 the page ask in flight",

@@ -1,0 +1,8 @@
+{
+	"ui.chat.sidebar.row.bg.subagents": "{count, plural, other {{count, number, ::group-off}个子智能体}}",
+	"ui.chat.sidebar.row.bg.jobs": "{count, plural, other {{count, number, ::group-off}个任务}}",
+	"ui.chat.sidebar.row.bg.running": "{items}正在运行",
+	"ui.chat.sidebar.row.bg.queued": "{count, plural, other {{count, number, ::group-off}个排队中}}",
+	"ui.chat.sidebar.row.bg.subagents_queued": "{count, plural, other {{count, number, ::group-off}个子智能体排队中}}",
+	"ui.chat.sidebar.row.bg.waiting": "正在等待后台工作"
+}

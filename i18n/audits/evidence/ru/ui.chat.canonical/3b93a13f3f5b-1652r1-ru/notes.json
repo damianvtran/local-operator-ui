@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "kind": "source inspection notes, NOT an execution log",
+  "locale": "ru",
+  "head": "ad12808392882707cbcbdeee56d82f68b3f82209",
+  "checks": [
+    "ICU arms = CLDR categories required by the style guide (es/fr one/many/other; ru one/few/many/other; hi/ur one/other; vi/zh-CN other only)",
+    "{count} via # and {reason} preserved; no extra/missing arguments",
+    "line_no_reason is a byte-exact prefix of line (context note)",
+    "reason phrases lower-case, no conjunction words (Intl.ListFormat joins them)",
+    "terminology matched against existing catalogue uses (file/preview/location) and core glossary/style guide",
+    "no bidi control characters"
+  ],
+  "per_key_verdict": {
+    "ui.chat.canonical.supplement.withheld.line": "PASS — after auditor fix",
+    "ui.chat.canonical.supplement.withheld.line_no_reason": "PASS — after auditor fix",
+    "ui.chat.canonical.supplement.withheld.reason_outside": "PASS — idiomatic; placeholders, plural arms and glossary/style conform",
+    "ui.chat.canonical.supplement.withheld.reason_sensitive": "PASS — idiomatic; placeholders, plural arms and glossary/style conform",
+    "ui.chat.canonical.supplement.withheld.reason_missing": "PASS — idiomatic; placeholders, plural arms and glossary/style conform",
+    "ui.chat.canonical.supplement.withheld.reason_too_large": "PASS — idiomatic; placeholders, plural arms and glossary/style conform"
+  },
+  "values": {
+    "ui.chat.canonical.supplement.withheld.line": "{count, plural, one {# файл не показан} few {# файла не показаны} many {# файлов не показано} other {# файла не показано}}: {reason}",
+    "ui.chat.canonical.supplement.withheld.line_no_reason": "{count, plural, one {# файл не показан} few {# файла не показаны} many {# файлов не показано} other {# файла не показано}}",
+    "ui.chat.canonical.supplement.withheld.reason_outside": "вне разрешённых расположений",
+    "ui.chat.canonical.supplement.withheld.reason_sensitive": "конфиденциальный файл",
+    "ui.chat.canonical.supplement.withheld.reason_missing": "файл больше не существует",
+    "ui.chat.canonical.supplement.withheld.reason_too_large": "слишком большой для предпросмотра"
+  },
+  "english_values": {
+    "ui.chat.canonical.supplement.withheld.line": "{count, plural, one {# file not shown} other {# files not shown}}: {reason}",
+    "ui.chat.canonical.supplement.withheld.line_no_reason": "{count, plural, one {# file not shown} other {# files not shown}}",
+    "ui.chat.canonical.supplement.withheld.reason_outside": "outside allowed locations",
+    "ui.chat.canonical.supplement.withheld.reason_sensitive": "sensitive file",
+    "ui.chat.canonical.supplement.withheld.reason_missing": "file no longer exists",
+    "ui.chat.canonical.supplement.withheld.reason_too_large": "too large to preview"
+  },
+  "unchanged_keys_identical_to_ledger_bound_base": 178
+}

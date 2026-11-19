@@ -1,0 +1,16 @@
+{
+	"ui.chat.composer_notes.default_not_saved": "The default was not saved: {reason}",
+	"ui.chat.composer_notes.default_not_saved_fallback": "the backend refused it",
+	"ui.chat.composer_notes.default_saved": "Default for new sessions: {model}",
+	"ui.chat.composer_notes.goal.done_tag": "— done",
+	"ui.chat.composer_notes.goal.stalled.breaker": "goal stalled: judge could not decide — send a message to continue",
+	"ui.chat.composer_notes.goal.stalled.cap": "goal stalled: stopped after {count, plural, one {# continuation} other {# continuations}} — send a message to continue",
+	"ui.chat.composer_notes.goal.stalled.cap_fallback": "goal stalled: reached the continuation limit — send a message to continue",
+	"ui.chat.composer_notes.goal.stalled.unknown": "goal stalled: auto-continuation stopped — send a message to continue",
+	"ui.chat.composer_notes.hint.choose_model": "Choose a model for this conversation before sending.",
+	"ui.chat.composer_notes.hint.connect_provider": "Connect a provider to send.",
+	"ui.chat.composer_notes.outside_mentions": "{count, plural, one {# reference points outside this session's working directory; the agent will ask you to approve it before reading.} other {# references point outside this session's working directory; the agent will ask you to approve them before reading.}}",
+	"ui.chat.composer_notes.skill_empty_body": "skill `{name}` has an empty body — sending your message as written",
+	"ui.chat.composer_notes.skill_load_failed": "could not load skill `{name}` — sending your message as written",
+	"ui.chat.composer_notes.slash_needs_name": "Type a name after /{command}, or choose one from the list."
+}

@@ -1,0 +1,148 @@
+{
+	"schema": 1,
+	"receipt_kind": "independent i18n audit, round 2 (delta re-audit of one locale's corrections in one namespace)",
+	"date": "2026-11-08",
+	"auditor": "translation-auditor",
+	"agent": "translation-auditor",
+	"model": "deepseek/deepseek-flash",
+	"model_provenance": "Session 8e74cbf91953 opened on anthropic/claude-sonnet-5-5, then fell back anthropic/claude-opus-5-5 → openai/gpt-6.1-sol → deepseek/deepseek-flash on consecutive provider quota failures. This round was served entirely under deepseek/deepseek-flash.",
+	"fallback": "yes — provider quota; see model_provenance. Disclosed as required.",
+	"independence": "Independent ru auditor for this delta. I did not author the corrections, the r1 findings or the translations: the corrections were written by the coder in 8d0b4e66f38 (in response to r1 auditor 88dcbe8a), and I read r1's receipt only to know WHICH keys this round must retest, not as evidence for any verdict here. Every verdict below is re-derived from the files at 8d0b4e66f38, the en sidecars, the render sites and the ru style guide.",
+	"instance": "8e74cbf9-pages",
+	"instance_note": "8-hex truncation of this run's session id, per the audit brief's receipt-naming convention; the full id is in `session`.",
+	"session": "8e74cbf91953",
+	"locale": "ru",
+	"round": 2,
+	"worktree": "/Users/damian/local-operator-ui/.worktrees/i18n-s4",
+	"branch": "i18n/s5-agent-hub",
+	"head": "8d0b4e66f38f1fac8df16767849c7a969a55b72f",
+	"base": "be77d308262ce0527c1fd4052ff77207edcac189",
+	"scope": "Delta round at 8d0b4e66f38: git diff be77d308262..8d0b4e66f38 changes 4 catalogue files (hi, ru, vi, zh-CN) and nothing else — 5 strings, of which the 2 ru ones are judged here: ui.hub.pages.empty.category.title and ui.hub.pages.empty.org.body, both corrections to r1 MAJOR findings RU-HUB-P1 and RU-HUB-P2. ru-hub.teams, the hi/vi/zh-CN corrections and the ru r1 NIT RU-HUB-P3 are not re-audited here; the ru search.body is confirmed byte-identical to its r1 form as evidence that no third key moved.",
+	"retest": [
+		"RU-HUB-P1",
+		"RU-HUB-P2",
+		"RU-HUB-P3"
+	],
+	"namespace": "ui.hub.pages",
+	"paths": {
+		"source": "src/i18n/catalogues/en/ui.hub.pages.json",
+		"context": "src/i18n/catalogues/en/ui.hub.pages.context.json",
+		"target": "src/i18n/catalogues/ru/ui.hub.pages.json",
+		"taxonomy": "src/i18n/catalogues/ru/ui.hub.taxonomy.json",
+		"style_guide": "i18n/style-guides/ru.md (repo damianvtran/local-operator)"
+	},
+	"sha256": {
+		"source_en": "47793b98059be89eafc26b8aff209b3aed63a9eac26b44ac5da9b87e973c7b5a",
+		"context_en": "e78c02114d87f722bd47bb14ea61f5ac3281407581132bd9a715c81d1a112872",
+		"target_ru": "ac2b823544a09aaf4606a3c22803f93121bc758cbf33231d770fb03626f81fc0",
+		"target_ru_at_base": "d84e487abe9391918fc76d61617181a78bf7fdc09f8b175df574b464d8d594c9",
+		"taxonomy_ru": "a45bd4d68e753efb4c4aa69ef5f8ee64cca3f4a9223a34a48051ab27beee0667",
+		"style_guide_ru": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5",
+		"glossary": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+	},
+	"sha256_notes": "target_ru is the working-tree file at this head; source_en equals the sha r1 recorded at be77d308262, so the English strings under the corrections did not move between the two audited revisions. style_guide_ru and glossary are the working-tree bytes of the shared repo's i18n/ files, unchanged since r1 — the same editorial rules are being applied.",
+	"changed_lines": [
+		{
+			"file": "src/i18n/catalogues/ru/ui.hub.pages.json",
+			"line": 52,
+			"key": "ui.hub.pages.empty.org.body",
+			"before": "Агенты, опубликованные в хабе {org}, появятся здесь для его участников.",
+			"after": "Агенты, опубликованные в хабе {org}, появятся здесь для участников этой организации."
+		},
+		{
+			"file": "src/i18n/catalogues/ru/ui.hub.pages.json",
+			"line": 53,
+			"key": "ui.hub.pages.empty.category.title",
+			"before": "Нет агентов в категории {category}.",
+			"after": "В категории «{category}» нет агентов."
+		}
+	],
+	"changed_lines_note": "These are the ONLY two changed lines in the ru namespace: `git diff --numstat` reports 2 insertions / 2 deletions for the file, `diff` against `git show be77d308262:<path>` returns exactly the 52,53c52,53 hunk, the file is 61 lines at both revisions, its key set is unchanged (59/59), and the en key set still matches (59/59, no missing, no extra). No other ru catalogue appears in the commit, and ui.hub.pages.load_failed.title is untouched by this commit.",
+	"corrected_keys": [
+		{
+			"key": "ui.hub.pages.empty.category.title",
+			"r1_finding": "RU-HUB-P1 (MAJOR) — the taxonomy label sat after 'в категории', which governs the prepositional case, while the render site passes the label in the nominative; ungrammatical for all 16 labels, and the en sidecar forbids declining or re-casing the placeholder.",
+			"now": "В категории «{category}» нет агентов.",
+			"verdict": "fixed — cited, not declined",
+			"evidence": "Rendered the shipped template against all 16 ru taxonomy labels (ui.hub.taxonomy.category.*: Бухгалтерия, Аналитика, Образование, Здравоохранение, Инвестиции, Право, Управление, Маркетинг, Другое, Личная помощь, Исследования, Ролевые игры, Продажи, Безопасность, Соцсети, Программирование). Every rendering is grammatical and idiomatic, e.g. 'В категории «Программирование» нет агентов.', 'В категории «Право» нет агентов.', 'В категории «Ролевые игры» нет агентов.'. «ёлочки» is the ru style guide's prose quote pair (i18n/style-guides/ru.md, 'Punctuation & typography': 'Quotes: «ёлочки» in prose'), and the catalogue already cites untouchable placeholders that way, so the citation form matches both the sidecar instruction and the house style. The 'All categories' label cannot reach this key: the sidebar's All row calls onSelectCategory(null) (agent-categories-sidebar.tsx:126) and the render site's `selectedCategory ? … : …` ternary (agent-hub-page.tsx:1452) then takes the search/public branch, so 'В категории «Все категории» нет агентов.' is not a reachable string."
+		},
+		{
+			"key": "ui.hub.pages.empty.org.body",
+			"r1_finding": "RU-HUB-P2 (MAJOR) — 'его' is masculine/neuter and cannot refer to a feminine organization; in the reachable fallback (orgName null → scope.org_unnamed 'этой организации') the pronoun attached to the masculine 'хабе', reading 'for the hub's members'.",
+			"now": "Агенты, опубликованные в хабе {org}, появятся здесь для участников этой организации.",
+			"verdict": "fixed — the pronoun is gone and the new tail binds correctly for both placeholder branches",
+			"evidence": "The referent is now a fixed genitive noun phrase, 'участников этой организации', with no pronoun to agree with anything: it is correct whether {org} renders as a name or as the fallback. Rendered both branches: [этой организации] 'Агенты, опубликованные в хабе этой организации, появятся здесь для участников этой организации.' — grammatical, both occurrences in valid case (prepositional after 'в хабе', genitive after 'для участников'); [Альфа / Ромашка / Acme Corp] '…в хабе Альфа, появятся здесь для участников этой организации.' — grammatical, with 'этой организации' deictically bound to the org just named. Feminine agreement is no longer being asked of the placeholder at all, so it cannot break for a feminine, masculine or indeclinable org name. Note this string is byte-identical to what r1's own proposed repair ('для участников {org}') would render in the fallback branch, and strictly better than it in the named branch, where a bare declinable name after a genitive would have been ungrammatical."
+		}
+	],
+	"checks": {
+		"changed_scope": "Exactly 2 ru lines changed, value-only; 0 keys added, 0 removed, 0 renamed, 0 reordered; file 61 lines before and after; JSON parses; tab indentation preserved; no BOM, no CRLF.",
+		"placeholders": "{category} and {org} each appear once, byte-identical to the English placeholders (ASCII braces, ASCII identifier names), in a sensible slot; braces balanced in both values; no placeholder invented, dropped, translated or duplicated; placeholder-set parity with en holds for all 59 keys.",
+		"characters": "NFC; no NBSP/U+202F/ZWSP/BOM or bidi controls introduced; the only non-ASCII non-Cyrillic characters in the two values are U+00AB and U+00BB in the category title, which the style guide prescribes; no double or edge spaces; trailing full stop kept in both.",
+		"grammar_category": "All 16 shipped taxonomy labels (ui.hub.taxonomy.category.*) were rendered into 'В категории «{category}» нет агентов.' and every one reads as a grammatical, natural Russian sentence: 'В категории «Бухгалтерия» нет агентов.' … 'В категории «Ролевые игры» нет агентов.' Quoting turns the label into a citation, which is exactly what the en sidecar asks for ('insert it whole, do not decline or re-case it'): the prepositional government of 'в категории' stops at the quote mark and nothing inside has to agree. Multi-word and plural labels ('Личная помощь', 'Ролевые игры', 'Соцсети') work unchanged — the reason the old unquoted form failed for all 16.",
+		"grammar_org_feminine": "The correction removes the gender-bound pronoun. 'участников этой организации' is a fixed genitive phrase; 'в хабе {org}' keeps its prepositional antecedent. Verified with the shipped fallback and with feminine, indeclinable and masculine-looking names.",
+		"naturalness_whole_string": "Title → body → button read as one set in both corrected keys: 'В категории «Программирование» нет агентов.' / 'В этой категории пока ничего нет. Сбросьте фильтр, чтобы увидеть весь хаб.' / 'Сбросить фильтр' share the noun 'фильтр' and the imperative register; 'В этой категории' picks the quoted category up cleanly. The org pair 'У этой организации пока нет общих агентов.' / '…появятся здесь для участников этой организации.' is grammatical, though the fallback branch repeats the noun phrase — see RU-HUB-R2-1.",
+		"pages_teams_parallelism": "ru ui.hub.teams.org.empty ('Команды, открытые для участников {org}, появятся здесь.') and the corrected pages value now share one construction in one voice: [entity], [the members it is aimed at], 'появятся здесь'. Both name the audience with 'участники' (the style guide's settled word for member) and both avoid a pronoun for the organization, so the pair the r1 finding asked to keep in step is in step. The remaining asymmetry — pages names the org twice, teams once — is the MINOR below, not a break of the parallel.",
+		"r1_nit_left": "RU-HUB-P3 (NIT) was not taken: ui.hub.pages.empty.search.body at this head is byte-identical to the value r1 reviewed ('Этого нет ни в названии, ни в описании агентов. Сбросьте поиск, чтобы увидеть весь хаб.'). Non-gating by construction; recorded so the round's ledger is complete.",
+		"other_locales": "The same commit corrects hi.empty.search.title, vi.empty.search.body and zh-CN.empty.org.body. They are outside this receipt's locale and are not judged here; nothing in this verdict speaks for them.",
+		"category_all_label_unreachable": "'Все категории' (ui.hub.taxonomy.all) cannot reach this key: the sidebar's All row calls onSelectCategory(null) (components/agent-categories-sidebar.tsx:126) and the render site only takes the category branch when selectedCategory is non-null (agent-hub-page.tsx:1452-1456). So the quoted label is always one of the 16 category keys, never the All label — no 'В категории «Все категории» нет агентов.' state exists."
+	},
+	"verified": [
+		"Both r1 MAJOR findings are remediated at 8d0b4e66f38: the category label is cited rather than declined, and the organization is referred to by a fixed noun phrase instead of a gender-bound pronoun.",
+		"The category title is grammatical for every one of the 16 shipped taxonomy labels, checked by rendering each label, not by inspecting the template alone.",
+		"The org body is grammatical in both reachable placeholder branches (a real name, and the scope.org_unnamed fallback 'этой организации').",
+		"No other key in the ru namespace changed; the diff between the two revisions is exactly two value-only lines, and the en source is byte-identical between the two audited heads.",
+		"Placeholders are byte-exact and unreordered, and the values carry no hidden or disallowed characters.",
+		"The whole string still reads naturally in both cases after the edit; the only residue is the fallback-branch repetition recorded as RU-HUB-R2-1."
+	],
+	"observations": [
+		"'в хабе {org}' is apposition: correct with the shipped fallback 'этой организации' and with an indeclinable foreign name; a declinable Russian name (Ромашка) would want «ёлочки». The construction is carried over unchanged from be77d308262 and was recorded in r1's observations, so it is out of scope for this delta rather than a finding.",
+		"scope.org_unnamed and org.that_organization are the same ru string, 'этой организации'; the collapse is correct because both slots demand an oblique case and Russian's feminine demonstrative does not distinguish them. It also means the corrected org body renders identically whichever of the two the caller passes.",
+		"The r1 proposal ('для участников {org}') and the shipped string are not the same change: the shipped form hard-codes the fallback phrase so that a real org name is never forced into the genitive after 'для участников'. A later reader comparing the r1 text with the commit should not read the difference as an unremediated finding."
+	],
+	"findings": [
+		{
+			"id": "RU-HUB-R2-1",
+			"severity": "MINOR",
+			"key": "ui.hub.pages.empty.org.body",
+			"kind": "wording, not correctness",
+			"issue": "In the fallback branch the corrected sentence names the organization twice: 'Агенты, опубликованные в хабе этой организации, появятся здесь для участников этой организации.' It is grammatical and unambiguous, but tautological, and the title directly above already opens with 'У этой организации…', so the reader meets the phrase three times in six lines.",
+			"reachability": "Reachable: orgName is `activeOrg?.tenant_name || null` (agent-hub-page.tsx:355) and the body passes `orgName ?? t('ui.hub.pages.scope.org_unnamed')` (:1475-1478), so any org entry whose tenant_name is empty while its tenant_id is present renders the fallback.",
+			"fix": "One line, optional: '…появятся здесь для участников организации.' — or, if the repetition is preferred gone while keeping the referent, '…появятся здесь для её участников.' Neither changes meaning; both keep the named branch correct.",
+			"note": "This is not a regression against r1: r1's own proposed repair renders exactly this string in the fallback branch. Non-gating; fold it into any later ru wave or leave it."
+		},
+		{
+			"id": "RU-HUB-P3",
+			"severity": "NIT",
+			"key": "ui.hub.pages.empty.search.body",
+			"kind": "carried from r1, not taken",
+			"issue": "r1's optional NIT was not applied; the value is unchanged at this head.",
+			"fix": "No action required for this round; recorded only so the ledger closes."
+		}
+	],
+	"counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 1,
+		"nit": 1,
+		"total": 2,
+		"r1_majors_remediated": 2,
+		"r1_majors_open": 0
+	},
+	"status": "passed",
+	"result": "clean-with-findings",
+	"verdict": "Clean for the two corrected keys: both r1 MAJORs are genuinely fixed at 8d0b4e66f38, each verified by rendering every reachable substitution rather than by reading the template. 0 BLOCKER, 0 MAJOR. One MINOR (RU-HUB-R2-1: the fallback branch repeats 'этой организации') and one carried NIT (RU-HUB-P3, not taken). Neither gates; the round is terminal for ru.",
+	"render_sites": [
+		"src/renderer/src/features/agent-hub/agent-hub-page.tsx:1452-1456 — t('ui.hub.pages.empty.category.title', { category: categoryEntry(selectedCategory).label })",
+		"src/renderer/src/features/agent-hub/agent-hub-page.tsx:1474-1478 — t('ui.hub.pages.empty.org.body', { org: orgName ?? t('ui.hub.pages.scope.org_unnamed') })",
+		"src/renderer/src/features/agent-hub/agent-hub-page.tsx:355 — const orgName = activeOrg?.tenant_name || null",
+		"src/renderer/src/features/agent-hub/components/agent-categories-sidebar.tsx:126 — All row: onClick={() => onSelectCategory(null)}",
+		"src/i18n/catalogues/ru/ui.hub.taxonomy.json — the 16 nominative labels inserted into {category}",
+		"src/i18n/catalogues/ru/ui.hub.pages.json:14 — scope.org_unnamed = 'этой организации'"
+	],
+	"method": "diff-first and adversarial: git diff be77d308262..8d0b4e66f38 -- . ':(exclude)i18n/receipts' (4 files, 5 strings; only the 2 ru ones judged), then a byte-level diff of the ru file between the two heads to prove nothing else moved, then the en source and en context sidecars for both keys, then the two render sites and the placeholder producers, then the ru taxonomy labels and the whole ru empty-state set for naturalness, then the ru teams sibling for parallelism, then the ru style guide and glossary. Mechanical pass (python, stdlib): key-set parity with en, placeholder-set equality, brace balance, NFC/bidi/NBSP scan, edge/double-space and trailing-punctuation checks, and a loop rendering all 16 taxonomy labels plus 5 org-name shapes through the corrected templates.",
+	"normalised_for_ledger": "auditor and instance rewritten to the ledger contract by the programme manager; original auditor text preserved verbatim inside the parentheses, findings and hashes untouched",
+	"auditor_provenance": "translation-auditor (translation-auditor (independent; lopdev reviewer role))",
+	"identity_provenance": {
+		"agent": "reviewer — lopdev team, session 8e74cbf91953"
+	}
+}

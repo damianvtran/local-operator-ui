@@ -1,0 +1,96 @@
+{
+  "schema": 1,
+  "kind": "translation-audit-receipt",
+  "audit_kind": "independent-namespace-bind-reaudit",
+  "date": "2026-10-25",
+  "locale": "ru",
+  "namespace": "ui.chat.header",
+  "batch": "ru-bind-1403",
+  "pr": 1403,
+  "branch": "feat/i18n-key-remaining-copy",
+  "audited_head": "0adbb37b9429e2c70cbe64ea149cb091432c8dd6",
+  "audited_head_short": "0adbb37b94",
+  "requested_head": "0adbb37b9429e2c70cbe64ea149cb091432c8dd6",
+  "instance": "ru-bind-efd5b5f4dc20",
+  "instance_note": "Per-namespace bind instance; the 12-hex suffix is the first 12 hex of the current ru target sha256, so the id names the bytes it audited.",
+  "auditor": {
+    "agent": "translation-auditor",
+    "harness": "Local Operator",
+    "team": "lopdev",
+    "session": "0c5590aa68a9",
+    "model": "deepseek/deepseek-flash",
+    "actual_model": "deepseek/deepseek-flash",
+    "actual_model_source": "harness session model (system prompt: Model: deepseek/deepseek-flash); no fallback selected or observed",
+    "fallback": null,
+    "independent_from_translator": true,
+    "independence_basis": "Independent translation-auditor session 0c5590aa68a9, separate from the translator (i18n-translator in the ledger). Bytes were read from git at 0adbb37b94; no catalogue or ledger file was edited by this run.",
+    "instance": "ru-bind-efd5b5f4dc20"
+  },
+  "independence": "Independent translation-auditor session 0c5590aa68a9; translator was i18n-translator per the ledger. The audit read en and ru bytes from git at 0adbb37b94, edited no catalogue and no ledger row, and writes only this receipt.",
+  "scope": "Full re-audit of ui.chat.header at the current bytes (bind audit): every key, not a delta.",
+  "method": "Read the en and ru JSON from git; compared key sets, ICU AST (arguments, number skeletons, select arms, plural categories, pound usage), rendered the ru messages with intl-messageformat (the same class used by src/i18n/messages) at 1/2/5/21 plus 0/3/4/6/11/22/1.5, and read the en context sidecars for role/tone/length. Catalogue-level audit only: no browser, no rendered-frame pass, no native-speaker sign-off is claimed.",
+  "source_sha256": "04fa4fb0f73dc33811c40b9574f92b8bc0ddafb8a458242497a92400c009e3f0",
+  "target_sha256": "efd5b5f4dc20102a9e67585066fce1543132b58dcaf8b1d1baaa8eb04f7b1680",
+  "context_sha256": "39558b26f12ae22908a146f61c8c40795ac9e3b19e41a6ebed7ada883e7281bf",
+  "checks": {
+    "en_keys": 12,
+    "ru_keys": 12,
+    "key_set_exact": true,
+    "icu_parsed": 12,
+    "icu_failures": 0,
+    "placeholders_exact": true,
+    "placeholder_note": "{target} preserved in new_chat_with; no other ICU arguments",
+    "with_name_construction": "«с {target}» follows the locale's established pattern (ui.agents.navigation.chat_named = «Чат с {name}»); not reported"
+  },
+  "findings": [
+    {
+      "id": "RU-BIND-H-01",
+      "severity": "nit",
+      "category": "register",
+      "key": "ui.chat.header.move_device",
+      "current": "На другое устройство…",
+      "proposed": "Переместить на другое устройство…",
+      "reason": "The en context tone is a short imperative phrase with the ellipsis; the ru leaves a bare destination fragment and is non-parallel with the sibling menu rows (Удалить разговор…, Открыть сведения), though the destination is clear. The proposal is 33 cells against the 32-cell advisory, so a rendered check should confirm the overflow-menu width before it is applied.",
+      "introduced_by": "pre-existing value at PR base 3d0e9010d7 (unchanged by this PR)"
+    },
+    {
+      "id": "RU-BIND-H-02",
+      "severity": "nit",
+      "category": "accuracy",
+      "key": "ui.chat.header.close_run_details",
+      "current": "Закрыть сведения",
+      "proposed": "Закрыть сведения о ходе",
+      "reason": "The en label names the run-details pane; «сведения» alone is the locale's generic 'details' word (cf. ui.chat.pickers.info_panel.info, ui.library.preview.details), so the toggle loses its object. The proposal is 24 cells against the 20-cell advisory: flag for a rendered check, and keep the short form only if the menu cannot take it.",
+      "introduced_by": "pre-existing value at PR base 3d0e9010d7 (unchanged by this PR)"
+    },
+    {
+      "id": "RU-BIND-H-03",
+      "severity": "nit",
+      "category": "accuracy",
+      "key": "ui.chat.header.open_run_details",
+      "current": "Открыть сведения",
+      "proposed": "Открыть сведения о ходе",
+      "reason": "Sibling of RU-BIND-H-02: the open-state toggle also drops the run object; the same 24-cell-vs-20-cell rendered check applies.",
+      "introduced_by": "pre-existing value at PR base 3d0e9010d7 (unchanged by this PR)"
+    },
+    {
+      "id": "RU-BIND-H-04",
+      "severity": "nit",
+      "category": "glossary-consistency",
+      "key": "ui.chat.header.transcript_display",
+      "current": "Вид транскрипта",
+      "proposed": "Отображение транскрипта",
+      "reason": "The same English term 'transcript display' already ships as «Отображение транскрипта» in ui.settings.appearance.transcript_display_mode_setting.transcript_display; the header submenu uses the synonym «Вид транскрипта», drifting the glossary for no width reason (25 cells against maxCells 28).",
+      "introduced_by": "pre-existing value at PR base 3d0e9010d7 (unchanged by this PR)"
+    }
+  ],
+  "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 4
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "verdict": "passed — 12/12 keys, 0 blocker/major, 4 nits recorded (menu register, the run-details object in both toggles, transcript-display glossary); ICU and {target} intact."
+}

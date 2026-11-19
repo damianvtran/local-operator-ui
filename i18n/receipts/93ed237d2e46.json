@@ -1,0 +1,447 @@
+{
+  "schema": 1,
+  "audit_kind": "independent-translation-audit",
+  "locale": "zh-CN",
+  "auditor": "translation-auditor",
+  "agent": "translation-auditor (lopdev team)",
+  "session": "93ed237d2e46",
+  "instance": "93ed237d2e46",
+  "model": "radient/auto",
+  "model_fallback": "none",
+  "model_note": "Harness-selected model identity recorded as radient/auto (effort auto); the upstream routed model is not exposed in session metadata. No fallback model was used.",
+  "date": "2026-10-24",
+  "scope": {
+    "pr": 1388,
+    "branch": "feat/i18n-canvas-batch",
+    "base": "d96d68795b1f261b3aac8c65d7ca821f6641c5fa",
+    "head": "936e3a483b4d675c9827be5f40167da186f86900",
+    "merged_main": "40462495827dfb0e1bfacb8643da805912493a5b",
+    "note": "Read the named head via git archive/git show without checking out or editing either branch. Each namespace sha256 binds the English source, zh-CN target and context sidecar at that head. The audited values are every zh-CN value changed against base d96d687; whole-file key presence and parity were checked separately."
+  },
+  "references": {
+    "core_revision": "24dbccbb784bd1c9b690ce4601f489791ceacb09",
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/zh-CN.md",
+      "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+    }
+  },
+  "keys_read": 1079,
+  "namespace_count": 8,
+  "status": "passed",
+  "verdict": "clean-with-findings: 6 minor findings over 10 keys and 3 nit findings over 8 keys; no blocker or major",
+  "namespaces": {
+    "ui.canvas": {
+      "status": "passed",
+      "verdict": "clean-with-findings",
+      "keys_audited": 290,
+      "namespace_key_count": 347,
+      "sha256": {
+        "en": "be8acd20add01188abed4985d0aad11325a7ebd8cdbc3bd5c9376be65543563f",
+        "zh-CN": "22f05638c559a2bca58dea34e51e34a918dcb960209d721189f6d08c647509bd",
+        "context": "4bc0f2bc47d4b0e826ebb10ba78ff965c550debef54f47c912b9e257fd1784f8"
+      },
+      "findings": [
+        {
+          "severity": "minor",
+          "key": "ui.canvas.variables_viewer.the_backend_did_not_answer_so_this_chat_s_code_memory_could_not_be_read",
+          "keys": [
+            "ui.canvas.variables_viewer.the_backend_did_not_answer_so_this_chat_s_code_memory_could_not_be_read",
+            "ui.canvas.variables_viewer.this_variable_s_name_can_t_be_edited_from_here_copy_it_to_the_session_un",
+            "ui.canvas.variable_form_dialog.the_variable_could_not_be_saved_try_again"
+          ],
+          "current": "后端未响应，因此无法读取此对话的代码记忆。未做任何更改。请稍后重试。 | 无法在这里编辑此变量的名称。如需更改，请用新名称将其复制到会话中。 | 无法保存变量。请重试。",
+          "proposed": "后端未响应，因此无法读取此对话的代码记忆。未做任何更改。稍后重试。 | 无法在这里编辑此变量的名称。如需更改，可用新名称将其复制到会话中。 | 无法保存变量。重试。",
+          "reason": "Style guide restricts 请 to strings whose English says 'please' (blocking dialogs); none of these three sources has 'please'."
+        },
+        {
+          "severity": "nit",
+          "key": "ui.canvas.create_file_dialog.creating",
+          "keys": [
+            "ui.canvas.create_file_dialog.creating"
+          ],
+          "current": "正在创建……",
+          "proposed": "正在创建...",
+          "reason": "The key's context note says 'preserve the three ASCII periods'; the general locale style prefers ……, so the key-specific note and the style guide conflict and one must be corrected."
+        }
+      ]
+    },
+    "ui.chat.pickers": {
+      "status": "passed",
+      "verdict": "clean-with-findings",
+      "keys_audited": 720,
+      "namespace_key_count": 720,
+      "sha256": {
+        "en": "8109df703e1a4901e4d892607dddd875e6a737c9ea8ee7ef41ec28dbe6ac2e58",
+        "zh-CN": "7f3bebf417d8112b08b39cc91f771e599865134b81ff02047732c4e81e38cd5f",
+        "context": "c921d3e37ce54288a18e2b45310034a0df0114f15c30e57133422018a00b38d9"
+      },
+      "findings": [
+        {
+          "severity": "minor",
+          "key": "ui.chat.pickers.destination_pickers.stores_a_secret_for_this_session_s_tools_by_name_the_value_never_appears",
+          "keys": [
+            "ui.chat.pickers.destination_pickers.stores_a_secret_for_this_session_s_tools_by_name_the_value_never_appears"
+          ],
+          "current": "按名称为此会话的工具存储机密。值绝不会出现在输入框、记录或命令回执中。",
+          "proposed": "按名称为此会话的工具存储敏感信息。值绝不会出现在输入框、记录或命令回执中。",
+          "reason": "Same English concept 'secret' is rendered 敏感信息 in the established asks-flow strings (10 occurrences in ui.chat.composer, e.g. secret_ask_notice); 机密 is a different term."
+        },
+        {
+          "severity": "minor",
+          "key": "ui.chat.pickers.destination_pickers.has_no_adjustable_effort_pick_another_model",
+          "keys": [
+            "ui.chat.pickers.destination_pickers.has_no_adjustable_effort_pick_another_model",
+            "ui.chat.pickers.destination_pickers.has_no_adjustable_effort_pick_a_reasoning_model_with_model_first"
+          ],
+          "current": "{label}没有可调整的推理强度。请选择其他模型。 | {label}没有可调整的推理强度。请先使用/model选择推理模型。",
+          "proposed": "{label}没有可调整的推理强度。选择其他模型。 | {label}没有可调整的推理强度。先使用/model选择推理模型。",
+          "reason": "Style guide restricts 请 to strings whose English says 'please'; both sources are imperative 'Pick...' without 'please'."
+        },
+        {
+          "severity": "minor",
+          "key": "ui.chat.pickers.destination_pickers.request_admitted_once",
+          "keys": [
+            "ui.chat.pickers.destination_pickers.request_admitted_once",
+            "ui.chat.pickers.destination_pickers.your_message_was_admitted_once"
+          ],
+          "current": "请求已准入一次{duplicate, select, true {（此前已准入）} other {}}。 | 你的消息已准入一次：{detail}。",
+          "proposed": "请求已受理一次{duplicate, select, true {（此前已受理）} other {}}。 | 你的消息已受理一次：{detail}。",
+          "reason": "准入 is a noun for market/access admission; for a message admitted into a session the idiomatic verb is 受理, and 已准入一次 reads translated."
+        },
+        {
+          "severity": "minor",
+          "key": "ui.chat.pickers.info_panel.live_total",
+          "keys": [
+            "ui.chat.pickers.info_panel.live_total"
+          ],
+          "current": "{formatcount}个实时 · 共{formatcount2}个",
+          "proposed": "{formatcount}个活跃 · 共{formatcount2}个",
+          "reason": "个实时 is ungrammatical as a count phrase (实时 is an adverb/adjective); the sibling info_model.live_not_answering already renders live sessions as 活跃."
+        },
+        {
+          "severity": "minor",
+          "key": "ui.chat.pickers.stop.confirm",
+          "keys": [
+            "ui.chat.pickers.stop.confirm"
+          ],
+          "current": "{count, plural, other {立即停止{count, number, ::group-off}个会话}}",
+          "proposed": "{count, plural, =1 {立即停止此会话} other {立即停止{count, number, ::group-off}个会话}}",
+          "reason": "The source's one branch says 'this session', and the context note calls that out; the other-only form loses the deictic and reads as a bare count for one."
+        },
+        {
+          "severity": "nit",
+          "key": "ui.chat.pickers.analytics_session_state.no_top_level_sessions_in_this_window",
+          "keys": [
+            "ui.chat.pickers.analytics_session_state.no_top_level_sessions_in_this_window",
+            "ui.chat.pickers.analytics_session_state.top_level_only",
+            "ui.chat.pickers.analytics_session_state.filter_top_zero",
+            "ui.chat.pickers.analytics_session_state.filter_top",
+            "ui.chat.pickers.analytics_session_state.top_level_only_off"
+          ],
+          "current": "此时间窗口内没有顶级会话。 | {searched} · 仅顶级会话 | 仅顶级会话：无会话。 | {matched, plural, other {仅顶级会话：{matchedtext}个会话。}} | {matched, plural, other {已关闭“仅顶级会话”：{matchedtext}个会话。}}",
+          "proposed": "Use 顶层 throughout: 此时间窗口内没有顶层会话。 | {searched} · 仅顶层会话 | 仅顶层会话：无会话。 | {matched, plural, other {仅顶层会话：{matchedtext}个会话。}} | {matched, plural, other {已关闭“仅顶层会话”：{matchedtext}个会话。}}",
+          "reason": "For a hierarchy, top-level is 顶层; 顶级 more often means top-tier/premium, and it recurs across five strings."
+        },
+        {
+          "severity": "nit",
+          "key": "ui.chat.pickers.destination_pickers.fork",
+          "keys": [
+            "ui.chat.pickers.destination_pickers.fork",
+            "ui.chat.pickers.destination_pickers.ports"
+          ],
+          "current": "创建分支 | 移植主题",
+          "proposed": "If the rendered controls are tight: 分支 | 移植 (or confirm both fit with a rendered check).",
+          "reason": "Cell-width risk: Fork 4→8 cells (2.0×) and Ports 5→8 cells (1.6×); no maxCells budget exists for these keys, so this is a rendered-check flag, not a measured overflow."
+        }
+      ]
+    },
+    "ui.common.actions": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_audited": 30,
+      "namespace_key_count": 36,
+      "sha256": {
+        "en": "d65be7beac66c209a55db5d8a672ff8a8a743eea49ba21593120d4b8664603b2",
+        "zh-CN": "9cabbd92edbad4245d1382e7f09f0b098b00fb114ea7f2b5ed10755711343618",
+        "context": "29a6cc54f8605ab2612775708bf5eb202a89e6708167d8a7c3f329a536b339db"
+      },
+      "findings": []
+    },
+    "ui.common.forms": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_audited": 10,
+      "namespace_key_count": 37,
+      "sha256": {
+        "en": "c87c16b1169f32105e017fd27eb80047446938b1b45046c28bcf693856898238",
+        "zh-CN": "1b365ede79da0c08c9aae2532dda478b08c944293121421352646da57d155b7a",
+        "context": "c11472cc390fe7771e08dcd34bb633e63797f979a113feaa47d70d06daea38b4"
+      },
+      "findings": []
+    },
+    "ui.common.layout": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_audited": 8,
+      "namespace_key_count": 8,
+      "sha256": {
+        "en": "c4efaa88bba85706ac9fb976bc3d3d009f3bb08fc762a90dfeb73d90d0c14db6",
+        "zh-CN": "c02cd9a6bf613448b3da6b3e03285a055243446b66543a58a56b36c9b2bb750f",
+        "context": "318673c640a31e11f5249127c8ef5a76d63c16c3c191960824391d934766bd39"
+      },
+      "findings": []
+    },
+    "ui.common.speech": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_audited": 5,
+      "namespace_key_count": 5,
+      "sha256": {
+        "en": "fa6a973f1a6a36f25218e884174299ba154e124baaddc87594bd516c8d07d8f6",
+        "zh-CN": "cde7779d2cba788609576948d2a8798c0972171550b8b8bf995ee37c03d75ce0",
+        "context": "740828525702d67b6ee0ecf7eb0a3f1582167989355bd12d0579d698b982267a"
+      },
+      "findings": []
+    },
+    "ui.common.updates": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_audited": 8,
+      "namespace_key_count": 135,
+      "sha256": {
+        "en": "1f81721263fa4c7d74219bd2c0af82b908bf2fb4491df074e99e2215ad00d667",
+        "zh-CN": "859754d92e281d0ce8360c6e6610684b666dcd938b22b3c492c4cc5b12ad37e7",
+        "context": "cb4a160ef62b1760d4622b29c90e130cff1b4165ac770dab200ebc54eca38bee"
+      },
+      "findings": []
+    },
+    "ui.common.viewer": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_audited": 8,
+      "namespace_key_count": 8,
+      "sha256": {
+        "en": "c0ffdd08058b062c88c6fad428db0e33c4162bcee1094dd5dd16890fe4e9705f",
+        "zh-CN": "340dc07cd763562727e2bdabc1284e5bc17ab34d9ce0b408c761947e186df027",
+        "context": "8b324e966ddb4aaef92ec3b3465f8ac6a80982529bcbd3b45a3c1cf1f9b28dd8"
+      },
+      "findings": []
+    }
+  },
+  "findings": [
+    {
+      "severity": "minor",
+      "key": "ui.canvas.variables_viewer.the_backend_did_not_answer_so_this_chat_s_code_memory_could_not_be_read",
+      "keys": [
+        "ui.canvas.variables_viewer.the_backend_did_not_answer_so_this_chat_s_code_memory_could_not_be_read",
+        "ui.canvas.variables_viewer.this_variable_s_name_can_t_be_edited_from_here_copy_it_to_the_session_un",
+        "ui.canvas.variable_form_dialog.the_variable_could_not_be_saved_try_again"
+      ],
+      "current": "后端未响应，因此无法读取此对话的代码记忆。未做任何更改。请稍后重试。 | 无法在这里编辑此变量的名称。如需更改，请用新名称将其复制到会话中。 | 无法保存变量。请重试。",
+      "proposed": "后端未响应，因此无法读取此对话的代码记忆。未做任何更改。稍后重试。 | 无法在这里编辑此变量的名称。如需更改，可用新名称将其复制到会话中。 | 无法保存变量。重试。",
+      "reason": "Style guide restricts 请 to strings whose English says 'please' (blocking dialogs); none of these three sources has 'please'."
+    },
+    {
+      "severity": "nit",
+      "key": "ui.canvas.create_file_dialog.creating",
+      "keys": [
+        "ui.canvas.create_file_dialog.creating"
+      ],
+      "current": "正在创建……",
+      "proposed": "正在创建...",
+      "reason": "The key's context note says 'preserve the three ASCII periods'; the general locale style prefers ……, so the key-specific note and the style guide conflict and one must be corrected."
+    },
+    {
+      "severity": "minor",
+      "key": "ui.chat.pickers.destination_pickers.stores_a_secret_for_this_session_s_tools_by_name_the_value_never_appears",
+      "keys": [
+        "ui.chat.pickers.destination_pickers.stores_a_secret_for_this_session_s_tools_by_name_the_value_never_appears"
+      ],
+      "current": "按名称为此会话的工具存储机密。值绝不会出现在输入框、记录或命令回执中。",
+      "proposed": "按名称为此会话的工具存储敏感信息。值绝不会出现在输入框、记录或命令回执中。",
+      "reason": "Same English concept 'secret' is rendered 敏感信息 in the established asks-flow strings (10 occurrences in ui.chat.composer, e.g. secret_ask_notice); 机密 is a different term."
+    },
+    {
+      "severity": "minor",
+      "key": "ui.chat.pickers.destination_pickers.has_no_adjustable_effort_pick_another_model",
+      "keys": [
+        "ui.chat.pickers.destination_pickers.has_no_adjustable_effort_pick_another_model",
+        "ui.chat.pickers.destination_pickers.has_no_adjustable_effort_pick_a_reasoning_model_with_model_first"
+      ],
+      "current": "{label}没有可调整的推理强度。请选择其他模型。 | {label}没有可调整的推理强度。请先使用/model选择推理模型。",
+      "proposed": "{label}没有可调整的推理强度。选择其他模型。 | {label}没有可调整的推理强度。先使用/model选择推理模型。",
+      "reason": "Style guide restricts 请 to strings whose English says 'please'; both sources are imperative 'Pick...' without 'please'."
+    },
+    {
+      "severity": "minor",
+      "key": "ui.chat.pickers.destination_pickers.request_admitted_once",
+      "keys": [
+        "ui.chat.pickers.destination_pickers.request_admitted_once",
+        "ui.chat.pickers.destination_pickers.your_message_was_admitted_once"
+      ],
+      "current": "请求已准入一次{duplicate, select, true {（此前已准入）} other {}}。 | 你的消息已准入一次：{detail}。",
+      "proposed": "请求已受理一次{duplicate, select, true {（此前已受理）} other {}}。 | 你的消息已受理一次：{detail}。",
+      "reason": "准入 is a noun for market/access admission; for a message admitted into a session the idiomatic verb is 受理, and 已准入一次 reads translated."
+    },
+    {
+      "severity": "minor",
+      "key": "ui.chat.pickers.info_panel.live_total",
+      "keys": [
+        "ui.chat.pickers.info_panel.live_total"
+      ],
+      "current": "{formatcount}个实时 · 共{formatcount2}个",
+      "proposed": "{formatcount}个活跃 · 共{formatcount2}个",
+      "reason": "个实时 is ungrammatical as a count phrase (实时 is an adverb/adjective); the sibling info_model.live_not_answering already renders live sessions as 活跃."
+    },
+    {
+      "severity": "minor",
+      "key": "ui.chat.pickers.stop.confirm",
+      "keys": [
+        "ui.chat.pickers.stop.confirm"
+      ],
+      "current": "{count, plural, other {立即停止{count, number, ::group-off}个会话}}",
+      "proposed": "{count, plural, =1 {立即停止此会话} other {立即停止{count, number, ::group-off}个会话}}",
+      "reason": "The source's one branch says 'this session', and the context note calls that out; the other-only form loses the deictic and reads as a bare count for one."
+    },
+    {
+      "severity": "nit",
+      "key": "ui.chat.pickers.analytics_session_state.no_top_level_sessions_in_this_window",
+      "keys": [
+        "ui.chat.pickers.analytics_session_state.no_top_level_sessions_in_this_window",
+        "ui.chat.pickers.analytics_session_state.top_level_only",
+        "ui.chat.pickers.analytics_session_state.filter_top_zero",
+        "ui.chat.pickers.analytics_session_state.filter_top",
+        "ui.chat.pickers.analytics_session_state.top_level_only_off"
+      ],
+      "current": "此时间窗口内没有顶级会话。 | {searched} · 仅顶级会话 | 仅顶级会话：无会话。 | {matched, plural, other {仅顶级会话：{matchedtext}个会话。}} | {matched, plural, other {已关闭“仅顶级会话”：{matchedtext}个会话。}}",
+      "proposed": "Use 顶层 throughout: 此时间窗口内没有顶层会话。 | {searched} · 仅顶层会话 | 仅顶层会话：无会话。 | {matched, plural, other {仅顶层会话：{matchedtext}个会话。}} | {matched, plural, other {已关闭“仅顶层会话”：{matchedtext}个会话。}}",
+      "reason": "For a hierarchy, top-level is 顶层; 顶级 more often means top-tier/premium, and it recurs across five strings."
+    },
+    {
+      "severity": "nit",
+      "key": "ui.chat.pickers.destination_pickers.fork",
+      "keys": [
+        "ui.chat.pickers.destination_pickers.fork",
+        "ui.chat.pickers.destination_pickers.ports"
+      ],
+      "current": "创建分支 | 移植主题",
+      "proposed": "If the rendered controls are tight: 分支 | 移植 (or confirm both fit with a rendered check).",
+      "reason": "Cell-width risk: Fork 4→8 cells (2.0×) and Ports 5→8 cells (1.6×); no maxCells budget exists for these keys, so this is a rendered-check flag, not a measured overflow."
+    }
+  ],
+  "observations": [
+    {
+      "key": "ui.chat.canonical.supplement.file_actions.open_in_canvas",
+      "current": "在Canvas中打开",
+      "note": "Canvas is left untranslated deliberately: the context sidecar says 'Canvas is the product's own pane name and stays untranslated.' Not a stub; the matching IDs in the other six locales also keep Canvas."
+    },
+    {
+      "key": "ui.chat.canonical.supplement.details.attempts",
+      "current": "尝试次数: {count, number, ::group-off}",
+      "note": "Half-width colon is correct here: the context sidecar says 'Keep the label and the separator exactly as they are' for this monospace diagnostic block."
+    },
+    {
+      "key": "ui.chat.canonical.supplement.details.model",
+      "current": "模型: {name}",
+      "note": "Same diagnostic-block separator rule as attempts."
+    }
+  ],
+  "limitations": [
+    "Catalogue audit only: no rendered-frame check was performed, so the two overflow-risk labels (fork, ports) are flagged rather than measured in the running UI.",
+    "No native-speaker review beyond this auditor is claimed; no activation, release or pseudo-localization evidence is claimed.",
+    "RTL checks are not applicable to zh-CN; no manual bidi controls were found in the audited values."
+  ],
+  "independence": "This audit was performed by translation-auditor in session 93ed237d2e46, which did not author or edit any catalogue, ledger, allowance or existing receipt. Translator receipts name translator session 04d5644fbe5a for canvas and 2947ffc9a35c for surfaces.",
+  "identical_candidates": [
+    {
+      "keys": [
+        "ui.canvas.create_file_dialog.markdown_md",
+        "ui.canvas.create_file_dialog.html_html",
+        "ui.canvas.create_file_dialog.css_css",
+        "ui.canvas.create_file_dialog.javascript_js",
+        "ui.canvas.create_file_dialog.jsx_jsx",
+        "ui.canvas.create_file_dialog.typescript_ts",
+        "ui.canvas.create_file_dialog.tsx_tsx",
+        "ui.canvas.create_file_dialog.python_py",
+        "ui.canvas.create_file_dialog.go_go",
+        "ui.canvas.create_file_dialog.java_java",
+        "ui.canvas.create_file_dialog.c_cs",
+        "ui.canvas.create_file_dialog.php_php",
+        "ui.canvas.create_file_dialog.ruby_rb",
+        "ui.canvas.create_file_dialog.rust_rs",
+        "ui.canvas.create_file_dialog.json_json",
+        "ui.canvas.create_file_dialog.yaml_yaml",
+        "ui.canvas.create_file_dialog.yaml_yml",
+        "ui.canvas.create_file_dialog.xml_xml",
+        "ui.canvas.create_file_dialog.toml_toml",
+        "ui.canvas.create_file_dialog.ini_ini",
+        "ui.canvas.create_file_dialog.env",
+        "ui.canvas.create_file_dialog.dockerfile",
+        "ui.canvas.create_file_dialog.c_c",
+        "ui.canvas.create_file_dialog.c_cpp",
+        "ui.canvas.create_file_dialog.swift_swift",
+        "ui.canvas.create_file_dialog.kotlin_kt",
+        "ui.canvas.create_file_dialog.scala_scala"
+      ],
+      "reason": "Language/product names and file-extension tokens; the translatable words (Plain text, Web development, Backend and scripting, etc.) are translated. Keeping these as-is is IDENTICAL_OK."
+    },
+    {
+      "keys": [
+        "ui.canvas.variable_form_dialog.example_key_example_value",
+        "ui.canvas.variable_form_dialog.item1_item2",
+        "ui.canvas.insert_image_dialog.users_eren_documents_image_png",
+        "ui.canvas.insert_link_dialog.url",
+        "ui.canvas.insert_link_dialog.https_example_com"
+      ],
+      "reason": "Examples of JSON syntax, a filesystem path, and the URL acronym/URL literal; translating any of them would break the example or the technical token."
+    },
+    {
+      "keys": [
+        "ui.chat.pickers.destination_pickers.k",
+        "ui.chat.pickers.destination_pickers.skill",
+        "ui.chat.pickers.destination_pickers.my_api_key",
+        "ui.chat.pickers.info_model.term",
+        "ui.chat.pickers.info_model.colorterm",
+        "ui.chat.pickers.info_model.python",
+        "ui.chat.pickers.info_model.pid",
+        "ui.chat.pickers.info_model.pid_7837d5",
+        "ui.chat.pickers.destination_pickers.completed_only",
+        "ui.chat.pickers.info_model.runtime_trajectories"
+      ],
+      "reason": "A number-format skeleton, protocol/identifier tokens, environment-variable names, a product name plus placeholder, and placeholder-only counters; no prose to translate."
+    },
+    {
+      "keys": [
+        "ui.common.layout.chat_layout.mac"
+      ],
+      "reason": "Platform-detection token: chat-layout.tsx tests navigator.userAgent for this exact string; translating it would break macOS detection."
+    }
+  ],
+  "identical_candidate_count": 43,
+  "stub_count": 0,
+  "finding_count_by_severity": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 6,
+    "nit": 3
+  },
+  "affected_key_count_by_severity": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 10,
+    "nit": 8
+  },
+  "shared_namespaces": {
+    "namespaces": [
+      "ui.common.actions",
+      "ui.common.speech",
+      "ui.common.updates",
+      "ui.common.viewer"
+    ],
+    "note": "These four namespaces are touched by both batches with disjoint additive keys. Each receipt binds the bytes at its own named head; after both PRs merge, the union file is a new byte state and needs a convergence audit (or a fresh per-namespace row) before the ledger can call it fresh."
+  }
+}

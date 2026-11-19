@@ -1,0 +1,731 @@
+/**
+ * The notifications reel's pure model: filters, grouping, selection plans and
+ * the badge number (design.md § 2-§ 7, § 11; contract § 2.3).
+ *
+ * WHY PURE. The page, its stories and `scripts/notifications-model.test.mjs`
+ * compose these functions, so the rules a reader relies on ("a live ask is
+ * never in a bulk dismiss", "Waiting on you is always first", "a repeat row
+ * dismisses all its updates") are pinned against the SHIPPED module, the
+ * `sidebar-destinations.ts` pattern. Nothing here imports React or reads state.
+ */
+import type {
+	DesktopNotificationItem,
+	DesktopNotificationPriority,
+	DesktopNotificationsCount,
+	DesktopNotificationsList,
+} from "../../../../shared/desktop-control-contract";
+
+/** The four write verbs the cache updater understands (contract § 5.2). */
+export type NotificationVerb = "read" | "unread" | "dismiss" | "undismiss";
+
+export type NotificationKindFilter = "all" | "asks" | "updates";
+export type NotificationPriorityFilter = "any" | "high" | "normal_up";
+export type NotificationGrouping = "time" | "conversation";
+
+export type NotificationFilters = {
+	kind: NotificationKindFilter;
+	priority: NotificationPriorityFilter;
+	/** A session id, or null for every conversation. */
+	from: string | null;
+};
+
+export const DEFAULT_FILTERS: NotificationFilters = {
+	kind: "all",
+	priority: "any",
+	from: null,
+};
+
+/** Whether any filter is off its default (design § 2: drives "Clear filters"). */
+export const filtersActive = (filters: NotificationFilters): boolean =>
+	filters.kind !== "all" || filters.priority !== "any" || filters.from !== null;
+
+const PRIORITY_RANK: Record<DesktopNotificationPriority, number> = {
+	high: 3,
+	normal: 2,
+	low: 1,
+};
+
+/** Whether an item is an OPEN ask: the one source a reel dismiss never settles. */
+export const isLiveAsk = (item: DesktopNotificationItem): boolean =>
+	item.source === "ask" &&
+	(item.ask?.status === undefined || item.ask.status === "open");
+
+/** Apply the client-side filters over a loaded set (design § 2). */
+export function filterItems(
+	items: readonly DesktopNotificationItem[],
+	filters: NotificationFilters,
+): DesktopNotificationItem[] {
+	return items.filter((item) => {
+		/*
+		 * A DISMISSED ROW LEAVES THE REEL (code round 8, R8-4 / Q12). The write path flips
+		 * `dismissed` in the cache instead of deleting the row (so Undo is a flip back),
+		 * which left it drawn once its exit animation finished - 138 rows standing after
+		 * the server had dismissed all 138. The drawer already filtered this way.
+		 */
+		if (item.dismissed) return false;
+		if (filters.kind === "asks" && item.source !== "ask") return false;
+		if (filters.kind === "updates" && item.source !== "notify") return false;
+		if (filters.priority === "high" && item.priority !== "high") return false;
+		if (
+			filters.priority === "normal_up" &&
+			PRIORITY_RANK[item.priority] < PRIORITY_RANK.normal
+		)
+			return false;
+		if (filters.from !== null && item.session.id !== filters.from) return false;
+		return true;
+	});
+}
+
+/**
+ * How long an Undo offer stands (design § 0.8 / § 12.4: 6 s).
+ *
+ * In the model rather than in the page because the reel AND the transcript
+ * drawer both take destructive actions and both must offer the same window
+ * (design audit OD3); a constant copied into the drawer would be the second
+ * spelling of one product rule.
+ */
+export const UNDO_WINDOW_MS = 6_000;
+
+/**
+ * How long a receipt that reports a refusal, a skip or an unresolved count stands.
+ *
+ * THE UNDO WINDOW IS THE WRONG LIFETIME FOR A PARTIAL RESULT (design round 1,
+ * D2). `UNDO_WINDOW_MS` is how long the offer to take an action BACK stands; a
+ * receipt that says some of the work did not happen is not an offer, it is an
+ * exception report, and the operator has to read it, find the row it left
+ * behind and decide what to do with it. Giving it the Undo window made the
+ * report vanish while its subject was still on screen - and it vanished on the
+ * one path where the page has something to explain.
+ *
+ * SO THE RECEIPT'S LIFETIME IS A FUNCTION OF WHAT IT SAYS, not a container
+ * default: the all-succeeded receipt keeps the Undo window (it is an offer, and
+ * it has nothing to explain), and a receipt carrying a skip, a refusal or a
+ * count that never resolved is held here until the operator closes it. The
+ * container ships `closeButton: true`, so a held receipt is always retirable by
+ * hand - `Infinity` would otherwise be a toast that can only be waited out.
+ *
+ * THE UNDO THE HELD RECEIPT CARRIES IS VALID FOR THE SAME PERIOD, because a
+ * receipt that holds while its own Undo has silently expired is a dead control:
+ * pressing it would do nothing and say nothing. Both call sites read their
+ * window from `receiptDuration` below so the button and the toast cannot drift
+ * apart, and `lastUndo` / `lastBulkUndo` identity still invalidates the offer the
+ * moment a newer press supersedes it.
+ */
+export const HELD_RECEIPT_MS = Number.POSITIVE_INFINITY;
+
+/**
+ * A receipt's lifetime, from whether it has anything to report beyond success.
+ *
+ * The single decision both notification receipt paths make, in one place: a
+ * partial receipt is held, a clean one keeps the Undo window. Taking this as a
+ * predicate rather than letting each call site pick a number is what stops one
+ * of them drifting back to the Undo window the way it started (D2).
+ */
+export const receiptDuration = (reportsException: boolean): number =>
+	reportsException ? HELD_RECEIPT_MS : UNDO_WINDOW_MS;
+
+export type TimeBucket = "today" | "yesterday" | "week" | "older";
+
+/** Local midnight of the day `ms` falls in. */
+const startOfDay = (ms: number): number => {
+	const date = new Date(ms);
+	date.setHours(0, 0, 0, 0);
+	return date.getTime();
+};
+
+/**
+ * The time group of an item (design § 3). Calendar days in the viewer's zone,
+ * not 24-hour windows: "Yesterday" at 00:30 means the day before, which is how
+ * a reader scans the list. "Earlier this week" is the six days before
+ * yesterday, so the four groups partition every timestamp.
+ */
+export function timeBucketOf(ms: number, nowMs: number): TimeBucket {
+	const today = startOfDay(nowMs);
+	if (ms >= today) return "today";
+	const yesterday = startOfDay(today - 1);
+	if (ms >= yesterday) return "yesterday";
+	const weekStart = startOfDay(yesterday - 6 * 86_400_000 + 1);
+	if (ms >= weekStart) return "week";
+	return "older";
+}
+
+export type NotificationGroup =
+	| {
+			kind: "waiting";
+			key: "waiting";
+			items: DesktopNotificationItem[];
+	  }
+	| {
+			kind: "time";
+			key: TimeBucket;
+			items: DesktopNotificationItem[];
+	  }
+	| {
+			kind: "conversation";
+			key: string;
+			sessionId: string;
+			title: string;
+			items: DesktopNotificationItem[];
+	  };
+
+const newestFirst = (a: DesktopNotificationItem, b: DesktopNotificationItem) =>
+	b.updated_at - a.updated_at || b.seq - a.seq;
+
+/**
+ * The reel's groups, in render order.
+ *
+ * WAITING ON YOU IS ALWAYS FIRST, in either grouping (design § 2-§ 3): a live
+ * ask is a turn that is blocked on the reader. The waiting set is the route's
+ * own `waiting` array when the caller passes it, so an ask is never listed
+ * twice: an id that is in `waiting` is removed from the rest.
+ *
+ * TIME GROUPS are Today / Yesterday / Earlier this week / Older, each newest
+ * first. CONVERSATION GROUPS are one per session, sorted by each group's newest
+ * item (design § 3), carrying the session id for "Dismiss all n".
+ */
+export function groupItems(
+	items: readonly DesktopNotificationItem[],
+	waiting: readonly DesktopNotificationItem[],
+	grouping: NotificationGrouping,
+	nowMs: number,
+): NotificationGroup[] {
+	const waitingIds = new Set(waiting.map((item) => item.id));
+	const rest = items
+		.filter((item) => !waitingIds.has(item.id) && !isLiveAsk(item))
+		.sort(newestFirst);
+	const pinned = [
+		...waiting,
+		...items.filter((item) => !waitingIds.has(item.id) && isLiveAsk(item)),
+	].sort(newestFirst);
+	const groups: NotificationGroup[] = [];
+	if (pinned.length > 0)
+		groups.push({ kind: "waiting", key: "waiting", items: pinned });
+	if (grouping === "time") {
+		const order: TimeBucket[] = ["today", "yesterday", "week", "older"];
+		const buckets = new Map<TimeBucket, DesktopNotificationItem[]>();
+		for (const item of rest) {
+			const bucket = timeBucketOf(item.updated_at, nowMs);
+			const list = buckets.get(bucket) ?? [];
+			list.push(item);
+			buckets.set(bucket, list);
+		}
+		for (const bucket of order) {
+			const list = buckets.get(bucket);
+			if (list && list.length > 0)
+				groups.push({ kind: "time", key: bucket, items: list });
+		}
+		return groups;
+	}
+	const bySession = new Map<string, DesktopNotificationItem[]>();
+	for (const item of rest) {
+		const list = bySession.get(item.session.id) ?? [];
+		list.push(item);
+		bySession.set(item.session.id, list);
+	}
+	const sessions = [...bySession.entries()].sort(([, a], [, b]) =>
+		newestFirst(a[0], b[0]),
+	);
+	for (const [sessionId, list] of sessions) {
+		groups.push({
+			kind: "conversation",
+			key: `session:${sessionId}`,
+			sessionId,
+			title: list[0].session.title,
+			items: list,
+		});
+	}
+	return groups;
+}
+
+/** The flat row order the keyboard walks: groups in order, rows in order. */
+export const rowOrder = (
+	groups: readonly NotificationGroup[],
+): DesktopNotificationItem[] => groups.flatMap((group) => group.items);
+
+/**
+ * What a bulk dismiss over a selection does (design § 6, contract § 2.3).
+ * Live asks are SKIPPED, and the count of them is what the selection bar's
+ * "N asks stay until they're answered" note states before the press; the
+ * server's own `skipped` list is what the receipt states after it.
+ */
+export function dismissPlan(selected: readonly DesktopNotificationItem[]): {
+	dismissable: DesktopNotificationItem[];
+	asksStaying: number;
+} {
+	const dismissable = selected.filter((item) => !isLiveAsk(item));
+	return { dismissable, asksStaying: selected.length - dismissable.length };
+}
+
+/**
+ * The items a "Dismiss all from this conversation" names for its confirm copy:
+ * every non-ask row of that session in the loaded set. The WRITE itself is
+ * `sessionId` + `throughSeq` (the server is the authority on what is in it);
+ * this count is only what the confirmation promises.
+ */
+/**
+ * Whether the reel should pay for a COMPLETE per-conversation enumeration.
+ *
+ * WHY THIS EXISTS (QA round 3, Q-lie): the detail's "Dismiss all N" and the
+ * confirm dialog behind it must name the same number as the write will cover, and
+ * that write is bounded by `through_seq` over the whole conversation, not by the
+ * page on screen. The count was only enabled while the reel was grouped by
+ * conversation, so under Time grouping - the default - the detail fell back to
+ * counting the LOADED page: QA measured the button saying 93 then 92 while its own
+ * confirm enumerated 130 then 131. The write was right; only the advertised number
+ * was wrong, which is the worse half to get wrong because it is the number the
+ * operator agrees to.
+ *
+ * The enumeration is a bounded walk, so it is bought only when something actually
+ * prints its result: the conversation-grouped header, or an open detail.
+ */
+/**
+ * The boundary a printed per-conversation count must be counted under.
+ *
+ * THE LIVE ONE, ALWAYS (round-3 review R1, kept by round 4). The confirm walks the
+ * session with `observeNotificationScope` bounded by the high-water mark it reads
+ * AT THE CLICK, and the store re-stamps a row's seq on every read or dismiss - so a
+ * count taken at any earlier mark describes a different set of rows than the dialog
+ * it opens. It is stated here, as a function the reader must call, so the rule has a
+ * name and a test rather than being an inline argument somebody can quietly freeze.
+ */
+/**
+ * How many pages of the reel the client keeps in memory, and WHICH ones.
+ *
+ * PAGE ONE IS NEVER THE ONE TO GO (code round 4, R4-4). The reel pages in cursor
+ * order - page one is the newest rows, and it is the only page carrying `waiting`,
+ * the counts and the high-water mark. `useInfiniteQuery`'s own `maxPages` evicts
+ * from the FRONT, so with a cap of five a deep scroll silently dropped page one:
+ * the waiting asks vanished, a late arrival stayed hidden (the store at 701 while
+ * the reel still showed 600), and Mark all read could not see unread asks. So the
+ * library cap is gone and this policy bounds the window from the TAIL instead -
+ * the oldest pages go, and the head is always kept.
+ */
+/**
+ * Apply this window's CONFIRMED reads to rows the list is only now supplying.
+ *
+ * WHY THIS IS IN THE MODEL (code audit DC7, and the test round 4 asked for). The
+ * reel keeps a map of read tokens it has a receipt for, because a mark-all or an
+ * Undo can confirm ids that were not on the loaded page; a synthetic row cannot be
+ * drawn from a token (no title, time or conversation), so the token waits and is
+ * merged when the real row arrives. The rule is small and load-bearing - a confirmed
+ * read must not flip back to unread, and a NEWER revision the operator never saw must
+ * not be forced read - so it is a pure function with its own test rather than a line
+ * buried in a component.
+ */
+export const mergeConfirmedReads = (
+	items: readonly DesktopNotificationItem[],
+	confirmed: ReadonlyMap<string, number>,
+): DesktopNotificationItem[] =>
+	items.map((item) => {
+		const revision = confirmed.get(item.id);
+		return revision !== undefined && revision >= item.revision
+			? { ...item, read: true, read_via: "explicit" as const }
+			: item;
+	});
+
+/*
+ * NO EVICTION, NO SLIDING WINDOW (code round 7 decision).
+ *
+ * Eviction answered DC5, a MINOR memory concern, and every major since round 4 came
+ * from it: maxPages -> tail trim -> slide -> facts split -> a window that snapped back
+ * to the top. The memory it saved is small - ~35 KB per 100-row page, so 5,000 loaded
+ * rows is about 1.75 MB - and the real cost (refetching every loaded page on each
+ * background refresh) is gone now that page one's facts live in their own query. The
+ * window therefore keeps everything it fetched: no cap, no trim, no slide, and nothing
+ * falls out of the list while the operator is reading it.
+ */
+
+/**
+ * Which drawn rows a successful write removes (QA round 3, Q12): the ids the server
+ * confirmed that this window is actually drawing.
+ */
+export const coveredByWrite = (
+	drawnIds: ReadonlySet<string>,
+	changed: readonly string[],
+): Set<string> => new Set(changed.filter((id) => drawnIds.has(id)));
+
+/**
+ * What the reel draws, given page one's facts and the scrolled window (round 7, Q13).
+ *
+ * At the top the facts' rows are the head of the list, so a late arrival is simply
+ * drawn. Scrolled away from the top they are NOT inserted above the viewport (that
+ * would shift what the operator is reading); `newerCount` says how many there are and
+ * the pill offers them. It counts only ids the window does not hold, so it cannot grow
+ * with rows that were already there.
+ */
+/** Read/dismiss mutations advance seq without advancing the content revision. */
+export const isNewerNotification = (
+	candidate: DesktopNotificationItem,
+	previous: DesktopNotificationItem,
+): boolean =>
+	candidate.revision > previous.revision ||
+	(candidate.revision === previous.revision && candidate.seq >= previous.seq);
+
+export function mergeWindowForReel(
+	facts: DesktopNotificationsList | undefined,
+	windowAnswer: DesktopNotificationsList | undefined,
+	atTop: boolean,
+):
+	| (DesktopNotificationsList & {
+			newerCount: number;
+			/** Display membership only; waiting/observed retain the authoritative write scope. */
+			reelWaiting?: DesktopNotificationItem[];
+	  })
+	| undefined {
+	if (!windowAnswer) return facts ? { ...facts, newerCount: 0 } : undefined;
+	if (!facts) return { ...windowAnswer, newerCount: 0 };
+	const known = new Set(
+		[...windowAnswer.items, ...(windowAnswer.waiting ?? [])].map(
+			(item) => item.id,
+		),
+	);
+	const newerCount = [...facts.items, ...(facts.waiting ?? [])].filter(
+		(item) => !known.has(item.id),
+	).length;
+	const revisions = new Map(facts.items.map((item) => [item.id, item]));
+	if (!atTop)
+		/*
+		 * THE WINDOW KEEPS ITS ROWS; THE FACTS KEEP THE FACTS (code round 8, R8-3). Deep
+		 * scrolling used to take the ugly half of both: the rows came from the window AND
+		 * `waiting`, the counts and the boundary came from the window's stale page one, so
+		 * Mark all read missed an ask that had arrived while the operator was reading.
+		 */
+		return {
+			...facts,
+			/* Freeze membership, not facts: an existing ID's revision is not news.
+			 * Keeping positions here lets the viewport preserve its visible anchor
+			 * even when that row's content or read state changes underneath it. */
+			items: windowAnswer.items.map((item) => {
+				const next = revisions.get(item.id);
+				return next && isNewerNotification(next, item) ? next : item;
+			}),
+			/* New asks must obey the same arrival door as updates. Settled asks
+			 * leave the authoritative waiting set; never resurrect them locally. */
+			reelWaiting: (facts.waiting ?? []).filter((item) => known.has(item.id)),
+			next_cursor: windowAnswer.next_cursor,
+			newerCount,
+		};
+	const items = new Map<string, DesktopNotificationItem>();
+	for (const item of windowAnswer.items) items.set(item.id, item);
+	for (const item of facts.items) {
+		const previous = items.get(item.id);
+		if (!previous || isNewerNotification(item, previous))
+			items.set(item.id, item);
+	}
+	return {
+		...facts,
+		/* Newest first: the facts' late arrivals belong at the head of the reel. */
+		items: [...items.values()].sort((left, right) => right.seq - left.seq),
+		next_cursor: windowAnswer.next_cursor,
+		newerCount: 0,
+	};
+}
+
+/**
+ * Keep the rows the operator SAW at the top in the window (design round 5, D5 / Q15).
+ *
+ * At the top, `mergeWindowForReel` draws the facts' late arrivals at the head, but only
+ * in the merged answer: the cached window never learnt them. Scrolling away then
+ * switched to window rows, the seen arrival left the list, and the pill counted it as
+ * "1 new" - history relabelled as news. Writing the drawn arrivals into the window's
+ * first page while at the top makes "newer" mean "not yet presented".
+ *
+ * Returns `null` when there is nothing to add, so a caller can skip the cache write
+ * (and the re-render it would cause) on every frame that changes nothing.
+ *
+ * Returns `"reset"` when the facts page is NOT CONTIGUOUS with the window (code round
+ * 10, R10-1): the facts carry only the newest page, so a burst larger than that page
+ * leaves no facts row the window already holds and more rows behind it
+ * (`factsHasMore`). Prepending would strand the rows between the facts' tail and the
+ * window's old head - never drawn, never counted. The caller resets the window to page
+ * one instead, which reads every row in order. A short facts page with nothing known
+ * is still contiguous (the window's head is right after it), so it prepends.
+ */
+export function prependSeenToWindow<
+	Page extends { items: DesktopNotificationItem[] },
+>(
+	pages: readonly Page[],
+	factsItems: readonly DesktopNotificationItem[],
+	factsHasMore = false,
+): Page[] | "reset" | null {
+	const [first, ...rest] = pages;
+	if (!first) return null;
+	const known = new Set(pages.flatMap((page) => page.items.map((i) => i.id)));
+	const unseen = factsItems.filter((item) => !known.has(item.id));
+	if (unseen.length === 0) return null;
+	if (factsHasMore && unseen.length === factsItems.length) return "reset";
+	/* Newest first, the window's own order, so the head stays the head. */
+	const head = [...unseen].sort((left, right) => right.seq - left.seq);
+	return [{ ...first, items: [...head, ...first.items] }, ...rest];
+}
+
+/**
+ * Reconcile the cached window with a page-one FACTS answer (PR #1900 QA round 1, Q1).
+ *
+ * WHY. The window paints from cache and is never re-read on mount, focus or a feed
+ * frame (`useNotificationsList`): only the facts are. `mergeWindowForReel` keeps every
+ * row the window holds, so a row another surface dismissed (core PATCH dismiss → 200)
+ * stayed drawn as Unread - through remounts, a backend restart and the 30 s backstop -
+ * because nothing ever told the window it was gone. Reads from elsewhere did reconcile
+ * (the facts row, newer `seq`, wins the merge); a dismissal is an ABSENCE, which the
+ * merge cannot see.
+ *
+ * WHAT COUNTS AS GONE. Core lists newest content first (`ORDER BY updated_at DESC, id
+ * DESC`, notifications/store.py `list_items`), so page one covers every row whose
+ * (updated_at, id) sorts at or above its last row - or every row at all when it has no
+ * `next_cursor`. A window row inside that range, at a `seq` the facts already cover
+ * (`seq <= high_water`), and absent from both `items` and `waiting`, is a row the server
+ * no longer lists under this state:
+ *  - `all`: it was dismissed → flip `dismissed` (the reel filters it out, exactly as a
+ *    local dismiss does; never deleted, so the window's paging is untouched). Its `seq`
+ *    is raised to the facts' `high_water` so an older cached copy (the write ledger's
+ *    base, an older page) can never win `isNewerNotification` and resurrect it.
+ *  - `unread`: it was read OR dismissed elsewhere, and this answer cannot say which.
+ *    It is flipped to read: it no longer counts as unread (the chip and the bold row
+ *    agree with core), and it does not vanish from under the reader - the same rule the
+ *    operator's own reads follow in the Unread view.
+ *
+ * WHAT IS LEFT ALONE.
+ *  - Rows the window already holds as dismissed (the operator's own dismiss: Undo is a
+ *    flag flip back and must still find them) and, in `unread`, rows already read.
+ *  - `protectedIds`: rows with a local write the facts do not yet reflect (pending, or
+ *    confirmed above the facts' `high_water`). A facts answer read before an Undo
+ *    landed must not re-dismiss what Undo restored.
+ *  - Rows below the covered range: the facts say nothing about them.
+ *
+ * Returns `null` when nothing changes, so the caller skips the cache write.
+ */
+export function reconcileWindowWithFacts<
+	Page extends { items: DesktopNotificationItem[] },
+>(
+	pages: readonly Page[],
+	facts: Pick<
+		DesktopNotificationsList,
+		"items" | "waiting" | "next_cursor" | "high_water"
+	>,
+	state: "unread" | "all",
+	protectedIds: ReadonlySet<string> = new Set(),
+): Page[] | null {
+	const listed = new Set(
+		[...facts.items, ...(facts.waiting ?? [])].map((item) => item.id),
+	);
+	const boundary = facts.next_cursor ? facts.items.at(-1) : undefined;
+	/* A truncated page with no rows covers nothing we can reason about. */
+	if (facts.next_cursor && !boundary) return null;
+	const covered = (item: DesktopNotificationItem) =>
+		!boundary ||
+		item.updated_at > boundary.updated_at ||
+		(item.updated_at === boundary.updated_at && item.id >= boundary.id);
+	let changed = false;
+	const next = pages.map((page) => {
+		let pageChanged = false;
+		const items = page.items.map((item) => {
+			if (
+				listed.has(item.id) ||
+				protectedIds.has(item.id) ||
+				item.dismissed ||
+				(state === "unread" && item.read) ||
+				item.seq > facts.high_water ||
+				!covered(item)
+			)
+				return item;
+			pageChanged = true;
+			return state === "all"
+				? { ...item, dismissed: true, seq: facts.high_water }
+				: { ...item, read: true };
+		});
+		if (!pageChanged) return page;
+		changed = true;
+		return { ...page, items };
+	});
+	return changed ? next : null;
+}
+
+/**
+ * Apply a CONFIRMED write to the cached window rows (round 7, R7-1).
+ *
+ * The window is no longer invalidated by a write: that refetched every loaded page and,
+ * before the facts split, replaced a deep scroll. The receipt names the ids the server
+ * actually changed, so the cache is edited in place. Dismiss flips `dismissed` rather
+ * than deleting the row, which is also what makes Undo a flag flip with no refetch.
+ */
+export function applyConfirmedToWindow<
+	Page extends { items: DesktopNotificationItem[] },
+>(
+	pages: readonly Page[],
+	changed: readonly string[],
+	verb: NotificationVerb,
+): Page[] {
+	const ids = new Set(changed);
+	const flipped = (item: DesktopNotificationItem): DesktopNotificationItem => {
+		if (!ids.has(item.id)) return item;
+		if (verb === "read") return { ...item, read: true, read_via: "explicit" };
+		if (verb === "unread") return { ...item, read: false, read_via: null };
+		if (verb === "dismiss") return { ...item, dismissed: true };
+		return { ...item, dismissed: false };
+	};
+	return pages.map((page) => ({ ...page, items: page.items.map(flipped) }));
+}
+
+/**
+ * Apply a write to a page-one FACTS answer: the rows, and the unread figure by
+ * the flips' delta. Facts are a plain list answer, not an infinite query, so
+ * they need their own edit (`applyConfirmedToWindow` takes pages).
+ */
+export function editFactsForWrite(
+	data: DesktopNotificationsList | undefined,
+	ids: readonly string[],
+	verb: NotificationVerb,
+	unreadDelta = 0,
+): DesktopNotificationsList | undefined {
+	if (!data || !Array.isArray(data.items)) return data;
+	const [page] = applyConfirmedToWindow([data], ids, verb);
+	return {
+		...page,
+		unread_count: Math.max(0, data.unread_count + unreadDelta),
+	};
+}
+
+export const scopeCountBoundary = (
+	highWaterMark: number | undefined,
+): number | undefined => highWaterMark;
+
+/**
+ * What the scope count is keyed by, so it re-walks only when THIS conversation
+ * changed (code round 5, R5-2).
+ *
+ * The walk is bought under the live high-water mark because the confirm enumerates
+ * under it (R4-1). Keying the query on that mark made every frame - and every mark
+ * anywhere in the store - re-walk: 3 marks over 900 rows cost 30 page reads. A mark
+ * in another conversation cannot change this conversation's answer, so the key is
+ * this conversation's own rows: their ids and revisions, which move only when one
+ * of them is read, dismissed or updated.
+ */
+export const scopeCountSignature = (
+	items: readonly DesktopNotificationItem[],
+	sessionId: string,
+): string =>
+	items
+		/* An empty scope means every visible conversation: the conversation-grouped
+		   header prints one number over all of them, so any of them changing re-walks. */
+		.filter((item) => !sessionId || item.session.id === sessionId)
+		/* Rows kept on screen after a read are drawn rows too: their state moved even
+		   though the server's list no longer returns them. */
+		.map(
+			(item) =>
+				`${item.id}@${item.revision}:${item.read ? 1 : 0}${item.dismissed ? "d" : ""}`,
+		)
+		.sort()
+		.join(",");
+
+/**
+ * The conversation's own FACTS, folded into the printed count's key (round 7, R7-2).
+ *
+ * `scopeCountSignature` sees only the rows this window has loaded, so a conversation
+ * whose page has not arrived yet could not move the number: the header showed 9 while
+ * its confirm enumerated 10. The session facts query is that conversation's server-side
+ * answer - its boundary, its pending asks and its unread count - so a late arrival in a
+ * conversation we have not paged to is a change in this string.
+ */
+export const conversationFactsKey = (
+	facts:
+		| {
+				high_water?: number;
+				waiting?: readonly unknown[];
+				unread_count?: number;
+		  }
+		| undefined,
+): string =>
+	facts
+		? `${facts.high_water ?? 0}:${facts.waiting?.length ?? 0}:${facts.unread_count ?? 0}`
+		: "";
+
+export const sessionScopeCountsEnabled = (
+	grouping: NotificationGrouping,
+	detailOpen: boolean,
+): boolean => detailOpen || grouping === "conversation";
+
+export const sessionDismissCount = (
+	items: readonly DesktopNotificationItem[],
+	sessionId: string,
+): number =>
+	items.filter(
+		(item) =>
+			item.session.id === sessionId && !isLiveAsk(item) && !item.dismissed,
+	).length;
+
+/**
+ * Extend a selection to the range between `anchorId` and `id` in row order
+ * (shift-click, Shift+arrow). Anchor missing from the order selects just `id`.
+ */
+export function rangeSelect(
+	order: readonly DesktopNotificationItem[],
+	anchorId: string | null,
+	id: string,
+	current: ReadonlySet<string>,
+): Set<string> {
+	const next = new Set(current);
+	const to = order.findIndex((item) => item.id === id);
+	const from = anchorId ? order.findIndex((item) => item.id === anchorId) : -1;
+	if (to < 0) return next;
+	if (from < 0) {
+		next.add(id);
+		return next;
+	}
+	const [lo, hi] = from < to ? [from, to] : [to, from];
+	for (let index = lo; index <= hi; index += 1) next.add(order[index].id);
+	return next;
+}
+
+/**
+ * The sidebar badge's number (contract § 8.1: `unread_count + waiting_count`).
+ * Absent count reads as zero: zero draws no badge, which is the honest render
+ * of "nothing known to be waiting".
+ */
+export const badgeCountOf = (
+	count: DesktopNotificationsCount | null | undefined,
+): number =>
+	count
+		? Math.max(0, count.unread_count) + Math.max(0, count.waiting_unread_count)
+		: 0;
+
+/** Which provenance mark a READ row draws (design § 17.4). */
+export type SeenMark = "live" | "in_view" | null;
+
+export const seenMarkOf = (item: DesktopNotificationItem): SeenMark => {
+	if (!item.read) return null;
+	if (item.read_via === "watching") return "live";
+	if (item.read_via === "in_view") return "in_view";
+	return null;
+};
+
+/** The relative-time spelling of a row's time column (design § 4). */
+export type RowTime =
+	| { kind: "now" }
+	| { kind: "minutes"; count: number }
+	| { kind: "hours"; count: number }
+	| { kind: "clock"; at: number }
+	| { kind: "date"; at: number };
+
+export function rowTimeOf(ms: number, nowMs: number): RowTime {
+	const delta = Math.max(0, nowMs - ms);
+	if (delta < 60_000) return { kind: "now" };
+	const bucket = timeBucketOf(ms, nowMs);
+	if (bucket === "today") {
+		if (delta < 3_600_000)
+			return { kind: "minutes", count: Math.floor(delta / 60_000) };
+		return { kind: "hours", count: Math.floor(delta / 3_600_000) };
+	}
+	if (bucket === "yesterday") return { kind: "clock", at: ms };
+	return { kind: "date", at: ms };
+}
+
+/**
+ * The "N new" pill (design § 5): ids in `next` that were not in `seen` and sort
+ * above the reader's scroll position. A pure set difference; the page decides
+ * whether the reader is scrolled.
+ */
+export const arrivals = (
+	seen: ReadonlySet<string>,
+	next: readonly DesktopNotificationItem[],
+): string[] => next.filter((item) => !seen.has(item.id)).map((item) => item.id);

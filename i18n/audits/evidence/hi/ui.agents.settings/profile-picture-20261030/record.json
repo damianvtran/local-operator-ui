@@ -1,0 +1,68 @@
+{
+  "audit_id": "profile-picture-20261030",
+  "date": "2026-10-30",
+  "locale": "hi",
+  "namespace": "ui.agents.settings",
+  "source_commit": "26c1dde39f4595a5de7bc22dad1dca00c45582b9",
+  "translator": {
+    "agent": "coder",
+    "model": "radient/auto",
+    "date": "2026-10-30",
+    "note": "per translator handoff; the ledger row keeps its earlier translator entry (assembler keeps a row's translator on re-bind)"
+  },
+  "auditors": [
+    {
+      "agent": "reviewer",
+      "model": "anthropic/claude-sonnet-5-5",
+      "date": "2026-10-30",
+      "session": "1f5234f0f81c",
+      "result": "clean",
+      "instance": "1f5234f0f81c-hi",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "receipt": "i18n/receipts/1f5234f0f81c-hi.json",
+      "receipt_sha256": "f6d24666fcae44cd17dbdd2a2301babf38d86b6ecb20e8be6160c1a54a779234",
+      "scope": "ui.agents.settings: the 7 profile-picture keys added in 26c1dde39f (delta audit); other 63 keys byte-identical to parent. Whole-file hashes bound.",
+      "note": "Independent delta audit of 7 keys; unchanged 63 keys byte-identical to parent. No rendered-fit, native-reader or screenshot claim."
+    }
+  ],
+  "files": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.agents.settings.json",
+      "sha256": "e509f98c52eb5da5359599e00a8430c41cb6aef36830aea5aa4f0feeb441c8c8"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/hi/ui.agents.settings.json",
+      "sha256": "065ed133b9693685d7476b2e747f27dd1a8f089b6d33b9508afbf71fe4830370"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.agents.settings.context.json",
+      "sha256": "e91e7a0d832b02e0c8b1c58f2f18f67ec93da82dd2627d2b05d95413a5d65041"
+    }
+  },
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/hi.md",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    }
+  },
+  "independence": "Auditor did not translate or edit any catalogue, context or key file; formed its own read before opening the translator handoff.",
+  "limitations": [
+    "Browser unavailable to this auditor; no rendered-fit, screenshots, pseudo-localization or activation evidence claimed.",
+    "Agent semantic read; no native-speaker review."
+  ],
+  "retained_rounds": [
+    {
+      "path": "i18n/receipts/1f5234f0f81c-hi.json",
+      "sha256": "f6d24666fcae44cd17dbdd2a2301babf38d86b6ecb20e8be6160c1a54a779234"
+    }
+  ]
+}

@@ -10,11 +10,18 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
 import { displayChord } from "@shared/keymap/keymap-chord";
 import type { ActionId } from "@shared/keymap/keymap-registry";
 import { cn } from "@shared/lib/utils";
+import { useCanvasStore } from "@shared/store/canvas-store";
 import {
 	resolveDrawnRightSlotPane,
 	useUiPreferencesStore,
 } from "@shared/store/ui-preferences-store";
-import { FileText, GitPullRequest, Globe, SquareTerminal } from "lucide-react";
+import {
+	FileText,
+	FolderKanban,
+	GitPullRequest,
+	Globe,
+	SquareTerminal,
+} from "lucide-react";
 import {
 	type FC,
 	type KeyboardEvent as ReactKeyboardEvent,
@@ -38,6 +45,7 @@ import {
 	canvasRailLabels,
 	codeRailLabels,
 	consoleRailLabels,
+	projectsRailLabels,
 } from "./panel-rail-model";
 
 export type PanelRailProps = {
@@ -67,6 +75,12 @@ export type PanelRailProps = {
 	 */
 	askCount: number;
 	/**
+	 * This conversation's unread notification updates (decisions D9): added to
+	 * the badge and named separately in the accessible name. 0 when the backend
+	 * does not serve the reel, which leaves the door exactly as it was.
+	 */
+	askUpdates?: number;
+	/**
 	 * Which queue the item's press opens - this conversation's or the fleet's -
 	 * riding the same `setAskDrawerOpen(open, scope)` seam the drawer reads.
 	 */
@@ -74,6 +88,16 @@ export type PanelRailProps = {
 	/** Console completions not yet looked at, and whether they still pulse. */
 	consoleUnseenCount: number;
 	consoleUnseenPulsing: boolean;
+	/**
+	 * Running console surfaces in THIS conversation, as the pane published them.
+	 *
+	 * THE ACTIVE TREATMENT FOLLOWS LIVENESS, not the pane's flag (operator report,
+	 * 2026-10-21: "0 live" still painted the console item as the active one). The
+	 * item is lit only when the slot holds the console AND a process is running; an
+	 * open pane showing restored history is a reader, not an active terminal, and
+	 * pressing the unlit item asks for a live one (`togglePanelRailItem`).
+	 */
+	consoleLiveCount: number;
 	/** Files the conversation has been seen to mention (the canvas item's dot). */
 	fileCount: number;
 	/** Rows in the ledger's Opened group (the name and tooltip clauses, §8). */
@@ -87,12 +111,25 @@ export type PanelRailProps = {
 	 * (design round 1, D5 / UX round 1, U6). Null when nothing needs attention.
 	 */
 	codeAttention: string | null;
+	/**
+	 * The canvas store's key for this conversation (the chat's `agentId`), or
+	 * null where there is no canvas (a story without one). The projects door
+	 * reads the canvas's view through it; see `PanelRailActionContext`.
+	 */
+	canvasConversationId?: string | null;
+	/**
+	 * How many projects this conversation is linked to (0 on a draft, before
+	 * the read, or on a backend without `projects_by_session`). A TOTAL, so it
+	 * rides the names and a quiet dot, never the accent count badge
+	 * (AGENTS.md: attention counts use the badge, totals use the subtle mark).
+	 */
+	linkedProjectCount?: number;
 };
 
 const ROW_KEYS = new Set(["ArrowUp", "ArrowDown", "Home", "End"]);
 
 /**
- * THE PANEL RAIL (#872, #896, #927): the six doors to the window's right slot, as one
+ * THE PANEL RAIL (#872, #896, #927): the seven doors to the window's right slot, as one
  * vertical column at the window's trailing edge.
  *
  * WHAT IT REPLACES. The Run details, Browser, Console and Canvas triggers lived in
@@ -119,7 +156,7 @@ const ROW_KEYS = new Set(["ArrowUp", "ArrowDown", "Home", "End"]);
  * borrowed pane back (#1079, the one sibling item that used to swap instead of
  * close).
  *
- * ALL SIX DOORS ARE ALWAYS PRESENT, AND A PANE THAT CANNOT ACT SAYS WHY (the
+ * ALL SEVEN DOORS ARE ALWAYS PRESENT, AND A PANE THAT CANNOT ACT SAYS WHY (the
  * always-visible rail, D1; it retires #872/#896/#927's "absent, not disabled"). A
  * door that came and went with the conversation's state flickered on every
  * conversation switch and every reconnect gap, and a user could not learn where
@@ -153,16 +190,31 @@ export const PanelRail: FC<PanelRailProps> = ({
 	readerChildId,
 	browserAttentionCount,
 	askCount,
+	askUpdates = 0,
 	askScope,
 	consoleUnseenCount,
 	consoleUnseenPulsing,
+	consoleLiveCount,
 	fileCount,
 	codeOpened,
 	codeMentioned,
 	codeAttention,
+	canvasConversationId = null,
+	linkedProjectCount = 0,
 }) => {
 	useI18nLocale();
 	const drawn = useUiPreferencesStore(resolveDrawnRightSlotPane);
+	/*
+	 * THE CANVAS SLOT HAS TWO DOORS since the projects item (operator,
+	 * 2026-11-15), and exactly one is lit: Projects while the canvas is drawn on
+	 * its Projects view, Canvas for every other view. Read here because "which
+	 * view" is the canvas store's fact, not the slot's.
+	 */
+	const canvasOnProjects = useCanvasStore((state) =>
+		canvasConversationId
+			? state.conversations[canvasConversationId]?.viewMode === "projects"
+			: false,
+	);
 	/*
 	 * THE ASKS FLAGS ARE READ HERE because the item's lit state and tooltip verb
 	 * are the two readings of them (`askRailLabels` below); the other five items
@@ -184,7 +236,11 @@ export const PanelRail: FC<PanelRailProps> = ({
 		displayChord(actionId, bindings, platform);
 	/* The context the shared toggles read: the conversation the console opens in,
 	   and the queue this route's ask door opens. */
-	const actionContext: PanelRailActionContext = { sessionId, askScope };
+	const actionContext: PanelRailActionContext = {
+		sessionId,
+		askScope,
+		canvasConversationId,
+	};
 
 	const rootRef = useRef<HTMLDivElement | null>(null);
 	const [present, setPresent] = useState<ReadonlySet<string>>(
@@ -304,17 +360,25 @@ export const PanelRail: FC<PanelRailProps> = ({
 		askScope,
 		askCount,
 		capFor("panel.ask"),
+		askUpdates,
 	);
+	const consoleActive = drawn === "console" && consoleLiveCount > 0;
+	/*
+	 * THE LABEL FOLLOWS THE PRESS, NOT THE LIGHT (m-5). The item toggles the pane
+	 * whenever it is drawn, so an unlit history/draft pane still says "Close console"
+	 * and its tooltip matches the act. `consoleActive` stays the paint and
+	 * `aria-pressed` fact; conflating them made the label promise an open while the
+	 * press closed.
+	 */
 	const terminal = consoleRailLabels(
 		drawn === "console",
 		consoleUnseenCount,
 		capFor("panel.console"),
 	);
-	const canvas = canvasRailLabels(
-		drawn === "canvas",
-		fileCount,
-		capFor("panel.canvas"),
-	);
+	const canvasLit = drawn === "canvas" && !canvasOnProjects;
+	const projectsLit = drawn === "canvas" && canvasOnProjects;
+	const canvas = canvasRailLabels(canvasLit, fileCount, capFor("panel.canvas"));
+	const projects = projectsRailLabels(projectsLit, linkedProjectCount);
 	const code = codeRailLabels(
 		drawn === "code",
 		codeOpened,
@@ -337,22 +401,33 @@ export const PanelRail: FC<PanelRailProps> = ({
 				className={cn(
 					"relative flex h-full w-full flex-col items-center gap-1 bg-surface",
 					/*
-					 * NO RULE ON THE LEADING EDGE (the operator's ask: the rail should be
-					 * borderless "like the left sidebar"). The boundary is the TONE STEP
-					 * alone - `surface` against the slot's `elevated` (a pane open) or the
-					 * conversation's `canvas` (no pane) - because that is how the sidebar's
-					 * own edge is carried, and the rail follows it. That is a choice, not a
-					 * proof of sufficiency: the ladder asserts these pairs at 2.0, the floor
-					 * for small FIELDS, while `REGION_SEPARATION_FLOOR` (4.0) in
-					 * `scripts/contrast-contract.mjs` is the stronger bar it sets for two
-					 * full-height planes with no line between them. The measured steps over
-					 * the 59 palettes are min 2.05 (`sage`, pane closed) and 2.02 (`arcade`,
-					 * pane open); `localOperatorDark`/`Light` read 2.77 / 3.29 and 2.32 /
-					 * 2.50 (closed / open). Its ABSENCE is pinned by `scripts/pane-slot-ground.test.mjs`, because
-					 * the `border-l border-hairline` this replaced drew a line from y=32
-					 * under the lane downwards - the "doesn't go all the way up" seam - and
-					 * a pin is the only thing that keeps a second way of drawing the edge
-					 * from quietly returning.
+					 * ONE SEAM ON THE RAIL'S EDGE, AND IT IS NOT ON THIS ELEMENT (B1). The
+					 * boundary is the TONE STEP - `surface` against the slot's `elevated` (a
+					 * pane open) or the conversation's `canvas` (no pane) - plus one 1px
+					 * `hairline` at 75% (`panel-edge.tsx`, 2026-10-30). The step alone is a
+					 * field-floor separation (min 2.05 `sage` with the pane closed, 2.02
+					 * `arcade` with it open; 2.77/3.29 and 2.32/2.50 for
+					 * `localOperatorDark`/`Light`), and the operator's 2026-10-30 report is
+					 * that it does not read in light themes.
+					 *
+					 * THE SEAM IS MOUNTED BY THE SHELL ON THIS RAIL'S HOST, NOT HERE. This
+					 * root is the host's `panel-top-pad` CONTENT box, so it starts at the pad:
+					 * an `inset-y-0` child of it began the seam at y=32 on macOS - the exact
+					 * mid-air line this change exists to remove (agent review round 1, B1).
+					 * `chat-layout.tsx`'s `data-panel-rail-host` is the full-height box that
+					 * paints the rail's ground, and it carries the `relative` and the
+					 * `<PanelEdge side="start" />`; `panel-rail-frame.tsx` mirrors that for
+					 * the story harnesses.
+					 *
+					 * IT IS NOT A BORDER ON THIS ROOT, WHICH IS WHY THIS ROOT'S CLASS LIST
+					 * STILL CARRIES NO RULE. The `border-l border-hairline` that used to sit
+					 * here drew from y=32 down - the "doesn't go all the way up" seam - and a
+					 * border would also take a pixel from a 44px column. `PanelEdge` states
+					 * the mechanism and its measurements; `panel-edge.tsx` also records why
+					 * the rail's earlier "borderless" round was the right call for the border
+					 * and the wrong one as a permanent rule. `scripts/pane-slot-ground.test.mjs`
+					 * pins both halves: no rule utility on this root, and the seam element
+					 * mounted on the host.
 					 */
 					/*
 					 * THE FIRST ITEM'S TOP IS THE CAPTION INSET PLUS 4px, set as PADDING (design
@@ -425,7 +500,7 @@ export const PanelRail: FC<PanelRailProps> = ({
 					data-ask-scope={askScope}
 				>
 					<AsksScopeIcon scope={askScope} aria-hidden={true} />
-					{askCount > 0 && (
+					{askCount + askUpdates > 0 && (
 						/*
 						 * THE COUNT IN THE RAIL'S OWN REGISTER (#896, the issue's "styled like
 						 * the Browser and Console counts already on the rail"). The browser
@@ -437,7 +512,7 @@ export const PanelRail: FC<PanelRailProps> = ({
 						 * match it - if the design round prefers the quiet register, this
 						 * block is where the change lands.
 						 */
-						<span className="pointer-events-none absolute -top-0.5 -right-0.5 flex">
+						<span className="pointer-events-none absolute -top-0.5 -end-0.5 flex">
 							<Badge
 								variant="attention"
 								shape="pill"
@@ -445,7 +520,7 @@ export const PanelRail: FC<PanelRailProps> = ({
 								className="h-3.5 min-w-3.5 px-0.75 text-meta-sm leading-none ring-2 ring-surface"
 								data-tour-tag="ask-pane-badge"
 							>
-								{countLabel(askCount, 9)}
+								{countLabel(askCount + askUpdates, 9)}
 							</Badge>
 						</span>
 					)}
@@ -477,7 +552,7 @@ export const PanelRail: FC<PanelRailProps> = ({
 						 * glyph's own cap ("9+") is unchanged. `ring-surface` because the ring
 						 * names the ground BEHIND the badge, and that is the rail's.
 						 */
-						<span className="pointer-events-none absolute -top-0.5 -right-0.5 flex">
+						<span className="pointer-events-none absolute -top-0.5 -end-0.5 flex">
 							<Badge
 								variant="attention"
 								shape="pill"
@@ -494,7 +569,7 @@ export const PanelRail: FC<PanelRailProps> = ({
 					id="console"
 					label={terminal.tooltip}
 					ariaLabel={terminal.aria}
-					pressed={drawn === "console"}
+					pressed={consoleActive}
 					onClick={() => togglePanelRailItem("console", actionContext)}
 					data-tour-tag="console-pane-trigger"
 				>
@@ -503,7 +578,7 @@ export const PanelRail: FC<PanelRailProps> = ({
 						<span
 							aria-hidden="true"
 							className={cn(
-								"absolute top-1 right-1 size-1.5 rounded-full",
+								"absolute top-1 end-1 size-1.5 rounded-full",
 								consoleUnseenPulsing
 									? "bg-accent animate-pulse-visible"
 									: "bg-ink-muted",
@@ -516,7 +591,7 @@ export const PanelRail: FC<PanelRailProps> = ({
 					id="canvas"
 					label={canvas.tooltip}
 					ariaLabel={canvas.aria}
-					pressed={drawn === "canvas"}
+					pressed={canvasLit}
 					onClick={() => togglePanelRailItem("canvas", actionContext)}
 					data-tour-tag="open-canvas-button"
 				>
@@ -524,7 +599,7 @@ export const PanelRail: FC<PanelRailProps> = ({
 					{fileCount > 0 && (
 						<span
 							aria-hidden="true"
-							className="absolute top-1 right-1 size-1.5 rounded-full bg-ink-muted"
+							className="absolute top-1 end-1 size-1.5 rounded-full bg-ink-muted"
 						/>
 					)}
 				</PanelRailItem>
@@ -556,7 +631,31 @@ export const PanelRail: FC<PanelRailProps> = ({
 						<span
 							aria-hidden="true"
 							data-code-review-attention=""
-							className="absolute top-1 right-1 size-1.5 rounded-full bg-ink-muted"
+							className="absolute top-1 end-1 size-1.5 rounded-full bg-ink-muted"
+						/>
+					)}
+				</PanelRailItem>
+				<PanelRailItem
+					id="projects"
+					label={projects.tooltip}
+					ariaLabel={projects.aria}
+					/*
+					 * LIT ONLY ON THE PROJECTS VIEW (see `canvasOnProjects`): the canvas
+					 * item above is lit for every other view, so one slot never lights two
+					 * doors. ALWAYS PRESENT, like every door (D1): on a draft or an older
+					 * runtime the view it opens says why it is empty.
+					 */
+					pressed={projectsLit}
+					onClick={() => togglePanelRailItem("projects", actionContext)}
+					data-tour-tag="canvas-projects-trigger"
+				>
+					<FolderKanban aria-hidden={true} />
+					{linkedProjectCount > 0 && (
+						/* The canvas item's quiet total mark, for the same kind of fact. */
+						<span
+							aria-hidden="true"
+							data-linked-projects-mark=""
+							className="absolute top-1 end-1 size-1.5 rounded-full bg-ink-muted"
 						/>
 					)}
 				</PanelRailItem>

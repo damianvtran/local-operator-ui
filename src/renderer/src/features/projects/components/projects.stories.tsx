@@ -55,6 +55,7 @@ import {
 import { type SortSpec, writeProjectsSort } from "../project-sort";
 import { REQUEST_UPDATE_NEVER_STARTED_DETAIL } from "../request-update";
 import { BOARD_WINDOW_HINT } from "./board-window-select";
+import { ProjectUpdates } from "./project-updates";
 import { ProjectsPage } from "./projects-page";
 
 /** Sunday 20 September 2026, 2:00 PM local — every label derives from this. */
@@ -389,11 +390,53 @@ const UPDATES: DesktopProjectUpdate[] = [
 		by: "4e92693767fa",
 		attachments: [
 			{
+				name: "dashboard-cutover.png",
+				kind: "image",
+				path: "/Users/dana/work/projects/payments/dashboard-cutover.png",
+				bytes: 182_400,
+				added_at: "2026-09-20T17:45:00Z",
+			},
+			{
+				name: "parity.png",
+				kind: "image",
+				path: "/Users/dana/work/projects/payments/parity.png",
+				bytes: 182_400,
+				added_at: "2026-09-20T17:45:01Z",
+			},
+			{
+				name: "cutover.mp4",
+				kind: "video",
+				path: "/Users/dana/work/projects/payments/cutover.mp4",
+				bytes: 9_437_184,
+				added_at: "2026-09-20T17:45:02Z",
+			},
+			{
+				name: "standup.mp3",
+				kind: "audio",
+				path: "/Users/dana/work/projects/payments/standup.mp3",
+				bytes: 512_000,
+				added_at: "2026-09-20T17:45:03Z",
+			},
+			{
+				name: "release-notes.md",
+				kind: "data",
+				path: "/Users/dana/work/projects/payments/release-notes.md",
+				bytes: 2_048,
+				added_at: "2026-09-20T17:45:04Z",
+			},
+			{
 				name: "cutover-report.csv",
 				kind: "data",
 				path: "/Users/dana/work/projects/payments/cutover-report.csv",
 				bytes: 4_096,
-				added_at: "2026-09-20T17:45:00Z",
+				added_at: "2026-09-20T17:45:05Z",
+			},
+			{
+				name: "migration-plan.pdf",
+				kind: "data",
+				path: "/Users/dana/work/projects/payments/migration-plan.pdf",
+				bytes: 220_200,
+				added_at: "2026-09-20T17:45:06Z",
 			},
 		],
 	},
@@ -1054,24 +1097,48 @@ const installBridge = () => {
 		api?: {
 			desktop?: { request: (r: Parameters<typeof answer>[0]) => unknown };
 			readFileBytes?: (path: string) => unknown;
+			readFile?: (path: string) => unknown;
 		};
 	};
 	const api = page.api ?? {};
 	page.api = api;
 	api.desktop = { request: answer };
 	/*
-	 * The local-file bridge, for the one image the feed carries. Storybook's
-	 * global mock has no `readFileBytes`, so without this the update's picture
-	 * would draw its honest "unavailable" sentence in every frame — a story
-	 * about a state the desktop app does not have. Bytes are drawn here rather
-	 * than committed as an asset (the canvas stories' rule).
+	 * The local-file bridge, for the update feed's attachments. Storybook's
+	 * global mock has neither reader, so without this every picture would draw
+	 * its honest "unavailable" sentence in every frame — a story about a state
+	 * the desktop app does not have. Bytes are drawn here rather than committed
+	 * as an asset (the canvas stories' rule); the clip and the sound only need
+	 * a resolvable blob for their thumbnail/player chrome, not a decodable
+	 * stream, because a still frame cannot show playback.
 	 */
 	api.readFileBytes = async (path: string) => {
-		if (!path.endsWith(".png")) {
-			return { success: false, code: "not-found", error: `No file at ${path}` };
+		if (path.endsWith(".png")) {
+			const bytes = pngBytes();
+			return { success: true, data: bytes, sizeBytes: bytes.byteLength };
 		}
-		const bytes = pngBytes();
-		return { success: true, data: bytes, sizeBytes: bytes.byteLength };
+		if (
+			path.endsWith(".mp3") ||
+			path.endsWith(".wav") ||
+			path.endsWith(".mp4")
+		) {
+			return { success: true, data: new Uint8Array([0, 0, 0, 0]) };
+		}
+		return { success: false, code: "not-found", error: `No file at ${path}` };
+	};
+	/*
+	 * The preview reader the markdown tile calls. It returns the fixture's own
+	 * note, so `lightbox-open`'s sibling story (the preview frame) shows prose
+	 * rather than a failure sentence.
+	 */
+	api.readFile = async (path: string) => {
+		if (path.endsWith(".md")) {
+			return {
+				success: true,
+				data: "# Cutover notes\n\nThe read path is live on staging.\n\n- parity holds\n- retry budget unchanged\n",
+			};
+		}
+		return { success: false, error: `No file at ${path}` };
 	};
 };
 installBridge();
@@ -4628,11 +4695,12 @@ export const BoardColumnDropCommits: Story = {
 
 /**
  * The board's sticky frame, BANDED (the teams rework), held to the mechanics
- * the sticky rounds measured: the column header row pins at 44 (`h-11`), the
- * band headers pin at `top-11` beneath it as a constant `h-8`, the incoming
- * band header PUSHES the outgoing one out (no stacked pair, no dead slot),
- * and every cell of the pinned band is stretched to that band's tallest —
- * numbers asserted before the shutter rather than described.
+ * the sticky rounds measured: the column header row is 44 (`h-11`) and sits
+ * ABOVE the vertical scrollport (its bottom edge is the clip boundary), the
+ * band headers pin at `top-0` as a constant `h-8`, the incoming band header
+ * PUSHES the outgoing one out (no stacked pair, no dead slot), and every cell
+ * of the pinned band is stretched to that band's tallest — numbers asserted
+ * before the shutter rather than described.
  */
 export const BoardSticky: Story = {
 	render: () =>
@@ -4667,7 +4735,7 @@ export const BoardSticky: Story = {
 				`the strip, the active header or two band headers are missing (bands ${bands.length})`,
 			);
 		}
-		/* The two offsets the sticky layers are written against: h-11 = 44, top-11 = 44. */
+		/* The two heights the frame is written against: h-11 = 44, h-8 = 32. */
 		const headerHeight = handle.getBoundingClientRect().height;
 		if (Math.abs(headerHeight - 44) > 0.6) {
 			throw new Error(`the column header is ${headerHeight}px tall, not 44`);
@@ -4676,9 +4744,9 @@ export const BoardSticky: Story = {
 		if (Math.abs(bandHeaderHeight - 32) > 0.6) {
 			throw new Error(`the band header is ${bandHeaderHeight}px tall, not 32`);
 		}
-		if (getComputedStyle(bands[0]).top !== "44px") {
+		if (getComputedStyle(bands[0]).top !== "0px") {
 			throw new Error(
-				`the band header's sticky offset is ${getComputedStyle(bands[0]).top}, not 44px`,
+				`the band header's sticky offset is ${getComputedStyle(bands[0]).top}, not 0px`,
 			);
 		}
 		const rel = (node: HTMLElement) =>
@@ -4688,11 +4756,11 @@ export const BoardSticky: Story = {
 		 * where a static element would also happen to sit at the offset (the
 		 * identity the list's round-1 probe called out).
 		 */
-		strip.scrollTop += rel(bands[1]) - 44;
+		strip.scrollTop += rel(bands[1]);
 		strip.scrollTop += 20;
 		await poll(
-			() => Math.abs(rel(bands[1]) - 44) <= 2,
-			"the second band header to pin under the row",
+			() => Math.abs(rel(bands[1])) <= 2,
+			"the second band header to pin at the scrollport's top edge",
 		);
 		/*
 		 * THE PUSH-OUT: the outgoing band header is fully displaced — its
@@ -4729,7 +4797,17 @@ export const BoardSticky: Story = {
 				`the band's cells are not equal height: shortest ${shortest.toFixed(2)}, tallest ${tallest.toFixed(2)}`,
 			);
 		}
-		const cap = strip.clientHeight - 92 + 1;
+		/*
+		 * `100cqh` is the board ROOT's height (the size container), so measure the
+		 * cap there rather than on the strip: the body's classic horizontal
+		 * scrollbar takes its own height out of the strip's client box, and the
+		 * cell cap is written against the container, not against what is left below
+		 * the bar.
+		 */
+		const board = document.querySelector<HTMLElement>(
+			'[data-testid="project-board"]',
+		);
+		const cap = (board?.clientHeight ?? strip.clientHeight + 44) - 92 + 1;
 		if (tallest > cap) {
 			throw new Error(
 				`the band is ${tallest.toFixed(2)} tall, past the one-screen cap ${cap.toFixed(2)}`,
@@ -4747,25 +4825,31 @@ export const BoardSticky: Story = {
 			);
 		}
 		/*
-		 * THE PIN HOLDS TO THE END OF THE SCROLL (design round 2, D2 = QA round
-		 * 1, Q2): the strip's child must stay content-height (`items-start`), or
-		 * the column row's sticky containing block ends after one screen and the
-		 * row drifts off — measured at −94.3px on the 6289px board. Scroll to
-		 * the very end and read the offset back; the row must still be pinned at
-		 * the scrollport's own top edge.
+		 * THE CLIP BOUNDARY IS AN IDENTITY, held at the scroll end: the header
+		 * window's bottom edge IS the body's top edge, and the body clips at it.
+		 * The old `items-start`/sticky-row invariant is gone with the row's
+		 * sticky position, so assert the new geometry directly (a drift here is
+		 * exactly the gap the operator reported). Scroll to the end first: the
+		 * boundary must not depend on how far the bands have travelled.
 		 */
 		strip.scrollTop = strip.scrollHeight;
 		await poll(
 			() => strip.scrollTop >= strip.scrollHeight - strip.clientHeight - 1,
 			"the strip at its scroll end",
 		);
-		const headerTop = document
+		const row = document
 			.querySelector<HTMLElement>('[data-board-column="active"]')
-			?.getBoundingClientRect().top;
+			?.closest<HTMLElement>("[data-board-column-row]");
+		const rowRect = row?.getBoundingClientRect();
 		const stripTop = strip.getBoundingClientRect().top;
-		if (headerTop === undefined || Math.abs(headerTop - stripTop) > 0.5) {
+		if (!rowRect || Math.abs(rowRect.bottom - stripTop) > 0.5) {
 			throw new Error(
-				`the column row lost its pin at the scroll end: offset ${((headerTop ?? 0) - stripTop).toFixed(1)}`,
+				`the header row does not end at the scrollport's top edge: bottom ${rowRect?.bottom.toFixed(1)}, strip top ${stripTop.toFixed(1)}`,
+			);
+		}
+		if (getComputedStyle(strip).overflowY !== "auto") {
+			throw new Error(
+				`the body does not clip on y: overflow-y ${getComputedStyle(strip).overflowY}`,
 			);
 		}
 		/*
@@ -4787,6 +4871,244 @@ export const BoardSticky: Story = {
 				"the titled card does not render title + key (the title display regressed)",
 			);
 		}
+	}),
+};
+
+/**
+ * A CONTINUOUS HORIZONTAL SCROLL MUST NOT GO BACKWARDS. The header mirror runs
+ * on scroll events, which are dispatched after the frame that moved the body;
+ * a mirror without provenance suppression can write an old header offset back
+ * over a newer body offset. This play advances the body one small step per
+ * frame and fails on any backwards sample, which is the echo's signature
+ * (half-speed, ~30Hz stutter) without needing a trackpad driver.
+ */
+export const BoardContinuousScroll: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: BOARD_LONG,
+			details: detailsFor(BOARD_LONG),
+		}),
+	play: playOnce("board-continuous-scroll", async () => {
+		await poll(
+			() => document.querySelector("[data-board-strip]") !== null,
+			"the board body",
+		);
+		const strip = document.querySelector<HTMLElement>("[data-board-strip]");
+		if (!strip) throw new Error("the board body is missing");
+		strip.scrollLeft = 0;
+		await new Promise((resolve) => requestAnimationFrame(resolve));
+		const samples: number[] = [];
+		for (let frame = 0; frame < 24; frame += 1) {
+			strip.scrollLeft += 4;
+			await new Promise((resolve) => requestAnimationFrame(resolve));
+			samples.push(strip.scrollLeft);
+		}
+		for (let index = 1; index < samples.length; index += 1) {
+			if (samples[index] < samples[index - 1] - 0.5) {
+				throw new Error(
+					`the board's horizontal scroll went backwards at frame ${index}: ${samples[index - 1].toFixed(1)} -> ${samples[index].toFixed(1)}`,
+				);
+			}
+		}
+	}),
+};
+
+/**
+ * THE PER-COLUMN SCROLLER STILL OWNS ITS OWN CONTENT: each band cell is its own
+ * bounded `overflow-y-auto` port under the one-screen cap. The wheel driver is
+ * a capture-rig input, not something the harness browser can synthesize, so
+ * this play proves the scroller with a direct `scrollTop` write and reads the
+ * card's rect before and after: the card moves by exactly the scroll distance
+ * inside its cell while the strip's own `scrollTop` is untouched.
+ */
+export const BoardCellScroll: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: BOARD_LONG,
+			details: detailsFor(BOARD_LONG),
+		}),
+	play: playOnce("board-cell-scroll", async () => {
+		await poll(
+			() => document.querySelector('[data-board-cell="active"]') !== null,
+			"the active cell",
+		);
+		const cell = document.querySelector<HTMLElement>(
+			'[data-board-cell="active"]',
+		);
+		const strip = document.querySelector<HTMLElement>("[data-board-strip]");
+		const card = cell?.querySelector<HTMLElement>("[data-project-name]");
+		if (!cell || !strip || !card) {
+			throw new Error("the cell-scroll fixture is incomplete");
+		}
+		if (cell.scrollHeight <= cell.clientHeight + 1) {
+			throw new Error("the active cell has nothing to scroll");
+		}
+		const stripBefore = strip.scrollTop;
+		const cardBefore = card.getBoundingClientRect().top;
+		cell.scrollTop = 40;
+		await poll(
+			() => Math.abs(cell.scrollTop - 40) <= 1,
+			"the cell to scroll by 40px",
+		);
+		const moved = cardBefore - card.getBoundingClientRect().top;
+		if (Math.abs(moved - 40) > 1) {
+			throw new Error(
+				`the cell's content moved ${moved.toFixed(1)}px, not 40px`,
+			);
+		}
+		if (strip.scrollTop !== stripBefore) {
+			throw new Error(
+				`the cell scroll moved the board's own scrollTop (${stripBefore} -> ${strip.scrollTop})`,
+			);
+		}
+	}),
+};
+
+/**
+ * HORIZONTAL SCROLL MOVES THE HEADER WITH ITS COLUMNS (the structure the fix
+ * introduced): the body is the one two-axis scroller and the header row is a
+ * hidden-overflow window above it whose `scrollLeft` is synced from the body's
+ * scroll event. The play drives the body's `scrollLeft` and asserts the header
+ * cell and its band cell keep the same horizontal offset - the claim the old
+ * single scroller made for free.
+ */
+export const BoardHorizontalScroll: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: BOARD_LONG,
+			details: detailsFor(BOARD_LONG),
+		}),
+	play: playOnce("board-horizontal-scroll", async () => {
+		await poll(
+			() =>
+				document.querySelector("[data-board-strip]") !== null &&
+				document.querySelector("[data-board-header-viewport]") !== null &&
+				document.querySelector("[data-board-column-row]") !== null &&
+				document.querySelector('[data-board-cell="active"]') !== null,
+			"the body scroller, the header window, the column row and the active cell",
+		);
+		const strip = document.querySelector<HTMLElement>("[data-board-strip]");
+		const window_ = document.querySelector<HTMLElement>(
+			"[data-board-header-viewport]",
+		);
+		const row = document.querySelector<HTMLElement>("[data-board-column-row]");
+		const header = document.querySelector<HTMLElement>(
+			'[data-board-column-handle="active"]',
+		);
+		const cell = document.querySelector<HTMLElement>(
+			'[data-board-cell="active"]',
+		);
+		if (!strip || !window_ || !row || !header || !cell) {
+			throw new Error("the horizontal-scroll fixture is incomplete");
+		}
+		const beforeRow = row.getBoundingClientRect().left;
+		const beforeHeader = header.getBoundingClientRect().left;
+		const beforeCell = cell.getBoundingClientRect().left;
+		const target = Math.min(120, strip.scrollWidth - strip.clientWidth);
+		if (target <= 0) throw new Error("the board has no horizontal overflow");
+		strip.scrollLeft = target;
+		await poll(
+			() =>
+				Math.abs(strip.scrollLeft - target) <= 1 &&
+				Math.abs(window_.scrollLeft - target) <= 1,
+			"the body and the header window to reach the target",
+		);
+		const moved = strip.scrollLeft;
+		const rowShift = beforeRow - row.getBoundingClientRect().left;
+		const headerShift = beforeHeader - header.getBoundingClientRect().left;
+		const cellShift = beforeCell - cell.getBoundingClientRect().left;
+		if (
+			Math.abs(window_.scrollLeft - moved) > 0.5 ||
+			Math.abs(rowShift - moved) > 0.5 ||
+			Math.abs(headerShift - moved) > 0.5 ||
+			Math.abs(cellShift - moved) > 0.5
+		) {
+			throw new Error(
+				`the header did not track the columns: scrolled ${moved.toFixed(1)}, window ${window_.scrollLeft.toFixed(1)}, row ${rowShift.toFixed(1)}, header ${headerShift.toFixed(1)}, cell ${cellShift.toFixed(1)}`,
+			);
+		}
+		/*
+		 * THE SYNC MUST RUN BOTH WAYS. A UA scrolls the header window by itself
+		 * when a clipped grip takes focus, and a strip→header-only listener would
+		 * leave the headers 111px off their columns while the body stayed put.
+		 * Focus Planning at this h-scroll and let the mirror settle both windows;
+		 * the active header must end over its own band cell.
+		 */
+		const planningGrip = document.querySelector<HTMLElement>(
+			'[data-board-column-grip="planning"]',
+		);
+		if (!planningGrip) throw new Error("the planning grip is missing");
+		planningGrip.focus();
+		/*
+		 * REQUIRE THE FOCUS SCROLL FIRST. Equality and alignment are already true
+		 * before the focus lands, so a check that starts there cannot tell "the
+		 * mirror moved the body" from "the UA never scrolled the header" (round-3
+		 * review, R3-2). The body must MOVE, then the two windows must agree.
+		 */
+		await poll(
+			() => Math.abs(strip.scrollLeft - moved) > 1,
+			"the focus scroll to move the board",
+		);
+		await poll(
+			() => Math.abs(strip.scrollLeft - window_.scrollLeft) <= 1,
+			"the header window and the body to settle on one offset",
+		);
+		const alignedHeader = header.getBoundingClientRect().left;
+		const alignedCell = cell.getBoundingClientRect().left;
+		if (Math.abs(alignedHeader - alignedCell) > 0.5) {
+			throw new Error(
+				`the header and its cell did not re-align after a focus scroll: header ${alignedHeader.toFixed(1)}, cell ${alignedCell.toFixed(1)}`,
+			);
+		}
+	}),
+};
+
+/**
+ * THE OPERATOR'S BOUNDARY, at a fixed scroll position: a card's top edge is
+ * 8px ABOVE the strip's scrollport, so its title line (12px into the card)
+ * sits just below the header boundary. The play does the scroll rather than
+ * the rig, so a re-capture lands on the same boundary; the frame is the
+ * evidence for the clip (the card is cut at the viewport's top edge, not
+ * painted through the header).
+ */
+export const BoardHeaderBoundary: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: BOARD_LONG,
+			details: detailsFor(BOARD_LONG),
+		}),
+	play: playOnce("board-header-boundary", async () => {
+		await poll(
+			() =>
+				document.querySelector("[data-board-strip]") !== null &&
+				document.querySelector('[data-project-name="load-shed-2"]') !== null,
+			"the strip and the first band's titled card",
+		);
+		const strip = document.querySelector<HTMLElement>("[data-board-strip]");
+		const card = document.querySelector<HTMLElement>(
+			'[data-project-name="load-shed-2"]',
+		);
+		if (!strip || !card) throw new Error("the boundary fixture is incomplete");
+		/*
+		 * The card starts at the strip's top edge minus 8: its title, which
+		 * sits `p-3` (12px) below the card's top, begins 4px below the
+		 * boundary - inside the header's band before the fix.
+		 *
+		 * The cell is reset first: a cell is its own scroller, and a capture
+		 * that inherits a previous run's wheel would measure a different card.
+		 */
+		strip.scrollTop = 0;
+		(card.closest("[data-board-cell]") as HTMLElement | null)?.scrollTo(0, 0);
+		const stripTop = strip.getBoundingClientRect().top;
+		strip.scrollTop += card.getBoundingClientRect().top - stripTop + 8;
+		await poll(
+			() => Math.abs(card.getBoundingClientRect().top - (stripTop - 8)) <= 1,
+			"the card title at the header boundary",
+		);
 	}),
 };
 
@@ -5991,4 +6313,108 @@ export const TimelineCalloutExpanded: Story = {
 			"the undated names to appear",
 		);
 	}),
+};
+
+/* -------------------------------------------------- update assets and gallery */
+
+/**
+ * The feed's evidence grid on its own, so the four kinds and the lightbox are
+ * photographed without the detail page's scroll context. The production
+ * `ProjectUpdates` is mounted unchanged; only the clock is pinned, the rule
+ * every fixture on this page follows.
+ */
+const UpdatesHost = ({ updates }: { updates: DesktopProjectUpdate[] }) => (
+	<div className="mx-auto flex w-[820px] max-w-full flex-col gap-4 p-6">
+		<ProjectUpdates updates={updates} nowMs={FIXTURE_NOW_MS} />
+	</div>
+);
+
+/** The newest update carries two pictures, a clip, a sound, markdown, CSV and a PDF. */
+export const WithAssets: Story = {
+	render: () => <UpdatesHost updates={UPDATES} />,
+};
+
+/** The shared lightbox over the update's set, opened on its first picture. */
+export const LightboxOpen: Story = {
+	render: () => <UpdatesHost updates={UPDATES} />,
+	play: playOnce("asset-lightbox-open", async () => {
+		const tile =
+			'[data-project-asset-grid] button[aria-label="Open dashboard-cutover.png"]';
+		await poll(
+			() => document.querySelector(tile) !== null,
+			"the first picture tile",
+		);
+		const pressed = document.querySelector(tile);
+		if (!pressed) throw new Error("the picture tile vanished");
+		await userEvent.click(pressed);
+		await poll(
+			() => document.querySelector("[data-image-viewport] img") !== null,
+			"the shared image frame",
+		);
+	}),
+};
+
+/** The same gallery on its video slide: a real `<video controls>` in the frame. */
+export const LightboxVideo: Story = {
+	render: () => <UpdatesHost updates={UPDATES} />,
+	play: playOnce("asset-lightbox-video", async () => {
+		const tile =
+			'[data-project-asset-grid] button[aria-label="Play cutover.mp4"]';
+		await poll(() => document.querySelector(tile) !== null, "the clip tile");
+		const pressed = document.querySelector(tile);
+		if (!pressed) throw new Error("the clip tile vanished");
+		await userEvent.click(pressed);
+		await poll(
+			() => document.querySelector("[data-image-viewport] video") !== null,
+			"the video slide",
+		);
+	}),
+};
+
+/**
+ * Forty updates of three attachments: the laziness budget's frame. A project
+ * that reads every tile up front opens a hundred and twenty files; this one
+ * paints reserved slots and reads only what the viewport reaches.
+ */
+export const ManyUpdates: Story = {
+	render: () => {
+		const many: DesktopProjectUpdate[] = Array.from(
+			{ length: 40 },
+			(_, index) => ({
+				at: new Date(FIXTURE_NOW_MS - index * HOUR_S * 1000).toISOString(),
+				text: `Step ${index + 1}: the suite is green and the next slice is queued.`,
+				by: "4e92693767fa",
+				attachments: [
+					{
+						name: `shot-${index + 1}.png`,
+						kind: "image",
+						path: `/Users/dana/work/projects/payments/many/shot-${index + 1}.png`,
+						bytes: 120_000,
+						added_at: new Date(
+							FIXTURE_NOW_MS - index * HOUR_S * 1000,
+						).toISOString(),
+					},
+					{
+						name: `log-${index + 1}.csv`,
+						kind: "data",
+						path: `/Users/dana/work/projects/payments/many/log-${index + 1}.csv`,
+						bytes: 8_192,
+						added_at: new Date(
+							FIXTURE_NOW_MS - index * HOUR_S * 1000,
+						).toISOString(),
+					},
+					{
+						name: `note-${index + 1}.md`,
+						kind: "data",
+						path: `/Users/dana/work/projects/payments/many/note-${index + 1}.md`,
+						bytes: 1_024,
+						added_at: new Date(
+							FIXTURE_NOW_MS - index * HOUR_S * 1000,
+						).toISOString(),
+					},
+				],
+			}),
+		);
+		return <UpdatesHost updates={many} />;
+	},
 };

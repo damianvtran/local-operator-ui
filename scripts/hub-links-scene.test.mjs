@@ -20,6 +20,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
+import { contractSource } from "./contrast-contract-source.mjs";
 
 const DRIVER = "scripts/renderer-driver.mjs";
 const STUB = "docs/evidence/hub-links/harness/stub-daemon.mjs";
@@ -235,7 +236,54 @@ test("the auto-push switch is described by its pause line only while that line r
 		src,
 		/aria-describedby=\{line !== "none" \? `\$\{id\}-push-line` : undefined\}/,
 	);
-	assert.match(src, /<p id=\{`\$\{id\}-push-line`\}/);
+	// `\s+`: the id is a separate attribute line now that the reason lives in the
+	// switch row's own stack. The pin is about the idref resolving to this element.
+	assert.match(src, /<p\s+id=\{`\$\{id\}-push-line`\}/);
 	// The paused/reason line renders under exactly the condition describedby uses.
 	assert.match(src, /\{line !== "none" && \(/);
+	// Severity lives in the INK ROLE: the standing capability note is neutral (it is
+	// true on a healthy link), the transient pause keeps the attention ink.
+	assert.match(src, /line === "paused" \? "text-warning" : "text-ink-muted"/);
+});
+
+// Pair the measured colours with the actual call site: a contrast row alone
+// would stay green if the control silently fell back to Button's secondary.
+test("source confirmation uses the two warning-wash pairings the contract measures", () => {
+	const panel = readFileSync(PANEL, "utf8");
+	const contract = contractSource();
+	assert.match(panel, /ref=\{openerRef\}\s+variant="primary"/);
+	assert.match(
+		panel,
+		/className="break-all text-mono-sm text-ink-muted">\s*\{t\("ui.hub.links.hub_id"/,
+	);
+	assert.match(
+		contract,
+		/name: "hub source confirmation remedy",\s+on: \["warningWash"\],\s+fill: "accent",\s+border: "accent",\s+ink: "onAccent"/,
+	);
+	assert.match(
+		contract,
+		/name: "hub source confirmation diagnostic",\s+on: \["canvas"\],\s+fill: "warningWash",\s+border: "warningBorder",\s+ink: "inkMuted"/,
+	);
+});
+
+test("the real scene checks completion and Cancel after the diagnostic unmounts", () => {
+	const driver = readFileSync(DRIVER, "utf8");
+	assert.match(driver, /Cancel restores focus to the remounted source opener/);
+	assert.match(
+		driver,
+		/team Cancel restores focus to its remounted source opener/,
+	);
+	assert.match(
+		driver,
+		/Cancel after conflict restores focus to its source opener/,
+	);
+	assert.match(
+		driver,
+		/confirmation announces success and focuses the surviving link disclosure/,
+	);
+	const actions = readFileSync(ACTIONS, "utf8");
+	assert.match(
+		actions,
+		/onSuccess: \(response\) => \{[\s\S]*?showSuccessToast\(t\("ui.hub.links.resolve_action_done"\)\)/,
+	);
 });

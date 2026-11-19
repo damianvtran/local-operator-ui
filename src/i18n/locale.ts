@@ -20,6 +20,13 @@
  * `en-US` for every option set the migrated sites pass
  * (`scripts/i18n/format.test.mjs` pins that equivalence).
  *
+ * A RAW TAG IS NOT A CATALOGUE TAG. Keeping the device's spelling costs nothing
+ * where the tag is only data — `document.documentElement.lang` and text
+ * direction want `fr-FR`/`ur-PK` (`./direction`), and Intl formatters read the
+ * region — but no catalogue is named `fr-FR`, so the COPY runtime canonicalises
+ * the tag before a lookup (`./catalogue-locale`). The store therefore answers
+ * "which tag is active"; it does not answer "which catalogue holds it".
+ *
  * This module is framework-free on purpose: the React binding lives in
  * `src/renderer/src/shared/i18n/use-locale.ts`, and the main process gets its
  * own catalogue later (RFC §3.2) without importing renderer code. It is also
@@ -46,7 +53,11 @@ export type LocaleCapabilities = {
 export type LocaleSource = "backend" | "device" | "default" | "manual";
 
 export type LocaleState = {
-	/** A BCP-47 tag: the backend's resolved tag, or the device's own. */
+	/**
+	 * A BCP-47 tag: the backend's resolved tag, or the device's own. The copy
+	 * runtime canonicalises it before a catalogue lookup (`./catalogue-locale`),
+	 * so this is not necessarily a catalogue spelling.
+	 */
 	locale: string;
 	source: LocaleSource;
 };
@@ -93,15 +104,47 @@ function i18nFeatureEnabled(
 }
 
 /**
+ * Whether a string is a structurally plausible BCP-47 language tag.
+ *
+ * WHY THIS EXISTS AT ALL. `resolveLocale` trusts a backend's tag verbatim, and
+ * that is right for the renderer: the backend's resolver normalises a raw
+ * preference to a SHIPPED tag, so a second copy of its rules would drift. The
+ * MAIN process has a second source the renderer never had - an install marker
+ * on disk and Electron's own locale readings - and a value from either reaches
+ * `Intl`/ICU formatters. A tag with a space, a slash or an empty string makes
+ * those throw or fall back mid-render, and the marker is a file a user or a
+ * stale version can write. So the STRUCTURE is checked here, once, while the
+ * choice of tag (and its eligibility) stays with the resolver that owns it.
+ *
+ * Deliberately permissive: language (2-8 alpha), then subtags of 1-8
+ * alphanumerics, which covers `en`, `fr-CA`, `zh-Hans-CN`, `es-419` and script
+ * or region extensions without claiming to validate the registry.
+ */
+export function isLanguageTag(value: unknown): value is string {
+	return (
+		typeof value === "string" &&
+		/^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$/.test(value.trim()) &&
+		value === value.trim()
+	);
+}
+
+/**
  * The locale a `GET /v1/capabilities` answer resolves to, ignoring the store.
  *
  * Exported for tests, which assert the truth table directly: an answer with
  * `features.i18n` and a non-empty `language` is the backend source; anything
  * else (no answer, an older backend without the feature, a blank tag) falls
  * back to the device.
+ *
+ * `deviceTag` is the MAIN process's explicit device reading. The renderer
+ * passes none and keeps reading `navigator.language` as it is (the unnormalised
+ * value every migrated call site used to read); main reads Electron's own
+ * preferred-system-languages chain and hands the winner here, which is the one
+ * difference the two processes are allowed to have about "the device".
  */
 export function resolveLocale(
 	capabilities?: LocaleCapabilities | null,
+	deviceTag?: string,
 ): LocaleState {
 	const language = capabilities?.language;
 	if (
@@ -111,7 +154,7 @@ export function resolveLocale(
 	) {
 		return { locale: language, source: "backend" };
 	}
-	const device = deviceLanguage();
+	const device = deviceTag !== undefined ? deviceTag : deviceLanguage();
 	return device
 		? { locale: device, source: "device" }
 		: { locale: DEFAULT_LOCALE, source: "default" };
@@ -161,8 +204,37 @@ function setState(next: LocaleState): void {
  */
 export function applyCapabilities(
 	capabilities?: LocaleCapabilities | null,
+	deviceTag?: string,
 ): void {
-	setState(resolveLocale(capabilities));
+	setState(resolveLocale(capabilities, deviceTag));
+}
+
+/**
+ * Apply a language the BACKEND resolved, after structural validation.
+ *
+ * The eligibility question (`features.i18n`) belongs to the caller that read
+ * the answer: this function is the write half, and it answers whether the value
+ * was usable so a main-process caller can log/fall back rather than pinning an
+ * untrusted tag into every formatter in the process. Source stays `backend`,
+ * the existing source kind.
+ */
+export function applyBackendLanguage(tag: unknown): boolean {
+	if (!isLanguageTag(tag)) return false;
+	setState({ locale: tag, source: "backend" });
+	return true;
+}
+
+/**
+ * Apply a device tag the MAIN process read from Electron, after validation.
+ *
+ * Same split as `applyBackendLanguage`: the reading (preferred system languages
+ * -> system locale -> app locale) is main-locale's, and this is the validated
+ * write. Source stays `device`, the existing source kind.
+ */
+export function applyDeviceLocale(tag: unknown): boolean {
+	if (!isLanguageTag(tag)) return false;
+	setState({ locale: tag, source: "device" });
+	return true;
 }
 
 /**

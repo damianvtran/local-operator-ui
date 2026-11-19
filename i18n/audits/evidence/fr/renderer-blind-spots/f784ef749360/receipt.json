@@ -1,0 +1,65 @@
+{
+  "auditor": "i18n-auditor-fr",
+  "instance": "f784ef749360",
+  "model": "openai/gpt-6.1-sol",
+  "status": "passed",
+  "date": "2026-10-31",
+  "provenance": {
+    "kind": "binding of independent verdict; not a new linguistic audit",
+    "verdict": "i18n/audits/evidence/fr/renderer-blind-spots/f784ef749360/verdict.txt",
+    "verdict_sha256": "009377210a26ad86d1c5824a3ba34dbce4f68402c6a3082e3b14fa505752d1a6",
+    "findings": "i18n/audits/evidence/fr/renderer-blind-spots/f784ef749360/findings.jsonl",
+    "findings_sha256": "3cca8b2e206e9de31726558100eaeb5c239f039a1a6945e6bd048e7957151d3e",
+    "fallback": "provider quota: anthropic/claude-sonnet-5-5 -> anthropic/claude-opus-5-5 -> openai/gpt-6.1-sol",
+    "scope": "35 added keys (32 ui.chat, 3 ui.chat.sidebar_view); existing namespace audit retained as superseded history"
+  },
+  "namespaces": {
+    "ui.chat": {
+      "status": "passed",
+      "sha256": {
+        "en": "fee31965fc3e93d600333d686af34957fa6467bc3b2ba116b69a0ca5df369dcd",
+        "fr": "aa5784f3dd5323c0cf56d0cbc1a44bbe63f76357ad932608a303044baccd3e60"
+      },
+      "findings": []
+    },
+    "ui.chat.sidebar_view": {
+      "status": "passed",
+      "sha256": {
+        "en": "0873abf83115e1dd479213706a401258369f58a3d9606ebbc12610a64348512e",
+        "fr": "c542cb444b827f26539b713026e1b2d4b3dc90eb891cc3ab4e26bf8115782e65"
+      },
+      "findings": [
+        {
+          "id": "FR-01",
+          "severity": "MINOR",
+          "namespace": "ui.chat.sidebar_view",
+          "key": "ui.chat.sidebar_view.relative_short",
+          "english": "{unit, select, now {now} minute {{count, number, ::group-off}m} hour {{count, number, ::group-off}h} day {{count, number, ::group-off}d} week {{count, number, ::group-off}w} year {{count, number, ::group-off}y} other {now}}",
+          "current": "{unit, select, now {à l’instant} minute {{count, number, ::group-off} min} hour {{count, number, ::group-off} h} day {{count, number, ::group-off} j} week {{count, number, ::group-off} sem} year {{count, number, ::group-off} an} other {à l’instant}}",
+          "problem": "The now/other arms render « à l’instant » at 11 cells (rich.cells.cell_len), against the sidecar’s advisory maxCells=6. This is idiomatic French, but not the most compact natural sidebar notation. The actual renderer uses a shrink-0 row-time span, not a six-cell hard clip: the extra width competes with the title. No rendered clipping is claimed. « 0 min » is a natural compact elapsed-time notation: the caller selects now only when elapsed whole minutes are zero (also for future clock skew). « récent » is shorter but loses the precise just-now meaning, so is not recommended.",
+          "suggested": "{unit, select, now {0 min} minute {{count, number, ::group-off} min} hour {{count, number, ::group-off} h} day {{count, number, ::group-off} j} week {{count, number, ::group-off} sem} year {{count, number, ::group-off} an} other {0 min}}"
+        },
+        {
+          "id": "FR-02",
+          "severity": "MINOR",
+          "namespace": "ui.chat.sidebar_view",
+          "key": "ui.chat.sidebar_view.relative_created",
+          "english": "{unit, select, now {created just now} minute {{count, plural, one {created # minute ago} other {created # minutes ago}}} hour {{count, plural, one {created # hour ago} other {created # hours ago}}} day {{count, plural, one {created # day ago} other {created # days ago}}} week {{count, plural, one {created # week ago} other {created # weeks ago}}} year {{count, plural, one {created # year ago} other {created # years ago}}} other {created just now}}",
+          "current": "{unit, select, now {créée à l’instant} minute {{count, plural, one {créée il y a # minute} many {créée il y a # de minutes} other {créée il y a # minutes}}} hour {{count, plural, one {créée il y a # heure} many {créée il y a # de heures} other {créée il y a # heures}}} day {{count, plural, one {créée il y a # jour} many {créée il y a # de jours} other {créée il y a # jours}}} week {{count, plural, one {créée il y a # semaine} many {créée il y a # de semaines} other {créée il y a # semaines}}} year {{count, plural, one {créée il y a # an} many {créée il y a # de ans} other {créée il y a # ans}}} other {créée à l’instant}}",
+          "problem": "In the hour/many and year/many arms, « de heures » and « de ans » omit mandatory elision. IntlMessageFormat(fr) actually renders these malformed phrases for count=1000000. Use « d’heures » and « d’ans ». Non-blocking here: the actual elapsed-time selector never emits a million hours (hours switch to days at 24), and a million years lies outside JavaScript Date’s supported range; ordinary reachable copy is unaffected.",
+          "suggested": "{unit, select, now {créée à l’instant} minute {{count, plural, one {créée il y a # minute} many {créée il y a # de minutes} other {créée il y a # minutes}}} hour {{count, plural, one {créée il y a # heure} many {créée il y a # d’heures} other {créée il y a # heures}}} day {{count, plural, one {créée il y a # jour} many {créée il y a # de jours} other {créée il y a # jours}}} week {{count, plural, one {créée il y a # semaine} many {créée il y a # de semaines} other {créée il y a # semaines}}} year {{count, plural, one {créée il y a # an} many {créée il y a # d’ans} other {créée il y a # ans}}} other {créée à l’instant}}"
+        },
+        {
+          "id": "FR-03",
+          "severity": "MINOR",
+          "namespace": "ui.chat.sidebar_view",
+          "key": "ui.chat.sidebar_view.relative_active",
+          "english": "{unit, select, now {last active just now} minute {{count, plural, one {last active # minute ago} other {last active # minutes ago}}} hour {{count, plural, one {last active # hour ago} other {last active # hours ago}}} day {{count, plural, one {last active # day ago} other {last active # days ago}}} week {{count, plural, one {last active # week ago} other {last active # weeks ago}}} year {{count, plural, one {last active # year ago} other {last active # years ago}}} other {last active just now}}",
+          "current": "{unit, select, now {dernière activité à l’instant} minute {{count, plural, one {dernière activité il y a # minute} many {dernière activité il y a # de minutes} other {dernière activité il y a # minutes}}} hour {{count, plural, one {dernière activité il y a # heure} many {dernière activité il y a # de heures} other {dernière activité il y a # heures}}} day {{count, plural, one {dernière activité il y a # jour} many {dernière activité il y a # de jours} other {dernière activité il y a # jours}}} week {{count, plural, one {dernière activité il y a # semaine} many {dernière activité il y a # de semaines} other {dernière activité il y a # semaines}}} year {{count, plural, one {dernière activité il y a # an} many {dernière activité il y a # de ans} other {dernière activité il y a # ans}}} other {dernière activité à l’instant}}",
+          "problem": "In the hour/many and year/many arms, « de heures » and « de ans » omit mandatory elision. IntlMessageFormat(fr) actually renders these malformed phrases for count=1000000. Use « d’heures » and « d’ans ». Non-blocking here: the actual elapsed-time selector never emits a million hours (hours switch to days at 24), and a million years lies outside JavaScript Date’s supported range; ordinary reachable copy is unaffected.",
+          "suggested": "{unit, select, now {dernière activité à l’instant} minute {{count, plural, one {dernière activité il y a # minute} many {dernière activité il y a # de minutes} other {dernière activité il y a # minutes}}} hour {{count, plural, one {dernière activité il y a # heure} many {dernière activité il y a # d’heures} other {dernière activité il y a # heures}}} day {{count, plural, one {dernière activité il y a # jour} many {dernière activité il y a # de jours} other {dernière activité il y a # jours}}} week {{count, plural, one {dernière activité il y a # semaine} many {dernière activité il y a # de semaines} other {dernière activité il y a # semaines}}} year {{count, plural, one {dernière activité il y a # an} many {dernière activité il y a # d’ans} other {dernière activité il y a # ans}}} other {dernière activité à l’instant}}"
+        }
+      ]
+    }
+  }
+}

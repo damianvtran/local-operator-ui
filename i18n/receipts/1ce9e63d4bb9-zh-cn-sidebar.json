@@ -1,0 +1,335 @@
+{
+	"instance": "1ce9e63d4bb9-zh-cn-sidebar",
+	"auditor": "i18n-auditor",
+	"model": "radient/auto",
+	"model_provenance": "Session primary anthropic/claude-opus-5-5 failed on provider quota and fell back openai/gpt-6.1-sol -> kimi/k3.1-pro -> radient/auto; every read, check and receipt byte in this audit was produced on that final radient/auto resolution. No model performed any translation or back-translation.",
+	"locale": "zh-CN",
+	"namespace": "ui.chat.sidebar",
+	"audit_date": "2026-11-05",
+	"task": "Independent audit of the final bytes of this contribution: ten new keys across seven locales, three of them corrected since the previous audit.",
+	"worktree": "~/local-operator-ui/.worktrees/i18n-sidebar-literals",
+	"head_reviewed": "257ad02237a1ea7b8676efea55d76f89bb145ee4",
+	"head_at_write": "2cdbf215d7bea01aff156e8dbd5bddb5343684bd",
+	"base": "65116989dc9",
+	"heads_equivalence": {
+		"all_audited_files_identical": true,
+		"files_compared": 16,
+		"note": "The branch was rebuilt while this audit ran. Every audited catalogue file is byte-identical at both heads, so these hashes describe the bytes on disk; see the manifest for the per-file comparison."
+	},
+	"independence": "This run translated none of these values and implemented none of this change. It read the English source, the en context sidecars, sibling keys in the same catalogue and the runtime's own ICU library, then judged every value itself.",
+	"keys_audited": 9,
+	"keys": [
+		"ui.chat.sidebar.row_menu.hint",
+		"ui.chat.sidebar.row_menu.hint_mac",
+		"ui.chat.sidebar.row.search_beyond",
+		"ui.chat.sidebar.row.recent",
+		"ui.chat.sidebar.row.not_sent_suffix",
+		"ui.chat.sidebar.row.unread_suffix",
+		"ui.chat.sidebar.row.silent_remedy",
+		"ui.chat.sidebar.catalogue.show_more",
+		"ui.chat.sidebar.catalogue.show_more_chats"
+	],
+	"en_path": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+	"target_path": "src/i18n/catalogues/zh-CN/ui.chat.sidebar.json",
+	"sha256": {
+		"en": "d1796cf86e2c2dde5f0dce93c8d5abceaf3ab09c2d44f9ff8ba42ac290fe3558",
+		"zh-CN": "fa339b46561ae8519510c23ad4a188bb5c01c649ec07407a883490dc246b623c"
+	},
+	"status": "passed",
+	"result": "clean",
+	"findings": [],
+	"finding_counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 0
+	},
+	"observations": [
+		{
+			"severity": "INFO",
+			"id": "zh-CN-O1",
+			"point": "The corrected search_beyond now states the right relation",
+			"detail": "\"由搜索找到，不在此处列表中\" = 'found by search, not in the list here' — the relation the English states ('beyond the chats listed here'), with the list comma U+FF0C. The previous form's trailing 的对话中 is gone. Wording is formal but correct; no change requested."
+		}
+	],
+	"checks": {
+		"values": {
+			"ui.chat.sidebar.row_menu.hint": "右键点击或按 Shift+F10 查看其操作。",
+			"ui.chat.sidebar.row_menu.hint_mac": "右键点击或按 Shift+F10（多数 Mac 键盘需配合 Fn）查看其操作。",
+			"ui.chat.sidebar.row.search_beyond": "由搜索找到，不在此处列表中",
+			"ui.chat.sidebar.row.recent": "最近",
+			"ui.chat.sidebar.row.not_sent_suffix": "，尚未发送",
+			"ui.chat.sidebar.row.unread_suffix": "，未读",
+			"ui.chat.sidebar.row.silent_remedy": "/stop 若持续无响应。",
+			"ui.chat.sidebar.catalogue.show_more": "再显示{hidden, plural, other {{hidden, number, ::group-off}条}}",
+			"ui.chat.sidebar.catalogue.show_more_chats": "再显示{add, plural, other {{add, number, ::group-off}个对话}}"
+		},
+		"icu": {
+			"show_more": {
+				"compiled": true,
+				"bracesBalanced": true,
+				"argument": "hidden",
+				"declaredCategories": [
+					"other"
+				],
+				"intlCategories": [
+					"other"
+				],
+				"categoriesEqual": true,
+				"groupOffInEveryArm": true,
+				"armCount": 1,
+				"formatted": {
+					"0": "再显示0条",
+					"1": "再显示1条",
+					"2": "再显示2条",
+					"3": "再显示3条",
+					"5": "再显示5条",
+					"11": "再显示11条",
+					"21": "再显示21条",
+					"22": "再显示22条",
+					"25": "再显示25条",
+					"101": "再显示101条",
+					"1000": "再显示1000条",
+					"12345": "再显示12345条",
+					"1000000": "再显示1000000条"
+				}
+			},
+			"show_more_chats": {
+				"compiled": true,
+				"bracesBalanced": true,
+				"argument": "add",
+				"declaredCategories": [
+					"other"
+				],
+				"intlCategories": [
+					"other"
+				],
+				"categoriesEqual": true,
+				"groupOffInEveryArm": true,
+				"armCount": 1,
+				"formatted": {
+					"0": "再显示0个对话",
+					"1": "再显示1个对话",
+					"2": "再显示2个对话",
+					"3": "再显示3个对话",
+					"5": "再显示5个对话",
+					"11": "再显示11个对话",
+					"21": "再显示21个对话",
+					"22": "再显示22个对话",
+					"25": "再显示25个对话",
+					"101": "再显示101个对话",
+					"1000": "再显示1000个对话",
+					"12345": "再显示12345个对话",
+					"1000000": "再显示1000000个对话"
+				}
+			}
+		},
+		"composition": {
+			"parts": {
+				"ui.chat.sidebar.row.not_sent_suffix": {
+					"value": "，尚未发送",
+					"firstCodepoint": "U+FF0C",
+					"secondCodepoint": "U+5C1A",
+					"localeComma": true,
+					"oneSpaceAfter": false,
+					"noDoubleSpace": true,
+					"noNbsp": true
+				},
+				"ui.chat.sidebar.row.unread_suffix": {
+					"value": "，未读",
+					"firstCodepoint": "U+FF0C",
+					"secondCodepoint": "U+672A",
+					"localeComma": true,
+					"oneSpaceAfter": false,
+					"noDoubleSpace": true,
+					"noNbsp": true
+				}
+			},
+			"composed": {
+				"statusOnly": "最近",
+				"statusPlusNotSent": "最近，尚未发送",
+				"statusPlusUnread": "最近，未读",
+				"searchBeyondPlusUnread": "由搜索找到，不在此处列表中，未读",
+				"statusPlusBothPlusArchived": "最近，尚未发送，未读，已归档",
+				"withSilentRemedy": "最近 · /stop 若持续无响应。"
+			}
+		},
+		"literals": {
+			"hint": {
+				"Shift+F10": {
+					"present": true,
+					"count": 1,
+					"codepoints": [
+						83,
+						104,
+						105,
+						102,
+						116,
+						43,
+						70,
+						49,
+						48
+					]
+				},
+				"Fn": {
+					"present": false,
+					"count": 0,
+					"codepoints": null
+				},
+				"Mac": {
+					"present": false,
+					"count": 0,
+					"codepoints": null
+				}
+			},
+			"hint_mac": {
+				"Shift+F10": {
+					"present": true,
+					"count": 1,
+					"codepoints": [
+						83,
+						104,
+						105,
+						102,
+						116,
+						43,
+						70,
+						49,
+						48
+					]
+				},
+				"Fn": {
+					"present": true,
+					"count": 1,
+					"codepoints": [
+						70,
+						110
+					]
+				},
+				"Mac": {
+					"present": true,
+					"count": 1,
+					"codepoints": [
+						77,
+						97,
+						99
+					]
+				}
+			},
+			"slashStop": {
+				"atStart": true,
+				"codepoints": [
+					47,
+					115,
+					116,
+					111,
+					112
+				],
+				"finalCodepoint": "U+3002"
+			}
+		},
+		"terminology": {
+			"ui.chat.sidebar.row_menu.hint": [
+				{
+					"comparedWith": "ui.chat.sidebar.row_menu.archive",
+					"why": "the row-menu family the hint opens; names the menu's items, not the menu",
+					"value": "归档对话",
+					"equalToAudited": false
+				},
+				{
+					"comparedWith": "ui.chat.sidebar.row_menu.pin",
+					"why": "second member of the same family",
+					"value": "置顶对话",
+					"equalToAudited": false
+				}
+			],
+			"ui.chat.sidebar.row_menu.hint_mac": [
+				{
+					"comparedWith": "ui.chat.sidebar.row_menu.archive",
+					"why": "the row-menu family the hint opens",
+					"value": "归档对话",
+					"equalToAudited": false
+				}
+			],
+			"ui.chat.sidebar.row.search_beyond": [
+				{
+					"comparedWith": "ui.chat.sidebar.row.matched_in_conversation",
+					"why": "the sibling why-this-row-is-here fragment for a filtered row",
+					"value": "，对话内容匹配",
+					"equalToAudited": false
+				}
+			],
+			"ui.chat.sidebar.row.recent": [
+				{
+					"comparedWith": "ui.command_palette.palette_search.recents",
+					"why": "the corpus's existing word for recency",
+					"value": "最近使用"
+				}
+			],
+			"ui.chat.sidebar.row.not_sent_suffix": [
+				{
+					"comparedWith": "ui.chat.sidebar.row.not_sent",
+					"why": "the row's own visible badge for the same fact",
+					"value": "尚未发送",
+					"equalToAudited": false
+				},
+				{
+					"comparedWith": "ui.chat.sidebar.row.archived_suffix",
+					"why": "the pre-existing suffix this one is shaped on",
+					"value": "，已归档",
+					"equalToAudited": false
+				}
+			],
+			"ui.chat.sidebar.row.unread_suffix": [
+				{
+					"comparedWith": "ui.command_palette.palette_search.unread",
+					"why": "the corpus's existing word for unread",
+					"value": "未读"
+				},
+				{
+					"comparedWith": "ui.chat.sidebar.row.archived_suffix",
+					"why": "the pre-existing suffix this one is shaped on",
+					"value": "，已归档",
+					"equalToAudited": false
+				}
+			],
+			"ui.chat.sidebar.row.silent_remedy": [
+				{
+					"comparedWith": "ui.chat.sidebar.row.search_beyond",
+					"why": "the neighbouring clause in the same status line (register)",
+					"value": "由搜索找到，不在此处列表中",
+					"equalToAudited": false
+				},
+				{
+					"comparedWith": "ui.chat.sidebar.row.in_conversation",
+					"why": "the row's other ' · '-slot clause (register)",
+					"value": "对话内匹配",
+					"equalToAudited": false
+				}
+			],
+			"ui.chat.sidebar.catalogue.show_more": [
+				{
+					"comparedWith": "ui.chat.sidebar.catalogue.total",
+					"why": "the same footer's count formatting and plural style",
+					"value": "显示{shown, number, ::group-off}/{total, number, ::group-off}个对话",
+					"equalToAudited": false
+				}
+			],
+			"ui.chat.sidebar.catalogue.show_more_chats": [
+				{
+					"comparedWith": "ui.chat.sidebar.catalogue.total",
+					"why": "the same namespace's word for a chat and its plural arms",
+					"value": "显示{shown, number, ::group-off}/{total, number, ::group-off}个对话",
+					"equalToAudited": false
+				},
+				{
+					"comparedWith": "ui.chat.sidebar.catalogue.total_search",
+					"why": "the same footer family's many-arm 'de …' form",
+					"value": "显示{shown, plural, other {{shown, number, ::group-off}个匹配}}，共{total, number, ::group-off}个对话",
+					"equalToAudited": false
+				}
+			],
+			"ui.chat.sidebar.row.archived_suffix": []
+		}
+	}
+}

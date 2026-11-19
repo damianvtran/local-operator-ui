@@ -1,0 +1,65 @@
+// Structural probe for UI PR #1604 delta audit A (session f89f59f896f1).
+// Reads catalogue bytes at BASE and HEAD via `git show`, reports changed keys,
+// placeholder/ICU/plural parity against English, NFC, bidi controls and
+// locale typography facts. Run from the audit worktree root.
+import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { parse, TYPE } from "@formatjs/icu-messageformat-parser";
+
+const BASE = "f6a91444077ee6e70edfbdff6d4b740c864b8503";
+const HEAD = "fbbbdec31b15b34d06b511278707ae3b0792b080";
+const LOCALES = ["en", "es", "fr", "hi", "ru", "ur", "vi", "zh-CN"];
+const show = (rev, p) => execFileSync("git", ["show", `${rev}:${p}`]);
+const sha = (b) => createHash("sha256").update(b).digest("hex");
+const file = (l) => `src/i18n/catalogues/${l}/ui.mesh.json`;
+
+function walk(nodes, acc) {
+	for (const n of nodes) {
+		if (n.type === TYPE.argument || n.type === TYPE.number || n.type === TYPE.date || n.type === TYPE.time) acc.args.add(`${n.value}:${n.type}`);
+		if (n.type === TYPE.plural || n.type === TYPE.select) {
+			acc.args.add(`${n.value}:${n.type}`);
+			acc.arms.push(`${n.value}=[${Object.keys(n.options).sort().join(",")}]`);
+			for (const o of Object.values(n.options)) walk(o.value, acc);
+		}
+		if (n.type === TYPE.tag) { acc.args.add(`<${n.value}>`); walk(n.children, acc); }
+	}
+	return acc;
+}
+const shape = (msg) => { const a = walk(parse(msg), { args: new Set(), arms: [] }); return { args: [...a.args].sort(), arms: a.arms }; };
+
+const en = JSON.parse(show(HEAD, file("en")));
+const out = [];
+out.push(`base ${BASE}\nhead ${HEAD}`);
+out.push(`context ${sha(show(HEAD, "src/i18n/catalogues/en/ui.mesh.context.json"))} src/i18n/catalogues/en/ui.mesh.context.json`);
+for (const l of LOCALES) {
+	const bBytes = show(BASE, file(l)); const hBytes = show(HEAD, file(l));
+	const b = JSON.parse(bBytes); const h = JSON.parse(hBytes);
+	out.push(`\n== ${l} base_sha256=${sha(bBytes)} head_sha256=${sha(hBytes)} keys=${Object.keys(h).length} keyset_eq_en=${JSON.stringify(Object.keys(h).sort()) === JSON.stringify(Object.keys(en).sort())}`);
+	const added = Object.keys(h).filter((k) => !(k in b)); const removed = Object.keys(b).filter((k) => !(k in h));
+	const changed = Object.keys(h).filter((k) => k in b && b[k] !== h[k]);
+	out.push(`added=${added.length} removed=${removed.length} changed=${changed.length}`);
+	for (const k of changed) {
+		const v = h[k];
+		const s = shape(v); const se = shape(en[k]);
+		const bidi = [...v].filter((c) => /[\u200e\u200f\u202a-\u202e\u2066-\u2069\u061c]/.test(c)).length;
+		const nfc = v === v.normalize("NFC");
+		const flags = [];
+		if (JSON.stringify(s.args) !== JSON.stringify(se.args)) flags.push(`ARGS_DIFF en=${se.args} t=${s.args}`);
+		if (/\s$|^\s/.test(v)) flags.push("EDGE_WS");
+		if (/ {2}/.test(v)) flags.push("DOUBLE_SPACE");
+		if (l === "fr") {
+			for (const m of v.matchAll(/(.)([:;!?])(?=\s|$)/gu)) if (!/[0-9A-Za-z{}]/.test(m[1]) || true) flags.push(`fr_before_${m[2]}=U+${m[1].codePointAt(0).toString(16).toUpperCase().padStart(4, "0")}`);
+			if (/'/.test(v)) flags.push("fr_ASCII_APOSTROPHE");
+		}
+		if (l === "zh-CN") {
+			const stripped = v.replace(/\{[^{}]*\}/g, "X");
+			const sp = [...v.matchAll(/(\S)( )(\S)/gu)].map((m) => `${m[1]}␠${m[3]}`);
+			flags.push(`zh_spaces=${JSON.stringify(sp)}`);
+			flags.push(`zh_ellipsis_U2026=${(v.match(/\u2026/g) || []).length}`);
+			if (/\.\.\./.test(stripped)) flags.push("zh_ASCII_DOTS");
+		}
+		if (/\.\.\./.test(v)) flags.push("ASCII_DOTS");
+		out.push(`  ${k}\n    base: ${b[k]}\n    head: ${v}\n    args=${s.args.join(",")} arms=${s.arms.join(";") || "-"} en_arms=${se.arms.join(";") || "-"} nfc=${nfc} bidi_ctrl=${bidi} ${flags.join(" ")}`);
+	}
+}
+console.log(out.join("\n"));

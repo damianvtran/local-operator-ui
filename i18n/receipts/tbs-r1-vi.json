@@ -1,0 +1,49 @@
+{
+  "auditor": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "tbs-r1-vi",
+  "session": "b4195c849296",
+  "date": "2026-10-21",
+  "locale": "vi",
+  "translator": "translator",
+  "translator_session": "fcf03ca6da03",
+  "namespace": "ui.teamBridge",
+  "status": "passed",
+  "keys_audited": 27,
+  "scope": "27-key drafts/schedule delta (5 ui.teamBridge.drafts.* + 22 ui.teamBridge.schedule.*, per git diff 2e16fb1456..e400709b71 of en); base 109 values verified byte-unchanged versus HEAD and inherited; catalogue audit only, not rendered-fit/activation/release.",
+  "sha256": {
+    "en": "145e5d2de5165a0fa6e5ce1cff91f6e6909007e448b4a6e229b47a87a71cb46b",
+    "vi": "8f2c3810f712f17e66dce9f306f209cbe16702e13c148c669a16cbc5249a18b7",
+    "context": "cfb426eebee10f1a71310746c4491690a24e2ad6074401115e217d222b9857b2"
+  },
+  "findings": [
+    {
+      "severity": "MINOR",
+      "key": "ui.teamBridge.schedule.cancel_failed",
+      "current": "Chưa xác nhận được việc hủy. Tin nhắn có thể đang được gửi. Hãy làm mới trước khi thử lại.",
+      "proposed": "Chưa xác nhận được việc hủy. Tin nhắn có thể đã bắt đầu được gửi. Hãy làm mới trước khi thử lại.",
+      "note": "Uncertainty (“có thể”) survives but English “may already be sending” loses “already” (đã), so the reader is not told the send may have started before the cancel attempt — the very nuance the sidecar asks failure copy to keep."
+    }
+  ],
+  "inherited_receipt": {
+    "base": "2e16fb1456",
+    "path": "i18n/receipts/tbd-r2-vi.json",
+    "sha256": "b06b33c45ad38222050412836b2f095a369eab4905066f0e96b9443045851bd8",
+    "keys_inherited": 109,
+    "base_source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+    "base_target_sha256": "71339f089127558ebe551d701ab8fbb394322a61bb44843002310cb294195fdc",
+    "unchanged_values_verified": 109
+  },
+  "reference_sha256": {
+    "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+  },
+  "validation": {
+    "independence": "Auditor session b4195c849296 is distinct from translator session fcf03ca6da03; read the bytes of the working-tree vi catalogue directly, made no edits, no git add/commit.",
+    "semantics": "All 27 new keys read side by side with en, the context sidecar, the vi style guide and their call sites (team-bridge-scheduled.tsx dialog title/label/hint/alert/primary button; team-bridge-page.tsx nav aria-label, rail quick-view buttons, alerts, icon-button aria-label; team-bridge-rail.tsx draft indicator title/sr-only). review/confirm_action form a parallel pair (Xem lại / Xác nhận lịch gửi); failed and success reference “Đã lên lịch” = schedule.list; create_uncertain/create_retry reference “Nhóm” = section.groups; uncertainty kept (“Chưa xác nhận được”, “có thể đã được tạo”); create_retry keeps the first-person explicit acknowledgement. Register: bạn only on blocking/result copy, “Hãy … thử lại” as in base composer.error; Hủy matches create.cancel; Làm mới matches ui.settings refresh; Bản nháp matches ui.code_review/ui.chat drafts; “lịch gửi” is a deliberate distinct compound from ui.schedules “lịch chạy” (agent run schedules), both under glossary schedule → lịch.",
+    "icu": "Parsed en and vi with @formatjs/icu-messageformat-parser: placeholder sets identical for all 27 ({timezone} in schedule.timezone, {date} in schedule.confirm, none elsewhere); no plural branches in delta. intl-messageformat vi samples: “Gửi vào lúc 16:30:00 GMT+7 Thứ Năm, 22 tháng 10, 2026?” (date = Intl vi dateStyle full + timeStyle long, Asia/Ho_Chi_Minh) and “Thời gian tính theo múi giờ Asia/Ho_Chi_Minh. Máy chủ sẽ gửi tin nhắn, kể cả khi thiết bị này ngoại tuyến.” File: 136 keys, en order preserved, no duplicate keys, trailing newline unchanged; 109 base values byte-identical to HEAD (HEAD vi sha 71339f08… = base_target_sha256).",
+    "typography": "All 27 NFC; no U+200E/F, U+202A–E, U+2066–9, U+061C; no value identical to en; real ellipsis in schedule.loading; curly “ ” quotes for section names; spaced em dash in schedule.sending and create_retry; no space before punctuation; no “!”; Latin digits; open-syllable orthography hủy per wave call (no huỷ/xoá/khoá variants).",
+    "overflow": "Short labels at or near en length: Bản nháp 8/6, Đã lên lịch 11/9 (full-width 30px rail buttons), Nháp 4/5 (tooltip/sr-only only), Xem lại lịch gửi 16/15 and Xác nhận lịch gửi 17/16 (dialog primary button), Đổi lịch gửi 12/10, Hủy gửi 7/14, create_retry 49/49. No material overflow risk; longest growth is wrapping body copy (schedule.empty 1.50×, success 1.30×) where the sidecar permits wrapping.",
+    "limitations": "Browser unavailable by task constraint; no screenshots, glyph metrics, visual-fit or rendered bidi claim. No catalogue/code edits."
+  }
+}

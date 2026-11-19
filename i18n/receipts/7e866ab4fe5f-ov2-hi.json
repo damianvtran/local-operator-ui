@@ -1,0 +1,151 @@
+{
+  "instance": "7e866ab4fe5f-ov2-hi",
+  "locale": "hi",
+  "scope": {
+    "namespaces": [
+      "ui.chat.thread_search",
+      "ui.chat.canonical"
+    ],
+    "keys": 23,
+    "added_by": "fbf78b5f67",
+    "mode": "delta re-verification at the correction commit, not a re-audit"
+  },
+  "key_count": 23,
+  "checkout_head": "58de30166d",
+  "checkout_head_full": "58de30166d26776166576c134d5456416616285b",
+  "audit_date": "2026-10-29",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "7e866ab4fe5f",
+    "model": "anthropic/claude-opus-4-6 via radient/auto fallback (primary anthropic/claude-sonnet-5-5; quota failures forced openai/gpt-6-astra → kimi/k3.1-pro → radient/auto)",
+    "actual_model_source": "host model-switch notices in this session",
+    "independent_from_translator_session": true
+  },
+  "reviewed_previous": {
+    "receipt": "/Users/damian/qa/ov-audit/hi/receipt.json",
+    "instance": "7e866ab4fe5f-ov-hi",
+    "checkout_head": "f6e5c3eb62",
+    "verdict": "PASS",
+    "counts": {
+      "BLOCKER": 0,
+      "MAJOR": 0,
+      "MINOR": 1,
+      "NIT": 2
+    }
+  },
+  "input_sha256": [
+    {
+      "path": "src/i18n/catalogues/en/ui.chat.thread_search.json",
+      "sha256": "08bc59d1fe1058d3704800f92ee05afe5a7ffc1c7146683100a1afe5b2fa28e6",
+      "changed_since_previous": true
+    },
+    {
+      "path": "src/i18n/catalogues/hi/ui.chat.thread_search.json",
+      "sha256": "ccd7f39b3a72231202159cb4c26dc9697133a164a549ecf54a82581a25998edf",
+      "changed_since_previous": true
+    },
+    {
+      "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+      "sha256": "da2c87f6caf8f238997861d850f575a3b3d8328c5d46abfffae4728ed41fb892",
+      "changed_since_previous": false
+    },
+    {
+      "path": "src/i18n/catalogues/hi/ui.chat.canonical.json",
+      "sha256": "dd90a0705cb5cf400ded64eae5a95b0018400694cf525bf07f86da132fbb0c19",
+      "changed_since_previous": false
+    }
+  ],
+  "checks": [
+    "delta scope: of the four in-scope files, exactly one value changed — ui.chat.thread_search.count.split in en and hi; en canonical and hi canonical files are byte-identical to round 1 (da2c87f6…, dd90a070…); key counts 23/23 and 80/80, nothing added or dropped",
+    "commit 58de30166d touches 9 files, of which two are in my scope (the en string with its sidecar note, and the hi value); the other seven are locales outside this audit",
+    "count.split new form verified against my own round-1 reasoning: I declined to file the agreement issue because hi's bare adjective did not show the defect that inflecting locales had; the label-first shape removes the numeral-adjacent adjective entirely, so there is nothing left to re-file. hi reads 'सटीक मिलान: 3 · संबंधित मिलान: 5' — label, ASCII colon + space, middot and both placeholders kept",
+    "count.split ICU render checked for 3/5, 1/21, 0/2 — no agreement surface remains, and the hi labels now match tier.related's 'संबंधित मिलान' instead of the old bare qualifier (strict improvement to terminology consistency)",
+    "ICU arguments of every count key match English byte-for-byte: count.match count+countText, count.related count+countText, count.split exactText+relatedText, count.truncated count+countText; all parse under intl-messageformat with locale hi and hi's one/other categories",
+    "plural bodies re-rendered, unchanged and still correct: 0/1 -> 'संदेश मिला', 2/5/21 -> 'संदेश मिले' (and the same for count.related)",
+    "role labels: en 'Agent'/'You' vs hi 'एजेंट'/'आप' — correct, and hi needs no colon; the ru capitalisation call in this commit ('Вы:') is a Cyrillic-case rule that does not transfer to caseless Devanagari, and hi's shipped copy already addresses the reader as आप (ui.chat.canonical 'आपका संदेश'). Nothing to change",
+    "repo gate run (scoped): node scripts/i18n/context-parity.mjs -> ok (131 allowed gaps, 4 namespaces) at 58de30166d; full check-i18n:catalogues not run (whole-repo ledger/generate gates, out of scope for a 23-key delta)",
+    "no translation/MT service used; repo untouched (git status clean); values read only through read_public_copy, sidecars/glossary/style guide as labelled filesystem docs"
+  ],
+  "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 1,
+    "NIT": 2
+  },
+  "counts_note": "All three are carried forward from round 1 and unchanged at these bytes; new findings in this round: 0/0/0/0. No BLOCKER or MAJOR has ever been open in this scope.",
+  "verdict": "pass",
+  "claimed_remediation_verified": {
+    "count.split label-first": "verified — resolved at source (en) and in hi; nothing to re-file",
+    "ru row-label capitalisation": "outside this locale; hi needs no equivalent",
+    "rest of my findings addressed or answered": "NOT SUPPORTED at 58de30166d — hi-ts-01/02/03 are byte-identical to the values I filed against, and no answer (ledger, project log, PR #1481 comments) exists; only the count.split key moved"
+  },
+  "namespaces": {
+    "ui.chat.thread_search": {
+      "status": "passed",
+      "keys_audited": 20,
+      "sha256": {
+        "en": "08bc59d1fe1058d3704800f92ee05afe5a7ffc1c7146683100a1afe5b2fa28e6",
+        "target": "ccd7f39b3a72231202159cb4c26dc9697133a164a549ecf54a82581a25998edf"
+      },
+      "changed_keys": [
+        "ui.chat.thread_search.count.split"
+      ],
+      "findings": [
+        {
+          "id": "hi-ts-01",
+          "severity": "MINOR",
+          "keys": [
+            "ui.chat.thread_search.building_hint"
+          ],
+          "status": "open — not remediated, no answer found",
+          "current_at_58de30166d": "इंडेक्स पूरा होते ही परिणाम दिखने लगेंगे।",
+          "evidence": "byte-identical to the f6e5c3eb62 value I filed against; en source 'Results appear as the index catches up.' also unchanged; no ledger note, project-log line or PR #1481 comment answers it",
+          "restated": "'पूरा होते ही' (= once complete) still defers every result to index completion, where the source and ui.chat.thread_search.partial both describe results appearing while it catches up",
+          "suggestion": "इंडेक्स बनते-बनते परिणाम दिखने लगेंगे।"
+        },
+        {
+          "id": "hi-ts-02",
+          "severity": "NIT",
+          "keys": [
+            "ui.chat.thread_search.searching",
+            "ui.chat.thread_search.jumping"
+          ],
+          "status": "open — not remediated, no answer found",
+          "current_at_58de30166d": "खोजा जा रहा है… / उस संदेश पर जाया जा रहा है…",
+          "evidence": "unchanged since f6e5c3eb62; style point only, meaning correct",
+          "suggestion": "खोजा जा रहा है… / जाया जा रहा है… kept is acceptable; 'जा रहे हैं…' reads more naturally"
+        },
+        {
+          "id": "hi-ts-03",
+          "severity": "NIT",
+          "keys": [
+            "ui.chat.thread_search.count.truncated"
+          ],
+          "status": "open — not remediated, no answer found",
+          "current_at_58de30166d": "{count, plural, one {(पहला संदेश दिखाया गया)} other {(पहले {countText} संदेश दिखाए गए)}}",
+          "evidence": "unchanged since f6e5c3eb62; 'पहले {countText}' can still be read as 'earlier N'",
+          "suggestion": "… other {(शुरुआती {countText} संदेश दिखाए गए)}}"
+        }
+      ]
+    },
+    "ui.chat.canonical": {
+      "status": "passed",
+      "keys_audited": 3,
+      "sha256": {
+        "en": "da2c87f6caf8f238997861d850f575a3b3d8328c5d46abfffae4728ed41fb892",
+        "target": "dd90a0705cb5cf400ded64eae5a95b0018400694cf525bf07f86da132fbb0c19"
+      },
+      "changed_keys": [],
+      "findings": []
+    }
+  },
+  "notes": [
+    "hi-ts-01 MINOR (building_hint): OPEN — unchanged at 58de30166d, no remediation and no tracked answer",
+    "hi-ts-02 NIT (searching/jumping passive-progressive): OPEN — unchanged at 58de30166d",
+    "hi-ts-03 NIT (count.truncated 'पहले' ambiguity): OPEN — unchanged at 58de30166d",
+    "no new finding filed against the label-first count.split; it resolves the hazard I deliberately did not file in round 1 and improves hi's terminology consistency",
+    "verdict stays pass on the standing rule (no BLOCKER or MAJOR), not because the round-2 summary was right: the summary overstated what this commit changed for hi"
+  ],
+  "ledger_recorded": false,
+  "ledger_note": "No ledger row written: this task forbids editing the repo."
+}

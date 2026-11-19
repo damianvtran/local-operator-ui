@@ -1,0 +1,90 @@
+{
+  "locale": "vi",
+  "branch": "i18n/slice-transcript",
+  "head": "2cf1ea7b5fd95b85d6c8bfaa264f6bd3c4e5c3b9",
+  "base": "6031bc9ad71e1b9fc83e0d1a9714e52a19301913",
+  "instance": "849774c2de9b",
+  "agent": "reviewer",
+  "model": "openai/gpt-6.1-sol",
+  "auditor": {
+    "agent": "reviewer",
+    "instance": "849774c2de9b",
+    "session": "849774c2de9b",
+    "model": "openai/gpt-6.1-sol",
+    "independent_from_translator": true,
+    "authored_translation": false,
+    "requested_model": "anthropic/claude-sonnet-5-5",
+    "fallback": true,
+    "model_source": "Explicit session model-switch notices: quota failure; final served model openai/gpt-6.1-sol"
+  },
+  "audit_id": "s2a-vi-2cf1ea7b5fd-849774c2de9b",
+  "audit_date": "2026-11-09",
+  "status": "passed",
+  "result": "clean",
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [],
+    "nit": []
+  },
+  "namespace": "ui.agents.upload",
+  "namespaces": {
+    "ui.agents.upload": {
+      "namespace": "ui.agents.upload",
+      "status": "passed",
+      "result": "clean",
+      "sha256": {
+        "en": "388f6b2348eb76b3c3f6ac074ce32434fe75a31a9a41aa5eaead59c34caa97ab",
+        "vi": "cbf960f0f8b65894b0bd49b966e4f60b4973ef97e23acd0bed75609020f625fd",
+        "context": "b2cff9fc8975e5bc6c394a39a9cbd464a53304f6be9657f80446801c0072734f"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.agents.upload.json",
+        "vi": "src/i18n/catalogues/vi/ui.agents.upload.json",
+        "context": "src/i18n/catalogues/en/ui.agents.upload.context.json"
+      },
+      "reviewed_keys": [
+        "ui.agents.upload.failure.publish_fallback"
+      ],
+      "keys_audited": 1,
+      "scope_note": "Delta-only linguistic audit; entire-namespace hashes bind the changed-key review, not a new full-namespace review.",
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      }
+    }
+  },
+  "guidance": [
+    {
+      "repository": "damianvtran/local-operator",
+      "path": "i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    {
+      "repository": "damianvtran/local-operator",
+      "path": "i18n/style-guides/vi.md",
+      "sha256": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888"
+    }
+  ],
+  "artifacts": {
+    "report.md": {
+      "path": "i18n/audits/evidence/vi/ui.agents.upload/s2a-vi-2cf1ea7b5fd-849774c2de9b/report.md",
+      "sha256": "e08b39bb6caf0b1c689b68610f251729dbd43c8fcc8bc90c8e1fa9e9fb0627fa"
+    },
+    "checks.json": {
+      "path": "i18n/audits/evidence/vi/ui.agents.upload/s2a-vi-2cf1ea7b5fd-849774c2de9b/checks.json",
+      "sha256": "6384ca59ecaed80c72d81f04fe2c421a142307e0b1b7cf4c5785980d46a4cff9"
+    },
+    "checks.py": {
+      "path": "i18n/audits/evidence/vi/ui.agents.upload/s2a-vi-2cf1ea7b5fd-849774c2de9b/checks.py",
+      "sha256": "0b208e0da74fb3da0483dcaa6b07b1cddb3a176fbdb00978e939c47c26e88bd8"
+    }
+  },
+  "limitations": [
+    "Changed keys only, not full-namespace re-audit.",
+    "No rendered/browser validation; catalogue completeness only.",
+    "Illustrative substitution is not runtime formatter execution."
+  ]
+}

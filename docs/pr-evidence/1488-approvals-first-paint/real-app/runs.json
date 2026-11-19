@@ -1,0 +1,542 @@
+{
+  "build": {
+    "command": "pnpm build",
+    "cwd": "/Users/damian/local-operator-ui/.worktrees/qa-1488-real-app",
+    "pid": 65009,
+    "startedAt": "2026-10-29T14:23:51.976Z",
+    "wallMs": 21879,
+    "error": null,
+    "code": 0,
+    "signal": null,
+    "memoryBudget": {
+      "budgetMb": 9216,
+      "arm": "derived",
+      "totalMb": 36864
+    },
+    "peak": {
+      "rssBytes": 3263660032,
+      "ownedBytes": 3809828640,
+      "samples": 32,
+      "blindSamples": 0
+    },
+    "breach": null,
+    "artifacts": {
+      "out/main/index.js": {
+        "sha256": "9a0e2c5478d7c4b8188f0f9e27b5776453db3b6748d7a3ef735ee37132205046",
+        "bytes": 72
+      },
+      "out/renderer/index.html": {
+        "sha256": "c15ced14b2e346f01e1ba3ebe17d5584a5b2e9dd060aedc2e35855f9423f46dd",
+        "bytes": 4020
+      }
+    }
+  },
+  "runs": {
+    "dark": {
+      "palette": "obsidian",
+      "runDir": "/Users/damian/.local-operator/sessions/9d06be9d75c2/scratchpad/run-dark",
+      "exitCode": 0,
+      "assertions": [
+        {
+          "label": "the app's own theme provider applies the seeded palette",
+          "status": "PASS",
+          "detail": "documentElement data-theme=\"obsidian\" dark=true"
+        },
+        {
+          "label": "the app's browser route mounts its live content box",
+          "status": "PASS",
+          "detail": "{\"route\":true,\"pane\":false,\"content\":true,\"hash\":\"#/browser\"}"
+        },
+        {
+          "label": "the browser route shows an enabled address field",
+          "status": "PASS",
+          "detail": "{\"x\":762,\"y\":87,\"width\":732,\"height\":28,\"disabled\":false,\"readOnly\":false,\"editing\":\"false\",\"value\":\"127.0.0.1:60092/page\"}"
+        },
+        {
+          "label": "a real loopback page is live inside the app",
+          "status": "PASS",
+          "detail": "url=http://127.0.0.1:60324/page viewport=940,694 dpr=2"
+        },
+        {
+          "label": "the page's permission request reaches the app's policy and is denied",
+          "status": "PASS",
+          "detail": "geolocation result=\"geolocation: denied (1)\" probe={\"geo\":\"denied:1\",\"notifications\":\"denied\"}"
+        },
+        {
+          "label": "the pending access request is queued (request_access answered pending)",
+          "status": "PASS",
+          "detail": "200 {\"id\":\"qa-1488-request-access\",\"ok\":true,\"result\":{\"origin\":\"http://127.0.0.1:60324\",\"state\":\"pending\",\"entry_id\":\"8827767fb85e4b0aac56d493bae4ae7d\",\"authority\":\"127.0.0.1:60324\",\"expires_at\":1793284877202,\"broad\":{\"scope\":\"host\",\"key\":\"127.0.0.1\"}}}"
+        },
+        {
+          "label": "the card is presented (queue count non-zero and the child carries bounds)",
+          "status": "PASS",
+          "detail": "first presented sample at 189 ms after the request"
+        },
+        {
+          "label": "the FIRST VISIBLE card sample already carries the seeded palette",
+          "status": "PASS",
+          "detail": "first visible at 353 ms: theme=\"obsidian\" size=[368,383] text=\"Local Operator Approvals Close An agent \""
+        },
+        {
+          "label": "every VISIBLE card sample carries the seeded palette",
+          "status": "PASS",
+          "detail": "visible samples=21 themes=[\"obsidian\"]"
+        },
+        {
+          "label": "no VISIBLE card sample carries localOperatorDark",
+          "status": "PASS",
+          "detail": "default-palette visible samples=0"
+        },
+        {
+          "label": "the document URL the app loaded at presentation carries the seeded palette",
+          "status": "PASS",
+          "detail": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian"
+        },
+        {
+          "label": "the presented card document carries the queued entry, not the empty state",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "label": "every composite captured from a VISIBLE card carries the seeded palette",
+          "status": "PASS",
+          "detail": "[[\"first-presented\",\"visible\",\"obsidian\"],[\"mid-settle\",\"visible\",\"obsidian\"],[\"settled\",\"visible\",\"obsidian\"]]"
+        },
+        {
+          "label": "no app process from this run survives teardown",
+          "status": "PASS",
+          "detail": "[]"
+        }
+      ],
+      "presentation": {
+        "presentedAt": 189,
+        "firstVisibleAt": 353,
+        "firstFrameAt": 189,
+        "frames": 22,
+        "frameThemes": [
+          "localOperatorDark",
+          "obsidian"
+        ]
+      },
+      "timeline": {
+        "samples": 23,
+        "withTarget": 23,
+        "errors": 1,
+        "beforeFirstPaint": [
+          {
+            "at": 9,
+            "error": "Error: evaluate threw: Uncaught TypeError: Cannot read properties of null (reading 'dataset')\n    at <anonymous>:5:41\n    at <anonymous>:12:7"
+          },
+          {
+            "at": 189,
+            "target": "674133F8C2A93C188BAF18D618F4EA3D",
+            "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian",
+            "theme": "localOperatorDark",
+            "vis": "hidden",
+            "size": [
+              368,
+              112
+            ],
+            "hasCard": true,
+            "text": "",
+            "bg": "rgb(50, 45, 34)"
+          }
+        ],
+        "firstVisible": {
+          "at": 353,
+          "target": "674133F8C2A93C188BAF18D618F4EA3D",
+          "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian",
+          "theme": "obsidian",
+          "vis": "visible",
+          "size": [
+            368,
+            383
+          ],
+          "hasCard": true,
+          "text": "Local Operator Approvals Close An agent from another session \u00b7 etic wants to ope",
+          "bg": "rgb(53, 52, 56)"
+        },
+        "visibilityValues": [
+          null,
+          "hidden",
+          "visible"
+        ],
+        "themes": [
+          null,
+          "localOperatorDark",
+          "obsidian"
+        ]
+      },
+      "frames": {
+        "first-presented": {
+          "file": "first-presented.png",
+          "bytes": 76110,
+          "theme": "obsidian",
+          "visibility": "visible",
+          "sincePresentedMs": 0,
+          "ring_page_shows_through": true,
+          "card_covers_page": true,
+          "card_centre_rgb": [
+            53,
+            52,
+            56
+          ],
+          "page_under_centre_rgb": [
+            29,
+            49,
+            77
+          ]
+        },
+        "mid-settle": {
+          "file": "mid-settle.png",
+          "bytes": 76110,
+          "theme": "obsidian",
+          "visibility": "visible",
+          "sincePresentedMs": 790,
+          "ring_page_shows_through": true,
+          "card_covers_page": true,
+          "card_centre_rgb": [
+            53,
+            52,
+            56
+          ],
+          "page_under_centre_rgb": [
+            29,
+            49,
+            77
+          ]
+        },
+        "settled": {
+          "file": "settled.png",
+          "bytes": 76110,
+          "theme": "obsidian",
+          "visibility": "visible",
+          "sincePresentedMs": 2257,
+          "ring_page_shows_through": true,
+          "card_covers_page": true,
+          "card_centre_rgb": [
+            53,
+            52,
+            56
+          ],
+          "page_under_centre_rgb": [
+            29,
+            49,
+            77
+          ]
+        }
+      },
+      "cardCloseup": {
+        "file": "card-first-visible.png",
+        "bytes": 25514,
+        "sourceFrame": {
+          "file": "card-01.png",
+          "atMs": 353,
+          "sincePresented": 164,
+          "theme": "obsidian",
+          "vis": "visible",
+          "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian"
+        }
+      },
+      "composites": [
+        {
+          "label": "first-presented",
+          "atMs": 377,
+          "sincePresented": 0,
+          "theme": "obsidian",
+          "vis": "visible",
+          "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian"
+        },
+        {
+          "label": "mid-settle",
+          "atMs": 1167,
+          "sincePresented": 790,
+          "theme": "obsidian",
+          "vis": "visible",
+          "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian"
+        },
+        {
+          "label": "settled",
+          "atMs": 2633,
+          "sincePresented": 2257,
+          "theme": "obsidian",
+          "vis": "visible",
+          "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian"
+        }
+      ],
+      "browserLog": [
+        "10:31:17.088 \u203a [browser] address overlay hidden: stale_layout",
+        "10:31:17.089 \u203a [browser] denied a media permission request from http://127.0.0.1:60092/page",
+        "10:31:17.089 \u203a [browser] denied a media permission request from http://127.0.0.1:60092/page",
+        "10:31:17.089 \u203a [browser] denied a web-app-installation permission request from http://127.0.0.1:60092/page",
+        "10:31:17.090 \u203a [browser] denied a geolocation permission request from http://127.0.0.1:60092/page",
+        "10:31:17.092 \u203a [browser] address overlay hidden: navigation",
+        "10:31:17.093 \u203a [browser] address overlay hidden: projection_hidden",
+        "10:31:17.160 \u203a [browser] tab 1 navigated to http://127.0.0.1:60324/page",
+        "10:31:17.165 \u203a [browser] denied a geolocation permission request from http://127.0.0.1:60324/page",
+        "10:31:17.166 \u203a [browser] denied a notifications permission request from http://127.0.0.1:60324/page",
+        "10:31:17.204 \u203a [browser] approvals overlay child released: resize",
+        "10:31:17.207 \u203a [browser] session:qa-1488-synthetic is asking for access to http://127.0.0.1:60324 (1 pending)"
+      ],
+      "pageUrl": "http://127.0.0.1:60324/page",
+      "pid": 79187,
+      "teardown": {
+        "signal": "SIGTERM",
+        "survivors": []
+      }
+    },
+    "light": {
+      "palette": "kanagawaLotus",
+      "runDir": "/Users/damian/.local-operator/sessions/9d06be9d75c2/scratchpad/run-light",
+      "exitCode": 0,
+      "assertions": [
+        {
+          "label": "the app's own theme provider applies the seeded palette",
+          "status": "PASS",
+          "detail": "documentElement data-theme=\"kanagawaLotus\" dark=false"
+        },
+        {
+          "label": "the app's browser route mounts its live content box",
+          "status": "PASS",
+          "detail": "{\"route\":true,\"pane\":false,\"content\":true,\"hash\":\"#/browser\"}"
+        },
+        {
+          "label": "the browser route shows an enabled address field",
+          "status": "PASS",
+          "detail": "{\"x\":762,\"y\":87,\"width\":732,\"height\":28,\"disabled\":false,\"readOnly\":false,\"editing\":\"false\",\"value\":\"127.0.0.1:60164/page\"}"
+        },
+        {
+          "label": "a real loopback page is live inside the app",
+          "status": "PASS",
+          "detail": "url=http://127.0.0.1:60382/page viewport=940,694 dpr=2"
+        },
+        {
+          "label": "the page's permission request reaches the app's policy and is denied",
+          "status": "PASS",
+          "detail": "geolocation result=\"geolocation: denied (1)\" probe={\"geo\":\"denied:1\",\"notifications\":\"denied\"}"
+        },
+        {
+          "label": "the pending access request is queued (request_access answered pending)",
+          "status": "PASS",
+          "detail": "200 {\"id\":\"qa-1488-request-access\",\"ok\":true,\"result\":{\"origin\":\"http://127.0.0.1:60382\",\"state\":\"pending\",\"entry_id\":\"bc68a93a267447e389dcc2084766ced4\",\"authority\":\"127.0.0.1:60382\",\"expires_at\":1793284882628,\"broad\":{\"scope\":\"host\",\"key\":\"127.0.0.1\"}}}"
+        },
+        {
+          "label": "the card is presented (queue count non-zero and the child carries bounds)",
+          "status": "PASS",
+          "detail": "first presented sample at 221 ms after the request"
+        },
+        {
+          "label": "the FIRST VISIBLE card sample already carries the seeded palette",
+          "status": "PASS",
+          "detail": "first visible at 376 ms: theme=\"kanagawaLotus\" size=[368,383] text=\"Local Operator Approvals Close An agent \""
+        },
+        {
+          "label": "every VISIBLE card sample carries the seeded palette",
+          "status": "PASS",
+          "detail": "visible samples=21 themes=[\"kanagawaLotus\"]"
+        },
+        {
+          "label": "no VISIBLE card sample carries localOperatorDark",
+          "status": "PASS",
+          "detail": "default-palette visible samples=0"
+        },
+        {
+          "label": "the document URL the app loaded at presentation carries the seeded palette",
+          "status": "PASS",
+          "detail": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus"
+        },
+        {
+          "label": "the presented card document carries the queued entry, not the empty state",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "label": "every composite captured from a VISIBLE card carries the seeded palette",
+          "status": "PASS",
+          "detail": "[[\"first-presented\",\"visible\",\"kanagawaLotus\"],[\"mid-settle\",\"visible\",\"kanagawaLotus\"],[\"settled\",\"visible\",\"kanagawaLotus\"]]"
+        },
+        {
+          "label": "no app process from this run survives teardown",
+          "status": "PASS",
+          "detail": "[]"
+        }
+      ],
+      "presentation": {
+        "presentedAt": 221,
+        "firstVisibleAt": 376,
+        "firstFrameAt": 221,
+        "frames": 22,
+        "frameThemes": [
+          "localOperatorDark",
+          "kanagawaLotus"
+        ]
+      },
+      "timeline": {
+        "samples": 23,
+        "withTarget": 23,
+        "errors": 1,
+        "beforeFirstPaint": [
+          {
+            "at": 10,
+            "error": "Error: evaluate threw: Uncaught TypeError: Cannot read properties of null (reading 'dataset')\n    at <anonymous>:5:41\n    at <anonymous>:12:7"
+          },
+          {
+            "at": 221,
+            "target": "4F252CEB62BC6A5ADFB8B089F810E76C",
+            "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus",
+            "theme": "localOperatorDark",
+            "vis": "hidden",
+            "size": [
+              368,
+              112
+            ],
+            "hasCard": true,
+            "text": "",
+            "bg": "rgb(50, 45, 34)"
+          }
+        ],
+        "firstVisible": {
+          "at": 376,
+          "target": "4F252CEB62BC6A5ADFB8B089F810E76C",
+          "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus",
+          "theme": "kanagawaLotus",
+          "vis": "visible",
+          "size": [
+            368,
+            383
+          ],
+          "hasCard": true,
+          "text": "Local Operator Approvals Close An agent from another session \u00b7 etic wants to ope",
+          "bg": "rgb(242, 236, 188)"
+        },
+        "visibilityValues": [
+          null,
+          "hidden",
+          "visible"
+        ],
+        "themes": [
+          null,
+          "localOperatorDark",
+          "kanagawaLotus"
+        ]
+      },
+      "frames": {
+        "first-presented": {
+          "file": "first-presented.png",
+          "bytes": 76084,
+          "theme": "kanagawaLotus",
+          "visibility": "visible",
+          "sincePresentedMs": 0,
+          "ring_page_shows_through": true,
+          "card_covers_page": true,
+          "card_centre_rgb": [
+            241,
+            236,
+            193
+          ],
+          "page_under_centre_rgb": [
+            29,
+            49,
+            77
+          ]
+        },
+        "mid-settle": {
+          "file": "mid-settle.png",
+          "bytes": 76084,
+          "theme": "kanagawaLotus",
+          "visibility": "visible",
+          "sincePresentedMs": 794,
+          "ring_page_shows_through": true,
+          "card_covers_page": true,
+          "card_centre_rgb": [
+            241,
+            236,
+            193
+          ],
+          "page_under_centre_rgb": [
+            29,
+            49,
+            77
+          ]
+        },
+        "settled": {
+          "file": "settled.png",
+          "bytes": 76084,
+          "theme": "kanagawaLotus",
+          "visibility": "visible",
+          "sincePresentedMs": 2277,
+          "ring_page_shows_through": true,
+          "card_covers_page": true,
+          "card_centre_rgb": [
+            241,
+            236,
+            193
+          ],
+          "page_under_centre_rgb": [
+            29,
+            49,
+            77
+          ]
+        }
+      },
+      "cardCloseup": {
+        "file": "card-first-visible.png",
+        "bytes": 26540,
+        "sourceFrame": {
+          "file": "card-01.png",
+          "atMs": 376,
+          "sincePresented": 155,
+          "theme": "kanagawaLotus",
+          "vis": "visible",
+          "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus"
+        }
+      },
+      "composites": [
+        {
+          "label": "first-presented",
+          "atMs": 394,
+          "sincePresented": 0,
+          "theme": "kanagawaLotus",
+          "vis": "visible",
+          "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus"
+        },
+        {
+          "label": "mid-settle",
+          "atMs": 1193,
+          "sincePresented": 794,
+          "theme": "kanagawaLotus",
+          "vis": "visible",
+          "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus"
+        },
+        {
+          "label": "settled",
+          "atMs": 2679,
+          "sincePresented": 2277,
+          "theme": "kanagawaLotus",
+          "vis": "visible",
+          "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus"
+        }
+      ],
+      "browserLog": [
+        "10:31:22.504 \u203a [browser] address overlay hidden: stale_layout",
+        "10:31:22.509 \u203a [browser] denied a media permission request from http://127.0.0.1:60164/page",
+        "10:31:22.509 \u203a [browser] denied a media permission request from http://127.0.0.1:60164/page",
+        "10:31:22.509 \u203a [browser] denied a web-app-installation permission request from http://127.0.0.1:60164/page",
+        "10:31:22.509 \u203a [browser] denied a geolocation permission request from http://127.0.0.1:60164/page",
+        "10:31:22.511 \u203a [browser] address overlay hidden: navigation",
+        "10:31:22.513 \u203a [browser] address overlay hidden: projection_hidden",
+        "10:31:22.586 \u203a [browser] tab 1 navigated to http://127.0.0.1:60382/page",
+        "10:31:22.589 \u203a [browser] denied a geolocation permission request from http://127.0.0.1:60382/page",
+        "10:31:22.589 \u203a [browser] denied a notifications permission request from http://127.0.0.1:60382/page",
+        "10:31:22.630 \u203a [browser] approvals overlay child released: resize",
+        "10:31:22.634 \u203a [browser] session:qa-1488-synthetic is asking for access to http://127.0.0.1:60382 (1 pending)"
+      ],
+      "pageUrl": "http://127.0.0.1:60382/page",
+      "pid": 79396,
+      "teardown": {
+        "signal": "SIGTERM",
+        "survivors": []
+      }
+    }
+  }
+}

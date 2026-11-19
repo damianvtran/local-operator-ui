@@ -1,0 +1,77 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "anthropic/claude-sonnet-5-5",
+  "instance": "5d1b7e42-uf2-hi",
+  "locale": "hi",
+  "scope": "fresh independent re-audit of hi ui.updates.service, ui.installer.setup_cause (+ unchanged ui.updates.status), on-disk working-tree files, UI PR #1760 worktree i18n-update-flow @ a71f64a822c",
+  "evidence": "Fresh from-scratch read of every key against en + .context.json sidecars and shipped hi copy (ui.updates.panel, ui.installer, ui.common.updates, ui.common.connection). check-coverage.mjs: ok (7 gated languages, 0 allowed keys remain); locale-parity.test.mjs: 44/44 pass; context-parity.mjs: ok. Placeholder/skeleton/backtick tokens compared en vs hi programmatically for all 48 keys: identical. intl-messageformat (locale hi) rendered at counts 0,1,2,5,11,21,100; hi CLDR: 0,1=one, 2/5/11/21/100=other. fleet.busy.lead: 1 -> 'इस मशीन पर 1 सत्र अब भी काम कर रहा है: A, B, C और 1 अन्य।', 2/5/11/21/100 -> '... N सत्र अब भी काम कर रहे हैं: A, B, C और N अन्य।' (extra=0 drops the clause). count=0 would render a singular verb ('0 सत्र ... रहा है') but fleet-drain.ts only calls busy.lead when busy.length>=1 (zero uses none_named): unreachable, not a finding. not_effective with real and fallback values: '0.42.7 पर ... 0.41.0 बता रहा है' / 'नई रिलीज़ पर सर्वर अपडेट लागू नहीं हुआ: इंस्टॉलेशन अब भी उसका पिछला संस्करण बता रहा है।' (agreement correct). रिलीज़ is feminine in every occurrence; टर्न/संस्करण/सत्र/बिल्ड consistent with shipped copy. Earlier MAJORs (busy.lead verb agreement, target_fallback gender) are fixed.",
+  "namespaces": {
+    "ui.updates.service": {
+      "status": "passed",
+      "keys_read": 38,
+      "sha256": {
+        "en": "856e8b40cb826f277ae373446fac676b21aefa396ada79827e47d06e0cf3bd04",
+        "hi": "8ff779bb191a0835e3c25c2b60f2caf4b520b9b85248b093e23fe267769b7180"
+      },
+      "summary": "38 keys read; no blocker/major; 3 minor, 1 nit. Placeholders, plural branches, ::group-off skeletons, backticked commands and technical tokens intact.",
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.updates.service.release_unreadable.message",
+          "current": "ऐप यह नहीं पढ़ सका कि कौन-सी रिलीज़ इंस्टॉल करनी है, इसलिए उसने अपने सर्वर एनवायरनमेंट को नहीं छेड़ा। कनेक्शन जाँचें और दोबारा कोशिश करें।",
+          "proposed": "ऐप यह नहीं पढ़ सका कि कौन-सी रिलीज़ इंस्टॉल करनी है, इसलिए उसने अपने सर्वर एनवायरनमेंट में कोई बदलाव नहीं किया। कनेक्शन जाँचें और दोबारा कोशिश करें।",
+          "reason": "'को नहीं छेड़ा' (छेड़ना = tease/provoke) is a calque of 'left alone' and reads oddly for an environment; shipped copy says 'बदलाव नहीं किए' (ui.library, ui.agentMessages.settings) and never uses छेड़ना."
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.updates.service.disk_space.message",
+          "current": "... इसलिए ऐप ने इस ऐप को चला रहे एनवायरनमेंट को नहीं छेड़ा। कुछ जगह खाली करें और दोबारा कोशिश करें।",
+          "proposed": "सर्वर अपडेट के लिए इस डिस्क पर लगभग {needed, number, ::group-off} MB खाली जगह चाहिए, जबकि {free, number, ::group-off} MB ही खाली है, इसलिए ऐप ने इस ऐप को चला रहे एनवायरनमेंट में कोई बदलाव नहीं किया। कुछ जगह खाली करें और दोबारा कोशिश करें।",
+          "reason": "Same 'नहीं छेड़ा' calque as release_unreadable; also keeps this key consistent with not_installed ('जैसा था वैसा ही छोड़ दिया गया')."
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.updates.service.global.legacy_installer.remedy",
+          "current": "... जिससे सत्र टर्न के बीच में रुक सकते हैं। उसके बाद अपडेट ऐप संभालता है।",
+          "proposed": "... जिससे सत्र टर्न के बीच में रुक सकते हैं। उसके बाद अपडेट की ज़िम्मेदारी ऐप संभालता है।",
+          "reason": "'अपडेट ऐप संभालता है' can be parsed as the compound noun 'update app' with a missing object; naming the object with 'की ज़िम्मेदारी' removes the ambiguity (English 'The app manages updates after that')."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.updates.service.fleet.unknown.credentials_refused",
+          "current": "सर्वर ने इस ऐप के क्रेडेंशियल स्वीकार नहीं किए, ...",
+          "proposed": "सर्वर ने इस ऐप के क्रेडेंशियल अस्वीकार कर दिए, इसलिए ऐप यह नहीं पढ़ सका कि इस मशीन पर कौन-से सत्र चल रहे हैं।",
+          "reason": "Shipped ui.common.connection renders 'refused/rejected credential' as 'अस्वीकार'; 'स्वीकार नहीं किए' is accurate but a small glossary drift."
+        }
+      ]
+    },
+    "ui.installer.setup_cause": {
+      "status": "passed",
+      "keys_read": 7,
+      "sha256": {
+        "en": "330241db6a55045e62e90042cf26694ff73537c24c50467e117436958a4b610b",
+        "hi": "e390fa29fefc87662e0ea806603739787dbcabc2b426dec583227113fcc4adce"
+      },
+      "summary": "7 keys read; no blocker/major/minor; 1 nit.",
+      "findings": [
+        {
+          "severity": "NIT",
+          "key": "ui.installer.setup_cause.tls_interception",
+          "current": "... - यह ऐप उस स्टोर पर पहले से भरोसा करता है - दोबारा कोशिश करें।",
+          "proposed": "... - यह ऐप उस स्टोर पर पहले से भरोसा करता है - फिर दोबारा कोशिश करें।",
+          "reason": "English 'then retry' marks the sequence (certificate first, retry after); 'फिर' restores it."
+        }
+      ]
+    },
+    "ui.updates.status": {
+      "status": "passed",
+      "keys_read": 3,
+      "sha256": {
+        "en": "a9bfd84ce05092a54ca32b2c9d365b0025ac16340ba9d553ffa9086be764c5cb",
+        "hi": "93aed0c766e9cc922b67f5bbbb4d26ae0ca9b6c5f8dc99327a0672341fa917a6"
+      },
+      "summary": "3 keys read; clean, unchanged.",
+      "findings": []
+    }
+  }
+}

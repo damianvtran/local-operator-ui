@@ -1,0 +1,22 @@
+{
+  "auditor": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "tbd-r4-zhcn",
+  "session": "0b05461ffe68",
+  "date": "2026-10-21",
+  "locale": "zh-CN",
+  "translator": "translator",
+  "namespaces": {
+    "ui.teamBridge": {
+      "status": "passed",
+      "keys_audited": 1,
+      "scope": "Remediation-only semantic audit: ui.teamBridge.create.name_placeholder (例如：qa-coordination), source/context and placeholder regression checks. Inherited full 109-key semantic coverage from tbd-r3-zhcn (0b05461ffe68); exact reconstruction matches its zh-CN hash, proving the other 108 values unchanged. All 109 keys rechecked mechanically for key parity, ICU parsing, argument/tag/number/date tokens, zh-CN other-only plurals, NFC and bidi controls. English/context frozen hashes unchanged; prior receipt preserved byte-identically.",
+      "sha256": {
+        "en": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+        "zh-CN": "a461bd1121e50a3091f42da7ec75196ff94efa0eecc3e87bd99ea352d3e33672",
+        "context": "17b7e1450dc7fa529d8e2e684bb8653fcc4f6cf220bf8261631d078d26545de5"
+      },
+      "findings": []
+    }
+  }
+}

@@ -1,0 +1,138 @@
+{
+  "schema": 1,
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "f6655caaf9ed",
+    "instance": "4d7a5444aa0b",
+    "model": "deepseek/deepseek-flash",
+    "model_note": "Actual model is this session's own header line (Model: deepseek/deepseek-flash), the i18n-auditor role default; no mid-run fallback was commanded or observed. The served provider cannot be independently verified from inside the session.",
+    "actual_model_source": "session header line: Model: deepseek/deepseek-flash",
+    "independence": "Independent audit: fresh session f6655caaf9ed, not the PR #1876 translator (i18n-translator, anthropic/claude-sonnet-5-5 per the ledger row) and not the earlier es auditors of these keys (round-1 7a0414234ed5 / round-2 756ed6175781 for the 10 PR keys, 4b8febc34595 / 15686088b7ce for the 5 loading keys). I did not translate, edit, commit or push anything: every check ran read-only against the shared manager-owned worktree ~/local-operator-ui/.worktrees/i18n-s16a @ 8180eff1f705eb79d4df5123d6108c539b585b2e. Judged by reasoning from the English source, its context sidecar, the core glossary, the es style guide, shipped es catalogue precedent and real renders through the app's own ICU formatter; no translation/MT service was used and no back-translation was performed. Disclosure: same model family as rounds 1-2 for this locale, so independence here is by session and by re-derivation from the bytes."
+  },
+  "agent": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "fallback": "none reported",
+  "instance": "4d7a5444aa0b",
+  "session": "f6655caaf9ed",
+  "locale": "es",
+  "namespace": "ui.chat.canonical",
+  "pr": "damianvtran/local-operator-ui#1876",
+  "audited_head": "8180eff1f705eb79d4df5123d6108c539b585b2e",
+  "branch": "merge of main into the S16f PR branch (team worktree i18n-s16a)",
+  "date": "2026-11-12",
+  "audit_date": "2026-11-12",
+  "translator": "i18n-translator, anthropic/claude-sonnet-5-5 (PR #1876 S16f labels) and the earlier main-side loading.* wave (per the es/ui.chat.canonical ledger row); this auditor is independent of both",
+  "audit_kind": "delta — fresh independent audit of the 15 keys (5 main-added loading.* + 10 PR-added S16f generation-card labels) on the MERGED bytes, plus a mechanical integrity proof for the other 452 values",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "scope": "The 15 keys named by the manager in es/ui.chat.canonical.json: loading.{cold,older,region_label,remote,revalidating}; media.{image_label,sound_label}; sound.batch.{item_status,latest_update,summary}; sound.cost.{batch_unknown,estimated_zero,no_charge,unknown}; supplement.sound_fallback_label. Read in full against the English source + context sidecar, the core glossary and the es style guide; the other 452 values were proven byte-identical to origin/main (and the 10 PR keys to 107ff1dd) rather than re-audited. Catalogue audit only: not rendered fit, activation or release.",
+  "keys_read": 15,
+  "keys_read_note": "15 of 15 in-scope keys read in full (both the ICU source and 112 real renderings). Integrity script result for the rest: 457/457 origin/main keys byte-identical, 10/10 PR-added keys equal to 107ff1dd, 0 non-PR changes, 0 main keys missing, 0 keys added beyond the declared 10 — so no further key needed re-reading.",
+  "key_count": 467,
+  "findings_count": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 2
+  },
+  "sha256": {
+    "es": "547b85e9670eec79f82211f50325092bf75c13eda4504995cce1a1d5ab25e272",
+    "en": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
+    "context": "8f56e0d2b384c6b41add57a64e6c863e565cb61d5a7c0de482d42f380be3acfe",
+    "glossary (local-operator HEAD b42471d3 = origin/main i18n/glossary.md)": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "style_guide es (local-operator HEAD b42471d3 i18n/style-guides/es.md — the file actually read)": "77b9227213802d14c74d4298d6b346ad842bbf2a5ca3b9d46fc6144430d26c3e",
+    "style_guide es (current origin/main i18n/style-guides/es.md)": "4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6"
+  },
+  "inputs": {
+    "source": "src/i18n/catalogues/en/ui.chat.canonical.json",
+    "context": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+    "target": "src/i18n/catalogues/es/ui.chat.canonical.json",
+    "glossary": "~/local-operator/i18n/glossary.md",
+    "style_guide": "~/local-operator/i18n/style-guides/es.md"
+  },
+  "style_guide_freshness": "The local ~/local-operator checkout is 1844 commits behind origin/main, so the guide read first (77b9227…) is the older file; I re-read the origin/main version (4a6f6270…, snapshot kept). The 44-line delta is three es amendments (carpeta vs directorio de trabajo, cuota vs asignación, pull/push kept English) plus TUI width exceptions — none names a term, surface or budget in this audit's 15 keys. The ru S16f receipt recorded the same 77b9227… hash, i.e. the same stale checkout. Verdict unaffected; both hashes recorded.",
+  "checks": {
+    "generate_mjs_check": "PASS — src/i18n/keys.gen.ts byte-identical to a fresh generation",
+    "check_duplicates": "PASS — 1437 file(s) scanned, 0 duplicate key(s)",
+    "context_parity": "PASS — every English key covered apart from 129 allowed gaps in 4 namespaces (shrink-only allowance)",
+    "locale_parity_test": "PASS — 44/44 across all shipped locales: key set, unknown keys, ICU placeholder preservation, not-an-English-stub",
+    "generation_card_labels_test": "PASS — 27/27",
+    "ledger_check": "es/ui.chat.canonical: status \"pending\" + no auditor recorded before this audit (the reset the manager described; all seven non-en locales are pending). This receipt is what ledger-assemble binds to the merged bytes; it was not run by this audit because it writes, and this audit is read-only.",
+    "icu_parse_and_argument_parity": "PASS — all 15 keys parse with the app's own @formatjs parser; argument name/type set identical to English once arm multiplicity is normalised (es has 4 arms where en has 2 because it adds the es 'many' category); compared per selector, and every English selector key is still present",
+    "cldr_categories": "PASS — every plural carries one+many+other; cancelled/unknown keep their empty '=0' hide-branches; every category es adds is a legal es CLDR category and 'few' appears nowhere in the file; the two media.*_label plurals keep the source's '=1'/other shape, which loses nothing because '=1' matches exactly one and every other count falls to the numbered 'other' (rendered at 1e6 to confirm)",
+    "typography": "PASS — NFC, no bidi controls, single-character ellipsis, ' · ' clause separators spaced, no space before ';', no double spaces, no '...'",
+    "skeletons": "PASS — every '::group-off' number skeleton preserved in every arm that English formats that way",
+    "render_grid": "PASS — 112 renders through intl-messageformat('es'): counts {0,1,2,3,5,11,21,22,100,1000,1e6,1.5e6,2e6,3.1e7} x statuses {failed,cancelled,other,queued,\"\",undefined} x has_attention {yes,no} x positions; 0 throws, 0 leftover braces, no English leftover, category boundaries as es CLDR requires (1e6/2e6 -> many, 1.5e6 -> other)",
+    "negative_controls": "5/5 CAUGHT in memory: dropping a many arm changes the render, renaming {failed} throws on the missing context variable, replacing the empty '=0' arm with a second 'one' arm throws DUPLICATE_PLURAL_ARGUMENT_SELECTOR, an English leftover in 'other' and a lost ' · ' separator each change the render",
+    "merge_integrity": "PASS — 467 merged keys vs 457 origin/main vs 466 at 107ff1dd; 0 main keys missing, exactly the 10 declared PR keys added, 0 main values changed (457/457 byte-identical), 10/10 PR-added keys equal to the already-audited 107ff1dd values, 0 non-PR changes; the four renamed-away keys are absent from both en and es",
+    "widths": "PASS/noted — rendered widths vs English (rich.cells.cell_len): cold 25/21, older 29/25, region_label 24/20, remote 40/31 (+29%), revalidating 25/26, batch_unknown 31/25, unknown 25/19, no_charge 10/10, sound_fallback_label 15/15; the loading labels live in a truncating single-line pill and the sidecar's word caps are met, so no overflow",
+    "english_leakage": "PASS for the 15 values — only the literal $0 and user-data placeholders are non-Spanish",
+    "glossary_and_register": "PASS — tú register ('desde tu otro dispositivo'), coste (cost), dispositivo (device), sentence case, no calque found in any of the 15"
+  },
+  "findings": [
+    {
+      "id": "S16F-ES-A3-01",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.sound.batch.summary",
+      "current": "… many {{completed, number, ::group-off} de completadas} … (same shape in the failed, cancelled and unknown plurals)",
+      "problem": "The 'many' arms are es-authored (English has no category arms here) and exist because es CLDR puts exact millions in 'many' ('un millón de completadas'). Each one reuses the sibling arms' '::group-off' skeleton, so the only number that can reach it prints ungrouped: rendering completed=1000000 gives \"1000000 de completadas\". Spanish always groups, and the es style guide's own exemplar for this category is many {# de sesiones}, illustrated as \"1.000.000 de sesiones\". Verified: many {# de completadas} renders \"1.000.000 de completadas\". Real but unreachable in practice (>=1,000,000 requests in one sound batch), and a one-commit fix, hence MINOR rather than MAJOR.",
+      "suggestion": "Use '#' in the four many arms: many {# de completadas}, many {# de fallidas}, many {# de detenidas}, many {# con estado desconocido}. Every other arm keeps the '::group-off' skeleton exactly as English.",
+      "disposition": "reported; does not gate (no BLOCKER/MAJOR)"
+    },
+    {
+      "id": "S16F-ES-A3-02",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.media.sound_label",
+      "current": "{count, plural, =1 {Sonido} other {Sonido {position, number, ::group-off}}}",
+      "problem": "This value is also the audio player's accessible name: media-label.ts documents it, and sound-player.tsx composes it into ui.chat.audio.play_label / pause_label / position_label, producing \"Reproducir Sonido 2\" — a capitalised common noun mid-sentence, an orthography error in Spanish. The visible tile/alt-text surface wants the capital ('Imagen' keeps it for the same reason); the composed accessible name wants lower case. Same trade-off the ru round-3 audit recorded as S16F-RU-R3-01.",
+      "suggestion": "No change requested now (screen-reader-only, invisible, and the sidecar's tone field asks for a capitalised bare noun). If a later wave decides, change 'Sonido'/'Imagen' together with the audio play/pause/position templates in one commit; never flip this key alone.",
+      "disposition": "accepted, no change requested"
+    },
+    {
+      "id": "S16F-ES-A3-03",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.sound.cost.no_charge",
+      "current": "Sin cargo.",
+      "problem": "'Charge' has two renderings inside one card: 'cobro' in sound.cost.estimated_zero ('cobro final sin confirmar') and sound.stop.warning ('se cobrará … el cobro'), and 'cargo' here. Reviewed and downgraded from MINOR: the shipped es catalogue already names an unbilled amount 'sin cargo' (ui.chat.session_spend.plan_clause: '…equivalente a API, sin cargo'), so this follows product precedent rather than inventing a term. 'Sin coste.' would be the alternative if card-internal uniformity is ever wanted.",
+      "suggestion": "No change recommended. Recorded so a later wave does not silently reverse a precedent-backed call, and so my own reversal (MINOR -> NIT on finding the plan_clause precedent) is visible rather than dropped.",
+      "disposition": "accepted, no change requested"
+    }
+  ],
+  "considered_and_rejected": [
+    {
+      "key": "ui.chat.canonical.media.image_label, ui.chat.canonical.media.sound_label",
+      "observation": "Plural carries '=1'/other rather than the full es one+many+other set.",
+      "judgement": "Not a defect. The English source branches on '=1' only; '=1' matches exactly one and every other count (including es 'many' at 1e6) falls to 'other', which is the numbered form — verified by render (Imagen 1000000). Adding one/many arms would be text-identical ceremony. fr, vi, ur and hi ship the same shape in this PR; only ru expanded it. I concur with the es round-2 receipt (756ed6175781) that the source-derived shape is correct."
+    },
+    {
+      "key": "ui.chat.canonical.sound.batch.summary",
+      "observation": "has_attention 'yes' renders 'Atención: {labels}' where English says 'Needs attention: {labels}'.",
+      "judgement": "A verbless warning label is idiomatic es UI and keeps the meaning (the listed items did not complete); 'Necesita atención:' would be a calque. No change."
+    },
+    {
+      "key": "ui.chat.canonical.loading.remote",
+      "observation": "40 cells vs en 31 (+29%, just above the guide's 15-25% band).",
+      "judgement": "The pill is 'truncate' on a single text-meta line, the sidecar's 'five words or fewer' is met (5 words), and no shorter form keeps 'your own other device' — the sidecar says naming that is the point of the label. No change."
+    }
+  ],
+  "out_of_scope_observations": [
+    {
+      "surface": "soundBatchCostCaption (src/renderer/src/features/chat/canonical/sound-batch-model.ts)",
+      "note": "Pre-existing and explicitly deferred in a code comment: the batch TOTAL line is built from English literals plus caption.slice(5) of soundCostCaption's English output ('Cost $X (billed).'), so under es it renders English and even slices a localized caption mid-word once a localized caption reaches it. Not one of this PR's 15 keys and already reported in the es round-2 receipt (756ed6175781). It does block the operator's 'no English anywhere' claim for this card until the structured-cost slice lands; reported, not gated."
+    }
+  ],
+  "verified_scope_limits": [
+    "Catalogue audit only: no rendered frame, no browser/Electron capture, no activation or release claim (machine near its RAM limit; this brief is catalogue-scoped).",
+    "No file in the shared worktree was edited, committed, checked out or installed by this audit.",
+    "ledger-assemble.mjs was NOT run here (it writes the ledger; this session is read-only). The integrator runs it against this receipt."
+  ],
+  "artifacts": {
+    "root": "session scratchpad (pending copy into tracked i18n/audits/evidence/es/ui.chat.canonical/4d7a5444aa0b/)",
+    "receipt": "receipt.json",
+    "report": "report.md",
+    "execution_log": "audit.log",
+    "scripts": ["es-mechanical.mjs", "es-renders.mjs", "es-integrity.py"],
+    "reference_snapshot": "es-style-guide-origin-main.md"
+  },
+  "record_notes": "audit.log holds the real commands and their actual output (execution record). report.md holds this auditor's reasoning (notes, not an execution log). The log's first mechanical run shows one FAIL that is annotated in place: it was the checker's raw per-arm argument multiset, not a translation defect; the corrected arm-normalised run reports no failures."
+}

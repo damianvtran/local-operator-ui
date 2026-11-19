@@ -128,14 +128,13 @@
 	"ui.command_palette.matches.best": {
 		"role": "status",
 		"tone": "Lowercase compact result summary.",
-		"note": "Rendered only for a clipped ranked search, so the existing reachable English uses plural matches (total exceeds shown rows). The one arm reproduces the plural bytes, byte-faithful to the pre-extraction form that never singularized; count is shown rows, total governs the result noun.",
+		"note": "Rendered only for a clipped ranked search, so the existing reachable English uses plural matches (total exceeds shown rows). The one arm reproduces the plural bytes, byte-faithful to the pre-extraction form that never singularized; count is shown rows, total governs the result noun. Plural: English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement.",
 		"length": "One row; avoid adding an explanatory sentence.",
 		"placeholders": {
 			"total": "Numeric total matching-result cardinal; determines match/matches.",
 			"totalText": "Existing decimal total without added English grouping.",
 			"countText": "Number of shown ranked rows rendered as existing decimal text."
-		},
-		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
+		}
 	},
 	"ui.command_palette.matches.showing": {
 		"role": "status",
@@ -275,8 +274,8 @@
 	},
 	"ui.command_palette.use_palette_sources.agent_hub": {
 		"role": "command/page label",
-		"tone": "Sentence-case destination noun or action phrase.",
-		"note": "Palette destination agent hub: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"tone": "Destination proper name; title case.",
+		"note": "Palette destination Agent Hub: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched. Destinations are proper names and take title case (Agent Hub, Team Bridge, Library); actions are sentences and take sentence case (New chat, Search). Localised labels follow their own locale's conventions rather than English title case.",
 		"length": "One row; avoid adding an explanatory sentence."
 	},
 	"ui.command_palette.use_palette_sources.agent_settings": {
@@ -463,6 +462,12 @@
 		"role": "command/page label",
 		"tone": "Sentence-case destination noun or action phrase.",
 		"note": "Palette destination usage over time: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.new_temporary_chat": {
+		"role": "command/page label",
+		"tone": "Sentence-case action phrase.",
+		"note": "Palette action that starts a new temporary chat.",
 		"length": "One row; avoid adding an explanatory sentence."
 	}
 }

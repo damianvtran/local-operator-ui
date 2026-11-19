@@ -1,0 +1,25 @@
+{
+ "schema": 1,
+ "auditor": "translation-auditor",
+ "model": "radient/auto",
+ "instance": "591153bbfff3-hi",
+ "locale": "hi",
+ "namespace": "ui.settings.shortcuts",
+ "date": "2026-10-29",
+ "status": "passed",
+ "sha256": {
+  "hi": "7501d8f29f8e2742604e61210bc27916f68ad1dd128dcbd20745a11bafb05f15",
+  "en": "6ac7282da4a4dc30389e1777bca07fc63d434fa9f80e703b6b76aa72670a7919"
+ },
+ "findings": [
+  {
+   "severity": "MINOR",
+   "key": "ui.settings.shortcuts.reserved.browser_reload",
+   "detail": "Both reload rows read 'उसके बाहर ऐप विंडो' with no genitive particle, while the same file's close row one line below reads 'उसके बाहर की विंडो'. Meaning was recoverable but the changed rows deviated from the locale's own established dual-scope phrasing.",
+   "disposition": "fixed in this audit",
+   "remediation": "Added 'की' in both rows: 'उसके बाहर ऐप विंडो' -> 'उसके बाहर की ऐप विंडो' (browser_reload and browser_reload_cache). No other wording changed."
+  }
+ ],
+ "scope": "Changed rows only: the 3 keys this PR rewrote (browser-scope paragraph, browser_reload, browser_reload_cache). The other 61 keys are byte-identical to the previously audited commit 3d2e8ce. Key set == English (64/64); ICU placeholder parity over the whole file (none of the three keys takes an argument); meaning against ui.settings.shortcuts.context.json; dual-scope phrasing and register against the same file's browser_back/close/find/zoom_in rows.",
+ "notes": "Checked the three changed keys against the English source and the .context.json note: the reload rows name both outcomes (browser page, or the app window outside it) and carry no focus-the-browser-first instruction; the paragraph names only new tab, reopen tab, the address bar and switching tabs, gives the reason, and ends with the focus instruction, as English does. One MINOR consistency defect was found and fixed (missing 'की' in both reload rows); wording otherwise unchanged. Native-reader naturalness was NOT verified by a native speaker of the target language: this is a semantic/structural read by an agent. Rendered fit, RTL layout (ur) and screenshot evidence were not produced. Auditor model: the session was served by radient/auto for this run after the primary deepseek/deepseek-flash returned HTTP 402; that fallback is recorded here rather than implied."
+}

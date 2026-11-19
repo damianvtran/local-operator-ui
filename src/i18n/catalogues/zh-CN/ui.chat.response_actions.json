@@ -1,0 +1,7 @@
+{
+	"ui.chat.response_actions.answer_label": "回答操作",
+	"ui.chat.response_actions.copied": "已复制",
+	"ui.chat.response_actions.copy": "复制",
+	"ui.chat.response_actions.label": "回复操作",
+	"ui.chat.response_actions.yours_label": "你的消息操作"
+}

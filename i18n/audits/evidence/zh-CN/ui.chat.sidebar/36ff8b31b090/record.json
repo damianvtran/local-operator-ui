@@ -1,0 +1,178 @@
+{
+  "locale": "zh-CN",
+  "mode": "Fresh independent high-visibility pass; fully audited five new keys and read the remaining 81 sidebar keys for consistency.",
+  "scope": "28a6127617e4ebe0b6ba47d39fca5d3a22d1ba93; zh-CN/ui.chat.sidebar; scope_chats, scope_chats_elsewhere, scope_tokenless, scope_joined, name_suffix_elsewhere fully audited; remaining keys read for consistency only.",
+  "head_sha": "28a6127617e4ebe0b6ba47d39fca5d3a22d1ba93",
+  "audit_date": "2026-11-10",
+  "key_count": 86,
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "Delegation brief and ../_s10-translations/zh-CN.json; translator session ID not supplied."
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "36ff8b31b090",
+    "session": "36ff8b31b090",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "Actual served model from this harness runtime header: openai/gpt-6.1-sol; no fallback used. Fresh audit session 36ff8b31b090.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "status": "passed",
+  "result": "clean",
+  "verdict": "clean",
+  "findings": [],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "namespaces": {
+    "ui.chat.sidebar": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "7db9ba5108a62330a1782f775b991ec0483537d2f7d808ae0691e1a6ef8840cd",
+      "target_sha256": "90b639908cb49e0b1627c4624fd99bfcdd263a867d0a355bdd6a955cf4686ba6",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+          "sha256": "7db9ba5108a62330a1782f775b991ec0483537d2f7d808ae0691e1a6ef8840cd"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.sidebar.context.json",
+          "sha256": "4f1593cc34b395ef8701a60e58e73a0371b3c93730eb7a1f2b2845dc6250d7e3"
+        },
+        "zh-CN": {
+          "path": "src/i18n/catalogues/zh-CN/ui.chat.sidebar.json",
+          "sha256": "90b639908cb49e0b1627c4624fd99bfcdd263a867d0a355bdd6a955cf4686ba6"
+        }
+      },
+      "findings": [],
+      "key_count": 86
+    }
+  },
+  "per_key_checks": [
+    {
+      "key": "ui.chat.sidebar.mark_all_read.scope_chats",
+      "source": "{count, plural, one {Mark {count, number, ::group-off} unread chat as read.} other {Mark {count, number, ::group-off} unread chats as read.}}",
+      "current_text": "{count, plural, other {将{count, number, ::group-off}个未读对话标为已读。}}",
+      "findings": [],
+      "assessment": "Faithful action/count/unread meaning. 将…标为已读 is idiomatic action copy and matches visible label 标为已读, unread suffix 未读 and nav 对话. Natural 个 classifier; no number agreement in Chinese. Other-only plural complete; full-width sentence stop.",
+      "placeholder_integrity": "Argument names/types match English; every numeric argument retains exact ::group-off skeleton. Narrow Python recursive parser and manual inspection.",
+      "plural_select": [
+        [
+          "count",
+          [
+            "other"
+          ]
+        ]
+      ],
+      "manual_bidi_controls": false,
+      "static_codepoint_length_without_arguments": 0
+    },
+    {
+      "key": "ui.chat.sidebar.mark_all_read.scope_chats_elsewhere",
+      "source": "{count, plural, one {Mark {count, number, ::group-off} unread chat as read} other {Mark {count, number, ::group-off} unread chats as read}}, including {elsewhere, plural, one {{elsewhere, number, ::group-off} that is not active} other {{elsewhere, number, ::group-off} that are not active}}.",
+      "current_text": "{count, plural, other {将{count, number, ::group-off}个未读对话标为已读}}，其中包含{elsewhere, plural, other {{elsewhere, number, ::group-off}个非活跃对话}}。",
+      "findings": [],
+      "assessment": "其中包含 explicitly expresses a subset, not an extra count. 非活跃对话 describes backend activity classification, not a sidebar section or Running. Both count and elsewhere independently use complete other-only plurals, each preserving number ::group-off. One full-width comma and one final full stop.",
+      "placeholder_integrity": "Argument names/types match English; every numeric argument retains exact ::group-off skeleton. Narrow Python recursive parser and manual inspection.",
+      "plural_select": [
+        [
+          "count",
+          [
+            "other"
+          ]
+        ],
+        [
+          "elsewhere",
+          [
+            "other"
+          ]
+        ]
+      ],
+      "manual_bidi_controls": false,
+      "static_codepoint_length_without_arguments": 6
+    },
+    {
+      "key": "ui.chat.sidebar.mark_all_read.scope_tokenless",
+      "source": "{count, plural, one {{count, number, ::group-off} unread mark with no completion token cannot be cleared.} other {{count, number, ::group-off} unread marks with no completion token cannot be cleared.}}",
+      "current_text": "{count, plural, other {有{count, number, ::group-off}个未读标记没有完成回执，无法清除。}}",
+      "findings": [],
+      "assessment": "没有完成回执，无法清除 accurately preserves the inability to clear the unread marks lacking a completion receipt. Context explicitly defines completion token as that receipt, not a security token. 完成回执 is understandable descriptive Chinese; sibling ui.hub.status.receipt uses 操作回执 and ui.chat.pickers.destination_pickers.stores_a_secret_for_this_session_s_tools_by_name_the_value_never_appears uses 命令回执. LLM token stays token elsewhere, a different concept; 令牌 would wrongly suggest authentication here. 有 introduces the separate tokenless mark count without merging it into ackable chats.",
+      "placeholder_integrity": "Argument names/types match English; every numeric argument retains exact ::group-off skeleton. Narrow Python recursive parser and manual inspection.",
+      "plural_select": [
+        [
+          "count",
+          [
+            "other"
+          ]
+        ]
+      ],
+      "manual_bidi_controls": false,
+      "static_codepoint_length_without_arguments": 0
+    },
+    {
+      "key": "ui.chat.sidebar.mark_all_read.scope_joined",
+      "source": "{chats} {tokenless}",
+      "current_text": "{chats}{tokenless}",
+      "findings": [],
+      "assessment": "No separator is correct for Simplified Chinese complete sentences ending in 。. {chats}{tokenless} retains both simple arguments, order and complete sentences without ASCII spaces or added text.",
+      "placeholder_integrity": "Argument names/types match English; every numeric argument retains exact ::group-off skeleton. Narrow Python recursive parser and manual inspection.",
+      "plural_select": "No plural/select in this joiner.",
+      "manual_bidi_controls": false,
+      "static_codepoint_length_without_arguments": 0
+    },
+    {
+      "key": "ui.chat.sidebar.mark_all_read.name_suffix_elsewhere",
+      "source": ", including {elsewhere, plural, one {{elsewhere, number, ::group-off} that is not active} other {{elsewhere, number, ::group-off} that are not active}}",
+      "current_text": "，其中包含{elsewhere, plural, other {{elsewhere, number, ::group-off}个非活跃对话}}",
+      "findings": [],
+      "assessment": "Initial full-width comma joins the existing label directly and leaves the exact label as prefix. 全部5个标为已读，其中包含2个非活跃对话 is intelligible compact control copy. 其中包含 makes elsewhere a subset and 非活跃对话 retains the same backend-class term as the tooltip. No trailing sentence stop on this fragment.",
+      "placeholder_integrity": "Argument names/types match English; every numeric argument retains exact ::group-off skeleton. Narrow Python recursive parser and manual inspection.",
+      "plural_select": [
+        [
+          "elsewhere",
+          [
+            "other"
+          ]
+        ]
+      ],
+      "manual_bidi_controls": false,
+      "static_codepoint_length_without_arguments": 5
+    }
+  ],
+  "remediation_verification": {
+    "scope": "Initial fresh audit, not a remediation re-audit. No earlier zh-CN audit read.",
+    "executed_checks": [
+      "git rev-parse HEAD: exact requested head.",
+      "shasum -a 256: English/context/target hashes recorded in namespace block.",
+      "Python duplicate-rejecting JSON load: English, context and target each 86 keys, identical key sets.",
+      "Python git-show comparison: each of the three audited files byte-identical to requested head.",
+      "Narrow Python recursive parser: all five English and Chinese messages parse within supported subset; argument name/type and number skeleton sets match; all Chinese plural nodes contain exactly other.",
+      "Read-only search of i18n/receipts and i18n/audits/evidence: this instance unused before writing."
+    ],
+    "composed_examples": {
+      "tooltip_count5_elsewhere2_tokenless5": "将5个未读对话标为已读，其中包含2个非活跃对话。有5个未读标记没有完成回执，无法清除。",
+      "accessible_name_count5_elsewhere2": "全部5个标为已读，其中包含2个非活跃对话"
+    },
+    "policy_sources": [
+      "~/local-operator/i18n/style-guides/zh-CN.md",
+      "~/local-operator/i18n/glossary.md",
+      "docs/I18N.md: Retain checkable audit records",
+      "src/i18n/catalogues/en/ui.chat.sidebar.context.json"
+    ],
+    "out_of_scope_pre_existing": [],
+    "fit": "Native tooltip explicitly allowed to wrap; no maxCells/maxChars numerical budget in the five context entries. Full-width CJK punctuation and no Chinese/Latin spacing comply; no defensible overflow finding without rendered proof."
+  },
+  "unverified": [
+    "Repository validator, FormatJS runtime and deriveReceiptAudit were NOT executed: explicit prohibition on node processes. Independent Python checks plus manual code-path review are not claimed as their execution.",
+    "No browser, build, native tooltip, geometry, accessibility tree, screen-reader speech or rendered fit verification under this read-only/no-browser brief. Composed examples are from a narrow Python parser, not runtime UI output.",
+    "Only the five new keys receive a full linguistic/mechanical verdict; remaining namespace keys were read for terminology consistency, not re-certified.",
+    "Scratch receipt is a handoff, not yet a committed retained record or ledger row. Manager must retain it under the tracked receipt/evidence contract; no repository writes performed."
+  ],
+  "receipt_contract_review": "Root field set matches committed 2bbf16af14ee.json; namespace key_count retained as in 92b74137fc35.json and required by brief. Read ../_s9-audits/second/fr.json, both committed examples, docs retention section, ledger-rules deriveReceiptAudit and ledger-assemble caller. Code-path review: namespace/status/result, independent identity, explicit empty findings, valid matching source/target aliases support clean. Python readback checks run; no Node execution claimed.",
+  "audit_notes_not_execution_log": true
+}

@@ -1,0 +1,270 @@
+{
+  "schema": 1,
+  "audit_kind": "translation-audit",
+  "auditor": "translation-auditor",
+  "agent": "translation-auditor (lopdev team)",
+  "model": "deepseek/deepseek-flash",
+  "model_fallback": "none",
+  "model_note": "Harness session model tag deepseek/deepseek-flash; no model switch or fallback occurred during this run.",
+  "session": "a816cdf135c7",
+  "instance": "fr-ui-common-viewer-union-30ad5317c5",
+  "instance_scope": "Artifact-scoped receipt instance for this locale. All seven receipts were authored in one session (a816cdf135c7); they are not seven independent reviewers.",
+  "date": "2026-10-25",
+  "locale": "fr",
+  "namespace": "ui.common.viewer",
+  "head": "30ad5317c5965fb1dfd40cb78b16525977129035",
+  "merge_parents": {
+    "A": "649a09fe302bd422e3db30804b8f278e78f64e24",
+    "B": "ece9ae92191a50950e0a7987b93163a7fba8b288"
+  },
+  "status": "clean-with-findings",
+  "verdict": "PASS — clean-with-findings. Union provenance is exact: all 13 values are byte-identical to one merge parent (8 to both, 4 B-only, 1 A-only), the key set equals English and the parent union, and there are no duplicate keys. Live strings are idiomatic except the inherited close register minor. Findings: the shared structural minor on image_progress plus the inherited close register minor (Fermeture → Fermer). 2 minor / 0 nit, 0 blocker/major.",
+  "keys_read": 13,
+  "keys_audited": 13,
+  "sha256": {
+    "en": "abfb7cc367dfbe11730a4ee57f5fbb19b67c67dbff1b919ae4575d72fa0fa537",
+    "fr": "ff3fe821417136179f4613537f0a3675243ba4b162c7b8e5398240f39dd1a2df",
+    "context": "e01d781a09d1bf5cc6368e79e3f7f89a8b25d923ac5e8fc93f137198325a5d2d"
+  },
+  "key_set": {
+    "english": 13,
+    "parent_A": 9,
+    "parent_B": 12,
+    "parent_union": 13,
+    "target": 13,
+    "equals_english": true,
+    "equals_parent_union": true,
+    "missing": [],
+    "extra": []
+  },
+  "duplicate_keys": {
+    "decoded_json": [],
+    "decoded_json_parent_A": [],
+    "decoded_json_parent_B": [],
+    "raw_duplicate_lines": [],
+    "note": "Checked with json.loads(object_pairs_hook=...) so last-wins parsing cannot hide a repeated member, and again at the raw line level. None found in any of the eight files."
+  },
+  "union": {
+    "A_only": [
+      "ui.common.viewer.image_progress"
+    ],
+    "B_only": [
+      "ui.common.viewer.close",
+      "ui.common.viewer.next",
+      "ui.common.viewer.position",
+      "ui.common.viewer.previous"
+    ],
+    "both": [
+      "ui.common.viewer.opening",
+      "ui.common.viewer.reset_view",
+      "ui.common.viewer.zoom_in",
+      "ui.common.viewer.zoom_out",
+      "ui.common.viewer.image_lightbox.previous",
+      "ui.common.viewer.image_lightbox.next",
+      "ui.common.viewer.image_lightbox.close",
+      "ui.common.viewer.image_lightbox.asset_of"
+    ],
+    "neither": []
+  },
+  "per_key": [
+    {
+      "key": "ui.common.viewer.close",
+      "source": "B",
+      "present_in_A": false,
+      "present_in_B": true,
+      "byte_identical_to_A": false,
+      "byte_identical_to_B": true,
+      "value": "{kind, select, image {Fermeture de l’image} asset {Fermeture de l’élément} other {Fermeture}}",
+      "raw_value_sha256": "afd4f15579a00ebd7576d69cd2c2afbaab41e4fed68c937974477fda987a590e"
+    },
+    {
+      "key": "ui.common.viewer.next",
+      "source": "B",
+      "present_in_A": false,
+      "present_in_B": true,
+      "byte_identical_to_A": false,
+      "byte_identical_to_B": true,
+      "value": "{kind, select, image {Image suivante} asset {Élément suivant} other {Suivant}}",
+      "raw_value_sha256": "763b2c2c1306f59cf097677d3adffd5a5851de0d0342e6376f56360e25647501"
+    },
+    {
+      "key": "ui.common.viewer.opening",
+      "source": "A+B",
+      "present_in_A": true,
+      "present_in_B": true,
+      "byte_identical_to_A": true,
+      "byte_identical_to_B": true,
+      "value": "Ouverture…",
+      "raw_value_sha256": "8eec1c2ccf4326b4cfbd7916e528d66ef1346ec786e064586a8b029ee71ebc8e"
+    },
+    {
+      "key": "ui.common.viewer.position",
+      "source": "B",
+      "present_in_A": false,
+      "present_in_B": true,
+      "byte_identical_to_A": false,
+      "byte_identical_to_B": true,
+      "value": "{kind, select, image {Image {index, number, ::group-off} sur {count, number, ::group-off}} asset {Élément {index, number, ::group-off} sur {count, number, ::group-off}} other {Image {index, number, ::group-off} sur {count, number, ::group-off}}}",
+      "raw_value_sha256": "bc526b03c9b640202c2cfc8538ff05a2705cfbc514a68b8aa42b7da19bcbcb3f"
+    },
+    {
+      "key": "ui.common.viewer.previous",
+      "source": "B",
+      "present_in_A": false,
+      "present_in_B": true,
+      "byte_identical_to_A": false,
+      "byte_identical_to_B": true,
+      "value": "{kind, select, image {Image précédente} asset {Élément précédent} other {Précédent}}",
+      "raw_value_sha256": "81de0009803271b919c852c45b89b8b93ea0f8ff5c75acf444082f68a005c121"
+    },
+    {
+      "key": "ui.common.viewer.reset_view",
+      "source": "A+B",
+      "present_in_A": true,
+      "present_in_B": true,
+      "byte_identical_to_A": true,
+      "byte_identical_to_B": true,
+      "value": "Réinitialiser la vue",
+      "raw_value_sha256": "3ee20e15605d96b4d7f6deca68c9daac501ad0a62e4d886391dea7fa4d126469"
+    },
+    {
+      "key": "ui.common.viewer.zoom_in",
+      "source": "A+B",
+      "present_in_A": true,
+      "present_in_B": true,
+      "byte_identical_to_A": true,
+      "byte_identical_to_B": true,
+      "value": "Zoom avant",
+      "raw_value_sha256": "cc449182eb8b518329539ed0fa501e9bb4526b761e9d9ff337189424c5f18811"
+    },
+    {
+      "key": "ui.common.viewer.zoom_out",
+      "source": "A+B",
+      "present_in_A": true,
+      "present_in_B": true,
+      "byte_identical_to_A": true,
+      "byte_identical_to_B": true,
+      "value": "Zoom arrière",
+      "raw_value_sha256": "c8514e80822b059dc96ab7e172557b459a0d6f697796bb00d53a9e83d5e8fc32"
+    },
+    {
+      "key": "ui.common.viewer.image_lightbox.previous",
+      "source": "A+B",
+      "present_in_A": true,
+      "present_in_B": true,
+      "byte_identical_to_A": true,
+      "byte_identical_to_B": true,
+      "value": "Précédent ({medialabel})",
+      "raw_value_sha256": "5d162bbad7a68175ca3f74c9e1cde0d5a27ac2a6eb78d1b5ebd5428ec0b03cd4"
+    },
+    {
+      "key": "ui.common.viewer.image_lightbox.next",
+      "source": "A+B",
+      "present_in_A": true,
+      "present_in_B": true,
+      "byte_identical_to_A": true,
+      "byte_identical_to_B": true,
+      "value": "Suivant ({medialabel})",
+      "raw_value_sha256": "52fa22b59843b812f2d8fb1d489d7254492719ebdadf3ee379d8f38d453fb7c6"
+    },
+    {
+      "key": "ui.common.viewer.image_lightbox.close",
+      "source": "A+B",
+      "present_in_A": true,
+      "present_in_B": true,
+      "byte_identical_to_A": true,
+      "byte_identical_to_B": true,
+      "value": "Fermer {medialabel}",
+      "raw_value_sha256": "dedcc29dbea345d33e53862eac1fe7d05b1ccf6ed3206e7c641a92545d56d07d"
+    },
+    {
+      "key": "ui.common.viewer.image_lightbox.asset_of",
+      "source": "A+B",
+      "present_in_A": true,
+      "present_in_B": true,
+      "byte_identical_to_A": true,
+      "byte_identical_to_B": true,
+      "value": "Élément {index, number, ::group-off} sur {count, number, ::group-off}",
+      "raw_value_sha256": "e9a3d3f5db8be91da20ee007392ac5f9c910865eb01fd08c7882a88e878cfc85"
+    },
+    {
+      "key": "ui.common.viewer.image_progress",
+      "source": "A",
+      "present_in_A": true,
+      "present_in_B": false,
+      "byte_identical_to_A": true,
+      "byte_identical_to_B": false,
+      "value": "Image {index, number, ::group-off} sur {count, number, ::group-off}",
+      "raw_value_sha256": "abb276c397d7ff91d34a80514506efbe3812817901085ef931ed22d35178d177"
+    }
+  ],
+  "icu": {
+    "runtime": "intl-messageformat 12.1.3 on Node 24.22.1",
+    "keys_compiled": 13,
+    "select_messages": 4,
+    "select_arms": 12,
+    "arm_names": [
+      "image",
+      "asset",
+      "other"
+    ],
+    "number_skeletons": {
+      "occurrences": 10,
+      "skeleton": "::group-off",
+      "all_match_english": true
+    },
+    "render_samples": {
+      "position_3_of_5": "Image 3 sur 5",
+      "position_index_1234_count_1500000": "Image 1234 sur 1500000",
+      "image_progress_3_of_5": "Image 3 sur 5"
+    },
+    "errors": []
+  },
+  "image_progress": {
+    "referenced_in_code": false,
+    "evidence": "git grep image_progress at 30ad5317c5 matches only src/i18n/catalogues/**, src/i18n/keys.gen.ts and historical i18n/receipts/**. The current counter call sites are src/renderer/src/shared/lib/image-viewer-model.ts:92 and src/renderer/src/shared/components/common/image-lightbox.tsx:429, both ui.common.viewer.position. The four ui.common.viewer.image_lightbox.* keys are likewise unreferenced in app code.",
+    "superseded_caller": "Parent A's image-viewer-model.ts:92 called image_progress; parent B's identical function calls position with kind: image. The merge resolved the code to B and the catalogue to A ∪ B.",
+    "same_as_position_image_arm": true,
+    "same_as_position_other_arm": false,
+    "recommendation": "remove — dead copy that carries a second counter wording; do not leave it as an unused alternative"
+  },
+  "findings": [
+    {
+      "id": "FR-UNION-01",
+      "severity": "minor",
+      "category": "dead-copy",
+      "key": "ui.common.viewer.image_progress",
+      "current": "Image {index, number, ::group-off} sur {count, number, ::group-off}",
+      "proposed": "remove ui.common.viewer.image_progress from the English source, its context sidecar and all seven targets, together with the four unreferenced ui.common.viewer.image_lightbox.* keys, in a follow-up extraction change; if a progress counter is needed later, reuse ui.common.viewer.position",
+      "reason": "At 30ad5317c5 the key has no caller: parent A's image-viewer-model.ts:92 used it, parent B's identical function calls ui.common.viewer.position with kind: image, and the merge resolved the code to B while unioning A's key. It restates position's image-counter role without a kind select, so it cannot serve assets, and its sidecar is boilerplate (role \"Hub update \") rather than viewer context. Seven locales now maintain a second source of truth for the same counter.",
+      "locale_detail": "Byte-identical to position's image arm (Image {index} sur {count}); no visible divergence today.",
+      "introduced_by": "merge 30ad5317c5 (A 649a09fe30 + B ece9ae9219)",
+      "disposition": "non-gating minor; recommend removal in a follow-up extraction PR, not in this audit (removal changes key sets, keys.gen.ts and every locale)"
+    },
+    {
+      "id": "FR-UNION-02",
+      "severity": "minor",
+      "category": "register",
+      "key": "ui.common.viewer.close",
+      "current": "{kind, select, image {Fermeture de l’image} asset {Fermeture de l’élément} other {Fermeture}}",
+      "proposed": "{kind, select, image {Fermer l’image} asset {Fermer l’élément} other {Fermer}}",
+      "reason": "The sidecar tone is 'short verb phrase with its object'. Every other close control in the fr catalogue uses the infinitive (Fermer l’aperçu, Fermer le terminal, Fermer les approbations, …), and the sibling ui.common.viewer.image_lightbox.close is 'Fermer {medialabel}'. The only other « Fermeture » in fr is ui.console.close.busy, a progress status, not a control label.",
+      "disposition": "inherited from FR-EXT-10 (i18n/receipts/fr-bind-d30909795b6c.json), still present at 30ad5317c5; non-gating minor"
+    }
+  ],
+  "findings_count": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 2,
+    "nit": 0
+  },
+  "observations": [
+    "Union was checked at the raw JSON literal level: each value's bytes (escapes included) equal the same key's bytes in A or B; no value was rewritten, re-escaped or round-tripped.",
+    "Key order is parent B's order with A's single unique key (image_progress) appended; no existing line was reordered. Ordering is not semantically required and is not part of this binding.",
+    "No duplicate JSON members and no duplicate raw key lines in any of the eight files (en + seven locales); the silent auto-merge duplicate class seen elsewhere did not occur here.",
+    "Byte hygiene: no BOM, no bidi controls (U+200E/F, U+202A–E, U+2066–9), no ZWSP/ZWNJ/ZWJ, no NBSP/U+202F, no trailing spaces; every value is NFC.",
+    "The four ui.common.viewer.image_lightbox.* keys are also unreferenced at HEAD (and were already unreferenced in both parents); they belong in the same cleanup as image_progress.",
+    "image_progress's English context sidecar says role \"Hub update \" (trailing space) and describes a 'plural selector' although the message uses a number skeleton — evidence it was imported from a bulk wave, not authored for the viewer."
+  ],
+  "limitations": "Read-only audit from the working tree at 30ad5317c5; no catalogue, context, ledger, allowance or generated file was edited, and this receipt is the only file written. No browser or native render was run, so this is a source-copy, ICU and provenance audit; rendered fit remains unproven. Width figures quoted are cell estimates from the ICU render, not measured pixels."
+}

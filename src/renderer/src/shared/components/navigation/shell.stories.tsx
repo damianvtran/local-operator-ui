@@ -11,11 +11,11 @@ import {
 } from "@features/chat/canonical/transcript-reducer";
 import {
 	CHAT_PANE_MIN_PX,
+	RIGHT_SLOT_MAX_PX,
 	rightSlotDividerContract,
 } from "@features/chat/chat-sidebar-layout";
 import { AskDrawer } from "@features/chat/components/asks/ask-drawer";
 import { Canvas } from "@features/chat/components/canvas";
-import { RUN_PANEL_MAX_PX } from "@features/chat/components/chat-content";
 import { ChatHeader } from "@features/chat/components/chat-header";
 import {
 	deriveMcpServers,
@@ -71,8 +71,8 @@ import {
 	useState,
 } from "react";
 import {
-	UP_TO_DATE_AFFIRMATION,
 	type UpdateCheckVerdict,
+	upToDateAffirmation,
 } from "../../../../../main/update-check-verdict";
 import type { DesktopResponse } from "../../../../../shared/desktop-contract";
 import type { PendingAsk } from "../../../../../shared/desktop-session-contract";
@@ -293,6 +293,17 @@ const DESKTOP_CAPABILITIES = {
 		settings: 1,
 		agents_config: 1,
 		session_interrupt: 1,
+		/*
+		 * The operator's IA asks for Library and Projects in the primary rows;
+		 * the shell fixture advertises both so the evidence frames show the real
+		 * order rather than a column that silently omitted two destinations.
+		 */
+		library: 1,
+		projects: 1,
+		/* The Team Bridge row joins the More group only when the backend
+		   publishes the conversation surface; the shell fixture advertises it so
+		   the nav evidence frames show the real group. */
+		team_bridge_conversations: 1,
 	},
 };
 
@@ -342,6 +353,19 @@ const desktopRoute = async (
 			return desktopOk(DESKTOP_CAPABILITIES);
 		case "config.get":
 			return desktopOk(CONFIG);
+		case "team_bridge.unread":
+			/* One account-wide read; the count the row carries in these frames. */
+			return desktopOk({
+				total: 3,
+				organizations: [
+					{
+						tenant_id: "tnt_story",
+						tenant_name: "Story org",
+						unread: 3,
+						eligible: true,
+					},
+				],
+			});
 		case "instructions.get":
 			return desktopOk({
 				content: SYSTEM_PROMPT_CONTENT,
@@ -420,7 +444,7 @@ const noopUnsubscribe = () => () => {};
 const UP_TO_DATE_VERDICT: UpdateCheckVerdict = {
 	app: "current",
 	server: "current",
-	affirmation: UP_TO_DATE_AFFIRMATION,
+	affirmation: upToDateAffirmation(),
 };
 
 const UPDATER_STUB = {
@@ -589,7 +613,7 @@ const ShellFrame: FC<{ children: ReactNode; windows?: boolean }> = ({
 			<ChatLayout
 				sidebar={<SidebarNavigation />}
 				content={
-					<main className="flex min-w-0 grow flex-col overflow-hidden">
+					<main className="panel-top-pad flex min-w-0 grow flex-col overflow-hidden">
 						{children}
 					</main>
 				}
@@ -629,14 +653,41 @@ export const Settings: Story = {
 };
 
 /**
+ * Settings under the macOS integrated titlebar - the frame the operator's
+ * "section above the settings in the titlebar area" report (2026-11-04) lives
+ * in. `Settings` above has no chrome facts, so its strip is 0px and cannot show
+ * the 32px lane at all. The defect is visible only with window glass on, where
+ * the split page's content column alone paints the canvas: open this with
+ * `?args=glass:on` (and a `theme:` arg for light/dark).
+ *
+ * THE STRIPES ARE A STAND-IN DESKTOP, not a product colour. Storybook's theme
+ * frame paints an opaque `canvas` behind every story, which hides exactly the
+ * hole this story exists to show; in the app the window's backdrop is the
+ * desktop. A loud pattern makes any unpainted box read at a glance.
+ */
+const SettingsUnderMacChrome: FC = () => {
+	useMacChrome();
+	return <SettingsPage />;
+};
+
+export const SettingsMacChrome: Story = {
+	render: () => (
+		<div className="bg-[repeating-linear-gradient(45deg,#2f6fb0_0_12px,#b0582f_12px_24px)]">
+			<ShellFrame>
+				<SettingsUnderMacChrome />
+			</ShellFrame>
+		</div>
+	),
+};
+
+/**
  * Appearance, scrolled into view.
  *
  * `Settings` above is a 1280x800 clip of the top of a page about 3,600px
- * tall, so it stops inside Model settings. The reasoning toggle sits at
- * roughly y=3094 and the theme grid just above it, which meant the only
- * control for a user-visible preference - and the theme picker, the largest
- * piece of visual design on the page - were both absent from the record
- * while appearing to be covered by a captured surface.
+ * tall, so it stops inside Model settings. The Appearance section - the
+ * theme picker, the largest piece of visual design on the page - sits near
+ * the bottom, so it was absent from the record while appearing to be
+ * covered by a captured surface.
  *
  * Scrolled rather than given a taller viewport: an 800px window is what the
  * app's own minimum produces, and a 3,600px frame would photograph a page no
@@ -655,12 +706,16 @@ const SettingsAtAppearance: FC = () => {
 	 * supplement. An observer fires on insertion instead, which is an event
 	 * rather than a guess about how long a stub takes.
 	 *
-	 * Anchored on the switch rather than on the section. The theme grid makes
-	 * Appearance about 4,400px tall, so centring the section put the heading
-	 * 1,858px above the viewport and the toggle 2,613px below it, and its end
-	 * put the row hard against the bottom edge with its description clipped.
-	 * Centring the control leaves the grid above it and the section boundary
-	 * below, which is the row in its context rather than the row in a corner.
+	 * Anchored on the section itself, aligned to its START. An earlier version
+	 * centred the section's reasoning switch; when that toggle was removed
+	 * (PR #1983) the selector matched nothing, the shutter never released and
+	 * manual captures stayed at the top of General settings. The section
+	 * container is the one thing the section owns for as long as it exists,
+	 * so no single control's removal can strand the story again. `start`, not
+	 * `center`: the theme grid makes Appearance thousands of pixels tall, and
+	 * centring it would land mid-grid with the heading far above the viewport;
+	 * aligning the top shows the heading, description and first gallery rows.
+	 * Pinned by scripts/settings-appearance-story-anchor.test.mjs.
 	 *
 	 * `data-capture-pending` holds the shutter until that has happened. The
 	 * rig's readiness poll gates on the loader being gone and an element count
@@ -675,9 +730,8 @@ const SettingsAtAppearance: FC = () => {
 		document.documentElement.dataset.capturePending = "1";
 		const scroll = () => {
 			const section = document.querySelector(APPEARANCE);
-			const control = section?.querySelector('button[role="switch"]');
-			if (!control) return false;
-			control.scrollIntoView({ block: "center" });
+			if (!section) return false;
+			section.scrollIntoView({ block: "start" });
 			document.documentElement.removeAttribute("data-capture-pending");
 			return true;
 		};
@@ -741,6 +795,57 @@ export const RailCollapsed: Story = {
 	render: () => <AgentsShell agentId={AGENTS[0].id} collapsed />,
 };
 
+/**
+ * The More group, collapsed and expanded.
+ *
+ * It renders the REAL rail inside `ChatLayout` - the composition `app.tsx`
+ * draws - so the frames show the bottom group, its ellipsis, the chevron and
+ * the revealed Agent Hub/Mesh rows exactly as the app arranges them. The
+ * preference is persisted in the app's store; these stories state both values
+ * explicitly and restore the default afterwards so one frame cannot leak into
+ * the next.
+ */
+const NavOverflowState: FC<{
+	open: boolean;
+	collapsed?: boolean;
+}> = ({ open, collapsed = false }) => {
+	const setOverflow = useUiPreferencesStore(
+		(state) => state.setSidebarOverflowExpanded,
+	);
+	const setCollapsed = useUiPreferencesStore(
+		(state) => state.setSidebarCollapsed,
+	);
+	useLayoutEffect(() => {
+		setOverflow(open);
+		setCollapsed(collapsed);
+		return () => {
+			setOverflow(false);
+			setCollapsed(false);
+		};
+	}, [open, collapsed, setOverflow, setCollapsed]);
+	return (
+		<ShellFrame>
+			<AgentsPage />
+		</ShellFrame>
+	);
+};
+
+export const NavMoreCollapsed: Story = {
+	render: () => <NavOverflowState open={false} />,
+};
+
+export const NavMoreExpanded: Story = {
+	render: () => <NavOverflowState open />,
+};
+
+export const NavMoreStripExpanded: Story = {
+	render: () => <NavOverflowState open collapsed />,
+};
+
+export const NavMoreStripCollapsed: Story = {
+	render: () => <NavOverflowState open={false} collapsed />,
+};
+
 /* ------------------------------------------------------------------ *
  * The dock, in the shell that decides its top edge
  * ------------------------------------------------------------------ */
@@ -765,10 +870,14 @@ export const RailCollapsed: Story = {
  * the `RunPanel`. STAND-IN: the conversation column, painted `bg-canvas` and
  * carrying the paragraph the committed canvas frames already carry.
  *
- * NO RULE IS DRAWN AT EITHER BOUNDARY. The rail has none in the app either
- * (`sidebar-navigation.tsx` states why the tonal step carries it), and the dock's
- * leading `hairline` is what this change removed; frames captured through a
- * harness that drew one showed a boundary the product no longer had (D1).
+ * ONE SEAM PER SHARED EDGE, AND IT IS THE PRODUCT'S. The rail mounts
+ * `PanelEdge` on its leading edge, and every pane mounts it through `PaneSlot`
+ * (`panel-edge.tsx`, 2026-10-30), so these frames show the same 1px seam the app
+ * paints. This paragraph used to say no rule was drawn - true of the `border-l
+ * border-hairline` it replaced, which began at y=32 and photographed as a
+ * boundary the product did not draw (design review round 1, D1). The seam is a
+ * child of the panel now, not a border on a wrapper, so the two cannot diverge
+ * again.
  */
 
 const DOCK_CONVERSATION_ID = "shell-dock-conversation";
@@ -923,7 +1032,12 @@ const ConversationStandIn = ({
 	return (
 		<div
 			data-tour-tag="chat-column"
-			className="w-0 min-w-[480px] flex-1 flex h-full min-h-0 flex-col overflow-hidden"
+			/*
+			 * `panel-top-pad bg-canvas`, as `chat-content.tsx`'s column: under the
+			 * flush row this column's ground starts at y0 and its own pad moves the
+			 * header below the OS controls.
+			 */
+			className="panel-top-pad w-0 min-w-[480px] flex-1 flex h-full min-h-0 flex-col overflow-hidden bg-canvas"
 		>
 			<ChatHeader
 				agentName="Core"
@@ -1160,11 +1274,18 @@ const ChatShellFrame: FC<{
 			<ChatLayout
 				sidebar={<SidebarNavigation />}
 				content={
-					<main className="flex min-w-0 grow flex-col overflow-hidden">
+					<main className="panel-top-pad flex min-w-0 grow flex-col overflow-hidden">
+						{/*
+						 * The pane row stands in for `ChatPage`'s root, so it is the chat
+						 * route's flush root as that is (design round 1, D1): it cancels
+						 * `<main>`'s pad so the conversation, the slot's pane and the rail
+						 * all start at y0 and each pads itself once. `flex-1`, not `h-full`,
+						 * so the negative margin is absorbed rather than lost at the bottom.
+						 */}
 						<div
 							ref={rowRef}
 							data-tour-tag="pane-row"
-							className="flex h-full min-h-0 w-full overflow-hidden"
+							className="panel-flush flex min-h-0 w-full flex-1 overflow-hidden"
 						>
 							<ConversationStandIn
 								details={details}
@@ -1392,13 +1513,15 @@ export const ChatDockRunPanel: Story = {
 					 * THE PANE'S OWN SEPARATOR, through the app's shared contract. The run
 					 * pane's divider exists whenever the pane is open (the app renders it
 					 * unconditionally), and its range collapses where the row cannot host
-					 * the pane's own 320px floor; the 320/640 are the range `chat-content.tsx`
-					 * declares for this pane.
+					 * the pane's own 320px floor; `RUN_PANEL_MIN_PX` and the slot's one
+					 * `RIGHT_SLOT_MAX_PX` are the range `chat-content.tsx` declares for this
+					 * pane, read here rather than restated (a literal is the drift the
+					 * constant exists to prevent).
 					 */
 					const divider = rightSlotDividerContract({
 						capacity: Math.max(0, rowWidth - CHAT_PANE_MIN_PX),
-						min: 320,
-						max: 640,
+						min: RUN_PANEL_MIN_PX,
+						max: RIGHT_SLOT_MAX_PX,
 						drawn: slotWidth,
 					});
 					return (
@@ -1603,8 +1726,9 @@ export const ChatMeasureEdgesRunPanel: Story = {
 						{/*
 						 * The pair chat-content.tsx mounts, with ITS bounds rather than a
 						 * literal: `RUN_PANEL_MIN_PX` is the range's floor (420 is the pane's
-						 * DEFAULT width, and restating it as a floor announced a contract the
-						 * app does not have), `RUN_PANEL_MAX_PX` its ceiling, and both writes go
+						 * old DEFAULT width, and restating it as a floor announced a contract the
+						 * app does not have), `RIGHT_SLOT_MAX_PX` its ceiling - the slot's ONE
+						 * ceiling, which every pane shares - and both writes go
 						 * through the store's own setter exactly as the app's
 						 * `handleRunPanelWidthChange` / `handleRunPanelWidthReset` do - a reset
 						 * being a drag to UNSET rather than to a stored number (design review
@@ -1615,7 +1739,7 @@ export const ChatMeasureEdgesRunPanel: Story = {
 						 * so a drag to the floor the divider now announces rendered 420 anyway -
 						 * a promise the range could not keep (`RUN_PANEL_MIN_PX`'s own note states
 						 * the rule). The ceiling is stated raw here; the app narrows it by the
-						 * row's capacity (`Math.min(RUN_PANEL_MAX_PX, runPanelCapacity)`), and at
+						 * row's capacity (`Math.min(RIGHT_SLOT_MAX_PX, runPanelCapacity)`), and at
 						 * this frame's 1512px row the capacity is 728, so 640 is the value both
 						 * mounts use.
 						 */}
@@ -1623,7 +1747,7 @@ export const ChatMeasureEdgesRunPanel: Story = {
 							sidebarWidth={slotWidth}
 							onSidebarWidthChange={setRightSlotWidth}
 							minWidth={RUN_PANEL_MIN_PX}
-							maxWidth={RUN_PANEL_MAX_PX}
+							maxWidth={RIGHT_SLOT_MAX_PX}
 							side="left"
 							onDoubleClick={() => setRightSlotWidth(0)}
 							label="Resize run details. Double-click resets the shared pane width."

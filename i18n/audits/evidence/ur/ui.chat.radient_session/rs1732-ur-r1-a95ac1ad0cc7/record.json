@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "audit_id": "rs1732-ur-r1-a95ac1ad0cc7",
+  "locale": "ur",
+  "namespace": "ui.chat.radient_session",
+  "date": "2026-11-06",
+  "auditor": {
+    "agent": "reviewer",
+    "session": "a95ac1ad0cc7",
+    "instance": "a95ac1ad0cc7-pr1732-r1-ur",
+    "model": "anthropic/claude-opus-5-5",
+    "independent_from_translator": true,
+    "translator": "PR #1732 coder session (anthropic/claude-opus-5-5, per PR body)"
+  },
+  "inputs": {
+    "src/i18n/catalogues/en/ui.chat.radient_session.json": {
+      "sha256": "49d5e57f39c27fc5c3dbaea99519cacb2ef739f9c3c88e1df8169fd349ccb8a1"
+    },
+    "src/i18n/catalogues/en/ui.chat.radient_session.context.json": {
+      "sha256": "4a6f942d3bcbea56d180e0ff40463f84916d58748cba2ec3b11670107ed1ca04"
+    },
+    "src/i18n/catalogues/ur/ui.chat.radient_session.json": {
+      "sha256": "f1442a3567da3f649f3d3a4295a172949f4e42300ed115b174665dcfb29af337"
+    }
+  },
+  "style_guide": {
+    "path": "~/local-operator i18n/style-guides/ur.md",
+    "sha256": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60",
+    "glossary_path": "~/local-operator i18n/glossary.md",
+    "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "core_commit": "e21f92fa4ee"
+  },
+  "result": "clean",
+  "status": "passed",
+  "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0,
+    "ids": []
+  },
+  "artifacts": {
+    "i18n/receipts/a95ac1ad0cc7-pr1732-r1-ur.json": {
+      "sha256": "d44a070ec8f4e4aaadde76189adc4aac372bbe4a79f3dcc120a9d081ebcf0813"
+    },
+    "i18n/audits/evidence/ur/ui.chat.radient_session/rs1732-ur-r1-a95ac1ad0cc7/audit.log": {
+      "sha256": "d3ac1e25141adb00df5e87dec744ef63b9f9af760ebe7922dda668f97eaca74d"
+    },
+    "i18n/audits/evidence/ur/ui.chat.radient_session/rs1732-ur-r1-a95ac1ad0cc7/verify.py": {
+      "sha256": "8da5ca0aa2ddde09be9c198641ed22dd0e5c7ad19c5537f08f5035d64d580fd8"
+    }
+  },
+  "integration": {
+    "repo": "damianvtran/local-operator-ui",
+    "pr": 1732,
+    "branch": "fix/radient-callout-no-terminal",
+    "head": "088881be3e494d1b5f9de2cfecc5861d4e8638e1",
+    "base": "ec09bc17aff"
+  },
+  "terminal": true
+}

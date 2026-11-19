@@ -52,7 +52,10 @@
  * one quiet line instead of a dead control.
  */
 
+import { ICON_BUTTON_CLASS } from "@shared/components/common/icon-button-class";
 import { Spinner } from "@shared/components/common/spinner";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	audioEngineElement,
@@ -69,12 +72,24 @@ import {
 } from "react";
 import {
 	BAR_RADIUS,
-	ariaValueText,
 	formatClock,
 	progressFraction,
 	seekSecondsAt,
 	waveformBars,
 } from "./waveform-model";
+
+/*
+ * The slider's `aria-valuetext`: elapsed time out of the clip's length, as two
+ * clocks. It lives HERE and not in waveform-model.ts on purpose: that module is
+ * pure number logic that its test bundles with no i18n alias, while this file
+ * already owns `t`. The clocks stay `formatClock` (ASCII m:ss) so the spoken
+ * value matches the visible readout; the catalogue sentence only orders them.
+ */
+const valueText = (current: number, duration: number): string =>
+	t("ui.chat.audio.position_value", {
+		current: formatClock(current),
+		total: formatClock(duration),
+	});
 
 export type SoundPlayerVariant = "full" | "compact";
 
@@ -93,6 +108,14 @@ export type SoundPlayerProps = {
 	peaks: readonly number[] | null;
 	/** The record's stated duration, shown until metadata can speak instead. */
 	durationHint?: number | null;
+	/**
+	 * Blank the total clock while the length is unknown (no hint, no metadata
+	 * yet) instead of printing `0:00` (design review PR #1652, D1): a written
+	 * MP3's hint is 0, and ten cells of `0:00 0:00` read as empty audio. The
+	 * slot keeps its width (`invisible`), so the clock landing causes no
+	 * reflow. Opt-in, so every other seat keeps today's rendering.
+	 */
+	hideUnknownTotal?: boolean;
 	variant?: SoundPlayerVariant;
 	className?: string;
 };
@@ -103,18 +126,17 @@ const CLICK_SLOP_PX = 4;
 /** Arrow-key seek step: these sounds are 0.5–30 s, where 1 s is perceptible. */
 const NUDGE_SECONDS = 1;
 
-const ICON_BUTTON_CLASS =
-	"flex min-h-11 min-w-11 shrink-0 items-center justify-center text-ink-muted transition-colors duration-fast ease-out-quart hover:text-ink disabled:pointer-events-none disabled:text-ink-disabled";
-
 export const SoundPlayer = ({
 	ownerId,
 	src,
 	label,
 	peaks,
 	durationHint = null,
+	hideUnknownTotal = false,
 	variant = "full",
 	className,
 }: SoundPlayerProps) => {
+	const locale = useI18nLocale();
 	/*
 	 * The engine's status, read through this widget's identity: another row's
 	 * press (or the speech store's) must not paint this row's spinner.
@@ -233,6 +255,10 @@ export const SoundPlayer = ({
 	 * Kept as a ref-stable function so the rAF effect below lists no deps it
 	 * does not use.
 	 */
+	// `locale` is a dependency so the painter (and the at-rest effect below)
+	// re-run on a language change: aria-valuetext is written imperatively, so
+	// React never rewrites it from the JSX prop once the clip is paused or idle.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: locale is read through t() at call time
 	const paintProgress = useCallback(
 		(seconds: number) => {
 			const fraction = progressFraction(seconds, duration);
@@ -248,10 +274,10 @@ export const SoundPlayer = ({
 			const slider = sliderRef.current;
 			if (slider) {
 				slider.setAttribute("aria-valuenow", String(Math.floor(seconds)));
-				slider.setAttribute("aria-valuetext", ariaValueText(seconds, duration));
+				slider.setAttribute("aria-valuetext", valueText(seconds, duration));
 			}
 		},
-		[duration],
+		[duration, locale],
 	);
 
 	/*
@@ -442,11 +468,19 @@ export const SoundPlayer = ({
 	};
 
 	const compact = variant === "compact";
-	const sliderLabel = `${label} position`;
+	const sliderLabel = t("ui.chat.audio.position_label", { label });
 
 	return (
 		<div
 			data-sound-player={variant}
+			/*
+			 * The observable form of the honest-flat rule: `flat` is the honest
+			 * scrubber drawn for absent/malformed peaks, `stored` is a real
+			 * envelope. Pixels cannot state which one a canvas holds (a JSDOM
+			 * canvas has no context), so the marker is what a test and a story
+			 * can assert without inventing a shape.
+			 */
+			data-sound-peaks={peaks ? "stored" : "flat"}
 			data-sound-status={
 				errored
 					? "error"
@@ -467,7 +501,11 @@ export const SoundPlayer = ({
 				className={ICON_BUTTON_CLASS}
 				disabled={loading}
 				onClick={() => void toggle()}
-				aria-label={`${playing ? "Pause" : "Play"} ${label}`}
+				aria-label={
+					playing
+						? t("ui.chat.audio.pause_label", { label })
+						: t("ui.chat.audio.play_label", { label })
+				}
 			>
 				{loading ? (
 					<Spinner size="sm" />
@@ -485,7 +523,7 @@ export const SoundPlayer = ({
 				aria-valuemin={0}
 				aria-valuemax={Math.max(0, Math.round(duration))}
 				aria-valuenow={0}
-				aria-valuetext={ariaValueText(0, duration)}
+				aria-valuetext={valueText(0, duration)}
 				data-sound-slider=""
 				className={cn(
 					"group relative min-h-11 min-w-0 flex-1 cursor-pointer touch-none select-none",
@@ -535,8 +573,11 @@ export const SoundPlayer = ({
 			</span>
 			{
 				<span
+					data-sound-total=""
+					aria-hidden={hideUnknownTotal && duration <= 0 ? true : undefined}
 					className={cn(
 						"min-w-10 shrink-0 text-center text-meta text-ink-dim tabular-nums",
+						hideUnknownTotal && duration <= 0 && "invisible",
 					)}
 				>
 					{formatClock(duration)}
@@ -547,7 +588,7 @@ export const SoundPlayer = ({
 					data-sound-error=""
 					className={cn("shrink-0 text-meta text-ink-muted")}
 				>
-					This sound could not be played
+					{t("ui.chat.canonical.sound.player_failed")}
 				</span>
 			) : null}
 		</div>

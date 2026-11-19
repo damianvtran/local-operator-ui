@@ -1,0 +1,76 @@
+{
+ "schema": 1,
+ "audit_id": "s16f-6e7c2663da44-r4",
+ "locale": "ru",
+ "namespace": "ui.chat.canonical",
+ "audit_date": "2026-11-12",
+ "slice": "S16f (damianvtran/local-operator-ui#1876) — delta audit, landed in the round-4 integration commit",
+ "head": "cbb8782a39b5692ae46bfc3aa6930840420e9b14",
+ "pr": 1876,
+ "audit_kind": "delta re-audit of the round-3 MAJOR remediation: ru ui.chat.canonical.media.sound_label lower case -> capitalised in all five plural arms, plus the same-noun family in the namespace (sound.player_failed, supplement.sound_fallback_label, the image_gen.state sound_effect arms)",
+ "scope": "The one key the landed commit changes, read in full and judged from the bytes rather than inherited from the round-3 finding or the commit's rationale; the other eight keys in the namespace carrying the same noun (everything with звук/звуковой), judged for consistency, including the deliberately kept звуковой эффект compound for the sound_effect material; the other 458 keys carried on byte-identity to the round-3-audited head, never re-judged. Catalogue audit only: no rendered fit, activation or release.",
+ "key_count": 467,
+ "namespace_key_count": 467,
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "6e7c2663da44",
+  "instance": "6e7c2663da44-s16f-au4-ru",
+  "model": "deepseek/deepseek-flash",
+  "independence": "Independent round-4 delta audit in a fresh session 6e7c2663da44: not the PR #1876 translator, not the round-3 auditor (instance 9f927eaac669), and not the author of the landed commit. Read-only: this audit edited, committed, pushed, checked out and installed nothing; every command below ran against the manager-owned worktree ~/local-operator-ui/.worktrees/i18n-s16a at cbb8782a, verified clean before and after. Disclosure: the round-3 auditor ran the same model (deepseek/deepseek-flash), so independence here is by session and by re-derivation from the bytes, not by model diversity.",
+  "model_note": "Actual model is this session's own header line (deepseek/deepseek-flash), the i18n-auditor role default; not a mid-run fallback and not a reasoned-down tier. The served provider cannot be verified from inside the session.",
+  "actual_model_source": "session header line: Model: deepseek/deepseek-flash"
+ },
+ "translator": "independent translator outside this audit and outside the round-3 auditor (per the manager's brief); the landed commit is authored by the shared account Damian Tran, so the commit manifest cannot name the translator instance",
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+   "sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+   "sha256": "8f56e0d2b384c6b41add57a64e6c863e565cb61d5a7c0de482d42f380be3acfe"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/ru/ui.chat.canonical.json",
+   "sha256": "fddef0897968450fb0157457dda37f7472fa467b4df1aea68af16bbe260f10f1"
+  }
+ },
+ "artifacts": {
+  "report": {
+   "path": "report.md",
+   "sha256": "ad044343e40ee84306b490de5a8f60d3dbdfa4e1c70c6383b2c7bd9eb4874f64"
+  },
+  "execution_log": {
+   "path": "audit.log",
+   "sha256": "d095296bb8d83fb24d198ecfda50725352b696322a0a72956588270017eaedc5",
+   "note": "the auditor's execution log as supplied, copied byte-for-byte; it is command output, not notes"
+  },
+  "receipt": {
+   "path": "i18n/receipts/6e7c2663da44-s16f-au4-ru.json",
+   "sha256": "679693ab40c06fa90f1bbd809663007e5759e830b7770860a091b5f82e23f006",
+   "note": "byte-for-byte copy written by scripts/i18n/ledger-assemble.mjs; the binding receipt lives there"
+  }
+ },
+ "companions_present": [
+  "audit.log",
+  "report.md"
+ ],
+ "current_report_verdict": {
+  "status": "passed",
+  "result": "clean",
+  "unresolved_blocker_major_count": 0,
+  "counts": {
+   "blocker": 0,
+   "major": 0,
+   "minor": 0,
+   "nit": 0
+  },
+  "finding_ids": []
+ },
+ "provenance": {
+  "record_written_by": "integrator s16f-integrator-3 from the receipt and the auditor's report — NOT written by the auditor",
+  "source_receipt": "~/.local-operator/sessions/6e7c2663da44/scratchpad/s16f-au4-ru/receipt.json",
+  "receipt_sha256": "679693ab40c06fa90f1bbd809663007e5759e830b7770860a091b5f82e23f006",
+  "why_note": "locales whose auditor wrote its own record.json (ur, hi) keep that file verbatim; this record is derived, so it cites only receipt fields and re-computed hashes"
+ }
+}

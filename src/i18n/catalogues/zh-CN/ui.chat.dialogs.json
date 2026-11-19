@@ -1,0 +1,21 @@
+{
+	"ui.chat.dialogs.delete_title": "删除此对话？",
+	"ui.chat.dialogs.delete_action": "删除",
+	"ui.chat.dialogs.archive_action": "归档",
+	"ui.chat.dialogs.archive_title_named": "归档“{title}”？",
+	"ui.chat.dialogs.archive_title_unnamed": "归档此对话？",
+	"ui.chat.dialogs.archive_message": "它将不再显示在你的列表中。可在{seconds, plural, other {#秒}}内撤销；之后请使用对话列表上方的搜索框，勾选“{include_archived}”，再点击“取消归档”。",
+	"ui.chat.dialogs.cancel": "取消",
+	"ui.chat.dialogs.options.clear_confirm": "清空",
+	"ui.chat.dialogs.options.clear_conversation": "清空对话",
+	"ui.chat.dialogs.options.clear_message": "此对话中的所有消息都将从本机删除，且无法撤销。智能体本身不受影响。",
+	"ui.chat.dialogs.options.clear_title": "清空此对话？",
+	"ui.chat.dialogs.options.description": "为此智能体自定义设置",
+	"ui.chat.dialogs.options.title": "对话选项",
+	"ui.chat.dialogs.make_temporary_title": "将此对话设为临时对话？",
+	"ui.chat.dialogs.make_temporary_deleted": "它会立即从你的对话列表中移除。闲置达到设定时间（默认 30 分钟）后，此对话及其消息和附件都会被删除。",
+	"ui.chat.dialogs.make_temporary_kept": "保留：它在你电脑上修改过的文件。",
+	"ui.chat.dialogs.make_temporary_confirm": "设为临时",
+	"ui.chat.dialogs.keep_and_link": "保留并关联",
+	"ui.chat.dialogs.keep_and_pin": "保留并置顶"
+}

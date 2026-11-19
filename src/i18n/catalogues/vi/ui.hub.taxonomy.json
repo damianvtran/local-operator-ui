@@ -1,0 +1,23 @@
+{
+	"ui.hub.taxonomy.category.investment": "Đầu tư",
+	"ui.hub.taxonomy.category.accounting": "Kế toán",
+	"ui.hub.taxonomy.category.healthcare": "Y tế",
+	"ui.hub.taxonomy.category.legal": "Pháp lý",
+	"ui.hub.taxonomy.category.software": "Phần mềm",
+	"ui.hub.taxonomy.category.security": "Bảo mật",
+	"ui.hub.taxonomy.category.role_play": "Nhập vai",
+	"ui.hub.taxonomy.category.personal_assistance": "Hỗ trợ cá nhân",
+	"ui.hub.taxonomy.category.education": "Giáo dục",
+	"ui.hub.taxonomy.category.marketing": "Tiếp thị",
+	"ui.hub.taxonomy.category.sales": "Bán hàng",
+	"ui.hub.taxonomy.category.research": "Nghiên cứu",
+	"ui.hub.taxonomy.category.analysis": "Phân tích",
+	"ui.hub.taxonomy.category.management": "Quản lý",
+	"ui.hub.taxonomy.category.social_media": "Mạng xã hội",
+	"ui.hub.taxonomy.category.other": "Khác",
+	"ui.hub.taxonomy.heading": "Danh mục",
+	"ui.hub.taxonomy.all": "Tất cả danh mục",
+	"ui.hub.taxonomy.origin.named": "Chia sẻ với {name}, không phải trung tâm công khai",
+	"ui.hub.taxonomy.origin.unnamed": "Chia sẻ với một tổ chức, không phải trung tâm công khai",
+	"ui.hub.taxonomy.origin.organization": "Tổ chức"
+}

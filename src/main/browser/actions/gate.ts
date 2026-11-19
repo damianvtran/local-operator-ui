@@ -1,5 +1,6 @@
 import type { DriveableView } from "../electron-types";
 import { BrowserHostError } from "../errors";
+import { displayTitleFor, displayUrlFor } from "../internal-pages";
 import { permittedScheme, settle } from "../settle";
 import type { BrowserActionContext } from "./context";
 
@@ -326,7 +327,8 @@ function loadFailure(load: Promise<void>): Promise<never> {
  * up in the result (the tool's `_page_line` rule). */
 export function pageOf(view: DriveableView): { url: string; title: string } {
 	return {
-		url: view.webContents.isDestroyed() ? "" : view.webContents.getURL(),
-		title: view.webContents.isDestroyed() ? "" : view.webContents.getTitle(),
+		// QA Q5: never the raw document URL — an internal page's carries main's nonce.
+		url: displayUrlFor(view.webContents),
+		title: displayTitleFor(view.webContents),
 	};
 }

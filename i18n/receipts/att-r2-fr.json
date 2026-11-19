@@ -1,0 +1,71 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "att-r2-fr",
+ "session": "12aab7b684ab",
+ "job": "d8717b64c01a",
+ "date": "2026-10-21",
+ "locale": "fr",
+ "translator": "coder",
+ "translator_session": "03594b2dcc02",
+ "translator_job": "bc0c4b952eaa",
+ "namespace": "ui.teamBridge",
+ "status": "passed",
+ "keys_audited": 10,
+ "scope": "Round-2 delta audit of #1314: git diff cf1d7c616c..8cf05961d6 -- src/i18n/catalogues (fr: 10 values changed/added — error_offline, error_type, error_upload, expired_staged, expired_staged_retry, preview_unavailable, remove, retry, send_blocked, uploading). Includes the changed en attachments.expired_staged and new en attachments.expired_staged_retry / attachments.preview_unavailable with their context notes. Every round-1 finding of att-r1-fr re-verified against the bytes. The other 161 fr values are byte-identical to cf1d7c616c (line-level diff shows only these keys plus schedule.discard_attempt gaining a trailing comma, value unchanged) and stay covered by att-r1-fr and its inherited receipts. PR head 8cf05961d6 re-checked via gh. Catalogue audit only, not rendered-fit/activation/release.",
+ "source_head": "8cf05961d64322fe64ebccd6282069c7f52f12f3",
+ "source_base": "cf1d7c616ca36bd48c0bf160d64a08514b7c2b08",
+ "sha256": {
+  "en": "a1e4452d733cee31812938d27106ff5b8cb15a74e4da6eaddbc8d9c1519fe8ed",
+  "fr": "64093579763efc8c0c1b3edf81b35b22ea0021181241cdade19e4d2aa2b3f6db",
+  "context": "09acfc1ecfb2533c8c340eb706b74b4f3ee68f367ad1bc60e41c06b549ca4f1a"
+ },
+ "findings": [],
+ "round1_dispositions": [
+  {
+   "finding": "ATT-FR-01",
+   "severity": "MINOR",
+   "keys": "remove/retry",
+   "verified": "applied: U+202F (bytes e2 80 af) before ':' verified in both values ('Retirer : {label}', 'Réessayer : {label}')"
+  },
+  {
+   "finding": "ATT-FR-02",
+   "severity": "MINOR",
+   "keys": "error_upload/error_offline/uploading",
+   "verified": "applied verbatim: 'téléversée' in error_upload and error_offline, 'Téléversement de l’image…' in uploading; upload/send verbs now separated in all three"
+  },
+  {
+   "finding": "ATT-FR-03",
+   "severity": "MINOR",
+   "keys": "send_blocked",
+   "verified": "applied verbatim: 'Avant d’envoyer, retirez les images signalées en erreur ou réessayez de les téléverser.'"
+  },
+  {
+   "finding": "ATT-FR-04",
+   "severity": "NIT",
+   "keys": "error_type",
+   "verified": "applied verbatim: 'Utilisez un fichier PNG, JPEG, WebP ou GIF.'"
+  }
+ ],
+ "inherited_receipt": {
+  "path": "i18n/receipts/att-r1-fr.json",
+  "sha256": "39df265b9409774901916d375b69fccd737dd819a69f1255832a8052f2217de9",
+  "base": "cf1d7c616c",
+  "target_sha256": "a5b8b5ddbbc1523366b5daeaa2817b30aa8a53cb9a3f656c19ddc92fe518a8e4",
+  "keys_inherited": 161,
+  "unchanged_values_verified": true
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+ },
+ "validation": {
+  "independence": "Auditor session 12aab7b684ab (job d8717b64c01a, translation-auditor, served model anthropic/claude-opus-5-5 per this session's selected_model record) is a new instance, distinct from translator coder session 03594b2dcc02 (job bc0c4b952eaa, remediation commits 1ffc748e68/cedfe88fc6) and from the round-1 auditor session 4177e47d05b0. Values read from working-tree bytes at 8cf05961d6 (equal to git show 8cf05961d6); translator/remediation summaries were checked, not relied on. No catalogue or code edits, no git operations, no ledger-assemble.",
+  "semantics": "New/changed keys: expired_staged « Cette image n’est plus prête à être envoyée. Retirez-la, puis ajoutez-la de nouveau. » matches the new en (no retry, remove then add again); expired_staged_retry « … Réessayez ou retirez-la. » mirrors error_upload's « Réessayez ou retirez-la. » verbatim; preview_unavailable « Aperçu indisponible » = locale term Aperçu (teamBridge.preview.chip, projects) and the sibling « Image indisponible ». Glossary held: Retirer/Réessayer/ajouter (= add « Ajouter des images »), envoyer for send, téléverser for upload; vous imperatives, sentence case.",
+  "icu": "Parsed all 25 attachments.* values in en and fr with @formatjs/icu-messageformat-parser: argument names/types identical (0 mismatches); the 3 new/changed keys are argument-free in en and fr. in_message/limit plural arms unchanged in structure. Formatted with intl-messageformat: position(2,3)/open/remove composed strings render as recorded in the round-1 dispositions.",
+  "typography": "Changed values NFC, no bidi controls, no ASCII apostrophe or '...', no doubled/edge spaces. U+202F before ':' in remove/retry; ellipsis U+2026; apostrophes U+2019.",
+  "overflow": "expired_staged/expired_staged_retry render in the 12 px wrapping status/alert line under the composer and in the chip's sr-only description; preview_unavailable is a title tooltip plus a hidden aria-describedby node (team-bridge-attachments.tsx:128-132, 761-763, 786-788): no fixed-width visible surface, so no fit risk.",
+  "rtl": "Not applicable (fr is LTR).",
+  "limitations": "Browser not used; no rendered-fit, screenshots, glyph metrics, pseudo-localization or activation claim."
+ }
+}

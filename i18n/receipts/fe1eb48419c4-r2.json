@@ -1,0 +1,263 @@
+{
+  "auditor": "i18n-auditor",
+  "team_role": "translation-auditor",
+  "model": "openrouter/moonshotai/kimi-k3.1-pro",
+  "served_model": "openrouter/moonshotai/kimi-k3.1-pro",
+  "fallback": "none",
+  "instance": "fe1eb48419c4-r2",
+  "session": "fe1eb48419c4",
+  "previous_round_instance": "fe1eb48419c4",
+  "date": "2026-10-23",
+  "audit": "Hindi UI completion — round-2 scoped independent remediation audit",
+  "locale": "hi",
+  "commit": "6064a0215b1f3557fed3f086098c95f997935038",
+  "delta": "678ff11a7a201c345ff6134c078b382ef8226477..6064a0215b1f3557fed3f086098c95f997935038",
+  "status": "passed",
+  "verdict": "clean",
+  "keys_read": 54,
+  "changed_keys_audited": 6,
+  "direct_neighbor_keys_audited": 48,
+  "finding_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "independence": "Independent translation-auditor; translator session 93388133b0e0 did not author this audit. This is a new round-2 audit instance fe1eb48419c4-r2, distinct from round-1 instance fe1eb48419c4. The translator metadata receipt and other auditors’ receipts were not read or copied. No source, catalogue, context, generated, allowance, receipt or ledger repository file was edited.",
+  "scope": "Only ui.chat.pickers (34), ui.common.account (18), and ui.chat.run_details (2): six remediated values plus 48 direct neighbors. The other nine namespaces were not re-audited.",
+  "references": {
+    "glossary": {
+      "path": "/Users/damian/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "/Users/damian/local-operator/i18n/style-guides/hi.md",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    },
+    "mechanical_script": {
+      "path": "/Users/damian/.local-operator/sessions/fe1eb48419c4/scratchpad/hi-round2-mechanical.cjs",
+      "sha256": "4d36821b1ef9414d507bb5052bc3845c42383d8036116d927b3118bb9faea911"
+    },
+    "mechanical_evidence": {
+      "path": "/Users/damian/.local-operator/sessions/fe1eb48419c4/scratchpad/hi-round2-mechanical-evidence.json",
+      "sha256": "398474ef7ac36714aa5886674a1a1cca281f965e102f43a9fc89581052e46c5b"
+    }
+  },
+  "evidence": {
+    "delta_inspection": "git diff 678ff11a7a201c345ff6134c078b382ef8226477..6064a0215b1f3557fed3f086098c95f997935038 showed only the three scoped Hindi catalogues plus the translator metadata receipt. English and context diff was empty. Six Hindi values changed; the metadata receipt was not read.",
+    "stop_plural": {
+      "key": "ui.chat.pickers.stop.confirm",
+      "actual": "PASS: the added exact =0 arm coexists with intact one/other arms and group-off number skeletons.",
+      "samples": [
+        {
+          "key": "ui.chat.pickers.stop.confirm",
+          "count": 0,
+          "category": "one",
+          "en": "Stop 0 sessions now",
+          "hi": "अभी 0 सत्र को रोकें"
+        },
+        {
+          "key": "ui.chat.pickers.stop.confirm",
+          "count": 1,
+          "category": "one",
+          "en": "Stop this session now",
+          "hi": "अभी इस सत्र को रोकें"
+        },
+        {
+          "key": "ui.chat.pickers.stop.confirm",
+          "count": 2,
+          "category": "other",
+          "en": "Stop 2 sessions now",
+          "hi": "अभी 2 सत्रों को रोकें"
+        },
+        {
+          "key": "ui.chat.pickers.stop.confirm",
+          "count": 1234,
+          "category": "other",
+          "en": "Stop 1234 sessions now",
+          "hi": "अभी 1234 सत्रों को रोकें"
+        }
+      ],
+      "number_samples": [
+        {
+          "n": 0,
+          "hi": "0",
+          "category": "one"
+        },
+        {
+          "n": 1,
+          "hi": "1",
+          "category": "one"
+        },
+        {
+          "n": 2,
+          "hi": "2",
+          "category": "other"
+        },
+        {
+          "n": 1234,
+          "hi": "1,234",
+          "category": "other"
+        },
+        {
+          "n": 1234567.5,
+          "hi": "12,34,567.5",
+          "category": "other"
+        }
+      ]
+    },
+    "forget_pair": {
+      "ui.chat.pickers.credential.forget": "भुलाएँ",
+      "ui.chat.pickers.credential.forget_confirmation": "इस सत्र से {name} भुलाएँ",
+      "established_neighbor": "ui.browser.browser_approvals_dock.forget_this_site = इस साइट को भुलाएँ",
+      "actual": "PASS: both remediated values use the established भुलाएँ action and preserve {name} exactly."
+    },
+    "unlock_composition": {
+      "prefix": "Local Operator की पूरी क्षमता अनलॉक करने के लिए:",
+      "product": "Radient Pass",
+      "actual_composed": "Local Operator की पूरी क्षमता अनलॉक करने के लिए: Radient Pass.",
+      "actual": "PASS: के लिए makes Radient Pass the means of unlocking Local Operator’s full power; the product name remains verbatim."
+    },
+    "byok_agentic": {
+      "key": "ui.common.account.low_credits_dialog.radient_automatic_is_often_cheaper_than_bringing_your_own_key_its",
+      "current": "अपनी कुंजी इस्तेमाल करने के मुकाबले Radient Automatic अक्सर सस्ता पड़ता है: इसकी स्मार्ट मॉडल राउटिंग आपके एजेंटिक वर्कफ़्लो के हर चरण के लिए सबसे किफ़ायती मॉडल चुनती है।",
+      "actual": "PASS: अपनी कुंजी इस्तेमाल करने के मुकाबले accurately conveys BYOK in this billing comparison; एजेंटिक वर्कफ़्लो preserves agentic workflows; अक्सर retains often and सबसे किफ़ायती retains most cost-effective."
+    },
+    "run_details_plural": {
+      "key": "ui.chat.run_details.jobs",
+      "english": "Jobs",
+      "current": "जॉब्स",
+      "actual": "PASS: जॉब्स is the natural plural label for the background-jobs section; singular neighbor ui.settings.imports.progress_job remains जॉब {job} · {state}, so the inflection is contextually consistent. Direct neighbor ui.chat.run_details.keep remains चलने दें."
+    },
+    "mechanical": "54/54 scoped keys passed exact key/order and context parity; 7 ICU placeholder/tag nodes checked. Source one/other arms survive with only the intentional additional exact =0 arm; no dropped/renamed argument or number-skeleton mismatch. NFC/whitespace/ZWJ/ZWNJ/bidi-control/digit/danda/nukta/ellipsis/quote checks: 0 errors.",
+    "commands": [
+      {
+        "command": "node hi-round2-mechanical.cjs",
+        "actual": "exit 0; keys=54, ICU nodes=7, pluralMessages=1, selectMessages=0, Hindi categories=one,other, errors=0; pseudo parsed=54/54."
+      },
+      {
+        "command": "node --test scripts/i18n/locale-parity.test.mjs",
+        "actual": "exit 0; 43 tests, 43 pass, 0 fail."
+      },
+      {
+        "command": "node scripts/i18n/generate.mjs --check",
+        "actual": "exit 0; src/i18n/keys.gen.ts is byte-identical to a fresh generation."
+      },
+      {
+        "command": "node scripts/i18n/context-parity.mjs",
+        "actual": "exit 0; context-parity ok, 131 allowed gaps in 4 namespaces."
+      }
+    ],
+    "pseudo_localization": "54/54 scoped messages passed AST literal-only pseudo-localization with identical ICU signatures; static formatted-grapheme expansion 1.244–2.0. Static parser evidence only, not rendering.",
+    "static_fit": {
+      "actual": "No new static expansion concern in the six remediated values. Prior/direct-neighbor watches remain assigned to rendered QA, not marked as measured overflows.",
+      "watch": [
+        {
+          "key": "ui.common.account.low_credits_dialog.plus_get",
+          "ratio": 1.778,
+          "cells": "9→16"
+        },
+        {
+          "key": "ui.chat.pickers.skills.loading",
+          "ratio": 1.286,
+          "cells": "7→9"
+        },
+        {
+          "key": "ui.chat.pickers.logout.title",
+          "ratio": 1.25,
+          "cells": "8→10"
+        },
+        {
+          "key": "ui.chat.run_details.keep",
+          "ratio": 1.25,
+          "cells": "4→5",
+          "note": "unchanged direct neighbor"
+        }
+      ],
+      "remediated_ratios": {
+        "stop.confirm": 0.632,
+        "credential.forget": 0.5,
+        "credential.forget_confirmation": 0.5,
+        "unlock_prefix": 0.864,
+        "radient_automatic_byok_agentic": 0.718,
+        "run_details.jobs": 0.5
+      }
+    },
+    "english_leakage": "No new untranslated prose. Radient Automatic, Radient Pass, Local Operator, USD and ICU/machine tokens remain allowed Latin; the six remediated values otherwise use Hindi copy.",
+    "rendering": "Not performed. No screenshot, pixel-width, clipping, native-font or real-app fit claim; static-fit watches and the stop-picker 0/1/2/1234 states remain for independent rendered QA."
+  },
+  "namespaces": {
+    "ui.chat.pickers": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_audited": 34,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.pickers.json",
+        "hi": "src/i18n/catalogues/hi/ui.chat.pickers.json",
+        "context": "src/i18n/catalogues/en/ui.chat.pickers.context.json"
+      },
+      "sha256": {
+        "en": "65f926679cefe21229f8d755f71d64381c5d6706c2d33c62cb63141e8f01352d",
+        "hi": "8642a1b803217430605f29a5ac3a1ebda547fbfc3cfc1043b5c9912bc836d213",
+        "context": "8d3fa914cd52768c98a75c4f41b903b86553335b27e406f98500eab7ff576e64"
+      },
+      "finding_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": [],
+      "semantic": "PASS: remediated values and direct neighbors reviewed; no findings.",
+      "mechanical": "PASS: parity, ICU, pseudo and typography checks clean."
+    },
+    "ui.common.account": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_audited": 18,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.account.json",
+        "hi": "src/i18n/catalogues/hi/ui.common.account.json",
+        "context": "src/i18n/catalogues/en/ui.common.account.context.json"
+      },
+      "sha256": {
+        "en": "72e2a848a2aa4b46ecdc0ede34ed5f59b280b73e3fc544d5e563ce22ab2743e0",
+        "hi": "e803fc5f02c179506d397da90fc17ddacac91e9ce21019506fe34d455d6a8bb0",
+        "context": "d3576fe1e83a51325e07df3b999a0e9c029c63b19aefad771edeb54be4dd3bcf"
+      },
+      "finding_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": [],
+      "semantic": "PASS: remediated values and direct neighbors reviewed; no findings.",
+      "mechanical": "PASS: parity, ICU, pseudo and typography checks clean."
+    },
+    "ui.chat.run_details": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_audited": 2,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.run_details.json",
+        "hi": "src/i18n/catalogues/hi/ui.chat.run_details.json",
+        "context": "src/i18n/catalogues/en/ui.chat.run_details.context.json"
+      },
+      "sha256": {
+        "en": "7eea05d7c5b371e7969214abc7bd2961bf6c38fd3e5886e0957493b787878094",
+        "hi": "b2b246144d121e4fabc7d5d0614d168bc42dbc51981507bc5fc6cc5d6e1906f5",
+        "context": "eae93350935a597d66fe4931a40fed2fa9d40d0b01e03925d2cef22985f628d6"
+      },
+      "finding_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": [],
+      "semantic": "PASS: remediated values and direct neighbors reviewed; no findings.",
+      "mechanical": "PASS: parity, ICU, pseudo and typography checks clean."
+    }
+  }
+}

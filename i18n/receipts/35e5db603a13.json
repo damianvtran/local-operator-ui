@@ -1,0 +1,122 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "35e5db603a13",
+  "date": "2026-10-19",
+  "locale": "ur",
+  "round": 1,
+  "section": 6,
+  "status": "changes_requested",
+  "scope": "Full independent copy audit of all eight Section 6 namespaces.",
+  "fallback": "Pinned anthropic/claude-sonnet-5-5 was unavailable (provider quota); this run executed on openai/gpt-6.1-sol.",
+  "notes": "Four namespaces passed; four had MINOR copy findings and were re-audited after remediation.",
+  "namespaces": {
+    "ui.browser": {
+      "namespace": "ui.browser",
+      "keys_read": 224,
+      "status": "changes_requested",
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.browser.browser_consent_request.wants_to_open",
+          "problem": "consent fragments do not compose naturally (also allow_all_of, every_site_under)",
+          "expected": "explicit composed consent text",
+          "evidence": "call-site compositions"
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.browser.browser_file_transfer_row.attached_verb",
+          "problem": "upload verb loses destination relation",
+          "expected": "destination introduced explicitly",
+          "evidence": "composed ...منسلک کی گئی example.com"
+        }
+      ],
+      "note": "Historical round-1 finding; remediated and re-audited in round 2. No hash recorded because the audited bytes were superseded."
+    },
+    "ui.browser.chrome": {
+      "namespace": "ui.browser.chrome",
+      "keys_read": 14,
+      "status": "passed",
+      "sha256": {
+        "en": "73793572e5e36b8bbc8df6c1f27fb98083634b3b9e3cbd05ede27da4813c656c",
+        "ur": "42a2aff7cdc5baee5b3a81fcad7088eae4c90e071a0a58d66949f5ec3ca1882b"
+      },
+      "findings": []
+    },
+    "ui.hub": {
+      "namespace": "ui.hub",
+      "keys_read": 150,
+      "status": "passed",
+      "sha256": {
+        "en": "3abae06a0eed97e4e9f6ea93d81a8fb0f5552bc41dc02c87c5825f4126640aca",
+        "ur": "2fd183ee68ed4fd09ffc240bfe89742192f30a83cda1889028bd0c8a17fce0c3"
+      },
+      "findings": []
+    },
+    "ui.hub.comments": {
+      "namespace": "ui.hub.comments",
+      "keys_read": 29,
+      "status": "passed",
+      "sha256": {
+        "en": "5c20d0e9a7f66f753561ded1d104aa5cf0e1fd0d5a73f7f0a7e3349a28c6f2c4",
+        "ur": "ee80c56eef1174f69498d6e1b014597dbf52632acc9f89e41e87863b94b2e741"
+      },
+      "findings": []
+    },
+    "ui.hub.taxonomy": {
+      "namespace": "ui.hub.taxonomy",
+      "keys_read": 21,
+      "status": "changes_requested",
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.hub.taxonomy.category.role_play",
+          "problem": "کردار نگاری means characterization",
+          "expected": "کردار ادا کرنا",
+          "evidence": "wrong sense"
+        }
+      ],
+      "note": "Historical round-1 finding; remediated and re-audited in round 2. No hash recorded because the audited bytes were superseded."
+    },
+    "ui.code_review": {
+      "namespace": "ui.code_review",
+      "keys_read": 75,
+      "status": "changes_requested",
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.code_review.attention.findings",
+          "problem": "کھلے نتائج means open results (also lane.state.findings_open)",
+          "expected": "unresolved review findings wording",
+          "evidence": "wrong sense"
+        }
+      ],
+      "note": "Historical round-1 finding; remediated and re-audited in round 2. No hash recorded because the audited bytes were superseded."
+    },
+    "ui.command_palette": {
+      "namespace": "ui.command_palette",
+      "keys_read": 75,
+      "status": "changes_requested",
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.command_palette.command_palette.characters_so_chats_are_matched_by_name",
+          "problem": "fragments form incomplete clause",
+          "expected": "complete predicate around the limit",
+          "evidence": "call-site composition"
+        }
+      ],
+      "note": "Historical round-1 finding; remediated and re-audited in round 2. No hash recorded because the audited bytes were superseded."
+    },
+    "ui.console": {
+      "namespace": "ui.console",
+      "keys_read": 57,
+      "status": "passed",
+      "sha256": {
+        "en": "65a71fecf4d10d1d2e2c1de1489101a752115cccaceee6d59bb98910273d4de0",
+        "ur": "44a56d342c530f518f43a559015c894014a27c1f5e349f47e6722f255aa1aca6"
+      },
+      "findings": []
+    }
+  }
+}

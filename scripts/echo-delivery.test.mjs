@@ -38,9 +38,12 @@ const bundle = await build({
 			export { admitChatDraft, useCanonicalSessionsStore, draftIdentityFor, isRefusedBeforeAdmission } from "./src/renderer/src/shared/store/canonical-sessions-store";
 			export { paintPendingSend, seedPendingSends, movePendingSendIdentity, replacePendingSendText, resolvePendingSend, resolveObservedPendingSends, hasPendingSend, settlePendingSend, pendingSendForView, discardPendingSends, retractPendingUser, __registerEchoTarget, streamChangeKeepsTranscript } from "./src/renderer/src/shared/hooks/use-canonical-session";
 			export { useMessageInput, COMPOSER_PLACEHOLDER, composerPlaceholder, clearSubmittedText, stagedPayloadOf } from "./src/renderer/src/shared/hooks/use-message-input";
+			export { t } from "./src/i18n/messages";
 			export { useConversationInputStore, mergeReturnedText, mergeReturnedPayload } from "./src/renderer/src/shared/store/conversation-input-store";
 			export { EMPTY_TRANSCRIPT, applyEvent } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
-			export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";
+			export { DesktopControlError, UserFacingError } from "./src/renderer/src/shared/api/local-operator/desktop-api";
+			export { budgetCheckedSeam, messageBudgetRefusal } from "./src/renderer/src/features/chat/utils/message-budget";
+			export { DESKTOP_MESSAGE_MAX_CHARS } from "./src/shared/desktop-contract";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -51,6 +54,7 @@ const bundle = await build({
 	// The renderer's aliases are tsconfig paths, not node resolutions.
 	alias: {
 		"@shared": "./src/renderer/src/shared",
+		"@shared/i18n": "./src/i18n",
 		"@features": "./src/renderer/src/features",
 	},
 	plugins: [
@@ -130,6 +134,7 @@ const {
 	streamChangeKeepsTranscript,
 	useMessageInput,
 	COMPOSER_PLACEHOLDER,
+	t,
 	composerPlaceholder,
 	clearSubmittedText,
 	mergeReturnedText,
@@ -139,6 +144,10 @@ const {
 	EMPTY_TRANSCRIPT,
 	applyEvent,
 	DesktopControlError,
+	UserFacingError,
+	budgetCheckedSeam,
+	messageBudgetRefusal,
+	DESKTOP_MESSAGE_MAX_CHARS,
 } = module;
 
 /** The payload's REQUEST line, which is its last: see the splice test below. */
@@ -747,6 +756,37 @@ test("the mint's bridge id landing on a draft pane keeps the transcript the pres
 		streamChangeKeepsTranscript("7f5d0a3e-warm", undefined, false),
 		true,
 		"and a bridge id going away (a drop) keeps it for the same reason",
+	);
+});
+
+test("a draft pane gaining its session id keeps the row the press painted (send flicker, 2026-11-11)", () => {
+	reset();
+	/*
+	 * The draft pane now stays MOUNTED through its own admission
+	 * (`panelMountKeyFor`), so the reset effect sees the stream move from the
+	 * draft's (nothing, or the mint's bridge id) to the session the create
+	 * answered. Resetting there is the blank the remount used to paint over: the
+	 * built-app trace measured the echo's node replaced ~100 ms after the press.
+	 */
+	assert.equal(
+		streamChangeKeepsTranscript(undefined, SESSION_ID, true, false),
+		true,
+		"no stream yet -> the created session is the same conversation",
+	);
+	assert.equal(
+		streamChangeKeepsTranscript("7f5d0a3e-warm", SESSION_ID, true, false),
+		true,
+		"the mint's bridge -> the created session is the same conversation",
+	);
+	assert.equal(
+		streamChangeKeepsTranscript("111111111111", SESSION_ID, true, true),
+		false,
+		"a session -> another session is still a real change, and resets",
+	);
+	assert.equal(
+		streamChangeKeepsTranscript(undefined, SESSION_ID, true),
+		false,
+		"the default stays the pre-draft answer for every other caller",
 	);
 });
 
@@ -1406,7 +1446,7 @@ test("R1: a clear at the paint cannot change what the request carries", async ()
 	 * composer reads is cleared at the echo, so anything that read the ROW after
 	 * that moment would see nothing. The request is built from the arguments the
 	 * press handed over - `buildSendPayload` for the words and the reply prefix,
-	 * `encodeImageAttachments` for the file paths - and this drives the real
+	 * `encodeAttachments` for the file paths - and this drives the real
 	 * `admitChatDraft` with a mounted transcript and a paint callback that clears
 	 * the row for real, then reads what reached the wire.
 	 */
@@ -1753,7 +1793,7 @@ test("MAJOR-1/Q-1: an unsettled send outranks `awaitingReply`, and the order is 
 			sendingUnsettled: true,
 			awaitingReply: true,
 		}),
-		COMPOSER_PLACEHOLDER.sending,
+		t(COMPOSER_PLACEHOLDER.sending),
 		"a send that has not settled must be able to say so with `awaitingReply` true - that is the app's own value on the canonical path, and reading it as `Waiting for the agent` is the defect QA executed",
 	);
 	/* And the moment after it settles, with the agent still answering. */
@@ -1763,7 +1803,7 @@ test("MAJOR-1/Q-1: an unsettled send outranks `awaitingReply`, and the order is 
 			sendingUnsettled: false,
 			awaitingReply: true,
 		}),
-		COMPOSER_PLACEHOLDER.waiting,
+		t(COMPOSER_PLACEHOLDER.waiting),
 		"once the send has settled the agent's sentence takes over, which is the half the operator asked for as the pair to this one",
 	);
 	assert.equal(
@@ -1772,7 +1812,7 @@ test("MAJOR-1/Q-1: an unsettled send outranks `awaitingReply`, and the order is 
 			sendingUnsettled: false,
 			awaitingReply: false,
 		}),
-		COMPOSER_PLACEHOLDER.idle,
+		t(COMPOSER_PLACEHOLDER.idle),
 		"and with no send in flight and nothing being answered the box invites a message again",
 	);
 	/* The three earlier terms keep the windows they had. */
@@ -1783,7 +1823,7 @@ test("MAJOR-1/Q-1: an unsettled send outranks `awaitingReply`, and the order is 
 			sendingUnsettled: true,
 			awaitingReply: true,
 		}),
-		COMPOSER_PLACEHOLDER.unavailable,
+		t(COMPOSER_PLACEHOLDER.unavailable),
 		"a conversation this machine does not have stays the first reading (design round 2, D3)",
 	);
 	assert.equal(
@@ -1793,7 +1833,7 @@ test("MAJOR-1/Q-1: an unsettled send outranks `awaitingReply`, and the order is 
 			sendingUnsettled: true,
 			awaitingReply: true,
 		}),
-		COMPOSER_PLACEHOLDER.busy,
+		t(COMPOSER_PLACEHOLDER.busy),
 		"a refused box keeps its own sentence",
 	);
 	assert.equal(
@@ -1803,7 +1843,7 @@ test("MAJOR-1/Q-1: an unsettled send outranks `awaitingReply`, and the order is 
 			sendingUnsettled: true,
 			awaitingReply: true,
 		}),
-		COMPOSER_PLACEHOLDER.answer,
+		t(COMPOSER_PLACEHOLDER.answer),
 		"and a pending question is what the box is for, whatever is in flight",
 	);
 });
@@ -2032,5 +2072,217 @@ test("R2-2/U5: a settled claim stops answering for the send that follows", async
 		pendingSendForView(SESSION_ID),
 		null,
 		"with every claim answered, nothing answers `still going out`",
+	);
+});
+
+test("the press commits the claim and the echo in ONE commit (send flicker, 2026-11-11)", async () => {
+	/*
+	 * By the time the page calls `admitChatDraft` the press has crossed an `await`
+	 * (`encodeAttachments`), so the echo's `setView` no longer carries the click's
+	 * priority while the draft's `pending` (a store update) still commits
+	 * synchronously. The built-app trace measured the frame between them: the
+	 * greeting gone and the pane empty for ~35 ms before the row. `flushSync`
+	 * around the call's synchronous prefix is what puts them in one commit;
+	 * `ChatPage` cannot be mounted in a node test, so the seam is pinned by source.
+	 */
+	const { readFileSync } = await import("node:fs");
+	const page = readFileSync(
+		"src/renderer/src/features/chat/components/chat-page.tsx",
+		"utf8",
+	);
+	assert.match(page, /import \{ flushSync \} from "react-dom";/);
+	assert.match(
+		page,
+		/await flushSync\(\(\) =>\s*admitChatDraft\(/,
+		"the admission's synchronous prefix is flushed as one commit",
+	);
+});
+
+/* ============================================ the seam's payload (bug 1) */
+
+/*
+ * THE PRESS NO LONGER COMPOSES EVERY PAYLOAD ITSELF. On a pane whose host
+ * honours `beforeAdmission`, the `$skill` bodies travel through the seam
+ * (`message-input.tsx`): the press paints the TYPED line and the seam's answer
+ * is what the owner receives. These three cases are the store's half of that
+ * contract - the paint, the body that leaves, and the replay that must not lose
+ * the block - driven through the shipped `admitChatDraft`.
+ */
+
+test("an attached send paints the typed line at the press and posts the seam's answer (bug 1)", async () => {
+	reset();
+	const transcript = await mountTranscript(SESSION_ID);
+	const paintedAt = [];
+	const posts = [];
+	let seamSawId = null;
+	let releaseSeam;
+	const held = new Promise((resolve) => {
+		releaseSeam = resolve;
+	});
+	globalThis.__echoRequest = async (request) => {
+		if (request.op === "sessions.message") posts.push(request);
+		return { status: "admitted" };
+	};
+	const typed = "$research Review this";
+	const composed = `${typed}\n\n<operator-skills>fixture</operator-skills>`;
+	const key = `send:${SESSION_ID}`;
+	const admission = admitChatDraft(
+		key,
+		{ ...input, text: typed },
+		SESSION_ID,
+		() => {
+			paintedAt.push("painted");
+		},
+		async (sessionId) => {
+			seamSawId = sessionId;
+			await held;
+			return composed;
+		},
+	);
+	/*
+	 * THE PRESS IS THE PAINT. Everything below is read with the seam still
+	 * pending: the row shows exactly what was typed, the composer has been told,
+	 * and nothing has reached the wire.
+	 */
+	assert.deepEqual(transcript.rows(), [typed], "the bubble is the typed line");
+	assert.deepEqual(paintedAt, ["painted"], "the composer is told at the press");
+	assert.equal(
+		posts.length,
+		0,
+		"no sessions.message while the seam is running",
+	);
+	releaseSeam();
+	assert.equal(await admission, SESSION_ID);
+	assert.equal(
+		seamSawId,
+		SESSION_ID,
+		"the seam is addressed to the session it renders for",
+	);
+	assert.deepEqual(
+		transcript.rows(),
+		[composed],
+		"the row's text is REPLACED by the composed payload, not painted twice",
+	);
+	assert.equal(posts.length, 1);
+	assert.equal(posts[0].text, composed, "and the wire carries it");
+	transcript.unregister();
+});
+
+test("a replay whose create failed still carries the press's block (bug 1)", async () => {
+	reset();
+	/*
+	 * THE ATTEMPT THIS PROTECTS AGAINST is the one that dies BEFORE the seam: the
+	 * create is refused, so nothing rendered and there is no `submittedRendered`
+	 * pin for the retry to replay. On a draft pane the press's payload is the
+	 * typed line now (the block is the seam's), so without the remembered seam the
+	 * second press would silently drop the expansion - the one outcome worse than
+	 * the lag this change removes.
+	 */
+	const key = store
+		.getState()
+		.stageDraft({ kind: "agent", name: "replay-seam" });
+	const posts = [];
+	let creates = 0;
+	globalThis.__echoRequest = async (request) => {
+		if (request.op === "sessions.create") {
+			creates += 1;
+			if (creates === 1) throw new Error("create refused");
+			return { session_id: SESSION_ID, binding: null };
+		}
+		if (request.op === "sessions.message") posts.push(request);
+		return { status: "admitted" };
+	};
+	const typed = "$research Review this";
+	const composed = `${typed}\n\n<operator-skills>fixture</operator-skills>`;
+	await assert.rejects(
+		() =>
+			admitChatDraft(
+				key,
+				{ ...input, text: typed },
+				undefined,
+				undefined,
+				async () => composed,
+			),
+		/the create never answered|create refused/,
+	);
+	assert.equal(creates, 1, "the first attempt died at the create");
+	assert.equal(posts.length, 0, "so nothing rendered and nothing was posted");
+	/*
+	 * SEND AGAIN, with no seam at all: the door that presses this draft a second
+	 * time may be the store's own retry, which never held the composer's read.
+	 */
+	assert.equal(
+		await admitChatDraft(key, { ...input, text: typed }),
+		SESSION_ID,
+	);
+	assert.equal(posts.length, 1);
+	assert.equal(
+		posts[0].text,
+		composed,
+		"the replay re-runs the press's seam instead of sending the typed line",
+	);
+});
+
+test("the seam's answer is weighed, and an over-budget composition leaves a failure row (bug 1)", async () => {
+	/*
+	 * TWO HALVES OF ONE REFUSAL. `budgetCheckedSeam` is what `chat-page.tsx`
+	 * wraps the composer's seam with, and the store turns its `UserFacingError`
+	 * into the row's own sentence because the seam runs inside the admission -
+	 * the failure row, not a second copy of the copy. The over-budget body is
+	 * built from the SHIPPED ceiling, so the fixture cannot drift away from it.
+	 */
+	const oversized = "x".repeat(DESKTOP_MESSAGE_MAX_CHARS + 2);
+	const sentence = messageBudgetRefusal(oversized, []);
+	assert.ok(sentence, "the fixture is over the shipped ceiling");
+	const wrapped = budgetCheckedSeam(async () => oversized, []);
+	await assert.rejects(
+		() => wrapped(SESSION_ID),
+		(error) => {
+			assert.ok(
+				error instanceof UserFacingError,
+				"a refusal the composer can print, not a transport error",
+			);
+			assert.equal(error.message, sentence);
+			return true;
+		},
+	);
+	// A seam that answers nothing stays nothing: nothing to weigh.
+	assert.equal(
+		await budgetCheckedSeam(async () => undefined, [])(SESSION_ID),
+		undefined,
+	);
+
+	reset();
+	const key = store
+		.getState()
+		.stageDraft({ kind: "agent", name: "over-budget-seam" });
+	const posts = [];
+	globalThis.__echoRequest = async (request) => {
+		if (request.op === "sessions.create")
+			return { session_id: SESSION_ID, binding: null };
+		if (request.op === "sessions.message") posts.push(request);
+		return { status: "admitted" };
+	};
+	await assert.rejects(
+		() =>
+			admitChatDraft(
+				key,
+				{ ...input, text: "small line" },
+				undefined,
+				undefined,
+				budgetCheckedSeam(async () => oversized, []),
+			),
+		(error) => error instanceof UserFacingError,
+	);
+	assert.equal(posts.length, 0, "the over-budget body never reaches the wire");
+	assert.equal(
+		store.getState().drafts[key].error,
+		sentence,
+		"the failure row carries the budget's own sentence",
+	);
+	assert.equal(
+		store.getState().drafts[key].errorRetry,
+		false,
+		"and offers no Retry: the same bytes would be refused for the same reason",
 	);
 });

@@ -76,6 +76,52 @@ export type MonitorCancelInteraction = {
 	dialog: MonitorCancelDialogProps;
 };
 
+const cancelControl = (id: string): HTMLElement | null =>
+	document.querySelector<HTMLElement>(`[data-monitor-cancel="${id}"]`);
+
+/**
+ * The focus chain after `id`'s control (U1): every later Cancel in the same
+ * section, in document order, and that section's fallback heading. Scoped to
+ * the pressed control's `<section>` so a second list elsewhere in the document
+ * is never a target; the document is the scope only when there is no section.
+ */
+const focusSuccessors = (
+	id: string,
+): { ids: string[]; fallback: HTMLElement | null } => {
+	const pressed = cancelControl(id);
+	const scope: ParentNode = pressed?.closest("section") ?? document;
+	const controls = Array.from(
+		scope.querySelectorAll<HTMLElement>("[data-monitor-cancel]"),
+	);
+	const at = controls.findIndex(
+		(control) => control.getAttribute("data-monitor-cancel") === id,
+	);
+	return {
+		ids:
+			at < 0
+				? []
+				: controls
+						.slice(at + 1)
+						.map((control) => control.getAttribute("data-monitor-cancel") ?? "")
+						.filter((successor) => successor !== ""),
+		fallback: scope.querySelector<HTMLElement>("[data-monitor-focus-fallback]"),
+	};
+};
+
+/** Focus the first candidate control that is still there and enabled, else the fallback. */
+const focusFirstAvailable = (
+	candidates: string[],
+	fallback: HTMLElement | null,
+): void => {
+	for (const id of candidates) {
+		const control = cancelControl(id);
+		if (!control || control.hasAttribute("disabled")) continue;
+		control.focus();
+		if (document.activeElement === control) return;
+	}
+	if (fallback?.isConnected) fallback.focus();
+};
+
 export const useMonitorCancel = ({
 	sessionId,
 	controls,
@@ -117,6 +163,15 @@ export const useMonitorCancel = ({
 	 * next conversation's list, whose handles collide by construction (`m1`..).
 	 */
 	const lastPressedIdRef = useRef<string | null>(null);
+	/*
+	 * Where focus goes when the pressed control cannot take it back (UX round 1,
+	 * U1, PR #1930): the Cancel controls that FOLLOW the pressed one, in document
+	 * order, and the section's `[data-monitor-focus-fallback]` heading. Captured
+	 * at press time because by the time the dialog closes the pressed row is a
+	 * disabled `Cancelled` mark and, once the re-read lands, gone.
+	 */
+	const successorIdsRef = useRef<string[]>([]);
+	const fallbackRef = useRef<HTMLElement | null>(null);
 
 	/*
 	 * A switch to another conversation closes everything this interaction holds.
@@ -134,27 +189,52 @@ export const useMonitorCancel = ({
 	}, [sessionId]);
 
 	/*
-	 * FOCUS FALLS BACK TO THE ROW'S OWN CONTROL. The dialog primitive restores
-	 * focus to the opener it captured while the opener is still connected; when
-	 * it could not (the opener went away with its row), the row's control is the
+	 * FOCUS FALLS BACK TO THE ROW'S OWN CONTROL, THEN FORWARD. The dialog primitive
+	 * restores focus to the opener it captured while the opener is still
+	 * connected and enabled; when it could not, the row's control is the
 	 * successor of the same act - the rule the delete dialog's fallback records.
+	 * After a SUCCESSFUL cancel that control is the disabled `Cancelled` mark (and
+	 * soon not there at all), so focus used to fall to `<body>` and a keyboard
+	 * user cancelling several watches re-Tabbed from the top every time (U1). The
+	 * chain is therefore: the pressed control if it can take focus (a refusal),
+	 * else the next line's Cancel, else the next row's (both are "the next
+	 * `[data-monitor-cancel]` in document order"), else the section heading.
+	 *
 	 * Only when focus went NOWHERE: a focus the primitive already restored is
-	 * left exactly where it is.
+	 * left exactly where it is. The dialog may still hold focus for its exit
+	 * animation, and the primitive restores on a `setTimeout(0)` after unmount,
+	 * so the check re-runs per frame (bounded, ~1 s) until focus has left the
+	 * dialog, rather than deciding once before the primitive has had its turn.
 	 */
 	useEffect(() => {
 		if (pending !== null) return;
 		const id = lastPressedIdRef.current;
 		if (id === null) return;
-		if (document.activeElement !== document.body) return;
-		document
-			.querySelector<HTMLElement>(`[data-monitor-cancel="${id}"]`)
-			?.focus();
+		const candidates = [id, ...successorIdsRef.current];
+		const fallback = fallbackRef.current;
+		let frame = 0;
+		let tries = 0;
+		const settle = () => {
+			const active = document.activeElement;
+			if (active === null || active === document.body) {
+				focusFirstAvailable(candidates, fallback);
+				return;
+			}
+			if (!active.closest('[role="dialog"]')) return;
+			tries += 1;
+			if (tries < 60) frame = requestAnimationFrame(settle);
+		};
+		settle();
+		return () => cancelAnimationFrame(frame);
 	}, [pending]);
 
 	const request = useCallback(
 		(row: MonitorRow) => {
 			if (busy) return;
 			lastPressedIdRef.current = row.id;
+			const successors = focusSuccessors(row.id);
+			successorIdsRef.current = successors.ids;
+			fallbackRef.current = successors.fallback;
 			setPending({ id: row.id, name: row.name });
 			/*
 			 * A fresh open is a FRESH question: the previous refusal's sentence is

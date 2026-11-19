@@ -91,7 +91,132 @@ allow/deny. It changes only presentation: `background-tab` may never foreground 
 (§2.4). `window.open` calls from script arrive with Electron's `default`/`new-window`
 shapes; all that matters is that nothing here distinguishes "the user clicked" from
 "script ran", because Electron exposes no gesture signal on this handler (accepted; see
-§6).
+§6). The opener test below is not a gesture signal: it separates links from sign-in
+popups, not clicks from scripts.
+
+**Routing: tab or window (amended 2026-10-29).** The table above decides *whether* a popup
+is admitted. A second decision, `routePopup` in `popups.ts`, decides *what it becomes*, and it
+runs in `did-create-window` because the answer needs the child, which does not exist yet in
+the open handler: **does the new page have an opener (`child.webContents.opener`)?**
+
+| trigger (measured, Electron 44.3.0) | `disposition` | opener | becomes |
+|---|---|---|---|
+| `<a target=_blank>`, with or without `rel=noopener` | `foreground-tab` | none | **tab** |
+| `<a target=_blank>` inside an iframe | `foreground-tab` | none | **tab** |
+| `window.open(url, n, "noopener")` | `foreground-tab` | none | **tab** |
+| `<a target=_blank rel=opener>` | `foreground-tab` | set | window |
+| `window.open(url)`, `window.open(url, n, "width=..")`, MSAL's `about:blank` first | `foreground-tab` / `new-window` | set | window |
+| `<form method=post target=_blank>` | `foreground-tab` + `postBody` (open handler only) | none | window (replaying the body into a new view was measured flaky: POST 1/1/0 over three runs) |
+| cmd / shift / middle click on `<a target=_blank>` | `background-tab` / `new-window` | none, **already loading** | window, `inactive` at most (a tab would fetch the URL a second time) |
+
+One refinement crosses that table, and only the TAB rows: a popup from a USER link tab is
+refused the tab route (`link_depth`), because a tab child carries the same handler and would
+start its own empty count — while every window row above still applies, since a window child
+carries `wirePopup`'s deny-all and adds no depth.
+
+Two facts the router needs are **not** where one would look (measured, Electron 44.3.0):
+`postBody` is present in the `setWindowOpenHandler` details and absent from the
+`did-create-window` details, so the handler records it and `did-create-window` reads that
+record (reading it later routed every form POST to a tab that replayed it as a GET); and a
+cmd/shift/middle click arrives with the child's navigation **already started**
+(`isLoading()` true), and destroying the child does not cancel that request, so loading the
+URL in a tab fetched it twice and spent a single-use link. A plain click and every script
+open arrive not loading. `alreadyLoading` therefore sends the child down the window route,
+where its own fetch is the only one. Adopting the child's `webContents` into a
+`WebContentsView` was tried and is not possible (`options.webContents is already attached
+to a window`; the child window's `contentView` holds no child view to move).
+
+Why the opener and not `disposition`, `features` or the URL: a bare `window.open(url)` and an
+anchor click are both `foreground-tab`; `rel=noopener` anchors arrive with empty `features`;
+and a URL allowlist is the thing §1 rejects. A flow that needs `window.opener` or
+`postMessage` has an opener or it cannot work, and `noopener` makes `window.open` return
+`null`, so the page cannot poll the child either. An opener-less popup therefore cannot be a
+sign-in popup that depends on its opener (§0), and the cost of guessing wrong is lopsided:
+an opener-bearing popup treated as a tab breaks MSAL silently (the failure this document
+exists to remove), while an opener-less one treated as a window is an OS window `tabs` never
+lists. The test is therefore the opener.
+
+An ordinary link becomes a **tab owned like its opener**: an agent's tab yields an agent tab
+in the same session (never activated, so the tab the operator is looking at does not move —
+`ui-browser-tab.md` 11.4, in `damianvtran/local-operator`), a user's tab yields a user tab that comes to the front only when
+the opener was the active tab and the request was not `background-tab`. It is never presented
+as a window. The opening session may adopt it with `open tab=<handle>` (`TabRecord.openedBy`,
+read by `sessionMayAdopt`); another session may not. Bounds: an agent's tab may spawn
+`MAX_POPUP_CHILDREN_PER_VIEW` link tabs and the agent-tab cap (`MAX_AGENT_TABS`) still
+applies; a user's tab may hold `MAX_USER_LINK_TABS_PER_VIEW` (12) link tabs open at once,
+and **a user's link tab may spawn no TAB of its own** (`link_depth`), its window shapes
+unchanged — the depth rule is route-scoped, as the routing section below says.
+
+The guarantee is therefore depth-1 fan-out, and it is worth stating exactly, because the
+first form of this bound did not hold: the count is `openedTabCount(openerTabId)`, the
+children whose `openedByTab` is that tab and that are still open, so it bounds CONCURRENT
+tabs rather than lifetime allocation — closing one frees its slot. Without the depth rule
+the fan-out would be 12^depth instead of 12, since every tab is wired with the same
+window-open handler and each child would have been measured against its own fresh, empty
+count: a page reproducing itself in its children (`window.open(location.href, "_blank",
+"noopener")` inside the child too) would have reached 12, 144, 1,728, 20,736 live views,
+because the window cap sees no tab and the agent-tab cap is agent-only. The rule that closes
+it is ROUTE-scoped: a user link tab is refused its TAB route (`link_depth`), so a tab it
+spawned spawns no tab, while its window shapes (an opener-bearing sign-in, `about:blank`, a
+form POST) still open — a window child carries `wirePopup`'s deny-all and adds no depth, and
+refusing it returned null from the page's `window.open`, which silently broke a sign-in
+opened in a `target=_blank` tab (§1.1's routing note; round 2's B2). The reason is nesting,
+not attention: the tab route ACTIVATES a user's link tab, so the operator is usually looking
+at it, and an earlier draft's "a link tab has no operator behind it" was false for the user
+case. An agent's link tab is not covered by the rule because `MAX_AGENT_TABS` bounds agent
+tabs in aggregate (8), so its nesting cannot grow the strip past a number nothing checks.
+
+The user bound corrects an earlier claim: `damianvtran/local-operator`'s `docs/design/ui-browser-tab.md`
+§6.5 leaves user tabs uncapped
+because "a user opening a dozen tabs is their business", and that reasoning held only while
+every user tab was an act the user took. A page looping `window.open(u, "_blank",
+"noopener")` is not an act the user took: before this section's routing those children were
+windows, so the live cap refused the fifth, and as tabs they never enter the window cap's
+count — the old reasoning would have let one page in the operator's own tab allocate views,
+`session.json` rows and activations without bound. Twelve is a ceiling taken from that same
+sentence's human scale rather than a copy of its conclusion: a page gets no more than a
+person gets for themselves, and seven slots over the ordinary case (a person opening the few
+links they want from one page) so ordinary use never meets the wall. It is a judgement about
+bounding abuse, like the window cap, not a measurement — §6.5 deliberately holds no measured
+human fan-out — and it sits below `MAX_RESTORED_TABS` (20), so one looping page cannot by
+itself fill what a restore reads back. Two things it is NOT, so a later reader does not
+mistake it for one: it is not §6.5's tab ceiling (no such cap exists for the operator's own
+tabs, and this bound does not become one), and memory is not the bound here as it is there —
+6.5 can lean on the operator owning what they open, while every view this bounds was opened
+by a page with nobody reading a count. A number was therefore required, and it is a number of
+judgement: 6.5 carries no measured fan-out and this text claims none, so the bound is picked
+to fail safe — wrong by being generous, still bounding the loop. It is a separate constant from the window cap because
+the two bound different resources and one number for both would silently tighten whichever
+side moved. Scheme and window-cap refusals are unchanged; the per-opener tab bounds log
+`(opener_cap)` for an agent and `(user_opener_cap)` for a user, distinct so a log says which
+bound was hit, and a popup whose opener tab has no registry record logs `(opener_gone)` and is
+refused on every route, before either count is consulted. The log line names the route:
+`opener=yes|no route=tab|window`; an opener that is a link tab logs `(link_depth)`.
+
+An agent's link tab lives and dies with the tab that opened it unless a session adopts it:
+closing the opener (or ending the scope that allocated it) closes the link tabs nothing
+adopted, so a page that spams links cannot leave tabs behind that count against
+`MAX_AGENT_TABS` and that no later session can close. A user's link tab stays, as in a
+browser. A link whose load produces no page at all (a download, a cancelled navigation)
+closes its tab; a link that fails with an error page keeps it. The tab load sends the
+opener's `Referer`.
+
+**Behaviour change to know about:** a named target (`target="mail"`) used to reuse one
+window on every click; each click now opens a new tab, and the fifth click from one agent
+tab is refused with `opener_cap` until one of them is closed. From a user's tab the same
+clicks are refused from the thirteenth with `user_opener_cap` while twelve are open, and a
+link clicked ON one of those new tabs opens no tab: it logs `link_depth` and no tab appears
+(its sign-in, `about:blank` and form-POST shapes still open a window). That refusal is
+deliberate rather than a gap: a tab child is wired with the same open handler, so a page
+that reproduces itself in its children would be bounded only per opener, at 12 to the power
+of the nesting rather than 12. It is not because nobody is watching — the tab route
+activates the operator's link tab, so they usually are.
+
+Not verified: that Gmail's links are opener-less (inferred from its `google.com/url?q=`
+redirect anchors), real MSAL/Google sign-in through the new routing, modifier-click in the
+`did-create-window` path (the `createWindow` path gave no guest), `window.close()` from an
+opener-less tab, and origin consent on a page-opened tab (authorization applies when the
+agent acts, per `host.ts`).
 
 ### 1.2 The fate of the blocked-popup notice
 
@@ -191,20 +316,19 @@ Why the default child wins:
 ### 2.2 The exact options
 
 ```ts
-// wireView(view) — replaces src/main/browser/index.ts:868-881
+// wireView(view) — the shape shipped in src/main/browser/index.ts (abridged)
 contents.setWindowOpenHandler((details) => {
-  const decision = decidePopup(details, {
-    mode: plan.show,               // "focus" | "inactive" | "never" (already passed in)
-    live: popupCount(tabId),       // §1 cap
-  });
+  const decision = decidePopup(
+    { url: details.url, disposition: details.disposition },
+    { mode: plan.show, live: popupCount(tabId), openerOwner: openerOwner() }, // §1 cap
+  );
   if (!decision.allow) {
     log(`[browser] refused a popup from a driven page: ${details.url} (${decision.reason})`);
     return { action: "deny" };
   }
-  log(
-    `[browser] tab ${tabId} opened a popup: ${details.url} ` +
-    `(disposition=${details.disposition}, presentation=${decision.presentation})`,
-  );
+  // `postBody` exists HERE and not in did-create-window (§1.1): remember it for the child.
+  pendingOpens.push({ url: details.url, hasPostBody: details.postBody != null, referrer: details.referrer });
+  // The "opened a popup" line is written by did-create-window, which knows the route.
   return {
     action: "allow",
     overrideBrowserWindowOptions: {
@@ -228,7 +352,9 @@ contents.setWindowOpenHandler((details) => {
     },
   };
 });
-contents.on("did-create-window", (child, details) => wirePopup(child, details, ctx));
+// did-create-window runs `routePopup` (§1.1): opener-less GET => openPopupAsTab,
+// everything else => wirePopup(child, popupChildren, presentation).
+contents.on("did-create-window", (child, details) => { /* route */ });
 ```
 
 Notes:
@@ -270,12 +396,16 @@ belongs to the browser profile, never the app's renderer.
 
 ### 2.4 Per-mode show policy, and where the code is allowed to live
 
-| launch mode (plan `show`) | disposition | effective presentation | what actually happens |
-|---|---|---|---|
-| `normal` (`focus`) | `default` / `foreground-tab` / `new-window` / `other` | `focus` | `show()` — activates the app and focuses the popup, as a browser popup does |
-| `normal` | `background-tab` | `inactive` | `showInactive()` — visible, never foregrounded |
-| `inactive` | any | `inactive` | `showInactive()` |
-| `headless` (`never`) | any | `never` | never shown, never focused; the window exists, hidden, drivable/capturable via CDP |
+Applies to a popup that stays a **window** (it has an opener, or it is a form POST); a link
+that became a tab is never presented as a window (§1.1).
+
+| launch mode (plan `show`) | opener tab's owner | disposition | effective presentation | what actually happens |
+|---|---|---|---|---|
+| `normal` (`focus`) | user | `default` / `foreground-tab` / `new-window` / `other` | `focus` | `show()` — activates the app and focuses the popup, as a browser popup does |
+| `normal` | user | `background-tab` | `inactive` | `showInactive()` — visible, never foregrounded |
+| `normal` | **agent** | any | `inactive` | `showInactive()` — an agent drives its tab while the operator works elsewhere; a sign-in window that raised the app over that was logged 12 times in two days. Visible, but it never activates the app or takes focus |
+| `inactive` | any | any | `inactive` | `showInactive()` |
+| `headless` (`never`) | any | any | `never` | never shown, never focused; the window exists, hidden, drivable/capturable via CDP |
 
 Mechanics:
 
@@ -356,8 +486,10 @@ Attached synchronously in `did-create-window`:
 - Track in a per-view `Set`; remove on `closed` (feeds the cap and the cleanup story).
 - `presentPopupWindow(child, effectiveShow, { trigger: "popup-open", report })` (§2.4).
 - No registry, no tab id, no state file, no CDP driver attachment, no `notifyChanged` —
-  the popup is not a tab and must not become one (the e2e proof asserts the tab count
-  stays put: `scripts/browser-host-proof.mjs:896-903`).
+  an opener-bearing popup is not a tab and must not become one (the e2e proof asserts the
+  tab count stays put, and that a `rel=opener` link is not listed). An opener-less popup
+  never reaches `wirePopup`: it is routed to `openPopupAsTab` (§1.1), which destroys the
+  unseen child and loads the URL in a registry tab.
 
 ### 3.2 Cleanup semantics
 
@@ -526,11 +658,12 @@ that is its own small design (see §1.2).
    - that a child in the explicit partition keeps a live `window.opener` (the whole
      reason §2.3 exists).
 4. **Focus in `normal` mode.** `show()` activates the app (macOS; `window-raise.ts:9-11`).
-   For a user-visible popup that is correct; for a scripted popup on an agent-driven page
-   it is a window the operator did not ask for (bounded: `normal` only, cap, closable,
-   logged). Watch the first weeks via the log line; if it bites, the lever is a
-   user-gesture requirement that Electron does not currently expose — a platform
-   limitation to record, not to paper over.
+   Ordinary links no longer reach it (they are tabs, §1.1). What still can: an
+   opener-bearing popup from a **user-owned** tab, which is the browser contract (the person
+   who clicked is looking at the app). An **agent-owned** opener's window is shown
+   `inactive` (§2.4), so a scripted popup on an agent-driven page no longer raises the app.
+   Still bounded by `normal` only, the cap, closable, logged. The lever Electron does not
+   expose is a user-gesture requirement — a platform limitation to record, not to paper over.
 5. **Cap number (4) is a judgement**, not a measurement: MSAL uses one window per flow,
    retries reuse the same-named window, and the cap only exists to bound abuse. If a real
    provider needs more, raise it with the observed flow named in the commit.
@@ -557,13 +690,32 @@ that is its own small design (see §1.2).
   instead of the system browser — backend/desktop scope, out of this PR.
 - **Not in scope:** custom-scheme redirects (`msauth:`, `ms-appx-web:` …) and any
   system-browser fallback for denied schemes; popups from popups; agent/CDP actions
-  targeting popups (the driver drives views; popups are invisible to it); popup chrome,
+  targeting an opener-bearing popup window (the driver drives views; such popups are
+  invisible to it — opener-less links are tabs and are driven normally); popup chrome,
   tab-strip integration, restore; per-popup consent UI; gesture gating (no signal
   exists — §6.4).
+- **Follow-ups for the tab route (slice 2, not built):** the agent's `click` result still
+  reads "(no navigation)" because it compares the opener's URL, so nothing tells the agent a
+  tab opened — add `opened_tab: <handle>` to the UI click result and a matching line in the
+  harness (`builtin.py`), and widen the `tab` parameter text that says "a tab the USER handed".
+  The windows that cmd/shift/middle clicks and form POSTs open are unlisted (no registry
+  record, so `tabs` and the agent never see them), the same as any opener-bearing popup;
+  a later step could register them.
+  Form-POST `target=_blank` could adopt the guest through `createWindow` instead of staying a
+  window. Neither is needed to stop a link from opening an unlisted OS window.
 - **Follow-up, cross-repo:** amend §11.6 of `docs/design/ui-browser-tab.md` (lives in
   `~/local-operator`, `:2056-2066`) — it currently mandates deny-all for driven views and
   cites exactly the reasoning this brief supersedes. The PR body should name it so the
   next reader is not left with two contradicting designs.
+- **Follow-up, cross-repo (§6.5):** `docs/design/ui-browser-tab.md` §6.5
+  (`damianvtran/local-operator`, `:1046-1060`, and risk item 10 at `:2484`) still says
+  user tabs have "no agent-facing cap" with memory as "the honest bound". That sentence is
+  about tabs the OPERATOR opens and stays true; what it cannot be read as — now that a page
+  can allocate tabs from one of them — is a statement that nothing bounds a page. The core
+  doc needs the matching change: name `MAX_USER_LINK_TABS_PER_VIEW` and the depth rule as
+  the bound on page-spawned tabs, so the two design documents do not disagree. Not edited
+  here: this brief owns the UI host, and a cross-repo edit from this branch would land
+  unreviewed in the other repository.
 
 ## 8. Implementation checklist (files and shapes)
 

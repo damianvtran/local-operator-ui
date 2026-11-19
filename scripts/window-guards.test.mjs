@@ -423,6 +423,80 @@ test("a child frame may be the PDF blob or the backend's static route, nothing e
 	);
 });
 
+test("only Chromium's own PDF viewer may navigate its internal UUID child", () => {
+	const viewer =
+		"chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/index.html";
+	const target = viewer.replace(
+		"index.html",
+		"53b6d933-cf85-403b-8748-8fecd8431f90",
+	);
+	const allowed = {
+		url: target,
+		isMainFrame: false,
+		parentUrl: viewer,
+		initiatorUrl: viewer,
+	};
+	assert.equal(guards.frameNavigationVerdict(allowed, TRUSTED).allowed, true);
+	for (const change of [
+		{ isMainFrame: true },
+		{ parentUrl: undefined },
+		{ initiatorUrl: undefined },
+		{ parentUrl: APP_FILE, initiatorUrl: APP_FILE },
+		{ parentUrl: "blob:file:///unrelated", initiatorUrl: APP_FILE },
+		{
+			parentUrl: "http://localhost:1111/v1/static/html?path=x",
+			initiatorUrl: viewer,
+		},
+		{ initiatorUrl: "https://attacker.test/" },
+		{ parentUrl: `${viewer}?fake=1` },
+		{
+			url: target.replace(
+				"mhjfbmdgcfjbbpaeojofohoefgiehjai",
+				"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+			),
+		},
+		{
+			url: target.replace(
+				"mhjfbmdgcfjbbpaeojofohoefgiehjai",
+				"mhjfbmdgcfjbbpaeojofohoefgiehjai.attacker.test",
+			),
+		},
+		{ url: viewer },
+		{ url: `${target}?fake=1` },
+		{ url: `${target}#fake` },
+	]) {
+		assert.equal(
+			guards.frameNavigationVerdict({ ...allowed, ...change }, TRUSTED).allowed,
+			false,
+			JSON.stringify(change),
+		);
+	}
+	const contents = fakeContents();
+	guards.guardNavigation(
+		contents,
+		() => TRUSTED,
+		() => {},
+	);
+	const event = {
+		url: target,
+		isMainFrame: false,
+		isSameDocument: false,
+		frame: { parent: { url: viewer } },
+		initiator: { url: viewer },
+	};
+	assert.equal(
+		contents.emit("will-frame-navigate", event).defaultPrevented,
+		false,
+	);
+	assert.equal(
+		contents.emit("will-frame-navigate", {
+			...event,
+			initiator: { url: APP_FILE },
+		}).defaultPrevented,
+		true,
+	);
+});
+
 test("guardNavigation cancels a refused navigation and lets the rest through", () => {
 	const contents = fakeContents();
 	const logs = [];
@@ -1070,14 +1144,28 @@ test("the main process installs every guard, before the first load", () => {
 		MAIN_GUARD,
 		"index.ts must call guardNavigation(mainWindow.webContents…",
 	);
+	/*
+	 * The first-load pins are PATTERNS on the call, not one literal argument:
+	 * the F2 hardening (da9f5a8318) routed the dev URL through
+	 * `devRendererUrl(app.isPackaged)` so a packaged app ignores
+	 * ELECTRON_RENDERER_URL, and the old exact `loadURL(process.env.…)` pin then
+	 * found nothing (-1) and read as the guard coming after the load. Either
+	 * branch can be the first load the window makes — `loadURL` in dev,
+	 * `loadFile` packaged — so the guard must precede both, whatever they load.
+	 */
+	const FIRST_LOADS = {
+		loadURL: /mainWindow\.loadURL\(/,
+		loadFile: /mainWindow\.loadFile\(/,
+	};
 	const guardAt = src.search(MAIN_GUARD);
-	const loadAt = src.indexOf(
-		"mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL)",
-	);
-	assert.ok(
-		guardAt > 0 && loadAt > guardAt,
-		"the guard must precede the first load",
-	);
+	for (const [name, pattern] of Object.entries(FIRST_LOADS)) {
+		const loadAt = src.search(pattern);
+		assert.ok(loadAt > 0, `index.ts must call mainWindow.${name}(`);
+		assert.ok(
+			guardAt > 0 && loadAt > guardAt,
+			`the guard must precede the first load (mainWindow.${name})`,
+		);
+	}
 	assert.ok(
 		src.indexOf("setWindowOpenHandler") === -1,
 		"the popup policy is guardWindowOpen's; a second handler here would be a second answer",

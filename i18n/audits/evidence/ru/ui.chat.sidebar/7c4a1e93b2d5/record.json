@@ -1,0 +1,161 @@
+{
+	"locale": "ru",
+	"pr": 1836,
+	"base_sha": "debb34cd35688ecbb1c17bf78a16eb4d93636f62",
+	"head_sha": "28a6127617e4ebe0b6ba47d39fca5d3a22d1ba93",
+	"audit_date": "2026-11-10",
+	"mode": "independent full audit of the five new ui.chat.sidebar mark-all-read keys at one pushed head; translator's own file read only as context, and the shipped catalogue judged. The prior ru ui.chat.sidebar record (ru-s9-2, instance f48b342c2596) was read solely to keep a pre-existing label-width finding out of this pass' findings, as the brief requires; no finding in this receipt is inherited from it.",
+	"round": 1,
+	"scope": "debb34cd356..28a6127617e4; ru/ui.chat.sidebar; five keys fully audited (mark_all_read.scope_chats, .scope_chats_elsewhere, .scope_tokenless, .scope_joined, .name_suffix_elsewhere), the remaining 81 keys of the file read for terminology, register and typography consistency",
+	"key_count": 86,
+	"translator": {
+		"agent": "i18n-translator",
+		"model": "anthropic/claude-sonnet-5-5",
+		"source": "s10-aud-ru-ds brief and the translator's own file ~/local-operator-ui/.worktrees/_s10-translations/ru.json; translator session id not supplied"
+	},
+	"auditor": {
+		"agent": "i18n-auditor",
+		"instance": "7c4a1e93b2d5",
+		"session": "a96240fc87c6",
+		"model": "deepseek/deepseek-flash",
+		"independent_from_translator_session": true,
+		"actual_model_source": "harness session model header for this run (deepseek/deepseek-flash); no fallback model was served or used",
+		"review_model_differs_from_translator": true
+	},
+	"input_hashes": {
+		"en": [
+			{
+				"path": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+				"sha256": "7db9ba5108a62330a1782f775b991ec0483537d2f7d808ae0691e1a6ef8840cd"
+			}
+		],
+		"context": [
+			{
+				"path": "src/i18n/catalogues/en/ui.chat.sidebar.context.json",
+				"sha256": "4f1593cc34b395ef8701a60e58e73a0371b3c93730eb7a1f2b2845dc6250d7e3"
+			}
+		],
+		"target": [
+			{
+				"path": "src/i18n/catalogues/ru/ui.chat.sidebar.json",
+				"sha256": "91b3813dce90565559c2ba25ef066978934c1adba2c4d1b33c91d04cb4da1825"
+			}
+		],
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/ru.md",
+			"sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+		},
+		"harness_guide": {
+			"path": "docs/I18N.md",
+			"sha256": "d58ad473701f098b3c2c24343c3a7e7236f22db22cc871016c4cb75f25f41f5c"
+		}
+	},
+	"namespaces": {
+		"ui.chat.sidebar": {
+			"status": "passed",
+			"key_count": 86,
+			"en_sha256": "7db9ba5108a62330a1782f775b991ec0483537d2f7d808ae0691e1a6ef8840cd",
+			"source_sha256": "7db9ba5108a62330a1782f775b991ec0483537d2f7d808ae0691e1a6ef8840cd",
+			"ru_sha256": "91b3813dce90565559c2ba25ef066978934c1adba2c4d1b33c91d04cb4da1825",
+			"target_sha256": "91b3813dce90565559c2ba25ef066978934c1adba2c4d1b33c91d04cb4da1825",
+			"context_sha256": "4f1593cc34b395ef8701a60e58e73a0371b3c93730eb7a1f2b2845dc6250d7e3",
+			"findings": [
+				{
+					"id": "RU1-F1",
+					"severity": "minor",
+					"kind": "idiom/clarity (accessible-name referent)",
+					"key": "ui.chat.sidebar.mark_all_read.name_suffix_elsewhere",
+					"namespace": "ui.chat.sidebar",
+					"current": ", включая {elsewhere, plural, one {{elsewhere, number, ::group-off} неактивный} few {{elsewhere, number, ::group-off} неактивных} many {{elsewhere, number, ::group-off} неактивных} other {{elsewhere, number, ::group-off} неактивного}}",
+					"problem": "The counted noun is dropped and carried only by the masculine adjective ending. Inside the tooltip (scope_chats_elsewhere) that is fine, because the same sentence has already said «непрочитанных чатов»; but this key is the TAIL OF THE ACCESSIBLE NAME, appended to a label that names no noun at all: «Отметить прочитанными: {count}». The full name therefore reads «Отметить прочитанными: 5, включая 2 неактивных» and never says what those 5 or those 2 are. This sidebar also lists agents, which are masculine and can be «неактивные», so the bare ending has a second possible referent for a screen-reader user with no rendered row in front of them. Not a meaning error (the reader still lands on chats); a native editor would put the noun back once, at no cost: the string is sr-only and inside a wrapping tooltip.",
+					"suggested": ", включая {elsewhere, plural, one {{elsewhere, number, ::group-off} неактивный чат} few {{elsewhere, number, ::group-off} неактивных чата} many {{elsewhere, number, ::group-off} неактивных чатов} other {{elsewhere, number, ::group-off} неактивного чата}}",
+					"suggested_note": "Keeps the label a byte prefix of the name (WCAG 2.5.3): «Отметить прочитанными: 5, включая 2 неактивных чата». Cases verified per category: one «неактивный чат» (acc. sg), few «неактивных чата», many «неактивных чатов», other «неактивного чата» — the same forms the shipped catalogue.show_more_chats uses for чат/чата/чатов/чата. Apply to scope_chats_elsewhere's elsewhere arm too if the two are kept in one shape, though that one reads acceptably as shipped because its own sentence names «чатов».",
+					"gating": false,
+					"evidence": [
+						"src/i18n/catalogues/ru/ui.chat.sidebar.json name_suffix_elsewhere and scope_chats_elsewhere (read at 91b3813dce905655)",
+						"en/ui.chat.sidebar.context.json name_suffix_elsewhere: \"APPENDED directly after the translated mark_all_read.label with no separator added by the code\"",
+						"ru mark_all_read.label = «Отметить прочитанными: {count, number, ::group-off}» (no noun, so the name's only noun must come from the suffix)",
+						"src/renderer/src/features/chat/components/chat-sidebar.tsx:2362-2364 renders nameSuffix in an sr-only span directly after the label span"
+					]
+				},
+				{
+					"id": "RU1-F2",
+					"severity": "nit",
+					"kind": "readability",
+					"key": "ui.chat.sidebar.mark_all_read.scope_chats",
+					"namespace": "ui.chat.sidebar",
+					"current": "few {Отметить прочитанными {count, number, ::group-off} непрочитанных чата.}",
+					"problem": "The two participles sit two words apart — «Отметить прочитанными 3 непрочитанных чата.» — so the instrumental predicate and the accusative object momentarily look like one phrase on first read. Grammatically correct and consistent with the shipped label, so this is a wrinkle worth recording, not a change request.",
+					"suggested": "Keep as shipped (label consistency outranks the wrinkle). If the key is touched for another reason, «Отметить как прочитанные {count, number, ::group-off} непрочитанных чатов» separates the participles.",
+					"suggested_note": "Same key shape in scope_chats_elsewhere. Not gating.",
+					"gating": false,
+					"evidence": [
+						"src/i18n/catalogues/ru/ui.chat.sidebar.json scope_chats one/few/many/other arms",
+						"ru mark_all_read.label «Отметить прочитанными: {count}» — the verb form the tooltip mirrors"
+					]
+				}
+			]
+		}
+	},
+	"findings_severity_counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 1,
+		"nit": 1
+	},
+	"current_report_verdict": {
+		"status": "passed",
+		"unresolved_blocker_major_count": 0,
+		"finding_ids": [
+			"RU1-F1",
+			"RU1-F2"
+		]
+	},
+	"cleared_keys": [
+		"ui.chat.sidebar.mark_all_read.scope_chats_elsewhere",
+		"ui.chat.sidebar.mark_all_read.scope_tokenless",
+		"ui.chat.sidebar.mark_all_read.scope_joined"
+	],
+	"precedents_cited": [
+		"ui.notices.chat.unread_not_cleared (ru «Отметки о непрочитанном не сняты.») — «снять отметку» is this catalogue's verb for clearing a mark, honoured by scope_tokenless",
+		"ui.notices.chat.mark_all_read_unknown (ru «1 отметку не удалось снять — она остаётся непрочитанной.») — отметка + непрочитанная as one object; «непрочитанная отметка» in scope_tokenless matches this sibling, so no finding raised",
+		"ui.notices.chat.mark_all_read_superseded (ru «1 отметка получила более новый результат и остаётся непрочитанной.»)",
+		"ui.chat.sidebar.nav.chats (ru «Чаты») and ui.chat.sidebar.catalogue.total («… чатов») — chat = чат, not разговор; the new keys use чат consistently",
+		"ui.settings.shortcuts.recording.inactive_claimed (ru «Запись неактивна») — неактив- is the catalogue's own word for 'not active', used without inventing a section name",
+		"~/local-operator i18n/style-guides/ru.md — infinitive action labels, Latin digits, no typographic space before ':', «ёлочки» for quotes (none needed here), token → «токен»",
+		"i18n/glossary.md §2 — token stays a Cyrillic transliteration; §3 — placeholders preserved byte-exactly",
+		"ui.console.ended.exit_code (ru «код завершения {code}») — examined for a collision with «токен завершения»; «токен» is not «код» and the ru guide endorses «токен», so no finding raised"
+	],
+	"verification": {
+		"executed": [
+			"read docs/I18N.md, ~/local-operator/i18n/glossary.md, ~/local-operator/i18n/style-guides/ru.md at the hashes above",
+			"read the five en values and their .context.json entries, the whole ru ui.chat.sidebar.json (86 keys), the translator's ~/local-operator-ui/.worktrees/_s10-translations/ru.json notes, src/renderer/src/features/chat/mark-all-read.ts and the mark-all-read render sites in chat-sidebar.tsx (label span, sr-only nameSuffix span, MARK_ALL_READ_LABEL_SHED ladder)",
+			"shasum -a 256 on en/ru/context catalogue files at 28a6127617e4 — target 91b3813dce905655… equals the hash the brief pins for ru",
+			"python3 json.loads on en and ru ui.chat.sidebar.json: 86 keys each, zero keys added or dropped, no duplicate keys observable through json (strict parse)",
+			"python3 ICU structure extraction on all five keys: argument names and types identical to en (count/elsewhere as number with ::group-off, chats/tokenless plain), brace balance true for every en and ru value, nested plural arms well formed",
+			"python3 CLDR category check: one, few, many, other present on count, elsewhere (x2) and on the tokenless count; no zero/two arms; ru category set complete",
+			"manual per-category agreement read: one «непрочитанный чат»/«прочитанным», few «непрочитанных чата»/«прочитанными», many «непрочитанных чатов», other (fractions) «непрочитанного чата» — numeral government and instrumental predicate correct in all four branches of scope_chats, scope_chats_elsewhere and scope_tokenless (отметку/отметки/отметок/отметки)",
+			"python3 composition check of the accessible name at count=5, elsewhere=2: label is a byte prefix of name («Отметить прочитанными: 5, включая 2 неактивных»), suffix starts with ', ' and carries no trailing punctuation; scope_joined renders the two full stops as sentence + single space",
+			"python3 codepoint dump on all five ru values plus the label: no U+00A0/U+202F/U+2009/U+200B/U+200E/U+200F or bidi controls, Latin letters only inside ICU syntax, no double spaces",
+			"cell/character budget: ru tooltip with both sentences 125 characters vs en 120 (native title attribute wraps, so no gate); sr-only name 46 vs en 48",
+			"python3 check that instance 7c4a1e93b2d5 is unused across i18n/receipts, i18n/audits/evidence, i18n/audit-evidence and the _s9/_s10 sibling trees (1314 distinct 12-hex ids scanned)",
+			"read scripts/i18n/ledger-rules.mjs (deriveReceiptAudit, countFindings, scopedHash, receiptScope, parseReceipt, resultSupportedBy, isPlaceholderInstance) and ledger-assemble.mjs to shape this receipt; NOT executed — node was prohibited for this pass, so the schema was checked by reading the code and re-implementing its checks in python"
+		],
+		"not_executed": [
+			"scripts/i18n/check-strings.mjs / ledger-check.mjs / ledger-assemble.mjs / check-coverage.mjs — the brief forbids node processes and git writes in this worktree, so the repo validator itself was not run; the mechanical checks above were re-derived in python instead",
+			"renderer-driver / pseudo-localisation / any build or install",
+			"any rendered frame, Storybook, browser, Electron or terminal render: label shedding (sr-only at the 220-320px sidebar widths for ru) and the tooltip wrap are UNVERIFIED here",
+			"a screen-reader pass (NVDA/VoiceOver) over the appended accessible name",
+			"lint/typecheck"
+		],
+		"audit_notes_not_execution_log": "This block separates what was actually run from what was read as notes. No validator, renderer, builder or screen-reader output is claimed. Everything above the 'not_executed' list was executed read-only (read/cat, shasum, python3); nothing was executed for the 'not_executed' list. The prior ru record ru-s9-2 was read for one purpose only — separating pre-existing findings (its rectifiable width finding on mark_all_read.label, now handled in code by MARK_ALL_READ_SHED ladder: ru 24 chars => class 245 => label spelled only from a 301px panel, never at the 260px default) from new findings about the five new keys."
+	},
+	"artifacts": {
+		"receipt": "/Users/damian/.local-operator/sessions/a96240fc87c6/scratchpad/aud-ru-ds/receipt.json",
+		"pr_comment": "### i18n audit — ru — five new mark-all-read keys (PR 1836, head 28a6127617e4)"
+	}
+}

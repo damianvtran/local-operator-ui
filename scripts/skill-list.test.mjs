@@ -33,13 +33,13 @@ const bundle = await build({
 			} from "./src/renderer/src/features/chat/components/skill-rank";
 			export { skillCompletionFor } from "./src/renderer/src/features/chat/components/skill-completion";
 			export {
-				SKILL_EMPTY_ATTACHED,
-				SKILL_EMPTY_DRAFT,
-				SKILL_LOADING_LINE,
-				SKILL_MISS_LINE,
-				SKILL_PHASE_LABEL,
-				SKILL_TRANSIENT_REASON,
-				SKILL_UNAVAILABLE_REASON,
+				skillEmptyAttached,
+				skillEmptyDraft,
+				skillLoadingLine,
+				skillMissLine,
+				skillPhaseLabel,
+				skillTransientReason,
+				skillUnavailableReason,
 				skillClickFooter,
 				skillEnterFooter,
 				skillKeyIntent,
@@ -57,13 +57,13 @@ const bundle = await build({
 const bundlePath = new URL(`./_skill-list-${process.pid}.mjs`, import.meta.url);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 const {
-	SKILL_EMPTY_ATTACHED,
-	SKILL_EMPTY_DRAFT,
-	SKILL_LOADING_LINE,
-	SKILL_MISS_LINE,
-	SKILL_PHASE_LABEL,
-	SKILL_TRANSIENT_REASON,
-	SKILL_UNAVAILABLE_REASON,
+	skillEmptyAttached,
+	skillEmptyDraft,
+	skillLoadingLine,
+	skillMissLine,
+	skillPhaseLabel,
+	skillTransientReason,
+	skillUnavailableReason,
 	hasLowercaseEvidence,
 	skillClickFooter,
 	skillCompletionFor,
@@ -232,7 +232,7 @@ const complete = (text, caret, name) => {
 	return skillCompletionFor(text, token, name);
 };
 
-test("a leading token is replaced in place, preserving lead and lstriping the suffix", () => {
+test("a token is replaced in its own span, preserving every other character", () => {
 	assert.deepEqual(complete("$res fix bug", 4, "research"), {
 		text: "$research fix bug",
 		caret: 10,
@@ -241,35 +241,44 @@ test("a leading token is replaced in place, preserving lead and lstriping the su
 		text: "  $research fix",
 		caret: 12,
 	});
-	// The write brings its own separator, so the suffix's runs collapse.
+	// The existing whitespace is the separator and is NOT collapsed: a
+	// completion must not reformat prose the user typed.
 	assert.deepEqual(complete("$res  fix", 4, "research"), {
-		text: "$research fix",
+		text: "$research  fix",
 		caret: 10,
 	});
+	// A NEWLINE terminates the token but the caret stops after the name, on the
+	// line the token is on; the newline itself survives.
 	assert.deepEqual(complete("$res\nfix", 4, "research"), {
-		text: "$research fix",
-		caret: 10,
+		text: "$research\nfix",
+		caret: 9,
 	});
 });
 
-test("an inline token is reassembled to the FRONT with the draft as its request", () => {
-	const assembled = "$research fix this ";
+test("an inline token is completed WHERE IT SITS — no reassembly", () => {
 	assert.deepEqual(complete("fix this $res", 12, "research"), {
-		text: assembled,
-		caret: assembled.length,
+		text: "fix this $research ",
+		caret: "fix this $research ".length,
 	});
-	// One adjoining separator goes with the token, so no gap survives the move.
+	// The surviving draft keeps its position; one space is inserted because the
+	// request follows immediately, and nothing is moved.
 	assert.deepEqual(complete("fix this $res bug", 12, "research"), {
-		text: "$research fix this bug ",
-		caret: "$research fix this bug ".length,
+		text: "fix this $research bug",
+		caret: 19,
 	});
 	assert.deepEqual(complete("hello\n$res fix", 9, "research"), {
-		text: "$research hello fix ",
-		caret: "$research hello fix ".length,
+		text: "hello\n$research fix",
+		caret: 16,
 	});
 	assert.deepEqual(complete("fix $res", 7, "research"), {
-		text: "$research fix ",
-		caret: "$research fix ".length,
+		text: "fix $research ",
+		caret: "fix $research ".length,
+	});
+	// TWO tokens in one draft: completing the second leaves the first untouched,
+	// which is the shape the reassembly could not survive.
+	assert.deepEqual(complete("compare $check and $res", 21, "research"), {
+		text: "compare $check and $research ",
+		caret: "compare $check and $research ".length,
 	});
 });
 
@@ -326,7 +335,7 @@ test("Enter and Tab both complete, never run; Escape closes; nothing else is cla
 });
 
 test("the popup's copy and ids are the contract's own", () => {
-	assert.equal(SKILL_PHASE_LABEL, "Skills");
+	assert.equal(skillPhaseLabel(), "Skills");
 	assert.equal(skillRowId("language-tutor"), "skill-language-tutor");
 	assert.equal(skillRowId("a b"), "skill-a_b");
 	assert.equal(
@@ -357,34 +366,34 @@ const noticeOf = (over = {}) =>
 
 test("the notice copy, one ratified string per state", () => {
 	assert.equal(
-		SKILL_UNAVAILABLE_REASON,
+		skillUnavailableReason(),
 		"This backend cannot serve the skill catalogue. Update the backend and try again.",
 	);
-	assert.equal(SKILL_TRANSIENT_REASON, "Skills aren't available right now.");
+	assert.equal(skillTransientReason(), "Skills aren't available right now.");
 	// The loading line is the `/` sibling's own word verbatim — family parity
 	// costs a state, not a new vocabulary (design round 1, D1).
-	assert.equal(SKILL_LOADING_LINE, "Loading…");
-	assert.equal(SKILL_EMPTY_ATTACHED, "No skills found — see /skills");
-	assert.equal(SKILL_EMPTY_DRAFT, "No skills found.");
-	assert.equal(SKILL_MISS_LINE, "No skills match.");
+	assert.equal(skillLoadingLine(), "Loading…");
+	assert.equal(skillEmptyAttached(), "No skills found — see /skills");
+	assert.equal(skillEmptyDraft(), "No skills found.");
+	assert.equal(skillMissLine(), "No skills match.");
 });
 
 test("a bare leading `$` always opens SOMETHING: rows, or one stated line", () => {
 	// Available: rows answer for themselves.
 	assert.equal(noticeOf({ rowsCount: 3 }), null);
 	// Settled-empty vocabulary, attached: the pointer may be followed.
-	assert.deepEqual(noticeOf(), { kind: "empty", text: SKILL_EMPTY_ATTACHED });
+	assert.deepEqual(noticeOf(), { kind: "empty", text: skillEmptyAttached() });
 	// The same state on a draft drops the pointer clause — `/skills` is refused
 	// without a conversation, and a dead end is worse than a shorter sentence.
 	assert.deepEqual(noticeOf({ attached: false }), {
 		kind: "empty",
-		text: SKILL_EMPTY_DRAFT,
+		text: skillEmptyDraft(),
 	});
 	// A TYPED query against an empty vocabulary takes the same empty state
 	// (one state, not two: there is no vocabulary for "match" to lack).
 	assert.deepEqual(noticeOf({ hasQuery: true }), {
 		kind: "empty",
-		text: SKILL_EMPTY_ATTACHED,
+		text: skillEmptyAttached(),
 	});
 	/*
 	 * AND THE EMPTY ARM IS A LEADING-TOKEN NOTICE (review round 1, R1-1):
@@ -398,7 +407,7 @@ test("a bare leading `$` always opens SOMETHING: rows, or one stated line", () =
 test("durable outranks everything and fires with no query at all", () => {
 	assert.deepEqual(noticeOf({ feature: "below-version" }), {
 		kind: "durable",
-		text: SKILL_UNAVAILABLE_REASON,
+		text: skillUnavailableReason(),
 	});
 	// It outranks the states it can coexist with: a fired query's error, an
 	// empty vocabulary, a typed miss.
@@ -428,7 +437,7 @@ test("durable outranks everything and fires with no query at all", () => {
 test("transient covers unpaired, main's pairing cause, and a fired query's error; everything else is quiet", () => {
 	assert.deepEqual(noticeOf({ feature: "unpaired" }), {
 		kind: "transient",
-		text: SKILL_TRANSIENT_REASON,
+		text: skillTransientReason(),
 	});
 	/*
 	 * MAIN'S PAIRING CAUSE IS THE SAME FACT LEARNED EARLIER (QA round 1, Q-2):
@@ -437,11 +446,11 @@ test("transient covers unpaired, main's pairing cause, and a fired query's error
 	 */
 	assert.deepEqual(noticeOf({ pairingRefused: true }), {
 		kind: "transient",
-		text: SKILL_TRANSIENT_REASON,
+		text: skillTransientReason(),
 	});
 	assert.deepEqual(noticeOf({ query: "error" }), {
 		kind: "transient",
-		text: SKILL_TRANSIENT_REASON,
+		text: skillTransientReason(),
 	});
 	// Transient outranks empty and miss.
 	assert.equal(
@@ -477,7 +486,7 @@ test("loading speaks one line, and only on a leading token", () => {
 	 */
 	assert.deepEqual(noticeOf({ query: "loading" }), {
 		kind: "loading",
-		text: SKILL_LOADING_LINE,
+		text: skillLoadingLine(),
 	});
 	// The money guard is unchanged: an inline `$` never gets a consultation
 	// line, loading included.
@@ -496,14 +505,14 @@ test("loading speaks one line, and only on a leading token", () => {
 test("the miss is unchanged, and it keeps the evidence it always had", () => {
 	assert.deepEqual(noticeOf({ vocabularyNonEmpty: true, hasQuery: true }), {
 		kind: "miss",
-		text: SKILL_MISS_LINE,
+		text: skillMissLine(),
 	});
 	// The miss may attach to an INLINE token — a settled non-empty vocabulary
 	// and a typed query are positive evidence the user meant a skill, wherever
 	// the token sits (#690's behaviour, unchanged).
 	assert.deepEqual(
 		noticeOf({ vocabularyNonEmpty: true, hasQuery: true, leading: false }),
-		{ kind: "miss", text: SKILL_MISS_LINE },
+		{ kind: "miss", text: skillMissLine() },
 	);
 	// A settled non-empty vocabulary with NO typed query and no rows cannot
 	// arise (the empty query lists the catalogue); the selector stays quiet.
@@ -556,13 +565,13 @@ test("the shipped composer wires the `$` seams", () => {
 	);
 	assert.match(
 		input,
-		/parseSkillInvocation\(message, skillNames\)/,
-		"the submit reads the TYPED line before anything splices it",
+		/planSkillMentions\(message, skillNames\)/,
+		"the submit plans every mention from the TYPED line",
 	);
 	assert.match(
 		input,
-		/renderSkillInvocation\(/,
-		"and renders the harness payload",
+		/renderSkillBlock\(/,
+		"the payload is the plan's skill block",
 	);
 	assert.match(
 		input,
@@ -628,10 +637,21 @@ test("the shipped composer wires the `$` seams", () => {
 	 * built, so the seam has to answer with the composed text. The mount-level
 	 * regression lives in `shared-composer.test.mjs`; this pin is the seam's
 	 * own line, where the replacement used to happen.
+	 *
+	 * READ AS THE SUBSTITUTED TEXT PLUS A COMPOSITION, because the seam now
+	 * composes over whichever text the credential step settled on and with the
+	 * block it awaited (bug 1: the `$skill` bodies ride the seam on a host that
+	 * honours it). Both halves are still the pin's claim - a seam that returned
+	 * the raw line would match neither line below.
 	 */
 	assert.match(
 		input,
-		/return composeOutgoing\(settled\.text\);/,
+		/const substituted = settled\?\.text \?\? carried\.text;/,
+		"the seam starts from the text the credential step settled on",
+	);
+	assert.match(
+		input,
+		/return composeOutgoing\(\s*substituted,/,
 		"the draft seam composes the payload instead of returning the raw line",
 	);
 	assert.match(
@@ -645,12 +665,12 @@ test("the shipped composer wires the `$` seams", () => {
 	 */
 	assert.match(
 		input,
-		/if \(invocation && skillReadProvided\)/,
+		/planned\.length > 0 && skillReadProvided/,
 		"the expansion gate is sessionless",
 	);
 	assert.match(
 		input,
-		/readSkillBody\(\s*skillReadClient,\s*cwd \?\? "",\s*invocation\.name,/,
+		/readSkillBody\(skillReadClient, cwd \?\? "",/,
 		"and the body read travels with the composer's folder",
 	);
 	assert.match(

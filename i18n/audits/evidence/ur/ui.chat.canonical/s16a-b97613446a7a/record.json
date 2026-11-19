@@ -1,0 +1,202 @@
+{
+  "audit_id": "s16a-au-ur",
+  "locale": "ur",
+  "namespace": "ui.chat.canonical",
+  "file_group": "s16a tool-state words: ui.chat.canonical.tool.composing_sized, tool.composing_empty, tool.queued_sized, tool.queued_empty, image_gen.state.{queued,writing_request,queue_ahead,running,running_batch,done,done_batch,already_finished,failed,failed_batch}",
+  "key_count": 14,
+  "branch": "feat/i18n-s16a-tool-state-words",
+  "head": "93a61605b059ada503d75da6e9e38e8ef14e1b67",
+  "base": "5acfe0a2d92365b7c9b029a9d870326d9b022d25",
+  "worktree": "~/local-operator-ui/.worktrees/i18n-s16a",
+  "audit_date": "2026-11-11",
+  "date": "2026-11-11",
+  "instance": "b97613446a7a",
+  "agent": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "model": "deepseek/deepseek-flash",
+    "instance": "b97613446a7a",
+    "session": "b97613446a7a",
+    "independent": true,
+    "independent_from_translator_session": true,
+    "actual_model_source": "Session default model as served for this run (deepseek/deepseek-flash). No provider fallback occurred in this audit; no model performed any translation or back-translation.",
+    "fallback": null
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "draft_sha256": "d29803e14b77a500f91f59651fe3858eed4cfe74a0f1330e5826bb45877b5c72"
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [
+      "UR-1",
+      "UR-2",
+      "UR-3",
+      "UR-4"
+    ]
+  },
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [
+      "UR-1"
+    ],
+    "nit": [
+      "UR-2",
+      "UR-3",
+      "UR-4"
+    ]
+  },
+  "scope": "Independent audit of the ur translation draft of the 14 new tool-state and image-generation status keys, against the English source, its context sidecar, the shipped ur corpus, i18n/glossary.md and the ur style guide. Includes real ICU formatting runs across the ur plural categories and every material, bidi reasoning for {size} and digit-led data, and code-point/width measurement. No rendered frame; no native speaker.",
+  "namespaces": {
+    "ui.chat.canonical": {
+      "namespace": "ui.chat.canonical",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "source_sha256": "d6d47d31667fe69448cf408f5a4fecf9948782e850506a6141217585de9db1fd",
+      "en_sha256": "d6d47d31667fe69448cf408f5a4fecf9948782e850506a6141217585de9db1fd",
+      "target_sha256": "d29803e14b77a500f91f59651fe3858eed4cfe74a0f1330e5826bb45877b5c72",
+      "ur_sha256": "d29803e14b77a500f91f59651fe3858eed4cfe74a0f1330e5826bb45877b5c72",
+      "context_sha256": "ef8a12dea1835c241af3a166754322ce093af88592ec625036211458a50accac",
+      "target_is_draft": true,
+      "target_note": "The audited bytes are the translator's unmerged draft (a JSON fragment of exactly these 14 keys), not src/i18n/catalogues/ur/ui.chat.canonical.json, which on this head still holds 442 keys without them (sha256 479f3224402071b5d31024e6b0a44400a7824b784114678f1fc4349536ee80f2). When the translation lands, the ledger row and receipt must carry the hash of the merged catalogue file, re-checked against these findings.",
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [
+          "UR-1"
+        ],
+        "nit": [
+          "UR-2",
+          "UR-3",
+          "UR-4"
+        ]
+      },
+      "scope": [
+        "ui.chat.canonical.tool.composing_sized",
+        "ui.chat.canonical.tool.composing_empty",
+        "ui.chat.canonical.tool.queued_sized",
+        "ui.chat.canonical.tool.queued_empty",
+        "ui.chat.canonical.image_gen.state.queued",
+        "ui.chat.canonical.image_gen.state.writing_request",
+        "ui.chat.canonical.image_gen.state.queue_ahead",
+        "ui.chat.canonical.image_gen.state.running",
+        "ui.chat.canonical.image_gen.state.running_batch",
+        "ui.chat.canonical.image_gen.state.done",
+        "ui.chat.canonical.image_gen.state.done_batch",
+        "ui.chat.canonical.image_gen.state.already_finished",
+        "ui.chat.canonical.image_gen.state.failed",
+        "ui.chat.canonical.image_gen.state.failed_batch"
+      ],
+      "evidence": "session scratchpad of b97613446a7a (report.md + audit.log + this record.json); not yet a tracked i18n/audits/evidence bundle, because this audit is read-only"
+    }
+  },
+  "source": {
+    "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+    "sha256": "d6d47d31667fe69448cf408f5a4fecf9948782e850506a6141217585de9db1fd"
+  },
+  "target": {
+    "path": "(translator draft, unmerged) manager scratchpad s16a-drafts/ur-s16a.json",
+    "sha256": "d29803e14b77a500f91f59651fe3858eed4cfe74a0f1330e5826bb45877b5c72"
+  },
+  "target_catalogue": {
+    "path": "src/i18n/catalogues/ur/ui.chat.canonical.json",
+    "sha256": "479f3224402071b5d31024e6b0a44400a7824b784114678f1fc4349536ee80f2",
+    "keys": 442,
+    "contains_audited_keys": false
+  },
+  "context": {
+    "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+    "sha256": "ef8a12dea1835c241af3a166754322ce093af88592ec625036211458a50accac"
+  },
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+      "sha256": "d6d47d31667fe69448cf408f5a4fecf9948782e850506a6141217585de9db1fd"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+      "sha256": "ef8a12dea1835c241af3a166754322ce093af88592ec625036211458a50accac"
+    },
+    "target": {
+      "path": "manager scratchpad s16a-drafts/ur-s16a.json (draft, unmerged)",
+      "sha256": "d29803e14b77a500f91f59651fe3858eed4cfe74a0f1330e5826bb45877b5c72"
+    },
+    "target_catalogue_on_head": {
+      "path": "src/i18n/catalogues/ur/ui.chat.canonical.json",
+      "sha256": "479f3224402071b5d31024e6b0a44400a7824b784114678f1fc4349536ee80f2"
+    }
+  },
+  "policy_sources": [
+    {
+      "repo": "local-operator",
+      "path": "i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    {
+      "repo": "local-operator",
+      "path": "i18n/style-guides/ur.md",
+      "sha256": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60"
+    }
+  ],
+  "checks": {
+    "ast_placeholder_parity": "pass — intl-messageformat getAst(): argument names/kinds, select option sets (video|voiceover|sound_effect|other in all six select keys) and plural option sets (one|other) identical to English for all 14 keys",
+    "cldr_categories": "pass — Intl.PluralRules('ur') yields one/other only; both present in queue_ahead and all four running_batch branches",
+    "icu_formatting": "pass — formatted with intl-messageformat@12.1.3 for counts 0,1,2,3,5,11,21,22,100,1000000 and every material; no compile error, no leftover braces, ::group-off honoured on 1000000, # substituted in all eight nested plural branches",
+    "code_points": "pass — no bidi controls (U+200E/200F/202A-202E/2066-2069), no Arabic-Indic digits, no Devanagari danda, no Arabic comma/question mark, no ASCII full stop, no '...'; U+00B7 separator with single spaces, U+2026 ellipsis, U+06D4 full stop present where the source has them",
+    "keyset": "pass — exactly the 14 assigned keys; none added or dropped",
+    "english_leakage": "pass — the only Latin in the values is ICU structure (argument names, select/plural selectors)",
+    "bidi": "pass — {size} ('12.4 KB') is isolated by the render layer because it contains a Latin letter (needsIsolation true, src/i18n/bidi.ts:113), so no catalogue control characters are needed or permitted; the state line's datum renders in <bdi dir=\"auto\"> with the '· ' separator outside the isolate",
+    "gender_agreement": "pass — ویڈیو fem, تصویر fem, وائس اوور masc, صوتی اثر masc; every singular/plural/failure branch agrees correctly",
+    "width": "measured, not inferred — see report.md §5; the two *_sized rows are ~2 cells longer than English in a truncating column (UR-4, nit)",
+    "repo_validators": "not run — an unmerged draft is not a committed catalogue, so check-i18n cannot read it; its predicates over these values were replicated and are reported above"
+  },
+  "artifacts": [
+    {
+      "path": "session scratchpad b97613446a7a: report.md",
+      "sha256": "dd76d47f723af493a97da1b53e93a2b179eb24acc97d981dca7f506f2fe16935"
+    },
+    {
+      "path": "session scratchpad b97613446a7a: audit.log",
+      "sha256": "6abcf5470cdb6ed298a4cebd4495280747ad2df55a65bba8b386c75c3edba1fc"
+    }
+  ],
+  "audit_notes_not_execution_log": "report.md §§1-6,8-11 are notes: reasoning, judgments and readings. audit.log is the execution log and holds the commands and their actual output (hashes, ICU formatting runs, width measurements, code-point scan). Nothing in report.md claims a run that audit.log does not contain.",
+  "audit_receipt": null,
+  "audit_receipt_note": "No i18n/receipts/*.json written: this audit is read-only on the repo and the translation is unmerged. The receipt the ledger will need is this record's auditor/instance/model/date/result/findings hashes once the keys land.",
+  "ledger_row_proposal": {
+    "locale": "ur",
+    "namespace": "ui.chat.canonical",
+    "source_sha256": "d6d47d31667fe69448cf408f5a4fecf9948782e850506a6141217585de9db1fd",
+    "target_sha256": "(hash of the merged ur catalogue, not the draft)",
+    "auditor": {
+      "agent": "i18n-auditor",
+      "model": "deepseek/deepseek-flash",
+      "date": "2026-11-11",
+      "result": "clean-with-findings",
+      "instance": "b97613446a7a",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 3
+      },
+      "scope": "s16a tool-state words: 14 new keys (tool.composing_*, tool.queued_*, image_gen.state.*) audited independently before merge",
+      "note": "0 blocker/0 major; UR-1 terminology consistency with shipped sound.* copy, UR-2..4 minor/nit. Detail: report.md in b97613446a7a scratchpad."
+    }
+  },
+  "original_lost_evidence": {
+    "status": "none"
+  },
+  "honest_gaps": [
+    "The auditor is not a native Urdu speaker; idiom and register judgments are reasoned from the shipped corpus, the glossary and the style guide.",
+    "No rendered frame: widths are code-point counts under the guide's ~1 cell/character rule, not painted geometry; I did not verify whether the generation card has a fixed height that would clip a wrapped two-line state line.",
+    "The repo's check-i18n gates were not executed against this draft (it is not a committed catalogue); their predicates were replicated by hand.",
+    "The audit rests on an unmerged draft: the merged catalogue bytes still need the ledger row and receipt hashes recorded at merge time."
+  ]
+}

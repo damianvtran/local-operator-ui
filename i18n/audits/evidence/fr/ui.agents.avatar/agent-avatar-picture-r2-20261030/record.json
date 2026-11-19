@@ -1,0 +1,194 @@
+{
+	"audit_id": "agent-avatar-picture-r2-20261030",
+	"round": 2,
+	"date": "2026-10-30",
+	"locale": "fr",
+	"namespace": "ui.agents.avatar",
+	"source_commit": "c987fbd854b58cad8baec533c6236139f8c25c34",
+	"supersedes": {
+		"audit_id": "agent-avatar-picture-20261030",
+		"reason": "the branch moved: editor.upload and editor.remove were added in all eight catalogues, and seven round-1 findings were fixed, so the audited bytes changed and the prior audit set is archived under `superseded` in the ledger row."
+	},
+	"translator": {
+		"agent": "coder",
+		"model": "radient/auto",
+		"date": "2026-10-30",
+		"note": "per translator handoff: the coder carried the remediation translations inside the feature commits and names no model; recorded per the lopdev handoff."
+	},
+	"auditors": [
+		{
+			"agent": "reviewer",
+			"model": "radient/auto",
+			"model_disclosure": "Disclosed fallback: the session's primary model anthropic/claude-opus-5-5 was unavailable (provider quota) and the harness routed this run through openai/gpt-6-astra and kimi/k3.1-pro before settling on radient/auto; both audit rounds were completed on radient/auto.",
+			"date": "2026-10-30",
+			"session": "7d20c9116360",
+			"result": "clean",
+			"instance": "7d20c9116360-r2-fr",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"receipt": "i18n/receipts/7d20c9116360-r2-fr.json",
+			"receipt_sha256": "74c8b42c3e28480473eb95255c5647fad8cfd402af63640493a82c0e0e717221",
+			"scope": "ui.agents.avatar (27 keys, now including editor.upload and editor.remove) — round-2 full-namespace re-audit of fr against English, the core glossary, the fr style guide and #1517's ui.agents.settings terms, on PR #1537 head c987fbd854b58cad8baec533c6236139f8c25c34. Whole-file hashes bound.",
+			"note": "Round-2 independent full-namespace re-audit on the PR head; no rendered-fit, screenshot or native-reader claim.",
+			"round_1_disposition": [
+				{
+					"id": "A-hi-zoom",
+					"severity": "minor",
+					"disposition": "fixed",
+					"keys": [
+						"ui.agents.avatar.editor.zoom_in",
+						"ui.agents.avatar.editor.zoom_out"
+					]
+				},
+				{
+					"id": "A-ur-zoom",
+					"severity": "minor",
+					"disposition": "fixed",
+					"keys": [
+						"ui.agents.avatar.editor.zoom_in",
+						"ui.agents.avatar.editor.zoom_out"
+					]
+				},
+				{
+					"id": "A-ur-arrows",
+					"severity": "minor",
+					"disposition": "fixed",
+					"keys": [
+						"ui.agents.avatar.editor.instructions"
+					]
+				},
+				{
+					"id": "A-zh-term",
+					"severity": "minor",
+					"disposition": "fixed",
+					"keys": [
+						"ui.agents.avatar.edit_link",
+						"ui.agents.avatar.editor.recenter",
+						"ui.agents.avatar.editor.replace",
+						"ui.agents.avatar.editor.save",
+						"ui.agents.avatar.editor.error_save",
+						"ui.agents.avatar.editor.error_remove",
+						"ui.agents.avatar.editor.remove",
+						"ui.agents.avatar.editor.upload"
+					]
+				},
+				{
+					"id": "A-fr-unit",
+					"severity": "minor",
+					"disposition": "fixed",
+					"keys": [
+						"ui.agents.avatar.editor.error_size",
+						"ui.agents.avatar.editor.hint"
+					]
+				},
+				{
+					"id": "A-ru-unit",
+					"severity": "minor",
+					"disposition": "fixed",
+					"keys": [
+						"ui.agents.avatar.editor.error_size",
+						"ui.agents.avatar.editor.hint"
+					]
+				},
+				{
+					"id": "A-ru-surface",
+					"severity": "minor",
+					"disposition": "fixed",
+					"keys": [
+						"ui.agents.avatar.editor.preview_sidebar",
+						"ui.agents.avatar.editor.previews"
+					]
+				},
+				{
+					"id": "A-hi-image",
+					"severity": "nit",
+					"disposition": "recorded",
+					"keys": [
+						"ui.agents.avatar.editor.error_decode",
+						"ui.agents.avatar.editor.error_size",
+						"ui.agents.avatar.editor.error_type"
+					]
+				},
+				{
+					"id": "A-hi-crop",
+					"severity": "nit",
+					"disposition": "recorded",
+					"keys": [
+						"ui.agents.avatar.editor.crop_area",
+						"ui.agents.avatar.editor.error_encode"
+					]
+				},
+				{
+					"id": "A-ru-zoom",
+					"severity": "nit",
+					"disposition": "recorded",
+					"keys": [
+						"ui.agents.avatar.editor.zoom_in",
+						"ui.agents.avatar.editor.zoom_out"
+					]
+				},
+				{
+					"id": "A-zh-space",
+					"severity": "nit",
+					"disposition": "recorded",
+					"keys": [
+						"ui.agents.avatar.edit_link",
+						"ui.agents.avatar.editor.error_size",
+						"ui.agents.avatar.editor.error_type",
+						"ui.agents.avatar.editor.hint",
+						"ui.agents.avatar.editor.instructions"
+					]
+				},
+				{
+					"id": "A-zh-ellipsis",
+					"severity": "nit",
+					"disposition": "recorded",
+					"keys": [
+						"ui.agents.avatar.editor.saving"
+					]
+				}
+			]
+		}
+	],
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.agents.avatar.json",
+			"sha256": "a0c10160f8a35aaae96efb01f9608dc62becc48aa4c85df119849e5eb2604a83"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.agents.avatar.context.json",
+			"sha256": "ac3e8fe82bb4d931af27dc7673b1b1eef656cbf6afdfb7368c8730721fe23ed5"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/fr/ui.agents.avatar.json",
+			"sha256": "245112d3fb2cb2e1e695d354705aaa833226379993059e0a824eb2011076fbfa"
+		}
+	},
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/fr.md",
+			"sha256": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226"
+		},
+		"sibling_namespace": {
+			"path": "src/i18n/catalogues/fr/ui.agents.settings.json",
+			"note": "#1517's profile-picture namespace: the term and verb reference for this round."
+		}
+	},
+	"observations": [
+		"editor.upload / editor.remove are new in all eight catalogues; their verbs match #1517's settings upload/remove in every locale, so the row's vocabulary is now one set rather than two.",
+		"The editor owns the upload/remove/refusal copy, so seven of #1517's eight ui.agents.settings.general.profile_picture_* keys are now unreferenced (only the row label remains). The repo's retained-orphan rule keeps those translated values until an audited removal round; noted, not a finding against this namespace."
+	],
+	"independence": "Auditor did not translate, write or edit any catalogue, context or key file; it re-read the current bytes, verified each round-1 fix against them, and only then read the remediation commits.",
+	"limitations": [
+		"Browser and rendered-frame capture are not in this auditor's tool set; no screenshot, pseudo-localization or measured-overflow evidence is claimed.",
+		"Overflow was reasoned from call sites (w-fit buttons, a flex-wrap settings row with min-w-0, aria-label-only preview names, no truncate/nowrap in any avatar surface), not measured in a rendered frame; the new labels are no longer than the replace/save labels already in the row."
+	]
+}

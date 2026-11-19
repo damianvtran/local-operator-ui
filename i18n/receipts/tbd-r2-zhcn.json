@@ -1,0 +1,128 @@
+{
+  "auditor": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "tbd-r2-zhcn",
+  "session": "0b05461ffe68",
+  "date": "2026-10-21",
+  "locale": "zh-CN",
+  "translator": "translator",
+  "namespaces": {
+    "ui.teamBridge": {
+      "status": "passed",
+      "keys_audited": 113,
+      "scope": "Whole ui.teamBridge catalogue (113 keys, focus on the 27 keys added 2026-10-21), checked against the en source, the context sidecar, the glossary, the zh-CN style guide and the other zh-CN ui.* catalogues; ICU parse, key set, bidi and NFC checked in the bytes",
+      "sha256": {
+        "en": "0dfc0c5ed780b7b6e2cf2a560f007350ce4d17d512c39cce001a182bf43a09a7",
+        "zh-CN": "776acf49cc0f3a65e9cbd9772518b8664d4a90ed2fdbe72b2f6bf1d441f1720d",
+        "context": "267fc1892bb84cd4d7dbab1ff86a8120e5ec07069d3437241cf45391c9fb2291"
+      },
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.teamBridge.section.chiefs_empty",
+          "current": "还没有团队成员将智能体接入 Team Bridge。",
+          "proposed": "还没有团队成员将智能体接入Team Bridge。",
+          "note": "zh-CN style guide forbids a space between Chinese text and a Latin run, and the rest of the zh-CN UI follows that (475 unspaced vs 3 spaced joins across the other ui.* catalogues)."
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.teamBridge.menu.mute",
+          "current": "对话静音",
+          "proposed": "静音此对话",
+          "note": "The context says this is an imperative menu action, but 对话静音 reads as a noun phrase (\"conversation mute\"). A verb-first 静音此对话 also keeps the object explicit, as the context asks."
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.teamBridge.plan.checking",
+          "current": "正在检查 Team Bridge…",
+          "proposed": "正在检查Team Bridge……",
+          "note": "The style guide requires the ellipsis …… (two marks), and so does the rest of the zh-CN UI (110 double vs 5 single); also drop the space before the Latin run."
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.teamBridge.people.identity_loading",
+          "current": "正在查找你的账户…",
+          "proposed": "正在查找你的账户……",
+          "note": "The style guide requires the ellipsis …… (two marks), not a single …."
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.teamBridge.people.bridge_off",
+          "current": "尚未启用 Team Bridge",
+          "proposed": "尚未启用Team Bridge",
+          "note": "zh-CN style guide forbids a space between Chinese text and a Latin run, and the rest of the zh-CN UI follows that (475 unspaced vs 3 spaced joins across the other ui.* catalogues)."
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.teamBridge.plan.title",
+          "current": "Team Bridge 需要 Radient Team 套餐",
+          "proposed": "Team Bridge需要Radient Team套餐",
+          "note": "zh-CN style guide forbids a space between Chinese text and a Latin run, and the rest of the zh-CN UI follows that (475 unspaced vs 3 spaced joins across the other ui.* catalogues)."
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.teamBridge.plan.reason",
+          "current": "此组织的套餐不包含 Team Bridge。",
+          "proposed": "此组织的套餐不包含Team Bridge。",
+          "note": "zh-CN style guide forbids a space between Chinese text and a Latin run, and the rest of the zh-CN UI follows that (475 unspaced vs 3 spaced joins across the other ui.* catalogues)."
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.teamBridge.plan.sign_in_title",
+          "current": "登录 Radient",
+          "proposed": "登录Radient",
+          "note": "zh-CN style guide forbids a space between Chinese text and a Latin run, and the rest of the zh-CN UI follows that (475 unspaced vs 3 spaced joins across the other ui.* catalogues)."
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.teamBridge.plan.sign_in_reason",
+          "current": "你已退出登录。登录后即可使用 Team Bridge。",
+          "proposed": "你已退出登录。登录后即可使用Team Bridge。",
+          "note": "zh-CN style guide forbids a space between Chinese text and a Latin run, and the rest of the zh-CN UI follows that (475 unspaced vs 3 spaced joins across the other ui.* catalogues)."
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.teamBridge.plan.update_title",
+          "current": "更新后使用 Team Bridge",
+          "proposed": "更新后使用Team Bridge",
+          "note": "zh-CN style guide forbids a space between Chinese text and a Latin run, and the rest of the zh-CN UI follows that (475 unspaced vs 3 spaced joins across the other ui.* catalogues)."
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.teamBridge.plan.update_reason",
+          "current": "Team Bridge 需要更新版本的 Radient。",
+          "proposed": "Team Bridge需要更新版本的Radient。",
+          "note": "zh-CN style guide forbids a space between Chinese text and a Latin run, and the rest of the zh-CN UI follows that (475 unspaced vs 3 spaced joins across the other ui.* catalogues)."
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.teamBridge.plan.unavailable_title",
+          "current": "Team Bridge 暂不可用",
+          "proposed": "Team Bridge暂不可用",
+          "note": "zh-CN style guide forbids a space between Chinese text and a Latin run, and the rest of the zh-CN UI follows that (475 unspaced vs 3 spaced joins across the other ui.* catalogues)."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.teamBridge.create.account_placeholder",
+          "current": "例如 acct_…",
+          "proposed": "例如acct_…",
+          "note": "Drop the space between 例如 and the Latin token, per the style guide. The single … belongs to the code-like example, so it stays."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.teamBridge.compose.placeholder",
+          "current": "输入名称",
+          "proposed": "输入名字",
+          "note": "Recipients are people or agents. 名称 is the word for an object or entity name, while 名字 is what a native speaker types for a person."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.teamBridge.builtin.agents_topic",
+          "current": "每位团队成员的首席助理。智能体只在被提及时才会唤醒。",
+          "proposed": "每位团队成员的首席助理。只有提及智能体时才会唤醒它。",
+          "note": "The English is passive (agents are woken). The current 智能体…才会唤醒 is acceptable but leaves the agent as the grammatical waker; making the mention the trigger reads more naturally."
+        }
+      ]
+    }
+  }
+}

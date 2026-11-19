@@ -167,7 +167,7 @@ after(() => {
 const bundle = await build({
 	stdin: {
 		contents: [
-			'export { applyHistoryPage, EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";',
+			'export { applyEvent, applyHistoryPage, EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";',
 			'export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";',
 			'export { __resetTurnCollapseOpen, writeRunExpanded, expandedRunsOf, forgetTurnCollapseOpen, __turnCollapseOpenStats } from "./src/renderer/src/shared/store/turn-collapse-open";',
 			/* The settle latch's store: the per-test reset the latch cases below owe, exactly as the expansions' is owed. */
@@ -228,6 +228,7 @@ const bundlePath = new URL(
 );
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 const {
+	applyEvent,
 	applyHistoryPage,
 	EMPTY_TRANSCRIPT,
 	CanonicalTranscript,
@@ -419,7 +420,7 @@ const mount = async (t, records, over = {}) => {
 						onLoadOlder: nextOver.onLoadOlder ?? (async () => true),
 						containerRef: { current: mounted.container },
 						isSmallView: nextOver.isSmallView ?? false,
-						status: "live",
+						status: nextOver.status ?? "live",
 						failure: null,
 						awaitingHydration: false,
 						onReconnect: () => {},
@@ -502,10 +503,23 @@ test("a completed run arrives collapsed: one bar, the work unmounted, the answer
 		WORKED_RE,
 		"the foot line yields to the bar: one summary per turn",
 	);
-	const stamps = mounted.container.querySelectorAll("time");
-	assert.equal(stamps.length, 1, "one stamp for the turn");
+	/*
+	 * TWO STAMPS, per message (operator, 2026-10-20): the reader's own message
+	 * keeps its time on its action line, and the closing answer's re-homes to the
+	 * bar with the foot it replaces. The answer-side count is what this test is
+	 * about - one per turn, on the bar - and the reader's stamp is a different
+	 * carrier with a different name.
+	 */
+	const userStamps = mounted.container.querySelectorAll(
+		'time[data-stamp="turn"]',
+	);
+	assert.equal(userStamps.length, 1, "the user message states its own time");
+	const answerStamps = mounted.container.querySelectorAll(
+		'time[data-stamp="answer"]',
+	);
+	assert.equal(answerStamps.length, 1, "one answer stamp for the turn");
 	assert.ok(
-		summary.contains(stamps[0]),
+		summary.contains(answerStamps[0]),
 		"and it lives on the bar rather than on the answer it closed",
 	);
 });
@@ -1801,6 +1815,465 @@ test("the settle latch: a steering re-entry cannot move a watched run's hides (o
 	);
 });
 
+test("a fresh pane's first pass cannot fold a run whose rows say it is still writing (operator report, 2026-10-21)", async (t) => {
+	/*
+	 * THE OTHER HALF OF THE SAME FLICKER. The latch above is written by a LIVE
+	 * pass, in an effect, after a paint. A pane whose first pass is not live -
+	 * a first open before the runtime publishes `streaming`, or the reconnect
+	 * arm's `frontend: null`, which drops `working` AND the latch's own store
+	 * key - has no latch to protect it, and the 2026-10-16 fix could not reach
+	 * it. What is left is the rows, and they state it plainly: a streaming
+	 * assistant row and an unfinished call cannot be a finished turn's last
+	 * word.
+	 *
+	 * THE SEQUENCE: the dip FIRST (the state the flicker is painted in), then
+	 * the live flag arriving. The plan must already be the correct one on the
+	 * dip, so the live pass adds nothing and takes nothing.
+	 */
+	__resetTurnCollapseOpen();
+	__resetWatchedRuns();
+	const frontend = { session_id: "chat-fresh-dip" };
+	const rows = [
+		userRecord("user:1"),
+		toolRecord("tool:1", { ts: TS + 1_000, durationS: 3 }),
+		answerRecord("answer:1", {
+			ts: TS + 3_000,
+			settledAt: TS + 3_000,
+			stopReason: "stop",
+		}),
+		toolRecord("tool:2", { ts: TS + 4_000, phase: "running" }),
+		answerRecord("answer:2", {
+			ts: TS + 5_000,
+			text: "Streaming the rest",
+			streaming: true,
+		}),
+	];
+	const mounted = await mount(t, rows, { frontend, waiting: false });
+	const barIds = () =>
+		barsOf(mounted).map((element) => element.getAttribute("data-record-id"));
+	assert.equal(
+		watchedRunOf("chat-fresh-dip"),
+		null,
+		"this pane has no latch: the first pass is not live",
+	);
+	assert.deepEqual(
+		barIds(),
+		["tool:1"],
+		"only the settled span is barred; the run in flight draws in place",
+	);
+	assert.ok(rowBox(mounted, "tool:2"), "the running call is on screen");
+	assert.ok(rowBox(mounted, "answer:2"), "and so is the text being written");
+	// The live flag arrives: the same plan, so nothing repaints.
+	await mounted.render(rows, { frontend, waiting: true });
+	assert.deepEqual(barIds(), ["tool:1"], "the live pass moves nothing");
+	assert.ok(rowBox(mounted, "tool:2"), "t2 was never handed to a bar");
+	assert.ok(
+		rowBox(mounted, "answer:2"),
+		"and the streaming row never vanished",
+	);
+	// THE ROWS SETTLE: the turn condenses once, because its data changed.
+	const settled = rows.map((record) =>
+		record.id === "answer:2"
+			? { ...record, streaming: false }
+			: record.id === "tool:2"
+				? { ...record, phase: "done", endedAt: TS + 6_000 }
+				: record,
+	);
+	await mounted.render(settled, { frontend, waiting: false });
+	assert.deepEqual(
+		barIds(),
+		["tool:1", "tool:2"],
+		"the settled run condenses once, on the pass that settles it",
+	);
+});
+
+test("a reconnect frame cannot collapse the reader's opened bar (operator report, 2026-10-21)", async (t) => {
+	/*
+	 * THE OTHER VISIBLE FRAME OF THE SAME REPAINT. A reconnect sets
+	 * `frontend: null` for the whole gap (`use-canonical-session`'s gap arm), and
+	 * the reader's stores used to be keyed off that raw id: every opened bar
+	 * snapped shut, and opened again when the snapshot repopulated - text the
+	 * reader had just chosen to see, replaced for a frame or two and handed back.
+	 * The key is sticky now (`conversationKey`), the rule the fold registry in the
+	 * same file has always used.
+	 */
+	__resetTurnCollapseOpen();
+	__resetWatchedRuns();
+	const frontend = { session_id: "chat-gap" };
+	const rows = [
+		userRecord("user:1"),
+		toolRecord("tool:1", { ts: TS + 1_000, durationS: 3 }),
+		answerRecord("answer:1", {
+			ts: TS + 3_000,
+			settledAt: TS + 3_000,
+			stopReason: "stop",
+		}),
+	];
+	const mounted = await mount(t, rows, { frontend });
+	const trigger = barTrigger(mounted);
+	await click(trigger);
+	assert.equal(
+		trigger.getAttribute("aria-expanded"),
+		"true",
+		"the reader opened the bar",
+	);
+	assert.ok(rowBox(mounted, "tool:1"), "and its rows are on screen");
+	// THE GAP: frontend goes away entirely, exactly as the reconnect arm writes it.
+	await mounted.render(rows, { frontend: null, waiting: false });
+	assert.equal(
+		barTrigger(mounted).getAttribute("aria-expanded"),
+		"true",
+		"the gap does not close a bar the reader opened",
+	);
+	assert.ok(
+		rowBox(mounted, "tool:1"),
+		"and does not take the rows back behind it",
+	);
+	// The snapshot returns on the same conversation: still open, still one press.
+	await mounted.render(rows, { frontend, waiting: false });
+	assert.equal(
+		barTrigger(mounted)?.getAttribute("aria-expanded"),
+		"true",
+		"the re-entry reads the same bucket",
+	);
+});
+
+test("a turn that GROWS while the live flag is down stops condensing (operator frames, 2026-10-21)", async (t) => {
+	/*
+	 * THE SECOND MECHANISM BEHIND THE FRAMES. Captured from a live turn: the
+	 * turn's rows out (the working line saying it is thinking), then the same
+	 * turn painted as its bar a frame later, then out again.
+	 *
+	 * The plan's `anchored` falls back to the pane's instantaneous `live` in the
+	 * gap between two calls, where no row is streaming and no call is in flight.
+	 * A pane that never caught a live pass for this run holds no latch, so every
+	 * dip alternates the whole turn. Growth of the newest run is the fact that
+	 * does not dip: rows are appended only while the turn is being written.
+	 *
+	 * Prose between the calls keeps the TOOL-GROUP tier out of this fixture
+	 * (`foldRuns` only folds a run of three or more adjacent actions), so the bar
+	 * these assertions are about is the turn's own.
+	 *
+	 * WHAT THIS PROVES, EXACTLY (agent review round 1, M2): the assertion is the
+	 * state after the arming pass has committed - the growth pass renders once
+	 * unarmed and the effect's setState re-renders it armed - so it proves the
+	 * turn does not STAY condensed once growth is observed, not that the very first
+	 * frame of the append is already expanded. The frame between the two is the
+	 * pass the effect cannot preempt.
+	 */
+	const prose = (id) => ({
+		kind: "assistant",
+		id,
+		ts: TS,
+		text: "Working through it.",
+		streaming: false,
+		stopReason: null,
+	});
+	const records = [
+		userRecord("grow-user"),
+		toolRecord("grow-t0"),
+		prose("grow-p0"),
+		toolRecord("grow-t1"),
+		prose("grow-p1"),
+	];
+	const over = { frontend: { session_id: "synthetic-grow" }, waiting: false };
+	__resetWatchedRuns();
+	const mounted = await mount(t, records, over);
+	assert.ok(
+		bar(mounted) !== null,
+		"the baseline pass paints the turn's bar (no latch before growth)",
+	);
+	await mounted.render(
+		[...records, prose("grow-p2"), toolRecord("grow-t2")],
+		over,
+	);
+	assert.ok(
+		bar(mounted) === null,
+		"a run that gained a row is being written: no bar while the flag is down",
+	);
+	assert.ok(
+		rowBox(mounted, "grow-t2") !== null,
+		"the new row is painted in place",
+	);
+
+	/*
+	 * AND A PAGE LANDING ABOVE IS NOT GROWTH (QA round 1, Q-F1). Loading older
+	 * history lengthens a head-cut run too, but the reader asked for it and no
+	 * turn is being written; only a row appended at the TAIL moves the run's last
+	 * id, which is the append this arm is about.
+	 */
+	__resetWatchedRuns();
+	const page = await mount(
+		t,
+		[
+			userRecord("page-old"),
+			toolRecord("page-t0"),
+			prose("page-p0"),
+			toolRecord("page-t1"),
+		],
+		{ frontend: { session_id: "synthetic-page" }, waiting: false },
+	);
+	assert.ok(bar(page) !== null, "the page fixture starts collapsed");
+	await page.render(
+		[
+			userRecord("page-cut"),
+			toolRecord("page-t-1"),
+			userRecord("page-old"),
+			toolRecord("page-t0"),
+			prose("page-p0"),
+			toolRecord("page-t1"),
+		],
+		{ frontend: { session_id: "synthetic-page" }, waiting: false },
+	);
+	assert.ok(
+		bar(page) !== null,
+		"older rows landing above a finished run do not arm the latch",
+	);
+});
+
+test("a job response cannot reopen a tool group the pane has already folded (operator report, 2026-10-21)", async (t) => {
+	/*
+	 * THE REPORT: "some of the job messages/responses will alternate between
+	 * forcing the tool group open and then closing it back again".
+	 *
+	 * The licensing rule is positional - a run folds on its TRAILING receipt
+	 * stretch - so one continuous run changed shape on every job response:
+	 * `[t1, j1, j2]` folds, the next call ends the stretch and the rows paint
+	 * loose, two more receipts fold it again. This drives the SHIPPED transcript
+	 * and asserts the reader-visible consequence: the tool rows stay unmounted
+	 * while the turn is live, and the group's header carries the new call.
+	 */
+	__resetTurnCollapseOpen();
+	__resetWatchedRuns();
+	const job = (id) => ({
+		kind: "custom",
+		id,
+		ts: TS + 1_000,
+		customType: "job_result",
+		text: "job finished",
+		attribution: "job",
+	});
+	const frontend = { session_id: "chat-job-fold" };
+	const first = [
+		userRecord("user:1"),
+		toolRecord("tool:1", { ts: TS + 1_000, durationS: 3 }),
+		job("job:1"),
+		job("job:2"),
+	];
+	const mounted = await mount(t, first, { frontend, waiting: true });
+	const folded = () =>
+		rowBox(mounted, "tool:1") === null && rowBox(mounted, "tool:2") === null;
+	assert.equal(
+		rowBox(mounted, "tool:1"),
+		null,
+		"the wall folds on its trailing receipts",
+	);
+	// The next call arrives: the run's trailing stretch ends, and the group used
+	// to open here.
+	const withCall = [
+		...first,
+		toolRecord("tool:2", { ts: TS + 2_000, durationS: 4 }),
+	];
+	await mounted.render(withCall, { frontend, waiting: true });
+	assert.ok(folded(), "the new call did not reopen the fold");
+	assert.ok(
+		mounted.container.textContent?.includes("2 shell"),
+		"and the header counts it instead",
+	);
+	// Two more job responses: still one group, still closed.
+	await mounted.render([...withCall, job("job:3"), job("job:4")], {
+		frontend,
+		waiting: true,
+	});
+	assert.ok(folded(), "a further receipt pair did not refold from scratch");
+	/*
+	 * A RECONNECT GAP IS NOT A SETTLE (design review round 1, U1). With no
+	 * snapshot the pane has observed nothing about the turn, so the latch is
+	 * retained and the group stays closed; the clear used to run here and the
+	 * return pass folded it again - the same open/close for a reader who only
+	 * watched the connection blink.
+	 */
+	await mounted.render(withCall, {
+		frontend: null,
+		waiting: false,
+		status: "reconnecting",
+	});
+	assert.ok(folded(), "the group stayed folded through the gap");
+	await mounted.render([...withCall, job("job:5")], {
+		frontend,
+		waiting: true,
+	});
+	assert.ok(folded(), "and the return pass did not refold from scratch");
+	// THE LATCH IS LIVE-ONLY: on the settled list the final rows decide, so the
+	// run with no trailing receipts paints its rows again - one transition, at
+	// the turn's end, not on every response.
+	await mounted.render(withCall, { frontend, waiting: false });
+	assert.ok(
+		rowBox(mounted, "tool:1") !== null,
+		"settled, the same rows paint as ordinary rows",
+	);
+});
+
+test("a child reader's null snapshot is not a gap: its settle releases the fold (agent review round 4)", async (t) => {
+	/*
+	 * THE RUN PANEL'S CHILD READER passes `frontend: null` for its whole life
+	 * with `status: "live"`. Reading the gap off the SNAPSHOT therefore held its
+	 * fold across the settle, and a finished child turn never painted its rows;
+	 * the pane's own `status` is the signal. This case mounts the reader's exact
+	 * prop shape and drives its live frame and its settle, so a revert of the
+	 * status reading fails HERE - the earlier assertion in the job-fold case runs
+	 * after a connected settle has already spent the latch and cannot see it.
+	 */
+	__resetTurnCollapseOpen();
+	__resetWatchedRuns();
+	const job = (id) => ({
+		kind: "custom",
+		id,
+		ts: TS + 1_000,
+		customType: "job_result",
+		text: "job finished",
+		attribution: "job",
+	});
+	const records = [
+		userRecord("child:u"),
+		toolRecord("child:1"),
+		job("child:j1"),
+		job("child:j2"),
+	];
+	const live = {
+		frontend: null,
+		status: "live",
+		workingLine: {
+			activity: { kind: "text", text: "running" },
+			phase: "running",
+		},
+	};
+	const child = await mount(t, records, live);
+	assert.ok(
+		rowBox(child, "child:1") === null,
+		"the child's live frame folds the wall",
+	);
+	/*
+	 * The settle frame ends the receipt stretch with a call (`[t1, j1, j2, t2]`):
+	 * two actions, no trailing receipt pair, so the rows only stay folded if the
+	 * latch is still consulted - which is what a snapshot-derived gap did.
+	 */
+	await child.render([...records, toolRecord("child:2", { ts: TS + 2_000 })], {
+		frontend: null,
+		status: "live",
+	});
+	assert.ok(
+		rowBox(child, "child:1") !== null,
+		"and its settle paints the rows",
+	);
+});
+
+test("a reconnect gap cannot fold a run the pane was watching (operator report, 2026-10-21)", async (t) => {
+	/*
+	 * THE LATCH HALF, MEASURED WHERE IT IS PAINTED (review round 2, M1). The
+	 * previous case proves the reader's EXPANSIONS survive a `frontend: null`
+	 * pass - which the store held even on the base, so it does not discriminate.
+	 * This one does: a run mid-flight after its first settled cycle has no
+	 * live-phase row (every call reported, no answer yet), so only the settle
+	 * latch can keep it open. The pane arms it on the live pass; the gap must not
+	 * drop it, or the work after the settled answer folds behind a bar and comes
+	 * back with the snapshot.
+	 */
+	__resetTurnCollapseOpen();
+	__resetWatchedRuns();
+	const frontend = { session_id: "chat-gap-latch" };
+	const rows = [
+		userRecord("user:1"),
+		toolRecord("tool:1", { ts: TS + 1_000, durationS: 3 }),
+		answerRecord("answer:1", {
+			ts: TS + 3_000,
+			settledAt: TS + 3_000,
+			stopReason: "stop",
+		}),
+		toolRecord("tool:2", { ts: TS + 4_000, durationS: 4 }),
+	];
+	const mounted = await mount(t, rows, { frontend, waiting: true });
+	const barIds = () =>
+		barsOf(mounted).map((element) => element.getAttribute("data-record-id"));
+	assert.equal(
+		watchedRunOf("chat-gap-latch"),
+		"user:1",
+		"the live pass latched the run it is watching",
+	);
+	assert.deepEqual(barIds(), ["tool:1"], "only the settled span is barred");
+	assert.ok(rowBox(mounted, "tool:2"), "the work after the answer is in place");
+	// THE GAP: frontend goes away, so the pane reads not-live.
+	await mounted.render(rows, { frontend: null, waiting: false });
+	assert.deepEqual(
+		barIds(),
+		["tool:1"],
+		"the dip does not add a bar over the work being watched",
+	);
+	assert.ok(
+		rowBox(mounted, "tool:2"),
+		"and the work after the answer stays on screen through the gap",
+	);
+	// The snapshot returns: same plan, nothing handed back or taken.
+	await mounted.render(rows, { frontend, waiting: false });
+	assert.deepEqual(barIds(), ["tool:1"], "the re-entry reaches the same plan");
+});
+
+test("a steer before its lead-in's calls report does not condense the turn (operator report, 2026-10-21)", async (t) => {
+	/*
+	 * THE MOUNTED HALF OF THE LEAD-IN FIX (agent review round 1, U3): the model
+	 * test says the run does not split, this says what the reader sees - the turn
+	 * stays whole and drawn in place while it is being steered, and its steer row
+	 * survives the condense when the closing answer lands.
+	 */
+	__resetTurnCollapseOpen();
+	__resetWatchedRuns();
+	const frontend = { session_id: "chat-lead-in" };
+	const rows = [
+		userRecord("user:1"),
+		toolRecord("tool:1", { ts: TS + 1_000, durationS: 3 }),
+		answerRecord("answer:1", {
+			ts: TS + 3_000,
+			text: "Reading the ledger first.",
+			settledAt: TS + 3_000,
+			stopReason: "toolUse",
+			callsTools: true,
+		}),
+		userRecord("user:2", { ts: TS + 4_000, text: "also check the ledger" }),
+		toolRecord("tool:2", { ts: TS + 5_000, durationS: 4 }),
+	];
+	const mounted = await mount(t, rows, { frontend, waiting: true });
+	const barIds = () =>
+		barsOf(mounted).map((element) => element.getAttribute("data-record-id"));
+	assert.deepEqual(
+		barIds(),
+		[],
+		"the steer did not condense the turn it interrupted",
+	);
+	assert.ok(
+		rowBox(mounted, "tool:1"),
+		"the work before the steer is on screen",
+	);
+	assert.ok(rowBox(mounted, "user:2"), "and the steer itself");
+	assert.ok(rowBox(mounted, "tool:2"), "and the work after it");
+	// The closing answer lands: the turn condenses ONCE, and keeps its steer.
+	await mounted.render(
+		[
+			...rows,
+			answerRecord("answer:2", {
+				ts: TS + 7_000,
+				settledAt: TS + 7_000,
+				stopReason: "stop",
+			}),
+		],
+		{ frontend, waiting: false },
+	);
+	assert.ok(barIds().length > 0, "the finished turn wears its bar");
+	assert.ok(
+		rowBox(mounted, "user:2"),
+		"and the steer stays on screen under it (V3)",
+	);
+});
+
 test("the trigger is focusable; the only press inside it toggles", async (t) => {
 	/*
 	 * DESIGN D4d's assertion, in the smallest honest form: the trigger is a
@@ -2051,7 +2524,7 @@ test("a pinned row between two hidden spans stays BETWEEN their bars, before and
 	);
 });
 
-test("one stamp per turn with several bars: the answer's foot keeps it", async (t) => {
+test("one answer stamp per turn with several bars: the answer's foot keeps it", async (t) => {
 	__resetTurnCollapseOpen();
 	const mounted = await mount(t, [
 		userRecord("user:1"),
@@ -2060,9 +2533,16 @@ test("one stamp per turn with several bars: the answer's foot keeps it", async (
 		toolRecord("tool:2", { ts: TS + 3_000 }),
 		answerRecord("answer:1", { ts: TS + 4_000, settledAt: TS + 4_000 }),
 	]);
-	assert.equal(mounted.container.querySelectorAll("time").length, 1);
+	assert.equal(
+		mounted.container.querySelectorAll('time[data-stamp="answer"]').length,
+		1,
+	);
+	assert.equal(
+		mounted.container.querySelectorAll('time[data-stamp="turn"]').length,
+		1,
+	);
 	assert.ok(
-		rowBox(mounted, "answer:1").querySelector("time"),
+		rowBox(mounted, "answer:1").querySelector('time[data-stamp="answer"]'),
 		"the stamp is on the answer's own foot, since no single bar states the turn",
 	);
 	assert.match(rowBox(mounted, "answer:1").textContent, WORKED_RE);
@@ -3332,7 +3812,7 @@ for (const isSmallView of [false, true])
 		const frontend = { session_id: `synthetic-active-${isSmallView}` };
 		const phase = {
 			phase: "thinking",
-			activity: "thinking",
+			activity: { kind: "thinking" },
 			startedAt: Date.now() - 8000,
 			clock: true,
 		};
@@ -3395,7 +3875,11 @@ test("active summary keeps legacy unanchored clock at footer; known current phas
 	const rows = activeSourceRows();
 	const mounted = await mount(t, rows, {
 		waiting: true,
-		workingLine: { phase: "thinking", activity: "thinking", clock: true },
+		workingLine: {
+			phase: "thinking",
+			activity: { kind: "thinking" },
+			clock: true,
+		},
 	});
 	assert.ok(bar(mounted).querySelector("[data-lo-working-line]") === null);
 	assert.ok(
@@ -3417,7 +3901,7 @@ test("active summary keeps legacy unanchored clock at footer; known current phas
 		hasMore: true,
 		workingLine: {
 			phase: "thinking",
-			activity: "thinking",
+			activity: { kind: "thinking" },
 			clock: true,
 			startedAt: since,
 		},
@@ -4065,5 +4549,286 @@ test("a condensed Highlights adjustment closes when preparation settles", async 
 		Boolean(mounted.container.querySelector("[data-supplement-adjust-form]")),
 		false,
 		"a settled job exposes no live steer input",
+	);
+});
+
+/** A sanitized receipt shape from the inbound producer, never the private body. */
+test("Bridge incoming reducer rows condense across quiet cycles without hiding the operator boundaries", async (t) => {
+	__resetTurnCollapseOpen();
+	const fixture = JSON.parse(
+		await readFile(
+			new URL("./fixtures/bridge-incoming.json", import.meta.url),
+			"utf8",
+		),
+	);
+	const reduced = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: fixture.entries,
+		has_more: false,
+		cursor_missing: false,
+	}).records;
+	assert.equal(reduced.length, 2);
+	const records = [
+		userRecord("bridge-user"),
+		answerRecord("bridge-final", { stopReason: "stop" }),
+		reduced[0],
+		toolRecord("bridge-history", {
+			toolName: "bridge",
+			args: { op: "channel_history", channel_id: "synthetic-conversation" },
+		}),
+		toolRecord("bridge-post", {
+			toolName: "bridge",
+			args: {
+				op: "channel_post",
+				channel_id: "synthetic-conversation",
+				text: "Acknowledged.",
+			},
+		}),
+		toolRecord("bridge-quiet-1", { toolName: "no_reply" }),
+		reduced[1],
+		toolRecord("bridge-send", {
+			toolName: "send",
+			args: { target: "synthetic-peer", message: "Received." },
+		}),
+		toolRecord("bridge-quiet-2", { toolName: "no_reply" }),
+	];
+	const mounted = await mount(t, records);
+	assert.ok(rowBox(mounted, "bridge-user"), "true user remains visible");
+	assert.ok(rowBox(mounted, "bridge-final"), "true final remains visible");
+	assert.equal(
+		mounted.container.querySelectorAll("[data-turn-summary]").length,
+		1,
+		"one internal episode, not a separate top-level notice per Bridge receipt",
+	);
+	assert.equal(
+		rowBox(mounted, "bridge-receipt-1"),
+		null,
+		"receipt folds with the work",
+	);
+	await click(barTrigger(mounted));
+	assert.ok(rowBox(mounted, "bridge-receipt-1"));
+	assert.ok(rowBox(mounted, "bridge-receipt-2"));
+	assert.match(rowBox(mounted, "bridge-receipt-1").textContent, /Received/);
+	assert.doesNotMatch(
+		rowBox(mounted, "bridge-receipt-1").textContent,
+		/team bridge message:/,
+	);
+	assert.ok(!bar(mounted).contains(rowBox(mounted, "bridge-final")));
+});
+
+/*
+ * PR #1977 review R3: with no `team_bridge_card_body` capability (an older
+ * backend; this mount advertises none) the open pane must be today's pane:
+ * the "unavailable" sentence in BridgeDetail's outcome slot ABOVE the
+ * provenance line, and no body section mounted (so no request either).
+ */
+test("Bridge incoming pane on a backend without the body read keeps today's sentence above the provenance line", async (t) => {
+	__resetTurnCollapseOpen();
+	const fixture = JSON.parse(
+		await readFile(
+			new URL("./fixtures/bridge-incoming.json", import.meta.url),
+			"utf8",
+		),
+	);
+	const reduced = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: fixture.entries,
+		has_more: false,
+		cursor_missing: false,
+	}).records;
+	const mounted = await mount(t, [
+		userRecord("bridge-legacy-user"),
+		answerRecord("bridge-legacy-final", { stopReason: "stop" }),
+		reduced[0],
+		toolRecord("bridge-legacy-quiet", { toolName: "no_reply" }),
+	]);
+	await click(barTrigger(mounted));
+	const row = rowBox(mounted, "bridge-receipt-1");
+	assert.ok(row, "the receipt is visible once the fold opens");
+	await click(row.querySelector("button[aria-expanded]"));
+	const outcome = row.querySelector('[data-detail-section="bridge-outcome"]');
+	const provenance = row.querySelector("[data-bridge-provenance]");
+	assert.ok(outcome && provenance, "pane open with outcome and provenance");
+	assert.equal(outcome.textContent, "Message body unavailable.");
+	assert.ok(
+		outcome.compareDocumentPosition(provenance) &
+			outcome.ownerDocument.defaultView.Node.DOCUMENT_POSITION_FOLLOWING,
+		"the sentence sits above the provenance line, where it always was",
+	);
+	assert.equal(
+		row.querySelector("[data-bridge-body-state]"),
+		null,
+		"no body section is mounted without the capability",
+	);
+});
+
+test("Bridge incoming action fold retains both receipts through live settle and the next activation", async (t) => {
+	__resetTurnCollapseOpen();
+	const fixture = JSON.parse(
+		await readFile(
+			new URL("./fixtures/bridge-incoming.json", import.meta.url),
+			"utf8",
+		),
+	);
+	const receipts = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: fixture.entries,
+		has_more: false,
+		cursor_missing: false,
+	}).records;
+	const records = [
+		userRecord("bridge-live-user"),
+		receipts[0],
+		toolRecord("bridge-live-history", {
+			toolName: "bridge",
+			args: { op: "channel_history" },
+		}),
+		receipts[1],
+		toolRecord("bridge-live-post", {
+			toolName: "bridge",
+			args: { op: "channel_post", text: "Acknowledged." },
+		}),
+		toolRecord("bridge-live-send", {
+			toolName: "send",
+			args: { target: "synthetic-peer", message: "Received." },
+		}),
+	];
+	const mounted = await mount(t, records, { waiting: true });
+	const fold = mounted.container.querySelector("[data-fold-ids]");
+	assert.ok(fold, "ordinary action aggregation exists while the turn is live");
+	assert.match(fold.dataset.foldIds, /bridge-receipt-1/);
+	assert.match(fold.dataset.foldIds, /bridge-receipt-2/);
+	assert.match(fold.textContent, /2 incoming messages/);
+	assert.equal(rowBox(mounted, "bridge-receipt-1"), null);
+	const settled = [
+		...records,
+		toolRecord("bridge-live-close", { toolName: "no_reply" }),
+	];
+	await mounted.render(settled, { waiting: false });
+	await mounted.render([...settled, { ...receipts[0], id: "bridge-next" }], {
+		waiting: true,
+	});
+	assert.ok(
+		rowBox(mounted, "bridge-live-user"),
+		"operator boundary survives activation",
+	);
+	assert.equal(
+		rowBox(mounted, "bridge-receipt-1"),
+		null,
+		"settled episode does not reopen on next activation",
+	);
+});
+
+test("Bridge current and legacy metadata agree across live delta, lazy history and reload without admitting a body", async (t) => {
+	__resetTurnCollapseOpen();
+	const fixture = JSON.parse(
+		await readFile(
+			new URL("./fixtures/bridge-incoming.json", import.meta.url),
+			"utf8",
+		),
+	);
+	const entries = structuredClone(fixture.entries);
+	entries[0].payload.details.bridge_receipt = {
+		v: 1,
+		sender: { name: "Example member", kind: "human" },
+		conversation: { kind: "dm" },
+		attachment_count: 1,
+		body: "Never admitted text",
+		admission: { state: "admitted" },
+	};
+	const live = applyEvent(EMPTY_TRANSCRIPT, {
+		type: "history_delta",
+		messages: entries.map((entry) => ({ id: entry.id, ...entry.payload })),
+	});
+	const tail = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [entries[1]],
+		has_more: true,
+		cursor_missing: false,
+	});
+	const replay = applyHistoryPage(tail, {
+		entries: [entries[0]],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.deepEqual(
+		live.records.map((r) => r.bridgeReceipt),
+		replay.records.map((r) => r.bridgeReceipt),
+	);
+	assert.equal(replay.records[0].bridgeReceipt.attachmentCount, 1);
+	const mounted = await mount(t, replay.records, {
+		frontend: { session_id: "synthetic-bridge-reload" },
+	});
+	for (
+		let depth = 0;
+		depth < 2 && !rowBox(mounted, "bridge-receipt-1");
+		depth += 1
+	) {
+		await click(
+			mounted.container.querySelector(
+				'[data-fold-ids] button[aria-expanded="false"], [data-turn-summary] button[aria-expanded="false"]',
+			),
+		);
+	}
+	const receipt = rowBox(mounted, "bridge-receipt-1");
+	assert.ok(
+		receipt,
+		"turn and action disclosures both reveal their original receipt row",
+	);
+	await click(receipt.querySelector("button"));
+	assert.match(receipt.textContent, /Received from Example member/);
+	assert.match(receipt.textContent, /Direct message/);
+	assert.match(receipt.textContent, /Message body unavailable/);
+	assert.doesNotMatch(receipt.textContent, /Never admitted text/);
+	assert.equal(
+		mounted.container.querySelectorAll("img").length,
+		0,
+		"attachment counts never manufacture an image ref",
+	);
+	const reload = await mount(t, replay.records, {
+		frontend: { session_id: "synthetic-bridge-reload" },
+	});
+	assert.equal(
+		reload.container.querySelectorAll("[data-turn-summary]").length,
+		1,
+		"reload preserves one receipt episode rather than splitting notices",
+	);
+	assert.equal(
+		reload.container.querySelectorAll("img").length,
+		0,
+		"reload does not invent admitted media",
+	);
+});
+
+test("Bridge admitted history media retains its own row while nearby incoming receipts fold", async (t) => {
+	__resetTurnCollapseOpen();
+	const fixture = JSON.parse(
+		await readFile(
+			new URL("./fixtures/bridge-incoming.json", import.meta.url),
+			"utf8",
+		),
+	);
+	const receipts = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: fixture.entries,
+		has_more: false,
+		cursor_missing: false,
+	}).records;
+	const history = toolRecord("bridge-media-history", {
+		toolName: "bridge",
+		args: { op: "channel_history", channel_id: "synthetic-conversation" },
+		images: [shotImage("bridge-media-history", 0)],
+	});
+	const mounted = await mount(t, [
+		userRecord("bridge-media-user"),
+		answerRecord("bridge-media-final", { stopReason: "stop" }),
+		receipts[0],
+		history,
+		receipts[1],
+		toolRecord("bridge-media-quiet", { toolName: "no_reply" }),
+	]);
+	assert.ok(
+		rowBox(mounted, "bridge-media-history"),
+		"admitted screenshot owner stays inline outside the collapsed episode",
+	);
+	assert.equal(mounted.container.querySelectorAll("img").length, 1);
+	assert.ok(
+		rowBox(mounted, "bridge-media-final"),
+		"real final answer remains outside receipt condensation",
 	);
 });

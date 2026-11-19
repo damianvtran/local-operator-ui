@@ -1,0 +1,102 @@
+{
+  "locale": "vi",
+  "cldr_categories": [
+    "other"
+  ],
+  "namespaces": {
+    "ui.chat": {
+      "audited_delta_keys": 3,
+      "catalogue_key_count": 206,
+      "key_parity": true,
+      "placeholder_types": true,
+      "valid_icu": true,
+      "NFC": true,
+      "no_Cf": true,
+      "no_combining_marks": true,
+      "explicit_numeric_maxCells_or_maxChars": false
+    },
+    "ui.chat.run_details": {
+      "audited_delta_keys": 2,
+      "catalogue_key_count": 91,
+      "key_parity": true,
+      "placeholder_types": true,
+      "valid_icu": true,
+      "NFC": true,
+      "no_Cf": true,
+      "no_combining_marks": true,
+      "explicit_numeric_maxCells_or_maxChars": false
+    }
+  },
+  "samples": [
+    {
+      "key": "ui.chat.session_status.effort_level.low",
+      "actual": "Thấp",
+      "characters": 4
+    },
+    {
+      "key": "ui.chat.session_status.effort_level.medium",
+      "actual": "Trung bình",
+      "characters": 10
+    },
+    {
+      "key": "ui.chat.session_status.effort_level.high",
+      "actual": "Cao",
+      "characters": 3
+    },
+    {
+      "key": "ui.chat.run_details.wake.armed_count",
+      "count": 0,
+      "actual": "0 lịch thức dậy đã đặt"
+    },
+    {
+      "key": "ui.chat.run_details.wake.armed_count",
+      "count": 1,
+      "actual": "1 lịch thức dậy đã đặt"
+    },
+    {
+      "key": "ui.chat.run_details.wake.armed_count",
+      "count": 2,
+      "actual": "2 lịch thức dậy đã đặt"
+    },
+    {
+      "key": "ui.chat.run_details.wake.armed_count",
+      "count": 5,
+      "actual": "5 lịch thức dậy đã đặt"
+    },
+    {
+      "key": "ui.chat.run_details.wake.armed_count",
+      "count": 21,
+      "actual": "21 lịch thức dậy đã đặt"
+    },
+    {
+      "key": "ui.chat.run_details.wake.armed_count",
+      "count": 1000,
+      "actual": "1000 lịch thức dậy đã đặt"
+    },
+    {
+      "key": "ui.chat.run_details.wake.armed_count",
+      "count": 1.5,
+      "actual": "1.5 lịch thức dậy đã đặt"
+    },
+    {
+      "key": "ui.chat.run_details.wake.armed_count",
+      "selector_print_separation": "TOKEN_1000.5 lịch thức dậy đã đặt"
+    },
+    {
+      "key": "ui.chat.run_details.wake.cadence_once",
+      "actual": "một lần",
+      "characters": 7
+    },
+    {
+      "key": "ui.schedules.scheduled_task_model.cadence_starts_value2",
+      "actual": "một lần · bắt đầu 10:00",
+      "scope": "Unchanged direct embedding consumer only"
+    },
+    {
+      "key": "ui.schedules.scheduled_task_model.cadence_until_value2",
+      "actual": "một lần · đến 10:00",
+      "scope": "Unchanged direct embedding consumer only"
+    }
+  ],
+  "limits": "Source/ICU formatting only; no native app, pseudo-localization or rendered pixel/fit proof. No full-repository scanner/build/tsc."
+}

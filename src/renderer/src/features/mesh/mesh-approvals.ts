@@ -1,3 +1,7 @@
+import {
+	desktopFeatureEnabled,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
 /**
  * The Mesh tab's approval surface: the device-local onboarding records, read
  * and answered.
@@ -54,6 +58,16 @@ import {
 } from "@shared/api/local-operator/desktop-api";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { t } from "../../../../i18n/messages";
+import {
+	CREDENTIAL_APPROVAL_DIGEST,
+	CREDENTIAL_APPROVAL_OPERATIONS,
+	type DesktopRequest,
+} from "../../../../shared/desktop-contract";
+import {
+	PROFILE_SAVE_OPERATION,
+	type ProfileTypedApproval,
+	profileTypedApproval,
+} from "../../../../shared/profile-consent";
 import { meshKeys } from "./mesh-store";
 import { deviceLabel, flag, strings, text, time } from "./mesh-types";
 
@@ -69,8 +83,75 @@ export const meshApprovalKeys = {
  */
 export const MESH_APPROVAL_POLL_MS = 15_000;
 
-/** The two decisions the record's store accepts (`approve`, `deny`). */
-export type ApprovalDecision = "approve" | "deny";
+/**
+ * The decisions a card can send: the store's two (`approve`, `deny`), plus
+ * `apply` - the retry of a typed credential card that was SIGNED but whose apply
+ * did not finish (`apply-credential`). `apply` never signs anything.
+ */
+export type ApprovalDecision = "approve" | "deny" | "apply";
+
+export type CredentialApprovalOperation =
+	(typeof CREDENTIAL_APPROVAL_OPERATIONS)[number];
+
+/**
+ * The structured facts a typed credential card discloses BEFORE it is signed
+ * (`finite_share.disclosure` / `inheritance.disclosure` on the backend - the same
+ * dict the CLI renders). Normalised fields drive plain copy; the complete served
+ * facts are also snapshotted for Details so exact signed evidence is not lost.
+ * That display snapshot is never hashed or sent back: only served digests are echoed.
+ */
+export type MeshCredentialDisclosure = {
+	operation: CredentialApprovalOperation;
+	/** Finite share: the credential key (`github`). Inheritance: "". */
+	credentialKey: string;
+	/** Inheritance: provider / account / org (`""` org = any org). */
+	provider: string;
+	account: string;
+	org: string;
+	/** Finite share: `device` or `session`. */
+	scope: string;
+	recipient: { deviceId: string; name: string; keyFingerprint: string };
+	withdrawalCount: number;
+	/** Complete served facts for inspection; never recomputed into an acknowledgment. */
+	evidence: string;
+	untilRevoked: boolean;
+	futureLogins: boolean;
+	installsOrJoins: boolean;
+	/** Inheritance only; `null` when the disclosure does not say. */
+	copiesCredential: boolean | null;
+	/** Inheritance only: the capability the recipient still needs and this does not grant. */
+	requiresCapability: string;
+};
+
+/** An apply phase's outcome, as the backend's `approval_copy.outcome` words it. */
+export type MeshApplyOutcome = {
+	code: string;
+	/** The ONLY signal that may offer "Try again" (backend UX U2). */
+	retryable: boolean;
+	reason: string;
+	remedy: string;
+};
+
+/**
+ * The row's `typed_approval` block (`desktop_approval.row_fields`), present only on
+ * a credential row from a backend with `features.credential_approvals`.
+ */
+export type MeshTypedApproval = {
+	action: string;
+	operation: CredentialApprovalOperation | null;
+	/** VERBATIM from the wire - never trimmed, never recomputed (see `typedApproval`). */
+	requestDigest: string;
+	disclosureDigest: string;
+	disclosure: MeshCredentialDisclosure | null;
+	assurance: string;
+	unprovenHuman: boolean;
+	signableHere: boolean;
+	refusal: string;
+	refusalMessage: string;
+	applyOutcome: MeshApplyOutcome | null;
+	/** Availability is retained; setup is a separate admin-authorized flow. */
+	upgrade?: Record<string, unknown>;
+};
 
 /** The where-block, under whichever key the row's kind spells it. */
 export type MeshApprovalWhere = {
@@ -102,7 +183,7 @@ export type MeshApprovalRow = {
 	/** Verbatim from the store: `requested`/`approved`/`connecting`/`connected`/`denied`/`expired`/`failed`. */
 	state: string;
 	/** Which where-block this row carries — the record's own kind is the difference. */
-	kind: "device" | "machine" | "credential" | "unknown";
+	kind: "device" | "machine" | "credential" | "profile" | "unknown";
 	/** Authored by the backend from the signed request, never reconstructed here. */
 	summary?: string;
 	details?: string[];
@@ -114,6 +195,16 @@ export type MeshApprovalRow = {
 	requestedBy: { surface: string; sessionId: string; deviceId: string };
 	/** Epoch seconds, or `null`; `<= 0` reads as "no window" in the labels. */
 	expiresAt: number | null;
+	/** The typed credential approval block, when the backend served one. */
+	typed?: MeshTypedApproval;
+	/**
+	 * The typed PROFILE-SAVE block (`profile_save`), when the backend served one.
+	 *
+	 * Separate from `typed` rather than folded into it: the two carry different
+	 * frozen disclosures, and a profile card that inherited the credential
+	 * gate's arms would offer a signature the profile route cannot carry.
+	 */
+	profile?: ProfileTypedApproval;
 };
 
 /* ------------------------------------------------------------ the states */
@@ -166,16 +257,211 @@ export function waitingApprovalCount(rows: readonly MeshApprovalRow[]): number {
 	return rows.filter((row) => isWaitingApproval(row.state)).length;
 }
 
+/**
+ * What the surface knows about the backend that decides which credential writes
+ * exist: `features.credential_approvals >= 1`. Passed in rather than read here so
+ * the gate stays a pure function of the row and the negotiated feature.
+ */
+export type ApprovalCapabilities = {
+	credentialApprovals?: boolean;
+	/**
+	 * `features.profile_approvals >= 1`: the backend serves the typed
+	 * `profile_save` card and its `profile_revert` descriptor. Absent or false, a
+	 * profile row keeps its opaque shape and offers no signature — the
+	 * kill-switch for a backend that predates the kind's registration.
+	 */
+	profileApprovals?: boolean;
+};
+
+function wellFormedDigests(typed: MeshTypedApproval): boolean {
+	return (
+		CREDENTIAL_APPROVAL_DIGEST.test(typed.requestDigest) &&
+		CREDENTIAL_APPROVAL_DIGEST.test(typed.disclosureDigest)
+	);
+}
+
+/**
+ * The typed block is one this build can ECHO: a credential operation the route's
+ * body model accepts, and two digests in its exact pattern. A block that fails
+ * this cannot produce a valid request, so no control that would send one is drawn.
+ */
+function echoable(
+	row: MeshApprovalRow,
+): row is MeshApprovalRow & { typed: MeshTypedApproval } {
+	return (
+		row.kind === "credential" &&
+		row.typed !== undefined &&
+		row.typed.action === "approve-credential" &&
+		row.typed.operation !== null &&
+		wellFormedDigests(row.typed)
+	);
+}
+
 /** `approve` is offered on `requested` alone: every other open state is past the decision. */
-export function canApproveApproval(row: MeshApprovalRow): boolean {
+export function canApproveApproval(
+	row: MeshApprovalRow,
+	{
+		credentialApprovals = false,
+		profileApprovals = false,
+	}: ApprovalCapabilities = {},
+): boolean {
+	if (row.state !== "requested") return false;
+	/*
+	 * A PROFILE CARD IS APPROVED ONLY THROUGH ITS ALLOWLISTED ROUTE, and only when
+	 * the backend says it accepts it: the capability is advertised, the row's
+	 * typed payload parses as the frozen v1 disclosure, the server says THIS host
+	 * may sign it, and the disclosure is for the operation the route carries.
+	 * There is no generic path: the removal of `profile_save` from production
+	 * registration means an unadvertised backend must show the card as opaque.
+	 */
+	if (row.kind === "profile")
+		return (
+			profileApprovals &&
+			row.profile !== undefined &&
+			row.profile.signable_here === true &&
+			row.profile.disclosure != null &&
+			row.profile.disclosure.operation === PROFILE_SAVE_OPERATION
+		);
+	/*
+	 * A CREDENTIAL CARD IS APPROVED ONLY THROUGH ITS TYPED ROUTE, and only when
+	 * every one of these holds:
+	 *  - the backend advertises `credential_approvals` (without it there is no
+	 *    route that accepts the body, and the bodiless `/approve` is refused for
+	 *    these records by design);
+	 *  - the server says THIS host may sign it (`signable_here`: the assurance
+	 *    policy, the state and a describable record, decided server-side);
+	 *  - the block is echoable, and its disclosure parsed for the same operation,
+	 *    so the card can state what the signature binds before offering it.
+	 * `can_approve_here` is deliberately NOT read for these rows: the backend keeps
+	 * it `false` so an older renderer never offers a bodiless Approve, and that
+	 * stays true however new this renderer is.
+	 */
+	if (row.kind === "credential")
+		return (
+			credentialApprovals &&
+			echoable(row) &&
+			row.typed.signableHere &&
+			row.typed.disclosure?.operation === row.typed.operation
+		);
 	// Legacy device/machine cards retain their existing signing route. Neither
 	// an optimistic optional field nor an unknown/new intent enables that route.
-	// Inheritance and future typed approvals need their OWN supported consumer.
 	return (
-		row.state === "requested" &&
 		row.canApproveHere !== false &&
 		(row.kind === "device" || row.kind === "machine")
 	);
+}
+
+/**
+ * Whether a SIGNED credential card's apply may be sent again (`apply-credential`).
+ *
+ * Only after the decision (`approved`, or `failed` once a run stopped), and only
+ * when an outcome said the SAME card can still succeed: the row's persisted
+ * `apply_outcome.retryable`, or the last decision's own outcome (`retryable`
+ * here) - the backend's rule that `retryable` is the only signal for "Try again",
+ * because a permanent refusal retried is a loop a person cannot get out of.
+ */
+/**
+ * Whether a SIGNED profile card's apply may be sent again (`apply-operation`).
+ *
+ * The same rule as the credential retry — a decision exists, and an outcome said
+ * this card can still succeed — because the backend's `retryable` is the only
+ * signal for "Try again" across both typed kinds.
+ */
+export function canRetryProfileApply(
+	row: MeshApprovalRow,
+	{ profileApprovals = false }: ApprovalCapabilities = {},
+	retryable?: boolean,
+): boolean {
+	return (
+		profileApprovals &&
+		row.kind === "profile" &&
+		row.profile !== undefined &&
+		(row.state === "approved" || row.state === "failed") &&
+		(retryable ?? row.profile.apply_outcome?.retryable === true)
+	);
+}
+
+export function canRetryCredentialApply(
+	row: MeshApprovalRow,
+	{ credentialApprovals = false }: ApprovalCapabilities = {},
+	retryable?: boolean,
+): boolean {
+	return (
+		credentialApprovals &&
+		echoable(row) &&
+		(row.state === "approved" || row.state === "failed") &&
+		// A latest response is authoritative, including false: an apply refusal
+		// before begin_run leaves the old retryable receipt unchanged on disk.
+		(retryable ?? row.typed.applyOutcome?.retryable === true)
+	);
+}
+
+/**
+ * The request one decision sends, or `null` when this row cannot send it.
+ *
+ * THE ONE PLACE A DECISION BECOMES A WIRE REQUEST, so the rule "a credential row
+ * never reaches the bodiless `/approve`" is enforced where the request is built,
+ * not only where the button is drawn. The typed body is the row's own operation
+ * and digests, copied unchanged: the server recomputes both from the record on
+ * disk and refuses a mismatch before it signs, so an echo of what was SHOWN is
+ * the whole point - a digest computed here would bind nothing the server served.
+ */
+export function approvalDecisionRequest(
+	row: MeshApprovalRow,
+	decision: ApprovalDecision,
+	capabilities: ApprovalCapabilities = {},
+	retryable?: boolean,
+): DesktopRequest | null {
+	const approvalId = row.approvalId;
+	if (decision === "deny") return { op: "approvals.deny", approvalId };
+	if (row.kind === "profile") {
+		const allowed =
+			decision === "approve"
+				? canApproveApproval(row, capabilities)
+				: canRetryProfileApply(row, capabilities, retryable);
+		if (!allowed || !row.profile) return null;
+		/*
+		 * THE TWO DIGESTS ARE ECHOED FROM THE ROW, never rebuilt: the server
+		 * recomputes both from the record on disk and refuses a mismatch before any
+		 * signer runs, so a value computed here would bind bytes the server never
+		 * served. `operation` is the frozen op name, not the row's own spelling.
+		 */
+		return {
+			op:
+				decision === "approve"
+					? "approvals.approveOperation"
+					: "approvals.applyOperation",
+			approvalId,
+			operation: PROFILE_SAVE_OPERATION,
+			requestDigest: row.profile.request_digest,
+			/*
+			 * An ABSENT disclosure digest cannot be echoed: the op's body must carry a
+			 * `sha256:` value, and inventing one would bind bytes nobody served. The
+			 * empty string fails the request schema, so the press is refused by name
+			 * rather than by a guessed digest.
+			 */
+			disclosureDigest: row.profile.disclosure_digest ?? "",
+		};
+	}
+	if (row.kind === "device" || row.kind === "machine")
+		return decision === "approve" && canApproveApproval(row, capabilities)
+			? { op: "approvals.approve", approvalId }
+			: null;
+	const allowed =
+		decision === "approve"
+			? canApproveApproval(row, capabilities)
+			: canRetryCredentialApply(row, capabilities, retryable);
+	if (!allowed || !echoable(row) || row.typed.operation === null) return null;
+	return {
+		op:
+			decision === "approve"
+				? "approvals.approveCredential"
+				: "approvals.applyCredential",
+		approvalId,
+		operation: row.typed.operation,
+		requestDigest: row.typed.requestDigest,
+		disclosureDigest: row.typed.disclosureDigest,
+	};
 }
 
 /**
@@ -228,6 +514,100 @@ function where(value: unknown): MeshApprovalWhere {
 	};
 }
 
+/** A wire string kept EXACTLY as sent (no trim): for values that are echoed back. */
+function verbatim(value: unknown): string {
+	return typeof value === "string" ? value : "";
+}
+
+function credentialOperation(
+	value: unknown,
+): CredentialApprovalOperation | null {
+	return (CREDENTIAL_APPROVAL_OPERATIONS as readonly unknown[]).includes(value)
+		? (value as CredentialApprovalOperation)
+		: null;
+}
+
+function disclosure(value: unknown): MeshCredentialDisclosure | null {
+	if (!isRecord(value)) return null;
+	const operation = credentialOperation(value.operation);
+	if (operation === null) return null;
+	const recipient = isRecord(value.recipient) ? value.recipient : {};
+	const lifetime = isRecord(value.grant_lifetime) ? value.grant_lifetime : {};
+	const requires = isRecord(value.requires_capability)
+		? value.requires_capability
+		: {};
+	return {
+		operation,
+		credentialKey: text(value.credential_key),
+		provider: text(value.provider),
+		account: text(value.account),
+		org: text(value.org),
+		scope: text(value.scope),
+		recipient: {
+			deviceId: text(recipient.device_id),
+			name: text(recipient.name),
+			keyFingerprint: text(recipient.key_fingerprint),
+		},
+		// Preserve EVERY served fact, including exact selector/revision/ref tuples,
+		// retained fence and provenance. Counts alone hide what is being restored.
+		// This display-only snapshot is never used to compute the echoed digest.
+		evidence: JSON.stringify(value, null, 2),
+		withdrawalCount: Array.isArray(value.withdrawals)
+			? value.withdrawals.length
+			: 0,
+		untilRevoked: lifetime.kind === "until_revoked",
+		// Each of these is a consequence the card states, so an absent or malformed
+		// value reads as the answer that claims the MOST: never a narrower grant
+		// than the backend may have meant.
+		futureLogins: value.future_logins !== false,
+		installsOrJoins: value.installs_or_joins !== false,
+		copiesCredential:
+			typeof value.copies_credential === "boolean"
+				? value.copies_credential
+				: null,
+		requiresCapability: text(requires.name),
+	};
+}
+
+function applyOutcome(value: unknown): MeshApplyOutcome | null {
+	if (!isRecord(value)) return null;
+	return {
+		code: text(value.code),
+		retryable: value.retryable === true,
+		reason: text(value.reason),
+		remedy: text(value.remedy),
+	};
+}
+
+/**
+ * `typed_approval`, normalised; `undefined` when the row carries none.
+ *
+ * THE DIGESTS ARE KEPT VERBATIM - not trimmed, not lower-cased, not rebuilt. They
+ * are echoed to the server, which compares them byte for byte with what it
+ * recomputes from the record; a "cleaned" digest is a different digest, and one
+ * that only matched after cleaning would mean the row and the server disagreed.
+ * A malformed one is kept as-is too, so the gate (`canApproveApproval`) refuses
+ * it by its pattern rather than this parser quietly repairing it.
+ */
+function typedApproval(value: unknown): MeshTypedApproval | undefined {
+	if (!isRecord(value)) return undefined;
+	return {
+		action: text(value.action),
+		operation: credentialOperation(value.operation),
+		requestDigest: verbatim(value.request_digest),
+		disclosureDigest: verbatim(value.disclosure_digest),
+		disclosure: disclosure(value.disclosure),
+		assurance: text(value.assurance),
+		// Fail toward the disclosure: only an explicit `false` hides it.
+		unprovenHuman: value.unproven_human !== false,
+		signableHere: value.signable_here === true,
+		refusal: text(value.refusal),
+		refusalMessage: text(value.refusal_message),
+		applyOutcome: applyOutcome(value.apply_outcome),
+		...(isRecord(value.upgrade) ? { upgrade: { ...value.upgrade } } : {}),
+	};
+}
+
 function scopes(value: unknown): MeshApprovalScopes {
 	const what = isRecord(value) ? value : {};
 	return {
@@ -271,21 +651,45 @@ export function approvalRows(value: unknown): MeshApprovalRow[] {
 		// #2435 is a signed intent INSIDE device_onboard, not a new where-block.
 		// Presence is enough to close the generic signing path even if the intent
 		// is malformed; only the backend can interpret and disclose signed scope.
+		// A finite share (`credential_finite_share`) is the same class of signed
+		// intent inside `device_onboard`: classifying it `device` headed it
+		// "Onboard <device>" and offered the generic signing route. Either key, or
+		// a typed block naming the credential action, makes it a credential row.
+		const typed = typedApproval(raw.typed_approval);
+		/*
+		 * A PROFILE ROW IS RECOGNISED BY ITS OWN TYPED BLOCK OR ITS RECORD KIND, and
+		 * both are checked because the block alone is optional on the wire (a kind
+		 * that is registered but served without a disclosure must still never fall
+		 * through to the generic signing path). A row whose typed payload does not
+		 * parse keeps the kind and loses the block, so the card states the record as
+		 * opaque rather than pretending it is an onboarding.
+		 */
+		const profile = profileTypedApproval(raw.typed_approval);
 		const credential =
-			isRecord(raw.what) &&
-			Object.prototype.hasOwnProperty.call(raw.what, "credential_inheritance");
+			(isRecord(raw.what) &&
+				(Object.prototype.hasOwnProperty.call(
+					raw.what,
+					"credential_inheritance",
+				) ||
+					Object.prototype.hasOwnProperty.call(
+						raw.what,
+						"credential_finite_share",
+					))) ||
+			typed?.action === "approve-credential";
 		const explicitKind = Object.prototype.hasOwnProperty.call(raw, "kind")
 			? text(raw.kind)
 			: undefined;
 		const kind: MeshApprovalRow["kind"] =
-			credential || explicitKind === "credential_inheritance"
-				? "credential"
-				: explicitKind !== undefined &&
-						!["device_onboard", "local_authority"].includes(explicitKind)
-					? "unknown"
-					: !isRecord(raw.device) && isRecord(raw.machine)
-						? "machine"
-						: "device";
+			profile !== null || explicitKind === PROFILE_SAVE_OPERATION
+				? "profile"
+				: credential || explicitKind === "credential_inheritance"
+					? "credential"
+					: explicitKind !== undefined &&
+							!["device_onboard", "local_authority"].includes(explicitKind)
+						? "unknown"
+						: !isRecord(raw.device) && isRecord(raw.machine)
+							? "machine"
+							: "device";
 		const requestedBy = isRecord(raw.requested_by) ? raw.requested_by : {};
 		rows.push({
 			approvalId,
@@ -314,6 +718,8 @@ export function approvalRows(value: unknown): MeshApprovalRow[] {
 				deviceId: text(requestedBy.device_id),
 			},
 			expiresAt: time(raw.expires_at),
+			...(typed && kind === "credential" ? { typed } : {}),
+			...(profile && kind === "profile" ? { profile } : {}),
 		});
 	}
 	return rows;
@@ -365,6 +771,10 @@ export function approvalSummary(
 		row.kind === "unknown" ||
 		row.canApproveHere === false
 	) {
+		// A typed disclosure states the ask in this app's own words; the backend's
+		// `summary` is the CLI-shaped sentence kept for renderers that predate it.
+		const typedHead = credentialHead(row);
+		if (typedHead) return typedHead;
 		if (row.summary) return row.summary;
 		if (row.kind === "credential" || row.kind === "unknown")
 			return approvalHead(row);
@@ -392,7 +802,11 @@ export function approvalSummary(
  */
 export function approvalHead(row: MeshApprovalRow): string {
 	if (row.kind === "credential")
-		return row.summary || t("ui.mesh.approval.credential_title");
+		return (
+			credentialHead(row) ||
+			row.summary ||
+			t("ui.mesh.approval.credential_title")
+		);
 	if (row.kind === "unknown")
 		return row.summary || t("ui.mesh.approval.unknown_title");
 	if (row.canApproveHere === false && row.summary) return row.summary;
@@ -401,6 +815,107 @@ export function approvalHead(row: MeshApprovalRow): string {
 		: t("ui.mesh.mesh_approvals.onboard_subject", {
 				subject: approvalSubject(row),
 			});
+}
+
+/** Direction provenance follows the SAME head selection as approvalHead. */
+export function approvalHeadUsesBackendSummary(row: MeshApprovalRow): boolean {
+	if (!row.summary) return false;
+	if (row.kind === "credential") return credentialHead(row) === null;
+	return row.kind === "unknown" || row.canApproveHere === false;
+}
+
+/**
+ * Brand spellings for the credential keys a finite share names. The key is a
+ * store identifier (`github`), and the ask reads better with the product's own
+ * name; an unlisted key is shown as it is rather than guessed at. Proper nouns,
+ * not copy, so they do not go through the catalogue.
+ */
+const CREDENTIAL_BRANDS: Readonly<Record<string, string>> = {
+	github: "GitHub",
+	gitlab: "GitLab",
+};
+
+function credentialName(key: string): string {
+	return CREDENTIAL_BRANDS[key.toLowerCase()] ?? key;
+}
+
+/** The device a typed credential card names: its name, else its id's tail. */
+export function credentialRecipientLabel(row: MeshApprovalRow): string {
+	const recipient = row.typed?.disclosure?.recipient;
+	return deviceLabel({
+		device_id: recipient?.deviceId ?? "",
+		name: recipient?.name ?? "",
+	});
+}
+
+/**
+ * The typed card's one-line ask ("Share your GitHub login with studio-mini"),
+ * from the structured disclosure the signature binds; `null` without one, so
+ * the callers fall back to the backend's summary exactly as before.
+ */
+function credentialHead(row: MeshApprovalRow): string | null {
+	const facts = row.kind === "credential" ? row.typed?.disclosure : null;
+	if (!facts) return null;
+	const device = credentialRecipientLabel(row);
+	if (facts.operation === "credential_finite_share")
+		return t("ui.mesh.approval.head_finite_share", {
+			credential: credentialName(facts.credentialKey),
+			device,
+		});
+	return t("ui.mesh.approval.head_inheritance", {
+		provider: credentialName(facts.provider),
+		account: facts.account,
+		device,
+	});
+}
+
+/**
+ * What approving a typed credential card does, one consequence per line, for the
+ * Details disclosure. Built from the SAME facts the CLI renders
+ * (`finite_share.details` / `inheritance.details`), in its order: who may use it,
+ * for how long, what it does not do, what it undoes. Empty without a disclosure.
+ */
+export function credentialConsequences(row: MeshApprovalRow): string[] {
+	const facts = row.kind === "credential" ? row.typed?.disclosure : null;
+	if (!facts) return [];
+	const device = credentialRecipientLabel(row);
+	const lines: string[] = [];
+	if (facts.operation === "credential_finite_share") {
+		lines.push(
+			facts.scope === "session"
+				? t("ui.mesh.approval.scope_session", { device })
+				: t("ui.mesh.approval.scope_device", { device }),
+		);
+	} else {
+		lines.push(
+			facts.org
+				? t("ui.mesh.approval.org_limited", { org: facts.org })
+				: t("ui.mesh.approval.org_any"),
+		);
+		if (facts.copiesCredential === false)
+			lines.push(t("ui.mesh.approval.not_copied", { device }));
+	}
+	if (facts.untilRevoked) lines.push(t("ui.mesh.approval.until_revoked"));
+	lines.push(
+		facts.futureLogins
+			? t("ui.mesh.approval.future_logins_covered")
+			: t("ui.mesh.approval.future_logins_not_shared"),
+	);
+	lines.push(
+		facts.installsOrJoins
+			? t("ui.mesh.approval.installs_something")
+			: t("ui.mesh.approval.installs_nothing"),
+	);
+	if (facts.requiresCapability === "broker_credential")
+		lines.push(t("ui.mesh.approval.needs_broker", { device }));
+	if (facts.withdrawalCount > 0)
+		lines.push(
+			t("ui.mesh.approval.undoes_withdrawals", {
+				count: facts.withdrawalCount,
+				device,
+			}),
+		);
+	return lines;
 }
 
 /**
@@ -712,26 +1227,78 @@ const grantClauses = (): Record<string, string> => ({
 });
 
 /**
- * "expires in 42 minutes" — the record's ONE window (§2.1: 60 minutes by
- * default), rounded UP to the next unit so the copy never claims less time than
- * is left, which is the browser consent card's own rule for the same reason.
- * `null` when there is no window or it has passed (a passed window folds to
- * `expired` server-side anyway; this is the belt beside that brace).
+ * A signed record still needing a decision is live, not settled history.
+ *
+ * The profile arm is the same fact one kind over: a signed `profile_save` whose
+ * apply has not finished is a change that is NOT saved, so it belongs beside the
+ * waiting cards rather than in the settled list, and it must survive a restart
+ * there (the store is the authority; this read is device-local).
  */
-export function approvalRemainingLabel(
-	expiresAtSeconds: number | null,
-	nowSeconds: number,
+export function isAttentionApproval(row: MeshApprovalRow): boolean {
+	if (row.kind === "profile")
+		return (
+			row.profile !== undefined &&
+			(row.state === "approved" || row.state === "failed")
+		);
+	return (
+		row.kind === "credential" &&
+		row.typed !== undefined &&
+		(row.state === "approved" || row.state === "failed")
+	);
+}
+
+/** A latest explicit outcome overrides the stored receipt, including false. */
+export function hasPermanentCredentialOutcome(
+	row: MeshApprovalRow,
+	retryable?: boolean,
+): boolean {
+	return (
+		row.kind === "credential" &&
+		(row.state === "approved" || row.state === "failed") &&
+		(retryable ?? row.typed?.applyOutcome?.retryable) === false
+	);
+}
+
+/** Request-answer deadline, NOT the duration of the share. Shared by every card kind. */
+export function approvalAnswerWindowLabel(
+	expires: number | null,
+	now: number,
+	alreadyAnswered = false,
 ): string | null {
-	if (expiresAtSeconds === null || expiresAtSeconds <= 0) return null;
-	const leftSeconds = expiresAtSeconds - nowSeconds;
-	if (leftSeconds <= 0) return null;
-	if (leftSeconds < 60)
-		return t("ui.mesh.mesh_approvals.expires_in_under_a_minute");
-	const minutes = Math.ceil(leftSeconds / 60);
-	if (minutes < 90)
-		return t("ui.mesh.mesh_approvals.expires_minutes", { count: minutes });
-	const hours = Math.ceil(minutes / 60);
-	return t("ui.mesh.mesh_approvals.expires_hours", { count: hours });
+	if (expires === null || expires <= now || expires <= 0) return null;
+	const minutes = Math.ceil((expires - now) / 60);
+	const duration =
+		expires - now < 60
+			? t("ui.mesh.approval.duration_under_minute")
+			: minutes < 90
+				? t("ui.mesh.approval.duration_minutes", { count: minutes })
+				: t("ui.mesh.approval.duration_hours", {
+						count: Math.ceil(minutes / 60),
+					});
+	return t(
+		alreadyAnswered
+			? "ui.mesh.approval.expires_window"
+			: "ui.mesh.approval.answer_window",
+		{ duration },
+	);
+}
+
+/** The consent-critical facts remain visible before a person presses Approve. */
+export function credentialVisibleConsequences(row: MeshApprovalRow): string {
+	const facts = row.typed?.disclosure;
+	if (!facts) return "";
+	const lines = credentialConsequences(row);
+	const lifetime = t("ui.mesh.approval.until_revoked");
+	const future = t(
+		facts.futureLogins
+			? "ui.mesh.approval.future_logins_covered"
+			: "ui.mesh.approval.future_logins_not_shared",
+	);
+	return lines
+		.filter(
+			(line, index) => index === 0 || line === lifetime || line === future,
+		)
+		.join(" · ");
 }
 
 /* ---------------------------------------------------------------- hooks */
@@ -748,7 +1315,14 @@ export function useMeshApprovals(
 	enabled: boolean,
 	{ poll = true }: { poll?: boolean } = {},
 ) {
+	const capabilities = useDesktopCapabilities();
+	const proposalsEnabled = desktopFeatureEnabled(
+		capabilities.data,
+		"profile_proposals",
+	);
 	return useQuery({
+		select: (rows: MeshApprovalRow[]) =>
+			meshRowsWithoutProfileProposals(rows, proposalsEnabled),
 		queryKey: meshApprovalKeys.approvals,
 		enabled,
 		queryFn: async () =>
@@ -773,19 +1347,38 @@ export function useMeshApprovals(
  * the 30 s mesh cadence is what picks the arrival up; this invalidation is what
  * makes the DECIDED cases immediate.
  */
-export function useMeshApprovalDecision() {
-	const client = useQueryClient();
-	return useMutation({
+/** Shared by the hook and production-defaults regression; no signing decision is replayed. */
+export function meshApprovalDecisionOptions() {
+	return {
+		// A 200 signed-but-unapplied answer is thrown to preserve its refusal.
+		// The app defaults retry mutations once; replaying Approve would sign twice
+		// or overwrite that outcome with a decision-conflict refusal. Only an
+		// explicit Try again may send applyCredential, never automatic retry.
+		retry: false as const,
 		mutationFn: async (ask: {
 			approvalId: string;
 			decision: ApprovalDecision;
+			/** Built by `approvalDecisionRequest`, the one place a decision becomes a request. */
+			request: DesktopRequest;
 		}): Promise<void> => {
-			const request =
-				ask.decision === "approve"
-					? ({ op: "approvals.approve", approvalId: ask.approvalId } as const)
-					: ({ op: "approvals.deny", approvalId: ask.approvalId } as const);
-			await desktopResult<unknown>(request);
+			const answer = await desktopResult<unknown>(ask.request);
+			// The ONE answer this reads (the header's rule otherwise holds): a typed
+			// approve that SIGNED but whose apply refused answers 200 with
+			// `applied.ok: false`, and the list cannot always say so - a card refused
+			// before its run started stays `approved` with no receipt. Thrown, so it
+			// reaches the card through the same refusal path every other one takes.
+			if (ask.request.op === "approvals.approveCredential") {
+				const unapplied = unappliedPhase(answer);
+				if (unapplied) throw unapplied;
+			}
 		},
+	};
+}
+
+export function useMeshApprovalDecision() {
+	const client = useQueryClient();
+	return useMutation({
+		...meshApprovalDecisionOptions(),
 		onSettled: () => {
 			void client.invalidateQueries({ queryKey: meshApprovalKeys.approvals });
 			void client.invalidateQueries({ queryKey: meshKeys.networks });
@@ -830,12 +1423,137 @@ export function approvalErrorMessage(error: unknown): string {
 export function approvalRefusal(error: unknown): {
 	code: string;
 	sentence: string;
+	retryable?: boolean;
 } {
-	const held = error as { code?: unknown; message?: unknown } | null;
+	const held = error as {
+		code?: unknown;
+		message?: unknown;
+		detail?: unknown;
+		applyOutcome?: unknown;
+	} | null;
+	/*
+	 * AN APPLY-PHASE REFUSAL CARRIES ITS OWN OUTCOME: the approve answer's
+	 * `applied` block (thrown by the mutation as `applyOutcome`), or the
+	 * `apply-credential` 409's `apply_outcome` (on the transport error's `detail`).
+	 * Its `reason` and `remedy` are the backend's desktop-safe sentences, so they
+	 * are preferred over `message`, which stays CLI-shaped for compatibility.
+	 */
+	const outcome = applyOutcome(
+		held?.applyOutcome ??
+			(isRecord(held?.detail) ? held.detail.apply_outcome : undefined),
+	);
+	const outcomeSentence = outcome
+		? [outcome.reason, outcome.remedy].filter(Boolean).join(" ")
+		: "";
 	return {
-		code: text(held?.code) || "approval_refused",
+		code: outcome?.code || text(held?.code) || "approval_refused",
 		sentence:
+			outcomeSentence ||
 			text(held?.message) ||
 			t("ui.mesh.mesh_approvals.decision_could_not_be_answered"),
+		// Only an apply outcome may override the persisted receipt. A transport
+		// deadline or pre-apply refusal says nothing about whether apply can retry.
+		retryable: outcome ? outcome.retryable === true : undefined,
 	};
+}
+
+/**
+ * The `applied: {ok: false, ...}` phase of an `approve-credential` answer, as an
+ * error `approvalRefusal` reads; `null` when the apply succeeded or the answer has
+ * no phase block (nothing to report beyond the list's own state).
+ */
+export function unappliedPhase(answer: unknown): {
+	code: string;
+	message: string;
+	applyOutcome: unknown;
+} | null {
+	const applied = isRecord(answer) ? answer.applied : undefined;
+	if (!isRecord(applied) || applied.ok !== false) return null;
+	return {
+		code: text(applied.code),
+		message: text(applied.message),
+		applyOutcome: applied,
+	};
+}
+
+const NAMED_REFUSAL_FIELDS = /(\{request\}|\{reason\})/;
+
+/**
+ * Keep locale-authored ordering/punctuation, but return the two interpolations
+ * separately so React can isolate each with bdi. Pass literal field tokens into
+ * the formatter, then insert actual untrusted text AFTER splitting: a request or
+ * backend reason containing the same token can never be interpreted as markup
+ * or confused with a template field. No manual bidi controls are stored in copy.
+ */
+export function namedApprovalRefusalParts(
+	request: string,
+	reason: string,
+): {
+	kind: "literal" | "request" | "reason";
+	text: string;
+}[] {
+	return t("ui.mesh.approval.named_refusal", {
+		request: "{request}",
+		reason: "{reason}",
+	})
+		.split(NAMED_REFUSAL_FIELDS)
+		.filter(Boolean)
+		.map((part) =>
+			part === "{request}"
+				? { kind: "request", text: request }
+				: part === "{reason}"
+					? { kind: "reason", text: reason }
+					: { kind: "literal", text: part },
+		);
+}
+
+/**
+ * Catalogue-authored requests keep locale direction despite leading Latin ids;
+ * a backend summary has no locale provenance and must select its own direction.
+ */
+export function approvalRefusalPartDirection(
+	kind: "request" | "reason" | "literal",
+	direction: "ltr" | "rtl",
+	backendSummary = false,
+): "ltr" | "rtl" | "auto" {
+	return kind === "request" && !backendSummary ? direction : "auto";
+}
+
+/**
+ * Route a refusal through focus OR a polite announcement, never neither/both.
+ * Read actual focus AFTER attempting the handoff: a disconnected/unfocusable
+ * target does not count as delivery. Pure DOM boundary for behavioural tests.
+ */
+export function deliverApprovalRefusal({
+	document,
+	target,
+	refusalTarget,
+	origin,
+	allowFocus,
+	sentence,
+}: {
+	document: Pick<Document, "activeElement" | "body">;
+	target: HTMLElement | null;
+	refusalTarget: HTMLElement | null;
+	origin: Element | null;
+	allowFocus: boolean;
+	sentence: string;
+}): { focused: boolean; announcement: string } {
+	if (
+		allowFocus &&
+		(document.activeElement === document.body ||
+			document.activeElement === origin)
+	)
+		target?.focus({ preventScroll: true });
+	const focused =
+		refusalTarget !== null && document.activeElement === refusalTarget;
+	return { focused, announcement: focused ? "" : sentence };
+}
+
+/** A new core owns profile proposals in Agents, even if a skewed feed lists legacy rows. */
+export function meshRowsWithoutProfileProposals(
+	rows: MeshApprovalRow[],
+	enabled: boolean,
+): MeshApprovalRow[] {
+	return enabled ? rows.filter((row) => row.kind !== "profile") : rows;
 }

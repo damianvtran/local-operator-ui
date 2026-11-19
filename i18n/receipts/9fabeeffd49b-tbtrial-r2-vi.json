@@ -1,0 +1,30 @@
+{
+ "auditor": "copy-reviewer",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "9fabeeffd49b-tbtrial-r2-vi",
+ "status": "passed",
+ "namespace": "ui.teamBridgeTrial",
+ "sha256": {
+  "vi": "6184b57d8a6db98e9f3dfc75a1dba1e3bde254b2f1e158d2dba7afbca4ee86c8",
+  "en": "36522e0b7e636ec33f5c654add2d7cafdf78644cc81806f24d54805095decc25",
+  "en_context": "964f7f893d1f066aa8fbcedfb4533f19a50aae7984c250a81c60675c72b3b411"
+ },
+ "scope": "Round 2 on PR #1654 head a906a494cb341e6c6b6d81779875bb91a79754e8 (delta bdc5bb1229e..a906a494): every value that changed since round 1 (13 en-driven keys incl. the new dialog.end_invites and paused.note_member, plus the locale-only fixes for R1/F1/Z1/Z2/V1/U1), read against en + ui.teamBridgeTrial.context.json and the core glossary/style guides; key-set parity (37), {date} preserved, no ASCII apostrophes, no manual bidi controls, no em/en dashes; {date} rendered through formatTrialDate's Intl options (node 24.22.1); each round-1 finding re-checked on head. Unchanged keys were audited in round 1 (53746f0323e5).",
+ "references": {
+  "glossary": "damianvtran/local-operator@89f7f8f9eaddb3084569a7dcddc6524fac454cd5:i18n/glossary.md",
+  "style_guide": "damianvtran/local-operator@89f7f8f9eaddb3084569a7dcddc6524fac454cd5:i18n/style-guides/vi.md",
+  "note": "glossary and style guides byte-identical to round 1's ffd6c9e6 (git diff --quiet)"
+ },
+ "translator": {
+  "agent": "coder",
+  "model": "anthropic/claude-opus-5-5",
+  "commits": [
+   "55dc7bb4d45",
+   "a906a494cb3"
+  ]
+ },
+ "independence": "Auditor copy-reviewer (session 9fabeeffd49b) is a different agent and run from the translator (coder, remediation commits 55dc7bb4d45 and a906a494). Same served model family disclosed. The auditor edited no translation.",
+ "date": "2026-11-04",
+ "prior_findings": "V1 fixed (nguồn tín dụng).",
+ "findings": []
+}

@@ -1,20 +1,48 @@
 import { t } from "../../i18n";
 import type {
+	AddressHistoryRequest,
+	AddressHistoryResponse,
+} from "../../shared/browser-address-history";
+import { isExtensionId } from "../../shared/browser-extensions";
+import type { MediaPermissionView } from "../../shared/browser-media-permission";
+import type {
+	PasskeyCustodyView,
+	PasskeyNoticeView,
+} from "../../shared/browser-passkey-notice";
+import type {
 	HumanTabAction,
 	HumanTabActionOutcome,
 } from "../../shared/browser-tab-action";
+import { parseInternalUrl } from "../../shared/internal-pages";
 import type { BrowserActionContext, HostFacts } from "./actions/context";
-import { requesterOf } from "./actions/context";
+import { requesterOf, sessionIdOf } from "./actions/context";
 import * as downloadActions from "./actions/download";
 import { withOriginGate } from "./actions/gate";
 import * as geometryActions from "./actions/geometry";
 import * as inputActions from "./actions/input";
+import * as networkActions from "./actions/network";
 import * as pageActions from "./actions/page";
+import * as queryActions from "./actions/query";
+import * as recordingActions from "./actions/recording";
+import * as selectActions from "./actions/select";
+import * as setvalueActions from "./actions/setvalue";
 import * as tabActions from "./actions/tabs";
 import * as uploadActions from "./actions/upload";
+import { collectAddressHistory, mergeAddressHistory } from "./address-history";
 import type { ConsentDecision } from "./approvals";
 import { ChromeTabOrder } from "./chrome-tab-order";
 import { BrowserHostError } from "./errors";
+import {
+	type BrowserHistoryStore,
+	createBrowserHistoryStore,
+} from "./history-store";
+import {
+	armInternalNavigation,
+	displayTitleFor,
+	displayUrlFor,
+	internalDocumentUrl,
+	internalPageOf,
+} from "./internal-pages";
 import { PageControls, type PageZoomCommand } from "./page-controls";
 import { COMMAND_TIMEOUTS_S, type Method, PROTO_VERSION } from "./protocol";
 import type { ContentRect, TabRecord } from "./registry";
@@ -22,6 +50,8 @@ import { redactToken, surfaceToken } from "./registry";
 import type { PersistedTab } from "./session-store";
 import { permittedScheme } from "./settle";
 import { TabAudioTracker } from "./tab-audio";
+import type { UserAttentionEntry } from "./user-attention";
+import { ACCESS_RESULT_TTL_MS } from "./vendor/driver/access-queue";
 import { safeHttpUrl } from "./vendor/driver/origin-policy";
 
 const DUPLICATABLE_WEB_URL = /^https?:\/\//i;
@@ -58,11 +88,35 @@ const DOCUMENT_SCOPED: ReadonlySet<string> = new Set([
 	"hit_test",
 	"ancestors",
 	"snapshot",
+	// `query` is a read of the CURRENT document's DOM (CSS in, descriptors out),
+	// so it is authorized on entry and again on the result exactly as `read` is:
+	// an answer that raced a navigation it did not cause must be discarded, not
+	// reported as the new page's (agent review round 2 on the query slice — the
+	// action was missing from BOTH sets).
+	"query",
+	// `copy` reads an element's text out of the CURRENT document and puts it on the
+	// user's clipboard, which is the strongest reason in this set to hold it to the
+	// entry document: an answer that raced an autonomous navigation would mean the
+	// clipboard now holds text from a document the agent was never approved for,
+	// and the receipt would describe it as the approved page's. It is NOT a
+	// NAVIGATING_ACTION — copying drives no click and fetches nothing — so the
+	// per-hop Document gate stays off, exactly as it does for `read`.
 	"screenshot",
 	"click",
 	"type",
+	"press",
+	// `hover` dispatches page events at the CURRENT document and reports its hit
+	// stack, so it is authorized on entry and on the result exactly like `click`.
+	"hover",
+	"select",
+	// `setvalue` writes into a control on the CURRENT document and reports the
+	// value it read back from it, so it is authorized on entry and on the result
+	// exactly as `select` is: an answer that raced a navigation it did not cause
+	// must be discarded, never reported as the new page's.
+	"setvalue",
 	"scroll",
 	"logs",
+	"copy",
 	// `download` names a control on the CURRENT document (the link or button that
 	// starts the file) and `upload` names a file input on it, so both are authorized
 	// against that document on entry and again on the result. BOTH are in the
@@ -73,6 +127,13 @@ const DOCUMENT_SCOPED: ReadonlySet<string> = new Set([
 	// review refused (M2).
 	"download",
 	"upload",
+	// `record_start` captures PIXELS of the current document, which is the same
+	// class of data `screenshot` gates, so it is authorized against that document
+	// on entry and again on the result (D8). `record_stop` reveals nothing new —
+	// it ends a capture the current document already authorized and writes bytes
+	// whose destination was approved at start — so it is deliberately NOT in this
+	// set. NEITHER is a NAVIGATING_ACTION: a recording does not drive the page.
+	"record_start",
 ]);
 
 /**
@@ -109,6 +170,25 @@ const DOCUMENT_SCOPED: ReadonlySet<string> = new Set([
 const NAVIGATING_ACTIONS: ReadonlySet<string> = new Set([
 	"click",
 	"type",
+	"press",
+	// `hover` cannot navigate by ITSELF, but the page's own `mouseenter`/`mouseover`
+	// handler can (menus and router links do exactly that), and measured against the
+	// built app (scripts/browser-hover-press-proof.mjs, `/navhover`) a hover whose
+	// handler sent the tab to an unapproved origin was refused with `origin_not_allowed`
+	// while the tab STAYED on the unapproved page. Membership here is what restores it
+	// to the entry document (and adopts an approved landing instead of reporting
+	// `changed`). It is deliberately NOT in NAVIGATION_ACTIONS: no per-hop `Fetch`
+	// gate, for the reason that set's comment gives.
+	"hover",
+	// A select change handler can navigate just like hover: adopt/authorize the
+	// landing on success OR throw, and restore if unapproved. No native popup,
+	// no agent-initiated document request to intercept with Fetch.
+	"select",
+	// A `setvalue` change handler can navigate exactly like a select change: an
+	// auto-submitting form turns a write into a navigation. Adopt/authorize the
+	// landing on success OR throw, restore if unapproved, and stay OUT of
+	// NAVIGATION_ACTIONS for the reason below: the write fetches nothing itself.
+	"setvalue",
 	"download",
 	"upload",
 ]);
@@ -118,9 +198,9 @@ const NAVIGATING_ACTIONS: ReadonlySet<string> = new Set([
  * need the per-hop Document gate armed around them.
  *
  * `open` and `goto` arm it from the navigation itself (`navigateView`), so what is
- * left is the pair that navigates because a PAGE decides to: a click follows a link
- * or submits a form, a type can submit one. Arming `Fetch.enable` around the rest
- * is not free and buys nothing: the rest cannot change which document is current,
+ * left is the input family that navigates because a PAGE decides to: a click follows
+ * a link or submits a form, and type/press can submit one. Arming `Fetch.enable`
+ * around the rest is not free and buys nothing: the rest cannot change which document is current,
  * so there is no agent-initiated hop for the gate to decide, while its
  * Document-stage interception also fails the PAGE's own subresource and
  * third-party-iframe loads with `BlockedByClient` — a side effect on the page the
@@ -148,8 +228,19 @@ const NAVIGATING_ACTIONS: ReadonlySet<string> = new Set([
  * which is judged by the same pair. Arming `Fetch.enable` around an attach would
  * intercept that form's own POST and its subresources for no consent gain, which
  * is the side effect this set exists to avoid.
+ *
+ * `hover` IS IN NAVIGATING_ACTIONS BUT NOT THIS SET, deliberately: it sends one
+ * pointer move with no button, which cannot follow a link or submit a form, so there
+ * is no agent-initiated hop for the per-hop gate to decide (and arming `Fetch.enable`
+ * would fail the page's own subresource loads for no consent gain). A page whose own
+ * hover handler navigates away is judged and, if unapproved, reverted by the
+ * entry/result pair in `authorizedPerform` that NAVIGATING_ACTIONS selects.
  */
-const NAVIGATION_ACTIONS: ReadonlySet<string> = new Set(["click", "type"]);
+const NAVIGATION_ACTIONS: ReadonlySet<string> = new Set([
+	"click",
+	"type",
+	"press",
+]);
 
 /** The methods that address one tab and therefore take that tab's command lane. */
 const TAB_SCOPED: ReadonlySet<string> = new Set([
@@ -159,9 +250,14 @@ const TAB_SCOPED: ReadonlySet<string> = new Set([
 	"hit_test",
 	"ancestors",
 	"snapshot",
+	"query",
 	"screenshot",
 	"click",
 	"type",
+	"press",
+	"hover",
+	"select",
+	"setvalue",
 	"scroll",
 	"logs",
 	"close",
@@ -173,6 +269,27 @@ const TAB_SCOPED: ReadonlySet<string> = new Set([
 	// which call.
 	"download",
 	"upload",
+	// `copy` resolves a selector against ONE tab's document and writes what it finds
+	// to a process-wide clipboard, so two concurrent copies on one tab would leave
+	// the clipboard holding whichever finished last while both receipts claimed
+	// success. The lane is what makes "the bytes this answer describes" true.
+	"copy",
+	// Network capture is TAB-scoped and deliberately NOT `DOCUMENT_SCOPED`, for the
+	// same reason `logs` is not: its answer describes the tab's TRAFFIC (which
+	// spans documents, redirects and third-party subresources), not the document
+	// currently loaded. Authorizing it against the current page would refuse a read
+	// of traffic the session already watched once the tab navigated elsewhere, and
+	// would add no confidentiality — the same metadata is what `logs` exposes.
+	"network_start",
+	"network_stop",
+	"network_read",
+	"network_clear",
+	// Both recording verbs are TAB-scoped: a recording is the tab's own capture,
+	// and the finalize reads a stream that belongs to that tab's session. The
+	// stop can hold the lane for up to 45 s while it drains, which is the same
+	// bargain `download` already makes (D7).
+	"record_start",
+	"record_stop",
 ]);
 
 /**
@@ -275,9 +392,36 @@ export interface LoadFailure {
  *
  * A zero code is the "provisional load failed" marker Electron also emits; it names
  * no failure either.
+ *
+ * RE-EVALUATED 2026-10-24 against the current recovery paths. `did-start-loading`
+ * clears the mark when a retry (or any new load) starts and `did-navigate` clears
+ * it on the commit (`browser/index.ts`), so a stop, a redirect chain and a
+ * superseded load never leave a stale panel behind. Measured on Electron 44.3.0:
+ * a superseded load rejects with `ERR_ABORTED (-3)` while a redirect chain
+ * resolves on its final commit; the read-only `query` action (DOCUMENT_SCOPED and
+ * TAB_SCOPED) never navigates, so it cannot produce either. The decision stands:
+ * reporting aborts would make the panel cry wolf on ordinary browsing.
  */
 export function isReportableLoadFailure(code: number): boolean {
 	return code !== 0 && code !== -3;
+}
+
+/**
+ * Whether a `history.restore()` rejection is the superseded-navigation abort.
+ *
+ * THE RESTORE PATH DOES NOT GET A NUMERIC NET CODE, unlike `did-fail-load`: the
+ * rejection is an `Error` whose message is the only place Electron puts
+ * `ERR_ABORTED (-3)`. Matching the message here is deliberate and narrow — the
+ * same reason `isReportableLoadFailure` exists one layer down — because a
+ * superseding navigation is ordinary browsing, not a restore failure. If that
+ * superseding page is then stopped before its `did-navigate`, no commit ever
+ * arrives to clear a mark written here, and `lastLoadFailed` would skip the tab
+ * on the next launch. The timeout and a deliberate Stop reject with different
+ * text (`ERR_FAILED (-2)` for a stop), so they still mark.
+ */
+function isSupersededRestore(error: unknown): boolean {
+	const message = error instanceof Error ? error.message : String(error);
+	return message.includes("ERR_ABORTED (-3)");
 }
 
 /**
@@ -320,6 +464,10 @@ export interface BrowserHostOptions {
 	 * `will-download` handler that feeds it is installed on the SESSION, which this
 	 * module deliberately does not own. */
 	downloads: BrowserActionContext["downloads"];
+	/** The hidden H.264 encoder window for `record_start {quality: "high"}`
+	 * (`actions/recording-encoder-host.ts`). Absent in a test or a story: `high` is
+	 * then refused `record_quality_unavailable` and `standard` is unaffected. */
+	recordingEncoder?: BrowserActionContext["recordingEncoder"];
 	log: (message: string) => void;
 	onChanged: () => void;
 	facts: () => HostFacts;
@@ -327,6 +475,58 @@ export interface BrowserHostOptions {
 	 * Injected from the wiring that owns the session, so this module does not
 	 * depend on the session object. */
 	forgetSiteData: (origin: string) => Promise<void>;
+	/** The active tab's passkey notice, from the wiring that owns the shim's state
+	 * (`passkey-notice.ts`). Absent means none: the projection then carries null. */
+	passkeyNotice?: (tabId: number) => PasskeyNoticeView | null;
+	/** The active tab's passkey custody (`extensions/passkey-custody.ts`). Absent
+	 * means none: the projection then carries null. */
+	passkeyCustody?: (tabId: number) => PasskeyCustodyView | null;
+	/** Every wait an agent tab has on a person, across ALL tabs
+	 * (`user-attention.ts`). Absent means none: the projection carries `[]`. */
+	waitingOnUser?: () => UserAttentionEntry[];
+	/** The active tab's camera/microphone prompt (or macOS notice), from
+	 * `media-permissions.ts`. Absent means none: the projection carries null. */
+	mediaPermission?: (tabId: number) => MediaPermissionView | null;
+	/** Whether an extension is installed AND enabled right now (the extension
+	 * manager's `isActive`). Lets the USER type one of its pages into a user tab
+	 * (review U1c); absent = no extension pages. */
+	isActiveExtension?: (id: string) => boolean;
+	/** S4b: the popout's health, supplied by the wiring that owns the overlay
+	 * controller. Absent means no controller was built, which is `suspend`. */
+	addressOverlayMode?: () => {
+		mode: "popout" | "suspend";
+		reason: string | null;
+	};
+	/** Where the persistent suggestion history lives. Absent means no store
+	 * (a test or a story): suggestions still come from live tabs, and nothing
+	 * is recorded or written. The production wiring passes
+	 * `<userData>/browser-history.json`. */
+	historyFilePath?: string;
+	/**
+	 * S6b: the native approvals card, when the launch opt-in built one. Absent
+	 * means the shield keeps using the DOM tray/dock, so an ordinary launch is
+	 * unchanged.
+	 */
+	approvalsCard?: {
+		open: (input: {
+			locale?: string;
+			dir?: "ltr" | "rtl";
+			theme?: "light" | "dark";
+			palette?: string | null;
+			paletteVars?: Record<string, string> | null;
+			requesterLabels?: Readonly<Record<string, string>>;
+		}) => void;
+		close: () => void;
+		setContext: (input: {
+			locale?: string;
+			dir?: "ltr" | "rtl";
+			theme?: "light" | "dark";
+			palette?: string | null;
+			paletteVars?: Record<string, string> | null;
+			requesterLabels?: Readonly<Record<string, string>>;
+		}) => void;
+		state: () => { available: boolean; open: boolean };
+	};
 }
 
 export class BrowserHost implements BrowserActionContext {
@@ -354,11 +554,31 @@ export class BrowserHost implements BrowserActionContext {
 	readonly approvals: BrowserActionContext["approvals"];
 	readonly ownership: BrowserActionContext["ownership"];
 	readonly downloads: BrowserActionContext["downloads"];
+	readonly recordingEncoder?: BrowserActionContext["recordingEncoder"];
 	readonly log: (message: string) => void;
 	readonly onChanged: () => void;
 	readonly facts: () => HostFacts;
 	/** The session's per-origin storage clear, injected (see `BrowserHostOptions`). */
 	private readonly forgetSiteData: (origin: string) => Promise<void>;
+	/** S6b's native card, when the launch built one (see `BrowserHostOptions`). */
+	private readonly approvalsCard: BrowserHostOptions["approvalsCard"];
+	/** Constructor-assigned, not a field initialiser: see `tabAudio` above. */
+	private readonly passkeyNotice: BrowserHostOptions["passkeyNotice"];
+	private readonly waitingOnUser: BrowserHostOptions["waitingOnUser"];
+	private readonly passkeyCustody: BrowserHostOptions["passkeyCustody"];
+	private readonly mediaPermission: BrowserHostOptions["mediaPermission"];
+	private readonly isActiveExtension: BrowserHostOptions["isActiveExtension"];
+	/** S4b's popout health, read from the controller (or the launch's platform
+	 * answer when no controller exists). The strip reads this from the same
+	 * projection as the tabs, so the renderer has one source for "child or
+	 * fallback" and never guesses from a failed IPC call. */
+	private readonly addressOverlayMode: () => {
+		mode: "popout" | "suspend";
+		reason: string | null;
+	};
+	/** One instance per host, constructed once in the constructor. `null` when
+	 * no path was supplied (see `BrowserHostOptions.historyFilePath`). */
+	private readonly historyStore: BrowserHistoryStore | null;
 
 	/**
 	 * The last main-frame load failure per tab, cleared by the next load.
@@ -377,11 +597,16 @@ export class BrowserHost implements BrowserActionContext {
 
 	constructor(options: BrowserHostOptions) {
 		this.registry = options.registry;
-		this.pageControls = new PageControls(() => this.onChanged());
+		this.pageControls = new PageControls(
+			() => this.onChanged(),
+			5000,
+			(tabId) => this.registry.hiddenByOverlay(tabId),
+		);
 		this.cdp = options.cdp;
 		this.approvals = options.approvals;
 		this.ownership = options.ownership;
 		this.downloads = options.downloads;
+		this.recordingEncoder = options.recordingEncoder;
 		this.log = options.log;
 		this.onChanged = options.onChanged;
 		// See the field's doc comment: an arrow in a class-property initialiser is
@@ -389,6 +614,18 @@ export class BrowserHost implements BrowserActionContext {
 		this.tabAudio = new TabAudioTracker(() => this.onChanged());
 		this.facts = options.facts;
 		this.forgetSiteData = options.forgetSiteData;
+		this.approvalsCard = options.approvalsCard;
+		this.passkeyNotice = options.passkeyNotice;
+		this.waitingOnUser = options.waitingOnUser;
+		this.passkeyCustody = options.passkeyCustody;
+		this.mediaPermission = options.mediaPermission;
+		this.isActiveExtension = options.isActiveExtension;
+		this.addressOverlayMode =
+			options.addressOverlayMode ??
+			(() => ({ mode: "suspend", reason: "unavailable" }));
+		this.historyStore = options.historyFilePath
+			? createBrowserHistoryStore(options.historyFilePath)
+			: null;
 	}
 
 	/** Answer one wire request. The only place a method name becomes an action. */
@@ -517,8 +754,40 @@ export class BrowserHost implements BrowserActionContext {
 		// `NAVIGATION_ACTIONS` for why the others are deliberately not wrapped in it.
 		const operation = async (): Promise<Record<string, unknown>> => {
 			assertDocument();
-			const result = await this.perform(method, params, requestId);
-			assertDocument();
+			let result: Record<string, unknown>;
+			try {
+				result = await this.perform(method, params, requestId);
+			} catch (error) {
+				// Input can land successfully and THEN fail reading the changed page:
+				// hover's mouseenter navigates, for example, and hitAt finds no element
+				// (or its execution context was destroyed). A return-only check leaves
+				// that unapproved landing open and reports the incidental read error.
+				// Judge/restore the landing even when perform throws; authorization
+				// takes precedence, but an approved document keeps the original error.
+				// Restrict this to actions that can move the page: a non-navigating
+				// read keeps its existing error semantics. No additional Fetch gate.
+				if (NAVIGATING_ACTIONS.has(method)) assertDocument();
+				throw error;
+			}
+			try {
+				assertDocument();
+			} catch (error) {
+				// A `record_start` that this result-side check refuses has ALREADY
+				// registered a capture. Recording into the approved path while the
+				// answer is discarded is footage the host may not hold, so the capture
+				// is discarded AND Chromium's recorder is stopped before the refusal
+				// returns (review N5, F1: dropping the bookkeeping alone left the
+				// screencast alive, and the next start on this tab was refused with
+				// "Screencast is already active"). `abortAndEnd` bounds the stop at the
+				// abort deadline, so a wedged session cannot hold the answer.
+				if (method === "record_start") {
+					await recordingActions.abortAndEnd(
+						record.view.webContents.id,
+						"document_refused_after_start",
+					);
+				}
+				throw error;
+			}
 			return result;
 		};
 		if (!NAVIGATION_ACTIONS.has(method)) return operation();
@@ -580,6 +849,8 @@ export class BrowserHost implements BrowserActionContext {
 				return geometryActions.hitTest(this, params);
 			case "ancestors":
 				return geometryActions.ancestors(this, params);
+			case "query":
+				return queryActions.query(this, params);
 			case "snapshot":
 				return pageActions.snapshot(this, params);
 			case "scroll":
@@ -592,19 +863,51 @@ export class BrowserHost implements BrowserActionContext {
 				return inputActions.click(this, params);
 			case "type":
 				return inputActions.type(this, params);
+			case "press":
+				return inputActions.press(this, params);
+			case "hover":
+				return inputActions.hover(this, params);
+			case "select":
+				return selectActions.select(this, params);
+			case "setvalue":
+				return setvalueActions.setvalue(this, params);
 			case "download":
 				return downloadActions.download(this, params);
 			case "upload":
 				return uploadActions.upload(this, params);
+			case "copy":
+				return pageActions.copy(this, params);
+			case "network_start":
+				return networkActions.networkStart(this, params, requestId);
+			case "network_stop":
+				return networkActions.networkStop(this, params, requestId);
+			case "network_read":
+				return networkActions.networkRead(this, params, requestId);
+			case "network_clear":
+				return networkActions.networkClear(this, params, requestId);
+			case "record_start":
+				return recordingActions.recordStart(this, params, requestId);
+			case "record_stop":
+				return recordingActions.recordStop(this, params, requestId);
 			case "request_access":
-				return this.approvals.requestAccess(
-					params.url,
+				return this.withOpenedTab(
+					this.approvals.requestAccess(
+						params.url,
+						requesterOf(params, requestId),
+						"async",
+						requestId,
+						// Optional opt-out for a caller that wants the grant without the page
+						// opening (unused by lop today); anything but an explicit `false`
+						// keeps the default.
+						{ openOnApproval: params.open_on_approval !== false },
+					),
 					requesterOf(params, requestId),
-					"async",
-					requestId,
 				);
 			case "await_access":
-				return this.awaitAccess(params, requestId);
+				return this.withOpenedTab(
+					await this.awaitAccess(params, requestId),
+					requesterOf(params, requestId),
+				);
 			case "cancel_access":
 				return this.approvals.cancelAccess(
 					params.url,
@@ -656,6 +959,35 @@ export class BrowserHost implements BrowserActionContext {
 				return current;
 			await new Promise((resolve) => setTimeout(resolve, 300));
 		}
+	}
+
+	/**
+	 * Add `opened_tab: true` to an `allowed` access answer when the operator's
+	 * Allow opened the page for this requester and that tab is still waiting.
+	 *
+	 * Also to a `pending` answer that opens on approval: a re-request after the
+	 * `once` grant lapsed, while the operator's signed-in page is still open. A
+	 * re-approval brings that same tab back (`openApprovedRequest`), so the session
+	 * can tell the operator they need not sign in again. Not on an opted-out
+	 * request, whose Allow opens (and brings back) nothing.
+	 *
+	 * Additive and handle-free on purpose: the session learns that a page is open
+	 * for the operator (so it can say "sign in there, then reply" instead of
+	 * opening a second tab), but no capability crosses until its own `open` picks
+	 * the tab up through admission. An older session ignores the key.
+	 */
+	private withOpenedTab(
+		result: Record<string, unknown>,
+		requester: string,
+	): Record<string, unknown> {
+		if (
+			(result.state === "allowed" ||
+				(result.state === "pending" && result.opens_on_approval === true)) &&
+			typeof result.origin === "string" &&
+			this.registry.approvalPickupTab(requester, result.origin, Date.now())
+		)
+			return { ...result, opened_tab: true };
+		return result;
 	}
 
 	/** Bounded by the wire's own budget for this method, for the case where a
@@ -782,13 +1114,26 @@ export class BrowserHost implements BrowserActionContext {
 			new Set(this.registry.snapshot().map((entry) => entry.tabId)),
 		);
 		return {
+			addressOverlay: this.addressOverlayMode(),
+			approvalsCard: this.approvalsCard?.state() ?? {
+				available: false,
+				open: false,
+			},
 			pageControls: this.pageControls.state(active),
 			tabs: this.chromeTabOrder
 				.project(this.registry.snapshot())
 				.map((entry, displayOrder) => ({
 					...(this.chromeTabOrder.hasCustomOrder ? { displayOrder } : {}),
 					tabId: entry.tabId,
-					title: this.titleForChrome(entry.title) || "New tab",
+					// MAIN OWNS THIS WORD: the projection hands the strip a ready title, so
+					// the renderer's own fallback never runs and a literal here shows in
+					// English under every locale. Reuses the strip's key, which every
+					// shipped locale already translates, rather than minting a twin that
+					// would have to be translated and audited again.
+					title: parseInternalUrl(entry.url)
+						? t("ui.browser.extensions.page_title")
+						: this.titleForChrome(entry.title) ||
+							t("ui.browser.browser_tab_strip.new_tab"),
 					url: entry.url,
 					owner: entry.owner,
 					// WHICH CONVERSATION THIS TAB BELONGS TO, and the ONLY new field this
@@ -846,9 +1191,35 @@ export class BrowserHost implements BrowserActionContext {
 			// which is the round-1 D2 fix: a host-wide projection rendered a decision taken
 			// in another tab into this one's chrome.
 			transfers: this.downloads.activityFor(active?.tabId ?? null),
-			url: active ? active.view.webContents.getURL() : "",
+			// The ACTIVE tab's passkey notice only, for the reason `transfers` is scoped
+			// the same way: a background (often agent-driven) tab's request must not
+			// narrate itself into the page the user is looking at. It is shown when the
+			// user activates that tab, if it has not aged out.
+			// Suppressed while the tab is in passkey custody: the user is looking at
+			// the real prompt then, and a "could not complete" band beside it would
+			// contradict it.
+			passkeyNotice:
+				active && !this.passkeyCustody?.(active.tabId)
+					? (this.passkeyNotice?.(active.tabId) ?? null)
+					: null,
+			// Active tab only, like the notice: a hold brings its tab to the front
+			// when it begins, and a tab the user switched away from shows it again
+			// when they come back.
+			passkeyCustody: active
+				? (this.passkeyCustody?.(active.tabId) ?? null)
+				: null,
+			// The ACTIVE tab's camera/microphone prompt only, scoped like the passkey
+			// notice: a background tab's request waits (its callback held) until the
+			// user switches to it, rather than asking about a page they cannot see.
+			mediaPermission: active
+				? (this.mediaPermission?.(active.tabId) ?? null)
+				: null,
+			// Internal pages project their lop:// URL, never the nonce document.
+			url: active ? displayUrlFor(active.view.webContents) : "",
 			title: active
-				? this.titleForChrome(active.view.webContents.getTitle())
+				? internalPageOf(active.view.webContents)
+					? t("ui.browser.extensions.page_title")
+					: this.titleForChrome(displayTitleFor(active.view.webContents))
 				: "",
 			loading: active ? active.view.webContents.isLoading() : false,
 			canGoBack: navigation ? navigation.canGoBack() : false,
@@ -884,6 +1255,11 @@ export class BrowserHost implements BrowserActionContext {
 				// one) would then be published to the UI.
 				requesterSessionId: sessionRequesterOf(entry.requester),
 			})),
+			// WHAT AN AGENT TAB IS WAITING ON A PERSON FOR, across every tab: a custody
+			// hold or a held popup (`user-attention.ts`). The sidebar draws these as
+			// notification rows and the Browser badge counts them; nothing moves the
+			// user's view until they click one (operator report 2026-11-15).
+			waitingOnUser: this.waitingOnUser?.() ?? [],
 			// Which sites an agent may act on as the user RIGHT NOW (design 9.3's
 			// honesty requirement). Shipped in the same projection as the strip rather
 			// than behind a second channel: the answer is only useful next to the tabs
@@ -925,6 +1301,87 @@ export class BrowserHost implements BrowserActionContext {
 	async newTab(sessionId?: string | null): Promise<Record<string, unknown>> {
 		await this.createUserTab(sessionId ?? null);
 		return this.chromeState();
+	}
+
+	/**
+	 * The passkey notice's "Continue in your own tab": a NEW user tab, active, at
+	 * the agent tab's current top-level URL. The agent's tab is left exactly as it
+	 * is (no navigation, no ownership change), so the agent's work survives.
+	 *
+	 * WHY A COPY AND NOT A TAKEOVER. Extension UI frames (a password manager's
+	 * passkey prompt is a `chrome-extension://` subframe) are refused in agent
+	 * tabs by `extensions/subframe-policy.ts`, deliberately: CDP must never drive
+	 * or read them. So an agent tab can never finish a 1Password passkey sign-in.
+	 * A user tab can, and every tab shares the one persistent profile, so the
+	 * cookies the sign-in sets are the agent tab's cookies too once it reloads.
+	 *
+	 * THE URL IS READ HERE from the tab's own top-level webContents: never a
+	 * renderer-supplied value, never the requesting iframe's URL (an embedded
+	 * sign-in frame such as idmsa.apple.com only works inside its host page).
+	 * Only http(s) pages are copied, the rule `duplicate` already uses.
+	 *
+	 * NO AUTHORITY MOVES: like `newTab`, the copy is attributed to the
+	 * conversation the agent tab belongs to (so a pane scoped to "This
+	 * conversation" still shows it) but has no nonce, so `mayDrive` stays false
+	 * for every agent; the user would have to hand it over explicitly.
+	 */
+	async continueAgentTabInUserTab(
+		tabId: number,
+	): Promise<{ ok: true; tabId: number } | { ok: false; reason: string }> {
+		const record = this.registry.get(tabId);
+		if (!record || record.view.webContents.isDestroyed())
+			return { ok: false, reason: t("ui.browser.chrome.tab_gone") };
+		// Only an agent's tab needs this: a user tab already runs extension frames.
+		if (record.owner !== "agent")
+			return {
+				ok: false,
+				reason: t(
+					"ui.browser.browser_passkey_notice.continue_refused_not_agent",
+				),
+			};
+		let url: string;
+		try {
+			url = record.view.webContents.getURL();
+		} catch {
+			return { ok: false, reason: t("ui.browser.chrome.tab_gone") };
+		}
+		// Its own sentence, not `duplicate_refused` (review Q2): the user asked to
+		// continue, not to duplicate.
+		if (!DUPLICATABLE_WEB_URL.test(url))
+			return {
+				ok: false,
+				reason: t("ui.browser.browser_passkey_notice.continue_refused_not_web"),
+			};
+		// A box, not a `let`: the id is written inside a callback, which TypeScript's
+		// narrowing cannot see, and the catch below needs it.
+		const created: { tabId: number | null } = { tabId: null };
+		try {
+			const copy = await this.createUserTab(
+				record.homeSessionId ?? record.sessionId,
+				url,
+				(record) => {
+					created.tabId = record.tabId;
+				},
+			);
+			return { ok: true, tabId: copy.tabId };
+		} catch {
+			if (created.tabId === null)
+				return {
+					ok: false,
+					reason: t("ui.browser.browser_passkey_notice.continue_unavailable"),
+				};
+			// The tab exists, is active and is the user's: that is the success the
+			// user asked for (review U3). Same as `duplicate`, the load failure stays
+			// in the tab for them to see, rather than a toast saying the tab they
+			// are looking at could not be opened.
+			this.recordLoadFailure(created.tabId, {
+				code: -2,
+				description: "PASSKEY_CONTINUE_NAVIGATION_FAILED", // i18n: ignore machine error code for the failure page's technical line, like ERR_*
+				url,
+			});
+			this.onChanged();
+			return { ok: true, tabId: created.tabId };
+		}
 	}
 
 	/** Human duplicates copy URL ONLY. Session attribution is not a capability,
@@ -1042,6 +1499,15 @@ export class BrowserHost implements BrowserActionContext {
 
 	/** Main owns this short-lived UI focus fact; it conveys no page capability. */
 	chordFocus = false;
+	/**
+	 * The tab whose native view last reported focus. Tracked from each view's own
+	 * `focus`/`blur` events because `webContents.getFocusedWebContents()` can
+	 * answer null while a `WebContentsView` holds focus (measured on Electron
+	 * 44.3.0 in a window that is not itself activated). Like `chordFocus`, this
+	 * is an input-ownership fact and carries no page capability; `ownsPage`
+	 * refuses it unless the tab is the active, presented one.
+	 */
+	focusedPageTabId: number | null = null;
 	onChordFocusChanged?: (focused: boolean) => void;
 	/** An explicit tab id fences queued chrome intents: a switch between key
 	 * delivery and IPC must never search/zoom the newly active tab instead. */
@@ -1057,7 +1523,7 @@ export class BrowserHost implements BrowserActionContext {
 			if (
 				!active ||
 				active.tabId !== tabId ||
-				!active.presented ||
+				(!active.presented && !this.registry.hiddenByOverlay(tabId)) ||
 				active.view.webContents.isDestroyed()
 			)
 				throw new Error("The browser tab is no longer presented.");
@@ -1074,6 +1540,16 @@ export class BrowserHost implements BrowserActionContext {
 	setChordFocus(focused: boolean): void {
 		this.chordFocus = focused;
 		this.onChordFocusChanged?.(focused);
+	}
+	/** One view gained or lost native focus. Only the id that lost it may clear
+	 * the fact: a departing view's blur must not erase a successor's focus. */
+	setPageFocused(tabId: number, focused: boolean): void {
+		if (focused) this.focusedPageTabId = tabId;
+		else if (this.focusedPageTabId === tabId) this.focusedPageTabId = null;
+	}
+	/** The window's own renderer gained focus (the user clicked chrome/chat). */
+	clearPageFocus(): void {
+		this.focusedPageTabId = null;
 	}
 	/** Only user URLs survive a close, never a capability, page state or nonce.
 	 * Conversation attribution is retained only to find the appropriate scope. */
@@ -1093,6 +1569,7 @@ export class BrowserHost implements BrowserActionContext {
 	clearChordState(): void {
 		this.pageControls.clear();
 		this.setChordFocus(false);
+		this.clearPageFocus();
 		this.closedUserTabs = [];
 	}
 	/**
@@ -1444,15 +1921,19 @@ export class BrowserHost implements BrowserActionContext {
 			// to a sentence the user can act on, and this fallback exists only for the
 			// failures that path cannot see.
 			//
-			// AN ABORT IS NOT EXEMPTED HERE, unlike the view's own `did-fail-load`
-			// path (`isReportableLoadFailure` drops `ERR_ABORTED`): that path reads a
-			// NUMERIC net code and this catch has none — its own timeout rejection is
-			// the only shape it produces itself — so a parity check would be a second,
-			// guessing spelling of the exemption. Nothing committed and nothing came
-			// back, so the mark is honest; a stop or a superseding navigation clears it
-			// through the same wiring on the commit that follows (round-1 n-1).
+			// AN ABORT IS EXEMPTED HERE TOO. The earlier reading — that a
+			// supersede always commits before this catch runs, so the commit
+			// guard covers it — was too strong: on Electron 44.3.0 a restore
+			// superseded mid-flight rejects `ERR_ABORTED (-3)` at 928ms while
+			// the superseding page's `did-navigate` did not arrive until 4960ms
+			// (and fast runs showed 611ms vs 678ms). If that superseding load is
+			// then stopped, no `did-navigate` ever arrives, so a mark written here
+			// would survive and `lastLoadFailed` would skip the tab next launch.
+			// The rejection is the ordinary supersede, not a restore failure; the
+			// timeout and a deliberate Stop still carry different text and mark.
 			if (
 				!committed &&
+				!isSupersededRestore(error) &&
 				!this.loadFailures.has(tabId) &&
 				this.registry.get(tabId) &&
 				!contents.isDestroyed()
@@ -1507,6 +1988,92 @@ export class BrowserHost implements BrowserActionContext {
 	}
 
 	/**
+	 * Local address suggestions for the field the user is editing.
+	 *
+	 * THE EXPECTED TAB IS A GUARD, not a hint: a response about tab A rendered
+	 * over tab B is how a stale completion navigates a tab the user is no longer
+	 * looking at. Main answers the read only when the request still names the
+	 * active tab; the renderer separately discards responses whose `activeTabId`
+	 * no longer matches, which covers the race between this check and the reply
+	 * landing.
+	 *
+	 * RANKING MOVED HERE with the persistent store: the renderer used to rank a
+	 * snapshot of every stack, which cannot scale to a 5000-entry history either
+	 * in memory or across IPC. Main now asks the store for its top matches, puts
+	 * them ahead of the live-tab rows (`mergeAddressHistory`), and bounds the
+	 * answer by `request.limit`. The renderer still derives display text, the
+	 * target URL and the inline suffix, because those depend on exactly what the
+	 * user typed.
+	 */
+	addressHistory(request: AddressHistoryRequest): AddressHistoryResponse {
+		const activeTabId = this.registry.activeTab?.tabId ?? null;
+		if (activeTabId !== request.expectedTabId) {
+			throw new BrowserHostError(
+				"nav_failed",
+				"the active tab changed before suggestions were read",
+			);
+		}
+		const live = collectAddressHistory(
+			this.registry.list().map((record) => ({
+				tabId: record.tabId,
+				sessionId: record.sessionId,
+				webContents: record.view.webContents,
+				restoreRow: record.restoreRow ?? null,
+			})),
+			activeTabId,
+		);
+		const historyMatches =
+			this.historyStore?.suggest(request.query, request.limit) ?? [];
+		return {
+			requestId: request.requestId,
+			activeTabId: live.activeTabId,
+			entries: mergeAddressHistory(
+				live.entries,
+				historyMatches,
+				request.query,
+				request.limit,
+			),
+		};
+	}
+
+	/**
+	 * Record one committed top-level navigation.
+	 *
+	 * Called from the per-view wiring in `index.ts`, which is the only place that
+	 * sees the event for every tab. A non-HTTP(S) URL is dropped by the store, so
+	 * `about:blank`, `chrome://` and a refused scheme never enter the document.
+	 * The title is filled in by `recordHistoryTitle` when Chromium announces it;
+	 * recording the visit first is deliberate, because the commit is the fact and
+	 * the title is a later, optional update.
+	 */
+	recordHistoryVisit(url: string): void {
+		this.historyStore?.record(url, "");
+	}
+
+	/** Update the stored title for a URL that is already in the history. Never
+	 * increments a visit: `page-title-updated` fires for a page that has already
+	 * been counted, sometimes several times. */
+	recordHistoryTitle(url: string, title: string): void {
+		this.historyStore?.updateTitle(url, title);
+	}
+
+	/** Write any debounced history change now (quit, and the host's own stop). */
+	flushHistory(): void {
+		this.historyStore?.flush();
+	}
+
+	/** "Clear everything" also forgets the suggestion history (`profile.ts` is
+	 * the path that calls this, so cookies/cache alone cannot reach it). */
+	clearHistory(): void {
+		this.historyStore?.clear();
+	}
+
+	/** "Forget this site" drops that origin's rows; other origins stay. */
+	clearOriginHistory(origin: string): void {
+		this.historyStore?.clearOrigin(origin);
+	}
+
+	/**
 	 * A URL the USER typed goes through here, and it is deliberately different from
 	 * an agent navigation in one way and identical in another (design 6.1):
 	 *
@@ -1518,10 +2085,87 @@ export class BrowserHost implements BrowserActionContext {
 	 *   `file:` or `javascript:` here would hand a page (or a paste) a way to reach
 	 *   the local filesystem through the app's own URL bar.
 	 */
-	async navigateActive(rawUrl: string): Promise<Record<string, unknown>> {
+	async navigateActive(
+		rawUrl: string,
+		expectedTabId?: number,
+	): Promise<Record<string, unknown>> {
 		const record = this.registry.activeTab;
 		if (!record)
 			throw new BrowserHostError("tab_closed", "no browser tab is open");
+		// ADDITIVE AND OPTIONAL: the URL bar always supplies the tab its draft belongs
+		// to, so a commit that raced a tab switch is refused instead of loading the
+		// new active tab with the old tab's address. Agent/legacy callers omit it.
+		if (expectedTabId !== undefined && record.tabId !== expectedTabId) {
+			throw new BrowserHostError(
+				"nav_failed",
+				"the active tab changed before the address was submitted",
+			);
+		}
+		// The browser's own pages (lop://extensions). Reached ONLY from here — the
+		// desktop renderer's sender-checked navigate — never from the agent RPC
+		// (`goto`/`open` keep the http(s)-only rule) or from web content
+		// (renderer-initiated about: navigations are refused in index.ts). See
+		// internal-pages.ts for why this is a history entry and not a protocol.
+		const internal = parseInternalUrl(rawUrl);
+		if (internal) {
+			if (record.owner !== "user")
+				throw new BrowserHostError(
+					"owner_refused",
+					"the browser's own pages open only in your own tabs",
+				);
+			const contents = record.view.webContents;
+			const current = internalPageOf(contents);
+			const navigation = contents.navigationHistory;
+			const index = navigation?.getActiveIndex?.() ?? -1;
+			const previous =
+				index > 0 ? navigation?.getEntryAtIndex?.(index - 1)?.url : undefined;
+			// U11: details → list when the entry behind this one IS the list is
+			// a history Back, as Chrome's own "back" affordance would be — no
+			// stack growth, Forward returns to the details, and the toolbar's
+			// focus restore lands on the card the user came from.
+			if (
+				navigation &&
+				current?.id &&
+				!internal.id &&
+				previous === internalDocumentUrl(internal)
+			) {
+				armInternalNavigation(contents);
+				navigation.goBack();
+				return this.chromeState();
+			}
+			// Armed immediately before main's own load: only this commit may show
+			// the page (internal-pages.ts, QA Q5).
+			armInternalNavigation(contents);
+			await contents.loadURL(internalDocumentUrl(internal));
+			this.onChanged();
+			return this.chromeState();
+		}
+		// U1c: a USER may type a page of an installed+enabled extension (its
+		// welcome/sign-in page), as in Chrome. Agents cannot: they never reach
+		// this method, and registry.requireSurface refuses extension documents.
+		// Parsed here rather than via extensions/adapter.ts, which would pull the
+		// electron-chrome-extensions runtime into every host import.
+		let extensionId: string | null = null;
+		try {
+			const parsed = new URL(rawUrl.trim());
+			if (
+				parsed.protocol === "chrome-extension:" &&
+				isExtensionId(parsed.hostname)
+			)
+				extensionId = parsed.hostname;
+		} catch {
+			/* Not a URL: the web-address path below reports it. */
+		}
+		if (extensionId) {
+			if (record.owner !== "user" || !this.isActiveExtension?.(extensionId))
+				throw new BrowserHostError(
+					"nav_failed",
+					"only pages of an installed, turned-on extension can open here",
+				);
+			await record.view.webContents.loadURL(new URL(rawUrl).href);
+			this.onChanged();
+			return this.chromeState();
+		}
 		let url: URL;
 		try {
 			url = new URL(rawUrl.includes("://") ? rawUrl : `https://${rawUrl}`);
@@ -1590,6 +2234,8 @@ export class BrowserHost implements BrowserActionContext {
 		const contents = this.registry.activeTab?.view.webContents;
 		// Falls back to a plain reload rather than doing nothing: a hard reload that
 		// silently vanishes is worse than one that keeps the cache (review R10).
+		// The user's own reload keeps an internal page shown (its commit is armed).
+		if (contents && internalPageOf(contents)) armInternalNavigation(contents);
 		if (hard && contents?.reloadIgnoringCache) contents.reloadIgnoringCache();
 		else contents?.reload();
 		return this.chromeState();
@@ -1601,9 +2247,16 @@ export class BrowserHost implements BrowserActionContext {
 	}
 
 	historyActive(direction: "back" | "forward"): Record<string, unknown> {
-		const navigation =
-			this.registry.activeTab?.view.webContents.navigationHistory;
-		if (navigation) {
+		const contents = this.registry.activeTab?.view.webContents;
+		const navigation = contents?.navigationHistory;
+		if (contents && navigation) {
+			// The user's own Back/Forward: the one traversal allowed to show an
+			// internal page again (a page's history.back() is not — QA Q6).
+			const able =
+				direction === "back"
+					? navigation.canGoBack()
+					: navigation.canGoForward();
+			if (able) armInternalNavigation(contents);
 			if (direction === "back") navigation.goBack();
 			else navigation.goForward();
 		}
@@ -1614,14 +2267,35 @@ export class BrowserHost implements BrowserActionContext {
 	 * area and reports it, and main applies it to the active tab only. */
 	setContentRect(rect: ContentRect | null): Record<string, unknown> {
 		this.registry.setContentRect(rect);
+		// A hidden surface is no longer the accelerator's owner; a view can keep a
+		// stale focus fact while it is not presented.
+		if (rect === null) this.clearPageFocus();
 		return this.chromeState();
 	}
 
 	/** Full-window overlays hide the view: a native view paints above all DOM, so
-	 * an overlay is invisible unless the view goes away (design 11.3). */
-	setViewVisible(visible: boolean): Record<string, unknown> {
-		this.registry.setViewVisible(visible);
+	 * an overlay is invisible unless the view goes away (design 11.3).
+	 *
+	 * `ownPage` is the RENDERER'S REASON for the hide, and the only fact that lets
+	 * main tell the browser's own state pages (start page, load failure - hidden so
+	 * their DOM can paint) from an overlay covering them. Shortcut ownership keys
+	 * on it; presentation does not. See `TabRegistry.chromeVisible`. */
+	setViewVisible(
+		visible: boolean,
+		ownPage = false,
+		ownStatePage = ownPage,
+	): Record<string, unknown> {
+		this.registry.setViewVisible(visible, ownPage, ownStatePage);
+		// Suppressed by an overlay: the page must not keep the native key owner.
+		// True for a state page too - there is no presented page either way.
+		if (!visible) this.clearPageFocus();
 		return this.chromeState();
+	}
+
+	/** `BrowserActionContext.prepareAgent`: the action-side hand-over (the approval
+	 * pickup) runs the same preparation `handOver` below does. */
+	prepareAgent(record: TabRecord): void {
+		this.pageControls.prepareAgent(record);
 	}
 
 	/** Hand a user tab to a session, minting the capability. The RENDERER never
@@ -1670,9 +2344,194 @@ export class BrowserHost implements BrowserActionContext {
 		entryId: string,
 		decision: ConsentDecision,
 	): Record<string, unknown> {
+		// Read BEFORE `respond`: answering removes the entry, and its requested URL
+		// with it. Both consent surfaces (the native approvals card and the chrome
+		// band's IPC) end here, which is why the auto-open lives here and not in
+		// either of them.
+		const entry = this.approvals
+			.pendingEntries()
+			.find((candidate) => candidate.entryId === entryId);
+		const requestedUrl = this.approvals.requestedUrl(entryId);
 		const result = this.approvals.respond(entryId, decision);
+		// Deny, an expired entry (`respond` throws) and a cancelled or superseded
+		// one (not pending, so `respond` throws) never reach this line.
+		if (result.state === "allowed" && entry && requestedUrl)
+			this.openApprovedRequest(entry.requester, entry.origin, requestedUrl);
 		this.onChanged();
 		return { ...result, ...this.chromeState() };
+	}
+
+	/**
+	 * After an Allow, open the page the agent asked for in a NEW USER tab, so the
+	 * operator can sign in (or do whatever the agent asked) and the agent's next
+	 * plain `open` continues in that same tab (`actions/tabs.ts`, the approval
+	 * pickup). The operator's request this answers: "if approved, the flow
+	 * continues and the tab opens ... and get back to the agent in one go".
+	 *
+	 * Constraints, each load-bearing:
+	 * - A USER tab, not an agent tab or the requester's held tab: sign-in popups
+	 *   from an agent tab are held (`user-attention.ts`), link tabs from it never
+	 *   activate, the agent could read the page while credentials are typed, and an
+	 *   agent tab would cost a `MAX_AGENT_TABS` slot before anyone picked it up.
+	 * - A plain user navigation, NOT `admit`: a `once` grant is not spent here;
+	 *   the agent's pickup spends it, exactly once.
+	 * - Only the approved origin is ever loaded (the stored URL must be on
+	 *   `entry.origin`), and only for a `session:*` requester, since only a session
+	 *   can pick the tab up.
+	 * - Revealing it is the registry's ordinary user-tab activation. No window
+	 *   show/focus: the consent card is only shown while the browser pane is, so the
+	 *   page lands where the operator is already looking.
+	 * - It NEVER throws: an Allow that already wrote its grant must not come back to
+	 *   the card as an error. Failures are logged without the URL (it may carry
+	 *   tokens in its query).
+	 */
+	private openApprovedRequest(
+		requester: string,
+		origin: string,
+		rawUrl: string,
+	): void {
+		// The error's CODE only, never its message: Electron's `loadURL` rejection
+		// embeds the URL it was loading, which is exactly what `[URL omitted]` keeps
+		// out of the log.
+		let created: TabRecord | null = null;
+		const fail = (error: unknown) => {
+			const code =
+				error && typeof error === "object" && "code" in error
+					? String((error as { code: unknown }).code)
+					: error instanceof Error
+						? error.name
+						: "unknown";
+			// `loadURL` rejects with ERR_ABORTED when the page replaces its own first
+			// navigation (an SPA or identity-provider redirect before load). The tab
+			// is open and still marked, so this is not a failure to report; only the
+			// strip refresh `createUserTab` skipped is owed (review round 1, R3).
+			if (
+				code === "ERR_ABORTED" &&
+				created &&
+				this.registry.approvalPickupTab(requester, origin, Date.now()) ===
+					created
+			) {
+				this.onChanged();
+				return;
+			}
+			this.log(
+				`[browser] could not open the approved page on ${origin} for ${requester} [URL omitted]: ${code}`,
+			);
+		};
+		try {
+			if (!requester.startsWith("session:")) return;
+			const url = safeHttpUrl(rawUrl);
+			if (url.origin !== origin) return;
+			const now = Date.now();
+			const pickup = {
+				requester,
+				origin,
+				expiresAt: now + ACCESS_RESULT_TTL_MS,
+			};
+			// A re-approval (the `once` grant lapsed while the operator was still
+			// signing in, so the agent asked again) brings back the tab that is already
+			// waiting rather than opening a second copy of the same sign-in.
+			const existing = this.registry.approvalPickupTab(requester, origin, now);
+			if (existing) {
+				existing.approvalPickup = pickup;
+				this.registry.activate(existing.tabId);
+				return;
+			}
+			this.createUserTab(sessionIdOf(requester), url.href, (record) => {
+				// Marked synchronously at creation, before the first await, so a pickup
+				// or an `await_access` that races the page load already sees it.
+				created = record;
+				record.approvalPickup = pickup;
+			}).catch(fail);
+		} catch (error) {
+			fail(error);
+		}
+	}
+
+	/**
+	 * Open the native approvals card from the shield (S6b).
+	 *
+	 * The renderer passes the locale and direction it resolved: main has no
+	 * catalogue, and the card is a second document whose `lang`/`dir` must follow
+	 * the app rather than the device tag (UX U2). The theme is the evidence
+	 * palette today; S6b's product path keeps the dark default it was reviewed in.
+	 */
+	openApprovalsCard(input: unknown): Record<string, unknown> {
+		const request =
+			input && typeof input === "object"
+				? (input as Record<string, unknown>)
+				: {};
+		const locale =
+			typeof request.locale === "string" ? request.locale : undefined;
+		const dir =
+			request.dir === "rtl" || request.dir === "ltr" ? request.dir : undefined;
+		const theme =
+			request.theme === "light" || request.theme === "dark"
+				? request.theme
+				: undefined;
+		const palette =
+			request.palette === null
+				? null
+				: typeof request.palette === "string"
+					? request.palette
+					: undefined;
+		/* The composed values travel with the name; the controller validates them
+		   (`sanitizePaletteVars`), so anything malformed arrives as null. */
+		const paletteVars =
+			request.paletteVars && typeof request.paletteVars === "object"
+				? (request.paletteVars as Record<string, string>)
+				: null;
+		this.approvalsCard?.open({ locale, dir, theme, palette, paletteVars });
+		// The renderer discards the returned projection for the shield toggle
+		// (M2); the push is what makes aria-expanded and the button's selected
+		// style follow main. `onChanged` also re-renders a route that mounted
+		// after the card opened (U1).
+		this.onChanged();
+		return { ...this.chromeState() };
+	}
+
+	/** Close the native card without deciding (shield's second click / Escape). */
+	closeApprovalsCard(): Record<string, unknown> {
+		this.approvalsCard?.close();
+		this.onChanged();
+		return { ...this.chromeState() };
+	}
+
+	/** The renderer's resolved locale/theme, pushed on mount and on change (U5). */
+	setApprovalsCardContext(input: unknown): void {
+		const request =
+			input && typeof input === "object"
+				? (input as Record<string, unknown>)
+				: {};
+		const labels =
+			request.requesterLabels &&
+			typeof request.requesterLabels === "object" &&
+			!Array.isArray(request.requesterLabels)
+				? (request.requesterLabels as Record<string, string>)
+				: undefined;
+		this.approvalsCard?.setContext({
+			locale: typeof request.locale === "string" ? request.locale : undefined,
+			dir:
+				request.dir === "rtl" || request.dir === "ltr"
+					? request.dir
+					: undefined,
+			theme:
+				request.theme === "light" || request.theme === "dark"
+					? request.theme
+					: undefined,
+			...(request.palette === null
+				? { palette: null, paletteVars: null }
+				: typeof request.palette === "string"
+					? {
+							palette: request.palette,
+							paletteVars:
+								request.paletteVars && typeof request.paletteVars === "object"
+									? (request.paletteVars as Record<string, string>)
+									: null,
+						}
+					: {}),
+			...(labels ? { requesterLabels: labels } : {}),
+		});
 	}
 
 	/** Revoke one origin's approvals (design 9.4). Separate from closing a tab and

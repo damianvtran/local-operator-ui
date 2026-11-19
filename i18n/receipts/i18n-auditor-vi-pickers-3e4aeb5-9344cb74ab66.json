@@ -1,0 +1,38 @@
+{
+ "auditor": "i18n-auditor",
+ "model": "anthropic/claude-sonnet-5-5",
+ "instance": "i18n-auditor-vi-pickers-3e4aeb5-9344cb74ab66",
+ "status": "passed",
+ "namespace": "ui.chat.pickers",
+ "sha256": {
+  "vi": "96ff802c86cd9d24ad7ac5378f32c2d4c25642692277b5e1447f41de86621997",
+  "en": "88d81780ea0cf598689a73b5b0206da020ccfe1b847631214f87f40791b684c7"
+ },
+ "findings": [
+  {
+   "severity": "NIT",
+   "key": "ui.chat.pickers.info_model.mobile_relay",
+   "note": "'Chuyển tiếp di động' is glossary-correct but bare reads as a verb phrase; siblings say 'dịch vụ chuyển tiếp'. Consider 'Dịch vụ chuyển tiếp di động' if the info row has width."
+  },
+  {
+   "severity": "NIT",
+   "key": "ui.chat.pickers.destination_pickers.choose_the_model_this_conversation_starts_on_and_keeps_running_on_your_d",
+   "note": "'mô hình mà … chạy với mô hình đó' is redundant (relative + resumptive). Tighter: 'Chọn mô hình để cuộc trò chuyện này bắt đầu và tiếp tục chạy. Mặc định không thay đổi.'"
+  },
+  {
+   "severity": "NIT",
+   "key": "ui.chat.pickers.destination_pickers.delivered_exactly_once_to_the_new_conversation",
+   "note": "'Được gửi đúng một lần' is passive/calque-leaning; 'Chỉ gửi đúng một lần tới cuộc trò chuyện mới.' is terser. Meaning is correct either way."
+  },
+  {
+   "severity": "NIT",
+   "key": "ui.chat.pickers.destination_pickers.default_approvals_for_all_sessions_that_follow_it_this_session_follows_i",
+   "note": "Meaning now correct (fixes 'kế tiếp' = subsequent); 'lựa chọn riêng' occurs twice in one sentence, mildly repetitive. Acceptable."
+  },
+  {
+   "severity": "INFO",
+   "key": "whole-file",
+   "note": "Pre-existing, out of scope (unchanged values): stop.confirm and totals_meta use =1/=0 arms and table_pager.range/info_model.count_noun keep a 'one' arm (vi guide: other only; dead arms, no mismatch in args); 'Mức sử dụng' (13 uses) vs glossary 'lượng sử dụng'."
+  }
+ ]
+}

@@ -1,0 +1,52 @@
+{
+ "schema": 1,
+ "auditor": "i18n-auditor (lopdev independent translation audit, instance 64a0e2d3b795-v3-vi; not the translator, not either earlier vi auditor of this slice, not the PR coder)",
+ "agent": "i18n-auditor",
+ "model": "deepseek/deepseek-flash",
+ "model_provenance": "Every read and verdict in this receipt ran on deepseek/deepseek-flash (instance 64a0e2d3b795 session header); no fallback occurred.",
+ "fallback": "none",
+ "independence": "Independent fresh instance 64a0e2d3b795 (lopdev i18n-auditor). Not the translator (anthropic/claude-sonnet-5-5 per the brief), not either earlier vi auditor of this slice, not the PR coder. No repo edits. No translation/MT API or back-translation was used: verdicts rebuilt from the English source, the en context sidecar, shipped vi usage grepped at file:key, the core glossary and the vi style guide. The v1/v2/v3 history was read only after forming per-key verdicts, and treated as claims to check.",
+ "instance": "64a0e2d3b795-v3-vi",
+ "session": "64a0e2d3b795",
+ "locale": "vi",
+ "namespace": "ui.chat.canonical",
+ "branch": "i18n-s16a",
+ "head": "93a61605b059ada503d75da6e9e38e8ef14e1b67",
+ "pr": "damianvtran/local-operator-ui#1870",
+ "date": "2026-11-11",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "findings": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 0,
+  "nit": 2
+ },
+ "finding_ids": [
+  "VI-S16A-1",
+  "VI-S16A-2"
+ ],
+ "scope": "Round-1 full independent audit of the 14 new EN keys added in 93a61605b for ui.chat.canonical (S16a), vi draft v3 sha256 a7929d1bb641cafa0a30d22e3ac7262840f1bb57d33e18232cae4ce739916518. v3 differs from v1 in exactly four values (tool.queued_sized, tool.queued_empty, image_gen.state.queued, image_gen.state.already_finished), verified by diffing the three draft files.",
+ "inputs_sha256": {
+  "en (src/i18n/catalogues/en/ui.chat.canonical.json)": "d6d47d31667fe69448cf408f5a4fecf9948782e850506a6141217585de9db1fd",
+  "en_context (src/i18n/catalogues/en/ui.chat.canonical.context.json)": "ef8a12dea1835c241af3a166754322ce093af88592ec625036211458a50accac",
+  "glossary (local-operator/i18n/glossary.md)": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "style guide (local-operator/i18n/style-guides/vi.md)": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888",
+  "audited_draft_vi (s16a-drafts/vi-s16a-v3.json)": "a7929d1bb641cafa0a30d22e3ac7262840f1bb57d33e18232cae4ce739916518"
+ },
+ "verified": [
+  "key set equals the 14 keys added by 93a61605b; no key added or dropped",
+  "placeholders and argument types identical to the English source ({size} text, {count}/{total} number, {material} select)",
+  "select branches identical to English (video, voiceover, sound_effect, other) in all 6 select messages",
+  "plurals: `other` only, which is the whole CLDR set for vi and what the style guide mandates; valid ICU, no unreachable-required category",
+  "::group-off preserved; # bound to the nested plural (formatted at 0,1,2,3,5,11,21,22,100,1000000 x 4 materials)",
+  "U+00B7 separator and U+2026 ellipsis preserved; no ASCII '...' or ' - ' separator; trailing full-stop parity per key",
+  "NFC precomposed Vietnamese only; no combining marks, NBSP/U+202F, zero-width or bidi-control characters",
+  "no value identical to its English source; no English left in any of the 14 values"
+ ],
+ "audited_draft_sha256": "a7929d1bb641cafa0a30d22e3ac7262840f1bb57d33e18232cae4ce739916518",
+ "target_sha256": "RECOMPUTE FROM src/i18n/catalogues/vi/ui.chat.canonical.json AFTER THE 14 KEYS LAND (was 325e37d1a3b5e8a0bbdfbf57bbb5ea3208fb377e35407ca989cba6d5e08b6cb8 with 442 keys); never paste the draft hash here - ledger-assemble requires the on-disk bytes",
+ "source_sha256": "d6d47d31667fe69448cf408f5a4fecf9948782e850506a6141217585de9db1fd",
+ "record": "i18n/audits/evidence/vi/ui.chat.canonical/64a0e2d3b795-v3-vi/record.json",
+ "notes": "clean-with-findings = 2 nits, 0 blocker/major/minor. No rendered frame and no pixel measurement were taken; fit judged from sidecar length hints, shipped vi of the same surfaces and the StateLine layout (text wraps, datum shrink-0)."
+}

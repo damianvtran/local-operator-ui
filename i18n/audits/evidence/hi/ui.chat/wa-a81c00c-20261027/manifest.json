@@ -1,0 +1,80 @@
+{
+ "audit_id": "wa-a81c00c-20261027",
+ "locale": "hi",
+ "audited_head": "a81c00cdda2667dc6b094128ff47ec72d0c4d095",
+ "date": "2026-10-27",
+ "receipt": {
+  "path": "i18n/receipts/wa-a81c00c-20261027-hi.json",
+  "sha256": "597d5a3942b582a589755301ea89827b3db2cf75ca3a28809d9ab0ba7578a8de"
+ },
+ "records": [
+  {
+   "namespace": "ui.chat",
+   "record": "i18n/audits/evidence/hi/ui.chat/wa-a81c00c-20261027/record.json",
+   "record_sha256": "da7c357afc7bc11805a11894706df5c72484602e1f53079e3466eb049d3432df"
+  },
+  {
+   "namespace": "ui.chat.header",
+   "record": "i18n/audits/evidence/hi/ui.chat.header/wa-a81c00c-20261027/record.json",
+   "record_sha256": "c894ac669d1ff5b8dd66eaac84832d4599658b1c5e936e1a412de9cc7e044534"
+  },
+  {
+   "namespace": "ui.chat.response_actions",
+   "record": "i18n/audits/evidence/hi/ui.chat.response_actions/wa-a81c00c-20261027/record.json",
+   "record_sha256": "a9f3170e4517cfe206a06a7afc3de7f2157741864a79ae11c033239996dfe4f1"
+  },
+  {
+   "namespace": "ui.chat.sidebar",
+   "record": "i18n/audits/evidence/hi/ui.chat.sidebar/wa-a81c00c-20261027/record.json",
+   "record_sha256": "85d2418d3b648654b921d0ef28e031d928256b046b7940ea58d2b783eb91ae91"
+  }
+ ],
+ "shared_artifacts": [
+  {
+   "path": "i18n/audits/evidence/hi/ui.chat/wa-a81c00c-20261027/audit.log",
+   "role": "actual command output for every validator, plural and ICU/render run",
+   "sha256": "92a633ba1a21fa5d9e0dff3c66b91fd628e1dd12f168a1f530013f31634d89d6"
+  },
+  {
+   "path": "i18n/audits/evidence/hi/ui.chat/wa-a81c00c-20261027/render-table.txt",
+   "role": "rendered output: base table, template width, 168 adversarial/realistic name variants",
+   "sha256": "1e036137f4552940acaa134ba11f2e4f9a473dc600d215c2e7499a24208f1a06"
+  },
+  {
+   "path": "i18n/audits/evidence/hi/ui.chat/wa-a81c00c-20261027/icu-digest.json",
+   "role": "machine digest of the 38 per-key ICU/render checks",
+   "sha256": "7dc757a4e61133301734ff3854bf60640f7d8aa0104b8a55ecc8fefae6d2b4f2"
+  },
+  {
+   "path": "i18n/audits/evidence/hi/ui.chat/wa-a81c00c-20261027/export-integrity.log",
+   "role": "git show a81c00cdda:<path> vs export byte equality for all 12 inputs",
+   "sha256": "ba15d3cddc8b2177cc1f4158f103e0b4678655e5328789a02e516d505555c1d3"
+  },
+  {
+   "path": "i18n/audits/evidence/hi/ui.chat/wa-a81c00c-20261027/tools/icu-audit.mjs",
+   "role": "read-only harness that produced icu-digest.json and the render table",
+   "sha256": "90daa3a44aaaee17910c6f50575434b4aa7779698a27c7a076481e73106a45b6"
+  },
+  {
+   "path": "i18n/audits/evidence/hi/ui.chat/wa-a81c00c-20261027/tools/plural-arms.mjs",
+   "role": "plural-arm/CLDR check over the four namespace files",
+   "sha256": "98a2defa5ea84dad76563cbdbb3e21ce5276febe3732cef551154e86f6925c11"
+  },
+  {
+   "path": "i18n/audits/evidence/hi/ui.chat/wa-a81c00c-20261027/tools/derive-check.mjs",
+   "role": "the deriveReceiptAudit() invocation whose output is derive-check.json",
+   "sha256": "806e2b850b0b83a420a523dee88011ed22b0f84cd9a70e69cb3cdb9f9965161a"
+  },
+  {
+   "path": "i18n/audits/evidence/hi/ui.chat/wa-a81c00c-20261027/derive-check.json",
+   "role": "derived audit per namespace by the repo's own deriveReceiptAudit()",
+   "sha256": "cf7a2f299760ea8cffeec00c4bae1cd1f644bd0d65a80e693aec7cbe9580bab5"
+  },
+  {
+   "path": "i18n/audits/evidence/hi/ui.chat/wa-a81c00c-20261027/receipt.json",
+   "role": "byte-identical copy of the served receipt",
+   "sha256": "597d5a3942b582a589755301ea89827b3db2cf75ca3a28809d9ab0ba7578a8de"
+  }
+ ],
+ "manifest_self_excluded": true
+}

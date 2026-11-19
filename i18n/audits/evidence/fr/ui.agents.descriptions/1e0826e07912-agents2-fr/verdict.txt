@@ -1,0 +1,2 @@
+PASS
+fr round 2: 0 BLOCKER / 0 MAJOR / 0 MINOR / 2 NIT over 14 values — the F1 MAJOR and all six MINOR findings are fixed on the bytes, N1 fixed, N2 withdrawn as contrary to the glossary (workspace -> "espace de travail"); the two NITs are a coined verb ("pré-vérifie") and length the fixes added (coder 1.31x, tui_designer 1.26x), neither affecting meaning or layout.

@@ -1,0 +1,89 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "att-r1-ur",
+ "session": "5e326caaed53",
+ "job": "9cce805ed705",
+ "date": "2026-10-21",
+ "locale": "ur",
+ "translator": "coder",
+ "translator_session": "03594b2dcc02",
+ "translator_job": "bc0c4b952eaa",
+ "namespace": "ui.teamBridge",
+ "status": "passed",
+ "keys_audited": 23,
+ "scope": "23-key image-attachment delta: every ui.teamBridge.attachments.* key, per git diff 5005cfe8b6..cf1d7c616c of en/ui.teamBridge.json filtered to attachments. 22 keys were added in en at 715c864171 and remove_all at b8aad1066b; 0906d747e5 shortened unsupported (dropping “Only the text was pasted.”) and added ur values for all 23. The diff also carries 8 replies.* keys merged in from #1304 (8913528); those and the other 138 values from #1309 (5005cfe) are OUT of scope. All 146 non-attachment ur values were verified byte-unchanged against 5005cfe8b6 and 8913528e50. PR head cf1d7c616c was re-checked and has not moved. Catalogue audit with a limited Storybook rendered spot-check; not a full rendered-fit, activation or release check.",
+ "sha256": {
+  "en": "de78ff4b0cf8aca9ddb5eda9687ee2a806e11f0bae32f005609579108360848f",
+  "ur": "47bccf3a65d5ad9ccba4b375fba35c67d3c00ec689bd209fcb06361a655a6d99",
+  "context": "8a84800e3d2d52aae3c44393b8fe79bcc567f2ca5d8660a2d260f889cc487902"
+ },
+ "findings": [
+  {
+   "severity": "MINOR",
+   "key": "ui.teamBridge.attachments.retry",
+   "current": "{label} دوبارہ آزمائیں",
+   "proposed": "{label} کی دوبارہ کوشش کریں",
+   "note": "Retry is “دوبارہ کوشش کریں” in about 20 ur keys, including retry_load, schedule.retry and the error copy beside this same chip, while آزمائیں means test/try out in ur catalogues (کنکشن آزمائیں، محفوظ کریں اور آزمائیں). The chip button therefore reads “re-test image 1 of 2” and names the action differently from the notice under it; the proposed form follows schedule.retry and library.composer.retry_link."
+  },
+  {
+   "severity": "MINOR",
+   "key": "ui.teamBridge.attachments.send_blocked",
+   "current": "بھیجنے سے پہلے غلطی والی تصاویر ہٹائیں یا دوبارہ آزمائیں۔",
+   "proposed": "بھیجنے سے پہلے خرابی کے نشان والی تصاویر ہٹائیں یا ان کی دوبارہ کوشش کریں۔",
+   "note": "غلطی (mistake, blame on the user) appears nowhere else in ur, where error is خرابی (9 keys, e.g. خرابی کی تفصیلات). The value also drops “marked”, which points to the red border and badge on the chip, and repeats the آزمائیں drift; the proposal is 74 chars against 63 in English, but it is a wrapping role=alert paragraph."
+  },
+  {
+   "severity": "NIT",
+   "key": "ui.teamBridge.attachments.error_quota",
+   "current": "بھیجے جانے کے انتظار میں بہت زیادہ تصاویر ہیں۔ کچھ بھیجیں یا ہٹائیں، پھر دوبارہ کوشش کریں۔",
+   "proposed": "آپ کی بہت زیادہ تصاویر بھیجے جانے کے انتظار میں ہیں۔ کچھ بھیجیں یا ہٹائیں، پھر دوبارہ کوشش کریں۔",
+   "note": "The English “You have” ties the limit to the author's own pending-image allowance (context sidecar), which can include images staged in other composers. Without آپ the sentence reads as a general or server-wide backlog."
+  },
+  {
+   "severity": "NIT",
+   "key": "ui.teamBridge.attachments.expired_staged",
+   "current": "یہ تصویر اب بھیجنے کے لیے تیار نہیں ہے۔ اسے ہٹا دیں، یا اگر یہ ابھی دکھائی دے رہی ہے تو دوبارہ کوشش کریں۔",
+   "proposed": "یہ تصویر اب بھیجنے کے لیے تیار نہیں ہے۔ اسے ہٹا دیں، یا اگر یہ اب بھی دکھائی دے رہی ہے تو دوبارہ کوشش کریں۔",
+   "note": "Here “still shown” means the preview is still visible after the image expired. ابھی leans to “right now”, while اب بھی says “still” unambiguously and matches schedule.held (ممکن ہے پچھلا شیڈول اب بھی موجود ہو)."
+  },
+  {
+   "severity": "NIT",
+   "key": "ui.teamBridge.attachments.expired",
+   "current": "تصویر کی میعاد ختم ہو گئی",
+   "proposed": "تصویر کی میعاد ختم",
+   "note": "At 25 chars against 13 in English, the label sits inside a fixed 144px (w-36) placeholder tile. The ur Storybook frame (bubble-placeholders) shows it wrapping onto two lines with a lone گئی orphan. The 18-char nominal form fits on one line and follows the browser approvals dock (میعاد ختم — …)."
+  }
+ ],
+ "inherited_receipt": {
+  "base": "5005cfe8b6",
+  "path": "i18n/receipts/tbh-r1-ur.json",
+  "sha256": "c00b9c945c59680a460b68c7e78364157fdfb7536691a350ecd6f9fda349208b",
+  "keys_inherited": 138,
+  "base_source_sha256": "5f67df6c37f34f1f83e4048ad47aef9bd4020fe2ba74c5e8e548b9c4439dc7ee",
+  "base_target_sha256": "d8a04b1e39a509dbee21aa7b2cf9b1d021a23ba9d1c0ba1a0c2e0c55309d7c0b",
+  "unchanged_values_verified": 138,
+  "merged_stack_receipt": {
+   "base": "8913528e50",
+   "path": "i18n/receipts/threads1304-r2-ur.json",
+   "sha256": "b5a7258163e453df983d6ac5b363216a7782e17aa87731f59e8e89fa3cdce23f",
+   "keys_inherited": 8,
+   "base_source_sha256": "7de891f2cf03b7563747c440847c853f1c1356aa0a50480ec28eae347e6581e9",
+   "base_target_sha256": "19ad3a4350dcb607412bc4b193ff54a6c204468861d760e21c76cec39a3faf0c",
+   "unchanged_values_verified": 8
+  }
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+ },
+ "validation": {
+  "independence": "The auditor (session 5e326caaed53, job 9cce805ed705, role translation-auditor) is not the translator, which was the implementing coder (session 03594b2dcc02, job bc0c4b952eaa). Every value was read from the worktree bytes. Nothing in the repo was edited, staged or committed except the two audit artifacts named in the task.",
+  "semantics": "Read all 23 values against en, the context sidecar and their roles in team-bridge-attachments.tsx, team-bridge-page.tsx, team-bridge-thread-pane.tsx and team-bridge-scheduled.tsx: icon-button aria-label/title, the strip ul aria-label, chip aria-label (`${label}. ${reason}`), Spinner label, the status/alert notice paragraph, placeholder tile copy, the retry link, and the ghost Button in the reschedule dialog. Register is آپ with polite -یں imperatives throughout and no T-form; the only تو is the اگر…تو conditional in expired_staged. These terms hold against the existing file and other ur catalogues: تصویر/تصاویر (ui.canvas.files, ui.library), اپ لوڈ, منسلک (ui.chat.composer.attach_file), تنظیم (ui.teamBridge.scope.*), ہٹائیں, میعاد ختم, دستیاب نہیں, Local Operator kept Latin per glossary §1, and دوبارہ کوشش کریں in error_rate, error_quota, error_offline, error_upload, expired_staged and retry_load. Two values drift from that last term, retry and send_blocked (findings above). position/open use “{index} از {count}”, which follows ui.projects.project_updates.show_asset_name (اثاثہ {index} از {count}). The locale also uses “{count} میں سے {index}”, but از is an established, shorter form for the same positional-label role and was not raised. unsupported correctly omits the dropped “Only the text was pasted.” clause, matching the shortened en.",
+  "icu": "Parsed all 23 en and ur values with @formatjs/icu-messageformat-parser from the repo's node_modules, and the argument sets match exactly: {index}+{count} in position and open, {label} in remove and retry, plural {count} in in_message, plural {max} in limit, none elsewhere. The ur plurals carry the CLDR ur categories one/other with # inside each branch, and the count is used in the sentence. Formatted every value with intl-messageformat (locale ur) at 1, 2 and 10 (e.g. “1 تصویر”، “2 تصاویر”، “ایک پیغام کے ساتھ زیادہ سے زیادہ 10 تصاویر منسلک کی جا سکتی ہیں۔”), and all formatted cleanly. remove and retry receive the formatted position label (e.g. “تصویر 1 از 2 ہٹائیں”). The 138 base values are byte-identical to 5005cfe8b6 and the 8 replies.* values to 8913528e50.",
+  "typography": "All 23 values are NFC and contain no manual bidi controls (U+200E/F, U+202A–E, U+2066–9, U+061C). They use Urdu ۔ and ،, with no ASCII sentence punctuation, Hindi danda or ASCII '...'. The ellipsis in uploading is U+2026, and digits come from the formatter in Latin form per the style guide. error_type keeps the format names Latin (PNG، JPEG، WebP یا GIF); the Arabic commas between Latin tokens resolve as neutrals inside one LTR run, so the list order is preserved. Code outside the catalogue joins the chip and placeholder aria-labels with a hard-coded ASCII “. ” separator. That separator is not a catalogue defect and is not counted; it is noted for the implementer.",
+  "overflow": "Labels at or near English length: add 16/10 and strip 20/14 (both aria-only), position 24/24, open 31/29 (aria/title), remove 14/14, unavailable 17/17, remove_all 13/13 (nowrap ghost Button), retry_load 16/9 (text link in a 144px tile; rendered on one line). retry is 22/13 but aria/title only. Paragraph notices wrap: limit renders 62 vs 45 chars, error_rate 69/51, error_quota 90/77, error_offline 105/92, expired_staged 105/79, send_blocked 57/63. Rendered composer frame: expired_staged wraps to 2 lines without clipping. expired (25/13) in the fixed w-36 tile is raised as a NIT above.",
+  "rtl": "Storybook (http://localhost:6119, ?args=locale:ur) rendered the attachment stories in ur. The viewed frames were bubble-placeholders (sha256 cbbef3270a2347fc6ea935be91ccd46aac9e7e7cc38f85f4884b94e2e0091fe0) and chips-expired-restored (sha256 e72979c334db01b95b44b076d26108069c9d0a6c602dc6c97dbb8d5bc8ad3546), with DOM text reads of chips-uploading, chips-limit-reached and scheduled-with-images. In those frames the Urdu runs shape correctly, word order is intact, the Latin digits in “4 تصاویر” sit correctly, and ۔ lands at the logical end. The Storybook frame did not mirror the layout (the document dir was not rtl), so no claim is made about mirrored alignment. Screenshots are kept in auditor scratch, not in the repo.",
+  "limitations": "Rendered evidence is limited to the two viewed Storybook frames and the DOM text reads above. The chips-error, thread and reschedule-dialog states (error_type/size/invalid/rate/quota/offline/upload, send_blocked, remove_all) were not visually checked in ur. The browser host dropped before further captures. No live-app, glyph-metric, pseudo-localization, mirrored-layout or activation claim. No catalogue or code edits."
+ }
+}

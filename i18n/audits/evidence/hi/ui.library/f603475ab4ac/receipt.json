@@ -1,0 +1,178 @@
+{
+  "locale": "hi",
+  "mode": "Fresh independent delta audit; fix (<2h), read-only bounded audit. All 20 new messages audited; 159 legacy namespace values checked only for parse/key parity/no changes and targeted consistency, not recertified.",
+  "scope": "PR damianvtran/local-operator-ui #1851; ui.library 20 new messages at frozen head; English metadata in scope; no full legacy certification.",
+  "head_sha": "8a9ce1f808c266ebe9a0e924094344cea60c2c23",
+  "audit_date": "2026-11-10",
+  "key_count": 179,
+  "fully_audited_key_count": 20,
+  "consistency_only_key_count": 159,
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "Agent/model supplied by delegation. Translator session: not supplied. Auditor did not translate or participate in translation."
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "f603475ab4ac",
+    "session": "f603475ab4ac",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "Served session header for session f603475ab4ac: Model openai/gpt-6.1-sol. No model switch or fallback occurred.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "policy_sources": {
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/hi.md",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    },
+    "glossary": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/_s14-audits/8a9ce1f808c266ebe9a0e924094344cea60c2c23/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "note": "Binding manager-owned byte-copy; matches the full SHA-256 supplied by the task. Original glossary not read (outside allowed reads)."
+    },
+    "expected_hashes": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/_s14-audits/8a9ce1f808c266ebe9a0e924094344cea60c2c23/expected-hashes.json",
+      "sha256": "9357d096c247098dc8364c6750e7f32b39ef2a5cfa871896a30a6b1fd507c420"
+    }
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "verdict": "clean-with-findings",
+  "findings": [
+    {
+      "id": "M1",
+      "severity": "minor",
+      "key": "ui.library.kind.other (English context.note)",
+      "current_text": "Rendered inside the sentence ui.library.preview.unsupported ONLY via the generic fallback; see manifest.",
+      "english_source": "Other",
+      "problem": "English metadata misleadingly says the Other label is rendered inside unsupported. The implementation selects unsupported_generic for other and never interpolates this badge label into that sentence. The remainder of this context accurately describes the badge. Hindi translation is unaffected.",
+      "recommendation": "For this kind, the preview uses ui.library.preview.unsupported_generic; the localized Other badge label is not interpolated into ui.library.preview.unsupported.",
+      "evidence": [
+        "src/i18n/catalogues/en/ui.library.json: ui.library.preview.unsupported_generic = \"This file has no in-app preview here.\"",
+        "src/i18n/catalogues/hi/ui.library.json: ui.library.preview.unsupported_generic = \"इस फ़ाइल का प्रीव्यू यहाँ ऐप में नहीं दिखता।\"",
+        "src/renderer/src/features/library/components/library-viewers.tsx:107-111 selects unsupported_generic for asset.kind === \"other\", otherwise unsupported with kind: libraryKindLabel(asset.kind)."
+      ],
+      "gates": false
+    }
+  ],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+  },
+  "namespaces": {
+    "ui.library": {
+      "status": "passed",
+      "result": "clean-with-findings",
+      "source_sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71",
+      "target_sha256": "276df1d52759ac97fc03b0569c7ce95db066b449a8a130435340f024fecc942d",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.library.json",
+          "sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71"
+        },
+        "hi": {
+          "path": "src/i18n/catalogues/hi/ui.library.json",
+          "sha256": "276df1d52759ac97fc03b0569c7ce95db066b449a8a130435340f024fecc942d"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.library.context.json",
+          "sha256": "2fe63e830b49079dac67c5c4513358d0a8559a94fbf27ac8d437212b13aa2e72"
+        }
+      },
+      "fully_audited_keys": [
+        "ui.library.kind.audio",
+        "ui.library.kind.code",
+        "ui.library.kind.docx",
+        "ui.library.kind.html",
+        "ui.library.kind.image",
+        "ui.library.kind.markdown",
+        "ui.library.kind.other",
+        "ui.library.kind.pdf",
+        "ui.library.kind.pptx",
+        "ui.library.kind.spreadsheet",
+        "ui.library.kind.text",
+        "ui.library.kind.video",
+        "ui.library.preview.unsupported_generic",
+        "ui.library.tag_category.custom",
+        "ui.library.tag_category.format",
+        "ui.library.tag_category.project",
+        "ui.library.tag_category.source",
+        "ui.library.tag_category.status",
+        "ui.library.tag_category.topic",
+        "ui.library.tag_category.type"
+      ],
+      "findings": [
+        {
+          "id": "M1",
+          "severity": "minor",
+          "key": "ui.library.kind.other (English context.note)",
+          "current_text": "Rendered inside the sentence ui.library.preview.unsupported ONLY via the generic fallback; see manifest.",
+          "english_source": "Other",
+          "problem": "English metadata misleadingly says the Other label is rendered inside unsupported. The implementation selects unsupported_generic for other and never interpolates this badge label into that sentence. The remainder of this context accurately describes the badge. Hindi translation is unaffected.",
+          "recommendation": "For this kind, the preview uses ui.library.preview.unsupported_generic; the localized Other badge label is not interpolated into ui.library.preview.unsupported.",
+          "evidence": [
+            "src/i18n/catalogues/en/ui.library.json: ui.library.preview.unsupported_generic = \"This file has no in-app preview here.\"",
+            "src/i18n/catalogues/hi/ui.library.json: ui.library.preview.unsupported_generic = \"इस फ़ाइल का प्रीव्यू यहाँ ऐप में नहीं दिखता।\"",
+            "src/renderer/src/features/library/components/library-viewers.tsx:107-111 selects unsupported_generic for asset.kind === \"other\", otherwise unsupported with kind: libraryKindLabel(asset.kind)."
+          ],
+          "gates": false
+        }
+      ]
+    }
+  },
+  "concern_verdicts": {
+    "a": "PASS: all 20 meanings preserved; ordinary Hindi noun labels and neutral register.",
+    "b": "PASS: तस्वीर is singular of category.images तस्वीरें; spreadsheet matches स्प्रेडशीट; code कोड, video वीडियो, other अन्य. Audio ऑडियो is justified by ui.canvas.files.audio ऑडियो: category.sounds आवाज़ें labels sounds rather than one audio format. Source स्रोत and status स्थिति exactly match filters; type प्रकार stays distinct from sort.kind क़िस्म. Topic विषय is natural subject-matter wording, corroborated by ui.teamBridge.create.topic विषय (वैकल्पिक).",
+    "c": "PASS individually: HTML matches ui.canvas.create_file_dialog.html_html HTML (.html); PDF matches ui.canvas.pdf_preview.pdf PDF: {title}; Markdown matches ui.canvas.create_file_dialog.markdown_md Markdown (.md). DOCX and PPTX have no prior literal occurrence in existing Hindi values (apart from additions); official format acronyms are consistent with Latin HTML/PDF practice and glossary §1 technology spelling, no contradictory localized rendering found. Audio uses ऑडियो, Video वीडियो and Code कोड, matching existing catalogue, not Latin English loans.",
+    "d": "PASS: इस फ़ाइल का प्रीव्यू यहाँ ऐप में नहीं दिखता। parallels legacy {kind} फ़ाइल का प्रीव्यू यहाँ ऐप में नहीं दिखता।, names no kind and has no placeholder; danda retained.",
+    "e": "PASS textual fit sanity only: badge/heading maximum 10 code points (स्प्रेडशीट); all <= about-12-character hint. Generic prose is 44 code points versus English 37, not a badge. Devanagari shaping not measured in rendered UI; no numeric maxCells/maxChars in these sidecars; no actual overflow alleged.",
+    "f": "PASS: no NBSP, narrow NBSP, ZW*, bidi controls or other Unicode Cf in the 20 target strings. Hindi is LTR; Urdu RTL check not applicable.",
+    "g": "PASS: 179 English/Hindi keys; precisely 20 additions from base 0e12072d2b3; all 159 legacy values byte-identical as decoded JSON strings. Legacy values not recertified.",
+    "h": "PASS WITH MINOR M1: roles, tone, badge/rail notes otherwise accurate; Other interpolation note misleading, contrary to generic branch in viewers source.",
+    "i": "PASS: frozen head verified and all relevant expected source/target/context hashes plus full binding glossary hash match."
+  },
+  "mechanical_checks": {
+    "head": "8a9ce1f808c266ebe9a0e924094344cea60c2c23",
+    "hash_binding": "all 3 catalogue/context hashes and full glossary SHA-256 match manifest/brief",
+    "total_namespace_keys": 179,
+    "delta_keys": 20,
+    "legacy_unchanged_keys": 159,
+    "key_parity": true,
+    "added_only_semantic_diff": true,
+    "keys20_source_context_binding": true,
+    "new_keys_placeholder_plural_markup_code_count": 0,
+    "invisible_characters": [],
+    "lengths_codepoints": {
+      "ui.library.kind.audio": 5,
+      "ui.library.kind.code": 3,
+      "ui.library.kind.docx": 4,
+      "ui.library.kind.html": 4,
+      "ui.library.kind.image": 6,
+      "ui.library.kind.markdown": 8,
+      "ui.library.kind.other": 4,
+      "ui.library.kind.pdf": 3,
+      "ui.library.kind.pptx": 4,
+      "ui.library.kind.spreadsheet": 10,
+      "ui.library.kind.text": 7,
+      "ui.library.kind.video": 6,
+      "ui.library.preview.unsupported_generic": 44,
+      "ui.library.tag_category.custom": 5,
+      "ui.library.tag_category.format": 8,
+      "ui.library.tag_category.project": 9,
+      "ui.library.tag_category.source": 5,
+      "ui.library.tag_category.status": 6,
+      "ui.library.tag_category.topic": 4,
+      "ui.library.tag_category.type": 6
+    },
+    "new_badge_heading_over_12_codepoints": {}
+  },
+  "unverified": [
+    "No full validator CLI or ICU runtime parser; narrow repository duplicate/context validators and own JSON/delta checks executed. New keys contain no ICU, placeholders, markup or code.",
+    "No rendered-frame, terminal cell_len or actual layout measurement.",
+    "No repository edits, ledger command, tracked retention, PR comment or commit; read-only delegation permits own scratchpad only.",
+    "Translator session not supplied; independence states no participation in translation, not a verified cross-session identity match."
+  ]
+}

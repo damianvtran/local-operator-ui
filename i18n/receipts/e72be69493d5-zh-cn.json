@@ -1,0 +1,94 @@
+{
+  "schema": 1,
+  "auditor": "i18n-auditor (independent lopdev task 'UI #1604 i18n audit round 6', session e72be69493d5)",
+  "model": "[redacted]/claude-opus-5-5",
+  "model_provenance": "Whole audit (source reads, semantic review, probe, receipt writing, gate runs) ran on this session's announced model [redacted]/claude-opus-5-5. No fallback or model switch was observed during this session.",
+  "instance": "e72be69493d5-zh-cn",
+  "audit_session": "e72be69493d5",
+  "locale": "zh-CN",
+  "namespace": "ui.mesh",
+  "date": "2026-11-02",
+  "scope": "Translation audit round 6 of PR #1604 head 318ce5c4804: final bytes of this locale's ui.mesh read against English and the changed duration_*/named_refusal context notes. Values audited semantically here: every ui.mesh value that changed in 7a583b6469a..318ce5c4804 (2 in this locale). Bytes are identical to 5405030d027, which round-5 audits A (c995f19efc89) and B (8a7ec1c69c02) found clean for this locale; this auditor re-graded the same values independently. Unchanged values retain their earlier audits.",
+  "audited_head": "318ce5c4804c5d736b8c6f77b44a5735640a55db",
+  "delta_base": "7a583b6469a476ac693c478e1b8597b41c7685db",
+  "round5_head": "5405030d0270b1aeddfe0366bed3f5200800b1cb",
+  "status": "passed",
+  "sha256": {
+    "en": "04a6ef2c573f30f595d1bb9d4882866f2aa777b833e0faceb9ed56f5e2e6d6a5",
+    "zh-CN": "e3c1e7e2e26ea99c9ae0b42aac47b46dd808a9a6ad03dc5d444f3c8b854cf539"
+  },
+  "round5_sha256": {
+    "en": "04a6ef2c573f30f595d1bb9d4882866f2aa777b833e0faceb9ed56f5e2e6d6a5",
+    "zh-CN": "e3c1e7e2e26ea99c9ae0b42aac47b46dd808a9a6ad03dc5d444f3c8b854cf539"
+  },
+  "bytes_identical_to_round5": true,
+  "findings": [],
+  "prior_findings_verified": [],
+  "observations": [],
+  "changed_keys": [
+    "ui.mesh.approval.expires_window",
+    "ui.mesh.approval.named_refusal"
+  ],
+  "verbatim_values": {
+    "ui.mesh.approval.expires_window": "{duration}后到期",
+    "ui.mesh.approval.named_refusal": "“{request}”：{reason}"
+  },
+  "english_values": {
+    "ui.mesh.approval.expires_window": "Expires in {duration}",
+    "ui.mesh.approval.named_refusal": "For “{request}”: {reason}"
+  },
+  "context_sidecar": {
+    "path": "src/i18n/catalogues/en/ui.mesh.context.json",
+    "sha256": "c3b5f7137facbf0bfb2cada7faef5f13300e899de3d379c42b5862056cacf257",
+    "changed_notes": [
+      "ui.mesh.approval.duration_under_minute",
+      "ui.mesh.approval.duration_minutes",
+      "ui.mesh.approval.duration_hours",
+      "ui.mesh.approval.named_refusal"
+    ],
+    "read": "Changed context notes read in full against code at head. duration_under_minute/minutes/hours: approvalAnswerWindowLabel (mesh-approvals.ts) builds ONE bare duration and wraps it in expires_window when isAttentionApproval(row) (typed credential, state approved or failed) else answer_window; the tray renders it only when waiting (state requested) or attention, so 'requested, unanswered' / 'already-approved needs-attention' and 'CARD window, not share lifetime' are accurate, and the 'preserve grammatical compatibility with both outer messages' requirement is satisfied by every locale's pair (probe renders both). named_refusal: approvalHead returns credentialHead || summary || credential_title (credential), summary || unknown_title (unknown), summary when canApproveHere is false; approvalHeadUsesBackendSummary mirrors that selection; approvalRefusalPartDirection returns locale direction only for a catalogue-authored request, auto for a backend summary and for reason; MeshDecisionRefusal wraps each part in its own bdi. The note matches. No translation needed to change for either note."
+  },
+  "call_sites_read": [
+    "src/renderer/src/features/mesh/mesh-approvals.ts approvalAnswerWindowLabel, isAttentionApproval, approvalHead, credentialHead, approvalHeadUsesBackendSummary, approvalRefusalPartDirection",
+    "src/renderer/src/features/mesh/mesh-approvals-tray.tsx remaining-window render guard (waiting || isAttentionApproval), MeshDecisionRefusal bdi per part, requestIsBackendSummary wiring"
+  ],
+  "standards": {
+    "root": "~/local-operator/i18n at origin/main 500883ef56c (read with git show origin/main:)",
+    "sha256": {
+      "glossary.md": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "style-guides/zh-CN.md": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+    }
+  },
+  "translator": {
+    "agent": "coder",
+    "jobs": [
+      "07291411b980",
+      "c61a64298a45",
+      "21ddee198f0b",
+      "d82369d8e233",
+      "c3976a04742d",
+      "4fe47970b5a5",
+      "486744e25afc",
+      "835b27311cfb"
+    ],
+    "remediation_commit": "318ce5c4804c5d736b8c6f77b44a5735640a55db",
+    "attribution": "Translator/coder runs named by the manager; their served model is not verified by this auditor."
+  },
+  "independence": "This session (e72be69493d5) authored no catalogue value and edited no translation or code. It is distinct from translator/coder runs 07291411b980, c61a64298a45, 21ddee198f0b, d82369d8e233, c3976a04742d, 4fe47970b5a5, 486744e25afc, 835b27311cfb and from earlier auditors 0a40e337218a, 38d28c8fb9bf, 4cb156711482, e4d4705aa898, ce58dae953f0, 3b60dc9f25d1, f89f59f896f1, f1566d61a664, 30323a25557e, 0aea6fc8783e, c995f19efc89, 8a7ec1c69c02. The verdict comes from reading final bytes here.",
+  "semantic_checks": [
+    "expires_window '{duration}后到期': '2小时后到期', '1分钟后到期'; '不到一分钟后到期' acceptable.",
+    "named_refusal '“{request}”：{reason}' (U+201C/U+201D, full-width U+FF1A): doubled 请求 removed; reads correctly with both catalogue heads and backend summaries."
+  ],
+  "evidence": {
+    "probe": "i18n/receipts/e72be69493d5-structural-probe.mjs.txt",
+    "probe_sha256": "fa805239b0367cd872ee5ab15fac53cf24a11dec01ca2defff570079f243a109",
+    "log": "i18n/receipts/e72be69493d5-structural-probe-output.txt",
+    "log_sha256": "f9514d88124a7bc05e887bc28a5a6226776153cc3dfdb3d6e50e261c56a46858",
+    "verdict_location": "Status, findings and semantic_checks here are the auditor's review record. The companion log is the actual probe output: R5->head byte identity per locale (only ru expires_window differs), English catalogue identity, context delta limited to the four notes, ICU argument parity/NFC/bidi for the changed ru value, and renders of every reachable ru duration plus sample renders of all locales."
+  },
+  "non_claims": [
+    "No rendered/compiled-native, width/fit, font shaping, RTL layout, screen-reader or visual validation (host memory hold); direction behaviour verified in source only.",
+    "No translation edits by this auditor."
+  ],
+  "notes": "Round 6 on PR #1604 head 318ce5c: passed, 0 findings; bytes identical to round-5-clean 5405030; context notes accurate."
+}

@@ -1,0 +1,108 @@
+{
+	"schema": 1,
+	"kind": "translation-audit",
+	"locale": "es",
+	"branch": "i18n/s5-agent-hub",
+	"head": "be77d308262ce0527c1fd4052ff77207edcac189",
+	"date": "2026-11-08",
+	"instance": "2ff5f985-teams",
+	"auditor": "translation-auditor",
+	"agent": "translation-auditor",
+	"model": "deepseek/deepseek-flash",
+	"model_provenance": "Session started as anthropic/claude-sonnet-5-5; provider quota failures forced three fallbacks (anthropic/claude-opus-5-5, openai/gpt-6.1-sol, deepseek/deepseek-flash), and deepseek/deepseek-flash served every catalogue read and this verdict. Disclosed under the review gate's provenance rule. The mechanical half of this audit is executed, not asserted: the repo's own ICU/key/placeholder guard was run at this head.",
+	"pr": null,
+	"pr_note": "`gh pr list --head i18n/s5-agent-hub --state all --json number` returned no rows at audit time; no PR number exists to record.",
+	"reference_sha256": {
+		"glossary": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+		"style_guide_es": "77b9227213802d14c74d4298d6b346ad842bbf2a5ca3b9d46fc6144430d26c3e",
+		"style_guide_es_rev": "~/local-operator @ b42471d3935 (i18n/ working tree clean for these files)"
+	},
+	"independence": "Separate session from the two commits under audit (c88ad36bbca keying, be77d308262 translation) and from the per-locale translation lanes. Read: the diff, the English source and its context sidecars, the es catalogue's carried values, the es style guide and the glossary, and the render sites, all read-only at the briefed head. Wrote only this receipt and its sibling.",
+	"scope_limits": "Source-level audit at HEAD be77d308262. Per the brief no app was started, no checkout or install was done, and no screenshot is claimed. Other locales and other namespaces are out of scope.",
+	"namespace": "ui.hub.teams",
+	"source": "src/i18n/catalogues/en/ui.hub.teams.json",
+	"target": "src/i18n/catalogues/es/ui.hub.teams.json",
+	"source_context": "src/i18n/catalogues/en/ui.hub.teams.context.json",
+	"key_count": 1,
+	"namespace_key_count": 50,
+	"keys_audited": [
+		"ui.hub.teams.unnamed_team"
+	],
+	"sha256": {
+		"source": "b9674e6bb1f862d380d45568204abcd8735eb08782bfb1351f469019b4e583b8",
+		"source_context": "5ff2873c5549724860df39f48eae57585a38dacc5bfdb5ae24758ab58e981fbe",
+		"target": "f19073d108d542f23947a78a52f01c3e290dc73224aa365f6e25171aae88ade4"
+	},
+	"audit_kind": "first audit of the 1 key this commit adds to this namespace, plus the syntax-only comma change the same commit makes in it",
+	"scope": "Delta c88ad36bbca..be77d308262 for es ui.hub.teams only: the key ui.hub.teams.unnamed_team, the trailing comma added to ui.hub.teams.recency.updated (value must not change), and the 49 carried values, checked for value-level change and used as the register/terminology baseline.",
+	"comma_change": {
+		"key": "ui.hub.teams.recency.updated",
+		"before": "actualizado {when}",
+		"after": "actualizado {when}",
+		"result": "unchanged",
+		"proof": "Both revisions parsed as JSON: c88ad36bbca has 49 keys, be77d308262 has 50; 0 keys removed, 0 values changed, and the recency.updated value is byte-identical ('actualizado {when}') on both sides. The added ',' is JSON syntax for the appended unnamed_team member and changed nothing it did not have to."
+	},
+	"checks": {
+		"completeness": {
+			"result": "pass",
+			"detail": "1/1 new key present; es key set equals en exactly (50 = 50); no value equals its key id; no es value is byte-identical to en in this namespace (repo guard re-run: 44/44 pass)."
+		},
+		"value_delta": {
+			"result": "pass",
+			"detail": "Parsed both sides of the range: 1 added key, 0 removed, 0 changed values. Nothing outside the appended member and its separating comma moved."
+		},
+		"placeholder_fidelity": {
+			"result": "pass",
+			"detail": "unnamed_team is placeholder-free in en and es; the key carries none and gained none. The message it feeds, pull_failed ('No se pudo hacer pull de “{name}”.'), keeps its own {name} untouched."
+		},
+		"plural_clrd": {
+			"result": "not-applicable",
+			"detail": "The new key carries no plural, select or number argument; the es one/many/other categories are not exercised by it. The plural-bearing member_count/match_line keys were not touched."
+		},
+		"use_site_fit": {
+			"result": "pass",
+			"detail": "'este equipo' is exactly the shape the sidecar demands: a lowercase noun phrase that a quoted name slot can hold, not a sentence. Both call sites pass it as `name` (public-teams-library.tsx:168, org-teams-list.tsx:187), so the rendered sentence is 'No se pudo hacer pull de “este equipo”.' — grammatical Spanish, and parallel to the sibling fallback org.that_organization ('esa organización'). Third-person form ('el equipo') would read as a different team; the demonstrative is the right one."
+		},
+		"register": {
+			"result": "pass",
+			"detail": "Lowercase fragment, no sentence punctuation, no usted — matches the sidecar's tone and the es style guide's 'fragments may stay lowercase' rule, and the 49 carried values around it."
+		},
+		"terminology": {
+			"result": "pass",
+			"detail": "'equipo' for team (glossary §team); no English residue at all in the new value, and 'pull' stays where the shipped family already has it (carried values, not this commit's addition)."
+		},
+		"pair_voice": {
+			"result": "pass",
+			"detail": "The pages namespace's fallback org.that_organization ('esa organización') uses the same demonstrative phrase pattern, so a pages/teams pair rendered together reads in one voice; the sibling headline in both namespaces keeps its own 'esa' consistent with it."
+		},
+		"typography": {
+			"result": "pass",
+			"detail": "No quotes, dashes, ellipses or trailing punctuation were added; trailing punctuation matches en key by key across all 50 keys. Accents correct in the surrounding carried values untouched here."
+		},
+		"whitespace_encoding": {
+			"result": "pass",
+			"detail": "No edge or double spaces, no NBSP, no zero-width or bidi control characters. File parses as JSON and keeps the catalogue's tab indentation."
+		},
+		"guard_run": {
+			"result": "pass",
+			"detail": "Same single serialised run of node --test scripts/i18n/locale-parity.test.mjs: 44 tests, 44 pass, 0 fail, covering key existence, ICU placeholder integrity and English-stub detection for every shipped locale."
+		}
+	},
+	"per_key_findings": [],
+	"findings_note": "No per-key findings: every key in keys_audited was read against its English value and context sidecar and passes every check below. Had a defect been found it would appear here with {id, severity, key, current, proposed, evidence}.",
+	"findings": [],
+	"counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 0
+	},
+	"status": "passed",
+	"result": "clean",
+	"verdict": "clean",
+	"ship": true,
+	"normalised_for_ledger": "auditor and instance rewritten to the ledger contract by the programme manager; original auditor text preserved verbatim inside the parentheses, findings and hashes untouched",
+	"identity_provenance": {
+		"auditor": "translation-auditor (translation-auditor (independent i18n auditor, lopdev reviewer role, instance 2ff5f985; not the translator of this wave and not the coder of either commit))"
+	}
+}

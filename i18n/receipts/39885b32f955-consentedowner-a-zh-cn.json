@@ -1,0 +1,83 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit, independent audit A (docs/I18N.md): the ui.teamBridge.events.consented_owner addition (the owner arm of the consented line) at the post-D1 bytes",
+	"date": "2026-10-30",
+	"auditor": "translation-auditor",
+	"agent": "translation-auditor",
+	"model": "radient/auto",
+	"model_provenance": "Session 39885b32f955 started as anthropic/claude-opus-5-5; the harness switched it to openai/gpt-6-astra, then kimi/k3.1-pro, then radient/auto (provider failure: quota). Every catalogue read, render and verdict below was produced under radient/auto.",
+	"session": "39885b32f955",
+	"instance": "39885b32f955-consentedowner-a-zh-cn",
+	"audit_id": "consented-owner-a-39885b32f955-zh-CN",
+	"status": "passed",
+	"result": "clean",
+	"locale": "zh-CN",
+	"namespace": "ui.teamBridge",
+	"en_sha256": "4042a918bc64406c4c24ad5ea68fe3c3f3aaa7228917bc1678547cfb0c20285c",
+	"zh-CN_sha256": "88761fbda9d8de5c7c0253809149ebf3be68e62f42ce8a8a109a754f29ad2f1a",
+	"translator": {
+		"agent": "translator",
+		"model": "anthropic/claude-opus-5-5"
+	},
+	"independence": "Auditor A (translation-auditor, session 39885b32f955, team lopdev) is independent of the translator (translator / anthropic/claude-opus-5-5) and of auditor B. Every verdict here was formed from the English catalogue, the English context sidecar, this locale catalogue, the repo glossary/style guides and the rendered ICU output BEFORE any other auditor receipt for this delta was read. No catalogue was edited, nothing was installed, and every command run was a node script.",
+	"integration": {
+		"branch": "fix/team-bridge-member-events",
+		"head_at_audit": "9d19fc6d58e",
+		"worktree": "~/local-operator-ui/.worktrees/member-events",
+		"catalogue_state": "the seven locale catalogues and the en source are committed at 9d19fc6d58e (the task described them as uncommitted; they were committed while the audit began). The bytes audited are the bytes on disk and at HEAD: git status is clean, and git show --stat 9d19fc6d58e records exactly one added line per catalogue."
+	},
+	"scope": {
+		"primary": [
+			"ui.teamBridge.events.consented_owner"
+		],
+		"inherited_byte_unchanged": "the other 297 ui.teamBridge keys: unchanged since the last audited row by the commit stat above; this audit re-read the 12-key events block, members.invitation_note_v3 and members.role.owner for term/register agreement with the new line and found no drift.",
+		"checked": [
+			"value vs the English sentence and the sidecar entry (meaning, who consented, the sibling's no-claim arm)",
+			"placeholder set {actor,targets} exact, in order, no ICU plural/select/number/date skeleton or markup token to preserve",
+			"ICU AST: two argument nodes and two literals, no plural branches",
+			"NFC normalisation, bidi control characters, ZWNJ/ZWJ",
+			"Urdu bidi context: every placeholder is space-delimited from Urdu text, so no neutral character can reorder around a Latin name; the line begins with {actor}, so the direction must come from <html dir> (use-document-direction.ts) and never dir=\"auto\"",
+			"locale typography: ru em dash spacing, zh-CN no inter-script space, fr/es apposition without a comma (the \"mon ami Pierre\" pattern), hi/ur oblique possessive + postposition",
+			"width: the new value against its own sibling line, not against the English length",
+			"render at exactly one target with the repo's intl-messageformat"
+		],
+		"renderer_predicate": "teamBridgeEventOwnerConsent fires when every target is kind=\"agent\" and target.account_id === actor.account_id (team-bridge-member-events-model.ts). That is the right test IN PRINCIPLE: a person IS an account (teamBridgeDirectoryMemberSchema keys a person by account_id) and an agent party carries its OWNER's account_id with its own endpoint_id, so same-account agents on an agent target are the actor's own. Two gaps are reported to the manager as source-side findings, not as locale defects: the predicate admits several targets while this copy is singular, and it does not require a human actor."
+	},
+	"findings": [],
+	"source_findings": [
+		{
+			"id": "CO-A-SRC1",
+			"severity": "MINOR",
+			"key": "ui.teamBridge.events.consented_owner",
+			"where": "en source copy + scripts/team-bridge-member-events.test.mjs / team-bridge-member-events-model.ts",
+			"current": "{actor} approved their agent {targets} joining (singular \"agent\"); the sidecar asserts \"{targets} is ... always exactly one name for this key\"",
+			"proposed": "enforce the asserted invariant in the renderer: teamBridgeEventOwnerConsent returns false unless line.targets.length === 1 (preferred), or pluralise the line (ICU plural, which then needs one/few/many/other in ru)",
+			"reason": "the predicate uses .every, and teamBridgeEventLines rolls up same-request_id/same-kind events, so a consent request covering two agents of one owner yields two targets and every locale renders a singular noun with a two-name list (\"their agent A and B joining\"). No fixture or hub evidence of a multi-target consent event exists, so this is latent, not demonstrated.",
+			"applies_to_locales": "all seven, identically (each renders the source's singular faithfully)"
+		},
+		{
+			"id": "CO-A-SRC2",
+			"severity": "NIT",
+			"key": "ui.teamBridge.events.consented_owner",
+			"where": "en context sidecar placeholders.actor + teamBridgeEventOwnerConsent",
+			"current": "sidecar: \"Display name of the person or agent who made the change\"; predicate accepts any actor kind",
+			"proposed": "require line.actor.kind === \"human\" for the owner arm (or say in this key's actor note that the actor is the person), since ownership of an agent belongs to the account's person, not to another agent",
+			"reason": "if a hub ever emits an agent as the consenting actor, \"their agent\" attributes ownership to an agent; the sidecar says the actor may be an agent, so copy and predicate disagree about what the line may claim.",
+			"applies_to_locales": "all seven, identically"
+		},
+		{
+			"id": "CO-A-SRC3",
+			"severity": "MINOR",
+			"key": "ui.teamBridge.events.consented",
+			"where": "src/i18n/catalogues/en/ui.teamBridge.context.json, ui.teamBridge.events.consented",
+			"current": "role: \"timeline system line: an agent's owner approved the agent joining\"; note: \"The owner gave consent for their agent to join this conversation. Reads 'X approved Y joining'.\"",
+			"proposed": "role: \"timeline system line: a consent whose owner relation the client cannot prove\"; note: \"Any consent the owner arm cannot prove - someone approving another person's agent, or a person approving a human. It must not claim the target is the actor's agent; the owner arm is ui.teamBridge.events.consented_owner.\"",
+			"reason": "after D1 this key is the NON-owner arm, so its description now describes only the case it no longer covers and would lead a future translator to put an ownership claim back into the arm that deliberately has none.",
+			"applies_to_locales": "source-side (the en sidecar has no ledger row); it is the file translators read, not a shipped string"
+		}
+	],
+	"cross_locale_answer": "REUSE OF owner_added_agent: right in all seven, because what transfers is the possessor phrase and each locale rebuilt the verb frame. en drops \"own\" in both lines (\"their agent\"), fr/es do the same (\"son agent\"/\"su agente\"), while zh (\"自己的\"), ru (\"собственного\"), ur (\"اپنے\"), hi (\"अपने\") and vi (\"của mình\") keep the emphatic own-word their sibling uses, so the pairs read in parallel inside each locale. hi/ur had to inflect the possessive to the oblique (अपना->अपने, اپنا->اپنے) for the کو postposition, and did. No locale copied a frame that does not fit \"approved ... joining\".",
+	"installed_keys": {
+		"note": "keys are not installed by this audit; the runtime installs from a release, and this branch is unmerged."
+	}
+}

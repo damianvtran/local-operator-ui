@@ -1,0 +1,22 @@
+{
+  "auditor": "translation-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "tbd-r2-ur",
+  "session": "bd7da88fb715",
+  "date": "2026-10-21",
+  "locale": "ur",
+  "translator": "translator",
+  "namespaces": {
+    "ui.teamBridge": {
+      "status": "passed",
+      "keys_audited": 6,
+      "scope": "Inherited full first-pass semantic coverage of 109 keys from unchanged tbd-r1-ur.json (SHA256 93b5f17ca759586da078f4890ab524d5d61ea46a609076273745d6a42b1a44f8). Round 2 semantic review: six remediation keys (row.menu, thread.yesterday, notify.mention, menu.unmute, people.bridge_off, notify.label), all applied byte-exactly as previously proposed; direct regression surfaces: menu.mute, menu.label, notify.all, notify.mute, notify.muted, notify.error, thread.today, people.message, people.paused, people.identity_loading. No new full semantic audit. Whole-catalogue mechanical regression checks: identical 109-key sets, parsed ICU arguments/options/styles/offsets and placeholders match English, no prohibited bidi controls/scripts/Arabic-only letters/non-Latin digits, NFC; frozen English/context hashes verified. RTL product runs and punctuation checked for remediation; no manual controls introduced. No rendered overflow check; revised row.menu and menu.unmute are accessible/menu labels, yesterday is a short divider, notification labels remain short, and people.bridge_off is tooltip/assistive text. chief.label verdict inherited unchanged: placeholder/bracket-only composition is valid.",
+      "sha256": {
+        "en": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+        "ur": "76bfaa1fa565994bbeeb8c76450042111a405525442a1ba2e0a956e1ba2e5397",
+        "context": "17b7e1450dc7fa529d8e2e684bb8653fcc4f6cf220bf8261631d078d26545de5"
+      },
+      "findings": []
+    }
+  }
+}

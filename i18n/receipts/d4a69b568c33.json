@@ -1,0 +1,23 @@
+{
+  "auditor": {
+    "agent": "reviewer",
+    "model": "deepseek/deepseek-flash",
+    "instance": "d4a69b568c33"
+  },
+  "locale": "ru",
+  "namespace": "ui.library",
+  "status": "passed",
+  "date": "2026-10-20",
+  "sha256": {
+    "ru": "98dd7b5e814ac2739430839c60a5007d9963bd6c53ae0fed870fe6d8379b2481",
+    "en": "d38247e1cc3871ed45581b84e5d514de7a6aa91cd0d946027a1dd37f5920daa5"
+  },
+  "scope": "Delta re-audit of ru/ui.library at the current on-disk bytes, after ui.library.librarian.organize_now was shortened from «Упорядочить сейчас» to «Упорядочить» to clear a measured 40px librarian-row overflow. Judged in the librarian action row: the label sits beside «Библиотекарь», the last-organized/never-run state, the unorganized count, and an «Открыть» button.",
+  "judgement": "The bare infinitive «Упорядочить» is adequate and idiomatic for the action: Russian UI buttons standardly use the infinitive, the row's own vocabulary («Упорядочено {at}», «не упорядочено») fixes the meaning, and «сейчас» adds no information next to a control that is by definition immediate. No clarity loss; no finding.",
+  "findings": [],
+  "remediation": {
+    "previous_target_sha256": "4a004038d1808cc9327668fe1d851f596794ce61cc58997a7829435a605a62e4",
+    "unchanged_proof": "Reversing that one substitution in the raw bytes («Упорядочить» -> «Упорядочить сейчас», one occurrence, at the organize_now value) reproduces sha256 4a004038d1808cc9327668fe1d851f596794ce61cc58997a7829435a605a62e4 byte-for-byte; the round-trip returns the on-disk bytes exactly. 158 keys, identical key set and order against en; English source hashes to d38247e1cc3871ed45581b84e5d514de7a6aa91cd0d946027a1dd37f5920daa5, the ledger's recorded source.",
+    "checks": "sha256 of on-disk ru/ui.library.json = 98dd7b5e814ac2739430839c60a5007d9963bd6c53ae0fed870fe6d8379b2481; key set/order parity with en; reverse-substitution hash equality; ledger-check run after assembly."
+  }
+}

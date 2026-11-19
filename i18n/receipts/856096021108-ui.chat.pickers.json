@@ -1,0 +1,96 @@
+{
+	"locale": "zh-CN",
+	"namespace": "ui.chat.pickers",
+	"audit_date": "2026-11-03",
+	"audit_id": "zhcn-r1-pickers-856096021108",
+	"agent": "i18n-auditor",
+	"instance": "856096021108",
+	"model": "radient/auto",
+	"requested_route": "radient/auto",
+	"served_underlying_model": "UNKNOWN",
+	"model_kind": "requested_route_only",
+	"status": "passed",
+	"key_count": 752,
+	"reviewed_key_count": 11,
+	"reviewed_keys": [
+		"ui.chat.pickers.slash.source.model",
+		"ui.chat.pickers.slash.source.effort",
+		"ui.chat.pickers.slash.source.approvals",
+		"ui.chat.pickers.slash.source.team",
+		"ui.chat.pickers.slash.source.agent",
+		"ui.chat.pickers.slash.source.providers",
+		"ui.chat.pickers.slash.source.provider_accounts",
+		"ui.chat.pickers.slash.source.mcp",
+		"ui.chat.pickers.slash.source.theme",
+		"ui.chat.pickers.slash.source.title_refresh",
+		"ui.chat.pickers.slash.source.session_tags"
+	],
+	"scope": "zh-CN reader 1, 12-key new-source delta: 11 of 12 keys in this namespace; the other 741 carried values keep prior approval and were not re-audited",
+	"translator_session": "cb9363e71f54",
+	"source_sha256": "ecc10fb18100d4d462f36214c83507a48c7f0f8173cb72f37bf5964a05abb58c",
+	"target_sha256": "1187771d4e7cc1bdff27c24289de4ee6c854dc8a122ac167a30b2b399dcddf11",
+	"context_sha256": "a03f45c9158177d2282d89c088fec46c949f42952959ac84d6a8b72e0582d981",
+	"base_target_sha256": "18e7c58d79856b9dd867aeb0696b4669bc140e2638bc4b842d84399791a7f535",
+	"input_hashes": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.chat.pickers.json",
+			"sha256": "ecc10fb18100d4d462f36214c83507a48c7f0f8173cb72f37bf5964a05abb58c"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.chat.pickers.context.json",
+			"sha256": "a03f45c9158177d2282d89c088fec46c949f42952959ac84d6a8b72e0582d981"
+		},
+		"target": {
+			"path": "/Users/damian/.local-operator/sessions/cb9363e71f54/scratchpad/target/zh-CN/ui.chat.pickers.json",
+			"sha256": "1187771d4e7cc1bdff27c24289de4ee6c854dc8a122ac167a30b2b399dcddf11"
+		},
+		"base_target": {
+			"path": "src/i18n/catalogues/zh-CN/ui.chat.pickers.json",
+			"sha256": "18e7c58d79856b9dd867aeb0696b4669bc140e2638bc4b842d84399791a7f535"
+		}
+	},
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "856096021108",
+		"model": "radient/auto",
+		"actual_model_source": "harness header 'Model: radient/auto' is a route name only; no served provider/model identity is exposed to this session, so served_underlying_model is UNKNOWN rather than asserted",
+		"independent_from_translator_session": true
+	},
+	"binding": {
+		"path": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/ui-four-flow-audit-binding.json",
+		"en_context_target_base_hashes_recomputed_and_matched": true,
+		"frozen_v2_manifest_and_delta_context_recomputed_and_matched": true
+	},
+	"verification": {
+		"method": "python 3 stdlib only (json, hashlib, re, unicodedata), in-session 2026-11-03",
+		"json_valid": true,
+		"duplicate_keys": 0,
+		"keyset_vs_english": "identical, no keys added or dropped",
+		"old_values_and_order": "every base value byte-identical, base order preserved, new keys appended in source order",
+		"placeholders": "0 in source and 0 in target (context declares placeholders {})",
+		"icu": "N/A - these keys carry no plural/select/number argument, so no CLDR category is required",
+		"markup_and_code": "0 rich-text tags, 0 backticks, 0 commands/flags/identifiers on either side",
+		"punctuation": "U+2014 x2 where the source has an em dash, U+FF0C, U+3002 only; no halfwidth punctuation, no stray whitespace, no Latin residue",
+		"unicode_scripts": "Han only where translation applies; no combining-mark or wide-glyph reordering risk",
+		"repo_validator_run": false,
+		"ledger_run": false,
+		"render_pseudo_rtl_run": false,
+		"reason_not_run": "source-only audit under resource hold with a no-edit/no-PR scope: check-strings/generate.py, ledger-assemble and rendered/pseudo/RTL evidence belong to the parent's shared gate and were not re-run here"
+	},
+	"findings": [
+		{
+			"id": "zhCN-R1-P1",
+			"severity": "nit",
+			"key": "ui.chat.pickers.slash.source.mcp",
+			"problem": "'服务器' alone is polysemous in this corpus: 155 zh-CN values use 服务器 for the app's own backend/server, and the same subject (MCP servers) is already named 'MCP服务器' in the picker copy. Under /mcp the heading is still readable, so this is disambiguation, not a wrong meaning.",
+			"suggestion": "MCP服务器",
+			"evidence": "corpus: ui.chat.pickers.mcp_picker.mcp_servers=MCP服务器, ui.chat.pickers.mcp_picker.loading_configured_mcp_servers=正在加载已配置的MCP服务器……; backend sense e.g. ui.chat.session_status.commands_off=此服务器已关闭斜杠命令"
+		}
+	],
+	"not_run": [
+		"repo validator / scripts/i18n check-strings and generate.py (source-only audit; resource hold)",
+		"ledger write or ledger-assemble (parent aggregates; this auditor edits no repo file)",
+		"render, pseudo-localization, RTL and runtime fit (no browser, app or screenshot activation)",
+		"the 806 carried zh-CN values (prior approval retained; this delta audits 12 keys only)"
+	]
+}

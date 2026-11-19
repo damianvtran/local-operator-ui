@@ -1,0 +1,60 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "tbs-r1-fr",
+ "session": "a418e33f0cf6",
+ "date": "2026-10-21",
+ "locale": "fr",
+ "translator": "translator",
+ "translator_session": "1198ce271648",
+ "namespace": "ui.teamBridge",
+ "status": "passed",
+ "keys_audited": 27,
+ "scope": "27-key drafts/schedule delta (5 ui.teamBridge.drafts.* + 22 ui.teamBridge.schedule.*, per git diff 2e16fb1456..e400709b71 of en); base 109 values verified byte-unchanged versus HEAD and inherited from tbd-r3-fr; catalogue audit only, not rendered-fit/activation/release.",
+ "sha256": {
+  "en": "145e5d2de5165a0fa6e5ce1cff91f6e6909007e448b4a6e229b47a87a71cb46b",
+  "fr": "cfe5349c5f64503c074a57ac86fb5e8d9817d84a31c53d02cd6de1e2c3944dea",
+  "context": "cfb426eebee10f1a71310746c4491690a24e2ad6074401115e217d222b9857b2"
+ },
+ "findings": [
+  {
+   "severity": "MINOR",
+   "key": "ui.teamBridge.schedule.create_retry",
+   "current": "J’ai vérifié la section Groupes — autoriser une nouvelle tentative de création",
+   "proposed": "J’ai vérifié la section Groupes — autoriser un nouvel essai",
+   "note": "78 chars vs 49 in English (1.59×) on a ghost Button whose base class is whitespace-nowrap in the composer footer of the thread pane, so it cannot wrap and risks horizontal overflow at the 800 px minimum window width; the proposal keeps the explicit acknowledgement and the Groupes term at 59 chars — flag for a rendered check either way."
+  },
+  {
+   "severity": "NIT",
+   "key": "ui.teamBridge.schedule.when",
+   "current": "Envoyer le",
+   "proposed": "Date et heure d’envoi",
+   "note": "As the visible <label> of a datetime-local field, a verb plus dangling article reads translated; French form labels are normally noun phrases (the dialog has width to spare, max-w-lg)."
+  }
+ ],
+ "inherited_receipt": {
+  "base": "2e16fb1456",
+  "path": "i18n/receipts/tbd-r3-fr.json",
+  "sha256": "fe0341dd78a19bfe03e02625f56ec08e77aab77f27123a57b00e3cd4a045fbcd",
+  "keys_inherited": 109,
+  "base_source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+  "base_target_sha256": "b28cfcd21792bd85822daffe240797f932dbf2c6fa9e11b1917c1c20759438fb",
+  "full_coverage_receipt": {
+   "path": "i18n/receipts/tbd-r2-fr.json",
+   "sha256": "1166ae248ede12a85c9526e8ac4ac2ff65df4b870619da96c30c820cf7e256fe"
+  },
+  "unchanged_values_verified": 109
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+ },
+ "validation": {
+  "independence": "Auditor session a418e33f0cf6 is distinct from translator session 1198ce271648; no translator summary relied on — every value read from the working-tree bytes; no repo file edited, staged or committed.",
+  "semantics": "All 27 values read beside en, the context sidecar and their call sites in team-bridge-scheduled.tsx (dialog title/description, field labels, help text, role=alert errors, aria-live confirm, nowrap primary button review→confirm_action, section h2/aria-label, row buttons), team-bridge-page.tsx (rail nav aria-label + buttons, drafts section, composer footer alerts and ghost retry/create_retry buttons, icon-button aria-label) and team-bridge-rail.tsx (drafts indicator title + sr-only). Uncertainty preserved: « n’a pas été confirmée », « peut-être déjà », « est peut-être déjà en cours d’envoi ». schedule.list « Planifiés » is referenced verbatim (in « ») by schedule.failed and schedule.success; create_uncertain/create_retry use « Groupes » = section.groups. Glossary/style guide: schedule→planification (Planifier/planifié/Replanifier, matching ui.schedules « Planifications »), device→appareil, organization→organisation, cancel→Annuler/annulation (schedule.cancel « Annuler l’envoi » correctly says delivery is stopped, not history deleted), retry→Réessayer (= list.retry), refresh→Actualiser (= ui.schedules), draft→Brouillon (= ui.code_review). Register: vous throughout, imperatives, no « Veuillez », sentence case, no T/V drift. No value identical to English (edit_body « Contenu » is an accurate rendering of the body label).",
+  "icu": "Parsed en and fr for all 27 keys with @formatjs/icu-messageformat-parser from the repo node_modules: argument sets identical (schedule.timezone {timezone}, schedule.confirm {date}; 25 keys argument-free), 0 mismatches, no plural/select needed. Formatted with intl-messageformat (fr): timezone → « …dans le fuseau horaire Europe/Paris. L’envoi… »; confirm with Intl dateStyle:full + timeStyle:long → « Envoyer le jeudi 22 octobre 2026 à 10:30:00 UTC−4 ? ».",
+  "typography": "File is NFC; no U+200E/F, U+202A–E, U+2066–9 or U+061C; all apostrophes U+2019; U+202F before ? (confirm) and ; (failed) and inside « » (failed, success); loading ends with U+2026; em dashes spaced; digits Latin (literal 1 / 120 mirror the English source); 109 base values byte-identical to HEAD (HEAD fr sha b28cfcd2… = inherited base_target_sha256; only diff hunk on base is the trailing comma on list.error_pane).",
+  "overflow": "Ratios 1.0–1.8×; short labels safe: drafts.title « Brouillons » and schedule.list « Planifiés » in the 288 px rail nav, drafts.indicator is tooltip/sr-only, review/confirm_action (25/26 chars) in a max-w-lg dialog, reschedule/cancel row buttons ≤15 chars, retry 37 chars. Only create_retry (78 chars, nowrap ghost button) is flagged.",
+  "limitations": "Browser unavailable by task constraint; no screenshots, glyph metrics, visual-fit or rendered bidi claim. No catalogue/code edits."
+ }
+}

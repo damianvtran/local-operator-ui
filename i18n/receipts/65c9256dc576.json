@@ -1,0 +1,21 @@
+{
+  "auditor": "qa-tester",
+  "model": "deepseek/deepseek-flash",
+  "instance": "65c9256dc576",
+  "status": "passed",
+  "namespace": "ui.projects",
+  "date": "2026-10-20",
+  "sha256": {
+    "en": "c5548caf87fc8f500ea5f56720c59d8aab940598275e4cf2c53e791990121f49",
+    "es": "1e9b4fa538e438fb81d9f40db44636679a8d180a9b63f61af78c142ad05f4c5d",
+    "fr": "2890e4a59802cc75818a867013b818db6e1f5c8a3dad98e71b6817f8a489b953",
+    "hi": "0f488b2c2b4786d18d14480dc6f2999ebc3f70c625f6e8a631ca06f8a5539c2b",
+    "ru": "6f887c95e10fed6fec74083494eacfafb63b2142f9c5d9f4401f67c64f1239fc",
+    "ur": "4079a8e209e4cc68a97e51ca331ffc4f8e7007a15a349c76d54d17135ef50e86",
+    "vi": "0445fa5cc83d4c7f2a46279cffc61e037896d5ffdabfaedf9859db400fb9c5f3",
+    "zh-CN": "8c7d01fb44394634c1fa3673512baca3f77933b32d2d245a5a5d93a6d945a011"
+  },
+  "findings": [],
+  "scope": "QA report — round 3 independent verification of PR #1250 at 84c8954ba3, scope 9895f79a24..84c8954ba3: all eight added ui.projects keys present in every one of the seven locales, ICU placeholders preserved, no English stubs; zero findings.",
+  "note": "QA report — round 3, https://github.com/damianvtran/local-operator-ui/pull/1250#issuecomment-6285533685; the earlier label and citation were a provenance error corrected on 2026-10-20."
+}

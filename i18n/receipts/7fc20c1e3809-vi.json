@@ -1,0 +1,89 @@
+{
+	"schema": 1,
+	"receipt_kind": "independent copy-delta audit (placeholder re-point), one locale",
+	"audit_id": "delivery-recipient-repoint-7fc20c1e3809",
+	"date": "2026-11-03",
+	"agent": "copy-reviewer",
+	"model": "anthropic/claude-opus-5-5",
+	"model_provenance": "Served model as announced by the harness system prompt for session 7fc20c1e3809 (Model: anthropic/claude-opus-5-5); no fallback announced or observed during the run.",
+	"model_fallback": {
+		"announced": false,
+		"observed": false
+	},
+	"instance": "7fc20c1e3809-vi",
+	"session": "7fc20c1e3809",
+	"status": "passed",
+	"result": "clean",
+	"locale": "vi",
+	"namespace": "ui.teamBridge",
+	"sha256": {
+		"en": "abb57e40f1b5c4ac9fd8426d12d622d8a68d1b974b77ab4cdfd7f13a21f604b9",
+		"vi": "ea0f3c8924756a199559f3df9401f9f25ff03a4ca17d1709b67166594b0c7740"
+	},
+	"context": {
+		"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+		"sha256": "ae4e73c95e85e7c773fefae1b6ec3cb5cccb3e3f1a802420bc3f608a3cadb1b4",
+		"delta_entries_present": true,
+		"note": "Exactly the ten delivery entries changed vs base 2ff3187db64d, and only their placeholders block ({agent},{owner} -> {recipient}); role/tone/length/note unchanged."
+	},
+	"reference_hashes": {
+		"~/local-operator/i18n/glossary.md": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+		"~/local-operator/i18n/style-guides/vi.md": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888",
+		"core_commit": "b42471d3935cb7e95d64428af27c32626665f4c0"
+	},
+	"integration": {
+		"pr": 1643,
+		"branch": "fix/delivery-recipient-label",
+		"reviewed_head": "0ce7d254d234513a2d522965e6170a6944239f4d",
+		"merge_base_main": "2ff3187db64d36fa42bd0b97b24ef5f184ac8145",
+		"author_job": "da8eee3a55f2"
+	},
+	"scope": {
+		"keys": [
+			"ui.teamBridge.delivery.refused",
+			"ui.teamBridge.delivery.refused_manipulation",
+			"ui.teamBridge.delivery.refused_personal_info",
+			"ui.teamBridge.delivery.refused_abusive",
+			"ui.teamBridge.delivery.refused_unsafe_content",
+			"ui.teamBridge.delivery.refused_out_of_scope",
+			"ui.teamBridge.delivery.held",
+			"ui.teamBridge.delivery.held_screening_unavailable",
+			"ui.teamBridge.delivery.held_awaiting_review",
+			"ui.teamBridge.delivery.pending"
+		],
+		"kind": "Independent linguistic audit of exactly the ten re-pointed delivery values against English, the context sidecar and the locale glossary/style guide, including how each sentence reads with both composed recipient forms (ui.teamBridge.chief.label and ui.teamBridge.chief.unnamed in this locale) and the pending meaning change. Unchanged namespace content is inherited, not re-audited.",
+		"unchanged_proof": "Parsed base and head: no key outside the ten changed in this catalogue; for each of the ten, the head value equals the base value with '{agent} ({owner})' (zh-CN: '{agent}（{owner}）') and, for pending, '{agent}' replaced by '{recipient}'. Translated words are byte-identical. Base file hash equals the existing ledger target hash.",
+		"base_target_sha256_prefix": "9e50088b52ae"
+	},
+	"independence": "copy-reviewer session 7fc20c1e3809 on the radientdev team. Authored none of PR #1643 (author: coder job da8eee3a55f2), none of the translations and none of the prior receipts; edited no catalogue value. Its only writes are these receipts and the ledger rows derived from them by ledger-assemble.",
+	"placeholder_check": {
+		"placeholders": [
+			"recipient"
+		],
+		"leftover_agent_or_owner": false,
+		"each_value_exactly_one_recipient": true
+	},
+	"per_key_verdict": {
+		"ui.teamBridge.delivery.refused": "PASS: Không được chuyển tới {recipient}. Bị bộ kiểm duyệt từ chối.",
+		"ui.teamBridge.delivery.refused_manipulation": "PASS: Không được chuyển tới {recipient}: bị bộ kiểm duyệt của họ từ chối (có vẻ là một nỗ lực thao túng tác nhân)",
+		"ui.teamBridge.delivery.refused_personal_info": "PASS: Không được chuyển tới {recipient}: bị bộ kiểm duyệt của họ từ chối (có vẻ là một yêu cầu thông tin cá nhân)",
+		"ui.teamBridge.delivery.refused_abusive": "PASS: Không được chuyển tới {recipient}: bị bộ kiểm duyệt của họ từ chối (có vẻ là nội dung lăng mạ)",
+		"ui.teamBridge.delivery.refused_unsafe_content": "PASS: Không được chuyển tới {recipient}: bị bộ kiểm duyệt của họ từ chối (có vẻ là nội dung hoặc liên kết không an toàn)",
+		"ui.teamBridge.delivery.refused_out_of_scope": "PASS: Không được chuyển tới {recipient}: bị bộ kiểm duyệt của họ từ chối (có vẻ là một yêu cầu nằm ngoài phạm vi của tác nhân này)",
+		"ui.teamBridge.delivery.held": "PASS: Đang chờ {recipient} sàng lọc…",
+		"ui.teamBridge.delivery.held_screening_unavailable": "PASS: Đang chờ {recipient} sàng lọc. Tính năng sàng lọc tạm thời không khả dụng.",
+		"ui.teamBridge.delivery.held_awaiting_review": "PASS: Đang chờ {recipient} sàng lọc. Tin nhắn đang chờ xem xét.",
+		"ui.teamBridge.delivery.pending": "PASS: Đã sàng lọc; đang chờ chuyển tới {recipient}"
+	},
+	"composition_notes": "No inflection; \"chuyển tới Aida (Ben Tran)\", \"Đang chờ Chánh văn phòng của Ben Tran sàng lọc…\", \"đang chờ chuyển tới Chánh văn phòng của Ben Tran\" all natural.",
+	"findings": [],
+	"out_of_scope_observations": [],
+	"copy_scan": "design-qa copy_scan.py over src/i18n/catalogues/{fr,es,ru,vi,ur,hi,zh-CN}/ui.teamBridge.json: scanned 7 files, 3219 candidate strings; 0 findings",
+	"not_audited": [
+		"Unchanged namespace language",
+		"Runtime ICU execution",
+		"Rendered fit and RTL layout",
+		"Pseudo-localization"
+	],
+	"execution_limitations": "Source and composition review; no rendered frames captured by this auditor."
+}

@@ -531,11 +531,11 @@ test("the control's copy names the extent before the click", () => {
 	assert.equal(local.label, "Mark all 2 read");
 	assert.equal(
 		local.scope,
-		"Mark 2 unread chats as read, including 1 in Previous chats.",
+		"Mark 2 unread chats as read, including 1 that is not active.",
 	);
 	assert.equal(
 		local.nameSuffix,
-		", including 1 in Previous chats",
+		", including 1 that is not active",
 		"the accessible name carries the rows the visible label cannot",
 	);
 	// A name whose visible text is a prefix of it, so Label in Name (WCAG 2.5.3)
@@ -588,7 +588,7 @@ test("the control's copy names the extent before the click", () => {
 	assert.equal(both.count, 2, "the tokenless mark is not in the set sent");
 	assert.equal(
 		both.scope,
-		"Mark 2 unread chats as read, including 1 in Previous chats. 1 unread mark with no completion token cannot be cleared.",
+		"Mark 2 unread chats as read, including 1 that is not active. 1 unread mark with no completion token cannot be cleared.",
 	);
 });
 

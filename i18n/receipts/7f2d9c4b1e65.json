@@ -1,0 +1,64 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "7f2d9c4b1e65",
+  "date": "2026-10-19",
+  "locale": "vi",
+  "status": "passed",
+  "namespaces": {
+    "ui.agents.settings": {
+      "namespace": "ui.agents.settings",
+      "status": "passed",
+      "sha256": {
+        "source": "2e2a8a28891db681fd72396a3b8323e8705e4ea9c0397e49237e3ed3f7e1a897",
+        "target": "c9c26ba2583f370c784ebdd6552007bda5f18563d75772a8a4e7357771fca34f"
+      },
+      "findings": []
+    },
+    "ui.settings.model": {
+      "namespace": "ui.settings.model",
+      "status": "passed",
+      "sha256": {
+        "source": "5a09b6ed49e8501d14a6f8052a70ce15ce5104ec8da3756c6b576e6e4d150cf1",
+        "target": "cc739201a7a3655741be87c3a4649325e4b2ce44b66c0ed2de54f1d11d037489"
+      },
+      "findings": []
+    },
+    "ui.mesh": {
+      "namespace": "ui.mesh",
+      "status": "passed",
+      "sha256": {
+        "source": "6b1a7e7433d1e4650d6bca114a7e6d20af3ea582b33a9c9c4039d22bdbbeb21d",
+        "target": "1682767424211506f2008672c702bf67d9eadd5484be37aca44dea607963d93e"
+      },
+      "findings": []
+    },
+    "ui.projects": {
+      "namespace": "ui.projects",
+      "status": "passed",
+      "sha256": {
+        "source": "6b12f695845c3d01500291f5bc4eb50ea9b35e60c68bc69f21ee219c5f9d7f52",
+        "target": "022bf0a24c4468a2a1ea585ea35c1b4ecb50eb8b557eabde2fd22ebff50f2a34"
+      },
+      "findings": []
+    },
+    "ui.schedules": {
+      "namespace": "ui.schedules",
+      "status": "passed",
+      "sha256": {
+        "source": "157303c99e3f8aabed9b4d60a00ee9a8ddb21a92df86f962f191aa002533799a",
+        "target": "d8c92002ac3f2300b47216a601588709e5170e3a3ba2a7a0abf6d91f7df51298"
+      },
+      "findings": []
+    },
+    "ui.settings.integrations": {
+      "namespace": "ui.settings.integrations",
+      "status": "passed",
+      "sha256": {
+        "source": "36b3507993a0466100ca099c3c1c2b2852d66a81b14f3685031f0a35dfa0f5b3",
+        "target": "db008026fc8aa49d6eeb09ea140d8028541cb5563fde6fcfbc8a458b7f96b23e"
+      },
+      "findings": []
+    }
+  }
+}

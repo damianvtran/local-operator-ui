@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "date": "2026-11-04",
+  "locale": "zh-CN",
+  "namespace": "ui.settings.appearance",
+  "instance": "aud1682-ci-zh-cn-ba69d836a6d4",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "ba69d836a6d4",
+    "instance": "aud1682-ci-zh-cn-ba69d836a6d4",
+    "model": "openai/gpt-6.1-sol",
+    "primary_model": "anthropic/claude-opus-5-5",
+    "fallback": "Quota fallback; actual openai/gpt-6.1-sol confirmed by host session-state.",
+    "independent_from_translator_session": true,
+    "independence": "Separate session from translator fd3ba80e8c8f; did not author or remediate translations."
+  },
+  "model": "openai/gpt-6.1-sol",
+  "status": "passed",
+  "result": "clean",
+  "sha256": {
+    "en": "869f7fb3cae2de41496b3e0582009c690961d52dafd006f51bf796e0219d43e3",
+    "zh-CN": "8ce4129fa074eb7cf642b12aa6c2ddb737dae6d34f65a2abce8323c8577d1ef9"
+  },
+  "context_sha256": "75db38dd15ae3c1ec3ca9ced1859edea11d999da9bd6fcca1e3286098cd372dd",
+  "scope": "B CI delta only: picker.hex; other keys retain audits 63837f8/bcf0760 with unchanged values verified.",
+  "head": "f9297edd67afddfed8c0a4eea53451fc859fda9c",
+  "base": "bcf07606370e26d55e2d26b3667c95292458be64",
+  "key_count": 1,
+  "keys_audited": [
+    "ui.settings.appearance.picker.hex"
+  ],
+  "findings": [],
+  "translator": {
+    "session": "fd3ba80e8c8f",
+    "model": "radient/auto",
+    "provenance_source": "Manager delegation for B CI delta at f9297edd67a explicitly states actual translator radient/auto. Underlying provider/model not independently inferred."
+  }
+}

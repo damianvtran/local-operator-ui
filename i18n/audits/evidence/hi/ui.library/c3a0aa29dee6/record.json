@@ -1,0 +1,44 @@
+{
+  "locale": "hi",
+  "namespace": "ui.library",
+  "date": "2026-11-11",
+  "slice": "P7",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "c3a0aa29dee6",
+    "session": "c3a0aa29dee6",
+    "model": "deepseek/deepseek-flash",
+    "independent_from_translator_session": true,
+    "actual_model_source": "as stated in the auditor's own report (companion report); no fallback reported"
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "per delegation and the candidate file model field; translator session id not supplied"
+  },
+  "keys": [
+    "ui.library.preview.organized_by_agent",
+    "ui.library.preview.organized_by_librarian",
+    "ui.library.preview.organized_by_system",
+    "ui.library.preview.organized_by_user",
+    "ui.library.preview.organized_unattributed"
+  ],
+  "english_sha256": "39d053e0e00464bc6166a022d6718ac6dbe19bfb5ff2db9497d1ae06a78f4444",
+  "target_sha256": "7abde0bcc24bc9de6ac577bc49f94c11da3f78b6f6be9c4819fa9a42c59f2397",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": [
+    {
+      "severity": "NIT",
+      "id": "NIT-2",
+      "key": "ui.library.preview.organized_unattributed",
+      "detail": "see the auditor report in this bundle (finding id and text live there)"
+    }
+  ],
+  "artifacts": {
+    "p7-round1-audit-hi.md": "861be12fed6f2530c9b067985bea7582c3bab482490ad4bef6f77cf373cc6c1a",
+    "receipt.json": "2633e61feb5efe87d0f16d3fdd34680abb27a40cae918470727b496205370df5",
+    "verify.log": "3827e2423c6b6f826f31437742ca4f9dff5ef0a370c67d2d0af6b35662038f9c"
+  },
+  "note": "record.json written by the integrating coder; verify.log is the coder re-check, not an auditor log."
+}

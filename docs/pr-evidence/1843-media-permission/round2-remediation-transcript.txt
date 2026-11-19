@@ -1,0 +1,360 @@
+# PR #1843 round-2 remediation — real-app transcript (redacted: scratch/home paths)
+# Rig: worktree's built out/ (one headless instance per run, isolated HOME/config/userData, fake media devices,
+# --use-mock-keychain --disable-gpu --renderer-process-limit=2 --js-flags=--max-old-space-size=512, CMUX_*/LOP_* stripped,
+# TCC + shell.openExternal stubbed in main by a rig-only --require preload; askForMediaAccess calls must be 0).
+
+## runN4: Q3 baseline with the rejected 'unnamed check answers stored decisions' experiment: no change event, Meet stuck
+[run_bounded] memory budget 2500 MiB (explicit, capped by inherited); sampled owned child group only
+[rig] app pid 62757; mode=meet; origins {"pc":"http://localhost:58996"}
+[PASS] G0 TCC stub patched in main (hard gate) :: true
+[OBS] PC0 <usermedia> element present? :: {"HTMLUserMediaElement":true}
+[OBS] PC1 PermissionStatus change after element Allow :: {"ch":"[\"camera:init:denied\",\"microphone:init:denied\"]","ev":"[\"promptaction\"]","q":"camera=granted microphone=granted"}
+[PASS] M0 Meet loaded; 'Use microphone and camera' is <usermedia> :: {"um":{"x":532,"y":527.6484375,"w":336.703125,"h":44,"text":"expand_more\nMore options"},"perms":"camera=denied microphone=denied"}
+[rig] meet title Meet
+[rig] frame m0-meet-before.png
+[PASS] Q1-M1 Meet click → our prompt :: {"view":{"kinds":["audio","video"],"owner":"user"},"band":{"kind":"prompt","text":"meet.google.com wants to use your camera and microphone. Block Allow"},"askedLines":1}
+[rig] frame m1-meet-prompt-chrome.png
+[OBS] t+1500ms gum="[]" live= dialog=true
+[rig] frame m2-t1500.png
+[OBS] t+4000ms gum="[]" live= dialog=true
+[rig] frame m2-t4000.png
+[OBS] t+10000ms gum="[]" live= dialog=true
+[rig] frame m2-t10000.png
+[OBS] RU-M2b second click on Meet button (same document, site allowed): events=[] band=null dialog=true
+[rig] frame m2b-second-click.png
+[OBS] meet instr log "[\"listen:PermissionStatus:change\",\"listen:PermissionStatus:change\",\"listen:HTMLUserMediaElement:promptaction\",\"listen:HTMLUserMediaElement:promptdismiss\",\"listen:HTMLUserMediaElement:promptaction\",\"listen:HTMLUserMediaElement:promptdismiss\"]"
+[FAIL] Q1-M2 Allow → Meet preview live (fake camera), no blocked state :: {"events":"[]","media":{"videos":[],"usermedia":1,"blockedText":null,"camOffText":null},"perms":"camera=granted microphone=granted","band":null,"stored":{"audio":"allow","video":"allow"}}
+[rig] frame m2-meet-after-allow.png
+[OBS] meet instr log after reload "[\"listen:PermissionStatus:change\",\"listen:PermissionStatus:change\",\"gum:{\\\"audio\\\":{\\\"deviceId\\\":{\\\"exact\\\":\\\"default\\\"},\\\"echoCancellation\\\":true,\\\"autoGainControl\\\":true,\\\"noiseSuppression\\\":true,\\\"voiceIsolation\\\":false},\\\"video\\\":false}@948\",\"gum:{\\\"audio\\\":false,\\\"video\\\":{\\\"deviceId\\\":{\\\"exact\\\":\\\"f3eabbf083055aa63602fd09ce320d0f35fd51c3c8db627646863de1d9b30417\\\"},\\\"width\\\":{\\\"ideal\\\":1280},\\\"height\\\":{\\\"ideal\\\":720},\\\"advanced\\\":[{\\\"frameRate\\\":{\\\"min\\\":30}},{\\\"height\\\":{\\\"min\\\":720}},{\\\"width\\\":{\\\"min\\\":1280}},{\\\"frameRate\\\":{\\\"max\\\":30}},{\\\"width\\\":{\\\"max\\\":1280}},{\\\"height\\\":{\\\"max\\\":720}},{\\\"aspectRatio\\\":{\\\"exact\\\":1.7777777777777777}}]}}@949\",\"gum-ok:audio\",\"gum-ok:video\"]"
+[OBS] RU-M3 reload: what does Meet show to a returning (allowed) user before any click :: {"usermediaVisible":null,"media":{"videos":[],"usermedia":0,"blockedText":null,"camOffText":null},"perms":"camera=granted microphone=granted","band":null}
+[rig] frame m3-meet-reload.png
+[rig] askForMediaAccess calls (must be 0): 0
+[rig] teardown clean=true survivors=0
+[app-log] [browser] https://meet.google.com asked for microphone and camera; waiting for the user
+[app-log] [browser] the user allowed microphone and camera for https://meet.google.com
+[app-log] [browser] granted media [unnamed] (request) from https://meet.google.com/meet/abc-defg-hij
+[app-log] [browser] granted media [unnamed] (request) from https://meet.google.com/meet/abc-defg-hij
+[app-log] [browser] granted media [audio,video] (request) from https://meet.google.com/
+[app-log] [browser] granted media [audio] (request) from https://meet.google.com/
+[app-log] [browser] granted media [video] (request) from https://meet.google.com/
+[rig] failures=1
+[run_bounded] node rc=0 wall=68.7s
+### runN4 app.log (permission lines, checks omitted)
+12:27:16.718 › [browser] tab 1 navigation committed
+12:27:17.714 › [browser] tab 2 navigation committed
+12:27:18.354 › [browser] tab 2 navigation committed
+12:27:19.924 › [browser] http://localhost:58996 asked for microphone and camera; waiting for the user
+12:27:19.946 › [browser] the user allowed microphone and camera for http://localhost:58996
+12:27:19.948 › [browser] granted media [unnamed] (request) from http://localhost:58996/pc
+12:27:19.948 › [browser] granted media [unnamed] (request) from http://localhost:58996/pc
+12:27:22.622 › [browser] tab 3 navigation committed
+12:27:23.901 › [browser] tab 3 navigation committed
+12:27:24.401 › [browser] tab 3 same-document navigation committed
+12:27:25.147 › [browser] tab 3 navigation committed
+12:27:28.674 › [browser] https://meet.google.com asked for microphone and camera; waiting for the user
+12:27:28.845 › [browser] the user allowed microphone and camera for https://meet.google.com
+12:27:28.846 › [browser] granted media [unnamed] (request) from https://meet.google.com/meet/abc-defg-hij
+12:27:28.846 › [browser] granted media [unnamed] (request) from https://meet.google.com/meet/abc-defg-hij
+12:27:39.280 › [browser] granted media [audio,video] (request) from https://meet.google.com/
+12:27:44.693 › [browser] tab 3 navigation committed
+12:27:45.507 › [browser] granted media [audio] (request) from https://meet.google.com/
+12:27:49.512 › [browser] granted media [video] (request) from https://meet.google.com/
+
+## runP2: rejected mechanism (a) measured: element absent only when the process-wide switch is also set
+[run_bounded] memory budget 2500 MiB (explicit, capped by inherited); sampled owned child group only
+[rig] app pid 46098; mode=meet; origins {"pc":"http://localhost:57063"}
+[PASS] G0 TCC stub patched in main (hard gate) :: true
+[OBS] PC0 <usermedia> element present in the driven page? :: {"pid":0,"HTMLUserMediaElement":false,"ctor":"HTMLUnknownElement","gum":"function"}
+[rig] askForMediaAccess calls (must be 0): 0
+[rig] teardown clean=true survivors=0
+[app-log] [browser] address overlay failed: load_failed:Error: ERR_FAILED (-2) loading 'file://~/local-operator-ui/.worktrees/browser-media-permissions/out/renderer/browser-addre
+[rig] failures=0
+[run_bounded] node rc=0 wall=5.0s
+### runP2 app.log (permission lines, checks omitted)
+12:22:22.290 › [browser] tab 1 navigation committed
+12:22:23.256 › [browser] tab 2 navigation committed
+12:22:23.889 › [browser] tab 2 navigation committed
+
+## runN3: rejected mechanism (a): with UserMediaElement disabled, Meet shows NO camera/mic dialog on first visit
+[run_bounded] memory budget 2500 MiB (explicit, capped by inherited); sampled owned child group only
+[rig] app pid 51181; mode=meet; origins {"pc":"http://localhost:57861"}
+[PASS] G0 TCC stub patched in main (hard gate) :: true
+[SCAN] t=2.5s url=https://meet.google.com/meet/abc-defg-hij buttons=["Return to home screen","Submit feedback"] dialog=[] log="[\"listen:PermissionStatus:change\",\"listen:PermissionStatus:change\"]"
+[SCAN] t=5s url=https://meet.google.com/meet/abc-defg-hij buttons=["Return to home screen","Submit feedback"] dialog=[] log="[\"listen:PermissionStatus:change\",\"listen:PermissionStatus:change\"]"
+[SCAN] t=7.5s url=https://meet.google.com/meet/abc-defg-hij buttons=["Return to home screen","Submit feedback"] dialog=[] log="[\"listen:PermissionStatus:change\",\"listen:PermissionStatus:change\"]"
+[rig] frame scan-7s.png
+[SCAN] t=10s url=https://meet.google.com/meet/abc-defg-hij buttons=["Return to home screen","Submit feedback"] dialog=[] log="[\"listen:PermissionStatus:change\",\"listen:PermissionStatus:change\"]"
+[SCAN] t=12.5s url=https://meet.google.com/meet/abc-defg-hij buttons=["Return to home screen","Submit feedback"] dialog=[] log="[\"listen:PermissionStatus:change\",\"listen:PermissionStatus:change\"]"
+[SCAN] t=15s url=https://meet.google.com/meet/abc-defg-hij buttons=["Return to home screen","Submit feedback"] dialog=[] log="[\"listen:PermissionStatus:change\",\"listen:PermissionStatus:change\"]"
+[SCAN] t=17.5s url=https://meet.google.com/meet/abc-defg-hij buttons=["Return to home screen","Submit feedback"] dialog=[] log="[\"listen:PermissionStatus:change\",\"listen:PermissionStatus:change\"]"
+[SCAN] t=20s url=https://meet.google.com/meet/abc-defg-hij buttons=["Return to home screen","Submit feedback"] dialog=[] log="[\"listen:PermissionStatus:change\",\"listen:PermissionStatus:change\"]"
+[SCAN] t=22.5s url=https://meet.google.com/meet/abc-defg-hij buttons=["Return to home screen","Submit feedback"] dialog=[] log="[\"listen:PermissionStatus:change\",\"listen:PermissionStatus:change\"]"
+[SCAN] t=25s url=https://meet.google.com/meet/abc-defg-hij buttons=["Return to home screen","Submit feedback"] dialog=[] log="[\"listen:PermissionStatus:change\",\"listen:PermissionStatus:change\"]"
+[SCAN] t=27.5s url=https://meet.google.com/meet/abc-defg-hij buttons=["Return to home screen","Submit feedback"] dialog=[] log="[\"listen:PermissionStatus:change\",\"listen:PermissionStatus:change\"]"
+[SCAN] t=30s url=https://meet.google.com/meet/abc-defg-hij buttons=["Return to home screen","Submit feedback"] dialog=[] log="[\"listen:PermissionStatus:change\",\"listen:PermissionStatus:change\"]"
+[rig] askForMediaAccess calls (must be 0): 0
+[rig] teardown clean=true survivors=0
+[rig] failures=0
+[run_bounded] node rc=0 wall=38.6s
+### runN3 app.log (permission lines, checks omitted)
+12:24:04.133 › [browser] tab 1 navigation committed
+12:24:05.094 › [browser] tab 2 navigation committed
+12:24:06.044 › [browser] tab 2 navigation committed
+12:24:06.550 › [browser] tab 2 same-document navigation committed
+12:24:07.091 › [browser] tab 2 navigation committed
+
+## runN6: CHOSEN: Meet first visit -> Use microphone and camera -> Allow -> follow-up reload -> getUserMedia audio+video ok
+[run_bounded] memory budget 2500 MiB (explicit, capped by inherited); sampled owned child group only
+[rig] app pid 82867; mode=meet; origins {"pc":"http://localhost:61351"}
+[PASS] G0 TCC stub patched in main (hard gate) :: true
+[PASS] M0 Meet loaded; 'Use microphone and camera' is <usermedia> :: {"um":{"x":532,"y":527.6484375,"w":336.703125,"h":44,"text":"expand_more\nMore options"},"perms":"camera=denied microphone=denied"}
+[rig] meet title Meet
+[rig] frame m0-meet-before.png
+[PASS] Q1-M1 Meet click → our prompt :: {"view":{"kinds":["audio","video"],"owner":"user"},"band":{"kind":"prompt","text":"meet.google.com wants to use your camera and microphone. Block Allow"},"askedLines":1}
+[rig] frame m1-meet-prompt-chrome.png
+[OBS] t+1500ms gum="[]" live= dialog=true
+[rig] frame m2-t1500.png
+[OBS] t+4000ms gum=undefined live= dialog=false
+[rig] frame m2-t4000.png
+[OBS] t+10000ms gum=undefined live= dialog=false
+[rig] frame m2-t10000.png
+[OBS] t+15000ms log=["gum:{\"audio\":{\"deviceId\":{\"exact\":\"default\"},\"echoCancellation\":true,\"autoGainControl\":true,\"noiseSuppression\":true,\"voiceIsolation\":false},\"video\":false}@933","gum:{\"audio\":false,\"video\":{\"deviceId\":{\"exact\":\"cb795078ac9f6999a258722120237388dbdebfebf00d43c3a6d2e57ccc646cf0\"},\"width\":{\"ideal\":1280},\"height\":{\"ideal\":720},\"advanced\":[{\"frameRate\":{\"min\":30}},{\"height\":{\"min\":720}},{\"width\":{\"min\":1280}},{\"frameRate\":{\"max\":30}},{\"width\":{\"max\":1280}},{\"height\":{\"max\":720}},{\"aspectRatio\":{\"exact\":1.7777777777777777}}]}}@936","gum-ok:audio","gum-ok:video"] dialog=false live=
+[OBS] t+20000ms log=["gum:{\"audio\":{\"deviceId\":{\"exact\":\"default\"},\"echoCancellation\":true,\"autoGainControl\":true,\"noiseSuppression\":true,\"voiceIsolation\":false},\"video\":false}@933","gum:{\"audio\":false,\"video\":{\"deviceId\":{\"exact\":\"cb795078ac9f6999a258722120237388dbdebfebf00d43c3a6d2e57ccc646cf0\"},\"width\":{\"ideal\":1280},\"height\":{\"ideal\":720},\"advanced\":[{\"frameRate\":{\"min\":30}},{\"height\":{\"min\":720}},{\"width\":{\"min\":1280}},{\"frameRate\":{\"max\":30}},{\"width\":{\"max\":1280}},{\"height\":{\"max\":720}},{\"aspectRatio\":{\"exact\":1.7777777777777777}}]}}@936","gum-ok:audio","gum-ok:video"] dialog=false live=
+[rig] frame m2-t20000.png
+[OBS] meet instr log "[\"listen:PermissionStatus:change\",\"listen:PermissionStatus:change\",\"gum:{\\\"audio\\\":{\\\"deviceId\\\":{\\\"exact\\\":\\\"default\\\"},\\\"echoCancellation\\\":true,\\\"autoGainControl\\\":true,\\\"noiseSuppression\\\":true,\\\"voiceIsolation\\\":false},\\\"video\\\":false}@933\",\"gum:{\\\"audio\\\":false,\\\"video\\\":{\\\"deviceId\\\":{\\\"exact\\\":\\\"cb795078ac9f6999a258722120237388dbdebfebf00d43c3a6d2e57ccc646cf0\\\"},\\\"width\\\":{\\\"ideal\\\":1280},\\\"height\\\":{\\\"ideal\\\":720},\\\"advanced\\\":[{\\\"frameRate\\\":{\\\"min\\\":30}},{\\\"height\\\":{\\\"min\\\":720}},{\\\"width\\\":{\\\"min\\\":1280}},{\\\"frameRate\\\":{\\\"max\\\":30}},{\\\"width\\\":{\\\"max\\\":1280}},{\\\"height\\\":{\\\"max\\\":720}},{\\\"aspectRatio\\\":{\\\"exact\\\":1.7777777777777777}}]}}@936\",\"gum-ok:audio\",\"gum-ok:video\"]"
+[FAIL] Q1-M2 Allow → Meet preview live (fake camera), no blocked state :: {"events":{"error":"ReferenceError: __ev is not defined\n    at <anonymous>:1:16"},"media":{"videos":[],"usermedia":0,"blockedText":null,"camOffText":null},"perms":"camera=granted microphone=granted","band":null,"stored":{"audio":"allow","video":"allow"}}
+[rig] frame m2-meet-after-allow.png
+[OBS] meet instr log after reload "[\"listen:PermissionStatus:change\",\"listen:PermissionStatus:change\",\"gum:{\\\"audio\\\":{\\\"deviceId\\\":{\\\"exact\\\":\\\"default\\\"},\\\"echoCancellation\\\":true,\\\"autoGainControl\\\":true,\\\"noiseSuppression\\\":true,\\\"voiceIsolation\\\":false},\\\"video\\\":false}@717\",\"gum:{\\\"audio\\\":false,\\\"video\\\":{\\\"deviceId\\\":{\\\"exact\\\":\\\"cb795078ac9f6999a258722120237388dbdebfebf00d43c3a6d2e57ccc646cf0\\\"},\\\"width\\\":{\\\"ideal\\\":1280},\\\"height\\\":{\\\"ideal\\\":720},\\\"advanced\\\":[{\\\"frameRate\\\":{\\\"min\\\":30}},{\\\"height\\\":{\\\"min\\\":720}},{\\\"width\\\":{\\\"min\\\":1280}},{\\\"frameRate\\\":{\\\"max\\\":30}},{\\\"width\\\":{\\\"max\\\":1280}},{\\\"height\\\":{\\\"max\\\":720}},{\\\"aspectRatio\\\":{\\\"exact\\\":1.7777777777777777}}]}}@718\",\"gum-ok:audio\",\"gum-ok:video\"]"
+[OBS] RU-M3 reload: what does Meet show to a returning (allowed) user before any click :: {"usermediaVisible":null,"media":{"videos":[],"usermedia":0,"blockedText":null,"camOffText":null},"perms":"camera=granted microphone=granted","band":null}
+[rig] frame m3-meet-reload.png
+[rig] askForMediaAccess calls (must be 0): 0
+[rig] teardown clean=true survivors=0
+[app-log] [browser] https://meet.google.com asked for microphone and camera; waiting for the user
+[app-log] [browser] the user allowed microphone and camera for https://meet.google.com
+[app-log] [browser] granted media [unnamed] (request) from https://meet.google.com/meet/abc-defg-hij
+[app-log] [browser] granted media [unnamed] (request) from https://meet.google.com/meet/abc-defg-hij
+[app-log] [browser] https://meet.google.com did not start the camera or microphone after the user allowed it; reloading the tab so the page picks up the permission
+[app-log] [browser] granted media [audio] (request) from https://meet.google.com/
+[app-log] [browser] granted media [video] (request) from https://meet.google.com/
+[app-log] [browser] granted media [audio] (request) from https://meet.google.com/
+[app-log] [browser] granted media [video] (request) from https://meet.google.com/
+[rig] failures=1
+[run_bounded] node rc=0 wall=68.3s
+### runN6 app.log (permission lines, checks omitted)
+12:35:05.397 › [browser] tab 1 navigation committed
+12:35:06.435 › [browser] tab 2 navigation committed
+12:35:07.559 › [browser] tab 2 navigation committed
+12:35:08.124 › [browser] tab 2 same-document navigation committed
+12:35:08.734 › [browser] tab 2 navigation committed
+12:35:12.277 › [browser] https://meet.google.com asked for microphone and camera; waiting for the user
+12:35:12.438 › [browser] the user allowed microphone and camera for https://meet.google.com
+12:35:12.439 › [browser] granted media [unnamed] (request) from https://meet.google.com/meet/abc-defg-hij
+12:35:12.439 › [browser] granted media [unnamed] (request) from https://meet.google.com/meet/abc-defg-hij
+12:35:14.940 › [browser] https://meet.google.com did not start the camera or microphone after the user allowed it; reloading the tab so the page picks up the permission
+12:35:15.200 › [browser] tab 2 navigation committed
+12:35:15.891 › [browser] granted media [audio] (request) from https://meet.google.com/
+12:35:26.229 › [browser] granted media [video] (request) from https://meet.google.com/
+12:35:33.268 › [browser] tab 2 navigation committed
+12:35:33.833 › [browser] granted media [audio] (request) from https://meet.google.com/
+12:35:33.909 › [browser] granted media [video] (request) from https://meet.google.com/
+
+## runP3: local <usermedia> page that never captures: reloaded once; gUM afterwards
+[run_bounded] memory budget 2500 MiB (explicit, capped by inherited); sampled owned child group only
+[rig] app pid 87561; mode=meet; origins {"pc":"http://localhost:61725"}
+[PASS] G0 TCC stub patched in main (hard gate) :: true
+[OBS] PC0 <usermedia> element present? :: {"HTMLUserMediaElement":true}
+[OBS] PC1 PermissionStatus change after element Allow :: {"ch":"[]","ev":"[]","q":"camera=granted microphone=granted"}
+[OBS] PC2 after auto-reload: gUM video :: {"url":"http://localhost:61725/pc nav=reload","video":"video:live in 198ms","audio":"audio:live in 10320ms","both":"audio:live+video:live in 27ms"}
+[rig] askForMediaAccess calls (must be 0): 0
+[rig] teardown clean=true survivors=0
+[app-log] [browser] http://localhost:61725 asked for microphone and camera; waiting for the user
+[app-log] [browser] the user allowed microphone and camera for http://localhost:61725
+[app-log] [browser] granted media [unnamed] (request) from http://localhost:61725/pc
+[app-log] [browser] granted media [unnamed] (request) from http://localhost:61725/pc
+[app-log] [browser] http://localhost:61725 did not start the camera or microphone after the user allowed it; reloading the tab so the page picks up the permission
+[app-log] [browser] granted media [video] (request) from http://localhost:61725/
+[app-log] [browser] granted media [audio] (request) from http://localhost:61725/
+[app-log] [browser] granted media [audio,video] (request) from http://localhost:61725/
+[rig] failures=0
+[run_bounded] node rc=0 wall=22.2s
+### runP3 app.log (permission lines, checks omitted)
+12:36:39.097 › [browser] tab 1 navigation committed
+12:36:40.108 › [browser] tab 2 navigation committed
+12:36:40.755 › [browser] tab 2 navigation committed
+12:36:42.330 › [browser] http://localhost:61725 asked for microphone and camera; waiting for the user
+12:36:42.354 › [browser] the user allowed microphone and camera for http://localhost:61725
+12:36:42.360 › [browser] granted media [unnamed] (request) from http://localhost:61725/pc
+12:36:42.361 › [browser] granted media [unnamed] (request) from http://localhost:61725/pc
+12:36:44.862 › [browser] http://localhost:61725 did not start the camera or microphone after the user allowed it; reloading the tab so the page picks up the permission
+12:36:44.871 › [browser] tab 2 navigation committed
+12:36:47.081 › [browser] granted media [video] (request) from http://localhost:61725/
+12:36:47.093 › [browser] granted media [audio] (request) from http://localhost:61725/
+12:36:57.418 › [browser] granted media [audio,video] (request) from http://localhost:61725/
+
+## runL5: local matrix: element pages that capture from promptaction are NOT reloaded; all rows
+[run_bounded] memory budget 2500 MiB (explicit, capped by inherited); sampled owned child group only
+[rig] app pid 89302; mode=local; origins {"cm":"http://localhost:61919","m":"http://localhost:61920","c":"http://localhost:61921","none":"http://localhost:61922","blk":"http://localhost:61923","ovA":"http://localhost:61924","ovB":"http://localhost:61925","ovP":"http://localhost:61926","esc":"http://localhost:61927","agent":"http://localhost:61928"}
+[PASS] G0 TCC stub patched in main (hard gate) :: true
+[PASS] Q1-cm <usermedia /um-cm> click → our prompt (one) :: {"kinds":["audio","video"],"owner":"user","askedLines":1,"band":{"kind":"prompt","text":"localhost:61919 wants to use your camera and microphone. Block Allow"}}
+[rig] frame q1-usermedia-prompt.png
+[PASS] Q1-cm Allow → promptaction → gUM live :: {"title":"granted:a1v1","events":"[\"promptaction\"]","band":null,"stored":{"audio":"allow","video":"allow"}}
+[OBS] RU-local element click on already-allowed origin :: {"title":"again","events":"[]","band":null,"perm":"camera=granted microphone=granted"}
+[OBS] RU-local element click after reload on allowed origin :: {"title":"ready","events":"[]","band":null}
+[PASS] Q1-m <usermedia /um-m> click → our prompt (one) :: {"kinds":["audio","video"],"owner":"user","askedLines":1,"band":{"kind":"prompt","text":"localhost:61920 wants to use your camera and microphone. Block Allow"}}
+[PASS] Q1-m Allow → promptaction → gUM live :: {"title":"granted:a1v0","events":"[\"promptaction\"]","band":null,"stored":{"audio":"allow","video":"allow"}}
+[PASS] Q1-c <usermedia /um-c> click → our prompt (one) :: {"kinds":["audio","video"],"owner":"user","askedLines":1,"band":{"kind":"prompt","text":"localhost:61921 wants to use your camera and microphone. Block Allow"}}
+[PASS] Q1-c Allow → promptaction → gUM live :: {"title":"granted:a0v1","events":"[\"promptaction\"]","band":null,"stored":{"audio":"allow","video":"allow"}}
+[PASS] Q1-none <usermedia /um-none> click → our prompt (one) :: {"kinds":["audio","video"],"owner":"user","askedLines":1,"band":{"kind":"prompt","text":"localhost:61922 wants to use your camera and microphone. Block Allow"}}
+[PASS] Q1-none Allow → promptaction → gUM live :: {"title":"granted:a1v1","events":"[\"promptaction\"]","band":null,"stored":{"audio":"allow","video":"allow"}}
+[PASS] U2-a Block → element refused, stored block :: {"title":"dismissed:1","stored":{"audio":"block","video":"block"},"band":null}
+[PASS] U2-b retry → BLOCKED band (not silence) :: {"view":{"kind":"blocked","kinds":["audio","video"]},"band":{"kind":"blocked","text":"Camera and microphone are blocked for localhost:61923. To use them here, select Allow, then try again on the page. Allow"},"page":"dismissed:2"}
+[rig] frame u2-blocked-band.png
+[PASS] U2-c untrusted Allow on blocked band refused :: {"forged":false,"scripted":"clicked","stored":{"audio":"block","video":"block"}}
+[PASS] U2-d trusted Allow on band → stored allow → retry live, no prompt :: {"stored":{"audio":"allow","video":"allow"},"retry":"granted:a1v1"}
+[PASS] R1-a top a+v, iframe mic; Allow :: {"asked":["asked for microphone and camera; waiting for the user","asked for microphone; waiting for the user"],"title":"done:a1v1|a1v0","after":null,"stored":{"audio":"allow","video":"allow"}}
+[PASS] R1-b top a+v, iframe mic; Block :: {"asked":["asked for microphone and camera; waiting for the user","asked for microphone; waiting for the user"],"title":"done:denied:NotAllowedError|denied:NotAllowedError","after":null,"stored":{"audio":"block","video":"block"}}
+[PASS] R1-c head mic, sibling a+v: Allow mic → sibling still prompts → Allow → both live :: {"head":["audio"],"next":{"kind":"prompt","kinds":["audio","video"]},"titleMid":"pending","fin":"done:a1v0|a1v1","stored":{"audio":"allow","video":"allow"}}
+[PASS] U5-a no autofocus on prompt :: {"focusBefore":"BODY"}
+[PASS] U8 Esc on band → dismiss: page denied, nothing stored, band gone :: {"title":"denied:NotAllowedError","stored":null,"band":null}
+[PASS] U5-b Enter on focused Allow (keyboard, trusted) → granted, stored; focus returns to page :: {"title":"granted:a1v0","stored":{"audio":"allow"},"rendererFocus":"BODY:","pageHasFocus":true}
+[rig] request_access 200 {"id":"qa-request_access-1794332281111","ok":true,"result":{"origin":"http://localhost:61928","state":"pending","entry_id":"cc81d9377b144f228e8d09ab0665968e","authority":"localhost:61928","expires_at"; open 200 {"id":"qa-open-1794332281649","ok":true,"result":{"tab":"ui:11:ce091c34e7a690f42cdc04e0ea81d7a2","url":"http://localhost:61928/gum-a","title":"pending","owner":"agent","restored":false,"limit":8}}
+[PASS] Q2-a agent tab gUM → prompt ownerKind agent :: {"requestAccess":200,"open":200,"view":{"kinds":["audio"],"owner":"agent"},"band":{"kind":"prompt","text":"localhost:61928 wants to use your microphone. This is an agent-driven tab, so Allow applies to this request only. Block Allow"}}
+[PASS] Q2-b agent-tab Block → denied, NOT persisted :: {"title":"denied:NotAllowedError","storedForOrigin":null,"storeUnchanged":true}
+[PASS] Q2-c agent tab reload → prompts again (no blocked band, no silent deny) :: {"view":{"kind":"prompt","owner":"agent"}}
+[PASS] Q2-d user tab same origin after agent Blocks → normal prompt (not blocked) :: {"view":{"kind":"prompt","owner":"user"}}
+[rig] final store {"http://localhost:61919":{"audio":"allow","video":"allow"},"http://localhost:61920":{"audio":"allow","video":"allow"},"http://localhost:61921":{"audio":"allow","video":"allow"},"http://localhost:61922":{"audio":"allow","video":"allow"},"http://localhost:61923":{"audio":"allow","video":"allow"},"http://localhost:61924":{"audio":"allow","video":"allow"},"http://localhost:61925":{"audio":"block","video":"block"},"http://localhost:61926":{"audio":"allow","video":"allow"},"http://localhost:61927":{"audio":"allow"},"http://localhost:61928":{"audio":"block"}}
+[rig] askForMediaAccess calls (must be 0): 0
+[rig] teardown clean=true survivors=0
+[app-log] [browser] http://localhost:61922 asked for microphone and camera; waiting for the user
+[app-log] [browser] the user allowed microphone and camera for http://localhost:61922
+[app-log] [browser] granted media [unnamed] (request) from http://localhost:61922/um-none
+[app-log] [browser] granted media [unnamed] (request) from http://localhost:61922/um-none
+[app-log] [browser] granted media [audio,video] (request) from http://localhost:61922/
+[app-log] [browser] http://localhost:61923 asked for microphone and camera; waiting for the user
+[app-log] [browser] the user blocked microphone and camera for http://localhost:61923
+[app-log] [browser] denied media [unnamed] (request) from http://localhost:61923/um-cm
+[app-log] [browser] denied media [unnamed] (request) from http://localhost:61923/um-cm
+[app-log] [browser] denied camera/microphone: http://localhost:61923 is blocked for microphone and camera
+[app-log] [browser] denied media [unnamed] (request) from http://localhost:61923/um-cm
+[app-log] [browser] denied camera/microphone: http://localhost:61923 is blocked for microphone and camera
+[app-log] [browser] denied media [unnamed] (request) from http://localhost:61923/um-cm
+[app-log] [browser] ignored a camera/microphone answer that was not a user click
+[app-log] [browser] ignored a camera/microphone answer that was not a user click
+[app-log] [browser] the user allowed microphone and camera for http://localhost:61923 (was blocked)
+[app-log] [browser] granted media [audio,video] (request) from http://localhost:61923/
+[app-log] [browser] http://localhost:61924 asked for microphone and camera; waiting for the user
+[app-log] [browser] http://localhost:61924 asked for microphone; waiting for the user
+[app-log] [browser] the user allowed microphone and camera for http://localhost:61924
+[app-log] [browser] granted media [audio,video] (request) from http://localhost:61924/
+[app-log] [browser] granted media [audio] (request) from http://localhost:61924/
+[app-log] [browser] http://localhost:61925 asked for microphone and camera; waiting for the user
+[app-log] [browser] http://localhost:61925 asked for microphone; waiting for the user
+[app-log] [browser] denied media [audio] (request) from http://localhost:61925/
+[app-log] [browser] the user blocked microphone and camera for http://localhost:61925
+[app-log] [browser] denied media [audio,video] (request) from http://localhost:61925/
+[app-log] [browser] http://localhost:61926 asked for microphone; waiting for the user
+[app-log] [browser] http://localhost:61926 asked for microphone and camera; waiting for the user
+[app-log] [browser] the user allowed microphone for http://localhost:61926
+[app-log] [browser] granted media [audio] (request) from http://localhost:61926/
+[app-log] [browser] the user allowed microphone and camera for http://localhost:61926
+[app-log] [browser] granted media [audio,video] (request) from http://localhost:61926/
+[app-log] [browser] http://localhost:61927 asked for microphone; waiting for the user
+[app-log] [browser] the user dismissed microphone for http://localhost:61927
+[app-log] [browser] denied media [audio] (request) from http://localhost:61927/
+[app-log] [browser] http://localhost:61927 asked for microphone; waiting for the user
+[app-log] [browser] the user allowed microphone for http://localhost:61927
+[app-log] [browser] granted media [audio] (request) from http://localhost:61927/
+[app-log] [browser] http://localhost:61928 asked for microphone; waiting for the user
+[app-log] [browser] the user blocked microphone for http://localhost:61928
+[app-log] [browser] denied media [audio] (request) from http://localhost:61928/
+[app-log] [browser] http://localhost:61928 asked for microphone; waiting for the user
+[app-log] [browser] the user blocked microphone for http://localhost:61928
+[app-log] [browser] denied media [audio] (request) from http://localhost:61928/
+[app-log] [browser] http://localhost:61928 asked for microphone; waiting for the user
+[app-log] [browser] the user blocked microphone for http://localhost:61928
+[app-log] [browser] denied media [audio] (request) from http://localhost:61928/
+[rig] failures=0
+[run_bounded] node rc=0 wall=53.4s
+### runL5 app.log (permission lines, checks omitted)
+12:37:17.768 › [browser] tab 1 navigation committed
+12:37:19.373 › [browser] tab 2 navigation committed
+12:37:20.036 › [browser] tab 2 navigation committed
+12:37:21.689 › [browser] http://localhost:61919 asked for microphone and camera; waiting for the user
+12:37:21.836 › [browser] the user allowed microphone and camera for http://localhost:61919
+12:37:21.852 › [browser] granted media [unnamed] (request) from http://localhost:61919/um-cm
+12:37:21.855 › [browser] granted media [unnamed] (request) from http://localhost:61919/um-cm
+12:37:22.322 › [browser] granted media [audio,video] (request) from http://localhost:61919/
+12:37:34.800 › [browser] granted media [audio,video] (request) from http://localhost:61919/
+12:37:36.862 › [browser] tab 2 navigation committed
+12:37:39.106 › [browser] granted media [audio,video] (request) from http://localhost:61919/
+12:37:41.373 › [browser] tab 3 navigation committed
+12:37:42.003 › [browser] tab 3 navigation committed
+12:37:43.571 › [browser] http://localhost:61920 asked for microphone and camera; waiting for the user
+12:37:43.596 › [browser] the user allowed microphone and camera for http://localhost:61920
+12:37:43.597 › [browser] granted media [unnamed] (request) from http://localhost:61920/um-m
+12:37:43.597 › [browser] granted media [unnamed] (request) from http://localhost:61920/um-m
+12:37:43.599 › [browser] granted media [audio] (request) from http://localhost:61920/
+12:37:43.909 › [browser] tab 4 navigation committed
+12:37:44.531 › [browser] tab 4 navigation committed
+12:37:46.076 › [browser] http://localhost:61921 asked for microphone and camera; waiting for the user
+12:37:46.102 › [browser] the user allowed microphone and camera for http://localhost:61921
+12:37:46.106 › [browser] granted media [unnamed] (request) from http://localhost:61921/um-c
+12:37:46.107 › [browser] granted media [unnamed] (request) from http://localhost:61921/um-c
+12:37:46.116 › [browser] granted media [video] (request) from http://localhost:61921/
+12:37:46.716 › [browser] tab 5 navigation committed
+12:37:47.349 › [browser] tab 5 navigation committed
+12:37:48.901 › [browser] http://localhost:61922 asked for microphone and camera; waiting for the user
+12:37:48.919 › [browser] the user allowed microphone and camera for http://localhost:61922
+12:37:48.921 › [browser] granted media [unnamed] (request) from http://localhost:61922/um-none
+12:37:48.921 › [browser] granted media [unnamed] (request) from http://localhost:61922/um-none
+12:37:48.924 › [browser] granted media [audio,video] (request) from http://localhost:61922/
+12:37:49.249 › [browser] tab 6 navigation committed
+12:37:49.873 › [browser] tab 6 navigation committed
+12:37:51.412 › [browser] http://localhost:61923 asked for microphone and camera; waiting for the user
+12:37:51.427 › [browser] denied media [unnamed] (request) from http://localhost:61923/um-cm
+12:37:51.427 › [browser] denied media [unnamed] (request) from http://localhost:61923/um-cm
+12:37:52.648 › [browser] denied media [unnamed] (request) from http://localhost:61923/um-cm
+12:37:52.649 › [browser] denied media [unnamed] (request) from http://localhost:61923/um-cm
+12:37:53.290 › [browser] the user allowed microphone and camera for http://localhost:61923 (was blocked)
+12:37:53.313 › [browser] granted media [audio,video] (request) from http://localhost:61923/
+12:37:53.530 › [browser] tab 7 navigation committed
+12:37:54.160 › [browser] tab 7 navigation committed
+12:37:54.167 › [browser] http://localhost:61924 asked for microphone and camera; waiting for the user
+12:37:54.486 › [browser] http://localhost:61924 asked for microphone; waiting for the user
+12:37:54.639 › [browser] the user allowed microphone and camera for http://localhost:61924
+12:37:54.669 › [browser] granted media [audio,video] (request) from http://localhost:61924/
+12:37:54.683 › [browser] granted media [audio] (request) from http://localhost:61924/
+12:37:55.216 › [browser] tab 8 navigation committed
+12:37:55.838 › [browser] tab 8 navigation committed
+12:37:55.842 › [browser] http://localhost:61925 asked for microphone and camera; waiting for the user
+12:37:56.152 › [browser] http://localhost:61925 asked for microphone; waiting for the user
+12:37:56.286 › [browser] denied media [audio] (request) from http://localhost:61925/
+12:37:56.287 › [browser] denied media [audio,video] (request) from http://localhost:61925/
+12:37:56.413 › [browser] tab 9 navigation committed
+12:37:57.048 › [browser] tab 9 navigation committed
+12:37:57.054 › [browser] http://localhost:61926 asked for microphone; waiting for the user
+12:37:57.362 › [browser] http://localhost:61926 asked for microphone and camera; waiting for the user
+12:37:57.519 › [browser] the user allowed microphone for http://localhost:61926
+12:37:57.520 › [browser] granted media [audio] (request) from http://localhost:61926/
+12:37:58.730 › [browser] the user allowed microphone and camera for http://localhost:61926
+12:37:58.731 › [browser] granted media [audio,video] (request) from http://localhost:61926/
+12:37:59.058 › [browser] tab 10 navigation committed
+12:37:59.681 › [browser] tab 10 navigation committed
+12:37:59.694 › [browser] http://localhost:61927 asked for microphone; waiting for the user
+12:37:59.747 › [browser] denied media [audio] (request) from http://localhost:61927/
+12:38:00.190 › [browser] tab 10 navigation committed
+12:38:00.199 › [browser] http://localhost:61927 asked for microphone; waiting for the user
+12:38:00.392 › [browser] the user allowed microphone for http://localhost:61927
+12:38:00.398 › [browser] granted media [audio] (request) from http://localhost:61927/
+12:38:01.885 › [browser] tab 11 navigation committed
+12:38:01.899 › [browser] tab 11 navigation committed
+12:38:01.909 › [browser] http://localhost:61928 asked for microphone; waiting for the user
+12:38:01.951 › [browser] denied media [audio] (request) from http://localhost:61928/
+12:38:02.467 › [browser] tab 11 navigation committed
+12:38:02.471 › [browser] http://localhost:61928 asked for microphone; waiting for the user
+12:38:02.673 › [browser] denied media [audio] (request) from http://localhost:61928/
+12:38:03.223 › [browser] tab 12 navigation committed
+12:38:03.847 › [browser] tab 12 navigation committed
+12:38:03.859 › [browser] http://localhost:61928 asked for microphone; waiting for the user
+12:38:03.948 › [browser] denied media [audio] (request) from http://localhost:61928/
+

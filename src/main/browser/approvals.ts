@@ -174,6 +174,20 @@ export class ApprovalStore {
 	private sessionRecords: ApprovalRecord[] = [];
 	/** Receipts for displaced requesters (see `access-flow.ts`). */
 	private tombstones: AccessTombstones = {};
+	/**
+	 * The FULL URL each pending entry was raised for (path and query included),
+	 * keyed by entry id, so an Allow can open the page the agent actually asked for
+	 * rather than the bare origin (`BrowserHost.respondToConsent`).
+	 *
+	 * A private side map rather than a field on the entry, deliberately:
+	 * `AccessQueueEntry` is vendored from the extension (`vendor/driver/`, pinned
+	 * by PROVENANCE.json), and the URL is a desktop-host concern the extension and
+	 * the shared protocol never see. Only entries raised by a `session:*` requester
+	 * that did not opt out (`open_on_approval: false`) get a row, which is also how
+	 * `entryResponse` knows whether to advertise `opens_on_approval`. In memory
+	 * only, like the queue it shadows, and pruned to the live queue on every write.
+	 */
+	private requestedUrls = new Map<string, string>();
 	/** Consumed once grants authorize one committed document, not every future
 	 * document on that origin. Revocation invalidates in-flight admissions too. */
 	private revision = 0;
@@ -291,6 +305,15 @@ export class ApprovalStore {
 				origin: url.origin,
 				authority: displayAuthority(url),
 				reason: this.refusalReason(url),
+				// The URL the agent actually asked for, so its `request_access` hint can
+				// carry the full page (the sign-in path) instead of falling back to the
+				// bare origin, which is what an Allow then opens for the operator.
+				url: url.href,
+				// Additive: this host opens the approved page for the operator when a
+				// session's request is allowed. Older sessions ignore the key.
+				...(requester.startsWith("session:")
+					? { opens_on_approval: true }
+					: {}),
 			},
 		);
 	}
@@ -455,9 +478,15 @@ export class ApprovalStore {
 		requester: string,
 		kind: "async" | "in_command" = "async",
 		commandId?: string,
+		options: { openOnApproval?: boolean } = {},
 	): Record<string, unknown> {
 		const url = safeHttpUrl(rawUrl);
 		const now = this.now();
+		// Only a session can ever pick the opened tab up (`approvalPickupTab` keys on
+		// the `session:*` identity), so a `call:*` requester's Allow opens nothing and
+		// its response does not claim otherwise.
+		const opensOnApproval =
+			options.openOnApproval !== false && requester.startsWith("session:");
 		/*
 		 * THE ANSWER COMES FROM LIVE AUTHORITY, and from nothing else. This replaces
 		 * two reads: an `originAllowed` early return, and a receipt branch that
@@ -488,6 +517,10 @@ export class ApprovalStore {
 		// prompt, and after the durable-denial read so a refused site does not re-prompt.
 		const existing = findPending(this.queue, url.origin, requester, kind, now);
 		if (existing) {
+			// The entry and its TTL are kept, but the URL follows the LATEST ask: an
+			// agent that re-requests with a more specific page (it first asked for the
+			// bare origin, then for the sign-in path) means the newer one.
+			this.rememberRequestedUrl(existing.entryId, url, opensOnApproval);
 			return this.entryResponse(existing, "pending");
 		}
 		this.sweep(now);
@@ -508,6 +541,7 @@ export class ApprovalStore {
 			broadGrantFor(url),
 		);
 		this.queue.push(entry);
+		this.rememberRequestedUrl(entry.entryId, url, opensOnApproval);
 		this.onChanged();
 		this.log(
 			`[browser] ${requester} is asking for access to ${url.origin} (${this.pendingEntries().length} pending)`,
@@ -526,7 +560,39 @@ export class ApprovalStore {
 			authority: entry.displayAuthority,
 			expires_at: entry.expiresAt,
 			...(entry.broad ? { broad: entry.broad } : {}),
+			// Additive capability flag: an older session ignores the unknown key, and
+			// a newer one uses it to tell the operator "approve, sign in in the tab
+			// that opens, then reply" in ONE message instead of two round trips.
+			...(this.requestedUrls.has(entry.entryId)
+				? { opens_on_approval: true }
+				: {}),
 		};
+	}
+
+	/**
+	 * The full URL a still-PENDING entry was raised for, or null (not pending, not
+	 * a session's request, or the caller opted out). The host reads it BEFORE
+	 * `respond`, because `respond` removes the entry and with it this row.
+	 */
+	requestedUrl(entryId: string): string | null {
+		if (!this.queue.some((entry) => entry.entryId === entryId)) return null;
+		return this.requestedUrls.get(entryId) ?? null;
+	}
+
+	private rememberRequestedUrl(
+		entryId: string,
+		url: URL,
+		opensOnApproval: boolean,
+	): void {
+		// Bounded by the queue (ACCESS_QUEUE_CAP): a row whose entry has left the
+		// queue by any route (answered, cancelled, displaced, expired) is dropped
+		// here rather than at each of those sites.
+		const live = new Set(this.queue.map((entry) => entry.entryId));
+		for (const key of this.requestedUrls.keys()) {
+			if (!live.has(key)) this.requestedUrls.delete(key);
+		}
+		if (opensOnApproval) this.requestedUrls.set(entryId, url.href);
+		else this.requestedUrls.delete(entryId);
 	}
 
 	/** What `await_access` answers, WITHOUT waiting (the loop is in
@@ -911,6 +977,7 @@ export class ApprovalStore {
 		this.revision += 1;
 		this.documents.clear();
 		this.queue = [];
+		this.requestedUrls.clear();
 		this.results = {};
 		this.onceGrants = {};
 		this.tombstones = {};

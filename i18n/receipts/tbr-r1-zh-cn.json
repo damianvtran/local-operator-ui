@@ -1,0 +1,40 @@
+{
+  "auditor": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "tbr-r1-zh-cn",
+  "session": "660fe399e735",
+  "date": "2026-10-21",
+  "locale": "zh-CN",
+  "translator": "translator",
+  "namespace": "ui.teamBridge",
+  "status": "passed",
+  "keys_audited": 20,
+  "scope": "Twenty-key reaction-picker delta: ui.teamBridge.reactions.* (add, search, categories, all, frequent, tone, toneDefault, empty, failed, category0-category8, choose, noResults). Inherit the base 2e16fb1456 full namespace audit for the other 109 values, all verified unchanged; no new full semantic audit of unchanged copy. Catalogue audit only, not rendered-fit, activation or release approval.",
+  "sha256": {
+    "en": "69f741a64df96b85b00e2f389bcda35bbbcc7cc023c4e2f31c997ef64fc0b50c",
+    "zh-CN": "f4c427fb1975c15fac1e2dc00ca3b7844605fd6ad1132b737412f3f1ac64b3d3",
+    "context": "ad0eef37d14411e02b07a083f3873518362734fefd8caa930cf4196728b2ef84"
+  },
+  "findings": [],
+  "inherited_receipt": {
+    "base": "2e16fb1456",
+    "path": "i18n/receipts/tbd-r4-zhcn.json",
+    "sha256": "85d1f0e0870d1a20d82e242187fbb7fba745a88189d98965e51010bd0e7125e9",
+    "keys_inherited": 109,
+    "unchanged_values_verified": 109,
+    "base_source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+    "base_target_sha256": "a461bd1121e50a3091f42da7ec75196ff94efa0eecc3e87bd99ea352d3e33672"
+  },
+  "reference_sha256": {
+    "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+  },
+  "validation": {
+    "independence": "This auditor did not translate or edit any catalogue or code and staged/committed nothing; the worktree was read only (the target file is an uncommitted working-tree modification by the author, audited at the frozen hash). Served as anthropic/claude-opus-5-5 throughout; no model switch or fallback noticed.",
+    "semantics": "Read all 20 en/zh-CN values side by side with the en context sidecar and the render sites in team-bridge-emoji-picker.tsx and team-bridge-reactions.tsx (search = aria-label + placeholder; categories = tablist aria-label; all = tab aria-label; frequent = 12px heading + row aria-label; tone = select aria-label; toneDefault = first option text; noResults = visible empty text; empty = keys.gen.ts entry only, no renderer call site; failed = role=alert span; category0-8 = tab title + aria-label; choose = grid aria-label; add = icon button aria-label). Terminology is consistent within the delta: emoji = 表情 everywhere (add, search, categories, all, empty, choose, noResults), reaction = 表情回应 in both add and failed. failed 表情回应未保存。请重试。 mirrors sibling ui.teamBridge.notify.error (通知偏好未保存。请重试。) and ui.chat.tags (标签未保存。请重试。). empty/noResults 未找到表情 mirror ui.agents.navigation sidebar.empty 未找到智能体; search 搜索表情 matches the 搜索X pattern (搜索标签, 搜索技能); choose 选择表情 matches 选择会话/选择模型; categories 表情类别 matches existing 类别 for Categories; toneDefault 默认肤色 and frequent 常用 are the conventional picker terms. No 您, no pronouns, no 啦/哦/呀, no ！; short labels carry no 。 while the two-sentence error keeps 。 per style guide. Emoji group names: CLDR 49 zh character labels (unicode.org chart summary/zh.html, fetched) give 动物与自然, 饮食, 出行与地点, 笑脸, 人物, 身体, 物体, 符号, 旗帜, 行为; the translation uses the 和-joined forms 笑脸和情感, 人物和身体, 动物和自然, 食物和饮料, 旅行和地点, 活动, 物品, 符号, 旗帜, which match widely used zh emoji-picker group names (a web_search snippet of github.com/zhouhuajian-course/emoji-manual lists the same set except 表情符号和情感 for Smileys; page not fetched) and are idiomatic; CLDR's 行为 for activities and 饮食/出行 are not more natural in a picker tab tooltip, so no finding is raised.",
+    "icu": "Ran node with @formatjs/icu-messageformat-parser from the worktree node_modules: parse() on all 20 en and 20 zh-CN values returned zero non-literal nodes (0 arguments each side). Also checked per value: NFC-normalized (true for all 20), no U+200E/200F/202A-202E/2066-2069/061C, no {}<> characters, no ASCII characters. Key set of zh-CN equals en (129 keys). Unchanged-copy check: the 109 non-reactions values are byte-identical (Buffer.equals) to git show 2e16fb1456:src/i18n/catalogues/zh-CN/ui.teamBridge.json, whose sha256 is a461bd1121e50a3091f42da7ec75196ff94efa0eecc3e87bd99ea352d3e33672; base en at 2e16fb1456 hashes 92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b and its 109 values are unchanged in current en. Target hash verified at start and again immediately before writing this receipt.",
+    "terminology": "Glossary rows checked: none of the 20 strings contains a glossary §2 term (session, agent, team, etc.), and no product-surface name appears. Style guide: 你-voice/pronoun-free, verb-forward, full-width 。, 重试 (not 重新尝试), no space rules violated. 表情 used uniformly for emoji and 表情回应 uniformly for reaction; empty and noResults identical, as in English.",
+    "overflow": "Static code-point comparison only, en vs zh-CN: add 12/6, search 12/4, categories 16/4, all 9/4, frequent 15/2, tone 9/2, toneDefault 17/4, empty 14/5, failed 39/12, category0 19/5, category1 15/5, category2 18/5, category3 14/5, category4 17/5, category5 10/2, category6 7/2, category7 7/2, category8 5/2, choose 15/4, noResults 14/5. In 2-cell CJK width every value is at or below its English cell count (max: failed 24 cells vs 39; toneDefault 8 cells vs 17 in the narrow select). No static expansion risk.",
+    "limitations": "Browser unavailable by task constraint. No screenshots, glyph metrics, visual-fit or native bidi-rendering claim. No catalogue/code edits."
+  }
+}

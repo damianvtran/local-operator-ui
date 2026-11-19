@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1, of the 13 PR #1923 native-messaging keys in this namespace (scope: ui.browser.extensions.details_desktop_apps, ui.browser.extensions.desktop_apps_none, ui.browser.extensions.desktop_apps_revoke, ui.browser.extensions.desktop_apps_revoke_label, ui.browser.extensions.native_confirm_title, ui.browser.extensions.native_confirm_body, ui.browser.extensions.native_confirm_host, ui.browser.extensions.native_confirm_program, ui.browser.extensions.native_confirm_note, ui.browser.extensions.native_confirm_deny, ui.browser.extensions.native_confirm_allow, ui.browser.extensions.permission_desktop_apps, ui.browser.extensions.permission_notifications; 3 removed keys blocked_heading/blocked_desktop_apps/blocked_notifications checked absent; pre-existing keys out of scope)",
+  "locale": "vi",
+  "namespace": "ui.browser.extensions",
+  "pr": 1923,
+  "date": "2026-11-14",
+  "head": "011a83e5d4151a02f45afe76e200d58b4e4ee491",
+  "instance": "pr1923-vi-browser-extensions-40d9e890",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "role": "independent translation auditor (team lopdev, task role); not the translator (coder subagent b588da57086a on anthropic/claude-opus-5-5)",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session a2938f50b716: a different session and agent from the translator (coder b588da57086a); same served model family anthropic/claude-opus-5-5 as stated by this session's harness system prompt, no fallback. Judgement derived from English, the context sidecar, the core glossary/style guides and the shipped corpus; no MT or translation service used. Disclosure: the remediation lines of fixed findings (commit 011a83e5d4) were written by this auditor, so those lines are auditor-authored and are re-bound here, not independently re-reviewed.",
+    "instance": "pr1923-vi-browser-extensions-40d9e890"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean",
+  "findings": [],
+  "binding": "Verified at 011a83e5d415: target is the committed blob src/i18n/catalogues/vi/ui.browser.extensions.json (sha256 60d1f42b708c08a97c08ec3cc9413528276b07569b73e0586043de7134d08114); English src/i18n/catalogues/en/ui.browser.extensions.json (sha256 7b454b104d77106b1b2a2ae7d4fff3be4b3330f40c84303856009d72c2102564). Key set equals English; removed keys absent. Checks (python): JSON valid, ICU argument names identical to English for every audited key, values NFC, no Cf characters. Terminology checked against shipped neighbours: Revoke = ui.browser.browser_approvals_dock.revoke; passkey term = permission_passkeys/passkey_recovery in this file; quoting/punctuation = install_confirm_title siblings. Glossary: ~/local-operator i18n/glossary.md sha256 0eb34437a8c3 (no entries for these terms) and i18n/style-guides/vi.md. details_desktop_apps = 'Kết nối với ứng dụng máy tính' (29/23 chars, 1.26x) | desktop_apps_none = 'Chưa có. Tiện ích sẽ hỏi bạn vào lần đầu cần dùng một ứng dụng máy tính.' (72/67 chars, 1.07x) | desktop_apps_revoke = 'Thu hồi' (7/6 chars, 1.17x) | desktop_apps_revoke_label = 'Thu hồi quyền truy cập vào {app}' (32/22 chars, 1.45x) | native_confirm_title = 'Cho phép “{name}” kết nối với {app}?' (36/35 chars, 1.03x) | native_confirm_body = '“{name}” muốn trao đổi tin nhắn với một ứng dụng được cài trên máy tính này — ví dụ, để mở khóa bằng trình quản lý mật khẩu trên máy tính và điền mật khẩu cũng như khóa truy cập từ đó.' (184/172 chars, 1.07x) | native_confirm_host = 'Kết nối: {host}' (15/18 chars, 0.83x) | native_confirm_program = 'Chương trình: {path}' (20/15 chars, 1.33x) | native_confirm_note = 'Chỉ cho phép những ứng dụng bạn tin tưởng. Bạn có thể thu hồi quyền này sau trên trang chi tiết của tiện ích.' (109/85 chars, 1.28x) | native_confirm_deny = 'Không cho phép' (14/11 chars, 1.27x) | native_confirm_allow = 'Cho phép' (8/5 chars, 1.60x) | permission_desktop_apps = 'Giao tiếp với các ứng dụng máy tính tương thích' (47/41 chars, 1.15x) | permission_notifications = 'Hiển thị thông báo' (18/21 chars, 0.86x)",
+  "scope": "ui.browser.extensions for vi: 13 PR #1923 keys at branch head 011a83e5d415",
+  "revisions": {
+    "head": "011a83e5d4151a02f45afe76e200d58b4e4ee491"
+  },
+  "en_sha256": "7b454b104d77106b1b2a2ae7d4fff3be4b3330f40c84303856009d72c2102564",
+  "context_sha256": "95c322a4f06c2346b302235b9a6b9f5904abbf62cd7c7baa4ec7759f69bc244c",
+  "target_sha256": "60d1f42b708c08a97c08ec3cc9413528276b07569b73e0586043de7134d08114",
+  "sha256": {
+    "vi": "60d1f42b708c08a97c08ec3cc9413528276b07569b73e0586043de7134d08114",
+    "en": "7b454b104d77106b1b2a2ae7d4fff3be4b3330f40c84303856009d72c2102564"
+  }
+}

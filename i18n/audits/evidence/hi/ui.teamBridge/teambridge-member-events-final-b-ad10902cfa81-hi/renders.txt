@@ -1,0 +1,72 @@
+RENDERS (executed 2026-10-30; intl-messageformat 12.1.3, locale hi; names joined by Intl.ListFormat 'long'/'conjunction' exactly as team-bridge-member-events.tsx does)
+
+-- the corrected value, both target counts
+owner_added_agent 1: Dana ने अपना एजेंट Ada जोड़ा
+owner_added_agent 3: Dana ने अपना एजेंट Ada, Bo, और Cy जोड़ा
+declined_self 1:     Dana ने आमंत्रण अस्वीकार कर दिया
+declined 1:          Dana ने Ada के लिए आमंत्रण अस्वीकार कर दिया
+declined 3:          Dana ने Ada, Bo, और Cy के लिए आमंत्रण अस्वीकार कर दिया
+
+-- events.others at the counts the brief names
+count= 1: 1 अन्य
+count= 2: 2 अन्य
+count= 3: 3 अन्य
+count= 5: 5 अन्य
+count=11: 11 अन्य
+count=21: 21 अन्य
+
+-- every event sentence as the truncated row actually builds it (2 names shown + N others, then the locale's own conjunction)
+N=1  list = "Ada, Bo, और 1 अन्य"
+   invited            Dana ने Ada, Bo, और 1 अन्य को आमंत्रित किया
+   joined             Ada, Bo, और 1 अन्य बातचीत में शामिल
+   owner_added_agent  Dana ने अपना एजेंट Ada, Bo, और 1 अन्य जोड़ा
+   left               Ada, Bo, और 1 अन्य ने बातचीत छोड़ दी
+   removed            Dana ने Ada, Bo, और 1 अन्य को हटा दिया
+   consented          Dana ने Ada, Bo, और 1 अन्य को शामिल होने की मंज़ूरी दी
+   declined           Dana ने Ada, Bo, और 1 अन्य के लिए आमंत्रण अस्वीकार कर दिया
+   withdrawn          Dana ने Ada, Bo, और 1 अन्य के लिए आमंत्रण वापस ले लिया
+N=2  list = "Ada, Bo, और 2 अन्य"
+   invited            Dana ने Ada, Bo, और 2 अन्य को आमंत्रित किया
+   joined             Ada, Bo, और 2 अन्य बातचीत में शामिल
+   owner_added_agent  Dana ने अपना एजेंट Ada, Bo, और 2 अन्य जोड़ा
+   left               Ada, Bo, और 2 अन्य ने बातचीत छोड़ दी
+   removed            Dana ने Ada, Bo, और 2 अन्य को हटा दिया
+   consented          Dana ने Ada, Bo, और 2 अन्य को शामिल होने की मंज़ूरी दी
+   declined           Dana ने Ada, Bo, और 2 अन्य के लिए आमंत्रण अस्वीकार कर दिया
+   withdrawn          Dana ने Ada, Bo, और 2 अन्य के लिए आमंत्रण वापस ले लिया
+N=3  list = "Ada, Bo, और 3 अन्य"
+   invited            Dana ने Ada, Bo, और 3 अन्य को आमंत्रित किया
+   joined             Ada, Bo, और 3 अन्य बातचीत में शामिल
+   owner_added_agent  Dana ने अपना एजेंट Ada, Bo, और 3 अन्य जोड़ा
+   left               Ada, Bo, और 3 अन्य ने बातचीत छोड़ दी
+   removed            Dana ने Ada, Bo, और 3 अन्य को हटा दिया
+   consented          Dana ने Ada, Bo, और 3 अन्य को शामिल होने की मंज़ूरी दी
+   declined           Dana ने Ada, Bo, और 3 अन्य के लिए आमंत्रण अस्वीकार कर दिया
+   withdrawn          Dana ने Ada, Bo, और 3 अन्य के लिए आमंत्रण वापस ले लिया
+N=5  list = "Ada, Bo, और 5 अन्य"
+   invited            Dana ने Ada, Bo, और 5 अन्य को आमंत्रित किया
+   joined             Ada, Bo, और 5 अन्य बातचीत में शामिल
+   owner_added_agent  Dana ने अपना एजेंट Ada, Bo, और 5 अन्य जोड़ा
+   left               Ada, Bo, और 5 अन्य ने बातचीत छोड़ दी
+   removed            Dana ने Ada, Bo, और 5 अन्य को हटा दिया
+   consented          Dana ने Ada, Bo, और 5 अन्य को शामिल होने की मंज़ूरी दी
+   declined           Dana ने Ada, Bo, और 5 अन्य के लिए आमंत्रण अस्वीकार कर दिया
+   withdrawn          Dana ने Ada, Bo, और 5 अन्य के लिए आमंत्रण वापस ले लिया
+N=11  list = "Ada, Bo, और 11 अन्य"
+   invited            Dana ने Ada, Bo, और 11 अन्य को आमंत्रित किया
+   joined             Ada, Bo, और 11 अन्य बातचीत में शामिल
+   owner_added_agent  Dana ने अपना एजेंट Ada, Bo, और 11 अन्य जोड़ा
+   left               Ada, Bo, और 11 अन्य ने बातचीत छोड़ दी
+   removed            Dana ने Ada, Bo, और 11 अन्य को हटा दिया
+   consented          Dana ने Ada, Bo, और 11 अन्य को शामिल होने की मंज़ूरी दी
+   declined           Dana ने Ada, Bo, और 11 अन्य के लिए आमंत्रण अस्वीकार कर दिया
+   withdrawn          Dana ने Ada, Bo, और 11 अन्य के लिए आमंत्रण वापस ले लिया
+N=21  list = "Ada, Bo, और 21 अन्य"
+   invited            Dana ने Ada, Bo, और 21 अन्य को आमंत्रित किया
+   joined             Ada, Bo, और 21 अन्य बातचीत में शामिल
+   owner_added_agent  Dana ने अपना एजेंट Ada, Bo, और 21 अन्य जोड़ा
+   left               Ada, Bo, और 21 अन्य ने बातचीत छोड़ दी
+   removed            Dana ने Ada, Bo, और 21 अन्य को हटा दिया
+   consented          Dana ने Ada, Bo, और 21 अन्य को शामिल होने की मंज़ूरी दी
+   declined           Dana ने Ada, Bo, और 21 अन्य के लिए आमंत्रण अस्वीकार कर दिया
+   withdrawn          Dana ने Ada, Bo, और 21 अन्य के लिए आमंत्रण वापस ले लिया

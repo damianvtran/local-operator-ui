@@ -1,0 +1,437 @@
+{
+  "agent": "translator",
+  "translator": "translator",
+  "model": "openrouter/moonshotai/kimi-k3.1-pro",
+  "served_model": "openrouter/moonshotai/kimi-k3.1-pro",
+  "fallback": null,
+  "model_provenance": "Actual served model reported by this Local Operator runtime; no fallback used.",
+  "instance": "i18n-surfaces-ur",
+  "session": "1e8065083189",
+  "date": "2026-10-24",
+  "locale": "ur",
+  "source_revision": "82393f2110b1e0c18acecf0dca1bd8699e688e13",
+  "scope": "Translation only: 470 manifest keys plus ui.common.errors.speech_temporarily_unavailable; no independent audit, ledger verdict, allowance, baseline, or rendered RTL claim.",
+  "keys_translated": 471,
+  "namespaces": {
+    "ui.browser.errors": {
+      "keys_translated": 2,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.browser.errors.json",
+        "ur": "src/i18n/catalogues/ur/ui.browser.errors.json",
+        "context": "src/i18n/catalogues/en/ui.browser.errors.context.json"
+      },
+      "sha256": {
+        "en": "c76148aad81e67ae2bacc513a51a5ff219c797ea93bf274f6b6ebaa09635426a",
+        "ur": "6ee6afe94d7e0772e98235e0ac6cdabf6cf693ac5d3345b3e07b29383b21fdf7",
+        "context": "2b1f9eb5194709780b3c9188d7463177a4bf2aff07b9a5a438e91a2ec7a82906"
+      }
+    },
+    "ui.chat.canonical": {
+      "keys_translated": 17,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.canonical.json",
+        "ur": "src/i18n/catalogues/ur/ui.chat.canonical.json",
+        "context": "src/i18n/catalogues/en/ui.chat.canonical.context.json"
+      },
+      "sha256": {
+        "en": "dfa9cde6984a451b75a22530303197ed8a3c8d9148685231d017299f16cfe0dd",
+        "ur": "97223a15e0be4535823a402a5ca55bb38262994702d161f699d4dbaef18e0ba4",
+        "context": "953ddc573ded81d8f78aec78a81cb89dbdf6fdc6f6adf2b0945b8b4bff71077b"
+      }
+    },
+    "ui.chat.composer": {
+      "keys_translated": 11,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.composer.json",
+        "ur": "src/i18n/catalogues/ur/ui.chat.composer.json",
+        "context": "src/i18n/catalogues/en/ui.chat.composer.context.json"
+      },
+      "sha256": {
+        "en": "beced0ec43069d64bcf96415a71ef53be1ed6366848f386a2efaa4d4b77bf4df",
+        "ur": "080403d84c30a54cbd3ecb4663c1357690f5c22318721c69f63a0c47c27a6c84",
+        "context": "ce5cb033df55ee401da6b4bf18ac1b205799e5126392e62a9c59ec02cd715330"
+      }
+    },
+    "ui.code_review": {
+      "keys_translated": 1,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.code_review.json",
+        "ur": "src/i18n/catalogues/ur/ui.code_review.json",
+        "context": "src/i18n/catalogues/en/ui.code_review.context.json"
+      },
+      "sha256": {
+        "en": "52c1c5147bded8beb2e223c43e7cdb44d236a9ab4c2722627868a5a0fca1a312",
+        "ur": "c78342cab8d4ca187049f7db1621cd54db0b82c35f92c3628d588765231fd48c",
+        "context": "4d60ce00b0a08f78c30aab5e1b40ddba4e086f61e828e3cf23116866b5daebb2"
+      }
+    },
+    "ui.common.account": {
+      "keys_translated": 20,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.account.json",
+        "ur": "src/i18n/catalogues/ur/ui.common.account.json",
+        "context": "src/i18n/catalogues/en/ui.common.account.context.json"
+      },
+      "sha256": {
+        "en": "0e39546d4357107a461f4eb3774c3a17d48a29af902825e86e450809dcf51a48",
+        "ur": "564f9c11c6eff15c5ba782d24e18fd1fdd58e350f49c424902f94e1cad04430d",
+        "context": "148dcc3c9c40ad03373b54c1394f210386290b9e9395134d12532617d0d33f1a"
+      }
+    },
+    "ui.common.actions": {
+      "keys_translated": 14,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.actions.json",
+        "ur": "src/i18n/catalogues/ur/ui.common.actions.json",
+        "context": "src/i18n/catalogues/en/ui.common.actions.context.json"
+      },
+      "sha256": {
+        "en": "e1d2fa68aededcc4aa67bd9527a80072859f35b8a358cadba2007696414e8235",
+        "ur": "05f1e53f0ea0db0bd61426aa0a2cc5f9acdc3047309f5d4c3a59a64b56ad7336",
+        "context": "160a775122143fdf72ed91a052d112f568a41105412e69f8adfdcfcc1b3b7256"
+      }
+    },
+    "ui.common.connection": {
+      "keys_translated": 27,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.connection.json",
+        "ur": "src/i18n/catalogues/ur/ui.common.connection.json",
+        "context": "src/i18n/catalogues/en/ui.common.connection.context.json"
+      },
+      "sha256": {
+        "en": "f4d8116323bd5fa12e2a7b7a9b95ce78be29e710088f7fa50f209b788dcfeaa5",
+        "ur": "5d22e34fa23f0fa4d212f842269dbfc74372958212a9e85d43efd662c07dd45a",
+        "context": "9d39efa215fb38d30e7b70d0df1ed293e32e33a0b72ffc838d7385fb17e7dbb2"
+      }
+    },
+    "ui.common.errors": {
+      "keys_translated": 131,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.errors.json",
+        "ur": "src/i18n/catalogues/ur/ui.common.errors.json",
+        "context": "src/i18n/catalogues/en/ui.common.errors.context.json"
+      },
+      "sha256": {
+        "en": "59dc7dfdbc3db2070238d457e7700d57941830a223181ea1eb4fabe9d5d7eae4",
+        "ur": "fdd970118892afdf0487d8b00329e6b7b934bd9f2ba0425064164ca9922c0de7",
+        "context": "714850a99bf61133a2fb7548504dc0030a20a516bd1ca3b1dfbe70b2de5f7fb1"
+      }
+    },
+    "ui.common.speech": {
+      "keys_translated": 11,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.speech.json",
+        "ur": "src/i18n/catalogues/ur/ui.common.speech.json",
+        "context": "src/i18n/catalogues/en/ui.common.speech.context.json"
+      },
+      "sha256": {
+        "en": "75e394ea07a049d8a58a2cc12fedec1042e30b61e572f53740f0fac35a825eb0",
+        "ur": "edc9686952f10190b0a3d8e92e19b3e658e5de93113447c725ec04db44948737",
+        "context": "284ead771845e6a6b4ef5c45ddc450e44f0df76873e63b4cc794fba84475522b"
+      }
+    },
+    "ui.common.time": {
+      "keys_translated": 1,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.time.json",
+        "ur": "src/i18n/catalogues/ur/ui.common.time.json",
+        "context": "src/i18n/catalogues/en/ui.common.time.context.json"
+      },
+      "sha256": {
+        "en": "d29ccbd6b980f727b02c9c7e60c27c0d068d8082bab2e424784bc683f1cfbdd0",
+        "ur": "89f3687b2d44d59cbc7a2fb69b29ec0e52cd79ab9743e1f2356799d6ee9f756c",
+        "context": "9d666403cd1c661075607faa0a7db78b43bdd570f3d2ce1c7f5968e26f28a6a1"
+      }
+    },
+    "ui.common.updates": {
+      "keys_translated": 11,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.updates.json",
+        "ur": "src/i18n/catalogues/ur/ui.common.updates.json",
+        "context": "src/i18n/catalogues/en/ui.common.updates.context.json"
+      },
+      "sha256": {
+        "en": "5bb2c4cba16a412565d9c41dd5e9233e8ad8324d07758327ddd947607b59bc82",
+        "ur": "4d7d9c8c1fb59b6789506a86c25562a4650ef3713f9e587c3ad80ae6a5a9fb66",
+        "context": "5188c08320cea150fd71c3a26666ca6b0b637a94659bc6087155681b59d9614f"
+      }
+    },
+    "ui.common.viewer": {
+      "keys_translated": 1,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.viewer.json",
+        "ur": "src/i18n/catalogues/ur/ui.common.viewer.json",
+        "context": "src/i18n/catalogues/en/ui.common.viewer.context.json"
+      },
+      "sha256": {
+        "en": "9db8efc731cb81ac781c732a3021587434acd26bd03d41ec41156c5672edabfe",
+        "ur": "18975edf1605f629975d0d831cadd0b6a94c909dd1473fadbad78f522bb83fcb",
+        "context": "77232304d3ddc3dbe20151daddc2ee1a3c28271cdcfd7ebc54a302fe6f68f40e"
+      }
+    },
+    "ui.console.errors": {
+      "keys_translated": 1,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.console.errors.json",
+        "ur": "src/i18n/catalogues/ur/ui.console.errors.json",
+        "context": "src/i18n/catalogues/en/ui.console.errors.context.json"
+      },
+      "sha256": {
+        "en": "ef6827986b0cd0d75cb4e2aea62aa0b017b58191b5736f7a721c6afa938f344b",
+        "ur": "8eceb100a539dca95b09359ea77263efb459778a785b9e62217fc14796b71e86",
+        "context": "7a4e2ef6e8a081c78dab8ac422a3c82fbe268d8f1f68ca885e5f4eb9f7bed0d3"
+      }
+    },
+    "ui.hub.updates": {
+      "keys_translated": 56,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.hub.updates.json",
+        "ur": "src/i18n/catalogues/ur/ui.hub.updates.json",
+        "context": "src/i18n/catalogues/en/ui.hub.updates.context.json"
+      },
+      "sha256": {
+        "en": "9fa15153d1a036a7f98b1d50da90d736c7f423c2981087ae1436469d23afcfdd",
+        "ur": "558a85f719c1e1262c3fe3adf8effad245599764c7385ec292a3ef32a7883033",
+        "context": "d30a14eb3c3bad0bd2bde7eb1a26fd5fff5aa16ff38dfdd623ed05db4db76390"
+      }
+    },
+    "ui.installer": {
+      "keys_translated": 4,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.installer.json",
+        "ur": "src/i18n/catalogues/ur/ui.installer.json",
+        "context": "src/i18n/catalogues/en/ui.installer.context.json"
+      },
+      "sha256": {
+        "en": "89b4c22ea75c9c7fb1db96e226c1eed958643d3e08eb4a0317b2e4369fd4e8e9",
+        "ur": "a3666343ef0918f7fcec203000d700c3e02d740575b6875cfd1feff4a4c53f33",
+        "context": "6969a13f454799d950a961da740d6585545525f0a148dade5c85e1ae81232705"
+      }
+    },
+    "ui.library.errors": {
+      "keys_translated": 3,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.library.errors.json",
+        "ur": "src/i18n/catalogues/ur/ui.library.errors.json",
+        "context": "src/i18n/catalogues/en/ui.library.errors.context.json"
+      },
+      "sha256": {
+        "en": "162f2d82448d8a77cd96d4b142018cf233dd1ebfabe37ba7ce47d4fc52195bc4",
+        "ur": "b51f97dc6b21a98a0317ce89b9b31e5265ebca6d89a83123ee2ec280bd38d60e",
+        "context": "cc8e737dc8b52dbe3cc5193a9fc33f5acdb6332420c95e3fad5e1567946b247a"
+      }
+    },
+    "ui.mesh.errors": {
+      "keys_translated": 1,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.mesh.errors.json",
+        "ur": "src/i18n/catalogues/ur/ui.mesh.errors.json",
+        "context": "src/i18n/catalogues/en/ui.mesh.errors.context.json"
+      },
+      "sha256": {
+        "en": "285997c116c83dd475ace036931ca2a49108dba4237300be3389bcc513ff2a40",
+        "ur": "8b205c416381b302e4221eaa0330dbd16fa8889579119a1432b467b8db4aaa6b",
+        "context": "d33ebdde6b2958258ed1e52f9aa44070c9987fe8e40287e6966ff4cfa9021299"
+      }
+    },
+    "ui.miniView": {
+      "keys_translated": 34,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.miniView.json",
+        "ur": "src/i18n/catalogues/ur/ui.miniView.json",
+        "context": "src/i18n/catalogues/en/ui.miniView.context.json"
+      },
+      "sha256": {
+        "en": "50202e2b2c757708215867b51811ca4c72dd1814c747960a98a4f1929925119e",
+        "ur": "7d57279ff7d535d2a25769d901dd6855342a0dee5358644c68556010bca486a1",
+        "context": "22c12b345086a5ae0f1efacf3e9256f2890d8621912f8b0c642554a50f838f07"
+      }
+    },
+    "ui.projects": {
+      "keys_translated": 3,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.projects.json",
+        "ur": "src/i18n/catalogues/ur/ui.projects.json",
+        "context": "src/i18n/catalogues/en/ui.projects.context.json"
+      },
+      "sha256": {
+        "en": "78d8aea1536bad3a731455d50fe3361e620ffb34f914368dfbbedc7b7d277883",
+        "ur": "232734a936be103b3be70e08a922e8dcd07a1a4c9b6406aa56ade5c9d16bdc0b",
+        "context": "7eaaba481914ce8fc0692c6eaee39ad04e80d9cddc82f0c83a00bebc96af28d4"
+      }
+    },
+    "ui.schedules.errors": {
+      "keys_translated": 3,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.schedules.errors.json",
+        "ur": "src/i18n/catalogues/ur/ui.schedules.errors.json",
+        "context": "src/i18n/catalogues/en/ui.schedules.errors.context.json"
+      },
+      "sha256": {
+        "en": "05e2bc81700cb5ef326144dcf2ded7fee9b351b02e56226cfc800a9bdcf07961",
+        "ur": "37ede29f5f1e530990ac5963ec0963099f703b623fab4d0e5b8cac5b78828883",
+        "context": "e622fe4a49850f864e15cda2fe0d6d724f8ec8e0769f1efb07adf243a51db69b"
+      }
+    },
+    "ui.settings": {
+      "keys_translated": 6,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.settings.json",
+        "ur": "src/i18n/catalogues/ur/ui.settings.json",
+        "context": "src/i18n/catalogues/en/ui.settings.context.json"
+      },
+      "sha256": {
+        "en": "3a4316b07423741b3a5bb670a82cb07ae260ef247c40fd039f5ad74213efd625",
+        "ur": "ddd178d737e391d27eaeec96d8f95edbe93a1e7395d274ee0b96a298f009b596",
+        "context": "bc524adfbef11d7aa28b074b5884076ab388526f44a344feaf53cabb51bb9692"
+      }
+    },
+    "ui.settings.appearance": {
+      "keys_translated": 59,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.settings.appearance.json",
+        "ur": "src/i18n/catalogues/ur/ui.settings.appearance.json",
+        "context": "src/i18n/catalogues/en/ui.settings.appearance.context.json"
+      },
+      "sha256": {
+        "en": "be349b938ef72437bfb68cdcbd6c168247edff20f5efe6b50abe981183769729",
+        "ur": "2ba0bc5900f6c52e8c4078f1449953ceff824493e584cb8310d7208f3319688f",
+        "context": "c18933608a9e715e4d7ea6fafd6096c154991e8829f79a2653a3726802cc7f3f"
+      }
+    },
+    "ui.settings.shortcuts": {
+      "keys_translated": 54,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.settings.shortcuts.json",
+        "ur": "src/i18n/catalogues/ur/ui.settings.shortcuts.json",
+        "context": "src/i18n/catalogues/en/ui.settings.shortcuts.context.json"
+      },
+      "sha256": {
+        "en": "0942be5821493ed1353b222905589e2a45204def2c2d1a4b26e1717e4cc7c99f",
+        "ur": "bf90f3e2ba6dc497e664f248aec2043f6effe002f089838aa00bc7388da17f55",
+        "context": "9c74fb267e6504114980b62f75efa1b02c79d76dbe1a20f1e476b56d9865c215"
+      }
+    }
+  },
+  "reference_sha256": {
+    "manifest": "01892e7f1dee7a7cd4c74f10c3447fa7e326c6fd0733aaf380163373b0e3d23d",
+    "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+  },
+  "remediation": {
+    "round": 1,
+    "date": "2026-10-24",
+    "agent": "translator",
+    "session": "1e8065083189",
+    "served_model": "radient/auto",
+    "model_history": [
+      {
+        "stage": "translation",
+        "served_model": "openrouter/moonshotai/kimi-k3.1-pro",
+        "fallback": null
+      },
+      {
+        "stage": "unified remediation",
+        "served_model": "radient/auto",
+        "fallback": null,
+        "note": "Model change is disclosed because the served model differs from the authoring run; same translator agent and role."
+      }
+    ],
+    "base_commit": "7bb57e910dd5c66bcefc8e3e845e9c21a44d553c",
+    "head_note": "The commit that adds this remediation block is the reviewed head; its SHA is reported outside the receipt so the receipt need not describe itself.",
+    "audits": {
+      "first": "/Users/damian/.local-operator/sessions/874627c718da/scratchpad/surfaces-r1-20261024-ur-audit.json",
+      "second": "/Users/damian/.local-operator/sessions/807b1fd66a5f/scratchpad/ur-surfaces-second-audit/receipt-ur-surfaces-r2-807b1fd66a5f.json"
+    },
+    "findings_applied": [
+      {
+        "id": "UR-SURF-R1-001 / ur-r2-01",
+        "key": "ui.common.connection.backend.diagnosis_unauthorized",
+        "fix": "سرور کے سامنے اپنی تصدیق نہیں کر سکتی — authenticates itself TO the server (second auditor's form)"
+      },
+      {
+        "id": "UR-SURF-R1-002 / ur-r2-02",
+        "key": "ui.common.connection.backend.compatibility_unauthorized",
+        "fix": "same direction fix, remedy list preserved on the correct cause"
+      },
+      {
+        "id": "ur-r2-03",
+        "key": "ui.common.connection.backend.pane_successor",
+        "fix": "کر لےتی → کر لے"
+      },
+      {
+        "id": "UR-SURF-R1-003",
+        "key": "ui.hub.updates.error.provider",
+        "fix": "merge ماڈل calque → اسے merge کرنے والے ماڈل, glossary Latin merge retained"
+      },
+      {
+        "id": "UR-SURF-R1-004",
+        "key": "ui.hub.updates.error.retry_named",
+        "fix": "آزمایا (tested) → ہب اپ ڈیٹ دوبارہ نہیں کی جا سکی"
+      },
+      {
+        "id": "UR-SURF-R1-005",
+        "key": "ui.hub.updates.mark.retry",
+        "fix": "دوبارہ آزمائیں → کے لیے دوبارہ کوشش کریں"
+      },
+      {
+        "id": "UR-SURF-R1-006 / ur-r2-04",
+        "key": "ui.settings.shortcuts.row.canvas",
+        "fix": "کینوس → Canvas, matching shell.rail, command_palette, mesh and the adjacent shortcut rows"
+      },
+      {
+        "id": "ur-r2-05",
+        "key": "ui.settings.shortcuts.reserved.redo, ui.settings.shortcuts.reserved.redo_windows_linux",
+        "fix": "redo paraphrases → ریڈو, matching the انڈو loanword so the pair uses one strategy"
+      },
+      {
+        "id": "ur-r2-06",
+        "key": "ui.miniView.hotkey_needs_modifier",
+        "fix": "bare modifier → ماڈیفائر کلید"
+      },
+      {
+        "id": "ur-r2-06b",
+        "key": "ui.miniView.registration_unavailable",
+        "fix": "تعاون یافتہ calque → معاون"
+      },
+      {
+        "id": "UR-SURF-R1-008 / ur-r2-07",
+        "key": "ui.settings.appearance.theme.dracula",
+        "fix": "Dracula کی نمایاں بنفشی رنگ → Dracula کے نمایاں بنفشی رنگ"
+      },
+      {
+        "id": "ur-r2-08",
+        "key": "ui.settings.appearance.theme.arctic",
+        "fix": "سلےٹ → سلیٹ, matching the other five occurrences"
+      },
+      {
+        "id": "UR-SURF-R1-007",
+        "key": "ui.settings.appearance.theme.rose_pine",
+        "fix": "بیر (jujube) → آلو بخارا رنگ for the plum colour"
+      },
+      {
+        "id": "UR-SURF-R1-009",
+        "key": "ui.settings.appearance.theme.rosewood",
+        "fix": "خشک گلاب کے سرخ → خشک گلاب کے سرخ رنگ"
+      }
+    ],
+    "unresolved": [
+      {
+        "item": "locale-parity [ur] is not an English stub fails for ui.settings.shortcuts.row.canvas",
+        "reason": "Both audits require the Latin product name, which makes the value byte-identical to English; the gate's designed path is a reviewed IDENTICAL_OK entry in scripts/i18n/locale-parity.test.mjs, which a translator must not add (gate-script and allowance edits are out of role). Precedent exists for ui.shell.rail.canvas.aria and ui.mesh.mesh_page.canvas.",
+        "owner": "gate owner (coder/reviewer) in the convergence round",
+        "exact_output": "[ur] is not an English stub (no value identical to the source) — actual: ['ui.settings.shortcuts.json: ui.settings.shortcuts.row.canvas']"
+      }
+    ],
+    "checks": {
+      "generate_check": "PASS — keys.gen.ts byte-identical to a fresh generation",
+      "translator_icu_check": "PASS — 471 keys, 94 argument messages, 8 plural messages, 1884 real t() runs; exact ICU signatures, CLDR branches and ::group-off skeletons",
+      "translator_pseudo_check": "PASS — 471 keys, 942 formatting paths",
+      "format_ur_activation_typed_keys": "PASS — 17/17",
+      "context_parity": "PASS — 131 allowed gaps in 4 namespaces unchanged",
+      "locale_parity": "43 tests, 35 passed, 8 failed: the legacy complete-namespace assertion for all seven locales (unintegrated backfill/extraction lanes, ur lists 30 ui.chat.canonical + 4 ui.common.viewer) plus the single ui.settings.shortcuts.row.canvas non-stub row above. ur placeholder, key-validity, duplicate-key, NFC and bidi assertions pass.",
+      "scope_check": "PASS — 15 changed values across 5 namespaces (the undo half of the redo pair was already the انڈو loanword and is unchanged); no keys added, removed or reordered; no en, other-locale, gate or ledger file touched"
+    }
+  },
+  "namespaces_note": "Per-namespace sha256 values below are current for the remediation head; keys_translated stays the round-1 addition count."
+}

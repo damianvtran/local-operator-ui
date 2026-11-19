@@ -1,3 +1,4 @@
+import type { ApprovalStore } from "../approvals";
 import { BrowserHostError } from "../errors";
 import {
 	MAX_AGENT_TABS,
@@ -84,7 +85,16 @@ export async function open(
 	// Admission is decided ONCE, here, before the page is touched. A grant consumed
 	// at entry is spent; the gate below must not consult the grant map again or a
 	// TTL lapse mid-command could turn a granted navigation into a refusal.
-	const admission = url ? ctx.approvals.admit(url, requester) : null;
+	//
+	// The approval pickup runs FIRST because it admits a different URL (the page
+	// the operator is on now, not the one requested): computing admission on the
+	// requested URL here and then again on the current one would spend a `once`
+	// grant twice, or spend it on the wrong document.
+	if (!handle && url) {
+		const adopted = await adoptApprovalPickup(ctx, params, requester, url);
+		if (adopted) return adopted;
+	}
+	const admission = url ? admitFlaggingWaitingTab(ctx, url, requester) : null;
 	const approved =
 		admission?.approved ??
 		((candidate: URL) => ctx.approvals.originAllowed(candidate));
@@ -188,6 +198,126 @@ export async function open(
 }
 
 /**
+ * The approval pickup: a no-`tab` `open url=` by the session whose request the
+ * operator just allowed takes over the USER tab the Allow opened
+ * (`BrowserHost.openApprovedRequest`), where it stands, instead of opening a
+ * second tab. This is the half of "approve, sign in, get back to the agent in one
+ * go" that lets the agent continue on the page the operator just signed in on.
+ *
+ * Rules, each a constraint rather than a preference:
+ * - Only the requester the marker names, and only for the approved origin.
+ * - Only while the tab's CURRENT document is on that origin. An operator still on
+ *   the identity provider, or who browsed away, keeps their tab; `open` then
+ *   behaves as it always has (a new agent tab, signed in through the shared
+ *   cookie jar). The agent never navigates the operator's tab away.
+ * - Admission runs on the CURRENT URL, so a `once` grant is spent exactly once,
+ *   here, and a durable grant is read as usual. No navigation follows: the
+ *   operator's page (a filled form, a post-login redirect) is what the agent gets.
+ * - The cap is checked before admission, so a full host does not spend a `once`
+ *   grant and then refuse.
+ * - The hand-over is the registry's ordinary one (`handOver`: owner -> agent, a
+ *   fresh nonce, `handedFrom: "user"`), so the tab carries the existing
+ *   hand-over chip and revoke control.
+ *
+ * Returns null when there is nothing to pick up, and the caller falls through.
+ */
+async function adoptApprovalPickup(
+	ctx: BrowserActionContext,
+	params: Record<string, unknown>,
+	requester: string,
+	url: URL,
+): Promise<Record<string, unknown> | null> {
+	const record = ctx.registry.approvalPickupTab(
+		requester,
+		url.origin,
+		Date.now(),
+	);
+	if (!record) return null;
+	let current: URL;
+	try {
+		current = safeHttpUrl(record.view.webContents.getURL());
+	} catch {
+		return null;
+	}
+	if (current.origin !== url.origin) return null;
+	ctx.registry.assertAgentCapacity();
+	let permission: ReturnType<ApprovalStore["admit"]>;
+	try {
+		permission = ctx.approvals.admit(current, requester);
+	} catch (error) {
+		// A refusal here (the `once` grant lapsed while the 15-minute marker is still
+		// live, it was spent elsewhere, or it was revoked) must NOT surface: its
+		// `data.url` would be the operator's CURRENT URL, which can be a post-login
+		// callback carrying a code in its query. Falling through lets `open` refuse
+		// with the URL the agent itself asked for (review round 1, R1).
+		if (
+			error instanceof BrowserHostError &&
+			error.code === "origin_not_allowed"
+		)
+			return null;
+		throw error;
+	}
+	// The same preparation the app's own hand-over runs BEFORE a capability
+	// transfer (`BrowserHost.handOver`): the operator's find bar and zoom on the
+	// sign-in page do not travel to the agent (review round 1, R2).
+	ctx.prepareAgent?.(record);
+	ctx.registry.handOver(record.tabId, requester);
+	// `handOver` clears the marker and the allocation; the allocation is set after
+	// it so the ownership journal's `owner_*` methods find this tab.
+	record.allocationId = stringParam(params, "allocation_id");
+	const token = surfaceToken(record) ?? "";
+	// Published before the first await, as the new-tab arm does, so a failure
+	// below leaves the journal naming the live tab rather than an empty reservation.
+	ctx.ownership.recordAllocation(params, token, "allocated");
+	await ctx.cdp.attach(record.view.webContents);
+	ctx.approvals.rememberDocument(
+		token,
+		current,
+		requester,
+		record.documentEpoch,
+		permission.approved,
+	);
+	ctx.registry.touch(record);
+	ctx.onChanged();
+	return openResult(record, {
+		...pageOf(record.view),
+		via: permission.viaOnceGrant ? "once_grant" : "stored_grant",
+		limit: MAX_AGENT_TABS,
+		adopted: "approval",
+		requested_url: url.href,
+	});
+}
+
+/**
+ * `open`'s single admission, with one addition to its refusal: `opened_tab: true`
+ * when the Allow already opened a page for this requester and origin and that
+ * tab is still waiting (typically the `once` grant lapsed before the agent came
+ * back). The session then tells the operator that approving again brings that
+ * same page back, so they need not sign in again. Additive; the refusal's `url`
+ * stays the one the agent asked for.
+ */
+function admitFlaggingWaitingTab(
+	ctx: BrowserActionContext,
+	url: URL,
+	requester: string,
+): ReturnType<ApprovalStore["admit"]> {
+	try {
+		return ctx.approvals.admit(url, requester);
+	} catch (error) {
+		if (
+			error instanceof BrowserHostError &&
+			error.code === "origin_not_allowed" &&
+			ctx.registry.approvalPickupTab(requester, url.origin, Date.now())
+		)
+			throw new BrowserHostError(error.code, error.message, {
+				...error.data,
+				opened_tab: true,
+			});
+		throw error;
+	}
+}
+
+/**
  * `goto`: navigate a tab the caller already holds.
  *
  * Gated on the way in, and the gate reports the failure with the origin it
@@ -264,6 +394,9 @@ export async function close(
 	const [record] = tabs;
 	if (!record)
 		throw new BrowserHostError("tab_closed", "no browser tab is open");
+	// The sole tab may be one the user is answering a password manager prompt in;
+	// closing it mid-answer is agent input like any other (review Q3).
+	ctx.registry.assertNotInCustody(record);
 	const closed = surfaceToken(record) ?? "";
 	ctx.registry.destroy(record.tabId);
 	ctx.onChanged();

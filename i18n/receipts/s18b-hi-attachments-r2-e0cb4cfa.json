@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "delta re-audit after remediation of findings from the round-1 receipt s18b-hi-attachments-483db6b1 (round 2, scope 3837df2f6c..a007916470; keys in scope: ui.chat.attachments.not_viewable_detail)",
+  "locale": "hi",
+  "namespace": "ui.chat.attachments",
+  "pr": 0,
+  "pr_note": "PR not yet opened (branch feat/i18n-s18b-approval-paydown)",
+  "date": "2026-11-14",
+  "head": "a0079164701fc748a3ffa0ae4d6576ec4578b80f",
+  "instance": "s18b-hi-attachments-r2-e0cb4cfa",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "role": "independent translation auditor (team lopdev); not the translator (i18n-translator on anthropic/claude-sonnet-5-5), not the integrator or remediator",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session 097e801c9a50: the same auditor session as round 1, and a different session, agent and model from the translator and the remediating commit. Served model anthropic/claude-opus-5-5, as stated by this session's harness system prompt; no fallback. Read-only in the worktree (git show/diff, python3). My only repo writes: these untracked receipts, plus deletion of the superseded round-1 receipt. No MT used.",
+    "instance": "s18b-hi-attachments-r2-e0cb4cfa"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean",
+  "findings": [],
+  "binding": "Verified here at a0079164701f: target is the committed blob (git show a0079164701fc748a3ffa0ae4d6576ec4578b80f:src/i18n/catalogues/hi/ui.chat.attachments.json, sha256 9f6d3cbb5c1ca3df4a758f42305410461d05b4c957f2439ef925fc3a8fbe8dad). The worktree file is byte-identical to it. Delta 3837df2f6c..a007916470 is one commit (a007916470), 5 files, +5/-5 lines. For this file, exactly one line changed: ui.chat.attachments.not_viewable_detail. Key set is unchanged. English file and sidecar are byte-identical between the two heads (en 69f31f3ccfd07e5c02838509aeb08cfdfd9a50bd606893add287ec2f614d7a73, context 0fa08be3af701edcd69a050ac5ebc42d6b05d1404eb7763cd6dba557385f79da). JSON valid, TAB indent, one trailing newline, no BOM/CR. Python checks only (no node validator, per the no-node constraint): placeholder set identical to English, NFC, no Cf characters. Round-1 NIT fixed: '(शायद अधूरी हो, हटा दी गई हो या कहीं और ले जाई गई हो)'. Every participle is feminine (अधूरी, दी गई, ले जाई गई), agreeing with the leading फ़ाइल as the implied subject. The parenthetical no longer repeats फ़ाइल. Width falls from 98 to 84 chars (1.27x vs English 66). {name} is byte-identical. Unchanged keys in this namespace keep their round-1 judgement from s18b-hi-attachments-483db6b1.",
+  "scope": "ui.chat.attachments for hi: 1 S18b key(s) (ui.chat.attachments.not_viewable_detail) at branch head a0079164701f; round-2 delta re-audit of the remediated line plus a re-bind of the whole file",
+  "revisions": {
+    "head": "a0079164701fc748a3ffa0ae4d6576ec4578b80f"
+  },
+  "en_sha256": "69f31f3ccfd07e5c02838509aeb08cfdfd9a50bd606893add287ec2f614d7a73",
+  "context_sha256": "0fa08be3af701edcd69a050ac5ebc42d6b05d1404eb7763cd6dba557385f79da",
+  "target_sha256": "9f6d3cbb5c1ca3df4a758f42305410461d05b4c957f2439ef925fc3a8fbe8dad",
+  "sha256": {
+    "hi": "9f6d3cbb5c1ca3df4a758f42305410461d05b4c957f2439ef925fc3a8fbe8dad",
+    "en": "69f31f3ccfd07e5c02838509aeb08cfdfd9a50bd606893add287ec2f614d7a73"
+  }
+}

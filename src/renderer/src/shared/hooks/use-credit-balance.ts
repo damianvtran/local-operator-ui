@@ -1,5 +1,6 @@
 import { radientProxy } from "@shared/api/radient/proxy";
 import type { CreditBalanceResult } from "@shared/api/radient/types";
+import { t } from "@shared/i18n";
 /**
  * React Query hook for fetching Radient credit balance through the backend
  * proxy. The backend resolves the tenant's credential; the renderer supplies
@@ -18,13 +19,13 @@ export const useCreditBalance = (options?: { enabled?: boolean }) => {
 	return useQuery<CreditBalanceResult, Error>({
 		queryKey: [QUERY_KEY, tenantId],
 		queryFn: async () => {
-			if (!tenantId) throw new Error("Tenant ID not available");
+			if (!tenantId) throw new Error(t("ui.common.errors.tenant_missing"));
 			const result = await radientProxy<CreditBalanceResult>({
 				operation: "credits",
 				tenantId,
 			});
 			if (!result || typeof result.balance !== "number") {
-				throw new Error("Invalid credit balance response format");
+				throw new Error(t("ui.common.errors.credit_balance_invalid"));
 			}
 			return result;
 		},

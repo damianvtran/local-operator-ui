@@ -1,0 +1,1290 @@
+{
+  "note": "Head 06db777c7 (key `dm1`) vs round-1 head 7887d0bf0 (key `r1`), same rig bytes and fixture. Heights and row positions must be 0 px; width may grow. Values in CSS px at DPR 1, viewport 1380x872. seq_* compare the DISTINCT values seen across every rAF sample of each phase (loading = indicator mounted).",
+  "maxAbsDelta": {
+    "slotH": 0,
+    "indicatorH": 0,
+    "indicatorY": 0,
+    "lastRowY_loading": 0,
+    "lastRowY_settled": 0,
+    "scrollH_loading": 0,
+    "scrollH_settled": 0,
+    "seq_lastRowY_whileLoading": 0,
+    "seq_lastRowY_afterLoading": 0,
+    "seq_scrollH_whileLoading": 0,
+    "seq_scrollH_afterLoading": 0
+  },
+  "runs": [
+    {
+      "run": "cold-light",
+      "slotH": {
+        "r1": 17.39,
+        "dm1": 17.39,
+        "delta": 0
+      },
+      "indicatorH": {
+        "r1": 17.39,
+        "dm1": 17.39,
+        "delta": 0
+      },
+      "indicatorW": {
+        "r1": 810,
+        "dm1": 810,
+        "note": "width may grow (outer box)"
+      },
+      "indicatorY": {
+        "r1": 96,
+        "dm1": 96,
+        "delta": 0
+      },
+      "lastRowY_loading": {
+        "r1": null,
+        "dm1": null,
+        "delta": 0
+      },
+      "lastRowY_settled": {
+        "r1": 589.44,
+        "dm1": 589.44,
+        "delta": 0
+      },
+      "scrollH_loading": {
+        "r1": 658,
+        "dm1": 658,
+        "delta": 0
+      },
+      "scrollH_settled": {
+        "r1": 2931,
+        "dm1": 2931,
+        "delta": 0
+      },
+      "seq_lastRowY_whileLoading": {
+        "r1": [
+          null
+        ],
+        "dm1": [
+          null
+        ],
+        "delta": 0
+      },
+      "seq_lastRowY_afterLoading": {
+        "r1": [
+          589.44
+        ],
+        "dm1": [
+          589.44
+        ],
+        "delta": 0
+      },
+      "seq_scrollH_whileLoading": {
+        "r1": [
+          658
+        ],
+        "dm1": [
+          658
+        ],
+        "delta": 0
+      },
+      "seq_scrollH_afterLoading": {
+        "r1": [
+          2931
+        ],
+        "dm1": [
+          2931
+        ],
+        "delta": 0
+      }
+    },
+    {
+      "run": "cold-light-glass-sim",
+      "slotH": {
+        "r1": 17.39,
+        "dm1": 17.39,
+        "delta": 0
+      },
+      "indicatorH": {
+        "r1": 17.39,
+        "dm1": 17.39,
+        "delta": 0
+      },
+      "indicatorW": {
+        "r1": 810,
+        "dm1": 810,
+        "note": "width may grow (outer box)"
+      },
+      "indicatorY": {
+        "r1": 96,
+        "dm1": 96,
+        "delta": 0
+      },
+      "lastRowY_loading": {
+        "r1": null,
+        "dm1": null,
+        "delta": 0
+      },
+      "lastRowY_settled": {
+        "r1": 589.44,
+        "dm1": 589.44,
+        "delta": 0
+      },
+      "scrollH_loading": {
+        "r1": 658,
+        "dm1": 658,
+        "delta": 0
+      },
+      "scrollH_settled": {
+        "r1": 2931,
+        "dm1": 2931,
+        "delta": 0
+      },
+      "seq_lastRowY_whileLoading": {
+        "r1": [
+          null
+        ],
+        "dm1": [
+          null
+        ],
+        "delta": 0
+      },
+      "seq_lastRowY_afterLoading": {
+        "r1": [
+          589.44
+        ],
+        "dm1": [
+          589.44
+        ],
+        "delta": 0
+      },
+      "seq_scrollH_whileLoading": {
+        "r1": [
+          658
+        ],
+        "dm1": [
+          658
+        ],
+        "delta": 0
+      },
+      "seq_scrollH_afterLoading": {
+        "r1": [
+          2931
+        ],
+        "dm1": [
+          2931
+        ],
+        "delta": 0
+      }
+    },
+    {
+      "run": "cold-dark",
+      "slotH": {
+        "r1": 17.39,
+        "dm1": 17.39,
+        "delta": 0
+      },
+      "indicatorH": {
+        "r1": 17.39,
+        "dm1": 17.39,
+        "delta": 0
+      },
+      "indicatorW": {
+        "r1": 810,
+        "dm1": 810,
+        "note": "width may grow (outer box)"
+      },
+      "indicatorY": {
+        "r1": 96,
+        "dm1": 96,
+        "delta": 0
+      },
+      "lastRowY_loading": {
+        "r1": null,
+        "dm1": null,
+        "delta": 0
+      },
+      "lastRowY_settled": {
+        "r1": 589.44,
+        "dm1": 589.44,
+        "delta": 0
+      },
+      "scrollH_loading": {
+        "r1": 658,
+        "dm1": 658,
+        "delta": 0
+      },
+      "scrollH_settled": {
+        "r1": 2931,
+        "dm1": 2931,
+        "delta": 0
+      },
+      "seq_lastRowY_whileLoading": {
+        "r1": [
+          null
+        ],
+        "dm1": [
+          null
+        ],
+        "delta": 0
+      },
+      "seq_lastRowY_afterLoading": {
+        "r1": [
+          589.44
+        ],
+        "dm1": [
+          589.44
+        ],
+        "delta": 0
+      },
+      "seq_scrollH_whileLoading": {
+        "r1": [
+          658
+        ],
+        "dm1": [
+          658
+        ],
+        "delta": 0
+      },
+      "seq_scrollH_afterLoading": {
+        "r1": [
+          2931
+        ],
+        "dm1": [
+          2931
+        ],
+        "delta": 0
+      }
+    },
+    {
+      "run": "cold-dark-glass-sim",
+      "slotH": {
+        "r1": 17.39,
+        "dm1": 17.39,
+        "delta": 0
+      },
+      "indicatorH": {
+        "r1": 17.39,
+        "dm1": 17.39,
+        "delta": 0
+      },
+      "indicatorW": {
+        "r1": 810,
+        "dm1": 810,
+        "note": "width may grow (outer box)"
+      },
+      "indicatorY": {
+        "r1": 96,
+        "dm1": 96,
+        "delta": 0
+      },
+      "lastRowY_loading": {
+        "r1": null,
+        "dm1": null,
+        "delta": 0
+      },
+      "lastRowY_settled": {
+        "r1": 589.44,
+        "dm1": 589.44,
+        "delta": 0
+      },
+      "scrollH_loading": {
+        "r1": 658,
+        "dm1": 658,
+        "delta": 0
+      },
+      "scrollH_settled": {
+        "r1": 2931,
+        "dm1": 2931,
+        "delta": 0
+      },
+      "seq_lastRowY_whileLoading": {
+        "r1": [
+          null
+        ],
+        "dm1": [
+          null
+        ],
+        "delta": 0
+      },
+      "seq_lastRowY_afterLoading": {
+        "r1": [
+          589.44
+        ],
+        "dm1": [
+          589.44
+        ],
+        "delta": 0
+      },
+      "seq_scrollH_whileLoading": {
+        "r1": [
+          658
+        ],
+        "dm1": [
+          658
+        ],
+        "delta": 0
+      },
+      "seq_scrollH_afterLoading": {
+        "r1": [
+          2931
+        ],
+        "dm1": [
+          2931
+        ],
+        "delta": 0
+      }
+    },
+    {
+      "run": "stale-light",
+      "slotH": {
+        "r1": 17.39,
+        "dm1": 17.39,
+        "delta": 0
+      },
+      "indicatorH": {
+        "r1": 17.39,
+        "dm1": 17.39,
+        "delta": 0
+      },
+      "indicatorW": {
+        "r1": 810,
+        "dm1": 810,
+        "note": "width may grow (outer box)"
+      },
+      "indicatorY": {
+        "r1": 704.61,
+        "dm1": 704.61,
+        "delta": 0
+      },
+      "lastRowY_loading": {
+        "r1": 589.44,
+        "dm1": 589.44,
+        "delta": 0
+      },
+      "lastRowY_settled": {
+        "r1": 589.44,
+        "dm1": 589.44,
+        "delta": 0
+      },
+      "scrollH_loading": {
+        "r1": 2931,
+        "dm1": 2931,
+        "delta": 0
+      },
+      "scrollH_settled": {
+        "r1": 2931,
+        "dm1": 2931,
+        "delta": 0
+      },
+      "seq_lastRowY_whileLoading": {
+        "r1": [
+          589.44
+        ],
+        "dm1": [
+          589.44
+        ],
+        "delta": 0
+      },
+      "seq_lastRowY_afterLoading": {
+        "r1": [
+          589.44
+        ],
+        "dm1": [
+          589.44
+        ],
+        "delta": 0
+      },
+      "seq_scrollH_whileLoading": {
+        "r1": [
+          2931
+        ],
+        "dm1": [
+          2931
+        ],
+        "delta": 0
+      },
+      "seq_scrollH_afterLoading": {
+        "r1": [
+          2931
+        ],
+        "dm1": [
+          2931
+        ],
+        "delta": 0
+      }
+    },
+    {
+      "run": "stale-light-glass-sim",
+      "slotH": {
+        "r1": 17.39,
+        "dm1": 17.39,
+        "delta": 0
+      },
+      "indicatorH": {
+        "r1": 17.39,
+        "dm1": 17.39,
+        "delta": 0
+      },
+      "indicatorW": {
+        "r1": 810,
+        "dm1": 810,
+        "note": "width may grow (outer box)"
+      },
+      "indicatorY": {
+        "r1": 704.61,
+        "dm1": 704.61,
+        "delta": 0
+      },
+      "lastRowY_loading": {
+        "r1": 589.44,
+        "dm1": 589.44,
+        "delta": 0
+      },
+      "lastRowY_settled": {
+        "r1": 589.44,
+        "dm1": 589.44,
+        "delta": 0
+      },
+      "scrollH_loading": {
+        "r1": 2931,
+        "dm1": 2931,
+        "delta": 0
+      },
+      "scrollH_settled": {
+        "r1": 2931,
+        "dm1": 2931,
+        "delta": 0
+      },
+      "seq_lastRowY_whileLoading": {
+        "r1": [
+          589.44
+        ],
+        "dm1": [
+          589.44
+        ],
+        "delta": 0
+      },
+      "seq_lastRowY_afterLoading": {
+        "r1": [
+          589.44
+        ],
+        "dm1": [
+          589.44
+        ],
+        "delta": 0
+      },
+      "seq_scrollH_whileLoading": {
+        "r1": [
+          2931
+        ],
+        "dm1": [
+          2931
+        ],
+        "delta": 0
+      },
+      "seq_scrollH_afterLoading": {
+        "r1": [
+          2931
+        ],
+        "dm1": [
+          2931
+        ],
+        "delta": 0
+      }
+    },
+    {
+      "run": "stale-dark",
+      "slotH": {
+        "r1": 17.39,
+        "dm1": 17.39,
+        "delta": 0
+      },
+      "indicatorH": {
+        "r1": 17.39,
+        "dm1": 17.39,
+        "delta": 0
+      },
+      "indicatorW": {
+        "r1": 810,
+        "dm1": 810,
+        "note": "width may grow (outer box)"
+      },
+      "indicatorY": {
+        "r1": 704.61,
+        "dm1": 704.61,
+        "delta": 0
+      },
+      "lastRowY_loading": {
+        "r1": 589.44,
+        "dm1": 589.44,
+        "delta": 0
+      },
+      "lastRowY_settled": {
+        "r1": 589.44,
+        "dm1": 589.44,
+        "delta": 0
+      },
+      "scrollH_loading": {
+        "r1": 2931,
+        "dm1": 2931,
+        "delta": 0
+      },
+      "scrollH_settled": {
+        "r1": 2931,
+        "dm1": 2931,
+        "delta": 0
+      },
+      "seq_lastRowY_whileLoading": {
+        "r1": [
+          589.44
+        ],
+        "dm1": [
+          589.44
+        ],
+        "delta": 0
+      },
+      "seq_lastRowY_afterLoading": {
+        "r1": [
+          589.44
+        ],
+        "dm1": [
+          589.44
+        ],
+        "delta": 0
+      },
+      "seq_scrollH_whileLoading": {
+        "r1": [
+          2931
+        ],
+        "dm1": [
+          2931
+        ],
+        "delta": 0
+      },
+      "seq_scrollH_afterLoading": {
+        "r1": [
+          2931
+        ],
+        "dm1": [
+          2931
+        ],
+        "delta": 0
+      }
+    },
+    {
+      "run": "stale-dark-glass-sim",
+      "slotH": {
+        "r1": 17.39,
+        "dm1": 17.39,
+        "delta": 0
+      },
+      "indicatorH": {
+        "r1": 17.39,
+        "dm1": 17.39,
+        "delta": 0
+      },
+      "indicatorW": {
+        "r1": 810,
+        "dm1": 810,
+        "note": "width may grow (outer box)"
+      },
+      "indicatorY": {
+        "r1": 704.61,
+        "dm1": 704.61,
+        "delta": 0
+      },
+      "lastRowY_loading": {
+        "r1": 589.44,
+        "dm1": 589.44,
+        "delta": 0
+      },
+      "lastRowY_settled": {
+        "r1": 589.44,
+        "dm1": 589.44,
+        "delta": 0
+      },
+      "scrollH_loading": {
+        "r1": 2931,
+        "dm1": 2931,
+        "delta": 0
+      },
+      "scrollH_settled": {
+        "r1": 2931,
+        "dm1": 2931,
+        "delta": 0
+      },
+      "seq_lastRowY_whileLoading": {
+        "r1": [
+          589.44
+        ],
+        "dm1": [
+          589.44
+        ],
+        "delta": 0
+      },
+      "seq_lastRowY_afterLoading": {
+        "r1": [
+          589.44
+        ],
+        "dm1": [
+          589.44
+        ],
+        "delta": 0
+      },
+      "seq_scrollH_whileLoading": {
+        "r1": [
+          2931
+        ],
+        "dm1": [
+          2931
+        ],
+        "delta": 0
+      },
+      "seq_scrollH_afterLoading": {
+        "r1": [
+          2931
+        ],
+        "dm1": [
+          2931
+        ],
+        "delta": 0
+      }
+    },
+    {
+      "run": "older-light",
+      "slotH": {
+        "r1": 28,
+        "dm1": 28,
+        "delta": 0
+      },
+      "indicatorH": {
+        "r1": 17.39,
+        "dm1": 17.39,
+        "delta": 0
+      },
+      "indicatorW": {
+        "r1": 172.52,
+        "dm1": 196.52,
+        "note": "width may grow (outer box)"
+      },
+      "indicatorY": {
+        "r1": -171.28,
+        "dm1": -171.28,
+        "delta": 0
+      },
+      "lastRowY_loading": {
+        "r1": 2589.44,
+        "dm1": 2589.44,
+        "delta": 0
+      },
+      "lastRowY_settled": {
+        "r1": 2861.44,
+        "dm1": 2861.44,
+        "delta": 0
+      },
+      "scrollH_loading": {
+        "r1": 2931,
+        "dm1": 2931,
+        "delta": 0
+      },
+      "scrollH_settled": {
+        "r1": 5788,
+        "dm1": 5788,
+        "delta": 0
+      },
+      "seq_lastRowY_whileLoading": {
+        "r1": [
+          2861.44
+        ],
+        "dm1": [
+          2861.44
+        ],
+        "delta": 0
+      },
+      "seq_lastRowY_afterLoading": {
+        "r1": [
+          2861.44
+        ],
+        "dm1": [
+          2861.44
+        ],
+        "delta": 0
+      },
+      "seq_scrollH_whileLoading": {
+        "r1": [
+          2931,
+          5788
+        ],
+        "dm1": [
+          2931,
+          5788
+        ],
+        "delta": 0
+      },
+      "seq_scrollH_afterLoading": {
+        "r1": [
+          5788
+        ],
+        "dm1": [
+          5788
+        ],
+        "delta": 0
+      }
+    },
+    {
+      "run": "older-light-glass-sim",
+      "slotH": {
+        "r1": 28,
+        "dm1": 28,
+        "delta": 0
+      },
+      "indicatorH": {
+        "r1": 17.39,
+        "dm1": 17.39,
+        "delta": 0
+      },
+      "indicatorW": {
+        "r1": 172.52,
+        "dm1": 196.52,
+        "note": "width may grow (outer box)"
+      },
+      "indicatorY": {
+        "r1": -171.28,
+        "dm1": -171.28,
+        "delta": 0
+      },
+      "lastRowY_loading": {
+        "r1": 2589.44,
+        "dm1": 2589.44,
+        "delta": 0
+      },
+      "lastRowY_settled": {
+        "r1": 2861.44,
+        "dm1": 2861.44,
+        "delta": 0
+      },
+      "scrollH_loading": {
+        "r1": 2931,
+        "dm1": 2931,
+        "delta": 0
+      },
+      "scrollH_settled": {
+        "r1": 5788,
+        "dm1": 5788,
+        "delta": 0
+      },
+      "seq_lastRowY_whileLoading": {
+        "r1": [
+          2861.44
+        ],
+        "dm1": [
+          2861.44
+        ],
+        "delta": 0
+      },
+      "seq_lastRowY_afterLoading": {
+        "r1": [
+          2861.44
+        ],
+        "dm1": [
+          2861.44
+        ],
+        "delta": 0
+      },
+      "seq_scrollH_whileLoading": {
+        "r1": [
+          2931,
+          5788
+        ],
+        "dm1": [
+          2931,
+          5788
+        ],
+        "delta": 0
+      },
+      "seq_scrollH_afterLoading": {
+        "r1": [
+          5788
+        ],
+        "dm1": [
+          5788
+        ],
+        "delta": 0
+      }
+    },
+    {
+      "run": "older-dark",
+      "slotH": {
+        "r1": 28,
+        "dm1": 28,
+        "delta": 0
+      },
+      "indicatorH": {
+        "r1": 17.39,
+        "dm1": 17.39,
+        "delta": 0
+      },
+      "indicatorW": {
+        "r1": 172.52,
+        "dm1": 196.52,
+        "note": "width may grow (outer box)"
+      },
+      "indicatorY": {
+        "r1": -171.28,
+        "dm1": -171.28,
+        "delta": 0
+      },
+      "lastRowY_loading": {
+        "r1": 2589.44,
+        "dm1": 2589.44,
+        "delta": 0
+      },
+      "lastRowY_settled": {
+        "r1": 2861.44,
+        "dm1": 2861.44,
+        "delta": 0
+      },
+      "scrollH_loading": {
+        "r1": 2931,
+        "dm1": 2931,
+        "delta": 0
+      },
+      "scrollH_settled": {
+        "r1": 5788,
+        "dm1": 5788,
+        "delta": 0
+      },
+      "seq_lastRowY_whileLoading": {
+        "r1": [
+          2861.44
+        ],
+        "dm1": [
+          2861.44
+        ],
+        "delta": 0
+      },
+      "seq_lastRowY_afterLoading": {
+        "r1": [
+          2861.44
+        ],
+        "dm1": [
+          2861.44
+        ],
+        "delta": 0
+      },
+      "seq_scrollH_whileLoading": {
+        "r1": [
+          2931,
+          5788
+        ],
+        "dm1": [
+          2931,
+          5788
+        ],
+        "delta": 0
+      },
+      "seq_scrollH_afterLoading": {
+        "r1": [
+          5788
+        ],
+        "dm1": [
+          5788
+        ],
+        "delta": 0
+      }
+    },
+    {
+      "run": "older-dark-glass-sim",
+      "slotH": {
+        "r1": 28,
+        "dm1": 28,
+        "delta": 0
+      },
+      "indicatorH": {
+        "r1": 17.39,
+        "dm1": 17.39,
+        "delta": 0
+      },
+      "indicatorW": {
+        "r1": 172.52,
+        "dm1": 196.52,
+        "note": "width may grow (outer box)"
+      },
+      "indicatorY": {
+        "r1": -171.28,
+        "dm1": -171.28,
+        "delta": 0
+      },
+      "lastRowY_loading": {
+        "r1": 2589.44,
+        "dm1": 2589.44,
+        "delta": 0
+      },
+      "lastRowY_settled": {
+        "r1": 2861.44,
+        "dm1": 2861.44,
+        "delta": 0
+      },
+      "scrollH_loading": {
+        "r1": 2931,
+        "dm1": 2931,
+        "delta": 0
+      },
+      "scrollH_settled": {
+        "r1": 5788,
+        "dm1": 5788,
+        "delta": 0
+      },
+      "seq_lastRowY_whileLoading": {
+        "r1": [
+          2861.44
+        ],
+        "dm1": [
+          2861.44
+        ],
+        "delta": 0
+      },
+      "seq_lastRowY_afterLoading": {
+        "r1": [
+          2861.44
+        ],
+        "dm1": [
+          2861.44
+        ],
+        "delta": 0
+      },
+      "seq_scrollH_whileLoading": {
+        "r1": [
+          2931,
+          5788
+        ],
+        "dm1": [
+          2931,
+          5788
+        ],
+        "delta": 0
+      },
+      "seq_scrollH_afterLoading": {
+        "r1": [
+          5788
+        ],
+        "dm1": [
+          5788
+        ],
+        "delta": 0
+      }
+    },
+    {
+      "run": "remote-light",
+      "slotH": {
+        "r1": 17.39,
+        "dm1": 17.39,
+        "delta": 0
+      },
+      "indicatorH": {
+        "r1": 17.39,
+        "dm1": 17.39,
+        "delta": 0
+      },
+      "indicatorW": {
+        "r1": 810,
+        "dm1": 810,
+        "note": "width may grow (outer box)"
+      },
+      "indicatorY": {
+        "r1": 96,
+        "dm1": 96,
+        "delta": 0
+      },
+      "lastRowY_loading": {
+        "r1": null,
+        "dm1": null,
+        "delta": 0
+      },
+      "lastRowY_settled": {
+        "r1": 589.44,
+        "dm1": 589.44,
+        "delta": 0
+      },
+      "scrollH_loading": {
+        "r1": 658,
+        "dm1": 658,
+        "delta": 0
+      },
+      "scrollH_settled": {
+        "r1": 2931,
+        "dm1": 2931,
+        "delta": 0
+      },
+      "seq_lastRowY_whileLoading": {
+        "r1": [
+          null
+        ],
+        "dm1": [
+          null
+        ],
+        "delta": 0
+      },
+      "seq_lastRowY_afterLoading": {
+        "r1": [
+          589.44
+        ],
+        "dm1": [
+          589.44
+        ],
+        "delta": 0
+      },
+      "seq_scrollH_whileLoading": {
+        "r1": [
+          658
+        ],
+        "dm1": [
+          658
+        ],
+        "delta": 0
+      },
+      "seq_scrollH_afterLoading": {
+        "r1": [
+          2931
+        ],
+        "dm1": [
+          2931
+        ],
+        "delta": 0
+      }
+    },
+    {
+      "run": "remote-light-glass-sim",
+      "slotH": {
+        "r1": 17.39,
+        "dm1": 17.39,
+        "delta": 0
+      },
+      "indicatorH": {
+        "r1": 17.39,
+        "dm1": 17.39,
+        "delta": 0
+      },
+      "indicatorW": {
+        "r1": 810,
+        "dm1": 810,
+        "note": "width may grow (outer box)"
+      },
+      "indicatorY": {
+        "r1": 96,
+        "dm1": 96,
+        "delta": 0
+      },
+      "lastRowY_loading": {
+        "r1": null,
+        "dm1": null,
+        "delta": 0
+      },
+      "lastRowY_settled": {
+        "r1": 589.44,
+        "dm1": 589.44,
+        "delta": 0
+      },
+      "scrollH_loading": {
+        "r1": 658,
+        "dm1": 658,
+        "delta": 0
+      },
+      "scrollH_settled": {
+        "r1": 2931,
+        "dm1": 2931,
+        "delta": 0
+      },
+      "seq_lastRowY_whileLoading": {
+        "r1": [
+          null
+        ],
+        "dm1": [
+          null
+        ],
+        "delta": 0
+      },
+      "seq_lastRowY_afterLoading": {
+        "r1": [
+          589.44
+        ],
+        "dm1": [
+          589.44
+        ],
+        "delta": 0
+      },
+      "seq_scrollH_whileLoading": {
+        "r1": [
+          658
+        ],
+        "dm1": [
+          658
+        ],
+        "delta": 0
+      },
+      "seq_scrollH_afterLoading": {
+        "r1": [
+          2931
+        ],
+        "dm1": [
+          2931
+        ],
+        "delta": 0
+      }
+    },
+    {
+      "run": "remote-dark",
+      "slotH": {
+        "r1": 17.39,
+        "dm1": 17.39,
+        "delta": 0
+      },
+      "indicatorH": {
+        "r1": 17.39,
+        "dm1": 17.39,
+        "delta": 0
+      },
+      "indicatorW": {
+        "r1": 810,
+        "dm1": 810,
+        "note": "width may grow (outer box)"
+      },
+      "indicatorY": {
+        "r1": 96,
+        "dm1": 96,
+        "delta": 0
+      },
+      "lastRowY_loading": {
+        "r1": null,
+        "dm1": null,
+        "delta": 0
+      },
+      "lastRowY_settled": {
+        "r1": 589.44,
+        "dm1": 589.44,
+        "delta": 0
+      },
+      "scrollH_loading": {
+        "r1": 658,
+        "dm1": 658,
+        "delta": 0
+      },
+      "scrollH_settled": {
+        "r1": 2931,
+        "dm1": 2931,
+        "delta": 0
+      },
+      "seq_lastRowY_whileLoading": {
+        "r1": [
+          null
+        ],
+        "dm1": [
+          null
+        ],
+        "delta": 0
+      },
+      "seq_lastRowY_afterLoading": {
+        "r1": [
+          589.44
+        ],
+        "dm1": [
+          589.44
+        ],
+        "delta": 0
+      },
+      "seq_scrollH_whileLoading": {
+        "r1": [
+          658
+        ],
+        "dm1": [
+          658
+        ],
+        "delta": 0
+      },
+      "seq_scrollH_afterLoading": {
+        "r1": [
+          2931
+        ],
+        "dm1": [
+          2931
+        ],
+        "delta": 0
+      }
+    },
+    {
+      "run": "remote-dark-glass-sim",
+      "slotH": {
+        "r1": 17.39,
+        "dm1": 17.39,
+        "delta": 0
+      },
+      "indicatorH": {
+        "r1": 17.39,
+        "dm1": 17.39,
+        "delta": 0
+      },
+      "indicatorW": {
+        "r1": 810,
+        "dm1": 810,
+        "note": "width may grow (outer box)"
+      },
+      "indicatorY": {
+        "r1": 96,
+        "dm1": 96,
+        "delta": 0
+      },
+      "lastRowY_loading": {
+        "r1": null,
+        "dm1": null,
+        "delta": 0
+      },
+      "lastRowY_settled": {
+        "r1": 589.44,
+        "dm1": 589.44,
+        "delta": 0
+      },
+      "scrollH_loading": {
+        "r1": 658,
+        "dm1": 658,
+        "delta": 0
+      },
+      "scrollH_settled": {
+        "r1": 2931,
+        "dm1": 2931,
+        "delta": 0
+      },
+      "seq_lastRowY_whileLoading": {
+        "r1": [
+          null
+        ],
+        "dm1": [
+          null
+        ],
+        "delta": 0
+      },
+      "seq_lastRowY_afterLoading": {
+        "r1": [
+          589.44
+        ],
+        "dm1": [
+          589.44
+        ],
+        "delta": 0
+      },
+      "seq_scrollH_whileLoading": {
+        "r1": [
+          658
+        ],
+        "dm1": [
+          658
+        ],
+        "delta": 0
+      },
+      "seq_scrollH_afterLoading": {
+        "r1": [
+          2931
+        ],
+        "dm1": [
+          2931
+        ],
+        "delta": 0
+      }
+    }
+  ]
+}

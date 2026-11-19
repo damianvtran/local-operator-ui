@@ -121,8 +121,8 @@ test("the repository's own slice matches its lock and the kit at the locked ref"
 	// claims is one this repository actually vendors — an empty or partial
 	// lock would otherwise pass silently.
 	assert.equal(result.lock.kit, "damianvtran/local-operator-design");
-	assert.equal(result.lock.version, "1.2.0");
-	assert.equal(result.lock.ref, "v1.2.0");
+	assert.equal(result.lock.version, "1.3.0");
+	assert.equal(result.lock.ref, "v1.3.0");
 	assert.deepEqual(Object.keys(result.lock.files).sort(), [
 		"LICENSE",
 		"app-family.json",
@@ -136,7 +136,7 @@ test("the repository's own slice matches its lock and the kit at the locked ref"
 	for (const url of remote.calls) {
 		assert.ok(
 			url.startsWith(
-				"https://raw.githubusercontent.com/damianvtran/local-operator-design/v1.2.0/",
+				"https://raw.githubusercontent.com/damianvtran/local-operator-design/v1.3.0/",
 			),
 			url,
 		);
@@ -230,7 +230,7 @@ test("a kit that no longer ships the locked bytes fails as the pin lying", async
 	assert.equal(result.findings.length, 1);
 	assert.match(
 		result.findings[0],
-		/v1\.2\.0 on damianvtran\/local-operator-design ships app-family\.json with sha256 [0-9a-f]{64}, but lock\.json records [0-9a-f]{64}/,
+		/v1\.3\.0 on damianvtran\/local-operator-design ships app-family\.json with sha256 [0-9a-f]{64}, but lock\.json records [0-9a-f]{64}/,
 	);
 });
 

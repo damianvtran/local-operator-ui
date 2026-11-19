@@ -1,0 +1,73 @@
+Mechanical checks as executed in this session (full-console output for all seven files).
+Values relevant to zh-CN are the ones carrying its tag.
+
+== 1. NFC ==
+  zh-CN  events.declined          NFC=true NFD-differs=false
+  zh-CN  events.others            NFC=true NFD-differs=false
+  zh-CN  members.invitation_note_v3 NFC=true NFD-differs=false
+  ru     events.joined            NFC=true NFD-differs=false
+  ru     events.declined          NFC=true NFD-differs=false
+  ru     events.owner_added_agent NFC=true NFD-differs=false
+  vi     events.owner_added_agent NFC=true NFD-differs=true
+  vi     events.joined            NFC=true NFD-differs=true
+  vi     events.unknown           NFC=true NFD-differs=true
+  ur     events.declined_self     NFC=true NFD-differs=false
+  ur     events.declined          NFC=true NFD-differs=false
+  ur     events.unknown           NFC=true NFD-differs=true
+  ur     events.others            NFC=true NFD-differs=false
+  hi     events.others            NFC=true NFD-differs=false
+
+== whole-file NFC (context) ==
+  es     non-NFC keys: 0
+  fr     non-NFC keys: 0
+  hi     non-NFC keys: 0
+  ru     non-NFC keys: 0
+  ur     non-NFC keys: 0
+  vi     non-NFC keys: 0
+  zh-CN  non-NFC keys: 0
+
+== 2. bidi controls ==
+  es     bidi-control keys: 0
+         any Cf (incl. ZWJ etc.) keys: 0
+  fr     bidi-control keys: 0
+         any Cf (incl. ZWJ etc.) keys: 0
+  hi     bidi-control keys: 0
+         any Cf (incl. ZWJ etc.) keys: 0
+  ru     bidi-control keys: 0
+         any Cf (incl. ZWJ etc.) keys: 0
+  ur     bidi-control keys: 0
+         any Cf (incl. ZWJ etc.) keys: 0
+  vi     bidi-control keys: 0
+         any Cf (incl. ZWJ etc.) keys: 0
+  zh-CN  bidi-control keys: 0
+         any Cf (incl. ZWJ etc.) keys: 0
+
+== 3. quote marks shipped per locale ==
+  en     {"’":29,"“":1,"”":1,"'":7}
+  es     {"“":1,"”":1}
+  fr     {"’":122,"«":5,"»":5}
+  hi     {"“":7,"”":7}
+  ru     {"«":8,"»":8}
+  ur     {"“":7,"”":7}
+  vi     {"“":7,"”":7}
+  zh-CN  {"“":8,"”":8}
+
+== 4. address form census (whole namespace) ==
+  zh-CN 你/您: {"ni":27,"nin":0}
+  ru ты/вы: {"ty":0,"vy":0}
+  ur آپ/تم: {"aap":42,"tum":1}
+  hi आप/तुम/तू: {"aap":42,"tum":0,"tu":0}
+  vi bạn/mày: {"ban":39,"may":0}
+  fr vous/tu: {"vous":17,"tu":3}
+  es usted/tú: {"usted":0,"tu":25}
+
+== 5. glossary census for the concepts the delta touches ==
+  zh-CN  {"agent":30,"member":25,"thread":5,"mute":5,"invitation":23}
+  ru     {"agent":32,"member":26,"conversation":32,"invitation":22,"decline":6}
+  vi     {"agent":40,"member":14,"join":13,"conversation":34}
+  ur     {"member":9,"decline":6,"invitation":29,"conversation":30}
+  hi     {"member":20,"people":17,"other":2,"person":4}
+
+  hi keys containing सदस्य: members.title, members.menu, members.description, members.current, members.current_empty, members.mutation_error, members.current_no_matches, members.no_invitable_matches
+  hi keys containing लोग: members.description, members.invite, members.group.people, members.search, members.load_error, members.loading, members.read_only, people.title, people.loading, people.error, people.all_scope, compose.label, compose.empty, builtin.humans_topic, create.channel_description, reactions.category1, events.others
+  vi members.title = Thành viên cuộc trò chuyện | member.count = {count, plural, other {{count} thành viên}}

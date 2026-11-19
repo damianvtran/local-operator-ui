@@ -1,0 +1,61 @@
+{
+  "pr": "1449",
+  "head": "c5e19ecec8",
+  "oldHead": "80ee119bbd",
+  "base": "1d631be71f",
+  "files": [
+    {
+      "file": "src/i18n/catalogues/ru/ui.chat.json",
+      "baseCount": 124,
+      "prCount": 133,
+      "mergedCount": 142,
+      "unionCount": 142,
+      "missingFromBase": [],
+      "missingFromPr": [],
+      "valueDifferences": [],
+      "ok": true
+    },
+    {
+      "file": "src/i18n/catalogues/en/ui.chat.json",
+      "baseCount": 124,
+      "prCount": 133,
+      "mergedCount": 142,
+      "unionCount": 142,
+      "missingFromBase": [],
+      "missingFromPr": [],
+      "valueDifferences": [],
+      "ok": true
+    },
+    {
+      "file": "src/i18n/catalogues/en/ui.chat.context.json",
+      "baseCount": 118,
+      "prCount": 127,
+      "mergedCount": 136,
+      "unionCount": 136,
+      "missingFromBase": [],
+      "missingFromPr": [],
+      "valueDifferences": [
+        {
+          "key": "ui.chat.checkpoint.turn",
+          "differsFrom": [
+            "pr"
+          ]
+        },
+        {
+          "key": "ui.chat.header_identity.aria_agent_closed",
+          "differsFrom": [
+            "pr"
+          ]
+        },
+        {
+          "key": "ui.chat.header_identity.aria_team_closed",
+          "differsFrom": [
+            "pr"
+          ]
+        }
+      ],
+      "ok": false
+    }
+  ],
+  "ok": false
+}

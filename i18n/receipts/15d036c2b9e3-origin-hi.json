@@ -1,0 +1,64 @@
+{
+  "schema": 1,
+  "auditor": "i18n-auditor (lopdev team; session 15d036c2b9e3; independent hi linguistic auditor, not the translator)",
+  "agent": "i18n-auditor (lopdev team; session 15d036c2b9e3; independent hi linguistic auditor, not the translator)",
+  "model": "anthropic/claude-sonnet-5-5",
+  "model_provenance": "Model as shown in this session's runtime header (anthropic/claude-sonnet-5-5). No fallback used or claimed; no mid-session model switch observed. Not independently verified beyond the runtime header.",
+  "fallback": "none",
+  "session": "15d036c2b9e3",
+  "job_id": null,
+  "job_identity_note": "Delegated lopdev i18n-auditor task; no separate background job id was supplied. The session id identifies this auditor.",
+  "role": "i18n-auditor / independent translation auditor",
+  "independence": "I did not author or edit this translation. I read the hi style guide, glossary, English source with its context sidecar, the committed hi target, and neighbouring hi keys (ui.agents.starters, ui.agents.detail, ui.agents.skills, ui.agents.refusals) for terminology.",
+  "locale": "hi",
+  "branch": "fix/agent-transport-copy",
+  "head": "30bdd7aedbce47dc0c0c1506103368e8225fb839",
+  "audited_head": "82ad0474cf93ead782300311a5b42e8f6f77d276",
+  "head_note": "Audit was performed at 82ad0474cf9; the hi file, English source and sidecar were re-hashed at 30bdd7aedbc and are byte-identical (only the es file changed between the two commits).",
+  "pr": "damianvtran/local-operator-ui#1594",
+  "date": "2026-11-02",
+  "status": "passed",
+  "instance": "15d036c2b9e3-origin-hi",
+  "namespace": "ui.agents.detail.origin",
+  "result": "clean-with-findings",
+  "source_sha256": "bbb0eeac68c5ccd14988bffab2502698cb14ff6871a0a2b2212dd779fd67efb4",
+  "context_sha256": "470e2004a28b867981fe7ae6bd55ce81bec490cab63553490548503ff181b8f5",
+  "target_sha256": "5c770aa2b03d0df8aa2ff9dbea01022c100bc5d5e6cfc7a39cf579c317e8bacd",
+  "paths": {
+    "source": "src/i18n/catalogues/en/ui.agents.detail.origin.json",
+    "context": "src/i18n/catalogues/en/ui.agents.detail.origin.context.json",
+    "target": "src/i18n/catalogues/hi/ui.agents.detail.origin.json"
+  },
+  "keys_read": 3,
+  "keys_in_file": 3,
+  "findings": [
+    {
+      "id": "A-1",
+      "severity": "minor",
+      "key": "ui.agents.detail.origin.installed_starter",
+      "text": "इसे पैकेज्ड स्टार्टर से इंस्टॉल किया गया था।",
+      "note": "'स्टार्टर' is transliterated and appears nowhere else in hi; the starters catalogue says अंतर्निहित एजेंट for the concept, so the origin line is not anchored to the install actions, and स्टार्टर also means restaurant appetiser. Defensible (software sense wins beside इंस्टॉल; not a contradiction). Suggested: इसे ऐप के साथ आए स्टार्टर टेम्पलेट से इंस्टॉल किया गया था। or reuse अंतर्निहित एजेंट."
+    },
+    {
+      "id": "A-2",
+      "severity": "minor",
+      "key": "ui.agents.detail.origin.shipped_with_app",
+      "text": "यह ऐप के साथ ही आया था।",
+      "note": "The emphatic ही scopes to 'with the app itself' and does not shift the meaning (matches the sidecar and created_locally 'इसी कंप्यूटर पर'). Residue is the completed past 'आया था', where the builtin alert and skills copy use present 'आता है'. Optional: यह ऐप के साथ ही आता है।"
+    },
+    {
+      "id": "A-3",
+      "severity": "nit",
+      "key": "ui.agents.detail.alert.builtin_title",
+      "text": "बिल्ट-इन एजेंट",
+      "note": "OUT OF NAMESPACE, unchanged by this PR: renders 'built-in' as बिल्ट-इन while the style guide and all other hi copy use अंतर्निहित. Recorded for the ui.agents.detail owner; does not affect this namespace's verdict."
+    }
+  ],
+  "scope": "WHOLE-NAMESPACE LINGUISTIC AUDIT of the three keys of ui.agents.detail.origin (shipped_with_app, installed_starter, compare_packaged) in hi: mechanical (valid JSON, key set equals English, no placeholders/plurals/format characters, danda on sentences and none on the label), accuracy, idiom/register, terminology (packaged consistent with ui.agents.detail.origin.changed), gender/case agreement, and the starter question. This is NOT a rendered-layout audit: no rendered frame, wrapping or Devanagari glyph width was inspected. A-3 is outside the namespace and recorded for information only.",
+  "verified": [
+    "No BLOCKER or MAJOR: meaning preserved, shipped_with_app and installed_starter stay distinguishable, पैकेज्ड is the single rendering of 'packaged' across origin.changed, installed_starter and compare_packaged.",
+    "Starter question: translator transliterated (स्टार्टर); the hi starters catalogue already uses अंतर्निहित एजेंट for the concept and स्टार्टर appears nowhere else in hi (git grep over hi/ at the audited commit). Judged defensible, not a defect; A-1 suggests a bridge.",
+    "Source, context and target SHA-256 re-derived from `git show 30bdd7aedbc:<path>` and equal the values derived at 82ad0474cf9.",
+    "I did not run the repo validator or the ledger command for the audit itself; deriveReceiptAudit was run on this receipt afterwards."
+  ]
+}

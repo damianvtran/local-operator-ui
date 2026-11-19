@@ -1,0 +1,41 @@
+{
+	"schema": 1,
+	"kind": "audit-amendment (second look)",
+	"audit_id": "teambridge-member-events-audit-b-502568f2aefe-es",
+	"date": "2026-10-30",
+	"auditor": "translation-auditor",
+	"model": "radient/radient-research/radient-ultra",
+	"session": "502568f2aefe",
+	"instance": "502568f2aefe-es",
+	"bound_receipt": {
+		"path": "i18n/receipts/502568f2aefe-es.json",
+		"sha256": "25c465e1609e884d4f5bd5bea26ce9e31e103bd95d9ad4596da9905df182990a",
+		"findings": {
+			"blocker": 0,
+			"major": 0,
+			"minor": 1,
+			"nit": 0
+		}
+	},
+	"why_an_amendment_and_not_a_new_receipt": "First-pass verdicts were written before any other auditor's receipt was read (receipts 502568f2aefe-* were created first). A second look afterwards added findings I had under-weighted and confirmed one I had missed: (1) the multi-name owner_added_agent number problem, which I had filed for vi only, applies to every locale whose grammar marks number on the agent noun or verb (fr, es, hi, ur, ru; zh-CN and vi are unaffected on number); (2) ur renders 'decline' as both انکار and مسترد inside one namespace; (3) hi/ur events.others has no head noun. Two proposals in the other auditor's report were rejected after checking the grammar: «A rejoint la conversation : {targets}» (the passe compose auxiliary must agree with its subject, so «A» is wrong for a three-name list - «ont rejoint» - reintroducing the very number problem it was meant to solve), and ru «ещё один» (the ru `one` arm also covers 21, 31, 101, so it would render «и ещё один» for 21 hidden names).",
+	"ledger_behaviour": "scripts/i18n/ledger-assemble.mjs refuses to replace an instance with different receipt bytes ('one run is one audit; a second audit needs its own instance'), and recording the same auditor under a second instance would misrepresent independence. The row therefore keeps the receipt above; this companion carries the auditor's final view. ledger.json was not hand-edited.",
+	"added_findings": [
+		{
+			"severity": "minor",
+			"id": "ES-B2",
+			"key": "ui.teamBridge.events.owner_added_agent",
+			"current": "{actor} añadió a su agente {targets}",
+			"proposed": "{actor} añadió a sus agentes: {targets} for a plural list - needs a source-level number, because the locale cannot know the count",
+			"reason": "Same roll-up class as FR-B2: a multi-name roll-up heads a singular «su agente». Spanish needs the plural noun rather than a colon, because «añadió a su agente:» re-reads «a su agente» as an indirect object ('added something to their agent'). Latent (no fixture) and inherited from the English singular head.",
+			"disposition": "fix recommended, source-first"
+		}
+	],
+	"final_counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 2,
+		"nit": 0
+	},
+	"final_verdict": "clean-with-findings: 0 blocker, 0 major, 2 minor, 0 nit.",
+	"corrections": "The ledger-bound receipt for this locale quotes character counts 41/38 (fr) and 35/36 (es) for events.joined / events.left. Measured on disk the counts are 40 and 37 (fr) and 37 and 36 (es); the ratios quoted there (2.5x/2.6x fr, 2.3x/2.6x es, against the English 16/14) are unaffected. The receipt is immutable once recorded, so the correction is recorded here rather than edited into it."
+}

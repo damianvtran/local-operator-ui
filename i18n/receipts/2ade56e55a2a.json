@@ -1,0 +1,911 @@
+{
+  "schema": 1,
+  "auditor": {
+    "agent": "translation-auditor",
+    "session": "2ade56e55a2a",
+    "instance": "2ade56e55a2a",
+    "model": "openrouter/moonshotai/kimi-k3.1-pro"
+  },
+  "agent": "translation-auditor",
+  "instance": "2ade56e55a2a",
+  "model": "openrouter/moonshotai/kimi-k3.1-pro",
+  "date": "2026-10-23",
+  "locale": "fr",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "commit": "a4dc78f1c5d58543996c050aca0a8258f098d233",
+  "source_head": "f6b9aae9ce5594e79dddb0d654edc4b4a0862331",
+  "keys_read": 134,
+  "round": 1,
+  "model_note": "Actual served model openrouter/moonshotai/kimi-k3.1-pro for this audit. No provider/model fallback occurred.",
+  "independence": {
+    "translator_receipt": "i18n/receipts/ui-fr-completion-batch.json",
+    "translator_receipt_sha256": "e6cf53a8e1437d378aaf5e28e3c86a217dca7b209a8a137e2f5866f42a95a013",
+    "translator_agent": "translator",
+    "translator_session": "816f8e1aa85e",
+    "statement": "Independent translation-auditor session 2ade56e55a2a; did not author the translation lane, did not edit any repository/catalogue/context/ledger/allowance/generated file, and derived findings from committed EN/FR/context blobs rather than translator claims. Same served model as translator but a distinct agent and session."
+  },
+  "references": {
+    "docs_I18N": {
+      "path": "docs/I18N.md",
+      "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+    },
+    "glossary": {
+      "path": "i18n/glossary.md (core)",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "fr_style_guide": {
+      "path": "i18n/style-guides/fr.md (core)",
+      "sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+    },
+    "core_head_read": "24dbccbb784bd1c9b690ce4601f489791ceacb09",
+    "core_commit_last_touching_guides": "5079899f091c5439711350108fa6a32500b1100c"
+  },
+  "evidence": {
+    "method": "Read every EN/FR/context tuple side by side at commit a4dc78f1c5d58543996c050aca0a8258f098d233. Ran scratchpad-only Node probe with the existing @formatjs/icu-messageformat-parser and intl-messageformat dependencies; no install and no repository writes.",
+    "key_order": "134/134 exact ordered-key equality with English; all nine context sidecars have exact key sets.",
+    "icu": "268/268 EN+FR messages parsed and formatted for counts 0,1,2,5,1000000,1500000,2000000 crossed with pin/unpin/other where applicable. Zero argument/type, select-arm, plural-category, number-skeleton or format failures. French plural blocks require exactly one/many/other, offset 0, and preserve every English number style; added many arms use the same ::group-off skeleton.",
+    "plural_rule_samples": {
+      "0": "one",
+      "1": "one",
+      "2": "other",
+      "5": "other",
+      "1000000": "many",
+      "1500000": "other",
+      "2000000": "many"
+    },
+    "plural_samples": {
+      "0": "Arrêter cette session maintenant",
+      "1": "Arrêter cette session maintenant",
+      "2": "Arrêter 2 sessions maintenant",
+      "5": "Arrêter 5 sessions maintenant",
+      "1000000": "Arrêter 1000000 de sessions maintenant",
+      "1500000": "Arrêter 1500000 sessions maintenant",
+      "2000000": "Arrêter 2000000 de sessions maintenant"
+    },
+    "select_samples": {
+      "pin": "Impossible d’épingler « Titre ».",
+      "unpin": "Impossible de désépingler « Titre ».",
+      "other": "Impossible de mettre à jour « Titre »."
+    },
+    "pseudo_localization": {
+      "method": "AST-literal-only accent expansion plus 35% (minimum two) ˣ suffixes on every non-empty literal; placeholders, argument types, select/plural arms and number skeletons untouched. Formatted both EN and FR variants of all 134 keys with synthetic values.",
+      "messages_formatted": 268,
+      "failures": 0,
+      "unresolved_or_undefined_output": 0,
+      "samples": [
+        {
+          "key": "ui.chat.sidebar.agents.clear_filter",
+          "locale": "en",
+          "source": "Clear agent filter",
+          "pseudo_output": "Çľéáŕ áĝéñŧ ƒíľŧéŕˣˣˣˣˣˣˣ"
+        },
+        {
+          "key": "ui.chat.sidebar.agents.clear_filter",
+          "locale": "fr",
+          "source": "Effacer le filtre des agents",
+          "pseudo_output": "Éƒƒáçéŕ ľé ƒíľŧŕé ðéš áĝéñŧšˣˣˣˣˣˣˣˣˣˣ"
+        },
+        {
+          "key": "ui.chat.pickers.stop.confirm",
+          "locale": "fr",
+          "source": "Arrêter {count, plural, one {cette session} many {{count, number, ::group-off} de sessions} other {{count, number, ::group-off} sessions}} maintenant",
+          "pseudo_output": "Áŕŕêŧéŕ ˣˣˣ2 šéššíóñšˣˣˣˣ ɱáíñŧéñáñŧˣˣˣˣ"
+        },
+        {
+          "key": "ui.chat.sidebar.pins.failure",
+          "locale": "fr",
+          "source": "{action, select, pin {Impossible d’épingler « {title} ».} unpin {Impossible de désépingler « {title} ».} other {Impossible de mettre à jour « {title} ».}}",
+          "pseudo_output": "Íɱþóššíƀľé ð’éþíñĝľéŕ « ˣˣˣˣˣˣˣˣˣTitre ».ˣˣ"
+        }
+      ]
+    },
+    "typography": "134/134 FR values NFC; no ASCII apostrophe between letters, English curly double quotes, prohibited bidi/zero-width controls, or prose : ; ! ? without U+202F. Guillemets have inner U+202F; ellipsis and em dash usage follows the fr guide. fork.search_placeholder correctly uses FR typographic … while the EN source retains its shipped ASCII ....",
+    "register_and_glossary": "Vous/imperative address is consistent; no tu or Title Case drift. Session, agent, équipe, outil, approbation, modèle, compétence, tâche and étiquette terminology is consistent with the core guide and existing fr catalogue.",
+    "english_prose_leakage": "None. Exact EN=FR values: 0/134. Residual English/product tokens are enumerated per namespace; shared French/English words such as session, agent, conversation and audio are native French usage, not leakage.",
+    "rtl": "Not applicable: French is LTR. No manual bidi controls found.",
+    "overflow": {
+      "threshold": "Representative formatted FR exceeds EN by >=4 Unicode code points AND >25%; static triage only, not evidence of clipping.",
+      "flagged": 81,
+      "disposition": "Every flagged key is listed in its namespace evidence and assigned to the separate real-app rendered-fit gate. No clipping/overflow defect is claimed from character counts alone. Accessible-name-only expansion remains relevant to announced wording but is not a visual clipping claim."
+    },
+    "commit_disk_freshness": "All 27 EN/context/FR disk files hashed byte-identically to their audited commit blobs after the audit, so the receipt hashes match the files the manager will assemble.",
+    "limitations": [
+      "Catalogue/ICU/static-length audit only. No browser/Electron launch, screenshot, geometry, real-app overflow, activation or release evidence is claimed; the separate real-app gate remains required.",
+      "No source worktree edits, PR, commit, ledger assembly or generated-file writes performed."
+    ]
+  },
+  "namespaces": {
+    "ui.chat.sidebar": {
+      "namespace": "ui.chat.sidebar",
+      "status": "passed",
+      "result": "clean",
+      "keys_read": 43,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+        "fr": "src/i18n/catalogues/fr/ui.chat.sidebar.json",
+        "context": "src/i18n/catalogues/en/ui.chat.sidebar.context.json"
+      },
+      "sha256": {
+        "en": "bd0bf045b2aa5a4495695592dcd3ccad76ec5bdea23cfda37460ce751479965f",
+        "fr": "5cd5a9b91f58ffff725c16da768873136223c37afa33eb65b1c1a47bad513f5c",
+        "context": "fe5dc2a0fa4cb9b95ef5c1a30d57aee030fa5edf2b6b54b323562a1c63b8eb3a"
+      },
+      "findings": [],
+      "evidence": {
+        "semantics": "All 43 pairs read against their sidecars. Agent/team/chat actions, draft clearing, offline/truncation states, archive qualifiers, pin/unpin failure select arms and search capability distinctions preserve intent. Session/agent/équipe/Local Operator usage follows glossary and existing fr terminology.",
+        "mechanical": {
+          "ordered_key_match": true,
+          "context_key_set_exact": true,
+          "parse_argument_select_plural_typography_format_failures": 0
+        },
+        "allowed_english_tokens": [
+          "Local Operator",
+          "backend",
+          "ID"
+        ],
+        "english_prose_leakage": [],
+        "static_overflow_rendered_check": [
+          {
+            "key": "ui.chat.sidebar.agents.clear_filter",
+            "en_codepoints": 18,
+            "fr_codepoints": 28,
+            "ratio": 1.56
+          },
+          {
+            "key": "ui.chat.sidebar.agents.empty",
+            "en_codepoints": 13,
+            "fr_codepoints": 26,
+            "ratio": 2
+          },
+          {
+            "key": "ui.chat.sidebar.agents.filter",
+            "en_codepoints": 13,
+            "fr_codepoints": 18,
+            "ratio": 1.38
+          },
+          {
+            "key": "ui.chat.sidebar.agents.loading",
+            "en_codepoints": 15,
+            "fr_codepoints": 22,
+            "ratio": 1.47
+          },
+          {
+            "key": "ui.chat.sidebar.agents.no_match",
+            "en_codepoints": 15,
+            "fr_codepoints": 25,
+            "ratio": 1.67
+          },
+          {
+            "key": "ui.chat.sidebar.drafts.clear_all_label",
+            "en_codepoints": 16,
+            "fr_codepoints": 27,
+            "ratio": 1.69
+          },
+          {
+            "key": "ui.chat.sidebar.header.create",
+            "en_codepoints": 17,
+            "fr_codepoints": 31,
+            "ratio": 1.82
+          },
+          {
+            "key": "ui.chat.sidebar.header.create_team",
+            "en_codepoints": 8,
+            "fr_codepoints": 15,
+            "ratio": 1.88
+          },
+          {
+            "key": "ui.chat.sidebar.header.open_agent",
+            "en_codepoints": 11,
+            "fr_codepoints": 16,
+            "ratio": 1.45
+          },
+          {
+            "key": "ui.chat.sidebar.header.search",
+            "en_codepoints": 23,
+            "fr_codepoints": 42,
+            "ratio": 1.83
+          },
+          {
+            "key": "ui.chat.sidebar.header.view_options",
+            "en_codepoints": 12,
+            "fr_codepoints": 19,
+            "ratio": 1.58
+          },
+          {
+            "key": "ui.chat.sidebar.list.connecting",
+            "en_codepoints": 20,
+            "fr_codepoints": 28,
+            "ratio": 1.4
+          },
+          {
+            "key": "ui.chat.sidebar.list.empty",
+            "en_codepoints": 48,
+            "fr_codepoints": 93,
+            "ratio": 1.94
+          },
+          {
+            "key": "ui.chat.sidebar.list.loading_more",
+            "en_codepoints": 13,
+            "fr_codepoints": 23,
+            "ratio": 1.77
+          },
+          {
+            "key": "ui.chat.sidebar.list.retry_refresh",
+            "en_codepoints": 13,
+            "fr_codepoints": 24,
+            "ratio": 1.85
+          },
+          {
+            "key": "ui.chat.sidebar.list.truncated_legacy",
+            "en_codepoints": 70,
+            "fr_codepoints": 110,
+            "ratio": 1.57
+          },
+          {
+            "key": "ui.chat.sidebar.nav.chats",
+            "en_codepoints": 5,
+            "fr_codepoints": 13,
+            "ratio": 2.6
+          },
+          {
+            "key": "ui.chat.sidebar.pins.drag_title",
+            "en_codepoints": 29,
+            "fr_codepoints": 46,
+            "ratio": 1.59
+          },
+          {
+            "key": "ui.chat.sidebar.pins.failure",
+            "en_codepoints": 22,
+            "fr_codepoints": 32,
+            "ratio": 1.45
+          },
+          {
+            "key": "ui.chat.sidebar.row.in_conversation",
+            "en_codepoints": 15,
+            "fr_codepoints": 20,
+            "ratio": 1.33
+          },
+          {
+            "key": "ui.chat.sidebar.row.matched_in_conversation",
+            "en_codepoints": 25,
+            "fr_codepoints": 37,
+            "ratio": 1.48
+          },
+          {
+            "key": "ui.chat.sidebar.row.not_sent",
+            "en_codepoints": 12,
+            "fr_codepoints": 17,
+            "ratio": 1.42
+          },
+          {
+            "key": "ui.chat.sidebar.row_menu.copy_id",
+            "en_codepoints": 15,
+            "fr_codepoints": 22,
+            "ratio": 1.47
+          },
+          {
+            "key": "ui.chat.sidebar.row_menu.fork",
+            "en_codepoints": 17,
+            "fr_codepoints": 25,
+            "ratio": 1.47
+          },
+          {
+            "key": "ui.chat.sidebar.row_menu.move_down",
+            "en_codepoints": 22,
+            "fr_codepoints": 36,
+            "ratio": 1.64
+          },
+          {
+            "key": "ui.chat.sidebar.row_menu.move_up",
+            "en_codepoints": 20,
+            "fr_codepoints": 37,
+            "ratio": 1.85
+          },
+          {
+            "key": "ui.chat.sidebar.row_menu.rename",
+            "en_codepoints": 19,
+            "fr_codepoints": 24,
+            "ratio": 1.26
+          },
+          {
+            "key": "ui.chat.sidebar.search.clear",
+            "en_codepoints": 12,
+            "fr_codepoints": 20,
+            "ratio": 1.67
+          },
+          {
+            "key": "ui.chat.sidebar.search.include_archived",
+            "en_codepoints": 16,
+            "fr_codepoints": 35,
+            "ratio": 2.19
+          },
+          {
+            "key": "ui.chat.sidebar.search.names_only",
+            "en_codepoints": 80,
+            "fr_codepoints": 109,
+            "ratio": 1.36
+          },
+          {
+            "key": "ui.chat.sidebar.search.no_match",
+            "en_codepoints": 37,
+            "fr_codepoints": 59,
+            "ratio": 1.59
+          },
+          {
+            "key": "ui.chat.sidebar.search.placeholder",
+            "en_codepoints": 23,
+            "fr_codepoints": 39,
+            "ratio": 1.7
+          },
+          {
+            "key": "ui.chat.sidebar.search.searching",
+            "en_codepoints": 24,
+            "fr_codepoints": 33,
+            "ratio": 1.38
+          },
+          {
+            "key": "ui.chat.sidebar.search.too_long",
+            "en_codepoints": 102,
+            "fr_codepoints": 128,
+            "ratio": 1.25
+          },
+          {
+            "key": "ui.chat.sidebar.search.unavailable",
+            "en_codepoints": 62,
+            "fr_codepoints": 106,
+            "ratio": 1.71
+          },
+          {
+            "key": "ui.chat.sidebar.teams.create",
+            "en_codepoints": 11,
+            "fr_codepoints": 16,
+            "ratio": 1.45
+          },
+          {
+            "key": "ui.chat.sidebar.teams.loading",
+            "en_codepoints": 14,
+            "fr_codepoints": 23,
+            "ratio": 1.64
+          }
+        ],
+        "overflow_disposition": "Rendered check required for every listed key; no rendered defect claimed."
+      }
+    },
+    "ui.chat.pickers": {
+      "namespace": "ui.chat.pickers",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "keys_read": 34,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.pickers.json",
+        "fr": "src/i18n/catalogues/fr/ui.chat.pickers.json",
+        "context": "src/i18n/catalogues/en/ui.chat.pickers.context.json"
+      },
+      "sha256": {
+        "en": "65f926679cefe21229f8d755f71d64381c5d6706c2d33c62cb63141e8f01352d",
+        "fr": "e27bfaeed08e93094ce29487c9494e0989c5f9575dbc6743337b3c5c4ed718a4",
+        "context": "8d3fa914cd52768c98a75c4f41b903b86553335b27e406f98500eab7ff576e64"
+      },
+      "findings": [
+        {
+          "id": "FR-COMP-1",
+          "severity": "MINOR",
+          "key": "ui.chat.pickers.credential.forget_confirmation",
+          "file": "src/i18n/catalogues/fr/ui.chat.pickers.json",
+          "line": 6,
+          "current_text": "Oublier {name} pour cette session",
+          "proposed_text": "Supprimer {name} de cette session",
+          "reason": "“Pour cette session” says “for this session,” not removal “from this session”; the destructive confirmation should state the removal direction explicitly and idiomatically."
+        }
+      ],
+      "evidence": {
+        "semantics": "All 34 pairs read against their sidecars. Vouvoiement and imperative/noun roles are consistent; goal completion versus clearing, reconnect/provider/model/credential flows and stop confirmation remain distinct. One MINOR semantic/preposition finding.",
+        "mechanical": {
+          "ordered_key_match": true,
+          "context_key_set_exact": true,
+          "parse_argument_select_plural_typography_format_failures": 0
+        },
+        "allowed_english_tokens": [
+          "token"
+        ],
+        "english_prose_leakage": [],
+        "static_overflow_rendered_check": [
+          {
+            "key": "ui.chat.pickers.approvals.title",
+            "en_codepoints": 14,
+            "fr_codepoints": 23,
+            "ratio": 1.64
+          },
+          {
+            "key": "ui.chat.pickers.effort.title",
+            "en_codepoints": 16,
+            "fr_codepoints": 22,
+            "ratio": 1.38
+          },
+          {
+            "key": "ui.chat.pickers.fast.premium_acknowledgement",
+            "en_codepoints": 46,
+            "fr_codepoints": 63,
+            "ratio": 1.37
+          },
+          {
+            "key": "ui.chat.pickers.goal.clear",
+            "en_codepoints": 10,
+            "fr_codepoints": 18,
+            "ratio": 1.8
+          },
+          {
+            "key": "ui.chat.pickers.goal.mark_done",
+            "en_codepoints": 9,
+            "fr_codepoints": 21,
+            "ratio": 2.33
+          },
+          {
+            "key": "ui.chat.pickers.goal.placeholder",
+            "en_codepoints": 33,
+            "fr_codepoints": 50,
+            "ratio": 1.52
+          },
+          {
+            "key": "ui.chat.pickers.goal.title",
+            "en_codepoints": 12,
+            "fr_codepoints": 22,
+            "ratio": 1.83
+          },
+          {
+            "key": "ui.chat.pickers.login.title",
+            "en_codepoints": 21,
+            "fr_codepoints": 29,
+            "ratio": 1.38
+          },
+          {
+            "key": "ui.chat.pickers.logout.title",
+            "en_codepoints": 8,
+            "fr_codepoints": 14,
+            "ratio": 1.75
+          },
+          {
+            "key": "ui.chat.pickers.loop.cancel",
+            "en_codepoints": 11,
+            "fr_codepoints": 17,
+            "ratio": 1.55
+          },
+          {
+            "key": "ui.chat.pickers.models.connect_provider",
+            "en_codepoints": 18,
+            "fr_codepoints": 24,
+            "ratio": 1.33
+          },
+          {
+            "key": "ui.chat.pickers.new_session.title",
+            "en_codepoints": 16,
+            "fr_codepoints": 21,
+            "ratio": 1.31
+          },
+          {
+            "key": "ui.chat.pickers.profile.loading_detail",
+            "en_codepoints": 14,
+            "fr_codepoints": 22,
+            "ratio": 1.57
+          },
+          {
+            "key": "ui.chat.pickers.rename.title",
+            "en_codepoints": 19,
+            "fr_codepoints": 24,
+            "ratio": 1.26
+          },
+          {
+            "key": "ui.chat.pickers.skills.title",
+            "en_codepoints": 6,
+            "fr_codepoints": 11,
+            "ratio": 1.83
+          },
+          {
+            "key": "ui.chat.pickers.stop.all_sessions",
+            "en_codepoints": 16,
+            "fr_codepoints": 23,
+            "ratio": 1.44
+          },
+          {
+            "key": "ui.chat.pickers.stop.confirm",
+            "en_codepoints": 19,
+            "fr_codepoints": 29,
+            "ratio": 1.53
+          }
+        ],
+        "overflow_disposition": "Rendered check required for every listed key; no rendered defect claimed."
+      }
+    },
+    "ui.chat.canonical": {
+      "namespace": "ui.chat.canonical",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "keys_read": 30,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.canonical.json",
+        "fr": "src/i18n/catalogues/fr/ui.chat.canonical.json",
+        "context": "src/i18n/catalogues/en/ui.chat.canonical.context.json"
+      },
+      "sha256": {
+        "en": "771482d2bdef4f9d40bfbdaa35e8eebed300b0e6f9a477318557c26d1770e5a7",
+        "fr": "a382cd92e954e331f9ef75a5679c553e1ee9c6059e2edd419b4e3a99d871221a",
+        "context": "53145be31fe46bde6578d114653466dc5c6c932947460c10a0022c9e190d9a34"
+      },
+      "findings": [
+        {
+          "id": "FR-COMP-2",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.sound.stop.warning",
+          "file": "src/i18n/catalogues/fr/ui.chat.canonical.json",
+          "line": 8,
+          "current_text": "Le fournisseur ne dispose d’aucun endpoint d’annulation. La génération continue et sera facturée si elle produit un audio. La demande d’arrêt est traitée au mieux, sans garantie d’annulation ni d’absence de frais.",
+          "proposed_text": "Le fournisseur ne dispose d’aucun endpoint d’annulation. La génération continue et sera facturée si elle produit de l’audio. La demande d’arrêt est traitée au mieux, sans garantie d’annulation ni d’absence de frais.",
+          "reason": "Audio is a mass noun here, so native French uses the partitive “de l’audio”; “un audio” reads as a calque and suggests one discrete recording."
+        }
+      ],
+      "evidence": {
+        "semantics": "All 30 pairs read against their sidecars. Sound-stop charge warning preserves every caveat; supplement failure/recovery and transcript missing/stale/reconnect states remain accurate. One NIT for the audio mass-noun calque.",
+        "mechanical": {
+          "ordered_key_match": true,
+          "context_key_set_exact": true,
+          "parse_argument_select_plural_typography_format_failures": 0
+        },
+        "allowed_english_tokens": [
+          "endpoint",
+          "HTML",
+          "Canvas",
+          "Finder"
+        ],
+        "english_prose_leakage": [],
+        "static_overflow_rendered_check": [
+          {
+            "key": "ui.chat.canonical.sound.stop.confirm_label",
+            "en_codepoints": 20,
+            "fr_codepoints": 34,
+            "ratio": 1.7
+          },
+          {
+            "key": "ui.chat.canonical.sound.stop.keep_waiting",
+            "en_codepoints": 12,
+            "fr_codepoints": 20,
+            "ratio": 1.67
+          },
+          {
+            "key": "ui.chat.canonical.sound.stop.request_stop",
+            "en_codepoints": 12,
+            "fr_codepoints": 16,
+            "ratio": 1.33
+          },
+          {
+            "key": "ui.chat.canonical.supplement.file_actions.open_in_canvas",
+            "en_codepoints": 14,
+            "fr_codepoints": 18,
+            "ratio": 1.29
+          },
+          {
+            "key": "ui.chat.canonical.supplement.file_actions.open_in_default_app",
+            "en_codepoints": 19,
+            "fr_codepoints": 36,
+            "ratio": 1.89
+          },
+          {
+            "key": "ui.chat.canonical.supplement.frame.loading",
+            "en_codepoints": 16,
+            "fr_codepoints": 24,
+            "ratio": 1.5
+          },
+          {
+            "key": "ui.chat.canonical.supplement.preview_unavailable",
+            "en_codepoints": 112,
+            "fr_codepoints": 157,
+            "ratio": 1.4
+          },
+          {
+            "key": "ui.chat.canonical.transcript.connect_provider",
+            "en_codepoints": 18,
+            "fr_codepoints": 24,
+            "ratio": 1.33
+          },
+          {
+            "key": "ui.chat.canonical.transcript.edit",
+            "en_codepoints": 4,
+            "fr_codepoints": 8,
+            "ratio": 2
+          },
+          {
+            "key": "ui.chat.canonical.transcript.missing_session_detail",
+            "en_codepoints": 72,
+            "fr_codepoints": 102,
+            "ratio": 1.42
+          },
+          {
+            "key": "ui.chat.canonical.transcript.reconnect",
+            "en_codepoints": 9,
+            "fr_codepoints": 21,
+            "ratio": 2.33
+          },
+          {
+            "key": "ui.chat.canonical.transcript.stale_caption",
+            "en_codepoints": 58,
+            "fr_codepoints": 78,
+            "ratio": 1.34
+          },
+          {
+            "key": "ui.chat.canonical.transcript.start_new_chat",
+            "en_codepoints": 16,
+            "fr_codepoints": 34,
+            "ratio": 2.13
+          }
+        ],
+        "overflow_disposition": "Rendered check required for every listed key; no rendered defect claimed."
+      }
+    },
+    "ui.chat.analytics": {
+      "namespace": "ui.chat.analytics",
+      "status": "passed",
+      "result": "clean",
+      "keys_read": 11,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.analytics.json",
+        "fr": "src/i18n/catalogues/fr/ui.chat.analytics.json",
+        "context": "src/i18n/catalogues/en/ui.chat.analytics.context.json"
+      },
+      "sha256": {
+        "en": "6ac0bbfb50c8ef8c772f229868614aa8d07dfd9f659311d5d396cea5c4611159",
+        "fr": "c3512588bdc67ea712f3328ad17e1fbc764b5641c337ceaa7d262f382126b4e6",
+        "context": "7c25af7f391fbaac6a1718a81b8b258c0b313ba46411f16e95691446828640ff"
+      },
+      "findings": [],
+      "evidence": {
+        "semantics": "All 11 pairs read against their sidecars. “Par canal/modèle/fournisseur/session” is consistent; “Sessions principales uniquement” correctly makes the top-level session filter explicit; Statistiques matches the existing command-palette term.",
+        "mechanical": {
+          "ordered_key_match": true,
+          "context_key_set_exact": true,
+          "parse_argument_select_plural_typography_format_failures": 0
+        },
+        "allowed_english_tokens": [],
+        "english_prose_leakage": [],
+        "static_overflow_rendered_check": [
+          {
+            "key": "ui.chat.analytics.filters.top_level_only",
+            "en_codepoints": 14,
+            "fr_codepoints": 31,
+            "ratio": 2.21
+          },
+          {
+            "key": "ui.chat.analytics.search.clear",
+            "en_codepoints": 12,
+            "fr_codepoints": 20,
+            "ratio": 1.67
+          },
+          {
+            "key": "ui.chat.analytics.search.sessions",
+            "en_codepoints": 15,
+            "fr_codepoints": 23,
+            "ratio": 1.53
+          },
+          {
+            "key": "ui.chat.analytics.sections.by_provider",
+            "en_codepoints": 11,
+            "fr_codepoints": 15,
+            "ratio": 1.36
+          },
+          {
+            "key": "ui.chat.analytics.toolbar.this_session_only",
+            "en_codepoints": 17,
+            "fr_codepoints": 24,
+            "ratio": 1.41
+          }
+        ],
+        "overflow_disposition": "Rendered check required for every listed key; no rendered defect claimed."
+      }
+    },
+    "ui.common.file_actions": {
+      "namespace": "ui.common.file_actions",
+      "status": "passed",
+      "result": "clean",
+      "keys_read": 5,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.file_actions.json",
+        "fr": "src/i18n/catalogues/fr/ui.common.file_actions.json",
+        "context": "src/i18n/catalogues/en/ui.common.file_actions.context.json"
+      },
+      "sha256": {
+        "en": "edac3001910c5ba03d5c0552f07c19baeb1bd1e8e9d3c0a6c178a693f9351233",
+        "fr": "35b227f93ed14ecdbb29440ce70c3d8e42ed4045e6f502b8a1d721639a616a2f",
+        "context": "147274f1e573608ac78a0dc45aa14d14a5d2cf89efa953d4f4e012a7fae8d04b"
+      },
+      "findings": [],
+      "evidence": {
+        "semantics": "All 5 pairs read against their sidecars. File/folder/path/preview/Canvas actions remain distinct; Canvas remains the product pane name.",
+        "mechanical": {
+          "ordered_key_match": true,
+          "context_key_set_exact": true,
+          "parse_argument_select_plural_typography_format_failures": 0
+        },
+        "allowed_english_tokens": [
+          "Canvas"
+        ],
+        "english_prose_leakage": [],
+        "static_overflow_rendered_check": [
+          {
+            "key": "ui.common.file_actions.copy_file_path",
+            "en_codepoints": 14,
+            "fr_codepoints": 27,
+            "ratio": 1.93
+          },
+          {
+            "key": "ui.common.file_actions.open_file",
+            "en_codepoints": 9,
+            "fr_codepoints": 17,
+            "ratio": 1.89
+          },
+          {
+            "key": "ui.common.file_actions.open_folder",
+            "en_codepoints": 11,
+            "fr_codepoints": 17,
+            "ratio": 1.55
+          },
+          {
+            "key": "ui.common.file_actions.show_in_canvas",
+            "en_codepoints": 14,
+            "fr_codepoints": 20,
+            "ratio": 1.43
+          }
+        ],
+        "overflow_disposition": "Rendered check required for every listed key; no rendered defect claimed."
+      }
+    },
+    "ui.common.viewer": {
+      "namespace": "ui.common.viewer",
+      "status": "passed",
+      "result": "clean",
+      "keys_read": 4,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.viewer.json",
+        "fr": "src/i18n/catalogues/fr/ui.common.viewer.json",
+        "context": "src/i18n/catalogues/en/ui.common.viewer.context.json"
+      },
+      "sha256": {
+        "en": "660c7e185ebc22d37ecc9b5d02807428f87c477f86431f5cdb07fdec888b78bb",
+        "fr": "544b0187e8ef22344e38b0d6e0c528ba8d11339bb28703d4c067e4db1f302d1c",
+        "context": "cd11be98d1d94cba927141b2b6b390af7fdc59a8519ea3ed18361cfd4930c2c9"
+      },
+      "findings": [],
+      "evidence": {
+        "semantics": "All 4 pairs read against their sidecars. Ouverture, Réinitialiser la vue, Zoom avant and Zoom arrière are native, consistent viewer controls.",
+        "mechanical": {
+          "ordered_key_match": true,
+          "context_key_set_exact": true,
+          "parse_argument_select_plural_typography_format_failures": 0
+        },
+        "allowed_english_tokens": [],
+        "english_prose_leakage": [],
+        "static_overflow_rendered_check": [
+          {
+            "key": "ui.common.viewer.reset_view",
+            "en_codepoints": 10,
+            "fr_codepoints": 20,
+            "ratio": 2
+          },
+          {
+            "key": "ui.common.viewer.zoom_out",
+            "en_codepoints": 8,
+            "fr_codepoints": 12,
+            "ratio": 1.5
+          }
+        ],
+        "overflow_disposition": "Rendered check required for every listed key; no rendered defect claimed."
+      }
+    },
+    "ui.chat.tag_dialogs": {
+      "namespace": "ui.chat.tag_dialogs",
+      "status": "passed",
+      "result": "clean",
+      "keys_read": 4,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.tag_dialogs.json",
+        "fr": "src/i18n/catalogues/fr/ui.chat.tag_dialogs.json",
+        "context": "src/i18n/catalogues/en/ui.chat.tag_dialogs.context.json"
+      },
+      "sha256": {
+        "en": "140fb44d94388706e24ba37c6910a6b753ce0f0701f44e78390a1fffb13c1506",
+        "fr": "637ff6576c5f549b33a5c2dbc0a9b324c3e0d53e0dff51c08da43b0256a95a4e",
+        "context": "8f4cc8ca17d926c4f85f4226ff92e7c291babbe7e9868ebb8d9fceb5a8841987"
+      },
+      "findings": [],
+      "evidence": {
+        "semantics": "All 4 pairs read against their sidecars. Étiquette is consistently feminine in créée/ajoutée/supprimée; create-success, partial-assignment failure and external-change retry semantics are preserved.",
+        "mechanical": {
+          "ordered_key_match": true,
+          "context_key_set_exact": true,
+          "parse_argument_select_plural_typography_format_failures": 0
+        },
+        "allowed_english_tokens": [],
+        "english_prose_leakage": [],
+        "static_overflow_rendered_check": [
+          {
+            "key": "ui.chat.tag_dialogs.deleted_name",
+            "en_codepoints": 13,
+            "fr_codepoints": 17,
+            "ratio": 1.31
+          },
+          {
+            "key": "ui.chat.tag_dialogs.changed_elsewhere",
+            "en_codepoints": 97,
+            "fr_codepoints": 154,
+            "ratio": 1.59
+          }
+        ],
+        "overflow_disposition": "Rendered check required for every listed key; no rendered defect claimed."
+      }
+    },
+    "ui.chat.run_details": {
+      "namespace": "ui.chat.run_details",
+      "status": "passed",
+      "result": "clean",
+      "keys_read": 2,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.run_details.json",
+        "fr": "src/i18n/catalogues/fr/ui.chat.run_details.json",
+        "context": "src/i18n/catalogues/en/ui.chat.run_details.context.json"
+      },
+      "sha256": {
+        "en": "7eea05d7c5b371e7969214abc7bd2961bf6c38fd3e5886e0957493b787878094",
+        "fr": "5f4d9cff39861504eedbd93fe5844919d5bdb2fd753d078e8bce7c9154a53936",
+        "context": "eae93350935a597d66fe4931a40fed2fa9d40d0b01e03925d2cef22985f628d6"
+      },
+      "findings": [],
+      "evidence": {
+        "semantics": "Both pairs read against their sidecars. Tâches follows glossary job=tâche; Conserver is the safe non-cancelling choice.",
+        "mechanical": {
+          "ordered_key_match": true,
+          "context_key_set_exact": true,
+          "parse_argument_select_plural_typography_format_failures": 0
+        },
+        "allowed_english_tokens": [],
+        "english_prose_leakage": [],
+        "static_overflow_rendered_check": [
+          {
+            "key": "ui.chat.run_details.keep",
+            "en_codepoints": 4,
+            "fr_codepoints": 9,
+            "ratio": 2.25
+          }
+        ],
+        "overflow_disposition": "Rendered check required for every listed key; no rendered defect claimed."
+      }
+    },
+    "ui.chat.commentary_actions": {
+      "namespace": "ui.chat.commentary_actions",
+      "status": "passed",
+      "result": "clean",
+      "keys_read": 1,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.commentary_actions.json",
+        "fr": "src/i18n/catalogues/fr/ui.chat.commentary_actions.json",
+        "context": "src/i18n/catalogues/en/ui.chat.commentary_actions.context.json"
+      },
+      "sha256": {
+        "en": "77d6babd2e9fac04e95a550d25f4428e113144c160c34009b89e06608b812868",
+        "fr": "4c324551d19c664eb20aa9b01e7198d4c794809f3bc756f2609834ba414cb390",
+        "context": "20901db281f82c025243d688a14bfc490d1b5c01c7fd03e7d8788f35411c3ad1"
+      },
+      "findings": [],
+      "evidence": {
+        "semantics": "The single pair was read against its sidecar. Actions du commentaire is a distinct, grammatical accessible name for the mid-turn commentary toolbar; no Answer/Response wording collision.",
+        "mechanical": {
+          "ordered_key_match": true,
+          "context_key_set_exact": true,
+          "parse_argument_select_plural_typography_format_failures": 0
+        },
+        "allowed_english_tokens": [],
+        "english_prose_leakage": [],
+        "static_overflow_rendered_check": [],
+        "overflow_disposition": "No key met the static material-expansion threshold; no rendered claim."
+      }
+    }
+  },
+  "overall_verdict": "clean-with-findings; TERMINAL for catalogue audit. Zero BLOCKER and zero MAJOR; one MINOR and one NIT remain recorded and non-gating. Nine namespaces, 134 keys read. Real-app rendered-fit evidence remains a separate required gate."
+}

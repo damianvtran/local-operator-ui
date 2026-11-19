@@ -30,9 +30,16 @@
 
 import { contextBridge, ipcRenderer } from "electron";
 import {
+	type AddressOverlayProbeAction,
+	DEV_DRIVER_ADDRESS_OVERLAY,
+	DEV_DRIVER_ADDRESS_OVERLAY_EVENT,
+	DEV_DRIVER_ADDRESS_OVERLAY_PROJECT,
 	DEV_DRIVER_CAPTURE,
 	DEV_DRIVER_FACTS,
+	DEV_DRIVER_SCRIPT_RESULT,
+	DEV_DRIVER_SCRIPT_STEP,
 	DEV_DRIVER_WORLD_KEY,
+	type OWNER_AUDIT_STARTUP_SCENE,
 	readDevDriverArgument,
 } from "../main/dev-driver";
 
@@ -44,6 +51,8 @@ export interface DevDriverBridge {
 	armed: true;
 	/** Where `capture()` writes its PNGs. */
 	outDir: string;
+	/** Fixed main-admitted isolated native-QA scene; never an arbitrary route. */
+	startupScene?: typeof OWNER_AUDIT_STARTUP_SCENE;
 	/** The verbs the renderer has registered so far. */
 	verbs(): string[];
 	/** Called by the renderer's install module; returns the full list after registering. */
@@ -54,13 +63,36 @@ export interface DevDriverBridge {
 	capture(label: string): Promise<unknown>;
 	/** Window facts from MAIN: mode, window vs content size, visibility, focus. */
 	facts(): Promise<unknown>;
+	/**
+	 * S1's native overlay probe: show/hide the inert child or read structural
+	 * facts. Main accepts only these three exact words and refuses the call
+	 * entirely (no handler) unless the launch gate passed; the renderer side
+	 * types the vocabulary, it does not grant it.
+	 */
+	addressOverlay(
+		action: AddressOverlayProbeAction,
+		argument?: unknown,
+	): Promise<unknown>;
+	/**
+	 * S2's renderer → main projection. The argument is a display model (rows of
+	 * text, an anchor rectangle, a seq); main revalidates every field before it
+	 * reaches the child, and only `{seq,index}` ever comes back. Rejects with
+	 * Electron's "No handler registered" in an S1-only or unarmed launch, which
+	 * the renderer's port treats as "not available" and latches off.
+	 */
+	addressOverlayProject(payload: unknown): Promise<unknown>;
+	/** Main → renderer commits and (future) lifecycle notes. Only a validated row
+	 * click is sent today; the callback returns its unsubscribe. */
+	onAddressOverlayEvent(callback: (event: unknown) => void): () => void;
 }
 
-function armedArgument(): { armed: true; outDir: string } | null {
+function armedArgument():
+	| ({ armed: true } & NonNullable<ReturnType<typeof readDevDriverArgument>>)
+	| null {
 	// The renderer process's own argv: Electron appends the window's
 	// `additionalArguments` to it, and main only adds the entry when it armed.
 	const parsed = readDevDriverArgument(process.argv);
-	return parsed === null ? null : { armed: true, outDir: parsed.outDir };
+	return parsed === null ? null : { armed: true, ...parsed };
 }
 
 /**
@@ -78,6 +110,7 @@ export function installDevDriverBridge(): boolean {
 	const bridge: DevDriverBridge = {
 		armed: true,
 		outDir: armed.outDir,
+		...(armed.startupScene ? { startupScene: armed.startupScene } : {}),
 		verbs: () => [...scenes.keys()].sort(),
 		install: (verbs) => {
 			const registered: string[] = [];
@@ -101,8 +134,68 @@ export function installDevDriverBridge(): boolean {
 		},
 		capture: (label) => ipcRenderer.invoke(DEV_DRIVER_CAPTURE, label),
 		facts: () => ipcRenderer.invoke(DEV_DRIVER_FACTS),
+		addressOverlay: (action, argument) =>
+			ipcRenderer.invoke(DEV_DRIVER_ADDRESS_OVERLAY, action, argument),
+		addressOverlayProject: (payload) =>
+			ipcRenderer.invoke(DEV_DRIVER_ADDRESS_OVERLAY_PROJECT, payload),
+		onAddressOverlayEvent: (callback) => {
+			const listener = (_event: unknown, payload: unknown): void =>
+				callback(payload);
+			ipcRenderer.on(DEV_DRIVER_ADDRESS_OVERLAY_EVENT, listener);
+			return () => {
+				ipcRenderer.removeListener(DEV_DRIVER_ADDRESS_OVERLAY_EVENT, listener);
+			};
+		},
 	};
 
 	contextBridge.exposeInMainWorld(DEV_DRIVER_WORLD_KEY, bridge);
+	if (armed.script) installScriptListener(bridge);
 	return true;
+}
+
+/**
+ * S1's preload half: answer main's step runner (`src/main/dev-driver-script.ts`).
+ *
+ * Installed only when main's script gate passed, which main says by adding
+ * `DEV_DRIVER_SCRIPT_ARG` to this renderer's argv - so an armed launch without a
+ * script, and every normal launch, has no listener at all. Each step is answered
+ * through the SAME bridge a CDP driver reaches (`call`, `verbs`, `capture`), so
+ * the runner adds an invoker and no new way to drive the UI. Two reserved names
+ * are not verbs: `__verbs` (readiness) and `__capture` (the existing
+ * `dev-driver-capture` channel, for the no-vibrancy-claim capture mode).
+ *
+ * Results are JSON round-tripped before they cross IPC: a verb answers with
+ * whatever the renderer built, and a value structured clone rejects would
+ * otherwise surface as an unprinted failure instead of a step result.
+ */
+function installScriptListener(bridge: DevDriverBridge): void {
+	ipcRenderer.on(
+		DEV_DRIVER_SCRIPT_STEP,
+		async (
+			_event: unknown,
+			message: { id: number; verb: string; payload?: unknown },
+		) => {
+			const id = message?.id;
+			try {
+				let value: unknown;
+				if (message.verb === "__verbs") value = bridge.verbs();
+				else if (message.verb === "__capture")
+					value = await bridge.capture(
+						String((message.payload as { label?: unknown })?.label ?? ""),
+					);
+				else value = await bridge.call(message.verb, message.payload);
+				ipcRenderer.send(DEV_DRIVER_SCRIPT_RESULT, {
+					id,
+					ok: true,
+					value: value === undefined ? null : JSON.parse(JSON.stringify(value)),
+				});
+			} catch (error) {
+				ipcRenderer.send(DEV_DRIVER_SCRIPT_RESULT, {
+					id,
+					ok: false,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+		},
+	);
 }

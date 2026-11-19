@@ -1,0 +1,62 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "tbs-r2-es",
+ "session": "e81ede7b8f9d",
+ "date": "2026-10-21",
+ "locale": "es",
+ "translator": "translator",
+ "translator_session": "c8f3273a539c",
+ "namespace": "ui.teamBridge",
+ "status": "passed",
+ "keys_audited": 2,
+ "scope": "Round-2 remediation delta: 2 changed keys (schedule.timezone, schedule.create_retry) versus the round-1 audited bytes (b04d0c34…); the other 134 values are verified byte-identical to round 1. The round-1 27-key drafts/schedule audit and the base 109-key audit (tbd-r4-es) are inherited. Catalogue audit only, not rendered-fit/activation/release.",
+ "sha256": {
+  "en": "145e5d2de5165a0fa6e5ce1cff91f6e6909007e448b4a6e229b47a87a71cb46b",
+  "es": "6ed0b9dc102977bb5952209bf17920a3fcd023cd475c99215d0be40ed6dae3b2",
+  "context": "cfb426eebee10f1a71310746c4491690a24e2ad6074401115e217d222b9857b2"
+ },
+ "findings": [],
+ "previous_round": {
+  "path": "i18n/receipts/tbs-r1-es.json",
+  "sha256": "bb3e19b00282b049a06557af12e07c6c419b94caf18aabb6d68e339c1c258abc",
+  "target_sha256": "b04d0c342c144fc890b8337956b5141c38aead2a579d1ef7ecb8b6bbe234449e"
+ },
+ "remediation": [
+  {
+   "key": "ui.teamBridge.schedule.timezone",
+   "r1_severity": "MINOR",
+   "disposition": "fixed",
+   "verified": true,
+   "value": "Las horas se muestran en la zona horaria {timezone}. El envío se realiza en el servidor, aunque este dispositivo no tenga conexión."
+  },
+  {
+   "key": "ui.teamBridge.schedule.create_retry",
+   "r1_severity": "NIT",
+   "disposition": "fixed",
+   "verified": true,
+   "value": "He revisado Grupos — permitir otro intento de creación"
+  }
+ ],
+ "inherited_receipt": {
+  "base": "2e16fb1456",
+  "path": "i18n/receipts/tbd-r4-es.json",
+  "sha256": "b06e9c976f832eeeba013442147c81173bf6c15122f9031e3c58c563edc58782",
+  "keys_inherited": 109,
+  "base_source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+  "base_target_sha256": "83f83edf103c94c8f6cdbb4c678853fbcfb1d23a207adc9143dfb6497eea0bdd",
+  "unchanged_values_verified": 109
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+ },
+ "validation": {
+  "independence": "Auditor session e81ede7b8f9d is distinct from translator session c8f3273a539c. I diffed the remediated repo bytes against the immutable round-1 snapshot r1/es.json (sha b04d0c34…, equal to the round-1 target hash). The round-1 receipt was not modified.",
+  "semantics": "Both changed values match the round-1 proposals verbatim. schedule.timezone now names “zona horaria” and uses natural “se muestran”, and keeps the tú-neutral impersonal register and the servidor/dispositivo glossary terms. schedule.create_retry uses neutral present perfect “He revisado”, keeps “Grupos” matching section.groups, and keeps the explicit acknowledgement before retry. There is no regression against adjacent keys: create_uncertain still says “Revisa Grupos”, and the review/confirm_action pair, the Programados references and the retry verb are untouched.",
+  "icu": "Both values parse with @formatjs/icu-messageformat-parser. Argument sets equal en: {timezone} / none. intl-messageformat es sample: “Las horas se muestran en la zona horaria America/New_York. …”. Key count is 136, order matches round 1, and 134/136 values are byte-identical to round 1.",
+  "typography": "The raw file is NFC with no bidi controls (U+200E/F, U+202A–E, U+2066–9, U+061C). The only non-ASCII characters in the changed values are í/ó and a spaced em dash U+2014. There is no space before punctuation, no leading or trailing or double whitespace, and no value identical to English.",
+  "overflow": "schedule.timezone grows to 131 vs 87 characters but is a wrapping DialogDescription paragraph (context: permit wrapping), so there is no fixed-width risk. schedule.create_retry is 54 vs 49 characters, a ghost button in the full-width composer alert block, and the change is negligible against round 1 (52).",
+  "limitations": "Browser unavailable by task constraint; no screenshots, glyph metrics, visual-fit or rendered bidi claim. No catalogue/code edits."
+ }
+}

@@ -83,20 +83,63 @@ const EFFORT_DEFAULT_STAYS =
 /* Case-insensitive: ticked, the label opens with "Default for new sessions:". */
 const MODEL_DEFAULT_LABEL = /default for new sessions/i;
 import type { FC, ReactNode } from "react";
-import { useLayoutEffect } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import "../../../styles/index.css";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
-import type { DesktopResponse } from "../../../../../shared/desktop-contract";
+import {
+	dismissSettingsIntent,
+	retrySettingsIntent,
+	useSessionSettingsIntents,
+} from "@shared/hooks/use-settings-intents";
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import type {
+	DesktopResponse,
+	SettingsIntent,
+} from "../../../../../shared/desktop-contract";
 import type {
 	DesktopModelCatalogue,
 	NativeDesktopAction,
 } from "../../../../../shared/desktop-control-contract";
 import type { SlashCommandMeta } from "../components/slash-commands";
+import { SettingsIntentChips } from "../session-status/settings-intent-chips";
 import {
 	EffortPicker,
+	FastPicker,
 	ModelPicker,
 	type PickerContext,
 } from "./destination-pickers";
+
+// Story matchers are shared constants: the changed-file pre-push lint gate
+// covers legacy stories too, without changing any matching semantics.
+const MATCH_OPUS_5_5 = /opus-5[.-]5/;
+const MATCH_GPT_5_4 = /GPT-5\.4/;
+const MATCH_ENTER_PICKS_CLAUDE_OPUS_5 = /Enter picks Claude Opus 5/;
+const MATCH_ANTHROPIC_CLAUDE_HAIKU_4_5 = /Anthropic: Claude Haiku 4\.5/;
+const MATCH_NOT_CHANGED_DID_NOT_RUN_RECONNECT =
+	/not changed|did not run|Reconnect/;
+const MATCH_NOT_CHANGED_DID_NOT_RUN = /not changed|did not run/;
+const MATCH_MAX = /^Max/;
+const MATCH_HIGH = /^High/;
+const MATCH_MODEL_ANTHROPIC_CLAUDE_OPUS_5 = /model: anthropic\/claude-opus-5 →/;
+const MATCH_OPUS_5_5_9 = /Opus 5\.5/;
+const MATCH_CLAUDE_OPUS_5_5 = /Claude Opus 5\.5/;
+const MATCH_THE_PROVIDER_LISTING_FAILED = /The provider listing failed/;
+const MATCH_CHECKING = /Checking…/;
+const MATCH_PROVIDER_LISTING_IS_UNAVAILABLE =
+	/Provider listing is unavailable\./;
+const MATCH_THE_LAST_LISTING_THAT_ANSWERED = /the last listing that answered/;
+const MATCH_THE_SHIPPED_MODELS = /the shipped models/;
+const MATCH_SOME_PROVIDERS_DID_NOT_ANSWER = /Some providers did not answer/;
+const MATCH_GLM_5_2 = /GLM-5\.2/;
+const MATCH_MAGISTRAL_MEDIUM = /Magistral Medium/;
+const MATCH_APPLIES_NEXT_STEP = /applies at the next step/;
+const MATCH_HAIKU_NAME = /Claude Haiku 4\.5|claude-haiku-4-5/;
+const MATCH_COULD_NOT_SWITCH_BUDGET =
+	/Couldn't switch to .*did not respond in time/;
+const MATCH_SWITCHING_TO = /^Switching to /;
+const MATCH_TURNING_FAST_ON = /^Turning fast mode on/;
+const MATCH_FAST_ON_ROW = /^On/;
+const MATCH_ENTER_CONNECTS_ZAI = /Enter connects zai/;
 
 const noop = () => {};
 
@@ -172,6 +215,11 @@ type BridgeRequest = {
 	key?: string;
 	value?: unknown;
 	command?: string;
+	args?: string;
+	/** The receipt key of one command dispatch; a repeat must carry a new one. */
+	requestId?: string;
+	sessionId?: string;
+	kind?: string;
 };
 
 /** A promise that never settles: the frame is the state while it is pending. */
@@ -252,8 +300,7 @@ const installBridge = (
 				}
 				if (
 					request.op === "commands.entities" &&
-					request.command === "effort" &&
-					request.live
+					request.command === "effort"
 				) {
 					const response = await frameBridge(request);
 					if (response !== undefined) return response;
@@ -480,7 +527,7 @@ const catalogue = (
  * longer fixture.
  */
 const REGISTRY_ROWS = CATALOGUE.filter(
-	(single) => !/opus-5[.-]5/.test(single.model_id),
+	(single) => !MATCH_OPUS_5_5.test(single.model_id),
 );
 const registryCatalogue = (): DesktopModelCatalogue =>
 	catalogue({ models: REGISTRY_ROWS });
@@ -507,7 +554,13 @@ type FrameProps = {
 	commandResponse?: DesktopResponse;
 	/** The model the session is on (the session frame's stand-in). */
 	selected?: { provider: string; model_id: string } | null;
-	picker?: "model" | "effort";
+	picker?: "model" | "effort" | "fast";
+	/** A whole frame in place of `{selected_model: selected}`, for states such as an effort displacement. */
+	frontend?: Record<string, unknown>;
+	onClose?: () => void;
+	note?: PickerContext["note"];
+	/** The session the picker addresses (the intent stories use several). */
+	sessionId?: string;
 };
 
 /**
@@ -522,15 +575,19 @@ const Frame: FC<FrameProps> = ({
 	commandResponse,
 	selected = CURRENT,
 	picker = "model",
+	frontend,
+	onClose = noop,
+	note = noop,
+	sessionId = "sess",
 }) => {
 	installBridge(storyBridge, commandResponse);
 	const isEffort = picker === "effort";
 	const ctx: PickerContext = {
 		action: isEffort ? EFFORT_ACTION : MODEL_ACTION,
 		spec: isEffort ? EFFORT_SPEC : MODEL_SPEC,
-		sessionId: "sess",
+		sessionId,
 		canonical: {
-			frontend: selected ? { selected_model: selected } : null,
+			frontend: frontend ?? (selected ? { selected_model: selected } : null),
 			// U1's half that lives in the picker: paint before the await, drop it
 			// when the owner refuses. Recorded so a play can assert the order.
 			paintPendingModel: (model: { provider: string; model_id: string }) => {
@@ -541,11 +598,13 @@ const Frame: FC<FrameProps> = ({
 			},
 		} as unknown as CanonicalSessionHandle,
 		commands: [MODEL_SPEC],
-		onClose: noop,
-		note: noop,
+		onClose,
+		note,
 		dispatch: noop,
 		rebind: noop,
 	};
+	if (picker === "fast")
+		return <FastPicker {...ctx} action={{ ...MODEL_ACTION, data: {} }} />;
 	return isEffort ? <EffortPicker {...ctx} /> : <ModelPicker {...ctx} />;
 };
 
@@ -780,11 +839,11 @@ export const Populated: Story = {
 export const Hovered: Story = {
 	render: () => <Frame bridge={catalogueOnly(catalogue())} />,
 	play: async () => {
-		await hoverRow(/GPT-5\.4/);
+		await hoverRow(MATCH_GPT_5_4);
 		// U1: the pointer's row is not the pick target, and the footer says which
 		// row is (`aria-selected` confirms the keyboard did not move).
 		await waitFor(() =>
-			expect(screen.getByText(/Enter picks Claude Opus 5/)).toBeTruthy(),
+			expect(screen.getByText(MATCH_ENTER_PICKS_CLAUDE_OPUS_5)).toBeTruthy(),
 		);
 		expect(
 			document
@@ -807,6 +866,393 @@ export const KeyboardHighlight: Story = {
  * still only elevated, and the footer's left slot is the single place that says
  * anything is happening.
  */
+const UnconfirmedModelFrame: FC<{
+	disconnected?: boolean;
+	readFails?: boolean;
+	committed?: boolean;
+	readPending?: boolean;
+	cold?: boolean;
+	/**
+	 * How many answers are busy BEFORE the owner accepts. Omitted means every
+	 * attempt is busy (the exhausted repeat); a number is the arm where the busy
+	 * clears on its own, which is the whole reason the press is repeated.
+	 */
+	busyTimes?: number;
+	/**
+	 * The model the read-only snapshot (`sessions.get`) reports, when it must not be
+	 * the authority the story's frames carry. The two are one variable in reality
+	 * only while the frame is alive: a LOST frame plus a fresh read is the arm where
+	 * the reconciliation can confirm a switch the push never did, so a story about
+	 * that arm has to be able to disagree with `selected` here.
+	 */
+	readModel?: { provider: string; model_id: string };
+}> = ({
+	disconnected = false,
+	readFails = false,
+	committed = true,
+	readPending = false,
+	cold = false,
+	busyTimes,
+	readModel,
+}) => {
+	const authoritative = useRef(CURRENT);
+	const [selected, setSelected] = useState(CURRENT);
+	const [notes, setNotes] = useState<{ id: string; text: string }[]>([]);
+	const [open, setOpen] = useState(true);
+	const mutations = useRef(0);
+	/*
+	 * EVERY dispatch's request id, in order. A repeat must mint a NEW one: this
+	 * route's receipt is claimed without `retry_safe`, so a reused id is the
+	 * journal's "outcome is indeterminate" 409 rather than a second attempt.
+	 */
+	const requestIds = useRef<string[]>([]);
+	const [reads, setReads] = useState(0);
+	const [preferencesWrites, setPreferencesWrites] = useState(0);
+	const note = useCallback(
+		(text: string) =>
+			setNotes((previous) => [...previous, { id: crypto.randomUUID(), text }]),
+		[],
+	);
+	const backend = useCallback(
+		async (request: BridgeRequest): Promise<DesktopResponse | undefined> => {
+			if (request.op === "models.catalogue")
+				return catalogueOnly(catalogue())(request);
+			if (request.op === "settings.edit") {
+				setPreferencesWrites((value) => value + 1);
+				return ok({});
+			}
+			if (request.op === "sessions.command") {
+				mutations.current += 1;
+				if (request.requestId) requestIds.current.push(request.requestId);
+				const value = request.args ?? "";
+				const slash = value.indexOf("/");
+				const model = {
+					provider: value.slice(0, slash),
+					model_id: value.slice(slash + 1),
+				};
+				const from = `${authoritative.current.provider}/${authoritative.current.model_id}`;
+				/*
+				 * `busyTimes` is the owner's patience running out on its own: the first
+				 * N answers are busy and nothing has landed, the next one is accepted
+				 * with a receipt. It is a DIFFERENT arm from `committed`, where the
+				 * authority moves even though the receipt never arrives.
+				 */
+				const accepts =
+					busyTimes !== undefined && mutations.current > busyTimes;
+				if (accepts) {
+					authoritative.current = model;
+					setSelected(model);
+					return ok({ command: "model", result: receipt(from, value) });
+				}
+				if (!disconnected && committed) {
+					authoritative.current = model;
+					setSelected(model);
+				}
+				// The authority changes BEFORE the missing receipt. This is not a
+				// static failed-response screenshot standing in for reconciliation.
+				return {
+					status: 503,
+					body: {
+						detail: {
+							code: disconnected ? "runtime_unreachable" : "runtime_busy",
+							text: "Session owner is unavailable. Reconnect and reconcile before retrying.",
+							retryable: !disconnected,
+							retry_after_ms: 2000,
+						},
+					},
+				};
+			}
+			if (request.op === "sessions.get") {
+				setReads((value) => value + 1);
+				if (readPending) return new Promise<DesktopResponse>(() => {});
+				if (readFails) return refuse(503, "Synthetic snapshot unavailable");
+				return ok({
+					payload: {
+						cold,
+						frontend: {
+							snapshot: {
+								selected_model: readModel ?? authoritative.current,
+								effective_model: readModel ?? authoritative.current,
+							},
+						},
+					},
+				});
+			}
+			return undefined;
+		},
+		[
+			disconnected,
+			readFails,
+			committed,
+			readPending,
+			cold,
+			busyTimes,
+			readModel,
+		],
+	);
+	return (
+		<>
+			{open && (
+				<Frame
+					bridge={backend}
+					selected={selected}
+					note={note}
+					onClose={() => setOpen(false)}
+				/>
+			)}
+			<section
+				className="fixed bottom-4 left-4 z-[60] max-w-xl rounded border border-control bg-surface p-3 text-ink"
+				data-testid="model-outcome-fixture"
+			>
+				<output data-testid="authoritative-model">{`${selected.provider}/${selected.model_id}`}</output>
+				<div data-testid="model-operation-counts">{`mutations=${mutations.current}; snapshot reads=${reads}`}</div>
+				<div data-testid="model-request-ids">
+					{requestIds.current.join(",")}
+				</div>
+				<div data-testid="model-preferences-count">{`preferences writes=${preferencesWrites}`}</div>
+				{notes.map((note) => (
+					<p key={note.id} data-testid="model-command-note">
+						{note.text}
+					</p>
+				))}
+			</section>
+		</>
+	);
+};
+
+/**
+ * The switch landed; the ACK was lost. The owner's own frame confirms it, so the
+ * press stops repeating and reports no doubt (design round 1, D3).
+ *
+ * WHY THIS REPLACED `AckTimeoutIndeterminate`: once the picker stops repeating as
+ * soon as a frame names the requested model, the commit-then-busy arm can no
+ * longer reach the indeterminate register — the frame IS the confirmation, and
+ * the extra attempts would only keep a dialog reading `Switching the model…` over
+ * a session already on it. The indeterminate register still has a story: the arm
+ * where nothing landed, `AckTimeoutNotApplied` below.
+ */
+export const AckTimeoutConfirmedByFrame: Story = {
+	render: () => <UnconfirmedModelFrame />,
+	play: async () => {
+		await pickRow(MATCH_ANTHROPIC_CLAUDE_HAIKU_4_5);
+		/*
+		 * ONE dispatch and NO snapshot read: the repeat stops at its second
+		 * opportunity (a fresh id is never minted), and the press never falls back
+		 * to the read-only reconciliation because it was never unconfirmed.
+		 */
+		await waitFor(
+			() =>
+				expect(screen.getByTestId("model-operation-counts").textContent).toBe(
+					"mutations=1; snapshot reads=0",
+				),
+			SLOW,
+		);
+		expect(screen.getByTestId("authoritative-model").textContent).toBe(
+			`${PICKED.provider}/${PICKED.model_id}`,
+		);
+		expect(screen.queryByTestId("model-command-note")).toBeNull();
+		expect(
+			document.querySelector("[data-picker-footer]")?.textContent,
+		).not.toContain("The request could not be confirmed.");
+		expect(
+			document.querySelector("[data-picker-footer]")?.textContent,
+		).not.toMatch(MATCH_NOT_CHANGED_DID_NOT_RUN_RECONNECT);
+	},
+};
+
+/**
+ * The switch never landed, and every attempt met a busy owner.
+ *
+ * The repeat is bounded (`BUSY_RESENDS`, three more attempts, waits of
+ * `min(max(0, retry_after_ms ?? 2000), 5000)` — six seconds with the backend's
+ * 2 s hint), and what is left is the honest register rather than "did not run":
+ * the switch may have applied on any attempt whose ACK was lost.
+ */
+export const AckTimeoutNotApplied: Story = {
+	render: () => <UnconfirmedModelFrame committed={false} />,
+	play: async () => {
+		await pickRow(MATCH_ANTHROPIC_CLAUDE_HAIKU_4_5);
+		await waitFor(
+			() =>
+				expect(screen.getByTestId("model-operation-counts").textContent).toBe(
+					"mutations=4; snapshot reads=1",
+				),
+			SLOW,
+		);
+		expect(screen.getByTestId("authoritative-model").textContent).toBe(
+			CURRENT_SELECTOR,
+		);
+		expect(screen.getByTestId("model-command-note").textContent).toBe(
+			"The request could not be confirmed.",
+		);
+	},
+};
+
+/**
+ * The busy owner clears on its own: the second attempt is accepted.
+ *
+ * This is the win the repeat exists for, and the two facts a capture alone cannot
+ * show are asserted here: the second attempt carries a DIFFERENT request id (a
+ * reused one would be the receipt journal's indeterminate 409, not a retry), and
+ * the user is never told the switch could not be confirmed.
+ */
+export const BusyThenConfirmed: Story = {
+	render: () => <UnconfirmedModelFrame committed={false} busyTimes={1} />,
+	play: async () => {
+		await pickRow(MATCH_ANTHROPIC_CLAUDE_HAIKU_4_5);
+		await waitFor(
+			() =>
+				expect(screen.getByTestId("model-operation-counts").textContent).toBe(
+					"mutations=2; snapshot reads=0",
+				),
+			SLOW,
+		);
+		const ids = (screen.getByTestId("model-request-ids").textContent ?? "")
+			.split(",")
+			.filter(Boolean);
+		expect(ids.length).toBe(2);
+		expect(new Set(ids).size).toBe(2);
+		expect(screen.getByTestId("authoritative-model").textContent).toBe(
+			`${PICKED.provider}/${PICKED.model_id}`,
+		);
+		expect(screen.queryByTestId("model-command-note")).toBeNull();
+		expect(
+			document.querySelector("[data-picker-footer]")?.textContent,
+		).not.toContain("The request could not be confirmed.");
+	},
+};
+
+export const DisconnectedOwnerUnconfirmed: Story = {
+	render: () => <UnconfirmedModelFrame disconnected readFails />,
+	play: async () => {
+		await pickRow(MATCH_ANTHROPIC_CLAUDE_HAIKU_4_5);
+		await waitFor(() =>
+			expect(screen.getByTestId("model-operation-counts").textContent).toBe(
+				"mutations=1; snapshot reads=1",
+			),
+		);
+		expect(screen.getByTestId("authoritative-model").textContent).toBe(
+			CURRENT_SELECTOR,
+		);
+		expect(screen.getByTestId("model-command-note").textContent).toContain(
+			"Reconnect and reconcile",
+		);
+		expect(screen.getByTestId("model-command-note").textContent).not.toMatch(
+			MATCH_NOT_CHANGED_DID_NOT_RUN,
+		);
+		expect(
+			document.querySelectorAll('[role="option"][aria-disabled="true"]').length,
+		).toBeGreaterThan(0);
+		expect(
+			document.querySelector("[data-picker-footer]")?.textContent,
+		).toContain("The request could not be confirmed.");
+		expect(
+			document.querySelector("[data-picker-footer]")?.textContent,
+		).not.toContain("Enter picks");
+	},
+};
+
+const assertDefaultStaysLocked = async () => {
+	await pickRow(MATCH_ANTHROPIC_CLAUDE_HAIKU_4_5);
+	await waitFor(
+		() =>
+			expect(screen.getByTestId("model-operation-counts").textContent).toBe(
+				"mutations=4; snapshot reads=1",
+			),
+		SLOW,
+	);
+	const checkbox = screen.getByRole("checkbox", { name: MODEL_DEFAULT_LABEL });
+	await waitFor(() => expect(checkbox.hasAttribute("disabled")).toBe(true));
+	await userEvent.click(checkbox);
+	expect(screen.getByTestId("model-preferences-count").textContent).toBe(
+		"preferences writes=0",
+	);
+	expect(checkbox.getAttribute("data-state")).toBe("unchecked");
+};
+
+/*
+ * `committed={false}` on all four: the lock these stories are about is the one a
+ * genuinely unconfirmed switch leaves behind. A switch whose frame names it is
+ * confirmed by that frame now (see `AckTimeoutConfirmedByFrame`), so the lock arm
+ * has to be the one where nothing landed — otherwise the story would be asserting
+ * a state the picker no longer reaches.
+ */
+
+/** Direct neighbors of the unconfirmed switch: none can save stale defaults. */
+export const UnconfirmedDefaultPending: Story = {
+	render: () => <UnconfirmedModelFrame readPending committed={false} />,
+	play: assertDefaultStaysLocked,
+};
+export const UnconfirmedDefaultFailed: Story = {
+	render: () => <UnconfirmedModelFrame readFails committed={false} />,
+	play: assertDefaultStaysLocked,
+};
+export const UnconfirmedDefaultCold: Story = {
+	render: () => <UnconfirmedModelFrame cold committed={false} />,
+	play: assertDefaultStaysLocked,
+};
+export const UnconfirmedDefaultResolved: Story = {
+	/*
+	 * The push never came (no frame names the pick) but the READ does: this is the
+	 * reconciliation arm, so the snapshot is the only thing that may confirm it.
+	 */
+	render: () => <UnconfirmedModelFrame committed={false} readModel={PICKED} />,
+	play: async () => {
+		await pickRow(MATCH_ANTHROPIC_CLAUDE_HAIKU_4_5);
+		await waitFor(
+			() =>
+				expect(screen.getByTestId("model-operation-counts").textContent).toBe(
+					"mutations=4; snapshot reads=1",
+				),
+			SLOW,
+		);
+		const checkbox = screen.getByRole("checkbox", {
+			name: MODEL_DEFAULT_LABEL,
+		});
+		await waitFor(() => expect(checkbox.hasAttribute("disabled")).toBe(false));
+		await userEvent.click(checkbox);
+		await waitFor(() =>
+			expect(screen.getByTestId("model-preferences-count").textContent).toBe(
+				"preferences writes=2",
+			),
+		);
+	},
+};
+
+export const ModelResolutionRefused: Story = {
+	render: () => (
+		<Frame
+			bridge={(request) =>
+				request.op === "models.catalogue"
+					? catalogueOnly(catalogue())(request)
+					: request.op === "sessions.command"
+						? Promise.resolve(
+								ok({
+									result: {
+										kind: "notice",
+										style: "error",
+										text: "cannot switch model: Timed out",
+										data: {},
+									},
+								}),
+							)
+						: Promise.resolve(undefined)
+			}
+		/>
+	),
+	play: async () => {
+		painted.length = 0;
+		cleared.length = 0;
+		await pickRow(MATCH_ANTHROPIC_CLAUDE_HAIKU_4_5);
+		await waitFor(() =>
+			expect(
+				screen.getByText("cannot switch model: Timed out", { exact: true }),
+			).toBeTruthy(),
+		);
+		expect(cleared.length).toBe(1);
+	},
+};
+
 export const Busy: Story = {
 	render: () => (
 		<Frame
@@ -820,7 +1266,7 @@ export const Busy: Story = {
 	play: async () => {
 		painted.length = 0;
 		cleared.length = 0;
-		await pickRow(/Anthropic: Claude Haiku 4\.5/);
+		await pickRow(MATCH_ANTHROPIC_CLAUDE_HAIKU_4_5);
 		// The picked row is MARKED, and the mark is in the meta slot the machine
 		// detail used to occupy, so the row cannot change height while the answer
 		// is pending.
@@ -889,6 +1335,144 @@ export const SetCurrentAsDefault: Story = {
 				screen.getByText("Default for new sessions: Claude Opus 5"),
 			).toBeTruthy(),
 		);
+	},
+};
+
+/**
+ * Max chosen, a fallback serving at High (operator report, 2026-10-21). The
+ * live frame's effective spec reads `high`, but the dialog changes the
+ * conversation's CHOICE, so `max` is the row marked current. Ticking `high`
+ * here would offer a "change" to the level that is already merely a fallback's.
+ */
+/** A tiny owner fixture: command acceptance updates the next frontend read. */
+const DisplacedChoiceFrame: FC = () => {
+	const [chosen, setChosen] = useState("max");
+	const [generation, setGeneration] = useState(0);
+	const [open, setOpen] = useState(true);
+	return (
+		<div className="flex flex-col gap-3 p-4">
+			<p data-testid="effort-choice-readback">
+				Selected: {effortChoiceLabel(chosen)}; in force: High
+			</p>
+			<button
+				type="button"
+				onClick={() => {
+					setGeneration((n) => n + 1);
+					setOpen(true);
+				}}
+			>
+				Reopen effort picker
+			</button>
+			{open && (
+				<Frame
+					key={generation}
+					onClose={() => setOpen(false)}
+					picker="effort"
+					frontend={{
+						selected_model: {
+							provider: "acme",
+							model_id: "flash-1",
+							reasoning_effort: chosen,
+						},
+						effective_model: {
+							provider: "anthropic",
+							model_id: "claude-sonnet-5-5",
+							reasoning_effort: "high",
+						},
+						effort_displacement:
+							chosen === "max"
+								? {
+										chosen: "max",
+										effective: "high",
+										selected: "acme/flash-1",
+										serving: "anthropic/claude-sonnet-5-5",
+										note: "Effort: high on anthropic/claude-sonnet-5-5; max resumes on acme/flash-1.",
+									}
+								: {},
+					}}
+					bridge={(request) => {
+						if (request.op === "commands.entities")
+							return Promise.resolve(
+								ok({
+									entities: ["low", "medium", "high", "max"].map((value) => ({
+										value,
+										name: value,
+									})),
+									current: chosen,
+								}),
+							);
+						if (request.op === "sessions.command") {
+							// Match the server's SlashOutcome envelope. Updating the owner
+							// frame makes a reopen verify read-back, not just the picker's
+							// transient acceptedRung latch (UX round 1, U1).
+							const accepted = String(request.args);
+							setChosen(accepted);
+							return Promise.resolve(
+								ok({
+									result: {
+										kind: "notice",
+										text: `Effort set to ${accepted}`,
+										style: "info",
+										data: {},
+									},
+								}),
+							);
+						}
+						return Promise.resolve(undefined);
+					}}
+				/>
+			)}
+		</div>
+	);
+};
+const effortChoiceLabel = (value: string) =>
+	value === "max" ? "Max" : value === "high" ? "High" : value;
+
+export const EffortDisplacedMarksChoice: Story = {
+	render: () => <DisplacedChoiceFrame />,
+	play: async () => {
+		const max = await screen.findByRole("option", { name: MATCH_MAX });
+		await waitFor(() => expect(max.getAttribute("data-current")).toBe("true"));
+		const high = await screen.findByRole("option", { name: MATCH_HIGH });
+		expect(high.getAttribute("data-current")).toBeNull();
+	},
+};
+
+/** Acceptance then remount: a fresh picker reads High back from the owner. */
+export const EffortDisplacedChangeAndReadBack: Story = {
+	render: () => <DisplacedChoiceFrame />,
+	play: async () => {
+		await waitFor(async () =>
+			expect(
+				(await screen.findByRole("option", { name: MATCH_MAX })).getAttribute(
+					"data-current",
+				),
+			).toBe("true"),
+		);
+		await userEvent.click(
+			await screen.findByRole("option", { name: MATCH_HIGH }),
+		);
+		await waitFor(() =>
+			expect(screen.getByTestId("effort-choice-readback").textContent).toBe(
+				"Selected: High; in force: High",
+			),
+		);
+		await userEvent.click(screen.getAllByRole("button", { name: "Close" })[0]);
+		await userEvent.click(
+			screen.getByRole("button", { name: "Reopen effort picker" }),
+		);
+		await waitFor(async () =>
+			expect(
+				(await screen.findByRole("option", { name: MATCH_HIGH })).getAttribute(
+					"data-current",
+				),
+			).toBe("true"),
+		);
+		expect(
+			(await screen.findByRole("option", { name: MATCH_MAX })).getAttribute(
+				"data-current",
+			),
+		).toBeNull();
 	},
 };
 
@@ -1081,10 +1665,10 @@ export const Result: Story = {
 		/>
 	),
 	play: async () => {
-		await pickRow(/Anthropic: Claude Haiku 4\.5/);
+		await pickRow(MATCH_ANTHROPIC_CLAUDE_HAIKU_4_5);
 		await waitFor(() =>
 			expect(
-				screen.getByText(/model: anthropic\/claude-opus-5 →/),
+				screen.getByText(MATCH_MODEL_ANTHROPIC_CLAUDE_OPUS_5),
 			).toBeTruthy(),
 		);
 	},
@@ -1170,7 +1754,7 @@ export const RegistryOnlyOpus: Story = {
 			.map((option) => option.textContent ?? "");
 		expect(rows).toHaveLength(1);
 		expect(rows[0]).toContain("Claude Opus 5");
-		expect(screen.queryByRole("option", { name: /Opus 5\.5/ })).toBeNull();
+		expect(screen.queryByRole("option", { name: MATCH_OPUS_5_5_9 })).toBeNull();
 	},
 };
 
@@ -1209,7 +1793,7 @@ export const ProviderListingOpus: Story = {
 		await waitFor(
 			() =>
 				expect(
-					screen.getByRole("option", { name: /Claude Opus 5\.5/ }),
+					screen.getByRole("option", { name: MATCH_CLAUDE_OPUS_5_5 }),
 				).toBeTruthy(),
 			SLOW,
 		);
@@ -1258,7 +1842,9 @@ export const LiveListingFailed: Story = {
 		await typeQuerySlowly("opus");
 		await waitFor(
 			() =>
-				expect(screen.getByText(/The provider listing failed/)).toBeTruthy(),
+				expect(
+					screen.getByText(MATCH_THE_PROVIDER_LISTING_FAILED),
+				).toBeTruthy(),
 			SLOW,
 		);
 		/*
@@ -1275,7 +1861,7 @@ export const LiveListingFailed: Story = {
 		 * the state the file names, without touching the retry policy the app ships.
 		 */
 		await waitFor(
-			() => expect(screen.queryByText(/Checking…/)).toBeNull(),
+			() => expect(screen.queryByText(MATCH_CHECKING)).toBeNull(),
 			SLOW,
 		);
 		await waitFor(
@@ -1288,7 +1874,9 @@ export const LiveListingFailed: Story = {
 		 * notice's own detail (the tooltip), which is where a message about a
 		 * transport belongs when the user has rows to work with.
 		 */
-		expect(screen.queryByText(/Provider listing is unavailable\./)).toBeNull();
+		expect(
+			screen.queryByText(MATCH_PROVIDER_LISTING_IS_UNAVAILABLE),
+		).toBeNull();
 	},
 };
 
@@ -1327,13 +1915,15 @@ export const RefetchFailedOverLiveRows: Story = {
 		);
 		await waitFor(
 			() =>
-				expect(screen.getByText(/The provider listing failed/)).toBeTruthy(),
+				expect(
+					screen.getByText(MATCH_THE_PROVIDER_LISTING_FAILED),
+				).toBeTruthy(),
 			SLOW,
 		);
 		// The clause is the live one, and the registry's clause is absent - this is
 		// the assertion the whole story exists for.
-		expect(screen.getByText(/the last listing that answered/)).toBeTruthy();
-		expect(screen.queryByText(/the shipped models/)).toBeNull();
+		expect(screen.getByText(MATCH_THE_LAST_LISTING_THAT_ANSWERED)).toBeTruthy();
+		expect(screen.queryByText(MATCH_THE_SHIPPED_MODELS)).toBeNull();
 		// And the rows it is drawn over are the provider listing's, not deleted.
 		expect(screen.getAllByRole("option").length).toBeGreaterThan(3);
 	},
@@ -1502,7 +2092,9 @@ export const PartialError: Story = {
 	),
 	play: async () => {
 		await waitFor(() =>
-			expect(screen.getByText(/Some providers did not answer/)).toBeTruthy(),
+			expect(
+				screen.getByText(MATCH_SOME_PROVIDERS_DID_NOT_ANSWER),
+			).toBeTruthy(),
 		);
 		expect(screen.getAllByRole("option").length).toBeGreaterThan(0);
 	},
@@ -1586,7 +2178,7 @@ export const ShowAllWire: Story = {
 	),
 	play: async () => {
 		await screen.findAllByRole("option", undefined, SLOW);
-		expect(screen.queryByText(/GLM-5\.2/)).toBeNull();
+		expect(screen.queryByText(MATCH_GLM_5_2)).toBeNull();
 		const control = await screen.findByRole(
 			"checkbox",
 			{ name: "Show all supported models (2 need sign-in)" },
@@ -1594,9 +2186,9 @@ export const ShowAllWire: Story = {
 		);
 		await userEvent.click(control);
 		await waitFor(() => expect(screen.getByText("Needs sign-in")).toBeTruthy());
-		await waitFor(() => expect(screen.getByText(/GLM-5\.2/)).toBeTruthy());
+		await waitFor(() => expect(screen.getByText(MATCH_GLM_5_2)).toBeTruthy());
 		await waitFor(() =>
-			expect(screen.getByText(/Magistral Medium/)).toBeTruthy(),
+			expect(screen.getByText(MATCH_MAGISTRAL_MEDIUM)).toBeTruthy(),
 		);
 		/*
 		 * Park the list on the rows the press just revealed. The group sits at the
@@ -1627,14 +2219,14 @@ export const ShowAllFallback: Story = {
 	),
 	play: async () => {
 		await screen.findAllByRole("option", undefined, SLOW);
-		expect(screen.queryByText(/GLM-5\.2/)).toBeNull();
+		expect(screen.queryByText(MATCH_GLM_5_2)).toBeNull();
 		const control = await screen.findByRole(
 			"checkbox",
 			{ name: "Show all supported models" },
 			SLOW,
 		);
 		await userEvent.click(control);
-		await waitFor(() => expect(screen.getByText(/GLM-5\.2/)).toBeTruthy());
+		await waitFor(() => expect(screen.getByText(MATCH_GLM_5_2)).toBeTruthy());
 		/* Parked on the revealed row, for the reason `ShowAllWire` states. */
 		const list = screen.getByRole("listbox");
 		list.scrollTop = list.scrollHeight;
@@ -1737,15 +2329,279 @@ export const ShowAllConnectFooter: Story = {
 			SLOW,
 		);
 		await userEvent.click(control);
-		await waitFor(() => expect(screen.getByText(/GLM-5\.2/)).toBeTruthy());
+		await waitFor(() => expect(screen.getByText(MATCH_GLM_5_2)).toBeTruthy());
 		/*
 		 * Narrow to the one hidden row so the keyboard's row — and therefore the
 		 * footer — is the needs-sign-in row this frame exists to show.
 		 */
 		await typeQuery("glm");
 		await waitFor(() =>
-			expect(screen.getByText(/Enter connects zai/)).toBeTruthy(),
+			expect(screen.getByText(MATCH_ENTER_CONNECTS_ZAI)).toBeTruthy(),
 		);
 		delete document.documentElement.dataset.capturePending;
+	},
+};
+
+/* ------------------------------------------------- durable settings intents */
+
+/*
+ * THE INTENT STORIES (`features.settings_intents`). The bridge advertises the
+ * capability, so a pick is a POST to `settings-intents` that the dialog does
+ * not wait on: it closes at once, the store's mirror holds the pick, and the
+ * chips (`SettingsIntentChips`, rendered beside the picker here) say what the
+ * server is doing with it. No `sessions.command` is ever sent.
+ */
+const INTENT_CAPABILITIES = {
+	desktop_contract: 1,
+	desktop_available: true,
+	desktop_auth: "bearer",
+	features: { settings_intents: 1 },
+};
+
+const intentSlot = (
+	request: BridgeRequest,
+	generation: number,
+	state: SettingsIntent["state"],
+): SettingsIntent => ({
+	kind: (request.kind ?? "model") as SettingsIntent["kind"],
+	value: request.value as string | boolean,
+	effort: null,
+	request_id: request.requestId ?? "",
+	generation,
+	base: CURRENT_SELECTOR,
+	state,
+	attempts: 0,
+	updated_at: new Date().toISOString(),
+	error: null,
+});
+
+/** Every intent POST, in order, so a play can count them and read their ids. */
+const intentPosts: BridgeRequest[] = [];
+const commandPosts: string[] = [];
+
+const intentBridge =
+	(
+		submit: (
+			request: BridgeRequest,
+			n: number,
+		) => Promise<DesktopResponse | undefined>,
+	) =>
+	(request: BridgeRequest): Promise<DesktopResponse | undefined> => {
+		if (request.op === "capabilities")
+			return Promise.resolve(ok(INTENT_CAPABILITIES));
+		if (request.op === "models.catalogue")
+			return catalogueOnly(catalogue())(request);
+		if (request.op === "sessions.command") {
+			commandPosts.push(request.args ?? "");
+			return pending();
+		}
+		if (request.op === "settingsIntents.submit") {
+			intentPosts.push(request);
+			return submit(request, intentPosts.length);
+		}
+		if (request.op === "settingsIntents.list")
+			return Promise.resolve(ok({ intents: {} }));
+		return Promise.resolve(refuse(400, `unexpected ${request.op}`));
+	};
+
+const resetIntents = () => {
+	intentPosts.length = 0;
+	commandPosts.length = 0;
+	useCanonicalSessionsStore.setState({ settingsIntents: {} });
+};
+
+/** The chips for one session, wired to the real store and client functions. */
+const LiveChips: FC<{ sessionId: string }> = ({ sessionId }) => {
+	const slots = useSessionSettingsIntents(sessionId);
+	return (
+		<SettingsIntentChips
+			slots={slots}
+			// The catalogue's label, as production's `useModelDescriber` gives it
+			// (design D7), so the frames show the name users actually read.
+			describeModel={(selector) =>
+				CATALOGUE.find((candidate) => candidate.selector === selector)?.label ??
+				selector
+			}
+			onRetry={(intent) => void retrySettingsIntent(sessionId, intent)}
+			onDismiss={(intent) => void dismissSettingsIntent(sessionId, intent)}
+		/>
+	);
+};
+
+/** A picker that reopens on the next session each time it closes. */
+const IntentFrame: FC<{
+	bridge: FrameProps["bridge"];
+	sessions: string[];
+	picker?: FrameProps["picker"];
+	frontend?: FrameProps["frontend"];
+}> = ({ bridge, sessions, picker, frontend }) => {
+	const [index, setIndex] = useState(0);
+	const [reset] = useState(() => {
+		resetIntents();
+		return true;
+	});
+	void reset;
+	const sessionId = sessions[Math.min(index, sessions.length - 1)];
+	return (
+		<div className="grid gap-3" style={{ width: 560 }}>
+			{index < sessions.length && (
+				<Frame
+					key={sessionId}
+					bridge={bridge}
+					sessionId={sessionId}
+					picker={picker}
+					frontend={frontend}
+					onClose={() => setIndex((current) => current + 1)}
+				/>
+			)}
+			{sessions.map((id) => (
+				<div key={id} data-intent-session={id}>
+					<LiveChips sessionId={id} />
+				</div>
+			))}
+		</div>
+	);
+};
+
+const INTENT_SESSION = "aaaaaaaaaaaa";
+
+/**
+ * A pick against a busy runtime: the server accepts it at once and the runtime
+ * answers "queued, applies at the next step". The dialog closed on the pick -
+ * there is no "Switching the model..." footer to wait out - and the chip names
+ * the target.
+ */
+export const IntentQueued: Story = {
+	render: () => (
+		<IntentFrame
+			sessions={[INTENT_SESSION]}
+			bridge={intentBridge(async (request, n) => {
+				const intent = intentSlot(request, n, "queued_next_step");
+				return ok({ intent, intents: { model: intent } });
+			})}
+		/>
+	),
+	play: async () => {
+		await pickRow(MATCH_ANTHROPIC_CLAUDE_HAIKU_4_5);
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		await waitFor(() =>
+			expect(screen.getByText(MATCH_APPLIES_NEXT_STEP).textContent).toMatch(
+				MATCH_HAIKU_NAME,
+			),
+		);
+		expect(intentPosts).toHaveLength(1);
+		expect(intentPosts[0].value).toBe("openrouter/anthropic/claude-haiku-4-5");
+		expect(commandPosts).toEqual([]);
+	},
+};
+
+/**
+ * The retry budget ran out (the runtime never answered): the chip says so in
+ * plain words with Retry and Dismiss, and Retry is the SAME value under a NEW
+ * request id, which this time lands.
+ */
+export const IntentFailedRetry: Story = {
+	render: () => (
+		<IntentFrame
+			sessions={[INTENT_SESSION]}
+			bridge={intentBridge(async (request, n) => {
+				const intent: SettingsIntent =
+					n === 1
+						? {
+								...intentSlot(request, n, "failed"),
+								attempts: 25,
+								error: {
+									code: "retry_budget_exhausted",
+									last_code: "runtime_unreachable",
+									message: "",
+									retryable: true,
+								},
+							}
+						: intentSlot(request, n, "applying");
+				return ok({ intent, intents: { model: intent } });
+			})}
+		/>
+	),
+	play: async () => {
+		await pickRow(MATCH_ANTHROPIC_CLAUDE_HAIKU_4_5);
+		await waitFor(() =>
+			expect(screen.getByText(MATCH_COULD_NOT_SWITCH_BUDGET)).toBeTruthy(),
+		);
+		await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+		await waitFor(() =>
+			expect(screen.getByText(MATCH_SWITCHING_TO)).toBeTruthy(),
+		);
+		expect(intentPosts).toHaveLength(2);
+		expect(intentPosts[1].value).toBe(intentPosts[0].value);
+		expect(intentPosts[1].requestId).not.toBe(intentPosts[0].requestId);
+	},
+};
+
+/**
+ * Three conversations changed in a row while the FIRST one's POST has still
+ * not answered: each pick closes its dialog at once, the next conversation's
+ * picker opens straight away, and every session keeps its own pending chip.
+ */
+export const IntentBurstAcrossSessions: Story = {
+	render: () => (
+		<IntentFrame
+			sessions={["aaaaaaaaaaaa", "bbbbbbbbbbbb", "cccccccccccc"]}
+			bridge={intentBridge(async (request, n) => {
+				if (n === 1) return pending();
+				const intent = intentSlot(request, n, "applying");
+				return ok({ intent, intents: { model: intent } });
+			})}
+		/>
+	),
+	play: async () => {
+		for (let pick = 0; pick < 3; pick += 1) {
+			await pickRow(MATCH_ANTHROPIC_CLAUDE_HAIKU_4_5);
+			await waitFor(() => expect(intentPosts).toHaveLength(pick + 1));
+		}
+		await waitFor(() =>
+			expect(screen.getAllByText(MATCH_SWITCHING_TO)).toHaveLength(3),
+		);
+		expect(intentPosts.map((request) => request.sessionId)).toEqual([
+			"aaaaaaaaaaaa",
+			"bbbbbbbbbbbb",
+			"cccccccccccc",
+		]);
+		expect(commandPosts).toEqual([]);
+	},
+};
+
+/**
+ * The FAST dial is a per-session setting too: with the capability its pick is
+ * a `fast` intent (boolean value) that closes the dialog at once, never a
+ * `sessions.command` a busy owner would hold.
+ */
+export const IntentFastToggle: Story = {
+	render: () => (
+		<IntentFrame
+			sessions={[INTENT_SESSION]}
+			picker="fast"
+			frontend={{
+				selected_model: {
+					...CURRENT,
+					supports_fast_mode: true,
+					fast_mode: false,
+				},
+			}}
+			bridge={intentBridge(async (request, n) => {
+				const intent = intentSlot(request, n, "applying");
+				return ok({ intent, intents: { fast: intent } });
+			})}
+		/>
+	),
+	play: async () => {
+		await pickRow(MATCH_FAST_ON_ROW);
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		await waitFor(() =>
+			expect(screen.getByText(MATCH_TURNING_FAST_ON)).toBeTruthy(),
+		);
+		expect(intentPosts).toHaveLength(1);
+		expect(intentPosts[0].kind).toBe("fast");
+		expect(intentPosts[0].value).toBe(true);
+		expect(commandPosts).toEqual([]);
 	},
 };

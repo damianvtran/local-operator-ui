@@ -1,0 +1,1290 @@
+{
+  "label": "after-unchanged",
+  "head": "a4103f69a12971db785d82f1304c76036d8fc924",
+  "proxyPort": 11879,
+  "backendPort": 9462,
+  "rig": {
+    "out": "/Users/bentran/.local-operator/sessions/a0621b5fc813/scratchpad/after",
+    "budgetSeconds": 1500,
+    "skillDelayMs": 200
+  },
+  "skills": [
+    "skill-one",
+    "skill-two",
+    "skill-three"
+  ],
+  "arms": [
+    {
+      "id": "control-delay-200",
+      "skills": 3,
+      "cold": true,
+      "delayMs": 200,
+      "requested": 4,
+      "attempts": 4,
+      "valid": 0,
+      "samples": [
+        {
+          "arm": "control-delay-200",
+          "index": 0,
+          "nonce": "nf18f34c346c2",
+          "keydownWall": 1794942687699,
+          "bubbleWall": 1794942687744,
+          "postWall": null,
+          "keydownToBubble": 45,
+          "keydownToPost": null,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 3,
+          "readScans": [
+            {
+              "inMs": 6,
+              "daemonMs": null,
+              "totalMs": null
+            },
+            {
+              "inMs": 6,
+              "daemonMs": null,
+              "totalMs": null
+            },
+            {
+              "inMs": 6,
+              "daemonMs": null,
+              "totalMs": null
+            }
+          ],
+          "payloadSkills": null,
+          "typed": true,
+          "invalid": "no sessions.message POST seen at the proxy"
+        },
+        {
+          "arm": "control-delay-200",
+          "index": 1,
+          "nonce": "nee0d8fd888e4",
+          "keydownWall": 1794942690498,
+          "bubbleWall": 1794942690524,
+          "postWall": null,
+          "keydownToBubble": 26,
+          "keydownToPost": null,
+          "cleared": true,
+          "clearedLeftover": true,
+          "skillReads": 3,
+          "readScans": [
+            {
+              "inMs": 3,
+              "daemonMs": null,
+              "totalMs": null
+            },
+            {
+              "inMs": 4,
+              "daemonMs": null,
+              "totalMs": null
+            },
+            {
+              "inMs": 4,
+              "daemonMs": null,
+              "totalMs": null
+            }
+          ],
+          "payloadSkills": null,
+          "typed": true,
+          "invalid": "no sessions.message POST seen at the proxy"
+        },
+        {
+          "arm": "control-delay-200",
+          "index": 2,
+          "nonce": "n3dc1c2cf4487",
+          "keydownWall": 1794942693265,
+          "bubbleWall": 1794942693289,
+          "postWall": null,
+          "keydownToBubble": 24,
+          "keydownToPost": null,
+          "cleared": true,
+          "clearedLeftover": true,
+          "skillReads": 3,
+          "readScans": [
+            {
+              "inMs": 4,
+              "daemonMs": null,
+              "totalMs": null
+            },
+            {
+              "inMs": 4,
+              "daemonMs": null,
+              "totalMs": null
+            },
+            {
+              "inMs": 4,
+              "daemonMs": null,
+              "totalMs": null
+            }
+          ],
+          "payloadSkills": null,
+          "typed": true,
+          "invalid": "no sessions.message POST seen at the proxy"
+        },
+        {
+          "arm": "control-delay-200",
+          "index": 3,
+          "nonce": "nccc3644df160",
+          "keydownWall": 1794942696088,
+          "bubbleWall": 1794942696108,
+          "postWall": null,
+          "keydownToBubble": 20,
+          "keydownToPost": null,
+          "cleared": true,
+          "clearedLeftover": true,
+          "skillReads": 3,
+          "readScans": [
+            {
+              "inMs": 2,
+              "daemonMs": null,
+              "totalMs": null
+            },
+            {
+              "inMs": 3,
+              "daemonMs": null,
+              "totalMs": null
+            },
+            {
+              "inMs": 3,
+              "daemonMs": null,
+              "totalMs": null
+            }
+          ],
+          "payloadSkills": null,
+          "typed": true,
+          "invalid": "no sessions.message POST seen at the proxy"
+        }
+      ],
+      "bubble": null,
+      "post": null,
+      "daemonScan": null,
+      "readsPerPress": null
+    },
+    {
+      "id": "plain",
+      "skills": 0,
+      "cold": false,
+      "delayMs": 0,
+      "requested": 11,
+      "attempts": 11,
+      "valid": 11,
+      "samples": [
+        {
+          "arm": "plain",
+          "index": 0,
+          "nonce": "n3a707b8d2b75",
+          "keydownWall": 1794942702509,
+          "bubbleWall": 1794942702523,
+          "postWall": 1794942702514,
+          "keydownToBubble": 14,
+          "keydownToPost": 5,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 0,
+          "readScans": [],
+          "payloadSkills": [],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "plain",
+          "index": 1,
+          "nonce": "n1fd046c4a6d0",
+          "keydownWall": 1794942707748,
+          "bubbleWall": 1794942707763,
+          "postWall": 1794942707753,
+          "keydownToBubble": 15,
+          "keydownToPost": 5,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 0,
+          "readScans": [],
+          "payloadSkills": [],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "plain",
+          "index": 2,
+          "nonce": "n1b31b867f175",
+          "keydownWall": 1794942713006,
+          "bubbleWall": 1794942713023,
+          "postWall": 1794942713011,
+          "keydownToBubble": 17,
+          "keydownToPost": 5,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 0,
+          "readScans": [],
+          "payloadSkills": [],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "plain",
+          "index": 3,
+          "nonce": "n6f80c500aad4",
+          "keydownWall": 1794942718479,
+          "bubbleWall": 1794942718496,
+          "postWall": 1794942718485,
+          "keydownToBubble": 17,
+          "keydownToPost": 6,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 0,
+          "readScans": [],
+          "payloadSkills": [],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "plain",
+          "index": 4,
+          "nonce": "n17d7db369253",
+          "keydownWall": 1794942724089,
+          "bubbleWall": 1794942724108,
+          "postWall": 1794942724096,
+          "keydownToBubble": 19,
+          "keydownToPost": 7,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 0,
+          "readScans": [],
+          "payloadSkills": [],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "plain",
+          "index": 5,
+          "nonce": "n897def3cccd3",
+          "keydownWall": 1794942729556,
+          "bubbleWall": 1794942729575,
+          "postWall": 1794942729562,
+          "keydownToBubble": 19,
+          "keydownToPost": 6,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 0,
+          "readScans": [],
+          "payloadSkills": [],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "plain",
+          "index": 6,
+          "nonce": "n9cff7a3a0ef9",
+          "keydownWall": 1794942735057,
+          "bubbleWall": 1794942735078,
+          "postWall": 1794942735067,
+          "keydownToBubble": 21,
+          "keydownToPost": 10,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 0,
+          "readScans": [],
+          "payloadSkills": [],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "plain",
+          "index": 7,
+          "nonce": "n3fa2a7cca681",
+          "keydownWall": 1794942740578,
+          "bubbleWall": 1794942740599,
+          "postWall": 1794942740585,
+          "keydownToBubble": 21,
+          "keydownToPost": 7,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 0,
+          "readScans": [],
+          "payloadSkills": [],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "plain",
+          "index": 8,
+          "nonce": "n4162b80a7932",
+          "keydownWall": 1794942746109,
+          "bubbleWall": 1794942746131,
+          "postWall": 1794942746116,
+          "keydownToBubble": 22,
+          "keydownToPost": 7,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 0,
+          "readScans": [],
+          "payloadSkills": [],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "plain",
+          "index": 9,
+          "nonce": "nf8edfda1eae4",
+          "keydownWall": 1794942751637,
+          "bubbleWall": 1794942751661,
+          "postWall": 1794942751645,
+          "keydownToBubble": 24,
+          "keydownToPost": 8,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 0,
+          "readScans": [],
+          "payloadSkills": [],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "plain",
+          "index": 10,
+          "nonce": "n336c123709bd",
+          "keydownWall": 1794942757003,
+          "bubbleWall": 1794942757028,
+          "postWall": 1794942757009,
+          "keydownToBubble": 25,
+          "keydownToPost": 6,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 0,
+          "readScans": [],
+          "payloadSkills": [],
+          "typed": true,
+          "invalid": null
+        }
+      ],
+      "bubble": {
+        "n": 11,
+        "p50": 19,
+        "p95": 25,
+        "max": 25,
+        "min": 14
+      },
+      "post": {
+        "n": 11,
+        "p50": 6,
+        "p95": 10,
+        "max": 10,
+        "min": 5
+      },
+      "daemonScan": null,
+      "readsPerPress": {
+        "n": 11,
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "min": 0
+      }
+    },
+    {
+      "id": "one-skill-cold",
+      "skills": 1,
+      "cold": true,
+      "delayMs": 0,
+      "requested": 11,
+      "attempts": 11,
+      "valid": 0,
+      "samples": [
+        {
+          "arm": "one-skill-cold",
+          "index": 0,
+          "nonce": "nc6ca512b2876",
+          "keydownWall": 1794942701884,
+          "bubbleWall": 1794942701899,
+          "postWall": null,
+          "keydownToBubble": 15,
+          "keydownToPost": null,
+          "cleared": true,
+          "clearedLeftover": true,
+          "skillReads": 1,
+          "readScans": [
+            {
+              "inMs": 2,
+              "daemonMs": null,
+              "totalMs": null
+            }
+          ],
+          "payloadSkills": null,
+          "typed": true,
+          "invalid": "no sessions.message POST seen at the proxy"
+        },
+        {
+          "arm": "one-skill-cold",
+          "index": 1,
+          "nonce": "necaae32bce0a",
+          "keydownWall": 1794942707137,
+          "bubbleWall": 1794942707153,
+          "postWall": null,
+          "keydownToBubble": 16,
+          "keydownToPost": null,
+          "cleared": true,
+          "clearedLeftover": true,
+          "skillReads": 1,
+          "readScans": [
+            {
+              "inMs": 2,
+              "daemonMs": null,
+              "totalMs": null
+            }
+          ],
+          "payloadSkills": null,
+          "typed": true,
+          "invalid": "no sessions.message POST seen at the proxy"
+        },
+        {
+          "arm": "one-skill-cold",
+          "index": 2,
+          "nonce": "n713613daff63",
+          "keydownWall": 1794942712390,
+          "bubbleWall": 1794942712407,
+          "postWall": null,
+          "keydownToBubble": 17,
+          "keydownToPost": null,
+          "cleared": true,
+          "clearedLeftover": true,
+          "skillReads": 1,
+          "readScans": [
+            {
+              "inMs": 2,
+              "daemonMs": null,
+              "totalMs": null
+            }
+          ],
+          "payloadSkills": null,
+          "typed": true,
+          "invalid": "no sessions.message POST seen at the proxy"
+        },
+        {
+          "arm": "one-skill-cold",
+          "index": 3,
+          "nonce": "n5d31f460df52",
+          "keydownWall": 1794942717838,
+          "bubbleWall": 1794942717856,
+          "postWall": null,
+          "keydownToBubble": 18,
+          "keydownToPost": null,
+          "cleared": true,
+          "clearedLeftover": true,
+          "skillReads": 1,
+          "readScans": [
+            {
+              "inMs": 2,
+              "daemonMs": null,
+              "totalMs": null
+            }
+          ],
+          "payloadSkills": null,
+          "typed": true,
+          "invalid": "no sessions.message POST seen at the proxy"
+        },
+        {
+          "arm": "one-skill-cold",
+          "index": 4,
+          "nonce": "nf9a65105398c",
+          "keydownWall": 1794942723454,
+          "bubbleWall": 1794942723473,
+          "postWall": null,
+          "keydownToBubble": 19,
+          "keydownToPost": null,
+          "cleared": true,
+          "clearedLeftover": true,
+          "skillReads": 1,
+          "readScans": [
+            {
+              "inMs": 2,
+              "daemonMs": null,
+              "totalMs": null
+            }
+          ],
+          "payloadSkills": null,
+          "typed": true,
+          "invalid": "no sessions.message POST seen at the proxy"
+        },
+        {
+          "arm": "one-skill-cold",
+          "index": 5,
+          "nonce": "na7ee6f099991",
+          "keydownWall": 1794942728921,
+          "bubbleWall": 1794942728942,
+          "postWall": null,
+          "keydownToBubble": 21,
+          "keydownToPost": null,
+          "cleared": true,
+          "clearedLeftover": true,
+          "skillReads": 1,
+          "readScans": [
+            {
+              "inMs": 2,
+              "daemonMs": null,
+              "totalMs": null
+            }
+          ],
+          "payloadSkills": null,
+          "typed": true,
+          "invalid": "no sessions.message POST seen at the proxy"
+        },
+        {
+          "arm": "one-skill-cold",
+          "index": 6,
+          "nonce": "n1a7676e01850",
+          "keydownWall": 1794942734418,
+          "bubbleWall": 1794942734456,
+          "postWall": null,
+          "keydownToBubble": 38,
+          "keydownToPost": null,
+          "cleared": true,
+          "clearedLeftover": true,
+          "skillReads": 1,
+          "readScans": [
+            {
+              "inMs": 4,
+              "daemonMs": null,
+              "totalMs": null
+            }
+          ],
+          "payloadSkills": null,
+          "typed": true,
+          "invalid": "no sessions.message POST seen at the proxy"
+        },
+        {
+          "arm": "one-skill-cold",
+          "index": 7,
+          "nonce": "nc44755427817",
+          "keydownWall": 1794942739930,
+          "bubbleWall": 1794942739972,
+          "postWall": null,
+          "keydownToBubble": 42,
+          "keydownToPost": null,
+          "cleared": true,
+          "clearedLeftover": true,
+          "skillReads": 1,
+          "readScans": [
+            {
+              "inMs": 5,
+              "daemonMs": null,
+              "totalMs": null
+            }
+          ],
+          "payloadSkills": null,
+          "typed": true,
+          "invalid": "no sessions.message POST seen at the proxy"
+        },
+        {
+          "arm": "one-skill-cold",
+          "index": 8,
+          "nonce": "n12c19352343f",
+          "keydownWall": 1794942745411,
+          "bubbleWall": 1794942745451,
+          "postWall": null,
+          "keydownToBubble": 40,
+          "keydownToPost": null,
+          "cleared": true,
+          "clearedLeftover": true,
+          "skillReads": 1,
+          "readScans": [
+            {
+              "inMs": 4,
+              "daemonMs": null,
+              "totalMs": null
+            }
+          ],
+          "payloadSkills": null,
+          "typed": true,
+          "invalid": "no sessions.message POST seen at the proxy"
+        },
+        {
+          "arm": "one-skill-cold",
+          "index": 9,
+          "nonce": "n25a1cdfc3936",
+          "keydownWall": 1794942750976,
+          "bubbleWall": 1794942751003,
+          "postWall": null,
+          "keydownToBubble": 27,
+          "keydownToPost": null,
+          "cleared": true,
+          "clearedLeftover": true,
+          "skillReads": 1,
+          "readScans": [
+            {
+              "inMs": 4,
+              "daemonMs": null,
+              "totalMs": null
+            }
+          ],
+          "payloadSkills": null,
+          "typed": true,
+          "invalid": "no sessions.message POST seen at the proxy"
+        },
+        {
+          "arm": "one-skill-cold",
+          "index": 10,
+          "nonce": "nd4ef35fbc420",
+          "keydownWall": 1794942756312,
+          "bubbleWall": 1794942756368,
+          "postWall": null,
+          "keydownToBubble": 56,
+          "keydownToPost": null,
+          "cleared": true,
+          "clearedLeftover": true,
+          "skillReads": 1,
+          "readScans": [
+            {
+              "inMs": 4,
+              "daemonMs": null,
+              "totalMs": null
+            }
+          ],
+          "payloadSkills": null,
+          "typed": true,
+          "invalid": "no sessions.message POST seen at the proxy"
+        }
+      ],
+      "bubble": null,
+      "post": null,
+      "daemonScan": null,
+      "readsPerPress": null
+    },
+    {
+      "id": "three-skills-cold",
+      "skills": 3,
+      "cold": true,
+      "delayMs": 0,
+      "requested": 11,
+      "attempts": 11,
+      "valid": 0,
+      "samples": [
+        {
+          "arm": "three-skills-cold",
+          "index": 0,
+          "nonce": "n77c9458eb273",
+          "keydownWall": 1794942698907,
+          "bubbleWall": 1794942698935,
+          "postWall": null,
+          "keydownToBubble": 28,
+          "keydownToPost": null,
+          "cleared": true,
+          "clearedLeftover": true,
+          "skillReads": 3,
+          "readScans": [
+            {
+              "inMs": 4,
+              "daemonMs": null,
+              "totalMs": null
+            },
+            {
+              "inMs": 5,
+              "daemonMs": null,
+              "totalMs": null
+            },
+            {
+              "inMs": 5,
+              "daemonMs": null,
+              "totalMs": null
+            }
+          ],
+          "payloadSkills": null,
+          "typed": true,
+          "invalid": "no sessions.message POST seen at the proxy"
+        },
+        {
+          "arm": "three-skills-cold",
+          "index": 1,
+          "nonce": "nb8f3c5b74784",
+          "keydownWall": 1794942704151,
+          "bubbleWall": 1794942704167,
+          "postWall": null,
+          "keydownToBubble": 16,
+          "keydownToPost": null,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 3,
+          "readScans": [
+            {
+              "inMs": 2,
+              "daemonMs": null,
+              "totalMs": null
+            },
+            {
+              "inMs": 2,
+              "daemonMs": null,
+              "totalMs": null
+            },
+            {
+              "inMs": 2,
+              "daemonMs": null,
+              "totalMs": null
+            }
+          ],
+          "payloadSkills": null,
+          "typed": true,
+          "invalid": "no sessions.message POST seen at the proxy"
+        },
+        {
+          "arm": "three-skills-cold",
+          "index": 2,
+          "nonce": "n2fe94de9ff28",
+          "keydownWall": 1794942709410,
+          "bubbleWall": 1794942709433,
+          "postWall": null,
+          "keydownToBubble": 23,
+          "keydownToPost": null,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 3,
+          "readScans": [
+            {
+              "inMs": 3,
+              "daemonMs": null,
+              "totalMs": null
+            },
+            {
+              "inMs": 3,
+              "daemonMs": null,
+              "totalMs": null
+            },
+            {
+              "inMs": 3,
+              "daemonMs": null,
+              "totalMs": null
+            }
+          ],
+          "payloadSkills": null,
+          "typed": true,
+          "invalid": "no sessions.message POST seen at the proxy"
+        },
+        {
+          "arm": "three-skills-cold",
+          "index": 3,
+          "nonce": "nc1f39346eadd",
+          "keydownWall": 1794942714665,
+          "bubbleWall": 1794942714684,
+          "postWall": null,
+          "keydownToBubble": 19,
+          "keydownToPost": null,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 3,
+          "readScans": [
+            {
+              "inMs": 2,
+              "daemonMs": null,
+              "totalMs": null
+            },
+            {
+              "inMs": 2,
+              "daemonMs": null,
+              "totalMs": null
+            },
+            {
+              "inMs": 2,
+              "daemonMs": null,
+              "totalMs": null
+            }
+          ],
+          "payloadSkills": null,
+          "typed": true,
+          "invalid": "no sessions.message POST seen at the proxy"
+        },
+        {
+          "arm": "three-skills-cold",
+          "index": 4,
+          "nonce": "n784827167e47",
+          "keydownWall": 1794942720266,
+          "bubbleWall": 1794942720289,
+          "postWall": null,
+          "keydownToBubble": 23,
+          "keydownToPost": null,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 3,
+          "readScans": [
+            {
+              "inMs": 2,
+              "daemonMs": null,
+              "totalMs": null
+            },
+            {
+              "inMs": 2,
+              "daemonMs": null,
+              "totalMs": null
+            },
+            {
+              "inMs": 2,
+              "daemonMs": null,
+              "totalMs": null
+            }
+          ],
+          "payloadSkills": null,
+          "typed": true,
+          "invalid": "no sessions.message POST seen at the proxy"
+        },
+        {
+          "arm": "three-skills-cold",
+          "index": 5,
+          "nonce": "n5a803801f5aa",
+          "keydownWall": 1794942725763,
+          "bubbleWall": 1794942725786,
+          "postWall": null,
+          "keydownToBubble": 23,
+          "keydownToPost": null,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 3,
+          "readScans": [
+            {
+              "inMs": 2,
+              "daemonMs": null,
+              "totalMs": null
+            },
+            {
+              "inMs": 2,
+              "daemonMs": null,
+              "totalMs": null
+            },
+            {
+              "inMs": 2,
+              "daemonMs": null,
+              "totalMs": null
+            }
+          ],
+          "payloadSkills": null,
+          "typed": true,
+          "invalid": "no sessions.message POST seen at the proxy"
+        },
+        {
+          "arm": "three-skills-cold",
+          "index": 6,
+          "nonce": "n2aa3fe557272",
+          "keydownWall": 1794942731266,
+          "bubbleWall": 1794942731307,
+          "postWall": null,
+          "keydownToBubble": 41,
+          "keydownToPost": null,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 3,
+          "readScans": [
+            {
+              "inMs": 5,
+              "daemonMs": null,
+              "totalMs": null
+            },
+            {
+              "inMs": 5,
+              "daemonMs": null,
+              "totalMs": null
+            },
+            {
+              "inMs": 5,
+              "daemonMs": null,
+              "totalMs": null
+            }
+          ],
+          "payloadSkills": null,
+          "typed": true,
+          "invalid": "no sessions.message POST seen at the proxy"
+        },
+        {
+          "arm": "three-skills-cold",
+          "index": 7,
+          "nonce": "n841f85043bd1",
+          "keydownWall": 1794942736747,
+          "bubbleWall": 1794942736772,
+          "postWall": null,
+          "keydownToBubble": 25,
+          "keydownToPost": null,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 3,
+          "readScans": [
+            {
+              "inMs": 2,
+              "daemonMs": null,
+              "totalMs": null
+            },
+            {
+              "inMs": 2,
+              "daemonMs": null,
+              "totalMs": null
+            },
+            {
+              "inMs": 2,
+              "daemonMs": null,
+              "totalMs": null
+            }
+          ],
+          "payloadSkills": null,
+          "typed": true,
+          "invalid": "no sessions.message POST seen at the proxy"
+        },
+        {
+          "arm": "three-skills-cold",
+          "index": 8,
+          "nonce": "nc8f22b24570e",
+          "keydownWall": 1794942742298,
+          "bubbleWall": 1794942742341,
+          "postWall": null,
+          "keydownToBubble": 43,
+          "keydownToPost": null,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 3,
+          "readScans": [
+            {
+              "inMs": 4,
+              "daemonMs": null,
+              "totalMs": null
+            },
+            {
+              "inMs": 5,
+              "daemonMs": null,
+              "totalMs": null
+            },
+            {
+              "inMs": 5,
+              "daemonMs": null,
+              "totalMs": null
+            }
+          ],
+          "payloadSkills": null,
+          "typed": true,
+          "invalid": "no sessions.message POST seen at the proxy"
+        },
+        {
+          "arm": "three-skills-cold",
+          "index": 9,
+          "nonce": "n6a6bb8ac2f49",
+          "keydownWall": 1794942747844,
+          "bubbleWall": 1794942747892,
+          "postWall": null,
+          "keydownToBubble": 48,
+          "keydownToPost": null,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 3,
+          "readScans": [
+            {
+              "inMs": 5,
+              "daemonMs": null,
+              "totalMs": null
+            },
+            {
+              "inMs": 5,
+              "daemonMs": null,
+              "totalMs": null
+            },
+            {
+              "inMs": 5,
+              "daemonMs": null,
+              "totalMs": null
+            }
+          ],
+          "payloadSkills": null,
+          "typed": true,
+          "invalid": "no sessions.message POST seen at the proxy"
+        },
+        {
+          "arm": "three-skills-cold",
+          "index": 10,
+          "nonce": "nc026b3631ca7",
+          "keydownWall": 1794942753381,
+          "bubbleWall": 1794942753427,
+          "postWall": null,
+          "keydownToBubble": 46,
+          "keydownToPost": null,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 3,
+          "readScans": [
+            {
+              "inMs": 5,
+              "daemonMs": null,
+              "totalMs": null
+            },
+            {
+              "inMs": 5,
+              "daemonMs": null,
+              "totalMs": null
+            },
+            {
+              "inMs": 5,
+              "daemonMs": null,
+              "totalMs": null
+            }
+          ],
+          "payloadSkills": null,
+          "typed": true,
+          "invalid": "no sessions.message POST seen at the proxy"
+        }
+      ],
+      "bubble": null,
+      "post": null,
+      "daemonScan": null,
+      "readsPerPress": null
+    },
+    {
+      "id": "three-skills-warm",
+      "skills": 3,
+      "cold": false,
+      "delayMs": 0,
+      "requested": 11,
+      "attempts": 11,
+      "valid": 0,
+      "samples": [
+        {
+          "arm": "three-skills-warm",
+          "index": 0,
+          "nonce": "na9bb31a96bcb",
+          "keydownWall": 1794942699496,
+          "bubbleWall": 1794942699500,
+          "postWall": null,
+          "keydownToBubble": 4,
+          "keydownToPost": null,
+          "cleared": false,
+          "clearedLeftover": false,
+          "skillReads": 0,
+          "readScans": [],
+          "payloadSkills": null,
+          "typed": true,
+          "invalid": "no sessions.message POST seen at the proxy"
+        },
+        {
+          "arm": "three-skills-warm",
+          "index": 1,
+          "nonce": "nd48633512dfc",
+          "keydownWall": 1794942704727,
+          "bubbleWall": 1794942704731,
+          "postWall": null,
+          "keydownToBubble": 4,
+          "keydownToPost": null,
+          "cleared": false,
+          "clearedLeftover": false,
+          "skillReads": 0,
+          "readScans": [],
+          "payloadSkills": null,
+          "typed": true,
+          "invalid": "no sessions.message POST seen at the proxy"
+        },
+        {
+          "arm": "three-skills-warm",
+          "index": 2,
+          "nonce": "n71182c35790b",
+          "keydownWall": 1794942709990,
+          "bubbleWall": 1794942709995,
+          "postWall": null,
+          "keydownToBubble": 5,
+          "keydownToPost": null,
+          "cleared": false,
+          "clearedLeftover": false,
+          "skillReads": 0,
+          "readScans": [],
+          "payloadSkills": null,
+          "typed": true,
+          "invalid": "no sessions.message POST seen at the proxy"
+        },
+        {
+          "arm": "three-skills-warm",
+          "index": 3,
+          "nonce": "nd1aec2df5e43",
+          "keydownWall": 1794942715247,
+          "bubbleWall": 1794942715253,
+          "postWall": null,
+          "keydownToBubble": 6,
+          "keydownToPost": null,
+          "cleared": false,
+          "clearedLeftover": false,
+          "skillReads": 0,
+          "readScans": [],
+          "payloadSkills": null,
+          "typed": true,
+          "invalid": "no sessions.message POST seen at the proxy"
+        },
+        {
+          "arm": "three-skills-warm",
+          "index": 4,
+          "nonce": "neb0473ef6c10",
+          "keydownWall": 1794942720854,
+          "bubbleWall": 1794942720859,
+          "postWall": null,
+          "keydownToBubble": 5,
+          "keydownToPost": null,
+          "cleared": false,
+          "clearedLeftover": false,
+          "skillReads": 0,
+          "readScans": [],
+          "payloadSkills": null,
+          "typed": true,
+          "invalid": "no sessions.message POST seen at the proxy"
+        },
+        {
+          "arm": "three-skills-warm",
+          "index": 5,
+          "nonce": "n6d5855bc34c8",
+          "keydownWall": 1794942726357,
+          "bubbleWall": 1794942726363,
+          "postWall": null,
+          "keydownToBubble": 6,
+          "keydownToPost": null,
+          "cleared": false,
+          "clearedLeftover": false,
+          "skillReads": 0,
+          "readScans": [],
+          "payloadSkills": null,
+          "typed": true,
+          "invalid": "no sessions.message POST seen at the proxy"
+        },
+        {
+          "arm": "three-skills-warm",
+          "index": 6,
+          "nonce": "nd66540ff1798",
+          "keydownWall": 1794942731884,
+          "bubbleWall": 1794942731891,
+          "postWall": null,
+          "keydownToBubble": 7,
+          "keydownToPost": null,
+          "cleared": false,
+          "clearedLeftover": false,
+          "skillReads": 0,
+          "readScans": [],
+          "payloadSkills": null,
+          "typed": true,
+          "invalid": "no sessions.message POST seen at the proxy"
+        },
+        {
+          "arm": "three-skills-warm",
+          "index": 7,
+          "nonce": "nb7774a666cde",
+          "keydownWall": 1794942737334,
+          "bubbleWall": 1794942737340,
+          "postWall": null,
+          "keydownToBubble": 6,
+          "keydownToPost": null,
+          "cleared": false,
+          "clearedLeftover": false,
+          "skillReads": 0,
+          "readScans": [],
+          "payloadSkills": null,
+          "typed": true,
+          "invalid": "no sessions.message POST seen at the proxy"
+        },
+        {
+          "arm": "three-skills-warm",
+          "index": 8,
+          "nonce": "na2944b9f5798",
+          "keydownWall": 1794942742919,
+          "bubbleWall": 1794942742926,
+          "postWall": null,
+          "keydownToBubble": 7,
+          "keydownToPost": null,
+          "cleared": false,
+          "clearedLeftover": false,
+          "skillReads": 0,
+          "readScans": [],
+          "payloadSkills": null,
+          "typed": true,
+          "invalid": "no sessions.message POST seen at the proxy"
+        },
+        {
+          "arm": "three-skills-warm",
+          "index": 9,
+          "nonce": "n55be5c66c729",
+          "keydownWall": 1794942748473,
+          "bubbleWall": 1794942748481,
+          "postWall": null,
+          "keydownToBubble": 8,
+          "keydownToPost": null,
+          "cleared": false,
+          "clearedLeftover": false,
+          "skillReads": 0,
+          "readScans": [],
+          "payloadSkills": null,
+          "typed": true,
+          "invalid": "no sessions.message POST seen at the proxy"
+        },
+        {
+          "arm": "three-skills-warm",
+          "index": 10,
+          "nonce": "na2fd6bcb99f5",
+          "keydownWall": 1794942754009,
+          "bubbleWall": 1794942754016,
+          "postWall": null,
+          "keydownToBubble": 7,
+          "keydownToPost": null,
+          "cleared": false,
+          "clearedLeftover": false,
+          "skillReads": 0,
+          "readScans": [],
+          "payloadSkills": null,
+          "typed": true,
+          "invalid": "no sessions.message POST seen at the proxy"
+        }
+      ],
+      "bubble": null,
+      "post": null,
+      "daemonScan": null,
+      "readsPerPress": null
+    }
+  ],
+  "notes": [
+    "control-delay-200: no sessions.message POST seen at the proxy",
+    "control-delay-200: no sessions.message POST seen at the proxy",
+    "control-delay-200: no sessions.message POST seen at the proxy",
+    "control-delay-200: no sessions.message POST seen at the proxy",
+    "three-skills-cold: no sessions.message POST seen at the proxy",
+    "three-skills-warm: no sessions.message POST seen at the proxy",
+    "one-skill-cold: no sessions.message POST seen at the proxy",
+    "three-skills-cold: no sessions.message POST seen at the proxy",
+    "three-skills-warm: no sessions.message POST seen at the proxy",
+    "one-skill-cold: no sessions.message POST seen at the proxy",
+    "three-skills-cold: no sessions.message POST seen at the proxy",
+    "three-skills-warm: no sessions.message POST seen at the proxy",
+    "one-skill-cold: no sessions.message POST seen at the proxy",
+    "three-skills-cold: no sessions.message POST seen at the proxy",
+    "three-skills-warm: no sessions.message POST seen at the proxy",
+    "one-skill-cold: no sessions.message POST seen at the proxy",
+    "three-skills-cold: no sessions.message POST seen at the proxy",
+    "three-skills-warm: no sessions.message POST seen at the proxy",
+    "one-skill-cold: no sessions.message POST seen at the proxy",
+    "three-skills-cold: no sessions.message POST seen at the proxy",
+    "three-skills-warm: no sessions.message POST seen at the proxy",
+    "one-skill-cold: no sessions.message POST seen at the proxy",
+    "three-skills-cold: no sessions.message POST seen at the proxy",
+    "three-skills-warm: no sessions.message POST seen at the proxy",
+    "one-skill-cold: no sessions.message POST seen at the proxy",
+    "three-skills-cold: no sessions.message POST seen at the proxy",
+    "three-skills-warm: no sessions.message POST seen at the proxy",
+    "one-skill-cold: no sessions.message POST seen at the proxy",
+    "three-skills-cold: no sessions.message POST seen at the proxy",
+    "three-skills-warm: no sessions.message POST seen at the proxy",
+    "one-skill-cold: no sessions.message POST seen at the proxy",
+    "three-skills-cold: no sessions.message POST seen at the proxy",
+    "three-skills-warm: no sessions.message POST seen at the proxy",
+    "one-skill-cold: no sessions.message POST seen at the proxy",
+    "three-skills-cold: no sessions.message POST seen at the proxy",
+    "three-skills-warm: no sessions.message POST seen at the proxy",
+    "one-skill-cold: no sessions.message POST seen at the proxy"
+  ],
+  "loadavg_start": [
+    4.88,
+    6.04,
+    8.75
+  ],
+  "capabilities.session_catalogue": 3,
+  "capabilities.session_catalogue_ok": true,
+  "capabilities.desktop_available": true,
+  "sessionId": "affd440fc570",
+  "viewport": "{\"w\":1380,\"h\":900,\"dpr\":1}",
+  "location": "file:///Users/bentran/workspace/repos/local-operator-ui/.worktrees/send-after/out/renderer/index.html#/chat/affd440fc570",
+  "proxy_saw_app_traffic": true,
+  "loadavg_end": [
+    5.4,
+    5.95,
+    8.49
+  ],
+  "invalid": 37
+}

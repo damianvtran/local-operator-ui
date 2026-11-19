@@ -32,6 +32,12 @@
  * - `RemoteHost` is the label that keeps the panel honest when the backend is
  *   not on this machine: the host facts describe the machine the app is
  *   CONNECTED TO, which is why section 2's meta says exactly that.
+ * - The `Stored*` frames are the stored row's readings, all four: a recorded
+ *   stop with its raw token (`StoredWithStopRecorded`), last activity alone
+ *   (`StoredWithoutStopRecorded`), the core's long measured reason
+ *   (`StoredLongStopReason`) and no stamp at all (`StoredUnknownAge`). Stored
+ *   stamps are epoch seconds, so these are also what proves an age is painted
+ *   rather than a 56-year duration.
  * - `MCP` counts come from the live `mcp_servers`, never from `env.mcp_*`: those
  *   are empty defaults on this payload and would paint a confident zero.
  */
@@ -49,6 +55,18 @@ import { InfoPanel } from "./info-panel";
 import { scrollPanelToSection } from "./story-scroll";
 
 const noop = () => {};
+
+/**
+ * Registry stamps are ABSOLUTE epoch seconds, so an age is spelled as "this long
+ * before now".
+ *
+ * `sessionLineRows` subtracts `Date.now()/1000` from `last_activity_s` and
+ * `stopped_at_s` because that is what the wire carries (the transcript file's
+ * mtime). A fixture holding a literal stamp would date the frame — the stored
+ * row would read `16000d ago` a year after it was written — so the fixtures
+ * age relative to render time, exactly as the real registry does.
+ */
+const secondsAgo = (seconds: number): number => Date.now() / 1000 - seconds;
 
 const info = (over: Partial<DesktopInfoData> = {}): DesktopInfoData => ({
 	install: {
@@ -102,7 +120,7 @@ const info = (over: Partial<DesktopInfoData> = {}): DesktopInfoData => ({
 				heartbeat_age_s: 2,
 				rss_bytes: 412_000_000,
 				footprint_bytes: 486_000_000,
-				last_activity_s: 2,
+				last_activity_s: secondsAgo(2),
 				pending: null,
 				busy: false,
 				detached: false,
@@ -121,7 +139,7 @@ const info = (over: Partial<DesktopInfoData> = {}): DesktopInfoData => ({
 				heartbeat_age_s: 4,
 				rss_bytes: 380_000_000,
 				footprint_bytes: null,
-				last_activity_s: 12,
+				last_activity_s: secondsAgo(12),
 				pending: "approval",
 				busy: true,
 				detached: false,
@@ -140,7 +158,15 @@ const info = (over: Partial<DesktopInfoData> = {}): DesktopInfoData => ({
 				heartbeat_age_s: 4_200,
 				rss_bytes: null,
 				footprint_bytes: null,
-				last_activity_s: 4_200,
+				/*
+				 * A stored row carries a RECORDED stop: last activity just before it,
+				 * the stop stamp, and the core's own token. The panel prints the
+				 * token as recorded (`idle-exit`), not a rewritten phrase.
+				 */
+				last_activity_s: secondsAgo(4_260),
+				stopped_at_s: secondsAgo(4_200),
+				stop_reason: "idle-exit",
+				stop_requested: false,
 				pending: null,
 				busy: false,
 				detached: true,
@@ -382,6 +408,115 @@ export const NoMemory: Story = {
 	},
 	/* The line under the table is the whole state, and the table is below the
 	   fold (D2). */
+	play: () => scrollPanelToSection("Sessions on this machine"),
+};
+
+/**
+ * A stored row with a RECORDED stop, in view: `stopped <age> ago · <reason>`.
+ *
+ * `Populated` carries the same row, but its frame is the top of the panel and
+ * the registry is below the fold (D2), so the state a design round has to judge
+ * gets its own scrolled frame. `Populated`'s fixture is reused rather than
+ * re-spelled, so the two frames cannot disagree about the row.
+ */
+export const StoredWithStopRecorded: Story = {
+	args: { ...base, data: info(), frontend },
+	play: () => scrollPanelToSection("Sessions on this machine"),
+};
+
+/**
+ * A stored row with NO recorded stop: last activity is the only claim the reader
+ * can make.
+ *
+ * It is the counter-frame to `StoredWithStopRecorded`: the backend that does not
+ * record a stop (or has not yet) must not get a `stopped` line painted from a
+ * missing stamp. `null` here, not an absent field, because that is what the
+ * newer backend sends for a session it never saw stop: `stopped_at_s: null` with
+ * the empty token, which is the core's own no-record spelling.
+ */
+export const StoredWithoutStopRecorded: Story = {
+	args: {
+		...base,
+		data: info({
+			sessions: {
+				...info().sessions,
+				lines: info().sessions.lines.map((line) =>
+					line.state === "stored"
+						? {
+								...line,
+								stopped_at_s: null,
+								stop_reason: "",
+								stop_requested: null,
+							}
+						: line,
+				),
+			},
+		}),
+		frontend,
+	},
+	/* The stored row is the third line of section 3, below the fold (D2). */
+	play: () => scrollPanelToSection("Sessions on this machine"),
+};
+
+/**
+ * The LONG stop reason: the core records a measured clause as well as the token.
+ *
+ * `idle-exit (busy probe unusable for 14 samples: ps exited 1: operation not
+ * permitted)` is the core's real long shape (`process._idle_exit_reason`, as the
+ * design round 1 probe reported it), and its length is the point: it wraps the
+ * Activity cell, and the separator has to survive that wrap without a dangling
+ * `·` (design round 1, D7). The reason is printed as recorded; no rewriting
+ * happens here.
+ */
+export const StoredLongStopReason: Story = {
+	args: {
+		...base,
+		data: info({
+			sessions: {
+				...info().sessions,
+				lines: info().sessions.lines.map((line) =>
+					line.state === "stored"
+						? {
+								...line,
+								stop_reason:
+									"idle-exit (busy probe unusable for 14 samples: ps exited 1: operation not permitted)",
+							}
+						: line,
+				),
+			},
+		}),
+		frontend,
+	},
+	play: () => scrollPanelToSection("Sessions on this machine"),
+};
+
+/**
+ * No stamp at all: `unknown`, which is the absence of a reading and not `0s`.
+ *
+ * It is the state an older backend's row, or a transcript whose mtime could not
+ * be read, lands in. `stop_reason: ""` is the core's no-record spelling beside
+ * `stopped_at_s: null`, so the row must say neither "stopped" nor an age.
+ */
+export const StoredUnknownAge: Story = {
+	args: {
+		...base,
+		data: info({
+			sessions: {
+				...info().sessions,
+				lines: info().sessions.lines.map((line) =>
+					line.state === "stored"
+						? {
+								...line,
+								last_activity_s: null,
+								stopped_at_s: null,
+								stop_reason: "",
+							}
+						: line,
+				),
+			},
+		}),
+		frontend,
+	},
 	play: () => scrollPanelToSection("Sessions on this machine"),
 };
 

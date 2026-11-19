@@ -1,0 +1,25 @@
+{
+ "auditor": "i18n-auditor",
+ "model": "radient/auto",
+ "instance": "audit-1470u-hi-uihub-20261029",
+ "status": "passed",
+ "namespace": "ui.hub",
+ "sha256": {
+  "hi": "19d95541ba33fd98051afee8cfba61076267ad54fcb7f13ac6ae603006591693",
+  "en": "0d77070295627e861882e8f952888c59e1d013dd754e1a7da79c85d1a31a9753"
+ },
+ "findings": [
+  {
+   "key": "ui.hub.skills.initial_policy_description",
+   "severity": "MINOR",
+   "problem": "‘ऑटो-पुश’ (Devanagari transliteration) is the only occurrence of that spelling in the whole hi locale; the other eight occurrences of the same term inside this catalogue use the Latin form ‘ऑटो-push’ (auto_push, enable, enable_title, enable_public, healthy, healthy_unsourced, auto_push_unverified, auto_push_source_unknown).",
+   "fix": "Use ‘ऑटो-push’ here so the term matches everywhere else in hi."
+  },
+  {
+   "key": "ui.hub.links.outcome_up_to_date",
+   "severity": "NIT",
+   "problem": "Rendered ‘अद्यतित’ (a rare literary form) for the same English “up to date” that ui.hub.links.mark_healthy renders as ‘अपडेट है’; the register also sits apart from the catalogue’s conversational Hindi.",
+   "fix": "Use one form in both keys, e.g. ‘अपडेट है’ or ‘अद्यतन’."
+  }
+ ]
+}

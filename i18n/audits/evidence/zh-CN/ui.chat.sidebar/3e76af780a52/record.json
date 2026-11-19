@@ -1,0 +1,212 @@
+{
+  "locale": "zh-CN",
+  "head_sha": "165aebb1b73e65a63ca2ba1e4d8c9e638e8dc696",
+  "previous_audited_head": "118da8491a9",
+  "scope": "118da8491a9..165aebb1b73",
+  "date": "2026-11-09",
+  "audit_date": "2026-11-09",
+  "mode": "DELTA; verify ZH1 and independently inspect all 7 named keys; not a full-namespace linguistic audit",
+  "key_count": 7,
+  "agent": "i18n-auditor",
+  "instance": "3e76af780a52",
+  "model": "openai/gpt-6.1-sol",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "3e76af780a52",
+    "session": "3e76af780a52",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "Host session model header",
+    "fallback": null,
+    "independent_from_translator_session": true
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "session": null,
+    "identity_source": "Delegation brief; translator session id not supplied"
+  },
+  "status": "passed",
+  "result": "clean",
+  "verdict": "clean",
+  "findings": [],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "namespaces": {
+    "ui.chat.canonical": {
+      "namespace": "ui.chat.canonical",
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "38f767d08ff0f8a4fc6d8eee536ae82a023e93fe50fecc5fabb25a8f7609541f",
+      "target_sha256": "705f67d486f9d011925a234c0a5adb2eb258570ebbc78d3eaa2cf25d24299a13",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+          "sha256": "38f767d08ff0f8a4fc6d8eee536ae82a023e93fe50fecc5fabb25a8f7609541f"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+          "sha256": "58cefb7d2140be875f5bcc0688631a85c368b130b551f82185d78cec47eb8107"
+        },
+        "zh-CN": {
+          "path": "src/i18n/catalogues/zh-CN/ui.chat.canonical.json",
+          "sha256": "705f67d486f9d011925a234c0a5adb2eb258570ebbc78d3eaa2cf25d24299a13"
+        }
+      },
+      "findings": [],
+      "audited_keys": [
+        "ui.chat.canonical.notice.interrupted",
+        "ui.chat.canonical.notice.stopped_with_error",
+        "ui.chat.canonical.notice.compaction_not_run",
+        "ui.chat.canonical.notice.compaction_not_run_after_colon",
+        "ui.chat.canonical.link_toolkit.actions_for"
+      ]
+    },
+    "ui.chat.sidebar_view": {
+      "namespace": "ui.chat.sidebar_view",
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "1c4e36003278bf5ed2afd29acb7f1546eec9a76d330777c7747eaab3a5646adf",
+      "target_sha256": "2722622d763edd095dc457769b895820f86759f016a31a4d40a8534cf2dae77c",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.sidebar_view.json",
+          "sha256": "1c4e36003278bf5ed2afd29acb7f1546eec9a76d330777c7747eaab3a5646adf"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.sidebar_view.context.json",
+          "sha256": "a6009c3a81f85dd2ab1c8dc730d410085850a69e6fdde28e9f37ee1c1bb93367"
+        },
+        "zh-CN": {
+          "path": "src/i18n/catalogues/zh-CN/ui.chat.sidebar_view.json",
+          "sha256": "2722622d763edd095dc457769b895820f86759f016a31a4d40a8534cf2dae77c"
+        }
+      },
+      "findings": [],
+      "audited_keys": [
+        "ui.chat.sidebar_view.ungrouped"
+      ]
+    },
+    "ui.chat.sidebar": {
+      "namespace": "ui.chat.sidebar",
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "5fa8ca072b46407199075c77639deb93957ce3ca93ee03cc70d4134fc027e1ff",
+      "target_sha256": "864b1afc241efb5c170dcf1749b18eeb392c8d08afe3b010a2d46018cf3abef5",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+          "sha256": "5fa8ca072b46407199075c77639deb93957ce3ca93ee03cc70d4134fc027e1ff"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.sidebar.context.json",
+          "sha256": "0449e60c6bd1eb2d298ed576e0428c67f50a9175eb260460ec3ba8e5e3f1eaff"
+        },
+        "zh-CN": {
+          "path": "src/i18n/catalogues/zh-CN/ui.chat.sidebar.json",
+          "sha256": "864b1afc241efb5c170dcf1749b18eeb392c8d08afe3b010a2d46018cf3abef5"
+        }
+      },
+      "findings": [],
+      "audited_keys": [
+        "ui.chat.sidebar.mark_all_read.label"
+      ]
+    }
+  },
+  "per_key": [
+    {
+      "key": "ui.chat.canonical.notice.interrupted",
+      "source": "Interrupted",
+      "current": "已中断",
+      "findings": [],
+      "assessment": "已中断 accurately marks an interrupted whole turn; matches ui.chat.canonical.json:ui.chat.canonical.transcript.interrupted and tool_row.outcome.interrupted."
+    },
+    {
+      "key": "ui.chat.canonical.notice.stopped_with_error",
+      "source": "Stopped with an error",
+      "current": "因出错而停止",
+      "findings": [],
+      "assessment": "因出错而停止 preserves error-caused stopping without inventing a cause; 停止 matches ui.chat.canonical.json:ui.chat.canonical.image_gen.control.stop."
+    },
+    {
+      "key": "ui.chat.canonical.notice.compaction_not_run",
+      "source": "Compaction did not run: {detail}",
+      "current": "上下文压缩未执行：{detail}",
+      "findings": [],
+      "assessment": "上下文压缩 follows glossary compaction→压缩 and style-guide contextual form 上下文压缩. Full-width colon precedes unchanged detail; no independent pre-existing desktop compaction precedent located."
+    },
+    {
+      "key": "ui.chat.canonical.notice.compaction_not_run_after_colon",
+      "source": "Compaction did not run — {detail}",
+      "current": "上下文压缩未执行——{detail}",
+      "findings": [],
+      "assessment": "Same terminology; Chinese paired em dash joins the unchanged reason and avoids duplicate colons; no translation of backend reason."
+    },
+    {
+      "key": "ui.chat.canonical.link_toolkit.actions_for",
+      "source": "Actions for {name}",
+      "current": "{name}的操作",
+      "findings": [],
+      "assessment": "{name}的操作 naturally identifies the toolbar target; 操作 matches ui.chat.canonical.json:ui.chat.canonical.fold.count.actions. Placeholder remains intact; Chinese possessive order is grammatical."
+    },
+    {
+      "key": "ui.chat.sidebar_view.ungrouped",
+      "source": "Ungrouped",
+      "current": "未分组",
+      "findings": [],
+      "assessment": "未分组 is a concise category for chats without an agent/team; no glossary-controlled term or separate shipped identical category precedent located. Sidebar agent/team terminology uses 智能体/团队 (ui.chat.sidebar_view.json:ui.chat.sidebar_view.agent_team)."
+    },
+    {
+      "key": "ui.chat.sidebar.mark_all_read.label",
+      "source": "Mark all {count, number, ::group-off} read",
+      "current": "全部{count, number, ::group-off}个标为已读",
+      "findings": [],
+      "assessment": "ZH1 fixed: 个 instead of 条, matching ui.chat.sidebar.json:ui.chat.sidebar.catalogue.total and catalogue.show_more_chats; 已读 matches ui.notifications.json:ui.notifications.action.mark_all_read. Natural concise bulk imperative; exact number skeleton retained."
+    }
+  ],
+  "mechanical_checks": {
+    "execution": "Tiny read-only Python string checks over git show bytes; not repo validator execution",
+    "valid_json": true,
+    "namespace_key_parity": true,
+    "exact_icu_argument_expressions": true,
+    "markup_and_backticks_unchanged": true,
+    "manual_bidi_controls_absent": true,
+    "plural": "None of the 7 strings uses plural/select; count is number formatting, so no CLDR plural arms are required. zh-CN would require other only.",
+    "english": "No literal English in audited target copy; ICU identifiers and verbatim backend detail/name are allowed.",
+    "receipt_rules": "Source-inspected scripts/i18n/ledger-rules.mjs: namespace objects own source/target sha256 and passing status; explicit [] findings yield clean; consistent agent/model and real instance. Later assembler must supply repo-relative i18n/receipts/<instance>.json plus receipt SHA and independently validate audit set. Rules were not executed."
+  },
+  "fit": {
+    "mark_all_read": "14 fixed CJK cells plus number digits (15 at count=1; 18 at count=1000). No numeric maxCells/maxChars in supplied sidecar; actual narrow-header fit unverified.",
+    "other": "Interrupted 6 cells; error status 12; ungrouped 6. Runtime detail/name unbounded by design; actions_for is screen-reader only. Cell estimates are Unicode east_asian_width-based, not font geometry."
+  },
+  "resolved_findings": [
+    {
+      "id": "ZH1",
+      "status": "fixed",
+      "key": "ui.chat.sidebar.mark_all_read.label",
+      "before": "全部{count, number, ::group-off}条标为已读",
+      "after": "全部{count, number, ::group-off}个标为已读"
+    }
+  ],
+  "out_of_scope_observations": [
+    {
+      "key": "ui.chat.sidebar.catalogue.show_more",
+      "current": "再显示{hidden, plural, other {{hidden, number, ::group-off}条}}",
+      "assessment": "Bare 条 is inconsistent if the hidden items are chats; 个 is the chat classifier used by catalogue.total/show_more_chats and locale guide. Pre-existing: exact same value independently read at main 23ec4af967b, previous audited head 118da8491a9, and current head. Not changed by delta; not a gating finding.",
+      "suggested_value": "再显示{hidden, plural, other {{hidden, number, ::group-off}个}}"
+    }
+  ],
+  "unverified": [
+    "Repository validator and ledger-rules execution (host overload: no tests/builds; source inspection only)",
+    "ICU runtime formatting, rendering, pseudo-localisation, font/geometry and real narrow-header fit (no browser permitted)",
+    "Translator session id not supplied; agent/model independence established from brief versus host header"
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": []
+  }
+}

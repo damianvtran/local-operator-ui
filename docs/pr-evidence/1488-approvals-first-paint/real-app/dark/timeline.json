@@ -1,0 +1,314 @@
+[
+ {
+  "at": 9,
+  "error": "Error: evaluate threw: Uncaught TypeError: Cannot read properties of null (reading 'dataset')\n    at <anonymous>:5:41\n    at <anonymous>:12:7"
+ },
+ {
+  "at": 189,
+  "target": "674133F8C2A93C188BAF18D618F4EA3D",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian",
+  "theme": "localOperatorDark",
+  "vis": "hidden",
+  "size": [
+   368,
+   112
+  ],
+  "hasCard": true,
+  "text": "",
+  "bg": "rgb(50, 45, 34)"
+ },
+ {
+  "at": 353,
+  "target": "674133F8C2A93C188BAF18D618F4EA3D",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian",
+  "theme": "obsidian",
+  "vis": "visible",
+  "size": [
+   368,
+   383
+  ],
+  "hasCard": true,
+  "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+  "bg": "rgb(53, 52, 56)"
+ },
+ {
+  "at": 578,
+  "target": "674133F8C2A93C188BAF18D618F4EA3D",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian",
+  "theme": "obsidian",
+  "vis": "visible",
+  "size": [
+   368,
+   383
+  ],
+  "hasCard": true,
+  "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+  "bg": "rgb(53, 52, 56)"
+ },
+ {
+  "at": 694,
+  "target": "674133F8C2A93C188BAF18D618F4EA3D",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian",
+  "theme": "obsidian",
+  "vis": "visible",
+  "size": [
+   368,
+   383
+  ],
+  "hasCard": true,
+  "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+  "bg": "rgb(53, 52, 56)"
+ },
+ {
+  "at": 812,
+  "target": "674133F8C2A93C188BAF18D618F4EA3D",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian",
+  "theme": "obsidian",
+  "vis": "visible",
+  "size": [
+   368,
+   383
+  ],
+  "hasCard": true,
+  "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+  "bg": "rgb(53, 52, 56)"
+ },
+ {
+  "at": 925,
+  "target": "674133F8C2A93C188BAF18D618F4EA3D",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian",
+  "theme": "obsidian",
+  "vis": "visible",
+  "size": [
+   368,
+   383
+  ],
+  "hasCard": true,
+  "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+  "bg": "rgb(53, 52, 56)"
+ },
+ {
+  "at": 1034,
+  "target": "674133F8C2A93C188BAF18D618F4EA3D",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian",
+  "theme": "obsidian",
+  "vis": "visible",
+  "size": [
+   368,
+   383
+  ],
+  "hasCard": true,
+  "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+  "bg": "rgb(53, 52, 56)"
+ },
+ {
+  "at": 1143,
+  "target": "674133F8C2A93C188BAF18D618F4EA3D",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian",
+  "theme": "obsidian",
+  "vis": "visible",
+  "size": [
+   368,
+   383
+  ],
+  "hasCard": true,
+  "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+  "bg": "rgb(53, 52, 56)"
+ },
+ {
+  "at": 1350,
+  "target": "674133F8C2A93C188BAF18D618F4EA3D",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian",
+  "theme": "obsidian",
+  "vis": "visible",
+  "size": [
+   368,
+   383
+  ],
+  "hasCard": true,
+  "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+  "bg": "rgb(53, 52, 56)"
+ },
+ {
+  "at": 1468,
+  "target": "674133F8C2A93C188BAF18D618F4EA3D",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian",
+  "theme": "obsidian",
+  "vis": "visible",
+  "size": [
+   368,
+   383
+  ],
+  "hasCard": true,
+  "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+  "bg": "rgb(53, 52, 56)"
+ },
+ {
+  "at": 1584,
+  "target": "674133F8C2A93C188BAF18D618F4EA3D",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian",
+  "theme": "obsidian",
+  "vis": "visible",
+  "size": [
+   368,
+   383
+  ],
+  "hasCard": true,
+  "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+  "bg": "rgb(53, 52, 56)"
+ },
+ {
+  "at": 1700,
+  "target": "674133F8C2A93C188BAF18D618F4EA3D",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian",
+  "theme": "obsidian",
+  "vis": "visible",
+  "size": [
+   368,
+   383
+  ],
+  "hasCard": true,
+  "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+  "bg": "rgb(53, 52, 56)"
+ },
+ {
+  "at": 1808,
+  "target": "674133F8C2A93C188BAF18D618F4EA3D",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian",
+  "theme": "obsidian",
+  "vis": "visible",
+  "size": [
+   368,
+   383
+  ],
+  "hasCard": true,
+  "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+  "bg": "rgb(53, 52, 56)"
+ },
+ {
+  "at": 1917,
+  "target": "674133F8C2A93C188BAF18D618F4EA3D",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian",
+  "theme": "obsidian",
+  "vis": "visible",
+  "size": [
+   368,
+   383
+  ],
+  "hasCard": true,
+  "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+  "bg": "rgb(53, 52, 56)"
+ },
+ {
+  "at": 2033,
+  "target": "674133F8C2A93C188BAF18D618F4EA3D",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian",
+  "theme": "obsidian",
+  "vis": "visible",
+  "size": [
+   368,
+   383
+  ],
+  "hasCard": true,
+  "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+  "bg": "rgb(53, 52, 56)"
+ },
+ {
+  "at": 2142,
+  "target": "674133F8C2A93C188BAF18D618F4EA3D",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian",
+  "theme": "obsidian",
+  "vis": "visible",
+  "size": [
+   368,
+   383
+  ],
+  "hasCard": true,
+  "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+  "bg": "rgb(53, 52, 56)"
+ },
+ {
+  "at": 2267,
+  "target": "674133F8C2A93C188BAF18D618F4EA3D",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian",
+  "theme": "obsidian",
+  "vis": "visible",
+  "size": [
+   368,
+   383
+  ],
+  "hasCard": true,
+  "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+  "bg": "rgb(53, 52, 56)"
+ },
+ {
+  "at": 2384,
+  "target": "674133F8C2A93C188BAF18D618F4EA3D",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian",
+  "theme": "obsidian",
+  "vis": "visible",
+  "size": [
+   368,
+   383
+  ],
+  "hasCard": true,
+  "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+  "bg": "rgb(53, 52, 56)"
+ },
+ {
+  "at": 2500,
+  "target": "674133F8C2A93C188BAF18D618F4EA3D",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian",
+  "theme": "obsidian",
+  "vis": "visible",
+  "size": [
+   368,
+   383
+  ],
+  "hasCard": true,
+  "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+  "bg": "rgb(53, 52, 56)"
+ },
+ {
+  "at": 2610,
+  "target": "674133F8C2A93C188BAF18D618F4EA3D",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian",
+  "theme": "obsidian",
+  "vis": "visible",
+  "size": [
+   368,
+   383
+  ],
+  "hasCard": true,
+  "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+  "bg": "rgb(53, 52, 56)"
+ },
+ {
+  "at": 2827,
+  "target": "674133F8C2A93C188BAF18D618F4EA3D",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian",
+  "theme": "obsidian",
+  "vis": "visible",
+  "size": [
+   368,
+   383
+  ],
+  "hasCard": true,
+  "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+  "bg": "rgb(53, 52, 56)"
+ },
+ {
+  "at": 2941,
+  "target": "674133F8C2A93C188BAF18D618F4EA3D",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=dark&palette=obsidian",
+  "theme": "obsidian",
+  "vis": "visible",
+  "size": [
+   368,
+   383
+  ],
+  "hasCard": true,
+  "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+  "bg": "rgb(53, 52, 56)"
+ }
+]

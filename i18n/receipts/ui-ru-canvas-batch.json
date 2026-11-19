@@ -1,0 +1,287 @@
+{
+	"locale": "ru",
+	"translator": "translator (lopdev team subagent)",
+	"agent": "i18n-translator",
+	"session": "ef600dd9bdd0",
+	"served_model": "radient/auto",
+	"model_history": [
+		"openrouter/moonshotai/kimi-k3.1-pro",
+		"radient/auto"
+	],
+	"date": "2026-10-24",
+	"status": "translated",
+	"awaiting": "independent i18n-auditor pass; ledger rows are added after the audit",
+	"source": {
+		"extraction_head": "eb963e1baa63078a708161efd19336d4a32429c7",
+		"manifest_base": "f6b9aae9ce5594e79dddb0d654edc4b4a0862331",
+		"manifest_keys": 1041
+	},
+	"scope": {
+		"assigned_keys": 1041,
+		"completeness_keys": 38,
+		"note": "The 1,041-key manifest is translated in full. Russian never carried ui.chat.pickers or ui.common.viewer, so creating those files from batch keys alone would ship a namespace that silently falls back to English for 34 picker and 4 viewer keys; those pre-existing English keys are translated too, making both namespaces complete. No key outside the English source was added."
+	},
+	"glossary": "~/local-operator/i18n/glossary.md",
+	"style_guide": "~/local-operator/i18n/style-guides/ru.md",
+	"namespaces": {
+		"ui.canvas": {
+			"keys": 347,
+			"sha256": {
+				"en": "be8acd20add01188abed4985d0aad11325a7ebd8cdbc3bd5c9376be65543563f",
+				"ru": "a7c181ca79d07eb7e145af1fb99003350d2122e026efbfba84078b7b7559a984",
+				"context": "4bc0f2bc47d4b0e826ebb10ba78ff965c550debef54f47c912b9e257fd1784f8"
+			}
+		},
+		"ui.chat.pickers": {
+			"keys": 720,
+			"sha256": {
+				"en": "8109df703e1a4901e4d892607dddd875e6a737c9ea8ee7ef41ec28dbe6ac2e58",
+				"ru": "e75baa492be02e21042bb07587a6d529fb3c48b0889420e67006ab5f5fa67bd9",
+				"context": "c921d3e37ce54288a18e2b45310034a0df0114f15c30e57133422018a00b38d9"
+			}
+		},
+		"ui.common.actions": {
+			"keys": 36,
+			"sha256": {
+				"en": "d65be7beac66c209a55db5d8a672ff8a8a743eea49ba21593120d4b8664603b2",
+				"ru": "56c5649c7e4b71e216cd9a770571726644fe8eb4da26fb237e964cea74097b40",
+				"context": "29a6cc54f8605ab2612775708bf5eb202a89e6708167d8a7c3f329a536b339db"
+			}
+		},
+		"ui.common.forms": {
+			"keys": 37,
+			"sha256": {
+				"en": "c87c16b1169f32105e017fd27eb80047446938b1b45046c28bcf693856898238",
+				"ru": "da39ff7a53fc07dc5c0cdc8bbca8f62b4ff9fa7ae210224b5577fc85ae0cf364",
+				"context": "c11472cc390fe7771e08dcd34bb633e63797f979a113feaa47d70d06daea38b4"
+			}
+		},
+		"ui.common.layout": {
+			"keys": 8,
+			"sha256": {
+				"en": "c4efaa88bba85706ac9fb976bc3d3d009f3bb08fc762a90dfeb73d90d0c14db6",
+				"ru": "58c4d7a152138cf8f9ddee54d631880d3ed2f7ce443b477573d71322dd1eb4ca",
+				"context": "318673c640a31e11f5249127c8ef5a76d63c16c3c191960824391d934766bd39"
+			}
+		},
+		"ui.common.speech": {
+			"keys": 5,
+			"sha256": {
+				"en": "fa6a973f1a6a36f25218e884174299ba154e124baaddc87594bd516c8d07d8f6",
+				"ru": "0cae5d5f726c1d3c606ca09730345b3c08b02234e083809151de4b84d29f9d3f",
+				"context": "740828525702d67b6ee0ecf7eb0a3f1582167989355bd12d0579d698b982267a"
+			}
+		},
+		"ui.common.updates": {
+			"keys": 135,
+			"sha256": {
+				"en": "1f81721263fa4c7d74219bd2c0af82b908bf2fb4491df074e99e2215ad00d667",
+				"ru": "11a410e3f7ff790b8b370e4559e5f4a27bc8da3bcbd18e2c07bd781aa168e430",
+				"context": "cb4a160ef62b1760d4622b29c90e130cff1b4165ac770dab200ebc54eca38bee"
+			}
+		},
+		"ui.common.viewer": {
+			"keys": 8,
+			"sha256": {
+				"en": "c0ffdd08058b062c88c6fad428db0e33c4162bcee1094dd5dd16890fe4e9705f",
+				"ru": "b6fafba450fed745a8a94282ea71e6f742afb38072a7238a011bca7e2348e995",
+				"context": "8b324e966ddb4aaef92ec3b3465f8ac6a80982529bcbd3b45a3c1cf1f9b28dd8"
+			}
+		}
+	},
+	"translator_calls": {
+		"register": "formal «вы», lowercase mid-sentence; infinitive action labels; sentence case; «ёлочки» for prose quotes; em dash with spaces; no typographic spacing before punctuation",
+		"chosen_terms": {
+			"canvas": "холст (existing catalogue usage)",
+			"pickers": "выбор/панель выбора where a noun is required",
+			"destination": "адресат",
+			"failover": "резервное переключение, резервные цепочки",
+			"judge": "судья (model that decides a goal is met)",
+			"native inputs/outputs": "входные/выходные модальности",
+			"graceful degradation": "не применялось"
+		},
+		"plurals": "all ru plural messages carry one/few/many/other; select arms mirror English exactly, including other_category versus the unknown-id other fallback",
+		"token_exemptions": "38 language-neutral values (file types, env-var names, JSON examples, sample path/URL, count-only skeletons) are declared in scripts/i18n/locale-parity.test.mjs IDENTICAL_OK with per-key reasons",
+		"count_api_note": "The extracted helper passes only a singular and a plural noun, which cannot express Russian's one/few/many noun forms. Counted messages therefore use the numeral-invariant 'шт.' for non-one categories and name the category once; a source fix (three noun forms, or the noun inside the counted message) would remove the remaining repetition in the canvas view labels. Flagged for the extraction owner."
+	},
+	"checks": {
+		"generate_check": "ok — keys.gen.ts byte-identical to a fresh generation",
+		"locale_parity_ru": "6/6 pass (keys, uniqueness, complete namespace, no unknown keys, ICU arguments, no English stubs)",
+		"icu_parity_manifest": "1041/1041 keys parse under ru rules; ICU arguments, select arms and numeric skeletons match English; 1079 ru values checked including the 38 completeness keys",
+		"context_parity": "ok — every English key covered apart from the existing shrink-only allowance",
+		"check_strings": "ok — 1343 files scanned, 417 literals at or below baseline",
+		"check_added_strings": "PASS — no newly added literal copy",
+		"check_types": "pnpm check-types passed (tsconfig.node + tsconfig.app)",
+		"check_coverage": "red until integration: other locales still lack the extraction keys; the ru/ui.chat.pickers and ru/ui.common.viewer allowance entries are now stale by exactly the 38 completed keys and need a shrink-only --update. No allowance was edited in this branch.",
+		"ledger": "red until independent audit: the four new ru namespaces ship without ledger rows, as expected before the auditor pass",
+		"pseudo_localization": "no pseudo-localization tooling exists in this repository at eb963e1baa; not run"
+	},
+	"remediation": {
+		"round": 1,
+		"date": "2026-10-24",
+		"head_before": "936e3a483b4d675c9827be5f40167da186f86900",
+		"base": "40462495827dfb0e1bfacb8643da805912493a5b",
+		"audit_receipt": "i18n/receipts/0f5238900a89-canvas.json",
+		"auditor": {
+			"agent": "translation-auditor",
+			"session": "0f5238900a89"
+		},
+		"disposition": {
+			"blockers_fixed": 2,
+			"required_majors_fixed": 5,
+			"clear_minors_fixed": 7,
+			"nits_fixed": 1,
+			"deferred": 0,
+			"changed_keys": 25
+		},
+		"changed_namespaces": [
+			"ui.canvas",
+			"ui.chat.pickers",
+			"ui.common.forms",
+			"ui.common.updates",
+			"ui.common.viewer"
+		],
+		"changes": {
+			"ui.canvas": [
+				{
+					"key": "ui.canvas.view_name.view_shown_this_list_is_capped",
+					"finding": "RU-C1 major grammar: «показано {pluralnoun}: N шт.» has the wrong case and an inventory unit",
+					"applied": "{label} · {counted, plural, one {{noun}} few {{pluralnoun}} many {{pluralnoun}} other {{pluralnoun}}}: {counted, number, ::group-off} — показано не всё"
+				},
+				{
+					"key": "ui.canvas.view_name.view_count",
+					"finding": "RU-C1 related key: same wrong case / «шт.» in the uncapped sibling",
+					"applied": "{label} · {counted, plural, one {{noun}} few {{pluralnoun}} many {{pluralnoun}} other {{pluralnoun}}}: {counted, number, ::group-off}"
+				},
+				{
+					"key": "ui.canvas.finder_layout.highlights",
+					"finding": "RU-C4 major glossary: «Избранное» means favourites, the section is item.highlighted",
+					"applied": "Выделенные"
+				},
+				{
+					"key": "ui.canvas.files.highlights",
+					"finding": "RU-C4 related surface: the finder's file-group label used the same wrong term",
+					"applied": "Выделенные"
+				},
+				{
+					"key": "ui.canvas.variable_form_dialog.this_name_cannot_be_sent_use_up_to_128_characters_without_control_charac",
+					"finding": "RU-C5 major grammar: «не только из точек» is ungrammatical and states a different rule",
+					"applied": "Это имя нельзя отправить. Используйте не более 128 символов, без управляющих символов; имя не должно состоять только из точек."
+				}
+			],
+			"ui.chat.pickers": [
+				{
+					"key": "ui.chat.pickers.stop.confirm",
+					"finding": "RU-C2 blocker placeholder: {count} and its ::group-off skeleton dropped in every non-one branch",
+					"applied": "Остановить {count, plural, =1 {эту сессию} one {{count, number, ::group-off} сессию} few {{count, number, ::group-off} сессии} many {{count, number, ::group-off} сессий} other {{count, number, ::group-off} сессии}} сейчас"
+				},
+				{
+					"key": "ui.chat.pickers.destination_pickers.signed_out_environment_variables_and_other_accounts_are_untouched",
+					"finding": "RU-C3 blocker accuracy: «Вход выполнен» says signed in; the state is signed out",
+					"applied": "Выход выполнен. Переменные окружения и другие учётные записи не затронуты."
+				},
+				{
+					"key": "ui.chat.pickers.info_model.runtimes",
+					"finding": "RU-C6 major plural: genitive singular «рантайма» is wrong as the Runtimes heading and as a counted noun",
+					"applied": "рантаймы"
+				},
+				{
+					"key": "ui.chat.pickers.info_model.subagents",
+					"finding": "RU-C6 related key: the counted plural was the genitive-singular «субагента»",
+					"applied": "субагенты"
+				},
+				{
+					"key": "ui.chat.pickers.info_model.count_noun",
+					"finding": "RU-C6 related key: one plural string served few and many, rendering «субагента: 5 шт.»",
+					"applied": "{count, plural, one {{noun}: {count, number, ::group-off}} few {{pluralnoun}: {count, number, ::group-off}} many {{pluralnoun}: {count, number, ::group-off}} other {{pluralnoun}: {count, number, ::group-off}}}"
+				},
+				{
+					"key": "ui.chat.pickers.info_model.of_did_not_report",
+					"finding": "RU-C6 follow-through: the template prefixed «всего:» to the counted phrase, which reads «всего: рантаймы: 5» once the counted form is label-first",
+					"applied": "Без ответа: {formatcount}; {plural}"
+				},
+				{
+					"key": "ui.chat.pickers.destination_pickers.refresh_from_providers",
+					"finding": "RU-C7 minor idiom: «Обновить от провайдеров»",
+					"applied": "Обновить у провайдеров"
+				},
+				{
+					"key": "ui.chat.pickers.destination_pickers.stalled_send_a_message_to_continue",
+					"finding": "RU-C8 minor glossary: «остановлено» collides with a requested stop",
+					"applied": "приостановлено — отправьте сообщение, чтобы продолжить"
+				},
+				{
+					"key": "ui.chat.pickers.destination_pickers.no_models_are_signed_in_yet",
+					"finding": "RU-C9 minor glossary: «авторизована» is a second term for sign-in",
+					"applied": "Ни одна модель ещё не подключена."
+				},
+				{
+					"key": "ui.chat.pickers.fork.search_placeholder",
+					"finding": "RU-C10 minor typography: sidecar requires the shipped ASCII ellipsis",
+					"applied": "Попробуйте другой подход..."
+				},
+				{
+					"key": "ui.chat.pickers.destination_pickers.show_all_supported_models_sign_in",
+					"finding": "RU-C11 minor grammar: the one branch read «(1 требуется вход)» with no subject",
+					"applied": "{scopecount, plural, one {Показать все поддерживаемые модели (требуется вход: {scopecount, number, ::group-off})} few {Показать все поддерживаемые модели (требуется вход: {scopecount, number, ::group-off})} many {Показать все поддерживаемые модели (требуется вход: {scopecount, number, ::group-off})} other {Показать все поддерживаемые модели (требуется вход: {scopecount, number, ::group-off})}}"
+				},
+				{
+					"key": "ui.chat.pickers.usage_view_model.last_known",
+					"finding": "RU-C12 minor overflow: 3.00x the English at a compact status label",
+					"applied": "Последние данные"
+				},
+				{
+					"key": "ui.chat.pickers.destination_pickers.use_team",
+					"finding": "RU-C12 minor overflow: 2.50x the English on a submit button",
+					"applied": "Использовать"
+				},
+				{
+					"key": "ui.chat.pickers.destination_pickers.default_effort",
+					"finding": "RU-C12 minor overflow: 2.29x the English on a key-value label",
+					"applied": "Рассуждения по умолчанию"
+				}
+			],
+			"ui.common.forms": [
+				{
+					"key": "ui.common.forms.slider_setting.saving",
+					"finding": "RU-C13 minor grammar: a nominative label after «Сохранение» needs a colon",
+					"applied": "Сохранение: {label}"
+				},
+				{
+					"key": "ui.common.forms.toggle_setting.saving",
+					"finding": "RU-C13 related key: same nominal-label shape",
+					"applied": "Сохранение: {label}"
+				},
+				{
+					"key": "ui.common.forms.autocomplete_field.saving",
+					"finding": "RU-C13 related key: same nominal-label shape",
+					"applied": "Сохранение: {label}"
+				}
+			],
+			"ui.common.updates": [
+				{
+					"key": "ui.common.updates.update_notification.the_new_build",
+					"finding": "RU-C14 major grammar: the only caller needs the accusative after «переводится на»",
+					"applied": "новую сборку"
+				}
+			],
+			"ui.common.viewer": [
+				{
+					"key": "ui.common.viewer.image_lightbox.previous",
+					"finding": "RU-C15 nit idiom: «Предыдущий материал» adds a noun the source does not have",
+					"applied": "Предыдущее: {medialabel}"
+				},
+				{
+					"key": "ui.common.viewer.image_lightbox.next",
+					"finding": "RU-C15 related key: the sibling carried the same added noun",
+					"applied": "Следующее: {medialabel}"
+				}
+			]
+		},
+		"residual_risks": [
+			"RU-C1: the auditor's exact drop of {noun}/{pluralnoun} is rejected by locale-parity's placeholder-integrity check while the English source keeps them; the applied form keeps both and states the cap as «показано не всё».",
+			"RU-C6: locale-only branch cannot split the label key from the counted noun (the English source passes one `runtimes` value to both). The applied nominative-plural label with `{pluralnoun}: {count}` is grammatical in every Russian category. `ui.chat.pickers.info_model.runtime_trajectories` still places the source's `{bound}` before the counted phrase, so the rare unreported>0 state reads «≥траектории: 12»; a source-side change is needed to carry the bound inside the counted phrase.",
+			"RU-C12: widths were shortened per the auditor's proposals but no rendered frame was captured in this locale-only pipeline; a rendered fit check remains owed."
+		]
+	}
+}

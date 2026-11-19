@@ -1,0 +1,26 @@
+MECHANICAL CHECKS (executed 2026-10-30 with the repository's own node_modules: intl-messageformat, @formatjs/icu-messageformat-parser)
+
+[keyset] fr: 297 keys, missing vs en 0, extra vs en 0, same key order true (en 297)
+[ast]    fr: argument-name/select/tag/exact-arm mismatches vs English: 1
+           ui.teamBridge.members.invite_count: plural arm =0 outside fr CLDR many,one,other
+[plural] fr: 16 plural keys; CLDR categories ["many","one","other"]
+[plural] fr: keys with no 'many' arm (1): ui.teamBridge.attachments.failed_count
+         Observation, not raised as a finding: ICU falls back to 'other' at exact 10^6 counts, which renders correctly here ("1.000.000 imágenes" / "1 000 000 images"); no reachable count in these surfaces is a multiple of 10^6. Recorded for the next locale wave, which should settle one arm policy.
+         Note events.others carries a 'many' arm whose text equals its 'other' arm (# más / # autres): correct, no partitive is needed after a bare numeral here.
+[nfc]    fr: values not in NFC: 0
+[bidi]   fr: values containing RLM/LRM/ALM/embedding/isolate/BOM/SHY: 0
+[quote]  fr: quote characters in the namespace: {"U+2019":122,"U+00AB":5,"U+00BB":5}
+[same]   fr: values identical to English (11), all placeholder-only or product-name strings: members.group.agents_v2, members.ineligible_label, page.title, nav.label, notify.mention, notify.title, notify.channel, notify.subtitle, chief.label, profile.agent_badge, invitations.title
+
+[width]  fr: length of each event key in code points, ratio to English (this locale's own script cell width is not measured here; a rendered check owns that):
+           events.invited           en  25  fr  26  x1.04
+           events.joined            en  16  fr  40  x2.50   <-- OVER 2x
+           events.owner_added_agent en  35  fr  38  x1.09
+           events.left              en  14  fr  37  x2.64   <-- OVER 2x
+           events.removed           en  25  fr  26  x1.04
+           events.consented         en  34  fr  56  x1.65
+           events.declined_self     en  31  fr  29  x0.94
+           events.declined          en  45  fr  44  x0.98
+           events.withdrawn         en  45  fr  44  x0.98
+           events.unknown           en  18  fr  24  x1.33
+           events.others            en  47  fr  65  x1.38

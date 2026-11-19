@@ -1,0 +1,35 @@
+{
+ "auditor": "i18n-auditor",
+ "model": "radient/auto",
+ "model_note": "Session began on anthropic/claude-opus-5-5 and fell back on provider quota through anthropic/claude-sonnet-5-5, openai/gpt-6-astra and kimi/k3.1-pro; the receipt was written while running radient/auto.",
+ "instance": "tb1482r2-ur-514736",
+ "status": "passed",
+ "namespace": "ui.ownerAudit",
+ "sha256": {
+  "ur": "b9e13f6260f8063fed840d1adb0ea7ce00aa74b32b70b0965f4e83a7eae04a17",
+  "en": "147de29a88573f22b144c09b6f94c8c5310e2e1d773d597a3ff44b2a2214efe1"
+ },
+ "findings": [
+  {
+   "severity": "NIT",
+   "key": "ui.ownerAudit.disclosure",
+   "resolved": false,
+   "detail": "«ایجنٹ کے مالکان» renders the English class term 'agent owners' as the owners of this one agent; «ایجنٹس کے مالکان» (the app already uses «ایجنٹس» for agents, e.g. ui.agents.publication.team_plan_required.body) would state the class. Left open deliberately: the singular reading is a defensible statement of the rule for the chief of staff this audit covers, and widening what a disclosure says other people may read is the manager's call, not a unilateral auditor edit."
+  }
+ ],
+ "resolved_findings": [
+  {
+   "severity": "MINOR",
+   "key": "ui.ownerAudit.viewers_label",
+   "resolved": true,
+   "detail": "Bare verb clause with an ambiguous «یہ»: it can parse as subject (the names below → 'these can also read') or as object («can also read this», addressed to the reader), so in a header it can read back as an echo of the disclosure's «آپ یہ آڈٹ پڑھ سکتے ہیں» instead of a label naming the other readers — the exact D2 regression this key exists to avoid. Fixed: «یہ بھی پڑھ سکتے ہیں» → «یہ افراد بھی پڑھ سکتے ہیں» (explicit subject, still a short metadata label with «بھی» = also, no colon, no placeholder, no sentence-final stop)."
+  },
+  {
+   "severity": "MINOR",
+   "key": "ui.ownerAudit.disclosure",
+   "resolved": true,
+   "detail": "The ownership basis put its relative clause after the copula («…اس چیف آف اسٹاف کے مالک آپ ہیں جس کا یہ آڈٹ ہے»), a colloquial afterthought order that reads as clumsy in a written disclosure. Reordered to the standard relative-first Urdu form; both required facts kept (own-basis, and that other members are told agent owners can audit) and no exclusivity claim added. Fixed: «آپ یہ آڈٹ پڑھ سکتے ہیں کیونکہ اس چیف آف اسٹاف کے مالک آپ ہیں جس کا یہ آڈٹ ہے۔» → «آپ یہ آڈٹ پڑھ سکتے ہیں کیونکہ جس چیف آف اسٹاف کا یہ آڈٹ ہے، اس کے مالک آپ ہیں۔»"
+  }
+ ],
+ "scope": "Round 2: the six changed keys only; earlier round out of scope."
+}

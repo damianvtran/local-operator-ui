@@ -1,0 +1,156 @@
+{
+ "audit_id": "att-attachments-r2-20261021",
+ "date": "2026-10-21",
+ "locale": "ur",
+ "namespace": "ui.teamBridge",
+ "source_commit": "8cf05961d64322fe64ebccd6282069c7f52f12f3",
+ "source_base": "cf1d7c616ca36bd48c0bf160d64a08514b7c2b08",
+ "scope": "Round-2 delta of #1314 (cf1d7c616c..8cf05961d6): 7 ur values changed/added applying att-r1-ur and design D1, including the changed en attachments.expired_staged and new attachments.expired_staged_retry / attachments.preview_unavailable. Other 164 values byte-unchanged and inherited from att-r1-ur.",
+ "status": "audited",
+ "translator": {
+  "agent": "coder",
+  "model": "anthropic/claude-opus-5-5",
+  "date": "2026-10-21",
+  "session": "03594b2dcc02",
+  "job": "bc0c4b952eaa",
+  "commit": "cedfe88fc6"
+ },
+ "auditors": [
+  {
+   "agent": "translation-auditor",
+   "model": "anthropic/claude-opus-5-5",
+   "date": "2026-10-21",
+   "result": "clean",
+   "instance": "att-r2-ur",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "receipt": "i18n/receipts/att-r2-ur.json",
+   "receipt_sha256": "5f9baf25801f94b9af402007278a2255d99386008cf91d34e7282aa44fbcc091",
+   "scope": "Team Bridge image attachments round 2: remediation delta (7 keys) independently audited at head 8cf05961d6; all att-r1-ur findings verified applied or superseded by the D1 source change. Catalogue audit only, not rendered-fit, activation or release approval.",
+   "note": "Round 2: no findings. All round-1 findings closed. No rendered-fit claim."
+  }
+ ],
+ "audit_rounds": [
+  {
+   "round": 1,
+   "instance": "att-r1-ur",
+   "session": "5e326caaed53",
+   "job": "9cce805ed705",
+   "model": "anthropic/claude-opus-5-5",
+   "status": "passed",
+   "keys_audited": 23,
+   "target_sha256": "47bccf3a65d5ad9ccba4b375fba35c67d3c00ec689bd209fcb06361a655a6d99",
+   "findings": [
+    {
+     "severity": "MINOR",
+     "key": "ui.teamBridge.attachments.retry"
+    },
+    {
+     "severity": "MINOR",
+     "key": "ui.teamBridge.attachments.send_blocked"
+    },
+    {
+     "severity": "NIT",
+     "key": "ui.teamBridge.attachments.error_quota"
+    },
+    {
+     "severity": "NIT",
+     "key": "ui.teamBridge.attachments.expired_staged"
+    },
+    {
+     "severity": "NIT",
+     "key": "ui.teamBridge.attachments.expired"
+    }
+   ],
+   "receipt": {
+    "path": "i18n/receipts/att-r1-ur.json",
+    "sha256": "005c6def2dad56d91fc7bb9e0a4d2fb8daf216093d755239281631ef3905821e"
+   }
+  },
+  {
+   "round": 2,
+   "instance": "att-r2-ur",
+   "session": "12aab7b684ab",
+   "job": "d8717b64c01a",
+   "model": "anthropic/claude-opus-5-5",
+   "status": "passed",
+   "keys_audited": 7,
+   "target_sha256": "f9b0ae461b2e8cba71e0000e24e37b0f09aa932f65ba77be381a336ce98e411e",
+   "findings": [],
+   "round1_dispositions": [
+    {
+     "finding": "r1 MINOR (no id)",
+     "keys": "retry",
+     "verified": "applied verbatim: '{label} کی دوبارہ کوشش کریں'"
+    },
+    {
+     "finding": "r1 MINOR (no id)",
+     "keys": "send_blocked",
+     "verified": "applied verbatim: 'خرابی کے نشان والی … ان کی دوبارہ کوشش کریں۔'"
+    },
+    {
+     "finding": "r1 NIT (no id)",
+     "keys": "error_quota",
+     "verified": "applied verbatim: 'آپ کی بہت زیادہ تصاویر …'"
+    },
+    {
+     "finding": "r1 NIT (no id)",
+     "keys": "expired_staged",
+     "verified": "superseded by the D1 rewrite: the 'still shown' clause no longer exists, so the ابھی/اب بھی ambiguity is gone"
+    },
+    {
+     "finding": "r1 NIT (no id)",
+     "keys": "expired",
+     "verified": "applied verbatim: 'تصویر کی میعاد ختم'"
+    }
+   ],
+   "receipt": {
+    "path": "i18n/receipts/att-r2-ur.json",
+    "sha256": "5f9baf25801f94b9af402007278a2255d99386008cf91d34e7282aa44fbcc091"
+   }
+  }
+ ],
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+   "sha256": "a1e4452d733cee31812938d27106ff5b8cb15a74e4da6eaddbc8d9c1519fe8ed"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/ur/ui.teamBridge.json",
+   "sha256": "f9b0ae461b2e8cba71e0000e24e37b0f09aa932f65ba77be381a336ce98e411e"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+   "sha256": "09acfc1ecfb2533c8c340eb706b74b4f3ee68f367ad1bc60e41c06b549ca4f1a"
+  }
+ },
+ "references": {
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/ur.md",
+   "sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+  }
+ },
+ "independence": "Translator (coder session 03594b2dcc02, job bc0c4b952eaa) and round-2 auditor (translation-auditor session 12aab7b684ab, job d8717b64c01a) are different agents in different sessions; the round-2 auditor is also distinct from the round-1 auditor session 5e326caaed53. The auditor never edited catalogues, ran no git operations and did not run ledger-assemble.",
+ "limitations": [
+  "Browser not used; no rendered-fit, screenshots, glyph metrics, pseudo-localization or activation evidence claimed.",
+  "Round 2 covers the remediation delta and direct regression surfaces only; unchanged values rely on att-r1 and its inherited receipts."
+ ],
+ "retained_rounds": [
+  {
+   "path": "i18n/receipts/att-r1-ur.json",
+   "sha256": "005c6def2dad56d91fc7bb9e0a4d2fb8daf216093d755239281631ef3905821e"
+  },
+  {
+   "path": "i18n/receipts/att-r2-ur.json",
+   "sha256": "5f9baf25801f94b9af402007278a2255d99386008cf91d34e7282aa44fbcc091"
+  }
+ ]
+}

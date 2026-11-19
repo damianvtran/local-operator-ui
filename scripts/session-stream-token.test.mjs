@@ -129,12 +129,16 @@ globalThis.__backendTestState = state;
 const bundle = await build({
 	stdin: {
 		contents:
-			'export { BackendServiceManager } from "./src/main/backend/backend-service.ts"; export { DesktopStreamRelay } from "./src/main/desktop-stream.ts"; export { DESKTOP_STREAM_DETAIL, streamFailureNotice } from "./src/shared/desktop-stream-notice.ts"; export { DEGRADED_AFTER_FAILURES } from "./src/main/backend/daemon-status.ts";',
+			'export { BackendServiceManager } from "./src/main/backend/backend-service.ts"; export { DesktopStreamRelay } from "./src/main/desktop-stream.ts"; export { DESKTOP_STREAM_DETAIL } from "./src/shared/desktop-stream-notice.ts"; export { streamFailureNotice } from "./src/renderer/src/features/chat/canonical/session-failure-notice.ts"; export { DEGRADED_AFTER_FAILURES } from "./src/main/backend/daemon-status.ts";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
 	format: "esm",
 	platform: "node",
+	alias: {
+		"@shared": "./src/renderer/src/shared",
+		"@shared/i18n": "./src/i18n",
+	},
 	write: false,
 	plugins: [
 		{

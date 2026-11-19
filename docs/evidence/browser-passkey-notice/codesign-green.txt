@@ -1,0 +1,35 @@
+✔ the keychain access group is <TEAM_ID>.<BUNDLE_ID>.webauthn (0.590375ms)
+✔ the bundle path is derived from the executable, not from app.getAppPath() (0.09875ms)
+✔ TeamIdentifier and Identifier are parsed from the real report shape (0.638084ms)
+✔ keychain access groups are parsed from the entitlements plist (0.731166ms)
+✔ the gate names the first fact that is wrong, in order (0.248125ms)
+✔ the signature probe spawns codesign only for a packaged macOS bundle (0.260958ms)
+✔ the shipped signature is read from codesign's real streams: report on stderr, plist on stdout (0.219583ms)
+✔ the report is read from either stream, stderr taking precedence (0.13625ms)
+✔ the installer configures the authenticator only when the signature carries the group (0.248708ms)
+✔ the installer survives a configureWebAuthn that throws (0.162167ms)
+✔ a multi-match request is surfaced with its accounts and answered with the choice (0.422084ms)
+✔ a request with no account, a dismissal and an unknown request id all settle with nothing (0.134625ms)
+✔ a choice naming a credential that was not offered cancels the request (0.085792ms)
+✔ an unanswered chooser expires rather than leaving the page pending (61.25825ms)
+✔ stopping the host cancels every pending choice (0.689083ms)
+✔ the chooser labels an account without inventing an identity (15.229959ms)
+✔ a second host start leaves ONE listener, and one request settles one callback (0.251834ms)
+✔ a surface that mounts late reads the pending queue oldest-first, with the page it came from (0.175625ms)
+✔ every settle path reports its outcome, which is what the surface explains (0.130959ms)
+✔ an expired request reports 'expired' rather than only cancelling (61.338333ms)
+✔ a nameless multi-match is explained rather than offered as an arbitrary choice (1.699666ms)
+✔ only the endings the user did not choose carry copy (0.323709ms)
+✔ the mirror merges main's snapshot instead of overwriting what it holds (0.178917ms)
+✔ the recovery clause lives in the lead, where prose wraps, and not in a truncating row (0.111958ms)
+✔ a request whose push throws leaves nothing pending behind (0.140583ms)
+✔ a live request is never hidden behind an ending, and an ending cancels nothing (0.115333ms)
+✔ an inbound chooser payload is validated once, for both channels (0.130958ms)
+ℹ tests 27
+ℹ suites 0
+ℹ pass 27
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 742.814958

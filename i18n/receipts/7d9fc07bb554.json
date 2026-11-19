@@ -1,0 +1,31 @@
+{
+  "auditor": "translation-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "7d9fc07bb554",
+  "date": "2026-10-20",
+  "locale": "ur",
+  "round": 4,
+  "status": "passed",
+  "namespace": "ui.hub",
+  "sha256": {
+    "ur": "8fb3bb30c59c47411b3bff9fc7e97a1b6895139ce4b2d06b31c879e1817b2a08",
+    "en": "96d5e20f3f1efc19efa36210ea7799af8216a863d7b872c71d69e599d5e59a44"
+  },
+  "keys_audited": [
+    "download",
+    "unpull",
+    "unpull_title",
+    "unpull_body",
+    "unpull_failed",
+    "subscribe_failed",
+    "local_path",
+    "published_by",
+    "not_downloaded",
+    "subscribed_absent",
+    "pulled",
+    "manual",
+    "detached"
+  ],
+  "scope": "Urdu only, round 4: the 13 new ui.hub.skills.* keys added by b2e7f5e56f, re-read against English ui.hub.json on the current bytes. Round-3 MINOR verified fixed: ui.hub.skills.unpull_body now reads برقرار رہتے ہیں, agreeing with the conjoined subject ربط اور اس کی سبسکرپشن. The delta since the round-3 target (68aceac10a36...) is exactly that one line (git diff 5f826daf..HEAD on src/i18n/catalogues/ur/ui.hub.json: 1 insertion, 1 deletion); all 13 keys were re-read in full, not only the changed line. Placeholders ({item}, {path}, {publisher}) are byte-identical to English; register (آپ + polite imperative) and glossary (ربط link, سبسکرپشن subscription, نقل copy, مہارت skill, ڈاؤن لوڈ download) match the rest of the Urdu ui.hub catalogue. No remaining findings.",
+  "findings": []
+}

@@ -1,0 +1,91 @@
+{
+  "audit_id": "s16dfr1",
+  "audit_date": "2026-11-12",
+  "locale": "fr",
+  "namespace": "ui.common.time",
+  "key_count": 4,
+  "namespace_key_count": 5,
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "51f78513d13c",
+    "model": "deepseek/deepseek-flash",
+    "independent_from_translator_session": true,
+    "actual_model_source": "session system header (Model: deepseek/deepseek-flash); no fallback observed; no role/default pin applied"
+  },
+  "head": "b2110ea9cd9fd0c103891a4a77b65ba741012cf4",
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.common.time.json",
+      "sha256": "bb0b3aa1a71679cc73cb40d73616b5e22057c7dcbc86705c2ec4425984971e13"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.common.time.context.json",
+      "sha256": "a9069037edc11c59288a7c2d3171496b1ef44a0982fc28e6a0edb4bcae0f98d2"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/fr/ui.common.time.json",
+      "sha256": "61934e35bbc1451f100d5935e061d3ad869b3c5cf679dd23f933c6ac5c5684b4"
+    },
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/fr.md",
+      "sha256": "5315e1ac10c2ce57aac631ba653d08de680ee70c9a022ed3a8345ce2f9902ee7"
+    },
+    "candidate_values_sorted_key_compact": {
+      "path": "translator session 3ef6295a5545 scratchpad s16d-drafts/fr-s16d.json (pre-landing, not in the repo)",
+      "sha256": "263069ffcecb4a0fdda89001350b9de46d42a3062010da5a7422d2aa4551b3ef",
+      "note": "identical to the landed 4-pair canonical hash; each of the 4 values re-hashes to its audited value, so the landed bytes are the audited bytes"
+    }
+  },
+  "artifacts": [
+    {
+      "path": "i18n/audits/evidence/fr/ui.common.time/s16dfr1/report.md",
+      "sha256": "99742a42e99d26f0ac44d2dc422fec400699857d0a08312d11023ea825f00794"
+    },
+    {
+      "path": "i18n/audits/evidence/fr/ui.common.time/s16dfr1/audit-receipt.json",
+      "sha256": "2cf6c89fc4ced57455ada786575d04774146817bc0709830a9d0ce3afe5cc041"
+    },
+    {
+      "path": "i18n/audits/evidence/fr/ui.common.time/s16dfr1/audit.log",
+      "sha256": "84248766b7740efa68455ab77f33f95c3d54f51e2792016a402b8e92db432e6b"
+    },
+    {
+      "path": "i18n/audits/evidence/fr/ui.common.time/s16dfr1/audit-pre-landing.log",
+      "sha256": "297241a520b78abfcab3981ab6f2d8db9437c911e473cb98a0bfb76578cc993b"
+    },
+    {
+      "path": "i18n/audits/evidence/fr/ui.common.time/s16dfr1/checker.mjs",
+      "sha256": "d17c3187fa7700e6d185bd955ba77905d7327ede73cbc8fb2671bb08e2afac5e"
+    },
+    {
+      "path": "i18n/audits/evidence/fr/ui.common.time/s16dfr1/checker-pre-landing.mjs",
+      "sha256": "9bb8376a75f4395305a818b178832d816df9a86bfff225814495cbb2ebd2e7ec"
+    }
+  ],
+  "audit_notes_not_execution_log": "Landed-bytes confirmation of a first audit, not a new audit: the audited candidate and the merged file are provably the same bytes (per-value and 4-pair canonical hashes all unchanged), so the linguistic judgement of sections 3-6 of report.md stands on the landed head. Two app-side observations are recorded at severity info in the receipt and are not defects of these keys: the CLDR-fr lowercase weekday that opens the composed divider label, and the single-digit hour that the English byte-identity pin forces. No translation or MT service was used. The audit.log companion is the executed checker run (ALL PASS, exit 0); the commands_actually_run list is the same evidence in readable form.",
+  "commands_actually_run": [
+    "git rev-parse HEAD / git status --porcelain (worktree) -> b2110ea9cd9fd0c103891a4a77b65ba741012cf4, 0 dirty lines",
+    "shasum -a 256 src/i18n/catalogues/fr/ui.common.time.json -> 61934e35bbc1451f100d5935e061d3ad869b3c5cf679dd23f933c6ac5c5684b4",
+    "python3 per-value + 4-pair canonical re-hash of the landed file -> all 4 MATCH, canonical 263069ff…",
+    "node check-s16d-fr-landed.mjs (worktree root; esbuild bundle of the head's messages/format/message-grouping/date-utils, landed catalogue registered) -> ALL PASS, exit 0",
+    "git archive HEAD src/i18n scripts/i18n i18n/receipts i18n/ledger.json … | tar -x (scratch mirror) + symlinked node_modules; nothing installed",
+    "node scripts/i18n/generate.mjs --check (mirror) -> keys.gen.ts byte-identical, exit 0",
+    "node scripts/i18n/check-coverage.mjs (mirror) -> ok — 7 gated language(s) over 158 namespace(s); 0 allowed key(s), exit 0",
+    "node --test scripts/i18n/locale-parity.test.mjs (mirror) -> tests 44, pass 44, fail 0",
+    "node --test scripts/i18n/context-parity.test.mjs (mirror) -> tests 8, pass 8, fail 0",
+    "node --test scripts/i18n/activation.test.mjs (mirror) -> tests 8, pass 8 (includes 'the shipped fr catalogue renders the report's strings in French'); no fr-activation.test.mjs exists",
+    "node scripts/i18n/ledger-check.mjs (mirror, pre-assemble) -> FAILED — 21 finding(s) across 1106 rows; exactly 3 for fr (stale source_sha256, stale target_sha256, receipt names other bytes)",
+    "node scripts/i18n/ledger-assemble.mjs --locale fr --file src/i18n/catalogues/fr/ui.common.time.json --auditor-instance 51f78513d13c --auditor-model deepseek/deepseek-flash --result clean --date 2026-11-12 --receipt <receipt> --scope … --note … (mirror) -> fr/ui.common.time -> status audited (prior audits superseded) | clean, 0 blocker, 0 major, 0 minor, 0 nit",
+    "node scripts/i18n/ledger-check.mjs (mirror, post-assemble) -> 0 findings for fr; the 18 remaining belong to es/hi/ru/ur/vi/zh-CN"
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": []
+  },
+  "original_lost_evidence": null
+}

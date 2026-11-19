@@ -169,12 +169,53 @@ function readScannedFile(file) {
  * `./node_modules/.bin/electron`. `electron-vite`, `electron-builder` and the
  * other tooling are commands, not the app, so they are not.
  */
+/**
+ * Is this entry a BUILD OUTPUT rather than a source file?
+ *
+ * `node --test` runs test files in parallel inside one checkout, and some of
+ * them transpile the app to a throwaway file so that one test file can import
+ * it: `scripts/_<name>-<pid>.mjs` and `scripts/<name>-runtime.cjs` are the two
+ * spellings in use. While such a file exists it is a faithful copy of every
+ * module the painted page pulls in - including, since the Team Bridge composer
+ * adoption, the chat composer's chain - so scanning it reports spawn sites no
+ * source file contains and `Desktop Tests` goes red on timing alone (measured:
+ * shards 0 and 2 on 2026-10-29, both at this assertion, with shard 1 green).
+ *
+ * The rule is measured rather than assumed: `git ls-files` holds NO tracked file
+ * under `scripts/` or `bin/` matching any of these patterns, and `.gitignore`
+ * already carries `scripts/_*.bundle.*` because the repository treats them as
+ * disposable. Skipping them keeps this scan a statement about SOURCE. A real
+ * spawn site that is genuinely gone is still caught by the reach assertions.
+ */
+function isGeneratedArtifact(name) {
+	return (
+		name.startsWith("_") ||
+		name.endsWith("-runtime.cjs") ||
+		name.endsWith(".bundle.mjs") ||
+		name.endsWith(".bundle.cjs")
+	);
+}
+
 function findSpawnSites() {
 	const sites = [];
 	for (const dir of ["scripts", "bin"]) {
 		if (!existsSync(dir)) continue;
 		for (const entry of readdirSync(dir, { withFileTypes: true })) {
 			if (!entry.isFile()) continue;
+			/*
+			 * A GENERATED BUNDLE IS NOT A CALL SITE. `node --test` runs test files in
+			 * PARALLEL inside one checkout, and the suites that paint a page transpile
+			 * it to a throwaway `scripts/_<name>-<pid>.mjs` for that one file to import.
+			 * While it exists it is a faithful copy of every module that page pulls in
+			 * - including, since the Team Bridge composer adoption, the chat composer's
+			 * chain - so scanning it reports spawn sites no source file contains and
+			 * `Desktop Tests` goes red on timing alone. `scripts/_*` is this
+			 * repository's disposable prefix (`.gitignore` carries `_*.bundle.*` and
+			 * no tracked file in `scripts/` or `bin/` starts with it), so skipping the
+			 * prefix is what keeps the scan a statement about SOURCE. A real spawn site
+			 * that is genuinely gone is still caught by the reach assertions below.
+			 */
+			if (isGeneratedArtifact(entry.name)) continue;
 			if (!/\.(mjs|js|cjs)$/.test(entry.name)) continue;
 			const file = join(dir, entry.name);
 			const raw = readScannedFile(file);
@@ -251,6 +292,110 @@ function exempt(file, name, index, why, site, noEnv) {
 
 const APP_SPAWN_SITES = [
 	guarded(
+		"scripts/submit-skill-latency-after.mjs",
+		"spawn",
+		2,
+		/\{\s*env:\s*appEnv\s*,/,
+		"The send-latency rig's AFTER tree boots a built app on a scratch profile to time a press; its analytics must not report a product user.",
+		/const appEnv = withTelemetryOff\(\{/,
+	),
+	guarded(
+		"scripts/submit-skill-latency-baseline.mjs",
+		"spawn",
+		2,
+		/\{\s*env:\s*appEnv\s*,/,
+		"The send-latency rig's BEFORE tree boots the baseline build the same way; launch suppression must accompany the scratch profile.",
+		/const appEnv = withTelemetryOff\(\{/,
+	),
+	guarded(
+		"scripts/extension-native-proof.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"The isolated extension-manager proof must not report a product user.",
+		/withTelemetryOff\(env\);/,
+	),
+	guarded(
+		"scripts/browser-focus-stability-proof.mjs",
+		"spawn",
+		2,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the real app for isolated native focus discrimination; launch suppression must accompany the scratch profile, including the explicitly armed CI-only native-owner mode",
+		/withTelemetryOff\(env\);/,
+	),
+	guarded(
+		"scripts/browser-approvals-first-paint-probe.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the built app headless to capture the approvals card's first paint; its environment carries the telemetry kill switch like every other app rig, so a probe run cannot report product telemetry",
+		/withTelemetryOff\(env\)/,
+	),
+	guarded(
+		"scripts/browser-tab-menu-native-proof.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the built app in an inactive window to prove the native tab-actions menu leaves the page visible; the build carries the live PostHog key, so this launch needs the telemetry switch",
+		/withTelemetryOff\(env\);/,
+	),
+	guarded(
+		"scripts/browser-native-determination.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the built app headless for the post-merge S4b native determination; the build carries the live PostHog key, so this launch needs the telemetry switch",
+		/withTelemetryOff\(env\);/,
+	),
+	guarded(
+		"scripts/browser-chrome-s4b-probe.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the built app headless to measure S4b's product chrome; the build carries the live PostHog key, so this unguarded product path needs the telemetry switch",
+		/withTelemetryOff\(env\);/,
+	),
+	guarded(
+		"scripts/browser-address-overlay-probe.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the built app headless to drive S1's native child; the build carries the live PostHog key, so this launch needs the same switch every app rig has",
+		/withTelemetryOff\(env\);/,
+	),
+	guarded(
+		"scripts/browser-approvals-s6b-probe.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots a standalone Electron fixture for the S6b interactive approvals card, so the kill switch must ride the launch env like every app rig",
+		/withTelemetryOff\(env\);/,
+	),
+	guarded(
+		"scripts/browser-approvals-s6d-capture.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the built app headless to capture the S6d approvals route; the build carries the live PostHog key, so this launch needs the telemetry switch",
+		/withTelemetryOff\(env\);/,
+	),
+	guarded(
+		"scripts/browser-approvals-narrow-panel-proof.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the built app headless at 264px to measure the full-width approvals panel and its controls, so this launch needs the same telemetry switch every app rig has",
+		/withTelemetryOff\(env\);/,
+	),
+	guarded(
+		"scripts/browser-approvals-s6a-probe.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots a standalone Electron fixture for the S6a approvals card; the build carries the live PostHog key, so this launch needs the telemetry switch",
+		/withTelemetryOff\(env\);/,
+	),
+	guarded(
 		"scripts/renderer-driver.mjs",
 		"spawn",
 		1,
@@ -275,11 +420,35 @@ const APP_SPAWN_SITES = [
 		/withTelemetryOff\(env\);/,
 	),
 	guarded(
+		"scripts/browser-identity-proof.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots a BUILT app tree headless on a scratch profile to read the browser tab's presented identity; a proof run must never report itself to the product's analytics as a user",
+		/withTelemetryOff\(env\);/,
+	),
+	guarded(
 		"scripts/browser-challenge-proof.mjs",
 		"spawn",
 		1,
 		/(?:\{|,)\s*env\s*,/,
 		"boots a BUILT app tree - `--app-tree`, so the same rig runs against a before and an after tree - in either window mode, and drives the browser host over its own /rpc",
+		/withTelemetryOff\(env\);/,
+	),
+	guarded(
+		"scripts/browser-hover-press-proof.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the built app on an isolated HOME/config/log/profile to prove background hover and press; the scratch environment must suppress notifications and telemetry, never treating proof traffic as a product user",
+		/withTelemetryOff\(env\);/,
+	),
+	guarded(
+		"scripts/browser-clipboard-proof.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the built app headless to measure the page clipboard gate; the build carries the live analytics key, which no scratch profile can switch off, so the child's environment carries the telemetry kill switch",
 		/withTelemetryOff\(env\);/,
 	),
 	guarded(
@@ -302,6 +471,16 @@ const APP_SPAWN_SITES = [
 		2,
 		/(?:\{|,)\s*env\s*,/,
 		"boots the built app headless and forks a REAL pty inside it - and with `--packaged` launches an electron-builder bundle the same way, so this rig is two separate runs",
+		/withTelemetryOff\(env\);/,
+	),
+	guarded(
+		"scripts/console-ended-proof.mjs",
+		"spawn",
+		/* #2, not #1: the `lop serve` daemon is spawned first; the app's own spawn is
+		 * the second and is the one this table exists to check. */
+		2,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the BUILT app twice over one quit on a scratch profile, so this rig is two chances to report a rig run as a product user",
 		/withTelemetryOff\(env\);/,
 	),
 	guarded(
@@ -345,6 +524,14 @@ const APP_SPAWN_SITES = [
 		/withTelemetryOff\(env\);/,
 	),
 	guarded(
+		"scripts/browser-url-autocomplete-proof.mjs",
+		"spawn",
+		1,
+		/env,\s*detached:/,
+		"boots the built app headless against local fixture sites to exercise the address bar's local autocomplete with real input and real keys",
+		/const env = withTelemetryOff\(\s*withNotificationsOff\(\{/,
+	),
+	guarded(
 		"scripts/interrupt-esc-proof.mjs",
 		"spawn",
 		1,
@@ -383,6 +570,21 @@ const APP_SPAWN_SITES = [
 		/env:\s*childEnv\(\),/,
 		"boots a SECOND headless app with --disable-gpu-compositing on its own scratch profile to reproduce a capability drop before the renderer subscribes - the same real app and renderer as #1, so the same reporting risk",
 		/withTelemetryOff\(env\);/,
+	),
+	guarded(
+		"scripts/notifications-glass-evidence.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the BUILT app headless on a scratch profile to photograph the notifications group headers and read-state switch at the user's glass setting, so the renderer's provider is live in it and would report an evidence run as a product session",
+		/withTelemetryOff\(env\);/,
+	),
+	exempt(
+		"scripts/extension-native-proof.mjs",
+		"execFileSync",
+		1,
+		"asks the Electron binary for its Chromium version so the store serves a compatible CRX: `ELECTRON_RUN_AS_NODE=1` with `-p` makes Electron a plain Node interpreter that evaluates one expression and exits - the app main is never loaded, so neither `posthog-node` nor the renderer's provider exists in it. The app boot in this rig is `spawn #1`, guarded above",
+		/ELECTRON_RUN_AS_NODE:\s*"1"/,
 	),
 	exempt(
 		"scripts/session-cookie-electron.test.mjs",

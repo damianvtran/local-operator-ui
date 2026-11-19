@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "date": "2026-11-05",
+  "namespace": "ui.settings.appearance",
+  "instance": "53718fab2aa2",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "53718fab2aa2",
+    "instance": "53718fab2aa2",
+    "model": "openai/gpt-6.1-sol",
+    "fallback": "No fallback observed in this audit session.",
+    "independence": "Independent reviewer; did not author or integrate translations. Separate translator agent stated in delegation; writer session 3e862534cee6 is distinct."
+  },
+  "model": "openai/gpt-6.1-sol",
+  "status": "passed",
+  "result": "clean",
+  "sha256": {
+    "en": "bbf7c83bd749d1153596fcc8dda33bbc667c8a74f58be2ba05856c0a8506ff00",
+    "fr": "085ccfd282eddd07cee6ce1c28f12c80d1c0199617f6647f0ce7f9c82c245260",
+    "es": "2c419f27bab67a529c669f03467c5649332f823dce47f80c681bdfcb6bf19495",
+    "zh-CN": "43e8495cf4682910fd483a40a76efad4c4fa11853d15485be6a3090e7470e414",
+    "ru": "a47d1ab20e090fa70d19acc36a35061fb37821ea06259fca95ba3bb0fb749d8c",
+    "vi": "f8fa1b620a61241f9fd530cc4d2f822e4d4342b55f145b3b4c0603afa9418fb8",
+    "ur": "296e7c3f0da99b8660c082ff96bd2b4ac67618faabcf7011511240e072e88454",
+    "hi": "23c6ee5ad9ccae6c7f8540ee68dd18c0aad7d7996798f165326fba7d03596d09"
+  },
+  "context_sha256": "71a8a0dfe324f53487b41d73ff090a42bdced110f31bc7c20243f63bc5a17cb6",
+  "scope": "One new key only: ui.settings.appearance.layers.preview.sample_backdrop. All 162 prior key/value pairs per locale equal base 87295a6a2c562aabfe4001013ba8fabc5aeec1bc; retain prior audited namespace evidence by verified value identity. No unchanged-key language re-audit. Integrated working-tree bytes (uncommitted); head names checkout commit, not a claim of a committed integration. Exact approved values verified by bounded JSON extraction; read_public_copy unavailable in this role. Caption-level language audit only; no rendered-fit or broader glossary conformance claim.",
+  "base": "87295a6a2c562aabfe4001013ba8fabc5aeec1bc",
+  "head": "87295a6a2c562aabfe4001013ba8fabc5aeec1bc",
+  "key_count": 1,
+  "keys_audited": [
+    "ui.settings.appearance.layers.preview.sample_backdrop"
+  ],
+  "findings": []
+}

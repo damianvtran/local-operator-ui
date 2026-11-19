@@ -102,6 +102,20 @@ an accent glyph and a small decorative accent dot in the existing gutter;
 collapsed icon rail and takes no layout space. This keeps the requested
 continuous, borderless surface without weakening chat's selected-row treatment.
 
+**The Team Bridge rail extends that exception to its glyph (C4, 2026-11-04).**
+A selected rail row keeps the shared `rowSelected` ground (`rowCurrent`) and
+its leading kind glyph (`#`, people, `@`) turns `text-accent`, so the current
+conversation is found by a glance down a rail of twenty rows rather than by a
+4 ΔE00 fill alone. Ground, not hue, is still the state; the glyph is the
+accent's "active state" spend on that screen. Asserted as the `team bridge
+selected rail glyph` graphic row (accent on `rowSelected`, 3:1).
+
+**A message that mentions the reader gets no row treatment (C3, revised
+2026-11-04).** It once wore an inset `accentWash` box and a 2px `accent`
+leading bar; the operator rejected both as visual noise. The inline token's
+viewer `warning` ink is what says "this is about you", so the row rests and
+hovers like every other message row.
+
 ### The four grounds
 
 `canvas` (page) → `surface` (cards, panels, inputs) → `elevated` (menus,
@@ -115,24 +129,43 @@ for hours, so it has a floor rather than a band with discretion:
 
 | Rule | Value |
 |---|---|
-| dark `canvas` | **hard floor L\* 12**, **hard ceiling L\* 22**, target band 12–20 — three palettes sit above the target inside the ceiling, at `catppuccinFrappe` 21.99, `everforest` 21.65, `nord` 21.60 |
+| dark `canvas` | **hard floor L\* 9**, **hard ceiling L\* 15**, target band 9–13 — three palettes sit above the target inside the ceiling, at `catppuccinFrappe` 14.97, `nord` 14.60, `everforest` 14.17 |
 | light `canvas` | **ceiling L\* 94** |
-| dark `elevated` | **ceiling L\* 30** |
+| dark `elevated` | **ceiling L\* 22** |
 | light `sunken` | **floor L\* 80** |
 | `canvas` → `surface` | **+2.5 to +5.0 `L*`** |
 | `surface` → `elevated` | **+2.5 to +6.0 `L*`** |
 | `canvas` → `sunken` (down) | **1.5 to 6.0 `L*`** |
 
-Why 12 and not 8: at canvas 12 / surface 17 / elevated 24 the three ink weights
-solve to L\* 78 / 74 / 71 with every floor and every step intact, and below that
-the ladder and the ink steps stop fitting together — measured, 8 of the 41 dark
-palettes were below L\* 5, `obsidian` at 2.51 the lowest. 12 is one rung above
-GitHub Dark's `#0D1117` (4.95) and exactly VS Code Dark+'s `#1E1E1E`, i.e.
-deliberately above GitHub's default. Why the maximums as well: an unbounded top
-step is what makes the ink budget unaffordable — at `elevated` L\* 34 an `ink-dim`
-at 5:1 needs L\* 85, and the ink/hover distinction disappears into the top of the
-ramp — and the light cap is the same arithmetic from the other end (`elevated` at
-L\* 100 is the end of sRGB's ramp, and the minimum spread is 2.5 + 2.5).
+Why 9 to 15 (2026-11-03). The floor was L\* 12 until the operator reported the
+opposite of the report that set it: "dark mode isn't that dark, it shouldn't be
+overly dark but it should be maybe a bit darker in tone". The median dark canvas
+then measured L\* 15.1. The floor of 9 sits between the two apps the request
+names, measured from their own grounds: Discord's 2025 chat `#1A1A1E` (L\* 9.42)
+and Slack's dark `#1A1D21` (L\* 10.62). That is still nearly double GitHub Dark's
+`#0D1117` (4.95), so the earlier near-black report (8 of the 41 dark palettes
+below L\* 5, `obsidian` at 2.51) stays closed; only `sunken` and `media-surface`
+go lower, as recesses. The ink budget allows it without moving an ink: darker
+grounds only raise ink contrast, and the re-light measured 0 ink-floor failures
+across the 41 dark palettes.
+
+The ceiling of 15 is not a clamp. Every dark palette was re-lit by one
+proportional map, `L*_new = 9 + 0.6 × (L*_old − 12)` (12 → 9, 22 → 15). The map
+preserves each theme's order and spacing; the hand re-solves move 34 canvases
+off it by up to ±1.04 L\*, which inverts 45 of the 820 dark pairs (the widest by
+0.96 L\*). Every inverted pair is still held apart by the fleet's pair rules. A clamp
+into 9–13 would have stacked a third of the fleet on the ceiling. That is the
+"the themes have all gone the same grey" regression the contract's fleet section
+guards. The design spec proposed 9–13; the 15 ceiling is that widening, and
+the median lands at L\* 10.96, inside the 9–13 target. Theme identity at the
+darker `L*` is carried by hue and chroma, which the map holds.
+
+Why the maximums as well: an unbounded top step is what makes the ink budget
+unaffordable. At `elevated` L\* 34 an `ink-dim` at 5:1 needs L\* 85, and the
+ink/hover distinction disappears into the top of the ramp. With the canvas at
+most 15, `elevated` 22 holds the ladder to the band's proportions. The light cap
+is the same arithmetic from the other end (`elevated` at L\* 100 is the end of
+sRGB's ramp, and the minimum spread is 2.5 + 2.5).
 
 **Lifting a ramp moves lightness only.** A ground is re-solved by holding its own
 `a` and `b` at a new `L*`, so a theme keeps its hue and its chroma class and
@@ -140,7 +173,7 @@ changes only how light it is; chroma is scaled only where sRGB forces it. The co
 is real and recorded rather than argued away: the four palettes whose upstream
 identity *is* near-black — `obsidian`, `tron`, `matrix`, `dune` — lose the black
 and keep the family. `obsidian` is the clearest case: zinc 950 becomes
-zinc-900-ish monochrome at L\* 12, with its h290 blue lean and no manufactured
+zinc-900-ish monochrome (L\* 12 at the legibility pass, 9.3 after the darker-grounds re-light), with its h290 blue lean and no manufactured
 chroma.
 
 **The grounds never move alone.** Raising a dark ground raises the luminance every
@@ -357,6 +390,72 @@ drawer, popover, tooltip, select. An in-flow card that needs to feel raised
 takes the next ground, not a shadow. This is why the four grounds must be
 mutually distinguishable, and why `check-themes` asserts it.
 
+**A floating surface separates by surface contrast AND elevation — never by a
+stroke.** (Operator report, 2026-11-06: a session-list tooltip, the canvas rail's
+tooltip, the agent-profile popover and the sidebar overflow menu were each
+carrying a rounded 1px lighter-than-surface border, which fights the
+borderless-chrome system; the popover added a bordered button inside the bordered
+panel. The line was also doing work it could not do well — a hairline measures
+1.03–1.18:1 against the panel's own fill, i.e. a boundary of nothing — while the
+ambient half of `--shadow-overlay` starts 12px out and left the panel's own edge
+bare.) The rule that follows, and it applies to every leave-flow surface:
+
+- **No border on a floating panel.** Menu, context menu, overflow menu, dialog,
+  drawer/sheet, popover, tooltip, hovercard, select list — none of them may
+  declare `border`, `border-hairline` or `border-control`. A hairline on one of
+  these is a regression by construction, not a question of taste. Each shared
+  primitive's panel wears `data-lo-floating`, and
+  `scripts/floating-surface-no-border.test.mjs` fails on a border utility (on the
+  tag or in a class constant it names), a stylesheet border outside the
+  forced-colors rule, a focus reset that reaches the panel, a second `shadow-*`
+  that would make tailwind-merge drop `shadow-overlay`, or a contact-less
+  `--shadow-overlay`. It is a static check; a computed border is a browser
+  run's evidence.
+- **The boundary is the shadow's contact layer.** `--shadow-overlay` composes a
+  tight contact layer (`--lo-shadow-contact`, derived from the palette's `scrim`
+  role) with the palette ambient, so there is real darkening AT the edge and the
+  panel reads on every theme. A `0 0 0 1px` ring is not a substitute: zero blur
+  makes it a border drawn with a shadow.
+- **On window glass it is restrengthened, never lightened.** A menu, popover,
+  tooltip or select list stays translucent on glass (the operator's request,
+  #1706; see § Window glass) with a 12px backdrop blur, and its contact layer is
+  the same `scrim` contact pulled 50% toward black - darker and a little stronger,
+  never stepped toward `ink`. On a dark palette ink is near-white, and an
+  ink-mixed "shadow" is a light rim: the lighter-than-surface outline the operator
+  reported, drawn with a shadow instead of a border. `contrast-contract.mjs`
+  measures the contact as painted (blurred coverage at the edge, both desktop
+  extremes) and fails if it is ever lighter than the column beneath it or worse
+  than the edge this composition shipped with.
+- **Elevation must survive focus.** No box-shadow reset may reach a floating
+  panel: Radix focuses a menu's content on a pointer open, and the global focus
+  rule's `box-shadow: none !important` used to strip the panel's only
+  separation. Focus is an `outline`, never a box-shadow, so the reset excludes
+  `[data-lo-floating]` and the guard holds it there.
+- **On dark palettes the ground step separates and the shadow supports.** A dark
+  shadow on a dark ground adds a few levels at the edge; the `elevated` step is
+  what the eye reads. Do not "fix" a dark panel with a ring - a nested panel
+  (submenu over menu, select inside a dialog) is a case to look at in a rendered
+  frame, not a reason for a stroke.
+- **The one sanctioned stroke is forced-colors mode.** `@media (forced-colors:
+  active)` drops every box-shadow, so there a floating panel draws a 1px
+  `CanvasText` border; without it it would have no edge at all. It is
+  implemented once in `styles/index.css`, and the guard allows exactly that rule.
+- **Group dividers are insets, not rules that touch the panel's edge.** An
+  internal separator sits inside the panel's padding, aligned with the item
+  labels (`mx-2` against `p-1` + `px-2` in the menu and select primitives), and
+  is `divider-inset` - the hairline mixed halfway toward the panel's `elevated`
+  ground - so the rule inside never out-draws the panel's own edge. A full-bleed
+  rule that reaches the panel's rounded corner rebuilds the box the border used
+  to draw.
+- **Nested elements may not reintroduce it.** A floating panel's action is the
+  `tonal` button - a borderless neutral fill one ground step off the panel
+  (`sunken`, hover `surface`, pressed `hairline`, `ink` label) - and quieter
+  ones are `ghost`. `primary` only where the panel's action is the screen's
+  commit; a bordered `secondary` on an `elevated` panel is a box inside a box.
+  Dialog footers take `tonal` through the shared `SecondaryButton`. Chips,
+  badges and avatars inside a floating panel are in-flow content and keep their
+  own treatment (a badge's hairline is the badge's, not the panel's).
+
 ### The four inks
 
 `ink` (primary) → `ink-muted` (secondary) → `ink-dim` (captions, metadata,
@@ -405,9 +504,10 @@ the slash word the app is about to RUN, the desktop twin of the TUI's
 `$lo-signal` — so its job is to be distinct from the three inks it is read
 against IN ONE LINE (`ink` for the instruction, `accent` for a live turn,
 `success` for a roster name) rather than to sit at a step in a hierarchy. Floors
-are per-palette and measured on the composer's own ground: at least 4.5:1 on
-`surface` and on `elevated`, and at least **ΔE00 8 from `ink`, `accent` and
-`success`**. `obsidian` is the one pinned exception — its `info` IS its `ink`, so
+are per-palette and measured on the grounds the role is painted on: at least
+4.5:1 on `surface` and `elevated` (the composer and its popup) and on
+`messageSurface` (the sent turn, below), and at least **ΔE00 8 from `ink`,
+`accent` and `success`**. `obsidian` is the one pinned exception — its `info` IS its `ink`, so
 there the run is separated by the painted weight step alone.
 
 Beside the ink, the run carries that weight step (`slash-run-bold`, a 0.5px
@@ -418,6 +518,22 @@ two layers have to wrap at the same character, and a real weight change moves
 the advances — which wrapped the mirror earlier than the textarea and hid the
 tail of the user's draft behind the mirror's own overflow (measured: 65 of 78
 typed characters). Add a run ink here and give it the same treatment.
+
+The same role also inks a `$skill` token in a sent turn: `.lo-skill-token` in
+`markdown.css` paints it in `tokenCommand`, so it is the same colour role the
+composer showed and the sealed row shows. The weight is the same step but NOT
+the same mechanism: the composer and the sealed row use the 0.5px
+`slash-run-bold` stroke because their mirror must not move an advance, while the
+transcript uses a real `font-weight: 600` (measured +3.5px on the one-line
+bubble). A real weight is right here because there is no mirror to keep aligned
+and `.lo-markdown strong` is also 600, so a token and bold prose share one
+weight. It is this role and not `accent` (budgeted at about three per screen,
+and a message can hold several tokens) or `accentAlt` (barred from links and
+syntax tokens, § The second accent), and a new role would cost every palette a
+value. Because the bubble's fill is `messageSurface`, that ground is asserted for
+the role too. In `obsidian` `tokenCommand` equals `ink`, so there a `$skill` and
+`**bold**` are pixel-identical and the weight is the only separation from plain
+prose; that is the accepted trade-off of the monochrome palette.
 
 ### The two lines — the distinction people get wrong
 
@@ -434,10 +550,12 @@ and must clear 3:1. If no, delete it rather than reaching for `hairline`.
 
 **The panel rail is chrome (#872, #896).** The 44px column at the window's right
 edge holds the right-slot doors - the four panel triggers since #872, and the asks
-drawer's door since #896 - and it stands on the sidebar's rung: `surface`,
-with **no drawn rule** at its leading edge - the boundary is the tone step alone,
-following the left sidebar's own edge (there is no line between it and the chat
-pane either). That is a choice to match the sidebar, not a sufficiency claim: the
+drawer's door since #896 - and it stands on the sidebar's rung: `surface`.
+Its leading edge carries the same 1px `hairline` seam as the sidebar's inner
+edge (`panel-edge.tsx`, § 2's panel section) and the tone step under it. The
+seam was added on 2026-10-30 because the step alone did not read in light
+themes; the paragraph here used to argue the absence, and what is still true of
+that argument is its measurement, which is the reason the seam exists. The
 ladder asserts these pairs at the 2.0 field floor, and
 `REGION_SEPARATION_FLOOR` (4.0) in `scripts/contrast-contract.mjs` is the
 stronger bar it sets for two full-height planes with no line between them.
@@ -449,10 +567,10 @@ dark, 2.50 light). Where a pane draws its own `surface` plane flush to the rail,
 the two chrome planes meet with no step by design: the canvas Files list
 scroller, the browser approvals dock, the canvas markdown viewer's root (via the
 `display: contents` tab panel) and the html/pdf preview iframe grounds are all
-`bg-surface`. `scripts/pane-slot-ground.test.mjs` pins the
-absence: the rail's root carries its ground and no border, divide or shadow, so
-the rule this paragraph used to describe cannot come back as a second way of
-drawing the edge. The lit item is the sidebar's selected-row pair, `rowSelected`
+`bg-surface`. `scripts/pane-slot-ground.test.mjs` pins the rail's root to its
+ground with no border, divide or shadow utility on it - the seam is a child
+element, so a rule cannot come back as a second way of drawing the edge. The lit
+item is the sidebar's selected-row pair, `rowSelected`
 ground and `accent` ink, plus a 2px `accent` bar flush with the rail's leading
 edge; the bar is there because an icon-only item has no weight to change (the
 sidebar's non-colour channel is `font-medium`), so it is the one mark that
@@ -475,6 +593,108 @@ a bordered composer was the loudest thing on the screen at rest — a ring aroun
 an empty box, while the transcript sat at `canvas` with nothing pointing at it.
 The accent is spent on what the user acts on (the send control's fill) and on
 focus, not on the frame of an empty field.
+
+### Panels: one seam, edge-to-edge, fading at the top
+
+A full-height panel is a region that owns a ground at the window's edge — the app
+sidebar, the rail, the right pane slot. It is not a card, an input, a menu or a
+popover.
+
+- **A full-height panel draws one seam, and still no border.** The tone step is
+  the panel's ground against its neighbour's; the seam is one 1px `hairline` at
+  75% along the edge the two share, painted by `panel-edge.tsx`. The tone step
+  alone is not enough between two full-height planes: `canvas` to `surface`
+  measures ΔE00 2.32 in `localOperatorLight` and 2.77 in `localOperatorDark`, a
+  ladder step sized for a small field. The seam is the app's decorative line at
+  three quarters strength — quieter than a section rule, and a real edge where
+  there was none. It is a positioned 1px element, not a `border`, because a
+  border takes a pixel from the panel and a panel is a scroll container; it is
+  full height (mounted on the full-height box that paints the ground, never on a
+  `panel-top-pad` content box, whose child would start at the pad) and paints
+  above sticky rows, so it cannot repeat the mid-height seam that made the old
+  border look broken. `border-control` is still the edge of a control, never of
+  a panel. Two marks are allowed to paint over it, because they are state rather
+  than decoration: the resize handle's 2px hover/drag line and the lit rail
+  item's 2px `accent` bar. The seam is asserted in § 3 and measured at ΔE00 2.92
+  or better from its own ground (`elevated`) and 2.29 or better from the plane it
+  faces (`gruvbox`'s rail against an open pane), across all fifty-nine palettes.
+  That assertion is an opaque-theme guarantee: under window glass the ground is
+  a translucent `surface` composited over the desktop, which the opaque-hex
+  contract does not measure.
+  - **Where it is drawn:** the shell's sidebar column along its inner edge, the
+    shell's rail host along the rail's inner edge, and each right-slot pane
+    along the edge it shares with the conversation. A panel that sits inside a
+    route rather than against the window edge (a card, an inspector inside a
+    page) has no seam: the tone step is the whole boundary there, because it is
+    one object on a page, not a column of the window.
+  - **The sidebar's seam is the shell column's edge, on every route.** It marks
+    where the app sidebar ends, so on a route whose own leading column is also
+    `surface` — the Settings nav, the Agents roster — it is the only boundary
+    between the two chrome planes, and those two keep the flat join *under* the
+    seam. The route column's own edge to its content keeps the tone step alone;
+    a seam inside a route's own layout is out of this change's scope.
+  - **The seam is placed logically.** `start-0`/`end-0` keep it on the side
+    facing the content in RTL; the class is pinned in
+    `scripts/pane-slot-ground.test.mjs`, but no rendered RTL frame was taken in
+    this change.
+- **Full-height panels extend through the titlebar strip; no top inset on the
+  panel; the scroll region clips and fades under it.** A panel that owns its
+  ground (the app sidebar, a route's leading rail, the Library filter rail, the
+  asset-details dock, the right-slot panes and canvas tabs, the panel rail,
+  Team Bridge's columns) starts at y0 and paints its own ground through the
+  traffic lights' band. Its first content row is padded by
+  `--panel-top-pad` — the shell publishes `var(--chrome-strip-h)` on the
+  content column for every route, so no route needs its own inset and none may
+  compute one.
+  - The mechanism is two utilities in `styles/index.css`, defined once:
+    `panel-flush` on a route root that owns the whole window height (it cancels
+    the shell's ordinary-content pad) and `panel-top-pad` on a full-height
+    panel column (it pushes the column's first row below the strip while the
+    panel's ground keeps y0). A simple page that is not a panel needs neither:
+    the shell pads it once on `<main>`.
+  - The titlebar lane is a single transparent overlay for every route. It
+    reserves no height and paints no ground; there is no route opt-in, and
+    no gradient mirror of the columns. Only the drag surface and
+    `data-slot-edge` remain on it.
+  - **A scroll region must clip at the panel's content edge, so its pad sits
+    outside the scroller.** A scroll container's own `padding-top` clips at
+    its padding box, which lets scrolled text paint through the strip; the
+    panel pads, the scroller begins at y32, and the existing top fade
+    (`data-lo-sidebar-edge-cues`) stays on the scroller. A file name scrolling
+    in the Library dock disappears at the dock's content edge, not at y0. When
+    the panel's ROOT is the scroller, `panel-scroll` states the same contract
+    as a margin plus the matching height.
+  - The element that wears `panel-top-pad` is the element that paints the
+    panel's ground. A padded wrapper that owns no ground is the inset band this
+    rule exists to forbid, not a clearance: the padding is invisible only when
+    it sits inside the surface it belongs to. A content column nested inside a
+    grounded, `panel-flush` ancestor needs no ground of its own — and must not
+    take one, which would put a second tone step inside a single panel.
+- **Chrome controls are borderless too.** A grouped segmented control (for example the Library grid/list toggle) may keep one shared `border-control` boundary around the group; the edge belongs to the group affordance, not to each button. Search, sort and filter chrome takes the `elevated` ground on a `surface` panel and the shared accent focus ring; no resting stroke. Reserve `border-control` for a form field or an actual boundary a ground cannot express, never as decoration on a toolbar control.
+- **A scrolling panel fades at its top edge.** `data-lo-sidebar-edge-cues` on
+  the scroller uses the shared scroll-driven mask: content dissolves under the
+  top spacing rather than being cut by a hard boundary, and the fade is zero at
+  rest so the first row is not dimmed for no reason.
+- **A panel footer/composer sits outside the scroller.** The scroll container
+  ends above it; content never paints underneath it.
+- **Narrow windows replace, they do not overlay.** A detail rail that cannot
+  fit beside the content at its minimum width becomes the full-width route view;
+  the content and filter rail step aside. The filter rail collapses into its
+  sheet below 1200px. A panel never floats over another panel's content. The one
+  exception is the transient Ask drawer below its dock breakpoint: replacing the
+  transcript there would take the question's context away with it, so the drawer
+  is a right-anchored sheet over the chat row - scrim over the row only, an
+  opaque `elevated` ground, the covered content `inert` while it is up, and the
+  sidebar and panel rail still reachable - and it is the case the one drawer
+  shadow is for.
+
+The Library route is the reference: a flush `bg-canvas` page root, a
+full-height `bg-surface` filter rail and `bg-surface` asset-details dock, both
+padded by the shared utility, with `data-lo-sidebar-edge-cues` on the scrollers
+and no right rule. `scripts/lane-leading.test.mjs` enforces the panel inventory
+and the absence of route-column right rules; `scripts/panel-top-inset.test.mjs`
+enforces that no route computes its own titlebar inset; agent-facing detail is
+in `docs/AGENTS.md`.
 
 ### Accent
 
@@ -509,7 +729,7 @@ semantic or `info`. The seven desktop-only palettes have no `label` and take a
 rotation of their accent's own `L*` and `C*` instead. Each palette file carries
 its own derivation and the measurement it was authored against.
 
-**What may spend it** — three sites today: the theme picker's miniature (a
+**What may spend it** — four sites today: the theme picker's miniature (a
 `bg-accent-alt` bar beside the accent fill, so a two-hue theme advertises both of
 its colours), mermaid's categorical fills (`accent-alt-wash` at index 1 of the
 wash cycle, ahead of the semantics), and the settled trace row's IDENTITY ink —
@@ -520,7 +740,19 @@ the row to `elevated`, so the ink is painted there, and the role — seated at i
 4.5:1 floor on `surface` — had no headroom for it. Ten palettes were re-seated on
 their own hue's lightness (chroma rising with it only where the lift would
 otherwise walk into `info`); the run's `Identity pairs:` line reports the tightest
-pair the fleet holds after the move.
+pair the fleet holds after the move. And **avatar identity (C2, 2026-11-04)**:
+Team Bridge's letter avatars and its workspace tile paint the initial in
+`accent-alt` on `accent-alt-wash` - identity, which is exactly the role's
+remit. That is text on the WASH, not on a solid `bg-accent-alt`, so the hard
+rule below holds; the pair is the `team bridge person identity plate` row in
+`CONTROLS` (4.53:1 worst, `ayuLight`). An agent's plate is the `accent` Bot
+glyph on the SAME wash (`team bridge agent identity plate`), so kind reads from
+the ink's hue and the glyph. The disc is borderless, so the wash is also its
+extent: `team bridge identity plate wash` in `PERCEPTIBLE` holds it ΔE00 3.0 off
+`canvas`, `surface`, `elevated` and `row-hover`. Eight palettes' washes were
+lifted on `L*` alone to clear that (design round 1 on #1668: radient measured
+1.78). `accent-wash` is not an identity plate: it sits within ΔE00 1.4–2.6 of a
+ground on fifteen palettes and has too many other consumers to re-seat.
 
 **What may not, and this list is the rule:** every selection and hover ground,
 the focus ring and the caret, primary/ghost/outline buttons and chips, links, the
@@ -535,7 +767,7 @@ two hues' relationship.
 **And one hard rule until `on-accent-alt` exists:** `bg-accent-alt` may not
 become a text-bearing fill anywhere. Ink on a solid alt fill is an unmeasured
 pair — no palette authors a value for it and no `CONTROLS` row asserts it — and
-neither of the two sites above paints text.
+none of the sites above paints text on it (the avatar initial is on the wash).
 
 **The floors** are in § 3: 4.5:1 as text on `canvas`, `surface` and `sunken`;
 ΔE00 15 from `accent`; ΔE00 15 from `success`, `warning` and `danger`; ΔE00 8
@@ -575,7 +807,7 @@ the weakest pair anywhere in the system is sage at 8.4.
 
 | Assertion | Floor |
 |---|---|
-| dark `canvas` / dark `elevated` / light `canvas` / light `sunken` | L\* 12–22 / ≤ 30 / ≤ 94 / ≥ 80 |
+| dark `canvas` / dark `elevated` / light `canvas` / light `sunken` | L\* 9–15 / ≤ 22 / ≤ 94 / ≥ 80 |
 | `canvas`→`surface` / `surface`→`elevated` / `canvas`→`sunken` | +2.5–5.0 / +2.5–6.0 / 1.5–6.0 `L*` |
 | `ink` on each of the eight grounds | 7:1 |
 | `ink` on `canvas` | 8:1 |
@@ -591,6 +823,7 @@ the weakest pair anywhere in the system is sage at 8.4.
 | `info` against `accent`, the settled `read` ink against the liveness ink | ΔE00 8, with five palettes pinned at 0–5.87 |
 | `accent-alt`'s chroma | C\* 15 |
 | `accent-alt-wash` against `accent-wash` | ΔE00 2.0 |
+| `accent-alt-wash`, the identity plate, against each of the four grounds | ΔE00 3.0 |
 | `on-accent` on the accent fill | 4.5:1 |
 | The alt wash chip: `accent-alt` on `accent-alt-wash`, with `accent-alt` as its edge | 4.5:1 ink, 3:1 edge |
 | `border-control`, `accent` and each semantic `-border` on each of the four grounds | 3:1 |
@@ -604,6 +837,7 @@ the weakest pair anywhere in the system is sage at 8.4.
 | The keycap's ground (`sunken`) against every ground it can be painted on | ΔE00 2.0 (the two row roles are withdrawn from this pair: a backdrop-relative fill IS a rung of the ladder, and the cap carries no fill of its own any more) |
 | `rowHover` and `rowSelected` against `surface` | ΔE00 2.0 each (the 4.0 band is withdrawn: with the hue and the cast held at the panel's own, it is reachable on 40 of 59 — see § 2) |
 | `rowSelected`'s `L*` step off `surface`: the direction, at least `1.5 L*`, and at most `5 L*` | 1.5–5.0 `L*` |
+| The panel seam: `hairline` at 75% composited on its panel, against that ground and against the plane it faces | ΔE00 2.0 both sides |
 | `rowHover`'s `L*` step off `surface`: the direction, and at least `1.5 L*` | 1.5 `L*` |
 | `rowHover`'s share of `rowSelected`'s step | at least 50% (the shipped hover spent 30% of its headroom) |
 | `rowHover`'s cast against the panel's: floor and ceiling | at least `max(2.5, 0.5 × C*(surface))`, at most `max(C*(surface), 2.5)` |
@@ -664,7 +898,8 @@ separating them by lightness costs every ink measured against them.
 **Component triples are the assertion that matters most.** A pair checker passes
 a control whose fill is 1.06:1 and whose border is 1.20:1 — each token is
 "fine", and the control has no perceivable edge. Adding a component to the app
-means adding a row to `CONTROLS` in that script; green output about a component
+means adding a row to `CONTROLS` (the contract's tables, in
+`src/shared/theme-engine/contract-tables.mjs`); green output about a component
 nobody listed is not evidence about that component.
 
 **Exemptions are pinned, not muted.** An accepted sub-floor pair records its
@@ -1011,9 +1246,20 @@ error and empty states. Under *Sidebars only* the whole route stays flat.
 **What stays solid under *Full app*, by design** (the Settings copy says so in one
 sentence): web pages in the browser view (the page paints itself), document and
 media viewers' own grounds (PDF, image, video, audio), code and diff grounds, a
-message's reply quote and attachment tiles, leave-flow surfaces (menus, dialogs,
-popovers, the palette, toasts, drag previews), theme preview tiles, and small
-deliberate marks. A panel's own *frame* (the Schedules list, the Agent hub category
+message's reply quote and attachment tiles, the leave-flow surfaces that sit over
+a scrim or carry their own motion (dialogs, sheets, the palette, toasts, drag
+previews), theme preview tiles, and small deliberate marks. The OTHER leave-flow
+surfaces - menus, context menus and submenus, tooltips, popovers, select lists and
+the update card - are not solid: the operator reported them as opaque plates over a
+translucent column (#1706), so they take the floating layer's derived translucency
+(`--lo-glass-a-overlay`) behind a 12px backdrop blur, which is what keeps the
+column under them from reading through. Their edge on glass is § 2's contact
+shadow, darkened, never a stroke. The exception is a panel over a live page:
+while the browser draws its picture of the page under an open overlay
+(`data-browser-live-composite` on the root), these panels take the opaque plate
+(`--lo-glass-a-overlay` pinned to 1 on the root), because the page is an opaque
+arbitrary ground, not the app's column, and the muted ink on the translucent
+panel fell to 3.36:1 over a white page. A panel's own *frame* (the Schedules list, the Agent hub category
 rail) is a surface and goes glass; the cards inside it are blocks (tints). The
 canvas, ask, run-detail, console and code-review panes are text-bearing panes: on
 glass their ROOT is the pane ground and every plane inside them is clear or a
@@ -1040,6 +1286,7 @@ opaque root behind opaque descendants.
 | Pressed (`active:bg-sunken`) | stays opaque `sunken` | a sub-200 ms state of the control, not a surface |
 | Primary buttons, avatars, brand mark, banners | unchanged, opaque | small deliberate marks, not grounds |
 | Sticky headers (scroll-under) | `data-glass-plane="band"`: the field overlay | a solid plate in a translucent column is the seam the operator reported; the band's own inks are contract rows |
+| Sticky headers over MOVING content (a section header that rows scroll under) | `data-glass-plane="band-backdrop"`: the pane's own `elevated` role, floored at the elevated alpha, plus a `backdrop-filter` blur | a 5% ink wash over moving content hides nothing, and the band's ground is whatever is scrolling under it, so the band needs an alpha FLOOR of its own - and that floor holds EVERY ink the band carries at its own register: `ink` and `inkMuted` at 4.5, `inkDim` at 3.5 (`GLASS_STATE_DIM_FLOOR`, the register a count wears). Deriving it against the label's ink alone was the bug: a CONTRAST PRESET took the count to 3.28:1 on a band that floor had fixed at 0.81 (QA round 1's Q-1; the floor's existence is design round 1's D1, and the term landed in #1714). What the term cost, fleet-wide: 50 of the 59 palettes' floors rose, 9 were unmoved, none fell, and the fleet floor stayed 0.88 dark / 0.78 light because the palette that bound it already sat there. That spread is a one-off result, not a guarded invariant: `scripts/derive-glass-floors.mjs --check` asserts the committed floor is not BELOW the derived one (one-directional) and `scripts/contrast-contract.mjs` asserts the band's per-ink rows |
 | Popout (quick send) | card ground `surface` at its floor raw; input a field; picker sheet solid | a single floating HUD on the window's material |
 
 **Planes, bands and lanes (round 3).** The operator's report: the left sidebar
@@ -1053,8 +1300,49 @@ be on glass:
 | Ground (a column: the pane root, the page canvas) | `data-glass-region` | the role alpha, one alpha-owning layer per region (unchanged) |
 | Plane (a scroll container, list body, viewer body, tab strip) | `data-glass-plane="clear"` | nothing: the region owns the alpha, and a second role fill is the opaque island the report is about |
 | Band (a sticky section header, a toolbar that masks what scrolls under it) | `data-glass-plane="band"` | the field overlay (ink 5%), the same step a track or a field wears |
+| Isolating band (a band whose content MOVES under it) | `data-glass-plane="band-backdrop"` | the `elevated` role - a pane's own ground, and one step UP from the page's when the band sits in a PAGE rather than a pane - floored at the band's derived alpha, with a `backdrop-filter` blur: the band's ground is the content passing under it, so a published alpha derived against a static ground is not enough for the ink on the band to clear its floor |
 | Block (a text-bearing card whose fill is its boundary) | `data-glass-block` | the derived veil (unchanged) |
 | Lane (a well that must read under veiled cards) | `data-glass-lane` | the derived scheme role at `pageAlpha * scale` (tracks the slider) |
+
+**An isolating band on a PAGE, not in a pane.** The rows above describe the band from inside a pane, where its role IS the pane's ground. A page that owns its ground (Notifications, Projects, Library, Settings) has no `pane` region at all: its material is the `canvas` the `<main>` backing paints, so the same band rule gates on the page's own `data-glass-region="canvas"` marker and the band takes the `elevated` role there too - one role step UP from the page, which is what makes it read as a band rather than as a thicker page. It is not the page's own canvas role, and the reason is measured rather than stylistic: at the band floor over the scheme's extreme, that role misses the ink floors on 17 of the theme set's 18 light palettes (all but `highContrastLight`), while `elevated` clears them on the whole fleet. The floor it takes is the one the band row derives, against every ink the band carries, so the count survives a CONTRAST PRESET here as well as on the authored palettes.
+
+**The isolating band is not see-through, and that is a decision, not an unfinished
+job.** At the shipped 80 % the desktop's share through the Notifications band is
+1.96 % dark / 2.35 % light against 38 % / 32 % through the page beside it (the
+band's own rect carries alpha 0.980 dark / 0.976 light in the frames), and over the
+one wallpaper the evidence set composites - a synthetic bright desktop, not an OS
+capture - the band's step off that page reads 3.17:1 at base and 2.56:1 at head,
+dark (`docs/pr-evidence/notifications-glass/`). The 1.11:1 dark-desktop end is not a
+read from that set and cannot be: it is arithmetic from PR #1714 round 1's design
+review, its dark-wallpaper x dark-theme cell, computed from the two-alpha model that
+#1714's own body retires once the frames show the band does not stack the way that
+model assumes. The step is the point: a header that let the desktop through as
+freely as the page beside it would stop reading as a header.
+The floor above is derived against the MEDIA hazard - a bare white or black under
+the band, the worst a material can put there. A notification row is the TEXT-ROW
+hazard instead: what passes under the band is text, not a photograph of a desktop,
+and measured under the band's own blur it puts the same three inks at 0.63 dark /
+0.32 light - the same round-2 design review blurred a real row at the band's own
+radius, took the brightest pixel (`#7b7a73` dark / `#aba69e` light) and solved the
+floor against it. That measurement holds only for a surface whose rows are text all
+the way under the band, and round 2 makes the class opt-in per surface and forbidden
+wherever media can pass under the band - an image preview or an avatar travelling
+under it puts the media hazard straight back. That restriction is why it is a class
+and not the global floor. Those are the numbers a see-through header would buy, and
+they are why it is not shipped. At 0.63 dark the projected desktop share rises to
+about 14 % - the band's own 37 % over the ~38 % the page already leaves open - so
+the header stops covering the thing it exists to cover. At 0.32 light the band's
+step against the page collapses toward 1.0 and the header stops reading as a header
+at all - a worse defect than the isolation it was trying to avoid. Anyone who wants
+a see-through header has to beat that measurement first, and then add a surface-class
+opt-in to the derivation plus a `CONTROLS`/contract row rather than hand-picking a
+number.
+
+**What this surface has not measured.** The updates drawer's Unread/Read switch and
+the Finder file-list band wear the same well and band rules but have not been driven
+in an isolated lane (both need a live conversation), and the wallpaper worst case
+here is a declared composite of the app's own alpha frames rather than a capture
+over a real desktop.
 
 **The selected tab is an overlay, not a pill.** A tab's opaque `bg-surface` /
 `bg-elevated` fill is a hole in a translucent strip; inside a covered pane the
@@ -1186,7 +1474,8 @@ equally important**, and the interface must not present them as though they are.
   the turn; a parked turn is unsettled, so nothing condenses). A finished turn
   also carries one turn-foot line (`Worked for 1m 12s · 8 actions`) — EXCEPT a
   turn that has condensed to ONE summary bar: there the foot stands down and the
-  bar IS the line (its own stamp replaces the foot's, one stamp per turn).
+  bar IS the line (its own stamp replaces the foot's, so the answer keeps one
+  stamp for the turn).
   A turn's hidden rows condense as SEGMENTS: one bar per contiguous hidden span,
   in place, around the rows that stay on screen (a compaction, a stop or incident
   marker, the turn's answer). When a pinned row splits the work into several
@@ -1474,52 +1763,180 @@ shared layer or it is not one.
 
 ### A view that is not the newest one
 
-Five states where the app is showing something other than the owner's current
+States where the app is showing something other than the owner's current
 answer, and each has one idiom because inventing a second at the call site is
 how a system ends up with two ways to say the same thing.
 
-**One register for the status slot.** Everything that says "the pane is not
-authoritative yet" is `text-meta text-ink-dim`: the stale caption below and the
-skeleton's label. The exception is `Reconnecting`, which stays
-`text-body-sm text-ink-dim` because during the retry window it is the pane's
-ONLY statement — there are no rows under it to carry the register — so it takes
-the reading step rather than the caption step. Three type steps in one slot read
-as three severities for one condition, which is what this rule removes.
+**One loading indicator for every wait on a conversation** (operator,
+2026-11-11, superseding the caption-only rule that stood here). Four cases show
+a conversation that is still arriving, and all four render the same element,
+`ConversationLoadingIndicator` (`features/chat/canonical/conversation-loading-indicator.tsx`),
+with a different label:
 
-**A caption, not a treatment.** A stale paint — rows read back from this
-window's own memory while the snapshot is still in flight — stays at full
-`ink`. No dimming, no scrim, and **no opacity**, which is banned as a state
-signal here for the reason § 6 gives: it is unreadable on some grounds and
-invisible on others. What says "this may be behind" is one sentence,
-`text-meta text-ink-dim`, sentence case, no spinner, no icon tile, no border,
-no shadow. It is present from the first painted frame and removed in the same
-commit as the reconciled rows, so the two never disagree.
+| Case | Where it mounts | Label |
+|---|---|---|
+| Cold open: no rows painted, the first page owed | the content column, where the rows will land | `Loading conversation…` |
+| Revalidate: rows painted from this window's cache, the owner's page owed | the transcript's foot slot (`data-lo-stale-caption`) | `Checking for new messages…` |
+| Older page: an earlier page in flight | the older-history slot's busy Button | `Loading earlier messages…` |
+| Remote: a peer's conversation whose history is not proven yet | whichever of the three slots above is waiting | `Syncing from your other device…` |
 
-That sentence lives OUTSIDE the scrolling content, as the pane column's first
-child above the transcript's scroll box. Placed inside it — as it first was —
-it is the oldest thing in a bottom-anchored `flex-col-reverse` scroller, so on
-the transcripts a cache exists for (only a conversation taller than the pane is
-ever cached) it renders thousands of pixels above the fold: measured at
-1280x600 on a 36-row stale transcript, its rect sat at top -2028 in a 560px
-pane. The state was then indistinguishable from a live one, which is the one
-thing this caption exists to prevent.
+The mark is the shared `Spinner` at `sm` (16px): an `accent` arc turning on a
+`border-control` ring, the one indeterminate-progress shape this app has, drawn
+here with a **2px** ring (`border-2`) at the same 16px border-box, so no
+geometry moves. `sm`'s own 1px ring left the light-theme arc as a few accent
+pixels — measured from frames, 2.96:1 at its weakest angle, under the 3:1
+non-text floor — and a still frame read as an empty grey circle, the sidebar's
+idle-session status circle rather than work in progress. It
+replaced a pulsing `accent` dot (design review round 1, D-M1) because a small
+green dot beside a line of text reads as **presence** — online, connected — not
+as work in progress, which is exactly the "doesn't read as loading" the operator
+reported. Under reduced motion the global duration cap ends `spin` on its
+identity keyframe, so ring and arc stay painted as a static mark; forced colours
+repaint the ring `CanvasText` and the arc `Highlight` so the arc survives the
+border flattening. It is `aria-hidden`, beside a visible label at
+`text-meta text-ink-muted`, sentence case, trailing ellipsis. `ink-muted` is one
+step above the `ink-dim` the old caption used.
+
+The label sits in a pill: `rounded-full bg-accent/10 px-2`. The tint is the
+`accent` role at an alpha (`LOADING_PILL_ALPHA`, pinned in
+`theme-engine/contract-tables.mjs` and read back from the component by
+`pnpm check-themes`), so it follows the theme and, on window glass, tints what is
+behind it instead of painting an opaque patch. No border, no shadow — it is a
+statement in the flow, not a floating surface. The contract asserts `ink-muted`
+at 4.5:1 on the pill's composite over `canvas`, `surface`, `elevated` and
+`accentWash` (the hovered older-history Button the `older` case sits in) in every
+palette (worst 4.92:1, kanagawaLotus on `accentWash`, then 5.40:1 on its
+`canvas`; `localOperatorLight` 6.70:1 and `localOperatorDark` 6.31:1 at their
+weakest grounds).
+
+**The spinner sits beside the pill, not in it**, in the same flex row and gap so
+the two read as one unit. Inside, the ring's `border-control` track would sit on
+the tint and lose the 3:1 the contract holds it to on every plain ground: 2.77:1
+on rosePineDawn over `canvas`, 2.99:1 on `localOperatorLight`, eight palettes
+under on `canvas` and five on `surface` — and no alpha fixes it (4 % still
+leaves rosePineDawn at 2.98:1, against 3.13:1 bare). On the slot's own ground the
+spinner keeps every existing row. In its own
+slot it is an `<output>`, named `Loading conversation` only in the cold case
+(over painted rows that name would contradict the screen, so the label alone
+is the status); inside the older-history Button it drops the live region,
+because that slot's sr-only announcer already says the same words. `Reconnecting` is a transport statement, not a load, and
+keeps its own `text-body-sm text-ink-dim` line.
+
+**It never adds height.** Every case mounts into a slot that is already
+reserved: the foot slot is `min-h-[1lh]` of `text-mono-sm` (12px x 1.45 =
+17.4px) and the indicator's line box is one `text-meta` line (12px x 1.45 =
+17.4px, the 16px spinner centred inside it, and the pill has no vertical
+padding — only `px-2`, which widens the indicator and moves no row); the older-history slot is a fixed `h-7`
+in every arm; the cold indicator stands where the rows will land, in a pane
+that holds nothing else. A label change between consecutive loading states of
+one slot (cold to remote when the placement fact arrives) re-renders the same
+element in place — no `key`, no remount — so the spinner's rotation does not restart.
+
+**Rows are never treated.** A stale paint — rows read back from this window's
+own memory while the snapshot is still in flight — stays at full `ink`. No
+dimming, no scrim, and **no opacity**, which is banned as a state signal here
+for the reason § 6 gives: it is unreadable on some grounds and invisible on
+others. The indicator is removed in the same commit as the reconciled rows, so
+the two never disagree — and on a cached return it is held back for its first
+half-second (below), and never painted at all when the snapshot lands first.
+
+The revalidate indicator lives in the transcript's FOOT slot, the row reserved
+at the newest edge of the scroller. Not at the oldest edge: inside a
+bottom-anchored `flex-col-reverse` scroller the first child renders thousands of
+pixels above the fold on the transcripts a cache exists for (measured at
+1280x600 on a 36-row stale transcript, top -2028 in a 560px pane), so the state
+was indistinguishable from a live one. Not above the scroller either, which is
+where it was hoisted to: a row that exists only while the paint is cached
+changes the scroller's height when it goes (33.4px, measured), and a stale
+paint now PAINTS at once, so that move happens in front of the reader. The foot
+slot exists for every conversation with rows, so the indicator's arrival and
+removal move nothing. The trade: a reader who scrolls up through the cached
+rows during the snapshot wait (median 0.96 s) scrolls it off screen. The
+older-history slot is reserved empty while the paint is cached for the same
+reason (`OlderHistorySlotReserve`).
+
+**A cached return is quiet for its first half-second.** The revalidate label is
+held back `STALE_INDICATOR_DELAY_MS = 500`
+(`features/chat/canonical/use-stale-indicator-hold.ts`) once rows are already
+painted, so a return whose snapshot lands first never shows it at all. The
+operator reported the opposite behaviour (2026-11-12: "when i switch between
+team bridge and session, it has some sort of loading mechanism to load
+conversation? looks like it always does this"): the rows were readable in the
+switch's first frame and the indicator still flashed on all 60 measured returns.
+The constant is the bound between two measured waits. On the mock daemon the
+authoritative snapshot landed a median of 165 ms after the paint (p90 300 ms,
+max 434 ms, n=60), inside the hold's 500 ms, so quick returns there paint no
+loader at all. Real use is slower: this app's own snapshot wait is a median of
+0.96 s (p90 1.9 s, 283 settled opens, `transcript-pane.ts`'s retired-hold note),
+and one machine's open-trace log of 294 settled opens puts the same wait at a
+median of about 1.3 s (p90 3.2 s, max 13 s) — a different trace of the same
+wait, not the same sample. On waits like those the hold hides nothing: the
+label appears about 500 ms after the click and stays until the snapshot lands.
+So the constant sits above the mock's whole distribution and below both real
+medians — no loader on a quick return, and on a real page a label that still
+says the view is a cache rather than looking settled when it is not. The slot
+is reserved either way (`min-h-[1lh]`), so the label's arrival and its removal
+move nothing. The cold and remote variants are never held: a cold open has no
+rows to be quiet about, and a peer's unproven history is not readable yet, so
+that wait IS the sync.
+
+The hold's limit is stated rather than implied. A snapshot that lands 500-650 ms
+after the click blinks the label rather than hiding it: the design sweep measured
+38 ms visible at a 500 ms landing, 69–132 ms at 540 ms, ~190 ms at 650 ms and
+~340 ms at 800 ms. Holding is the minority case on a real machine: both real
+medians above sit past the constant, so the trade it makes is the measured one
+— no flash on the quick returns on the mock daemon, and, on the slow ones, a
+caption that stays for as long as the wait lasts.
+
+**A cached paint carries one liveness bit.** When a turn was running at unmount,
+the paint records that fact beside the rows — the flag only: the in-flight rows
+are still dropped on write, because a cached streaming row can never advance. A
+return to that conversation therefore paints the working line from its first
+frame instead of idle chrome for the length of the revalidate, and the snapshot
+— the only authority — keeps or withdraws the claim in the commit that replaces
+the rows. The carried claim reads `thinking` with its number withheld (a number
+counted from the viewer's arrival would name a phase that began earlier) until
+the snapshot dates it, and a reader who leaves again before the snapshot lands
+carries the claim forward. Where both claims are true the working line wins the
+foot slot over the revalidating label ("the agent is working" outranks "this
+view is being checked"), and the slot is the same box either way, so the order
+costs no layout. While a running turn revalidates, the pane therefore shows the
+working line and no caption at all: the working line holds the foot slot, so
+the label has nowhere to be. On an idle revalidate the label takes that same
+slot, and a scrolled-up idle return leaves it at the newest edge, off screen by
+design rather than lost. A scrolled-up running return is the other way round:
+the working line holds the slot, so it is the working line that sits at the
+newest edge, off screen. The flag is presentation only, and the composer is
+where its account stops: in a return's first frames the idle placeholder and
+the stop affordance still read the live turn (`chat-page.tsx`'s `turnAlive`)
+until the snapshot lands. That is a disclosed gap, because seeding those would
+change send mode and the interrupt path from a cached claim; a prompt sent
+before the snapshot lands is sent as a new turn rather than as a steer. That
+gap is pre-existing and is not widened here.
+
+**A scrolled-up return lands where it left.** The paint carries the reader's
+place in the same entry as the rows: pinned, or the id of the row they were
+looking at plus its offset from the scrollport's top — never a `scrollTop`,
+which is a position in a content length the reconcile changes. The transcript
+records it in a layout cleanup, the last moment the scroller is still
+measurable, and `writePaint` carries the value forward because its own write
+runs in the passive cleanup that follows; the seeded mount restores it in its
+layout phase, so the first painted frame of the return is already the reader's
+place. A row the transcript no longer holds is a missing anchor, and the tail is
+the honest fallback rather than a guess at the nearest neighbour. A reader who
+left at the tail is already home, so the return stays pinned and nothing moves.
+The geometry claim this paragraph rests on — painted rows move 1 px or less on a
+return — holds at widths of ~1380 px and up. At the 800 px minimum width the
+first paint reflows before the reader can act on it: rows move up to 96 px at
+roughly 25 ms and 4 px at the snapshot. That reflow is pre-existing and
+identical on the base commit, and this change does not address it.
 
 **A loading state is not an empty state.** "There are no messages" is a claim
 about the conversation, and making it before the transcript resolves is how the
 app once flashed "no messages yet" at a populated chat. While a conversation is
-being fetched and nothing has been painted, the pane shows a skeleton: three
-`aria-hidden` bars on `elevated` and an `<output>` (same register as the caption
-above) reading `Loading conversation…`. Never a skeleton **over** painted rows,
-and never the empty state — the skeleton is the honest shape of not knowing.
-
-The bars are drawn on `elevated`, not `sunken`. The bars ARE the entire
-substance of this state, and `sunken` against `canvas` is ΔE00 1.23 in
-obsidian, 1.66 in dune, 1.82 in iceberg and 1.89 in brand-dark — at or below
-the § 3 aim of 2 on nine of the fifty-nine themes (four of the twelve the port
-started from), where the loading state is a black
-pane with one sentence. `check-themes` cannot catch it: it floors grounds at
-1.03:1, which those steps pass. `elevated` measures 6.44 dark / 4.35 light
-against `canvas`, and it is a ground role the palette already owns.
+being fetched and nothing has been painted, the pane shows the cold indicator.
+Never a skeleton **over** painted rows, and never the empty state — the
+indicator is the honest shape of not knowing.
 
 **An arrival must not move anything.** The unseen mark used to be
 `font-semibold` on a row whose title is `flex-1 truncate`, so the marking event

@@ -147,6 +147,30 @@ export type CanvasDocument = {
 	 * artifact "no longer on disk".
 	 */
 	artifact?: CanvasArtifact;
+
+	/**
+	 * Present when a PEER owns this file (`features.remote_files`). Its `path`
+	 * above is then the owner's display path - text for classification and the
+	 * tooltip, never a path on this disk (I3-1, `canonical/remote-files.ts`).
+	 */
+	remote?: CanvasRemoteFile;
+};
+
+/** A peer-held Files row, as the actions and readers need it. */
+export type CanvasRemoteFile = {
+	/** The owner's index row id: what the content and download routes take. */
+	fileId: string;
+	/** The session this device lists the row under (the parent of a family). */
+	sessionId: string;
+	/** The owning device's display name, from this device's own catalogue. */
+	deviceName: string;
+	/** How the owner can serve the bytes, or `null` when it cannot. */
+	readKind: "attachment" | "path" | null;
+	/** The owner's reason it cannot serve the bytes, or `null` when it can. */
+	unreadable: string | null;
+	/** The owner's display path (`~/…` or cwd-relative), text only. */
+	ownerPath: string | null;
+	sizeBytes: number | null;
 };
 
 /**

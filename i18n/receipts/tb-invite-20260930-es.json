@@ -1,0 +1,26 @@
+{
+	"auditor": "i18n-auditor",
+	"agent": "i18n-auditor",
+	"model": "kimi/k3.1-pro",
+	"instance": "tb-invite-20260930-es",
+	"date": "2026-09-30",
+	"status": "passed",
+	"locale": "es",
+	"namespace": "ui.teamBridge",
+	"sha256": {
+		"en": "c7b1dc752c9f773df7e116be1d121bec0009c33da52bcd5931cc88c41ce9cbe3",
+		"es": "8c4238d6cfb57fdfaaff2b6320225162bbf2b4975626348cf24308f15f1d4eb9"
+	},
+	"findings": [],
+	"checks": {
+		"key_parity": "283 English keys, 283 Spanish keys; en-es=set(), es-en=set().",
+		"icu_render": "Parsed and rendered with intl-messageformat from the repository node_modules under locale es. 0 => Enviar invitaciones; 1 => Enviar 1 invitación; 2 => Enviar 2 invitaciones; 5 => Enviar 5 invitaciones; 21 => Enviar 21 invitaciones.",
+		"cldr_arms": "Required =0, one, many and other arms all present. {count} occurs zero times in =0 and exactly once in each non-zero arm.",
+		"bidi": "No U+200E/U+200F/U+202A-U+202E bidi controls and no zero-width characters found in any Spanish catalogue string.",
+		"apostrophes": "No ASCII apostrophe U+0027 found in any Spanish ICU message.",
+		"diff": "git diff shows only the two group-heading insertions after members.invite, the counted members.add replacement, the bridge_unavailable replacement and the state.left deletion; no unrelated key changed or reordered."
+	},
+	"scope": "Reviewed in depth the four changed keys against English, their context entries and established Spanish terminology, including the counted plural, disabled-row state semantics, both group-heading roles and the required removed key. Ran the mechanical whole-file parity, ICU, CLDR-arm, placeholder, bidi/zero-width, apostrophe and scoped-diff checks. Deliberately did not re-litigate the other 279 unchanged keys already passed by a previous audit.",
+	"independence": "Auditor wrote none of the audited strings; the translator was a separate subagent. No catalogue or ledger edit by the auditor.",
+	"status_vocabulary_note": "Auditor wrote status 'pass' with an empty findings list; the coordinator normalised the vocabulary to the ledger tool's passed | changes_requested. The verdict is the auditor's."
+}

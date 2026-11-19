@@ -1,0 +1,277 @@
+{
+  "audit_id": "waveb-urnib-20261027",
+  "kind": "independent-delta-audit",
+  "audit_kind": "one-value delta re-audit (wave B, locale ur)",
+  "date": "2026-10-27",
+  "audit_date": "2026-10-27",
+  "locale": "ur",
+  "locale_name": "Urdu",
+  "namespace": "ui.chat.pickers",
+  "batch": "wave-b-delta-nib",
+  "pr": null,
+  "head": "e90a9ac4094fed38dea41bf17470904ffedeb9da",
+  "base": "a5356ce91c4f37bf4c4d1c4518070e3a9b2505cb",
+  "head_subject": "fix(test): run the wave B keyed-copy suite in the desktop lane",
+  "audit_workspace_head": "fbd334629fab274a2b65337bd1490767d39baee1",
+  "repository_moved_during_audit": {
+    "workspace_head_when_gates_ran": "fbd334629fab274a2b65337bd1490767d39baee1",
+    "head_when_record_written": "e90a9ac4094fed38dea41bf17470904ffedeb9da",
+    "audited_bytes_identical_at_both": true,
+    "commits_landed": "e90a9ac409 fix(test) / c471ab54eb merge origin/main / bbf844b152 ledger bind",
+    "effect_on_this_audit": "none: `git diff --stat fbd334629f HEAD -- src/i18n/catalogues src/renderer scripts/i18n` is empty, and generate --check and locale-parity (44/44) were re-run at HEAD — see audit.log section 9"
+  },
+  "binding": "Binds to the sha256 of the catalogue bytes ON DISK at e90a9ac4094fed38dea41bf17470904ffedeb9da: the whole ur namespace file is 4772ed26451c1118c927a0aec722428eb88f3cd3f26c80dfae183ec2b14af0c1, the changed value is injected into that file only. Verified two ways: `git diff`/`git show` for the base bytes and a byte-level common-prefix/suffix comparison, which found exactly one insertion (U+06D4) at char offset 68284, line 737, +2 bytes, 738 keys in identical document order. A later commit that changes any value voids this record.",
+  "instance": "181144042069-waveb-urnib",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "181144042069",
+    "team": "lopdev",
+    "model": "radient/auto",
+    "route": "radient/auto",
+    "effort": "auto",
+    "fallback_used": false,
+    "fallback_note": "No model-switch or fallback notice appeared in this session; the route stayed radient/auto from boot.",
+    "actual_model_source": "This session's own runtime state (~/.local-operator/sessions/181144042069/tail-anchor.v1.json -> selection_payloads[0].details.selector = 'radient/auto', effort 'auto', boot 'radient/auto') and the run's system context ('Model: radient/auto'), which name the same route. The upstream provider/model behind the router alias is not exposed to the session, so none is invented; no fallback is claimed.",
+    "independent_from_translator_session": true,
+    "independence_basis": "This session is NOT the session that wrote UR-WBD-01 (that was c89cee263ac2), NOT the session that applied this amendment (the coordinator applied it), and NOT the translator of the value (commit 0559f7f7d8 / a5356ce91c, other sessions). It edited no catalogue, context file, ledger, generated file or package.json: `git status` shows this bundle and receipt as the only paths it created. It judged the amendment on the English source, the sidecar, the consuming component and the style guide, and it ran no translation API, SDK, MT service or back-translation. ICU rendering used the repo's own intl-messageformat 12.1.3 and @formatjs parser; the RTL pass used GNU FriBidi 1.0.16 locally."
+  },
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/ur.md",
+      "sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+    },
+    "languages_manifest": {
+      "path": "i18n/languages.json",
+      "sha256": "7fd056b916fc3d56ddf36991a09b29864ea0b0f825d938aead1ed165926f8d63"
+    },
+    "contract": {
+      "path": "docs/I18N.md",
+      "sha256": "6fc7bea71643c0dcaeaed697ecd792cfdfeb11b7816b5f8d160011e7c7df2abe"
+    },
+    "previous_receipt": {
+      "path": "i18n/receipts/c89cee263ac2-waveb-delta-ur.json",
+      "sha256": "c46bfc1a6847d8fe54c85f7df5b8bb6116d6d9c543c4aa71665c209c72904cd8",
+      "note": "the nine-namespace delta receipt this one re-binds, for one row"
+    }
+  },
+  "key_count": 738,
+  "keys_in_delta": [
+    "ui.chat.pickers.slash.enter_needs_a_pick"
+  ],
+  "delta": {
+    "key": "ui.chat.pickers.slash.enter_needs_a_pick",
+    "base_value": "Enter کے لیے قطار منتخب کرنی ہو گی: پہلے ↓ پھر Enter · Tab اس قطار کو مکمل کرتا ہے",
+    "disk_value": "Enter کے لیے قطار منتخب کرنی ہو گی: پہلے ↓ پھر Enter · Tab اس قطار کو مکمل کرتا ہے۔",
+    "byte_equal_to_proposal_of_UR_WBD_01": true,
+    "proposal_source": "~/qa/wave-b-delta-ur-deliver/REPORT.md, UR-WBD-01 'proposed' line (session c89cee263ac2), extracted by script, not retyped",
+    "codepoints_added": [
+      "U+06D4 ARABIC FULL STOP"
+    ],
+    "byte_delta_in_file": 2,
+    "values_changed_in_file": [
+      "ui.chat.pickers.slash.enter_needs_a_pick"
+    ],
+    "keys_added_or_dropped": [],
+    "document_order_preserved": true,
+    "nfc_stable_whole_file": true,
+    "manual_bidi_controls_in_file": 0
+  },
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.chat.pickers.json",
+      "sha256": "d91585397b3314c5ffd81d93c3fd7d9fdb1e0a54cc6ddd57ba082f55d666522c"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.chat.pickers.context.json",
+      "sha256": "6861dbfbdbc9af23c8c09332670a6f7d77c2a12b5724afc91d0054660ef904d0"
+    },
+    "ur": {
+      "path": "src/i18n/catalogues/ur/ui.chat.pickers.json",
+      "sha256": "4772ed26451c1118c927a0aec722428eb88f3cd3f26c80dfae183ec2b14af0c1"
+    },
+    "ur_at_base": {
+      "path": "src/i18n/catalogues/ur/ui.chat.pickers.json",
+      "sha256": "7802b5fdd2e5a8c3847c8cc97dfb1faabbc0c9064ba50caab7f93aec3de01925"
+    }
+  },
+  "other_eight_namespaces": {
+    "claim": "unchanged from receipt c89cee263ac2 — only ui.chat.pickers needs re-binding",
+    "all_identical": true,
+    "rows": [
+      {
+        "namespace": "ui.agents.config",
+        "ur_sha256": "35c369946919f4d93ae1ddc7e79a97196666632f8c727eccca12a8bf53be2a1c",
+        "en_sha256": "534c035edf33e60c142f0106306cd2ce8c6250f6516a321a12ae5c0a6a5621bc",
+        "context_sha256": "d55725ee860cc40539b200ab0d0018e4f1062d6ade08c16c169520a4f3625db0",
+        "identical_to_receipt_c89cee263ac2": true
+      },
+      {
+        "namespace": "ui.chat",
+        "ur_sha256": "f426744c3577e192c66c94f3dcad22918fd7ebf38361cc0a83ff1f6ca201a643",
+        "en_sha256": "4d07ed6de9382fdf1310fd70bf48be2602952538c1ddf43bda8972834760be04",
+        "context_sha256": "f300190022daa1e49a200072b29501cfc6a5be7c542a57ef741873c14bfa6164",
+        "identical_to_receipt_c89cee263ac2": true
+      },
+      {
+        "namespace": "ui.chat.canonical",
+        "ur_sha256": "5bf58414f7bbd78921fb1671a4032dd66e8b45159c236d4cf072b8b2c4d273d9",
+        "en_sha256": "5bb6a6fe5dd64f70a4caf0812d3fa4b95c70bd49c12bd556ab0d827176ac4477",
+        "context_sha256": "ea13112039dfed41998801904ccc88531f87452a7e3d7138ab09a5f48f9e65b2",
+        "identical_to_receipt_c89cee263ac2": true
+      },
+      {
+        "namespace": "ui.chat.device",
+        "ur_sha256": "7c46f933a3f32d8145f5484c1fda47f42d58c5cde505ba40b419b989f00aa64e",
+        "en_sha256": "0d4c357edbb9a67d015301f263e3892f752aca9ee63a3d5c737bf12a9ac6375a",
+        "context_sha256": "b3f41c2c587de6559aa52fe15ab2cfdda521df44b770b76ac8160855fd5c4a7a",
+        "identical_to_receipt_c89cee263ac2": true
+      },
+      {
+        "namespace": "ui.chat.run_details",
+        "ur_sha256": "ddce087907e8e07db42bf819cef78c133e66a6f5f02edee98bc503cb0d5d7061",
+        "en_sha256": "77471485df0fccb4a29541d98949d5e21e8e541099cbe602e540c5848b96db61",
+        "context_sha256": "6e25843e49db6d20254d7593cbfe06c81dd8ba305c369351b4a9e374c6e4e526",
+        "identical_to_receipt_c89cee263ac2": true
+      },
+      {
+        "namespace": "ui.chat.status",
+        "ur_sha256": "77138a3d3fe8d02576f05a79346e92d6f71536669d477cda7501398faaf08bfa",
+        "en_sha256": "c11e619f13f9c40637a33cbafc40442d61c1bf2eed5e4c0c7d667db55f4b65cb",
+        "context_sha256": "a62b34dde0f22e95c34793f1f87791fc38385c68c840a0f6c60adf304aaec561",
+        "identical_to_receipt_c89cee263ac2": true
+      },
+      {
+        "namespace": "ui.common.connection",
+        "ur_sha256": "455e6f80179c80af412138d3edcd3780b610a10273a2cbcdb7e631cb2fa353ae",
+        "en_sha256": "0e69a319b56d967cc012d15c6480ae1cf2084092ac0c98d130a9412047fcc681",
+        "context_sha256": "99f458fecbeae8ea58c45f171d7ccbc465cc9a717255553aaadc3c1927f875ae",
+        "identical_to_receipt_c89cee263ac2": true
+      },
+      {
+        "namespace": "ui.common.layout",
+        "ur_sha256": "145bc93d2724ea34181b9c14f2c5847c28896a5d131c16b487ecfbc10c5587e1",
+        "en_sha256": "1d9f353eb3aa467d22e102aa9459ba7070637c6b2a2ddb17e31b075963df9231",
+        "context_sha256": "cb15214ec6712e3a15bf8cb30918b3720348a7546d773788fe06a69b3575b5f6",
+        "identical_to_receipt_c89cee263ac2": true
+      }
+    ]
+  },
+  "method": {
+    "mechanical": "repo validator + gates on the audited tree: generate --check (keys.gen.ts byte-identical), check-duplicates (853 files, 0 dup), context-parity (ok, 131 allowed gaps), check-coverage (ok, 0 allowed keys), check-strings (1377 files, 77 at/below baseline), locale-parity 44/44 including the six [ur] checks, ur-activation 3/3, wave-B keyed-copy 10/10; then a namespace-wide sweep of all 738 ur values through @formatjs/icu-messageformat-parser — 0 parse errors, 0 argument/type mismatches against en.",
+    "accuracy": "the value read against the English source (which ends in '.'), its context sidecar entry, the component that paints it (slash-commands.tsx:2258-2269, two block <p>s in one bordered strip), the sibling click lines it sits above, the ur style guide's punctuation section, and the same key in all eight shipped locales (en/es/fr/hi/ru/vi carry a stop; zh-CN does not — out of locale, NIB-OBS-2).",
+    "rtl": "GNU FriBidi 1.0.16: order proved from `fribidi --novisual --vtol` (visual->logical map), not from the shaped visual string, because this build applies Arabic shaping and merges lam-alef. Checks: the final U+06D4 sits at VISUAL INDEX 0 (leftmost); no manual bidi controls; every maximal bidi run lands on one contiguous visual block with LTR runs ascending and RTL runs reversed, and the blocks run right-to-left; Latin islands (Enter, Tab) contiguous and internally un-reversed; NFC stable; the reordering is a permutation of the same code points. Applied to the changed line and to all five click lines it sits above.",
+    "fit": "the value grows 82 -> 83 code points (+1 glyph, +2 UTF-8 bytes). It is one <p> in a full-width, text-meta footer strip; the key carries no maxCells/maxChars budget in its sidecar, and the sibling click lines are of comparable length, so the change adds no new wrap or overflow class. No pixel measurement was made (no browser, no frame) — see limits.",
+    "limits": "Catalogue-level: no rendered frame, no screenshot, no pixel measurement and no native-speaker sign-off. Fit is call-site geometry plus the absent maxCells, not a measured render. The namespace carries no ICU plural or select at all, so the ur one/other category rule is vacuous here and no category is claimed; the changed value is a plain literal with zero ICU arguments, so the formatter's identity render is the whole of its parse proof."
+  },
+  "findings": [
+    {
+      "id": "UR-WBD-01",
+      "severity": "minor",
+      "state": "resolved",
+      "key": "ui.chat.pickers.slash.enter_needs_a_pick",
+      "resolution": "The amendment is BYTE-EQUAL to the string UR-WBD-01 proposed (134 bytes each, compared in code, not by eye): the value now ends U+06D4 ARABIC FULL STOP. All five click lines it sits above already ended in U+06D4, and the English value, its three hardcoded siblings and every other shipped locale except zh-CN end in a stop. Verified independently of the session that wrote the finding.",
+      "verification": [
+        "byte compare of the disk value against the proposal extracted from the finding's own report: equal",
+        "render: 6/6 strip lines end in U+06D4 after formatting with the repo's intl-messageformat",
+        "fribidi: the final U+06D4 is at visual index 0 on all six lines, no bidi controls, NFC stable",
+        "parsed-JSON diff: this is the only value changed in the file; 738 keys, order unchanged"
+      ]
+    }
+  ],
+  "observations": [
+    {
+      "id": "NIB-OBS-1",
+      "counted": false,
+      "key": "ui.chat.pickers.slash.enter_needs_a_pick",
+      "kind": "source-side inconsistency, not a catalogue defect",
+      "text": "The English context sidecar's tone line for this key says 'instruction, sentence case, no trailing period' while the English value itself ends in '.'. That contradiction is the exact premise the translator declined UR-WB-06 on, so it will be re-argued in every later wave unless it is settled at source: either update that tone line to say the two clauses end in a stop, or drop the stop from the English value AND from the click.* lines in all seven locales (source-side, wider). Not fixed here — this audit edits no catalogue, sidecar or ledger."
+    },
+    {
+      "id": "NIB-OBS-2",
+      "counted": false,
+      "kind": "out of locale, reported not judged",
+      "text": "With ur stopped, zh-CN is the only shipped locale whose line ends without a terminal stop (it ends U+884C 行, no 。). zh-CN's own audit record governs that call; noted only because the consistency argument for the ur change is now complete for the other six locales."
+    }
+  ],
+  "result_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0,
+    "open": 0,
+    "resolved": 1,
+    "observations_uncounted": 2
+  },
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [],
+    "resolved_finding_ids": [
+      "UR-WBD-01"
+    ],
+    "observation_ids": [
+      "NIB-OBS-1",
+      "NIB-OBS-2"
+    ],
+    "summary": "UR-WBD-01 is resolved: the amended value is byte-identical to the proposed string, the strip's two lines both stop, and the stop is visually leftmost with no bidi hazard. No blocker, no major, no open minor. passed."
+  },
+  "harness": {
+    "node": "v24.22.1",
+    "python": "3.14.7",
+    "icu_renderer": "intl-messageformat 12.1.3 + @formatjs/icu-messageformat-parser (repo node_modules, shared by symlink; nothing installed)",
+    "bidi": "fribidi (GNU FriBidi) 1.0.16",
+    "repo_state": "worktree /Users/damian/local-operator-ui/.worktrees/wave-b-bind at e90a9ac4094fed38dea41bf17470904ffedeb9da (detached, locked); catalogue and context files unmodified by this audit"
+  },
+  "artifacts": [
+    {
+      "path": "i18n/audits/evidence/ur/ui.chat.pickers/waveb-urnib-20261027/audit.log",
+      "sha256": "ebc15ab120a6a6cdee1a216a0d5564793278211933d2d4306806f38e4e8522f0",
+      "bytes": 32703
+    },
+    {
+      "path": "i18n/audits/evidence/ur/ui.chat.pickers/waveb-urnib-20261027/render.json",
+      "sha256": "b2ecfd2d83e1a092201b41b5f3d1279c1b07a700571da5ab27ea00ff382f059b",
+      "bytes": 2514
+    },
+    {
+      "path": "i18n/audits/evidence/ur/ui.chat.pickers/waveb-urnib-20261027/bidi.json",
+      "sha256": "bbc43e5304f7e17e4d2ad73caf3cb5340f525ad7dfe4ae68bf10c57fe32d8d4b",
+      "bytes": 14737
+    },
+    {
+      "path": "i18n/audits/evidence/ur/ui.chat.pickers/waveb-urnib-20261027/icu-sweep.json",
+      "sha256": "f1e4ca32e52ca73ab06acbac9c843eac4ebefca9112fe4d4ba47ece5b192c6ff",
+      "bytes": 731
+    },
+    {
+      "path": "i18n/audits/evidence/ur/ui.chat.pickers/waveb-urnib-20261027/scripts/render.mjs",
+      "sha256": "fcf847c6efa7d2d495d93a759099682c58cdb16160779de3401738078c4be11c",
+      "bytes": 4249
+    },
+    {
+      "path": "i18n/audits/evidence/ur/ui.chat.pickers/waveb-urnib-20261027/scripts/bidi.py",
+      "sha256": "f0d19c274ce5135e9b8204fd4cbccd27c92b3fe6f2df29a57936bda05fc034a7",
+      "bytes": 8440
+    },
+    {
+      "path": "i18n/audits/evidence/ur/ui.chat.pickers/waveb-urnib-20261027/scripts/ns-sweep.mjs",
+      "sha256": "0e4ea90854fda8ae0b1b941e943a2eb0ccd3f6e02f3dc74c1f457e7652b7c619",
+      "bytes": 4089
+    },
+    {
+      "path": "i18n/audits/evidence/ur/ui.chat.pickers/waveb-urnib-20261027/report.md",
+      "sha256": "17ab806b533f1996f6fbf3ec80e4bfa7ee696e4dbd5907946bd9c5f00f67067f",
+      "bytes": 7361
+    }
+  ],
+  "audit_notes_not_execution_log": {
+    "execution_log": "i18n/audits/evidence/ur/ui.chat.pickers/waveb-urnib-20261027/audit.log",
+    "note": "audit.log is the execution log: every command and its captured stdout/stderr, run on the audited tree at e90a9ac4094fed38dea41bf17470904ffedeb9da. It carries no hand-written claim. The prose fields in this record (method, findings, limits) are audit notes and are not themselves proof of execution; the artifacts listed above are. This record claims no CLI or validator output that is not in audit.log."
+  },
+  "original_lost_evidence": null,
+  "original_lost_note": "No original was lost. This is an original record for a new one-value delta, not a replacement or a recreation."
+}

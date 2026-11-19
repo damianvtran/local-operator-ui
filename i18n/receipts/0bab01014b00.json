@@ -1,0 +1,169 @@
+{
+	"schema": 1,
+	"status": "passed",
+	"result": "clean-with-findings",
+	"auditor": "translation-auditor",
+	"model": "radient/auto",
+	"model_identity": {
+		"provider": "radient",
+		"model_id": "auto",
+		"selector": "radient/auto",
+		"requested_route": "radient/auto",
+		"served": "radient/auto — the harness's own session model line for this run (Model: radient/auto)",
+		"fallback": "none taken: no host 402 or provider fallback event occurred in this run; had one, it would be named here rather than folded into the requested route"
+	},
+	"instance": "0bab01014b00",
+	"independence": "The eight audited values were produced by the translation workflow this receipt reviews (translator 79eb1ec05ca2); this run wrote no catalogue, context, generated, ledger or git value. It read the head bytes, the frozen English source and context sidecar, and the shipped callers, parsed every value with @formatjs/icu-messageformat-parser and composed them through intl-messageformat. This receipt is a new file; the prior 5079fd4cb4 receipt was not rewritten.",
+	"translator": "79eb1ec05ca2",
+	"locale": "fr",
+	"namespace": "ui.notices",
+	"branch": "feat/i18n-toasts (PR #1413 worktree .worktrees/i18n-toasts)",
+	"head": "7b32fd2704b6168d653e717bfc7fa4ddc58686e5",
+	"head_short": "7b32fd2704",
+	"head_note": "The English source ref is COMMITTED at this head. The candidate fr catalogue is UNCOMMITTED in the worktree (git status: M src/i18n/catalogues/fr/ui.notices.json); every byte hash below was taken from the working-tree file, not from a committed blob.",
+	"previous_head": "5079fd4cb4af89eee6ddd3d1a7617ff5bc9a0e6b",
+	"previous_receipt": "i18n/receipts/fr-ui-notices-audit-5079fd4cb4.json",
+	"previous_receipt_status": "passed (clean-with-findings: one retained minor, FR-NOT-03 deferred-toast wrapping risk)",
+	"date": "2026-10-25",
+	"round": 1,
+	"audit_kind": "Eight-key DELTA audit against the frozen 102-key English source, with a whole-namespace structural re-check; the prior audit's 94-key semantic verdict is retained, not re-litigated",
+	"scope": "Delta: the eight keys added between 5079fd4cb4 (94 keys) and 7b32fd2704 (102 keys) — ui.notices.chat.{goal_restore_failed,loop_clear_failed,loop_stop_failed} and ui.notices.main.watchdog_{app_wait,app_wait_fallback,installing,still_installing,taking_longer} — judged on the frozen English source c9556d7d, the context sidecar 9a536d75 and the shipped callers. The 94 unchanged values are retained on fr-ui-notices-audit-5079fd4cb4's verdict and were re-checked mechanically only (key set/order, ICU parse, argument identity, plural categories, NFC, renders). No repaired key was reopened; no prior finding was re-decided.",
+	"keys_read": 102,
+	"keys_audited": 8,
+	"whole_namespace_mechanically_checked": 102,
+	"changed_keys_reviewed": [
+		"ui.notices.chat.goal_restore_failed",
+		"ui.notices.chat.loop_clear_failed",
+		"ui.notices.chat.loop_stop_failed",
+		"ui.notices.main.watchdog_app_wait",
+		"ui.notices.main.watchdog_app_wait_fallback",
+		"ui.notices.main.watchdog_installing",
+		"ui.notices.main.watchdog_still_installing",
+		"ui.notices.main.watchdog_taking_longer"
+	],
+	"unchanged_values": 94,
+	"sha256": {
+		"en": "c9556d7d6d8b399bc62f3a35b7bb4d01109f118b1ab29fe47ba70b739552a4e0",
+		"en_context": "9a536d75dec597c27281380946b807abdca8ad5c1f7c4e02ba54852a4568c5ee",
+		"fr": "7757c584d6d0f0f29af5a57df9cd386603c87c04c7a769830992b3af7f4f500f",
+		"fr_base": "64bae2c5d918afa59ed0f2835937d7e5a6f17a06da7a094df96c73adef55ef5b",
+		"en_base": "f806e02def13361717f2db882ab91f407ca7f7b023da7be9e19b26f0e9c4302a",
+		"en_context_base": "2980f9d4a5d99d7b32c1a752ac462a4f503488ac0d49e2465e10ce7f99ee0859"
+	},
+	"git_blob_sha1": {
+		"en": "03039a20bd1c8282c903403eec1fd37e7cd52491",
+		"en_context": "147ded3b01e478d84ca9d174d7207ccda24ad2dc",
+		"fr": "5debad0699d984c4ddd14c5722918c5a26b215bb"
+	},
+	"delta": {
+		"previous_keys": 94,
+		"head_keys": 102,
+		"changed": 0,
+		"new": 8,
+		"removed": 0,
+		"new_keys": [
+			"ui.notices.chat.goal_restore_failed",
+			"ui.notices.chat.loop_clear_failed",
+			"ui.notices.chat.loop_stop_failed",
+			"ui.notices.main.watchdog_app_wait",
+			"ui.notices.main.watchdog_app_wait_fallback",
+			"ui.notices.main.watchdog_installing",
+			"ui.notices.main.watchdog_still_installing",
+			"ui.notices.main.watchdog_taking_longer"
+		],
+		"prior94_proof": "Every one of the 94 keys present at 5079fd4cb4 carries a byte-identical value in the head working-tree file (set difference over values: empty). The baseline itself is the file the prior audit hashed: sha256(fr@5079fd4cb4) = 64bae2c5… = sha256.fr in fr-ui-notices-audit-5079fd4cb4.json, so the retained verdict is bound to exactly these bytes.",
+		"english_proof": "The English catalogue gained the same eight keys and changed no existing value (value-level set difference over the 94 shared keys: empty); sha256(en@5079fd4cb4) = f806e02d… = sha256.en in the prior receipt, and the context sidecar gained entries for the eight keys only.",
+		"order_proof": "fr key order equals en key order at 102/102 (the eight main.watchdog_* keys sit after main.update_hold_* and the three chat prefixes inside the chat block), and no key is duplicated."
+	},
+	"prior_audit_retained": {
+		"receipt": "i18n/receipts/fr-ui-notices-audit-5079fd4cb4.json",
+		"verdict": "clean-with-findings at 94/94 keys: 0 blocker, 0 major, 1 minor (FR-NOT-03, deferred-toast wrapping, retained for visual QA)",
+		"carried_findings": [
+			"FR-NOT-03"
+		],
+		"note": "Carried honestly and unchanged: the key is untouched in this delta, so its risk is neither repaired nor re-measured. It remains the namespace's one visual-QA item."
+	},
+	"caller_evidence": {
+		"chat_prefixes": "src/renderer/src/features/chat/components/composer-status-row.tsx: loopAffordance() selects loop_stop_failed (line 1152) for a running loop and loop_clear_failed (1157) for a settled one; restoreGoal() passes goal_restore_failed (2142) to goalCommand.run(GOAL_COMMAND, text, …). The row's own contract comment (409-418) states the prefix is the control's verb and object and 'the reason after the colon is still the owner's own sentence', so each of the three values must read as the START of one sentence — all three do (« Impossible de rétablir l’objectif : <reason> »).",
+		"watchdog": "src/main/update-install.ts: watchdogMessages() (2693-2701) reads the five keys at plan-build time because no process is left to call t() when a notice fires; the values travel to the detached script as ENVIRONMENT DATA (LO_UPDATE_WATCHDOG_MSG_*), never as shell source. splitElapsed() cuts each elapsed sentence at its single {elapsed} token, compose_elapsed() prints prefix + the shell's own elapsed_text() + suffix through a fixed '%s%s%s' format, and notify() passes the finished sentence as an argv to `osascript … display notification (item 1 of argv) with title (item 2 of argv)`. A translated sentence therefore cannot be a shell word, a printf format or a script fragment.",
+		"elapsed_shape": "elapsed_text() emits '%d s' below a minute ('15 s', '21 s'), '%d min %d s' otherwise ('2 min 30 s'), and '%d min' at an exact minute ('30 min'). First notice fires at WATCHDOG_APP_WAIT_NOTICE_SECONDS = 15 s and the fallback at WATCHDOG_APP_WAIT_FALLBACK_SECONDS = 160 s, so 0 s / 1 s readings are not reachable in production (rendered only as the narrow-duration probes this audit was asked for)."
+	},
+	"checks": {
+		"structure": "All 102 values parse under @formatjs/icu-messageformat-parser in both en and fr; the key sets are equal and in the same order; no duplicate key; the fr file is NFC; every fr value is a string.",
+		"arguments": "AST argument sets are identical to English for all 102 keys (10 plural keys, 12 plural elements); the three chat prefixes and the three non-elapsed watchdog notices carry no argument at all.",
+		"plurals": "fr uses one/many/other and never few; every English plural value carries both one and other in fr, with many added where fr CLDR selects it (exact multiples of 10^6). No plural category is missing from any key.",
+		"elapsed_token": "Exactly one {elapsed} in each of watchdog_app_wait and watchdog_app_wait_fallback; zero braces in the other six. The token sits inside the parenthetical in both fr values, so the split composes '(depuis ' + reading + ')' with no doubled or dropped space.",
+		"hostile_safety": "None of the eight values contains % \\ ` $ or a newline; apostrophes are U+2019 only; the strings reach the shell solely through the env-var/argv path above, so their bytes are inert.",
+		"typography": "U+2019 apostrophes throughout; U+202F before the semicolon in watchdog_still_installing; em dash U+2014 with spaces in watchdog_taking_longer; no ASCII apostrophe, no double space, no trailing whitespace, no ASCII space before ; : ! ?.",
+		"glossary": "goal -> objectif (matches goal_clear_failed / goal_dismiss_failed and 10 fr chat.pickers keys), loop -> boucle ('Mode boucle', 'Démarrer la boucle', 'Annuler la boucle'), update → mise à jour (matches the shipped update_hold_* family), Local Operator kept without an article. 'Force Quit' is rendered 'Forcer à quitter', the macOS French menu item — the one OS action in this delta the source expects translated, and it is translated, not left English.",
+		"register": "vous throughout with vous-form imperatives ('fermez', 'laissez'), no 'Veuillez', sentence case, no Title Case; 'Local Operator' takes no article; no T/V mismatch across the eight."
+	},
+	"render": {
+		"method": "Composed each value through intl-messageformat with the token substituted by the exact strings elapsed_text() emits; no OS notification was raised and no browser was used.",
+		"watchdog_app_wait": {
+			"0 s": "En attente de la fermeture de Local Operator pour permettre l'installation de la mise à jour (depuis 0 s). Aucune action n'est nécessaire pour l'instant. [153 chars]",
+			"1 s": "…(depuis 1 s)… [153 chars]",
+			"21 s": "…(depuis 21 s)… [154 chars]",
+			"2 min 30 s": "…(depuis 2 min 30 s)… [160 chars]",
+			"30 min": "…(depuis 30 min)… [156 chars]"
+		},
+		"watchdog_app_wait_fallback": {
+			"0 s": "…[214 chars]",
+			"21 s": "…[215 chars]",
+			"2 min 30 s": "…[221 chars]",
+			"30 min": "…[217 chars]"
+		},
+		"width_note": "Longest reachable banner body in this delta is watchdog_app_wait at 160 chars for a '2 min 30 s' reading (English 107 -> ratio 1.49). The context sidecar's own budget for this key is ~170 characters and the value stays under it; no cell count is claimed because no maxCells is declared for these OS surfaces. This is a risk estimate, not a rendered frame."
+	},
+	"findings": [
+		{
+			"id": "FR-NOT-03",
+			"severity": "minor",
+			"status": "retained (unchanged; visual QA)",
+			"key": "ui.notices.chat.mark_all_read_deferred",
+			"current": "{count, plural, one {1 conversation se trouve sur un autre appareil et sera marquée comme lue quand celui-ci se mettra à jour.} many {{count} de conversations se trouvent sur d’autres appareils et seront marquées comme lues quand ceux-ci se mettront à jour.} other {{count} conversations se trouvent sur d’autres appareils et seront marquées comme lues quand ceux-ci se mettront à jour.}}",
+			"proposed": "Flag for a rendered check of the toast card. If it overflows, a shorter collocation saves 12-13 characters per arm: many/other '… et seront marquées comme lues dès leur mise à jour.' (60 -> 48 chars for the clause), one '… et sera marquée comme lue dès sa mise à jour.' (55 -> 42).",
+			"reason": "Carried from fr-ui-notices-audit-5079fd4cb4 without re-measurement: the key is byte-identical in this delta, so its width risk is unchanged and still the namespace's only visual-QA item.",
+			"evidence": "Unchanged at this head: the value equals the 5079fd4cb4 value byte for byte; the prior audit measured 105/114/123-character arms against English 62/60/66 and a 281-character worst composed card."
+		},
+		{
+			"id": "FR-NOT-04",
+			"severity": "minor",
+			"status": "risk-only (budget met; no wording change required unless a rendered banner clips)",
+			"key": "ui.notices.main.watchdog_app_wait",
+			"current": "En attente de la fermeture de Local Operator pour permettre l’installation de la mise à jour (depuis {elapsed}). Aucune action n’est nécessaire pour l’instant.",
+			"proposed": "If a rendered macOS banner clips, use 'En attente de la fermeture de Local Operator pour installer la mise à jour (depuis {elapsed}). Aucune action n'est nécessaire pour l'instant.' — 143 chars at a '2 min 30 s' reading instead of 160, and still names the phase, the wait and the no-action-yet clause.",
+			"reason": "This is the delta's widest value: 159 characters against 107 English (1.49x), 160 with the longest realistic elapsed reading, on the surface with the least control over wrapping — a macOS notification body painted by a watchdog after the app has died. It stays under the context sidecar's own ~170-character budget, so this is a width flag for a rendered check rather than a translation defect.",
+			"evidence": "Composed at 0 s / 1 s / 21 s / 2 min 30 s / 30 min: 153 / 153 / 154 / 160 / 156 characters. English source 107; the sibling fallback notice is 220 chars against 204 English (1.08x) and taking_longer is 233 against 206 (1.13x) inside its ~250 budget, so the ratio here is the outlier, not the pattern."
+		}
+	],
+	"observations": [
+		"The chat prefixes join in code as '<prefix>: <reason>' (the row's contract comment: 'the reason after the colon is still the owner's own sentence'). French prose typography would want U+202F before that colon; the colon is code-owned, identical for every locale, and predates this delta, so it is recorded here as an observation and not charged to the catalogue.",
+		"'depuis {elapsed}' is the idiomatic French durative ('j’attends depuis 10 minutes') and reads correctly for every reading elapsed_text() can emit. 'depuis 0 s' and 'depuis 1 s' render grammatically but are unreachable (first notice at 15 s, fallback at 160 s).",
+		"'Force Quit' -> 'Forcer à quitter' is verified as the macOS French menu item, so the one translatable OS action in the delta is translated; the English token is not leaking into fr.",
+		"watchdog_taking_longer compresses the app's own status wording to 'la mise à jour est toujours en cours' where watchdog_still_installing spells 'toujours en cours d’installation'. Both are idiomatic and the compression is inside reported speech ('s’il indique que…'), so it is a style observation, not a finding.",
+		"Outside the delta and retained on the prior verdict: ui.notices.chat.drafts_offered_name renders French 'Brouillon' at count 0 because fr CLDR puts 0 in `one`; an offer is never made with zero drafts, so the arm is unreachable. Noted for completeness, not raised as a finding."
+	],
+	"counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 2,
+		"nit": 0
+	},
+	"summary": "Delta at 7b32fd2704 / fr 7757c584: 8 new keys read against the frozen English source and its context sidecar, with the 94 prior keys retained on the 5079fd4cb4 verdict and re-checked mechanically. The three chat failure prefixes name the control's own verb ('rétablir', 'effacer', 'arrêter') with the locale's established nouns (objectif, boucle); the five watchdog notices keep both instructions, the no-action-yet clause, the stay-closed instruction and the 'must not promise the install finished' constraint, translate the one OS action (Forcer à quitter) and keep Local Operator unarticled. Exactly one {elapsed} in each wait key; no argument, plural, ICU or NFC divergence anywhere in the namespace; no hostile bytes. Two minors, both risk-only: the retained deferred-toast wrapping risk and a new width flag on watchdog_app_wait (1.49x, within its own ~170-character budget).",
+	"verdict": {
+		"namespace": "clean-with-findings",
+		"clean": true,
+		"reason": "0 blocker, 0 major. The eight added values say what the English says (chat prefixes name the control's act ahead of the owner's reason; the five watchdog notices keep every instruction, the no-action-yet clause and the no-premature-finish constraint), use the locale's established glossary (objectif, boucle, mise à jour, Local Operator) and vous register, preserve the single {elapsed} token exactly where the caller can split it, and are inert as shell data. Two minors remain, both width risks with no wording change required while the declared budgets hold: FR-NOT-03 carried unchanged from the prior audit, FR-NOT-04 new for the delta's widest string. 102/102 keys read; the 94 unchanged keys are not re-litigated."
+	},
+	"namespace_verdict": "clean-with-findings (0 blocker, 0 major, 2 minor, 0 nit; 102/102 keys read, 8 audited semantically, 94 retained)",
+	"overall_verdict": "clean-with-findings — pass",
+	"pinned_to": {
+		"head": "7b32fd2704b6168d653e717bfc7fa4ddc58686e5",
+		"en_sha256": "c9556d7d6d8b399bc62f3a35b7bb4d01109f118b1ab29fe47ba70b739552a4e0",
+		"en_context_sha256": "9a536d75dec597c27281380946b807abdca8ad5c1f7c4e02ba54852a4568c5ee",
+		"fr_sha256": "7757c584d6d0f0f29af5a57df9cd386603c87c04c7a769830992b3af7f4f500f",
+		"fr_committed": false,
+		"note": "Pinned to the worktree bytes, not to a committed target blob: the candidate catalogue is uncommitted. If the file changes, this receipt is stale — re-derive before it is used to back a ledger row."
+	}
+}

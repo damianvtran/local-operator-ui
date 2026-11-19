@@ -1,0 +1,34 @@
+{
+	"ui.teamBridge.leave.back": {
+		"role": "visible label of the control at the top of the Team Bridge sidebar that leaves Team Bridge",
+		"tone": "plain, navigation",
+		"length": "One word; the column can be 220px wide and the label sits beside an arrow and a count badge.",
+		"placeholders": {},
+		"note": "Reads as the familiar Back of a browser or app. It returns to where the reader was before Team Bridge (or to chats when Team Bridge was opened directly). Do not name a destination."
+	},
+	"ui.teamBridge.leave.back_shortcut": {
+		"role": "tooltip of the Back control, naming its keyboard shortcut",
+		"tone": "plain",
+		"length": "Short; one tooltip line.",
+		"placeholders": {
+			"shortcut": "the key chord, e.g. ⌘[ or Ctrl+[; never translated, kept left-to-right"
+		},
+		"note": "Same shape as the browser toolbar's Back tooltip. Keep {shortcut} in the position natural for the locale."
+	},
+	"ui.teamBridge.leave.name": {
+		"role": "accessible name (screen reader) of the Back control",
+		"tone": "plain, states the action",
+		"length": "One short phrase.",
+		"placeholders": {},
+		"note": "Says what the control does whatever page it returns to. \"Team Bridge\" is the product name; keep it as the locale's Team Bridge catalogue spells it. MUST START with the exact visible label (ui.teamBridge.leave.back) so voice control matches it (WCAG 2.5.3 Label in Name)."
+	},
+	"ui.teamBridge.leave.name_attention": {
+		"role": "accessible name of the Back control when other parts of the app are waiting on the reader",
+		"tone": "plain, states the number",
+		"length": "One short sentence.",
+		"placeholders": {
+			"count": "number of things waiting outside Team Bridge (missed messages, notifications, approvals); a positive integer"
+		},
+		"note": "The count is shown as a badge on the control; the name states it because a badge is only visual. Plural forms matter. \"elsewhere\" means outside Team Bridge, elsewhere in the app. MUST START with the exact visible label (ui.teamBridge.leave.back) so voice control matches it (WCAG 2.5.3 Label in Name)."
+	}
+}

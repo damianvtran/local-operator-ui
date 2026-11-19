@@ -3,7 +3,13 @@ import { BrowserHostError } from "../errors";
 import { sleep } from "../policy/adapter";
 import type { TabRecord } from "../registry";
 import { settle } from "../settle";
-import { type BrowserActionContext, stringParam } from "./context";
+import {
+	locatorSuggestions,
+	parseLocator,
+	resolveLocator,
+} from "../vendor/driver/ax-locator";
+import { armHostClipboardWrite, clearHostClipboardArm } from "./clipboard-shim";
+import { type BrowserActionContext, numberParam, stringParam } from "./context";
 import {
 	CONTENTEDITABLE_SELECTOR,
 	EDITABLE_SELECTOR,
@@ -23,21 +29,36 @@ import {
 	sendIn,
 } from "./frames";
 import { pageOf } from "./gate";
-import { nodeIdForSelector } from "./page";
+import { hitAt } from "./geometry";
+import { nodeIdForSelector, readAccessibilityTree } from "./page";
+import { describeRefusedKey, parsePressChord } from "./press-chord";
 
 /**
- * The interaction actions: `click` and `type`.
+ * The interaction actions: `click`, `type`, and trusted `press`.
  * Design: docs/design/ui-browser-tab.md 4 (`click`, `type` rows), 6.4.
  *
  * THE CONSTRAINT THAT SHAPES EVERY LINE HERE: an agent tab is intentionally NOT
- * the active tab, and Chromium drops synthetic compositor input — CDP
- * `Input.dispatchMouseEvent`, and key events — on a view that is not visible.
- * Real-Chrome testing of the extension showed the press never reached the page
- * and no handler fired. So a `click` is dispatched ON THE RESOLVED NODE through
- * our own debugger session: a full pointer/mouse event sequence at the element,
- * which fires handlers and default actions (link navigation, form submit) without
- * the tab ever becoming visible, and therefore without touching the operator's
- * focus.
+ * the active tab, and the extension's real-Chrome testing showed that Chromium
+ * drops synthetic compositor input on a view that is not visible (the press never
+ * reached the page, no handler fired). So `click` is dispatched ON THE RESOLVED
+ * NODE through our own debugger session: a full pointer/mouse event sequence at the
+ * element, which fires handlers and default actions (link navigation, form
+ * submit) without the tab ever becoming visible, and therefore without touching
+ * the operator's focus. That path is shipped and is kept.
+ *
+ * WHAT WAS MEASURED ON THIS APP (scripts/browser-hover-press-proof.mjs --ladder,
+ * under `headless` and `inactive`): the premise does not hold for THESE views.
+ * They are detached from the window (`view-presentation.ts`) yet sized and
+ * composited, and report `visibilityState: "visible"`; a real
+ * `Input.dispatchMouseEvent` mouseMoved and `Input.dispatchKeyEvent` reach the
+ * page, with focus emulation on (`cdp.ts` enables it at attach) and off alike.
+ * So `hover` and `press` use the real input, which `:hover` and Chromium's native
+ * key defaults require, and neither activates the window or the tab. Delivery on a
+ * different Electron/Chromium build is a claim to re-measure with that ladder, and
+ * a failure must never be "fixed" by activating the operator's window.
+ *
+ * `press` deliberately has no DOM-event fallback: keyboard focus traversal and
+ * activation must be Chromium defaults, not an imitation scripted in the page.
  *
  * `type` is the one action where the design and the extension differ, and this
  * file follows the design while keeping the extension's fallback:
@@ -65,7 +86,7 @@ import { nodeIdForSelector } from "./page";
  * dispatch has no native mousedown focus default, so emulate that default BEFORE
  * click handlers run; a trailing focus would undo an application's destination.
  * This is not trusted compositor input or a full pointer compatibility emulator. */
-const CLICK_FUNCTION = `function () {
+export const CLICK_FUNCTION = `function () {
   const r = this.getBoundingClientRect();
   const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
   const opts = { bubbles: true, cancelable: true, view: window, clientX: cx, clientY: cy, button: 0 };
@@ -198,6 +219,13 @@ const SNAPSHOT_REF = /^e\d+$/;
 export interface ResolvedNode {
 	nodeId: number;
 	objectId: string;
+	/** How the target was named, when the caller should be told what the host
+	 * actually resolved (locators only: a ref and a CSS selector already name
+	 * the element to the caller, and their result copy is pinned). */
+	resolvedBy?: "locator";
+	role?: string;
+	name?: string;
+	matched?: number;
 	/** The child session the node lives in; absent for the page's own session
 	 * (which includes a same-site frame's in-process document). */
 	sessionId?: string;
@@ -205,9 +233,41 @@ export interface ResolvedNode {
 	frame?: FrameScope;
 }
 
+/** How a resolution may touch the page beyond naming the node. */
+export interface ResolveOptions {
+	/**
+	 * Scroll the node (and the frame chain holding it) into view before resolving.
+	 * Default `true`: `click` and `type` act on what is on screen, so they need the
+	 * element brought into the viewport.
+	 *
+	 * `upload` passes `false`. `DOM.scrollIntoViewIfNeeded` is a LAYOUT step, and
+	 * Chromium refuses it for a node with no layout object — answering `Node does not
+	 * have a layout object`, which surfaces as `internal` — and a file input hidden
+	 * with `display:none` (the React/Slack/GitHub pattern: a button calls
+	 * `input.click()`) has exactly none. `DOM.setFileInputFiles` needs only the node,
+	 * never its geometry, so the upload path must not depend on layout at all. Every
+	 * other part of the resolution — the epoch rule, locator and ref lookup, frame
+	 * hops, denial checks and `element_not_found` diagnostics — is unchanged.
+	 */
+	scroll?: boolean;
+}
+
 /** Results carry the frame's origin whenever the target is not in the top
  * document: approval is per top-level origin, so the agent and the transcript
  * must see when the text went to a third-party frame (ARCH-1, consent). */
+function resolvedFields(node: ResolvedNode): Record<string, unknown> {
+	return node.resolvedBy === "locator"
+		? {
+				resolved: {
+					by: "locator",
+					role: node.role ?? "",
+					name: node.name ?? "",
+					matched: node.matched ?? 1,
+				},
+			}
+		: {};
+}
+
 function frameFields(node: ResolvedNode): Record<string, unknown> {
 	return node.frame ? { frame_origin: node.frame.origin ?? "" } : {};
 }
@@ -237,7 +297,9 @@ export async function resolveNode(
 	ctx: BrowserActionContext,
 	record: TabRecord,
 	target: string,
+	options: ResolveOptions = {},
 ): Promise<ResolvedNode> {
+	const scroll = options.scroll !== false;
 	const view = record.view;
 	const contents = view.webContents;
 
@@ -249,7 +311,7 @@ export async function resolveNode(
 				"the page navigated since that snapshot; take a new snapshot and retry",
 			);
 		}
-		if (ref.frameId) return resolveFrameRef(ctx, contents, target, ref);
+		if (ref.frameId) return resolveFrameRef(ctx, contents, target, ref, scroll);
 		await ctx.cdp.send(contents, "DOM.getDocument", { depth: 0 });
 		const pushed = await ctx.cdp.send<{ nodeIds?: number[] }>(
 			contents,
@@ -260,13 +322,64 @@ export async function resolveNode(
 		if (pushedId === undefined) {
 			throw new BrowserHostError("element_not_found", "snapshot ref is stale");
 		}
-		return finishTop(ctx, contents, target, pushedId, ref.frameOrigin);
+		return finishTop(ctx, contents, target, scroll, pushedId, ref.frameOrigin);
+	}
+
+	// Accessibility locators are resolved BEFORE the CSS path: `role=`,
+	// `label=` and `text=` are not valid CSS, so parsing first cannot shadow a
+	// selector, and the framework-generated-id case never reaches
+	// `DOM.querySelector` at all.
+	//
+	// TOP DOCUMENT ONLY, and that is a MEASURED property rather than a promise
+	// (agent review round 1, R1-1). `Accessibility.getFullAXTree` on the page's
+	// session returns the ROOT frame's tree: driven against the built app on
+	// 2026-10-23 over `iframe#pay-frame` (same site, port 8766) holding a button
+	// named "Pay now", `click text="Pay now"` answered `element_not_found` while
+	// `snapshot` showed the frame's contents through its own sessions. So a
+	// locator cannot land in a frame, cannot bypass `assertFrameNotDenied`, and
+	// cannot mis-report `frame_origin`. A caller that needs a frame keeps the
+	// explicit `>>>` hop syntax, which the CSS path below serves.
+	const locator = parseLocator(target);
+	if (locator) {
+		const nodes = await readAccessibilityTree(ctx, contents);
+		const hit = resolveLocator(nodes, locator);
+		if (!hit) {
+			// The measured loop: nine CSS guesses, each a whole tool call, each
+			// answering only "element not found". Candidates turn one wrong guess
+			// into one correction.
+			throw new BrowserHostError(
+				"element_not_found",
+				`no element matches ${target}`,
+				{ candidates: locatorSuggestions(nodes, target), matched: 0 },
+			);
+		}
+		await ctx.cdp.send(contents, "DOM.getDocument", { depth: 0 });
+		const pushed = await ctx.cdp.send<{ nodeIds?: number[] }>(
+			contents,
+			"DOM.pushNodesByBackendIdsToFrontend",
+			{ backendNodeIds: [hit.backendNodeId] },
+		);
+		const nodeId = pushed?.nodeIds?.[0];
+		if (nodeId === undefined) {
+			throw new BrowserHostError(
+				"element_not_found",
+				`${target} is no longer in the document`,
+			);
+		}
+		const resolved = await finishTop(ctx, contents, target, scroll, nodeId);
+		return {
+			...resolved,
+			resolvedBy: "locator",
+			role: hit.role,
+			name: hit.name,
+			matched: hit.matched,
+		};
 	}
 
 	const hops = parseFrameHops(target);
 	if (hops) {
 		const hit = await resolveHops(ctx, contents, hops);
-		return finishInFrame(ctx, contents, target, hit.scope, hit.nodeId);
+		return finishInFrame(ctx, contents, target, scroll, hit.scope, hit.nodeId);
 	}
 
 	let nodeId: number;
@@ -309,11 +422,12 @@ export async function resolveNode(
 			ctx,
 			contents,
 			target,
+			scroll,
 			matches[0].scope,
 			matches[0].nodeId,
 		);
 	}
-	return finishTop(ctx, contents, target, nodeId);
+	return finishTop(ctx, contents, target, scroll, nodeId);
 }
 
 /** Why a frame search was not exhaustive, in the refusal's words. */
@@ -343,12 +457,17 @@ async function finishTop(
 	ctx: BrowserActionContext,
 	contents: DriveableView["webContents"],
 	target: string,
+	scroll: boolean,
 	nodeId: number,
 	frameOrigin?: string,
 ): Promise<ResolvedNode> {
 	if (frameOrigin !== undefined)
 		assertFrameNotDenied(ctx, { origin: frameOrigin });
-	await ctx.cdp.send(contents, "DOM.scrollIntoViewIfNeeded", { nodeId });
+	// Skipped for `upload` (see `ResolveOptions.scroll`): the scroll is the one
+	// layout-dependent command on this path, and it throws for a `display:none` node.
+	if (scroll) {
+		await ctx.cdp.send(contents, "DOM.scrollIntoViewIfNeeded", { nodeId });
+	}
 	const resolved = await ctx.cdp.send<{ object?: { objectId?: string } }>(
 		contents,
 		"DOM.resolveNode",
@@ -375,20 +494,23 @@ async function finishInFrame(
 	ctx: BrowserActionContext,
 	contents: DriveableView["webContents"],
 	target: string,
+	scroll: boolean,
 	scope: FrameScope,
 	nodeId: number,
 ): Promise<ResolvedNode> {
 	// Before ANY command in the frame: a denied origin is neither scrolled, resolved
 	// nor touched (review round 1, M1).
 	assertFrameNotDenied(ctx, scope);
-	for (const hop of scope.hops) {
-		await sendIn(ctx, contents, hop.sessionId, "DOM.scrollIntoViewIfNeeded", {
-			nodeId: hop.nodeId,
+	if (scroll) {
+		for (const hop of scope.hops) {
+			await sendIn(ctx, contents, hop.sessionId, "DOM.scrollIntoViewIfNeeded", {
+				nodeId: hop.nodeId,
+			}).catch(() => undefined);
+		}
+		await sendIn(ctx, contents, scope.sessionId, "DOM.scrollIntoViewIfNeeded", {
+			nodeId,
 		}).catch(() => undefined);
 	}
-	await sendIn(ctx, contents, scope.sessionId, "DOM.scrollIntoViewIfNeeded", {
-		nodeId,
-	}).catch(() => undefined);
 	const resolved = await sendIn<{ object?: { objectId?: string } }>(
 		ctx,
 		contents,
@@ -414,6 +536,7 @@ async function resolveFrameRef(
 	contents: DriveableView["webContents"],
 	target: string,
 	ref: TabRecord["refs"][string],
+	scroll: boolean,
 ): Promise<ResolvedNode> {
 	// Refused before attaching when the snapshot already named a denied origin;
 	// checked again below against the document actually there now.
@@ -434,18 +557,20 @@ async function resolveFrameRef(
 	// selector paths do through their hops (review round 1, n1; ARCH-1 §7). Best
 	// effort: the owner of a frame nested in another out-of-process frame lives in
 	// THAT frame's session, where the page session's lookup fails harmlessly.
-	await ctx.cdp
-		.send<{ backendNodeId?: number }>(contents, "DOM.getFrameOwner", {
-			frameId: ref.frameId,
-		})
-		.then((owner) =>
-			owner?.backendNodeId
-				? ctx.cdp.send(contents, "DOM.scrollIntoViewIfNeeded", {
-						backendNodeId: owner.backendNodeId,
-					})
-				: undefined,
-		)
-		.catch(() => undefined);
+	if (scroll) {
+		await ctx.cdp
+			.send<{ backendNodeId?: number }>(contents, "DOM.getFrameOwner", {
+				frameId: ref.frameId,
+			})
+			.then((owner) =>
+				owner?.backendNodeId
+					? ctx.cdp.send(contents, "DOM.scrollIntoViewIfNeeded", {
+							backendNodeId: owner.backendNodeId,
+						})
+					: undefined,
+			)
+			.catch(() => undefined);
+	}
 	const pushed = await ctx.cdp.send<{ nodeIds?: number[] }>(
 		contents,
 		"DOM.pushNodesByBackendIdsToFrontend",
@@ -460,6 +585,7 @@ async function resolveFrameRef(
 		ctx,
 		contents,
 		target,
+		scroll,
 		{
 			sessionId: rooted.sessionId,
 			frameTargetId: ref.frameId,
@@ -505,6 +631,29 @@ export async function click(
 		navigationSeen = true;
 	};
 	contents.on("did-start-navigation", onStart);
+	/*
+	 * ARM THE PAGE'S CLIPBOARD WRITE FOR THIS CLICK, before the dispatch.
+	 *
+	 * The dispatch below happens IN THE PAGE, which carries no user activation, so a
+	 * page's Copy button clicked by an agent took the native refusal path and showed
+	 * "Unable to copy to clipboard" — the operator's own symptom, on the agent's
+	 * route. The arm lives in MAIN memory (`{frameId, expiresAt}`, host clock), so
+	 * there is nothing in the page to read, freeze or forge; it is single-use and
+	 * cleared in this call's own `finally`. What it grants is one clipboard WRITE
+	 * inside the window a real click gives a page, never a read
+	 * (`actions/clipboard-shim.ts` states it at the mechanism). A view with no shim
+	 * is simply not armed, and the click behaves exactly as it did before.
+	 */
+	// The node lives in the PAGE's own session (the top document, or a same-site frame
+	// whose document is in-process). A node in a child SESSION is an OOPIF, whose
+	// clipboard write the shim does not reach — so it is not armed, and the click
+	// behaves as it always did.
+	const armableTarget = node.sessionId === undefined;
+	// The frame the click actually resolved in: an in-process child frame has its own
+	// id here, the top document has none (`undefined` ⇒ the view's main frame). The
+	// arm admits ONE write for THAT frame only, because an arm for "any frame" would
+	// be the borrowed activation the per-frame rule exists to forbid.
+	if (armableTarget) armHostClipboardWrite(contents.id, node.frame?.frameId);
 	try {
 		// In a frame the click runs in the frame's own session: the function reads
 		// `getBoundingClientRect` and dispatches in-page, so its coordinates are
@@ -516,6 +665,9 @@ export async function click(
 		});
 		await sleep(1200);
 	} finally {
+		// Cleared on the click's OWN completion path, so nothing the page scheduled
+		// for later rides a window this call justified.
+		if (armableTarget) clearHostClipboardArm(contents.id);
 		contents.removeListener("did-start-navigation", onStart);
 	}
 	if (navigationSeen) {
@@ -528,7 +680,303 @@ export async function click(
 	return {
 		navigated: navigationSeen || after.url !== before,
 		...frameFields(node),
+		...resolvedFields(node),
 		...after,
+	};
+}
+
+/** The page function `press` runs on its optional `selector` target: focus it
+ * and report whether it kept focus. UNLIKE `type`'s FOCUS_AND_SELECT_FUNCTION it
+ * does not require an editable: the point of `press` + `selector` is a keyboard
+ * shortcut handled by a focusable non-editable element (a `tabindex` list item
+ * listening for `e`). `preventScroll` because the resolver already scrolled it. */
+const FOCUS_FUNCTION = `function () {
+  const focusFn = this.focus;
+  if (typeof focusFn === 'function') focusFn.call(this, { preventScroll: true });
+  return this.getRootNode().activeElement === this;
+}`;
+
+/**
+ * `press`: ONE key chord to the page's focused element (or to `selector`, focused
+ * first). The grammar and its closed tables live in `press-chord.ts`; everything
+ * this function sends to Chromium is read out of those tables, never from the
+ * request. Design: docs/design/ui-browser-tab.md 4 (`press`).
+ *
+ * MEASURED (scripts/browser-hover-press-proof.mjs --ladder, ladder rows E, F, H):
+ * a raw `Input.dispatchKeyEvent` DOES reach the page's `keydown` listener on an
+ * agent view that is not the presented tab, for a plain character on a focused
+ * non-editable element and for Control+K, with `Emulation.setFocusEmulationEnabled`
+ * on (which `cdp.ts` turns on at attach) and with it switched off again in a
+ * foreign session. The file header's "Chromium drops synthetic key input on a
+ * non-visible view" is therefore not what this app's agent views do: they are
+ * detached from the window (`view-presentation.ts`) but still sized and
+ * composited, and the page reports `visibilityState: "visible"`.
+ */
+export async function press(
+	ctx: BrowserActionContext,
+	params: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+	// Parsed before ANY page work: a refused chord must have touched nothing.
+	const chord = parsePressChord(params.key);
+	if (!chord) {
+		throw new BrowserHostError(
+			"unsupported_key",
+			`unsupported key: ${describeRefusedKey(params.key)}`,
+			{
+				key:
+					typeof params.key === "string"
+						? describeRefusedKey(params.key)
+						: (params.key ?? null),
+			},
+		);
+	}
+	const record = ctx.registry.requireSurface(params.tab);
+	const contents = record.view.webContents;
+	const event = {
+		key: chord.key,
+		code: chord.code,
+		windowsVirtualKeyCode: chord.windowsVirtualKeyCode,
+		modifiers: chord.modifiers,
+	};
+	// The host's owned-tab lane and per-hop origin gate wrap this operation just
+	// like click/type. Never focus/show the view or choose a caller-supplied target.
+	const before = pageOf(record.view).url;
+	let navigationSeen = false;
+	const onStart = (...args: never[]): void => {
+		if ((args[2] as unknown) !== false) navigationSeen = true;
+	};
+	contents.on("did-start-navigation", onStart);
+	try {
+		// ELEMENT focus inside the page, never window activation: it is what lets a
+		// shortcut aimed at one element land on it, and it is the same call `click`
+		// makes. A target that will not hold focus is refused before any key is
+		// sent, since the key would otherwise go to whatever else held focus.
+		const target =
+			stringParam(params, "ref") || stringParam(params, "selector");
+		let node: ResolvedNode | null = null;
+		if (target) {
+			node = await resolveNode(ctx, record, target);
+			if (node.sessionId) {
+				throw new BrowserHostError(
+					"element_not_found",
+					`${target} is inside a cross-origin frame, which press cannot focus; click it, then press without a selector`,
+				);
+			}
+			const focus = await sendIn<{ result?: { value?: unknown } }>(
+				ctx,
+				contents,
+				node.sessionId,
+				"Runtime.callFunctionOn",
+				{
+					objectId: node.objectId,
+					functionDeclaration: FOCUS_FUNCTION,
+					returnByValue: true,
+				},
+			);
+			if (focus?.result?.value !== true) {
+				throw new BrowserHostError(
+					"element_not_found",
+					`${target} cannot take focus (it is not focusable, e.g. a non-interactive element with no tabindex), so nothing was pressed`,
+				);
+			}
+		}
+		let keyDownFailed = true;
+		try {
+			await ctx.cdp.send(contents, "Input.dispatchKeyEvent", {
+				...event,
+				type: "keyDown",
+				// Only a character press with no Control/Meta/Alt held carries text (the
+				// chord parser decides); a shortcut with `text` would also fire
+				// `keypress` and type into an editable.
+				...(chord.text !== undefined
+					? { text: chord.text, unmodifiedText: chord.unmodifiedText }
+					: {}),
+			});
+			keyDownFailed = false;
+		} finally {
+			// Release even when dispatch fails, so the atomic chord cannot leave a
+			// modifier behind. A lost debugger keeps its original typed error.
+			const release = ctx.cdp.send(contents, "Input.dispatchKeyEvent", {
+				...event,
+				type: "keyUp",
+			});
+			if (keyDownFailed) await release.catch(() => undefined);
+			else await release;
+		}
+		// Enter can submit or follow a link asynchronously. Match click's grace so
+		// the host does not disarm its per-hop gate immediately after keyUp.
+		await sleep(1200);
+		if (navigationSeen)
+			await settle(contents as never, 10_000).catch(() => undefined);
+		ctx.registry.touch(record);
+		const after = pageOf(record.view);
+		return {
+			key: chord.canonical,
+			navigated: navigationSeen || after.url !== before,
+			...(node ? { ...frameFields(node), ...resolvedFields(node) } : {}),
+			...after,
+		};
+	} finally {
+		contents.removeListener("did-start-navigation", onStart);
+	}
+}
+
+/** Where the pointer goes for a selector target: the centre of its box, from the
+ * page itself after the resolver has scrolled it into view. `null` for an element
+ * with no box (`display:none`, detached, zero-sized): nothing to point at. */
+const CENTER_FUNCTION = `function () {
+  const r = this.getBoundingClientRect();
+  if (!(r.width > 0 && r.height > 0)) return null;
+  return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+}`;
+
+/** Whether the topmost element at (x, y) is in the `:hover` state: the honest
+ * verdict `hover` reports, so a pointer move the page ignored is not reported as a
+ * hover. Numbers only are interpolated, so no caller text reaches the page. */
+function hoveredAt(x: number, y: number): string {
+	return `(() => { const el = document.elementFromPoint(${x}, ${y}); return !!el && el.matches(':hover'); })()`;
+}
+
+/** Quiet time after the pointer move for the page to apply `:hover` styles and run
+ * its `mouseenter`/`mouseover` handlers before the hit stack is read. */
+const HOVER_SETTLE_MS = 150;
+
+/**
+ * `hover`: move the pointer to a target and leave it there, so `:hover` styles and
+ * JS hover handlers (a row action revealed on hover, a menu opened on
+ * `mouseenter`) take effect and become visible to the next `snapshot`/`click`.
+ *
+ * Result: `x`, `y`, `hit` (the `hit_test` result, `{count, elements}`, topmost
+ * first) and `hovered`. `hovered` is ADVISORY and optional for a caller: it is the
+ * host's own `:hover` verdict at the point, an additional signal and not part of
+ * the minimal contract a harness may rely on (an older host never sends it).
+ *
+ * Params: `tab`, and EITHER `selector` (CSS, snapshot ref or a11y locator,
+ * resolved exactly as `click` resolves it; scrolled into view first, never
+ * activating the tab) OR both `x` and `y` (viewport pixels). Naming both, or only
+ * one coordinate, or neither, is refused with `internal` + `data.reason:
+ * "invalid_arguments"` BEFORE any page work (no `invalid_arguments` code exists in
+ * the closed `ERROR_CODES`, and an unknown code is dropped by a released session,
+ * so the reason rides `data` on a code the wire has).
+ *
+ * MECHANISM, chosen by measurement (scripts/browser-hover-press-proof.mjs
+ * --ladder, rows A-D, G) rather than inferred from the file header: a real
+ * `Input.dispatchMouseEvent` `mouseMoved` on this app's unpresented agent view
+ * sets the genuine `:hover` state AND fires `pointerenter`, `mouseenter`,
+ * `mousemove` (and `mouseleave` on the element it leaves), where the two
+ * alternatives the brief listed each deliver half: `CSS.forcePseudoState` applies
+ * the style but fires NO event (row C), and dispatching synthetic pointer/mouse
+ * events fires handlers but sets NO `:hover` (row D). A real move is also the only
+ * one of the three that is stateful the way a hover is — it leaves the previous
+ * element, so a menu on the old row closes. The header's premise that Chromium
+ * drops compositor input on a non-visible view does not hold for these views: they
+ * are detached from the window yet sized and composited, and report
+ * `visibilityState: "visible"`. It also held with focus emulation switched off in
+ * the foreign session (row G), so it does not depend on `cdp.ts`'s attach.
+ *
+ * The move is a single `mouseMoved` with no buttons: it cannot press, drag or
+ * click, and no caller-controlled CDP field is passed. Not in NAVIGATION_ACTIONS:
+ * it cannot start a navigation of its own, so the per-hop gate has nothing to
+ * decide (see that set's comment); the entry and result document authorization
+ * in `authorizedPerform` still apply.
+ */
+export async function hover(
+	ctx: BrowserActionContext,
+	params: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+	const target = stringParam(params, "ref") || stringParam(params, "selector");
+	const px = numberParam(params, "x");
+	const py = numberParam(params, "y");
+	const refuse = (message: string, param: string): never => {
+		throw new BrowserHostError("internal", message, {
+			reason: "invalid_arguments",
+			param,
+		});
+	};
+	if (target && (params.x !== undefined || params.y !== undefined)) {
+		refuse(
+			"hover takes a selector OR x and y, not both; nothing was moved",
+			"selector",
+		);
+	}
+	if (!target && (px === undefined || py === undefined)) {
+		refuse(
+			"hover needs a selector, or both numeric x and y (viewport pixels); nothing was moved",
+			params.x === undefined && params.y === undefined ? "selector" : "x,y",
+		);
+	}
+	const record = ctx.registry.requireSurface(params.tab);
+	const contents = record.view.webContents;
+
+	let x = px as number;
+	let y = py as number;
+	let node: ResolvedNode | null = null;
+	if (target) {
+		// `resolveNode` scrolls the element into view with `DOM.scrollIntoViewIfNeeded`
+		// on the page's own session: layout, not window activation.
+		node = await resolveNode(ctx, record, target);
+		if (node.frame) {
+			// A frame-local rect is not a top-level viewport point; the move below is
+			// in top-level coordinates. x/y reaches into a frame by position.
+			throw new BrowserHostError(
+				"element_not_found",
+				`${target} is inside a frame; hover it by position with x and y (take them from hit_test)`,
+			);
+		}
+		const centre = await sendIn<{ result?: { value?: unknown } }>(
+			ctx,
+			contents,
+			node.sessionId,
+			"Runtime.callFunctionOn",
+			{
+				objectId: node.objectId,
+				functionDeclaration: CENTER_FUNCTION,
+				returnByValue: true,
+			},
+		);
+		const point = centre?.result?.value as { x?: number; y?: number } | null;
+		if (!point || typeof point.x !== "number" || typeof point.y !== "number") {
+			throw new BrowserHostError(
+				"element_not_found",
+				`${target} has no box to point at (display:none, detached or zero-sized), so the pointer was not moved`,
+			);
+		}
+		x = Math.round(point.x * 100) / 100;
+		y = Math.round(point.y * 100) / 100;
+	}
+
+	await ctx.cdp.send(contents, "Input.dispatchMouseEvent", {
+		type: "mouseMoved",
+		x,
+		y,
+		button: "none",
+		buttons: 0,
+		pointerType: "mouse",
+	});
+	await sleep(HOVER_SETTLE_MS);
+
+	const stack = await hitAt(ctx, record, x, y);
+	if (stack === null || stack === undefined) {
+		throw new BrowserHostError(
+			"element_not_found",
+			`no element at point (${x}, ${y}); the pointer was moved there but nothing is under it`,
+		);
+	}
+	const hovered = await sendIn<{ result?: { value?: unknown } }>(
+		ctx,
+		contents,
+		undefined,
+		"Runtime.evaluate",
+		{ expression: hoveredAt(x, y), returnByValue: true },
+	);
+	ctx.registry.touch(record);
+	return {
+		x,
+		y,
+		hit: stack,
+		hovered: hovered?.result?.value === true,
+		...(node ? { ...frameFields(node), ...resolvedFields(node) } : {}),
+		...pageOf(record.view),
 	};
 }
 
@@ -545,7 +993,12 @@ export async function type(
 	const typed = await typeInto(ctx, contents, node, text, target);
 	if (typed) {
 		ctx.registry.touch(record);
-		return { ...typed, ...frameFields(node), ...pageOf(record.view) };
+		return {
+			...typed,
+			...frameFields(node),
+			...resolvedFields(node),
+			...pageOf(record.view),
+		};
 	}
 	// Nothing on this node can hold typed text. If it is an iframe ELEMENT, the
 	// field the agent means is inside it: descend to the focused editable or the

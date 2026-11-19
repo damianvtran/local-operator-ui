@@ -1,0 +1,422 @@
+{
+ "locale": "hi",
+ "mode": "Fresh independent delta audit of 20 new keys in ONE namespace (ui.library) against frozen head 8a9ce1f8; read-only worktree ~/local-operator-ui/.worktrees/i18n-s8. Allocation: fix (<2h), bounded audit only. Glossary conformance checked against the manager-owned byte-copy at _s14-audits/8a9ce1f8…/glossary.md (sha256 0eb34437a8c3d6f5…, byte-identical to ~/local-operator/i18n/glossary.md). Fully audited keys: 20 (12 file-kind badges, 7 tag-group headings, 1 standalone sentence). The remaining 159 namespace keys were read only for JSON validity, key-set parity, no-value-changed-vs-base and term consistency; legacy values are NOT certified.",
+ "scope": "PR damianvtran/local-operator-ui #1851 'fix(i18n): localize Library kind and tag-category labels' @ 8a9ce1f808c266ebe9a0e924094344cea60c2c23 (origin/main 0e12072d2b3..HEAD). Audited keys: ui.library.kind.{audio,code,docx,html,image,markdown,other,pdf,pptx,spreadsheet,text,video}, ui.library.tag_category.{custom,format,project,source,status,topic,type}, ui.library.preview.unsupported_generic; plus the 20 matching English context notes. No full legacy namespace certification.",
+ "head_sha": "8a9ce1f808c266ebe9a0e924094344cea60c2c23",
+ "audit_date": "2026-11-10",
+ "key_count": 179,
+ "fully_audited_key_count": 20,
+ "consistency_only_key_count": 159,
+ "translator": {
+  "agent": "i18n-translator",
+  "model": "anthropic/claude-sonnet-5-5",
+  "source": "Translator model supplied by delegation; the translator SESSION was NOT supplied by the manager and is unrecorded, so it cannot be cross-checked. Values were landed verbatim per the brief. This auditor did not translate and took no part in translation."
+ },
+ "auditor": {
+  "agent": "i18n-auditor",
+  "instance": "5d845498f5c6",
+  "session": "5d845498f5c6",
+  "model": "deepseek/deepseek-flash",
+  "actual_model_source": "Served session header for session 5d845498f5c6 states deepseek/deepseek-flash; no model switch or fallback occurred in this session.",
+  "fallback_used": false,
+  "independent_from_translator_session": true
+ },
+ "policy_sources": {
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/hi.md",
+   "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+  },
+  "glossary": {
+   "path": "~/local-operator-ui/.worktrees/_s14-audits/8a9ce1f808c266ebe9a0e924094344cea60c2c23/glossary.md",
+   "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+   "note": "Manager-owned byte-copy; verified identical to ~/local-operator/i18n/glossary.md by sha256. Glossary conformance was checked against this copy."
+  },
+  "expected_hashes": {
+   "path": "~/local-operator-ui/.worktrees/_s14-audits/8a9ce1f808c266ebe9a0e924094344cea60c2c23/expected-hashes.json"
+  }
+ },
+ "status": "passed",
+ "result": "clean-with-findings",
+ "verdict": "passed",
+ "findings": [
+  {
+   "id": "F1",
+   "severity": "minor",
+   "key": "ui.library.kind.other (English context note)",
+   "current_text": "English source: Other. Catch-all for a file the Library could not classify. Singular adjective/noun, not an action. Rendered inside the sentence ui.library.preview.unsupported ONLY via the generic fallback; see manifest.",
+   "english_source": "Other",
+   "problem": "The pointer \"see manifest\" has no referent. The only manifest this repo has is the LANGUAGE manifest i18n/languages.json (schema 1: code/native/english/dir/status), and that is exactly what check-coverage.mjs means by \"the manifest\"; nothing tracked maps a key to the surface it renders on. The substantive half of the sentence is correct — library-viewers.tsx:105-111 renders ui.library.preview.unsupported_generic instead of ui.library.preview.unsupported when kind === \"other\" — but a translator who follows the pointer finds no mapping to read, and the clause as written can be read as claiming `other` is interpolated into the unsupported sentence, which is the opposite of what the code does.",
+   "recommendation": "Name the code instead of a non-existent manifest, e.g. \"Shown as the badge like every kind; the catch-all preview state swaps in ui.library.preview.unsupported_generic with no kind slot when the kind is `other` (src/renderer/src/features/library/components/library-viewers.tsx).\"",
+   "evidence": [
+    "src/renderer/src/features/library/components/library-viewers.tsx:105-111 — `{asset.kind === \"other\" ? t(\"ui.library.preview.unsupported_generic\") : t(\"ui.library.preview.unsupported\", { kind: libraryKindLabel(asset.kind) })}`",
+    "src/i18n/catalogues/en/ui.library.json: ui.library.preview.unsupported_generic = \"This file has no in-app preview here.\" (no {kind} slot)",
+    "i18n/languages.json — schema 1, fields code/native/english/dir/status only; the sole \"manifest\" in the repo (scripts/i18n/check-coverage.mjs:5 \"The manifest lists the languages the app commits to\")",
+    "grep 'unsupported_generic' over i18n/**/*.json, docs/ and scripts/**: no mapping file; the only non-generated referents are library-viewers.tsx and library-model.ts"
+   ],
+   "gates": false
+  }
+ ],
+ "severity_counts": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 1,
+  "nit": 0
+ },
+ "namespaces": {
+  "ui.library": {
+   "status": "passed",
+   "result": "clean-with-findings",
+   "source_sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71",
+   "target_sha256": "276df1d52759ac97fc03b0569c7ce95db066b449a8a130435340f024fecc942d",
+   "input_hashes": {
+    "en": {
+     "path": "src/i18n/catalogues/en/ui.library.json",
+     "sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71"
+    },
+    "hi": {
+     "path": "src/i18n/catalogues/hi/ui.library.json",
+     "sha256": "276df1d52759ac97fc03b0569c7ce95db066b449a8a130435340f024fecc942d"
+    },
+    "context": {
+     "path": "src/i18n/catalogues/en/ui.library.context.json",
+     "sha256": "2fe63e830b49079dac67c5c4513358d0a8559a94fbf27ac8d437212b13aa2e72"
+    }
+   },
+   "fully_audited_keys": [
+    "ui.library.kind.audio",
+    "ui.library.kind.code",
+    "ui.library.kind.docx",
+    "ui.library.kind.html",
+    "ui.library.kind.image",
+    "ui.library.kind.markdown",
+    "ui.library.kind.other",
+    "ui.library.kind.pdf",
+    "ui.library.kind.pptx",
+    "ui.library.kind.spreadsheet",
+    "ui.library.kind.text",
+    "ui.library.kind.video",
+    "ui.library.tag_category.custom",
+    "ui.library.tag_category.format",
+    "ui.library.tag_category.project",
+    "ui.library.tag_category.source",
+    "ui.library.tag_category.status",
+    "ui.library.tag_category.topic",
+    "ui.library.tag_category.type",
+    "ui.library.preview.unsupported_generic"
+   ],
+   "findings": [
+    {
+     "id": "F1",
+     "severity": "minor",
+     "key": "ui.library.kind.other (English context note)",
+     "current_text": "English source: Other. Catch-all for a file the Library could not classify. Singular adjective/noun, not an action. Rendered inside the sentence ui.library.preview.unsupported ONLY via the generic fallback; see manifest.",
+     "english_source": "Other",
+     "problem": "The pointer \"see manifest\" has no referent. The only manifest this repo has is the LANGUAGE manifest i18n/languages.json (schema 1: code/native/english/dir/status), and that is exactly what check-coverage.mjs means by \"the manifest\"; nothing tracked maps a key to the surface it renders on. The substantive half of the sentence is correct — library-viewers.tsx:105-111 renders ui.library.preview.unsupported_generic instead of ui.library.preview.unsupported when kind === \"other\" — but a translator who follows the pointer finds no mapping to read, and the clause as written can be read as claiming `other` is interpolated into the unsupported sentence, which is the opposite of what the code does.",
+     "recommendation": "Name the code instead of a non-existent manifest, e.g. \"Shown as the badge like every kind; the catch-all preview state swaps in ui.library.preview.unsupported_generic with no kind slot when the kind is `other` (src/renderer/src/features/library/components/library-viewers.tsx).\"",
+     "evidence": [
+      "src/renderer/src/features/library/components/library-viewers.tsx:105-111 — `{asset.kind === \"other\" ? t(\"ui.library.preview.unsupported_generic\") : t(\"ui.library.preview.unsupported\", { kind: libraryKindLabel(asset.kind) })}`",
+      "src/i18n/catalogues/en/ui.library.json: ui.library.preview.unsupported_generic = \"This file has no in-app preview here.\" (no {kind} slot)",
+      "i18n/languages.json — schema 1, fields code/native/english/dir/status only; the sole \"manifest\" in the repo (scripts/i18n/check-coverage.mjs:5 \"The manifest lists the languages the app commits to\")",
+      "grep 'unsupported_generic' over i18n/**/*.json, docs/ and scripts/**: no mapping file; the only non-generated referents are library-viewers.tsx and library-model.ts"
+     ],
+     "gates": false
+    }
+   ]
+  }
+ },
+ "per_key_checks": [
+  {
+   "key": "ui.library.kind.audio",
+   "source": "Audio",
+   "current_text": "ऑडियो",
+   "findings": [],
+   "assessment": "Accurate and consistent with the corpus's audio noun, not with the plural group label: the catalogue writes ऑडियो for audio files throughout (ui.canvas.json:9 ऑडियो; ui.settings.notifications ऑडियो फ़ाइल; ui.chat.canonical ऑडियो अटैचमेंट). The sibling group label ui.library.category.sounds = आवाज़ें renders English \"Sounds\", a different English word, and आवाज़ is the corpus's word for voice (ui.settings.speech आवाज़ का ज़रिया) — so the kind/group divergence mirrors the English rather than breaking it. 5 cells against a ~12-cell slot, single noun, no punctuation.",
+   "placeholder_integrity": {
+    "arguments": [],
+    "matches_english": true,
+    "number_skeleton": null
+   },
+   "plural_select": []
+  },
+  {
+   "key": "ui.library.kind.code",
+   "source": "Code",
+   "current_text": "कोड",
+   "findings": [],
+   "assessment": "Byte-identical to the shipped group label ui.library.category.code = कोड, which is what the context note asks for (\"Not the filter-rail group 'Code' … same word today, independent role\"). 3 cells, no punctuation.",
+   "placeholder_integrity": {
+    "arguments": [],
+    "matches_english": true,
+    "number_skeleton": null
+   },
+   "plural_select": []
+  },
+  {
+   "key": "ui.library.kind.docx",
+   "source": "DOCX",
+   "current_text": "DOCX",
+   "findings": [],
+   "assessment": "Retention judged against the catalogue: no prior DOCX rendering exists to contradict (DOCX appears only in this file), the hi guide keeps product/format names and Latin tokens as-is (\"Keep Latin as-is: … product names, tool names\"; \"Kept-Latin: API, CLI, TUI, JSON, YAML, HTTP, URL\"), and the English note declares format names retained technical tokens. The English kind badge is the format id while the group is \"Documents\" (दस्तावेज़) — the Hindi mirrors that split exactly, so no localized rendering was due here.",
+   "placeholder_integrity": {
+    "arguments": [],
+    "matches_english": true,
+    "number_skeleton": null
+   },
+   "plural_select": []
+  },
+  {
+   "key": "ui.library.kind.html",
+   "source": "HTML",
+   "current_text": "HTML",
+   "findings": [],
+   "assessment": "Consistent with the existing catalogue, which already writes HTML in Latin inside Hindi prose: ui.canvas.create_file_dialog.html_html = \"HTML (.html)\", ui.canvas.html_preview.html_preview = \"HTML प्रीव्यू: {title}\". Localizing it to देवनागरी would contradict seven shipped values. 4 cells.",
+   "placeholder_integrity": {
+    "arguments": [],
+    "matches_english": true,
+    "number_skeleton": null
+   },
+   "plural_select": []
+  },
+  {
+   "key": "ui.library.kind.image",
+   "source": "Image",
+   "current_text": "तस्वीर",
+   "findings": [],
+   "assessment": "The singular of the shipped group label ui.library.category.images = तस्वीरें, and the same word the canvas uses for an image (ui.canvas.image_preview.this_image_could_not_be_shown = यह तस्वीर नहीं दिखाई जा सकी), so the \"singular of the same word family\" requirement holds exactly. 6 cells, one noun.",
+   "placeholder_integrity": {
+    "arguments": [],
+    "matches_english": true,
+    "number_skeleton": null
+   },
+   "plural_select": []
+  },
+  {
+   "key": "ui.library.kind.markdown",
+   "source": "Markdown",
+   "current_text": "Markdown",
+   "findings": [],
+   "assessment": "Kept as the format's proper name, matching the catalogue's existing practice (ui.canvas.create_file_dialog.markdown_md = \"Markdown (.md)\", plus ui.projects, ui.settings.model, ui.chat.transcript_copy). The hi guide's keep-Latin rule covers it and the English note calls it the format's proper name. 8 cells, the widest Latin token here and still inside the slot.",
+   "placeholder_integrity": {
+    "arguments": [],
+    "matches_english": true,
+    "number_skeleton": null
+   },
+   "plural_select": []
+  },
+  {
+   "key": "ui.library.kind.other",
+   "source": "Other",
+   "current_text": "अन्य",
+   "findings": [],
+   "assessment": "Identical to ui.library.category.other = अन्य, the same English word in an independent role; a bare adjective used nominally reads correctly as a badge. NOTE: this key also carries finding F1, which is against its English context note, not against this Hindi value. 4 cells.",
+   "placeholder_integrity": {
+    "arguments": [],
+    "matches_english": true,
+    "number_skeleton": null
+   },
+   "plural_select": []
+  },
+  {
+   "key": "ui.library.kind.pdf",
+   "source": "PDF",
+   "current_text": "PDF",
+   "findings": [],
+   "assessment": "Latin retained, matching seven shipped values including ui.canvas.pdf_preview.pdf = \"PDF: {title}\" and \"यह PDF नहीं खोली जा सकी\". The hi guide keeps format/product names Latin. 3 cells.",
+   "placeholder_integrity": {
+    "arguments": [],
+    "matches_english": true,
+    "number_skeleton": null
+   },
+   "plural_select": []
+  },
+  {
+   "key": "ui.library.kind.pptx",
+   "source": "PPTX",
+   "current_text": "PPTX",
+   "findings": [],
+   "assessment": "Retention justified the same way as DOCX: no prior localized PPTX rendering exists, the English badge names the format rather than the presentation family (group label ui.library.category.presentations = प्रस्तुतियाँ stays for the plural family), and format tokens are kept Latin by the guide. 4 cells.",
+   "placeholder_integrity": {
+    "arguments": [],
+    "matches_english": true,
+    "number_skeleton": null
+   },
+   "plural_select": []
+  },
+  {
+   "key": "ui.library.kind.spreadsheet",
+   "source": "Spreadsheet",
+   "current_text": "स्प्रेडशीट",
+   "findings": [],
+   "assessment": "Byte-identical to ui.library.category.spreadsheets = स्प्रेडशीट (this loan has one form in Hindi, so singular and plural coincide) and to ui.canvas.spreadsheet_preview.spreadsheet_saved = स्प्रेडशीट सहेजी गई. 10 cells, the longest value in the group and still inside the ~12-cell slot.",
+   "placeholder_integrity": {
+    "arguments": [],
+    "matches_english": true,
+    "number_skeleton": null
+   },
+   "plural_select": []
+  },
+  {
+   "key": "ui.library.kind.text",
+   "source": "Text",
+   "current_text": "टेक्स्ट",
+   "findings": [],
+   "assessment": "The corpus's word for plain text: ui.canvas.create_file_dialog.plain_text_txt = \"सादा टेक्स्ट (.txt)\", and ui.library.preview.pptx_text = टेक्स्ट for the same English \"Text\" in a different role. 7 cells, no punctuation.",
+   "placeholder_integrity": {
+    "arguments": [],
+    "matches_english": true,
+    "number_skeleton": null
+   },
+   "plural_select": []
+  },
+  {
+   "key": "ui.library.kind.video",
+   "source": "Video",
+   "current_text": "वीडियो",
+   "findings": [],
+   "assessment": "Identical to ui.library.category.video = वीडियो, the singular form of the same word family. 6 cells.",
+   "placeholder_integrity": {
+    "arguments": [],
+    "matches_english": true,
+    "number_skeleton": null
+   },
+   "plural_select": []
+  },
+  {
+   "key": "ui.library.tag_category.custom",
+   "source": "Custom",
+   "current_text": "कस्टम",
+   "findings": [],
+   "assessment": "The established rendering: ui.common.models.custom_model = कस्टम मॉडल, ui.settings.appearance.editor.custom_theme = कस्टम थीम, ui.chat.directory.custom_dir = कस्टम डायरेक्टरी. A rail heading, singular, no punctuation, 5 cells.",
+   "placeholder_integrity": {
+    "arguments": [],
+    "matches_english": true,
+    "number_skeleton": null
+   },
+   "plural_select": []
+  },
+  {
+   "key": "ui.library.tag_category.format",
+   "source": "Format",
+   "current_text": "फ़ॉर्मैट",
+   "findings": [],
+   "assessment": "Keeps the nukta the hi guide requires (\"Keep nukta consistently (फ़, ज़, ड़)\") and matches the corpus spelling: ui.library.preview.pptx_failed_detail = \"… उसका फ़ॉर्मैट इस व्यूअर में नहीं खुलता।\" in this same namespace, plus ui.common.actions, ui.settings.model, ui.settings.appearance.editor. 8 cells.",
+   "placeholder_integrity": {
+    "arguments": [],
+    "matches_english": true,
+    "number_skeleton": null
+   },
+   "plural_select": []
+  },
+  {
+   "key": "ui.library.tag_category.project",
+   "source": "Project",
+   "current_text": "प्रोजेक्ट",
+   "findings": [],
+   "assessment": "The glossary's recorded rendering (project → प्रोजेक्ट across all seven locales), so no per-locale latitude to diverge. 9 cells, inside the rail slot.",
+   "placeholder_integrity": {
+    "arguments": [],
+    "matches_english": true,
+    "number_skeleton": null
+   },
+   "plural_select": []
+  },
+  {
+   "key": "ui.library.tag_category.source",
+   "source": "Source",
+   "current_text": "स्रोत",
+   "findings": [],
+   "assessment": "Matches ui.library.filter.source = स्रोत for the same English word. The two headings coexist in one rail, but so do the English ones, and the context note already distinguishes the roles (TAG group vs origin-group filter section); a different word here would break the one-term-one-decision invariant, not fix it. 5 cells.",
+   "placeholder_integrity": {
+    "arguments": [],
+    "matches_english": true,
+    "number_skeleton": null
+   },
+   "plural_select": []
+  },
+  {
+   "key": "ui.library.tag_category.status",
+   "source": "Status",
+   "current_text": "स्थिति",
+   "findings": [],
+   "assessment": "Matches ui.library.filter.status = स्थिति for the same English word, with the same intentional coexistence as source. 6 cells.",
+   "placeholder_integrity": {
+    "arguments": [],
+    "matches_english": true,
+    "number_skeleton": null
+   },
+   "plural_select": []
+  },
+  {
+   "key": "ui.library.tag_category.topic",
+   "source": "Topic",
+   "current_text": "विषय",
+   "findings": [],
+   "assessment": "The value the translator flagged, and it is right: it is the catalogue's only existing rendering of \"Topic\" (ui.teamBridge.create.topic = \"विषय (वैकल्पिक)\" for \"Topic (optional)\"), it is the standard Hindi noun for subject matter, and it clashes with nothing else in the rail. Verified in source that it really is the first group (library-model.ts:319 known order starts with \"topic\"), as the note says. 4 cells, no punctuation.",
+   "placeholder_integrity": {
+    "arguments": [],
+    "matches_english": true,
+    "number_skeleton": null
+   },
+   "plural_select": []
+  },
+  {
+   "key": "ui.library.tag_category.type",
+   "source": "Type",
+   "current_text": "प्रकार",
+   "findings": [],
+   "assessment": "Standard Hindi for \"type\" and distinct from the sort option's legacy क़िस्म (ui.library.sort.kind = क़िस्म), which is exactly the distinctness the English note demands (\"Keep it distinct from the sort option 'Kind'\"). 6 cells.",
+   "placeholder_integrity": {
+    "arguments": [],
+    "matches_english": true,
+    "number_skeleton": null
+   },
+   "plural_select": []
+  },
+  {
+   "key": "ui.library.preview.unsupported_generic",
+   "source": "This file has no in-app preview here.",
+   "current_text": "इस फ़ाइल का प्रीव्यू यहाँ ऐप में नहीं दिखता।",
+   "findings": [],
+   "assessment": "Meaning preserved with no omission or added polarity: इस फ़ाइल का … नहीं दिखता। = \"this file's [preview] does not show\", and यहाँ ऐप में carries both \"here\" and \"in-app\". It is a clean structural parallel of the shipped ui.library.preview.unsupported = \"{kind} फ़ाइल का प्रीव्यू यहाँ ऐप में नहीं दिखता।\", so a user sees one sentence pattern whether or not the kind is known; it names no kind (checked mechanically against all 12 kind labels), carries no placeholder, ends with the danda the hi guide requires for prose, and is 44 cells against an English 37 characters for a full-width state line rather than a badge slot. A more formal alternative (\"… प्रीव्यू उपलब्ध नहीं है।\") is defensible on its own, but parallelism with the sibling sentence is worth more than the register step up, so this is not raised as a finding.",
+   "placeholder_integrity": {
+    "arguments": [],
+    "matches_english": true,
+    "number_skeleton": null
+   },
+   "plural_select": []
+  }
+ ],
+ "english_metadata_check": {
+  "keys": "all 20 English context entries (role/tone/note/length) for ui.library.kind.*, ui.library.tag_category.*, ui.library.preview.unsupported_generic",
+  "verdict": "accurate except the one pointer in F1",
+  "detail": "Every render point the notes name was confirmed in source: 'card/list/preview badge' = library-card.tsx:249-251 (grid caption, truncating span), :366-368 (list row), library-preview.tsx:494 (<Badge>); 'narrow rail header' = library-filter-rail.tsx:303-307 (text-meta text-ink-dim span); 'small muted header above that category's tag rows in the Tags section' likewise. The 'raw machine value … data fallback' sentence matches libraryKindLabel()/tagCategoryLabel() falling back to the raw string via Object.hasOwn. 'First group in the rail' (topic) matches groupTagsByCategory's known order [topic, project, type, source, custom]. The source/status notes' contrast with filter.source (Generated/Created/Mentioned) and filter.status (Favorites/Highlighted/Unorganized) matches ORIGIN_GROUPS and LibraryStatusFilter. The legacy note on tag_category.type matches the code comment in library-model.ts:365. The stated English lengths check out (e.g. unsupported_generic is exactly 37 characters; image 5, markdown 8, spreadsheet 11, pdf 3). The only defect is F1's unresolvable 'see manifest' pointer.",
+  "observation": "Not a finding, outside the 20 keys: the same sidecar style is used for the legacy kind-less sentence, and ui.library.preview.unsupported's own note still describes a {kind} slot that the `other` path never reaches — consistent with F1 rather than a separate defect."
+ },
+ "mechanical": {
+  "validator_commands_run": [
+   "node scripts/i18n/generate.mjs --check -> src/i18n/keys.gen.ts is byte-identical to a fresh generation. exit 0",
+   "node scripts/i18n/check-duplicates.mjs -> ok — 1419 file(s) scanned, 0 duplicate key(s). exit 0",
+   "node scripts/i18n/context-parity.mjs -> ok — every English key is covered, apart from 129 allowed gap(s) in 4 namespace(s) (shrink-only). exit 0",
+   "node scripts/i18n/ledger-check.mjs -> FAILED — 21 finding(s) across 1099 ledger entr(ies); 3 of them hi/ui.library (stale source_sha256 f573e43a8f34… vs 065ac47c67e2…, stale target_sha256 97d735dd1735… vs 276df1d52759…, and the receipt does not name the English bytes on disk). Expected pre-audit state for this PR's delta; no ledger write was run by this auditor.",
+   "python3 hi-ds-5d845498f5c6-check.py -> RESULT: all mechanical checks passed. exit 0"
+  ],
+  "json_valid": true,
+  "key_sets_identical_to_english": true,
+  "keys_added_or_removed_vs_origin_main": "none removed, none renamed; hi adds exactly the 20 audited keys (159 -> 179) and 0 legacy values changed vs 0e12072d2b3 (the diff's single deletion is the trailing-comma rewrite of ui.library.time.years_y_ago)",
+  "placeholder_parity": true,
+  "icu_plural_select_needed": false,
+  "hash_binding": "3/3 relevant sha256 entries match expected-hashes.json (en ui.library 065ac47c…, hi ui.library 276df1d5…, en ui.library.context 2fe63e83…) plus the glossary byte-copy 0eb34437…; 0 mismatches. The other six locale entries belong to their own auditors.",
+  "invisible_characters": "none: no NBSP, narrow NBSP, ZW*, bidi control or stray whitespace in any of the 20 values",
+  "width": "max 10 cells (kind.spreadsheet) against the ~12-cell badge/rail slot named in the sidecar; unsupported_generic 44 cells vs English 37 characters in a full-width state line"
+ },
+ "unverified": [
+  "No production ICU parser/formatter, no Electron/React run, no rendered frame and no screen-reader session: read-only, no-build, no-server constraint. Grammar, idiom and register judgments are native-reader reasoning over the catalogue text, not runtime output.",
+  "No ledger write, tracked evidence retention, PR comment or commit: writes were limited to this session's scratchpad. The manager retains these deliverables under i18n/audits/evidence/hi/ui.library/<audit-id>/.",
+  "The 159 non-delta legacy values of ui.library were NOT certified: only JSON validity, key-set parity, no-value-changed-vs-base and cross-file term consistency were checked.",
+  "The translator session id is unknown (not supplied), so translator/auditor independence rests on this auditor having been launched as a separate role, not on session-id inequality.",
+  "Render points were confirmed by reading source, not by rendering the Library surface; no screenshot exists for a badge or rail heading."
+ ],
+ "receipt_contract_review": "Root, per-namespace, auditor and translator field sets mirror the model receipt _s12-audits/e5fb4310…/fr-ds-e3c562b03258.json; the single namespace block carries status, result, source_sha256, target_sha256, input_hashes, fully_audited_keys and findings. Every JSON file was re-parsed with python3 json.load after writing. Field-level schema validation was not run (no repo validator writes permitted).",
+ "audit_notes_not_execution_log": false,
+ "execution_log": "hi-ds-5d845498f5c6.audit.log"
+}

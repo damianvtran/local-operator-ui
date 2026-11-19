@@ -8,6 +8,9 @@
  * and a component file cannot be bundled by the node harness.
  */
 
+// Relative on purpose: this module is bundled by the node harness with no alias map.
+import { t } from "../../../../../i18n/messages";
+
 export type SkillKeyIntent =
 	/** The key is not this list's; the composer's own handling continues. */
 	| { kind: "pass" }
@@ -82,7 +85,7 @@ export function skillRowId(name: string): string {
 }
 
 /** The header strip's word for this list, beside the slash popup's labels. */
-export const SKILL_PHASE_LABEL = "Skills";
+export const skillPhaseLabel = () => t("ui.chat.slash.skill.phase_label");
 
 /**
  * Enter's line, naming what the key does in the state the user is looking at.
@@ -93,12 +96,12 @@ export const SKILL_PHASE_LABEL = "Skills";
  * rather than a generic word, because the line sits beside the row it names.
  */
 export function skillEnterFooter(name: string): string {
-	return `Enter completes $${name}; Enter again sends it.`;
+	return t("ui.chat.slash.skill.enter_footer", { name });
 }
 
 /** The pointer's line, on the same row, for the same gesture. */
 export function skillClickFooter(name: string): string {
-	return `Click completes $${name}.`;
+	return t("ui.chat.slash.skill.click_footer", { name });
 }
 
 /* ------------------------------------------------------------------ */
@@ -116,7 +119,7 @@ export function skillClickFooter(name: string): string {
  * has arrived, the token is not leading at all, or the pane has no folder
  * staged — `!hasCwd`, where no query has fired and nothing has failed yet).
  * A read still in flight is no longer one of the silent states: it renders
- * `SKILL_LOADING_LINE` (design round 1, D1 — the `/` sibling prints its own
+ * `skillLoadingLine` (design round 1, D1 — the `/` sibling prints its own
  * "Loading…" ahead of every other cause, `slash-contract.ts`).
  *
  * ORDER IS THE CONTRACT, durable > transient > loading > empty > miss:
@@ -124,7 +127,7 @@ export function skillClickFooter(name: string): string {
  *   - DURABLE (`skill_catalogue` absent): this backend cannot answer a
  *     sessionless read at all. NO query is fired, and the sentence is the
  *     update-the-backend register, the same one the `@` composer notice uses
- *     (`at-contract.ts`, `AT_UNAVAILABLE_REASON`): the state, then the one
+ *     (`at-contract.ts`, `atUnavailableReason`): the state, then the one
  *     remedy that can change it.
  *   - TRANSIENT (unpaired ∪ pairing-refused ∪ the fired query's own error):
  *     reachability is not a pane property — one string serves drafts and
@@ -172,17 +175,17 @@ export type SkillNotice = { kind: SkillNoticeKind; text: string };
 /**
  * The durable state's sentence, in the app's update-the-backend register.
  *
- * Worded after `AT_UNAVAILABLE_REASON` (`at-contract.ts`), the sibling notice
+ * Worded after `atUnavailableReason` (`at-contract.ts`), the sibling notice
  * in the same composer slot, because the two states are the same kind of fact
  * one capability over: this backend cannot serve the thing the gesture needs,
  * and updating it is the way out. The design round ratifies the exact string;
  * the register it must stay in is the one both siblings write.
  */
-export const SKILL_UNAVAILABLE_REASON =
-	"This backend cannot serve the skill catalogue. Update the backend and try again.";
+export const skillUnavailableReason = () =>
+	t("ui.chat.slash.skill.unavailable");
 
 /** The transient state's sentence; one string for every pane and cause. */
-export const SKILL_TRANSIENT_REASON = "Skills aren't available right now.";
+export const skillTransientReason = () => t("ui.chat.slash.skill.transient");
 
 /**
  * The loading state's line: the `/` sibling's own word, verbatim
@@ -191,16 +194,16 @@ export const SKILL_TRANSIENT_REASON = "Skills aren't available right now.";
  * vocabulary — and it is the one string design round 2 ratifies with this
  * state (`skillNotice`'s LOADING arm, design round 1's D1).
  */
-export const SKILL_LOADING_LINE = "Loading…";
+export const skillLoadingLine = () => t("ui.chat.slash.skill.loading");
 
 /** The empty state where `/skills` can be followed (a session is attached). */
-export const SKILL_EMPTY_ATTACHED = "No skills found — see /skills";
+export const skillEmptyAttached = () => t("ui.chat.slash.skill.empty_attached");
 
 /** The empty state on a draft, where `/skills` would be refused. */
-export const SKILL_EMPTY_DRAFT = "No skills found.";
+export const skillEmptyDraft = () => t("ui.chat.slash.skill.empty_draft");
 
 /** The miss line, unchanged from #690. */
-export const SKILL_MISS_LINE = "No skills match.";
+export const skillMissLine = () => t("ui.chat.slash.skill.miss");
 
 export type SkillNoticeInput = {
 	/**
@@ -260,7 +263,7 @@ export function skillNotice({
 	// DURABLE first: a capability fact outranks everything, and no query was
 	// fired on this build to ask anything else.
 	if (feature === "below-version")
-		return leading ? { kind: "durable", text: SKILL_UNAVAILABLE_REASON } : null;
+		return leading ? { kind: "durable", text: skillUnavailableReason() } : null;
 	/*
 	 * TRANSIENT, pairing half: a daemon this app holds no credential for is a
 	 * pairing fact no matter what its feature list says (`desktopFeatureState`),
@@ -271,7 +274,7 @@ export function skillNotice({
 	 * failed call (QA round 1, Q-2).
 	 */
 	if (feature === "unpaired" || pairingRefused)
-		return leading ? { kind: "transient", text: SKILL_TRANSIENT_REASON } : null;
+		return leading ? { kind: "transient", text: skillTransientReason() } : null;
 	// No capability answer yet: assert neither cause.
 	if (feature === "unknown") return null;
 	// A folder mid-edit (or none staged): no query is fired, and silence is the
@@ -282,7 +285,7 @@ export function skillNotice({
 	if (rowsCount > 0) return null;
 	// TRANSIENT, transport half: the fired query failed.
 	if (query === "error")
-		return leading ? { kind: "transient", text: SKILL_TRANSIENT_REASON } : null;
+		return leading ? { kind: "transient", text: skillTransientReason() } : null;
 	/*
 	 * LOADING: a read actually in flight, on a leading token — the one arm that
 	 * used to be silent and no longer is (design round 1, D1; UX round 1, U4
@@ -292,7 +295,7 @@ export function skillNotice({
 	 * ink would claim a verdict the read may still withdraw.
 	 */
 	if (query === "loading")
-		return leading ? { kind: "loading", text: SKILL_LOADING_LINE } : null;
+		return leading ? { kind: "loading", text: skillLoadingLine() } : null;
 	// Pending (a read deliberately not running): quiet — no claim to make.
 	if (query !== "success") return null;
 	// EMPTY: a settled vocabulary with nothing in it. Both the bare `$` and a
@@ -300,10 +303,10 @@ export function skillNotice({
 	if (leading && !vocabularyNonEmpty)
 		return {
 			kind: "empty",
-			text: attached ? SKILL_EMPTY_ATTACHED : SKILL_EMPTY_DRAFT,
+			text: attached ? skillEmptyAttached() : skillEmptyDraft(),
 		};
 	// MISS: a settled non-empty vocabulary and a typed query that found nothing.
 	if (vocabularyNonEmpty && hasQuery)
-		return { kind: "miss", text: SKILL_MISS_LINE };
+		return { kind: "miss", text: skillMissLine() };
 	return null;
 }

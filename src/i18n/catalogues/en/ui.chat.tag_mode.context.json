@@ -1,0 +1,22 @@
+{
+	"ui.chat.tag_mode.live": {
+		"role": "screen-reader suffix on a folded tag group header",
+		"tone": "short factual count",
+		"note": "Read after a tag group's name and conversation count when the group is folded and hides conversations that are running or waiting on the user (Group by › Tag mode in the conversation sidebar). The header also shows the existing running status glyph. Use the same word the app uses for the Running section/status. Preserve the ICU plural and the number format."
+	},
+	"ui.chat.tag_mode.not_loaded": {
+		"role": "muted placeholder line under a tag group header",
+		"tone": "plain statement, sentence case",
+		"note": "Shown in the conversation sidebar (220px+ wide, may wrap) under a tag that has conversations, none of which are in the loaded part of the list yet. Directly below it is the existing 'Show N more chats' button that loads more. It must not promise a count."
+	},
+	"ui.chat.tag_mode.mode_hint": {
+		"role": "helper text in the sidebar View options popover",
+		"tone": "plain statement, sentence case",
+		"note": "Shown when the list is grouped by Agent and team or In one list, where tags do not arrange the list. 'Time section' and 'Tag' are the names of two Group by options in the same popover; use exactly the translated option labels. Two buttons follow: 'Use Time section' (existing) and 'Use Tag'."
+	},
+	"ui.chat.tag_mode.use_tag": {
+		"role": "button that switches Group by to Tag",
+		"tone": "concise imperative",
+		"note": "Sits beside the existing 'Use Time section' button under the hint; 'Tag' is the translated label of the Group by › Tag option in the same popover. Mirror the phrasing of 'Use Time section' in this locale."
+	}
+}

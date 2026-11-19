@@ -1,0 +1,56 @@
+{
+ "schema": 1,
+ "receipt_kind": "locale-audit (PR delta audit, round 2)",
+ "date": "2026-11-04",
+ "auditor": "translation-auditor",
+ "agent": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "model_provenance": "Served model as announced by the harness preamble for session 0bfa9123c649 (anthropic/claude-opus-5-5); no fallback announced or observed.",
+ "model_fallback": {
+  "announced": false,
+  "observed": false
+ },
+ "status": "passed",
+ "result": "clean",
+ "namespace": "ui.teamBridge",
+ "locale": "ur",
+ "audit_id": "tb1681r2-0bfa9123c649-ur",
+ "instance": "0bfa9123c649-pr1681-r2-ur",
+ "session": "0bfa9123c649",
+ "integration": {
+  "pr": 1681,
+  "repo": "damianvtran/local-operator-ui",
+  "branch": "feat/team-bridge-conversation-menu",
+  "base": "7345dcbf238d334e56f102eb994b15eb5c1776f0",
+  "round": 2,
+  "scope": "fd5465dc728..129897358386",
+  "audited_head": "129897358386badeb15fcf2ddbad77ef5cbfa2bd",
+  "auditor_fix_commit": "the commit that adds this record"
+ },
+ "independence": "Independent auditor: lopdev team translation-auditor, session 0bfa9123c649. Did not translate the 2 values (they arrived in the implementer's remediation commit 129897358386 on PR #1681), wrote no English copy or code in the PR, and is a different instance from the round-1 auditor (f96f8d39d33d-pr1681). Applied only the corrections listed in findings. Same model family as the team coder (anthropic/claude-opus-5-5), separate agent instance; disclosed. No MT service used. Row written by ledger-assemble.mjs.",
+ "sha256": {
+  "ur": "41c5dbb0ef5028d2d866444ffd6b69b727c2bebc5c27a09af59e1179466f16bd",
+  "en": "91adbd87ec45fdb999e8dbeb6560cffb1545a7826d49fc1efada484a39608bc2"
+ },
+ "context_sha256": "2ab9c99330497a1e3e2a6345699992666d09124b8f67c4b33ad794efc8310ede",
+ "scope": {
+  "delta_kind": "Round-2 delta audit of PR #1681 (fd5465dc728..129897358386): the 2 values the round-1 remediation added (confirm.leave_body_agents for #agents; error.general_rejoin_refused, shown for both agent_not_permitted and invalid_transition/not_opted_out via generalRejoinRefused) read against en, the en context notes, the call sites (team-bridge-conversation-menu.tsx, -model.ts) and the round-1 glossary (receipts f96f8d39d33d-pr1681-*). No other value changed in the range; everything else retained from fd5465dc728.",
+  "glossary_checked": "pause → موقوف (people.paused, reason.agents_builtin); rejoin → دوبارہ شامل; آپ register; Arabic semicolon U+061B",
+  "keys_added": [
+   "ui.teamBridge.conversation_menu.confirm.leave_body_agents",
+   "ui.teamBridge.conversation_menu.error.general_rejoin_refused"
+  ],
+  "keys_changed_by_auditor": []
+ },
+ "findings": [],
+ "evidence": {
+  "record": "i18n/audits/evidence/ur/ui.teamBridge/tb1681r2-0bfa9123c649-ur/record.json",
+  "record_sha256": "140ebf4bd92fa2fb69affcfb31de41e9e2fb0d6f9c722aa4de661ef4d7e69709"
+ },
+ "checks": {
+  "command": "node scripts/verify.mjs (worktree root; @formatjs/icu-messageformat-parser + intl-messageformat): whole-file key set/order and argument names equal en; delta keys composed with {channel}=isolateLtr('#agents'/'#general'), NFC, no bidi controls, {channel} exactly once, fr U+202F before ';', zh-CN no CJK/Latin space, no stray U+202F",
+  "result": "0 problem(s)",
+  "execution_log": "i18n/audits/evidence/ur/ui.teamBridge/tb1681r2-0bfa9123c649-ur/audit.log"
+ },
+ "terminal": true
+}

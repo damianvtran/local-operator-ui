@@ -1,0 +1,78 @@
+== (i) hash binding ==
+  en/ui.library            065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71 MATCH
+  zh-CN/ui.library         686dfeeaa8ee25abd2815181ea7fe11ff7cd708cd0ea718632f870e5b1d5b857 MATCH
+  en/ui.library.context    2fe63e830b49079dac67c5c4513358d0a8559a94fbf27ac8d437212b13aa2e72 MATCH
+  head in manifest: 8a9ce1f808c266ebe9a0e924094344cea60c2c23
+  mismatches: 0
+
+== (g) key set parity, whole namespace ==
+  en keys=179 zh keys=179
+  missing in target: none
+  extra in target:   none
+  delta keys present in target: 20/20
+
+== (a)(d)(f) mechanical per delta key ==
+  key                                          len cells  placeholders      invisible
+  ui.library.kind.audio                          2     4  ok               none
+  ui.library.kind.code                           2     4  ok               none
+  ui.library.kind.docx                           4     4  ok               none
+  ui.library.kind.html                           4     4  ok               none
+  ui.library.kind.image                          2     4  ok               none
+  ui.library.kind.markdown                       8     8  ok               none
+  ui.library.kind.other                          2     4  ok               none
+  ui.library.kind.pdf                            3     3  ok               none
+  ui.library.kind.pptx                           4     4  ok               none
+  ui.library.kind.spreadsheet                    2     4  ok               none
+  ui.library.kind.text                           2     4  ok               none
+  ui.library.kind.video                          2     4  ok               none
+  ui.library.tag_category.custom                 3     6  ok               none
+  ui.library.tag_category.format                 2     4  ok               none
+  ui.library.tag_category.project                2     4  ok               none
+  ui.library.tag_category.source                 2     4  ok               none
+  ui.library.tag_category.status                 2     4  ok               none
+  ui.library.tag_category.topic                  2     4  ok               none
+  ui.library.tag_category.type                   2     4  ok               none
+  ui.library.preview.unsupported_generic        14    28  ok               none
+  ICU plural/select in delta: False
+
+== (c) retained Latin tokens: existing-usage precedent ==
+  DOCX      appears in: ui.library.json
+  HTML      appears in: ui.canvas.json, ui.chat.canonical.json, ui.library.json, ui.onboarding.tour.json
+  PDF       appears in: ui.canvas.json, ui.library.json, ui.onboarding.tour.json, ui.teamBridge.json
+  PPTX      appears in: ui.library.json
+  Markdown  appears in: ui.canvas.json, ui.chat.transcript_copy.json, ui.library.json, ui.onboarding.tour.json, ui.projects.json, ui.settings.model.json
+
+== (b) word-family / collision check against existing vocabulary ==
+  ui.library.sort.kind                     en='Kind' zh='类型'
+  ui.library.filter.categories             en='Categories' zh='类别'
+  ui.library.category.spreadsheets         en='Spreadsheets' zh='表格'
+  ui.library.preview.sheet_unreadable      en='This spreadsheet could not be read.' zh='无法读取此电子表格。'
+  ui.library.filter.source                 en='Source' zh='来源'
+  ui.library.filter.status                 en='Status' zh='状态'
+  delta collisions (target value == an existing value of a DIFFERENT concept):
+    ui.library.kind.audio = '音频'  also used by ui.library.category.sounds
+    ui.library.kind.code = '代码'  also used by ui.library.category.code
+    ui.library.kind.image = '图片'  also used by ui.library.category.images
+    ui.library.kind.other = '其他'  also used by ui.library.origin.other
+    ui.library.kind.spreadsheet = '表格'  also used by ui.library.category.spreadsheets
+    ui.library.kind.text = '文本'  also used by ui.library.preview.pptx_text
+    ui.library.kind.video = '视频'  also used by ui.library.category.video
+    ui.library.tag_category.source = '来源'  also used by ui.library.filter.source
+    ui.library.tag_category.status = '状态'  also used by ui.library.filter.status
+    ui.library.tag_category.type = '类型'  also used by ui.library.sort.kind
+
+== (e) badge-slot width (budget ~12) ==
+  longest badge: ui.library.kind.markdown = 'Markdown' len=8 cells=8
+  over 12 chars: none
+  standalone sentence: len=14 cells=28 names-a-kind=False
+
+== (h) context sidecar coverage of the delta ==
+  delta keys with a context entry: 20/20
+  missing: none
+  ui.library.kind.audio: role="Library card/list/preview badge: the asset's file kind (one of twelve fixed kinds)"
+  ui.library.tag_category.topic: role='Library filter rail: header above one group of tags (tag category)'
+  ui.library.preview.unsupported_generic: role='Library preview: unsupported-file state, generic'
+
+== legacy integrity (not recertified) ==
+  keys whose target value is byte-identical to English: 5
+  files parsed as JSON: en ok, zh ok, context ok

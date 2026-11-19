@@ -1,0 +1,66 @@
+{
+	"schema": 1,
+	"receipt": "fr-hub-teams-r1-cf863242",
+	"agent": "translation-auditor",
+	"auditor": "translation-auditor",
+	"model": "deepseek/deepseek-flash",
+	"model_provenance": "Actual served model: deepseek/deepseek-flash. The session header began on anthropic/claude-sonnet-5-5 and the provider served three fallbacks inside this run (claude-opus-5-5, then gpt-6.1-sol, then deepseek/deepseek-flash, each on a quota failure). Every catalogue read, render-site read, composition test and verdict in this receipt was produced on deepseek/deepseek-flash; no result was carried over from the earlier models.",
+	"fallback": "deepseek/deepseek-flash (after anthropic/claude-sonnet-5-5 -> anthropic/claude-opus-5-5 -> openai/gpt-6.1-sol, provider quota)",
+	"independence": "Session cf863242ed03, independent reviewer-role i18n audit. This session did not author, key or translate these values and did not write the commit under audit. Translator provenance is relayed, not verified: i18n/ledger.json records the fr rows locale-wide as agent i18n-translator, model radient/auto. Cross-family attribution is therefore NOT established and is not claimed. The verdict was rebuilt from the English source, the en context sidecar, the render sites (public-teams-library.tsx, org-teams-list.tsx, publication-failure.ts, backend-error.ts), the shipped fr ui.hub.* family, the glossary and the fr style guide.",
+	"instance": "cf863242ed03-fr-hub-teams",
+	"session": "cf863242ed03",
+	"locale": "fr",
+	"namespace": "ui.hub.teams",
+	"branch": "i18n/s5-agent-hub",
+	"base": "c88ad36bbcadee99791b9153ba9a8d31b2b49d1d",
+	"head": "be77d308262ce0527c1fd4052ff77207edcac189",
+	"date": "2026-11-08",
+	"status": "passed",
+	"result": "clean",
+	"scope": "fr ui.hub.teams: the 1 key added by be77d308262 on top of c88ad36bbca (ui.hub.teams.unnamed_team), audited against the English source and its context sidecar at the same head. The 49 keys the base commit already carried are byte-identical at head, so this receipt does not re-audit them.",
+	"key_count": 50,
+	"delta_key_count": 1,
+	"delta_keys": [
+		"ui.hub.teams.unnamed_team"
+	],
+	"inputs_sha256": {
+		"style guide (local-operator/i18n/style-guides/fr.md)": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226",
+		"glossary (local-operator/i18n/glossary.md)": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+	},
+	"source": {
+		"path": "src/i18n/catalogues/en/ui.hub.teams.json",
+		"sha256": "b9674e6bb1f862d380d45568204abcd8735eb08782bfb1351f469019b4e583b8"
+	},
+	"target": {
+		"path": "src/i18n/catalogues/fr/ui.hub.teams.json",
+		"sha256": "b6e741a8dce567644f7eadd7045edd252f638b0d3e3b8301a0a5da903df6938f"
+	},
+	"context": {
+		"path": "src/i18n/catalogues/en/ui.hub.teams.context.json",
+		"sha256": "5ff2873c5549724860df39f48eae57585a38dacc5bfdb5ae24758ab58e981fbe"
+	},
+	"source_sha256": "b9674e6bb1f862d380d45568204abcd8735eb08782bfb1351f469019b4e583b8",
+	"target_sha256": "b6e741a8dce567644f7eadd7045edd252f638b0d3e3b8301a0a5da903df6938f",
+	"verified": [
+		"Completeness: 1/1 delta key present; the parsed key set equals en (50/50), the key order equals en, there are no duplicate JSON members, the value is a real translation and never the key id, the file is NFC and ends with a newline.",
+		"Carried keys untouched: parsing c88ad36bbca and be77d308262 for this namespace differs only by the one added key (1 addition, 0 changes, 0 removals), so the 49 keys the base carried are byte-identical and were not re-audited.",
+		"Placeholders: ui.hub.teams.unnamed_team carries none, matching its English source; the delta introduces no placeholder at all.",
+		"Render sites: public-teams-library.tsx:168 and org-teams-list.tsx:187 pass this value as publicationTreatment’s name when a failed row cannot be resolved, so the shipped template « {name} » n’a pas pu être téléchargée carries it: the quoted slot accepts « cette équipe » and the template’s feminine agreement stays correct (téléchargée).",
+		"Case and voice: lowercase, as the context requires of a name fragment (English « this team »), and the same demonstrative choice as the sibling ui.hub.teams.org.that_organization (cette organisation), so the family keeps one voice.",
+		"Terminology: équipe is the glossary’s mandatory fr rendering for team; no English residue; the key carries no plural, so CLDR plural-category correctness is not applicable to it.",
+		"Typography: no bidi control, zero-width or BOM character, no edge or double space, no punctuation added (the English has none), and the apostrophe in the composed sentence is the corpus’ U+2019, not an ASCII quote.",
+		"Width: the composed failure line stays short (« cette équipe » n’a pas pu être téléchargée), so the fallback adds no wrapping risk of its own to the dialog body."
+	],
+	"findings": [
+		{
+			"key": "ui.hub.teams.unnamed_team",
+			"severity": "info",
+			"status": "verified",
+			"note": "The quoted form repeats the English design of putting a demonstrative inside a name slot; it is grammatically sound and agrees in gender with the shipped template. The publish-flow templates that also take {name} (name_taken.body, name_claim_in_flight.body) would in theory print a masculine participle against a feminine name, but those are pre-existing shipped keys outside this delta and are not reachable from the pull path this fallback serves. Recorded as out of scope, not as a finding."
+		}
+	],
+	"normalised_for_ledger": "auditor and instance rewritten to the ledger contract by the programme manager; original auditor text preserved verbatim inside the parentheses, findings and hashes untouched",
+	"identity_provenance": {
+		"auditor": "translation-auditor (translation-auditor (lopdev reviewer-role session cf863242ed03; independent fr i18n audit, round 1, of the 17 Agent Hub publication keys at be77d308262ce0527c1fd4052ff77207edcac189))"
+	}
+}

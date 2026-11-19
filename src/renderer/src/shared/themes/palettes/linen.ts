@@ -41,7 +41,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const linen: ThemeDefinition = {
 	id: "linen",
 	name: "Linen",
-	description: "Cool off-white linen with soft dusty-pastel states.",
+	descriptionKey: "ui.settings.appearance.theme.linen",
 	palette: {
 		mode: "light",
 		canvas: "#DEE0DB",

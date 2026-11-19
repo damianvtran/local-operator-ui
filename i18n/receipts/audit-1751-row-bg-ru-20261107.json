@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "agent": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "audit-1751-row-bg-ru-20261107",
+  "locale": "ru",
+  "date": "2026-11-07",
+  "status": "passed",
+  "namespace": "ui.chat.sidebar.row.bg",
+  "keys_read": 6,
+  "sha256": {
+    "en": "cb2b1c6bbaa8171855af0cd6769c1eda1bd65c2aeaf0c08452e94989720487fc",
+    "ru": "01c5e4b2b31aa214bfe5e6b5f633a336e92d9a77f5b05ed5e3d04be82fff8907"
+  },
+  "findings": [
+    {
+      "id": "R1",
+      "severity": "MINOR",
+      "key": "ui.chat.sidebar.row.bg.queued",
+      "current": "{count, plural, one {{count, number, ::group-off} в очереди} few {{count, number, ::group-off} в очереди} many {{count, number, ::group-off} в очереди} other {{count, number, ::group-off} в очереди}}",
+      "proposed": "{count, plural, one {в очереди: {count, number, ::group-off}} few {…} many {…} other {…}}",
+      "reason": "Sibling drift: the run panel's same fact (ui.chat.pickers.info_model.queued / none_running_queued) is 'в очереди: {n}' after ' · ', and this clause follows 'В работе: {items}' — the label-colon form keeps the pair parallel ('В работе: 2 субагента · в очереди: 1') instead of a bare '1 в очереди'.",
+      "disposition": "corrected in this audit commit; this receipt binds the corrected bytes"
+    },
+    {
+      "id": "I1",
+      "severity": "INFO",
+      "key": "ui.chat.sidebar.row.bg.running",
+      "reason": "Not a catalogue defect: the {items} list comes from Intl.ListFormat(type 'unit', style 'short') in chat-session-subagents.ts joinItems; CLDR unit-short joins ru with a bare space and zh-CN with nothing ('1 субагент 1 задание', '1个子智能体1个任务'). Recommended code fix type 'conjunction', style 'narrow' (en keeps '1 subagent, 1 job'). Reported on the PR for the coder; catalogue bytes are correct for either list style.",
+      "disposition": "code follow-up for the PR coder; not counted"
+    }
+  ],
+  "scope": "PR #1751 ui.chat.sidebar.row.bg at 47253d733ffd3e8c0b275a533c1b708c317709d6: full 6-key namespace (subagents, jobs, running, queued, subagents_queued, waiting), en catalogue + en context, composed output rendered with intl-messageformat + Intl.ListFormat as chat-session-subagents.ts builds it (counts 1/2/5/21/22), siblings ui.chat.pickers.info_model.*, ui.chat.composer.status.*_action, ui.projects.count.*, ui.common.errors.job*",
+  "independence": "lopdev task subagent ui-i18n-audit (job ab9ddad178e1, manager session 393182dd4bfe), separate from the PR coder that translated; same served model family (anthropic/claude-opus-5-5) disclosed; verdict rebuilt from the English source, the en context, sibling keys, the core glossary (~/local-operator/i18n/glossary.md) and the locale style guide.",
+  "references": "co",
+  "checks": "placeholders {count}/{items} exact per key, ICU arms = CLDR categories for the locale (fr/es one/many/other, ru one/few/many/other, ur/hi one/other, zh-CN/vi other), every arm renders via intl-messageformat, key set == en, NFC, zero Unicode Cf (bidi/format) code points, no ASCII ellipsis, tooltip + sr-only clause (no fixed width budget)",
+  "verdict": "ru: passed after R1 — субагент/задание per glossary; one/few/many/other arms grammatical (1 субагент, 2 субагента, 5 субагентов, 21 субагент); 'В работе: {items}' keeps the list nominative; queued clause aligned to sibling 'в очереди: {n}' (R1, corrected). Joiner is code-side I1."
+}

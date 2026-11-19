@@ -1,0 +1,5 @@
+{
+	"ui.schedules.errors.agent_id_required": "شیڈول بنانے کے لیے ایجنٹ ID درکار ہے۔",
+	"ui.schedules.errors.agent_id_missing": "جمع کروانے کے لیے ایجنٹ ID موجود نہیں۔",
+	"ui.schedules.errors.base_url_missing": "Local Operator API کا بنیادی URL ترتیب نہیں دیا گیا۔"
+}

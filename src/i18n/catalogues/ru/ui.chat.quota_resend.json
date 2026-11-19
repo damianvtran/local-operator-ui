@@ -1,0 +1,9 @@
+{
+	"ui.chat.quota_resend.failed": "Не удалось отправить. Повторите попытку.",
+	"ui.chat.quota_resend.rate_limited": "Запрос уже отправлялся недавно. Повторите примерно через 2 минуты.",
+	"ui.chat.quota_resend.refresh_checking": "Проверка…",
+	"ui.chat.quota_resend.refresh_failed": "Не удалось проверить. Повторите попытку.",
+	"ui.chat.quota_resend.refresh_unchanged": "Только что проверено — изменений пока нет.",
+	"ui.chat.quota_resend.sending": "Отправка…",
+	"ui.chat.quota_resend.sent": "Отправлено. Проверьте входящие и папку «Спам»."
+}

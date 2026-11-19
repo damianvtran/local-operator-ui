@@ -1,0 +1,52 @@
+{
+  "initial_audit_head": "f043579ec5d1c7aba7eed34703806dc3c75d3b99",
+  "verified_head": "78d84573cb687bf593a9b2e385d7bf5a9056ca3a",
+  "comparisons": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.settings.appearance.editor.json",
+      "sha256": "b02c6ea9e8a0854cc3879de025f4e1dc14e940a2b44db04afb75dc42b1711661",
+      "byte_identical": true
+    },
+    "fr": {
+      "path": "src/i18n/catalogues/fr/ui.settings.appearance.editor.json",
+      "sha256": "07fb00efc44e01bfc08e3d4ead5d2eceb6ca69f9e06f40d529e980ff9903f17b",
+      "byte_identical": true
+    },
+    "es": {
+      "path": "src/i18n/catalogues/es/ui.settings.appearance.editor.json",
+      "sha256": "76f7076c423553986ddca101975f9dcb1214782147f0b997bb719c3e19057a6b",
+      "byte_identical": true
+    },
+    "zh-CN": {
+      "path": "src/i18n/catalogues/zh-CN/ui.settings.appearance.editor.json",
+      "sha256": "9f86c8232f1d0b0c42e781804438049cbac7ecffa339449a5c0323e4ef7c6794",
+      "byte_identical": true
+    },
+    "ru": {
+      "path": "src/i18n/catalogues/ru/ui.settings.appearance.editor.json",
+      "sha256": "5454a95db916ae120d7582085e1a814f4f412437ceef46ccf08672ddae9de86f",
+      "byte_identical": true
+    },
+    "vi": {
+      "path": "src/i18n/catalogues/vi/ui.settings.appearance.editor.json",
+      "sha256": "f8d8045429594282367cec7d9d830f9859a02ffef14d48a45a63ae95b9be8871",
+      "byte_identical": true
+    },
+    "ur": {
+      "path": "src/i18n/catalogues/ur/ui.settings.appearance.editor.json",
+      "sha256": "b31830bc94817155a83b67e2ff05b6122c840152817836ddad2832e41487bbf2",
+      "byte_identical": true
+    },
+    "hi": {
+      "path": "src/i18n/catalogues/hi/ui.settings.appearance.editor.json",
+      "sha256": "6c68a90c7bc5920fffb4b198b49d8f10b716a96e8a14db3355a8bd4b4ce1face",
+      "byte_identical": true
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.settings.appearance.editor.context.json",
+      "sha256": "6882beca38567bd97e56a145ed579def86c704316d34116eeaa61ef20acaa3a0",
+      "byte_identical": true
+    },
+    "locale_parity_gate_byte_identical": true
+  }
+}

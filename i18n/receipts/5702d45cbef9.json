@@ -1,0 +1,59 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "5702d45cbef9",
+  "date": "2026-10-19",
+  "locale": "ur",
+  "round": 1,
+  "section": 3,
+  "status": "changes_requested",
+  "scope": "Full independent copy audit of both Section 3 namespaces.",
+  "fallback": "Pinned anthropic/claude-sonnet-5-5 was unavailable (provider quota); this run executed on openai/gpt-6.1-sol.",
+  "notes": "Both namespaces had findings; remediated and re-audited in round 2.",
+  "namespaces": {
+    "ui.settings.integrations": {
+      "namespace": "ui.settings.integrations",
+      "keys_read": 218,
+      "status": "changes_requested",
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.settings.integrations.integration_key_dialog.keys_are_saved_encrypted_on_this_computer_other_integrations_that",
+          "problem": "masculine والے with feminine انٹیگریشنز",
+          "expected": "والی",
+          "evidence": "agreement"
+        }
+      ],
+      "note": "Historical round-1 finding; remediated and re-audited in round 2. No hash recorded because the audited bytes were superseded."
+    },
+    "ui.providers": {
+      "namespace": "ui.providers",
+      "keys_read": 189,
+      "status": "changes_requested",
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.providers.provider_detail.at",
+          "problem": "assembled reachability sentence places پر before URL",
+          "expected": "natural punctuation before URL",
+          "evidence": "composed ...جواب نہیں دے رہا پر http://"
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.providers.provider_detail.runs_on_this_computer_and_needs_no",
+          "problem": "شروع کریں before inline brand",
+          "expected": "verb after brand",
+          "evidence": "composed شروع کریں Ollama"
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.providers.provider_detail.enter_this_code",
+          "problem": "destination after completed imperative",
+          "expected": "destination before درج کریں",
+          "evidence": "composed یہ کوڈ درج کریں example.com پر"
+        }
+      ],
+      "note": "Historical round-1 finding; remediated and re-audited in round 2. No hash recorded because the audited bytes were superseded."
+    }
+  }
+}

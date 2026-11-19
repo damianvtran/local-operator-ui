@@ -1,0 +1,35 @@
+{
+  "retained_commit": "b0c7f1010c3d3a1bc0f324a5383711e87e6b9f23",
+  "actual_execution_model": "openai/gpt-6.1-sol",
+  "requested_header_model": "anthropic/claude-sonnet-5-5",
+  "model_evidence": "own session transcript payload.usage.provider/model_id and payload.provider_payload.native_replay",
+  "completed_segment_recorded_calls": [
+    30,
+    9,
+    10,
+    27,
+    64,
+    6
+  ],
+  "completed_segment_models": "openai/gpt-6.1-sol only in all six",
+  "changes": {
+    "QA-NATIVE.md": {
+      "before_sha256": "92381e2164b4d55dff209d02015d4b1b334f4a5c0568101d93ff3b2b4d38ba8f",
+      "after_sha256": "78e6c6a20f414d023b345c5d10d95d0007e77d603792506ab048268f60085d81",
+      "changed_lines": "Reviewer provenance only"
+    },
+    "CHECKPOINT.md": {
+      "before_sha256": "92b005e4a468e02bb5ad79125ee6e045be5d2b0ce1122e0f259f74f23e6545ae",
+      "after_sha256": "6f636f481902e5bce7b397e0747c655bccc61d438b8e4b225fc38fb50e5314ff",
+      "changed_lines": "Reviewer provenance only"
+    }
+  },
+  "checksum_entries_changed": [
+    "QA-NATIVE.md",
+    "CHECKPOINT.md"
+  ],
+  "pixel_machine_receipts_changed": false,
+  "scope_head_verdict_changed": false,
+  "comment_reviewer_lines_corrected": 3,
+  "committed_worktree_modified": false
+}

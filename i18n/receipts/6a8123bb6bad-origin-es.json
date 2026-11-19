@@ -1,0 +1,78 @@
+{
+  "schema": 1,
+  "auditor": "i18n-auditor (lopdev team; session 6a8123bb6bad; independent es linguistic auditor, not the translator)",
+  "agent": "i18n-auditor (lopdev team; session 6a8123bb6bad; independent es linguistic auditor, not the translator)",
+  "model": "anthropic/claude-sonnet-5-5",
+  "model_provenance": "Model as shown in this session's runtime header (anthropic/claude-sonnet-5-5). No fallback used or claimed; not independently verified beyond the runtime header.",
+  "fallback": "none",
+  "session": "6a8123bb6bad",
+  "job_id": null,
+  "job_identity_note": "Delegated lopdev i18n-auditor task (round 1 then round 2); no separate background job id was supplied. The session id identifies this auditor.",
+  "role": "i18n-auditor / independent translation auditor",
+  "independence": "I did not author or edit this translation. I read the es style guide, glossary, the English source with its context sidecar, the committed es target, and the neighbouring es starters/detail/alert catalogues for terminology.",
+  "locale": "es",
+  "branch": "fix/agent-transport-copy",
+  "head": "30bdd7aedbce47dc0c0c1506103368e8225fb839",
+  "pr": "damianvtran/local-operator-ui#1594",
+  "date": "2026-11-02",
+  "status": "passed",
+  "instance": "6a8123bb6bad-origin-es",
+  "namespace": "ui.agents.detail.origin",
+  "result": "clean-with-findings",
+  "source_sha256": "bbb0eeac68c5ccd14988bffab2502698cb14ff6871a0a2b2212dd779fd67efb4",
+  "context_sha256": "470e2004a28b867981fe7ae6bd55ce81bec490cab63553490548503ff181b8f5",
+  "target_sha256": "d09f61041a28cf757501ced32d343184b2d4b789054da9ba3d14cf32c0b49dd5",
+  "paths": {
+    "source": "src/i18n/catalogues/en/ui.agents.detail.origin.json",
+    "context": "src/i18n/catalogues/en/ui.agents.detail.origin.context.json",
+    "target": "src/i18n/catalogues/es/ui.agents.detail.origin.json"
+  },
+  "keys_read": 3,
+  "keys_in_file": 3,
+  "linguistic_scope_keys": [
+    "ui.agents.detail.origin.shipped_with_app",
+    "ui.agents.detail.origin.installed_starter",
+    "ui.agents.detail.origin.compare_packaged"
+  ],
+  "rounds": [
+    {
+      "round": 1,
+      "pin": "82ad0474cf9:",
+      "target_sha256": "55cc11525ff858d8edf3c83b185562c29343a8069a19143757cf31b5361db5a0",
+      "verdict": "changes_requested",
+      "note": "One MAJOR (A-1) and one NIT (A-2); no blocker."
+    },
+    {
+      "round": 2,
+      "pin": "30bdd7aedbce47dc0c0c1506103368e8225fb839",
+      "target_sha256": "d09f61041a28cf757501ced32d343184b2d4b789054da9ba3d14cf32c0b49dd5",
+      "verdict": "passed",
+      "note": "Delta-scoped re-read of installed_starter only; the git diff 82ad0474cf9..30bdd7aedbc for the es file is that one line."
+    }
+  ],
+  "findings": [
+    {
+      "id": "A-1",
+      "severity": "info",
+      "round1_severity": "MAJOR",
+      "status": "remediated",
+      "key": "ui.agents.detail.origin.installed_starter",
+      "text": "Round 1 text: \"Instalado desde una plantilla inicial empaquetada.\" Final text: \"Instalado desde una plantilla incluida.\"",
+      "note": "Round 1 MAJOR: 'plantilla inicial' was a second rendering of 'starter' against the recorded es decision starter -> 'plantilla incluida' (es style guide W2 amendment; shipped tui.authoring.seed_not_installed 'Instala esta plantilla incluida antes de editarla.'; cli.agents_help audits w2a1/w2a4 enforced it). Remediated in 30bdd7aedbc. Re-read at that pin: conforms to the recorded term, still distinct from shipped_with_app 'Viene con la app.' (bundled agent vs installed copy), masculine singular 'Instalado' agrees with the elided 'agente' and matches created_locally, ends in a full stop. Recorded severity info because the final bytes carry no open defect; the history is kept here."
+    },
+    {
+      "id": "A-2",
+      "severity": "nit",
+      "key": "ui.agents.detail.origin.shipped_with_app",
+      "text": "Viene con la app.",
+      "note": "'app' here versus 'aplicación' in ui.agents.refusals.class.install_disclosure. 'app' matches ui.agents.detail.alert.builtin_body ('Este agente viene con la app...') and this namespace, so it is locally consistent; observation only, no change needed."
+    }
+  ],
+  "scope": "WHOLE-NAMESPACE LINGUISTIC AUDIT of the three keys of ui.agents.detail.origin (round 1 at 82ad0474cf9, round 2 delta-scoped at 30bdd7aedbc). It does NOT clear rendered layout, wrapping or the live disclosure UI; no rendered frame was inspected. The 'Comparar con las instrucciones empaquetadas' label and 'Viene con la app.' are byte-identical between the two pins; 'empaquetada' matches the existing origin.changed ('Cambiado respecto a la copia empaquetada').",
+  "verified": [
+    "Key set equals English (3 keys, no adds/drops); valid JSON; no placeholders, plural arms, markup or backticks in source or target, and none added.",
+    "Source, context and target hashes derived from git show 30bdd7aedbc:<path> committed blobs; on-disk files in this worktree verified byte-identical (shasum).",
+    "Sentences end in a full stop; the disclosure label has none and is an infinitive per the es style guide.",
+    "I did not run the repo validator or the ledger command for the audit itself; deriveReceiptAudit was run on this receipt afterwards."
+  ]
+}

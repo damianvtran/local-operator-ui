@@ -1,0 +1,110 @@
+{
+  "auditor": {
+    "agent": "reviewer",
+    "model": "openai/gpt-6.1-sol",
+    "instance": "9f4c2a71b3d8"
+  },
+  "date": "2026-10-18",
+  "locale": "ru",
+  "namespace": "ui.chat.tags",
+  "status": "passed",
+  "result": "clean",
+  "sha256": {
+    "en": "5e248d96f215a0754ba201a6f4df9801350532d3259506fa6ac995c455450427",
+    "ru": "a0d325ec2a9835044b901da0ae66ee5f9a0ead72f239a734fb502a87adbbbc8a"
+  },
+  "findings": [],
+  "scope": "V2-1 11-key drag/move/remove delta; unchanged 42-key baseline retained",
+  "independence": {
+    "translator_agent": "coder",
+    "auditor_did_not_translate": true,
+    "actual_model": "openai/gpt-6.1-sol",
+    "fallback": "Temporary fallback from anthropic/claude-sonnet-5-5 after quota exhaustion; all substantive catalogue audit performed with openai/gpt-6.1-sol."
+  },
+  "language_competence": "Russian-language semantic and grammatical review performed directly; no external translation service used.",
+  "checked_keys": [
+    "ui.chat.tags.label",
+    "ui.chat.tags.menu",
+    "ui.chat.tags.group",
+    "ui.chat.tags.manage",
+    "ui.chat.tags.mode_hint",
+    "ui.chat.tags.use_time",
+    "ui.chat.tags.discovery",
+    "ui.chat.tags.picker_title",
+    "ui.chat.tags.picker_description",
+    "ui.chat.tags.search",
+    "ui.chat.tags.empty",
+    "ui.chat.tags.loading",
+    "ui.chat.tags.applying",
+    "ui.chat.tags.retry",
+    "ui.chat.tags.cancel",
+    "ui.chat.tags.apply",
+    "ui.chat.tags.clear",
+    "ui.chat.tags.new",
+    "ui.chat.tags.new_name",
+    "ui.chat.tags.add",
+    "ui.chat.tags.primary",
+    "ui.chat.tags.group_under",
+    "ui.chat.tags.untagged",
+    "ui.chat.tags.rename",
+    "ui.chat.tags.save",
+    "ui.chat.tags.delete",
+    "ui.chat.tags.delete_tag",
+    "ui.chat.tags.delete_title",
+    "ui.chat.tags.delete_description",
+    "ui.chat.tags.move_up",
+    "ui.chat.tags.move_down",
+    "ui.chat.tags.manage_description",
+    "ui.chat.tags.rename_label",
+    "ui.chat.tags.no_matches",
+    "ui.chat.tags.save_failed",
+    "ui.chat.tags.load_failed",
+    "ui.chat.tags.duplicate_name",
+    "ui.chat.tags.updated_grouped",
+    "ui.chat.tags.updated_untagged",
+    "ui.chat.tags.none_yet",
+    "ui.chat.tags.manage_title",
+    "ui.chat.tags.apply_deletion_first",
+    "ui.chat.tags.moved_to",
+    "ui.chat.tags.removed_all",
+    "ui.chat.tags.remove_all",
+    "ui.chat.tags.move_menu",
+    "ui.chat.tags.changed_elsewhere",
+    "ui.chat.tags.move_armed",
+    "ui.chat.tags.move_cancelled",
+    "ui.chat.tags.undo",
+    "ui.chat.tags.move_undone",
+    "ui.chat.tags.move_title",
+    "ui.chat.tags.move_description"
+  ],
+  "inputs": {
+    "english": "src/i18n/catalogues/en/ui.chat.tags.json",
+    "russian": "src/i18n/catalogues/ru/ui.chat.tags.json",
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.chat.tags.context.json",
+      "sha256": "61fd8f9b9f9d930e0b70da2d6029da22e55e6d13fd47f925e9a456c05867ee51"
+    },
+    "glossary": {
+      "repository": "local-operator",
+      "path": "i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "repository": "local-operator",
+      "path": "i18n/style-guides/ru.md",
+      "sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+    }
+  },
+  "checks": {
+    "key_parity": "PASS: 53 English/Russian pairs; no missing/extra keys.",
+    "baseline": "PASS: git show HEAD:<path> comparison proves all 42 pre-existing values unchanged in both languages; 11 additions each.",
+    "icu": "PASS: @formatjs/icu-messageformat-parser parsed all 106 messages; recursive argument-name parity across all 53 pairs; present Russian plural selectors valid and other present.",
+    "remove_all": "PASS: invariant plural noun in Удалить все теги ({count}) is grammatical without count-governed noun inflection; checked counts 0,1,2,5,11,21,22,25,1.5.",
+    "semantics": "PASS: Без тега identifies Untagged consistently; move_description distinguishes choosing a primary tag from removing all assignments. Move, remove, concurrent-change and undo messages preserve English meaning. move_armed is an ongoing-action announcement in its call-site context, so nominal Перемещение is appropriate.",
+    "style": "PASS: neutral concise register, infinitive action labels, Russian guillemets, Unicode ellipsis and placeholder names retained.",
+    "fit_risk": "Text-only review: move_menu 18 vs 12 English codepoints; changed_elsewhere 28 vs 22; move_cancelled 20 vs 14; undo 8 vs 4; move_undone 25 vs 15; move_description 61 vs 64. No copy-shortening defect identified; these lengths do not prove pixel fit."
+  },
+  "limitations": [
+    "No browser tool in this role; no rendered frame or pixel-fit claim. Rendered sidebar/menu/toast fit remains with independent visual QA."
+  ]
+}

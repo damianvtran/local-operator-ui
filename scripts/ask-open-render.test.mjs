@@ -93,6 +93,7 @@ const bundle = await build({
 			export { AskDrawer } from "./src/renderer/src/features/chat/components/asks/ask-drawer";
 			export { useAskOpenPolicy } from "./src/renderer/src/features/chat/use-ask-open-policy";
 			export { askDismissals } from "./src/renderer/src/features/chat/ask-open-policy";
+			export { resolveSessionAskFrame } from "./src/renderer/src/features/chat/session-asks";
 			export { askQueueView } from "./src/renderer/src/features/chat/ask-queue";
 			export { askClaimsEscape } from "./src/renderer/src/features/chat/ask-queue";
 			export { registerComposerFocus } from "./src/renderer/src/features/chat/composer-field";
@@ -156,6 +157,7 @@ const {
 	useAskOpenPolicy,
 	askDismissals,
 	askQueueView,
+	resolveSessionAskFrame,
 	askClaimsEscape,
 	registerComposerFocus,
 	useUiPreferencesStore,
@@ -166,11 +168,24 @@ const h = React.createElement;
 
 /*
  * The call site and its import, as patterns hoisted to module scope (a regex literal in
- * a test body is rebuilt per call). The call is matched whole - three named arguments -
- * so a rewiring that dropped one (the composer key, say) is a failure, not a pass.
+ * a test body is rebuilt per call). The call is matched whole - four named arguments -
+ * so a rewiring that dropped one (the composer key, say, or the presentation fact that
+ * keeps an auto-open off the sheet) is a failure, not a pass.
  */
 const HOOK_CALL =
-	/useAskOpenPolicy\(\{\s*sessionId,\s*composerId: conversationId,\s*view: sessionAsksView,\s*\}\)/;
+	/useAskOpenPolicy\(\{\s*sessionId,\s*composerId: conversationId,\s*view: sessionAsksView,/;
+/*
+ * THE PRESENTATION FACT (design 2026-11-03, D5). Matched apart from the three wiring
+ * arguments because the call site carries a long comment between them, and a pinned
+ * gap would fail on the prose rather than on the fact.
+ */
+const HOOK_OVERLAY = /overlayPresentation:\s*inOverlayPresentation,/;
+/*
+ * ...AND THE READER ITSELF: the live presentation fact, from the measured row through
+ * the one predicate (`canvasPaneMode`), not a boolean captured at render.
+ */
+const HOOK_OVERLAY_READER =
+	/const inOverlayPresentation = useCallback\(\s*\(\) =>[\s\S]{0,200}?canvasPaneMode\(paneRowWidthRef\.current[\s\S]{0,120}?"overlay"/;
 const HOOK_IMPORT =
 	/import \{ useAskOpenPolicy \} from "\.\.\/use-ask-open-policy";/;
 /** The call site CAPTURES the return (the live region's sentence; design review round 1, D1). */
@@ -225,6 +240,9 @@ const Pane = ({ sessionId, frontend }) => {
 		sessionId,
 		composerId: sessionId,
 		view,
+		/* The harness is the DOCKED presentation: a sheet auto-open is
+		 * `ask-open-policy`'s own arm, driven there as a pure input. */
+		overlayPresentation: () => false,
 	});
 	/*
 	 * THE COMPOSER'S REAL REGISTRATION (`registerComposerFocus`), not a stub that focuses the
@@ -1284,6 +1302,41 @@ test("D1 - a policy open speaks one sentence in the live region; a door press an
 	);
 });
 
+/*
+ * U8, SCOPED TO THE ARM THE HOOK CAN ACTUALLY SEE (UX round 2). The settle writes the
+ * region while the drawer stays open. The shipped drawer closes itself over an emptied
+ * queue in the same frame, and the close clears the region - so the sentence is never
+ * left stale, but it is also not heard in the single-ask case. This pins the hook's own
+ * side of that: the transition, the sentence, and the fact that the hook does not close
+ * the drawer. The end-to-end arm is the drawer's, and the PR note is scoped to match.
+ */
+test("U8 - the live region speaks the settled clause when the queue empties with the drawer still open", async () => {
+	const Harness = ({ view }) => {
+		const text = useAskOpenPolicy({
+			sessionId: "c-u8",
+			composerId: "c-u8",
+			view,
+			overlayPresentation: () => false,
+		});
+		return h("output", { "data-u8-announcer": "" }, text);
+	};
+	// Store state is shared across this file: start from the closed drawer the arm assumes.
+	useUiPreferencesStore.getState().setAskDrawerOpen(false, "session");
+	const container = document.createElement("div");
+	document.body.append(container);
+	const root = createRoot(container);
+	const render = async (view) =>
+		act(async () => root.render(h(Harness, { view })));
+	await render(askQueueView(withRows([ask("open")])));
+	const region = () => container.querySelector("output")?.textContent;
+	assert.equal(region(), "Opened your questions: 1 question waiting.");
+	await render(askQueueView(withRows([])));
+	assert.equal(useUiPreferencesStore.getState().isAskDrawerOpen, true);
+	assert.equal(region(), "All asks settled.");
+	await act(async () => root.unmount());
+	container.remove();
+});
+
 test("D1 - the drawer's own empty close clears the sentence, and a fresh view re-announces", async (t) => {
 	const view = await rig(t);
 	const region = () => view.container.querySelector("output");
@@ -1345,6 +1398,16 @@ test("ChatContent calls the hook with the conversation, the composer key and the
 		HOOK_CALL,
 		"the open policy is no longer wired at the mount that owns the drawer",
 	);
+	assert.match(
+		source,
+		HOOK_OVERLAY,
+		"the mount no longer hands the policy its presentation fact: below the dock breakpoint an auto-open would cover and inert the conversation",
+	);
+	assert.match(
+		source,
+		HOOK_OVERLAY_READER,
+		"the presentation fact no longer reads the measured row through `canvasPaneMode`; a render-time boolean would answer with the pre-measurement row",
+	);
 	assert.match(source, HOOK_IMPORT);
 	const wired = source.indexOf("useAskOpenPolicy({");
 	const viewDecl = source.indexOf("const sessionAsksView = useMemo(");
@@ -1372,4 +1435,194 @@ test("the wiring leaves the composer's routing alone", async () => {
 			`the open policy must not touch the composer's routing (${forbidden})`,
 		);
 	}
+});
+
+/* ==================================== the resumed conversation's first frame ==== */
+
+/*
+ * THE OPERATOR'S SCREENSHOT, AS A REGRESSION (the resumed-ask fix).
+ *
+ * The durable checkpoint of a resumed conversation carries no ask claim, and
+ * the aggregate index answers for it a few milliseconds later. The failure was
+ * a copy claim, not a layout one: the session drawer rendered "This runtime
+ * doesn't support queued asks." while the read was merely unfinished. So this
+ * mounts the REAL drawer over the REAL resolver's answer for the claimless
+ * frame - first with the aggregate in flight, then with its rows - and asserts
+ * the two bodies and the absent unsupported copy.
+ */
+const mountDrawerFor = async (t, frontend) => {
+	const container = document.createElement("div");
+	document.body.appendChild(container);
+	const root = createRoot(container);
+	await act(async () => {
+		root.render(
+			h(AskDrawer, {
+				frontend,
+				scope: "session",
+				onClose: () => {},
+			}),
+		);
+	});
+	t.after(async () => {
+		await act(async () => root.unmount());
+		container.remove();
+	});
+	return container;
+};
+
+test("a claimless frame whose aggregate is still in flight reads 'Reading the asks…', never 'doesn't support queued asks'", async (t) => {
+	/* The exact frame a resumed checkpoint produces: present, no claim. */
+	const claimless = { asks: null, asks_open: null, asks_truncated: null };
+	const frame = resolveSessionAskFrame("fa1107000001", claimless, {
+		rows: null,
+		capability: "unknown",
+	});
+	assert.equal(
+		frame,
+		null,
+		"the resolver's pending answer is the drawer's unread frame",
+	);
+
+	const container = await mountDrawerFor(t, frame);
+	assert.match(
+		container.textContent,
+		/Reading the asks…/,
+		"the in-flight read must say it is reading",
+	);
+	assert.doesNotMatch(
+		container.textContent,
+		/don't support queued asks|doesn't support queued asks/,
+		"no read may be worded as an unsupported runtime while it is pending",
+	);
+	assert.doesNotMatch(container.textContent, /Asks unavailable/);
+});
+
+test("the same claimless frame resolves to the aggregate's rows and renders the question", async (t) => {
+	const claimless = { asks: null, asks_open: null, asks_truncated: null };
+	const entry = {
+		ask_id: "a-1",
+		session_id: "fa1107000001",
+		created_at: Date.now() - 60_000,
+		expires_at: Date.now() + 3_600_000,
+		timeout_s: 3600,
+		urgent: false,
+		status: "open",
+		delivered: false,
+		questions: [
+			{
+				id: "environment",
+				question: "Which environment?",
+				options: [{ label: "staging" }],
+			},
+		],
+	};
+	const frame = resolveSessionAskFrame("fa1107000001", claimless, {
+		rows: [entry],
+		capability: "live",
+	});
+	assert.notEqual(frame, null);
+
+	const container = await mountDrawerFor(t, frame);
+	assert.match(
+		container.textContent,
+		/Which environment\?/,
+		"the aggregate's row must render as a card",
+	);
+	assert.doesNotMatch(container.textContent, /Reading the asks…/);
+	assert.doesNotMatch(container.textContent, /doesn't support queued asks/);
+});
+
+/*
+ * D5 / m2, DRIVEN THROUGH THE HOOK (review round 1): the sheet presentation is a
+ * FACT the view decides on, so both consequences are observable here - the refusal
+ * with the sentence that stands in for the open, and the carried-open close.
+ */
+test("D5 - the sheet presentation leaves the drawer shut, speaks the queue's clause, and widening later does not open it", async () => {
+	const Harness = ({ view, overlay }) => {
+		const text = useAskOpenPolicy({
+			sessionId: "c-sheet",
+			composerId: "c-sheet",
+			view,
+			overlayPresentation: () => overlay,
+		});
+		return h("output", { "data-sheet-announcer": "" }, text);
+	};
+	useUiPreferencesStore.getState().setAskDrawerOpen(false, "session");
+	const container = document.createElement("div");
+	document.body.append(container);
+	const root = createRoot(container);
+	const render = async (view, overlay) =>
+		act(async () => root.render(h(Harness, { view, overlay })));
+	const region = () => container.querySelector("output")?.textContent;
+	await render(askQueueView(withRows([ask("open")])), true);
+	assert.equal(
+		useUiPreferencesStore.getState().isAskDrawerOpen,
+		false,
+		"an auto-open must not cover and inert the conversation",
+	);
+	assert.equal(
+		region(),
+		"1 question waiting.",
+		"the refusal still tells a reader who cannot see the chip that asks are waiting",
+	);
+	/*
+	 * THE LEAVE IS FINAL FOR THE VIEW: a wider row is not a user asking for the
+	 * drawer, so the decision is not un-spent (the policy comment says why).
+	 */
+	await render(askQueueView(withRows([ask("open")])), false);
+	assert.equal(useUiPreferencesStore.getState().isAskDrawerOpen, false);
+	/*
+	 * AND THE SENTENCE GOES WHEN THE WAITING DOES (agent review round 2, m-r2-3): the
+	 * refusal speaks over a SHUT drawer, so neither the close watch nor the open-drawer
+	 * settle can ever end it - a queue that emptied left "1 question waiting." standing
+	 * for the rest of the mount.
+	 */
+	await render(askQueueView(withRows([])), false);
+	assert.equal(
+		region(),
+		"",
+		"nothing is waiting and nothing is up: the region has nothing true left to say",
+	);
+	await act(async () => root.unmount());
+	container.remove();
+});
+
+test("m2 - a carried open is closed as a withdrawal under the sheet, and kept when docked", async () => {
+	const Harness = ({ view, overlay }) => {
+		const text = useAskOpenPolicy({
+			sessionId: "c-carried",
+			composerId: "c-carried",
+			view,
+			overlayPresentation: () => overlay,
+		});
+		return h("output", {}, text);
+	};
+	const mount = async (overlay) => {
+		const container = document.createElement("div");
+		document.body.append(container);
+		const root = createRoot(container);
+		await act(async () =>
+			root.render(
+				h(Harness, { view: askQueueView(withRows([ask("open")])), overlay }),
+			),
+		);
+		return { root, container };
+	};
+	/* The sheet: the flag outlived the conversation switch, so the view closes it. */
+	useUiPreferencesStore.getState().setAskDrawerOpen(true, "session");
+	const sheet = await mount(true);
+	assert.equal(
+		useUiPreferencesStore.getState().isAskDrawerOpen,
+		false,
+		"a modal sheet must not be carried onto a view with the keyboard on <body>",
+	);
+	await act(async () => sheet.root.unmount());
+	sheet.container.remove();
+	/* Docked: the same carried flag follows the user, as it always did. */
+	useUiPreferencesStore.getState().setAskDrawerOpen(true, "session");
+	const docked = await mount(false);
+	assert.equal(useUiPreferencesStore.getState().isAskDrawerOpen, true);
+	useUiPreferencesStore.getState().setAskDrawerOpen(false, "session");
+	await act(async () => docked.root.unmount());
+	docked.container.remove();
 });

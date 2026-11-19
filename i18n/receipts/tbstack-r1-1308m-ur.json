@@ -1,0 +1,60 @@
+{
+ "auditor": "translation-auditor",
+ "model": "openai/gpt-6.1-sol",
+ "instance": "tbstack-r1-1308m-ur",
+ "session": "a0d4a2558d92",
+ "job": "64b71b9bb8d3",
+ "task_label": "audit-stackm-hi-ur",
+ "model_history": [
+  "anthropic/claude-opus-5-5",
+  "openai/gpt-6.1-sol"
+ ],
+ "model_provenance": "Opus read required skill only; harness switched to gpt-6.1-sol for quota exhaustion before catalogue audit. All catalogue review and receipt creation performed by gpt-6.1-sol. Exact job id supplied by parent coordinator after initial artifact creation.",
+ "date": "2026-10-22",
+ "locale": "ur",
+ "namespace": "ui.teamBridge",
+ "status": "passed",
+ "keys_audited": 144,
+ "union_keys_verified": 144,
+ "scope": "PR #1308 local head 2908b0a9f1ad0c7be87553cd2c12b20008ad0c31: all 144 ui.teamBridge ur keys read beside English; exact parent union 2156430ae2 + 3269107dbd for en/context/target; four OS banner keys substantively reviewed with thread/reaction/schedule/attachment vocabulary where present.",
+ "sha256": {
+  "en": "f9d6aa7afa46fd6b877e5fe1b3e8a276657445bf929f237a51b0726f6860d214",
+  "ur": "ce734f6de07b06789bd21caea6a01f68fcfcacc86870cbe33658c6b6d7a44302",
+  "context": "be847e5b61705864af0972446332cbed327f98f2d7f591c4a4de0d86f39e6f7b"
+ },
+ "findings": [],
+ "inherited_receipts": [
+  {
+   "commit": "2156430ae280ba2e368db32a51242927c72057fb",
+   "path": "i18n/receipts/tbstack-r2-1308-ur.json",
+   "read_from": "git:2156430ae2:i18n/receipts/tbstack-r2-1308-ur.json",
+   "receipt_sha256": "5b1a685b3774e07d83a91a4e84d4a0f63fea419acd7f8e20b3936f6b4af9a7e2",
+   "status": "passed",
+   "findings": []
+  },
+  {
+   "commit": "3269107dbd8582ab07a6fddba55b271ad0a6c076",
+   "path": "i18n/receipts/tbstack-r1-1304m-ur.json",
+   "read_from": "git:3269107dbd:i18n/receipts/tbstack-r1-1304m-ur.json",
+   "receipt_sha256": "e35be7e2f4d86eb4213e6d21a6082e20c27f2cf32f32e0b4119080ba5babf83f",
+   "status": "passed",
+   "findings": []
+  }
+ ],
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+ },
+ "validation": {
+  "union": "Exact JSON key/value union for English, context and target; zero dropped, altered, conflicting shared or extra values. Both parents independently compared, not inferred from merge ancestry.",
+  "icu": "Installed @formatjs/icu-messageformat-parser: 932 (head,locale,key) pairs checked; zero structural differences. Branch-by-branch argument names/types/multiplicity, pound nodes, offsets, skeletons and markup preserved; natural target argument reordering permitted.",
+  "plurals": "Runtime Intl.PluralRules: hi=one/other (one includes 0 and 1); ur=one/other. All source arms retained, count/# used in every corresponding arm, including banner preview and attachment failures.",
+  "banner": "Read all four notify.channel/subtitle/count/count_preview values and English contexts. # channel prefix unchanged; place-middle-dot-organization logical order retained; count/# retained in each branch, preview last; accurate neutral burst summary, no invented sender. Message=संदेश/پیغام agrees with thread, compose.new, scheduling and attachment-adjacent copy.",
+  "terminology": "Urdu: گفتگو conversation; پیغام message (پیغامات plural); تھریڈ thread; جواب reply (جوابات plural); ردعمل reaction; مسودہ draft; شیڈول schedule; تصویر image (تصاویر plural). Polite آپ/کریں/دیں, no T/V drift.",
+  "typography": "NFC, final newline; no U+200B–200F, U+202A–202E, U+2066–2069, U+061C or BOM in actual target bytes.",
+  "rtl": "Logical storage order verified; no manual bidi controls. Latin Team Bridge/Local Operator/Enter/Shift+Enter/qa-coordination intact where present; banner #channel, place · organization, colon before final preview and embedded numbers/zone/name arguments not visually reversed in storage. Native OS banner mixed-direction rendering remains unverified; no rendered-fit claim.",
+  "overflow": "Four inherited banner templates have no material static expansion over English; dynamic names and previews remain variable. Longer existing action/error copy reviewed against context (accessible labels or wrap-permitted prose). No new material overflow finding. No pixels/cell-width or rendered-fit measurements claimed.",
+  "inherited_dispositions": "Historical #1308 Urdu F1 actions.more minor no longer applicable: key absent in source and target; F2 actions.label nit fixed to پیغام کے اقدامات. Verified actual values. Other traced hi/ur receipts have no findings.",
+  "limitations": "Read-only git-object catalogue audit; no repo edits, builds, tests, installs, worktrees, push, screenshot, pseudo-localization or native bidi rendering. Not activation/release approval."
+ }
+}

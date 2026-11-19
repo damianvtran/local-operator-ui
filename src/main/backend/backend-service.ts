@@ -26,6 +26,14 @@ import os from "node:os";
 import { basename, dirname, join } from "node:path";
 import { promisify } from "node:util";
 import { app, dialog as electronDialog } from "electron";
+import { formatDate, formatTime } from "../../i18n";
+import {
+	type BackendStartup,
+	type BackendStartupCategory,
+	type BackendStartupFailure,
+	appendStderrTail,
+	classifyStartupFailure,
+} from "../../shared/backend-startup";
 import {
 	type AddressSubstitution,
 	type DaemonStatusSnapshot,
@@ -36,9 +44,11 @@ import {
 	pairingHasRemedy,
 	relayNeedsRebuild,
 } from "../../shared/backend-status";
-import type {
-	DesktopFeedState,
-	DesktopResponse,
+import {
+	DESKTOP_MACHINE_DETAIL,
+	DESKTOP_REFUSAL_CODE,
+	type DesktopFeedState,
+	type DesktopResponse,
 } from "../../shared/desktop-contract";
 import type { DesktopFeedFrame } from "../../shared/desktop-session-contract";
 import {
@@ -60,29 +70,42 @@ import {
 import { DesktopStreamRelay } from "../desktop-stream";
 import {
 	desktopAnswerProvesPairing,
+	markUpdating,
 	requestDesktop,
 	requestDesktopOutcome,
+	serverUpdateStalledBody,
 } from "../desktop-transport";
+import { devRendererUrl } from "../dev-renderer-url";
 import { withPythonBytecodeCache } from "../python-bytecode-cache";
 import { type UserShellPath, withUserShellPath } from "../shell-path";
+import type { TeamBridgeImageCache } from "../team-bridge-image-cache";
 import {
 	readInstallIdentity,
 	resolveGlobalConsoleScript,
 } from "../update-install";
 import { withoutAgentShellMarker } from "./agent-shell-spawn-env";
+import {
+	ATTACH_BACKEND_TOKEN_VARIABLE,
+	type BackendAttach,
+} from "./attach-backend";
 import { backendConfig } from "./config";
 import {
 	DETACHED_AFTER_MS,
 	type DaemonIdentity,
 	DaemonStateMachine,
+	PROBE_ATTEMPTS,
 	PROBE_INTERVAL_MS,
+	PROBE_RETRY_GAP_MS,
+	PROBE_RETRY_TIMEOUT_MS,
 	PROBE_TIMEOUT_MS,
 	type ProbeObservation,
 	REATTACH_BACKOFF_MS,
+	TRANSPORT_EVIDENCE_MS,
 } from "./daemon-status";
 import type {
 	DiscoveredDaemon,
 	HealthIdentity,
+	IdentityProbe,
 	ServeRecord,
 } from "./discovery";
 import {
@@ -166,6 +189,33 @@ export const READINESS_POLL_INTERVAL_MS = 1_000;
 export const READINESS_BUDGET_MS = 30_000;
 
 /**
+ * The shortest gap between two recoveries this app's own ANSWERED requests start.
+ *
+ * The trigger is `noteTransportAnswer`, which runs on every admitted desktop
+ * request: a presence beat every 15 s plus the renderer's session reads, i.e.
+ * several a second while a turn streams. `recoveryInFlight` already collapses
+ * concurrent requests into the attempt that is running; this floor governs the
+ * other edge - a burst arriving as an attempt ENDS - so a daemon that answers
+ * everything while its `/health` stalls cannot turn every answer into a probe
+ * storm. One second keeps the heal at "the next request" (the tick's own cadence
+ * is ten).
+ *
+ * WHAT IT BOUNDS, precisely (QA round 1, Q-2): the START RATE of attempts, not the
+ * rate of probes - one attempt spends its own `PROBE_ATTEMPTS` samples whatever
+ * this floor says. So while the connection is detached AND answering - every
+ * admitted answer clears the reattach backoff, which is why those verdict lines
+ * read `next=no wait` - the sustained cadence is one attempt per attempt-span plus
+ * this floor: 7.3 s of samples plus the discovery sweep, measured at one attempt
+ * per ~13.6 s while detached-and-answering (QA round 1, Q-2). THAT IS THE INTENT,
+ * not a leak: an answering transport is fresh proof the daemon is there and that a
+ * heal is likely to succeed, so pacing it like a gone daemon (30 s, doubling to
+ * 300 s) is exactly the defect this change exists to fix. `recoveryInFlight` keeps
+ * it to one attempt at a time, and `next=no wait` names this floor rather than an
+ * absence of pacing.
+ */
+export const AUTO_RECOVERY_FLOOR_MS = 1_000;
+
+/**
  * The wait before the next readiness attempt, by how long the start has
  * waited so far.
  *
@@ -228,24 +278,25 @@ function installName(prefix: string): string {
  * When the holder started, in the READER's own local time and at minute precision.
  *
  * WHY NOT THE APP'S `shared/utils/date-utils.ts` HELPERS (design round 1, D4): they
- * are renderer modules (`date-fns`, `navigator.language`) and this sentence is
+ * are renderer modules (`date-fns`) and this sentence is
  * composed in main, so the alternatives were a second dialect of the same fact or a
  * sentence split across two processes - and one composer for every sentence about an
  * occupant is the property this change exists to keep. What is taken from that module
  * is its SHAPE (a clock time for today, a date for anything older) and its choice
- * formatter (the platform's own, so the instant reads in the operator's locale rather
- * than in UTC). The raw ISO-8601 string with milliseconds it replaces was addressed to
+ * formatter (the i18n layer's, so the instant reads in the UI's live locale rather than
+ * in the operating system's region or in UTC). The `started` word and the rest of the
+ * holder sentence are still English: that composer is its own keying slice. The raw ISO-8601 string with milliseconds it replaces was addressed to
  * a reader comparing it against their own clock, which is the one thing UTC is not.
  */
 function describeStartedAt(startedAtMs: number): string {
 	const started = new Date(startedAtMs);
 	if (started.toDateString() === new Date().toDateString()) {
-		return `started ${started.toLocaleTimeString(undefined, {
+		return `started ${formatTime(started, {
 			hour: "numeric",
 			minute: "2-digit",
 		})}`;
 	}
-	return `started ${started.toLocaleDateString(undefined, {
+	return `started ${formatDate(started, {
 		year: "numeric",
 		month: "short",
 		day: "numeric",
@@ -685,6 +736,14 @@ interface OwnedServe {
 	/** Escalation timers, held so this generation's exit cancels them; a timer
 	 * that outlives its generation is how a replacement used to get killed. */
 	timers: Set<NodeJS.Timeout>;
+	/** The child's last stderr, bounded (`STDERR_TAIL_CHARS`): the evidence a
+	 * failed start is classified from and the user can copy. */
+	stderrTail: string;
+	/** How the child ended, once it has: read by the start-up record. */
+	exitCode: number | null;
+	signal: string | null;
+	/** The errno-style code of a spawn that never produced a process. */
+	spawnErrorCode: string | null;
 }
 
 /**
@@ -703,6 +762,41 @@ export interface BackendServiceManagerOptions {
 	 * shipped budget: the second and last origin the renderer's policy trusts.
 	 */
 	fallbackSpawnUrls?: string[];
+	/**
+	 * What this LAUNCH decided about its backend (`./attach-backend`). Absent - a
+	 * test, a rig, or any ordinary launch - is the managed path exactly as before;
+	 * `{ kind: "attach" }` names a backend this app did not start and must not
+	 * spawn over.
+	 *
+	 * Passed in rather than re-derived from the environment: `src/main/index.ts`
+	 * resolves it once and acts on the same answer (it refuses to install a runtime
+	 * when the launch named one), and a second read is a second opinion about which
+	 * backend this process is for.
+	 */
+	attach?: BackendAttach;
+}
+
+/**
+ * The port an origin names, defaulted by its protocol when it names none.
+ *
+ * WHY IT EXISTS. `new URL("http://host").port` is the empty string, and two sites
+ * in this file translate an origin's port into `this.port` - the launch's attach
+ * target and the attach itself. `if (port) this.port = port` silently kept the
+ * PREVIOUS value there, so a backend on the protocol's default port was reported
+ * on whatever port the build-time URL happened to configure (review round 1,
+ * NIT-2). Null is "this is not a URL this app can name a port for", which keeps
+ * the caller's existing value rather than inventing one.
+ */
+function originPort(origin: string): number | null {
+	try {
+		const parsed = new URL(origin);
+		if (parsed.port) return Number(parsed.port);
+		if (parsed.protocol === "https:") return 443;
+		if (parsed.protocol === "http:") return 80;
+		return null;
+	} catch {
+		return null;
+	}
 }
 
 /**
@@ -800,6 +894,29 @@ export class BackendServiceManager {
 	 * this field is that this class of failure is not a reason to take the app down.
 	 */
 	private spawnRefusals: OriginOccupancy[] | null = null;
+	/**
+	 * The backend this LAUNCH named, when it named one (`./attach-backend`). Null on
+	 * every ordinary launch, and that null is what keeps this class's behaviour
+	 * byte-for-byte what it was.
+	 *
+	 * It is a second fact beside `remoteConfigured` rather than a use of it. The
+	 * remote flag answers "was the configured URL deliberately not local", and it
+	 * drives prose ("the configured remote server") and the no-spawn branch; an
+	 * attach target is typically LOCAL - a daemon a rig or the operator started on
+	 * 127.0.0.1 - and calling that remote would be a false sentence in the log, the
+	 * banner and the update plan.
+	 */
+	private readonly attachTarget: string | null = null;
+	/**
+	 * Why this launch's named backend could not be attached to, in words a person
+	 * can act on. Null when it could, or when nothing was named.
+	 *
+	 * Kept because the caller must NOT fall back to installing a runtime when an
+	 * attach fails: `src/main/index.ts` reads this to say what happened, and a
+	 * silent "no backend" is the state that would otherwise walk into the
+	 * installer. Never holds a token.
+	 */
+	private attachFailure: string | null = null;
 	private remoteConfigured = false;
 	/**
 	 * The last address this app served on that was NOT the one it is configured for,
@@ -850,6 +967,18 @@ export class BackendServiceManager {
 	 */
 	private discoveryWedged: WedgedRecord[] = [];
 	private recoveryInFlight = false;
+	/**
+	 * The attempt `recoveryInFlight` says is running, and how to release a joiner.
+	 *
+	 * `recoveryInFlight` alone tells a caller to DROP its request, which is right for
+	 * the tick and for an answer-triggered nudge (both only want an attempt to happen)
+	 * and wrong for the banner's Retry: `reconnectNow()` renders whatever snapshot it
+	 * gets back, so a dropped call printed "Still unreachable" over an attempt that was
+	 * about to re-attach (design review round 1, D1). A joiner awaits this promise and
+	 * reads the state the running attempt produced.
+	 */
+	private recoveryDone: Promise<void> | null = null;
+	private finishRecovery: (() => void) | null = null;
 	private nextRecoveryAt = 0;
 	private appDataPath = app.getPath("userData");
 	private venvPath: string;
@@ -863,6 +992,20 @@ export class BackendServiceManager {
 
 	/** The one probe loop's interval handle. */
 	private healthCheckInterval: NodeJS.Timeout | null = null;
+	/**
+	 * Whether a tick's own work is still running.
+	 *
+	 * THE TICK CAN OUTLIVE ITS INTERVAL: the probe alone spans up to 7.3 s, and a tick
+	 * that moves the state then runs `recoverFromDetachment`, whose observation spends
+	 * up to another 7.3 s - ~14.6 s of work against a 10 s interval (see
+	 * `daemon-status.ts`'s `PROBE_ATTEMPTS` note). `setInterval` does not serialise its
+	 * callback, so without this flag two ticks overlap and ONE physical stall is
+	 * sampled twice and counted twice, reaching the nine-miss detach in half the
+	 * wall-clock silence it is meant to represent. A tick that arrives while one runs
+	 * is DROPPED rather than queued: the running tick is asking the same question about
+	 * the same daemon, and the next interval asks it again.
+	 */
+	private healthCheckInFlight = false;
 	/** The only process this manager may terminate. Null means it owns nothing,
 	 * which is a reason to report "nothing to stop" - never to go looking. */
 	private ownedServe: OwnedServe | null = null;
@@ -871,6 +1014,22 @@ export class BackendServiceManager {
 	 * that was already committed, and the caller installs over a live serve. */
 	private startPromise: Promise<boolean> | null = null;
 	private restartPromise: Promise<boolean> | null = null;
+	/**
+	 * The owned server's start-up, as the renderer's start-up panel draws it
+	 * (`src/shared/backend-startup.ts` for why it is a record of its own).
+	 * Null until this session spawns: an attached external daemon never has one.
+	 */
+	private startup: BackendStartup | null = null;
+	private startupAttempts = 0;
+	/**
+	 * When the current attempt began, set BEFORE anything that can throw (review
+	 * round 1, N1/R2): a start that fails before its child is captured is still
+	 * an attempt, and must report its own number and span - not the previous
+	 * record's, which made `elapsed_s` a stale span.
+	 */
+	private attemptStartedAt: number | null = null;
+	/** Failures since the server was last ready (`BackendStartup.failuresInRow`). */
+	private failuresInRow = 0;
 	/** Bumped by every stop. A start that began under an older epoch cannot
 	 * report success or adopt its child: the cancellation happened after it
 	 * checked, and this is what it re-checks across each await. */
@@ -928,6 +1087,19 @@ export class BackendServiceManager {
 	private desktopToken: string | null =
 		process.env.LOCAL_OPERATOR_DESKTOP_TOKEN || null;
 
+	/**
+	 * The Team Bridge image cache (`../team-bridge-image-cache`), attached by
+	 * `src/main/index.ts` once the app is ready.
+	 *
+	 * WHY A SETTER RATHER THAN A CONSTRUCTOR OPTION. This manager is constructed at
+	 * module load (`index.ts`), before there is a `userData` path to put a cache
+	 * directory under; the cache is built in the ready block beside the link-preview
+	 * one. `null` - a test, a rig, or a process that never attached one - means the
+	 * relay has no cache and every read is a fetch, which is the behaviour before
+	 * this existed.
+	 */
+	private teamBridgeImages: TeamBridgeImageCache | null = null;
+
 	/** Authenticated SSE relay for canonical session events. Recreated when the
 	 * backend URL rotates (external-backend discovery) or the desktop token does
 	 * (every managed start mints one), and dropped outright by `stop()`.
@@ -950,8 +1122,9 @@ export class BackendServiceManager {
 	private streamRelayToken: string | null = null;
 	/** Survives relay recreation so notifications never silently detach
 	 * when the backend URL rotates. */
-	private streamObserver: ((sessionId: string, data: string) => void) | null =
-		null;
+	private streamObserver:
+		| ((sessionId: string, data: string) => true | undefined)
+		| null = null;
 
 	/**
 	 * The machine-wide desktop feed relay, rebuilt when the backend URL rotates
@@ -961,6 +1134,8 @@ export class BackendServiceManager {
 	 * carry an SSE connection and to beat the presence lease.
 	 */
 	private feedRelay: DesktopFeedRelay | null = null;
+	/** Pushes the reverted snapshot when the server-update window lapses. */
+	private serverUpdatingTimer: ReturnType<typeof setTimeout> | null = null;
 	private feedRelayUrl = "";
 	/**
 	 * The credential the current feed relay was built with.
@@ -1014,6 +1189,17 @@ export class BackendServiceManager {
 	 * outlive the backend it described.
 	 */
 	private backendReadyObserver: (() => void) | null = null;
+
+	/**
+	 * Attach the Team Bridge image cache, once, from the ready block that owns it.
+	 *
+	 * Called from the same place that owns the cache's lifetime, so there is one
+	 * owner for "does this process cache message images". Idempotent, and passing
+	 * `null` detaches it - useful to a test, never used by the app.
+	 */
+	attachTeamBridgeImageCache(cache: TeamBridgeImageCache | null): void {
+		this.teamBridgeImages = cache;
+	}
 
 	onBackendReady(observer: (() => void) | null): void {
 		this.backendReadyObserver = observer;
@@ -1069,7 +1255,122 @@ export class BackendServiceManager {
 		return {
 			...snapshot,
 			addressSubstitution: this.addressSubstitutionFor(snapshot),
+			startup: this.startup,
 		};
+	}
+
+	/**
+	 * Whether a failed start is on record for the status surface to show.
+	 *
+	 * `index.ts` reads it to decide that a failed launch keeps its window: the
+	 * window's start-up panel names the cause and offers Restart and Copy
+	 * diagnostics, where the old answer was a modal with no cause and a quit.
+	 */
+	startupFailureReported(): boolean {
+		return this.startup?.phase === "failed";
+	}
+
+	/** Publish a start-up transition. */
+	private setStartup(next: BackendStartup | null): void {
+		this.startup = next;
+		this.notifyStatus();
+	}
+
+	/**
+	 * Record a failed start from what the generation left behind, and move the
+	 * connection to `detached` with main's sentence, so every surface gated on
+	 * the server stops asking it and the panel is the one place that speaks.
+	 */
+	private recordStartupFailure(
+		generation: OwnedServe | null,
+		message: string,
+		timedOut: boolean,
+		error?: unknown,
+		options: {
+			/** The server had been ready (`BackendStartupFailure.afterReady`). */
+			afterReady?: boolean;
+			/** Known without reading the child: the refusal path's held port. */
+			category?: BackendStartupCategory;
+			/**
+			 * Whether to move the connection to `detached`. The refusal path has
+			 * already observed the more precise state for its holder, and this
+			 * record must not overwrite it.
+			 */
+			observe?: boolean;
+		} = {},
+	): BackendStartupFailure {
+		const afterReady = options.afterReady === true;
+		const thrownCode = (error as { code?: unknown } | undefined)?.code;
+		const spawnErrorCode =
+			generation?.spawnErrorCode ??
+			(typeof thrownCode === "string" ? thrownCode : null);
+		const failure: BackendStartupFailure = {
+			category:
+				options.category ??
+				classifyStartupFailure({
+					spawnErrorCode,
+					exitCode: generation?.exitCode ?? null,
+					signal: generation?.signal ?? null,
+					stderrTail: generation?.stderrTail ?? "",
+					timedOut,
+				}),
+			exitCode: generation?.exitCode ?? null,
+			signal: generation?.signal ?? null,
+			spawnErrorCode,
+			stderrTail: generation?.stderrTail ?? "",
+			message,
+			afterReady,
+		};
+		// A stop after Ready is a recovery prompt, not a failed attempt to start.
+		if (!afterReady) this.failuresInRow += 1;
+		logger.error(
+			`Backend ${afterReady ? "stopped after ready" : "start failed"} (${failure.category}; exit=${failure.exitCode ?? "none"} signal=${failure.signal ?? "none"} spawn=${failure.spawnErrorCode ?? "none"})`,
+			LogFileType.BACKEND,
+		);
+		if (options.observe !== false)
+			this.daemonState.observe({ kind: "no-candidate", detail: message });
+		/*
+		 * After ready, the span is the ready attempt's own (the telemetry drops
+		 * it anyway); otherwise it is THIS attempt's, from `beginStartupAttempt`,
+		 * never an older record's.
+		 */
+		const current =
+			this.startup && this.startup.attempt === this.startupAttempts
+				? this.startup
+				: null;
+		this.setStartup({
+			phase: "failed",
+			startedAt: afterReady
+				? (this.startup?.startedAt ?? Date.now())
+				: (current?.startedAt ?? this.attemptStartedAt ?? Date.now()),
+			budgetMs: READINESS_BUDGET_MS,
+			attempt: afterReady
+				? (this.startup?.attempt ?? this.startupAttempts)
+				: this.startupAttempts,
+			settledAt: Date.now(),
+			failure,
+			failuresInRow: this.failuresInRow,
+		});
+		return failure;
+	}
+
+	/** Count a new start attempt, before anything in it can throw (N1). */
+	private beginStartupAttempt(): void {
+		this.startupAttempts += 1;
+		this.attemptStartedAt = Date.now();
+	}
+
+	/** The server answered: the failure streak ends with it. */
+	private markStartupReady(): void {
+		this.failuresInRow = 0;
+		if (this.startup && this.startup.phase !== "ready")
+			this.setStartup({
+				...this.startup,
+				phase: "ready",
+				settledAt: Date.now(),
+				failure: null,
+				failuresInRow: 0,
+			});
 	}
 
 	/**
@@ -1225,7 +1526,7 @@ export class BackendServiceManager {
 	}
 
 	observeStream(
-		observer: ((sessionId: string, data: string) => void) | null,
+		observer: ((sessionId: string, data: string) => true | undefined) | null,
 	): void {
 		this.streamObserver = observer;
 		this.streamRelay?.observe(observer);
@@ -1314,11 +1615,58 @@ export class BackendServiceManager {
 			input,
 			this.backendUrl,
 			this.desktopToken,
-		).then(({ response, answered }) => {
+		).then(({ response, answered, serverUpdating }) => {
+			if (serverUpdating) {
+				// The fence is a refusal, never an admitted answer: liveness only, and
+				// the server-update window opens (or extends). Past the window's cap
+				// it is relayed as a real failure instead (review round 1, M2).
+				return this.noteFenceAnswer()
+					? response
+					: { status: 503, body: serverUpdateStalledBody() };
+			}
 			if (answered)
 				this.noteTransportAnswer(desktopAnswerProvesPairing(input, response));
-			return response;
+			// A follow-on failure inside the window is the update's tail: same code,
+			// plus the display-only hint (see `markUpdating` for which, and why).
+			return this.daemonState.isServerUpdating()
+				? markUpdating(input, response)
+				: response;
 		});
+	}
+
+	/**
+	 * The daemon answered with its reload admission fence: record it as liveness,
+	 * open or extend the server-update window, push ONE snapshot when it opens,
+	 * and arm a single timer that pushes the reverted snapshot when it lapses.
+	 *
+	 * Returns whether the window is open AFTER this answer, i.e. whether the
+	 * caller may relay "updating". False means the episode's cap has run out and
+	 * the fence must be reported as a failure - the JSON and media relays share
+	 * this one decision, and one order (liveness first, then the window), so the
+	 * two paths cannot disagree about what a fence answer means (review m2).
+	 *
+	 * The timer exists because `snapshot().updating` is read lazily against the
+	 * clock: without a push at expiry the strip would keep saying "updating" until
+	 * some unrelated event re-sent the status, which is the "masked forever" risk
+	 * the window's cap is there to prevent. It is re-armed on every extension and
+	 * unref'd so it never holds the process open.
+	 */
+	private noteFenceAnswer(): boolean {
+		this.daemonState.recordTransportAnswer();
+		if (this.daemonState.noteServerUpdating()) this.notifyStatus();
+		const until = this.daemonState.serverUpdatingUntil();
+		if (this.serverUpdatingTimer) clearTimeout(this.serverUpdatingTimer);
+		this.serverUpdatingTimer = null;
+		if (until === null) return false;
+		this.serverUpdatingTimer = setTimeout(
+			() => {
+				this.serverUpdatingTimer = null;
+				if (!this.daemonState.isServerUpdating()) this.notifyStatus();
+			},
+			Math.max(0, until - this.daemonState.nowMs()) + 50,
+		);
+		this.serverUpdatingTimer.unref?.();
+		return true;
 	}
 
 	requestDesktopMedia(
@@ -1330,7 +1678,8 @@ export class BackendServiceManager {
 			bytes,
 			this.backendUrl,
 			this.desktopToken,
-		).then(({ response, answered }) => {
+			this.teamBridgeImages,
+		).then(({ response, answered, serverUpdating }) => {
 			// A media answer is recorded as LIVENESS and nothing else, and the
 			// reason is structural rather than provisional: `desktopAnswerProvesPairing`
 			// parses its request against the JSON contract's op vocabulary, and the
@@ -1347,6 +1696,16 @@ export class BackendServiceManager {
 			// evidence, through the predicate written for them. If a media op ever
 			// needs to prove a pairing on its own, it needs its own predicate rather
 			// than a widened `input` type here.
+			if (serverUpdating)
+				return this.noteFenceAnswer()
+					? response
+					: {
+							// Past the cap: the same honest failure the JSON relay sends
+							// (`serverUpdateStalledBody`), in the media envelope.
+							...response,
+							code: DESKTOP_REFUSAL_CODE.transportFailed,
+							detail: DESKTOP_MACHINE_DETAIL.transportFailed,
+						};
 			if (answered) this.daemonState.recordTransportAnswer();
 			return response;
 		});
@@ -1387,7 +1746,70 @@ export class BackendServiceManager {
 			return;
 		}
 		if (this.daemonState.recordTransportSuccess()) this.notifyStatus();
+		/*
+		 * AN ADMITTED ANSWER ENDS A DETACH BY ITSELF (2026-11-08).
+		 *
+		 * The operator's report: the banner said "Can't reach the Local Operator
+		 * server" while they were chatting through the same daemon, and only their
+		 * manual Retry cleared it. The reasons were two and both are here:
+		 *
+		 *  - `recordTransportSuccess` revives `degraded` and nothing above it, and it
+		 *    must not: an answer proves the TRANSPORT, never that the answering process
+		 *    is the one this app holds a credential for, so only
+		 *    `recoverFromDetachment` may lift `detached`/`wedged` - it re-proves
+		 *    identity. What it could not do is START; nothing called it.
+		 *  - the only other callers are the ten-second tick (gated by the reattach
+		 *    backoff, whose ceiling is five minutes) and the banner's Retry. So a
+		 *    connection that detached during a stall sat out the backoff while every
+		 *    request the app made was answered - measured in the operator's own log as
+		 *    `No daemon at http://127.0.0.1:1111 for over 90s` every five minutes for
+		 *    two and a half hours.
+		 *
+		 * So the answer that just arrived is treated as the evidence it is: the backoff
+		 * gate is cleared for it and recovery runs now. It runs through the ONE
+		 * recovery path, so every guard that path holds still holds - the owned-child
+		 * guard (a live child is never spawned over), `isExternalBackend` (an adopted
+		 * daemon is never spawned over) and the pid-liveness check (a daemon that is
+		 * really gone is still reported gone). Nothing about the state moves here.
+		 */
+		if (this.daemonState.needsRecovery()) this.recoverFromAnsweredRequest();
 	}
+
+	/**
+	 * Start recovery because THIS APP'S OWN request was answered while the
+	 * connection had no usable daemon.
+	 *
+	 * WHY the answer does not simply run `recoverFromDetachment()` per call: this
+	 * runs on every admitted desktop request, and the renderer's presence beat plus
+	 * its session reads arrive several times a second while a turn is streaming. The
+	 * gate is the attempt itself - `recoveryInFlight` makes every concurrent request
+	 * join the attempt already running - with one extra floor so that a burst of
+	 * answers arriving as an attempt ENDS does not queue an attempt each. One second
+	 * is below the tick's own ten, so the operator-visible latency of a heal stays
+	 * "the next request", and above the beat's spacing, so the retries stay bounded.
+	 */
+	private recoverFromAnsweredRequest(): void {
+		const now = Date.now();
+		if (now < this.autoRecoveryFloor) return;
+		this.autoRecoveryFloor = now + AUTO_RECOVERY_FLOOR_MS;
+		// This app's own answer outranks the reattach backoff: that pacing exists to
+		// avoid asking a daemon that is not there, and this one just answered.
+		this.nextRecoveryAt = 0;
+		void this.recoverFromDetachment().catch((error) => {
+			logger.error(
+				"Recovery triggered by an answered request threw:",
+				LogFileType.BACKEND,
+				error,
+			);
+		});
+	}
+
+	/**
+	 * Earliest time the next answer-triggered recovery may run (`Date.now()` ms).
+	 *
+	 * A floor rather than a queue: see `recoverFromAnsweredRequest`.
+	 */
+	private autoRecoveryFloor = 0;
 	private isAppClosing = false; // Flag to track when the app is being closed
 	private isAutoUpdating = false; // Flag to track when an autoupdate is in progress
 	/**
@@ -1450,6 +1872,31 @@ export class BackendServiceManager {
 		// parsed one where there is one, and the default the fallback arm just
 		// established where there is not - one assignment, two ways in.
 		this.configuredUrl = this.backendUrl;
+
+		/*
+		 * THE BACKEND THIS LAUNCH NAMED OUTRANKS THE BUILD-TIME URL.
+		 *
+		 * `VITE_LOCAL_OPERATOR_API_URL` is compiled into the build and describes the
+		 * address this app would SERVE on; a launch that names a backend means that
+		 * address and no other, so it takes effect here rather than competing with the
+		 * compiled default at every later call site. `configuredUrl` follows it for
+		 * the reason it follows the parse above: the substitution check in
+		 * `attachDaemon` compares the address we landed on with the one we meant, and
+		 * those two must agree from the first frame.
+		 *
+		 * `remoteConfigured` is deliberately NOT set: it means "configured away from
+		 * this machine", and a named backend is usually local - the daemon a rig or
+		 * the operator started on 127.0.0.1. Saying "remote" about one would put a
+		 * false sentence in the log, the banner and the update plan.
+		 */
+		const attachTarget =
+			options.attach?.kind === "attach" ? options.attach.baseUrl : null;
+		if (attachTarget) {
+			this.attachTarget = attachTarget;
+			this.backendUrl = attachTarget;
+			this.configuredUrl = attachTarget;
+			this.port = originPort(attachTarget) ?? this.port;
+		}
 
 		// The app-managed venv for THIS instance - a packaged install and an
 		// unpackaged one must not share it, or the dev instance's backend imports its
@@ -1911,7 +2358,15 @@ export class BackendServiceManager {
 		 * running re-observes the same reading on every paced attempt.
 		 */
 		const after = this.daemonState.snapshot();
-		if (after.state !== before.state || after.detail !== before.detail) {
+		if (
+			after.state !== before.state ||
+			after.detail !== before.detail ||
+			// `updating` is news too (review round 1, M1): a probe can end the
+			// server-update window (a re-anchored reload, a detach) without moving
+			// state or detail, and the spinner then stayed up until the window's
+			// expiry timer - up to 60 s after the server was back.
+			after.updating !== before.updating
+		) {
 			this.notifyStatus();
 		}
 	}
@@ -2159,7 +2614,18 @@ export class BackendServiceManager {
 	 * forbidden from spawning is still allowed to discover).
 	 */
 	private async discoverAndAttach(): Promise<boolean> {
-		const adopted = await this.adoptFirstUsableDaemon();
+		/*
+		 * A NAMED BACKEND IS NOT DISCOVERED, IT IS ATTACHED, and it is attached
+		 * through the ONE function every caller already goes through - startup, the
+		 * watchdog's recovery, the banner's Retry. Routing here rather than adding an
+		 * entry point beside it is what keeps "what backend is this app on" a single
+		 * answer: a second path would let a named backend be replaced by a discovered
+		 * one mid-session, which is the one thing a launch that named a backend must
+		 * never do.
+		 */
+		const adopted = this.attachTarget
+			? await this.attachToConfiguredBackend(this.attachTarget)
+			: await this.adoptFirstUsableDaemon();
 		/*
 		 * WHY the probe loop is armed HERE and not only in `startOwned()`.
 		 *
@@ -2516,6 +2982,120 @@ export class BackendServiceManager {
 	}
 
 	/**
+	 * Attach to the backend this LAUNCH named, or say exactly why it cannot.
+	 *
+	 * WHY THIS IS NOT `adoptFirstUsableDaemon()`. Discovery answers "which daemon on
+	 * this machine is mine, and which of these may I drive" by ranking serve
+	 * records. A launch that names an address has already answered both questions,
+	 * and it has answered them about a daemon that need not have a record at all - a
+	 * rig starts `lop serve` with its own config dir - so running discovery would
+	 * either find nothing (and invite the installer) or find some OTHER daemon and
+	 * quietly become about that one. What is worth keeping from discovery is its
+	 * evidence discipline, and that is what this uses: an identity from the process
+	 * itself (`probeUnidentified`) and a credential actually accepted
+	 * (`probeCandidate`), both against the named address.
+	 *
+	 * NO FALLBACK BY DESIGN. Every failure returns false with `attachFailure` set;
+	 * nothing here spawns, installs, or adopts a neighbour, because a caller that
+	 * asked for one specific backend and silently got another is measuring the
+	 * wrong thing - and the caller that matters is a QA rig whose evidence would
+	 * then be about a daemon it never chose.
+	 */
+	private async attachToConfiguredBackend(address: string): Promise<boolean> {
+		this.attachFailure = null;
+		const token = this.desktopToken;
+		if (!token) {
+			this.attachFailure = `This launch named ${address} as its backend, but this app holds no desktop credential for it (${ATTACH_BACKEND_TOKEN_VARIABLE} is unset), so it cannot authenticate.`;
+			logger.error(this.attachFailure, LogFileType.BACKEND);
+			return false;
+		}
+		/*
+		 * WHO, THEN WHETHER. The identity probe runs first because the credential
+		 * probe's answer is meaningless against something that is not a daemon - a
+		 * 401 from a proxy and a 401 from a daemon this app is not paired with send a
+		 * reader to two different places, and only the daemon's own identity turns
+		 * the second one into a fact.
+		 */
+		const occupant = await probeUnidentified(address);
+		if (!occupant.identity) {
+			this.attachFailure = `${address} was named as this launch's backend, but ${HEALTH_PATH} did not identify a Local Operator daemon there (${occupant.detail}).`;
+			logger.error(this.attachFailure, LogFileType.BACKEND);
+			return false;
+		}
+		const identity = occupant.identity;
+		const probe = await this.probeCandidate(address, token);
+		if (probe.verdict === "refused") {
+			this.attachFailure = `The Local Operator daemon at ${address} (v${identity.version || "unknown"}) refused this app's desktop credential (HTTP ${probe.status}). Start it with the same ${ATTACH_BACKEND_TOKEN_VARIABLE} this app holds.`;
+			logger.error(this.attachFailure, LogFileType.BACKEND);
+			return false;
+		}
+		if (probe.verdict !== "accepted") {
+			this.attachFailure =
+				probe.verdict === "unusable"
+					? `The Local Operator daemon at ${address} answered the desktop request with HTTP ${probe.status}, so it cannot be driven from here.`
+					: `The Local Operator daemon at ${address} identified itself but stopped answering the desktop request.`;
+			logger.error(this.attachFailure, LogFileType.BACKEND);
+			return false;
+		}
+		const previousUrl = this.backendUrl;
+		this.backendUrl = address;
+		/*
+		 * The origin's OWN port, defaulted rather than skipped (review round 1, NIT-2).
+		 * `URL.port` is empty for an origin that names no port, and the old
+		 * `if (port) …` left whatever the build-time URL had configured - so the
+		 * status surface would have named a port this backend is not on.
+		 */
+		this.port = originPort(address) ?? this.port;
+		// A named backend has no serve record in THIS app's account: the record the
+		// rig published lives in the rig's config dir, and pretending otherwise would
+		// make the reaper and the identity checks read a file this process wrote.
+		this.attachedRecord = null;
+		this.isExternalBackend = true;
+		this.startupMode = LocalOperatorStartupMode.EXISTING_SERVER;
+		this.desktopToken = token;
+		/*
+		 * NO `setPairing` HERE (review round 1, NIT-1): `attachDaemon` →
+		 * `DaemonStateMachine.attach` already publishes `DAEMON_PAIRED` as part of
+		 * the attach, and a second call could only disagree with it one day.
+		 */
+		this.attachDaemon(
+			{
+				url: address,
+				instanceId: identity.instanceId,
+				pid: identity.pid,
+				version: identity.version,
+				prefix: identity.prefix,
+				installKind: identity.installKind,
+			},
+			{ owned: false },
+		);
+		/*
+		 * The line a rig's log is read for. The TOKEN is absent by construction: this
+		 * is the one sentence that proves the attach happened, and it is written to
+		 * the operator's own log files.
+		 */
+		logger.info(
+			`Attached to the backend this launch named: ${address} (pid ${identity.pid}, v${identity.version || "unknown"}, ${identity.installKind || "kind unknown"})${previousUrl !== address ? ` - backend URL moved from ${previousUrl}` : ""}`,
+			LogFileType.BACKEND,
+		);
+		this.notifyStatus();
+		this.notifyBackendReady();
+		return true;
+	}
+
+	/**
+	 * Why this launch's named backend could not be attached to, in words; null when
+	 * it was attached or when nothing was named.
+	 *
+	 * The caller must use this instead of falling through to the installer: a named
+	 * backend that cannot be reached is an error to report, never a reason to
+	 * download a runtime.
+	 */
+	lastAttachFailure(): string | null {
+		return this.attachFailure;
+	}
+
+	/**
 	 * Adopt a validated, usable daemon: rotate onto it and publish the state.
 	 *
 	 * The rotation must happen before `notifyBackendReady()`: everything that
@@ -2589,7 +3169,9 @@ export class BackendServiceManager {
 	 * declaring it is what admits that origin once the claim tightens the plane.
 	 */
 	private rendererOrigins(): string[] {
-		const url = process.env.ELECTRON_RENDERER_URL;
+		// Never in a packaged app: see `devRendererUrl` for why the variable
+		// must not widen a packaged build's CORS allowlist.
+		const url = devRendererUrl(app.isPackaged);
 		if (!url) return [];
 		const origin = normaliseAddress(url);
 		return origin ? [origin] : [];
@@ -2769,11 +3351,26 @@ export class BackendServiceManager {
 	start(options: StartOptions = {}): Promise<boolean> {
 		if (this.isAppClosing) return Promise.resolve(false);
 		if (this.startPromise) return this.startPromise;
-		this.startPromise = this.startOwned(this.startEpoch, options).finally(
-			() => {
+		this.startPromise = this.startOwned(this.startEpoch, options)
+			.then((started) => {
+				/*
+				 * The start-up record must end in a terminal phase whatever path
+				 * the start took. A start that ATTACHED (discovery found a daemon)
+				 * never spawned, so nothing below set `ready`; a start cancelled by a
+				 * stop or a newer epoch left `starting` behind - and a panel drawing
+				 * "Starting..." over a start nobody is running is the stuck state
+				 * this record exists to remove.
+				 */
+				if (started) {
+					this.markStartupReady();
+				} else if (!started && this.startup?.phase === "starting") {
+					this.setStartup(null);
+				}
+				return started;
+			})
+			.finally(() => {
 				this.startPromise = null;
-			},
-		);
+			});
 		return this.startPromise;
 	}
 
@@ -2801,7 +3398,7 @@ export class BackendServiceManager {
 		}
 		if (epoch !== this.startEpoch || this.isAppClosing) return false;
 
-		if (!this.managerMaySpawn || this.remoteConfigured) {
+		if (!this.managerMaySpawn || this.remoteConfigured || this.attachTarget) {
 			/*
 			 * `VITE_DISABLE_BACKEND_MANAGER=true` means "do not spawn or kill a
 			 * daemon", NOT "assume one exists". Discovery found nothing, so there
@@ -2817,9 +3414,11 @@ export class BackendServiceManager {
 			 * place - a remote target reported as "VITE_DISABLE_BACKEND_MANAGER=true"
 			 * is a config file that is not the one in play.
 			 */
-			const noSpawnReason = this.managerMaySpawn
-				? `the configured target (${this.backendUrl}) is remote`
-				: "VITE_DISABLE_BACKEND_MANAGER=true";
+			const noSpawnReason = this.attachTarget
+				? `this launch named the backend to attach to (${this.attachTarget})`
+				: this.managerMaySpawn
+					? `the configured target (${this.backendUrl}) is remote`
+					: "VITE_DISABLE_BACKEND_MANAGER=true";
 			logger.info(
 				`No daemon discovered, and this app is configured not to spawn one (${noSpawnReason}).`,
 				LogFileType.BACKEND,
@@ -2899,6 +3498,38 @@ export class BackendServiceManager {
 		this.spawnRefusals = target ? null : refusals;
 		if (!target) {
 			this.observeSpawnRefusal(refusals);
+			/*
+			 * A port held by something that is NOT a Local Operator server (QA
+			 * round 1, Q2: `python3 -m http.server` on the port) used to end here
+			 * with no start-up record, so the band never showed and the cause sat
+			 * only in `snapshot.detail` while every view said "could not be
+			 * reached". It is recorded as a failed start with the holder sentence,
+			 * so the band names it and Restart re-runs this resolution, which
+			 * re-probes every address. A Local Operator holder (`daemon`/`record`)
+			 * is excluded: that is "a server is running and this app is not
+			 * attached" (`wedged`), which has its own surface and remedy. A
+			 * `silent` holder can in principle be a Local Operator server too busy
+			 * to answer; "another program is using the port" plus Restart is still
+			 * the right act for the user then. The connection state observed above
+			 * is kept (`observe: false`): it is the more precise fact.
+			 */
+			const localOperatorHolder = refusals.some(
+				(occupancy) =>
+					occupancy.kind === "daemon" || occupancy.kind === "record",
+			);
+			if (
+				!localOperatorHolder &&
+				refusals.some((occupancy) => occupancy.kind === "silent")
+			) {
+				this.beginStartupAttempt();
+				this.recordStartupFailure(
+					null,
+					describeSpawnRefusal(refusals),
+					false,
+					undefined,
+					{ category: "port_in_use", observe: false },
+				);
+			}
 			this.startHealthCheck();
 			return false;
 		}
@@ -2983,6 +3614,7 @@ export class BackendServiceManager {
 				env.PATH = `${bin}${process.platform === "win32" ? ";" : ":"}${env.PATH ?? ""}`;
 				env.PYTHONHOME = undefined;
 			}
+			this.beginStartupAttempt();
 			const launch = await ownedServeLaunch(
 				interpreters,
 				this.port,
@@ -3006,6 +3638,17 @@ export class BackendServiceManager {
 			});
 			const generation = this.captureServe(child);
 			captured = generation;
+			this.setStartup({
+				phase: "starting",
+				// From the spawn, not `attemptStartedAt`: the bar is drawn against
+				// the readiness budget, which the loop below measures from here.
+				startedAt: Date.now(),
+				budgetMs: READINESS_BUDGET_MS,
+				attempt: this.startupAttempts,
+				settledAt: null,
+				failure: null,
+				failuresInRow: this.failuresInRow,
+			});
 
 			// Log output
 			if (child.stdout) {
@@ -3017,6 +3660,10 @@ export class BackendServiceManager {
 			if (child.stderr) {
 				child.stderr.on("data", (data) => {
 					logger.error(`Backend stderr: ${data}`, LogFileType.BACKEND);
+					generation.stderrTail = appendStderrTail(
+						generation.stderrTail,
+						String(data),
+					);
 				});
 			}
 
@@ -3045,6 +3692,15 @@ export class BackendServiceManager {
 					// version comes from this registration, and a consumer that
 					// re-reads capabilities on `backendReady` must already see it.
 					await this.registerOwnedDaemon(child, reason);
+					/*
+					 * The tail is START-UP evidence (review round 1, R1): from here on
+					 * it holds only what the server writes after ready, so a later
+					 * crash is classified and copied from its own output, not from 4 KiB
+					 * of runtime logs (agent activity, paths) or a handled traceback
+					 * logged long before.
+					 */
+					generation.stderrTail = "";
+					this.markStartupReady();
 					this.startHealthCheck();
 					this.notifyBackendReady();
 					return true;
@@ -3055,6 +3711,12 @@ export class BackendServiceManager {
 				await new Promise((resolve) => setTimeout(resolve, delay));
 			}
 
+			/*
+			 * Read BEFORE the stop below: a child still alive here is the
+			 * readiness budget running out, and the kill that follows would
+			 * otherwise read as an exit.
+			 */
+			const timedOut = !generation.exited && !generation.stop;
 			await this.stopGeneration(generation, false);
 			if (epoch !== this.startEpoch) return false;
 			logger.error(
@@ -3062,8 +3724,21 @@ export class BackendServiceManager {
 				LogFileType.BACKEND,
 			);
 
+			/*
+			 * The status surface carries this failure - cause, Restart and Copy
+			 * diagnostics in the window - so it is reported there and never as a
+			 * modal: the modal said "check the logs" and nothing else, and
+			 * `index.ts` used to follow it with a quit.
+			 */
+			this.recordStartupFailure(
+				generation,
+				timedOut
+					? `The server did not answer within ${Math.round(READINESS_BUDGET_MS / 1000)} s of starting.`
+					: "The server process ended before it answered.",
+				timedOut,
+			);
 			this.reportStartOutcome(
-				options,
+				{ ...options, quiet: true },
 				"Failed to start the Local Operator backend service. Please check the logs for more information.",
 			);
 
@@ -3101,8 +3776,14 @@ export class BackendServiceManager {
 				error,
 			);
 
+			this.recordStartupFailure(
+				captured,
+				`Error starting the Local Operator backend service: ${error}`,
+				false,
+				error,
+			);
 			this.reportStartOutcome(
-				options,
+				{ ...options, quiet: true },
 				`Error starting the Local Operator backend service: ${error}`,
 			);
 
@@ -3346,6 +4027,10 @@ export class BackendServiceManager {
 			resolveExit: () => resolveExit(),
 			stop: null,
 			timers: new Set(),
+			stderrTail: "",
+			exitCode: null,
+			signal: null,
+			spawnErrorCode: null,
 		};
 		this.ownedServe = generation;
 		this.process = child;
@@ -3360,9 +4045,11 @@ export class BackendServiceManager {
 		 * (`attachTo`, the fixed-port adopt), so clearing it here loses nothing.
 		 */
 		this.attachedRecord = null;
-		const exited = (code?: number | null) => {
+		const exited = (code?: number | null, signal?: NodeJS.Signals | null) => {
 			if (generation.exited) return;
 			generation.exited = true;
+			generation.exitCode = code ?? null;
+			generation.signal = signal ?? null;
 			// This generation's escalation timers die with it, so a SIGKILL armed
 			// for a process that has already gone cannot fire at a successor that
 			// took its place in the meantime.
@@ -3381,22 +4068,39 @@ export class BackendServiceManager {
 			// Windows exit code 1 that a terminated serve reports, which the previous
 			// code had to special-case by platform because it could not tell a
 			// requested termination from a crash.
+			//
+			// It is reported through the start-up record, not a modal: the window's
+			// start-up panel names the cause from the exit code and stderr, and
+			// offers Restart and Copy diagnostics - the modal asked the user to
+			// restart the whole application and said nothing else. An exit DURING
+			// the readiness wait is left to that loop, which records it with the
+			// right sentence; this arm is the server dying after it was ready.
 			if (
 				code != null &&
 				code !== 0 &&
 				!generation.stop &&
 				!this.isAppClosing &&
-				!this.isAutoUpdating
+				!this.isAutoUpdating &&
+				this.startup?.phase === "ready"
 			) {
-				electronDialog.showErrorBox(
-					"Backend Error",
-					`The Local Operator backend service exited unexpectedly with code ${code}. Please restart the application.`,
+				this.recordStartupFailure(
+					generation,
+					`The server stopped unexpectedly with exit code ${code}.`,
+					false,
+					undefined,
+					{ afterReady: true },
 				);
 			}
 		};
 		child.once("exit", exited);
 		child.on("error", (error) => {
 			logger.error("Owned backend process error", LogFileType.BACKEND, error);
+			// The errno a spawn failed with (ENOENT, EACCES, EPERM) is the one
+			// evidence an executable blocked or removed by antivirus leaves.
+			if (child.pid === undefined) {
+				const code = (error as NodeJS.ErrnoException).code;
+				generation.spawnErrorCode = typeof code === "string" ? code : null;
+			}
 			// Spawn failure has no process. A signal error with a PID does not
 			// prove exit and must retain ownership for fail-closed cleanup.
 			if (child.pid === undefined) exited();
@@ -4003,9 +4707,19 @@ export class BackendServiceManager {
 						: `No answer from ${this.backendUrl}${HEALTH_PATH}`,
 			};
 		}
-		const probe = await probeIdentity(this.backendUrl, expected, {
-			timeoutMs: PROBE_TIMEOUT_MS,
-		});
+		const { probe, attempts } = await this.probeIdentityWithRetries(expected);
+		if (attempts > 1) {
+			/*
+			 * A retry that ANSWERED is the whole point of change 1, so it is recorded -
+			 * once, and only when it happened. A daemon answering its first sample (the
+			 * ordinary case) logs nothing, which is what keeps this out of the
+			 * per-request noise the operator's log already carries.
+			 */
+			logger.info(
+				`${this.backendUrl}${HEALTH_PATH} answered on probe attempt ${attempts} of ${PROBE_ATTEMPTS}: the first sample gave no answer (an expired budget, an unresolved name or an unexplained reset) and the retry inside the same stall found the daemon serving.`,
+				LogFileType.BACKEND,
+			);
+		}
 		/*
 		 * THE ANSWERED VERDICT IS ALSO A PAIRING FACT, and recording it here is what
 		 * makes the pairing record honest while the app is still `attached`.
@@ -4170,6 +4884,82 @@ export class BackendServiceManager {
 	}
 
 	/**
+	 * One observation's samples of `/health`, with the retries a transient failure needs.
+	 *
+	 * WHY THIS EXISTS (2026-11-08). The observation was ONE request with a 2000 ms
+	 * budget, on a host that was swapping 12.3 GB of 13.3 GB at load 132: `/health`
+	 * costs this daemon ~1.3 ms to serve, this app's per-tick sample of it reached
+	 * 3982 ms, and the log shows it served nothing at all for 25-1021 s before each
+	 * detach - so a stall is folded as silence, one miss at a time. This app then
+	 * reports a daemon it is actively using as unreachable, and every five-minute
+	 * recovery attempt spends a single sample the same way, which is why a detach
+	 * could outlive the stall by hours.
+	 *
+	 * THE RETRIES SIT INSIDE THE SAME STALL, not after it: attempt 1 keeps the
+	 * ordinary `PROBE_TIMEOUT_MS`, so a healthy daemon costs exactly what it cost
+	 * before, and attempts 2-3 arrive 150 ms later with a slightly larger budget -
+	 * a 4 s stall that started before attempt 1 is therefore answered by attempt 2
+	 * near its own tail. The whole observation spans at most 7.3 s. That is NOT a
+	 * tick's bound: the tick that calls this also runs `recoverFromDetachment`, whose
+	 * own observation spends another 7.3 s (~14.6 s in total, against a 10 s
+	 * interval), which is why the tick refuses to overlap itself instead of relying
+	 * on `PROBE_INTERVAL_MS`.
+	 *
+	 * WHAT IS RETRIED IS DECIDED BY THE CAUSE, and the arbiter is the classifier the
+	 * state machine already uses (`discovery.ts::classifyUnreachable`): a budget that
+	 * expired (`timeout`), a name that did not resolve (`unresolved` - `EAI_AGAIN`),
+	 * and anything it cannot name (`other` - `ECONNRESET`, an unknown throw) get the
+	 * remaining samples, because it files those WITH the timeouts. A REFUSED socket
+	 * returns on its first sample: it is the one unreachable cause that is EVIDENCE
+	 * rather than a stall, and re-asking it would stop the "refused means gone" fast
+	 * path from being fast. A `200` naming another process, and a status this path
+	 * will not read, are ANSWERS with their own outcomes and never reach the retry.
+	 *
+	 * WHERE THIS DOES NOT APPLY, stated rather than implied (review round 1, N3): the
+	 * no-identity arm above still spends ONE `checkHealth` (its own 3 s budget). It
+	 * cannot detach on one miss - that arm reports `unanswered`, which needs
+	 * `UNANSWERED_BEFORE_DETACHED` of them - and it is reachable only where this app
+	 * never held an identity, so acceptance criterion 1 is a guarantee of the
+	 * WITH-identity path only. Extending the retry there is a separate change with
+	 * its own budget question.
+	 *
+	 * @returns the determining probe and how many samples it took, so the caller can
+	 *   record a retry that answered (the one case worth a log line) and a reader can
+	 *   tell "silent three times" from "silent once".
+	 */
+	private async probeIdentityWithRetries(
+		expected: string,
+	): Promise<{ probe: IdentityProbe; attempts: number }> {
+		for (let attempt = 1; attempt <= PROBE_ATTEMPTS; attempt += 1) {
+			if (attempt > 1) {
+				await new Promise((resolve) => setTimeout(resolve, PROBE_RETRY_GAP_MS));
+			}
+			const probe = await probeIdentity(this.backendUrl, expected, {
+				timeoutMs: attempt === 1 ? PROBE_TIMEOUT_MS : PROBE_RETRY_TIMEOUT_MS,
+			});
+			/*
+			 * THE CAUSE DECIDES, and `refused` is the only unreachable cause that returns on
+			 * its first sample: a refusal is evidence, while a timeout, an `unresolved` name
+			 * and an `other` (a reset, an unknown throw) are the transients this change
+			 * exists for - the classifier files all three WITH the timeouts.
+			 */
+			const transient =
+				probe.outcome === "unreachable" && probe.cause !== "refused";
+			if (!transient || attempt === PROBE_ATTEMPTS) {
+				return { probe, attempts: attempt };
+			}
+		}
+		/*
+		 * NOT REACHED: the loop returns on its final iteration whatever it found. Kept
+		 * as a refusal rather than a fall-through so a later edit to `PROBE_ATTEMPTS`
+		 * cannot make this method answer with a verdict it never took.
+		 */
+		throw new Error(
+			"probeIdentityWithRetries reached its end without a verdict",
+		);
+	}
+
+	/**
 	 * Start health check interval.
 	 *
 	 * 10 s rather than 30 s, because the loop is now cheap and non-destructive:
@@ -4218,6 +5008,30 @@ export class BackendServiceManager {
 	 * connection still reads `attached`.
 	 */
 	private async checkBackendHealth(): Promise<void> {
+		/*
+		 * ONE TICK AT A TIME, and the guard protects the COUNT rather than the load: a
+		 * tick can outlive its interval (~14.6 s against 10 s while the connection is
+		 * detached - see the `PROBE_ATTEMPTS` note), and `setInterval` does not serialise
+		 * its callback. Two overlapping ticks would sample ONE physical stall twice and
+		 * count it twice, reaching the nine-miss detach in half the wall-clock silence
+		 * that silence is meant to represent.
+		 *
+		 * HERE rather than in the interval's callback, so a DIRECT call - every case in
+		 * `scripts/daemon-observation.test.mjs` drives one tick this way - is held to the
+		 * same rule. Dropping is safe: no tick carries state a later one needs, and the
+		 * next interval asks the same question again.
+		 */
+		if (this.healthCheckInFlight) return;
+		this.healthCheckInFlight = true;
+		try {
+			await this.runHealthCheck();
+		} finally {
+			this.healthCheckInFlight = false;
+		}
+	}
+
+	/** The tick's own work, without the overlap guard `checkBackendHealth` holds. */
+	private async runHealthCheck(): Promise<void> {
 		if (this.isAppClosing) return;
 
 		// A child of ours whose pid is gone is EVIDENCE, not a timeout to
@@ -4266,7 +5080,15 @@ export class BackendServiceManager {
 		// Push only a real change: a probe that found what the last probe found is
 		// not news, and a status event per 10 s tick would be one IPC wake-up per
 		// interval forever.
-		if (after.state !== before.state || after.detail !== before.detail) {
+		if (
+			after.state !== before.state ||
+			after.detail !== before.detail ||
+			// `updating` is news too (review round 1, M1): a probe can end the
+			// server-update window (a re-anchored reload, a detach) without moving
+			// state or detail, and the spinner then stayed up until the window's
+			// expiry timer - up to 60 s after the server was back.
+			after.updating !== before.updating
+		) {
 			this.notifyStatus();
 		}
 		if (next === "detached") {
@@ -4397,8 +5219,22 @@ export class BackendServiceManager {
 	 * replaced at all: if it is gone, the app says so.
 	 */
 	private async recoverFromDetachment(): Promise<void> {
-		if (this.isAppClosing || this.isAutoUpdating || this.recoveryInFlight)
+		if (this.isAppClosing || this.isAutoUpdating) return;
+		/*
+		 * AN ATTEMPT ALREADY RUNNING IS JOINED, not dropped (design review round 1, D1).
+		 * The tick and an answer-triggered nudge only want an attempt to happen, so a drop
+		 * was right for them - but `reconnectNow()` hands the snapshot it reads back to the
+		 * renderer, and the strip prints that snapshot's outcome as a reachability
+		 * statement. A press that dropped made the band say "Still unreachable" over an
+		 * attempt that was at that moment re-attaching, and this change makes that
+		 * collision likely: recovery now starts on the next admitted request, i.e. more or
+		 * less continuously while the connection is detached and answering. Awaiting the
+		 * running attempt is the honest answer - the caller reads the state it produced.
+		 */
+		if (this.recoveryInFlight) {
+			if (this.recoveryDone) await this.recoveryDone;
 			return;
+		}
 		// Backoff applies to a daemon we HAD (re-attaching to a specific daemon
 		// on a specific address is the case worth pacing), and to a pairing main
 		// already knows is broken with a cause a sweep could repair even when no
@@ -4429,6 +5265,31 @@ export class BackendServiceManager {
 			);
 		}
 		this.recoveryInFlight = true;
+		this.recoveryDone = new Promise<void>((resolve) => {
+			// Wrapped rather than handed over directly: `resolve` takes the promise's
+			// `void` value, and the field is a plain no-argument callback.
+			this.finishRecovery = () => resolve();
+		});
+		/*
+		 * THE ATTEMPT'S OWN VERDICT, logged once in the `finally` below (2026-11-08).
+		 *
+		 * WHY a variable rather than a line per branch: a FAILED attempt used to log
+		 * NOTHING AT ALL, which is why an all-evening detach loop could not be diagnosed
+		 * from the operator's own log, and this file said nothing about the attempt in
+		 * either direction. One line per attempt, naming the probe's verdict, the branch
+		 * it took, whether this app's own traffic was fresh evidence and when the next
+		 * attempt may run, is the difference between "recovery is broken" and "recovery
+		 * keeps landing inside a stall".
+		 *
+		 * EVERY ARM STATES WHAT HAPPENED, and this value is the NO-IDENTITY case only
+		 * (review round 1, R1-5). The arms below APPEND to it, so a default that spelled
+		 * out a sweep made an attempt that had just read `contradicted` - or one an
+		 * owned-child guard stopped - claim "no identity and no repairable pairing: swept
+		 * discovery" first: three false statements in the one diagnostic line this change
+		 * adds. The probed path therefore overwrites this with the probe's own reading
+		 * before any arm appends, and no arm's sentence is written here.
+		 */
+		let verdict = "no identity and no repairable pairing";
 		try {
 			// Recover the selected daemon first. Re-discovery must not silently switch
 			// installs during a transient outage, especially with an active turn.
@@ -4448,6 +5309,7 @@ export class BackendServiceManager {
 					observation.kind === "identified" ||
 					observation.kind === "reanchored"
 				) {
+					verdict = `probe=${observation.kind}: identity re-proved, re-attached`;
 					this.daemonState.observe(observation);
 					this.nextRecoveryAt = 0;
 					this.notifyStatus();
@@ -4474,6 +5336,12 @@ export class BackendServiceManager {
 				const selectedPid = this.daemonState.snapshot().pid;
 				const processGone =
 					selectedPid !== null && pidLiveness(selectedPid) === "dead";
+				const probeClause = `probe=${observation.kind}${
+					observation.kind === "unanswered" ? `(${observation.cause})` : ""
+				}${processGone ? "+pid-dead" : ""}`;
+				// Every arm below appends to this, so it states the probe's own reading and
+				// nothing it cannot know: what followed is each arm's to say (R1-5).
+				verdict = `${probeClause}: identity not re-proved by this probe`;
 				const before = this.daemonState.snapshot();
 				this.daemonState.observe(
 					processGone ? { kind: "pid-dead" } : observation,
@@ -4481,7 +5349,15 @@ export class BackendServiceManager {
 				const after = this.daemonState.snapshot();
 				// The same push discipline the tick uses: a probe that found what the
 				// last one found is not news.
-				if (after.state !== before.state || after.detail !== before.detail) {
+				if (
+					after.state !== before.state ||
+					after.detail !== before.detail ||
+					// `updating` is news too (review round 1, M1): a probe can end the
+					// server-update window (a re-anchored reload, a detach) without moving
+					// state or detail, and the spinner then stayed up until the window's
+					// expiry timer - up to 60 s after the server was back.
+					after.updating !== before.updating
+				) {
 					this.notifyStatus();
 				}
 				// A process that is still there is not ours to replace on a failed
@@ -4533,7 +5409,10 @@ export class BackendServiceManager {
 				// `scripts/daemon-observation.test.mjs` ("the residue: an owned child that
 				// answers as a non-daemon still reaches the guard, and the Retry cannot
 				// clear it").
-				if (!processGone && observation.kind !== "contradicted") return;
+				if (!processGone && observation.kind !== "contradicted") {
+					verdict = `${probeClause}: a live process is not this app's to replace on a failed probe, so re-discovery was held back`;
+					return;
+				}
 			}
 			// A live owned ChildProcess (including a legacy daemon without records)
 			// is not ours to kill just because HTTP timed out.
@@ -4541,9 +5420,14 @@ export class BackendServiceManager {
 				this.process &&
 				this.process.exitCode === null &&
 				this.process.signalCode == null
-			)
+			) {
+				verdict = `${verdict}; this app's own child (pid ${this.process.pid}) is still live, so no discovery and no spawn`;
 				return;
-			if (await this.discoverAndAttach()) return;
+			}
+			if (await this.discoverAndAttach()) {
+				verdict = `${verdict}; discovery re-attached`;
+				return;
+			}
 			/*
 			 * AN ANSWERED REFUSAL IS NOT A FAILED RE-ATTACH (QA round 2, Q-2). The
 			 * reattach backoff paces retries that FAILED; a sweep that just heard the
@@ -4585,12 +5469,51 @@ export class BackendServiceManager {
 				 * fresh reading.
 				 */
 				this.observeNoCandidate();
+				verdict = `${verdict}; discovery found nothing attachable and this app may not spawn, so the absence was published`;
 				return;
 			}
-			if (this.remoteConfigured || this.isExternalBackend) return;
+			if (this.remoteConfigured || this.isExternalBackend) {
+				verdict = `${verdict}; the daemon is ${this.remoteConfigured ? "remote" : "adopted"}, so it is not this app's to replace`;
+				return;
+			}
+			verdict = `${verdict}; starting a replacement daemon`;
 			await this.start({ quiet: true });
 		} finally {
 			this.recoveryInFlight = false;
+			/*
+			 * ONE LINE, EVERY ATTEMPT, and the fields are the ones a reader needs to tell
+			 * the two failure shapes apart: a probe that kept landing inside a stall (the
+			 * operator's 2026-11-08 evening) and a daemon that is genuinely gone. Both used
+			 * to be silent, and "No daemon ... reporting it as stopped" was the only line
+			 * either of them produced.
+			 *
+			 * THE AGES ARE MEASURED WITH THE STATE MACHINE'S CLOCK, not `Date.now()`
+			 * (review round 1, N4): `lastTransportAt` is stamped by `now()`, which is
+			 * injectable, so a reader comparing them must not mix two clocks. Production
+			 * passes nothing and both are `Date.now()`.
+			 */
+			const nowMs = this.daemonState.nowMs();
+			const finalSnapshot = this.daemonState.snapshot();
+			const evidenceAgeMs =
+				finalSnapshot.lastTransportAt === null
+					? null
+					: nowMs - finalSnapshot.lastTransportAt;
+			const evidenceClause =
+				evidenceAgeMs === null
+					? "none, this app made no answered request"
+					: `${Math.round(evidenceAgeMs / 1000)}s old${evidenceAgeMs <= TRANSPORT_EVIDENCE_MS ? " (fresh)" : " (stale)"}`;
+			const nextWaitMs = Math.max(0, this.nextRecoveryAt - nowMs);
+			logger.info(
+				`Recovery attempt: ${verdict}; state=${finalSnapshot.state}; probes unanswered=${finalSnapshot.unanswered}; transport evidence ${evidenceClause}; next=${nextWaitMs === 0 ? "no wait" : `${Math.round(nextWaitMs / 1000)}s`}.`,
+				LogFileType.BACKEND,
+			);
+			/*
+			 * RELEASED LAST, so a joiner (`reconnectNow`'s Retry, or another answer) reads a
+			 * state that already carries this attempt's result and its log line.
+			 */
+			this.finishRecovery?.();
+			this.finishRecovery = null;
+			this.recoveryDone = null;
 		}
 	}
 	/**
@@ -4874,6 +5797,21 @@ export class BackendServiceManager {
 	}
 
 	/**
+	 * The bearer token this app presents to THAT daemon, or null while none has
+	 * been minted/adopted yet.
+	 *
+	 * Exposed for the one request that does not travel through the op plane: the
+	 * attachment UPLOAD (attachment contract v1 §1.1). It carries raw bytes in a
+	 * multipart body, which the op plane's JSON schemas cannot describe, so it
+	 * goes over `fetch` from main and has to present the same credential the
+	 * plane would. Kept a getter rather than a public field so the token's
+	 * lifecycle stays owned here (`mintDesktopToken`, adoption, persistence).
+	 */
+	getDesktopToken(): string | null {
+		return this.desktopToken;
+	}
+
+	/**
 	 * Check if the backend service is using an external backend
 	 * @returns True if using an external backend, false if we started our own
 	 */
@@ -4924,13 +5862,15 @@ export class BackendServiceManager {
 	 * default grace exactly as before.
 	 * @returns Promise resolving to true if the restart was successful, false otherwise
 	 */
-	restart(options: { stopGraceMs?: number } = {}): Promise<boolean> {
+	restart(
+		options: { stopGraceMs?: number; quiet?: boolean } = {},
+	): Promise<boolean> {
 		if (this.restartPromise) return this.restartPromise;
 		this.restartPromise = (async () => {
 			try {
 				await this.stop(true, { graceMs: options.stopGraceMs });
 				if (this.isAppClosing) return false;
-				return await this.start();
+				return await this.start({ quiet: options.quiet });
 			} catch (error) {
 				logger.error("Backend restart refused", LogFileType.BACKEND, error);
 				return false;

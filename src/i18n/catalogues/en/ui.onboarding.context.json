@@ -1,0 +1,14 @@
+{
+	"ui.onboarding.connect.intro": {
+		"role": "Intro paragraph above the first-run provider list",
+		"tone": "Plain factual explanation with equal choice; no hype",
+		"length": "Three short sentences; wraps in the setup dialog",
+		"note": "Radient benefits are many models, dictation and public agent sharing via one browser sign-in. Existing Claude/ChatGPT subscriptions, API keys and local models are equally valid alternatives. Credit is CONDITIONAL on eligibility, email verification and a security check; no amount, no unconditional free offer. Keep product names unchanged."
+	},
+	"ui.onboarding.search.mode.free_detail": {
+		"role": "Explanation of the preselected Free web-search option in onboarding step 3",
+		"tone": "Plain factual description",
+		"length": "Three short sentences",
+		"note": "Free search services are shared; no key needed; busy times can be slower. Deliberately names no vendors: this is about what the reader needs to do, not how the backend rotates services."
+	}
+}

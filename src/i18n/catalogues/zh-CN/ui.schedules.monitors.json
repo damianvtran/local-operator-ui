@@ -1,0 +1,10 @@
+{
+	"ui.schedules.monitors.blind_health": "无法比较结果，因此不会报告变化",
+	"ui.schedules.monitors.could_not_load_monitors": "无法加载监控项。",
+	"ui.schedules.monitors.could_not_read_monitors": "无法读取此设备上的监控项，此列表可能不完整。",
+	"ui.schedules.monitors.count_needs_attention": "{total, plural, other {{total_display}个监控项}} · {attention, plural, other {{attention_display}个需要处理}}",
+	"ui.schedules.monitors.expired_state": "已过期",
+	"ui.schedules.monitors.list_truncated": "共有{total, plural, other {{total, number, ::group-off}个包含监控的对话}}，当前显示{shown, number, ::group-off}个。",
+	"ui.schedules.monitors.parked_clause": "已挂起，监控暂不检查",
+	"ui.schedules.monitors.parked_state": "已挂起"
+}

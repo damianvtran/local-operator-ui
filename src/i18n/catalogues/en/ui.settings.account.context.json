@@ -47,6 +47,12 @@
 		"length": "Field or row label above/beside a control; one line. English is 7 characters.",
 		"note": "Label for the date the account was created."
 	},
+	"ui.settings.account.radient_account_section.team_plan_line": {
+		"role": "One body sentence in Settings > Radient account, shown to a signed-in user above the sign-out block",
+		"tone": "Plain factual description; not promotional.",
+		"length": "One sentence; wraps inside the settings column. Followed on the same line by the link 'See the Radient Team plan'.",
+		"note": "Lists what the plan covers in this app: Team Bridge (product name, untranslated), and sharing agents and agent teams inside the reader's organization. 'teams' here means teams of agents, the same noun as the Teams tab. Keep 'Radient Team' untranslated. No exclamation, no call to action; the link that follows carries the action."
+	},
 	"ui.settings.account.radient_account_section.need_to_sign_out_or_switch_accounts": {
 		"role": "Question above the sign-out button",
 		"tone": "Plain, friendly second person; explains rather than commands.",

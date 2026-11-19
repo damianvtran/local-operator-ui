@@ -42,7 +42,6 @@ const {
 	BAR_WIDTH,
 	EDGE_FADE_PX,
 	VALUE_SCALE,
-	ariaValueText,
 	barCountForWidth,
 	downsamplePeaks,
 	edgeFade,
@@ -207,11 +206,9 @@ test("progressFraction is the played share, clamped to 0..1", () => {
 
 /* ------------------------------------------------------------ aria text */
 
-test("the slider's value text is time-valued at BOTH ends", () => {
-	assert.equal(ariaValueText(0, 0), "0:00 of 0:00");
-	assert.equal(ariaValueText(7, 12), "0:07 of 0:12");
-	assert.equal(ariaValueText(75, 130), "1:15 of 2:10");
-	// A bare number would be indistinguishable from a bar index; the sentence
-	// says which end it is at, which is what a screen reader announces on drag.
-	assert.equal(ariaValueText(Number.NaN, 12), "0:00 of 0:12");
-});
+/*
+ * The slider's aria-valuetext is no longer built here: it is a catalogue
+ * sentence (ui.chat.audio.position_value) composed in sound-player.tsx from two
+ * `formatClock` strings, so this pure module stays free of the i18n runtime.
+ * Its per-locale text is pinned by attachment-chrome-i18n.test.mjs.
+ */

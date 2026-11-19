@@ -1,0 +1,121 @@
+{
+ "schema": 1,
+ "record_kind": "locale-audit evidence record (PR delta audit, round 2)",
+ "audit_id": "tb1670-r2-bf2ddf2b6fb3-vi",
+ "locale": "vi",
+ "namespace": "ui.teamBridge",
+ "audit_date": "2026-11-04",
+ "key_count": 366,
+ "auditor": {
+  "agent": "translation-auditor",
+  "team": "lopdev",
+  "session": "bf2ddf2b6fb3",
+  "instance": "bf2ddf2b6fb3-pr1670-r2-vi",
+  "model": "anthropic/claude-opus-5-5",
+  "independent_from_translator_session": true,
+  "actual_model_source": "Served model as announced by the harness preamble for session bf2ddf2b6fb3 (anthropic/claude-opus-5-5); no fallback announced or observed.",
+  "model_fallback": {
+   "announced": false,
+   "observed": false
+  },
+  "findings": {
+   "blocker": 0,
+   "major": 0,
+   "minor": 0,
+   "nit": 0
+  }
+ },
+ "independence": "Independent auditor: lopdev team translation-auditor, session bf2ddf2b6fb3. Did not translate the 6 round-2 values (implementer commit 096c8ce4e29 on PR #1670), wrote no English copy or code in the PR, and is not the round-1 auditor instance (7c739a6246b4-pr1670-vi). Applied only the corrections listed in findings. Same model family as the team coder (anthropic/claude-opus-5-5), separate agent instance; disclosed. No MT service used. Row written by ledger-assemble.mjs.",
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+   "sha256": "81fdc6ce881aab2e606a04d88d734741542f62ad090220e40951692fab6b913b"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+   "sha256": "a6bf1bfe941b49471dd6bb498f4b2f26e2677a5363ffc98275a65f404e7f2fb9"
+  },
+  "vi": {
+   "path": "src/i18n/catalogues/vi/ui.teamBridge.json",
+   "sha256": "c217c192106c89ab5e5bd22b3a6fd85a7ef17d9634704d519dd16aaeb94c42a0",
+   "pr_head_sha256_before_auditor_fixes": "c217c192106c89ab5e5bd22b3a6fd85a7ef17d9634704d519dd16aaeb94c42a0"
+  }
+ },
+ "style_guide": {
+  "path": "~/local-operator i18n/style-guides/vi.md",
+  "sha256": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888",
+  "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "core_commit": "b42471d3935"
+ },
+ "integration": {
+  "pr": 1670,
+  "repo": "damianvtran/local-operator-ui",
+  "branch": "feat/team-bridge-members-panel",
+  "base": "1acab5915d98a0d59c893c29baa273e2ef27d643",
+  "audited_head": "a5d95f8359b7c6f37ef677d5b3ab46e9b5a4368d",
+  "round": 2,
+  "auditor_fix_commit": "the commit that adds this record"
+ },
+ "scope": {
+  "delta_kind": "Round-2 delta audit of PR #1670 (1acab5915d98..a5d95f8359b7): the 6 changed ui.teamBridge.members_panel values (confirm.remove_body, confirm.leave_body, NEW confirm.remove_invited_body; note.general/humans/agents now take {channel}) read against en, the en context sidecar, the glossary and the vi style guide, composed with the argument the renderer passes. The three notes are byte-identical to the round-1 audited values except '#name' -> '{channel}' (verified). The other 360 values are byte-identical to the round-1 audited bytes (verified). No rendered width fit claimed.",
+  "keys_changed_in_pr": [
+   "ui.teamBridge.members_panel.confirm.remove_body",
+   "ui.teamBridge.members_panel.confirm.remove_invited_body",
+   "ui.teamBridge.members_panel.confirm.leave_body",
+   "ui.teamBridge.members_panel.note.general",
+   "ui.teamBridge.members_panel.note.humans",
+   "ui.teamBridge.members_panel.note.agents"
+  ],
+  "keys_added": [
+   "ui.teamBridge.members_panel.confirm.remove_invited_body"
+  ],
+  "keys_changed_by_auditor": []
+ },
+ "glossary": "withdraw = 'rút lại lời mời dành cho' (events.withdrawn); conversation = 'cuộc trò chuyện'; Bạn register as round 1.",
+ "audited": {
+  "ui.teamBridge.members_panel.confirm.remove_body": {
+   "en": "They’ll stop getting this conversation’s messages. You can invite them again later.",
+   "translation": "Họ sẽ không nhận tin nhắn của cuộc trò chuyện này nữa. Bạn có thể mời lại họ sau.",
+   "round1": "Họ sẽ không nhận tin nhắn ở đây nữa. Có thể mời lại họ sau."
+  },
+  "ui.teamBridge.members_panel.confirm.remove_invited_body": {
+   "en": "Their invitation will be withdrawn. You can invite them again later.",
+   "translation": "Lời mời dành cho họ sẽ bị rút lại. Bạn có thể mời lại họ sau.",
+   "round1": null
+  },
+  "ui.teamBridge.members_panel.confirm.leave_body": {
+   "en": "You’ll stop getting this conversation’s messages. To come back, rejoin from the channel list or ask a member to invite you.",
+   "translation": "Bạn sẽ không nhận tin nhắn của cuộc trò chuyện này nữa. Để quay lại, hãy tham gia từ danh sách kênh hoặc nhờ một thành viên mời bạn.",
+   "round1": "Bạn sẽ không nhận tin nhắn ở đây nữa. Để quay lại, hãy tham gia từ danh sách kênh nếu kênh mở cho tổ chức của bạn, hoặc nhờ một thành viên mời lại bạn."
+  },
+  "ui.teamBridge.members_panel.note.general": {
+   "en": "Everyone in the organization is a member of {channel}. Mute it instead of leaving.",
+   "translation": "Mọi người trong tổ chức đều là thành viên của {channel}. Hãy tắt tiếng thay vì rời đi.",
+   "round1": "Mọi người trong tổ chức đều là thành viên của #general. Hãy tắt tiếng thay vì rời đi."
+  },
+  "ui.teamBridge.members_panel.note.humans": {
+   "en": "Every person in the organization is a member of {channel}. Mute it instead of leaving.",
+   "translation": "Mọi người trong tổ chức đều là thành viên của {channel}. Hãy tắt tiếng thay vì rời đi.",
+   "round1": "Mọi người trong tổ chức đều là thành viên của #humans. Hãy tắt tiếng thay vì rời đi."
+  },
+  "ui.teamBridge.members_panel.note.agents": {
+   "en": "Membership of {channel} follows the organization. You can leave if you joined it yourself.",
+   "translation": "Tư cách thành viên của {channel} được xác định theo tổ chức. Bạn có thể rời đi nếu đã tự tham gia.",
+   "round1": "Tư cách thành viên của #agents được xác định theo tổ chức. Bạn có thể rời đi nếu đã tự tham gia."
+  }
+ },
+ "checks": {
+  "icu_command": "node scripts/verify.mjs (worktree root; @formatjs/icu-messageformat-parser) — all 366 values parse; argument names equal en; delta notes carry exactly one {channel} and no literal #name",
+  "compose_command": "node scripts/compose.mjs (intl-messageformat; channel = isolateLtr('#<name>'))",
+  "unicode": "All values NFC; no bidi controls (U+200E/F, U+061C, U+202A-E, U+2066-9).",
+  "key_set": "366 keys, equal to English, same order.",
+  "execution_log": "i18n/audits/evidence/vi/ui.teamBridge/tb1670-r2-bf2ddf2b6fb3-vi/audit.log"
+ },
+ "not_claimed": "No rendered width fit; dialog bodies wrap. ur RTL order observed only in the implementer's single Storybook frame (note.general), not natively re-captured by the auditor.",
+ "artifacts": {
+  "audit.log": "9c629fe512d8107a007b2ab6df3d1e7e63195f18dd4912590718a0d54ed59912",
+  "scripts/verify.mjs": "45ee66ecb8b370871e9c74aefc26716a68ff35aef238064eed71cba0d61d06a4",
+  "scripts/compose.mjs": "a61658aad3ebcfe9cbae9899eb55d59b738a7e04c9907b96cd39c1b570d50d52"
+ },
+ "findings": []
+}

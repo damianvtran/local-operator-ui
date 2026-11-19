@@ -1,0 +1,51 @@
+// Captures named Storybook stories with a private headless Chrome over CDP and
+// prints geometry. Usage: node probe.mjs <origin> <outdir> <label>
+import { spawn } from "node:child_process";
+import { mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+const [origin, outdir, label] = process.argv.slice(2);
+mkdirSync(outdir, { recursive: true });
+const STORIES = JSON.parse(process.env.STORIES);
+const THEMES = ["localOperatorDark", "localOperatorLight"];
+const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+const dataDir = join(tmpdir(), `lo-avatar-ev-${process.pid}`);
+const chrome = spawn(CHROME, ["--headless=new", "--use-mock-keychain", "--no-sandbox", "--disable-gpu", "--hide-scrollbars", `--user-data-dir=${dataDir}`, "--remote-debugging-port=0", "--window-size=1400,1000", "about:blank"], { stdio: ["ignore", "ignore", "pipe"] });
+const reap = () => { try { process.kill(chrome.pid, "SIGKILL"); } catch {} try { rmSync(dataDir, { recursive: true, force: true }); } catch {} };
+process.on("exit", reap);
+const wsUrl = await new Promise((res, rej) => {
+  let buf = ""; const t = setTimeout(() => rej(new Error("no devtools url")), 20000);
+  chrome.stderr.on("data", (d) => { buf += d; const m = /DevTools listening on (ws:\S+)/.exec(buf); if (m) { clearTimeout(t); res(m[1]); } });
+});
+const port = new URL(wsUrl).port;
+const target = await (await fetch(`http://127.0.0.1:${port}/json/new?about:blank`, { method: "PUT" })).json();
+const ws = new WebSocket(target.webSocketDebuggerUrl);
+await new Promise((r) => ws.addEventListener("open", r));
+let id = 0; const pending = new Map();
+ws.addEventListener("message", (e) => { const m = JSON.parse(e.data); if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id); } });
+const send = (method, params = {}) => new Promise((r) => { const i = ++id; pending.set(i, r); ws.send(JSON.stringify({ id: i, method, params })); });
+const evalJs = async (expr) => (await send("Runtime.evaluate", { expression: expr, awaitPromise: true, returnByValue: true })).result?.result?.value;
+await send("Page.enable"); await send("Runtime.enable");
+await send("Emulation.setDeviceMetricsOverride", { width: 1400, height: 1000, deviceScaleFactor: 2, mobile: false });
+const results = {};
+for (const s of STORIES) {
+  for (const theme of THEMES) {
+    await send("Page.navigate", { url: `${origin}/iframe.html?id=${s.id}&viewMode=story&args=theme:${theme}` });
+    // settle: theme applied, no capturePending, then extra frames
+    for (let i = 0; i < 200; i++) {
+      const ok = await evalJs(`document.documentElement.dataset.theme && !document.documentElement.dataset.capturePending && !!document.querySelector(${JSON.stringify(s.root)})`);
+      if (ok) break; await new Promise((r) => setTimeout(r, 100));
+    }
+    await new Promise((r) => setTimeout(r, s.settle ?? 1500));
+    const geo = await evalJs(`(${s.measure})()`);
+    const rect = await evalJs(`(() => { const r = document.querySelector(${JSON.stringify(s.root)}).getBoundingClientRect(); return { x: r.x, y: r.y, width: Math.ceil(r.width), height: Math.ceil(Math.min(r.height, ${s.maxH ?? 900})) }; })()`);
+    if (!rect || !rect.width || !rect.height) { console.error("NO ROOT", s.name, theme, JSON.stringify(rect), await evalJs("document.body.innerText.slice(0,400)")); continue; }
+    const shot = await send("Page.captureScreenshot", { format: "png", clip: { ...rect, scale: 1 }, captureBeyondViewport: true });
+    const file = join(outdir, `${s.name}-${label}-${theme === "localOperatorDark" ? "dark" : "light"}.png`);
+    if (!shot.result) { console.error("SHOT FAIL", s.name, JSON.stringify(shot.error), JSON.stringify(rect)); continue; }
+    writeFileSync(file, Buffer.from(shot.result.data, "base64"));
+    results[`${s.name}/${theme}`] = geo;
+  }
+}
+console.log(JSON.stringify(results, null, 1));
+ws.close(); reap(); process.exit(0);

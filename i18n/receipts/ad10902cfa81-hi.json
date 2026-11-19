@@ -1,0 +1,103 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit (team-bridge membership events + invitation_note_v3, FINAL round, auditor B)",
+	"date": "2026-10-30",
+	"auditor": "translation-auditor",
+	"agent": "translation-auditor",
+	"model": "radient/auto",
+	"model_provenance": "Session ad10902cfa81 began on anthropic/claude-opus-5-5 and the harness switched it on provider-quota failures to openai/gpt-6-astra, then kimi/k3.1-pro, then radient/auto. The byte verification, reverse-apply proof, renders and every verdict here were produced under radient/auto. No role, default or tool setting was changed by this auditor.",
+	"model_fallback": {
+		"announced": true,
+		"observed": true,
+		"chain": [
+			"anthropic/claude-opus-5-5",
+			"openai/gpt-6-astra",
+			"kimi/k3.1-pro",
+			"radient/auto"
+		],
+		"actual_model": "radient/auto"
+	},
+	"session": "ad10902cfa81",
+	"instance": "ad10902cfa81-hi",
+	"audit_id": "teambridge-member-events-final-b-ad10902cfa81-hi",
+	"status": "passed",
+	"namespace": "ui.teamBridge",
+	"locale": "hi",
+	"integration": {
+		"branch": "fix/team-bridge-member-events",
+		"head_at_audit": "1eeb46187ce12fbcb5e13c5f02be0251b8979ee8",
+		"worktree": "~/local-operator-ui/.worktrees/member-events",
+		"note": "Translations are uncommitted on the branch; the hashes bind the on-disk bytes at audit time."
+	},
+	"independence": "Independent auditor B of the final round, Local Operator session ad10902cfa81 (team lopdev, role translation-auditor). Independent of the translator and of auditor A: every value read, the six-postposition count for hi, the renders and the verdicts were formed from the catalogues, the English source, its context sidecar, the core glossary and the hi style guide before any receipt for this round was read. No catalogue was edited; only scripts/i18n/ledger-assemble.mjs wrote the ledger row.",
+	"scope": {
+		"delta_kind": "Final round: the corrected values re-read at the CURRENT bytes, the whole 297-key namespace scanned for term/quote/case consistency.",
+		"corrections_verified": [
+			"ui.teamBridge.events.others: reverted to the invariant {count, plural, one {# अन्य} other {# अन्य}}"
+		],
+		"keys_audited_linguistically": [
+			"ui.teamBridge.members.invitation_note_v3",
+			"ui.teamBridge.events.invited",
+			"ui.teamBridge.events.joined",
+			"ui.teamBridge.events.owner_added_agent",
+			"ui.teamBridge.events.left",
+			"ui.teamBridge.events.removed",
+			"ui.teamBridge.events.consented",
+			"ui.teamBridge.events.declined_self",
+			"ui.teamBridge.events.declined",
+			"ui.teamBridge.events.withdrawn",
+			"ui.teamBridge.events.unknown",
+			"ui.teamBridge.events.others"
+		],
+		"keys_read_for_context": "All 297 keys of ui.teamBridge in English and in hi, scanned mechanically (placeholders, CLDR arms, NFC, bidi controls, quotes, whitespace, address form, terminology, case) and read by eye in the membership/invitation domain (members.*, invitations.*, events.*). Unchanged keys are additionally proven byte-identical to the state previous independent audits passed, by the reverse-apply proof.",
+		"english_source": "src/i18n/catalogues/en/ui.teamBridge.json at 56810571f7cf",
+		"state_at_audit": "The locale catalogues are uncommitted working-tree changes on branch fix/team-bridge-member-events at head 1eeb46187ce; the ledger row was assembled from these bytes."
+	},
+	"mechanical_checks": {
+		"render": "Every event value re-rendered with the repository's own intl-messageformat (12.1.3) through the call site's Intl.ListFormat 'long'/'conjunction' join: 1 and 3 targets, and events.others at counts 1/2/3/5/11/21, plus all eight sentences in the truncated 2-shown+N-others path. Output verbatim in renders.txt.",
+		"placeholders": "AST diff of all 297 values against English: argument names, select option sets, markup tags and exact/offset plural arms all identical (0 mismatches). No placeholder dropped, renamed or reused.",
+		"plural_arms": "Plural arms compared with Intl.PluralRules('hi').resolvedOptions().pluralCategories [\"one\",\"other\"]: no arm outside the locale's categories, every English arm present. Coverage is complete for this locale's categories.",
+		"nfc_bidi": "All 297 values are NFC (0 exceptions). Zero RLM/LRM/ALM/embedding/isolate/BOM/soft-hyphen characters in any value.",
+		"keyset": "All four locales hold 297 keys in the same order as English: 0 missing, 0 extra.",
+		"glossary": "i18n/glossary.md line 46 (agent) honoured: agente (es), agent (fr), एजेंट (hi), ایجنٹ (ur). Namespace term counts and the address form are in mechanical-checks.txt",
+		"register": "Address form measured across the namespace: आप throughout (42 occurrences, 0 तुम/तू); sentence case per style guide."
+	},
+	"result": "clean",
+	"translator": {
+		"agent": "translator",
+		"model": "anthropic/claude-opus-5-5 (as stated in the audit brief; not verifiable from the working tree)",
+		"date": "2026-10-30"
+	},
+	"sha256": {
+		"hi": "c51c89590c7f0e00f01f6128fdc2acc05e32aa773ea7da36dd909103d35ecb60",
+		"en": "56810571f7cfe24841940394b0579e28a13616c40da35fe93301f5b66fb7290c"
+	},
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "56810571f7cfe24841940394b0579e28a13616c40da35fe93301f5b66fb7290c"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "adb76e0b6e40573f67398d6d260fbb738686f34f73077b593126cee6d2d0a77e"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/hi/ui.teamBridge.json",
+			"sha256": "c51c89590c7f0e00f01f6128fdc2acc05e32aa773ea7da36dd909103d35ecb60"
+		}
+	},
+	"evidence": {
+		"root": "i18n/audits/evidence/hi/ui.teamBridge/teambridge-member-events-final-b-ad10902cfa81-hi",
+		"artifacts": [
+			"record.json",
+			"hashes.txt",
+			"reverse-apply-proof.txt",
+			"mechanical-checks.txt",
+			"renders.txt",
+			"findings.json",
+			"notes.txt"
+		]
+	},
+	"findings": [],
+	"verdict": "clean: 0 blocker, 0 major, 0 minor, 0 nit across 297 keys read."
+}

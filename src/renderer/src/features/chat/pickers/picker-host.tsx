@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * The one picker host for every `native_action` destination.
  *
@@ -165,6 +167,18 @@ export type PickerHostProps = {
 	/** An operation is in flight; the footer shows it and disables submit. */
 	busy?: boolean;
 	/**
+	 * Picks stay live while `busy` (`features.settings_intents`).
+	 *
+	 * The busy gate exists because a pick used to BE the runtime round trip, and
+	 * a second pick during it raced the first. A durable intent is a file write
+	 * the server coalesces last-wins, so the only thing still busy is a default
+	 * save beside it - which must not swallow the user's next pick. Off (the
+	 * default) keeps today's gate byte for byte.
+	 */
+	picksWhileBusy?: boolean;
+	/** A blocked choice must not advertise an Enter action it cannot perform. */
+	blockedHint?: string;
+	/**
 	 * What the in-flight footer says, in the user's terms.
 	 *
 	 * The default names the CHANGE rather than the machinery: "Waiting for the
@@ -250,7 +264,7 @@ const TONE_CLASS: Record<PickerResult["tone"], string> = {
  * `/analytics` (QA round 1, Q4). The constant stays as the fallback for a caller
  * that has not said where it is.
  */
-const PANEL_BODY_LABEL = "Panel content";
+const PANEL_BODY_LABEL = () => t("ui.chat.pickers.picker_host.panel_content");
 
 type PickerRowProps = {
 	id: string;
@@ -583,17 +597,29 @@ export function pickerFooterHint(state: {
 	 */
 	retargetedLabel?: string | null;
 }): string {
-	if (state.busy) return state.busyText ?? "Applying the change…";
+	if (state.busy)
+		return (
+			state.busyText ?? t("ui.chat.pickers.picker_host.applying_the_change")
+		);
 	if (state.hasList && state.rowCount > 0) {
 		if (state.retargetedLabel)
-			return `The row you were on is gone · Enter picks ${state.retargetedLabel}`;
+			return t(
+				"ui.chat.pickers.picker_host.the_row_you_were_on_is_gone_enter_picks",
+				{ retargetedlabel: state.retargetedLabel },
+			);
 		if (state.activeConnectProvider)
-			return `Arrows move · Enter connects ${state.activeConnectProvider} · Esc closes`;
+			return t(
+				"ui.chat.pickers.picker_host.arrows_move_enter_connects_esc_closes",
+				{ activeconnectprovider: state.activeConnectProvider },
+			);
 		return state.activeLabel
-			? `Arrows move · Enter picks ${state.activeLabel} · Esc closes`
-			: "Arrows move, Enter picks, Esc closes";
+			? t(
+					"ui.chat.pickers.picker_host.arrows_move_enter_picks_esc_closes5710e2",
+					{ activelabel: state.activeLabel },
+				)
+			: t("ui.chat.pickers.picker_host.arrows_move_enter_picks_esc_closes");
 	}
-	return "Esc closes";
+	return t("ui.chat.pickers.picker_host.esc_closes");
 }
 
 /**
@@ -610,11 +636,11 @@ export function pickerPrimaryLabel(state: {
 	busy: boolean;
 	result: PickerResult | null;
 }): string {
-	if (state.busy) return "Close";
+	if (state.busy) return t("ui.chat.pickers.picker_host.close");
 	return state.result &&
 		(state.result.tone === "success" || state.result.tone === "info")
-		? "Done"
-		: "Close";
+		? t("ui.chat.pickers.picker_host.done")
+		: t("ui.chat.pickers.picker_host.close");
 }
 
 /**
@@ -687,134 +713,143 @@ export const PickerRow: FC<PickerRowProps> = memo(
 		isPicked,
 		onHover,
 		onPick,
-		busyLabel = "Applying the change",
-	}) => (
-		/* biome-ignore lint/a11y/useFocusableInteractive: focus stays in the search input; the active option is announced through aria-activedescendant. */
-		<div
-			id={id}
-			// biome-ignore lint/a11y/useFocusableInteractive: focus stays in the search input; the active option is announced through aria-activedescendant.
-			// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox option cannot be a native <option>.
-			role="option"
-			aria-selected={isActive}
-			aria-disabled={option.disabled || undefined}
-			// `data-current` is a HOOK, not a style: it marks the row the owner
-			// reports as the model in force, for the a11y tree and for the harness's
-			// assertions. It is deliberately unstyled — the visible mark is the
-			// accent check beside the label, which does not depend on the attribute
-			// existing (design D11).
-			data-current={option.current || undefined}
-			data-hovered={isHovered || undefined}
-			data-picked={isPicked || undefined}
-			onMouseEnter={() => onHover(index)}
-			onMouseDown={(event) => {
-				// mousedown, not click: keeps focus in the search input, the same
-				// reason the composer popup does it.
-				event.preventDefault();
-				onPick(option, index);
-			}}
-			/*
-			 * No cursor class, on purpose. This row is `role="option"`, so the base
-			 * layer's rule gives it the pointer; an explicit utility here would ALSO
-			 * beat that rule's disabled arm, and a disabled row (`aria-disabled`,
-			 * above) would then advertise a click it cannot take.
-			 */
-			className={cn(
-				"flex items-start gap-3 rounded-sm px-2 py-1.5",
-				isActive && "bg-sunken",
+		busyLabel = t("ui.chat.pickers.picker_host.applying_the_changea9b670"),
+	}) => {
+		useI18nLocale();
+		return (
+			/* biome-ignore lint/a11y/useFocusableInteractive: focus stays in the search input; the active option is announced through aria-activedescendant. */
+			<div
+				id={id}
+				// biome-ignore lint/a11y/useFocusableInteractive: focus stays in the search input; the active option is announced through aria-activedescendant.
+				// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox option cannot be a native <option>.
+				role="option"
+				aria-selected={isActive}
+				aria-disabled={option.disabled || undefined}
+				// `data-current` is a HOOK, not a style: it marks the row the owner
+				// reports as the model in force, for the a11y tree and for the harness's
+				// assertions. It is deliberately unstyled — the visible mark is the
+				// accent check beside the label, which does not depend on the attribute
+				// existing (design D11).
+				data-current={option.current || undefined}
+				data-hovered={isHovered || undefined}
+				data-picked={isPicked || undefined}
 				/*
-				 * A REFUSED ROW IS NOT INVITED (review round 1, U2): the hover wash is
-				 * this picker's "you may click this" signal everywhere else, and a row
-				 * that keeps `cursor: not-allowed` while painting the same wash gives
-				 * the pointer two contradictory answers. The wash and its structural
-				 * half (the outline below) are gated on `!option.disabled` together -
-				 * half a hover mark is a defect of its own - while the cursor and the
-				 * reason stay.
+				 * The ROW'S OWN VALUE, so a scene picks a named row rather than a position or
+				 * a label: `fast-picker-options.ts` already publishes `on`/`off` as the value
+				 * it posts, and the label beside it is catalogue copy a locale may reword.
 				 */
-				isHovered && !isActive && !option.disabled && "bg-accent-wash",
-				// The structural half of both marks; see the block comment above for
-				// why the wash alone is not enough in every theme.
-				(isPicked || (isHovered && !isActive && !option.disabled)) &&
-					"outline-solid outline-1 -outline-offset-1 outline-control",
-				option.disabled && "text-ink-disabled",
-			)}
-		>
-			<span className="flex min-w-0 flex-1 flex-col">
-				<span className="flex items-center gap-2">
-					<span
-						className={cn(
-							"truncate text-body-sm",
-							option.disabled ? "text-ink-disabled" : "text-ink",
-						)}
-					>
-						{option.label}
-					</span>
-					{option.current && (
-						/*
-						 * WARNING INK ON A REFUSED ROW (review round 1, D2): the accent check is
-						 * the mark that says "Enter picks this", and on a row the rule refuses
-						 * that reading is false - the mark stays (the row IS the current
-						 * identity) but wears the warning ink the header's own cue uses, so
-						 * accent green never sits on a row that cannot be picked.
-						 */
-						<Check
+				data-option-value={option.value}
+				onMouseEnter={() => onHover(index)}
+				onMouseDown={(event) => {
+					// mousedown, not click: keeps focus in the search input, the same
+					// reason the composer popup does it.
+					event.preventDefault();
+					onPick(option, index);
+				}}
+				/*
+				 * No cursor class, on purpose. This row is `role="option"`, so the base
+				 * layer's rule gives it the pointer; an explicit utility here would ALSO
+				 * beat that rule's disabled arm, and a disabled row (`aria-disabled`,
+				 * above) would then advertise a click it cannot take.
+				 */
+				className={cn(
+					"flex items-start gap-3 rounded-sm px-2 py-1.5",
+					isActive && "bg-sunken",
+					/*
+					 * A REFUSED ROW IS NOT INVITED (review round 1, U2): the hover wash is
+					 * this picker's "you may click this" signal everywhere else, and a row
+					 * that keeps `cursor: not-allowed` while painting the same wash gives
+					 * the pointer two contradictory answers. The wash and its structural
+					 * half (the outline below) are gated on `!option.disabled` together -
+					 * half a hover mark is a defect of its own - while the cursor and the
+					 * reason stay.
+					 */
+					isHovered && !isActive && !option.disabled && "bg-accent-wash",
+					// The structural half of both marks; see the block comment above for
+					// why the wash alone is not enough in every theme.
+					(isPicked || (isHovered && !isActive && !option.disabled)) &&
+						"outline-solid outline-1 -outline-offset-1 outline-control",
+					option.disabled && "text-ink-disabled",
+				)}
+			>
+				<span className="flex min-w-0 flex-1 flex-col">
+					<span className="flex items-center gap-2">
+						<span
 							className={cn(
-								"size-3.5 shrink-0",
-								option.disabled ? "text-warning" : "text-accent",
+								"truncate text-body-sm",
+								option.disabled ? "text-ink-disabled" : "text-ink",
 							)}
-							aria-label="Current"
-						/>
+						>
+							{option.label}
+						</span>
+						{option.current && (
+							/*
+							 * WARNING INK ON A REFUSED ROW (review round 1, D2): the accent check is
+							 * the mark that says "Enter picks this", and on a row the rule refuses
+							 * that reading is false - the mark stays (the row IS the current
+							 * identity) but wears the warning ink the header's own cue uses, so
+							 * accent green never sits on a row that cannot be picked.
+							 */
+							<Check
+								className={cn(
+									"size-3.5 shrink-0",
+									option.disabled ? "text-warning" : "text-accent",
+								)}
+								aria-label={t("ui.chat.pickers.picker_host.current")}
+							/>
+						)}
+					</span>
+					{option.description && (
+						/*
+						 * `title` ON A `truncate` LINE, and only that combination needs it (review
+						 * round 1, MINOR 3). This span clips, and since design D6 replaced the
+						 * pickers' raw `live: wedged` token with the catalogue's own sentence it now
+						 * carries the LONGEST label in the app - "Not answering · process alive (last
+						 * heartbeat 4m ago)" - so a clip can hide the half that says which state the
+						 * row is in. The host caps at `max-w-xl` and the sentence measures ~300px at
+						 * this role, so it fits on one line in the default width and the tooltip is
+						 * what covers the narrower case, rather than a claim that it never clips.
+						 *
+						 * NOT A SHADOWING TOOLTIP: the option row itself carries no `title`, so this
+						 * is the innermost one and it hides nothing - which is the failure
+						 * `chat-session-status.tsx` had to have removed from the sidebar's rows.
+						 */
+						<span
+							className={cn(
+								"truncate text-meta",
+								/*
+								 * THE REASON STEPS DOWN ON A REFUSED ROW (review round 1, D5):
+								 * measured, the first draft made the explanation the loudest text on
+								 * the row (7.24:1) while the name it explains sat at 1.99:1 - the eye
+								 * landed on the reason instead of the profile. `ink-dim` brings it to
+								 * the caption's own weight - the two tie at 5.25:1 on the dark
+								 * ground, corrected in review round 2 from an earlier "under the
+								 * caption" claim this file no longer makes - so the reason no longer
+								 * outranks the row's name and the row reads as one quiet unit.
+								 */
+								option.disabled ? "text-ink-dim" : "text-ink-muted",
+							)}
+							title={option.description}
+						>
+							{option.description}
+						</span>
 					)}
 				</span>
-				{option.description && (
-					/*
-					 * `title` ON A `truncate` LINE, and only that combination needs it (review
-					 * round 1, MINOR 3). This span clips, and since design D6 replaced the
-					 * pickers' raw `live: wedged` token with the catalogue's own sentence it now
-					 * carries the LONGEST label in the app - "Not answering · process alive (last
-					 * heartbeat 4m ago)" - so a clip can hide the half that says which state the
-					 * row is in. The host caps at `max-w-xl` and the sentence measures ~300px at
-					 * this role, so it fits on one line in the default width and the tooltip is
-					 * what covers the narrower case, rather than a claim that it never clips.
-					 *
-					 * NOT A SHADOWING TOOLTIP: the option row itself carries no `title`, so this
-					 * is the innermost one and it hides nothing - which is the failure
-					 * `chat-session-status.tsx` had to have removed from the sidebar's rows.
-					 */
-					<span
-						className={cn(
-							"truncate text-meta",
-							/*
-							 * THE REASON STEPS DOWN ON A REFUSED ROW (review round 1, D5):
-							 * measured, the first draft made the explanation the loudest text on
-							 * the row (7.24:1) while the name it explains sat at 1.99:1 - the eye
-							 * landed on the reason instead of the profile. `ink-dim` brings it to
-							 * the caption's own weight - the two tie at 5.25:1 on the dark
-							 * ground, corrected in review round 2 from an earlier "under the
-							 * caption" claim this file no longer makes - so the reason no longer
-							 * outranks the row's name and the row reads as one quiet unit.
-							 */
-							option.disabled ? "text-ink-dim" : "text-ink-muted",
-						)}
-						title={option.description}
-					>
-						{option.description}
-					</span>
-				)}
-			</span>
-			{isPicked ? (
-				/* The picked row's mark, held until the operation settles (design D3).
+				{isPicked ? (
+					/* The picked row's mark, held until the operation settles (design D3).
 				   It replaces the meta slot rather than adding a second element, so the
 				   row does not change height while the answer is pending. */
-				<span className="shrink-0">
-					<Spinner size="sm" label={busyLabel} />
-				</span>
-			) : option.meta ? (
-				<span className="shrink-0 font-mono text-ink-dim text-mono-sm">
-					{option.meta}
-				</span>
-			) : null}
-		</div>
-	),
+					<span className="shrink-0">
+						<Spinner size="sm" label={busyLabel} />
+					</span>
+				) : option.meta ? (
+					<span className="shrink-0 font-mono text-ink-dim text-mono-sm">
+						{option.meta}
+					</span>
+				) : null}
+			</div>
+		);
+	},
 );
 PickerRow.displayName = "PickerRow";
 
@@ -829,19 +864,21 @@ export const PickerHost: FC<PickerHostProps> = ({
 	loadError = null,
 	notice = null,
 	noticeDetail = null,
-	emptyText = "Nothing matches.",
+	emptyText = t("ui.chat.pickers.picker_host.nothing_matches"),
 	emptyAction,
-	searchPlaceholder = "Search",
+	searchPlaceholder = t("ui.chat.pickers.picker_host.search"),
 	onPick,
 	form,
 	onSubmit,
-	submitLabel = "Apply",
+	submitLabel = t("ui.chat.pickers.picker_host.apply"),
 	submitDisabled = false,
 	actions,
 	result = null,
 	busy = false,
+	picksWhileBusy = false,
+	blockedHint,
 	busyText,
-	busyLabel = "Applying the change",
+	busyLabel = t("ui.chat.pickers.picker_host.applying_the_changea9b670"),
 	wide = false,
 	shell = "dialog",
 	bodyLabel,
@@ -849,6 +886,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 	body,
 	bodyScrolls = false,
 }) => {
+	useI18nLocale();
 	const listId = useId();
 	/*
 	 * Hide the native browser view while this modal is up.
@@ -861,7 +899,9 @@ export const PickerHost: FC<PickerHostProps> = ({
 	 * way. Registered here, in the one funnel BOTH hosts render through, rather
 	 * than in each panel, so a picker added tomorrow inherits it.
 	 */
-	useSuppressBrowserView(open, "panel-picker");
+	// A modal presentation (the shell below), not a popover: it covers the content
+	// area with a scrim, so the dialog rule — always pause while open — is right.
+	useSuppressBrowserView(open, "dialog", "panel-picker");
 	const [query, setQuery] = useState("");
 	// The keyboard's selection: the row Enter picks, and the row
 	// `aria-activedescendant` names. Moved by the arrow keys only — see
@@ -1167,7 +1207,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 
 	const pick = useCallback(
 		async (option: PickerOption | undefined) => {
-			if (!option || option.disabled || busy) return;
+			if (!option || option.disabled || (busy && !picksWhileBusy)) return;
 			/*
 			 * A CONNECT PICK IS NOT MARKED (QA round 1, Q-1).
 			 *
@@ -1184,7 +1224,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 			}
 			await onPick?.(option.value, option);
 		},
-		[onPick, busy],
+		[onPick, busy, picksWhileBusy],
 	);
 	/*
 	 * Handler identities the memoized rows depend on.
@@ -1303,7 +1343,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 					inputRef.current?.focus();
 				}}
 			>
-				<div className="flex flex-col gap-1 px-5 pt-5 pr-12">
+				<div className="flex flex-col gap-1 px-5 pt-5 pe-12">
 					<DialogTitle className="text-heading text-ink">{title}</DialogTitle>
 					{description ? (
 						<DialogDescription className="text-body-sm text-ink-muted">
@@ -1332,7 +1372,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 						 */}
 						<div className="relative">
 							<Search
-								className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-2.5 size-4 text-ink-dim"
+								className="-translate-y-1/2 pointer-events-none absolute top-1/2 start-2.5 size-4 text-ink-dim"
 								aria-hidden="true"
 							/>
 							<Input
@@ -1348,7 +1388,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 								onChange={(event) => setQuery(event.target.value)}
 								onKeyDown={onKeyDown}
 								placeholder={searchPlaceholder}
-								className="pl-8"
+								className="ps-8"
 								autoComplete="off"
 								spellCheck={false}
 							/>
@@ -1381,7 +1421,10 @@ export const PickerHost: FC<PickerHostProps> = ({
 						)}
 						{bodyKind === "loading" ? (
 							<div className="flex h-24 items-center justify-center">
-								<Spinner size="md" label="Loading" />
+								<Spinner
+									size="md"
+									label={t("ui.chat.pickers.picker_host.loading")}
+								/>
 							</div>
 						) : bodyKind === "error" ? (
 							<p className="px-2 py-3 text-body-sm text-danger">{loadError}</p>
@@ -1503,7 +1546,9 @@ export const PickerHost: FC<PickerHostProps> = ({
 							 */
 							role={shell === "panel" ? "region" : undefined}
 							aria-label={
-								shell === "panel" ? (bodyLabel ?? PANEL_BODY_LABEL) : undefined
+								shell === "panel"
+									? (bodyLabel ?? PANEL_BODY_LABEL())
+									: undefined
 							}
 							tabIndex={shell === "panel" ? 0 : undefined}
 							/*
@@ -1580,7 +1625,18 @@ export const PickerHost: FC<PickerHostProps> = ({
 
 				{result && (
 					<div className="px-5 pt-3">
+						{/*
+						 * `data-picker-result` is the TONE, published for the same reason
+						 * every other scene hook here is a data attribute: a capture can
+						 * read the sentence, and only this attribute says whether the pick
+						 * was applied or refused without a scene matching copy (which the
+						 * i18n catalogues make locale-dependent). The draft scenes read it
+						 * to require that what the dialog CLAIMS and what the pane RECORDED
+						 * agree (issue #1265) - a success sentence over an unrecorded dial
+						 * is exactly the silent drop that route must not ship.
+						 */}
 						<output
+							data-picker-result={result.tone}
 							className={cn(
 								"block rounded-md border px-3 py-2 text-body-sm",
 								TONE_CLASS[result.tone],
@@ -1606,7 +1662,9 @@ export const PickerHost: FC<PickerHostProps> = ({
 					 * dialog that is not already bounded by a column.
 					 */}
 					<span className="min-w-0 truncate text-ink-dim text-meta">
-						{busy ? (
+						{blockedHint ? (
+							blockedHint
+						) : busy ? (
 							/*
 							 * `Working` was the whole of the feedback while a pick was in flight,
 							 * and a cold backend bind measures 1.1-4.2 s — long enough that the
@@ -1713,7 +1771,15 @@ export const PickerCheck: FC<{
 	onCheckedChange: (checked: boolean) => void;
 	children: ReactNode;
 	tone?: "muted" | "ink";
-}> = ({ checked, onCheckedChange, children, tone = "muted" }) => {
+	/** Keep a consent control inert while its authoritative target is unknown. */
+	disabled?: boolean;
+}> = ({
+	checked,
+	onCheckedChange,
+	children,
+	tone = "muted",
+	disabled = false,
+}) => {
 	const id = useId();
 	return (
 		<div className="flex items-start gap-2">
@@ -1721,13 +1787,18 @@ export const PickerCheck: FC<{
 				className="mt-0.5"
 				id={id}
 				checked={checked}
+				disabled={disabled}
 				onCheckedChange={(next) => onCheckedChange(next === true)}
 			/>
 			<Label
 				htmlFor={id}
 				className={cn(
 					"font-normal text-body-sm",
-					tone === "ink" ? "text-ink" : "text-ink-muted",
+					disabled
+						? "text-ink-disabled"
+						: tone === "ink"
+							? "text-ink"
+							: "text-ink-muted",
 				)}
 			>
 				{children}

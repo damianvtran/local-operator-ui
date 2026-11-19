@@ -1,0 +1,86 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "1703be2b4196-r2",
+  "locale": "ur",
+  "status": "passed",
+  "round": 2,
+  "previous_receipt": {
+    "path": "audit-ur-r1.json",
+    "sha256": "d068dcfa93fa630cfebc755bf0cd4a899dda34849dffb4e65fce536914dc9e5a"
+  },
+  "independent_from_translator_session": "prB1-tr-ur (openai/gpt-6.1-sol)",
+  "native_speaker_review": false,
+  "scope": "Round 2 on final working-tree bytes over HEAD 25eabf1aff: the 24 keys added by en 88d2ad3b7d; diff vs f132aad424 = 8 remediated keys; all other keys byte-identical",
+  "dispositions": {
+    "UR-1": "fixed",
+    "UR-2": "fixed",
+    "UR-3": "fixed (=1 restored; one arm kept as in run_details.mcp.tool_count)",
+    "UR-4": "deferred to programme glossary (no change in keys)",
+    "UR-N1": "fixed",
+    "UR-N2": "unchanged",
+    "UR-N3": "unchanged (pre-existing locale split)",
+    "D2": "accepted",
+    "D4": "accepted"
+  },
+  "namespaces": {
+    "ui.chat.canonical": {
+      "status": "passed",
+      "sha256": {
+        "ur": "f568fbd1e90edfbdd05d17b0addf29e14bb88fb4540b5f021b901691f0bbde60",
+        "en": "dca993aa47b9c7c6287aadf423a750f0c923ff062eaf817f229d6b292a451be5"
+      },
+      "findings": [
+        {
+          "id": "UR-4",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.link_actions.open_in_canvas",
+          "keys": [
+            "ui.chat.canonical.link_actions.open_in_canvas",
+            "ui.chat.canonical.link_actions.too_large_note",
+            "ui.chat.canonical.link_actions.too_large_title"
+          ],
+          "current": "Canvas (Latin)",
+          "problem": "Mixed-script surface name, consistent with the locale's 29 pre-existing Latin uses; glossary has no canvas row",
+          "suggestion": "No change here; programme glossary to record the call",
+          "disposition": "deferred"
+        },
+        {
+          "id": "UR-5",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.working_line.running_tools",
+          "current": "=1 {1 ٹول چل رہا} one {{count_display} ٹول چل رہا} other {{count_display} ٹولز چلا رہا}",
+          "problem": "Singular arms switched to intransitive چل رہا ('1 tool is running') while other arm and running_tool '{tool} چلا رہا' are transitive (the assistant running tools); grammatical but the voice changes with the count",
+          "suggestion": "=1 {1 ٹول چلا رہا} one {{count_display} ٹول چلا رہا}",
+          "disposition": "new"
+        },
+        {
+          "id": "UR-N2",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.link_actions.too_large_note",
+          "current": "Canvas کے پیش منظر کے لیے بہت بڑی فائل",
+          "problem": "38 chars at the ~38-char budget",
+          "suggestion": "Canvas پیش منظر کے لیے بہت بڑی",
+          "disposition": "unchanged"
+        },
+        {
+          "id": "UR-N3",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.link_actions.open_in_default_app",
+          "current": "ڈیفالٹ ایپ میں کھولیں",
+          "problem": "Locale splits ڈیفالٹ ایپ vs پہلے سے مقرر ایپ (ui.canvas.file_viewer_state)",
+          "suggestion": "Settle locale-wide; no change required here",
+          "disposition": "unchanged"
+        }
+      ]
+    },
+    "ui.chat.attachments": {
+      "status": "passed",
+      "sha256": {
+        "ur": "7b5758e2fc6f4bc7060a50fc59f0aa7c5e127cd345f291724996f86566abad61",
+        "en": "1a5709a63c44655e0d96ec39ef87ddfd4715a811b6de2f29e851080a10dd42e7"
+      },
+      "findings": []
+    }
+  }
+}

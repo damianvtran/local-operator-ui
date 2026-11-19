@@ -1,3 +1,11 @@
+import { type MessageKey, t } from "../../i18n";
+
+/** The catalogue keys the cause table may name: only the setup-cause sentences. */
+export type SetupCauseKey = Extract<
+	MessageKey,
+	`ui.installer.setup_cause.${string}`
+>;
+
 /**
  * The failure classes a user can act on, matched on the error's own words.
  *
@@ -12,20 +20,28 @@
  *
  * A second table in the update path would be a second answer to "what does ENOSPC
  * mean to this user", and the two would drift the first time one was reworded, so
- * both callers ask this one. It is deliberately import-free: `update-service.ts`
- * cannot import `backend-installer.ts` (that module pulls the three platform
- * install scripts in as `?raw`, which the update-robustness bundle has no loader
- * for - measured, in this file's own earlier form), so the shared home has to be a
- * module with no dependencies of its own.
+ * both callers ask this one. It stays free of anything platform-bound:
+ * `update-service.ts` cannot import `backend-installer.ts` (that module pulls the
+ * three platform install scripts in as `?raw`, which the update-robustness bundle
+ * has no loader for - measured, in this file's own earlier form), so the shared
+ * home has to be a module with no platform dependencies of its own. Its one
+ * import is the catalogue translator (`../../i18n`), which the update path already
+ * bundles.
+ *
+ * THE TABLE HOLDS CATALOGUE KEYS, NOT SENTENCES (i18n slice S1): both callers
+ * put the cause in front of a person - the installer window and the
+ * `backend-update-error` panel - so the sentence is resolved through `t()` at the
+ * moment it is read, in the locale in force then. The patterns stay English on
+ * purpose: they match the machine's own words (errno, pip, the TLS stack).
  *
  * Order is the decision, not an accident: a full disk is the one cause whose
  * remedy is the user's (`free space`), and it can look like a missing file, so it
  * is tested first.
  */
-export const SETUP_FAILURE_CAUSES: Array<[RegExp, string]> = [
+export const SETUP_FAILURE_CAUSES: Array<[RegExp, SetupCauseKey]> = [
 	[
 		/ENOSPC|No space left|not enough (?:free )?space/i,
-		"This Mac ran out of disk space while setting up the backend. Free some space and retry.",
+		"ui.installer.setup_cause.disk_full",
 	],
 	[
 		/*
@@ -42,7 +58,7 @@ export const SETUP_FAILURE_CAUSES: Array<[RegExp, string]> = [
 		 * alone, and nothing in the previous sentence mentioned it.
 		 */
 		/certificate has expired|certificate is not yet valid|not valid at this time/i,
-		"Local Operator read the package index's certificate as expired or not yet valid. A wrong clock is the usual cause - check this machine's date and time and retry; if the clock is right, the certificate itself has expired and the index's operator has to renew it.",
+		"ui.installer.setup_cause.clock_or_expired",
 	],
 	[
 		/*
@@ -80,7 +96,7 @@ export const SETUP_FAILURE_CAUSES: Array<[RegExp, string]> = [
 		 * beside this.
 		 */
 		/invalid peer certificate|UnknownIssuer|SSLCertVerificationError|CERTIFICATE_VERIFY_FAILED|certificate verify failed|problem confirming the ssl certificate|certificate is not trusted/i,
-		"Local Operator could not verify the package index's secure connection, which is usually a network that inspects it (a corporate proxy or firewall). Ask IT for the root certificate and add it to your system certificate store - this app already trusts that store - then retry.",
+		"ui.installer.setup_cause.tls_interception",
 	],
 	[
 		/*
@@ -95,11 +111,11 @@ export const SETUP_FAILURE_CAUSES: Array<[RegExp, string]> = [
 		 * are pip's and the resolver's own words for "the network is the problem".
 		 */
 		/Could not find a version|No matching distribution|ConnectionError|connection error|Temporary failure in name resolution|Failed to establish a new connection/i,
-		"Local Operator could not reach the package index, which is usually the network or a proxy. Check the connection and retry.",
+		"ui.installer.setup_cause.unreachable",
 	],
 	[
 		/Another Local Operator instance is preparing/i,
-		"Another copy of Local Operator is setting up its backend right now. Retry in a moment.",
+		"ui.installer.setup_cause.locked",
 	],
 	[
 		/*
@@ -112,11 +128,11 @@ export const SETUP_FAILURE_CAUSES: Array<[RegExp, string]> = [
 		 * follows under `The app recorded:`.
 		 */
 		/did not become healthy|Backend smoke|exited with/i,
-		"The backend was installed but did not start correctly.",
+		"ui.installer.setup_cause.not_started",
 	],
 	[
 		/ENOENT|no such file or directory|did not match its signed seed/i,
-		"A file the setup needed was missing, which usually means the download or the copy did not finish.",
+		"ui.installer.setup_cause.file_missing",
 	],
 ];
 
@@ -130,7 +146,6 @@ export const SETUP_FAILURE_CAUSES: Array<[RegExp, string]> = [
  */
 export function setupFailureCause(error: unknown): string | null {
 	const raw = error instanceof Error ? error.message : String(error);
-	return (
-		SETUP_FAILURE_CAUSES.find(([pattern]) => pattern.test(raw))?.[1] ?? null
-	);
+	const key = SETUP_FAILURE_CAUSES.find(([pattern]) => pattern.test(raw))?.[1];
+	return key === undefined ? null : t(key);
 }

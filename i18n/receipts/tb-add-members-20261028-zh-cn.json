@@ -1,0 +1,30 @@
+{
+	"auditor": "i18n-auditor",
+	"agent": "i18n-auditor",
+	"model": "kimi/k3.1-pro",
+	"model_note": "Session header states kimi/k3.1-pro. During this run the primary provider returned quota HTTP 429 and the harness fell back through anthropic/claude-sonnet-5-5 and openai/gpt-6-astra to radient/auto; the audit work was performed under that fallback chain. The header string is recorded per the coordinator's instruction, with the fallback disclosed here.",
+	"instance": "tb-add-members-20261028-zh-cn",
+	"date": "2026-10-28",
+	"status": "passed",
+	"namespace": "ui.teamBridge",
+	"locale": "zh-CN",
+	"sha256": {
+		"en": "4337253270df03ec0ad4bf00bd27db4f4e8d279376f0dfe5be230fb1d897d01a",
+		"locale": "91b231ba8a3876dd35a7020af82904ae9640c644616c4d244f36eddbae0771c1",
+		"zh-CN": "91b231ba8a3876dd35a7020af82904ae9640c644616c4d244f36eddbae0771c1"
+	},
+	"findings": [
+		{
+			"severity": "MINOR",
+			"key": "ui.teamBridge.members.loading",
+			"note": "「正在加载成员和智能体」用了「成员」，而同一批次其他字符串对目录里的人员一律用「人员」（empty「…的人员或智能体」、no_matches「…的人员或智能体」、load_error「无法加载人员和智能体」、search、invite、description）；且此处加载的候选人尚未入会（reason.already_member「已加入或已受邀」）。这是加载器与无障碍标签（team-bridge-add-members.tsx:243）、报错与空状态会被接连朗读的两组字。建议改为「正在加载人员和智能体」。注：既有 people.loading「正在加载成员」是旧约定，不在本轮范围。"
+		},
+		{
+			"severity": "NIT",
+			"key": "ui.teamBridge.members.state.active",
+			"note": "「active」在本批里出现两种译法：state.active「已加入」与本批 invitation_note 的「有效访问权限」，而全文件 member.active_count 用「有效成员」。建议后续统一措辞，但不要改成「活跃」——context sidecar 明确说 state 是参与状态、不是在线状态（not online presence），「活跃」会读成在线。"
+		}
+	],
+	"scope": "PR add-members: 28 new ui.teamBridge.members.* keys; existing keys unchanged. Read against the English source and its context sidecar, i18n/glossary.md and the locale style guide; checked key parity (28/28, file 269/269 vs English), the one placeholder ({name} in members.remove, exactly once), ICU safety (no ASCII apostrophe that would open an ICU quoted literal), absence of bidi controls/zero-width characters, sentence case, and terminology against the rest of the locale's ui.teamBridge.json. Source-only: no tests, build, Storybook or browser run; no rendered-fit or width claim. No catalogue, ledger or code edit by the auditor.",
+	"independence": "Auditor wrote none of the audited strings; translator was a separate coder subagent."
+}

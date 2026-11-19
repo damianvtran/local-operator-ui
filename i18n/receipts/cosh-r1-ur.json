@@ -1,0 +1,58 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "cosh-r1-ur",
+ "session": "c911849eb597",
+ "date": "2026-10-22",
+ "locale": "ur",
+ "translator": "translator",
+ "translator_session": "94dcc5a13838",
+ "namespace": "ui.agentMessages.settings",
+ "status": "passed",
+ "keys_audited": 3,
+ "scope": "Independent audit of the 3 chief-of-staff hold keys (hold.chief_of_staff, hold.chief_of_staff_unlinked, hold.open) in ur at worktree HEAD 2fb94727d3906e2e2e44cbe91acf95c27aea5105 plus the uncommitted catalogue bytes, with byte-identity verification of the 84 inherited keys against HEAD.",
+ "sha256": {
+  "en": "1fb72465d3c05768918f79164bf1c3f8313160c4d05046a50a52046b2e8c1e3b",
+  "ur": "56cc2a2cffd7f6e05f2e893ad59a76b3bcd4e412059e55beefe79d55e0b27653",
+  "context": "0796c27031e5a3b9a600147e67e1341234f6ed0f5adfd3b7c4f7758a5bcff63d"
+ },
+ "findings": [
+  {
+   "id": "F1",
+   "severity": "MINOR",
+   "key": "ui.agentMessages.settings.hold.chief_of_staff",
+   "current": "{count, plural, one {{count} پیغام آپ کے چیف آف اسٹاف کا منتظر ہے۔ اسے وصول کرنے کے لیے اس گفتگو میں ایک پیغام بھیجیں۔} other {{count} پیغامات آپ کے چیف آف اسٹاف کے منتظر ہیں۔ انہیں وصول کرنے کے لیے اس گفتگو میں ایک پیغام بھیجیں۔}}",
+   "proposed": "{count, plural, one {{count} پیغام آپ کی چیف آف اسٹاف کا منتظر ہے۔ اسے وصول کرنے کے لیے اس گفتگو میں ایک پیغام بھیجیں۔} other {{count} پیغامات آپ کی چیف آف اسٹاف کے منتظر ہیں۔ انہیں وصول کرنے کے لیے اس گفتگو میں ایک پیغام بھیجیں۔}}",
+   "note": "ur.ui.onboarding greeting_done/greeting_owed make the product's chief of staff grammatically feminine ('{name} آپ کی چیف آف اسٹاف ہیں', matching fr cheffe / es jefa); here the possessive is masculine oblique 'آپ کے', so the same persona changes grammatical gender between screens. Grammatical in isolation, hence MINOR, not a meaning defect; 'کا/کے منتظر' still agrees with پیغام/پیغامات."
+  },
+  {
+   "id": "F2",
+   "severity": "MINOR",
+   "key": "ui.agentMessages.settings.hold.chief_of_staff_unlinked",
+   "current": "{count, plural, one {{count} پیغام آپ کے چیف آف اسٹاف کا منتظر ہے۔ اسے وصول کرنے کے لیے سائیڈ بار میں وہ گفتگو تلاش کریں اور اس میں ایک پیغام بھیجیں۔} other {{count} پیغامات آپ کے چیف آف اسٹاف کے منتظر ہیں۔ انہیں وصول کرنے کے لیے سائیڈ بار میں وہ گفتگو تلاش کریں اور اس میں ایک پیغام بھیجیں۔}}",
+   "proposed": "{count, plural, one {{count} پیغام آپ کی چیف آف اسٹاف کا منتظر ہے۔ اسے وصول کرنے کے لیے سائیڈ بار میں وہ گفتگو تلاش کریں اور اس میں ایک پیغام بھیجیں۔} other {{count} پیغامات آپ کی چیف آف اسٹاف کے منتظر ہیں۔ انہیں وصول کرنے کے لیے سائیڈ بار میں وہ گفتگو تلاش کریں اور اس میں ایک پیغام بھیجیں۔}}",
+   "note": "Same feminine-agreement drift as F1 (masculine 'آپ کے' vs onboarding's feminine 'آپ کی چیف آف اسٹاف'); fix both notices together so they stay identical in their first sentence."
+  }
+ ],
+ "inherited_receipt": {
+  "base": "2fb94727d3",
+  "path": "i18n/receipts/102ffa6d185d.json",
+  "sha256": "9cf5311d3e87ee9ff90304782aae6ea3a5535cb78213ad107f9f48c737df1d63",
+  "keys_inherited": 84,
+  "base_target_sha256": "e9e78fec859b048edb6010a196ad6883a7f40e86eacf841392e1bd2f3797ecb4",
+  "unchanged_values_verified": 84
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+ },
+ "validation": {
+  "independence": "Auditor (anthropic/claude-opus-5-5, session c911849eb597) did not translate these strings; translator session 94dcc5a13838. All claims checked against catalogue bytes read from the worktree; helper scripts ran from the auditor's own scratchpad.",
+  "semantics": "Both notices say the messages are waiting (منتظر) and that the reader must SEND one message (ایک پیغام بھیجیں) in that conversation to receive them; nothing implies opening is enough, and nothing implies refused/failed/read/lost. Unlinked variant adds 'find that conversation in the sidebar' (سائیڈ بار میں وہ گفتگو تلاش کریں), matching English. hold.open 'چیف آف اسٹاف کو پیغام بھیجیں' renders 'Message' as a verb, imperative-first in Urdu order, as a navigation label. Register: آپ with respectful imperatives (بھیجیں، تلاش کریں) per style guide. Terms: چیف آف اسٹاف equals ui.onboarding greeting_done/greeting_owed; سائیڈ بار equals ui.shell.sidebar_navigation and ui.settings usage; پیغام/پیغامات and گفتگو consistent with the other 84 keys; انہیں spelling matches repo practice (10 vs 0 انھیں). Only drift: masculine possessive vs onboarding's feminine (F1, F2).",
+  "icu": "Parsed en and ur with @formatjs/icu-messageformat-parser: both notices are a single plural on `count` with arms one/other, {count} present in every arm; hold.open has no arguments, as in en. Formatted with intl-messageformat (ur) for 0, 1, 2, 5, 21, 1000000: one arm only at 1, other otherwise; outputs read and correct.",
+  "plurals": "Intl.PluralRules('ur').resolvedOptions().pluralCategories = [one, other], matching glossary and ur style guide. Agreement per arm verified: one 'پیغام … کا منتظر ہے … اسے'; other 'پیغامات … کے منتظر ہیں … انہیں'.",
+  "typography": "File is NFC; no U+200E/F, U+202A–E, U+2066–9, U+061C, ZW chars or BOM anywhere in the file. Urdu full stop ۔ ends each sentence; no Latin . , ? ; or Hindi danda in the hold values. {count} renders as a Latin-digit run at the logical start (right edge in RTL), per style guide (Latin digits v1); unformatted large counts mirror the English source's plain {count}. Key set and order equal English (87/87); the 84 non-hold values are byte-identical to `git show HEAD:` (base sha256 e9e78fec…ecb4, which equals the inherited receipt's ur sha256 for this namespace); file ends with a trailing newline like base.",
+  "overflow": "hold.open is 28 characters vs 22 English (~27% longer; ~28 cells per the ur width rule, Nastaliq glyphs taller). It is a shrink-0 ghost sm button beside a min-w-0 flex-1 wrapping <p>, so the paragraph absorbs the width; no shorter phrasing preserves both the verb and the recipient ('پیغام بھیجیں' alone loses who), so no finding — flagged for a rendered check at the narrowest settings-pane width. Notices: one 231 vs 244, unlinked 293 vs 286 characters (wrapping paragraph, no budget issue).",
+  "limitations": "Browser unavailable; no screenshots/rendered-fit claim. No catalogue/code edits; no files created in the worktree."
+ }
+}

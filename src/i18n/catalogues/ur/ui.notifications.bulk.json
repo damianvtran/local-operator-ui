@@ -1,0 +1,14 @@
+{
+	"ui.notifications.bulk.dismiss_all": "سب ہٹائیں",
+	"ui.notifications.bulk.read_hint": "پڑھا ہوا نشان لگانے کے بعد بھی اپ ڈیٹس “سب” میں رہتی ہیں۔",
+	"ui.notifications.bulk.dismiss_hint": "ہٹانے سے اپ ڈیٹس نظر نہیں آتیں۔ واپس کریں سے وہ بحال ہو جاتی ہیں۔",
+	"ui.notifications.bulk.frozen_hint": "یہ انتخاب طے ہو چکا ہے۔ نئے آنے والے آئٹمز اس میں شامل نہیں ہیں۔",
+	"ui.notifications.bulk.confirm_title": "{count, plural, one {# اپ ڈیٹ ہٹائیں؟} other {# اپ ڈیٹس ہٹائیں؟}}",
+	"ui.notifications.bulk.beyond_page": "اس کا اثر لوڈ کیے گئے صفحے سے باہر کی اپ ڈیٹس پر بھی ہوگا۔",
+	"ui.notifications.bulk.asks_hint": "بے جواب سوالات برقرار رہیں گے۔ انہیں الگ دیکھیں: سوال ہٹانے کا عمل واپس نہیں کیا جا سکتا۔",
+	"ui.notifications.bulk.review_asks": "بے جواب سوالات دیکھیں",
+	"ui.notifications.bulk.select_error": "اس منظر کے آئٹمز منتخب نہیں ہو سکے۔ دوبارہ کوشش کریں۔",
+	"ui.notifications.bulk.update_required": "تمام متعلقہ نتائج منتخب کرنے کے لیے Local Operator اپ ڈیٹ کریں۔",
+	"ui.notifications.bulk.partial": "{changed} تبدیل · {skipped} چھوڑ دیے گئے",
+	"ui.notifications.bulk.exclusion_limit": "آپ زیادہ سے زیادہ 500 آئٹمز خارج کر سکتے ہیں۔ الگ الگ آئٹمز چننے کے لیے انتخاب صاف کریں۔"
+}

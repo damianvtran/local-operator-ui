@@ -1,0 +1,403 @@
+{
+  "schema": 1,
+  "instance": "d967d245-s3b-hi",
+  "agent": "translation-auditor",
+  "auditor": "translation-auditor",
+  "model": "anthropic/claude-sonnet-5-5",
+  "fallback": "none",
+  "model_provenance": "Every read, parse, render and verdict in this receipt ran on anthropic/claude-sonnet-5-5 (session d967d2456324, role translation-auditor, team lopdev); no fallback model was used.",
+  "independence": "Fresh session d967d2456324; did not write or edit any hi catalogue (earlier receipt 11add240-s3a-hi was read only to verify each of its 13 findings against the bytes on disk, not to inherit its verdicts). The only file created in the repo is this receipt.",
+  "session": "d967d2456324",
+  "locale": "hi",
+  "branch": "i18n/composer-keying",
+  "head": "a151ba95325",
+  "pr": "damianvtran/local-operator-ui#1761",
+  "date": "2026-11-08",
+  "status": "changes_requested",
+  "scope": "ui.chat batch A remediation (slash 89, page_chrome 26, header_menu 12, interrupt 6, fast_mode 10) + batch B1 (session_readout 54, ask_queue 44, session_spend 32, aside 24, device_move 24): all 321 keys, full read of en value, hi value and .context.json sidecar (UNCOMMITTED translator files on disk)",
+  "key_count": 321,
+  "inputs_sha256": {
+    "glossary (local-operator/i18n/glossary.md)": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "style guide (local-operator/i18n/style-guides/hi.md)": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+  },
+  "prior_findings_verification": {
+    "hi-s3a-01": "APPLIED — ui.chat.slash.arg.model_aggregated = समेकित (matches shipped destination_pickers.aggregated)",
+    "hi-s3a-02": "APPLIED — removal_many other arm = # क्रेडेंशियल्स; renders 2→'2 क्रेडेंशियल्स हटाएँ', 1→'1 क्रेडेंशियल हटाएँ'",
+    "hi-s3a-03": "APPLIED — skill.click_footer = क्लिक करने पर ${name} पूरा हो जाता है।",
+    "hi-s3a-04": "APPLIED — locked.taken = …शब्दों को उसका आर्ग्युमेंट समझ लिया गया, और कमांड लाइन पर लिखा मान सहेजा नहीं जाता।",
+    "hi-s3a-05": "APPLIED — mcp_status.not_started = कनेक्ट नहीं है",
+    "hi-s3a-06": "APPLIED — provider_state.local_ready = कॉन्फ़िगर किया गया सर्वर",
+    "hi-s3a-07": "APPLIED — empty.not_reported = अभी रिपोर्ट नहीं किया गया। Enter कमांड चलाता है।",
+    "hi-s3a-08": "APPLIED — at.no_match_files / at.no_match_projects now use curly “{query}”; {scope}/{query} both preserved",
+    "hi-s3a-09": "APPLIED — dispatch.could_not_run = /{name} नहीं चली: {reason} (aligned with the shipped feminine sibling)",
+    "hi-s3a-10": "APPLIED — page_chrome.options.resume = जारी रखें",
+    "hi-s3a-11": "APPLIED — page_chrome.aside_text_only = …पूछने के लिए अटैच की गई फ़ाइलें हटाएँ।",
+    "hi-s3a-12": "RETAINED as proposed (keep फिर कोशिश हो रही है…; 2.1x English, same family as the shipped Retrying/फिर कोशिश हो रही है)",
+    "hi-s3a-13": "APPLIED — interrupt.idle_disputed ends यह व्यू पुराना हो सकता है।; no new defect introduced (parsed, placeholders unchanged)"
+  },
+  "checks": [
+    "node --test scripts/i18n/locale-parity.test.mjs: tests 44, pass 44, fail 0 — all six [hi] checks pass (ships messages, one-namespace-per-key, carries every key, only English keys, preserves ICU placeholders, not an English stub). No hi value is a non-legitimate English copy: the only two values identical to English are ui.chat.ask_queue.deadline.with_subject '{subject} {deadline}' and ui.chat.session_spend.summary.basis_amount '{label} {amount}' (placeholder-only).",
+    "node scripts/i18n/context-parity.mjs: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (none in the ten audited namespaces)",
+    "mechanical pass over all 321 keys (@formatjs/icu-messageformat-parser, own script in scratchpad): key set AND key order identical en/hi in all ten namespaces; every en and hi value parses; argument-name sets, number styles, select arms (yes/other, on/other) and plural/select node sets identical en/hi; every hi plural has only one/other (+ =0 in rail.open/close, as the English) — correct CLDR for hi; no whitespace other than U+0020 (no NBSP, U+200B–200F, U+2028–202F, U+2066–2069, FEFF), no ZWJ/ZWNJ, no non-ASCII char inside any ICU argument header, all values NFC, no double spaces, leading space of summary.subagent_part preserved; ASCII full stops only inside the shipped duration abbreviations घं. / मि. / सेक. (shipped notifications.time.* uses the same घं./मि.)",
+    "English-stub scan: no hi value lacks Devanagari except the two placeholder-only values above; Latin runs in B1 values are only API-, Enter, Esc, /btw, /stop, {cap} shortcut and ICU keywords",
+    "intl-messageformat (locale hi) rendered every plural/select key at counts 0,1,2,5,11,21,100,1000000: removal_many (1 and 0 singular, 2+ क्रेडेंशियल्स), stopped_children/jobs/both (one covers 0 and 1 as in style guide hi.md; 10,00,000 Indian grouping), rail.open/close (count 0 omits the clause; 'N इंतज़ार में'), records_unpriced (invariant रिकॉर्ड, correct for hi), fast_mode.dial_differs 4/4 combinations, ask_queue.response.dismissed with/without via. No rendering error.",
+    "spliced fragments rendered with realistic arguments: asks chip 'N सवाल इंतज़ार में · सबसे जल्दी वाला सवाल 12 मि. में समाप्त होगा' for 45 सेक./12 मि./3 घं./2 दिन and now_long/now_short; moved_on; label_expand with urgent suffix; timed_out with a duration and with 'कुछ देर'; session_readout access titles/descriptions with owner='Damian का MacBook Pro' AND the fallback 'मालिक डिवाइस' ('मालिक डिवाइस से Anthropic की पहुँच', '…मालिक डिवाइस को अपने आप सत्यापित करेगा') — all grammatical; effort detail/draft confirmations with levels lists; spend summaries with and without subagent_part; tokens_of_window '2,00,000 में से 12,345 टोकन (200k विंडो)'. DEFECT: device_move.another_device / other_device spliced into shipped move_in_flight / copy_loss render 'दूसरा डिवाइस पर' and 'वह दूसरा डिवाइस की कॉपी' (hi hi-s3b-01/02).",
+    "glossary/style guide vs 8,093 shipped hi values (grep): उधार लेना (borrow), पहुँच (access), मेश (mesh, not used here), डिवाइस, सवाल (ask), अलग बातचीत (aside), प्रयास / तर्क का प्रयास (effort), खर्च (spend), कीमत (price), बिल किया गया, अनुमानित, ट्रैक, उप-एजेंट, रनटाइम, बैकएंड, पेयर, कतार में, समाप्त होगा (notifications.row.ask_expires), समय-सीमा खत्म हो गई (chat.asks.clause.timed_out), अवधि खत्म (expired), प्रति (chat.device.*), साइन-इन (noun)/साइन इन करें (verb), फ़ास्ट मोड, रीडिंग, टर्न, घं./मि. — consistent. Drifts reported: आदान-प्रदान vs सवाल-जवाब (hi-s3b-04), ट्रैक किए vs ट्रैक किए गए (hi-s3b-06), मालिक vs ओनर (hi-s3b-09, shipped itself mixed). संदर्भ (context.title) matches chat.session_status.context_heading; shipped pickers use कॉन्टेक्स्ट — pre-existing, not a finding against these keys.",
+    "register: आप-register polite imperative throughout (हटाएँ, चुनें, दबाएँ, कोशिश करें); no T/V drift; status lines use the shipped 'passive — consequence' pattern",
+    "overflow: the only short labels above 1.5x the English by code points: status_strip.retry / strip.draft_failed.retry (फिर कोशिश करें, 1.8x, identical to the 5+ shipped retry buttons), effort.level.max (अधिकतम, 1.67x, 6 cells), status_strip.retrying (1.56x). Asks chip with subject is ~1.65x — flagged NIT hi-s3b-10 for a rendered check. No context sidecar carries a length budget.",
+    "bidi: not applicable (hi is LTR); fribidi not needed",
+    "Devanagari digits: none; Latin digits via the formatter (10,00,000 grouping verified) as the style guide requires",
+    "shipped-catalogue observation OUT OF SCOPE (not edited, not a finding on these keys): ui.mesh.mesh_drop.this_device 'यह डिवाइस' is substituted before की/को in copy_loss, rendering 'Mac mini की कॉपी तब हटती है जब यह डिवाइस को मिल जाती है।' — needs the oblique 'इस डिवाइस' (pre-existing shipped ui.mesh string)"
+  ],
+  "namespaces": {
+    "ui.chat.slash": {
+      "namespace": "ui.chat.slash",
+      "status": "passed",
+      "result": "clean",
+      "keys_read": 89,
+      "sha256": {
+        "en": "7d9ae8c2ff74de40aec65a6bddb7ead03abbc537a04a8366b5c452d7a057be7c",
+        "hi": "79b9dbfff7a7fdd41ac82b1e63ef3c65d65e5a21b8a7feb7c52ae9d10b0d19cb"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.slash.json",
+        "target": "src/i18n/catalogues/hi/ui.chat.slash.json",
+        "context": "src/i18n/catalogues/en/ui.chat.slash.context.json"
+      },
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": []
+    },
+    "ui.chat.page_chrome": {
+      "namespace": "ui.chat.page_chrome",
+      "status": "passed",
+      "result": "clean",
+      "keys_read": 26,
+      "sha256": {
+        "en": "ad54b5d07aa2de04c8ffab1403fc6adb2b96adcbcb24eddeba99e0ff0425c73e",
+        "hi": "b015aa3cbd7522780ec76ac4cbe22cb2f1dd66bc9c8df63d9c0f1b971c47ae42"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.page_chrome.json",
+        "target": "src/i18n/catalogues/hi/ui.chat.page_chrome.json",
+        "context": "src/i18n/catalogues/en/ui.chat.page_chrome.context.json"
+      },
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": []
+    },
+    "ui.chat.header_menu": {
+      "namespace": "ui.chat.header_menu",
+      "status": "passed",
+      "result": "clean",
+      "keys_read": 12,
+      "sha256": {
+        "en": "2bfaecb5b8bcba8f9b46087bb404d139566a8032578a0e60c3f8b449670e73d4",
+        "hi": "6c90b1da39d7919d2a0f32ba814324237b134156dcced3d12b7ad71c995f77ad"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.header_menu.json",
+        "target": "src/i18n/catalogues/hi/ui.chat.header_menu.json",
+        "context": "src/i18n/catalogues/en/ui.chat.header_menu.context.json"
+      },
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": []
+    },
+    "ui.chat.interrupt": {
+      "namespace": "ui.chat.interrupt",
+      "status": "passed",
+      "result": "clean",
+      "keys_read": 6,
+      "sha256": {
+        "en": "c360665564dcd59d5656131902ed17f4a5912914844feabc1e790ded2d2bd603",
+        "hi": "bee7b77fff54f58e0252cfca9a9bafba4e675ff7c0c91f0e4246ee581e0f907e"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.interrupt.json",
+        "target": "src/i18n/catalogues/hi/ui.chat.interrupt.json",
+        "context": "src/i18n/catalogues/en/ui.chat.interrupt.context.json"
+      },
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": []
+    },
+    "ui.chat.fast_mode": {
+      "namespace": "ui.chat.fast_mode",
+      "status": "passed",
+      "result": "clean",
+      "keys_read": 10,
+      "sha256": {
+        "en": "c6fd6fd1dfd776d099a74c866be11f0a8e821a4a1fa9beb7bccde11de095f412",
+        "hi": "a694147abfbdd66db6b3813792e8f76b4e58b2a557d7dea018cbcbe28ea36479"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.fast_mode.json",
+        "target": "src/i18n/catalogues/hi/ui.chat.fast_mode.json",
+        "context": "src/i18n/catalogues/en/ui.chat.fast_mode.context.json"
+      },
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": []
+    },
+    "ui.chat.session_readout": {
+      "namespace": "ui.chat.session_readout",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "keys_read": 54,
+      "sha256": {
+        "en": "613dad2f1acee22dd7d6e4b7c482b1caa8ec49938f207b8bee52a071a18c4386",
+        "hi": "e29710829ba07a379c58db265a968e86b313e4737a121958567e4d73850f14cb"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.session_readout.json",
+        "target": "src/i18n/catalogues/hi/ui.chat.session_readout.json",
+        "context": "src/i18n/catalogues/en/ui.chat.session_readout.context.json"
+      },
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 2
+      },
+      "findings": [
+        {
+          "id": "hi-s3b-08",
+          "severity": "NIT",
+          "key": "ui.chat.session_readout.effort.detail.not_reported",
+          "current": "इस सत्र ने अभी अपना तर्क का प्रयास नहीं बताया है। वह अगले टर्न के बाद दिखेगा, या अभी तय करने के लिए {command} चलाएँ।",
+          "proposed": "इस सत्र ने अभी तर्क का प्रयास नहीं बताया है। वह अगले टर्न के बाद दिखेगा, या अभी तय करने के लिए {command} चलाएँ।",
+          "reason": "\"अपना तर्क का प्रयास\" stacks a possessive on a genitive phrase; the shipped term is \"तर्क का प्रयास\" (chat.pickers.effort.title) and needs no अपना."
+        },
+        {
+          "id": "hi-s3b-09",
+          "severity": "NIT",
+          "key": "ui.chat.session_readout.access.owner_fallback",
+          "current": "मालिक डिवाइस",
+          "proposed": "keep, or record the decision: मालिक डिवाइस",
+          "reason": "Shipped composer-picker keys for the same session owner say \"ओनर\" (chat.pickers.context_panel.asking_the_owner, destination_pickers.session_runs_on_the_owner, failovers_panel…), while 24 other shipped keys, the bridge-delivery rows and this namespace say \"मालिक\". The shipped catalogue is itself mixed; मालिक is the majority and renders correctly in every splice (\"मालिक डिवाइस से Anthropic की पहुँच\", \"…मालिक डिवाइस को अपने आप सत्यापित करेगा\"). Flag only so the style guide records one term."
+        }
+      ]
+    },
+    "ui.chat.ask_queue": {
+      "namespace": "ui.chat.ask_queue",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "keys_read": 44,
+      "sha256": {
+        "en": "6709d1631a00f1fde2d4150770f5a549f4737b95b0d792c47128958e3b83012d",
+        "hi": "5950ce7e3ca25c8b264c26f84662239138d399ce09d1f8ea5d10208c50bc075a"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.ask_queue.json",
+        "target": "src/i18n/catalogues/hi/ui.chat.ask_queue.json",
+        "context": "src/i18n/catalogues/en/ui.chat.ask_queue.context.json"
+      },
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 2
+      },
+      "findings": [
+        {
+          "id": "hi-s3b-10",
+          "severity": "NIT",
+          "key": "ui.chat.ask_queue.deadline.soonest_subject",
+          "current": "सबसे जल्दी वाला सवाल",
+          "proposed": "keep; check width in a rendered chip (alt. \"सबसे पहले समाप्त होने वाला सवाल\" is longer)",
+          "reason": "\"सबसे जल्दी वाला सवाल\" is colloquial and, read alone, could mean \"the quickest ask\"; the chip context (\"… 12 मि. में समाप्त होगा\") disambiguates it. Rendered chip text is ~1.65x the English (\"सबसे जल्दी वाला सवाल 12 मि. में समाप्त होगा\" vs \"soonest ask expires in 12m\"); the code yields the subject at narrow columns, but confirm in a rendered frame."
+        },
+        {
+          "id": "hi-s3b-11",
+          "severity": "NIT",
+          "key": "ui.chat.ask_queue.status.expired",
+          "current": "समय-सीमा खत्म — यह सवाल जवाब देने के लिए बहुत पुराना है; एजेंट से फिर पूछें",
+          "proposed": "अवधि समाप्त — यह सवाल जवाब देने के लिए बहुत पुराना है; एजेंट से फिर पूछें",
+          "reason": "English \"Expired\" and \"Timed out\" (status.timed_out) are different states but both lead with \"समय-सीमा खत्म\" in hi; the clause after the dash disambiguates, so NIT. Shipped uses \"अवधि खत्म हो गई\" for expired attachments (teamBridge.fileCard.expired)."
+        }
+      ]
+    },
+    "ui.chat.session_spend": {
+      "namespace": "ui.chat.session_spend",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "keys_read": 32,
+      "sha256": {
+        "en": "4de17b68d20c7a8ea35b16bdaf466290075029806aa2c95d2c72dc8a225c31dd",
+        "hi": "1f5f1bb936dfe0125840bd1e22a2f8963535d48dcd77feb877537b013893901d"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.session_spend.json",
+        "target": "src/i18n/catalogues/hi/ui.chat.session_spend.json",
+        "context": "src/i18n/catalogues/en/ui.chat.session_spend.context.json"
+      },
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 2,
+        "nit": 0
+      },
+      "findings": [
+        {
+          "id": "hi-s3b-06",
+          "severity": "MINOR",
+          "key": "ui.chat.session_spend.summary.untracked",
+          "keys": [
+            "ui.chat.session_spend.summary.untracked",
+            "ui.chat.session_spend.untracked_basis"
+          ],
+          "current": {
+            "ui.chat.session_spend.summary.untracked": "{amount} अभी बिना ट्रैक किए आधार के{children}",
+            "ui.chat.session_spend.untracked_basis": "अभी बिना ट्रैक किए आधार के"
+          },
+          "proposed": {
+            "ui.chat.session_spend.summary.untracked": "{amount} अभी बिना ट्रैक किए गए आधार के{children}",
+            "ui.chat.session_spend.untracked_basis": "अभी बिना ट्रैक किए गए आधार के"
+          },
+          "reason": "Glossary drift and a clipped participle: the shipped rendering of the same English phrase \"Without a tracked basis\" (ui.chat.pickers.session_report_model.without_a_tracked_basis) is \"बिना ट्रैक किए गए आधार के\"; the new keys drop गए (\"बिना ट्रैक किए आधार के\"), which reads as \"without having tracked the basis\". Rendered: \"$1.54 अभी बिना ट्रैक किए आधार के (≥$0.20 उप-एजेंट सत्र)\"."
+        },
+        {
+          "id": "hi-s3b-07",
+          "severity": "MINOR",
+          "key": "ui.chat.session_spend.duration_explanation",
+          "current": "इस बातचीत में एजेंट ने काम करने में जितना समय लगाया। टर्न के बीच इंतज़ार का समय नहीं गिना जाता।",
+          "proposed": "इस बातचीत में एजेंट के काम करने में लगा समय। टर्न के बीच इंतज़ार का समय नहीं गिना जाता।",
+          "reason": "The first sentence is an unfinished relative clause (\"…जितना समय लगाया।\" with no antecedent), whereas the English is a complete noun phrase. The shipped sibling for the same readout (chat.session_status.duration_explanation) is \"काम में लगा समय; इंतज़ार की अवधि नहीं गिनी जाती।\"."
+        }
+      ]
+    },
+    "ui.chat.aside": {
+      "namespace": "ui.chat.aside",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "keys_read": 24,
+      "sha256": {
+        "en": "23591a418d92d4fbb7e67075c59a8efaee0ba9465bd8554ca2dcc51f539ad725",
+        "hi": "ff260fd3a00b3023cb9ed3a44a44d40e6baa774d4b56a1bc0e836e38b1f11bec"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.aside.json",
+        "target": "src/i18n/catalogues/hi/ui.chat.aside.json",
+        "context": "src/i18n/catalogues/en/ui.chat.aside.context.json"
+      },
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 1
+      },
+      "findings": [
+        {
+          "id": "hi-s3b-04",
+          "severity": "MINOR",
+          "key": "ui.chat.aside.blocked.settling",
+          "keys": [
+            "ui.chat.aside.blocked.settling",
+            "ui.chat.aside.continuation_escape",
+            "ui.chat.aside.declined_options"
+          ],
+          "current": {
+            "ui.chat.aside.blocked.settling": "यह आदान-प्रदान अभी पूरा हो रहा है — जोड़ने से पहले थोड़ा रुकें।",
+            "ui.chat.aside.continuation_escape": "यह अलग बातचीत आगे नहीं बढ़ सकती। इसे बंद करने के लिए Esc दबाएँ, जिससे यह आदान-प्रदान हट जाएगा, फिर /btw से नई शुरू करें।",
+            "ui.chat.aside.declined_options": "इस आदान-प्रदान को रखने के लिए यहीं फिर पूछें, या अलग बातचीत बंद करके उसे हटाने के लिए Esc दबाएँ।"
+          },
+          "proposed": {
+            "ui.chat.aside.blocked.settling": "यह सवाल-जवाब अभी पूरा हो रहा है — जोड़ने से पहले थोड़ा रुकें।",
+            "ui.chat.aside.continuation_escape": "यह अलग बातचीत आगे नहीं बढ़ सकती। इसे बंद करने के लिए Esc दबाएँ, जिससे यह सवाल-जवाब हट जाएगा, फिर /btw से नई शुरू करें।",
+            "ui.chat.aside.declined_options": "इस सवाल-जवाब को रखने के लिए यहीं फिर पूछें, या अलग बातचीत बंद करके उसे हटाने के लिए Esc दबाएँ।"
+          },
+          "reason": "Glossary drift on the aside's \"exchange\": shipped ui.chat.aside.exchange_label (\"The aside exchange\") is \"अलग बातचीत के सवाल-जवाब\", the new keys spell the same noun \"आदान-प्रदान\" in the same panel (3 keys). Align on the shipped सवाल-जवाब, or change both together."
+        },
+        {
+          "id": "hi-s3b-05",
+          "severity": "NIT",
+          "key": "ui.chat.aside.blocked.working",
+          "current": "यह बातचीत काम कर रही है। चलते समय अलग बातचीत जोड़ने से चालू टर्न के बीच में एक संदेश घुस जाएगा।",
+          "proposed": "यह बातचीत काम कर रही है। चलते समय अलग बातचीत जोड़ने पर एक संदेश चालू टर्न के बीच में जुड़ जाएगा।",
+          "reason": "\"घुस जाएगा\" (slips/barges in) is colloquial and slightly negative for a neutral status tooltip; \"जुड़ जाएगा\" is the verb the aside keys use everywhere else (जोड़ना/जुड़ना)."
+        }
+      ]
+    },
+    "ui.chat.device_move": {
+      "namespace": "ui.chat.device_move",
+      "status": "changes_requested",
+      "result": "changes_requested",
+      "keys_read": 24,
+      "sha256": {
+        "en": "2983e0f36bb471841c7937259e24fd5047db0d43c1d7f655984a02a7510c5e6f",
+        "hi": "26465f60bce8f86bacc6424171abd1dde6ac431eadd182b2f460332d309983fe"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.device_move.json",
+        "target": "src/i18n/catalogues/hi/ui.chat.device_move.json",
+        "context": "src/i18n/catalogues/en/ui.chat.device_move.context.json"
+      },
+      "severity_counts": {
+        "blocker": 0,
+        "major": 2,
+        "minor": 0,
+        "nit": 1
+      },
+      "findings": [
+        {
+          "id": "hi-s3b-01",
+          "severity": "MAJOR",
+          "key": "ui.chat.device_move.another_device",
+          "current": "दूसरा डिवाइस",
+          "proposed": "दूसरे डिवाइस",
+          "reason": "The fallback is substituted as {name} into the shipped ui.chat.device.sentence.move_in_flight (\"यह बातचीत {name} पर ले जाई जा रही है\"), where the postposition पर needs the oblique form. Rendered: \"यह बातचीत दूसरा डिवाइस पर ले जाई जा रही है।\" (ungrammatical); with the proposal: \"यह बातचीत दूसरे डिवाइस पर ले जाई जा रही है।\" The shipped sibling ui.chat.header.move_device already says \"दूसरे डिवाइस पर ले जाएँ…\". Fallback-only path (device name unknown), but a hard agreement error in a full sentence."
+        },
+        {
+          "id": "hi-s3b-02",
+          "severity": "MAJOR",
+          "key": "ui.chat.device_move.other_device",
+          "current": "वह दूसरा डिवाइस",
+          "proposed": "उस दूसरे डिवाइस",
+          "reason": "The fallback is substituted as {source} into the shipped ui.mesh.mesh_drop.copy_loss (\"{source} की कॉपी तब हटती है जब {destination} को मिल जाती है\"), where की needs the oblique form. Rendered: \"वह दूसरा डिवाइस की कॉपी तब हटती है…\" (ungrammatical); with the proposal: \"उस दूसरे डिवाइस की कॉपी तब हटती है…\". A real device name renders correctly (\"Mac mini की कॉपी…\"), so only the fallback is broken."
+        },
+        {
+          "id": "hi-s3b-03",
+          "severity": "NIT",
+          "key": "ui.chat.device_move.gate.below_version",
+          "keys": [
+            "ui.chat.device_move.gate.below_version",
+            "ui.chat.device_move.ineligible.no_transfer",
+            "ui.chat.device_move.ineligible.cannot_receive"
+          ],
+          "current": {
+            "ui.chat.device_move.gate.below_version": "यह बैकएंड बातचीत को ले जा नहीं सकता",
+            "ui.chat.device_move.ineligible.no_transfer": "यह बैकएंड अभी बातचीत को ले जा नहीं सकता",
+            "ui.chat.device_move.ineligible.cannot_receive": "बातचीत ले नहीं सकता"
+          },
+          "proposed": {
+            "ui.chat.device_move.gate.below_version": "यह बैकएंड बातचीत को नहीं ले जा सकता",
+            "ui.chat.device_move.ineligible.no_transfer": "यह बैकएंड अभी बातचीत को नहीं ले जा सकता",
+            "ui.chat.device_move.ineligible.cannot_receive": "बातचीत स्वीकार नहीं कर सकता"
+          },
+          "reason": "\"ले जा नहीं सकता\" splits the compound verb ले जाना around the negative in an order that reads as a calque of the English word order; the idiomatic order is \"नहीं ले जा सकता\". \"बातचीत ले नहीं सकता\" for \"cannot receive a move\" can be misread as \"cannot take (the) conversation\"; \"स्वीकार नहीं कर सकता\" is unambiguous and matches the shipped \"गंतव्य … सामग्री सुरक्षित रूप से नहीं ले सकता\" register. Intelligible as written, hence NIT."
+        }
+      ]
+    }
+  }
+}

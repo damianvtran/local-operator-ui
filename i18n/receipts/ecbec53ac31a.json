@@ -1,0 +1,151 @@
+{
+  "schema": 1,
+  "kind": "translation-audit-receipt",
+  "date": "2026-10-25",
+  "round": 2,
+  "agent": "translation-auditor",
+  "auditor": "translation-auditor",
+  "instance": "ecbec53ac31a",
+  "session": "ecbec53ac31a",
+  "team": "lopdev",
+  "locale": "hi",
+  "namespace": "ui.notices",
+  "model": "radient/auto",
+  "model_provenance": "Current resumed run host Model: radient/auto; no fallback notice observed in this resumed turn. Earlier semantic audit was routed to Claude Sonnet5.5 after quota failure; prior receipt completion used openai/gpt-6.1-sol, as disclosed in original receipt/session report. No provider identity beyond current host route is independently exposed.",
+  "translator": {
+    "agent": "translator",
+    "instance": "6a81502a5609",
+    "model": "radient/auto",
+    "provenance": "Identity supplied by manager task, not independently observed model routing."
+  },
+  "independence": "Auditor session ecbec53ac31a is distinct from translator job6a81502a5609; no translation edits by this auditor.",
+  "frozen_source_commit": "7b32fd2704b6168d653e717bfc7fa4ddc58686e5",
+  "head": "7b32fd2704b6168d653e717bfc7fa4ddc58686e5",
+  "candidate_status": "Uncommitted target candidate; no activation/commit claim.",
+  "sha256": {
+    "en": "c9556d7d6d8b399bc62f3a35b7bb4d01109f118b1ab29fe47ba70b739552a4e0",
+    "hi": "5bc4f61bbbd080bc3b59e907084f0fb10a05fcb8fb1d46c7f467d563bed566d1",
+    "context": "9a536d75dec597c27281380946b807abdca8ad5c1f7c4e02ba54852a4568c5ee"
+  },
+  "prior_receipt": {
+    "path": "i18n/receipts/hi-ui-notices-delta-audit-7b32fd2704-ecbec53ac31a.json",
+    "sha256": "ed57126a645a6d6aa4db3e7d5f4e64cde9ceba2b42030b270b46306563514121",
+    "target_sha256": "df90a76ad598ec2ff688e4ac139ac2fffd3131ed1c897136d66ea49e25eeba14",
+    "original94_audit": {
+      "path": "i18n/receipts/hi-ui-notices-audit-a32f7349e3.json",
+      "sha256": "809d35039a1af0beecece7f6742de69ddaba3af1d333f2bef71e419ebd53f718",
+      "head": "a32f7349e3efff461cdfa63674b86ddbc21bf955",
+      "original_key_count": 94,
+      "unchanged_proof": "Executed git show a32f7349e3:src/i18n/catalogues/hi/ui.notices.json; parsed all94 prior key/value entries and verified each equals candidate corresponding value. All94 English values likewise unchanged. Original94 not semantically re-reviewed.",
+      "previous_fixed_findings": [
+        {
+          "id": "HIN-1",
+          "severity": "minor",
+          "status": "fixed",
+          "key": "ui.notices.main.update_hold_body",
+          "verified_value": "संस्करण {version} का अपडेट अभी इंस्टॉल हो रहा है — इस समय ऐप खोलने पर वह रद्द हो जाएगा। {relaunch} इस सूचना पर क्लिक करने से ऐप जल्दी नहीं खुलेगा।",
+          "note": "वर्ज़न is gone: 0 occurrences in all 78 hi namespace files; संस्करण now appears in 58 strings / 64 occurrences, including the update surfaces this notice sits beside. The value is byte-for-byte the first audit's proposed text."
+        },
+        {
+          "id": "HIN-2",
+          "severity": "minor",
+          "status": "fixed",
+          "key": "ui.notices.credentials.unstored",
+          "verified_value": "{count, plural, one {{count} क्रेडेंशियल सहेजा नहीं जा सका} other {{count} क्रेडेंशियल सहेजे नहीं जा सके}} ({keys}); एजेंट को इसकी जानकारी दे दी गई है। दोबारा कोशिश करने के लिए /credential के बाद मान फिर चिपकाएँ।",
+          "note": "The finite verb moved inside both arms: one क्रेडेंशियल सहेजा नहीं जा सका, other {count} क्रेडेंशियल सहेजे नहीं जा सके. The implemented value equals the first audit's proposed text after the required one-arm 1→{count} substitution. Rendered 0/1/2/5/21: the finite verb is masculine singular at 0/1 and masculine plural at 2+, which is the agreement HIN-2 asked for. The noun form in the other arm is HIN-D1 separately."
+        }
+      ],
+      "retained_dispositions": "HIN-D1 remains pre-existing minor; HIN-3 and HIN-4 remain open recorded nits. All counted below."
+    }
+  },
+  "scope": "R2 one-key remediation only; unchanged101 preserved, prior102 structural/8 semantic dimensions carried without reset.",
+  "keys_read": 1,
+  "keys_audited": 1,
+  "key_count": 102,
+  "findings": [
+    {
+      "id": "HIN-D1",
+      "severity": "minor",
+      "status": "pre-existing; not introduced by the remediation",
+      "keys": [
+        "ui.notices.credentials.unstored",
+        "ui.notices.credentials.unconfirmed"
+      ],
+      "key": "ui.notices.credentials.unstored / ui.notices.credentials.unconfirmed (other arm)",
+      "current": "{count, plural, one {{count} क्रेडेंशियल सहेजा नहीं जा सका} other {{count} क्रेडेंशियल सहेजे नहीं जा सके}} ({keys}); एजेंट को इसकी जानकारी दे दी गई है। दोबारा कोशिश करने के लिए /credential के बाद मान फिर चिपकाएँ।",
+      "current_unconfirmed": "{count, plural, one {{count} क्रेडेंशियल} other {{count} क्रेडेंशियल}} सहेजे जाने की पुष्टि नहीं हो सकी ({keys}); एजेंट को बताया गया है कि इस्तेमाल से पहले जाँच करे। दोबारा सहेजने के लिए /credential के बाद मान फिर चिपकाएँ।",
+      "proposed": "{count, plural, one {{count} क्रेडेंशियल सहेजा नहीं जा सका} other {{count} क्रेडेंशियल्स सहेजे नहीं जा सके}} ({keys}); एजेंट को इसकी जानकारी दे दी गई है। दोबारा कोशिश करने के लिए /credential के बाद मान फिर चिपकाएँ।",
+      "proposed_unconfirmed": "{count, plural, one {{count} क्रेडेंशियल} other {{count} क्रेडेंशियल्स}} सहेजे जाने की पुष्टि नहीं हो सकी ({keys}); एजेंट को बताया गया है कि इस्तेमाल से पहले जाँच करे। दोबारा सहेजने के लिए /credential के बाद मान फिर चिपकाएँ।",
+      "reason": "The hi style guide records the plural of क्रेडेंशियल as क्रेडेंशियल्स, and the shipped catalogue uses that form in the other plural contexts (no_credentials_stored_yet, stored_credentials, removes_one_stored_account_credentials, hosting_select.detail and the settings configuration row). Both notices print the singular noun after a plural count (2+) in the other arm; the one arm stays singular, which is correct at 1 and, per the hi guide, at 0. Meaning is unaffected; this is glossary consistency, not a HIN-2 regression.",
+      "carried_from": "i18n/receipts/hi-ui-notices-audit-a32f7349e3.json"
+    },
+    {
+      "id": "HIN-3",
+      "severity": "nit",
+      "status": "open",
+      "disposition": "recorded nit, not part of this remediation",
+      "key": "ui.notices.agents.config_run_changed | ui.notices.agents.config_run_updated | ui.notices.chat.drafts_offered_name | ui.notices.chat.mark_all_read_cleared | ui.notices.chat.mark_all_read_deferred | ui.notices.chat.mark_all_read_superseded | ui.notices.chat.mark_all_read_unknown | ui.notices.credentials.unconfirmed | ui.notices.credentials.unstored",
+      "note": "The nine keys still print a bare {count} rather than {count, number}; the remediation's one-arm switch from literal 1 to {count} preserves that same bare-number convention. The first audit recorded this as a source-level nit that has to be fixed in the English skeleton first, not churned in the translation.",
+      "carried_from": "i18n/receipts/hi-ui-notices-audit-a32f7349e3.json"
+    },
+    {
+      "id": "HIN-4",
+      "severity": "nit",
+      "status": "open",
+      "disposition": "recorded nit, not part of this remediation",
+      "key": "ui.notices.chat.archive_offered_verb",
+      "verified_value": "को संग्रहित किया गया।",
+      "note": "The archive tail is unchanged and still measures materially longer than English (108.2px vs 52.7px in the first audit's CoreText measurement at the card's 13px); it fits the card, and shortening it would require splitting the key from the no-name head, a code change. Not reopened here.",
+      "carried_from": "i18n/receipts/hi-ui-notices-audit-a32f7349e3.json"
+    }
+  ],
+  "resolved_findings": [
+    {
+      "id": "HIN-D8-1",
+      "severity": "minor",
+      "status": "fixed in current candidate; not yet committed",
+      "key": "ui.notices.main.watchdog_app_wait_fallback",
+      "current": "अपडेट अब भी Local Operator के बंद होने का इंतज़ार कर रहा है (अब तक {elapsed})। अगर कुछ न हो, तो Local Operator बंद करें (जवाब न दे तो Force Quit करें) और उसे तब तक बंद रखें जब तक वह अपने आप न खुल जाए।",
+      "proposed": "अपडेट अब भी Local Operator के बंद होने का इंतज़ार कर रहा है (अब तक {elapsed})। अगर कुछ न हो, तो Local Operator बंद करें (जवाब न दे तो जबरन बंद करें) और उसे तब तक बंद रखें जब तक वह अपने आप न खुल जाए।",
+      "reason": "Force Quit is an ordinary localized OS action, not a protected product/tool name; the Hindi guide has no kept-English exception. The actual local macOS Hindi DockMenus.strings maps FORCE_QUIT to जबरन बंद करें (and QUIT to बंद करें).",
+      "evidence": "plutil -convert json -o - /System/Library/CoreServices/Dock.app/Contents/Resources/hi.lproj/DockMenus.strings; filtered FORCE_QUIT and QUIT entries only.",
+      "verified_value": "अपडेट अब भी Local Operator के बंद होने का इंतज़ार कर रहा है (अब तक {elapsed})। अगर कुछ न हो, तो Local Operator बंद करें (जवाब न दे तो जबरन बंद करें) और उसे तब तक बंद रखें जब तक वह अपने आप न खुल जाए।",
+      "verification": "Exact proposed value; actual macOS Hindi FORCE_QUIT label reconfirmed using plutil; elapsed exactly once; ICU and shell printf output equal for0s/1s/21s/2min30s."
+    }
+  ],
+  "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 2
+  },
+  "result": "clean-with-findings",
+  "status": "passed",
+  "executed_checks": [
+    {
+      "check": "Bindings",
+      "result": "PASS current hi5bc4f61b..., original receipt ed57126a..., source/context exact unchanged hashes."
+    },
+    {
+      "check": "Other101 preservation",
+      "result": "PASS: full old snapshot not separately stored. Reversed ONLY the one unique raw UTF8 substring जबरन बंद करें to Force Quit करें in memory, then SHA256 of reconstructed entire file exactly equals original audited target df90a76ad598ec2ff688e4ac139ac2fffd3131ed1c897136d66ea49e25eeba14. This proves all other bytes (including101 values) unchanged without inventing an old snapshot."
+    },
+    {
+      "check": "Semantics",
+      "result": "PASS meaningful Hindi OS-action correction: (जवाब न दे तो जबरन बंद करें) matches exact actual macOS Hindi DockMenus.strings FORCE_QUIT. Instruction still says close unresponsive app and leave closed until automatic reopening."
+    },
+    {
+      "check": "Placeholder and output",
+      "result": "PASS exactly one literal {elapsed}; installed IntlMessageFormat and /bin/sh printf with source escape-percent then elapsed-to-%s transformation produce identical outputs at0 s,1 s,21 s,2 min30 s. No plural-count assumption."
+    }
+  ],
+  "retained_dimensions": "Original prior94 audit and original delta8 semantic/102 structural audit remain as recorded, with HIN-D1 minor and HIN-3/HIN-4 nits unchanged. HIN-D8-1 fixed; no new finding.",
+  "limitations": [
+    "No browser/OS banner/native notifications/build/full suites launched, per explicit restriction. No visual-fit/native-language certification.",
+    "Only one key semantically reread; not a new102-key audit.",
+    "Canonical deriveReceiptAudit validation executed after receipt creation; command output is separate execution evidence."
+  ],
+  "namespace_verdict": "ui.notices R2 one-key delta clean-with-findings: HIN-D8-1 corrected,0 blocker/major, carried1 minor2 nits.",
+  "overall_verdict": "clean-with-findings, limited one-key remediation audit; current candidate only.",
+  "edits": "Only this new immutable receipt written; original receipt unmodified; no catalogue/source/ledger/generated/git edits."
+}

@@ -69,7 +69,7 @@ import {
 import { openingLevels, prefixGroups, scopeStacks } from "./mesh-scope";
 import { MeshScopeLayer } from "./mesh-scope-layer";
 import type { DeviceSessions } from "./mesh-sessions";
-import type { MeshSessionRow } from "./mesh-types";
+import { type MeshSessionRow, deviceIdentityText } from "./mesh-types";
 
 /** How far one arrow key or one keyboard zoom step moves the view. */
 const KEY_PAN_PX = 48;
@@ -117,6 +117,8 @@ type MeshCanvasProps = {
 	onDropRefused: (refusal: {
 		code: string;
 		sentence: string;
+		/** The client's reach word, present when the drag had the device in hand. */
+		reach?: string;
 		remedy: Remedy | null;
 		/** The move the refusal was about, for the `wait` remedy - see `DropVerdict`. */
 		plan: MovePlan | null;
@@ -332,7 +334,9 @@ export const MeshCanvas: FC<MeshCanvasProps> = ({
 			const payload: DragPayload = {
 				session,
 				ownerDeviceId,
-				ownerLabel: owner?.label ?? session.owner_device_name,
+				ownerLabel: owner
+					? deviceIdentityText(owner, [...dropContext.devices.keys()], true)
+					: session.owner_device_name,
 			};
 			/*
 			 * CAPTURE IS BEST-EFFORT, and the guard is not defensive padding: a
@@ -418,6 +422,7 @@ export const MeshCanvas: FC<MeshCanvasProps> = ({
 			onDropRefused({
 				code: decided.code,
 				sentence: decided.sentence,
+				reach: decided.reach,
 				remedy: decided.remedy,
 				plan: decided.plan ?? null,
 			});
@@ -918,6 +923,7 @@ export const MeshCanvas: FC<MeshCanvasProps> = ({
 							<MeshDeviceNode
 								key={device.id}
 								device={device}
+								deviceIds={graph.devices.map((entry) => entry.id)}
 								x={box.x}
 								y={box.y}
 								nowSeconds={nowSeconds}

@@ -1,3 +1,5 @@
+import { t } from "../i18n";
+
 /**
  * What one whole update check is allowed to say.
  *
@@ -109,9 +111,15 @@ export type UpdateCheckVerdict = {
  * about their installation and the app's two halves are not separately
  * meaningful to them: "the app is up to date" while the server is behind is
  * exactly the contradiction this file exists to prevent.
+ *
+ * A FUNCTION, NOT A CONSTANT (i18n slice S1): the sentence is catalogue copy the
+ * renderer paints verbatim, so it has to be resolved in the locale in force when
+ * a check finishes. A module-level constant would freeze the locale of the
+ * moment this module loaded. The verdict still carries a plain string, so
+ * nothing downstream (the preload types, the button) changes shape.
  */
-export const UP_TO_DATE_AFFIRMATION =
-	"The application and server are up to date";
+export const upToDateAffirmation = (): string =>
+	t("ui.updates.status.up_to_date");
 
 /**
  * The affirmation a pair of channel statuses earns, or null.
@@ -127,7 +135,7 @@ export const updateCheckAffirmation = (channels: {
 	server: UpdateChannelStatus;
 }): string | null =>
 	channels.app === "current" && channels.server === "current"
-		? UP_TO_DATE_AFFIRMATION
+		? upToDateAffirmation()
 		: null;
 
 /**
@@ -202,7 +210,7 @@ const readable = (value: string | null | undefined): string | null =>
  *
  * 1. **unreadable** - the published release or the running server could not be
  *    read. "We could not find out" is not "current", which is the misreading
- *    this module's own history is about (see `UP_TO_DATE_AFFIRMATION`), and it is
+ *    this module's own history is about (see `upToDateAffirmation`), and it is
  *    not an offer either: a version nobody can read is not one to move to.
  * 2. **install-behind** - the install serving this app is older than the
  *    published release. This is the one state that earns an offer, and the

@@ -1,0 +1,69 @@
+{
+ "schema": 1,
+ "receipt_kind": "locale-audit (PR delta audit, round 2)",
+ "date": "2026-11-04",
+ "auditor": "translation-auditor",
+ "agent": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "model_provenance": "Served model as announced by the harness preamble for session bf2ddf2b6fb3 (anthropic/claude-opus-5-5); no fallback announced or observed.",
+ "model_fallback": {
+  "announced": false,
+  "observed": false
+ },
+ "status": "passed",
+ "result": "clean",
+ "namespace": "ui.teamBridge",
+ "locale": "hi",
+ "audit_id": "tb1670-r2-bf2ddf2b6fb3-hi",
+ "instance": "bf2ddf2b6fb3-pr1670-r2-hi",
+ "session": "bf2ddf2b6fb3",
+ "integration": {
+  "pr": 1670,
+  "repo": "damianvtran/local-operator-ui",
+  "branch": "feat/team-bridge-members-panel",
+  "base": "1acab5915d98a0d59c893c29baa273e2ef27d643",
+  "audited_head": "a5d95f8359b7c6f37ef677d5b3ab46e9b5a4368d",
+  "round": 2,
+  "auditor_fix_commit": "the commit that adds this record"
+ },
+ "independence": "Independent auditor: lopdev team translation-auditor, session bf2ddf2b6fb3. Did not translate the 6 round-2 values (implementer commit 096c8ce4e29 on PR #1670), wrote no English copy or code in the PR, and is not the round-1 auditor instance (7c739a6246b4-pr1670-hi). Applied only the corrections listed in findings. Same model family as the team coder (anthropic/claude-opus-5-5), separate agent instance; disclosed. No MT service used. Row written by ledger-assemble.mjs.",
+ "sha256": {
+  "hi": "8d09c5dedc4b8e87bb59aa8d66da0c2e46fbc1a3e09ba9f9fdd3afcd4560c284",
+  "en": "81fdc6ce881aab2e606a04d88d734741542f62ad090220e40951692fab6b913b"
+ },
+ "context_sha256": "a6bf1bfe941b49471dd6bb498f4b2f26e2677a5363ffc98275a65f404e7f2fb9",
+ "style_guide": {
+  "path": "~/local-operator i18n/style-guides/hi.md",
+  "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5",
+  "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "core_commit": "b42471d3935"
+ },
+ "scope": {
+  "delta_kind": "Round-2 delta audit of PR #1670 (1acab5915d98..a5d95f8359b7): the 6 changed ui.teamBridge.members_panel values (confirm.remove_body, confirm.leave_body, NEW confirm.remove_invited_body; note.general/humans/agents now take {channel}) read against en, the en context sidecar, the glossary and the hi style guide, composed with the argument the renderer passes. The three notes are byte-identical to the round-1 audited values except '#name' -> '{channel}' (verified). The other 360 values are byte-identical to the round-1 audited bytes (verified). No rendered width fit claimed.",
+  "keys_changed_in_pr": [
+   "ui.teamBridge.members_panel.confirm.remove_body",
+   "ui.teamBridge.members_panel.confirm.remove_invited_body",
+   "ui.teamBridge.members_panel.confirm.leave_body",
+   "ui.teamBridge.members_panel.note.general",
+   "ui.teamBridge.members_panel.note.humans",
+   "ui.teamBridge.members_panel.note.agents"
+  ],
+  "keys_added": [
+   "ui.teamBridge.members_panel.confirm.remove_invited_body"
+  ],
+  "keys_changed_by_auditor": []
+ },
+ "findings": [],
+ "evidence": {
+  "record": "i18n/audits/evidence/hi/ui.teamBridge/tb1670-r2-bf2ddf2b6fb3-hi/record.json",
+  "record_sha256": "fc256c89fa042d024d89aa3ecfd69b54232cb0e7ae250d00dc4f55925bfdfec2"
+ },
+ "checks": {
+  "icu_command": "node scripts/verify.mjs (worktree root; @formatjs/icu-messageformat-parser) — all 366 values parse; argument names equal en; delta notes carry exactly one {channel} and no literal #name",
+  "compose_command": "node scripts/compose.mjs (intl-messageformat; channel = isolateLtr('#<name>'))",
+  "unicode": "All values NFC; no bidi controls (U+200E/F, U+061C, U+202A-E, U+2066-9).",
+  "key_set": "366 keys, equal to English, same order.",
+  "execution_log": "i18n/audits/evidence/hi/ui.teamBridge/tb1670-r2-bf2ddf2b6fb3-hi/audit.log"
+ },
+ "terminal": true
+}

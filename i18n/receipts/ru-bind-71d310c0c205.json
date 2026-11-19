@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "kind": "translation-audit-receipt",
+  "audit_kind": "independent-namespace-bind-reaudit",
+  "date": "2026-10-25",
+  "locale": "ru",
+  "namespace": "ui.common.errors",
+  "batch": "ru-bind-1403",
+  "pr": 1403,
+  "branch": "feat/i18n-key-remaining-copy",
+  "audited_head": "0adbb37b9429e2c70cbe64ea149cb091432c8dd6",
+  "audited_head_short": "0adbb37b94",
+  "requested_head": "0adbb37b9429e2c70cbe64ea149cb091432c8dd6",
+  "instance": "ru-bind-71d310c0c205",
+  "instance_note": "Per-namespace bind instance; the 12-hex suffix is the first 12 hex of the current ru target sha256, so the id names the bytes it audited.",
+  "auditor": {
+    "agent": "translation-auditor",
+    "harness": "Local Operator",
+    "team": "lopdev",
+    "session": "0c5590aa68a9",
+    "model": "deepseek/deepseek-flash",
+    "actual_model": "deepseek/deepseek-flash",
+    "actual_model_source": "harness session model (system prompt: Model: deepseek/deepseek-flash); no fallback selected or observed",
+    "fallback": null,
+    "independent_from_translator": true,
+    "independence_basis": "Independent translation-auditor session 0c5590aa68a9, separate from the translator (i18n-translator in the ledger). Bytes were read from git at 0adbb37b94; no catalogue or ledger file was edited by this run.",
+    "instance": "ru-bind-71d310c0c205"
+  },
+  "independence": "Independent translation-auditor session 0c5590aa68a9; translator was i18n-translator per the ledger. The audit read en and ru bytes from git at 0adbb37b94, edited no catalogue and no ledger row, and writes only this receipt.",
+  "scope": "Full re-audit of ui.common.errors at the current bytes (bind audit): every key, not a delta.",
+  "method": "Read the en and ru JSON from git; compared key sets, ICU AST (arguments, number skeletons, select arms, plural categories, pound usage), rendered the ru messages with intl-messageformat (the same class used by src/i18n/messages) at 1/2/5/21 plus 0/3/4/6/11/22/1.5, and read the en context sidecars for role/tone/length. Catalogue-level audit only: no browser, no rendered-frame pass, no native-speaker sign-off is claimed.",
+  "source_sha256": "79e061d415b61aed65c06e6800b379b332048a200d8d88f6cbbf4647eba593db",
+  "target_sha256": "71d310c0c205088ab6b56c569203ad26a7c3eacf58bc4ed3010aaa5912f6c30f",
+  "context_sha256": "33432e29556ed7d91eac12edeff1998b623da3fcb48e3515b045e1e0b5c84049",
+  "checks": {
+    "en_keys": 8,
+    "ru_keys": 8,
+    "key_set_exact": true,
+    "icu_parsed": 8,
+    "icu_failures": 0,
+    "placeholders_exact": true,
+    "note": "No ICU arguments in this namespace; product name Local Operator kept in English in all four desktop_refusal keys."
+  },
+  "findings": [
+    {
+      "id": "RU-BIND-E-01",
+      "severity": "minor",
+      "category": "accuracy",
+      "key": "ui.common.errors.desktop_refusal.plane_closed",
+      "current": "Запущенный сервер Local Operator не принимает управляющие команды этого приложения.",
+      "proposed": "Запущенный сервер Local Operator не принимает элементы управления этого настольного приложения.",
+      "reason": "The en names this app's desktop controls and the sidecar defines the desktop control plane; five other locales keep the desktop qualifier (escritorio / bureau / máy tính để bàn / 桌面 / डेस्कटॉप / ڈیسک ٹاپ), and the two sibling keys in this family render 'control' as «элемент управления». The current text drops the qualifier and drifts the term to «управляющие команды».",
+      "introduced_by": "added by this PR (3d0e9010d7..0adbb37b94)"
+    }
+  ],
+  "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "verdict": "passed — 8/8 keys, 0 blocker/major; the desktop qualifier is still dropped in plane_closed (the one minor, with a proposed fix); the other seven keys are clean."
+}

@@ -1,0 +1,26 @@
+{
+  "auditor": "i18n-auditor-fr",
+  "instance": "cbd8252fdd97",
+  "model": "openai/gpt-6.1-sol",
+  "status": "passed",
+  "date": "2026-10-31",
+  "provenance": {
+    "kind": "binding of independent scoped post-fix re-audit",
+    "verdict": "i18n/audits/evidence/fr/renderer-blind-spots/cbd8252fdd97/verdict-r2.txt",
+    "verdict_sha256": "a0b4cd25df063389452f7f12f4b54a7d7c965eacfcf0d31d3f25d272afae0e86",
+    "findings": "i18n/audits/evidence/fr/renderer-blind-spots/cbd8252fdd97/findings-r2.jsonl",
+    "findings_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "scope": "Exactly relative_short, relative_created, relative_active; no full-namespace re-audit",
+    "fallback": "quota: anthropic/claude-sonnet-5-5 -> anthropic/claude-opus-5-5 -> openai/gpt-6.1-sol"
+  },
+  "namespaces": {
+    "ui.chat.sidebar_view": {
+      "status": "passed",
+      "sha256": {
+        "en": "0873abf83115e1dd479213706a401258369f58a3d9606ebbc12610a64348512e",
+        "fr": "e8663cc922b4d6dd953f378c43a3224e8bd7ac83c54c88b34809ee8981f847ab"
+      },
+      "findings": []
+    }
+  }
+}

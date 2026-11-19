@@ -1,0 +1,27 @@
+intl-messageformat renders - zh-CN - auditor B session 94934cc4a6fd
+(repo's own intl-messageformat; Intl.ListFormat conjunction for the name list)
+
+===== zh-CN =====
+
+--- events.declined
+  value: {actor}代{targets}拒绝了邀请
+  1 target : Ana代Ana拒绝了邀请
+  3 targets: Ana代Ana、Ben和Sana拒绝了邀请
+
+--- events.others
+  value: {count, plural, other {其他#名成员}}
+  count= 1: 其他1名成员
+  count= 2: 其他2名成员
+  count= 3: 其他3名成员
+  count= 5: 其他5名成员
+  count=11: 其他11名成员
+  count=21: 其他21名成员
+  as last list item (2 hidden, naive join): Ana、Ben和其他2名成员
+  as last list item (3 hidden, naive join): Ana、Ben和其他3名成员
+
+--- members.invitation_note_v3
+  value: 邀请在被接受前不会授予访问权限。你自己的智能体会立即加入；他人的智能体在其所有者同意后加入。成员智能体会阅读此处的每条消息并自行决定是否回复，被@提及时应当回复。其所有者可将它限制在@提及和它参与的讨论串内，或将其静音。
+  1 target : 邀请在被接受前不会授予访问权限。你自己的智能体会立即加入；他人的智能体在其所有者同意后加入。成员智能体会阅读此处的每条消息并自行决定是否回复，被@提及时应当回复。其所有者可将它限制在@提及和它参与的讨论串内，或将其静音。
+
+
+render failures for this locale: 0

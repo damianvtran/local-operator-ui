@@ -1,0 +1,52 @@
+== head ==
+  en: 179 keys
+  ur: 179 keys
+  context: 179 keys
+== base ==
+  en: 159 keys
+  ur: 159 keys
+  context: 159 keys
+
+== base -> head deltas (additions only expected) ==
+  en: +20 -0 ~0
+  ur: +20 -0 ~0
+  context: +20 -0 ~0
+
+== key-set parity en vs ur ==
+  equal=True, en=179, ur=179
+  context covers en: True
+
+== per-key mechanical checks ==
+  ui.library.kind.audio                        len(en)= 5 len(ur)= 4 ph=- arabic=True latin=False icu=no
+  ui.library.kind.code                         len(en)= 4 len(ur)= 3 ph=- arabic=True latin=False icu=no
+  ui.library.kind.docx                         len(en)= 4 len(ur)= 4 ph=- arabic=False latin=True icu=no
+  ui.library.kind.html                         len(en)= 4 len(ur)= 4 ph=- arabic=False latin=True icu=no
+  ui.library.kind.image                        len(en)= 5 len(ur)= 5 ph=- arabic=True latin=False icu=no
+  ui.library.kind.markdown                     len(en)= 8 len(ur)= 8 ph=- arabic=False latin=True icu=no
+  ui.library.kind.other                        len(en)= 5 len(ur)= 4 ph=- arabic=True latin=False icu=no
+  ui.library.kind.pdf                          len(en)= 3 len(ur)= 3 ph=- arabic=False latin=True icu=no
+  ui.library.kind.pptx                         len(en)= 4 len(ur)= 4 ph=- arabic=False latin=True icu=no
+  ui.library.kind.spreadsheet                  len(en)=11 len(ur)=10 ph=- arabic=True latin=False icu=no
+  ui.library.kind.text                         len(en)= 4 len(ur)= 5 ph=- arabic=True latin=False icu=no
+  ui.library.kind.video                        len(en)= 5 len(ur)= 5 ph=- arabic=True latin=False icu=no
+  ui.library.tag_category.custom               len(en)= 6 len(ur)= 9 ph=- arabic=True latin=False icu=no
+  ui.library.tag_category.format               len(en)= 6 len(ur)= 6 ph=- arabic=True latin=False icu=no
+  ui.library.tag_category.project              len(en)= 7 len(ur)= 7 ph=- arabic=True latin=False icu=no
+  ui.library.tag_category.source               len(en)= 6 len(ur)= 4 ph=- arabic=True latin=False icu=no
+  ui.library.tag_category.status               len(en)= 6 len(ur)= 4 ph=- arabic=True latin=False icu=no
+  ui.library.tag_category.topic                len(en)= 5 len(ur)= 5 ph=- arabic=True latin=False icu=no
+  ui.library.tag_category.type                 len(en)= 4 len(ur)= 3 ph=- arabic=True latin=False icu=no
+  ui.library.preview.unsupported_generic       len(en)=37 len(ur)=45 ph=- arabic=True latin=False icu=no  <<< OVER-12 (45)
+
+== ur values that stay Latin (retained tokens) ==
+  ui.library.kind.docx: 'DOCX'
+  ui.library.kind.html: 'HTML'
+  ui.library.kind.markdown: 'Markdown'
+  ui.library.kind.pdf: 'PDF'
+  ui.library.kind.pptx: 'PPTX'
+
+== trailing punctuation ==
+  ui.library.preview.unsupported_generic: en='This file has no in-app preview here.' ur='اس فائل کا پیش منظر یہاں ایپ میں دستیاب نہیں۔'
+
+== PROBLEMS ==
+  ui.library.preview.unsupported_generic: OVER-12 (45)

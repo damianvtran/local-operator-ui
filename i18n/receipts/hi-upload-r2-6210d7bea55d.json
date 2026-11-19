@@ -1,0 +1,168 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent-namespace-delta-translation-audit",
+  "date": "2026-11-08",
+  "round": 2,
+  "locale": "hi",
+  "namespace": "ui.agents.upload",
+  "branch": "i18n/slice-upload-agent-dialog",
+  "head": "269ef259c0523fd61c9f40b2a700bed27b838055",
+  "base": "2b72db6a56ad8204ec7f30a0ba6ffbc941be3b82",
+  "instance": "hi-upload-r2-6210d7bea55d",
+  "agent": "reviewer",
+  "model": "openai/gpt-6.1-sol",
+  "auditor": {
+    "agent": "reviewer (r2-hi)",
+    "session": "6210d7bea55d",
+    "instance": "hi-upload-r2-6210d7bea55d",
+    "model": "openai/gpt-6.1-sol",
+    "fallback": "Used. Host switched from anthropic/claude-sonnet-5-5 through anthropic/claude-opus-5-5 to openai/gpt-6.1-sol after provider quota failures; this linguistic audit was served by openai/gpt-6.1-sol.",
+    "model_source": "Used. Host switched from anthropic/claude-sonnet-5-5 through anthropic/claude-opus-5-5 to openai/gpt-6.1-sol after provider quota failures; this linguistic audit was served by openai/gpt-6.1-sol.",
+    "independent_from_translator_session": true,
+    "independence": true
+  },
+  "status": "clean-with-findings",
+  "result": "clean-with-findings",
+  "keys_audited": 3,
+  "source_sha256": "6aff9fbb0706c9852760db60f22cdb075b747cef37dbc3e9130731943babef0b",
+  "target_sha256": "c4db80a23bbaab3dd626eddead6a3859780c79530fc728ac1455a99a38a3c342",
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.agents.upload.json",
+      "sha256": "6aff9fbb0706c9852760db60f22cdb075b747cef37dbc3e9130731943babef0b"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.agents.upload.context.json",
+      "sha256": "19e0fe920ae831b4e3bb8dcd7750dbdb508640c5cec6ca468c0acc1b853cf768"
+    },
+    "hi": {
+      "path": "src/i18n/catalogues/hi/ui.agents.upload.json",
+      "sha256": "c4db80a23bbaab3dd626eddead6a3859780c79530fc728ac1455a99a38a3c342"
+    },
+    "hi_hub": {
+      "path": "src/i18n/catalogues/hi/ui.hub.json",
+      "sha256": "19d95541ba33fd98051afee8cfba61076267ad54fcb7f13ac6ae603006591693"
+    },
+    "dialog": {
+      "path": "src/renderer/src/features/agents/components/upload-agent-dialog.tsx",
+      "sha256": "ce84c3b069ebcc06d93d2ac678f176e568bd22fb147df07cf482d4997a57dc2a"
+    },
+    "policy_fields": {
+      "path": "src/renderer/src/features/agents/components/hub-initial-policy-fields.tsx",
+      "sha256": "c0675c317087926f75b03c05bbc4552992d1d51bed3a0aead4f7c751447b5d2a"
+    },
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/hi.md",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    },
+    "prior_receipt": {
+      "path": "i18n/receipts/hi-upload-r1-0a2d35091c2c.json",
+      "sha256": "3b35ef4776a933f9f2e685b3dc730e3deb3cddb2801435c4661e0ea8f87f2316"
+    },
+    "hi_previous": {
+      "path": "src/i18n/catalogues/hi/ui.agents.upload.json",
+      "revision": "2b72db6a56ad8204ec7f30a0ba6ffbc941be3b82",
+      "sha256": "1adaf78e8656d3881af6f87c5da387a032601428b5408d32c174933aa8eafbbd"
+    }
+  },
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [
+      {
+        "id": "HIU-R2-M1",
+        "severity": "MINOR",
+        "gates": false,
+        "path": "src/i18n/catalogues/hi/ui.agents.upload.json",
+        "line": 34,
+        "key": "ui.agents.upload.target.org_unnamed",
+        "summary": "The fallback is grammatical in all seven receivers, but its proximal इस संगठन reintroduces the strict one-demonstrative-per-organization inconsistency with retained distal उसके / उस संगठन.",
+        "evidence": [
+          "intro.org: इस संगठन में … उसके सदस्य",
+          "not_leaving.org: इस संगठन के सदस्य … उसके बाहर",
+          "published.org_listed: इस संगठन के साझा एजेंटों में … उसके सदस्य",
+          "ui.hub.subscriptions.enable_private: इस संगठन पर … सिर्फ़ उस संगठन तक पहुँच"
+        ],
+        "impact": "Stylistic consistency only: ordinary Hindi permits proximal noun phrases followed by anaphoric उसके, and every referent remains clear. No semantic, permission or runtime defect. Flagged against the brief’s stricter demonstrative discipline, not as a grammar error.",
+        "suggested_fix": "If folded into an already-required remediation, use उस संगठन; it is the same oblique shape and works before में, के and पर in all seven frames. Otherwise defer in-thread; do not create another code round for this MINOR.",
+        "status": "deferred"
+      }
+    ],
+    "nit": []
+  },
+  "prior_findings": [
+    {
+      "id": "HIU-R1-M1",
+      "status": "fixed",
+      "verification": "Both changed values now use उसके; named-target and unnamed-target frames exercised."
+    },
+    {
+      "id": "HIU-R1-N1",
+      "status": "deferred — unchanged, out of remediation scope; retained from round 1"
+    }
+  ],
+  "scope": "2b72db6a56ad8204ec7f30a0ba6ffbc941be3b82..269ef259c0523fd61c9f40b2a700bed27b838055",
+  "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+  },
+  "publication": {
+    "posted": false,
+    "reason": "No PR found: gh pr list --repo damianvtran/local-operator-ui --state all --head i18n/slice-upload-agent-dialog returned []",
+    "remote_head": "269ef259c0523fd61c9f40b2a700bed27b838055"
+  },
+  "gating": false,
+  "verdict": "clean — terminal; MINOR deferred",
+  "keys_total_in_file": 47,
+  "artifacts": [
+    {
+      "path": "i18n/audits/evidence/hi/ui.agents.upload/hi-upload-r2-6210d7bea55d/record.json",
+      "sha256": "9f64d01ad016963d967fb2a2a98f49371a91a62119da5019e66a67fc34cf23fb"
+    },
+    {
+      "path": "i18n/audits/evidence/hi/ui.agents.upload/hi-upload-r2-6210d7bea55d/report.md",
+      "sha256": "05d07f3c74b8026efad40c8ba057c4362eb359f3753bc791a7f000cb7c52105b"
+    },
+    {
+      "path": "i18n/audits/evidence/hi/ui.agents.upload/hi-upload-r2-6210d7bea55d/renders.log",
+      "sha256": "ec47a96883f584ae0bd9fc33fe312aadc85cd39f11d6e48a817beb9fe201ccca"
+    }
+  ],
+  "original_auditor": {
+    "agent": "reviewer / r2-hi",
+    "session": "6210d7bea55d",
+    "model": "openai/gpt-6.1-sol",
+    "independent_from_translator": true,
+    "fallback": "Used. Host switched from anthropic/claude-sonnet-5-5 through anthropic/claude-opus-5-5 to openai/gpt-6.1-sol after provider quota failures; this linguistic audit was served by openai/gpt-6.1-sol."
+  },
+  "findings_detail": [
+    {
+      "id": "HIU-R2-M1",
+      "severity": "MINOR",
+      "gates": false,
+      "path": "src/i18n/catalogues/hi/ui.agents.upload.json",
+      "line": 34,
+      "key": "ui.agents.upload.target.org_unnamed",
+      "summary": "The fallback is grammatical in all seven receivers, but its proximal इस संगठन reintroduces the strict one-demonstrative-per-organization inconsistency with retained distal उसके / उस संगठन.",
+      "evidence": [
+        "intro.org: इस संगठन में … उसके सदस्य",
+        "not_leaving.org: इस संगठन के सदस्य … उसके बाहर",
+        "published.org_listed: इस संगठन के साझा एजेंटों में … उसके सदस्य",
+        "ui.hub.subscriptions.enable_private: इस संगठन पर … सिर्फ़ उस संगठन तक पहुँच"
+      ],
+      "impact": "Stylistic consistency only: ordinary Hindi permits proximal noun phrases followed by anaphoric उसके, and every referent remains clear. No semantic, permission or runtime defect. Flagged against the brief’s stricter demonstrative discipline, not as a grammar error.",
+      "suggested_fix": "If folded into an already-required remediation, use उस संगठन; it is the same oblique shape and works before में, के and पर in all seven frames. Otherwise defer in-thread; do not create another code round for this MINOR."
+    }
+  ],
+  "normalised_from": {
+    "path": "i18n/receipts/raw/hi-upload-r2-6210d7bea55d.raw.json",
+    "sha256": "0481c09824f911e6dd2f05d2180f9fcaa4b7bf2868bf9fde8f285562f10d7d05"
+  }
+}

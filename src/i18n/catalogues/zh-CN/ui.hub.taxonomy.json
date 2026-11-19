@@ -1,0 +1,23 @@
+{
+	"ui.hub.taxonomy.category.investment": "投资",
+	"ui.hub.taxonomy.category.accounting": "会计",
+	"ui.hub.taxonomy.category.healthcare": "医疗健康",
+	"ui.hub.taxonomy.category.legal": "法律",
+	"ui.hub.taxonomy.category.software": "软件开发",
+	"ui.hub.taxonomy.category.security": "安全",
+	"ui.hub.taxonomy.category.role_play": "角色扮演",
+	"ui.hub.taxonomy.category.personal_assistance": "个人助理",
+	"ui.hub.taxonomy.category.education": "教育",
+	"ui.hub.taxonomy.category.marketing": "营销",
+	"ui.hub.taxonomy.category.sales": "销售",
+	"ui.hub.taxonomy.category.research": "研究",
+	"ui.hub.taxonomy.category.analysis": "分析",
+	"ui.hub.taxonomy.category.management": "管理",
+	"ui.hub.taxonomy.category.social_media": "社交媒体",
+	"ui.hub.taxonomy.category.other": "其他",
+	"ui.hub.taxonomy.heading": "分类",
+	"ui.hub.taxonomy.all": "全部分类",
+	"ui.hub.taxonomy.origin.named": "仅向{name}共享，不在公开中心共享",
+	"ui.hub.taxonomy.origin.unnamed": "仅向某个组织共享，不在公开中心共享",
+	"ui.hub.taxonomy.origin.organization": "组织"
+}

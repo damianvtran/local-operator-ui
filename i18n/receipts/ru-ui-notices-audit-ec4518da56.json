@@ -1,0 +1,166 @@
+{
+	"auditor": "translation-auditor",
+	"model": "deepseek/deepseek-flash",
+	"instance": "c68c7e3cf942",
+	"locale": "ru",
+	"namespace": "ui.notices",
+	"status": "changes_requested",
+	"date": "2026-10-25",
+	"round": 1,
+	"head": "ec4518da560867e897c290ddf8abc3b2496a4b59",
+	"head_short": "ec4518da56",
+	"branch": "feat/i18n-toasts",
+	"keys_audited": 93,
+	"sha256": {
+		"en": "f473fa10e95b24f50ce13647ae50a923b34d8efd31249d99d6c437e183722277",
+		"ru": "5b18ef2503eb6304b71d331beaeb6e6b5ae10759c051d06248bd4ae2218e09b1"
+	},
+	"context_sha256": "acce3fd5c70232afcc3ca2dec3c3bc7d63ab0869485900de3e6b6b03bd4e9379",
+	"provenance": {
+		"independent_of_translator": true,
+		"first_audit": true,
+		"note": "First audit of ui.notices/ru, not a re-bind. No finding in this receipt was taken from a translator's summary; every claim below was re-derived by parsing the ru catalogue with the repository's installed @formatjs/icu-messageformat-parser and formatting it with the repository's installed intl-messageformat (12.1.3, the library src/i18n/messages.ts uses), under Intl.PluralRules('ru').",
+		"model_provenance": "The session header reports deepseek/deepseek-flash; the routing provider behind it is not exposed to this session, so none is invented."
+	},
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+			"revision": "local-operator 24dbccbb78"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/ru.md",
+			"sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+		},
+		"languages_manifest": {
+			"path": "i18n/languages.json",
+			"sha256": "7fd056b916fc3d56ddf36991a09b29864ea0b0f825d938aead1ed165926f8d63"
+		},
+		"context_sidecar": {
+			"path": "src/i18n/catalogues/en/ui.notices.context.json",
+			"sha256": "acce3fd5c70232afcc3ca2dec3c3bc7d63ab0869485900de3e6b6b03bd4e9379"
+		}
+	},
+	"coverage": [
+		"All 93 EN keys read against the ru catalogue key by key (key sets identical: 93/93, no missing, no extra, order preserved).",
+		"All 93 ru messages parsed with @formatjs/icu-messageformat-parser 3.5.21 as an ICU AST; argument sets compared with EN, and every plural message's arm set listed. All 10 plural messages carry the full ru CLDR set one/few/many/other; none carries an EN-only or extra arm.",
+		"Every plural message formatted with intl-messageformat under 'ru' at counts 0, 1, 2, 3, 4, 5, 21, 22, 25, 101 and 1234; the numeral-noun agreement of each arm inspected at the count that selects it, not only at 1.",
+		"Composed head+tail strings rendered as the toast joins them (undo-toasts.tsx renders head in a truncating span and tail in a shrink-0 span separated by a flex gap) for counts 1, 2, 5 and 21, plus both archive-offer shapes (titled and untitled).",
+		"Register checked for the style guide's вы-form, impersonal preference, sentence case, no exclamation marks, no politeness padding: no ты/тебе/твой form and no '!' anywhere in the namespace.",
+		"Typography: guillemets «» in prose; no bidi control characters (LTR locale, checked anyway); no double spaces, leading/trailing whitespace or NFD sequences; em dash spacing per the ru guide.",
+		"Glossary and locale-terminology conformance checked against the rest of the ru catalogue rather than against guesswork: агент/субагент, учётные данные, одобрения (not подтверждения), разговор, сессия, хаб, бэкенд, промпт, Отменить, Очистить, Удалить цель.",
+		"Fixed-width check: both shrink-0 tails measured (archive 11 characters, drafts 8) against the toast card; the flexing heads are allowed to ellipsise. Longest rendered body is 192 characters, one of the wrapping multi-sentence toasts; the OS-banner body is 91 characters against the sidecar's ~170 budget.",
+		"Not done, and not claimed: no rendered frame was captured for this audit (it is a source-and-formatter audit), so no clipping claim is made about any string at a specific window width."
+	],
+	"summary": {
+		"blocker": 0,
+		"major": 3,
+		"minor": 1,
+		"nit": 1,
+		"note": "The namespace is not clean. RU-NOT-01 is one root cause over eight keys: the ru `one` category also selects 21, 31 and 101, so a literal 1 in that arm reports the wrong number. RU-NOT-02 is an accusative case error in the few arm of one key. RU-NOT-03 is a verb agreement that breaks on the single-key path, which is the common path for a stored credential. Counts are derived from the five findings below, not asserted: 0 blocker, 3 major, 1 minor, 1 nit."
+	},
+	"findings": [
+		{
+			"id": "RU-NOT-01",
+			"severity": "major",
+			"key": "ui.notices.agents.config_run_changed + 7 more (see keys)",
+			"keys": [
+				"ui.notices.agents.config_run_changed",
+				"ui.notices.agents.config_run_updated",
+				"ui.notices.chat.mark_all_read_cleared",
+				"ui.notices.chat.mark_all_read_deferred",
+				"ui.notices.chat.mark_all_read_superseded",
+				"ui.notices.chat.mark_all_read_unknown",
+				"ui.notices.credentials.unstored",
+				"ui.notices.credentials.unconfirmed"
+			],
+			"file": "src/i18n/catalogues/ru/ui.notices.json",
+			"description": "Eight Russian plural messages hardcode the digit 1 inside their `one` arm, copying the English source literally. English `one` is exactly one, so a literal 1 is safe there; Russian `one` covers 1, 21, 31, 41, 101, 1001 — Intl.PluralRules('ru').select(21) and .select(101) both return 'one'. At any of those counts the message therefore reports 1 instead of the actual number, in a confirmation toast whose whole job is to state that number. The ru style guide states the rule the text breaks (\"Categories: one (1, 21, 31…) … Numbers govern case — check every branch\").",
+			"evidence": "Formatted with the repository's intl-messageformat at ru. config_run_changed at count=21 renders «Запуск конфигурации завершён: 1 определение изменено.» (English: «21 definitions changed.»); at 101 the same «1 определение изменено». mark_all_read_cleared at 21 renders «1 чат отмечен как прочитанный.»; mark_all_read_superseded at 21 renders «1 отметка получила более новый результат…». Same at 101 for all eight. Sibling ui.notices.chat.drafts_offered_name shows the correct shape in the same namespace — its one arm prints {count} and renders «21 черновик». Call sites confirm the counts are user-reachable integers, not fixed at 1: mark-all-read.ts passes receipt.cleared/superseded/unknown/deferred row counts; credential-capture.ts passes keys.length; the configuration run passes its touched-definition count.",
+			"recommendation": "Replace the literal 1 with {count} in each one arm. Three keys need an exact =1 branch as well, because their singular sentence is not count-neutral: mark_all_read_deferred says «на другом устройстве … это устройство» (asserts one device where 21 marks may live on several, while its few/many arms say «на других устройствах»), mark_all_read_superseded says «более новый результат» (singular result for 21), and mark_all_read_unknown says «она остаётся» (singular pronoun for 21). For those three keep the current sentence under =1 and let one carry the count with the plural-friendly wording. Proposed ru values, verified to render correctly at 1/2/5/21/22/101:",
+			"proposed": {
+				"ui.notices.agents.config_run_changed": "{count, plural, one {Запуск конфигурации завершён: {count} определение изменено.} few {Запуск конфигурации завершён: {count} определения изменены.} many {Запуск конфигурации завершён: {count} определений изменено.} other {Запуск конфигурации завершён: {count} определения изменено.}}",
+				"ui.notices.agents.config_run_updated": "{count, plural, one {Запуск конфигурации завершён: {count} определение обновлено.} few {Запуск конфигурации завершён: {count} определения обновлены.} many {Запуск конфигурации завершён: {count} определений обновлено.} other {Запуск конфигурации завершён: {count} определения обновлено.}}",
+				"ui.notices.chat.mark_all_read_cleared": "{count, plural, one {{count} чат отмечен как прочитанный.} few {{count} чата отмечены как прочитанные.} many {{count} чатов отмечены как прочитанные.} other {{count} чата отмечены как прочитанные.}}",
+				"ui.notices.chat.mark_all_read_deferred": "{count, plural, =1 {1 отметка остаётся на другом устройстве и снимется, когда это устройство обновится.} one {{count} отметка остаётся на других устройствах и снимется, когда они обновятся.} few {{count} отметки остаются на других устройствах и снимаются, когда те обновятся.} many {{count} отметок остаются на других устройствах и снимаются, когда те обновятся.} other {{count} отметки остаются на других устройствах и снимаются, когда те обновятся.}}",
+				"ui.notices.chat.mark_all_read_superseded": "{count, plural, =1 {1 отметка получила более новый результат и остаётся непрочитанной.} one {{count} отметка получила более новые результаты и остаётся непрочитанной.} few {{count} отметки получили более новые результаты и остаются непрочитанными.} many {{count} отметок получили более новые результаты и остаются непрочитанными.} other {{count} отметки получили более новые результаты и остаются непрочитанными.}}",
+				"ui.notices.chat.mark_all_read_unknown": "{count, plural, =1 {1 отметку не удалось снять — она остаётся непрочитанной.} one {{count} отметку не удалось снять — они остаются непрочитанными.} few {{count} отметки не удалось снять — они остаются непрочитанными.} many {{count} отметок не удалось снять — они остаются непрочитанными.} other {{count} отметки не удалось снять — они остаются непрочитанными.}}",
+				"ui.notices.credentials.unstored": "Не удалось сохранить {count, plural, one {{count} запись учётных данных} few {{count} записи учётных данных} many {{count} записей учётных данных} other {{count} записи учётных данных}} ({keys}); агенту сообщено об этом. Вставьте значение ещё раз после /credential, чтобы повторить.",
+				"ui.notices.credentials.unconfirmed": "Не удалось подтвердить сохранение {count, plural, one {{count} записи учётных данных} few {{count} записей учётных данных} many {{count} записей учётных данных} other {{count} записи учётных данных}} ({keys}); агенту сказано проверить их перед использованием. Вставьте значение ещё раз после /credential, чтобы сохранить его снова."
+			},
+			"disposition": "unresolved",
+			"lines_by_key": {
+				"ui.notices.agents.config_run_changed": 2,
+				"ui.notices.agents.config_run_updated": 3,
+				"ui.notices.chat.mark_all_read_cleared": 36,
+				"ui.notices.chat.mark_all_read_deferred": 37,
+				"ui.notices.chat.mark_all_read_superseded": 40,
+				"ui.notices.chat.mark_all_read_unknown": 41,
+				"ui.notices.credentials.unstored": 51,
+				"ui.notices.credentials.unconfirmed": 50
+			}
+		},
+		{
+			"id": "RU-NOT-02",
+			"severity": "major",
+			"key": "ui.notices.credentials.unstored",
+			"file": "src/i18n/catalogues/ru/ui.notices.json",
+			"line": 51,
+			"description": "The few arm uses the genitive plural «записей» where the verb demands the accusative. «сохранить» is transitive, so counts 2–4 and 22–24 take «записи» (две записи), not «записей». The sentence is ungrammatical exactly at the counts a two-credential refusal produces.",
+			"current": "Не удалось сохранить {count, plural, one {1 запись учётных данных} few {{count} записей учётных данных} many {{count} записей учётных данных} other {{count} записи учётных данных}} ({keys}); …",
+			"proposed_arm": "few {{count} записи учётных данных}",
+			"evidence": "Rendered at ru: count=2 → «Не удалось сохранить 2 записей учётных данных», count=3 and 4 likewise; count=5 (many) → «5 записей» is correct, and count=1 → «1 запись» is correct, so only the few arm is wrong. The catalogue's own precedent for the same counting construction is ui.settings.imports.preview_memory: «one {# запись памяти} few {# записи памяти} many {# записей памяти} other {# записи памяти}». Note the sibling key ui.notices.credentials.unconfirmed is NOT affected: there the numeral is governed by «сохранение» (genitive), so «2 записей» is correct in that sentence — I checked both before reporting.",
+			"disposition": "unresolved"
+		},
+		{
+			"id": "RU-NOT-03",
+			"severity": "major",
+			"key": "ui.notices.credentials.stored",
+			"file": "src/i18n/catalogues/ru/ui.notices.json",
+			"line": 49,
+			"description": "«Сохранены {keys}» is a plural predicate, but {keys} is a comma-joined list that is usually a single key — one credential per paste. The common case therefore renders «Сохранены API_KEY», which is ungrammatical; English «Stored {keys}» has no agreement to break, so the defect is introduced by the translation.",
+			"current": "Сохранены {keys}. Каждый подставляется в каждую команду bash как переменная окружения; агент не может прочитать значение.",
+			"evidence": "storedNotice(keys) in credential-capture.ts interpolates keys.join(', '); its callers pass carried.stored, the credential keys cited by one sent message, and the sibling story credential-notice.stories.tsx exercises the single-key case with unstoredNotice([SESSION_KEY]). The function's own comment calls the sentence 'plural-safe because two pastes while armed capture two credentials', i.e. one paste is the norm. Rendered: single key → «Сохранены API_KEY.»",
+			"recommendation": "Use a count-neutral predicate that reads for 1..n: «Сохранено: {keys}.» (verified: «Сохранено: API_KEY.» and «Сохранено: A, B, C.»). Leaving the second sentence unchanged is correct — «Каждый подставляется…» still reads for a single key.",
+			"disposition": "unresolved"
+		},
+		{
+			"id": "RU-NOT-04",
+			"severity": "minor",
+			"key": "ui.notices.main.consent_body_many",
+			"file": "src/i18n/catalogues/ru/ui.notices.json",
+			"line": 73,
+			"description": "«Одобрений сайтов в очереди: {count, number}» is a literal calque of 'site approvals are waiting' — the colon label is understandable and, deliberately, avoids numeral agreement at every count, but «одобрений сайтов» is not a collocation a native writer produces for pending requests from sites.",
+			"current": "Одобрений сайтов в очереди: {count, number}. Одобрите или отклоните их во вкладке браузера.",
+			"proposed": "Запросов на одобрение сайтов: {count, number}. Одобрите или отклоните их во вкладке браузера.",
+			"evidence": "This key is the OS banner body for count != 1 (consent-notifier.ts picks body_one only at count === 1), so the label form serving every other count is the right shape — only the noun phrase needs the change. Rendered length 91 characters at count 5, inside the sidecar's ~170-character banner budget; the proposal is 93.",
+			"disposition": "unresolved"
+		},
+		{
+			"id": "RU-NOT-05",
+			"severity": "nit",
+			"key": "ui.notices.chat.archive_offered_verb",
+			"file": "src/renderer/src/features/chat/archive-undo.ts",
+			"line": 107,
+			"description": "Out of catalogue scope, reported rather than fixed: the composed archive-offer sentence wraps the conversation title in the English curly pair “ … ” from code, while the ru catalogue itself correctly uses « » (ui.notices.chat.archive_failed, chat.unarchive_failed, files.created, hub.downloaded all use guillemets). The ru render is therefore «“Отчёт за квартал” — в архиве.», mixing the two systems in one card. The verb tail is fine and is a good call: «— в архиве.» is gender-neutral, which a fixed tail must be because it follows a title of any gender.",
+			"current_composed": "“{title}” — в архиве.",
+			"evidence": "archiveOfferedName returns `“${title}”` in archive-undo.ts:107; undo-toasts.tsx renders it as the truncating head beside the shrink-0 tail from the catalogue. The same quote characters apply to every locale, so the fix belongs in the code path (locale-aware quoting), not in ru/ui.notices.json.",
+			"disposition": "reported — owner is the renderer, not the catalogue"
+		}
+	],
+	"observations": [
+		"All 10 plural messages carry exactly one/few/many/other and no fifth arm; no message carries an English-shaped one/other pair. The required `other` arm is present in every message (glossary §3).",
+		"mark_all_read_deferred/superseded/unknown `other` arms use plural predicates («отметки … остаются/получили») where a fraction would want the neuter singular. Counts reaching those messages are row counts (integers), so the arm is unreachable in practice; recorded for completeness, not raised as a finding.",
+		"`{count}` (a bare argument) prints the raw number, while `{count, number}` and the plural `#` apply ru digit grouping (NBSP). The heads in this namespace use the bare argument, so a count of 1000 or more would render «1234 черновика» instead of «1 234 черновика». The English source uses the same bare argument, the visible difference starts above 100, and none of these counts realistically reaches 1000, so this is a source-level property, not a ru translation defect. `ui.notices.main.consent_body_many` and `credentials.removed` do carry `{count, number}` and `{index, number}` and group correctly (verified: «1 234»).",
+		"UI terminology checked against the rest of the ru catalogue rather than against intuition, and found conformant: «Зерно» for Seed (matches ui.agents.settings.chat.seed, so the seed_invalid notice agrees with the field label the reader sees); «Выделенные» for Highlights (matches ui.canvas.files.highlights and ui.library); «Проактивный»/«Реактивный» (matches ui.agents.refusals.class.label.proactive/reactive, which is the control these notices report); «хаб» (ui.hub strings); «бэкенд» (established across the locale); «учётные данные» for credentials (glossary §2 and wave-2 note); «одобрения», never «подтверждения»; «разговор» for conversation; «сессия» for session (ui.notices.sessions.id_copied); «Отменить» for Undo (ui.chat.tags.undo); «Очистить» for the clear act; «Удалить цель» matching the control whose toast chat.goal_cleared confirms.",
+		"Register: вы-form throughout (проверьте, вставьте, запустите, переименуйте, одобрите, отклоните), impersonal where English allows («Не удалось …», «Требуется одобрение сайта»), sentence case, no exclamation marks, no added politeness. No instance of ты/тебе/твой anywhere in the namespace.",
+		"Placeholders and kept tokens: every {name}/{title}/{goal}/{keys}/{key}/{index}/{origin}/{version}/{relaunch}/{detail}/{reason}/{count} survives byte-identically; /credential, /goal, bash, ID, Aida, Local Operator, and the '<text>' quoting in chat.goal_done are preserved. Latin runs in the ru values are only placeholders and these kept tokens.",
+		"Composed sentences verified as sentences, not as fragments. Drafts at 1/2/5/21: «1 черновик удалён.», «2 черновика удалены.», «5 черновиков удалено.», «21 черновик удалён.» — the head's numeral form and the tail's predicate agree at every count, including the 21 one-category case. Archive offer: «Разговор — в архиве.» untitled; the dash construction carries the state without needing the title's gender. The plural-aware head/tail split the code passes to draftsOfferedVerb is used correctly.",
+		"Length: no label is materially over budget. The two shrink-0 tails are 11 and 8 characters. The largest ru/en growth on a card sentence is mark_all_read_superseded at 1.84x (37 → 68 characters at count 5), a wrapping two-clause sentence; the largest absolute bodies (update_hold_body 192, credentials.unconfirmed 191) are multi-sentence toasts that wrap, and their en counterparts are 166 and 166."
+	],
+	"verdict": {
+		"namespace": "changes_requested",
+		"clean": false,
+		"reason": "3 major, 1 minor, 1 nit, 0 blocker. A clean verdict requires zero blocker and zero major; the plural-category error alone blocks it."
+	}
+}

@@ -1,0 +1,200 @@
+{
+  "record_type": "audit_record",
+  "schema": 1,
+  "audit_id": "s16a-au-hi",
+  "locale": "hi",
+  "namespace": "ui.chat.canonical",
+  "audit_date": "2026-11-11",
+  "audit_kind": "delta audit of the 14 new s16a keys as an auditor-owned draft, not yet in the hi catalogue; shipped sibling keys and the rest of the namespace were read only for glossary/register and term-choice consistency",
+  "key_count": 14,
+  "delta_keys": [
+    "ui.chat.canonical.tool.composing_sized",
+    "ui.chat.canonical.tool.composing_empty",
+    "ui.chat.canonical.tool.queued_sized",
+    "ui.chat.canonical.tool.queued_empty",
+    "ui.chat.canonical.image_gen.state.queued",
+    "ui.chat.canonical.image_gen.state.writing_request",
+    "ui.chat.canonical.image_gen.state.queue_ahead",
+    "ui.chat.canonical.image_gen.state.running",
+    "ui.chat.canonical.image_gen.state.running_batch",
+    "ui.chat.canonical.image_gen.state.done",
+    "ui.chat.canonical.image_gen.state.done_batch",
+    "ui.chat.canonical.image_gen.state.already_finished",
+    "ui.chat.canonical.image_gen.state.failed",
+    "ui.chat.canonical.image_gen.state.failed_batch"
+  ],
+  "total_keys_in_file": {
+    "en": 456,
+    "hi_at_head": 442,
+    "note": "the 14-key gap is exactly the s16a delta"
+  },
+  "head": "93a61605b059ada503d75da6e9e38e8ef14e1b67",
+  "branch": "feat/i18n-s16a-tool-state-words",
+  "pr": "damianvtran/local-operator-ui#1870",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "2bc153cbf350",
+    "instance": "2bc153cbf350-s16a-au-hi",
+    "model": "deepseek/deepseek-flash",
+    "independent_from_translator_session": true,
+    "actual_model_source": "session header (Model: deepseek/deepseek-flash); no provider fallback observed or used",
+    "fallback": "none",
+    "readonly": "no repo file, catalogue, ledger, translation or commit was written by this audit"
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "draft_path": "manager session 3ef6295a5545 scratchpad s16a-drafts/hi-s16a.json (not in the repo)",
+    "notes_path": "same directory: hi-s16a-notes.md"
+  },
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+      "sha256": "d6d47d31667fe69448cf408f5a4fecf9948782e850506a6141217585de9db1fd"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+      "sha256": "ef8a12dea1835c241af3a166754322ce093af88592ec625036211458a50accac"
+    },
+    "hi": {
+      "path": "src/i18n/catalogues/hi/ui.chat.canonical.json",
+      "sha256": "da636c7580e96efed0b3db710f577d8ced1c2321fc747b95675028ae529bbb4f",
+      "role": "the shipped catalogue as read for glossary/register; it does NOT yet contain the 14 audited keys"
+    },
+    "target_draft": {
+      "path": "scratchpad s16a-drafts/hi-s16a.json (manager session 3ef6295a5545)",
+      "sha256": "2b7d98192ccbe13deb01e0b24c2cad296c21fcdb1514cf50a56924f0dd685db6",
+      "role": "the bytes this audit backs; recomputed by the auditor, matches the brief"
+    },
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md (checkout at b42471d3935c)",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/hi.md (checkout at b42471d3935c)",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    }
+  },
+  "artifacts": [
+    {
+      "path": "session scratchpad 2bc153cbf350/report.md",
+      "sha256": "068d94fdb4aab296265074cdf1b26720d73d92e1c87e6a95ae794944c91b62f4",
+      "tracked_destination": "i18n/audits/evidence/hi/ui.chat.canonical/s16a-au-hi/report.md",
+      "note": "written alongside; hash is of the scratchpad copy the auditor produced"
+    },
+    {
+      "path": "session scratchpad 2bc153cbf350/icu-matrix.log",
+      "sha256": "eef8537af58e03c86c7cb02c5fb9dc08e213340f54532634d9f5e77ab5ad6c2a",
+      "tracked_destination": "i18n/audits/evidence/hi/ui.chat.canonical/s16a-au-hi/audit.log",
+      "note": "actual execution log of the ICU/placeholder matrix (intl-messageformat + formatjs parser)"
+    },
+    {
+      "path": "session scratchpad 2bc153cbf350/icu-check.mjs",
+      "sha256": "8f0679d0abdd3216059e45cb7fce1453b37ecb4ab3a36051a667b39e1d2ac437",
+      "tracked_destination": "i18n/audits/evidence/hi/ui.chat.canonical/s16a-au-hi/audit.log.mjs",
+      "note": "the script behind audit.log; reproducible from the worktree's own node_modules"
+    }
+  ],
+  "checks_run": [
+    "python: json parse of en/context/hi/draft; draft key set == the 14 English s16a keys (none added, none dropped); hi file 442 keys vs en 456 = the 14 gap",
+    "node @formatjs/icu-messageformat-parser: recursive AST comparison of all 14 messages vs English (argument names/types, select option sets video/voiceover/sound_effect/other, nested plural option sets, `#` and ::group-off preserved); only literal/number ORDER differs, which the sidecar allows",
+    "node Intl.PluralRules('hi'): categories one,other; 0 and 1 -> one, 2/3/5/11/21/22/100/1000000 -> other; both hi categories present in queue_ahead and in all four nested running_batch branches",
+    "node intl-messageformat (worktree node_modules): formatted all 14 messages for counts 0,1,2,3,5,11,21,22,100,1000000 and materials image/video/voiceover/sound_effect/unknown_material, sizes 12.4 KB and 1.2 MB; read every output for noun-case, number agreement, gender agreement per material and leftover braces (none)",
+    "unicode: NFC, no Cf/Cc/ZWJ/ZWNJ/bidi controls, no edge or double spaces; middle dot U+00B7 and ellipsis U+2026 and danda U+0964 as required; no user-visible Latin (Latin only inside ICU syntax)",
+    "python: shipped-term counts over all 9086 hi keys — तस्वीर 88 keys/105 occurrences, इमेज 2/2 (both inside 'इमेज जनरेशन'), चित्र 7, छवि 5, फ़ोटो 13; 'अनुरोध' 148 keys, 'विफल' 79 keys, 'कतार में' 12 keys, 'बन रहा है' 5 keys, वॉइसओवर 0, बैच 0",
+    "read the render sites: canonical-transcript.tsx:2310-2350 (toolRecordSummary), image-gen-card.tsx:320-485 (StateLine, bdi-isolated datum), fold-media.tsx:303, image-group-lightbox.tsx:448, image-gen-card.tsx:735",
+    "read-only repo gates on the branch state: node scripts/i18n/generate.mjs --check (byte-identical), check-duplicates (ok, 1428 files), context-parity (ok); node --test scripts/i18n/tool-state-copy.test.mjs (17 pass); node scripts/i18n/ledger-check.mjs reports the expected hi/ui.chat.canonical missing-14 + stale-source rows that the translation commit must clear"
+  ],
+  "audit_notes_not_execution_log": "The linguistic judgement (accuracy, idiom, register, native-reader grammar) is the auditor's own reasoning; no translation/MT service and no back-translation was used. Every item under checks_run was actually executed in this session except ledger-assemble, which was NOT run: it writes i18n/ledger.json, this worktree was read-only for the auditor, and by contract it refuses a receipt whose target sha256 is not the on-disk catalogue - which is the case for a draft. No rendered frame and no native-speaker review: no screenshot of the tool row or the generation card in hi was captured (flagged in the report's gaps).",
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": []
+  },
+  "severity_counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 0,
+    "NIT": 0
+  },
+  "findings": [],
+  "judged_not_findings": [
+    {
+      "key": "ui.chat.canonical.image_gen.state.queue_ahead",
+      "kind": "defensible deviation",
+      "what": "carries the noun अनुरोध although the sidecar tone line says 'no noun'",
+      "why_not_a_finding": "a bare 'आगे 2' is not Hindi; the noun is grammatically required, the datum stays within the 'two to three words' hint and inside the shrink-0 never-wraps slot, and 'अनुरोध' is the shipped term for 'request' (148 keys)"
+    },
+    {
+      "key": "ui.chat.canonical.image_gen.state.queue_ahead",
+      "kind": "defensible deviation",
+      "what": "count 0 renders 'आगे 0 अनुरोध' rather than a sentence",
+      "why_not_a_finding": "the sidecar requires only that zero not read as a rank, and it does not; an =0 branch would add copy the English does not have - optional, not needed"
+    },
+    {
+      "key": "ui.chat.canonical.image_gen.state.done_batch / failed_batch",
+      "kind": "new term, no shipped precedent",
+      "what": "'बैच' has 0 shipped hi uses",
+      "why_not_a_finding": "it conflicts with nothing - the shipped image_gen.batch_summary says 'आइटम' because its English says 'items', not 'batch'; per glossary §4 the wave that first needs a term records it, so वॉइसओवर / साउंड इफ़ेक्ट / बैच are worth a line in the hi style guide's wave list (docs task, not copy)"
+    }
+  ],
+  "task_judgement": {
+    "question": "translator's flagged इमेज vs तस्वीर choice, judged against shipped usage counts",
+    "verdict": "तस्वीर - the translator's choice is correct and should not be changed",
+    "evidence": {
+      "इमेज_is_never_a_standalone_noun": "both hits are the fixed compound 'इमेज जनरेशन' (ui.chat.canonical.image_gen.progress and ui.onboarding.tour.radient_account_settings.body.1)",
+      "same_family_siblings_all_say_तस्वीर": [
+        "ui.chat.canonical.image_label",
+        "ui.chat.canonical.fold.images_aria",
+        "ui.chat.canonical.fold.more_images",
+        "ui.chat.canonical.lightbox.show_image"
+      ],
+      "correction_to_the_translator_note": "the note calls it '5 uses vs 1'; the real margin is 88 keys/105 occurrences vs 2, so the decision is stronger than the note claims",
+      "shipped_counts_at_93a6160": {
+        "तस्वीर": {
+          "keys": 88,
+          "occurrences": 105
+        },
+        "इमेज": {
+          "keys": 2,
+          "occurrences": 2
+        },
+        "चित्र": 7,
+        "छवि": 5,
+        "फ़ोटो": {
+          "keys": 13,
+          "occurrences": 15
+        }
+      }
+    }
+  },
+  "out_of_scope_observation": "pre-existing on main, not introduced here and not edited: ui.chat.canonical.image_gen.progress (the card's progressbar aria-label) says 'इमेज जनरेशन की प्रगति' while image_label / fold.images_aria / lightbox.show_image in the same card say तस्वीर. Does not gate this draft; if aligned, it belongs in its own follow-up rather than in this translation wave.",
+  "not_audited": [
+    "the unchanged 442 keys of the hi namespace (read only for glossary/register consistency)",
+    "rendered fit in the live UI (no frame captured)",
+    "the other locales' drafts for this wave",
+    "the hi style guide / glossary as documents (read and hashed, not reviewed)",
+    "the 14 keys in any catalogue: they are not in the repo yet, so no repo gate has seen them"
+  ],
+  "ledger_row_proposal": {
+    "commands_are_the_manager_s": true,
+    "ledger_assemble_not_run_why": "it writes i18n/ledger.json (this audit was read-only) and refuses a receipt whose target sha256 is not the on-disk catalogue; the hi catalogue only carries the 14 keys after the translation commit lands, so the row must be assembled then, from a receipt carrying the draft hash while the draft still stands",
+    "receipt_contract_fields": {
+      "auditor": "i18n-auditor",
+      "model": "deepseek/deepseek-flash",
+      "instance": "2bc153cbf350-s16a-au-hi",
+      "status": "passed",
+      "namespace": "ui.chat.canonical",
+      "sha256": {
+        "en": "d6d47d31667fe69448cf408f5a4fecf9948782e850506a6141217585de9db1fd",
+        "hi": "2b7d98192ccbe13deb01e0b24c2cad296c21fcdb1514cf50a56924f0dd685db6",
+        "hi_role": "the DRAFT the receipt backs; ledger-assemble derives target_sha256 from the catalogue on disk, which only carries these keys after the translation commit",
+        "derivation": "do not hand-copy; ledger-assemble derives both from the files on disk"
+      },
+      "findings": []
+    },
+    "result": "clean",
+    "note": "Independent hi audit of the 14 s16a keys (draft 2b7d9819…, not yet in the catalogue): ICU matrix run for 0,1,2,3,5,11,21,22,100,1e6 × 4 materials; तस्वीर endorsed (105 vs 2 shipped); 0 blocker/major/minor/nit. See i18n/audits/evidence/hi/ui.chat.canonical/s16a-au-hi/report.md",
+    "receipt_copy_to": "i18n/receipts/2bc153cbf350-s16a-au-hi.json (byte-for-byte; manager applies)"
+  }
+}

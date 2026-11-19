@@ -1,0 +1,179 @@
+# The release gate: a small, dedicated lane for "is this commit releasable?".
+#
+# WHY THIS FILE EXISTS, in the numbers that produced it.
+#
+# The account runs 40 concurrent standard jobs (GitHub Pro; the standard-runner
+# table is Free 20 / Pro 40 / Team 60) with a SEPARATE cap of 5 concurrent
+# macOS jobs, and the cap is account-wide across every repository the account
+# owns. On 2026-10-19 that pool was saturated: 26-28 workflow runs in flight
+# across three repositories, 53-118 jobs queued, a median pending-job AGE of
+# 25.8 minutes (p90 35.0, max 48.8), and a four-minute sample in which ZERO
+# jobs started. The `Desktop Tests` step in this repository's own `test` job
+# waited more than 40 minutes for a runner, which is the shape of the whole
+# problem: a job that is one of the account's 40 slots, queued behind work
+# whose results nobody is waiting on.
+#
+# The durable argument for this file is the SLOT COUNT, and it is worth stating
+# first because it does not depend on any property of GitHub's scheduler: a
+# push to `main` asks this repository's `ci.yml` for TEN runner slots (nine
+# job definitions, one of which -- `npx-sanity-check` -- fans out to two
+# `matrix.os` legs), and this workflow asks for ONE. Under even a strict FIFO queue the gate takes the
+# first slot that frees while the matrix drains ten, so the gate's answer
+# arrives long before the matrix's. (The queue was also measured NOT to be
+# strict FIFO -- 118 jobs started in a 45-minute window that had been created
+# after the oldest job still waiting -- which helps, but is an observation
+# about an implementation detail rather than a contract, so nothing here
+# depends on it.)
+#
+# It does NOT replace `ci.yml`. The desktop suite, the lint and type gates and
+# the runtime-dependency guard stay exactly where they are, and a release
+# still needs both. Duplicating them here would ADD to the very queue
+# pressure this file exists to relieve, which is the opposite of the point.
+# What this file adds is the fast answer to the question the release owner
+# asks first, answered in about a minute instead of an hour.
+#
+# WHAT IS IN IT: ONE invariant, the version.
+#
+# `package.json` is this repository's version source and the tags are
+# `vX.Y.Z`, so the declared version must never go BACKWARDS. This is a REWIND
+# backstop, not a "burned number" check: a version that was published and
+# then never released is HIGHER than the newest tag, and this gate accepts it
+# -- it is the `scripts/version-bump-guard.mjs` job, which runs on pull
+# requests, that owns the policy of which PR may carry a bump at all. What
+# this gate adds is the check that survives a PR-time policy that was
+# `--admin`-merged over: on `main`, a version that has been rewound below the
+# newest published tag means the published history and the tree have stopped
+# agreeing, and that is a release-stopping condition.
+#
+# It reuses `listReleaseTags` and `compareVersions` from
+# `scripts/version-bump-guard.mjs` rather than resolving tags a second time.
+# That is deliberate: the first version of this file carried its own tag
+# resolution, and it was weaker than the repository's -- it excluded
+# prerelease tags, so it went green on a version LOWER than a published
+# `v0.37.0-rc.1`. One implementation, the tested one, and one place to fix a
+# rule. `listReleaseTags` also FAILS CLOSED when the tag list cannot be
+# read, which is the behaviour this gate needs and did not have.
+name: Release Gate
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One group per (ref, commit), and NEVER cancelled. Two runs on the SAME
+# commit share a group, so a re-run waits for its predecessor instead of
+# racing it; two runs on DIFFERENT commits get different groups, so neither
+# can evict the other -- which is what `cancel-in-progress: false` alone
+# would not guarantee, because a group holds only ONE pending run by default
+# and evicts the waiting one when a third arrives. A release gate that can be
+# cancelled is not a gate.
+concurrency:
+  group: release-gate-${{ github.ref }}-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  release-invariants:
+    name: Release invariants
+    runs-on: ubuntu-latest
+    # Generous against the ~30 s this takes. It exists so a wedged step cannot
+    # hold a runner for the 360-minute default -- the same reasoning as the
+    # `version-bump-guard` job in this repository.
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # No `pnpm install`: the check imports node builtins and the
+      # repository's own scripts, so this job is a checkout and one node
+      # process. A gate that needs a dependency install is a gate that goes
+      # red for reasons unrelated to versions.
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Verify the declared version has not been rewound
+        run: |
+          # `-e` is EXPLICIT here even though the runner already runs `run:`
+          # blocks under `bash -e {0}`. The assertion below is the only thing
+          # standing between a wrong commit and a green gate, and a script
+          # that depends on the runner's implicit `-e` is a script that a
+          # reader re-running it by hand gets a FALSE PASS from.
+          set -euo pipefail
+          # The commit under test IS the commit that was pushed, so nothing can
+          # move underneath the verdict.
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          node --input-type=module - <<'NODE'
+          import { readFileSync } from "node:fs";
+          import { join } from "node:path";
+          import { pathToFileURL } from "node:url";
+
+          // The repository's OWN tag reader and version comparison, imported
+          // rather than reimplemented. `listReleaseTags` throws when the tag
+          // list cannot be read, so an unreadable list is a failure and not a
+          // silent pass.
+          const { listReleaseTags, compareVersions } = await import(
+            pathToFileURL(join(process.cwd(), "scripts", "version-bump-guard.mjs")).href
+          );
+
+          const pkg = JSON.parse(readFileSync("package.json", "utf8"));
+          const version = pkg.version;
+
+          let tags;
+          try {
+            tags = listReleaseTags();
+          } catch (err) {
+            console.error(`::error::Could not read the release tags: ${err.message}`);
+            process.exit(1);
+          }
+          if (tags.length === 0) {
+            // A repository with no release tags yet has nothing to compare
+            // against, and that is the CHECK being wrong rather than the tree
+            // being wrong. The repository's own guard takes the same path.
+            console.log("no release tags on the remote; nothing to compare against");
+            process.exit(0);
+          }
+
+          // The HIGHEST published tag. `compareVersions` is the repository's
+          // semver comparison, so a prerelease sorts below the release it
+          // precedes -- which is what makes `v0.37.0-rc.1` the highest tag
+          // while `0.37.0` is not yet published. Tags the comparison cannot
+          // parse are dropped first, exactly as the pull-request guard drops
+          // them, so an unparseable tag can neither win nor block.
+          const parseable = tags.filter((tag) => compareVersions(tag, tag) !== null);
+          if (parseable.length === 0) {
+            console.log("no parseable release tags on the remote; nothing to compare against");
+            process.exit(0);
+          }
+          const highest = parseable.reduce((a, b) => {
+            const c = compareVersions(b, a);
+            return c === null || c <= 0 ? a : b;
+          }, parseable[0]);
+
+          const cmp = compareVersions(version, highest);
+          if (cmp === null) {
+            console.error(
+              `::error::package.json declares an unusable version: ${JSON.stringify(version)}`,
+            );
+            process.exit(1);
+          }
+          if (cmp < 0) {
+            console.error(
+              `::error::package.json declares ${version}, which is LOWER than the published ${highest}. ` +
+                "A published version cannot be reused and a tree that has been rewound below it means the " +
+                "published history and the tree have stopped agreeing.",
+            );
+            process.exit(1);
+          }
+          console.log(
+            cmp === 0
+              // The tag is printed WITH its `v`, because that is how a tag is
+              // written and how the repository's own guard prints it.
+              ? `declared version ${version} matches the published v${highest} (no bump yet)`
+              : `declared version ${version} is ahead of the published v${highest}`,
+          );
+          NODE

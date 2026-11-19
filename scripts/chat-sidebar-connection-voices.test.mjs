@@ -55,7 +55,18 @@ const PAGE_SOURCE = readFileSync(CHAT_PAGE, "utf8");
  */
 const ERROR_COPY_ROW = /capabilities\.error\.message/;
 const NOTICE_ROW = /<p>\{notice\}<\/p>/;
-const RETRY_REFRESH = /Retry refresh/;
+/**
+ * The paragraphs' verb and the disconnected sentence live in the sidebar's own
+ * English catalogue now. Each assertion names the key the control renders AND
+ * the message a reader hears, so a key whose copy moved fails here rather than
+ * in a frame.
+ */
+const SIDEBAR_COPY = JSON.parse(
+	readFileSync("src/i18n/catalogues/en/ui.chat.sidebar.json", "utf8"),
+);
+const RETRY_REFRESH_KEY = "ui.chat.sidebar.list.retry_refresh";
+const RETRY_REFRESH = /t\("ui\.chat\.sidebar\.list\.retry_refresh"\)/;
+const OFFLINE_KEY = "ui.chat.sidebar.list.offline";
 const SHARED_GATE = "!stripSpeaksConnection";
 const BANNER_GATE = "!coveredByCompatibilityBanner";
 const PANE_BANNER_YIELD =
@@ -65,13 +76,28 @@ const STRIP_IMPORT =
 	/import \{ useStripSpeaksConnection \} from "\.\.\/chat-status-presence";/;
 const SIDEBAR_HOOK_CALL =
 	/const stripSpeaksConnection = useStripSpeaksConnection\(\s*serverHealth\?\.online === false,\s*\);/;
+/*
+ * THE SIDEBAR'S READING ALSO COUNTS A SERVER UPDATE (PR #1817): during an update
+ * the strip's `updating` row is the one voice for the outage, so the sidebar's
+ * reason term widens to "offline OR updating". The R11 invariant is unchanged -
+ * the call still goes through the presence hook, so the stand-down holds only
+ * where the strip is on screen - and only that one extra disjunct is accepted:
+ * a bare `serverUpdating` (dropping the offline term) or a reading outside the
+ * hook still fails here.
+ */
+const SIDEBAR_OWN_HOOK_CALL =
+	/const stripSpeaksConnection = useStripSpeaksConnection\(\s*serverHealth\?\.online === false(?:\s*\|\|\s*serverUpdating)?,\s*\);/;
 const PRESENCE_TWO_TERMS =
 	/export function useStripSpeaksConnection\(serverOffline: boolean\): boolean \{\s*return useChatStatusStripPresent\(\) && serverOffline;/;
 const PRESENCE_DEFAULT = /let stripPresent = false;/;
 const PANE_YIELDS = /error && !stripSpeaksConnection/;
 const STRIP_PUBLISHES_IMPORT =
 	/import \{ setChatStatusStripPresent \} from "\.\.\/chat-status-presence";/;
-const STRIP_SPEAKING = /const speaking = display !== null;/;
+// The start-up band (backend-startup-panel) is the strip speaking too, so the
+// published fact is "a display OR a start-up phase is drawn"; both halves are
+// pinned so neither can silently drop out of the sidebar's view.
+const STRIP_SPEAKING =
+	/const speaking = display !== null \|\| startupPhase !== null;/;
 const STRIP_PUBLISH_CALL = /setChatStatusStripPresent\(speaking\);/;
 const STRIP_UNMOUNT_CLEARS =
 	/return \(\) => setChatStatusStripPresent\(false\);/;
@@ -94,6 +120,11 @@ test("the capability paragraph stands down on the strip's own reading, and the b
 	const block = between("{capabilities.error &&", "\n\t\t\t{/*");
 	assert.match(block, ERROR_COPY_ROW);
 	assert.match(block, RETRY_REFRESH);
+	assert.equal(
+		SIDEBAR_COPY[RETRY_REFRESH_KEY],
+		"Retry refresh",
+		"the paragraph's verb moved: it reads `Retry refresh`, the strip's one re-read",
+	);
 	assert.ok(
 		block.includes(SHARED_GATE),
 		"the strip's own reading guards this block",
@@ -117,12 +148,23 @@ test("the capability paragraph stands down on the strip's own reading, and the b
 });
 
 test("the withdrawn-gate paragraph takes the same stand-down", () => {
+	/*
+	 * The marker carries PR #1817's `!serverUpdating` term: the notice is also
+	 * hidden for an update window (its sentence is read off the same fenced
+	 * answer). The guarded invariant - the paragraph stands down on the shared
+	 * predicate - is still the marker's own `!stripSpeaksConnection`.
+	 */
 	const block = between(
-		"{notice && !stripSpeaksConnection && (",
+		"{notice && !stripSpeaksConnection && !serverUpdating && (",
 		"\n\t\t\t{/*",
 	);
 	assert.match(block, NOTICE_ROW);
 	assert.match(block, RETRY_REFRESH);
+	assert.equal(
+		SIDEBAR_COPY[RETRY_REFRESH_KEY],
+		"Retry refresh",
+		"the withdrawn-gate paragraph's verb moved: it reads `Retry refresh`",
+	);
 	assert.equal(
 		block.includes('role="alert"'),
 		false,
@@ -171,17 +213,22 @@ test("the foot line and the two paragraphs read one predicate, not three", () =>
 		foot.includes(BANNER_GATE),
 		"the foot line must also yield to the compatibility banner",
 	);
-	const caption = between("feed.available &&", "Not connected");
+	const caption = between("feed.available &&", `t("${OFFLINE_KEY}")`);
 	assert.ok(
 		caption.includes(SHARED_GATE),
 		"the caption reads the same predicate (D30): with the strip up it stands down, and off /chat it speaks again",
+	);
+	assert.equal(
+		SIDEBAR_COPY[OFFLINE_KEY],
+		"Not connected to the backend — showing the last known state.",
+		"the caption's sentence moved: it still states the last-known state it is showing",
 	);
 });
 
 test("the shared predicate carries the strip's presence beside the copy condition (R11)", () => {
 	assert.match(
 		SOURCE,
-		SIDEBAR_HOOK_CALL,
+		SIDEBAR_OWN_HOOK_CALL,
 		"the sidebar must read the shared predicate: 'the strip is on screen AND unreachability is the reason' - a one-term version is the silent-route defect R11 found",
 	);
 	assert.match(
@@ -255,7 +302,7 @@ test("the strip publishes its own presence while it is drawn (R11)", () => {
 	assert.match(
 		STRIP_SOURCE,
 		STRIP_SPEAKING,
-		"presence is 'has something to say', and the dismissed pill still counts",
+		"presence is 'has something to say' (a display or the start-up band), and the dismissed pill still counts",
 	);
 	assert.match(STRIP_SOURCE, STRIP_PUBLISH_CALL, "the publish call itself");
 	assert.match(

@@ -14,7 +14,13 @@
 
 export { Alert, AlertDescription, AlertTitle, alertVariants } from "./alert";
 export type { AlertProps } from "./alert";
-export { Avatar, AvatarFallback, AvatarImage } from "./avatar";
+export { AgentAvatar, Avatar, AvatarFallback, AvatarImage } from "./avatar";
+export {
+	AttentionBadge,
+	ATTENTION_BADGE_CAP,
+	ATTENTION_BADGE_CORNER_CAP,
+} from "./attention-badge";
+export type { AttentionBadgeProps } from "./attention-badge";
 export { Badge, badgeVariants, countLabel } from "./badge";
 export type { BadgeProps } from "./badge";
 export { Button, buttonVariants } from "./button";
@@ -72,6 +78,7 @@ export {
 } from "./popover";
 export { Progress } from "./progress";
 export type { ProgressProps } from "./progress";
+export { RadioGroup, RadioGroupItem } from "./radio-group";
 export { ScrollArea, ScrollBar } from "./scroll-area";
 export {
 	SearchableSelect,
@@ -132,6 +139,7 @@ export {
 export type { TabPanelProps } from "./tabs";
 export { Textarea } from "./textarea";
 export type { TextareaProps } from "./textarea";
+export { BrowserSafeTooltip } from "./browser-safe-tooltip";
 export {
 	Tooltip,
 	TooltipContent,

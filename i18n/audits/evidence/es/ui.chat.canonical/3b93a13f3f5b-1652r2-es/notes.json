@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "kind": "source inspection notes, NOT an execution log",
+  "locale": "es",
+  "head": "0b3d90980efb2b70306f665a10af128a06a421b6",
+  "checks": [
+    "separator is the locale's ordinary list comma, never a conjunction word (context note); matches ui.agents.starters.summary.separator except where noted",
+    "zh-CN uses the enumeration comma 、 (style guide punctuation set); ur Arabic comma ، + space; others comma + space",
+    "ICU arms = CLDR categories required by the style guide (es/fr one/many/other; ru one/few/many/other; hi/ur one/other; vi/zh-CN other only)",
+    "{count} via # and {reason} preserved; no extra/missing arguments",
+    "line_no_reason is a byte-exact prefix of line (context note)",
+    "reason phrases lower-case, no conjunction words (Intl.ListFormat joins them)",
+    "terminology matched against existing catalogue uses (file/preview/location) and core glossary/style guide",
+    "no bidi control characters"
+  ],
+  "per_key_verdict": {
+    "ui.chat.canonical.supplement.withheld.reason_separator": "PASS — idiomatic; placeholders, plural arms and glossary/style conform"
+  },
+  "values": {
+    "ui.chat.canonical.supplement.withheld.reason_separator": ", "
+  },
+  "english_values": {
+    "ui.chat.canonical.supplement.withheld.reason_separator": ", "
+  },
+  "unchanged_keys_identical_to_ledger_bound_base": 184
+}

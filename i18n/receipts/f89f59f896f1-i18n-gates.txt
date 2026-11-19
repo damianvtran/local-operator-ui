@@ -1,0 +1,17 @@
+# Actual output, delta audit A (session f89f59f896f1), worktree at fbbbdec31b1 + ledger/receipt changes, run serially with NODE_OPTIONS=--max-old-space-size=2048 timeout 120
+## node scripts/i18n/ledger-check.mjs
+ledger-check: ok — 826 entr(ies) complete, fresh and independently audited
+ledger-check exit=0
+## pnpm check-i18n
+$ pnpm check-i18n:catalogues && pnpm check-i18n:added-strings && pnpm check-i18n:coverage
+$ node scripts/i18n/generate.mjs --check && node scripts/i18n/check-duplicates.mjs && node scripts/i18n/check-strings.mjs && node scripts/i18n/ledger-check.mjs && node scripts/i18n/context-parity.mjs
+/Users/damian/local-operator-ui/.worktrees/i18n-audit-1604-a/src/i18n/keys.gen.ts is byte-identical to a fresh generation.
+check-duplicates: ok — 1067 file(s) scanned, 0 duplicate key(s)
+check-strings.mjs: ok — 1493 file(s) scanned, 0 literal(s) at or below the baseline
+ledger-check: ok — 826 entr(ies) complete, fresh and independently audited
+context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json).
+$ node scripts/i18n/check-added-strings.mjs
+PASS: no newly added literal copy in 6 changed file(s) against 2c5c462ab881eb16ad4505108b9cc16d3d72d426.
+$ node scripts/i18n/check-coverage.mjs
+coverage-check: ok — 7 gated language(s) over 118 namespace(s); 0 allowed key(s) remain across 0 pair(s) (shrink-only; see i18n/coverage-allowance.json).
+pnpm check-i18n exit=0

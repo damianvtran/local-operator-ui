@@ -68,6 +68,7 @@
  * which is what lets the whole matrix be asserted without an Electron process.
  */
 
+import { isolateLtr, t } from "@shared/i18n";
 import { type TargetEvidence, normalizeFileUrl } from "./link-grammar";
 import {
 	MAX_EAGER_READ_BYTES,
@@ -270,12 +271,61 @@ export type ProbeFunction = (paths: string[]) => Promise<
 /*
  * The session's answers. A negative is cached too (the file may be created
  * later, and `use-mentioned-files` covers that case for the Files panel with a
- * growth trigger); here the recovery is the click that failed, which forgets the
- * entry and re-probes rather than leaving the reader with a stale "No file".
+ * growth trigger); here there are two recoveries: the click that failed, which
+ * forgets the entry and re-probes rather than leaving the reader with a stale
+ * "No file", and a NEW message naming the spelling (`claimFirstScan` below).
  * A FAULT is not an answer and is never cached at all - see the `error` arm in
  * `probeTargets` below.
  */
 const probeCache = new Map<string, ProbedTarget>();
+
+/**
+ * Every document the transcript has pre-scanned this session, so a REMOUNT of a
+ * row is told apart from a NEW row (round 2, review R2-1).
+ *
+ * WHY. A listed name links only on the disk's "exists", so an agent that writes
+ * `Writing to ~/out/:` + names BEFORE its tool runs caches a negative for each
+ * name, and the final report listing the same names - mounted after the files
+ * were written - used to read that negative and stay plain for the rest of the
+ * session. A new message naming a spelling is the event that says the answer
+ * may have moved, so the first scan of a document re-asks the negatives among
+ * its suspects; the answer lands through `notifyProbes`, which re-renders the
+ * EARLIER row too.
+ *
+ * WHY NOT A TTL. A tool that writes in two seconds puts the report inside any
+ * TTL short enough to matter, and a TTL short enough to cover it re-asks on
+ * every virtualized remount - up to `probeFiles` 79 batches for one long
+ * listing on each scroll (review R2-3's measurement). Keyed on the document,
+ * a re-ask costs one stat per negative per NEW message, never per render or
+ * per scroll. An earlier row whose files appear with no later message naming
+ * them stays plain: the accepted false negative recorded in
+ * `markdown-renderer.tsx`'s `useLinkEvidence`.
+ *
+ * BOUNDED. Cleared when it reaches `SCANNED_LIMIT` documents: the cost of the
+ * clear is one extra ask round for negatives in the rows mounted after it,
+ * which `probeTargets`'s dedupe and batching already bound.
+ */
+const scannedDocuments = new Set<string>();
+const SCANNED_LIMIT = 4096;
+
+/**
+ * True exactly once per distinct document per session: the caller is the first
+ * scan of it, so its cached negatives are worth asking again.
+ *
+ * `document` is an IDENTITY, not merely text (round 3, review R3-3b): the
+ * transcript passes the record id with the content, so a later message whose
+ * text is byte-identical to an earlier one is still a new document and still
+ * re-checks once, while a virtualized remount of the same record is not. A
+ * surface with no record id falls back to the text alone, and a byte-identical
+ * second document there is the accepted false negative recorded beside the
+ * plain-until-known one in `markdown-renderer.tsx`.
+ */
+export const claimFirstScan = (document: string): boolean => {
+	if (scannedDocuments.has(document)) return false;
+	if (scannedDocuments.size >= SCANNED_LIMIT) scannedDocuments.clear();
+	scannedDocuments.add(document);
+	return true;
+};
 
 /** What is known about a target, or `undefined` when it has not been asked. */
 export const probeStateFor = (target: string): ProbedTarget | undefined =>
@@ -298,6 +348,7 @@ export const forgetProbe = (target: string): void => {
  */
 export const resetProbeCache = (): void => {
 	probeCache.clear();
+	scannedDocuments.clear();
 };
 
 /**
@@ -398,7 +449,25 @@ const notifyProbes = (landed: readonly string[]): void => {
  * A failed chunk clears its entries here (`finally`), so the next asker retries
  * rather than inheriting a permanently in-flight token.
  */
-const inFlightProbes = new Set<string>();
+const inFlightProbes = new Map<string, Promise<void>>();
+
+/**
+ * Whether an answer CHANGES what the session knew (round 3, review R3-1).
+ *
+ * Only a change is announced to `subscribeProbes`: a re-check that comes back
+ * "still missing" is the common case (`/health`, `/new`, a not-yet-created
+ * `~/out/`), and announcing it re-rendered EVERY mounted row naming that
+ * spelling on every new message that named it - 101 rows on the 101st message,
+ * 5,151 re-renders over the session, each a full react-markdown parse. A row's
+ * render reads only `exists` (`evidenceFor`) and the toolbar reads `isFile`,
+ * so those two are what "changed" means; the asking row still repaints itself
+ * from its own `.then`.
+ */
+const answerChanged = (
+	prior: ProbedTarget | undefined,
+	next: NonNullable<ProbedTarget>,
+): boolean =>
+	!prior || prior.exists !== next.exists || prior.isFile !== next.isFile;
 
 /**
  * Ask about many targets in `maxBatch`-sized sequential chunks.
@@ -417,11 +486,28 @@ const inFlightProbes = new Set<string>();
  * A chunk that throws warns ONCE per call and is left uncached: a stat that
  * failed says nothing about whether the file exists, and a second warning for a
  * second bad chunk is noise about one broken bridge.
+ *
+ * `recheckMissing` asks again about spellings cached as MISSING (never about
+ * an "exists", which stays cached as before); the in-flight set still dedupes
+ * it. Only a document's first scan passes it (`claimFirstScan`).
+ *
+ * A RE-CHECK IS NEVER SPENT WITHOUT AN ASK (round 3, review R3-3a). A spelling
+ * already in flight when a new document re-checks it was asked BEFORE that
+ * document existed - possibly before the tool wrote the file - so its answer
+ * may be the stale "missing" the re-check exists to replace. Skipping it (the
+ * round-2 dedupe) consumed the document's one re-check with nothing sent:
+ * with 50 ms of probe latency both rows stayed plain while the file existed.
+ * Such a spelling now waits for that flight and, if it landed missing, is
+ * asked once more. That second pass does not defer again: any flight it meets
+ * started after this document mounted, so its answer is already fresh for it,
+ * and twenty documents waiting on one flight still cost one extra ask.
  */
 export async function probeTargets(
 	targets: readonly string[],
 	ask: ProbeFunction | undefined,
 	maxBatch: number,
+	recheckMissing = false,
+	deferInFlight = recheckMissing,
 ): Promise<void> {
 	/*
 	 * No bridge is not an error: Storybook and browser development have none, and
@@ -433,13 +519,44 @@ export async function probeTargets(
 	const size = maxBatch > 0 ? Math.floor(maxBatch) : 1;
 	const seen = new Set<string>();
 	const wanted: string[] = [];
+	const stale: string[] = [];
+	const flights = new Set<Promise<void>>();
 	for (const target of targets) {
-		if (probeCache.has(target) || inFlightProbes.has(target)) continue;
 		if (seen.has(target)) continue;
 		seen.add(target);
+		const flight = inFlightProbes.get(target);
+		if (flight) {
+			if (deferInFlight) {
+				stale.push(target);
+				flights.add(flight);
+			}
+			continue;
+		}
+		const known = probeCache.get(target);
+		if (known && (known.exists || !recheckMissing)) continue;
 		wanted.push(target);
 	}
-	for (const target of wanted) inFlightProbes.add(target);
+	if (wanted.length > 0) {
+		const flight = askInChunks(wanted, ask, size);
+		for (const target of wanted) inFlightProbes.set(target, flight);
+		await flight;
+	}
+	if (stale.length === 0) return;
+	await Promise.all(flights);
+	await probeTargets(stale, ask, maxBatch, true, false);
+}
+
+/**
+ * The asking half of `probeTargets`: `wanted` in sequential chunks, each
+ * chunk's answers cached and the CHANGED ones announced as they land. It never
+ * rejects - a throwing chunk is warned about and left uncached - because its
+ * promise is what a deferred re-check awaits (`inFlightProbes`).
+ */
+async function askInChunks(
+	wanted: readonly string[],
+	ask: ProbeFunction,
+	size: number,
+): Promise<void> {
 	let warned = false;
 	for (let at = 0; at < wanted.length; at += size) {
 		const chunk = wanted.slice(at, at + size);
@@ -459,7 +576,8 @@ export async function probeTargets(
 				 * rather than reading a lie.
 				 */
 				if (answer.error !== undefined) return;
-				probeCache.set(target, {
+				const prior = probeCache.get(target);
+				const next: NonNullable<ProbedTarget> = {
 					exists: answer.exists,
 					isFile: answer.isFile,
 					/*
@@ -472,8 +590,9 @@ export async function probeTargets(
 					resolved: answer.resolved ?? target,
 					sizeBytes: answer.sizeBytes ?? null,
 					mtimeMs: answer.mtimeMs ?? null,
-				});
-				landed.push(target);
+				};
+				probeCache.set(target, next);
+				if (answerChanged(prior, next)) landed.push(target);
 			});
 			if (landed.length > 0) notifyProbes(landed);
 		} catch (error) {
@@ -645,6 +764,9 @@ const baseName = (target: string): string =>
  */
 const MISSING_NOTE_MAX_CHARS = 40;
 
+/** Invisible direction marks and isolates (LRM/RLM/ALM, LRE..PDI): zero width, so not budget. */
+const BIDI_CONTROLS = /[\u200e\u200f\u061c\u202a-\u202e\u2066-\u2069]/g;
+
 /**
  * The missing-file reason, with the DIRECTORY ellipsised instead of the name.
  *
@@ -654,16 +776,46 @@ const MISSING_NOTE_MAX_CHARS = 40;
  * The full path is still on the anchor above the strip and in `title`.
  */
 export function missingNote(target: string): { note: string; title: string } {
-	const title = `No file at ${target}`;
+	/*
+	 * The VISIBLE length of the sentence, bidi controls not counted. The budget is
+	 * a proxy for what the reader sees, but an RTL sentence carries invisible
+	 * isolation marks twice over (`isolateLtr` here, and the runtime's own FSI/PDI
+	 * around a Latin-led argument in `src/i18n/bidi.ts`), so measuring the raw
+	 * string charged an RTL locale up to four characters an LTR one is not
+	 * charged: the same path flipped to its short form at a different length by
+	 * language. Measured on the sentence built WITHOUT `isolateLtr` and with the
+	 * controls stripped, LTR and RTL switch at the same visible length.
+	 */
+	const visibleLength = (sentenceText: string) =>
+		sentenceText.replace(BIDI_CONTROLS, "").length;
+	const plain = (path: string) =>
+		t("ui.chat.canonical.link_actions.missing_file", { path });
+	/* A path is LTR content inside a sentence that may be RTL; a no-op in LTR. */
+	const sentence = (path: string) =>
+		t("ui.chat.canonical.link_actions.missing_file", {
+			path: isolateLtr(path),
+		});
+	const title = sentence(target);
 	const base = baseName(target) || target;
 	const parts = target.split("/").filter(Boolean);
 	const directory = parts.length > 1 ? parts[parts.length - 2] : "";
-	const withDirectory = directory ? `No file at …/${directory}/${base}` : title;
+	const shortPath = directory ? `…/${directory}/${base}` : target;
 	return {
+		/*
+		 * The budget is measured on the WHOLE translated sentence, and the choice is
+		 * between two whole messages - never a slice of one - so a translation can
+		 * lengthen the frame around the path without this ever cutting a word. One
+		 * number serves every language on purpose: it is a character proxy for the
+		 * slot's pixel width, the catalogue context asks translators to keep the
+		 * frame short (about 16 characters), and a frame that is longer still lands
+		 * on the base-name-only message, which keeps the part that tells one missing
+		 * path from another; past that the slot's CSS ellipsis is the backstop,
+		 * exactly as it already is for an over-long English base name.
+		 */
 		note:
-			withDirectory.length <= MISSING_NOTE_MAX_CHARS
-				? withDirectory
-				: `No file at ${base}`,
+			visibleLength(plain(shortPath)) <= MISSING_NOTE_MAX_CHARS
+				? sentence(shortPath)
+				: sentence(base),
 		title,
 	};
 }
@@ -713,21 +865,22 @@ export function linkToolbarModel(input: {
 }): LinkToolbarModel | null {
 	const { kind, target, probe, quotable, canOpenInCanvas } = input;
 	if (kind === "other") return null;
-	const leading = quotable ? [action("quote", "Quote")] : [];
-	const trailing = quotable ? [] : [action("quote", "Quote")];
+	const quote = t("ui.chat.canonical.link_actions.quote");
+	const leading = quotable ? [action("quote", quote)] : [];
+	const trailing = quotable ? [] : [action("quote", quote)];
 	const name = baseName(target) || target;
 
 	if (kind === "url") {
 		return {
 			actions: [
 				...leading,
-				action("copy", "Copy link"),
-				action("open", "Open in browser"),
+				action("copy", t("ui.chat.canonical.link_actions.copy_link")),
+				action("open", t("ui.chat.canonical.link_actions.open_in_browser")),
 				...trailing,
 			],
 			note: null,
 			noteTitle: null,
-			label: `Actions for ${name}`,
+			label: t("ui.chat.canonical.link_toolkit.actions_for", { name }),
 		};
 	}
 
@@ -741,10 +894,14 @@ export function linkToolbarModel(input: {
 	if (missing) {
 		const reason = missingNote(target);
 		return {
-			actions: [...leading, action("copy", "Copy path"), ...trailing],
+			actions: [
+				...leading,
+				action("copy", t("ui.chat.canonical.link_actions.copy_path")),
+				...trailing,
+			],
 			note: reason.note,
 			noteTitle: reason.title,
-			label: `Actions for ${name}`,
+			label: t("ui.chat.canonical.link_toolkit.actions_for", { name }),
 		};
 	}
 	/*
@@ -770,29 +927,29 @@ export function linkToolbarModel(input: {
 	return {
 		actions: [
 			...leading,
-			action("copy", "Copy path"),
+			action("copy", t("ui.chat.canonical.link_actions.copy_path")),
 			...fileActions,
 			...trailing,
 		],
-		note: overCeiling ? TOO_LARGE_NOTE : null,
-		noteTitle: overCeiling ? TOO_LARGE_TITLE : null,
-		label: `Actions for ${name}`,
+		/*
+		 * THE NOTE: the sentence a strip shows when the canvas is on offer for the TYPE but a press
+		 * would refuse this FILE.
+		 *
+		 * The note slot is the missing-path one's, and the reason it is reused rather than
+		 * a button being dropped silently is the reader's own expectation: the operator's
+		 * rule is that a supported file opens in the canvas, so a `.csv` with no canvas
+		 * button reads as a bug unless the strip says why. Sentence case, and short enough
+		 * to sit in the strip's own line, because it renders beside the buttons.
+		 */
+		note: overCeiling
+			? t("ui.chat.canonical.link_actions.too_large_note")
+			: null,
+		noteTitle: overCeiling
+			? t("ui.chat.canonical.link_actions.too_large_title")
+			: null,
+		label: t("ui.chat.canonical.link_toolkit.actions_for", { name }),
 	};
 }
-
-/**
- * The sentence a strip shows when the canvas is on offer for the TYPE but a press
- * would refuse this FILE.
- *
- * The note slot is the missing-path one's, and the reason it is reused rather than
- * a button being dropped silently is the reader's own expectation: the operator's
- * rule is that a supported file opens in the canvas, so a `.csv` with no canvas
- * button reads as a bug unless the strip says why. Sentence case, and short enough
- * to sit in the strip's own line, because it renders beside the buttons.
- */
-const TOO_LARGE_NOTE = "Too large for the canvas preview";
-const TOO_LARGE_TITLE =
-	"Too large for the canvas preview, so Open uses the default app";
 
 /**
  * Whether the press on this path would REFUSE it for the read ceiling.
@@ -856,7 +1013,9 @@ function actionListFor(input: {
 	probe: ProbedTarget;
 	canOpenInCanvas: boolean;
 }): LinkAction[] {
-	if (input.isDirectory) return [action("open", "Open")];
+	const open = t("ui.chat.canonical.link_actions.open");
+	const openFolder = t("ui.chat.canonical.link_actions.open_folder");
+	if (input.isDirectory) return [action("open", open)];
 	/*
 	 * Where the app can show the file itself, the canvas is what `Open` means and
 	 * the OS gets a press of its own: the operator's ask is that a supported file
@@ -867,10 +1026,13 @@ function actionListFor(input: {
 	 */
 	if (canvasActionFor(input)) {
 		return [
-			action("open", "Open in canvas"),
-			action("open-default", "Open in default app"),
-			action("open-folder", "Open folder"),
+			action("open", t("ui.chat.canonical.link_actions.open_in_canvas")),
+			action(
+				"open-default",
+				t("ui.chat.canonical.link_actions.open_in_default_app"),
+			),
+			action("open-folder", openFolder),
 		];
 	}
-	return [action("open", "Open"), action("open-folder", "Open folder")];
+	return [action("open", open), action("open-folder", openFolder)];
 }

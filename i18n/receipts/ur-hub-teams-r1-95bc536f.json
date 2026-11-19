@@ -1,0 +1,93 @@
+{
+	"schema": 1,
+	"auditor": "translation-auditor",
+	"agent": "translation-auditor",
+	"model": "deepseek/deepseek-flash",
+	"model_provenance": "Session opened on anthropic/claude-sonnet-5-5 (harness header). Three provider-quota fallbacks arrived in one notice before the first catalogue read: anthropic/claude-sonnet-5-5 -> anthropic/claude-opus-5-5 -> openai/gpt-6.1-sol -> deepseek/deepseek-flash. Every catalogue read, check and verdict in this receipt ran on deepseek/deepseek-flash. Disclosed rather than papered over; if this commit's translation lanes were also DeepSeek, cross-family separation was not available this round and the manager should weigh that when binding the ledger row. Independence here is instance-level: a separate session that wrote none of these bytes.",
+	"fallback": "anthropic/claude-sonnet-5-5 -> anthropic/claude-opus-5-5 -> openai/gpt-6.1-sol -> deepseek/deepseek-flash (provider quota)",
+	"independence": "Separate session from every translation lane and from the commit author. The commit body (be77d308262) was read only as claims to check, never as evidence. The verdict was rebuilt from the en source, the en context sidecars, the shipped ur catalogue (all 10 ur ui.hub.* namespaces, 505 existing ur values, plus a catalogue-wide terminology scan), the render sites, the core glossary and the ur style guide.",
+	"instance": "95bc536f37d9-teams",
+	"receipt_slug": "95bc536f",
+	"session": "95bc536f37d9",
+	"locale": "ur",
+	"namespace": "ui.hub.teams",
+	"branch": "i18n/s5-agent-hub",
+	"head": "be77d308262ce0527c1fd4052ff77207edcac189",
+	"base": "c88ad36bbcadee99791b9153ba9a8d31b2b49d1d",
+	"date": "2026-11-08",
+	"scope": "delta audit, round 1: the 17 Agent Hub keys added by be77d308262 (c88ad36bbca..be77d308262), teams namespace. Round 1 for this locale; no prior audit row covers these ids.",
+	"status": "passed",
+	"result": "clean",
+	"inputs_sha256": {
+		"en (ui.hub.teams)": "b9674e6bb1f862d380d45568204abcd8735eb08782bfb1351f469019b4e583b8",
+		"target (ui.hub.teams)": "60680030ea7a7614e6ce7176d5c8dd9a654c56eb9f105c03f16af05d661afcc3",
+		"context (ui.hub.teams)": "5ff2873c5549724860df39f48eae57585a38dacc5bfdb5ae24758ab58e981fbe",
+		"glossary (local-operator/i18n/glossary.md)": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+		"style guide (local-operator/i18n/style-guides/ur.md)": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60"
+	},
+	"verified": [
+		"COMPLETENESS: the 17 ids added by be77d308262 all exist in ur and no ur value equals its key id. The delta is purely additive: parsing c88ad36bbca against be77d308262 for both ur files shows zero pre-existing values changed, zero removed, and existing key order preserved (only a trailing comma was added to the last pre-existing entry).",
+		"PLACEHOLDERS: byte-exact and the same set as en for all 17 keys — {org} in org.plan_body, org.no_access_body and empty.org.body; {category} in empty.category.title; none in the other 13. Braces balanced, nothing renamed, re-spaced or translated, no argument added or dropped.",
+		"CLDR PLURALS: no new key carries a plural. None of the 17 values contains a plural or select argument, so CLDR category selection does not apply to this delta (ur is one/other). The existing plural siblings (status.count.*, teams.member_count, teams.public.match_line) are untouched.",
+		"BIDI/RTL HYGIENE: zero manual bidi control characters in either ur file — every value of both namespaces scanned for U+200E, U+200F, U+061C, U+202A-U+202E and U+2066-U+2069. Also zero U+200B/200C/200D, U+FEFF, U+00A0 and U+00AD. The ur style guide forbids RLM/LRM/FSI/PDI because the render layer applies isolation itself ('they are double-applied'); the 17 values comply, including empty.category.title (which begins with {category}) and the literal 'Team' inside org.plan_headline — both rely on that render-time isolation rather than manual controls.",
+		"SCRIPT INTEGRITY: every new value uses the Urdu letter shapes only — U+06CC Farsi yeh 69x, U+06A9 keheh 49x, U+06C1 heh goal 34x, U+06D2 yeh barree 29x, U+06BE heh doachashmee 9x, U+06D4 Arabic full stop 16x, U+060C Arabic comma 2x, U+0679 tteh 14x. Zero Arabic-variant contamination (no U+064A, U+0643, U+0647) — the same as the whole ur catalogue, which records 0 of each.",
+		"PUNCTUATION: sentence-final ۔ on every sentence-shaped key; org.plan_headline, org.no_access_headline, org.that_organization, teams.unnamed_team, clear.filter and clear.search carry none, exactly as their en sources and sidecar tone fields require. No '!' and no 'براہ کرم', per the guide. Commas are the Urdu ، (U+060C), never the Latin one.",
+		"LATIN RESIDUE: only the allowed exceptions — 'Radient' (org.plan_body), 'Team' (org.plan_headline, org.plan_body) and the placeholder names themselves. No keyboard key or typed answer occurs in this delta. 'Team plan' is a product name the en sidecar says stays verbatim ('Radient' and 'Team plan' are product names and stay verbatim), and 'Team پلان' is not a new coinage: it already ships in 15 ur values across five namespaces (ui.agents.publication, ui.hub.teams, ui.teamBridge, ui.teamBridgeTrial, and now ui.hub.pages). No settled loanword was left in Latin.",
+		"TERMINOLOGY: pinned to the shipped ur family, checked value-by-value against all 10 ur ui.hub.* namespaces and the wider catalogue. organization=تنظیم (scope.org_label; orgs_unavailable 'تنظیمیں'); agent list=ایجنٹس کی فہرست (pages.signed_out.body); sharing agents=ایجنٹس کا اشتراک (orgs_below_version, and verbatim the first sentence of the shipped ui.agents.publication.team_plan_required.body); listed=درج (teams.org.plan_body/no_access_body); hub=ہب; category=زمرہ/زمرے (ui.hub.taxonomy.heading 'زمرے', ui.agents.settings.general.categories, ui.common.forms.categories_input_chips); search=تلاش; description=تفصیل (pages.search_field.description); shared=مشترک; owner=مالک; invite=مدعو کرنا; console=کنسول. clear.filter reads 'فلٹر صاف کریں' and clear.search 'تلاش صاف کریں' — character-identical to shipped precedents (ui.library.filter.clear_filters, ui.notifications.filter.clear, ui.chat.sidebar.agents.clear_filter; ui.chat.analytics.search.clear). 'Category' does not collide with browse_aria's قسم, which renders 'type', a different axis.",
+		"REGISTER: آپ throughout, respectful imperatives (صاف کریں, دیکھیں), no تم/تو, no padding honorifics, everyday educated register — matching the ur style guide and the shipped ui.hub.* voice.",
+		"SIDECAR CONTRACTS: each key was read against its en context entry. org.that_organization is a bare noun phrase ('اس تنظیم') using the same demonstrative as org.no_access_headline, as the sidecar demands, and identical to the pre-existing scope.org_unnamed. empty.category.body uses the same noun as clear.filter (فلٹر); empty.search.body uses the same noun as clear.search (تلاش) and avoids the category miss's phrasing. empty.org.body says who the list is for (اس کے ارکان کو) and does not borrow the public hub's 'yours could be the first'. list_unreadable ends in a full stop and names no remedy, which is what the call site needs: backendLoadErrorMessage() does join(' ') of [lead, diagnosis, remedy] (src/renderer/src/shared/api/local-operator/backend-error.ts:182-187), so the ur lead joins as 'ایجنٹس کی فہرست لوڈ نہیں ہو سکی۔ <diagnosis> <remedy>'.",
+		"FALLBACK SUBSTITUTION: the render sites were read, not assumed. plan_body and empty.org.body receive org: orgName ?? t('ui.hub.pages.scope.org_unnamed'), and no_access_body receives org: orgName ?? t('ui.hub.pages.org.that_organization') (agent-hub-page.tsx:1355-1362, 1475-1479). Substituting the ur fallback 'اس تنظیم' yields 'اس تنظیم کا مالک اسے Radient کنسول میں فعال کر سکتا ہے' and 'آپ اس تنظیم کے رکن نہیں...' — both natural, and the noun phrase takes the postposition the sentence gives it, which is what the sidecar requires of that_organization.",
+		"PAGES/TEAMS PAIRING: the five mirrored pairs read as one voice. plan_headline, no_access_headline and that_organization are byte-identical between the two namespaces. plan_body and no_access_body differ only where their en sources differ (ایجنٹس vs ٹیمیں) and keep gender/number agreement on each side (درج ہوں گے / درج ہوں گی; درج نہیں ہیں both). empty.org.body mirrors teams.org.empty with the verb each en source needs (published into -> شائع کیے گئے, shared with -> مشترک کی گئی) and both use the same experiencer construction (اس کے ارکان کو ... نظر آتے/آتی ہیں).",
+		"RENDER FIT: the four empty headings share one centred <p className='text-heading'> with no truncation (agent-hub-page.tsx:1450-1460; the text wraps and the panel is max-w-2xl on the public scope), so the heading length spread reflows at worst and clips nothing. ur spread is 11-40 characters against en 17-43. The bodies sit in a max-w-md <p>. clear.filter/clear.search are secondary-button labels at 13 characters against en 12. No maxCells TUI budget applies: this is a web/Electron surface.",
+		"THIS NAMESPACE: its single id added by be77d308262 is present and non-empty in ur; parsed key sets are equal to en (50 keys each side, no missing, no extra); the 50-value file was read in full, not sampled."
+	],
+	"findings": [],
+	"counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 0
+	},
+	"namespaces": {
+		"ui.hub.teams": {
+			"namespace": "ui.hub.teams",
+			"status": "passed",
+			"result": "clean",
+			"keys_read": 50,
+			"new_key_count": 1,
+			"new_keys_audited": [
+				"ui.hub.teams.unnamed_team"
+			],
+			"findings": [],
+			"counts": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"sha256": {
+				"en": "b9674e6bb1f862d380d45568204abcd8735eb08782bfb1351f469019b4e583b8",
+				"target": "60680030ea7a7614e6ce7176d5c8dd9a654c56eb9f105c03f16af05d661afcc3",
+				"context": "5ff2873c5549724860df39f48eae57585a38dacc5bfdb5ae24758ab58e981fbe"
+			},
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.hub.teams.json",
+				"target": "src/i18n/catalogues/ur/ui.hub.teams.json",
+				"context": "src/i18n/catalogues/en/ui.hub.teams.context.json"
+			},
+			"per_key_verdicts": {
+				"ui.hub.teams.unnamed_team": {
+					"verdict": "ok",
+					"en": "this team",
+					"ur": "اس ٹیم",
+					"note": "'اس ٹیم' — bare noun phrase, no punctuation, the same demonstrative as the sibling teams.org.that_organization. Substituted into both call sites (public-teams-library.tsx:168 and org-teams-list.tsx:187, as the name handed to the publication treatment that formats ui.hub.teams.pull_failed) it yields '“اس ٹیم” کو pull نہیں کیا جا سکا۔', which reads as natural Urdu and matches the en design of quoting a name fragment; it is not a sentence and needs no case ending of its own there."
+				}
+			}
+		}
+	},
+	"normalised_for_ledger": "auditor and instance rewritten to the ledger contract by the programme manager; original auditor text preserved verbatim inside the parentheses, findings and hashes untouched",
+	"auditor_provenance": "translation-auditor (i18n-auditor (independent ur lane, lopdev reviewer role, session 95bc536f37d9; not the translator of these values, not the PR coder, not any earlier ui.hub ur auditor))",
+	"identity_provenance": {
+		"agent": "i18n-auditor (independent ur lane, lopdev reviewer role, session 95bc536f37d9; not the translator of these values, not the PR coder, not any earlier ui.hub ur auditor)"
+	}
+}

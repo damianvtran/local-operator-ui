@@ -1,4 +1,30 @@
 import type { ITheme } from "@xterm/xterm";
+import {
+	BACKDROP_GRAY,
+	composite,
+	ratio,
+} from "../../../../shared/glass-derivation.mjs";
+import { solveLightness } from "../../../../shared/theme-engine/contrast.mjs";
+import {
+	isSafeThemeId,
+	paletteBlock,
+} from "../../../../shared/theme-engine/css.mjs";
+import { sanitizePaletteVars } from "../../../../shared/theme-engine/roles.mjs";
+import type { ResolvedAppearance } from "./appearance";
+
+/** Legacy feeds remain names; composed feeds snapshot the palette, not just its
+ * runtime id (which is meaningless in a different document without its CSS). */
+export const captureTheme = (
+	resolved: ResolvedAppearance,
+	builtIn: string,
+): string =>
+	resolved.identity
+		? builtIn
+		: JSON.stringify({
+				id: resolved.id,
+				mode: resolved.palette.mode,
+				palette: sanitizePaletteVars(resolved.palette),
+			});
 
 /**
  * The console mirror's colours, taken from the theme's roles.
@@ -133,15 +159,152 @@ export const kebabRole = (role: string): string =>
  * unthemed cell rather than as a crash in a pane, and `missingTerminalRoles`
  * makes it assertable where a frame can be looked at.
  */
+/**
+ * Which of the two terminal surfaces this theme is for.
+ *
+ * `history` is the ended state (the pane's read-only reconstruction). It is a
+ * SEPARATE PALETTE DERIVATION rather than a CSS overlay for two reasons: opacity is
+ * banned as a state signal in this app (branding, "A view that is not the newest
+ * one" — it is unreadable on some grounds and invisible on others), and xterm paints
+ * into cells with parsed colours, so a `class` or a scrim on the host cannot reach
+ * what the program printed.
+ */
+export type TerminalSurfaceMode = "live" | "history";
+
+/**
+ * The role table for a mode.
+ *
+ * HISTORY DIMS THROUGH A ROLE STEP, NOT A SCRIM: the default foreground moves from
+ * `ink` to `inkMuted`, which every palette carries with its own contrast floor. The
+ * program's explicit ANSI colours are left alone — they are the program's
+ * vocabulary and a dimmed red is no longer the red the program asked for.
+ */
+const terminalThemeRoles = (
+	mode: TerminalSurfaceMode,
+): Record<TerminalThemeRole, string> =>
+	mode === "history"
+		? { ...TERMINAL_THEME_ROLES, foreground: "inkMuted" }
+		: TERMINAL_THEME_ROLES;
+
+/**
+ * Glass floors protect body inks, not the semantic hues used by ANSI. For example,
+ * Light/Gentle danger passed 4.577:1 on sunken but fell to 4.22:1 on the covered
+ * canvas. Chromatic slots retain their flat contrast, capped at AA: a pre-existing
+ * sub-AA hue is not promoted to AA, but glass must not make it less legible.
+ * Black/dim/white remain deliberate indexed-palette exceptions, not a new palette
+ * for this fix. xterm shares indexed foreground/background colours, so a
+ * repaired semantic slot also changes that indexed background; arbitrary SGR
+ * truecolour and background/foreground combinations are not rewritten.
+ *
+ * Use the published alphas, including the net pane-over-canvas composition, not
+ * an opacity preference. Material identity is not published in CSS, so retain
+ * safety over each measured native backdrop endpoint using the existing model.
+ * The shared solver changes L* only, retaining hue/chroma as gamut permits, and
+ * already-passing colours stay byte-identical. Nothing here writes global roles.
+ */
+const adaptTerminalGlassInks = (
+	theme: Record<string, string>,
+	styles: CSSStyleDeclaration,
+	root: HTMLElement,
+): void => {
+	const canvas = styles.getPropertyValue("--lo-canvas").trim();
+	const elevated = styles.getPropertyValue("--lo-elevated").trim();
+	const alpha = (name: string): number | null => {
+		const value = styles.getPropertyValue(name).trim();
+		if (!value) return null;
+		const parsed = Number(value);
+		return Number.isFinite(parsed) && parsed >= 0 && parsed <= 1
+			? parsed
+			: null;
+	};
+	const canvasAlpha = alpha("--lo-glass-a-canvas");
+	const paneAlpha = alpha("--lo-glass-a-elevated");
+	const netAlpha = alpha("--lo-glass-in-elevated");
+	if (
+		!FLAT_TERMINAL_COLOR.test(canvas) ||
+		!FLAT_TERMINAL_COLOR.test(elevated) ||
+		!FLAT_TERMINAL_COLOR.test(theme.background ?? "") ||
+		canvasAlpha === null ||
+		paneAlpha === null ||
+		netAlpha === null
+	)
+		return;
+	const mode = root.classList.contains("dark") ? "dark" : "light";
+	const grounds = Object.values(BACKDROP_GRAY).flatMap((tier) => {
+		const channel = tier[mode].toString(16).padStart(2, "0");
+		const backdrop = `#${channel.repeat(3)}`;
+		return [
+			composite(elevated, paneAlpha, backdrop),
+			composite(elevated, netAlpha, composite(canvas, canvasAlpha, backdrop)),
+		];
+	});
+	const groundRoles = grounds.map((_, index) => `ground${index}`);
+	const repair = (value: string, requestedFloor: number): string => {
+		if (!FLAT_TERMINAL_COLOR.test(value ?? "")) return value;
+		const floor = Math.min(requestedFloor, ratio(value, theme.background));
+		if (grounds.every((ground) => ratio(value, ground) >= floor)) return value;
+		return solveLightness(
+			{
+				mode,
+				ink: value,
+				...Object.fromEntries(groundRoles.map((role, i) => [role, grounds[i]])),
+			},
+			"ink",
+			groundRoles,
+			floor,
+		);
+	};
+	// Aliased bright/cyan/magenta slots must keep their existing shared identity.
+	for (const role of ["danger", "success", "warning", "info"]) {
+		const slots = TERMINAL_ANSI_SLOTS.filter(
+			(slot) => TERMINAL_THEME_ROLES[slot] === role,
+		);
+		const value = theme[slots[0]];
+		if (!value) continue;
+		const adapted = repair(value, 4.5);
+		for (const slot of slots) theme[slot] = adapted;
+	}
+	if (theme.cursor) theme.cursor = repair(theme.cursor, 3);
+};
+
+const FLAT_TERMINAL_COLOR = /^#[0-9a-fA-F]{6}$/;
+
 export const readTerminalTheme = (
 	root: HTMLElement = document.documentElement,
+	mode: TerminalSurfaceMode = "live",
+	glassHost?: HTMLElement,
 ): ITheme => {
 	const styles = getComputedStyle(root);
 	const theme: Record<string, string> = {};
-	for (const role of Object.keys(TERMINAL_THEME_ROLES) as TerminalThemeRole[]) {
-		const value = resolveTerminalRole(styles, TERMINAL_THEME_ROLES[role]);
+	const roles = terminalThemeRoles(mode);
+	for (const role of Object.keys(roles) as TerminalThemeRole[]) {
+		const value = resolveTerminalRole(styles, roles[role]);
 		if (value) theme[role] = value;
 	}
+	// Only an on-screen pane may borrow its parent's glass ground. Captures
+	// have no native backdrop and must keep their deterministic solid palette.
+	// data-glass is capability-gated by use-window-glass (including Reduce
+	// Transparency); a preference alone must never punch through a solid window.
+	if (
+		root.dataset?.glass?.split(/\s+/).includes("pane") &&
+		glassHost?.closest('[data-glass-region="pane"]')
+	) {
+		adaptTerminalGlassInks(theme, styles, root);
+		// Only the default cell ground is transparent. Explicit cell backgrounds,
+		// glyphs, selection and cursor remain opaque; capture callers never opt in.
+		theme.background = "#00000000";
+	}
+	/*
+	 * THE CARET IS HIDDEN IN CSS, NOT PAINTED AWAY (design round 1, D1).
+	 *
+	 * An earlier version painted both cursor colours as the ground, which hides the
+	 * block in every renderer but also paints the glyph UNDER the cursor in the ground
+	 * colour — a character vanished at the end of a recording. The history host now
+	 * carries `data-console-history` and the stylesheet makes the cursor cell
+	 * transparent while inheriting the row's ink; the theme deliberately leaves the
+	 * cursor roles as the live ones so a stylesheet that fails to load shows a visible
+	 * caret rather than an invisible glyph.
+	 */
 	/*
 	 * LOUD WHEN NOTHING RESOLVES, once per document theme.
 	 *
@@ -176,6 +339,36 @@ export const applyCaptureTheme = (
 	root: HTMLElement = document.documentElement,
 ): void => {
 	if (theme === null || theme === undefined) return;
+	if (theme.startsWith("{")) {
+		try {
+			const snapshot = JSON.parse(theme);
+			const palette = sanitizePaletteVars(snapshot.palette);
+			if (
+				!palette ||
+				!isSafeThemeId(snapshot.id) ||
+				!["dark", "light"].includes(snapshot.mode)
+			)
+				throw new Error("Invalid capture palette");
+			let style = root.ownerDocument.getElementById("lo-capture-palette");
+			if (!style) {
+				style = root.ownerDocument.createElement("style");
+				style.id = "lo-capture-palette";
+				root.ownerDocument.head.appendChild(style);
+			}
+			style.textContent = paletteBlock(snapshot.id, {
+				...palette,
+				mode: snapshot.mode,
+			});
+			root.dataset.theme = snapshot.id;
+			root.classList.toggle("dark", snapshot.mode === "dark");
+			return;
+		} catch {
+			console.warn(
+				"[console] the capture view refused an invalid composed palette",
+			);
+			return;
+		}
+	}
 	root.dataset.theme = theme;
 	root.classList.toggle(
 		"dark",

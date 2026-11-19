@@ -1,0 +1,122 @@
+{
+  "locale": "fr",
+  "mode": "Fresh independent audit; fix lane (<2h); read-only source, scratch-only output. No builds/installs/servers/test trees/MT services.",
+  "scope": "PR #1851; 20 new ui.library keys plus English context; 159 legacy values checked only for parse, key parity, unchanged bytes and targeted terminology, NOT recertified.",
+  "head_sha": "8a9ce1f808c266ebe9a0e924094344cea60c2c23",
+  "audit_date": "2026-11-10",
+  "key_count": 179,
+  "fully_audited_key_count": 20,
+  "consistency_only_key_count": 159,
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "Delegation names translator session 39f51922849d and model; auditor did not translate."
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "7126a8836150",
+    "session": "7126a8836150",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "Served session system header: Model openai/gpt-6.1-sol; no model switch or fallback used in this audit.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "verdict": "clean-with-findings",
+  "findings": [
+    {
+      "id": "M1",
+      "severity": "minor",
+      "key": "ui.library.kind.other (English context note)",
+      "current_text": "English source: Other. Catch-all for a file the Library could not classify. Singular adjective/noun, not an action. Rendered inside the sentence ui.library.preview.unsupported ONLY via the generic fallback; see manifest. Short badge beside the file size on a card, list row and the preview header; a single noun, no placeholders. Translate as the locale's ordinary noun for this file kind. The raw machine value (for example 'pptx') is shown only as a data fallback when a newer backend adds a kind this catalogue does not know.",
+      "english_source": "Other",
+      "problem": "The note says this label is rendered inside ui.library.preview.unsupported via the generic fallback. In fact the other branch selects unsupported_generic with no interpolation, so this label is never rendered inside that sentence. This is misleading translation metadata, not a French defect.",
+      "recommendation": "Replace that sentence with: Never interpolate this catch-all label into ui.library.preview.unsupported; for kind other, render ui.library.preview.unsupported_generic instead.",
+      "evidence": [
+        "src/renderer/src/features/library/components/library-viewers.tsx:105-111: other selects unsupported_generic with no kind parameter.",
+        "Existing fr ui.library.preview.unsupported = \"Un fichier {kind} n’a pas d’aperçu intégré ici.\"; new generic = \"Ce fichier n’a pas d’aperçu intégré ici.\"",
+        "fr style guide lines 37-38: \"Prefer French where settled: serveur, fichier, dossier...\"; note must not imply inserting Autre in the article-bearing sentence."
+      ],
+      "gates": false
+    }
+  ],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+  },
+  "namespaces": {
+    "ui.library": {
+      "status": "passed",
+      "result": "clean-with-findings",
+      "source_sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71",
+      "target_sha256": "5b2b439c0837be164d52fc50a53a40a8e0ea0b5940f1dff96359f5b18f61bc0f",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.library.json",
+          "sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.library.context.json",
+          "sha256": "2fe63e830b49079dac67c5c4513358d0a8559a94fbf27ac8d437212b13aa2e72"
+        },
+        "fr": {
+          "path": "src/i18n/catalogues/fr/ui.library.json",
+          "sha256": "5b2b439c0837be164d52fc50a53a40a8e0ea0b5940f1dff96359f5b18f61bc0f"
+        }
+      },
+      "fully_audited_keys": [
+        "ui.library.kind.audio",
+        "ui.library.kind.code",
+        "ui.library.kind.docx",
+        "ui.library.kind.html",
+        "ui.library.kind.image",
+        "ui.library.kind.markdown",
+        "ui.library.kind.other",
+        "ui.library.kind.pdf",
+        "ui.library.kind.pptx",
+        "ui.library.kind.spreadsheet",
+        "ui.library.kind.text",
+        "ui.library.kind.video",
+        "ui.library.preview.unsupported_generic",
+        "ui.library.tag_category.custom",
+        "ui.library.tag_category.format",
+        "ui.library.tag_category.project",
+        "ui.library.tag_category.source",
+        "ui.library.tag_category.status",
+        "ui.library.tag_category.topic",
+        "ui.library.tag_category.type"
+      ],
+      "findings": [
+        {
+          "id": "M1",
+          "severity": "minor",
+          "key": "ui.library.kind.other (English context note)",
+          "current_text": "English source: Other. Catch-all for a file the Library could not classify. Singular adjective/noun, not an action. Rendered inside the sentence ui.library.preview.unsupported ONLY via the generic fallback; see manifest. Short badge beside the file size on a card, list row and the preview header; a single noun, no placeholders. Translate as the locale's ordinary noun for this file kind. The raw machine value (for example 'pptx') is shown only as a data fallback when a newer backend adds a kind this catalogue does not know.",
+          "english_source": "Other",
+          "problem": "The note says this label is rendered inside ui.library.preview.unsupported via the generic fallback. In fact the other branch selects unsupported_generic with no interpolation, so this label is never rendered inside that sentence. This is misleading translation metadata, not a French defect.",
+          "recommendation": "Replace that sentence with: Never interpolate this catch-all label into ui.library.preview.unsupported; for kind other, render ui.library.preview.unsupported_generic instead.",
+          "evidence": [
+            "src/renderer/src/features/library/components/library-viewers.tsx:105-111: other selects unsupported_generic with no kind parameter.",
+            "Existing fr ui.library.preview.unsupported = \"Un fichier {kind} n’a pas d’aperçu intégré ici.\"; new generic = \"Ce fichier n’a pas d’aperçu intégré ici.\"",
+            "fr style guide lines 37-38: \"Prefer French where settled: serveur, fichier, dossier...\"; note must not imply inserting Autre in the article-bearing sentence."
+          ],
+          "gates": false
+        }
+      ]
+    }
+  },
+  "concern_verdicts": {
+    "a": "PASS: all 20 meanings, singular badge nouns and neutral register fit.",
+    "b": "PASS: Image/Images, Autre/Autres, Tableur/Tableurs, Code/Code, Vidéo/Vidéo, Texte/preview.pptx_text Texte. Audio is a justified media-kind term vs plural category Sons; existing canvas processing_audio says Traitement de l’audio. Source and Statut exactly match existing filters. Projet follows glossary. No new contradiction from legacy canvas Feuilles de calcul vs Library Tableurs.",
+    "c": "PASS individually: HTML existing create_file_dialog.html_html HTML (.html); Markdown existing Markdown (.md); PDF existing pdf_preview PDF : {title} (NNBSP in original); Code existing category Code; Vidéo existing category Vidéo and canvas Vidéos; Audio supported by Traitement de l’audio. No existing DOCX/PPTX localized rendering found in target fr catalogues beyond new badges; standard format acronyms are appropriate per glossary technology-name policy and explicit context retention permission.",
+    "d": "PASS: Ce fichier n’a pas d’aperçu intégré ici. preserves negation, apostrophe style and existing unsupported wording, names no kind and contains no placeholder.",
+    "e": "PASS: 12 badges 3–8 codepoints; seven headings 4–12. Personnalisé reaches approximate 12-character slot, not over. Generic sentence 40 characters vs English 37, not a badge. No measured overflow. Actual pixels not rendered.",
+    "f": "PASS: no invisible/NBSP/NNBSP/zero-width/bidi controls in 20 new fr values; RTL not applicable.",
+    "g": "PASS: namespace parses; 179/179 key parity; 20 additions, 159 unchanged legacy values, zero removals/changes; comma-only prior final line is serialization. Legacy semantics NOT recertified.",
+    "h": "PASS WITH MINOR M1: metadata roles/tone/length and all other notes fit source; other note wrongly describes interpolation. Type existing sort Type is acceptable shared French term in distinct controls despite English note urging distinction; no misdescription.",
+    "i": "PASS: en/fr/context and glossary hashes match binding manifest; head exact."
+  }
+}

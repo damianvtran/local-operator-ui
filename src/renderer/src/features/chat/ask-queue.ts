@@ -60,6 +60,11 @@ import {
 	DesktopControlError,
 	userFacingMessage,
 } from "@shared/api/local-operator/desktop-api";
+import { t } from "@shared/i18n";
+import {
+	DESKTOP_REFUSAL_CODE,
+	RUNTIME_BUSY_CODE,
+} from "../../../../shared/desktop-contract";
 import type {
 	CanonicalFrontendState,
 	PendingAsk,
@@ -73,7 +78,6 @@ import type {
  * module's only imports are types, so this adds no runtime weight to a bundle
  * that exists precisely to be DOM-free (see `scripts/ask-queue.test.mjs`).
  */
-import { LABEL_SEAM } from "./components/run-details/run-detail-model";
 import { COMPOSER_TEXTAREA_SELECTOR } from "./composer-field";
 import { pressLandsOnOverlay } from "./keyboard-scopes";
 
@@ -93,7 +97,13 @@ export type AskStatus =
 	| "timed_out"
 	| "late"
 	| "dismissed"
-	| "expired";
+	| "expired"
+	/*
+	 * The agent took the ask back itself (core `asks/store.py` STATUS_WITHDRAWN). Read
+	 * as unknown before (QA round 1, Q-2), it drew `Waiting on an answer` under Settled
+	 * - an open-sounding badge on a closed ask.
+	 */
+	| "withdrawn";
 
 /** Unknown statuses are their own case, never silently coerced into `open`. */
 export const isKnownAskStatus = (status: string): status is AskStatus =>
@@ -103,7 +113,8 @@ export const isKnownAskStatus = (status: string): status is AskStatus =>
 	status === "timed_out" ||
 	status === "late" ||
 	status === "dismissed" ||
-	status === "expired";
+	status === "expired" ||
+	status === "withdrawn";
 
 /**
  * The session's asks, or `null` when this backend does not publish them.
@@ -273,11 +284,10 @@ export const askChipClause = (view: AskQueueView, nowMs: number): string => {
  * string a DOM-free rig asserts. One source, two renderers.
  */
 export const askChipCountClause = (view: AskQueueView): string => {
-	if (!askSplitIsKnowable(view)) return `${view.open} outstanding`;
+	if (!askSplitIsKnowable(view))
+		return t("ui.chat.asks.clause.outstanding", { count: view.open });
 	if (view.waiting > 0)
-		return view.waiting === 1
-			? "1 question waiting"
-			: `${view.waiting} questions waiting`;
+		return t("ui.chat.asks.clause.waiting", { count: view.waiting });
 	/*
 	 * ANSWERS STILL TO DELIVER COME BEFORE `All asks settled` (design §10, #1936).
 	 *
@@ -307,9 +317,7 @@ export const askChipCountClause = (view: AskQueueView): string => {
 	 * delivery.
 	 */
 	if (view.delivering > 0)
-		return view.delivering === 1
-			? "1 answer not yet delivered — you can still change it"
-			: `${view.delivering} answers not yet delivered — you can still change them`;
+		return t("ui.chat.asks.clause.delivering", { count: view.delivering });
 	/*
 	 * TIMED OUT, in the badge's own word (design round 1 on #1116, D2): the quiet
 	 * register, and AFTER the delivering clause because nothing on a timed-out ask can
@@ -317,10 +325,8 @@ export const askChipCountClause = (view: AskQueueView): string => {
 	 * third name for the state the row's badge calls `Timed out`.
 	 */
 	if (view.movedOn > 0)
-		return view.movedOn === 1
-			? "1 question timed out"
-			: `${view.movedOn} questions timed out`;
-	return "All asks settled";
+		return t("ui.chat.asks.clause.timed_out", { count: view.movedOn });
+	return t("ui.chat.asks.clause.settled");
 };
 
 /**
@@ -350,7 +356,9 @@ export type AskScope = "session" | "fleet";
 
 /** The scope line's subject noun: what set the count beside it counts. */
 export const askScopeSubject = (scope: AskScope): string =>
-	scope === "fleet" ? "All conversations" : "This conversation";
+	scope === "fleet"
+		? t("ui.chat.asks.scope.fleet")
+		: t("ui.chat.asks.scope.session");
 
 /**
  * WHAT THE DRAWER SAYS WHEN THE FRAME THAT DECIDES ITS CONTENTS HAS NOT BEEN READ.
@@ -362,7 +370,8 @@ export const askScopeSubject = (scope: AskScope): string =>
  * is unresolved - `askScopeLine` omits the separator when there is no clause - so the
  * surface names what it is doing exactly once.
  */
-export const ASK_DRAWER_UNREAD_LINE = "Reading the asks…";
+export const askDrawerUnreadLine = (): string =>
+	t("ui.chat.ask_queue.drawer.unread_line");
 
 /**
  * THE OTHER UNRESOLVED-LOOKING FRAME, WHICH IS NOT THE SAME FACT (design round 1, D1).
@@ -389,11 +398,12 @@ export const ASK_DRAWER_UNREAD_LINE = "Reading the asks…";
  * what that means, in the drawer's own voice; the pair is the drawer's, and the chip
  * and the asks item keep their designed zero-state offers unchanged.
  */
-export const ASK_DRAWER_UNAVAILABLE_CLAUSE = "Asks unavailable";
+export const askDrawerUnavailableClause = (): string =>
+	t("ui.chat.ask_queue.drawer.unavailable_clause");
 
 /** The body under that clause: what is true, rather than what the surface hopes. */
-export const ASK_DRAWER_UNAVAILABLE_LINE =
-	"This runtime doesn't support queued asks.";
+export const askDrawerUnavailableLine = (): string =>
+	t("ui.chat.ask_queue.drawer.unavailable_line");
 
 /**
  * The DRAWER's count clause: what the surface shows, not only what the agent waits on.
@@ -415,14 +425,14 @@ export const ASK_DRAWER_UNAVAILABLE_LINE =
 export const askDrawerCountClause = (view: AskQueueView): string => {
 	/* No clause at all while unresolved: the body names that fact once (D5). */
 	if (view.unread) return "";
-	if (!view.published) return ASK_DRAWER_UNAVAILABLE_CLAUSE;
+	if (!view.published) return askDrawerUnavailableClause();
 	/*
 	 * A timed-out ask is a settled ROW in this drawer (D11), and settled rows are not in
 	 * the title (design round 1 on #1116, D2), so a queue with nothing waiting or being
 	 * delivered is a settled drawer, as the TUI's is.
 	 */
 	if (askSplitIsKnowable(view) && view.waiting === 0 && view.delivering === 0) {
-		return "All asks settled";
+		return t("ui.chat.asks.clause.settled");
 	}
 	return askChipCountClause(view);
 };
@@ -442,9 +452,14 @@ export const askDrawerCountClause = (view: AskQueueView): string => {
  */
 export const askScopeLine = (scope: AskScope, view: AskQueueView): string => {
 	const clause = askDrawerCountClause(view);
+	// One keyed phrase with both halves as placeholders, so a language can order
+	// or punctuate the subject and the count its own way.
 	return clause === ""
 		? askScopeSubject(scope)
-		: `${askScopeSubject(scope)} · ${clause}`;
+		: t("ui.chat.asks.scope_line", {
+				scope: askScopeSubject(scope),
+				clause,
+			});
 };
 
 /**
@@ -494,13 +509,19 @@ export const askRailToggleLabel = (args: {
 	 */
 	cap?: string | null;
 }): string => {
-	const verb = args.open ? "Close" : "Open";
-	const chord =
-		args.cap === null || args.cap === undefined ? "" : ` (${args.cap})`;
-	const subject = askScopeSubject(args.scope);
-	return args.count > 0
-		? `${verb} asks${chord} \u2014 ${subject}, ${args.count} waiting`
-		: `${verb} asks${chord} \u2014 ${subject}`;
+	const cap = args.cap === null || args.cap === undefined ? "" : args.cap;
+	// One message per direction rather than a spliced verb, so each language orders
+	// "Open asks (⌘A) — scope, N waiting" its own way; the waiting clause and the
+	// shortcut parenthetical are optional INSIDE the message.
+	return t(
+		args.open ? "ui.chat.ask_queue.rail.close" : "ui.chat.ask_queue.rail.open",
+		{
+			hasCap: cap === "" ? "no" : "yes",
+			cap,
+			subject: askScopeSubject(args.scope),
+			count: args.count,
+		},
+	);
 };
 
 /**
@@ -559,7 +580,7 @@ export const askChipDeadlineText = (
  * ask the number IS that ask's and any subject would be noise.
  */
 export const askChipDeadlineSubject = (view: AskQueueView): string =>
-	view.waiting > 1 ? "soonest ask" : "";
+	view.waiting > 1 ? t("ui.chat.ask_queue.deadline.soonest_subject") : "";
 
 /**
  * The whole countdown as one string: the subject and its number, or null.
@@ -578,7 +599,12 @@ export const askChipDeadline = (
 	const text = askChipDeadlineText(view, nowMs);
 	if (text === null) return null;
 	const subject = askChipDeadlineSubject(view);
-	return subject === "" ? text : `${subject} ${text}`;
+	return subject === ""
+		? text
+		: t("ui.chat.ask_queue.deadline.with_subject", {
+				subject,
+				deadline: text,
+			});
 };
 
 /**
@@ -633,7 +659,10 @@ const askChipFullClause = (view: AskQueueView, nowMs: number): string => {
 		(view.waiting > 0 || view.delivering > 0) &&
 		view.movedOn > 0
 	) {
-		return `${askChipClause(view, nowMs)} · ${view.movedOn} timed out`;
+		return t("ui.chat.ask_queue.chip.moved_on", {
+			clause: askChipClause(view, nowMs),
+			count: view.movedOn,
+		});
 	}
 	return askChipClause(view, nowMs);
 };
@@ -662,7 +691,6 @@ export const askChipLabel = (
 	 * this control cannot, because its `aria-label` OVERRIDES its content, so the word
 	 * goes in the label. APPENDED, so the visible clause stays a prefix of the name.
 	 */
-	const urgency = view.urgent ? " · Urgent" : "";
 	/*
 	 * THE SURFACE'S OWN NOUN, NOT "the ask history" (UX round 1, U3). The chip's
 	 * label is the only sentence that names what the press opens, and "history" was
@@ -672,7 +700,15 @@ export const askChipLabel = (
 	 * because the chip sits in one conversation's row while the drawer's other scope
 	 * - `fleet` - has no chip here).
 	 */
-	return `${expanded ? "Collapse" : "Expand"} this conversation's asks${LABEL_SEAM}${askChipFullClause(view, nowMs)}${urgency}`;
+	return t(
+		expanded
+			? "ui.chat.ask_queue.chip.label_collapse"
+			: "ui.chat.ask_queue.chip.label_expand",
+		{
+			clause: askChipFullClause(view, nowMs),
+			urgent: view.urgent ? "yes" : "no",
+		},
+	);
 };
 
 /**
@@ -1081,11 +1117,23 @@ export const askSettledAnswers = (
  * rather than rounding up to an hour.
  */
 export const askWaitedText = (seconds: number): string => {
-	if (!Number.isFinite(seconds) || seconds <= 0) return "a while";
-	if (seconds < 60) return `${Math.trunc(seconds)}s`;
-	if (seconds < 3600) return `${Math.trunc(seconds / 60)}m`;
-	if (seconds < 86400) return `${Math.trunc(seconds / 3600)}h`;
-	return `${Math.trunc(seconds / 86400)}d`;
+	if (!Number.isFinite(seconds) || seconds <= 0)
+		return t("ui.chat.ask_queue.duration.unknown");
+	if (seconds < 60)
+		return t("ui.chat.ask_queue.duration.seconds", {
+			count: Math.trunc(seconds),
+		});
+	if (seconds < 3600)
+		return t("ui.chat.ask_queue.duration.minutes", {
+			count: Math.trunc(seconds / 60),
+		});
+	if (seconds < 86400)
+		return t("ui.chat.ask_queue.duration.hours", {
+			count: Math.trunc(seconds / 3600),
+		});
+	return t("ui.chat.ask_queue.duration.days", {
+		count: Math.trunc(seconds / 86400),
+	});
 };
 
 /**
@@ -1103,12 +1151,45 @@ export const askWaitedText = (seconds: number): string => {
 export const askResponseSummary = (receipt: {
 	askId: string;
 	status: string;
+	/**
+	 * Which surface settled it (`by.surface` on the `ask_response` row), and the
+	 * operator's reason on a dismissal. Both are read only for the `dismissed`
+	 * sentence; every other status keeps the contract's own words.
+	 */
+	by?: { surface?: string; [key: string]: unknown } | null;
+	reason?: string | null;
 }): string => {
+	if (receipt.status === "dismissed") {
+		/*
+		 * Word for word `harness/rows.ask_response_notice`'s dismissed branch: who,
+		 * through which surface, and why. Without it a dismissal would fall through
+		 * to "Answered — delivering", which is false for an ask nobody answered.
+		 */
+		const raw =
+			typeof receipt.by?.surface === "string" ? receipt.by.surface : "";
+		// `remote`/`tui` are wire codes for the phone and terminal surfaces; any other
+		// surface name is a device label the backend wrote and is shown as it came.
+		const surface =
+			raw === "remote"
+				? t("ui.chat.ask_queue.response.surface_phone")
+				: raw === "tui"
+					? t("ui.chat.ask_queue.response.surface_terminal")
+					: raw;
+		return t("ui.chat.ask_queue.response.dismissed", {
+			hasVia: surface ? "yes" : "no",
+			via: surface,
+			reason:
+				receipt.reason === "answered_in_chat"
+					? t("ui.chat.ask_queue.response.reason_answered_in_chat")
+					: t("ui.chat.ask_queue.response.reason_moot"),
+			askId: receipt.askId,
+		});
+	}
 	if (receipt.status === "declined")
-		return `Ask ${receipt.askId} declined — the agent was told`;
+		return t("ui.chat.ask_queue.response.declined", { askId: receipt.askId });
 	if (receipt.status === "late")
-		return `Answered late — the agent was told (ask ${receipt.askId})`;
-	return `Answered — delivering (ask ${receipt.askId})`;
+		return t("ui.chat.ask_queue.response.late", { askId: receipt.askId });
+	return t("ui.chat.ask_queue.response.answered", { askId: receipt.askId });
 };
 
 /**
@@ -1122,7 +1203,10 @@ export const askTimeoutSummary = (receipt: {
 	askId: string;
 	waitedS: number;
 }): string =>
-	`Timed out after ${askWaitedText(receipt.waitedS)} — the agent goes ahead without your answer (ask ${receipt.askId})`;
+	t("ui.chat.ask_queue.response.timed_out", {
+		waited: askWaitedText(receipt.waitedS),
+		askId: receipt.askId,
+	});
 
 /**
  * WHAT CLOSES THE CHANGE WINDOW, said where the control that uses it is (design §10,
@@ -1137,8 +1221,8 @@ export const askTimeoutSummary = (receipt: {
  * rather than in the mirrored copy contract: these are this surface's words about
  * this surface's control, not a backend notice restated.
  */
-export const ASK_CHANGE_WINDOW_HINT =
-	"You can change this until the agent is handed your answer.";
+export const askChangeWindowHint = (): string =>
+	t("ui.chat.ask_queue.change_window_hint");
 
 /**
  * This surface's record of the ask it last acted on (design §10, #1936).
@@ -1162,6 +1246,16 @@ export type AskOutcome = {
 	/** A CHANGE that landed, per the owner's own acceptance (design §10, #1936). */
 	changed?: boolean;
 	/**
+	 * A DISMISSAL that landed, and the reason the operator chose (harness SA-D5).
+	 *
+	 * The card's own receipt, for the reason `changed` exists: the wire folds the
+	 * ask to `dismissed` with no marker for WHICH reason a surface sent, so a row
+	 * that only read the frame could not say "Dismissed — no longer needed" rather
+	 * than "Dismissed". The reason is the client's own record rather than a claim
+	 * about the backend.
+	 */
+	dismissed?: AskDismissReason;
+	/**
 	 * Whether the refusal above is the OWNER's own verdict on this ask - a sentence
 	 * that crossed the wire, or a status/code the app reads as one of the ask's own
 	 * states - rather than a transport failure that reached nothing.
@@ -1177,6 +1271,218 @@ export type AskOutcome = {
 	 * sentence.
 	 */
 	refusedByOwner?: boolean;
+	/**
+	 * Whether the refusal above is the answers route's RETRYABLE-BUSY arm - the
+	 * owner is alive and did not confirm the press, so the answer may or may not
+	 * have landed (`answerOwnerIsBusy`).
+	 *
+	 * IT DECIDES THE INK, and only the ink (design round 1, D1). The sentence is
+	 * `ANSWER_BUSY_MESSAGE` either way; a busy press is a moment the app is still
+	 * absorbing, not a verdict on the act, and the GATE card has painted it in the
+	 * muted register since `answerReport` (its `muted` field, `question-dock.tsx`).
+	 * Before this field existed the queued card painted the same sentence in the
+	 * danger band, so one disposition read as a definite failure on one surface and
+	 * as a wait on the other. Classified where the error is still in hand, for the
+	 * reason `refusedByOwner` gives: a reader of this record only ever gets the
+	 * sentence.
+	 */
+	busy?: boolean;
+	/**
+	 * THE ACT THIS SURFACE SAW ACCEPTED, painted over a frame that has not caught up
+	 * (`askWithLocalSettle`). A surface whose rows come from a READ rather than the
+	 * live session stream - the Notifications detail pane, the fleet pane between its
+	 * POST and its refetch - otherwise kept drawing the ask `open`, with live options,
+	 * a countdown and `Send answer`, after the owner had accepted the answer: the
+	 * press looked like it did nothing (the Notifications pane bug this field fixes).
+	 *
+	 * It states only what the owner ACCEPTED, never more: an answer is recorded but
+	 * not delivered (`delivered: false`), so the card reads `Answered — delivering`
+	 * exactly as the session drawer's live frame does in the same window. It applies
+	 * while the first-settlement frame still says `open`/`timed_out`. A revision
+	 * may instead supersede an exact known already-answered snapshot's answer map;
+	 * the wire's identity, terminal status and delivered facts remain authoritative.
+	 */
+	settled?: {
+		status: "answered" | "declined" | "dismissed";
+		/** Client epoch ms the owner accepted the act: the card's stamp until the wire's. */
+		at: number;
+		answers?: Record<string, string[]>;
+		/** Mount-local accepted decisions and exact snapshots, never attempted drafts. */
+		revision?: {
+			identity: string;
+			superseded: readonly string[];
+			accepted: string;
+			/** Only public maps this mount actually saw accepted, never attempted drafts. */
+			acknowledged?: {
+				current: string;
+				predecessors: readonly string[];
+				unmarked: boolean;
+			};
+		};
+		reason?: AskDismissReason;
+	};
+	/**
+	 * Send the SAME act again, after a transport failure (`useAskOutcomes`). Present
+	 * only on a failure the press can recover from: an owner's verdict is final and
+	 * carries none, so the card never offers a Retry whose only outcome is the same
+	 * sentence.
+	 */
+	retry?: () => void;
+};
+
+/**
+ * The answer map a surface may PAINT for an ask it just answered.
+ *
+ * A secret question's cell in the map a surface SENDS is the value the user typed;
+ * the owner replaces it with the credential store's key name before it is ever
+ * recorded (`asks/queue.py::_guard_secret_cells` accepts nothing else). So a local
+ * record of the answer has to take the same shape the wire will: the key name, in
+ * the `[KEY]` form the settled card already draws for a wire row, spelled the way
+ * core's `_credential_key_shape` spells it (letters and digits kept, every other
+ * run folded to `_`, upper-cased). An empty cell (a skipped secret) stays empty.
+ */
+/** Core's key-shape separator run (`_credential_key_shape`): any non-alphanumeric. */
+const KEY_SEPARATOR = /[^A-Za-z0-9]+/;
+
+export const askPaintableAnswers = (
+	questions: readonly { id: string; secret?: boolean }[],
+	answers: Record<string, string[]>,
+): Record<string, string[]> => {
+	const secret = new Set(
+		questions.filter((question) => question.secret === true).map((q) => q.id),
+	);
+	const out: Record<string, string[]> = {};
+	for (const [id, cell] of Object.entries(answers)) {
+		if (!secret.has(id)) {
+			out[id] = [...cell];
+			continue;
+		}
+		const key = id.split(KEY_SEPARATOR).filter(Boolean).join("_").toUpperCase();
+		out[id] = cell.length === 0 ? [] : [`[${key}]`];
+	}
+	return out;
+};
+
+/** Public-only evidence captured at dispatch, never a client-clock freshness guess. */
+export type AskRevisionEvidence = {
+	identity: string;
+	before: string;
+	after: string;
+	beforeAnswers: string;
+	afterAnswers: string;
+	hasRevisionMarker: boolean;
+};
+
+/**
+ * Capture a first-answer/revision decision at dispatch; only a successful send
+ * records it as acknowledged ancestry. Keep exact wire snapshots separate from
+ * public answer maps: the first server ANSWERED row's metadata may arrive only
+ * after revision B. `answered_at` is FIRST acceptance, never a revision clock;
+ * neither browser nor query-read time orders writes. Every cell is public/masked.
+ * Identity includes session and question schema to exclude unrelated/reissued asks.
+ */
+export const askRevisionEvidence = (
+	ask: PendingAsk,
+	answers: Record<string, string[]>,
+	/** Detail rows may imply the target session; fleet rows publish it explicitly. */
+	sessionId?: string | null,
+): AskRevisionEvidence => {
+	const identity = JSON.stringify([
+		ask.session_id ?? sessionId ?? null,
+		ask.ask_id,
+		ask.created_at ?? null,
+		ask.questions,
+	]);
+	const publicMap = (cells: Record<string, string[]> | null | undefined) => {
+		const painted = askPaintableAnswers(ask.questions, cells ?? {});
+		return Object.keys(painted)
+			.sort()
+			.map((key) => [key, painted[key]]);
+	};
+	const snapshot = (cells: Record<string, string[]> | null | undefined) => {
+		return JSON.stringify([
+			identity,
+			ask.status,
+			ask.answered_at ?? null,
+			ask.revised_at ?? null,
+			ask.delivered ?? null,
+			ask.answered_by ?? null,
+			publicMap(cells),
+		]);
+	};
+	return {
+		identity,
+		before: snapshot(ask.answers),
+		after: snapshot(answers),
+		beforeAnswers: JSON.stringify(publicMap(ask.answers)),
+		afterAnswers: JSON.stringify(publicMap(answers)),
+		hasRevisionMarker: ask.revised_at != null,
+	};
+};
+
+/**
+ * The ask as the owner has accepted it, when this surface knows more than the frame.
+ *
+ * First-settlement, exact-snapshot and acknowledged-predecessor lag share this
+ * reader. Only stale public answers change; unfamiliar decisions/write markers and
+ * delivered/terminal rows win. Server first-answer metadata is preserved verbatim.
+ * Presentation and form seeding must never grow separate reconciliation paths.
+ */
+export const askWithLocalSettle = (
+	ask: PendingAsk,
+	outcome: AskOutcome | undefined,
+	sessionId?: string | null,
+): PendingAsk => {
+	const settled = outcome?.settled;
+	/*
+	 * Every status a door is still offered on, not only `open` (agent review round 1,
+	 * R1-2): a `timed_out` ask takes a late answer, decline or dismissal too, and its
+	 * card went stale exactly the way an open one did.
+	 */
+	if (settled === undefined || ask.delivered === true) return ask;
+	if (settled.revision) {
+		const observed = askRevisionEvidence(ask, ask.answers ?? {}, sessionId);
+		if (observed.identity !== settled.revision.identity) return ask;
+		if (ask.status === "answered" || ask.status === "late") {
+			/* A first ANSWERED/A read can arrive only AFTER local revision B: its
+			 * authoritative first-answer metadata was never observed while OPEN.
+			 * The locally acknowledged public A is causal predecessor evidence even
+			 * then; an arbitrary matching draft is not. Keep the wire's metadata.
+			 * Confirmation of B does not erase A: older reads may still arrive.
+			 * A newly visible revision marker must defer to exact evidence/the wire,
+			 * never a timestamp rank. Unversioned cross-writer ABA remains impossible
+			 * to distinguish without a server-issued write identity, not just a date. */
+			const acknowledged = settled.revision.acknowledged;
+			if (acknowledged?.current === observed.beforeAnswers) return ask;
+			const ancestor =
+				acknowledged?.unmarked === true &&
+				!observed.hasRevisionMarker &&
+				acknowledged.current !== observed.beforeAnswers &&
+				acknowledged.predecessors.includes(observed.beforeAnswers);
+			return settled.answers &&
+				(settled.revision.superseded.includes(observed.before) || ancestor)
+				? { ...ask, answers: settled.answers }
+				: ask;
+		}
+	}
+	if (!OPEN_STATUSES.has(ask.status)) return ask;
+	if (settled.status === "dismissed")
+		return {
+			...ask,
+			status: "dismissed",
+			dismissed_at: settled.at,
+			...(settled.reason === undefined
+				? {}
+				: { dismissed_reason: settled.reason }),
+		};
+	return {
+		...ask,
+		status: settled.status,
+		answered_at: settled.at,
+		answered_by: { surface: "desktop" },
+		delivered: false,
+		...(settled.answers === undefined ? {} : { answers: settled.answers }),
+	};
 };
 
 const OPEN_STATUSES: ReadonlySet<string> = new Set(["open", "timed_out"]);
@@ -1339,6 +1645,7 @@ export const askQueueView = (
 	 * known to be stale.
 	 */
 	outcomes?: Readonly<Record<string, AskOutcome | undefined>>,
+	sessionId?: string | null,
 ): AskQueueView => {
 	const asks = sessionAsks(frontend);
 	const published = askQueuePublished(frontend);
@@ -1393,7 +1700,26 @@ export const askQueueView = (
 			soonestExpiryMs: null,
 			head: null,
 		};
-	const rows = asks.map(presentAsk).sort(compareAsks);
+	/*
+	 * The local record corrects a frame that has not caught up with an act this surface
+	 * saw accepted (`askWithLocalSettle`). The wire's own `asks_open` predates that act
+	 * too, so only an actual outstanding→settled transition comes off it below.
+	 * Object identity is not queue membership: a revision can replace the answer
+	 * map on an already-answered row, which the authoritative tally already excludes.
+	 * Subtracting that replacement would hide an unrelated outstanding decision.
+	 */
+	const settledLocally = asks.filter(
+		(ask) =>
+			OPEN_STATUSES.has(ask.status) &&
+			!OPEN_STATUSES.has(
+				askWithLocalSettle(ask, outcomes?.[ask.ask_id], sessionId).status,
+			),
+	).length;
+	const rows = asks
+		.map((ask) =>
+			presentAsk(askWithLocalSettle(ask, outcomes?.[ask.ask_id], sessionId)),
+		)
+		.sort(compareAsks);
 	const open = rows.filter((row) => row.open).length;
 	/*
 	 * The two halves are derived from the ROWS rather than the backend's tally,
@@ -1431,7 +1757,10 @@ export const askQueueView = (
 		 * The derived count is the fallback for a frame that carried rows but no
 		 * count, which is the older producer's shape.
 		 */
-		open: typeof frontend?.asks_open === "number" ? frontend.asks_open : open,
+		open:
+			typeof frontend?.asks_open === "number"
+				? Math.max(0, frontend.asks_open - settledLocally)
+				: open,
 		waiting,
 		movedOn,
 		delivering,
@@ -1477,14 +1806,35 @@ const compareAge = (a: AskPresentation, b: AskPresentation): number => {
  * offers that any more (D10).
  */
 export const ASK_STATUS_COPY: Record<AskStatus | "unknown", string> = {
-	open: "Queued — the agent is continuing",
-	answered: "Answered — delivering",
-	timed_out: "Timed out — the agent goes ahead without your answer",
-	late: "Answered late — the agent was told",
-	declined: "Declined — the agent was told",
-	dismissed: "Dismissed — no reply was sent",
-	expired: "Expired — this ask is too old to answer; ask the agent again",
-	unknown: "Waiting on an answer",
+	/* Getters, not literals: resolve on read, not module load, so an open pane
+	 * follows a language change and `ASK_STATUS_COPY[status]` keeps its shape. */
+	get open() {
+		return t("ui.chat.ask_queue.status.open");
+	},
+	get answered() {
+		return t("ui.chat.ask_queue.status.answered");
+	},
+	get timed_out() {
+		return t("ui.chat.ask_queue.status.timed_out");
+	},
+	get late() {
+		return t("ui.chat.ask_queue.status.late");
+	},
+	get declined() {
+		return t("ui.chat.ask_queue.status.declined");
+	},
+	get dismissed() {
+		return t("ui.chat.ask_queue.status.dismissed");
+	},
+	get expired() {
+		return t("ui.chat.ask_queue.status.expired");
+	},
+	get withdrawn() {
+		return t("ui.chat.asks.status.withdrawn");
+	},
+	get unknown() {
+		return t("ui.chat.ask_queue.status.unknown");
+	},
 };
 
 /**
@@ -1502,7 +1852,8 @@ export const ASK_STATUS_COPY: Record<AskStatus | "unknown", string> = {
  * in the settled section (`askStatusWord`), where "the agent was told" is true — the
  * sentence is condition-dependent, the word is not.
  */
-export const ASK_LATE_UNDELIVERED_TEXT = "Answered late — not yet delivered";
+export const askLateUndeliveredText = (): string =>
+	t("ui.chat.ask_queue.late_undelivered");
 
 /**
  * The status WORD for a settled row's one line, DERIVED from the sentence above.
@@ -1520,19 +1871,20 @@ export const ASK_LATE_UNDELIVERED_TEXT = "Answered late — not yet delivered";
  * about the agent's day.
  */
 export const askStatusWord = (status: AskStatus | "unknown"): string => {
+	/* Localized punctuation is not an English delimiter: keep the compact label keyed. */
+	if (status === "withdrawn") return t("ui.chat.asks.status.withdrawn_label");
 	const copy = ASK_STATUS_COPY[status];
 	const cut = copy.indexOf(" — ");
 	return cut === -1 ? copy : copy.slice(0, cut);
 };
 
 /**
- * The ask panel's two halves: the cards a control can still act on, and the rows it
- * collapses to one line each behind their status badge.
- *
- * PENDING is `canAnswer || delivering`: an ask the user can answer, or an answer the
- * agent has not been handed yet, which is still the user's to change (design §10).
- * Everything else is SETTLED, and that includes a LAPSED ask (D11): it is read-only,
- * so it renders exactly as a declined one does - collapsed, opened only by the reader.
+ * The ask panel partitions unanswered decisions from recorded decisions, not from
+ * delivery work. An accepted answer is SETTLED for the user even while the agent
+ * has not received it; counting it as Pending makes a successful send look undone.
+ * `delivering` stays an independent fact: the panel keeps that card expanded, its
+ * delivery sentence and its legal Change answer door until actual delivery (§10).
+ * LAPSED asks are settled history too, except for the existing pointer-safety hold.
  *
  * `held` is the one exception: the ids this MOUNT has already shown as answerable. A
  * held ask that lapses stays in the pending half, in its own slot, until the next
@@ -1553,7 +1905,7 @@ export const askPanelHalves = (
 	held: ReadonlySet<string> = new Set(),
 ): { pending: AskPresentation[]; settled: AskPresentation[] } => {
 	const isPending = (row: AskPresentation) =>
-		row.canAnswer || row.delivering || (row.lapsed && held.has(row.ask.ask_id));
+		row.canAnswer || (row.lapsed && held.has(row.ask.ask_id));
 	return {
 		pending: rows.filter(isPending),
 		settled: rows
@@ -1582,7 +1934,12 @@ export const askPanelHalves = (
 export const askStatusText = (ask: PendingAsk, nowMs: number): string => {
 	const presentation = presentAsk(ask);
 	if (presentation.status === "late" && presentation.delivering)
-		return ASK_LATE_UNDELIVERED_TEXT;
+		return askLateUndeliveredText();
+	/* A local acknowledgement can stay expanded in its action slot after the
+	 * wire confirms delivery. The generic answered copy names the queue, so only
+	 * use it while delivery is actually pending; no new copy/second status owner. */
+	if (presentation.status === "answered" && !presentation.delivering)
+		return askStatusWord("answered");
 	const base = ASK_STATUS_COPY[presentation.status];
 	if (presentation.status !== "open") return base;
 	const expiry = askExpiryText(ask, nowMs);
@@ -1625,8 +1982,18 @@ const expiryParts = (
 ): { long: string; short: string } | null => {
 	if (!Number.isFinite(expiresAt) || expiresAt <= 0) return null;
 	const remainingMs = expiresAt - nowMs;
-	if (remainingMs <= 0) return { long: "expiring now", short: "now" };
+	if (remainingMs <= 0)
+		return {
+			long: t("ui.chat.ask_queue.expiry.now_long"),
+			short: t("ui.chat.ask_queue.expiry.now_short"),
+		};
 	const minutes = Math.floor(remainingMs / 60_000);
+	// The unit abbreviations are keyed (`ui.chat.ask_queue.duration.*`) so each
+	// language spells "42m" its own way; `long` wraps the same text.
+	const within = (time: string) => ({
+		long: t("ui.chat.ask_queue.expiry.in", { time }),
+		short: time,
+	});
 	/*
 	 * ONE SPELLING OF ONE UNIT, and no space: the TUI this feature deliberately
 	 * rhymes with reads `expires in 42m` (`tui/widgets/ask_queue.py`), and the
@@ -1634,16 +2001,19 @@ const expiryParts = (
 	 * "minutes" in the pair of PRs that share a copy contract is the kind of drift
 	 * the shared contract exists to prevent (design round 1, D5).
 	 */
-	if (minutes < 1) {
-		const seconds = `${Math.floor(remainingMs / 1000)}s`;
-		return { long: `expires in ${seconds}`, short: seconds };
-	}
+	if (minutes < 1)
+		return within(
+			t("ui.chat.ask_queue.duration.seconds", {
+				count: Math.floor(remainingMs / 1000),
+			}),
+		);
 	if (minutes < 60)
-		return { long: `expires in ${minutes}m`, short: `${minutes}m` };
+		return within(t("ui.chat.ask_queue.duration.minutes", { count: minutes }));
 	const hours = Math.floor(minutes / 60);
-	if (hours < 24) return { long: `expires in ${hours}h`, short: `${hours}h` };
+	if (hours < 24)
+		return within(t("ui.chat.ask_queue.duration.hours", { count: hours }));
 	const days = Math.floor(hours / 24);
-	return { long: `expires in ${days}d`, short: `${days}d` };
+	return within(t("ui.chat.ask_queue.duration.days", { count: days }));
 };
 
 export const askDeadlineText = (
@@ -1772,17 +2142,18 @@ export const askSecretIsSkippable = (
  * "skip" as a parenthetical it read as "you will not be asked again" (design round 1,
  * D3). `askSecretPlaceholder` picks one.
  */
-export const ASK_SECRET_SKIP_PLACEHOLDER =
-	"Leave empty to skip; what you type is never shown";
+export const askSecretSkipPlaceholder = (): string =>
+	t("ui.chat.ask_queue.secret.placeholder_skip");
 /**
  * The change form's field over a stored key. It is the only explanation for a disabled
  * `Update answer` there, so it states the requirement rather than an option (D4), and
  * it is short enough to fit the 400px drawer floor's 332px text box (D6).
  */
-export const ASK_SECRET_RETYPE_PLACEHOLDER =
-	"Required: type it again; it is never shown";
+export const askSecretRetypePlaceholder = (): string =>
+	t("ui.chat.ask_queue.secret.placeholder_retype");
 /** Main's copy, kept where an empty field could not be sent as a skip. */
-export const ASK_SECRET_PLAIN_PLACEHOLDER = "Your answer (never shown again)";
+export const askSecretPlainPlaceholder = (): string =>
+	t("ui.chat.ask_queue.secret.placeholder_plain");
 
 /** Whether a typed secret value is there to send. */
 const secretTyped = (question: PendingAskQuestion, secrets: AskSecrets) =>
@@ -1818,12 +2189,12 @@ export const askSecretPlaceholder = (
 	recorded?: Record<string, string[]>,
 ): string => {
 	if (!askSecretIsSkippable(question, recorded))
-		return ASK_SECRET_RETYPE_PLACEHOLDER;
+		return askSecretRetypePlaceholder();
 	return ask.questions.some(
 		(other) => other.id !== question.id && carriesRealAnswer(other),
 	)
-		? ASK_SECRET_SKIP_PLACEHOLDER
-		: ASK_SECRET_PLAIN_PLACEHOLDER;
+		? askSecretSkipPlaceholder()
+		: askSecretPlainPlaceholder();
 };
 
 /**
@@ -2126,11 +2497,88 @@ export const askRevisionDraft = (ask: PendingAsk): AskDraft => {
  * they are worded to say what the user's next move is rather than to guess which
  * of the two happened.
  */
-export const ASK_ALREADY_SETTLED_MESSAGE =
-	"That question was already settled, so your answer was not sent.";
+export const askAlreadySettledMessage = (): string =>
+	t("ui.chat.ask_queue.refusal.already_settled");
 
-export const ASK_EXPIRED_MESSAGE =
-	"This ask is too old to answer — ask the agent again.";
+export const askExpiredMessage = (): string =>
+	t("ui.chat.ask_queue.refusal.expired");
+
+/**
+ * The sentence for a press the owner was too BUSY to confirm, after the app's
+ * own repeats are spent.
+ *
+ * THE ONE SENTENCE BOTH ASK SURFACES CARRY — the blocking card (`answerReport`)
+ * and the queued ask (`askRefusalSentence`) — which is why it lives in this
+ * module rather than beside either of them: a disposition stated two ways is the
+ * defect this family of constants exists to end. It moved here from
+ * `ask-answer.ts` when the queued ask took the busy arm, because this module may
+ * not import that one (see `scripts/ask-queue.test.mjs`: this graph is bundled
+ * node-side with `@shared` as its only alias, and `ask-answer`'s reach into the
+ * store is not).
+ *
+ * The answers route answers `503 {"code": "runtime_busy", "retryable": true,
+ * "retry_after_ms": 2000}` when the session's owner is alive and not answering
+ * its attach socket. Two things about that arm decide this copy, and both were
+ * design round 1 on the backend change (D1/D2/D4/D5):
+ *
+ *  - IT MUST NOT CLAIM THE ANSWER WAS NOT SENT. The busy refusal is raised for
+ *    `RuntimeUnresponsiveError` AND for an ack timeout on a live owner
+ *    (`desktop_sessions.py`), and the second is the write-then-wait path this app
+ *    records on `DESKTOP_REFUSAL_CODE.transportFailed`: the frame was written and
+ *    only its acknowledgement was lost. So the answer may have been taken, and
+ *    this arm takes the unknowable register, exactly as the deadline and lost-hop
+ *    arms do. The app's own bounded repeat (`withBusyResends`, spent before this
+ *    sentence can paint) is what makes that acceptable to say in the first place.
+ *
+ *    THE SEND PATH HOLDS THE SAME EXPOSURE, and its copy is not changed here
+ *    (agent review round 1, MINOR-2, which corrected an earlier draft of this
+ *    note). That draft rested the argument on "nothing was admitted is true of
+ *    `runtime_busy` on `/messages`", and the merged ladder does not support it:
+ *    the busy refusal is raised from the SHARED `errors()` ladder, whose second
+ *    arm is the generic ack timeout on a live owner, and that ladder wraps
+ *    `/v1/desktop/sessions/{id}/messages` too - where admission is itself an
+ *    acked write (`AttachedSession.admit_prompt` ends in
+ *    `request_ack_with_duplicate`). So a send can meet this code over a
+ *    write-then-wait loss, where `SEND_FAILURE_COPY.busy`'s "your message wasn't
+ *    sent" is as unprovable as the sentence this arm replaced. Nothing about the
+ *    ANSWER path changes either way - that arm's classification and copy are right
+ *    on both raise arms - and the send half is deferred rather than fixed
+ *    silently, because it is a copy decision about a different surface.
+ *  - IT MUST NOT CARRY THE BACKEND'S PROSE. The route's sentence on this arm is
+ *    the unreachable one - "Reconnect and reconcile before retrying" - which
+ *    names a control this screen does not have and tells the user to retry what
+ *    the app has already retried. The app's own noun for this owner is "the
+ *    agent" (`SEND_FAILURE_COPY.busy`), not "the session owner".
+ *
+ * "isn't confirmed yet" rather than "wasn't sent" is the whole finding, and
+ * "yet" is load-bearing: the owner may still take it, and the app may still be
+ * told so.
+ *
+ * ITS LEAD IS DELIBERATELY ITS OWN, not `ANSWER_UNCONFIRMED_LEAD` (agent review
+ * round 1, NIT-1). The sibling arm composes its lead so the two "outcome is not
+ * knowable" sentences cannot drift apart, and composing this one too would put
+ * that longer register - "Whether your answer landed is not knowable." - in front
+ * of a sentence the design round chose short for a measured reason: the band
+ * wraps to two lines at the 172 px column and the shorter candidate is the one
+ * that fits it (`composer-notice-arms`, the busy arm's three widths). The factual
+ * claim is the same one the lead makes ("isn't confirmed YET"), stated in the
+ * first person of a press rather than the passive; the drift risk the sibling's
+ * composition guards against is one of wording between two sentences that say the
+ * same thing, and here the wording is the point.
+ */
+export const answerBusyMessage = (): string =>
+	t("ui.chat.ask_queue.refusal.busy");
+
+/**
+ * Whether this failure is the answers route's retryable-busy refusal.
+ *
+ * Keyed on the CODE and never the status: a `503` on a `/v1/desktop/` route is
+ * also how the desktop plane refuses this app (`pairing.plane-closed`), which IS
+ * an answer about the request rather than a lost sight of it. Re-exported through
+ * `ask-answer.ts`, which gates the blocking card's arms on it.
+ */
+export const answerOwnerIsBusy = (error: unknown): boolean =>
+	error instanceof DesktopControlError && error.code === RUNTIME_BUSY_CODE;
 
 /**
  * The app's own sentence for a refusal that arrived WITHOUT one.
@@ -2156,8 +2604,8 @@ export const askRefusalFallback = (error: unknown): string | null => {
 		typeof (error as { code?: unknown })?.code === "string"
 			? ((error as { code: string }).code as string)
 			: "";
-	if (status === 410 || code === "expired") return ASK_EXPIRED_MESSAGE;
-	if (status === 409) return ASK_ALREADY_SETTLED_MESSAGE;
+	if (status === 410 || code === "expired") return askExpiredMessage();
+	if (status === 409) return askAlreadySettledMessage();
 	/*
 	 * NULL MEANS "NOT THIS APP'S CALL", and it is a real answer rather than a
 	 * failure. A transport failure carries no status, and a 404 is "no ask with
@@ -2203,6 +2651,23 @@ const askRefusalAuthored = (error: unknown): boolean => {
 /**
  * What to paint on a row whose answer the backend refused.
  *
+ * THE BUSY ARM SPEAKS FIRST, and it is the one place in this module where a
+ * sentence that crossed the wire is NOT the one to paint. The backend's
+ * `runtime_busy` body deliberately carries the UNREACHABLE sentence ("Session
+ * owner is unavailable. Reconnect and reconcile before retrying.") — its own
+ * note says the user-facing words belong to the UI, keyed on the code plus
+ * `retryable`. Painted here it names the wire's noun ("session owner"), offers a
+ * control this screen does not have ("reconnect and reconcile"), and tells the
+ * user to retry what the app has already retried `BUSY_RESENDS` times before
+ * this sentence can appear.
+ *
+ * AND ITS DISPOSITION IS THE INDETERMINATE ONE, never the not-sent one: on
+ * `/answers` a busy is raised both for a sync expiry and for an ack timeout on a
+ * live owner, so the frame may have been written with only its acknowledgement
+ * lost (`desktop_sessions.py`, both raise sites). "Your answer isn't confirmed
+ * yet" is exactly the fact; "your answer wasn't sent" is a claim nothing
+ * establishes — the false report `ANSWER_BUSY_MESSAGE` was written to end.
+ *
  * TWO FACTS, IN ORDER (agent review F5, QA round 1 Q-2, QA round 2 Q-2):
  *
  *  1. THE OWNER'S SENTENCE WINS WHENEVER IT CROSSED THE WIRE. That is
@@ -2223,8 +2688,9 @@ const askRefusalAuthored = (error: unknown): boolean => {
  * now names both.
  */
 export const askRefusalSentence = (error: unknown): string => {
+	if (answerOwnerIsBusy(error)) return answerBusyMessage();
 	if (askRefusalAuthored(error))
-		return userFacingMessage(error, ASK_ALREADY_SETTLED_MESSAGE);
+		return userFacingMessage(error, askAlreadySettledMessage());
 	const classified = askRefusalFallback(error);
 	if (classified !== null) return classified;
 	/*
@@ -2238,7 +2704,7 @@ export const askRefusalSentence = (error: unknown): string => {
 		error,
 		error instanceof Error && error.message
 			? error.message
-			: ASK_ALREADY_SETTLED_MESSAGE,
+			: askAlreadySettledMessage(),
 	);
 };
 
@@ -2279,6 +2745,45 @@ export const askRefusalSentence = (error: unknown): string => {
  */
 export const askRefusalIsOwner = (error: unknown): boolean =>
 	askRefusalFallback(error) !== null;
+
+/**
+ * Whether a failed press earns a Retry, or whether the sentence is the whole answer.
+ *
+ * U2 (UX review round 2, MAJOR) measured the failure row pairing `plane_closed` - "the
+ * server does not accept this app's desktop controls" - with an ENABLED Retry. That is
+ * the dead control this panel refuses elsewhere: a pairing condition is the app's own
+ * business to re-establish, and pressing Retry re-sends into the same closed plane.
+ *
+ * THE PAIRING CODES, NOT EVERY REFUSAL CODE (this is where the finding's own suggested
+ * predicate, "no code at all", is too broad). `DESKTOP_REFUSAL_CODE` holds two kinds:
+ * `noCredential`, `refused` and `planeClosed` are PAIRING conditions, while
+ * `transportFailed` is explicitly not one - "main could not complete the request" is a
+ * refused socket or a reset, nothing was learned about the plane, and it is exactly the
+ * failure a second press repairs. Suppressing Retry on every code would take the one
+ * state that has a working next action and give it none.
+ *
+ * A PLAIN `Error` CARRIES NO CODE and stays retryable for the same reason: the
+ * renderer's own catch means the request never reached the backend.
+ */
+export const askFailureEarnsRetry = (error: unknown): boolean => {
+	if (askRefusalIsOwner(error)) return false;
+	const code =
+		typeof error === "object" && error !== null
+			? (error as { code?: unknown }).code
+			: undefined;
+	if (typeof code !== "string") return true;
+	/*
+	 * `serverUpdating` earns Retry: the reload fence refused the answer before any
+	 * handler ran, so nothing was recorded and a second press is safe once the
+	 * server is back. Keyed on the CODE, not on the display-only `updating` hint a
+	 * follow-on failure may carry - that hint rides `planeClosed` and deadlines
+	 * too, whose retry rules must not move (see `isServerUpdatingError`).
+	 */
+	return (
+		code === DESKTOP_REFUSAL_CODE.transportFailed ||
+		code === DESKTOP_REFUSAL_CODE.serverUpdating
+	);
+};
 
 /**
  * The `sessions.answer` body for a whole-ask answer, or `null` when the draft is
@@ -2330,6 +2835,55 @@ export const askDeclineRequest = (
 });
 
 /**
+ * The operator's own word for putting an open ask away (harness SA-D5).
+ *
+ * `answered_in_chat` says the conversation already settled it; `moot` says it is
+ * no longer needed. The pair is the wire's whole vocabulary (`Answer.reason` in
+ * `server/routes/desktop_sessions.py`), and the labels below are the harness's
+ * own (`asks/render.py`'s `DISMISS_REASON_LABELS`), so a receipt reads the same
+ * on every surface.
+ */
+export type AskDismissReason = "answered_in_chat" | "moot";
+
+/**
+ * The wire's dismissal reason, narrowed: `answered_in_chat` | `moot`, or null.
+ *
+ * ONE reader for the two directions the value travels (the request body this app
+ * composes, and the settled row harness PR-4c publishes): a string the enum does not
+ * name is not a reason this surface can print, and guessing the nearest one would be
+ * the app inventing what the operator chose. `null` says "cannot say", which every
+ * caller renders as the contract's own no-reason sentence.
+ */
+export const askDismissReason = (value: unknown): AskDismissReason | null =>
+	value === "moot" || value === "answered_in_chat" ? value : null;
+
+/**
+ * The `sessions.answer` body for a dismissal: put an OPEN ask away without
+ * answering it (`{ask_id, dismiss: true, reason?}`).
+ *
+ * The sibling of `askDeclineRequest`, and a constructor of its own for the same
+ * reason: a dismissal is the alternative TO an answer, not a modifier the client
+ * could accidentally send on one — the route refuses the two shapes together.
+ */
+export const askDismissRequest = (
+	ask: PendingAsk,
+	sessionId: string,
+	reason: AskDismissReason,
+): {
+	op: "sessions.answer";
+	sessionId: string;
+	askId: string;
+	dismiss: true;
+	reason: AskDismissReason;
+} => ({
+	op: "sessions.answer",
+	sessionId,
+	askId: ask.ask_id,
+	dismiss: true,
+	reason,
+});
+
+/**
  * The outstanding-asks chip's copy, for the mark a sidebar conversation row
  * carries (`ChatAsksOutstanding` in `chat-session-status.tsx`).
  *
@@ -2338,4 +2892,7 @@ export const askDeclineRequest = (
  * the chip says what is outstanding and never "waiting for you".
  */
 export const asksOutstandingLabel = (open: number): string =>
-	open === 1 ? "1 ask" : `${open} asks`;
+	t("ui.chat.asks.outstanding_count", {
+		count: open,
+		count_display: String(open),
+	});

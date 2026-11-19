@@ -1,0 +1,103 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit, independent re-audit of an applied fix (round 3): HI-D1 events.others tail in ui.teamBridge",
+	"date": "2026-10-30",
+	"auditor": "translation-auditor",
+	"agent": "translation-auditor",
+	"model": "radient/auto",
+	"model_provenance": "Session 4ab583bbf0ca was started on anthropic/claude-opus-5-5 and switched by the harness on provider-quota failures to openai/gpt-6-astra, then kimi/k3.1-pro, then radient/auto. This fix verification and its verdict were produced under radient/auto.",
+	"session": "4ab583bbf0ca",
+	"instance": "4ab583bbf0ca-hi-r3",
+	"audit_id": "teambridge-member-events-delta-a-r3-4ab583bbf0ca-hi",
+	"round": {
+		"kind": "round 3 — verification of the applied fix for this audit's round-2 findings",
+		"head_at_audit": "1eeb46187ce",
+		"fixes": [
+			"HI-D1"
+		],
+		"prev_round_sha256": "57b7bc7207eba05879dada197dea46a8ed03f145d506c903521e64fa35e2411d",
+		"prev_round_record": "i18n/audits/evidence/hi/ui.teamBridge/teambridge-member-events-delta-a-4ab583bbf0ca-hi",
+		"scope_rule": "Round 3 covers exactly the corrected values and the composition path they feed; the remaining audited values are byte-unchanged from the round-2 bytes."
+	},
+	"status": "passed",
+	"result": "clean",
+	"locale": "hi",
+	"namespace": "ui.teamBridge",
+	"translator": {
+		"agent": "translator",
+		"model": "anthropic/claude-opus-5-5"
+	},
+	"independence": "Auditor A of the delta round, session 4ab583bbf0ca, independent of the translator. The corrections were verified against the bytes on disk (hash chain to the round-2 delta bytes) and re-judged on their own merits, not accepted because they match this audit's proposal. No catalogue was edited.",
+	"integration": {
+		"branch": "fix/team-bridge-member-events",
+		"head_at_audit": "1eeb46187ce",
+		"worktree": "~/local-operator-ui/.worktrees/member-events",
+		"catalogue_state": "the seven locale catalogues remain uncommitted working-tree modifications on top of 1eeb46187ce"
+	},
+	"sha256": {
+		"hi": "c51c89590c7f0e00f01f6128fdc2acc05e32aa773ea7da36dd909103d35ecb60",
+		"en": "56810571f7cfe24841940394b0579e28a13616c40da35fe93301f5b66fb7290c"
+	},
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "56810571f7cfe24841940394b0579e28a13616c40da35fe93301f5b66fb7290c"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "adb76e0b6e40573f67398d6d260fbb738686f34f73077b593126cee6d2d0a77e"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/hi/ui.teamBridge.json",
+			"sha256": "c51c89590c7f0e00f01f6128fdc2acc05e32aa773ea7da36dd909103d35ecb60"
+		}
+	},
+	"delta_verification": {
+		"method": "rebuilt the round-2 bytes from the round-1 file, re-applied the corrections in reverse on the file on disk, compared hashes and line diffs",
+		"round2_recorded_sha256": "57b7bc7207eba05879dada197dea46a8ed03f145d506c903521e64fa35e2411d",
+		"reverse_applied_sha256": "57b7bc7207eba05879dada197dea46a8ed03f145d506c903521e64fa35e2411d",
+		"matches": true,
+		"changed_lines": 1,
+		"conclusion": "only events.others moved; the file is byte-identical to the round-1 audited bytes"
+	},
+	"keys_read": 12,
+	"findings": [],
+	"severity_counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 0
+	},
+	"checks": [
+		"Chain proof: the round-2 delta bytes were rebuilt from the round-1 file by re-applying the delta (byte-level line substitution, no JSON round-trip) and hashed to the round-2 recorded value; subtracting this round's corrections from the file on disk reproduces that same hash, and a line-by-line diff shows exactly the corrected lines — nothing else moved.",
+		"ICU: the corrected values parse with the project's own parser; arguments match English exactly ({count} only, with one/other arms and # in both), no renamed or added argument.",
+		"Renders of events.others at counts 1/2/3/5/11/21 and the shortened-list composition of all seven name-bearing event lines — no noun now carries a postposition in the nominative.",
+		"Encoding: NFC, no quote marks introduced, one/other only as the hi guide records.",
+		"The rest of the 12-key event/consent block is byte-unchanged from the round-2 bytes this audit already passed, so the round-2 verdict on those values stands; this round re-read the corrected keys and the composition path they feed.",
+		"This round audits catalogue text only: no rendered-frame, font-fallback, geometry or activation evidence, and no release approval."
+	],
+	"verdict": "ui.teamBridge (hi): CLEAN — 0 blocker, 0 major, 0 minor, 0 nit. HI-D1 is resolved as recommended; the invariant tail carries no inflection error in any of the seven event lines.",
+	"artifacts": [
+		{
+			"path": "i18n/audits/evidence/hi/ui.teamBridge/teambridge-member-events-delta-a-r3-4ab583bbf0ca-hi/record.json"
+		},
+		{
+			"path": "i18n/audits/evidence/hi/ui.teamBridge/teambridge-member-events-delta-a-r3-4ab583bbf0ca-hi/findings.json"
+		},
+		{
+			"path": "i18n/audits/evidence/hi/ui.teamBridge/teambridge-member-events-delta-a-r3-4ab583bbf0ca-hi/fix-chain-proof.txt"
+		},
+		{
+			"path": "i18n/audits/evidence/hi/ui.teamBridge/teambridge-member-events-delta-a-r3-4ab583bbf0ca-hi/fix-audit.txt"
+		},
+		{
+			"path": "i18n/audits/evidence/hi/ui.teamBridge/teambridge-member-events-delta-a-r3-4ab583bbf0ca-hi/bidi-nfc-scan.txt"
+		},
+		{
+			"path": "i18n/audits/evidence/hi/ui.teamBridge/teambridge-member-events-delta-a-r3-4ab583bbf0ca-hi/hashes.txt"
+		},
+		{
+			"path": "i18n/audits/evidence/hi/ui.teamBridge/teambridge-member-events-delta-a-r3-4ab583bbf0ca-hi/check-i18n-after-assembly.log"
+		}
+	]
+}

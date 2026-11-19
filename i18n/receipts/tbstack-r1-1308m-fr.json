@@ -1,0 +1,97 @@
+{
+ "auditor": "translation-auditor",
+ "model": "openai/gpt-6.1-sol",
+ "instance": "tbstack-r1-1308m-fr",
+ "session": "5cbc583203b9",
+ "job": "163c5616675a",
+ "parent_session": "687384e07954",
+ "date": "2026-10-22",
+ "locale": "fr",
+ "namespace": "ui.teamBridge",
+ "status": "passed",
+ "result": "clean",
+ "keys_audited": 144,
+ "keys_substantive": 4,
+ "source_head": "2908b0a9f1ad0c7be87553cd2c12b20008ad0c31",
+ "merge_parents": [
+  "2156430ae280ba2e368db32a51242927c72057fb",
+  "3269107dbd8582ab07a6fddba55b271ad0a6c076"
+ ],
+ "scope": "PR #1308 local head 2908b0a9f1ad0c7be87553cd2c12b20008ad0c31: ui.teamBridge fr; 144 keys read side-by-side (reused identical observations across heads). Exact parent union for English/context/target; substantive four OS-banner key audit plus inherited terminology and ICU/CLDR checks. Existing feature linguistic authority inherited from hash-verified receipts; no fresh full re-audit or rendered-fit claim.",
+ "sha256": {
+  "en": "f9d6aa7afa46fd6b877e5fe1b3e8a276657445bf929f237a51b0726f6860d214",
+  "fr": "07241a949b415cc7f3175a7d6a07302fe4349d9f46f513b022d232364df2de99",
+  "context": "be847e5b61705864af0972446332cbed327f98f2d7f591c4a4de0d86f39e6f7b"
+ },
+ "findings": [],
+ "inherited_receipts": [
+  {
+   "parent": "2156430ae280ba2e368db32a51242927c72057fb",
+   "path": "i18n/receipts/tbstack-r2-1308-fr.json",
+   "sha256": "f6a7fbc96e5855aabe2031bd3913e67fe6ae7b814c2abf0183fba09f2c65a5be",
+   "instance": "tbstack-r2-1308-fr",
+   "result": "clean",
+   "keys_verified_unchanged": 140,
+   "source_sha256": "f940f0c6b7bd896e49c691c1afa4cdb21a0c7dcf8179b81e3c9071503f168448",
+   "target_sha256": "607c19eb57e813e849639bbe93f19583d5580a83e9a5d9c1d0376dacf2cee515",
+   "context_sha256": "2c60cbbbf0164f2a888809eeb8e3eddb11dc6c8bf9bbb2176b3687542acb4843"
+  },
+  {
+   "parent": "3269107dbd8582ab07a6fddba55b271ad0a6c076",
+   "path": "i18n/receipts/tbstack-r1-1304m-fr.json",
+   "sha256": "96946ca7fea27373abbc8c43470f78c8d7deb509f54e5213d6bee43b5c7d6442",
+   "instance": "tbstack-r1-1304m-fr",
+   "result": "clean",
+   "keys_verified_unchanged": 123,
+   "source_sha256": "281cb8adcc75e5bb4fcebf5c9112ab260bcf8ed2fbcf6bbcd6d04bfc3cfff41c",
+   "target_sha256": "00f25eaca02107324037d83ead2c21144298d4cb704c31efb86e5cade2ea69a5",
+   "context_sha256": "f5cf60d75f5e8b8ecc378174bc9f9e5e158b14afb80cda504e1b61e921b5cafd"
+  }
+ ],
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+ },
+ "independence": "Independent translation-auditor child audit-stackm-fr-es-vi; produced none of the reviewed copy. Read Git objects only; no repository edits, builds, tests, installs, worktrees or pushes. Pure receipt derivation and catalogue parsing are validation, not app test/render evidence.",
+ "model_note": "Session began on anthropic/claude-opus-5-5 for required skill reading; announced quota fallback to openai/gpt-6.1-sol before repository-contract and catalogue audit work. All linguistic review, comparisons, ICU validation and artifacts in this pass used openai/gpt-6.1-sol.",
+ "validation": {
+  "union": {
+   "own": 140,
+   "integrated": 123,
+   "shared": 119,
+   "own_only": 21,
+   "integrated_only": 4,
+   "head": 144,
+   "dropped": 0,
+   "altered": 0,
+   "conflicts": 0,
+   "extra": 0
+  },
+  "context_union": {
+   "own": 140,
+   "integrated": 123,
+   "shared": 119,
+   "own_only": 21,
+   "integrated_only": 4,
+   "head": 144,
+   "dropped": 0,
+   "altered": 0,
+   "conflicts": 0,
+   "extra": 0
+  },
+  "icu": {
+   "parsed": 144,
+   "plural_messages": 6,
+   "categories": [
+    "one",
+    "many",
+    "other"
+   ],
+   "errors": [],
+   "missing": []
+  },
+  "nfc": true,
+  "bidi_controls": 0,
+  "rendered_fit": "Not executed; OS-controlled banner/preview truncation is not a fit guarantee."
+ }
+}

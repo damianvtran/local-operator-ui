@@ -1,0 +1,44 @@
+{
+  "auditor": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "tbd-r2-fr",
+  "session": "6bec71b1ea82",
+  "date": "2026-10-21",
+  "locale": "fr",
+  "translator": "translator",
+  "namespaces": {
+    "ui.teamBridge": {
+      "status": "passed",
+      "keys_audited": 113,
+      "scope": "Full fr ui.teamBridge catalogue (113 keys; 27 added today in focus) read side by side with EN plus the context sidecar, checked against the glossary, the fr style guide and the other fr ui.*/wire.* catalogues; ICU, NFC, bidi and typography checked in the bytes",
+      "sha256": {
+        "en": "0dfc0c5ed780b7b6e2cf2a560f007350ce4d17d512c39cce001a182bf43a09a7",
+        "fr": "c85e6bdf1c4d200f735418eea2fa2b40ce442fae378abe3d6291ee877c3c97d8",
+        "context": "267fc1892bb84cd4d7dbab1ff86a8120e5ec07069d3437241cf45391c9fb2291"
+      },
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.teamBridge.chief.fallback",
+          "current": "Chef de cabinet",
+          "proposed": "Cheffe de cabinet",
+          "note": "The fr product has already settled on the feminine singular for this role: wire.settings «Cheffe de cabinet activée», wire.slash «votre cheffe de cabinet» and ui.onboarding «{name} est votre cheffe de cabinet» (the EN source uses she/her for the role whatever the name), so a teammate’s nameless chief of staff showing as «Chef de cabinet» is gender drift on the same term. The plural forms (section.chiefs, builtin.agents_topic) correctly keep the generic masculine «chefs de cabinet»."
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.teamBridge.builtin.humans_topic",
+          "current": "Toute l’organisation. Les messages ici notifient chaque personne.",
+          "proposed": "Toute l’organisation. Les messages envoyés ici notifient chaque personne.",
+          "note": "«Les messages ici», with no verb, is a calque of “Messages here”; a native writer would add a participle, and the fix costs only one word in a topic line that may truncate."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.teamBridge.read_only.composer",
+          "current": "Cette organisation est en lecture seule pour le moment ; les messages ne peuvent pas être envoyés.",
+          "proposed": "Cette organisation est en lecture seule pour le moment ; les messages ne peuvent pas être envoyés.",
+          "note": "The space before «;» is U+00A0, but the binding fr style guide requires U+202F (espace fine insécable). This is the only U+00A0-before-«;» in the fr ui.* catalogues, against 95 that use U+202F."
+        }
+      ]
+    }
+  }
+}

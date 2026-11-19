@@ -40,6 +40,8 @@ import {
 	type UpdateInfo,
 	autoUpdater,
 } from "electron-updater";
+import { t } from "../i18n";
+import { currentLocaleState, isLanguageTag } from "../i18n/locale";
 import {
 	type DriftAbsence,
 	type DriftRestartHold,
@@ -50,8 +52,11 @@ import {
 	servingInstallReadings,
 } from "./backend-version-drift";
 import type { BackendServiceManager } from "./backend/backend-service";
+import { applyHoldLocale } from "./main-locale";
 import {
 	type UpdateReport,
+	type UpdateReportFailureKind,
+	type UpdateReportFailureStep,
 	daemonMoveOutcome,
 	parseUpdateReport,
 	runtimeStragglerCount,
@@ -112,6 +117,7 @@ import {
 	runInOwnProcessGroup,
 	waitForInstallGroupGone,
 } from "./install-group-run";
+import { notificationSoundOptions } from "./notification-sound";
 import {
 	ensureVenvBytecodeGuard,
 	withPythonBytecodeCache,
@@ -120,7 +126,10 @@ import {
 	type ServerReleaseNotes,
 	fetchServerReleaseNotes,
 } from "./server-release-notes";
-import { serverUpdateFailureSentence } from "./server-update-copy";
+import {
+	serverUpdateFailureSentence,
+	stripFailureSentence,
+} from "./server-update-copy";
 import {
 	type UpdateChannelStatus,
 	type UpdateCheckVerdict,
@@ -444,11 +453,6 @@ const PYPI_VERSION_READ_TIMEOUT_MS = 10_000;
  * re-price of one must not silently re-price the other.
  */
 const NPM_VERSION_READ_TIMEOUT_MS = 10_000;
-
-/** ` to version X`, or nothing when the version is unknown. */
-function versionSuffix(version: string | null | undefined): string {
-	return version ? ` to version ${version}` : "";
-}
 
 /**
  * The failure the network gate hands its caller when the machine never had a network.
@@ -1175,6 +1179,31 @@ export type BackendUpdateErrorReport = {
 	 */
 	phase: "check" | "update";
 	/**
+	 * The producer wrote `message` itself, from the catalogue, so it is copy and
+	 * not a caught value. The renderer must take it as the sentence and must not
+	 * guess.
+	 *
+	 * WHY THE PRODUCER SAYS SO. The renderer's only other way to tell the app's
+	 * words from a library's is `isAuthoredSentence`, a heuristic tuned to
+	 * English (at least four space-separated words, at most 400 characters, no
+	 * status-code-shaped number). Translated copy fails it for reasons that have
+	 * nothing to do with who wrote it: zh-CN has no spaces between words, fr
+	 * "450 Mo" reads as an HTTP 450, and the fr fleet refusals run past the
+	 * length cap. The toast then showed "the update check could not complete; the
+	 * app will retry" over a refusal that was no check and would not retry, with
+	 * the real reason in the monospace Details block (design round 1, D1 on
+	 * PR #1760). The service already knows which of its payloads are keyed
+	 * copy, so it marks them rather than leaving the renderer to infer it.
+	 *
+	 * ABSENT means a caught value (`stripErrorPrefixes(error.message)`, an errno
+	 * form such as `getaddrinfo ENOTFOUND pypi.org`) and keeps the classifier.
+	 * `"message"`: the whole string is copy (the fleet refusals are two authored
+	 * paragraphs with a blank line between them). `"sentence"`: only the first
+	 * paragraph is, and what follows a blank line is the installer's own error
+	 * (`not_installed` appends it), which belongs on the monospace line.
+	 */
+	authored?: "message" | "sentence";
+	/**
 	 * The update service log the failing branch wrote its detail to, when it has
 	 * one.
 	 *
@@ -1206,6 +1235,49 @@ export type BackendUpdateErrorReport = {
 	 * both, so the producer says which is which and no heuristic decides it.
 	 */
 	installerOutput?: string;
+	/**
+	 * The updater's structured cause, when the build that failed emits one.
+	 *
+	 * WHY IT TRAVELS BESIDE THE SENTENCE. `message` is the app's own copy and is
+	 * rendered verbatim; parsing a sentence to recover the step or kind would be a
+	 * second way to read the same fact, which drifts the moment the copy is edited.
+	 * The producer therefore carries the machine-readable half, and every surface
+	 * that needs to act on the kind can read it rather than match English.
+	 *
+	 * ABSENT means an older backend (or a report this app could not read). The
+	 * `message` already preserves that build's wording, so the renderer needs no
+	 * special case for it.
+	 */
+	failure?: {
+		step: UpdateReportFailureStep;
+		kind: UpdateReportFailureKind;
+		exitCode: number;
+		/** One sentence naming the cause, in the updater's own words. */
+		error: string;
+		/**
+		 * The version this attempt was moving to, for the publication/serve copy.
+		 * Null when the failing branch had no target (a check-like arm).
+		 */
+		target?: string | null;
+		/** The version the INSTALL reports after the attempt (`after`). */
+		installVersion?: string | null;
+		/** The version the serving process reports, when it could be read. */
+		runningVersion?: string | null;
+		/**
+		 * Whether the app may bounce the daemon: the serve kind keys its primary
+		 * action on this, so a restart label is never shown beside an install press.
+		 */
+		restartable?: boolean;
+		/** Whether the install `update-backend` moved is the app's own environment. */
+		appOwnedEnvironment?: boolean;
+		/** The by-hand update command, for the refused arm's escape hatch. */
+		command?: string | null;
+		/**
+		 * Whether the stopped updater's process group was still alive afterwards.
+		 * The structured arm renders the legacy safety clause from this reading.
+		 */
+		groupSurvived?: boolean;
+	};
 	/**
 	 * Set when this report is a REFUSAL rather than a failure: the fleet did not
 	 * drain and the app chose not to update the server (review round 1, D1).
@@ -1363,6 +1435,16 @@ export type BackendUpdateInfo = {
 	 * `server-release-notes.ts`.
 	 */
 	releaseNotes?: ServerReleaseNotes | null;
+	/**
+	 * Whether the press behind this offer cannot interrupt a running session.
+	 *
+	 * True only on the `entry-point` managed route (the generation layout: the
+	 * build lands in a tree no runtime imports, and the server move never signals
+	 * a runtime). The `source-build` rebuild and every by-hand route rewrite the
+	 * install in place, so the renderer must not reassure on them - this is what
+	 * the foot icon's "won't interrupt" line is gated on (review M1, 2026-11-03).
+	 */
+	nonDisruptive?: boolean;
 };
 
 /**
@@ -1937,7 +2019,8 @@ function bannerReportedShown(
 			const notification = new Notification({
 				title: notice.title,
 				body: notice.body,
-				silent: false,
+				// The configured sound (or none); see `notification-sound.ts`.
+				...notificationSoundOptions(),
 			});
 			notification.on("show", () => {
 				clearTimeout(deadline);
@@ -2120,6 +2203,29 @@ export function holdLaunchForLiveInstall(options: {
 	// Before the quit, never after: the notice's promise - and, on the branch where
 	// nothing could be arranged, its warning - is about what happens once this
 	// process is gone, and only a watchdog can make the promise good.
+	/*
+	 * THE HOLD SPEAKS THE USER'S LANGUAGE BEFORE IT SPEAKS AT ALL (R1-1).
+	 *
+	 * This path runs before any window and, on a cold start, before a backend is
+	 * reachable, so the ordinary backend-ready refresh may not have happened. The
+	 * marker written by the quitting process carries the tag the BACKEND had
+	 * resolved; a legacy marker has no field, and the fallback is Electron's own
+	 * device reading - not a fresh parse of config, which would be a second
+	 * language decision in the one path that must not improvise.
+	 *
+	 * Applied BEFORE the relaunch job is built: the shell script's notices are
+	 * composed from this process's locale at that moment.
+	 */
+	const localeSource = applyHoldLocale(reading.marker, app);
+	options.log(
+		`The hold's notice and watchdog messages speak ${
+			localeSource === "marker"
+				? "the language the quitting app recorded"
+				: localeSource === "device"
+					? "this machine's preferred language"
+					: "the previous locale"
+		}.`,
+	);
 	const relaunchEnsured = ensureRelaunchWatchdog({
 		marker: reading.marker,
 		startWatchdog: options.startWatchdog ?? defaultStartRelaunchWatchdog,
@@ -2534,6 +2640,9 @@ export class UpdateService {
 	 */
 	private fleetDrainSpentMs = 0;
 
+	/** S3: why this launch skips app-initiated update work; null for product launches. */
+	private readonly quietReason: string | null;
+
 	/**
 	 * Initialize the update service
 	 * @param mainWindow - The main application window
@@ -2542,13 +2651,26 @@ export class UpdateService {
 	constructor(
 		mainWindow: BrowserWindow,
 		backendService?: BackendServiceManager,
+		/**
+		 * S3 (mac proof capture): when set, this launch is a rig's armed boot
+		 * (`devDriverQuietUpdatesReason` in `./dev-driver`) and the service skips
+		 * the start-up seal repair, the periodic and post-wake checks, and the
+		 * renderer's app-initiated (non-manual) check. Why: an agent run of the
+		 * SHIPPED bundle must not delete files inside the bundle the operator is
+		 * running, and an update card must not enter an evidence frame. Omitted
+		 * (every product launch) leaves the service exactly as it was.
+		 */
+		options?: { quietReason?: string | null },
 	) {
 		this.mainWindow = mainWindow;
 		this.backendService = backendService || null;
+		this.quietReason = options?.quietReason ?? null;
 
 		// Determine if we're in dev mode
-		this.isDevMode =
-			!app.isPackaged || Boolean(process.env.ELECTRON_RENDERER_URL);
+		// `app.isPackaged` alone: `ELECTRON_RENDERER_URL` used to switch a
+		// PACKAGED app into dev mode (no updates) too, and a packaged build no
+		// longer lets that variable decide anything (`./dev-renderer-url.ts`).
+		this.isDevMode = !app.isPackaged;
 
 		// Determine if this is an npx installation
 		// Check if the app is running from a node_modules/.bin directory which is typical for npx
@@ -2593,6 +2715,17 @@ export class UpdateService {
 		// A marker left behind by a previous run means that run's install never
 		// completed. Recover it before anything else can offer the update again.
 		this.recoverPendingInstall();
+
+		if (this.quietReason) {
+			// S3: stop here - no seal repair, no schedule, no wake check. The IPC
+			// handlers are still registered by the caller, so a MANUAL check still
+			// works and nothing in the renderer meets a missing channel.
+			logger.info(
+				`Update service is quiet for this launch: ${this.quietReason}`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			return;
+		}
 
 		/*
 		 * Then repair this bundle's seal, if an earlier run broke it.
@@ -3860,9 +3993,13 @@ export class UpdateService {
 		if (!artifactPath) {
 			return {
 				code: "download-verification-failed",
-				message: `The downloaded update${versionSuffix(info?.version)} could not be found on disk, so it wasn't installed.`,
+				message: info?.version
+					? t("ui.updates.panel.artifact.missing_on_disk.message_version", {
+							version: info.version,
+						})
+					: t("ui.updates.panel.artifact.missing_on_disk.message"),
 				remedy: {
-					text: "Check for updates again to re-download the release.",
+					text: t("ui.updates.panel.artifact.remedy"),
 				},
 				detail: `No staged artifact matching ${candidates.join(", ") || "the update metadata"}.`,
 			};
@@ -3883,9 +4020,13 @@ export class UpdateService {
 		} catch (error) {
 			return {
 				code: "download-verification-failed",
-				message: `The downloaded update${versionSuffix(info?.version)} could not be read, so it wasn't installed.`,
+				message: info?.version
+					? t("ui.updates.panel.artifact.unreadable.message_version", {
+							version: info.version,
+						})
+					: t("ui.updates.panel.artifact.unreadable.message"),
 				remedy: {
-					text: "Check for updates again to re-download the release.",
+					text: t("ui.updates.panel.artifact.remedy"),
 				},
 				detail: `${artifactPath}: ${String(error)}`,
 			};
@@ -4235,8 +4376,12 @@ export class UpdateService {
 		if (!verdict.ok) {
 			return block(
 				`The staged update bundle is not this application: ${verdict.detail}.`,
-				`The downloaded update${versionSuffix(version)} is not this application, so it wasn't installed.`,
-				"Check for updates again to re-download the release.",
+				version
+					? t("ui.updates.panel.artifact.not_this_app.message_version", {
+							version,
+						})
+					: t("ui.updates.panel.artifact.not_this_app.message"),
+				t("ui.updates.panel.artifact.remedy"),
 			);
 		}
 
@@ -4273,8 +4418,12 @@ export class UpdateService {
 			 */
 			return block(
 				`The staged update bundle's seal reads \`unsealed\` (${stagedSeal.detail}), so Apple's own validation would have the same answer.`,
-				`The downloaded update${versionSuffix(version)} is damaged, so it wasn't installed.`,
-				"Check for updates again to re-download the release.",
+				version
+					? t("ui.updates.panel.artifact.damaged.message_version", {
+							version,
+						})
+					: t("ui.updates.panel.artifact.damaged.message"),
+				t("ui.updates.panel.artifact.remedy"),
 			);
 		}
 		if (stagedSeal.kind !== "sealed") {
@@ -5204,6 +5353,16 @@ export class UpdateService {
 		ipcMain.handle(
 			"check-for-updates",
 			async (_event, options?: { manual?: boolean }) => {
+				// S3: the renderer's mount check is app-initiated (no `manual`); a
+				// quiet (rig) launch answers it with the same `null` a skipped feed
+				// check returns, so no update card can enter an evidence frame.
+				if (this.quietReason && options?.manual !== true) {
+					logger.info(
+						`Skipped the app-initiated UI update check: ${this.quietReason}`,
+						LogFileType.UPDATE_SERVICE,
+					);
+					return null;
+				}
 				logger.info("Checking for UI updates...", LogFileType.UPDATE_SERVICE);
 				this.onCheckRequested(options);
 				/*
@@ -5583,6 +5742,20 @@ export class UpdateService {
 			const watchdogPid = this.launchWatchdog(targetVersion, installerPid);
 			let marker: PendingInstallMarker;
 			try {
+				/*
+				 * The locale the NEXT process needs for its pre-window notices. The
+				 * store's own source is the gate: only a tag the BACKEND resolved is
+				 * recorded, never a device guess and never a manual pin - the marker
+				 * must not become a second preference. Absent when the backend has not
+				 * answered yet, which is the honest state and the same shape an older
+				 * version wrote.
+				 */
+				const activeLocale = currentLocaleState();
+				const markerLanguage =
+					activeLocale.source === "backend" &&
+					isLanguageTag(activeLocale.locale)
+						? { language: activeLocale.locale }
+						: {};
 				marker = writePendingInstallMarker(this.markerDir(), {
 					targetVersion,
 					artifactPath:
@@ -5592,6 +5765,7 @@ export class UpdateService {
 					startedAt: new Date().toISOString(),
 					watchdogPid,
 					installerPid,
+					...markerLanguage,
 				});
 			} catch (error) {
 				/*
@@ -5723,7 +5897,7 @@ export class UpdateService {
 				) {
 					this.mainWindow.webContents.send(
 						"update-dev-mode",
-						"Application is running in development mode. Updates are disabled.",
+						t("ui.updates.status.dev_mode.app"),
 					);
 				}
 				// Development mode does not find out nothing: it does not find out
@@ -6668,8 +6842,7 @@ export class UpdateService {
 					 */
 					managedRoute: null,
 					installPrefix: null,
-					remedy:
-						"This server is running from Local Operator's own managed environment, which no package manager owns - so there is no terminal command that can update it correctly. The app can only update a server it started itself: stop this one, then start Local Operator again and let it start its own.",
+					remedy: t("ui.updates.service.global.app_owned.remedy"),
 					detail,
 					sourceBuild: false,
 					appOwned: true,
@@ -6760,8 +6933,16 @@ export class UpdateService {
 			 * that remains - sessions still working move onto the new build when they
 			 * next stop or go idle - with the cost stated as the time it takes.
 			 */
-			remedy:
-				"The app publishes the new build beside the one the server is using and then moves the server onto it, so nothing in flight is cut off. Sessions that are still working move onto the new build when they next stop or go idle. This can take a minute or two.",
+			/*
+			 * Keyed (it renders verbatim above `Update server`) and led by the
+			 * reassurance: session runtimes are detached processes the move never
+			 * signals (`local_operator/server/reload.py` "It does NOT touch
+			 * runtimes"), so the reader needs to know first that nothing has to be
+			 * stopped before pressing.
+			 */
+			remedy: t(
+				"ui.common.updates.update_notification.remedy_managed_app_owned",
+			),
 			detail: `The app started this server itself (${startupMode}).`,
 			sourceBuild: false,
 			/*
@@ -6952,7 +7133,7 @@ export class UpdateService {
 				) {
 					this.mainWindow.webContents.send(
 						"backend-update-dev-mode",
-						"Backend updates are disabled in development mode.",
+						t("ui.updates.status.dev_mode.backend"),
 					);
 				}
 				return { status: "unavailable", info: null };
@@ -7167,9 +7348,12 @@ export class UpdateService {
 						 */
 						message:
 							installedVersion && this.pendingPypiVersion
-								? `A new server release (${this.pendingPypiVersion}) is still publishing, so no update was offered yet. Check again in a few minutes.`
-								: "Unable to determine backend version.",
+								? t("ui.updates.service.release_publishing.message", {
+										version: this.pendingPypiVersion,
+									})
+								: t("ui.updates.panel.service.check_unavailable.message"),
 						phase: "check",
+						authored: "message",
 						logPath: serverUpdateLogPath(),
 					});
 				}
@@ -7186,9 +7370,9 @@ export class UpdateService {
 				);
 				if (reportFailure) {
 					this.sendToRenderer("backend-update-error", {
-						message:
-							"The installed server version could not be determined, so no update was offered. Restart the app to try again.",
+						message: t("ui.updates.service.version_unknown.message"),
 						phase: "check",
+						authored: "message",
 						logPath: serverUpdateLogPath(),
 					});
 				}
@@ -7227,8 +7411,9 @@ export class UpdateService {
 				);
 				if (reportFailure) {
 					this.sendToRenderer("backend-update-error", {
-						message: "Unable to determine backend version.",
+						message: t("ui.updates.panel.service.check_unavailable.message"),
 						phase: "check",
+						authored: "message",
 						logPath: serverUpdateLogPath(),
 					});
 				}
@@ -7344,6 +7529,7 @@ export class UpdateService {
 					remedy: plan.remedy,
 					detail: plan.detail,
 					sourceBuild: plan.sourceBuild,
+					nonDisruptive: plan.managedRoute === "entry-point",
 					/*
 					 * WHO THE APP WOULD RESTART, on the panel where the user decides (UX U9).
 					 *
@@ -7992,6 +8178,7 @@ export class UpdateService {
 		this.sendToRenderer("backend-update-error", {
 			message,
 			phase: "update",
+			authored: "message",
 			logPath: serverUpdateLogPath(),
 			/*
 			 * WHAT WAS WAITED FOR, and the choice made instead of forcing: this is
@@ -8872,15 +9059,31 @@ export class UpdateService {
 			const ageMinutes = Number.isFinite(startedAtMs)
 				? Math.max(0, Math.round((Date.now() - startedAtMs) / 60_000))
 				: null;
-			const age =
+			/*
+			 * THREE WHOLE SENTENCES, NOT A SPLICED AGE FRAGMENT: "moments ago" and "N
+			 * minutes ago" cannot be concatenated into a sentence in a language whose
+			 * word order differs, so each age earns its own key and the minutes use the
+			 * locale's plural rules. The process group is a machine id and travels as
+			 * a value.
+			 */
+			const group = String(outcome.marker.groupPid);
+			const attemptRunning =
 				ageMinutes === null
-					? "at a time that could not be read"
+					? t("ui.updates.service.attempt_running.message_unknown_age", {
+							group,
+						})
 					: ageMinutes < 1
-						? "moments ago"
-						: `${ageMinutes} minute${ageMinutes === 1 ? "" : "s"} ago`;
+						? t("ui.updates.service.attempt_running.message_moments", {
+								group,
+							})
+						: t("ui.updates.service.attempt_running.message_minutes", {
+								minutes: ageMinutes,
+								group,
+							});
 			this.sendToRenderer("backend-update-error", {
-				message: `A server update this app started ${age} is still running (process group ${outcome.marker.groupPid}), so a second one will not be started beside it. If that update is no longer responding, the update service log says what it was doing.`,
+				message: attemptRunning,
 				phase: "update",
+				authored: "message",
 				logPath: serverUpdateLogPath(),
 			});
 			return false;
@@ -8891,9 +9094,9 @@ export class UpdateService {
 				LogFileType.UPDATE_SERVICE,
 			);
 			this.sendToRenderer("backend-update-error", {
-				message:
-					"A server update is already running. Let it finish before starting another.",
+				message: t("ui.updates.service.already_running.message"),
 				phase: "update",
+				authored: "message",
 				logPath: serverUpdateLogPath(),
 			});
 			return false;
@@ -9041,9 +9244,9 @@ export class UpdateService {
 		const generationInstall = freshPlan.managedRoute === "entry-point";
 		if (!consolePath && !rebuildRoute) {
 			this.sendToRenderer("backend-update-error", {
-				message:
-					"The global install could not be found on this machine, so the update did not run. See the update service log.",
+				message: t("ui.updates.service.install_not_found.message"),
 				phase: "update",
+				authored: "message",
 				logPath: serverUpdateLogPath(),
 			});
 			return false;
@@ -9235,26 +9438,95 @@ export class UpdateService {
 			const diagnosis = installDiagnosisLines(
 				run.stderr.length > 0 ? run.stderr : run.stdout,
 			);
+			/*
+			 * THE STRUCTURED CAUSE, taken from the same stdout the post-condition read
+			 * (contract 2026-10-24). Parsed on the failing branch too, because this is
+			 * the branch the contract exists for: the updater prints ONE report line at
+			 * exit, and its `failure` block is the only account of WHY that does not
+			 * depend on which stream happened to carry startup chatter first.
+			 *
+			 * MEASURED ON THE INCIDENT (2026-10-24): the stderr was 1,475 characters,
+			 * opening with two startup advisories of 355 and 427. `installDiagnosisLines`
+			 * takes the head and slices it at 800 characters, so it returned the first
+			 * advisory, the second, and sixteen characters of a third - while the cause,
+			 * `fresh PyPI latest is 0.88.4, not 0.89.0`, sat on line 6 and never reached
+			 * the panel. The diagnosis is still the raw-output fallback; it cannot be the
+			 * diagnosis when its budget is spent before the verdict arrives.
+			 *
+			 * `parseUpdateReport` returns null for a build that predates the contract.
+			 * The `message` is the legacy sentence either way: when `failure` is present
+			 * the renderer composes the localized cause and remedy from it, and when it
+			 * is absent the renderer shows that sentence exactly as before.
+			 */
+			const failedReport = parseUpdateReport(run.stdout)?.failure ?? null;
+			/*
+			 * The serve arm's restart action needs the same ownership readings the
+			 * skew panel takes, so they travel with the cause rather than being
+			 * guessed in the renderer. `after` is the install reading and `running`
+			 * is the process the reader is talking to.
+			 */
+			const failureStartupMode = this.backendService?.getStartupMode();
+			const failureAppOwnedEnvironment = failureStartupMode
+				? this.appOwnsInstall(failureStartupMode, serving)
+				: false;
 			logger.error(
 				`${rebuildRoute ? "Source rebuild" : "Global install update"} did not land (exited ${run.exitCode}, ran ${run.ran}${groupSurvived ? `, group ${run.groupPid} still alive` : ""}): ${before ?? "unknown"} -> ${after ?? "unknown"}${rebuildRoute ? `, marker ${markerBefore?.ref ?? "none"} -> ${markerAfter?.ref ?? "none"}` : ""}, running backend reports ${running ?? "no reading"}`,
 				LogFileType.UPDATE_SERVICE,
 			);
+			const failureMessage = serverUpdateFailureSentence({
+				rebuildRoute,
+				ran: run.ran,
+				exitCode: run.exitCode,
+				groupSurvived,
+				diagnosis,
+				target,
+				after,
+				before,
+				updateCommand: freshPlan.updateCommand ?? null,
+			});
 			// Nothing moved, so nothing is restarted: the daemon that was serving is
 			// still serving, on the build it loaded.
 			this.sendToRenderer("backend-update-error", {
-				message: serverUpdateFailureSentence({
-					rebuildRoute,
-					ran: run.ran,
-					exitCode: run.exitCode,
-					groupSurvived,
-					diagnosis,
-					target,
-					after,
-					before,
-					updateCommand: freshPlan.updateCommand ?? null,
-				}),
-				installerOutput: diagnosis || undefined,
+				message: failureMessage,
+				/*
+				 * THE STRUCTURED ARM KEEPS THE VERBATIM RECORD (QA round 2 decision). The
+				 * primary block paraphrases the cause and never quotes it, and the record
+				 * is collapsed, so there is no duplicate on screen; a reader who expands
+				 * it is asking for the updater's exact sentence, including the verdict.
+				 *
+				 * THE LEGACY ARM has no structured cause and its sentence is the one that
+				 * can quote the same text; the only duplicate identifiable there is a raw
+				 * line equal to the message itself, and whole-line matching leaves an
+				 * unrelated warning that merely contains it intact (R2-F1).
+				 */
+				installerOutput: failedReport
+					? /*
+						 * The whole stream, not the diagnosis head: the record keeps the
+						 * updater's exact sentence even when it sat past the 800-character
+						 * head the old panel sliced (the incident's line 6). The stderr is
+						 * the installer's own record; `diagnosis` is the fallback when the
+						 * stream is empty and the report arrived on stdout.
+						 */
+						run.stderr.trim() || diagnosis || undefined
+					: stripFailureSentence(diagnosis, failureMessage) || undefined,
+				failure: failedReport
+					? {
+							step: failedReport.step,
+							kind: failedReport.kind,
+							exitCode: failedReport.exit_code,
+							error: failedReport.error,
+							target,
+							installVersion: after,
+							runningVersion: running,
+							restartable: this.backendIsAppOwned(),
+							appOwnedEnvironment: failureAppOwnedEnvironment,
+							command: freshPlan.updateCommand ?? null,
+							// A boolean, not the short-circuit's `undefined` on a test double.
+							groupSurvived: Boolean(groupSurvived),
+						}
+					: undefined,
 				phase: "update",
+				authored: "message",
 				logPath: serverUpdateLogPath(),
 			});
 			return false;
@@ -9483,9 +9755,9 @@ export class UpdateService {
 				LogFileType.UPDATE_SERVICE,
 			);
 			this.sendToRenderer("backend-update-error", {
-				message:
-					"The server was updated but the backend did not restart. Restart Local Operator to run the new version.",
+				message: t("ui.updates.service.no_restart.message"),
 				phase: "update",
+				authored: "message",
 				logPath: serverUpdateLogPath(),
 			});
 			return false;
@@ -9499,9 +9771,9 @@ export class UpdateService {
 			await backend.start();
 			if (!(await this.checkBackendHealth())) {
 				this.sendToRenderer("backend-update-error", {
-					message:
-						"The server was updated but the backend did not restart properly. Restart Local Operator to run the new version.",
+					message: t("ui.updates.service.no_restart_properly.message"),
 					phase: "update",
+					authored: "message",
 					logPath: serverUpdateLogPath(),
 				});
 				return false;
@@ -9521,8 +9793,13 @@ export class UpdateService {
 				LogFileType.UPDATE_SERVICE,
 			);
 			this.sendToRenderer("backend-update-error", {
-				message: `The server restarted but did not report ${target ? `version ${target}` : "the updated version"}. See the update service log, then restart Local Operator.`,
+				message: target
+					? t("ui.updates.panel.service.restart.message_version", {
+							version: target,
+						})
+					: t("ui.updates.panel.service.restart.message"),
 				phase: "update",
+				authored: "message",
 				logPath: serverUpdateLogPath(),
 			});
 			return false;
@@ -9793,8 +10070,9 @@ export class UpdateService {
 					!this.mainWindow.webContents.isDestroyed()
 				) {
 					this.mainWindow.webContents.send("backend-update-error", {
-						message: "No backend service reference available, cannot update.",
+						message: t("ui.updates.panel.service.no_backend.message"),
 						phase: "update",
+						authored: "message",
 						logPath: serverUpdateLogPath(),
 					});
 				}
@@ -9828,8 +10106,9 @@ export class UpdateService {
 						!this.mainWindow.webContents.isDestroyed()
 					) {
 						this.mainWindow.webContents.send("backend-update-error", {
-							message: "No python server is available, nothing to update.",
+							message: t("ui.updates.panel.service.no_server.message"),
 							phase: "update",
+							authored: "message",
 							logPath: serverUpdateLogPath(),
 						});
 					}
@@ -9953,9 +10232,9 @@ export class UpdateService {
 					 * the rule this branch was the exception to.
 					 */
 					this.sendToRenderer("backend-update-error", {
-						message:
-							"The app could not tell how this server was started, so it did not update it. See the update service log.",
+						message: t("ui.updates.service.start_mode_unknown.message"),
 						phase: "update",
+						authored: "message",
 						logPath: serverUpdateLogPath(),
 					});
 					return false;
@@ -10055,9 +10334,9 @@ export class UpdateService {
 				LogFileType.UPDATE_SERVICE,
 			);
 			this.sendToRenderer("backend-update-error", {
-				message:
-					"A server update is already running. Let it finish before starting another.",
+				message: t("ui.updates.service.already_running.message"),
 				phase: "update",
+				authored: "message",
 				logPath: serverUpdateLogPath(),
 			});
 			return false;
@@ -10085,9 +10364,9 @@ export class UpdateService {
 				LogFileType.UPDATE_SERVICE,
 			);
 			this.sendToRenderer("backend-update-error", {
-				message:
-					"The app has no server to update right now. Restart Local Operator and try again.",
+				message: t("ui.updates.service.no_server_reference.message"),
 				phase: "update",
+				authored: "message",
 				logPath: serverUpdateLogPath(),
 			});
 			return false;
@@ -10112,9 +10391,9 @@ export class UpdateService {
 				LogFileType.UPDATE_SERVICE,
 			);
 			this.sendToRenderer("backend-update-error", {
-				message:
-					"The app could not read which release to install, so it left its server environment alone. Check the connection and try again.",
+				message: t("ui.updates.service.release_unreadable.message"),
 				phase: "update",
+				authored: "message",
 				logPath: serverUpdateLogPath(),
 			});
 			return false;
@@ -10191,8 +10470,12 @@ export class UpdateService {
 					LogFileType.UPDATE_SERVICE,
 				);
 				this.sendToRenderer("backend-update-error", {
-					message: `The server update needs about ${neededMb} MB of free space on this disk, and ${freeMb} MB is free, so the app left the environment serving this app alone. Free some space and try again.`,
+					message: t("ui.updates.service.disk_space.message", {
+						needed: neededMb,
+						free: freeMb,
+					}),
 					phase: "update",
+					authored: "message",
 					logPath: serverUpdateLogPath(),
 				});
 				return false;
@@ -10250,8 +10533,9 @@ export class UpdateService {
 				LogFileType.UPDATE_SERVICE,
 			);
 			this.sendToRenderer("backend-update-error", {
-				message: `The server update did not install, so the environment serving this app was left as it was.${cause ? ` ${cause}` : ""}${reason ? `\n\n${reason}` : ""}`,
+				message: `${t("ui.updates.service.not_installed.message")}${cause ? ` ${cause}` : ""}${reason ? `\n\n${reason}` : ""}`,
 				phase: "update",
+				authored: "sentence",
 				logPath: serverUpdateLogPath(),
 			});
 			return false;

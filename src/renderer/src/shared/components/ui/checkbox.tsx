@@ -19,47 +19,70 @@ import {
  * facts — "some of these" is not "all of these" — and a checkbox that shows a
  * tick for both is lying about what will happen on submit.
  */
+/** Shared paint contract: used by the ordinary root or the opt-in inner mark. */
+const checkboxPaint = [
+	"inline-flex size-4 shrink-0 items-center justify-center rounded-xs",
+	"border border-control bg-surface text-on-accent",
+	"transition-colors duration-fast ease-out-quart",
+	// `not-data-[disabled]` is load-bearing, not defensive. Tailwind emits
+	// `data-[disabled]:*` BEFORE `data-[state=checked]:*`, so without the
+	// exclusion a disabled-and-checked box keeps the accent fill and reads
+	// as live. Making the two selectors mutually exclusive removes the
+	// dependence on emission order entirely.
+	"data-[state=checked]:not-data-[disabled]:border-accent data-[state=checked]:not-data-[disabled]:bg-accent",
+	"data-[state=indeterminate]:not-data-[disabled]:border-accent data-[state=indeterminate]:not-data-[disabled]:bg-accent",
+	"aria-invalid:border-danger",
+	"data-[disabled]:border-hairline data-[disabled]:bg-sunken data-[disabled]:text-ink-disabled",
+];
+
+type CheckboxProps = ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root> & {
+	/** Real32px pointer root (44px coarse), retaining the shared16px paint. */
+	hitArea?: "default" | "comfortable";
+};
+
 export const Checkbox = forwardRef<
 	ElementRef<typeof CheckboxPrimitive.Root>,
-	ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root>
->(({ className, checked, ...props }, ref) => (
-	<CheckboxPrimitive.Root
-		ref={ref}
-		checked={checked}
-		className={cn(
-			"inline-flex size-4 shrink-0 items-center justify-center rounded-xs",
-			"border border-control bg-surface text-on-accent",
-			"transition-colors duration-fast ease-out-quart",
-			// `not-data-[disabled]` is load-bearing, not defensive. Tailwind emits
-			// `data-[disabled]:*` BEFORE `data-[state=checked]:*`, so without the
-			// exclusion a disabled-and-checked box keeps the accent fill and reads
-			// as live. Making the two selectors mutually exclusive removes the
-			// dependence on emission order entirely.
-			"data-[state=checked]:not-data-[disabled]:border-accent data-[state=checked]:not-data-[disabled]:bg-accent",
-			"data-[state=indeterminate]:not-data-[disabled]:border-accent data-[state=indeterminate]:not-data-[disabled]:bg-accent",
-			"aria-invalid:border-danger",
-			"data-[disabled]:border-hairline data-[disabled]:bg-sunken data-[disabled]:text-ink-disabled",
-			className,
-		)}
-		{...props}
-	>
-		<CheckboxPrimitive.Indicator className="flex items-center justify-center text-current">
-			{/*
-			 * 14px glyph, no `strokeWidth`. The app runs one pen weight — lucide's
-			 * default 2 on its 24px grid — so when a glyph reads thin the lever is
-			 * its size, not its stroke. This one carried `strokeWidth={3}` at 12px,
-			 * which bought the weight back by putting a second pen in the tree.
-			 * 14px at the standard weight is the same optical density as every
-			 * other 14px icon, and it fills the 16px box's content area exactly —
-			 * the 1px border is the whole gap, which is enough because neither a
-			 * tick nor a dash puts ink in its bounding box corners.
-			 */}
-			{checked === "indeterminate" ? (
-				<Minus className="size-3.5" aria-hidden="true" />
-			) : (
-				<Check className="size-3.5" aria-hidden="true" />
+	CheckboxProps
+>(({ className, checked, hitArea = "default", ...props }, ref) => {
+	const comfortable = hitArea === "comfortable";
+	return (
+		<CheckboxPrimitive.Root
+			ref={ref}
+			checked={checked}
+			className={cn(
+				/*
+				 * Notification selection formerly enlarged the painted root to24px.
+				 * Keep ONE semantic/interactive Radix root, but move its unchanged
+				 * paint onto the indicator for this opt-in. Empty target space must
+				 * activate the same checkbox, not stop clicks in an inert wrapper.
+				 * Geometry/outline clipping still require real-render validation.
+				 */
+				comfortable
+					? "inline-flex size-8 shrink-0 items-center justify-center rounded-xs border-0 bg-transparent pointer-coarse:size-11"
+					: checkboxPaint,
+				className,
 			)}
-		</CheckboxPrimitive.Indicator>
-	</CheckboxPrimitive.Root>
-));
+			{...props}
+		>
+			<CheckboxPrimitive.Indicator
+				/* forceMount paints the unchecked boundary too; hide only its glyph. */
+				forceMount={comfortable || undefined}
+				data-checkbox-paint={comfortable ? "" : undefined}
+				aria-invalid={comfortable ? props["aria-invalid"] : undefined}
+				className={cn(
+					"flex items-center justify-center text-current",
+					comfortable && checkboxPaint,
+					comfortable && "data-[state=unchecked]:[&>svg]:invisible",
+				)}
+			>
+				{/* Keep the brand's14px standard-stroke tick/dash; do not shrink text. */}
+				{checked === "indeterminate" ? (
+					<Minus className="size-3.5" aria-hidden="true" />
+				) : (
+					<Check className="size-3.5" aria-hidden="true" />
+				)}
+			</CheckboxPrimitive.Indicator>
+		</CheckboxPrimitive.Root>
+	);
+});
 Checkbox.displayName = "Checkbox";

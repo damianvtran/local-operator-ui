@@ -1,0 +1,104 @@
+{
+ "locale": "hi",
+ "namespaces": {
+  "ui.library": {
+   "status": "passed",
+   "fully_audited_key_count": 20,
+   "consistency_only_key_count": 159,
+   "finding_ids": [
+    "F1"
+   ],
+   "input_hashes": {
+    "en": {
+     "path": "src/i18n/catalogues/en/ui.library.json",
+     "sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71"
+    },
+    "hi": {
+     "path": "src/i18n/catalogues/hi/ui.library.json",
+     "sha256": "276df1d52759ac97fc03b0569c7ce95db066b449a8a130435340f024fecc942d"
+    },
+    "context": {
+     "path": "src/i18n/catalogues/en/ui.library.context.json",
+     "sha256": "2fe63e830b49079dac67c5c4513358d0a8559a94fbf27ac8d437212b13aa2e72"
+    }
+   }
+  }
+ },
+ "audit_date": "2026-11-10",
+ "key_count": 179,
+ "fully_audited_key_count": 20,
+ "consistency_only_key_count": 159,
+ "scope": "PR damianvtran/local-operator-ui #1851 fix(i18n): localize Library kind and tag-category labels @ 8a9ce1f808c266ebe9a0e924094344cea60c2c23; delta audit of the 20 new ui.library keys (12 kind badges, 7 tag_category rail headings, preview.unsupported_generic) plus the 20 matching English context notes. No full legacy namespace certification.",
+ "head_sha": "8a9ce1f808c266ebe9a0e924094344cea60c2c23",
+ "auditor": {
+  "agent": "i18n-auditor",
+  "instance": "5d845498f5c6",
+  "session": "5d845498f5c6",
+  "model": "deepseek/deepseek-flash",
+  "actual_model_source": "Served session header for session 5d845498f5c6 states deepseek/deepseek-flash; no model switch or fallback occurred in this session.",
+  "fallback_used": false,
+  "independent_from_translator_session": true
+ },
+ "translator": {
+  "agent": "i18n-translator",
+  "model": "anthropic/claude-sonnet-5-5",
+  "source": "Translator model supplied by delegation; the translator SESSION was NOT supplied by the manager and is unrecorded, so it cannot be cross-checked. Values were landed verbatim per the brief. This auditor did not translate and took no part in translation."
+ },
+ "policy_inputs": {
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/hi.md",
+   "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+  },
+  "glossary": {
+   "path": "~/local-operator-ui/.worktrees/_s14-audits/8a9ce1f808c266ebe9a0e924094344cea60c2c23/glossary.md",
+   "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+   "note": "Manager-owned byte-copy; verified identical to ~/local-operator/i18n/glossary.md by sha256. Glossary conformance was checked against this copy."
+  },
+  "expected_hashes": {
+   "path": "~/local-operator-ui/.worktrees/_s14-audits/8a9ce1f808c266ebe9a0e924094344cea60c2c23/expected-hashes.json"
+  }
+ },
+ "artifacts": [
+  {
+   "path": "hi-ds-5d845498f5c6.json",
+   "sha256": "72b240c23376ba05241735ca82e132eae3827a85ecaf2ab3567a7790677de042",
+   "kind": "audit_notes_not_execution_log",
+   "record_reference": "hi-ds-5d845498f5c6.record.json"
+  },
+  {
+   "path": "hi-ds-5d845498f5c6.audit.log",
+   "sha256": "d3c2afede1782d73c4a1c248089b5ac26bd4ac8c0cd3c1add8f55fba39b01869",
+   "kind": "actual_execution_log",
+   "record_reference": "hi-ds-5d845498f5c6.record.json"
+  },
+  {
+   "path": "hi-ds-5d845498f5c6-check.py",
+   "sha256": "d6c75768c798a2cc1328f66fe43f083843ed0af41dd63e5b77ecce638dbcff22",
+   "kind": "executed_check_source",
+   "record_reference": "hi-ds-5d845498f5c6.record.json"
+  }
+ ],
+ "current_report_verdict": {
+  "status": "passed",
+  "unresolved_blocker_major_count": 0,
+  "finding_ids": [
+   "F1"
+  ]
+ },
+ "finding_report": "hi-ds-5d845498f5c6.json",
+ "audit_notes_not_execution_log": false,
+ "execution_log": "hi-ds-5d845498f5c6.audit.log",
+ "retention": {
+  "state": "scratch_handoff_only_per_explicit_read_only_task",
+  "intended_tracked_directory": "i18n/audits/evidence/hi/ui.library/p2-ds-5d845498",
+  "manager_action_required": "Retain these three files (receipt, execution log, executed check source) under the canonical evidence root i18n/audits/evidence/hi/ui.library/<audit-id>/ and record the ledger row with scripts/i18n/ledger-assemble.mjs. No ledger command was run by this auditor (read-only task).",
+  "proposed_note": "passed; 1 MINOR (English kind.other note's dangling 'see manifest'); record i18n/audits/evidence/hi/ui.library/p2-ds-5d845498/record.json"
+ },
+ "unverified": [
+  "No production ICU parser/formatter, no Electron/React run, no rendered frame and no screen-reader session: read-only, no-build, no-server constraint. Grammar, idiom and register judgments are native-reader reasoning over the catalogue text, not runtime output.",
+  "No ledger write, tracked evidence retention, PR comment or commit: writes were limited to this session's scratchpad. The manager retains these deliverables under i18n/audits/evidence/hi/ui.library/<audit-id>/.",
+  "The 159 non-delta legacy values of ui.library were NOT certified: only JSON validity, key-set parity, no-value-changed-vs-base and cross-file term consistency were checked.",
+  "The translator session id is unknown (not supplied), so translator/auditor independence rests on this auditor having been launched as a separate role, not on session-id inequality.",
+  "Render points were confirmed by reading source, not by rendering the Library surface; no screenshot exists for a badge or rail heading."
+ ]
+}

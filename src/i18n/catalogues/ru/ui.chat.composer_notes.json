@@ -1,0 +1,16 @@
+{
+	"ui.chat.composer_notes.default_not_saved": "Значение по умолчанию не сохранено: {reason}",
+	"ui.chat.composer_notes.default_not_saved_fallback": "бэкенд отклонил запрос",
+	"ui.chat.composer_notes.default_saved": "По умолчанию для новых сессий: {model}",
+	"ui.chat.composer_notes.goal.done_tag": "— готово",
+	"ui.chat.composer_notes.goal.stalled.breaker": "цель остановилась: судья не смог вынести решение — отправьте сообщение, чтобы продолжить",
+	"ui.chat.composer_notes.goal.stalled.cap": "цель остановилась после {count, plural, one {# продолжения} few {# продолжений} many {# продолжений} other {# продолжения}} — отправьте сообщение, чтобы продолжить",
+	"ui.chat.composer_notes.goal.stalled.cap_fallback": "цель остановилась: достигнут лимит продолжений — отправьте сообщение, чтобы продолжить",
+	"ui.chat.composer_notes.goal.stalled.unknown": "цель остановилась: автоматическое продолжение прекращено — отправьте сообщение, чтобы продолжить",
+	"ui.chat.composer_notes.hint.choose_model": "Перед отправкой выберите модель для этого разговора.",
+	"ui.chat.composer_notes.hint.connect_provider": "Чтобы отправить сообщение, подключите провайдера.",
+	"ui.chat.composer_notes.outside_mentions": "{count, plural, one {# ссылка указывает за пределы рабочего каталога этой сессии; агент попросит одобрения, прежде чем читать её.} few {# ссылки указывают за пределы рабочего каталога этой сессии; агент попросит одобрения, прежде чем читать их.} many {# ссылок указывают за пределы рабочего каталога этой сессии; агент попросит одобрения, прежде чем читать их.} other {# ссылки указывают за пределы рабочего каталога этой сессии; агент попросит одобрения, прежде чем читать их.}}",
+	"ui.chat.composer_notes.skill_empty_body": "у навыка `{name}` пустое содержимое — сообщение отправляется как есть",
+	"ui.chat.composer_notes.skill_load_failed": "не удалось загрузить навык `{name}` — сообщение отправляется как есть",
+	"ui.chat.composer_notes.slash_needs_name": "Введите имя после /{command} или выберите его из списка."
+}

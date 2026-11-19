@@ -1,0 +1,19 @@
+REVERSE-APPLY PROOF (executed with node, 2026-10-30)
+
+file: src/i18n/catalogues/ur/ui.teamBridge.json
+forward edit under test: "{actor} نے دعوت سے انکار کر دیا"
+  was, before this round's correction: "{actor} نے دعوت سے انکار کر دی"
+occurrences of the current value in the file: 1
+
+second edit (ui.teamBridge.events.declined): reverse-replaced "{actor} نے {targets} کے لیے دعوت سے انکار کر دیا" -> "{actor} نے {targets} کے لیے دعوت سے انکار کر دی"
+
+sha256(now on disk)        = 046cb95c37eecd141da4a0c5e86ef271d45fd64b7dad6f6ae25f1622b00c2521
+sha256(reverse-applied)    = a2e6c102ee41badf587ea1afc4d0ca3d911f0f97979f0be2c3c60881694018a7
+sha256 expected (prior)    = a2e6c102ee41badf587ea1afc4d0ca3d911f0f97979f0be2c3c60881694018a7
+MATCH = true
+
+Reading: the reverse-applied bytes reproduce the previously audited file exactly, so the value-level edits between the two states are exactly the documented correction(s) and nothing else moved. Every other key in this 297-key namespace is byte-identical to the state prior receipts audited.
+
+codepoints of the current value:
+  ui.teamBridge.events.declined_self = "{actor} نے دعوت سے انکار کر دیا"
+  U+007B U+0061 U+0063 U+0074 U+006F U+0072 U+007D U+0020 U+0646 U+06D2 U+0020 U+062F U+0639 U+0648 U+062A U+0020 U+0633 U+06D2 U+0020 U+0627 U+0646 U+06A9 U+0627 U+0631 U+0020 U+06A9 U+0631 U+0020 U+062F U+06CC U+0627

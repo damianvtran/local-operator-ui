@@ -1,0 +1,169 @@
+{
+	"audit_id": "teambridge-pr1482-merge-delta-20261030-ru",
+	"date": "2026-10-30",
+	"locale": "ru",
+	"namespace": "ui.teamBridge",
+	"pr": 1482,
+	"branch": "feat/team-bridge-owner-audit-ui",
+	"merge": {
+		"pr": 1482,
+		"branch": "feat/team-bridge-owner-audit-ui",
+		"worktree": "~/local-operator-ui/.worktrees/1482-fold",
+		"branch_head_at_fold": "bb41165ae09a5032a7f23e5953e5a5bbc0758ffa",
+		"origin_main_at_fold": "85971d8b44b57aabfee209a45e6646eb6b62a150",
+		"merge_base": "a36e9e165c22376d297368fdd2ebd378206de6c8",
+		"merge_state": "merge of origin/main into the branch, uncommitted at audit time. The fold's three conflicts were resolved before this audit (package.json: per-key three-way with scripts.test:desktop as the token union; en/ui.teamBridge.context.json: pure union, no shared key disagrees; i18n/ledger.json: per-row three-way with both-moved rows left at the branch for re-derivation). This run wrote only receipts, their evidence records and the ledger rows, and those rows only through scripts/i18n/ledger-assemble.mjs."
+	},
+	"translator": {
+		"agent": "translator",
+		"model": "anthropic/claude-opus-5-5 (per the branch's ledger row for this locale)",
+		"date": "2026-10-21",
+		"source": "the branch's ledger row for this locale/ui.teamBridge, carried into the fold unchanged",
+		"method": "LLM reasoning in the translation sessions; no MT service or translation API is involved"
+	},
+	"auditors": [
+		{
+			"agent": "i18n-auditor",
+			"model": "radient/auto",
+			"date": "2026-10-30",
+			"result": "clean",
+			"instance": "tb1482m3-ru-2d47856c6ee9",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"receipt": "i18n/receipts/tb1482m3-ru-2d47856c6ee9.json",
+			"receipt_sha256": "00306c24302b3dc8e96f5c599f4e3217eb97d2689dbcb21620602748ee6654ba",
+			"scope": "Merged copy delta at the fold of origin/main 85971d8b44b5: the one key this branch adds to ui.teamBridge (thread.not_available) plus its sidecar entry; the rest of the namespace is inherited byte-identically from origin/main."
+		}
+	],
+	"auditor_independence": "See the receipt: the auditing run is not the author of any audited string.",
+	"files": {
+		"english": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "ed1be56fa3b8ebefebc758a03a0c6ce69cec6d2aa92208725eb875dd1e89a1ca"
+		},
+		"context_sidecar": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "a32ec9180bc93f3ac602c1fa95c08bf68134e02e8560c5599e923a62d31af0ea"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/ru/ui.teamBridge.json",
+			"sha256": "fa583516e46c9a20f3bf39326c7faae0e03005fa8beceb13ea7717656633e637"
+		},
+		"archive_namespace_read_for_terminology": {
+			"path": "src/i18n/catalogues/ru/ui.teamBridge.archive.json",
+			"sha256": "a61b9f5f9e8a5bf6ff8eb73a43a0cd9c8419a3c8cdc4fd792f3808b6e0985b8e"
+		}
+	},
+	"scope": {
+		"delta_kind": "Merge delta: what this fold adds to origin/main, in one namespace.",
+		"added_relative_to_origin_main": [
+			"ui.teamBridge.thread.not_available"
+		],
+		"inherited_from_origin_main": "origin/main contributes 27 keys of its own to this namespace in the same fold (ui.teamBridge.members.*). They are inherited byte-identically: this audit compared every key present on both sides and found no value changed (282 merged keys = 255 branch keys + 281 main keys, a pure union at 282 in every one of the eight catalogues). They stay covered by their own receipts; this is not a re-audit of them.",
+		"key_sets": "282 English keys; this locale is key-complete at 282 and ledger-assemble.mjs re-checks that before writing the row.",
+		"keys_audited_linguistically": [
+			"ui.teamBridge.thread.not_available"
+		],
+		"keys_read_for_consistency": [
+			"ui.teamBridge.member.count",
+			"ui.teamBridge.members.role.member",
+			"ui.teamBridge.members.read_only",
+			"ui.teamBridge.archive.banner.plain",
+			"ui.teamBridge.thread.intro_chief",
+			"ui.teamBridge.thread.withheld",
+			"ui.teamBridge.members.title",
+			"ui.teamBridge.members.description"
+		],
+		"not_audited": "The 281 other English keys and their translations: unchanged by this fold and covered by their own receipts. Nothing here re-audits them."
+	},
+	"english": {
+		"ui.teamBridge.thread.not_available": {
+			"value": "This conversation is not open to you. You may not be a member of it, or it may have been archived.",
+			"clause_1": "This conversation is not open to you - the state, not a verdict on the reader.",
+			"clause_2": "You may not be a member of it, or it may have been archived - both reasons, which one is not revealed.",
+			"context_role": "thread placeholder when the addressed conversation is not in the reader's list",
+			"context_tone": "plain, factual, never accusatory",
+			"context_length": "Two short sentences.",
+			"context_note": "Shown for an addressed conversation id the caller cannot open: the list only carries conversations the caller participates in, so this covers both \"not a member\" and \"archived\" without revealing which. It replaces the draft intro, which wrongly told a reader their history was empty when the conversation actually held messages (2026-10-28). Do not imply the conversation does not exist.",
+			"placeholders": []
+		}
+	},
+	"audited": {
+		"key": "ui.teamBridge.thread.not_available",
+		"translation": {
+			"value": "Этот разговор вам недоступен. Возможно, вы не являетесь его участником или он был архивирован.",
+			"clause_map": "Clause 1 = 'this conversation is inaccessible to you'. Clause 2 = 'perhaps you are not its participant, or it was archived'."
+		},
+		"checks": {
+			"placeholders": "The English source takes no interpolation arguments; this locale declares none either, so placeholder parity is 0 = 0.",
+			"unicode": "NFC verified; no bidi control characters; no NBSP; no double or edge spaces.",
+			"structure": "Two sentences in the target, as the sidecar's length field asks, with the two candidate reasons in the second.",
+			"meaning": "Accurate. Both reasons, no disclosure, nothing suggesting the conversation is absent.",
+			"register": "Formal вы / вам, matching 'ваш разговор' and 'Вы не можете приглашать людей'.",
+			"terminology": "участник = member.count and members.role.member (instrumental участником here, which is the same term inflected, not a different one). архивирован = ui.teamBridge.archive.banner.plain.",
+			"punctuation": "Two full stops; no comma before the single или, which is correct; Cyrillic only, no Latin characters.",
+			"length": "94 characters against 98 English; two sentences.",
+			"consistent_with": "ui.teamBridge.archive.banner.plain; ui.teamBridge.thread.intro_chief; ui.teamBridge.members.read_only",
+			"method": "Read against the English value and the sidecar, then against members.role.member / member.count (участник), ui.teamBridge.archive.banner.plain ('Этот канал архивирован.'), thread.intro_chief ('ваш разговор') and members.read_only (вы).",
+			"sidecar": "The English sidecar entry was read in full and each target was checked against its four requirements individually rather than against the English wording: the reader is told they cannot open this conversation, both possible reasons are offered, which one it is stays unrevealed, and nothing suggests the conversation does not exist."
+		}
+	},
+	"findings": [
+		{
+			"severity": "info",
+			"id": "RU-I1",
+			"detail": "недоступен renders 'is not open to you' as 'is inaccessible to you' - the standard Russian for this state, and the same family as the archive banner's phrasing. Short-form adjective agrees with разговор (masculine). No change proposed."
+		}
+	],
+	"status": "audited",
+	"ledger_row": {
+		"locale": "ru",
+		"namespace": "ui.teamBridge",
+		"source_sha256": "ed1be56fa3b8ebefebc758a03a0c6ce69cec6d2aa92208725eb875dd1e89a1ca",
+		"target_sha256": "fa583516e46c9a20f3bf39326c7faae0e03005fa8beceb13ea7717656633e637",
+		"status": "audited",
+		"auditor_instances_current": [
+			"tb1482m3-ru-2d47856c6ee9"
+		],
+		"superseded_entries": 38,
+		"written_by": "scripts/i18n/ledger-assemble.mjs, never by hand"
+	},
+	"artifacts": {
+		"receipt": {
+			"path": "i18n/receipts/tb1482m3-ru-2d47856c6ee9.json",
+			"sha256": "00306c24302b3dc8e96f5c599f4e3217eb97d2689dbcb21620602748ee6654ba"
+		},
+		"evidence_record": {
+			"path": "i18n/audits/evidence/ru/ui.teamBridge/tb1482-merge-delta-20261030-ru/record.json",
+			"note": "this file; its own hash is not self-recorded"
+		}
+	},
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+		},
+		"docs_I18N": {
+			"path": "docs/I18N.md",
+			"sha256": "9a4bde8d1c161286160be4a4ae1c7655615dbf39047052550b725a3da2eb00e2"
+		},
+		"ledger_rules": {
+			"path": "scripts/i18n/ledger-rules.mjs",
+			"sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6"
+		},
+		"ledger_assemble": {
+			"path": "scripts/i18n/ledger-assemble.mjs",
+			"sha256": "66ec03de791b515424b8d9a93094315111c179c149b35a5323d80c9c38644657"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/ru.md",
+			"sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+		}
+	},
+	"limitations": "Auditor competence: reading-level, not native. Verdict confidence: medium-high on meaning, grammar and term consistency, medium on idiom. Not claimed: native ru polish and rendered fit.",
+	"audit_notes_not_execution_log": "The notes and findings are this auditor's reading of the bytes, not a script's output. The mechanical properties (encoding, placeholders, script, punctuation, length) and every sha256 were computed from the catalogue files on disk; the linguistic judgement is written per key so a native reviewer can check the reasoning instead of trusting a verdict."
+}

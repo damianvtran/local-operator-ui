@@ -1,0 +1,38 @@
+{
+ "auditor": "i18n-auditor",
+ "model": "deepseek/deepseek-flash",
+ "instance": "3fcd4635c3cc",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "namespace": "ui.chat.canonical",
+ "locale": "es",
+ "key_count": 2,
+ "scope": "l2 file-size wave: the 2 keys ui.chat.canonical.tool.never_sent_composed / never_sent_empty (the rest of the namespace is not re-audited here)",
+ "findings": [
+  {
+   "id": "N1",
+   "severity": "nit",
+   "key": "ui.chat.canonical.tool.never_sent_composed",
+   "problem": "'redactado' is the heavier verb; 'escrito' plainer and 2 cells shorter; both correct Spanish",
+   "disposition": "no change required"
+  }
+ ],
+ "severity_counts": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 0,
+  "nit": 1
+ },
+ "independence": {
+  "translator_agent": "i18n-translator",
+  "translator_model": "openai/gpt-6.1-sol",
+  "independent_from_translator": true,
+  "independent_auditors_for_this_locale": 1
+ },
+ "sha256": {
+  "es": "55c4c0d0fe520dedea1ab9b26bb26558fdd90cd8f2e59ea900c773e2d31c6dde",
+  "en": "27ae7327daa34be60b619be551c840e057d61c3d69dc801269e4f389edc0f031"
+ },
+ "assembled_from": "Assembled by the landing coder from the auditor's report audit-es-v2.md (round 2 delta audit on es.v2; the round-1 audit of es.json v1 audited different bytes and is not counted); verdict, severity counts and findings are transcribed from that report, the sha256 values are computed from the catalogue files at the landing commit. The auditor's own evidence bundle, where one exists, is under i18n/audits/evidence/es/ui.chat.canonical/.",
+ "round": 2
+}

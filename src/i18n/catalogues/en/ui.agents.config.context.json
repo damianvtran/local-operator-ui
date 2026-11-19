@@ -1,0 +1,204 @@
+{
+	"ui.agents.config.about": {
+		"role": "inline label and tooltip on the selected row",
+		"tone": "plain, smallest register",
+		"note": "Names what the next request is about: {kind} is the read-only word 'agent' or 'team' from the row's kind, {name} is the row's own name (data, never translated). The visible span truncates at 224 px; the tooltip carries the whole string."
+	},
+	"ui.agents.config.kind.agent": {
+		"role": "a lowercase common noun, never capitalised",
+		"tone": "plain",
+		"note": "Names what kind of row the next request is about. It is substituted for {kind} in 'ui.agents.config.about' and in the '({kind})' suffix of the summary rows, so it must work bare: no article, no case ending that a preposition would need. Not a heading or a button."
+	},
+	"ui.agents.config.kind.team": {
+		"role": "a lowercase common noun, never capitalised",
+		"tone": "plain",
+		"note": "Same slot as 'ui.agents.config.kind.agent': the word for a team of agents, used bare in 'About {kind} {name}' and in the '({kind})' summary suffix."
+	},
+	"ui.agents.config.action.clear": {
+		"role": "button label",
+		"tone": "plain",
+		"note": "Drops the selected 'about' row so the next request is not scoped to it. Short ghost button next to the composer."
+	},
+	"ui.agents.config.action.dismiss": {
+		"role": "button label",
+		"tone": "plain",
+		"note": "Clears a finished run's strip from the dock. Pairs with watch/stop in the same trailing row."
+	},
+	"ui.agents.config.action.retry": {
+		"role": "button label",
+		"tone": "plain",
+		"note": "Re-sends the request after a message-call failure. The text is still in the box, so this is the same call again, not a new one."
+	},
+	"ui.agents.config.action.stop": {
+		"role": "button label",
+		"tone": "plain, decisive",
+		"note": "Interrupts a live configuration run. Not a danger colour: the run writes through as it goes and a stop is not a rollback (see stopped.*)."
+	},
+	"ui.agents.config.action.watch": {
+		"role": "button label with aria-expanded",
+		"tone": "plain",
+		"note": "Expands the run's own tool rows under the strip. Toggles; the chevron mirrors in RTL."
+	},
+	"ui.agents.config.activity.empty": {
+		"role": "empty-state sentence inside the run's detail region",
+		"tone": "plain, factual",
+		"note": "The run has started but has not called a tool yet. Says what is missing without sounding like a failure; full sentence, wraps inside a bounded region."
+	},
+	"ui.agents.config.background_only": {
+		"role": "inline sentence under the idle box",
+		"tone": "plain, factual",
+		"note": "Says the run is not part of the conversation transcript, which is why it has its own surface. Two sentences; the second one is what a reader needs before pressing Send."
+	},
+	"ui.agents.config.composer.label": {
+		"role": "screen-reader label for the composer region",
+		"tone": "plain, names the task",
+		"note": "The surface takes free text that asks for a change to an agent or a team. Not a placeholder: it is the region's accessible name."
+	},
+	"ui.agents.config.definitions": {
+		"role": "count phrase embedded in a summary sentence",
+		"tone": "plain, counted",
+		"note": "{count} is how many files the run touched. English needs one/other; use the language's own plural categories. Sits between 'Configured' and the rest of the row, so it must read as a noun phrase."
+	},
+	"ui.agents.config.error.stop_refused": {
+		"role": "error sentence under the live strip",
+		"tone": "direct, no blame",
+		"note": "The backend refused the interrupt and the run is still writing. The refusal's own reason sits beneath it, already localised by the backend."
+	},
+	"ui.agents.config.error.turn_failed": {
+		"role": "status line under the run strip's 'Did not finish' title",
+		"tone": "plain, honest",
+		"note": "Shown when the run's model failed (provider error) and the incident carried no message of its own. Says nothing was answered; must not imply the operator did anything wrong, nor that the request was refused."
+	},
+	"ui.agents.config.examples.add_twice": {
+		"role": "clickable example request",
+		"tone": "plain, imperative",
+		"note": "Second of three hero examples; fills the box when clicked. 'release-crew' and 'coder' are example data used across the app's samples and stay as written."
+	},
+	"ui.agents.config.examples.reads_code": {
+		"role": "clickable example request",
+		"tone": "plain, descriptive",
+		"note": "First of three hero examples; fills the box when clicked. Sits in a wrapping ghost row, so length is forgiving."
+	},
+	"ui.agents.config.examples.team_shipping": {
+		"role": "clickable example request",
+		"tone": "plain, imperative",
+		"note": "Third hero example; fills the box when clicked. 'shipping' is an example team name, kept as written."
+	},
+	"ui.agents.config.placeholder.about": {
+		"role": "Placeholder in the composer when the request names an agent or team",
+		"tone": "Invitation, second person, imperative.",
+		"length": "One short line; the name is data and may be long, so keep the surrounding words short.",
+		"placeholders": {
+			"name": "The agent or team the request is about, as stored: user-authored data, never translate it. It can be a few dozen characters, so keep the surrounding words short enough that the sentence still reads as one line at the docked width."
+		},
+		"note": "Ends with U+2026. This is the box's invitation once a row is selected, and the target's name is the only thing that changes between agents and teams."
+	},
+	"ui.agents.config.placeholder.docked": {
+		"role": "Placeholder in the docked config composer at the bottom of the detail pane",
+		"tone": "Invitation, second person; names the job (a change) without naming one object.",
+		"length": "About 45 characters in English. The narrowest docked pane is 392 px at native 1000 px (sidebar 288 + roster 288 + detail 392). The box's content area is 304 px wide there, and the English string measured 301.1709 px unwrapped: it wraps readably with no clipping and no vertical overflow (scrollHeight == clientHeight == 55). Do not lengthen it without re-running the native pane-width boundary check.",
+		"note": "The docked box has a fixed height and does not auto-grow, so a longer translation wraps rather than clipping; readable wrapping is accepted, clipping and vertical overflow are not. It must not name only one object (the box serves both tabs) and must not read as messaging the open agent."
+	},
+	"ui.agents.config.placeholder.hero": {
+		"role": "Placeholder in the empty configuration composer on the Agents page hero",
+		"tone": "Invitation, second person, sentence case.",
+		"length": "About 25 characters in English. This is the native placeholder of a growing box, not a label; a longer string wraps to a second line in the empty state.",
+		"note": "Names no object on purpose: the same box serves the Agents and Teams tabs, so naming one would contradict the other pane. Ends with U+2026, not three periods."
+	},
+	"ui.agents.config.result.changed": {
+		"role": "prefix in the list of changed rows",
+		"tone": "plain",
+		"note": "Prefixed to a definition's name: 'Changed <name>'. A separate span carries the name, so this message is a bare verb in past tense."
+	},
+	"ui.agents.config.result.configured": {
+		"role": "screen-reader prefix on the settled status",
+		"tone": "plain",
+		"note": "Spoken before the definitions count ('Configured 2 definitions'); also reused inside the live-region sentence after a full stop. No trailing punctuation: the caller supplies it."
+	},
+	"ui.agents.config.result.created": {
+		"role": "prefix in the list of changed rows",
+		"tone": "plain",
+		"note": "Prefixed to a definition's name: 'Created <name>'. Use the same verb form as result.changed."
+	},
+	"ui.agents.config.state.did_not_finish": {
+		"role": "status title",
+		"tone": "plain, honest",
+		"note": "Heading of the configuration-run strip when the run's model failed (provider error, session incident) before it could answer. Must not read as the operator's own Stop, nor as success. Short: it sits on one line beside the elapsed time."
+	},
+	"ui.agents.config.state.sending": {
+		"role": "button label while the request is in flight",
+		"tone": "plain, progress",
+		"note": "Replaces action.retry while the retry is being sent. U+2026, not three periods."
+	},
+	"ui.agents.config.state.stopping": {
+		"role": "button label while the interrupt is in flight",
+		"tone": "plain, progress",
+		"note": "Replaces action.stop while the stop request runs; the button is disabled meanwhile. U+2026."
+	},
+	"ui.agents.config.status.attached": {
+		"role": "notice inside the run's detail region",
+		"tone": "plain, explains an outcome",
+		"note": "The page attached to a configuration run that was already going instead of starting its own; the typed request stays in the box. Two sentences, second one reassures about the draft."
+	},
+	"ui.agents.config.stopped.kept": {
+		"role": "settled sentence after a stop that wrote something",
+		"tone": "plain, factual",
+		"note": "Cancellation is not rollback: whatever the run had already written is still there. Must not imply the machine was reverted."
+	},
+	"ui.agents.config.stopped.nothing": {
+		"role": "settled sentence after a stop before any write",
+		"tone": "plain, factual",
+		"note": "The empty-result counterpart of stopped.kept; says nothing had been changed yet, rather than showing a kept-changes list with no rows."
+	},
+	"ui.agents.config.summary.created": {
+		"note": "One line of the finished run's summary: the run created this definition. {name} is the agent or team name as the registry stores it, never translated. A colon and the changed-field list follow the name, so do not end the line with punctuation.",
+		"role": "summary line lead in a completed configuration run",
+		"tone": "plain past tense"
+	},
+	"ui.agents.config.summary.hidden_changes": {
+		"note": "Continues an 'Updated {name}' line after a colon, when the run changed settings the summary cannot list (the instructions, which the list does not print). Starts lowercase because it follows the colon; a locale may need different punctuation or casing there.",
+		"role": "second clause of a summary line in a completed configuration run",
+		"tone": "plain, explains a gap"
+	},
+	"ui.agents.config.summary.no_changes": {
+		"role": "settled sentence when the run changed nothing",
+		"tone": "plain, factual",
+		"note": "The run answered a question instead of editing definitions. The answer itself follows as free text."
+	},
+	"ui.agents.config.summary.nothing_else": {
+		"role": "settled sentence under the changed rows",
+		"tone": "plain, factual",
+		"note": "Says the listed changes are the whole change set, so a reader does not go looking for more. One line."
+	},
+	"ui.agents.config.summary.updated": {
+		"note": "One line of the finished run's summary: the run changed an existing definition. {name} is the agent or team name as the registry stores it, never translated. A colon and the changed-field list follow the name, so do not end the line with punctuation.",
+		"role": "summary line lead in a completed configuration run",
+		"tone": "plain past tense"
+	},
+	"ui.agents.config.summary.you_asked": {
+		"role": "quoted request under the answer",
+		"tone": "plain, factual",
+		"note": "{topic} is the operator's own typed text, unvalidated and possibly long: it wraps, and it is never translated or reworded."
+	},
+	"ui.agents.config.banner.unavailable": {
+		"role": "composer notice when the backend could not be reached, so the composer cannot send",
+		"tone": "statement of fact, sentence case, trailing period",
+		"length": "Fourteen words.",
+		"note": "Says why the box is unavailable rather than asking for a press: the composer refuses every keystroke in this state.",
+		"placeholders": {}
+	},
+	"ui.agents.config.disabled_gate": {
+		"role": "the box's own line for the disabled gate, shared by the two slots that can carry it",
+		"tone": "imperative-free description of how this surface is configured, sentence case, no trailing punctuation",
+		"length": "Four words.",
+		"note": "It DESCRIBES the surface rather than asking for a press, because the box refuses every keystroke while agents cannot be reached. Deliberately not the run's refusal sentence: the notice band is that sentence's single carrier and repeating it here would print it twice, 8 px apart.",
+		"placeholders": {}
+	},
+	"ui.agents.config.run_details_region": {
+		"role": "accessible name of the run details panel's scrollable detail region",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Applied only while the region overflows and is therefore a real tab stop; when everything fits it is not a region and carries no name.",
+		"placeholders": {}
+	}
+}

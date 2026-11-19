@@ -1,0 +1,75 @@
+{
+  "out": "/Users/damian/.local-operator/sessions/e79be63cc5c8/scratchpad/tab-menu-evidence",
+  "viewport": {
+    "width": 1180,
+    "height": 820,
+    "dpr": 2
+  },
+  "checks": [
+    {
+      "name": "the menu is OPEN: the trigger reports aria-expanded, and the run never takes focus",
+      "ok": true,
+      "detail": {
+        "expanded": "true",
+        "hasFocus": false
+      }
+    },
+    {
+      "name": "no renderer panel exists for the tab menu",
+      "ok": true,
+      "detail": {
+        "domPanel": false
+      }
+    },
+    {
+      "name": "the page is NOT suppressed while the menu is open",
+      "ok": true,
+      "detail": {
+        "suppressedBy": ""
+      }
+    },
+    {
+      "name": "the page's rectangle does not move",
+      "ok": true,
+      "detail": {
+        "before": {
+          "x": 260,
+          "y": 106,
+          "width": 920,
+          "height": 714
+        },
+        "open": {
+          "x": 260,
+          "y": 106,
+          "width": 920,
+          "height": 714
+        }
+      }
+    },
+    {
+      "name": "the page's own pixels are unchanged while the menu is open",
+      "ok": true,
+      "detail": {
+        "pageChanged": 0,
+        "channels": [
+          36,
+          58,
+          91
+        ]
+      }
+    },
+    {
+      "name": "window-capture attempt recorded",
+      "ok": true,
+      "detail": {
+        "answer": "blocked: could not create image from rect"
+      }
+    }
+  ],
+  "screenCapture": "blocked: could not create image from rect",
+  "stateBeforeMenu": {
+    "url": "http://127.0.0.1:61871/",
+    "navFailure": null,
+    "loading": false
+  }
+}

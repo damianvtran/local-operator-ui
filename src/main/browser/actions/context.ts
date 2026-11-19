@@ -2,7 +2,8 @@ import type { ApprovalStore } from "../approvals";
 import type { CdpPool } from "../cdp";
 import type { DownloadArmer } from "../downloads";
 import type { OwnershipLedger } from "../ownership";
-import type { TabRegistry } from "../registry";
+import type { TabRecord, TabRegistry } from "../registry";
+import type { RecordingEncoderService } from "./recording-hq";
 
 /**
  * What every action is given, and the two identity helpers they all use.
@@ -22,6 +23,16 @@ export interface BrowserActionContext {
 	 * the capture owns an Electron `DownloadItem`'s lifecycle, which is knowledge
 	 * the registry deliberately does not have. */
 	readonly downloads: DownloadArmer;
+	/** The hidden H.264 encoder window behind `record_start {quality: "high"}`
+	 * (`recording-encoder-host.ts`). Optional: a host or test built without it
+	 * answers `high` with `record_quality_unavailable` and records `standard`
+	 * exactly as before. */
+	readonly recordingEncoder?: RecordingEncoderService;
+	/** Reset operator page chrome (find-in-page, zoom) on a tab about to pass to
+	 * an agent: the app's own hand-over runs this BEFORE every capability
+	 * transfer, and the approval pickup in `tabs.ts` is one too. Optional so a test
+	 * context without page controls keeps working. */
+	readonly prepareAgent?: (record: TabRecord) => void;
 	/** Put a line in the app's log. Never model-facing. */
 	readonly log: (message: string) => void;
 	/** Ask the chrome surface to re-render (tabs changed, a prompt moved). */

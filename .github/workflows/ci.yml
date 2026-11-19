@@ -3,21 +3,86 @@ name: Pre-Release CI Testing
 on:
   push:
     branches:
+      # ONLY `main` here, deliberately, and for the same reason the backend
+      # repository dropped `dev-*` from its own push list in 6f8cae2e35bc
+      # ("ci: stop the queue eating itself on a 20-job concurrency cap").
+      #
+      # `dev-*` used to be in this list as well, which double-billed every
+      # feature branch: a `dev-*` branch with an open PR fired a `push` run AND
+      # a `pull_request` run for the SAME commit, two identical sets of jobs
+      # whose results nobody read twice. The `pull_request` trigger below
+      # already covers feature branches, so dropping `dev-*` here halves the
+      # per-commit cost without reducing what is actually tested.
+      #
+      # Measured on 2026-10-19, the account-wide runner pool was saturated:
+      # 26-28 runs in flight across three repositories, 53-118 jobs queued, a
+      # median pending-job age of 25.8 minutes, and a four-minute sample in
+      # which zero jobs started. Every job that gates nothing is a job that
+      # makes a release gate wait.
+      #
+      # FIVE `dev-*` branches exist here and NOT ONE of them has an open pull
+      # request, so every push to any of them ran this whole job set to gate
+      # nothing at all. A `dev-*` branch with NO open PR now gets no CI until
+      # the PR is opened. That is the intended trade: CI exists to gate review
+      # and merge, and an un-PR'd branch is gating nothing -- and the manual
+      # dispatch trigger further down this block is the escape hatch for
+      # exactly that case.
       - main
-      - 'dev-*'
   # Pull requests run this workflow so the runtime-dependency guard below fires
   # before the merge: GitHub cannot run a single job from a workflow whose
   # trigger excludes the event, and a guard that only fires on `push` fires
   # after the merge, which is too late to stop an unvetted dependency shipping.
   # The rest of the job set riding along is the cost of that, not the reason.
   pull_request:
+  # The manual escape hatch, and it is a REQUIREMENT rather than a nicety now
+  # that `dev-*` has left the push list above: a branch with no open pull
+  # request gets no CI at all, so this is the only way to run the job set
+  # against such a branch by hand. The backend repository has the same
+  # trigger for the same reason.
+  workflow_dispatch:
+    inputs:
+      music_acceptance_mode:
+        description: 'off; Core preflight only; or explicitly admitted single native acceptance'
+        type: choice
+        options: ['off', 'preflight', 'native']
+        required: false
+        default: 'off'
 
-# Pull-request runs supersede each other, so the older one is cancelled rather
-# than queued; pushes to `main` are left alone so a merge is never interrupted
-# mid-flight.
+# Cancellation exists for SUPERSEDED PR COMMITS; `main` coalesces instead.
+#
+# `cancel-in-progress` is keyed on `pull_request` `synchronize` ONLY, so a
+# force-push or follow-up commit on a pull request cancels an in-progress run
+# on a head nobody is waiting for, while `opened`, `reopened`,
+# `workflow_dispatch` and `push` to `main` never kill a running suite.
+#
+# NON-RELEASE `main` PUSHES COALESCE INTO `'ci-main'` (one running + newest
+# pending, matching `full-suite.yml`), rather than giving every merge commit
+# its own per-SHA group. Measured on 2026-10-19..11-18, giving each `main`
+# merge its own `github.sha` group started N parallel job sets across a shared
+# runner pool (40 standard / 5 macOS slots account-wide), turning bursts of
+# merges into multi-minute queues for active PRs even though every merged PR
+# already ran `ci.yml` and `full-suite.yml` on its head. With `cancel-in-progress`
+# false on `main`, the run already building finishes undisturbed and any burst
+# while it runs collapses to the newest `main` tip waiting behind it.
+#
+# RELEASE COMMITS (`chore(release)...`) AND `workflow_dispatch` ON `main` KEEP
+# THEIR OWN PER-SHA GROUP (`ci-main-release-<event>-<sha>`): a release bump is
+# the tagged commit `publish.yml` ships, so its record must never be evicted
+# from the pending slot by a later merge, and an explicit dispatch on `main`
+# must run the exact SHA asked for rather than coalesce into the push slot.
+#
+# MEASURED ON 2026-10-20: if a job reports `cancelled` without a superseding
+# `synchronize` push, read the closest job annotation before blaming this block:
+# GitHub also reports a job that exceeded `timeout-minutes` as `cancelled`
+# (e.g. runs 39489336612, 39489768296, 39491353371 hit the 50m0s ceiling).
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: >-
+    ${{ github.ref == 'refs/heads/main'
+    && ((github.event_name == 'workflow_dispatch' || startsWith(github.event.head_commit.message, 'chore(release)'))
+        && format('ci-main-release-{0}-{1}', github.event_name, github.sha)
+        || 'ci-main')
+    || format('{0}-{1}-shared', github.workflow, github.ref) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && github.event.action == 'synchronize' }}
 
 jobs:
   # Classifies this diff and exposes one flag per job, so a pull request that
@@ -76,9 +141,11 @@ jobs:
       unit: ${{ steps.classify.outputs.unit }}
       bytecode: ${{ steps.classify.outputs.bytecode }}
       evidence: ${{ steps.classify.outputs.evidence }}
+      i18n: ${{ steps.classify.outputs.i18n }}
       runtime_deps: ${{ steps.classify.outputs.runtime_deps }}
       audit: ${{ steps.classify.outputs.audit }}
       pack: ${{ steps.classify.outputs.pack }}
+      parity: ${{ steps.classify.outputs.parity }}
 
     steps:
       - name: Checkout code
@@ -133,6 +200,78 @@ jobs:
             node scripts/ci-scope.mjs --all --root "$GITHUB_WORKSPACE" \
               --github-output "$GITHUB_OUTPUT" --summary "$GITHUB_STEP_SUMMARY"
           fi
+
+  # Rejects a `package.json` version bump outside a `chore(release):` pull
+  # request (and rejects a `chore(release):` PR whose diff does NOT bump the
+  # version). Folded from the standalone `version-bump-guard.yml` workflow into
+  # `ci.yml` behind `CI Gate` (matching core `ci.yml`), so:
+  #  1. one fewer workflow/runner spin-up fires on every PR push, and
+  #  2. a red guard now fails `CI Gate`, making an unauthorized bump
+  #     mechanically fatal under branch protection rather than advisory.
+  #
+  # Gated on the EVENT (`pull_request`) rather than on a `changes` scope flag:
+  # a PR must never influence whether the guard that reads its own version line
+  # runs, and on a version-only release PR where every scope flag is `false`,
+  # this job and `changes` are the exact checks that run. `CI Gate` accepts
+  # `skipped` for this job ONLY when `github.event_name != 'pull_request'`.
+  version-bump-guard:
+    name: Version Bump Guard
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    # Generous against the ~15-30 s this takes. It exists so a wedged step cannot
+    # hold a runner for the 360-minute default.
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          # Two commits is all the diff below needs, but the checkout is the
+          # `refs/pull/N/merge` commit, so HEAD^1 (the base side) and HEAD^2
+          # (the PR side) must both be present. `fetch-tags` stays off on
+          # purpose — the tag list comes from `git ls-remote`, and tags this
+          # shallow are unreachable anyway (see scripts/version-bump-guard.mjs).
+          fetch-depth: 2
+
+      # No `pnpm install`: the guard imports node builtins only, so this job is
+      # a checkout and one node process. A guard that needs a dependency
+      # install is a guard that goes red for reasons unrelated to versions.
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Reject a version bump outside a release PR
+        env:
+          # Read through the environment rather than interpolated into the
+          # script: a PR title is attacker-controlled text, and inlining it
+          # directly would let a crafted title inject shell.
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          # The verdict IS the output: every path that decides anything prints at
+          # least one line, and the guard exits on the verdict. So an exit of 0 with
+          # NOTHING printed is not a pass - it is the shape a guard that never ran
+          # takes, which is exactly what reaching the script through a symlinked
+          # directory used to produce (`scripts/entry-point.mjs` fixes that at the
+          # source: nothing was printed and the status was 0, so this job went green
+          # having checked nothing). The status is captured rather than left to
+          # `set -e` because the two facts have to be told apart: a refusal prints
+          # its reason, a silence does not.
+          #
+          # `|| status=$?` and not `verdict="$(...)"` followed by `status=$?` on the
+          # next line: this step's shell is `bash -e {0}` (no `defaults.run.shell`
+          # anywhere in this directory), so a bare substitution that FAILS aborts the
+          # step AT that line and the annotation below - the refusal's own reason,
+          # which is the product of this job - never prints. `-e` does not fire on a
+          # command in a `||` list, so the code is recorded and the reason survives.
+          set -uo pipefail
+          status=0
+          verdict="$(node scripts/version-bump-guard.mjs)" || status=$?
+          printf '%s\n' "$verdict"
+          if [ "$status" -eq 0 ] && [ -z "$verdict" ]; then
+            echo "::error title=Version bump guard produced no verdict::the guard exited 0 without printing one, so this pull request was never checked for a version bump. Refusing to pass a diff no guard read."
+            exit 1
+          fi
+          exit "$status"
 
   lint:
     name: Lint
@@ -237,6 +376,63 @@ jobs:
       - name: Check the scripts scope gate's own cases
         run: node --test scripts/check-scripts-lint.test.mjs
 
+  # `i18n/languages.json` promises every shipped language carries every English
+  # key, and `i18n/coverage-allowance.json` is only shrink-only if something
+  # CHECKS it at merge time. Before this job the whole policy was a `package.json`
+  # script nothing invoked, so the promise was documentation. The job runs the
+  # same catalogue and coverage gates a developer runs through `pnpm check-i18n`,
+  # plus the base-aware added-literal guard. Both diff-aware halves receive the
+  # base ref their comparisons need.
+  #
+  # THAT BASE IS `HEAD^1`, NOT `github.event.pull_request.base.sha`, for the
+  # reason the `lint:scripts` step above records: Actions checks out the
+  # recomputed `refs/pull/N/merge`, whose first parent is the base branch as of
+  # this run, while the payload's SHA is frozen when the event fires. So
+  # `fetch-depth: 2` is all this job needs - and on a push to `main`, `HEAD^1` is
+  # the commit before the merge, so the comparison still runs there rather than
+  # degrading to `origin/main` (which a push checkout may not carry at all).
+  #
+  # The classifier selects catalogue changes through `i18n`; `types` also turns
+  # this job on for renderer/source diffs so the added-literal guard sees them.
+  # Both flags use the workflow's fail-closed empty-output convention.
+  i18n-coverage:
+    name: Language Coverage
+    needs: [changes]
+    if: >-
+      !cancelled() &&
+      (needs.changes.outputs.i18n != 'false' ||
+      needs.changes.outputs.types != 'false')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '10.29.2'
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check the catalogues, the scanner, the ledger and context parity
+        run: pnpm check-i18n:catalogues
+
+      - name: Check newly added literal copy against the pull request base
+        run: pnpm check-i18n:added-strings --base "$(git rev-parse HEAD^1)"
+
+      - name: Check language coverage against the pull request base
+        run: pnpm check-i18n:coverage --allowance-base "$(git rev-parse HEAD^1)"
+
   runtime-deps:
     # What the packaged app ships as node_modules is decided entirely by
     # package.json `dependencies`: electron-vite's externalizeDepsPlugin()
@@ -334,7 +530,7 @@ jobs:
       - name: Check release contracts
         run: |
           node scripts/test-validate-release.mjs
-          node --test scripts/test-release-safety.mjs scripts/test-publish-workflow.mjs scripts/test-version-bump-guard.mjs scripts/ci-scope.test.mjs
+          node --test scripts/test-release-safety.mjs scripts/test-publish-workflow.mjs scripts/test-version-bump-guard.mjs scripts/ci-scope.test.mjs scripts/native-bytecode-artifact.test.mjs
           # The per-architecture contract, over EVERY workflow that packages macOS
           # rather than over the one that was fixed first. `publish.yml` was fixed
           # for the v0.30.10 brick and `signed-update-candidate.yml` was not, so its
@@ -347,7 +543,7 @@ jobs:
           # download, `7z` and `zsyncmake` are exercised by the Linux build
           # job's own steps in publish.yml.
           node --test scripts/appimage-update-info.test.mjs
-          node --test scripts/release-baseline.test.mjs scripts/release-candidate.test.mjs scripts/entry-point.test.mjs scripts/require-report.test.mjs
+          node --test scripts/release-baseline.test.mjs scripts/release-candidate.test.mjs scripts/entry-point.test.mjs scripts/require-report.test.mjs scripts/desktop-suite-checkpoints.test.mjs
           # The attach path's recovery branches, against a local stub upload endpoint: a
           # stalled attempt retried, a `starter` record repaired, a same-size asset
           # skipped and a same-name/different-size asset refused. They run here because
@@ -370,65 +566,114 @@ jobs:
           # its exit status and nothing else.
           bash scripts/require-report.sh "Build environment contracts" node scripts/check-build-env.mjs
 
-  test:
-    # The desktop test suite -- the regression guards for issues 87, 92 and 93,
-    # every one of which is the same defect class (a surface treating "we could
-    # not find out" as an answer).
-    #
-    # This job exists because until it did, `pnpm test:desktop` ran in NO
-    # workflow: the whole suite was local-only, so three consecutive fixes in
-    # one defect class landed with their guards unenforced on every subsequent
-    # PR. A guard nothing runs is indistinguishable from no guard, which is the
-    # failure this suite is largely about.
-    #
-    # `--frozen-lockfile` is what keeps the invocation CI-safe. Running
-    # `pnpm test:desktop` on a cold tree makes pnpm resolve first, and that
-    # resolution is what writes an `allowBuilds:` block into
-    # `pnpm-workspace.yaml`; installing explicitly and frozen beforehand means
-    # the test step only runs node, and pnpm fails loudly rather than mutating
-    # the lockfile if either file is out of date.
-    #
-    # Bounded because nothing else bounds it. `node --test` sets no per-process
-    # timeout and this job declared none, so its default was 360 minutes: a
-    # suite that leaked a handle and never exited presented as six hours of
-    # waiting rather than as a failure, which is the same defect this job's
-    # suite is about, one level up. The job was measured at ~6m17s end to end
-    # when it invoked the suite TWICE (once to collect and once to assert); it
-    # now invokes it once, so the ceiling below has more headroom than that
-    # figure implies. This bounds a hang the file cannot: the per-test
-    # `timeout` in `scripts/backend-settings-collapse.test.mjs` only covers a
-    # test body that never settles, and is blind to a leak that outlives every
-    # test.
-    #
-    # RAISED FROM 20 TO 35 on 2026-09-26 (#534's round-1 remediation), measured
-    # rather than guessed: `main`'s Desktop Tests took 10m43s / 11m0s / 11m10s
-    # across three runs that day, while this branch's suite did not finish
-    # inside 20 minutes on the two consecutive heads either side of the round
-    # (the pre-remediation head and the folded one) - the cap was the bound
-    # being hit, not a hang, so the ceiling was clipping the suite this job
-    # exists to run, and it is raised so the suite can finish and be read. Nothing else changes: the job still runs the suite once,
-    # fails on any red, and the whole-tree count assertions stand.
-    #
-    # RAISED FROM 35 TO 50 on 2026-10-14, measured rather than guessed again:
-    # the 2026-09-26 figure above is stale. `main`'s five most recent successful
-    # Desktop Tests runs (38582941365, 38579912186, 38572407387, 38568822437,
-    # 38565863630) took 31m59s / 27m25s / 31m37s / 31m49s / 23m40s - so `main`
-    # itself now finishes within about 3 minutes of the old ceiling, and a
-    # feature head ran straight into it on two consecutive attempts, both
-    # cancelled mid-suite at the cap with the suite still emitting tests when
-    # it was cut. The cap was the bound being hit, not a hang, so the ceiling is raised
-    # again so the suite this job exists to run can finish and be read. The
-    # growth from about 11 minutes (2026-09-26) to about 32 minutes is
-    # UNMEASURED and out of scope here. Nothing else changes: the job still runs
-    # the suite once, fails on any red, and the whole-tree count assertions
-    # stand.
-    name: Desktop Tests
+  # THE UNIT SUITE LEFT PULL-REQUEST CI ON 2026-11-07 (POC). Measured over
+  # 2026-10-24..11-07, the four `Desktop Tests shard` jobs were ~80% of this
+  # workflow's runner time (9.6 min mean each) on a runner pool whose job queue
+  # had a 15.6 min median. They now run in `full-suite.yml` - every push to
+  # `main`, nightly, and on demand - whose red `main` run is the signal (no issue is filed) instead of
+  # blocking a pull request. A pull request carries TARGETED local evidence
+  # instead: `pnpm test:affected --run --evidence` selects the files a diff can
+  # reach (scripts/affected-tests.mjs) and prints the block the PR body records.
+  #
+  # What stays here is the class a targeted run is blind to: tree-wide guards
+  # that assert something about the WHOLE repository (every test file is run
+  # somewhere, every lane is registered, the runner and its memory guard behave)
+  # rather than about the code a diff touched. The release contracts already run
+  # in `check-types` above. The list lives in ONE place, `GUARD_TESTS` in
+  # scripts/affected-tests.mjs, so this job and the local helper cannot drift
+  # into two opinions about what a guard is.
+  # A GENERATED FIXTURE GOES STALE IN A PULL REQUEST, NOT IN A RELEASE. #1758 is
+  # the measured case: a pull request edited
+  # `src/renderer/src/features/chat/canonical/trace-fold-model.ts`, which is one
+  # of the pin's 35 declared `modelSources`, without regenerating
+  # `scripts/fixtures/condense.parity.json`. Nothing on the pull request read the
+  # fixture, so the stale bytes reached `main` and reded the desktop suite there
+  # - a fix-forward for a defect a one-second comparison would have stopped.
+  #
+  # WHY THE FILTER IS THIS NARROW, AND WHY IT CANNOT DRIFT SILENTLY. `esbuild`'s
+  # own `metafile.inputs` decides what the pin covers, so the covered set is
+  # those 35 files plus the generator's own inputs; the list lives in
+  # `scripts/ci-scope.mjs` (`PARITY_MODEL_SOURCES`) and
+  # `scripts/ci-scope.test.mjs` asserts it EQUALS the fixture's
+  # `desktop.modelSources`. A regenerated pin that names a file the filter does
+  # not is therefore a FAILING TEST, not a pull request that quietly skips this
+  # job. The model's own directory is in the filter as well: a module ADDED
+  # beside the model is a source the next regeneration names, and the change that
+  # adds it is the change that must run the pin.
+  condense-parity:
+    name: Condense Parity Fixture
+    needs: [changes]
+    # Same `!= 'false'` spelling as every other gate: an output that was never
+    # written is EMPTY, so a classifier that died runs this job rather than
+    # skipping it.
+    if: >-
+      !cancelled() &&
+      needs.changes.outputs.parity != 'false'
+    runs-on: ubuntu-latest
+    # The comparison is ~1 s; this bound is for the install, not the check.
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '10.29.2'
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      # THE INSTALL IS GENUINE AND MINIMAL: the generator bundles the shipped
+      # model with `esbuild`, a devDependency, so it cannot run without the
+      # lockfile's tree. Nothing here builds the app - measured locally on
+      # 2026-11-08, `--check` is 1.0 s once node_modules exists.
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The generator already says the fixture is STALE and names the command
+      # that rewrites it. The annotation adds WHICH FILES to commit: a
+      # regeneration writes the manifest beside the fixture, and committing only
+      # one of the two fails the next run for a different-looking reason.
+      - name: Check the condense parity fixture is current
+        run: |
+          if ! node scripts/generate-condense-parity.mjs --check; then
+            echo "::error title=Condense parity fixture is STALE::scripts/fixtures/condense.parity.json no longer matches the model it pins. Run node scripts/generate-condense-parity.mjs and commit BOTH scripts/fixtures/condense.parity.json and scripts/fixtures/condense.parity.manifest.json."
+            exit 1
+          fi
+
+  # THE CATALOGUE VALIDATORS ARE NOT THE GAP - the locale BUNDLE tests are. The
+  # `Language Coverage` job above already runs `pnpm check-i18n:catalogues`
+  # (`generate --check`, `check-duplicates`, `check-strings`, `ledger-check`,
+  # `context-parity`), `check-i18n:added-strings` and `check-i18n:coverage` on
+  # every pull request, so this job deliberately does NOT repeat them: five
+  # validators already ran and passed, and duplicating them would buy nothing and
+  # pay twice.
+  #
+  # What no pull-request job ran is the ten `node --test` files the desktop suite
+  # owns, and #1762 is the measured cost: a manual bidi control (U+200E)
+  # committed into `src/i18n/catalogues/ur/ui.updates.service.json` passed every
+  # catalogue validator above and reded the desktop suite on `main`. The desktop
+  # suite left pull-request CI for full-suite.yml, so nothing compared the
+  # SHIPPED CATALOGUE BUNDLE against the locale rules before the merge.
+  #
+  # Each file bundles the real catalogues through esbuild and asserts over the
+  # BUNDLE rather than over fixtures - that is why the install is required and a
+  # fixture-only pass would not do (the argument `ur-activation.test.mjs` makes in
+  # its own header, after a forgotten generated import shipped once). Measured
+  # locally on 2026-11-08: all ten files, 2.5 s once node_modules exists.
+  locale-activation:
+    name: Locale Activation
     needs: [changes]
     if: >-
       !cancelled() &&
-      needs.changes.outputs.unit != 'false'
+      needs.changes.outputs.i18n != 'false'
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    timeout-minutes: 10
 
     steps:
       - name: Checkout code
@@ -448,14 +693,90 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # The failing file's own output already names the locale, the key and the
+      # rule; the annotation says what a reader has to know to act on it, which
+      # is that the fix is a CATALOGUE byte change and that the ledger gates will
+      # ask for a re-audit of the value they changed.
+      - name: Check the shipped catalogue bundles against the locale rules
+        run: |
+          if ! node --test scripts/i18n/activation.test.mjs scripts/i18n/absent-locale.test.mjs scripts/i18n/device-tag-activation.test.mjs scripts/i18n/es-activation.test.mjs scripts/i18n/hi-activation.test.mjs scripts/i18n/ru-activation.test.mjs scripts/i18n/ur-activation.test.mjs scripts/i18n/vi-activation.test.mjs scripts/i18n/zh-CN-activation.test.mjs scripts/i18n/locale-parity.test.mjs; then
+            echo "::error title=Locale activation failed::a shipped catalogue violates the locale rules above (manual bidi control, forbidden script, an English value left in a non-English catalogue, or a missing locale). The failing test names the locale and the key; the same node --test command runs it locally, and the fix is a catalogue byte change that pnpm check-i18n:catalogues will then ask you to re-ledger."
+            exit 1
+          fi
+
+  guards:
+    name: Guards
+    needs: [changes]
+    if: >-
+      !cancelled() &&
+      needs.changes.outputs.unit != 'false'
+    runs-on: ubuntu-latest
+    # A bound, not an expectation: the guard set runs in well under a minute
+    # locally. A guard that needs ten minutes has stopped being a guard.
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '10.29.2'
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run the tree-wide guard tests
+        run: pnpm test:guards
+
+  # The plain-JS bundle isolated native QA downloads. It used to ride on Desktop
+  # Tests shard 0; the shard left pull-request CI, the artifact did not - QA
+  # agents fetch it by name (`ui-qa-bundle-<pr>-<run>`), so the name is kept.
+  # Pull requests only: nothing consumes it for a `main` push.
+  qa-bundle:
+    name: QA Bundle
+    needs: [changes]
+    if: >-
+      !cancelled() &&
+      github.event_name == 'pull_request' &&
+      needs.changes.outputs.unit != 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '10.29.2'
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       # Native QA on the shared development host must not require another local
-      # whole-renderer build. Reuse this existing, independently eligible job:
-      # unlike pack it does not depend on typecheck succeeding. The artifact is
+      # whole-renderer build. Like the shard it came from, this job does not
+      # depend on typecheck succeeding. The artifact is
       # evidence input, NOT approval to merge a red build. No credentials/native
       # dependencies are included; OAuth placeholders deliberately cannot log in.
       - name: Build plain-JS bundle for isolated native QA
         id: qa_bundle
-        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
         timeout-minutes: 10
         env:
           LOCAL_OPERATOR_UI_NO_BYTECODE: 'true'
@@ -506,7 +827,6 @@ jobs:
           NODE
 
       - name: Upload isolated native QA bundle
-        if: ${{ !cancelled() && github.event_name == 'pull_request' && steps.qa_bundle.outcome == 'success' }}
         uses: actions/upload-artifact@v4
         with:
           name: ui-qa-bundle-${{ github.event.pull_request.number }}-${{ github.run_id }}
@@ -514,139 +834,41 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-      - name: Run the desktop suite and assert it actually ran
-        id: desktop_suite
-        # ONE run, not two. This job used to invoke `pnpm test:desktop` twice:
-        # once for its exit status and again inside its own count assertions,
-        # which doubled the dominant cost of the job for no signal. `pipefail`
-        # gives the first half (a red suite fails the step) and the counts give
-        # the second (a renamed script or a glob matching nothing still exits
-        # 0), so the suite runs once. `tee` keeps the log as evidence either
-        # way. `scripts/ci-scope.test.mjs` asserts there is exactly one
-        # invocation and that this step still fails closed.
-        #
-        # THE SUITE'S STATUS IS CAPTURED, NOT LEFT TO ABORT THE STEP, and the
-        # failures are ANNOTATED - both because a red suite has to SAY WHICH test
-        # was red. GitHub runs a `run:` step as `bash -e`, so a red suite ended
-        # this step at the pipeline: the count greps below never ran, the
-        # `desktop suite: ...` line never printed, and the job's only message was
-        # the runner's `Process completed with exit code 1`.
-        #
-        # THE CITATION NAMES THE ATTEMPT, which is not pedantry: `gh run view
-        # <run> --log` reports the run's CURRENT attempt, so the run that
-        # produced this defect reads as GREEN under an unqualified citation.
-        # Run 36287261534, ATTEMPT 1, Desktop Tests job 108530309901: a
-        # 37,750,309-byte, 194,666-line job log, red on ONE test - `not ok 1599 -
-        # the operator's report: an ADOPTED daemon that reloads in place never
-        # re-discovers while admitted traffic keeps clearing the count
-        # (2026-09-21)`, `daemon-observation.test.mjs:2333:1` - which sits at line
-        # 90,936, byte 16,694,662 (44.2%). `gh run view 36287261534 --attempt 1
-        # --log` returns 19,396,643 bytes that contain no `not ok` line at all
-        # and end this job on a `completion-view-ack.test.mjs:681` error line -
-        # which is why one failing test was hunted fleet-wide as a hang in a file
-        # it never touched. Attempt 2 of that same run is green (`# pass 4548 /
-        # # fail 0`). A check-run annotation does not go through the log.
-        #
-        # FAILS CLOSED, and that is unchanged: every arm below ends in `exit 1`,
-        # so a red suite, a truncated run and a renamed script are all still red.
-        # What changed is that they are red WITH a reason.
-        run: |
-          set -o pipefail
-          # GitHub surfaces only a BOUNDED number of error annotations per step
-          # and drops the rest with no trace on either surface; 10 is the bound
-          # the lanes that chased this one measured, so `head -20` was asking for
-          # ten drops nobody could see. The head and the bound now agree, and the
-          # count is printed beside them, so an 11th failure is still NAMED.
-          ANNOTATION_CAP=10
-          # THE CAPTURE DOES NOT DEPEND ON ERREXIT, BY CONSTRUCTION: a command
-          # in a `||` list is exempt from errexit, so this needs no `set +e` /
-          # `set -e` pair around it. That pair was the weaker shape - dropping it
-          # while keeping `SUITE_RC=$?` restored the entire original defect
-          # (measured: no rc line, no TAP summary, no annotations) and every
-          # string pin still matched the body.
-          SUITE_RC=0
-          pnpm test:desktop 2>&1 | tee /tmp/desktop-tests.log || SUITE_RC=$?
-          # `|| true` so a log with no counts still reaches the guards below
-          # instead of tripping errexit on the way - the arms below are what name
-          # that case, and they cannot name it from here if grep kills the step.
-          PASS=$(grep -E '^# pass ' /tmp/desktop-tests.log | awk '{print $3}' || true)
-          FAIL=$(grep -E '^# fail ' /tmp/desktop-tests.log | awk '{print $3}' || true)
-          echo "desktop suite: rc=$SUITE_RC pass=$PASS fail=$FAIL"
-          # WHERE THIS ACTUALLY REACHES A READER, stated rather than implied:
-          # everything printed below is written AFTER the suite finishes, so it
-          # lands at the very END of the job log (measured: byte 37,747,599 of
-          # 37,750,309 - 99.99%) and a `gh run view --log` reader never gets it.
-          # ONLY the annotations cross that cut. Read them back - they are not in
-          # the log at all - with:
-          #   gh api repos/<owner>/<repo>/check-runs/<id>/annotations --jq '.[].message'
-          # And do NOT "verify" this by grepping a truncated log for `::error::`:
-          # the runner echoes this whole `run:` body into the log, so the first
-          # hit is that echo (byte 25,750 of the attempt-1 view) and the green
-          # means nothing.
-          grep -E '^# (tests|pass|fail|skipped) ' /tmp/desktop-tests.log || true
-          NOT_OK=$(grep -cE '^not ok ' /tmp/desktop-tests.log || true)
-          echo "desktop suite: not-ok lines=$NOT_OK; annotating the first $ANNOTATION_CAP"
-          # Workflow commands need `%` and CR escaped, by the runner's own command
-          # rules, or a test name carrying one renders as a mangled annotation -
-          # the failure this step exists to make readable. `IFS= read -r` strips
-          # the line's own LF, so LF is the one of the three that cannot occur.
-          grep -E '^not ok ' /tmp/desktop-tests.log | head -n "$ANNOTATION_CAP" | while IFS= read -r line; do
-            line=${line//%/%25}
-            line=${line//$'\r'/%0D}
-            echo "::error::$line"
-          done || true
-          # A log with no summary is TWO situations, and the exit status is what
-          # tells them apart: reported as one, a red run whose summary never
-          # printed reads as a coverage problem instead of as a failure.
-          if [ -z "$PASS" ]; then
-            if [ "$SUITE_RC" != "0" ]; then
-              echo "The desktop suite exited $SUITE_RC without printing a TAP summary."
-              echo "The run died before the summary: read the suite's own failure, not this line."
-            else
-              echo "Desktop suite reported no pass count at all; expected at least 60."
-              echo "Either tests were dropped or the runner matched no files."
-            fi
-            exit 1
-          fi
-          if [ "$PASS" -lt 60 ]; then
-            echo "Desktop suite reported $PASS passing tests; expected at least 60."
-            echo "Either tests were dropped or the runner matched no files."
-            exit 1
-          fi
-          if [ "$FAIL" != "0" ]; then
-            echo "Desktop suite reported $FAIL failing tests."
-            exit 1
-          fi
-          if [ "$SUITE_RC" != "0" ]; then
-            echo "The desktop suite exited $SUITE_RC while reporting pass=$PASS fail=$FAIL."
-            exit 1
-          fi
+      # Same changed-path inventory as ci-scope; no PR-number/branch exception.
+      # Hosted compilation avoids another whole-renderer build on the shared
+      # development host. Static files remain separate from out/'s closed manifest.
+      - name: Classify scoped music evidence
+        id: music_evidence
+        run: node scripts/music-storybook-evidence.mjs scope
 
-      # gh's rendered job log can omit the middle of a large run, including
-      # its real assertions and TAP summary. Keep the exact single-run tee file
-      # independently retrievable on failure; no rerun or environment dump.
-      - name: Upload failed desktop suite log
-        if: ${{ always() && (steps.desktop_suite.outcome == 'failure' || steps.desktop_suite.outcome == 'cancelled') }}
+      - name: Build static music component evidence
+        if: steps.music_evidence.outputs.music == 'true'
+        env:
+          LOP_STORYBOOK_MUSIC_EVIDENCE: '1'
+          STORYBOOK_CACHE_PRUNE: 'off'
+          STORYBOOK_DISABLE_TELEMETRY: '1'
+          VITE_LOCAL_OPERATOR_API_URL: 'http://127.0.0.1:8080'
+          VITE_DISABLE_BACKEND_MANAGER: 'true'
+          LOCAL_OPERATOR_NO_NOTIFICATIONS: '1'
+          LOCAL_OPERATOR_UI_TELEMETRY: 'off'
+          VITE_GOOGLE_CLIENT_ID: 'qa-not-configured'
+          VITE_GOOGLE_CLIENT_SECRET: 'qa-not-configured'
+          VITE_MICROSOFT_CLIENT_ID: '00000000-0000-0000-0000-000000000000'
+          VITE_MICROSOFT_TENANT_ID: '00000000-0000-0000-0000-000000000000'
+          QA_REQUESTED_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          pnpm build-storybook --output-dir "$RUNNER_TEMP/music-storybook"
+          node scripts/music-storybook-evidence.mjs manifest "$RUNNER_TEMP/music-storybook"
+
+      - name: Upload static music component evidence
+        if: steps.music_evidence.outputs.music == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: desktop-suite-log-${{ github.run_id }}-${{ github.run_attempt }}
-          path: /tmp/desktop-tests.log
+          name: ui-music-storybook-${{ github.event.pull_request.number }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/music-storybook/
+          include-hidden-files: true
           if-no-files-found: error
-          retention-days: 7
-
-      # The suite must not mutate tracked files. `pnpm test:desktop` on a cold
-      # tree has been observed writing an `allowBuilds:` block into
-      # pnpm-workspace.yaml via pnpm's own resolution, which would land in a
-      # later commit as unexplained churn.
-      - name: Assert the run left the tree clean
-        run: |
-          if [ -n "$(git status --porcelain)" ]; then
-            echo "Desktop tests modified tracked files:"
-            git status --porcelain
-            git diff
-            exit 1
-          fi
-          echo "Working tree clean after the desktop suite."
+          retention-days: 1
 
   # The check that would have stopped v0.35.0 at the pull request.
   #
@@ -692,8 +914,18 @@ jobs:
           node-version: '22'
           cache: 'pnpm'
 
+      - name: Prepare the Electron runtime cache
+        uses: ./.github/actions/electron-runtime
+        with:
+          phase: prepare
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Assert the Electron runtime is installed
+        uses: ./.github/actions/electron-runtime
+        with:
+          phase: assert
 
       - name: Build main with V8 bytecode
         env:
@@ -716,45 +948,235 @@ jobs:
           fi
           echo 'Main bundle compiled to V8 bytecode.'
 
-  # The frame sweep - `pnpm check-evidence` - which NO workflow ran until this
-  # job existed.
+  # The Mac arm64 native bytecode artifact native QA downloads, built by its own
+  # job rather than as a matrix leg of `bytecode-build`. V8 cached data cannot
+  # cross CPU architectures, so the Linux gate's `.jsc` is useless on a Mac and a
+  # second native build is necessary; macos-15 is GitHub's arm64 image. This adds
+  # hosted CI cost, NOT another local build or packaging pass.
   #
-  # What it asserts: every committed FRAME under `docs/evidence/` whose NAME
-  # names a theme is a picture of that theme, whatever container it is packed in
-  # (the walk judges by name, not by extension), and the frames that name no
-  # theme are counted by `manifest.json`'s `unjudgedFrames` rather than skipped.
-  # The colour covering the most pixels must sit within DELTA-E00 25 of one of its
-  # theme's four grounds, no single colour may cover more than 98.5% of the frame,
-  # the manifest's counts must agree with the tree, and every `supplementary`
-  # entry must say where it came from. It is the only check in this repository
-  # that can see a frame that is of NOTHING.
+  # WHY TWO JOBS, NOT A MATRIX. The branch ruleset requires a check NAMED exactly
+  # `Bytecode Build Check`, and required status checks are keyed by the job's
+  # display name, not its id. Every way of carrying that name through a matrix
+  # fails:
+  #   - a literal `name:` under a matrix gains a suffix
+  #     (`Bytecode Build Check (ubuntu-latest)`), so the required name never
+  #     reports and merge is refused ("Required status check "Bytecode Build
+  #     Check" is expected");
+  #   - an expression `name:` renders correctly while the job RUNS, but a job
+  #     skipped by its `if:` posts ONE check under the raw, unevaluated string -
+  #     main commit 92984394 shows a check literally named
+  #     `NPX Sanity Check (${{ matrix.os }})` - and the `changes` classifier
+  #     skips this job routinely, so the required check would go missing on
+  #     every such PR.
+  # So `bytecode-build` keeps its literal required name and no matrix, and this
+  # job carries the Mac-only build heap, runtime record, staging and upload.
+  # scripts/native-bytecode-artifact.test.mjs pins both shapes. It shares the
+  # gate's `needs`/`if:` and is listed in `ci-gate.needs`, so a red Mac build
+  # reds CI Gate without being a required check of its own.
+  bytecode-build-macos:
+    name: Bytecode Build Check (macos-15)
+    needs: [changes]
+    if: >-
+      !cancelled() &&
+      needs.changes.outputs.bytecode != 'false'
+    runs-on: macos-15
+    timeout-minutes: 20
+    # Renderer bindings are inlined by Vite: runtime env cannot repair an
+    # artifact pointing at the operator's backend. Port 9 is deliberately inert;
+    # a consumer must own an isolated fixture there before exercising API flows.
+    env:
+      VITE_LOCAL_OPERATOR_API_URL: http://127.0.0.1:9
+      VITE_DISABLE_BACKEND_MANAGER: 'true'
+      VITE_RADIENT_SERVER_BASE_URL: http://127.0.0.1:9
+      VITE_PUBLIC_POSTHOG_HOST: http://127.0.0.1:9
+      VITE_PUBLIC_POSTHOG_KEY: ci-bytecode-check
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          # The reusable Mac artifact compiles the exact immutable source head
+          # requested by native QA, not the PR merge commit the Linux gate builds.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '10.29.2'
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Prepare the Electron runtime cache
+        uses: ./.github/actions/electron-runtime
+        with:
+          phase: prepare
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Assert the Electron runtime is installed
+        uses: ./.github/actions/electron-runtime
+        with:
+          phase: assert
+
+      - name: Build main with V8 bytecode
+        env:
+          # Run 43319106365 hit Node's ~2 GiB heap limit while bundling the
+          # renderer. Match publish's 4 GiB old-space budget on the 7 GB Mac
+          # runner, leaving headroom for native allocations and the OS. This is
+          # CI build-only: scoped to this step so Node flags never leak into the
+          # later Electron runtime probe or the shipped app.
+          NODE_OPTIONS: --max-old-space-size=4096
+          VITE_GOOGLE_CLIENT_ID: ci-bytecode-check
+          VITE_GOOGLE_CLIENT_SECRET: ci-bytecode-check
+          VITE_MICROSOFT_CLIENT_ID: ci-bytecode-check
+          VITE_MICROSOFT_TENANT_ID: ci-bytecode-check
+        run: pnpm build
+
+      # A green build is not enough. If the bytecode plugin were dropped from
+      # `electron.vite.config.js`, `pnpm build` would emit plain JS, pass, and
+      # verify nothing - the shape of absence this repository treats as worse
+      # than no gate. The `.jsc` is the artifact this job exists to produce.
+      - name: Assert the main bundle really is bytecode
+        run: |
+          if [ ! -f out/main/index.jsc ]; then
+            echo 'out/main/index.jsc is missing: the main bundle was not compiled to V8 bytecode, so this check verified nothing.'
+            ls -l out/main || true
+            exit 1
+          fi
+          echo 'Main bundle compiled to V8 bytecode.'
+
+      # Reuse this leg's production output, never the NO_BYTECODE QA bundle.
+      # Only compiled UI assets + public package metadata leave the runner:
+      # no dependency tree, seeds, source checkout, profile or environment files.
+      - name: Record native bytecode runtime
+        env:
+          ELECTRON_RUN_AS_NODE: '1'
+        run: |
+          node_modules/.bin/electron -e '
+            const fs = require("node:fs");
+            if (process.platform !== "darwin" || process.arch !== "arm64") throw new Error("Expected darwin arm64");
+            const pin = require("./package.json").optionalDependencies.electron;
+            if (process.versions.electron !== pin) throw new Error("Electron pin mismatch");
+            fs.writeFileSync(process.env.RUNNER_TEMP + "/bytecode-runtime.json", JSON.stringify({
+              platform: process.platform, arch: process.arch, versions: process.versions,
+              cachedDataVersionTag: require("node:v8").cachedDataVersionTag()
+            }));
+          '
+
+      - name: Stage native bytecode artifact and hash manifest
+        env:
+          SOURCE_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { cpSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+          import { createHash } from 'node:crypto';
+          import { execFileSync } from 'node:child_process';
+          const runtime = JSON.parse(readFileSync(process.env.RUNNER_TEMP + '/bytecode-runtime.json'));
+          const checkout = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+          const sourceHead = process.env.SOURCE_HEAD;
+          if (sourceHead !== checkout) throw new Error('Source head is not the checked-out artifact source');
+          for (const file of ['main/index.jsc', 'main/index.js', 'preload/index.js', 'renderer/index.html', 'preload/browser-approvals-overlay.js', 'renderer/browser-approvals-overlay.html']) {
+            if (!existsSync('out/' + file)) throw new Error('Missing compiled surface: ' + file);
+          }
+          const files = [];
+          function inventory(dir) {
+            for (const name of readdirSync(dir).sort()) {
+              const path = dir + '/' + name;
+              const stat = lstatSync(path);
+              if (stat.isSymbolicLink() || name.startsWith('.env')) throw new Error('Unsafe artifact entry: ' + path);
+              if (stat.isDirectory()) inventory(path);
+              else if (stat.isFile()) {
+                const bytes = readFileSync(path);
+                files.push({ path, size: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') });
+              } else throw new Error('Non-file artifact entry: ' + path);
+            }
+          }
+          inventory('out');
+          const pkg = readFileSync('package.json');
+          files.push({ path: 'package.json', size: pkg.length, sha256: createHash('sha256').update(pkg).digest('hex') });
+          const destination = process.env.RUNNER_TEMP + '/ui-native-bytecode';
+          mkdirSync(destination);
+          cpSync('out', destination + '/out', { recursive: true });
+          writeFileSync(destination + '/package.json', pkg);
+          writeFileSync(destination + '/manifest.json', JSON.stringify({
+            schemaVersion: 1, sourceHead, checkout, runtime,
+            repository: process.env.GITHUB_REPOSITORY, workflow: process.env.GITHUB_WORKFLOW,
+            runId: process.env.GITHUB_RUN_ID, runAttempt: process.env.GITHUB_RUN_ATTEMPT,
+            compiledBindings: Object.fromEntries([
+              'VITE_LOCAL_OPERATOR_API_URL', 'VITE_DISABLE_BACKEND_MANAGER',
+              'VITE_RADIENT_SERVER_BASE_URL', 'VITE_PUBLIC_POSTHOG_HOST', 'VITE_PUBLIC_POSTHOG_KEY'
+            ].map(key => [key, process.env[key]])),
+            // Main's backend config also reads runtime env. The consumer must
+            // preserve these bindings and isolate HOME/config; this is not a
+            // self-contained executable or proof that backend discovery is safe.
+            requiredRuntimeBindings: {
+              VITE_LOCAL_OPERATOR_API_URL: process.env.VITE_LOCAL_OPERATOR_API_URL,
+              VITE_DISABLE_BACKEND_MANAGER: 'true'
+            },
+            build: 'pnpm build', configuration: 'ci-bytecode-check placeholders; no signing or repository secrets',
+            // Matching provenance is a prerequisite, not proof of native behavior.
+            requires: 'Exact Electron/platform/arch; compatible V8 cached data; separately supplied dependencies; disposable profile; native smoke test',
+            files
+          }, null, 2) + '\n');
+          NODE
+
+      - name: Upload native bytecode bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-native-bytecode-darwin-arm64-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/ui-native-bytecode/
+          if-no-files-found: error
+          retention-days: 1
+
+  # THE TRACKED EVIDENCE STRUCTURE - the half of the evidence gate a fresh
+  # checkout can still answer.
   #
-  # WHY IT IS HERE RATHER THAN IN THE DESKTOP SUITE. That suite already holds the
-  # manifest's OTHER half - `scripts/evidence-manifest.test.mjs` checks the stamps
-  # and the counts that need no image, runs inside `pnpm test:desktop`, and is
-  # what caught a stale stamp that once reached `main`. The sweep is the half that
-  # decodes every frame, so it is its own job gated on its own flag and the
-  # classifier keeps it off every diff that cannot move a verdict. It ran in
-  # neither place, and that absence was not a quiet gap: 20 findings sat on `main`
-  # - 19 frames whose filename named no palette, and one `supplementary` entry
-  # with no `why` - under a green CI. A gate that is green by absence is worse
-  # than no gate, because the absence reads as a pass.
+  # WHAT IT ASSERTS: no frame container is committed under `docs/evidence/`, and
+  # nothing at all is tracked in the ignored `docs/evidence-frames/` (the split's
+  # invariant); `manifest.json` parses, every `supplementary` set carries its
+  # provenance, a repository-relative path, no duplicate and non-negative integer
+  # counts; the proof artefacts the runbook names are still tracked; and the
+  # counts that need no pixels - `surfaces`/`themes` against
+  # `HEAD:scripts/capture-evidence.mjs` and the `partialCapture` tallies -
+  # through `stampFailures` itself.
   #
-  # MEASURED COST, so nobody discovers it from a timeout: 15,532 frames in 4m53s
-  # on an M-series laptop at load 20 (one process; the decode is in-process and
-  # sequential, ~19ms a frame). A hosted runner is slower per core, so the ceiling
-  # is 60 minutes - a bound, not an expectation. Needs python3 (the sweep admits
-  # one run per machine through `scripts/evidence-run-guard.py`, which uses POSIX
-  # `flock`) and `sharp` (how the frames are decoded; a devDependency, hence the
-  # install below). On a fresh runner the lease is uncontended.
+  # WHAT ACTUALLY CATCHES A RIG THAT DEFAULTS BACK: this gate catches a COMMITTED
+  # frame, on the PR that commits it. A regressed rig writes an UNTRACKED file
+  # into an ignored path, and no diff - so no job - ever sees an untracked write;
+  # the net there is the `.gitignore` leftover rules, which keep an unforced
+  # `git add -A` from adding it, plus this assertion refusing the commit if one is
+  # force-added. Do not read this job as watching the working tree.
+  #
+  # WHAT IT DOES NOT ASSERT: that a frame is a picture of its theme. That is the
+  # pixel sweep, `pnpm check-evidence`, and it MOVED to the release path when the
+  # frames became rig output: a fresh runner checks out no frames at all, so a
+  # job decoding them here would either fail on every evidence-touching PR or
+  # pass over zero frames - the green-by-absence its predecessor existed to
+  # remove. The release owner runs the sweep on a captured checkout before the
+  # tag and records the verdict (AGENTS.md, "the window, and the release owner's
+  # procedure", step 2b).
+  #
+  # THIS IS A TRADE, NOT A COVERAGE CLAIM. Pixel verification used to run on
+  # every evidence-touching PR and now runs once per release, on one captured
+  # machine. The structural gate is what CI keeps; do not read its green as the
+  # sweep's green.
+  #
+  # WHY THE NAME CHANGED: "Evidence Frames" described a job that decoded frames.
+  # This one never does, and a name that says Frames while checking structure is
+  # the misleading-absence this repository keeps having to close.
   evidence:
-    name: Evidence Frames
+    name: Evidence Structure
     needs: [changes]
     if: >-
       !cancelled() &&
       needs.changes.outputs.evidence != 'false'
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 10
 
     steps:
       - name: Checkout code
@@ -774,35 +1196,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # The gate's own exit status is the verdict: a frame that is not a picture
-      # of its theme, an unaccounted frame count, or a declaration that does not
-      # say where it came from each exits 1 with a `FAIL` line naming the file.
-      # `tee` is deliberately absent - the sweep's output IS the evidence, and
-      # piping it through a filter would put a process between the reader and the
-      # lines the gate prints.
-      #
-      # WHAT THIS JOB DOES NOT CHECK, named here because a skipped check is a
-      # claim and this file is where the scope is declared rather than restated
-      # per run: the CITATION half - whether every commit the manifest cites still
-      # exists and is reachable from a ref. `actions/checkout` here is ONE COMMIT
-      # DEEP, so every citation in the file reads as missing at once and this clone
-      # cannot answer the question at all; judging it made the first run of this
-      # job 111 findings on a tree that is clean locally, and printing a stand-down
-      # on 100% of runs would be a standing excuse that reads as a covered check.
-      #
-      # AND ON THIS FLEET IT IS CHECKED NOWHERE TODAY - not in CI and NOT LOCALLY
-      # either, which is the part "local-only" was understating: every checkout
-      # here is shallow too (`git rev-parse --is-shallow-repository` is `true` in
-      # this repository's own), so a developer's `pnpm check-evidence` stands the
-      # half down exactly as this job does, and `evidence-manifest.test.mjs`'s
-      # ancestry test SKIPS here for the same reason. Four citations are known to
-      # be reachable from no remote ref today, and that is the consequence. What
-      # does answer it: `git fetch --unshallow` before the run, and the synthetic
-      # manifests in `evidence-manifest.test.mjs`. A green run, local or here, is
-      # not evidence about the citations. The step name carries the same scope, so
-      # it travels with the job's own report.
-      - name: Sweep the committed frames (citations unchecked on shallow clones)
-        run: pnpm check-evidence
+      # The gate's exit status is the verdict; every assertion prints one `FAIL`
+      # line naming the path. `stampFailures` is asked with its frames tree
+      # absent, so it stands down from the pixel half - the release step owns
+      # that - rather than reporting a clean tree it never read.
+      - name: Assert the tracked evidence structure (the pixel sweep runs at release)
+        run: node scripts/check-evidence-structure.mjs
 
   audit:
     name: Security Audit
@@ -916,6 +1315,19 @@ jobs:
         with:
           version: '10.29.2'
 
+      - name: Prepare the Electron runtime cache
+        uses: ./.github/actions/electron-runtime
+        with:
+          phase: prepare
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Assert the Electron runtime is installed
+        uses: ./.github/actions/electron-runtime
+        with:
+          phase: assert
+
       - name: Build and pack
         # Fork pull_request jobs cannot read repository secrets. This disposable
         # tarball proves packaging and launch, not OAuth authentication, so use
@@ -931,12 +1343,38 @@ jobs:
           VITE_MICROSOFT_CLIENT_ID: 00000000-0000-4000-8000-000000000001
           VITE_MICROSOFT_TENANT_ID: 00000000-0000-4000-8000-000000000002
 
+          # THE HEAP CEILING `publish.yml` ALREADY CARRIES, for the same build.
+          # `npm pack` runs the prepack script (`pnpm run build:npm` ->
+          # `electron-vite build`), and on Node 22's default ~2 GB heap the renderer
+          # pass aborts on macos-latest: run 40628162002 (8c5c5b23, 2026-10-28
+          # 03:41Z), job 122634096939, logged `7694 modules transformed`, then
+          # `rendering chunks...` and `Mark-Compact 1961.6 (2075.3) -> 1930.9
+          # (2050.0) MB`, `FATAL ERROR: Ineffective mark-compacts near heap limit
+          # Allocation failed - JavaScript heap out of memory`, `Abort trap: 6` on
+          # `npm pack`, exit 134. Same signature in runs 40625952174 (a22fd4bf, job
+          # 122625611670) and 40567859580 (cbc7ddbe, job 122430145666), on Node
+          # 22.23.4 and 22.23.3 respectively.
+          #
+          # The cause is not proven: the last green main run of this same job
+          # (40594559669, 1a707a36) packed a 36.3 MB unpacked tarball through this
+          # same path, so either the renderer's growth erodes the default heap's
+          # headroom or the runner draw varies. 4096 MB is a CEILING, not an
+          # allocation: it sits inside the ~7 GB macOS runner and only stops the
+          # default limit aborting a build that would otherwise fit.
+          #
+          # Bound on this step, not the job, because only this step builds: the npx
+          # launch and asks-regression steps below run the packed app and keep a
+          # user's environment. The ubuntu leg shares the step and stays under the
+          # default 2 GB (job 122634096771 succeeded in that run), so the ceiling
+          # only widens headroom there. This workflow sets no other NODE_OPTIONS
+          # for this to overwrite.
+          NODE_OPTIONS: '--max-old-space-size=4096'
+
         # npm pack triggers the prepack script, which builds the npm-channel
         # bundle (plain JS, no V8 bytecode). Do not add a separate pnpm build
         # here: it would emit bytecode that prepack then overwrites, which is
         # exactly the ambiguity that let the broken artifact ship.
         run: |
-          pnpm install --frozen-lockfile
           npm pack
 
       # Inspects the tarball only, so it is platform-independent and stays on
@@ -970,83 +1408,158 @@ jobs:
           TARBALL=$(ls local-operator-ui-*.tgz)
           node scripts/npx-smoke-test.mjs "$TARBALL"
 
-      # This is the real production app already compiled by npm pack, not a
-      # Storybook surrogate. macOS already owns Electron launch in this job;
-      # Linux's documented sandbox limitation is not waived for screenshots.
-      # 15 minutes, up from 8, because the case table ships three cases and each
-      # case boots the app TWICE (control + candidate): six boots and ONE control
-      # renderer build (the candidate renderer arrives prebuilt from the job's
-      # "Build and pack" step), plus the capture sequences. The run that proved
-      # the producer works end to end spent its first 60 s on the control boot's
-      # build and its last minute on the candidate's, and an 8-minute ceiling left
-      # no room for the frames. Bounded deliberately: a timeout must stay a FAIL,
-      # so this is a ceiling that fits the work rather than a wait, and the script's
-      # own per-boot timeouts (150 s each) are what stop a hung app.
-      - name: Exercise assembled asks and capture regression frames
-        id: asks_regression
-        # The producer this step runs is now a CASE TABLE (scripts/asks-app-regression.mjs):
-        # the asks scenario is its first entry and two further cases ride the same
-        # step, each with its own candidate and derived-control leg. The file name and
-        # the artifact names below keep their historical spelling on purpose - QA
-        # howtos and review threads resolve against those paths. Adding a case is a
-        # table entry, not a workflow change.
-        if: runner.os == 'macOS' && github.event_name == 'pull_request'
-        timeout-minutes: 15
-        env:
-          VITE_LOCAL_OPERATOR_API_URL: 'http://127.0.0.1:8080'
-          VITE_DISABLE_BACKEND_MANAGER: 'true'
-          LOCAL_OPERATOR_UI_NO_BYTECODE: 'true'
-          LOCAL_OPERATOR_NO_NOTIFICATIONS: '1'
-          LOCAL_OPERATOR_UI_TELEMETRY: 'off'
-          VITE_GOOGLE_CLIENT_ID: ci-fixture.apps.googleusercontent.com
-          VITE_GOOGLE_CLIENT_SECRET: 'ci-fixture-unused'
-          VITE_MICROSOFT_CLIENT_ID: '00000000-0000-4000-8000-000000000001'
-          VITE_MICROSOFT_TENANT_ID: '00000000-0000-4000-8000-000000000002'
-          QA_REQUESTED_HEAD: ${{ github.event.pull_request.head.sha }}
+      # Manual-only evidence lease: push/PR events can never consume this boot.
+      # Reuse this job's actual packed App and normal Core server extras. Setup
+      # runs before HOME isolation; fixture workers never invoke git/gh/keychains.
+      - name: Initialize owned music acceptance receipts
+        if: runner.os == 'macOS' && github.event_name == 'workflow_dispatch' && inputs.music_acceptance_mode != 'off'
         run: |
-          # THE CONTROL IS THE BASE THIS CANDIDATE WAS BUILT FROM, resolved here
-          # rather than pinned to a historical commit. A pinned revision stops
-          # being able to satisfy the control leg's byte-identity requirement as
-          # soon as `main` moves - its `src/main` is then older than the merged
-          # head's - and the producer dies with `control reuse mismatch src/main`
-          # before it renders anything (measured on run 38916579072). This
-          # checkout is GitHub's MERGE ref, so `HEAD^1` is main as of THIS run,
-          # which is the baseline the change must be judged against.
-          #
-          # The depth-2 fetch brings that parent and its tree in; a depth-1
-          # checkout carries neither. `origin/main` is not consulted: on a fork
-          # PR the remote's `main` is the FORK's, which is why the parent of the
-          # merge ref is the honest source here.
-          git fetch --no-tags --depth=2 origin "$(git rev-parse HEAD)" || true
-          CONTROL="$(git rev-parse HEAD^1 2>/dev/null)" || true
-          if [ -z "$CONTROL" ]; then
-            echo '::error::the asks regression control could not be derived: this checkout has no parent commit, so the base this candidate was built from is unknown. Refusing rather than booting an arbitrary control.'
-            exit 1
-          fi
-          git cat-file -e "$CONTROL^{commit}" || git fetch --no-tags --depth=1 origin "$CONTROL"
-          echo "asks regression control (merge base of this PR): $CONTROL"
-          ASKS_CONTROL_OVERRIDE="$CONTROL" node scripts/asks-app-regression.mjs
+          set -euo pipefail
+          # Failure artifacts must exist even if Python, Homebrew or pip fails.
+          # These exports are paths only; never copy a credential/profile store.
+          mkdir -p "$RUNNER_TEMP/music-acceptance" "$RUNNER_TEMP/music-acceptance-artifacts"
+          echo "LOCAL_OPERATOR_CORE_BIN=$RUNNER_TEMP/music-core-venv/bin/local-operator" >> "$GITHUB_ENV"
+          echo "LOCAL_OPERATOR_CORE_PYTHON=$RUNNER_TEMP/music-core-venv/bin/python" >> "$GITHUB_ENV"
+          echo "MUSIC_UI_WORKTREE=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+          echo "LOCAL_OPERATOR_SCRATCHPAD=$RUNNER_TEMP/music-acceptance" >> "$GITHUB_ENV"
+          git rev-parse HEAD > "$RUNNER_TEMP/music-acceptance/ui-checkout.txt"
+          git rev-parse HEAD:src HEAD:.storybook HEAD:i18n HEAD:scripts/fixtures > "$RUNNER_TEMP/music-acceptance/ui-trees.txt"
+          shasum -a 256 out/main/index.js out/preload/index.js > "$RUNNER_TEMP/music-acceptance/app-source-sha256.txt"
 
-      # A run that completed must have produced frames, or this step fails red.
-      # The step above being SKIPPED (an earlier gate went red) is not a missing
-      # artifact, and reporting it as one buries the real failure under a second,
-      # misleading one - which is what the outcome guard and the sibling below
-      # separate. Partial evidence from a failed run is still uploaded, quietly.
-      - name: Upload assembled asks frames and measurements
-        if: ${{ always() && steps.asks_regression.conclusion == 'success' }}
+      - name: Set up supported music acceptance Python
+        if: runner.os == 'macOS' && github.event_name == 'workflow_dispatch' && inputs.music_acceptance_mode != 'off'
+        uses: actions/setup-python@v7
+        with:
+          # Pinned Core requires >=3.12; use the harness-tested interpreter,
+          # not an unversioned runner image's incidental python3 installation.
+          python-version: '3.14'
+
+      - name: Checkout pinned music Core source
+        if: runner.os == 'macOS' && github.event_name == 'workflow_dispatch' && inputs.music_acceptance_mode != 'off'
+        uses: actions/checkout@v4
+        with:
+          repository: damianvtran/local-operator
+          # Core PR damianvtran/local-operator#3780 final head (0.101.44 base):
+          # the actual_same_turn_highlight stage needs music tracks in turn
+          # highlights, which Core never emitted before #3780. #3780 lands with
+          # a merge commit, so this SHA stays reachable from Core main; no
+          # further repin needed. Keep the rev-parse check below in sync.
+          ref: 57d2fb95862a523f603cd999512056da9064a23a
+          path: .music-core-source
+          persist-credentials: false
+
+      - name: Prepare isolated music acceptance dependencies
+        if: runner.os == 'macOS' && github.event_name == 'workflow_dispatch' && inputs.music_acceptance_mode != 'off'
+        timeout-minutes: 10
+        run: |
+          set -euo pipefail
+          # Hosted ephemeral runner only, before HOME isolation. Real MP3
+          # generation/peaks need ffmpeg; absence must acquire it, not skip proof.
+          if ! command -v ffmpeg; then
+            brew install ffmpeg
+          fi
+          ffmpeg -version
+          test "$(git -C .music-core-source rev-parse HEAD)" = 57d2fb95862a523f603cd999512056da9064a23a
+          python -c 'import sys; assert sys.version_info[:2] == (3, 14), sys.version'
+          python -m venv "$RUNNER_TEMP/music-core-venv"
+          "$RUNNER_TEMP/music-core-venv/bin/pip" install --quiet './.music-core-source[server]'
+          echo "MUSIC_QA_CORE_MODULE=$("$RUNNER_TEMP/music-core-venv/bin/python" -c 'import local_operator; print(local_operator.__file__)')" >> "$GITHUB_ENV"
+
+      - name: Execute serving music Core preflight and prove rollback
+        id: music_core_preflight
+        if: runner.os == 'macOS' && github.event_name == 'workflow_dispatch' && inputs.music_acceptance_mode != 'off'
+        timeout-minutes: 10
+        run: |
+          python3 .github/harness/music/check_capacity.py "$LOCAL_OPERATOR_SCRATCHPAD/resource-admission-${{ github.action }}.json" --grant-mib 1536
+          "$LOCAL_OPERATOR_CORE_PYTHON" .music-core-source/scripts/run_bounded.py             --contract command-status --timeout 600 --memory-mb 1536 --             "$LOCAL_OPERATOR_CORE_PYTHON" .github/harness/music/music-serving-core-preflight.py --resource-lease
+
+      - name: Execute one native music acceptance on the same serving graph
+        id: music_native_acceptance
+        if: runner.os == 'macOS' && github.event_name == 'workflow_dispatch' && inputs.music_acceptance_mode == 'native' && steps.music_core_preflight.outcome == 'success'
+        timeout-minutes: 10
+        env:
+          # Never inherited by automatic, off, or preflight-only executions.
+          MUSIC_NATIVE_LEASE: '1'
+          LOCAL_OPERATOR_UI_NO_BYTECODE: 'true'
+          LOCAL_OPERATOR_UI_TELEMETRY: 'off'
+          LOCAL_OPERATOR_NO_NOTIFICATIONS: '1'
+          LOCAL_OPERATOR_UI_WINDOW_MODE: headless
+        run: |
+          python3 .github/harness/music/check_capacity.py "$LOCAL_OPERATOR_SCRATCHPAD/resource-admission-${{ github.action }}.json" --grant-mib 2560
+          "$LOCAL_OPERATOR_CORE_PYTHON" .music-core-source/scripts/run_bounded.py             --contract command-status --timeout 600 --memory-mb 2560 --             "$LOCAL_OPERATOR_CORE_PYTHON" .github/harness/music/music-serving-core-preflight.py --resource-lease --native-after-preflight
+
+      - name: Collect sanitized music receipts without credential databases
+        if: always() && runner.os == 'macOS' && github.event_name == 'workflow_dispatch' && inputs.music_acceptance_mode != 'off'
+        run: python3 .github/harness/music/collect_artifacts.py "$RUNNER_TEMP/music-acceptance" "$RUNNER_TEMP/music-acceptance-artifacts"
+
+      - name: Upload owned music acceptance receipts and native frames
+        if: always() && runner.os == 'macOS' && github.event_name == 'workflow_dispatch' && inputs.music_acceptance_mode != 'off'
         uses: actions/upload-artifact@v4
         with:
-          name: asks-app-regression-${{ github.event.pull_request.number }}-${{ github.run_id }}
-          path: artifacts/asks-app/
+          name: music-native-acceptance-${{ github.sha }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/music-acceptance-artifacts/
+          # Core's logs (runtime.log, runtime-stall-*.log) sit under the serving
+          # home's `.local-operator/` directory; upload-artifact@v4 drops hidden
+          # paths by default, so files artifact-index.json lists went missing (Q4).
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 7
 
-      - name: Upload partial asks frames from a failed run
-        if: ${{ always() && steps.asks_regression.conclusion == 'failure' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: asks-app-regression-partial-${{ github.event.pull_request.number }}-${{ github.run_id }}
-          path: artifacts/asks-app/
-          if-no-files-found: ignore
-          retention-days: 7
-
+  # ONE stable check name to require, whatever the job set becomes. Requiring
+  # individual jobs makes every rename or removal a ruleset edit that strands
+  # in-flight pull requests on a check that will never report; requiring this
+  # aggregate does not. `always()` because a failed dependency must still
+  # produce a RED gate rather than a skipped (and, to a ruleset, passing-ish)
+  # one. A deliberately SKIPPED scope-flagged job is a pass: the classifier
+  # decided this diff cannot affect it. `version-bump-guard` has no scope flag
+  # and may be `skipped` ONLY outside `pull_request` (`push` / `workflow_dispatch`);
+  # `changes` is never gated and may never skip. Anything else (`failure`,
+  # `cancelled`, `abandoned`, empty) fails closed. `Bytecode Build Check` stays
+  # required under its own name until the ruleset moves to this gate; its Mac
+  # artifact twin, `bytecode-build-macos`, is not required and is gated only
+  # here, like every other listed job.
+  ci-gate:
+    name: CI Gate
+    needs:
+      - changes
+      - version-bump-guard
+      - lint
+      - condense-parity
+      - locale-activation
+      - i18n-coverage
+      - runtime-deps
+      - check-types
+      - guards
+      - qa-bundle
+      - bytecode-build
+      - bytecode-build-macos
+      - evidence
+      - audit
+      - npx-sanity-check
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fail on any failed or cancelled job
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          node --input-type=module <<'NODE'
+          const needs = JSON.parse(process.env.NEEDS);
+          const eventName = process.env.EVENT_NAME;
+          const bad = Object.entries(needs).filter(([job, v]) => {
+            if (v.result === 'success') return false;
+            if (v.result === 'skipped') {
+              if (job === 'changes') return true;
+              if (job === 'version-bump-guard') return eventName === 'pull_request';
+              return false;
+            }
+            return true;
+          });
+          for (const [job, v] of Object.entries(needs)) console.log(`${job}: ${v.result}`);
+          if (bad.length) {
+            console.log(`::error title=CI Gate::${bad.map(([job, v]) => `${job}=${v.result}`).join(', ')}`);
+            process.exit(1);
+          }
+          NODE

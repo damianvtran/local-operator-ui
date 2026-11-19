@@ -95,17 +95,29 @@
  * pool's labels being distinct, which the module's own unit test asserts.
  */
 
-export const COMPOSER_TIPS: readonly string[] = [
-	"search chats and agents to reopen an earlier session",
-	"ask for a team and several agents share one request",
-	"type /approvals to set whether tools ask first",
-	"ask for parallel work and the agent fans out subagents",
-	"open the run panel to see a turn's plan and subagents",
-	"attach a file with the paperclip, or paste one in",
-	"connect MCP servers in settings to give the agent tools",
-	"open a document in the canvas to keep it beside the chat",
-	"set a schedule to run a prompt on a timer",
-	"ask for phone access to drive this session from your phone",
+/**
+ * The pool holds MESSAGE KEYS; `t()` resolves them where the row draws.
+ *
+ * Why: this is the row a first-run reader meets on the one screen with no
+ * conversation, and it was the last surface still English-only in a French
+ * build for exactly this reason - a module-scope array of sentences cannot
+ * follow a language switch. The rotation only moves keys around, so its order
+ * and the pinned opening frame are locale-independent.
+ */
+
+import type { WithoutParams } from "@shared/i18n";
+
+export const COMPOSER_TIPS: readonly WithoutParams[] = [
+	"ui.chat.composer.tip.search_past_work",
+	"ui.chat.composer.tip.ask_for_a_team",
+	"ui.chat.composer.tip.approvals",
+	"ui.chat.composer.tip.parallel_work",
+	"ui.chat.composer.tip.run_panel",
+	"ui.chat.composer.tip.attach_a_file",
+	"ui.chat.composer.tip.mcp_tools",
+	"ui.chat.composer.tip.canvas",
+	"ui.chat.composer.tip.schedule",
+	"ui.chat.composer.tip.phone_access",
 ];
 
 /**
@@ -128,8 +140,7 @@ export const COMPOSER_TIPS: readonly string[] = [
  * mechanism. That entry is the UPLOAD half of the pair and stays; this one is the
  * REFERENCE half — point the agent at a path, rather than send the bytes.
  */
-export const MENTION_TIP =
-	"type @ to point the agent at a file in this directory";
+export const MENTION_TIP: WithoutParams = "ui.chat.composer.tip.mention_file";
 
 /**
  * The pool this composer may rotate, given whether it offers `@` at all.
@@ -138,7 +149,9 @@ export const MENTION_TIP =
  * be forgotten: a caller that has not asked the question gets the pool WITHOUT the
  * mention entry, which is the quiet direction on a harness that cannot expand one.
  */
-export const composerTips = (mentionsEnabled: boolean): readonly string[] =>
+export const composerTips = (
+	mentionsEnabled: boolean,
+): readonly WithoutParams[] =>
 	mentionsEnabled ? [...COMPOSER_TIPS, MENTION_TIP] : COMPOSER_TIPS;
 
 /** Seconds one tip is held before the next takes its place. See the module comment. */
@@ -157,9 +170,9 @@ export const TIP_ROTATE_INTERVAL_MS = TIP_ROTATE_INTERVAL_S * 1000;
  * at all.
  */
 export const tipRotationOrder = (
-	pool: readonly string[],
+	pool: readonly WithoutParams[],
 	random: () => number = Math.random,
-): string[] => {
+): WithoutParams[] => {
 	if (pool.length <= 1) return [...pool];
 	const rest = [...pool.slice(1)];
 	for (let i = rest.length - 1; i > 0; i--) {
@@ -170,8 +183,10 @@ export const tipRotationOrder = (
 };
 
 /** The entry at `index`, wrapping. `pool[index % pool.length]` named, for the component. */
-export const tipAt = (pool: readonly string[], index: number): string =>
-	pool[index % pool.length];
+export const tipAt = (
+	pool: readonly WithoutParams[],
+	index: number,
+): WithoutParams => pool[index % pool.length];
 
 /** The next index around the ring. One step, so a repeat can only be the wrap. */
 export const advanceTipIndex = (index: number, length: number): number =>

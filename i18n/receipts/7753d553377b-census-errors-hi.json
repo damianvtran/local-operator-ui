@@ -1,0 +1,39 @@
+{
+  "agent": "i18n-auditor (independent lopdev census session 7753d553377b; not the Hindi translator)",
+  "role": "i18n-auditor / independent translation auditor",
+  "model": "anthropic/claude-sonnet-5-5",
+  "model_provenance": "Model as shown in this session's runtime header. No fallback is claimed and none could be verified from the runtime.",
+  "instance": "7753d553377b-census-hi-errors",
+  "session": "7753d553377b",
+  "locale": "hi",
+  "namespace": "ui.common.errors",
+  "branch": "fix/agent-transport-copy",
+  "head": "dd75287b77ca8b8447a362aa9d052a2dccacf097",
+  "pr": "damianvtran/local-operator-ui#1594",
+  "date": "2026-11-02",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "independence": "I did not author or modify this Hindi translation.",
+  "scope": "Linguistic judgement covers ONLY the one new key ui.common.errors.desktop_transport_failed. The other 139 keys are byte-unchanged from the previously audited state: I confirmed from the committed bytes at dd75287b that the key set equals English and that this commit's diff of the Hindi file adds exactly that key and changes nothing else. I did NOT re-audit those 139 keys; this is not a whole-file linguistic audit. Linguistic catalogue clearance only; no rendered layout, width or UI QA is claimed. The repo validator was not run by me; mechanical checks (JSON validity, key-set parity, no placeholders/plurals, NFC, no control chars) were done by hand.",
+  "key_count": 140,
+  "inputs_sha256": {
+    "en": "1c33841b78da772dab58d4476295082b6e1d56a328c587597de20a368cb7c254",
+    "en_context": "6cd0c99c1e5e40619c44e1e8fad1a249582b3dad09ca1bc32d04f3fcafee98b1",
+    "hi": "f5dcbcc00621e0fc41e881d97921e1c48cfa309a4c3fb3f3a03a99fff69dc5cf"
+  },
+  "paths": {
+    "en": "src/i18n/catalogues/en/ui.common.errors.json",
+    "context": "src/i18n/catalogues/en/ui.common.errors.context.json",
+    "target": "src/i18n/catalogues/hi/ui.common.errors.json"
+  },
+  "en_sha256": "1c33841b78da772dab58d4476295082b6e1d56a328c587597de20a368cb7c254",
+  "hi_sha256": "f5dcbcc00621e0fc41e881d97921e1c48cfa309a4c3fb3f3a03a99fff69dc5cf",
+  "findings": [
+    {
+      "id": "A-1",
+      "severity": "minor",
+      "key": "ui.common.errors.desktop_transport_failed",
+      "note": "'उसका कनेक्शन' resolves to the backend's connection (same reading as English), but only by elimination, since the nearest noun अनुरोध makes the other reading nonsensical. Optional tightening: 'बैकएंड का कनेक्शन जाँचें और फिर कोशिश करें।'."
+    }
+  ]
+}

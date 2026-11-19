@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Local Operator Recording Encoder</title>
+    <!--
+      The hidden document behind `record_start {quality: "high"}` (design D15).
+
+      It exists because WebCodecs is a renderer API: main hands it screencast frames
+      and it hands back H.264 chunks. It paints nothing and shows nothing. It runs
+      behind a purpose-built preload exposing `on`/`send` for two channels, with no
+      inline script, no remote content and every capability it does not need
+      denied. Script is emitted by the app's own build (`script-src 'self'`).
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; img-src 'none'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
+    />
+  </head>
+  <body>
+    <script type="module" src="/src/recording-encoder/main.ts"></script>
+  </body>
+</html>

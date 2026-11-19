@@ -1,0 +1,253 @@
+{
+ "locale": "ur",
+ "namespace": "ui.chat.sidebar",
+ "pr": 1836,
+ "head_sha": "28a6127617e4ebe0b6ba47d39fca5d3a22d1ba93",
+ "head_scope": "9d257a7adf0..28a6127617e",
+ "audit_date": "2026-11-10",
+ "mode": "fresh independent audit of the five ADDED mark-all-read keys; all 86 keys of the file read for terminology, register and typography consistency",
+ "scope": "damianvtran/local-operator-ui#1836 head 28a6127617e; ur/ui.chat.sidebar; five new keys (scope_chats, scope_chats_elsewhere, scope_tokenless, scope_joined, name_suffix_elsewhere). Diff 9d257a7adf0..28a6127617e adds exactly those five keys and re-terminates mark_all_read.label with a comma; no other ur sidebar value changed.",
+ "key_count": 86,
+ "keys_audited": 5,
+ "scope_keys": [
+  "ui.chat.sidebar.mark_all_read.scope_chats",
+  "ui.chat.sidebar.mark_all_read.scope_chats_elsewhere",
+  "ui.chat.sidebar.mark_all_read.scope_tokenless",
+  "ui.chat.sidebar.mark_all_read.scope_joined",
+  "ui.chat.sidebar.mark_all_read.name_suffix_elsewhere"
+ ],
+ "scope_note": "Fully audited the five new keys (meaning, ICU, terminology, typography, RTL, composed name/tooltip). Read the remaining 81 keys of ur/ui.chat.sidebar, plus ur/ui.chat.canonical, ui.notices, ui.notifications, ui.chat.read_ack, ui.chat.pickers and ui.common.updates for the sibling renderings of completion token/receipt, not active, unread mark, mark-as-read and clear. Pre-existing issues in other keys are recorded as observations_not_counted and do not gate.",
+ "translator": {
+  "agent": "i18n-translator",
+  "model": "anthropic/claude-sonnet-5-5",
+  "source": "translator record ~/local-operator-ui/.worktrees/_s10-translations/ur.json (translator block names agent i18n-translator, model anthropic/claude-sonnet-5-5, date 2026-11-10, source_head f5053145f94); translator session id not supplied to this run"
+ },
+ "auditor": {
+  "agent": "i18n-auditor",
+  "instance": "c2f848438dc2",
+  "session": "45b1fea45107",
+  "model": "deepseek/deepseek-flash",
+  "actual_model_source": "Session primary model header deepseek/deepseek-flash (team s10-aud-ur-ds); no fallback model was used or substituted.",
+  "fallback_used": false,
+  "independent_from_translator_session": true,
+  "independence_note": "This session translated and edited none of these values and read no earlier audit of these five keys or its verdict before forming this one; the shipped ur catalogue was judged against the English source, its context sidecar, the core glossary, the ur style guide and sibling ur catalogues only."
+ },
+ "model": "deepseek/deepseek-flash",
+ "instance": "c2f848438dc2",
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+   "sha256": "7db9ba5108a62330a1782f775b991ec0483537d2f7d808ae0691e1a6ef8840cd"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.chat.sidebar.context.json",
+   "sha256": "4f1593cc34b395ef8701a60e58e73a0371b3c93730eb7a1f2b2845dc6250d7e3"
+  },
+  "ur": {
+   "path": "src/i18n/catalogues/ur/ui.chat.sidebar.json",
+   "sha256": "63d00e932600a42550f418845640696ce6f62005e166984503497c50a8b46e2a"
+  }
+ },
+ "hash_method": "shasum -a 256 over the files in the read-only worktree ~/local-operator-ui/.worktrees/i18n-s8 (git status clean at 28a6127617e); each digest cross-checked against sha256 of `git show HEAD:<path>` bytes, identical. The ur target digest matches the digest the brief pinned for this head (63d00e932600a425...).",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "verdict": "clean-with-findings",
+ "current_report_verdict": {
+  "status": "passed",
+  "result": "clean-with-findings",
+  "unresolved_blocker_major_count": 0,
+  "finding_ids": [
+   "UR-S10-01",
+   "UR-S10-02"
+  ]
+ },
+ "severity_counts": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 1,
+  "nit": 1
+ },
+ "findings": [
+  {
+   "id": "UR-S10-01",
+   "severity": "minor",
+   "keys": [
+    "ui.chat.sidebar.mark_all_read.scope_tokenless"
+   ],
+   "current": "one: تکمیل کی رسید کے بغیر {count, number, ::group-off} نہ پڑھا گیا نشان صاف نہیں کیا جا سکتا۔ | other: تکمیل کی رسید کے بغیر {count, number, ::group-off} نہ پڑھے گئے نشان صاف نہیں کیے جا سکتے۔",
+   "problem": "The unread-mark noun already has settled renderings in this locale, and the two arms each drift from one: the singular attributive نہ پڑھا ہوا نشان (ui.chat.read_ack.description.remote \"نہ پڑھا ہوا نشان دوسری ڈیوائس پر ہے\" / en \"The unread mark lives on another device\"; ui.chat.read_ack.refusal.refused \"...اس لیے نہ پڑھا ہوا نشان صاف نہیں ہوا۔\") and the broken plural نشانات (ui.notices.chat.unread_not_cleared \"نہ پڑھے گئے نشانات صاف نہیں ہوئے۔\" / en \"The unread marks were not cleared\"). This key renders نہ پڑھا گیا نشان in the one arm (attributive ہوا replaced by a passive verb) and نہ پڑھے گئے نشان in the other (the established plural نشانات replaced by the singular form), so the same object is named two ways across adjacent tooltip/notice copy and the plural arm's masculine-plural predicate کیے جا سکتے leans on a singular-looking noun. Meaning is intact — the condition still binds to the mark and the cannot-be-cleared negation survives — so this is consistency and agreement, not a meaning error; the passive form itself is fine, since the notices sibling uses it too.",
+   "suggested": "one: تکمیل کی رسید کے بغیر {count, number, ::group-off} نہ پڑھا ہوا نشان صاف نہیں کیا جا سکتا۔ | other: تکمیل کی رسید کے بغیر {count, number, ::group-off} نہ پڑھے گئے نشانات صاف نہیں کیے جا سکتے۔ (minimal changes: the one arm adopts read_ack's attributive ہوا, the other arm keeps its own passive form and restores the نشانات plural used by ui.notices.chat.unread_not_cleared)"
+  },
+  {
+   "id": "UR-S10-02",
+   "severity": "nit",
+   "keys": [
+    "ui.chat.sidebar.mark_all_read.scope_chats_elsewhere",
+    "ui.chat.sidebar.mark_all_read.name_suffix_elsewhere"
+   ],
+   "current": "بشمول {elsewhere, number, ::group-off} غیر فعال چیٹ / غیر فعال چیٹس",
+   "problem": "غیر فعال is also this catalogue's word for \"Disabled\" and \"Off\" (ui.settings.appearance.editor.preview.disabled \"غیر فعال\", ui.settings.appearance.layers.preview.disabled \"غیر فعال\", ui.hub.subscriptions.configured_off \"غیر فعال\"), so a scope clause can be read as \"2 disabled chats\" rather than \"2 that are not active\". The class sense is still the dominant one in session copy — ui.common.updates.completion.sessions renders \"goes idle\" as غیر فعال ہونے and ui.chat.pickers.destination_pickers.every_canonical_session_live_or_cold_picking_one_attaches_this_window_to renders \"every canonical session, live or cold\" as \"ہر مستند سیشن، فعال یا غیر فعال\" — and the sidebar has no section by that name (its sections are جاری / آج / اس ہفتے / پرانے), so the meaning survives. A clarity nit only, not a meaning error.",
+   "suggested": "Optional, only if the manager wants the class to be unmistakable: بشمول {elsewhere, number, ::group-off} چیٹ جو ابھی فعال نہیں — one phrasing that serves both plural arms, because the relative clause carries no noun agreement."
+  }
+ ],
+ "namespaces": {
+  "ui.chat.sidebar": {
+   "status": "passed",
+   "result": "clean-with-findings",
+   "key_count": 86,
+   "keys_audited": 5,
+   "source_sha256": "7db9ba5108a62330a1782f775b991ec0483537d2f7d808ae0691e1a6ef8840cd",
+   "target_sha256": "63d00e932600a42550f418845640696ce6f62005e166984503497c50a8b46e2a",
+   "input_hashes": {
+    "en": {
+     "path": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+     "sha256": "7db9ba5108a62330a1782f775b991ec0483537d2f7d808ae0691e1a6ef8840cd"
+    },
+    "context": {
+     "path": "src/i18n/catalogues/en/ui.chat.sidebar.context.json",
+     "sha256": "4f1593cc34b395ef8701a60e58e73a0371b3c93730eb7a1f2b2845dc6250d7e3"
+    },
+    "ur": {
+     "path": "src/i18n/catalogues/ur/ui.chat.sidebar.json",
+     "sha256": "63d00e932600a42550f418845640696ce6f62005e166984503497c50a8b46e2a"
+    }
+   },
+   "findings": [
+    {
+     "id": "UR-S10-01",
+     "severity": "minor",
+     "key": "ui.chat.sidebar.mark_all_read.scope_tokenless",
+     "current": "نہ پڑھا گیا نشان / نہ پڑھے گئے نشان",
+     "suggested": "نہ پڑھا ہوا نشان / نہ پڑھے ہوئے نشانات"
+    },
+    {
+     "id": "UR-S10-02",
+     "severity": "nit",
+     "key": "ui.chat.sidebar.mark_all_read.scope_chats_elsewhere",
+     "current": "بشمول {elsewhere, number, ::group-off} غیر فعال چیٹس",
+     "suggested": "بشمول {elsewhere, number, ::group-off} چیٹ جو ابھی فعال نہیں"
+    }
+   ]
+  }
+ },
+ "per_key_checks": [
+  {
+   "key": "ui.chat.sidebar.mark_all_read.scope_chats",
+   "source": "{count, plural, one {Mark {count, number, ::group-off} unread chat as read.} other {Mark {count, number, ::group-off} unread chats as read.}}",
+   "current_text": "{count, plural, one {{count, number, ::group-off} نہ پڑھی گئی چیٹ کو پڑھا ہوا نشان زد کریں۔} other {{count, number, ::group-off} نہ پڑھی گئی چیٹس کو پڑھا ہوا نشان زد کریں۔}}",
+   "assessment": "Faithful. Imperative honourific کریں matches the آپ register the guide mandates and the mark_all_read.label verb phrase. Singular object carries کو and the feminine agreement (نہ پڑھی گئی) matches the gender the file already gives چیٹ (catalogue.total: چیٹس ... دکھائی جا رہی ہیں). Full stop ۔ per arm, as in English.",
+   "placeholder_integrity": "count as {count, number, ::group-off} in both arms, byte-identical skeleton",
+   "plural_select": "one/other only, correct for ur CLDR; 0 falls to other",
+   "findings": []
+  },
+  {
+   "key": "ui.chat.sidebar.mark_all_read.scope_chats_elsewhere",
+   "source": "{count, plural, one {Mark {...} unread chat as read} other {Mark {...} unread chats as read}}, including {elsewhere, plural, one {{elsewhere, number, ::group-off} that is not active} other {{elsewhere, number, ::group-off} that are not active}}.",
+   "current_text": "{count, plural, one {...} other {...}}، {elsewhere, plural, one {بشمول {elsewhere, number, ::group-off} غیر فعال چیٹ} other {بشمول {elsewhere, number, ::group-off} غیر فعال چیٹس}}۔",
+   "assessment": "Two nested plurals preserved with the English one/other structure and one terminal ۔ outside the inner plural, as English keeps its one full stop. بشمول + repeated noun carries the subset reading of \"including\" (not an addition), so the elsewhere count is still part of count. Urdu comma ، attaches with no preceding space. Only UR-S10-02 (nit) is raised against it; rendered cases count=5/elsewhere=2 and count=1/elsewhere=1 read correctly.",
+   "placeholder_integrity": "count and elsewhere skeletons identical to English, nested at the same depth",
+   "plural_select": "count one/other + elsewhere one/other",
+   "findings": [
+    "UR-S10-02"
+   ]
+  },
+  {
+   "key": "ui.chat.sidebar.mark_all_read.scope_tokenless",
+   "source": "{count, plural, one {{count, number, ::group-off} unread mark with no completion token cannot be cleared.} other {{count, number, ::group-off} unread marks with no completion token cannot be cleared.}}",
+   "current_text": "{count, plural, one {تکمیل کی رسید کے بغیر {count, number, ::group-off} نہ پڑھا گیا نشان صاف نہیں کیا جا سکتا۔} other {تکمیل کی رسید کے بغیر {count, number, ::group-off} نہ پڑھے گئے نشان صاف نہیں کیے جا سکتے۔}}",
+   "assessment": "Meaning preserved: the negation of cannot-be-cleared is intact in both arms (صاف نہیں کیا جا سکتا / صاف نہیں کیے جا سکتے), the condition binds to the mark, and nothing claims these marks sit inside the count of the other sentence. Completion token is rendered descriptively as تکمیل کی رسید (completion receipt) rather than ٹوکن, exactly as the context note asks and consistently with رسید for receipt elsewhere in ur (ui.chat.canonical.fold.receipt.other رسید, ui.hub.status.receipt کارروائی کی رسید, ui.mesh.mesh_approvals.profile_changes_not_in_receipt اس رسید میں...); ٹوکن in ur is reserved for model/credential tokens. Fronted کے بغیر clause is idiomatic Urdu. UR-S10-01 (minor) is the noun shape.",
+   "placeholder_integrity": "count skeleton identical in both arms",
+   "plural_select": "one/other",
+   "findings": [
+    "UR-S10-01"
+   ]
+  },
+  {
+   "key": "ui.chat.sidebar.mark_all_read.scope_joined",
+   "source": "{chats} {tokenless}",
+   "current_text": "{chats} {tokenless}",
+   "assessment": "Both placeholders present, same order, nothing added. A single U+0020 is the correct separator for Urdu (Arabic script, RTL) and the context note says to keep the language's own separator; both joined sentences already carry ۔, so no run-on is possible. Rendered case count=3/tokenless=1 gives \"…نشان زد کریں۔ تکمیل کی رسید کے بغیر 1 نہ پڑھا گیا نشان صاف نہیں کیا جا سکتا۔\" — two clean sentences.",
+   "placeholder_integrity": "chats and tokenless, no argument types",
+   "plural_select": "none",
+   "findings": []
+  },
+  {
+   "key": "ui.chat.sidebar.mark_all_read.name_suffix_elsewhere",
+   "source": ", including {elsewhere, plural, one {{elsewhere, number, ::group-off} that is not active} other {{elsewhere, number, ::group-off} that are not active}}",
+   "current_text": "، {elsewhere, plural, one {بشمول {elsewhere, number, ::group-off} غیر فعال چیٹ} other {بشمول {elsewhere, number, ::group-off} غیر فعال چیٹس}}",
+   "assessment": "Starts with U+060C and a space, the same joining shape the file already uses in ui.chat.sidebar.row.unread_suffix (\"، نہ پڑھا گیا\"), so no double comma and the visible label stays a byte-prefix of the accessible name (WCAG 2.5.3): label سب 5 پڑھا ہوا نشان زد کریں + suffix ، بشمول 2 غیر فعال چیٹس reads as one clause. No trailing punctuation, matching the English and the label. Only UR-S10-02 (nit) applies.",
+   "placeholder_integrity": "elsewhere skeleton identical, one/other arms both carry the number skeleton",
+   "plural_select": "one/other",
+   "findings": [
+    "UR-S10-02"
+   ]
+  }
+ ],
+ "mechanical": {
+  "json_valid": true,
+  "keyset_equal_to_en": "yes — 86 English and 86 ur keys, none added, none dropped (Python json key diff)",
+  "placeholders": "every argument name and every skeleton identical to English for all five keys: count as {count, number, ::group-off}, elsewhere as {elsewhere, number, ::group-off}, chats/tokenless as plain arguments, nested at the same depth. Verified with a recursive ICU parser written for this audit, not by eye.",
+  "icu": "all five parse; count and elsewhere are plural with exactly one+other, the ur CLDR cardinal set (ur has no few/many); zero = other. Nothing else in the file uses a category ur does not have.",
+  "whole_file_icu": "all 86 ur values parse with the same recursive parser; one pre-existing structural difference from English (groups.badge uses {badge, number, ::group-off} inside each arm where English uses #) recorded as an observation, not counted.",
+  "markup": "no Rich/markup tags, no backticks, no commands or flags in any of the five; no ASCII letters outside ICU argument names and type/skeleton keywords",
+  "typography": "Urdu punctuation only in prose: ، U+060C and ۔ U+06D4; no ASCII comma or full stop in prose, no Hindi danda U+0964, no Arabic-only signs, no double spaces, no space before Urdu punctuation, no trailing whitespace, and every ASCII ','/':' present in the five values belongs to ICU syntax.",
+  "rtl_hygiene": "no manual bidi controls (U+200E/200F/2066-2069/061C) in any of the five, as the ur guide requires; no Arabic-Indic digits; numbers are Latin digits via the ICU number formatter per the guide's v1 digit policy. No LTR token islands appear inside these five strings, so there is no LTR/RTL boundary in the copy itself; the digit runs are weak-directional and the render layer wraps each string in FSI/PDI.",
+  "nfc": "all five values NFC, verified with unicodedata.is_normalized on the shipped bytes",
+  "composed_output": "Rendered by substituting realistic counts (5/2, 1/0, 3/1, 1/1/1, 12/4/2) through the five messages plus mark_all_read.label: label, accessible name and tooltip all read as complete Urdu sentences; the accessible name is label + suffix with no separator supplied by code and none needed."
+ },
+ "observations_not_counted": [
+  {
+   "id": "O1",
+   "kind": "INFO",
+   "surface": "src/i18n/catalogues/ur/ui.chat.sidebar.json ui.chat.sidebar.groups.badge",
+   "detail": "PRE-EXISTING, outside the five new keys, not counted: English uses the plural pound placeholder in each arm ({badge, plural, one {# chat in this group} other {# chats in this group}}) while ur spells {badge, number, ::group-off} inside each arm. Rendering is equivalent (both print the count) and the value is unchanged by this PR; the structural difference is noted only so a later pass does not rediscover it as new."
+  },
+  {
+   "id": "O2",
+   "kind": "INFO",
+   "surface": "ui.chat.sidebar.row.unread_suffix vs the new key",
+   "detail": "PRE-EXISTING, not counted: row.unread_suffix renders \"unread\" as masculine نہ پڑھا گیا while the new sentences agree with چیٹ as feminine (نہ پڑھی گئی). Both are shipped and the new strings take the feminine form the file's own چیٹس sentences use; the suffix predates this PR and is out of scope."
+  },
+  {
+   "id": "O3",
+   "kind": "INFO",
+   "surface": "ui.notices.chat.mark_all_read_cleared vs the new key",
+   "detail": "PRE-EXISTING cross-namespace drift, not counted: the notices namespace calls a chat گفتگو (\"{count} گفتگوئیں پڑھا ہوا نشان زد کر دی گئیں\") where the sidebar calls it چیٹ (nav.chats چیٹس, the new scope_chats). چیت is the sidebar's consistent choice here and matches its own nav/section copy, so these five keys are internally consistent; the drift lives in another namespace."
+  },
+  {
+   "id": "O4",
+   "kind": "INFO",
+   "surface": "src/renderer/src/features/chat/mark-all-read.ts (markAllReadShedWidth)",
+   "detail": "The visible label sheds to sr-only at every supported sidebar width in ur (the source's own comment records this: the control is glyph-only at every supported width in fr, es, hi and ur). So in practice the ur reader meets these strings as tooltip and accessible name, which is what this pass audited. Renderer behaviour, not copy; no finding."
+  }
+ ],
+ "not_run_unverified": [
+  "Repository validators (node scripts/i18n/generate.mjs --check, check-i18n, ledger-check/ledger-assemble) were NOT executed: this audit is bound to a read-only worktree with no node processes permitted. The mechanical parity in `mechanical` was produced with a Python recursive ICU parser and byte-level checks I ran myself, and the receipt was validated by reading deriveReceiptAudit/parseReceipt/scopedHash/resultSupportedBy in scripts/i18n/ledger-rules.mjs and mirroring them in Python, not by executing node.",
+  "No rendering, Storybook frame, browser, screenshot, screen-reader or accessibility-tree run: none was available under the constraint, and none is claimed. Composition was derived from mark-all-read.ts and chat-sidebar.tsx source plus my own substitution of counts, not from a live UI.",
+  "No fribidi/bidi measurement: RTL judgements come from reading the strings and the ur style guide (storage order, render-layer FSI/PDI isolation), not from a bidi engine.",
+  "Tooltip wrapping and glyph shaping in Nastaliq were not observed; the context sidecar states the tooltip may wrap and sets no maxChars/maxCells for these keys, so no fit finding is raised either way.",
+  "No translation/MT service, dictionary API or back-translation was used or consulted; findings come from reading the English source, its context sidecar, the core glossary, the ur style guide and sibling ur catalogues.",
+  "The tracked evidence bundle i18n/audits/evidence/ur/ui.chat.sidebar/c2f848438dc2/ is not committed by me: the worktree is read-only for this audit. The manager/coordinator commits the bundle from the scratchpad copies referenced in `artifacts`."
+ ],
+ "artifacts": [
+  {
+   "path": "/Users/damian/.local-operator/sessions/45b1fea45107/scratchpad/aud-ur-ds/receipt.json",
+   "role": "this receipt"
+  },
+  {
+   "path": "/Users/damian/.local-operator/sessions/45b1fea45107/scratchpad/aud-ur-ds/record.json",
+   "role": "evidence record for i18n/audits/evidence/ur/ui.chat.sidebar/c2f848438dc2/record.json"
+  },
+  {
+   "path": "/Users/damian/.local-operator/sessions/45b1fea45107/scratchpad/aud-ur-ds/audit.log",
+   "role": "execution log of the checks actually run"
+  }
+ ],
+ "audit_notes_not_execution_log": "This receipt records audit judgements and the hashes/parse results I derived myself. It is not an execution log of the repository's node validators, which this run was not permitted to execute; audit.log lists the commands that were actually run and what they printed.",
+ "policy_sources": [
+  "~/local-operator/i18n/style-guides/ur.md (read in full)",
+  "~/local-operator/i18n/glossary.md (§2 core terminology, §3 formatting, §5 wave binding)",
+  "docs/I18N.md — Add or extend a locale; Retain checkable audit records",
+  "src/i18n/catalogues/en/ui.chat.sidebar.context.json role/tone/length/note for the six mark-all-read keys"
+ ]
+}

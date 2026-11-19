@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { CanonicalAudio, soundOwnerId } from "./canonical-audio";
 import type { SoundBatchItem } from "./sound-batch-model";
@@ -17,6 +19,7 @@ export function SoundBatch({
 	summary: string;
 	scope: AttachmentScope | null;
 }) {
+	useI18nLocale();
 	return (
 		<div
 			data-sound-batch=""
@@ -37,10 +40,18 @@ export function SoundBatch({
 								"text-body text-ink break-words [overflow-wrap:anywhere]",
 							)}
 						>
-							{item.label}
-							{item.status !== "completed"
-								? ` · ${item.status === "unknown" ? "Status unknown" : item.status === "cancelled" ? "Stopped" : "Failed"}`
-								: ""}
+							{/*
+							 * One whole message per status (select), not `label + " · " +
+							 * suffix`: a language may put the state before the name. The name
+							 * is user data passed as an argument, so the runtime isolates it
+							 * in an RTL answer (src/i18n/bidi.ts); no wrapper of ours.
+							 */}
+							{item.status === "completed"
+								? item.label
+								: t("ui.chat.canonical.sound.batch.item_status", {
+										status: item.status,
+										label: item.label,
+									})}
 						</p>
 						{item.error ? (
 							<p
@@ -59,11 +70,11 @@ export function SoundBatch({
 							/>
 						) : (
 							<p className={cn("text-meta text-ink-muted")}>
-								Audio attachment unavailable.
+								{t("ui.chat.canonical.sound.batch_attachment_unavailable")}
 							</p>
 						)}
 						<p className={cn("text-meta text-ink-dim")}>
-							{item.costCaption ?? "Cost not yet known."}
+							{item.costCaption ?? t("ui.chat.canonical.sound.cost.unknown")}
 						</p>
 					</li>
 				))}

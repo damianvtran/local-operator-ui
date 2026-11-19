@@ -1,0 +1,169 @@
+{
+ "audit_id": "tbstack-1308m-union-20261022",
+ "date": "2026-10-22",
+ "locale": "hi",
+ "namespace": "ui.teamBridge",
+ "source_commit": "2908b0a9f1ad0c7be87553cd2c12b20008ad0c31",
+ "status": "audited",
+ "scope": "PR #1308 local head 2908b0a9f1ad0c7be87553cd2c12b20008ad0c31: all 144 ui.teamBridge hi keys read beside English; exact parent union 2156430ae2 + 3269107dbd for en/context/target; four OS banner keys substantively reviewed with thread/reaction/schedule/attachment vocabulary where present.",
+ "translator": {
+  "agent": "translator",
+  "model": "anthropic/claude-opus-5-5",
+  "date": "2026-10-21",
+  "session": "6e73d9cbd3b4",
+  "job": "09973563c6e2"
+ },
+ "auditors": [
+  {
+   "agent": "translation-auditor",
+   "model": "openai/gpt-6.1-sol",
+   "date": "2026-10-22",
+   "result": "clean",
+   "instance": "tbstack-r1-1308m-hi",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "receipt": "i18n/receipts/tbstack-r1-1308m-hi.json",
+   "receipt_sha256": "4393109496332dc6f42627fc5ccd0cbbcbeb24359854fb30e4a16493fe7780ad"
+  }
+ ],
+ "audit_rounds": [
+  {
+   "round": 1,
+   "instance": "tbstack-r1-1308m-hi",
+   "session": "a0d4a2558d92",
+   "job": "64b71b9bb8d3",
+   "task_label": "audit-stackm-hi-ur",
+   "model": "openai/gpt-6.1-sol",
+   "model_history": [
+    "anthropic/claude-opus-5-5",
+    "openai/gpt-6.1-sol"
+   ],
+   "status": "passed",
+   "keys_audited": 144,
+   "union_keys_verified": 144,
+   "en_sha256": "f9d6aa7afa46fd6b877e5fe1b3e8a276657445bf929f237a51b0726f6860d214",
+   "target_sha256": "b311a22badbb3b03612bc6fbb6ef2b6dc91731419411a3a44c185093e4f9c851",
+   "context_sha256": "be847e5b61705864af0972446332cbed327f98f2d7f591c4a4de0d86f39e6f7b",
+   "findings": []
+  }
+ ],
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+   "sha256": "f9d6aa7afa46fd6b877e5fe1b3e8a276657445bf929f237a51b0726f6860d214"
+  },
+  "hi": {
+   "path": "src/i18n/catalogues/hi/ui.teamBridge.json",
+   "sha256": "b311a22badbb3b03612bc6fbb6ef2b6dc91731419411a3a44c185093e4f9c851"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+   "sha256": "be847e5b61705864af0972446332cbed327f98f2d7f591c4a4de0d86f39e6f7b"
+  }
+ },
+ "union_evidence": {
+  "parents": [
+   {
+    "commit": "2156430ae280ba2e368db32a51242927c72057fb",
+    "keys": 140,
+    "files": {
+     "en": {
+      "sha256": "f940f0c6b7bd896e49c691c1afa4cdb21a0c7dcf8179b81e3c9071503f168448",
+      "unchanged_values": 140
+     },
+     "hi": {
+      "sha256": "8605bbd445bccf538d72b14b3f1aa5669c19cf5453d6b2c5d4327abfebbe6b47",
+      "unchanged_values": 140
+     },
+     "context": {
+      "sha256": "2c60cbbbf0164f2a888809eeb8e3eddb11dc6c8bf9bbb2176b3687542acb4843",
+      "unchanged_values": 140
+     }
+    }
+   },
+   {
+    "commit": "3269107dbd8582ab07a6fddba55b271ad0a6c076",
+    "keys": 123,
+    "files": {
+     "en": {
+      "sha256": "281cb8adcc75e5bb4fcebf5c9112ab260bcf8ed2fbcf6bbcd6d04bfc3cfff41c",
+      "unchanged_values": 123
+     },
+     "hi": {
+      "sha256": "f46bebeb999478c221abb0d5ec85ebd448bb3f53b788f9cc862363657b09e3f6",
+      "unchanged_values": 123
+     },
+     "context": {
+      "sha256": "f5cf60d75f5e8b8ecc378174bc9f9e5e158b14afb80cda504e1b61e921b5cafd",
+      "unchanged_values": 123
+     }
+    }
+   }
+  ],
+  "shared_conflicts": 0,
+  "dropped": 0,
+  "altered": 0,
+  "extra": 0
+ },
+ "inherited_receipts": [
+  {
+   "commit": "2156430ae280ba2e368db32a51242927c72057fb",
+   "path": "i18n/receipts/tbstack-r2-1308-hi.json",
+   "read_from": "git:2156430ae2:i18n/receipts/tbstack-r2-1308-hi.json",
+   "receipt_sha256": "9e292dbea2a98d7953ae4da16a02e3c62224b1eb57478e1e90de4d08d154d8ee",
+   "status": "passed",
+   "findings": []
+  },
+  {
+   "commit": "3269107dbd8582ab07a6fddba55b271ad0a6c076",
+   "path": "i18n/receipts/tbstack-r1-1304m-hi.json",
+   "read_from": "git:3269107dbd:i18n/receipts/tbstack-r1-1304m-hi.json",
+   "receipt_sha256": "fbae54137366e7c00767d62c2fcd282773c1c6fbe961bb765ba7ffe4de746b40",
+   "status": "passed",
+   "findings": []
+  }
+ ],
+ "inherited_trace": "28 historical receipt nodes recursively rehashed against recorded child receipt hashes and exact source/target/context git bytes. Some archived receipts read from supplied external precedents because the audited base predates receipt addition. Legacy receipt prose-only inheritance was not recursively expanded.",
+ "validation": {
+  "union": "Exact JSON key/value union for English, context and target; zero dropped, altered, conflicting shared or extra values. Both parents independently compared, not inferred from merge ancestry.",
+  "icu": "Installed @formatjs/icu-messageformat-parser: 932 (head,locale,key) pairs checked; zero structural differences. Branch-by-branch argument names/types/multiplicity, pound nodes, offsets, skeletons and markup preserved; natural target argument reordering permitted.",
+  "plurals": "Runtime Intl.PluralRules: hi=one/other (one includes 0 and 1); ur=one/other. All source arms retained, count/# used in every corresponding arm, including banner preview and attachment failures.",
+  "banner": "Read all four notify.channel/subtitle/count/count_preview values and English contexts. # channel prefix unchanged; place-middle-dot-organization logical order retained; count/# retained in each branch, preview last; accurate neutral burst summary, no invented sender. Message=संदेश/پیغام agrees with thread, compose.new, scheduling and attachment-adjacent copy.",
+  "terminology": "Hindi: बातचीत conversation; संदेश message; थ्रेड thread; जवाब reply; प्रतिक्रिया reaction; ड्राफ़्ट draft; शेड्यूल schedule; तस्वीर image. Polite आप/करें/हटाएँ, no T/V drift.",
+  "typography": "NFC, final newline; no U+200B–200F, U+202A–202E, U+2066–2069, U+061C or BOM in actual target bytes.",
+  "rtl": "Not applicable: Hindi LTR.",
+  "overflow": "Four inherited banner templates have no material static expansion over English; dynamic names and previews remain variable. Longer existing action/error copy reviewed against context (accessible labels or wrap-permitted prose). No new material overflow finding. No pixels/cell-width or rendered-fit measurements claimed.",
+  "inherited_dispositions": "Direct inherited hi/ur receipts clean; no still-present inherited minor/nit omitted.",
+  "limitations": "Read-only git-object catalogue audit; no repo edits, builds, tests, installs, worktrees, push, screenshot, pseudo-localization or native bidi rendering. Not activation/release approval."
+ },
+ "independence": "Read-only independent translation-auditor session a0d4a2558d92, job 64b71b9bb8d3 (exact id supplied by parent coordinator); translator ledger identities copied for attribution, not accepted as validation. No catalogue authored or edited.",
+ "references": {
+  "core_revision": "24dbccbb784bd1c9b690ce4601f489791ceacb09",
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "hi": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5",
+  "ur": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+ },
+ "receipt_verification": {
+  "method": "git show 2908b0a9f1ad0c7be87553cd2c12b20008ad0c31:scripts/i18n/ledger-rules.mjs, imported in memory; deriveReceiptAudit against actual git-show SHA256s",
+  "exit": 0,
+  "derived": {
+   "agent": "translation-auditor",
+   "instance": "tbstack-r1-1308m-hi",
+   "model": "openai/gpt-6.1-sol",
+   "result": "clean",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "source_sha256": "f9d6aa7afa46fd6b877e5fe1b3e8a276657445bf929f237a51b0726f6860d214",
+   "target_sha256": "b311a22badbb3b03612bc6fbb6ef2b6dc91731419411a3a44c185093e4f9c851",
+   "receipt_sha256": "4393109496332dc6f42627fc5ccd0cbbcbeb24359854fb30e4a16493fe7780ad"
+  }
+ }
+}

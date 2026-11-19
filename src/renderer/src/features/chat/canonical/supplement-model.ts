@@ -27,6 +27,10 @@
  * content, reads file bytes, or talks to the backend.
  */
 
+import {
+	type FileSizeUnit,
+	formatByteQuantity,
+} from "../../../../../i18n/format";
 import type { DesktopHistoryPage } from "../../../../../shared/desktop-session-contract";
 import { CONTROL_SEQUENCES } from "../components/trace/receipt-row-model";
 import type { TranscriptRecord } from "./transcript-reducer";
@@ -66,7 +70,76 @@ export type SupplementFile = {
 	sizeBytes: number;
 	mtime: number;
 	why: string;
+	/**
+	 * The agent named this file in a `deliver` pin (highlights deliverables,
+	 * 2026-11-03). Carries no badge — the operator asked for files to show up,
+	 * not for a second vocabulary — but the files section orders pinned entries
+	 * first so a pin can never sit behind an unpinned file. Absent = false.
+	 */
+	pinned?: boolean;
 };
+
+/**
+ * Why a pinned or answer-named deliverable was NOT shown (the contract's
+ * `withheld[].reason`). The core never sends a path here, only a display name,
+ * so the notice cannot leak where a refused file lives.
+ */
+export type SupplementWithheldReason =
+	| "outside"
+	| "sensitive"
+	| "missing"
+	| "too-large";
+
+export type SupplementWithheld = {
+	name: string;
+	reason: SupplementWithheldReason;
+};
+
+/** The core's `withheld[]` bound (≤ 10 names; the rest is `withheld_more`). */
+export const WITHHELD_MAX = 10;
+
+const WITHHELD_REASONS: readonly SupplementWithheldReason[] = [
+	"outside",
+	"sensitive",
+	"missing",
+	"too-large",
+];
+
+/**
+ * The withheld notice off a row's `details`, read defensively. An entry with an
+ * unknown reason is DROPPED rather than painted under a guessed phrase, but it
+ * still counts: the line's whole job is "never silent", so a reason this build
+ * does not know moves into the count (`more`) instead of vanishing.
+ */
+export function withheldFrom(
+	value: unknown,
+	moreValue: unknown,
+): { withheld: SupplementWithheld[]; withheldMore: number } {
+	const withheld: SupplementWithheld[] = [];
+	let unknown = 0;
+	if (Array.isArray(value)) {
+		for (const entry of value.slice(0, WITHHELD_MAX)) {
+			if (!entry || typeof entry !== "object") continue;
+			const item = entry as Record<string, unknown>;
+			const reason = item.reason as SupplementWithheldReason;
+			if (!WITHHELD_REASONS.includes(reason)) {
+				unknown += 1;
+				continue;
+			}
+			withheld.push({
+				name: typeof item.name === "string" ? item.name : "",
+				reason,
+			});
+		}
+	}
+	const more =
+		typeof moreValue === "number" &&
+		Number.isInteger(moreValue) &&
+		moreValue > 0
+			? moreValue
+			: 0;
+	return { withheld, withheldMore: more + unknown };
+}
 
 export type SupplementComponent = {
 	/** The attachment digest the document route is addressed by. */
@@ -136,6 +209,9 @@ function fileFrom(value: unknown): SupplementFile | null {
 		sizeBytes: finiteNumber(file.size_bytes) ?? 0,
 		mtime: finiteNumber(file.mtime) ?? 0,
 		why: typeof file.why === "string" ? file.why : "",
+		// Additive: stated only when true, so a row older than the pin parses to
+		// exactly the shape it always did.
+		...(file.pinned === true ? { pinned: true } : {}),
 	};
 }
 
@@ -203,6 +279,17 @@ export type SupplementSound = {
 	title: string;
 	/** Seconds, from the record that wrote it; `null` when it stated none. */
 	durationS: number | null;
+	/**
+	 * `"file"` for audio the turn WROTE to disk (highlights deliverables,
+	 * 2026-11-03): the core copies its bytes into the attachment store so it
+	 * plays through this exact player, and keeps the display `path` so the row's
+	 * title can open the file. Absent for a generated sound (the wire leaves
+	 * `origin` absent there).
+	 */
+	origin?: "file" | "";
+	/** Display path of a written audio file (session/`~`-relative); absent otherwise. */
+	path?: string;
+	pinned?: boolean;
 };
 
 /** One sound entry, read field-by-field; a malformed entry is dropped. */
@@ -220,6 +307,12 @@ function soundFrom(value: unknown): SupplementSound | null {
 		mime: typeof sound.mime === "string" ? sound.mime : "audio/mpeg",
 		title: typeof sound.title === "string" ? sound.title : "",
 		durationS: finiteNumber(sound.duration_s),
+		// Additive, like `pinned` on files: a generated sound keeps its old shape.
+		...(sound.origin === "file" ? { origin: "file" as const } : {}),
+		...(sound.origin === "file" && typeof sound.path === "string" && sound.path
+			? { path: sound.path }
+			: {}),
+		...(sound.pinned === true ? { pinned: true } : {}),
 	};
 }
 
@@ -238,9 +331,6 @@ export const DIGEST_RE = /^[a-f0-9]{32}$/;
 
 /** Every run of whitespace, the display boundary's collapse. */
 const WHITESPACE_RUN = /\s+/;
-
-/** The trailing `.0` a one-decimal size drops (`4.0 KB` reads `4 KB`). */
-const TRAILING_ZERO_DECIMAL = /\.0$/;
 
 export function isDigest(value: unknown): value is string {
 	return typeof value === "string" && DIGEST_RE.test(value);
@@ -337,9 +427,14 @@ export function supplementDisposition(
 		// content were images would paint an empty block, so the clause returns
 		// with their renderer rather than admitting a block that shows nothing.
 		// A sounds-only highlight is content too; otherwise its player never mounts.
+		// A withheld-only row is content as well (the contract's "never silent"):
+		// the core writes it precisely so the reader learns a pinned file was
+		// refused, and "nothing" would swallow the one line that says so.
 		return record.files.length ||
 			record.components.length ||
-			record.sounds?.length
+			record.sounds?.length ||
+			record.withheld?.length ||
+			record.withheldMore
 			? "block"
 			: "nothing";
 	}
@@ -440,8 +535,14 @@ export function moreText(count: number): string {
 export function fileSizeText(sizeBytes: unknown): string {
 	if (typeof sizeBytes !== "number" || !Number.isFinite(sizeBytes)) return "";
 	if (sizeBytes < 0) return "";
-	if (sizeBytes < 1024) return `${Math.trunc(sizeBytes)} B`;
-	const units: ReadonlyArray<readonly [string, number]> = [
+	// Locale-aware spelling (digits, decimal mark, unit symbol) comes from the
+	// shared helper; the 1024 ladder and the one-decimal/`.0`-dropped rule stay
+	// here because other surfaces print the same file and must agree on the number.
+	if (sizeBytes < 1024)
+		return formatByteQuantity(Math.trunc(sizeBytes), "B", {
+			maximumFractionDigits: 0,
+		});
+	const units: ReadonlyArray<readonly [FileSizeUnit, number]> = [
 		["KB", 1024],
 		["MB", 1024 ** 2],
 		["GB", 1024 ** 3],
@@ -449,8 +550,7 @@ export function fileSizeText(sizeBytes: unknown): string {
 	for (const [unit, scale] of units) {
 		if (sizeBytes < scale * 1024 || unit === "GB") {
 			const value = sizeBytes / scale;
-			const text = value.toFixed(1).replace(TRAILING_ZERO_DECIMAL, "");
-			return `${text} ${unit}`;
+			return formatByteQuantity(value, unit, { maximumFractionDigits: 1 });
 		}
 	}
 	return "";
@@ -473,11 +573,8 @@ export function fileRowParts(file: SupplementFile): {
 
 /**
  * One count clause, singular/plural: `1 file` / `2 files`, `1 graphic` /
- * `2 graphics` (design D1's copy table). Its remaining caller is the condensed
- * form's graphics-only clause; the files arms paint the rows and the image grid
- * instead since the 2026-10-16 rework, so no files clause is built here any
- * more — a second spelling of one set's count beside its own rows is the
- * duplication that rework removed.
+ * `2 graphics` (design D1's copy table). Reveal copy reuses this noun/count
+ * grammar; it does not change the overflow tail's separate Show all meaning.
  */
 export function countClause(count: number, noun: "file" | "graphic"): string {
 	const bounded = Math.max(0, Math.floor(count));
@@ -485,9 +582,25 @@ export function countClause(count: number, noun: "file" | "graphic"): string {
 }
 
 /**
- * The graphics disclosure's words: `Show all 2 graphics` — SINGULARIZED for one
- * (`Show all 1 graphic`), matching `moreText`'s own singular arm; the memo's
- * plural-only spelling was a defect against its sibling (UX round 1, U7).
+ * Closed copy names the budgeted head precisely: "Show 1 of 3 graphics" does
+ * not promise the off-budget tail. Open copy names the whole group being hidden,
+ * including a tail explicitly opened inside it. Equal counts keep the singular
+ * grammar ("Show 1 graphic") without an unnecessary "1 of 1".
+ */
+export function graphicRevealText(
+	count: number,
+	open: boolean,
+	headCount = count,
+): string {
+	if (open) return `Hide ${countClause(count, "graphic")}`;
+	return headCount < count
+		? `Show ${Math.max(0, Math.floor(headCount))} of ${countClause(count, "graphic")}`
+		: `Show ${countClause(count, "graphic")}`;
+}
+
+/**
+ * The overflow tail's own words: `Show all 2 graphics` — singularized for one
+ * (`Show all 1 graphic`), matching `moreText`'s singular arm (UX round 1, U7).
  */
 export function showAllText(count: number): string {
 	const bounded = Math.max(0, Math.floor(count));
@@ -889,6 +1002,9 @@ export type SupplementPatch = {
 	components?: SupplementComponent[];
 	/** Present only on a beat that stated the list (the `done` beat, or a durable row's `details`). */
 	sounds?: SupplementSound[];
+	/** Stated alongside `sounds`; the same keep-unless-restated merge rule. */
+	withheld?: SupplementWithheld[];
+	withheldMore?: number;
 	error?: string;
 	/** The failed line's typed cause (`provider_<kind>`); the reader bounds it. */
 	cause?: string;
@@ -998,7 +1114,21 @@ export function supplementPatchFromEvent(
 		// it on the same `done` beat (and on the durable row's `details`), and a
 		// beat that does not state it leaves whatever the row already held.
 		...(state === "decided" || state === "done"
-			? { files: filesFrom(event.files) }
+			? {
+					files: filesFrom(event.files),
+					/*
+					 * The withheld notice rides `files`' states, not `components`':
+					 * the producer (core #3392) states it on `decided` as well as
+					 * `done`, because the refusals are known when the files are
+					 * (review round 2, R7). ONLY WHEN STATED (round 1, R1): a beat
+					 * that does not carry the keys must not restate "nothing
+					 * withheld" over the row's list; the merge keeps an undefined
+					 * field.
+					 */
+					...("withheld" in event || "withheld_more" in event
+						? withheldFrom(event.withheld, event.withheld_more)
+						: {}),
+				}
 			: {}),
 		...(state === "done"
 			? {
@@ -1050,6 +1180,8 @@ export function supplementPatchFromDetails(
 		// empty list for those, and the merge below keeps a previous list when the
 		// patch does not state one — the same rule `files`/`components` follow.
 		sounds: soundsFrom(details.sounds),
+		// Additive (2026-11-03): absent on older rows, which read as "nothing withheld".
+		...withheldFrom(details.withheld, details.withheld_more),
 		...diagnosticsFrom(details),
 		...(details.dismissed === true ? { dismissed: true } : {}),
 		...(typeof details.error === "string" && details.error
@@ -1116,7 +1248,8 @@ function sameFiles(a: readonly SupplementFile[], b: readonly SupplementFile[]) {
 			file.kind === other.kind &&
 			file.sizeBytes === other.sizeBytes &&
 			file.mtime === other.mtime &&
-			file.why === other.why
+			file.why === other.why &&
+			(file.pinned ?? false) === (other.pinned ?? false)
 		);
 	});
 }
@@ -1156,9 +1289,24 @@ function sameSounds(
 			sound.attachment === other.attachment &&
 			sound.mime === other.mime &&
 			sound.title === other.title &&
-			sound.durationS === other.durationS
+			sound.durationS === other.durationS &&
+			sound.origin === other.origin &&
+			(sound.path ?? "") === (other.path ?? "") &&
+			(sound.pinned ?? false) === (other.pinned ?? false)
 		);
 	});
+}
+
+function sameWithheld(
+	a: readonly SupplementWithheld[],
+	b: readonly SupplementWithheld[],
+) {
+	if (a === b) return true;
+	if (a.length !== b.length) return false;
+	return a.every(
+		(item, index) =>
+			item.name === b[index].name && item.reason === b[index].reason,
+	);
 }
 
 /**
@@ -1199,6 +1347,12 @@ export function mergeSupplement(
 	 */
 	const sounds =
 		patch.sounds !== undefined ? patch.sounds : (previous?.sounds ?? []);
+	const withheld =
+		patch.withheld !== undefined ? patch.withheld : (previous?.withheld ?? []);
+	const withheldMore =
+		patch.withheldMore !== undefined
+			? patch.withheldMore
+			: (previous?.withheldMore ?? 0);
 	const filesMore =
 		patch.filesMore !== undefined
 			? patch.filesMore
@@ -1240,6 +1394,10 @@ export function mergeSupplement(
 		sounds: sameSounds(sounds, previous?.sounds ?? [])
 			? (previous?.sounds ?? [])
 			: sounds,
+		withheld: sameWithheld(withheld, previous?.withheld ?? [])
+			? (previous?.withheld ?? [])
+			: withheld,
+		withheldMore,
 		error,
 		cause,
 		model: patch.model ?? (newVersion ? "" : (previous?.model ?? "")),

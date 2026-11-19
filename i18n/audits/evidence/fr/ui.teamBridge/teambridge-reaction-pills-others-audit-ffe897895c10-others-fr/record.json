@@ -1,0 +1,131 @@
+{
+  "audit_id": "teambridge-reaction-pills-others-audit-ffe897895c10-others-fr",
+  "date": "2026-10-30",
+  "locale": "fr",
+  "namespace": "ui.teamBridge",
+  "branch": "fix/team-bridge-reaction-pills",
+  "source_commit": "uncommitted working tree on 9d7c5fd911e7436d946ba8c863d992f72df9b357",
+  "translator": {
+    "agent": "translator",
+    "model": "anthropic/claude-opus-5-5",
+    "session": "not supplied to the auditor",
+    "method": "LLM translation by a separate agent; no MT service or translation API"
+  },
+  "auditors": [
+    {
+      "agent": "translation-auditor",
+      "model": "anthropic/claude-opus-5-5",
+      "date": "2026-10-30",
+      "result": "clean-with-findings",
+      "instance": "ffe897895c10-others-fr",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 1
+      },
+      "receipt": "i18n/receipts/ffe897895c10-others-fr.json",
+      "receipt_sha256": "e1b2b09e85a8c7c3884020f1317689581e9987f50349c9d018c3b8dac82b3e7d",
+      "scope": "One-key delta (branch fix/team-bridge-reaction-pills, uncommitted): ui.teamBridge.reactions.others only, against English 82d626917199. Other values unchanged since the row's prior audit.",
+      "note": "1-key delta audit by translation-auditor (session ffe897895c10). FR-N1 nit: missing CLDR many arm; proposed string in receipt.",
+      "session": "ffe897895c10",
+      "model_fallback": {
+        "announced": false,
+        "observed": false
+      }
+    }
+  ],
+  "independence": "Independent auditor: lopdev team member translation-auditor in session ffe897895c10, which authored none of the audited strings. The translations were produced by a separate agent (translator, anthropic/claude-opus-5-5). This session wrote only receipts, evidence records and ledger rows via ledger-assemble.mjs; it did not edit any catalogue. Same underlying model family as the translator, different agent and session.",
+  "files": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+      "sha256": "82d6269171995e4e396a08f51a044fa8ea5e4cf3945779b097109c2a4b40250d"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+      "sha256": "f8f08c06b639571103da55233116e9de68d3defb02261ea0c5e6021d923f74df"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/fr/ui.teamBridge.json",
+      "sha256": "cbde1f8c0210f0d9f3578d108f054dc86f96e628f27b6b976b40779015c3e6c2"
+    }
+  },
+  "scope": {
+    "delta_kind": "One-key delta: the working tree adds exactly one line to each of the eight catalogues (git diff --numstat: 1 added, 0 removed per file) - ui.teamBridge.reactions.others - plus its context entry in en/ui.teamBridge.context.json.",
+    "keys_audited_linguistically": [
+      "ui.teamBridge.reactions.others"
+    ],
+    "keys_read_for_consistency": [
+      "ui.teamBridge.reactions.failed",
+      "ui.teamBridge.reactions.empty"
+    ],
+    "not_audited": "Every other ui.teamBridge key: byte-unchanged by this delta and covered by the row's earlier audits (moved to `superseded`)."
+  },
+  "english": {
+    "ui.teamBridge.reactions.others": {
+      "value": "{others, plural, one {# other} other {# others}}",
+      "context_role": "list item in a reaction tooltip",
+      "context_note": "Last item of a who-reacted list joined by Intl.ListFormat long conjunction; must not contain a word for 'and'.",
+      "placeholders": [
+        "others"
+      ]
+    }
+  },
+  "audited": {
+    "ui.teamBridge.reactions.others": {
+      "en": "{others, plural, one {# other} other {# others}}",
+      "translation": "{others, plural, one {# autre} other {# autres}}"
+    }
+  },
+  "checks": {
+    "placeholders": "Parsed with @formatjs/icu-messageformat-parser: one top-level plural on `others`, every arm uses `#`, no other argument introduced, none dropped or renamed.",
+    "plural_arms": "Locale CLDR categories (Intl.PluralRules resolvedOptions): one,many,other. No invalid selector. Missing `many` (see FR-N1).",
+    "no_conjunction": "No word for 'and' in the value (regex for and/et/y/и/và/和/और/اور: no match); the conjunction comes once from Intl.ListFormat.",
+    "unicode": "NFC; no Cc/Cf characters (no RLM/LRM/FSI/PDI), no NBSP.",
+    "overflow": "Tooltip text that wraps, not a fixed-width label; rendered tails within 1-2 words plus the number, as the context asks. Longest rendered list ur 33 chars vs en 29 at 21 others.",
+    "rendered": [
+      "fr\t1\tone\t\"1 autre\"\tAda et 1 autre\t14",
+      "fr\t2\tother\t\"2 autres\"\tAda, Bea et 2 autres\t20",
+      "fr\t5\tother\t\"5 autres\"\tAda, Bea, Cleo et 5 autres\t26",
+      "fr\t21\tother\t\"21 autres\"\tAda, Bea, Cleo et 21 autres\t27"
+    ],
+    "rendered_command": "node $LOCAL_OPERATOR_SCRATCHPAD/render-others.mjs (intl-messageformat from the repo's node_modules + Intl.ListFormat style long, type conjunction; names Ada/Bea/Cleo capped at 3 as in reactorsLabel; Node v24.22.1). Columns: locale, count, plural category, item, full list, length."
+  },
+  "findings": [
+    {
+      "severity": "nit",
+      "id": "FR-N1",
+      "key": "ui.teamBridge.reactions.others",
+      "current": "{others, plural, one {# autre} other {# autres}}",
+      "proposed": "{others, plural, one {# autre} many {# d’autres} other {# autres}}",
+      "detail": "French CLDR has a `many` category (exact multiples of 10^6) and the fr guide's plural example carries it; 279 of 283 fr plural messages in this corpus do. Without it 1 000 000 renders '1 000 000 autres' where French writes 'd’autres' after a million. Unreachable for a reaction count in practice, so recorded, not gating.",
+      "disposition": "recorded; translator/implementer may apply the proposed string"
+    }
+  ],
+  "status": "passed",
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "revision": "2008053b5d6af37fa449fc303d9e344c262f82c8",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/fr.md",
+      "revision": "2008053b5d6af37fa449fc303d9e344c262f82c8",
+      "sha256": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226"
+    },
+    "docs_I18N": {
+      "path": "docs/I18N.md",
+      "sha256": "9a4bde8d1c161286160be4a4ae1c7655615dbf39047052550b725a3da2eb00e2"
+    }
+  },
+  "artifacts": {
+    "receipt": {
+      "path": "i18n/receipts/ffe897895c10-others-fr.json",
+      "sha256": "e1b2b09e85a8c7c3884020f1317689581e9987f50349c9d018c3b8dac82b3e7d"
+    },
+    "ledger_row": "i18n/ledger.json#entries[locale=fr,namespace=ui.teamBridge]"
+  },
+  "limitations": "Auditor competence: strong; verdict confidence high. Not claimed: a rendered frame of the tooltip in the app, or a native-speaker sign-off.",
+  "audit_notes_not_execution_log": "linguistic_note and findings are this auditor's judgement, not command output. checks.rendered is verbatim output of the named command."
+}

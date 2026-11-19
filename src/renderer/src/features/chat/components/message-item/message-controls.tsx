@@ -26,6 +26,9 @@
  * from the other surfaces in spinner size and disabled copy.
  */
 
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
+
 import {
 	SpeakButton,
 	useSpeakControl,
@@ -61,6 +64,7 @@ export const MessageControls: FC<MessageControlsProps> = ({
 	inline = false,
 	timestamp,
 }) => {
+	useI18nLocale();
 	const [copied, setCopied] = useState(false);
 	const { playSpeech } = useSpeechStore();
 	/*
@@ -113,6 +117,7 @@ export const MessageControls: FC<MessageControlsProps> = ({
 
 	return (
 		<div
+			data-lo-floating={inline ? undefined : ""}
 			className={cn(
 				"flex items-center gap-0.5",
 				inline
@@ -122,10 +127,12 @@ export const MessageControls: FC<MessageControlsProps> = ({
 							// the turn's top-right corner rather than a strip reserved
 							// under every message. Nothing is reserved, so the rhythm
 							// between turns stays exactly what the grouping asked for, and
-							// nothing shifts when it appears. The `elevated` ground plus a
-							// hairline is what makes it read as floating — § 2 keeps the
-							// one shadow for objects that genuinely leave the flow.
-							"message-controls absolute -top-2 right-0 z-10 h-8 rounded-md border border-hairline bg-elevated px-1",
+							// nothing shifts when it appears. It leaves the flow, so since
+							// 2026-11-06 it separates the way every other floating surface
+							// does - `elevated` ground plus the one shadow - and not with
+							// the hairline this strip used to wear. Two elevation languages
+							// for hover chrome was the operator's report.
+							"message-controls absolute -top-2 end-0 z-10 h-8 rounded-md bg-elevated px-1 shadow-overlay",
 							actionRowVisibility(pinned),
 						),
 				className,
@@ -134,11 +141,22 @@ export const MessageControls: FC<MessageControlsProps> = ({
 			{timestamp && <MessageTimestamp timestamp={timestamp} className="px-1" />}
 			{showCopyButton && (
 				<div className="flex items-center">
-					<Tooltip content={copied ? "Copied" : "Copy message"} side="top">
+					<Tooltip
+						content={
+							copied
+								? t("ui.chat.message_controls.copied")
+								: t("ui.chat.message_controls.copy")
+						}
+						side="top"
+					>
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							aria-label={copied ? "Copied" : "Copy message"}
+							aria-label={
+								copied
+									? t("ui.chat.message_controls.copied")
+									: t("ui.chat.message_controls.copy")
+							}
 							className={buttonClass}
 							onClick={handleCopy}
 						>

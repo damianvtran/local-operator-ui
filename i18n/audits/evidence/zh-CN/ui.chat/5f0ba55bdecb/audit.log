@@ -1,0 +1,249 @@
+i18n audit log — zh-CN — tag ds — instance 5f0ba55bdecb
+Auditor: i18n-auditor (independent), served model deepseek/deepseek-flash
+Date: 2026-11-10
+PR damianvtran/local-operator-ui #1842 @ e5fb4310dab638f9cf428779d62539ec039a8990
+Read-only worktree: ~/local-operator-ui/.worktrees/i18n-s8
+
+WHAT THIS IS
+  An account of what I actually ran and what I only read. Nothing here was
+  fabricated: every command listed under "EXECUTED" was run in this session, and
+  every item under "NOT RUN" was not. This auditor did not translate these values,
+  did not edit any repository file, and used no translation, MT or back-translation
+  service at any point.
+
+====================================================================
+EXECUTED (commands actually run)
+====================================================================
+
+1. Worktree pin
+   cd ~/local-operator-ui/.worktrees/i18n-s8 && git rev-parse HEAD
+     -> e5fb4310dab638f9cf428779d62539ec039a8990  (matches the frozen head; proceeded)
+   git status --porcelain | head -20
+     -> no output (clean at that head)
+
+2. Expected hashes
+   ls ~/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/
+     -> expected-hashes.json   (only file in that directory at the time of the listing;
+        the manager's glossary.md byte-copy arrived later, per its note, and was read
+        from that same permitted directory)
+   cat .../expected-hashes.json   (read)
+
+3. Hash binding (g)
+   shasum -a 256 on all nine in-scope files, compared against expected-hashes.json:
+     en/ui.chat.json                        ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15   MATCH
+     en/ui.chat.composer_media.json         79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae   MATCH
+     en/ui.common.actions.json              0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b   MATCH
+     zh-CN/ui.chat.json                     6c28931de502a5fd821f9bd9ff779a55599681804575a8a2ba4cdc3346c1e1b9   MATCH
+     zh-CN/ui.chat.composer_media.json      d32d42c7972f9cb433844db9d41fe79da6aa05b8c6a2b80643947f4179950df8   MATCH
+     zh-CN/ui.common.actions.json           9372ac48a563ad7ea188dcaca65ec3c2d165ed5188b8f45bb916c2bd726541bb   MATCH
+     en/ui.chat.context.json                84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf   MATCH
+     en/ui.chat.composer_media.context.json a0fbc1552ef6f27999f3cff365750025627a284faa106d767e22a24d131ae77b   MATCH
+     en/ui.common.actions.context.json      24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d   MATCH
+   Nine of nine matched. No BLOCKER for hash binding.
+
+4. Policy inputs
+   shasum -a 256 ~/local-operator/i18n/style-guides/zh-CN.md
+     -> 8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c
+   shasum -a 256 <manager glossary copy> and ~/local-operator/i18n/glossary.md
+     -> both 0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8 (173 lines)
+        The manager's byte-copy is byte-identical to the canonical glossary, so
+        glossary conformance was checked against the copy as instructed.
+
+5. Repo validators (read-only Node gates; no build, no install)
+   node scripts/i18n/context-parity.mjs
+     -> "context-parity: ok — every English key is covered, apart from 131 allowed
+        gap(s) in 4 namespace(s) (shrink-only ...)". exit 0
+   node scripts/i18n/check-duplicates.mjs
+     -> "check-duplicates: ok — 1400 file(s) scanned, 0 duplicate key(s)". exit 0
+   node scripts/i18n/generate.mjs --check
+     -> "src/i18n/keys.gen.ts is byte-identical to a fresh generation." exit 0
+   node scripts/i18n/check-strings.mjs
+     -> "ok — 1649 file(s) scanned, 0 literal(s) at or below the baseline; 40
+        literal(s) in the data shapes ...". exit 0
+   node scripts/i18n/ledger-check.mjs
+     -> FAILED — 64 finding(s) across 1085 ledger entries.
+        Every finding is stale source_sha256 / stale target_sha256 / "receipt does
+        not name the English source bytes" on ui.chat, ui.chat.composer_media and
+        ui.common.actions for all seven locales, including zh-CN:
+          zh-CN/ui.chat            ledger 270fc752791e -> file ee4e2a9eeb84 (source stale)
+          zh-CN/ui.chat            ledger 0027aebd3b5c -> file 6c28931de502 (target stale)
+          zh-CN/ui.chat.composer_media   c1ddfc211ada -> 79e7d18ff960 (source stale)
+          zh-CN/ui.chat.composer_media   e525b3929a04 -> d32d42c7972f (target stale)
+          zh-CN/ui.common.actions        3f9e9a4b0231 -> 0218bb5b748c (source stale)
+          zh-CN/ui.common.actions        e7074cf3b256 -> 9372ac48a563 (target stale)
+        This is the expected pre-audit state: the four new keys changed all seven
+        locale files and the English sources, so every row describing these three
+        namespaces is stale until ledger-assemble refreshes it after the audits
+        land. It is NOT a defect in the zh-CN values and I do not count it as a
+        finding against them. I am not claiming ledger-check passes — it does not.
+
+6. Mechanical verification of the four keys (my own, beyond the validators)
+   python3 — strict JSON parse of all 156 files in src/i18n/catalogues/zh-CN/
+     -> 156 files, 0 parse failures
+   python3 — placeholder extraction + ICU + shape comparison, en vs zh-CN:
+     ui.chat.image_actions.actions        en 'Image actions'      zh '图片操作'
+       en_args [] == zh_args []; no plural/select in either; braces balanced; 0 backticks;
+       no leading/trailing whitespace; no spaces at all; does not end in punctuation; 8 cells
+     ui.chat.audio.position_label         en '{label} position'   zh '{label}的播放位置'
+       en_args [('label',NO_TYPE)] == zh_args, identical and byte-exact; no plural/select;
+       braces balanced; no trailing punctuation; no spaces; 17 cells
+     ui.chat.composer_media.pasted_image  en 'Pasted image'       zh '粘贴的图片'
+       no placeholders in either; no trailing punctuation; no spaces; 10 cells
+     ui.common.actions.actions_for_name   en 'Actions for {name}' zh '{name}的操作'
+       en_args [('name',NO_TYPE)] == zh_args, identical and byte-exact; no plural/select;
+       braces balanced; no trailing punctuation; no spaces; 12 cells
+   python3 — invisible/format-character scan (Unicode categories Cf, Zs, Zl, Zp) over
+     the four zh-CN values -> none in any of them. No NBSP, no narrow NBSP, no ZWSP,
+     no ZWNJ/ZWJ, no bidi control. The zh-CN guide requires no such mark in a value of
+     this shape (it mandates full-width punctuation for prose and no space between
+     Chinese and Latin runs, which these values already satisfy).
+
+7. Scope verification against origin/main
+   python3 — key-set and value comparison against `git show origin/main:<file>`:
+     ui.chat                    206 -> 208 keys (added audio.position_label, image_actions.actions)
+     ui.chat.composer_media       8 ->   9 keys (added pasted_image)
+     ui.common.actions           53 ->  54 keys (added actions_for_name)
+     zero keys removed; zero pre-existing values changed; each zh-CN key set exactly
+     equals its English counterpart. The only diff lines touching pre-existing keys are
+     trailing-comma edits on remove_attachment and clear, values unchanged.
+   git diff --stat / git diff for the three zh-CN files and en/ui.chat.composer_media.context.json
+
+8. English metadata under review
+   cat src/renderer/src/features/chat/utils/get-file-name.ts
+   cat src/renderer/src/features/chat/utils/attachment-encode.ts
+   (Both read in full; see the receipt's english_metadata_check. Every clause of the
+   broadened pasted_file note is supported. Verdict: accurate.)
+
+9. Call-site reading (to test whether the constructions survive real insertion)
+   grep -rn "image_actions.actions|audio.position_label|common.actions.actions_for_name"
+     -> supplement-file-actions.tsx:181, sound-player.tsx:455, image-actions-menu.tsx:204/365/366
+   sed -n '440,470p' sound-player.tsx; sed -n '170,190p' supplement-file-actions.tsx;
+   sed -n '195,215p;355,370p' image-actions-menu.tsx
+   grep -n "label" on sound-player.tsx / image-actions-menu.tsx
+   grep for ImageActionsMenu callers; awk over markdown-image.tsx / image-preview.tsx /
+   video-preview.tsx to read the label props; grep label= in finder-files-view.tsx
+   grep -n "label|alt" scripts/image-actions.test.mjs -> no output (no label/alt case there)
+   grep -rn "pasted_type" over src -> still referenced by attachments-preview.tsx:190, so
+     this key is live and not orphaned by the get-file-name change.
+
+====================================================================
+READ ONLY (no command produced this)
+====================================================================
+  - ~/local-operator/i18n/style-guides/zh-CN.md (read in full via the read tool)
+  - the manager-owned glossary byte-copy (read via the read tool, lines 1-114 and 115-173)
+  - the four English context sidecar entries and the three English catalogues
+  - docs/I18N.md (ledger sections), scripts/i18n/ledger-assemble.mjs usage header
+  - the model receipt and record at _s10-audits/fd09d8f/
+  - the source files listed in section 8 and 9
+
+====================================================================
+NOT RUN — stated plainly, not implied as covered
+====================================================================
+  - ledger-assemble.mjs: NOT executed. It writes i18n/ledger.json and
+    i18n/receipts/<instance>.json, and this audit may not edit repository files.
+    The receipt is written to the assembled shape so the manager can run it per
+    namespace; that the tool accepts it is unproven here.
+  - No build, no install, no dev server, no Electron, no browser, no screenshot:
+    the remit forbids them, so there is no rendered, screen-reader or pixel-fit
+    evidence in this audit and none is claimed.
+  - No ICU runtime parse or CLDR category selection was executed. The four values
+    contain no plural or select at all, so no category set had to be validated; the
+    zh-CN "other only" rule is not engaged by any of them.
+  - No test was executed. No test file was run and no test asserts these keys'
+    rendered copy in this worktree.
+  - One earlier broad `grep -rn` over docs/ and scripts/i18n/ was stopped by the
+    shell query budget before returning. I replaced it with a scoped grep on
+    docs/I18N.md and a bounded head of ledger-assemble.mjs. No result was taken
+    from the stopped command.
+
+====================================================================
+JUDGEMENT ON THE FOUR KEYS (reasoning, not execution)
+====================================================================
+All four read as settled product Chinese rather than translation, and each is
+consistent with an already-approved neighbour in this same locale:
+
+  ui.chat.image_actions.actions = 图片操作
+    Exact parallel of the existing ui.common.actions.file_actions_menu.file_actions
+    = 文件操作 ("File actions"), and 图片 is the catalogue's established word for image
+    (copy_image = 复制图片, expand_image = 展开图片). "Image actions" carries no plural
+    in Chinese, which is correct rather than an omission. The sidecar asks for a
+    short noun phrase for a tooltip and for the unnamed-image accessible-name
+    fallback; a bare noun phrase satisfies both. No punctuation, no backticks.
+
+  ui.chat.audio.position_label = {label}的播放位置
+    {label} is byte-exact and stays first; only the surrounding word is translated,
+    as the sidecar instructs. The construction is a plain attributive noun phrase, so
+    it stays grammatical for any clip title — Latin filename, CJK title, title ending
+    in punctuation, title containing “ ” quotes — with no case, gender or number
+    agreement to break, and the zh-CN guide's no-space-between-Chinese-and-Latin rule
+    is respected. Rendering "position" as 播放位置 rather than bare 位置 is the right
+    call and not an addition of meaning: the sidecar's own first sentence is "Names
+    playback position for this specific clip", and 播放位置 is the catalogue's existing
+    term for exactly that concept (ui.chat.attachments.playback_position = 播放位置).
+    Bare 位置 beside a file name would read as a spatial/screen position. It also
+    stays distinguishable from the neighbouring verb-first play/pause names
+    (播放{label}, 暂停{label}).
+
+  ui.chat.composer_media.pasted_image = 粘贴的图片
+    Mirror of the existing pasted_file = 粘贴的文件 and pasted_type = 粘贴的{mimeType}.
+    Carries no file extension, no MIME identifier and no placeholder, as the sidecar
+    requires, and it works as a filename. 10 cells against the sibling's 20-cell
+    advisory budget; this key has no maxCells hint of its own.
+
+  ui.common.actions.actions_for_name = {name}的操作
+    Identical to two already-approved values for the identical English string —
+    ui.chat.canonical.link_toolkit.actions_for = {name}的操作 and
+    ui.projects.project_board.actions_for_displayname = {displayName}的操作 — and the
+    same shape as ui.projects.project_updates.file_actions_for_name = {name}的文件操作.
+    The 的-construction identifies the asset rather than commanding an action, which is
+    what the sidecar asks for, and 操作 is the catalogue's term for "actions". Diverging
+    from those three would have been the finding; matching them is not.
+    Considered and dismissed: ui.browser.browser_tab_strip.actions_for wraps its
+    {title} in “ ” (“{title}”的操作). That is a tab title, which can be a whole
+    sentence; the two direct file/image precedents above are unquoted, so quoting here
+    would introduce an inconsistency rather than remove one.
+
+Nothing in the four values contradicts a §1 or §2 glossary row, because no product
+name, no core §2 term and no kept-English token appears in them. The §3 rows that do
+apply — placeholders byte-exact, Chinese punctuation conventions, no hand-written
+digits, zh-CN "other"-only plurals — are all satisfied.
+
+====================================================================
+OBSERVATIONS THAT ARE NOT TRANSLATION FINDINGS
+====================================================================
+Raised so the manager can route them, and deliberately NOT counted against the
+zh-CN translator, because both are locale-agnostic and both are equally true of the
+English source:
+
+  (a) Empty-label guard. image-actions-menu.tsx:364 guards the shared key with
+      `label != null`, where supplement-file-actions.tsx:181 guards the same key with
+      truthiness (`label ? ... :`). Callers pass label={alt} (markdown-image.tsx:90),
+      label={document.title} and label={row.name}. An empty-string label — a markdown
+      image with empty alt text is the plausible route — would satisfy `!= null` and
+      call t("ui.common.actions.actions_for_name", { name: "" }), rendering "的操作"
+      with a leading 的. The English degrades identically there ("Actions for "), so
+      this is a source-side guard inconsistency, not a translation defect: the zh-CN
+      value is right for every non-empty name. Not proven by execution — read from
+      source only, and scripts/image-actions.test.mjs has no label/alt case.
+
+  (b) Two keys for one English string. "Actions for {name}" now exists as both the
+      legacy ui.chat.canonical.link_toolkit.actions_for and the new
+      ui.common.actions.actions_for_name. check-duplicates passes because the keys
+      differ, and both zh-CN values are identical today, so there is no current defect —
+      recorded only as a future drift risk for whoever owns the keying change.
+
+====================================================================
+VERDICT
+====================================================================
+  ui.chat                     passed / clean
+  ui.chat.composer_media      passed / clean
+  ui.common.actions           passed / clean
+  Overall: status passed, result clean, 0 BLOCKER, 0 MAJOR, 0 MINOR, 0 NIT.
+  Hashes: nine of nine matched expected-hashes.json.
+  4 of 271 keys fully audited; the remaining 267 were consistency-checked only
+  (parse, English key parity, unchanged versus origin/main) and are NOT certified.
+
+Artifacts (all in $LOCAL_OPERATOR_SCRATCHPAD):
+  zh-CN-ds-5f0ba55bdecb.json
+  zh-CN-ds-5f0ba55bdecb.record.json
+  zh-CN-ds-5f0ba55bdecb.audit.log

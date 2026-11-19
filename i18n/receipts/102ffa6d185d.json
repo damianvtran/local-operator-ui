@@ -1,0 +1,195 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "102ffa6d185d",
+  "date": "2026-10-19",
+  "locale": "ur",
+  "round": 1,
+  "section": 1,
+  "status": "changes_requested",
+  "scope": "Full independent copy audit of all 17 Section 1 namespaces; only findings-bearing namespaces failed the zero-findings rule.",
+  "fallback": "Pinned anthropic/claude-sonnet-5-5 was unavailable (provider quota); this run executed on openai/gpt-6.1-sol.",
+  "notes": "15 namespaces passed; ui.agents.models and ui.agents.navigation had one MINOR each and were re-audited after remediation.",
+  "namespaces": {
+    "ui.chat": {
+      "namespace": "ui.chat",
+      "keys_read": 8,
+      "status": "passed",
+      "sha256": {
+        "en": "29169c4c0801689781d503f724d457757275416c49e975bfb6ae4872d90c2c46",
+        "ur": "413ec101ef3168594fc84e1517fc1980b514c384a8d5950b9dcee59f8cafb4dc"
+      },
+      "findings": []
+    },
+    "ui.chat.composer": {
+      "namespace": "ui.chat.composer",
+      "keys_read": 34,
+      "status": "passed",
+      "sha256": {
+        "en": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
+        "ur": "0676c38c35abe51cd25ad9b2ed239d25beaca11ec781368440e8919efa41d4fb"
+      },
+      "findings": []
+    },
+    "ui.chat.composer_media": {
+      "namespace": "ui.chat.composer_media",
+      "keys_read": 7,
+      "status": "passed",
+      "sha256": {
+        "en": "47ec03f574b6665bafaf900f15067ef522fbf8b7fe665402b0bb4be03d0aa0ff",
+        "ur": "5d643f131688fabd07bce2dc7bc419afedd043070b7132c6665142bdd6e6e807"
+      },
+      "findings": []
+    },
+    "ui.chat.dialogs": {
+      "namespace": "ui.chat.dialogs",
+      "keys_read": 4,
+      "status": "passed",
+      "sha256": {
+        "en": "783d72141bae3491cc1ecfbdfc983339e327406cd4385e7ce8f9dfa1360997fc",
+        "ur": "6fe807b71fe2ca758ab6b5380e96efda2cbd0ba3f3e597f39b8c9a116b83e8dc"
+      },
+      "findings": []
+    },
+    "ui.chat.header": {
+      "namespace": "ui.chat.header",
+      "keys_read": 10,
+      "status": "passed",
+      "sha256": {
+        "en": "1e395f1110147c45fea1182e26542cfdb44c966eaed0966d2fefcade11d161aa",
+        "ur": "80d3fa0bd8d20ac591063fa0b63086421412fc7c08050837e8a1f32a0f3aa7ac"
+      },
+      "findings": []
+    },
+    "ui.chat.response_actions": {
+      "namespace": "ui.chat.response_actions",
+      "keys_read": 1,
+      "status": "passed",
+      "sha256": {
+        "en": "3c3e9480cf38316dda324d31e127ab9e63e2bf846c8e46f8efee7306fe4e47d5",
+        "ur": "aca473b81477e547587ca7dd9b3b1ce03f005e610b04f091e02b39421a3fdd76"
+      },
+      "findings": []
+    },
+    "ui.chat.sidebar_view": {
+      "namespace": "ui.chat.sidebar_view",
+      "keys_read": 22,
+      "status": "passed",
+      "sha256": {
+        "en": "62f5807d9a6c90b84ea88d6665d18568b568f59b5e68f80f038f73fb502ef834",
+        "ur": "e7137d8f828d94292494b19b8b7396dd1f899df5ba889f55c2ec421731ac9157"
+      },
+      "findings": []
+    },
+    "ui.chat.tags": {
+      "namespace": "ui.chat.tags",
+      "keys_read": 42,
+      "status": "passed",
+      "sha256": {
+        "en": "ffb1c6b985fd1ab521a2a5fc49955978d76cabc5671437dc2bc6b31cfa1ada74",
+        "ur": "aada754c9fde321fecfa8fea89cdeb49cc371e9de73fa36e2a6e33eb21c8e1c5"
+      },
+      "findings": []
+    },
+    "ui.agentMessages": {
+      "namespace": "ui.agentMessages",
+      "keys_read": 16,
+      "status": "passed",
+      "sha256": {
+        "en": "065cbea39ca4df33aa114fc027e5f75bcc6e74e9cb21d4f14e42628d3795cbcb",
+        "ur": "360a5c6b91119c7b9c261e9c9f61734a905aab7c7910739d5c852afe0b1f5f6d"
+      },
+      "findings": []
+    },
+    "ui.agentMessages.settings": {
+      "namespace": "ui.agentMessages.settings",
+      "keys_read": 84,
+      "status": "passed",
+      "sha256": {
+        "en": "9f323c46102978c0fa60b8f006e4b380d78c18ab81a7205cd233438d867c5d5d",
+        "ur": "e9e78fec859b048edb6010a196ad6883a7f40e86eacf841392e1bd2f3797ecb4"
+      },
+      "findings": []
+    },
+    "ui.agents": {
+      "namespace": "ui.agents",
+      "keys_read": 0,
+      "status": "passed",
+      "sha256": {
+        "en": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+        "ur": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+      },
+      "findings": []
+    },
+    "ui.agents.dialogs": {
+      "namespace": "ui.agents.dialogs",
+      "keys_read": 33,
+      "status": "passed",
+      "sha256": {
+        "en": "99fc8672fbb4139aa2721542a8fb994506301b0c678d86c21439e939f5dd2bf4",
+        "ur": "94a472ef174de9c5642e0dd5abf162810e91162db49afad05073f6f34f2cdee9"
+      },
+      "findings": []
+    },
+    "ui.agents.models": {
+      "namespace": "ui.agents.models",
+      "keys_read": 38,
+      "status": "changes_requested",
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.agents.models.pin_reach",
+          "problem": "singular arm used plural verb agreement",
+          "expected": "agreement inside one/other arms",
+          "evidence": "count=1 produced ...کرتی ہیں"
+        }
+      ],
+      "note": "Historical round-1 finding; remediated and re-audited in round 2. No hash recorded because the audited bytes were superseded."
+    },
+    "ui.agents.navigation": {
+      "namespace": "ui.agents.navigation",
+      "keys_read": 32,
+      "status": "changes_requested",
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.agents.navigation.legacy.unnamed_agent",
+          "problem": "nominative یہ ایجنٹ before کے ساتھ",
+          "expected": "oblique اس ایجنٹ",
+          "evidence": "composition produced یہ ایجنٹ کے ساتھ"
+        }
+      ],
+      "note": "Historical round-1 finding; remediated and re-audited in round 2. No hash recorded because the audited bytes were superseded."
+    },
+    "ui.agents.refusals": {
+      "namespace": "ui.agents.refusals",
+      "keys_read": 16,
+      "status": "passed",
+      "sha256": {
+        "en": "457cb86efa40d800d2adf711ec2b4289d22b4b9013fd48189082c4b8808d3f20",
+        "ur": "fbcccfd467fb39440a12a479b5fab0786930c5bbdb2c0851950ab485db1afa3e"
+      },
+      "findings": []
+    },
+    "ui.agents.settings": {
+      "namespace": "ui.agents.settings",
+      "keys_read": 58,
+      "status": "passed",
+      "sha256": {
+        "en": "2e2a8a28891db681fd72396a3b8323e8705e4ea9c0397e49237e3ed3f7e1a897",
+        "ur": "9deecaf714d69efe47c4b697e1a93c2820dd844970c7292f0d23941841c0d3d5"
+      },
+      "findings": []
+    },
+    "ui.agents.starters": {
+      "namespace": "ui.agents.starters",
+      "keys_read": 16,
+      "status": "passed",
+      "sha256": {
+        "en": "7d7170328807a0ae0018bb69c4cd5fe49f6d5e47f7ca34484cf71b2a74612cec",
+        "ur": "0700d00995bf6c7d6a67dd240b84b4cc82630f2341d746d727637192b4c2909a"
+      },
+      "findings": []
+    }
+  }
+}

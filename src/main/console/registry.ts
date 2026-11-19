@@ -83,6 +83,10 @@ export interface ConsoleSurfaceRecord {
 	rows: number;
 	running: boolean;
 	exitCode: number | null;
+	/** The signal that ended the process, when node-pty reported one (Q-3). A
+	 * signalled process reports exit code 0, so this is the only durable record
+	 * that distinguishes a kill from a clean exit. */
+	exitSignal: string | null;
 	/** Seconds: the last byte the surface emitted, or its creation. */
 	lastActivity: number;
 	/** False once the process is gone AND nothing can bring it back. A surface
@@ -289,6 +293,7 @@ export class ConsoleRegistry<R> {
 			rows: input.rows,
 			running: input.live !== false,
 			exitCode: null,
+			exitSignal: null,
 			lastActivity: this.now(),
 			live: input.live !== false,
 			retain: input.retain,

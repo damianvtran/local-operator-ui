@@ -7,13 +7,29 @@
  * sonner call with no DOM contract worth asserting through, so the call itself
  * is captured and everything else stays the real module's (`export *` keeps
  * every other member intact, and explicit exports win over the star).
+ *
+ * NOW ALSO COUNTS ERRORS, for `language-dialog-applies-on-pick.test.mjs`: a
+ * language write that rejects AFTER the palette dialog closed has no surface
+ * left to render its refusal in, so the dialog announces it through
+ * `showErrorToast`, and that call is the only observable evidence.
  */
 export * from "../src/renderer/src/shared/utils/toast-manager";
 
 /** Every `showInfoToast` call, in order. */
-export const toastCalls = [];
+export const infoCalls = [];
+
+/* Kept under the original name: `language-live-updates.test.mjs` reads it. */
+export const toastCalls = infoCalls;
+
+/** Every `showErrorToast` call, in order. */
+export const errorCalls = [];
 
 export function showInfoToast(message, options) {
-	toastCalls.push({ message: String(message), options });
-	return toastCalls.length;
+	infoCalls.push({ message: String(message), options });
+	return infoCalls.length;
+}
+
+export function showErrorToast(message, options) {
+	errorCalls.push({ message: String(message), options });
+	return errorCalls.length;
 }

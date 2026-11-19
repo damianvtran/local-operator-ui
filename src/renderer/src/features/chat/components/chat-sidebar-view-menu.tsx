@@ -66,20 +66,23 @@
 
 import type { SidebarBasis } from "@features/chat/chat-list-sections";
 import {
+	SIDEBAR_SECTION_LABEL,
 	type SidebarGroupBy,
 	type SidebarOrderBy,
 	type SidebarSectionKey,
 	type SidebarView,
 	canMoveSection,
+	drawnGroupBy,
 	isChatSection,
 	isEntitySection,
 	isSectionShown,
 	moveSection,
+	tagSurfaceOn,
 	toggleSection,
 } from "@features/chat/chat-sidebar-view";
 import { Button } from "@shared/components/ui";
 import { Switch } from "@shared/components/ui/switch";
-import { type WithoutParams, t } from "@shared/i18n";
+import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
@@ -93,22 +96,16 @@ import {
 	Layers,
 	List,
 	SlidersHorizontal,
+	Tag,
 	Users,
 } from "lucide-react";
 import type { ReactNode } from "react";
 
-// Stable model IDs stay separate from copy: store order/hidden state must not
-// become translated strings. Resolve these keys only while rendering the menu.
-const SECTION_MESSAGE_KEYS = {
-	pinned: "ui.chat.sidebar_view.section.pinned",
-	running: "ui.chat.sidebar_view.section.running",
-	today: "ui.chat.sidebar_view.section.today",
-	week: "ui.chat.sidebar_view.section.week",
-	older: "ui.chat.sidebar_view.section.older",
-	agents: "ui.chat.sidebar_view.section.agents",
-	teams: "ui.chat.sidebar_view.section.teams",
-} as const satisfies Record<SidebarSectionKey, WithoutParams>;
-const sectionLabel = (key: SidebarSectionKey) => t(SECTION_MESSAGE_KEYS[key]);
+// Section labels are drawn from the ONE table `chat-sidebar-view.ts` exports, so
+// the popover row and the sidebar heading cannot name one section two ways. The
+// keys are resolved only while rendering the menu, never stored as copy: a
+// module-scope English table would freeze at import and ignore a language switch.
+const sectionLabel = (key: SidebarSectionKey) => t(SIDEBAR_SECTION_LABEL[key]);
 
 /** A row's trailing count, when the caller has one. `undefined` draws nothing. */
 export type ViewMenuCounts = Partial<Record<SidebarSectionKey, number>>;
@@ -117,8 +114,13 @@ type Props = {
 	view: SidebarView;
 	counts?: ViewMenuCounts;
 	tagsAvailable?: boolean;
-	tagsEmpty?: boolean;
-	onManageTags?: () => void;
+	/**
+	 * Whether this backend's fork route understands `auto_tag`
+	 * (`chat-auto-tag.ts` owns the version). The row is ABSENT rather than
+	 * disabled when it cannot work: a switch that writes an intent no backend
+	 * reads is the dead control this repo's fail-closed rule forbids.
+	 */
+	autoTagAvailable?: boolean;
 	/** Called with the WHOLE next view - the model returns complete values. */
 	onView: (view: SidebarView) => void;
 };
@@ -159,7 +161,7 @@ const choice = (
 		{...dataAttribute}
 		onClick={onPress}
 		className={cn(
-			"flex h-7 w-full items-center gap-2 rounded-md px-1 text-left text-body-sm",
+			"flex h-7 w-full items-center gap-2 rounded-md px-1 text-start text-body-sm",
 			"transition-colors duration-fast ease-out-quart",
 			active ? "text-ink" : "text-ink-muted hover:bg-row-hover hover:text-ink",
 		)}
@@ -185,8 +187,7 @@ export function ChatSidebarViewMenu({
 	counts,
 	onView,
 	tagsAvailable = false,
-	tagsEmpty = false,
-	onManageTags,
+	autoTagAvailable = false,
 }: Props) {
 	// Refresh all option/section labels when the backend-owned locale changes.
 	useI18nLocale();
@@ -203,12 +204,34 @@ export function ChatSidebarViewMenu({
 	const draws = counts
 		? (key: SidebarSectionKey) => (counts[key] ?? 0) > 0
 		: undefined;
+	/*
+	 * The grouping the list DRAWS, which is what the tick marks: a stored `tag`
+	 * on a backend without tags draws Time section, so Time section is the row
+	 * that reads as selected - while the stored value is left alone for a
+	 * capable backend to honour again (`drawnGroupBy`).
+	 */
+	const drawn = drawnGroupBy(view, tagsAvailable);
+	/*
+	 * `Tag` SITS SECOND (issue #1733, design §2.1): Time section and Tag are the two
+	 * structured ways to organise conversations, so they sit together, and In one
+	 * list stays last as the unstructured end. Absent - not disabled - without the
+	 * backend's tag registry, the same rule the Tags group below follows.
+	 */
 	const groupBy: { key: SidebarGroupBy; label: string; icon: ReactNode }[] = [
 		{
 			key: "section",
 			label: t("ui.chat.sidebar_view.time_section"),
 			icon: <Layers aria-hidden="true" className="size-3.5" />,
 		},
+		...(tagsAvailable
+			? [
+					{
+						key: "tag" as const,
+						label: t("ui.chat.sidebar_view.tag"),
+						icon: <Tag aria-hidden="true" className="size-3.5" />,
+					},
+				]
+			: []),
 		{
 			key: "agent",
 			label: t("ui.chat.sidebar_view.agent_team"),
@@ -282,7 +305,7 @@ export function ChatSidebarViewMenu({
 						option.key,
 						option.icon,
 						option.label,
-						view.groupBy === option.key,
+						drawn === option.key,
 						() => onView({ ...view, groupBy: option.key }),
 					),
 				)}
@@ -340,47 +363,108 @@ export function ChatSidebarViewMenu({
 					),
 				)}
 			</fieldset>
-			{tagsAvailable && (
+			{/*
+			 * Under `Group by › Tag` the group holds only the auto-tag row, so with no
+			 * auto-tag field on the backend it would be a hairline around nothing.
+			 */}
+			{tagsAvailable && (drawn !== "tag" || autoTagAvailable) && (
 				<div className="border-hairline border-b" data-sidebar-tags-options>
+					{/*
+					 * THE SWITCH IS NOT DRAWN UNDER `Group by › Tag` (issue #1733, design
+					 * §2.2) - absent, not disabled: that mode is tags-on by definition, so
+					 * the switch could only offer a press that does nothing. It keeps its
+					 * stored value for Time section, which is the axis its label
+					 * (`Split time sections by tag`) names.
+					 */}
 					{/* 39px content plus the group hairline is the contracted 40px insertion. */}
-					<div className="flex h-[39px] items-center gap-2 px-1">
-						<span className="flex-1 text-meta text-ink-dim">
-							{t("ui.chat.tags.label")}
-						</span>
-						<Switch
-							aria-label={t("ui.chat.tags.group")}
-							aria-describedby="sidebar-tags-help"
-							checked={view.tagsEnabled}
-							onCheckedChange={(tagsEnabled) =>
-								onView({ ...view, tagsEnabled })
-							}
-						/>
-						<Button
-							variant="ghost"
-							className="h-7 px-1 text-meta"
-							onClick={onManageTags}
-						>
-							{t("ui.chat.tags.manage")}
-						</Button>
-					</div>
-					{view.tagsEnabled && tagsEmpty && (
-						<p className="px-1 pb-1 text-meta text-ink-muted">
-							{t("ui.chat.tags.none_yet")}
-						</p>
+					{/*
+					 * LABEL + SWITCH ONLY (v3 spec D7). `Manage tags…` is gone: tags are
+					 * renamed, reordered and deleted on their own group headers and created
+					 * in the list's tag footer. The visible label IS the accessible name
+					 * (a real `<label>`), where it used to read "Tags" while the switch
+					 * announced "Group chats by tag" (WCAG 2.5.3, label in name).
+					 */}
+					{drawn !== "tag" && (
+						<div className="flex h-[39px] items-center gap-2 px-1">
+							<label
+								htmlFor="sidebar-tags-switch"
+								className="flex-1 text-meta text-ink-dim"
+							>
+								{t("ui.chat.tags.group")}
+							</label>
+							<Switch
+								id="sidebar-tags-switch"
+								aria-describedby="sidebar-tags-help"
+								checked={view.tagsEnabled}
+								onCheckedChange={(tagsEnabled) =>
+									onView({ ...view, tagsEnabled })
+								}
+							/>
+						</div>
+					)}
+					{/*
+					 * THE AUTO-TAG INTENT, inside the Tags group rather than beside it
+					 * (§5.4): it is a consequence of tagging, is only meaningful while the
+					 * group is on, and shares the panel's ONE scroller with the Sections
+					 * controls below. The row is absent - not disabled - when the backend
+					 * cannot read the fork field; see `autoTagAvailable`'s own comment.
+					 *
+					 * The helper is a real description, wired with `aria-describedby`, not
+					 * a caption: it says WHICH tags (the reader's own) and WHEN (naming a
+					 * fork), the two facts the label alone leaves open.
+					 */}
+					{tagSurfaceOn(view) && autoTagAvailable && (
+						<>
+							<div className="flex min-h-7 items-center gap-2 px-1 py-0.5">
+								<span className="min-w-0 flex-1 text-meta text-ink-dim">
+									{t("ui.chat.tags.auto_tag")}
+								</span>
+								<Switch
+									data-sidebar-auto-tag
+									aria-label={t("ui.chat.tags.auto_tag")}
+									aria-describedby="sidebar-auto-tag-help"
+									checked={view.autoTagForks}
+									onCheckedChange={(autoTagForks) =>
+										onView({ ...view, autoTagForks })
+									}
+								/>
+							</div>
+							<p
+								id="sidebar-auto-tag-help"
+								className="px-1 pb-1 text-meta text-ink-dim"
+							>
+								{t("ui.chat.tags.auto_tag_help")}
+							</p>
+						</>
 					)}
 					<span id="sidebar-tags-help" className="sr-only">
 						{t("ui.chat.tags.discovery")}
 					</span>
-					{view.groupBy !== "section" && (
+					{/*
+					 * BOTH TAG ARRANGEMENTS ARE OFFERED (PR #1747 U4): since `Group by › Tag`
+					 * exists, a hint that only offered Time section sent the reader to the
+					 * less direct mode. Each press is the reader's own explicit mode change.
+					 */}
+					{(drawn === "agent" || drawn === "flat") && (
 						<div className="px-1 text-meta text-ink-muted">
-							<p>{t("ui.chat.tags.mode_hint")}</p>
-							<Button
-								variant="ghost"
-								className="h-7 px-1 text-meta"
-								onClick={() => onView({ ...view, groupBy: "section" })}
-							>
-								{t("ui.chat.tags.use_time")}
-							</Button>
+							<p>{t("ui.chat.tag_mode.mode_hint")}</p>
+							<div className="flex flex-wrap gap-x-2">
+								<Button
+									variant="ghost"
+									className="h-7 px-1 text-meta"
+									onClick={() => onView({ ...view, groupBy: "section" })}
+								>
+									{t("ui.chat.tags.use_time")}
+								</Button>
+								<Button
+									variant="ghost"
+									data-sidebar-use-tag
+									className="h-7 px-1 text-meta"
+									onClick={() => onView({ ...view, groupBy: "tag" })}
+								>
+									{t("ui.chat.tag_mode.use_tag")}
+								</Button>
+							</div>
 						</div>
 					)}
 				</div>
@@ -418,7 +502,7 @@ export function ChatSidebarViewMenu({
 					return (
 						<div
 							key={key}
-							className="flex h-7 items-center gap-1 rounded-md pl-1 text-body-sm"
+							className="flex h-7 items-center gap-1 rounded-md ps-1 text-body-sm"
 						>
 							<button
 								type="button"
@@ -427,7 +511,7 @@ export function ChatSidebarViewMenu({
 								data-sidebar-view-section={key}
 								onClick={() => onView(toggleSection(view, key))}
 								className={cn(
-									"flex h-7 min-w-0 flex-1 items-center gap-2 text-left",
+									"flex h-7 min-w-0 flex-1 items-center gap-2 text-start",
 									on ? "text-ink" : "text-ink-muted",
 								)}
 							>

@@ -1,0 +1,70 @@
+{
+ "schema": 1,
+ "instance": "3311618b2a8b",
+ "locale": "es",
+ "namespace": "ui.chat.canonical",
+ "audit_date": "2026-11-11",
+ "auditor": {
+  "agent": "i18n-auditor",
+  "instance": "3311618b2a8b",
+  "session": "3311618b2a8b",
+  "model": "deepseek/deepseek-flash",
+  "independent_from_translator_session": true,
+  "actual_model_source": "as stated in the auditor's own record (session runtime model header deepseek/deepseek-flash); no fallback was reported"
+ },
+ "status": "passed",
+ "result": "clean-with-findings",
+ "scope": "the 14 NEW tool-state / image-generation status keys of ui.chat.canonical for es (PR #1870, S16a), audited as the translator's draft es-s16a.json (sha256 d5e50601a2c09101a83f1c4f9c11ae69375e96fd6e050fff1af5f5a9ce85ae29); the other 442 keys are byte-identical to the origin/main bytes covered by the superseded row audits (verify.log)",
+ "sha256": {
+  "es": "04f155b9b3de84c32e7701890a1e0926001da393385691f4be77fb2bf6b485cc",
+  "en": "d6d47d31667fe69448cf408f5a4fecf9948782e850506a6141217585de9db1fd",
+  "context": "ef8a12dea1835c241af3a166754322ce093af88592ec625036211458a50accac"
+ },
+ "findings": [
+  {
+   "severity": "NIT",
+   "id": "ES-1",
+   "key": "ui.chat.canonical.image_gen.state.queue_ahead",
+   "detail": "width: datum grows 5-6 cells over English on a shrink-0 line (integrator-assigned id; the auditor record numbers none)"
+  },
+  {
+   "severity": "NIT",
+   "id": "ES-2",
+   "key": "ui.chat.canonical.image_gen.state.running (voiceover branch) / done / running_batch / done_batch",
+   "detail": "`locución` is a new product term with no glossary row"
+  },
+  {
+   "severity": "NIT",
+   "id": "ES-3",
+   "key": "ui.chat.canonical.image_gen.state.running (all four branches)",
+   "detail": "bare singular after the gerund"
+  },
+  {
+   "severity": "NIT",
+   "id": "ES-4",
+   "key": "ui.chat.canonical.image_gen.state.running/done/running_batch/done_batch/failed/failed_batch (video branch)",
+   "detail": "cross-namespace spelling drift `vídeo` in SHIPPED copy, not introduced here"
+  }
+ ],
+ "provenance": {
+  "kind": "BINDING RECEIPT: verdict, counts, model and session are transcribed from the auditor's own record/report; this file was written by the integrating coder session (agent coder), NOT by the auditor. The auditor audited the 14-key draft fragment, so no auditor-authored file can name the landed catalogue hash; this receipt names it, and verify.log proves the 14 landed values equal the audited draft. Finding ids/keys/headlines are lifted from the auditor record/report (the report is authoritative for detail).",
+  "auditor_record_instance_label": "3311618b2a8b-s16a-es",
+  "source_report": {
+   "path": "i18n/audits/evidence/es/ui.chat.canonical/s16a-3311618b2a8b/report.md",
+   "sha256": "63cd8c094c579cddecc933611964bbbe50d2acbf4c3a5931604254231fab4e39"
+  },
+  "auditor_record": {
+   "path": "i18n/audits/evidence/es/ui.chat.canonical/s16a-3311618b2a8b/record.json",
+   "sha256": "272523031c7b7a164bede335290cee0ca402c10fd2e3e01491d4da3ef230e845"
+  },
+  "auditor_authored_receipt": null,
+  "audited_draft": {
+   "file": "es-s16a.json",
+   "sha256": "d5e50601a2c09101a83f1c4f9c11ae69375e96fd6e050fff1af5f5a9ce85ae29"
+  },
+  "landed_value_proof": {
+   "path": "i18n/audits/evidence/es/ui.chat.canonical/s16a-3311618b2a8b/verify.log",
+   "sha256": "49f2642b8cc5db7b8f305f654c4f823417877d7c00afc88470ff3b61582205ab"
+  }
+ }
+}

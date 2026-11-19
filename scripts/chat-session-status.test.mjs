@@ -6,7 +6,7 @@ const require = createRequire(import.meta.url);
 const result = await build({
 	stdin: {
 		contents:
-			'export { ChatSessionStatus, ChatAsksOutstanding } from "./src/renderer/src/features/chat/components/chat-session-status"; export { renderToStaticMarkup } from "react-dom/server"; export { createElement } from "react";',
+			'export { ChatSessionStatus, ChatAsksOutstanding } from "./src/renderer/src/features/chat/components/chat-session-status"; export { renderToStaticMarkup } from "react-dom/server"; export { createElement } from "react"; export { peerLinkDownLabel, peerLinkDownVisibleLabel } from "./src/renderer/src/features/mesh/peer-presence";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -25,6 +25,8 @@ new Function("module", "exports", "require", result.outputFiles[0].text)(
 const {
 	ChatSessionStatus,
 	ChatAsksOutstanding,
+	peerLinkDownLabel,
+	peerLinkDownVisibleLabel,
 	renderToStaticMarkup,
 	createElement,
 } = output.exports;
@@ -117,18 +119,15 @@ for (const [code, icon, ink] of [
 	 */
 	["wedged", "equal-approximately", "warning"],
 	["busy", "loader-circle", "accent"],
-	["answer", "circle-alert", "warning"],
-	["approval", "circle-alert", "warning"],
+	["answer", "message-circle-question", "warning"],
+	["approval", "message-circle-question", "warning"],
 	["scheduled", "clock", "ink-dim"],
 	["attached", "message-square", "ink-dim"],
 	/*
-	 * `delegating` IS THE ONE CODE WHOSE MARK IS NOT A LUCID GLYPH (issue #840): it is
-	 * `SubagentRunningMark`, the shared three-bead mark, so its icon slot is `null` and
-	 * the assertion below reads the mark's own markup instead. The ink column is
-	 * unchanged - `accent` is the liveness ink, which the beads inherit through
-	 * `currentColor`.
+	 * `delegating` rests on the ring since the running lane (2026-11-07): the
+	 * trio of #840 is retired, and the lane under the cell carries the liveness.
 	 */
-	["delegating", null, "accent"],
+	["delegating", "circle", "ink-dim"],
 	["idle", "circle", "ink-dim"],
 	["dormant", "pause", "ink-dim"],
 	["unknown", "circle-help", "ink-dim"],
@@ -138,126 +137,26 @@ for (const [code, icon, ink] of [
 		const after = render(code, false);
 		assert.equal(after, before);
 		assert.match(after, new RegExp(`text-${ink}`));
-		if (icon === null) {
-			assert.match(after, /viewBox="0 0 24 24"/);
-			assert.equal(
-				(after.match(/fill="currentColor"/g) ?? []).length,
-				3,
-				"the mark is the three-bead trio",
-			);
-			assert.doesNotMatch(after, /lucide-/);
-		} else {
-			assert.match(after, new RegExp(`lucide-${icon}`));
-		}
+		assert.match(after, new RegExp(`lucide-${icon}`));
 	});
 }
 
 /*
  * `delegating` is the arm for a parent whose own turn is NOT running while its
- * subagents are, and the label is the whole of what it says: the backend folds
- * the counts INTO `status.label` ("2 subagents running · 1 queued") rather than
- * shipping them as a field of their own, because the count moves on the same
- * clock as the code and a count read from a slower projection could contradict
- * the glyph beside it. So the words must be the label VERBATIM, at whatever
- * count it carries - which is the only thing separating this state from the
- * unknown-code fallback a build without the arm would draw.
+ * subagents are; core folds the counts into `status.label`, so the words are
+ * the label VERBATIM. Its mark is the resting ring plus the running lane (the
+ * trio is retired), and even on an older backend with no `background_work`
+ * flag the lane is drawn, because `delegating` always implied children.
  */
-test("delegating draws the delegated-work mark and names its counts", () => {
+test("delegating draws the ring and the lane and names its counts", () => {
 	const label = "2 subagents running \u00b7 1 queued";
 	const markup = render("delegating", false, label);
-	// Its own mark, in the accent role, and NOT the unknown-code fallback: a
-	// build that had the backend's code but not this arm would draw HelpCircle.
-	// The mark is the shared three-bead trio, not a glyph, since issue #840.
-	assert.match(markup, /viewBox="0 0 24 24"/);
-	assert.doesNotMatch(markup, /lucide-/);
-	assert.match(markup, /text-accent/);
-	assert.doesNotMatch(markup, /lucide-circle-help|lucide-circle /);
-	/*
-	 * THE ACKED GEOMETRY, pinned so a future edit cannot quietly re-break it. These
-	 * three circles ARE the design: three EQUAL beads (no larger apex - that is the
-	 * `Users` figure the design round refused), and centres far enough apart that
-	 * the children never fuse. Round 1 fused: an apex-plus-pair whose lower centres
-	 * sat 4.43px apart against radii summing to 4.32px overlapped by 0.12px at 14px,
-	 * and its component count flipped between 1 and 2 with the box's sub-pixel
-	 * phase. So the radii are asserted equal and each centre distance is asserted
-	 * to exceed the radii sum, which is the property the frames measure as n=3 at
-	 * every phase and every real x.
-	 */
-	const beads = [
-		...markup.matchAll(/<circle cx="([\d.]+)" cy="([\d.]+)" r="([\d.]+)"/g),
-	].map(([, x, y, r]) => ({ x: Number(x), y: Number(y), r: Number(r) }));
-	assert.equal(
-		beads.length,
-		3,
-		"the triad is three beads, not a badge or a pair",
-	);
-	assert.deepEqual(
-		beads.map((b) => b.r),
-		[3.9, 3.9, 3.9],
-		"equal radii: a larger apex is the head-and-shoulders figure",
-	);
-	for (let i = 0; i < beads.length; i++)
-		for (let j = i + 1; j < beads.length; j++) {
-			const d = Math.hypot(beads[i].x - beads[j].x, beads[i].y - beads[j].y);
-			assert.ok(
-				d > beads[i].r + beads[j].r,
-				`beads ${i} and ${j} clear each other (${d.toFixed(2)}px apart, radii sum ${(beads[i].r + beads[j].r).toFixed(2)}px) - fusion is the round-1 defect`,
-			);
-		}
-	assert.deepEqual(
-		beads.map((b) => [b.x, b.y]),
-		[
-			[12, 6.8],
-			[7, 17.4],
-			[17, 17.4],
-		],
-		"the operator-ACKed trio geometry",
-	);
-	// STATIC: `busy` owns the spinner in this slot, and two animated marks would
-	// make two different states read as one.
-	assert.doesNotMatch(markup, /animate-spin/);
-	// The counts ride the label, all the way into the name a screen reader hears,
-	// with no separate field for the row to fall out of step with.
-	assert.match(markup, new RegExp(`sr-only">${label}<`));
-	/*
-	 * AND NO NESTED `title`, which is the half of the label this mark must NOT
-	 * carry. The row's own button owns the tooltip for the whole row, including
-	 * this 16px square (review round 1, MINOR 1, on this very span), and the
-	 * row composes it from `row.status?.label` - so a mark that also carried the
-	 * sentence would win the nested-title rule and shadow the row's, which is
-	 * what makes the count's SECOND surface the row's tooltip and not a copy
-	 * here. Asserted on the new arm because it is the arm whose label is a
-	 * sentence rather than a token, and so the one that would tempt a title.
-	 */
-	assert.doesNotMatch(markup, /title=/);
-	// And the resting ring is NOT what it draws: `delegating` must not be
-	// normalised into `idle`/`recent` by the fallback below.
-	assert.doesNotMatch(markup, /text-ink-dim/);
+	assert.match(markup, /lucide-circle /);
+	assert.match(markup, /data-background-work=""/);
+	assert.match(markup, new RegExp(label));
+	assert.doesNotMatch(markup, /lucide-circle-help|<circle cx="12" cy="6.8"/);
 });
 
-/*
- * The separation itself, asserted as a RELATION between two rows.
- *
- * A table row proves what `wedged` draws; it cannot prove that what it draws is
- * different from `error`, and sameness is exactly what the defect was. So this
- * case renders the pair and compares them, on both channels that carry the mark:
- * the glyph and the ink. The ink half is checked as inequality rather than as two
- * literals because this product's own measurement records the two inks CONVERGING
- * under deuteranopia — the silhouettes have to differ on their own, and a test
- * that only pinned the two class names would pass with two identical marks in two
- * colours.
- *
- * WHICH OF THESE ASSERTIONS DISCRIMINATES, because one of them does not on its
- * own (QA round 1, Q-1). `notEqual` is a smoke assertion: the two rows differ in
- * their LABELS as well as their marks, so it passes for the exact regression this
- * case exists to catch — a `wedged` row wearing `error`'s silhouette in the
- * warning ink — and both reviewers had to mutate the component to establish that.
- * The discriminating pair is `match(/lucide-equal-approximately/)` with
- * `doesNotMatch(/lucide-circle-alert/)`: those two fail on such a mutant while
- * `notEqual` still passes. They are kept TOGETHER and after it, so the shape is
- * named rather than left to be inferred from a case that reads like an
- * inequality test.
- */
 test("a not-answering row is not drawn like a failed one", () => {
 	const failed = render("error", false);
 	const silent = render("wedged", false);
@@ -546,4 +445,251 @@ test("the row's own field answers when the caller has no read, and the caller wi
 	assert.match(asksMark({ row: asksRow(1) }), />1</);
 	assert.match(asksMark({ row: asksRow(5), open: 2 }), />2</);
 	assert.doesNotMatch(asksMark({ row: asksRow(5), open: 2 }), />5</);
+});
+
+test("waiting uses a static accent hourglass and the backend accessible name", () => {
+	const label = "Waiting on 2 jobs · 1 subagent running";
+	const html = render("waiting", false, label);
+	assert.match(html, /lucide-hourglass/);
+	assert.match(html, /text-accent/);
+	assert.doesNotMatch(html, /animate-spin/);
+	assert.match(html, /sr-only">Waiting on 2 jobs · 1 subagent running</);
+});
+
+test("a link-down remote row cannot draw or announce its last-known idle state", () => {
+	const html = renderToStaticMarkup(
+		createElement(ChatSessionStatus, {
+			row: {
+				session_id: "offline-fixture",
+				locality: "remote",
+				link_down: true,
+				last_seen_at: null,
+				status: { code: "idle", label: "Idle" },
+			},
+		}),
+	);
+	assert.match(html, /lucide-wifi-off/);
+	assert.match(html, /link down · last seen unknown/);
+	assert.doesNotMatch(html, /lucide-circle |Idle|animate-spin/);
+	const recovered = renderToStaticMarkup(
+		createElement(ChatSessionStatus, {
+			row: {
+				session_id: "offline-fixture",
+				locality: "remote",
+				link_down: false,
+				status: { code: "idle", label: "Idle" },
+			},
+		}),
+	);
+	assert.match(recovered, /lucide-circle /);
+	assert.doesNotMatch(recovered, /lucide-wifi-off|link down/);
+});
+
+test("remote glyph and sidebar age copy share the supplied list clock", () => {
+	const row = {
+		session_id: "clock-fixture",
+		locality: "remote",
+		link_down: true,
+		last_seen_at: 100,
+		status: { code: "idle", label: "Idle" },
+	};
+	const html = renderToStaticMarkup(
+		createElement(ChatSessionStatus, { row, nowSeconds: 340 }),
+	);
+	assert.match(html, /link down · last seen 4m ago/);
+	assert.equal(peerLinkDownLabel(row, 340), "link down · last seen 4m ago");
+	assert.equal(peerLinkDownVisibleLabel(row, 340), "Link down · 4m ago");
+	// A date far from the real clock proves the glyph is not consulting Date.now().
+	assert.doesNotMatch(html, /Idle|d ago/);
+});
+
+const renderRow = (row) =>
+	renderToStaticMarkup(
+		createElement(ChatSessionStatus, {
+			row: { session_id: "fixture", ...row },
+		}),
+	);
+
+/*
+ * THE PRECEDENCE RULE, pinned (agent review round 1, R1-2; this is design round
+ * 1's D1, which was a BLOCKER). The runtime publishes `delegating` only when no
+ * louder code applies (`catalog.py:268-330`), so a live child count ALWAYS rides
+ * beside a louder fact - and the count may never replace it. A cell that asked
+ * the counts first would pass every other test in this file, which is why each
+ * louder code gets its own case here rather than one representative: the trio is
+ * `delegating`'s alone, and a queued glyph is never drawn over a louder glyph.
+ */
+for (const [code, icon] of [
+	["approval", "lucide-message-circle-question"],
+	["answer", "lucide-message-circle-question"],
+	["wedged", "lucide-equal-approximately"],
+	["busy", "lucide-loader-circle"],
+	["waiting", "lucide-hourglass"],
+	["interrupted", "lucide-pause"],
+	["scheduled", "lucide-clock"],
+	["idle", "lucide-circle "],
+]) {
+	test(`${code} keeps its own glyph while children run and queue`, () => {
+		const html = renderRow({
+			status: { code, label: code },
+			subagents_running: 2,
+			subagents_queued: 1,
+		});
+		assert.match(html, new RegExp(icon), `${code} must keep its own glyph`);
+		assert.equal(
+			(html.match(/fill="currentColor"/g) ?? []).length,
+			0,
+			`${code}: no lane without core's background_work flag`,
+		);
+		assert.doesNotMatch(html, /data-subagent-mark/);
+	});
+}
+
+test("an unread completion keeps its check while children run", () => {
+	const html = renderRow({
+		status: { code: "complete", label: "complete, unread" },
+		attention: { unseen: true },
+		subagents_running: 2,
+	});
+	assert.match(html, /lucide-check/);
+	assert.match(html, /text-success/);
+	assert.equal(
+		(html.match(/fill="currentColor"/g) ?? []).length,
+		0,
+		"no lane without core's background_work flag; the check stays",
+	);
+});
+
+/*
+ * THE RUNNING LANE (2026-11-07): drawn UNDER every glyph while core says
+ * `background_work`, never in place of it - geometry pinned so an edit cannot
+ * quietly grow it into the cell or move the row: 10x2, radius 1, absolute,
+ * accent ink through currentColor on an SVG rect (forced-colors survives).
+ */
+const LANE =
+	/<svg aria-hidden="true" data-background-work="" viewBox="0 0 10 2" width="10" height="2" class="[^"]*absolute[^"]*text-accent[^"]*"><rect width="10" height="2" rx="1" fill="currentColor"><\/rect><\/svg>/;
+
+for (const [code, icon] of [
+	["idle", "lucide-circle "],
+	["complete", "lucide-circle "],
+	["approval", "lucide-message-circle-question"],
+	["error", "lucide-circle-alert"],
+	["busy", "lucide-loader-circle"],
+	["attached", "lucide-message-square"],
+	["interrupted", "lucide-pause"],
+]) {
+	test(`${code} keeps its glyph and gains the lane while background work runs`, () => {
+		const html = renderRow({
+			status: { code, label: code },
+			background_work: true,
+			subagents_running: 1,
+			jobs_running: 1,
+		});
+		assert.match(html, new RegExp(icon));
+		assert.match(html, LANE);
+		assert.match(html, /relative flex size-4 shrink-0/);
+	});
+}
+
+test("the lane leaves with the work, in the same render", () => {
+	const html = renderRow({
+		status: { code: "idle", label: "Idle" },
+		background_work: false,
+		subagents_running: 0,
+		jobs_running: 0,
+	});
+	assert.doesNotMatch(html, /data-background-work/);
+});
+
+test("queued-only rests on the ring plus the lane (the Timer is retired)", () => {
+	const html = renderRow({
+		status: { code: "delegating", label: "1 subagent queued" },
+		background_work: true,
+		subagents_queued: 1,
+	});
+	assert.match(html, /lucide-circle /);
+	assert.match(html, LANE);
+	assert.doesNotMatch(html, /lucide-timer/);
+});
+
+test("a remote row draws the lane; a link-down or uncertain one does not", () => {
+	const remote = {
+		session_id: "remote-fixture",
+		locality: "remote",
+		owner_device: "synthetic-peer",
+		status: { code: "idle", label: "Idle" },
+		background_work: true,
+		subagents_running: 1,
+	};
+	assert.match(
+		renderToStaticMarkup(createElement(ChatSessionStatus, { row: remote })),
+		LANE,
+	);
+	for (const stale of [{ link_down: true }, { peer_reach: "unknown" }]) {
+		const html = renderToStaticMarkup(
+			createElement(ChatSessionStatus, {
+				row: { ...remote, ...stale },
+				nowSeconds: 340,
+			}),
+		);
+		assert.doesNotMatch(html, /data-background-work/, JSON.stringify(stale));
+	}
+});
+
+test("not-attempted remote reach does not claim idle or link loss", () => {
+	const html = renderToStaticMarkup(
+		createElement(ChatSessionStatus, {
+			row: {
+				session_id: "not-asked-fixture",
+				locality: "remote",
+				link_down: false,
+				peer_reach: "not-attempted",
+				status: { code: "idle", label: "Idle" },
+			},
+		}),
+	);
+	assert.match(html, /not asked/);
+	assert.match(
+		html,
+		/lucide-circle-question-mark|lucide-help-circle|lucide-circle-help/,
+	);
+	assert.doesNotMatch(html, /Idle|link down|lucide-circle /);
+});
+
+/* The reconnecting cell's patterns, at TOP LEVEL per the scripts lint ratchet. */
+const WIFI_OFF_RE = /lucide-wifi-off/;
+const STALE_IDLE_RE = /lucide-circle |Idle/;
+const DIM_INK_RE = /text-ink-dim/;
+const WARNING_INK_RE = /text-warning/;
+const RECONNECTING_AGE_RE = /Reconnecting · 3m ago/;
+const LINK_DOWN_AGE_RE = /link down · last seen 3m ago/;
+
+test("a remote row inside the relay's redial grace says Reconnecting in dim ink", () => {
+	const row = {
+		session_id: "reconnecting-fixture",
+		locality: "remote",
+		link_down: true,
+		link_reconnecting: true,
+		last_seen_at: 100,
+		status: { code: "idle", label: "Idle" },
+	};
+	const html = renderToStaticMarkup(
+		createElement(ChatSessionStatus, { row, nowSeconds: 280 }),
+	);
+	// Still the lost-link SHAPE and still no stale idle claim...
+	assert.match(html, WIFI_OFF_RE);
+	assert.doesNotMatch(html, STALE_IDLE_RE);
+	// ...but quiet ink and the reconnecting sentence with a real last-seen age.
+	assert.match(html, DIM_INK_RE);
+	assert.doesNotMatch(html, WARNING_INK_RE);
+	assert.match(html, RECONNECTING_AGE_RE);
+	// Escalated: the same row once the relay says `down` is amber "link down".
+	const down = renderToStaticMarkup(
+		createElement(ChatSessionStatus, {
+			row: { ...row, link_reconnecting: false },
+			nowSeconds: 280,
+		}),
+	);
+	assert.match(down, WARNING_INK_RE);
+	assert.match(down, LINK_DOWN_AGE_RE);
 });

@@ -1,0 +1,166 @@
+{
+  "schema": 1,
+  "kind": "translation-audit-receipt",
+  "audit_kind": "current-byte-rebind",
+  "date": "2026-10-25",
+  "locale": "zh-CN",
+  "locale_name": "Simplified Chinese",
+  "namespace": "ui.chat.sidebar",
+  "pr": 1403,
+  "pr_url": "https://github.com/damianvtran/local-operator-ui/pull/1403",
+  "branch": "feat/i18n-key-remaining-copy",
+  "head": "0adbb37b9429e2c70cbe64ea149cb091432c8dd6",
+  "base": "91aa8f5f10797184d01c41143d1a3645176b566b",
+  "instance": "zh-cn-bind-7cbdb74557a0",
+  "auditor": {
+    "agent": "translation-auditor",
+    "role": "independent translation auditor (team lopdev); not a translator or implementer of the values under audit",
+    "instance": "zh-cn-bind-7cbdb74557a0",
+    "session": "8cb6c214de69",
+    "model": "deepseek/deepseek-flash",
+    "model_note": "Harness session model is deepseek/deepseek-flash (system prompt 'Model:' line); no provider fallback was reported or observed during this run.",
+    "independence": "Separate session from the commits that authored these values (13bfd7bb772 translated the final eleven keys; 89037325dbc pluralised the group badge). Every byte was read from git objects at the recorded head; this run wrote no catalogue, English source, context sidecar, ledger, allowance or generated file. It adds only one receipt per namespace under i18n/receipts/ and does not author the values it audits."
+  },
+  "agent": "translation-auditor",
+  "model": "deepseek/deepseek-flash",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": [
+    {
+      "severity": "minor",
+      "key": "ui.chat.sidebar.groups.badge",
+      "current": "{badge, plural, other {此分组中有{badge, number, ::group-off}个对话}}",
+      "proposed": "{badge, plural, other {此分组中有#个对话}}",
+      "reason": "The English source at this head formats the count with `#` (default grouping: '1,234,567 chats in this group'). This arm carries a ::group-off skeleton the source does not have, so the badge renders 1234567 ungrouped; the style guide hands numbers to the formatter and the other zh count sinks carry group-off only where English does. Rendered: badge=1234567 gives '此分组中有1234567个对话' now, '此分组中有1,234,567个对话' with the proposed arm; 1 and 3 are identical.",
+      "introduced_by": "89037325dbc (deliberate group-off retention while pluralising the badge)"
+    },
+    {
+      "severity": "minor",
+      "key": "ui.chat.sidebar.list.empty",
+      "current": "暂无对话。请选择智能体、团队或“新建对话”。",
+      "proposed": "暂无对话。选择智能体、团队或“新建对话”。",
+      "reason": "The zh-CN style guide permits 请 only where the English says please in a blocking dialog; 'No chats yet. Choose an agent, team or New chat.' adds no please and this is an ordinary empty state. The value is byte-identical to the main-side bytes, so this is a carried finding, not new copy.",
+      "carried_from": "8c38294d1379-r1 (T-001), independently corroborated by 351aa9be8eac-r1-second (ZH2-SIDEBAR-1)"
+    }
+  ],
+  "en_sha256": "ef1e1be1e56216cbace31a229d20979c2fc00fb43d15559a93605e33e900b171",
+  "target_sha256": "7cbdb74557a098e5925710df0c8498b0148c291476cbb5ba5eb28ba238c0b571",
+  "context_sha256": "0a5a1fc27e8d0cab8dfe9b086144a19969268403afded5a7a68036eaf5485339",
+  "guidance": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/zh-CN.md",
+      "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+    },
+    "contracts": [
+      {
+        "path": "docs/I18N.md",
+        "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+      },
+      {
+        "path": "AGENTS.md (head blob)",
+        "sha256": "b05f5fd1472fe1617783e51bc709df8e6f079a87ceda0f2ff97fff539be320af"
+      }
+    ]
+  },
+  "scope": "zh-CN namespace at PR #1403 head. Current-byte binding re-attestation plus a read of every value; the values this wave added were reviewed as copy, unchanged values carry their recorded prior audits.",
+  "method": [
+    "Extracted the English, zh-CN and English-context blobs for the head, the branch pre-merge parent (d784571d90) and main (91aa8f5f10) with `git show <rev>:<path>` into the session scratchpad; hashed the raw bytes there. No checkout, reset or catalogue edit.",
+    "Compared key sets and key order with the English source; every key present exactly once, no duplicate JSON members (object_pairs_hook), no BOM, CR, NBSP, bidi controls or unindented key lines, final newline present.",
+    "Parsed every message with @formatjs/icu-messageformat-parser 3.5.21 (the generator's parser) with requiresOtherClause: true; compared argument sets, argument occurrence counts and number/date skeleton sets.",
+    "Rendered the reviewed keys through the shipped messages.t() runtime bundled with esbuild from a mirror of the head src/i18n tree, under locale zh-CN and en, at the counts quoted in render_evidence; those are actual t() returns.",
+    "Ran negative controls on the same checks: deleting one {list} occurrence, renaming count to cnt and deleting the other arm were each caught, so the placeholder/other-clause checks are not vacuous."
+  ],
+  "limitations": "Static catalogue and message-runtime audit only: no rendered screen, screenshot or pixel measurement was produced, so width statements are code-point cell arithmetic against English maxCells hints, not measured layout. No native-speaker sign-off is claimed. Rendered UI QA and design review remain separate gates.",
+  "keys": {
+    "total": 49,
+    "english_total": 49,
+    "new_in_this_wave": 5,
+    "unchanged_prior_values": 44,
+    "new_keys": [
+      "ui.chat.sidebar.agents.builtin_offer",
+      "ui.chat.sidebar.catalogue.total",
+      "ui.chat.sidebar.catalogue.total_search",
+      "ui.chat.sidebar.catalogue.total_search_clipped",
+      "ui.chat.sidebar.groups.badge"
+    ]
+  },
+  "checks": {
+    "key_set_equals_english": true,
+    "key_order_equals_english": false,
+    "key_order_note": "46 of 49 positions equal English; the final three keys (section.current_chat, teams.create, teams.loading) are transposed relative to English. JSON object order is not semantic, the ledger gate compares key sets, and English-key-order was required for ui.common.viewer, which is verified there. Recorded so the difference is not mistaken for a silent reorder.",
+    "source_bytes_match_ledger_rebinding_target": true,
+    "target_bytes_identical_to_premerge_parent_A": true,
+    "parent_A_target_sha256": "7cbdb74557a098e5925710df0c8498b0148c291476cbb5ba5eb28ba238c0b571",
+    "parent_B_target_sha256": "05091e7028843aa083de7975e3a9682ed66adb3309f1ba6c41e8ecb9c16a25dd",
+    "icu": {
+      "parser": "@formatjs/icu-messageformat-parser 3.5.21",
+      "messages_parsed": 49,
+      "messages_total": 49,
+      "plural_messages": 4,
+      "plural_keys": [
+        "ui.chat.sidebar.agents.builtin_offer",
+        "ui.chat.sidebar.catalogue.total_search",
+        "ui.chat.sidebar.catalogue.total_search_clipped",
+        "ui.chat.sidebar.groups.badge"
+      ],
+      "zh_plural_categories": {
+        "other": 4
+      },
+      "zh_categories_other_only": true,
+      "exact_zero_arms": 1,
+      "zero_arm_key": "ui.chat.sidebar.agents.builtin_offer",
+      "zero_arm_present": true,
+      "zero_arm_keeps_list": true,
+      "zero_arm_keeps_no_count": true,
+      "arguments_and_skeletons_match_english": false,
+      "skeleton_exception": "ui.chat.sidebar.groups.badge: en uses `#`, zh uses {badge, number, ::group-off} (finding 1)"
+    },
+    "english_stub_values": 0,
+    "nfc": true,
+    "duplicate_keys": 0,
+    "bidi_controls": 0,
+    "width": "no maxCells hints on the five new keys; all five are shorter in cells than their English sources (0.20-0.95 ratio)"
+  },
+  "render_evidence": {
+    "ui.chat.sidebar.agents.builtin_offer[count=0,list=A、B]": "没有可安装的内置智能体——A、B。安装后即可编辑。",
+    "ui.chat.sidebar.agents.builtin_offer[count=1,list=A]": "有1个内置智能体可安装——A。安装后即可编辑。",
+    "ui.chat.sidebar.agents.builtin_offer[count=3,list=A、B、C]": "有3个内置智能体可安装——A、B、C。安装后即可编辑。",
+    "ui.chat.sidebar.agents.builtin_offer[count=7,list=A、B]": "有7个内置智能体可安装——A、B。安装后即可编辑。",
+    "ui.chat.sidebar.catalogue.total[shown=3,total=10]": "显示3/10个对话",
+    "ui.chat.sidebar.catalogue.total[shown=1234567,total=2000000]": "显示1234567/2000000个对话",
+    "ui.chat.sidebar.catalogue.total_search[shown=1,total=10]": "显示1个匹配，共10个对话",
+    "ui.chat.sidebar.catalogue.total_search[shown=3,total=10]": "显示3个匹配，共10个对话",
+    "ui.chat.sidebar.catalogue.total_search[shown=1234567,total=2000000]": "显示1234567个匹配，共2000000个对话",
+    "ui.chat.sidebar.catalogue.total_search_clipped[shown=3,total=10]": "显示3+个匹配，共10个对话",
+    "ui.chat.sidebar.groups.badge[badge=1]": "此分组中有1个对话",
+    "ui.chat.sidebar.groups.badge[badge=3]": "此分组中有3个对话",
+    "ui.chat.sidebar.groups.badge[badge=1234567]": "此分组中有1234567个对话"
+  },
+  "prior_audits": [
+    {
+      "receipt": "i18n/receipts/8c38294d1379-r1.json",
+      "sha256": "06b7034e72e45d25d762272af3e6c0f5880af92ef0c8e8c6d1164a02b10e62be",
+      "coverage": "full independent audit of the 43-key main-side pair; clean-with-findings (T-001 list.empty corroborated below, T-002/T-003/T-004 not re-adjudicated)"
+    },
+    {
+      "receipt": "i18n/receipts/351aa9be8eac-r1-second.json",
+      "sha256": "7b94ffaa900e21e96ced7b5e46ca55c14f1553140dec21935d5da5d56a616bdc",
+      "coverage": "second independent audit of the same 43-key pair; clean-with-findings (list.empty)"
+    },
+    {
+      "receipt": "i18n/receipts/zh-cn-extract-734dc4749c3d-r2.json",
+      "sha256": "b450f3650b62cd22fbfd25ab914b24064faa002ca8d0a016fe31aadd00d3a265",
+      "coverage": "1-key extract delta at the 44-key pair (target 8c123f38…), clean; the 44 values it did not read are byte-identical here"
+    }
+  ],
+  "binding": "The current English and zh-CN blobs are the branch pre-merge parent A blobs byte-for-byte (A and head hashes equal). The ledger row records the older pair (source b20a2e81…, target 8c123f38…), which is why it is stale; this receipt binds the head 49-key pair. The five keys added by 13bfd7bb772/89037325dbc were reviewed here; the other 44 values are byte-identical to the pair the three prior audits above covered.",
+  "verdict": "clean-with-findings — 49/49 keys read; key set equals English; all four plurals use other only (zh-CN CLDR) and builtin_offer keeps its exact =0 arm with {list} and no count; 1 new minor (groups.badge suppresses number grouping where English uses #) and 1 carried minor (list.empty adds 请). No blocker or major; nothing changes what a control does.",
+  "observations": [
+    "The badge commit 89037325dbc deliberately kept ::group-off inside the new arm; finding 1 asks for the source's `#` formatting instead, so the implementer can either apply it or reject it with that design reason recorded.",
+    "Prior audit 8c38294d1379-r1 also recorded T-002 (minor, row_menu.fork 分叉对话 -> 创建对话分支) and T-003/T-004 (nits, retry_refresh/connecting). The second independent audit did not corroborate T-002; this binding pass does not re-adjudicate those unchanged values and records them here so they are not silently dropped."
+  ]
+}

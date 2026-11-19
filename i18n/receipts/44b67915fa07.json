@@ -1,0 +1,321 @@
+{
+  "schema": 1,
+  "kind": "independent-translation-audit",
+  "auditor": "translation-auditor",
+  "agent": "translation-auditor",
+  "model": "openrouter/moonshotai/kimi-k3.1-pro",
+  "served_model": "openrouter/moonshotai/kimi-k3.1-pro",
+  "fallback": "none",
+  "instance": "44b67915fa07",
+  "session": "44b67915fa07",
+  "date": "2026-10-23",
+  "locale": "vi",
+  "round": 1,
+  "status": "changes_requested",
+  "verdict": "changes_requested",
+  "commit": "03e1f5c34881dfaa169643f3022a7a45698e8a73",
+  "repository": "/Users/damian/local-operator-ui/.worktrees/i18n-vi",
+  "keys_read": 341,
+  "namespace_count": 12,
+  "independence": {
+    "translator_agent": "translator",
+    "translator_session": "673311bac161",
+    "independent": true,
+    "authored_translation": false,
+    "repository_edits": false,
+    "basis": "Different auditor session; read the committed English, context and Vietnamese bytes directly. Translator receipt claims were not used as audit evidence. git status --porcelain=v1 was empty after the audit."
+  },
+  "reference_sha256": {
+    "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+  },
+  "summary": {
+    "blocker": 0,
+    "major": 2,
+    "minor": 5,
+    "nit": 3,
+    "clean_namespaces": 9,
+    "clean_with_findings_namespaces": 2,
+    "changes_requested_namespaces": 1
+  },
+  "evidence": {
+    "semantic_review": "Read all 341 English/Vietnamese pairs and all 341 English context entries side by side across the 12 scoped namespaces; checked accuracy, idiom, bạn/plain-verb register, sentence case, provider/settings terminology and existing vi catalogue usage.",
+    "keys_and_order": {
+      "command": "Python json.loads over each scoped en/vi/context file; compared list(en) == list(vi), key sets and context key sets.",
+      "actual_output": "12/12 namespaces same_order=True and context_exact=True; total en=341, vi=341, context=341."
+    },
+    "icu_structure": {
+      "command": "Node @formatjs/icu-messageformat-parser AST walk comparing argument names/types, number skeletons, select arms, tags and plural structure, allowing only the vi CLDR removal of the English 'one' category.",
+      "actual_output": "Locale-normalized ICU structure mismatches: 0 []; Select branches structurally checked: 3. Negative control with count renamed to total was detected: true."
+    },
+    "cldr_and_formatted_samples": {
+      "command": "Node Intl.PluralRules('vi') and IntlMessageFormat against the audited vi bytes.",
+      "actual_output": "Inputs 0,1,2,3,5,11,21,100,1.5 all returned only 'other'. ui.providers.provider_detail.code_expiry formatted 1 => 'Mã hết hạn sau 1 phút'; 2 => 'Mã hết hạn sau 2 phút'; 1234 => 'Mã hết hạn sau 1234 phút'. ui.chat.pickers.stop.confirm formatted 1 => 'Dừng 1 phiên ngay'; 2 => 'Dừng 2 phiên ngay'; 1234 => 'Dừng 1234 phiên ngay'. more_providers_and with providers=A,count=1234 => 'Nhà cung cấp khác: A và 1234 nhà cung cấp nữa'. Number skeleton ::group-off remained ungrouped."
+    },
+    "pseudo_localization": {
+      "command": "Parsed every vi message with captureLocation=true, doubled Unicode letters only in literal AST spans, then formatted en, vi and pseudo-vi with sample arguments through IntlMessageFormat.",
+      "actual_output": "Messages: 341; pseudo-expanded: 340 (the remaining ui.providers.provider_grid.row_action is placeholder-only); format runs: 1023; format errors: 0. This is static/parser evidence, not rendered evidence."
+    },
+    "nfc_diacritics_typography": {
+      "command": "Python unicodedata.normalize('NFC'), combining-mark U+0300..U+036f scan, boundary/control-whitespace comparison and literal typography scan over all 341 vi values.",
+      "actual_output": "NFC/combining/boundary/control issues: 0 []. No ASCII '...', exclamation marks or non-NFC text found. Open-syllable forms observed use the guide's khóa/hóa/hủy/xóa convention. Curly quotes, spaced em dashes and single ellipses were preserved where used."
+    },
+    "static_overflow": {
+      "method": "Compared JavaScript string lengths en/vi and reviewed the 26 heuristic candidates (vi > en*1.35 and at least 8 characters longer) against roles/length notes. These are static triage results only; no fit claim is made.",
+      "rendered_check_required": [
+        {"key": "ui.providers.phone.heading", "en_cells": 12, "vi_cells": 22, "text": "Truy cập từ điện thoại"},
+        {"key": "ui.providers.provider_catalog.browser_sign_in", "en_cells": 15, "vi_cells": 25, "text": "Đăng nhập qua trình duyệt"},
+        {"key": "ui.chat.sidebar.list.empty", "en_cells": 48, "vi_cells": 74, "text": "Chưa có cuộc trò chuyện nào. Chọn tác nhân, nhóm hoặc Cuộc trò chuyện mới."},
+        {"key": "ui.chat.sidebar.list.connecting", "en_cells": 20, "vi_cells": 37, "text": "Đang kết nối với các cuộc trò chuyện…"},
+        {"key": "ui.chat.pickers.credential.title", "en_cells": 10, "vi_cells": 18, "text": "Thông tin xác thực", "note": "Glossary term; do not shorten to a different credential term."},
+        {"key": "ui.presence.device_link_down", "en_cells": 38, "vi_cells": 59, "text": "Mất liên kết thiết bị · {reason} · lần cuối hoạt động {age}"},
+        {"key": "ui.presence.minutes_ago", "text": "{count, number} phút trước", "note": "Sidecar explicitly requests a compact unit for narrow sidebar rows; check together with hours_ago and days_ago."},
+        {"key": "ui.common.viewer.reset_view", "en_cells": 10, "vi_cells": 18, "text": "Đặt lại chế độ xem"}
+      ],
+      "shorter_phrasing_proposed": [
+        {"key": "ui.chat.sidebar.nav.chats", "en_cells": 5, "vi_cells": 15, "current": "Cuộc trò chuyện", "proposed": "Trò chuyện", "note": "Optional nav-label tightening; not counted as a semantic finding."},
+        {"key": "ui.chat.sidebar.search.no_match", "en_cells": 40, "vi_cells": 66, "current": "Không có kết quả nào trong các cuộc trò chuyện khớp với “{query}”.", "proposed": "Không có cuộc trò chuyện nào khớp với “{query}”.", "note": "Also recorded as MINOR VI-SIDE-002."}
+      ]
+    },
+    "allowed_english_and_untranslated": {
+      "allowed_or_context_bound": "Local Operator; Claude; ChatGPT; Radient; Moonshot; SuperGrok; Token Plan; Canvas and Finder (explicit context); API, URL, HTML, Markdown, USD, ID, Esc and token (style/technical tokens); model/provider identifiers and all placeholders. Existing vi technical usage also retains tunnel and terminal.",
+      "untranslated_prose": "ui.chat.pickers.models.native_details retains the adjective 'native', which is not in the vi kept-English list; recorded as NIT VI-PICK-002."
+    },
+    "rtl": "Not applicable: Vietnamese is LTR. No bidi control characters were introduced.",
+    "rendered": "UNVERIFIED by this audit. No real-app, screenshot, geometry, design or UX claim is made; the separate real-app gate must exercise the static overflow list."
+  },
+  "namespaces": {
+    "ui.providers": {
+      "status": "changes_requested",
+      "verdict": "changes_requested",
+      "keys": 189,
+      "sha256": {
+        "en": "9981637a98afbcbc166d889b461795bae7685e42274f4d607b711f4b0f9085f2",
+        "vi": "14f5aeaf552bc9ec151cacfaf5979abbcb5f0eff1dd1f4dd0578b7a34773c5f9",
+        "target": "14f5aeaf552bc9ec151cacfaf5979abbcb5f0eff1dd1f4dd0578b7a34773c5f9",
+        "context": "038afc45c25370cbea4d94aaf4c3cc822ac9956d02fd54cba70ea66e61a68d4d"
+      },
+      "findings": [
+        {
+          "id": "VI-PROV-001",
+          "severity": "MAJOR",
+          "key": "ui.providers.provider_catalog.didn_t_confirm_the_sign_in",
+          "current": "{brand} đã từ chối xác nhận đăng nhập.",
+          "proposed": "{brand} chưa xác nhận đăng nhập.",
+          "reason": "“Đã từ chối” adds a deliberate refusal that the English “didn't confirm” does not state."
+        },
+        {
+          "id": "VI-PROV-002",
+          "severity": "MAJOR",
+          "key": "ui.providers.provider_detail.didn_t_confirm_the_sign_in",
+          "current": "{brand} đã từ chối xác nhận đăng nhập.",
+          "proposed": "{brand} chưa xác nhận đăng nhập.",
+          "reason": "The same false refusal changes a neutral provider outcome into an explicit rejection."
+        },
+        {
+          "id": "VI-PROV-003",
+          "severity": "MINOR",
+          "key": "ui.providers.phone.action.set_up",
+          "current": "Thiết lập truy cập",
+          "proposed": "Thiết lập truy cập từ điện thoại",
+          "reason": "The button drops the source's phone-access object; restore it rather than relying only on the surrounding heading."
+        },
+        {
+          "id": "VI-PROV-004",
+          "severity": "MINOR",
+          "key": "ui.providers.provider_detail.use_an_api_key_instead",
+          "current": "Dùng khóa API",
+          "proposed": "Dùng khóa API thay vì đăng nhập",
+          "reason": "Dropping “instead” loses the alternative-to-sign-in meaning of this recovery action."
+        },
+        {
+          "id": "VI-PROV-005",
+          "severity": "MINOR",
+          "key": "ui.providers.provider_detail.this_page_updates_on_its_own_once",
+          "related_keys": [
+            "ui.providers.provider_detail.shows_after_you_approve",
+            "ui.providers.provider_detail.we_opened_approve_access_there_and_this",
+            "ui.providers.provider_detail.opening_approve_access_there_and_this_page"
+          ],
+          "current": "sau khi bạn phê duyệt / Hãy phê duyệt quyền truy cập",
+          "proposed": "sau khi bạn cho phép / Hãy cho phép truy cập",
+          "reason": "“Phê duyệt quyền truy cập” is an administrative calque for the user's browser consent; “cho phép” is the native UI wording in all four keys."
+        },
+        {
+          "id": "VI-PROV-006",
+          "severity": "NIT",
+          "key": "ui.providers.phone.signing_in",
+          "current": "Hoàn tất đăng nhập trong trình duyệt. Nội dung sẽ tự cập nhật khi bạn hoàn tất.",
+          "proposed": "Hoàn tất đăng nhập trong trình duyệt. Trang sẽ tự cập nhật khi xong.",
+          "reason": "Repeating “hoàn tất” in adjacent clauses reads translated rather than native."
+        }
+      ]
+    },
+    "ui.chat.sidebar": {
+      "status": "passed",
+      "verdict": "clean-with-findings",
+      "keys": 43,
+      "sha256": {
+        "en": "bd0bf045b2aa5a4495695592dcd3ccad76ec5bdea23cfda37460ce751479965f",
+        "vi": "c24173b2471e61c46e86f7adbb87761112161714829189da26f4d7daac06721f",
+        "target": "c24173b2471e61c46e86f7adbb87761112161714829189da26f4d7daac06721f",
+        "context": "fe5dc2a0fa4cb9b95ef5c1a30d57aee030fa5edf2b6b54b323562a1c63b8eb3a"
+      },
+      "findings": [
+        {
+          "id": "VI-SIDE-001",
+          "severity": "NIT",
+          "key": "ui.chat.sidebar.row.matched_in_conversation",
+          "current": ", khớp trong cuộc trò chuyện",
+          "proposed": ", có kết quả trong cuộc trò chuyện",
+          "reason": "“Khớp trong” is a search-keyword calque; the proposed fragment natively describes where the match occurred."
+        },
+        {
+          "id": "VI-SIDE-002",
+          "severity": "MINOR",
+          "key": "ui.chat.sidebar.search.no_match",
+          "current": "Không có kết quả nào trong các cuộc trò chuyện khớp với “{query}”.",
+          "proposed": "Không có cuộc trò chuyện nào khớp với “{query}”.",
+          "reason": "The current 66-character rendering is wordy and materially longer than the 40-character source; the shorter sentence preserves the empty-search meaning."
+        }
+      ]
+    },
+    "ui.chat.pickers": {
+      "status": "passed",
+      "verdict": "clean-with-findings",
+      "keys": 34,
+      "sha256": {
+        "en": "65f926679cefe21229f8d755f71d64381c5d6706c2d33c62cb63141e8f01352d",
+        "vi": "f00c49fa594ca81c6413d54e4040a208c11f56b280e1fe1e37ec607659acc498",
+        "target": "f00c49fa594ca81c6413d54e4040a208c11f56b280e1fe1e37ec607659acc498",
+        "context": "8d3fa914cd52768c98a75c4f41b903b86553335b27e406f98500eab7ff576e64"
+      },
+      "findings": [
+        {
+          "id": "VI-PICK-001",
+          "severity": "MINOR",
+          "key": "ui.chat.pickers.stop.confirm",
+          "current": "Dừng {count, plural, other {{count, number, ::group-off} phiên}} ngay",
+          "proposed": "Dừng {count, plural, =1 {phiên này} other {{count, number, ::group-off} phiên}} ngay",
+          "reason": "The source intentionally says “this session” for one target; the actual vi render “Dừng 1 phiên ngay” loses that deixis, and an exact =1 arm preserves vi's CLDR other-only categories."
+        },
+        {
+          "id": "VI-PICK-002",
+          "severity": "NIT",
+          "key": "ui.chat.pickers.models.native_details",
+          "current": "Chi tiết native — {name}",
+          "proposed": "Chi tiết gốc — {name}",
+          "reason": "“Native” is untranslated prose outside the vi kept-English list; use a Vietnamese adjective while preserving the name and spaced em dash."
+        }
+      ]
+    },
+    "ui.chat.canonical": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys": 30,
+      "sha256": {
+        "en": "771482d2bdef4f9d40bfbdaa35e8eebed300b0e6f9a477318557c26d1770e5a7",
+        "vi": "5944f46a2a6ecad8fc99ad78a28a912d417b027f0bfc4d929f3b118990db7cb7",
+        "target": "5944f46a2a6ecad8fc99ad78a28a912d417b027f0bfc4d929f3b118990db7cb7",
+        "context": "53145be31fe46bde6578d114653466dc5c6c932947460c10a0022c9e190d9a34"
+      },
+      "findings": []
+    },
+    "ui.chat.analytics": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys": 11,
+      "sha256": {
+        "en": "6ac0bbfb50c8ef8c772f229868614aa8d07dfd9f659311d5d396cea5c4611159",
+        "vi": "fb5e6deac0f80014d7ea0e04ba84b92df9dfcfaeb226d02609e19f761e55ef87",
+        "target": "fb5e6deac0f80014d7ea0e04ba84b92df9dfcfaeb226d02609e19f761e55ef87",
+        "context": "7c25af7f391fbaac6a1718a81b8b258c0b313ba46411f16e95691446828640ff"
+      },
+      "findings": []
+    },
+    "ui.chat.transcript_copy": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys": 9,
+      "sha256": {
+        "en": "a81115a3e17a63068b79b4c66d86edaa1417a145f0b1fcc14d34deae8cd1734b",
+        "vi": "784a15a3f17e16f6eb1459cb7b37057b6c953778922490d46893233c4adccec7",
+        "target": "784a15a3f17e16f6eb1459cb7b37057b6c953778922490d46893233c4adccec7",
+        "context": "955b217858b3ac8c2ab4a20e7ad47298c683698c5c65c0012f681ba6b23d4c8b"
+      },
+      "findings": []
+    },
+    "ui.presence": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys": 9,
+      "sha256": {
+        "en": "7dc0d4c3bb4c18fb15501b630c7f1b2bc1f2f1ec8dabe131d3a3498b50a142a8",
+        "vi": "8eb97a5353d73b8940863570879f82cc605295bf73c66cef912aa6d18561703a",
+        "target": "8eb97a5353d73b8940863570879f82cc605295bf73c66cef912aa6d18561703a",
+        "context": "f78dc27ea4c00befbb3b48ce6723230a23c6e4388bf5ace429c2b445447aae44"
+      },
+      "findings": []
+    },
+    "ui.common.file_actions": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys": 5,
+      "sha256": {
+        "en": "edac3001910c5ba03d5c0552f07c19baeb1bd1e8e9d3c0a6c178a693f9351233",
+        "vi": "d5ac91b0312dbf6ec94425768bd376cdbeb6b06c2e7b71134bb5c9c91f63ea02",
+        "target": "d5ac91b0312dbf6ec94425768bd376cdbeb6b06c2e7b71134bb5c9c91f63ea02",
+        "context": "147274f1e573608ac78a0dc45aa14d14a5d2cf89efa953d4f4e012a7fae8d04b"
+      },
+      "findings": []
+    },
+    "ui.common.viewer": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys": 4,
+      "sha256": {
+        "en": "660c7e185ebc22d37ecc9b5d02807428f87c477f86431f5cdb07fdec888b78bb",
+        "vi": "64b007eaa632166d3b54bd5f933f7c6693d836f6af6db64475cb80e4d8dffd65",
+        "target": "64b007eaa632166d3b54bd5f933f7c6693d836f6af6db64475cb80e4d8dffd65",
+        "context": "cd11be98d1d94cba927141b2b6b390af7fdc59a8519ea3ed18361cfd4930c2c9"
+      },
+      "findings": []
+    },
+    "ui.chat.tag_dialogs": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys": 4,
+      "sha256": {
+        "en": "140fb44d94388706e24ba37c6910a6b753ce0f0701f44e78390a1fffb13c1506",
+        "vi": "d665ad4671f4ffd7748bbfabb31a5e24d4328e323b396fa7d9fc79558808c09b",
+        "target": "d665ad4671f4ffd7748bbfabb31a5e24d4328e323b396fa7d9fc79558808c09b",
+        "context": "8f4cc8ca17d926c4f85f4226ff92e7c291babbe7e9868ebb8d9fceb5a8841987"
+      },
+      "findings": []
+    },
+    "ui.chat.run_details": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys": 2,
+      "sha256": {
+        "en": "7eea05d7c5b371e7969214abc7bd2961bf6c38fd3e5886e0957493b787878094",
+        "vi": "f55e2b740675c6977d3cdb860a4442f196b3f06a2bd2704ed2a915deade7d0b8",
+        "target": "f55e2b740675c6977d3cdb860a4442f196b3f06a2bd2704ed2a915deade7d0b8",
+        "context": "eae93350935a597d66fe4931a40fed2fa9d40d0b01e03925d2cef22985f628d6"
+      },
+      "findings": []
+    },
+    "ui.chat.commentary_actions": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys": 1,
+      "sha256": {
+        "en": "77d6babd2e9fac04e95a550d25f4428e113144c160c34009b89e06608b812868",
+        "vi": "d5802ec3e8277221843269d702f08a1d1d7e8731792f34aa6e03960228c0072e",
+        "target": "d5802ec3e8277221843269d702f08a1d1d7e8731792f34aa6e03960228c0072e",
+        "context": "20901db281f82c025243d688a14bfc490d1b5c01c7fd03e7d8788f35411c3ad1"
+      },
+      "findings": []
+    }
+  }
+}

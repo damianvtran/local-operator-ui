@@ -1,0 +1,821 @@
+[
+  {
+    "locale": "zh-CN",
+    "state": "effort-popover-settings-zh",
+    "first": "zh-cn-effort-popover-settings-zh-first.png",
+    "settled": "zh-cn-effort-popover-settings-zh.png",
+    "viewport": {
+      "width": 1380,
+      "height": 900,
+      "devicePixelRatio": 2
+    },
+    "first_size": [
+      2760,
+      1800
+    ],
+    "settled_size": [
+      2760,
+      1800
+    ],
+    "byte_identical_pixels": true,
+    "pixel_change_box": null
+  },
+  {
+    "locale": "fr",
+    "state": "effort-popover-settings-fr-retained",
+    "first": "fr-effort-popover-settings-fr-retained-first.png",
+    "settled": "fr-effort-popover-settings-fr-retained.png",
+    "viewport": {
+      "width": 1380,
+      "height": 900,
+      "devicePixelRatio": 2
+    },
+    "first_size": [
+      2760,
+      1800
+    ],
+    "settled_size": [
+      2760,
+      1800
+    ],
+    "byte_identical_pixels": false,
+    "pixel_change_box": [
+      2744,
+      109,
+      2760,
+      242
+    ]
+  },
+  {
+    "locale": "es",
+    "state": "effort-popover-settings-retained",
+    "first": "es-effort-popover-settings-retained-first.png",
+    "settled": "es-effort-popover-settings-retained.png",
+    "viewport": {
+      "width": 1380,
+      "height": 900,
+      "devicePixelRatio": 2
+    },
+    "first_size": [
+      2760,
+      1800
+    ],
+    "settled_size": [
+      2760,
+      1800
+    ],
+    "byte_identical_pixels": true,
+    "pixel_change_box": null
+  },
+  {
+    "locale": "ru",
+    "state": "effort-popover-settings-retained",
+    "first": "ru-effort-popover-settings-retained-first.png",
+    "settled": "ru-effort-popover-settings-retained.png",
+    "viewport": {
+      "width": 1380,
+      "height": 900,
+      "devicePixelRatio": 2
+    },
+    "first_size": [
+      2760,
+      1800
+    ],
+    "settled_size": [
+      2760,
+      1800
+    ],
+    "byte_identical_pixels": true,
+    "pixel_change_box": null
+  },
+  {
+    "locale": "vi",
+    "state": "effort-popover-settings-retained",
+    "first": "vi-effort-popover-settings-retained-first.png",
+    "settled": "vi-effort-popover-settings-retained.png",
+    "viewport": {
+      "width": 1380,
+      "height": 900,
+      "devicePixelRatio": 2
+    },
+    "first_size": [
+      2760,
+      1800
+    ],
+    "settled_size": [
+      2760,
+      1800
+    ],
+    "byte_identical_pixels": true,
+    "pixel_change_box": null
+  },
+  {
+    "locale": "ur",
+    "state": "effort-popover-settings-retained",
+    "first": "ur-effort-popover-settings-retained-first.png",
+    "settled": "ur-effort-popover-settings-retained.png",
+    "viewport": {
+      "width": 1380,
+      "height": 900,
+      "devicePixelRatio": 2
+    },
+    "first_size": [
+      2760,
+      1800
+    ],
+    "settled_size": [
+      2760,
+      1800
+    ],
+    "byte_identical_pixels": false,
+    "pixel_change_box": [
+      0,
+      109,
+      16,
+      246
+    ]
+  },
+  {
+    "locale": "hi",
+    "state": "effort-popover-settings-retained",
+    "first": "hi-effort-popover-settings-retained-first.png",
+    "settled": "hi-effort-popover-settings-retained.png",
+    "viewport": {
+      "width": 1380,
+      "height": 900,
+      "devicePixelRatio": 2
+    },
+    "first_size": [
+      2760,
+      1800
+    ],
+    "settled_size": [
+      2760,
+      1800
+    ],
+    "byte_identical_pixels": true,
+    "pixel_change_box": null
+  },
+  {
+    "locale": "en",
+    "state": "effort-popover-settings-retained",
+    "first": "en-effort-popover-settings-retained-first.png",
+    "settled": "en-effort-popover-settings-retained.png",
+    "viewport": {
+      "width": 1380,
+      "height": 900,
+      "devicePixelRatio": 2
+    },
+    "first_size": [
+      2760,
+      1800
+    ],
+    "settled_size": [
+      2760,
+      1800
+    ],
+    "byte_identical_pixels": false,
+    "pixel_change_box": [
+      2744,
+      111,
+      2760,
+      247
+    ]
+  },
+  {
+    "locale": "en",
+    "state": "status-wakes",
+    "first": "en-status-wakes-first.png",
+    "settled": "en-status-wakes.png",
+    "viewport": {
+      "width": 1380,
+      "height": 900,
+      "devicePixelRatio": 2
+    },
+    "first_size": [
+      2760,
+      1800
+    ],
+    "settled_size": [
+      2760,
+      1800
+    ],
+    "byte_identical_pixels": false,
+    "pixel_change_box": [
+      568,
+      185,
+      584,
+      201
+    ]
+  },
+  {
+    "locale": "fr",
+    "state": "status-wakes-retained",
+    "first": "fr-status-wakes-retained-first.png",
+    "settled": "fr-status-wakes-retained.png",
+    "viewport": {
+      "width": 1380,
+      "height": 900,
+      "devicePixelRatio": 2
+    },
+    "first_size": [
+      2760,
+      1800
+    ],
+    "settled_size": [
+      2760,
+      1800
+    ],
+    "byte_identical_pixels": false,
+    "pixel_change_box": [
+      568,
+      185,
+      584,
+      201
+    ]
+  },
+  {
+    "locale": "zh-CN",
+    "state": "status-wakes-retained",
+    "first": "zh-cn-status-wakes-retained-first.png",
+    "settled": "zh-cn-status-wakes-retained.png",
+    "viewport": {
+      "width": 1380,
+      "height": 900,
+      "devicePixelRatio": 2
+    },
+    "first_size": [
+      2760,
+      1800
+    ],
+    "settled_size": [
+      2760,
+      1800
+    ],
+    "byte_identical_pixels": false,
+    "pixel_change_box": [
+      568,
+      185,
+      584,
+      201
+    ]
+  },
+  {
+    "locale": "es",
+    "state": "status-wakes-retained",
+    "first": "es-status-wakes-retained-first.png",
+    "settled": "es-status-wakes-retained.png",
+    "viewport": {
+      "width": 1380,
+      "height": 900,
+      "devicePixelRatio": 2
+    },
+    "first_size": [
+      2760,
+      1800
+    ],
+    "settled_size": [
+      2760,
+      1800
+    ],
+    "byte_identical_pixels": false,
+    "pixel_change_box": [
+      568,
+      185,
+      584,
+      201
+    ]
+  },
+  {
+    "locale": "ru",
+    "state": "status-wakes-retained",
+    "first": "ru-status-wakes-retained-first.png",
+    "settled": "ru-status-wakes-retained.png",
+    "viewport": {
+      "width": 1380,
+      "height": 900,
+      "devicePixelRatio": 2
+    },
+    "first_size": [
+      2760,
+      1800
+    ],
+    "settled_size": [
+      2760,
+      1800
+    ],
+    "byte_identical_pixels": false,
+    "pixel_change_box": [
+      568,
+      185,
+      584,
+      201
+    ]
+  },
+  {
+    "locale": "vi",
+    "state": "status-wakes-retained",
+    "first": "vi-status-wakes-retained-first.png",
+    "settled": "vi-status-wakes-retained.png",
+    "viewport": {
+      "width": 1380,
+      "height": 900,
+      "devicePixelRatio": 2
+    },
+    "first_size": [
+      2760,
+      1800
+    ],
+    "settled_size": [
+      2760,
+      1800
+    ],
+    "byte_identical_pixels": false,
+    "pixel_change_box": [
+      568,
+      185,
+      584,
+      201
+    ]
+  },
+  {
+    "locale": "ur",
+    "state": "status-wakes-retained",
+    "first": "ur-status-wakes-retained-first.png",
+    "settled": "ur-status-wakes-retained.png",
+    "viewport": {
+      "width": 1380,
+      "height": 900,
+      "devicePixelRatio": 2
+    },
+    "first_size": [
+      2760,
+      1800
+    ],
+    "settled_size": [
+      2760,
+      1800
+    ],
+    "byte_identical_pixels": false,
+    "pixel_change_box": [
+      2176,
+      185,
+      2192,
+      201
+    ]
+  },
+  {
+    "locale": "hi",
+    "state": "status-wakes-retained",
+    "first": "hi-status-wakes-retained-first.png",
+    "settled": "hi-status-wakes-retained.png",
+    "viewport": {
+      "width": 1380,
+      "height": 900,
+      "devicePixelRatio": 2
+    },
+    "first_size": [
+      2760,
+      1800
+    ],
+    "settled_size": [
+      2760,
+      1800
+    ],
+    "byte_identical_pixels": false,
+    "pixel_change_box": [
+      568,
+      185,
+      584,
+      201
+    ]
+  },
+  {
+    "locale": "hi",
+    "state": "session-effort-picker-status",
+    "first": "hi-session-effort-picker-status-first.png",
+    "settled": "hi-session-effort-picker-status.png",
+    "viewport": {
+      "width": 1380,
+      "height": 900,
+      "devicePixelRatio": 2
+    },
+    "first_size": [
+      2760,
+      1800
+    ],
+    "settled_size": [
+      2760,
+      1800
+    ],
+    "byte_identical_pixels": false,
+    "pixel_change_box": [
+      786,
+      185,
+      802,
+      201
+    ]
+  },
+  {
+    "locale": "ur",
+    "state": "session-effort-picker-status",
+    "first": "ur-session-effort-picker-status-first.png",
+    "settled": "ur-session-effort-picker-status.png",
+    "viewport": {
+      "width": 1380,
+      "height": 900,
+      "devicePixelRatio": 2
+    },
+    "first_size": [
+      2760,
+      1800
+    ],
+    "settled_size": [
+      2760,
+      1800
+    ],
+    "byte_identical_pixels": false,
+    "pixel_change_box": [
+      1958,
+      185,
+      1974,
+      201
+    ]
+  },
+  {
+    "locale": "vi",
+    "state": "session-effort-picker-status",
+    "first": "vi-session-effort-picker-status-first.png",
+    "settled": "vi-session-effort-picker-status.png",
+    "viewport": {
+      "width": 1380,
+      "height": 900,
+      "devicePixelRatio": 2
+    },
+    "first_size": [
+      2760,
+      1800
+    ],
+    "settled_size": [
+      2760,
+      1800
+    ],
+    "byte_identical_pixels": false,
+    "pixel_change_box": [
+      786,
+      185,
+      802,
+      201
+    ]
+  },
+  {
+    "locale": "ru",
+    "state": "session-effort-picker-status",
+    "first": "ru-session-effort-picker-status-first.png",
+    "settled": "ru-session-effort-picker-status.png",
+    "viewport": {
+      "width": 1380,
+      "height": 900,
+      "devicePixelRatio": 2
+    },
+    "first_size": [
+      2760,
+      1800
+    ],
+    "settled_size": [
+      2760,
+      1800
+    ],
+    "byte_identical_pixels": true,
+    "pixel_change_box": null
+  },
+  {
+    "locale": "es",
+    "state": "session-effort-picker-status",
+    "first": "es-session-effort-picker-status-first.png",
+    "settled": "es-session-effort-picker-status.png",
+    "viewport": {
+      "width": 1380,
+      "height": 900,
+      "devicePixelRatio": 2
+    },
+    "first_size": [
+      2760,
+      1800
+    ],
+    "settled_size": [
+      2760,
+      1800
+    ],
+    "byte_identical_pixels": false,
+    "pixel_change_box": [
+      786,
+      185,
+      802,
+      201
+    ]
+  },
+  {
+    "locale": "zh-CN",
+    "state": "session-effort-picker-status",
+    "first": "zh-cn-session-effort-picker-status-first.png",
+    "settled": "zh-cn-session-effort-picker-status.png",
+    "viewport": {
+      "width": 1380,
+      "height": 900,
+      "devicePixelRatio": 2
+    },
+    "first_size": [
+      2760,
+      1800
+    ],
+    "settled_size": [
+      2760,
+      1800
+    ],
+    "byte_identical_pixels": false,
+    "pixel_change_box": [
+      786,
+      185,
+      802,
+      201
+    ]
+  },
+  {
+    "locale": "fr",
+    "state": "session-effort-picker-status",
+    "first": "fr-session-effort-picker-status-first.png",
+    "settled": "fr-session-effort-picker-status.png",
+    "viewport": {
+      "width": 1380,
+      "height": 900,
+      "devicePixelRatio": 2
+    },
+    "first_size": [
+      2760,
+      1800
+    ],
+    "settled_size": [
+      2760,
+      1800
+    ],
+    "byte_identical_pixels": false,
+    "pixel_change_box": [
+      788,
+      187,
+      800,
+      199
+    ]
+  },
+  {
+    "locale": "en",
+    "state": "session-effort-picker-status",
+    "first": "en-session-effort-picker-status-first.png",
+    "settled": "en-session-effort-picker-status.png",
+    "viewport": {
+      "width": 1380,
+      "height": 900,
+      "devicePixelRatio": 2
+    },
+    "first_size": [
+      2760,
+      1800
+    ],
+    "settled_size": [
+      2760,
+      1800
+    ],
+    "byte_identical_pixels": false,
+    "pixel_change_box": [
+      786,
+      185,
+      802,
+      201
+    ]
+  },
+  {
+    "locale": "ru",
+    "state": "session-effort-picker-800",
+    "first": "ru-session-effort-picker-800-first.png",
+    "settled": "ru-session-effort-picker-800.png",
+    "viewport": {
+      "width": 1380,
+      "height": 900,
+      "devicePixelRatio": 2
+    },
+    "first_size": [
+      2760,
+      1800
+    ],
+    "settled_size": [
+      2760,
+      1800
+    ],
+    "byte_identical_pixels": false,
+    "pixel_change_box": [
+      786,
+      185,
+      802,
+      201
+    ]
+  },
+  {
+    "locale": "ru",
+    "state": "session-effort-picker-narrow-actual800",
+    "first": "ru-session-effort-picker-narrow-actual800-first.png",
+    "settled": "ru-session-effort-picker-narrow-actual800.png",
+    "viewport": {
+      "width": 800,
+      "height": 900,
+      "devicePixelRatio": 2
+    },
+    "first_size": [
+      1600,
+      1800
+    ],
+    "settled_size": [
+      1600,
+      1800
+    ],
+    "byte_identical_pixels": false,
+    "pixel_change_box": [
+      568,
+      185,
+      584,
+      201
+    ]
+  },
+  {
+    "locale": "ur",
+    "state": "browser-tabs-ur-before-switch",
+    "first": "ur-browser-tabs-ur-before-switch-first.png",
+    "settled": "ur-browser-tabs-ur-before-switch.png",
+    "viewport": {
+      "width": 800,
+      "height": 900,
+      "devicePixelRatio": 2
+    },
+    "first_size": [
+      1600,
+      1800
+    ],
+    "settled_size": [
+      2760,
+      1800
+    ],
+    "byte_identical_pixels": false,
+    "pixel_change_box": null
+  },
+  {
+    "locale": "fr",
+    "state": "browser-tabs-fr-retained",
+    "first": "fr-browser-tabs-fr-retained-first.png",
+    "settled": "fr-browser-tabs-fr-retained.png",
+    "viewport": {
+      "width": 800,
+      "height": 900,
+      "devicePixelRatio": 2
+    },
+    "first_size": [
+      2760,
+      1800
+    ],
+    "settled_size": [
+      2760,
+      1800
+    ],
+    "byte_identical_pixels": false,
+    "pixel_change_box": [
+      858,
+      159,
+      860,
+      190
+    ]
+  },
+  {
+    "locale": "ur",
+    "state": "browser-reload-tooltip-ur",
+    "first": "ur-browser-reload-tooltip-ur-first.png",
+    "settled": "ur-browser-reload-tooltip-ur.png",
+    "viewport": {
+      "width": 800,
+      "height": 900,
+      "devicePixelRatio": 2
+    },
+    "first_size": [
+      2760,
+      1800
+    ],
+    "settled_size": [
+      2760,
+      1800
+    ],
+    "byte_identical_pixels": true,
+    "pixel_change_box": null
+  },
+  {
+    "locale": "ur",
+    "state": "browser-reload-tooltip-ur-wide",
+    "first": "ur-browser-reload-tooltip-ur-wide-first.png",
+    "settled": "ur-browser-reload-tooltip-ur-wide.png",
+    "viewport": {
+      "width": 1380,
+      "height": 900,
+      "devicePixelRatio": 2
+    },
+    "first_size": [
+      2760,
+      1800
+    ],
+    "settled_size": [
+      2760,
+      1800
+    ],
+    "byte_identical_pixels": true,
+    "pixel_change_box": null
+  },
+  {
+    "locale": "ur",
+    "state": "wake-count-once-narrow800",
+    "first": "ur-wake-count-once-narrow800-first.png",
+    "settled": "ur-wake-count-once-narrow800.png",
+    "viewport": {
+      "width": 800,
+      "height": 900,
+      "devicePixelRatio": 2
+    },
+    "first_size": [
+      1600,
+      1800
+    ],
+    "settled_size": [
+      2760,
+      1800
+    ],
+    "byte_identical_pixels": false,
+    "pixel_change_box": null
+  },
+  {
+    "locale": "ru",
+    "state": "wake-count-once-narrow800",
+    "first": "ru-wake-count-once-narrow800-first.png",
+    "settled": "ru-wake-count-once-narrow800.png",
+    "viewport": {
+      "width": 800,
+      "height": 900,
+      "devicePixelRatio": 2
+    },
+    "first_size": [
+      2760,
+      1800
+    ],
+    "settled_size": [
+      2760,
+      1800
+    ],
+    "byte_identical_pixels": true,
+    "pixel_change_box": null
+  },
+  {
+    "locale": "fr",
+    "state": "wake-count-once-narrow800",
+    "first": "fr-wake-count-once-narrow800-first.png",
+    "settled": "fr-wake-count-once-narrow800.png",
+    "viewport": {
+      "width": 800,
+      "height": 900,
+      "devicePixelRatio": 2
+    },
+    "first_size": [
+      2760,
+      1800
+    ],
+    "settled_size": [
+      2760,
+      1800
+    ],
+    "byte_identical_pixels": true,
+    "pixel_change_box": null
+  },
+  {
+    "locale": "en",
+    "state": "wake-narrow800-english-control",
+    "first": "en-wake-narrow800-english-control-first.png",
+    "settled": "en-wake-narrow800-english-control.png",
+    "viewport": {
+      "width": 800,
+      "height": 900,
+      "devicePixelRatio": 2
+    },
+    "first_size": [
+      1600,
+      1800
+    ],
+    "settled_size": [
+      1600,
+      1800
+    ],
+    "byte_identical_pixels": true,
+    "pixel_change_box": null
+  }
+]

@@ -1,0 +1,41 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "9e2472367ad7",
+  "status": "passed",
+  "namespace": "ui.chat.pickers",
+  "sha256": {
+    "hi": "583f9807cfc3da12f819828049586986adbfff67819d0d102663369db8e694e7",
+    "en": "88d81780ea0cf598689a73b5b0206da020ccfe1b847631214f87f40791b684c7"
+  },
+  "findings": [],
+  "scope": {
+    "head": "c6f1c9ec23db8db01a88af576fb4d7f1a2dde737",
+    "base": "0fd3dc386c2",
+    "locale": "hi",
+    "semantic_keys": [
+      "ui.chat.pickers.destination_pickers.default_approvals_for_all_sessions_that_follow_it_this_session_follows_i",
+      "ui.chat.pickers.destination_pickers.default_for_all_sessions_that_follow_it"
+    ],
+    "whole_file_mechanical_key_count": 741
+  },
+  "provenance": {
+    "actual_model_source": "Runtime model-switch notice: openai/gpt-6.1-sol; temporary quota/provider fallback from anthropic/claude-sonnet-5-5, after an intervening anthropic/claude-opus-5-5 notice. Semantic audit and mechanical execution occurred on openai/gpt-6.1-sol.",
+    "independent_from_translation": true,
+    "other_auditor_reports_or_pr_comments_consulted": false,
+    "translation_service_used": false
+  },
+  "assessment": "Both changed values refer to all sessions using the saved default, without a future-only restriction. The success sentence explicitly includes this session unless it has its own choice. Hindi grammar, everyday register, glossary session/approval terms, nukta spelling and danda punctuation are appropriate. The scope label is an acceptable concise phrase. The dynamic {string} argument is preserved. Neither scoped context entry supplies maxCells/maxChars. No rendered fit or pixel proof is claimed.",
+  "mechanical_notes": [
+    "Committed English and Hindi bytes extracted with git show; checked all 741 keys using existing node_modules and node --max-old-space-size=512, with a 512 MB process-group ceiling.",
+    "Repository check-duplicates.mjs ran successfully on an isolated two-catalogue fixture: 2 files scanned, 0 duplicate keys. Repository generate.mjs messageArguments plus the installed FormatJS parser verified ICU syntax and parameter types; custom AST checks verified tags, structures, plural/select branches and backtick tokens. All values are NFC and key sets match.",
+    "Whole-file CLDR enumeration observed a preexisting missing one branch in session_report_model.totals_meta's failed plural in BOTH English and Hindi (=0/other only). Independently verified this key is byte-identical in base and head in both locales. Unchanged and outside the two-key semantic scope; not a new finding or claim of whole-file CLDR cleanliness.",
+    "An initial custom AST check needed branch-order canonicalization; an initial duplicate-validator CLI invocation pointed at the script directory and encountered an ENOENT in the linked dependency cache. The corrected validator invocation targeted only the isolated catalogue directory and passed. No install, build, Electron, or repository edits were performed."
+  ],
+  "evidence": {
+    "mechanical_log": "mechanical.log",
+    "repository_validator_log": "validator.log",
+    "audit_script": "check.mjs"
+  },
+  "severity_counts": { "BLOCKER": 0, "MAJOR": 0, "MINOR": 0, "NIT": 0 }
+}

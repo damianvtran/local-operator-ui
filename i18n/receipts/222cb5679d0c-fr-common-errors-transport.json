@@ -1,0 +1,49 @@
+{
+	"schema": 1,
+	"kind": "translation-audit-receipt",
+	"audit_kind": "independent-translation-audit",
+	"instance": "222cb5679d0c-fr-common-errors-transport",
+	"locale": "fr",
+	"namespace": "ui.common.errors",
+	"key_count": 140,
+	"keys_audited": [
+		"ui.common.errors.desktop_transport_failed"
+	],
+	"source_sha256": "1c33841b78da772dab58d4476295082b6e1d56a328c587597de20a368cb7c254",
+	"context_sha256": "6cd0c99c1e5e40619c44e1e8fad1a249582b3dad09ca1bc32d04f3fcafee98b1",
+	"target_sha256": "cc599a8816bca0ad95bf1c94d0ca780b6174d6bbb69fe9eea8c88e87ce826227",
+	"head": "dd75287b77ca8b8447a362aa9d052a2dccacf097",
+	"audit_date": "2026-11-02",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"role": "independent French translation auditor (team task, lopdev)",
+		"session": "222cb5679d0c",
+		"instance": "222cb5679d0c-fr-common-errors-transport",
+		"model": "anthropic/claude-sonnet-5-5",
+		"model_fallback": "None claimed. The model is taken from this run's session-state header; it is not independently verifiable beyond that header.",
+		"independent_from_translator_session": true
+	},
+	"status": "passed",
+	"result": "clean-with-findings",
+	"verdict": "PASS: says what happened (backend could not process the request) and what to do (check its connection, retry) in two calm vous-imperative sentences; backend/requête/connexion match neighbouring keys. One MINOR on possessive ambiguity, optional.",
+	"severity_counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 1,
+		"nit": 0
+	},
+	"findings": [
+		{
+			"id": "A-1",
+			"key": "ui.common.errors.desktop_transport_failed",
+			"severity": "minor",
+			"text": "Le backend n’a pas pu traiter cette requête. Vérifiez sa connexion, puis réessayez.",
+			"problem": "'sa connexion' carries the BACKEND's connection (possessive agrees with the subject backend; the user's would be 'votre connexion'); the nearest preceding noun is the feminine 'requête', so a brief misparse is possible, as with English 'its'. Optional tightening: 'Vérifiez la connexion au backend, puis réessayez.' No change required."
+		}
+	],
+	"scope": "PARTIAL-FILE LINGUISTIC AUDIT. (a) The linguistic judgement covers ONLY the keys in keys_audited (PR #1594 additions). (b) The other keys of this file are byte-unchanged from the previously audited state: I checked that `git diff 7920f05769bd..dd75287b77ca -- src/i18n/catalogues/fr` adds exactly the two new keys (one per namespace) and changes nothing else, that the en catalogues have no diff over that range, and that fr/en key sets are equal (51/51 and 140/140), JSON valid, no placeholders or plurals. (c) I did NOT re-audit the remaining keys; their linguistic clearance rests on the earlier receipts for the previous bytes, not on this one. The hashes bind the whole file because the ledger gate requires it. Catalogue-linguistic clearance only, not rendered layout; no screenshot is claimed. Repo validators (ledger-check, context-parity) were not used to clear the catalogue; see audit_notes.",
+	"audit_notes_not_execution_log": "Audit notes, not an execution log. Style guide read: i18n/style-guides/fr.md and i18n/glossary.md from ~/local-operator (last commit 4981010c6fb6); their hashes were not recorded.",
+	"judgements": [
+		"desktop_transport_failed: two calm sentences; 'sa connexion' = the backend's connection; backend, requête, connexion agree with neighbouring fr keys."
+	]
+}

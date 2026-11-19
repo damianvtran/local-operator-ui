@@ -33,7 +33,10 @@
  * React components - the listener must outlive every render.
  */
 
-import { useConversationInputStore } from "./conversation-input-store";
+import {
+	discardQueuedComposerDraftWrite,
+	useConversationInputStore,
+} from "./conversation-input-store";
 
 /**
  * Whether a storage event means "adopt the writer's copy".
@@ -70,6 +73,22 @@ export function installConversationInputSync(): void {
 		) {
 			return;
 		}
+		/*
+		 * WHICH COPY IS NEWER, and how this document knows (agent review round 1,
+		 * R1-1). The event itself is the knowledge: the platform raised it because
+		 * ANOTHER document just wrote the whole key, so the disk is newer than
+		 * anything this document holds - including a write still queued in the
+		 * coalescing window (`conversation-input-store.ts`), which was serialised from
+		 * the rows this adoption is about to replace. Landing that queue would revert
+		 * the writer's draft on disk for every document, so it is DROPPED here rather
+		 * than flushed, and the read that follows must not write either - which is what
+		 * `getItem` used to do, and what made this adoption adopt nothing.
+		 *
+		 * A failed re-hydration still leaves the dropped queue behind; the document
+		 * keeps the state it had and heals on its next edit, which is the same
+		 * trade the error swallow below makes.
+		 */
+		discardQueuedComposerDraftWrite();
 		/*
 		 * A failed re-hydration is left as the in-memory state it was: the next
 		 * write from either document re-raises the event, so a swallowed error

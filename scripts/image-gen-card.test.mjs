@@ -43,6 +43,7 @@ const bundle = await build({
 	bundle: true,
 	format: "esm",
 	platform: "node",
+	alias: { "@shared": "./src/renderer/src/shared" },
 	write: false,
 });
 const {
@@ -51,7 +52,6 @@ const {
 	imageGenCardMountActions,
 	imageGenCardView,
 	imageGenMaterial,
-	imageGenMaterialNoun,
 	isImageGenTool,
 	isVideoGenTool,
 	preferProgressDetails,
@@ -132,9 +132,11 @@ test("the detection set is the four frozen tool names, and the material fact der
 	assert.equal(isImageGenTool("generate_image "), false);
 	assert.equal(isImageGenTool("Generate_Voiceover"), false);
 	assert.equal(isImageGenTool(""), false);
-	// The material fact is derived once, from the call's own name — and the
-	// noun it steers is spelled once, beside it, so the three strings cannot
-	// come to name one material two ways.
+	// The material fact is derived ONCE from the call's own name. The noun a
+	// sentence spells is no longer a function of this module: it lives inside
+	// each catalogue message, one branch per material, so the state line, the
+	// done receipt and the failure fallback cannot name one material three ways
+	// and every language inflects the noun itself (S16e).
 	assert.equal(isVideoGenTool("generate_video"), true);
 	assert.equal(isVideoGenTool("generate_image"), false);
 	assert.equal(imageGenMaterial("generate_video"), "video");
@@ -142,10 +144,6 @@ test("the detection set is the four frozen tool names, and the material fact der
 	assert.equal(imageGenMaterial("generate_voiceover"), "voiceover");
 	assert.equal(imageGenMaterial("generate_sound_effect"), "sound-effect");
 	assert.equal(imageGenMaterial("bash"), "image");
-	assert.equal(imageGenMaterialNoun("video"), "video");
-	assert.equal(imageGenMaterialNoun("image"), "image");
-	assert.equal(imageGenMaterialNoun("voiceover"), "voiceover");
-	assert.equal(imageGenMaterialNoun("sound-effect"), "sound effect");
 });
 
 test("a dictated or waiting call maps to queued, with the byte count it has", () => {
@@ -153,6 +151,7 @@ test("a dictated or waiting call maps to queued, with the byte count it has", ()
 		imageGenCardView(tool({ phase: "composing", argumentBytes: 2458 })),
 		{
 			state: "queued",
+			material: "image",
 			composing: true,
 			argumentBytes: 2458,
 			queuePosition: null,
@@ -162,6 +161,7 @@ test("a dictated or waiting call maps to queued, with the byte count it has", ()
 		imageGenCardView(tool({ phase: "queued", argumentBytes: 2458 })),
 		{
 			state: "queued",
+			material: "image",
 			composing: false,
 			argumentBytes: 2458,
 			queuePosition: null,
@@ -197,6 +197,7 @@ test("the canonical payload reads into the frozen slots, field by field", () => 
 		),
 		{
 			state: "queued",
+			material: "image",
 			composing: false,
 			argumentBytes: 0,
 			queuePosition: 2,
@@ -255,6 +256,9 @@ test("the canonical payload reads into the frozen slots, field by field", () => 
 test("the failure pair reads verbatim, the conflict is a receipt, and a plain cancel is cancelled", () => {
 	// A settled failure: the frozen `error` field is the message (falling back
 	// to the result's output when a frame carried none), `error_type` beside it.
+	// The CODE rides the view whatever the material (S16e): the label policy —
+	// sound and planning only — is the CARD's, so an image failure carries the
+	// code and draws no class label from it.
 	const failed = imageGenCardView(
 		tool({
 			isError: true,
@@ -269,7 +273,7 @@ test("the failure pair reads verbatim, the conflict is a receipt, and a plain ca
 		state: "failed",
 		material: "image",
 		message: "out of credits",
-		errorType: null,
+		errorCode: "insufficient_credits",
 	});
 	// The mid-walk frame (`stage: null`, the pair present, the call unsettled):
 	// the LIVE presentation with the sentence as its interim note (design round
@@ -338,7 +342,7 @@ test("the failure pair reads verbatim, the conflict is a receipt, and a plain ca
 		state: "failed",
 		material: "image",
 		message: "boom",
-		errorType: null,
+		errorCode: null,
 	});
 });
 
@@ -396,7 +400,7 @@ test("a failure carries the error text verbatim, and a verdict keeps its own", (
 		message: "This generation failed before producing output.",
 		// The frozen `error_type` lives in the record's `details` carrier; a
 		// record that states none carries null, and the read stays in this module.
-		errorType: null,
+		errorCode: null,
 	});
 	// An error frame that carried no text states none — the card's absence
 	// sentence is the card's, and nothing here invents a detail.
@@ -404,7 +408,7 @@ test("a failure carries the error text verbatim, and a verdict keeps its own", (
 		state: "failed",
 		material: "image",
 		message: null,
-		errorType: null,
+		errorCode: null,
 	});
 	const harness = imageGenCardView(
 		tool({
@@ -419,7 +423,7 @@ test("a failure carries the error text verbatim, and a verdict keeps its own", (
 		state: "failed",
 		material: "image",
 		message: "invalid arguments for generate_image: 'prompt' is required",
-		errorType: null,
+		errorCode: null,
 	});
 	// A record built by hand carries no `notRunReason` key at all; an absent
 	// key must not read as a verdict.
@@ -485,7 +489,7 @@ test("controls render only where wired and where the state can act", () => {
 	};
 	const cancelling = { ...running, state: "cancelling", generating: true };
 	const done = { state: "done", images: [], durationS: null };
-	const failed = { state: "failed", message: null, errorType: null };
+	const failed = { state: "failed", message: null, errorCode: null };
 	const cancelled = { state: "cancelled" };
 
 	// Nothing wired, nothing drawn — an absent handler is an absent control.
@@ -712,9 +716,14 @@ test("a queued card states how many are ahead only when a count exists (Q-1)", (
 	});
 	// The field counts requests AHEAD, so the copy says so: "2 ahead", never
 	// "position 2" (which would read one off — the TUI's D3 ruling).
-	// Anchored on the datum span's own edges (`>` ... `<`): a bare substring
-	// would also pass for "12 ahead".
-	assert.equal(withPosition.includes(">· 2 ahead<"), true);
+	// Anchored on the datum's own edges (`>` ... `<`): a bare substring would
+	// also pass for "12 ahead". The datum is isolated in its own <bdi> while the
+	// "· " separator stays outside it (design D3), so the dot cannot be carried
+	// to the edge by the datum's own direction in an RTL locale.
+	assert.equal(
+		withPosition.includes('>· <bdi dir="auto">2 ahead</bdi><'),
+		true,
+	);
 	assert.equal(withPosition.includes("position"), false);
 
 	// Zero is a real reading (nothing ahead), not an absent field.
@@ -724,7 +733,10 @@ test("a queued card states how many are ahead only when a count exists (Q-1)", (
 		argumentBytes: 1900,
 		queuePosition: 0,
 	});
-	assert.equal(nothingAhead.includes(">· 0 ahead<"), true);
+	assert.equal(
+		nothingAhead.includes('>· <bdi dir="auto">0 ahead</bdi><'),
+		true,
+	);
 
 	const without = markupOf({
 		state: "queued",
@@ -913,7 +925,7 @@ test("the material noun reaches the three strings, and only those strings move (
 		state: "failed",
 		material: "video",
 		message: null,
-		errorType: null,
+		errorCode: null,
 	});
 	assert.equal(failed.includes("The video could not be generated."), true);
 	assert.equal(failed.includes("could not be generated."), true);
@@ -951,7 +963,7 @@ test("the material noun reaches the three strings, and only those strings move (
 		state: "failed",
 		material: "sound-effect",
 		message: null,
-		errorType: null,
+		errorCode: null,
 	});
 	assert.equal(
 		soundEffectFailed.includes("The sound effect could not be generated."),
@@ -971,7 +983,7 @@ test("the material noun reaches the three strings, and only those strings move (
 		state: "failed",
 		material: "image",
 		message: null,
-		errorType: null,
+		errorCode: null,
 	});
 	assert.equal(imageFailed.includes("The image could not be generated."), true);
 });
@@ -1260,6 +1272,165 @@ test("the cancel copy is the security round's queued/running split, byte for byt
 });
 
 /*
+ * THE KEYED STOP, SETTLEMENT AND ERROR COPY (S16e, 2026-11-12): THE ENGLISH
+ * MUST NOT MOVE BY ONE BYTE.
+ *
+ * Every sentence asserted here was a module constant in the view model
+ * (`CANCEL_QUEUED_COPY`, `CANCEL_RUNNING_COPY`, `AUDIO_RATE_LIMITED_COPY`, the
+ * settlement sentence, `batchMaterialTitle`, the humanised error class). They
+ * are catalogue keys now, composed by the CARD at render time so the language
+ * can change without a reload. SO THE LITERALS BELOW ARE THE OLD CONSTANTS,
+ * copied verbatim, and the card's own markup is what proves the keyed path
+ * still says them.
+ *
+ * The second half pins the POLICY RULING: when a cancel payload carries
+ * `stage: "cancelled"` with `settling` and a boolean `vendor_stopped`, the card
+ * words the stop from those FIELDS and the wire sentence beside them is not
+ * shown — because a fixed English sentence cannot state a cost consequence the
+ * fields state exactly. With no such fields (an older durable row, another
+ * producer, or a null `vendor_stopped`) the wire's own sentence is rendered
+ * exactly as before.
+ */
+test("the keyed cancel copy renders the old constants byte for byte, and the structured fact wins", () => {
+	const QUEUED =
+		"Stopped before the provider was called; you will not be charged.";
+	const RUNNING_SENTENCE =
+		"Stop requested. The provider has no cancellation endpoint; the generation continues and will be charged if it produces audio.";
+	const RUNNING = `${RUNNING_SENTENCE} Checking for settlement.`;
+	/* The backend's own wording, which differs from the card's by one colon. */
+	const WIRE =
+		"Stop requested: the provider has no cancellation endpoint; the generation continues and will be charged if it produces audio. Checking for settlement.";
+	const cancelReceipt = (over = {}) =>
+		tool({
+			toolName: "generate_voiceover",
+			isError: true,
+			output: WIRE,
+			details: canonical({
+				stage: "cancelled",
+				settling: true,
+				vendor_stopped: false,
+				...over,
+			}),
+		});
+
+	/* In flight: the request, its billing consequence, and the pending check. */
+	const running = imageGenCardView(cancelReceipt());
+	assert.equal(running.state, "cancelled");
+	assert.deepEqual(running.cancel, {
+		vendorStopped: false,
+		settling: true,
+	});
+	const runningHtml = markupOf(running);
+	assert.ok(
+		runningHtml.includes(RUNNING),
+		"the keyed pair composes the constant",
+	);
+	assert.equal(
+		runningHtml.includes(WIRE),
+		false,
+		"the structured fact outranks the wire's sentence",
+	);
+	assert.equal(runningHtml.includes(QUEUED), false);
+
+	/* A settled row answers the clause, so the keyed sentence drops it. */
+	const answered = markupOf(
+		imageGenCardView(cancelReceipt(), { settled: true }),
+	);
+	assert.ok(answered.includes(RUNNING_SENTENCE));
+	assert.equal(answered.includes("Checking for settlement"), false);
+	assert.equal(answered.includes(WIRE), false);
+
+	/* Queued: the one case that may claim no charge. */
+	const queued = markupOf(
+		imageGenCardView(cancelReceipt({ settling: false, vendor_stopped: true })),
+	);
+	assert.ok(queued.includes(QUEUED));
+	assert.equal(queued.includes(RUNNING_SENTENCE), false);
+	assert.equal(queued.includes(WIRE), false);
+
+	/*
+	 * A NULL `vendor_stopped` IS PRESENT BUT UNKEYED: it covers a stop the server
+	 * never applied as well as one it declined to describe, so the wire's own
+	 * sentence is the honest render until a cancel OUTCOME code exists.
+	 */
+	const unknown = imageGenCardView(cancelReceipt({ vendor_stopped: null }));
+	assert.deepEqual(unknown.cancel, { vendorStopped: null, settling: true });
+	const unknownHtml = markupOf(unknown);
+	assert.ok(unknownHtml.includes(WIRE), "no fact, so the wire's words stand");
+	assert.equal(unknownHtml.includes(QUEUED), false);
+	assert.equal(unknownHtml.includes(RUNNING), false);
+
+	/* No cancel payload at all: the pre-S16e fallback, keyed but unchanged. */
+	const bare = markupOf({
+		state: "cancelled",
+		generating: true,
+		message: null,
+	});
+	assert.ok(bare.includes(RUNNING));
+
+	/* The batch title's material select, one whole sentence per branch. */
+	for (const [material, sentence] of [
+		["video", "Video batch stopped."],
+		["voiceover", "Voiceover batch stopped."],
+		["sound-effect", "Sound effect batch stopped."],
+		["image", "Image batch stopped."],
+	]) {
+		const html = markupOf({
+			state: "cancelled",
+			generating: false,
+			message: null,
+			material,
+			batch: [],
+		});
+		assert.ok(html.includes(sentence), sentence);
+	}
+
+	/* The settlement note: an outstanding charge, never an amount. */
+	assert.ok(
+		markupOf({
+			state: "cancelled",
+			generating: true,
+			message: null,
+			settlementPending: true,
+		}).includes(
+			"Settlement pending — the final charge will appear once the provider reports it.",
+		),
+	);
+
+	/* The failure classes, plus the humanised fallback for an unknown code. */
+	for (const [code, label] of [
+		["audio_rate_limited", "Audio rate limited"],
+		["unknown_tool", "Unknown tool"],
+		["invalid_arguments", "Invalid arguments"],
+		["duplicate_id", "Duplicate id"],
+		["denied", "Denied"],
+		["gate_failed", "Gate failed"],
+		["audio_rejected", "Audio rejected"],
+	]) {
+		const html = markupOf({
+			state: "failed",
+			material: "sound-effect",
+			message: null,
+			errorCode: code,
+		});
+		assert.ok(html.includes(label), code);
+		assert.equal(html.includes(code), false, "the raw id never renders");
+	}
+
+	/* The rate-limited absence sentence, keyed but worded as the constant was. */
+	assert.ok(
+		markupOf({
+			state: "failed",
+			material: "sound-effect",
+			message: null,
+			errorCode: "audio_rate_limited",
+		}).includes(
+			"Audio generation is busy right now. Wait a moment and try again.",
+		),
+	);
+});
+
+/*
  * THE RATE-LIMITED STATE (sound phase, 2026-10-17). `audio_rate_limited` is a
  * retryable error whose reader sentence the server authors; the card renders
  * the tool result's message when it has one and the fixed copy when only the
@@ -1275,11 +1446,14 @@ test("a rate-limited call states the server's sentence, preferring the result's 
 		}),
 	);
 	assert.equal(onlyType.state, "failed");
-	assert.equal(onlyType.errorType, "Audio rate limited");
-	assert.equal(
-		onlyType.message,
-		"Audio generation is busy right now. Wait a moment and try again.",
-	);
+	/*
+	 * THE CODE, NOT A SENTENCE (S16e): the view carries the wire discriminator,
+	 * and the CARD words the absence at render time in the reader's language —
+	 * so the model states no message when the result stated none, and the English
+	 * bytes are asserted off the rendered card below.
+	 */
+	assert.equal(onlyType.errorCode, "audio_rate_limited");
+	assert.equal(onlyType.message, null);
 
 	// A result that stated its own sentence WINS over the type's fixed copy.
 	const withResult = imageGenCardView(
@@ -1336,9 +1510,19 @@ test("sound receipts retain billed/estimated provenance and never turn quotes in
 			details: { settled: null, cost_usd: null, cost: { basis: "quote" } },
 		}),
 	);
-	assert.equal(
-		pending.settlementCaption,
-		"Settlement pending — the final charge will appear once the provider reports it.",
+	/*
+	 * THE OUTSTANDING CHARGE IS A STRUCTURED FACT (S16e): the view states
+	 * `settlementPending` and carries NO sentence, because the card words it from
+	 * `ui.chat.canonical.image_gen.settlement.pending` at render time. The
+	 * English bytes are asserted off the rendered card, where a language change
+	 * would also show up.
+	 */
+	assert.equal(pending.settlementPending, true);
+	assert.equal(pending.settlementCaption, undefined);
+	assert.ok(
+		markupOf(pending).includes(
+			"Settlement pending — the final charge will appear once the provider reports it.",
+		),
 	);
 	/*
 	 * SUB-CENT CHARGES (review round 2, MINOR): four decimals is the receipt's
@@ -1506,12 +1690,17 @@ test("sound failure labels are human, scoped, and do not repeat a sentence openi
 				},
 			}),
 		);
-		assert.equal(view.errorType, null);
+		assert.equal(view.errorCode, "insufficient_credits");
+		const imageMarkup = markupOf(view);
 		assert.equal(
-			markupOf({ ...view, errorType: "insufficient_credits" }).includes(
-				"insufficient_credits",
-			),
+			imageMarkup.includes("insufficient_credits"),
 			false,
+			"the raw id never reaches the reader",
+		);
+		assert.equal(
+			imageMarkup.includes("Insufficient credits"),
+			false,
+			"the class label is sound-only, so a picture's failure draws none",
 		);
 		const done = imageGenCardView(
 			tool({
@@ -1532,7 +1721,7 @@ test("sound failure labels are human, scoped, and do not repeat a sentence openi
 			},
 		}),
 	);
-	assert.equal(view.errorType, null);
+	assert.equal(view.errorCode, null);
 	assert.equal(view.message, "Invalid arguments: duration is required.");
 });
 
@@ -1569,9 +1758,8 @@ test("cancelled sound receipts retain explicit pending and completed billing fac
 		stopped: true,
 		details: cancelled,
 	});
-	assert.ok(
-		imageGenCardView(record).settlementCaption.startsWith("Settlement pending"),
-	);
+	assert.equal(imageGenCardView(record).settlementPending, true);
+	assert.equal(imageGenCardView(record).settlementCaption, undefined);
 	const settled = imageGenCardView({
 		...record,
 		details: { settled: true, cost_usd: 0.0021, billing_basis: "billed" },
@@ -2104,7 +2292,7 @@ test("batch cause and class survive failed and stopped receipt presentation", ()
 			},
 		}),
 	);
-	assert.equal(view.errorType, "Audio rejected");
+	assert.equal(view.errorCode, "audio_rejected");
 	assert.ok(view.message.includes("Batch time budget reached"));
 	assert.equal(
 		view.batchNote,
@@ -2286,4 +2474,222 @@ test("batch title follows its material rather than assuming sound effects", () =
 	const html = markupOf(view);
 	assert.ok(html.includes("Voiceover batch"));
 	assert.ok(!html.includes("Sound effect batch"));
+});
+
+/*
+ * THE SOUND GENERATION'S SEAT (operator requirement, 2026-10-23). A voiceover
+ * or sound effect used to wait behind the image card's 240x160 rectangle and
+ * shimmer; a sound waits on a WAVEFORM built from the player's own recipe
+ * (`BAR_WIDTH` 4, 2px gaps, 2px radius), so the loader and the clip it becomes
+ * read as one object. The four states are the card's own and must differ:
+ * queued (static, disabled ink), running (pulsing, muted ink), failed (the
+ * band collapsed to its base line), stopped (at rest, muted ink) - and only
+ * the running one animates, because no vendor exposes a sound's progress.
+ */
+test("a sound generation waits on a waveform, never on the image rectangle", () => {
+	const running = markupOf({
+		state: "running",
+		material: "voiceover",
+		startedAtMs: 3,
+		progress: NO_PROGRESS,
+	});
+	assert.ok(
+		running.includes('data-sound-loading="running"'),
+		"the running sound card carries the waveform tile",
+	);
+	assert.equal(
+		running.includes("data-imagegen-tile"),
+		false,
+		"the image rectangle is not the sound's loader",
+	);
+	// INDETERMINATE: no fraction was carried, so no progressbar and no fill.
+	assert.equal(running.includes('role="progressbar"'), false);
+	// The player's recipe: a 4px bar and a 2px pitch, not an ad-hoc shape.
+	assert.ok(running.includes("width:4px"), "bars use the player's BAR_WIDTH");
+	assert.ok(
+		running.includes("margin-right:2px"),
+		"bars use the player's BAR_GAP",
+	);
+	assert.ok(
+		running.includes("animation-delay"),
+		"the pulse is a travelling wave",
+	);
+	// N2 (round 1): the band is the compact player's own 44px box, so the card
+	// does not shrink when the sound settles.
+	assert.ok(
+		running.includes("height: 44px") || running.includes("height:44px"),
+		"the loader is the player's height, not 12px taller",
+	);
+
+	const queued = markupOf({
+		state: "queued",
+		material: "sound-effect",
+		progress: NO_PROGRESS,
+	});
+	assert.ok(queued.includes('data-sound-loading="queued"'));
+	assert.equal(
+		queued.includes("animation-delay"),
+		false,
+		"queued is at rest: the provider has not been asked yet",
+	);
+	assert.notEqual(queued, running, "queued must not look like running");
+	// Through the REAL model: a queued voiceover call carries its material, so
+	// the queued seat is reachable from the wire's own record, not only from a
+	// hand-built view.
+	const queuedView = imageGenCardView(
+		tool({ toolName: "generate_voiceover", phase: "queued" }),
+	);
+	assert.equal(queuedView.material, "voiceover");
+	assert.ok(markupOf(queuedView).includes('data-sound-loading="queued"'));
+
+	const failed = markupOf({
+		state: "failed",
+		material: "sound-effect",
+		generating: true,
+		message: "The sound effect could not be generated.",
+		errorCode: null,
+		progress: NO_PROGRESS,
+	});
+	assert.ok(failed.includes('data-sound-loading="failed"'));
+	assert.ok(
+		failed.includes("height:4px"),
+		"a failure produced no shape: the band is its base line",
+	);
+
+	const stopped = markupOf({
+		state: "cancelled",
+		material: "sound-effect",
+		generating: true,
+		message: "Stopped by the operator.",
+		progress: NO_PROGRESS,
+	});
+	assert.ok(stopped.includes('data-sound-loading="stopped"'));
+	/*
+	 * N1 (round 1): a reduced-motion reader gets the running band parked (the
+	 * CSS cap lands on its end keyframe), so RUNNING and STOPPED must differ in
+	 * more than motion. They do, by ink: muted vs dim.
+	 */
+	assert.ok(
+		running.includes("bg-ink-muted") && stopped.includes("bg-ink-dim"),
+		"the parked running frame and the stopped frame differ by ink",
+	);
+	assert.ok(
+		stopped.includes(
+			"provider has no cancellation endpoint; the generation continues and will be charged if it produces audio",
+		),
+		"the stop receipt's billing sentence is in the card, not only the transcript",
+	);
+	// And a plain cancelled sound states it ONCE: the receipt must not repeat
+	// the state line it already sits under.
+	const plain = markupOf({
+		state: "cancelled",
+		material: "sound-effect",
+		generating: true,
+		message: null,
+		progress: NO_PROGRESS,
+	});
+	assert.equal(
+		(plain.match(/no cancellation endpoint/g) ?? []).length,
+		1,
+		"the plain cancelled line is the receipt; no duplicate note",
+	);
+});
+
+test("images and videos keep the rectangular generating tile", () => {
+	for (const material of ["image", "video"]) {
+		const markup = markupOf({
+			state: "running",
+			material,
+			startedAtMs: 3,
+			progress: NO_PROGRESS,
+		});
+		assert.ok(
+			markup.includes("data-imagegen-tile"),
+			`${material} keeps the 3:2 rectangle`,
+		);
+		assert.equal(
+			markup.includes("data-sound-loading"),
+			false,
+			`${material} is not caught by the audio branch`,
+		);
+	}
+});
+
+/*
+ * A STOP THAT LOST ITS RACE IS NOT A COST RECEIPT (review round 1, F1,
+ * 2026-11-12). `cancelFact` reads `stage`/`settling`/`vendor_stopped` as the
+ * stop's cost consequence, and ARM 1 (`record.stopped === true`, the user's
+ * interrupt) is evaluated BEFORE the `media_already_completed` branch — so a
+ * stop pressed as the generation finished used to render the in-flight
+ * sentence ("Stop requested… will be charged") over the server's own
+ * "Not cancelled — already completed.", the one statement that the artifact
+ * may already exist. A payload that names an `error_type` describes a stop that
+ * did NOT happen, so it carries no cost consequence to render: the wire's
+ * sentence keeps its precedence, exactly as before the keying.
+ */
+test("a stop that raced the completion keeps the wire's conflict receipt (F1)", () => {
+	const CONFLICT = "Not cancelled — already completed.";
+	const record = tool({
+		toolName: "generate_voiceover",
+		stopped: true,
+		startedAt: 1,
+		isError: true,
+		phase: "error",
+		output: CONFLICT,
+		details: {
+			stage: "cancelled",
+			settling: false,
+			vendor_stopped: false,
+			error: CONFLICT,
+			error_type: "media_already_completed",
+		},
+	});
+	const view = imageGenCardView(record);
+	assert.equal(view.state, "cancelled");
+	assert.equal(
+		view.cancel,
+		undefined,
+		"a named error is not a stop receipt, so no keyed cost sentence is available",
+	);
+	assert.equal(view.message, CONFLICT, "the record keeps the wire's own words");
+	const markup = markupOf(view, ALL_ACTIONS);
+	assert.equal(
+		markup.includes(CONFLICT),
+		true,
+		"the card states the server's conflict receipt",
+	);
+	assert.equal(
+		markup.includes("Stop requested"),
+		false,
+		"and never claims a stop is in flight when the generation had finished",
+	);
+	assert.equal(
+		markup.includes("you will not be charged"),
+		false,
+		"nor a no-charge promise it cannot make",
+	);
+	// The direct neighbour is untouched: a plain cancel (no `error_type`) still
+	// renders the keyed sentence chosen from its fields.
+	const plain = imageGenCardView(
+		tool({
+			toolName: "generate_voiceover",
+			stopped: true,
+			startedAt: 1,
+			isError: true,
+			details: {
+				stage: "cancelled",
+				settling: false,
+				vendor_stopped: false,
+			},
+		}),
+	);
+	assert.deepEqual(plain.cancel, { vendorStopped: false, settling: false });
+	const plainMarkup = markupOf(plain, ALL_ACTIONS);
+	assert.equal(
+		plainMarkup.includes(
+			"Stop requested. The provider has no cancellation endpoint; the generation continues and will be charged if it produces audio.",
+		),
+		true,
+		"a real in-flight stop still states the request and its consequence",
+	);
 });

@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "convergence-rebind",
+  "locale": "zh-CN",
+  "namespace": "ui.chat.run_details",
+  "pr": 1897,
+  "date": "2026-11-14",
+  "head": "dcfbcdbd0567f72233f5fb19c87b207ab7067aed",
+  "instance": "s17c-zh-cn-rebind-181cd807",
+  "auditor": {
+    "agent": "translation-auditor",
+    "role": "independent translation auditor (team lopdev); not the translator, not the draft auditor, not the integrator",
+    "model": "deepseek/deepseek-flash",
+    "independence": "This session is a fresh audit instance: I did not translate, draft-audit or integrate any of this PR's S17c work, and I judged the 36 values myself against English and the sidecar before reading the original auditor's record, carrying only the two findings I independently agree with.",
+    "instance": "s17c-zh-cn-rebind-181cd807"
+  },
+  "model": "deepseek/deepseek-flash",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": [
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.run_details.monitor.armed_count",
+      "note": "English 'armed' gets two Chinese words: current {count, plural, other {{count_display}个监控项已启用}} here versus the already-shipped sibling ui.chat.run_details.wake.armed_count {count_display}个唤醒项待触发, and both chips sit on the same composer row off one English word. 已启用 is accurate for a monitor and pairs with monitor.disabled 已停用, so nothing is misread; this is term drift only. Either record the split as deliberate in the zh-CN translator notes, or unify on 待触发 ({count_display}个监控项待触发) which still fits the width budget."
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.chat.run_details.wake.cadence_finished",
+      "note": "Current 每{duration} · 无剩余次数 parses as a bare noun phrase; proposed 每{duration} · 已无剩余次数 gives it the clause shape of its sibling 剩余{remaining_display}次. Correct as written, safe to defer."
+    }
+  ],
+  "binding": "Verified before reading, then re-verified after writing: all four input sha256 matched (zh merged 181cd807…, en 1f1bf1d0…, sidecar 8a329d4c…, draft 3cdc15da…) and the merged file still hashes 181cd807… after this receipt was written. (1) PARENT: parsing both files, the merged file's first 109 key/value pairs are identical to git show ec00119944d:… in order and value (0 differences, 109/109); a raw line diff of the two files is exactly one changed line — the formerly-last entry mcp_failure.session gaining a trailing comma — plus 36 added lines, so every other byte of the pre-existing region is untouched. (2) DRAFT: merged pairs 110-145 equal the 36 audited draft pairs as an ordered tuple list (order and values, exact). (3) ENGLISH: key sets equal both ways (145=145, 0 orphaned either side), no duplicate keys (145 entry lines, 145 unique), raw key order equals parsed order, and English's last 36 keys are exactly the 36 new ones so the appended block follows English's relative order; the order divergence from English that starts at index 93 lies wholly in the pre-existing block and is inherited from the parent, not introduced here. ICU: parsed all 145 zh and all 145 en values with the repo's own @formatjs/icu-messageformat-parser 3.5.21 — argument-name sets identical on all 145 (0 mismatches), tag sets, select arms and number/date/time skeletons identical, and the only differences are plural arms on 14 keys where zh carries `other` alone and English carries one/=1+other: correct for CLDR zh, whose only plural category is `other`, and each zh arm still prints the number (pound # or explicit {count_display}). Negative control: a deliberately malformed message throws MISSING_OTHER_CLAUSE, so the parse path discriminates. Format: TAB indent (every entry line exactly one leading tab, none doubled), no BOM, no CRLF, single trailing newline, all values NFC, no \\u escapes. Width in cells (CJK=2): widest growth is +3 (monitor.failed_count), +2 on two compact buttons, every other key shorter than English. The receipt date is the brief's UTC date; local time at audit was 2026-11-13 19:44 EST (2026-11-14 00:44 UTC).",
+  "scope": "ui.chat.run_details for zh-CN: 145 keys at PR head dcfbcdbd0567; 109 byte-identical to parent ec00119944d, 36 new read against English and the sidecar",
+  "revisions": {
+    "parent": "ec00119944dabb6a44ed8130f8864280401b1714",
+    "head": "dcfbcdbd0567f72233f5fb19c87b207ab7067aed"
+  },
+  "en_sha256": "1f1bf1d066875db81d4b5728e6a3f88c47a432d75aa8e75b92cdbefc42f2eb66",
+  "context_sha256": "8a329d4c5c6122e35986b8de3d04b6f25dfb3979349cd1675fed1b4cbc2497a6",
+  "target_sha256": "181cd807956df562852162bbc8eda73c90f74a1a9c4c2df235890ef0bb008453",
+  "sha256": {
+    "zh-CN": "181cd807956df562852162bbc8eda73c90f74a1a9c4c2df235890ef0bb008453",
+    "en": "1f1bf1d066875db81d4b5728e6a3f88c47a432d75aa8e75b92cdbefc42f2eb66"
+  },
+  "draft_sha256": "3cdc15daf84ad29743dcd8876a0d0e3bbcf6f68d642ac27d099261cce9780aea"
+}

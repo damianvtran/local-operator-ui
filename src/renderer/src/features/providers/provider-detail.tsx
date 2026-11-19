@@ -25,6 +25,8 @@
  * field, and nothing was stored (UX U3).
  */
 
+import { categorizeProviderFailure } from "@shared/analytics/first-run-reasons";
+import { trackProductEvent } from "@shared/analytics/product-events";
 import { pollAuthOperation } from "@shared/api/local-operator/auth-operation";
 import {
 	DesktopControlError,
@@ -36,7 +38,11 @@ import type {
 	DesktopProvider,
 	ProviderMethod,
 } from "@shared/api/local-operator/desktop-api";
-import { desktopKeys } from "@shared/api/local-operator/desktop-hooks";
+import {
+	desktopFeatureEnabled,
+	desktopKeys,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
 import { CopyButton } from "@shared/components/common/copy-button";
 import { Spinner } from "@shared/components/common/spinner";
 import { getModelsForHostingProvider } from "@shared/components/hosting/hosting-model-manifest";
@@ -45,7 +51,6 @@ import {
 	AlertDescription,
 	AlertTitle,
 	Button,
-	Input,
 	Label,
 	Tabs,
 	TabsList,
@@ -60,7 +65,7 @@ import { apiConfig } from "@shared/config/api-config";
  * instant (see `useRadientAuthStatus`).
  */
 import {
-	radientSessionIssueKey,
+	rereadVerdictAfterSignIn,
 	useRadientLoginVerdict,
 } from "@shared/hooks/use-radient-session-issue";
 /*
@@ -82,18 +87,23 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
 	CircleCheck,
 	ExternalLink,
-	Eye,
-	EyeOff,
 	RotateCcw,
 	TriangleAlert,
 } from "lucide-react";
 import type { FC, ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type {
+	BedrockConnectResult,
 	DefaultsApplied,
 	SaveKeyResult,
 } from "../../../../shared/desktop-contract";
 import { voiceKeys } from "../voice/use-voice-status";
+import { awsPanelAvailable } from "./bedrock-connect-model";
+import { BedrockConnectPanel } from "./bedrock-connect-panel";
+import { useMakeLocalDefault } from "./local-default";
+import { checkLocalProvider } from "./local-provider-check";
+import type { LocalDiagnosis } from "./local-provider-diagnosis";
+import { LocalProviderStatusView } from "./local-provider-status";
 import { PhoneAccessBlock } from "./phone-access-block";
 import {
 	brandOf,
@@ -110,106 +120,118 @@ import {
 	primaryMethod,
 	providerReadiness,
 } from "./provider-labels";
+import { SecretInput } from "./secret-input";
 import {
 	clearKeyOutcome,
 	peekKeyOutcome,
 	setKeyOutcome,
 	useSignInSession,
 } from "./sign-in-sessions";
+import { useDefaultModel } from "./use-provider-status";
 
 /**
- * Reachability for a local provider.
+ * Reachability for a local provider, and what to do when it fails.
  *
  * The probe runs when the panel OPENS (design D11): opening a panel is already
  * an explicit user action, and "Not tested yet" was a state that asked the
  * user to press a button whose result the app could have fetched itself. The
  * "no probe on render" rule is about the provider LIST, which still never
  * probes.
+ *
+ * D1 (onboarding friction, 2026-11): the failure used to be one sentence and a
+ * "Check again" that re-ran a probe failing in milliseconds with the same
+ * words, so 146 users pressed it (8.4x each on Windows) and half never sent a
+ * message. The panel now names the cause (`diagnoseLocal`), gives that cause
+ * its next steps, offers the hosted alternative, and makes every check visibly
+ * land: a held in-flight state and a "checked at <time>" receipt that changes
+ * on every press.
  */
-const LocalProviderReachability: FC<{ provider: DesktopProvider }> = ({
-	provider,
-}) => {
+const LocalProviderReachability: FC<{
+	provider: DesktopProvider;
+	/** Opens the hosted sign-in instead; absent where no such row exists. */
+	onUseHosted?: () => void;
+	/** The flow's next step once chats use this runtime; absent in Settings. */
+	onContinue?: () => void;
+	continueLabel?: string;
+}> = ({ provider, onUseHosted, onContinue, continueLabel }) => {
 	useI18nLocale();
+	/*
+	 * U1: whether chats already use this runtime, and the press that makes them.
+	 * The default is the gate `useProviderStatus` reads, so the same read decides
+	 * the receipt here and the composer's line there.
+	 */
+	const defaults = useDefaultModel();
+	const makeDefault = useMakeLocalDefault();
+	const inUse =
+		defaults.hosting === provider.id ? (defaults.model ?? "") : null;
 	const [testing, setTesting] = useState(false);
-	const [result, setResult] = useState<{
-		reachable: boolean;
-		detail: string;
-	} | null>(null);
+	const [diagnosis, setDiagnosis] = useState<LocalDiagnosis | null>(null);
+	const [checkedAt, setCheckedAt] = useState<number | null>(null);
+	const [failedChecks, setFailedChecks] = useState(0);
+	/* A stale answer for a previous provider row must not land on this one. */
+	const generation = useRef(0);
+	const providerId = provider.id;
+	const baseUrl = provider.base_url;
 
 	const test = useCallback(async () => {
+		const mine = ++generation.current;
 		setTesting(true);
-		try {
-			setResult(
-				await desktopResult<{ reachable: boolean; detail: string }>({
-					op: "auth.probe",
-					provider: provider.id,
-				}),
-			);
-		} catch (error) {
-			setResult({
-				reachable: false,
-				detail:
-					error instanceof Error
-						? error.message
-						: t(
-								"ui.providers.provider_detail.the_connection_could_not_be_tested",
-							),
-			});
-		} finally {
-			setTesting(false);
-		}
-	}, [provider.id]);
+		const started = Date.now();
+		const next = await checkLocalProvider({
+			id: providerId,
+			base_url: baseUrl,
+		});
+		/*
+		 * A PERCEPTION FLOOR, not a timeout: a refused connection answers in a few
+		 * milliseconds, so "Checking..." never painted and the press looked
+		 * ignored. 400 ms is long enough to read as "it ran" and short enough not
+		 * to read as slow; a real network probe that takes longer is unaffected.
+		 */
+		const remaining = 400 - (Date.now() - started);
+		if (remaining > 0)
+			await new Promise((resolve) => setTimeout(resolve, remaining));
+		if (mine !== generation.current) return;
+		setDiagnosis(next);
+		setCheckedAt(Date.now());
+		setFailedChecks((count) => (next.kind === "ready" ? 0 : count + 1));
+		setTesting(false);
+	}, [providerId, baseUrl]);
 
 	// A different provider row reuses this component, so the verdict is reset
 	// and re-asked per provider rather than left beside the new name.
 	useEffect(() => {
-		setResult(null);
+		setDiagnosis(null);
+		setCheckedAt(null);
+		setFailedChecks(0);
 		void test();
 	}, [test]);
 
-	const brand = brandOf(provider);
+	const firstModel =
+		diagnosis?.kind === "ready" ? (diagnosis.firstModel ?? null) : null;
 	return (
-		<div className="flex flex-col items-start gap-2">
-			{result === null ? (
-				<p className="flex items-center gap-2 text-body-sm text-ink-muted">
-					<Spinner size="sm" />
-					{t("ui.providers.provider_detail.checking_whether")}
-					{brand} {t("ui.providers.provider_detail.is_running")}
-				</p>
-			) : result.reachable ? (
-				<p className="text-body-sm text-success">
-					{brand} {t("ui.providers.provider_detail.is_running")}
-				</p>
-			) : (
-				<p className="text-body-sm text-ink-muted">
-					{brand} {t("ui.providers.provider_detail.isn_t_answering")}
-					{provider.base_url ? (
-						<>
-							{t("ui.providers.provider_detail.at")}
-							<span className="font-mono">{provider.base_url}</span>
-						</>
-					) : null}
-				</p>
-			)}
-			{/*
-			 * No second failure line when the probe could not answer: the line above
-			 * already carries the verdict AND the address, so the backend's sentence
-			 * printed the same failure twice (design round 2 D9). The old guard hid it
-			 * only when the detail contained the configured address, which never
-			 * matched -- the configured address carries `/v1` and the sentence does not,
-			 * and the real backend (routes/auth.py's probe) sends no address at all.
-			 */}
-			<Button
-				variant="secondary"
-				size="sm"
-				onClick={() => void test()}
-				disabled={testing}
-			>
-				{testing
-					? t("ui.providers.provider_detail.checking")
-					: t("ui.providers.provider_detail.check_again")}
-			</Button>
-		</div>
+		<LocalProviderStatusView
+			provider={provider}
+			diagnosis={diagnosis}
+			testing={testing}
+			checkedAt={checkedAt}
+			failedChecks={failedChecks}
+			onCheckAgain={() => void test()}
+			onUseHosted={onUseHosted}
+			inUse={inUse}
+			onUseForChats={
+				firstModel
+					? () =>
+							void makeDefault.run({
+								provider: provider.id,
+								model_id: firstModel,
+							})
+					: undefined
+			}
+			using={makeDefault.busy}
+			useError={makeDefault.error}
+			onContinue={onContinue}
+			continueLabel={continueLabel}
+		/>
 	);
 };
 
@@ -244,6 +266,12 @@ type ProviderDetailProps = {
 	 * what the panel did before.
 	 */
 	readiness?: ProviderReadiness | null;
+	/**
+	 * Opens the hosted (Radient) sign-in in place of this panel. Passed by the
+	 * grid only when that row exists; the local panel offers it as the clear
+	 * alternative to setting up a model on this computer (D1).
+	 */
+	onUseHosted?: () => void;
 };
 
 /**
@@ -253,50 +281,6 @@ type ProviderDetailProps = {
  * edited nor submitted.
  */
 const STORED_KEY_MASK = "\u2022".repeat(16);
-
-const SecretInput: FC<{
-	id: string;
-	value: string;
-	onChange: (value: string) => void;
-	label: string;
-	invalid?: boolean;
-	describedBy?: string;
-	placeholder?: string;
-}> = ({ id, value, onChange, label, invalid, describedBy, placeholder }) => {
-	useI18nLocale();
-	const [visible, setVisible] = useState(false);
-	return (
-		<div className="relative">
-			<Input
-				id={id}
-				type={visible ? "text" : "password"}
-				value={value}
-				placeholder={placeholder}
-				onChange={(event) => onChange(event.target.value)}
-				autoComplete="off"
-				spellCheck={false}
-				aria-label={label}
-				aria-invalid={invalid || undefined}
-				aria-describedby={describedBy}
-				className="pr-10 font-mono"
-			/>
-			<Button
-				type="button"
-				variant="ghost"
-				size="icon-sm"
-				className="absolute top-1/2 right-1 -translate-y-1/2"
-				onClick={() => setVisible((current) => !current)}
-				aria-label={
-					visible
-						? t("ui.providers.provider_detail.hide_key")
-						: t("ui.providers.provider_detail.show_key")
-				}
-			>
-				{visible ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
-			</Button>
-		</div>
-	);
-};
 
 /**
  * The success receipt: the backend's own sentence, never re-derived here,
@@ -316,8 +300,11 @@ const verdictStop = (sentence: string): string =>
 
 const SignedIn: FC<{
 	brand: string;
-	verb: "Signed in to" | "Connected";
+	/** Which headline to draw: a token, resolved to a translated sentence below.
+	 * It was `verb` until the i18n scanner started counting that prop name as prose. */
+	kind: "signed-in" | "connected";
 	defaults: DefaultsApplied | null | undefined;
+	retainedNotice?: string | null;
 	unverified?: string | null;
 	onChangeModel?: () => void;
 	actionLabel: string;
@@ -349,8 +336,9 @@ const SignedIn: FC<{
 	verdict?: ProviderReadiness | null;
 }> = ({
 	brand,
-	verb,
+	kind,
 	defaults,
+	retainedNotice,
 	unverified,
 	onChangeModel,
 	actionLabel,
@@ -415,7 +403,7 @@ const SignedIn: FC<{
 					{contested && verdict
 						? verdict.label
 						: (headline ??
-							(verb === "Connected"
+							(kind === "connected"
 								? t("ui.providers.provider_detail.connected_variant_163", {
 										brand,
 									})
@@ -460,6 +448,16 @@ const SignedIn: FC<{
 					{t(
 						"ui.providers.provider_detail.the_sign_in_itself_finished_what_follows",
 					)}
+				</p>
+			) : null}
+			{retainedNotice?.trim() ? (
+				// Record references belong on separate lines; preserve the trusted
+				// indentation while allowing long tokens to wrap in narrow panels.
+				<p
+					className="min-w-0 whitespace-pre-wrap text-body-sm text-ink-muted [overflow-wrap:anywhere]"
+					data-retained-notice
+				>
+					{retainedNotice}
 				</p>
 			) : null}
 			{defaults?.receipt || defaults?.model_name ? (
@@ -537,6 +535,7 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 	onChangeModel,
 	context = "settings",
 	readiness: readinessProp,
+	onUseHosted,
 }) => {
 	useI18nLocale();
 	const queryClient = useQueryClient();
@@ -650,13 +649,28 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 	const [promptValue, setPromptValue] = useState("");
 	const [promptError, setPromptError] = useState<string | null>(null);
 	const brand = brandOf(provider);
+	/*
+	 * Amazon Bedrock's AWS panel is licensed by the backend, not by the census
+	 * row: a backend can list an `aws` method (bedrock design §7) and this app
+	 * may only render the panel when the four `auth.bedrock.*` routes behind it
+	 * exist. Without `features.bedrock_auth` the `aws` method is dropped and the
+	 * provider is the plain API-key panel every backend serves. Called before
+	 * the early returns so the hook order is the same for every provider.
+	 */
+	const capabilities = useDesktopCapabilities();
+	const awsPanel = awsPanelAvailable(
+		provider,
+		desktopFeatureEnabled(capabilities.data, "bedrock_auth"),
+	);
+	const methods = provider.auth_methods.filter(
+		(candidate) => candidate.kind !== "aws",
+	);
 
 	// Resolved by METHOD identity, not provider id: a provider can offer several
 	// methods that all act on the same provider (D2 of the earlier round).
 	const method: ProviderMethod | null =
-		provider.auth_methods.find(
-			(candidate) => candidate.method_id === methodId,
-		) ?? primaryMethod(provider.auth_methods);
+		methods.find((candidate) => candidate.method_id === methodId) ??
+		primaryMethod(methods);
 
 	const refreshProviders = useCallback(() => {
 		void queryClient.invalidateQueries({ queryKey: desktopKeys.providers });
@@ -744,8 +758,15 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 		 * the row still read "Needs re-authentication" with the verdict request count
 		 * unchanged at 1 and `{credential_id: 7, state: "login_required"}` still in
 		 * the cache.
+		 *
+		 * Through the callout's own re-read rather than a bare invalidation, so a
+		 * sign-in that lands before the backend's off-thread tunnel heal gets the
+		 * same ONE bounded second look here as it does in the composer callout
+		 * (`VERDICT_HEAL_REREAD_MS`): the chip and the callout settle on the same
+		 * reading of the same event. Not awaited - the panel's own state does not
+		 * wait on the verdict.
 		 */
-		void queryClient.invalidateQueries({ queryKey: radientSessionIssueKey });
+		void rereadVerdictAfterSignIn(queryClient);
 		onConnected?.();
 	}, [queryClient, onConnected, provider.id]);
 
@@ -943,6 +964,10 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 		setKeySaving(true);
 		rememberKey({ error: null });
 		try {
+			trackProductEvent("provider_setup_started", {
+				provider: method.id,
+				method: "api_key",
+			});
 			const result =
 				(await desktopResult<SaveKeyResult | null>({
 					op: "auth.key",
@@ -951,6 +976,10 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 				})) ?? {};
 			setKeyValue("");
 			rememberKey({ saved: result });
+			trackProductEvent("provider_connected", {
+				provider: method.id,
+				method: "api_key",
+			});
 			refreshProviders();
 			void adoptDefaultRef.current(
 				provider.id,
@@ -958,6 +987,11 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 				provider.suggested_model?.id,
 			);
 		} catch (error) {
+			trackProductEvent("provider_setup_failed", {
+				provider: method.id,
+				method: "api_key",
+				reason: categorizeProviderFailure(error, "key"),
+			});
 			// A 422 is the backend refusing THIS key (validation, or a provider
 			// with no key route), and its sentence belongs under the field.
 			// Anything else is also shown there: the field is what the user
@@ -1011,13 +1045,111 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 	if (provider.local) {
 		return (
 			<div className="flex flex-col gap-3">
+				{/*
+				 * Short on purpose (design round 1, D7): the old intro's "start <brand>,
+				 * then check the connection" repeated the cause-specific steps the panel
+				 * now shows right under it.
+				 */}
 				<p className="text-body-sm text-ink-muted">
-					{t("ui.providers.provider_detail.runs_on_this_computer_and_needs_no")}
-					{brand}
-					{t("ui.providers.provider_detail.then_check_the_connection")}
+					{t("ui.recovery.local.intro")}
 				</p>
-				<LocalProviderReachability provider={provider} />
+				<LocalProviderReachability
+					provider={provider}
+					onUseHosted={onUseHosted}
+					/*
+					 * Where the flow has a next step (onboarding, the connect dialog),
+					 * the "chats use <brand>" receipt carries it, so a ready runtime
+					 * ends the dialog in one more press (U1). Settings has none.
+					 */
+					onContinue={context === "dialog" ? finish : undefined}
+					continueLabel={context === "dialog" ? doneLabel : undefined}
+				/>
 			</div>
+		);
+	}
+
+	/*
+	 * Bedrock's connect result carries what the generic key save does not: the
+	 * connection's label and how many models it can reach. A verified connect
+	 * says so in the headline; an unverified one keeps the shared "saved, not
+	 * checked" wording and the backend's reason (credentials that work but
+	 * cannot list models land here, valid: null).
+	 */
+	const bedrockSaved =
+		keySaved && "credential_id" in keySaved
+			? (keySaved as BedrockConnectResult)
+			: null;
+	const bedrockHeadline =
+		bedrockSaved === null
+			? undefined
+			: bedrockSaved.valid === true
+				? typeof bedrockSaved.models_available === "number"
+					? t("ui.providers.bedrock.connected_models", {
+							label: bedrockSaved.label,
+							count: bedrockSaved.models_available,
+						})
+					: undefined
+				: // An AWS connection is not a "key": say what was stored, by its label.
+					t("ui.providers.bedrock.connection_saved", {
+						label: bedrockSaved.label,
+					});
+	const savedReceipt = keySaved ? (
+		<SignedIn
+			brand={brand}
+			kind="connected"
+			defaults={keySaved.defaults_applied}
+			/*
+			 * `valid: true` is the only verified answer. `null` is the backend
+			 * saying it could not check, and ABSENT is a released backend that
+			 * checks nothing at all and answers `{}` -- treating that as success
+			 * printed "Radient connected" for a fabricated key (code round 1
+			 * Q6, UX U1).
+			 */
+			unverified={
+				keySaved.valid === true
+					? null
+					: (keySaved.reason ??
+						t(
+							"ui.providers.provider_detail.this_local_operator_does_not_check_keys",
+						))
+			}
+			tone={keySaved.valid === true ? "success" : "unchecked"}
+			headline={
+				bedrockHeadline ??
+				(keySaved.valid === true
+					? undefined
+					: t("ui.providers.provider_detail.key_saved", { brand }))
+			}
+			onChangeModel={onChangeModel}
+			actionLabel={doneLabel}
+			onAction={finish}
+			primaryAction={context === "dialog"}
+			/*
+			 * THE SAME VERDICT AS THE FLOW'S SUCCESS VIEW (review round 6, minor).
+			 * Radient offers an API key as well as a browser sign-in, so this
+			 * branch can render under a credential the provider has stopped
+			 * accepting -- and with no verdict it printed "Radient connected" over a
+			 * row saying otherwise: U19's contradiction, one route over.
+			 */
+			verdict={readiness}
+		/>
+	) : null;
+
+	/* ------------------------------------------------------ Amazon Bedrock */
+	if (awsPanel) {
+		if (savedReceipt) return savedReceipt;
+		return (
+			<BedrockConnectPanel
+				onConnected={(result) => {
+					rememberKey({ saved: result });
+					refreshProviders();
+					void adoptDefaultRef.current(
+						provider.id,
+						result.defaults_applied,
+						provider.suggested_model?.id,
+					);
+				}}
+			/>
 		);
 	}
 
@@ -1044,10 +1176,10 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 	 * "Use an API key instead" action right below them (design round 1, D4).
 	 */
 	const methodTabs =
-		provider.auth_methods.length > 1 && flow.phase !== "settled" ? (
+		methods.length > 1 && flow.phase !== "settled" ? (
 			<Tabs value={method.method_id} onValueChange={chooseMethod}>
 				<TabsList aria-label={t("ui.providers.provider_detail.how_to_connect")}>
-					{provider.auth_methods.map((candidate) => (
+					{methods.map((candidate) => (
 						<TabsTrigger key={candidate.method_id} value={candidate.method_id}>
 							{methodName(candidate)}
 						</TabsTrigger>
@@ -1062,44 +1194,7 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 			return (
 				<div className="flex flex-col gap-4">
 					{methodTabs}
-					<SignedIn
-						brand={brand}
-						verb="Connected"
-						defaults={keySaved.defaults_applied}
-						/*
-						 * `valid: true` is the only verified answer. `null` is the backend
-						 * saying it could not check, and ABSENT is a released backend that
-						 * checks nothing at all and answers `{}` -- treating that as success
-						 * printed "Radient connected" for a fabricated key (code round 1
-						 * Q6, UX U1).
-						 */
-						unverified={
-							keySaved.valid === true
-								? null
-								: (keySaved.reason ??
-									t(
-										"ui.providers.provider_detail.this_local_operator_does_not_check_keys",
-									))
-						}
-						tone={keySaved.valid === true ? "success" : "unchecked"}
-						headline={
-							keySaved.valid === true
-								? undefined
-								: t("ui.providers.provider_detail.key_saved", { brand })
-						}
-						onChangeModel={onChangeModel}
-						actionLabel={doneLabel}
-						onAction={finish}
-						primaryAction={context === "dialog"}
-						/*
-						 * THE SAME VERDICT AS THE FLOW'S SUCCESS VIEW (review round 6, minor).
-						 * Radient offers an API key as well as a browser sign-in, so this
-						 * branch can render under a credential the provider has stopped
-						 * accepting -- and with no verdict it printed "Radient connected" over a
-						 * row saying otherwise: U19's contradiction, one route over.
-						 */
-						verdict={readiness}
-					/>
+					{savedReceipt}
 				</div>
 			);
 		}
@@ -1554,15 +1649,22 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 		body = (
 			<SignedIn
 				brand={brand}
-				verb="Signed in to"
+				kind="signed-in"
 				defaults={operation.defaults_applied}
+				// Recovery copy belongs to this successful Radient operation only;
+				// a generic message can contain provider diagnostics, not this receipt.
+				retainedNotice={
+					provider.id === "radient" && operation.provider === "radient"
+						? operation.retained_notice
+						: undefined
+				}
 				onChangeModel={onChangeModel}
 				// A completed OAuth operation is not a working grant. The refused
 				// Radient row still needs the existing re-auth flow; Done alone
 				// stranded the phone block on "sign in, then check again".
 				actionLabel={
 					provider.id === "radient" && readiness?.group === "Needs sign-in"
-						? "Sign in again"
+						? t("ui.providers.provider_detail.sign_in_again")
 						: doneLabel
 				}
 				onAction={

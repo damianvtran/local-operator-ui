@@ -1,0 +1,163 @@
+{
+	"auditor": "i18n-auditor",
+	"model": "anthropic/claude-sonnet-5-5",
+	"instance": "a4d27c58-uf2-zh-cn",
+	"locale": "zh-CN",
+	"audit_date": "2026-11-08",
+	"status": "passed",
+	"scope": "fresh independent from-scratch re-audit of zh-CN ui.updates.service (38), ui.updates.status (3), ui.installer.setup_cause (7); supersedes the instance-spelling-rejected 7c3e91a4-uf-zh-CN receipt",
+	"independence_note": "This session (team lopdev, translation-auditor) authored and edited none of these 48 values and did not consult the previous receipt's findings before judging; it read English source, .context.json sidecars and shipped zh-CN ui.updates.panel / ui.installer / ui.common.updates.",
+	"evidence": "Bytes on disk hashed at audit time. Every key rendered through intl-messageformat locale zh-CN at minutes/count 0,1,2,5,11,21,100 and extra 0,1,3 with real values (no format errors; plural 'other' only; =0 branch hides clause; ::group-off numbers render ungrouped). Script check: placeholder name set identical en vs zh-CN for all 48 keys; verbatim tokens (Local Operator, lop-update, .lop-source, pipx, pip, uv, backticks, ::group-off) survive; no English leftovers; no zh-CN value longer than its English source (sidecar length budget: keep the source's shape). Ran read-only: check-coverage.mjs ok (7 languages/133 namespaces); locale-parity.test.mjs 44/44 pass; context-parity.mjs ok. CJK-Latin spacing: update-flow copy consistently has no space (Local Operator安装, pipx安装, 这台Mac) matching shipped ui.installer/ui.common.updates; only the numeric unit keeps a space ('{n} MB'), matching shipped ui.agents.settings/ui.settings.notifications. Register: second-person 你 and calm factual tone match shipped copy.",
+	"namespaces": {
+		"ui.updates.service": {
+			"status": "passed",
+			"result": "clean-with-findings",
+			"keys_read": 38,
+			"sha256": {
+				"en": "856e8b40cb826f277ae373446fac676b21aefa396ada79827e47d06e0cf3bd04",
+				"zh-CN": "a7c7e0f16844db7d196dcc9845000275af5d85fb7a004581ac4ee4d699976060"
+			},
+			"en_path": "src/i18n/catalogues/en/ui.updates.service.json",
+			"target_path": "src/i18n/catalogues/zh-CN/ui.updates.service.json",
+			"counts": {
+				"BLOCKER": 0,
+				"MAJOR": 0,
+				"MINOR": 8,
+				"NIT": 1
+			},
+			"summary": "38 keys read; no blocker/major; 8 minor, 1 nit. Meaning, ICU placeholders, plurals and verbatim tokens correct; findings are glossary (这台设备 vs shipped 本机) and two translated-sounding phrasings.",
+			"findings": [
+				{
+					"severity": "MINOR",
+					"key": "ui.updates.service.server_failure.not_run",
+					"current": "服务器更新未完成：安装程序未能运行到得出结论。",
+					"proposed": "服务器更新未完成：未能运行安装程序并得出明确结果。",
+					"reason": "'运行到得出结论' is a word-for-word rendering of 'run to a verdict'; reads translated."
+				},
+				{
+					"severity": "MINOR",
+					"key": "ui.updates.service.server_failure.stopped",
+					"current": "更新程序已被停止；它启动的内容可能仍在替换此安装。",
+					"proposed": "更新程序已被停止；它启动的某个进程可能仍在替换此安装。",
+					"reason": "'启动的内容' (started content) is imprecise; what an updater starts is a process."
+				},
+				{
+					"severity": "MINOR",
+					"key": "ui.updates.service.install_not_found.message",
+					"current": "在这台设备上找不到全局安装，因此未执行更新。请查看更新服务日志。",
+					"proposed": "在本机上找不到全局安装，因此未执行更新。请查看更新服务日志。",
+					"reason": "Glossary drift: shipped ui.common.updates renders 'this machine' as 本机 (45 uses catalogue-wide; 本机正在运行另一个更新, 本机检出的源码), this update-flow key says 这台设备; the same failure panel mixes both. Not a meaning error."
+				},
+				{
+					"severity": "MINOR",
+					"key": "ui.updates.service.fleet.unknown.credentials_refused",
+					"current": "服务器拒绝了此应用的凭据，因此应用无法读取这台设备上正在运行哪些会话。",
+					"proposed": "服务器拒绝了此应用的凭据，因此应用无法读取本机上正在运行哪些会话。",
+					"reason": "Glossary drift: shipped ui.common.updates renders 'this machine' as 本机 (45 uses catalogue-wide; 本机正在运行另一个更新, 本机检出的源码), this update-flow key says 这台设备; the same failure panel mixes both. Not a meaning error."
+				},
+				{
+					"severity": "MINOR",
+					"key": "ui.updates.service.fleet.unknown.unreadable",
+					"current": "应用无法读取这台设备上正在运行哪些会话，因此未更新服务器。",
+					"proposed": "应用无法读取本机上正在运行哪些会话，因此未更新服务器。",
+					"reason": "Glossary drift: shipped ui.common.updates renders 'this machine' as 本机 (45 uses catalogue-wide; 本机正在运行另一个更新, 本机检出的源码), this update-flow key says 这台设备; the same failure panel mixes both. Not a meaning error."
+				},
+				{
+					"severity": "MINOR",
+					"key": "ui.updates.service.fleet.busy.lead",
+					"current": "这台设备上仍有{count, plural, other {#个会话}}正在执行一轮：{names}{extra, plural, =0 {} other {，以及另外#个}}。",
+					"proposed": "本机上仍有{count, plural, other {#个会话}}正在执行一轮：{names}{extra, plural, =0 {} other {，以及另外#个}}。",
+					"reason": "Glossary drift: shipped ui.common.updates renders 'this machine' as 本机 (45 uses catalogue-wide; 本机正在运行另一个更新, 本机检出的源码), this update-flow key says 这台设备; the same failure panel mixes both. Not a meaning error."
+				},
+				{
+					"severity": "MINOR",
+					"key": "ui.updates.service.global.source_build.remedy",
+					"current": "服务器运行于这台设备上的源码检出，而非已安装的副本，因此请在你的更改合并后用lop-update更新。",
+					"proposed": "服务器运行于本机上的源码检出，而非已安装的副本，因此请在你的更改合并后用lop-update更新。",
+					"reason": "Glossary drift: shipped ui.common.updates renders 'this machine' as 本机 (45 uses catalogue-wide; 本机正在运行另一个更新, 本机检出的源码), this update-flow key says 这台设备; the same failure panel mixes both. Not a meaning error."
+				},
+				{
+					"severity": "MINOR",
+					"key": "ui.updates.service.global.source_rebuild.remedy",
+					"current": "用`lop-update`重新构建此检出。应用会先等待这台设备上正在运行的各轮结束，随后重新构建并就地重装此安装——因此重建期间开始的一轮仍可能被中断——整个过程最长可能需要半小时。此安装仍会报告该检出的版本，而不是应用所提供的版本。",
+					"proposed": "用`lop-update`重新构建此检出。应用会先等待本机上正在进行的各个会话轮次结束，随后重新构建并就地重装此安装——因此重建期间开始的一轮仍可能被中断——整个过程最长可能需要半小时。此安装仍会报告该检出的版本，而不是应用所提供的版本。",
+					"reason": "Glossary drift: shipped ui.common.updates renders 'this machine' as 本机 (45 uses catalogue-wide; 本机正在运行另一个更新, 本机检出的源码), this update-flow key says 这台设备; the same failure panel mixes both. Not a meaning error. Also '正在运行的各轮' is a stilted rendering of 'the turns running'; '各个会话轮次' reads naturally (nit-level)."
+				},
+				{
+					"severity": "NIT",
+					"key": "ui.updates.service.global.legacy_installer.remedy",
+					"current": "此安装早于无中断安装程序，请先在终端中更新一次；该更新程序会就地重写共享环境，可能会中断正在进行的会话。此后的更新由应用管理。",
+					"proposed": "此安装早于无中断安装程序，请先在终端中更新一次；该更新程序会就地重写共享环境，可能会在会话执行中途将其中断。此后的更新由应用管理。",
+					"reason": "English 'interrupt sessions mid-turn' says the cut lands inside a turn; '中断正在进行的会话' drops the mid-turn nuance. Meaning remains understandable."
+				}
+			]
+		},
+		"ui.updates.status": {
+			"status": "passed",
+			"result": "clean",
+			"keys_read": 3,
+			"sha256": {
+				"en": "a9bfd84ce05092a54ca32b2c9d365b0025ac16340ba9d553ffa9086be764c5cb",
+				"zh-CN": "697abf085e9b3cade7f48222192460078b9ddb9ef6acf806fd78f01eec32bbd1"
+			},
+			"en_path": "src/i18n/catalogues/en/ui.updates.status.json",
+			"target_path": "src/i18n/catalogues/zh-CN/ui.updates.status.json",
+			"counts": {
+				"BLOCKER": 0,
+				"MAJOR": 0,
+				"MINOR": 0,
+				"NIT": 0
+			},
+			"summary": "3 keys read; clean.",
+			"findings": []
+		},
+		"ui.installer.setup_cause": {
+			"status": "passed",
+			"result": "clean-with-findings",
+			"keys_read": 7,
+			"sha256": {
+				"en": "330241db6a55045e62e90042cf26694ff73537c24c50467e117436958a4b610b",
+				"zh-CN": "8062a7037b2a0158ff22c504b67082ef8a8e39ed99711ed0449e1eb9c27c1e80"
+			},
+			"en_path": "src/i18n/catalogues/en/ui.installer.setup_cause.json",
+			"target_path": "src/i18n/catalogues/zh-CN/ui.installer.setup_cause.json",
+			"counts": {
+				"BLOCKER": 0,
+				"MAJOR": 0,
+				"MINOR": 4,
+				"NIT": 0
+			},
+			"summary": "7 keys read; no blocker/major; 4 minor (设置 vs shipped 安装 glossary for 3; 这台设备 vs 本机 for 1), 1 nit folded into clock_or_expired. Placeholders: none; Local Operator verbatim.",
+			"findings": [
+				{
+					"severity": "MINOR",
+					"key": "ui.installer.setup_cause.disk_full",
+					"current": "设置后端时，这台Mac的磁盘空间已用尽。请腾出一些空间后重试。",
+					"proposed": "安装后端时，这台Mac的磁盘空间已用尽。请腾出一些空间后重试。",
+					"reason": "Glossary: the shipped installer panel renders 'setup' as 安装 (取消安装, 安装完成, 所有安装内容); this failure cause is shown in that same panel with 设置后端, and 设置 alone also reads as 'settings/configure'."
+				},
+				{
+					"severity": "MINOR",
+					"key": "ui.installer.setup_cause.locked",
+					"current": "另一个Local Operator副本正在设置其后端。请稍后重试。",
+					"proposed": "另一个Local Operator副本正在安装其后端。请稍后重试。",
+					"reason": "Same 设置 vs 安装 glossary drift against the shipped ui.installer panel."
+				},
+				{
+					"severity": "MINOR",
+					"key": "ui.installer.setup_cause.file_missing",
+					"current": "设置所需的某个文件缺失，这通常意味着下载或复制未完成。",
+					"proposed": "安装所需的某个文件缺失，这通常意味着下载或复制未完成。",
+					"reason": "Same 设置 vs 安装 glossary drift against the shipped ui.installer panel."
+				},
+				{
+					"severity": "MINOR",
+					"key": "ui.installer.setup_cause.clock_or_expired",
+					"current": "Local Operator读取到软件包索引的证书已过期或尚未生效。通常是系统时钟不准——请检查这台设备的日期和时间后重试；如果时钟无误，则是证书本身已过期，需要由该索引的运营方续期。",
+					"proposed": "Local Operator判定软件包索引的证书已过期或尚未生效。通常是系统时钟不准——请检查本机的日期和时间后重试；如果时钟无误，则是证书本身已过期，需要由该索引的运营方续期。",
+					"reason": "'这台设备' vs shipped 本机 for 'this machine' (same drift as ui.updates.service). Separately the English 'read ... as expired' is a verdict; '读取到...已过期' is a mild calque, '判定' is more natural (nit-level)."
+				}
+			]
+		}
+	}
+}

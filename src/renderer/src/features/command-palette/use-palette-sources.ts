@@ -39,6 +39,7 @@ import {
 	searchChats,
 } from "@features/chat/chat-search";
 import type { ArchiveView } from "@features/chat/chat-search";
+import { partition as partitionTemporary } from "@features/chat/chat-temporary";
 import { useMeshMembership } from "@features/mesh/mesh-store";
 import { presentSetting } from "@features/settings/backend-setting-copy";
 import { DEFAULT_SETTINGS_SECTIONS } from "@features/settings/components/settings-sidebar";
@@ -83,6 +84,7 @@ import {
 	parsePaletteQuery,
 } from "./palette-search";
 import { chatRecentsOfRow } from "./use-conversation-recents";
+import { usePaletteTeamBridge } from "./use-palette-team-bridge";
 
 /**
  * The agent roster's page size.
@@ -231,6 +233,12 @@ export type PaletteChatState = {
 export type PaletteSources = {
 	items: PaletteItem[];
 	chats: PaletteChatState;
+	/**
+	 * Whether the `tb` word scope exists on this backend (the route's own
+	 * capability). The view's `searchPalette` call must parse the query the way
+	 * this hook did, or the two would disagree about which rows were asked for.
+	 */
+	bridgeScope: boolean;
 };
 
 export type PaletteSourceInput = {
@@ -257,9 +265,21 @@ export function usePaletteItems({
 	isCanvasOpen,
 }: PaletteSourceInput): PaletteSources {
 	useI18nLocale();
-	const { scope, terms } = parsePaletteQuery(query);
+	const capabilities = useDesktopCapabilities();
+	/* The `tb` scope exists only where the destination does (agent review round 1, M1). */
+	const bridgeScope = desktopFeatureEnabled(
+		capabilities.data,
+		"team_bridge_conversations",
+	);
+	const { scope, terms } = parsePaletteQuery(query, { bridgeScope });
 	const wantsChats = scope === null || scope === "chat";
-	const wantsAgents = scope === null || scope === "agent";
+	/*
+	 * Keep the roster available to the bridge scope's literal-name escape hatch
+	 * (`searchPalette`, Q1 in review round 2 of #1673). Otherwise `tb helper`
+	 * loses `tb-helper` here before search can admit its whole-name match. The
+	 * search still excludes agents that match only the stripped term `helper`.
+	 */
+	const wantsAgents = scope === null || scope === "agent" || scope === "bridge";
 	/*
 	 * Teams ride the SAME scope the roster does (issue #849): `@` reads "the things
 	 * I can start a chat with", and a team is one of them. A name of its own rather
@@ -269,8 +289,17 @@ export function usePaletteItems({
 	 */
 	const wantsTeams = scope === null || scope === "agent";
 	const wantsSettings = scope === null || scope === "setting";
+	/*
+	 * Team Bridge rows answer the default search as well as their own scope
+	 * (`tb`): a reader typing a channel's or a person's name should not first
+	 * have to know which surface it lives on (operator, 2026-11-04). They stay out
+	 * of `@`, `>` and `,`, each of which names a different store. `#` carries
+	 * them only for its no-chat-matched fallback (UX round 1, U3; the scope's
+	 * groups still exclude them, see `searchPalette`).
+	 */
+	const wantsTeamBridge =
+		scope === null || scope === "bridge" || scope === "chat";
 
-	const capabilities = useDesktopCapabilities();
 	const chatSearchSupported = desktopFeatureEnabled(
 		capabilities.data,
 		"session_search",
@@ -302,6 +331,10 @@ export function usePaletteItems({
 	const archiveEnabled = desktopFeatureEnabled(
 		capabilities.data,
 		"session_archive",
+	);
+	const temporaryEnabled = desktopFeatureEnabled(
+		capabilities.data,
+		"temporary_chats",
 	);
 	/*
 	 * The team catalogue, for the CHAT ROWS' hint labels AND for the palette's own
@@ -355,6 +388,17 @@ export function usePaletteItems({
 		[meshMembership, projectsEnabled],
 	);
 	/*
+	 * Team Bridge: the destination row (gated on the route's capability, as the
+	 * sidebar row is) plus the rail's conversations and people, from the caches
+	 * the rail already fills (`use-palette-team-bridge.ts`). The destination is
+	 * ordered after the other pages, where the sidebar's More group places it.
+	 */
+	const teamBridge = usePaletteTeamBridge({
+		open,
+		wantsRows: wantsTeamBridge,
+		destinationOrder: pages.length,
+	});
+	/*
 	 * Whether MAIN has an answer about the credential, which is a different fact
 	 * from the capability above.
 	 *
@@ -381,7 +425,14 @@ export function usePaletteItems({
 
 	/* ---------------------------- conversations ---------------------------- */
 
-	const sessions = useCanonicalSessionsStore((state) => state.sessions);
+	// Temporary chats are left out of every palette row, as they are out of
+	// every normal list (`chat-temporary.ts`); without the capability this is
+	// the store's own array.
+	const allSessions = useCanonicalSessionsStore((state) => state.sessions);
+	const sessions = useMemo(
+		() => partitionTemporary(allSessions, temporaryEnabled).normal,
+		[allSessions, temporaryEnabled],
+	);
 	/*
 	 * THE PALETTE'S OWN VIEW OF WHAT MAY NOT BE DRAWN (agent review round 2, R2-2).
 	 *
@@ -936,23 +987,27 @@ export function usePaletteItems({
 
 	const items = (() => [
 		...buildNavigationItems(pages),
+		...(teamBridge.destination ? [teamBridge.destination] : []),
 		...buildActionItems(
 			buildPaletteActions({
 				isOnChatPage,
 				hasConversation,
 				isCanvasOpen,
 				canStageDraft,
+				canStageTemporary: canStageDraft && temporaryEnabled,
 			}),
 		),
 		...panelItems,
 		...settingItems,
 		...agentItems,
 		...teamItems,
+		...teamBridge.rows,
 		...chatItems,
 	])();
 
 	return {
 		items,
+		bridgeScope,
 		chats: {
 			/*
 			 * Every term of this is a state the panel has to be able to explain:
@@ -1002,11 +1057,14 @@ function buildPaletteActions({
 	hasConversation,
 	isCanvasOpen,
 	canStageDraft,
+	canStageTemporary = false,
 }: {
 	isOnChatPage: boolean;
 	hasConversation: boolean;
 	isCanvasOpen: boolean;
 	canStageDraft: boolean;
+	/** `canStageDraft` and `features.temporary_chats`: absent means no row. */
+	canStageTemporary?: boolean;
 }) {
 	return [
 		...(canStageDraft
@@ -1019,6 +1077,18 @@ function buildPaletteActions({
 						verb: t("ui.command_palette.use_palette_sources.start"),
 						command: "new-chat" as const,
 						featured: true,
+					},
+				]
+			: []),
+		...(canStageTemporary
+			? [
+					{
+						id: "new-temporary-chat",
+						name: t("ui.command_palette.new_temporary_chat"),
+						icon: "new-temporary-chat" as const,
+						keywords: ["temporary", "private", "incognito", "not saved"],
+						verb: t("ui.command_palette.use_palette_sources.start"),
+						command: "new-temporary-chat" as const,
 					},
 				]
 			: []),

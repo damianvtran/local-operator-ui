@@ -15,10 +15,14 @@ const ARCHIVED_RE = /archived/;
 const BODY_FOCUS_RE = /document\.body\.focus\(\)/;
 const COLLAPSE_FILTER_RE =
 	/!owned\.has\(row\.session_id\)[\s\S]{0,200}?fromHeadPage\.has\(row\.session_id\)[\s\S]{0,200}?row\.session_id === active/;
+const WITHHELD_CLAMP_RE =
+	/view\.forbidden\s*\?\s*"line-clamp-4 text-meta text-ink-dim"\s*:\s*"line-clamp-2 text-meta text-ink-dim"/;
 const BADGE_SR_ONLY_RE =
 	/\{badge > 0 && \(\s*<span className="sr-only">\{groupBadgeLabel\(badge\)\}<\/span>/;
 const DISCLOSURE_LABEL_RE =
-	/DISCLOSURE_LABELS|aria-label="Expand \$\{pending\.name\} chats"/;
+	/DISCLOSURE_LABELS|ui\.chat\.sidebar\.entity\.expand_chats/;
+const MORE_IN_ARIA_RE =
+	/aria-label=\{t\("ui\.chat\.sidebar\.entity\.more_in", \{\s*label: foot\.aria,\s*name: displayName,\s*\}\)\}/;
 
 /*
  * THE PAGED CATALOGUE, driven through the shipped store and the shipped
@@ -58,7 +62,7 @@ globalThis.__canonicalEcho = () => {};
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {desktopRequestSchema, desktopEndpoint} from "./src/shared/desktop-contract"; export {desktopFeatureEnabled} from "./src/renderer/src/shared/api/local-operator/desktop-hooks"; export {groupChatsView, groupBadgeCount, groupBadgeLabel, scopeCensusTotal, catalogueTailView, catalogueTotalSentence, tailArrivalAnnouncement, tailExtendDue} from "./src/renderer/src/features/chat/sidebar-scope-paging";',
+			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {desktopRequestSchema, desktopEndpoint} from "./src/shared/desktop-contract"; export {desktopFeatureEnabled} from "./src/renderer/src/shared/api/local-operator/desktop-hooks"; export {t} from "./src/i18n"; export {groupChatsView, groupBadgeCount, groupBadgeLabel, scopeCensusTotal, catalogueTailView, catalogueTotalSentence, tailArrivalAnnouncement, tailExtendDue} from "./src/renderer/src/features/chat/sidebar-scope-paging";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -101,6 +105,16 @@ const bundle = await build({
 				 * resolution for this suite's shape - it reads a plain document with no
 				 * provider, exactly the condition the module exists for.
 				 */
+				/*
+				 * THE I18N CORE, resolved to its REAL file and to the CORE rather than the
+				 * renderer door: the paging model paints catalogue copy now, and the door
+				 * pulls `desktop-hooks` (a query client this node harness has no use for),
+				 * while `t` is the framework-free module's own export. The rendering suites
+				 * that paint through React keep using the door.
+				 */
+				builder.onResolve({ filter: /^@shared\/i18n$/ }, () => ({
+					path: `${process.cwd()}/src/i18n/index.ts`,
+				}));
 				builder.onResolve(
 					{ filter: /^@shared\/hooks\/use-optional-query-client$/ },
 					() => ({
@@ -143,6 +157,7 @@ const {
 	replaceSessionRows,
 	desktopRequestSchema,
 	desktopEndpoint,
+	t,
 	groupChatsView,
 	groupBadgeCount,
 	groupBadgeLabel,
@@ -1537,9 +1552,24 @@ test("the Show-more control names its group, joins the arrow-key idiom, and is f
 	 * group they are in. The assertion moved with the copy; the intent it states is
 	 * the same three clauses it stated before.
 	 */
-	assert.ok(
-		SIDEBAR_SRC.includes("aria-label={`${foot.aria} in ${displayName}`}"),
+	assert.match(
+		SIDEBAR_SRC,
+		MORE_IN_ARIA_RE,
 		"the press must say what it does, where in the group the reader is, AND which group it belongs to",
+	);
+	/*
+	 * The label is a catalogue message now (`{label} in {name}`), so the source pin
+	 * above proves WHICH two facts feed it and this proves what the reader hears: the
+	 * English resolves to the same sentence the template literal built, with the
+	 * group's name last. A catalogue edit that dropped the `{name}` clause would pass
+	 * the pin and fail here.
+	 */
+	assert.equal(
+		t("ui.chat.sidebar.entity.more_in", {
+			label: "Show 25 more of 80",
+			name: "Team Ops",
+		}),
+		"Show 25 more of 80 in Team Ops",
 	);
 	assert.ok(
 		SIDEBAR_SRC.includes(
@@ -1552,6 +1582,20 @@ test("the Show-more control names its group, joins the arrow-key idiom, and is f
 	assert.ok(
 		SIDEBAR_SRC.includes("tailFocusRef"),
 		"the press records where the reader was, so the answer can put them there",
+	);
+	assert.ok(
+		SIDEBAR_SRC.includes("data-entity-key={key}"),
+		"the group's disclosure carries its catalogue key, so the hand-back can find it",
+	);
+	assert.ok(
+		SIDEBAR_SRC.includes(
+			'`[data-disclosure][data-entity-key="${CSS.escape(pending.key)}"]`',
+		),
+		"the group is found by that key, so localized copy never enters the selector (review round 1, M4)",
+	);
+	assert.ok(
+		!SIDEBAR_SRC.includes("[data-disclosure][aria-label="),
+		"the disclosure's accessible name drifted back into being a lookup key",
 	);
 	assert.ok(
 		SIDEBAR_SRC.includes("target?.focus()"),
@@ -1600,7 +1644,7 @@ test("the open conversation is kept in membership, and a collapse drops a group'
 
 test("the refusal holds its shape, and the badge announces its meaning (D4, D1, D5)", () => {
 	assert.ok(
-		SIDEBAR_SRC.includes("line-clamp-2 py-1 pl-7 text-meta text-ink-dim"),
+		SIDEBAR_SRC.includes("line-clamp-2 py-1 ps-7 text-meta text-ink-dim"),
 		"the refusal's sentence is clamped, so a long transport string cannot move the control",
 	);
 	assert.match(
@@ -1772,14 +1816,12 @@ test("the round-2 code paths are pinned in source", () => {
 		"the press's recovery looks in the region the group is drawn in (U2 = F1)",
 	);
 	assert.ok(
-		SIDEBAR_SRC.includes(
-			'groupRow?.querySelector<HTMLElement>("[data-disclosure]")',
-		),
+		SIDEBAR_SRC.includes("groupDisclosure ??"),
 		"and its fallback is the group's own control, which exists at exhaustion",
 	);
 	assert.ok(
 		DISCLOSURE_LABEL_RE.test(SIDEBAR_SRC),
-		"the group is matched by its disclosure's label, not by name-plus-badge text",
+		"the disclosure's name stays the catalogue's - it is copy the reader hears, never a lookup key (review round 1, M4)",
 	);
 	// All THREE refusal sites wear the one treatment: clamped sentence, Retry on its own
 	// line. Counted rather than eyeballed, because round 1 fixed one of them and the
@@ -1789,6 +1831,14 @@ test("the round-2 code paths are pinned in source", () => {
 		clamped.length >= 3,
 		`the clamped sentence appears ${clamped.length} time(s); the group's first-page refusal, its extension refusal and the flat list's tail refusal all wear it (D10 = U9)`,
 	);
+	// The withheld ("chats may be archived") sentence alone gets four lines: it needs 3 in
+	// es/ru and 4 in fr at the default sidebar width (design round 1, D2), and it is
+	// catalogue copy, not an unbounded daemon string, so it cannot move the control.
+	assert.match(
+		SIDEBAR_SRC,
+		WITHHELD_CLAMP_RE,
+		"the withheld state is clamped to four lines and every other state keeps two",
+	);
 	const ownLine = SIDEBAR_SRC.match(/<p className="pt-1">\s*<button/g) ?? [];
 	assert.ok(
 		ownLine.length >= 2,
@@ -1796,7 +1846,7 @@ test("the round-2 code paths are pinned in source", () => {
 	);
 	// The live region survives the swap (R2-5)
 	assert.ok(
-		SIDEBAR_SRC.includes('? "py-1 pl-7"\n\t\t\t\t\t\t\t\t\t: "sr-only"'),
+		SIDEBAR_SRC.includes('? "py-1 ps-7"\n\t\t\t\t\t\t\t\t\t: "sr-only"'),
 		"the group's sentence region is mounted in every state, so loading -> settled is announced",
 	);
 	// The total sentence reads the drawn count (R2-2)

@@ -66,13 +66,29 @@
  */
 
 import { Button, Input } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { MessageCircleQuestion } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { PendingDesktopGate } from "../../../../../../shared/desktop-session-contract";
+import { approvalOptionDisplay } from "../../approval-words";
 import { APPROVAL_OPTIONS, gateIsSecret } from "../../ask-answer";
 import { composerField, focusComposer } from "../../composer-field";
+import { parseProfileProposalCard } from "../../profile-proposal-ask";
+import {
+	ASK_CARD_MAX_H,
+	AskScrollBody,
+	AskSecondary,
+	ProposalReviewButton,
+	ProposalReviewNotice,
+} from "../asks/ask-bounds";
 import { MarkdownRenderer } from "../markdown-renderer";
+import {
+	ApprovalEscape,
+	ApprovalLatchedNote,
+	approvalGateIsBridgeLatched,
+} from "./approval-escape";
 import { AskOptions } from "./ask-options";
 
 export type QuestionDockProps = {
@@ -120,6 +136,14 @@ export type QuestionDockProps = {
 		 */
 		muted?: boolean;
 	} | null;
+	/**
+	 * The session this gate belongs to. `PendingDesktopGate` carries the request,
+	 * not the session, and the approval card's policy handles address the LIVE
+	 * gate by session id (`/approvals auto`), so the panel passes it here. Absent
+	 * on a surface with no session (a draft, a story): the handles are then not
+	 * rendered at all, because there is no gate to address.
+	 */
+	sessionId?: string;
 	/** Extra classes on the dock's outer box (the caller owns the measure). */
 	className?: string;
 };
@@ -168,11 +192,19 @@ export const questionDockHint = (
 		 * scopes are the point, so the clause is the dock's own.
 		 */
 		return held
-			? "Answer from the composer instead: type yes, no, 1, or 2 and send, or press Escape in the message box to stop the turn."
-			: "Choose Approve or Deny above, type yes, no, 1, or 2 and send, or press Escape in the message box to stop the turn.";
+			? t("ui.chat.question_dock.hint.approval_held")
+			: t("ui.chat.question_dock.hint.approval");
+	/*
+	 * The prefix is its own message so the numbering follows the locale’s
+	 * own `1 of N` idiom instead of being assembled here; every sentence below
+	 * takes it as `{prefix}` and receives "" when there is one question.
+	 */
 	const prefix =
 		gate.question_total > 1
-			? `Question ${gate.question_index + 1} of ${gate.question_total}. `
+			? t("ui.chat.question_dock.hint.prefix", {
+					index: String(gate.question_index + 1),
+					total: String(gate.question_total),
+				})
 			: "";
 	/*
 	 * THE SECRET SENTENCE, and what it may name: the field the card draws (type
@@ -199,12 +231,13 @@ export const questionDockHint = (
 	 */
 	if (gate.kind === "ask" && gateIsSecret(gate))
 		return held
-			? `${prefix}Held while this answer's fate is unknown — it may have landed, so nothing can send again · Esc in the card hides it`
-			: `${prefix}Type or paste the secret above · Enter sends · Esc hides`;
-	if (gate.options.length === 0) return `${prefix}Type your answer below.`;
+			? t("ui.chat.question_dock.hint.secret_held", { prefix })
+			: t("ui.chat.question_dock.hint.secret", { prefix });
+	if (gate.options.length === 0)
+		return t("ui.chat.question_dock.hint.type", { prefix });
 	const digits =
 		gate.options.length === 1 ? "1" : `1-${Math.min(gate.options.length, 9)}`;
-	return `${prefix}Up/Down choose · Enter or ${digits} answers · Esc hides · or type your own answer below`;
+	return t("ui.chat.question_dock.hint.options", { prefix, digits });
 };
 
 /**
@@ -274,11 +307,12 @@ const SecretAnswer = ({
 	/** Submit the typed value; absent where the surface cannot answer. */
 	onAnswer?: (value: string) => void;
 }) => {
+	useI18nLocale();
 	const ready = value.trim().length > 0 && !busy && Boolean(onAnswer);
 	return (
 		<form
 			data-ask-secret=""
-			aria-label="Secret answer"
+			aria-label={t("ui.chat.question_dock.secret_answer_label")}
 			className="flex flex-col gap-2"
 			onSubmit={(event) => {
 				event.preventDefault();
@@ -297,13 +331,13 @@ const SecretAnswer = ({
 			 * paints no record of it in the transcript.
 			 */}
 			<p className="text-ink-dim text-meta">
-				Hidden as you type — sent to the agent, not shown in the transcript.
+				{t("ui.chat.question_dock.secret_note")}
 			</p>
 			<div className="flex items-center gap-2">
 				<Input
 					type="password"
-					aria-label="Secret value"
-					placeholder="Paste the secret"
+					aria-label={t("ui.chat.question_dock.secret_value_label")}
+					placeholder={t("ui.chat.question_dock.secret_placeholder")}
 					autoComplete="off"
 					autoCapitalize="none"
 					autoCorrect="off"
@@ -316,7 +350,7 @@ const SecretAnswer = ({
 					className="min-w-0 flex-1"
 				/>
 				<Button type="submit" variant="primary" disabled={!ready}>
-					Send
+					{t("ui.chat.question_dock.send")}
 				</Button>
 			</div>
 		</form>
@@ -329,8 +363,10 @@ export const QuestionDock = ({
 	onAnswerSecret,
 	answering = false,
 	answer = null,
+	sessionId,
 	className,
 }: QuestionDockProps) => {
+	useI18nLocale();
 	const key = questionKeyOf(gate);
 	const [collapsedKey, setCollapsedKey] = useState<string | null>(null);
 	const collapsed = collapsedKey === key;
@@ -458,9 +494,55 @@ export const QuestionDock = ({
 	 * hint's digit clause all have to count the same set.
 	 */
 	const options = gate.kind === "approval" ? APPROVAL_OPTIONS : gate.options;
-	const content = gate.detail
-		? `**${gate.title}**\n\n${gate.detail}`
-		: gate.title;
+	/*
+	 * A profile/team/skill proposal (the core's `account profile save` approval)
+	 * gets its review link and its compact summary: the contract's lines are
+	 * read from the detail (an approval's text) or the title (an ask's question).
+	 * Its question then prints only what the summary does not draw (line 1, plus
+	 * anything an older runtime appended), at body size - the 3-line text set as
+	 * one heading-weight paragraph was design D2.
+	 */
+	const fromDetail = parseProfileProposalCard(gate.detail);
+	const proposal = fromDetail ?? parseProfileProposalCard(gate.title);
+	/*
+	 * THE PINNED HEADLINE (design round 2, D6/S3): what is being approved, kept
+	 * outside every scroller so no squeeze can take it.
+	 * - A proposal: line 1 of the contract VERBATIM ("Apply proposal pp_... to
+	 *   team 'x'?") - spoken approval matches its `pp_` id, so it is never
+	 *   reworded. The gate title (`account profile save`, the tool's generic
+	 *   name) is NOT drawn: at 1024x600 it was the one line the body kept, and
+	 *   it says nothing the header and this line do not.
+	 * - Any other approval: the gate title; its detail is the body.
+	 * - A plain ask: none - the question is the body, as before.
+	 */
+	const proposalRest = proposal
+		? proposal.body.split("\n").slice(1).join("\n").trim()
+		: "";
+	const headline = proposal
+		? (proposal.body.split("\n")[0] ?? "")
+		: gate.kind === "approval"
+			? gate.title
+			: null;
+	/*
+	 * THE BODY: everything the headline does not draw. For a proposal that is
+	 * what an older runtime appended after the contract (and, on an ask whose
+	 * question did not carry the proposal, that question), then the
+	 * Changes/Origin notice below; for an approval, its detail.
+	 */
+	const content = proposal
+		? [
+				fromDetail && gate.kind === "ask" ? gate.title : "",
+				proposalRest,
+				fromDetail ? "" : gate.detail,
+			]
+				.filter(Boolean)
+				.join("\n\n")
+		: gate.kind === "approval"
+			? gate.detail
+			: gate.detail
+				? `**${gate.title}**\n\n${gate.detail}`
+				: gate.title;
+	const hasNotice = Boolean(proposal?.changes || proposal?.origin);
 
 	if (collapsed) {
 		return (
@@ -475,7 +557,7 @@ export const QuestionDock = ({
 				 */}
 				<button
 					type="button"
-					aria-label="Show the agent's question"
+					aria-label={t("ui.chat.question_dock.show_question_label")}
 					onClick={() => {
 						setCollapsedKey(null);
 						setExpandedByPress(true);
@@ -489,21 +571,30 @@ export const QuestionDock = ({
 						aria-hidden={true}
 						className="size-3.5 text-accent"
 					/>
-					<span>The agent is asking</span>
+					<span>{t("ui.chat.question_dock.asking")}</span>
 					<span aria-hidden={true} className="text-ink-dim">
 						·
 					</span>
-					<span className="text-ink-muted">Show</span>
+					<span className="text-ink-muted">
+						{t("ui.chat.question_dock.show")}
+					</span>
 				</button>
 			</div>
 		);
 	}
 
 	return (
-		<div className={cn("pb-2", className)} data-lo-question-dock="expanded">
+		/*
+		 * A flex column with `min-h-0` so the card can shrink to what its wrapper in
+		 * `chat-content.tsx` is given (see the BOUNDED note on the card below).
+		 */
+		<div
+			className={cn("flex min-h-0 flex-col pb-2", className)}
+			data-lo-question-dock="expanded"
+		>
 			<section
 				ref={cardRef}
-				aria-label="Question from the agent"
+				aria-label={t("ui.chat.question_dock.from_agent_label")}
 				/*
 				 * Focusable by pointer (`-1`, not in the Tab order): a press anywhere on
 				 * the card makes it the focus scope, so Escape reaches the handler
@@ -517,85 +608,200 @@ export const QuestionDock = ({
 					setCollapsedKey(key);
 					focusComposer();
 				}}
-				className="flex flex-col gap-2 rounded-lg border border-accent bg-elevated p-4 outline-none"
+				/*
+				 * BOUNDED (see `ask-bounds.tsx`) BY THE CHAT COLUMN, not the window
+				 * (design D1): the dock's wrapper is a shrinkable flex item of the column
+				 * beside a `shrink-0` composer, and this card (`min-h-0`) shrinks with it,
+				 * so the composer and its send row stay fully on screen at 1024x600. The
+				 * vh/rem cap is only the upper bound on a tall window. Inside, the
+				 * secondary rows give way first, then (after the transcript reaches
+				 * its floor) the question body, down to two lines; the header, the
+				 * headline and the answer controls never do. Only when those alone
+				 * outgrow the card does its own scroll take over (QA round 2, Q1;
+				 * design round 2, S1).
+				 */
+				className={cn(
+					"flex min-h-0 flex-col gap-2 rounded-lg border border-accent bg-elevated p-4 outline-none",
+					ASK_CARD_MAX_H,
+					"overflow-y-auto overscroll-contain",
+				)}
 			>
-				<div className="flex items-center gap-2">
-					<MessageCircleQuestion
-						aria-hidden={true}
-						className="size-4 shrink-0 text-accent"
-					/>
-					{/*
-					 * The eyebrow says what is happening, and switches while an answer
-					 * is on its way so a press on a slow round trip visibly landed
-					 * (design round 1, D3; UX round 1, U2).
-					 */}
-					<p className="font-medium text-ink-muted text-meta">
-						{sending ? "Sending your answer…" : "The agent is asking"}
-					</p>
+				{/*
+				 * THE HEADER ROW, PINNED (design round 2, S2): the eyebrow, the
+				 * proposal's Review changes (moved here from the bottom of the notice so
+				 * it never scrolls) and the key hint. It WRAPS and clips its second
+				 * line, and the hint is the last item, so on a narrow card the hint is
+				 * what goes - never the button (the hint is `aria-hidden`, and the
+				 * secondary hint repeats it). `overflow-clip` rather than `hidden` so
+				 * the row is not a scroll container, and its 4 px clip margin keeps the
+				 * button's focus ring.
+				 */}
+				<div className="flex max-h-[26px] shrink-0 flex-wrap items-center gap-x-2 gap-y-2 overflow-clip [overflow-clip-margin:4px]">
+					<div className="flex min-w-0 flex-1 items-center gap-2">
+						<MessageCircleQuestion
+							aria-hidden={true}
+							className="size-4 shrink-0 text-accent"
+						/>
+						{/*
+						 * The eyebrow says what is happening, and switches while an answer
+						 * is on its way so a press on a slow round trip visibly landed
+						 * (design round 1, D3; UX round 1, U2).
+						 */}
+						<p className="min-w-0 truncate font-medium text-ink-muted text-meta">
+							{sending
+								? t("ui.chat.ask_panel.dock.sending")
+								: t("ui.chat.ask_panel.dock.asking")}
+						</p>
+						{proposal ? (
+							<ProposalReviewButton proposal={proposal} className="ml-auto" />
+						) : null}
+					</div>
 					{/*
 					 * The ordinal eyebrow, for every kind whose rows print digits: an ask's
 					 * model-authored set, and the approval pair this card now draws. The `1-2`
 					 * matches the rows' own ordinals (`AskOptions`) and the sentence below.
 					 */}
 					{options.length > 0 && (
-						<p aria-hidden={true} className="ml-auto text-ink-dim text-meta">
+						<p
+							aria-hidden={true}
+							className="ml-auto shrink-0 text-ink-dim text-meta"
+						>
 							{options.length === 1
-								? "1 to answer"
-								: `1-${Math.min(options.length, 9)} to answer`}
+								? t("ui.chat.ask_panel.dock.keys_one")
+								: t("ui.chat.ask_panel.dock.keys_range", {
+										max: Math.min(options.length, 9),
+									})}
 						</p>
 					)}
 				</div>
-				<div className="text-heading text-ink">
-					<MarkdownRenderer content={content} />
-				</div>
-				{gate.kind === "ask" &&
-					(gateIsSecret(gate) ? (
-						/*
-						 * THE SECRET FIELD IS THIS CARD'S, not the composer's: the answer is
-						 * a credential, and this field is the only surface allowed to hold it
-						 * (see `SecretAnswer`). Keyed on the question as well as keyed at the
-						 * draft, so not even DOM state (focus, selection) survives into the
-						 * next question. `busy` is `secretBusy` rather than the options'
-						 * `busy`: a definite refusal RELEASES this field while it holds the
-						 * options band (see the split above).
-						 */
-						<SecretAnswer
-							key={key}
-							busy={secretBusy}
-							value={secretValue}
-							onChange={(value) => setSecretDraft({ key, value })}
-							onAnswer={onAnswerSecret}
-						/>
-					) : (
+				{/*
+				 * THE HEADLINE (pinned, see above), then THE ONLY REGION THAT GIVES WAY
+				 * FOR THE ANSWER (design round 2, S4): the question and, on a proposal,
+				 * its Changes/Origin lines. Its floor on the dock is min(two lines,
+				 * content), which holds a proposal's two summary lines whole, and it
+				 * shrinks only after the secondary rows and the transcript have given
+				 * theirs. The review link is in the header row, never down here.
+				 */}
+				{headline ? (
+					<p
+						data-lo-ask-headline=""
+						title={headline}
+						className="line-clamp-2 shrink-0 font-medium text-body text-ink [overflow-wrap:anywhere]"
+					>
+						{headline}
+					</p>
+				) : null}
+				{content || hasNotice ? (
+					<AskScrollBody
+						shrinkable={true}
+						className={cn(
+							gate.kind === "ask" && !proposal ? "text-heading" : "text-body",
+							"text-ink",
+						)}
+					>
+						{content ? <MarkdownRenderer content={content} /> : null}
+						{proposal && hasNotice ? (
+							<ProposalReviewNotice
+								proposal={proposal}
+								review={false}
+								className={content ? "mt-2" : undefined}
+							/>
+						) : null}
+					</AskScrollBody>
+				) : null}
+				{/*
+				 * PINNED: the answer controls are `shrink-0` and outside every scroll
+				 * region, so whatever else gives way, they stay on the card.
+				 */}
+				<div data-lo-ask-pinned="" className="flex shrink-0 flex-col gap-2">
+					{gate.kind === "ask" &&
+						(gateIsSecret(gate) ? (
+							/*
+							 * THE SECRET FIELD IS THIS CARD'S, not the composer's: the answer is
+							 * a credential, and this field is the only surface allowed to hold it
+							 * (see `SecretAnswer`). Keyed on the question as well as keyed at the
+							 * draft, so not even DOM state (focus, selection) survives into the
+							 * next question. `busy` is `secretBusy` rather than the options'
+							 * `busy`: a definite refusal RELEASES this field while it holds the
+							 * options band (see the split above).
+							 */
+							<SecretAnswer
+								key={key}
+								busy={secretBusy}
+								value={secretValue}
+								onChange={(value) => setSecretDraft({ key, value })}
+								onAnswer={onAnswerSecret}
+							/>
+						) : (
+							<AskOptions
+								options={gate.options}
+								recommended={gate.recommended}
+								recommendedAll={gate.recommended_all}
+								requestId={gate.request_id}
+								busy={busy}
+								onAnswer={(label) => onAnswer?.(label)}
+							/>
+						))}
+					{/*
+					 * An approval gets the same affordance as an ask, and the SAME component
+					 * (main's approval-options arm, carried into this carrier by the fold):
+					 * `AskOptions` holds the contrast triple, the focus handling, the aria and
+					 * the busy semantics as one unit, so a forked copy would be a second
+					 * implementation of a control the design contract tests by the triple it
+					 * is built from. The options are the client's own pair - the wire carries
+					 * none for an approval - and the label a press submits is what
+					 * `approvalVerdict` turns into the boolean the request carries. `busy` is
+					 * the ask arm's own expression, so the two option bands hold identically
+					 * across the whole window between a press and the gate moving.
+					 */}
+					{gate.kind === "approval" && (
 						<AskOptions
-							options={gate.options}
-							recommended={gate.recommended}
+							options={APPROVAL_OPTIONS}
+							display={approvalOptionDisplay}
+							inlineDescriptions={true}
 							requestId={gate.request_id}
 							busy={busy}
 							onAnswer={(label) => onAnswer?.(label)}
 						/>
-					))}
+					)}
+				</div>
 				{/*
-				 * An approval gets the same affordance as an ask, and the SAME component
-				 * (main's approval-options arm, carried into this carrier by the fold):
-				 * `AskOptions` holds the contrast triple, the focus handling, the aria and
-				 * the busy semantics as one unit, so a forked copy would be a second
-				 * implementation of a control the design contract tests by the triple it
-				 * is built from. The options are the client's own pair - the wire carries
-				 * none for an approval - and the label a press submits is what
-				 * `approvalVerdict` turns into the boolean the request carries. `busy` is
-				 * the ask arm's own expression, so the two option bands hold identically
-				 * across the whole window between a press and the gate moving.
+				 * SECONDARY, and the first thing to give way (see `AskSecondary`): the
+				 * policy handles and the key hint never push the pair out of the card.
 				 */}
-				{gate.kind === "approval" && (
-					<AskOptions
-						options={APPROVAL_OPTIONS}
-						requestId={gate.request_id}
-						busy={busy}
-						onAnswer={(label) => onAnswer?.(label)}
-					/>
-				)}
-				<p className="text-ink-dim text-meta">{questionDockHint(gate, held)}</p>
+				<AskSecondary>
+					{/*
+					 * THE POLICY HANDLES, kept BELOW the pair the card exists for. They
+					 * own their own busy state, so a policy call in flight disables only
+					 * these two links; a policy failure never disables Approve or Deny.
+					 * They are absent where there is no session to address.
+					 */}
+					{gate.kind === "approval" && sessionId ? (
+						approvalGateIsBridgeLatched(gate) ? (
+							/*
+							 * A conversation holding a teammate agent's message cannot be
+							 * set to auto from here: the backend refuses it, and the "all
+							 * sessions" press would still have written the machine default
+							 * before the session half failed. So neither handle is mounted
+							 * and one line says why. Approve and Deny above are unchanged.
+							 */
+							<ApprovalLatchedNote />
+						) : (
+							<ApprovalEscape
+								// The idle status slot's 2lh reserve was blank card height
+								// the bounded dock could not spare (design D1(c)).
+								compactIdle={true}
+								sessionId={sessionId}
+								approvalMode={gate.approval_mode}
+								approvalProvenance={gate.approval_provenance}
+								approvalGlobalMode={gate.approval_global_mode}
+							/>
+						)
+					) : null}
+					<p className="text-ink-dim text-meta">
+						{questionDockHint(gate, held)}
+					</p>
+				</AskSecondary>
 				{/*
 				 * A refused answer lands on the card it was pressed on, outcome first,
 				 * and the card stays held so it cannot be pressed twice (QA round 1, Q3;
@@ -609,7 +815,7 @@ export const QuestionDock = ({
 				{answer?.refused && (
 					<output
 						className={cn(
-							"block text-body-sm",
+							"block shrink-0 text-body-sm",
 							answer.muted ? "text-ink-muted" : "text-danger",
 						)}
 					>

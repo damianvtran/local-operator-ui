@@ -153,7 +153,7 @@ const PHASE: Record<string, McpFailurePhase> = {
 	reload: "reload",
 	remove: "remove",
 	sign_out: "disconnect",
-	cancel: "cancel",
+	cancel: "cancel", // i18n: ignore action-id token mapped to another action id
 	login: "grant",
 	reauth: "grant",
 };
@@ -786,6 +786,10 @@ export const McpManagementSection: FC<{
 				title={t(SECTION_TITLE)}
 				titleComponent={header}
 				sectionRef={sectionRef}
+				searchSection="integrations"
+				searchSectionLabel={t(
+					"ui.settings.navigation.settings_sidebar.integrations",
+				)}
 			>
 				<Alert variant="warning">
 					{t(
@@ -1156,6 +1160,10 @@ export const McpManagementSection: FC<{
 			title={t(SECTION_TITLE)}
 			titleComponent={header}
 			sectionRef={sectionRef}
+			searchSection="integrations"
+			searchSectionLabel={t(
+				"ui.settings.navigation.settings_sidebar.integrations",
+			)}
 		>
 			<div className="flex flex-col gap-4">
 				{integrations.route === "session" && integrations.borrowed ? (
@@ -1265,7 +1273,7 @@ export const McpManagementSection: FC<{
 					<div className="relative">
 						<Search
 							aria-hidden="true"
-							className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-dim"
+							className="pointer-events-none absolute top-1/2 start-3 size-4 -translate-y-1/2 text-ink-dim"
 						/>
 						<Input
 							ref={searchRef}
@@ -1290,7 +1298,7 @@ export const McpManagementSection: FC<{
 							aria-label={t(
 								"ui.settings.integrations.mcp_management_section.search_integrations",
 							)}
-							className="pl-9"
+							className="ps-9"
 						/>
 					</div>
 				) : null}

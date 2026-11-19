@@ -62,6 +62,31 @@ test("rendered order, ordinal chords and close-to-right consume the SAME order",
 	assert.deepEqual(intent.tabIds, [1]);
 });
 
+test("close-to-right selects the physical set at first, middle and last tabs", () => {
+	const ordered = pooledTabs([
+		{ tabId: 1, sessionId: "a", displayOrder: 2 },
+		{ tabId: 2, sessionId: "b", displayOrder: 0 },
+		{ tabId: 3, sessionId: "a", displayOrder: 1 },
+	]);
+	assert.deepEqual(
+		ordered.map((tab) => tab.tabId),
+		[2, 3, 1],
+	);
+	for (const [direction, expectations] of [
+		["ltr", [[3, 1], [1], null]],
+		["rtl", [null, [2], [2, 3]]],
+	]) {
+		ordered.forEach((anchor, index) => {
+			const intent = closeToTheRightIntent(ordered, anchor.tabId, direction);
+			assert.deepEqual(
+				intent?.tabIds ?? null,
+				expectations[index],
+				`${direction} anchor index=${index}`,
+			);
+		});
+	}
+});
+
 test("first scoped reorder preserves the old grouped default and unrelated slots", () => {
 	const tabs = [
 		{ tabId: 1, sessionId: "a" },

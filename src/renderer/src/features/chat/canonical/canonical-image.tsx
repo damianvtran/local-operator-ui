@@ -13,7 +13,7 @@
  * that is the same argument the TUI makes for its own `▨ image unavailable`
  * receipt (`tui/widgets/image_block.py:24-29`): "the reader learns an image WAS
  * here, which is the fact the empty space would have hidden." It carries
- * `ATTACHMENT_UNAVAILABLE_COPY` rather than that component's default sentence:
+ * `kind="unavailable"` rather than that component's default sentence:
  * a canonical image is a digest in the app's own store, not a path on disk, so
  * the moved/renamed/deleted cause is one this row cannot know — see the copy's
  * own comment in `attachment-frame.tsx`.
@@ -27,10 +27,12 @@
  */
 
 import { cn } from "@shared/lib/utils";
+import { useState } from "react";
 import {
-	ATTACHMENT_UNAVAILABLE_COPY,
 	AttachmentFrame,
 	BrokenAttachment,
+	PendingAttachment,
+	RetryableAttachment,
 } from "../components/message-item/attachment-frame";
 import { ImageAttachment } from "../components/message-item/image-attachment";
 import type {
@@ -43,6 +45,7 @@ import {
 } from "./image-group-lightbox";
 import type { TranscriptImage } from "./transcript-reducer";
 import { type AttachmentScope, useAttachmentUrl } from "./use-attachment-url";
+import { useRemoteSessionDevice } from "./use-remote-device";
 
 export type CanonicalImageProps = {
 	image: TranscriptImage;
@@ -91,6 +94,8 @@ export type CanonicalImageProps = {
 	 * the open one instead.
 	 */
 	press?: NonNullable<ImageAttachmentProps["press"]>;
+	/** Path actions over a retained copy (`ImageAttachment`'s `pathActions`). */
+	pathActions?: ImageAttachmentProps["pathActions"];
 };
 
 export const CanonicalImage = ({
@@ -100,8 +105,23 @@ export const CanonicalImage = ({
 	size,
 	group,
 	press,
+	pathActions,
 }: CanonicalImageProps) => {
 	const source = useAttachmentUrl(image, scope);
+	const device = useRemoteSessionDevice(scope?.sessionId);
+	// Set by this tile's Retry press, so the wait and the next Retry tile keep
+	// the reader's focus instead of dropping it to the document (U2-2).
+	const [retried, setRetried] = useState(false);
+	// A slow owner gets a labelled wait, not the bare box (U1-1). A filmstrip
+	// select keeps its own reserved button below: its action is the point.
+	if (source.state === "resolving" && source.pending && device && !press)
+		return (
+			<PendingAttachment
+				device={device}
+				compact={size === "thumbnail"}
+				focusOnMount={retried}
+			/>
+		);
 	if (source.state === "resolving") {
 		const reserved = (
 			/*
@@ -161,12 +181,26 @@ export const CanonicalImage = ({
 			</div>
 		);
 	}
+	if (source.state === "retryable") {
+		return (
+			<RetryableAttachment
+				name={label}
+				compact={size === "thumbnail"}
+				onRetry={() => {
+					setRetried(true);
+					source.retry();
+				}}
+				device={device}
+				focusOnMount={retried}
+			/>
+		);
+	}
 	if (source.state === "missing") {
 		return (
 			<BrokenAttachment
 				name={label}
 				compact={size === "thumbnail"}
-				detail={ATTACHMENT_UNAVAILABLE_COPY}
+				kind="unavailable"
 			/>
 		);
 	}
@@ -205,6 +239,7 @@ export const CanonicalImage = ({
 				 * `ImageAttachment` directly in the strip keeps one tile component.
 				 */
 				press={press}
+				pathActions={pathActions}
 				/*
 				 * The group door. The overlay is built HERE, not passed rendered,
 				 * because the layer's open state and the tile's focus-restore control

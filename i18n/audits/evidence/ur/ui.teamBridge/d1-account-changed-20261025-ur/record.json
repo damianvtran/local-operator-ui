@@ -1,0 +1,49 @@
+{
+ "audit_id": "d1-account-changed-20261025-ur",
+ "date": "2026-10-25",
+ "locale": "ur",
+ "namespace": "ui.teamBridge",
+ "source_commit": "d1385ac4d9",
+ "keys_audited": [
+  "ui.teamBridge.attachments.error_account_changed"
+ ],
+ "translator": {
+  "agent": "translator",
+  "model": "unreported-by-delegating-agent",
+  "date": "2026-10-25",
+  "note": "Produced the locale value in the delegating agent's translation pass."
+ },
+ "auditors": [
+  {
+   "agent": "translation-auditor",
+   "model": "unreported-by-delegating-agent",
+   "date": "2026-10-25",
+   "result": "clean",
+   "instance": "d1-account-changed-20261025-ur",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "receipt": "i18n/receipts/d1-account-changed-20261025-ur.json",
+   "receipt_sha256": "5a7570715b94041233d37cb0ca87150e96f867dc84e393708c62ad20b2a17b1b",
+   "scope": "PR #1314 one-key delta: ui.teamBridge.attachments.error_account_changed. Four phrasing improvements and the mismatch->changed rename were applied before landing; no unresolved findings.",
+   "note": "Independent audit performed outside this session; this record transcribes the verdict the delegating agent reported."
+  }
+ ],
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+   "sha256": "cb265d27c44bd2abadf4dadbf9167c20d3efe629b1c423261a1a3c29e97278ed"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/ur/ui.teamBridge.json",
+   "sha256": "f4c3632ed372e50656a80ff5eb6c28648de6c389d4aae293a8176108c98866a0"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+   "sha256": "a5484c46f0f95def7314208f7d1e2d460f7a31fc6186c50bda6c142738585be3"
+  }
+ }
+}

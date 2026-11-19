@@ -1,0 +1,17 @@
+{
+ "schema": 1,
+ "auditor": "translation-auditor",
+ "model": "radient/auto",
+ "instance": "591153bbfff3-zh-cn",
+ "locale": "zh-CN",
+ "namespace": "ui.settings.shortcuts",
+ "date": "2026-10-29",
+ "status": "passed",
+ "sha256": {
+  "zh-CN": "a7a32d86c33c7bc49e7f74a7053a08ab0f6e34ec452b06ebf86f46d02c262a09",
+  "en": "6ac7282da4a4dc30389e1777bca07fc63d434fa9f80e703b6b76aa72670a7919"
+ },
+ "findings": [],
+ "scope": "Changed rows only: the 3 keys this PR rewrote (browser-scope paragraph, browser_reload, browser_reload_cache). The other 61 keys are byte-identical to the previously audited commit 3d2e8ce. Key set == English (64/64); ICU placeholder parity over the whole file (none of the three keys takes an argument); meaning against ui.settings.shortcuts.context.json; dual-scope phrasing and register against the same file's browser_back/close/find/zoom_in rows.",
+ "notes": "Checked the three changed keys against the English source and the .context.json note: the reload rows name both outcomes (browser page, or the app window outside it) and carry no focus-the-browser-first instruction; the paragraph names only new tab, reopen tab, the address bar and switching tabs, gives the reason, and ends with the focus instruction, as English does. Dual-clause structure matches the corpus ('...，或...'), and '重新加载' appears only in the reload rows, never in the paragraph's browser-only list. Native-reader naturalness was NOT verified by a native speaker of the target language: this is a semantic/structural read by an agent. Rendered fit, RTL layout (ur) and screenshot evidence were not produced. Auditor model: the session was served by radient/auto for this run after the primary deepseek/deepseek-flash returned HTTP 402; that fallback is recorded here rather than implied."
+}

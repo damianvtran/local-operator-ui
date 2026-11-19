@@ -1,0 +1,171 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "date": "2026-11-08",
+  "locale": "es",
+  "instance": "e1e9dc0a-s3a-es",
+  "session": "e1e9dc0a94fb",
+  "auditor": {
+    "agent": "translation-auditor",
+    "session": "e1e9dc0a94fb",
+    "instance": "e1e9dc0a-s3a-es",
+    "model": "anthropic/claude-sonnet-5-5",
+    "fallback": "none (Session header model; no provider fallback occurred)",
+    "independent_from_translator_session": true
+  },
+  "model": "anthropic/claude-sonnet-5-5",
+  "independence": "Fresh auditor session, did not write the es files. Judged from bytes on disk in the worktree (uncommitted src/i18n/catalogues/es/<ns>.json), the English source, the .context.json sidecars, the render sites in src/renderer, and shipped es catalogues; the translator's report was not read.",
+  "branch": "i18n/composer-keying",
+  "head": "a151ba95325",
+  "pr": "damianvtran/local-operator-ui#1761",
+  "scope": "batch A, 5 namespaces, 143 keys, es only",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "namespaces": {
+    "ui.chat.slash": {
+      "status": "passed",
+      "keys_audited": 89,
+      "sha256": {
+        "en": "7d9ae8c2ff74de40aec65a6bddb7ead03abbc537a04a8366b5c452d7a057be7c",
+        "es": "22aa354a4fb1eb23d75a271b2b3286de0c0312ab5056dee0344b189a5e8c6469",
+        "context": "c0ed86748344531c893f205ea6f8a1731effdbe45bb98647dce7ab6889b4a0fd"
+      },
+      "findings": [
+        {
+          "key": "ui.chat.slash.at.unavailable",
+          "severity": "minor",
+          "current": "Este backend no puede llevar referencias a archivos. Actualiza el backend y vuelve a intentarlo.",
+          "proposed": "Este backend no admite referencias a archivos. Actualiza el backend y vuelve a intentarlo.",
+          "reason": "'llevar referencias' calques English 'carry'; the sibling ui.chat.fast_mode.service_cannot_carry already renders the same verb as 'admitirlo'."
+        },
+        {
+          "key": "ui.chat.slash.empty.not_reported",
+          "severity": "minor",
+          "current": "Aún no se ha informado. Intro ejecuta el comando.",
+          "proposed": "El backend aún no ha comunicado ningún valor. Intro ejecuta el comando.",
+          "reason": "'Aún no se ha informado.' has no object, so it reads as an unfinished impersonal; the English role is 'the backend has not reported any values yet'."
+        },
+        {
+          "key": "ui.chat.slash.skill.unavailable",
+          "severity": "nit",
+          "current": "Este backend no puede servir el catálogo de habilidades. Actualiza el backend y vuelve a intentarlo.",
+          "proposed": "Este backend no ofrece el catálogo de habilidades. Actualiza el backend y vuelve a intentarlo.",
+          "reason": "'servir el catálogo' is a calque of 'serve'; 'ofrecer' is the idiomatic verb. Understandable as is."
+        },
+        {
+          "key": "ui.chat.slash.locked.fields",
+          "severity": "nit",
+          "current": "Escribe el secreto en los campos Nombre y Valor del cuadro de diálogo.",
+          "proposed": "(no change required) 'cuadro de diálogo' vs shipped bare 'diálogo' (4 uses)",
+          "reason": "Glossary drift between 'cuadro de diálogo' (this batch, also dispatch.dialog_missing) and shipped 'diálogo'; both are correct Spanish and the new form is the more precise in a sentence. Field labels 'Nombre'/'Valor' VERIFIED against ui.chat.pickers.destination_pickers.name/value, the labels of the credential dialog (destination-pickers.tsx:5022,5032)."
+        },
+        {
+          "key": "ui.chat.slash.arg.price_usage_based",
+          "severity": "nit",
+          "current": "según el uso",
+          "proposed": "por uso",
+          "reason": "Shipped es renders the billing sense of usage as 'por uso' ('de pago por uso', 'factura por uso'); 'según el uso' is correct but a second spelling."
+        },
+        {
+          "key": "ui.chat.slash.dispatch.model_unresolved",
+          "severity": "nit",
+          "current": "/{name} necesita el modelo de esta conversación, que no se resolvió. Pulsa Reintentar y vuelve a intentarlo.",
+          "proposed": "/{name} necesita el modelo de esta conversación, que no se resolvió. Pulsa Reintentar y prueba de nuevo.",
+          "reason": "'Reintentar ... vuelve a intentarlo' repeats the same root back to back; faithful but clunky."
+        },
+        {
+          "key": "ui.chat.slash.arg.provider_state.env_key",
+          "severity": "nit",
+          "current": "variable de entorno (19 chars; en 7). Also arg.provider_state.needs_login / arg.mcp_status.needs_sign_in / arg.model_needs_sign_in 'requiere iniciar sesión' (23 chars; en 11-13)",
+          "proposed": "(no change required) — flag for a rendered check",
+          "reason": "Detail column of a slash-menu row is `min-w-0 flex-1 truncate` (slash-commands.tsx ~2489), so overflow degrades to an ellipsis, not a break; not rendered by this audit, so the visible truncation width is unverified."
+        }
+      ]
+    },
+    "ui.chat.page_chrome": {
+      "status": "passed",
+      "keys_audited": 26,
+      "sha256": {
+        "en": "ad54b5d07aa2de04c8ffab1403fc6adb2b96adcbcb24eddeba99e0ff0425c73e",
+        "es": "dd4428b70cef9a2130efac8005ca3ec6dabb5073fe41bc09961eacb5b2ec2bdd",
+        "context": "267fccd8002958294fc478dd1ebbd953ebf24e53e053412692fa4fd3f45f3596"
+      },
+      "findings": [
+        {
+          "key": "ui.chat.page_chrome.scroll_to_bottom.new_activity",
+          "severity": "nit",
+          "current": "Nueva actividad",
+          "proposed": "Actividad nueva",
+          "reason": "Same button's shipped aria label is ui.chat.scroll_to_bottom.label_new_activity = 'Actividad nueva, ir al final'; adjective order drifts (same length)."
+        },
+        {
+          "key": "ui.chat.page_chrome.status_strip.outcome_refused",
+          "severity": "nit",
+          "current": "El servidor está en ejecución, pero la credencial de esta app sigue siendo rechazada.",
+          "proposed": "El servidor está en ejecución, pero sigue rechazando la credencial de esta app.",
+          "reason": "'sigue siendo rechazada' is a passive calque of 'is still refused'; the active form is the idiomatic one."
+        }
+      ]
+    },
+    "ui.chat.header_menu": {
+      "status": "passed",
+      "keys_audited": 12,
+      "sha256": {
+        "en": "2bfaecb5b8bcba8f9b46087bb404d139566a8032578a0e60c3f8b449670e73d4",
+        "es": "ad1b656709076f460688e9823a1b913a65014ab219e7593df6fd4d98c0475668",
+        "context": "b353e09e5e5b828cc65b439b5dee87ef72a7969d40045b045ee8f578b7eed74a"
+      },
+      "findings": [
+        {
+          "key": "ui.chat.header_menu.close_asks",
+          "severity": "nit",
+          "current": "Cerrar consultas",
+          "proposed": "Cerrar las consultas (and open_asks: Abrir las consultas)",
+          "reason": "Shipped ui.chat.asks.close_asks is 'Cerrar las consultas'; term 'consulta' for 'ask' is consistent, only the article differs. +4 chars on an overflow-menu item."
+        }
+      ]
+    },
+    "ui.chat.interrupt": {
+      "status": "passed",
+      "keys_audited": 6,
+      "sha256": {
+        "en": "c360665564dcd59d5656131902ed17f4a5912914844feabc1e790ded2d2bd603",
+        "es": "3435c29e0861eb1e8f20515ad960ec260221f9f8802619d48c6920aa3471d47c",
+        "context": "b388c901f5ada7c3b98c2e094ea4d7e58f8abe5201e26004210ebaeae92a0100"
+      },
+      "findings": []
+    },
+    "ui.chat.fast_mode": {
+      "status": "passed",
+      "keys_audited": 10,
+      "sha256": {
+        "en": "c6fd6fd1dfd776d099a74c866be11f0a8e821a4a1fa9beb7bccde11de095f412",
+        "es": "2289279d1eabe921bd1ef6cc82789441e5e0911c6324bf2cf932c6504db069a2",
+        "context": "ee883d0495afbf16f3f67367f9827b0a31458fe956ebe927732b376a92405694"
+      },
+      "findings": []
+    }
+  },
+  "checks": [
+    "node --test scripts/i18n/locale-parity.test.mjs: tests 44, pass 44, fail 0",
+    "node scripts/i18n/context-parity.mjs: ok - every English key covered, 131 allowed gaps in 4 namespaces (shrink-only)",
+    "all 143 es values and 143 en values parsed with @formatjs/icu-messageformat-parser: 0 parse errors; per-key argument/plural/select/number signature of es equals en (0 mismatches); es key set and order equal en in all 5 namespaces",
+    "plural categories used in es: one/many/other only (arg.removal_many, interrupt.stopped_children, stopped_jobs, stopped_both); no non-ASCII character in any argument name or option selector; no ::skeleton present in this batch; no NBSP/ZW/bidi/format characters, no edge or double spaces, all NFC; no value identical to English",
+    "intl-messageformat rendered at counts 0,1,2,5,11,21,100,1000000 in es: 'many' branch fires only at 1000000 ('1.000.000 de subagentes'), one at 1, other elsewhere; agreement of 'sigue/siguen', 'seguirlo/seguirlos', 'lo/los' correct in every branch; stopped_both checked on 8 child/job pairs",
+    "technical tokens verbatim in all keys that carry them in en: /stop, /skills, /{name}, /{label}, /{word}, ${name}, local-operator, Local Operator, {cap}, {example}, {prefix}, {target}, {scope}, {query}",
+    "register: informal tu throughout (Quita, Pulsa, Escribe, Elige, Comprueba, Inténtalo, Actualiza); no usted; matches shipped es"
+  ],
+  "translator_choices_judged": {
+    "Enter -> Intro": "CONFIRMED correct: shipped es values use 'Intro' 59x vs 'Enter' 2x (miniView.hint, teamBridge.composer.hint, both pre-existing), incl. sibling ui.chat.pickers.picker_host ('Intro elige, Esc cierra') and ui.chat.canonical.send_failure ('Pulsa Intro de nuevo'). The PR's allowed-English row 'key names (Enter, Esc)' covers the English literal scanner, not the localized catalogue.",
+    "«» quotes": "CONFIRMED: shipped ui.chat.tags.create_name = 'Crear «{name}»', browser.address rows use «», and tag.add_named renders as the verb sibling of it ('Intro: Crear «trabajo»' / 'Intro: Añadir «trabajo»'); the sidecar 'keep typographic quotes' is satisfied by the locale's own typographic quotes.",
+    "arg.mcp_status.error -> con error": "ACCEPTED: sits in a lowercase status set (conectado / conectando / requiere iniciar sesión / sin conectar / con error) where a bare 'error' would be the only noun; shipped es has the 'con ...' pattern ('con dirección inaccesible'). No finding.",
+    "slash.locked.fields 'campos Nombre y Valor'": "CONFIRMED: the dialog /credential opens is the PickerHost form in destination-pickers.tsx (5022 name, 5032 value) whose labels are ui.chat.pickers.destination_pickers.name = 'Nombre' and .value = 'Valor' in the shipped es catalogue."
+  },
+  "rendered_splice_samples": [
+    "Intro: Crear «trabajo» | Clic: Quitar trabajo | Intro: Añadir «trabajo»",
+    "Preparado: /goal terminar la migración. Intro establece el objetivo y envía el texto.",
+    "Preparado: /rename Plan de lanzamiento. Necesita una conversación abierta; inicia una primero.",
+    "Las palabras después de /credential se tomaron como su argumento, y un valor escrito en una línea de comandos no se guarda. Escribe el secreto en los campos Nombre y Valor del cuadro de diálogo. Pulsa ⌘Z en el cuadro de mensaje para devolver las palabras a su sitio."
+  ],
+  "findings": []
+}

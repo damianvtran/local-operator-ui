@@ -1,0 +1,480 @@
+{
+  "schema": 1,
+  "kind": "independent-translation-audit",
+  "batch": "agents-surfaces",
+  "round": 2,
+  "locale": "ur",
+  "locale_name": "Urdu (RTL)",
+  "date": "2026-10-26",
+  "branch": "i18n-agents-pages",
+  "head": "91231e66c955197e86cec5b1bf7c6f488eff48de",
+  "candidate_state": "Current working tree: ur catalogues committed at 0ae75afa0c on this branch; en source tracked at HEAD 91231e66c9. Every audited bytes hash was recomputed from disk and matched the manager-supplied agents-r2-hashes list before reading.",
+  "auditor": "i18n-auditor (lopdev team)",
+  "agent": "i18n-auditor",
+  "session": "74bd1d94a511",
+  "instance": "74bd1d94a511",
+  "model": "radient/auto",
+  "model_route": {
+    "requested": "radient/auto",
+    "actual": "radient/auto",
+    "fallback": false,
+    "disclosure": "No provider error, quota descent or mid-run model switch was surfaced by the harness in this run; the session's configured model header read radient/auto throughout. The resolved upstream provider/model id is not exposed to the agent, so none is claimed."
+  },
+  "actual_model_source": "harness session header (Model: radient/auto); upstream resolution not visible to the agent and not inferred",
+  "independence": "Independent round-2 auditor for ur: did not translate or remediate these catalogues, read the translator's output only as bytes, used no translation/MT service or back-translation, and made no catalogue, ledger or git edit. This receipt is the only repository write.",
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/ur.md",
+      "sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+    }
+  },
+  "method": "Read the ur style guide and the programme glossary first, then the English source with each key's context sidecar, then the translated bytes; judged by native-fluent reading of ur against en and the call sites (grep of src/renderer/src/features/agents and features/agent-hub), with no MT service. Mechanical checks were derived, not trusted: a scratch Node script parsed all 321 messages with @formatjs/icu-messageformat-parser and compared argument names/types, plural arms, NFC, bidi controls, punctuation and code-span counts against en, plus a Latin-token check for identifiers/commands/products. Composition was checked in code: publication-failure.ts (publicationTreatment, pullRefusalMessage), upload-agent-dialog.tsx (terms lead+link+tail, target label), and label-in-name for pull_target, brief.trigger_aria, delegate.aria, collaboration/project_brief/members aria.",
+  "commands": [
+    {
+      "command": "node --test --test-name-pattern='ur' scripts/i18n/locale-parity.test.mjs",
+      "exit": 1,
+      "observed": "All six [ur] subtests pass (ships a message; one namespace per key; every en key carried; only en keys named; every ICU placeholder preserved; not an English stub). The run exits 1 because the same filter also selects '[fr] is not an English stub (no value identical to the source)' — the substring 'ur' in 'source' — and fr has 11 values identical to English; that is a French result, not an ur defect."
+    },
+    {
+      "command": "node --test --test-name-pattern='\\[ur\\]' scripts/i18n/locale-parity.test.mjs",
+      "exit": 0,
+      "observed": "tests 6, pass 6, fail 0 — all [ur] subtests green."
+    },
+    {
+      "command": "node scripts/i18n/context-parity.mjs",
+      "exit": 0,
+      "observed": "context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s); the four are ui.canvas, ui.chat, ui.onboarding, ui.settings, none of the eight audited."
+    },
+    {
+      "command": "node scripts/i18n/check-duplicates.mjs",
+      "exit": 0,
+      "observed": "check-duplicates: ok — 835 file(s) scanned, 0 duplicate key(s)."
+    },
+    {
+      "command": "node scripts/i18n/generate.mjs --check",
+      "exit": 0,
+      "observed": "src/i18n/keys.gen.ts is byte-identical to a fresh generation."
+    },
+    {
+      "command": "node scripts/i18n/check-strings.mjs",
+      "exit": 0,
+      "observed": "check-strings.mjs: ok — 1368 file(s) scanned, 191 literal(s) at or below the baseline."
+    }
+  ],
+  "mechanical": "321 keys across the 8 namespaces; key sets and order equal en for every namespace (no missing/extra key); valid JSON; 0 ICU argument-name/type diffs; 8 keys differ only by placeholder/literal ORDER (status.agents_scope, status.count.agents, status.count.teams, status.scope.shared_with, status.teams_scope, brief.trigger_aria, org.aria, pull_target) — the locale's own word order, all placeholders present once. All 6 plural messages carry one+other, matching Intl.PluralRules('ur'); no zero/two/few/many arm. All values NFC; no manual bidi controls (RLM/LRM/FSI/PDI/ALM); no Arabic-Indic/Urdu digits; no Devanagari danda; U+2026 exactly where en has it; no ASCII '.', '?' or ';' in prose; only “ ” curly quotes except the acknowledged field.name_hint rule characters; no backticks or Rich/markup tags in scope; backtick counts equal en (0). Latin tokens that are identifiers/products (release-crew, coder, shipping, KiB, Radient, Local Operator, Agent Hub, Team, 128, 1) preserved. No maxCells/maxChars hints exist in these eight sidecars; widths were judged from the sidecar prose only (no pixel or rendered-frame evidence) and no overflow risk was found.",
+  "acknowledged_source_gaps": [
+    "ui.agents.config.about inserts raw English {kind} ('agent'/'team') from the row's kind — a source-data gap, not an ur translation defect.",
+    "ui.agents.detail.tools.every_tool_aria's accessible name does not contain the visible 'تمام ٹولز' — the identical gap exists in English ('Give this agent every tool' vs 'All tools'); a source a11y issue, not counted.",
+    "upload-agent-dialog.tsx still hard-codes English copy beside these keys (the publish-target hint sentence, 'Organization', 'this organization', 'any of the organizations marked above', the Pull button label in public-teams-library.tsx) — source-side strings with no key, outside this catalogue audit.",
+    "ui.agents.upload.field.name_hint keeps straight ASCII quotes around '/', '\\\\' and ':' — round 1 accepted it as the literal rule characters; recorded here as a style preference only, not counted."
+  ],
+  "round1_dispositions": [
+    {
+      "id": "D1",
+      "outcome": "fixed",
+      "evidence": "alert.conflict_body now says 'آپ کی ترامیم برقرار ہیں' (no false 'saved')."
+    },
+    {
+      "id": "D2",
+      "outcome": "fixed",
+      "evidence": "action.edit now 'ترمیم کریں'."
+    },
+    {
+      "id": "D3",
+      "outcome": "fixed",
+      "evidence": "builtin_body/origin.changed now use نقل throughout."
+    },
+    {
+      "id": "D4",
+      "outcome": "fixed",
+      "evidence": "unconfirmed_title now 'آخری بار محفوظ کرنے کی تصدیق نہیں ہوئی'."
+    },
+    {
+      "id": "D5",
+      "outcome": "fixed",
+      "evidence": "kind.specialist now 'دوسرے ایجنٹس اسے بلا سکتے ہیں'."
+    },
+    {
+      "id": "H1",
+      "outcome": "fixed",
+      "evidence": "hub.pages.header.title is 'Agent Hub'."
+    },
+    {
+      "id": "H2",
+      "outcome": "fixed-as-proposed",
+      "evidence": "sort labels shortened to 'سب سے زیادہ ڈاؤن لوڈ' / 'سب سے زیادہ لائکس' as round 1 proposed for the w-48 trigger; accepted, no new finding."
+    },
+    {
+      "id": "H3",
+      "outcome": "fixed",
+      "evidence": "viewer_unknown now '…یا پسندیدہ بنایا ہے'."
+    },
+    {
+      "id": "T1",
+      "outcome": "fixed",
+      "evidence": "manager role is منتظم in hub.teams and agents.teams."
+    },
+    {
+      "id": "C1",
+      "outcome": "fixed",
+      "evidence": "config.about is 'متعلق: {kind} {name}'."
+    },
+    {
+      "id": "C2",
+      "outcome": "fixed",
+      "evidence": "result.configured is 'ترتیب شدہ'."
+    },
+    {
+      "id": "C3",
+      "outcome": "fixed",
+      "evidence": "activity.empty / summary.no_changes / summary.nothing_else now use رن."
+    },
+    {
+      "id": "C4",
+      "outcome": "fixed",
+      "evidence": "examples.team_shipping now 'ایک منتظم'."
+    },
+    {
+      "id": "C5",
+      "outcome": "fixed",
+      "evidence": "action.dismiss is 'ہٹائیں'."
+    },
+    {
+      "id": "M1",
+      "outcome": "fixed",
+      "evidence": "agents.teams manager strings all منتظم."
+    },
+    {
+      "id": "U1",
+      "outcome": "fixed",
+      "evidence": "terms lead/link/tail now compose: 'میں نے شرائط و ضوابط پڑھ لیے ہیں اور مجھے ان سے اتفاق ہے…'."
+    },
+    {
+      "id": "U2",
+      "outcome": "fixed",
+      "evidence": "terms.lead uses 'میں نے', no gendered first-person verb."
+    },
+    {
+      "id": "U3",
+      "outcome": "fixed",
+      "evidence": "reauthenticate and category.credential_theft use اسناد."
+    },
+    {
+      "id": "U4",
+      "outcome": "fixed",
+      "evidence": "open_listing is 'ہب پر اندراج کھولیں'."
+    },
+    {
+      "id": "P1",
+      "outcome": "fixed",
+      "evidence": "category.credential_theft uses اسناد."
+    },
+    {
+      "id": "P2",
+      "outcome": "fixed",
+      "evidence": "category.evasion_or_abuse_tooling now 'حفاظتی اور غلط استعمال روکنے والے نظاموں'."
+    },
+    {
+      "id": "P3",
+      "outcome": "fixed",
+      "evidence": "category.sexual_content now 'صریح جنسی مواد'."
+    },
+    {
+      "id": "P4",
+      "outcome": "fixed",
+      "evidence": "publish_as_new/update_listing use اندراج."
+    }
+  ],
+  "namespaces": {
+    "ui.agents.pages": {
+      "status": "passed",
+      "result": "clean",
+      "verdict": "passed: 0 blocker, 0 major, 0 minor, 0 nit",
+      "keys_audited": 22,
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "sha256": {
+        "en": "38a713b6cc4a63532543924cfdd2093b11c3618c31fc6266d28e20b84572feb5",
+        "ur": "14573b2594e6c54add646218f038a2fd3e430f9d0a714b128ae8b4892f0d662d",
+        "context": "4b761bfa8eeeddf3689a2160e8249b153c095368b6f6fe3df7046052d95d2642"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.agents.pages.json",
+        "target": "src/i18n/catalogues/ur/ui.agents.pages.json",
+        "context": "src/i18n/catalogues/en/ui.agents.pages.context.json"
+      },
+      "note": "All keys re-read in the current working tree; round-1 findings re-checked only against the bytes (receipt read afterwards).",
+      "findings": []
+    },
+    "ui.agents.detail": {
+      "status": "passed",
+      "result": "clean-with-findings",
+      "verdict": "passed: 0 blocker, 0 major, 1 minor, 0 nit",
+      "keys_audited": 47,
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 0
+      },
+      "sha256": {
+        "en": "9cf3c2f8cbd522ea6e3e2c88b9c65c80bb63d79b7a417992ece92043809ff025",
+        "ur": "5f4bf5a941c6ee4e4f2e76750a58421b9f73d456d75aa7122988d3d73426245c",
+        "context": "f1b0bbf296d01189d64cbdc9bb1bc77d3e7971d8f891c693b94af5741de58cd9"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.agents.detail.json",
+        "target": "src/i18n/catalogues/ur/ui.agents.detail.json",
+        "context": "src/i18n/catalogues/en/ui.agents.detail.context.json"
+      },
+      "note": "All keys re-read in the current working tree; round-1 findings re-checked only against the bytes (receipt read afterwards).",
+      "findings": [
+        {
+          "id": "UR-R2-D1",
+          "severity": "minor",
+          "category": "terminology",
+          "key": "ui.agents.detail.alert.conflict_body",
+          "current": "کوئی ترتیب کا رن",
+          "problem": "'a configuration run' renders configuration with ترتیب, but the shipped ur catalogue fixes configuration as کنفیگریشن (ui.common.errors.configuration_fetch 'کنفیگریشن حاصل نہیں ہو سکی', ui.common.errors.configuration_update, ui.common.actions.configuration_updated 'کنفیگریشن اپ ڈیٹ ہو گئی', ui.canvas.create_file_dialog.configuration). ترتیب alone also reads as 'order/arrangement', so 'ترتیب کا رن' is ambiguous in an alert about a concurrent writer.",
+          "suggested": "کوئی کنفیگریشن رن"
+        }
+      ]
+    },
+    "ui.hub.pages": {
+      "status": "passed",
+      "result": "clean",
+      "verdict": "passed: 0 blocker, 0 major, 0 minor, 0 nit",
+      "keys_audited": 35,
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "sha256": {
+        "en": "ba970e165ed879e7f9968a02302480a86d8002954d514247d633ae54eb7ca139",
+        "ur": "8c9bcd5bfc64b7de15a2bbab828110b7afc5d0a90e005711fd6655e0b8c1efd2",
+        "context": "baa1605388a3892267e503c2e9a2504a7c6ace8d92bbb380a2c72ccb33be4dcc"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.hub.pages.json",
+        "target": "src/i18n/catalogues/ur/ui.hub.pages.json",
+        "context": "src/i18n/catalogues/en/ui.hub.pages.context.json"
+      },
+      "note": "All keys re-read in the current working tree; round-1 findings re-checked only against the bytes (receipt read afterwards).",
+      "findings": []
+    },
+    "ui.hub.teams": {
+      "status": "changes_requested",
+      "result": "changes_requested",
+      "verdict": "changes_requested: 0 blocker, 1 major, 1 minor, 0 nit",
+      "keys_audited": 47,
+      "severity_counts": {
+        "blocker": 0,
+        "major": 1,
+        "minor": 1,
+        "nit": 0
+      },
+      "sha256": {
+        "en": "32d6df8db5c9226cd9a3e4d57f7bf12a14579ad266feaa3a914c4cfdddad9ad5",
+        "ur": "8a6f49b2b7b9d4dba5a282c723c3875d6d9b7330651a87fc69d949c7bb1c0ed4",
+        "context": "9a6f5f35045687eab48c7491086b759c06d5ad635e93cdfdbcaf2f663acd6651"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.hub.teams.json",
+        "target": "src/i18n/catalogues/ur/ui.hub.teams.json",
+        "context": "src/i18n/catalogues/en/ui.hub.teams.context.json"
+      },
+      "note": "All keys re-read in the current working tree; round-1 findings re-checked only against the bytes (receipt read afterwards).",
+      "findings": [
+        {
+          "id": "UR-R2-H1",
+          "severity": "major",
+          "category": "terminology",
+          "key": "ui.hub.teams.pull; ui.hub.teams.pulling; ui.hub.teams.pull_target; ui.hub.teams.pull_failed; ui.hub.teams.public.pull_failed; ui.hub.teams.public.pull_no_signin",
+          "current": "حاصل کریں · حاصل کیا جا رہا ہے… · ٹیم {name} حاصل کریں; “{name}” حاصل نہیں ہو سکی۔; ٹیم حاصل نہیں ہو سکی۔; … پھر دوبارہ حاصل کریں۔",
+          "problem": "The programme glossary's wave-2 kept-English set keeps `pull` for git/hub operations ('Inflect around them; never translate inside them'), and shipped ur already does exactly that on this surface: ui.hub.subscriptions.pull = 'اب pull کریں' and ui.hub.subscriptions.subscribe_description = 'دستی pull دستیاب رہتا ہے'. The six new keys name the same hub pull operation as حاصل, so the new hub.roster button contradicts the locale's shipped hub vocabulary and the glossary; no divergence is recorded in i18n/style-guides/ur.md. Same ruling the es round-2 audit made (ES-R2-H1). Direct neighbours on this surface that carry the same verb and should move with it (round-1 bytes): ui.hub.teams.public.intro 'کوئی ٹیم حاصل کرنے پر', ui.hub.teams.public.sign_in_hint 'کوئی ٹیم حاصل کرنے کے لیے'.",
+          "suggested": "Pull · Pull ہو رہا ہے… · ٹیم {name} کو Pull کریں · “{name}” کو Pull نہیں کیا جا سکا۔ · ٹیم کو Pull نہیں کیا جا سکا۔ · … پھر دوبارہ Pull کریں۔ (running text lower-case 'pull', as the shipped subscription strings do; the visible label must stay inside pull_target/its aria name)"
+        },
+        {
+          "id": "UR-R2-H2",
+          "severity": "minor",
+          "category": "grammar",
+          "key": "ui.hub.teams.public.match_line",
+          "current": "{visible} از {total, plural, one {# ٹیم} other {# ٹیمیں}} اس صفحے پر “{query}” سے مطابقت رکھتی ہیں",
+          "problem": "The trailing verb is outside the ICU plural and is fixed feminine-plural, so the `one` arm produces broken agreement: total=1 renders '0/1 از 1 ٹیم … مطابقت رکھتی ہیں' (needs رکھتی ہے). fr/ru/zh-CN avoided this by recasting the sentence as a label ('Matches for “{query}” on this page: {visible} of {total}'); the English source's own plural verb has the same latent edge, but the target can fix it without changing the placeholders.",
+          "suggested": "اس صفحے پر “{query}” سے مطابقت: {visible} از {total, plural, one {# ٹیم} other {# ٹیمیں}}"
+        }
+      ]
+    },
+    "ui.agents.config": {
+      "status": "passed",
+      "result": "clean-with-findings",
+      "verdict": "passed: 0 blocker, 0 major, 2 minor, 0 nit",
+      "keys_audited": 28,
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 2,
+        "nit": 0
+      },
+      "sha256": {
+        "en": "aa4fde04d7db00418387f862d42d547bead44e96c880e8b4e0dc86384eed305b",
+        "ur": "28307c5459022ead0023bd9dc3f308dae0a5f981e674420b54015f4a5d1bb33a",
+        "context": "5dd8f962ad021b0dc4004ea2531257b3fd70904e834f77b5f9b7b2d7266a48db"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.agents.config.json",
+        "target": "src/i18n/catalogues/ur/ui.agents.config.json",
+        "context": "src/i18n/catalogues/en/ui.agents.config.context.json"
+      },
+      "note": "All keys re-read in the current working tree; round-1 findings re-checked only against the bytes (receipt read afterwards).",
+      "findings": [
+        {
+          "id": "UR-R2-C1",
+          "severity": "minor",
+          "category": "terminology",
+          "key": "ui.agents.config.status.attached",
+          "current": "ایک اور ترتیب کا رن پہلے سے جاری تھا",
+          "problem": "Same configuration term as UR-R2-D1: shipped ur uses کنفیگریشن for configuration; ترتیب reads as order/arrangement here.",
+          "suggested": "ایک اور کنفیگریشن رن پہلے سے جاری تھا"
+        },
+        {
+          "id": "UR-R2-C2",
+          "severity": "minor",
+          "category": "accuracy",
+          "key": "ui.agents.config.summary.you_asked",
+          "current": "آپ نے پوچھا: {topic}",
+          "problem": "پوچھنا means to inquire/ask a question; {topic} is the operator's own CHANGE REQUEST that the run acted on (sidecar: 'quoted request under the answer'). 'آپ نے پوچھا: coder کو دو بار شامل کریں' reads as if the request were a question.",
+          "suggested": "آپ کی درخواست: {topic} (or آپ نے کہا: {topic})"
+        }
+      ]
+    },
+    "ui.agents.teams": {
+      "status": "passed",
+      "result": "clean",
+      "verdict": "passed: 0 blocker, 0 major, 0 minor, 0 nit",
+      "keys_audited": 23,
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "sha256": {
+        "en": "139eca3cd41f62cfea0a97d6a9b40cff8aa446ea761b1f94d42334d1d576fdef",
+        "ur": "35d060377f836bcac6dd22a4a9abddc3b234dab70e7d4162fc46fc11f5346526",
+        "context": "0b3f7f59a37c671813d9a5c9d32b242e04d0fa0b3c5605421c3129cab937bfc1"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.agents.teams.json",
+        "target": "src/i18n/catalogues/ur/ui.agents.teams.json",
+        "context": "src/i18n/catalogues/en/ui.agents.teams.context.json"
+      },
+      "note": "All keys re-read in the current working tree; round-1 findings re-checked only against the bytes (receipt read afterwards).",
+      "findings": []
+    },
+    "ui.agents.upload": {
+      "status": "changes_requested",
+      "result": "changes_requested",
+      "verdict": "changes_requested: 0 blocker, 1 major, 0 minor, 0 nit",
+      "keys_audited": 23,
+      "severity_counts": {
+        "blocker": 0,
+        "major": 1,
+        "minor": 0,
+        "nit": 0
+      },
+      "sha256": {
+        "en": "6f1242bae1dcc952a8f3a659a2850fad2af9a3b0834d6a23ddac28fc8be91c11",
+        "ur": "399ad8de4ec4be3d60d1fc39dafe7ca6d942eda2799e432f2dc2610e61491495",
+        "context": "9c8ccc682885383f7aee9f77a1dbbb8c94a5d709e2de4ee9d76b40c7248a277a"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.agents.upload.json",
+        "target": "src/i18n/catalogues/ur/ui.agents.upload.json",
+        "context": "src/i18n/catalogues/en/ui.agents.upload.context.json"
+      },
+      "note": "All keys re-read in the current working tree; round-1 findings re-checked only against the bytes (receipt read afterwards).",
+      "findings": [
+        {
+          "id": "UR-R2-U1",
+          "severity": "major",
+          "category": "accuracy",
+          "key": "ui.agents.upload.target.label",
+          "current": "یہاں شائع کریں",
+          "problem": "English 'Publish to' is the <Label> of the destination Select (upload-agent-dialog.tsx:938-952; its options are ui.hub.pages.scope.public 'Public hub' and organization names). 'یہاں' means HERE, so the label reads 'Publish here' and names the current place instead of the destination the reader must choose; it contradicts the options below it and every other locale (fr 'Publier vers', es 'Publicar en', ru 'Куда опубликовать', hi 'कहाँ प्रकाशित करें', zh-CN '发布到', vi 'Xuất bản đến'). Sidecar: 'Introduces the public hub and organization targets below it.'",
+          "suggested": "شائع کرنے کی جگہ (or کس جگہ شائع کریں)"
+        }
+      ]
+    },
+    "ui.agents.publication": {
+      "status": "changes_requested",
+      "result": "changes_requested",
+      "verdict": "changes_requested: 0 blocker, 1 major, 0 minor, 0 nit",
+      "keys_audited": 96,
+      "severity_counts": {
+        "blocker": 0,
+        "major": 1,
+        "minor": 0,
+        "nit": 0
+      },
+      "sha256": {
+        "en": "20056e5654c004bef9318bf91531cb0cbc349d6242f6c49ba4801eb5d4605f39",
+        "ur": "7e8f984d23e43432aec57b6b27e783f28bbd9c104baa9a7442c74b043fe14848",
+        "context": "69ceeff1e7162764e13c6d5fdee8e7a9f1184f1ab8209839a34e64ce6c486f90"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.agents.publication.json",
+        "target": "src/i18n/catalogues/ur/ui.agents.publication.json",
+        "context": "src/i18n/catalogues/en/ui.agents.publication.context.json"
+      },
+      "note": "All keys re-read in the current working tree; round-1 findings re-checked only against the bytes (receipt read afterwards).",
+      "findings": [
+        {
+          "id": "UR-R2-P1",
+          "severity": "major",
+          "category": "terminology",
+          "key": "ui.agents.publication.hub_unauthorized.body_pull; ui.agents.publication.hub_unavailable.body_pull; ui.agents.publication.hub_unavailable.headline_pull; ui.agents.publication.insufficient_role.body_pull; ui.agents.publication.insufficient_role.body_with_role_pull; ui.agents.publication.local_failure.headline_pull; ui.agents.publication.not_a_member.body_pull; ui.agents.publication.team_plan_required.body_pull",
+          "current": "کچھ بھی حاصل نہیں ہوا … پھر دوبارہ حاصل کریں۔ · حصول مکمل نہیں ہو سکا · یہ ٹیم اس مشین سے حاصل نہیں ہو سکی",
+          "problem": "Same `pull` decision as UR-R2-H1: these keys are the EN pull surface ('Nothing was pulled', 'The pull did not go through', 'then pull again', 'could not be pulled'), and the glossary keeps pull English for hub operations while shipped ur renders the hub operation as 'pull' (ui.hub.subscriptions.pull 'اب pull کریں'). The pull.* refusal bodies are NOT part of this finding: their English says downloaded/download, where ڈاؤن لوڈ is the correct rendering, and they are left alone.",
+          "suggested": "کچھ بھی Pull نہیں ہوا۔ … پھر دوبارہ Pull کریں۔ · Pull مکمل نہیں ہو سکا · یہ ٹیم اس مشین سے Pull نہیں ہو سکی"
+        }
+      ]
+    }
+  },
+  "totals": {
+    "keys": 321,
+    "namespaces": 8,
+    "blocker": 0,
+    "major": 3,
+    "minor": 3,
+    "nit": 0
+  },
+  "current_report_verdict": {
+    "status": "changes_requested",
+    "unresolved_blocker_major_count": 3,
+    "finding_ids": [
+      "UR-R2-U1",
+      "UR-R2-H1",
+      "UR-R2-P1",
+      "UR-R2-H2",
+      "UR-R2-D1",
+      "UR-R2-C1",
+      "UR-R2-C2"
+    ]
+  },
+  "limitations": [
+    "No rendered frame, pixel measurement or bidi-render evidence: widths are codepoint/prose judgements only.",
+    "Gender, register and idiom judgements are the auditor's own native-fluent reading; no MT service or back-translation was used.",
+    "This is the second independent pass over a high-visibility error group (publication refusals) requested by the manager; the round-1 receipt was read only after the bytes were judged, and one round-1-accepted choice (the hub pull verb) is re-opened with shipped-catalogue evidence."
+  ]
+}

@@ -1,0 +1,266 @@
+{
+	"audit_id": "teambridge-owner-audit-audit-b393dc8cd01c",
+	"date": "2026-10-28",
+	"locale": "ur",
+	"namespace": "ui.ownerAudit",
+	"source_commit": "a975a0b4ec82c0cd6b6541d68b1d3501f683328d",
+	"translator": {
+		"agent": "i18n-translator",
+		"job": "64be94d56ced",
+		"model": "not supplied",
+		"date": "2026-10-28",
+		"method": "LLM translator subagent; no MT service referenced"
+	},
+	"auditors": [
+		{
+			"agent": "i18n-auditor",
+			"model": "anthropic/claude-opus-5-5",
+			"date": "2026-10-28",
+			"result": "clean",
+			"instance": "b393dc8cd01c-owneraudit-ur",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"receipt": "i18n/receipts/b393dc8cd01c-owneraudit-ur.json",
+			"receipt_sha256": "cb8d96d577277a39a09b000c634ca49b8f0010f1194a3d43a13bd040b8af71a8"
+		}
+	],
+	"ledger_status": "audited",
+	"independence": "Independent auditor (reviewer role, session b393dc8cd01c). It authored none of the translated strings as delivered by i18n-translator job 64be94d56ced. Per the audit brief it then FIXED blocker/major strings itself; those replaced values (listed in resolved_findings with before/after) are auditor-authored and were not re-audited by a second agent. This run wrote only catalogue fixes, receipts, evidence records and ledger rows; it did not commit.",
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.ownerAudit.json",
+			"sha256": "a83890d7dafe0a81c4bbc4862da0f77eaf4b7573b1654fbff6d8e37c19eaf4fb"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/ur/ui.ownerAudit.json",
+			"sha256": "8e330a5e59bddcbd896ca8f1a46482ed2d2f87007eadbbf20cc7a44a175f44b9"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.ownerAudit.context.json",
+			"sha256": "ad77dcc43ee06d1f43ef6c2a6422c33ee458534b805d888cb413a4f9ebf8226c"
+		}
+	},
+	"audited": {
+		"ui.ownerAudit.title": {
+			"en": "Your chief of staff’s messages",
+			"target": "آپ کے چیف آف اسٹاف کے پیغامات"
+		},
+		"ui.ownerAudit.read_only": {
+			"en": "Read-only history. Sending, reactions and editing are unavailable.",
+			"target": "صرف پڑھنے کے لیے سابقہ پیغامات۔ بھیجنا، ردعمل اور ترمیم دستیاب نہیں۔"
+		},
+		"ui.ownerAudit.loading": {
+			"en": "Loading audited messages",
+			"target": "آڈٹ شدہ پیغامات لوڈ ہو رہے ہیں"
+		},
+		"ui.ownerAudit.error": {
+			"en": "Audited messages could not be loaded.",
+			"target": "آڈٹ شدہ پیغامات لوڈ نہیں ہو سکے۔"
+		},
+		"ui.ownerAudit.retry": {
+			"en": "Try again",
+			"target": "دوبارہ کوشش کریں"
+		},
+		"ui.ownerAudit.refresh": {
+			"en": "Refresh",
+			"target": "تازہ کریں"
+		},
+		"ui.ownerAudit.empty_list": {
+			"en": "No audited conversations in this organization.",
+			"target": "اس تنظیم میں کوئی آڈٹ شدہ گفتگو نہیں۔"
+		},
+		"ui.ownerAudit.empty_history": {
+			"en": "No messages in the audit window for this conversation.",
+			"target": "اس گفتگو کے آڈٹ کے دور میں کوئی پیغام نہیں۔"
+		},
+		"ui.ownerAudit.unnamed": {
+			"en": "Unnamed conversation",
+			"target": "بلا نام گفتگو"
+		},
+		"ui.ownerAudit.agent": {
+			"en": "Chief of staff",
+			"target": "چیف آف اسٹاف"
+		},
+		"ui.ownerAudit.more": {
+			"en": "Load more",
+			"target": "مزید لوڈ کریں"
+		},
+		"ui.ownerAudit.older": {
+			"en": "Load older messages",
+			"target": "پرانے پیغامات لوڈ کریں"
+		},
+		"ui.ownerAudit.admitted": {
+			"en": "Admitted to your chief of staff",
+			"target": "آپ کے چیف آف اسٹاف نے قبول کیا"
+		},
+		"ui.ownerAudit.rejected": {
+			"en": "Rejected by your chief of staff’s screening",
+			"target": "آپ کے چیف آف اسٹاف کی جانچ نے مسترد کیا"
+		},
+		"ui.ownerAudit.not_screened": {
+			"en": "Not screened by your chief of staff",
+			"target": "آپ کے چیف آف اسٹاف نے جانچ نہیں کی"
+		},
+		"ui.ownerAudit.unknown_status": {
+			"en": "Status unknown",
+			"target": "حالت نامعلوم"
+		},
+		"ui.ownerAudit.own": {
+			"en": "Sent by your chief of staff",
+			"target": "آپ کے چیف آف اسٹاف نے بھیجا"
+		},
+		"ui.ownerAudit.body_unavailable": {
+			"en": "Message text unavailable.",
+			"target": "پیغام کا متن دستیاب نہیں۔"
+		},
+		"ui.ownerAudit.attachment_expired": {
+			"en": "Attachment expired; bytes are unavailable.",
+			"target": "منسلکہ کی میعاد ختم ہو گئی؛ مواد دستیاب نہیں۔"
+		},
+		"ui.ownerAudit.attachment_unavailable": {
+			"en": "Attachment present; downloading is unavailable in this view.",
+			"target": "منسلکہ موجود ہے؛ اس منظر میں ڈاؤن لوڈ دستیاب نہیں۔"
+		},
+		"ui.ownerAudit.unknown_sender": {
+			"en": "Unknown sender",
+			"target": "نامعلوم بھیجنے والا"
+		},
+		"ui.ownerAudit.reveal": {
+			"en": "Show message text",
+			"target": "پیغام کا متن دکھائیں"
+		},
+		"ui.ownerAudit.active": {
+			"en": "Your chief of staff is still a member.",
+			"target": "آپ کا چیف آف اسٹاف اب بھی رکن ہے۔"
+		},
+		"ui.ownerAudit.left": {
+			"en": "Your chief of staff left this conversation; later messages are outside the audit window.",
+			"target": "آپ کا چیف آف اسٹاف اس گفتگو سے چلا گیا؛ بعد کے پیغامات آڈٹ کے دور سے باہر ہیں۔"
+		},
+		"ui.ownerAudit.removed": {
+			"en": "Your chief of staff was removed; later messages are outside the audit window.",
+			"target": "آپ کے چیف آف اسٹاف کو ہٹا دیا گیا؛ بعد کے پیغامات آڈٹ کے دور سے باہر ہیں۔"
+		},
+		"ui.ownerAudit.disclosure": {
+			"en": "Visible only to you as this agent’s owner; other members see that owner auditing is enabled.",
+			"target": "اس ایجنٹ کے مالک کی حیثیت سے صرف آپ دیکھ سکتے ہیں؛ دیگر ارکان دیکھ سکتے ہیں کہ مالک کا آڈٹ فعال ہے۔"
+		},
+		"ui.ownerAudit.viewer": {
+			"en": "Also visible to {name}, an agent owner.",
+			"target": "ایجنٹ کے مالک {name} بھی دیکھ سکتے ہیں۔"
+		},
+		"ui.ownerAudit.replies": {
+			"en": "Read thread replies",
+			"target": "تھریڈ کے جوابات پڑھیں"
+		}
+	},
+	"scope": {
+		"keys_audited_linguistically": [
+			"ui.ownerAudit.title",
+			"ui.ownerAudit.read_only",
+			"ui.ownerAudit.loading",
+			"ui.ownerAudit.error",
+			"ui.ownerAudit.retry",
+			"ui.ownerAudit.refresh",
+			"ui.ownerAudit.empty_list",
+			"ui.ownerAudit.empty_history",
+			"ui.ownerAudit.unnamed",
+			"ui.ownerAudit.agent",
+			"ui.ownerAudit.more",
+			"ui.ownerAudit.older",
+			"ui.ownerAudit.admitted",
+			"ui.ownerAudit.rejected",
+			"ui.ownerAudit.not_screened",
+			"ui.ownerAudit.unknown_status",
+			"ui.ownerAudit.own",
+			"ui.ownerAudit.body_unavailable",
+			"ui.ownerAudit.attachment_expired",
+			"ui.ownerAudit.attachment_unavailable",
+			"ui.ownerAudit.unknown_sender",
+			"ui.ownerAudit.reveal",
+			"ui.ownerAudit.active",
+			"ui.ownerAudit.left",
+			"ui.ownerAudit.removed",
+			"ui.ownerAudit.disclosure",
+			"ui.ownerAudit.viewer",
+			"ui.ownerAudit.replies"
+		],
+		"new_namespace": true,
+		"note": "first audit of this namespace; all 28 keys"
+	},
+	"notes": "Namespace-wide audit against en + context (owner vs agent, screening vs authorship, audit window). RTL: Arabic punctuation ۔ ، ؛, {name} mid-sentence, no manual bidi controls. Open findings: 0; resolved by this run: 3.",
+	"findings": [],
+	"resolved_findings": [
+		{
+			"id": "I18N-ur-1",
+			"severity": "major",
+			"status": "resolved",
+			"resolved_by": "auditor b393dc8cd01c (this run)",
+			"keys": [
+				"ui.ownerAudit.read_only"
+			],
+			"reason": "Meaning: 'صرف پڑھنے کی تاریخ' reads first as 'read-only date' (تاریخ = date/history); shipped Team Bridge renders history as 'سابقہ پیغامات' (ui.teamBridge.preview.banner). Also ردِعمل -> ردعمل to match ui.teamBridge.reactions.add.",
+			"change": {
+				"ui.ownerAudit.read_only": {
+					"before": "صرف پڑھنے کی تاریخ۔ بھیجنا، ردِعمل اور ترمیم دستیاب نہیں۔",
+					"after": "صرف پڑھنے کے لیے سابقہ پیغامات۔ بھیجنا، ردعمل اور ترمیم دستیاب نہیں۔"
+				}
+			}
+		},
+		{
+			"id": "I18N-ur-2",
+			"severity": "major",
+			"status": "resolved",
+			"resolved_by": "auditor b393dc8cd01c (this run)",
+			"keys": [
+				"ui.ownerAudit.empty_list"
+			],
+			"reason": "Terminology consistency: organization 'ادارہ' broke shipped 'تنظیم' (ui.teamBridge.scope.label, read_only.note).",
+			"change": {
+				"ui.ownerAudit.empty_list": {
+					"before": "اس ادارے میں کوئی آڈٹ شدہ گفتگو نہیں۔",
+					"after": "اس تنظیم میں کوئی آڈٹ شدہ گفتگو نہیں۔"
+				}
+			}
+		},
+		{
+			"id": "I18N-ur-3",
+			"severity": "minor",
+			"status": "resolved",
+			"resolved_by": "auditor b393dc8cd01c (this run)",
+			"keys": [
+				"ui.ownerAudit.disclosure"
+			],
+			"reason": "Grammar: آڈٹ is masculine — 'مالک کی آڈٹ' -> 'مالک کا آڈٹ'.",
+			"change": {
+				"ui.ownerAudit.disclosure": {
+					"before": "اس ایجنٹ کے مالک کی حیثیت سے صرف آپ دیکھ سکتے ہیں؛ دیگر ارکان دیکھ سکتے ہیں کہ مالک کی آڈٹ فعال ہے۔",
+					"after": "اس ایجنٹ کے مالک کی حیثیت سے صرف آپ دیکھ سکتے ہیں؛ دیگر ارکان دیکھ سکتے ہیں کہ مالک کا آڈٹ فعال ہے۔"
+				}
+			}
+		}
+	],
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide_ur": {
+			"path": "~/local-operator/i18n/style-guides/ur.md",
+			"revision": "24d328a19a8b39ba4d6e824b8bf2ebf1bb629ffe",
+			"sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+		}
+	},
+	"artifacts": {
+		"receipt": {
+			"path": "i18n/receipts/b393dc8cd01c-owneraudit-ur.json",
+			"sha256": "cb8d96d577277a39a09b000c634ca49b8f0010f1194a3d43a13bd040b8af71a8"
+		}
+	},
+	"limitations": "No rendered-fit, screenshot, pseudo-localization or FriBidi evidence: this role has no browser tool and the host is source-only (builds/tests paused). Fit for not_available judged by character count only (en 104; longest fr 117)."
+}

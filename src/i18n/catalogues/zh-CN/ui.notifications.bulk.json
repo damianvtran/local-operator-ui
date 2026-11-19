@@ -1,0 +1,14 @@
+{
+	"ui.notifications.bulk.dismiss_all": "全部移除",
+	"ui.notifications.bulk.read_hint": "标记为已读后，更新仍保留在“全部”中。",
+	"ui.notifications.bulk.dismiss_hint": "移除会隐藏更新，撤销可将其恢复。",
+	"ui.notifications.bulk.frozen_hint": "此选择已固定，不包含新到达的项目。",
+	"ui.notifications.bulk.confirm_title": "{count, plural, other {移除 # 条更新？}}",
+	"ui.notifications.bulk.beyond_page": "此操作也会影响已加载页面之外的更新。",
+	"ui.notifications.bulk.asks_hint": "未回答的问题会保留。单独查看：移除问题的操作无法撤销。",
+	"ui.notifications.bulk.review_asks": "查看未回答的问题",
+	"ui.notifications.bulk.select_error": "无法选择此视图，重试。",
+	"ui.notifications.bulk.update_required": "更新 Local Operator，以选择所有匹配的结果。",
+	"ui.notifications.bulk.partial": "已更改 {changed} 项 · 已跳过 {skipped} 项",
+	"ui.notifications.bulk.exclusion_limit": "最多可排除 500 项。清除选择后逐项选择。"
+}

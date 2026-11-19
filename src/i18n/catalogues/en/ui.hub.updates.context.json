@@ -1,0 +1,393 @@
+{
+	"ui.hub.updates.kind.agent": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: agent"
+	},
+	"ui.hub.updates.kind.team": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: team"
+	},
+	"ui.hub.updates.kind.skill": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: skill"
+	},
+	"ui.hub.updates.error.provider": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Couldn't reach the model that merges this. It retries on its own; press Retry to try now."
+	},
+	"ui.hub.updates.error.model_unavailable": {
+		"role": "Hub update vailable",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: No model available for merging. Check Settings › Agent Hub."
+	},
+	"ui.hub.updates.error.prompt_too_long": {
+		"role": "Hub update o_long",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: This one is too large to merge automatically."
+	},
+	"ui.hub.updates.error.merge_refused": {
+		"role": "Hub update used",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: The hub and your copy both changed the same part. Review it."
+	},
+	"ui.hub.updates.error.concurrent_edit": {
+		"role": "Hub update t_edit",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: It changed while updating. Try again."
+	},
+	"ui.hub.updates.error.item_missing": {
+		"role": "Hub update ing",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: No longer available on the hub (or you lost access)."
+	},
+	"ui.hub.updates.error.no_credential": {
+		"role": "Hub update tial",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Sign in to Radient to update from the hub."
+	},
+	"ui.hub.updates.error.hub": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: The update didn't complete. Try again."
+	},
+	"ui.hub.updates.error.generic": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Couldn't update this from the hub. Try again."
+	},
+	"ui.hub.updates.error.update_named": {
+		"role": "Hub update med",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Couldn't update {name} from the hub. Try again.",
+		"placeholders": {
+			"name": "Hub item display name; insert verbatim."
+		}
+	},
+	"ui.hub.updates.error.retry_named": {
+		"role": "Hub update ed",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Couldn't retry {name}. Try again.",
+		"placeholders": {
+			"name": "Hub item display name; insert verbatim."
+		}
+	},
+	"ui.hub.updates.mark.update": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Update {name} from the hub",
+		"placeholders": {
+			"name": "Hub item display name; insert verbatim."
+		}
+	},
+	"ui.hub.updates.mark.review": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Review the hub update for {name}",
+		"placeholders": {
+			"name": "Hub item display name; insert verbatim."
+		}
+	},
+	"ui.hub.updates.mark.retry": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Retry the hub update for {name}",
+		"placeholders": {
+			"name": "Hub item display name; insert verbatim."
+		}
+	},
+	"ui.hub.updates.mark.failure_details": {
+		"role": "Hub update tails",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: See why the hub update for {name} failed",
+		"placeholders": {
+			"name": "Hub item display name; insert verbatim."
+		}
+	},
+	"ui.hub.updates.mark.updating": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Updating {name} from the hub",
+		"placeholders": {
+			"name": "Hub item display name; insert verbatim."
+		}
+	},
+	"ui.hub.updates.mark.applied": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: {name} was updated from the hub",
+		"placeholders": {
+			"name": "Hub item display name; insert verbatim."
+		}
+	},
+	"ui.hub.updates.action.update": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Click to update."
+	},
+	"ui.hub.updates.action.review": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Click to review."
+	},
+	"ui.hub.updates.action.retry": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Click to retry."
+	},
+	"ui.hub.updates.action.details": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Click to see details."
+	},
+	"ui.hub.updates.ago.now": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: just now"
+	},
+	"ui.hub.updates.ago.minutes": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: {count, plural, one {{count, number, ::group-off} min ago} other {{count, number, ::group-off} min ago}}",
+		"placeholders": {
+			"count": "Numeric count; ICU plural selector and ungrouped number."
+		}
+	},
+	"ui.hub.updates.ago.hours": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: {count, plural, one {{count, number, ::group-off} h ago} other {{count, number, ::group-off} h ago}}",
+		"placeholders": {
+			"count": "Numeric count; ICU plural selector and ungrouped number."
+		}
+	},
+	"ui.hub.updates.detail.available_auto": {
+		"role": "Hub update e_auto",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: A newer version is on the hub. It will update automatically."
+	},
+	"ui.hub.updates.detail.needs_decision": {
+		"role": "Hub update cision",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: A newer version is on the hub. You changed this too, so it needs you."
+	},
+	"ui.hub.updates.detail.available": {
+		"role": "Hub update e",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: A newer version is on the hub."
+	},
+	"ui.hub.updates.detail.baseline_unknown": {
+		"role": "Hub update _unknown",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: A newer version is on the hub, and nothing records what you changed. It needs you."
+	},
+	"ui.hub.updates.detail.updating": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Merging the hub's version with yours."
+	},
+	"ui.hub.updates.detail.applied_ago": {
+		"role": "Hub update ago",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Updated {ago}.",
+		"placeholders": {
+			"ago": "Already localized relative-time phrase."
+		}
+	},
+	"ui.hub.updates.detail.applied": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Updated from the hub."
+	},
+	"ui.hub.updates.sign_in": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Sign in to Radient to get hub updates"
+	},
+	"ui.hub.updates.report.merged_local": {
+		"role": "Hub update ocal",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Updated. Where the hub and your copy differed, yours was kept. Your previous version is saved as a backup."
+	},
+	"ui.hub.updates.report.merged_remote": {
+		"role": "Hub update emote",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Updated. Where the hub and your copy differed, the hub's was used. Your previous version is saved as a backup."
+	},
+	"ui.hub.updates.report.merged_edits": {
+		"role": "Hub update dits",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Merged with your edits. Your previous version is saved as a backup."
+	},
+	"ui.hub.updates.report.unchanged": {
+		"role": "Hub update d",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Already up to date."
+	},
+	"ui.hub.updates.report.would_merge": {
+		"role": "Hub update rge",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Checked. It is ready to update; press it again to update."
+	},
+	"ui.hub.updates.report.review_baseline": {
+		"role": "Hub update aseline",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Nothing records what you changed, so this needs your review."
+	},
+	"ui.hub.updates.report.skipped": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Skipped. {reason}",
+		"placeholders": {
+			"reason": "Already localized hub refusal sentence."
+		}
+	},
+	"ui.hub.updates.rollup.updated": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: {count, plural, one {{count, number, ::group-off} updated} other {{count, number, ::group-off} updated}}",
+		"placeholders": {
+			"count": "Numeric count; ICU plural selector and ungrouped number."
+		}
+	},
+	"ui.hub.updates.rollup.ready": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: {count, plural, one {{count, number, ::group-off} ready to update} other {{count, number, ::group-off} ready to update}}",
+		"placeholders": {
+			"count": "Numeric count; ICU plural selector and ungrouped number."
+		}
+	},
+	"ui.hub.updates.rollup.review": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: {count, plural, one {{count, number, ::group-off} needs your review{who}} other {{count, number, ::group-off} need your review{who}}}",
+		"placeholders": {
+			"count": "Numeric count; ICU plural selector and ungrouped number.",
+			"who": "Already formatted parenthetical list of item names, or an empty string."
+		}
+	},
+	"ui.hub.updates.rollup.failed": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: {count, plural, one {{count, number, ::group-off} couldn't be updated} other {{count, number, ::group-off} couldn't be updated}}",
+		"placeholders": {
+			"count": "Numeric count; ICU plural selector and ungrouped number."
+		}
+	},
+	"ui.hub.updates.rollup.skipped": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: {count, plural, one {{count, number, ::group-off} skipped} other {{count, number, ::group-off} skipped}}",
+		"placeholders": {
+			"count": "Numeric count; ICU plural selector and ungrouped number."
+		}
+	},
+	"ui.hub.updates.rollup.all_current": {
+		"role": "Hub update ent",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Everything was already up to date."
+	},
+	"ui.hub.updates.rollup.nothing": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Nothing needed updating."
+	},
+	"ui.hub.updates.check.checked": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Checked just now."
+	},
+	"ui.hub.updates.check.sign_in": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Checked just now. Sign in to Radient to get hub updates."
+	},
+	"ui.hub.updates.check.waiting": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Checked just now. {count, plural, one {{count, number, ::group-off} update is on the hub.} other {{count, number, ::group-off} updates are on the hub.}}",
+		"placeholders": {
+			"count": "Numeric count; ICU plural selector and ungrouped number."
+		}
+	},
+	"ui.hub.updates.check.current": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Checked just now. Everything is up to date."
+	},
+	"ui.hub.updates.slow_note": {
+		"role": "Product status or action message",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: This is taking longer than expected. It may still finish; the mark will update."
+	},
+	"ui.hub.updates.error.check": {
+		"role": "Product status or action message",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Couldn't check the hub. Try again."
+	},
+	"ui.hub.updates.error.update_all": {
+		"role": "Product status or action message",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Couldn't update from the hub. Try again."
+	}
+}

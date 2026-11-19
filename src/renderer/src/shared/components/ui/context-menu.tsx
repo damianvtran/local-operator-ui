@@ -1,9 +1,12 @@
+import { useMeasuredBrowserViewPanel } from "@shared/browser-view-policy";
+import { composeRefs } from "@shared/lib/compose-refs";
 import { cn } from "@shared/lib/utils";
 import { ContextMenu as ContextMenuPrimitive } from "radix-ui";
 import {
 	type ComponentPropsWithoutRef,
 	type ElementRef,
 	forwardRef,
+	useMemo,
 } from "react";
 
 /**
@@ -75,7 +78,7 @@ export const ContextMenuRadioGroup = ContextMenuPrimitive.RadioGroup;
 
 /** Panel chrome, copied from `dropdown-menu.tsx`'s `panelClasses`. */
 const panelClasses = [
-	"z-50 min-w-32 overflow-hidden rounded-md border border-hairline bg-elevated p-1",
+	"z-50 min-w-32 overflow-hidden rounded-md bg-elevated p-1",
 	// No entrance animation; see the note at the top of `tooltip.tsx`.
 	"shadow-overlay",
 ];
@@ -96,16 +99,25 @@ const itemClasses = [
 export const ContextMenuContent = forwardRef<
 	ElementRef<typeof ContextMenuPrimitive.Content>,
 	ComponentPropsWithoutRef<typeof ContextMenuPrimitive.Content>
->(({ className, ...props }, ref) => (
-	<ContextMenuPrimitive.Portal>
-		<ContextMenuPrimitive.Content
-			ref={ref}
-			data-titlebar-no-drag=""
-			className={cn(panelClasses, "min-w-56", className)}
-			{...props}
-		/>
-	</ContextMenuPrimitive.Portal>
-));
+>(({ className, ...props }, ref) => {
+	const panelRef = useMeasuredBrowserViewPanel<HTMLDivElement>("context-menu");
+	const composedRef = useMemo(
+		() => composeRefs(ref, panelRef),
+		[ref, panelRef],
+	);
+	return (
+		<ContextMenuPrimitive.Portal>
+			<ContextMenuPrimitive.Content
+				ref={composedRef}
+				data-titlebar-no-drag=""
+				data-glass-overlay=""
+				data-lo-floating=""
+				className={cn(panelClasses, "min-w-56", className)}
+				{...props}
+			/>
+		</ContextMenuPrimitive.Portal>
+	);
+});
 ContextMenuContent.displayName = "ContextMenuContent";
 
 export const ContextMenuItem = forwardRef<
@@ -121,7 +133,7 @@ export const ContextMenuItem = forwardRef<
 		ref={ref}
 		className={cn(
 			itemClasses,
-			inset && "pl-8",
+			inset && "ps-8",
 			destructive && "text-danger data-[highlighted]:bg-danger-wash",
 			className,
 		)}

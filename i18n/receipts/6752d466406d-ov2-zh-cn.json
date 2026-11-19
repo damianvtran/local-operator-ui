@@ -1,0 +1,90 @@
+{
+  "locale": "zh-CN",
+  "scope": "delta verification round 2: the same 23 keys added by fbf78b5f67 at the corrected head 58de30166d - ui.chat.thread_search 20, ui.chat.canonical 3; prior findings checked at the new bytes, not re-audited from scratch; the rest of both files stays out of scope",
+  "checkout_head": "58de30166d",
+  "key_count": 23,
+  "audit_date": "2026-10-29",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "6752d466406d",
+    "model": "radient/auto",
+    "model_fallbacks": [
+      "anthropic/claude-sonnet-5-5 (session primary, provider quota failure)",
+      "openai/gpt-6-astra (quota fallback)",
+      "kimi/k3.1-pro (quota fallback)"
+    ],
+    "actual_model_source": "harness model-switch notices in this session; both rounds completed under radient/auto",
+    "independent_from_translator_session": true
+  },
+  "input_sha256": {
+    "en": {
+      "ui.chat.thread_search": {
+        "path": "src/i18n/catalogues/en/ui.chat.thread_search.json",
+        "sha256": "08bc59d1fe1058d3704800f92ee05afe5a7ffc1c7146683100a1afe5b2fa28e6"
+      },
+      "ui.chat.canonical": {
+        "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+        "sha256": "da2c87f6caf8f238997861d850f575a3b3d8328c5d46abfffae4728ed41fb892"
+      }
+    },
+    "target": {
+      "ui.chat.thread_search": {
+        "path": "src/i18n/catalogues/zh-CN/ui.chat.thread_search.json",
+        "sha256": "4b2dbe9038907563256d36e9c7e70b06a97e45ad7224911b40446756eea5221a"
+      },
+      "ui.chat.canonical": {
+        "path": "src/i18n/catalogues/zh-CN/ui.chat.canonical.json",
+        "sha256": "d59ec01183f2cf004403f35fec49256c31ed74ee0d3da6ff12a12bc4731b0e03"
+      }
+    }
+  },
+  "reviewed_previous": "/Users/damian/qa/ov-audit/zh-CN/receipt.json (instance 6752d466406d-ov-zh-CN, verdict PASS, head f6e5c3eb62; findings zh-CN-TS-01 MINOR and zh-CN-TS-02 NIT)",
+  "checks": {
+    "movement between f6e5c3eb62 and 58de30166d": "exactly one in-scope value moved per side: en ui.chat.thread_search.count.split and zh-CN ui.chat.thread_search.count.split; ui.chat.canonical is byte-identical on both sides (en da2c87f6, zh d59ec011); no key added or removed (thread_search 23/23, canonical 80/80 both commits)",
+    "the 23 keys at the new bytes": "all re-read through read_public_copy after the move; only the split value differs from round 1, every other key is byte-identical to what round 1 judged",
+    "generate.mjs --check": "pass - keys.gen.ts byte-identical to a fresh generation",
+    "check-duplicates.mjs": "pass - 934 files scanned, 0 duplicate keys",
+    "check-strings.mjs": "pass - 1409 files scanned, 0 literals at or below the baseline",
+    "context-parity.mjs": "pass - every English key covered, 131 allowed gaps in 4 namespaces",
+    "ledger-check.mjs": "FAILED at this checkout - 67 findings repo-wide, the same 7 zh-CN rows for these two namespaces as at f6e5c3eb62 (stale source/target sha256 and prior auditor receipts naming an older English file). Expected pre-audit state until this receipt is recorded; not a string finding, and this instance does not edit the ledger.",
+    "placeholder and argument names": "pass - count.split carries exactText then relatedText in both locales, byte-identical names, no reordering; the three plural keys keep count and countText",
+    "ICU and CLDR categories": "pass - count.match/count.related/count.truncated remain {count, plural, other {...}} only, zh-CN's single category; rendered with intl-messageformat under zh-CN at count 0/1/2/5/21: all parse and format. count.split is not a plural message and formats cleanly to 精确：3 · 相关：1",
+    "typography of the new split": "pass - full-width colon ： after each Chinese label with no space before the digit run, middot separator kept with its spaces, no Han/Latin space violation",
+    "terminology": "pass - 精确/相关 reuse the same stems as the sibling count lines and tier.related 相关匹配; 智能体 and 你 unchanged and still match the shipped navigation and the style guide's recorded 你 decision",
+    "rendered evidence": "not performed - copy verification at the new bytes only; no app launch or rendered-frame capture, and the mechanical gates are not design sign-off"
+  },
+  "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 0,
+    "NIT": 0
+  },
+  "verdict": "pass",
+  "instance": "6752d466406d-ov2-zh-cn",
+  "namespaces": {
+    "ui.chat.thread_search": {
+      "status": "passed",
+      "keys_audited": 20,
+      "sha256": {
+        "en": "08bc59d1fe1058d3704800f92ee05afe5a7ffc1c7146683100a1afe5b2fa28e6",
+        "target": "4b2dbe9038907563256d36e9c7e70b06a97e45ad7224911b40446756eea5221a"
+      },
+      "findings": []
+    },
+    "ui.chat.canonical": {
+      "status": "passed",
+      "keys_audited": 3,
+      "sha256": {
+        "en": "da2c87f6caf8f238997861d850f575a3b3d8328c5d46abfffae4728ed41fb892",
+        "target": "d59ec01183f2cf004403f35fec49256c31ed74ee0d3da6ff12a12bc4731b0e03"
+      },
+      "findings": []
+    }
+  },
+  "notes": [
+    "zh-CN-TS-01 (MINOR, ui.chat.thread_search.count.split) - RESOLVED at 58de30166d. The new form is 精确：{exactText} · 相关：{relatedText}. My finding was that a bare adjective glued to a numeral (精确3) gave the same status slot two incompatible count shapes and dropped the 条 classifier its siblings carry. The label-first shape answers that at the root: 精确：3 is a label:number pair, where Chinese expects no classifier (cf. 总计：3), and it now mirrors the English 'Exact: 3 · Related: 1' rather than an English word order the locale could not copy. Checked against my own reasoning rather than the commit message: the pair is stable for 1/2/21, both labels reuse the stems of the sibling lines (相关 also backs tier.related 相关匹配), and the full-width colon is the correct zh punctuation with no space before the digits. No agreement or classifier issue remains.",
+    "zh-CN-TS-02 (NIT, ui.chat.thread_search.partial) - NOT CHANGED, non-blocking. The line still reads 索引跟上之前，较新的消息可能缺失。 I re-read it at the new bytes: it states the caveat honestly and reads as the softer 'list is shown, may be incomplete' the sidecar asks for, so I am not re-filing it and it does not block. Suggested wording 索引尚未跟上，较新的消息可能缺失。 stands as an optional polish only.",
+    "Nothing else moved: the two count-bearing keys' ICU arguments are identical to English, the user/agent row labels are unchanged (你, 智能体) and read correctly before the middot and tier hint, and the three image-gen control labels are byte-identical to round 1.",
+    "Independence: I did not translate or edit any of these files, and the repository was not modified by this instance."
+  ]
+}

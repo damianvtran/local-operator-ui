@@ -1,0 +1,83 @@
+{
+	"record_kind": "translation audit record (round-2 independent delta audit, PR #1532 mention notice copy)",
+	"locale": "hi",
+	"namespace": "ui.teamBridge",
+	"date": "2026-10-30",
+	"auditor": {
+		"agent": "task",
+		"session": "4ad83913bb2a",
+		"model": "anthropic/claude-opus-5-5",
+		"independence": "Independent auditor: session 4ad83913bb2a (team lopdev, role task, assignment 'i18n re-audit ui#1532'). The values were self-translated by the lopdev coder in 4a4ea10; this session did not author them."
+	},
+	"re_auditor": {
+		"agent": "scout",
+		"session": "f61a774e19eb",
+		"model": "anthropic/claude-opus-5-5",
+		"receipt": {
+			"path": "i18n/receipts/f61a774e19eb-hi.json",
+			"sha256": "5715f040ed4a281582d1e455db1157f368140e638e9d66a99305acead7bc3f28"
+		}
+	},
+	"translator": {
+		"agent": "coder",
+		"model": "anthropic/claude-opus-5-5",
+		"commit": "4a4ea100d67"
+	},
+	"paths": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "872abba111887ee71c0f4f079bdb3747f564b93abc85639b13b43d864a9372cb"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/hi/ui.teamBridge.json",
+			"sha256": "c5b8869b6e1f78f4100050c90a081b96c3deaca718ce474c89f6a9ff3f564fdd"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "f6b472c8df1b84cc9611728de26d5fd8776dd36f3aec9f431f12f505ce1fed42"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/hi.md",
+			"sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+		},
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+		}
+	},
+	"receipt": {
+		"path": "i18n/receipts/4ad83913bb2a-hi.json",
+		"sha256": "91a1473245ce59487a709cc4f61ac607758ff25c256a3392283600510bcc04e1"
+	},
+	"head_at_audit": "2b9c44c6ba3260ec4ed53a63baba8d0d5b5dee17",
+	"pr": "damianvtran/local-operator-ui#1532",
+	"keys": [
+		"ui.teamBridge.mentions.tag.not_member",
+		"ui.teamBridge.mentions.notice.not_member",
+		"ui.teamBridge.mentions.notice.pending",
+		"ui.teamBridge.mentions.notice.invited"
+	],
+	"removed_keys": [
+		"ui.teamBridge.mentions.agent_secondary"
+	],
+	"findings": {
+		"residual": {
+			"blocker": 0,
+			"major": 0,
+			"minor": 0,
+			"nit": 0
+		},
+		"remediated_in_audit": [
+			{
+				"id": "RTBM-HI-1",
+				"severity": "minor",
+				"key": "ui.teamBridge.mentions.notice.not_member",
+				"before": "{name} इस बातचीत में शामिल नहीं है, इसलिए उन्हें सूचना नहीं मिलेगी।",
+				"after": "{name} इस बातचीत में शामिल नहीं हैं, इसलिए उन्हें सूचना नहीं मिलेगी।"
+			}
+		],
+		"residual_nits": []
+	},
+	"status": "clean",
+	"notes": "Audit notes, not an execution log. No rendered-frame claim."
+}

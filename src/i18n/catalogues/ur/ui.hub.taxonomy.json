@@ -1,0 +1,23 @@
+{
+	"ui.hub.taxonomy.category.investment": "سرمایہ کاری",
+	"ui.hub.taxonomy.category.accounting": "حساب داری",
+	"ui.hub.taxonomy.category.healthcare": "صحت کی دیکھ بھال",
+	"ui.hub.taxonomy.category.legal": "قانونی امور",
+	"ui.hub.taxonomy.category.software": "سافٹ ویئر",
+	"ui.hub.taxonomy.category.security": "سیکیورٹی",
+	"ui.hub.taxonomy.category.role_play": "کردار ادا کرنا",
+	"ui.hub.taxonomy.category.personal_assistance": "ذاتی معاونت",
+	"ui.hub.taxonomy.category.education": "تعلیم",
+	"ui.hub.taxonomy.category.marketing": "مارکیٹنگ",
+	"ui.hub.taxonomy.category.sales": "فروخت",
+	"ui.hub.taxonomy.category.research": "تحقیق",
+	"ui.hub.taxonomy.category.analysis": "تجزیہ",
+	"ui.hub.taxonomy.category.management": "انتظام",
+	"ui.hub.taxonomy.category.social_media": "سوشل میڈیا",
+	"ui.hub.taxonomy.category.other": "دیگر",
+	"ui.hub.taxonomy.heading": "زمرے",
+	"ui.hub.taxonomy.all": "تمام زمرے",
+	"ui.hub.taxonomy.origin.named": "{name} کے ساتھ مشترک، عوامی Agent Hub پر نہیں",
+	"ui.hub.taxonomy.origin.unnamed": "تنظیم کے ساتھ مشترک، عوامی Agent Hub پر نہیں",
+	"ui.hub.taxonomy.origin.organization": "تنظیم"
+}

@@ -1,0 +1,94 @@
+{
+  "schema": 1,
+  "auditor": {
+    "agent": "reviewer",
+    "session": "1736cfb27a20",
+    "instance": "1736cfb27a20-relaystep-r1-es",
+    "model": "anthropic/claude-opus-5-5",
+    "requested_model": "anthropic/claude-opus-5-5",
+    "fallback": false,
+    "model_source": "Session system prompt header 'Model: anthropic/claude-opus-5-5'; no model-switch or fallback notice in this session.",
+    "independence": "Independent auditor (reviewer role, PR #1852 i18n audit round 1); authored no translation or code in this PR. The translation was committed in 76a0b500d85 by the PR's implementer lane; this session is 1736cfb27a20.",
+    "independent_from_translator_session": true
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "1736cfb27a20-relaystep-r1-es",
+  "locale": "es",
+  "date": "2026-11-10",
+  "head": "76a0b500d85d56b9756726e1fc14b86f670ddef9",
+  "base": "a0464af9e0a8d13e87409a4e2fd410e87b6bcdcc",
+  "pr": "https://github.com/damianvtran/local-operator-ui/pull/1852",
+  "branch": "tunnel-relay-setup-step (PR #1852)",
+  "audit_kind": "delta audit of 1 added key",
+  "scope": "ui.providers, 1 key added by PR #1852 (ui.providers.phone.connector_not_needed) read against the English source, the English context sidecar, the core glossary and the locale style guide. All other keys byte-identical to the base and not re-audited.",
+  "union_proof": "Computed from git objects: for en and every locale, HEAD ui.providers.json keys == origin/main a0464af9e0a keys + exactly this 1 added key; 0 changed, 0 removed; base locale bytes hash == the ledger row's previous target_sha256 and base en == previous source_sha256; worktree bytes == HEAD blob.",
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/es.md",
+      "sha256": "77b9227213802d14c74d4298d6b346ad842bbf2a5ca3b9d46fc6144430d26c3e"
+    },
+    "glossary_style_revision": "e21f92fa4ee1a7a4095586e33453c19f54aca4f9"
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+  },
+  "findings": [
+    {
+      "id": "m1",
+      "severity": "minor",
+      "key": "ui.providers.phone.connector_not_needed",
+      "issue": "Uses «este ordenador». The es style guide (Formality & tone) is neutral Spanish and says to avoid region-marked words; «ordenador» is Spain-marked. The es catalogues say «este equipo» 70 times (including this namespace's phone.outcome.reservation_saved «reserva guardada en este equipo») and «este ordenador» nowhere else.",
+      "suggested": "El acceso desde el teléfono ya no necesita una herramienta de conexión aparte en este equipo. Comprueba de nuevo para continuar con la configuración.",
+      "disposition": "deferred to the PR thread (MINOR, non-gating)"
+    }
+  ],
+  "namespaces": {
+    "ui.providers": {
+      "namespace": "ui.providers",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "sha256": {
+        "es": "4ecfff084eabbf1e14351c61e2b915b8df22b19e4466aa156018464ec404ec99",
+        "en": "0379d564673cfe5b344b5e2af374000d1c71543021b748dc3c1363db5d07a0fd"
+      },
+      "context_sha256": "51f2a2b0d4cf51387ca48d3292ab24dc6ac3c301759af1bb675127282daed581",
+      "keys_reviewed": [
+        "ui.providers.phone.connector_not_needed"
+      ],
+      "keys_read": 1,
+      "counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 0
+      },
+      "findings": [
+        {
+          "id": "m1",
+          "severity": "minor",
+          "key": "ui.providers.phone.connector_not_needed",
+          "issue": "Uses «este ordenador». The es style guide (Formality & tone) is neutral Spanish and says to avoid region-marked words; «ordenador» is Spain-marked. The es catalogues say «este equipo» 70 times (including this namespace's phone.outcome.reservation_saved «reserva guardada en este equipo») and «este ordenador» nowhere else.",
+          "suggested": "El acceso desde el teléfono ya no necesita una herramienta de conexión aparte en este equipo. Comprueba de nuevo para continuar con la configuración.",
+          "disposition": "deferred to the PR thread (MINOR, non-gating)"
+        }
+      ]
+    }
+  },
+  "checks": [
+    "ICU parse with the repo's @formatjs/icu-messageformat-parser: 0 arguments, matching English; parses cleanly.",
+    "'Check again' wording matches this locale's ui.providers.phone.action.check_again button (same verb; imperative or bare form as the locale's grammar requires), per the context sidecar note.",
+    "Neither the tool (cloudflared) nor the transport (relay) is named, per the context sidecar note; meaning (no separate connector tool needed on this computer; check again to continue) preserved.",
+    "Address register per style guide; no ASCII apostrophes; no manual bidi control characters (U+200E/200F/202A-202E/2066-2069).",
+    "Length: body paragraph that wraps in the phone-access block (text-body-sm); no fixed-width control changed."
+  ],
+  "limitations": "Source/text audit only; no rendered-fit or execution claim. Carried keys rely on byte identity to the base. Ledger translator metadata left unchanged (ledger-assemble sets a translator only on a new row); the translator of this key is the implementer of 76a0b500d85."
+}

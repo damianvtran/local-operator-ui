@@ -1,0 +1,263 @@
+{
+ "schema": 1,
+ "auditor": "translation-auditor (lopdev translation-auditor session 05dd4fa2b221, final independent audit of the 86 keys added by #1753 for ru; not the PR coder, the ru translator, the remediation author or the round-1 / delta auditors)",
+ "agent": "translation-auditor (lopdev translation-auditor session 05dd4fa2b221, final independent audit of the 86 keys added by #1753 for ru; not the PR coder, the ru translator, the remediation author or the round-1 / delta auditors)",
+ "model": "anthropic/claude-sonnet-5-5",
+ "model_provenance": "Model identity taken from this session's header (anthropic/claude-sonnet-5-5); no fallback or model switch was reported during the session.",
+ "fallback": "none reported",
+ "independence": "Separate session (05dd4fa2b221) from the PR coder, the ru translator, the remediation author and the earlier round-1 / delta auditors. The prior audits' findings were treated only as claims to re-check; the verdict was rebuilt from the English source, the en .context.json sidecars, the ru style guide, the glossary and shipped ru precedent grepped in the committed catalogues. No file was edited other than this receipt.",
+ "instance": "05dd4fa2b221-ui1753-ru",
+ "session": "05dd4fa2b221",
+ "session_id_provenance": "read from LOCAL_OPERATOR_SESSION_ID in the audit session's environment",
+ "locale": "ru",
+ "branch": "i18n/key-census-literals",
+ "head": "bd17b456e079c761013c580ea4263b5c4bc57f5d",
+ "pr": "damianvtran/local-operator-ui#1753",
+ "date": "2026-11-07",
+ "status": "passed",
+ "scope": "The 86 keys added by 874446c2c80e8c3849c20ed72780d1455e7752a9 in seven ru namespaces (ui.chat.canonical 55, ui.chat.asks 8, ui.chat.sidebar 7, ui.chat.pickers 8, ui.chat.run_details 2, ui.chat.user_turn 3, ui.hub.pages 3), derived with git diff 874446c2c8^..874446c2c8 -- src/i18n/catalogues/en and judged on the final committed bytes at bd17b456e0. Re-confirms the prior fixes: asks.clause.settled 'решены', asks.clause.outstanding 'без ответа', canonical receipt.steered 'Ход направлен', receipt.wake 'уведомление о пробуждении', team_delete/project_delete other arm, and the retained masculine past forms in fold.sentence.*.",
+ "inputs_sha256": {
+  "glossary (local-operator/i18n/glossary.md)": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "style guide (local-operator/i18n/style-guides/ru.md)": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+ },
+ "verified": [
+  "key sets: en and ru have identical key sets in all 7 namespaces (canonical 241, asks 41, sidebar 80, pickers 760, run_details 93, user_turn 5, hub.pages 43; 0 missing, 0 extra); all 86 delta keys present in ru; node scripts/i18n/check-coverage.mjs: 'coverage-check: ok — 7 gated language(s) over 129 namespace(s); 0 allowed key(s) remain across 0 pair(s)'",
+  "ICU: every delta value parsed with @formatjs/icu-messageformat-parser from the worktree node_modules; the placeholder / number-skeleton / plural-selector signature of each ru value equals its English source (argument names, '{count, number, ::group-off}' options, plural variables, '#'); 0 differences across 86 keys",
+  "plurals: every ru plural carries one/few/many/other; all 41 plural keys formatted with intl-messageformat (locale ru) at 0,1,2,3,5,11,21,22,25,100,1000 and 1.5 with no error; Intl.PluralRules('ru') categories confirmed (21 one, 22 few, 11 many, 1.5 other); every noun, adjective and verb agrees in number and case at every count (e.g. 21 файл, 22 файла, 11 файлов, 2 входящих сообщения, 2 вопроса ждут ответа, Показать ещё 21 команду)",
+  "bytes: all seven ru files NFC, end with a newline, no Cf/bidi/zero-width/soft-hyphen characters, no edge or double spaces in delta values (fold.unit_separator ' · ' is byte-identical to English on purpose); no straight quotes; ёлочки « » in prose; ru values identical to English only for the four structural keys fold.count.named, fold.unit_separator, fold.sentence.join, asks.scope_line",
+  "terminology vs shipped precedent (grepped in src/i18n/catalogues/ru): ask=запрос and conversation=разговор (ui.chat.asks.all_asks, conversation_asks); settled=решён- (ui.chat.asks.settled_heading 'Решённые', dismiss.receipt.answered_in_chat 'решено в чате'); outstanding='Без ответа' (ui.chat.asks.outstanding_aria); steer=направ- (ui.chat.composer.steer_hint 'Направить агента сейчас', ui.mesh steer_a_running_turn_there 'направлять текущий ход'); turn=ход; mesh=меш-сеть (ui.mesh.mesh_page.mesh); assistant=ассистент; credential=учётные данные; fast mode=быстрый режим; hub=хаб; session=сессия, wake=пробуждение, job=задание, prompt=промпт, monitor=мониторинг per the ru guide/glossary; shell and python kept Latin per the guide; draft removal=Удалить (ui.chat.sidebar.drafts.clear_all_label)",
+  "voice: masculine agent-voice past forms in fold.sentence.* (Изучил, Выполнил, Изменил, Поручил, Искал) match the shipped masculine forms in the same namespace (ui.chat.canonical.tool_row.bridge.verb.*.settled: Создал, Прочитал, Опубликовал, Написал); the ru guide prefers impersonal forms 'where the English allows' and the English here is a personified agent verb, so the retained form is consistent, not a defect",
+  "meaning and safety: pending/failed never reads as done — asks.clause.delivering says 'ещё не передано агенту — их можно изменить' (both facts kept), transcript.not_delivered 'Не доставлено', pickers fast_on/off qualified with 'сейчас', user_turn.stamp.* use sent/answered/ran wording truthful to each event, receipt.reply_requested 'Запрошен ответ'; hub.pages.signed_out names the missing credential and the next step; sidebar.groups.withheld keeps the hedge 'Возможно' and the exact search label 'Включая архивные' (byte-identical to shipped ui.chat.sidebar.search.include_archived)",
+  "register: lowercase 'вы' throughout, no 'Пожалуйста', no '!', sentence case, impersonal imperatives as the ru guide requires",
+  "overflow (observation, not a finding): the longest unbreakable fold units are 'N удалений проектов', 'N уведомлений о пробуждении', 'N обновлений списка задач' and 'N вызовов меш-сети' (roughly 1.5-2x English); the sidecar says units are joined by the separator and may wrap there, so these are flagged for a rendered check at the narrowest tool-call summary width rather than shortened here",
+  "observation on the English sidecar, not on ru: ui.chat.sidebar.catalogue.show_more_agents/_teams sidecars document the placeholder as 'hidden' while the message and the caller (chat-sidebar-view.ts:492-493) use 'count'; ru matches the message and the caller"
+ ],
+ "namespaces": {
+  "ui.chat.canonical": {
+   "namespace": "ui.chat.canonical",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 55,
+   "delta_keys_audited": [
+    "ui.chat.canonical.fold.count.shell",
+    "ui.chat.canonical.fold.count.python",
+    "ui.chat.canonical.fold.count.file",
+    "ui.chat.canonical.fold.count.search",
+    "ui.chat.canonical.fold.count.web",
+    "ui.chat.canonical.fold.count.edit",
+    "ui.chat.canonical.fold.count.task",
+    "ui.chat.canonical.fold.count.agent",
+    "ui.chat.canonical.fold.count.team",
+    "ui.chat.canonical.fold.count.team_delete",
+    "ui.chat.canonical.fold.count.hub",
+    "ui.chat.canonical.fold.count.secret",
+    "ui.chat.canonical.fold.count.project",
+    "ui.chat.canonical.fold.count.project_delete",
+    "ui.chat.canonical.fold.count.wake",
+    "ui.chat.canonical.fold.count.jobs",
+    "ui.chat.canonical.fold.count.jobs_cancel",
+    "ui.chat.canonical.fold.count.console",
+    "ui.chat.canonical.fold.count.network",
+    "ui.chat.canonical.fold.count.browser",
+    "ui.chat.canonical.fold.count.todo",
+    "ui.chat.canonical.fold.count.todo_read",
+    "ui.chat.canonical.fold.count.send",
+    "ui.chat.canonical.fold.count.ask",
+    "ui.chat.canonical.fold.count.wait",
+    "ui.chat.canonical.fold.count.lsp",
+    "ui.chat.canonical.fold.count.web_read",
+    "ui.chat.canonical.fold.count.list_variables",
+    "ui.chat.canonical.fold.count.read_variable",
+    "ui.chat.canonical.fold.count.sessions",
+    "ui.chat.canonical.fold.count.named",
+    "ui.chat.canonical.fold.count.actions",
+    "ui.chat.canonical.fold.count.other_actions",
+    "ui.chat.canonical.fold.unit_separator",
+    "ui.chat.canonical.fold.sentence.files",
+    "ui.chat.canonical.fold.sentence.searches",
+    "ui.chat.canonical.fold.sentence.web_lead",
+    "ui.chat.canonical.fold.sentence.web_follow",
+    "ui.chat.canonical.fold.sentence.commands_lead",
+    "ui.chat.canonical.fold.sentence.commands_follow",
+    "ui.chat.canonical.fold.sentence.edits_lead",
+    "ui.chat.canonical.fold.sentence.edits_follow",
+    "ui.chat.canonical.fold.sentence.delegated_lead",
+    "ui.chat.canonical.fold.sentence.delegated_follow",
+    "ui.chat.canonical.fold.sentence.join",
+    "ui.chat.canonical.fold.receipt.incoming",
+    "ui.chat.canonical.fold.receipt.job_result",
+    "ui.chat.canonical.fold.receipt.wake",
+    "ui.chat.canonical.fold.receipt.monitor_prompt",
+    "ui.chat.canonical.fold.receipt.other",
+    "ui.chat.canonical.fold.receipt.reply_requested",
+    "ui.chat.canonical.fold.receipt.steered",
+    "ui.chat.canonical.checkpoint_rail.label",
+    "ui.chat.canonical.transcript.not_delivered",
+    "ui.chat.canonical.fold.count.actions_partial"
+   ],
+   "sha256": {
+    "ru": "0d72b4a18e5fd9bf8b681f28b2ed44e147e542d9a49a040bd33fdb546ebc26d4",
+    "en": "c5f286f8f88ec52c722e6b3eebd0c41f7969a47b6f496473f692ae3e4f500885"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.canonical.json",
+    "target": "src/i18n/catalogues/ru/ui.chat.canonical.json",
+    "context": "src/i18n/catalogues/en/ui.chat.canonical.context.json"
+   },
+   "findings": [],
+   "verdict": "clean: 55/55 read. 41 plural units render correctly at 0,1,2,3,5,11,21,22,25,100,1000 and 1.5 (21 file, 22 файла, 11 файлов); shell/python stay Latin per the ru guide; receipt.wake 'уведомление о пробуждении', receipt.steered 'Ход направлен' (matches shipped composer.steer_hint 'Направить агента сейчас' and mesh 'направлять текущий ход'); masculine agent-voice past forms in fold.sentence.* match shipped tool_row.bridge.verb.*.settled (Создал, Прочитал, Опубликовал); team_delete/project_delete other arm 'удаления команд/проектов' consistent with few."
+  },
+  "ui.chat.asks": {
+   "namespace": "ui.chat.asks",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 8,
+   "delta_keys_audited": [
+    "ui.chat.asks.scope.session",
+    "ui.chat.asks.scope.fleet",
+    "ui.chat.asks.scope_line",
+    "ui.chat.asks.clause.settled",
+    "ui.chat.asks.clause.outstanding",
+    "ui.chat.asks.clause.waiting",
+    "ui.chat.asks.clause.delivering",
+    "ui.chat.asks.clause.timed_out"
+   ],
+   "sha256": {
+    "ru": "c560f37540e801719a7490c8adf01773cfee1db6cf291e9a702c5df6c8415b9a",
+    "en": "36346bf6a1422f090b306be21eebe034b0a9ee071725c94f7296d1d1322e9e0e"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.asks.json",
+    "target": "src/i18n/catalogues/ru/ui.chat.asks.json",
+    "context": "src/i18n/catalogues/en/ui.chat.asks.context.json"
+   },
+   "findings": [],
+   "verdict": "clean: 8/8 read. clause.settled 'Все запросы решены' matches shipped settled_heading 'Решённые' and dismiss.receipt.answered_in_chat 'решено в чате'; clause.outstanding 'без ответа' matches shipped outstanding_aria 'Без ответа: {label}'; ask=запрос and conversation=разговор per shipped all_asks/conversation_asks; clause.waiting/delivering/timed_out agree in number at every count; pending reads as pending (ещё не передано), never done."
+  },
+  "ui.chat.sidebar": {
+   "namespace": "ui.chat.sidebar",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 7,
+   "delta_keys_audited": [
+    "ui.chat.sidebar.groups.empty",
+    "ui.chat.sidebar.groups.loading",
+    "ui.chat.sidebar.groups.withheld",
+    "ui.chat.sidebar.catalogue.show_more_agents",
+    "ui.chat.sidebar.catalogue.show_more_teams",
+    "ui.chat.sidebar.drafts.row_label",
+    "ui.chat.sidebar.drafts.discard_label"
+   ],
+   "sha256": {
+    "ru": "92b6288212724f4295683194e803142244346fe06467e58db979e253f090e3d6",
+    "en": "da4e961e7f19619d98860565be68e0edf65d26ebd8eef4eac2a48e8e6aa8b3df"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+    "target": "src/i18n/catalogues/ru/ui.chat.sidebar.json",
+    "context": "src/i18n/catalogues/en/ui.chat.sidebar.context.json"
+   },
+   "findings": [],
+   "verdict": "clean: 7/7 read. 'Включая архивные' is byte-identical to shipped ui.chat.sidebar.search.include_archived; discard_label 'Удалить черновик' matches shipped drafts.clear_all_label 'Удалить все черновики'; show_more_* use accusative after 'ещё' (1 агента, 2 агента, 5 агентов, 1 команду, 2 команды, 5 команд) at every count; «ёлочки» quotes."
+  },
+  "ui.chat.pickers": {
+   "namespace": "ui.chat.pickers",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 8,
+   "delta_keys_audited": [
+    "ui.chat.pickers.at_menu.footer.nothing",
+    "ui.chat.pickers.at_menu.footer.inserts",
+    "ui.chat.pickers.at_menu.footer.opens",
+    "ui.chat.pickers.slash.row_slot.fast_on",
+    "ui.chat.pickers.slash.row_slot.fast_off",
+    "ui.chat.pickers.slash.row_slot.needs_value",
+    "ui.chat.pickers.slash.unknown_command",
+    "ui.chat.pickers.slash.unknown_command_suggest"
+   ],
+   "sha256": {
+    "ru": "f2b6afd22a1ebe3d1a8510cbd5eba57da24f23726ac1099352739667f54cb94c",
+    "en": "fc24432940fa342e87f169992f8f9bf00d2d73a06ee654a29a62b547bcb6be37"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.pickers.json",
+    "target": "src/i18n/catalogues/ru/ui.chat.pickers.json",
+    "context": "src/i18n/catalogues/en/ui.chat.pickers.context.json"
+   },
+   "findings": [],
+   "verdict": "clean: 8/8 read. Footer hints follow the shipped 'Enter — выбор … · Esc — закрытие' pattern (picker_host.*); fast_on/off 'сейчас включён/выключен' agrees with 'режим' (shipped 'Быстрый режим'); unknown_command(_suggest) keep {command}/{suggestions} and the literal '/'; lowercase вы."
+  },
+  "ui.chat.run_details": {
+   "namespace": "ui.chat.run_details",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 2,
+   "delta_keys_audited": [
+    "ui.chat.run_details.wake.managed_by",
+    "ui.chat.run_details.wake.managed_note"
+   ],
+   "sha256": {
+    "ru": "4e313329e07a0f7d0e174f9991b8054a33d48edd23b8e838bf6bddd6f8ff1948",
+    "en": "92fb1e13c99204304e7f567f29be4983416d7eddd3c5ff092a3abf4716dbf5e4"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.run_details.json",
+    "target": "src/i18n/catalogues/ru/ui.chat.run_details.json",
+    "context": "src/i18n/catalogues/en/ui.chat.run_details.context.json"
+   },
+   "findings": [],
+   "verdict": "clean: 2/2 read. managed_note keeps {name} and the literal '/aida pause'; 'ассистента' is shipped for assistant (ui.settings.notifications.custom.empty); no gendered pronoun for the assistant; managed_by 'под управлением {name}' keeps the name verbatim."
+  },
+  "ui.chat.user_turn": {
+   "namespace": "ui.chat.user_turn",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 3,
+   "delta_keys_audited": [
+    "ui.chat.user_turn.stamp.sent",
+    "ui.chat.user_turn.stamp.answered",
+    "ui.chat.user_turn.stamp.ran"
+   ],
+   "sha256": {
+    "ru": "1dc01ee0e797f8a8aa149cee53724bd735a34976d0d4a0e4510163ba334e560e",
+    "en": "5447e7d6963609e2769747e31b64beec7b7957e1f2c92126d281b21f5dbf78e8"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.user_turn.json",
+    "target": "src/i18n/catalogues/ru/ui.chat.user_turn.json",
+    "context": "src/i18n/catalogues/en/ui.chat.user_turn.context.json"
+   },
+   "findings": [],
+   "verdict": "clean: 3/3 read. 'Отправлено/Ответ дан/Выполнено {date}': {date} kept, completion wording is truthful for each (sent, answered, tool call ran); 'Ответ дан' matches shipped asks.dismiss.answered_in_chat.title."
+  },
+  "ui.hub.pages": {
+   "namespace": "ui.hub.pages",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 3,
+   "delta_keys_audited": [
+    "ui.hub.pages.signed_out.title",
+    "ui.hub.pages.signed_out.body",
+    "ui.hub.pages.load_failed.title"
+   ],
+   "sha256": {
+    "ru": "ae290eb91cf9534a980cc9a8a917a63152f1bcd67634a00c201b58d01e6c0188",
+    "en": "cf81ba3771a985ac8dbe5d992df409977d792b836f1e48fb335f65f253837a20"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.hub.pages.json",
+    "target": "src/i18n/catalogues/ru/ui.hub.pages.json",
+    "context": "src/i18n/catalogues/en/ui.hub.pages.context.json"
+   },
+   "findings": [],
+   "verdict": "clean: 3/3 read. Radient kept verbatim, 'учётные данные' per ru guide, 'хаб' per shipped ui.hub.pages.header/status copy, 'Войдите' + 'повторите попытку' per shipped sign-in copy; lowercase вы."
+  }
+ },
+ "findings_summary": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 0,
+  "nit": 0
+ },
+ "result": "clean"
+}

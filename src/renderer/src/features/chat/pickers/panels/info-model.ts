@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 import type { DesktopInfoData } from "../../../../../../shared/desktop-contract";
 import {
 	UNKNOWN,
@@ -91,9 +92,12 @@ export const isShadowedInstall = (
  */
 export function installMeta(install: DesktopInfoData["install"]): string {
 	const python = install.python_version
-		? `Python ${install.python_version}`
+		? t("ui.chat.pickers.info_model.python", {
+				python_version: install.python_version,
+			})
 		: "";
-	const platform = install.platform || "unknown platform";
+	const platform =
+		install.platform || t("ui.chat.pickers.info_model.unknown_platform");
 	const machine =
 		install.machine && !platform.endsWith(install.machine)
 			? install.machine
@@ -104,7 +108,8 @@ export function installMeta(install: DesktopInfoData["install"]): string {
 export function installFacts(
 	install: DesktopInfoData["install"],
 ): InstallFacts {
-	const version = install.version || "unavailable";
+	const version =
+		install.version || t("ui.chat.pickers.info_model.unavailable");
 	/*
 	 * `never checked` is a different fact from `up to date`: an install whose
 	 * latest PyPI answer was never written to disk has no opinion, and calling
@@ -120,25 +125,30 @@ export function installFacts(
 	const versionNote =
 		install.behind && install.latest_known
 			? install.latest_age_s === null
-				? "update available"
-				: `checked ${formatDuration(install.latest_age_s)} ago`
+				? t("ui.chat.pickers.info_model.update_available")
+				: t("ui.chat.pickers.info_model.checked_ago", {
+						formatduration: formatDuration(install.latest_age_s),
+					})
 			: install.latest_known === null
-				? "never checked"
-				: "up to date";
+				? t("ui.chat.pickers.info_model.never_checked")
+				: t("ui.chat.pickers.info_model.up_to_date");
 	const executable = install.executable ? ` (${install.executable})` : "";
 	return {
 		version,
-		kind: install.kind || "unavailable",
+		kind: install.kind || t("ui.chat.pickers.info_model.unavailable"),
 		interpreter: install.python_version
 			? `${install.python_version} ${install.python_implementation}`.trim()
-			: "unavailable",
-		installPath: `${install.prefix || "unavailable"}${executable}`,
-		runningCode: install.import_path || "unavailable",
+			: t("ui.chat.pickers.info_model.unavailable"),
+		installPath: `${install.prefix || t("ui.chat.pickers.info_model.unavailable")}${executable}`,
+		runningCode:
+			install.import_path || t("ui.chat.pickers.info_model.unavailable"),
 		runningCodeShadowed: isShadowedInstall(install),
 		versionNote,
 		updateBadge:
 			install.behind && install.latest_known
-				? `v${install.latest_known} available — /update`
+				? t("ui.chat.pickers.info_model.v_available_update", {
+						latest_known: install.latest_known,
+					})
 				: null,
 	};
 }
@@ -148,21 +158,36 @@ export function hostRows(process: DesktopInfoData["process"]): InfoRow[] {
 	return omitEmpty([
 		{
 			key: "pid",
-			label: "Process",
-			value: `pid ${formatCount(process.pid)}`,
+			label: t("ui.chat.pickers.info_model.process"),
+			value: t("ui.chat.pickers.info_model.pid", { pid: process.pid }),
 			mono: true,
 		},
-		{ key: "kind", label: "Kind", value: process.kind, mono: true },
-		{ key: "session", label: "Session", value: process.session_id, mono: true },
+		{
+			key: "kind",
+			label: t("ui.chat.pickers.info_model.kind"),
+			value: process.kind,
+			mono: true,
+		},
+		{
+			key: "session",
+			label: t("ui.chat.pickers.info_model.session"),
+			value: process.session_id,
+			mono: true,
+		},
 		{
 			key: "conversation",
-			label: "Conversation",
+			label: t("ui.chat.pickers.info_model.conversation"),
 			value: process.conversation_name,
 		},
-		{ key: "model", label: "Model", value: process.model_label, mono: true },
+		{
+			key: "model",
+			label: t("ui.chat.pickers.info_model.model"),
+			value: process.model_label,
+			mono: true,
+		},
 		{
 			key: "effective",
-			label: "Answering model",
+			label: t("ui.chat.pickers.info_model.answering_model"),
 			/*
 			 * Present only when it DIFFERS: on the common case the one line is
 			 * enough, and a duplicate row reads as a distinction that is not there.
@@ -176,7 +201,7 @@ export function hostRows(process: DesktopInfoData["process"]): InfoRow[] {
 		},
 		{
 			key: "started",
-			label: "Started",
+			label: t("ui.chat.pickers.info_model.started"),
 			/*
 			 * A duration and its direction belong in ONE cell. Split as label +
 			 * "ago" the row read `Started  ago   3h 26m`, which is two halves of a
@@ -195,47 +220,61 @@ export function hostRows(process: DesktopInfoData["process"]): InfoRow[] {
 			 */
 			value:
 				process.uptime_s === null
-					? UNKNOWN_WORD
-					: `${formatDuration(process.uptime_s)} ago`,
+					? UNKNOWN_WORD()
+					: t("ui.chat.pickers.info_model.ago", {
+							formatduration: formatDuration(process.uptime_s),
+						}),
 			mono: true,
 		},
 		{
 			key: "cwd",
-			label: "Working dir",
+			label: t("ui.chat.pickers.info_model.working_dir"),
 			value: process.cwd,
 			mono: true,
 		},
 		{
 			key: "config",
-			label: "Config dir",
+			label: t("ui.chat.pickers.info_model.config_dir"),
 			value: process.config_dir,
 			mono: true,
 			note: process.config_dir_redirected
-				? "redirected by LOCAL_OPERATOR_CONFIG_DIR"
+				? t(
+						"ui.chat.pickers.info_model.redirected_by_local_operator_config_dir",
+					)
 				: undefined,
 		},
-		{ key: "cache", label: "Cache dir", value: process.cache_dir, mono: true },
+		{
+			key: "cache",
+			label: t("ui.chat.pickers.info_model.cache_dir"),
+			value: process.cache_dir,
+			mono: true,
+		},
 		{
 			key: "agent_home",
-			label: "Agent home",
+			label: t("ui.chat.pickers.info_model.agent_home"),
 			value: process.agent_home,
 			mono: true,
 			note: process.agent_home_redirected
-				? "redirected by LOCAL_OPERATOR_HOME"
+				? t("ui.chat.pickers.info_model.redirected_by_local_operator_home")
 				: undefined,
 		},
-		{ key: "log", label: "Log dir", value: process.log_dir, mono: true },
+		{
+			key: "log",
+			label: t("ui.chat.pickers.info_model.log_dir"),
+			value: process.log_dir,
+			mono: true,
+		},
 		{
 			key: "control",
-			label: "Control port",
+			label: t("ui.chat.pickers.info_model.control_port"),
 			/*
 			 * `null` is not listening, and it says so rather than rendering a
 			 * number: a port is not a measurement otherwise.
 			 */
 			value:
 				process.control_port === null
-					? "not listening"
-					: `${formatCount(process.control_port)}${process.protocol === null ? "" : ` · protocol v${process.protocol}`}`,
+					? t("ui.chat.pickers.info_model.not_listening")
+					: `${formatCount(process.control_port)}${process.protocol === null ? "" : t("ui.chat.pickers.info_model.protocol_v", { protocol: process.protocol })}`,
 			mono: true,
 		},
 	]);
@@ -258,13 +297,16 @@ function omitEmpty(rows: (InfoRow & { value: string })[]): InfoRow[] {
  * than a second helper beside this one. `trajectory` is the reason it exists:
  * `1 trajectory` / `5 trajectories` is what the fleet answer is made of.
  */
-const IRREGULAR_PLURALS: Record<string, string> = {
-	trajectory: "trajectories",
-};
-
-export function plural(count: number, noun: string): string {
-	if (count === 1) return `${count} ${noun}`;
-	return `${count} ${IRREGULAR_PLURALS[noun] ?? `${noun}s`}`;
+export function plural(
+	count: number,
+	noun: string,
+	pluralNoun: string,
+): string {
+	return t("ui.chat.pickers.info_model.count_noun", {
+		count: count,
+		noun: noun,
+		pluralnoun: pluralNoun,
+	});
 }
 
 /** One row of the sessions table. */
@@ -292,8 +334,56 @@ export type SessionLineRow = {
  * Not the terminal's copy: the desktop has no `r` key to retry with, so the
  * sentence names closing and reopening the panel instead.
  */
-export const REGISTRY_UNAVAILABLE_NOTICE =
-	"Could not scan the session registry. Close and reopen this panel to try again.";
+export const REGISTRY_UNAVAILABLE_NOTICE = () =>
+	t(
+		"ui.chat.pickers.info_model.could_not_scan_the_session_registry_close_and_reopen_this_panel_to_try_a",
+	);
+
+/**
+ * An ABSOLUTE stamp as an age, in the panel's duration spelling.
+ *
+ * `last_activity_s` and `stopped_at_s` are epoch seconds, not ages: the registry
+ * row carries the transcript file's mtime (`builtin.py::_sessions_list` puts
+ * `session_row.mtime` on `last_activity_s`), and the CLI's own table already
+ * subtracts it (`time.time() - row["last_activity_s"]`). Formatting the stamp
+ * itself painted a 56-year duration on every stopped session — `20747d 4h ago`
+ * at this panel's own formatter, `497932h` in the terminal's hours spelling — a
+ * number nobody can read as "when", which is how it was found on the fleet.
+ *
+ * The subtraction lives here, once, so the panel and the terminal table cannot
+ * disagree about what the field means. `nowS` is injectable so a test can pin the
+ * clock; the panel passes nothing. A stamp in the future (a clock skew across
+ * machines) formats as `0s` rather than a negative age, because `formatDuration`
+ * clamps — the same rule the terminal path gets from its own `max(0.0, …)`.
+ *
+ * `null` comes back as `null` rather than the unknown word: the caller decides
+ * which spelling applies when a stamp is absent.
+ */
+export function stampAge(
+	stamp: number | null | undefined,
+	nowS: number = Date.now() / 1000,
+): string | null {
+	/*
+	 * `0` is the never-recorded spelling, not 1970: a transcript mtime of zero
+	 * means the core had no stamp to send, and formatting it as a duration is
+	 * the same 56-year lie this helper exists to remove (`0` rendered
+	 * `20747d 5h ago`, design round 1 D6). A stamp in the FUTURE is different:
+	 * that is a real reading skewed by a clock, so it stays a clamp to `0s`.
+	 */
+	if (stamp === null || stamp === undefined || stamp <= 0) return null;
+	return formatDuration(nowS - stamp);
+}
+
+/**
+ * The separator between a stored row's stop age and its reason.
+ *
+ * NON-BREAKING spaces on both sides: with a plain ` · ` the stop sentence wraps
+ * at 768 px and leaves a dangling `·` at the end of the first line, with the
+ * reason starting the next (design round 1, D7). Gluing the token to the words
+ * on either side moves the break to a normal space before `reason:`, which is
+ * where prose breaks anyway.
+ */
+const CLAUSE_SEPARATOR = "\u00A0·\u00A0";
 
 /**
  * Section 3's table rows.
@@ -305,32 +395,96 @@ export const REGISTRY_UNAVAILABLE_NOTICE =
 export function sessionLineRows(
 	lines: DesktopInfoData["sessions"]["lines"],
 	thisSessionId: string,
+	/** Epoch seconds; injectable for tests, defaulted for the panel. */
+	nowS: number = Date.now() / 1000,
 ): SessionLineRow[] {
 	return lines.map((line) => {
+		/*
+		 * The stored half of the row below: what the core RECORDED about this
+		 * session's end, or nothing. Everything here is a stamp the wire sends, so
+		 * both ages go through `stampAge` — never `formatDuration` on the raw field.
+		 */
+		const lastActive = stampAge(line.last_activity_s, nowS);
+		const stoppedAge = stampAge(line.stopped_at_s, nowS);
+		/* The trimmed token, so a padded reason does not pad the row. */
+		const stopReason = line.stop_reason?.trim() || null;
+		/*
+		 * A recorded stop outranks "last active": it is the fact the reader came
+		 * for, and last activity alone cannot separate a session that was closed
+		 * from one that merely fell out of the registry.
+		 *
+		 * The reason is printed RAW and LABELLED. Raw, because this repository
+		 * has no table of the core's stop tokens and inventing one would be a
+		 * second vocabulary for a backend-owned value (`idle-exit` is what its
+		 * log line says; the long shape carries a measured clause). Labelled,
+		 * because the token alone reads as engineer vocabulary in a user-facing
+		 * cell (design round 1, D2) — `reason:` says what the token is without
+		 * changing it.
+		 */
+		const stopLine =
+			stoppedAge === null
+				? null
+				: stopReason === null
+					? t("ui.chat.pickers.info_model.stopped_ago", {
+							stoppedage: stoppedAge,
+						})
+					: t("ui.chat.pickers.info_model.stopped_ago_reason", {
+							stoppedage: stoppedAge,
+							clause_separator: CLAUSE_SEPARATOR,
+							stopreason: stopReason,
+						});
 		const markers: SessionLineRow["markers"] = [];
 		if (line.session_id === thisSessionId) {
-			markers.push({ label: "this session", tone: "neutral" });
+			markers.push({
+				label: t("ui.chat.pickers.info_model.this_session"),
+				tone: "neutral",
+			});
 		}
-		if (line.busy) markers.push({ label: "busy", tone: "warning" });
+		if (line.busy)
+			markers.push({
+				label: t("ui.chat.pickers.info_model.busy"),
+				tone: "warning",
+			});
 		if (line.pending !== null) {
-			markers.push({ label: `needs ${line.pending}`, tone: "warning" });
+			markers.push({
+				label: t("ui.chat.pickers.info_model.needs", { pending: line.pending }),
+				tone: "warning",
+			});
 		}
-		if (line.detached) markers.push({ label: "detached", tone: "dim" });
+		if (line.detached)
+			markers.push({
+				label: t("ui.chat.pickers.info_model.detached"),
+				tone: "dim",
+			});
 		return {
 			key: `${line.pid}-${line.session_id}`,
-			name: line.conversation_name || line.session_id || `pid ${line.pid}`,
+			name:
+				line.conversation_name ||
+				line.session_id ||
+				t("ui.chat.pickers.info_model.pid_7837d5", { pid: line.pid }),
 			state: line.state,
 			model: line.model_label,
 			/*
 			 * A `stored` row has no uptime to report — it is not running — so it
-			 * reports how long ago it was last active instead. A row that showed
-			 * `0s` uptime for a stored session would read as running.
+			 * reports how long ago it was last active instead, and how it ended when
+			 * the core recorded a stop. A row that showed `0s` uptime for a stored
+			 * session would read as running, and a stop line on a LIVE row would
+			 * claim an end that has not happened, so the stopped spelling is gated on
+			 * `state === "stored"` as well as on the stamp.
+			 *
+			 * The last-active spelling carries its own label for the same reason the
+			 * reason does: `1h 11m ago` beside `stopped 1h 10m ago` is two durations
+			 * with no visible difference in kind, so a SIGKILLed session — one with
+			 * no stop record — would read as stopped (design round 1, D1).
 			 */
 			uptime:
 				line.state === "stored"
-					? line.last_activity_s === null
-						? "unknown"
-						: `${formatDuration(line.last_activity_s)} ago`
+					? (stopLine ??
+						(lastActive === null
+							? UNKNOWN_WORD()
+							: t("ui.chat.pickers.info_model.last_active_ago", {
+									lastactive: lastActive,
+								})))
 					: formatDuration(line.uptime_s),
 			memory: formatBytes(line.footprint_bytes ?? line.rss_bytes),
 			markers,
@@ -463,18 +617,39 @@ export function fleetFacts(data: DesktopInfoData): FleetFacts | null {
 	 * refused keeps the noun the other states omit, because without the noun the
 	 * line reads as a missing measurement of something unnamed.
 	 */
+	const runtimeCount = plural(
+		runtimes,
+		t("ui.chat.pickers.info_model.runtime"),
+		t("ui.chat.pickers.info_model.runtimes"),
+	);
 	const meta = total
-		? `${plural(runtimes, "runtime")} · ${bound}${plural(total, "trajectory")}`
+		? t("ui.chat.pickers.info_model.runtime_trajectories", {
+				runtimecount: runtimeCount,
+				bound: bound,
+				trajectorycount: plural(
+					total,
+					t("ui.chat.pickers.info_model.trajectory"),
+					t("ui.chat.pickers.info_model.trajectories"),
+				),
+			})
 		: unreported > 0
-			? `${plural(runtimes, "runtime")} · trajectories ${UNKNOWN}`
+			? t("ui.chat.pickers.info_model.trajectories4288bf", {
+					plural: runtimeCount,
+					unknown: UNKNOWN,
+				})
 			: queued
-				? `${plural(runtimes, "runtime")} · none running · ${formatCount(queued)} queued`
-				: `${plural(runtimes, "runtime")} · none running`;
+				? t("ui.chat.pickers.info_model.none_running_queued", {
+						plural: runtimeCount,
+						formatcount: formatCount(queued),
+					})
+				: t("ui.chat.pickers.info_model.none_running", {
+						plural: runtimeCount,
+					});
 
 	const facts: AgentFact[] = [
 		{
 			key: "runtimes",
-			label: "Runtimes",
+			label: t("ui.chat.pickers.info_model.runtimes"),
 			/*
 			 * The split appears only when there is one to make. With nothing wedged,
 			 * `21 live` under a card whose value is already `21` restates the Live and
@@ -488,13 +663,22 @@ export function fleetFacts(data: DesktopInfoData): FleetFacts | null {
 			 */
 			value: formatCount(runtimes),
 			note: sessions.wedged
-				? `${formatCount(sessions.live)} live${SEPARATOR}${formatCount(sessions.wedged)} not answering`
+				? t("ui.chat.pickers.info_model.live_not_answering", {
+						formatcount: formatCount(sessions.live),
+						separator: SEPARATOR,
+						formatcount2: formatCount(sessions.wedged),
+					})
 				: undefined,
 		},
 		{
 			key: "trajectories",
-			label: "Trajectories",
-			value: measured ? `${bound}${formatCount(total)} total` : UNKNOWN,
+			label: t("ui.chat.pickers.info_model.trajectories"),
+			value: measured
+				? t("ui.chat.pickers.info_model.total", {
+						bound: bound,
+						formatcount: formatCount(total),
+					})
+				: UNKNOWN,
 			/*
 			 * When nothing was measured the addends are not shown at all rather than
 			 * shown as zeros: `0 total — 0 sessions + 0 subagents` is three zeros in a
@@ -502,9 +686,10 @@ export function fleetFacts(data: DesktopInfoData): FleetFacts | null {
 			 */
 			note: measured
 				? [
-						`${plural(sessions.fleet_session_trajectories, "session")} + ${plural(
+						`${plural(sessions.fleet_session_trajectories, t("ui.chat.pickers.info_model.sessionfcbdc4"), t("ui.chat.pickers.info_model.sessions"))} + ${plural(
 							sessions.fleet_subagents_running,
-							"subagent",
+							t("ui.chat.pickers.info_model.subagent"),
+							t("ui.chat.pickers.info_model.subagents"),
 						)}`,
 						/*
 						 * Named BESIDE the total, never added into it (a queued child spends
@@ -517,15 +702,22 @@ export function fleetFacts(data: DesktopInfoData): FleetFacts | null {
 						 * `U did not report` is NOT here for the same reason: the caveat line
 						 * directly beneath the grid says it, in this viewport, with the cause.
 						 */
-						total && queued ? `${formatCount(queued)} queued` : "",
+						total && queued
+							? t("ui.chat.pickers.info_model.queued", {
+									formatcount: formatCount(queued),
+								})
+							: "",
 					]
 						.filter(Boolean)
 						.join(SEPARATOR)
-				: `${formatCount(unreported)} of ${plural(runtimes, "runtime")} did not report`,
+				: t("ui.chat.pickers.info_model.of_did_not_report", {
+						formatcount: formatCount(unreported),
+						plural: runtimeCount,
+					}),
 		},
 		{
 			key: "profiles",
-			label: "Agent profiles",
+			label: t("ui.chat.pickers.info_model.agent_profiles"),
 			value: countOrUnknown(
 				data.agents.profiles,
 				"agents.profiles",
@@ -534,7 +726,7 @@ export function fleetFacts(data: DesktopInfoData): FleetFacts | null {
 		},
 		{
 			key: "teams",
-			label: "Teams",
+			label: t("ui.chat.pickers.info_model.teams"),
 			value: countOrUnknown(data.agents.teams, "agents.teams", data.degraded),
 		},
 	];
@@ -559,10 +751,10 @@ export function fleetFacts(data: DesktopInfoData): FleetFacts | null {
 		 * one restart from updated, i.e. the tail of the very rollout this caveat
 		 * exists for, and it shipped once in the terminal before it was fixed.
 		 */
-		const one = unreported === 1;
 		caveats.push(
-			`${plural(unreported, "session")} ${one ? "runs" : "run"} an older build and ` +
-				`${one ? "does" : "do"} not report subagents — the fleet total is a lower bound.`,
+			t("ui.chat.pickers.info_model.older_build_caveat", {
+				count: unreported,
+			}),
 		);
 	}
 	if (sessions.wedged > 0) {
@@ -585,10 +777,10 @@ export function fleetFacts(data: DesktopInfoData): FleetFacts | null {
 		 * changed, and it is the same drift the badges above carry (design D5) — the
 		 * token is the machine's spelling, and a reader of this panel is a person.
 		 */
-		const one = sessions.wedged === 1;
 		caveats.push(
-			`${plural(sessions.wedged, "session")} ${one ? "is" : "are"} not answering; ` +
-				`${one ? "its" : "their"} counts are as of ${one ? "its" : "their"} last heartbeat.`,
+			t("ui.chat.pickers.info_model.not_answering_caveat", {
+				count: sessions.wedged,
+			}),
 		);
 	}
 
@@ -648,21 +840,35 @@ export function conversationRows(
 		? (teamLabelFor?.(frontend.active_team) ?? frontend.active_team)
 		: null;
 	const active = activeTeam
-		? `team ${activeTeam}`
+		? t("ui.chat.pickers.info_model.team", { activeteam: activeTeam })
 		: frontend.active_agent
-			? `agent ${frontend.active_agent}`
+			? t("ui.chat.pickers.info_model.agent", {
+					active_agent: frontend.active_agent,
+				})
 			: "";
 	return omitEmpty([
-		{ key: "session", label: "Session", value: sessionId, mono: true },
+		{
+			key: "session",
+			label: t("ui.chat.pickers.info_model.session"),
+			value: sessionId,
+			mono: true,
+		},
 		{
 			key: "title",
-			label: "Title",
-			value: frontend.conversation_title || "Untitled session",
+			label: t("ui.chat.pickers.info_model.title"),
+			value:
+				frontend.conversation_title ||
+				t("ui.chat.pickers.info_model.untitled_session"),
 		},
-		{ key: "model", label: "Model", value: selected, mono: true },
+		{
+			key: "model",
+			label: t("ui.chat.pickers.info_model.model"),
+			value: selected,
+			mono: true,
+		},
 		{
 			key: "effective",
-			label: "Answering model",
+			label: t("ui.chat.pickers.info_model.answering_model"),
 			// Only when it differs — the failover fact, and the only reason this
 			// row exists at all.
 			value: effective && effective !== selected ? effective : "",
@@ -670,7 +876,7 @@ export function conversationRows(
 		},
 		{
 			key: "context",
-			label: "Context",
+			label: t("ui.chat.pickers.info_model.context"),
 			value: context,
 			mono: true,
 			/*
@@ -680,14 +886,26 @@ export function conversationRows(
 			 */
 			note:
 				frontend.context_tokens === null || !frontend.context_window
-					? "not measured"
+					? t("ui.chat.pickers.info_model.not_measured")
 					: frontend.context_is_estimate === true
-						? "estimate"
-						: "measured",
+						? t("ui.chat.pickers.info_model.estimate")
+						: t("ui.chat.pickers.info_model.measured"),
 		},
-		{ key: "cost", label: "Cost knowledge", value: frontend.cost_knowledge },
-		{ key: "active", label: "Active", value: active },
-		{ key: "goal", label: "Goal", value: frontend.goal },
+		{
+			key: "cost",
+			label: t("ui.chat.pickers.info_model.cost_knowledge"),
+			value: frontend.cost_knowledge,
+		},
+		{
+			key: "active",
+			label: t("ui.chat.pickers.info_model.active"),
+			value: active,
+		},
+		{
+			key: "goal",
+			label: t("ui.chat.pickers.info_model.goal"),
+			value: frontend.goal,
+		},
 	]);
 }
 
@@ -762,7 +980,8 @@ export function mcpSummary(frontend: InfoFrontend | null): McpSummary {
  * which is not mounted there. What is true in both is that THIS presentation read
  * nothing, and that is the claim the note makes.
  */
-export const MCP_NOT_READ_NOTE = "not read in this view";
+export const MCP_NOT_READ_NOTE = (): string =>
+	t("ui.chat.pickers.info_model.not_read_in_this_view");
 
 /** Section 6's rows: everything except the terminal-only half. */
 export function environmentRows(
@@ -773,7 +992,7 @@ export function environmentRows(
 	return omitEmpty([
 		{
 			key: "mcp",
-			label: "MCP servers",
+			label: t("ui.chat.pickers.info_model.mcp_servers"),
 			/*
 			 * Three different facts, three spellings: no live copy to read at all
 			 * (`—`), a copy that lists nothing ("none configured"), and a copy with
@@ -783,8 +1002,11 @@ export function environmentRows(
 			value: !mcp.measured
 				? UNKNOWN
 				: mcp.configured === 0
-					? "none configured"
-					: `${formatCount(mcp.connected)} of ${formatCount(mcp.configured)} connected`,
+					? t("ui.chat.pickers.info_model.none_configured")
+					: t("ui.chat.pickers.info_model.of_connected", {
+							formatcount: formatCount(mcp.connected),
+							formatcount2: formatCount(mcp.configured),
+						}),
 			/*
 			 * `not read in this view` is the fourth spelling, and the reason it is not
 			 * silent: with no copy the failure table below is omitted as well, so the
@@ -795,14 +1017,14 @@ export function environmentRows(
 			 * files a bug about a server that came up a second later.
 			 */
 			note: !mcp.measured
-				? MCP_NOT_READ_NOTE
+				? MCP_NOT_READ_NOTE()
 				: mcp.settling
-					? "still connecting deferred servers"
+					? t("ui.chat.pickers.info_model.still_connecting_deferred_servers")
 					: undefined,
 		},
 		{
 			key: "approval",
-			label: "Approval mode",
+			label: t("ui.chat.pickers.info_model.approval_mode"),
 			/*
 			 * `null` is the desktop's NORMAL payload here (no session is attached to
 			 * this read), and it is a different fact from an empty approval mode: one
@@ -815,21 +1037,30 @@ export function environmentRows(
 		},
 		{
 			key: "browser",
-			label: "Browser",
+			label: t("ui.chat.pickers.info_model.browser"),
 			value: env.browser_backend
-				? `${env.browser_backend}${env.browser_name ? ` · ${env.browser_name}` : ""}${env.browser_paired ? " · paired" : " · not paired"}`
+				? t("ui.chat.pickers.info_model.browser_status", {
+						backend: env.browser_backend,
+						browsername: env.browser_name ?? "",
+						hasname: env.browser_name ? "true" : "false",
+						paired: env.browser_paired ? "true" : "false",
+					})
 				: "",
 		},
 		{
 			key: "mobile",
-			label: "Mobile relay",
+			label: t("ui.chat.pickers.info_model.mobile_relay"),
 			value: env.mobile_installed
-				? `installed${env.mobile_healthy ? ", healthy" : ", not healthy"}${env.mobile_port === null ? "" : `, port ${formatCount(env.mobile_port)}`}`
-				: "not installed",
+				? t("ui.chat.pickers.info_model.mobile_status", {
+						healthy: env.mobile_healthy ? "true" : "false",
+						hasport: env.mobile_port === null ? "false" : "true",
+						port: env.mobile_port === null ? "" : formatCount(env.mobile_port),
+					})
+				: t("ui.chat.pickers.info_model.not_installed"),
 		},
 		{
 			key: "guides",
-			label: "Guides and skills",
+			label: t("ui.chat.pickers.info_model.guides_and_skills"),
 			/*
 			 * `guides` is a real count of this install's files; `skills` is nulled on
 			 * this route, because a skill is discovered with a session attached. Both
@@ -838,23 +1069,27 @@ export function environmentRows(
 			 * about a machine that was never asked (backend QA round, cross-repo
 			 * finding).
 			 */
-			value: `${formatCount(env.guides)} guides · ${
-				env.skills === null ? UNKNOWN : `${formatCount(env.skills)} skills`
-			}`,
+			value: t("ui.chat.pickers.info_model.guides", {
+				guides: env.guides,
+				guidetext: formatCount(env.guides),
+				skilltext: env.skills === null ? UNKNOWN : formatCount(env.skills),
+				skills: env.skills ?? 0,
+				hasskills: env.skills === null ? "unknown" : "measured",
+			}),
 		},
 		{
 			key: "credentials",
-			label: "Stored credentials",
+			label: t("ui.chat.pickers.info_model.stored_credentials"),
 			value:
 				env.credential_keys.length === 0
-					? "none"
+					? t("ui.chat.pickers.info_model.none")
 					: formatCount(env.credential_keys.length),
 			/*
 			 * NAMES ONLY, and the note says so: the payload carries no value, and a
 			 * reader who saw a count with no explanation would reasonably wonder
 			 * what else was read.
 			 */
-			note: "names only · values are never read",
+			note: t("ui.chat.pickers.info_model.names_only_values_are_never_read"),
 			names: env.credential_keys,
 		},
 	]);
@@ -869,33 +1104,50 @@ export function environmentRows(
  */
 export function terminalRows(env: DesktopInfoData["env"]): InfoRow[] {
 	return omitEmpty([
-		{ key: "term", label: "TERM", value: env.term, mono: true },
-		{ key: "colorterm", label: "COLORTERM", value: env.colorterm, mono: true },
+		{
+			key: "term",
+			label: t("ui.chat.pickers.info_model.term"),
+			value: env.term,
+			mono: true,
+		},
+		{
+			key: "colorterm",
+			label: t("ui.chat.pickers.info_model.colorterm"),
+			value: env.colorterm,
+			mono: true,
+		},
 		{
 			key: "multiplexer",
-			label: "Multiplexer",
+			label: t("ui.chat.pickers.info_model.multiplexer"),
 			value: env.multiplexer,
 			mono: true,
 		},
 		{
 			key: "is_tty",
-			label: "Interactive terminal",
-			value: env.is_tty ? "yes" : "no",
+			label: t("ui.chat.pickers.info_model.interactive_terminal"),
+			value: env.is_tty
+				? t("ui.chat.pickers.info_model.yes")
+				: t("ui.chat.pickers.info_model.no"),
 		},
 		{
 			key: "rows",
-			label: "Rows",
+			label: t("ui.chat.pickers.info_model.rows"),
 			value:
 				env.terminal_size === null ? "" : formatCount(env.terminal_size[0]),
 			mono: true,
 		},
 		{
 			key: "cols",
-			label: "Columns",
+			label: t("ui.chat.pickers.info_model.columns"),
 			value:
 				env.terminal_size === null ? "" : formatCount(env.terminal_size[1]),
 			mono: true,
 		},
-		{ key: "theme", label: "Theme", value: env.theme, mono: true },
+		{
+			key: "theme",
+			label: t("ui.chat.pickers.info_model.theme"),
+			value: env.theme,
+			mono: true,
+		},
 	]);
 }

@@ -52,12 +52,46 @@
  * (`4 files · 3 agents`), which is the same fallback an unknown name takes.
  */
 
+import { t } from "@shared/i18n";
+import { BRIDGE_POST_OPS } from "../components/trace/bridge-row-model";
+import {
+	type InternalReceiptFamily,
+	receiptFamilyOf,
+} from "../components/trace/receipt-row-model";
 import { displayName, toolRowLabel } from "../components/trace/tool-row-model";
 import { type TranscriptImage, isPictureRef } from "./transcript-reducer";
 import type { Row } from "./transcript-rows";
 
 /** §E2: a run of three or more consecutive actions folds. */
 export const FOLD_MIN_ACTIONS = 3;
+
+/**
+ * The trailing-receipt threshold: a run whose TRAILING stretch of adjacent
+ * receipts is at least this long folds under one header, whatever its action
+ * count.
+ *
+ * WHY A SECOND THRESHOLD RATHER THAN COUNTING RECEIPTS AS ACTIONS. A receipt is
+ * not work the turn DID - it is the turn being told something - so it must
+ * never reach the action threshold, the action count, failures, duration or the
+ * live clause (see `foldRuns`). But the operator's wall of `job result` rows
+ * proved the converse too: a stretch of receipts with no calls between them is
+ * a wall of identical standalone rows with one chevron each, and folding it is
+ * the whole point of this tier. TWO is the smallest run that has something to
+ * summarise; a LONE receipt stays an ordinary row, which is the existing
+ * "a lone receipt is content" policy (`scripts/canonical-notice.test.mjs`).
+ *
+ * WHY THE STRETCH MUST BE THE RUN'S TRAILING ONE, never a count of adjacent
+ * receipt pairs anywhere in the run. The 129-owner shape in
+ * `scripts/turn-collapse-behaviour.test.mjs` is the failure: after its prepend
+ * the one-action run is `[peer, peer, tool]`, so two receipts at its HEAD
+ * licensed a fold that hid the call the reader's opened turn bar is pinned to
+ * mount. A receipt at the tail is what the reader is being told AFTER the work;
+ * folding that is what the wall needs, and a head receipt rides along only when
+ * the run already folds on §E2's action threshold (which is why
+ * `[peer, tool, wake]` and `[peer, tool, peer]` stay ordinary rows too: their
+ * trailing stretch is one).
+ */
+export const FOLD_MIN_RECEIPTS = 2;
 
 export type FoldableAction = {
 	/** The ledger's own name for the call (`ledgerName`), already case-folded. */
@@ -142,6 +176,87 @@ export type FoldGroup =
 			/** The in-flight call, when one is inside this run (see `foldLive`). */
 			live: FoldLive | null;
 	  };
+
+/**
+ * The receipt families' units for one run's header, in a stable order.
+ *
+ * WHY THE HEADER COUNTS BY FAMILY AND NOT ONE `incoming messages` TOTAL. The
+ * old line called every internal receipt an incoming message, which was true
+ * while `isInternalReceipt` covered only peer/hub traffic. It is FALSE the
+ * moment a job result folds: a `job result` is not a message from anyone, and a
+ * reader told `4 incoming messages` cannot know which of the rows behind the
+ * fold will be a conversation and which a finished call. Each family therefore
+ * states its own noun, and the order is fixed (incoming, job results, wakes,
+ * monitor prompts) so the same group does not reword itself as rows arrive.
+ *
+ * A FAMILY WITH ZERO ROWS CONTRIBUTES NO UNIT - never `0 job results`. The two
+ * markers are historical intent (`Reply requested`, `Steered`) and ride the
+ * existing grammar; they are not counts and are omitted when absent.
+ *
+ * INVARIANT (asserted): every receipt row in `rows` is counted exactly once
+ * across the family units, so the header's numbers are the expanded group's
+ * contents. Arbitrary custom notices never reach here: `isReceipt` decides the
+ * membership structurally (see `receiptFamilyOf`). A family the table does not
+ * know is counted under `other receipts` rather than dropped.
+ */
+export function receiptFoldUnits(rows: readonly Row[]): string[] {
+	/*
+	 * A RECORD KEYED BY FAMILY, and a fallback for anything the family table does
+	 * not know yet: a future receipt kind that `receiptFamilyOf` learns must not
+	 * silently vanish from the header (the counts would stop summing to the rows
+	 * behind the fold). Known families bump their own bucket; whatever is left
+	 * over is a receipt no family claims, stated as `N other receipts`.
+	 */
+	const counts: Record<InternalReceiptFamily, number> = {
+		incoming: 0,
+		job_result: 0,
+		wake: 0,
+		monitor_prompt: 0,
+	};
+	let replyRequested = false;
+	let steered = false;
+	for (const { record } of rows) {
+		const family = receiptFamilyOf(record);
+		if (family) counts[family] += 1;
+		if (record.kind === "custom") {
+			if (record.receipt?.expectsReply === true) replyRequested = true;
+			if (record.receipt?.steer === true) steered = true;
+		}
+	}
+	const units: string[] = [];
+	/*
+	 * Each unit is ONE keyed ICU plural phrase, number included, so a language
+	 * whose noun agrees with the count (or puts it after the noun) can say so;
+	 * the old `${n} ${one|many}` assembly fixed the English word order.
+	 */
+	const count = (n: number, phrase: (count: number) => string) => {
+		if (n > 0) units.push(phrase(n));
+	};
+	count(counts.incoming, (count) =>
+		t("ui.chat.canonical.fold.receipt.incoming", { count }),
+	);
+	count(counts.job_result, (count) =>
+		t("ui.chat.canonical.fold.receipt.job_result", { count }),
+	);
+	count(counts.wake, (count) =>
+		t("ui.chat.canonical.fold.receipt.wake", { count }),
+	);
+	count(counts.monitor_prompt, (count) =>
+		t("ui.chat.canonical.fold.receipt.monitor_prompt", { count }),
+	);
+	count(
+		rows.length -
+			counts.incoming -
+			counts.job_result -
+			counts.wake -
+			counts.monitor_prompt,
+		(count) => t("ui.chat.canonical.fold.receipt.other", { count }),
+	);
+	if (replyRequested)
+		units.push(t("ui.chat.canonical.fold.receipt.reply_requested"));
+	if (steered) units.push(t("ui.chat.canonical.fold.receipt.steered"));
+	return units;
+}
 
 /**
  * The run's wall-clock span: FIRST start to LAST completion.
@@ -248,11 +363,82 @@ export const actionClass = (
 export type FoldSummarySpec = {
 	units: string[];
 	/**
+	 * THE SAME SUMMARY AS STRUCTURED COUNT SEGMENTS, beside the words.
+	 *
+	 * WHY A SECOND FIELD RATHER THAN PARSING `units`. A cross-client parity
+	 * fixture cannot compare English: another surface owns its own vocabulary for
+	 * the same counts (the phone says `3 tool calls` where this app says
+	 * `Explored 3 files`), and asserting a shared string would either forbid that
+	 * or silently drift. The identifier and the number are the shared facts; the
+	 * words are per-surface. `class:agent`-style ids come from the same derivation
+	 * that builds the sentence above, so the two can never disagree, and
+	 * `generateCondenseFixture` (scripts/traces) is the only reader today.
+	 *
+	 * It is the CLASS/noun line (`foldCountSegments`) in EVERY case, including the
+	 * two-class sentence form, because a surface that renders only the count line
+	 * must still be comparable to one that renders the sentence.
+	 */
+	countUnits: FoldCountSegment[];
+	/**
 	 * True for the SENTENCE form (a single flowing clause): the browser's own
 	 * line breaking is correct for it, so the header does NOT hold it whole.
 	 */
 	prose: boolean;
 };
+
+type SentenceClass =
+	| "files"
+	| "searches"
+	| "web"
+	| "commands"
+	| "edits"
+	| "delegated";
+
+/**
+ * One class's clause of the summary sentence, count included, as ONE keyed ICU
+ * phrase. `follows` selects the spelling used when the clause is the second of
+ * two: English lowercases the verb there (\`Explored 4 files, delegated 3
+ * tasks\`), and that choice belongs to the catalogue, not to code that edits a
+ * translated string. \`files\` and \`searches\` have no follow spelling because the
+ * first never trails (it is first in \`order\`) and the second has no verb.
+ */
+const sentencePart = (
+	cls: SentenceClass,
+	count: number,
+	follows: boolean,
+): string => {
+	switch (cls) {
+		case "files":
+			return t("ui.chat.canonical.fold.sentence.files", { count });
+		case "searches":
+			return t("ui.chat.canonical.fold.sentence.searches", { count });
+		case "web":
+			return follows
+				? t("ui.chat.canonical.fold.sentence.web_follow", { count })
+				: t("ui.chat.canonical.fold.sentence.web_lead", { count });
+		case "commands":
+			return follows
+				? t("ui.chat.canonical.fold.sentence.commands_follow", { count })
+				: t("ui.chat.canonical.fold.sentence.commands_lead", { count });
+		case "edits":
+			return follows
+				? t("ui.chat.canonical.fold.sentence.edits_follow", { count })
+				: t("ui.chat.canonical.fold.sentence.edits_lead", { count });
+		case "delegated":
+			return follows
+				? t("ui.chat.canonical.fold.sentence.delegated_follow", { count })
+				: t("ui.chat.canonical.fold.sentence.delegated_lead", { count });
+	}
+};
+
+/**
+ * The glue between count-line units (\` · \` in English), keyed so a language
+ * can choose its own separator. The renderer draws the visible \`·\` glyphs
+ * between units itself; this is the one string the non-DOM consumers (the bar's
+ * \`title\`, the collapsed turn's title) join with.
+ */
+export const foldUnitSeparator = (): string =>
+	t("ui.chat.canonical.fold.unit_separator");
 
 export const foldSummarySpec = (actions: FoldableAction[]): FoldSummarySpec => {
 	const counts = new Map<string, number>();
@@ -262,12 +448,21 @@ export const foldSummarySpec = (actions: FoldableAction[]): FoldSummarySpec => {
 		if (cls === null) unknown += 1;
 		else counts.set(cls, (counts.get(cls) ?? 0) + 1);
 	}
+	const segments = foldCountSegments(actions);
 	if (unknown > 0 || counts.size > 2) {
-		const units = foldCountUnits(foldCountSegments(actions));
+		const units = foldCountUnits(segments);
 		// Only reachable for an empty run, which `foldRuns` never emits a summary for.
 		return {
-			units: units.length === 0 ? [`${actions.length} actions`] : units,
+			units:
+				units.length === 0
+					? [
+							t("ui.chat.canonical.fold.count.actions", {
+								count: actions.length,
+							}),
+						]
+					: units,
 			prose: false,
+			countUnits: segments,
 		};
 	}
 
@@ -277,36 +472,44 @@ export const foldSummarySpec = (actions: FoldableAction[]): FoldSummarySpec => {
 	 * whose wording depended on which call came first would change under a reader
 	 * who had not changed anything.
 	 */
-	const order = ["files", "searches", "web", "commands", "edits", "delegated"];
+	const order: SentenceClass[] = [
+		"files",
+		"searches",
+		"web",
+		"commands",
+		"edits",
+		"delegated",
+	];
 	const parts: string[] = [];
 	for (const cls of order) {
 		const count = counts.get(cls) ?? 0;
 		if (count === 0) continue;
-		if (cls === "files")
-			parts.push(`Explored ${count} file${count === 1 ? "" : "s"}`);
-		if (cls === "searches")
-			parts.push(`${count} search${count === 1 ? "" : "es"}`);
-		if (cls === "web")
-			parts.push(`Searched the web ${count} time${count === 1 ? "" : "s"}`);
-		if (cls === "commands")
-			parts.push(`Ran ${count} command${count === 1 ? "" : "s"}`);
-		if (cls === "edits")
-			parts.push(`Edited ${count} file${count === 1 ? "" : "s"}`);
-		if (cls === "delegated")
-			parts.push(`Delegated ${count} task${count === 1 ? "" : "s"}`);
+		parts.push(sentencePart(cls, count, parts.length > 0));
 	}
 	if (parts.length === 0)
-		return { units: [`${actions.length} actions`], prose: true };
+		return {
+			units: [
+				t("ui.chat.canonical.fold.count.actions", { count: actions.length }),
+			],
+			prose: true,
+			countUnits: segments,
+		};
 	// A two-class sentence reads as "Explored 4 files, 1 search"; the second part
-	// keeps the join's own lowercase, which is why the first part is the only one
-	// that capitalises.
+	// is the catalogue's own `_follow` spelling (lowercase where English needs
+	// it), chosen by `sentencePart(…, follows)` rather than by lowercasing the
+	// first letter of a translated string, which is wrong for any language whose
+	// sentence-initial letter is not simply the capital of the word.
 	return {
 		units: [
 			parts.length === 1
 				? parts[0]
-				: `${parts[0]}, ${parts[1].charAt(0).toLowerCase()}${parts[1].slice(1)}`,
+				: t("ui.chat.canonical.fold.sentence.join", {
+						first: parts[0],
+						second: parts[1],
+					}),
 		],
 		prose: true,
+		countUnits: segments,
 	};
 };
 
@@ -316,7 +519,7 @@ export const foldSummaryUnits = (actions: FoldableAction[]): string[] =>
 
 /** The units joined with the ` · ` the renderer draws between them. */
 export function foldSummary(actions: FoldableAction[]): string {
-	return foldSummaryUnits(actions).join(" · ");
+	return foldSummaryUnits(actions).join(foldUnitSeparator());
 }
 
 /**
@@ -360,28 +563,107 @@ export function foldSummary(actions: FoldableAction[]): string {
  *
  * Keys are the lowercase wire names, the same vocabulary `actionClass` reads.
  */
-const KIND_NOUNS: Record<string, { noun: string; plural: string }> = {
-	agent: { noun: "agent", plural: "agents" },
-	team: { noun: "team", plural: "teams" },
-	team_delete: { noun: "team deletion", plural: "team deletions" },
-	hub: { noun: "subagent", plural: "subagents" },
-	secret: { noun: "secret", plural: "secrets" },
-	project: { noun: "project", plural: "projects" },
-	project_delete: { noun: "project deletion", plural: "project deletions" },
-	wake: { noun: "wake", plural: "wakes" },
-	jobs: { noun: "job", plural: "jobs" },
-	console: { noun: "console", plural: "consoles" },
-	network: { noun: "network call", plural: "network calls" },
-	browser: { noun: "browser action", plural: "browser actions" },
-	todo: { noun: "todo update", plural: "todo updates" },
-	send: { noun: "message", plural: "messages" },
-	ask: { noun: "question", plural: "questions" },
-	wait: { noun: "wait", plural: "waits" },
-	lsp: { noun: "code lookup", plural: "code lookups" },
-	web_read: { noun: "page", plural: "pages" },
-	list_variables: { noun: "variable lookup", plural: "variable lookups" },
-	read_variable: { noun: "variable read", plural: "variable reads" },
-	sessions: { noun: "session", plural: "sessions" },
+/**
+ * A count-line noun: how to say \`n\` of it, and the English-only key the rest
+ * of the line is ordered by.
+ *
+ * \`label\` is a keyed ICU plural phrase with the number INSIDE it
+ * (\`ui.chat.canonical.fold.count.*\`), because \`\${count} \${noun}\` assembly fixed
+ * English word order and English plural rules for every language. \`sort\` is the
+ * tie-break the tail ordering has always used (the English noun) and is NEVER
+ * painted: ordering by a translated word would reorder the same run when only
+ * the language changes.
+ */
+type Kind = { sort: string; label: (count: number) => string };
+
+const KIND_NOUNS: Record<string, Kind> = {
+	agent: {
+		sort: "agent",
+		label: (count) => t("ui.chat.canonical.fold.count.agent", { count }),
+	},
+	team: {
+		sort: "team",
+		label: (count) => t("ui.chat.canonical.fold.count.team", { count }),
+	},
+	team_delete: {
+		sort: "team deletion",
+		label: (count) => t("ui.chat.canonical.fold.count.team_delete", { count }),
+	},
+	hub: {
+		sort: "subagent",
+		label: (count) => t("ui.chat.canonical.fold.count.hub", { count }),
+	},
+	secret: {
+		sort: "secret",
+		label: (count) => t("ui.chat.canonical.fold.count.secret", { count }),
+	},
+	project: {
+		sort: "project",
+		label: (count) => t("ui.chat.canonical.fold.count.project", { count }),
+	},
+	project_delete: {
+		sort: "project deletion",
+		label: (count) =>
+			t("ui.chat.canonical.fold.count.project_delete", { count }),
+	},
+	wake: {
+		sort: "wake",
+		label: (count) => t("ui.chat.canonical.fold.count.wake", { count }),
+	},
+	jobs: {
+		sort: "job check",
+		label: (count) => t("ui.chat.canonical.fold.count.jobs", { count }),
+	},
+	console: {
+		sort: "console",
+		label: (count) => t("ui.chat.canonical.fold.count.console", { count }),
+	},
+	network: {
+		sort: "network call",
+		label: (count) => t("ui.chat.canonical.fold.count.network", { count }),
+	},
+	browser: {
+		sort: "browser action",
+		label: (count) => t("ui.chat.canonical.fold.count.browser", { count }),
+	},
+	todo: {
+		sort: "todo update",
+		label: (count) => t("ui.chat.canonical.fold.count.todo", { count }),
+	},
+	send: {
+		sort: "message",
+		label: (count) => t("ui.chat.canonical.fold.count.send", { count }),
+	},
+	ask: {
+		sort: "question",
+		label: (count) => t("ui.chat.canonical.fold.count.ask", { count }),
+	},
+	wait: {
+		sort: "wait",
+		label: (count) => t("ui.chat.canonical.fold.count.wait", { count }),
+	},
+	lsp: {
+		sort: "code lookup",
+		label: (count) => t("ui.chat.canonical.fold.count.lsp", { count }),
+	},
+	web_read: {
+		sort: "page",
+		label: (count) => t("ui.chat.canonical.fold.count.web_read", { count }),
+	},
+	list_variables: {
+		sort: "variable lookup",
+		label: (count) =>
+			t("ui.chat.canonical.fold.count.list_variables", { count }),
+	},
+	read_variable: {
+		sort: "variable read",
+		label: (count) =>
+			t("ui.chat.canonical.fold.count.read_variable", { count }),
+	},
+	sessions: {
+		sort: "session",
+		label: (count) => t("ui.chat.canonical.fold.count.sessions", { count }),
+	},
 };
 
 /**
@@ -449,18 +731,33 @@ export const foldCountUnits = (
 		 * work the cap hid, so it is never broken between `and 4` and `other
 		 * actions` - that break is the reader-visible defect D1 measured.
 		 */
-		`and ${other} other action${other === 1 ? "" : "s"}`,
+		t("ui.chat.canonical.fold.count.other_actions", { count: other }),
 	];
+};
+
+/**
+ * ONE COUNT-LINE SEGMENT: the shared decision, plus this surface's word for it.
+ *
+ * `key` and `count` are the cross-client facts (`kind:shell`, `class:files`,
+ * `name:<display name>`); `label` is this app's own phrasing of them. A surface
+ * with a different vocabulary renders `key` through its own catalogue and
+ * compares only `{key, count}` against a parity fixture - see `FoldSummarySpec`.
+ */
+export type FoldCountSegment = {
+	/** The stable identifier: `class:<class>`, `kind:<tool>`, or `name:<label>`. */
+	key: string;
+	/** This app's words for the key and count (`3 shell`, `2 files`). */
+	label: string;
+	count: number;
 };
 
 /**
  * The per-kind segments of a run's count line, in the line's own order and NOT
  * yet capped - `foldCountUnits` applies the cap.
  */
-const foldCountSegments = (
+export const foldCountSegments = (
 	actions: FoldableAction[],
-): { label: string; count: number }[] => {
-	type Kind = { noun: string; plural: string | null };
+): FoldCountSegment[] => {
 	const counts = new Map<string, { kind: Kind; count: number }>();
 	const bump = (key: string, kind: Kind) => {
 		const seen = counts.get(key);
@@ -470,23 +767,45 @@ const foldCountSegments = (
 	for (const action of actions) {
 		const n = action.name.toLowerCase();
 		if (n === "bash" || n === "exec" || n === "shell" || n === "run") {
-			bump("kind:shell", { noun: "shell", plural: null });
+			bump("kind:shell", {
+				sort: "shell",
+				label: (count) => t("ui.chat.canonical.fold.count.shell", { count }),
+			});
 			continue;
 		}
 		if (n === "eval") {
-			bump("kind:python", { noun: "python", plural: null });
+			bump("kind:python", {
+				sort: "python",
+				label: (count) => t("ui.chat.canonical.fold.count.python", { count }),
+			});
 			continue;
 		}
 		const cls = actionClass(action.name);
-		if (cls === "files") bump("class:files", { noun: "file", plural: "files" });
+		if (cls === "files")
+			bump("class:files", {
+				sort: "file",
+				label: (count) => t("ui.chat.canonical.fold.count.file", { count }),
+			});
 		else if (cls === "searches")
-			bump("class:searches", { noun: "search", plural: "searches" });
+			bump("class:searches", {
+				sort: "search",
+				label: (count) => t("ui.chat.canonical.fold.count.search", { count }),
+			});
 		else if (cls === "web")
-			bump("class:web", { noun: "web search", plural: "web searches" });
+			bump("class:web", {
+				sort: "web search",
+				label: (count) => t("ui.chat.canonical.fold.count.web", { count }),
+			});
 		else if (cls === "edits")
-			bump("class:edits", { noun: "edit", plural: "edits" });
+			bump("class:edits", {
+				sort: "edit",
+				label: (count) => t("ui.chat.canonical.fold.count.edit", { count }),
+			});
 		else if (cls === "delegated")
-			bump("class:delegated", { noun: "task", plural: "tasks" });
+			bump("class:delegated", {
+				sort: "task",
+				label: (count) => t("ui.chat.canonical.fold.count.task", { count }),
+			});
 		else if (n === "todo") {
 			/*
 			 * `todo view` is a READ and the five write ops are not; one noun for
@@ -497,14 +816,71 @@ const foldCountSegments = (
 			 * op-less call is the write noun the family already had.
 			 */
 			if ((action.op ?? "").toLowerCase() === "view")
-				bump("kind:todo:view", { noun: "todo read", plural: "todo reads" });
+				bump("kind:todo:view", {
+					sort: "todo read",
+					label: (count) =>
+						t("ui.chat.canonical.fold.count.todo_read", { count }),
+				});
 			else bump("kind:todo", KIND_NOUNS.todo);
+		} else if (n === "jobs") {
+			/*
+			 * A `jobs cancel` is a CANCELLATION, not a check (review round 1,
+			 * R1-1): the receipt family prints `N job results`, and `1 job check`
+			 * for a call that stopped a job claims the run looked at one. `list`,
+			 * `peek` and an op-less call keep the check noun.
+			 */
+			if ((action.op ?? "").toLowerCase() === "cancel")
+				bump("kind:jobs:cancel", {
+					sort: "job cancellation",
+					label: (count) =>
+						t("ui.chat.canonical.fold.count.jobs_cancel", { count }),
+				});
+			else bump("kind:jobs", KIND_NOUNS.jobs);
+		} else if (n === "bridge") {
+			/*
+			 * Team Bridge splits like `jobs cancel`: a call that WROTE something a
+			 * person reads (a post, a DM, a pair-lane send or reply) is a `team
+			 * message`, and every other op (reads, lists, reactions, claims) is a
+			 * `team action`. One noun for both would count `3 team messages` over
+			 * a run that only read history - the false-claim species this split
+			 * exists to stop. The KEYS are the cross-surface contract the parity
+			 * fixture pins; the words are this app's own, through `t()`.
+			 */
+			if (BRIDGE_POST_OPS.has((action.op ?? "").toLowerCase()))
+				bump("kind:bridge:post", {
+					sort: "team message",
+					// The pre-existing one/other noun keys (already translated): kept as
+					// they are rather than re-keyed as ICU plurals in this change.
+					label: (count) =>
+						`${count} ${
+							count === 1
+								? t("ui.chat.canonical.fold.bridge_post.one")
+								: t("ui.chat.canonical.fold.bridge_post.other")
+						}`,
+				});
+			else
+				bump("kind:bridge", {
+					sort: "team action",
+					label: (count) =>
+						`${count} ${
+							count === 1
+								? t("ui.chat.canonical.fold.bridge.one")
+								: t("ui.chat.canonical.fold.bridge.other")
+						}`,
+				});
 		} else {
 			const noun = KIND_NOUNS[n];
 			if (noun) bump(`kind:${n}`, noun);
 			else {
 				const name = displayName(action.name);
-				bump(`name:${name}`, { noun: name, plural: null });
+				// An unclassed tool counts under its own identifier (an MCP tool, a
+				// tool newer than the table): the name is data, not copy, so only the
+				// order of count and name is the catalogue's.
+				bump(`name:${name}`, {
+					sort: name,
+					label: (count) =>
+						t("ui.chat.canonical.fold.count.named", { count, name }),
+				});
 			}
 		}
 	}
@@ -527,22 +903,28 @@ const foldCountSegments = (
 		"kind:team",
 		"kind:hub",
 	];
-	const segments: { label: string; count: number }[] = [];
-	const fact = (count: number, kind: Kind) =>
-		`${count} ${count === 1 || kind.plural === null ? kind.noun : kind.plural}`;
+	const segments: FoldCountSegment[] = [];
 	for (const key of order) {
 		const seen = counts.get(key);
 		if (seen)
-			segments.push({ label: fact(seen.count, seen.kind), count: seen.count });
+			segments.push({
+				key,
+				label: seen.kind.label(seen.count),
+				count: seen.count,
+			});
 	}
 	const rest = [...counts.entries()]
 		.filter(([key]) => !order.includes(key))
 		.sort(
 			([, a], [, b]) =>
-				b.count - a.count || a.kind.noun.localeCompare(b.kind.noun),
+				b.count - a.count || a.kind.sort.localeCompare(b.kind.sort),
 		);
-	for (const [, seen] of rest)
-		segments.push({ label: fact(seen.count, seen.kind), count: seen.count });
+	for (const [key, seen] of rest)
+		segments.push({
+			key,
+			label: seen.kind.label(seen.count),
+			count: seen.count,
+		});
 	return segments;
 };
 
@@ -555,8 +937,11 @@ const foldCountSegments = (
 export function foldCounts(actions: FoldableAction[]): string {
 	const segments = foldCountSegments(actions);
 	// Only reachable for an empty run, which `foldRuns` never emits a summary for.
-	if (segments.length === 0) return `${actions.length} actions`;
-	return foldCountUnits(segments).join(" · ");
+	if (segments.length === 0)
+		return t("ui.chat.canonical.fold.count.actions", {
+			count: actions.length,
+		});
+	return foldCountUnits(segments).join(foldUnitSeparator());
 }
 
 /**
@@ -678,15 +1063,39 @@ export function foldLive(actions: FoldableAction[]): FoldLive | null {
 }
 
 /**
+ * How many receipts the run ENDS with, counting back from the last row.
+ *
+ * This is the licensing stretch for `FOLD_MIN_RECEIPTS`, and it is deliberately
+ * TRAILING-only: the constant's comment records the 129-owner failure a
+ * whole-run adjacency count caused. Any non-receipt row stops the count, so a
+ * receipt at the HEAD of a run licenses nothing by itself.
+ */
+export function trailingReceiptStretch(
+	rows: readonly Row[],
+	isReceipt: (row: Row) => boolean,
+): number {
+	let stretch = 0;
+	for (let index = rows.length - 1; index >= 0; index -= 1) {
+		if (!isReceipt(rows[index])) break;
+		stretch += 1;
+	}
+	return stretch;
+}
+
+/**
  * The rows, split into single rows and folds.
  *
  * A run is consecutive SAME-TURN actions: a row whose `gap` is `"turn"` opens a
  * new turn and therefore a new run, which is how the boundary between two turns
  * is respected without this model knowing anything about turns. Rows the
  * transcript does not treat as trace-like (prose and notices) break a run.
- * Positively classified incoming receipts may bridge calls, but are excluded
+ * Positively classified internal receipts may bridge calls, but are excluded
  * from the action threshold, work duration, failures and live execution. This
  * preserves chronology without claiming that a received message was an action.
+ * A run that ENDS with two or more adjacent receipts folds on its own (see
+ * `FOLD_MIN_RECEIPTS` and `trailingReceiptStretch`), which is what stops a wall
+ * of job results from painting one row per receipt without folding the call a
+ * reader's opened turn bar is pinned to mount.
  */
 export function foldRuns(
 	rows: Row[],
@@ -719,6 +1128,39 @@ export function foldRuns(
 		/** Receipts may bridge calls but never contribute action arithmetic. */
 		isReceipt?: (row: Row) => boolean;
 		receiptSummaryOf?: (rows: Row[]) => string[];
+		/**
+		 * Whether the turn this list belongs to is STILL BEING WRITTEN.
+		 *
+		 * It exists for one rule, `latchedFoldIds`: a live run's fold must not be
+		 * dissolved by the next call. See that option's note. Absent (the settled
+		 * default, and every pure test) keeps the threshold-only behaviour exactly.
+		 *
+		 * Named `liveTurn`, not `live`: `FoldGroup.live` is the condensed header's
+		 * live clause, and one word for two different facts is how a later reader
+		 * wires the wrong one in (agent review round 1, F5).
+		 */
+		liveTurn?: boolean;
+		/**
+		 * Ids of rows this pane has ALREADY PAINTED folded, while the turn is live.
+		 *
+		 * WHY A LATCH AND NOT ANOTHER THRESHOLD (operator report, 2026-10-21: job
+		 * messages and responses "alternate between forcing the tool group open and
+		 * then closing it back again"). `FOLD_MIN_RECEIPTS` licenses a fold on the
+		 * run's TRAILING receipt stretch, which is positional by design (the head-pair
+		 * negatives below must stay ordinary rows). A positional rule is not
+		 * monotonic under append: `[t1, j1, j2]` folds, `[t1, j1, j2, t2]` does not
+		 * (the new call ends the stretch), `[t1, j1, j2, t2, j3, j4]` folds again - so
+		 * every job response close to a call made the group open and close in turn,
+		 * with no reader action.
+		 *
+		 * The latch is the one fact the pure threshold cannot carry: this run was
+		 * already shown to the reader as a fold. While the turn is live it keeps
+		 * folding, so the group can only ever GROW; at settle the latch is no longer
+		 * consulted and the final shape comes from the final rows alone, which is why
+		 * every settled negative in `trace-fold-model.test.mjs` still holds (the
+		 * head-pair shapes are judged on the completed list, where no latch applies).
+		 */
+		latchedFoldIds?: ReadonlySet<string>;
 	},
 ): FoldGroup[] {
 	const groups: FoldGroup[] = [];
@@ -742,7 +1184,73 @@ export function foldRuns(
 				if (options.executingOf) action.executing = options.executingOf(row);
 				return action;
 			});
-		if (actions.length >= FOLD_MIN_ACTIONS) {
+		/*
+		 * THE HEADER'S RECEIPT UNITS. The option owns the family grammar
+		 * (`receiptFoldUnits` at the call site); the fallback keeps a caller that
+		 * classifies receipts but supplies no summary from painting an EMPTY header,
+		 * which would be a fold with nothing to say.
+		 */
+		const suppliedReceiptUnits = receiptRows.length
+			? (options.receiptSummaryOf?.(receiptRows) ?? [])
+			: [];
+		const receiptUnits =
+			suppliedReceiptUnits.length > 0
+				? suppliedReceiptUnits
+				: receiptRows.length > 0
+					? [
+							`${receiptRows.length} receipt${receiptRows.length === 1 ? "" : "s"}`,
+						]
+					: [];
+		/*
+		 * A run folds on EITHER threshold: §E2's three actions, or a TRAILING
+		 * stretch of two adjacent receipts (see `FOLD_MIN_RECEIPTS` and
+		 * `trailingReceiptStretch`). Receipts still contribute nothing to
+		 * `actions`, `failedCount`, `span` or `live` - they only license the fold
+		 * and add their own units to the header. A receipt at the run's HEAD rides
+		 * along only when the action threshold already folded the run.
+		 */
+		const trailingReceipts = options.isReceipt
+			? trailingReceiptStretch(run, options.isReceipt)
+			: 0;
+		/*
+		 * THE LIVE LATCH (see `latchedFoldIds`). A run this pane has already painted
+		 * folded keeps folding while the turn is being written, so a call arriving
+		 * after a receipt wall cannot dissolve the group it belongs to. Settled
+		 * passes never consult it.
+		 */
+		const latchedHere =
+			options.liveTurn === true &&
+			options.latchedFoldIds !== undefined &&
+			run.some((row) => options.latchedFoldIds?.has(row.record.id) === true);
+		if (
+			actions.length >= FOLD_MIN_ACTIONS ||
+			trailingReceipts >= FOLD_MIN_RECEIPTS ||
+			latchedHere
+		) {
+			/*
+			 * THE ACTION SIDE OF A MIXED LINE IS A COUNT, NOT A SENTENCE.
+			 * `foldSummarySpec`'s sentence form ("Ran 3 commands") is right when it
+			 * is the whole line, but ``Ran 3 commands · 3 job results`` glues prose
+			 * to a noun inventory with the ledger's own separator. Once receipts
+			 * join the line, the action side takes the count vocabulary the same
+			 * module already uses for multi-class runs (`3 shell`), so every unit
+			 * is the same shape and the ` · ` boundaries are the only grammar.
+			 * A receipt-only run has no action units at all - never `0 actions`.
+			 */
+			const actionSpec: FoldSummarySpec = (() => {
+				if (actions.length === 0)
+					return { units: [], prose: false, countUnits: [] };
+				/* ONE derivation of the count segments, whichever shape the words take,
+				 * so `countUnits` is the same list the line is built from. */
+				const countUnits = foldCountSegments(actions);
+				return receiptUnits.length > 0
+					? {
+							units: foldCountUnits(countUnits),
+							prose: false,
+							countUnits,
+						}
+					: foldSummarySpec(actions);
+			})();
 			groups.push({
 				kind: "run",
 				id: run[0].record.id,
@@ -750,11 +1258,9 @@ export function foldRuns(
 				rows: run,
 				actions,
 				summary: {
-					...foldSummarySpec(actions),
-					units: [
-						...foldSummarySpec(actions).units,
-						...(options.receiptSummaryOf?.(receiptRows) ?? []),
-					],
+					units: [...actionSpec.units, ...receiptUnits],
+					prose: actionSpec.prose,
+					countUnits: actionSpec.countUnits,
 				},
 				failedCount: actions.filter((action) => action.failed).length,
 				span: foldSpan(actions),
@@ -793,6 +1299,41 @@ export function foldRuns(
 }
 
 /**
+ * The next live fold latch: what was latched before, pruned to the STORE's live
+ * rows, plus every run this pass painted folded.
+ *
+ * WHY IT IS A UNION AND NOT A REBUILD (agent review round 1, F1). The transcript
+ * window is not the conversation: a snap, a widened page or a filter can paint a
+ * frame whose slice omits a run the pane has already shown folded. Rebuilding
+ * the set from that slice dropped the run's ids, so the rows came back on the
+ * next full pass and re-folded - the same open/close pair through another door.
+ * Retaining across the shrink and pruning against `held` (the STORE's ids) is
+ * what keeps the latch both sticky and bounded.
+ *
+ * `held` is asked per LATCHED id, never materialised as a set of the whole store
+ * (agent review round 2): this runs inside a memo that re-runs on every streamed
+ * token, and building a 20k-entry id set per token measured 0.677 ms against
+ * 0.013 ms at 500 records - work proportional to the conversation for a fact
+ * about a handful of rows. The transcript's own id index is already a `Map`, so
+ * it answers `.has` directly.
+ *
+ * Pure so the trade is arithmetic rather than a mount: the component owns the
+ * ref, this owns the rule.
+ */
+export function latchFoldedRuns(
+	previous: ReadonlySet<string>,
+	held: { has(id: string): boolean },
+	runs: readonly FoldGroup[],
+): Set<string> {
+	const next = new Set<string>();
+	for (const id of previous) if (held.has(id)) next.add(id);
+	for (const group of runs)
+		if (group.kind === "run")
+			for (const row of group.rows) next.add(row.record.id);
+	return next;
+}
+
+/**
  * The images a run produced, in row order.
  *
  * A folded run UNMOUNTS the rows that would show these, so the artifacts a turn
@@ -822,7 +1363,10 @@ export const foldImages = (rows: readonly Row[]): TranscriptImage[] => {
 	for (const row of rows) {
 		if (
 			row.record.kind !== "tool" &&
-			!(row.record.kind === "custom" && row.record.customType === "hub_message")
+			!(
+				row.record.kind === "custom" &&
+				receiptFamilyOf(row.record) === "incoming"
+			)
 		)
 			continue;
 		for (const image of row.record.images ?? []) {

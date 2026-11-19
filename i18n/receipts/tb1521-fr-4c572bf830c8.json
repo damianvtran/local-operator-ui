@@ -1,0 +1,104 @@
+{
+  "schema": 1,
+  "receipt_kind": "locale-audit (key delta, PR #1521)",
+  "date": "2026-10-30",
+  "auditor": "i18n-auditor",
+  "agent": "i18n-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "tb1521-fr-4c572bf830c8",
+  "model_provenance": "This session's harness preamble reads 'Model: anthropic/claude-opus-5-5'; no fallback or model switch was announced during the audit.",
+  "independence": "The audited strings were authored in PR #1521's implementer commit 098b2e36cebc9b7743f5a68c95ed61760f51b7b9 (team lopdev coder); this auditor run (lopdev team task agent, session 4c572bf830c8) authored none of them. Remediations listed below were made by this auditor and are recorded per key with before/after values.",
+  "status": "passed",
+  "namespace": "ui.teamBridge",
+  "locale": "fr",
+  "integration": {
+    "pr": 1521,
+    "branch": "feat/team-bridge-delivery-annotation",
+    "branch_head_at_audit": "098b2e36cebc9b7743f5a68c95ed61760f51b7b9"
+  },
+  "sha256": {
+    "fr": "726f809d140588f3803df15b5e6e9b355dccaece67adcd390d6482c782a67383",
+    "en": "dfc0b67d39a811183322708c61e2a02494c2b9a18b5f79570d94248d9805d3f2"
+  },
+  "context_sha256": "932a56da3821d53573748c3602fb5ef37746f2168ce168ab7375ea74e7565808",
+  "style_guide": "~/local-operator i18n/style-guides/fr.md + i18n/glossary.md (agent term)",
+  "scope": {
+    "keys_audited_linguistically": [
+      "ui.teamBridge.delivery.refused",
+      "ui.teamBridge.delivery.refused_manipulation",
+      "ui.teamBridge.delivery.refused_personal_info",
+      "ui.teamBridge.delivery.refused_abusive",
+      "ui.teamBridge.delivery.refused_unsafe_content",
+      "ui.teamBridge.delivery.refused_out_of_scope",
+      "ui.teamBridge.delivery.held",
+      "ui.teamBridge.delivery.hold_screening_unavailable",
+      "ui.teamBridge.delivery.hold_awaiting_review",
+      "ui.teamBridge.delivery.hold_delivery_pending",
+      "ui.teamBridge.delivery.info",
+      "ui.teamBridge.delivery.info_label"
+    ],
+    "checks": [
+      "meaning vs English and translator context",
+      "placeholders {agent} {owner} preserved exactly (mechanically verified)",
+      "hedge \"looked like\" kept, never a verdict",
+      "muted, non-accusatory register; hold fragments lowercase, no final punctuation",
+      "held line keeps trailing ellipsis per locale convention",
+      "no bidi control characters (mechanically verified)",
+      "glossary: agent term"
+    ],
+    "not_audited": "The other ui.teamBridge keys; unchanged and covered by their own receipts."
+  },
+  "remediated_in_this_audit": [
+    {
+      "key": "ui.teamBridge.delivery.refused",
+      "original_severity": "minor",
+      "reason": "Plain U+0020 before \":\" in all six refusal lines; fr style guide requires U+202F before : ; ! ? and the rest of this catalogue (16 of 22) uses it. Replaced with U+202F in all six.",
+      "before": "Non remis à {agent} ({owner}) : refusé par sa modération",
+      "after": "Non remis à {agent} ({owner}) : refusé par sa modération"
+    },
+    {
+      "key": "ui.teamBridge.delivery.refused_manipulation",
+      "original_severity": "see grouped finding",
+      "reason": "grouped with the finding recorded on a sibling key in this list",
+      "before": "Non remis à {agent} ({owner}) : refusé par sa modération (ressemblait à une tentative de manipuler l’agent)",
+      "after": "Non remis à {agent} ({owner}) : refusé par sa modération (ressemblait à une tentative de manipuler l’agent)"
+    },
+    {
+      "key": "ui.teamBridge.delivery.refused_personal_info",
+      "original_severity": "see grouped finding",
+      "reason": "grouped with the finding recorded on a sibling key in this list",
+      "before": "Non remis à {agent} ({owner}) : refusé par sa modération (ressemblait à une demande d’informations personnelles)",
+      "after": "Non remis à {agent} ({owner}) : refusé par sa modération (ressemblait à une demande d’informations personnelles)"
+    },
+    {
+      "key": "ui.teamBridge.delivery.refused_abusive",
+      "original_severity": "see grouped finding",
+      "reason": "grouped with the finding recorded on a sibling key in this list",
+      "before": "Non remis à {agent} ({owner}) : refusé par sa modération (ressemblait à un contenu abusif)",
+      "after": "Non remis à {agent} ({owner}) : refusé par sa modération (ressemblait à un contenu abusif)"
+    },
+    {
+      "key": "ui.teamBridge.delivery.refused_unsafe_content",
+      "original_severity": "minor",
+      "reason": "\"dangereux\" (dangerous) is stronger than the hedged, muted \"unsafe\"; now \"à risque\".",
+      "before": "Non remis à {agent} ({owner}) : refusé par sa modération (ressemblait à un contenu ou des liens dangereux)",
+      "after": "Non remis à {agent} ({owner}) : refusé par sa modération (ressemblait à un contenu ou des liens à risque)"
+    },
+    {
+      "key": "ui.teamBridge.delivery.refused_out_of_scope",
+      "original_severity": "see grouped finding",
+      "reason": "grouped with the finding recorded on a sibling key in this list",
+      "before": "Non remis à {agent} ({owner}) : refusé par sa modération (ressemblait à une demande hors du champ de cet agent)",
+      "after": "Non remis à {agent} ({owner}) : refusé par sa modération (ressemblait à une demande hors du champ de cet agent)"
+    },
+    {
+      "key": "ui.teamBridge.delivery.hold_delivery_pending",
+      "original_severity": "minor",
+      "reason": "\"vérifié, remise en attente\" reads ambiguously as \"checked, put back on hold\" (remise en attente = re-queued). Now \"vérifié, en attente de remise\".",
+      "before": "vérifié, remise en attente",
+      "after": "vérifié, en attente de remise"
+    }
+  ],
+  "findings": [],
+  "verdict": "Every remaining value on the audited bytes is accurate, hedged and muted; all findings were fixed before these bytes were hashed, so none is open."
+}

@@ -1,0 +1,262 @@
+{
+ "schema": 1,
+ "audit_kind": "independent-translation-audit",
+ "round": 2,
+ "locale": "zh-CN",
+ "auditor": "i18n-auditor",
+ "agent": "i18n-auditor (lopdev team)",
+ "session": "fa696f7f3dff",
+ "instance": "fa696f7f3dff",
+ "model": "radient/auto",
+ "model_fallback": "none observed: this run stayed on the pinned radient/auto route for the whole audit; the harness surfaced no provider error and no mid-run model switch. The resolved upstream provider/model id is not exposed to the agent, so none is claimed.",
+ "actual_model_source": "harness session header (Model: radient/auto); upstream resolution not visible to the agent and not inferred.",
+ "independence": "Independent round-2 auditor: did not translate or remediate these catalogues, read no translator report, used no translation/MT service, and edited no catalogue, ledger or git state. Only this receipt was written in the repo.",
+ "date": "2026-10-26",
+ "scope": {
+  "worktree": "~/local-operator-ui/.worktrees/i18n-agents-pages",
+  "branch": "i18n-agents-pages",
+  "head": "91231e66c9",
+  "note": "Round 2 over the current working-tree bytes of 8 namespaces, bound by sha256 (target files are untracked candidates in this worktree). English source is tracked at HEAD 91231e66c9. Round-1 receipt read only to check resolution: i18n/receipts/zh-cn-agents-surfaces-audit-6b2fb9eecb4c.json."
+ },
+ "references": {
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/zh-CN.md",
+   "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+  }
+ },
+ "namespace_count": 8,
+ "keys_read": 321,
+ "mechanical": "All 8 namespaces have the same key set as en (321 = 219 round-1 + 102 new). Node IntlMessageFormat parsed all 321 zh-CN messages: 0 errors. ICU AST argument names/types identical to en for every key (0 diffs). All 6 plural messages carry `other` only, matching Intl.PluralRules('zh-CN') categories [other]. No markup/Rich tags, backticks, commands or flags in these namespaces; hyphenated English compounds (built-in, sign-in, anti-abuse, machine-specific) are translated, not identifiers. NFC-clean; no bidi control characters; no ASCII punctuation beside CJK; no CJK-Latin spaces; ellipsis double U+2026; only curly quotes “ ”; no straight quotes. No maxCells/maxChars hints in these 8 context sidecars; no overflow risk found (widest strings are dialog bodies). Composition checked in code: publication refusal body/subject pairs (publication-failure.ts), invalid.field sentences stand alone (sidecar sanctions a locale's own sentence), pull_target/brief.trigger_aria label-in-name hold.",
+ "commands": [
+  {
+   "command": "node --test --test-name-pattern='zh-CN' scripts/i18n/locale-parity.test.mjs",
+   "exit": 0,
+   "observed": "6 tests, 6 pass, 0 fail (ships a message; one namespace per key; every en key carried; only en keys named; every ICU placeholder preserved; not an English stub)"
+  },
+  {
+   "command": "node scripts/i18n/context-parity.mjs",
+   "exit": 0,
+   "observed": "context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only)"
+  },
+  {
+   "command": "node scripts/i18n/check-duplicates.mjs",
+   "exit": 0,
+   "observed": "check-duplicates: ok — 835 file(s) scanned, 0 duplicate key(s)"
+  },
+  {
+   "command": "node scripts/i18n/generate.mjs --check",
+   "exit": 0,
+   "observed": "src/i18n/keys.gen.ts is byte-identical to a fresh generation."
+  },
+  {
+   "command": "node scripts/i18n/check-strings.mjs",
+   "exit": 0,
+   "observed": "check-strings.mjs: ok — 1368 file(s) scanned, 191 literal(s) at or below the baseline"
+  }
+ ],
+ "observations": [
+  "Glossary vs shipped term for hub/git pull: the glossary wave-2 kept-English set lists merge/pull/push/commit, but shipped zh-CN on main already translates them (ui.hub.subscriptions.pull “立即拉取”, code_review 合并请求/拉取请求). New hub.pages/hub.teams copy uses 拉取 consistently with that shipped practice. Recorded as an observation: changing only this namespace would fragment the term; a program-level decision is needed if the glossary is to win.",
+  "Caller-injected separators (source-side, not copy): config-composer.tsx joins summary.hidden_changes with an ASCII “: ”, and hub.teams manager_label/member_count carry a full-width colon while the caller adds a space, so the card renders “管理者： Name” and “3个成员： Name” beside the now colon-free “发布者 Name”. Unchanged keys, previously approved; recorded, not gating.",
+  "Round-1 minors left unapplied and not re-raised: detail.alert.unconfirmed_body (请), detail.read.effort_label (档位 vs shipped 能力档位), hub.pages.orgs_below_version (请), publication.category.unclear_dual_use/self_harm/sexual_content_minors (请). Declines are defensible on shipped zh-CN precedent; none gates.",
+  "Round-1 majors both resolved: upload.sign_in.reauthenticate and publication.category.credential_theft now use 凭据, matching all shipped zh-CN credential copy. Round-1 applied minors verified: viewer_unknown, status.scope.public (位于公开中心), public.published_by (colon dropped), sexual_content (露骨的性内容), upload.list.surface (若有), config.summary.no_changes.",
+  "ui.agents.config.about still concatenates the raw English {kind} and {name} with one space (“关于agent 名称”): unchanged round-1 observation; the caller supplies an untranslated kind, so no spacing choice is right for both CJK and Latin names.",
+  "Publication refusal table checked for the copy-paste trap: every *_pull variant says 未拉取/拉取 and every publish variant says 未发布/发布; no cross-contamination across the 7 body pairs or 4 headline_pull keys."
+ ],
+ "status": "passed",
+ "verdict": "passed overall: 0 blocker, 0 major, 2 minor, 4 nit. 4 namespaces clean (ui.agents.pages, ui.agents.detail, ui.hub.pages, ui.agents.teams); 4 clean-with-findings (ui.agents.publication, ui.hub.teams, ui.agents.config, ui.agents.upload carry minors/nits only). Round-1 blockers/majors resolved; all 102 new keys audited against en, its context sidecars and call sites.",
+ "namespaces": {
+  "ui.agents.pages": {
+   "status": "passed",
+   "keys_audited": 22,
+   "verdict": "passed: 0 blocker, 0 major, 0 minor, 0 nit over 22 keys",
+   "findings": [],
+   "en_sha256": "38a713b6cc4a63532543924cfdd2093b11c3618c31fc6266d28e20b84572feb5",
+   "zh-CN_sha256": "8c89cae6d432f7c638d54518206ad525249b825cafd571d617cc283bc0d3b4a7",
+   "context_sha256": "4b761bfa8eeeddf3689a2160e8249b153c095368b6f6fe3df7046052d95d2642",
+   "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   }
+  },
+  "ui.agents.detail": {
+   "status": "passed",
+   "keys_audited": 47,
+   "verdict": "passed: 0 blocker, 0 major, 0 minor, 0 nit over 47 keys (no new findings; 2 round-1 minors in alert.unconfirmed_body and read.effort_label remain unchanged and are not re-raised)",
+   "findings": [],
+   "en_sha256": "9cf3c2f8cbd522ea6e3e2c88b9c65c80bb63d79b7a417992ece92043809ff025",
+   "zh-CN_sha256": "1941c5bd63795c60e34b7a1f987a6acff9d08368cebd128059c972c735db538d",
+   "context_sha256": "f1b0bbf296d01189d64cbdc9bb1bc77d3e7971d8f891c693b94af5741de58cd9",
+   "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   }
+  },
+  "ui.hub.pages": {
+   "status": "passed",
+   "keys_audited": 35,
+   "verdict": "passed: 0 blocker, 0 major, 0 minor, 0 nit over 35 keys (no new findings; round-1 minor orgs_below_version remains unchanged and is not re-raised)",
+   "findings": [],
+   "en_sha256": "ba970e165ed879e7f9968a02302480a86d8002954d514247d633ae54eb7ca139",
+   "zh-CN_sha256": "b82cefb8d92e95496575620c9697687bd1e970f93efac0f7ffc96b36cbd76536",
+   "context_sha256": "baa1605388a3892267e503c2e9a2504a7c6ace8d92bbb380a2c72ccb33be4dcc",
+   "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   }
+  },
+  "ui.hub.teams": {
+   "status": "passed",
+   "keys_audited": 47,
+   "verdict": "passed: 0 blocker, 0 major, 1 minor, 0 nit over 47 keys",
+   "findings": [
+    {
+     "key": "ui.hub.teams.public.pull_no_signin",
+     "severity": "minor",
+     "current": "无法拉取该团队：本机没有用于中心的Radient登录。请在设置页面登录，然后重新拉取。",
+     "problem": "Calque: '用于中心的Radient登录' translates 'a Radient sign-in for the hub' word for word; 用于+noun+的 reads as an instrument, not an account the reader signs into. The sentence is user-facing on a failure path.",
+     "proposed": "无法拉取该团队：本机尚未登录可访问中心的Radient账户。请在设置页面登录，然后重新拉取。"
+    }
+   ],
+   "en_sha256": "32d6df8db5c9226cd9a3e4d57f7bf12a14579ad266feaa3a914c4cfdddad9ad5",
+   "zh-CN_sha256": "3f8d5cbf07c498b9394f9c109431294ce84a929af5b50dd752848f4126f0b268",
+   "context_sha256": "9a6f5f35045687eab48c7491086b759c06d5ad635e93cdfdbcaf2f663acd6651",
+   "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+   }
+  },
+  "ui.agents.config": {
+   "status": "passed",
+   "keys_audited": 28,
+   "verdict": "passed: 0 blocker, 0 major, 0 minor, 1 nit over 28 keys",
+   "findings": [
+    {
+     "key": "ui.agents.config.summary.hidden_changes",
+     "severity": "nit",
+     "current": "其设置已变更。列表不显示指令，请打开查看写入内容。",
+     "problem": "请 again (English has no 'please'), and 打开查看写入内容 compresses 'open it to see what was written' into three verbs in a row; the clause is also joined by an ASCII ': ' supplied by the caller, so the line renders '已更新X: 其设置…'.",
+     "proposed": "其设置已变更。列表不显示指令，打开即可查看具体写入内容。"
+    }
+   ],
+   "en_sha256": "aa4fde04d7db00418387f862d42d547bead44e96c880e8b4e0dc86384eed305b",
+   "zh-CN_sha256": "71209a18fdf664b46b98cd9c10235ad372c93d84b7f43256c1f30b93e85b185f",
+   "context_sha256": "5dd8f962ad021b0dc4004ea2531257b3fd70904e834f77b5f9b7b2d7266a48db",
+   "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 1
+   }
+  },
+  "ui.agents.teams": {
+   "status": "passed",
+   "keys_audited": 23,
+   "verdict": "passed: 0 blocker, 0 major, 0 minor, 0 nit over 23 keys",
+   "findings": [],
+   "en_sha256": "139eca3cd41f62cfea0a97d6a9b40cff8aa446ea761b1f94d42334d1d576fdef",
+   "zh-CN_sha256": "02e8026a1bd1687ffe64ab71b17e31be537cd7840c57fa2700b7ec698dff8903",
+   "context_sha256": "0b3f7f59a37c671813d9a5c9d32b242e04d0fa0b3c5605421c3129cab937bfc1",
+   "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   }
+  },
+  "ui.agents.upload": {
+   "status": "passed",
+   "keys_audited": 23,
+   "verdict": "passed: 0 blocker, 0 major, 0 minor, 1 nit over 23 keys",
+   "findings": [
+    {
+     "key": "ui.agents.upload.sign_in.reauthenticate",
+     "severity": "nit",
+     "current": "请重新登录Radient，以替换中心拒绝的凭据。",
+     "problem": "Round-1 major (凭据) is fixed. The remediation text adds 请 where the English has none and keeps the literary 以替换; terse modern register would drop both.",
+     "proposed": "重新登录Radient，替换中心拒绝的凭据。"
+    }
+   ],
+   "en_sha256": "6f1242bae1dcc952a8f3a659a2850fad2af9a3b0834d6a23ddac28fc8be91c11",
+   "zh-CN_sha256": "395009e70b43410a3871d4e6688b78c1731c7f58f151e13f10972650d9405eee",
+   "context_sha256": "9c8ccc682885383f7aee9f77a1dbbb8c94a5d709e2de4ee9d76b40c7248a277a",
+   "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 1
+   }
+  },
+  "ui.agents.publication": {
+   "status": "passed",
+   "keys_audited": 96,
+   "verdict": "passed: 0 blocker, 0 major, 1 minor, 2 nit over 96 keys",
+   "findings": [
+    {
+     "key": "ui.agents.publication.hub_unauthorized.body",
+     "severity": "minor",
+     "current": "未发布任何内容。请重新登录Radient，以替换中心拒绝的凭据，然后重新发布。",
+     "problem": "Style guide: 请 only where the English says 'please'. The English refusal copy is a bare imperative, and 19 of the new publication strings add 请 (hub_unauthorized.body/body_pull, hub_unavailable.body/body_pull, insufficient_role.*, moderation_unavailable.body, name_claim_in_flight.body, name_taken.owned_body, not_a_member.*, payload_too_large.*, pull.busy, pull.incomplete, team_plan_required.*). Shipped zh-CN does use 请 freely, so this is a register deviation with precedent, not a meaning error.",
+     "proposed": "Drop 请 and keep the verb forward: '未发布任何内容。重新登录Radient，以替换中心拒绝的凭据，然后重新发布。' (same edit across the 19 keys).",
+     "also_affects": [
+      "ui.agents.publication.hub_unauthorized.body_pull",
+      "ui.agents.publication.hub_unavailable.body",
+      "ui.agents.publication.hub_unavailable.body_pull",
+      "ui.agents.publication.insufficient_role.body",
+      "ui.agents.publication.insufficient_role.body_pull",
+      "ui.agents.publication.insufficient_role.body_with_role",
+      "ui.agents.publication.insufficient_role.body_with_role_pull",
+      "ui.agents.publication.moderation_unavailable.body",
+      "ui.agents.publication.name_claim_in_flight.body",
+      "ui.agents.publication.name_taken.owned_body",
+      "ui.agents.publication.not_a_member.body",
+      "ui.agents.publication.not_a_member.body_pull",
+      "ui.agents.publication.payload_too_large.body",
+      "ui.agents.publication.payload_too_large.body_with_limit",
+      "ui.agents.publication.pull.busy",
+      "ui.agents.publication.pull.incomplete",
+      "ui.agents.publication.team_plan_required.body",
+      "ui.agents.publication.team_plan_required.body_pull"
+     ]
+    },
+    {
+     "key": "ui.agents.publication.pull.refused_download",
+     "severity": "nit",
+     "current": "中心拒绝下载，{subject}不在本机。",
+     "problem": "Subject attribution: EN says the hub refused the download REQUEST (4xx), so the document is not here. 拒绝下载 reads as 'the hub declined to download', making the hub the actor of a download it never attempts.",
+     "proposed": "中心拒绝了这次下载请求，{subject}不在本机。"
+    },
+    {
+     "key": "ui.agents.publication.team_not_found.headline",
+     "severity": "nit",
+     "current": "该团队已不再发布",
+     "problem": "The transitive verb 发布 has no object here, so 已不再发布 can be read as 'no longer publishes' (intransitive). The sibling body already uses 下架 for the same fact.",
+     "proposed": "该团队已下架  (or 该团队已不再公开发布)"
+    }
+   ],
+   "en_sha256": "20056e5654c004bef9318bf91531cb0cbc349d6242f6c49ba4801eb5d4605f39",
+   "zh-CN_sha256": "7711569b08d57221ac4d0135b8eb1097739f1079d76a8a0e96086c44c7318b5d",
+   "context_sha256": "69ceeff1e7162764e13c6d5fdee8e7a9f1184f1ab8209839a34e64ce6c486f90",
+   "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 2
+   }
+  }
+ },
+ "audit_date": "2026-10-26",
+ "key_count": 321,
+ "hash_verification": "All 8 zh-CN target hashes recomputed from the working tree match the 'agents-r2-hashes.txt' lines for zh-CN (8/8); all 8 English catalogue hashes recomputed from disk match the source list supplied in the task (8/8). No mismatch, so the audit proceeded."
+}

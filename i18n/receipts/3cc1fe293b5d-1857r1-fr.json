@@ -1,0 +1,74 @@
+{
+ "schema": 1,
+ "auditor": {
+  "agent": "reviewer",
+  "session": "3cc1fe293b5d",
+  "instance": "3cc1fe293b5d-1857r1-fr",
+  "model": "anthropic/claude-opus-5-5",
+  "model_note": "Model is this session's own header line (anthropic/claude-opus-5-5); no fallback reported. The served provider cannot be independently verified from inside the session.",
+  "independence": "lopdev reviewer session 3cc1fe293b5d, separate from the PR #1857 coder that wrote the translations. Verdict rebuilt from the committed en/target bytes, the en context sidecar, the core glossary and locale style guide, and shipped catalogue precedent. Disclosure: the MINOR fixes listed below were applied by this auditor in the audit commit, as the brief allowed; those changed values are auditor-authored and a later independent reader should re-check them."
+ },
+ "agent": "reviewer",
+ "model": "anthropic/claude-opus-5-5",
+ "fallback": "none reported",
+ "instance": "3cc1fe293b5d-1857r1-fr",
+ "session": "3cc1fe293b5d",
+ "locale": "fr",
+ "namespace": "ui.chat.asks",
+ "pr": "damianvtran/local-operator-ui#1857",
+ "branch_base": "21038c9f9ae",
+ "audited_head": "e03462240a7 + this audit commit's catalogue fixes",
+ "date": "2026-11-10",
+ "translator": "PR #1857 coder (relayed by the manager; identity not verified here)",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "scope": "Round-1 independent audit of the 5 keys PR #1857 added to ui.chat.asks (bounds.body_label, proposal.summary, proposal.field_lines, proposal.field_changed, proposal.review), from git diff 21038c9f9ae..e03462240a7 -- src/i18n/catalogues; pre-existing keys read only as precedent. Catalogue audit only: not rendered fit, activation or release.",
+ "keys_audited": [
+  "ui.chat.asks.bounds.body_label",
+  "ui.chat.asks.proposal.summary",
+  "ui.chat.asks.proposal.field_lines",
+  "ui.chat.asks.proposal.field_changed",
+  "ui.chat.asks.proposal.review"
+ ],
+ "sha256": {
+  "fr": "1e3c49748c682952eec327941d4d4e4e0fe142ecc41caa57c5df64ff2b0b0d20",
+  "en": "ef8da717937c4c1fb4973310d178bbb076538fcc0ed24a8be6702c2794112e06",
+  "context": "5f48f36cfdcdd6239953c7f1df913b48cd3dbead2cbb39010a06b958b3b82d3f",
+  "glossary (damianvtran/local-operator origin/main 9cd230511fb1:i18n/glossary.md)": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "style_guide (damianvtran/local-operator origin/main 9cd230511fb1:i18n/style-guides/fr.md)": "5315e1ac10c2ce57aac631ba653d08de680ee70c9a022ed3a8345ce2f9902ee7"
+ },
+ "checks": {
+  "icu_parse_and_argument_parity": "PASS (argument names/types and select arms agent|team|skill|other identical to en)",
+  "bidi_controls": "none (U+061C, U+200E/F, U+202A-E, U+2066-9 scanned)",
+  "render": "IntlMessageFormat per locale with kind in agent/team/skill/other, name=minervadev, added=1234, removed=2: all render",
+  "negative_control": "mutating one vi select arm and one ur argument + U+200F made the same verifier exit 1 with 2 FAILs",
+  "plurals": "no plural messages in this delta"
+ },
+ "findings": [
+  {
+   "id": "R1857-FR-01",
+   "severity": "MINOR",
+   "disposition": "fixed in this audit commit",
+   "keys": [
+    "ui.chat.asks.proposal.field_lines",
+    "ui.chat.asks.proposal.field_changed"
+   ],
+   "key": "ui.chat.asks.proposal.field_lines",
+   "before": "{label} : … (U+0020 before the colon)",
+   "after": "{label} : … (U+202F)",
+   "note": "fr style guide (Punctuation): espace fine insécable U+202F is required before : ; ! ?. A plain space also lets the colon wrap onto its own line in the narrow card. Shipped precedent in this namespace: ui.chat.asks.answer_aria uses U+202F."
+  },
+  {
+   "id": "R1857-INFO-1",
+   "severity": "INFO",
+   "key": "ui.chat.asks.proposal.field_lines",
+   "note": "Out of scope for this catalogue audit: {label} is the field name the core sends (e.g. Instructions); ask-bounds.tsx passes it through unlocalized, so every locale renders the English field name inside localized copy. A code/product follow-up, not a translation defect."
+  },
+  {
+   "id": "R1857-INFO-2",
+   "severity": "INFO",
+   "key": "ui.chat.asks.proposal.field_lines",
+   "note": "English source has no plural arm ('lines' for every count); it is a compact diff stat over two numbers, so each locale's fixed plural/genitive form is accepted as diff-stat register, not grammar agreement."
+  }
+ ]
+}

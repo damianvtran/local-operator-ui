@@ -1,0 +1,46 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "c44e0f808e48",
+  "locale": "fr",
+  "audit_date": "2026-11-03",
+  "commit": "c44e9e8be8eb5a134a97acd87e7015f54b82c13d",
+  "parent": "6dd43fd7494f651fd99b3fe926606fc7ba35fd82",
+  "scope": "Five new French translations only; whole-file hashes bind inputs, not a whole-namespace re-audit.",
+  "actual_model_source": "Host model-switch notice: temporary fallback after provider quota failures; analysis and verdict by openai/gpt-6.1-sol.",
+  "independent_from_translator_session": true,
+  "limitations": [
+    "No native rendered proof, browser, Electron or pixel/geometry validation.",
+    "Static width/pseudo guidance reviewed; no maxCells/maxChars numeric budget exists on these keys.",
+    "No full catalogue/scanner/typecheck/build or ledger write; bounded parser and receipt derivation only."
+  ],
+  "namespaces": {
+    "ui.chat": {
+      "status": "passed",
+      "sha256": {
+        "fr": "bc5efc6ac845d6983391602b567753f0c282b79fcbf0ce64c47950e9c7f106d6",
+        "en": "270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27"
+      },
+      "findings": [],
+      "audited_keys": [
+        "ui.chat.session_status.effort_level.low",
+        "ui.chat.session_status.effort_level.medium",
+        "ui.chat.session_status.effort_level.high"
+      ],
+      "context_sha256": "efcf4d1872974b6fc7456e753a2e10010ab896fffede262ae7c19d96c35ecee1"
+    },
+    "ui.chat.run_details": {
+      "status": "passed",
+      "sha256": {
+        "fr": "3b3e42a575145c97192548b67cc8326e5144e0de12744d5b79dc6855d9d8d2d0",
+        "en": "f8184d5f41b359364e47747871988bbb731d79c12bc3b9ec755f3db73e5db6ab"
+      },
+      "findings": [],
+      "audited_keys": [
+        "ui.chat.run_details.wake.armed_count",
+        "ui.chat.run_details.wake.cadence_once"
+      ],
+      "context_sha256": "da588f521188a2bcba1d0aeb7a265c3474b16673b8f653a021fa7e9e7075e911"
+    }
+  }
+}

@@ -80,6 +80,14 @@ export const RUNTIME_DEPENDENCIES = [
 		name: "node-pty",
 		why: "src/main/console/pty.ts — the pty itself (design 5.3). A native module, so it must NOT be bundled: it is externalised and shipped under app.asar.unpacked, with the prebuilds and the exec bit handled by scripts/console-pack.mjs",
 	},
+	{
+		name: "electron-chrome-extensions",
+		why: "src/main/browser/extensions/adapter.ts:19 — the session-singleton Chrome extension adapter (chrome.* APIs for the browser tab). Externalised by externalizeDepsPlugin, so it must ship as a production dependency; its pinned bytes are patched by patches/electron-chrome-extensions@4.10.0.patch",
+	},
+	{
+		name: "yauzl",
+		why: "src/main/browser/extensions/install.ts:15 — unpacks the verified Chrome Web Store CRX3 payload in main at install time, with validateEntrySizes bounding inflation; externalised, so it ships as a production dependency",
+	},
 ];
 
 /**

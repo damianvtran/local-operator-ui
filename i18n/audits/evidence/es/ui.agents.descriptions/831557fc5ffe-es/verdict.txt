@@ -1,0 +1,2 @@
+PASS
+0 BLOCKER, 0 MAJOR, 3 MINOR, 4 NIT: every value carries its English claim and the es house voice; the minors are phrasing on architect/coder/tui_designer, nothing inaccurate or unsafe, and the repo locale-parity validator is 44/44 with these bytes in catalogues/es.

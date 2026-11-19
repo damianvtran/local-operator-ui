@@ -1,0 +1,89 @@
+{
+  "auditor": "independent-translation-auditor (team task: 1557-i18n-audit)",
+  "model": "anthropic/claude-sonnet-5-5",
+  "instance": "75830dea2957-owner-audit-reply-delta",
+  "session": "75830dea2957",
+  "date": "2026-11-01",
+  "status": "passed",
+  "namespace": "ui.ownerAudit",
+  "sha256": {
+    "en": "1be9b36e0201411304198a33f426ee66b41bdd6e2f96372b1c325fb5a1a848ef",
+    "fr": "c499d49bb20b231d99425555e2b5556fc60cf7ecf0f2cdfee6cb4baf24b84655",
+    "es": "ad384109f9a8881d3db13338d55b39480e714487334a55f3b7dc9285641eb03e",
+    "zh-CN": "240847e1b6fb177418142c05de7d28c2ad3991809d26b97db61591877d23c568",
+    "ru": "ec6a85175a359e1cc6a40ee40c882402028b19cc0b10cdd1d7729cbc6118d6b6",
+    "vi": "b93efa8b94f16ef47bb20039d7ff23100d786a26446db98bc7373c3a6c1370ab",
+    "ur": "eed43be662a13236caeb73787b9f1a583f7134fb53162834c7543dea1286cb39",
+    "hi": "bd8b43142e5e8be93a12ffd30fa07e2353a03171c6ed101a37a04eab5f96590d",
+    "en.context": "03d9e3fda612feaf26c53ccdaaa51fbd5b79b79bc8f0ead00cbf602a2b805e92"
+  },
+  "hashes": {
+    "src/i18n/catalogues/en/ui.ownerAudit.json": "1be9b36e0201411304198a33f426ee66b41bdd6e2f96372b1c325fb5a1a848ef",
+    "src/i18n/catalogues/fr/ui.ownerAudit.json": "c499d49bb20b231d99425555e2b5556fc60cf7ecf0f2cdfee6cb4baf24b84655",
+    "src/i18n/catalogues/es/ui.ownerAudit.json": "ad384109f9a8881d3db13338d55b39480e714487334a55f3b7dc9285641eb03e",
+    "src/i18n/catalogues/zh-CN/ui.ownerAudit.json": "240847e1b6fb177418142c05de7d28c2ad3991809d26b97db61591877d23c568",
+    "src/i18n/catalogues/ru/ui.ownerAudit.json": "ec6a85175a359e1cc6a40ee40c882402028b19cc0b10cdd1d7729cbc6118d6b6",
+    "src/i18n/catalogues/vi/ui.ownerAudit.json": "b93efa8b94f16ef47bb20039d7ff23100d786a26446db98bc7373c3a6c1370ab",
+    "src/i18n/catalogues/ur/ui.ownerAudit.json": "eed43be662a13236caeb73787b9f1a583f7134fb53162834c7543dea1286cb39",
+    "src/i18n/catalogues/hi/ui.ownerAudit.json": "bd8b43142e5e8be93a12ffd30fa07e2353a03171c6ed101a37a04eab5f96590d",
+    "src/i18n/catalogues/en/ui.ownerAudit.context.json": "03d9e3fda612feaf26c53ccdaaa51fbd5b79b79bc8f0ead00cbf602a2b805e92"
+  },
+  "hash_verification": {
+    "matched": 9,
+    "total": 9,
+    "result": "9/9 matched supplied audit-time hashes; rechecked before receipt creation"
+  },
+  "scope": "Textual audit of ui.ownerAudit two-key delta: ui.ownerAudit.older_replies and ui.ownerAudit.empty_replies. Nine working-tree files, hash-verified, NOT staged at audit time. Existing values unchanged against HEAD. Not a whole-namespace retranslation or rendered validation.",
+  "reviewed_keys": [
+    "ui.ownerAudit.older_replies",
+    "ui.ownerAudit.empty_replies"
+  ],
+  "findings": [],
+  "wording_verdicts": {
+    "en": {
+      "verdict": "correct",
+      "note": "Both strings pass: older replies distinct from older messages; factual read-only empty state."
+    },
+    "fr": {
+      "verdict": "correct",
+      "note": "Both strings pass: older replies distinct from older messages; factual read-only empty state."
+    },
+    "es": {
+      "verdict": "correct",
+      "note": "Both strings pass: older replies distinct from older messages; factual read-only empty state."
+    },
+    "zh-CN": {
+      "verdict": "correct",
+      "note": "Both strings pass: older replies distinct from older messages; factual read-only empty state."
+    },
+    "ru": {
+      "verdict": "acceptable",
+      "note": "New «окне аудита» versus neighboring «периоде проверки»: terminology variation, intended meaning understandable."
+    },
+    "vi": {
+      "verdict": "acceptable",
+      "note": "New «phản hồi» versus neighboring «câu trả lời»: both valid for replies, terminology could be more uniform."
+    },
+    "ur": {
+      "verdict": "correct",
+      "note": "Both strings pass: older replies distinct from older messages; factual read-only empty state."
+    },
+    "hi": {
+      "verdict": "acceptable",
+      "note": "New «जवाब» versus neighboring «उत्तर»: both mean replies; जवाब is slightly more conversational."
+    }
+  },
+  "evidence": {
+    "sole_auditor": true,
+    "method": "Parsed JSON presence and unchanged-value comparisons against HEAD; placeholder and Unicode format-control checks; semantic/register comparison with neighboring catalogue values; translator context review.",
+    "placeholders": "No braces or %s in either new translated value; no existing placeholder sequence changed.",
+    "context": "Both new entries accurately describe older-reply paging and a successful empty read-only reply window, with empty placeholder maps.",
+    "provenance": "Sole auditor. Authoritative session model identifies anthropic/claude-sonnet-5-5. Earlier report claimed openai/gpt-6.1-sol/fallback without supporting runtime evidence; that claim is withdrawn, not certified. No independent second auditor or fallback is attested."
+  },
+  "limits": [
+    "Textual audit only; no rendered layout or RTL validation.",
+    "Urdu is the least-certain native register judgment; semantic distinction and script passed.",
+    "Vietnamese terminology/register is next-least certain; phản hồi and câu trả lời are valid alternatives.",
+    "Acceptable terminology notes are nonblocking observations, not wrong strings."
+  ]
+}

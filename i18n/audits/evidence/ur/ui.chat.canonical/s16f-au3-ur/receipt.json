@@ -1,0 +1,106 @@
+{
+ "schema": 1,
+ "locale": "ur",
+ "namespace": "ui.chat.canonical",
+ "audit_id": "s16f-au3-ur",
+ "audit_kind": "delta",
+ "pr": "damianvtran/local-operator-ui#1876",
+ "audited_head": "8180eff1f705eb79d4df5123d6108c539b585b2e",
+ "merged_base": "9ef579fe12abe99409c4ed0b52a3d125afdc1b10",
+ "premerge_pr_head_10_keys": "107ff1dd0bddd0dbefa60e27cb179ee636d923a1",
+ "date": "2026-11-12",
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "a870ddd68b99",
+  "instance": "1d764576d0aa-s16f-au3-ur",
+  "model": "deepseek/deepseek-flash",
+  "actual_model_source": "This session's harness-declared model header (deepseek/deepseek-flash). No model switch, provider fallback or degradation notice appeared in this run; no model name beyond the header is invented.",
+  "independent_from_translator_session": true,
+  "independence": "This session translated nothing, edited no catalogue and committed nothing in the worktree (read-only; `git status --porcelain` empty before and after). No translation API, SDK, MT service or back-translation was used: every judgment is a reading of the English source, its context sidecar, the shipped ur corpus, the ur style guide and the core glossary. The round-2 receipt for these same 10 keys (session 33f0800c30f3) and the earlier ur records were read only after the values were re-derived here; where I agree with them I say so explicitly."
+ },
+ "agent": "i18n-auditor",
+ "model": "deepseek/deepseek-flash",
+ "fallback": "none reported",
+ "instance": "1d764576d0aa-s16f-au3-ur",
+ "session": "a870ddd68b99",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "scope": "S16f on the MERGED bytes: all 15 keys ur/ui.chat.canonical carries at head 8180eff (5 main-added loading.* renames + 10 PR-added generation-card labels), audited in full per locale; plus a mechanical integrity proof over the other 452 keys. Catalogue audit only: not rendered fit, activation, packaging or release.",
+ "keys_audited": [
+  "ui.chat.canonical.loading.cold",
+  "ui.chat.canonical.loading.older",
+  "ui.chat.canonical.loading.region_label",
+  "ui.chat.canonical.loading.remote",
+  "ui.chat.canonical.loading.revalidating",
+  "ui.chat.canonical.media.image_label",
+  "ui.chat.canonical.media.sound_label",
+  "ui.chat.canonical.sound.batch.item_status",
+  "ui.chat.canonical.sound.batch.latest_update",
+  "ui.chat.canonical.sound.batch.summary",
+  "ui.chat.canonical.sound.cost.batch_unknown",
+  "ui.chat.canonical.sound.cost.estimated_zero",
+  "ui.chat.canonical.sound.cost.no_charge",
+  "ui.chat.canonical.sound.cost.unknown",
+  "ui.chat.canonical.supplement.sound_fallback_label"
+ ],
+ "keys_read": 15,
+ "sha256": {
+  "ur": "fd1116ccb5e847eb7f28c4cf5d1084efad95edf52d638d1a6144e065ce7d98a7",
+  "en": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
+  "context": "8f56e0d2b384c6b41add57a64e6c863e565cb61d5a7c0de482d42f380be3acfe",
+  "glossary (~/local-operator i18n/glossary.md, identical on local-operator origin/main)": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "style_guide (read: ~/local-operator i18n/style-guides/ur.md, local HEAD b42471d)": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60",
+  "style_guide (damianvtran/local-operator origin/main: same file, adds one macOS-labels clause, no key in this scope)": "7276e96210fe5f23fd82a39ae4cc0c88b2c1009d3a551d914efc3f61516eddc4"
+ },
+ "mechanical_validation": {
+  "repo_validator": "locale-parity.test.mjs: 44/44 tests pass, including [ur] carries every en key / names only defined keys / preserves every ICU placeholder / is not an English stub",
+  "icu_ast_vs_english": "15/15 keys: argument names+types, plural selectors and plural types, select branches and `other` arms identical to the English source (real @formatjs parser). ur CLDR categories are one,other; no plural message uses a category outside them; every plural and select carries `other`.",
+  "placeholder_policy": "media.image_label and media.sound_label use `=1` + `other` exactly as the source does; `=1` is an exact-value selector matching ur's `one` for count 1, so no count falls through. Recorded as an observation: changing it to `one` would diverge structurally from the source for no behavioural gain.",
+  "markup_and_tokens": "no Rich/markup tags, no backticks, no commands, flags, paths or identifiers in any of the 15 (nothing to protect); no manual bidi controls (U+200E/200F/202A-202E/2066-2069), no Arabic-only signs, no Hindi danda, no ASCII sentence punctuation, NFC.",
+  "negative_control": "7/7 injected mutants flagged (dropped {total}; dropped has_attention `other`; plural arm renamed to a non-ur category; dropped `cancelled` branch; {count}->{n}; injected danda; injected RLM) and 15/15 real values pass the same rules. First mutant run flagged 6/7 because one mutant regex had not changed the text; the mutant was corrected and re-run (see audit.log).",
+  "integrity_script": "467 keys on disk = 457 (origin/main) + 10 (PR). 0 keys differ from origin/main among the 452 neither PR- nor main-added; the 10 PR keys are byte-identical to pre-merge 107ff1dd; the 5 main-added loading.* keys byte-identical to origin/main; main's four deleted keys absent; exactly the 10 PR keys are new relative to main. Nothing else moved."
+ },
+ "findings": [
+  {
+   "id": "NIT-1",
+   "severity": "NIT",
+   "key": "ui.chat.canonical.sound.cost.estimated_zero",
+   "current": "تخمینہ شدہ لاگت $0؛ حتمی چارج کی تصدیق نہیں ہوئی۔",
+   "problem": "src/i18n/bidi.ts isolates a sigil only when it opens a Latin word, so `$` + digit is not isolated. Measured with GNU FriBidi 1.0.16: the `$` resolves to the paragraph (RTL) level 1 while `0` sits at level 2, so the pair is drawn `0$`; reading the RTL line still yields `$0`, which is why the value reads correctly. UAX#9 W5 (ET adjacent to EN joins the number run) says a conformant engine - Chromium/ICU, i.e. the Electron surface - should draw `$0`. The two authorities disagree and the Electron surface was NOT exercised in this pass, so the painted result is unproven.",
+   "suggestion": "No copy change. Do not reorder the value or insert an LRM (the ur style guide forbids manual bidi controls and storage must stay logical). If a rendered capture shows `0$`, the fix belongs in isolateSigils (accept a digit after the sigil) with a regression test, i.e. a renderer ticket.",
+   "disposition": "recorded as information for rendered fit; does not gate this catalogue and does not affect the verdict"
+  }
+ ],
+ "counts": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 0,
+  "nit": 1
+ },
+ "checks": {
+  "generator_freshness": "not run by this auditor (integrator/CI scope; no generated file is in this delta)",
+  "coverage": "not run (gate scope, not a per-locale audit)",
+  "locale_parity": "PASS - node --test scripts/i18n/locale-parity.test.mjs: 44/44",
+  "duplicates": "not run (gate scope)",
+  "context_parity": "not run (gate scope); the 15 keys all carry non-boilerplate context entries, read in full",
+  "icu_parse_and_structure": "PASS - 15/15 AST-identical to source (argument names/types, plural arms, select branches, `other`)",
+  "cldr_categories": "PASS - ur one/other only; =1+other on the media labels; every select carries other",
+  "typography": "PASS - ۔ ، ؛ : ( ) … and mid-dot only; no ASCII sentence punctuation, no danda, no manual bidi controls; NFC",
+  "rtl_bidi": "PASS - 29/29 assertions with GNU FriBidi 1.0.16 over the runtime's own FSI/PDI isolation (names and label lists stay isolated LTR islands; numerals and parens read in the right order; `$0` reported as NIT-1)",
+  "negative_control": "7/7 mutants flagged; 15/15 real values clean",
+  "git_integrity": "PASS - 452/452 unchanged keys byte-identical to origin/main; 10/10 PR keys equal to pre-merge 107ff1dd; 5/5 main keys equal to main; union 457+10=467"
+ },
+ "considered_not_raised": [
+  "loading.remote: 41 cells vs 31 for English, the longest of the four labels, in a truncating pill. No maxCells declared, the pill sits in the wide transcript column, and shortening ہم آہنگی would break the corpus's sync vocabulary.",
+  "loading.older: six words against the sidecar's 'three or four'; word-count hints do not transfer to a postpositional verb phrase. 29 cells in a full-width button.",
+  "sound.cost.no_charge: three words against 'one or two'; کوئی چارج نہیں is the smallest natural statement of a confirmed zero and must not read like the unknown state.",
+  "summary renders 'cancelled/stopped' as the single word منسوخ: English needs two words because English has two UI words for one outcome; Urdu has one, and it is the same word item_status uses.",
+  "latest_update uses از for 'of': five shipped values already use از for the same X-of-Y construction (lightbox, viewer, ownerAudit, projects, hub.teams).",
+  "sound_label آواز vs آڈیو elsewhere: mirrors the English sound/audio split rather than contradicting it.",
+  "estimated_zero تخمینہ شدہ follows the corpus's productive شدہ/کردہ forms (تیار کردہ, منسوخ شدہ), not a calque of 'estimated'.",
+  "The four cost strings are kept as four distinguishable statements (unknown / total unknown / no charge / estimated zero), which is the accuracy risk the sidecar warns about.",
+  "Prior round-2 audit of the same 10 keys (session 33f0800c30f3) reached the same conclusions on منسوخ, مجموعی لاگت, از, کوئی چارج نہیں and آواز/آڈیو; re-derived here before reading it, and agreed."
+ ],
+ "evidence_note": "Report, execution log and the checkers live in this auditor's session scratchpad (report.md, audit.log, integrity.py, check-icu.mjs, check-mutants.mjs, typography.py, bidi-evidence.py); the integrator copies them into i18n/audits/evidence/ur/ui.chat.canonical/s16f-au3-ur/ with record.json. audit.log is an EXECUTION log (real commands, real output). The first bidi block inside it is marked SUPERSEDED (naive direction assumptions) and the corrected run follows.",
+ "limitations": "No rendered frame, no activation or packaging run, no release claim. NIT-1 rests on FriBidi measurement, not on a Chromium capture. Integrity holds against refs/remotes/origin/main = 9ef579fe12a in this worktree as read on 2026-11-12."
+}

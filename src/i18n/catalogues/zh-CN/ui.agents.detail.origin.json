@@ -1,0 +1,5 @@
+{
+	"ui.agents.detail.origin.shipped_with_app": "此智能体随应用提供。",
+	"ui.agents.detail.origin.installed_starter": "此智能体安装自应用内置的智能体。",
+	"ui.agents.detail.origin.compare_packaged": "与内置指令对比"
+}

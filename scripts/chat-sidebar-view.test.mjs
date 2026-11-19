@@ -28,6 +28,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
+import { IntlMessageFormat } from "intl-messageformat";
 
 /*
  * The storage shim the store needs to load in node at all: zustand's `persist`
@@ -122,6 +123,14 @@ const bundle = await build({
 			 */
 			'export * from "./src/renderer/src/features/chat/chat-sidebar-agents";',
 			/*
+			 * Tag mode (issue #1733) is a composition of three shipped modules -
+			 * the pin order, the tag bucketing and the fork auto-tag rule - so its
+			 * cases drive those modules rather than a restatement of them.
+			 */
+			'export { orderPinnedRows } from "./src/renderer/src/features/chat/chat-pin-order";',
+			'export { groupChatsByTag } from "./src/renderer/src/features/chat/chat-tag-groups";',
+			'export { forkAutoTag } from "./src/renderer/src/features/chat/chat-auto-tag";',
+			/*
 			 * The store joins the bundle for the PERSISTENCE case, and for one
 			 * reason: the view the popover writes is a persisted field, so the
 			 * claim "this setting survives a relaunch" is a claim about the
@@ -173,6 +182,10 @@ const {
 	releaseSectionCap,
 	SIDEBAR_SECTION_ROWS,
 	toggleSectionDisclosure,
+	tagDisclosureKey,
+	tagGroupCollapsed,
+	tagGroupBodyRows,
+	toggleTagDisclosure,
 	entityQueryAdmits,
 	entitySectionGap,
 	ENTITY_SECTION_GAP,
@@ -185,6 +198,12 @@ const {
 	CHAT_LIST_SECTIONS,
 	PINNED_AGENTS_MAX,
 	togglePinnedAgent,
+	drawnGroupBy,
+	effectiveLoads,
+	tagSurfaceOn,
+	orderPinnedRows,
+	groupChatsByTag,
+	forkAutoTag,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(
 		bundle.outputFiles[0].text,
@@ -394,8 +413,12 @@ test("the viewed conversation is lifted when the bound withheld it", () => {
 test("the group's foot names the next page AND the position it is drawn from", () => {
 	const foot = entityMore({ add: 15, drawn: 10, total: 41 });
 	assert.equal(foot.label, "Show 15 more chats · 10 of 41");
-	/* The name contains the visible label whole (round 1, U4): same ` · `, not a comma. */
-	assert.equal(foot.aria, "Show 15 more chats · 10 of 41 shown");
+	/*
+	 * The name contains the visible label whole (round 1, U4): same ` · `, not a
+	 * comma. The old trailing " shown" word had no catalogue key, so the name ends
+	 * at the self-describing position rather than inventing untranslated copy.
+	 */
+	assert.equal(foot.aria, "Show 15 more chats · 10 of 41");
 	/* A press that adds one row counts it, for `pageMoreLabel`'s reason. */
 	assert.equal(
 		entityMore({ add: 1, drawn: 40, total: 41 }).label,
@@ -534,6 +557,21 @@ test("closing a section nobody widened returns the same map", () => {
  * longer); this asserts the other half - the persisted view a relaunch reads
  * carries no cap field for it to come back through.
  */
+test("auto-tag default is on, and only a stored boolean can turn it off", () => {
+	/*
+	 * The setting is opt-out (§5.4), so TWO absences read as ON: a view stored
+	 * before the field existed, and a stored non-boolean from tampered storage.
+	 * `false` is only ever the reader's own press - which is what makes turning
+	 * it off survive a relaunch rather than being re-defaulted at launch.
+	 */
+	assert.equal(DEFAULT_SIDEBAR_VIEW.autoTagForks, true);
+	assert.equal(parseSidebarView({}).autoTagForks, true);
+	assert.equal(parseSidebarView({ autoTagForks: "no" }).autoTagForks, true);
+	assert.equal(parseSidebarView({ autoTagForks: 0 }).autoTagForks, true);
+	assert.equal(parseSidebarView({ autoTagForks: true }).autoTagForks, true);
+	assert.equal(parseSidebarView({ autoTagForks: false }).autoTagForks, false);
+});
+
 test("the persisted view carries no section cap", () => {
 	const view = parseSidebarView(
 		persistedUiPreferences(useUiPreferencesStore.getState()).chatSidebarView,
@@ -1530,13 +1568,30 @@ test("the component draws the band's controls and the popover's four groups", ()
 			source.includes('navigate("/agents?create=team")'),
 		"the create menu is not wired to the two existing authoring flows",
 	);
-	assert.ok(
-		source.includes('aria-label="Search chats and agents"'),
-		"the band's search control has no accessible name",
+	/*
+	 * Both names are catalogue messages now: the anchor is the key the control
+	 * renders, and the copy beside it is what a screen reader announces.
+	 */
+	const sidebarCopy = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.chat.sidebar.json", "utf8"),
 	);
 	assert.ok(
-		source.includes('aria-label="Open agent…"'),
+		source.includes('aria-label={t("ui.chat.sidebar.header.search")}'),
+		"the band's search control has no accessible name",
+	);
+	assert.equal(
+		sidebarCopy["ui.chat.sidebar.header.search"],
+		"Search chats and agents",
+		"the band's search control announces a different message",
+	);
+	assert.ok(
+		source.includes('aria-label={t("ui.chat.sidebar.header.open_agent")}'),
 		"the band's agent jump has no accessible name",
+	);
+	assert.equal(
+		sidebarCopy["ui.chat.sidebar.header.open_agent"],
+		"Open agent…",
+		"the band's agent jump announces a different message",
 	);
 });
 
@@ -1645,10 +1700,45 @@ test("the pin's label is the subject and the state is aria-pressed", () => {
 		"the pin is not wrapped in the app's own Tooltip",
 	);
 	const control = source.slice(tooltipAt, at + 900);
-	assert.ok(
-		control.includes("aria-label={`Pin “${name}”`}"),
-		"the pin's label no longer names the agent it pins",
+	/*
+	 * THE LABEL IS THE CATALOGUE'S (i18n wave A), so what the pin pins is the
+	 * key, its ARGUMENT and the composed English - not the sentence a literal
+	 * used to spell. The subject is `{ name }`, and each state asks for its own
+	 * key: `entity.pin` while the row is unpinned, `entity.unpin` while it is
+	 * already pinned (QA round 1, Q2: a control that unpins must not be announced
+	 * as "Pin …" while `aria-pressed` says it is pressed). The composed messages
+	 * are checked below, because either one must still read `Pin "<name>"` /
+	 * `Unpin "<name>"` or the reader loses the object of the action.
+	 *
+	 * The shape is matched loosely across whitespace because the formatter owns
+	 * the line breaks here, the same reason `chat-sidebar-selection` matches its
+	 * keyed anchor by the expression's opening lines.
+	 */
+	assert.match(
+		control,
+		/aria-label=\{\s*t\(\s*pinnedAgent\s*\?\s*"ui\.chat\.sidebar\.entity\.unpin"\s*:\s*"ui\.chat\.sidebar\.entity\.pin",\s*\{\s*name\s*\},?\s*\)/,
+		"the pin's accessible name no longer names the agent AND flips with the state",
 	);
+	assert.match(
+		control,
+		/pinnedAgent\s*\?\s*t\("ui\.chat\.sidebar\.entity\.unpin",\s*\{\s*name\s*\}\)\s*:\s*t\("ui\.chat\.sidebar\.entity\.pin",\s*\{\s*name\s*\}\)/,
+		"the pin's tooltip no longer asks the catalogue for the action and its release, with the agent's name",
+	);
+	const sidebarCopy = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.chat.sidebar.json", "utf8"),
+	);
+	for (const [key, expected] of [
+		["ui.chat.sidebar.entity.pin", "Pin “Writer”"],
+		["ui.chat.sidebar.entity.unpin", "Unpin “Writer”"],
+	]) {
+		assert.equal(
+			new IntlMessageFormat(sidebarCopy[key], "en").format({
+				name: "Writer",
+			}),
+			expected,
+			`${key} no longer composes to a sentence that names its subject`,
+		);
+	}
 	assert.ok(
 		control.includes("aria-pressed={pinnedAgent}"),
 		"the pin's state left aria-pressed",
@@ -1737,7 +1827,8 @@ test("the AGENTS/TEAMS region draws each entity row behind the view's own gate",
 test("a grouped list is the page plus the pinned rows, never the page alone", () => {
 	const source = readFileSync(SIDEBAR, "utf8");
 	assert.ok(
-		source.includes("groupRows([...pinned, ...pagedRows], view.groupBy)"),
+		// `orderedPinned` since issue #1733: the same pinned rows, in manual order.
+		source.includes("groupRows([...orderedPinned, ...pagedRows], groupBy)"),
 		"the grouped arrangement drops the pinned rows, so grouping acts as a filter",
 	);
 });
@@ -1767,12 +1858,16 @@ test("every view setting the popover writes survives a relaunch", () => {
 	// The pin is the roster's own field and rides the same object: one press, in
 	// the module's own spelling, so the relaunch below proves it comes back.
 	const pinned = togglePinnedAgent(ordered, "release-captain");
-	store.getState().setChatSidebarView(pinned);
+	// The fork's auto-tag intent rides the same object and is opted OUT here:
+	// `true` is the default, so only the non-default value proves the write is
+	// the reader's and not the parser's fallback.
+	const optedOut = { ...pinned, autoTagForks: false };
+	store.getState().setChatSidebarView(optedOut);
 	// The store is the writer, and the filter the middleware keeps is the one it
 	// ships: assert the field is IN the persisted blob rather than assuming it.
 	assert.deepEqual(
 		persistedUiPreferences(store.getState()).chatSidebarView,
-		pinned,
+		optedOut,
 	);
 	// The bytes on disk, parsed the way the next launch parses them.
 	const key = [...memory.keys()].find((entry) => {
@@ -1800,6 +1895,11 @@ test("every view setting the popover writes survives a relaunch", () => {
 		["release-captain"],
 		"the pin came back",
 	);
+	assert.equal(
+		relaunched.autoTagForks,
+		false,
+		"the fork's auto-tag intent came back",
+	);
 	// And the one control with a non-default value nothing else writes: the page
 	// ladder, whose counter is the only field that can only ever grow.
 	store.getState().setChatSidebarView({ ...relaunched, loads: 2 });
@@ -1808,4 +1908,274 @@ test("every view setting the popover writes survives a relaunch", () => {
 	);
 	assert.equal(again.loads, 2, "the page rung came back");
 	assert.equal(pageLimit(again.loads), CHAT_PAGE_STEPS[1]);
+});
+
+/*
+ * A TAG GROUP'S FOLD (issue #1639). Both edges of the chevron press, the key it is
+ * recorded under, and the persistence round trip through the SAME blob the section
+ * headings write - `localStorage['chat-sidebar-disclosures']`, serialized with
+ * `JSON.stringify` and read back with `JSON.parse` by the sidebar.
+ */
+test("a tag group's chevron folds and unfolds it, keyed by tag id", () => {
+	assert.equal(tagDisclosureKey("review"), "tag:review");
+	assert.equal(
+		tagGroupCollapsed({}, "review"),
+		false,
+		"an untouched tag must draw open, as every group did before the control",
+	);
+	const sections = { pinned: true, today: false };
+	const folded = toggleTagDisclosure(sections, "review");
+	assert.equal(tagGroupCollapsed(folded, "review"), true, "close edge");
+	assert.equal(folded.pinned, true, "a fold rewrote a section's disclosure");
+	assert.equal(folded.today, false, "a fold rewrote a section's disclosure");
+	assert.equal(
+		tagGroupCollapsed(folded, "project"),
+		false,
+		"a fold leaked onto another tag",
+	);
+	assert.notEqual(folded, sections, "the transition mutated its input");
+	assert.equal(sections["tag:review"], undefined);
+	const unfolded = toggleTagDisclosure(folded, "review");
+	assert.equal(tagGroupCollapsed(unfolded, "review"), false, "open edge");
+	assert.equal(
+		"tag:review" in unfolded,
+		false,
+		"an unfold must drop the key, not store an open entry (U6)",
+	);
+	assert.equal(unfolded.pinned, true, "an unfold dropped a section key");
+	/* A tag id that spells a section key cannot fold that section. */
+	assert.equal(toggleTagDisclosure({}, "today").today, undefined);
+});
+
+test("a folded group draws no body rows, and its count is still the group", () => {
+	const rows = ["a", "b", "c"];
+	const folded = toggleTagDisclosure({}, "review");
+	assert.deepEqual(tagGroupBodyRows(rows, folded, "review"), []);
+	assert.equal(tagGroupBodyRows(rows, {}, "review"), rows);
+	/*
+	 * A DROP onto the folded header changes the group's rows, never the map: the
+	 * fold holds and the header's count (the bucket's length) is what moves.
+	 */
+	const dropped = [...rows, "d"];
+	assert.equal(tagGroupCollapsed(folded, "review"), true);
+	assert.deepEqual(tagGroupBodyRows(dropped, folded, "review"), []);
+	assert.equal(dropped.length, 4);
+});
+
+test("a tag fold survives the disclosures blob's relaunch round trip", () => {
+	const written = JSON.stringify(
+		toggleTagDisclosure({ previous: true }, "review"),
+	);
+	const relaunched = JSON.parse(written);
+	assert.equal(tagGroupCollapsed(relaunched, "review"), true);
+	assert.equal(relaunched.previous, true);
+	const source = readFileSync(
+		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		"utf8",
+	);
+	// The fold rides the existing blob: read once at mount, written by the
+	// `expanded` effect - no second storage key for the same kind of fact.
+	assert.match(
+		source,
+		/localStorage\.setItem\("chat-sidebar-disclosures", JSON\.stringify\(expanded\)\)/,
+	);
+	assert.match(source, /tagGroupCollapsed\(expanded, bucket\.id\)/);
+	assert.match(source, /toggleTagDisclosure\(current, bucket\.id\)/);
+});
+
+/*
+ * `Group by › Tag` (issue #1733, docs/design/sidebar-tag-first-grouping.md).
+ * Each test below is one acceptance criterion of the brief's §6, driven through
+ * the shipped modules; the sidebar's own wiring is pinned by source where the
+ * JSX is the only place it can be read (the file header says why).
+ */
+test('tag mode: "tag" round-trips through the parser and the store', () => {
+	assert.equal(parseSidebarView({ groupBy: "tag" }).groupBy, "tag");
+	assert.equal(
+		parseSidebarView(JSON.parse(JSON.stringify({ groupBy: "tag" }))).groupBy,
+		"tag",
+		"the persisted blob is JSON; a relaunch re-parses it",
+	);
+	assert.equal(
+		parseSidebarView({ groupBy: "tags" }).groupBy,
+		DEFAULT_SIDEBAR_VIEW.groupBy,
+		"an unknown value still falls back to the default",
+	);
+	/*
+	 * Choosing Tag never writes the Time-section switch: the stored subheader
+	 * preference waits for Time section untouched (design §2.2).
+	 */
+	const before = parseSidebarView({ tagsEnabled: false });
+	const chosen = parseSidebarView({ ...before, groupBy: "tag" });
+	assert.equal(chosen.tagsEnabled, false);
+	assert.equal(
+		parseSidebarView({ ...chosen, groupBy: "section" }).tagsEnabled,
+		false,
+	);
+});
+
+test("tag mode: a stored tag on a tag-less backend draws Time section and is kept", () => {
+	const stored = parseSidebarView({ groupBy: "tag" });
+	assert.equal(drawnGroupBy(stored, true), "tag");
+	assert.equal(drawnGroupBy(stored, false), "section");
+	assert.equal(
+		stored.groupBy,
+		"tag",
+		"the fallback is a render answer, not a write",
+	);
+	for (const groupBy of ["section", "agent", "flat"])
+		assert.equal(drawnGroupBy({ groupBy }, false), groupBy);
+	/*
+	 * And the sidebar spreads the STORED view on every write - the drawn answer
+	 * lives in its own local, so no `{ ...view }` can carry it back.
+	 */
+	const source = readFileSync(SIDEBAR, "utf8");
+	assert.match(source, /const groupBy = drawnGroupBy\(view, tagsAvailable\);/);
+	assert.doesNotMatch(
+		source,
+		/setChatSidebarView\(\{\s*\.\.\.view,\s*groupBy\s*[,}]/,
+		"the drawn grouping is never written back as the stored one",
+	);
+});
+
+test("tag mode: the page starts on the held 50-row head without rewriting loads", () => {
+	assert.equal(effectiveLoads({ groupBy: "tag", loads: 0 }), 2);
+	assert.equal(pageLimit(effectiveLoads({ groupBy: "tag", loads: 0 })), 50);
+	assert.equal(effectiveLoads({ groupBy: "tag", loads: 1 }), 2);
+	assert.equal(
+		effectiveLoads({ groupBy: "tag", loads: 3 }),
+		3,
+		"a reader already past the head keeps their rung",
+	);
+	for (const groupBy of ["section", "agent", "flat"])
+		assert.equal(effectiveLoads({ groupBy, loads: 0 }), 0);
+	/*
+	 * The cut, the label and the press all read the ONE drawn rung, and the press
+	 * goes 50 -> 100 from it rather than 10 -> 25 (which would add nothing).
+	 */
+	const source = readFileSync(SIDEBAR, "utf8");
+	assert.match(
+		source,
+		/const loads = effectiveLoads\(\{ groupBy, loads: view\.loads \}\);/,
+	);
+	assert.match(source, /limit: pageLimit\(loads\),/);
+	assert.match(source, /const next = loads \+ 1;/);
+	assert.match(source, /pageReveal\(arranged, loads, page\.remaining\)/);
+	assert.equal(
+		pageLimit(effectiveLoads({ groupBy: "tag", loads: 0 }) + 1),
+		100,
+	);
+	/*
+	 * And the press holds the reader's place (design §2.6.3): rows land in groups
+	 * ABOVE the viewport in Tag mode, so the first visible row is recorded and put
+	 * back after the commit (`sidebar-focus-hold.test.mjs` drives the hold itself).
+	 */
+	assert.match(
+		source,
+		/groupBy === "tag" && !keyboard\s*\?\s*firstVisibleRow\(listPanelRef\.current\)/,
+	);
+	assert.match(
+		source,
+		/holdPageAnchor\(listPanelRef\.current, pageAnchorRef\.current\);/,
+	);
+});
+
+test("tag mode: the tag surface is the switch OR the mode", () => {
+	assert.equal(tagSurfaceOn({ groupBy: "section", tagsEnabled: false }), false);
+	assert.equal(tagSurfaceOn({ groupBy: "section", tagsEnabled: true }), true);
+	assert.equal(tagSurfaceOn({ groupBy: "tag", tagsEnabled: false }), true);
+	assert.equal(tagSurfaceOn({ groupBy: "agent", tagsEnabled: false }), false);
+});
+
+test("tag mode: forks auto-tag under Tag even with the Time-section switch off", () => {
+	const view = (extra) => ({ ...DEFAULT_SIDEBAR_VIEW, ...extra });
+	assert.equal(
+		forkAutoTag(view({ groupBy: "tag", tagsEnabled: false }), true),
+		true,
+	);
+	assert.equal(
+		forkAutoTag(view({ groupBy: "tag", autoTagForks: false }), true),
+		false,
+		"the reader's own auto-tag switch still wins",
+	);
+	assert.equal(
+		forkAutoTag(view({ groupBy: "agent", tagsEnabled: false }), true),
+		false,
+	);
+	assert.equal(forkAutoTag(view({ groupBy: "tag" }), false), undefined);
+});
+
+test("tag mode: pins lead their tag in manual order, then the lift, then the clock", () => {
+	const categories = [
+		{ id: "project", name: "Project", order: 1, conversations: 2 },
+		{ id: "review", name: "Review", order: 0, conversations: 3 },
+		{ id: "gone", name: "Unused", order: 2, conversations: 0 },
+	];
+	const tagged = (entry, id) => ({
+		...entry,
+		tags: [{ id, name: id }],
+		primary: id,
+	});
+	const pinned = [
+		tagged(row("pinA", SECONDS(50)), "review"),
+		tagged(row("pinB", SECONDS(2)), "review"),
+		row("pinC", SECONDS(3)),
+	];
+	const rest = [
+		tagged(row("old", SECONDS(100)), "review"),
+		tagged(row("new", SECONDS(1)), "review"),
+		tagged(row("live", SECONDS(300), "busy"), "project"),
+		tagged(row("quiet", SECONDS(5)), "project"),
+		row("loose", SECONDS(4)),
+		// A primary the registry no longer has is Untagged, never a ghost header.
+		{
+			...row("deleted", SECONDS(6)),
+			tags: [{ id: "deleted", name: "x" }],
+			primary: "deleted",
+		},
+	];
+	// The reader moved pinB above pinA: the manual order, not the catalogue's.
+	const orderedPinned = orderPinnedRows(pinned, ["pinB", "pinA", "pinC"]);
+	const paged = pageOrder(rest, "active-first", "active");
+	const groups = groupChatsByTag(
+		[...orderedPinned, ...paged],
+		categories,
+		true,
+	);
+	assert.deepEqual(
+		groups.map((group) => [
+			group.id,
+			group.rows.map((entry) => entry.session_id),
+		]),
+		[
+			["review", ["pinB", "pinA", "new", "old"]],
+			["project", ["live", "quiet"]],
+			["untagged", ["pinC", "loose", "deleted"]],
+		],
+		"registry order, Untagged last, no empty group, one row once",
+	);
+	// Most recent: no lift, the live row sits by its clock inside its group.
+	const recent = groupChatsByTag(
+		[...orderedPinned, ...pageOrder(rest, "recent", "active")],
+		categories,
+		true,
+	);
+	assert.deepEqual(
+		recent
+			.find((group) => group.id === "project")
+			.rows.map((entry) => entry.session_id),
+		["quiet", "live"],
+	);
+	// The sidebar hands the mode exactly that list, and the agent grouping now
+	// reads the same manual order (design §2.4 note).
+	const source = readFileSync(SIDEBAR, "utf8");
+	assert.match(
+		source,
+		/taggedRows\(\[\.\.\.orderedPinned, \.\.\.pagedRows\], "tag", true\)/,
+	);
+	assert.match(
+		source,
+		/groupRows\(\[\.\.\.orderedPinned, \.\.\.pagedRows\], groupBy\)/,
+	);
+	assert.equal(groupRows(rest, "tag"), null, "one bucketing implementation");
 });

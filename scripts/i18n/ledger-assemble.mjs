@@ -62,6 +62,11 @@
  *     --auditor-instance 5091a70eeedc --auditor-model anthropic/claude-sonnet-5-5 \
  *     --result clean-with-findings --receipt ~/path/to/receipt.json \
  *     [--translator-agent i18n-translator --translator-model <m>]  # required for a NEW row
+ *     [--update-translator]  # existing row only; requires BOTH translator fields
+ *
+ * Translator correction changes ONLY translator metadata (including --date and
+ * --note, which names the translation lane). It refuses stale bytes or a changed
+ * independence verdict: correcting provenance must never rewrite audit evidence.
  *     [--scope "<what was audited>"] [--note "<=280 chars"] [--date YYYY-MM-DD] [--repo <root>]
  */
 
@@ -265,10 +270,31 @@ export function assemble(options) {
 	) {
 		refuse("existing row status contradicts its receipt-backed audits");
 	}
+	if (options.updateTranslator) {
+		if (!row)
+			refuse("no row exists: --update-translator requires an existing row");
+		if (!options.translatorAgent?.trim() || !options.translatorModel?.trim()) {
+			refuse(
+				"--update-translator requires --translator-agent and --translator-model",
+			);
+		}
+	} else if (
+		row &&
+		(options.translatorAgent !== undefined ||
+			options.translatorModel !== undefined)
+	) {
+		refuse("existing-row translator fields require --update-translator");
+	}
 	const stale =
 		row &&
 		(row.source_sha256 !== source_sha256 ||
 			row.target_sha256 !== target_sha256);
+
+	if (options.updateTranslator && stale) {
+		refuse(
+			"--update-translator cannot change stale hashes or supersede audits; re-audit the bytes first",
+		);
+	}
 
 	if (!row) {
 		if (!options.translatorAgent?.trim() || !options.translatorModel?.trim()) {
@@ -344,7 +370,36 @@ export function assemble(options) {
 	 * verdict rewritten under an old id - so it is refused, not merged.
 	 */
 	const existing = row.auditors.findIndex((a) => a.instance === audit.instance);
-	if (existing >= 0) {
+	if (options.updateTranslator) {
+		// An existing, receipt-backed audit anchors the correction; date/note belong
+		// to the translator here, never to the auditor whose evidence is immutable.
+		if (
+			existing < 0 ||
+			row.auditors[existing].receipt_sha256 !== audit.receipt_sha256
+		) {
+			refuse(
+				"--update-translator requires an audit already recorded on this row",
+			);
+		}
+		if (
+			row.status !==
+			supportedStatus(
+				row.auditors,
+				options.translatorAgent,
+				`${locale}/${namespace}`,
+			)
+		) {
+			refuse(
+				"--update-translator would change the receipt-backed independence/status",
+			);
+		}
+		row.translator = {
+			agent: options.translatorAgent,
+			model: options.translatorModel,
+			date: options.date,
+			...(options.note ? { note: options.note } : {}),
+		};
+	} else if (existing >= 0) {
 		if (row.auditors[existing].receipt_sha256 !== audit.receipt_sha256) {
 			refuse(
 				`instance ${audit.instance} is already recorded on ${locale}/${namespace} with a different receipt - one run is one audit; a second audit needs its own instance`,
@@ -389,6 +444,10 @@ function parseArgs(argv) {
 		const arg = argv[i];
 		if (!arg.startsWith("--")) refuse(`unexpected argument ${arg}`);
 		const name = arg.slice(2);
+		if (name === "update-translator") {
+			flags[name] = true;
+			continue;
+		}
 		const value = argv[i + 1];
 		if (value === undefined || value.startsWith("--"))
 			refuse(`--${name} needs a value`);
@@ -403,7 +462,7 @@ export function main(argv) {
 		process.stdout.write(
 			"usage: node scripts/i18n/ledger-assemble.mjs --locale <l> --file <catalogue.json> \\\n" +
 				"  --auditor-instance <id> --auditor-model <m> --result <clean|clean-with-findings|changes_requested> \\\n" +
-				"  --receipt <path> [--translator-agent <a> --translator-model <m>] [--scope <s>] [--note <n>] [--date YYYY-MM-DD] [--repo <root>]\n\n" +
+				"  --receipt <path> [--translator-agent <a> --translator-model <m>] [--update-translator] [--scope <s>] [--note <n>] [--date YYYY-MM-DD] [--repo <root>]\n\n" +
 				"Derives the row's hashes and status from disk and the receipt; refuses what the receipt does not support.\n",
 		);
 		return argv.length === 0 ? 2 : 0;
@@ -418,6 +477,7 @@ export function main(argv) {
 			auditorModel: flags["auditor-model"],
 			result: flags.result,
 			receipt: flags.receipt,
+			updateTranslator: flags["update-translator"] === true,
 			translatorAgent: flags["translator-agent"],
 			translatorModel: flags["translator-model"],
 			scope: flags.scope,

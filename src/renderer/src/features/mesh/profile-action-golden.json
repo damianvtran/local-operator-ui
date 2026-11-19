@@ -1,0 +1,494 @@
+{
+	"approval_rows": [
+		{
+			"approval_id": "ap_j3ta3xe6rzh5t",
+			"can_approve_here": false,
+			"expires_at": 1794192443.629282,
+			"machine": {
+				"key_id": "baa2f0d2350ff1a89e17b8f2ccab8725",
+				"spki_fp": "BAA2-F0D2-350F-F1A8"
+			},
+			"requested_by": {
+				"session_id": "session",
+				"surface": "profile-tool",
+				"tool_call_id": "queued-call"
+			},
+			"state": "requested",
+			"typed_approval": {
+				"action": "approve-credential",
+				"assurance": "presence",
+				"disclosure": {
+					"after": {
+						"categories": ["role"],
+						"description": "Reviews code",
+						"id": "e7313c75-2830-4c0e-9ddc-fe8c9c62e590",
+						"instructions": "Public queued fixture guidance.",
+						"label": "Reviewer",
+						"model": "anthropic/claude-opus-5",
+						"name": "reviewer",
+						"tags": ["role", "effort:hi", "tools:read,grep", "class:reactive"]
+					},
+					"after_commitment": "sha256:498fc8b1af465fadb815b4704f11073c5288155bf3f4d9ac1362beddaa63d6c1",
+					"approval_id": "ap_j3ta3xe6rzh5t",
+					"base_commitment": "sha256:130e65da7130c052a65fadc09c350d71f86b95fdeae62ea7d51183a170b6a785",
+					"before": {
+						"categories": ["role"],
+						"description": "Reviews code",
+						"id": "e7313c75-2830-4c0e-9ddc-fe8c9c62e590",
+						"instructions": "Review the diff.\nBe terse.\nCite file:line.\nRank by severity.\nNo nits.\nRule 1.\nRule 2.\nRule 3.\nRule 4.\nRule 5.\nRule 6.\nRule 7.\nRule 8.",
+						"label": "Reviewer",
+						"model": "anthropic/claude-opus-5",
+						"name": "reviewer",
+						"tags": ["role", "effort:hi", "tools:read,grep", "class:reactive"]
+					},
+					"changed_fields": ["instructions"],
+					"expires_at": 1794192443.629282,
+					"operation": "profile_save",
+					"profile_kind": "agent",
+					"profile_name": "reviewer",
+					"profile_operation": "update",
+					"receipt_id": "72f05b9583075520c74aee12b990e69e7ac206c1be32aacc3499ced7f5f8d370",
+					"scope": "global",
+					"session_id": "session",
+					"signing_principal": "baa2f0d2350ff1a89e17b8f2ccab8725",
+					"target_id": "e7313c75-2830-4c0e-9ddc-fe8c9c62e590",
+					"tool_call_id": "queued-call",
+					"version": 1
+				},
+				"disclosure_digest": "sha256:33c49a3e999b1b872ae530a647f104e23f38dba4433ad473a011df1e654a4a4a",
+				"operation": "profile_save",
+				"request_digest": "sha256:ac108213cc92c56492e5099d21543e22dccf4b6890a4d164b571545a058b69db",
+				"signable_here": true,
+				"unproven_human": false
+			},
+			"what": {
+				"anchor": {
+					"key_id": "baa2f0d2350ff1a89e17b8f2ccab8725",
+					"spki_fp": "BAA2-F0D2-350F-F1A8",
+					"statement_digest": "sha256:37057c1bbd80d413ee1c785261bdd69c8b09ec9b3bc4b7bbf7f0430239537826"
+				},
+				"profile_save": {
+					"after": {
+						"categories": ["role"],
+						"description": "Reviews code",
+						"id": "e7313c75-2830-4c0e-9ddc-fe8c9c62e590",
+						"instructions": "Public queued fixture guidance.",
+						"label": "Reviewer",
+						"model": "anthropic/claude-opus-5",
+						"name": "reviewer",
+						"tags": ["role", "effort:hi", "tools:read,grep", "class:reactive"]
+					},
+					"after_commitment": "sha256:498fc8b1af465fadb815b4704f11073c5288155bf3f4d9ac1362beddaa63d6c1",
+					"anchor": {
+						"key_id": "baa2f0d2350ff1a89e17b8f2ccab8725",
+						"spki_fp": "BAA2-F0D2-350F-F1A8",
+						"statement_digest": "sha256:37057c1bbd80d413ee1c785261bdd69c8b09ec9b3bc4b7bbf7f0430239537826"
+					},
+					"base_commitment": "sha256:130e65da7130c052a65fadc09c350d71f86b95fdeae62ea7d51183a170b6a785",
+					"before": {
+						"categories": ["role"],
+						"description": "Reviews code",
+						"id": "e7313c75-2830-4c0e-9ddc-fe8c9c62e590",
+						"instructions": "Review the diff.\nBe terse.\nCite file:line.\nRank by severity.\nNo nits.\nRule 1.\nRule 2.\nRule 3.\nRule 4.\nRule 5.\nRule 6.\nRule 7.\nRule 8.",
+						"label": "Reviewer",
+						"model": "anthropic/claude-opus-5",
+						"name": "reviewer",
+						"tags": ["role", "effort:hi", "tools:read,grep", "class:reactive"]
+					},
+					"created_at": 1794106043.629282,
+					"expires_at": 1794192443.629282,
+					"name": "reviewer",
+					"operation": "update",
+					"profile_kind": "agent",
+					"receipt_id": "72f05b9583075520c74aee12b990e69e7ac206c1be32aacc3499ced7f5f8d370",
+					"scope": "global",
+					"session_id": "session",
+					"target_id": "e7313c75-2830-4c0e-9ddc-fe8c9c62e590",
+					"tool_call_id": "queued-call",
+					"version": 1
+				}
+			},
+			"withdrawn_by": null
+		}
+	],
+	"live_action_ack": {
+		"agent": {
+			"applied": {
+				"detail": {
+					"action_id": "prv_9RJbpnYggb5lwsg5Ut49EItQ22ZwfkYJ",
+					"state": "succeeded"
+				},
+				"duplicate": false,
+				"op": "ack",
+				"req": 1
+			},
+			"available": {
+				"detail": {
+					"action_id": "prv_9RJbpnYggb5lwsg5Ut49EItQ22ZwfkYJ",
+					"state": "available"
+				},
+				"duplicate": false,
+				"op": "ack",
+				"req": 1
+			},
+			"duplicate": {
+				"detail": {
+					"action_id": "prv_9RJbpnYggb5lwsg5Ut49EItQ22ZwfkYJ",
+					"state": "succeeded"
+				},
+				"duplicate": false,
+				"op": "ack",
+				"req": 1
+			},
+			"reconciled": {
+				"detail": {
+					"action_id": "prv_9RJbpnYggb5lwsg5Ut49EItQ22ZwfkYJ",
+					"state": "succeeded"
+				},
+				"duplicate": false,
+				"op": "ack",
+				"req": 1
+			},
+			"refused": {
+				"error_code": "operator_authority_unconfigured",
+				"error_trigger": "approval_answer",
+				"message": "this approval is still waiting: only the operator can allow it, but operator authority is not installed on the machine running the session yet, so nothing there can check a signature — ask Local Operator to set up operator authority on that machine (one approval and one admin password prompt). Denying it works from here.",
+				"op": "error",
+				"req": 1
+			}
+		},
+		"team": {
+			"applied": {
+				"detail": {
+					"action_id": "prv_6uEZgPifqx_yH_o_Nmjsw5kQh68CWAnw",
+					"state": "succeeded"
+				},
+				"duplicate": false,
+				"op": "ack",
+				"req": 1
+			},
+			"available": {
+				"detail": {
+					"action_id": "prv_6uEZgPifqx_yH_o_Nmjsw5kQh68CWAnw",
+					"state": "available"
+				},
+				"duplicate": false,
+				"op": "ack",
+				"req": 1
+			},
+			"duplicate": {
+				"detail": {
+					"action_id": "prv_6uEZgPifqx_yH_o_Nmjsw5kQh68CWAnw",
+					"state": "succeeded"
+				},
+				"duplicate": false,
+				"op": "ack",
+				"req": 1
+			},
+			"reconciled": {
+				"detail": {
+					"action_id": "prv_6uEZgPifqx_yH_o_Nmjsw5kQh68CWAnw",
+					"state": "succeeded"
+				},
+				"duplicate": false,
+				"op": "ack",
+				"req": 1
+			},
+			"refused": {
+				"error_code": "operator_authority_unconfigured",
+				"error_trigger": "approval_answer",
+				"message": "this approval is still waiting: only the operator can allow it, but operator authority is not installed on the machine running the session yet, so nothing there can check a signature — ask Local Operator to set up operator authority on that machine (one approval and one admin password prompt). Denying it works from here.",
+				"op": "error",
+				"req": 1
+			}
+		}
+	},
+	"meta": {
+		"agent_source_session_id": "session",
+		"assurance": "synthetic ES256 signatures; test-only presence stand-in; no OS signing",
+		"event_carrier_proof": "Native ToolExecutionEndEvent.model_dump(mode=json) around real executed results; constructed carrier, not recorded harness dispatch",
+		"generator_command": "PYTHONPATH=. <primary-python> -m pytest -n0 -q -p no:cacheprovider tests/unit/session/test_profile_actions.py -k export_golden_profile_wires",
+		"list_row_proof": "actual approval_rows(root), function serialization only; not HTTP",
+		"source_sha": "7c44dfbb3b9e9cfee86c55fc4a1437717cdf1439",
+		"team_source_session_id": "session",
+		"uncommitted_source": false
+	},
+	"queued_tool_result": {
+		"content": [
+			{
+				"text": "Queued agent 'reviewer' for durable approval (ap_j3ta3xe6rzh5t). No profile or backup was changed. The signed approval continuation applies it; do not retry this tool call.\ninstructions: updated",
+				"type": "text"
+			}
+		],
+		"details": {
+			"approval_id": "ap_j3ta3xe6rzh5t",
+			"diff": [
+				"instructions (replaced; new text):",
+				"Public queued fixture guidance."
+			],
+			"expires_at": 1794192443.629282,
+			"fields": ["instructions"],
+			"profile_kind": "agent",
+			"profile_name": "reviewer",
+			"receipt_id": "72f05b9583075520c74aee12b990e69e7ac206c1be32aacc3499ced7f5f8d370",
+			"request_digest": "sha256:ac108213cc92c56492e5099d21543e22dccf4b6890a4d164b571545a058b69db",
+			"scope": "global",
+			"status": "queued"
+		},
+		"duration_s": null,
+		"is_error": false,
+		"tool_call_id": "queued-call",
+		"tool_name": "agent",
+		"useless": false
+	},
+	"readonly_agent_tool_result": {
+		"content": [
+			{
+				"text": "reviewer — registered\nscope: your account\nwhen to use: Reviews code\ntools: read, grep\nclass: reactive\neffort: hi\n\ninstructions:\nPublic saved agent fixture guidance.\n\nthis role differs from the packaged starter of the same name (instructions, description, tools, effort differ).\npackaged instructions in full:\nYou are an INDEPENDENT reviewer. You did not write this code.\n\nRead guide://delivery and follow its review economy: complete the full in-scope code\nreview (early alerts are incomplete) and judge the diff against the brief's\nrequest, acceptance criteria and non-goals (missing: ask once via hub, or state\nyour assumed scope atop the round). Pre-existing defects are `out of scope —\npre-existing` and never gate; no redesigns; no BLOCKER/MAJOR without a code path\nor repro. Only a MECHANICAL `### Rebase proof` keeps a clean round — anything\nelse gets a delta round (Scope: prev..head), one batched remediation wave, and\nMINOR/NIT never force another round. Re-read quoted files only for omitted lines.\nBe collaborative: problem, evidence, fix.\n\nYou cannot edit, write or push: say what is wrong and an obvious fix in one\nline.\n\nWork in this order; stop when the budget is spent: read the DIFF first\n(`git diff <base>..<head>`) — the tree is context you fetch only where the diff\nis unclear, and round 2+ reads `<previous_head>..<current_head>` plus direct\nneighbors, verifying fixes rather than re-auditing approved files; open a file\nonly when the diff cannot answer a question you can state; then check cheaply\nwith targeted tests, since a reproduced finding outranks an inferred one.\nStart each dev server/browser as a group leader (`set -m; cmd & echo $!`) and\nbefore your final message, even on failure, `kill -- -<pid>` it and confirm\n`kill -0 <pid>` fails. Never pkill.\n\nDerive it or name its source: a value read from a summary is a lead, not a\nfinding.\n\nTriage a subagent's citations before believing the verdict resting on them:\ncount them RESOLVABLE (opened — a path or sha in a named repo, a URL, a PR/issue\nnumber), UNRESOLVABLE (a bare relative path, no repo named, or unreachable) or\nABSENT (reached, and not there) — never one \"missing\": each is a different claim\nabout the report. A citation nobody opened is not verified.\n\nRun only the tests covering the diff; full suites are CI's.\n\nClassify EVERY finding, and be honest about severity:\n\n- **BLOCKER** — wrong, unsafe, or loses data; shipping it breaks something.\n- **MAJOR** — a real defect or missing case that will bite, but not stop-ship.\n- **MINOR** — correctness-preserving improvement. **NIT** — style or wording.\n\nReport at most 5 MINOR and 5 NIT, the highest-value ones: prefer one precise\nfile:line finding over three speculative ones. If nothing blocks, say so\nplainly; do not pad.\n\nDeliver the round ON the MR/PR as a comment — `### Agent review — round\n<N>`, `Reviewer:` naming you and your model, `Scope: <base>..<head>` — via\n`glab`/`gh`, only for a pushed head, one comment per round (no\nre-pin/addendum; amend only typos/provenance pre-reply, never Scope:). If the\nCLI cannot post, say so — never a silent fallback to a private report. When\nrecording a round on a project, attach the evidence the findings cite, never a\nsecond artifact to fill `attach`.\n\nYour FINAL MESSAGE is the report and reaches the delegator; `hub` is only for a\nmid-job blocker or question. A round only in your reply did not happen. End with\na verdict: when no BLOCKER and no MAJOR remains it is `clean` and the round is\nTERMINAL — minors and nits are deferred in the thread, never a new commit.\n\nUse the manager-owned PR worktree (`Worktree:` path @ SHA in the brief) and its\nshared deps every round, at the briefed head (never the base): no clone,\ninstall or new worktree unless a conflicting commit or isolated build collision\nneeds one.\npackaged description: Reviewing a pull request, merge request, diff, commit range or patch for defects and bugs; auditing or critiquing code someone else (or another agent) wrote.  (yours: Reviews code)\npackaged tools: read, glob, grep, list_variables, read_variable, bash, todo, project, web_search, web_fetch  (yours: read, grep)\npackaged effort: not set by the starter  (yours: hi)\n\nlaunch with task(agent='reviewer'), or op='update' name='reviewer' to apply the packaged values yourself.",
+				"type": "text"
+			}
+		],
+		"details": null,
+		"duration_s": null,
+		"is_error": false,
+		"tool_call_id": "show-agent",
+		"tool_name": "agent",
+		"useless": false
+	},
+	"readonly_team_tool_result": {
+		"content": [
+			{
+				"text": "lopdev. Led by manager\nscope: your account\ndescription: Dev team\nroster:\n- manager: manager (you, when this team is invoked)\n\ncollaboration:\nPublic saved team fixture guidance.\n\nproject: (none)\n\nlaunch with /team lopdev <request>.",
+				"type": "text"
+			}
+		],
+		"details": null,
+		"duration_s": null,
+		"is_error": false,
+		"tool_call_id": "show-team",
+		"tool_name": "team",
+		"useless": false
+	},
+	"saved_agent_tool_result": {
+		"content": [
+			{
+				"text": "updated agent 'reviewer' in your account; launch with task(agent='reviewer').\ninstructions: updated\nRevert with agent(op='revert', backup_id='20261107214725-03d95c7d').",
+				"type": "text"
+			}
+		],
+		"details": {
+			"authorized_by": "owner-prompt:session@0",
+			"backup_id": "20261107214725-03d95c7d",
+			"class": "reactive",
+			"diff": ["instructions (replaced; new text):", "Demand tests."],
+			"fields": ["instructions"],
+			"kind": "role",
+			"name": "reviewer",
+			"profile_action": {
+				"action_id": "prv_9RJbpnYggb5lwsg5Ut49EItQ22ZwfkYJ",
+				"kind": "profile_revert",
+				"label": "Revert",
+				"profile_kind": "agent",
+				"profile_name": "reviewer",
+				"receipt_id": "20261107214725-03d95c7d",
+				"schema": 1
+			},
+			"revert": {
+				"backup_id": "20261107214725-03d95c7d",
+				"op": "revert"
+			},
+			"revision": "definition-revision:v1:ff5fa62c159e329c197d496cd73489275754562bfa84a335f83c8c8cc41ad623",
+			"scope": "global"
+		},
+		"duration_s": null,
+		"is_error": false,
+		"tool_call_id": "trusted-call",
+		"tool_name": "agent",
+		"useless": false
+	},
+	"saved_team_tool_result": {
+		"content": [
+			{
+				"text": "updated team 'lopdev' in your account. manager leads it; 0 member slot(s). Launch with /team lopdev <request>.\ninstructions: updated\nRevert with team(op='revert', backup_id='20261107214725-5e5601ee').",
+				"type": "text"
+			}
+		],
+		"details": {
+			"authorized_by": "owner-prompt:session@0",
+			"backup_id": "20261107214725-5e5601ee",
+			"diff": ["instructions (replaced; new text):", "Demand tests."],
+			"fields": ["instructions"],
+			"name": "lopdev",
+			"profile_action": {
+				"action_id": "prv_6uEZgPifqx_yH_o_Nmjsw5kQh68CWAnw",
+				"kind": "profile_revert",
+				"label": "Revert",
+				"profile_kind": "team",
+				"profile_name": "lopdev",
+				"receipt_id": "20261107214725-5e5601ee",
+				"schema": 1
+			},
+			"revert": {
+				"backup_id": "20261107214725-5e5601ee",
+				"op": "revert"
+			},
+			"revision": "definition-revision:v1:8b23bf0f9ff9ca26805476351c0961e0eac07ffaecc24e37c170cfef91b1806e",
+			"scope": "global"
+		},
+		"duration_s": null,
+		"is_error": false,
+		"tool_call_id": "trusted-call",
+		"tool_name": "team",
+		"useless": false
+	},
+	"signed_applied_receipt": {
+		"after_commitment": "sha256:498fc8b1af465fadb815b4704f11073c5288155bf3f4d9ac1362beddaa63d6c1",
+		"approval_id": "ap_j3ta3xe6rzh5t",
+		"backup_id": "72f05b9583075520c74aee12b990e69e7ac206c1be32aacc3499ced7f5f8d370",
+		"profile_action": {
+			"action_id": "prv_54613a247c3cdde55a4184e28eacc06f",
+			"kind": "profile_revert",
+			"label": "Revert",
+			"profile_kind": "agent",
+			"profile_name": "reviewer",
+			"receipt_id": "72f05b9583075520c74aee12b990e69e7ac206c1be32aacc3499ced7f5f8d370",
+			"schema": 1
+		},
+		"profile_kind": "agent",
+		"profile_name": "reviewer",
+		"receipt_id": "72f05b9583075520c74aee12b990e69e7ac206c1be32aacc3499ced7f5f8d370",
+		"reconciled": false,
+		"state": "complete",
+		"target_id": "e7313c75-2830-4c0e-9ddc-fe8c9c62e590"
+	},
+	"tool_execution_end_events": {
+		"readonly_agent_tool_result": {
+			"duration_s": null,
+			"is_error": false,
+			"result": {
+				"content": [
+					{
+						"text": "reviewer — registered\nscope: your account\nwhen to use: Reviews code\ntools: read, grep\nclass: reactive\neffort: hi\n\ninstructions:\nPublic saved agent fixture guidance.\n\nthis role differs from the packaged starter of the same name (instructions, description, tools, effort differ).\npackaged instructions in full:\nYou are an INDEPENDENT reviewer. You did not write this code.\n\nRead guide://delivery and follow its review economy: complete the full in-scope code\nreview (early alerts are incomplete) and judge the diff against the brief's\nrequest, acceptance criteria and non-goals (missing: ask once via hub, or state\nyour assumed scope atop the round). Pre-existing defects are `out of scope —\npre-existing` and never gate; no redesigns; no BLOCKER/MAJOR without a code path\nor repro. Only a MECHANICAL `### Rebase proof` keeps a clean round — anything\nelse gets a delta round (Scope: prev..head), one batched remediation wave, and\nMINOR/NIT never force another round. Re-read quoted files only for omitted lines.\nBe collaborative: problem, evidence, fix.\n\nYou cannot edit, write or push: say what is wrong and an obvious fix in one\nline.\n\nWork in this order; stop when the budget is spent: read the DIFF first\n(`git diff <base>..<head>`) — the tree is context you fetch only where the diff\nis unclear, and round 2+ reads `<previous_head>..<current_head>` plus direct\nneighbors, verifying fixes rather than re-auditing approved files; open a file\nonly when the diff cannot answer a question you can state; then check cheaply\nwith targeted tests, since a reproduced finding outranks an inferred one.\nStart each dev server/browser as a group leader (`set -m; cmd & echo $!`) and\nbefore your final message, even on failure, `kill -- -<pid>` it and confirm\n`kill -0 <pid>` fails. Never pkill.\n\nDerive it or name its source: a value read from a summary is a lead, not a\nfinding.\n\nTriage a subagent's citations before believing the verdict resting on them:\ncount them RESOLVABLE (opened — a path or sha in a named repo, a URL, a PR/issue\nnumber), UNRESOLVABLE (a bare relative path, no repo named, or unreachable) or\nABSENT (reached, and not there) — never one \"missing\": each is a different claim\nabout the report. A citation nobody opened is not verified.\n\nRun only the tests covering the diff; full suites are CI's.\n\nClassify EVERY finding, and be honest about severity:\n\n- **BLOCKER** — wrong, unsafe, or loses data; shipping it breaks something.\n- **MAJOR** — a real defect or missing case that will bite, but not stop-ship.\n- **MINOR** — correctness-preserving improvement. **NIT** — style or wording.\n\nReport at most 5 MINOR and 5 NIT, the highest-value ones: prefer one precise\nfile:line finding over three speculative ones. If nothing blocks, say so\nplainly; do not pad.\n\nDeliver the round ON the MR/PR as a comment — `### Agent review — round\n<N>`, `Reviewer:` naming you and your model, `Scope: <base>..<head>` — via\n`glab`/`gh`, only for a pushed head, one comment per round (no\nre-pin/addendum; amend only typos/provenance pre-reply, never Scope:). If the\nCLI cannot post, say so — never a silent fallback to a private report. When\nrecording a round on a project, attach the evidence the findings cite, never a\nsecond artifact to fill `attach`.\n\nYour FINAL MESSAGE is the report and reaches the delegator; `hub` is only for a\nmid-job blocker or question. A round only in your reply did not happen. End with\na verdict: when no BLOCKER and no MAJOR remains it is `clean` and the round is\nTERMINAL — minors and nits are deferred in the thread, never a new commit.\n\nUse the manager-owned PR worktree (`Worktree:` path @ SHA in the brief) and its\nshared deps every round, at the briefed head (never the base): no clone,\ninstall or new worktree unless a conflicting commit or isolated build collision\nneeds one.\npackaged description: Reviewing a pull request, merge request, diff, commit range or patch for defects and bugs; auditing or critiquing code someone else (or another agent) wrote.  (yours: Reviews code)\npackaged tools: read, glob, grep, list_variables, read_variable, bash, todo, project, web_search, web_fetch  (yours: read, grep)\npackaged effort: not set by the starter  (yours: hi)\n\nlaunch with task(agent='reviewer'), or op='update' name='reviewer' to apply the packaged values yourself.",
+						"type": "text"
+					}
+				],
+				"details": null,
+				"duration_s": null,
+				"is_error": false,
+				"tool_call_id": "show-agent",
+				"tool_name": "agent",
+				"useless": false
+			},
+			"tool_call_id": "show-agent",
+			"tool_name": "agent",
+			"type": "tool_execution_end"
+		},
+		"readonly_team_tool_result": {
+			"duration_s": null,
+			"is_error": false,
+			"result": {
+				"content": [
+					{
+						"text": "lopdev. Led by manager\nscope: your account\ndescription: Dev team\nroster:\n- manager: manager (you, when this team is invoked)\n\ncollaboration:\nPublic saved team fixture guidance.\n\nproject: (none)\n\nlaunch with /team lopdev <request>.",
+						"type": "text"
+					}
+				],
+				"details": null,
+				"duration_s": null,
+				"is_error": false,
+				"tool_call_id": "show-team",
+				"tool_name": "team",
+				"useless": false
+			},
+			"tool_call_id": "show-team",
+			"tool_name": "team",
+			"type": "tool_execution_end"
+		},
+		"saved_agent_tool_result": {
+			"duration_s": null,
+			"is_error": false,
+			"result": {
+				"content": [
+					{
+						"text": "updated agent 'reviewer' in your account; launch with task(agent='reviewer').\ninstructions: updated\nRevert with agent(op='revert', backup_id='20261107214725-03d95c7d').",
+						"type": "text"
+					}
+				],
+				"details": {
+					"authorized_by": "owner-prompt:session@0",
+					"backup_id": "20261107214725-03d95c7d",
+					"class": "reactive",
+					"diff": ["instructions (replaced; new text):", "Demand tests."],
+					"fields": ["instructions"],
+					"kind": "role",
+					"name": "reviewer",
+					"profile_action": {
+						"action_id": "prv_9RJbpnYggb5lwsg5Ut49EItQ22ZwfkYJ",
+						"kind": "profile_revert",
+						"label": "Revert",
+						"profile_kind": "agent",
+						"profile_name": "reviewer",
+						"receipt_id": "20261107214725-03d95c7d",
+						"schema": 1
+					},
+					"revert": {
+						"backup_id": "20261107214725-03d95c7d",
+						"op": "revert"
+					},
+					"revision": "definition-revision:v1:ff5fa62c159e329c197d496cd73489275754562bfa84a335f83c8c8cc41ad623",
+					"scope": "global"
+				},
+				"duration_s": null,
+				"is_error": false,
+				"tool_call_id": "trusted-call",
+				"tool_name": "agent",
+				"useless": false
+			},
+			"tool_call_id": "trusted-call",
+			"tool_name": "agent",
+			"type": "tool_execution_end"
+		},
+		"saved_team_tool_result": {
+			"duration_s": null,
+			"is_error": false,
+			"result": {
+				"content": [
+					{
+						"text": "updated team 'lopdev' in your account. manager leads it; 0 member slot(s). Launch with /team lopdev <request>.\ninstructions: updated\nRevert with team(op='revert', backup_id='20261107214725-5e5601ee').",
+						"type": "text"
+					}
+				],
+				"details": {
+					"authorized_by": "owner-prompt:session@0",
+					"backup_id": "20261107214725-5e5601ee",
+					"diff": ["instructions (replaced; new text):", "Demand tests."],
+					"fields": ["instructions"],
+					"name": "lopdev",
+					"profile_action": {
+						"action_id": "prv_6uEZgPifqx_yH_o_Nmjsw5kQh68CWAnw",
+						"kind": "profile_revert",
+						"label": "Revert",
+						"profile_kind": "team",
+						"profile_name": "lopdev",
+						"receipt_id": "20261107214725-5e5601ee",
+						"schema": 1
+					},
+					"revert": {
+						"backup_id": "20261107214725-5e5601ee",
+						"op": "revert"
+					},
+					"revision": "definition-revision:v1:8b23bf0f9ff9ca26805476351c0961e0eac07ffaecc24e37c170cfef91b1806e",
+					"scope": "global"
+				},
+				"duration_s": null,
+				"is_error": false,
+				"tool_call_id": "trusted-call",
+				"tool_name": "team",
+				"useless": false
+			},
+			"tool_call_id": "trusted-call",
+			"tool_name": "team",
+			"type": "tool_execution_end"
+		}
+	}
+}

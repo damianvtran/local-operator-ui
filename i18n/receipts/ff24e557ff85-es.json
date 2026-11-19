@@ -1,0 +1,28 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "kimi/k3.1-pro",
+  "instance": "ff24e557ff85-es",
+  "locale": "es",
+  "namespace": "ui.settings.shortcuts",
+  "status": "passed",
+  "sha256": {
+    "es": "4a5332c3606ef855bf2be333703f20e230652749b71dbad89c039c0b7cbc900a",
+    "en": "cdc8d66af4e558046072d06df97e638feab4b7579b6f3abba097c30949d7835c"
+  },
+  "context_sha256": "7873c3c486821688257a22f7b13d1c28f36017d7865fd3a6a72a7740861f64d9",
+  "scope": "The three keys added for recording shortcuts; pre-existing catalogue bytes checked only for matching control terminology.",
+  "findings": [],
+  "checks": [
+    "Current-byte SHA-256 matches the supplied English, context and Spanish hashes.",
+    "Exact full-catalogue key parity; the diff adds exactly the three scoped keys.",
+    "Placeholder parity (none in scoped keys), JSON validity and NFC normalization.",
+    "Neutral Spanish glossary/style, tú register, sentence case and punctuation.",
+    "Dictado correctly denotes speech input converted to text, not spoken output.",
+    "Esc and Restablecer match existing controls; all three source meanings and visible fallback are preserved.",
+    "Wrapping-paragraph and one/two-line semantic fit reviewed against context; no bidi controls present."
+  ],
+  "references": {
+    "glossary_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide_sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+  }
+}

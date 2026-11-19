@@ -1,0 +1,802 @@
+import type {
+	KeyboardEvent as ReactKeyboardEvent,
+	RefObject,
+	SyntheticEvent,
+} from "react";
+import {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
+import type { EmojiInputIntent } from "../emoji/use-emoji-autocomplete";
+import type { MentionCandidateRow } from "./candidates";
+import {
+	type MentionSection,
+	findMentionQuery,
+	mentionKey,
+	rankMentionCandidates,
+} from "./matcher";
+import { useMentionSource } from "./mention-context";
+import {
+	mentionDraftStorageKey,
+	useMentionDraftStore,
+} from "./mention-draft-store";
+import {
+	type MentionToken,
+	type MentionWireRow,
+	clampCaret,
+	deleteAcrossToken,
+	insertMention,
+	rebaseTokens,
+	serializeMentions,
+} from "./tokens";
+
+/**
+ * The composer's @-mention controller: popover state, the token map, the key
+ * handling and the send payload, behind one hook so the composer's own diff is
+ * a mount and not a rewrite (another lane owns that file).
+ *
+ * THE TEXT STAYS THE COMPOSER'S. The hook never holds a second copy of the
+ * draft: it reads `text` and writes through `setText`, the same setter the
+ * field's `onChange` uses (`useMessageInput`'s register). The token map is
+ * rebased against every text value it observes, so typing, paste, dictation
+ * and the composer's own clear-on-send all keep it honest without being told.
+ *
+ * KEYS. `onKeyDown` must run BEFORE the composer's own handler and returns
+ * true when it consumed the event: while the popover is open ↑/↓, Enter, Tab
+ * and Esc belong to it, otherwise Enter would send a half-typed `@Be`.
+ * Backspace/Delete into a pill removes the whole pill. Nothing happens during
+ * IME composition (`isComposing`), so a CJK reader's candidate window keeps
+ * its keys.
+ */
+export type MentionNotice = {
+	candidate: MentionCandidateRow;
+	token: MentionToken;
+	/** The invite went through: they are invited, not yet able to be notified. */
+	invited?: boolean;
+};
+
+export type MentionAutocomplete = {
+	enabled: boolean;
+	open: boolean;
+	sections: MentionSection[];
+	flat: MentionCandidateRow[];
+	active: number;
+	setActive: (index: number) => void;
+	pick: (candidate: MentionCandidateRow) => void;
+	close: () => void;
+	/** Index of the `@` the popover is anchored to. */
+	anchorIndex: number | null;
+	tokens: MentionToken[];
+	onKeyDown: (event: ReactKeyboardEvent<HTMLTextAreaElement>) => boolean;
+	onSelect: (event: SyntheticEvent<HTMLTextAreaElement>) => void;
+	/** The wire rows for a send now, or undefined when none may be sent. */
+	payload: () => MentionWireRow[] | undefined;
+	notice: MentionNotice | null;
+	dismissNotice: () => void;
+	/** Keep the pill, drop it from `mentions[]` ("Mention without notifying"). */
+	silenceNotice: () => void;
+	/** The candidate became a member: the token now notifies as usual. */
+	resolveNotice: () => void;
+	source: ReturnType<typeof useMentionSource>;
+	listboxId: string;
+	/** Shared input provenance and edit ownership for Bridge-only autocomplete. */
+	inputScopeKey: string;
+	emojiIntent: EmojiInputIntent | null;
+	isComposing: () => boolean;
+	clearEmojiIntent: () => void;
+	applyTextEdit: (edit: {
+		text: string;
+		caret: number;
+		edit: { start: number; end: number; insert: string };
+	}) => void;
+};
+
+const NO_TOKENS: MentionToken[] = [];
+
+/**
+ * How many (text, token map) pairs an undo may reach back through. A draft's
+ * own pill-bearing history is short - a handful of picks and deletes - and the
+ * cap keeps a long editing session from growing it without bound.
+ */
+const PILL_HISTORY_LIMIT = 50;
+
+export function useMentionAutocomplete(input: {
+	draftKey: string;
+	text: string;
+	setText: (next: string) => void;
+	fieldRef: RefObject<HTMLTextAreaElement | null>;
+	listboxId: string;
+}): MentionAutocomplete {
+	const { draftKey, text, setText, fieldRef, listboxId } = input;
+	const source = useMentionSource();
+	const enabled = source !== null;
+	const storageKey = mentionDraftStorageKey(source?.draftOwner, draftKey);
+	// A scope change also retires in-memory tokens/history without requiring
+	// the parent to unmount us. Missing ownership must never reuse another map.
+	const tokenKey = storageKey ?? JSON.stringify(["unresolved", draftKey]);
+
+	/*
+	 * THE TOKEN MAP. Seeded from the persisted sidecar for this draft key (a
+	 * restored draft gets its pills back), then carried across every text value
+	 * by `rebaseTokens`. `lastText` is the text the map was last true for.
+	 */
+	// localStorage hydration is synchronous. Read the seed, not a subscription
+	// to our own writes: publishing tokens before the parent's text update must
+	// not synchronously re-render this hook against the previous text prop.
+	// Never fall back to a legacy unscoped draftKey: its owner is unknowable.
+	const stored = storageKey
+		? useMentionDraftStore.getState().drafts[storageKey]
+		: undefined;
+	const writeStored = useMentionDraftStore((state) => state.write);
+	const persistDraft = useCallback(
+		(value: string, map: MentionToken[]) => {
+			if (storageKey) writeStored(storageKey, value, map);
+		},
+		[storageKey, writeStored],
+	);
+	const [tokens, setTokens] = useState<MentionToken[]>(() =>
+		stored ? rebaseTokens(stored.text, text, stored.tokens) : NO_TOKENS,
+	);
+	const lastText = useRef(text);
+	// The text owner can deliver its draft a render after this synchronous
+	// sidecar. Keep that snapshot until matching text or an actual field edit;
+	// an empty hydration render is NOT a deletion of the user's draft.
+	const pendingRestore = useRef(stored && stored.text !== text ? stored : null);
+	const [interactionText, setInteractionText] = useState<string | null>(null);
+	const caretInteraction = useRef(false);
+	const applyingEdit = useRef<{ text: string; tokens: MentionToken[] } | null>(
+		null,
+	);
+	/*
+	 * THE PILL HISTORY: a bounded list of (text, token map) pairs, newest
+	 * last. Every other edit only ever SHRINKS the map (`rebaseTokens` drops a
+	 * token whose characters were touched), so a native UNDO that re-inserts
+	 * "@Bea" had no token to re-expand and an undo-then-send silently dropped
+	 * `mentions[]` (QA round 3, Q3-1). A history jump is the one edit whose
+	 * resulting map is known exactly: it is the map this text had before.
+	 */
+	const spanHistory = useRef<Array<{ text: string; tokens: MentionToken[] }>>(
+		[],
+	);
+	/*
+	 * Set to the TEXT an undo/redo produced, by the field's own `input`
+	 * listener. A text-carrying flag rather than a boolean, so a history event
+	 * that changed nothing cannot leak into the next ordinary keystroke: the
+	 * jump is consumed only by the change whose value is the one it announced.
+	 */
+	const historyJump = useRef<string | null>(null);
+	/*
+	 * Set to the value a native `input` produced, by the field's own listener,
+	 * and adopted as `interactionText` by the render that receives that text.
+	 * A REF, NEVER STATE, on purpose: in a real browser a user-dispatched event
+	 * gets a microtask checkpoint between listener callbacks, and React 18 flushes
+	 * a discrete (`input`) update synchronously at that checkpoint. A setState in
+	 * the target-phase listener therefore re-rendered this component with the
+	 * PREVIOUS `text` prop before the delegated `onChange` ran, React wrote that
+	 * old value back into the controlled textarea, and onChange read the reverted
+	 * value: the key was lost, and only a key repeating the last one survived
+	 * (an equal setState bails out). That shipped in #1590 (3381fc6eafb) because
+	 * jsdom dispatches without the checkpoint; the browser-ordered tests in
+	 * mention-draft-restore.test.mjs model it. Same text-carrying contract as
+	 * `historyJump`: consumed by the change whose value is the one it announced.
+	 */
+	const nativeEditText = useRef<string | null>(null);
+	// Ref-only at the target listener: state there reverts controlled input before
+	// React's delegated onChange (#1600). Adopt this same object after commit;
+	// never consume it during render, which StrictMode may replay.
+	const pendingEmojiIntent = useRef<EmojiInputIntent | null>(null);
+	const emojiSequence = useRef(0);
+	const [emojiIntent, setEmojiIntent] = useState<EmojiInputIntent | null>(null);
+	/** The map this text last had, newest first; undefined when never seen. */
+	const snapshotTokens = useCallback(
+		(value: string): MentionToken[] | undefined => {
+			for (let i = spanHistory.current.length - 1; i >= 0; i -= 1)
+				if (spanHistory.current[i].text === value)
+					return spanHistory.current[i].tokens;
+			return undefined;
+		},
+		[],
+	);
+	/*
+	 * Whether this render's text is the field's own edit rather than text the
+	 * owner delivered. A pure read taken during render, so both StrictMode passes
+	 * agree, and the layout effect below acts on this captured value. Re-reading
+	 * there would be too late: React has written `text` into the field by then.
+	 * The announcement alone is not enough. When an owner refuses an input, React
+	 * puts the old controlled value back without rendering, so nothing retires
+	 * the ref, and a later restore of that same string would pass as typed and
+	 * arm the query (review R1-03 on #1600). A real edit is still in the field
+	 * when its text renders. A refused one is not.
+	 */
+	const typedText =
+		nativeEditText.current === text && fieldRef.current?.value === text;
+	const keyRef = useRef(tokenKey);
+	if (keyRef.current !== tokenKey) {
+		// A different draft: its own sidecar, never the previous draft's pills.
+		keyRef.current = tokenKey;
+		pendingRestore.current = stored && stored.text !== text ? stored : null;
+		setInteractionText(null);
+		caretInteraction.current = false;
+		lastText.current = text;
+		spanHistory.current = [];
+		historyJump.current = null;
+		nativeEditText.current = null;
+		pendingEmojiIntent.current = null;
+		setEmojiIntent(null);
+		const next = stored
+			? rebaseTokens(stored.text, text, stored.tokens)
+			: NO_TOKENS;
+		if (next !== tokens) setTokens(next);
+	} else if (lastText.current !== text) {
+		const pending = pendingRestore.current;
+		// A field edit is `edited` whichever way it was announced: an ordinary
+		// keystroke must never take the `restored` branch below (which would also
+		// disarm caretInteraction when the previous text was empty).
+		// READ, never consume: render must stay pure. StrictMode (dev, main.tsx)
+		// renders twice and React may discard a render, so clearing the ref here
+		// left the second pass reading null, resetting interactionText and arming
+		// '@' only on keyup (review R1-01 on #1600). The layout effect below
+		// adopts and retires it once per committed text.
+		const typed = typedText;
+		const edited = interactionText === text || typed;
+		const jumped = historyJump.current === text;
+		historyJump.current = null;
+		// A refused optimistic send restores text without a DOM edit. Its
+		// identities come from this mounted draft's history, never name matching.
+		const restored =
+			jumped || (!edited && lastText.current === "")
+				? snapshotTokens(text)
+				: undefined;
+		const next =
+			pending?.text === text
+				? rebaseTokens(text, text, pending.tokens)
+				: (restored ?? rebaseTokens(lastText.current, text, tokens));
+		if (pending?.text === text) pendingRestore.current = null;
+		if (!edited) {
+			setInteractionText(null);
+			caretInteraction.current = false;
+		}
+		lastText.current = text;
+		setTokens(next);
+	}
+	/*
+	 * ADOPT AND RETIRE THE NATIVE EDIT AFTER COMMIT, not during render (see the
+	 * render-phase read above). A layout effect runs once per commit, after both
+	 * StrictMode render passes and before paint, so the query still arms on the
+	 * very keystroke ('@' into an empty composer opens before the frame) and the
+	 * next keystroke's listener always writes a fresh value. Its setState runs
+	 * with the committed `text`, never from a native `input` listener, so it
+	 * cannot revert a key (see `nativeEditText`).
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: once per committed `text`; `typedText` is that commit's own reading.
+	useLayoutEffect(() => {
+		if (typedText) setInteractionText(text);
+		nativeEditText.current = null;
+	}, [text]);
+	useEffect(() => {
+		if (pendingRestore.current) return;
+		persistDraft(text, tokens);
+		const history = spanHistory.current;
+		const newest = history.at(-1);
+		if (!newest || newest.text !== text || newest.tokens !== tokens) {
+			history.push({ text, tokens });
+			if (history.length > PILL_HISTORY_LIMIT) history.shift();
+		}
+	}, [persistDraft, text, tokens]);
+
+	const [caret, setCaret] = useState<number | null>(null);
+	const [dismissedAt, setDismissedAt] = useState<number | null>(null);
+	const [active, setActive] = useState(0);
+	const [notice, setNotice] = useState<MentionNotice | null>(null);
+	const composing = useRef(false);
+
+	const query = useMemo(() => {
+		// Hydration/remount is not an autocomplete gesture, even in an
+		// autofocus field. Only input or an intentional caret interaction arms it.
+		if (!enabled || caret === null || interactionText !== text) return null;
+		const found = findMentionQuery(text, caret);
+		if (!found) return null;
+		// Inside an existing pill is not a new query.
+		if (tokens.some((t) => found.start >= t.start && found.start < t.end))
+			return null;
+		return found;
+	}, [enabled, caret, text, tokens, interactionText]);
+
+	const ranked = useMemo(
+		() =>
+			query
+				? rankMentionCandidates(query.query, source?.candidates ?? [])
+				: { sections: [], flat: [] },
+		[query, source?.candidates],
+	);
+	const flat = ranked.flat as MentionCandidateRow[];
+
+	/*
+	 * ESC KEEPS THE TEXT AND STAYS CLOSED for this `@`: the popover reopens
+	 * only for a different `@` (a new start index), not on the next letter.
+	 * A trailing space that leaves zero matches closes it the same way, so
+	 * "email @ 5pm" style prose stops offering names.
+	 */
+	const zeroAfterSpace =
+		query !== null && flat.length === 0 && query.query.endsWith(" ");
+	/*
+	 * A SPACE WITH ZERO MATCHES IS A DISMISSAL, REMEMBERED (review R1-02). It
+	 * used to be a property of the current query only, so the next letter
+	 * ("@ops t") reopened an empty popover over the thread until a newline.
+	 * Recording the `@` like Esc does keeps prose prose.
+	 */
+	const zeroStart = zeroAfterSpace ? query.start : null;
+	useEffect(() => {
+		if (zeroStart !== null) setDismissedAt(zeroStart);
+	}, [zeroStart]);
+	const open =
+		query !== null &&
+		dismissedAt !== query.start &&
+		!zeroAfterSpace &&
+		!composing.current;
+
+	const queryText = query?.query;
+	// biome-ignore lint/correctness/useExhaustiveDependencies: a new query string is the trigger to reset the active row to the top.
+	useEffect(() => {
+		setActive(0);
+	}, [queryText]);
+
+	const syncCaret = useCallback(
+		(direction: "backward" | "forward" = "forward") => {
+			const field = fieldRef.current;
+			if (!field) return;
+			if (field.selectionStart !== field.selectionEnd) {
+				setCaret(null);
+				return;
+			}
+			const at = field.selectionStart;
+			// The caret may not rest inside a pill.
+			const clamped = clampCaret(tokens, at, direction);
+			if (clamped !== at) field.setSelectionRange(clamped, clamped);
+			setCaret(clamped);
+		},
+		[fieldRef, tokens],
+	);
+
+	/*
+	 * THE CARET FOLLOWS EVERY TEXT CHANGE, not only `onSelect`. React derives
+	 * `onSelect` from `selectionchange`, which not every host fires on typing
+	 * (jsdom never does; a programmatic `setInputValue` from dictation fires
+	 * none). Re-reading the field after each committed value keeps the query
+	 * in step with what was actually typed.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `text` is the trigger; the caret is read from the field.
+	useLayoutEffect(() => {
+		if (
+			enabled &&
+			fieldRef.current === fieldRef.current?.ownerDocument.activeElement
+		)
+			syncCaret();
+	}, [text, enabled]);
+
+	useLayoutEffect(() => {
+		const intent = pendingEmojiIntent.current;
+		const current = intent?.draftKey === tokenKey && intent.text === text;
+		// Retire on an authoritative non-input commit, not during render. A
+		// refused send restoring identical old text must not resurrect old intent.
+		if (!current) pendingEmojiIntent.current = null;
+		setEmojiIntent(current ? intent : null);
+	}, [text, tokenKey]);
+
+	/*
+	 * EDITS GO THROUGH THE FIELD'S OWN EDITING PATH WHEN IT CAN (review R1-04).
+	 * Setting `value` programmatically wipes Chromium's undo stack for the
+	 * field, so Cmd+Z could not bring back a deleted pill or the typed `@que`.
+	 * `execCommand("insertText")` over the replaced range is a real user edit:
+	 * it lands on the undo stack and fires `input`, so the composer's own
+	 * `onChange` writes the text and `rebaseTokens` runs as for typing; the
+	 * token map is then replaced with the edit's own (which knows the new
+	 * token). The map comes back with the text on Undo through `spanHistory`
+	 * below, because a history jump is the one edit whose map is not derived
+	 * from the text (QA round 3, Q3-1). It is deprecated but still the only
+	 * API that edits a textarea with undo in Chromium. Where it is unavailable or refuses (jsdom, a
+	 * disabled field), the value is written directly and undo is lost for
+	 * that one edit - the text and tokens are correct either way.
+	 */
+	const applyEdit = useCallback(
+		(
+			next: { text: string; caret: number; tokens: MentionToken[] },
+			range?: { start: number; end: number; insert: string },
+		) => {
+			const field = fieldRef.current;
+			pendingRestore.current = null;
+			applyingEdit.current = next;
+			// Write the pair before the text setter/native input persists text.
+			// Otherwise a synchronous unmount can strand text without identities.
+			persistDraft(next.text, next.tokens);
+			setInteractionText(next.text);
+			let native = false;
+			if (field && range) {
+				field.focus();
+				field.setSelectionRange(range.start, range.end);
+				try {
+					native =
+						field.ownerDocument.execCommand?.(
+							range.insert === "" ? "delete" : "insertText",
+							false,
+							range.insert,
+						) === true && field.value === next.text;
+				} catch {
+					native = false;
+				}
+			}
+			applyingEdit.current = null;
+			lastText.current = next.text;
+			setTokens(next.tokens);
+			if (!native) setText(next.text);
+			setCaret(next.caret);
+			// The caret is placed after React writes the value.
+			requestAnimationFrame(() => {
+				const current = fieldRef.current;
+				if (!current) return;
+				current.setSelectionRange(next.caret, next.caret);
+			});
+		},
+		[fieldRef, setText, persistDraft],
+	);
+
+	/** Back to the field with the caret where it was (design D4). */
+	const refocus = useCallback(
+		(at?: number) => {
+			requestAnimationFrame(() => {
+				const field = fieldRef.current;
+				if (!field) return;
+				field.focus();
+				if (at !== undefined) field.setSelectionRange(at, at);
+			});
+		},
+		[fieldRef],
+	);
+
+	const pick = useCallback(
+		(candidate: MentionCandidateRow) => {
+			if (!query) return;
+			/*
+			 * ONLY AN ACTIVE MEMBER GETS A NOTIFYING TOKEN (review R1-01). The hub
+			 * refuses the whole send for a row naming anyone else, so a
+			 * non-member or invited pick starts as non-notifying text, and the
+			 * notice says so and offers the invite. It is never dropped silently:
+			 * the pill stays, visibly quiet.
+			 */
+			const edit = insertMention(
+				text,
+				tokens,
+				query,
+				candidate,
+				candidate.member,
+			);
+			const insertedText = edit.text.slice(query.start, edit.caret);
+			applyEdit(edit, {
+				start: query.start,
+				end: query.end,
+				insert: insertedText,
+			});
+			setDismissedAt(null);
+			const token = edit.tokens.find((t) => t.start === query.start);
+			if (token && !candidate.member) setNotice({ candidate, token });
+			refocus(edit.caret);
+		},
+		[query, text, tokens, applyEdit, refocus],
+	);
+
+	const close = useCallback(() => {
+		if (query) setDismissedAt(query.start);
+	}, [query]);
+
+	const onKeyDown = useCallback(
+		(event: ReactKeyboardEvent<HTMLTextAreaElement>): boolean => {
+			if (!enabled) return false;
+			if (event.nativeEvent.isComposing || event.key === "Process")
+				return false;
+			const field = event.currentTarget;
+			if (open && flat.length > 0) {
+				if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+					event.preventDefault();
+					const step = event.key === "ArrowDown" ? 1 : -1;
+					setActive((index) => (index + step + flat.length) % flat.length);
+					return true;
+				}
+				if (
+					(event.key === "Enter" && !event.shiftKey) ||
+					(event.key === "Tab" && !event.shiftKey)
+				) {
+					event.preventDefault();
+					pick(flat[Math.min(active, flat.length - 1)]);
+					return true;
+				}
+			}
+			if (open && event.key === "Escape") {
+				event.preventDefault();
+				// Esc closes the popover only; the thread pane must not close too.
+				event.stopPropagation();
+				close();
+				return true;
+			}
+			if (event.key === "Backspace" || event.key === "Delete") {
+				const edit = deleteAcrossToken(
+					text,
+					tokens,
+					{ start: field.selectionStart, end: field.selectionEnd },
+					event.key,
+				);
+				if (edit) {
+					event.preventDefault();
+					applyEdit(edit, {
+						start: edit.caret,
+						end: edit.caret + (text.length - edit.text.length),
+						insert: "",
+					});
+					return true;
+				}
+			}
+			if (
+				(event.key === "ArrowLeft" || event.key === "ArrowRight") &&
+				!event.shiftKey &&
+				field.selectionStart === field.selectionEnd
+			) {
+				// Step OVER a pill in one keypress rather than through its letters.
+				const at = field.selectionStart;
+				const rtl =
+					field.ownerDocument.defaultView?.getComputedStyle(field).direction ===
+					"rtl";
+				const forward = (event.key === "ArrowRight") !== rtl;
+				const hit = tokens.find((t) =>
+					forward ? at === t.start : at === t.end,
+				);
+				if (hit) {
+					event.preventDefault();
+					const to = forward ? hit.end : hit.start;
+					field.setSelectionRange(to, to);
+					setCaret(to);
+					return true;
+				}
+			}
+			return false;
+		},
+		[enabled, open, flat, active, pick, close, text, tokens, applyEdit],
+	);
+
+	const onSelect = useCallback(
+		(event: SyntheticEvent<HTMLTextAreaElement>) => {
+			const native = event.nativeEvent as Event & { isComposing?: boolean };
+			composing.current = Boolean(native.isComposing);
+			const field = event.currentTarget;
+			if (caretInteraction.current) setInteractionText(text);
+			const intent = pendingEmojiIntent.current;
+			if (
+				intent &&
+				(field.selectionStart !== intent.selectionStart ||
+					field.selectionEnd !== intent.selectionEnd)
+			) {
+				pendingEmojiIntent.current = null;
+				setEmojiIntent(null);
+			}
+			const previous = caret ?? field.selectionStart;
+			syncCaret(field.selectionStart < previous ? "backward" : "forward");
+		},
+		[caret, syncCaret, text],
+	);
+
+	// Composition events do not all reach `onSelect`; track them directly.
+	useEffect(() => {
+		const field = fieldRef.current;
+		if (!field || !enabled) return;
+		const start = () => {
+			composing.current = true;
+			// An emoji query adopted before the IME opened is a stale non-composing
+			// snapshot; retire it here so the open picker cannot replace text under
+			// the candidate window. Safe as state, unlike `input`: no onChange of
+			// this same dispatch can be reverted by it (#1600).
+			pendingEmojiIntent.current = null;
+			setEmojiIntent(null);
+		};
+		const end = () => {
+			composing.current = false;
+			syncCaret();
+		};
+		/*
+		 * THE FIELD'S OWN HISTORY, announced before React sees the change: this
+		 * listener sits on the field, so it runs in the target phase and ahead of
+		 * the delegated `onChange` that writes the text. Chromium reports both the
+		 * Edit menu's Undo and Cmd+Z as `historyUndo`/`historyRedo` on an `input`,
+		 * which is the only signal that separates them from typing (QA round 3,
+		 * Q3-1). `execCommand("undo")` fires the same event.
+		 */
+		const onInput = (event: Event) => {
+			const type = (event as InputEvent).inputType;
+			const jumped = type === "historyUndo" || type === "historyRedo";
+			if (jumped) historyJump.current = field.value;
+			pendingRestore.current = null;
+			// NO setState here: it flushes before onChange and reverts the typed
+			// key (see `nativeEditText`). Only refs and the unsubscribed store write.
+			nativeEditText.current = field.value;
+			pendingEmojiIntent.current = {
+				draftKey: tokenKey,
+				sequence: ++emojiSequence.current,
+				text: field.value,
+				selectionStart: field.selectionStart,
+				selectionEnd: field.selectionEnd,
+				kind:
+					type === "insertFromPaste" ? "paste" : jumped ? "restore" : "typing",
+				inputType: type,
+				composing:
+					composing.current || Boolean((event as InputEvent).isComposing),
+			};
+			// Target-phase input runs before React's delegated onChange writes
+			// the text store. Persist its matching identities in that same turn.
+			// Safe to do here: this hook reads `stored` via getState() and selects
+			// only the stable `write`, so the store write re-renders nothing (the
+			// browser-ordered tests fail if it ever does).
+			const next =
+				applyingEdit.current?.text === field.value
+					? applyingEdit.current.tokens
+					: ((jumped ? snapshotTokens(field.value) : undefined) ??
+						rebaseTokens(lastText.current, field.value, tokens));
+			persistDraft(field.value, next);
+		};
+		const armCaret = () => {
+			caretInteraction.current = true;
+		};
+		field.addEventListener("compositionstart", start);
+		field.addEventListener("compositionend", end);
+		field.addEventListener("input", onInput);
+		field.addEventListener("pointerdown", armCaret);
+		field.addEventListener("keydown", armCaret);
+		return () => {
+			field.removeEventListener("compositionstart", start);
+			field.removeEventListener("compositionend", end);
+			field.removeEventListener("input", onInput);
+			field.removeEventListener("pointerdown", armCaret);
+			field.removeEventListener("keydown", armCaret);
+		};
+	}, [
+		fieldRef,
+		enabled,
+		syncCaret,
+		snapshotTokens,
+		tokens,
+		persistDraft,
+		tokenKey,
+	]);
+
+	const activeKeys = useMemo(
+		() =>
+			new Set(
+				(source?.candidates ?? [])
+					.filter((c) => c.member)
+					.map((c) => mentionKey(c)),
+			),
+		[source?.candidates],
+	);
+	/*
+	 * A token waiting on an invite becomes notifying once a refetch shows the
+	 * person ACTIVE - accepting is theirs, so the pill upgrades itself rather
+	 * than asking the author to pick again.
+	 */
+	const awaitingKeys = useRef(new Set<string>());
+	// Availability is not subtree identity anymore. Retire only source-scoped
+	// notice/invite state when its conversation disappears or changes; draft
+	// text, tokens, selection and the page's account/tenant/target keys stay owned
+	// where they already were. A same-conversation roster refresh is not a reset.
+	const sourceConversationId = source?.conversationId ?? null;
+	// biome-ignore lint/correctness/useExhaustiveDependencies: source identity is a reset trigger; no source data is read while retiring notice state.
+	useLayoutEffect(() => {
+		setNotice(null);
+		awaitingKeys.current.clear();
+	}, [sourceConversationId]);
+	useEffect(() => {
+		if (awaitingKeys.current.size === 0) return;
+		const ready = [...awaitingKeys.current].filter((key) =>
+			activeKeys.has(key),
+		);
+		if (ready.length === 0) return;
+		for (const key of ready) awaitingKeys.current.delete(key);
+		setTokens((current) =>
+			current.map((t) =>
+				ready.includes(mentionKey(t)) ? { ...t, notify: true } : t,
+			),
+		);
+	}, [activeKeys]);
+
+	const payload = useCallback((): MentionWireRow[] | undefined => {
+		if (!source?.sendMentions) return undefined;
+		const rows = serializeMentions(
+			rebaseTokens(lastText.current, text, tokens),
+			activeKeys,
+		);
+		return rows.length > 0 ? rows : undefined;
+	}, [source?.sendMentions, text, tokens, activeKeys]);
+
+	const updateNoticeToken = useCallback(
+		(patch: Partial<MentionToken> | null, close = true) => {
+			if (!notice) return;
+			if (patch)
+				setTokens((current) =>
+					current.map((t) =>
+						t.start === notice.token.start &&
+						mentionKey(t) === mentionKey(notice.candidate)
+							? { ...t, ...patch }
+							: t,
+					),
+				);
+			if (close) setNotice(null);
+			// Focus back in the field, caret after the pill (design D4).
+			refocus(notice.token.end + 1);
+		},
+		[notice, refocus],
+	);
+
+	// The notice goes with its pill: delete the mention and the question is moot.
+	useEffect(() => {
+		if (
+			notice &&
+			!tokens.some(
+				(t) =>
+					t.start === notice.token.start &&
+					mentionKey(t) === mentionKey(notice.candidate),
+			)
+		)
+			setNotice(null);
+	}, [notice, tokens]);
+
+	return {
+		enabled,
+		open,
+		sections: ranked.sections,
+		flat,
+		active,
+		setActive,
+		pick,
+		close,
+		anchorIndex: query?.start ?? null,
+		tokens,
+		onKeyDown,
+		onSelect,
+		payload,
+		notice,
+		/*
+		 * Every choice keeps the pill and NONE notifies a non-member, because
+		 * the hub would refuse the whole message (review R1-01): Dismiss and
+		 * "Mention without notifying" both leave readable, non-notifying text;
+		 * Invite leaves it non-notifying until the person is active, when it
+		 * upgrades itself (`awaitingKeys`).
+		 */
+		dismissNotice: () => updateNoticeToken({ notify: false }),
+		silenceNotice: () => updateNoticeToken({ notify: false }),
+		resolveNotice: () => {
+			if (!notice) return;
+			awaitingKeys.current.add(mentionKey(notice.candidate));
+			setNotice({ ...notice, invited: true });
+			refocus(notice.token.end + 1);
+		},
+		source,
+		listboxId,
+		inputScopeKey: tokenKey,
+		emojiIntent,
+		isComposing: () => composing.current,
+		clearEmojiIntent: () => {
+			pendingEmojiIntent.current = null;
+			setEmojiIntent(null);
+		},
+		applyTextEdit: (edit) => {
+			// One undo/redo and sidecar owner for both @ and : replacements.
+			applyEdit(
+				{
+					text: edit.text,
+					caret: edit.caret,
+					tokens: rebaseTokens(text, edit.text, tokens),
+				},
+				edit.edit,
+			);
+		},
+	};
+}

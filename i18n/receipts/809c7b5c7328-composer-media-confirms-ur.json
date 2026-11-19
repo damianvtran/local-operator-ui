@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "auditor": "reviewer-session (independent of coder-desktop)",
+  "agent": "reviewer-session (independent of coder-desktop)",
+  "model": "anthropic/claude-sonnet-5-5",
+  "fallback": "none",
+  "model_provenance": "Session 809c7b5c7328 header: anthropic/claude-sonnet-5-5; no provider fallback occurred.",
+  "independence": "Separate session from coder-desktop, who changed the key in all eight catalogues, and from earlier auditor sessions 0b2a6fefb140 and 54ec32ab1ef8. Verdict rebuilt from the en source and context sidecar, the render site (audio-recording-indicator.tsx:343-360), the sibling keys and the control label in ui.chat.composer, origin/main i18n/glossary.md and i18n/style-guides/<locale>.md; the coder's commit text was not read.",
+  "instance": "809c7b5c7328-composer-media-confirms-ur",
+  "session": "809c7b5c7328",
+  "locale": "ur",
+  "namespace": "ui.chat.composer_media",
+  "branch": "feat/composer-send-stop-slot",
+  "base": "origin/main 4f11d63ef64ed963f760dece99d29c265e24e78a (worktree HEAD d7625cf64d651a1133778d4f575bcd503e84ec57, changes uncommitted)",
+  "date": "2026-11-03",
+  "status": "passed",
+  "result": "clean",
+  "audit_kind": "delta audit of 1 changed value (confirms) plus line-coherence read of its siblings cancels and sends_now; all other keys of the file are byte-identical to the last audited row (HEAD blob hash == ledger target_sha256)",
+  "delta_keys_audited": [
+    "ui.chat.composer_media.confirms"
+  ],
+  "scope": "ui.chat.composer_media: confirms (changed value) and its coherence with the unchanged cancels and sends_now on one hint line",
+  "sha256": {
+    "en": "c1ddfc211ada93d361b212446fe9ac8dbef08506190eef710898baf392690582",
+    "ur": "ff5d51690b3ca45b10a170eaa75790ba565dd52ee6e714e180e5046e97889713",
+    "context": "b0d58ecf438a0bcd377f9f4a7c246344a6c2de8fbeddcf92d8f264b1702ff47a"
+  },
+  "reference_sha256": {
+    "glossary": "sha256 of origin/main:i18n/glossary.md, fetched 2026-11-03",
+    "style_guide": "origin/main:i18n/style-guides/ur.md"
+  },
+  "verified": [
+    "meaning: in the render site Enter ends the recording and the transcript goes into the box for review (control label ui.chat.composer.insert_transcript = 'ٹرانسکرپٹ داخل کریں'); the old 'تصدیق کرے' ('confirm') no longer describes that. New value 'داخل کرے' uses the same verb as the label.",
+    "line as rendered: 'Enter داخل کرے · Esc منسوخ کرے · ابھی بھیجے'. Form parity: 3rd-person subjunctive/aorist (داخل کرے/منسوخ کرے/بھیجے) - committed sends_now is 'ابھی بھیجے', so the line is uniform. Committed cancels='منسوخ کرے', sends_now='ابھی بھیجے' (unchanged on this diff).",
+    "advisory maxCells 12 from the en context sidecar (display width, CJK=2): confirms = 8; cancels = 9; sends_now = 10 of 16",
+    "no placeholders/ICU/tags in any of the three strings; NFC; no edge or double spaces; no bidi, zero-width or other format characters (the render layer adds FSI/PDI for ur); lowercase except where the language capitalises; no trailing punctuation, as the context tone requires",
+    "key set of the locale equals en (node --test scripts/i18n/locale-parity.test.mjs 44/44, context-parity.test.mjs 8/8, typed-keys.test.mjs 6/6 on this worktree); git diff of the locale file against HEAD shows confirms as the ONLY changed line",
+    "glossary/style guide: no row for confirm/insert as a keyboard-hint verb; guide rules read (fr imperative for actions applies to labels, not 3rd-person hints, same as the shipped siblings; vi unconjugated verbs; zh-CN no space inside Chinese runs; ur FSI/PDI by the renderer) - none violated"
+  ],
+  "findings": [
+    {
+      "severity": "INFO",
+      "key": "ui.chat.composer_media.confirms",
+      "note": "ur renders other 'Insert' controls (canvas insert_link_dialog.insert) as شامل کریں, but this namespace's own label ui.chat.composer.insert_transcript is ٹرانسکرپٹ داخل کریں. The hint follows the label it names (داخل), as the brief and the en context note require; no defect."
+    }
+  ]
+}

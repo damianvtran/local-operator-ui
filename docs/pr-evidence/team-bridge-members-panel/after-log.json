@@ -1,0 +1,521 @@
+[
+  {
+    "name": "panel-populated__localOperatorDark",
+    "story": "team-bridge-members-panel--populated",
+    "theme": "localOperatorDark",
+    "frame": "docs/pr-evidence/team-bridge-members-panel/panel-populated__localOperatorDark__after.png",
+    "facts": {
+      "theme": "localOperatorDark",
+      "active": "Close members",
+      "panel": true,
+      "countButton": null,
+      "rows": 7,
+      "dialog": null
+    },
+    "round": 1
+  },
+  {
+    "name": "panel-populated__localOperatorLight",
+    "story": "team-bridge-members-panel--populated",
+    "theme": "localOperatorLight",
+    "frame": "docs/pr-evidence/team-bridge-members-panel/panel-populated__localOperatorLight__after.png",
+    "facts": {
+      "theme": "localOperatorLight",
+      "active": "Close members",
+      "panel": true,
+      "countButton": null,
+      "rows": 7,
+      "dialog": null
+    },
+    "round": 1
+  },
+  {
+    "name": "panel-populated__dracula",
+    "story": "team-bridge-members-panel--populated",
+    "theme": "dracula",
+    "frame": "docs/pr-evidence/team-bridge-members-panel/panel-populated__dracula__after.png",
+    "facts": {
+      "theme": "dracula",
+      "active": "Close members",
+      "panel": true,
+      "countButton": null,
+      "rows": 7,
+      "dialog": null
+    }
+  },
+  {
+    "name": "panel-populated__tokyoNight",
+    "story": "team-bridge-members-panel--populated",
+    "theme": "tokyoNight",
+    "frame": "docs/pr-evidence/team-bridge-members-panel/panel-populated__tokyoNight__after.png",
+    "facts": {
+      "theme": "tokyoNight",
+      "active": "Close members",
+      "panel": true,
+      "countButton": null,
+      "rows": 7,
+      "dialog": null
+    }
+  },
+  {
+    "name": "panel-row-hover__localOperatorDark",
+    "story": "team-bridge-members-panel--row-hover",
+    "theme": "localOperatorDark",
+    "action": "hover:aside[aria-label=\"Members\"] li:nth-of-type(2)",
+    "frame": "docs/pr-evidence/team-bridge-members-panel/panel-row-hover__localOperatorDark__after.png",
+    "facts": {
+      "theme": "localOperatorDark",
+      "active": "Close members",
+      "panel": true,
+      "countButton": null,
+      "rows": 7,
+      "dialog": null
+    }
+  },
+  {
+    "name": "panel-row-hover__localOperatorLight",
+    "story": "team-bridge-members-panel--row-hover",
+    "theme": "localOperatorLight",
+    "action": "hover:aside[aria-label=\"Members\"] li:nth-of-type(2)",
+    "frame": "docs/pr-evidence/team-bridge-members-panel/panel-row-hover__localOperatorLight__after.png",
+    "facts": {
+      "theme": "localOperatorLight",
+      "active": "Close members",
+      "panel": true,
+      "countButton": null,
+      "rows": 7,
+      "dialog": null
+    },
+    "round": 1
+  },
+  {
+    "name": "panel-many-members__localOperatorDark",
+    "story": "team-bridge-members-panel--many-members",
+    "theme": "localOperatorDark",
+    "frame": "docs/pr-evidence/team-bridge-members-panel/panel-many-members__localOperatorDark__after.png",
+    "facts": {
+      "theme": "localOperatorDark",
+      "active": "Close members",
+      "panel": true,
+      "countButton": null,
+      "rows": 23,
+      "dialog": null
+    }
+  },
+  {
+    "name": "panel-many-members__localOperatorLight",
+    "story": "team-bridge-members-panel--many-members",
+    "theme": "localOperatorLight",
+    "frame": "docs/pr-evidence/team-bridge-members-panel/panel-many-members__localOperatorLight__after.png",
+    "facts": {
+      "theme": "localOperatorLight",
+      "active": "Close members",
+      "panel": true,
+      "countButton": null,
+      "rows": 23,
+      "dialog": null
+    }
+  },
+  {
+    "name": "panel-search-with-query__localOperatorDark",
+    "story": "team-bridge-members-panel--search-with-query",
+    "theme": "localOperatorDark",
+    "frame": "docs/pr-evidence/team-bridge-members-panel/panel-search-with-query__localOperatorDark__after.png",
+    "facts": {
+      "theme": "localOperatorDark",
+      "active": "Close members",
+      "panel": true,
+      "countButton": null,
+      "rows": 8,
+      "dialog": null
+    }
+  },
+  {
+    "name": "panel-search-with-query__localOperatorLight",
+    "story": "team-bridge-members-panel--search-with-query",
+    "theme": "localOperatorLight",
+    "frame": "docs/pr-evidence/team-bridge-members-panel/panel-search-with-query__localOperatorLight__after.png",
+    "facts": {
+      "theme": "localOperatorLight",
+      "active": "Close members",
+      "panel": true,
+      "countButton": null,
+      "rows": 8,
+      "dialog": null
+    }
+  },
+  {
+    "name": "panel-search-no-match__localOperatorDark",
+    "story": "team-bridge-members-panel--search-no-match",
+    "theme": "localOperatorDark",
+    "frame": "docs/pr-evidence/team-bridge-members-panel/panel-search-no-match__localOperatorDark__after.png",
+    "facts": {
+      "theme": "localOperatorDark",
+      "active": "Close members",
+      "panel": true,
+      "countButton": null,
+      "rows": 0,
+      "dialog": null
+    }
+  },
+  {
+    "name": "panel-search-no-match__localOperatorLight",
+    "story": "team-bridge-members-panel--search-no-match",
+    "theme": "localOperatorLight",
+    "frame": "docs/pr-evidence/team-bridge-members-panel/panel-search-no-match__localOperatorLight__after.png",
+    "facts": {
+      "theme": "localOperatorLight",
+      "active": "Close members",
+      "panel": true,
+      "countButton": null,
+      "rows": 0,
+      "dialog": null
+    }
+  },
+  {
+    "name": "panel-non-owner-viewer__localOperatorDark",
+    "story": "team-bridge-members-panel--non-owner-viewer",
+    "theme": "localOperatorDark",
+    "frame": "docs/pr-evidence/team-bridge-members-panel/panel-non-owner-viewer__localOperatorDark__after.png",
+    "facts": {
+      "theme": "localOperatorDark",
+      "active": "Close members",
+      "panel": true,
+      "countButton": null,
+      "rows": 7,
+      "dialog": null
+    }
+  },
+  {
+    "name": "panel-non-owner-viewer__localOperatorLight",
+    "story": "team-bridge-members-panel--non-owner-viewer",
+    "theme": "localOperatorLight",
+    "frame": "docs/pr-evidence/team-bridge-members-panel/panel-non-owner-viewer__localOperatorLight__after.png",
+    "facts": {
+      "theme": "localOperatorLight",
+      "active": "Close members",
+      "panel": true,
+      "countButton": null,
+      "rows": 7,
+      "dialog": null
+    }
+  },
+  {
+    "name": "panel-remove-confirm-open__localOperatorDark",
+    "story": "team-bridge-members-panel--remove-confirm-open",
+    "theme": "localOperatorDark",
+    "frame": "docs/pr-evidence/team-bridge-members-panel/panel-remove-confirm-open__localOperatorDark__after.png",
+    "facts": {
+      "theme": "localOperatorDark",
+      "active": "BUTTON",
+      "panel": true,
+      "countButton": null,
+      "rows": 7,
+      "dialog": "Remove Ben Tran from qa-coordination?"
+    },
+    "round": 1
+  },
+  {
+    "name": "panel-remove-confirm-open__localOperatorLight",
+    "story": "team-bridge-members-panel--remove-confirm-open",
+    "theme": "localOperatorLight",
+    "frame": "docs/pr-evidence/team-bridge-members-panel/panel-remove-confirm-open__localOperatorLight__after.png",
+    "facts": {
+      "theme": "localOperatorLight",
+      "active": "BUTTON",
+      "panel": true,
+      "countButton": null,
+      "rows": 7,
+      "dialog": "Remove Ben Tran from qa-coordination?"
+    },
+    "round": 1
+  },
+  {
+    "name": "panel-leave-confirm-open__localOperatorDark",
+    "story": "team-bridge-members-panel--leave-confirm-open",
+    "theme": "localOperatorDark",
+    "frame": "docs/pr-evidence/team-bridge-members-panel/panel-leave-confirm-open__localOperatorDark__after.png",
+    "facts": {
+      "theme": "localOperatorDark",
+      "active": "BUTTON",
+      "panel": true,
+      "countButton": null,
+      "rows": 7,
+      "dialog": "Leave qa-coordination?"
+    }
+  },
+  {
+    "name": "panel-leave-confirm-open__localOperatorLight",
+    "story": "team-bridge-members-panel--leave-confirm-open",
+    "theme": "localOperatorLight",
+    "frame": "docs/pr-evidence/team-bridge-members-panel/panel-leave-confirm-open__localOperatorLight__after.png",
+    "facts": {
+      "theme": "localOperatorLight",
+      "active": "BUTTON",
+      "panel": true,
+      "countButton": null,
+      "rows": 7,
+      "dialog": "Leave qa-coordination?"
+    }
+  },
+  {
+    "name": "panel-action-refused__localOperatorDark",
+    "story": "team-bridge-members-panel--action-refused",
+    "theme": "localOperatorDark",
+    "frame": "docs/pr-evidence/team-bridge-members-panel/panel-action-refused__localOperatorDark__after.png",
+    "facts": {
+      "theme": "localOperatorDark",
+      "active": "Close members",
+      "panel": true,
+      "countButton": null,
+      "rows": 7,
+      "dialog": null
+    }
+  },
+  {
+    "name": "panel-action-refused__localOperatorLight",
+    "story": "team-bridge-members-panel--action-refused",
+    "theme": "localOperatorLight",
+    "frame": "docs/pr-evidence/team-bridge-members-panel/panel-action-refused__localOperatorLight__after.png",
+    "facts": {
+      "theme": "localOperatorLight",
+      "active": "Close members",
+      "panel": true,
+      "countButton": null,
+      "rows": 7,
+      "dialog": null
+    }
+  },
+  {
+    "name": "panel-builtin-general__localOperatorDark",
+    "story": "team-bridge-members-panel--builtin-general",
+    "theme": "localOperatorDark",
+    "frame": "docs/pr-evidence/team-bridge-members-panel/panel-builtin-general__localOperatorDark__after.png",
+    "facts": {
+      "theme": "localOperatorDark",
+      "active": "Close members",
+      "panel": true,
+      "countButton": null,
+      "rows": 7,
+      "dialog": null
+    }
+  },
+  {
+    "name": "panel-builtin-general__localOperatorLight",
+    "story": "team-bridge-members-panel--builtin-general",
+    "theme": "localOperatorLight",
+    "frame": "docs/pr-evidence/team-bridge-members-panel/panel-builtin-general__localOperatorLight__after.png",
+    "facts": {
+      "theme": "localOperatorLight",
+      "active": "Close members",
+      "panel": true,
+      "countButton": null,
+      "rows": 7,
+      "dialog": null
+    }
+  },
+  {
+    "name": "panel-builtin-agents__localOperatorDark",
+    "story": "team-bridge-members-panel--builtin-agents",
+    "theme": "localOperatorDark",
+    "frame": "docs/pr-evidence/team-bridge-members-panel/panel-builtin-agents__localOperatorDark__after.png",
+    "facts": {
+      "theme": "localOperatorDark",
+      "active": "Close members",
+      "panel": true,
+      "countButton": null,
+      "rows": 7,
+      "dialog": null
+    }
+  },
+  {
+    "name": "panel-builtin-agents__localOperatorLight",
+    "story": "team-bridge-members-panel--builtin-agents",
+    "theme": "localOperatorLight",
+    "frame": "docs/pr-evidence/team-bridge-members-panel/panel-builtin-agents__localOperatorLight__after.png",
+    "facts": {
+      "theme": "localOperatorLight",
+      "active": "Close members",
+      "panel": true,
+      "countButton": null,
+      "rows": 7,
+      "dialog": null
+    }
+  },
+  {
+    "name": "header-count__localOperatorDark",
+    "story": "team-bridge-page--channel-selected",
+    "theme": "localOperatorDark",
+    "width": 1440,
+    "frame": "docs/pr-evidence/team-bridge-members-panel/header-count__localOperatorDark__after.png",
+    "facts": {
+      "theme": "localOperatorDark",
+      "active": "BODY",
+      "panel": false,
+      "countButton": "View 2 active members, 1 invited",
+      "rows": 0,
+      "dialog": null
+    },
+    "round": 1
+  },
+  {
+    "name": "header-count-hover__localOperatorDark",
+    "story": "team-bridge-page--channel-selected",
+    "theme": "localOperatorDark",
+    "width": 1440,
+    "action": "hover:button[aria-label^=\"View \"]",
+    "frame": "docs/pr-evidence/team-bridge-members-panel/header-count-hover__localOperatorDark__after.png",
+    "facts": {
+      "theme": "localOperatorDark",
+      "active": "BODY",
+      "panel": false,
+      "countButton": "View 2 active members, 1 invited",
+      "rows": 0,
+      "dialog": null
+    },
+    "round": 1
+  },
+  {
+    "name": "header-count-focus__localOperatorDark",
+    "story": "team-bridge-page--channel-selected",
+    "theme": "localOperatorDark",
+    "width": 1440,
+    "action": "focus-kbd:button[aria-label^=\"View \"]",
+    "frame": "docs/pr-evidence/team-bridge-members-panel/header-count-focus__localOperatorDark__after.png",
+    "facts": {
+      "theme": "localOperatorDark",
+      "active": "View 2 active members, 1 invited",
+      "panel": false,
+      "countButton": "View 2 active members, 1 invited",
+      "rows": 0,
+      "dialog": null
+    },
+    "round": 1
+  },
+  {
+    "name": "page-panel-docked__localOperatorDark",
+    "story": "team-bridge-page--members-panel-open",
+    "theme": "localOperatorDark",
+    "width": 1440,
+    "frame": "docs/pr-evidence/team-bridge-members-panel/page-panel-docked__localOperatorDark__after.png",
+    "facts": {
+      "theme": "localOperatorDark",
+      "active": "Close members",
+      "panel": true,
+      "countButton": "View 2 active members, 1 invited",
+      "rows": 3,
+      "dialog": null
+    }
+  },
+  {
+    "name": "page-panel-takeover-900__localOperatorDark",
+    "story": "team-bridge-page--members-panel-open",
+    "theme": "localOperatorDark",
+    "width": 900,
+    "frame": "docs/pr-evidence/team-bridge-members-panel/page-panel-takeover-900__localOperatorDark__after.png",
+    "facts": {
+      "theme": "localOperatorDark",
+      "active": "Close members",
+      "panel": true,
+      "countButton": "View 2 active members, 1 invited",
+      "rows": 3,
+      "dialog": null
+    }
+  },
+  {
+    "name": "header-count__localOperatorLight",
+    "story": "team-bridge-page--channel-selected",
+    "theme": "localOperatorLight",
+    "width": 1440,
+    "frame": "docs/pr-evidence/team-bridge-members-panel/header-count__localOperatorLight__after.png",
+    "facts": {
+      "theme": "localOperatorLight",
+      "active": "BODY",
+      "panel": false,
+      "countButton": "View 2 active members, 1 invited",
+      "rows": 0,
+      "dialog": null
+    },
+    "round": 1
+  },
+  {
+    "name": "header-count-hover__localOperatorLight",
+    "story": "team-bridge-page--channel-selected",
+    "theme": "localOperatorLight",
+    "width": 1440,
+    "action": "hover:button[aria-label^=\"View \"]",
+    "frame": "docs/pr-evidence/team-bridge-members-panel/header-count-hover__localOperatorLight__after.png",
+    "facts": {
+      "theme": "localOperatorLight",
+      "active": "BODY",
+      "panel": false,
+      "countButton": "View 2 active members, 1 invited",
+      "rows": 0,
+      "dialog": null
+    },
+    "round": 1
+  },
+  {
+    "name": "header-count-focus__localOperatorLight",
+    "story": "team-bridge-page--channel-selected",
+    "theme": "localOperatorLight",
+    "width": 1440,
+    "action": "focus-kbd:button[aria-label^=\"View \"]",
+    "frame": "docs/pr-evidence/team-bridge-members-panel/header-count-focus__localOperatorLight__after.png",
+    "facts": {
+      "theme": "localOperatorLight",
+      "active": "View 2 active members, 1 invited",
+      "panel": false,
+      "countButton": "View 2 active members, 1 invited",
+      "rows": 0,
+      "dialog": null
+    },
+    "round": 1
+  },
+  {
+    "name": "page-panel-docked__localOperatorLight",
+    "story": "team-bridge-page--members-panel-open",
+    "theme": "localOperatorLight",
+    "width": 1440,
+    "frame": "docs/pr-evidence/team-bridge-members-panel/page-panel-docked__localOperatorLight__after.png",
+    "facts": {
+      "theme": "localOperatorLight",
+      "active": "Close members",
+      "panel": true,
+      "countButton": "View 2 active members, 1 invited",
+      "rows": 3,
+      "dialog": null
+    }
+  },
+  {
+    "name": "page-panel-takeover-900__localOperatorLight",
+    "story": "team-bridge-page--members-panel-open",
+    "theme": "localOperatorLight",
+    "width": 900,
+    "frame": "docs/pr-evidence/team-bridge-members-panel/page-panel-takeover-900__localOperatorLight__after.png",
+    "facts": {
+      "theme": "localOperatorLight",
+      "active": "Close members",
+      "panel": true,
+      "countButton": "View 2 active members, 1 invited",
+      "rows": 3,
+      "dialog": null
+    }
+  },
+  {
+    "name": "panel-builtin-general-ur__localOperatorLight",
+    "story": "team-bridge-members-panel--builtin-general",
+    "theme": "localOperatorLight",
+    "locale": "ur",
+    "frame": "docs/pr-evidence/team-bridge-members-panel/panel-builtin-general-ur__localOperatorLight__after.png",
+    "facts": {
+      "theme": "localOperatorLight",
+      "active": "\u0627\u0631\u06a9\u0627\u0646 \u06a9\u06cc \u0641\u06c1\u0631\u0633\u062a \u0628\u0646\u062f \u06a9\u0631\u06cc\u06ba",
+      "panel": false,
+      "countButton": null,
+      "rows": 0,
+      "dialog": null
+    },
+    "round": 1
+  }
+]

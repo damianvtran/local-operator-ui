@@ -1,0 +1,22 @@
+[
+  {
+    "path": "out/renderer/browser-approvals-overlay.html",
+    "sha256": "0c92d73ff0f659f7ce67714668e3b2ed63afa09af85508c5f134a56eb7dc680c"
+  },
+  {
+    "path": "out/preload/browser-approvals-overlay.js",
+    "sha256": "9497956e0e76f8cabd4d840cdf11f3351553963482c354bf09f54a5117602ffe"
+  },
+  {
+    "path": "out/renderer/assets/approvalsOverlay-CyoIvkPw.js",
+    "sha256": "6c042cc48caae039880d53579cbc98f8e1056805f3b9cd709223c4a0396197e3"
+  },
+  {
+    "path": "out/renderer/assets/messages-CSKtFcP6.js",
+    "sha256": "8be3c45307204e0d81f4eb02dd402bf27f659e196f28a30d512e6ea948c8c34b"
+  },
+  {
+    "path": "out/renderer/assets/approvalsOverlay-CX3DxhSv.css",
+    "sha256": "bcb512a8f9260ee5403c868a0509cb38462903ac0c7993997937b42047adc873"
+  }
+]

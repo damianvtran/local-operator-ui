@@ -1,0 +1,22 @@
+{
+ "derived": {
+  "agent": "i18n-auditor",
+  "instance": "74af897140ba",
+  "model": "deepseek/deepseek-flash",
+  "result": "clean-with-findings",
+  "findings": {
+   "blocker": 0,
+   "major": 0,
+   "minor": 0,
+   "nit": 1
+  },
+  "source_sha256": "3676c1b366cc5159b94be65acdaea925bd193d20c2524ff3f410a8a5ddff514f",
+  "target_sha256": "89fe14994a64d7eba37f789a7ca5debc6503beb42ee99eabfe7f5256ef135c62",
+  "receipt_sha256": "08bc17ffe737fc07b06aeb4a152c9b1fce9e1b500a4555900f4660e955480b86"
+ },
+ "identity": {
+  "instance": "74af897140ba",
+  "model": "deepseek/deepseek-flash",
+  "status": "passed"
+ }
+}

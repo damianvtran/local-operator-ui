@@ -1,0 +1,28 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "4f2a9c71b8d3",
+  "date": "2026-10-18",
+  "locale": "vi",
+  "status": "passed",
+  "namespaces": {
+    "ui.projects": {
+      "namespace": "ui.projects",
+      "status": "passed",
+      "sha256": {
+        "source": "6b12f695845c3d01500291f5bc4eb50ea9b35e60c68bc69f21ee219c5f9d7f52",
+        "target": "1f55393c17abd213ebffb476e451ebdeb5ee1244e56107d53ec8f7c83be74763"
+      },
+      "findings": []
+    },
+    "ui.schedules": {
+      "namespace": "ui.schedules",
+      "status": "passed",
+      "sha256": {
+        "source": "157303c99e3f8aabed9b4d60a00ee9a8ddb21a92df86f962f191aa002533799a",
+        "target": "e09af5b94b6f8ca252c81a03a1b64bc518d4a6ff2e57d868222f8681c4173920"
+      },
+      "findings": []
+    }
+  }
+}

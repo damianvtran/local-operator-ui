@@ -1,0 +1,19 @@
+{
+  "auditor": "translation-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "452db1574370",
+  "reissued_from": "859a20bd9c70",
+  "date": "2026-10-20",
+  "round": 7,
+  "namespace": "ui.hub",
+  "locale": "vi",
+  "status": "clean",
+  "sha256": {
+    "vi": "3c201a9e58c52b39dcf6f56fe9db2318412a4cc52cac0781c7bcf422f36eb06f",
+    "en": "281a4058420d135c4dd8767610f6144ab1597fc2fca50e96253bd5846605905f"
+  },
+  "head": "1c3ecb6d52bb7dd0bc7436ea1493cff594dcd007",
+  "keys_audited": 49,
+  "scope": "ui.hub.skills.* — all 49 keys in vi/ui.hub.json read against en/ui.hub.json (full namespace pass). Every plural message parsed and rendered with the repo's intl-messageformat 12.1.3 for counts 0/1/2/3/5/11/21/100/1.5/1000000, and its declared branches compared with Intl.PluralRules('vi') CLDR categories; every placeholder, plural branch and ::group-off skeleton checked per branch. count/count_shared judged at their only call sites (hub-skills-library.tsx:385-392): count is a bare plural concatenated with public_hub, count_shared carries {organization}. Term consistency cross-checked against ui.hub.taxonomy.origin.named and the sibling subscription keys (auto_push, pull, subscri*). Read at head 1c3ecb6d52 (fix(i18n): keep the scope out of the count sentence).",
+  "findings": []
+}

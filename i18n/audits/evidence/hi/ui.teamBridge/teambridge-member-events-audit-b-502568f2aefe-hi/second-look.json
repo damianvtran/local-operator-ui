@@ -1,0 +1,49 @@
+{
+	"schema": 1,
+	"kind": "audit-amendment (second look)",
+	"audit_id": "teambridge-member-events-audit-b-502568f2aefe-hi",
+	"date": "2026-10-30",
+	"auditor": "translation-auditor",
+	"model": "radient/radient-research/radient-ultra",
+	"session": "502568f2aefe",
+	"instance": "502568f2aefe-hi",
+	"bound_receipt": {
+		"path": "i18n/receipts/502568f2aefe-hi.json",
+		"sha256": "ccc8e2a4d66b1489a9a39770d50d5613b678e2444506c7c43637e1f37484fa63",
+		"findings": {
+			"blocker": 0,
+			"major": 0,
+			"minor": 0,
+			"nit": 1
+		}
+	},
+	"why_an_amendment_and_not_a_new_receipt": "First-pass verdicts were written before any other auditor's receipt was read (receipts 502568f2aefe-* were created first). A second look afterwards added findings I had under-weighted and confirmed one I had missed: (1) the multi-name owner_added_agent number problem, which I had filed for vi only, applies to every locale whose grammar marks number on the agent noun or verb (fr, es, hi, ur, ru; zh-CN and vi are unaffected on number); (2) ur renders 'decline' as both انکار and مسترد inside one namespace; (3) hi/ur events.others has no head noun. Two proposals in the other auditor's report were rejected after checking the grammar: «A rejoint la conversation : {targets}» (the passe compose auxiliary must agree with its subject, so «A» is wrong for a three-name list - «ont rejoint» - reintroducing the very number problem it was meant to solve), and ru «ещё один» (the ru `one` arm also covers 21, 31, 101, so it would render «и ещё один» for 21 hidden names).",
+	"ledger_behaviour": "scripts/i18n/ledger-assemble.mjs refuses to replace an instance with different receipt bytes ('one run is one audit; a second audit needs its own instance'), and recording the same auditor under a second instance would misrepresent independence. The row therefore keeps the receipt above; this companion carries the auditor's final view. ledger.json was not hand-edited.",
+	"added_findings": [
+		{
+			"severity": "minor",
+			"id": "HI-B2",
+			"key": "ui.teamBridge.events.owner_added_agent",
+			"current": "{actor} ने अपना एजेंट {targets} जोड़ा",
+			"proposed": "{actor} ने अपने एजेंट जोड़े: {targets} for a plural list - needs a source-level number",
+			"reason": "Hindi marks number obligatorily on both the possessive (अपना/अपने) and the verb (जोड़ा/जोड़े), so a rolled-up three-name line renders a singular-marked sentence. That is a grammatical error rather than the loose apposition English tolerates, and it is the strongest case in the set - but it stays latent while no fixture produces a multi-name owner_invite, and the English template is the root.",
+			"disposition": "fix recommended, source-first"
+		},
+		{
+			"severity": "nit",
+			"id": "HI-B3",
+			"key": "ui.teamBridge.events.others",
+			"current": "{count, plural, one {# अन्य} other {# अन्य}}",
+			"proposed": "{count, plural, one {# अन्य व्यक्ति} other {# अन्य लोग}}",
+			"reason": "«अन्य» alone has no head noun, so the trailing item reads «…और 3 अन्य»; a counted noun is what Hindi wants, and the two arms can then also agree in number. Cosmetic; the current form is understandable.",
+			"disposition": "recorded, not blocking"
+		}
+	],
+	"final_counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 1,
+		"nit": 2
+	},
+	"final_verdict": "clean-with-findings: 0 blocker, 0 major, 1 minor, 2 nit."
+}

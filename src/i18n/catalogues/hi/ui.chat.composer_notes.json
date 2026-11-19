@@ -1,0 +1,16 @@
+{
+	"ui.chat.composer_notes.default_not_saved": "डिफ़ॉल्ट सहेजा नहीं गया: {reason}",
+	"ui.chat.composer_notes.default_not_saved_fallback": "बैकएंड ने इसे स्वीकार नहीं किया",
+	"ui.chat.composer_notes.default_saved": "नए सत्रों के लिए डिफ़ॉल्ट: {model}",
+	"ui.chat.composer_notes.goal.done_tag": "— पूरा",
+	"ui.chat.composer_notes.goal.stalled.breaker": "लक्ष्य अटक गया: जज फ़ैसला नहीं कर सका — आगे बढ़ाने के लिए संदेश भेजें",
+	"ui.chat.composer_notes.goal.stalled.cap": "लक्ष्य अटक गया: अपने-आप {count, plural, one {# बार} other {# बार}} जारी रहने के बाद रुक गया — आगे बढ़ाने के लिए संदेश भेजें",
+	"ui.chat.composer_notes.goal.stalled.cap_fallback": "लक्ष्य अटक गया: अपने-आप जारी रहने की सीमा पूरी हो गई — आगे बढ़ाने के लिए संदेश भेजें",
+	"ui.chat.composer_notes.goal.stalled.unknown": "लक्ष्य अटक गया: अपने-आप जारी रहना रुक गया — आगे बढ़ाने के लिए संदेश भेजें",
+	"ui.chat.composer_notes.hint.choose_model": "भेजने से पहले इस बातचीत के लिए मॉडल चुनें।",
+	"ui.chat.composer_notes.hint.connect_provider": "भेजने के लिए प्रोवाइडर कनेक्ट करें।",
+	"ui.chat.composer_notes.outside_mentions": "{count, plural, one {# संदर्भ इस सत्र के कार्य फ़ोल्डर के बाहर है; एजेंट पढ़ने से पहले आपसे इसकी स्वीकृति माँगेगा।} other {# संदर्भ इस सत्र के कार्य फ़ोल्डर के बाहर हैं; एजेंट पढ़ने से पहले आपसे उनकी स्वीकृति माँगेगा।}}",
+	"ui.chat.composer_notes.skill_empty_body": "कौशल `{name}` की सामग्री खाली है — आपका संदेश जैसा लिखा है वैसा ही भेजा जा रहा है",
+	"ui.chat.composer_notes.skill_load_failed": "कौशल `{name}` लोड नहीं हो सका — आपका संदेश जैसा लिखा है वैसा ही भेजा जा रहा है",
+	"ui.chat.composer_notes.slash_needs_name": "/{command} के बाद कोई नाम टाइप करें, या सूची से चुनें।"
+}

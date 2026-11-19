@@ -1,0 +1,12 @@
+{
+	"ui.hub.viewer.favourite": "Favourite agent",
+	"ui.hub.viewer.favourite_signed_out": "Log in to Radient to favourite agents",
+	"ui.hub.viewer.favourite_unavailable": "Favourite state unavailable",
+	"ui.hub.viewer.favourite_unknown": "Your favourites could not be read, so this is not shown as unfavourited.",
+	"ui.hub.viewer.like": "Like agent",
+	"ui.hub.viewer.like_signed_out": "Log in to Radient to like agents",
+	"ui.hub.viewer.like_unavailable": "Like state unavailable",
+	"ui.hub.viewer.like_unknown": "Your likes could not be read, so this is not shown as unliked.",
+	"ui.hub.viewer.unfavourite": "Unfavourite agent",
+	"ui.hub.viewer.unlike": "Unlike agent"
+}

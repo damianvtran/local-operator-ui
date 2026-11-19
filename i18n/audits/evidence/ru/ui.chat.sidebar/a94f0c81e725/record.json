@@ -1,0 +1,218 @@
+{
+  "locale": "ru",
+  "mode": "Fresh independent high-visibility audit: fully audited all FIVE new keys; read remaining 81 sidebar keys for terminology consistency. No earlier ru audit receipt read.",
+  "scope": "28a6127617e4ebe0b6ba47d39fca5d3a22d1ba93; ru/ui.chat.sidebar; scope_chats, scope_chats_elsewhere, scope_tokenless, scope_joined, name_suffix_elsewhere only.",
+  "head_sha": "28a6127617e4ebe0b6ba47d39fca5d3a22d1ba93",
+  "audit_date": "2026-11-10",
+  "key_count": 86,
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "../_s10-translations/ru.json translator identity; translator session id not supplied"
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "a94f0c81e725",
+    "session": "60572bc0f73e",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "Served runtime model header openai/gpt-6.1-sol for this session. No fallback used. Independent from translator anthropic/claude-sonnet-5-5.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "verdict": "clean-with-findings",
+  "findings": [
+    {
+      "id": "RU-S10-F1",
+      "severity": "minor",
+      "key": "ui.chat.sidebar.mark_all_read.scope_tokenless",
+      "current": "{count, plural, one {Нельзя снять {count, number, ::group-off} непрочитанную отметку без токена завершения.} few {Нельзя снять {count, number, ::group-off} непрочитанные отметки без токена завершения.} many {Нельзя снять {count, number, ::group-off} непрочитанных отметок без токена завершения.} other {Нельзя снять {count, number, ::group-off} непрочитанной отметки без токена завершения.}}",
+      "problem": "The noun phrase непрочитанная отметка literally describes a mark that has not been read, rather than a mark indicating unread content. The intended limit remains understandable in context, so this is a non-gating collocation/terminology improvement. Existing read-ack copy already uses the clearer отметка о непрочитанном.",
+      "suggested": "Use the existing state term: one {Нельзя снять {count, number, ::group-off} отметку о непрочитанном без токена завершения.} few {Нельзя снять {count, number, ::group-off} отметки о непрочитанном без токена завершения.} many {Нельзя снять {count, number, ::group-off} отметок о непрочитанном без токена завершения.} other {Нельзя снять {count, number, ::group-off} отметки о непрочитанном без токена завершения.}",
+      "evidence": "ui.chat.read_ack.description.remote: «Отметка о непрочитанном остаётся на другом устройстве. Она снимется, когда это устройство обновится.»; ui.chat.read_ack.refusal.busy: «Статус прочтения занят, поэтому отметка о непрочитанном не снята. {remedy}»"
+    }
+  ],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+  },
+  "namespaces": {
+    "ui.chat.sidebar": {
+      "status": "passed",
+      "result": "clean-with-findings",
+      "source_sha256": "7db9ba5108a62330a1782f775b991ec0483537d2f7d808ae0691e1a6ef8840cd",
+      "target_sha256": "91b3813dce90565559c2ba25ef066978934c1adba2c4d1b33c91d04cb4da1825",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+          "sha256": "7db9ba5108a62330a1782f775b991ec0483537d2f7d808ae0691e1a6ef8840cd"
+        },
+        "ru": {
+          "path": "src/i18n/catalogues/ru/ui.chat.sidebar.json",
+          "sha256": "91b3813dce90565559c2ba25ef066978934c1adba2c4d1b33c91d04cb4da1825"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.sidebar.context.json",
+          "sha256": "4f1593cc34b395ef8701a60e58e73a0371b3c93730eb7a1f2b2845dc6250d7e3"
+        }
+      },
+      "findings": [
+        {
+          "id": "RU-S10-F1",
+          "severity": "minor",
+          "key": "ui.chat.sidebar.mark_all_read.scope_tokenless",
+          "current": "{count, plural, one {Нельзя снять {count, number, ::group-off} непрочитанную отметку без токена завершения.} few {Нельзя снять {count, number, ::group-off} непрочитанные отметки без токена завершения.} many {Нельзя снять {count, number, ::group-off} непрочитанных отметок без токена завершения.} other {Нельзя снять {count, number, ::group-off} непрочитанной отметки без токена завершения.}}",
+          "problem": "The noun phrase непрочитанная отметка literally describes a mark that has not been read, rather than a mark indicating unread content. The intended limit remains understandable in context, so this is a non-gating collocation/terminology improvement. Existing read-ack copy already uses the clearer отметка о непрочитанном.",
+          "suggested": "Use the existing state term: one {Нельзя снять {count, number, ::group-off} отметку о непрочитанном без токена завершения.} few {Нельзя снять {count, number, ::group-off} отметки о непрочитанном без токена завершения.} many {Нельзя снять {count, number, ::group-off} отметок о непрочитанном без токена завершения.} other {Нельзя снять {count, number, ::group-off} отметки о непрочитанном без токена завершения.}",
+          "evidence": "ui.chat.read_ack.description.remote: «Отметка о непрочитанном остаётся на другом устройстве. Она снимется, когда это устройство обновится.»; ui.chat.read_ack.refusal.busy: «Статус прочтения занят, поэтому отметка о непрочитанном не снята. {remedy}»"
+        }
+      ],
+      "key_count": 86
+    }
+  },
+  "per_key_checks": [
+    {
+      "key": "ui.chat.sidebar.mark_all_read.scope_chats",
+      "source": "{count, plural, one {Mark {count, number, ::group-off} unread chat as read.} other {Mark {count, number, ::group-off} unread chats as read.}}",
+      "current_text": "{count, plural, one {Отметить прочитанным {count, number, ::group-off} непрочитанный чат.} few {Отметить прочитанными {count, number, ::group-off} непрочитанных чата.} many {Отметить прочитанными {count, number, ::group-off} непрочитанных чатов.} other {Отметить прочитанными {count, number, ::group-off} непрочитанного чата.}}",
+      "findings": [],
+      "assessment": "Meaning/action faithful; чат and непрочитанный match sidebar terms. one: непрочитанный чат / прочитанным; few: непрочитанных чата / прочитанными; many: непрочитанных чатов / прочитанными; other: непрочитанного чата with plural collective predicate. Other is structurally valid though fractional counts cannot arise from array lengths. Infinitive matches existing label.",
+      "placeholder_integrity": "Recursive audit-only ICU-subset parse; argument names/types equal source; every number retains exact ::group-off skeleton.",
+      "plural_select": "All plural nodes one/few/many/other; independently inspected all branches and audit-only expansion at 1/2/5/21/1.5.",
+      "manual_bidi_controls": false,
+      "static_codepoint_length_without_arguments": 0
+    },
+    {
+      "key": "ui.chat.sidebar.mark_all_read.scope_chats_elsewhere",
+      "source": "{count, plural, one {Mark {count, number, ::group-off} unread chat as read} other {Mark {count, number, ::group-off} unread chats as read}}, including {elsewhere, plural, one {{elsewhere, number, ::group-off} that is not active} other {{elsewhere, number, ::group-off} that are not active}}.",
+      "current_text": "{count, plural, one {Отметить прочитанным {count, number, ::group-off} непрочитанный чат} few {Отметить прочитанными {count, number, ::group-off} непрочитанных чата} many {Отметить прочитанными {count, number, ::group-off} непрочитанных чатов} other {Отметить прочитанными {count, number, ::group-off} непрочитанного чата}}, включая {elsewhere, plural, one {{elsewhere, number, ::group-off} неактивный} few {{elsewhere, number, ::group-off} неактивных} many {{elsewhere, number, ::group-off} неактивных} other {{elsewhere, number, ::group-off} неактивного}}.",
+      "findings": [],
+      "assessment": "Same case/agreement as scope_chats. Including preserves subset, not addition. Неактивный names backend active=false class, not a sidebar heading or Running. Elsewhere one masculine accusative неактивный, few/many неактивных with omitted чат, fractional other неактивного. Single final full stop.",
+      "placeholder_integrity": "Recursive audit-only ICU-subset parse; argument names/types equal source; every number retains exact ::group-off skeleton.",
+      "plural_select": "All plural nodes one/few/many/other; independently inspected all branches and audit-only expansion at 1/2/5/21/1.5.",
+      "manual_bidi_controls": false,
+      "static_codepoint_length_without_arguments": 11
+    },
+    {
+      "key": "ui.chat.sidebar.mark_all_read.scope_tokenless",
+      "source": "{count, plural, one {{count, number, ::group-off} unread mark with no completion token cannot be cleared.} other {{count, number, ::group-off} unread marks with no completion token cannot be cleared.}}",
+      "current_text": "{count, plural, one {Нельзя снять {count, number, ::group-off} непрочитанную отметку без токена завершения.} few {Нельзя снять {count, number, ::group-off} непрочитанные отметки без токена завершения.} many {Нельзя снять {count, number, ::group-off} непрочитанных отметок без токена завершения.} other {Нельзя снять {count, number, ::group-off} непрочитанной отметки без токена завершения.}}",
+      "findings": [
+        {
+          "id": "RU-S10-F1",
+          "severity": "minor",
+          "key": "ui.chat.sidebar.mark_all_read.scope_tokenless",
+          "current": "{count, plural, one {Нельзя снять {count, number, ::group-off} непрочитанную отметку без токена завершения.} few {Нельзя снять {count, number, ::group-off} непрочитанные отметки без токена завершения.} many {Нельзя снять {count, number, ::group-off} непрочитанных отметок без токена завершения.} other {Нельзя снять {count, number, ::group-off} непрочитанной отметки без токена завершения.}}",
+          "problem": "The noun phrase непрочитанная отметка literally describes a mark that has not been read, rather than a mark indicating unread content. The intended limit remains understandable in context, so this is a non-gating collocation/terminology improvement. Existing read-ack copy already uses the clearer отметка о непрочитанном.",
+          "suggested": "Use the existing state term: one {Нельзя снять {count, number, ::group-off} отметку о непрочитанном без токена завершения.} few {Нельзя снять {count, number, ::group-off} отметки о непрочитанном без токена завершения.} many {Нельзя снять {count, number, ::group-off} отметок о непрочитанном без токена завершения.} other {Нельзя снять {count, number, ::group-off} отметки о непрочитанном без токена завершения.}",
+          "evidence": "ui.chat.read_ack.description.remote: «Отметка о непрочитанном остаётся на другом устройстве. Она снимется, когда это устройство обновится.»; ui.chat.read_ack.refusal.busy: «Статус прочтения занят, поэтому отметка о непрочитанном не снята. {remedy}»"
+        }
+      ],
+      "assessment": "Cannot-clear negation and no-completion-token limitation preserved. Токен завершения is understandable descriptive technical Russian; токен matches style guide and sibling usage, not silently an authentication token. one accusative feminine непрочитанную отметку; few accusative counted непрочитанные отметки; many genitive непрочитанных отметок; other genitive singular непрочитанной отметки. One non-gating collocation finding recorded.",
+      "placeholder_integrity": "Recursive audit-only ICU-subset parse; argument names/types equal source; every number retains exact ::group-off skeleton.",
+      "plural_select": "All plural nodes one/few/many/other; independently inspected all branches and audit-only expansion at 1/2/5/21/1.5.",
+      "manual_bidi_controls": false,
+      "static_codepoint_length_without_arguments": 0
+    },
+    {
+      "key": "ui.chat.sidebar.mark_all_read.scope_joined",
+      "source": "{chats} {tokenless}",
+      "current_text": "{chats} {tokenless}",
+      "findings": [],
+      "assessment": "Exact {chats} {tokenless}: ordinary U+0020 between complete Russian sentences is correct. No extra punctuation or word, arguments in correct order.",
+      "placeholder_integrity": "Recursive audit-only ICU-subset parse; argument names/types equal source; every number retains exact ::group-off skeleton.",
+      "plural_select": "No plural; both plain arguments preserved.",
+      "manual_bidi_controls": false,
+      "static_codepoint_length_without_arguments": 1
+    },
+    {
+      "key": "ui.chat.sidebar.mark_all_read.name_suffix_elsewhere",
+      "source": ", including {elsewhere, plural, one {{elsewhere, number, ::group-off} that is not active} other {{elsewhere, number, ::group-off} that are not active}}",
+      "current_text": ", включая {elsewhere, plural, one {{elsewhere, number, ::group-off} неактивный} few {{elsewhere, number, ::group-off} неактивных} many {{elsewhere, number, ::group-off} неактивных} other {{elsewhere, number, ::group-off} неактивного}}",
+      "findings": [],
+      "assessment": "Direct concatenation gives «Отметить прочитанными: 5, включая 2 неактивных». Elliptical чат recoverable from chats section/context; natural concise label tail. Leading comma+space intact, no final punctuation; original visible label remains a byte-for-byte prefix. All four plural categories agree with omitted masculine noun.",
+      "placeholder_integrity": "Recursive audit-only ICU-subset parse; argument names/types equal source; every number retains exact ::group-off skeleton.",
+      "plural_select": "All plural nodes one/few/many/other; independently inspected all branches and audit-only expansion at 1/2/5/21/1.5.",
+      "manual_bidi_controls": false,
+      "static_codepoint_length_without_arguments": 10
+    }
+  ],
+  "remediation_verification": {
+    "out_of_scope_pre_existing": [],
+    "policy_sources": [
+      "~/local-operator/i18n/style-guides/ru.md",
+      "~/local-operator/i18n/glossary.md",
+      "docs/I18N.md Retain checkable audit records"
+    ],
+    "executed_checks": [
+      "git rev-parse HEAD equals pinned head; git show bytes equal current bytes for en/context/ru.",
+      "shasum -a 256 on en/context/ru sidebar files; target expected prefix matched.",
+      "Python duplicate-rejecting JSON parse; en/ru key parity 86/86.",
+      "Python recursive ICU-subset structural parser for five keys; argument names/types exact, all number skeletons ::group-off, all ru plural nodes one/few/many/other, no bidi controls. This is not FormatJS execution.",
+      "Audit-only expansion at 1,2,5,21,1.5 for manual case inspection; corrected audit helper so decimal-comma substitution applies only to numbers, never plain joined sentence arguments.",
+      "Read label and name suffix, mark-all-read.ts selection/join code and chat-sidebar.tsx accessible-name composition.",
+      "Instance search (rg plus Python recursive byte/name scan) found no a94f0c81e725 in 4398 existing receipt/evidence files."
+    ],
+    "current_report_verdict": {
+      "status": "passed",
+      "unresolved_blocker_major_count": 0,
+      "finding_ids": [
+        "RU-S10-F1"
+      ]
+    },
+    "branch_expansions_audit_helper_not_runtime": {
+      "ui.chat.sidebar.mark_all_read.scope_chats": [
+        "Отметить прочитанным 1 непрочитанный чат.",
+        "Отметить прочитанными 2 непрочитанных чата.",
+        "Отметить прочитанными 5 непрочитанных чатов.",
+        "Отметить прочитанным 21 непрочитанный чат.",
+        "Отметить прочитанными 1,5 непрочитанного чата."
+      ],
+      "ui.chat.sidebar.mark_all_read.scope_chats_elsewhere": [
+        "Отметить прочитанным 1 непрочитанный чат, включая 1 неактивный.",
+        "Отметить прочитанными 2 непрочитанных чата, включая 2 неактивных.",
+        "Отметить прочитанными 5 непрочитанных чатов, включая 5 неактивных.",
+        "Отметить прочитанным 21 непрочитанный чат, включая 21 неактивный.",
+        "Отметить прочитанными 1,5 непрочитанного чата, включая 1,5 неактивного."
+      ],
+      "ui.chat.sidebar.mark_all_read.scope_tokenless": [
+        "Нельзя снять 1 непрочитанную отметку без токена завершения.",
+        "Нельзя снять 2 непрочитанные отметки без токена завершения.",
+        "Нельзя снять 5 непрочитанных отметок без токена завершения.",
+        "Нельзя снять 21 непрочитанную отметку без токена завершения.",
+        "Нельзя снять 1,5 непрочитанной отметки без токена завершения."
+      ],
+      "ui.chat.sidebar.mark_all_read.scope_joined": [
+        "Первое предложение. Второе предложение.",
+        "Первое предложение. Второе предложение.",
+        "Первое предложение. Второе предложение.",
+        "Первое предложение. Второе предложение.",
+        "Первое предложение. Второе предложение."
+      ],
+      "ui.chat.sidebar.mark_all_read.name_suffix_elsewhere": [
+        ", включая 1 неактивный",
+        ", включая 2 неактивных",
+        ", включая 5 неактивных",
+        ", включая 21 неактивный",
+        ", включая 1,5 неактивного"
+      ]
+    },
+    "terminology_sources": {
+      "unread_mark": "ui.chat.read_ack.description.remote and refusal.busy: отметка о непрочитанном",
+      "receipt": "ui.chat.canonical.fold.receipt.wake: уведомление о пробуждении; fold.receipt.other: другое уведомление. These are displayed receipt/event kinds, not a competing completion-token term.",
+      "not_active": "ui.settings.shortcuts.recording.inactive_claimed: Запись неактивна: {label} использует это сочетание.",
+      "token": "Russian style guide established transliteration токен; sibling ui.chat.pickers.fast.premium_acknowledgement: стоимость токена. No competing exact completion-token term found in searched siblings."
+    }
+  },
+  "unverified": [
+    "Repository Node validators, deriveReceiptAudit execution, FormatJS formatting and assembler not run: explicit no-node/read-only restriction. No ledger row written.",
+    "No browser, build, rendered tooltip, live accessibility tree or screen reader. Native-tooltip wrapping allowed by sidecar; actual rendered fit unverified. No quantitative maxCells/maxChars hint for these keys.",
+    "Only five new keys semantically audited; remaining 81 sidebar keys read for consistency, not globally certified. Sibling namespaces consulted for terminology only.",
+    "Receipt is scratch-only handoff per explicit task; requesting manager must retain it via approved tracked receipt/evidence mapping. Shared worktree unchanged."
+  ],
+  "receipt_contract_review": "Used committed 2bbf16af14ee.json exact top-level field set; added namespace key_count per task, also supported by 92b74137fc35.json. Read _s9-audits/second/fr.json, docs/I18N.md, ledger-rules.mjs deriveReceiptAudit/receiptScope/countFindings and ledger-assemble.mjs. Static checks only: identity unambiguous, source/target hashes match actual files, namespace owns explicit countable minor finding, passed+one minor derives clean-with-findings. Node execution not claimed.",
+  "audit_notes_not_execution_log": true
+}

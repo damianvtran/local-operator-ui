@@ -1,0 +1,80 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "1b7a2a90c876",
+  "locale": "ur",
+  "reviewed_commit": "c44e9e8be8eb5a134a97acd87e7015f54b82c13d",
+  "parent_commit": "6dd43fd7494f651fd99b3fe926606fc7ba35fd82",
+  "scope": "Five newly added Urdu keys only; namespace hashes bind whole files, not a full-namespace semantic re-audit.",
+  "actual_model_source": "Host model-switch notification: temporary fallback from anthropic/claude-sonnet-5-5 through anthropic/claude-opus-5-5 to openai/gpt-6.1-sol, provider failure: quota.",
+  "namespaces": {
+    "ui.chat": {
+      "status": "passed",
+      "sha256": {
+        "ur": "656e54c5f0c354929765afc16f7d6805301fdfcce4bbc8311e5fe03b73b73890",
+        "en": "270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27"
+      },
+      "findings": []
+    },
+    "ui.chat.run_details": {
+      "status": "passed",
+      "sha256": {
+        "ur": "f529b7913b8809704e6e16706faac642d03a02f7715582bf92aa8d37d6107459",
+        "en": "f8184d5f41b359364e47747871988bbb731d79c12bc3b9ec755f3db73e5db6ab"
+      },
+      "findings": []
+    }
+  },
+  "limitations": [
+    "Static bidi assessment only; no native rendered pixels, shaping, overflow or mirroring proof.",
+    "No builds, installs, scanner, typecheck, Electron or translation services. Focused ICU/parser and immutable receipt validation, not the full repository suite.",
+    "Pseudo/width reviewed statically against context; no numeric maxCells/maxChars caps on these five sidecar entries and no pseudo-rendered proof."
+  ],
+  "checks": {
+    "ui.chat": {
+      "key_count": 3,
+      "keys": [
+        "ui.chat.session_status.effort_level.low",
+        "ui.chat.session_status.effort_level.medium",
+        "ui.chat.session_status.effort_level.high"
+      ],
+      "english_path": "src/i18n/catalogues/en/ui.chat.json",
+      "target_path": "src/i18n/catalogues/ur/ui.chat.json",
+      "context_path": "src/i18n/catalogues/en/ui.chat.context.json",
+      "context_sha256": "efcf4d1872974b6fc7456e753a2e10010ab896fffede262ae7c19d96c35ecee1",
+      "whole_namespace_key_parity": "passed",
+      "only_expected_keys_added": "passed",
+      "existing_values_unchanged": "passed",
+      "icu_parser_and_parameter_types": "passed",
+      "ur_cldr_categories": [
+        "one",
+        "other"
+      ],
+      "manual_bidi_controls_cf_count": 0
+    },
+    "ui.chat.run_details": {
+      "key_count": 2,
+      "keys": [
+        "ui.chat.run_details.wake.armed_count",
+        "ui.chat.run_details.wake.cadence_once"
+      ],
+      "english_path": "src/i18n/catalogues/en/ui.chat.run_details.json",
+      "target_path": "src/i18n/catalogues/ur/ui.chat.run_details.json",
+      "context_path": "src/i18n/catalogues/en/ui.chat.run_details.context.json",
+      "context_sha256": "da588f521188a2bcba1d0aeb7a265c3474b16673b8f653a021fa7e9e7075e911",
+      "whole_namespace_key_parity": "passed",
+      "only_expected_keys_added": "passed",
+      "existing_values_unchanged": "passed",
+      "icu_parser_and_parameter_types": "passed",
+      "ur_cldr_categories": [
+        "one",
+        "other"
+      ],
+      "manual_bidi_controls_cf_count": 0
+    },
+    "negative_controls": {
+      "malformed_icu_rejected": true,
+      "renamed_placeholder_detected": true
+    }
+  }
+}

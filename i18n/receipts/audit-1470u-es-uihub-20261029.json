@@ -1,0 +1,12 @@
+{
+ "auditor": "i18n-auditor",
+ "model": "radient/auto",
+ "instance": "audit-1470u-es-uihub-20261029",
+ "status": "passed",
+ "namespace": "ui.hub",
+ "sha256": {
+  "es": "2d4624ac033a587d5a7a7e1d2c499c1b88b8292a8e09e6cabb380ac8d90eb0cf",
+  "en": "0d77070295627e861882e8f952888c59e1d013dd754e1a7da79c85d1a31a9753"
+ },
+ "findings": []
+}

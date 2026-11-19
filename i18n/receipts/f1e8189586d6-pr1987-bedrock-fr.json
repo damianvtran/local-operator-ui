@@ -1,0 +1,197 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1, PR #1987",
+  "locale": "fr",
+  "namespace": "ui.providers.bedrock",
+  "pr": 1987,
+  "date": "2026-11-19",
+  "head": "21be3643c9d0",
+  "instance": "f1e8189586d6-pr1987-bedrock-fr",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "model": "anthropic/claude-opus-5-5",
+    "instance": "f1e8189586d6-pr1987-bedrock-fr",
+    "independence": "lopdev task subagent job ab68148cabf7 (session f1e8189586d6), anthropic/claude-opus-5-5, no fallback observed; distinct from the translator (coder, PR #1987 implementer lane bedrock-B-ui, job 07b871a99b2c, anthropic/claude-opus-5-5 per manager). Judged from English, its context sidecar, the core glossary and locale style guide (local-operator i18n/), and shipped catalogue precedent; no MT used. Minor findings were corrected by the auditor in place (repo docs do not forbid it); the hashes below are of the corrected bytes."
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": [
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Mechanical pass on the audited bytes: key set and order equal English (71); ICU parse OK (@formatjs/icu-messageformat-parser); argument names/types equal English per key; every plural arm set equals Intl.PluralRules cardinal categories; no bidi control characters (U+200E/F, U+202A-E, U+2066-9, U+061C); NFC."
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Semantic pass: every value faithful to English and its context sidecar; AWS product names (Amazon Bedrock, AWS CLI, AWS SSO, SSO, IAM) and Local Operator kept Latin; {region}/{label}/{command}/{sources}/{source}/{time} preserved; region_help reads with each region_source_* phrase in place."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.access_key_id_label",
+      "current": "ID de clé d'accès",
+      "replacement": "ID de clé d’accès",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide fr: apostrophe U+2019 (not '), U+202F before : ; ! ?; CLDR fr requires a many arm"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.ambient_body",
+      "current": "Utilisez les identifiants AWS déjà fournis par cet ordinateur : variables d'environnement, votre configuration AWS ou le rôle de la machine sur laquelle tourne Local Operator.",
+      "replacement": "Utilisez les identifiants AWS déjà fournis par cet ordinateur : variables d’environnement, votre configuration AWS ou le rôle de la machine sur laquelle tourne Local Operator.",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide fr: apostrophe U+2019 (not '), U+202F before : ; ! ?; CLDR fr requires a many arm"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.ambient_none",
+      "current": "Aucun identifiant AWS n'a été détecté dans l'environnement. La connexion vérifie quand même toute la chaîne d'identifiants AWS.",
+      "replacement": "Aucun identifiant AWS n’a été détecté dans l’environnement. La connexion vérifie quand même toute la chaîne d’identifiants AWS.",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide fr: apostrophe U+2019 (not '), U+202F before : ; ! ?; CLDR fr requires a many arm"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.ambient_sources",
+      "current": "Trouvé : {sources}",
+      "replacement": "Trouvé : {sources}",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide fr: apostrophe U+2019 (not '), U+202F before : ; ! ?; CLDR fr requires a many arm"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.checking",
+      "current": "Vérification d'Amazon Bedrock dans {region}…",
+      "replacement": "Vérification d’Amazon Bedrock dans {region}…",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide fr: apostrophe U+2019 (not '), U+202F before : ; ! ?; CLDR fr requires a many arm"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.error_region_invalid",
+      "current": "Amazon Bedrock n'est pas disponible dans cette région",
+      "replacement": "Amazon Bedrock n’est pas disponible dans cette région",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide fr: apostrophe U+2019 (not '), U+202F before : ; ! ?; CLDR fr requires a many arm"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.kind_process",
+      "current": "Processus d'identifiants",
+      "replacement": "Processus d’identifiants",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide fr: apostrophe U+2019 (not '), U+202F before : ; ! ?; CLDR fr requires a many arm"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.kind_static",
+      "current": "Clés d'accès",
+      "replacement": "Clés d’accès",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide fr: apostrophe U+2019 (not '), U+202F before : ; ! ?; CLDR fr requires a many arm"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.method_aws_blurb",
+      "current": "Utilisez un profil AWS, une connexion SSO, des clés d'accès ou les identifiants AWS de cet ordinateur. Facturé par AWS.",
+      "replacement": "Utilisez un profil AWS, une connexion SSO, des clés d’accès ou les identifiants AWS de cet ordinateur. Facturé par AWS.",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide fr: apostrophe U+2019 (not '), U+202F before : ; ! ?; CLDR fr requires a many arm"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.no_profiles_body",
+      "current": "Aucune configuration AWS n'a été trouvée sur cet ordinateur. Collez plutôt une clé API Amazon Bedrock ou une clé d'accès, ou configurez l'AWS CLI puis revenez.",
+      "replacement": "Aucune configuration AWS n’a été trouvée sur cet ordinateur. Collez plutôt une clé API Amazon Bedrock ou une clé d’accès, ou configurez l’AWS CLI puis revenez.",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide fr: apostrophe U+2019 (not '), U+202F before : ; ! ?; CLDR fr requires a many arm"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.region_help",
+      "current": "Par défaut : {region}, d'après {source}.",
+      "replacement": "Par défaut : {region}, d’après {source}.",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide fr: apostrophe U+2019 (not '), U+202F before : ; ! ?; CLDR fr requires a many arm"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.secret_access_key_label",
+      "current": "Clé d'accès secrète",
+      "replacement": "Clé d’accès secrète",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide fr: apostrophe U+2019 (not '), U+202F before : ; ! ?; CLDR fr requires a many arm"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.session_valid_until",
+      "current": "Connecté jusqu'à {time}",
+      "replacement": "Connecté jusqu’à {time}",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide fr: apostrophe U+2019 (not '), U+202F before : ; ! ?; CLDR fr requires a many arm"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.sso_code_label",
+      "current": "Confirmez ce code dans le navigateur :",
+      "replacement": "Confirmez ce code dans le navigateur :",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide fr: apostrophe U+2019 (not '), U+202F before : ; ! ?; CLDR fr requires a many arm"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.sso_expired_body",
+      "current": "Reconnectez-vous pour la renouveler. Rien n'a été enregistré.",
+      "replacement": "Reconnectez-vous pour la renouveler. Rien n’a été enregistré.",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide fr: apostrophe U+2019 (not '), U+202F before : ; ! ?; CLDR fr requires a many arm"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.sso_failed",
+      "current": "La connexion AWS n'a pas abouti.",
+      "replacement": "La connexion AWS n’a pas abouti.",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide fr: apostrophe U+2019 (not '), U+202F before : ; ! ?; CLDR fr requires a many arm"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.sso_needs_cli",
+      "current": "Pour vous connecter d'ici, l'AWS CLI est nécessaire. Installez-la, ou exécutez ceci dans un terminal :",
+      "replacement": "Pour vous connecter d’ici, l’AWS CLI est nécessaire. Installez-la, ou exécutez ceci dans un terminal :",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide fr: apostrophe U+2019 (not '), U+202F before : ; ! ?; CLDR fr requires a many arm"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.tab_access_key",
+      "current": "Clé d'accès",
+      "replacement": "Clé d’accès",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide fr: apostrophe U+2019 (not '), U+202F before : ; ! ?; CLDR fr requires a many arm"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.connected_models",
+      "current": "Connecté à Amazon Bedrock en tant que {label} · {count, plural, one {# modèle disponible} other {# modèles disponibles}}",
+      "replacement": "Connecté à Amazon Bedrock en tant que {label} · {count, plural, one {# modèle disponible} many {# de modèles disponibles} other {# modèles disponibles}}",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide fr: apostrophe U+2019 (not '), U+202F before : ; ! ?; CLDR fr requires a many arm"
+    }
+  ],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 19,
+    "nit": 0
+  },
+  "scope": "PR #1987 round 1: new namespace ui.providers.bedrock, all 71 keys (origin/main..21be3643c9 plus auditor corrections)",
+  "en_sha256": "ce2759029a0f26381abb6d7171f40513776f11a4ab58fa3f553af017d92ad1ba",
+  "context_sha256": "73941550bb926fc74be6bb35a68cf9a540702d21eada0668f2b0a2252b9da6bc",
+  "sha256": {
+    "fr": "250de2095b91da55bcbb594a41b4f751bc4641d6844542d2d656ae0dbccbf264",
+    "en": "ce2759029a0f26381abb6d7171f40513776f11a4ab58fa3f553af017d92ad1ba"
+  }
+}

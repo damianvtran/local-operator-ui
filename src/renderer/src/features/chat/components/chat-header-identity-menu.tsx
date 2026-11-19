@@ -71,6 +71,8 @@
 
 import { Input } from "@shared/components/ui/input";
 import { PopoverContent } from "@shared/components/ui/popover";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Search } from "lucide-react";
 import {
@@ -188,6 +190,14 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 	onClose,
 	onCloseAutoFocus,
 }) => {
+	/*
+	 * Read as a VALUE, not just subscribed to: the band headings are copy that
+	 * `identityMenuBands` resolves through `t()` at call time, so a `view` memo
+	 * that did not list the locale would keep serving the previous language's
+	 * headings after the backend `language` setting changed (the re-render alone
+	 * does not recompute a memo whose inputs are unchanged).
+	 */
+	const locale = useI18nLocale();
 	const [query, setQuery] = useState("");
 	const [active, setActive] = useState(0);
 	const [hovered, setHovered] = useState<number | null>(null);
@@ -231,9 +241,10 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 		() => filterPickerOptions(options, query),
 		[options, query],
 	);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `locale` is an input the callback reads indirectly - `identityMenuBands` resolves the band headings through `t()` at call time, so a language change must recompute the view or the headings go stale
 	const view = useMemo(
 		() => identityMenuBands({ rows: options, matches, recents, kind, query }),
-		[options, matches, recents, kind, query],
+		[options, matches, recents, kind, query, locale],
 	);
 	/*
 	 * One index space over the RENDERED rows, bands included - `picker-host`'s
@@ -451,7 +462,7 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 		[active, flat, move, onClose, onPick],
 	);
 
-	const noun = kind === "team" ? "teams" : "agents";
+	const nounKind = kind === "team" ? "teams" : "agents";
 	const activeId = flat.length > 0 ? `${listId}-${active}` : undefined;
 	/*
 	 * Whether any VISIBLE row can take the seat, and the footer sentence that
@@ -485,7 +496,7 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 	const field = (
 		<div className="relative px-1 pt-1 pb-1">
 			<Search
-				className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-2.5 size-4 text-ink-dim"
+				className="-translate-y-1/2 pointer-events-none absolute top-1/2 start-2.5 size-4 text-ink-dim"
 				aria-hidden="true"
 			/>
 			<Input
@@ -498,12 +509,14 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 				aria-controls={showsList ? listId : undefined}
 				aria-activedescendant={activeId}
 				aria-autocomplete="list"
-				aria-label={`Search ${noun}`}
+				aria-label={t("ui.chat.header_identity.search", { kind: nounKind })}
 				value={query}
 				onChange={(event) => setQuery(event.target.value)}
 				onKeyDown={onKeyDown}
-				placeholder={`Search ${noun}`}
-				className="pl-8"
+				placeholder={t("ui.chat.header_identity.search", {
+					kind: nounKind,
+				})}
+				className="ps-8"
 				autoComplete="off"
 				spellCheck={false}
 			/>
@@ -650,7 +663,11 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 							// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox cannot be a native <select>.
 							// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: the listbox role is the WAI-ARIA combobox pattern for a popup driven from a text input.
 							role="listbox"
-							aria-label={kind === "team" ? "Teams" : "Agents"}
+							aria-label={
+								kind === "team"
+									? t("ui.agents.pages.tab.teams")
+									: t("ui.agents.pages.tab.agents")
+							}
 							/*
 							 * The rule the list enforces, programmatically associated (review
 							 * round 1, U4): a screen reader entering the listbox now hears the
@@ -686,7 +703,9 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 									 * photograph an empty list and hope. */
 									data-header-identity-no-matches=""
 								>
-									Nothing matches “{query.trim()}”.
+									{t("ui.chat.header_identity.no_matches", {
+										query: query.trim(),
+									})}
 								</p>
 							) : (
 								view.bands.map((band) => (
@@ -802,7 +821,9 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 					 */}
 					<div className={cn(MENU_STATE_ROW, "text-ink-dim")}>
 						{loading ? (
-							<span data-header-identity-loading="">Loading {noun}…</span>
+							<span data-header-identity-loading="">
+								{t("ui.chat.header_identity.loading", { kind: nounKind })}
+							</span>
 						) : loadError ? (
 							<span className="text-danger" data-header-identity-error="">
 								{loadError}

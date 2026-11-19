@@ -1,0 +1,77 @@
+{
+  "audit_id": "teambridge-human-badge-audit-e2cc7b3bceb8",
+  "date": "2026-10-26",
+  "locale": "hi",
+  "namespace": "ui.teamBridge",
+  "source_commit": "5a4f5df22b0b5665dedd628147df417bbf111dd5",
+  "translator": {
+    "agent": "translator",
+    "role_label": "Local Operator task subagent",
+    "session": "0b54a00af908",
+    "model": "anthropic/claude-opus-5-5",
+    "fallback": "none",
+    "commit": "5a4f5df22b0b5665dedd628147df417bbf111dd5",
+    "rationale_note": "Translator rationale was read from the coordinating session's scratchpad (i18n-human-badge-translations.json); every value and file hash in it matches the committed bytes."
+  },
+  "auditors": [
+    {
+      "agent": "i18n-auditor",
+      "model": "anthropic/claude-opus-5-5",
+      "date": "2026-10-26",
+      "result": "clean",
+      "instance": "e2cc7b3bceb8",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "receipt": "i18n/receipts/e2cc7b3bceb8.json",
+      "receipt_sha256": "d1f3dc66973bdae62a0b2047e982ef2feadbff3abe678ec3830b465725914b22",
+      "scope": "Single-key delta: ui.teamBridge.profile.human_badge after English Person -> Human; other 207 keys inherited on byte identity."
+    }
+  ],
+  "files": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+      "sha256": "0d8233767a01c51776431b831303b8d7d516f9a79d9b2e6344d57559409cfa32"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/hi/ui.teamBridge.json",
+      "sha256": "b1bf7041eb38fbae9f387483a14c48a05162183cc014bceec249d3875d7893d9"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+      "sha256": "fc3b5d401f601b14a38bb724d5dac95aa226ad53072d4f4addd698b98d781e88"
+    }
+  },
+  "audited": {
+    "key": "ui.teamBridge.profile.human_badge",
+    "en": "Human",
+    "target": "मानव",
+    "agent_badge": "एजेंट",
+    "verdict": "PASS. 'मानव' is the standard Hindi noun for 'human' in human-vs-AI usage ('मानव बनाम एआई'); the previous 'व्यक्ति' meant individual. Common rather than heavily Sanskritised ('मनुष्य' would be more formal; 'इंसान' more colloquial), so it fits the style guide's everyday standard Hindi; pairs with 'एजेंट'."
+  },
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/hi.md",
+      "revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    }
+  },
+  "independence": "Independent auditor. This run produced none of the audited strings: the translator (session 0b54a00af908) authored them in commit 5a4f5df22b0b. This run read the catalogues, context sidecar, glossary and style guides, and wrote only this receipt, the per-locale evidence records and (via ledger-assemble.mjs) the ledger rows. No catalogue byte was edited.",
+  "limitations": [
+    "Single-key delta audit; 207 inherited keys per locale not re-read.",
+    "No rendered frame, screenshot, pseudo-localization or RTL layout evidence (no browser tool in this auditor session).",
+    "Second independent audit not performed; this key is a hover-card badge, not a high-visibility group."
+  ],
+  "named_receipt": {
+    "path": "i18n/receipts/teambridge-human-badge-audit-e2cc7b3bceb8.json",
+    "sha256": "d1f3dc66973bdae62a0b2047e982ef2feadbff3abe678ec3830b465725914b22"
+  }
+}

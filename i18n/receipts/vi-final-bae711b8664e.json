@@ -1,0 +1,186 @@
+{
+  "schema": "local-operator-ui/i18n-audit-receipt",
+  "kind": "translation-audit-receipt",
+  "round": 1,
+  "locale": "vi",
+  "locale_name": "Tiếng Việt",
+  "batch": "final-eleven-keys",
+  "pr": 1403,
+  "branch": "feat/i18n-key-remaining-copy",
+  "head": "d784571d9017c2958a80c51808b2ace64e3f76ba",
+  "audited_head": "566fed884558fa38c662b6e4b55c7915f56798a8",
+  "head_note": "The PR head advanced from 566fed8845 to d784571d90 (a revert of a2be7769's chat-counter pluralization) after the audit read; git diff 566fed8845..d784571d90 is empty, so the three vi files and every hash in this receipt are byte-identical at both heads.",
+  "base": "3d0e9010d71c00662902971e4bd6888f7a8f6f1c",
+  "merge_base_main": "3d0e9010d71c00662902971e4bd6888f7a8f6f1c",
+  "previous_head": "d082bd9595dcc41018b86f22a26fa7f3ae4e891f",
+  "translation_commit": "5f7e78e7904355c3c76f5e1afd815e728e592c84",
+  "badge_fix_commit": "29bd499ed3d76ab662a049670f49a9f2cf7328af",
+  "integration_commit": "a3ba65ee90eea448f0fc256574ac3e8c0346eab3",
+  "date": "2026-10-25",
+  "model": "deepseek/deepseek-flash",
+  "translator": {
+    "agent": "not recorded on the branch",
+    "commits": [
+      "5f7e78e7904355c3c76f5e1afd815e728e592c84",
+      "29bd499ed3d76ab662a049670f49a9f2cf7328af"
+    ],
+    "author": "Damian Tran <damian@gominerva.com>",
+    "note": "The translation and badge-fix commits record no translator agent/model; the branch is authored under the shared account. The manager must supply --translator-agent/--translator-model when creating the absent ledger rows."
+  },
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/vi.md",
+      "sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+    },
+    "docs": {
+      "path": "docs/I18N.md",
+      "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+    }
+  },
+  "status": "clean-with-findings",
+  "verdict": "clean-with-findings — 69/69 keys read across the three namespaces (11/11 batch keys); 0 blocker, 0 major, 2 minor, 0 nit; whole-locale vi parity 3824/3824 with 0 missing/extra and 0 placeholder diffs. Header contributes 1 minor (width); sidebar contributes 1 minor (last-known drift); errors are clean.",
+  "auditor": {
+    "agent": "translation-auditor",
+    "harness": "Local Operator",
+    "team": "lopdev",
+    "session": "4354691259e5",
+    "instance": "vi-final-bae711b8664e",
+    "model": "deepseek/deepseek-flash",
+    "model_provenance": "Harness session header reports deepseek/deepseek-flash; no narrower underlying id and no fallback were exposed. No other model is claimed.",
+    "independence": "This run audited the Vietnamese bytes at 566fed8845 (translation 5f7e78e790, badge fix 29bd499ed3, integration a3ba65ee90); it authored or edited no catalogue, English, other-locale, ledger, allowance or generated file. Only these three new untracked receipts under i18n/receipts/ were written. The commits record no translator agent/model, so no translator identity is claimed; independence is established by this run reading only the committed bytes.",
+    "date": "2026-10-25"
+  },
+  "instance": "vi-final-bae711b8664e",
+  "instance_basis": "'vi-final-' plus the first 12 hex of this namespace's current target sha256",
+  "scope": {
+    "batch_keys": 11,
+    "batch_keys_by_namespace": {
+      "ui.chat.header": 2,
+      "ui.chat.sidebar": 5,
+      "ui.common.errors": 4
+    },
+    "namespaces_audited": 3,
+    "namespace_keys_read": 69,
+    "whole_locale_keys": 3824,
+    "whole_locale_namespaces": 75,
+    "whole_locale_missing": 0,
+    "whole_locale_extra": 0,
+    "placeholder_diffs": 0,
+    "icu_parse_failures": 0,
+    "description": "Final-keys audit for vi at 566fed8845 (tree-identical to d784571d90): the eleven batch keys (header 2, sidebar 5, errors 4) plus every other key in the three namespaces, all read semantically against English and the context sidecar. Since the previous vi receipt head d082bd9595, only these eleven vi values changed (three files); no other vi value changed. The badge plural fix (29bd499ed3, merged in a3ba65ee90) is included. Mechanical verification: 3824/3824 whole-locale keys present, 0 extra, 0 placeholder-name differences, 0 ICU parse failures across the three namespaces; all three namespace files and the eleven batch keys were read in full.",
+    "namespace_scope": {
+      "ui.chat.header": {
+        "batch_keys": 2,
+        "head_keys": 12,
+        "changed_keys": 2,
+        "delta_since_d082bd": 2
+      },
+      "ui.chat.sidebar": {
+        "batch_keys": 5,
+        "head_keys": 49,
+        "changed_keys": 5,
+        "delta_since_d082bd": 5
+      },
+      "ui.common.errors": {
+        "batch_keys": 4,
+        "head_keys": 8,
+        "changed_keys": 4,
+        "delta_since_d082bd": 4
+      }
+    }
+  },
+  "namespaces": {
+    "ui.chat.header": {
+      "namespace": "ui.chat.header",
+      "batch_keys": 2,
+      "batch_key_list": [
+        "ui.chat.header.new_chat",
+        "ui.chat.header.new_chat_with"
+      ],
+      "head_keys": 12,
+      "changed_keys": 2,
+      "sha256": {
+        "en": "04fa4fb0f73dc33811c40b9574f92b8bc0ddafb8a458242497a92400c009e3f0",
+        "context": "39558b26f12ae22908a146f61c8c40795ac9e3b19e41a6ebed7ada883e7281bf",
+        "target": "bae711b8664e1c3eb08500407c194150908c27151f3d9b504a7905baad11b6d4"
+      },
+      "status": "clean-with-findings",
+      "findings": [
+        {
+          "id": "VI-FINAL-H1",
+          "severity": "minor",
+          "namespace": "ui.chat.header",
+          "key": "ui.chat.header.new_chat",
+          "keys": [
+            "ui.chat.header.new_chat",
+            "ui.chat.header.new_chat_with"
+          ],
+          "current": "new_chat: «Cuộc trò chuyện mới» (19 cells; maxCells 16; en 8); new_chat_with: «Cuộc trò chuyện mới với {target}» (32 cells including the 8-cell placeholder; maxCells 32; en 15 + target).",
+          "proposed": "No mandatory rewording: flag for a rendered check at the narrowest header width. If truncation is observed, the term-preserving shortenings are «Trò chuyện mới» (14 cells) and «Trò chuyện mới với {target}» (27 cells including the placeholder, 19 before it); both drop the «cuộc» classifier used by the sidebar New chat label, so keep the current values if the header has room.",
+          "reason": "The two new header titles are materially longer than English (new_chat is 2.4x) and the h2 is `truncate`; the new_chat_with fixed prefix is 24 cells, so with the 8-cell placeholder the template already sits at 32/32 and any target longer than 8 cells exceeds the budget (English leaves about 17 cells for the target), so a typical agent or team name can be cut. The sidecar calls maxCells advisory, not measured fit; this is a rendered-fit flag, not a proven overflow.",
+          "evidence": "Sidecar ui.chat.header.context.json: maxCells 16 for new_chat, 32 for new_chat_with. Chat header renders the title in an h2 with `min-w-0 max-w-full truncate` (chat-header.tsx:879-901). Character-cell counts are NFC codepoints including spaces; no combining marks (NFC check passed).",
+          "disposition": "rendered check; no change demanded on advisory evidence"
+        }
+      ],
+      "summary": "12/12 keys read, including both new keys. Placeholders: {target} preserved exactly in new_chat_with (1/1); no other ICU arguments. ICU: parses; no plural/select in this namespace. The two new titles are semantically accurate and use the house term «cuộc trò chuyện»; the only finding is their advisory width (19/16 and 32/32 including the 8-cell placeholder), with the h2 truncating rather than breaking. The ten carry-over values are byte-identical to the previously audited header at d082bd9595.",
+      "verdict": "clean-with-findings — 12/12 header keys read; one minor width finding on the two new titles, flagged for a rendered check; no blocker/major/nit. transcript_display and archived_hint are observations, not findings."
+    }
+  },
+  "findings": [
+    {
+      "id": "VI-FINAL-H1",
+      "severity": "minor",
+      "namespace": "ui.chat.header",
+      "key": "ui.chat.header.new_chat",
+      "keys": [
+        "ui.chat.header.new_chat",
+        "ui.chat.header.new_chat_with"
+      ],
+      "current": "new_chat: «Cuộc trò chuyện mới» (19 cells; maxCells 16; en 8); new_chat_with: «Cuộc trò chuyện mới với {target}» (32 cells including the 8-cell placeholder; maxCells 32; en 15 + target).",
+      "proposed": "No mandatory rewording: flag for a rendered check at the narrowest header width. If truncation is observed, the term-preserving shortenings are «Trò chuyện mới» (14 cells) and «Trò chuyện mới với {target}» (27 cells including the placeholder, 19 before it); both drop the «cuộc» classifier used by the sidebar New chat label, so keep the current values if the header has room.",
+      "reason": "The two new header titles are materially longer than English (new_chat is 2.4x) and the h2 is `truncate`; the new_chat_with fixed prefix is 24 cells, so with the 8-cell placeholder the template already sits at 32/32 and any target longer than 8 cells exceeds the budget (English leaves about 17 cells for the target), so a typical agent or team name can be cut. The sidecar calls maxCells advisory, not measured fit; this is a rendered-fit flag, not a proven overflow.",
+      "evidence": "Sidecar ui.chat.header.context.json: maxCells 16 for new_chat, 32 for new_chat_with. Chat header renders the title in an h2 with `min-w-0 max-w-full truncate` (chat-header.tsx:879-901). Character-cell counts are NFC codepoints including spaces; no combining marks (NFC check passed).",
+      "disposition": "rendered check; no change demanded on advisory evidence"
+    }
+  ],
+  "observations": [
+    {
+      "key": "ui.chat.header.transcript_display",
+      "issue": "«Hiển thị bản ghi» is a verb phrase where the sidecar specifies a noun-phrase overflow submenu trigger; in the menu it can read as the action «display the transcript» rather than the display-mode setting the submenu chooses. The French audit of the same key used the nominal «Affichage de la transcription».",
+      "recommendation": "If a future copy pass touches it, «Chế độ hiển thị bản ghi» (23 cells, within maxCells 28) states the setting and keeps the glossary term transcript → bản ghi. Not counted: the value is pre-existing, was previously audited clean, and the active mode label rendered beside it keeps the affordance readable."
+    },
+    {
+      "key": "ui.chat.header.archived_hint",
+      "issue": "«Nó sẽ ẩn khỏi danh sách cuộc trò chuyện cho đến khi bạn khôi phục.» reads as a future/passive consequence where the English states the present state («It is hidden»); the pronoun «Nó» is optional in Vietnamese.",
+      "recommendation": "If touched, «Cuộc trò chuyện này đã được lưu trữ nên bị ẩn khỏi danh sách cho đến khi bạn khôi phục.» is more direct. Not counted: the tooltip sits on an already-archived badge and the statement is not false."
+    },
+    {
+      "key": "ui.chat.header.close_run_details, ui.chat.header.open_run_details",
+      "issue": "Carry-over width overruns: close «Đóng chi tiết lượt chạy» is 23 cells against maxCells 20 (en 17); open «Mở chi tiết lượt chạy» is 21 against 20 (en 15).",
+      "recommendation": "No shorter phrasing preserves the established «lượt chạy» term («Đóng chi tiết» would drop «run»); flag alongside VI-FINAL-H1 if a rendered check runs. Not counted separately: pre-existing keys."
+    }
+  ],
+  "totals": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0,
+    "keys_read": 12,
+    "batch_keys": 2
+  },
+  "limitations": [
+    "No rendered app frame was captured; the width finding is a character-cell measurement against the sidecar budgets, not a screenshot or a measured overflow.",
+    "No native-speaker sign-off is claimed; this is an independent agent audit against the vi style guide and glossary.",
+    "The repository’s full pnpm check-i18n gate was not run; the mechanical checks (whole-locale key parity, ICU parse, placeholder names, NFC, token counts, plural rendering with intl-messageformat) were run directly on the committed bytes at 566fed8845 (tree-identical to d784571d90).",
+    "The translation and badge-fix commits record no translator agent/model; the branch is authored under the shared account."
+  ],
+  "run_receipts": [
+    "i18n/receipts/vi-final-bae711b8664e.json (ui.chat.header)",
+    "i18n/receipts/vi-final-6e9c1ff48a0b.json (ui.chat.sidebar)",
+    "i18n/receipts/vi-final-c6082f69de5b.json (ui.common.errors)"
+  ]
+}

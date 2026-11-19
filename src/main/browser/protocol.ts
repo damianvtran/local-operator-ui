@@ -73,6 +73,9 @@ export const METHODS = [
 	"screenshot",
 	"click",
 	"type",
+	// Trusted desktop key input; the core mirror must add this at the same
+	// position because this list is the closed admission gate, not discovery.
+	"press",
 	"close",
 	"status",
 	"tabs",
@@ -86,6 +89,10 @@ export const METHODS = [
 	"styles",
 	"hit_test",
 	"ancestors",
+	// The read-only DOM query: CSS in, element descriptors out. A read by
+	// construction (no write, no navigation, no caller-supplied code), served by
+	// every non-cmux host like the structured reads above.
+	"query",
 	"request_access",
 	"await_access",
 	"cancel_access",
@@ -105,6 +112,42 @@ export const METHODS = [
 	// holds. THIS host serves both.
 	"download",
 	"upload",
+	// Desktop-only network capture. The extension does not implement these
+	// methods; backend capability discovery must gate them by host.
+	"network_start",
+	"network_stop",
+	"network_read",
+	"network_clear",
+	// Desktop-only video recording. Appended after the network family in the order
+	// `protocol.py`'s METHODS tuple carries them, so the hand-kept mirror stays
+	// comparable by eye (D8).
+	"record_start",
+	"record_stop",
+	// Pointer-move without a press (hover-revealed menus, row actions, tooltips).
+	// APPENDED here so no existing method's index moves on this host. The Python
+	// mirror (`protocol.py`, local-operator#3326) places it right after `press`
+	// instead: the lists are NOT byte-comparable at this entry, and the wire is by
+	// NAME, so `isMethod` admits it either way. Hosts advertise it in
+	// HOST_CAPABILITIES (beside `press`), which is what lets the harness refuse it
+	// on an app that predates it instead of sending an unknown method.
+	"hover",
+	// DOM/native and page-owned ARIA selection; never an OS popup.
+	"select",
+	// Write one form control's value and read it back: a native <select> by
+	// label or value, an <input>/<textarea> through the prototype setter (so a
+	// framework's instance tracker cannot swallow the update), `input` then
+	// `change` dispatched. Appended here so no existing method index moves.
+	"setvalue",
+	// Clipboard write through the HOST rather than through a page permission:
+	// the element's bytes are read in an isolated world and written from the main
+	// process, and the answer is a receipt (chars, a 16-hex sha256, verified) that
+	// carries no text at all. APPENDED (after `setvalue`, which main landed first)
+	// so no existing method's index moves on this host, the same rule `hover`
+	// follows above: the Python mirror places it in its own group and the wire is
+	// by NAME, so `isMethod` admits it either way, and HOST_CAPABILITIES is what
+	// refuses it on a host that predates it instead of a version bump (an additive
+	// method must not close an already-released peer with `proto_mismatch`).
+	"copy",
 ] as const;
 
 export type Method = (typeof METHODS)[number];
@@ -133,6 +176,16 @@ export const COMMAND_TIMEOUTS_S: Record<Method, number> = {
 	goto: 30.0,
 	click: 25.0,
 	type: 25.0,
+	press: 25.0,
+	// A pointer move plus a short settle: no navigation, no wait on the page.
+	hover: 20.0,
+	select: 25.0,
+	// One page program plus a read-back: the same budget as `select`, which is
+	// the same shape (resolve, run, report), and it waits on no page load.
+	setvalue: 25.0,
+	// One selector resolution, one isolated-world read and one synchronous
+	// clipboard write: the cheapest shape in this table, and it waits on nothing.
+	copy: 20.0,
 	read: 20.0,
 	snapshot: 20.0,
 	screenshot: 20.0,
@@ -144,6 +197,8 @@ export const COMMAND_TIMEOUTS_S: Record<Method, number> = {
 	styles: 20.0,
 	hit_test: 20.0,
 	ancestors: 20.0,
+	// The same one-shot page-script class as the reads above.
+	query: 20.0,
 	request_access: 20.0,
 	await_access: 25.0,
 	cancel_access: 20.0,
@@ -159,6 +214,16 @@ export const COMMAND_TIMEOUTS_S: Record<Method, number> = {
 	// `upload` is local: the browser reads the bytes off disk, so the budget covers
 	// the attach plus the read-back that proves the DOM holds them.
 	upload: 60.0,
+	network_start: 20.0,
+	network_stop: 20.0,
+	network_read: 20.0,
+	network_clear: 20.0,
+	// `record_start` covers the attach plus the encoder utility process launch.
+	// `record_stop` is the host's 45 s stop budget with the answer's room on top
+	// (D8): the client timeout derives from this table, so this is the only place
+	// the nesting lives.
+	record_start: 20.0,
+	record_stop: 60.0,
 };
 
 /**
@@ -196,12 +261,24 @@ export const ERROR_CODES = [
 	// direction (daemon -> session), a browser host is not, which is exactly why a
 	// policy refusal travels as an `ok: true` result here.
 	"capability_unsupported",
+	// Paired with the core press follow-up before callers use this new method.
+	// Also the refusal for a `press` chord outside the grammar (press-chord.ts).
+	"unsupported_key",
 	"internal",
 	// The console namespace's own additions (design 10.6). Spread rather than copied
 	// for the same reason METHODS is: this list is what `rpc.ts` narrows a raised
 	// code against, and an unknown code is silently dropped by the session's model —
 	// a command that hangs rather than one that fails.
 	...CONSOLE_ERROR_CODES,
+	// `copy`'s two refusals, in `protocol.py`'s order (the `ErrorCode` enum the
+	// generated `protocol.gen.ts` carries). They arrived with the action: an element
+	// that exists but has no text is not a missing element, and a clipboard the OS
+	// refused is not a host fault, and collapsing either into a code that means
+	// something else is how a caller's correction advice goes wrong. Additive in the
+	// safe direction — this host emits them, and only a session that knows the
+	// vocabulary reads them.
+	"empty_element_text",
+	"clipboard_write_failed",
 ] as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[number];
@@ -261,6 +338,53 @@ export interface UploadResult {
 	accepted: FileFact[];
 }
 
+/** `setvalue` -> the value the control actually holds after the write, read back
+ * from the page rather than assumed.
+ *
+ * `value` is ABSENT for `<input type=password>`: the program reads it back to
+ * answer `verified` honestly and then drops it, because this result rides into a
+ * transcript and a credential must not. `input_type` and `matched` are additive
+ * desktop-only extensions of the shared `{value, kind?, verified?, url, title}`
+ * shape (the wire table in the sibling `local-operator` PR owns that base): the
+ * DOM type the write went through, and the option a `<select>` resolved to —
+ * the same `{index, label, value}` triple `select` returns. */
+export interface SetvalueResult {
+	value?: string;
+	kind?: "input" | "textarea" | "select";
+	verified: boolean;
+	input_type?: string;
+	matched?: { index: number; label: string; value: string };
+	url: string;
+	title: string;
+}
+
+/**
+ * Capability TOKENS that are not wire methods: a flag on a method the host already
+ * serves. `press_chord` says this build's `press` understands the extended
+ * contract (a modifier chord such as `Control+K`, the closed base-key table, and an
+ * optional `selector` to focus first). It cannot be inferred from `press` alone:
+ * every desktop build since the 8-key allowlist advertises `press`, and such a build
+ * would ignore `selector` and answer `unsupported_key` for the rest, so the harness
+ * (`protocol.PRESS_CHORD_CAPABILITY`, damianvtran/local-operator#3326) sends only a
+ * legacy-shaped press on `press` alone and requires this exact spelling for more.
+ *
+ * `record_size` is the second token: it says this build's `record_start` accepts a
+ * `width`/`height`, so the harness may request a resized capture. It is a capability
+ * TOKEN and not a wire method — absent from `METHODS` on purpose, which is what keeps
+ * the extension from ever advertising it — and it needs no `PROTO_VERSION` bump: an
+ * old harness simply never sends the fields, and a host that does not advertise this
+ * token is refused by capability rather than by version arithmetic.
+ *
+ * `record_quality` is the third token, on the same terms: it advertises that
+ * `record_start` accepts `quality: "standard" | "high"` and that `high` answers with
+ * `codec: "h264"`. A host without it ignores the field and records AV1, which is why
+ * the harness gates the parameter on this name AND checks the echoed codec.
+ */
+export type HostCapabilityToken =
+	| "press_chord"
+	| "record_size"
+	| "record_quality";
+
 /**
  * The methods THIS host build serves, as it advertises them.
  *
@@ -278,16 +402,70 @@ export interface UploadResult {
  * typed, actionable refusal instead.
  *
  * ONE constant, three writers: a second list beside this one is how a host starts
- * advertising something it does not serve.
+ * advertising something it does not serve. The list is a constant of THIS build, so
+ * it is not a runtime probe: a build that lists `record_*` can still be running an
+ * engine without `Page.startScreenRecording` (Chromium below 153), and that case is
+ * refused at `record_start` with `record_unsupported`, not by the capability list.
+ *
+ * `record_size` is a CAPABILITY, not a wire method: it advertises that
+ * `record_start` accepts `width`/`height`. It is deliberately absent from
+ * `METHODS`, so the extension can never advertise it, and an old harness simply
+ * never sends the fields.
  */
-export const HOST_CAPABILITIES: readonly Method[] = [
+export const HOST_CAPABILITIES: readonly (Method | HostCapabilityToken)[] = [
 	"console_resources",
 	"console_cleanup",
 	"styles",
 	"hit_test",
 	"ancestors",
+	"query",
 	"download",
 	"upload",
+	// Desktop-only trusted keys. Core must capability-gate extension/cmux and
+	// older desktop hosts instead of sending them an unknown method.
+	"press",
+	// The extended-press flag (see `HostCapabilityToken`). Advertised with the same
+	// change that implements the grammar in `actions/press-chord.ts`, never ahead of it.
+	"press_chord",
+	// `hover` rides the same list as `press` for the same reason: desktop-only, and
+	// the extension/cmux hosts and older desktop apps must be refused by capability.
+	"hover",
+	"select",
+	// Writing a value into a form control. On the same list as `select` for the
+	// same reason: an app build that predates it answers the frame with a bare
+	// `internal`, which a caller can only read as "the bridge broke"; the
+	// capability turns that peer into a typed refusal instead.
+	"setvalue",
+	// Session-scoped network capture. DESKTOP-ONLY: the extension's debugger is
+	// attached only for the duration of an action, so it holds no standing session
+	// to keep a `Network` subscription on. The backend therefore gates these four
+	// on this list rather than on `PROTO_VERSION`.
+	"network_start",
+	"network_stop",
+	"network_read",
+	"network_clear",
+	// Video recording is served by this host build because it ships on a runtime
+	// with `Page.startScreenRecording` (D8): the Electron bump is the ordering
+	// PR-A owns, so a build that predates the bump advertises nothing it cannot
+	// do.
+	"record_start",
+	"record_stop",
+	// Sized recording (width/height on record_start) is not a method; the
+	// harness capability-gates the two params on this name.
+	"record_size",
+	// High-quality recording (quality on record_start) is not a method either; the
+	// harness capability-gates the one param on this name.
+	"record_quality",
+	// Clipboard write, served by the DESKTOP app's browser host only: the copy is
+	// a Node-side `clipboard.writeText` in the host's main process, which a
+	// browser extension has no equivalent of (an extension's clipboard API is
+	// user-gesture-bound and cannot be driven from a service worker), and the
+	// cmux host drives a panel it does not own the process of. Advertising it here
+	// is what lets the harness refuse `copy` by CAPABILITY on the extension, the
+	// cmux host and any desktop build that predates this one — the `download`
+	// precedent — instead of sending a method the peer answers `internal` for or,
+	// worse, never answers at all.
+	"copy",
 ];
 
 export interface Request {

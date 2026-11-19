@@ -2,13 +2,17 @@
  * The supplement block's DOM contract, asked of the SHIPPED row.
  *
  * WHAT THIS FILE IS FOR (design round 1, D1's pin; reworked by the operator
- * decision of 2026-10-16): while the block's own turn renders condensed the
- * block shows the SAME files section as its expanded self — actionable
- * `[data-supplement-file]` rows and the `[data-supplement-images]` tile grid —
- * with no `[data-supplement-slot]`, no iframe and no graphics beside them; a
- * graphics-ONLY finish keeps the design's plain count clause. It also pins the
- * glyph-fallback slot of an image tile and the graphics disclosure's singular
- * arm (`Show all 1 graphic`, U7).
+ * decisions of 2026-10-16 and 2026-10-19): while the block's own turn renders
+ * condensed the block shows the SAME files section as its expanded self —
+ * actionable `[data-supplement-file]` rows and the `[data-supplement-images]`
+ * tile grid — and graphics are VISIBLE BY DEFAULT: a graphics-only or mixed
+ * finish renders its budgeted `[data-supplement-slot]` head with the Hide clause
+ * without a press (the 2026-10-19 operator request; it supersedes the closed
+ * default this file used to pin). Static markup runs no effects, so the slot is
+ * the reserved box and no document or iframe exists yet; the viewport gate and
+ * the fetch counts are `supplement-disclosure.test.mjs`'s mounted contract.
+ * The file also pins the glyph-fallback slot of an image tile and the graphics
+ * disclosure's singular arm (`Show all 1 graphic`, U7).
  *
  * WHY STATIC MARKUP AND NOT A MOUNT. The contract is about what the row
  * RENDERS; `renderToStaticMarkup` runs every render pass and no effect, so a
@@ -159,15 +163,21 @@ test("the failed line names the typed cause, and stays bare without one", () => 
 
 /* -------------------------- the condensed arms --------------------------- */
 
-test("a condensed block keeps the design's quiet arms: no slot, no iframe, no graphics", () => {
+test("a condensed block shows its graphics by default, behind the viewport gate", () => {
 	/*
-	 * THE GRAPHICS-ONLY ARM keeps the design's plain count clause (there is no
-	 * file to act on, and the turn's own bar is the expansion frames render in),
-	 * and it is still pinned on the DOM by `data-supplement-condensed`.
+	 * THE GRAPHICS-ONLY ARM now defaults OPEN (operator request, 2026-10-19;
+	 * superseding the closed default from 2026-10-16): the budgeted head's slot
+	 * is in the markup without a press and the same block still offers Hide. A
+	 * static render runs no effects, so the slot is the reserved box and no
+	 * iframe/document exists yet — the viewport gate and fetch counts are the
+	 * mounted contract in `supplement-disclosure.test.mjs`.
 	 */
 	const arms = [
 		// components only
-		[supplement({ components: [component("one", "Chart", 320)] }), "1 graphic"],
+		[
+			supplement({ components: [component("one", "Chart", 320)] }),
+			"Hide 1 graphic",
+		],
 		[
 			supplement({
 				components: [
@@ -175,7 +185,7 @@ test("a condensed block keeps the design's quiet arms: no slot, no iframe, no gr
 					component("two", "Table", 320),
 				],
 			}),
-			"2 graphics",
+			"Hide 2 graphics",
 		],
 	];
 	for (const [record, line] of arms) {
@@ -184,15 +194,23 @@ test("a condensed block keeps the design's quiet arms: no slot, no iframe, no gr
 			markup.includes("data-supplement-condensed"),
 			`the condensed form must be pinned on the DOM: ${line}`,
 		);
-		assert.ok(
-			!markup.includes("data-supplement-slot"),
-			`no slot under a condensed block: ${line}`,
+		assert.equal(
+			(markup.match(/data-supplement-slot/g) ?? []).length,
+			1,
+			`the budgeted head is mounted by default: ${line}`,
 		);
 		assert.ok(
 			!markup.includes("<iframe"),
-			`no iframe under a condensed block: ${line}`,
+			`static markup cannot paint the document: ${line}`,
 		);
-		assert.equal(textOf(markup), line, `whole text is the one clause: ${line}`);
+		assert.ok(
+			textOf(markup).startsWith(line),
+			`the Hide clause leads the visible body: ${line}`,
+		);
+		assert.ok(
+			textOf(markup).includes("Source: bench.csv rows 1-4"),
+			`the budgeted head keeps its caption: ${line}`,
+		);
 	}
 });
 
@@ -227,17 +245,20 @@ test("a condensed block's files are the SAME actionable rows as the expanded for
 		assert.ok(!markup.includes("data-supplement-slot"));
 		assert.ok(!markup.includes("<iframe"));
 	}
-	/*
-	 * The mixed set renders the files and NOT a graphics clause beside them:
-	 * the graphics' route is the turn's bar, and a count of frames the reader
-	 * cannot reach from here would be a dead end the design does not draw.
-	 */
+	/* Mixed sets retain their file rows and show their graphics by default. */
 	const mixed = render(
 		supplement({ files, components: [component("one", "Chart", 320)] }),
 		true,
 	);
 	assert.equal((mixed.match(/data-supplement-file=""/g) ?? []).length, 2);
-	assert.ok(!mixed.includes("graphic"), "no graphics clause beside rows");
+	assert.ok(
+		textOf(mixed).includes("Hide 1 graphic"),
+		"graphics are visible beside files",
+	);
+	assert.ok(
+		mixed.includes("data-supplement-slot"),
+		"mixed graphics default open",
+	);
 });
 
 test("a not-settled condensed block leads with its rows and keeps its actions", () => {
@@ -417,6 +438,65 @@ test("a row with sounds draws them in both forms; a row without draws nothing", 
 	);
 });
 
+test("fourteen sounds draw one collage cell each, in both forms", () => {
+	/*
+	 * THE OPERATOR'S WALL (2026-10-23). The producer now sends every sound it
+	 * generated, so fourteen arrived as fourteen stacked rows. The fix is a
+	 * width-driven grid: the container answers to the BLOCK's own width, a
+	 * single sound still fills the row, and no cell is dropped - the brief's
+	 * explicit rule is no slice, no cap, no pagination.
+	 */
+	const sounds = Array.from({ length: 14 }, (_, index) =>
+		sound(`collage-${index}`, `Take ${index + 1}`, 6 + index),
+	);
+	const record = supplement({ sounds });
+	for (const condensed of [false, true]) {
+		const markup = render(record, condensed);
+		assert.equal(
+			(markup.match(/data-supplement-sounds=""/g) ?? []).length,
+			1,
+			"one section in both forms",
+		);
+		assert.equal(
+			(markup.match(/data-supplement-sound=""/g) ?? []).length,
+			14,
+			"every distinct digest gets its own cell",
+		);
+		assert.equal(
+			(markup.match(/data-supplement-sound-placeholder=""/g) ?? []).length,
+			14,
+			"every cell carries its player's own seat (bytes resolve in the mount)",
+		);
+		assert.equal(
+			(markup.match(/data-supplement-sound-title=""/g) ?? []).length,
+			14,
+			"each cell keeps the producer's title",
+		);
+		assert.ok(
+			markup.includes("grid-cols-[repeat(auto-fit,minmax(15rem,1fr))]"),
+			"the collage is a responsive grid, not the old column",
+		);
+		assert.equal(
+			(markup.match(/data-sound-player="compact"/g) ?? []).length,
+			0,
+			"the players mount once the resolver answers, never before",
+		);
+	}
+});
+
+test("a single sound keeps today's full-width row", () => {
+	const markup = render(
+		supplement({ sounds: [sound("only", "Solo take", 4)] }),
+		false,
+	);
+	assert.equal((markup.match(/data-supplement-sound=""/g) ?? []).length, 1);
+	assert.equal(
+		markup.includes("auto-fit"),
+		false,
+		"one sound must not be squeezed into a multi-column template",
+	);
+});
+
 test("a row whose sounds are absent or empty renders no sounds section at all", () => {
 	for (const sounds of [
 		/*
@@ -440,4 +520,202 @@ test("a row whose sounds are absent or empty renders no sounds section at all", 
 			assert.equal(markup.includes("data-sound-player"), false);
 		}
 	}
+});
+
+/* ------------------ highlights deliverables (2026-11-03) ------------------ */
+
+/*
+ * THE OPERATOR'S REPRO: a turn wrote ten audio files and one HTML page to the
+ * scratchpad and the user had to find them on disk. The core now emits the
+ * audio in `sounds[]` with `origin: "file"` and the page as an html-kind file;
+ * the block must draw all ten in the SAME collage generated sounds use and keep
+ * the page as an actionable row, in BOTH fold states.
+ */
+const writtenSound = (index) => ({
+	...sound(`picked-${index}`, `take-${index}.mp3`, 0),
+	origin: "file",
+	path: `picks/take-${index}.mp3`,
+});
+
+test("written audio draws in the sounds collage beside an html row, in both forms", () => {
+	const record = supplement({
+		files: [file("picks/index.html", "index.html", 2048, "html")],
+		sounds: Array.from({ length: 10 }, (_, index) => writtenSound(index + 1)),
+	});
+	for (const condensed of [true, false]) {
+		const markup = render(record, condensed);
+		assert.equal(
+			(markup.match(/data-supplement-sound=""/g) ?? []).length,
+			10,
+			`one collage cell per written file (condensed=${condensed})`,
+		);
+		assert.ok(
+			markup.includes("grid-cols-[repeat(auto-fit"),
+			"the collage grid",
+		);
+		// The written file's title is the reveal/open press, and its tooltip is
+		// the display path - no extra button, so no cell grows.
+		assert.equal(
+			(markup.match(/data-supplement-sound-file=""/g) ?? []).length,
+			10,
+		);
+		assert.ok(markup.includes('title="picks/take-3.mp3"'), "path tooltip");
+		// The page stays a compact file row (its canvas action is the row menu's;
+		// `supplement-file-actions.test.mjs` exercises the menu itself).
+		assert.equal((markup.match(/data-supplement-file=""/g) ?? []).length, 1);
+		assert.ok(textOf(markup).includes("index.html"));
+		assert.equal(markup.includes("data-supplement-images"), false);
+	}
+	// A GENERATED sound keeps a plain title span: nothing to reveal.
+	const generated = render(supplement({ sounds: [sound("g", "Swell", 3)] }));
+	assert.equal(generated.includes("data-supplement-sound-file"), false);
+});
+
+const PIN_WORD = /pinned/i;
+
+test("pinned files lead the files section; no badge is drawn", () => {
+	const record = supplement({
+		files: [
+			file("a.md", "a.md", 10),
+			file("b.md", "b.md", 10),
+			{ ...file("pinned.md", "pinned.md", 10), pinned: true },
+		],
+		filesMore: 2,
+		more: ["c.md", "d.md"],
+	});
+	for (const condensed of [true, false]) {
+		const text = textOf(render(record, condensed));
+		assert.ok(
+			text.indexOf("pinned.md") < text.indexOf("a.md"),
+			`the pin precedes unpinned rows (condensed=${condensed}): ${text}`,
+		);
+		assert.ok(text.includes("2 more files"), "the disclosure is unchanged");
+		assert.equal(PIN_WORD.test(text.replace("pinned.md", "")), false);
+	}
+});
+
+test("the withheld line paints once, muted, in both forms; a withheld-only row paints it", () => {
+	const mixed = supplement({
+		files: [file("report.md", "report.md", 100)],
+		withheld: [
+			{ name: "x.key", reason: "sensitive" },
+			{ name: "far.mp4", reason: "outside" },
+			{ name: "far2.mp4", reason: "outside" },
+		],
+		withheldMore: 1,
+	});
+	const only = supplement({
+		withheld: [{ name: "gone.png", reason: "missing" }],
+	});
+	for (const condensed of [true, false]) {
+		const markup = render(mixed, condensed);
+		assert.equal(
+			(markup.match(/data-supplement-withheld=""/g) ?? []).length,
+			1,
+		);
+		// Four refused (three listed + one more), distinct reasons in first-seen
+		// order, joined by the catalogue's list comma - never "and" (D2).
+		assert.ok(
+			textOf(markup).includes(
+				"4 files not shown: sensitive file, outside allowed locations",
+			),
+			textOf(markup),
+		);
+		assert.ok(markup.includes("text-ink-muted"), "the quiet style");
+		const single = render(only, condensed);
+		assert.ok(
+			textOf(single).includes("1 file not shown: file no longer exists"),
+			textOf(single),
+		);
+		// Names only ever reach the tooltip, never the line itself.
+		assert.equal(textOf(single).includes("gone.png"), false);
+	}
+	// Only a count, no reason this build knows: the count alone.
+	const countOnly = render(supplement({ withheldMore: 2 }));
+	assert.ok(textOf(countOnly).includes("2 files not shown"), textOf(countOnly));
+	assert.equal(textOf(countOnly).includes(":"), false);
+	// Nothing withheld: no line.
+	assert.equal(
+		render(supplement({ files: [file("a.md", "a.md", 1)] })).includes(
+			"data-supplement-withheld",
+		),
+		false,
+	);
+});
+
+test("a video-kind file renders as a preview tile in both forms; images keep the grid", () => {
+	const record = supplement({
+		files: [
+			file("renders/demo.mp4", "demo.mp4", 900_000, "video"),
+			file("renders/still.png", "still.png", 9_000, "image"),
+			file("notes.md", "notes.md", 100),
+		],
+	});
+	for (const condensed of [true, false]) {
+		const markup = render(record, condensed);
+		assert.equal(
+			(markup.match(/data-supplement-video-tile=""/g) ?? []).length,
+			1,
+			`one video tile (condensed=${condensed})`,
+		);
+		assert.equal(
+			(markup.match(/data-supplement-image-tile=""/g) ?? []).length,
+			1,
+			"the image keeps its grid tile",
+		);
+		// The tile's name row + the markdown row; the image has no row.
+		assert.equal((markup.match(/data-supplement-file=""/g) ?? []).length, 2);
+		// Static markup runs no effects: the tile is the reserved 16:9 box, and
+		// no <video> exists until the path resolves near the viewport.
+		assert.ok(markup.includes("aspect-video"));
+		assert.equal(markup.includes("<video"), false);
+	}
+});
+
+/* ----------------------- round-1 remediation (2026-11-03) ----------------------- */
+
+test("an over-cap clip is a plain file row, not an inline tile (R3)", () => {
+	const markup = render(
+		supplement({
+			files: [file("renders/huge.mp4", "huge.mp4", 33 * 1024 * 1024, "video")],
+		}),
+	);
+	assert.equal(markup.includes("data-supplement-video-tile"), false);
+	assert.equal((markup.match(/data-supplement-file=""/g) ?? []).length, 1);
+	assert.ok(textOf(markup).includes("huge.mp4"));
+});
+
+test("the video name row carries the path suffix and size like its neighbours (D4)", () => {
+	const markup = render(
+		supplement({
+			files: [file("renders/demo.mp4", "demo.mp4", 2309, "video")],
+		}),
+	);
+	const text = textOf(markup);
+	assert.ok(text.includes("renders/demo.mp4"), text);
+	assert.ok(text.includes("2.3 KB"), text);
+});
+
+test("two written files with identical bytes render two cells (R5)", () => {
+	const twin = (path) => ({
+		...sound("same-bytes", path, 0),
+		origin: "file",
+		path,
+	});
+	const errors = [];
+	const original = console.error;
+	console.error = (...args) => errors.push(args.join(" "));
+	try {
+		const markup = render(
+			supplement({ sounds: [twin("a.mp3"), twin("picks/a.mp3")] }),
+		);
+		assert.equal((markup.match(/data-supplement-sound=""/g) ?? []).length, 2);
+	} finally {
+		console.error = original;
+	}
+	assert.equal(
+		errors.some((line) => line.includes("same key")),
+		false,
+		errors.join("\n"),
+	);
 });

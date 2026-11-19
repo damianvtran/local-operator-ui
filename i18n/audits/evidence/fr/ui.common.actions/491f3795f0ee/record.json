@@ -1,0 +1,106 @@
+{
+  "locale": "fr",
+  "namespaces": {
+    "ui.common.actions": {
+      "status": "passed",
+      "fully_audited_key_count": 1,
+      "consistency_only_key_count": 53,
+      "finding_ids": [],
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.json",
+          "sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b"
+        },
+        "fr": {
+          "path": "src/i18n/catalogues/fr/ui.common.actions.json",
+          "sha256": "65357603eec7fb7afabd5d55c786735dc05e89cb36d19ccd4116bdb5bdbc2907"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.context.json",
+          "sha256": "24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d"
+        }
+      }
+    }
+  },
+  "audit_date": "2026-11-10",
+  "key_count": 54,
+  "fully_audited_key_count": 1,
+  "consistency_only_key_count": 53,
+  "scope": "PR #1842 @ b8f0fc3aa922b99c6fad9c32edd36515fbd24e5a; delta audit of ONE revised value, ui.common.actions.actions_for_name ('Actions sur {name}' -> 'Actions pour {name}'), the fresh translator revision of prior-round finding F1 (fr-ds-e3c562b03258, MAJOR). Exactly one line changed in the file versus e5fb4310dab; English catalogue and context sidecar byte-unchanged. No full namespace certification; prior-round keys outside this delta were not re-audited.",
+  "head_sha": "b8f0fc3aa922b99c6fad9c32edd36515fbd24e5a",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "491f3795f0ee",
+    "session": "491f3795f0ee",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "Served session header for session 491f3795f0ee states deepseek/deepseek-flash; no model switch or fallback occurred in this session.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "Translator identity supplied by delegation: i18n-translator / anthropic/claude-sonnet-5-5, a new translation session for this revision (prior-round translator session was 2ddc9a08181b). This auditor did not translate and has no access to the translator's session."
+  },
+  "policy_inputs": {
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/fr.md",
+      "sha256": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226"
+    },
+    "glossary": {
+      "path": "~/local-operator-ui/.worktrees/_s12-audits/b8f0fc3aa922b99c6fad9c32edd36515fbd24e5a/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "note": "Manager-owned byte-copy, recomputed identical by sha256 to ~/local-operator/i18n/glossary.md (173 lines); glossary conformance was checked against this copy. The glossary has no 'actions' row; its binding part here is the § intro one-term-one-decision invariant."
+    },
+    "expected_hashes": {
+      "path": "~/local-operator-ui/.worktrees/_s12-audits/b8f0fc3aa922b99c6fad9c32edd36515fbd24e5a/expected-hashes.json"
+    }
+  },
+  "artifacts": [
+    {
+      "path": "fr-ds-491f3795f0ee.json",
+      "sha256": "bfe8eda3c6c3a0cf291218f93023e25baaa385b1780266a111e7ff3752551429",
+      "kind": "audit_notes_not_execution_log",
+      "record_reference": "record.json"
+    },
+    {
+      "path": "fr-ds-491f3795f0ee.audit.log",
+      "sha256": "42cbb35991ad30abb6fe786d58666d0ba01bae5be1a7693cf14ca09738e47fd7",
+      "kind": "actual_execution_log",
+      "record_reference": "record.json"
+    },
+    {
+      "path": "fr-ds-491f3795f0ee-check.py",
+      "sha256": "7c4338e96c5d6470fd46a777fdd02f890f50a692f4a86bed595584ae896f65a5",
+      "kind": "executed_check_source",
+      "record_reference": "record.json"
+    },
+    {
+      "path": "fr-ds-491f3795f0ee-check.out",
+      "sha256": "5a730869d103966d38fc02ea9b5dadfb1a6c8d272da6c7b589b668866100a2ba",
+      "kind": "actual_execution_output",
+      "record_reference": "record.json"
+    }
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": []
+  },
+  "finding_report": "fr-ds-491f3795f0ee.json",
+  "audit_notes_not_execution_log": false,
+  "execution_log": "fr-ds-491f3795f0ee.audit.log",
+  "retention": {
+    "state": "scratch_handoff_only_per_explicit_read_only_task",
+    "intended_tracked_directory": "i18n/audits/evidence/fr/ui.common.actions/s8-fr-ds-491f3795f0ee",
+    "manager_action_required": "Retain the four artifacts above under the canonical evidence root as record.json plus audit.log / receipt.json companions, then record the ledger row with the repo's audit-ledger command. No ledger command was run by this auditor (read-only brief); scripts/i18n/ledger-check.mjs currently reports stale source and target hashes for fr/ui.common.actions, which the manager's write will clear.",
+    "proposed_note": "passed; delta audit of ui.common.actions.actions_for_name (sur->pour), 0 findings; fr/ui.common.actions 65357603; record i18n/audits/evidence/fr/ui.common.actions/s8-fr-ds-491f3795f0ee/record.json"
+  },
+  "unverified": [
+    "No production ICU parser/formatter, Electron/React run, screen-reader session or rendered-frame check: read-only, no-build, no-server constraint.",
+    "No ledger write, tracked evidence retention, PR comment or commit: writes were limited to this session's scratchpad.",
+    "The 53 non-delta keys of ui.common.actions were not certified; only JSON validity, key-set parity, no-removal and cross-file term consistency were checked for them.",
+    "No separate second auditor/session pass was available or requested for this one-key delta; a deliberate second re-read of the key and its neighbours by this auditor is recorded in the audit log in its place.",
+    "The ledger-check failure count (64 across 1085 entries) was read from that command's own output; other locales' rows belong to their own auditors and were not investigated."
+  ]
+}

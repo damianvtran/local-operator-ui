@@ -1,0 +1,511 @@
+{
+ "renderedKeys": 62,
+ "failures": [],
+ "plurals": {
+  "0": "0 conversation",
+  "1": "1 conversation",
+  "2": "2 conversations",
+  "1000": "1000 conversations",
+  "1000000": "1000000 de conversations",
+  "1000001": "1000001 conversations",
+  "1500000": "1500000 conversations"
+ },
+ "rows": [
+  {
+   "namespace": "ui.chat.device",
+   "key": "ui.chat.device.fact.this_device",
+   "fr": "cet appareil",
+   "en": "this device",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat.device",
+   "key": "ui.chat.device.footer.move_deletes_copy",
+   "fr": "La copie sur cet appareil est supprimée une fois le déplacement confirmé.",
+   "en": "The copy on this device is deleted when the move commits.",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat.device",
+   "key": "ui.chat.device.label.this_device",
+   "fr": "Cet appareil",
+   "en": "This device",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat.device",
+   "key": "ui.chat.device.notice.move_hold_detail",
+   "fr": "déplacement en cours · elle continue là-bas ; impossible de l’arrêter d’ici",
+   "en": "handing off · it continues there; this cannot be stopped from here",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat.device",
+   "key": "ui.chat.device.picker.heading.move",
+   "fr": "Déplacer cette conversation vers",
+   "en": "Move this conversation to",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat.device",
+   "key": "ui.chat.device.picker.heading.start",
+   "fr": "Démarrer la conversation sur",
+   "en": "Start the conversation on",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat.device",
+   "key": "ui.chat.device.row.conversations",
+   "fr": "3 conversations",
+   "en": "3 conversations",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat.device",
+   "key": "ui.chat.device.row.not_here_why",
+   "fr": "la conversation n’est pas ici ; rappelez-la ici avant de la déplacer",
+   "en": "the conversation is not here to move; recall it here first",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat.device",
+   "key": "ui.chat.device.sentence.mesh_read_failure",
+   "fr": "La liste des appareils n’a pas pu être lue ; l’affichage reprend donc la dernière réponse.",
+   "en": "The device list could not be read, so this is what the last answer holds.",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat.device",
+   "key": "ui.chat.device.sentence.move_in_flight",
+   "fr": "Cette conversation est en cours de déplacement vers atelier. Elle continue là-bas ; rien de ce qui serait envoyé d’ici ne serait délivré.",
+   "en": "This conversation is moving to atelier. It continues there; nothing sent from here would be delivered.",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat.device",
+   "key": "ui.chat.device.sentence.pairing_guidance",
+   "fr": "Cet appareil n’appartient à aucun réseau. Créez-en un avec `lop network init`, ou rejoignez-en un avec `lop network join <token>`.",
+   "en": "This device is in no network. Create one with `lop network init`, or join one with `lop network join <token>`.",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat.pickers",
+   "key": "ui.chat.pickers.at_menu.heading.files",
+   "fr": "Fichiers",
+   "en": "Files",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat.pickers",
+   "key": "ui.chat.pickers.at_menu.heading.projects",
+   "fr": "Projets",
+   "en": "Projects",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat.pickers",
+   "key": "ui.chat.pickers.at_menu.region_label",
+   "fr": "Fichiers",
+   "en": "Files",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat.pickers",
+   "key": "ui.chat.pickers.at_menu.tag.directory",
+   "fr": "Dossier",
+   "en": "Directory",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat.pickers",
+   "key": "ui.chat.pickers.at_menu.tag.file",
+   "fr": "Fichier",
+   "en": "File",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat.pickers",
+   "key": "ui.chat.pickers.at_menu.tag.project",
+   "fr": "Projet",
+   "en": "Project",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat.pickers",
+   "key": "ui.chat.pickers.slash.arguments_region_label",
+   "fr": "Arguments de la commande",
+   "en": "Command arguments",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat.pickers",
+   "key": "ui.chat.pickers.slash.click.chooses_name",
+   "fr": "Cliquez pour choisir ce nom.",
+   "en": "Click chooses this name.",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat.pickers",
+   "key": "ui.chat.pickers.slash.click.completes_label",
+   "fr": "Cliquez pour compléter /Anthropic.",
+   "en": "Click completes /Anthropic.",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat.pickers",
+   "key": "ui.chat.pickers.slash.click.completes_value",
+   "fr": "Cliquez pour compléter cette valeur.",
+   "en": "Click completes this value.",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat.pickers",
+   "key": "ui.chat.pickers.slash.click.connects",
+   "fr": "Cliquez pour connecter atelier.",
+   "en": "Click connects atelier.",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat.pickers",
+   "key": "ui.chat.pickers.slash.click.runs",
+   "fr": "Cliquez pour lancer /Anthropic.",
+   "en": "Click runs /Anthropic.",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat.pickers",
+   "key": "ui.chat.pickers.slash.click.runs_command",
+   "fr": "Cliquez pour lancer la commande.",
+   "en": "Click runs the command.",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat.pickers",
+   "key": "ui.chat.pickers.slash.click.runs_with_value",
+   "fr": "Cliquez pour lancer /model--flag.",
+   "en": "Click runs /model--flag.",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat.pickers",
+   "key": "ui.chat.pickers.slash.click.stages",
+   "fr": "Cliquez pour préparer /Anthropic.",
+   "en": "Click stages /Anthropic.",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat.pickers",
+   "key": "ui.chat.pickers.slash.enter_needs_a_pick",
+   "fr": "Entrée a besoin d’une ligne choisie : ↓ puis Entrée · Tab complète cette ligne.",
+   "en": "Enter needs a row you pick: ↓ then Enter · Tab completes this row.",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat.pickers",
+   "key": "ui.chat.pickers.slash.phase.arguments",
+   "fr": "Arguments",
+   "en": "Arguments",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat.pickers",
+   "key": "ui.chat.pickers.slash.region_label",
+   "fr": "Commandes slash",
+   "en": "Slash commands",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat.canonical",
+   "key": "ui.chat.canonical.placeholder.loading",
+   "fr": "Chargement de la conversation…",
+   "en": "Loading conversation…",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat.canonical",
+   "key": "ui.chat.canonical.placeholder.region_label",
+   "fr": "Chargement de la conversation",
+   "en": "Loading conversation",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat.canonical",
+   "key": "ui.chat.canonical.tool_row.generic_verb.running",
+   "fr": "Appel en cours :",
+   "en": "Calling",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat.canonical",
+   "key": "ui.chat.canonical.tool_row.generic_verb.settled",
+   "fr": "Appel :",
+   "en": "Called",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat.canonical",
+   "key": "ui.chat.canonical.tool_row.outcome.failed",
+   "fr": "échoué",
+   "en": "failed",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat.canonical",
+   "key": "ui.chat.canonical.tool_row.outcome.interrupted",
+   "fr": "interrompu",
+   "en": "interrupted",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat.canonical",
+   "key": "ui.chat.canonical.tool_row.outcome.never_ran",
+   "fr": "jamais exécuté",
+   "en": "never ran",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat.canonical",
+   "key": "ui.chat.canonical.tool_row.outcome.succeeded",
+   "fr": "réussi",
+   "en": "succeeded",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.session_status.context_heading",
+   "fr": "Contexte",
+   "en": "Context",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.session_status.context_nothing_measured_tooltip",
+   "fr": "Contexte : rien n’a encore été mesuré. La fenêtre de contexte se remplit au fil de la conversation.",
+   "en": "Context: nothing measured yet. The window fills as the conversation runs.",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.session_status.conversation_starting",
+   "fr": "Défini une fois la conversation lancée.",
+   "en": "Set once the conversation starts.",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.session_status.model_none_resolved_tooltip",
+   "fr": "Modèle : aucun n’est encore déterminé. Choisissez le modèle que cette conversation utilisera.",
+   "en": "Model: none resolved yet. Choose the model this conversation will run on.",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.session_status.not_signed_in",
+   "fr": "Non connecté à Anthropic",
+   "en": "Not signed in to Anthropic",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.session_status.not_signed_in_description",
+   "fr": "Cette session utilise Anthropic sans connexion active ; elle ne peut donc pas répondre tant que la connexion n’est pas établie.",
+   "en": "This session runs Anthropic without a working sign-in, so it cannot answer until you connect it.",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.session_status.nothing_measured_yet",
+   "fr": "Rien n’a encore été mesuré. La fenêtre de contexte se remplit au fil de la conversation.",
+   "en": "Nothing measured yet. The window fills as the conversation runs.",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.session_status.temporarily_unavailable",
+   "fr": "Anthropic est temporairement indisponible",
+   "en": "Anthropic is temporarily unavailable",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.session_status.temporarily_unavailable_description",
+   "fr": "Votre connexion reste enregistrée. Réessayez plus tard ou choisissez un autre modèle.",
+   "en": "Your saved sign-in is still present. Try again later or choose another model.",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat.status",
+   "key": "ui.chat.status.credential_refused",
+   "fr": "Le serveur en cours d’exécution a refusé l’identifiant de cette application ; la connexion, les paramètres et les commandes slash sont donc indisponibles.",
+   "en": "The running server refused this app's credential, so sign-in, settings and slash commands are unavailable.",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat.status",
+   "key": "ui.chat.status.degraded",
+   "fr": "Le serveur répond lentement. Vos messages sont mis en file d’attente.",
+   "en": "The server is answering slowly. Your messages are queued.",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat.status",
+   "key": "ui.chat.status.internet_offline",
+   "fr": "Cet ordinateur est hors ligne. L’envoi attendra.",
+   "en": "This machine is offline. Sending will wait.",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat.status",
+   "key": "ui.chat.status.unreachable",
+   "fr": "Le serveur Local Operator est injoignable. L’envoi attendra.",
+   "en": "Can't reach the Local Operator server. Sending will wait.",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat.run_details",
+   "key": "ui.chat.run_details.nothing_in_flight",
+   "fr": "Rien en cours.",
+   "en": "Nothing in flight.",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.chat.run_details",
+   "key": "ui.chat.run_details.nothing_to_show_yet",
+   "fr": "Rien à afficher pour l’instant.",
+   "en": "Nothing to show yet.",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.common.connection",
+   "key": "ui.common.connection.session_loss.frame_too_large",
+   "fr": "Les mises à jour de cette conversation étaient trop volumineuses pour être affichées — rétablissez la connexion pour réessayer.",
+   "en": "This conversation's updates were too large to display — reconnect to try again.",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.common.connection",
+   "key": "ui.common.connection.session_loss.history_unreadable",
+   "fr": "Impossible de charger l’historique de cette conversation — rétablissez la connexion pour réessayer.",
+   "en": "Could not load this conversation's history — reconnect to try again.",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.common.connection",
+   "key": "ui.common.connection.session_loss.lost",
+   "fr": "La connexion à cette conversation a été perdue — rétablissez-la pour continuer à lire.",
+   "en": "Lost the connection to this conversation — reconnect to keep reading.",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.common.connection",
+   "key": "ui.common.connection.session_loss.not_paired",
+   "fr": "Cette application n’est pas appairée au serveur Local Operator ; cette conversation ne peut donc pas encore être lue.",
+   "en": "This app is not paired with the Local Operator server, so this conversation cannot be read yet.",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.common.connection",
+   "key": "ui.common.connection.session_loss.server_down",
+   "fr": "Le serveur Local Operator n’est pas démarré — rétablissez la connexion une fois qu’il est de retour, ou redémarrez l’application s’il reste arrêté.",
+   "en": "The Local Operator server is not running — reconnect once it is back, or restart the app if it stays down.",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.common.layout",
+   "key": "ui.common.layout.toasts.dismiss",
+   "fr": "Fermer la notification",
+   "en": "Close toast",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.common.layout",
+   "key": "ui.common.layout.toasts.notifications",
+   "fr": "Notifications",
+   "en": "Notifications",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.agents.config",
+   "key": "ui.agents.config.banner.unavailable",
+   "fr": "Le backend est injoignable ; la zone de saisie est donc indisponible pour le moment.",
+   "en": "The backend could not be reached, so the composer is unavailable for now.",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.agents.config",
+   "key": "ui.agents.config.disabled_gate",
+   "fr": "Configuration des agents par conversation",
+   "en": "Configure agents by conversation",
+   "keyEcho": false,
+   "leftoverBrace": false
+  },
+  {
+   "namespace": "ui.agents.config",
+   "key": "ui.agents.config.run_details_region",
+   "fr": "Détails de l’exécution",
+   "en": "Run details",
+   "keyEcho": false,
+   "leftoverBrace": false
+  }
+ ]
+}

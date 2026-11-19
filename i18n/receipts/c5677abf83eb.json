@@ -1,0 +1,105 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "c5677abf83eb",
+  "date": "2026-10-18",
+  "locale": "zh-CN",
+  "status": "passed",
+  "scope": "full independent pass, every key, at HEAD 1844a072210c29a34ea1462d0ee31333d4407575",
+  "namespaces": {
+    "ui.providers": {
+      "namespace": "ui.providers",
+      "status": "passed",
+      "sha256": {
+        "source": "9981637a98afbcbc166d889b461795bae7685e42274f4d607b711f4b0f9085f2",
+        "target": "b989ad017720c2ec00c0b502dbf7bc74aef28753cb02529ef3af81bc6664b62f"
+      },
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.providers.provider_detail.checking_whether",
+          "issue": "The pending reachability sentence reads as a statement that the service is running, rather than checking whether it is running.",
+          "current": "正在检查：",
+          "suggested": "正在检查是否 ",
+          "reason": "The actual pending call site in src/renderer/src/features/providers/provider-detail.tsx:175-176 concatenates this prefix, brand and the shared 正在运行 suffix. For example, 正在检查：Ollama 正在运行 momentarily reads as a positive status. Keep the interrogative uncertainty; the trailing fragment boundary is also explicitly required by context."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.providers.provider_detail.paste_the_code",
+          "issue": "The required trailing sentence-fragment boundary space was removed.",
+          "current": "请粘贴",
+          "suggested": "请粘贴 ",
+          "reason": "The full English context sidecar explicitly requires preserving the trailing space, and the task style contract preserves concatenated fragment boundaries even though ordinary Chinese/Latin adjacency has no space. This is a boundary-contract nit, not a claim of unusable rendering."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.providers.provider_detail.saved_but_not_checked_yet",
+          "issue": "The required trailing sentence-fragment boundary space was removed.",
+          "current": "已保存，但尚未检查：",
+          "suggested": "已保存，但尚未检查： ",
+          "reason": "The full English context sidecar explicitly requires preserving the trailing space, and the task style contract preserves concatenated fragment boundaries even though ordinary Chinese/Latin adjacency has no space. This is a boundary-contract nit, not a claim of unusable rendering."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.providers.provider_detail.runs_on_this_computer_and_needs_no",
+          "issue": "The required trailing sentence-fragment boundary space was removed.",
+          "current": "在此电脑上运行，无需账户或密钥。先启动",
+          "suggested": "在此电脑上运行，无需账户或密钥。先启动 ",
+          "reason": "The full English context sidecar explicitly requires preserving the trailing space, and the task style contract preserves concatenated fragment boundaries even though ordinary Chinese/Latin adjacency has no space. This is a boundary-contract nit, not a claim of unusable rendering."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.providers.provider_grid.suggests",
+          "issue": "The required trailing sentence-fragment boundary space was removed.",
+          "current": "· 推荐",
+          "suggested": "· 推荐 ",
+          "reason": "The full English context sidecar explicitly requires preserving the trailing space, and the task style contract preserves concatenated fragment boundaries even though ordinary Chinese/Latin adjacency has no space. This is a boundary-contract nit, not a claim of unusable rendering."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.providers.provider_grid.sign_out_of",
+          "issue": "The required trailing sentence-fragment boundary space was removed.",
+          "current": "退出登录：",
+          "suggested": "退出登录： ",
+          "reason": "The full English context sidecar explicitly requires preserving the trailing space, and the task style contract preserves concatenated fragment boundaries even though ordinary Chinese/Latin adjacency has no space. This is a boundary-contract nit, not a claim of unusable rendering."
+        }
+      ]
+    },
+    "ui.hub": {
+      "namespace": "ui.hub",
+      "status": "passed",
+      "sha256": {
+        "source": "3abae06a0eed97e4e9f6ea93d81a8fb0f5552bc41dc02c87c5825f4126640aca",
+        "target": "395a16cf201cdc3318096629cfecbea7d3e19954f6ea200a917ba93ebe118109"
+      },
+      "findings": []
+    },
+    "ui.canvas": {
+      "namespace": "ui.canvas",
+      "status": "passed",
+      "sha256": {
+        "source": "6fa13501b59a260373bcb26f212fc6244a3d1219ef1811d2b0c1de05b541f1f5",
+        "target": "c643ebba12f7fbc6b0b0959e00e47e937ca90350aa2de25ccc9dd3aa649a2501"
+      },
+      "findings": []
+    },
+    "ui.hub.comments": {
+      "namespace": "ui.hub.comments",
+      "status": "passed",
+      "sha256": {
+        "source": "5c20d0e9a7f66f753561ded1d104aa5cf0e1fd0d5a73f7f0a7e3349a28c6f2c4",
+        "target": "b236dcc33c7c7b692538c30a77d7a7ed202c835a5a1416d8c38584700ebab261"
+      },
+      "findings": []
+    },
+    "ui.hub.taxonomy": {
+      "namespace": "ui.hub.taxonomy",
+      "status": "passed",
+      "sha256": {
+        "source": "4614e6b5eb2c56f0f48ccbee9bf26266193701a79994da4d9cf533386f1d3717",
+        "target": "f13098788f664c49574934bb629970f4a532d24924987af0720eee591e312ff9"
+      },
+      "findings": []
+    }
+  }
+}

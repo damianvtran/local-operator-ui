@@ -39,6 +39,7 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
 import { updateErrorCopy } from "@shared/utils/update-error-copy";
 import type { FC } from "react";
 import { t } from "../../../../../i18n/messages";
+import type { BackendUpdateErrorReport } from "../../../../../main/update-service";
 import { FloatingAlert } from "./floating-alert";
 import { PanelDetails } from "./panel-details";
 
@@ -46,6 +47,12 @@ export interface UpdateErrorAlertProps {
 	open: boolean;
 	/** The message the app's update path produced, raw. */
 	message: string;
+	/**
+	 * The producer wrote `message` from the catalogue (`BackendUpdateErrorReport.authored`):
+	 * it is the sentence in every locale and is not offered to the English-tuned
+	 * classifier (design round 1, D1).
+	 */
+	authored?: BackendUpdateErrorReport["authored"];
 	onClose: () => void;
 	/** Milliseconds before it dismisses itself. Omit to leave it up. */
 	autoHideDuration?: number;
@@ -58,13 +65,14 @@ export interface UpdateErrorAlertProps {
 export const UpdateErrorAlert: FC<UpdateErrorAlertProps> = ({
 	open,
 	message,
+	authored,
 	onClose,
 	autoHideDuration,
 	onRetry,
 	retrying = false,
 }) => {
 	useI18nLocale();
-	const { sentence, detail, action } = updateErrorCopy(message);
+	const { sentence, detail, action } = updateErrorCopy(message, { authored });
 	return (
 		<FloatingAlert
 			open={open}

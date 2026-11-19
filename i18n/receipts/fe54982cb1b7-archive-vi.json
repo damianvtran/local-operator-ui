@@ -1,0 +1,157 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit binding (byte-identity re-bind, PR #1438; the cited receipt path was overwritten by #1442)",
+	"audit_id": "teambridge-pr1438-rebind-fe54982cb1b7",
+	"date": "2026-10-27",
+	"instance": "fe54982cb1b7-archive-vi",
+	"instance_note": "Auditor session fe54982cb1b7, suffix 'archive-<locale>' so the id cannot collide with this session's PR #1441 receipts (fe54982cb1b7-<locale>, ui.teamBridge). One receipt per locale. Unique across main, #1441, #1444 and #1446.",
+	"auditor": "i18n-auditor",
+	"agent": "i18n-auditor",
+	"model": "anthropic/claude-opus-5-5",
+	"model_provenance": "Harness session header: 'Model: anthropic/claude-opus-5-5'. The translator recorded the same model; independence is by agent role and session.",
+	"model_fallback": {
+		"announced": false,
+		"observed": false
+	},
+	"independence": "Independent auditor (reviewer role, session fe54982cb1b7). It authored none of the audited strings, edited no catalogue byte, and is neither the translator (subagent archive-i18n-1438) nor the earlier auditor dedc59c2f981. This run wrote only these receipts, the per-locale evidence records, and the ledger rows (via ledger-assemble.mjs).",
+	"status": "passed",
+	"result": "clean",
+	"translator": {
+		"agent": "translator",
+		"role_label": "Local Operator subagent archive-i18n-1438 (first-round keys came with the implementer commit 7662559be8)",
+		"model": "anthropic/claude-opus-5-5",
+		"record": "i18n-1438-translations.json (coordinating session 17cd3e74c66f scratchpad)",
+		"commits": [
+			"7662559be8",
+			"44ec5a5971d2241068da152d5d8c88e8d1b93788",
+			"45d27bbc320e7cbb62823a42d446318988f0e35b",
+			"a128abe1843db9f762b5305d7ff0a1a5dd766410"
+		],
+		"fallback": "none recorded"
+	},
+	"integration": {
+		"pr": 1438,
+		"branch": "feat/team-bridge-archive-delete",
+		"base": "a63e47ec9bc633f86abd7c6418692a9c02183042",
+		"reviewed_head": "10f8728b74f3e0c2121d4bb82a8107818a2f86a8",
+		"prior_reviewed_head": "a128abe1843db9f762b5305d7ff0a1a5dd766410",
+		"worktree": "~/local-operator-ui/.worktrees/i18n-rebind-1438-fe54 (removed after push)"
+	},
+	"why_rebind": "The rows cited i18n/receipts/dedc59c2f981.json, a copy of teambridge-pr1438-audit-dedc59c2f981.json (sha256 58cf48c787f9...). #1442 (merged) reused instance dedc59c2f981 and its copy at that path won the merge of main into this branch, so ledger-check failed 14 findings (receipt hash mismatch, namespace not covered). The original receipt and evidence survive under their audit-id names and are kept as superseded history.",
+	"locale": "vi",
+	"namespace": "ui.teamBridge.archive",
+	"scope": {
+		"kind": "byte-identity binding of an already-audited new namespace; NOT a fresh linguistic review. No value changed since the prior audit, so its linguistic verdict carries over.",
+		"keys_bound": [
+			"ui.teamBridge.archive.banner.by_on",
+			"ui.teamBridge.archive.banner.delete",
+			"ui.teamBridge.archive.banner.on",
+			"ui.teamBridge.archive.banner.plain",
+			"ui.teamBridge.archive.banner.unarchive",
+			"ui.teamBridge.archive.banner.unarchive_error",
+			"ui.teamBridge.archive.composer.note",
+			"ui.teamBridge.archive.confirm.body",
+			"ui.teamBridge.archive.confirm.confirm",
+			"ui.teamBridge.archive.confirm.error",
+			"ui.teamBridge.archive.confirm.title",
+			"ui.teamBridge.archive.delete.body",
+			"ui.teamBridge.archive.delete.confirm",
+			"ui.teamBridge.archive.delete.confirm_label",
+			"ui.teamBridge.archive.delete.error",
+			"ui.teamBridge.archive.delete.not_found",
+			"ui.teamBridge.archive.delete.title",
+			"ui.teamBridge.archive.list.empty",
+			"ui.teamBridge.archive.list.error",
+			"ui.teamBridge.archive.list.load_more",
+			"ui.teamBridge.archive.list.load_more_error",
+			"ui.teamBridge.archive.list.loading",
+			"ui.teamBridge.archive.list.meta_by_on",
+			"ui.teamBridge.archive.list.meta_on",
+			"ui.teamBridge.archive.menu.archive",
+			"ui.teamBridge.archive.section.archived",
+			"ui.teamBridge.archive.section.menu",
+			"ui.teamBridge.archive.thread.empty",
+			"ui.teamBridge.archive.thread.forbidden",
+			"ui.teamBridge.archive.toast.archive_failed"
+		],
+		"prior_audit": {
+			"instance": "dedc59c2f981",
+			"receipt": "i18n/receipts/teambridge-pr1438-audit-dedc59c2f981.json",
+			"receipt_sha256": "58cf48c787f9d338be5887ad0fe932d3634495cc845597a44c251378e45b3376",
+			"evidence": "i18n/audits/evidence/vi/ui.teamBridge.archive/teambridge-pr1438-audit-dedc59c2f981/record.json",
+			"evidence_sha256": "d94ed843fc86a047ff95b74769caef171f4d97376c3119ca1597026178c9415d",
+			"result": "clean",
+			"resolved_findings": [
+				"C2"
+			]
+		},
+		"verification": "At 10f8728b74: en (ceb7030e4414), context (d7f8d6150bae) and vi (8cfe97f51c9f) catalogue bytes equal the hashes named by the prior receipt's namespace block and by the prior evidence record's files; all 30 vi values equal the prior receipt's audited_strings and the evidence record's audited[].target, and all 30 en values equal audited[].en; key set equals en; no bidi control characters. No commit after the prior reviewed_head a128abe184 touches any ui.teamBridge.archive catalogue."
+	},
+	"sha256": {
+		"en": "ceb7030e4414e216b56fba46652a023de9f937eb7b64f0c433ddb5660b4ec4fe",
+		"vi": "8cfe97f51c9fb23622d286b422bc5cc28ac53c05a4fe2e1ceff8fed494e2086e"
+	},
+	"context_sha256": "d7f8d6150baef2402da7645d8893a7189c2a70375741cca988f140c9e72af46d",
+	"findings": [],
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide_fr": {
+			"path": "~/local-operator/i18n/style-guides/fr.md",
+			"revision": "24d328a19a8b39ba4d6e824b8bf2ebf1bb629ffe",
+			"sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+		},
+		"style_guide_es": {
+			"path": "~/local-operator/i18n/style-guides/es.md",
+			"revision": "95dea370856c5ab99309246b5e41869ea5c69d7a",
+			"sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+		},
+		"style_guide_zh-CN": {
+			"path": "~/local-operator/i18n/style-guides/zh-CN.md",
+			"revision": "ad1de332210d47cc01e62393c2d0cd4708e2312b",
+			"sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+		},
+		"style_guide_ru": {
+			"path": "~/local-operator/i18n/style-guides/ru.md",
+			"revision": "24d328a19a8b39ba4d6e824b8bf2ebf1bb629ffe",
+			"sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+		},
+		"style_guide_vi": {
+			"path": "~/local-operator/i18n/style-guides/vi.md",
+			"revision": "6c085b93b6ecc1a27a0daab552302687b059a911",
+			"sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+		},
+		"style_guide_ur": {
+			"path": "~/local-operator/i18n/style-guides/ur.md",
+			"revision": "24d328a19a8b39ba4d6e824b8bf2ebf1bb629ffe",
+			"sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+		},
+		"style_guide_hi": {
+			"path": "~/local-operator/i18n/style-guides/hi.md",
+			"revision": "14f73c4dcce62d858508fb6313b7f0416999a63b",
+			"sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+		},
+		"AGENTS.md": {
+			"path": "AGENTS.md",
+			"sha256": "b05f5fd1472fe1617783e51bc709df8e6f079a87ceda0f2ff97fff539be320af"
+		},
+		"docs/I18N.md": {
+			"path": "docs/I18N.md",
+			"sha256": "6fc7bea71643c0dcaeaed697ecd792cfdfeb11b7816b5f8d160011e7c7df2abe"
+		},
+		"scripts/i18n/ledger-rules.mjs": {
+			"path": "scripts/i18n/ledger-rules.mjs",
+			"sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6"
+		},
+		"scripts/i18n/ledger-assemble.mjs": {
+			"path": "scripts/i18n/ledger-assemble.mjs",
+			"sha256": "66ec03de791b515424b8d9a93094315111c179c149b35a5323d80c9c38644657"
+		}
+	},
+	"audit_notes_not_execution_log": "This receipt records hash and value comparisons computed from the files at reviewed_head, not a new translation judgement.",
+	"limitations": "Binding only: the linguistic verdict is the prior audit's (dedc59c2f981, rounds 1-3). No rendered-fit evidence; this role has no browser tool.",
+	"evidence_record": "i18n/audits/evidence/vi/ui.teamBridge.archive/teambridge-pr1438-rebind-fe54982cb1b7/record.json"
+}

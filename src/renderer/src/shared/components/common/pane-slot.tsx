@@ -1,11 +1,39 @@
 import { cn } from "@shared/lib/utils";
 import { type HTMLAttributes, type ReactNode, forwardRef } from "react";
+import { PanelEdge } from "./panel-edge";
 
 type PaneSlotProps = HTMLAttributes<HTMLDivElement> & {
 	/**
-	 * The pane's width in pixels, from the store that owns the drag.
+	 * The pane's width in pixels: the store's answer for a dragged pane, or
+	 * `askPanePresentation`'s for the ask sheet.
+	 *
+	 * WHICH NUMBER A PANE DRAWS, and the two answers are different claims rather
+	 * than a default for one.
+	 *
+	 *  - A DOCKED pane (and, since 2026-11-03, the ask sheet) passes the width it
+	 *    draws: a number a person chose or a presentation function answered
+	 *    (`askPanePresentation`, `chat-sidebar-layout.ts`). The sheet also carries
+	 *    `max-w-full`, so a row number one reflow old cannot overrun the row it is
+	 *    pinned to.
+	 *
+	 *  - AN OVERLAY PANE THAT OWNS NO WIDTH omits it and the box resolves against
+	 *    the row it is pinned to (`absolute inset-0`). MEASURED, and it cost a
+	 *    design round (D8): passing the measured row width into an `inset-0` box is
+	 *    over-constrained - the direction decides which inset is ignored, so in RTL
+	 *    the box keeps its trailing inset and a WIDER number pushes its leading edge
+	 *    past the containing block. The number is one reflow old for a frame or two
+	 *    after 200 % zoom (measured: 956 px of row state in a 456 px row while the
+	 *    width transition ran), and in those frames the pane is wider than the row it
+	 *    is clipped by: it gives the `overflow-hidden` row a horizontal scroll range
+	 *    it does not have once settled, and any programmatic scroll of a control
+	 *    inside that row (a `scrollIntoView`, a focus scroll) then consumes it and
+	 *    drags the pinned pane with it - 24 px in RTL, off the window.
+	 *
+	 * THE ASK SHEET NEVER USES THAT SECOND SHAPE: it is `inset-y-0 end-0`, one
+	 * inline inset plus one inline width, so it is not over-constrained and its
+	 * drawn edge is a number a rig can compare with `data-slot-edge`.
 	 */
-	width: number;
+	width?: number;
 	/**
 	 * A floor for the box, in pixels. Omitted, the floor is ZERO — see the class
 	 * note below, where the measurement behind that default is written down. A
@@ -49,9 +77,20 @@ type PaneSlotProps = HTMLAttributes<HTMLDivElement> & {
  *     go of the divider (the same reason `chat-layout.tsx` states for the sidebar);
  *   - the WIDTH TRANSITION belongs to the slot rather than to any pane, because it
  *     is the drawer opening and closing that moves it;
- *   - NO SEAM. The pane's boundary is the tonal step between its ground and the
- *     column beside it (`canvas/index.tsx` states which ground and why), and the
- *     app draws no rule here. A rule on this element is the defect above;
+ *   - ONE SEAM, AND IT IS `PanelEdge` (2026-10-30). The pane's boundary is the
+ *     tonal step between its ground and the column beside it (`canvas/index.tsx`
+ *     states which ground and why), and on top of that step this component draws
+ *     ONE 1px `hairline` seam on its leading edge. The comment here used to say
+ *     "NO SEAM": the operator asked for the borders to go, and a `border-l` on
+ *     this box (plus a copy of it in three story arms) was the second way of
+ *     drawing the boundary that round removed. That was right for a border and
+ *     wrong as a rule - the tone step measures ΔE00 2.32 in
+ *     `localOperatorLight`, and the operator's 2026-10-30 report is that the
+ *     panels therefore have no readable edge in light themes. The seam is drawn
+ *     from the theme's `hairline` at 75%, on a positioned child rather than as a
+ *     border, so it costs no layout and cannot be clipped;
+ *     `panel-edge.tsx` carries the full argument and its measurements. One
+ *     spelling, so the app and the story arms cannot disagree again;
  *   - no ground of its own either: the occupant paints its surface, so the slot
  *     stays a box;
  *   - the WIDTH stays a preference and the FLOOR is always an explicit `0`,
@@ -72,17 +111,30 @@ type PaneSlotProps = HTMLAttributes<HTMLDivElement> & {
  *     reads it from this file.
  */
 export const PaneSlot = forwardRef<HTMLDivElement, PaneSlotProps>(
-	({ width, minWidth = 0, tourTag, children, ...rest }, ref) => (
+	({ width, minWidth = 0, tourTag, className, children, ...rest }, ref) => (
 		<div
 			ref={ref}
 			style={{ minWidth, width }}
 			data-tour-tag={tourTag}
 			className={cn(
 				"relative h-full overflow-hidden transition-[width] duration-base ease-out-quart",
+				/*
+				 * THE CALLER'S OWN CLASSES ARE MERGED HERE, NOT SPREAD PAST. `className`
+				 * used to travel in `...rest` and land on the element AFTER this `cn(...)`,
+				 * so a caller that named one class replaced the WHOLE family list —
+				 * `relative h-full overflow-hidden` included, and with it the clip and the
+				 * floor this file's header argues for. Merging through `cn` keeps the family
+				 * list and lets `twMerge` resolve a genuine collision (`absolute` over
+				 * `relative`), which is what the ask drawer's narrow-width overlay needs.
+				 */
+				className,
 			)}
 			{...rest}
 		>
 			{children}
+			{/* The seam sits LAST so it paints above the occupant's own ground and any
+			 * sticky bar inside it; `z-20` keeps a positioned toolbar from covering it. */}
+			<PanelEdge side="start" />
 		</div>
 	),
 );

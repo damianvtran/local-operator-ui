@@ -250,6 +250,18 @@ async function realSweep(
 	]) {
 		copyFileSync(join(dirname(guard), name), join(scripts, name));
 	}
+	/*
+	 * `scripts/color.mjs` re-exports the shared colour maths from
+	 * `src/shared/theme-engine/color.mjs` (the theme composition engine measures
+	 * with the same functions the gates do), so the relocated checkout needs that
+	 * one module too - the same import edge, one directory over.
+	 */
+	const engine = join(root, "src", "shared", "theme-engine");
+	mkdirSync(engine, { recursive: true });
+	copyFileSync(
+		join(dirname(guard), "..", "src", "shared", "theme-engine", "color.mjs"),
+		join(engine, "color.mjs"),
+	);
 	// Only relocate the fixed lock literal in this disposable checkout. There is
 	// deliberately no production env override that lets sibling worktrees opt out.
 	const source = readFileSync(
@@ -274,7 +286,22 @@ async function realSweep(
 		join(palettes, "synthetic.ts"),
 		'id: "synthetic", palette: { canvas: "#000000" }',
 	);
-	const evidence = join(root, "docs/evidence");
+	/*
+	 * The FRAMES tree: the relocated CLI walks the ignored `docs/evidence-frames/`
+	 * (`check-evidence.mjs`'s `EVIDENCE`), so the synthetic frames have to land
+	 * where it looks. The manifest stays in `docs/evidence/` and this fixture
+	 * carries none - the sweep's manifest arithmetic is exercised against the
+	 * shipped file by `evidence-manifest.test.mjs`.
+	 */
+	const evidence = join(root, "docs/evidence-frames");
+	/*
+	 * The TRACKED tree, where the manifest is read from: the CLI resolves it
+	 * independently of the frames (`MANIFEST_DIR` in `check-evidence.mjs`), so a
+	 * fixture that wrote the manifest into the frames tree would be describing
+	 * the pre-split layout and the sweep would find no declarations.
+	 */
+	const manifestDir = join(root, "docs/evidence");
+	mkdirSync(manifestDir, { recursive: true });
 	for (let index = 0; index < frames; index += 1) {
 		const dir = join(evidence, `frame-${index}`);
 		mkdirSync(dir, { recursive: true });
@@ -299,7 +326,7 @@ async function realSweep(
 			encoding: "utf8",
 			timeout,
 		});
-	return { root, scripts, entry, cli, cliEnv, evidence };
+	return { root, scripts, entry, cli, cliEnv, evidence, manifestDir };
 }
 
 /**
@@ -400,7 +427,7 @@ test(
 		 * the comparison, not the fixture.
 		 */
 		const lock = fixture(t);
-		const { cli, root, evidence } = await realSweep(t, lock);
+		const { cli, root, manifestDir } = await realSweep(t, lock);
 		const story = "src/stories/advisory.stories.tsx";
 		mkdirSync(join(root, "src", "stories"), { recursive: true });
 		writeFileSync(join(root, story), "export const cut = 1;\n");
@@ -436,12 +463,28 @@ test(
 							capturedAt: "2026-01-01T00:00:00.000Z",
 							capturedAtHead,
 						},
+						/*
+						 * A ZERO-FRAME declaration, which is a state rather than a
+						 * lost directory: `submit-latency` in the shipped manifest is
+						 * the real instance, and its only file is a tracked README, so
+						 * the frames tree has no directory for it. Without the
+						 * `set.frames === 0` allowance in `check-evidence.mjs` this
+						 * entry turns the run red with "names a directory that is not
+						 * in the tree" - measured on 2026-10-20.
+						 */
+						{
+							path: "zero-set",
+							frames: 0,
+							source: "declared at zero frames; no capture has been taken",
+							why: "a declared absence is visible to the gate, an undeclared one is not",
+							capturedAt: "2026-01-01T00:00:00.000Z",
+						},
 					],
 				},
 				null,
 				2,
 			);
-		writeFileSync(join(evidence, "manifest.json"), stamp(first));
+		writeFileSync(join(manifestDir, "manifest.json"), stamp(first));
 		const drifted = cli();
 		assert.equal(drifted.status, 0, drifted.stdout + drifted.stderr);
 		assert.match(
@@ -453,7 +496,7 @@ test(
 		// fixture prints is still the sweep's own.
 		assert.doesNotMatch(drifted.stdout, /FAIL/);
 		assert.match(drifted.stdout, /Evidence holds: 1 frames/);
-		writeFileSync(join(evidence, "manifest.json"), stamp(second));
+		writeFileSync(join(manifestDir, "manifest.json"), stamp(second));
 		const agreed = cli();
 		assert.equal(agreed.status, 0, agreed.stdout + agreed.stderr);
 		assert.doesNotMatch(agreed.stdout, /NOTE/);

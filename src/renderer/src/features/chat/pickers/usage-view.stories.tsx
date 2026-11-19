@@ -31,12 +31,15 @@
 
 import type { Meta, StoryObj } from "@storybook/react";
 import "../../../styles/index.css";
-import { UsageDialog } from "./usage-view";
-import type {
-	UsageAmount,
-	UsageLimit,
-	UsagePayload,
-	UsageReport,
+import { UsageDialog, type UsageResetControls } from "./usage-view";
+import {
+	type AccountResetState,
+	type UsageAmount,
+	type UsageLimit,
+	type UsagePayload,
+	type UsageReport,
+	canReset,
+	resetAccountKey,
 } from "./usage-view-model";
 
 /* A fixed clock, so a countdown cannot move between two captures of the same
@@ -307,6 +310,120 @@ export const MultiProvider: Story = {
 /** A percent-only provider on its own, where no row carries a currency. */
 export const PercentOnly: Story = {
 	args: { ...base, payload: payload([openai]) },
+};
+
+/**
+ * Kimi on a current plan: a 5-hour window and the MONTHLY pool, no weekly one.
+ *
+ * New Kimi plans expose `5h + monthly`; legacy plans keep the weekly window,
+ * so a frame that always shows three rows is a frame for a plan most accounts
+ * no longer have. The monthly pool is the case this frame exists for: it has
+ * STARTED at 0.06% (`used: 0.06`, no limit, fraction `0.0006`), which
+ * zero-places rounding would print as `0%` — indistinguishable from a window
+ * nothing has been consumed from. The ROW must read `<1%`. In this fixture the
+ * 5h window binds (1% over 0.06%), so the block heading reads `5h limit 1%`;
+ * the heading's sub-1% path is pinned by the binding-summary test, and
+ * `KimiMonthlyBinding` below is the frame that shows it.
+ */
+export const KimiMonthly: Story = {
+	args: {
+		...base,
+		payload: payload([
+			report({
+				provider: "kimi",
+				identity: null,
+				fetched_at: NOW,
+				age_ms: 0,
+				state: "available",
+				limits: [
+					limit({
+						id: "kimi:0",
+						label: "5h limit",
+						window: "5h limit",
+						amount: amount({
+							used: 1,
+							limit: 100,
+							remaining: 99,
+							used_fraction: 0.01,
+							unit: "unknown",
+						}),
+						resets_at_ms: NOW + 4 * HOUR + 16 * MINUTE,
+						shared: true,
+					}),
+					limit({
+						id: "kimi:monthly-total",
+						label: "Monthly total",
+						window: "monthly",
+						amount: amount({
+							used: 0.06,
+							limit: null,
+							remaining: 99.94,
+							used_fraction: 0.0006,
+							unit: "percent",
+						}),
+						resets_at_ms: NOW + 31 * DAY + 5 * HOUR,
+						shared: true,
+					}),
+				],
+			}),
+		]),
+	},
+};
+
+/**
+ * The same report with the 5h window UNTOUCHED, so the monthly pool binds.
+ *
+ * `KimiMonthly` cannot exercise the heading's sub-1% path: its 1% 5h window
+ * outranks the 0.06% monthly one, so the header reads `5h limit 1%` while the
+ * monthly ROW reads `<1%`. A `<1%` row under a heading that answered the same
+ * question differently (`Monthly total 0%`) is exactly the defect this pair
+ * exists to prevent, so here the 5h row sits at zero and the heading must read
+ * `Monthly total <1%`. Both rows stay: the frame shows WHICH row the heading
+ * bound, not a month-only report.
+ */
+export const KimiMonthlyBinding: Story = {
+	args: {
+		...base,
+		payload: payload([
+			report({
+				provider: "kimi",
+				identity: null,
+				fetched_at: NOW,
+				age_ms: 0,
+				state: "available",
+				limits: [
+					limit({
+						id: "kimi:0",
+						label: "5h limit",
+						window: "5h limit",
+						amount: amount({
+							used: 0,
+							limit: 100,
+							remaining: 100,
+							used_fraction: 0,
+							unit: "unknown",
+						}),
+						resets_at_ms: NOW + 4 * HOUR + 16 * MINUTE,
+						shared: true,
+					}),
+					limit({
+						id: "kimi:monthly-total",
+						label: "Monthly total",
+						window: "monthly",
+						amount: amount({
+							used: 0.06,
+							limit: null,
+							remaining: 99.94,
+							used_fraction: 0.0006,
+							unit: "percent",
+						}),
+						resets_at_ms: NOW + 31 * DAY + 5 * HOUR,
+						shared: true,
+					}),
+				],
+			}),
+		]),
+	},
 };
 
 /** A remaining-only balance: a number, no fill, and the words "not reported". */
@@ -823,5 +940,220 @@ export const PaidCreditsSpendUnavailable: Story = {
 				],
 			}),
 		]),
+	},
+};
+
+/* ---------------------------------------------------------------------------
+ * The reset-credit surface
+ *
+ * Six outcomes, a confirmation and an in-flight state, all driven by the REAL
+ * machine from `usage-view-model.ts` -- the fixtures below are states that
+ * machine can be in, not a story-shaped imitation of them. What to look for:
+ *
+ * - The chip rides the account's own heading line, so the block's rows do not
+ *   move when it appears, and the binding numbers on the right do not re-flow.
+ * - The confirmation sits inline in the block it spends on; Cancel carries the
+ *   focus and Confirm is the primary action.
+ * - The RESULT LINE OUTLIVES THE CHIP. The `ResetOutcome*` frames below all
+ *   carry zero credits -- which is exactly why the chip is gone and why a
+ *   result drawn beside it would disappear at the moment it matters.
+ * ---------------------------------------------------------------------- */
+
+/** The ref a real OpenAI report carries; the key a reset state is filed under. */
+const RESET_REF = "cred-openai-1";
+
+/** The OpenAI account, with credits on it (`credits: 0` after a spend). */
+const resettable = (credits = 3): UsageReport => ({
+	...openai,
+	resets_available: credits,
+	credential_ref: RESET_REF,
+});
+
+/** Story-only controls: real states, inert handlers. */
+const resetControls = (
+	state: AccountResetState,
+	report: UsageReport,
+): UsageResetControls => ({
+	states: {
+		[resetAccountKey({ provider: report.provider, credentialRef: RESET_REF })]:
+			state,
+	},
+	canReset,
+	onAsk: noop,
+	onConfirm: noop,
+	onCancel: noop,
+	onDismiss: noop,
+});
+
+/** Idle with credits: the chip is on the heading line, and nothing else moved. */
+export const ResetIdle: Story = {
+	args: {
+		...base,
+		payload: payload([resettable(), anthropic]),
+		reset: resetControls(
+			{ phase: "idle", pendingRedeemRequestId: null },
+			resettable(),
+		),
+	},
+};
+
+/** The confirmation: the cost is stated, Cancel holds the focus. */
+export const ResetConfirm: Story = {
+	args: {
+		...base,
+		payload: payload([resettable()]),
+		reset: resetControls(
+			{
+				phase: "confirm",
+				redeemRequestId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+			},
+			resettable(),
+		),
+	},
+};
+
+/** In flight: both buttons are inert, and the wait names the account. */
+export const ResetBusy: Story = {
+	args: {
+		...base,
+		payload: payload([resettable()]),
+		reset: resetControls(
+			{
+				phase: "busy",
+				redeemRequestId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+			},
+			resettable(),
+		),
+	},
+};
+
+/** A spent credit: the chip is gone because there are none left, the result is not. */
+export const ResetOutcomeReset: Story = {
+	args: {
+		...base,
+		payload: payload([resettable(0)]),
+		reset: resetControls(
+			{
+				phase: "result",
+				redeemRequestId: null,
+				result: {
+					outcome: "reset",
+					windowsReset: 2,
+					detail: "",
+					refused: false,
+				},
+			},
+			resettable(0),
+		),
+	},
+};
+
+/** Already applied by a retry: the credit count did not move. */
+export const ResetOutcomeAlreadyRedeemed: Story = {
+	args: {
+		...base,
+		payload: payload([resettable(2)]),
+		reset: resetControls(
+			{
+				phase: "result",
+				redeemRequestId: null,
+				result: {
+					outcome: "already_redeemed",
+					windowsReset: 0,
+					detail: "",
+					refused: false,
+				},
+			},
+			resettable(2),
+		),
+	},
+};
+
+/** Nothing left to spend: neutral, and the line says nothing was spent. */
+export const ResetOutcomeNoCredit: Story = {
+	args: {
+		...base,
+		payload: payload([resettable(0)]),
+		reset: resetControls(
+			{
+				phase: "result",
+				redeemRequestId: null,
+				result: {
+					outcome: "no_credit",
+					windowsReset: 0,
+					detail: "",
+					refused: false,
+				},
+			},
+			resettable(0),
+		),
+	},
+};
+
+/** No window needed clearing: the credit was still not spent. */
+export const ResetOutcomeNothingToReset: Story = {
+	args: {
+		...base,
+		payload: payload([resettable(3)]),
+		reset: resetControls(
+			{
+				phase: "result",
+				redeemRequestId: null,
+				result: {
+					outcome: "nothing_to_reset",
+					windowsReset: 0,
+					detail: "",
+					refused: false,
+				},
+			},
+			resettable(3),
+		),
+	},
+};
+
+/** The unknown arm: the only line allowed to say the credit's fate is unknown. */
+export const ResetOutcomeFailed: Story = {
+	args: {
+		...base,
+		payload: payload([resettable(2)]),
+		reset: resetControls(
+			{
+				phase: "result",
+				/*
+				 * The id is KEPT here, and that is the point of the picture: the
+				 * retry affordance beside the line is only honest because this state
+				 * still owes the vendor the id it already spent.
+				 */
+				redeemRequestId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+				result: {
+					outcome: "failed",
+					windowsReset: 0,
+					detail: "",
+					refused: false,
+				},
+			},
+			resettable(2),
+		),
+	},
+};
+
+/** Refused before anything was sent: nothing was spent, and the id is still owed. */
+export const ResetOutcomeRefused: Story = {
+	args: {
+		...base,
+		payload: payload([resettable(3)]),
+		reset: resetControls(
+			{
+				phase: "result",
+				redeemRequestId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+				result: {
+					outcome: "refused",
+					windowsReset: 0,
+					detail: "",
+					refused: true,
+				},
+			},
+			resettable(3),
+		),
 	},
 };

@@ -1,0 +1,176 @@
+{
+	"ui.chat.settings_intents.chips_label": {
+		"length": "short; fits one composer line",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "accessible label of the group of settings-change chips above the composer",
+		"tone": "sentence case, no full stop"
+	},
+	"ui.chat.settings_intents.cwd_waiting": {
+		"length": "short; fits one composer line",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"dir": "a home-relative folder path, shown verbatim"
+		},
+		"role": "status chip: the working-directory move waits until the current turn ends",
+		"tone": "sentence case, no full stop"
+	},
+	"ui.chat.settings_intents.effort_queued": {
+		"length": "short; fits one composer line",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"level": "the effort level word, already localized"
+		},
+		"role": "status chip: the runtime accepted the effort change and will use it before its next model call",
+		"tone": "sentence case, no full stop"
+	},
+	"ui.chat.settings_intents.failed_cwd": {
+		"length": "short; fits one composer line",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"dir": "a home-relative folder path, shown verbatim",
+			"reason": "the server's reason sentence, already localized, may be long"
+		},
+		"role": "error chip: the working-directory move was refused or never applied",
+		"tone": "sentence case, no full stop"
+	},
+	"ui.chat.settings_intents.failed_effort": {
+		"length": "short; fits one composer line",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"level": "the effort level word, already localized",
+			"reason": "the server's reason sentence, already localized, may be long"
+		},
+		"role": "error chip: the effort change was refused or never applied; followed by Retry and Dismiss buttons",
+		"tone": "sentence case, no full stop"
+	},
+	"ui.chat.settings_intents.failed_fast": {
+		"length": "short; fits one composer line",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"reason": "the server's reason sentence, already localized, may be long"
+		},
+		"role": "error chip: the fast-mode change was refused or never applied",
+		"tone": "sentence case, no full stop"
+	},
+	"ui.chat.settings_intents.failed_model": {
+		"length": "short; fits one composer line",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"model": "the model's display name, shown verbatim",
+			"reason": "the server's reason sentence, already localized, may be long"
+		},
+		"role": "error chip: the model change was refused or never applied; followed by Retry and Dismiss buttons",
+		"tone": "sentence case, no full stop"
+	},
+	"ui.chat.settings_intents.fast_queued": {
+		"length": "short; fits one composer line",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "status chip: the runtime accepted the fast-mode change and will use it at its next step",
+		"tone": "sentence case, no full stop"
+	},
+	"ui.chat.settings_intents.model_queued": {
+		"length": "short; fits one composer line",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"model": "the model's display name, shown verbatim"
+		},
+		"role": "status chip: the runtime accepted the model change and will use it before its next model call",
+		"tone": "sentence case, no full stop"
+	},
+	"ui.chat.settings_intents.moving_cwd": {
+		"length": "short; fits one composer line",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"dir": "a home-relative folder path, shown verbatim"
+		},
+		"role": "status chip while the working directory move is being applied",
+		"tone": "sentence case, ends with an ellipsis"
+	},
+	"ui.chat.settings_intents.reason_budget": {
+		"length": "short; fits one composer line",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "reason inside a failure chip when the background retries ran out",
+		"tone": "sentence case, no full stop"
+	},
+	"ui.chat.settings_intents.reason_unknown": {
+		"length": "short; fits one composer line",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "fallback reason inside a failure chip when the server gave none",
+		"tone": "sentence case, no full stop"
+	},
+	"ui.chat.settings_intents.row_applying": {
+		"length": "short; fits one composer line",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "accessible label of the small spinner dot on a sidebar conversation row",
+		"tone": "sentence case, no full stop"
+	},
+	"ui.chat.settings_intents.row_failed": {
+		"length": "short; fits one composer line",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "accessible label of the warning dot on a sidebar conversation row",
+		"tone": "sentence case, no full stop"
+	},
+	"ui.chat.settings_intents.setting_effort": {
+		"length": "short; fits one composer line",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"level": "the effort level word, already localized"
+		},
+		"role": "status chip while a reasoning-effort change is being applied in the background",
+		"tone": "sentence case, ends with an ellipsis"
+	},
+	"ui.chat.settings_intents.setting_fast_off": {
+		"length": "short; fits one composer line",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "status chip while fast mode is being turned off",
+		"tone": "sentence case, ends with an ellipsis"
+	},
+	"ui.chat.settings_intents.setting_fast_on": {
+		"length": "short; fits one composer line",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "status chip while fast mode is being turned on",
+		"tone": "sentence case, ends with an ellipsis"
+	},
+	"ui.chat.settings_intents.superseded_effort": {
+		"length": "short; fits one composer line",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"level": "the effort level word, already localized"
+		},
+		"role": "transcript note: another client changed the effort first, so this pick was dropped",
+		"tone": "sentence case, no full stop"
+	},
+	"ui.chat.settings_intents.superseded_model": {
+		"length": "short; fits one composer line",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"model": "the model's display name, shown verbatim"
+		},
+		"role": "transcript note: another client (terminal, phone) changed the model first, so this pick was dropped",
+		"tone": "sentence case, no full stop"
+	},
+	"ui.chat.settings_intents.superseded_other": {
+		"length": "short; fits one composer line",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "transcript note: another client changed the setting first",
+		"tone": "sentence case, no full stop"
+	},
+	"ui.chat.settings_intents.switching_model": {
+		"length": "short; fits one composer line",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"model": "the model's display name, shown verbatim"
+		},
+		"role": "status chip while a model change is being applied in the background",
+		"tone": "sentence case, ends with an ellipsis"
+	}
+}

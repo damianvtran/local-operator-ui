@@ -1,0 +1,112 @@
+{
+  "schema": 1,
+  "auditor": "i18n-auditor (independent lopdev task 'UI #1604 delta i18n audit A', session f89f59f896f1)",
+  "model": "anthropic/claude-opus-5-5",
+  "model_provenance": "Whole audit (source reads, semantic review, structural probe, classification, receipt writing) ran on the session's announced model anthropic/claude-opus-5-5. No fallback or model switch was observed during this session.",
+  "instance": "f89f59f896f1-hi",
+  "audit_session": "f89f59f896f1",
+  "locale": "hi",
+  "namespace": "ui.mesh",
+  "date": "2026-11-02",
+  "scope": "Delta audit A of f6a91444077..fbbbdec31b1 (PR #1604 remediation commit). All 5 changed ui.mesh value(s) in this locale read in final bytes; English/context change to scope_session reviewed. Also re-read in final bytes the 19 ui.mesh.approval.* values for consent consistency (borrow/login terms). Unchanged non-approval values retain historical audits.",
+  "audited_head": "fbbbdec31b15b34d06b511278707ae3b0792b080",
+  "delta_base": "f6a91444077ee6e70edfbdff6d4b740c864b8503",
+  "status": "passed",
+  "sha256": {
+    "en": "edf18f0d32404972428c4bfcc107f835d170df6e2f6c800d10681d1a1e6e4fd1",
+    "hi": "692e69a25f52c2deaa1cf3c23afe678c274168d857113a0c33d4e9f4f66ed99a"
+  },
+  "base_sha256": {
+    "en": "14428f2aa934af49f6c9d34a09696a3ba29505f653894a1c69b3fb8a22a261e4",
+    "hi": "4cc40fa0f117a1e100140064f8f380666c3a0e6ea4a5709f9ed896dfb6675b48"
+  },
+  "findings": [
+    {
+      "id": "TA3A-HI-01",
+      "severity": "minor",
+      "key": "ui.mesh.approval.file_key_disclosure",
+      "keys": [
+        "ui.mesh.approval.file_key_disclosure"
+      ],
+      "verbatim": "Remediation of TA2-HI-01 changed \"इसे किसी व्यक्ति ने दिया\" to \"इसे किसी व्यक्ति ने दी\". With the object marked by को (इसे = इस को), a perfective ergative verb takes default masculine singular, so \"इसे ... ने दी\" is an agreement error; feminine agreement with स्वीकृति requires an unmarked object (\"यह ... ने दी\"). The inability to prove a person approved remains clear; the glossary term स्वीकृति is correct.",
+      "recommendation": "\"…इसलिए यह स्वीकृति साबित नहीं कर सकती कि यह किसी व्यक्ति ने दी।\" (or revert to \"इसे … ने दिया\").",
+      "disposition": "not applied: auditors never edit translations; handed to the implementer for one batched remediation or explicit deferral. Nonblocking: no security-consent consequence is reversed or omitted."
+    },
+    {
+      "id": "TA3A-HI-02",
+      "severity": "nit",
+      "key": "ui.mesh.approval.scope_session",
+      "keys": [
+        "ui.mesh.approval.scope_session",
+        "ui.mesh.approval.credential_title"
+      ],
+      "verbatim": "\"हर सत्र से जुड़े ऐक्सेस\" introduces the spelling ऐक्सेस, which appears nowhere else in the hi catalogues; existing hi copy uses एक्सेस (ui.canvas, ui.chat.composer, ui.providers, ui.settings.integrations) or पहुँच (this namespace's credential_title \"क्रेडेंशियल पहुँच\"). Meaning is correct, including borrow (उधार) matching needs_broker.",
+      "recommendation": "Use पहुँच for consistency with credential_title, e.g. \"हर सत्र से जुड़ी पहुँच के साथ\".",
+      "disposition": "not applied: auditors never edit translations; handed to the implementer for one batched remediation or explicit deferral. Nonblocking: no security-consent consequence is reversed or omitted."
+    }
+  ],
+  "changed_keys": [
+    "ui.mesh.approval.scope_session",
+    "ui.mesh.approval.installs_something",
+    "ui.mesh.approval.needs_broker",
+    "ui.mesh.approval.file_key_disclosure",
+    "ui.mesh.approval.approved_not_applied"
+  ],
+  "verbatim_values": {
+    "ui.mesh.approval.scope_session": "{device} पर सत्र इस लॉगिन को हर सत्र से जुड़े ऐक्सेस के साथ उधार ले सकते हैं।",
+    "ui.mesh.approval.installs_something": "स्वीकृति देने से कुछ इंस्टॉल या जुड़ भी सकता है।",
+    "ui.mesh.approval.needs_broker": "{device} को लॉगिन उधार लेने की अनुमति भी चाहिए, जो यह स्वीकृति नहीं देती।",
+    "ui.mesh.approval.file_key_disclosure": "यह मशीन Touch ID से नहीं, कुंजी फ़ाइल से हस्ताक्षर करती है, इसलिए यह स्वीकृति साबित नहीं कर सकती कि इसे किसी व्यक्ति ने दी।",
+    "ui.mesh.approval.approved_not_applied": "स्वीकृत, लेकिन अभी लागू नहीं हुआ।"
+  },
+  "english_values": {
+    "ui.mesh.approval.scope_session": "Sessions on {device} can borrow this login with session-bound access.",
+    "ui.mesh.approval.installs_something": "Approving may also install or join something.",
+    "ui.mesh.approval.needs_broker": "{device} also needs permission to borrow logins, which this does not grant.",
+    "ui.mesh.approval.file_key_disclosure": "This machine signs with a key file, not Touch ID, so this approval can't prove a person made it.",
+    "ui.mesh.approval.approved_not_applied": "Approved, but not applied yet."
+  },
+  "context_sidecar": {
+    "path": "src/i18n/catalogues/en/ui.mesh.context.json",
+    "sha256": "79b22ab6e83a0d8675409f9673a452928b77cee22e47c52930ea0c2127f269f5",
+    "read": "scope_session context note read in full: session scope = device is holder, its sessions may each borrow with grants bound to the individual incoming session; NOT restricted to the requesting session."
+  },
+  "standards": {
+    "root": "~/local-operator/i18n at origin/main 5909dc26678 (shared checkout is on a feature branch; bytes read with git show origin/main:)",
+    "sha256": {
+      "glossary.md": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "style-guides/hi.md": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    }
+  },
+  "translator": {
+    "agent": "coder",
+    "jobs": [
+      "job07291411b980",
+      "c61a64298a45",
+      "21ddee198f0b"
+    ],
+    "remediation_commit": "fbbbdec31b15b34d06b511278707ae3b0792b080",
+    "attribution": "Translator/remediation coder runs named by the manager; their served model is not verified by this auditor."
+  },
+  "independence": "This session (f89f59f896f1) authored no catalogue value and is distinct from the translator/coder runs and from earlier auditors 1f7797b807b7 (job0a40e337218a) and 5c609e74f770 (job38d28c8fb9bf). Parallel auditor B writes its own receipts under its own instance ids; none were read before this verdict.",
+  "semantic_checks": [
+    "scope_session: every final locale says sessions (plural/each) on {device} may use/borrow the login with access bound to each session; none retains the superseded 'only the requesting session' claim; none widens to unbound device-wide access.",
+    "scope_device vs scope_session remain distinguishable: device scope = any session can use it; session scope adds per-session binding.",
+    "No changed value reverses or omits a consent consequence; {device} placeholder present in every changed scope line.",
+    "Prior TA2 typography/glossary remediations verified in final bytes where applicable to this locale.",
+    "scope_session: all sessions; borrow (उधार) matches needs_broker; per-session binding. Glossary स्वीकृति/स्वीकृत applied in installs_something, needs_broker, file_key_disclosure, approved_not_applied (TA2-HI-01 terminology resolved); new agreement error in file_key_disclosure (TA3A-HI-01)."
+  ],
+  "evidence": {
+    "probe": "i18n/receipts/f89f59f896f1-structural-probe.mjs.txt",
+    "probe_sha256": "be39a0750797ec72151f7fc18676f5b1e8b35e219485acfdb7d8c9bbb53b6fac",
+    "log": "i18n/receipts/f89f59f896f1-structural-probe-output.txt",
+    "log_sha256": "7edf239e9a6f244d05483b48b30cdcf3f3b5abe6a91318b48a7455425ce6dafd",
+    "verdict_location": "Findings, status and semantic_checks in this receipt are the auditor's review record; the companion log is actual probe output (ICU arg/plural parity vs English, NFC, bidi controls, fr colon spacing, zh spaces/ellipsis)."
+  },
+  "non_claims": [
+    "No rendered/compiled-native, width/fit, pseudo-localization, font shaping or visual RTL validation (host memory hold).",
+    "No translation edits by this auditor.",
+    "Not the second (B) delta audit; B records its own receipts."
+  ],
+  "notes": "Delta audit A on PR #1604 head fbbbdec. Passing with 1 minor / 1 nit; zero blocker/major."
+}

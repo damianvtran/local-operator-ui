@@ -123,7 +123,7 @@ const bundle = await build({
 		contents:
 			'export * from "./src/renderer/src/shared/store/speech-store";\n' +
 			'export * from "./src/renderer/src/shared/store/audio-engine-store";\n' +
-			'export { SPEECH_FAILURE_COPY, SPEECH_PLAYBACK_COPY } from "./src/renderer/src/shared/lib/speech-errors";',
+			'export { speechFailureFallbackCopy, speechPlaybackCopy } from "./src/renderer/src/shared/lib/speech-errors";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -178,8 +178,8 @@ const {
 	AUDIO_CACHE_LIMIT,
 	messageSpeechKey,
 	selectionSpeechKey,
-	SPEECH_FAILURE_COPY,
-	SPEECH_PLAYBACK_COPY,
+	speechFailureFallbackCopy,
+	speechPlaybackCopy,
 	useAudioEngineStore,
 	useSpeechStore,
 } = mod;
@@ -468,7 +468,7 @@ test("a fetcher that answers nothing is a failure, not a silent success", () => 
 		assert.match(state().error ?? "", NO_AUDIO_SENTENCE);
 		assert.deepEqual(
 			toasts().errors,
-			[SPEECH_FAILURE_COPY],
+			[speechFailureFallbackCopy()],
 			"the transport's words stay out of the reader's sentence",
 		);
 	})();
@@ -493,7 +493,7 @@ test("an unmapped upstream diagnostic is mapped, with the detail only in the con
 		}
 		assert.deepEqual(
 			toasts().errors,
-			[SPEECH_FAILURE_COPY],
+			[speechFailureFallbackCopy()],
 			"the support diagnostic never reads as copy",
 		);
 		assert.equal(state().error, raw, "the raw detail is kept for the tests");
@@ -521,7 +521,7 @@ test("a playback failure raises the error toast through the same channel (C1)", 
 		}
 		assert.deepEqual(
 			toasts().errors,
-			[SPEECH_PLAYBACK_COPY],
+			[speechPlaybackCopy()],
 			"a fetched-then-unplayable press must not look like nothing happened",
 		);
 		assert.equal(state().playingKey, null, "and the slot is released");

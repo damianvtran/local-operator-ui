@@ -1,0 +1,198 @@
+{
+  "locale": "fr",
+  "mode": "delta",
+  "scope": "118da8491a9..165aebb1b73",
+  "head_sha": "165aebb1b73e65a63ca2ba1e4d8c9e638e8dc696",
+  "audit_date": "2026-11-10",
+  "key_count": 7,
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "delegation brief; translator session id not supplied"
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "70ebc89d3bc3",
+    "session": "70ebc89d3bc3",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "runtime session metadata",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "status": "passed",
+  "result": "clean",
+  "verdict": "clean",
+  "findings": [],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "namespaces": {
+    "ui.chat.canonical": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "38f767d08ff0f8a4fc6d8eee536ae82a023e93fe50fecc5fabb25a8f7609541f",
+      "target_sha256": "72353c812ac37c1728af21c33d429fa04e9c3ebf8e55c701b22617d443fb6d2e",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+          "sha256": "38f767d08ff0f8a4fc6d8eee536ae82a023e93fe50fecc5fabb25a8f7609541f"
+        },
+        "fr": {
+          "path": "src/i18n/catalogues/fr/ui.chat.canonical.json",
+          "sha256": "72353c812ac37c1728af21c33d429fa04e9c3ebf8e55c701b22617d443fb6d2e"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+          "sha256": "58cefb7d2140be875f5bcc0688631a85c368b130b551f82185d78cec47eb8107"
+        }
+      },
+      "findings": []
+    },
+    "ui.chat.sidebar_view": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "1c4e36003278bf5ed2afd29acb7f1546eec9a76d330777c7747eaab3a5646adf",
+      "target_sha256": "88699b197a699ca06c33ec57792d8ceda7cb36bd7a5a680a42b8f2cb0b2967cf",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.sidebar_view.json",
+          "sha256": "1c4e36003278bf5ed2afd29acb7f1546eec9a76d330777c7747eaab3a5646adf"
+        },
+        "fr": {
+          "path": "src/i18n/catalogues/fr/ui.chat.sidebar_view.json",
+          "sha256": "88699b197a699ca06c33ec57792d8ceda7cb36bd7a5a680a42b8f2cb0b2967cf"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.sidebar_view.context.json",
+          "sha256": "a6009c3a81f85dd2ab1c8dc730d410085850a69e6fdde28e9f37ee1c1bb93367"
+        }
+      },
+      "findings": []
+    },
+    "ui.chat.sidebar": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "5fa8ca072b46407199075c77639deb93957ce3ca93ee03cc70d4134fc027e1ff",
+      "target_sha256": "8a837089e21f8dd4c4c86f276f7db989ee6562c8ad640c464d5444a880938d0b",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+          "sha256": "5fa8ca072b46407199075c77639deb93957ce3ca93ee03cc70d4134fc027e1ff"
+        },
+        "fr": {
+          "path": "src/i18n/catalogues/fr/ui.chat.sidebar.json",
+          "sha256": "8a837089e21f8dd4c4c86f276f7db989ee6562c8ad640c464d5444a880938d0b"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.sidebar.context.json",
+          "sha256": "0449e60c6bd1eb2d298ed576e0428c67f50a9175eb260460ec3ba8e5e3f1eaff"
+        }
+      },
+      "findings": []
+    }
+  },
+  "per_key_checks": [
+    {
+      "key": "ui.chat.canonical.notice.interrupted",
+      "source": "Interrupted",
+      "current_text": "Interrompu",
+      "findings": [],
+      "assessment": "Accurate terse past participle; agrees with masculine tour. Precedent: fr/ui.chat.canonical.json:ui.chat.canonical.transcript.interrupted = Interrompu.",
+      "placeholder_integrity": "exact",
+      "plural_select": "none needed; no ICU plural/select in source or target",
+      "manual_bidi_controls": false,
+      "static_codepoint_length_without_arguments": 10
+    },
+    {
+      "key": "ui.chat.canonical.notice.stopped_with_error",
+      "source": "Stopped with an error",
+      "current_text": "Arrêté sur une erreur",
+      "findings": [],
+      "assessment": "Idiomatic French factual completion status; sur une erreur preserves error termination without adding a cause. Arrêter precedent: fr/ui.chat.canonical.json:ui.chat.canonical.image_gen.control.stop; error wording: ui.chat.canonical.send_failure.gone (message not sent).",
+      "placeholder_integrity": "exact",
+      "plural_select": "none needed; no ICU plural/select in source or target",
+      "manual_bidi_controls": false,
+      "static_codepoint_length_without_arguments": 21
+    },
+    {
+      "key": "ui.chat.canonical.notice.compaction_not_run",
+      "source": "Compaction did not run: {detail}",
+      "current_text": "Le compactage du contexte n’a pas été exécuté : {detail}",
+      "findings": [],
+      "assessment": "FR-M1 and FR-m1 fixed. compactage matches glossary line 56 and fr/ui.settings.imports.json:ui.settings.imports.session_meta / ui.settings.imports.preview_summary. Context is explicit, detail remains untouched. Before colon is U+202F; after is U+0020.",
+      "placeholder_integrity": "exact",
+      "plural_select": "none needed; no ICU plural/select in source or target",
+      "manual_bidi_controls": false,
+      "static_codepoint_length_without_arguments": 48,
+      "separator_codepoints": [
+        "U+202F",
+        "U+003A",
+        "U+0020"
+      ]
+    },
+    {
+      "key": "ui.chat.canonical.notice.compaction_not_run_after_colon",
+      "source": "Compaction did not run — {detail}",
+      "current_text": "Le compactage du contexte n’a pas été exécuté — {detail}",
+      "findings": [],
+      "assessment": "FR-M2 fixed. Same compactage precedents. Em dash is U+2014 surrounded by ordinary U+0020 spaces. Detail is unchanged and follows the dash, avoiding a second colon.",
+      "placeholder_integrity": "exact",
+      "plural_select": "none needed; no ICU plural/select in source or target",
+      "manual_bidi_controls": false,
+      "static_codepoint_length_without_arguments": 48,
+      "separator_codepoints": [
+        "U+0020",
+        "U+2014",
+        "U+0020"
+      ]
+    },
+    {
+      "key": "ui.chat.canonical.link_toolkit.actions_for",
+      "source": "Actions for {name}",
+      "current_text": "Actions pour {name}",
+      "findings": [],
+      "assessment": "Natural accessible toolbar name. Actions precedent: fr/ui.common.actions.json:ui.common.actions.file_actions_menu.file_actions = Actions sur le fichier. pour correctly associates the toolbar with its verbatim name.",
+      "placeholder_integrity": "exact",
+      "plural_select": "none needed; no ICU plural/select in source or target",
+      "manual_bidi_controls": false,
+      "static_codepoint_length_without_arguments": 13
+    },
+    {
+      "key": "ui.chat.sidebar_view.ungrouped",
+      "source": "Ungrouped",
+      "current_text": "Non groupées",
+      "findings": [],
+      "assessment": "Natural residual category; feminine plural agrees with conversations, supported by fr/ui.chat.sidebar_view.json:ui.chat.sidebar_view.most_recent = Plus récentes / section.older = Plus anciennes. No binding glossary term for ungrouped; two-word French is justified despite English one-word hint.",
+      "placeholder_integrity": "exact",
+      "plural_select": "none needed; no ICU plural/select in source or target",
+      "manual_bidi_controls": false,
+      "static_codepoint_length_without_arguments": 12
+    },
+    {
+      "key": "ui.chat.sidebar.mark_all_read.label",
+      "source": "Mark all {count, number, ::group-off} read",
+      "current_text": "Tout marquer comme lu ({count, number, ::group-off})",
+      "findings": [],
+      "assessment": "Natural infinitive action, consistent with fr/ui.chat.sidebar.json:ui.chat.sidebar.agents.clear_filter = Effacer le filtre des agents. lu precedent: ui.chat.sidebar.row.unread_suffix = , non lue. Tout marquer comme lu is idiomatic generic-object wording. Count and number skeleton are exact. No plural is needed: count is parenthesized, not attached to an inflected noun. Narrow-header fit remains unrendered.",
+      "placeholder_integrity": "exact",
+      "plural_select": "none needed; no ICU plural/select in source or target",
+      "manual_bidi_controls": false,
+      "static_codepoint_length_without_arguments": 24
+    }
+  ],
+  "remediation_verification": {
+    "FR-M1": "fixed",
+    "FR-M2": "fixed",
+    "FR-m1": "fixed"
+  },
+  "unverified": [
+    "Repository validator and ledger-rules runtime execution (host restriction: tiny read-only Python string checks only).",
+    "Rendered/narrow-header layout, pseudo-localisation, browser and terminal width measurements.",
+    "Final assembled tracked receipt path and ledger gate; this is only the requested candidate, not a ledger row or a committed audit bundle."
+  ],
+  "receipt_contract_review": "Read scripts/i18n/ledger-rules.mjs: explicit empty findings; namespace-scoped status/source/target hashes; unambiguous agent, instance, model; non-placeholder instance; matching locale; passing counts. No runtime gate run. Final assembler must place immutable receipt under i18n/receipts and bind its hash; no repo write attempted.",
+  "audit_notes_not_execution_log": true
+}

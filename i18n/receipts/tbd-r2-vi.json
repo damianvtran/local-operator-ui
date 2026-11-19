@@ -1,0 +1,22 @@
+{
+  "auditor": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "tbd-r2-vi",
+  "session": "5ba00fcd73ed",
+  "date": "2026-10-21",
+  "locale": "vi",
+  "translator": "translator",
+  "namespaces": {
+    "ui.teamBridge": {
+      "status": "passed",
+      "keys_audited": 109,
+      "scope": "Round 2: all 109 keys of vi ui.teamBridge re-read against the English and context frozen at 7bf957741a, including the 9 new keys and the status of the 6 round-1 findings. Checked against the glossary, style-guides/vi.md and the other vi ui.* catalogues. Key set, ICU, plurals, NFC and bidi verified in the bytes with node.",
+      "sha256": {
+        "en": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+        "vi": "71339f089127558ebe551d701ab8fbb394322a61bb44843002310cb294195fdc",
+        "context": "17b7e1450dc7fa529d8e2e684bb8653fcc4f6cf220bf8261631d078d26545de5"
+      },
+      "findings": []
+    }
+  }
+}

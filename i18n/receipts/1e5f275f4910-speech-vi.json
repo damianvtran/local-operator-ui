@@ -1,0 +1,36 @@
+{
+  "auditor": "reviewer",
+  "model": "anthropic/claude-sonnet-5-5",
+  "instance": "1e5f275f4910-speech-vi",
+  "locale": "vi",
+  "namespace": "ui.settings.shortcuts",
+  "status": "passed",
+  "sha256": {
+    "vi": "ec114095c4c13d97592f7a5e89fe8ace0c0b64a64e59d59deaeb0f891004217c",
+    "en": "d77d1f6f8d3e1f6ef3f80af207f37f560dd234f9b985deac85507d0ec5c95b36"
+  },
+  "context_sha256": "c40de630259c3b4de44043fdfd63f9c184c23d7f32b0f1a01dc02d1654508340",
+  "scope": "Delta audit of the 7 new keys ui.settings.shortcuts.speech.{primary,secondary,start_recording_press,push_to_talk_hold,push_to_talk_hint,push_to_talk_refused,push_to_talk_overlap} at branch feat/speech-shortcut-slots, locale commit b880085fb6 (head a02762c0a8). The other 68 keys are byte-identical to base 8d81d18b6a, whose file hash equals the target hash of the previously audited ledger row.",
+  "findings": [
+    {
+      "severity": "nit",
+      "key": "ui.settings.shortcuts.speech.push_to_talk_overlap",
+      "finding": "\"có thể khiến bản ghi âm bắt đầu trong chốc lát\" makes the noun \"audio recording\" the subject; \"có thể bắt đầu ghi âm trong chốc lát\" would read more naturally. Meaning is intact.",
+      "disposition": "accepted, no change"
+    }
+  ],
+  "checks": [
+    "English, context and target SHA-256 recomputed from the bytes on disk; this receipt names exactly those bytes.",
+    "Delta isolation: against base 8d81d18b6a the locale file has exactly the 7 new keys added, 0 removed, 0 changed, original key order preserved.",
+    "Key parity 75/75 against English; NFC normalisation checked; no manual bidi control characters; no stray non-ASCII spaces except the fr U+202F before ';'.",
+    "Every new message parsed with the project's own @formatjs/icu-messageformat-parser: all 7 parse and the argument/select signature equals English's. push_to_talk_refused keeps {platform, select, darwin win32 other}, with `other` present and every arm a complete sentence.",
+    "Semantic read of each of the 7 messages against English and the English context note (rank label vs priority, press vs hold contrast, modifier-key meaning, 'begin with this key').",
+    "Vocabulary read against the same locale's existing strings: ui.chat.composer.start_recording / start_recording_hint, ui.canvas.inline_edit.start_recording_or_hold, ui.settings.shortcuts press-the-keys and capture strings, ui.*.tags.primary. Vietnamese: bare verbs for labels, 'nhấn/giữ' as in composer hint, 'Chính' matches ui.*.tags.primary, sibling 'Esc để hủy' pattern kept.",
+    "Glossary and this locale's style guide read as binding; their bytes (local-operator origin/main 8076c56ac) are hashed in `references`.",
+    "Length fit was judged from character counts only; no rendered frame was produced or reviewed in this audit."
+  ],
+  "references": {
+    "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "style_guide_sha256": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888"
+  }
+}

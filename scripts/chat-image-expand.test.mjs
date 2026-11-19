@@ -148,6 +148,9 @@ const bundle = await build({
 				wrapGroupIndex,
 			} from "./src/renderer/src/shared/lib/image-viewer-model";
 			export { SCROLLBAR_HOLD_MS } from "./src/renderer/src/shared/lib/scrollbar-activity";
+			export { CONTROLS_RESTING_CLASS } from "./src/renderer/src/shared/components/common/image-lightbox";
+			export { t } from "@shared/i18n";
+			export { setLocale, registerCatalogue, clearRegisteredCatalogues } from "./src/i18n";
 		`,
 		resolveDir: ROOT,
 	},
@@ -203,6 +206,11 @@ const {
 	VIEWER_ZOOM_MAX,
 	wrapGroupIndex,
 	SCROLLBAR_HOLD_MS,
+	CONTROLS_RESTING_CLASS,
+	t,
+	setLocale,
+	registerCatalogue,
+	clearRegisteredCatalogues,
 } = await import(pathToFileURL(bundlePath).href);
 
 /* ------------------------------------------------------------------ fixtures */
@@ -1288,7 +1296,6 @@ const foldElement = (props, Fold = TraceFold) =>
 		Fold,
 		{
 			summary: { units: ["Explored 1 file, ran 2 commands"], prose: true },
-			actionCount: 3,
 			failedCount: 0,
 			/*
 			 * Both defaulted to `null` rather than left out: `span?.running` is read on
@@ -2190,7 +2197,7 @@ test("the group walk wraps and clamps, and the position sentence is one rule", (
 
 	assert.equal(
 		groupPositionLabel(1, 3),
-		"Image 2 of 3",
+		t("ui.common.viewer.position", { kind: "image", index: 2, count: 3 }),
 		"one sentence, 1-based, both facts",
 	);
 
@@ -2370,7 +2377,7 @@ test("the arrows walk the whole group, wrapping at the ends, and a missing pictu
 		);
 		assert.equal(
 			position(),
-			"Image 1 of 3",
+			t("ui.common.viewer.position", { kind: "image", index: 1, count: 3 }),
 			"and the announcement wraps with it",
 		);
 	});
@@ -2684,8 +2691,15 @@ test("the controls fade to their resting floor after the hold, and activity wake
 				setTimeout(resolve, SCROLLBAR_HOLD_MS + 400),
 			);
 		});
+		/*
+		 * The resting floor is the shipped component's own
+		 * `CONTROLS_RESTING_CLASS` (design round 1, D1; agent review round 3,
+		 * R3-2): imported rather than copied, so changing the floor cannot leave
+		 * this assertion pinning the previous value - which is how this suite
+		 * went red when 0.45 became 0.85.
+		 */
 		assert.ok(
-			controls.className.split(" ").includes("opacity-45"),
+			controls.className.split(" ").includes(CONTROLS_RESTING_CLASS),
 			"after the hold the cluster sinks to its resting floor",
 		);
 
@@ -2789,6 +2803,63 @@ test("a walk from a strip tile moves focus with the picture - and off the tiles 
 			"and sits on the dialog's layer",
 		);
 	});
+});
+
+test("a walk from a strip tile still moves focus under another language (the lookup is by slot, not by the English name)", async () => {
+	/*
+	 * `focusFor` used to find the next tile with
+	 * `button[aria-label="Show image N of M"]` - the ENGLISH accessible name - so
+	 * once the label was keyed the query matched nothing and focus silently fell
+	 * to the dialog layer. A marker catalogue renames every tile; the walk must
+	 * still land on the next tile's own control. (A stub, not a translation: only
+	 * the name changes.)
+	 */
+	clearRegisteredCatalogues();
+	registerCatalogue("fr", {
+		"ui.chat.canonical.lightbox.show_image":
+			"fr-tile {index, number, ::group-off}/{count, number, ::group-off}",
+	});
+	setLocale("fr");
+	try {
+		await mount(async (api) => {
+			await api.render(
+				React.createElement(FoldMedia, {
+					images: [IMAGE_ONE, IMAGE_TWO, IMAGE_ABSENT],
+					scope: transcriptScope,
+					onRevealMore: () => {},
+				}),
+			);
+			await api.click(
+				// By shape (the first picture's press), not by its name: the shipped
+				// fr catalogue is bundled, so "Expand Image 1" is French here.
+				api.document
+					.querySelector("[data-fold-media] button img")
+					?.closest("button"),
+			);
+			const tiles = [
+				...api.document.querySelectorAll(`${FILMSTRIP} button`),
+			].filter((tile) =>
+				(tile.getAttribute("aria-label") ?? "").startsWith("fr-tile"),
+			);
+			assert.deepEqual(
+				tiles.map((tile) => tile.getAttribute("aria-label")),
+				["fr-tile 1/3", "fr-tile 2/3"],
+				"the tiles carry the keyed name, none of the English",
+			);
+			act(() => {
+				tiles[0].focus();
+			});
+			await api.pressKey("ArrowRight");
+			assert.equal(
+				api.document.activeElement?.getAttribute("aria-label"),
+				"fr-tile 2/3",
+				"focus followed the walk to the new current tile",
+			);
+		});
+	} finally {
+		setLocale("en");
+		clearRegisteredCatalogues();
+	}
 });
 
 test("the walk scrolls the current slot into view, a receipt's slot included", async () => {

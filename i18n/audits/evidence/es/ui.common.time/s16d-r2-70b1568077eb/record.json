@@ -1,0 +1,185 @@
+{
+	"audit_id": "s16d-r2-es",
+	"locale": "es",
+	"namespace": "ui.common.time",
+	"file_group": "S16d live-locale time words: ui.common.time.today_at, yesterday, weekday_at, date_at (new) plus the unchanged yesterday_at sibling",
+	"key_count": 5,
+	"branch": "feat/i18n-s16d-live-locale-formatting",
+	"head": "b2110ea9cd9fd0c103891a4a77b65ba741012cf4",
+	"base": "7c2b6af66486c9e7ec0603141fb4529e10204c7f",
+	"pr": 1877,
+	"worktree": "~/local-operator-ui/.worktrees/i18n-s16d (manager-owned, read-only for this audit)",
+	"audit_date": "2026-11-12",
+	"date": "2026-11-12",
+	"round": 2,
+	"instance": "70b1568077eb",
+	"agent": "i18n-auditor",
+	"model": "deepseek/deepseek-flash",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"model": "deepseek/deepseek-flash",
+		"instance": "70b1568077eb",
+		"session": "70b1568077eb",
+		"independent": true,
+		"independent_from_translator_session": true,
+		"actual_model_source": "Session runtime model header for this run: deepseek/deepseek-flash. No provider fallback occurred in this audit; no model performed any translation or back-translation, and no translation/MT service was used.",
+		"fallback": null
+	},
+	"translator": {
+		"agent": "i18n-translator",
+		"model": "anthropic/claude-sonnet-5-5",
+		"note": "These are the translator's values with the round-1 auditors' replacement applied (weekday_at joiner). This auditor did not translate or edit them."
+	},
+	"status": "passed",
+	"result": "clean-with-findings",
+	"current_report_verdict": {
+		"status": "passed",
+		"unresolved_blocker_major_count": 0,
+		"finding_ids": [
+			"ES-1"
+		]
+	},
+	"findings": {
+		"blocker": [],
+		"major": [],
+		"minor": [],
+		"nit": [
+			"ES-1"
+		]
+	},
+	"scope": "Independent round-2 audit of the LANDED es ui.common.time bytes at b2110ea9cd9f: the four S16d keys plus the unchanged yesterday_at sibling. Real output composed through formatDividerLabel/formatMessageDateTime (esbuild write:false, live-locale Intl) and an intl-messageformat grid with the formatter's actual arguments; repo validators in a scratch mirror; negative controls on in-memory mutants; native-idiom judgement of the round-1 weekday_at comma correction and of the es:ui.common.time.date_at identical-value exemption row. No rendered frame; no native speaker.",
+	"input_hashes": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.common.time.json",
+			"sha256": "bb0b3aa1a71679cc73cb40d73616b5e22057c7dcbc86705c2ec4425984971e13"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.common.time.context.json",
+			"sha256": "a9069037edc11c59288a7c2d3171496b1ef44a0982fc28e6a0edb4bcae0f98d2"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/es/ui.common.time.json",
+			"sha256": "ca96efc391c6c880900485d02da2d93011056565a49128391e77ce97fc5396b3"
+		}
+	},
+	"namespaces": {
+		"ui.common.time": {
+			"namespace": "ui.common.time",
+			"status": "passed",
+			"result": "clean-with-findings",
+			"keys_audited": 5,
+			"namespace_key_count": 5,
+			"source_sha256": "bb0b3aa1a71679cc73cb40d73616b5e22057c7dcbc86705c2ec4425984971e13",
+			"en_sha256": "bb0b3aa1a71679cc73cb40d73616b5e22057c7dcbc86705c2ec4425984971e13",
+			"target_sha256": "ca96efc391c6c880900485d02da2d93011056565a49128391e77ce97fc5396b3",
+			"es_sha256": "ca96efc391c6c880900485d02da2d93011056565a49128391e77ce97fc5396b3",
+			"context_sha256": "a9069037edc11c59288a7c2d3171496b1ef44a0982fc28e6a0edb4bcae0f98d2",
+			"target_is_draft": false,
+			"findings": {
+				"blocker": [],
+				"major": [],
+				"minor": [],
+				"nit": [
+					"ES-1"
+				]
+			},
+			"scope": [
+				"ui.common.time.today_at",
+				"ui.common.time.yesterday_at",
+				"ui.common.time.yesterday",
+				"ui.common.time.weekday_at",
+				"ui.common.time.date_at"
+			],
+			"checks": {
+				"generate_check": "pass — src/i18n/keys.gen.ts byte-identical to a fresh generation",
+				"coverage": "pass — check-coverage ok (7 gated languages, 158 namespaces, 0 allowed keys remaining)",
+				"duplicates": "pass — 1428 files, 0 duplicate keys",
+				"context_parity": "pass — 129 allowed gaps in 4 namespaces (shrink-only), none in ui.common.time",
+				"locale_parity_es": "pass — 6/6 [es] cases, including 'is not an English stub'",
+				"activation": "pass — es-activation.test.mjs, 3/3 (Ajustes | Consola | Paso 2 de 5)",
+				"formatting": "pass — biome check clean on the es file; tab-indented, LF-terminated",
+				"encoding": "pass — NFC-normalised; no bidi control characters (correct for es); valid JSON; key set identical to en",
+				"placeholders": "pass — identical names/types to en (time:string; weekday+time; date+time; yesterday none); no plural/select in these values",
+				"markup_and_code": "pass — no Rich tags, code spans, commands, flags or identifiers in these values",
+				"english_leakage": "pass — composed es output 'Hoy 14:30' / 'Ayer 9:05' / 'Ayer' / 'lunes, 14:30' / '5 de noviembre de 2026, 14:30' contains no English token; 24-hour clock means there is no am/pm to except",
+				"series_consistency": "pass — adverbs (Hoy/Ayer) juxtapose the clock; nominal date elements (lunes, 5 de noviembre de 2026) comma-join it, which is what Intl es composes for weekday+clock",
+				"width": "measured in characters: 13->9, 17->9, 14->12, 25->29 (+16%); no maxCells hint on these keys, divider line is full width",
+				"negative_controls": "M1 (weekday_at reverted to English-identical) fails the stub guard; M2 (renamed placeholder) fails the placeholder guard; M3 (es date_at row disabled) fails the stub guard — the exemption is load-bearing; mirror files restored byte-identical (cmp silent)"
+			}
+		}
+	},
+	"judgements": {
+		"round1_weekday_at_correction": "Upheld and strengthened. Intl.DateTimeFormat('es', {weekday:'long',hour:'numeric',minute:'2-digit'}) renders 'lunes, 14:30' (measured), so the comma matches the locale's own composition; the pre-round-1 '{weekday} {time}' would also have failed the stub guard (no es exemption row exists for it, control M1).",
+		"date_at_identical_ok_row": "Reason verified true (pure placeholders plus one comma, no lexical English), row verified load-bearing (M3), verified es-scoped (the suite's cross-locale scoping case passes; no other locale inherits it). The joiner is a translator choice the sidecar grants; the platform's dateStyle+timeStyle composition for es uses ' a las ' (measured), which is the recorded alternative — not raised as a finding because both are idiomatic and the comma form is terser for a divider label."
+	},
+	"artifacts": [
+		{
+			"path": "i18n/audits/evidence/es/ui.common.time/s16d-r2-70b1568077eb/report.md",
+			"sha256": "74c708a69ea9319bbd89d467bbc66330f9f5f35a2a3ac9a255bfddb612ca16ea"
+		},
+		{
+			"path": "i18n/audits/evidence/es/ui.common.time/s16d-r2-70b1568077eb/audit.log",
+			"sha256": "e8c07cb9774dead3bc6c83bf2c097e297bc7a5c5da04ae63e9c74e774d70aa72"
+		},
+		{
+			"path": "i18n/audits/evidence/es/ui.common.time/s16d-r2-70b1568077eb/receipt.json",
+			"sha256": "a480cbf442bfbc4e21ac8e8e0e92ed9967369fbfb64d81197f3f3c6e9840246e"
+		},
+		{
+			"path": "i18n/audits/evidence/es/ui.common.time/s16d-r2-70b1568077eb/ledger-receipt.json",
+			"sha256": "637d48adc95205633bf9e658433ac5e405f174801994d0ba1ce1eeae309bdb47"
+		},
+		{
+			"path": "i18n/audits/evidence/es/ui.common.time/s16d-r2-70b1568077eb/auditor-files/compose-es.mjs",
+			"sha256": "bedf4820db42315e3e38fd3a4cbb8738f8177e9cc00f0f5f6a072976f21f01f0"
+		},
+		{
+			"path": "i18n/audits/evidence/es/ui.common.time/s16d-r2-70b1568077eb/auditor-files/grid-es.mjs",
+			"sha256": "a12d13dca389705ab6340c92ed5582f63ef60668d72e528e281b9f3f918b3888"
+		},
+		{
+			"path": "i18n/audits/evidence/es/ui.common.time/s16d-r2-70b1568077eb/auditor-files/make-audit-log.sh",
+			"sha256": "66d9dc177652c154c4af7d5d7daa014cf9c52b0266375856ed5c51d4aa82cc67"
+		}
+	],
+	"audit_notes_not_execution_log": "report.md is notes: reasoning and judgements. audit.log is the execution log and holds the commands and their actual output (hashes, validator runs, composed strings, ICU grid, negative controls, ledger assemble/check). No run is claimed in report.md that audit.log does not contain.",
+	"ledger_receipt": {
+		"repo_path": "i18n/receipts/70b1568077eb.json",
+		"sha256": "637d48adc95205633bf9e658433ac5e405f174801994d0ba1ce1eeae309bdb47",
+		"instance": "70b1568077eb",
+		"result": "clean-with-findings",
+		"assembled_status": "audited",
+		"prior_audits": "moved to superseded (they described pre-S16d bytes)",
+		"ledger_check_es_findings": 0,
+		"translator_flags_needed": false
+	},
+	"ledger_row_proposal": {
+		"locale": "es",
+		"namespace": "ui.common.time",
+		"source_sha256": "bb0b3aa1a71679cc73cb40d73616b5e22057c7dcbc86705c2ec4425984971e13",
+		"target_sha256": "ca96efc391c6c880900485d02da2d93011056565a49128391e77ce97fc5396b3",
+		"auditor": {
+			"agent": "i18n-auditor",
+			"model": "deepseek/deepseek-flash",
+			"date": "2026-11-12",
+			"result": "clean-with-findings",
+			"instance": "70b1568077eb",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 1
+			},
+			"note": "R2 es on b2110ea9cd9f: 0 blocker/major on all 5 time words; weekday_at comma = Intl es own composition; date_at IDENTICAL_OK row verified load-bearing and es-scoped. ES-1 nit: row lacks provenance. Record: i18n/audits/evidence/es/ui.common.time/s16d-r2-70b1568077eb/record.json"
+		}
+	},
+	"original_lost_evidence": {
+		"status": "none"
+	},
+	"honest_gaps": [
+		"The auditor is not a native Spanish speaker; idiom, register and the comma judgement are reasoned from the style guide, the glossary, the shipped es corpus and the platform's own Intl es output.",
+		"No rendered frame: the change is copy-only in a text label, so fit is argued from composed strings and character counts (the guide's ~1 cell/character proxy), not painted geometry; the divider's column width in a live window was not checked.",
+		"es has no plural or select arms in these values, so the CLDR-category check is vacuous here rather than passed by evidence.",
+		"This record binds the bytes at b2110ea9cd9f; any later edit to the es file requires a fresh receipt. The record itself has not been committed at audit time (read-only audit) — it must land with the ledger row and i18n/receipts/70b1568077eb.json."
+	]
+}

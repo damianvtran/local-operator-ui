@@ -1,0 +1,124 @@
+{
+  "locale": "ru",
+  "branch": "feat/i18n-s7",
+  "head": "31710e01b6b6e1e0aae6ed56d5e4467de6611740",
+  "base": "0ad5542379a349a98e0a8d602dbd992746fd40a2",
+  "main_base": "41c265cbff628f8c6add089f6c042363a131f24c",
+  "instance": "cb7f11d0579e-s7a-ru",
+  "agent": "reviewer",
+  "model": "openai/gpt-6.1-sol",
+  "auditor": {
+    "agent": "reviewer",
+    "instance": "cb7f11d0579e-s7a-ru",
+    "model": "openai/gpt-6.1-sol",
+    "independent_of_translator": true
+  },
+  "model_provenance": "Initial requested model anthropic/claude-sonnet-5-5; host reported fallback anthropic/claude-opus-5-5 followed by openai/gpt-6.1-sol. Substantive audit and receipt completed on openai/gpt-6.1-sol.",
+  "date": "2026-11-09",
+  "round": 1,
+  "status": "passed",
+  "result": "clean",
+  "scope": "29 Russian additions only, English-head base 0ad5542379a..31710e01b6b; not a full re-audit of existing namespace keys.",
+  "limitations": [
+    "Source/ICU-formatter audit, not browser rendering or clipping validation. Browser tool unavailable to this role.",
+    "Existing approval canonical labels and encoder wire diagnostics are deliberate English and outside these 29 additions."
+  ],
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [],
+    "nit": []
+  },
+  "namespaces": {
+    "ui.agents.pages": {
+      "status": "passed",
+      "sha256": {
+        "en": "0b2e8e8a93001604df2d7a49abe57c8070f29ef30b50209bc3a84cbdc43b540f",
+        "ru": "87e71505fa14eed2b26997a5ea753f367c8e110ac67660d000f8e010ed803cc6"
+      },
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      },
+      "keys_audited": 7,
+      "keys": [
+        "ui.agents.pages.backend.connecting",
+        "ui.agents.pages.backend.loading_capabilities",
+        "ui.agents.pages.change.new",
+        "ui.agents.pages.backend.upgrade_heading",
+        "ui.agents.pages.backend.unreachable",
+        "ui.agents.pages.backend.upgrade_body",
+        "ui.agents.pages.change.updated"
+      ],
+      "evidence": {
+        "path": "i18n/audits/evidence/ru/ui.agents.pages/cb7f11d0579e-s7a-ru/record.json",
+        "sha256": "6f79116669c4606c867a7c084527a20345f18e9af1ec1897791f0feb7ef9724f"
+      }
+    },
+    "ui.chat.run_details": {
+      "status": "passed",
+      "sha256": {
+        "en": "02877dbbfba534fb2467008550d55ffd45c928c990b89c3d1a72acbfc76d2d50",
+        "ru": "ba2db0a9b262b004808ea97676ab89f9278ce8b9b3e38c596659847e5bb9f80b"
+      },
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      },
+      "keys_audited": 16,
+      "keys": [
+        "ui.chat.run_details.child.result.preview",
+        "ui.chat.run_details.child.result.title",
+        "ui.chat.run_details.child.result.unavailable_clipped",
+        "ui.chat.run_details.child.result.unavailable",
+        "ui.chat.run_details.child.brief.show_less",
+        "ui.chat.run_details.child.brief.show_more",
+        "ui.chat.run_details.mcp_auth.upgrade",
+        "ui.chat.run_details.mcp_auth.no_references",
+        "ui.chat.run_details.mcp_auth.unknown_method",
+        "ui.chat.run_details.mcp_auth.waiting",
+        "ui.chat.run_details.mcp_auth.status",
+        "ui.chat.run_details.mcp_auth.status_unavailable",
+        "ui.chat.run_details.mcp_failure.cancel_lead",
+        "ui.chat.run_details.mcp_failure.busy",
+        "ui.chat.run_details.mcp_failure.refused",
+        "ui.chat.run_details.mcp_failure.session"
+      ],
+      "evidence": {
+        "path": "i18n/audits/evidence/ru/ui.chat.run_details/cb7f11d0579e-s7a-ru/record.json",
+        "sha256": "b86ee306610c5ebb471a88b94507a7fb57ae85e897b7658ce6d690b0fe635e9e"
+      }
+    },
+    "ui.notices": {
+      "status": "passed",
+      "sha256": {
+        "en": "043243b66381b6fa1143acb645ce0c83fcb381883038ef88bbcb28e36764b112",
+        "ru": "99d2d3a5c094a4da84fc64147e2906059b676edf96b1929db1ba285be45574b9"
+      },
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      },
+      "keys_audited": 6,
+      "keys": [
+        "ui.notices.aida.paused_receipt",
+        "ui.notices.aida.resumed_receipt",
+        "ui.notices.aida.paused",
+        "ui.notices.aida.active",
+        "ui.notices.aida.account_required",
+        "ui.notices.aida.open_fallback"
+      ],
+      "evidence": {
+        "path": "i18n/audits/evidence/ru/ui.notices/cb7f11d0579e-s7a-ru/record.json",
+        "sha256": "88e3f9c6c08253ee5a59f70e0f44d19057689413d95b7de9f8d2e77750fbfdb8"
+      }
+    }
+  },
+  "keys_audited": 29
+}

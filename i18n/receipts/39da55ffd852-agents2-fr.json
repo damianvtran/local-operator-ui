@@ -1,0 +1,194 @@
+{
+	"instance": "39da55ffd852-agents2-fr",
+	"locale": "fr",
+	"audit_date": "2026-10-30",
+	"audit_round": 2,
+	"reissue_of": "1e0826e07912-agents2-fr",
+	"reissue_reason": "Format correction only. The earlier receipt recorded the catalogue digests as a bare hex at namespace-block level (sha256: \"<hex>\"), which scripts/i18n/ledger-rules.mjs scopedHash reads as block.sha256.en and block.sha256.fr and so cannot resolve; each namespace block now carries sha256: {en, fr}. The target bytes are unchanged - the fr catalogue hashes today are exactly the two digests that earlier audit recorded - so the judgement, verdict and findings are carried unchanged rather than re-scored.",
+	"scope": [
+		"ui.agents.descriptions",
+		"ui.agents.detail.install"
+	],
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "39da55ffd852",
+		"model": "radient/auto",
+		"actual_model_source": "Session configured radient/auto; this re-issue's reads, checks and receipt were produced on radient/auto's resolved model deepseek/deepseek-v4.1-flash-1017 after in-session provider-quota fallbacks (anthropic/claude-sonnet-5-5 -> openai/gpt-6-astra -> kimi/k3.1-pro -> radient/auto -> openrouter/deepseek/deepseek-v4.1-flash-1017). No model performed a translation or a back-translation.",
+		"independent_from_translator_session": true,
+		"translator_session": "3ef6295a5545",
+		"independence_note": "This session did not author, edit or translate the fr values; it re-read the bytes, re-ran the mechanical checks and re-formed the semantic judgement of all 14 values independently.",
+		"carries_judgement_of": "1e0826e07912"
+	},
+	"counts": {
+		"BLOCKER": 0,
+		"MAJOR": 0,
+		"MINOR": 0,
+		"NIT": 2
+	},
+	"verdict": "pass",
+	"verdict_reason": "No BLOCKER or MAJOR on the bytes. All 12 + 2 values were re-read against the English source they were hashed with: meaning preserved, no omission, addition or polarity error, vous register, French typography exact (U+202F before every : and ;, U+2019 apostrophes, U+2026 ellipsis), glossary terms held (workspace -> espace de travail, Library -> Bibliothèque capitalised), kept-English tokens untouched (diff, MR, PR, QA, UX, Unicode, web, IA, C/D/T/U prefixes). Both files are literal ICU with no placeholders, plurals, selects or tags, so placeholder and CLDR parity are vacuous; key parity is 12/12 and 2/2 with identical key order. The two NITs carried from the earlier pass are re-confirmed on the bytes: a coined hyphenated 'pré-vérifie', and two values above the fr guide's recorded 15-25% length band with no layout at risk.",
+	"namespaces": {
+		"ui.agents.descriptions": {
+			"status": "passed",
+			"result": "clean-with-findings",
+			"keys_audited": 12,
+			"sha256": {
+				"en": "ec18513f0ebaa99be4c329a8ea5896631fd2b9e4f4d53febdc5c7acd049b5511",
+				"fr": "c97aa95926e4a6ddd1e07b9cedb0178b18fddcd940db3c06d5bd3f7cf1418f02"
+			},
+			"findings": [
+				{
+					"id": "NIT-1",
+					"severity": "NIT",
+					"keys": [
+						"ui.agents.descriptions.coder",
+						"ui.agents.descriptions.tui_designer"
+					],
+					"current": {
+						"ui.agents.descriptions.coder": "Réalise de bout en bout une tranche de travail délimitée avec l’ensemble des outils, puis rend compte des changements et de la façon dont ils ont été vérifiés.",
+						"ui.agents.descriptions.tui_designer": "Conception et revue d’interfaces en terminal : parcours pensés d’abord pour le clavier, densité dans de petites zones d’affichage fixes, replis pour la couleur et Unicode, géométrie mesurée ; signale des constats préfixés T."
+					},
+					"problem": "Length the earlier remediation added: coder 159/121 = 1.31x and tui_designer 224/178 = 1.26x exceed the fr guide's recorded 15-25% band (group mean 1.195 over all fourteen values, five of them above 1.20). No layout is at risk - the roster line is `truncate` at 256 px with the full sentence in the row's title (agents-page.tsx:1988), the detail page wraps it in a ReadBlock, and install_to_edit is an auto-width secondary Button (agent-detail.tsx:914-921).",
+					"suggestion": "Optional, on a future touch: coder compresses to 'Réalise de bout en bout une tranche de travail délimitée avec tous les outils, puis rend compte des changements et de leur vérification.' (136 chars, 1.12x) at the cost of 'how it was verified' becoming 'their verification'. tui_designer has no compression that keeps both the viewport and Unicode nuance. No action required."
+				},
+				{
+					"id": "NIT-2",
+					"severity": "NIT",
+					"keys": [
+						"ui.agents.descriptions.qa_tester"
+					],
+					"current": "Preuve d’exécution indépendante pour un changement : pré-vérifie le banc d’essai, parcourt les chemins réels et les cas négatifs, puis fournit une matrice QA ciblée sans modifier le dépôt.",
+					"problem": "'pré-vérifie' is a coinage and hyphenated: French forms pré- + verb solid (préinscrire, prévisualiser, préremplir, prévalider), and the settled phrasing is 'vérifie au préalable' / 'contrôle en amont'. The fix itself is right on meaning - the pré- sense the first round asked for is present.",
+					"suggestion": "Leave as is; take 'vérifie au préalable' only if the line is touched for another reason (it costs 11 characters the card does not have to spare)."
+				}
+			]
+		},
+		"ui.agents.detail.install": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 2,
+			"sha256": {
+				"en": "964c83098370d82d74df8c21d6f1f69e74a76f4ea73b3af7bc16ac06981fbcf0",
+				"fr": "a80c0c6880cd9417dd3eff3c0ad60115367219e58249998296efa3cf3eb63b59"
+			},
+			"findings": []
+		}
+	},
+	"input_sha256": {
+		"repo_sources": {
+			"src/i18n/catalogues/en/ui.agents.descriptions.json": "ec18513f0ebaa99be4c329a8ea5896631fd2b9e4f4d53febdc5c7acd049b5511",
+			"src/i18n/catalogues/fr/ui.agents.descriptions.json": "c97aa95926e4a6ddd1e07b9cedb0178b18fddcd940db3c06d5bd3f7cf1418f02",
+			"src/i18n/catalogues/en/ui.agents.detail.install.json": "964c83098370d82d74df8c21d6f1f69e74a76f4ea73b3af7bc16ac06981fbcf0",
+			"src/i18n/catalogues/fr/ui.agents.detail.install.json": "a80c0c6880cd9417dd3eff3c0ad60115367219e58249998296efa3cf3eb63b59"
+		},
+		"handed_copies": {
+			"scratchpad/agents-i18n/fr/ui.agents.descriptions.en.json": "c865345f35a1f50313a2dd6cc6afa4f06d80144a2312ac691bacd1932edf2f1f",
+			"scratchpad/agents-i18n/fr/ui.agents.detail.install.en.json": "cb0674b7f65c48806d427a9ed2702c9d77e4bd6ff866f9966bc6f7762b84bcc9",
+			"scratchpad/agents-i18n/fr/ui.agents.descriptions.json": "c97aa95926e4a6ddd1e07b9cedb0178b18fddcd940db3c06d5bd3f7cf1418f02",
+			"scratchpad/agents-i18n/fr/ui.agents.detail.install.json": "a80c0c6880cd9417dd3eff3c0ad60115367219e58249998296efa3cf3eb63b59"
+		},
+		"context": {
+			"en/ui.agents.descriptions.context.json": "6311128dc89d50d886f3066f9cea2c802482a7db9979d9c5cc4bd93cdd8a7398",
+			"en/ui.agents.detail.install.context.json": "f82578e4390f18d396fa229286d5395492618bd93ccbfa43d8d0dbe5a6530307"
+		},
+		"references": {
+			"glossary": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+			"style_guide_fr": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226"
+		},
+		"note": "The handed *.en.json copies are value-identical to the repo sources but re-indented with one space, so their hashes differ. The namespace blocks record the REPO catalogue hashes, because that is what ledger-assemble and ledger-check re-read from src/i18n/catalogues/en/<namespace>.json. The two hand-delivered fr files are byte-identical to the repo targets, so no value moved between the earlier audit and this re-issue."
+	},
+	"verified": [
+		"Re-hashed with shasum -a 256: two fr targets, two en repo sources, two handed en copies, two handed fr copies; every digest is recorded above.",
+		"Values unchanged since the audited pass: the fr targets hash to exactly the two digests the earlier audit recorded, so this is a re-issue and not a new audit.",
+		"Key sets: 12 and 2, identical to English, identical order, no missing, extra, empty or duplicate key.",
+		"ICU: all 28 values (14 fr, 14 en) parsed with the repo's own @formatjs/icu-messageformat-parser; every message is literal, so placeholder and CLDR parity is vacuous rather than untested.",
+		"Encoding: NFC 14/14, no BOM, no bidi or zero-width controls, no U+00A0, no straight apostrophe, one U+2026, no doubled or edge spaces, tab indent and LF preserved.",
+		"Typography: U+202F before every ':' and ';', and no ASCII space before any of them.",
+		"Semantic read of all 14 values against their English sentence: meaning preserved, no omission, addition, negation or polarity error; refusal wording ('ne modifie jamais', 'sans modifier le dépôt', 'Ne change rien') keeps its force.",
+		"Register: vous throughout per the fr guide, no 'Veuillez', third-person present-tense agent summaries, sentence case.",
+		"Terminology: workspace -> 'espace de travail' (glossary pins it for fr), Library -> 'Bibliothèque' capitalised, severity -> 'gravité', findings -> 'constats', rig -> 'banc d'essai'; kept-English tokens untouched (diff, MR, PR, QA, UX, Unicode, web, IA, C/D/T/U prefixes).",
+		"Gates: node scripts/i18n/generate.mjs --check exit 0; node scripts/i18n/context-parity.mjs exit 0. node scripts/i18n/ledger-check.mjs still fails on this locale ('fr/ui.agents.descriptions: shipped without a ledger entry' and the same for ui.agents.detail.install, plus two ru lines) - that red is what this receipt exists to clear, and it was red before this re-issue too.",
+		"Bind dry run: scripts/i18n/ledger-rules.mjs deriveReceiptAudit was run against this receipt with the live catalogue hashes and both namespaces derive cleanly. That is the check the earlier root-shaped receipt could not pass."
+	],
+	"fit": {
+		"ui.agents.descriptions.aida": {
+			"en_chars": 122,
+			"fr_chars": 138,
+			"ratio": 1.1311
+		},
+		"ui.agents.descriptions.architect": {
+			"en_chars": 136,
+			"fr_chars": 166,
+			"ratio": 1.2206
+		},
+		"ui.agents.descriptions.coder": {
+			"en_chars": 121,
+			"fr_chars": 159,
+			"ratio": 1.314
+		},
+		"ui.agents.descriptions.copy_reviewer": {
+			"en_chars": 177,
+			"fr_chars": 185,
+			"ratio": 1.0452
+		},
+		"ui.agents.descriptions.designer": {
+			"en_chars": 123,
+			"fr_chars": 138,
+			"ratio": 1.122
+		},
+		"ui.agents.descriptions.librarian": {
+			"en_chars": 150,
+			"fr_chars": 164,
+			"ratio": 1.0933
+		},
+		"ui.agents.descriptions.manager": {
+			"en_chars": 115,
+			"fr_chars": 136,
+			"ratio": 1.1826
+		},
+		"ui.agents.descriptions.qa_tester": {
+			"en_chars": 165,
+			"fr_chars": 188,
+			"ratio": 1.1394
+		},
+		"ui.agents.descriptions.reviewer": {
+			"en_chars": 126,
+			"fr_chars": 143,
+			"ratio": 1.1349
+		},
+		"ui.agents.descriptions.scout": {
+			"en_chars": 133,
+			"fr_chars": 151,
+			"ratio": 1.1353
+		},
+		"ui.agents.descriptions.tui_designer": {
+			"en_chars": 178,
+			"fr_chars": 224,
+			"ratio": 1.2584
+		},
+		"ui.agents.descriptions.ux_reviewer": {
+			"en_chars": 135,
+			"fr_chars": 167,
+			"ratio": 1.237
+		},
+		"ui.agents.detail.install.action.install_to_edit": {
+			"en_chars": 15,
+			"fr_chars": 23,
+			"ratio": 1.5333
+		},
+		"ui.agents.detail.install.action.installing": {
+			"en_chars": 11,
+			"fr_chars": 13,
+			"ratio": 1.1818
+		}
+	},
+	"artifacts": {
+		"receipt": "scratchpad/agents-receipts/fr/receipt.json",
+		"verdict": "scratchpad/agents-receipts/fr/verdict.txt",
+		"execution_log": "scratchpad/agents-receipts/fr/reissue.log"
+	},
+	"limits": [
+		"No rendered frame was captured for this re-issue: the values are unchanged from the audited pass and the fr catalogue is already shipped, so fit is judged from the components' own source (truncate + title on the roster line, ReadBlock on the detail page, auto-width Button for install_to_edit) rather than a screenshot.",
+		"This is a format correction of 1e0826e07912-agents2-fr under a NEW instance id; it does not replace that receipt's evidence bundle and does not claim to be a second independent opinion on the French."
+	]
+}

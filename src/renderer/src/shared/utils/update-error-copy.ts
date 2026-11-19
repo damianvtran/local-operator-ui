@@ -43,6 +43,8 @@
  * unrecognised failure is the defect class this whole change exists to remove.
  */
 
+import { t } from "../../../../i18n/messages";
+import type { BackendUpdateErrorReport } from "../../../../main/update-service";
 import {
 	type TransportFragment,
 	stripErrorPrefixes,
@@ -77,8 +79,8 @@ export interface UpdateErrorCopy {
  * act on. The action named is the one that works - the connection, then try
  * again - because the transient shape is exactly the one a retry fixes.
  */
-const UPDATE_SERVER_UNREACHABLE =
-	"The app could not reach the update server. Check this machine's connection, then try again.";
+const updateServerUnreachable = (): string =>
+	t("ui.common.updates.error.server_unreachable");
 
 /**
  * The download stage's own sentence, and WHY IT NAMES THE ACTION IT CAN KEEP.
@@ -102,11 +104,15 @@ const UPDATE_SERVER_UNREACHABLE =
  * every case.
  */
 const UPDATE_STAGE_SENTENCE: Record<UpdateStage, string> = {
-	download:
-		"The update could not be downloaded. Check this machine's connection, then start the download again.",
-	install:
-		"The update could not be installed. Check this machine's connection, then start it again from the update panel.",
-	quit: "The app could not quit to finish the install. Quit the app yourself, then let the update finish.",
+	get download() {
+		return t("ui.common.updates.error.download");
+	},
+	get install() {
+		return t("ui.common.updates.error.install");
+	},
+	get quit() {
+		return t("ui.common.updates.error.quit");
+	},
 };
 
 /**
@@ -120,8 +126,8 @@ const UPDATE_STAGE_SENTENCE: Record<UpdateStage, string> = {
  * sentence: the machine's own words go to the line below for whoever has to
  * read them.
  */
-const UPDATE_CHECK_INCOMPLETE =
-	"The update check could not finish. The app will try again at its next check.";
+const updateCheckIncomplete = (): string =>
+	t("ui.common.updates.error.check_incomplete");
 
 /**
  * How long an app-authored label may be before it is machine wrapping.
@@ -243,7 +249,32 @@ const LEADING_SEPARATOR = /^[:\uff1a\s]+/;
  * `Error: Error: net::ERR_X` shape a nested failure produces is classified and
  * shown cleanly rather than travelling to the reader as-is.
  */
-export function updateErrorCopy(message: string): UpdateErrorCopy {
+export function updateErrorCopy(
+	message: string,
+	options?: { authored?: BackendUpdateErrorReport["authored"] },
+): UpdateErrorCopy {
+	/*
+	 * THE PRODUCER SAID THIS IS ITS OWN COPY (`BackendUpdateErrorReport.authored`),
+	 * so nothing below is asked: the stage and transport matchers read English
+	 * machine vocabulary and `isAuthoredSentence` counts space-separated words,
+	 * none of which can be trusted to judge a translation (zh-CN has no spaces,
+	 * fr "450 Mo" looks like an HTTP status, fr refusals run past the length cap -
+	 * design round 1, D1). `"sentence"` is the one producer (`not_installed`) that appends
+	 * the installer's own error after a blank line: that tail belongs on the monospace
+	 * line. `"message"` is whole, because the fleet refusals have a blank line
+	 * between two authored paragraphs.
+	 */
+	if (options?.authored !== undefined) {
+		const authored = message.trim();
+		const split =
+			options.authored === "sentence" ? authored.indexOf("\n\n") : -1;
+		const tail = split === -1 ? "" : authored.slice(split + 2).trim();
+		return {
+			sentence: split === -1 ? authored : authored.slice(0, split).trim(),
+			detail: tail === "" ? null : tail,
+			action: null,
+		};
+	}
 	const cleaned = stripErrorPrefixes(message).trim();
 	const stage = updateStageOf(cleaned);
 	const fragment = transientTransportFragment(cleaned);
@@ -277,7 +308,7 @@ export function updateErrorCopy(message: string): UpdateErrorCopy {
 			return { sentence: cleaned, detail: null, action: null };
 		}
 		return {
-			sentence: UPDATE_CHECK_INCOMPLETE,
+			sentence: updateCheckIncomplete(),
 			detail: cleaned === "" ? null : cleaned,
 			action: null,
 		};
@@ -300,7 +331,7 @@ export function updateErrorCopy(message: string): UpdateErrorCopy {
 	 * sentence takes the whole message.
 	 */
 	if (!fragment.clause) {
-		return { sentence: UPDATE_SERVER_UNREACHABLE, detail, action };
+		return { sentence: updateServerUnreachable(), detail, action };
 	}
 	/*
 	 * AND THE SURVIVING PREFIX HAS TO BE THE APP'S OWN LABEL, which is where the
@@ -316,10 +347,10 @@ export function updateErrorCopy(message: string): UpdateErrorCopy {
 	const prefix = cleaned.slice(0, fragment.start);
 	const tail = cleaned.slice(fragment.end).trim();
 	if (!isAuthoredLabel(prefix) || (tail !== "" && !isAuthoredLabel(tail))) {
-		return { sentence: UPDATE_SERVER_UNREACHABLE, detail, action };
+		return { sentence: updateServerUnreachable(), detail, action };
 	}
 	return {
-		sentence: `${prefix}${UPDATE_SERVER_UNREACHABLE}${cleaned.slice(fragment.end)}`,
+		sentence: `${prefix}${updateServerUnreachable()}${cleaned.slice(fragment.end)}`,
 		detail,
 		action,
 	};
@@ -417,20 +448,87 @@ export function serverUpdateFailureCopy(message: string): string {
  *
  * - an ATTEMPT's report is the app's own composed sentence and is trusted verbatim;
  * - a CHECK's report is written around a caught value - errno forms like
- *   `getaddrinfo ENOTFOUND pypi.org` - and keeps the classifier, which is what it is for.
+ *   `getaddrinfo ENOTFOUND pypi.org` - and keeps the classifier, which is what it is for;
+ * - unless the producer marked it `authored` (a keyed catalogue sentence, such as
+ *   "version unknown"), which skips the classifier in every locale.
  */
 export function serverUpdateFailureReason(report: {
 	message: string;
 	phase: "check" | "update";
+	authored?: BackendUpdateErrorReport["authored"];
 }): string {
 	return report.phase === "update"
 		? serverUpdateFailureCopy(report.message)
-		: updateErrorMessage(report.message);
+		: updateErrorMessage(report.message, report.authored);
+}
+
+/**
+ * One piece of a composed sentence: running text, or one backtick token.
+ *
+ * `at` is the part's character offset in the sentence. It is the token's own
+ * position rather than a list index, which is what React needs for a stable key -
+ * an index key reorders the isolate when the sentence before it changes length.
+ */
+export type SentencePart = { kind: "text" | "token"; text: string; at: number };
+
+/**
+ * A backtick-delimited run, backticks INCLUDED. The copy marks a literal value
+ * (`.lop-source`, `lop-update`) by wrapping it in backticks, and every shipped
+ * locale keeps them: the panel shows the characters as written, so the token is
+ * rendered as one unit rather than re-styled here.
+ */
+const BACKTICK_TOKEN = /`[^`]+`/g;
+
+/**
+ * Split a composed sentence at the tokens its own copy marks, so each can be its
+ * own bidi isolate at the render site.
+ *
+ * WHY THIS EXISTS (issue #1762). `ui.updates.service.server_failure.rebuild_unchanged`
+ * names a dotfile - "its `.lop-source` still names the same revision" - and the
+ * character that misbehaves is the token's LEADING FULL STOP. The stored value is
+ * logical order and, per the i18n policy, must carry no manual bidi control: the
+ * `ur` activation guard fails the build on one. In an RTL paragraph that full stop
+ * is a neutral between RTL text and an `l` (class L), so UAX #9 rule N1 resolves it
+ * to the paragraph's own direction and it is drawn to the RIGHT of the token -
+ * `lop-source.` instead of `.lop-source`. A translator closed that by storing LRMs
+ * around the token, which is exactly what the policy forbids.
+ *
+ * The fix belongs here, not in the string: storage stays logical order, and the
+ * surface that renders it - the only place that knows the paragraph runs RTL -
+ * wraps the token in `<bdi dir="ltr">`. This module only finds the tokens; the
+ * component decides the isolate, because `update-error-copy` has no DOM.
+ *
+ * A sentence with an unmatched backtick yields no token at all and renders as it
+ * does today, so malformed copy degrades to the current behaviour rather than to
+ * a half-isolated sentence.
+ */
+export function isolatedTokenParts(sentence: string): SentencePart[] {
+	const parts: SentencePart[] = [];
+	let cursor = 0;
+	for (const match of sentence.matchAll(BACKTICK_TOKEN)) {
+		const at = match.index ?? 0;
+		if (at > cursor) {
+			parts.push({
+				kind: "text",
+				text: sentence.slice(cursor, at),
+				at: cursor,
+			});
+		}
+		parts.push({ kind: "token", text: match[0], at });
+		cursor = at + match[0].length;
+	}
+	if (cursor < sentence.length) {
+		parts.push({ kind: "text", text: sentence.slice(cursor), at: cursor });
+	}
+	return parts;
 }
 
 /** Just the sentence, for a surface that has nowhere to put a machine line. */
-export function updateErrorMessage(message: string): string {
-	return updateErrorCopy(message).sentence;
+export function updateErrorMessage(
+	message: string,
+	authored?: BackendUpdateErrorReport["authored"],
+): string {
+	return updateErrorCopy(message, { authored }).sentence;
 }
 
 /**
@@ -485,4 +583,141 @@ export type UpdateMessageFate = "muted" | "show";
 export function updateMessageFate(message: string): UpdateMessageFate {
 	if (RELEASE_ARTIFACT_ERROR_REGEX.test(message)) return "muted";
 	return "show";
+}
+
+/** Longest updater sentence the panel prints as a cause - well under the 400-character dump bound. */
+const UPDATER_CAUSE_MAX_LENGTH = 240;
+const UPDATER_NAMED_VALUE_PATTERN =
+	/(?<![A-Za-z0-9_-])([A-Za-z0-9_-]*(?:token|secret|password|passwd|api[_-]?key|access[_-]?key|auth))(["']?\s*[=:]\s*)/gi;
+const UPDATER_VALUE_BOUNDARY = /[\s,;"'}\]]/;
+
+/**
+ * Credential shapes a failing install actually emits.
+ *
+ * NOT A GENERAL REDACTOR, and this table is not a claim that it is one: it covers the
+ * shapes seen in updater output - userinfo in a URL, an Authorization header, a
+ * `key=value` pair in any of the spellings (`access_token`, quoted JSON keys, spaces
+ * around the separator) and bare provider token prefixes. A cause line is screenshot
+ * material, so the useful head stays and the credential goes.
+ *
+ * COVERAGE IS LIMITED, AND UNRECOGNISED MATERIAL IS SHOWN. A credential in a shape this
+ * table does not match is printed as the updater wrote it - the bound shortens it, it
+ * does not remove it - so this is defence in depth for the shapes an install actually
+ * emits, not a guarantee about arbitrary input. Do not call it redaction in the general
+ * sense, and do not let a passing test here read as proof that no secret can reach the
+ * panel.
+ *
+ * THE HEADER ARM IS DELIBERATELY LENGTH-AGNOSTIC. `Basic dTpw` is base64 for "u:p" -
+ * four characters, and a real credential. A minimum length would miss exactly the
+ * shortest secret, so the arm masks any 4+ character run after the scheme and accepts
+ * that prose beginning "Basic <word>" is masked too.
+ *
+ * RESTARTS ARE BOUNDED. Scheme/key matches start only outside their entire name
+ * alphabet, not at every word boundary (a hyphen is a word boundary inside a scheme).
+ * A failed candidate therefore scans its name a bounded number of times, not every suffix.
+ * Header whitespace likewise has one owner on either side of a required separator.
+ *
+ * ORDER IS PART OF THE CONTRACT: these run BEFORE the bound, because truncating first
+ * can cut a token in half and still emit a usable prefix.
+ */
+const UPDATER_CAUSE_MASKS: ReadonlyArray<readonly [RegExp, string]> = [
+	// scheme://user:password@host -> scheme://...@host
+	[
+		/((?<![A-Za-z0-9+.-])[A-Za-z][A-Za-z0-9+.-]*:\/\/)[^\s/@:]+:[^\s/@]+@/g,
+		"$1\u2026@",
+	],
+	// Authorization: Bearer/Basic <credential>, quotes and separators optional
+	[
+		/\b(Bearer|Basic)("?(?:\s*[:=]\s*|\s+)?"?)[A-Za-z0-9._~+/=-]{4,}/gi,
+		"$1$2\u2026",
+	],
+	// provider token prefixes with no key in front (GitHub, Slack, OpenAI, AWS)
+	[
+		/\b(ghp_|gho_|ghu_|ghs_|ghr_|github_pat_|xox[abpr]-|sk-|AKIA)[A-Za-z0-9._-]{8,}/g,
+		"$1\u2026",
+	],
+];
+
+/**
+ * Named values may contain spaces, punctuation or escaped quotes. Scan a quoted
+ * value to its closing unescaped quote (or the line end when incomplete), rather
+ * than treating the first space as the end of a credential. The key expression
+ * cannot restart inside the same name, and lastIndex skips every consumed value:
+ * even an unterminated quote or a long non-matching name takes only linear work.
+ */
+function maskUpdaterNamedValues(line: string): string {
+	// Each cause owns a fresh cursor; global lastIndex must not leak across renders.
+	const names = new RegExp(
+		UPDATER_NAMED_VALUE_PATTERN.source,
+		UPDATER_NAMED_VALUE_PATTERN.flags,
+	);
+	const parts: string[] = [];
+	let copied = 0;
+	for (let match = names.exec(line); match; match = names.exec(line)) {
+		const start = names.lastIndex;
+		const quote = line[start];
+		const opening = quote === '"' || quote === "'" ? quote : "";
+		let closing = "";
+		let end = start;
+		if (opening) {
+			end++;
+			while (end < line.length) {
+				if (line[end] === "\\") {
+					// An escaped quote belongs to the value, not the delimiter.
+					end = Math.min(end + 2, line.length);
+				} else if (line[end++] === quote) {
+					closing = quote;
+					break;
+				}
+			}
+		} else {
+			while (end < line.length && !UPDATER_VALUE_BOUNDARY.test(line[end]))
+				end++;
+		}
+		if (end === start) continue;
+		// Keep the name and delimiters, never any part of the consumed value.
+		parts.push(line.slice(copied, start), `${opening}\u2026${closing}`);
+		copied = end;
+		names.lastIndex = end;
+	}
+	parts.push(line.slice(copied));
+	return parts.join("");
+}
+
+/**
+ * The updater's own cause sentence, made safe to print on the panel.
+ *
+ * WHY THIS EXISTS. `update.report.v1` carries `error` - one sentence in the updater's
+ * words - and the contract refuses a block whose `error` is empty, so an `unknown` KIND
+ * still arrives with a real cause. Rendering it is the difference between "the update
+ * failed" and "the update failed because the recovery records are full"; printing it
+ * naively is the difference between a useful sentence and a screenshot with a token in
+ * it.
+ *
+ * Three rules, each for a reason:
+ * - FIRST LINE ONLY. The producer sends the failing branch's first line followed by a
+ *   dump; the dump belongs in the collapsed record, which the panel already shows.
+ * - MASK, THEN BOUND. See the table's note; the order is what stops a half-token.
+ * - BOUND. `AUTHORED_SENTENCE_MAX_LENGTH` is where this file already decides a string
+ *   is a machine dump; a cause line stays under it so the panel never grows a paragraph
+ *   it cannot wrap.
+ *
+ * Null means there is nothing to say, and the caller falls back to the nameless remedy
+ * rather than printing an empty line.
+ */
+export function updaterFailureCauseLine(error: string): string | null {
+	const firstLine = error
+		.split(/\r?\n/)
+		.map((line) => line.trim())
+		.find((line) => line !== "");
+	if (!firstLine) return null;
+	let masked = firstLine;
+	for (const [pattern, replacement] of UPDATER_CAUSE_MASKS) {
+		masked = masked.replace(pattern, replacement);
+	}
+	const oneLine = maskUpdaterNamedValues(masked).replace(/\s+/g, " ").trim();
+	if (oneLine === "") return null;
+	return oneLine.length > UPDATER_CAUSE_MAX_LENGTH
+		? `${oneLine.slice(0, UPDATER_CAUSE_MAX_LENGTH - 1).trimEnd()}\u2026`
+		: oneLine;
 }

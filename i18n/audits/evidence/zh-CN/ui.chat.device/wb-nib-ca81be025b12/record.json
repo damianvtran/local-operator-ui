@@ -1,0 +1,166 @@
+{
+	"schema": 1,
+	"kind": "translation-audit-record",
+	"audit_kind": "independent-nib-delta-audit-of-the-wave-b-zh-CN-nit",
+	"batch": "wave-b",
+	"round": "R2a (nib delta: one value, one namespace)",
+	"audit_id": "wb-nib-ca81be025b12",
+	"instance": "wb-zh-cn-nib-20261027-ca81be025b12",
+	"locale": "zh-CN",
+	"namespace": "ui.chat.device",
+	"audit_date": "2026-10-27",
+	"branch": "i18n-wave-b",
+	"head": "fbd334629f",
+	"head_full": "fbd334629fab274a2b65337bd1490767d39baee1",
+	"parent_full": "a5356ce91c4f37bf4c4d1c4518070e3a9b2505cb",
+	"binding": "Binds the sha256 ef39c17d6fbc2a5f65661e8c97d8b2bab1657bfa0a2527359f1a0f348a7435d1 of the committed blob at fbd334629fab274a2b65337bd1490767d39baee1 for src/i18n/catalogues/zh-CN/ui.chat.device.json, read from disk, cross-checked against `git show <head>:<path>`, and re-hashed from a read-only `git archive` export in which the gates ran. A later commit that changes any audited value voids this receipt.",
+	"key_count": 25,
+	"wave_b_keys": 11,
+	"changed_keys": [
+		"ui.chat.device.sentence.local"
+	],
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "ca81be025b12",
+		"model": "radient/auto",
+		"model_provenance": {
+			"route": "radient/auto",
+			"route_source": "the harness system prompt of this session ('Model: radient/auto')",
+			"fallback_used": false,
+			"fallback_chain": [],
+			"actual_model_source": "No [session incident] and no 'model switch' notice appears anywhere in this session's transcript (~/.local-operator/sessions/ca81be025b12/transcript.jsonl, 158 events, types message/custom only); grep finds the phrases only inside prompt text that quotes the guidance and inside this session's own tool output quoting that text. The upstream model behind the router alias is not exposed to this session, so none is invented: the route recorded is the one the harness reports.",
+			"disclosure": "Every judgement below was made in this session under the recorded route; no model change was requested or observed."
+		},
+		"independent_from_translator_session": true,
+		"actual_model_source": "No [session incident] and no 'model switch' notice appears anywhere in this session's transcript (~/.local-operator/sessions/ca81be025b12/transcript.jsonl, 158 events, types message/custom only); grep finds the phrases only inside prompt text that quotes the guidance and inside this session's own tool output quoting that text. The upstream model behind the router alias is not exposed to this session, so none is invented: the route recorded is the one the harness reports."
+	},
+	"auditor_continuity": "This session (ca81be025b12) is NOT the session that wrote ZH-WBD-1 (9b3e2c165c87, receipt wb-zh-cn-delta-20261027-9b3e2c165c87). Same auditor role, fresh session, and the fix is re-read here from the text rather than from that session's reasoning: the high-visibility second-pass request is satisfied by the session boundary, and the suggested wording was taken from the predecessor record's own bytes so 'it matches the suggestion' is checkable, not remembered.",
+	"translator": {
+		"agent": "i18n-translator",
+		"model": "radient/auto",
+		"model_note": "router alias recorded by the coordinator for the reply lane; the upstream model is not exposed to the auditor. Disclosed rather than guessed.",
+		"date": "2026-10-27"
+	},
+	"fix_applier": {
+		"agent": "lopdev coordinator (manager lane)",
+		"model": "radient/auto",
+		"note": "The coordinator applied the one-line amendment that this audit verifies; it did not author the translation lane's wording beyond substituting the auditor's suggested sentence.",
+		"date": "2026-10-27"
+	},
+	"input_hashes": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.chat.device.json",
+			"sha256": "0d4c357edbb9a67d015301f263e3892f752aca9ee63a3d5c737bf12a9ac6375a"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.chat.device.context.json",
+			"sha256": "b3f41c2c587de6559aa52fe15ab2cfdda521df44b770b76ac8160855fd5c4a7a"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/zh-CN/ui.chat.device.json",
+			"sha256": "ef39c17d6fbc2a5f65661e8c97d8b2bab1657bfa0a2527359f1a0f348a7435d1"
+		}
+	},
+	"artifacts": [
+		{
+			"path": "i18n/audits/evidence/zh-CN/ui.chat.device/wb-nib-ca81be025b12/audit.log",
+			"sha256": "b3e5448e75658f1b316ef55077254e3dc3f236ce7ae08a4ee692030a1584d11d"
+		},
+		{
+			"path": "i18n/receipts/wb-zh-cn-nib-20261027-ca81be025b12.json",
+			"sha256": "2fc47d14bf2518575a297a3d092103a508e3603781f2d27e397e236452f58a3c"
+		}
+	],
+	"current_report_verdict": {
+		"status": "passed",
+		"result": "clean",
+		"unresolved_blocker_major_count": 0,
+		"severity_counts": {
+			"blocker": 0,
+			"major": 0,
+			"minor": 0,
+			"nit": 0
+		},
+		"finding_ids": [],
+		"resolved_finding_ids": [
+			"ZH-WBD-1"
+		],
+		"independent_of_translator": true
+	},
+	"delta": {
+		"base": "a5356ce91c4f37bf4c4d1c4518070e3a9b2505cb",
+		"head": "fbd334629fab274a2b65337bd1490767d39baee1",
+		"changed_values_zh_CN": {
+			"ui.chat.device.sentence.local": {
+				"was": "此对话在此设备上运行。点击可将其迁移到其他设备，或稍后召回。",
+				"now": "此对话在此设备上运行。点击可将其迁移到其他设备，或稍后移回此处。"
+			}
+		},
+		"changed_values_en": {},
+		"proof": "Parsed-JSON diff of the file at both commits: 25 keys each, identical order, exactly one value changed, one differing line of 27 (logs/delta-proof.log §3). The other eight namespaces' en, context and zh-CN hashes equal the predecessor receipt's (§4).",
+		"sibling_namespaces_unchanged": {
+			"ui.agents.config": {
+				"zh_CN_sha256": "417340255f620bb552045cf68cb3bbb0121d13d08111941b46cf7515a4137286",
+				"status": "unchanged"
+			},
+			"ui.chat": {
+				"zh_CN_sha256": "76bdcfd3abb2d67ecc49d87b078bd5a2d367b03d760c0a0ca20db59ebebd4a10",
+				"status": "unchanged"
+			},
+			"ui.chat.canonical": {
+				"zh_CN_sha256": "b1a3c93999622d6f2538e9252e8e17a4109f3c612525e3891f48f3db2fe0ffbc",
+				"status": "unchanged"
+			},
+			"ui.chat.pickers": {
+				"zh_CN_sha256": "78a402c9ac97417bd365fd98157390500c37c857bba179aaf0e83907ddd19028",
+				"status": "unchanged"
+			},
+			"ui.chat.run_details": {
+				"zh_CN_sha256": "0eb302844b1110be4748e72b361d126f865f208e3b02591e3b0b0d9a34a5b0b0",
+				"status": "unchanged"
+			},
+			"ui.chat.status": {
+				"zh_CN_sha256": "7fc957cfa3e777bd6d59fb7398b946637c3bca799a52f9008caddd4cd567d86e",
+				"status": "unchanged"
+			},
+			"ui.common.connection": {
+				"zh_CN_sha256": "b0a06d159014c977b4c6a58295564bd26eb70781fe512d39a1c6dbdbcb3ebf72",
+				"status": "unchanged"
+			},
+			"ui.common.layout": {
+				"zh_CN_sha256": "376260aa48e706b0a4bb9ab5ef3ca73bf97052cdc0eae1429b99b893591873b0",
+				"status": "unchanged"
+			}
+		}
+	},
+	"resolutions": [
+		{
+			"id": "ZH-WBD-1",
+			"severity_in_earlier_audit": "MINOR",
+			"namespace": "ui.chat.device",
+			"key": "ui.chat.device.sentence.local",
+			"earlier_suggestion": "此对话在此设备上运行。点击可将其迁移到其他设备，或稍后移回此处。",
+			"applied": "此对话在此设备上运行。点击可将其迁移到其他设备，或稍后移回此处。",
+			"decision": "resolved",
+			"judgement": "Applied byte for byte (sha256 of the value's UTF-8 is bcbe196ed542167ee563b5237f1156da258b2926d0d26253b6bc8c06f60b15b7 for both the suggestion and the audited bytes). It is the right fix, not merely the requested one: 移回 is now the locale's only verb for recall (7 sites, 0 occurrences of 召回), the sentence keeps both halves of the affordance, and it is 4 cells longer than the pre-fix wording while still 29 cells shorter than English.",
+			"checked": "sentence reads 此对话在此设备上运行。点击可将其迁移到其他设备，或稍后移回此处。 (64 cells vs EN 93)."
+		}
+	],
+	"findings": [],
+	"observations_not_findings": [
+		"ui.chat.device.sentence.gone / gone_did_not_answer render EN's 'bring it back here' as 带回此处, a different English verb from 'recall'. Kept: the source says a different thing there (carried from the predecessor report, still out of scope).",
+		"ui.chat.device.label.on is 12 cells against EN's 9 (+3) and label.moving_to 14 against 16; both stay under their maxCells hints (20 and 24). The only +delta on a visible label is label.on, which is 12 of 20 — no truncation risk at any width the chip truncates at.",
+		"The commit fbd334629f also carries an unrelated ur/ui.chat.pickers.json trailing-full-stop nit. It is outside this audit's namespace and was not read as evidence for anything here."
+	],
+	"limitations": [
+		"No browser or rendered frame was available, so no pixel, truncation or overflow claim is made; widths are codepoint cell counts, not measurements.",
+		"No native-speaker sign-off is claimed; the audit is an independent agent read of the locale against its own shipped catalogue, the glossary and the style guide.",
+		"The English copy was read as the source, not audited as English.",
+		"The upstream model behind the radient/auto route is not exposed to this session; the recorded route is the harness's own.",
+		"The predecessor's nine-namespace bundle was consumed as evidence (hashes and finding text) but not re-litigated as an audit."
+	],
+	"audit_notes_not_execution_log": [
+		"The verbatim command output lives in audit.log and in the package's logs/; this record's narrative fields are notes about that output, not a substitute for it.",
+		"The judgement text in resolutions was written after reading the renders and the whole-catalogue counts shown in audit.log §5-§7."
+	]
+}

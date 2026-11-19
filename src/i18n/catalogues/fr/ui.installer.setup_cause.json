@@ -1,0 +1,9 @@
+{
+	"ui.installer.setup_cause.disk_full": "Ce Mac a manqué d’espace disque pendant la configuration du backend. Libérez de l’espace, puis réessayez.",
+	"ui.installer.setup_cause.clock_or_expired": "Local Operator a jugé le certificat de l’index de paquets expiré ou pas encore valide. Une horloge incorrecte en est généralement la cause : vérifiez la date et l’heure de cet ordinateur, puis réessayez ; si l’horloge est correcte, c’est le certificat lui-même qui a expiré et l’exploitant de l’index doit le renouveler.",
+	"ui.installer.setup_cause.tls_interception": "Local Operator n’a pas pu vérifier la connexion sécurisée à l’index de paquets, généralement parce qu’un réseau l’inspecte (proxy ou pare-feu d’entreprise). Demandez le certificat racine à votre service informatique et ajoutez-le au magasin de certificats du système, auquel cette application fait déjà confiance, puis réessayez.",
+	"ui.installer.setup_cause.unreachable": "Local Operator n’a pas pu joindre l’index de paquets, généralement à cause du réseau ou d’un proxy. Vérifiez la connexion, puis réessayez.",
+	"ui.installer.setup_cause.locked": "Une autre copie de Local Operator configure son backend en ce moment. Réessayez dans un instant.",
+	"ui.installer.setup_cause.not_started": "Le backend a été installé, mais n’a pas démarré correctement.",
+	"ui.installer.setup_cause.file_missing": "Un fichier nécessaire à la configuration était manquant, ce qui signifie généralement que le téléchargement ou la copie ne s’est pas terminé."
+}

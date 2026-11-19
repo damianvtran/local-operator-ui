@@ -8,12 +8,19 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { pathToFileURL } from "node:url";
+import vm from "node:vm";
 import { build } from "esbuild";
 
 const electron = `
 import { EventEmitter } from 'node:events';
 const f = () => globalThis.__browserStartupFixture;
-export const app = { getVersion: () => 'isolated-test' };
+// A real EventEmitter: production startup registers a module-level
+// before-quit history flush (browser/index.ts), and a bare object stub
+// turns that registration into a startup crash the app never has. The fake
+// models the listener surface; the test never fires quit itself.
+// getPath: the extension manager roots its store under userData; every path
+// stays inside the fixture's scratch directory, never the real profile.
+export const app = Object.assign(new EventEmitter(), { getVersion: () => 'isolated-test', getPath: name => f().dir + '/app-path-' + name });
 export class BrowserWindow { constructor() { throw new Error('A test must never create a desktop window'); } }
 export const shell = { openPath: async () => '' };
 // The page context menu's two Electron members (LOH-13), modelled only so
@@ -21,30 +28,52 @@ export const shell = { openPath: async () => '' };
 // opens the menu, so building one is a no-op here rather than a fake menu.
 export const Menu = { buildFromTemplate: () => ({ popup: () => {} }) };
 export const clipboard = { writeText: () => {} };
+// The camera/microphone OS gate (media-permissions.ts). Startup asks for no
+// device, so neither member is ever called; modelled so the import resolves.
+export const systemPreferences = { getMediaAccessStatus: () => 'not-determined', askForMediaAccess: async () => false };
+// The extension manager's native consent dialogs (extensions/dialogs.ts),
+// modelled only so the import resolves: startup installs nothing, so no dialog
+// is ever asked for, and an inert answer can never show one.
+export const dialog = { showMessageBox: async () => ({ response: 0, checkboxChecked: false }) };
 export const webContents = { getAllWebContents: () => [] };
+// Startup has no page frames: passkey attribution must treat missing frames as gone.
+export const webFrameMain = { fromId: (processId, routingId) => f().frames?.get(processId + ':' + routingId) ?? null };
 export class Notification { static isSupported() { return false; } }
 export const safeStorage = { isEncryptionAvailable: () => false };
 export const protocol = { registerSchemesAsPrivileged() {} };
 export const ipcMain = {
  handle: (name, fn) => { if (f().handlers.has(name)) throw new Error("Attempted to register a second handler for '" + name + "'"); f().handlers.set(name, fn); },
- removeHandler: name => f().handlers.delete(name) };
+ removeHandler: name => f().handlers.delete(name),
+ on: () => {},
+ removeListener: () => {} };
 export const session = { fromPartition: () => f().session };
 export class WebContentsView {
- constructor() {
+ constructor(options) {
+  // R1: a card child whose construction throws (the native boundary refusing a
+  // sandboxed view). Only the approvals card carries its own preload.
+  if (f().failCardChild && String(options?.webPreferences?.preload ?? '').includes('browser-approvals-overlay')) throw new Error('synthetic card child construction failure');
   const wc = new EventEmitter();
   Object.assign(wc, { id: ++f().id, session: f().session,
    isDestroyed: () => !!wc.destroyed, isLoading: () => false, getURL: () => wc.url || 'about:blank', getTitle: () => '',
    getUserAgent: () => 'isolated-test', setUserAgent() {}, setAudioMuted() {}, setBackgroundThrottling() {},
    setZoomMode() {}, setZoomFactor() {}, getZoomFactor: () => 1,
-   setWindowOpenHandler() {}, loadURL: async url => { wc.url = url; },
-   close: () => { if (!wc.destroyed) { wc.destroyed = true; wc.emit('destroyed'); f().views.delete(wc.id); } },
+   setWindowOpenHandler() {}, loadURL: async url => { wc.url = url; this.parentedAtLoad = f().window.contentView.children.includes(this); },
+   close: () => { if (!wc.destroyed) { wc.destroyed = true; wc.emit('destroyed'); f().views.delete(wc.id); f().liveViews.delete(wc.id); } },
    debugger: { isAttached: () => false },
    navigationHistory: { canGoBack: () => false, canGoForward: () => false,
+     length: () => 1, getActiveIndex: () => 0,
+     getEntryAtIndex: () => ({ url: wc.url || 'about:blank' }),
      restore: async ({ entries }) => { wc.url = entries[0]?.url; },
-     getAllEntries: () => [{ url: wc.url || 'about:blank' }], getActiveIndex: () => 0 }
+     getAllEntries: () => [{ url: wc.url || 'about:blank' }] }
   });
-  this.webContents = wc; this.setBounds = () => {}; this.setVisible = () => {};
-  f().views.add(wc.id); f().peak = Math.max(f().peak, f().views.size);
+  this.webContents = wc; this.setBounds = () => {}; this.visible = true; this.setVisible = value => { this.visible = value; };
+  // The card child reads its provisional width and sets its ground through
+  // these; a launch that builds the card must not fail on a missing native
+  // boundary, and the zero-width measurement returns before any DOM read.
+  this.setBackgroundColor = () => {};
+  this.getBounds = () => ({ x: 0, y: 0, width: 0, height: 0 });
+  wc.executeJavaScript = async () => 0;
+  f().views.add(wc.id); f().liveViews.set(wc.id, this); f().peak = Math.max(f().peak, f().views.size);
  }
 }
 `;
@@ -59,10 +88,46 @@ const bundled = await build({
 	format: "esm",
 	write: false,
 	target: "node20",
+	// The extension manager pulls CommonJS dependencies into main (yauzl, which
+	// unpacks CRX archives, calls require("fs")); an ESM bundle has no require,
+	// so give it one, as census-locale-switch.test.mjs does for its bundles.
+	banner: {
+		js: 'import { createRequire as __startupCreateRequire } from "node:module"; const require = __startupCreateRequire(process.cwd() + "/package.json");',
+	},
 	plugins: [
 		{
 			name: "startup-native-boundaries",
 			setup(b) {
+				// electron-vite's `?asset` import yields the file's path, not its code
+				// (the Web Store preload runs in a page, never in main): model that
+				// rather than bundling a page script that reads `location` at load.
+				b.onResolve({ filter: /\?asset$/ }, (args) => ({
+					path: join(args.resolveDir, args.path.replace(/\?asset$/, "")),
+					namespace: "startup-asset",
+				}));
+				b.onLoad({ filter: /.*/, namespace: "startup-asset" }, (args) => ({
+					contents: `export default ${JSON.stringify(args.path)};`,
+					loader: "js",
+				}));
+				// electron-chrome-extensions is a native boundary like webauthn: its
+				// constructor binds ipcMain routes, preloads and crx: protocol on a
+				// real Session, which these fixtures do not model, and it is
+				// session-singleton, so every retry in a fixture would throw "already
+				// exists". Main touches only these members while no extension is
+				// installed; api/ctx exist for adapter.ts's event-time probes.
+				b.onResolve({ filter: /^electron-chrome-extensions$/ }, () => ({
+					path: "electron-chrome-extensions",
+					namespace: "startup-extensions",
+				}));
+				b.onLoad({ filter: /.*/, namespace: "startup-extensions" }, () => ({
+					contents: `
+export class ElectronChromeExtensions {
+ constructor() { this.api = { browserAction: {} }; this.ctx = { router: {} }; }
+ addTab() {} selectTab() {} removeTab() {}
+}
+`,
+					loader: "js",
+				}));
 				b.onResolve({ filter: /^electron$/ }, () => ({
 					path: "electron",
 					namespace: "startup-test",
@@ -73,7 +138,7 @@ const bundled = await build({
 				}));
 				b.onLoad({ filter: /main\/webauthn(?:\/index)?\.ts$/ }, () => ({
 					contents: `
-export async function installWebauthn() { globalThis.__browserStartupFixture.installs++; }
+export async function installWebauthn() { const f = globalThis.__browserStartupFixture; f.installs++; return { configured: !!f.touchIdConfigured }; }
 export class WebauthnChooser { dispose() {} state() { return null; } }
 export function attachWebauthnChooser() { return () => {}; }
 `,
@@ -148,6 +213,13 @@ function fixture(failConsole) {
 		setPermissionCheckHandler() {},
 		setDevicePermissionHandler() {},
 		protocol: { handle() {} },
+		// The Chrome Web Store bridge preload: registered once per Session, so the
+		// fixture keeps the list a retry must find already present.
+		preloadScripts: [],
+		getPreloadScripts: () => session.preloadScripts,
+		registerPreloadScript(script) {
+			session.preloadScripts.push(script);
+		},
 		webRequest: {
 			onBeforeRequest() {},
 			onBeforeSendHeaders() {},
@@ -160,6 +232,10 @@ function fixture(failConsole) {
 		mainFrame,
 		send() {},
 		isDestroyed: () => false,
+		// The real Electron API ownsPage reads; this fake must model it so a host
+		// that asks the focus fact cannot crash on the fake's shape.
+		getFocusedWebContents: () =>
+			globalThis.__browserStartupFixture?.focused ?? null,
 		setIgnoreMenuShortcuts(value) {
 			webContents.ignoringMenu = value;
 		},
@@ -167,7 +243,16 @@ function fixture(failConsole) {
 	const window = Object.assign(new EventEmitter(), {
 		isDestroyed: () => false,
 		webContents,
-		contentView: { addChildView() {}, removeChildView() {} },
+		contentView: {
+			children: [],
+			addChildView(view) {
+				this.children.push(view);
+			},
+			removeChildView(view) {
+				const index = this.children.indexOf(view);
+				if (index >= 0) this.children.splice(index, 1);
+			},
+		},
 		getContentBounds: () => ({ x: 0, y: 0, width: 1000, height: 700 }),
 	});
 	const f = {
@@ -177,6 +262,8 @@ function fixture(failConsole) {
 		window,
 		handlers: new Map(),
 		views: new Set(),
+		liveViews: new Map(),
+		frames: new Map(),
 		peak: 0,
 		id: 800,
 		installs: 0,
@@ -239,6 +326,186 @@ test("production startup owns IPC before awaits, rolls back seven restored views
 		);
 	} finally {
 		await stopBrowserHost();
+	}
+});
+
+test("configured Touch ID still injects rejection recovery and projects the requesting origin", async () => {
+	const f = fixture(false);
+	f.touchIdConfigured = true;
+	try {
+		await startBrowserHost(options(f));
+		const contents = [...f.liveViews.values()].find(
+			(view) => view.webContents.getURL() === "https://example.test/0",
+		).webContents;
+		const timers = [];
+		class CredentialsContainer {
+			get() {
+				return Promise.reject(
+					new DOMException("private detail", "NotAllowedError"),
+				);
+			}
+		}
+		const page = vm.createContext({
+			CredentialsContainer,
+			console: {
+				debug: (message) => contents.emit("console-message", { message }),
+			},
+			setTimeout: (fn) => {
+				timers.push(fn);
+			},
+		});
+		f.frames.set("1:8", {
+			processId: 1,
+			routingId: 8,
+			url: "https://example.test/0",
+			origin: "https://example.test",
+			parent: null,
+			isDestroyed: () => false,
+			executeJavaScript: async (source) => vm.runInContext(source, page),
+		});
+		contents.emit("did-frame-finish-load", {}, true, 1, 8);
+		await assert.rejects(new CredentialsContainer().get({ publicKey: {} }), {
+			name: "NotAllowedError",
+		});
+		assert.equal(
+			timers.length,
+			1,
+			"the configured gate must not skip injection",
+		);
+		for (const fn of timers) fn();
+		await new Promise((resolve) => setImmediate(resolve));
+		const state = f.handlers.get("browser-state")({
+			sender: f.window.webContents,
+			senderFrame: f.window.webContents.mainFrame,
+		});
+		assert.equal(state.passkeyNotice?.outcome, "not-allowed");
+		assert.equal(state.passkeyNotice?.origin, "https://example.test");
+	} finally {
+		await stopBrowserHost();
+	}
+});
+
+/** S6c's launch option, exactly the shape `src/main/index.ts` now passes. */
+function overlayOptions() {
+	return {
+		enabled: true,
+		documentUrl: "file:///isolated/browser-approvals-overlay.html",
+		preloadPath: "/isolated/browser-approvals-overlay.js",
+	};
+}
+
+// Pinned to APPROVALS_OVERLAY_DISABLE_ENV in src/main/browser/approvals-overlay.ts;
+// the unit test asserts the constant's exact spelling and values.
+const APPROVALS_OVERLAY_DISABLE_ENV =
+	"LOCAL_OPERATOR_UI_BROWSER_APPROVALS_OVERLAY_DISABLE";
+
+/** A live card document still exists while its hidden native child is detached. */
+function cardViews(f) {
+	return [...f.liveViews.values()].filter((view) =>
+		view.webContents.getURL().includes("browser-approvals-overlay.html"),
+	);
+}
+
+test("the approvals card is default-on: an ordinary launch builds its child", async () => {
+	const previous = process.env[APPROVALS_OVERLAY_DISABLE_ENV];
+	delete process.env[APPROVALS_OVERLAY_DISABLE_ENV];
+	const f = fixture(false);
+	try {
+		await startBrowserHost({
+			...options(f),
+			approvalsOverlay: overlayOptions(),
+		});
+		const cards = cardViews(f);
+		assert.equal(
+			cards.length,
+			1,
+			"default-on still constructs the reusable card document",
+		);
+		// Availability is not native parenting: hidden loading children caused the
+		// focus loss. Prove creation AND the load boundary, not merely zero children.
+		assert.equal(cards[0].parentedAtLoad, false, "navigation starts detached");
+		assert.equal(cards[0].visible, false, "the warming card stays hidden");
+		assert.equal(
+			f.window.contentView.children.includes(cards[0]),
+			false,
+			"startup does not leave a hidden native card attached",
+		);
+		const projection = f.handlers.get("browser-state")({
+			sender: f.window.webContents,
+			senderFrame: f.window.webContents.mainFrame,
+		});
+		assert.equal(projection.approvalsCard.available, true);
+	} finally {
+		await stopBrowserHost();
+		assert.equal(
+			cardViews(f).length,
+			0,
+			"stopping the host destroys the card document",
+		);
+		if (previous === undefined) {
+			delete process.env[APPROVALS_OVERLAY_DISABLE_ENV];
+		} else {
+			process.env[APPROVALS_OVERLAY_DISABLE_ENV] = previous;
+		}
+	}
+});
+
+test("the disable switch makes an ordinary launch create no card child at all", async () => {
+	const previous = process.env[APPROVALS_OVERLAY_DISABLE_ENV];
+	process.env[APPROVALS_OVERLAY_DISABLE_ENV] = "1";
+	const f = fixture(false);
+	try {
+		await startBrowserHost({
+			...options(f),
+			approvalsOverlay: overlayOptions(),
+		});
+		assert.equal(cardViews(f).length, 0, "the kill switch creates no child");
+		const projection = f.handlers.get("browser-state")({
+			sender: f.window.webContents,
+			senderFrame: f.window.webContents.mainFrame,
+		});
+		assert.equal(projection.approvalsCard.available, false);
+	} finally {
+		await stopBrowserHost();
+		if (previous === undefined) {
+			delete process.env[APPROVALS_OVERLAY_DISABLE_ENV];
+		} else {
+			process.env[APPROVALS_OVERLAY_DISABLE_ENV] = previous;
+		}
+	}
+});
+
+test("a card child that throws while it is being constructed leaves the host running on the dock and band (R1)", async () => {
+	const previous = process.env[APPROVALS_OVERLAY_DISABLE_ENV];
+	delete process.env[APPROVALS_OVERLAY_DISABLE_ENV];
+	const f = fixture(false);
+	f.failCardChild = true;
+	try {
+		// Before the fix this rejected with "Cannot access 'notifyChanged' before
+		// initialization": the controller's failure push ran inside its own
+		// constructor, ahead of the host's `notifyChanged` declaration.
+		await startBrowserHost({
+			...options(f),
+			approvalsOverlay: overlayOptions(),
+		});
+		assert.equal(cardViews(f).length, 0, "no card child exists");
+		const projection = f.handlers.get("browser-state")({
+			sender: f.window.webContents,
+			senderFrame: f.window.webContents.mainFrame,
+		});
+		assert.equal(
+			projection.approvalsCard.available,
+			false,
+			"the renderer is told the card is gone, so it mounts the dock and band",
+		);
+		assert.equal(projection.approvalsCard.open, false);
+	} finally {
+		await stopBrowserHost();
+		if (previous === undefined) {
+			delete process.env[APPROVALS_OVERLAY_DISABLE_ENV];
+		} else {
+			process.env[APPROVALS_OVERLAY_DISABLE_ENV] = previous;
+		}
 	}
 });
 

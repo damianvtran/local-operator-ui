@@ -1,0 +1,57 @@
+{
+  "previousHead": "fde244b7350d09499a6a2f0c3f458f1408dfc34a",
+  "scope": "Unified C1/C2/Q1 + stale selector + D1 evidence remediation; synthetic DOM/transport tests, not live backend",
+  "sourceSHA256": {
+    "src/renderer/src/shared/store/session-tags-store.ts": "025b1c0d552b7e58279a1ee998fb83198cea05c151ff9756fdf39593a766e24b",
+    "src/renderer/src/features/chat/use-chat-tag-registry.ts": "ef29797adee0cdb2460c31cfc67ef866d7fc3632aaf9d912ca2120203b06ec2e",
+    "src/renderer/src/features/chat/use-chat-tag-assignment.ts": "fa557e2867a7b851949d01eea3f5af8846dec0c23e2ccabbeca91a515775351f",
+    "src/renderer/src/features/chat/components/chat-tag-header.tsx": "1dd85bb916267964b67c290c68afef55a5839eb614ae7bdbc1b9a870a1d61411",
+    "src/renderer/src/features/chat/components/chat-sidebar-tags.stories.tsx": "2cd181f4fc0c9102334d80a5869df1310d91c0fcaf0f86cd2e13c4979aeb79bd",
+    "scripts/chat-tag-dialogs-immediate.test.mjs": "5008c57e29ccf8f3d83e1f7a22a1a587b668a45f83210ed7fbd9a2ed8d283bbe",
+    "scripts/chat-sidebar-tags.test.mjs": "75d6ac272418880a5d652567b057ef9e15397436bec1e32e976fe975b46420ed",
+    "scripts/sidebar-tag-auto.test.mjs": "0bd3d43716a159b0806a0aa85628fbe71a8f78fef9b570ea4e0ede449c7322e5"
+  },
+  "beforeControl": {
+    "method": "Temporarily loaded four production files from previousHead while keeping new regression tests, then restored exact current bytes in finally",
+    "command": "env -u NODE_TEST_CONTEXT node --test --test-reporter=tap --test-name-pattern=\"two headers serialize|picker creation shares|failed blur-save\" scripts/chat-tag-dialogs-immediate.test.mjs",
+    "exitCode": 1,
+    "actual": [
+      "not ok 1 - two headers serialize delayed whole-registry edits without losing an acknowledged rename (C1)",
+      "not ok 2 - picker creation shares header registry ownership and preserves a pending rename (C1)",
+      "not ok 3 - failed blur-save retains the typed rename, alert, retry and focus (C2)",
+      "# pass 0",
+      "# fail 3"
+    ]
+  },
+  "after": {
+    "command": "env -u NODE_TEST_CONTEXT node scripts/run-desktop-tests.mjs scripts/chat-tag-dialogs-immediate.test.mjs scripts/sidebar-tag-picker.test.mjs scripts/sidebar-tag-drag.test.mjs scripts/chat-sidebar-tags.test.mjs scripts/chat-sidebar-row-menu.test.mjs scripts/keymap-registry.test.mjs scripts/keymap-chords.test.mjs scripts/chat-keyboard-regions.test.mjs scripts/test-inventory.test.mjs scripts/sidebar-tag-auto.test.mjs scripts/slash-tags.test.mjs scripts/slash-tags-reopen.test.mjs scripts/slash-tags-popup.test.mjs",
+    "exitCode": 0,
+    "actual": [
+      "ℹ tests 133",
+      "ℹ suites 0",
+      "ℹ pass 133",
+      "ℹ fail 0",
+      "ℹ cancelled 0",
+      "ℹ skipped 0",
+      "ℹ todo 0",
+      "ℹ duration_ms 6546.198208"
+    ]
+  },
+  "otherGates": {
+    "pnpm check-types": "exit 0: main and renderer tsc",
+    "pnpm check-i18n": "exit 0: generator, literal scanner, independent ledger, context, shrink-only coverage",
+    "pnpm lint:scripts": "exit 0: 8 changed script files lint-clean",
+    "changed source Biome": "exit 0; warning-level diagnostics retained",
+    "node scripts/check-evidence-structure.mjs": "exit 0; 1468 tracked evidence files, 235 sets, 0 committed release frames, 4 proof artefacts"
+  },
+  "visualCompatibility": {
+    "byteIdenticalAgainstPreviousHead": [
+      "chat-sidebar.tsx",
+      "chat-sidebar-view-menu.tsx",
+      "chat-tag-popover.tsx",
+      "tag-picker-combobox.tsx"
+    ],
+    "headerClassNameExpressionsUnchanged": true,
+    "catalogueAndAuditBytesUnchanged": true
+  }
+}

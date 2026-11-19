@@ -1,0 +1,82 @@
+{
+  "auditor": {
+    "agent": "i18n-auditor-es",
+    "model": "anthropic/claude-sonnet-5-5",
+    "instance": "a7b8c9d0e1f2"
+  },
+  "date": "2026-10-19",
+  "locale": "es",
+  "namespace": "ui.chat.tags",
+  "sha256": {
+    "en": "2ceb3d8a5e4592916fce55ab7eeee5f4654f2d2394cbdb74be89aff2e73ab1be",
+    "es": "38cb3bfafe458380b4d22cef2155e1545421b108626c05e890414436a904381c"
+  },
+  "status": "passed",
+  "result": "clean",
+  "findings": [],
+  "scope": "V2-2 Spanish re-freeze: remediation of selection_status and tag_usage plus ICU/key/baseline regression checks; unchanged 71 pairs retain prior semantic evidence under exact-byte compatibility proof.",
+  "independence": {
+    "auditor_did_not_translate": true,
+    "actual_model": "anthropic/claude-sonnet-5-5",
+    "fallback": "No fallback used in this remediation audit. Prior receipt records its own model provenance."
+  },
+  "language_competence": "Spanish grammar and meaning of both changed messages reviewed directly; no translation service used.",
+  "prior_receipt": {
+    "path": "i18n/receipts/a1f2c3d4e5f6.json",
+    "sha256": "741753ddb90a91dad95e841f548044c047d5ed0956abd9451bd251d7e76729f1",
+    "instance": "a1f2c3d4e5f6",
+    "target_sha256": "f369f01299f6e86e725933363da1ce6b27c1c1ef3a9bdd50fb4b5abb993fbd3a",
+    "model": "openai/gpt-6.1-sol"
+  },
+  "checked_keys": [
+    "ui.chat.tags.selection_status",
+    "ui.chat.tags.tag_usage"
+  ],
+  "inputs": {
+    "context": {
+      "repository": "local-operator-ui",
+      "path": "src/i18n/catalogues/en/ui.chat.tags.context.json",
+      "sha256": "ce20c5a796056d03f7dd17f55974982fd62fe2895ec8d7250679c07bee93f852"
+    },
+    "glossary": {
+      "repository": "local-operator",
+      "path": "i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "repository": "local-operator",
+      "path": "i18n/style-guides/es.md",
+      "sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+    }
+  },
+  "remediated_findings": [
+    {
+      "id": "ES-1",
+      "status": "fixed",
+      "evidence": "Count-neutral Selección: {count}. Agrupar en {name}. renders Selección: 1. Agrupar en Trabajo. with the actual string count argument; grammar is correct for 0, 1 and 8 without changing callers."
+    },
+    {
+      "id": "ES-2",
+      "status": "fixed",
+      "evidence": "Added many {# de conversaciones}; intl-messageformat(es) renders 1.000.000 de conversaciones for 1000000 and preserves 1 conversación / 0 conversaciones."
+    }
+  ],
+  "checks": {
+    "hashes": "PASS: both actual SHA-256 pins match; English bytes unchanged.",
+    "compatibility": "PASS: replaced ONLY the two new values in memory with their previously audited strings, serialized with the catalogue existing 2-space indentation and trailing newline, and recovered exact old target SHA-256 f369f01299f6e86e725933363da1ce6b27c1c1ef3a9bdd50fb4b5abb993fbd3a. Thus no other byte changes; unchanged 71-pair evidence survives.",
+    "baseline": "PASS: git show HEAD:<path> comparison finds exactly 54 baseline entries with identical values in both English and Spanish.",
+    "icu": "PASS: parsed all 146 EN/ES messages with @formatjs/icu-messageformat-parser; recursive placeholder-name parity across all 73 pairs; no extra or missing keys.",
+    "plural_edges": "PASS: executed both changed messages with intl-messageformat at 0,1,2,8,1000000,1500000; selection_status uses String(count) as actual call sites do. tag_usage outputs: 0 conversaciones; 1 conversación; 2 conversaciones; 8 conversaciones; 1.000.000 de conversaciones; 1.500.000 conversaciones.",
+    "meaning_register": "PASS: count-neutral selection status preserves count and grouping destination, with correct accent and neutral concise register. tag_usage handles Spanish one/many/other grammar without changing the count meaning.",
+    "severity_counts": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 0,
+      "nit": 0
+    }
+  },
+  "limitations": [
+    "Text/ICU audit only; no rendered-fit or accessible-announcement claim. Earlier quantified expansion risks remain for independent visual QA."
+  ],
+  "verdict": "clean — TERMINAL; no findings remain."
+}

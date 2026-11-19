@@ -1,0 +1,34 @@
+{
+  "source_head_before_final_evidence_commit": "63b2e47613a147252445b0b5810f08cb9bef4ef7",
+  "source_working_edits_at_capture": true,
+  "source_sha256_at_final_validation": {
+    "src/renderer/src/features/chat/components/chat-session-tags-dialog.tsx": "1f640b1a14dafb675f6c88e6c7ea1d92ca0cce32365601e705d67672d6ee3b26",
+    "src/renderer/src/features/chat/components/manage-tags-dialog.tsx": "86b2f7da505b82978713e354b222afc1f3b44cfac69a864e1ded8ff7548993d2",
+    "src/renderer/src/features/chat/components/tag-picker-combobox.tsx": "7bef3f08a47a5209f15dc815a26594ceb441cd90b19ddd8415d2a959dee6a9a2",
+    "src/renderer/src/features/chat/components/chat-sidebar-tags.stories.tsx": "0edc8ba945eb7a14515e477fc7d2946e0b9399a59d4b518321d8963e1d1a6f65",
+    "src/renderer/src/features/chat/chat-tag-picker.ts": "7e3f068b59555927f373cd68abca81266ee2dff2e79883c02f239758ca54304c"
+  },
+  "scope": "Actual Storybook app components, synthetic contract bridge; iterative captures. Error/loading/empty/localized/Unicode states recaptured after visual corrections. Unchanged ready-state class output retained for entry-width frames. No native OS, IME, assistive-tech or real-core persistence claim.",
+  "before": "Designer supplied baseline contact sheet, source74fcf12c2e; not a new capture or repinned review.",
+  "final_inline_validation": {
+    "actual": "PASS: duplicate name stays in its staged editor; one inline alert; no merge or write",
+    "viewport": [
+      1280,
+      720
+    ],
+    "dialog": [
+      420,
+      560
+    ],
+    "body": [
+      370,
+      370,
+      379,
+      383
+    ],
+    "footerVisible": true,
+    "horizontalOverflow": false,
+    "registryWrites": 0,
+    "assignmentWrites": 0
+  }
+}

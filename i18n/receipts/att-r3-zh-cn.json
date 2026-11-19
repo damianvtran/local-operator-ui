@@ -1,0 +1,53 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "att-r3-zh-cn",
+ "session": "57c37248b1be",
+ "job": "8d68b2c4680c",
+ "date": "2026-10-21",
+ "locale": "zh-CN",
+ "translator": "coder",
+ "translator_session": "03594b2dcc02",
+ "translator_job": "5084d4f46f6c",
+ "namespace": "ui.teamBridge",
+ "status": "passed",
+ "keys_audited": 2,
+ "scope": "Round-3 delta audit of #1314: git diff 8cf05961d6..b787a8458f -- src/i18n/catalogues (zh-CN: 2 value(s) changed/added — failed_count, expired_staged_retry). Covers the new en attachments.failed_count and its context note (count 2-4, shown only when more than one staged image fails, followed by the first image's reason as its own sentence). Also re-verifies the round-2 finding ATT-ZH-R2-01 against the bytes. The other 170 zh-CN values are byte-identical to 8cf05961d6 (parsed key-by-key: 0 changed, 0 removed, 0 missing vs en, 0 extra; the line diff shows only these keys plus preview_unavailable gaining a trailing comma) and stay covered by att-r2-zh-cn, att-r1-zh-cn and their inherited receipts. The en catalogue changed only by adding failed_count. PR head b787a8458f re-checked via gh. Catalogue audit only, not rendered-fit/activation/release.",
+ "source_head": "b787a8458fb1c44a7e479949155c6e32240d6e79",
+ "source_base": "8cf05961d64322fe64ebccd6282069c7f52f12f3",
+ "sha256": {
+  "en": "f982d8a6e7300cee8f36605ae4779eea8c5ec0ebffdd741ca0fc806c8ee807af",
+  "zh-CN": "6de951c7cacb6a061dffb7c1825def627562ff03cfd8205cd96044a8ac9dd820",
+  "context": "53d21a0cbcb9a35d6ea280dec60aa55225d995e21a87d92ed5cb5f7ff82bcf38"
+ },
+ "findings": [],
+ "round2_dispositions": [
+  {
+   "finding": "ATT-ZH-R2-01",
+   "severity": "NIT",
+   "keys": "expired_staged_retry",
+   "verified": "applied verbatim: current bytes equal the round-2 proposal '此图片当前无法发送。请重试或将其移除。' (string equality against zh-CN at b787a8458f)"
+  }
+ ],
+ "inherited_receipt": {
+  "path": "i18n/receipts/att-r2-zh-cn.json",
+  "sha256": "98f1329f08c9f78585937671507db2f5d50a7f020860657e69dab82375be56ab",
+  "base": "8cf05961d6",
+  "target_sha256": "9a66cc5265c438481620c908d75ea93399da3dad5dc0ffa46cc9b75f63cdec40",
+  "keys_inherited": 170,
+  "unchanged_values_verified": true
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+ },
+ "validation": {
+  "independence": "Auditor session 57c37248b1be (job 8d68b2c4680c, translation-auditor, served model anthropic/claude-opus-5-5 per this session's selected_model record) is a new instance, distinct from translator coder session 03594b2dcc02 (job 5084d4f46f6c, commit b787a8458f) and from the round-2 auditor session 12aab7b684ab and the round-1 auditor sessions. Values read from working-tree bytes at b787a8458f (equal to git show HEAD; worktree clean); the translator's and remediation comment's summaries were checked, not relied on. No catalogue or code edits, no git operations, no ledger-assemble.",
+  "semantics": "failed_count '#张图片无法发送。' = 'N images can’t be sent.'; classifier 张 matches in_message '#张图片' and limit '#张图片'; 无法发送 matches error_size '此图片过大，无法发送。'. expired_staged_retry is now '此图片当前无法发送。请重试或将其移除。', byte-equal to the ATT-ZH-R2-01 proposal: 当前 keeps the state repairable so 请重试 makes sense, and expired_staged (no Retry) keeps '已无法发送' as intended. Register is pronoun-dropped, as in the rest of the locale.",
+  "icu": "Parsed en and zh-CN failed_count with @formatjs/icu-messageformat-parser: one plural argument 'count', the same name and type as en; arms present other (CLDR zh-CN categories via Intl.PluralRules: other), # in every arm, no other arguments. Formatted with intl-messageformat at 0,1,2,3,4,5,11,21,22,25,1000000: correct branch and agreement at the reachable 2-4. The call site passes count: failures.length (number), only when >1 (team-bridge-attachments.tsx:316-318).",
+  "typography": "NFC, full-width 。 (U+3002), no space between # and 张 per the zh-CN guide's no-CJK/Latin-spacing rule; no bidi controls.",
+  "overflow": "Rendered en 'N images can’t be sent.' = 23 chars; zh-CN = 9 chars at count=2. It renders as an inline medium-weight span (me-1.5) at the start of the 12 px wrapping alert line under the composer, followed by the reason sentence, so no fixed width and no fit risk.",
+  "rtl": "Not applicable (zh-CN is LTR).",
+  "limitations": "Browser not used; no rendered-fit, screenshots, glyph metrics, pseudo-localization or activation claim."
+ }
+}

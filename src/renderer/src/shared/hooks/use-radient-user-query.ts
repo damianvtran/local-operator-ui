@@ -21,6 +21,7 @@ import {
 } from "@shared/api/local-operator/desktop-hooks";
 import { radientProxy } from "@shared/api/radient/proxy";
 import type { UserInfoResult } from "@shared/api/radient/types";
+import { t } from "@shared/i18n";
 import { useUserStore } from "@shared/store/user-store";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import {
@@ -31,11 +32,14 @@ import {
 } from "@tanstack/react-query";
 import { useSyncExternalStore } from "react";
 
-// Query keys for Radient user data
-export const radientUserKeys = {
-	all: ["radient-user"] as const,
-	user: () => [...radientUserKeys.all, "user"] as const,
-};
+import {
+	beginRadientAuthoritySignOut,
+	beginRadientAuthorityTransition,
+	radientAuthorityEpoch,
+	radientUserKeys,
+	settleRadientAuthority,
+} from "./radient-account-authority";
+export { radientUserKeys } from "./radient-account-authority";
 
 /**
  * What the Radient account read currently says, for every surface that renders
@@ -318,6 +322,10 @@ export function forgetAccountReadFailure(): void {
 export async function commissionAccountRead(
 	queryClient: QueryClient,
 ): Promise<void> {
+	// Credentials already changed: invalidate private authority BEFORE any await.
+	// The previous account query remains cached for profile continuity, but may
+	// no longer authorize private Team Bridge data or asynchronous continuations.
+	beginRadientAuthorityTransition(queryClient);
 	forgetAccountReadFailure();
 	await queryClient.cancelQueries({ queryKey: radientUserKeys.all });
 	await queryClient.invalidateQueries({ queryKey: radientUserKeys.all });
@@ -383,6 +391,7 @@ export const useRadientUserQuery = ({
 			 * re-arm the class that clear removed (see `accountReadGeneration`).
 			 */
 			const generation = accountReadGeneration;
+			const authorityEpoch = radientAuthorityEpoch(queryClient);
 			try {
 				const account = await radientProxy<UserInfoResult>({
 					operation: "account",
@@ -394,6 +403,11 @@ export const useRadientUserQuery = ({
 				 * and `error`) and what the press beneath the alert used to erase the
 				 * fault with. See `accountFailureKinds`.
 				 */
+				settleRadientAuthority(
+					queryClient,
+					authorityEpoch,
+					account.account?.id,
+				);
 				forgetAccountReadFailure();
 				return account;
 			} catch (error) {
@@ -401,6 +415,7 @@ export const useRadientUserQuery = ({
 					// No stored credential is an ANSWER rather than a fault, so it
 					// clears the record instead of being kept as one: nothing about a
 					// previous episode may survive a re-classification of this key.
+					settleRadientAuthority(queryClient, authorityEpoch);
 					forgetAccountReadFailure();
 					return null;
 				}
@@ -496,6 +511,9 @@ export const useRadientUserQuery = ({
 
 	const signOutMutation = useMutation({
 		onMutate: () => {
+			// Deliberate: identity is known gone, so this publishes settled absence
+			// and main withdraws the departing account's banners on the press.
+			beginRadientAuthoritySignOut(queryClient);
 			setIsSigningOut(true);
 		},
 		mutationFn: async () => {
@@ -523,14 +541,19 @@ export const useRadientUserQuery = ({
 			 */
 			forgetAccountReadFailure();
 			queryClient.invalidateQueries({ queryKey: desktopKeys.accounts });
-			showSuccessToast("Successfully signed out");
+			showSuccessToast(t("ui.notices.sessions.signed_out"));
 			setIsSigningOut(false);
 		},
 		onError: (error) => {
 			const errorMessage =
 				error instanceof Error ? error.message : String(error);
-			showErrorToast(`Failed to sign out: ${errorMessage}`);
+			showErrorToast(
+				t("ui.notices.sessions.sign_out_failed", { detail: errorMessage }),
+			);
 			setIsSigningOut(false);
+			// A partial account removal cannot restore old private authority by
+			// assumption. Commission the real account read to establish it again.
+			void commissionAccountRead(queryClient);
 		},
 	});
 

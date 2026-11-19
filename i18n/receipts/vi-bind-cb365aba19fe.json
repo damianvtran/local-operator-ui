@@ -1,0 +1,199 @@
+{
+  "schema": "local-operator-ui/i18n-audit-receipt",
+  "kind": "translation-audit-receipt",
+  "audit_kind": "current-byte-rebind",
+  "round": 1,
+  "locale": "vi",
+  "locale_name": "Tiếng Việt",
+  "pr": 1403,
+  "branch": "feat/i18n-key-remaining-copy",
+  "head": "0adbb37b9429e2c70cbe64ea149cb091432c8dd6",
+  "audited_head": "0adbb37b9429e2c70cbe64ea149cb091432c8dd6",
+  "base": "91aa8f5f10797184d01c41143d1a3645176b566b",
+  "date": "2026-10-25",
+  "agent": "translation-auditor",
+  "model": "deepseek/deepseek-flash",
+  "status": "passed",
+  "namespace": "ui.common.viewer",
+  "instance": "vi-bind-cb365aba19fe",
+  "auditor": {
+    "agent": "translation-auditor",
+    "role": "independent translation auditor (team lopdev); not a translator on PR #1403",
+    "harness": "Local Operator",
+    "team": "lopdev",
+    "session": "0040bedb2ab5",
+    "model": "deepseek/deepseek-flash",
+    "model_provenance": "Harness session header reports deepseek/deepseek-flash; no provider fallback was reported or observed during this run. No other model is claimed.",
+    "independence": "This run authored no catalogue, ledger, allowance or code change for PR #1403. It read the committed catalogue bytes at 0adbb37b94 from git and writes only the four vi-bind receipts. The translator rows for these namespaces name i18n-translator/translator, not translation-auditor.",
+    "date": "2026-10-25",
+    "instance": "vi-bind-cb365aba19fe"
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "merge composition (see note)",
+    "date": "2026-10-24",
+    "note": "Values are the union of the two audited snapshots recorded under `union`: parent A's four select-form keys and the four shared keys come from the branch wave; parent B's four image_lightbox keys come from the canvas batch. This re-bind retranslated nothing."
+  },
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/vi.md",
+      "sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+    },
+    "docs": {
+      "path": "docs/I18N.md",
+      "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+    }
+  },
+  "result": "clean",
+  "previous_head": "d082bd9595dcc41018b86f22a26fa7f3ae4e891f",
+  "previous_receipt": "i18n/receipts/vi-extract-517c59bfdfe3-r2.json",
+  "binding": "Current-byte convergence re-bind of a merged union: parent A (branch d082bd9595) and parent B (origin/main 91aa8f5f) were each audited; the merged 12-key file contains the union, the 4 shared values are identical in both parents, and every merged value is byte-identical to its parent. This receipt binds the merged bytes; it does not re-review the audited parents.",
+  "scope": "ui.common.viewer for vi: all 12 keys at PR #1403 head 0adbb37b94, read against the English source, the English context sidecar, the vi style guide and the glossary. Parent A (branch, d082bd9595) has 8 keys (close, next, opening, position, previous, reset_view, zoom_in, zoom_out), audited by vi-extract-517c59bfdfe3-r2. Parent B (origin/main, 91aa8f5f) has 8 keys; its four image_lightbox keys were audited by b928c7f0c96d, and its four shared keys are identical to parent A's. The merged file is the 12-key union with all 4 shared values identical.",
+  "en_sha256": "13e7cccf566f6a41d890c36a9dc24242a154b80d9e8cdbcfdf6988d5c5376243",
+  "context_sha256": "c105c548706f46e9e247437c16352074c245ff07551a8edf360a4a8e666a4d73",
+  "target_sha256": "cb365aba19fe6edbc9c5e8c633052a452bd5f78509e83352b4ef2d5c3305cdda",
+  "instance_basis": "target_sha256 first 12 hex, per the re-bind naming instruction",
+  "union": {
+    "parent_a": {
+      "rev": "d082bd9595",
+      "keys": 8,
+      "sha256": "517830ed45a14db0de431ceb30fc4330f4e210338558dc2210e6a184705ffc01",
+      "receipt": "i18n/receipts/vi-extract-517c59bfdfe3-r2.json",
+      "only_a": [
+        "ui.common.viewer.close",
+        "ui.common.viewer.next",
+        "ui.common.viewer.position",
+        "ui.common.viewer.previous"
+      ],
+      "role": "branch pre-merge head (audited)"
+    },
+    "parent_b": {
+      "rev": "91aa8f5f",
+      "keys": 8,
+      "sha256": "6870b8b1de074943c687442d16cc24cd5a75beead9de8a25396fa94c550072d6",
+      "receipt": "i18n/receipts/b928c7f0c96d.json",
+      "only_b": [
+        "ui.common.viewer.image_lightbox.asset_of",
+        "ui.common.viewer.image_lightbox.close",
+        "ui.common.viewer.image_lightbox.next",
+        "ui.common.viewer.image_lightbox.previous"
+      ],
+      "role": "origin/main at this read (audited)"
+    },
+    "shared": [
+      "ui.common.viewer.opening",
+      "ui.common.viewer.reset_view",
+      "ui.common.viewer.zoom_in",
+      "ui.common.viewer.zoom_out"
+    ],
+    "shared_values_identical": true,
+    "merged_keys": 12,
+    "union_equals_merged": true,
+    "every_merged_value_from_a_parent": true
+  },
+  "checks": {
+    "keys": {
+      "english": 12,
+      "target": 12,
+      "set_equals_english": true,
+      "order_equals_english": true,
+      "missing": [],
+      "extra": []
+    },
+    "icu": {
+      "parser": "@formatjs/icu-messageformat-parser 3.5.21",
+      "messages_parsed": 12,
+      "plural_messages": 0,
+      "select_messages": 4,
+      "arguments": [
+        "count",
+        "index",
+        "kind",
+        "medialabel"
+      ],
+      "select_arms": {
+        "kind": [
+          "image",
+          "asset",
+          "other"
+        ]
+      },
+      "number_skeletons": {
+        "ui.common.viewer.position": 6,
+        "ui.common.viewer.image_lightbox.asset_of": 2,
+        "all_group_off": true
+      },
+      "parse_errors": []
+    },
+    "placeholders": {
+      "all_preserved": true,
+      "detail": "{kind} select in close/next/position/previous; {index, number, ::group-off} and {count, number, ::group-off} in position and image_lightbox.asset_of; {medialabel} in image_lightbox.previous/next/close."
+    },
+    "render": {
+      "position": {
+        "image": "Ảnh 2 trên 1000",
+        "asset": "Tệp 2 trên 1000",
+        "other": "Ảnh 2 trên 1000"
+      },
+      "close": {
+        "image": "Đóng ảnh",
+        "asset": "Đóng tệp",
+        "other": "Đóng"
+      },
+      "next": {
+        "image": "Ảnh tiếp theo",
+        "asset": "Tệp tiếp theo",
+        "other": "Tiếp theo"
+      },
+      "previous": {
+        "image": "Ảnh trước",
+        "asset": "Tệp trước",
+        "other": "Trước"
+      },
+      "image_lightbox": {
+        "previous": "ảnh trước",
+        "next": "ảnh tiếp theo",
+        "close": "Đóng ảnh",
+        "asset_of": "Mục 2 / 1000"
+      }
+    },
+    "text": {
+      "nfc": true,
+      "ellipsis_preserved": true,
+      "bidi_controls": 0
+    }
+  },
+  "findings": [],
+  "observations": [
+    {
+      "key": "ui.common.viewer.image_lightbox.asset_of",
+      "issue": "«Mục {index} / {count}» renders the English «Asset» as «Mục», while the same namespace's asset arms use «Tệp» (close «Đóng tệp», next «Tệp tiếp theo», position «Tệp … trên …», previous «Tệp trước»). This is a glossary split within one namespace: «Mục» is otherwise the locale's word for a section or goal (mục tiêu, mục thời gian), not an asset. The value is byte-identical to parent B (origin/main 91aa8f5f), whose vi canvas batch audit b928c7f0c96d passed it clean, so it is carried as approved and is not counted as a new finding here.",
+      "recommendation": "If a future copy pass touches this namespace, align to «Tệp …»; the minimal change is «Tệp {index, number, ::group-off} / {count, number, ::group-off}». Not counted: parent-approved unchanged value, re-bind scope.",
+      "counted": false
+    },
+    {
+      "key": "ui.common.viewer (union shape)",
+      "issue": "The merged file is the exact union of the two audited parents. Parent A contributes the four select-form keys (close/next/position/previous) and the four shared keys; parent B contributes the four image_lightbox keys and the four shared keys. No value was overwritten, no key dropped, and the four shared values are identical in both parents.",
+      "recommendation": "Pass; no change.",
+      "counted": false
+    }
+  ],
+  "totals": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0,
+    "keys_read": 12
+  },
+  "limitations": [
+    "No rendered app frame was captured; the width finding (where present) is a character-cell measurement against the sidecar's advisory maxCells, not a screenshot or a measured overflow.",
+    "No native-speaker sign-off is claimed; this is an independent agent audit against the vi style guide and glossary.",
+    "The repository's full pnpm check-i18n gate was not run; the mechanical checks (key parity, ICU parse, placeholder names, NFC, plural/select rendering with intl-messageformat 12.1.3) were run directly on the committed bytes at 0adbb37b94.",
+    "The four image_lightbox keys have no call site in this repository at 0adbb37b94 (git grep); the audit covers catalogue bytes only.",
+    "The four image_lightbox values are carried from the main-audited parent b928c7f0c96d and were not re-reviewed as new translation work; the «Mục»/«Tệp» split is recorded as a non-counted observation."
+  ]
+}

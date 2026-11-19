@@ -535,7 +535,16 @@ corpus. Trailing slot, the sidebar row's 14px box (`subagent-rows-running*`,
 **12x12**, gap **2**, mass 65.7–67.5, parts `6x5@39,278 + 5x5@36,285 +
 5x5@43,285` — the same components the design round's independent pass measured
 on its own corpus. The mark is static, count-free, `aria-hidden`, and takes
-`currentColor`; `data-subagent-mark` and the `sr-only` sentence are unchanged.
+`currentColor`, and the `sr-only` sentence around it is unchanged.
+
+**What DID move, since this record was written** (agent review round 1, R1-1):
+the row's trailing-slotted mark is gone. `data-subagent-mark` now appears in one
+place, the leading status cell of a `delegating` row (`mark="running"`, so the
+hook still means "the row's own running children" and `scripts/session-switch.tsx`
+still reads it), and a queue with nothing running draws a `Timer` there rather
+than an `Hourglass`, which is now `waiting`'s glyph alone. The trailing-slot
+readings above stay as the record of the shape this round measured, not as the
+current markup.
 
 **Why equal beads.** The row is the parent, so a centred larger apex over a pair
 draws the head-and-shoulders figure — `Users` — that the design round refused.

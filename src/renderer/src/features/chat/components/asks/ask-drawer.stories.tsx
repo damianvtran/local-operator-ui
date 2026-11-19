@@ -15,8 +15,9 @@
  * accordingly a bare panel at 617px with no chrome around it. It is now a SIDE
  * CANVAS (the design note's §2 decision), so the frames carry what that decision
  * bought: a 40px chrome bar with a scope line and a dismiss, a scroller the queue
- * can actually overflow into, and the family's own width (560px is the dock cap the
- * decorator pins). The minimized bar's stories left this file long ago — the
+ * can actually overflow into, and a width the drawer's own pane arithmetic draws
+ * (the decorator pins a mid-band 560px; the slot opens at 640 and offers
+ * 400..1200). The minimized bar's stories left this file long ago — the
  * affordance is an ITEM in the composer's status row, photographed beside the other
  * chips in `composer-status-row.stories.tsx`.
  *
@@ -170,10 +171,11 @@ const meta = {
 	},
 	/*
 	 * THE DRAWER'S OWN BOX, and the sizes are the family's rather than decorative: a
-	 * 560px column with a fixed height is what the pane docks at when the row can
-	 * afford it (`CANVAS_PANE_MAX_PX`), and the height is what makes the middle
-	 * region's scroller a fact a frame can show - the D1 defect was a panel with no
-	 * scroll owner, so a frame that gave it unlimited height could not show the fix.
+	 * 560px column with a fixed height is a row that leaves the pane 560 (the slot's
+	 * own band is 400..1200, opening at the 640 default), and the height is what
+	 * makes the middle region's scroller a fact a frame can show - the D1 defect was
+	 * a panel with no scroll owner, so a frame that gave it unlimited height could
+	 * not show the fix.
 	 */
 	decorators: [
 		(Story, context) => (
@@ -184,12 +186,13 @@ const meta = {
 			 * shown a narrower drawer than the family ever draws.
 			 *
 			 * THE WIDTH IS A PARAMETER since the 2026-10-04 fold (`drawerWidth`,
-			 * defaulting to the family's 560px cap). The full-text case has to be judged at
-			 * BOTH ends of the family's arithmetic, and the 400px floor is the end where a
-			 * wrapped question competes hardest with its own option rows: the `min(560,
-			 * row - 480)` rule bottoms out there (`CANVAS_PANE_MIN_PX`), so a frame at 560
-			 * alone cannot answer "does the card hold with real text". The inline style
-			 * rather than a `w-[560px]` class is what makes one decorator serve both.
+			 * defaulting to a mid-band 560). The full-text case has to be judged at BOTH
+			 * ends of the family's arithmetic, and the 400px floor is the end where a
+			 * wrapped question competes hardest with its own option rows: the
+			 * `min(RIGHT_SLOT_MAX_PX, row - 480)` rule bottoms out there
+			 * (`CANVAS_PANE_MIN_PX`), so a frame at 560 alone cannot answer "does the card
+			 * hold with real text". The inline style rather than a `w-[560px]` class is
+			 * what makes one decorator serve both.
 			 */
 			<div
 				className="flex h-[640px] flex-col bg-canvas"
@@ -691,6 +694,73 @@ export const RecommendedPassedOver: Story = {
 };
 
 /*
+ * A MULTI-SELECT ASK THAT RECOMMENDS SEVERAL OPTIONS (operator report,
+ * 2026-11-10: "if it's a checkbox option then we provide multiple recommended
+ * answers").
+ *
+ * The wire sends `recommended: 0` (the first recommended row) AND
+ * `recommended_all: [0, 1]` once the model names two or more; the core has
+ * hoisted the named rows to the top in the order it listed them. Both rows carry
+ * the bold label and the badge, and NOTHING is ticked: the recommendation is
+ * advice, so the draft is empty and the user ticks the rows themselves.
+ */
+const MULTI_ASK: PendingAsk = ask({
+	ask_id: "a-5c2d",
+	questions: [
+		{
+			id: "files",
+			question: "Which files should the cleanup script touch?",
+			recommended: 0,
+			recommended_all: [0, 1],
+			options: [
+				{ label: "logs only", description: "Rotated logs older than 7 days" },
+				{ label: "logs and caches", description: "Also clears build caches" },
+				{ label: "everything under tmp", description: "Includes live sockets" },
+			],
+			multi: true,
+		},
+	],
+});
+
+export const MultiSelectTwoRecommended: Story = {
+	args: {
+		frontend: frontend([MULTI_ASK]),
+		scope: "session",
+		onClose: noop,
+		nowMs: NOW,
+		/* Nothing is pre-ticked: the recommendation marks rows, never the draft. */
+		drafts: {},
+		onDraftChange: noop,
+		onAnswer: noop,
+		onDecline: noop,
+	},
+};
+
+/** The same ask from a runtime that predates `recommended_all`: one badge. */
+export const MultiSelectOneRecommendedLegacy: Story = {
+	args: {
+		frontend: frontend([
+			ask({
+				ask_id: "a-5c2e",
+				questions: [
+					{
+						...MULTI_ASK.questions[0],
+						recommended_all: undefined,
+					},
+				],
+			}),
+		]),
+		scope: "session",
+		onClose: noop,
+		nowMs: NOW,
+		drafts: {},
+		onDraftChange: noop,
+		onAnswer: noop,
+		onDecline: noop,
+	},
+};
+
+/*
  * ---------------------------------------------------------------------------
  * THE CARD AT FULL TEXT (the wire stopped clipping, so the layout has to hold)
  * ---------------------------------------------------------------------------
@@ -713,10 +783,10 @@ export const RecommendedPassedOver: Story = {
  * drawer owns a scroller (`ask-drawer.tsx`: `min-h-0 flex-1 overflow-y-auto`), so
  * a tall card is a card the user scrolls, not a card that cuts a sentence.
  *
- * TWO WIDTHS, and both are the family's own: 560 is `CANVAS_PANE_MAX_PX` and 400
- * is `CANVAS_PANE_MIN_PX`. The floor is where the wrapped question competes
- * hardest with its option rows, and it is the one the design round asked to
- * check rather than assume.
+ * TWO WIDTHS, and both are inside the slot's band: 560 is a row that leaves the
+ * pane its old cap's width, and 400 is `CANVAS_PANE_MIN_PX`. The floor is where
+ * the wrapped question competes hardest with its option rows, and it is the one
+ * the design round asked to check rather than assume.
  */
 const LONG_QUESTION =
 	"The rollout window for the billing migration collides with the audit freeze, and the question is which of the two should move: if I move the migration the finance close slips a week and the reconciliation report has to be rebuilt on top of partially migrated rows, and if I move the freeze the auditors see a schema change mid-window — either way one of them needs a decision from you before Thursday, and I would rather not guess which one is cheaper.";
@@ -752,7 +822,7 @@ const LONG_TEXT_ASK: PendingAsk = ask({
 	],
 });
 
-/** Full text at the family's 560px cap: the question wraps, nothing elides. */
+/** Full text at 560, a mid-band width the card must hold: nothing elides. */
 export const FullTextAtWidth: Story = {
 	args: {
 		frontend: frontend([LONG_TEXT_ASK]),
@@ -1048,5 +1118,79 @@ export const SecretStoredKeyChange: Story = {
 			await screen.findByRole("button", { name: "Change answer" }),
 		);
 		await screen.findByRole("button", { name: "Update answer" });
+	},
+};
+
+/*
+ * THE SUGGESTED COMMAND (`PendingAskQuestion.command`): the four states the
+ * design review renders. One question that needs the user to sign a CLI back
+ * in, with the command the agent suggests. `Command none` is the same card
+ * without the field — the before. `Command local` is a conversation whose agent
+ * works on this computer: Insert and Run… are offered. `Command remote` is a
+ * conversation whose agent works on another device: Insert only, with the line
+ * that says why. `Command run dialog` presses Run… and holds the confirmation.
+ */
+const SIGN_IN: PendingAsk = ask({
+	ask_id: "a-cmd1",
+	questions: [
+		{
+			id: "glab",
+			question:
+				"glab is signed out, so I can't open the merge request. Sign it back in, then tell me when it's done.",
+			options: [
+				{ label: "Done — signed in" },
+				{ label: "Skip the MR for now" },
+			],
+			command: "glab auth login --hostname gitlab.com",
+			command_target: "agent",
+		},
+	],
+});
+
+const {
+	command: _command,
+	command_target: _target,
+	...SIGN_IN_PLAIN
+} = SIGN_IN.questions[0];
+
+export const CommandNone: Story = {
+	args: {
+		frontend: frontend([{ ...SIGN_IN, questions: [SIGN_IN_PLAIN] }]),
+		scope: "session",
+		onClose: noop,
+		nowMs: NOW,
+		onAnswer: noop,
+		onDecline: noop,
+	},
+};
+
+export const CommandLocal: Story = {
+	args: {
+		frontend: frontend([SIGN_IN]),
+		scope: "session",
+		onClose: noop,
+		nowMs: NOW,
+		onAnswer: noop,
+		onDecline: noop,
+		onCommand: () => true,
+		commandPlacementOf: () => ({ kind: "here" }),
+	},
+};
+
+export const CommandRemote: Story = {
+	args: {
+		...CommandLocal.args,
+		commandPlacementOf: () => ({
+			kind: "elsewhere",
+			device: "Studio Mac mini",
+		}),
+	},
+};
+
+export const CommandRunDialog: Story = {
+	args: CommandLocal.args,
+	play: async () => {
+		await userEvent.click(await screen.findByRole("button", { name: "Run…" }));
+		await screen.findByRole("dialog");
 	},
 };

@@ -1,0 +1,1679 @@
+{
+	"meta": {
+		"source_file": "queued-cold-actual-api.json",
+		"source_sha256": "30689cfaa94dbc0f214d80cc8a785c568959ca1eca6dc179805ce1c900a52c0f",
+		"provenance": "Full fourteen actual cold API entries, copied verbatim to reproduce newest-six then older-eight pagination. Synthetic isolated runtime; no config or credential logs."
+	},
+	"entries": [
+		{
+			"id": "96ab6596e0144ce0a0fedfccc79d7e82",
+			"ts": 1793877708.653437,
+			"type": "custom",
+			"payload": {
+				"custom_type": "selected_model",
+				"details": {
+					"version": 2,
+					"selector": "test/mock",
+					"effort": null,
+					"fast": false,
+					"boot": "test/mock"
+				}
+			},
+			"ts_source": "entry"
+		},
+		{
+			"id": "87d93b678e3d48e7bb42e18652d53633",
+			"ts": 1793878130.351458,
+			"type": "custom",
+			"payload": {
+				"custom_type": "attention_started",
+				"details": {
+					"conversation_id": "session/ceb68ce9be6a",
+					"token": "41112f87-79ad-4f4a-b1aa-a165d2522d74"
+				}
+			},
+			"ts_source": "entry"
+		},
+		{
+			"id": "35bb0208ab8a4d8bad7b02fa3ee44c2e",
+			"ts": 1793878130.3574011,
+			"type": "custom",
+			"payload": {
+				"custom_type": "conversation_name",
+				"details": {
+					"text": "Isolated profile proof",
+					"user_set": false
+				}
+			},
+			"ts_source": "entry"
+		},
+		{
+			"id": "7355fa2e-a939-4770-b438-8cb6c9545bbd",
+			"ts": 1793878130.360291,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "user",
+				"content": [
+					{
+						"text": "Review this plan."
+					}
+				],
+				"input_mode": "typed",
+				"producer_command_id": "7355fa2e-a939-4770-b438-8cb6c9545bbd"
+			},
+			"ts_source": "entry"
+		},
+		{
+			"id": "a11e016d55d04a4898769510a4058a90",
+			"ts": 1793878130.3756459,
+			"type": "custom",
+			"payload": {
+				"custom_type": "session_spend.v1",
+				"details": {
+					"version": 1,
+					"micro": 0,
+					"calls": 1,
+					"priced_calls": 0,
+					"unpriced_calls": 1,
+					"floor": false,
+					"rebuilt": false,
+					"writer": "13143:1793877707",
+					"last_identity": {
+						"provider": "test",
+						"model_id": "mock"
+					},
+					"by_identity": {
+						"test/mock": {
+							"provider": "test",
+							"model_id": "mock",
+							"micro": 0,
+							"calls": 1,
+							"unpriced": 1
+						}
+					}
+				}
+			},
+			"ts_source": "entry"
+		},
+		{
+			"id": "2c2801eb44204c8cbac65b698a225426",
+			"ts": 1793878130.3887439,
+			"type": "custom",
+			"payload": {
+				"custom_type": "session_channel_spend.v1",
+				"details": {
+					"kind": "start",
+					"version": 1,
+					"ts_ms": 1793878130388
+				}
+			},
+			"ts_source": "entry"
+		},
+		{
+			"id": "d346d19f71be48f8ba28e6ebc0c0e4fa",
+			"ts": 1793878130.391253,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "qa-live-team-0361fb1cb2b8",
+						"name": "team",
+						"arguments": {
+							"op": "update",
+							"name": "lopdev",
+							"instructions": "Queued browser proof."
+						}
+					}
+				],
+				"stop_reason": "toolUse",
+				"usage": {
+					"billing_basis": "billed",
+					"input_tokens": 1,
+					"output_tokens": 1,
+					"provider": "test",
+					"model_id": "mock"
+				}
+			},
+			"ts_source": "entry"
+		},
+		{
+			"id": "604f898ecbae4ba191cb0e5a3f9f8f49",
+			"ts": 1793878130.39127,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "Queued team 'lopdev' for durable approval (ap_brrgw2wh9gk4m). No profile or backup was changed. The signed approval continuation applies it; do not retry this tool call.\ninstructions: updated"
+					}
+				],
+				"tool_call_id": "qa-live-team-0361fb1cb2b8",
+				"tool_name": "team",
+				"provider_payload": {
+					"details": {
+						"status": "queued",
+						"fields": ["instructions"],
+						"diff": [
+							"instructions (replaced; new text):",
+							"Queued browser proof."
+						],
+						"approval_id": "ap_brrgw2wh9gk4m",
+						"request_digest": "sha256:f43dc1cd610d55fb827d21d1ba4682d1463943549a103a4bcb9cfb33ac4dd908",
+						"expires_at": 1793964530.379034,
+						"receipt_id": "56bbbab5e3d666a88053f9af085de012db2b517c0c877e778462cc032154d319",
+						"profile_kind": "team",
+						"profile_name": "lopdev",
+						"scope": "global"
+					},
+					"useless": false,
+					"duration_s": 0.010571790975518525
+				}
+			},
+			"ts_source": "entry"
+		},
+		{
+			"id": "0489c3f5ea984cbf9dbd5294fc902de7",
+			"ts": 1793878130.399211,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"content": [
+					{
+						"text": "The actual profile tool returned the result shown above."
+					}
+				],
+				"stop_reason": "stop",
+				"usage": {
+					"billing_basis": "billed",
+					"input_tokens": 1,
+					"output_tokens": 1,
+					"provider": "test",
+					"model_id": "mock"
+				}
+			},
+			"ts_source": "entry"
+		},
+		{
+			"id": "b4a7ece7c9ba43439ac885f9e69dbf65",
+			"ts": 1793878130.3990579,
+			"type": "custom",
+			"payload": {
+				"custom_type": "session_spend.v1",
+				"details": {
+					"version": 1,
+					"micro": 0,
+					"calls": 2,
+					"priced_calls": 0,
+					"unpriced_calls": 2,
+					"floor": false,
+					"rebuilt": false,
+					"writer": "13143:1793877707",
+					"last_identity": {
+						"provider": "test",
+						"model_id": "mock"
+					},
+					"by_identity": {
+						"test/mock": {
+							"provider": "test",
+							"model_id": "mock",
+							"micro": 0,
+							"calls": 2,
+							"unpriced": 2
+						}
+					}
+				}
+			},
+			"ts_source": "entry"
+		},
+		{
+			"id": "81620ac9a49949f48b938b498fb55f78",
+			"ts": 1793878130.401535,
+			"type": "custom",
+			"payload": {
+				"custom_type": "frontend_state_checkpoint_v1",
+				"details": {
+					"checkpoint_id": "3d1cbba05d6b426997590d80f1fe645c",
+					"state": {
+						"state_version": 1,
+						"session_id": "ceb68ce9be6a",
+						"epoch": "5cb033e4aef349c3898db72e78f8d974",
+						"sequence": 17,
+						"checkpoint_id": "3d1cbba05d6b426997590d80f1fe645c",
+						"cwd": "/Users/damian/.local-operator/sessions/864e3aabad43/scratchpad/root-live-a8-5214",
+						"conversation_title": "Isolated profile proof",
+						"conversation_title_user_set": false,
+						"conversation_title_forked": false,
+						"goal": "",
+						"goal_status": "",
+						"goal_judge": null,
+						"goal_history": [],
+						"goal_history_truncated": false,
+						"active_agent": "",
+						"active_team": "",
+						"effective_identity": {
+							"speaker": "",
+							"team": "",
+							"role_of_speaker": ""
+						},
+						"selected_model": {
+							"provider": "test",
+							"model_id": "mock",
+							"context_window": 128000,
+							"context_metadata_resolved": false,
+							"default_context_window": null,
+							"max_context_window": null,
+							"max_output_tokens": 0,
+							"supports_tools": true,
+							"supports_images": true,
+							"supports_images_stated": false,
+							"supports_audio_input": false,
+							"supports_prompt_cache": false,
+							"supports_responses_api": false,
+							"requires_reasoning_echo": false,
+							"base_url": null,
+							"temperature": null,
+							"top_p": null,
+							"reasoning": false,
+							"reasoning_effort": null,
+							"supports_sampling_params": true,
+							"reasoning_efforts": [],
+							"reasoning_default_effort": null,
+							"reasoning_boundary_markers": [],
+							"supports_fast_mode": false,
+							"fast_mode": false,
+							"display_name": "mock"
+						},
+						"effective_model": {
+							"provider": "test",
+							"model_id": "mock",
+							"context_window": 128000,
+							"context_metadata_resolved": false,
+							"default_context_window": null,
+							"max_context_window": null,
+							"max_output_tokens": 0,
+							"supports_tools": true,
+							"supports_images": true,
+							"supports_images_stated": false,
+							"supports_audio_input": false,
+							"supports_prompt_cache": false,
+							"supports_responses_api": false,
+							"requires_reasoning_echo": false,
+							"base_url": null,
+							"temperature": null,
+							"top_p": null,
+							"reasoning": false,
+							"reasoning_effort": null,
+							"supports_sampling_params": true,
+							"reasoning_efforts": [],
+							"reasoning_default_effort": null,
+							"reasoning_boundary_markers": [],
+							"supports_fast_mode": false,
+							"fast_mode": false,
+							"display_name": "mock"
+						},
+						"effort_displacement": {},
+						"saver_on": false,
+						"last_usage": {
+							"billing_basis": "billed",
+							"input_tokens": 1,
+							"output_tokens": 1,
+							"cache_read_tokens": 0,
+							"cache_write_tokens": 0,
+							"cache_write_5m_tokens": 0,
+							"cache_write_1h_tokens": 0,
+							"context_tokens": null,
+							"reasoning_tokens": 0,
+							"usd_cost": null,
+							"estimated_usd_cost": null,
+							"cost_components": [],
+							"provider": "test",
+							"model_id": "mock"
+						},
+						"usage_components": [],
+						"context_tokens": 1,
+						"context_is_estimate": false,
+						"context_window": 128000,
+						"context_breakdown": null,
+						"cumulative_parent_cost": null,
+						"child_costs": {},
+						"subagent_basis_micro": {
+							"subscription_api_equivalent": 0,
+							"billed": 0,
+							"estimated": 0,
+							"not_tracked": 0
+						},
+						"subagent_cost": null,
+						"subagent_cost_knowledge": "exact",
+						"cost_knowledge": "unknown",
+						"spend_channels": {
+							"version": 1,
+							"tracked": true,
+							"total_micro": 0,
+							"knowledge": "unknown",
+							"by_basis": {
+								"billed": 0,
+								"subscription_api_equivalent": 0,
+								"estimated": 0,
+								"not_tracked_micro": 0,
+								"not_tracked_calls": 0
+							},
+							"rows": [
+								{
+									"channel": "inference",
+									"provider": "test",
+									"model": "mock",
+									"label": "test/mock",
+									"units": 2,
+									"unit": "calls",
+									"amount_micro": 0,
+									"knowledge": "unknown",
+									"basis": ["not_tracked"],
+									"price_versions": []
+								}
+							],
+							"children": {
+								"total_micro": 0,
+								"knowledge": "exact",
+								"by_basis": {
+									"billed": 0,
+									"subscription_api_equivalent": 0,
+									"estimated": 0,
+									"not_tracked_micro": 0
+								}
+							},
+							"breakdown": {
+								"by_agent": [
+									{
+										"id": "parent",
+										"label": "Parent agent",
+										"amount_micro": null,
+										"knowledge": "partial",
+										"unstated_records": 0,
+										"bases": []
+									}
+								],
+								"by_source": [
+									{
+										"id": "inference",
+										"label": "Inference",
+										"amount_micro": null,
+										"knowledge": "partial",
+										"unstated_records": 0,
+										"bases": []
+									}
+								]
+							},
+							"vocabulary": {
+								"channels": {
+									"inference": {
+										"label": "Inference"
+									}
+								},
+								"bases": {
+									"not_tracked": {
+										"label": "not tracked",
+										"source_class": "unknown",
+										"marker": "not tracked"
+									}
+								}
+							}
+						},
+						"streaming": true,
+						"generation": 1,
+						"last_turn_outcome": "",
+						"last_turn_cut_off": "",
+						"activity_started_at": 1793878130.3671029,
+						"activity_phase": "thinking",
+						"activity_phase_started_at": 1793878130.398719,
+						"live_tool_started_at": {},
+						"active_duration_s": 0,
+						"current_turn_accrued_cost": 0,
+						"queued_steering": [],
+						"live_events": [],
+						"jobs": [],
+						"todos": [],
+						"wakes": [],
+						"monitors": [],
+						"mcp_servers": [],
+						"mcp_startup": null,
+						"loop": null,
+						"pending_gate": null,
+						"slash_capabilities": [
+							{
+								"command": "help",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "keys",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "exit",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "clear",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "copy",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "links",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "new",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "reload",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "update",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "resume",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "aida",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "view",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "move",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "rename",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "tag",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "tags",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "fork",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "archive",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "unarchive",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "delete",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "model",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "effort",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "fast",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "radient",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "saver",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "theme",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "language",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "provider",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "settings",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "import",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "review",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "schedule",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "library",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "librarian",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "sidebar",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "search",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "accounts",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "failovers",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "usage",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "hub",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "context",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "session",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "info",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "analytics",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "goal",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "loop",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "btw",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "compact",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "stop",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "highlights",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "approvals",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "skills",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "mcp",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "login",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "logout",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "notifications",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "unread",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "mobile",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "sound",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "network",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "credential",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "team",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": true
+							},
+							{
+								"command": "agent",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": true
+							},
+							{
+								"command": "memory",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "project",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							}
+						],
+						"model_catalogue": [],
+						"model_catalogue_truncated": false,
+						"history_cursor": "604f898ecbae4ba191cb0e5a3f9f8f49",
+						"history_generation": 0,
+						"attachment_root": "/Users/damian/.local-operator/sessions/864e3aabad43/scratchpad/root-live-a8-5214/config/sessions/ceb68ce9be6a",
+						"attention": {
+							"conversation_id": "session/ceb68ce9be6a",
+							"completion_token": null,
+							"anchor_id": null,
+							"kind": null,
+							"reason": "",
+							"cause": "",
+							"notify": true,
+							"unseen": false,
+							"revision": [0, 0]
+						}
+					}
+				}
+			},
+			"ts_source": "entry"
+		},
+		{
+			"id": "7df4f90f6c7a4ca08b3a62c0569a09f1",
+			"ts": 1793878130.406471,
+			"type": "custom",
+			"payload": {
+				"custom_type": "completion_attention",
+				"details": {
+					"conversation_id": "session/ceb68ce9be6a",
+					"token": "41112f87-79ad-4f4a-b1aa-a165d2522d74",
+					"anchor": "0489c3f5ea984cbf9dbd5294fc902de7",
+					"kind": "complete",
+					"cause": "",
+					"reason": "",
+					"notify": true
+				}
+			},
+			"ts_source": "entry"
+		},
+		{
+			"id": "d830f6facc3b454fad542e780a88c115",
+			"ts": 1793878188.774679,
+			"type": "custom",
+			"payload": {
+				"custom_type": "frontend_state_checkpoint_v1",
+				"details": {
+					"checkpoint_id": "e4dae07b5f114b9eb7d31314143006a0",
+					"state": {
+						"state_version": 1,
+						"session_id": "ceb68ce9be6a",
+						"epoch": "5cb033e4aef349c3898db72e78f8d974",
+						"sequence": 22,
+						"checkpoint_id": "e4dae07b5f114b9eb7d31314143006a0",
+						"cwd": "/Users/damian/.local-operator/sessions/864e3aabad43/scratchpad/root-live-a8-5214",
+						"conversation_title": "Isolated profile proof",
+						"conversation_title_user_set": false,
+						"conversation_title_forked": false,
+						"goal": "",
+						"goal_status": "",
+						"goal_judge": null,
+						"goal_history": [],
+						"goal_history_truncated": false,
+						"active_agent": "",
+						"active_team": "",
+						"effective_identity": {
+							"speaker": "",
+							"team": "",
+							"role_of_speaker": ""
+						},
+						"selected_model": {
+							"provider": "test",
+							"model_id": "mock",
+							"context_window": 128000,
+							"context_metadata_resolved": false,
+							"default_context_window": null,
+							"max_context_window": null,
+							"max_output_tokens": 0,
+							"supports_tools": true,
+							"supports_images": true,
+							"supports_images_stated": false,
+							"supports_audio_input": false,
+							"supports_prompt_cache": false,
+							"supports_responses_api": false,
+							"requires_reasoning_echo": false,
+							"base_url": null,
+							"temperature": null,
+							"top_p": null,
+							"reasoning": false,
+							"reasoning_effort": null,
+							"supports_sampling_params": true,
+							"reasoning_efforts": [],
+							"reasoning_default_effort": null,
+							"reasoning_boundary_markers": [],
+							"supports_fast_mode": false,
+							"fast_mode": false,
+							"display_name": "mock"
+						},
+						"effective_model": {
+							"provider": "test",
+							"model_id": "mock",
+							"context_window": 128000,
+							"context_metadata_resolved": false,
+							"default_context_window": null,
+							"max_context_window": null,
+							"max_output_tokens": 0,
+							"supports_tools": true,
+							"supports_images": true,
+							"supports_images_stated": false,
+							"supports_audio_input": false,
+							"supports_prompt_cache": false,
+							"supports_responses_api": false,
+							"requires_reasoning_echo": false,
+							"base_url": null,
+							"temperature": null,
+							"top_p": null,
+							"reasoning": false,
+							"reasoning_effort": null,
+							"supports_sampling_params": true,
+							"reasoning_efforts": [],
+							"reasoning_default_effort": null,
+							"reasoning_boundary_markers": [],
+							"supports_fast_mode": false,
+							"fast_mode": false,
+							"display_name": "mock"
+						},
+						"effort_displacement": {},
+						"saver_on": false,
+						"last_usage": {
+							"billing_basis": "billed",
+							"input_tokens": 1,
+							"output_tokens": 1,
+							"cache_read_tokens": 0,
+							"cache_write_tokens": 0,
+							"cache_write_5m_tokens": 0,
+							"cache_write_1h_tokens": 0,
+							"context_tokens": null,
+							"reasoning_tokens": 0,
+							"usd_cost": null,
+							"estimated_usd_cost": null,
+							"cost_components": [],
+							"provider": "test",
+							"model_id": "mock"
+						},
+						"usage_components": [],
+						"context_tokens": 1,
+						"context_is_estimate": false,
+						"context_window": 128000,
+						"context_breakdown": null,
+						"cumulative_parent_cost": null,
+						"child_costs": {},
+						"subagent_basis_micro": {
+							"subscription_api_equivalent": 0,
+							"billed": 0,
+							"estimated": 0,
+							"not_tracked": 0
+						},
+						"subagent_cost": null,
+						"subagent_cost_knowledge": "exact",
+						"cost_knowledge": "unknown",
+						"spend_channels": {
+							"version": 1,
+							"tracked": true,
+							"total_micro": 0,
+							"knowledge": "unknown",
+							"by_basis": {
+								"billed": 0,
+								"subscription_api_equivalent": 0,
+								"estimated": 0,
+								"not_tracked_micro": 0,
+								"not_tracked_calls": 0
+							},
+							"rows": [
+								{
+									"channel": "inference",
+									"provider": "test",
+									"model": "mock",
+									"label": "test/mock",
+									"units": 2,
+									"unit": "calls",
+									"amount_micro": 0,
+									"knowledge": "unknown",
+									"basis": ["not_tracked"],
+									"price_versions": []
+								}
+							],
+							"children": {
+								"total_micro": 0,
+								"knowledge": "exact",
+								"by_basis": {
+									"billed": 0,
+									"subscription_api_equivalent": 0,
+									"estimated": 0,
+									"not_tracked_micro": 0
+								}
+							},
+							"breakdown": {
+								"by_agent": [
+									{
+										"id": "parent",
+										"label": "Parent agent",
+										"amount_micro": null,
+										"knowledge": "partial",
+										"unstated_records": 0,
+										"bases": []
+									}
+								],
+								"by_source": [
+									{
+										"id": "inference",
+										"label": "Inference",
+										"amount_micro": null,
+										"knowledge": "partial",
+										"unstated_records": 0,
+										"bases": []
+									}
+								]
+							},
+							"vocabulary": {
+								"channels": {
+									"inference": {
+										"label": "Inference"
+									}
+								},
+								"bases": {
+									"not_tracked": {
+										"label": "not tracked",
+										"source_class": "unknown",
+										"marker": "not tracked"
+									}
+								}
+							}
+						},
+						"streaming": false,
+						"generation": 1,
+						"last_turn_outcome": "completed",
+						"last_turn_cut_off": "",
+						"activity_started_at": null,
+						"activity_phase": "",
+						"activity_phase_started_at": null,
+						"live_tool_started_at": {},
+						"active_duration_s": 0.03801608085632324,
+						"current_turn_accrued_cost": 0,
+						"queued_steering": [],
+						"live_events": [],
+						"jobs": [],
+						"todos": [],
+						"wakes": [],
+						"monitors": [],
+						"mcp_servers": [],
+						"mcp_startup": null,
+						"loop": null,
+						"pending_gate": null,
+						"slash_capabilities": [
+							{
+								"command": "help",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "keys",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "exit",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "clear",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "copy",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "links",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "new",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "reload",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "update",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "resume",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "aida",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "view",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "move",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "rename",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "tag",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "tags",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "fork",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "archive",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "unarchive",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "delete",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "model",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "effort",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "fast",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "radient",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "saver",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "theme",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "language",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "provider",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "settings",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "import",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "review",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "schedule",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "library",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "librarian",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "sidebar",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "search",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "accounts",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "failovers",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "usage",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "hub",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "context",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "session",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "info",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "analytics",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "goal",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "loop",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "btw",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "compact",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "stop",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "highlights",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "approvals",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "skills",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "mcp",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "login",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "logout",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "notifications",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "unread",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "mobile",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "sound",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "network",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "credential",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "team",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": true
+							},
+							{
+								"command": "agent",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": true
+							},
+							{
+								"command": "memory",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "project",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							}
+						],
+						"model_catalogue": [],
+						"model_catalogue_truncated": false,
+						"history_cursor": "7df4f90f6c7a4ca08b3a62c0569a09f1",
+						"history_generation": 0,
+						"attachment_root": "/Users/damian/.local-operator/sessions/864e3aabad43/scratchpad/root-live-a8-5214/config/sessions/ceb68ce9be6a",
+						"attention": {
+							"conversation_id": "session/ceb68ce9be6a",
+							"completion_token": "41112f87-79ad-4f4a-b1aa-a165d2522d74",
+							"anchor_id": "0489c3f5ea984cbf9dbd5294fc902de7",
+							"kind": "complete",
+							"reason": "",
+							"cause": "",
+							"notify": true,
+							"unseen": false,
+							"revision": [4, 4]
+						}
+					}
+				}
+			},
+			"ts_source": "entry"
+		},
+		{
+			"id": "profile-applied:56bbbab5e3d666a88053f9af085de012db2b517c0c877e778462cc032154d319",
+			"ts": 1793878237.953805,
+			"type": "prune",
+			"payload": {
+				"target": "604f898ecbae4ba191cb0e5a3f9f8f49",
+				"notice": "Profile save applied.",
+				"replacement": {
+					"kind": "message",
+					"role": "tool",
+					"content": [
+						{
+							"text": "Saved team 'lopdev' in your account after signed approval.\ninstructions: updated"
+						}
+					],
+					"tool_call_id": "qa-live-team-0361fb1cb2b8",
+					"tool_name": "team",
+					"provider_payload": {
+						"details": {
+							"status": "applied",
+							"profile_kind": "team",
+							"profile_name": "lopdev",
+							"scope": "global",
+							"receipt_id": "56bbbab5e3d666a88053f9af085de012db2b517c0c877e778462cc032154d319",
+							"fields": ["instructions"],
+							"diff": ["instructions:", "Queued browser proof."],
+							"approval_id": "ap_brrgw2wh9gk4m",
+							"request_digest": "sha256:f43dc1cd610d55fb827d21d1ba4682d1463943549a103a4bcb9cfb33ac4dd908",
+							"profile_action": {
+								"schema": 1,
+								"kind": "profile_revert",
+								"action_id": "prv_9de76caa1190c4541f0261011af4c07d",
+								"label": "Revert",
+								"profile_kind": "team",
+								"profile_name": "lopdev",
+								"receipt_id": "56bbbab5e3d666a88053f9af085de012db2b517c0c877e778462cc032154d319"
+							}
+						},
+						"useless": false,
+						"duration_s": null
+					}
+				}
+			},
+			"ts_source": "entry"
+		}
+	]
+}

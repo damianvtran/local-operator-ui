@@ -77,6 +77,17 @@ const bundle = await build({
 		{
 			name: "explicit-main-status-and-wire",
 			setup(b) {
+				// This suite isolates backend-version/write safety. Current-account
+				// membership is exercised with the real hook in the popover suite.
+				b.onResolve({ filter: /hub-link-source$/ }, () => ({
+					path: "source",
+					namespace: "guard-source",
+				}));
+				b.onLoad({ filter: /.*/, namespace: "guard-source" }, () => ({
+					contents: `import {t} from "@shared/i18n"; export const useHubLinkSource=(link)=>({source:link.visibility==="public"?t("ui.hub.links.source_label_public"):null,organization:null});`,
+					resolveDir: process.cwd(),
+					loader: "ts",
+				}));
 				// Inert primitive boundaries make the real component's dialog subtree
 				// inspectable by SSR. This is copy/placement proof, not portal/focus QA.
 				b.onResolve({ filter: UI_PRIMITIVES }, () => ({
@@ -421,7 +432,11 @@ test("mounted actual policy/link/source/legacy hooks fence every write arm and r
 	function Probe() {
 		exposed = {
 			policy: api.useHubLinkPolicy(),
-			link: api.useHubLinkActions("fixture-link"),
+			link: api.useHubLinkActions({
+				link_id: "fixture-link",
+				kind: "agent",
+				name: "fixture",
+			}),
 			resolve: api.useHubSourceResolution(),
 			legacy: api.useHubActions(),
 			safety: api.useHubMutationSafety(),
@@ -462,13 +477,17 @@ test("mounted actual policy/link/source/legacy hooks fence every write arm and r
 				}),
 		],
 		[
-			"pull-confirm",
+			/*
+			 * The incoming confirm is a plain item-addressed apply: core has no
+			 * pull receipt (its apply route recomputes the merge), so the only
+			 * choice a confirm can carry is `prefer`.
+			 */
+			"pull-apply",
 			() =>
 				x.link.mutateAsync({
 					action: "apply",
 					linkId: link.link_id,
-					confirmApply: true,
-					previewReceipt: "reviewed-receipt",
+					prefer: "local",
 				}),
 		],
 		...["pull", "push"].map((direction) => [

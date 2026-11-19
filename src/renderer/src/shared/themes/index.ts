@@ -1,3 +1,4 @@
+import { t } from "../../../../i18n/messages";
 import type { ThemeCollection, ThemeName, ThemeOption } from "../types/theme";
 import { createBaseTheme } from "./base-theme";
 import type { ThemeDefinition } from "./palette-contract";
@@ -205,11 +206,38 @@ export const themes: ThemeCollection = Object.fromEntries(
 		{
 			id: definition.id,
 			name: definition.name,
-			description: definition.description,
+			/*
+			 * Resolve the description KEY here, at read time. The palette files are
+			 * colour data and carry no copy: a `t()` at their module scope froze
+			 * bootstrap English (and broke `check-design-kit`, whose esbuild fixture
+			 * has no i18n module to resolve). Reading here keeps the picker in step
+			 * with a live language switch for the same reason the earlier getter
+			 * existed.
+			 */
+			get description() {
+				return t(definition.descriptionKey);
+			},
 			theme: createBaseTheme(definition.palette),
 		},
 	]),
 ) as ThemeCollection;
+
+/**
+ * The built-in definition (its authored palette) for an id, or undefined. The
+ * composition engine needs the PALETTE object itself - by reference, since the
+ * identity guarantee is `composeTheme(base) === base` - not the MUI theme.
+ */
+export const definitionOf = (id: string): ThemeDefinition | undefined =>
+	definitions.find((definition) => definition.id === id);
+
+/**
+ * True when `id` names a built-in theme. Persisted references to a palette (an
+ * accent borrowed from another theme, a custom theme's base) are checked with
+ * this on load, so a palette removed in a later build degrades to a default
+ * rather than indexing `themes` with an unknown key.
+ */
+export const isThemeName = (id: string): id is ThemeName =>
+	Object.prototype.hasOwnProperty.call(themes, id);
 
 /**
  * Default theme name

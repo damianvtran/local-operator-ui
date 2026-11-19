@@ -1,0 +1,232 @@
+{
+	"schema": 1,
+	"kind": "i18n-audit-receipt",
+	"audit_kind": "union-delta-audit of two independently audited wave deltas over unchanged-by-proof bytes + whole-file consistency read",
+	"audit_id": "union-hi-20261028-d22645c370a9",
+	"instance": "union-hi-20261028-d22645c370a9",
+	"locale": "hi",
+	"namespace": "ui.chat",
+	"audit_date": "2026-10-28",
+	"branch": "i18n-wave-a",
+	"pr": 1449,
+	"head": "c5e19ecec8",
+	"head_full": "c5e19ecec883b45e281d696f06dac86bcb0d90f3",
+	"merge_parents": [
+		"e5f7c8daeaf3bd5a6267c5910288e2b5f1bcc807",
+		"1d631be71fb7a674b117aab61508d6dd822708b4"
+	],
+	"auditor": "i18n-auditor",
+	"session": "d22645c370a9",
+	"team": "lopdev",
+	"model": "radient/auto",
+	"model_provenance": {
+		"route": "radient/auto",
+		"route_source": "this session's harness system prompt: 'Model: radient/auto'",
+		"fallback_used": false,
+		"fallback_chain": [],
+		"actual_model_source": "No [session incident] record and no model-switch notice exists anywhere in this session's transcript (~/.local-operator/sessions/d22645c370a9/transcript.jsonl: 239 events when checked, types message/custom only; the phrases appear there only inside quoted prompt text, the es reference bundle this task named, and this session's own commands and output). The upstream model behind the router alias is not exposed to this session, so none is invented.",
+		"disclosure": "Every judgement in this audit was made in this session under the recorded route; no model change was requested or observed."
+	},
+	"status": "passed",
+	"verdict": "passed",
+	"result": "clean-with-findings",
+	"key_count": 142,
+	"sha256": {
+		"en": "d3bc8ec097540b123500005e941093dbc73eaaa46fa1152643a04d51b6f259e4",
+		"hi": "917ad047d210bdeb028965e6b84b1f71dbc9fb325faa58c44d6205bf112136e3"
+	},
+	"context_sha256": "994de1d3c61cdc19ba61bb8b0995e4e96e17e80c531c9b3dafb4572d3c8bca3e",
+	"scope": "DELTA + WHOLE-FILE union audit of one catalogue (src/i18n/catalogues/hi/ui.chat.json, 142 keys) at c5e19ecec8. Delta: prove by parsed-JSON and raw-line comparison that the 18 wave-A keys equal the bytes receipt wa-hi-3acece16f468 read (a81c00cdda; byte-identical at 80ee119bbd), the 9 wave-B keys equal the bytes receipt 8f4aa3fba6ed read (a5356ce91c = origin/main 1d631be71f), and the 115 base keys equal origin/main's and the pre-wave file (6216167f44); then read the union as one text for cross-wave term/register/punctuation consistency, placeholder and CLDR parity, real renders, typography, fit and terminology.",
+	"delta": {
+		"base_pre_union": {
+			"commit": "1d631be71f",
+			"hi_sha256": "2c5d82df782e1451017cc234eb4f6fec82be4d7c73a0110c98bab5bc967044ca",
+			"en_sha256": "4d07ed6de9382fdf1310fd70bf48be2602952538c1ddf43bda8972834760be04"
+		},
+		"wave_a_audited_bytes": {
+			"commit": "a81c00cdda",
+			"also_at": "80ee119bbd",
+			"receipt": "wa-hi-3acece16f468",
+			"hi_sha256": "849a6cd3093ca30986b9d85d347479859314ef99d490f91eeea98ed6639b4ebb",
+			"en_sha256": "1a1c9329a1a56ffda47b27da91e80fdf454751a4463b76f09ae9138d1ad0bcdc"
+		},
+		"wave_b_audited_bytes": {
+			"commit": "a5356ce91c",
+			"receipt": "8f4aa3fba6ed",
+			"hi_sha256": "2c5d82df782e1451017cc234eb4f6fec82be4d7c73a0110c98bab5bc967044ca",
+			"en_sha256": "4d07ed6de9382fdf1310fd70bf48be2602952538c1ddf43bda8972834760be04"
+		},
+		"pre_wave_base": {
+			"commit": "6216167f44",
+			"hi_sha256": "27e9651711db634d6199f409e85754068a584cb1fb686aed402d0fa2346bdb43",
+			"en_sha256": "1a1c9329a1a56ffda47b27da91e80fdf454751a4463b76f09ae9138d1ad0bcdc"
+		},
+		"key_counts": {
+			"base": 115,
+			"wave_a_head": 133,
+			"origin_main_after_wave_b": 124,
+			"union": 142
+		},
+		"wave_a_keys": [
+			"ui.chat.checkpoint.generating_name",
+			"ui.chat.checkpoint.jump_agent",
+			"ui.chat.checkpoint.jump_agent_unnamed",
+			"ui.chat.checkpoint.jump_user",
+			"ui.chat.checkpoint.jump_user_no_clock",
+			"ui.chat.checkpoint.turn",
+			"ui.chat.header_identity.aria_agent_assign",
+			"ui.chat.header_identity.aria_agent_closed",
+			"ui.chat.header_identity.aria_agent_switch",
+			"ui.chat.header_identity.aria_team_assign",
+			"ui.chat.header_identity.aria_team_closed",
+			"ui.chat.header_identity.aria_team_switch",
+			"ui.chat.header_identity.assign_agent",
+			"ui.chat.header_identity.assign_team",
+			"ui.chat.header_identity.no_agent",
+			"ui.chat.header_identity.no_team",
+			"ui.chat.region.composer",
+			"ui.chat.region.conversation"
+		],
+		"wave_b_keys": [
+			"ui.chat.session_status.context_heading",
+			"ui.chat.session_status.context_nothing_measured_tooltip",
+			"ui.chat.session_status.conversation_starting",
+			"ui.chat.session_status.model_none_resolved_tooltip",
+			"ui.chat.session_status.not_signed_in",
+			"ui.chat.session_status.not_signed_in_description",
+			"ui.chat.session_status.nothing_measured_yet",
+			"ui.chat.session_status.temporarily_unavailable",
+			"ui.chat.session_status.temporarily_unavailable_description"
+		],
+		"shared_key_names": [],
+		"proof": "Parsed-JSON and raw-line comparison across five commits (c5e19ecec8, 1d631be71f, a81c00cdda, a5356ce91c, 6216167f44; plus a byte-identity check at 80ee119bbd), each read with `git show` into a throw-away dir, never the shared checkout: 0 value mismatches and 0 raw-text mismatches in en and hi for all 142 keys. Union order is origin/main 124 keys followed by wave A 18; hi and en key sets/order are identical; wave B is already in main and wave A is absent from it. See audit.log section 2.",
+		"binding": "Binds hi 917ad047d210bdeb028965e6b84b1f71dbc9fb325faa58c44d6205bf112136e3 and en d3bc8ec097540b123500005e941093dbc73eaaa46fa1152643a04d51b6f259e4, each read from a read-only `git archive` export of c5e19ecec8 and cross-checked with `git show c5e19ecec8:<path> | shasum -a 256`. A later commit that changes any value voids this receipt."
+	},
+	"gates": {
+		"ledger-check": "fails exactly 7 rows / 21 findings, every one */ui.chat stale source+target+receipt-vs-bytes: the expected pre-audit state the union bytes are in until this receipt and its six siblings are assembled.",
+		"generate --check": "pass - src/i18n/keys.gen.ts is byte-identical to a fresh generation",
+		"context-parity": "pass - every English key covered apart from 131 allowed gaps in 4 namespaces; all 27 wave keys carry sidecar entries",
+		"check-coverage": "pass - 7 gated languages over 99 namespaces, 0 allowed keys remain",
+		"locale-parity": "pass - 44/44 tests across all shipped locales (hi: every key, no unknown key, placeholder parity, not an English stub)",
+		"check-duplicates": "pass - 889 files scanned, 0 duplicate keys",
+		"mechanical_sweep": "pass - 142/142 keys parsed; 166 real intl-messageformat renders in hi and en; arg name/type parity; ICU select/plural tree parity vs en; 3 selects (agents/teams/skills/other) and 1 plural (one/other, offset 0); hi plurals use only CLDR one/other with 'other' present and 0/1 falling to 'one'; NFC; no bidi/zero-width/NBSP; no token or backtick drift; no key added or dropped"
+	},
+	"findings": [
+		{
+			"id": "UHI-M1",
+			"severity": "minor",
+			"key": "ui.chat.error_block.link.providers",
+			"source": "Providers section",
+			"current": "प्रोवाइडर्स सेक्शन",
+			"problem": "The destination label is singular everywhere else in the hi corpus: ui.settings.model.provider_callout.providers_link renders the same settings section as «प्रोवाइडर», and «प्रोवाइडर्स» occurs nowhere else in 99 hi catalogues. A link whose text names a section by a different word than the section's own label is a cross-file term split, not a wording preference.",
+			"suggested": "प्रोवाइडर सेक्शन"
+		},
+		{
+			"id": "UHI-M2",
+			"severity": "minor",
+			"key": "ui.chat.question_dock.hint.approval",
+			"source": "Choose Approve or Deny above, type yes, no, 1, or 2 and send, or press Escape in the message box to stop the turn.",
+			"current": "ऊपर के बटन से स्वीकृति दें या अस्वीकार करें, या yes, no, 1, या 2 टाइप करके भेजें, या टर्न रोकने के लिए संदेश बॉक्स में Escape दबाएँ।",
+			"problem": "The approval card prints the client-owned labels APPROVAL_OPTIONS verbatim (src/renderer/src/features/chat/approval-words.ts: 'Approve' / 'Deny', submitted by label, never localized), so the hint tells the reader to press two Hindi actions that do not appear on the buttons. The es audit (UES-O2) settled the programme convention: name the controls the reader actually sees. Understandable from context, so minor, not a meaning blocker.",
+			"suggested": "ऊपर Approve या Deny चुनें, या yes, no, 1, या 2 टाइप करके भेजें, या टर्न रोकने के लिए संदेश बॉक्स में Escape दबाएँ।"
+		},
+		{
+			"id": "UHI-M3",
+			"severity": "minor",
+			"key": "ui.chat.error_block.schema.before",
+			"source": "Typically this happens because the model can't follow the complex instructions required for agentic AI.",
+			"current": "ऐसा आम तौर पर इसलिए होता है कि मॉडल एजेंटिक AI के लिए ज़रूरी जटिल निर्देश नहीं निभा पाता।",
+			"problem": "«निर्देश निभाना» is not a Hindi collocation: निभाना takes a duty, promise or role, while instructions take «पालन». The sentence is understandable but reads translated; it is error copy, so the register should be clean.",
+			"suggested": "ऐसा आम तौर पर इसलिए होता है कि मॉडल एजेंटिक AI के लिए ज़रूरी जटिल निर्देशों का पालन नहीं कर पाता।"
+		},
+		{
+			"id": "UHI-N1",
+			"severity": "nit",
+			"key": "ui.chat.mermaid.loading",
+			"source": "Loading diagram...",
+			"current": "डायग्राम लोड हो रहा है...",
+			"problem": "The only three-dot ellipsis in the catalogue: the other six ellipsis occurrences in this file (in four values) use U+2026 («…»), and the en source's ASCII dots are not a locale decision. Cosmetic, no meaning change.",
+			"suggested": "डायग्राम लोड हो रहा है…"
+		},
+		{
+			"id": "UHI-N2",
+			"severity": "nit",
+			"key": "ui.chat.usage.unlimited",
+			"source": "Unlimited paid allowance",
+			"current": "भुगतान वाला असीमित कोटा",
+			"problem": "«भुगतान वाला» is a literal '-having' calque of 'paid'; Hindi product copy for a paid allowance uses «सशुल्क» (or «भुगतान किया गया»). Meaning survives.",
+			"suggested": "सशुल्क असीमित कोटा"
+		},
+		{
+			"id": "UHI-N3",
+			"severity": "nit",
+			"key": "ui.chat.error_block.rate_limit.after",
+			"source": "to access AI models with no rate limits at low prices.",
+			"current": "खोलें — बिना रेट सीमा वाले AI मॉडल कम दाम पर पाने के लिए।",
+			"problem": "With the before half and the settings link, the sentence carries two purpose clauses joined by a dash ('open settings to get Radient Pass — to get models without rate limits'). Understandable but loose; one purpose clause reads better in error copy. Same shape in rate_limit.all_after.",
+			"suggested": "before: …या बिना रेट सीमा वाले AI मॉडल कम दाम पर पाने के लिए / after: में Radient Pass लें।"
+		}
+	],
+	"findings_summary": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 3,
+		"nit": 3
+	},
+	"observations": [
+		{
+			"id": "UHI-O1",
+			"topic": "Wave-A minor HI-WA-1 re-judged, not carried",
+			"detail": "Receipt wa-hi-3acece16f468 recorded «एजेंट सौंपें / टीम सौंपें» (header chip tooltips and their aria twins) as a minor idiom improvement toward «असाइन करें». Re-read here against the whole hi corpus: सौंपना is this product's assign verb in 21 shipped key-values (20 distinct values), including ui.projects… «टीम या एजेंट बाद में सौंपें।», ui.settings… «पहले से {label} को सौंपा गया।», the work-over-session strings), while «असाइन» occurs once, in a shortcut-capture refuser. Changing these four values would create a term split rather than remove one, so this audit does not re-raise it; the wave-A entry remains history on its own receipt."
+		},
+		{
+			"id": "UHI-O2",
+			"topic": "Placeholder order is a locale adaptation, not a parity break",
+			"detail": "Six messages place the same named arguments in a different sentence order than en: checkpoint.turn / jump_agent / jump_agent_unnamed / jump_user / jump_user_no_clock («{total} में से टर्न {turn}»), composer.status.loop_progress_of_turns («{total} में से {completed} टर्न») and session_status.not_signed_in («{label} में साइन-इन नहीं है»). Names, types, styles (::group-off, number) and select/plural trees are identical; Hindi verb-final order requires the reordering, and the two wave receipts already read these bytes. Not a finding."
+		},
+		{
+			"id": "UHI-O3",
+			"topic": "Split strings compose with their link/prefix neighbours",
+			"detail": "Rendered by concatenation: provider/model/rate_limit/invalid_key/unavailable/schema before+link+after and the question_dock {prefix} family read continuously, and the two whitespace differences flagged mechanically are required joins (leading space in invalid_key.after after the settings link, trailing space in hint.prefix). No double or missing space at the joins."
+		},
+		{
+			"id": "UHI-O4",
+			"topic": "No English fallback and no identical-to-source value",
+			"detail": "0 of 142 hi values equal en, so no locale-parity exemption is invoked. Latin runs inside hi values are only tokens also present in the source: Radient, Radient Pass, Radient Automatic, AI, API, SVG, Mermaid, Enter, Esc, yes/no/1/2."
+		},
+		{
+			"id": "UHI-O5",
+			"topic": "Cross-wave families agree",
+			"detail": "सत्र (session), एजेंट, उप-एजेंट, टीम, मॉडल, टर्न, संदेश, बातचीत, जवाब and संदर्भ are used identically across the wave-A region/checkpoint/header keys, the wave-B session_status keys and the base keys; «संदेश कंपोज़र» matches the base «कंपोज़र» values in this file (the two «कम्पोज़र» spellings live outside ui.chat, as the wave-A INFO recorded). All prose stops use danda; labels carry none."
+		},
+		{
+			"id": "UHI-O6",
+			"topic": "hub_update.update_all_label count referent checked in code",
+			"detail": "First read suggested the agents/teams/skills branches («सभी {count} एजेंट अपडेट करें») could state a wrong count because they drop the noun «updates». Going one step further: hubAvailableCount() in src/renderer/src/shared/api/local-operator/hub-updates.ts:379 counts ITEMS of the kind whose mark is available (one update per item), so {count} equals the number of agents/teams/skills being updated. The wording names the same number naturally; it is not a factual error, so it is not counted."
+		}
+	],
+	"independence": "Independent union audit for hi. This session wrote no catalogue byte, context sidecar, ledger row or generated file, and could not edit the audited file: it read the committed bytes through a read-only `git archive` export and read the shared checkout only with git show/grep/ls. It did not translate or amend anything for hi; wave A was audited by session 3acece16f468 and wave B by 8f4aa3fba6ed, and the translator lane is a different instance. No translation or MT service was used to compare or back-translate anything.",
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/hi.md",
+			"sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+		},
+		"contract": {
+			"path": "docs/I18N.md",
+			"ref": "c5e19ecec8",
+			"sha256": "9a4bde8d1c161286160be4a4ae1c7655615dbf39047052550b725a3da2eb00e2"
+		}
+	},
+	"limitations": [
+		"Catalogue-level audit: proves strings, ICU structure and rendering; it does not render the Electron UI and claims no screenshot (design/QA lanes own visual proof).",
+		"Base and wave-B keys are carried by the delta proof rather than re-derived from a second source; every whole-file mechanical and narrative check was nevertheless re-run over all 142 keys.",
+		"The audit reads catalogue files and the en context sidecar only; no network and no MT.",
+		"High-visibility copy (error_block.*, approval.*, question_dock secret copy, session_status.*) was read twice in this session; no second independent session was run, matching the es union audit's continuity note."
+	],
+	"audit_notes_not_execution_log": "The prose in this receipt, the record and the report states what this audit concluded. Command execution is evidenced ONLY by audit.log, which carries the commands and their actual output; nothing here claims a run that audit.log does not show.",
+	"ledger_note_draft": "hi/ui.chat union: passed, 0 blocker/major, 3 minor/3 nit; 115 base + 18 wave A + 9 wave B bytes unchanged by parsed+raw-line proof at c5e19ecec8; record i18n/audits/evidence/hi/ui.chat/union-hi-20261028-d22645c370a9/record.json"
+}

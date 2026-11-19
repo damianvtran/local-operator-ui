@@ -1,0 +1,171 @@
+{
+  "schema": 1,
+  "instance": "e98e27ec97a4-1603r2-zh-cn",
+  "locale": "zh-CN",
+  "pr": "damianvtran/local-operator-ui#1603",
+  "branch": "feat/i18n-uncounted-props",
+  "head": "011c0f4f4caaf5a388a67ba2eda3f615ac676d3c",
+  "date": "2026-11-02",
+  "status": "passed",
+  "model": "anthropic/claude-sonnet-5-5",
+  "audit_kind": "round-1 full review at ab45351362a + round-2 delta re-audit at 011c0f4f4ca",
+  "author": "Written by coder session 92f609a7042a (lopdev team, PR #1603 receipts slice) on the auditors' behalf, transcribed from each auditor session's final report (the auditors wrote no receipt and no ledger row). Hashes were re-derived by the coder from git objects (git show <rev>:<path> | sha256) and every full hash an auditor reported was matched against them; the writer re-derives them again from disk. The coder did not translate or remediate any string and is not the auditor.",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "e98e27ec97a4",
+    "model": "anthropic/claude-sonnet-5-5",
+    "model_note": "Instance is the ROUND-2 delta auditor's session; the round-1 full auditor is the separate session 0bb8123f20fc. Both are agent i18n-auditor, model anthropic/claude-sonnet-5-5 per their session headers; neither auditor can verify the runtime provider and neither claims a fallback; none was verified or ruled out.",
+    "independent_from_translator": true,
+    "role": "round-2 delta auditor (second pass on the final bytes); round-1 full auditor = 0bb8123f20fc"
+  },
+  "sessions": {
+    "round1_auditor": "0bb8123f20fc",
+    "round2_auditor": "e98e27ec97a4",
+    "round2_job": "728cff6a15d4"
+  },
+  "independence": "The auditor(s) are separate i18n-auditor sessions from the translator (session 2071a6d2f218, job a1a155d78afc) and from the remediation translator (session 969fd4e90925, job bdffc4284eb8); neither auditor translated, edited or remediated any string, and neither wrote a receipt or ledger row. The translator, remediator and auditors share one model (anthropic/claude-sonnet-5-5), so independence is by agent and session, not by model family; a shared blind spot is possible (the hi round-1 auditor states this explicitly). Independence is attested by the auditors' own reports and the session transcripts; it is not provable from this file alone. Job-to-session mapping for round 2 (job -> auditor session) was read from the parent transcript, where each delta report follows its launching job id; round-1 jobs are identified by session id only.",
+  "locale_level_round1_verdict": {
+    "verdict": "changes_requested",
+    "pin": "ab45351362a",
+    "majors": [
+      "A-1 (ui.agents.detail)"
+    ],
+    "note": "Locale-level verdict covered all 17 namespaces of the locale. Each namespace block below carries its own status derived from its own findings."
+  },
+  "round2_delta": {
+    "pin": "011c0f4f4ca",
+    "verdict": "passed",
+    "blocker": 0,
+    "major": 0,
+    "job": "728cff6a15d4",
+    "session": "e98e27ec97a4",
+    "range": "5af81c6b78a..011c0f4f4ca"
+  },
+  "reported_hash_check": "Every full sha256 the round-2 delta auditor reported for this locale matched the git-object hash recomputed by the coder; round-1 auditors reported 16-hex prefixes that matched at ab45351362a.",
+  "finding_attribution": "Findings are split per namespace and key so each ledger row counts its own; one auditor finding spanning several namespaces is counted once per namespace it touches, so the sum can exceed the auditor's headline totals. Only OPEN findings (unapplied at 011c0f4f4ca, or raised by the round-2 auditor on the new text) are counted; fixed ones are listed under resolved_findings.",
+  "namespaces": {
+    "ui.agents.detail": {
+      "ledger_scope": "Round-1 full review (0bb8123f20fc) at ab45351362a of the 16 keys PR #1603 added + round-2 delta re-audit (e98e27ec97a4) at 011c0f4f4ca of the 1 changed key(s). Round-1 MAJOR here: A-1, verified fixed. Counts are open findings only.",
+      "status": "passed",
+      "audit_kind": "round-1 full review at ab45351362a + round-2 delta re-audit at 011c0f4f4ca",
+      "scope": "round-1 full review at ab45351362a (session 0bb8123f20fc, covered the 16 keys PR #1603 added; everything except the remediated keys is reviewed there) + round-2 delta re-audit at 011c0f4f4ca (session e98e27ec97a4, scoped to the 1 changed key(s) of this file: detail.field.effort_inherit_hint). Round-1 MAJOR(s) in this namespace: A-1 ui.agents.detail.field.effort_inherit_hint - verified FIXED by the delta auditor. Only OPEN findings are counted. Pre-existing keys not touched by the PR were not re-reviewed (earlier audits are in superseded).",
+      "keys_added_by_pr": 16,
+      "sha256": {
+        "en": "4daf2f93b8fbeedd1df1b26350b6c748f5f2d5a4eb236b2c40049585cecce648",
+        "zh-CN": "07add678b09bb0c08544e132bbdaaea117f5b879ea44b0054b723585d3daa59b"
+      },
+      "context_sha256": "490a11824373fafb57d2d9b765bd4273c6066cce19e416043cd5eb16d0cf6ea3",
+      "bytes_checked_at": "011c0f4f4ca",
+      "findings": [
+        {
+          "id": "A-5",
+          "severity": "MINOR",
+          "keys": [
+            "ui.agents.detail.read.effort_label"
+          ],
+          "round": 1,
+          "text": "Pre-existing observation, not new text: \"Effort tier\" is \"能力档位\" in agents.models.* but bare \"档位\" here (ui.agents.detail, matching read.effort_label); auditor: does not gate. Attributed once to ui.agents.detail."
+        }
+      ],
+      "resolved_findings": [
+        {
+          "id": "A-1",
+          "severity": "MAJOR",
+          "keys": [
+            "ui.agents.detail.field.effort_inherit_hint"
+          ],
+          "round": 1,
+          "text": "\"推理强度\" in the tier picker's inherit option; the option label uses the tier word \"档位\" - two terms for one effort tier.",
+          "resolution": {
+            "state": "fixed",
+            "fixed_in": "011c0f4f4ca",
+            "remediation_translator_job": "bdffc4284eb8",
+            "verified_by_round2_session": "e98e27ec97a4"
+          }
+        }
+      ]
+    },
+    "ui.agents.teams": {
+      "ledger_scope": "Round-1 full review (0bb8123f20fc) at ab45351362a of the 17 keys PR #1603 added + round-2 delta re-audit (e98e27ec97a4) at 011c0f4f4ca of the 1 changed key(s). No round-1 MAJOR here (changed for MINOR/NIT wording). Counts are open findings only.",
+      "status": "passed",
+      "audit_kind": "round-1 full review at ab45351362a + round-2 delta re-audit at 011c0f4f4ca",
+      "scope": "round-1 full review at ab45351362a (session 0bb8123f20fc, covered the 17 keys PR #1603 added; everything except the remediated keys is reviewed there) + round-2 delta re-audit at 011c0f4f4ca (session e98e27ec97a4, scoped to the 1 changed key(s) of this file: teams.field.name_hint). Round-1 MAJOR(s) in this namespace: none (the namespace was changed for MINOR/NIT wording only) - verified FIXED by the delta auditor. Only OPEN findings are counted. Pre-existing keys not touched by the PR were not re-reviewed (earlier audits are in superseded).",
+      "keys_added_by_pr": 17,
+      "sha256": {
+        "en": "6a05f539a9a7f3157fe42b5ed9bc5ec89f9a94f86df64b3c752a1bc115335220",
+        "zh-CN": "9f6b6708d739fd505811861539a22dc39ccbaea4604bd8350c28e2ea8c9783bb"
+      },
+      "context_sha256": "cc6a3a4797479595fe6aceea348b88b79e6aaa62d8169097cc833efd6c9918e0",
+      "bytes_checked_at": "011c0f4f4ca",
+      "findings": [
+        {
+          "id": "B-2",
+          "severity": "MINOR",
+          "keys": [
+            "ui.agents.teams.field.name_hint"
+          ],
+          "round": 2,
+          "text": "Round 2 on NEW text \"你与对话中引用此团队时使用的名称。\": \"你与\" can parse as \"you and [the name]\" (garden path); meaning not inverted."
+        }
+      ],
+      "resolved_findings": [
+        {
+          "id": "A-N3",
+          "severity": "NIT",
+          "keys": [
+            "ui.agents.teams.field.name_hint"
+          ],
+          "round": 1,
+          "text": "\"你和你的对话用来称呼…\" literal and repeats 你 (original NIT 3).",
+          "resolution": {
+            "state": "fixed",
+            "fixed_in": "011c0f4f4ca",
+            "remediation_translator_job": "bdffc4284eb8",
+            "verified_by_round2_session": "e98e27ec97a4"
+          }
+        }
+      ]
+    },
+    "ui.chat.canonical": {
+      "ledger_scope": "Round-1 full review (0bb8123f20fc) at ab45351362a of the 10 keys PR #1603 added + round-2 delta re-audit (e98e27ec97a4) at 011c0f4f4ca of the 1 changed key(s). No round-1 MAJOR here (changed for MINOR/NIT wording). Counts are open findings only.",
+      "status": "passed",
+      "audit_kind": "round-1 full review at ab45351362a + round-2 delta re-audit at 011c0f4f4ca",
+      "scope": "round-1 full review at ab45351362a (session 0bb8123f20fc, covered the 10 keys PR #1603 added; everything except the remediated keys is reviewed there) + round-2 delta re-audit at 011c0f4f4ca (session e98e27ec97a4, scoped to the 1 changed key(s) of this file: canonical.fold.more_images). Round-1 MAJOR(s) in this namespace: none (the namespace was changed for MINOR/NIT wording only) - verified FIXED by the delta auditor. Only OPEN findings are counted. Pre-existing keys not touched by the PR were not re-reviewed (earlier audits are in superseded).",
+      "keys_added_by_pr": 10,
+      "sha256": {
+        "en": "4f3fec6ec3ff88dc503687ecfe802f18369cbb0e67b34f5c1223eee61383891e",
+        "zh-CN": "8f73bea7cfbedf2df68ecbbe3d568512a29665b1d5d057fb40694ee9c0364a1b"
+      },
+      "context_sha256": "f8fe8eda8334c6b137b50fbba9103ddea3a6ac9e2c0f35d94c4d1fd2b4573356",
+      "bytes_checked_at": "011c0f4f4ca",
+      "findings": [
+        {
+          "id": "B-1",
+          "severity": "NIT",
+          "keys": [
+            "ui.chat.canonical.fold.more_images"
+          ],
+          "round": 2,
+          "text": "Round 2 on NEW text \"+{count_display}张更多图片\": 更多 after a measure word is a mild calque; understandable, auditor would leave it."
+        }
+      ],
+      "resolved_findings": [
+        {
+          "id": "A-2",
+          "severity": "MINOR",
+          "keys": [
+            "ui.chat.canonical.fold.more_images"
+          ],
+          "round": 1,
+          "text": "\"+3张图片\" drops \"more\"; suggests \"+N张更多图片\".",
+          "resolution": {
+            "state": "fixed",
+            "fixed_in": "011c0f4f4ca",
+            "remediation_translator_job": "bdffc4284eb8",
+            "verified_by_round2_session": "e98e27ec97a4"
+          }
+        }
+      ]
+    }
+  }
+}

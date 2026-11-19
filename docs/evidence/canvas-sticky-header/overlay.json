@@ -1,0 +1,29 @@
+{
+	"panes": [
+		{
+			"pane": "canvas-files",
+			"overlays": []
+		},
+		{
+			"pane": "asks",
+			"overlays": []
+		},
+		{
+			"pane": "console",
+			"overlays": []
+		},
+		{
+			"pane": "browser",
+			"overlays": []
+		},
+		{
+			"pane": "code-review",
+			"overlays": []
+		},
+		{
+			"pane": "library",
+			"overlays": []
+		}
+	],
+	"overlay": []
+}

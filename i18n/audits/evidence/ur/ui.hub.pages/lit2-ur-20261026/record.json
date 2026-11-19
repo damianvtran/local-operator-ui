@@ -1,0 +1,132 @@
+{
+  "audit_id": "lit2-ur-20261026",
+  "date": "2026-10-26",
+  "audit_date": "2026-10-26",
+  "locale": "ur",
+  "namespace": "ui.hub.pages",
+  "key_count": 2,
+  "keys_audited": [
+    "ui.hub.pages.card.get",
+    "ui.hub.pages.card.updated"
+  ],
+  "namespace_key_count": 37,
+  "source_commit": "a9e536bf892f48ed2a87772658055abfd10caa5e",
+  "source_parent": "73af0b6855231c8e484bd4097e57fb879e10e9a8",
+  "source_base": "73af0b6855",
+  "round": 1,
+  "scope": "ur ui.hub.pages in the 25-key agents/Agent Hub literals wave at a9e536bf892f48ed2a87772658055abfd10caa5e (parent 73af0b6855): 2 new values audited; every other value in the file is byte-identical to the parent and was not re-judged. Catalogue audit of accuracy, register, terminology, typography, bidi composition and fit hints; not rendered-frame, activation or release approval.",
+  "status": "changes_requested",
+  "verdict": "changes_requested: 1 major over 2 keys",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "312a0e1276c0",
+    "model": "radient/auto",
+    "actual_model_source": "session transcript selected_model and provider_payload: provider=radient, model_id=auto; the harness reports no resolved upstream model",
+    "fallback": "none",
+    "independent_from_translator_session": true,
+    "translator_session": "Translator session not recorded in commit a9e536bf89 (authored by the branch implementer); this auditor is a different session, so independence holds by session and by having performed no translation or remediation."
+  },
+  "auditors": [
+    {
+      "agent": "i18n-auditor",
+      "model": "radient/auto",
+      "date": "2026-10-26",
+      "result": "changes_requested",
+      "instance": "f98cb709d732",
+      "findings": {
+        "blocker": 0,
+        "major": 1,
+        "minor": 0,
+        "nit": 0
+      },
+      "receipt": "i18n/receipts/ur-agents-literals-audit-f98cb709d732.json",
+      "receipt_sha256": "2c6fd8ef110e0a09b42c70fef0531cc14032258a2451cee3962d2dcffbdbac2a",
+      "scope": "changes_requested: 1 major over 2 keys (catalogue audit only).",
+      "note": "Record: i18n/audits/evidence/ur/ui.hub.pages/lit2-ur-20261026/."
+    }
+  ],
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.hub.pages.json",
+      "sha256": "c54d0aca4e8047657a61367c667c6ad9351f198a10d7380c1478745152a832b6"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.hub.pages.context.json",
+      "sha256": "d913efa6ea062fe5c04861c6db202d5bf303b7b0c1a6f9c7efbdaa4b5c095d10"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/ur/ui.hub.pages.json",
+      "sha256": "c64d666ba0e59c1e64865b23c612937a7438d76f17d468a7bbd110016641094b"
+    }
+  },
+  "files": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.hub.pages.json",
+      "sha256": "c54d0aca4e8047657a61367c667c6ad9351f198a10d7380c1478745152a832b6"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/ur/ui.hub.pages.json",
+      "sha256": "c64d666ba0e59c1e64865b23c612937a7438d76f17d468a7bbd110016641094b"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.hub.pages.context.json",
+      "sha256": "d913efa6ea062fe5c04861c6db202d5bf303b7b0c1a6f9c7efbdaa4b5c095d10"
+    }
+  },
+  "artifacts": [
+    {
+      "path": "i18n/receipts/ur-agents-literals-audit-f98cb709d732.json",
+      "sha256": "2c6fd8ef110e0a09b42c70fef0531cc14032258a2451cee3962d2dcffbdbac2a",
+      "kind": "audit receipt"
+    },
+    {
+      "path": "i18n/audits/evidence/ur/ui.agents.pages/lit2-ur-20261026/audit.log",
+      "sha256": "5eb8f075f391098b55eb447f0be06d7cf7207c24644a6e938d4e2552ca34eac5",
+      "kind": "execution log (shared by the seven namespace records of this wave)"
+    }
+  ],
+  "current_report_verdict": {
+    "status": "changes_requested",
+    "unresolved_blocker_major_count": 1,
+    "finding_ids": [
+      "F1"
+    ]
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "major",
+      "key": "ui.hub.pages.card.updated",
+      "keys": [
+        "ui.hub.pages.card.updated"
+      ],
+      "current": "اپ ڈیٹ کیا گیا {when}",
+      "proposed": "{when} اپ ڈیٹ کیا گیا",
+      "example": "3 دن پہلے اپ ڈیٹ کیا گیا",
+      "problem": "Source-order calque: the age follows the passive verb, composed as 'اپ ڈیٹ کیا گیا 3 دن پہلے'. Urdu fronts a relative-time phrase ('3 دن پہلے اپ ڈیٹ کیا گیا'). This key is one whole message precisely so the language can reorder it: the sidecar says the time may go before the verb, and the org-teams-list call-site comment names the shipped 'updated 2 دن پہلے' order as the defect the whole-message change removes. Measured with fribidi (RTL base), the age occupies the leftmost 9 columns - the end a single-line ellipsis truncates first. Shipped ui.settings.integrations...worked_when_with_tools renders 'Worked {when}' as '{when} کام کیا', the same time-first shape proposed here. Counter-evidence weighed: shipped ui.hub.teams.detail.created/updated and ui.agents.config.summary.updated use the same post-verbal shape, so this is not a term clash; but those placeholders are a formatted date or a name in label/value rows, while these three are whole single-line sentences the sidecar and call site explicitly freed for reordering.",
+      "evidence": "bidi-ur-literals.py CASE ui.hub.pages.card.updated: when log15..23 vis0..8; rtl_visual starts with the age at the left edge."
+    }
+  ],
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/ur.md",
+      "sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+    },
+    "ui_doc": {
+      "path": "docs/I18N.md",
+      "sha256": "6fc7bea71643c0dcaeaed697ecd792cfdfeb11b7816b5f8d160011e7c7df2abe"
+    }
+  },
+  "independence": "Independent auditor: I did not translate or remediate this locale and edited no catalogue, English source, context sidecar, ledger, allowance or generated file. Every value was read from the worktree at the recorded head; the files this run adds are this receipt and its evidence records only.",
+  "limitations": [
+    "Catalogue audit only. No rendered frame, screenshot, pseudo-localization, activation or release evidence is claimed.",
+    "Fit is judged from character counts and the sidecars, not from measured pixels. ui.hub.pages.card.get ('حاصل کریں', 9 cells vs 3 English) is the one value visibly longer than its English hint; no truncation was measured.",
+    "The bidi model is the app's RTL base direction (dir=rtl document root; BaseDialog title and AlertDescription carry no dir/auto override; messages.ts adds no per-string isolate per ur-activation.test.mjs).",
+    "Shipped ui.agents.detail.meta.* has no other key to compare against; 'تفویض' was judged against ui.agents.detail.delegate.label and ui.agents.upload.list.surface."
+  ],
+  "audit_notes_not_execution_log": "This record and its receipt are notes and structured claims; audit.log is the captured command transcript for this audit id. No CLI/validator output is recorded that was not actually run."
+}

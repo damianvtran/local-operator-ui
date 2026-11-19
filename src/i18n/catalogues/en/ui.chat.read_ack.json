@@ -1,0 +1,18 @@
+{
+	"ui.chat.read_ack.clause.offscreen": "scroll to the result to mark this chat read",
+	"ui.chat.read_ack.clause.pending": "marking read",
+	"ui.chat.read_ack.clause.remote": "lives on another device, and it clears when that device updates",
+	"ui.chat.read_ack.clause.remote_named": "lives on {device}, and it clears when that device updates",
+	"ui.chat.read_ack.description.offscreen": "Scroll to the result to mark this chat read.",
+	"ui.chat.read_ack.description.pending": "Marking this chat read.",
+	"ui.chat.read_ack.description.remote": "The unread mark lives on another device. It clears when that device updates.",
+	"ui.chat.read_ack.description.remote_named": "The unread mark lives on {device}. It clears when that device updates.",
+	"ui.chat.read_ack.description.unsettled": "Not marked read. {remedy}",
+	"ui.chat.read_ack.refusal.busy": "The read state is busy, so the unread mark was not cleared. {remedy}",
+	"ui.chat.read_ack.refusal.refused": "The read state could not be written, so the unread mark was not cleared. {remedy}",
+	"ui.chat.read_ack.refusal.unreachable": "{reason} The unread mark was not cleared. {remedy}",
+	"ui.chat.read_ack.refusal.unreported": "The unread mark was not cleared. {remedy}",
+	"ui.chat.read_ack.retry_remedy": "click the chat to try again",
+	"ui.chat.read_ack.retry_remedy_sentence": "Click the chat to try again.",
+	"ui.chat.read_ack.unreachable_fallback": "The app could not reach the backend."
+}

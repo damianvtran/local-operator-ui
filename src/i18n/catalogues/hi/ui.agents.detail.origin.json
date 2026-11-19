@@ -1,0 +1,5 @@
+{
+	"ui.agents.detail.origin.shipped_with_app": "यह ऐप के साथ ही आया था।",
+	"ui.agents.detail.origin.installed_starter": "इसे पैकेज्ड स्टार्टर से इंस्टॉल किया गया था।",
+	"ui.agents.detail.origin.compare_packaged": "पैकेज्ड निर्देशों से तुलना करें"
+}

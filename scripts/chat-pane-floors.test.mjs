@@ -39,11 +39,9 @@
  * 3. The right pane's capacity is the row MINUS that floor, measured from the
  *    element (not assumed in the component), and the pane has a contract floor of
  *    its own that decides whether a docked pane is possible at all.
- * 4. The sidebar's bands keep their relations at BOTH floors: the strip plus the
- *    chat floor fits inside the width the pane is said to hold its floor at, and
- *    the docked sidebar plus the chat floor fits inside the dock threshold. §I's
- *    ordering rule (chat floor, then the sidebar to the strip, then the canvas
- *    stopping docking) is only coherent while both sums hold.
+ * 4. The sidebar's render-only capacity cap keeps the chat floor and the 44px
+ *    rail inside the app's 800px minimum window, even when the stored sidebar
+ *    preference is wider. The stored preference itself is not rewritten.
  */
 
 import assert from "node:assert/strict";
@@ -58,8 +56,18 @@ const LAYOUT = "src/renderer/src/features/chat/chat-sidebar-layout.ts";
 // #677 review (D2): the slot's resolver holds the shared width to it and
 // cannot import the component that consumes it.
 const PREFS = "src/renderer/src/shared/store/ui-preferences-store.ts";
+const DIVIDER =
+	"src/renderer/src/shared/components/common/resizable-divider.tsx";
+const SCROLLBARS =
+	"src/renderer/src/shared/components/common/global-scrollbar-styles.tsx";
 
 const read = (file) => readFileSync(file, "utf8");
+
+/*
+ * A pane clamping the shared width ITSELF, outside `rightSlotPaneWidth` (review
+ * round 1, MINOR-2). Top-level so the pattern is compiled once for the file.
+ */
+const HAND_ROLLED_CLAMP = /Math\.max\([^)]*rightSlotWidth/;
 
 const bundle = await build({
 	stdin: {
@@ -80,15 +88,17 @@ const bundle = await build({
 
 const {
 	CHAT_PANE_MIN_PX,
+	CHAT_SEAM_INSET_PX,
 	CHAT_PANE_WITH_DOCK_MIN_PX,
 	SIDEBAR_COLLAPSED_WIDTH,
 	SIDEBAR_DEFAULT_WIDTH,
-	SIDEBAR_DOCK_MIN_PX,
+	PANEL_RAIL_WIDTH_PX,
 	CANVAS_PANE_MIN_PX,
-	CANVAS_PANE_MAX_PX,
+	RIGHT_SLOT_MAX_PX,
 	canvasDockWidth,
 	canvasPaneMode,
 	rightSlotDividerContract,
+	sidebarDockCapacity,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -186,8 +196,8 @@ test("the right pane's capacity is the row minus the column's floor, measured", 
 	/*
 	 * The measurement itself, pinned as a SHAPE: the floor is read back from the
 	 * element's computed style (with the constant as the unparseable fallback), and
-	 * the capacity is the row's width minus it. §I's `min(560, available - 480)` is
-	 * this subtraction with the floor at its spec value.
+	 * the capacity is the row's width minus it. `canvasDockWidth`, and every pane's
+	 * capacity, is this subtraction under the slot's one ceiling.
 	 */
 	assert.match(
 		source,
@@ -285,28 +295,42 @@ test("the run panel's contract is unchanged by the extraction (U6's numbers)", (
 		}),
 		{ resizable: false, value: 44, minWidth: 44, maxWidth: 44 },
 	);
-	// A row that can host it: 320..min(640, capacity), value the drawn width.
+	// A row that can host it: 320..min(RIGHT_SLOT_MAX_PX, capacity), value the
+	// drawn width.
 	assert.deepEqual(
 		rightSlotDividerContract({
 			capacity: 596,
 			min: 320,
-			max: 640,
+			max: RIGHT_SLOT_MAX_PX,
 			drawn: 320,
 		}),
 		{ resizable: true, value: 320, minWidth: 320, maxWidth: 596 },
 	);
 });
 
-test("the run divider can announce a value above its ceiling when a wider shared width is drawn - measured, recorded, not fixed here (D4)", () => {
+test("one ceiling means the run pane's 1600px/stored-1000 case announces value === max (D4's found-not-fixed class, closed)", () => {
 	/*
-	 * Found while implementing D4, left as measured rather than reshaped: at a
-	 * 1600px window with a stored 1000 the run pane draws 816 (row 1296 minus the
-	 * conversation's 480 floor) while its own ceiling is 640, so the contract's
-	 * value sits above its maxWidth. Either clamp lies about the drawn width or
-	 * lifting the ceiling lets a run-panel drag store past its 640 contract
-	 * maximum - a design call, so the numbers are recorded in
-	 * docs/evidence/right-slot-one-default/readings.json and on the PR. This cell
-	 * pins the CURRENT shape so a fix fails visibly rather than silently.
+	 * It used to be: at a 1600px window with a stored 1000 the run pane drew 816
+	 * (row 1296 minus the conversation's 480 floor) while its own ceiling was 640,
+	 * so the contract's value sat above its maxWidth and the PR recorded it as
+	 * found-not-fixed. With the slot's ONE ceiling the announced maximum is 1200
+	 * held to the same capacity, so value and max are one number.
+	 */
+	assert.deepEqual(
+		rightSlotDividerContract({
+			capacity: 816,
+			min: 320,
+			max: RIGHT_SLOT_MAX_PX,
+			drawn: 816,
+		}),
+		{ resizable: true, value: 816, minWidth: 320, maxWidth: 816 },
+	);
+	/*
+	 * THE FUNCTION STILL REFUSES TO CLAMP A DRAWN VALUE ABOVE `max`: called
+	 * directly with a narrower ceiling, value stays the drawn width (clamping it
+	 * would announce a width the pane is not drawn at) and maxWidth stays the
+	 * ceiling. That is a property of the contract, not a state the app produces -
+	 * `rightSlotPaneWidth` holds every caller's width to the one ceiling.
 	 */
 	assert.deepEqual(
 		rightSlotDividerContract({
@@ -349,9 +373,48 @@ test("the browser and console separators read the contract, and a write the row 
 	);
 });
 
-test("the canvas docks at min(560, available - 480), or stops docking below 400 (§I)", () => {
+test("every effective*PanelWidth in the slot is the shared width held by rightSlotPaneWidth", () => {
+	const content = read(CONTENT);
+	/*
+	 * THE WIRING HALF OF THE ONE-BAND RULE (review round 1, MINOR-2). The resolver
+	 * tests drive `resolveRightSlotWidth`, and this file greps `chat-content.tsx`
+	 * elsewhere, but nothing pinned that the four panes this component DRAWS take
+	 * their width from `rightSlotPaneWidth`. Reverting one of them to a hand-rolled
+	 * clamp (`Math.max(floor, rightSlotWidth || DEFAULT)`) leaves the slot's
+	 * separator announcing one width and that pane drawing another - the exact drift
+	 * the one band removes - and every other assertion here still passes.
+	 */
+	for (const [name, floor] of [
+		["effectiveRunPanelWidth", "RUN_PANEL_MIN_PX"],
+		["effectiveBrowserPanelWidth", "BROWSER_PANEL_MIN_PX"],
+		["effectiveConsolePanelWidth", "CONSOLE_PANEL_MIN_PX"],
+		["effectiveCodePanelWidth", "RUN_PANEL_MIN_PX"],
+	])
+		assert.match(
+			content,
+			new RegExp(
+				`const ${name} = rightSlotPaneWidth\\(\\s*${floor},\\s*rightSlotWidth,?\\s*\\);`,
+			),
+			`\`${name}\` no longer comes from \`rightSlotPaneWidth(${floor}, rightSlotWidth)\`: the pane would draw a width the slot's separator does not announce`,
+		);
+	/*
+	 * Exactly four, and no pane clamped beside them: a fifth call or a bare
+	 * `Math.max(...rightSlotWidth...)` is the second way this file exists to stop.
+	 */
+	assert.equal(
+		content.split("rightSlotPaneWidth(").length - 1,
+		4,
+		"the slot draws from exactly the four `rightSlotPaneWidth` calls above",
+	);
+	assert.ok(
+		!HAND_ROLLED_CLAMP.test(content),
+		"a pane clamps `rightSlotWidth` itself again; the slot's floor and ceiling belong to `rightSlotPaneWidth`",
+	);
+});
+
+test("the canvas docks at min(RIGHT_SLOT_MAX_PX, available - 480), or stops docking below 400 (§I)", () => {
 	assert.equal(CANVAS_PANE_MIN_PX, 400);
-	assert.equal(CANVAS_PANE_MAX_PX, 560);
+	assert.equal(RIGHT_SLOT_MAX_PX, 1200);
 	/*
 	 * THE FOUR ROWS THE SCENE IS RUN AT, as arithmetic instead of a frame: the dock
 	 * threshold's row (a 260px sidebar in a 1024 window), the strip's rows at 960 and
@@ -361,9 +424,9 @@ test("the canvas docks at min(560, available - 480), or stops docking below 400 
 	const cases = [
 		{
 			row: 1120,
-			dock: 560,
+			dock: 640,
 			mode: "docked",
-			why: "1380 with the sidebar docked: capped at §I's 560",
+			why: "1380 with the sidebar docked: the row leaves 640, under both the default and the ceiling",
 		},
 		{
 			row: 764,
@@ -389,14 +452,22 @@ test("the canvas docks at min(560, available - 480), or stops docking below 400 
 		assert.equal(canvasPaneMode(row), mode, `${why}: canvasPaneMode(${row})`);
 	}
 	/*
-	 * THE TWO EDGES. Exactly 560 is still docked (the ceiling is a width the pane may
-	 * hold, not one it may not exceed), exactly 400 is still docked (the floor is
-	 * inclusive), and a row narrower than the chat floor itself gives a ZERO dock
-	 * width rather than a negative one - the caller reads the mode, and a negative
-	 * width would render a pane with a divider and no pixels.
+	 * THE THREE EDGES. A row wide enough to leave the slot its whole ceiling docks
+	 * at the ceiling, not above it (one cap for every pane); exactly 400 is still
+	 * docked (the floor is inclusive); and a row narrower than the chat floor itself
+	 * gives a ZERO dock width rather than a negative one - the caller reads the
+	 * mode, and a negative width would render a pane with a divider and no pixels.
 	 */
 	assert.equal(
-		canvasPaneMode(CHAT_PANE_MIN_PX + CANVAS_PANE_MIN_PX + CANVAS_PANE_MAX_PX),
+		canvasDockWidth(CHAT_PANE_MIN_PX + RIGHT_SLOT_MAX_PX),
+		RIGHT_SLOT_MAX_PX,
+	);
+	assert.equal(
+		canvasDockWidth(CHAT_PANE_MIN_PX + RIGHT_SLOT_MAX_PX + 400),
+		RIGHT_SLOT_MAX_PX,
+	);
+	assert.equal(
+		canvasPaneMode(CHAT_PANE_MIN_PX + CANVAS_PANE_MIN_PX + RIGHT_SLOT_MAX_PX),
 		"docked",
 	);
 	assert.equal(canvasPaneMode(CHAT_PANE_MIN_PX + CANVAS_PANE_MIN_PX), "docked");
@@ -408,20 +479,15 @@ test("the canvas docks at min(560, available - 480), or stops docking below 400 
 	assert.equal(canvasPaneMode(400), "overlay");
 });
 
-test("the sidebar's bands keep their relations at both floors", () => {
-	assert.equal(SIDEBAR_DOCK_MIN_PX, 1024);
+test("the sidebar's render cap preserves the chat floor at the app minimum", () => {
 	assert.equal(SIDEBAR_COLLAPSED_WIDTH, 56);
 	assert.equal(SIDEBAR_DEFAULT_WIDTH, 260);
-	for (const floor of [appliedChatFloor().declared, CHAT_PANE_MIN_PX]) {
-		assert.ok(
-			SIDEBAR_COLLAPSED_WIDTH + floor <= CHAT_PANE_WITH_DOCK_MIN_PX,
-			`the icon strip (${SIDEBAR_COLLAPSED_WIDTH}) plus a ${floor}px chat floor does not fit inside \`CHAT_PANE_WITH_DOCK_MIN_PX\` (${CHAT_PANE_WITH_DOCK_MIN_PX})`,
-		);
-		assert.ok(
-			SIDEBAR_DEFAULT_WIDTH + floor <= SIDEBAR_DOCK_MIN_PX,
-			`the docked sidebar (${SIDEBAR_DEFAULT_WIDTH}) plus a ${floor}px chat floor does not fit inside the dock threshold (${SIDEBAR_DOCK_MIN_PX})`,
-		);
-	}
+	assert.equal(PANEL_RAIL_WIDTH_PX, 44);
+	const capacity = sidebarDockCapacity(800);
+	assert.equal(capacity, 276);
+	assert.equal(capacity + CHAT_PANE_MIN_PX + PANEL_RAIL_WIDTH_PX, 800);
+	/* A wide window does not cap the user's 220-560px drag range further. */
+	assert.equal(sidebarDockCapacity(1380), 560);
 });
 
 test("the layout module owns the bands the shell reads", () => {
@@ -429,16 +495,180 @@ test("the layout module owns the bands the shell reads", () => {
 	for (const name of [
 		"CHAT_PANE_MIN_PX",
 		"CANVAS_PANE_MIN_PX",
-		"CANVAS_PANE_MAX_PX",
+		"RIGHT_SLOT_MAX_PX",
 		"CHAT_PANE_WITH_DOCK_MIN_PX",
-		"SIDEBAR_DOCK_MIN_PX",
 		"SIDEBAR_COLLAPSED_WIDTH",
 		"SIDEBAR_DEFAULT_WIDTH",
-		"SIDEBAR_SHEET_WIDTH",
 	])
 		assert.match(
 			layout,
 			new RegExp(`export const ${name}\\b`),
 			`${name} is no longer exported from \`chat-sidebar-layout.ts\`; the bands and this test read it from there`,
 		);
+	assert.match(
+		layout,
+		/export function sidebarDockCapacity\b/,
+		"the render-only dock capacity must stay in the shipped layout module",
+	);
+});
+
+/* --------------------------- the seam's clearance --------------------------- */
+
+/**
+ * Tailwind's spacing scale, in pixels: one step is 0.25rem at the 16px root the
+ * renderer runs at. The band's classes are the source - there is no constant to
+ * import for them - so the parse is what makes them readable by a test at all.
+ */
+const tailwindPx = (suffix) => Number(suffix) * 4;
+
+/*
+ * The patterns the readers below share, named at module scope so each match says
+ * what it is FOR at the site that uses it.
+ */
+const BAND_WIDTH = /"top-0 h-full w-(\d+(?:\.\d+)?) cursor-col-resize"/;
+const BAND_LEFT = /"-left-(\d+(?:\.\d+)?)"/;
+const BAND_RIGHT = /"-right-(\d+(?:\.\d+)?)"/;
+const SCROLLBAR_DECLARATION = /\*::-webkit-scrollbar \{\n\twidth: 8px;/;
+const RIGHT_PANE_DOCKED = /const rightPaneDocked =([\s\S]*?);\n/;
+/*
+ * The chat column's inner surface: from its ref to the close of that element's
+ * own opening tag. The slice is the tag rather than a window to `className="`,
+ * because the prose above the attribute legitimately NAMES that attribute and a
+ * lazy window would stop inside the comment (measured: the first draft did).
+ */
+const seamSurface = () => {
+	const source = read(CONTENT);
+	const from = source.indexOf("ref={chatContainerRef}");
+	assert.notEqual(from, -1, "the chat column's inner surface lost its ref");
+	const close = source.indexOf(">", from);
+	assert.notEqual(
+		close,
+		-1,
+		"the chat column's inner surface has no tag close",
+	);
+	const tag = source.slice(from, close);
+	assert.ok(
+		tag.includes('className="panel-top-pad'),
+		"the chat column's inner surface no longer wears its literal `panel-top-pad` class list; `lane-leading.test.mjs` matches that string to keep every full-height column padded off the lane",
+	);
+	return tag;
+};
+/* The inset as the element applies it: a named pixel, conditional on the gate. */
+const SEAM_STYLE =
+	/rightPaneDocked\s*\?\s*\{ paddingInlineEnd: CHAT_SEAM_INSET_PX \}\s*: undefined/;
+
+/** The separator's vertical hit band: its width and how far it reaches in. */
+const verticalBand = () => {
+	const source = read(DIVIDER);
+	const width = BAND_WIDTH.exec(source);
+	assert.ok(
+		width,
+		"the separator no longer declares its vertical band (`top-0 h-full w-N cursor-col-resize`), so the width the chat column must clear cannot be read",
+	);
+	const left = BAND_LEFT.exec(source);
+	const right = BAND_RIGHT.exec(source);
+	assert.ok(
+		left && right,
+		"the separator no longer declares both vertical offsets (`-left-N`/`-right-N`), so the band is no longer known to be centred and half its width is not its reach",
+	);
+	/*
+	 * The reach is HALF the width only while the band is centred. Asserted rather
+	 * than assumed: an asymmetric band (all of it on one side) is a different
+	 * geometry and would quietly invalidate the clearance below.
+	 */
+	assert.equal(
+		tailwindPx(left[1]),
+		tailwindPx(right[1]),
+		`the separator's vertical band is no longer centred (left ${left[1]} vs right ${right[1]}), so half its width is not the reach the seam inset has to clear`,
+	);
+	return {
+		width: tailwindPx(width[1]),
+		reach: tailwindPx(left[1]),
+	};
+};
+
+test("the separator's reach into the chat column is cleared before the scrollbar", () => {
+	const band = verticalBand();
+	/*
+	 * THE INVARIANT, and it is the operator's report as arithmetic: the band
+	 * reaches `band.reach` px into the chat column, and the transcript's
+	 * scrollbar is 8px wide (`*::-webkit-scrollbar { width: 8px }`) and sits
+	 * flush against the seam. Anything at or below `band.reach` puts the band on
+	 * top of the bar - a drag that starts on the bar resizes the pane instead of
+	 * scrolling - so the clearance must EXCEED the reach, not merely meet it.
+	 *
+	 * The number is IMPORTED (`CHAT_SEAM_INSET_PX`, beside `CHAT_PANE_MIN_PX` in
+	 * the layout module), not parsed: a pixel the band is measured against is a
+	 * value, and a value belongs in one place.
+	 */
+	assert.ok(
+		Number.isFinite(CHAT_SEAM_INSET_PX),
+		"`CHAT_SEAM_INSET_PX` is no longer exported from `chat-sidebar-layout.ts`; the chat column's seam clearance has no named value, so the band's reach is checked against nothing",
+	);
+	assert.ok(
+		CHAT_SEAM_INSET_PX > band.reach,
+		`the separator's band reaches ${band.reach}px into the chat column (${band.width}px wide, centred) but the column only gives back ${CHAT_SEAM_INSET_PX}px: the band covers the transcript's scrollbar again`,
+	);
+	assert.match(
+		read(SCROLLBARS),
+		SCROLLBAR_DECLARATION,
+		"the app's classic scrollbar is no longer declared as 8px in `global-scrollbar-styles.tsx`; the seam inset above was measured against it",
+	);
+	const surface = seamSurface();
+	/*
+	 * The inset is CONDITIONAL on a separator being drawn: with no pane open there
+	 * is nothing to clear, and an unconditional inset would move every chat
+	 * surface off the seam for no reason. Round 1 shipped the wrong gate
+	 * (`canvasDocked` alone) and this case plus the gate's own case below are what
+	 * closed it.
+	 */
+	assert.match(
+		surface,
+		SEAM_STYLE,
+		"the chat column's inner surface no longer applies `CHAT_SEAM_INSET_PX` as `rightPaneDocked ? { paddingInlineEnd: … } : undefined`; applied unconditionally it narrows every chat surface when no pane is open",
+	);
+});
+
+/*
+ * THE GATE'S DEFINITION, not just its name (review round 1, BLOCKER). Round 1
+ * shipped `rightPaneDocked = canvasDocked || ...`, and `canvasDocked` only says
+ * the row is WIDE ENOUGH to dock a canvas - so the inset applied with every pane
+ * closed, on every window wide enough to dock one. The cases below read the
+ * definition and require the two canvas families to carry their OPEN flag, the
+ * way the divider blocks themselves do (`{isCanvasOpen && (` around
+ * `{canvasDocked && <ResizableDivider`), and refuse a bare `canvasDocked`
+ * anywhere else (review round 2's MINOR).
+ */
+test("the seam inset is gated on a separator actually being drawn", () => {
+	const definition = read(CONTENT).match(RIGHT_PANE_DOCKED);
+	assert.ok(
+		definition,
+		"`rightPaneDocked` is no longer a named constant in `chat-content.tsx`; the seam inset's gate cannot be read",
+	);
+	const flattened = definition[1].replace(/\s+/g, " ");
+	for (const pair of [
+		"isCanvasOpen && canvasDocked",
+		"sessionAsksOpen && canvasDocked",
+	])
+		assert.ok(
+			flattened.includes(pair),
+			`\`rightPaneDocked\` no longer carries \`${pair}\`: \`canvasDocked\` alone means the row is wide enough to dock, which is true with the canvas closed - the inset then applies to every chat on a wide window (review round 1, BLOCKER)`,
+		);
+	for (const flag of [
+		"isRunPanelOpen",
+		"isBrowserPaneOpen",
+		"isConsolePaneOpen",
+		"isCodeReviewPaneOpen",
+	])
+		assert.ok(
+			definition[1].includes(flag),
+			`\`rightPaneDocked\` dropped \`${flag}\`, so a docked pane no longer earns the inset and its scrollbar goes back under the separator's band`,
+		);
+	const stripped = definition[1]
+		.replace(/\(\s*isCanvasOpen && canvasDocked\s*\)/g, "")
+		.replace(/\(\s*sessionAsksOpen && canvasDocked\s*\)/g, "");
+	assert.ok(
+		!/\bcanvasDocked\b/.test(stripped),
+		"`rightPaneDocked` still reads `canvasDocked` outside the canvas families' open pairs; a bare `canvasDocked` is true with every pane closed and insets every chat on a wide window",
+	);
 });

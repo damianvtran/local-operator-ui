@@ -1,0 +1,18 @@
+{
+	"auditor": "i18n-auditor",
+	"model": "deepseek/deepseek-flash",
+	"instance": "95bc536f37d9-teams",
+	"namespace": "ui.hub.teams",
+	"status": "passed",
+	"result": "clean",
+	"sha256": {
+		"en": "b9674e6bb1f862d380d45568204abcd8735eb08782bfb1351f469019b4e583b8",
+		"ur": "60680030ea7a7614e6ce7176d5c8dd9a654c56eb9f105c03f16af05d661afcc3"
+	},
+	"findings": [],
+	"locale": "ur",
+	"provenance": {
+		"original_receipt": "i18n/receipts/ur-hub-teams-r1-95bc536f.json",
+		"note": "receipt normalised into the ledger contract by the programme manager; findings and identity text carried unchanged"
+	}
+}

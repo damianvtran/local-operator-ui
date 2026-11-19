@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "agent": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "audit-1745-tag-groups-ur-20261107",
+  "locale": "ur",
+  "date": "2026-11-07",
+  "status": "passed",
+  "namespace": "ui.chat.tag_groups",
+  "keys_read": 2,
+  "sha256": {
+    "en": "bb046f0781f89559eeeb9382a8ece731281d58d8872f342e0ca09e2229f7d3ca",
+    "ur": "b367e19302a9e6849e1ffbf443e59b8a8452a7eec22608bf1a6a4aff5105f79f"
+  },
+  "findings": [],
+  "scope": "PR #1745 ui.chat.tag_groups at 2209af742306909800ae675df54d8df4dc5b3074: full 2-key namespace (collapse, expand), en catalogue + en context, sibling collapse/expand keys, ui.chat.tags.untagged substitution",
+  "independence": "lopdev translation-auditor, separate session (f015890e4661) from the PR coder that translated; same served model family (anthropic/claude-opus-5-5) disclosed; verdict rebuilt from the English source, the en context, sibling keys, the core glossary and the locale style guide.",
+  "references": "co",
+  "checks": "placeholders {name} exactly once per key, no ICU/plural arms (none in source; CLDR categories not applicable), key set == en, zero Unicode Cf (bidi/format) code points, aria-label + title only (no fixed width budget), Untagged substitution read in-locale",
+  "verdict": "ur: passed — سمیٹیں/پھیلائیں is the pair the sidebar already uses (ui.chat.sidebar.entity.*_chats, collapse/expand_sidebar); respectful imperative, object-first order correct; {name} intact; no manual bidi controls (zero Cf code points in the bytes), a Latin tag name is isolated at runtime per the ur RTL section. Clean."
+}

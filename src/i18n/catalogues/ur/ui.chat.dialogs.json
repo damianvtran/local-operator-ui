@@ -1,0 +1,21 @@
+{
+	"ui.chat.dialogs.delete_title": "یہ گفتگو حذف کریں؟",
+	"ui.chat.dialogs.delete_action": "حذف کریں",
+	"ui.chat.dialogs.archive_action": "آرکائیو کریں",
+	"ui.chat.dialogs.archive_title_named": "“{title}” کو آرکائیو کریں؟",
+	"ui.chat.dialogs.archive_title_unnamed": "یہ گفتگو آرکائیو کریں؟",
+	"ui.chat.dialogs.archive_message": "یہ آپ کی فہرستوں سے ہٹ جاتی ہے۔ آپ {seconds, plural, one {# سیکنڈ} other {# سیکنڈ}} تک اس عمل کو واپس کر سکتے ہیں؛ اس کے بعد چیٹس کے اوپر والے تلاش کے خانے میں تلاش کریں، “{include_archived}” آن کریں، پھر اسے آرکائیو سے بحال کریں۔",
+	"ui.chat.dialogs.cancel": "منسوخ کریں",
+	"ui.chat.dialogs.options.clear_confirm": "صاف کریں",
+	"ui.chat.dialogs.options.clear_conversation": "گفتگو صاف کریں",
+	"ui.chat.dialogs.options.clear_message": "اس کا ہر پیغام اس کمپیوٹر سے حذف ہو جاتا ہے اور اسے واپس نہیں لایا جا سکتا۔ خود ایجنٹ پر کوئی اثر نہیں پڑتا۔",
+	"ui.chat.dialogs.options.clear_title": "یہ گفتگو صاف کریں؟",
+	"ui.chat.dialogs.options.description": "اس ایجنٹ کی ترتیبات حسب ضرورت بنائیں",
+	"ui.chat.dialogs.options.title": "چیٹ کے اختیارات",
+	"ui.chat.dialogs.make_temporary_title": "اس چیٹ کو عارضی بنائیں؟",
+	"ui.chat.dialogs.make_temporary_deleted": "یہ ابھی آپ کی چیٹس سے ہٹ جائے گی۔ مقررہ وقت تک غیر فعال رہنے پر (پہلے سے طے شدہ 30 منٹ) یہ چیٹ، اس کے پیغامات اور منسلکات حذف ہو جائیں گے۔",
+	"ui.chat.dialogs.make_temporary_kept": "محفوظ رہیں گی: وہ فائلیں جو اس نے آپ کے کمپیوٹر پر بدلیں۔",
+	"ui.chat.dialogs.make_temporary_confirm": "عارضی بنائیں",
+	"ui.chat.dialogs.keep_and_link": "رکھیں اور منسلک کریں",
+	"ui.chat.dialogs.keep_and_pin": "رکھیں اور پن کریں"
+}

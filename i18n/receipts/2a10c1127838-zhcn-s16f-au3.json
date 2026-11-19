@@ -1,0 +1,106 @@
+{
+ "schema": 1,
+ "auditor": "i18n-auditor (lopdev team; independent of the translator and of every earlier audit on this row)",
+ "model": "deepseek/deepseek-flash",
+ "fallback": "none observed in this session (harness model header deepseek/deepseek-flash)",
+ "instance": "2a10c1127838-zhcn-s16f-au3",
+ "session": "2a10c1127838",
+ "locale": "zh-CN",
+ "namespace": "ui.chat.canonical",
+ "branch": "feat/i18n-s16f-generation-card-labels",
+ "head": "8180eff1f705eb79d4df5123d6108c539b585b2e",
+ "base": "9ef579fe12abe99409c4ed0b52a3d125afdc1b10",
+ "pr": 1876,
+ "pr_note": "gh pr view 1876 --json headRefOid,state,isDraft -> 8180eff1…, OPEN, non-draft; equals worktree HEAD",
+ "date": "2026-11-12",
+ "audit_kind": "delta audit of merged bytes: 5 main-added loading.* keys + the 10 PR-added generation-card/sound keys, plus a namespace-wide value-integrity proof against both parents",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "keys_read": 15,
+ "keys_read_note": "15 of 467 keys read in full (all mechanical + accuracy + idiom + register + terminology + fit checks). The other 452 keys were NOT re-audited: a script proved 457/457 non-PR values byte-identical to origin/main and 10/10 PR-added values identical to 107ff1dd, with 0 changes to the rest.",
+ "findings_count": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 0,
+  "nit": 2
+ },
+ "sha256": {
+  "zh-CN": "35f8058839549d4a8be28792c279784c75a624b9c076fc98d359bae1fe1db12c",
+  "en": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
+  "context": "8f56e0d2b384c6b41add57a64e6c863e565cb61d5a7c0de482d42f380be3acfe"
+ },
+ "reference_sha256": {
+  "glossary": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "style_guide": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+ },
+ "inputs": {
+  "source": "src/i18n/catalogues/en/ui.chat.canonical.json",
+  "context": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+  "target": "src/i18n/catalogues/zh-CN/ui.chat.canonical.json",
+  "parents": {
+   "origin_main": "9ef579fe12abe99409c4ed0b52a3d125afdc1b10",
+   "pr_base_audited": "107ff1dd0bddd0dbefa60e27cb179ee636d923a1"
+  },
+  "glossary": "~/local-operator/i18n/glossary.md",
+  "style_guide": "~/local-operator/i18n/style-guides/zh-CN.md"
+ },
+ "translator": {
+  "agent": "i18n-translator",
+  "model": "anthropic/claude-sonnet-5-5 (10 PR keys, per the ledger row); main's 5 loading.* keys landed with main's own audited translations",
+  "note": "named by the audit brief and the ledger row; this auditor translated nothing, edited nothing and did not back-translate"
+ },
+ "independence": "Separate session (2a10c1127838) from the translator and from every earlier audit on this row (s16a-07b0fc8f8d80, s16f-r2-4184f7fa45be). Read only: the English catalogue and its context sidecar, the zh-CN catalogue bytes, the locale style guide and glossary, sibling zh-CN namespaces for precedent, the two parent commits' files, and other locales' reports as context. Re-derived every cited precedent from the repo rather than trusting a prior report.",
+ "verified": [
+  "valid JSON, 467 keys, key set and key order identical to en (0 added, 0 dropped)",
+  "all 467 zh-CN messages and all 467 English messages parse with the repo's own parser (@formatjs/icu-messageformat-parser)",
+  "ICU element skeleton identical to en for all 467 keys; placeholder name/type/style sets identical; every select field carries the same three branches (failed/cancelled/other)",
+  "every zh-CN plural has `other` and no one/few/many/two/zero (69 plurals, as many as en); exact `=0`/`=1` selectors kept wherever en uses them",
+  "rendered the 12 delta combinations with intl-messageformat at zh-CN: no throw, no stray brace/pound, =0 hides 已停止/状态未知, attention clause only with has_attention=yes",
+  "no code spans, markup, printf tokens or identifiers in en that the target drops",
+  "typography: U+2026 pairs (……) per the zh-CN guide, no ASCII ellipsis, no half-width , ; : ( ) in rendered copy, no space between CJK and Latin/digit runs, NFC, no bidi control characters",
+  "terminology: 对话 for conversation (此对话/未命名对话), 会话 for session (glossary), 费用 for cost (glossary), 声音 for a sound artefact (sound.player_failed), 项 for items and 张/个 classifiers per the guide, 另一台设备 for the user's other device (ui.chat.device_move.other_device), 同步 for sync (tool_row.verb.synced_agents)",
+  "cell widths (wide glyph = 2): loading labels 12–22, item_status 97 with placeholders (longest literal clause 13/17), latest_update 87, costs 8–32, sound_fallback 10 — no numeric maxCells/maxChars exists in this namespace's sidecar (0 of 467 entries), and every delta string is shorter than its English counterpart in cells",
+  "merge integrity: 457/457 non-PR values byte-identical to origin/main (0 changed, 0 missing, 0 extra); 10/10 PR-added values identical to 107ff1dd; English side unchanged for all 467",
+  "context-parity.mjs exit 0; ledger-check.mjs reports this row pending (expected: bytes are new, no auditor recorded yet) alongside the six other locales' pending canonical rows"
+ ],
+ "notes": "Verdict on the merged bytes: pass. The 10 PR keys were already corrected in round 1 (word-order calques 图片 2 / 声音 2 -> 第{position}张图片 / 个声音; the space before $0 removed) and round 2 passed them; I re-derived the precedents myself (lightbox.show_image 显示第{index}张图片（共{count}张）, fold.unit_separator ' · ', sound.player_failed 无法播放此声音) and agree. The 5 main-added loading.* values are byte-identical to the audited pre-rename strings they replace (placeholder.loading, placeholder.region_label, older_history.loading + the ellipsis English added) and to the transcript.stale_caption phrase 正在检查新消息, so they read as one family with the rest of the catalogue. Only two NITs, both non-blocking.",
+ "findings": [
+  {
+   "id": "N1",
+   "severity": "NIT",
+   "key": "ui.chat.canonical.sound.batch.latest_update",
+   "current": "最近更新：{name}（第{item, number, ::group-off}项，共{total, number, ::group-off}项）。",
+   "problem": "最近更新 is this app's settled label for `recently updated` (ui.hub.pages.sort.recently_updated = 最近更新), i.e. a sort/timestamp label, while the message reports which request spoke last. A reader can take the colon as introducing a timestamp rather than a name.",
+   "suggestion": "最新动态：{name}（第{item, number, ::group-off}项，共{total, number, ::group-off}项）。 — same length, names the line as the newest activity rather than a modification time.",
+   "blocking": false
+  },
+  {
+   "id": "N2",
+   "severity": "NIT",
+   "key": "ui.chat.canonical.sound.cost.estimated_zero",
+   "current": "估算费用为$0；最终计费尚未确认。",
+   "problem": "计费 is used as a verb elsewhere in this catalogue (sound.stop.warning 则会计费 / 免于计费, ui.chat.slash.arg.price_usage_based 按用量计费), so 最终计费 reads as the billing action being unconfirmed, where the English sentence is about the final charge amount.",
+   "suggestion": "估算费用为$0；最终收费尚未确认。 — 收费 keeps the sentence about the amount, and 未收费 is already the noun form used by its sibling sound.cost.no_charge.",
+   "blocking": false
+  }
+ ],
+ "considered_and_accepted": [
+  "声音 vs 音频: sound.batch_attachment_unavailable uses 音频 for the attachment and sound.stop.warning for audio output, but sound.player_failed fixes 声音 as the noun for a sound artefact, which media.sound_label and the player label follow. Not a violation, and the classifier 个 is the guide's documented default (an audio clip's natural classifier here is 个, not 段).",
+  "不存在 rounding of 'not yet known' to 尚不明确 in both cost lines: the sibling relation (费用 / 总费用) and the 'no promise an amount will arrive' nuance hold.",
+  "项 in latest_update/summary is the guide's classifier for items; 已完成{n}项 / 失败{n}项 mirror the parallel stats order and keep the =0 rows visible as the sidecar requires.",
+  "失败 · {code} (tool_row.bridge.outcome.failed) leads with the state because it is that row's title; item_status appends the state after the item's own name, which is what the sidecar asks for."
+ ],
+ "artifacts": {
+  "report": "2a10c1127838/scratchpad/report.md",
+  "log": "2a10c1127838/scratchpad/audit.log",
+  "mechanical_script": "2a10c1127838/scratchpad/icu-check.cjs",
+  "integrity_script": "2a10c1127838/scratchpad/integrity.py",
+  "runbook": "2a10c1127838/scratchpad/run-audit.sh"
+ },
+ "honesty_notes": [
+  "audit_notes_not_execution_log: audit.log is the real command/output capture; this receipt and report.md describe it and claim no command output beyond it.",
+  "The worktree was read-only throughout: git status --porcelain was empty before and after every command; no file was created, edited or committed there.",
+  "Not exercised: rendered UI fit (no Electron window, no screenshot), activation/eligibility, and the whole-suite gates generate.mjs --check / check-coverage.mjs / locale-parity.test.mjs (CI's lane; the English side is byte-identical to origin/main so generation cannot move).",
+  "ledger-check.mjs fails on this tree for 14 pre-integration findings across 7 locales, all 'pending, no auditor recorded' — this audit's own row is one of them until the integrator assembles the receipt."
+ ]
+}

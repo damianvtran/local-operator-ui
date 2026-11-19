@@ -1,13 +1,16 @@
 import { format } from "date-fns";
+import { t } from "../../../../i18n/messages";
 
 import { formatDate, formatDateTime, formatTime } from "@shared/i18n";
 
 /**
  * Formats a date/time string based on when it occurred
- * - Today: just time (h:mm a)
- * - Yesterday: "Yesterday"
- * - Within the last 7 days: Day of week (e.g., "Monday")
- * - Older: Full date (yyyy-MM-dd)
+ * - Today: just the clock (the live locale's hour cycle: `3:42 PM`, `15:42`)
+ * - Yesterday: the keyed word (`ui.common.time.yesterday`)
+ * - Within the last 7 days: the weekday name in the live locale
+ * - Older: ISO `yyyy-MM-dd`, KEPT: a numeric year-month-day stamp is
+ *   unambiguous in every language and its digits are ASCII, so it is not
+ *   English text; a locale-shaped numeric date would also change English
  *
  * @param dateTimeString The date/time string to format
  * @returns Formatted date/time string
@@ -29,22 +32,26 @@ export const formatMessageDateTime = (
 
 		// Check if the message was sent today
 		if (messageDate.toDateString() === now.toDateString()) {
-			return format(messageDate, "h:mm a"); // Today: just time
+			// Today: just the clock, in the live locale's own hour cycle. date-fns'
+			// `h:mm a` was an English 12-hour `PM` in every language (a French
+			// window read `3:42 PM`); the layer prints `15:42` there and keeps
+			// `3:42 PM` in English.
+			return formatTime(messageDate, { hour: "numeric", minute: "2-digit" });
 		}
 
 		// Check if the message was sent yesterday
 		if (messageDate.toDateString() === yesterday.toDateString()) {
-			return "Yesterday"; // Yesterday
+			return t("ui.common.time.yesterday");
 		}
 
 		// Check if the message was sent this week (within the last 7 days)
 		const oneWeekAgo = new Date(now);
 		oneWeekAgo.setDate(now.getDate() - 7);
 		if (messageDate > oneWeekAgo) {
-			return format(messageDate, "EEEE"); // Day of week
+			return formatDate(messageDate, { weekday: "long" }); // Day of week
 		}
 
-		// Otherwise, show the full date
+		// Otherwise, show the full date (ISO, language-neutral; see the header)
 		return format(messageDate, "yyyy-MM-dd");
 	} catch (error) {
 		console.error("Error formatting date:", error);
@@ -108,10 +115,11 @@ export const formatCalendarDate = (dateTimeString?: string | Date): string => {
  * The DATE half goes through the i18n formatter layer, for the reason
  * `formatCalendarDate` above documents at length: a hardcoded `MMM d` is
  * English and month-first, and the platform's formatter is the app's only
- * answer for a user whose language orders the day first. The TIME half is
- * 12-hour BY REQUEST rather than by locale: the operator asked for am/pm, and a
- * reader's 24-hour preference is not the preference that was stated. `hour12`
- * is therefore forced instead of left to the locale's own hour cycle.
+ * answer for a user whose language orders the day first. The TIME half uses the
+ * ACTIVE LANGUAGE'S hour cycle: English is 12-hour (`9:28 PM`, the am/pm the
+ * operator asked for) and French is 24-hour (`21:28`). It used to force
+ * `hour12: true` for every language, which printed an English `PM` inside a
+ * French date (`7 novembre 2026 à 9:28 PM`) - the census defect this fixes.
  *
  * `now` is a parameter so the tests can stand on a fixed instant. The two
  * boundaries this function has - the calendar day and the calendar year - are
@@ -136,7 +144,6 @@ export const formatTurnTimestamp = (
 		const time = formatTime(date, {
 			hour: "numeric",
 			minute: "2-digit",
-			hour12: true,
 		});
 
 		// Calendar days, not elapsed hours: 23:50 yesterday is "Yesterday" at
@@ -147,7 +154,7 @@ export const formatTurnTimestamp = (
 		const yesterday = new Date(now);
 		yesterday.setDate(now.getDate() - 1);
 		if (date.toDateString() === yesterday.toDateString()) {
-			return `Yesterday ${time}`;
+			return t("ui.common.time.yesterday_at", { time });
 		}
 
 		const monthDay = formatDate(date, {
@@ -177,22 +184,14 @@ export const formatTurnTimestamp = (
  * than a day, so this keeps the time and drops the seconds, which are never
  * what anyone is reading a "last modified" field for.
  *
- * `hour12` IS OPT-IN AND OFF BY DEFAULT, because the callers want different
- * clocks and both are right: a settings metadata field is read by someone
- * comparing timestamps in their own locale, so it keeps the locale's hour cycle
- * (24-hour on a 24-hour machine). A TURN STAMP's title is read by someone
- * looking at a stamp whose own text is forced 12-hour by the operator's request,
- * so leaving it to the locale printed `15 September 2026 at 15:42` under the
- * text `15 Sept, 3:42 pm` - one instant, two conventions, in one element on a
- * day-first 24-hour machine (review round 1, R3). The option exists so that
- * caller can agree with itself without moving every other caller's output.
+ * The clock is the active language's own cycle, for every caller: a turn
+ * stamp's title and its visible text (`formatTurnTimestamp`) both follow the
+ * language, so they cannot state one instant in two conventions (review round
+ * 1, R3). The `hour12` option this used to take, to force am/pm onto a stamp
+ * title, is gone with the forcing it served.
  */
 export const formatCalendarDateTime = (
 	dateTimeString?: string | Date,
-	options?: {
-		/** Force the 12-hour clock (a stamp's own text is am/pm by request). */
-		hour12?: boolean;
-	},
 ): string => {
 	if (!dateTimeString) return "";
 
@@ -208,7 +207,6 @@ export const formatCalendarDateTime = (
 			day: "numeric",
 			hour: "numeric",
 			minute: "2-digit",
-			...options,
 		});
 	} catch (error) {
 		console.error("Error formatting calendar date-time:", error);

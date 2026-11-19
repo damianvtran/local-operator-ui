@@ -1,0 +1,452 @@
+{
+  "locale": "zh-CN",
+  "head": "31710e01b6b6e1e0aae6ed56d5e4467de6611740",
+  "base": "0ad5542379a349a98e0a8d602dbd992746fd40a2",
+  "namespaces": {
+    "ui.agents.pages": {
+      "sha256": {
+        "en": "0b2e8e8a93001604df2d7a49abe57c8070f29ef30b50209bc3a84cbdc43b540f",
+        "zh-CN": "0897262054c50e8355faaad03fdfbe02f3386424b4863e84120dc486ab6cd635"
+      },
+      "addition_count": 7,
+      "rows": [
+        {
+          "key": "ui.agents.pages.backend.loading_capabilities",
+          "source": "Loading what this backend can do…",
+          "target": "正在加载后端支持的功能……"
+        },
+        {
+          "key": "ui.agents.pages.backend.connecting",
+          "source": "Connecting to the backend",
+          "target": "正在连接后端"
+        },
+        {
+          "key": "ui.agents.pages.backend.upgrade_body",
+          "source": "Update the backend to manage reusable agents and teams. Saved chats are unchanged.",
+          "target": "更新后端即可管理可复用的智能体与团队。已保存的对话不受影响。"
+        },
+        {
+          "key": "ui.agents.pages.backend.upgrade_heading",
+          "source": "Reusable agents need a newer backend",
+          "target": "可复用智能体需要更新版本的后端"
+        },
+        {
+          "key": "ui.agents.pages.backend.unreachable",
+          "source": "The backend could not be reached",
+          "target": "无法连接后端"
+        },
+        {
+          "key": "ui.agents.pages.change.new",
+          "source": "New",
+          "target": "新增"
+        },
+        {
+          "key": "ui.agents.pages.change.updated",
+          "source": "Updated",
+          "target": "已更新"
+        }
+      ],
+      "terminology": {
+        "智能体": {
+          "existing": [
+            {
+              "key": "ui.agents.pages.add_manual.agent",
+              "value": "手动添加智能体"
+            },
+            {
+              "key": "ui.agents.pages.ask.body_agent",
+              "value": "智能体是一套可复用的指令，你可以与它开始对话，也可以让其他智能体调用它。描述你的需求，配置运行便会把它建好。"
+            },
+            {
+              "key": "ui.agents.pages.ask.body_team",
+              "value": "团队有一个主导对话的智能体，以及由它委派工作的成员。描述你的需求，配置运行便会把它建好。"
+            }
+          ],
+          "new_keys": [
+            "ui.agents.pages.backend.upgrade_body",
+            "ui.agents.pages.backend.upgrade_heading"
+          ]
+        },
+        "子智能体": {
+          "existing": [],
+          "new_keys": []
+        },
+        "后端": {
+          "existing": [],
+          "new_keys": [
+            "ui.agents.pages.backend.loading_capabilities",
+            "ui.agents.pages.backend.connecting",
+            "ui.agents.pages.backend.upgrade_body",
+            "ui.agents.pages.backend.upgrade_heading",
+            "ui.agents.pages.backend.unreachable"
+          ]
+        },
+        "会话": {
+          "existing": [],
+          "new_keys": []
+        },
+        "对话": {
+          "existing": [
+            {
+              "key": "ui.agents.pages.ask.body_agent",
+              "value": "智能体是一套可复用的指令，你可以与它开始对话，也可以让其他智能体调用它。描述你的需求，配置运行便会把它建好。"
+            },
+            {
+              "key": "ui.agents.pages.ask.body_team",
+              "value": "团队有一个主导对话的智能体，以及由它委派工作的成员。描述你的需求，配置运行便会把它建好。"
+            }
+          ],
+          "new_keys": [
+            "ui.agents.pages.backend.upgrade_body"
+          ]
+        },
+        "登录": {
+          "existing": [],
+          "new_keys": []
+        }
+      }
+    },
+    "ui.chat.run_details": {
+      "sha256": {
+        "en": "02877dbbfba534fb2467008550d55ffd45c928c990b89c3d1a72acbfc76d2d50",
+        "zh-CN": "8c7229a394091d3b05ebb1723af637078dcc22f42720681609700c8ab594e63d"
+      },
+      "addition_count": 16,
+      "rows": [
+        {
+          "key": "ui.chat.run_details.child.brief.show_less",
+          "source": "Show less",
+          "target": "收起"
+        },
+        {
+          "key": "ui.chat.run_details.child.brief.show_more",
+          "source": "{count, plural, one {Show {count, number, ::group-off} more line} other {Show {count, number, ::group-off} more lines}}",
+          "target": "{count, plural, other {再显示{count, number, ::group-off}行}}"
+        },
+        {
+          "key": "ui.chat.run_details.child.result.preview",
+          "source": "Result preview",
+          "target": "结果预览"
+        },
+        {
+          "key": "ui.chat.run_details.child.result.title",
+          "source": "Result",
+          "target": "结果"
+        },
+        {
+          "key": "ui.chat.run_details.child.result.unavailable",
+          "source": "This subagent's conversation is not available here.",
+          "target": "无法在此查看该子智能体的对话。"
+        },
+        {
+          "key": "ui.chat.run_details.child.result.unavailable_clipped",
+          "source": "This is a shortened copy. This subagent's conversation is not available here.",
+          "target": "此副本已缩短。无法在此查看该子智能体的对话。"
+        },
+        {
+          "key": "ui.chat.run_details.mcp_auth.no_references",
+          "source": "This server does not use OAuth and declares no secret references. Add explicit $'{'NAME'}' references to its MCP environment or headers, then retry.",
+          "target": "此服务器不使用OAuth，也未声明密钥引用。在其MCP环境变量或请求头中添加明确的$'{'NAME'}'引用后重试。"
+        },
+        {
+          "key": "ui.chat.run_details.mcp_auth.status",
+          "source": "Sign-in {status}.",
+          "target": "登录：{status}。"
+        },
+        {
+          "key": "ui.chat.run_details.mcp_auth.status_unavailable",
+          "source": "status unavailable",
+          "target": "状态不可用"
+        },
+        {
+          "key": "ui.chat.run_details.mcp_auth.unknown_method",
+          "source": "Could not determine this server's sign-in method. Check its connection and MCP setup, then retry.",
+          "target": "无法确定此服务器的登录方式。检查连接和MCP配置后重试。"
+        },
+        {
+          "key": "ui.chat.run_details.mcp_auth.upgrade",
+          "source": "Update the backend for secure MCP key entry. OAuth and the server list remain available.",
+          "target": "更新后端以安全输入MCP密钥。OAuth和服务器列表仍可使用。"
+        },
+        {
+          "key": "ui.chat.run_details.mcp_auth.waiting",
+          "source": "Waiting for backend sign-in status…",
+          "target": "正在等待后端登录状态……"
+        },
+        {
+          "key": "ui.chat.run_details.mcp_failure.busy",
+          "source": "{lead}: a sign-in is already running for this conversation, and only one can run at a time. Wait for it to finish, or cancel it from the server's row.",
+          "target": "{lead}：此对话已有登录操作正在运行，一次只能运行一个。等待其完成，或在服务器所在行取消。"
+        },
+        {
+          "key": "ui.chat.run_details.mcp_failure.cancel_lead",
+          "source": "The cancellation could not be confirmed",
+          "target": "无法确认取消是否成功"
+        },
+        {
+          "key": "ui.chat.run_details.mcp_failure.refused",
+          "source": "{lead}: the server refused it without giving a reason, and nothing was changed.",
+          "target": "{lead}：服务器拒绝了操作，但未说明原因，未作任何更改。"
+        },
+        {
+          "key": "ui.chat.run_details.mcp_failure.session",
+          "source": "{lead} because this conversation's session is not running. Trying again restarts it and repeats this request.",
+          "target": "{lead}，因为此对话的会话未运行。重试将重启会话并再次发送此请求。"
+        }
+      ],
+      "terminology": {
+        "智能体": {
+          "existing": [
+            {
+              "key": "ui.chat.run_details.subagent_path_label",
+              "value": "子智能体路径"
+            },
+            {
+              "key": "ui.chat.run_details.previous_subagent",
+              "value": "上一个子智能体"
+            },
+            {
+              "key": "ui.chat.run_details.next_subagent",
+              "value": "下一个子智能体"
+            }
+          ],
+          "new_keys": [
+            "ui.chat.run_details.child.result.unavailable",
+            "ui.chat.run_details.child.result.unavailable_clipped"
+          ]
+        },
+        "子智能体": {
+          "existing": [
+            {
+              "key": "ui.chat.run_details.subagent_path_label",
+              "value": "子智能体路径"
+            },
+            {
+              "key": "ui.chat.run_details.previous_subagent",
+              "value": "上一个子智能体"
+            },
+            {
+              "key": "ui.chat.run_details.next_subagent",
+              "value": "下一个子智能体"
+            }
+          ],
+          "new_keys": [
+            "ui.chat.run_details.child.result.unavailable",
+            "ui.chat.run_details.child.result.unavailable_clipped"
+          ]
+        },
+        "后端": {
+          "existing": [
+            {
+              "key": "ui.chat.run_details.children_unopenable",
+              "value": "打开子智能体的对话需要更新版本的Local Operator后端。请更新后端并重启应用。"
+            },
+            {
+              "key": "ui.chat.run_details.update_backend",
+              "value": "更新后端"
+            }
+          ],
+          "new_keys": [
+            "ui.chat.run_details.mcp_auth.upgrade",
+            "ui.chat.run_details.mcp_auth.waiting"
+          ]
+        },
+        "会话": {
+          "existing": [
+            {
+              "key": "ui.chat.run_details.reader.no_session_id",
+              "value": "该子智能体的条目中没有会话ID，因此无法从这里打开对话。"
+            },
+            {
+              "key": "ui.chat.run_details.reader.no_transcript",
+              "value": "磁盘上还没有该子智能体的会话记录。"
+            },
+            {
+              "key": "ui.chat.run_details.reader.directory_gone",
+              "value": "该子智能体的会话目录已不在磁盘上。"
+            }
+          ],
+          "new_keys": [
+            "ui.chat.run_details.mcp_failure.session"
+          ]
+        },
+        "对话": {
+          "existing": [
+            {
+              "key": "ui.chat.run_details.children_unopenable",
+              "value": "打开子智能体的对话需要更新版本的Local Operator后端。请更新后端并重启应用。"
+            },
+            {
+              "key": "ui.chat.run_details.unopenable",
+              "value": "无法打开该子智能体的对话。"
+            },
+            {
+              "key": "ui.chat.run_details.mcp_auth.no_session",
+              "value": "打开一个对话以登录此服务器。"
+            }
+          ],
+          "new_keys": [
+            "ui.chat.run_details.child.result.unavailable",
+            "ui.chat.run_details.child.result.unavailable_clipped",
+            "ui.chat.run_details.mcp_failure.busy",
+            "ui.chat.run_details.mcp_failure.session"
+          ]
+        },
+        "登录": {
+          "existing": [
+            {
+              "key": "ui.chat.run_details.mcp_auth.title",
+              "value": "登录MCP服务器"
+            },
+            {
+              "key": "ui.chat.run_details.mcp_auth.title_for_server",
+              "value": "登录{server}"
+            },
+            {
+              "key": "ui.chat.run_details.mcp_auth.no_session",
+              "value": "打开一个对话以登录此服务器。"
+            }
+          ],
+          "new_keys": [
+            "ui.chat.run_details.mcp_auth.status",
+            "ui.chat.run_details.mcp_auth.unknown_method",
+            "ui.chat.run_details.mcp_auth.waiting",
+            "ui.chat.run_details.mcp_failure.busy"
+          ]
+        }
+      }
+    },
+    "ui.notices": {
+      "sha256": {
+        "en": "043243b66381b6fa1143acb645ce0c83fcb381883038ef88bbcb28e36764b112",
+        "zh-CN": "21ef6724666bcfe676428b242c30cb148768e67fc95983e4f762cfea2281efe8"
+      },
+      "addition_count": 6,
+      "rows": [
+        {
+          "key": "ui.notices.aida.account_required",
+          "source": "{name} will say hello once an AI account is connected. Connect one from the chat to start.",
+          "target": "连接人工智能账号后，{name}会主动打招呼。在对话中连接账号即可开始。"
+        },
+        {
+          "key": "ui.notices.aida.active",
+          "source": "Aida is active.",
+          "target": "Aida已启用"
+        },
+        {
+          "key": "ui.notices.aida.open_fallback",
+          "source": "{name}'s conversation could not be opened, so you are in a new chat instead. {detail}",
+          "target": "无法打开{name}的对话，已改为打开新对话。{detail}"
+        },
+        {
+          "key": "ui.notices.aida.paused",
+          "source": "Aida is paused.",
+          "target": "Aida已暂停"
+        },
+        {
+          "key": "ui.notices.aida.paused_receipt",
+          "source": "Aida is paused. She will not check in until you resume her.",
+          "target": "Aida已暂停，恢复前不会主动联系。"
+        },
+        {
+          "key": "ui.notices.aida.resumed_receipt",
+          "source": "Aida is resumed. She will check in on her usual schedule.",
+          "target": "Aida已恢复，将按原定时间主动联系。"
+        }
+      ],
+      "terminology": {
+        "智能体": {
+          "existing": [
+            {
+              "key": "ui.notices.agents.created",
+              "value": "智能体已创建"
+            },
+            {
+              "key": "ui.notices.agents.deleted",
+              "value": "智能体已删除"
+            },
+            {
+              "key": "ui.notices.agents.exported",
+              "value": "智能体已导出"
+            }
+          ],
+          "new_keys": []
+        },
+        "子智能体": {
+          "existing": [],
+          "new_keys": []
+        },
+        "后端": {
+          "existing": [
+            {
+              "key": "ui.notices.aida.unreachable",
+              "value": "Aida的控件无法连接后端。"
+            },
+            {
+              "key": "ui.notices.chat.unread_backend_silent",
+              "value": "后端未响应。"
+            }
+          ],
+          "new_keys": []
+        },
+        "会话": {
+          "existing": [
+            {
+              "key": "ui.notices.files.image_copy_failed_gone",
+              "value": "复制图片失败：该图片已不在会话中。"
+            },
+            {
+              "key": "ui.notices.files.save_failed_gone",
+              "value": "保存文件失败：该图片已不在会话中。"
+            },
+            {
+              "key": "ui.notices.sessions.id_copied",
+              "value": "会话ID已复制"
+            }
+          ],
+          "new_keys": []
+        },
+        "对话": {
+          "existing": [
+            {
+              "key": "ui.notices.chat.archive_offered_no_name",
+              "value": "对话"
+            },
+            {
+              "key": "ui.notices.chat.mark_all_read_cleared",
+              "value": "{count, plural, other {已将{count}个对话标记为已读。}}"
+            },
+            {
+              "key": "ui.notices.chat.mark_all_read_deferred",
+              "value": "{count, plural, other {{count}个对话在其他设备上，待这些设备更新后会清除。}}"
+            }
+          ],
+          "new_keys": [
+            "ui.notices.aida.account_required",
+            "ui.notices.aida.open_fallback"
+          ]
+        },
+        "登录": {
+          "existing": [
+            {
+              "key": "ui.notices.sessions.sign_out_failed",
+              "value": "退出登录失败：{detail}"
+            },
+            {
+              "key": "ui.notices.sessions.signed_out",
+              "value": "已退出登录"
+            }
+          ],
+          "new_keys": []
+        }
+      }
+    }
+  },
+  "semantic_review": {
+    "terminology": "New 智能体/子智能体/后端/会话/对话/登录 agree with existing bytes; 会话=session, 对话=conversation. Existing 后台任务 means background jobs, not backend. No competing term introduced.",
+    "notices": "All six preserve factual outcomes and schedule semantics; concise, no added politeness.",
+    "run_details": "All sixteen compact technical messages preserve meaning, including unconfirmed cancellation, refusal without changes, session restart and repeated request.",
+    "residue": "Only intentional OAuth, MCP, NAME, Aida and ICU technical identifiers remain; no untranslated English prose or bidi controls.",
+    "probe_corrections": "Naive probes corrected: English repeats ::group-off across one/other, Chinese correctly has other only; 请求 means request, not politeness. Instance made lowercase to meet receipt validator."
+  }
+}

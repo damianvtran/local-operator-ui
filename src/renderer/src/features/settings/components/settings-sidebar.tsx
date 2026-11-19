@@ -6,9 +6,11 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	AudioLines,
+	Bell,
 	Download,
 	FolderInput,
 	Keyboard,
+	MessageSquare,
 	Paintbrush,
 	Plug,
 	Puzzle,
@@ -88,13 +90,15 @@ const SECTION_GROUPS: { label: string; ids: string[] }[] = [
 	 * of destination: how the app behaves for the reader, as opposed to what it
 	 * talks to (Account) or what its backend stores (Backend). Keyboard shortcuts
 	 * joined it for the same reason (issue #928) - and its document position
-	 * follows this list, per the rule below.
+	 * follows this list, per the rule below. Notifications sits after Appearance
+	 * (notification-sound settings spec §2.1): it is a preference about how the
+	 * app behaves for the reader, and it owns the promoted master switch.
 	 */
 	{
 		get label() {
 			return t("ui.settings.navigation.settings_sidebar.general");
 		},
-		ids: ["general", "appearance", "speech", "keyboard"],
+		ids: ["general", "appearance", "notifications", "speech", "keyboard"],
 	},
 	/*
 	 * Model providers first (design audit section 2 / D13): it is the section a
@@ -106,7 +110,7 @@ const SECTION_GROUPS: { label: string; ids: string[] }[] = [
 		get label() {
 			return t("ui.settings.navigation.settings_sidebar.account");
 		},
-		ids: ["providers", "integrations", "radient"],
+		ids: ["providers", "integrations", "radient", "agent-messages"],
 	},
 	// The backend registry section was rendered but reachable only by deep
 	// link because it sat in no group; the rail filters by group membership.
@@ -166,11 +170,13 @@ const SECTION_GROUPS: { label: string; ids: string[] }[] = [
  * stacked layout is gone (the rail has no `max-*` utilities any more) and the
  * boundary that remains is the tone step the rail's own ground makes against
  * the `canvas` content on its right (`surface` against `canvas`). On its left
- * there is no boundary at all: the rail and the app sidebar are both `surface`
- * (see the ground note below), the same flat join the agents roster makes
- * beside the sidebar. A drawn line over a tone step is the second mark this
- * app's doctrine removes (`chat-layout.tsx`, and the pass that took the dock's
- * `border-l`), and the one the wrapper drew was the one that stopped short.
+ * there is no tone step (the rail and the app sidebar are both `surface`; see
+ * the ground note below), the same flat join the agents roster makes beside the
+ * sidebar. The only boundary on that join is the shell's 1px `PanelEdge` seam
+ * (2026-10-30, `chat-layout.tsx`), which marks where the app sidebar ends on
+ * every route - it is not a line this page draws. A drawn edge here would be a
+ * second seam beside the shell's, and the one the old wrapper drew was the one
+ * that stopped at mid-height.
  *
  * ## Why it drops its labels below 1040px
  *
@@ -221,7 +227,7 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 				aria-label={labelled ? undefined : section.label}
 				data-tour-tag={TOUR_TAGS[section.id]}
 				className={cn(
-					"relative flex h-8 w-full items-center rounded-sm bg-transparent text-left text-body-sm hover:bg-row-hover hover:text-ink",
+					"relative flex h-8 w-full items-center rounded-sm bg-transparent text-start text-body-sm hover:bg-row-hover hover:text-ink",
 					"transition-colors duration-fast ease-out-quart",
 					labelled ? "justify-start gap-2 px-3" : "justify-center",
 					/* A settings destination is not a selected conversation. Keep the
@@ -233,7 +239,7 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 				{isActive && (
 					<span
 						aria-hidden="true"
-						className="absolute left-1 top-1/2 size-1 -translate-y-1/2 rounded-full bg-accent"
+						className="absolute start-1 top-1/2 size-1 -translate-y-1/2 rounded-full bg-accent"
 					/>
 				)}
 				{/* Decorative in both layouts: labelled, the text beside it names the
@@ -296,7 +302,7 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 				"ui.settings.navigation.settings_sidebar.settings_sections",
 			)}
 			data-glass-region="page-sidebar"
-			className="flex h-full w-full flex-col overflow-hidden bg-surface"
+			className="panel-top-pad flex h-full w-full flex-col overflow-hidden bg-surface"
 		>
 			{/* `gap-6` between groups rather than a margin on each: a stacking
 			    margin needs a `last:` reset to stop it adding a phantom row of
@@ -353,6 +359,15 @@ export const DEFAULT_SETTINGS_SECTIONS: SettingsSection[] = [
 		icon: RadientMark,
 	},
 	{
+		// Present only while the agent-messages status says Settings is part of
+		// the surface (RFC §5.6); settings-page filters this entry out otherwise.
+		id: "agent-messages",
+		get label() {
+			return t("ui.agentMessages.settings.section");
+		},
+		icon: MessageSquare,
+	},
+	{
 		id: "integrations",
 		get label() {
 			return t("ui.settings.navigation.settings_sidebar.integrations");
@@ -365,6 +380,13 @@ export const DEFAULT_SETTINGS_SECTIONS: SettingsSection[] = [
 			return t("ui.settings.navigation.settings_sidebar.appearance");
 		},
 		icon: Paintbrush,
+	},
+	{
+		id: "notifications",
+		get label() {
+			return t("ui.settings.notifications.section.title");
+		},
+		icon: Bell,
 	},
 	{
 		id: "speech",

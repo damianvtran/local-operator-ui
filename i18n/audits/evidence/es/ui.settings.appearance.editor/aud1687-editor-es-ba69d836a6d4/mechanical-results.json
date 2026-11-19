@@ -1,0 +1,22 @@
+{
+  "keys": 160,
+  "format_calls": 160,
+  "errors": [],
+  "unexempted_identical": [
+    "ui.settings.appearance.editor.copy_name",
+    "ui.settings.appearance.editor.ratio",
+    "ui.settings.appearance.editor.picker.rgb",
+    "ui.settings.appearance.editor.picker.oklch",
+    "ui.settings.appearance.editor.preview.bridge"
+  ],
+  "plural_outputs": {
+    "0": "0 problemas de contraste",
+    "1": "1 problema de contraste",
+    "2": "2 problemas de contraste",
+    "5": "5 problemas de contraste",
+    "11": "11 problemas de contraste",
+    "21": "21 problemas de contraste",
+    "22": "22 problemas de contraste",
+    "1.5": "1,5 problemas de contraste"
+  }
+}

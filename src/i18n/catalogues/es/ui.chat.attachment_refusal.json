@@ -1,0 +1,17 @@
+{
+	"ui.chat.attachment_refusal.cannot_upload": "esta ventana no puede subir archivos",
+	"ui.chat.attachment_refusal.clause.read": "{name} no se pudo leer (puede que se haya movido o eliminado)",
+	"ui.chat.attachment_refusal.clause.remote": "{name} no se puede adjuntar porque esta conversación pertenece a otro dispositivo, y los archivos solo se pueden adjuntar a conversaciones de este dispositivo",
+	"ui.chat.attachment_refusal.clause.upload": "{name} no se pudo adjuntar",
+	"ui.chat.attachment_refusal.clause.upload_reason": "{name} no se pudo adjuntar ({reason})",
+	"ui.chat.attachment_refusal.files_many": "Este borrador tiene {total, number} archivos y un mensaje admite hasta {cap, number}, así que este mensaje no se envió. Quita {dropped, number} de ellos o envíalos en un segundo mensaje.",
+	"ui.chat.attachment_refusal.files_one": "Este borrador tiene {total, number} archivos y un mensaje admite hasta {cap, number}, así que este mensaje no se envió. Quita el archivo sobrante o envíalo en un segundo mensaje.",
+	"ui.chat.attachment_refusal.images_many": "Este borrador tiene {total, number} imágenes y un mensaje admite hasta {cap, number}, así que este mensaje no se envió. Quita {dropped, number} de ellas o envíalas en un segundo mensaje.",
+	"ui.chat.attachment_refusal.images_one": "Este borrador tiene {total, number} imágenes y un mensaje admite hasta {cap, number}, así que este mensaje no se envió. Quita la imagen sobrante o envíala en un segundo mensaje.",
+	"ui.chat.attachment_refusal.mixed_many": "{clauses}, así que este mensaje no se envió. Adjúntalos de nuevo o quítalos del borrador.",
+	"ui.chat.attachment_refusal.mixed_one": "{clauses}, así que este mensaje no se envió. Adjúntalo de nuevo o quítalo del borrador.",
+	"ui.chat.attachment_refusal.read_many": "{names} no se pudieron leer (puede que se hayan movido o eliminado), así que este mensaje no se envió. Adjúntalos de nuevo o quítalos del borrador.",
+	"ui.chat.attachment_refusal.read_one": "{name} no se pudo leer (puede que se haya movido o eliminado), así que este mensaje no se envió. Adjúntalo de nuevo o quítalo del borrador.",
+	"ui.chat.attachment_refusal.remote_many": "{names} no se pueden adjuntar porque esta conversación pertenece a otro dispositivo, y los archivos solo se pueden adjuntar a conversaciones de este dispositivo. Envía el mensaje sin ellos o inicia la conversación aquí.",
+	"ui.chat.attachment_refusal.remote_one": "{name} no se puede adjuntar porque esta conversación pertenece a otro dispositivo, y los archivos solo se pueden adjuntar a conversaciones de este dispositivo. Envía el mensaje sin él o inicia la conversación aquí."
+}

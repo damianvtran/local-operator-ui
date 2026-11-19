@@ -1,0 +1,116 @@
+en base=7acc3ea2a00d63aa3b68aadf7e42007e19d3de9e4cef9b72beafdbe73e351359 head=321cd5b9c918247c9ead225cf7497a21c322028766c6db600ba5ba3e31be2696 english_bytes_identical=differs
+en changed_values=0 removed=["ui.mesh.approval.approved_pending_apply","ui.mesh.approval.request_window","ui.mesh.mesh_approvals.expires_hours","ui.mesh.mesh_approvals.expires_in_under_a_minute","ui.mesh.mesh_approvals.expires_minutes"] removed_matches=true
+context base=469d7b985ed12cf1c72f6c5f59eea6783cd2861ba8fb96ca7cd99e4089fcb6cf head=2f31e6b6996c1c655871947f8b7d4158113f79d973afb180ed042f9ef8cc474f
+context changed=["ui.mesh.approval.result_status","ui.mesh.approval.named_refusal"] removed_matches=true
+
+es: base=2fa9466fdca70ef9dafd1b415f5df324aadaae5a2b45f4227f6972c8a46e42c9 head=2df01e3754b84c9cf6f8dcbeffdd7dddb3c0582b4bc4892e1e0b2f5f14c0a286 keyset_matches_en=true changed=4 changed_matches_list=true removed_matches=true added=0
+  PASS ui.mesh.approval.answer_window
+    en:   Answer within {duration}
+    base: Responde en {duration}
+    head: Responde en un plazo de {duration}
+    {"args":"duration:1","args_match":true,"nfc":true,"bidi_free":true,"render":"Responde en un plazo de <DURATION>"}
+  PASS ui.mesh.approval.file_key_disclosure
+    en:   Signing here uses a key file, not Touch ID, so it cannot prove a person approved the request.
+    base: Aquí se firma con un archivo de clave, no con Touch ID, por lo que no se puede demostrar que una persona aprobó la solicitud.
+    head: Aquí se firma con un archivo de clave, no con Touch ID, por lo que no se puede demostrar que una persona haya aprobado la solicitud.
+    {"args":"","args_match":true,"nfc":true,"bidi_free":true,"render":"Aquí se firma con un archivo de clave, no con Touch ID, por lo que no se puede demostrar que una persona haya aprobado la solicitud."}
+  PASS ui.mesh.approval.file_key_recorded
+    en:   This approval was signed with a key file, not Touch ID. It cannot prove a person approved it.
+    base: Esta aprobación se firmó con un archivo de clave, no con Touch ID. No puede demostrar que una persona la aprobó.
+    head: Esta aprobación se firmó con un archivo de clave, no con Touch ID. No puede demostrar que una persona la haya aprobado.
+    {"args":"","args_match":true,"nfc":true,"bidi_free":true,"render":"Esta aprobación se firmó con un archivo de clave, no con Touch ID. No puede demostrar que una persona la haya aprobado."}
+  PASS ui.mesh.approval.named_refusal
+    en:   For “{request}”: {reason}
+    base: Solicitud «{request}»: {reason}
+    head: Para “{request}”: {reason}
+    {"args":"reason:1,request:1","args_match":true,"nfc":true,"bidi_free":true,"render":"Para “{request}”: {reason}","parts":["Para “","{request}","”: ","{reason}"],"fields_once":true}
+
+fr: base=527832b560bdc4a8a816eb2189e510263ba7de3c189929f891228829619baa99 head=e4721a7631b4dadece0fa5971bb49bce75ef298baa21c67d2e668c4184574cf1 keyset_matches_en=true changed=3 changed_matches_list=true removed_matches=true added=0
+  PASS ui.mesh.approval.named_refusal
+    en:   For “{request}”: {reason}
+    base: Pour « {request} » : {reason}
+    head: Pour « {request} » : {reason}
+    {"args":"reason:1,request:1","args_match":true,"nfc":true,"bidi_free":true,"render":"Pour « {request} » : {reason}","parts":["Pour « ","{request}"," » : ","{reason}"],"fields_once":true}
+  PASS ui.mesh.approval.result_status
+    en:   Shared: {shared, number, ::group-off}. Needs attention: {attention, number, ::group-off}.
+    base: Partagés: {shared, number, ::group-off}. À traiter: {attention, number, ::group-off}.
+    head: Partagés : {shared, number, ::group-off}. À traiter : {attention, number, ::group-off}.
+    {"args":"attention:2,shared:2","args_match":true,"nfc":true,"bidi_free":true,"render":"Partagés : 1500. À traiter : 2."}
+  PASS ui.mesh.approval.shared
+    en:   Shared
+    base: Partagé
+    head: Partagée
+    {"args":"","args_match":true,"nfc":true,"bidi_free":true,"render":"Partagée"}
+
+ru: base=043539358f5956a2bb3be3f4f096b5d39563c78b68a5db2f54f63885b2ce283d head=e7b65bec08cdb7a9f79de02dcaaa00189e9ce374efba0a44ee789b039c278c62 keyset_matches_en=true changed=1 changed_matches_list=true removed_matches=true added=0
+  PASS ui.mesh.approval.named_refusal
+    en:   For “{request}”: {reason}
+    base: Запрос «{request}»: {reason}
+    head: Для «{request}»: {reason}
+    {"args":"reason:1,request:1","args_match":true,"nfc":true,"bidi_free":true,"render":"Для «{request}»: {reason}","parts":["Для «","{request}","»: ","{reason}"],"fields_once":true}
+
+hi: base=0dec3965667ab042bfb7a357053292b6de41126802780c2d5f74df1be3c49e00 head=d5b244664e31636f03a74171f0ae47394b9473672cc0a8204e599b1062f23022 keyset_matches_en=true changed=3 changed_matches_list=true removed_matches=true added=0
+  PASS ui.mesh.approval.named_refusal
+    en:   For “{request}”: {reason}
+    base: अनुरोध “{request}”: {reason}
+    head: “{request}” के लिए: {reason}
+    {"args":"reason:1,request:1","args_match":true,"nfc":true,"bidi_free":true,"render":"“{request}” के लिए: {reason}","parts":["“","{request}","” के लिए: ","{reason}"],"fields_once":true}
+  PASS ui.mesh.approval.result_status
+    en:   Shared: {shared, number, ::group-off}. Needs attention: {attention, number, ::group-off}.
+    base: साझा किए गए: {shared, number, ::group-off}. ध्यान देना ज़रूरी: {attention, number, ::group-off}.
+    head: साझा किए गए: {shared, number, ::group-off}। ध्यान देना ज़रूरी: {attention, number, ::group-off}।
+    {"args":"attention:2,shared:2","args_match":true,"nfc":true,"bidi_free":true,"render":"साझा किए गए: 1500। ध्यान देना ज़रूरी: 2।"}
+  PASS ui.mesh.approval.retry_hint
+    en:   Choose Try again to apply this approved request.
+    base: इस स्वीकृत अनुरोध को लागू करने के लिए फिर से कोशिश करें चुनें।
+    head: इस स्वीकृत अनुरोध को लागू करने के लिए “फिर से कोशिश करें” चुनें।
+    {"args":"","args_match":true,"nfc":true,"bidi_free":true,"render":"इस स्वीकृत अनुरोध को लागू करने के लिए “फिर से कोशिश करें” चुनें।"}
+
+ur: base=cdce6e7f28e59bb6461f92a875e338957e912d0a2a7cfba7247c0cfcfe71c568 head=80c4716fd77916acb5802f4bd2426e563967794ee199b23dd9142b231b62b716 keyset_matches_en=true changed=3 changed_matches_list=true removed_matches=true added=0
+  PASS ui.mesh.approval.named_refusal
+    en:   For “{request}”: {reason}
+    base: درخواست «{request}»: {reason}
+    head: “{request}” کے لیے: {reason}
+    {"args":"reason:1,request:1","args_match":true,"nfc":true,"bidi_free":true,"render":"“{request}” کے لیے: {reason}","parts":["“","{request}","” کے لیے: ","{reason}"],"fields_once":true}
+  PASS ui.mesh.approval.result_status
+    en:   Shared: {shared, number, ::group-off}. Needs attention: {attention, number, ::group-off}.
+    base: شیئر کیے گئے: {shared, number, ::group-off}. توجہ درکار: {attention, number, ::group-off}.
+    head: شیئر کیے گئے: {shared, number, ::group-off}۔ توجہ درکار: {attention, number, ::group-off}۔
+    {"args":"attention:2,shared:2","args_match":true,"nfc":true,"bidi_free":true,"render":"شیئر کیے گئے: 1500۔ توجہ درکار: 2۔"}
+  PASS ui.mesh.approval.retry_hint
+    en:   Choose Try again to apply this approved request.
+    base: اس منظور شدہ درخواست کو لاگو کرنے کے لیے دوبارہ کوشش کریں منتخب کریں۔
+    head: اس منظور شدہ درخواست کو لاگو کرنے کے لیے “دوبارہ کوشش کریں” منتخب کریں۔
+    {"args":"","args_match":true,"nfc":true,"bidi_free":true,"render":"اس منظور شدہ درخواست کو لاگو کرنے کے لیے “دوبارہ کوشش کریں” منتخب کریں۔"}
+
+vi: base=657657becd93a3c37729be0823dc024f682a7830e55bd02b6031a394c04e50f3 head=ed17f5e0e3ece15ad81250f2a2290b6ad5040be765e82c47427be2ce678a1977 keyset_matches_en=true changed=2 changed_matches_list=true removed_matches=true added=0
+  PASS ui.mesh.approval.cancel_hint
+    en:   Cancel sharing stops this request. It does not withdraw access already shared.
+    base: Hủy chia sẻ dừng yêu cầu này, không thu hồi quyền truy cập đã chia sẻ.
+    head: Hủy chia sẻ dừng yêu cầu này, không rút lại quyền truy cập đã chia sẻ.
+    {"args":"","args_match":true,"nfc":true,"bidi_free":true,"render":"Hủy chia sẻ dừng yêu cầu này, không rút lại quyền truy cập đã chia sẻ."}
+  PASS ui.mesh.approval.named_refusal
+    en:   For “{request}”: {reason}
+    base: Yêu cầu “{request}”: {reason}
+    head: Đối với “{request}”: {reason}
+    {"args":"reason:1,request:1","args_match":true,"nfc":true,"bidi_free":true,"render":"Đối với “{request}”: {reason}","parts":["Đối với “","{request}","”: ","{reason}"],"fields_once":true}
+
+zh-CN: base=6bd3118d6a07d813a21a37aacf06b0e2e6bf1fe0d07aa10b314e500edcf1d299 head=487243af4180f1034d2ab5c4096f66816dccd922a5d25290a1ca825c48778dbc keyset_matches_en=true changed=3 changed_matches_list=true removed_matches=true added=0
+  PASS ui.mesh.approval.file_key_disclosure
+    en:   Signing here uses a key file, not Touch ID, so it cannot prove a person approved the request.
+    base: 此处使用密钥文件而非Touch ID签名，因此无法证明是由人批准了请求。
+    head: 此处使用密钥文件而非Touch ID签名，因此无法证明请求是由人批准的。
+    {"args":"","args_match":true,"nfc":true,"bidi_free":true,"render":"此处使用密钥文件而非Touch ID签名，因此无法证明请求是由人批准的。"}
+  PASS ui.mesh.approval.head_inheritance
+    en:   Let {device} use your {provider} account ({account})
+    base: 允许{device}使用你的{provider}账号({account})
+    head: 允许{device}使用你的{provider}账号（{account}）
+    {"args":"account:1,device:1,provider:1","args_match":true,"nfc":true,"bidi_free":true,"render":"允许Studio-Mac使用你的Anthropic账号（dev@example.com）"}
+  PASS ui.mesh.approval.result_status
+    en:   Shared: {shared, number, ::group-off}. Needs attention: {attention, number, ::group-off}.
+    base: 已共享: {shared, number, ::group-off}. 需要处理: {attention, number, ::group-off}.
+    head: 已共享：{shared, number, ::group-off}。需要处理：{attention, number, ::group-off}。
+    {"args":"attention:2,shared:2","args_match":true,"nfc":true,"bidi_free":true,"render":"已共享：1500。需要处理：2。"}
+
+probe structural failures=0 punctuation signals=0
+exit=0

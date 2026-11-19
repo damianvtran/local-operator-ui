@@ -1,0 +1,139 @@
+{
+  "locale": "hi",
+  "mode": "fresh independent five-key audit; all 86 sidebar keys read for terminology consistency",
+  "scope": "Fully audited the five new ui.chat.sidebar.mark_all_read scope_chats, scope_chats_elsewhere, scope_tokenless, scope_joined, name_suffix_elsewhere keys; read the remaining 81 sidebar keys for consistency.",
+  "head_sha": "28a6127617e4ebe0b6ba47d39fca5d3a22d1ba93",
+  "audit_date": "2026-11-10",
+  "key_count": 86,
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "delegation brief; translator session id not supplied"
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "0a6975e56f51",
+    "session": "5e316c13af23",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "Served runtime model header: openai/gpt-6.1-sol; no fallback used. Independent fresh session 5e316c13af23. Translator notes identify anthropic/claude-sonnet-5-5.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "status": "passed",
+  "result": "clean",
+  "verdict": "clean",
+  "findings": [],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "namespaces": {
+    "ui.chat.sidebar": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "7db9ba5108a62330a1782f775b991ec0483537d2f7d808ae0691e1a6ef8840cd",
+      "context_sha256": "4f1593cc34b395ef8701a60e58e73a0371b3c93730eb7a1f2b2845dc6250d7e3",
+      "target_sha256": "4c6c4b0f5667968ef4814025ec72b1ca0f6a0a58678288ef9c36601af469993f",
+      "key_count": 86,
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+          "sha256": "7db9ba5108a62330a1782f775b991ec0483537d2f7d808ae0691e1a6ef8840cd"
+        },
+        "hi": {
+          "path": "src/i18n/catalogues/hi/ui.chat.sidebar.json",
+          "sha256": "4c6c4b0f5667968ef4814025ec72b1ca0f6a0a58678288ef9c36601af469993f"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.sidebar.context.json",
+          "sha256": "4f1593cc34b395ef8701a60e58e73a0371b3c93730eb7a1f2b2845dc6250d7e3"
+        }
+      },
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": []
+    }
+  },
+  "per_key_checks": {
+    "ui.chat.sidebar.mark_all_read.scope_chats": {
+      "mechanical": "PASS: parsed ICU; names/types, ::group-off and one/other intact",
+      "semantic": "PASS",
+      "hi_plural_categories": [
+        [
+          "count",
+          [
+            "one",
+            "other"
+          ]
+        ]
+      ]
+    },
+    "ui.chat.sidebar.mark_all_read.scope_chats_elsewhere": {
+      "mechanical": "PASS: parsed ICU; names/types, ::group-off and one/other intact",
+      "semantic": "PASS",
+      "hi_plural_categories": [
+        [
+          "count",
+          [
+            "one",
+            "other"
+          ]
+        ],
+        [
+          "elsewhere",
+          [
+            "one",
+            "other"
+          ]
+        ]
+      ]
+    },
+    "ui.chat.sidebar.mark_all_read.scope_tokenless": {
+      "mechanical": "PASS: parsed ICU; names/types, ::group-off and one/other intact",
+      "semantic": "PASS",
+      "hi_plural_categories": [
+        [
+          "count",
+          [
+            "one",
+            "other"
+          ]
+        ]
+      ]
+    },
+    "ui.chat.sidebar.mark_all_read.scope_joined": {
+      "mechanical": "PASS: parsed ICU; names/types, ::group-off and one/other intact",
+      "semantic": "PASS",
+      "hi_plural_categories": []
+    },
+    "ui.chat.sidebar.mark_all_read.name_suffix_elsewhere": {
+      "mechanical": "PASS: parsed ICU; names/types, ::group-off and one/other intact",
+      "semantic": "PASS",
+      "hi_plural_categories": [
+        [
+          "elsewhere",
+          [
+            "one",
+            "other"
+          ]
+        ]
+      ]
+    }
+  },
+  "remediation_verification": "Not applicable: fresh independent initial pass; no findings.",
+  "unverified": [
+    "Repository Node validator / deriveReceiptAudit execution forbidden by brief (no node processes). Reviewed derivation code and manually checked its branches; Python checks are not the repository validator.",
+    "No browser, builds, runtime tooltip, screen-reader output, fonts, glyph width or rendered fit verified."
+  ],
+  "receipt_contract_review": "Read second/fr.json, committed 2bbf16af14ee.json and 92b74137fc35.json, docs/I18N.md retention section, ledger-rules.mjs deriveReceiptAudit and helper code, ledger-assemble.mjs. Namespace status/result, exact source/target hashes, unambiguous independent identity and explicit empty findings satisfy the read contract by inspection; Node execution not claimed.",
+  "audit_notes_not_execution_log": {
+    "actual_execution": "Read-only file and git reads; shasum -a 256 on en/context/hi at requested HEAD; Python JSON/key parity and recursive ICU grammar/argument/skeleton checks on five keys; fresh instance searched in receipt/evidence files.",
+    "notes": "Receipt semantic judgments are audit notes, not an execution log. पूर्णता रसीद is acceptable descriptive terminology: context explicitly defines completion token as the receipt permitting clearance; canonical.fold.receipt.wake/other and ui.hub.status.receipt use रसीद. Not a security credential. गैर-सक्रिय चैट denotes the backend class, not a heading; distinct from running/idle update copy. one/other verbs agree (शामिल है/हैं; किया/किए); count 0 is unreachable per context. The invariant loan चैट before को is natural. Name label remains byte-identical prefix; suffix comma-space joins naturally. Danda followed by ordinary space in scope_joined is correct Hindi prose. Native tooltip may wrap; no fixed maxCells/maxChars supplied. No translation service used."
+  }
+}

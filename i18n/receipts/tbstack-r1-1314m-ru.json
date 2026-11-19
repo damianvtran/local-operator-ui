@@ -1,0 +1,109 @@
+{
+ "auditor": "translation-auditor",
+ "model": "openai/gpt-6.1-sol",
+ "model_note": "Host-announced fallback sequence: anthropic/claude-opus-5-5 → anthropic/claude-sonnet-5-5 → openai/gpt-6.1-sol (provider quota). Substantive catalogue review, receipts and final verification completed under openai/gpt-6.1-sol.",
+ "instance": "tbstack-r1-1314m-ru",
+ "session": "c3f4ad19c4ad",
+ "job": "5ddd51d10a50",
+ "date": "2026-10-22",
+ "locale": "ru",
+ "namespace": "ui.teamBridge",
+ "status": "passed",
+ "keys_audited": 4,
+ "keys_read": 178,
+ "union_keys_verified": 178,
+ "scope": "PR #1314, 7a2e6371736c327e28c2e57d45d9a5a5d5304360: 178-key exact two-parent English/target/context union verified; all 178 keys read side by side, 4 new-to-feature OS-banner keys substantively audited against thread/reaction/scheduling/attachment terminology where present. Other values traced to actual inherited audited receipts. Catalogue-only; no rendered-fit, activation or release claim.",
+ "sha256": {
+  "en": "d27275edddf911b66c28f71051c318ca939a968b462937c6ca3809b8ae7f34cc",
+  "ru": "d597416f7119be2d9e1970d9a823cb1863f19d2f59e171bbe6f89558c0b401cb",
+  "context": "e10643d988fdb11fe2f76ba9408a85bbd1a19d006c1940e4144364612e0916c8"
+ },
+ "findings": [],
+ "union_integrity": {
+  "merge": {
+   "head": "7a2e6371736c327e28c2e57d45d9a5a5d5304360",
+   "parents": [
+    "95e9b273a2bef3487cfa5718fbde99a66cc31f23",
+    "6dac4f5baa8e26da07370d244240e7acb8238e1f"
+   ]
+  },
+  "files": [
+   {
+    "file": "src/i18n/catalogues/en/ui.teamBridge.json",
+    "head_keys": 178,
+    "left_keys": 174,
+    "right_keys": 144,
+    "dropped": 0,
+    "changed": 0
+   },
+   {
+    "file": "src/i18n/catalogues/ru/ui.teamBridge.json",
+    "head_keys": 178,
+    "left_keys": 174,
+    "right_keys": 144,
+    "dropped": 0,
+    "changed": 0
+   },
+   {
+    "file": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+    "head_keys": 178,
+    "left_keys": 174,
+    "right_keys": 144,
+    "dropped": 0,
+    "changed": 0
+   }
+  ],
+  "keys_dropped": 0,
+  "shared_keys_altered": 0,
+  "keys_unsourced": []
+ },
+ "inherited_receipts": [
+  {
+   "base": "95e9b273a2bef3487cfa5718fbde99a66cc31f23",
+   "path": "i18n/receipts/tbstack-r1-1314-ru.json",
+   "sha256": "c5a1377d282b17b63ff4ecff8e1dd74f903599571e35a6bd12495fbd09ec9a58",
+   "instance": "tbstack-r1-1314-ru",
+   "keys_inherited": 174,
+   "unchanged_values_verified": 174,
+   "base_en_sha256": "9da45f3026229bfd8c10f0a09dbc6e52b0d7f82a4c8a20af8feb77ef4c83931c",
+   "base_target_sha256": "ae8efc1c6f5f6f44f2e0e0a92b233b4d9825093e337035a1319cc72396d678b7",
+   "base_context_sha256": "5a18898b0ee57a11b3b67e796f0203248b4371a7e66b8ed11c5eebcc42ad0d13",
+   "location": "git ledger audited parent",
+   "findings": []
+  },
+  {
+   "base": "6dac4f5baa8e26da07370d244240e7acb8238e1f",
+   "path": "i18n/receipts/tbstack-r1-1309m-ru.json",
+   "sha256": "40cfe19f3c936933a115cc3e5804574f2c73b7c919f9c1afbace15ce17d5c2ff",
+   "instance": "tbstack-r1-1309m-ru",
+   "keys_inherited": 4,
+   "unchanged_values_verified": 144,
+   "base_en_sha256": "b027df099c805e7121cc74c80411959c6ea178abe7a6b9a9fd6b9cb35524e510",
+   "base_target_sha256": "49cc192fbc1eed523e5bf310e435117176749130b72cdaa412770ff1771fc941",
+   "base_context_sha256": "7062ca8351d00aba9c040eeae2a1d5f1cee83f6c4dd3dbcaab6da60c2aa5bd5b",
+   "location": "external freshly audited parent",
+   "findings": []
+  }
+ ],
+ "validation": {
+  "independence": "Read-only independent translation-auditor session c3f4ad19c4ad, job 5ddd51d10a50; no translation/catalogue/source edits. Translator identity preserved from parent ledger, never invented. All assertions checked against git objects, not translator summaries.",
+  "semantics": "message → сообщение, thread → ветка, reply → ответ, reaction → реакция; scheduled items → Запланированные, image → изображение where present. Banner count uses новое сообщение / новых сообщения / новых сообщений / нового сообщения, correct agreement for one/few/many/other. No T/V address introduced; neutral sentence case. Preview remains verbatim and last.",
+  "banner": "notify.channel retains literal # and {channel}; notify.subtitle retains {place} · {organization}, exact placeholder names/order and middle dot. notify.count and count_preview count messages, not replies/reactions/attachments or scheduled delivery; no sender attribution added. Every plural arm retains #; every count_preview arm retains {preview} last.",
+  "icu": {
+   "locale": "ru",
+   "head": "7a2e6371736c327e28c2e57d45d9a5a5d5304360",
+   "keys": 178,
+   "plural_blocks": 9,
+   "skeletons": 0,
+   "markup_tags": 0,
+   "errors": []
+  },
+  "overflow": "Banner count literals: 1 новое сообщение = 17 characters vs 1 new message = 13; 2 новых сообщения = 17 vs 2 new messages = 14; 5 новых сообщений = 17 vs 5 new messages = 14. The extra 3–4 Cyrillic characters require a rendered OS-banner truncation check with real names/previews; no fitting claim. Preview remains last to preserve count visibility.",
+  "typography": "NFC; no BOM, bidi controls or zero-width codepoints in target catalogue. ru and zh-CN are LTR; RTL-specific audit is not applicable. Embedded channel marker and Latin names/placeholders preserved.",
+  "limitations": "No repo writes, builds, tests, installs, worktrees, pushes or browser/render execution. Prior feature namespace audits inherited after exact source/context/target comparison, not falsely represented as fresh full semantic re-audits."
+ },
+ "reference_sha256": {
+  "i18n/glossary.md": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "i18n/style-guides/ru.md": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+ }
+}

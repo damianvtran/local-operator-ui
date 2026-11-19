@@ -1,0 +1,29 @@
+{
+  "auditor": "independent-i18n-reviewer",
+  "model": "anthropic/claude-sonnet-5-5",
+  "instance": "c0864aa17805-owner-audit-vi",
+  "session": "c0864aa17805",
+  "date": "2026-11-01T14:06:15.601994+00:00",
+  "status": "passed",
+  "namespace": "ui.ownerAudit",
+  "sha256": {
+    "en": "19aa80671ba18c584410232fa035db0841a09d72ddb0faae98bc3c2bc4ca604f",
+    "vi": "041094dffd164a769fc1b8aa2589bc91beb744d0737e3b94337bbe900be9c01a"
+  },
+  "findings": [],
+  "scope": "owner-audit bounded recovery copy",
+  "reviewed_keys": [
+    "ui.ownerAudit.auth_required",
+    "ui.ownerAudit.permission_refused",
+    "ui.ownerAudit.not_found",
+    "ui.ownerAudit.unavailable",
+    "ui.ownerAudit.sign_in"
+  ],
+  "evidence": {
+    "method": "Independent catalogue semantic audit of five added keys against English, surrounding owner-audit copy, core glossary and native style guides; all referenced component keys and coverage checked. Other namespace content read as context in initial audit; no runtime or rendered-fit attestation.",
+    "freshness": "English and es/fr/hi/ur/vi namespace SHA256 values match initial audit exactly. ru and zh-CN final remediated strings re-read after catalogues-final signal.",
+    "hindi_decision": "Any prior Hindi finding withdrawn: सत्र is the prescribed session noun; no expiry-phrasing objection.",
+    "resolved_findings": [],
+    "provenance": "Actual model anthropic/claude-sonnet-5-5. Prior report claimed openai/gpt-6.1-sol/fallback without support; that claim is withdrawn. No fallback attested."
+  }
+}

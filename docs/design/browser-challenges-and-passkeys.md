@@ -291,8 +291,9 @@ missing configuration. Measured with the authenticator **off**, on a real RP ori
 (`http://localhost:<port>`, so an IP-literal origin's `SecurityError` is out of the
 picture), a page calling `credentials.create()` with `userVerification: "required"`
 was **still pending after 20 s**, twice — so a never-shown window leaves that
-request pending whether or not anything is configured, which points at Chromium
-waiting on a native prompt such a window cannot present rather than at this module.
+request pending whether or not anything is configured, which by itself does not distinguish missing discovery from missing native UI.
+The later controls and source inspection in §3.5 narrow the evidence without
+claiming a native-hardware result.
 
 The difference the gate actually buys is the one a site's own feature detection
 reads, and it is the one measured here: with the entitlement missing,
@@ -309,7 +310,16 @@ hang this machine cannot attribute.
 `src/main/webauthn.ts` derives everything from the running app's signature:
 
 - `codesign -dv --verbose=4 <bundle>` → `TeamIdentifier=` (absent entirely for an
-  ad-hoc signature) and `Identifier=` (the bundle id). Measured: the shipped
+  ad-hoc signature) and `Identifier=` (the bundle id). **The report is on STDERR,
+  and stdout is empty** (measured 2026-10-28 on the shipped 0.45.1: 1142 bytes on
+  stderr, 0 on stdout). Until the fix in this change the gate parsed stdout, so
+  every real signature read as `no bundle id` and the installed app logged
+  `Touch ID passkeys are off: no bundle id` — a reason that blamed a field that is
+  present and hid the real blocker (no entitlement, §3.4). The probe now reads
+  stderr and falls back to stdout; the entitlement read below is the opposite case
+  (`-` puts the plist on stdout) and is unchanged. The test fixture is the real
+  captured stderr (`scripts/fixtures/codesign/`), because a fixture that put the
+  report where the code looked is how the defect shipped. Measured: the shipped
   `/Applications/Local Operator.app` reports `TeamIdentifier=SHA2U6KT7V` and
   `Identifier=com.local-operator`; this machine's ad-hoc
   `node_modules/electron/dist/Electron.app` reports **no** `TeamIdentifier` line.
@@ -479,45 +489,111 @@ relaunch it — while `codesign --verify --deep --strict`, `spctl -a -vvv -t exe
 and `stapler validate` all passed on the same bundle, because none of them asks
 whether a claimed entitlement is authorized.
 
-So until a profile exists, **the release path ships no group at all**:
+**Status (2026-11-02): the profile exists and the release path signs the group
+in.** Until then the release path shipped no group at all — the shape described in
+the history paragraph below — and the switch-on is the "one secret wide" path that
+paragraph names, wired as documented:
 
-- `publish.yml` builds with the committed, group-free
-  `build/entitlements.mac.plist` and passes no entitlements override, so the group
-  cannot reach the app *or the helpers it inherits*.
-- Passkeys are inert in that build by design, not by accident: the gate reports
+- `publish.yml` and `signed-update-candidate.yml` decode `MACOS_APP_PROFILE_BASE64`
+  (the Radient Inc. organization's Developer ID profile for
+  `<TEAM_ID>.com.local-operator`) to `$RUNNER_TEMP/embedded.provisionprofile`, run
+  `scripts/render-mac-entitlements.mjs --profile` on it, and pass
+  `-c.mac.provisioningProfile` plus `-c.mac.entitlements=<rendered plist>` on both
+  per-architecture passes. `entitlementsInherit` stays the committed, group-free
+  plist, so helpers and ShipIt carry no restricted claim.
+- **A real Developer ID profile does not list the group.** Measured with
+  `security cms -D` on both of the organization's profiles: `keychain-access-groups`
+  is the single team wildcard `<TEAM_ID>.*`, which is how the portal issues every
+  Developer ID profile. The exact-match check the renderer and the gate first had
+  would have refused it, so both now ask through one implementation of Apple's
+  matching rule (`profileEntryAuthorizes` in
+  `scripts/macos-entitlement-policy.mjs`): equal, or a dotted team-stem wildcard
+  that prefixes the value. Another team's wildcard and a bare `*` are refusals.
+- **The main executable also carries `com.apple.application-identifier`
+  (`<TEAM_ID>.<BUNDLE_ID>`) and `com.apple.developer.team-identifier`**, as Xcode
+  signs every profile-backed Developer ID app: the keychain's access-group
+  machinery keys on the application identifier. `@electron/osx-sign` does not add
+  them for a non-sandboxed app (`preAutoEntitlements` returns early without
+  `com.apple.security.app-sandbox`), so the renderer does — each only when the
+  profile authorizes that exact value, and all three or none.
+- Proven before wiring on the released v0.47.7 arm64 bundle re-signed through this
+  tree's own `@electron/osx-sign` with the organization identity: `app-spawn`,
+  `app-profile-authorization` and `app-webauthn-entitlement` pass, the helpers
+  carry no group, and the notarized result passes `spctl`/`stapler`.
+
+History — the group-free interim (0.29.6 to the switch-on):
+
+- `publish.yml` built with the committed, group-free
+  `build/entitlements.mac.plist` and passed no entitlements override, so the group
+  could not reach the app *or the helpers it inherits*.
+- Passkeys were inert in that build by design, not by accident: the gate reports
   the entitlement absent, `src/main/webauthn.ts` logs one line and never calls
   `configureWebAuthn`, and a site that feature-detects simply never offers a
-  passkey. Nothing is shown to the user (§3.1).
+  passkey. Nothing is shown to the user (§3.1). A build without the profile secret
+  still gets exactly that.
 - `scripts/render-mac-entitlements.mjs` is the door back, and it cannot be opened
   half way: without `--profile` it writes the committed plist unchanged, and with
-  one it refuses unless the profile's own `keychain-access-groups` contains the
-  exact group being signed in. Enabling passkeys is one secret wide — a Developer
-  ID profile with Keychain Sharing on the App ID — and the three steps are written
-  at the Build macOS app step in `publish.yml`. The group must go on
-  `-c.mac.entitlements` **only**, never `entitlementsInherit`: Chromium reads the
-  *main executable's* entitlement and osx-sign embeds the profile in the main
-  bundle only, so a helper or ShipIt carrying the group holds a claim no profile
-  authorizes — which is exactly how this incident took the relaunch leg down with
-  it.
+  one it refuses unless the profile covers every claim being signed in. The group
+  must go on `-c.mac.entitlements` **only**, never `entitlementsInherit`: Chromium
+  reads the *main executable's* entitlement and osx-sign embeds the profile in the
+  main bundle only, so a helper or ShipIt carrying the group holds a claim no
+  profile authorizes — which is exactly how this incident took the relaunch leg
+  down with it.
 
 A local build renders nothing: `pnpm dist:mac` keeps the committed plist, stays
 ad-hoc signed, and the app stays inert, logging `unpackaged`. That is the intended
 behaviour and the reason the OS sheet cannot be verified here (§4).
 
-`scripts/test-publish-workflow.mjs` asserts that shape: no render step, no
-`ENTITLEMENTS_PLIST`, no entitlements override, `provisioningProfile` **absent**
-(documented rather than wired), and the committed plist carries no
+`scripts/test-publish-workflow.mjs` and `scripts/mac-build-arch.test.mjs` assert
+the wired shape: the profile is staged and the plist rendered with it before
+either pass, both passes carry `provisioningProfile` and the rendered
+`entitlements` (checked through electron-builder's real argv parser), nothing
+overrides `entitlementsInherit`, and the committed plist carries no
 `keychain-access-groups` at all.
 
+**Main and nested code are signed with different plists (F2).** Since the F2
+hardening, `mac.entitlements` (`build/entitlements.mac.plist`, rendered with the
+group in CI) is the MAIN executable's alone, and `mac.entitlementsInherit` is a
+separate `build/entitlements.mac.inherit.plist` for every nested Mach-O (Electron
+helpers, the python seed, uv, node-pty's `spawn-helper`). Neither carries
+`com.apple.security.cs.allow-dyld-environment-variables` any more, and main no
+longer carries `disable-library-validation`: with them, any same-uid process
+could `DYLD_INSERT_LIBRARIES` into the genuine signed app and still satisfy its
+designated requirement (measured in the F2 spike on 0.57.8), which would make
+the runtime's app-signature attestation of card answers meaningless and also
+exposed this keychain group to injected code. The inherit plist keeps
+`disable-library-validation` for one reason, the python seed: the managed
+runtime is a copy of those signed bytes and loads third-party wheels' extension
+modules that our team did not sign. electron-builder applies one inherit plist to
+every nested binary, so the helpers carry it too; that is the recorded residual.
+The release gate enforces the split (`app-hardening-entitlements`, below), and
+the group stays on main only, so nothing about passkeys changes.
+
 **The gate asserts two things about a built artifact, and one of them is a spawn.**
-`app-spawn` executes the bundle's own `Contents/MacOS/<CFBundleExecutable>` in
-Electron's node mode (`ELECTRON_RUN_AS_NODE=1 <exe> -p 'process.exit(0)'`, so no
-window, no display, no user-data directory) and fails on a non-zero status, a
-terminating signal, or a child that never exits within the bound. That is the
-question the pipeline could not ask and the one the OS actually answers: measured
-against the real 0.29.6 bundle it exits 137 (SIGKILL, no output), against the same
-bundle re-signed without the group it exits 0, and against the 0.29.5 install on
-this machine it exits 0. **The bound is one per kind of child, because the runner
+`app-spawn` executes the bundle's own `Contents/MacOS/<CFBundleExecutable>` with
+`--lo-launch-probe` (plus a scratch `--user-data-dir`, `--use-mock-keychain` and
+`--window-mode=headless`). The app answers that flag first thing in its main
+module, before its single-instance lock, any window, `whenReady` or the backend:
+it prints one `LOCAL_OPERATOR_LAUNCH_PROBE {...}` line and exits 0
+(`src/main/launch-probe.ts`). The check fails on a non-zero status, a terminating
+signal, a child that never exits within the bound, or an exit without that line.
+That is the question the pipeline could not ask and the one the OS actually
+answers: measured against the real 0.29.6 bundle (then in node mode) it exits 137
+(SIGKILL, no output), against the same bundle re-signed without the group it
+exits 0. Because the line is printed from the shipped `out/main/index.jsc`, the
+same launch also proves the bundle's own V8 accepts its own bytecode (the 0.30.10
+x64 class), so the separate `app-bytecode-loadable` probe is gone.
+
+*Why not node mode any more (F2).* Until F2 this check ran
+`ELECTRON_RUN_AS_NODE=1 <exe> -p 'process.exit(0)'`. The RunAsNode fuse is now
+off (node mode ran arbitrary JS inside the genuine signed process), and on a
+fused build that command does not run Node: it boots the full app, which on a
+runner hangs to the bound and on a Mac raises a window and asks the keychain. The
+gate also reads the fuse wire itself (`app-electron-fuses`, policy in
+`scripts/electron-fuse-policy.mjs`), requires `LOAttestationEpoch = "1"` in
+`Info.plist` (`app-attestation-epoch`, the runtime's downgrade lock), and walks
+every executable's entitlements for the keys above (`app-hardening-entitlements`).
+**The bound is one per kind of child, because the runner
 checks both architectures.** A launcher this host has to translate answers in a
 translation's time rather than in its own: on the arm64 runner, the x64 bundles'
 probe crossed the 60 s bound twice in one release (v0.30.9, run `35701146672`,
@@ -530,8 +606,9 @@ status or a child that never returns is still red under either bound.
 `app-profile-authorization` names the *cause* rather than
 the symptom — every profile-backed entitlement the signature claims must appear in
 an embedded profile's own `Entitlements` — and `app-webauthn-entitlement` is
-bidirectional: absent is the shipped default, and present is only acceptable when
-the profile authorizes that exact group for that bundle id. `app-spawn` is
+bidirectional: absent (a build without the profile) is inert and passes, and
+present is only acceptable when the profile authorizes that group — by Apple's
+rule, so the team wildcard counts — for that bundle id. `app-spawn` is
 deliberately absent from `SIGNATURE_CHECK_IDS` in `scripts/verify-signed-update.mjs`:
 a failure there is a defect in the artifact, not a capability the runner lacks.
 
@@ -582,21 +659,306 @@ requires a `keychain-access-groups` entry whose value has the group's shape,
 id is a release secret this gate does not hold; the runtime compares the full value
 against its own signature and stays inert if they differ.
 
-### 3.5 What Electron's implementation cannot do (stated plainly)
+### 3.5 What can and cannot be achieved in this browser (stated plainly)
 
-- **Touch ID / Secure Enclave only**, via `LAContext`. Credentials are
-  **device-bound**: no iCloud Keychain sync, and they exist only on Macs with a
-  Secure Enclave (Apple silicon, or Intel with a T2).
-- **It does not open Apple Passwords or a third-party passkey manager
-  (1Password).** That sheet needs Apple's
-  `com.apple.developer.web-browser.public-key-credential` entitlement plus
-  AuthenticationServices integration that Electron does not have — i.e. a native
-  addon (`vault12/electron-webauthn-mac`) layered over a preload polyfill. Out of
-  scope here, and the chooser's copy says so to the user rather than leaving them
-  to wonder where their passkey went.
-- Sources: electron/electron#51255, electron/electron#27355, and a
-  near-identical Electron browser that filed the same class of bug,
-  freedom-browser#347.
+The measurements and source inspection below come from an investigation on 2026-10-28 (Electron
+44.3.0 / Chromium 152.0.7977.78, macOS arm64; the installed, signed 0.45.1 and a
+dev build; headless, isolated HOME and user-data-dir; real relying-party fixture
+and webauthn.io; a CDP virtual authenticator as the control). The matrix, the
+probe scripts and the Chromium/Electron source copies are in that session's
+scratchpad (`passkey-investigation/FINDINGS.md`, rows quoted by id below); the
+upstream paths are named so each claim can be re-read at the tag.
+
+**What happens today, in the shipped build.** There is **no authenticator**:
+`PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()` is `false`
+and `navigator.credentials.create()` / `.get()` **remained pending at the observation ceiling** (4–5 s in the fixture,
+15 s after Register on webauthn.io; no prompt or rejection during those windows) for a platform, cross-platform and unspecified attachment,
+with `uv` required, preferred and discouraged (rows A1, A4, A5, A8; webauthn.io,
+A9). A virtual-authenticator control resolves requests in the same hidden window
+(B2, B12), proving the page/Chromium path but not native discovery or hardware.
+Hidden and bare-WebContents observations do not exclude a native-UI visibility
+constraint; neither has a visible native UI. Touch ID is off
+because the shipped signature carries no `keychain-access-groups` entitlement
+(D1), and `src/main/webauthn.ts` additionally mis-reported the reason until the
+stderr fix (§3.2). `PublicKeyCredential.isConditionalMediationAvailable()` is
+`true`, so a site still starts a conditional `get()` still pending at the fixture ceiling (A3).
+
+**What cannot be achieved, and why.**
+
+| Capability | Status | Why (source) |
+| --- | --- | --- |
+| Touch ID platform passkeys | **Enabled in release builds from the switch-on (2026-11-02); verify on the first signed release (§3.7 step 5)** | Needs the `keychain-access-groups` entitlement `<TEAM_ID>.<BUNDLE_ID>.webauthn`, a *restricted* entitlement that must be authorized by an embedded Developer ID provisioning profile (the 0.29.6 incident, §3.4). The Radient Inc. organization's profile now authorizes it (as the team wildcard) and both release workflows embed it on the main executable only. Chromium's Touch ID path checks only that entitlement, then uses `LAContext` and the Secure Enclave: `device/fido/mac/touch_id_context.mm` `TouchIdAvailableImpl`. Credentials are device-bound (no iCloud sync) |
+| Apple Passwords / iCloud Keychain / 1Password sheet | **Not available, and no flag or entitlement alone changes it** | Chromium's iCloud-keychain discovery is added only when an `NSWindow` is set (`device/fido/fido_discovery_factory.cc` `MaybeCreatePlatformDiscovery`, ~202-212), and `set_nswindow` is called only from //chrome (`chrome/browser/webauthn/chrome_authenticator_request_delegate.cc` ~1206); Electron 44's WebAuthn files (`shell/browser/webauthn/`) contain no `NSWindow` handoff. It would also need Apple's `com.apple.developer.web-browser.public-key-credential` entitlement (applied for, reviewed by Apple, profile-backed) and Local Operator to declare `http`/`https` URL schemes (it does not today, so it is not selectable as a browser) |
+| Hybrid ("use a phone", QR) | **Not available** | The QR key and cable data are set only by //chrome's `ConfigureDiscoveries`; `FidoDiscoveryFactory::Create(kHybrid)` returns nothing without them, and Electron never sets them (C1-C3). A CDP *virtual* hybrid device "works" only because it bypasses discovery (B11) |
+| Bluetooth LE and NFC security keys | **Not available** | `Create(kBluetoothLowEnergy)` returns nothing in Electron's configuration; NFC is a TODO upstream (C3) |
+| PIN-protected security keys; `userVerification: "required"` on a roaming key | **Not available** | Electron's client delegate does not override `SupportsPIN()`, whose default is `false`, and `CollectPIN` is `NOTREACHED()` in the base delegate, so nothing can collect a PIN (C1, C2, C4) |
+| USB-HID security key with no PIN, `uv` preferred or discouraged | **UNMEASURED, not "unsupported"** | HID discovery IS created in Electron (no embedder gate, C4) and the page/Chromium flow completes against a *virtual* USB device (B7, B9, B13), but no real key was available, and there would be no on-screen cue to touch it |
+| The OS Touch ID sheet itself | **UNMEASURED** | Cannot be driven headlessly and the entitlement is absent (A10 BLOCKED). The sheet has never been seen in this repository |
+| Password-manager extensions (1Password, iCloud Passwords) | **Required integration APIs absent; real products untested** | `session.loadExtension` works in the persistent browser session and content scripts run (E2), but native messaging was disabled in Electron's extension host (`sendNativeMessage` fails, E4) and `chrome.webAuthenticationProxy` does not exist (E3). The real 1Password extension was not loaded (E6 BLOCKED): this is measured on a synthetic MV3 extension. **Update (2026-11):** native messaging is now available per extension and per desktop app — the extension must be installed and on, declare `nativeMessaging`, be listed in the host manifest's `allowed_origins`, and the user allows each host once in a native dialog (revocable on lop://extensions); see `src/main/browser/extensions/adapter.ts`. Desktop apps that verify the calling browser's code signature (1Password) must additionally be told to trust Local Operator in their own settings |
+| Native addon (`vault12/electron-webauthn-mac`, `ASAuthorizationController`) | **Not built; would not reach third-party sites** | The addon generates its own challenge (README `challenge` row: "Auto-generated internally"), so a page's server-issued challenge cannot be used as-is, and it needs `com.apple.developer.associated-domains` plus an `apple-app-site-association` (AASA) file on the relying party that lists our app id. Measured: amazon.com's and login.microsoftonline.com's AASA files list 98 and 115 apps and neither includes `com.local-operator`; github.com and accounts.google.com serve none (the addon investigation's F1-F3) |
+| Electron 45 `platformPasskeys` | **Not adopted; same reach as the addon** | Electron 45's option (released 2026-10-21) shows the system sheet but is described as requiring associated domains plus AASA and rejects cross-origin iframes (the addon investigation's F5, from the Electron PR, not run here) |
+
+**Does the AASA limit apply to the Touch ID path? Not on what was read, and the
+claim is bounded.** The Touch ID authenticator that `app.configureWebAuthn({
+touchID })` enables is Chromium's own (`device/fido/mac/`, `LAContext` plus keychain
+items in the configured access group). A search of the core files of that
+directory at tag 152.0.7977.78 (`authenticator.{h,mm}`, `authenticator_config.h`,
+`credential_metadata.cc`, `credential_store.mm`, `discovery.cc`,
+`get_assertion_operation.mm`, `make_credential_operation.mm`,
+`touch_id_context.mm`, `util.mm`) for `associated domain`, `applinks`,
+`webcredentials`, `site-association`, `AASA` and `AuthenticationServices` found
+**no match**; the group is the only app-identity input
+(`touch_id_context.mm`'s entitlement check; `credential_store.mm` keys items by
+`keychain_access_group`). So the AASA/associated-domains requirement belongs to
+the addon and `platformPasskeys` paths, which go through `AuthenticationServices`,
+and was NOT found on the Touch ID path. **UNVERIFIED:** that no other component
+in the browser process imposes a per-site association on this path (not read), and
+that a real signed build with the profile works at all (never exercised, §5).
+
+**Open decisions, not decided here.** Whether to apply to Apple for the
+web-browser passkey entitlement (which also turns Local Operator into a selectable
+default browser), and whether to create the Developer ID provisioning profile
+that would unlock the Touch ID path, are product and account decisions with the
+account holder; the Touch ID path is additionally waiting on the Apple Developer
+**Organization** account upgrade, after which the team id and so the group may
+change. Nothing in this change creates a profile, touches a CI secret or changes
+signing or notarization.
+
+Sources: electron/electron#51255, electron/electron#27355, freedom-browser#347
+(the same class of bug in a near-identical Electron browser), and the Chromium
+and Electron paths named in the table.
+
+**Shipped status (2026-10-28):** passkeys do **not** work in the built-in
+browser. The release has no platform authenticator (no `keychain-access-groups`
+entitlement and no provisioning profile), so a page's WebAuthn request stays
+pending, and the entitlement is **not the only** blocker for password-manager
+sheets: those also need an NSWindow handoff Electron 44 lacks and `http`/`https`
+URL schemes the app does not declare. Hybrid/QR, BLE/NFC, PIN-protected keys and
+extension native-messaging and webAuthenticationProxy APIs are absent (actual
+product extensions untested); a real USB key and the OS Touch ID
+sheet are **unmeasured**. A site that needs a passkey has to be completed in the
+system browser; since §3.6 the browser says so instead of hanging silently.
+
+### 3.6 The notice: a request that cannot be served must not hang silently
+
+**2026-11-09 correction — signed Touch ID is not synced passkey access.**
+Read-only checks of the installed v0.52.12 app found the exact
+`SHA2U6KT7V.com.local-operator.webauthn` keychain group and an embedded
+provisioning profile; `codesign --verify --deep --strict` succeeded. The
+associated-domains and web-browser public-key-credential entitlements were
+absent. The October gate-off description below is historical, not the current
+installed capability. This signature check does not prove a native ceremony.
+Existing GitHub credentials in Apple Passwords or another manager are not made
+available by configuring Electron's device-bound Touch ID authenticator. The
+per-RP AASA restriction in §3.5 still prevents treating `platformPasskeys` as a
+generic browser replacement.
+
+The old recovery path had two observable holes: `index.ts` did not inject the
+shim at all once Touch ID was configured, and its delayed observer ignored a
+request that had already rejected. A baseline execution of the original shim
+returned the page's `NotAllowedError` unchanged but emitted zero recovery
+signals. Recovery now observes explicit `create`/`get` requests in both gate
+states. It keeps the existing three-second courtesy delay (no synchronous
+interruption of the site's cancellation UX); only gate-off pending requests
+raise a pending notice. A `NotAllowedError` instead carries the typed
+`outcome: "not-allowed"` and says the request did not complete. Native
+cancellation and an unavailable credential have the same error name: neither
+is diagnosed as a broken or missing provider. Successful requests, conditional
+mediation, `AbortError`, aborted signals, validation and security errors stay
+silent. The original promise, arguments and exception remain the site's own.
+The delayed observation has the same late-unhandled-rejection limitation noted
+below; exception messages and credentials are never signalled.
+
+Both notice states explain the actual recovery choices: use another sign-in
+method **on this page** to authenticate this tab, or sign in separately in the
+system browser. Opening the current URL does **not** transfer cookies or make
+the embedded tab authenticated. It remains a nonmodal, rate-limited,
+dismissible courtesy, with origin read by main and no automatic navigation.
+The existing observer injection race and frame limits remain unchanged.
+
+**Historical gate-off implementation and evidence (2026-10-28):**
+
+**The mechanism and why this one.** Electron 44 gives the embedder no
+request-start signal: its only WebAuthn event, `select-webauthn-account`, fires
+after a request already has several credentials to choose from (and never fires
+on a build with no authenticator), and its client delegate overrides no
+request-lifecycle method (C1). A timer in main therefore has nothing to hang off.
+The one place a request is observable is the page's own JavaScript, so the
+mechanism is a small shim that main injects (`frame.executeJavaScript` at each
+http(s) frame's commit and finish-load) which wraps `CredentialsContainer`'s
+`create` and `get` and reports, once, a call that is **still pending three
+seconds later**. (A CDP `Page.addScriptToEvaluateOnNewDocument` was built first
+and dropped: it needs the `Page` domain, which `actions/gate.ts` disables again
+after every agent navigation, and a permanently enabled `Page` domain is one of
+the open Cloudflare-stall discriminators of §2.2.)
+
+**It observes and never participates.** The shim returns the page's own promise
+and arguments unchanged and never rejects, resolves or fakes a result: a failure
+must not wear a verdict's clothes. The notice says only what main can stand
+behind: *a request from this site is still waiting, and this browser has no
+passkey provider*. It does not say the request failed, and it does not call Touch
+ID or a USB key "unsupported". Conditional-mediation `get()` (the autofill form)
+is excluded, because pending is its normal state. A call that already settled by
+the time of the check is not announced.
+
+**The signal is one-way and carries no page text.** One `console.debug` line:
+a fixed sentinel, a per-FRAME random nonce main issued, and `create` or `get`.
+Main reads it from `webContents`' `console-message`. **Measured on Electron
+44.3.0:** that event's `frame` is the *top* frame even when a child frame logged
+the line, so attributing by it would blame the address-bar site for an embedded
+frame's request; the nonce therefore selects the `WebFrameMain` main injected,
+and that frame's browser-side `origin` (and whether it has a parent) is read at
+that moment. Nothing is exposed to the page: no preload, no `contextBridge`, no
+global; the sandbox, `contextIsolation`, origin gating and popup handling are
+untouched. A page that cannot guess a nonce cannot signal; an opaque origin
+(`null`, a sandboxed frame) raises nothing rather than a notice naming an invented
+site; one notice per tab per 30 s (the rest are counted in the log); a notice
+clears on the next top-level document and ages out at 120 s.
+
+**The agent-versus-human boundary.** The notice carries who owns the tab as the
+registry records it, and says "agent-driven tab" in its copy. It is projected only
+for the ACTIVE tab, so a background agent tab's request never narrates itself onto
+the page the user is looking at; it is shown, still labelled, when the user
+activates that tab (measured by the rig's background-agent-tab and on-activation checks, §4.4).
+
+**The one action** opens the tab's own page in the system browser through the
+app's vetted door (`openVettedExternal`: http(s) only, no credentials, no
+loopback or private-network host). The renderer sends a tab id and the notice's
+identity (`at`); main reads the URL from the tab itself, so no URL travels from
+the renderer, and a stale or replaced notice is refused. Measured: a loopback
+page is refused by the door with its own reason and never reaches the opener.
+
+**Off when the platform authenticator is on.** The shim is registered only when
+`installWebauthn` did not configure the authenticator. With a signed build whose
+entitlement the gate accepted, the OS sheet is the UX and the existing chooser
+stays.
+
+**Limits.** (1) A call made before the shim lands (an inline script at parse time)
+is not observed. (2) A cross-origin frame may only call `create()` under user
+activation in Chromium, and an out-of-process frame is reached only if Electron
+lets main execute in it. (3) A page can evade the notice by replacing the wrapped
+methods; it then only loses a courtesy. (4) The line is also a `logs`-action entry
+for the tab (a nonce, no page data). (5) The copy is deliberately provisional:
+*Touch ID passkeys are planned* promises no date.
+
+### 3.7 Enablement runbook (steps 1-3 DONE 2026-11-02; step 5 pending the first signed release)
+
+The Organization account landed with the team id unchanged (the individual account
+was converted), so the keychain group's value did not change.
+
+1. **Apple side (done).** App ID `<TEAM_ID>.com.local-operator` with Keychain
+   Sharing, and a Developer ID provisioning profile for it ("Local Operator desktop
+   passkeys (Developer ID, Radient Inc)"). Its `keychain-access-groups` is the team
+   wildcard `<TEAM_ID>.*`, which covers `<TEAM_ID>.com.local-operator.webauthn`;
+   it also carries `com.apple.application-identifier` and
+   `com.apple.developer.team-identifier` for the app. The profile embeds the
+   Developer ID Application certificate, which expires 2027-12-02: a new
+   certificate needs a NEW profile. What happens at launch once a profile expires
+   is still **UNVERIFIED**.
+2. **CI secrets (done).** `MACOS_DEVID_APP_P12_BASE64`,
+   `MACOS_DEVID_APP_P12_PASSWORD`, `MACOS_APP_PROFILE_BASE64`,
+   `APPLE_API_KEY_P8_BASE64`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`,
+   `APPLE_TEAM_ID`. Notarization moved from the Apple ID to an App Store Connect
+   API key at the same time. The individual-account secrets (`CSC_CONTENT`,
+   `CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_ID_PASSWORD`) stay for rollback and are
+   read by nothing.
+3. **Where the workflow consumes them (done).** `publish.yml`'s "Stage the
+   provisioning profile, entitlements and notarization key" step (and the same
+   step in `signed-update-candidate.yml`) decodes the profile, renders the plist
+   with `--profile`, and both `dist:mac` passes carry
+   `-c.mac.provisioningProfile` and `-c.mac.entitlements`; `entitlementsInherit`
+   is untouched. The comment above that step in `publish.yml` is the authority,
+   including rotation.
+4. **How the value is derived.** `<TEAM_ID>.<BUNDLE_ID>.webauthn`, built in one
+   place per side: `webauthnKeychainAccessGroup` in `src/main/webauthn.ts` (read
+   from the running signature) and in `scripts/render-mac-entitlements.mjs` (from
+   `APPLE_TEAM_ID` and `build.appId`). A new team id changes the value everywhere
+   at once; nothing is hand-typed.
+5. **Verify in a signed build (pending the first release; the pre-wiring re-sign of v0.47.7 is §3.4).** In order: `pnpm verify-macos-artifacts`
+   (its `app-webauthn-entitlement` check, and the spawn check that guards the
+   0.29.6 brick); on the installed `.app`,
+   `codesign -d --entitlements - --xml '<app>'` showing the group under
+   `keychain-access-groups`; the boot log line `[webauthn] Touch ID platform
+   authenticator enabled (<group>)` instead of `Touch ID passkeys are off: ...`;
+   `PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()` returning
+   `true` on a test page; and one real `navigator.credentials.create()` and
+   `.get()` that **settle** (the OS Touch ID sheet appears, a credential is
+   created and retrieved). With the authenticator on, the §3.6 **pending** notice
+   is not armed; rejection recovery remains available. Confirm that a successful
+   native request produces no notice and explicit abort stays silent.
+6. **Rollback and reinstall consequence (not measured).** Credentials are
+   device-bound and scoped to the configured keychain access group. A build
+   without access to that group cannot use those keys. Whether a reinstall or
+   rollback retains usable credentials depends on the signature, group, session
+   metadata and keychain persistence; no data-loss or recovery guarantee has been
+   measured. Validate that migration before enablement and communicate the result.
+7. **AASA scope.** Not required by the Touch ID path on what was read (§3.5);
+   required by the addon and Electron 45 `platformPasskeys` paths, which would
+   reach only relying parties whose AASA lists our app id.
+
+### 3.8 Password-manager prompts in agent tabs: user custody (2026-11-11)
+
+**Report.** Microsoft's sign-in (`login.microsoft.com/consumers/fido/get`) sat on
+"Face, fingerprint, PIN or security key" with Try again disabled in an
+agent-driven tab; the same sign-in completed in a tab the operator opened.
+
+**Root cause (ours, not native).** `extensions/subframe-policy.ts` refuses every
+`chrome-extension://` subframe in a tab whose owner is not the user. 1Password
+answers WebAuthn in page script and shows its passkey UI in such a frame, so in
+an agent tab its request could never be answered. Measured on the installed
+0.54.1 with 1Password 8.12.44.33, synthetic RP on `http://localhost`: 1Password
+installs an accessor `get` on the `navigator.credentials` instance that bypasses
+the prototype-level shim of §3.6 (`L(e){return await q(e?.publicKey?.hints)?H(e):d.credentials.get(e…`);
+a `create()` inserted `com-1password-notification` whose frame was refused.
+In the shipped bundle the passkey sign-in and save UI is
+`inline/notification/notification.html` (`passkey-signin-prompt`,
+`sign-in-with-passkey`, `select-passkey-item`, `use-system-passkeys`), finished
+in `inline/universal-sign-on/universal-sign-on.html`; `modal.html` has no passkey
+route and `menu.html` is the autofill menu.
+
+**Decision.** `extensions/passkey-custody.ts`: a known, installed provider's
+measured prompt document is admitted in an agent tab only after a hold is in
+place, synchronously in `will-frame-navigate`. While held: `registry.requireSurface`
+refuses the tab (handle-less `close` included); `CdpPool.sendTo` refuses every
+command but the origin gate's `Fetch` answers and capture teardown
+(`Page.stopScreencast`, `Page.stopScreenRecording`, `IO.close` — never `IO.read` —
+`Emulation.clearDeviceMetricsOverride`, `Page.disable`) and drops a result that
+was in flight when the hold began;
+isolated-world reads that cross the hold are dropped (`registry.guardRead`);
+CDP events other than `Fetch.*` reach no subscriber (console and network
+captures see nothing of the hold); frame walks refuse any `chrome-extension:`
+document independent of custody. A running recording is DISCARDED when the hold
+begins (`discardRecordingForCustody`, tombstone `record_aborted` /
+`passkey_custody`), not paused: Chromium's default recorder encodes the
+composited surface with no event to filter, so a paused clip would still carry
+the prompt to the agent at `record_stop`. The tab is activated, the renderer opens its
+conversation's browser pane, and `window-raise.ts` raises under the launch plan
+(`passkey-custody` trigger). Only the user's trusted **Return to agent** ends a
+hold — no timer. A provider frame still present at release, or any frame
+admitted during the hold that is not yet destroyed (it may not have committed),
+reloads the page first; the hold lifts on the new document's commit, and a
+second press meanwhile does not reload again. The previous tab, and in the
+renderer the previous route, conversation or draft and pane state
+(`shared/browser-passkey-custody-handoff.ts`), come back only if the user is
+still where the handoff put them; one hold (`{tabId, at}`) moves the user at
+most once. OS focus is not handed back to another app (Electron cannot).
+
+**Band copy** (`ui.browser.browser_passkey_custody.*`, eight locales): neutral
+"password manager" wording because the same frame hosts the save-login prompt;
+it says returning with the prompt open reloads and cancels an unfinished
+sign-in or save, and that the agent may need asking to continue. The button
+shows `returning` until the hold lifts; refusals toast `return_refused_stale`,
+`return_refused_not_held` or `return_failed`.
+
+**Accepted side effect.** `notification.html` is 1Password's generic notification
+host (its hash is `type=notificationManager` for every kind), so a "save this
+login?" prompt in an agent tab also enters custody.
+
+**Not changed.** Native reach (§3.5): synced iCloud Keychain passkeys for
+arbitrary relying parties still need Apple's browser entitlement plus a
+platform bridge Electron 45 does not ship (its `platformPasskeys` uses the
+public per-RP API with associated domains). Other managers' prompts stay
+refused until measured.
 
 ---
 
@@ -691,18 +1053,42 @@ the answer reaches Electron's callback, exactly one Session listener survives ni
 requests, and focus comes back to the app rather than landing on `<body>`. The
 frames and the numbers are in `docs/evidence/browser-webauthn/README.md`.
 
+### 4.4 The passkey notice, in a real boot
+
+`scripts/browser-challenge-proof.mjs --arm passkey` (committed, re-runnable)
+boots the built app headless (`--window-mode=headless`, scratch HOME and
+user-data-dir, `--use-mock-keychain`) with the platform authenticator OFF, which
+is the shipped state, and serves a relying-party fixture on two origins
+(`rp.test` is mapped to 127.0.0.1 and treated as secure, because the app's
+external door correctly refuses loopback hosts, so a `localhost` fixture could
+only ever show the refusal). `shell.openExternal` is replaced from the main
+inspector with a recorder, so no real browser is launched. Result on this head:
+**arm=passkey pass=1/1, 29 checks, all PASS**, covering: the page's `create()`
+returns a Promise and stays **pending** after the notice and 5 s later (nothing
+rejected or faked); no notice before the 3 s delay; the origin read by main; a
+**cross-origin iframe** attributed to the frame's own origin and marked embedded
+(clicked with a real CDP mouse event, because a cross-origin frame may only call
+`create()` under user activation); two more requests inside the window raising no
+second notice (one log line); a stale or unknown notice identity refused for the
+right reason; the real button handing the tab's own URL to the stubbed opener
+exactly once; a loopback page refused by the vetted door and never reaching the
+opener; dismissal by identity; a background **agent** tab raising nothing on the
+user's page, then showing, labelled agent-driven, on activation; and no horizontal
+overflow at 800 px in either ramp. The frames are in
+`docs/evidence/browser-passkey-notice/README.md`.
+
 ---
 
 ## 5. What is NOT verified, and what the next signed release owes
 
-- **The OS Touch ID sheet has never been seen.** This machine has no signing
-  identity: a local build is ad-hoc signed, so the gate says `unpackaged` and
-  stays inert. Nothing here proves that a signed build's sheet appears, that the
+- **The OS Touch ID sheet is unmeasured.** The tested development build is
+  unpackaged and the installed signed build has no keychain group/profile. Nothing here proves that a signed build's sheet appears, that the
   prompt string renders as intended, or that a created credential is retrievable.
-  The chooser itself is exercised only through a synthetic emit (§4.3), because
-  the OS path that fires the real event needs that same signed bundle.
-- **The entitlement on a signed build has never been READ, and the profile path
-  has never run.** The render script and the workflow wiring are asserted by tests
+  The earlier chooser rig uses a synthetic emit (§4.3); the 2026-10-28
+  investigation also triggered the real event with virtual authenticators, not
+  native hardware.
+- **The enabled profile path has never run. The shipped signature HAS been read
+  (2026-10-28, §3.2), and contains no keychain group.** The render script and the workflow wiring are asserted by tests
   over the YAML and the plist, the gate's comparisons are unit-tested with the real
   0.29.6 signature as the negative fixture, and `app-spawn` runs for real against
   every artifact a release builds — but no build in this repository has produced a
@@ -712,7 +1098,8 @@ frames and the numbers are in `docs/evidence/browser-webauthn/README.md`.
   group cannot be signed in without one, and that the group-free build launches
   (measured on this machine, §3.4).
 - **The 1Password / Apple Passwords sheet cannot work at all** (§3.5), and no
-  amount of testing here would change that; it needs a native addon.
+  amount of testing here would change that; an entitlement alone is insufficient, and the examined addon is not a
+  drop-in solution for third-party relying parties (§3.5).
 - **Two keyboard surfaces are unmeasured, and QA round 2 says so rather than
   implying coverage**: what a half-typed composer draft does when a passkey
   chooser takes focus on a boot where the chat route is reachable (round 2 had no

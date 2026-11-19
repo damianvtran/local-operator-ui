@@ -11,11 +11,12 @@
  *
  * The fix is the container, not the symptom: the panel is now a member of the
  * CANVAS FAMILY - right-docked, a 40px chrome bar, its own scroller, the family's
- * width arithmetic (`min(560, row - 480)`, floor 400, the `overlay` literal below
- * the floor - a flex dock, not a cover, since the positioning was removed; see
- * `chat-sidebar-layout.ts`). The card can no longer be the widest thing on the
- * screen because it fills a pane the family sizes, which is also why there is no
- * separate width rule here for it to fight with.
+ * width arithmetic (`min(RIGHT_SLOT_MAX_PX, row - 480)`, floor 400). Below the dock
+ * breakpoint it is a right-anchored SHEET over the row that cannot host it
+ * (`askPanePresentation`), with a scrim and an opaque ground, because a 0-wide flex
+ * dock is not a readable drawer. The card can no longer be the widest thing on the
+ * screen because it fills a pane the family sizes, and it opens at the same width
+ * as every other pane in the slot; there is no separate width rule here.
  *
  * ## One right pane at a time
  *
@@ -28,10 +29,13 @@
  * ## Scroll ownership (the D1 fix)
  *
  * Three regions, and only the middle one scrolls: the chrome bar is `shrink-0`, the
- * list is `min-h-0 flex-1 overflow-y-auto`, and there is no footer (the actions live
- * in each card). The transcript does not move when this opens, and the fix is
- * checkable as a number rather than by eye: the scroller's `scrollHeight` is what it
- * is, and `clip` is gone from the page (`virtual_size == size` on the page scroller).
+ * list is `min-h-0 flex-1 overflow-y-auto`, and there is no drawer-level footer - the
+ * actions live in each card, where the card's own row pins to this scroller's bottom
+ * while that card is the one in view (`ask-panel.tsx`'s pinned row, and the list's
+ * `scroll-padding-bottom`, which keeps Tab focus above it). The transcript does not
+ * move when this opens, and the fix is checkable as a number rather than by eye: the
+ * scroller's `scrollHeight` is what it is, and `clip` is gone from the page
+ * (`virtual_size == size` on the page scroller).
  *
  * ## Dismiss
  *
@@ -89,33 +93,46 @@
  */
 
 import { Button, Tooltip } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	type AskDrawerCloseOptions,
 	useUiPreferencesStore,
 } from "@shared/store/ui-preferences-store";
 import { PanelRightClose } from "lucide-react";
-import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
+import {
+	type ReactNode,
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from "react";
 import type { CanonicalFrontendState } from "../../../../../../shared/desktop-session-contract";
 import type {
+	AskDismissReason,
 	AskDraft,
 	AskOutcome,
 	AskPresentation,
 	AskScope,
 } from "../../ask-queue";
 import {
-	ASK_DRAWER_UNAVAILABLE_LINE,
-	ASK_DRAWER_UNREAD_LINE,
 	ASK_ITEM_SELECTOR,
 	ASK_RAIL_ITEM_SELECTOR,
 	EMPTY_DRAFTS,
+	askAttentionCount,
+	askDrawerUnavailableLine,
+	askDrawerUnreadLine,
 	askQueueView,
 	askScopeLine,
+	askScopeSubject,
 	noopDraftChange,
 } from "../../ask-queue";
 import { handCaretToComposer } from "../../composer-caret";
 import { useAskClock } from "../../use-ask-clock";
-import { AskPanel } from "./ask-panel";
+import { useAskActionsHeight } from "./ask-bounds";
+import { AskPanel, type AskPanelProps } from "./ask-panel";
 
 /**
  * What "the drawer's first control" means when focus enters it.
@@ -161,6 +178,24 @@ const ASK_PANEL_SELECTOR = "[data-lo-ask-panel]";
 const ASK_LANDING_TARGET = "[data-lo-ask-row], [data-lo-ask-settled]";
 
 /**
+ * THE SUGGESTED-COMMAND ROW IS NEVER THE LANDING (UX round 1, U2). The row sits
+ * under the question prose, ABOVE the answer options, so a bare "first
+ * focusable in the row" walk put the entry focus on its Copy — the action the
+ * card is least about, where Enter only copies — instead of the answer control
+ * it landed on before the row existed. The walk skips the row's subtree; the row
+ * stays in the Tab order right where it is drawn.
+ */
+const ASK_LANDING_SKIP = "[data-ask-command]";
+
+/** The first control in `root` the entry move may land on (see above). */
+const firstLandingControl = (root: HTMLElement | null | undefined) =>
+	root
+		? (Array.from(
+				root.querySelectorAll<HTMLElement>(ASK_DRAWER_FOCUSABLE),
+			).find((node) => node.closest(ASK_LANDING_SKIP) === null) ?? null)
+		: null;
+
+/**
  * THE MENU DOOR'S RETURN TARGET (#896 round 1, Q1): the `…` menu's asks row is
  * the third door to this drawer, and the one that cannot signal its press
  * through focus - Radix hands the keyboard back to the menu's own trigger when
@@ -201,6 +236,21 @@ const keyboardLeftOnMenuPress = (active: Element): boolean =>
 	active === document.body || active.matches(MENU_TRIGGER_SELECTOR);
 
 /**
+ * Whether the element is inside a subtree an `inert` ancestor has covered.
+ *
+ * THE PRESS LATCH BELOW NEEDS THIS, not merely "focus is on BODY": a click on
+ * chrome that cannot take focus, or a blur, also parks the keyboard on body
+ * while the drawer waits for its records, and adopting the latch there would
+ * pull focus into the drawer after the user moved away (agent review round 2,
+ * m-r2-2). `inert` blurs the focused descendant to body AND marks the subtree,
+ * so the marker is what distinguishes our own open from a keyboard that left.
+ * The property reflects the attribute in every engine the app ships on, so
+ * `closest` reads the same fact the parent's layout effect wrote.
+ */
+const insideInert = (element: Element | null): boolean =>
+	element !== null && element.closest("[inert]") !== null;
+
+/**
  * HOW MANY TIMES the claim below may re-take the keyboard before it gives up.
  *
  * A BOUND, NOT A TUNING KNOB. The menu's close writes focus more than once on
@@ -228,6 +278,27 @@ export type AskDrawerProps = {
 	 */
 	scope: AskScope;
 	/**
+	 * THE GROUND THIS DRAWER PAINTS, chosen by the mount from the presentation it
+	 * was drawn in (2026-11-03). "glass" is the pane's translucent window-glass
+	 * ground (`data-glass-region="pane"`): correct for a pane DOCKED beside the
+	 * conversation over window material, wrong for the sheet drawn OVER the
+	 * conversation, where the transcript shows through it. "solid" drops that
+	 * marker so `bg-elevated` is opaque. Defaults to "glass", the pane's existing
+	 * ground, so every existing mount and story keeps what it had.
+	 */
+	ground?: "glass" | "solid";
+	/**
+	 * WHETHER THIS SURFACE COVERS CONTENT, which is what decides whether a press on
+	 * SOMEONE ELSE'S control survives its own commit (agent review round 3, MINOR-1).
+	 * The sheet's mount inerts or removes the control that opened it, so the press is
+	 * latched and the keyboard follows it in; the docked pane takes nothing away, so a
+	 * control that still holds focus keeps it - and a composer the user is typing in
+	 * must never be pulled into the pane by a request it did not make. Chosen by the
+	 * mount from `askPanePresentation`'s mode, beside `ground` and from the same fact;
+	 * defaults to "docked" so every existing mount and story keeps its behaviour.
+	 */
+	presentation?: "docked" | "overlay";
+	/**
 	 * The door that closes the drawer WITHOUT answering. The caller owns the flag
 	 * (the store does), so this reports the request rather than applying it - AND
 	 * IT CARRIES WHICH KIND OF CLOSE IT IS (#1079): the X below is the user asking
@@ -251,6 +322,13 @@ export type AskDrawerProps = {
 	 * the whole-map body is built inside the card where the edit buffer lives.
 	 */
 	onRevise?: (askId: string, answers: Record<string, string[]>) => void;
+	/**
+	 * PUT AN OPEN ASK AWAY (harness PR #2833, SA-D5), addressed by ask id for the
+	 * same reason the three doors above are. Absent where the backend does not
+	 * advertise `features.ask_dismiss`, so the panel draws no button — the gate is
+	 * the CALLER's, resolved where the capabilities are.
+	 */
+	onDismiss?: (askId: string, reason: AskDismissReason) => void;
 	answering?: boolean;
 	/** This surface's own record of the asks it posted for: `AskOutcome`, passed through untouched. */
 	outcomes?: Record<string, AskOutcome | undefined>;
@@ -272,8 +350,27 @@ export type AskDrawerProps = {
 	 * exists to avoid.
 	 */
 	conversationOf?: (row: AskPresentation) => string | null;
+	/**
+	 * THE SUGGESTED-COMMAND DOORS and the placement that gates Run…, passed
+	 * straight to the panel (see `AskPanelProps.onCommand` /
+	 * `commandPlacementOf`). The CALLER supplies both for the same reason it
+	 * supplies `conversationOf`: which conversation's terminal a command lands
+	 * in, and where that conversation's agent works, are facts of the mount's
+	 * scope, not of this container.
+	 */
+	onCommand?: AskPanelProps["onCommand"];
+	commandPlacementOf?: AskPanelProps["commandPlacementOf"];
 	/** A story pins the clock so its frames are reproducible. */
 	nowMs?: number;
+	/**
+	 * THE NOTIFICATIONS TAB STRIP (decisions D9, design § 18), supplied by the
+	 * mount when `features.notifications` is advertised. `strip` draws under the
+	 * chrome bar; `body` REPLACES the asks body while a non-asks tab is chosen.
+	 * Absent means this drawer renders exactly as it did before the feature.
+	 * `action` draws in the chrome bar beside the scope line: the Updates list's
+	 * back-to-top chip lives there so it costs the list none of its height.
+	 */
+	tabs?: { strip: ReactNode; body: ReactNode | null; action?: ReactNode };
 };
 
 /**
@@ -285,17 +382,24 @@ export type AskDrawerProps = {
 export const AskDrawer = ({
 	frontend,
 	scope,
+	ground = "glass",
+	presentation = "docked",
 	onClose,
 	onAnswer,
 	onDecline,
 	onRevise,
+	onDismiss,
 	answering = false,
 	outcomes,
 	drafts,
 	onDraftChange,
 	conversationOf,
+	onCommand,
+	commandPlacementOf,
 	nowMs,
+	tabs,
 }: AskDrawerProps) => {
+	useI18nLocale();
 	/*
 	 * THE VIEW IS READ THROUGH THIS DRAWER'S OWN OUTCOMES, so its `delivering` count
 	 * excludes a row the owner has already refused to change (design round 2, D7 =
@@ -308,6 +412,63 @@ export const AskDrawer = ({
 	const view = askQueueView(frontend, outcomes);
 	const now = useAskClock(view.open > 0, nowMs);
 	const rootRef = useRef<HTMLElement | null>(null);
+	const listRef = useRef<HTMLDivElement | null>(null);
+	/*
+	 * THE LIST'S KEYBOARD STOP, AND WHY IT IS MEASURED (the long-ask keyboard fix).
+	 *
+	 * A wheel over a question or an option row now reaches this scroller (the cards no
+	 * longer `overscroll-contain` it away). The KEYBOARD did not have that path at all:
+	 * the cards' controls are buttons, and a page key pressed on one of them scrolls the
+	 * nearest scrollable ancestor - which, with the old containment, was nothing. So the
+	 * list itself takes a Tab stop while it actually overflows, the same contract
+	 * `AskScrollBody` keeps for a long question and `aside-panel.tsx` keeps for an
+	 * exchange: a labelled scroll region in the walk, so PageDown/End/Space have
+	 * somewhere to land without a click first. A list that fits takes neither the stop
+	 * nor the role - an empty Tab stop in front of every short queue is noise.
+	 *
+	 * The name is the RAIL DOOR's own (`ui.shell.rail.ask.aria[_count]`): the noun,
+	 * this queue's scope and how many of it are waiting - the register a screen-reader
+	 * user already hears for the control that opened this pane (agent review round 1,
+	 * U3). Naming the region from the bar's STATUS LINE made it announce "1 question
+	 * waiting" as if that were what the box is; the bar still says that, above it.
+	 */
+	const [listOverflows, setListOverflows] = useState(false);
+	useAskActionsHeight(listRef);
+	/*
+	 * The region's name, in the RAIL DOOR's register (`ui.shell.rail.ask.aria[_count]`):
+	 * the noun, this queue's scope and how many are waiting - no new copy, and no
+	 * chord, because this box answers none of its own.
+	 */
+	const waiting = askAttentionCount(view);
+	const regionName =
+		waiting > 0
+			? t("ui.shell.rail.ask.aria_count", {
+					chord: "",
+					subject: askScopeSubject(scope),
+					count: waiting,
+					countText: String(waiting),
+				})
+			: t("ui.shell.rail.ask.aria", {
+					chord: "",
+					subject: askScopeSubject(scope),
+				});
+	useEffect(() => {
+		const node = listRef.current;
+		if (!node) return;
+		const measure = () =>
+			setListOverflows(node.scrollHeight > node.clientHeight + 1);
+		measure();
+		if (typeof ResizeObserver === "undefined") return;
+		const observer = new ResizeObserver(measure);
+		observer.observe(node);
+		/*
+		 * The CONTENT's own size is the other input: a card growing (a settled frame, the
+		 * dismiss chooser opening) does not resize the scroller, so its wrapper is watched
+		 * too - the same two-node shape `AskScrollBody` measures with.
+		 */
+		if (node.firstElementChild) observer.observe(node.firstElementChild);
+		return () => observer.disconnect();
+	}, []);
 	/*
 	 * THE UNREAD FRAME IS THE VIEW'S OWN FACT, not a second read of `frontend` here
 	 * (remediation round 1, D1 keeps it separate from `published`, and R1 needs it in
@@ -410,7 +571,9 @@ export const AskDrawer = ({
 	 * the latch is spent.
 	 */
 	useEffect(() => {
-		if (closedOnce.current) return;
+		// With Notifications the panel also owns updates: an empty asks queue
+		// cannot close an Updates tab (or steal the tab strip after answering).
+		if (tabs || closedOnce.current) return;
 		/*
 		 * NOTHING TO SHOW IS `open === 0` AND NO ROWS, NOT ROWS ALONE (remediation round
 		 * 1, R1). A frame whose LIST the wire bound dropped but whose TALLY survived
@@ -449,7 +612,7 @@ export const AskDrawer = ({
 		 * effect could sit on a stale close verdict for exactly the frame the guard was
 		 * added for.
 		 */
-	}, [view.rows.length, view.open, frameUnread, onClose]);
+	}, [view.rows.length, view.open, frameUnread, onClose, tabs]);
 
 	/*
 	 * INTO THE DRAWER, and only for the user's own press: the mount must find focus
@@ -673,6 +836,8 @@ export const AskDrawer = ({
 
 	const wasBootstrapped = useRef(false);
 	const doorRef = useRef<Element | null>(null);
+	/* The press itself, latched before the unread wait (see the entry effect). */
+	const pressedDoorRef = useRef<Element | null>(null);
 	useLayoutEffect(() => {
 		/*
 		 * THE CLAIM RE-ARMS ON EVERY COMMIT UNTIL IT SETTLES, including a commit a
@@ -742,6 +907,38 @@ export const AskDrawer = ({
 		 * menu row as a no-op.
 		 */
 		if (door !== null || requested) openedByDoor.current = true;
+		/*
+		 * THE DOOR IS LATCHED AS SOON AS IT IS SEEN, BEFORE THE WAIT BELOW CAN RETURN
+		 * (agent review round 1, m1). The covered column is `inert` on this same commit
+		 * - the parent's layout effect runs AFTER this one, and `inert` blurs the chip
+		 * to `<body>` - so a later commit of the unread wait cannot re-read the press.
+		 * Only a real DOOR is latched (`pressedDoorRef`), never the menu's trigger: the
+		 * request path has its own guard and must keep it.
+		 */
+		if (door !== null) pressedDoorRef.current = door;
+		else if (
+			presentation === "overlay" &&
+			requested &&
+			!viaMenu.current &&
+			pressedDoorRef.current === null &&
+			active !== document.body
+		) {
+			/*
+			 * A CHORD'S PRESSED CONTROL IS THE SAME KIND OF ORIGIN (agent review round 2,
+			 * M2-r2). A press that opens the sheet from an ordinary button - the notice's
+			 * "Open asks", the confirm's "Open asks panel" - is latched here too: the button
+			 * may still hold focus on this commit and is then blurred by the covered
+			 * column's `inert`, or removed with the confirm, and either way the keyboard
+			 * must end in the sheet rather than on `<body>`. The menu's trigger keeps its
+			 * own guard and is never latched as a press (`viaMenu`).
+			 *
+			 * AND ONLY THE SHEET LATCHES (agent review round 3, MINOR-1): the docked
+			 * pane takes nothing away, so a control still holding focus - the composer
+			 * the user is typing in, most of all - keeps it. Latching there made an asks
+			 * request pull the caret out of the box.
+			 */
+			pressedDoorRef.current = active;
+		}
 		const root = rootRef.current;
 		/* No container yet: nothing to move focus into, and the one-shot is not spent. */
 		if (root === null) return;
@@ -772,7 +969,29 @@ export const AskDrawer = ({
 		 */
 		if ((door !== null || requested) && frameUnread) return;
 		wasBootstrapped.current = true;
-		if (door === null && !requested) return;
+		/*
+		 * THE LATCHED PRESS IS ACCEPTED WHERE OUR OWN COMMIT LEFT THE KEYBOARD (agent
+		 * review round 1, m1): focus on the body is not the user moving away, it is the
+		 * covered column being made inert under the chip they pressed - or that control
+		 * removed outright -, and a user who went anywhere else still has no `door` here
+		 * and stands the move down, as before.
+		 *
+		 * AND THE TWO READINGS ARE BOTH EVIDENCE, because `<body>` alone is not (agent
+		 * review round 2, m-r2-2): a click on non-focusable chrome parks the keyboard in
+		 * exactly that place. The latched origin is adopted when the keyboard is still ON
+		 * it, or when it went to `<body>` and our own commit took the control away - the
+		 * covered column marks it `inert`, or the confirm that held it was removed
+		 * (`!isConnected`). Anything else means the user moved on. Only a SHEET has a
+		 * latch to adopt at all (see the latch above).
+		 */
+		const latched = pressedDoorRef.current;
+		const latchedPressOk =
+			latched !== null &&
+			(active === latched ||
+				(active === document.body &&
+					(insideInert(latched) || !latched.isConnected)));
+		const pressedDoor = door ?? (latchedPressOk ? latched : null);
+		if (pressedDoor === null && !requested) return;
 		/*
 		 * THE RETURN TARGET: the pressed door itself, or - for the menu's request -
 		 * the trigger Radix handed the keyboard back to (`MENU_TRIGGER_SELECTOR`).
@@ -786,11 +1005,11 @@ export const AskDrawer = ({
 		 * elsewhere (the composer, a palette) keeps their newer act. Either way the
 		 * one-shot is SPENT above, so a later Tab cannot resurrect the move.
 		 */
-		if (door !== null) doorRef.current = door;
+		if (pressedDoor !== null) doorRef.current = pressedDoor;
 		/* The request's target was recorded when the request was SEEN (above); this
 		 * is the fallback for a paint that could not find one then. */
 		if (viaMenu.current) doorRef.current ??= menuReturnTarget(active);
-		if (door === null && !keyboardLeftOnMenuPress(active)) return;
+		if (pressedDoor === null && !keyboardLeftOnMenuPress(active)) return;
 		/*
 		 * THE LIST'S FIRST CONTROL, not the bar's and not the filter's (UX round 1, U4;
 		 * agent review round 1, m1). The bar leads the DOM and its first focusable is
@@ -833,9 +1052,9 @@ export const AskDrawer = ({
 		 * `[tabindex="-1"]`, so the root can never be picked as the "first control" above.
 		 */
 		const landing =
-			landingRoot?.querySelector<HTMLElement>(ASK_DRAWER_FOCUSABLE) ??
+			firstLandingControl(landingRoot) ??
 			landingRoot ??
-			panel?.querySelector<HTMLElement>(ASK_DRAWER_FOCUSABLE) ??
+			firstLandingControl(panel) ??
 			root;
 		landingRef.current = landing;
 		landing.focus();
@@ -968,12 +1187,23 @@ export const AskDrawer = ({
 		 */
 		<section
 			ref={rootRef}
-			aria-label={scope === "fleet" ? "All asks" : "This conversation's asks"}
+			aria-label={
+				scope === "fleet"
+					? t("ui.chat.asks.all_asks")
+					: t("ui.chat.asks.conversation_asks")
+			}
 			data-lo-ask-surfaces=""
-			data-glass-region="pane"
+			/*
+			 * THE GLASS MARKER IS THE PRESENTATION'S, not the component's (2026-11-03): the
+			 * CSS gives every `[data-glass-region="pane"]` a TRANSLUCENT `elevated`
+			 * (`styles/index.css`, net alpha inside `<main>`), which is what a docked pane
+			 * wants over window material and what makes text bleed through when the same
+			 * pane is drawn over the transcript. The sheet mount passes `ground="solid"`.
+			 */
+			data-glass-region={ground === "glass" ? "pane" : undefined}
 			data-ask-drawer={scope}
 			tabIndex={-1}
-			className={cn("flex h-full flex-col bg-elevated")}
+			className={cn("panel-top-pad flex h-full flex-col bg-elevated")}
 			/*
 			 * Esc closes rather than declines (see the module note). Claimed with
 			 * `preventDefault` so the app-wide interrupt ladder does not also treat it as
@@ -1017,17 +1247,20 @@ export const AskDrawer = ({
 					className="truncate text-ink-muted text-xs"
 					/*
 					 * The scope line is the surface's own name, so a reader who arrives by
-					 * keyboard hears which queue this is rather than only "Asks".
+					 * keyboard hears which queue this is rather than only "Asks". It is the
+					 * BAR's reading and not the list region's name (see the region's own note);
+					 * the two say the same scope and count different things on purpose.
 					 */
 					data-ask-scope=""
 				>
 					{askScopeLine(scope, view)}
 				</span>
-				<Tooltip content="Close asks">
+				{tabs?.action}
+				<Tooltip content={t("ui.chat.asks.close_asks")}>
 					<Button
 						variant="ghost"
 						size="icon-sm"
-						aria-label="Close asks"
+						aria-label={t("ui.chat.asks.close_asks")}
 						/*
 						 * THE PRESSED KIND (#1079): this is the control the user aimed at, so it
 						 * asks for an EMPTY SLOT rather than handing the pane it displaced back.
@@ -1037,7 +1270,7 @@ export const AskDrawer = ({
 						onClick={() => onClose({ dismissSlot: true })}
 						data-tour-tag="close-asks-button"
 					>
-						<PanelRightClose aria-hidden="true" />
+						<PanelRightClose aria-hidden="true" className="rtl:-scale-x-100" />
 					</Button>
 				</Tooltip>
 			</div>
@@ -1046,52 +1279,142 @@ export const AskDrawer = ({
 			 * shrink below its content so `overflow-y-auto` can actually take the overflow
 			 * (without it the drawer grows and the page scroller returns - the D1 defect).
 			 */}
-			<div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2">
-				{/*
-				 * THE BODY, AND WHY THERE ARE THREE READINGS RATHER THAN TWO (remediation round
-				 * 1, D1). `AskPanel` draws the queue, its designed empty sentence and - R1 - the
-				 * clipped-list statement for a PUBLISHED frame (`asks` OR `asks_open` present),
-				 * including the live-but-empty one the drawer used to render as nothing. The
-				 * two unpublishable frames are NOT one state: an UNREAD frame is a progress
-				 * state that will resolve, and a RESOLVED frame that publishes no engine is a
-				 * terminal answer about the runtime - the same words over both parked a
-				 * permanent `Reading the asks…` on a runtime that will never read anything.
-				 * So each gets its own honest line, and the second is not a claim that can
-				 * never complete.
-				 */}
-				{view.published ? (
-					<AskPanel
-						view={view}
-						nowMs={now}
-						answering={answering}
-						outcomes={outcomes}
-						drafts={drafts ?? EMPTY_DRAFTS}
-						onDraftChange={onDraftChange ?? noopDraftChange}
-						onAnswer={(task, answers) => onAnswer?.(task.ask_id, answers)}
-						onDecline={(task) => onDecline?.(task.ask_id)}
-						onRevise={
-							onRevise === undefined
-								? undefined
-								: (task, answers) => onRevise(task.ask_id, answers)
-						}
-						/*
-						 * THE CONVERSATION LINE IS THE FLEET'S OWN, and the CALLER supplies it (see
-						 * `AskDrawerProps.conversationOf`): a session drawer's rows are all about the
-						 * conversation the user is in, so naming it on every card would be the same word
-						 * N times. The panel stays scope-agnostic, which is what lets one list serve
-						 * both contexts.
-						 */
-						conversationOf={conversationOf}
-					/>
-				) : (
+			{tabs?.strip}
+			{tabs?.body ?? null}
+			<div
+				ref={listRef}
+				data-lo-ask-list=""
+				/*
+				 * THE LIST OWNS THIS SURFACE'S SCROLL, and three contracts come with that:
+				 *
+				 * 1. THE CARD'S ACTIONS PIN INSIDE IT. Each card's `Send answer`/`Decline` row is
+				 *    `sticky bottom-0`, so it holds at the bottom of this box while its card is the
+				 *    one crossing the fold (see the row's note in `ask-panel.tsx`).
+				 * 2. TAB FOCUS LANDS ABOVE THAT ROW. `useAskActionsHeight` (`ask-bounds.tsx`)
+				 *    publishes the TALLEST row in this scroller as `--lo-ask-actions-h` (the
+				 *    host owns the number, so no card takes another's away), and this padding
+				 *    makes a focus or `scrollIntoView` stop short of it: the browser only
+				 *    scrolls an element that is outside the scrollport, and under a sticky bar
+				 *    it is INSIDE - the same defect `EditFooter` fixed for the agents pane. The
+				 *    4 px is the focus ring's offset-and-width, so the ring clears the bar too.
+				 * 3. THE REGION IS IN THE TAB WALK WHILE IT SCROLLS (`tabIndex`/`role` below,
+				 *    measured, not unconditional).
+				 */
+				tabIndex={listOverflows ? 0 : undefined}
+				role={listOverflows ? "region" : undefined}
+				aria-label={listOverflows ? regionName : undefined}
+				/*
+				 * SPACE IS THE ONE PAGE KEY THE PLATFORM DOES NOT GIVE A FOCUSED SCROLL
+				 * CONTAINER. PageDown, End, Home and the arrows are Chromium's own on a
+				 * focusable scroller (measured: 1756 px on the first PageDown, End at the
+				 * maximum, Home back at 0); Space scrolls only the DOCUMENT, so on this stop
+				 * it did nothing at all. The reader's expectation is the platform's, so the
+				 * region takes the key itself - by the scrollport's height less a line of
+				 * overlap, which is what a browser's own page scroll leaves. Shift reverses
+				 * it, as it does for every other page key (agent review round 1, m2).
+				 *
+				 * ONLY ON THE REGION ITSELF (`target === currentTarget`): a focused control
+				 * inside it - a button, the `Other` field - keeps its own Space, which is
+				 * activation and typing, not scrolling.
+				 */
+				onKeyDown={(event) => {
+					if (event.key !== " " || event.target !== event.currentTarget) return;
+					if (event.metaKey || event.ctrlKey || event.altKey) return;
+					event.preventDefault();
+					const page = Math.round(event.currentTarget.clientHeight * 0.9);
+					event.currentTarget.scrollBy({
+						top: event.shiftKey ? -page : page,
+					});
+				}}
+				className={cn(
 					/*
-					 * `frameUnread` is `view.unread`, so this is the unresolved frame; the other
-					 * falsy-`published` case is the resolved-but-unsupported one below it.
+					 * NO BOTTOM PADDING, and it is the pinned row that needs it: a scroller
+					 * clips at its PADDING box and `sticky bottom-0` stops there, so any
+					 * bottom padding is a strip the band cannot paint - 8 px of the question
+					 * text scrolling visibly under the bar. The cards keep their own 12 px
+					 * (`p-3`), which is where the breathing room at the end of the list comes
+					 * from; the top padding is the space between the tab strip and the first
+					 * card and has no such constraint.
 					 */
-					<p className="text-ink-muted text-body">
-						{frameUnread ? ASK_DRAWER_UNREAD_LINE : ASK_DRAWER_UNAVAILABLE_LINE}
-					</p>
+					"min-h-0 flex-1 flex-col overflow-y-auto px-3 pt-2",
+					"[scroll-padding-bottom:calc(var(--lo-ask-actions-h,0px)+4px)]",
+					tabs?.body ? "hidden" : "flex",
 				)}
+			>
+				{/*
+				 * THE CONTENT MEASURE (design review round 1, D1). The slot's one ceiling
+				 * reached 1200 with #1525, and this drawer had no measure of its own: at a
+				 * 1200 pane the card was 1176 wide around a 277px question run and 165px of
+				 * actions - the decision affordance, by design the first thing in the
+				 * hierarchy (§ 7), reduced to the smallest object in the largest box. The
+				 * card is a decision to read, not a surface to scan, so the column stops
+				 * growing at 720: wide enough for the card's option rows at the 640 opening
+				 * width plus a description column, and past that the pane's ground carries
+				 * the air instead of empty rows inside a heavy border.
+				 *
+				 * THE WRAPPER AND NOT THE SCROLLER, because the scroller has to keep the
+				 * pane's width: a scrollbar inside the constrained column would narrow the
+				 * measure every time the queue grows past the window, which reads as a jump
+				 * (AGENTS.md, "Scrollbars sit outside the content constraint"). It stays
+				 * start-aligned, so the cards hold the same left edge as the chrome bar's
+				 * scope line above them, and `max-w` in logical space flips with the
+				 * document under RTL. The chrome bar and the tab strip are chrome and keep
+				 * the pane's full width, as the bar does on every pane in this family.
+				 */}
+				<div className={cn("w-full max-w-[720px]")}>
+					{/*
+					 * THE BODY, AND WHY THERE ARE THREE READINGS RATHER THAN TWO (remediation round
+					 * 1, D1). `AskPanel` draws the queue, its designed empty sentence and - R1 - the
+					 * clipped-list statement for a PUBLISHED frame (`asks` OR `asks_open` present),
+					 * including the live-but-empty one the drawer used to render as nothing. The
+					 * two unpublishable frames are NOT one state: an UNREAD frame is a progress
+					 * state that will resolve, and a RESOLVED frame that publishes no engine is a
+					 * terminal answer about the runtime - the same words over both parked a
+					 * permanent `Reading the asks…` on a runtime that will never read anything.
+					 * So each gets its own honest line, and the second is not a claim that can
+					 * never complete.
+					 */}
+					{view.published ? (
+						<AskPanel
+							view={view}
+							nowMs={now}
+							answering={answering}
+							outcomes={outcomes}
+							drafts={drafts ?? EMPTY_DRAFTS}
+							onDraftChange={onDraftChange ?? noopDraftChange}
+							onAnswer={(task, answers) => onAnswer?.(task.ask_id, answers)}
+							onDecline={(task) => onDecline?.(task.ask_id)}
+							onRevise={
+								onRevise === undefined
+									? undefined
+									: (task, answers) => onRevise(task.ask_id, answers)
+							}
+							onDismiss={
+								onDismiss === undefined
+									? undefined
+									: (task, reason) => onDismiss(task.ask_id, reason)
+							}
+							/*
+							 * THE CONVERSATION LINE IS THE FLEET'S OWN, and the CALLER supplies it (see
+							 * `AskDrawerProps.conversationOf`): a session drawer's rows are all about the
+							 * conversation the user is in, so naming it on every card would be the same word
+							 * N times. The panel stays scope-agnostic, which is what lets one list serve
+							 * both contexts.
+							 */
+							conversationOf={conversationOf}
+							onCommand={onCommand}
+							commandPlacementOf={commandPlacementOf}
+						/>
+					) : (
+						/*
+						 * `frameUnread` is `view.unread`, so this is the unresolved frame; the other
+						 * falsy-`published` case is the resolved-but-unsupported one below it.
+						 */
+						<p className="text-ink-muted text-body">
+							{frameUnread ? askDrawerUnreadLine() : askDrawerUnavailableLine()}
+						</p>
+					)}
+				</div>
 			</div>
 		</section>
 	);

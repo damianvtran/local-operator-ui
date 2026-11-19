@@ -1,0 +1,44 @@
+{
+	"auditor": "translation-auditor",
+	"model": "anthropic/claude-opus-5-5",
+	"instance": "190fe64b9fbc-phonepair-r2-vi",
+	"date": "2026-11-14",
+	"locale": "vi",
+	"independence": "Independent lopdev translation-auditor session 190fe64b9fbc (round-2 re-audit); not the translator (coder subagent of host session 25fe8dfbf610) and not the round-1 auditor (cf304a0ef14b). Configured model anthropic/claude-opus-5-5, the same family as the translator host: disclosed; served model not independently confirmable from inside the session. Read only the PR's committed bytes at the head; authored no catalogue change.",
+	"references": {
+		"glossary": "damianvtran/local-operator@097b9bc6c562 i18n/glossary.md",
+		"style_guide": "damianvtran/local-operator@097b9bc6c562 i18n/style-guides/vi.md",
+		"core_pairing_copy": "damianvtran/local-operator@097b9bc6c562 local_operator/i18n/catalogues/vi/relay.pairing.json and operator.pairing.json",
+		"ui_register": "src/i18n/catalogues/vi/ui.providers.json (ui.providers.phone.heading, .consent tunnel term), ui.settings.json (ui.settings.page.title)",
+		"spec": "lop-specs/mobile-pairing-design-v2.md §4.1 (grant sentence, Show phone password)",
+		"round1": "cf304a0ef14b replacements-r1.json and i18n/receipts/cf304a0ef14b-phonepair-r1-*.json"
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"pr": 1912,
+	"head": "33e589a2d522de161298bd0be7b38bd82637d6a0",
+	"scope": "Round 2 delta re-audit of ui.phone_pairing: every key whose bytes changed in this locale in 41fd2166..33e589a2 (29 keys: the 24 English-driven new/changed keys incl. 12 password.*, plus 5 round-1 minor replacements applied verbatim), read against en, en .context.json, glossary, style guide and core relay.pairing/operator.pairing. The other 51 keys are byte-identical to the bytes round-1 audit cf304a0ef14b passed at 2f1f580e3 (verified by diff); carried, not re-read. Checked: ICU select arms mac/windows/other on all 7 select keys (parsed + formatted), placeholders, password.* claims, Settings path names, quoted button names, typography, widths.",
+	"namespace": "ui.phone_pairing",
+	"status": "passed",
+	"sha256": {
+		"en": "ead4e5ad631a5b636664cef029a22def4a91803d1743167e9287dde2f68ed135",
+		"vi": "9415183533e04b2db3484252e6af63b3bb408733b0b63fce8692e921a659d6c5"
+	},
+	"context_sha256": "2e8c8b1004f666fb24a653bc86ae743d34bca5b18a0a37644b1750a4abbfe906",
+	"findings": [
+		{
+			"id": "VI-6",
+			"severity": "MINOR",
+			"key": "ui.phone_pairing.popup.grant",
+			"issue": "'các agent của bạn' leaves 'agent' in English; the glossary maps agent → tác nhân and the vi UI uses tác nhân ~850 times, so the consent sentence drifts from the term used everywhere else.",
+			"proposed": {
+				"ui.phone_pairing.popup.grant": "Nếu bạn phê duyệt, điện thoại này có thể phê duyệt mọi việc mà các tác nhân của bạn xin phép làm trên máy tính này, giống như khi bạn bấm Phê duyệt ở đây, và nhận thông báo của máy tính này. Các máy tính tham gia cùng máy này sau này cũng sẽ tin cậy nó."
+			}
+		}
+	],
+	"resolved": [
+		{
+			"ref": "cf304a0ef14b V-1 (approve term), V-2 (từ điện thoại)",
+			"verified": "applied verbatim in 5 keys; still_removing now quotes “Hoàn tất gỡ bỏ”, matching phones.finish_removing."
+		}
+	]
+}

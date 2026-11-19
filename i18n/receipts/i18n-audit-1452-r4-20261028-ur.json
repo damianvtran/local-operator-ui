@@ -1,0 +1,98 @@
+{
+	"auditor": "reviewer",
+	"model": "anthropic/claude-opus-5-5",
+	"fallback": "none — every usage record in auditor session 2dbc322519eb names claude-opus-5-5",
+	"instance": "i18n-audit-1452-r4-20261028-ur",
+	"session": "2dbc322519eb",
+	"job": "12e161dc203d",
+	"parent_session": "65a12b105119",
+	"date": "2026-10-28",
+	"locale": "ur",
+	"round": 4,
+	"translator": {
+		"agent": "coder",
+		"job": "bdb7d1ad75b7",
+		"session": "cedb979297ba",
+		"parent_session": "65a12b105119",
+		"model": "anthropic/claude-opus-5-5 (usage records in session cedb979297ba name claude-opus-5-5 528x, provider anthropic)",
+		"commit": "c6eac7664ba2297bda588dc2dc52a76028841c94",
+		"lineage": [
+			{
+				"round": 1,
+				"agent": "task",
+				"job": "7c09e08359e1",
+				"model": "anthropic/claude-opus-5-5",
+				"commit": "0a02713ed4 (rebased as 6da4ebea87)"
+			},
+			{
+				"round": 2,
+				"agent": "coder",
+				"job": "4a907cae19a9",
+				"session": "5f4c49fec12b",
+				"model": "kimi/k3.1-pro via radient/auto",
+				"commit": "752abc1c19 (rebased as 922b9a5a40)"
+			},
+			{
+				"round": 3,
+				"agent": "coder",
+				"job": "0fc4118bdd37",
+				"session": "43acf20a38da",
+				"model": "anthropic/claude-opus-5-5",
+				"commit": "8cbaff82e6"
+			},
+			{
+				"round": 4,
+				"agent": "coder",
+				"job": "bdb7d1ad75b7",
+				"session": "cedb979297ba",
+				"parent_session": "65a12b105119",
+				"model": "anthropic/claude-opus-5-5",
+				"commit": "c6eac7664b",
+				"what": "added ui.canvas.files.attachmentRefused (en + context note + 7 locales); no other ui.canvas value changed"
+			}
+		]
+	},
+	"pr": "damianvtran/local-operator-ui#1452",
+	"source_base": "618775273858e5430c86f99b5877df095e9c0f8f",
+	"source_head": "9827145233a9b8ae74ffce0e148d6541b49be3d2",
+	"scope": "Round-4 audit of ui.canvas: the one new key ui.canvas.files.attachmentRefused added by coder job bdb7d1ad75b7 in c6eac7664b, plus its en context note. 7e941500b1 (the round-3 audit commit before the rebase) diffs to 9827145233 in ui.canvas by exactly that key in every catalogue; the rebased 6187752738 carries the round-3 audited bytes (sha256 equal to the r3 receipts for en and all 7 locales), and 6187752738..9827145233 changes no existing ui.canvas key or context note (key-by-key JSON comparison). Catalogue audit only.",
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "local-operator f67b1135c75 (origin/main)",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/ur.md",
+			"revision": "local-operator f67b1135c75 (origin/main)",
+			"sha256": "3f8d600cd51d585278405f6bfcf93c0ddd1718d2490423849e8dab3f4f1d6545"
+		}
+	},
+	"namespaces": {
+		"ui.canvas": {
+			"status": "passed",
+			"keys_audited": 1,
+			"keys": [
+				"ui.canvas.files.attachmentRefused"
+			],
+			"value": "یہ راز معلوم ہوتا ہے، اس لیے فائل کے اعمال بند ہیں",
+			"sha256": {
+				"en": "a535d329f15954843522b1f635b6b9c616c60287d25c2150661c750f100d5321",
+				"ur": "b4298eeefff338f73982781e2feaf681769e738b00a23b6629d076ad71b14a4b"
+			},
+			"context_sha256": "efced93015d369ba2296a49b226ed0a908dfc068c7bebb0e68031d55f8f91799",
+			"findings": []
+		}
+	},
+	"checks": {
+		"independence": "Auditor reviewer session 2dbc322519eb (job 12e161dc203d): a different agent and session from coder job bdb7d1ad75b7 (session cedb979297ba) and every earlier author; this auditor edited no catalogue value.",
+		"unchanged": "6187752738 vs 9827145233: ui.canvas key-by-key, 0 changed values, 1 added key; en context: 0 changed notes, 1 added; keys.gen.ts adds only the attachmentRefused: undefined row. Key set equals en.",
+		"credential_choice": "The implementer used each catalogue's existing word for 'secret' rather than 'credential'. Endorsed: the en string itself says 'secret' and its note defines it as the secret-store word; the glossary 'credentials' row is '—' for zh-CN and ur (note 6: do not invent), and 'secret' is the more accurate word for an .env file or SSH key.",
+		"terminology": "'راز' is the catalogue's word for secret (17 values) versus خفیہ (1, the store); 'فائل کے اعمال' is the exact fileActions label. Arabic comma U+060C, no ۔ (tooltip line, per note).",
+		"tooltip": "Rendered as its own line of a native title tooltip (finder-files-view.tsx:1201-1203, title={tooltip}); no placeholders, so ICU is trivially identical; no colon (ASCII or full-width) and no trailing full stop, per the note.",
+		"typography": "Value and whole ui.canvas file NFC; no bidi controls (U+200E/F, U+061C, U+202A-E, U+2066-9).",
+		"length": "50 characters (en 44; note budget about 60)."
+	},
+	"limitations": "No app build, browser or Storybook this round: no rendered-fit or RTL layout measurement. Fit judged by character count against the context note.",
+	"status_note": "Passed."
+}

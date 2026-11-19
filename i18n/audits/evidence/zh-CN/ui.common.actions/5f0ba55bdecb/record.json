@@ -1,0 +1,133 @@
+{
+  "locale": "zh-CN",
+  "namespace": "ui.chat, ui.chat.composer_media, ui.common.actions",
+  "audit_date": "2026-11-10",
+  "key_count": 271,
+  "fully_audited_key_count": 4,
+  "consistency_only_key_count": 267,
+  "scope": "PR #1842 @ e5fb4310dab638f9cf428779d62539ec039a8990; origin/main..HEAD zh-CN delta: 4 added keys across three namespaces, no removals, no pre-existing value changed. Legacy values consistency-checked only (parse, key parity with English, untouched versus origin/main); not certified.",
+  "head_sha": "e5fb4310dab638f9cf428779d62539ec039a8990",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "5f0ba55bdecb",
+    "session": "5f0ba55bdecb",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "Served session header for session 5f0ba55bdecb: deepseek/deepseek-flash; delegation tag 'ds' matches. No fallback used.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "session": "6c6b9e0107b6",
+    "source": "Supplied by delegation; this auditor did not translate or participate in translation."
+  },
+  "namespaces": {
+    "ui.chat": {
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.json",
+          "sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15"
+        },
+        "zh-CN": {
+          "path": "src/i18n/catalogues/zh-CN/ui.chat.json",
+          "sha256": "6c28931de502a5fd821f9bd9ff779a55599681804575a8a2ba4cdc3346c1e1b9"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.context.json",
+          "sha256": "84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf"
+        }
+      },
+      "status": "passed",
+      "result": "clean",
+      "unresolved_blocker_major_count": 0,
+      "finding_ids": [],
+      "intended_tracked_directory": "i18n/audits/evidence/zh-CN/ui.chat/s12-ds-5f0ba55bdecb"
+    },
+    "ui.chat.composer_media": {
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.composer_media.json",
+          "sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae"
+        },
+        "zh-CN": {
+          "path": "src/i18n/catalogues/zh-CN/ui.chat.composer_media.json",
+          "sha256": "d32d42c7972f9cb433844db9d41fe79da6aa05b8c6a2b80643947f4179950df8"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.composer_media.context.json",
+          "sha256": "a0fbc1552ef6f27999f3cff365750025627a284faa106d767e22a24d131ae77b"
+        }
+      },
+      "status": "passed",
+      "result": "clean",
+      "unresolved_blocker_major_count": 0,
+      "finding_ids": [],
+      "intended_tracked_directory": "i18n/audits/evidence/zh-CN/ui.chat.composer_media/s12-ds-5f0ba55bdecb"
+    },
+    "ui.common.actions": {
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.json",
+          "sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b"
+        },
+        "zh-CN": {
+          "path": "src/i18n/catalogues/zh-CN/ui.common.actions.json",
+          "sha256": "9372ac48a563ad7ea188dcaca65ec3c2d165ed5188b8f45bb916c2bd726541bb"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.context.json",
+          "sha256": "24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d"
+        }
+      },
+      "status": "passed",
+      "result": "clean",
+      "unresolved_blocker_major_count": 0,
+      "finding_ids": [],
+      "intended_tracked_directory": "i18n/audits/evidence/zh-CN/ui.common.actions/s12-ds-5f0ba55bdecb"
+    }
+  },
+  "policy_inputs": {
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/zh-CN.md",
+      "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+    },
+    "glossary": {
+      "path": "~/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "note": "Manager-owned byte-copy; verified identical to ~/local-operator/i18n/glossary.md."
+    }
+  },
+  "artifacts": [
+    {
+      "path": "zh-CN-ds-5f0ba55bdecb.json",
+      "kind": "audit_notes_not_execution_log",
+      "record_reference": "zh-CN-ds-5f0ba55bdecb.record.json"
+    },
+    {
+      "path": "zh-CN-ds-5f0ba55bdecb.audit.log",
+      "kind": "actual_execution_log",
+      "record_reference": "zh-CN-ds-5f0ba55bdecb.record.json"
+    }
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": []
+  },
+  "finding_report": "zh-CN-ds-5f0ba55bdecb.json",
+  "audit_notes_not_execution_log": true,
+  "execution_log": "zh-CN-ds-5f0ba55bdecb.audit.log",
+  "retention": {
+    "state": "scratch_handoff_only_per_explicit_read_only_task",
+    "intended_tracked_directory": "i18n/audits/evidence/zh-CN/<namespace>/s12-ds-5f0ba55bdecb",
+    "manager_action_required": "Retain record and companions under the canonical evidence root, one directory per namespace (ui.chat, ui.chat.composer_media, ui.common.actions), then run ledger-assemble per namespace. No ledger command run here: it writes repo files and this audit is read-only.",
+    "proposed_note": "passed; 4/271 keys fully audited; record i18n/audits/evidence/zh-CN/<ns>/s12-ds-5f0ba55bdecb/record.json"
+  },
+  "unverified": [
+    "ledger-assemble.mjs not run (writes i18n/ledger.json and i18n/receipts/; read-only remit). Receipt written to be assemble-ready; tool acceptance unproven.",
+    "ledger-check currently fails on stale hashes for all seven locales - expected pre-audit state after these four added keys.",
+    "No ICU runtime, build, server, browser or screen-reader output. Grammar/register judgements are reasoning over byte-exact values, sidecars, code and the binding guide.",
+    "The empty-label guard observation is read from source, not executed."
+  ]
+}

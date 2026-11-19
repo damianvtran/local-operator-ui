@@ -68,7 +68,7 @@ const DEVTOOLS_LISTENING = /DevTools listening on (ws:\/\/[^\s]+)/;
 
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const ORIGIN = process.argv[2] ?? "http://localhost:6006";
-const OUT = process.argv[3] ?? "docs/evidence/chat-slash-enter-gestures";
+const OUT = process.argv[3] ?? "docs/evidence-frames/chat-slash-enter-gestures";
 /*
  * The story's own id: `<kebab(title)>--<kebab(story)>` for
  * `Chat/Message input` / `SlashEnter` (`message-input.stories.tsx`). Named

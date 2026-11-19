@@ -1,0 +1,20 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "860b01935e9f",
+  "locale": "zh-CN",
+  "status": "passed",
+  "namespace": "ui.console",
+  "sha256": {
+    "en": "c0aa99e935c874ff2bdbac467ca9278007d885efcd6aa4f6269e0d1132a975f9",
+    "target": "2167d00a2fb48ff71c8d7dee2b6757349679db8179624da15be47f5201c9324b"
+  },
+  "findings": [
+    {
+      "severity": "NIT",
+      "key": "ui.console.ended.input_blocked",
+      "issue": "The 即可 construction repeats marker_detail's \"选中文本即可复制\" in the same footer band once a key is swallowed, where varied connectives read more naturally in adjacent sentences.",
+      "suggestion": "此终端已结束，因此该按键未被发送。打开新的控制台就能再次输入。"
+    }
+  ]
+}

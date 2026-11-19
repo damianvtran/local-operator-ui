@@ -1,0 +1,199 @@
+{
+  "instance": "923747795457-union-es",
+  "locale": "es",
+  "scope": "ui.chat.attachments: verification of the hand-union of 5 branch keys and 1 main key onto the 12-key base",
+  "checkout_head": "36b88a45fe",
+  "audit_date": "2026-10-29",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "923747795457",
+    "model": "radient/auto",
+    "actual_model_source": "live session model read from the sessions store for 923747795457 (reported radient/auto); the session began as anthropic/claude-sonnet-5-5 and received provider-quota fallback notices to openai/gpt-6-astra, kimi/k3.1-pro, then radient/auto. No translation or MT service was used at any point.",
+    "independent_from_translator_session": true
+  },
+  "input_sha256": {
+    "en": "5e99fd052e7a24dc2715d7de1332b378c1c964f801cdc1c241c7068569de41a0",
+    "target": "fd5d34750415c6dbd21daf9dd9e4e97b6a6008936c56e794e9fefaf68af08d9b"
+  },
+  "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 0,
+    "NIT": 0
+  },
+  "verdict": "pass",
+  "namespaces": {
+    "ui.chat.attachments": {
+      "status": "passed",
+      "keys_audited": 18,
+      "sha256": {
+        "en": "5e99fd052e7a24dc2715d7de1332b378c1c964f801cdc1c241c7068569de41a0",
+        "target": "fd5d34750415c6dbd21daf9dd9e4e97b6a6008936c56e794e9fefaf68af08d9b"
+      },
+      "findings": []
+    }
+  },
+  "provenance": {
+    "note": "Side identities were proved from git objects, not taken on trust. The index still carried stages 1/2/3 for both files while no merge was in progress (.git/MERGE_HEAD absent), so base/ours/theirs were read with `git show :N:<path>` and cross-checked against named refs.",
+    "identity_proofs": {
+      "en": {
+        "stage1_base_blob": "7b2508feb51b1148e6463ab23a439536a524e721",
+        "stage1_equals_merge_base_aafa890e3c98": true,
+        "stage2_ours_blob": "22491c6f962a4cfcbdd77996dec054e2143fedcb",
+        "stage2_equals_HEAD_36b88a45fe": true,
+        "stage3_theirs_blob": "a7a22acf0bd397b17c23425f49b83df56c815653",
+        "stage3_equals_origin_main": true
+      },
+      "es": {
+        "stage1_base_blob": "9f439a7b7376fe1a68017cd9945a55e3afd4ae07",
+        "stage1_equals_merge_base_aafa890e3c98": true,
+        "stage2_ours_blob": "49a29aa72872cc5a6a4d7f2326d6b0731db0ebc5",
+        "stage2_equals_HEAD_36b88a45fe": true,
+        "stage3_theirs_blob": "b5d2a2776c4f8de6d86e7bdac71be6162d9466d7",
+        "stage3_equals_origin_main": true
+      }
+    },
+    "audited_bytes_binding": {
+      "claim": "the five branch keys' es values in the working tree are the ones this PR audited",
+      "es_branch_file_sha256": "dda45dbcffcfd6577195a0303ca866075c7f18130b58c70636d2b2153f2f6c07",
+      "matches_ledger_target_sha256": true,
+      "ledger_row": "i18n/ledger.json -> es/ui.chat.attachments (status audited)",
+      "matches_receipt_target_sha256": true,
+      "receipt": "i18n/receipts/acd53e2cf056-r4-es.json",
+      "en_branch_file_sha256": "623a1363260ecbe40393b4424dde4d7b6cc084688ac354483052639a145ce892",
+      "matches_ledger_source_sha256": true,
+      "spot_checks_es": {
+        "ui.chat.attachments.playback_rate_option": "{rate}x",
+        "ui.chat.attachments.volume": "Volumen",
+        "ui.chat.attachments.playback_position": "Posición de reproducción"
+      },
+      "spot_checks_note": "Each spot-check value is byte-identical to the branch blob, whose sha256 equals both the ledger's target_sha256 for es/ui.chat.attachments and the target sha in i18n/receipts/acd53e2cf056-r4-es.json."
+    }
+  },
+  "diffs": {
+    "en": {
+      "base_to_branch": "--- a/src/i18n/catalogues/en/ui.chat.attachments.json (merge-base aafa890e3c98)\n+++ b/... (branch HEAD 36b88a45fe)\n@@ -1,4 +1,5 @@\n {\n+\t\"ui.chat.attachments.open\": \"Open\",\n \t\"ui.chat.attachments.pending_caption\": \"Not sent yet\",\n \t\"ui.chat.attachments.file_meta\": \"{type} · {size}\",\n \t\"ui.chat.attachments.file_missing\": \"Moved or deleted\",\n@@ -9,6 +10,10 @@\n \t\"ui.chat.attachments.file_missing_recovery\": \"The file is no longer at this path.\",\n \t\"ui.chat.attachments.file_type_unknown\": \"File\",\n \t\"ui.chat.attachments.copy_saved_path\": \"Copy saved copy path\",\n+\t\"ui.chat.attachments.playback_position\": \"Playback position\",\n+\t\"ui.chat.attachments.playback_rate\": \"Playback rate\",\n+\t\"ui.chat.attachments.playback_rate_option\": \"{rate}x\",\n \t\"ui.chat.attachments.saved_path_copied\": \"Saved copy path copied\",\n-\t\"ui.chat.attachments.saved_copy_label\": \"Saved copy\"\n+\t\"ui.chat.attachments.saved_copy_label\": \"Saved copy\",\n+\t\"ui.chat.attachments.volume\": \"Volume\"\n }\n",
+      "base_to_main": "--- a/... (merge-base aafa890e3c98)\n+++ b/... (origin/main)\n@@ -10,5 +10,6 @@\n \t\"ui.chat.attachments.file_type_unknown\": \"File\",\n \t\"ui.chat.attachments.copy_saved_path\": \"Copy saved copy path\",\n \t\"ui.chat.attachments.saved_path_copied\": \"Saved copy path copied\",\n-\t\"ui.chat.attachments.saved_copy_label\": \"Saved copy\"\n+\t\"ui.chat.attachments.saved_copy_label\": \"Saved copy\",\n+\t\"ui.chat.attachments.file_and_copy_missing\": \"The saved copy is gone too.\"\n }\n",
+      "union_vs_base": "--- a/... (merge-base, 12 keys)\n+++ b/... (hand-union worktree, 18 keys)\n@@ -10,5 +10,11 @@\n \t\"ui.chat.attachments.file_type_unknown\": \"File\",\n \t\"ui.chat.attachments.copy_saved_path\": \"Copy saved copy path\",\n \t\"ui.chat.attachments.saved_path_copied\": \"Saved copy path copied\",\n-\t\"ui.chat.attachments.saved_copy_label\": \"Saved copy\"\n+\t\"ui.chat.attachments.saved_copy_label\": \"Saved copy\",\n+\t\"ui.chat.attachments.file_and_copy_missing\": \"The saved copy is gone too.\",\n+\t\"ui.chat.attachments.open\": \"Open\",\n+\t\"ui.chat.attachments.playback_position\": \"Playback position\",\n+\t\"ui.chat.attachments.playback_rate\": \"Playback rate\",\n+\t\"ui.chat.attachments.playback_rate_option\": \"{rate}x\",\n+\t\"ui.chat.attachments.volume\": \"Volume\"\n }\n",
+      "key_counts": {
+        "base": 12,
+        "branch": 17,
+        "main": 13,
+        "union": 18
+      },
+      "keys_added_by_branch": {
+        "ui.chat.attachments.open": "Open",
+        "ui.chat.attachments.playback_position": "Playback position",
+        "ui.chat.attachments.playback_rate": "Playback rate",
+        "ui.chat.attachments.playback_rate_option": "{rate}x",
+        "ui.chat.attachments.volume": "Volume"
+      },
+      "keys_added_by_main": {
+        "ui.chat.attachments.file_and_copy_missing": "The saved copy is gone too."
+      },
+      "keys_added_by_both": [],
+      "keys_removed_vs_base": [],
+      "base_keys_changed_locally": [],
+      "values_matching_wrong_side": []
+    },
+    "es": {
+      "base_to_branch": "--- a/src/i18n/catalogues/es/ui.chat.attachments.json (merge-base aafa890e3c98)\n+++ b/... (branch HEAD 36b88a45fe)\n@@ -1,4 +1,5 @@\n {\n+\t\"ui.chat.attachments.open\": \"Abrir\",\n \t\"ui.chat.attachments.pending_caption\": \"Aún no enviado\",\n \t\"ui.chat.attachments.file_meta\": \"{type} · {size}\",\n \t\"ui.chat.attachments.file_missing\": \"Movido o eliminado\",\n@@ -9,6 +10,10 @@\n \t\"ui.chat.attachments.file_missing_recovery\": \"El archivo ya no está en esta ruta.\",\n \t\"ui.chat.attachments.file_type_unknown\": \"Archivo\",\n \t\"ui.chat.attachments.copy_saved_path\": \"Copiar ruta de la copia guardada\",\n+\t\"ui.chat.attachments.playback_position\": \"Posición de reproducción\",\n+\t\"ui.chat.attachments.playback_rate\": \"Velocidad de reproducción\",\n+\t\"ui.chat.attachments.playback_rate_option\": \"{rate}x\",\n \t\"ui.chat.attachments.saved_path_copied\": \"Ruta de la copia guardada copiada\",\n-\t\"ui.chat.attachments.saved_copy_label\": \"Copia guardada\"\n+\t\"ui.chat.attachments.saved_copy_label\": \"Copia guardada\",\n+\t\"ui.chat.attachments.volume\": \"Volumen\"\n }\n",
+      "base_to_main": "--- a/... (merge-base aafa890e3c98)\n+++ b/... (origin/main)\n@@ -10,5 +10,6 @@\n \t\"ui.chat.attachments.file_type_unknown\": \"Archivo\",\n \t\"ui.chat.attachments.copy_saved_path\": \"Copiar ruta de la copia guardada\",\n \t\"ui.chat.attachments.saved_path_copied\": \"Ruta de la copia guardada copiada\",\n-\t\"ui.chat.attachments.saved_copy_label\": \"Copia guardada\"\n+\t\"ui.chat.attachments.saved_copy_label\": \"Copia guardada\",\n+\t\"ui.chat.attachments.file_and_copy_missing\": \"Tampoco queda la copia guardada.\"\n }\n",
+      "union_vs_base": "--- a/... (merge-base, 12 keys)\n+++ b/... (hand-union worktree, 18 keys)\n@@ -10,5 +10,11 @@\n \t\"ui.chat.attachments.file_type_unknown\": \"Archivo\",\n \t\"ui.chat.attachments.copy_saved_path\": \"Copiar ruta de la copia guardada\",\n \t\"ui.chat.attachments.saved_path_copied\": \"Ruta de la copia guardada copiada\",\n-\t\"ui.chat.attachments.saved_copy_label\": \"Copia guardada\"\n+\t\"ui.chat.attachments.saved_copy_label\": \"Copia guardada\",\n+\t\"ui.chat.attachments.file_and_copy_missing\": \"Tampoco queda la copia guardada.\",\n+\t\"ui.chat.attachments.open\": \"Abrir\",\n+\t\"ui.chat.attachments.playback_position\": \"Posición de reproducción\",\n+\t\"ui.chat.attachments.playback_rate\": \"Velocidad de reproducción\",\n+\t\"ui.chat.attachments.playback_rate_option\": \"{rate}x\",\n+\t\"ui.chat.attachments.volume\": \"Volumen\"\n }\n",
+      "key_counts": {
+        "base": 12,
+        "branch": 17,
+        "main": 13,
+        "union": 18
+      },
+      "keys_added_by_branch": {
+        "ui.chat.attachments.open": "Abrir",
+        "ui.chat.attachments.playback_position": "Posición de reproducción",
+        "ui.chat.attachments.playback_rate": "Velocidad de reproducción",
+        "ui.chat.attachments.playback_rate_option": "{rate}x",
+        "ui.chat.attachments.volume": "Volumen"
+      },
+      "keys_added_by_main": {
+        "ui.chat.attachments.file_and_copy_missing": "Tampoco queda la copia guardada."
+      },
+      "keys_added_by_both": [],
+      "keys_removed_vs_base": [],
+      "base_keys_changed_locally": [],
+      "values_matching_wrong_side": []
+    }
+  },
+  "checks": [
+    {
+      "check": "side identity from git objects (stage 1/2/3 vs merge-base, HEAD, origin/main), both locales",
+      "command": "git show :1|:2|:3:src/i18n/catalogues/<loc>/ui.chat.attachments.json  # compared to aafa890e3c98, 36b88a45fe, origin/main",
+      "exit": 0,
+      "result": "all six identities hold; base = merge-base, ours = HEAD, theirs = origin/main"
+    },
+    {
+      "check": "key-set and value-provenance comparison (base vs branch vs main vs union), both locales",
+      "command": "python3 json comparison of the four extracted versions per locale",
+      "exit": 0,
+      "result": "union = base(12) + branch(5) + main(1) = 18; keys added by both sides: []; value conflicts on shared keys: []; base keys dropped: []; base values changed: []"
+    },
+    {
+      "check": "repo union tool, exercised unmodified on a faithful reproduction",
+      "command": "node scripts/i18n/catalogue-union-parity.mjs --repo <scratch> --pr 1452 --head d0d3bab883 --old-head bc5abbab9a --base 04802e5491 --file <en catalogue> --file <es catalogue> --file <en context>",
+      "exit": 0,
+      "result": "RESULT: PASS for all three files; base 13 keys, PR pre-merge 17, merged 18 = base union PR; missing from base []; missing from PR []; value differences []"
+    },
+    {
+      "check": "the same tool against the audited checkout itself",
+      "command": "node scripts/i18n/catalogue-union-parity.mjs --repo . ...",
+      "result": "NOT RUN: the tool reads committed blobs only and the union is uncommitted in this checkout, which this audit was told not to edit. The scratch reproduction is a real git merge of the three real object states, so the tool's own logic ran unmodified; it is not a substitute for running it once the merge commit exists."
+    },
+    {
+      "check": "context sidecar parity",
+      "command": "node scripts/i18n/context-parity.mjs",
+      "exit": 0,
+      "result": "ok - every English key is covered apart from 131 allowed gaps in 4 namespaces (shrink-only; unchanged by this delta)"
+    },
+    {
+      "check": "duplicate-key scan",
+      "command": "node scripts/i18n/check-duplicates.mjs",
+      "exit": 0,
+      "result": "ok - 934 files scanned, 0 duplicate keys"
+    },
+    {
+      "check": "translation ledger",
+      "command": "node scripts/i18n/ledger-check.mjs",
+      "exit": 1,
+      "result": "FAILED - 23 findings. es/ui.chat.attachments: stale source_sha256 (ledger 623a1363..., file 5e99fd05...) and stale target_sha256 (ledger dda45dbc..., file fd5d3475...); identical staleness for fr, hi, ru, ur, vi, zh-CN. Expected consequence of the main-side key: the English source and every target file changed, so every whole-file binding for this namespace must be re-bound in the merge commit. Not a copy defect, but it must not ship unrepaired."
+    },
+    {
+      "check": "sanctioned public-copy read (read_public_copy)",
+      "command": "read_public_copy path=src/i18n/catalogues/en/ui.chat.attachments.json key=ui.chat.attachments.file_and_copy_missing ; same for es",
+      "result": "REFUSED both times: 'differs from HEAD; commit the public copy before auditing it'. The sanctioned route is unavailable until the union is committed, so English and Spanish were read from the working-tree files directly. Recorded rather than papered over: read_public_copy did not return these strings."
+    }
+  ],
+  "key_assessments": [
+    {
+      "key": "ui.chat.attachments.file_and_copy_missing",
+      "origin": "origin/main (the one key main added; not audited by this PR's earlier rounds)",
+      "en": "The saved copy is gone too.",
+      "es": "Tampoco queda la copia guardada.",
+      "finding": null,
+      "reasoning": "Read against its context note (under 'Moved or deleted' on a sent file card, stating the second loss) and against the sibling strings. 'Tampoco' correctly presupposes the first loss stated by 'Movido o eliminado', and 'queda' carries 'is gone' without implying a recovery action, matching the row's lack of a copy control. 'la copia guardada' reuses saved_copy_label verbatim, so the user meets the same noun for the same object. Register is the guide's neutral tu-less product voice, sentence case, closed with a full stop like its sibling 'El archivo ya no está en esta ruta.' No placeholders, no plural, no punctuation drift. No finding."
+    }
+  ],
+  "observations": [
+    {
+      "key": "ui.chat.attachments.saved_path_copied",
+      "es": "Ruta de la copia guardada copiada",
+      "severity": null,
+      "status": "pre-existing, outside this union's delta",
+      "note": "Byte-identical to the merge base and already passed in acd53e2cf056-r4-es, so it is not a regression and not counted as a finding here. Recording it only so the decision is visible: the trailing 'copiada' after a long noun phrase reads heavy. If a future pass wants a lighter announcement, 'Ruta de la copia guardada copiada' -> 'Ruta copiada de la copia guardada' would keep the meaning with a natural verb position. Do not change it in a merge commit; it is a copy edit that needs its own audit round."
+    }
+  ],
+  "limitations": [
+    "The union is uncommitted in the audited checkout, so checkout_head 36b88a45fe is the PRE-merge head; both input_sha256 values are the working-tree bytes, not a commit. Re-derive them after the merge commit and re-bind the ledger.",
+    "read_public_copy refused both files ('differs from HEAD') - the strings were read from the working-tree files, not through the sanctioned reader.",
+    "No maxCells/maxChars hint is declared for any key in this namespace, so fit was judged by role and length only (longest es value, a tooltip, 56 characters).",
+    "ledger-check is red for all seven locales on this namespace until the merge commit re-binds the whole-file hashes; a green verdict here is about copy, not about release readiness.",
+    "One auditor and two reading passes; this is not two independent agents."
+  ]
+}

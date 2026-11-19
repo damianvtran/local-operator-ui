@@ -1,0 +1,15 @@
+{
+	"ui.shared.unified_diff.accessible": "统一差异视图；按 N 跳到下一处更改，按 P 跳到上一处更改",
+	"ui.shared.unified_diff.no_changes": "无更改",
+	"ui.shared.unified_diff.changes": "{count} 处更改",
+	"ui.shared.unified_diff.stats_accessible": "新增 {added} 行，删除 {removed} 行",
+	"ui.shared.unified_diff.position": "第 {index} 处更改，共 {total} 处",
+	"ui.shared.unified_diff.previous": "上一处更改",
+	"ui.shared.unified_diff.previous_hint": "上一处更改（P）",
+	"ui.shared.unified_diff.next": "下一处更改",
+	"ui.shared.unified_diff.next_hint": "下一处更改（N）",
+	"ui.shared.unified_diff.show_unchanged": "显示 {count} 行未更改内容",
+	"ui.shared.unified_diff.hide_unchanged": "隐藏 {count} 行未更改内容",
+	"ui.shared.unified_diff.line_added": "新增：",
+	"ui.shared.unified_diff.line_removed": "删除："
+}

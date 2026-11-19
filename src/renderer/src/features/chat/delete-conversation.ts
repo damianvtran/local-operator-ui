@@ -1,7 +1,7 @@
 /**
  * What a typed `/delete` says on a backend with no delete route.
  *
- * A sentence rather than silence, and the SAME shape `MOVE_UNAVAILABLE_REASON`
+ * A sentence rather than silence, and the SAME shape `moveUnavailableReason`
  * uses for a route this renderer can see the absence of: the catalogue is the
  * backend's own, so a daemon that advertises `/delete` without the capability is
  * a backend skew the user cannot fix by trying again - they are told what is

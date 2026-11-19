@@ -50,6 +50,7 @@ const bundle = await build({
 		contents: `
 			export { ComposerTipRow } from "./${source}composer-tip";
 			export { COMPOSER_TIPS, TIP_ROTATE_INTERVAL_MS } from "./${source}composer-tips";
+			export { t } from "./src/i18n/messages";
 		`,
 		loader: "tsx",
 		resolveDir: process.cwd(),
@@ -67,9 +68,8 @@ const bundlePath = new URL(
 	import.meta.url,
 );
 await writeFile(bundlePath, bundle.outputFiles[0].text);
-const { COMPOSER_TIPS, ComposerTipRow, TIP_ROTATE_INTERVAL_MS } = await import(
-	bundlePath.href
-);
+const { COMPOSER_TIPS, ComposerTipRow, TIP_ROTATE_INTERVAL_MS, t } =
+	await import(bundlePath.href);
 await unlink(bundlePath);
 
 const h = React.createElement;
@@ -167,7 +167,7 @@ test("the row opens on the pinned entry, on the TUI's interval, one step per per
 		await api.render();
 		assert.equal(
 			api.tip(),
-			COMPOSER_TIPS[0],
+			t(COMPOSER_TIPS[0]),
 			"the opening frame is pinned, which is what makes a committed capture of a rotating row reproducible",
 		);
 		const timers = api.timers();

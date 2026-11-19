@@ -1,0 +1,81 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit (removal-only delta)",
+	"audit_id": "pr1533-ownerAudit-removal-audit-2026-10-30-vi",
+	"date": "2026-10-30",
+	"instance": "pr1533rm-vi-4c85ce2d",
+	"instance_note": "One auditor run (2026-10-30) over PR #1533's vi ui.ownerAudit delta, which only deletes ui.ownerAudit.reveal and ui.ownerAudit.own. One receipt per locale so every ledger row holds a distinct instance; the suffix is the first 8 hex of the new vi target sha256.",
+	"auditor": "translation-auditor",
+	"agent": "translation-auditor",
+	"model": "anthropic/claude-opus-5-5",
+	"model_provenance": "Harness preamble of this auditor session reads 'Model: anthropic/claude-opus-5-5'; no provider fallback or model-switch notice was seen in this session before these receipts were written, so that is the model recorded. The auditor cannot independently attest the serving endpoint beyond the harness's own report.",
+	"independence": "Independent auditor: lopdev team role translation-auditor. It authored neither the deleted strings (translator i18n-translator, radient/auto, 2026-10-29), the remaining strings, nor the deletion (implemented by the team's coder on fix/owner-audit-show-unscreened). This run changed no catalogue byte; it wrote only this receipt, and the ledger row was written by scripts/i18n/ledger-assemble.mjs. Every sha256 here was recomputed from the files in the worktree.",
+	"status": "passed",
+	"locale": "vi",
+	"integration": {
+		"repo": "damianvtran/local-operator-ui",
+		"pr": "https://github.com/damianvtran/local-operator-ui/pull/1533",
+		"branch": "fix/owner-audit-show-unscreened",
+		"worktree": "~/local-operator-ui/.worktrees/owner-audit-open",
+		"base": "d62accf9db03190b52b96fa424f34018bb6c29bb",
+		"head": "a50a623ecdde730fb0f887f462e8605c5751d962"
+	},
+	"translator": {
+		"agent": "i18n-translator",
+		"model": "radient/auto",
+		"date": "2026-10-29",
+		"source": "unchanged from the ledger row this receipt re-binds; no string was translated in this delta"
+	},
+	"namespaces": {
+		"ui.ownerAudit": {
+			"namespace": "ui.ownerAudit",
+			"status": "passed",
+			"sha256": {
+				"en": "4664abd43f241e7d8c3ef2b6635b1bc1e5227e7096217fdcb7eaf03d869895df",
+				"vi": "4c85ce2da95d41658a283bcea15eb59e26d9e8028028848a3ffcc525c681d5a5"
+			},
+			"context_sha256": "c6c511468cb1d208d0e0de2d915c3c9215d762a82c85f53a04bbe9d88f54cea1",
+			"previous_sha256": {
+				"en": "147de29a88573f22b144c09b6f94c8c5310e2e1d773d597a3ff44b2a2214efe1",
+				"vi": "2c1973082305830137de0577d4704c6549ee6943a6b5d3f204a3d52042e686b4",
+				"context": "508f8a06ff1a6101fe8b25f658eda4c905bd583df35ac509883aa42b065ea10e"
+			},
+			"keys_audited": 28,
+			"keys_removed": [
+				"ui.ownerAudit.own",
+				"ui.ownerAudit.reveal"
+			],
+			"findings": [],
+			"scope": "removal-only delta: confirmed the two removed keys are gone, the remaining 28 keys equal English's key set, and every remaining value is byte-identical to origin/main's audited value; the remaining strings' translation quality is carried by the prior receipt, not re-judged here"
+		}
+	},
+	"checks": {
+		"pure_deletion": "git diff origin/main -- src/i18n: the vi hunk deletes exactly the two lines for ui.ownerAudit.own and ui.ownerAudit.reveal; origin/main bytes with those two lines removed are byte-identical to the file on disk (key order preserved, no other byte changed)",
+		"key_set": "28 keys, equal to the English ui.ownerAudit.json key set on disk; no extra or missing key",
+		"values": "every remaining value equals origin/main's value exactly (the bytes the prior receipt audited)",
+		"placeholders": "no remaining English or target value contains { } or < > tokens; the target placeholder multiset equals English for all 28 keys",
+		"plurals": "no ICU plural in this namespace, so no CLDR category is exercised",
+		"json": "file parses as JSON",
+		"context": "en ui.ownerAudit.context.json loses exactly the own and reveal entries; every remaining entry is unchanged from origin/main and no remaining note references either removed key",
+		"references": "no src/ or scripts/ runtime source references the removed keys; scripts/team-bridge-owner-audit-render.test.mjs still calls m.t('ui.ownerAudit.own') in two negative assertions (lines 933, 1494) which, because t() returns the key for an unknown message, now test for the literal key string - a test-vacuity note for the implementer, not a catalogue finding"
+	},
+	"scope": "PR #1533 removal-only delta in vi ui.ownerAudit. Translation quality of the surviving 28 strings was judged by the prior audit and is not re-derived; this receipt re-binds that audit to the new bytes after verifying nothing but the two deletions changed.",
+	"references": {
+		"previous_receipt": "i18n/receipts/tb1482mg-vi-6eeefd82.json",
+		"previous_receipt_sha256": "c3c4e0920b7a756c6acd871f14505b2a39db8c81a6ac69e2066cdbd93cf31c35",
+		"previous_result": "clean-with-findings",
+		"previous_findings": {
+			"blocker": 0,
+			"major": 0,
+			"minor": 0,
+			"nit": 2
+		},
+		"note": "the prior receipt's NIT findings on surviving keys remain recorded there; none concerned the two removed keys' successors and none is re-counted here"
+	},
+	"findings": [],
+	"limitations": [
+		"No rendered frame: removal-only delta, no surviving string changed, so fit is unchanged.",
+		"Neither this auditor nor the translator is a native speaker of the locale.",
+		"Surviving strings' quality is inherited from the prior receipt, not re-audited at whole-namespace scope."
+	]
+}

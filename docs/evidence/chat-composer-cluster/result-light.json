@@ -7,7 +7,7 @@
     "height": 900
   },
   "driver": "scripts/composer-cluster-proof.mjs",
-  "at": "2026-10-01T00:18:41.726Z",
+  "at": "2026-10-28T19:27:00.200Z",
   "cases": [
     {
       "name": "history-empty-recalls",
@@ -174,10 +174,10 @@
       "mismatches": []
     },
     {
-      "name": "skill-accepted-reassembles",
-      "why": "Accepting the row: the token moves to the FRONT with the surviving draft as its request (`fix this $res` \u2192 `$research fix this `), staged for send. The click is used here so the before tree \u2014 which has no list to click \u2014 simply leaves the draft alone; the keyboard accept is the unit suites' (the accept write is `skillCompletionFor`, executed there).",
+      "name": "skill-accepted-in-place",
+      "why": "Accepting the row: the token is replaced WHERE IT SITS (`fix this $res` \u2192 `fix this $research `), because the submit trigger reads the whole message now and moving the token would be an edit nobody asked for. The click is used here so the before tree \u2014 which has no list to click \u2014 simply leaves the draft alone; the keyboard accept is the unit suites' (the accept write is `skillCompletionFor`, executed there).",
       "state": {
-        "draft": "$research fix this ",
+        "draft": "fix this $research ",
         "sel": 19,
         "list": null,
         "listText": null,
@@ -208,7 +208,7 @@
         "listText": null,
         "rows": [],
         "active": null,
-        "sent": "The user invoked the `research` skill directly. Follow it for this request. Its reference files, if any, are listed at the end of the body and are read with `skill://<name>/<path>`. <skill name=\"research\" invocation=\"$research fix this\"> --- name: research description: Fixture --- # research Follow the fixture body for this request. </skill> fix this",
+        "sent": "fix this $research <operator-skills> The user invoked the following skills directly. Follow them for this request. Their reference files, if any, are listed at the end of each body and are read with `skill://<name>/<path>`. <skill name=\"research\"> --- name: research description: Fixture --- # research Follow the fixture body for this request. </skill> </operator-skills>",
         "dispatched": "none",
         "dialog": null,
         "dialogRows": 0,
@@ -438,7 +438,7 @@
         "draft": "/model $5",
         "sel": 9,
         "list": "Command arguments",
-        "listText": "ModelsNo matches. Enter runs the command.",
+        "listText": "ModelsNeeds an open conversation. Start one first.",
         "rows": [],
         "active": null,
         "sent": "none",
@@ -558,7 +558,7 @@
         "listText": null,
         "rows": [],
         "active": null,
-        "sent": "The user invoked the `research` skill directly. Follow it for this request. Its reference files, if any, are listed at the end of the body and are read with `skill://<name>/<path>`. <skill name=\"research\" invocation=\"$research fix this\"> --- name: research description: Fixture --- # research Follow the fixture body for this request. </skill> fix this",
+        "sent": "$research fix this <operator-skills> The user invoked the following skills directly. Follow them for this request. Their reference files, if any, are listed at the end of each body and are read with `skill://<name>/<path>`. <skill name=\"research\"> --- name: research description: Fixture --- # research Follow the fixture body for this request. </skill> </operator-skills>",
         "dispatched": "none",
         "dialog": null,
         "dialogRows": 0,

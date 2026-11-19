@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "locale": "es",
+  "namespace": "ui.settings.notifications",
+  "date": "2026-11-04",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "ed833173e70f",
+    "model": "openai/gpt-6.1-sol"
+  },
+  "independence": "Auditor is a distinct agent/session from coder/anthropic/claude-opus-5-5; no translation API used.",
+  "source": {
+    "path": "src/i18n/catalogues/en/ui.settings.notifications.json",
+    "sha256": "4bf3f8ffb1daecc09ac44049245bb85fe4c78b2c45ba19062218accc53782d65"
+  },
+  "context": {
+    "path": "src/i18n/catalogues/en/ui.settings.notifications.context.json",
+    "sha256": "aec944a760fd984421ddb0afcb1135d03cb156b844fc88ff8a32ad250385e554"
+  },
+  "target": {
+    "path": "src/i18n/catalogues/es/ui.settings.notifications.json",
+    "sha256": "3d6de2e77b7a1eaa3978c130d5977f3c3a2524b1d8a24352ed9847298da2d9fa"
+  },
+  "artifacts": [
+    {
+      "path": "i18n/receipts/d2-notification-sounds-r1-ed833173e70f-es.json",
+      "sha256": "582c01eef14ccdd0262c76df8280b456c4b84b2370652dc622fe6458b4e74af3"
+    }
+  ],
+  "findings": [],
+  "status": "passed",
+  "notes_not_execution_logs": true,
+  "limitations": [
+    "One independent LLM linguistic audit, not human-native certification or second high-visibility/safety audit.",
+    "No translated rendered-fit, pseudo-localization, RTL visual/shaping proof or audio/runtime QA claimed. English screenshots supplied by implementer do not prove target fit."
+  ]
+}

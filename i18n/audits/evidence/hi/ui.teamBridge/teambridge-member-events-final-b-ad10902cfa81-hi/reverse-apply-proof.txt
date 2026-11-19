@@ -1,0 +1,18 @@
+REVERSE-APPLY PROOF (executed with node, 2026-10-30)
+
+file: src/i18n/catalogues/hi/ui.teamBridge.json
+forward edit under test: "{count, plural, one {# अन्य} other {# अन्य}}"
+  was, before this round's correction: "{count, plural, one {# अन्य व्यक्ति} other {# अन्य लोग}}"
+occurrences of the current value in the file: 1
+
+
+sha256(now on disk)        = c51c89590c7f0e00f01f6128fdc2acc05e32aa773ea7da36dd909103d35ecb60
+sha256(reverse-applied)    = 57b7bc7207eba05879dada197dea46a8ed03f145d506c903521e64fa35e2411d
+sha256 expected (prior)    = 57b7bc7207eba05879dada197dea46a8ed03f145d506c903521e64fa35e2411d
+MATCH = true
+
+Reading: the reverse-applied bytes reproduce the previously audited file exactly, so the value-level edits between the two states are exactly the documented correction(s) and nothing else moved. Every other key in this 297-key namespace is byte-identical to the state prior receipts audited.
+
+codepoints of the current value:
+  ui.teamBridge.events.others = "{count, plural, one {# अन्य} other {# अन्य}}"
+  U+007B U+0063 U+006F U+0075 U+006E U+0074 U+002C U+0020 U+0070 U+006C U+0075 U+0072 U+0061 U+006C U+002C U+0020 U+006F U+006E U+0065 U+0020 U+007B U+0023 U+0020 U+0905 U+0928 U+094D U+092F U+007D U+0020 U+006F U+0074 U+0068 U+0065 U+0072 U+0020 U+007B U+0023 U+0020 U+0905 U+0928 U+094D U+092F U+007D U+007D

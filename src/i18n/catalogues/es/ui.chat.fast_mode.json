@@ -1,0 +1,12 @@
+{
+	"ui.chat.fast_mode.dial_differs": "El modo rápido está {dial, select, on {activado} other {desactivado}} para este modelo, así que no se {requested, select, on {activó} other {desactivó}}.",
+	"ui.chat.fast_mode.first_message_off": "El modo rápido está desactivado para el primer mensaje.",
+	"ui.chat.fast_mode.first_message_on": "El modo rápido está activado para el primer mensaje.",
+	"ui.chat.fast_mode.not_changed": "No se cambió el modo rápido. Inténtalo de nuevo.",
+	"ui.chat.fast_mode.pick_unsupported": "Este modelo no puede ejecutar el modo rápido. Elige uno que pueda.",
+	"ui.chat.fast_mode.service_cannot_carry": "El modo rápido está desactivado: esta versión del servicio de Local Operator no puede admitirlo.",
+	"ui.chat.fast_mode.service_unavailable": "El modo rápido no está disponible en esta versión del servicio de Local Operator. Actualiza Local Operator y vuelve a intentarlo.",
+	"ui.chat.fast_mode.stays_on": "El modo rápido sigue activado para este modelo.",
+	"ui.chat.fast_mode.turned_off": "Al cambiar de modelo se desactivó el modo rápido.",
+	"ui.chat.fast_mode.unsupported_stays_off": "Este modelo no admite el modo rápido, así que sigue desactivado."
+}

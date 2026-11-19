@@ -1,0 +1,206 @@
+{
+ "audit_id": "ru-upload-r1",
+ "audit_date": "2026-11-08",
+ "locale": "ru",
+ "namespace": "ui.agents.upload",
+ "round": 1,
+ "batch": "upload-agent-dialog (seven-locale slice)",
+ "head": "2b72db6a56ad8204ec7f30a0ba6ffbc941be3b82",
+ "base": "b915083bd96f5118c793d26c47d5a1f2afc1f8d9",
+ "branch": "i18n/slice-upload-agent-dialog",
+ "key_count": 15,
+ "keys_in_file": 46,
+ "keys_audited": [
+  "ui.agents.upload.action.publish",
+  "ui.agents.upload.action.publishing",
+  "ui.agents.upload.action.update_listing",
+  "ui.agents.upload.availability.reserved_named",
+  "ui.agents.upload.availability.reserved_unnamed",
+  "ui.agents.upload.intro.org",
+  "ui.agents.upload.intro.public",
+  "ui.agents.upload.not_leaving.org",
+  "ui.agents.upload.not_leaving.public",
+  "ui.agents.upload.published.org_listed",
+  "ui.agents.upload.receipt.title_hub",
+  "ui.agents.upload.receipt.title_org",
+  "ui.agents.upload.receipt.title_updated",
+  "ui.agents.upload.target.blocked_hint",
+  "ui.agents.upload.target.visibility_hint_public"
+ ],
+ "scope": "The 15 keys added to src/i18n/catalogues/ru/ui.agents.upload.json at 2b72db6a56a; the file now holds 46 keys, equal to en. The 31 carried values were verified byte-identical to the parent and not re-audited. Catalogue-only audit: no rendered frame, no activation, no release claim.",
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "3f08e28cd8df",
+  "model": "deepseek/deepseek-flash",
+  "actual_model_source": "Harness session header for this run: 'Model: anthropic/claude-sonnet-5-5' at start, then three provider-quota fallback notices (anthropic/claude-opus-5-5, openai/gpt-6.1-sol, deepseek/deepseek-flash). The verdict of record was completed on deepseek/deepseek-flash; no other served model is claimed.",
+  "independent_from_translator_session": true,
+  "instance": "3f08e28cd8df"
+ },
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.agents.upload.json",
+   "sha256": "3676c1b366cc5159b94be65acdaea925bd193d20c2524ff3f410a8a5ddff514f"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.agents.upload.context.json",
+   "sha256": "76323fe386f9b15d490c3a48feaddbd924f04148f1c893e927c2acde06f11cec"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/ru/ui.agents.upload.json",
+   "sha256": "055f72e11c8c7919a3c6fbe9488b1537e18d2ad906d98a6531889bffb96f9aaf"
+  },
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/ru.md",
+   "sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+  }
+ },
+ "artifacts": {
+  "receipt": {
+   "path": "i18n/receipts/ru-upload-r1-3f08e28cd8df.json",
+   "sha256": "913fa98e08f4bde6359e553b34efdc3cfefd1158b695752f4a3b465e066e9457"
+  },
+  "report": {
+   "path": "i18n/audits/evidence/ru/ui.agents.upload/ru-upload-3f08e28cd8df/report.md"
+  },
+  "renders": {
+   "path": "i18n/audits/evidence/ru/ui.agents.upload/ru-upload-3f08e28cd8df/renders.txt",
+   "sha256": "872fb66f265e0bd9bef9b23fa2ac3ba0fa21abe21c031166b9782bb6b02b232e"
+  },
+  "probes": [
+   {
+    "path": "i18n/audits/evidence/ru/ui.agents.upload/ru-upload-3f08e28cd8df/probe.mjs",
+    "sha256": "717fac09bc4673791258c9ff57b57a68bfd02d9bd9406ca4f2a1dadc2321baed"
+   },
+   {
+    "path": "i18n/audits/evidence/ru/ui.agents.upload/ru-upload-3f08e28cd8df/probe-placeholders.mjs",
+    "sha256": "6891117b29069f4b63cce098bfc24b600dfc82034b23b770186c973e1bfe4ea8"
+   }
+  ],
+  "audit_json": {
+   "path": "i18n/audits/evidence/ru/ui.agents.upload/ru-upload-3f08e28cd8df/record.json",
+   "note": "This file; its sha256 is reported by the audit's final message."
+  }
+ },
+ "current_report_verdict": {
+  "status": "passed",
+  "result": "clean-with-findings",
+  "counts": {
+   "blocker": 0,
+   "major": 0,
+   "minor": 1,
+   "nit": 3
+  },
+  "unresolved_blocker_major_count": 0,
+  "finding_ids": [
+   "RU-UP-01",
+   "RU-UP-02",
+   "RU-UP-03",
+   "RU-UP-04"
+  ]
+ },
+ "verified": [
+  "Key set: 46/46 against en; the 15 new keys are exactly the en keys this commit translated; no carried value changed (git diff --name-only shows only this catalogue for ru).",
+  "ICU: all 15 parse with @formatjs/icu-messageformat-parser 3.x; placeholder sets equal en key for key ({name}, {destination}, and blocked_hint's {org}); {count} exists only as the plural selector in both, so it can never render as a digit - the sidecar requirement holds.",
+  "Plural categories: one/few/many/other present, which is the ru set the locale guide mandates (one 1,21,31; few 2-4; many 0,5-20; other fractions); `other` present as required. All four arms are genitive, as the commit claims: 'владелец' governs the genitive and 'любой из отмеченных выше организаций' is genitive plural in every non-one arm.",
+  "Substitution premise re-derived, not assumed: ui.hub.pages.scope.org_unnamed is shipped in ru as «этой организации» (genitive) and the new call site upload-agent-dialog.tsx:1040 passes org: blockedTargets[0].tenant_name || t('ui.hub.pages.scope.org_unnamed'), the same shape as the two shipped siblings agent-hub-page.tsx:1355 and org-teams-list.tsx:325.",
+  "Case government: 'Владелец X' is genitive in every arm with the genitive fallback; with a real org name it is apposition and the name stays uninflected, matching the shipped identical frame 'Владелец {org} может включить его в консоли Radient' in ui.hub.pages.org.plan_body and ui.hub.teams.org.plan_body.",
+  "intro.org's directional accusative ('в организацию {destination}') is correct and matches the locale's shipped publishing phrase (target.orgs_unread, ui.agents.publication.insufficient_role.body); not_leaving.org ('Участники организации {destination}') and published.org_listed ('в общих агентах организации {destination}') correctly take genitive apposition, and receipt.title_org correctly takes the locative because it is a state, not a direction.",
+  "Terminology matches the locale, word for word where the frame already exists: 'Обмен агентами внутри организации входит в тариф Radient Team' is the sentence ui.hub.pages.org.plan_body already ships; 'набор инструкций', 'общие агенты', 'усвоенное', 'история выполнения', 'участники' all have shipped precedent; 'тариф' agrees with the carried target.upgrade '(нужен тариф выше)'.",
+  "Hub casing follows the locale's implicit rule rather than adding a new one: capitalised for the surface name 'Хаб агентов' (as in ui.hub.pages.header.title, ui.agents.dialogs.create.hub_link, sign_in.needed) and lowercase for the common noun 'хаб' (as in ui.hub.pages.status.scope.public, published.listed).",
+  "No English residue: the only Latin spans in the 15 values are the placeholders {name}/{destination}/{org}/{count}, the product names 'Radient' and 'Team', and ICU keywords.",
+  "Typography: U+2026 ellipsis (not three periods) in action.publishing, «ёлочки» for quoted names, no space before ':', sentence case throughout, 'вы' only sentence-initial (lowercase mid-sentence), no Title Case.",
+  "Terminal punctuation matches en on every key ('.', ':', '…', and a trailing placeholder for receipt.title_org); nothing added or dropped from the en sentence inventory, including the six-item not_leaving list in en order and the two halves of visibility_hint_public in en order.",
+  "Input hashes re-derived from bytes at the briefed head; no catalogue, ledger, allowance or generator file modified by this audit; nothing committed."
+ ],
+ "observations": [
+  {
+   "id": "RU-UP-INFO-1",
+   "kind": "out of scope - pre-existing (component, all seven locales)",
+   "note": "{destination} is not always a name: upload-agent-dialog.tsx:306 falls back to the hardcoded English literal 'this organization' (blame: dac08d66c86, 2026-09-27, two commits before the English keying), not to ui.hub.pages.scope.org_unnamed. In ru that renders 'в организацию this organization'. It is a component defect that predates this diff and affects every locale equally, so it does not gate this audit. Note for whoever fixes it: the fallback must be NOMINATIVE for {destination} - reusing the shipped genitive org_unnamed would make intro.org read 'в организацию этой организации'."
+  },
+  {
+   "id": "RU-UP-INFO-2",
+   "kind": "observation",
+   "note": "A declinable common-noun organization name stays uninflected after the accusative head ('в организацию Служба поддержки'). Quoting the name would fix the morphology but collides with the genitive fallback and with the locale's shipped unquoted {org}/{organization} usage (ui.hub.pages.status.scope.shared_with, ui.hub.links.source_label_org), so the current treatment is the consistent one. No action."
+  },
+  {
+   "id": "RU-UP-INFO-3",
+   "kind": "observation",
+   "note": "Casing of the hub: the new copy is internally consistent with the locale's implicit rule (surface name capitalised, common noun lowercase). The open NIT RU-AL2-04 asked for that rule to be written down; this audit found the copy already follows it, so RU-AL2-04 stays open on the record, not on this diff."
+  },
+  {
+   "id": "RU-UP-INFO-4",
+   "kind": "observation",
+   "note": "The audit did not render a frame. These keys are catalogue values in a desktop dialog; the renders in renders.txt are the formatted strings from the app's own ICU runtime, which is the right instrument for case, plural and punctuation. A pixel/layout check belongs to the design stream if the dialog itself is re-reviewed."
+  }
+ ],
+ "findings": [
+  {
+   "id": "RU-UP-01",
+   "severity": "minor",
+   "category": "plural-category / accuracy",
+   "key": "ui.agents.upload.target.blocked_hint",
+   "source": "Sharing agents inside an organization is part of the Team plan. An owner of {count, plural, one {{org}} other {any of the organizations marked above}} can activate it in the Radient console.",
+   "current": "Обмен агентами внутри организации входит в тариф Radient Team. Владелец {count, plural, one {{org}} few {любой из отмеченных выше организаций} many {любой из отмеченных выше организаций} other {любой из отмеченных выше организаций}} может включить его в консоли Radient.",
+   "problem": "ru CLDR `one` covers 1, 21, 31, 41, 101 - not exactly 1 as in English. The `one` arm names ONE organization, which is right at count 1 and wrong-shaped at 21: the hint then names a single owner while the picker shows 21 disabled rows. Reproduced at the briefed head with the app's own intl-messageformat 12.1.3: count=21 and count=31 render 'Владелец Acme Corp может включить его в консоли Radient.', while 22 and 25 correctly say 'любой из отмеченных выше организаций'. English cannot show this because English `one` is exactly 1. The translator disclosed the limitation; this audit confirms it is reachable and supplies the one-line fix.",
+   "evidence": "i18n/audits/evidence/ru/ui.agents.upload/ru-upload-3f08e28cd8df/renders.txt (probe.mjs sweep at counts 1/2/3/5/11/21/22/25/31/101 - actual formatted output, not a description).",
+   "proposed": "{count, plural, =1 {{org}} one {любой из отмеченных выше организаций} few {любой из отмеченных выше организаций} many {любой из отмеченных выше организаций} other {любой из отмеченных выше организаций}} - the explicit `=1` selector keeps the count-of-one behaviour the sidecar asks for ('The one arm names the organization the reader has to ask') and routes 21/31 to the count-neutral phrase. `=1` beside `one` is the shipped ru pattern (ui.chat.canonical.fold.images_aria, ui.chat.canonical.image_gen.batch_summary), so nothing new is introduced.",
+   "severity_rationale": "MINOR, not MAJOR: it needs 21+ blocked organizations, the sentence stays grammatical, its assertion stays true of the named organization (that owner can enable it), and the disabled picker rows themselves carry the true scope, so no wrong action follows from the reading. If the team treats the 21-state as asserting something false about how many organizations are blocked, the fix is one line and already precedented.",
+   "disposition": "open"
+  },
+  {
+   "id": "RU-UP-02",
+   "severity": "nit",
+   "category": "consistency",
+   "key": "ui.agents.upload.published.org_listed",
+   "related_keys": [
+    "ui.agents.upload.not_leaving.org"
+   ],
+   "source": "Its members can read and install it; nobody outside the organization can. / ...; nobody outside it can.",
+   "current": "…никто за её пределами этого не может. (published.org_listed) against …никто за её пределами этого не сможет. (not_leaving.org)",
+   "problem": "Two sibling 'nobody outside it' clauses in the same namespace differ in aspect: the receipt clause uses 'не может', the pre-submit clause 'не сможет'. Both are grammatical and mean the same thing; the pair reads as drift because the two sentences are otherwise near-identical.",
+   "proposed": "Harmonise on 'не сможет' (the not_leaving.org form) or leave both deliberately; no meaning change either way.",
+   "disposition": "open"
+  },
+  {
+   "id": "RU-UP-03",
+   "severity": "nit",
+   "category": "terminology",
+   "key": "ui.agents.upload.action.publishing",
+   "related_keys": [
+    "ui.agents.upload.action.open_listing",
+    "ui.agents.upload.action.update_listing",
+    "ui.agents.upload.receipt.title_updated"
+   ],
+   "source": "Publishing… (primary button label while the publication request is in flight)",
+   "current": "Публикация…",
+   "problem": "The same namespace uses «публикация» as the noun for a LISTING ('Открыть публикацию', 'Обновить публикацию', 'Публикация обновлена'), so this in-flight label reuses the object noun for an action. The ru guide's tone section prefers impersonal constructions, which gives a form that does not collide.",
+   "proposed": "Публикуется… - impersonal in-flight form, still one word plus U+2026, one character longer than the current label.",
+   "disposition": "open"
+  },
+  {
+   "id": "RU-UP-04",
+   "severity": "nit",
+   "category": "consistency (points at an open prior finding; the new copy is the correct half)",
+   "key": "ui.agents.upload.intro.org",
+   "related_keys": [
+    "ui.agents.upload.title.publish_org",
+    "ui.agents.upload.title.published_org"
+   ],
+   "source": "You are about to publish this agent's instruction set into {destination}, ... / Publish \"{name}\" to {destination}?",
+   "current": "«в организацию {destination}» (intro.org, new) against «в организации {destination}?» (title.publish_org, carried)",
+   "problem": "The new body sentence takes the directional accusative, which is right and matches the locale's shipped publishing phrase (target.orgs_unread '…опубликовать в организацию'; ui.agents.publication.insufficient_role.body). The dialog TITLE on the same screen still takes the locative - that is the still-open MINOR RU-AL2-02 from the previous ru round, not a new defect. Recorded so the title is fixed with it; the body needs no change and must not be re-churned.",
+   "proposed": "When RU-AL2-02 is worked, the title follows 'в организацию {destination}?' and the two agree. receipt.title_org keeps the locative deliberately: «опубликовано в организации X» is a state, not a direction.",
+   "disposition": "open"
+  }
+ ],
+ "audit_notes_not_execution_log": [
+  "Read: the 15 added ru values in the diff of 2b72db6a56a, the en catalogue, the en context sidecar, the shipped ru siblings in the same file and namespace, the render sites (upload-agent-dialog.tsx lines 844/949/961/1040 and 304-306), the pre-existing siblings that share the frame (ui.hub.pages.org.plan_body, ui.hub.teams.org.plan_body, ui.hub.pages.scope.org_unnamed), the ru style guide and the glossary.",
+  "Ran: probe-placeholders.mjs (ICU parse + argument/plural-category parity against en, terminal punctuation, Latin-span scan) and probe.mjs (formatted renders at ten counts and three org-name shapes) with the app's own intl-messageformat 12.1.3 from the worktree's shared node_modules; then deriveReceiptAudit from scripts/i18n/ledger-rules.mjs against the receipt, which accepted it as clean-with-findings with the recorded counts and re-derived hashes.",
+  "Not run: no full i18n gate (generate --check / check-coverage / ledger-check) - those are CI's and the ledger rows do not exist yet by design; no rendered frame (catalogue-only audit, see RU-UP-INFO-4)."
+ ]
+}

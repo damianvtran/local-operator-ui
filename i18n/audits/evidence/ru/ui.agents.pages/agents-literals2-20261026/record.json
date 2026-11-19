@@ -1,0 +1,86 @@
+{
+  "audit_id": "agents-literals2-20261026",
+  "audit_date": "2026-10-26",
+  "locale": "ru",
+  "namespace": "ui.agents.pages",
+  "round": 1,
+  "batch": "agents-literals-2",
+  "head": "a9e536bf892f48ed2a87772658055abfd10caa5e",
+  "base": "73af0b6855231c8e484bd4097e57fb879e10e9a8",
+  "branch": "i18n-agents-literals-2",
+  "key_count": 8,
+  "keys_in_file": 30,
+  "scope": "Batch agents-literals-2: the 25 new keys only, over seven namespaces. Every other ru value in these files was verified byte-identical to the parent and not re-audited. Catalogue-only: no rendered frame, activation or release claim.",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "d2fba0341c06",
+    "model": "radient/auto",
+    "actual_model_source": "Harness session header for this run: 'Model: radient/auto'; no fallback notice appeared during the audit and no other served model is claimed.",
+    "independent_from_translator_session": true,
+    "instance": "114c8d6e8551"
+  },
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.agents.pages.json",
+      "sha256": "e85765ccb25a8675e64cb8cd1cc37edd86afbe9a77d444f9a1ec8ac9aee45781"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.agents.pages.context.json",
+      "sha256": "f9690a17e6e7307df154bdc0d71ab8a0d002a07a052e11c0025d2ff874d3dfea"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/ru/ui.agents.pages.json",
+      "sha256": "220ee7e2dc6fb4df210a6c489de1c16f55817f085625adf7e55769d3f46732f5"
+    }
+  },
+  "artifacts": {
+    "receipt": {
+      "path": "i18n/receipts/ru-agents-literals-audit-114c8d6e8551.json",
+      "sha256": "c7604f6af740f3a2349af3b98cfffb28d0480b88b0767d274668268eb1a40c31"
+    },
+    "execution_log": {
+      "path": "i18n/audits/evidence/ru/ui.agents.pages/agents-literals2-20261026/audit.log",
+      "sha256": "092f1cca3cdbf6c1331bda6ccebdeaa8a5e625275bcc334634d597a16922fcbc"
+    },
+    "audit_json": {
+      "path": "i18n/audits/evidence/ru/ui.agents.pages/agents-literals2-20261026/record.json",
+      "note": "This file; its sha256 is reported by the audit's final message and by the project record."
+    }
+  },
+  "current_report_verdict": {
+    "status": "passed",
+    "result": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 1,
+      "nit": 0
+    },
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [
+      "RU-AL2-01"
+    ]
+  },
+  "findings": [
+    {
+      "id": "RU-AL2-01",
+      "severity": "MINOR",
+      "category": "idiom",
+      "key": "ui.agents.pages.ask.body_agent",
+      "source": "An agent is a reusable set of instructions you can start a chat with, or let other agents call on. Describe what you want and a configuration run sets it up.",
+      "current": "Агент — это набор инструкций, который можно использовать повторно: с ним можно начать чат, а можно позволить другим агентам обращаться к нему. Опишите, что нужно, и запуск конфигурации всё настроит.",
+      "proposed": "Агент — это многоразовый набор инструкций: с ним можно начать чат или разрешить другим агентам обращаться к нему. Опишите, что нужно, и запуск конфигурации всё настроит.",
+      "problem": "Meaning is faithful and every clause of the English survives. The first sentence is nonetheless wordy where a native editor would tighten it: 'который можно использовать повторно' is a periphrasis for 'reusable', and 'можно' occurs three times in 22 words ('который можно использовать', 'с ним можно начать', 'а можно позволить'). The sibling ask.body_team is compact, so the pair reads unevenly.",
+      "evidence": "First sentence measures 1043.27 px at 14 px (system-ui/SF Pro) in the 810 px ask column, i.e. two lines; the proposal is about 20 characters shorter and keeps the shared closing sentence byte-identical to ask.body_team.",
+      "disposition": "open"
+    }
+  ],
+  "audit_notes_not_execution_log": "The prose in the receipt and in this record is the auditor's reasoning. The commands and their actual output are in audit.log beside this file; nothing in it was edited or invented.",
+  "original_lost_evidence": {
+    "status": "none",
+    "original_path": null,
+    "expected_original_sha256": null
+  },
+  "new_report_is_original": true,
+  "new_report_is_historical_R2_recreation": false,
+  "backdated": false
+}

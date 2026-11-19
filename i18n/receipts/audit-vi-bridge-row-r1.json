@@ -1,0 +1,77 @@
+{
+  "instance": "audit-vi-bridge-row-r1",
+  "locale": "vi",
+  "namespace": "ui.chat.canonical",
+  "audit_date": "2026-10-30",
+  "checkout_head": "434b86d279c",
+  "branch": "feat/bridge-tool-row",
+  "pr": "damianvtran/local-operator-ui#1529",
+  "auditor": {
+    "agent": "translation-auditor",
+    "session": "c3ef611146c0",
+    "instance": "audit-vi-bridge-row-r1",
+    "model": "anthropic/claude-opus-5-5",
+    "actual_model_source": "session runtime header; no provider fallback occurred in this audit",
+    "independent_from_translator_session": true
+  },
+  "translator": {
+    "round_1": "translator agent under radient/auto fallback",
+    "round_2_delta": "translator agent on anthropic/claude-opus-5-5"
+  },
+  "scope": "Re-audit of ui.chat.canonical at its current source hash. The 88 keys added by the Team Bridge row (tool_row.bridge.* 84, fold.bridge*/bridge_post* 4) read in full against English and the context sidecar. The other 80 keys proven value-identical in both en and vi to the bytes the prior row audited (en da2c87f6, vi d44c0204 at f6e5c3eb62e: 0 removed, 0 changed); 10 of them spot-read.",
+  "key_count": 168,
+  "keys_read_in_full": 88,
+  "reviewed_previous": "i18n/receipts/2248800d3855-ov2-vi.json",
+  "sha256": {
+    "en": "67ea94ac8ebbfb34b5ea71fc1c9c6f633994f2e2e0bf06da66137f85a596646a",
+    "vi": "f111b46f4532c200684c96792bfbc3d43638d4e82c2a9e830898b47f035546c5"
+  },
+  "checks": {
+    "key parity": "168/168, no key added or dropped against English",
+    "placeholders": "ICU argument sets parsed with @formatjs/icu-messageformat-parser identical to English for all 88 bridge keys ({target}, {verb}, {code}, {error}, {seq}, {count}); =0 arms kept on summary.members/messages; ::group-off kept on summary.count and posted_at_seq",
+    "ICU and CLDR": "112 renders through intl-messageformat under vi at counts 0/1/2/3/5/11/21/22/1000000 and sentinels: all parse, 0 placeholders lost; plurals other-only (+=0), e.g. '(1.000.000 thành viên)'",
+    "bidi/NFC": "no bidi/Cf controls; all values NFC",
+    "cross-repo": "65 paired keys (51 verbs, delivery word/short, fallbacks, details, inbox note, bare outcomes) byte-identical to core wire.tool_rows.bridge vi after the same fixes in both repos",
+    "fold nouns": "fold.bridge* one/other identical by design (thao tác / tin nhắn Team Bridge) as vi has no plural; pre-split fold plural keys deferred per the brief, not reopened",
+    "rendered evidence": "not performed; copy audit only"
+  },
+  "findings": [
+    {
+      "id": "VI-1",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.tool_row.bridge.delivery.unconfirmed.word",
+      "keys": [
+        "ui.chat.canonical.tool_row.bridge.delivery.unconfirmed.word",
+        "ui.chat.canonical.tool_row.bridge.delivery.unconfirmed.label"
+      ],
+      "current": "chưa xác nhận gửi",
+      "en": "delivery unconfirmed",
+      "problem": "'xác nhận gửi' reads as the action 'confirm sending' (a pending confirm step), not 'delivery has not been confirmed'; the status must say the hub did not confirm it was sent",
+      "fixed": "chưa xác nhận đã gửi",
+      "status": "fixed"
+    },
+    {
+      "id": "VI-2",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.tool_row.bridge.verb.ack_done.settled",
+      "keys": [
+        "ui.chat.canonical.tool_row.bridge.verb.ack_done.settled",
+        "ui.chat.canonical.tool_row.bridge.verb.ack_done.running",
+        "ui.chat.canonical.tool_row.bridge.verb.ack_done.failed"
+      ],
+      "current": "Đã trả lại / Đang trả lại / Không thể trả lại",
+      "en": "Released / Releasing / Couldn't release",
+      "problem": "'trả lại' means return/give back and reads as bouncing the message to its sender; ack done releases this session's own claim on the message",
+      "fixed": "Đã nhả / Đang nhả / Không thể nhả",
+      "status": "fixed"
+    }
+  ],
+  "verdict": "pass",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "notes": [
+    "Recorded, not changed: fallback.dm 'một người' (no literal 'DM'; 'Đã nhắn cho một người' is idiomatic, same choice as zh-CN 对方); take_up 'mở' (fetch/open, since 'nhận' is used by claim); directory 'danh sách thành viên'; thread 'luồng' and reaction 'cảm xúc' match ui.teamBridge.",
+    "Spot-checked 10 unchanged keys (send_failure.*, security_notice.*, sound.*, older_history.*, supplement.file_actions.open_in_default_app): all read correctly.",
+    "Independence: I did not translate these strings; fixes are the auditor's remediation of its own findings, recorded above."
+  ]
+}

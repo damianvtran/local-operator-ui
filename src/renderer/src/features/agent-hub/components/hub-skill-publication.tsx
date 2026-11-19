@@ -14,7 +14,7 @@ import {
 import { Button } from "@shared/components/ui/button";
 import { Input } from "@shared/components/ui/input";
 import { Textarea } from "@shared/components/ui/textarea";
-import { t } from "@shared/i18n";
+import { t, userTextDir } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useId, useRef, useState } from "react";
@@ -34,11 +34,14 @@ export function HubSkillPublication({
 	source,
 	verifiedCas,
 	enabled = true,
+	heading = true,
 }: {
 	scope: HubSkillScope;
 	source: string;
 	verifiedCas: boolean;
 	enabled?: boolean;
+	/** False when a dialog already names the surface (design round 2, D10). */
+	heading?: boolean;
 }) {
 	useI18nLocale();
 	const id = useId();
@@ -145,9 +148,11 @@ export function HubSkillPublication({
 	};
 	return (
 		<section className="flex min-w-0 flex-col gap-4" data-hub-skill-publication>
-			<h3 className="text-heading text-ink">
-				{t("ui.hub.skills.publish_title")}
-			</h3>
+			{heading && (
+				<h3 className="text-heading text-ink">
+					{t("ui.hub.skills.publish_title")}
+				</h3>
+			)}
 			<label htmlFor={`${id}-source`} className="text-body-sm text-ink">
 				{t("ui.hub.skills.select_authored")}
 			</label>
@@ -181,6 +186,7 @@ export function HubSkillPublication({
 			<Input
 				id={`${id}-alias`}
 				data-testid="hub-skill-publish-alias"
+				dir={userTextDir(alias)}
 				value={alias}
 				disabled={action.isPending || !enabled}
 				onChange={(event) => {
@@ -242,6 +248,8 @@ export function HubSkillPublication({
 							rows={12}
 							aria-label={t("ui.hub.links.preview_payload", { source })}
 							value={JSON.stringify(preview.proposal.fields, null, 2)}
+							// JSON is machine text: always left-to-right, even under ur.
+							dir="ltr"
 							className="max-h-96 bg-sunken text-mono-sm"
 						/>
 						{preview.warnings.map((warning, index) => (

@@ -1,0 +1,20 @@
+{
+	"ui.settings.search.field.label": "Поиск настроек",
+	"ui.settings.search.field.placeholder": "Поиск настроек",
+	"ui.settings.search.empty.summary": "Ищет все настройки на этой странице и в реестре подключённого сервиса.",
+	"ui.settings.search.empty.shortcut": "Нажмите {shortcut}, чтобы искать из любого места на этой странице.",
+	"ui.settings.search.no_results.title": "Ничего не найдено по запросу «{query}».",
+	"ui.settings.search.no_results.hint": "Попробуйте другое слово или очистите поле, чтобы продолжить просмотр страницы.",
+	"ui.settings.search.no_results.clear": "Очистить поиск",
+	"ui.settings.search.results.count": "{count, plural, one {# результат} few {# результата} many {# результатов} other {# результата}}",
+	"ui.settings.search.results.more": "{count, plural, one {ещё # результат не показан} few {ещё # результата не показаны} many {ещё # результатов не показано} other {ещё # результата не показано}}",
+	"ui.settings.search.panel.label": "Результаты настроек",
+	"ui.settings.search.reason.label": "совпадение по названию",
+	"ui.settings.search.reason.synonym": "совпадение по синониму",
+	"ui.settings.search.reason.key": "совпадение по ключу настройки",
+	"ui.settings.search.reason.choice": "совпадение по варианту",
+	"ui.settings.search.reason.section": "совпадение по разделу",
+	"ui.settings.search.reason.description": "совпадение по описанию",
+	"ui.settings.search.jump.missing": "Этой настройки сейчас нет на экране.",
+	"ui.settings.search.row.section_hint": "В разделе «{section}»"
+}

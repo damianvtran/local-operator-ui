@@ -31,17 +31,38 @@ import { spawnSync } from "node:child_process";
  * plist and embedded no profile, so the app could not be launched at all and the
  * ShipIt that should have relaunched it was refused too. This script therefore
  * refuses to emit the group unless it is given the profile that authorizes it
- * (`--profile`), and refuses a profile that does not list the exact group being
+ * (`--profile`), and refuses a profile that does not cover the exact group being
  * rendered — the door to passkeys is one secret wide, and it cannot be opened
  * half way.
+ *
+ * "COVER", NOT "LIST". A real Developer ID profile authorizes keychain groups
+ * with Apple's team wildcard (`<TEAM_ID>.*`), never by naming each one, so the
+ * question is asked through `profileAllowlistAuthorizes` in
+ * `scripts/macos-entitlement-policy.mjs` — the one copy of Apple's matching rule,
+ * shared with the release gate. Another team's wildcard and a bare `*` are still
+ * refusals.
+ *
+ * THE APP'S IDENTITY CLAIMS RIDE WITH THE GROUP. With a profile, the main
+ * executable is also signed with `com.apple.application-identifier`
+ * (`<TEAM_ID>.<BUNDLE_ID>`) and `com.apple.developer.team-identifier`, which is
+ * what Xcode signs into every profile-backed Developer ID app: the keychain's
+ * access-group machinery keys on the application identifier, and a profile that
+ * authorizes a group for an app whose signature names no application identifier
+ * is not a combination Apple's own tooling ever produces. `@electron/osx-sign`
+ * would not add them for us — its `preAutoEntitlements` returns early unless
+ * the App Sandbox is on, and this app is not sandboxed. Each of the three is
+ * rendered only when the profile authorizes that exact value, and a profile that
+ * authorizes any one of them but not all three is a refusal rather than a
+ * partial render: half a door is the shape that silently never works.
  *
  * WHAT A LOCAL BUILD GETS: nothing. `pnpm dist:mac` on a developer machine keeps
  * using the committed `build/entitlements.mac.plist` (no group), stays ad-hoc
  * signed, and the app stays inert for passkeys (it logs the reason).
  *
- * `publish.yml` does not call this at all while no profile exists: see the
- * comment above its Build macOS app step for the three steps that turn passkeys
- * back on.
+ * `publish.yml` and `signed-update-candidate.yml` call it with the Developer ID
+ * profile decoded from `MACOS_APP_PROFILE_BASE64` and hand the result to
+ * `-c.mac.entitlements` only; the comment above `publish.yml`'s Build macOS app
+ * step is the authority for that wiring and for rotating the profile.
  *
  * Usage:
  *   node scripts/render-mac-entitlements.mjs --out <path> \
@@ -53,13 +74,18 @@ import { spawnSync } from "node:child_process";
  * `--profile` the output is the committed plist unchanged: the app ships with no
  * restricted claim, and passkeys are inert rather than a brick.
  *
- * The rendered group is NEVER printed: the team id is a secret, and this script's
- * output is a CI log. What it prints is the count and the destination.
+ * The rendered values are NEVER printed: each embeds the team id, which is a
+ * secret, and this script's output is a CI log. What it prints is the count, the
+ * key names and the destination.
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { isEntryPoint } from "./entry-point.mjs";
+import {
+	plistStringValues,
+	unauthorizedClaims,
+} from "./macos-entitlement-policy.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -68,6 +94,73 @@ export const WEBAUTHN_GROUP_SUFFIX = ".webauthn";
 
 /** The entitlement key the group has to appear under. */
 export const KEYCHAIN_ACCESS_GROUPS_KEY = "keychain-access-groups";
+
+/** The app's identity claims a profile-backed Developer ID signature carries. */
+export const APPLICATION_IDENTIFIER_KEY = "com.apple.application-identifier";
+export const TEAM_IDENTIFIER_KEY = "com.apple.developer.team-identifier";
+
+/**
+ * Every restricted claim a profile-backed main executable is signed with, as
+ * `[key, value, isArray]`, in the order they are written. The single list both
+ * the authorization check and the render read, so a claim cannot be rendered
+ * without first being checked against the profile.
+ */
+export function profileBackedClaims(teamId, bundleId) {
+	return [
+		[
+			KEYCHAIN_ACCESS_GROUPS_KEY,
+			webauthnKeychainAccessGroup(teamId, bundleId),
+			true,
+		],
+		[APPLICATION_IDENTIFIER_KEY, `${teamId}.${bundleId}`, false],
+		[TEAM_IDENTIFIER_KEY, teamId, false],
+	];
+}
+
+/*
+ * `unauthorizedClaims` lives in `macos-entitlement-policy.mjs` beside the
+ * matching rule it applies, because the release gate asks the same question of a
+ * built bundle and imports it from there (agent review round 1, R3): one copy of
+ * "does the profile authorize this value" for the renderer and the gate both.
+ * Re-exported so this module's callers and its test keep their import.
+ */
+export { unauthorizedClaims };
+
+/**
+ * Set one scalar string entitlement, replacing an existing value. Same string
+ * surgery and the same refusal on a plist with no `</dict>` as the group below,
+ * for the same reasons.
+ */
+export function renderStringEntitlement(plist, key, value) {
+	const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+	const existing = new RegExp(
+		`<key>${escaped}</key>\\s*<string>[^<]*</string>`,
+	);
+	const block = `<key>${key}</key>\n    <string>${value}</string>`;
+	if (existing.test(plist)) return plist.replace(existing, block);
+	const insertion = plist.lastIndexOf("</dict>");
+	if (insertion === -1) {
+		throw new Error(
+			`the entitlements plist has no </dict>, so ${key} could not be injected`,
+		);
+	}
+	// The indentation that precedes `</dict>` is dropped and re-emitted, so a key
+	// inserted after an earlier insertion lines up with it rather than drifting.
+	const head = plist.slice(0, insertion).replace(/[ \t]*$/, "");
+	return `${head}    ${block}\n  ${plist.slice(insertion)}`;
+}
+
+/** Render every claim of `profileBackedClaims` into `plist`. */
+export function renderProfileBackedEntitlements(plist, claims) {
+	let rendered = plist;
+	for (const [key, value, isArray] of claims) {
+		rendered =
+			key === KEYCHAIN_ACCESS_GROUPS_KEY && isArray
+				? renderEntitlementsPlist(rendered, [value])
+				: renderStringEntitlement(rendered, key, value);
+	}
+	return rendered;
+}
 
 /**
  * `<TEAM_ID>.<BUNDLE_ID>.webauthn`, the only place this shape is written here.
@@ -156,6 +249,21 @@ export function assertBundleId(bundleId) {
  * because only one of those is a reason to stop the build.
  */
 export function profileKeychainGroups(profilePath, run = defaultProfileReader) {
+	return plistStringValues(
+		profileEntitlementsDump(profilePath, run),
+		KEYCHAIN_ACCESS_GROUPS_KEY,
+	);
+}
+
+/**
+ * The profile unwrapped by `security cms -D`, as plist text. Throws when the
+ * profile is missing or cannot be unwrapped, for the reason given above
+ * `profileKeychainGroups`.
+ */
+export function profileEntitlementsDump(
+	profilePath,
+	run = defaultProfileReader,
+) {
 	if (!profilePath || !existsSync(profilePath)) {
 		throw new Error(
 			`--profile ${profilePath ?? "(missing)"} does not name a readable provisioning profile; refusing to render a restricted entitlement no profile can authorize`,
@@ -167,18 +275,7 @@ export function profileKeychainGroups(profilePath, run = defaultProfileReader) {
 			`security cms -D could not read ${profilePath}: ${(dump.stderr ?? "").trim() || "no output"}`,
 		);
 	}
-	const text = dump.stdout ?? "";
-	const key = text.indexOf(`<key>${KEYCHAIN_ACCESS_GROUPS_KEY}</key>`);
-	if (key === -1) return [];
-	const after = text.slice(key);
-	const start = after.indexOf("<array>");
-	const end = after.indexOf("</array>", start + 1);
-	if (start === -1 || end === -1) return [];
-	return [
-		...after
-			.slice(start + "<array>".length, end)
-			.matchAll(/<string>([^<]*)<\/string>/g),
-	].map(([, value]) => value.trim());
+	return dump.stdout ?? "";
 }
 
 /** Runs `security cms -D -i <path>`; injectable so the profile-side contract can
@@ -243,23 +340,28 @@ async function main() {
 	const bundleId = assertBundleId(
 		argValue(argv, "--bundle-id") ?? bundleIdFromPackage(),
 	);
-	const group = webauthnKeychainAccessGroup(teamId, bundleId);
-	// The profile has to authorize the EXACT group before the group is signed in:
-	// a signature and an allowlist that disagree is refused at spawn, and the build
-	// log would look the same either way.
-	const authorized = profileKeychainGroups(resolve(profile));
-	if (!authorized.includes(group)) {
+	const claims = profileBackedClaims(teamId, bundleId);
+	// The profile has to authorize EVERY claim before any of them is signed in: a
+	// signature and an allowlist that disagree is refused at spawn, and the build
+	// log would look the same either way. All three or none — a render that
+	// carried the group without the application identifier, or the reverse, is
+	// the half-open door this script exists to keep shut.
+	const missing = unauthorizedClaims(
+		profileEntitlementsDump(resolve(profile)),
+		claims,
+	);
+	if (missing.length > 0) {
 		throw new Error(
-			`the provisioning profile at ${profile} authorizes ${authorized.length} keychain access group(s) and not the one this build would sign in; refusing to render a restricted entitlement the profile does not cover`,
+			`the provisioning profile at ${profile} does not authorize ${missing.join(", ")} for this build's team and bundle id; refusing to render restricted entitlements the profile does not cover`,
 		);
 	}
-	const rendered = renderEntitlementsPlist(plist, [group]);
+	const rendered = renderProfileBackedEntitlements(plist, claims);
 	writeFileSync(destination, rendered);
-	// The GROUP is not printed: it embeds the team id. The destination and the
-	// count are what a reader needs to see that this ran.
+	// The VALUES are not printed: each embeds the team id. The destination, the
+	// count and the key names are what a reader needs to see that this ran.
 	const entitlementCount = (rendered.match(/<key>/g) ?? []).length;
 	console.log(
-		`render-mac-entitlements: wrote ${entitlementCount} entitlements, including one keychain access group authorized by ${profile}, to ${destination}`,
+		`render-mac-entitlements: wrote ${entitlementCount} entitlements, including ${claims.map(([key]) => key).join(", ")} authorized by ${profile}, to ${destination}`,
 	);
 }
 

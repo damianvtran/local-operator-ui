@@ -1,0 +1,45 @@
+{
+	"ui.hub.viewer.favourite": {
+		"role": "button name and tooltip",
+		"tone": "plain",
+		"note": "Shared by the hub's card and its detail page so the two cannot word one fact two ways. Keep Radient in Latin where it appears."
+	},
+	"ui.hub.viewer.favourite_signed_out": {
+		"role": "tooltip",
+		"tone": "plain",
+		"note": "The control is disabled; this says why."
+	},
+	"ui.hub.viewer.favourite_unavailable": {
+		"role": "button name",
+		"tone": "plain",
+		"note": "The viewer's own state failed to read, so neither 'favourite' nor 'unfavourite' is a claim this surface can make."
+	},
+	"ui.hub.viewer.favourite_unknown": {
+		"role": "tooltip",
+		"tone": "plain"
+	},
+	"ui.hub.viewer.like": {
+		"role": "button name and tooltip",
+		"tone": "plain"
+	},
+	"ui.hub.viewer.like_signed_out": {
+		"role": "tooltip",
+		"tone": "plain"
+	},
+	"ui.hub.viewer.like_unavailable": {
+		"role": "button name",
+		"tone": "plain"
+	},
+	"ui.hub.viewer.like_unknown": {
+		"role": "tooltip",
+		"tone": "plain"
+	},
+	"ui.hub.viewer.unfavourite": {
+		"role": "button name and tooltip",
+		"tone": "plain"
+	},
+	"ui.hub.viewer.unlike": {
+		"role": "button name and tooltip",
+		"tone": "plain"
+	}
+}

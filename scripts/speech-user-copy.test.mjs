@@ -130,6 +130,7 @@ const bundle = await build({
 						contents: `
 							export const showErrorToast = () => "toast";
 							export const showInfoToast = () => "toast";
+							export const showLoadingToast = () => "toast";
 							export const showSuccessToast = () => "toast";
 							export const showWarningToast = () => "toast";
 							export const dismissToast = () => {};
@@ -236,15 +237,14 @@ const mountTranscript = async (records) => {
 		records,
 		index: new Map(records.map((row, at) => [row.id, at])),
 	};
+	const client = new QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
 	await act(async () => {
 		root.render(
 			React.createElement(
 				QueryClientProvider,
-				{
-					client: new QueryClient({
-						defaultOptions: { queries: { retry: false } },
-					}),
-				},
+				{ client },
 				React.createElement(mod.CanonicalTranscript, {
 					transcript,
 					frontend: null,
@@ -282,6 +282,10 @@ const mountTranscript = async (records) => {
 		await act(async () => {
 			root.unmount();
 		});
+		// Unmount schedules query GC; release the fixture's cache and timers now.
+		client.clear();
+		assert.equal(client.getQueryCache().getAll().length, 0);
+		dom.window.close();
 	};
 	return { dom, userRow, answerRow, press, written, unmount };
 };
@@ -302,10 +306,13 @@ test("the user turn carries the copy row under its bubble, and only the answer s
 	/*
 	 * The mount site, not just the presence: the row is a SIBLING OF THE BUBBLE
 	 * ROW inside the turn's column, which is what makes it read under the
-	 * message rather than beside it.
+	 * message rather than beside it. Since the stamp joined it on that line
+	 * (operator, 2026-10-20) the toolbar's parent is the LINE, and the line's
+	 * previous sibling is the bubble's row.
 	 */
+	const line = row.parentElement;
 	assert.match(
-		row.previousElementSibling?.textContent ?? "",
+		line?.previousElementSibling?.textContent ?? "",
 		/Is the March import finished\?/,
 		"the row sits directly under the bubble",
 	);
@@ -327,7 +334,7 @@ test("the user turn carries the copy row under its bubble, and only the answer s
 		"revealed by the turn's hover",
 	);
 	assert.ok(
-		row.parentElement?.classList.contains("group"),
+		line?.parentElement?.classList.contains("group"),
 		"the column above is the group",
 	);
 	await unmount();

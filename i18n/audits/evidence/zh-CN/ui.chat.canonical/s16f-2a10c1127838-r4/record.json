@@ -1,0 +1,83 @@
+{
+ "schema": 1,
+ "audit_id": "s16f-2a10c1127838-r4",
+ "locale": "zh-CN",
+ "namespace": "ui.chat.canonical",
+ "audit_date": "2026-11-12",
+ "slice": "S16f (damianvtran/local-operator-ui#1876) — delta audit, landed in the round-4 integration commit",
+ "head": "8180eff1f705eb79d4df5123d6108c539b585b2e",
+ "pr": 1876,
+ "audit_kind": "delta audit of merged bytes: 5 main-added loading.* keys + the 10 PR-added generation-card/sound keys, plus a namespace-wide value-integrity proof against both parents",
+ "scope": null,
+ "key_count": 15,
+ "namespace_key_count": 467,
+ "auditor": {
+  "agent": "i18n-auditor (lopdev team; independent of the translator and of every earlier audit on this row)",
+  "session": "2a10c1127838",
+  "instance": "2a10c1127838-zhcn-s16f-au3",
+  "model": "deepseek/deepseek-flash",
+  "independence": "Separate session (2a10c1127838) from the translator and from every earlier audit on this row (s16a-07b0fc8f8d80, s16f-r2-4184f7fa45be). Read only: the English catalogue and its context sidecar, the zh-CN catalogue bytes, the locale style guide and glossary, sibling zh-CN namespaces for precedent, the two parent commits' files, and other locales' reports as context. Re-derived every cited precedent from the repo rather than trusting a prior report.",
+  "fallback": "none observed in this session (harness model header deepseek/deepseek-flash)",
+  "actual_model_source": "not stated in the receipt"
+ },
+ "translator": {
+  "agent": "i18n-translator",
+  "model": "anthropic/claude-sonnet-5-5 (10 PR keys, per the ledger row); main's 5 loading.* keys landed with main's own audited translations",
+  "note": "named by the audit brief and the ledger row; this auditor translated nothing, edited nothing and did not back-translate"
+ },
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+   "sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+   "sha256": "8f56e0d2b384c6b41add57a64e6c863e565cb61d5a7c0de482d42f380be3acfe"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/zh-CN/ui.chat.canonical.json",
+   "sha256": "35f8058839549d4a8be28792c279784c75a624b9c076fc98d359bae1fe1db12c"
+  }
+ },
+ "artifacts": {
+  "report": {
+   "path": "report.md",
+   "sha256": "72c246745fb83c2e780a18b00d966fa0643b5dc6a52a134072272f8e01e6692d"
+  },
+  "execution_log": {
+   "path": "audit.log",
+   "sha256": "49bb95591155dbd75987a0c4190cd7e118bef7699e10020f194f6c028ac411ce",
+   "note": "the auditor's execution log as supplied, copied byte-for-byte; it is command output, not notes"
+  },
+  "receipt": {
+   "path": "i18n/receipts/2a10c1127838-zhcn-s16f-au3.json",
+   "sha256": "d945a58c75c7825349f3ab87581b332b9fe08bb3fe5eccf5ff6bbfc270d2c9b7",
+   "note": "byte-for-byte copy written by scripts/i18n/ledger-assemble.mjs; the binding receipt lives there"
+  }
+ },
+ "companions_present": [
+  "audit.log",
+  "report.md"
+ ],
+ "current_report_verdict": {
+  "status": "passed",
+  "result": "clean-with-findings",
+  "unresolved_blocker_major_count": 0,
+  "counts": {
+   "blocker": 0,
+   "major": 0,
+   "minor": 0,
+   "nit": 2
+  },
+  "finding_ids": [
+   "N1",
+   "N2"
+  ]
+ },
+ "provenance": {
+  "record_written_by": "integrator s16f-integrator-3 from the receipt and the auditor's report — NOT written by the auditor",
+  "source_receipt": "~/.local-operator/sessions/2a10c1127838/scratchpad/receipt.json",
+  "receipt_sha256": "d945a58c75c7825349f3ab87581b332b9fe08bb3fe5eccf5ff6bbfc270d2c9b7",
+  "why_note": "locales whose auditor wrote its own record.json (ur, hi) keep that file verbatim; this record is derived, so it cites only receipt fields and re-computed hashes"
+ }
+}

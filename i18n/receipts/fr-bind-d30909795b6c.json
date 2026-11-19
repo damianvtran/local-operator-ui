@@ -1,0 +1,161 @@
+{
+  "schema": 1,
+  "kind": "translation-audit-receipt",
+  "audit_kind": "current-byte rebind",
+  "date": "2026-10-25",
+  "locale": "fr",
+  "namespace": "ui.common.viewer",
+  "pr": 1403,
+  "branch": "feat/i18n-key-remaining-copy",
+  "head": "0adbb37b9429e2c70cbe64ea149cb091432c8dd6",
+  "merge": "ab9bd739c21ebc24c22b9d4fb25ce78a43c4fede",
+  "instance": "fr-bind-d30909795b6c",
+  "auditor": {
+    "agent": "translation-auditor",
+    "role": "independent translation auditor (team lopdev); authored no catalogue value for PR #1403 and edited no catalogue or ledger",
+    "team": "lopdev",
+    "harness": "Local Operator",
+    "session": "e2287a4a6524",
+    "model": "deepseek/deepseek-flash",
+    "actual_model": "deepseek/deepseek-flash",
+    "model_source": "harness session banner (system prompt line 'Model: deepseek/deepseek-flash'); no fallback used",
+    "fallback": null,
+    "independence": "This run read the catalogue bytes with git show, wrote no translated value, and edited no catalogue, English source, context sidecar, ledger or allowance file. It did not author any fr value under audit. The two value sets the merge unions were audited by other sessions: fr-extract-da12aa6ade20-r2 for the branch’s 8 keys and d94011de0dc0 for origin/main’s 4 image_lightbox keys. This receipt re-binds both sets at the merged bytes.",
+    "instance": "fr-bind-d30909795b6c"
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "binding": "Current-byte convergence re-bind of the merge union, not a fresh translation wave. Merge ab9bd739c2 took the union of the two parents for this namespace: the PR pre-merge head d784571d90 contributed 8 keys (close, next, opening, position, previous, reset_view, zoom_in, zoom_out) and origin/main 91aa8f5f10 contributed 4 keys (image_lightbox.previous, .next, .close, .asset_of). The merged file has 12 keys in both en and fr, and every value is byte-identical to the parent that supplied it; the 4 keys present on both sides had identical values in both parents, so the merge made no value choice. One inherited minor (FR-EXT-10, the nominal close label) remains. This receipt names the current bytes so the stale ledger row can be re-bound.",
+  "scope": "All 12 ui.common.viewer keys for fr at current PR head 0adbb37b94, read against the English source, its context sidecar and both merge parents. No value was authored or edited by this run.",
+  "sha256": {
+    "en": "13e7cccf566f6a41d890c36a9dc24242a154b80d9e8cdbcfdf6988d5c5376243",
+    "fr": "d30909795b6c895b9cd7a59c873bb588a2bab60585a35e83432a64c3977450f7",
+    "context": "c105c548706f46e9e247437c16352074c245ff07551a8edf360a4a8e666a4d73"
+  },
+  "parents": {
+    "branch": {
+      "rev": "d784571d9017c2958a80c51808b2ace64e3f76ba",
+      "role": "PR pre-merge head; supplies the 8 generic keys",
+      "en_sha256": "1faadd19f505153f97f239f612ad3316282a8ba85da55b882d626fc276593de5",
+      "fr_sha256": "7434486d50fc318ef2c2014a66c48974a93aef1c73fb95278beef3b6f5400f82",
+      "context_sha256": "e754ce6c5403f7fc27c1b7d768f25626ecc77be9886eaec1e12fdeed267514d5",
+      "keys": 8
+    },
+    "main": {
+      "rev": "91aa8f5f10797184d01c41143d1a3645176b566b",
+      "role": "origin/main merged in; supplies the 4 image_lightbox keys",
+      "en_sha256": "c0ffdd08058b062c88c6fad428db0e33c4162bcee1094dd5dd16890fe4e9705f",
+      "fr_sha256": "45b0e3669be462ff23652796e5f7779f3484ba130e265e9d612f015349f68c90",
+      "context_sha256": "8b324e966ddb4aaef92ec3b3465f8ac6a80982529bcbd3b45a3c1cf1f9b28dd8",
+      "keys": 8
+    }
+  },
+  "union_binding": {
+    "from_branch": [
+      "ui.common.viewer.close",
+      "ui.common.viewer.next",
+      "ui.common.viewer.opening",
+      "ui.common.viewer.position",
+      "ui.common.viewer.previous",
+      "ui.common.viewer.reset_view",
+      "ui.common.viewer.zoom_in",
+      "ui.common.viewer.zoom_out"
+    ],
+    "from_main": [
+      "ui.common.viewer.image_lightbox.previous",
+      "ui.common.viewer.image_lightbox.next",
+      "ui.common.viewer.image_lightbox.close",
+      "ui.common.viewer.image_lightbox.asset_of"
+    ],
+    "shared_keys_identical_in_both_parents": [
+      "ui.common.viewer.opening",
+      "ui.common.viewer.reset_view",
+      "ui.common.viewer.zoom_in",
+      "ui.common.viewer.zoom_out"
+    ],
+    "value_drift": 0
+  },
+  "union_parity": {
+    "tool": "scripts/i18n/catalogue-union-parity.mjs --pr 1403 --head 0adbb37b9429e2c70cbe64ea149cb091432c8dd6 --old-head d784571d9017c2958a80c51808b2ace64e3f76ba --file src/i18n/catalogues/en/ui.common.viewer.json --file src/i18n/catalogues/en/ui.common.viewer.context.json",
+    "result": "PASS",
+    "base_keys": 8,
+    "pr_keys": 8,
+    "merged_keys": 12,
+    "expected_union_keys": 12,
+    "missing_from_base": [],
+    "missing_from_pr": [],
+    "value_differences": []
+  },
+  "keys_read": 12,
+  "key_set": "equal to English: 12/12, same key order, no missing or extra key, no duplicate key, no English stub",
+  "icu": "Every value parsed with @formatjs/icu-messageformat-parser and compared by structure with English. close/next/previous each keep their {kind, select, image, asset, other} arms; position keeps {kind, select, image, asset, other} with {index}/{count} both carrying ::group-off; image_lightbox.previous/next/close keep {medialabel}; image_lightbox.asset_of keeps {index}/{count} with ::group-off. No placeholder was renamed, dropped or re-skeletoned by the union. The only structural difference from the English source is the programme-wide explicit {badge, number, ::group-off} preference in ui.chat.sidebar.groups.badge, not applicable in this namespace.",
+  "register": "The generic toolbar uses nominal labels (Image précédente / Image suivante / Fermeture de l’image) while main’s image_lightbox family uses Précédent/Suivant ({medialabel}) and the imperative Fermer {medialabel}; the merge did not reconcile those registers. FR-EXT-10 records the one close label that contradicts its sidecar and every other close control; the nominal next/previous now match main’s nominal Précédent/Suivant, so this re-bind does not propose changing them.",
+  "glossary": "image -> image; asset -> élément; position -> « {index} sur {count} »; medialabel kept verbatim; close -> Fermer (FR-EXT-10 argues the nominal Fermeture is the outlier). No other term drift.",
+  "typography": "U+2019 apostrophe in l’image/l’élément; U+2026 only in opening (Ouverture…); no ASCII punctuation, straight quotes, NBSP or bidi controls; NFC-clean.",
+  "width": "No maxCells hints in this namespace. All labels are aria-label/title strings on icon controls; no visible-text budget applies.",
+  "findings": [
+    {
+      "id": "FR-EXT-10",
+      "severity": "minor",
+      "key": "ui.common.viewer.close",
+      "current": "{kind, select, image {Fermeture de l’image} asset {Fermeture de l’élément} other {Fermeture}}",
+      "proposed": "{kind, select, image {Fermer l’image} asset {Fermer l’élément} other {Fermer}}",
+      "reason": "The sidecar tone for this key is « short verb phrase with its object, sentence case ». The fr catalogue names the close action with the infinitive in every other control (Fermer le navigateur, Fermer l’aperçu, Fermer la console, Fermer le terminal, Fermer les approbations, Fermer le fil, … — 30+ values); the only « Fermeture » in the whole catalogue is ui.console.close.busy, a progress status. In the merged namespace the sibling ui.common.viewer.image_lightbox.close is « Fermer {medialabel} », so the imperative is also the merge-consistent choice. The prior FR-EXT-10 proposed_set also put next/previous into « Afficher… » verb phrases; after the union those keys are byte-identical to main’s nominal « Précédent/Suivant » labels, so this re-bind narrows the fix to close only.",
+      "disposition": "inherited from fr-extract-da12aa6ade20-r2 (FR-EXT-10), still present at the current bytes; non-gating minor."
+    }
+  ],
+  "inherited_findings": [],
+  "observations": [
+    {
+      "severity": "info",
+      "key": "ui.common.viewer.image_lightbox.*",
+      "observation": "The four image_lightbox values are byte-identical to origin/main 91aa8f5f10, whose fr viewer block (en c0ffdd08, fr 45b0e366) was audited clean in d94011de0dc0; the generic eight are byte-identical to the branch parent d784571d90, audited in fr-extract-da12aa6ade20-r2. The union adds no value and changes none."
+    }
+  ],
+  "prior_audits": [
+    {
+      "instance": "fr-extract-da12aa6ade20-r2",
+      "receipt": "i18n/receipts/fr-extract-da12aa6ade20-r2.json",
+      "receipt_sha256": "c56cf3241e239dc06441c5cff8c944ab04f7b81584390228b0c497e1d956842d",
+      "covers": "clean-with-findings audit of the 8 branch-side keys at d082bd95 (en 1faadd19, fr 7434486d); 1 minor (FR-EXT-10), 0 blocker/major",
+      "namespace_block_sha256": {
+        "en": "1faadd19f505153f97f239f612ad3316282a8ba85da55b882d626fc276593de5",
+        "fr": "7434486d50fc318ef2c2014a66c48974a93aef1c73fb95278beef3b6f5400f82"
+      }
+    },
+    {
+      "instance": "d94011de0dc0",
+      "receipt": "i18n/receipts/d94011de0dc0.json",
+      "receipt_sha256": "47b8cc59535099ee6ca1b4b8f2f166eb31ca5e2c63ad0d29f1429cca440aec6b",
+      "covers": "clean audit of the 4 origin/main image_lightbox keys at 82209cab3a; the fr viewer block is en c0ffdd08 / fr 45b0e366, byte-identical to the main parent above",
+      "namespace_block_sha256": {
+        "en": "c0ffdd08058b062c88c6fad428db0e33c4162bcee1094dd5dd16890fe4e9705f",
+        "fr": "45b0e3669be462ff23652796e5f7779f3484ba130e265e9d612f015349f68c90"
+      }
+    }
+  ],
+  "method": [
+    "Read all 12 values at the current head with git show and compared them key by key with the English source and the context sidecar’s role/tone notes.",
+    "Reconstructed the merge union from both parents: classified every merged key by the parent whose value it equals byte-for-byte (8 branch, 4 main) and confirmed the 4 keys present on both sides had identical values, so no conflict was resolved by preference.",
+    "Compared the raw JSON value text of the four image_lightbox keys with main, including escapes and apostrophes: byte-identical.",
+    "Parsed all 12 messages with @formatjs/icu-messageformat-parser; compared select arms, arguments and ::group-off skeletons with English.",
+    "Verified key parity and key order in both directions (12 keys each), rejected duplicate keys, and checked UTF-8/NFC, BOM, CRLF and bidi controls."
+  ],
+  "verdict": "clean-with-findings — 12 keys read; the union is exact (8 branch + 4 main, 0 drift, 0 shared-key conflict), every select arm and ::group-off skeleton survives, and both value sets were already audited by independent sessions at the exact parent bytes. 1 inherited minor (FR-EXT-10, the nominal close label) remains.",
+  "limitations": "Static catalogue audit only; no rendered French screen was built or captured, so register/width judgement is source-level. No native-speaker sign-off is claimed.",
+  "ledger_binding": {
+    "agent": "translation-auditor",
+    "model": "deepseek/deepseek-flash",
+    "result": "clean-with-findings",
+    "instance": "fr-bind-d30909795b6c",
+    "receipt": "i18n/receipts/fr-bind-d30909795b6c.json",
+    "findings": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 1,
+      "nit": 0
+    },
+    "scope": "current-byte rebind at 0adbb37b94; all 12 keys; union exact; FR-EXT-10 minor carried",
+    "note": "Re-binds fr/ui.common.viewer to en 13e7cccf566f / fr d30909795b6c at PR #1403 head."
+  }
+}

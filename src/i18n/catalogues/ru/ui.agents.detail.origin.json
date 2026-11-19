@@ -1,0 +1,5 @@
+{
+	"ui.agents.detail.origin.shipped_with_app": "Поставляется вместе с приложением.",
+	"ui.agents.detail.origin.installed_starter": "Установлен из встроенного шаблона.",
+	"ui.agents.detail.origin.compare_packaged": "Сравнить со встроенными инструкциями"
+}

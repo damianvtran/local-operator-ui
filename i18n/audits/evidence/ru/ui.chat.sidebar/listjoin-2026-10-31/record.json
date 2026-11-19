@@ -1,0 +1,67 @@
+{
+  "locale": "ru",
+  "namespace": "ui.chat.sidebar",
+  "scope": {
+    "key": "ui.chat.sidebar.agents.list_join",
+    "key_count": 1
+  },
+  "audit_date": "2026-11-01T01:56:29.861Z",
+  "head": "1e28ba901ab0c1499d317420060162981bdc8708",
+  "auditor": {
+    "agent": "i18n-auditor-ru",
+    "session": "e3d68e9ca8b0",
+    "model": "openai/gpt-6.1-sol",
+    "independent_from_translator_session": true,
+    "actual_model_source": "host model-switch message; temporary quota fallback from anthropic/claude-sonnet-5-5 via anthropic/claude-opus-5-5",
+    "fallback": true
+  },
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+      "sha256": "0928091b1241792f86f7fe2fafb9895d0c9d8f75341f59513f7d720a9acb477b"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.chat.sidebar.context.json",
+      "sha256": "cf078e20bcf1e8e6070e8f5daf8d60c1676bd9f2c9c6671c3bbbc49777676925"
+    },
+    "ru": {
+      "path": "src/i18n/catalogues/ru/ui.chat.sidebar.json",
+      "sha256": "606d4be86f310b34066643f7d41b4e9f303e537bc3f958a60e77c727c2ba87b8"
+    }
+  },
+  "guidance_hashes": [
+    {
+      "path": "/Users/damian/local-operator/i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    {
+      "path": "/Users/damian/local-operator/i18n/style-guides/ru.md",
+      "sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/listjoin-audit/ru/findings.jsonl",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/listjoin-audit/ru/verdict.txt",
+      "sha256": "a7297df57e0a06f03271138f916be3d0cba9c732ce8aa2cc63d1e2c1bffab497"
+    },
+    {
+      "path": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/listjoin-audit/ru/validators.log",
+      "sha256": "c81d2300a98a9d737888035b77b57869104156dd595af7de2a42fdbe66476e22"
+    },
+    {
+      "path": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/listjoin-audit/ru/formatter.log",
+      "sha256": "6537c1c6eb6100b88eef9d046e53b7782c88139939f4846198916b02ad8fbf84"
+    }
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": []
+  },
+  "audit_notes_not_execution_log": "Linguistic reasoning is in verdict.txt; validators.log and formatter.log record actual execution. No translation/MT service used. Search was only for a punctuation reference; Gramota fetch returned 403 and is not cited as retrieved authority.",
+  "retention": "Temporary parent-requested output only. Parent must retain canonically and update appropriate UI audit records; no repo writes authorized."
+}

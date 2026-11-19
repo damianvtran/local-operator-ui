@@ -1,0 +1,23 @@
+{
+	"auditor": "i18n-auditor",
+	"agent": "i18n-auditor",
+	"model": "radient/auto",
+	"instance": "tb-invite-r2-20261029-zh-cn",
+	"date": "2026-10-29",
+	"status": "passed",
+	"locale": "zh-CN",
+	"namespace": "ui.teamBridge",
+	"sha256": {
+		"en": "1516974c44681940753862f9735f0b3c19c7815ca4e68eab7fd343f1f1ed53f3",
+		"zh-CN": "315363f36a12608efab1ed6abeae39ac71d43329f0d4a24f347f3f5bc148a692"
+	},
+	"findings": [],
+	"checks": {
+		"key_parity": "PASS: 281 English keys and 281 zh-CN keys; en-zhCN=set(), zhCN-en=set(). Both removed invitation keys (members.agent_invitation, members.human_invitation) are absent from English and from zh-CN, and key order matches the English catalogue exactly. Placeholder parity per key holds; the only apparent mismatches are the English 'one' plural categories, which Simplified Chinese legitimately does not carry (other-only).",
+		"bidi": "PASS: no U+200E/U+200F/U+202A-U+202E bidi controls and no zero-width characters (U+200B/U+200C/U+200D/U+2060/U+FEFF) anywhere in the zh-CN catalogue; UTF-8 decodes cleanly, 283 lines, trailing newline present.",
+		"apostrophes": "PASS: no ASCII apostrophe (U+0027) in any zh-CN value, so nothing can open an ICU quoted literal. No typographic apostrophes either.",
+		"diff": "PASS: git diff --numstat 2 insertions / 4 deletions, i.e. exactly the members.empty and members.read_only replacements plus the two whole-line deletions of members.agent_invitation and members.human_invitation. No unrelated key touched, no reordering, no whitespace error (git diff --check clean)."
+	},
+	"scope": "Re-audited only the review-round delta in the zh-CN catalogue plus the mechanical whole-file checks: the changed members.read_only ('你无法邀请人员加入此对话。') and members.empty ('此组织中没有可被邀请的人。'), the removal of members.agent_invitation and members.human_invitation, and CJK/Latin spacing consistency. register: read_only is second-person and states only what the reader cannot do in this conversation - it drops the old false claim about administrator authority and assigns no blame, which matches the source and its context note (DM, archived/built-in channel, non-active reader). empty correctly says nobody can be invited rather than that the organization has no people; '人' here is the ordinary 'no one' sense, not a narrowing to humans, matching the English 'Nobody'. Judged the 可被邀请 passive explicitly: it is well-formed formal Chinese and consistent with this catalogue's register, which already uses 被 elsewhere (invitations.accepted '被唤醒', invitations.failed.gone) and formal markers throughout (此/尚未/仅/无法), so '此组织中没有可邀请的人。' is optional polish rather than a defect - no change requested. CJK/Latin spacing: both delta strings are pure Chinese, and the file's established convention is no space between CJK and Latin/digits (e.g. '此人的Team Bridge尚未启用', '按Enter发送', '按Shift+Enter换行'); no spaced CJK-Latin sequence exists in the file, so the delta is consistent. No doubled-character typos found in the delta (the only repeated glyphs in the file are legitimate '……' ellipses). Deliberately did not re-audit the other keys a previous audit already passed; spot-checked the unchanged plural line members.add ('{count, plural, =0 {发送邀请} other {发送{count}份邀请}}') and it is ICU-safe. Model note: the session launched as anthropic/claude-opus-5-5 and provider quota failures fell it back through anthropic/claude-sonnet-5-5, openai/gpt-6-astra and kimi/k3.1-pro to radient/auto; the receipt is written under radient/auto, which is the model running when this audit concluded.",
+	"independence": "Auditor wrote none of the audited strings; the translator was a separate subagent. No catalogue or ledger edit by the auditor."
+}

@@ -1,0 +1,200 @@
+{
+  "locale": "es",
+  "scope": "ui.common.actions: verification that the only change since 369bb0113f is the deletion of the unused key check_again",
+  "checkout_head": "58de30166d",
+  "audit_date": "2026-10-29",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "0c37bc41f0c5",
+    "instance": "0c37bc41f0c5-act-es",
+    "model": "radient/auto",
+    "actual_model_source": "provider fallback, not the run's primary model: anthropic/claude-sonnet-5-5 -> openai/gpt-6-astra -> kimi/k3.1-pro -> radient/auto (quota failures, recorded by the harness during this run)",
+    "independent_from_translator_session": true,
+    "translator": {
+      "agent": "i18n-translator",
+      "model": "deepseek/deepseek-flash",
+      "date": "2026-10-18"
+    },
+    "prior_auditor_of_this_namespace": {
+      "instance": "acd53e2cf056-r4-es",
+      "agent": "i18n-auditor",
+      "model": "radient/auto",
+      "date": "2026-10-29"
+    },
+    "note": "Separate session from both the translator and the prior auditor of this namespace; this run changed no repo file."
+  },
+  "input_sha256": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.common.actions.json",
+      "sha256": "8dc67dc7c285d2747f4586a5d01a39c23423b10e506f6cfa44c258caed37a412"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/es/ui.common.actions.json",
+      "sha256": "4f8716b49fadbbc503502aadc9ec012c658621d17354c5ca9997597959750225"
+    }
+  },
+  "bind_commit": {
+    "rev": "369bb0113f",
+    "ancestor_of_head": true,
+    "en_sha256": "0c279fc21d17c3f1937e4364fac698601ec4304ce7c7055df786bc037a8b12e3",
+    "target_sha256": "cf93fd6c66908de795f0a5fa7acb08b76957b7f0782082609d9c85371dc8269c",
+    "matches_ledger_row": true,
+    "ledger_row": {
+      "path": "i18n/ledger.json",
+      "locale": "es",
+      "namespace": "ui.common.actions",
+      "status": "audited",
+      "receipt": "i18n/receipts/acd53e2cf056-r4-es.json"
+    }
+  },
+  "diff_observed": {
+    "command": "git diff 369bb0113f HEAD -- src/i18n/catalogues/en/ui.common.actions.json src/i18n/catalogues/es/ui.common.actions.json",
+    "numstat": {
+      "en": {
+        "added": 0,
+        "removed": 1
+      },
+      "target": {
+        "added": 0,
+        "removed": 1
+      }
+    },
+    "added_lines": [],
+    "removed_lines": [
+      {
+        "file": "src/i18n/catalogues/en/ui.common.actions.json",
+        "line": "\t\"ui.common.actions.check_again\": \"Check again\","
+      },
+      {
+        "file": "src/i18n/catalogues/es/ui.common.actions.json",
+        "line": "\t\"ui.common.actions.check_again\": \"Volver a comprobar\","
+      }
+    ],
+    "hunks": 2,
+    "commits_in_range_touching_either_file": [
+      "fbf78b5f67 fix(i18n): key the find overlay and image-gen controls, unstick the ratchet tests"
+    ],
+    "unified_diff": "diff --git a/src/i18n/catalogues/en/ui.common.actions.json b/src/i18n/catalogues/en/ui.common.actions.json\n@@ -1,6 +1,5 @@\n {\n \t\"ui.common.actions.cancel\": \"Cancel\",\n-\t\"ui.common.actions.check_again\": \"Check again\",\n \t\"ui.common.actions.close\": \"Close\",\n \t\"ui.common.actions.copied\": \"Copied\",\n \t\"ui.common.actions.copy_failed\": \"Could not copy. Select and copy it manually.\",\ndiff --git a/src/i18n/catalogues/es/ui.common.actions.json b/src/i18n/catalogues/es/ui.common.actions.json\n@@ -1,6 +1,5 @@\n {\n \t\"ui.common.actions.cancel\": \"Cancelar\",\n-\t\"ui.common.actions.check_again\": \"Volver a comprobar\",\n \t\"ui.common.actions.close\": \"Cerrar\",\n \t\"ui.common.actions.copied\": \"Copiado\",\n \t\"ui.common.actions.copy_failed\": \"No se pudo copiar. Selecciónalo y cópialo manualmente.\","
+  },
+  "byte_identity_proof": {
+    "method": "git show 369bb0113f:<file> | grep -v '\"ui\\.common\\.actions\\.check_again\":' | cmp - <(git show HEAD:<file>)",
+    "en": {
+      "derived_sha256": "8dc67dc7c285d2747f4586a5d01a39c23423b10e506f6cfa44c258caed37a412",
+      "head_sha256": "8dc67dc7c285d2747f4586a5d01a39c23423b10e506f6cfa44c258caed37a412",
+      "identical": true
+    },
+    "target": {
+      "derived_sha256": "4f8716b49fadbbc503502aadc9ec012c658621d17354c5ca9997597959750225",
+      "head_sha256": "4f8716b49fadbbc503502aadc9ec012c658621d17354c5ca9997597959750225",
+      "identical": true
+    },
+    "conclusion": "Removing exactly that one line from each audited blob reproduces the HEAD bytes byte-for-byte, including whitespace, key order and trailing newline; no other byte of either file moved."
+  },
+  "checks": {
+    "git_worktree_clean_for_both_files": true,
+    "json_valid": true,
+    "key_for_key_parity": {
+      "en_only": [],
+      "target_only": [],
+      "keys": 52
+    },
+    "placeholder_parity_mismatches": 0,
+    "icu_number_skeleton_preserved": "ui.common.actions.find_replace_widget.of keeps {currentmatch, number, ::group-off} and {matchcount, number, ::group-off} with only the literal 'of' localised to 'de'",
+    "plural_keys_in_namespace": 0,
+    "empty_target_values": 0,
+    "target_values_identical_to_en": 0,
+    "deleted_key_absent_in_all_seven_locales": [
+      "en",
+      "es",
+      "fr",
+      "hi",
+      "ru",
+      "ur",
+      "vi",
+      "zh-CN"
+    ],
+    "deleted_key_absent_from_keys_gen": true,
+    "deleted_key_has_no_code_consumer": "grep -rn 'ui\\.common\\.actions\\.check_again' src/ returns nothing; the used sibling is ui.chat.device.check_again (src/renderer/src/features/chat/device/chat-header-device.tsx:475)",
+    "other_locales_same_single_deletion": {
+      "fr": "0+/1-",
+      "hi": "0+/1-",
+      "ru": "0+/1-",
+      "ur": "0+/1-",
+      "vi": "0+/1-",
+      "zh-CN": "0+/1-"
+    },
+    "repo_validators": {
+      "node scripts/i18n/generate.mjs --check": "exit 0 - src/i18n/keys.gen.ts is byte-identical to a fresh generation",
+      "node scripts/i18n/context-parity.mjs": "exit 0 - every English key covered, apart from 131 allowed gaps in 4 namespaces (shrink-only allowance)",
+      "node scripts/i18n/ledger-check.mjs": "exit 1 - 23 findings across 728 entries; every finding is the expected consequence of this deletion (see observations.ledger_state), including es/ui.common.actions stale source_sha256 (ledger 0c279fc21d17..., file 8dc67dc7c285...) and stale target_sha256 (ledger cf93fd6c6690..., file 4f8716b49fad...)"
+    },
+    "style_guide_read": {
+      "path": "/Users/damian/local-operator/i18n/style-guides/es.md",
+      "applied": [
+        "tu address",
+        "infinitive action labels",
+        "neutral Spanish (archivo)",
+        "curly quotes “ ”",
+        "terse past participle",
+        "no space before ? !"
+      ]
+    }
+  },
+  "sample_reads": [
+    {
+      "key": "ui.common.actions.credential_updated",
+      "en": "Credential \"{key}\" updated successfully",
+      "es": "Credencial “{key}” actualizada",
+      "verdict": "placeholder preserved; curly quotes per es typography; terse, drops 'successfully' as the guide requires"
+    },
+    {
+      "key": "ui.common.actions.find_replace_widget.of",
+      "en": "{currentmatch, number, ::group-off} of {matchcount, number, ::group-off}",
+      "es": "{currentmatch, number, ::group-off} de {matchcount, number, ::group-off}",
+      "verdict": "ICU number skeletons byte-identical; only the literal localised"
+    },
+    {
+      "key": "ui.common.actions.copy_failed",
+      "en": "Could not copy. Select and copy it manually.",
+      "es": "No se pudo copiar. Selecciónalo y cópialo manualmente.",
+      "verdict": "tu-form imperatives with clitics; meaning and severity preserved"
+    },
+    {
+      "key": "ui.common.actions.date_time_picker.choose_date",
+      "en": "Choose {label} date",
+      "es": "Elegir fecha de {label}",
+      "verdict": "infinitive label; {label} preserved"
+    }
+  ],
+  "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 0,
+    "NIT": 0
+  },
+  "verdict": "pass",
+  "instance": "0c37bc41f0c5-act-es",
+  "namespaces": {
+    "ui.common.actions": {
+      "status": "passed",
+      "keys_audited": 52,
+      "sha256": {
+        "en": "8dc67dc7c285d2747f4586a5d01a39c23423b10e506f6cfa44c258caed37a412",
+        "target": "4f8716b49fadbbc503502aadc9ec012c658621d17354c5ca9997597959750225"
+      },
+      "findings": []
+    }
+  },
+  "observations": [
+    {
+      "id": "OBS-1",
+      "severity": "none - expected state, not a defect",
+      "summary": "i18n/ledger.json still binds es/ui.common.actions to the pre-deletion hashes (0c279fc21d17…/cf93fd6c6690… = the 369bb0113f bytes), so pnpm check-i18n:ledger-check fails on this namespace. That is the bookkeeping this verification exists to justify re-binding: the ledger must be pointed at 8dc67dc7c285…/4f8716b49fad… once the re-bind lands. Same single-line deletion, same stale binding, in all seven locales."
+    },
+    {
+      "id": "OBS-2",
+      "severity": "NIT - pre-existing, outside this verification's delta, unchanged since 369bb0113f",
+      "summary": "Key ui.common.actions.date_time_picker.set_to_current_time369877 carries a stray numeric suffix while its sibling ui.common.actions.date_time_picker.set_to_current_time also exists and both are live (date-time-picker.tsx:329 uses the suffixed one). Ugly, not dead, and not touched by this change - flagged only so the next whole-file review does not rediscover it."
+    }
+  ]
+}

@@ -1,0 +1,119 @@
+{
+	"audit_id": "teambridge-reaction-pills-rebase-audit-b20548e9b2d9-rebase-es",
+	"date": "2026-10-30",
+	"locale": "es",
+	"namespace": "ui.teamBridge",
+	"branch": "fix/team-bridge-reaction-pills",
+	"source_commit": "local head edf12eb5a39e9baf8833b7c2b17f0f092a130524 (not pushed), rebased onto d62accf9db03190b52b96fa424f34018bb6c29bb",
+	"translator": {
+		"agent": "translator",
+		"model": "anthropic/claude-opus-5-5",
+		"date": "2026-10-21",
+		"session": "87a8efad496d",
+		"job": "cc64f5dc3c0c",
+		"added_key_source": {
+			"key": "ui.teamBridge.notify.unavailable",
+			"job": "job8d4e6d78c133",
+			"model": "not supplied"
+		}
+	},
+	"auditors": [
+		{
+			"agent": "translation-auditor",
+			"model": "anthropic/claude-opus-5-5",
+			"session": "b20548e9b2d9",
+			"instance": "b20548e9b2d9-rebase-es",
+			"date": "2026-10-30",
+			"result": "clean",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"model_fallback": {
+				"announced": false,
+				"observed": false
+			}
+		}
+	],
+	"independence": "Independent auditor: lopdev translation-auditor, session b20548e9b2d9; authored none of the audited strings (translator agent 'translator'); edited no catalogue; wrote only receipts/evidence and rows via ledger-assemble.mjs. Distinct run from ffe897895c10.",
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "fa61d01336edd0355d0ce7befde7957ec60457ade37a02b11c0b31eb3b2f3a96"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "5a724b7553d2575759c7fbb8fcd1fa9e6e78c4a56a8bbe1418f28f26f5d4f9de"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/es/ui.teamBridge.json",
+			"sha256": "559b5718f4a5c5edf4401ce299f2ad7b9ee63367c02be3d8a14ec2f97281f73b"
+		}
+	},
+	"scope": {
+		"delta_kind": "Rebase onto origin/main d62accf. Mechanical: git diff d62accf -- src/i18n/catalogues adds exactly one line per target catalogue (ui.teamBridge.reactions.others) and one en line plus one context entry; JSON key diff: 1 added, 0 removed, 0 changed; target bytes with that line removed are byte-identical to d62accf's.",
+		"base_target_sha256": "6919a2d7b2435b65195ffa65b030470bdbf8201225301224dbe53d90ff7c6741",
+		"base_en_sha256": "20a8960b411dbff3dc7a8b6e029a4a17091e95980bd1bab946445597aff3277f",
+		"base_bytes_audited_by": [
+			"b5610aecd5f2-es",
+			"e49c0ab64b49-es"
+		],
+		"keys_audited_linguistically": [
+			"ui.teamBridge.reactions.others"
+		],
+		"prior_audit_of_key": {
+			"instance": "ffe897895c10-others-es",
+			"value_byte_identical": true
+		},
+		"not_audited": "Every other ui.teamBridge key: byte-identical to d62accf, whose row was audited by the instances in base_bytes_audited_by (now moved to superseded by the assembler)."
+	},
+	"audited": {
+		"ui.teamBridge.reactions.others": {
+			"en": "{others, plural, one {# other} other {# others}}",
+			"translation": "{others, plural, one {# más} other {# más}}"
+		}
+	},
+	"checks": {
+		"placeholders": "@formatjs/icu-messageformat-parser: one top-level plural on `others`; every arm uses `#`; nothing dropped/renamed/added.",
+		"no_conjunction": "No word for 'and' in the value; Intl.ListFormat supplies it once.",
+		"unicode": "NFC; no Cc/Cf (no RLM/LRM/FSI/PDI), no NBSP.",
+		"rendered": [
+			"{\"l\":\"es\",\"top\":1,\"arg\":\"others\",\"cats\":[\"one\",\"many\",\"other\"],\"arms\":[\"one\",\"other\"],\"bad\":[],\"missing\":[\"many\"],\"armsHaveHash\":true,\"and\":false,\"nfc\":true,\"cf\":[]}",
+			"  1:Ada, Bea, Cleo y 1 más | 2:Ada, Bea, Cleo y 2 más | 3:Ada, Bea, Cleo y 3 más | 5:Ada, Bea, Cleo y 5 más | 11:Ada, Bea, Cleo y 11 más | 21:Ada, Bea, Cleo y 21 más | 22:Ada, Bea, Cleo y 22 más | 25:Ada, Bea, Cleo y 25 más"
+		],
+		"rendered_command": "node $LOCAL_OPERATOR_SCRATCHPAD/others-recheck.mjs (repo node_modules intl-messageformat + Intl.ListFormat long conjunction; Node v24.22.1)"
+	},
+	"findings": [],
+	"status": "passed",
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "e21f92fa4ee1a7a4095586e33453c19f54aca4f9",
+			"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/es.md",
+			"revision": "e21f92fa4ee1a7a4095586e33453c19f54aca4f9",
+			"sha256": "77b9227213802d14c74d4298d6b346ad842bbf2a5ca3b9d46fc6144430d26c3e"
+		},
+		"docs_I18N": {
+			"path": "docs/I18N.md",
+			"sha256": "9a4bde8d1c161286160be4a4ae1c7655615dbf39047052550b725a3da2eb00e2"
+		},
+		"ledger_assemble": {
+			"path": "scripts/i18n/ledger-assemble.mjs",
+			"sha256": "66ec03de791b515424b8d9a93094315111c179c149b35a5323d80c9c38644657"
+		}
+	},
+	"artifacts": {
+		"receipt": {
+			"path": "i18n/receipts/b20548e9b2d9-rebase-es.json",
+			"sha256": "92343cbad55e53f510f5b6949f37f311d886a3052a965bdd35404faa93888a45"
+		},
+		"ledger_row": "i18n/ledger.json#entries[locale=es,namespace=ui.teamBridge]"
+	},
+	"limitations": "No rendered app frame of the tooltip; no native-speaker sign-off.",
+	"audit_notes_not_execution_log": "findings and linguistic judgement are auditor notes; checks.rendered is verbatim command output."
+}

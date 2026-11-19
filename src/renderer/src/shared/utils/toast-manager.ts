@@ -9,6 +9,7 @@
 import type { ReactNode } from "react";
 import { toast } from "sonner";
 import type { ExternalToast } from "sonner"; // Using ExternalToast for options type
+import { t } from "../../../../i18n/messages";
 import {
 	stripErrorPrefixes,
 	transientTransportFragment,
@@ -61,8 +62,8 @@ const RAW_TRANSPORT_ERRORS: Record<string, true> = {
 	"net::ERR_CONNECTION_REFUSED": true,
 };
 
-const CONNECTION_FAILURE_COPY =
-	"Could not reach the server. Check that it is running, then try again.";
+const connectionFailureCopy = (): string =>
+	t("ui.common.connection.transport_failure");
 
 /**
  * The sentence a person reads, for one raw transport failure.
@@ -100,7 +101,7 @@ const CONNECTION_FAILURE_COPY =
 const transportFailureText = (message: string): string => {
 	const trimmed = message.trim();
 	if (Object.prototype.hasOwnProperty.call(RAW_TRANSPORT_ERRORS, trimmed)) {
-		return CONNECTION_FAILURE_COPY;
+		return connectionFailureCopy();
 	}
 	const cleaned = stripErrorPrefixes(trimmed);
 	const fragment = transientTransportFragment(cleaned);
@@ -108,8 +109,8 @@ const transportFailureText = (message: string): string => {
 	// A fragment inside machine vocabulary is replaced along with it - see
 	// `TransportFragment.clause`; one that is a clause of an authored message
 	// leaves the authored half in place.
-	if (!fragment.clause) return CONNECTION_FAILURE_COPY;
-	return `${cleaned.slice(0, fragment.start)}${CONNECTION_FAILURE_COPY}${cleaned.slice(fragment.end)}`;
+	if (!fragment.clause) return connectionFailureCopy();
+	return `${cleaned.slice(0, fragment.start)}${connectionFailureCopy()}${cleaned.slice(fragment.end)}`;
 };
 
 /**
@@ -333,12 +334,16 @@ export const showSuccessToast = (
 /**
  * Show a warning toast
  *
- * @param message - The warning message to display
+ * @param message - The warning message to display, or a node when the sentence
+ * needs a shape a string cannot carry (the dictated-send refusal names the chat
+ * on its own truncated line above the sentence; see `dictated-send.ts`). A
+ * node is only ever used where the copy is already keyed and translated - this
+ * widens the CHANNEL, not the policy: every caller still passes copy from `t()`.
  * @param options - Sonner toast options (ExternalToast)
  * @returns The toast ID
  */
 export const showWarningToast = (
-	message: string,
+	message: ReactNode,
 	options?: ExternalToast,
 ): string | number => {
 	return toast.warning(message, options);

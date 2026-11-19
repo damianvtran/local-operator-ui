@@ -33,6 +33,7 @@ import {
 import { Button, Tooltip } from "@shared/components/ui";
 import { hasConnectedProvider } from "@shared/hooks/first-time-user";
 import { type MessageKey, t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	OnboardingStep,
@@ -132,6 +133,9 @@ type OnboardingModalProps = {
  * Manages the first-time setup experience with multiple steps
  */
 export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
+	// Step children subscribe independently; they cannot refresh their parent's
+	// retained title/progress elements, including while a step is unmounted.
+	const locale = useI18nLocale();
 	const { currentStep, setCurrentStep, completeModalOnboarding } =
 		useOnboardingStore();
 	const navigate = useNavigate();
@@ -173,12 +177,13 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	 * spell step 3 differently (see `stepTitle`). Memoized because the track maps
 	 * over it on every render.
 	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: locale invalidates translations resolved by stepTitle.
 	const resolvedTitles = useMemo(() => {
 		const name = aidaAvailable ? aidaName : null;
 		return Object.fromEntries(
 			STEP_SEQUENCE.map((step) => [step, stepTitle(step, name)]),
 		) as Record<OnboardingStep, string>;
-	}, [aidaAvailable, aidaName]);
+	}, [aidaAvailable, aidaName, locale]);
 	const [meeting, setMeeting] = useState(false);
 	/** Step 2 registers the write a PROPOSED default needs on Continue. */
 	const beforeContinue = useRef<(() => Promise<void>) | null>(null);
@@ -436,6 +441,7 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	 * `rounded-full` is reserved, and `progress.tsx` already sets the
 	 * precedent for a bar this size.
 	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: locale invalidates translated progress text independently of the active step.
 	const finalStepIndicatorsProp = useMemo(() => {
 		if (!currentStep) {
 			return null;
@@ -508,7 +514,7 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 				</ol>
 			</div>
 		);
-	}, [currentStep, visitedSteps, setCurrentStep, resolvedTitles]);
+	}, [currentStep, visitedSteps, setCurrentStep, resolvedTitles, locale]);
 
 	return (
 		<OnboardingDialog

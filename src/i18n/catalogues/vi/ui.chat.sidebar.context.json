@@ -1,0 +1,13 @@
+{
+	"ui.chat.sidebar.agents.list_join": {
+		"role": "joiner for the agent-name list inside the built-in installation offer",
+		"tone": "terse, neutral inline enumeration; preserve names verbatim, no sentence punctuation",
+		"length": "Two placeholders plus separators: four characters for pair/final ( và ), two for middle (, ). Names determine width; allow wrapping without truncation.",
+		"note": "Vietnamese joins a pair and the final item with và, without a preceding comma; intermediate items use a comma followed by a space. Keep agent names and product names verbatim.",
+		"placeholders": {
+			"position": "pair for two names, middle for non-final joins, end (the other arm) for the final join in lists of three or more",
+			"head": "first name or the already joined preceding names; preserve verbatim",
+			"tail": "next agent name; preserve verbatim"
+		}
+	}
+}

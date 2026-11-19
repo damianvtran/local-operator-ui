@@ -1,0 +1,154 @@
+[
+  {
+    "id": "P1",
+    "claim": "the built card document exists, links only built assets, and carries the pinned deny-all CSP",
+    "mode": "static",
+    "status": "PASS",
+    "evidence": "htmlSha=3e640b0485ff assets=['assets/approvalsOverlay-CX3DxhSv.css', 'assets/approvalsOverlay-DC6BOmdk.js', 'assets/messages-DwEn-4Kt.js'] csp=default-src 'none'; script-src 'self'; style-src 'self'; img-src 'none'; font-src 'none'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none' sourceHead=703f2ce5a3",
+    "at": "2026-10-24T16:08:54Z"
+  },
+  {
+    "id": "U1",
+    "claim": "the round-2 contract is unit-tested: dismissal push, production requester mapping, exact palette, explicit-open latch, recall, selected-entry decisions, context re-push, RTL mirror, sender/seq drops",
+    "mode": "unit",
+    "status": "PASS",
+    "evidence": "node --test scripts/approvals-overlay.test.mjs: 27/27 PASS; targeted set (approvals + notification-spawn-sites + telemetry-spawn-sites + browser-startup): 39/39 PASS",
+    "at": "2026-10-24T16:08:54Z"
+  },
+  {
+    "id": "A1",
+    "claim": "auto-present is unfocused: no focus call, no page focus/blur event, unchanged activeElement/bounds/presented",
+    "mode": "driven",
+    "status": "PASS",
+    "evidence": "four cells: focusTargets=[] at auto-present, page focusEvents=blurEvents=0, activeElement unchanged, bounds/presented unchanged; 264-dark: view={'x': 0, 'y': 306, 'width': 264, 'height': 414} card={'x': 8, 'y': 8.234375, 'width': 248, 'height': 397.765625} footerTop=352 denyBottom=346 requester='Fix the login flow' auto(explicitOpen=False,visible=True,ready=True) | 264-light: view={'x': 0, 'y': 306, 'width': 264, 'height': 414} card={'x': 8, 'y': 8.234375, 'width': 248, 'height': 397.765625} footerTop=352 denyBottom=346 requester='Fix the login flow' auto(explicitOpen=False,visible=True,ready=True) | 900-dark: view={'x': 532, 'y': 355, 'width': 368, 'height': 365} card={'x': 8, 'y': 8.2265625, 'width': 352, 'height': 348.7734375} footerTop=303 denyBottom=297 requester='Fix the login flow' auto(explicitOpen=False,visible=True,ready=True) | 900-light: view={'x': 532, 'y': 355, 'width': 368, 'height': 365} card={'x': 8, 'y': 8.2265625, 'width': 352, 'height': 348.7734375} footerTop=303 denyBottom=297 requester='Fix the login flow' auto(explicitOpen=False,visible=True,ready=True)",
+    "at": "2026-10-24T16:08:54Z"
+  },
+  {
+    "id": "A2",
+    "claim": "content-driven geometry at 264 and 900, with the five decisions above the footer",
+    "mode": "driven",
+    "status": "PASS",
+    "evidence": "Q2 passes in all four cells (deny bottom <= footer top): 264-dark: view={'x': 0, 'y': 306, 'width': 264, 'height': 414} card={'x': 8, 'y': 8.234375, 'width': 248, 'height': 397.765625} footerTop=352 denyBottom=346 requester='Fix the login flow' auto(explicitOpen=False,visible=True,ready=True) | 264-light: view={'x': 0, 'y': 306, 'width': 264, 'height': 414} card={'x': 8, 'y': 8.234375, 'width': 248, 'height': 397.765625} footerTop=352 denyBottom=346 requester='Fix the login flow' auto(explicitOpen=False,visible=True,ready=True) | 900-dark: view={'x': 532, 'y': 355, 'width': 368, 'height': 365} card={'x': 8, 'y': 8.2265625, 'width': 352, 'height': 348.7734375} footerTop=303 denyBottom=297 requester='Fix the login flow' auto(explicitOpen=False,visible=True,ready=True) | 900-light: view={'x': 532, 'y': 355, 'width': 368, 'height': 365} card={'x': 8, 'y': 8.2265625, 'width': 352, 'height': 348.7734375} footerTop=303 denyBottom=297 requester='Fix the login flow' auto(explicitOpen=False,visible=True,ready=True)",
+    "at": "2026-10-24T16:08:54Z"
+  },
+  {
+    "id": "A3",
+    "claim": "RTL mirrors the native view (view x=0, card x=8)",
+    "mode": "driven",
+    "status": "PASS",
+    "evidence": "G-rtl-anchor PASS in all four cells",
+    "at": "2026-10-24T16:08:54Z"
+  },
+  {
+    "id": "C1",
+    "claim": "the card follows the app locale (lang/dir, ICU copy) and exact palette",
+    "mode": "driven",
+    "status": "PASS",
+    "evidence": "auto-present doc lang=fr dir=ltr; requester 'Fix the login flow'; review '2 approbations en attente'; catppuccinLatte document frame in docs/pr-evidence",
+    "at": "2026-10-24T16:08:54Z"
+  },
+  {
+    "id": "I1",
+    "claim": "Allow once through the real document button",
+    "mode": "driven",
+    "status": "PASS",
+    "evidence": "I1 PASS in 264/900 dark/light",
+    "at": "2026-10-24T16:08:54Z"
+  },
+  {
+    "id": "I2",
+    "claim": "outside click neither dismisses nor decides",
+    "mode": "driven",
+    "status": "PASS",
+    "evidence": "I2 PASS in all four cells",
+    "at": "2026-10-24T16:08:54Z"
+  },
+  {
+    "id": "I3",
+    "claim": "a click on the 8 DIP ring is routed natively",
+    "mode": "driven",
+    "status": "BLOCKED",
+    "evidence": "hidden window has no sibling-view hit testing; probe row I3 BLOCKED in all four cells",
+    "at": "2026-10-24T16:08:54Z"
+  },
+  {
+    "id": "I4",
+    "claim": "Escape dismisses without deciding",
+    "mode": "driven",
+    "status": "PASS",
+    "evidence": "I4 PASS in all four cells; after Escape the document painted the controller's next request (origin https://example1.test, requester 'Draft a release note') and nothing was decided; controller requestEntryId=entry-1",
+    "at": "2026-10-24T16:08:54Z"
+  },
+  {
+    "id": "I5",
+    "claim": "a page click keeps the card presented",
+    "mode": "driven",
+    "status": "PASS",
+    "evidence": "I5 PASS in all four cells",
+    "at": "2026-10-24T16:08:54Z"
+  },
+  {
+    "id": "I6",
+    "claim": "explicit open/close focus handoff",
+    "mode": "driven",
+    "status": "PASS",
+    "evidence": "I6 PASS in all four cells (open focuses card, close returns page)",
+    "at": "2026-10-24T16:08:54Z"
+  },
+  {
+    "id": "I7",
+    "claim": "Tab order inside the child",
+    "mode": "driven",
+    "status": "PASS",
+    "evidence": "I7 PASS in all four cells",
+    "at": "2026-10-24T16:08:54Z"
+  },
+  {
+    "id": "I8",
+    "claim": "stale seq decides nothing and repaints the error",
+    "mode": "driven",
+    "status": "PASS",
+    "evidence": "I8 PASS in all four cells; dropped action increments and the model is re-pushed with the stale error",
+    "at": "2026-10-24T16:08:54Z"
+  },
+  {
+    "id": "E1",
+    "claim": "card-document frames at 264/368 dark/light, plus list/error/palette states",
+    "mode": "driven",
+    "status": "PASS",
+    "evidence": "nine cropped document frames in docs/pr-evidence/browser-approvals-s6b/ from this build (request 264/368 \u00d7 dark/light, list 264/368, catppuccinLatte, expired, stale error); harness browser, model via __approvalsCard",
+    "at": "2026-10-24T16:08:54Z"
+  },
+  {
+    "id": "V1",
+    "claim": "native composite / transparency over a live page",
+    "mode": "driven",
+    "status": "BLOCKED",
+    "evidence": "no Screen Recording in this run; not claimed",
+    "at": "2026-10-24T16:08:54Z"
+  },
+  {
+    "id": "V2",
+    "claim": "VoiceOver across the second document",
+    "mode": "driven",
+    "status": "BLOCKED",
+    "evidence": "manual release gate",
+    "at": "2026-10-24T16:08:54Z"
+  },
+  {
+    "id": "V3",
+    "claim": "8 DIP ring native hit routing",
+    "mode": "driven",
+    "status": "BLOCKED",
+    "evidence": "same as I3; not claimed",
+    "at": "2026-10-24T16:08:54Z"
+  },
+  {
+    "id": "T1",
+    "claim": "every probe boot exits cleanly and leaves no process",
+    "mode": "driven",
+    "status": "PASS",
+    "evidence": "four cells exit 0; pgrep for s6b-main.mjs after the run: empty (process-group reap); a stalled boot records BOOT-fixture-load and exits 1 instead of hanging (900-dark's first attempt hit this under host contention and was retried; final cell is exit 0)",
+    "at": "2026-10-24T16:08:54Z"
+  }
+]

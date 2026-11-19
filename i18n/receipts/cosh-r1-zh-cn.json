@@ -1,0 +1,41 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "cosh-r1-zh-cn",
+ "session": "57031c66f6cb",
+ "date": "2026-10-22",
+ "locale": "zh-CN",
+ "translator": "translator",
+ "translator_session": "117d7cc086cd",
+ "namespace": "ui.agentMessages.settings",
+ "status": "passed",
+ "keys_audited": 3,
+ "scope": "The three new/changed chief-of-staff hold keys (hold.chief_of_staff, hold.chief_of_staff_unlinked, hold.open) in zh-CN ui.agentMessages.settings at 2fb94727d3 plus working-tree translation, with the other 84 values verified byte-identical to the previously audited base.",
+ "sha256": {
+  "en": "1fb72465d3c05768918f79164bf1c3f8313160c4d05046a50a52046b2e8c1e3b",
+  "zh-CN": "29dbb048958de8ecca72abf9a16c4c4fd4ab764e446e3405b28a89cd75fce2e3",
+  "context": "0796c27031e5a3b9a600147e67e1341234f6ed0f5adfd3b7c4f7758a5bcff63d"
+ },
+ "findings": [],
+ "inherited_receipt": {
+  "base": "2fb94727d3",
+  "path": "i18n/receipts/c94a2f70.json",
+  "sha256": "49bcf7665f9a32c19a825151ffa92bb1cd4e3244b20cdcd941a85e9a291416f9",
+  "keys_inherited": 84,
+  "base_target_sha256": "b356a5c32b30fd5dd68bdf95335bfe7e17ad6a1832a882c29415ce57e3ddfa7e",
+  "unchanged_values_verified": 84
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+ },
+ "validation": {
+  "independence": "Auditor session 57031c66f6cb (anthropic/claude-opus-5-5) did not translate these strings; translator session is 117d7cc086cd. All claims verified against catalogue bytes, not the translator's summary.",
+  "semantics": "Both notices say '{count}条消息待你的首席助理接收' and name SENDING as the release action ('在其对话中发一条消息即可送达' / '在侧边栏中找到其对话，发一条消息即可送达'); neither implies opening alone suffices, and none says refused/failed/read/lost. hold.open '给首席助理发消息' is the idiomatic verb-first 'message X' label (as in messaging apps' 发消息), a navigation label that does not claim to send. Terms: 首席助理 equals onboarding greeting_done/greeting_owed; 侧边栏 is the established sidebar term (12 occurrences across ui.shell, ui.settings.appearance.window_glass, ui.settings.configuration vs a single 侧栏 in onboarding greeting_done), so the translator's choice is right; 消息 and 对话 (conversation, as in onboarding '她的对话' and this file's '新对话') are consistent with the file. 其 is a neutral reference that avoids a personal name. Register: 你, no 请, no particles or ！, full-width ，。 in prose, no space between digits and CJK, per the zh-CN style guide. The two notices and the button agree (发一条消息 / 发消息).",
+  "icu": "Parsed en and zh-CN with @formatjs/icu-messageformat-parser from the worktree node_modules: both notices are a single plural on argument `count` with {count} in every arm (en one/other, zh-CN other); hold.open is a plain literal in both. Only ASCII commas in the hold keys are the two ICU-syntax commas.",
+  "plurals": "Intl.PluralRules('zh-CN').resolvedOptions().pluralCategories = ['other']; the catalogue uses other only, matching CLDR, the style guide and repo practice. No pronoun to agree (it/them is dropped naturally). Formatted with intl-messageformat for 1, 2, 5, 21 and 1000000; every output read correctly, using the 条 classifier for messages per the style guide. As in English, {count} renders without grouping (e.g. 1000000), a source-design property, not a translation defect.",
+  "typography": "Target file is NFC; no bidi controls and no zero-width characters. Full-width prose punctuation; no sentence-final 。 on the button label.",
+  "overflow": "hold.open is 8 CJK characters (16 cells) against the 22-character English 'Message chief of staff'; at equal font size that is about the same width or narrower, so no overflow risk for the shrink-0 ghost sm Button. The notices (60 and 66 characters) sit in a wrapping flex-1 <p> and are far shorter than English (244 and 286 characters across arms).",
+  "limitations": "Browser unavailable; no screenshots/rendered-fit claim. No catalogue/code edits; no files created in the worktree."
+ }
+}

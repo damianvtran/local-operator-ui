@@ -1,0 +1,5 @@
+{
+	"ui.chat.draft_target.aria_label": "Start this chat with {target}. Choose an agent or team",
+	"ui.chat.draft_target.default_agent": "Default agent",
+	"ui.chat.draft_target.menu_heading": "Start this chat with"
+}

@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 import type { AtSpan } from "./at-token";
 
 /**
@@ -319,7 +320,7 @@ export function atCandidateKey(rows: readonly { path: string }[]): string {
  * THE GATE WAS SILENT, and silence is its own failure for a user who types `@`
  * expecting something: no list, no chip, no tip and no sentence, with no path from
  * "nothing happened" to "this install's backend is older". The sibling gate in
- * the same band does name its reason (`MOVE_UNAVAILABLE_REASON`, on the
+ * the same band does name its reason (`moveUnavailableReason`, on the
  * read-only working-directory chip), so this is the app's own vocabulary for the
  * same class of fact rather than a new register.
  *
@@ -332,7 +333,7 @@ export function atCandidateKey(rows: readonly { path: string }[]): string {
  * carries the key — so the promise is
  * one a newer backend keeps, and a sentence that names the backend as the reason
  * while offering no way out of the state is the dead end the sibling gate in this
- * same band already refuses (`MOVE_UNAVAILABLE_REASON`, on the read-only
+ * same band already refuses (`moveUnavailableReason`, on the read-only
  * working-directory chip). `scripts/at-mentions.test.mjs` asserts BOTH halves of
  * that: the remedy is an imperative sentence naming the backend, and the sentence
  * still never carries the `@`. What it deliberately does NOT pin is the wording —
@@ -367,8 +368,7 @@ export function atCandidateKey(rows: readonly { path: string }[]): string {
  * transcript exactly as the list it stands in for does, and no row of the composer
  * moves.
  */
-export const AT_UNAVAILABLE_REASON =
-	"This backend cannot carry file references. Update the backend and try again.";
+export const atUnavailableReason = () => t("ui.chat.slash.at.unavailable");
 
 /**
  * The footer's left line, read off the ACTIVE ROW.
@@ -401,11 +401,16 @@ export const AT_UNAVAILABLE_REASON =
 export function atFooter(
 	row: { path: string; directory: boolean } | undefined,
 ): string {
-	if (!row) return "Nothing to insert · Esc closes";
-	const verb = row.directory
-		? `Enter opens ${row.path}`
-		: `Enter inserts ${atFooterToken(row.path)}`;
-	return `${verb} · Esc closes`;
+	// Three WHOLE keyed lines, not a verb glued to " · Esc closes": the key names
+	// (Enter, Esc) sit inside each sentence for the translator to render as the
+	// language writes them (the same policy every other hint line follows), and
+	// the file name/token is the only placeholder.
+	if (!row) return t("ui.chat.pickers.at_menu.footer.nothing");
+	return row.directory
+		? t("ui.chat.pickers.at_menu.footer.opens", { path: row.path })
+		: t("ui.chat.pickers.at_menu.footer.inserts", {
+				reference: atFooterToken(row.path),
+			});
 }
 
 /** The token a footer line names: the write minus the space that closes it. */
@@ -491,16 +496,23 @@ export function atEmptyCopy(state: {
 	projects?: boolean;
 }): string {
 	if (state.error) return unreadableCopy(state.error);
-	if (state.loading && state.entries === 0) return "Reading this folder…";
-	if (state.entries === 0) return "This folder is empty.";
+	if (state.loading && state.entries === 0)
+		return t("ui.chat.slash.at.reading");
+	if (state.entries === 0) return t("ui.chat.slash.at.empty");
 	if (state.matched === 0)
 		return state.projects
-			? `Nothing here matches "${state.query}" in ${state.scope}.`
-			: `No files match "${state.query}" in ${state.scope}.`;
+			? t("ui.chat.slash.at.no_match_projects", {
+					query: state.query,
+					scope: state.scope,
+				})
+			: t("ui.chat.slash.at.no_match_files", {
+					query: state.query,
+					scope: state.scope,
+				});
 	// Unreachable while the caller renders a notice only when it has no rows, and
 	// stated rather than left undefined so a future caller that asks anyway gets a
 	// sentence instead of an empty div.
-	return "This folder is empty.";
+	return t("ui.chat.slash.at.empty");
 }
 
 /*
@@ -523,8 +535,8 @@ const PERMISSION_ERRNO = /\bEACCES\b|\bEPERM\b/;
  */
 export function unreadableCopy(error: string): string {
 	if (PERMISSION_ERRNO.test(error))
-		return "Could not read this folder. It may need a permission this app does not have.";
-	return "Could not read this folder. Check that it exists and that you can open it.";
+		return t("ui.chat.slash.at.unreadable_permission");
+	return t("ui.chat.slash.at.unreadable_generic");
 }
 
 /**

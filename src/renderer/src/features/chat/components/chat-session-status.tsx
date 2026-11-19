@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	type CanonicalSessionRow,
@@ -10,15 +12,29 @@ import {
 	Clock,
 	EqualApproximately,
 	HelpCircle,
+	Hourglass,
 	LoaderCircle,
 	MessageCircleQuestion,
 	MessageSquare,
 	Pause,
+	WifiOff,
 } from "lucide-react";
+import {
+	peerLinkDownLabel,
+	peerUncertainLabel,
+} from "../../mesh/peer-presence";
 import { asksOutstandingLabel } from "../ask-queue";
+import {
+	RESTING_CODES,
+	backgroundWorkClause,
+	clauseReplacesLabel,
+	hasBackgroundWork,
+} from "../chat-session-subagents";
 
-/** Resting codes that legitimately render as a plain ring. */
-const KNOWN_RESTING = new Set(["idle", "recent"]);
+/** Resting codes that legitimately render as a plain ring. One set with the
+ * one that decides when the background-work clause replaces the label, so the
+ * ring and the sentence agree on what "resting" means. */
+const KNOWN_RESTING = RESTING_CODES;
 
 /**
  * The OUTSTANDING-ASKS mark for a conversation row (design §5.0).
@@ -99,6 +115,7 @@ export function ChatAsksOutstanding({
 	 * and `null` is the same absence - neither is a claim of zero. */
 	open?: number | null;
 }) {
+	useI18nLocale();
 	const count = typeof open === "number" ? open : row.asks_open;
 	if (typeof count !== "number" || !Number.isFinite(count) || count <= 0)
 		return null;
@@ -114,7 +131,9 @@ export function ChatAsksOutstanding({
 		 */
 		<span
 			role="img"
-			aria-label={`${asksOutstandingLabel(count)} outstanding. The agent is not blocked on you.`}
+			aria-label={t("ui.chat.asks.outstanding_aria", {
+				label: asksOutstandingLabel(count),
+			})}
 			className={cn("inline-flex shrink-0 items-center gap-0.5")}
 		>
 			{/*
@@ -141,270 +160,287 @@ export function ChatAsksOutstanding({
 }
 
 /**
- * THE RUNNING-SUBAGENT MARK: three equal beads in the liveness ink - the
- * "trio" (issue #840; the trio itself operator-ACKed 2026-10-06).
+ * The RUNNING LANE: "this session still has work running" (a subagent, a
+ * background job or a wait), drawn UNDER the status cell rather than in it.
  *
- * WHY IT MOVED OFF THE GLYPH. It used to be `Share2` in `text-accent`, at BOTH
- * this component's `delegating` rung and the sidebar row's own running mark, so
- * one glyph meant "delegated work" on two surfaces. The operator's report is
- * that it does not read as a state where it is drawn: a share glyph in the row
- * beside the row's OWN act buttons reads as AN ACTION, and a reader can click a
- * control they think exists and get nothing. The fix is to leave the icon
- * vocabulary entirely - the mark is a SHAPE now, not a glyph, so there is no
- * control for it to be mistaken for.
+ * WHY (operator report, 2026-11-07): a session whose turn had ended with a
+ * subagent and a job still at work read as idle. The lane is ADDED under every
+ * status glyph and never replaces it: the code says what the TURN did (a check,
+ * an approval bubble, a spinner), the lane says children are still busy - two
+ * facts, two channels. It retires the three-bead trio, which only one code
+ * could draw (#840/#1503) and which the operator ruled out as a bead cluster.
  *
- * WHY IT IS A TRIO AND NOT A DOT. The shape shipped as a single filled disc
- * (`size-2 rounded-full bg-current`) and the operator's report on THAT is the
- * change this docstring now records: one disc at 8px states "something is here"
- * and not "CHILDREN are here", and it sits in a family the app already spends
- * on unrelated facts (unread, device presence, recording). Three equal beads
- * state plurality - the mark is about the row's subagents - without inventing a
- * parent figure: the ROW is the parent, so a centred larger apex over a pair
- * (the head-and-shoulders read) would draw a parent that is already on screen as
- * the row itself. `Users`, the collision the design round named, is exactly that
- * figure, and three equal beads share no silhouette with it.
- *
- * THE GEOMETRY, AND THE LESSON THAT FIXED IT. Three equal filled circles on the
- * 24-unit grid - `c(12,6.8) r3.9`, `c(7,17.4) r3.9`, `c(17,17.4) r3.9` - in the
- * ink they inherit (`currentColor`), inside an `svg viewBox="0 0 24 24"` that
- * fills the caller's box. THE SPACING IS THE DESIGN, NOT A DETAIL: the round-1
- * candidate was the same beads with a larger apex and 4.43px between the lower
- * centres against radii summing to 4.32px, so the children OVERLAPPED by 0.12px
- * at 14px - they fused into one mass whose component count flipped between 1 and
- * 2 with the box's sub-pixel phase, which is not a property a shipped indicator
- * can carry. These three measure n=3 at every one of the 25 phases and at every
- * real x the app can place the box (measured on captured frames: x159 at the
- * 240px floor, x177, x199 and x36 in the leading slot). Count stability across
- * phases is the acceptance property; closing the gap to buy mass breaks it.
- *
- * THE INK IS `currentColor`, the way the disc took `bg-current`: the caller
- * states `text-accent` (the liveness ink `busy` uses), so the ink chain above
- * stays the single place a code's colour is decided, and the mark wears whatever
- * the family of codes paints there. THE SILHOUETTE IS WHAT SEPARATES IT FROM THE
- * UNREAD MARK, not the colour: `accent` and `success` are ΔE00 0.00 in three
- * palettes (`monokai`, `everforest`, `everforestLight` - re-derived over all
- * fifty-nine), so on those grounds a three-bead cluster and the `Check` beside
- * it are told apart by shape alone, which they are.
- *
- * THE BOX IS THE CALLER'S; THE MARK FILLS IT. `size-full` on the svg against the
- * caller's box gives ink of about 10x10px in the sidebar row's `size-3.5` (the
- * icon ramp's `sm` step the mark already occupied, so the row's footprint and
- * the mark's NOTICEABILITY - the 2026-09-29 fix that made running subagents
- * visible at all - are both unchanged), and about 12x12px in the `delegating`
- * rung's `size-4`, which fills the status slot every other code's glyph occupies
- * (agent review round 1, N2: this note used to claim the `size-3.5` box
- * unconditionally, which is true of one call site and not the other). Coverage
- * mass is 91-94% of the discarded dot's on the same ground, so noticeability is
- * held rather than traded.
- *
- * THE TWO SLOTS, AND WHY THEY DIFFER (design round 1's D7). The same mark is the
- * `delegating` rung's PRIMARY mark, drawn in the LEADING status slot where every
- * status code's glyph goes, and the sidebar row's running mark, drawn in the
- * TRAILING slot after the title. That is deliberate and the frames show it
- * working: in the rung it says what the PARENT's own turn is doing (delegated
- * work, none of it the row's), and in the row it says what the row's CHILDREN
- * are doing beside the row's own act buttons. One vocabulary, two meanings that
- * a reader never has to tell apart, because a row is in one state or the other.
- * The position is the only thing separating them, so the local text is the
- * caller's `sr-only` name (`delegating`, or the count sentence) - recorded here
- * so the next reader does not re-litigate the slot.
- *
- * IT IS STATIC, and that is a rule rather than an omission: `busy` owns the
- * spinner in the leading slot, and two animated marks in one column would make
- * two different states read as one motion. A running child is a fact, not a
- * progress bar.
- *
- * THE COLLISION CHECK, against the status family this slot draws (SC 1.4.11 - the
- * mark's ink is `accent` inside the sidebar row's 14px box, on
- * `surface`/`row-hover`/`row-selected`, which is the pair the contract's
- * GRAPHICS row is derived from; worst case 4.24:1, `tokyoNight` on
- * `row-selected`, clearing the 3:1 graphic floor):
- *
- *  - `Circle` (the resting ring) and `LoaderCircle` (`busy`) are RINGS - outlined,
- *    1.5px of `ink-dim`/`accent` with an interior the ground shows through. Three
- *    SOLID beads share no silhouette with either, at 14px or at 16px.
- *  - `Check`, `Clock`, `MessageSquare`, `Hourglass`, `Pause` and
- *    `EqualApproximately` are all angular or stroke-built; none is a cluster of
- *    discs.
- *  - `Users` is stroked, muted and a two-figure glyph, and the trio is three
- *    equal solid beads with no apex - the figure read the design round refused.
- *  - the amber class (`CircleAlert`, `Clock`) is where the module's own
- *    `wedged` note already forbids a second RING; the trio is not one.
- *
- * THE ONE RESIDUAL PUT ON THE RECORD, not argued away: three accent beads is also
- * the arrangement of a decorative cluster (a sparkle, a "∴"). It does not appear
- * at 1x in the two frames where the read is actually made (the list, and the
- * status matrix), and no motif in this family escapes it; it is accepted given
- * the brief's "subtle".
- *
- * IT IS DIGIT-FREE. The count lives in `status.label` (the backend's
- * "2 subagents running - 1 queued"), which this component renders into its
- * `sr-only` name and the row's button reads for its tooltip; a numeral beside
- * the mark would be read text on a 12px step that `accent` cannot carry on every
- * ground the row can sit on, and it would reflow the row as children start and
- * finish (see `ChatAsksOutstanding`'s D1 note). The count's home is the tooltip
- * and the `sr-only` sentence, where the exact numbers already are.
- *
- * KEEPING IT STRUCTURED. Both call sites render THIS component, so the design
- * round can iterate one place and the two surfaces cannot drift apart again.
+ * DESIGN CONSTRAINTS (designer spec "running lane", candidate A):
+ *  - 10x2 CSS px, 1px radius, centred under the 16px cell, `absolute` inside it,
+ *    so the cell box, the row height and the title edge never move when work
+ *    starts or ends (sidebar-row-space s2);
+ *  - `currentColor` in `text-accent` (the liveness role `busy` uses), drawn as
+ *    an SVG rect because a `background-color` span vanishes in forced-colors;
+ *  - `forced-colors:text-[CanvasText]`, the notification dot's convention:
+ *    Chromium does NOT force `color` inside an SVG, so without it the lane
+ *    kept the theme's accent on the system Canvas - measured in the D2 frame
+ *    (design review round 1), where dark's #38c96a on a light Canvas would sit
+ *    near 2:1. CanvasText is the system's own ink against that Canvas;
+ *  - static: `busy` owns motion in this column, and a fade would be a frame
+ *    where the row has re-filed but its lane has not.
+ *  - `aria-hidden`: the row's sentence carries the clause once
+ *    (`backgroundWorkClause`).
+ * `data-background-work` is the rig/story hook that counts it.
  */
-export function SubagentRunningMark({
-	className,
-	mark,
-}: {
-	/**
-	 * REQUIRED, because the box is load-bearing rather than decorative (agent review round 1, NIT 1). The
-	 * mark is an `size-full` svg now, so `width/height: 100%` needs a definite box to resolve against -
-	 * the disc it replaced was `size-2` and sized itself. Both call sites pass one (the sidebar row's
-	 * `size-3.5`, the `delegating` rung's `size-4`), and `cn` keeps the caller's class authoritative; the
-	 * type says so rather than leaving the next call site to discover an invisible mark at runtime.
-	 */
-	className: string;
-	/** The rig/test hook (`data-subagent-mark`). Passed only where the mark stands for the ROW's own running subagents - the `delegating` rung shares the component but not the hook. */
-	mark?: string;
-}) {
+export function BackgroundWorkLane({ className }: { className?: string }) {
 	return (
-		<span
+		<svg
 			aria-hidden="true"
-			data-subagent-mark={mark}
-			className={cn("flex shrink-0 items-center justify-center", className)}
+			data-background-work=""
+			viewBox="0 0 10 2"
+			width="10"
+			height="2"
+			className={cn(
+				"pointer-events-none absolute start-[3px] top-[calc(100%+3px)] text-accent forced-colors:text-[CanvasText]",
+				className,
+			)}
 		>
-			{/*
-			 * `currentColor`, not a `bg-*`/`fill-*` role: the beads wear the INK their
-			 * caller states (`text-accent` - the liveness ink, the one `busy` uses), so
-			 * the ink chain above stays the single place a code's colour is decided.
-			 * `size-full` hands the box's size straight to the viewBox, so the caller's
-			 * class alone decides how big the mark is drawn (see the docstring).
-			 */}
-			<svg aria-hidden="true" viewBox="0 0 24 24" className="size-full">
-				{/*
-				 * THE THREE BEADS, AND THE SPACING IS THE DESIGN: equal radii, 24-grid
-				 * units, centre distances kept above the radii sum so the children never
-				 * fuse (the round-1 defect - see the docstring). Do not close the gap to
-				 * make the mark heavier, and do not give the apex a larger radius: the
-				 * equal triad IS the statement that these are the children.
-				 */}
-				<circle cx="12" cy="6.8" r="3.9" fill="currentColor" />
-				<circle cx="7" cy="17.4" r="3.9" fill="currentColor" />
-				<circle cx="17" cy="17.4" r="3.9" fill="currentColor" />
-			</svg>
-		</span>
+			<rect width="10" height="2" rx="1" fill="currentColor" />
+		</svg>
 	);
 }
 
-export function ChatSessionStatus({ row }: { row: CanonicalSessionRow }) {
+/**
+ * The status label both the sidebar's tooltip/accessible name and the Stop
+ * picker read, with the one translated exception.
+ *
+ * `status.label` is a WIRE label, not copy: the backend's resting code
+ * `recent` carries the English word "Recent" (core `session/catalog.py`).
+ * The sidebar already owns the translated equivalent for that one state, so
+ * substitute it by the stable transport code rather than by spelling. Every
+ * other code keeps the backend's own label: those carry counts, causes and
+ * state-specific detail this client does not reconstruct, and copying them
+ * here would make a second source of truth.
+ */
+export function statusLabelText(
+	row: Pick<CanonicalSessionRow, "status">,
+): string | undefined {
+	if (row.status?.code === "recent") return t("ui.chat.sidebar.row.recent");
+	return row.status?.label;
+}
+
+/**
+ * The sentence the status contributes to the row's accessible name.
+ *
+ * ONE SPELLING, because the row now has two arms (the glyph, or a badge on a
+ * picture) and a reader must hear the same words in both. `unread` is a LEVEL
+ * the ink carries visually, so the name has to say it - and only where a mark
+ * is actually drawn (`unreadMark`), never on a quiet row.
+ *
+ * THE SUFFIX HAS ONE OWNER, AND IT IS THIS FUNCTION (agent review round 1,
+ * R1-B1/R1-B2). It used to be appended here AND again in the `sr-only` span, so
+ * a complete unread row's name read "Complete, unread, unread" - which is what
+ * four cases in `scripts/chat-session-status.test.mjs` and the added-strings
+ * guard (the second literal) both failed on. Anything that renders this
+ * sentence therefore renders it WHOLE; no call site may add the level itself.
+ *
+ * Gated on `unreadMark`, not on `row.attention?.unseen`, and the gating is the
+ * contract rather than a preference: this module's own test asserts that an
+ * ACKNOWLEDGED row renders IDENTICALLY to an unacknowledged one for every code
+ * that draws NO mark, so an unconditional suffix changes what an acknowledged
+ * busy, wedged or gated row says - and a busy row claiming ", unread" is the
+ * reported defect in the one place the ink cannot show it.
+ *
+ * The marks are the predicate's three: `complete`, and the `error` and
+ * `interrupted` codes the runtime labels "Unseen error" / "Unseen interruption"
+ * and ranks as outstanding completions. The suffix is the translated `ui.chat.sidebar.row.unread_suffix`, not an English literal, so this sentence and the visible tooltip name the same level in the same language.
+ *
+ * THE TWO FAILURE CODES THEREFORE SAY "UNSEEN" TWICE - "Unseen error, unread" -
+ * and that redundancy is ACCEPTED rather than trimmed (design D4 and QA Q-2 both
+ * raised it). Gating the suffix on `unreadMark === "complete"` would be a
+ * SECOND rule about which codes carry the suffix, which is the two-derivations
+ * class this whole change removes: the suffix would become the check's property
+ * rather than the mark's, and a counted row's name would say nothing about the
+ * mark it draws. It is also the CLIENT's own statement of the level, where the
+ * "Unseen" in the label is the backend's word for it - which is what keeps the
+ * name true if that label is ever reworded for a code whose ink does not step
+ * between read and unseen.
+ */
+export function statusSpokenText(
+	row: CanonicalSessionRow,
+	nowSeconds: number,
+	mark: ReturnType<typeof sessionStatusMark>,
+): string {
+	/*
+	 * A RESTING LABEL YIELDS TO THE CLAUSE (design review round 1, D1): the
+	 * name says "1 subagent, 1 job running", not "Idle ... · 1 subagent, 1 job
+	 * running", in the same slot the tooltip's status line uses. The row's own
+	 * `sr-only` tail then stays silent (`clauseReplacesLabel` there too), so the
+	 * clause is heard once.
+	 */
+	const clause = backgroundWorkClause(row);
+	const label = mark.linkDown
+		? peerLinkDownLabel(row, nowSeconds)
+		: (mark.uncertainLabel ??
+			(clauseReplacesLabel(row, clause) ? clause : undefined) ??
+			statusLabelText(row) ??
+			t("ui.chat.sidebar.row.recent"));
+	return `${label}${mark.unreadMark !== null ? t("ui.chat.sidebar.row.unread_suffix") : ""}`;
+}
+
+/**
+ * What one row's status cell draws, as data.
+ *
+ * EXTRACTED SO TWO SURFACES CANNOT DISAGREE (agent profile pictures, 2026-10-30).
+ * The chat sidebar now has two arms for the same row - the status glyph alone
+ * when the agent has no picture, and a status badge on the corner of its
+ * picture when it has one - and a second copy of these chains would let the
+ * same conversation read "waiting" in one arm and "running" in the other. Every
+ * rule the chains state (the unread level, the louder-fact precedence, the
+ * `delegating` rung, the ink ladder) is unchanged and lives here once;
+ * `ChatSessionStatus` below renders it and `ChatSessionStatusBadge` shrinks it.
+ */
+export function sessionStatusMark(row: CanonicalSessionRow) {
 	const code = row.status?.code;
+	const linkDown = row.locality === "remote" && row.link_down === true;
+	const reconnecting = linkDown && row.link_reconnecting === true;
+	const uncertainLabel = peerUncertainLabel(row);
 	/*
-	 * `delegating`'s mark is the RUNNING MARK below rather than a Lucide icon:
-	 * the glyph slot renders one or the other, and the chain underneath is not
-	 * asked for an icon on this code (see `SubagentRunningMark`).
+	 * Whether the lane is drawn under this row's glyph. Stale remote counts
+	 * (link down, reach unknown) answer false inside the predicate itself.
 	 */
-	const delegating = code === "delegating";
-	/*
-	 * WHAT THIS ROW IS DRAWING, asked of the ONE predicate (`unreadMarkKind`) the
-	 * accessible name below, the sidebar row's tooltip and the bulk control's
-	 * count all ask. It reads `status.code`, which is the runtime's own
-	 * `shows_completion_mark` precedence over the wire; `unseen` alone cannot
-	 * answer it, because a session that finished a turn and then started another
-	 * still carries `unseen` — a LEVEL, cleared only by an acknowledgement — while
-	 * drawing a spinner, and that row must claim neither the check nor "unread".
-	 */
+	const backgroundWork = hasBackgroundWork(row);
 	const unreadMark = unreadMarkKind(row);
 	// Completion is still the outcome after reading it; only its attention
 	// mark rests. Keep failures, work and pending gates independent of receipts.
 	const unseenCompletion = unreadMark === "complete";
-	const Icon =
-		code === "busy"
-			? LoaderCircle
-			: code === "approval" || code === "answer" || code === "error"
-				? CircleAlert
-				: /*
-					 * `wedged` WEARS A MARK OF ITS OWN, and that is the fix rather than a
-					 * flourish. It used to share `CircleAlert` with `error`, so an owner that
-					 * had merely stopped reporting and a turn that had actually broken drew
-					 * byte-identical output — and the two ask opposite things of a reader
-					 * (reopen the failed one; do not expect a message to land in the silent
-					 * one). Colour cannot carry the difference either: this app and the TUI
-					 * share one brand ramp, and the measurement recorded for the same
-					 * `warning`/`danger` pair collapses the two inks under deuteranopia
-					 * (`session_picker.py:563-569`). SHAPE IS THE SIGNAL, so the state gets
-					 * a silhouette that shares no stroke with the alert ring — two
-					 * horizontal waves, which is this app's `EqualApproximately` and the
-					 * TUI's `≈` for the same state.
-					 *
-					 * WHY NOT THE NEAR MISSES: `WifiOff` belongs to the app's
-					 * daemon-connection vocabulary for a different fact with a different
-					 * remedy (`shared/backend-status.ts`); `HelpCircle` already means "a code
-					 * this build does not know" two branches below; and
-					 * `CircleDashed`/`CircleDotDashed` would put a second RING in the amber
-					 * class beside `approval`/`answer`, which is the grouping failure the
-					 * TUI's marker register warns about.
-					 *
-					 * IT STAYS STATIC while `busy` spins. Nothing about this state is
-					 * turning: the runtime's beat stopped landing, and an animation here
-					 * would both borrow the busy reading and assert an activity the stale
-					 * heartbeat cannot support.
-					 */
-					code === "wedged"
-					? EqualApproximately
-					: code === "interrupted" || code === "dormant"
-						? Pause
-						: code === "complete"
-							? unseenCompletion
-								? Check
-								: Circle
-							: code === "scheduled"
-								? Clock
-								: code === "attached"
-									? MessageSquare
-									: // A `delegating` row never reads this chain: its glyph slot draws
-										// the RUNNING MARK instead (`SubagentRunningMark` below), because the
-										// share glyph read as an action on a row whose mark is a state
-										// (issue #840).
-										KNOWN_RESTING.has(code ?? "recent")
-										? Circle
-										: HelpCircle;
-	const ink =
-		code === "busy"
-			? // LIVENESS IS `accent` (or motion). It was `info` here and the accent
-				// in the transcript, so one fact wore two hues depending on which
-				// surface carried it — and `info` means "here is a fact" on the six
-				// sites that own it. Motion still carries the state on its own; the
-				// accent is the second channel, not the only one.
-				"text-accent motion-safe:animate-spin"
-			: code === "wedged"
-				? /*
-					 * `warning`, not `danger`, and the product already agreed with itself
-					 * about this everywhere except here: `warning` is the role reserved
-					 * for "read this, nothing has broken" — the same reading that moved
-					 * `interrupted` off danger — and it is what the `/info` badge
-					 * (`pickers/panels/info-panel.tsx`) and the connectivity banner
-					 * already render for this state. The row was the outlier.
-					 *
-					 * NO NEW TOKEN, so no palette edit, no `gen-themes` run and no row in
-					 * `scripts/contrast-contract.mjs`: `warning` is an existing semantic
-					 * with a measured 4.5:1 text floor (docs/branding.md § 3), and this is
-					 * an ink on an icon rather than a component fill/border triple.
-					 *
-					 * NOT `text-ink-dim`: the state changes what the user can expect of
-					 * the row — their next message may silently not land — so it stays
-					 * louder than a resting row, which is also why it must not be quieter
-					 * than `busy`.
-					 */
-					"text-warning"
-				: code === "error"
-					? "text-danger"
-					: code === "approval" || code === "answer" || code === "interrupted"
-						? "text-warning"
-						: unseenCompletion
-							? "text-success"
-							: // The accent role, and STATIC on purpose: `busy` owns the spinner in
-								// this slot, and a second animated mark would make two different
-								// states read as one. Delegating is a state of the session, not
-								// activity within it, so it holds still.
-								code === "delegating"
-								? "text-accent"
-								: "text-ink-dim";
+	const Icon = uncertainLabel
+		? HelpCircle
+		: linkDown
+			? WifiOff
+			: code === "waiting"
+				? Hourglass
+				: code === "busy"
+					? LoaderCircle
+					: code === "approval" || code === "answer"
+						? /* Needs input must not share failure's alert ring: warning and danger can converge for colour-blind readers, so the question silhouette carries the distinction. */
+							MessageCircleQuestion
+						: code === "error"
+							? CircleAlert
+							: /*
+								 * `wedged` WEARS A MARK OF ITS OWN, and that is the fix rather than a
+								 * flourish. It used to share `CircleAlert` with `error`, so an owner that
+								 * had merely stopped reporting and a turn that had actually broken drew
+								 * byte-identical output — and the two ask opposite things of a reader
+								 * (reopen the failed one; do not expect a message to land in the silent
+								 * one). Colour cannot carry the difference either: this app and the TUI
+								 * share one brand ramp, and the measurement recorded for the same
+								 * `warning`/`danger` pair collapses the two inks under deuteranopia
+								 * (`session_picker.py:563-569`). SHAPE IS THE SIGNAL, so the state gets
+								 * a silhouette that shares no stroke with the alert ring — two
+								 * horizontal waves, which is this app's `EqualApproximately` and the
+								 * TUI's `≈` for the same state.
+								 *
+								 * WHY NOT THE NEAR MISSES: `WifiOff` is reserved for a lost link
+								 * (to the daemon or a remote owner), not a wedged session on a
+								 * reachable device; `HelpCircle` already means "a code
+								 * this build does not know" two branches below; and
+								 * `CircleDashed`/`CircleDotDashed` would put a second RING in the amber
+								 * class beside `approval`/`answer`, which is the grouping failure the
+								 * TUI's marker register warns about.
+								 *
+								 * IT STAYS STATIC while `busy` spins. Nothing about this state is
+								 * turning: the runtime's beat stopped landing, and an animation here
+								 * would both borrow the busy reading and assert an activity the stale
+								 * heartbeat cannot support.
+								 */
+								code === "wedged"
+								? EqualApproximately
+								: code === "interrupted" || code === "dormant"
+									? Pause
+									: code === "complete"
+										? unseenCompletion
+											? Check
+											: Circle
+										: code === "scheduled"
+											? Clock
+											: code === "attached"
+												? MessageSquare
+												: // `delegating` rests on the ring: the running lane under the
+													// cell now says children are at work (the trio is retired).
+													code === "delegating" ||
+														KNOWN_RESTING.has(code ?? "recent")
+													? Circle
+													: HelpCircle;
+	const ink = uncertainLabel
+		? "text-ink-dim"
+		: linkDown
+			? reconnecting
+				? "text-ink-dim"
+				: "text-warning"
+			: code === "waiting"
+				? "text-accent"
+				: code === "busy"
+					? // LIVENESS IS `accent` (or motion). It was `info` here and the accent
+						// in the transcript, so one fact wore two hues depending on which
+						// surface carried it — and `info` means "here is a fact" on the six
+						// sites that own it. Motion still carries the state on its own; the
+						// accent is the second channel, not the only one.
+						"text-accent motion-safe:animate-spin"
+					: code === "wedged"
+						? /*
+							 * `warning`, not `danger`, and the product already agreed with itself
+							 * about this everywhere except here: `warning` is the role reserved
+							 * for "read this, nothing has broken" — the same reading that moved
+							 * `interrupted` off danger — and it is what the `/info` badge
+							 * (`pickers/panels/info-panel.tsx`) and the connectivity banner
+							 * already render for this state. The row was the outlier.
+							 *
+							 * NO NEW TOKEN, so no palette edit, no `gen-themes` run and no row in
+							 * `scripts/contrast-contract.mjs`: `warning` is an existing semantic
+							 * with a measured 4.5:1 text floor (docs/branding.md § 3), and this is
+							 * an ink on an icon rather than a component fill/border triple.
+							 *
+							 * NOT `text-ink-dim`: the state changes what the user can expect of
+							 * the row — their next message may silently not land — so it stays
+							 * louder than a resting row, which is also why it must not be quieter
+							 * than `busy`.
+							 */
+							"text-warning"
+						: code === "error"
+							? "text-danger"
+							: code === "approval" ||
+									code === "answer" ||
+									code === "interrupted"
+								? "text-warning"
+								: unseenCompletion
+									? "text-success"
+									: // `delegating` rests in `ink-dim` like every resting ring: the
+										// accent liveness is carried by the running lane under the cell.
+										"text-ink-dim";
+	return {
+		code,
+		linkDown,
+		reconnecting,
+		uncertainLabel,
+		backgroundWork,
+		unreadMark,
+		Icon,
+		ink,
+	};
+}
+
+export function ChatSessionStatus({
+	row,
+	nowSeconds = Date.now() / 1000,
+}: { row: CanonicalSessionRow; nowSeconds?: number }) {
+	/*
+	 * ONE GLYPH PER CODE, PLUS THE LANE (2026-11-07). The cell is `size-4` on
+	 * every row whether or not work is running, so a count that arrives late
+	 * changes what is drawn and never how much of the title is cut (the
+	 * first-paint fix of 2026-10-30). Every code keeps its own glyph (#1503 D1);
+	 * background work adds `BackgroundWorkLane` under it, absolutely positioned
+	 * so the cell's box does not grow. The facts come from `sessionStatusMark`,
+	 * which the 10px badge reads too, so the two cannot drift.
+	 */
+	const mark = sessionStatusMark(row);
+	const { Icon, ink, backgroundWork } = mark;
+
 	return (
 		/*
 		 * NO `title` ON THIS SPAN (review round 1, MINOR 1). It used to carry
@@ -417,46 +453,61 @@ export function ChatSessionStatus({ row }: { row: CanonicalSessionRow }) {
 		 * the whole row (including the mark), and the `sr-only` span below carries the
 		 * same words to the accessibility tree.
 		 */
-		<span className="flex size-4 shrink-0">
-			{delegating ? (
-				<SubagentRunningMark className={cn("size-4", ink)} />
-			) : (
-				<Icon className={cn("size-4", ink)} aria-hidden="true" />
+		<span className="relative flex size-4 shrink-0">
+			{/*
+			 * EVERY CODE KEEPS ITS OWN GLYPH (#1503 D1), and background work ADDS the
+			 * lane beneath it rather than taking the cell: an approval, an error or an
+			 * unread completion is the louder fact, and the lane is the quieter one
+			 * that must not hide it.
+			 */}
+			<Icon className={cn("size-4", ink)} aria-hidden="true" />
+			{backgroundWork && <BackgroundWorkLane />}
+			<span className="sr-only">{statusSpokenText(row, nowSeconds, mark)}</span>
+		</span>
+	);
+}
+
+/**
+ * The same status, shrunk to sit on the corner of a session's picture.
+ *
+ * WHY A CORNER BADGE (operator's ask: "the running/done/waiting/attention
+ * states must stay legible, so never hide status behind the avatar"). A row
+ * with a picture would otherwise spend the leading slot on the picture and lose
+ * the one mark that says what the conversation is doing. The badge keeps BOTH:
+ * the avatar takes the slot the status glyph had, and the glyph rides its
+ * bottom-trailing corner at 10px on a `sunken` plate with the ring the row's
+ * ground provides, so the shape and the ink are the ones `sessionStatusMark`
+ * decided for the full-size cell.
+ *
+ * THE PLATE IS NOT DECORATION. A 10px glyph directly on a photo is illegible on
+ * a busy image; the fill separates it from the pixels behind it, and the ink
+ * still carries the state (`text-accent` for running, `text-success` for a done
+ * turn, `text-warning` for waiting, `text-danger` for a failure) exactly as the
+ * full cell does.
+ *
+ * `data-session-status` survives on the badge: the rigs and the stylesheet read
+ * that hook, and a row that swapped its glyph for a picture must not disappear
+ * from their measurements.
+ */
+export function ChatSessionStatusBadge({
+	row,
+	className,
+}: {
+	row: CanonicalSessionRow;
+	className?: string;
+}) {
+	const { Icon, ink } = sessionStatusMark(row);
+	return (
+		<span
+			aria-hidden="true"
+			data-session-status=""
+			className={cn(
+				"pointer-events-none absolute -end-0.5 -bottom-0.5 flex size-2.5 items-center justify-center rounded-full bg-sunken",
+				className,
 			)}
-			<span className="sr-only">
-				{row.status?.label ?? "Recent"}
-				{/*
-				 * THE UNREAD SEMANTIC IS AN INK STEP, so on its own it tells a screen
-				 * reader nothing — the arrival is visible only to someone looking at
-				 * the glyph — and the name carries it in the cases the ink moves to a
-				 * state of its own (review round 3, R3-3).
-				 *
-				 * Gated on `unreadMark`, not on `row.attention?.unseen`, and the gating
-				 * is the contract rather than a preference: this module's own test
-				 * asserts that an ACKNOWLEDGED row renders IDENTICALLY to an
-				 * unacknowledged one for every code that draws NO mark, so an
-				 * unconditional suffix changes what an acknowledged busy, wedged or
-				 * gated row says — and a busy row claiming ", unread" is the reported
-				 * defect in the one place the ink cannot show it.
-				 *
-				 * The marks are the predicate's three: `complete`, and the `error` and
-				 * `interrupted` codes the runtime labels "Unseen error" / "Unseen
-				 * interruption" and ranks as outstanding completions.
-				 *
-				 * THE TWO FAILURE CODES THEREFORE SAY "UNSEEN" TWICE — "Unseen error,
-				 * unread" — and that redundancy is ACCEPTED rather than trimmed (design
-				 * D4 and QA Q-2 both raised it). Gating the suffix on `unreadMark ===
-				 * "complete"` would be a SECOND rule about which codes carry the
-				 * suffix, which is the two-derivations class this whole change removes:
-				 * the suffix would become the check's property rather than the mark's,
-				 * and a counted row's name would say nothing about the mark it draws.
-				 * It is also the CLIENT's own statement of the level, where the
-				 * "Unseen" in the label is the backend's word for it — which is what
-				 * keeps the name true if that label is ever reworded for a code whose
-				 * ink does not step between read and unseen.
-				 */}
-				{unreadMark !== null ? ", unread" : ""}
-			</span>
+		>
+			{/* The lane for a picture row sits under the avatar (chat-sidebar), not on this 10px plate. */}
+			<Icon className={cn("size-2", ink)} />
 		</span>
 	);
 }

@@ -1,0 +1,81 @@
+{
+ "schema": 1,
+ "audit_id": "s16f-4d7a5444aa0b-r4",
+ "locale": "es",
+ "namespace": "ui.chat.canonical",
+ "audit_date": "2026-11-12",
+ "slice": "S16f (damianvtran/local-operator-ui#1876) — delta audit, landed in the round-4 integration commit",
+ "head": "8180eff1f705eb79d4df5123d6108c539b585b2e",
+ "pr": 1876,
+ "audit_kind": "delta — fresh independent audit of the 15 keys (5 main-added loading.* + 10 PR-added S16f generation-card labels) on the MERGED bytes, plus a mechanical integrity proof for the other 452 values",
+ "scope": "The 15 keys named by the manager in es/ui.chat.canonical.json: loading.{cold,older,region_label,remote,revalidating}; media.{image_label,sound_label}; sound.batch.{item_status,latest_update,summary}; sound.cost.{batch_unknown,estimated_zero,no_charge,unknown}; supplement.sound_fallback_label. Read in full against the English source + context sidecar, the core glossary and the es style guide; the other 452 values were proven byte-identical to origin/main (and the 10 PR keys to 107ff1dd) rather than re-audited. Catalogue audit only: not rendered fit, activation or release.",
+ "key_count": 15,
+ "namespace_key_count": 467,
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "f6655caaf9ed",
+  "instance": "4d7a5444aa0b",
+  "model": "deepseek/deepseek-flash",
+  "independence": "Independent audit: fresh session f6655caaf9ed, not the PR #1876 translator (i18n-translator, anthropic/claude-sonnet-5-5 per the ledger row) and not the earlier es auditors of these keys (round-1 7a0414234ed5 / round-2 756ed6175781 for the 10 PR keys, 4b8febc34595 / 15686088b7ce for the 5 loading keys). I did not translate, edit, commit or push anything: every check ran read-only against the shared manager-owned worktree ~/local-operator-ui/.worktrees/i18n-s16a @ 8180eff1f705eb79d4df5123d6108c539b585b2e. Judged by reasoning from the English source, its context sidecar, the core glossary, the es style guide, shipped es catalogue precedent and real renders through the app's own ICU formatter; no translation/MT service was used and no back-translation was performed. Disclosure: same model family as rounds 1-2 for this locale, so independence here is by session and by re-derivation from the bytes.",
+  "model_note": "Actual model is this session's own header line (Model: deepseek/deepseek-flash), the i18n-auditor role default; no mid-run fallback was commanded or observed. The served provider cannot be independently verified from inside the session.",
+  "fallback": "none reported",
+  "actual_model_source": "session header line: Model: deepseek/deepseek-flash"
+ },
+ "translator": "i18n-translator, anthropic/claude-sonnet-5-5 (PR #1876 S16f labels) and the earlier main-side loading.* wave (per the es/ui.chat.canonical ledger row); this auditor is independent of both",
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+   "sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+   "sha256": "8f56e0d2b384c6b41add57a64e6c863e565cb61d5a7c0de482d42f380be3acfe"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/es/ui.chat.canonical.json",
+   "sha256": "547b85e9670eec79f82211f50325092bf75c13eda4504995cce1a1d5ab25e272"
+  }
+ },
+ "artifacts": {
+  "report": {
+   "path": "report.md",
+   "sha256": "8ce2efa3768805d60c4c325192cedb1ab0f07a537bd013707137f49ecafdd4d1"
+  },
+  "execution_log": {
+   "path": "audit.log",
+   "sha256": "6428d2e66b0a7233f60d6577d520654f9d76e2929b9abc1d1cc4abfbd8d9b9e0",
+   "note": "the auditor's execution log as supplied, copied byte-for-byte; it is command output, not notes"
+  },
+  "receipt": {
+   "path": "i18n/receipts/4d7a5444aa0b.json",
+   "sha256": "0d53576dd82e8db22742ddcaa18810c5e786cf93d88d15f0d6181de37adfc7c3",
+   "note": "byte-for-byte copy written by scripts/i18n/ledger-assemble.mjs; the binding receipt lives there"
+  }
+ },
+ "companions_present": [
+  "audit.log",
+  "report.md"
+ ],
+ "current_report_verdict": {
+  "status": "passed",
+  "result": "clean-with-findings",
+  "unresolved_blocker_major_count": 0,
+  "counts": {
+   "blocker": 0,
+   "major": 0,
+   "minor": 1,
+   "nit": 2
+  },
+  "finding_ids": [
+   "S16F-ES-A3-01",
+   "S16F-ES-A3-02",
+   "S16F-ES-A3-03"
+  ]
+ },
+ "provenance": {
+  "record_written_by": "integrator s16f-integrator-3 from the receipt and the auditor's report — NOT written by the auditor",
+  "source_receipt": "~/.local-operator/sessions/f6655caaf9ed/scratchpad/receipt.json",
+  "receipt_sha256": "0d53576dd82e8db22742ddcaa18810c5e786cf93d88d15f0d6181de37adfc7c3",
+  "why_note": "locales whose auditor wrote its own record.json (ur, hi) keep that file verbatim; this record is derived, so it cites only receipt fields and re-computed hashes"
+ }
+}

@@ -1,0 +1,15 @@
+PASS
+BLOCKER=0 MAJOR=0 MINOR=0 NIT=0
+Agent: i18n-auditor-ru; session: e3d68e9ca8b0; actual model: openai/gpt-6.1-sol; temporary fallback after anthropic/claude-sonnet-5-5 and anthropic/claude-opus-5-5 quota failures (host model-switch notices).
+Key: ui.chat.sidebar.agents.list_join
+Source: {position, select, pair {{head} and {tail}} middle {{head}, {tail}} other {{head} and {tail}}}
+Target: {position, select, pair {{head} и {tail}} middle {{head}, {tail}} other {{head} и {tail}}}
+Inspected pair: {head} и {tail}
+Inspected middle: {head}, {tail}
+Inspected other: {head} и {tail}
+Two names: Coder и Reviewer
+Three names: Coder, Reviewer и Designer
+Cyrillic/i-initial tail: Кодер, Ревьюер и Исследователь
+Rationale: Russian uses an ordinary comma followed by U+0020 between earlier list items, and U+0020 и U+0020 before the last item. No comma precedes a single final и in an ordinary homogeneous enumeration. The brief's parenthetical assertion to the contrary is incorrect; do not introduce an English Oxford comma. Pair Coder и Reviewer is natural. No tail-dependent conjunction alternation equivalent to Spanish y/e applies. No glossary term, plural category, markup or protected token is introduced by this conjunction-only key. No numerical width budget exists in its context; separators add no avoidable width.
+Mechanical: real intl-messageformat formatter exercised pair, middle, end=>other and unknown=>other; missing-tail negative control throws; ICU type/select/arm and placeholder parity asserted. Validators: context-parity, generate --check, check-duplicates, locale-parity.test.mjs (44/44) passed. No full test suite, package manager, rebuild or repository writes.
+Scope: one key only, not a namespace-wide audit. Ledger and canonical evidence retention must be performed by parent; assignment explicitly made checkout read-only.

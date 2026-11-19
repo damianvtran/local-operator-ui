@@ -1,0 +1,146 @@
+{
+  "head": "2cf1ea7b5fd95b85d6c8bfaa264f6bd3c4e5c3b9",
+  "base": "6031bc9ad71",
+  "namespaces": [
+    "ui.chat.canonical",
+    "ui.agents.upload"
+  ],
+  "hashes": {
+    "ui.chat.canonical": {
+      "en": {
+        "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+        "sha256": "cd755f73444d7acff3e681c35bbf7e0da30bc61851f28ad711904f23c20c693a"
+      },
+      "context": {
+        "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+        "sha256": "4c2a77ff391e074b4561f71f9ceaf2690362c89880b259cba69e6a58832d80dc"
+      },
+      "ru": {
+        "path": "src/i18n/catalogues/ru/ui.chat.canonical.json",
+        "sha256": "fc107d781035ed4e7e043ff844b9bf6d1a36b51c293e34c90e5f37d13a59a990"
+      }
+    },
+    "ui.agents.upload": {
+      "en": {
+        "path": "src/i18n/catalogues/en/ui.agents.upload.json",
+        "sha256": "388f6b2348eb76b3c3f6ac074ce32434fe75a31a9a41aa5eaead59c34caa97ab"
+      },
+      "context": {
+        "path": "src/i18n/catalogues/en/ui.agents.upload.context.json",
+        "sha256": "b2cff9fc8975e5bc6c394a39a9cbd464a53304f6be9657f80446801c0072734f"
+      },
+      "ru": {
+        "path": "src/i18n/catalogues/ru/ui.agents.upload.json",
+        "sha256": "fd5cf0acdb350da982e667157df051d189405ed78a20158b484705ea4b56941c"
+      }
+    }
+  },
+  "entries": [
+    {
+      "namespace": "ui.chat.canonical",
+      "key": "ui.chat.canonical.transcript.earlier_text_offscreen",
+      "source": "Earlier text of this answer is not on screen",
+      "target": "Начало этого ответа не отображается на экране",
+      "source_arguments": [],
+      "target_arguments": [],
+      "formatted": "Начало этого ответа не отображается на экране",
+      "checks": "PASS: ICU parse/format; exact placeholders; context; NFC; no bidi controls; no English residue outside placeholders"
+    },
+    {
+      "namespace": "ui.chat.canonical",
+      "key": "ui.chat.canonical.transcript.interrupted",
+      "source": "Interrupted",
+      "target": "Прервано",
+      "source_arguments": [],
+      "target_arguments": [],
+      "formatted": "Прервано",
+      "checks": "PASS: ICU parse/format; exact placeholders; context; NFC; no bidi controls; no English residue outside placeholders"
+    },
+    {
+      "namespace": "ui.chat.canonical",
+      "key": "ui.chat.canonical.transcript.no_answer_given",
+      "source": "No answer given",
+      "target": "Ответ не дан",
+      "source_arguments": [],
+      "target_arguments": [],
+      "formatted": "Ответ не дан",
+      "checks": "PASS: ICU parse/format; exact placeholders; context; NFC; no bidi controls; no English residue outside placeholders"
+    },
+    {
+      "namespace": "ui.chat.canonical",
+      "key": "ui.chat.canonical.transcript.not_run",
+      "source": "Not run",
+      "target": "Не запускалось",
+      "source_arguments": [],
+      "target_arguments": [],
+      "formatted": "Не запускалось",
+      "checks": "PASS: ICU parse/format; exact placeholders; context; NFC; no bidi controls; no English residue outside placeholders"
+    },
+    {
+      "namespace": "ui.chat.canonical",
+      "key": "ui.chat.canonical.transcript.answer_may_be_missing",
+      "source": "Part of this answer may be missing",
+      "target": "Часть этого ответа может отсутствовать",
+      "source_arguments": [],
+      "target_arguments": [],
+      "formatted": "Часть этого ответа может отсутствовать",
+      "checks": "PASS: ICU parse/format; exact placeholders; context; NFC; no bidi controls; no English residue outside placeholders"
+    },
+    {
+      "namespace": "ui.chat.canonical",
+      "key": "ui.chat.canonical.transcript.worked",
+      "source": "Worked",
+      "target": "Велась работа",
+      "source_arguments": [],
+      "target_arguments": [],
+      "formatted": "Велась работа",
+      "checks": "PASS: ICU parse/format; exact placeholders; context; NFC; no bidi controls; no English residue outside placeholders"
+    },
+    {
+      "namespace": "ui.chat.canonical",
+      "key": "ui.chat.canonical.transcript.worked_for",
+      "source": "Worked for {duration}",
+      "target": "Время работы: {duration}",
+      "source_arguments": [
+        "duration"
+      ],
+      "target_arguments": [
+        "duration"
+      ],
+      "formatted": "Время работы: 2m 4s",
+      "checks": "PASS: ICU parse/format; exact placeholders; context; NFC; no bidi controls; no English residue outside placeholders"
+    },
+    {
+      "namespace": "ui.chat.canonical",
+      "key": "ui.chat.canonical.transcript.job_suffix",
+      "source": "· Job {id}",
+      "target": "· Задание {id}",
+      "source_arguments": [
+        "id"
+      ],
+      "target_arguments": [
+        "id"
+      ],
+      "formatted": "· Задание job_ru-42",
+      "checks": "PASS: ICU parse/format; exact placeholders; context; NFC; no bidi controls; no English residue outside placeholders"
+    },
+    {
+      "namespace": "ui.agents.upload",
+      "key": "ui.agents.upload.failure.publish_fallback",
+      "source": "The agent could not be published. Try again.",
+      "target": "Не удалось опубликовать агента. Попробуйте ещё раз.",
+      "source_arguments": [],
+      "target_arguments": [],
+      "formatted": "Не удалось опубликовать агента. Попробуйте ещё раз.",
+      "checks": "PASS: ICU parse/format; exact placeholders; context; NFC; no bidi controls; no English residue outside placeholders"
+    }
+  ],
+  "summary": {
+    "keys_checked": 9,
+    "passed": 9,
+    "failed": 0
+  },
+  "limitations": [
+    "Formatter-level text, not rendered UI. Duration/ID samples deliberately retain supplied technical text."
+  ]
+}

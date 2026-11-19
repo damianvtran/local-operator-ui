@@ -1,0 +1,158 @@
+{
+  "schema": 1,
+  "receipt_kind": "independent context-only addendum; not a replacement linguistic audit or ledger receipt",
+  "auditor": "reviewer",
+  "instance": "f93eb129057e-context-followup",
+  "session": "f93eb129057e",
+  "model": "anthropic/claude-sonnet-5-5",
+  "model_provenance": "Current host session descriptor names anthropic/claude-sonnet-5-5 for this context-only follow-up. Original receipts retain their recorded openai/gpt-6.1-sol model and fallback history; this addendum does not rewrite historical provenance. No new fallback announced for this follow-up.",
+  "date": "2026-11-03",
+  "status": "passed",
+  "result": "clean",
+  "scope": {
+    "namespace": "ui.teamBridge",
+    "prior_audited_head": "c162569e8ff8bceb32d7a011c5fa52c17c07b61c",
+    "observed_local_head": "9fb7a423e6103a9d78069c8602317ba4c6933b96",
+    "context_path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+    "context_sha256": "b309e464421167093b9434f33944bbbb1931385a63c822cc3763c4f1c5a6cb49",
+    "keys": [
+      "ui.teamBridge.attachmentCard.bytes",
+      "ui.teamBridge.attachmentCard.file",
+      "ui.teamBridge.attachmentCard.list",
+      "ui.teamBridge.attachmentCard.metadata_only",
+      "ui.teamBridge.attachmentCard.unavailable"
+    ],
+    "working_tree_note": "Context additions are observed local working-tree bytes; local HEAD alone is not a commit receipt for them. This binds the exact file hash, not any unobserved future amended commit.",
+    "not_reviewed": "Other code/remediation, CI, runtime fit, browser/RTL, tests, unchanged namespace translations."
+  },
+  "checks": {
+    "exactly_five_context_entries_added": true,
+    "all_existing_context_values_unchanged": true,
+    "all_eight_catalogue_raw_byte_hashes_match_original_audit": true,
+    "all_seven_original_receipts_byte_identical_to_original_published_hashes": true
+  },
+  "per_key_assessment": {
+    "ui.teamBridge.attachmentCard.list": "PASS: count names attachments, not progress; descriptor/count-only distinction and lack of byte authority match audited label meaning. Locale-specific plural instructions allow the existing invariant noun phrases.",
+    "ui.teamBridge.attachmentCard.file": "PASS: generic File title deliberately covers images and nonimages and forbids identifiers, paths, MIME and invented names. Matches original safe-name interpretation.",
+    "ui.teamBridge.attachmentCard.bytes": "PASS: formatted byte size, not dimensions/progress or scaled units; explicit Spanish identical-unit rationale is correct. Inflection instruction supports, but does not fix, existing Russian R2.",
+    "ui.teamBridge.attachmentCard.metadata_only": "PASS: preview unavailability is confined to this view, without promising transport/access/retry; matches existing values in all seven locales.",
+    "ui.teamBridge.attachmentCard.unavailable": "PASS: single neutral wording across terminal/unknown states, without disclosing retention/moderation/account/refusal cause; matches original audit semantics."
+  },
+  "findings": [],
+  "prior_receipts": [
+    {
+      "locale": "es",
+      "path": "/Users/damian/.local-operator/sessions/f93eb129057e/scratchpad/s3-translation-audit/f93eb129057e-es.json",
+      "sha256": "4fe558aa7e29b4b535148887365af91eb277eac6cab6de31dcd979f4f2c43dcd",
+      "instance": "f93eb129057e-es",
+      "model_as_recorded": "openai/gpt-6.1-sol",
+      "inherited_result": "clean",
+      "inherited_findings": [],
+      "catalogue_sha256": {
+        "en": "00a4cb6150b71677766c8527369527497cf29ec3ccb91cb5e2b8a3d1c65baffd",
+        "es": "4e4149606e029b605eb55acbc8309f7989fe00bfe75dc2b6c69d3da2cf39536c"
+      }
+    },
+    {
+      "locale": "fr",
+      "path": "/Users/damian/.local-operator/sessions/f93eb129057e/scratchpad/s3-translation-audit/f93eb129057e-fr.json",
+      "sha256": "60a61625870414586e08c9a4a1bc5b0969d42024c2527c7de474733ecf6d09eb",
+      "instance": "f93eb129057e-fr",
+      "model_as_recorded": "openai/gpt-6.1-sol",
+      "inherited_result": "clean",
+      "inherited_findings": [],
+      "catalogue_sha256": {
+        "en": "00a4cb6150b71677766c8527369527497cf29ec3ccb91cb5e2b8a3d1c65baffd",
+        "fr": "50fbac8752e8891eb4bc2ad3c71fb0e173eb6fbde1a155f31a3058acbf642329"
+      }
+    },
+    {
+      "locale": "hi",
+      "path": "/Users/damian/.local-operator/sessions/f93eb129057e/scratchpad/s3-translation-audit/f93eb129057e-hi.json",
+      "sha256": "0daccb8bf6333a03e284ad1139e83016e84f10f0205d55002cd847c098609294",
+      "instance": "f93eb129057e-hi",
+      "model_as_recorded": "openai/gpt-6.1-sol",
+      "inherited_result": "clean",
+      "inherited_findings": [],
+      "catalogue_sha256": {
+        "en": "00a4cb6150b71677766c8527369527497cf29ec3ccb91cb5e2b8a3d1c65baffd",
+        "hi": "688eea4077454fb0c029bf48279a18c805def8b98050c2a7a536631cf784d8cd"
+      }
+    },
+    {
+      "locale": "ru",
+      "path": "/Users/damian/.local-operator/sessions/f93eb129057e/scratchpad/s3-translation-audit/f93eb129057e-ru.json",
+      "sha256": "fe09d7e37c58de32411de72a9931c77987ae8ef8429777982b98153d426e71b5",
+      "instance": "f93eb129057e-ru",
+      "model_as_recorded": "openai/gpt-6.1-sol",
+      "inherited_result": "clean-with-findings",
+      "inherited_findings": [
+        {
+          "id": "R2",
+          "severity": "MINOR",
+          "key": "ui.teamBridge.attachmentCard.bytes",
+          "file": "src/i18n/catalogues/ru/ui.teamBridge.json",
+          "line": 338,
+          "description": "Invariant байт is not grammatically correct for the few category: a two-byte attachment displays 2 байт rather than 2 байта. Meaning remains clear; this is nonblocking linguistic polish.",
+          "recommendation": "Use ICU size plural with one {# байт} few {# байта} many {# байт} other {# байта}, retaining numeric size.",
+          "disposition": "Not changed by reviewer; implementer may fix in batched remediation or explicitly defer in PR thread."
+        }
+      ],
+      "catalogue_sha256": {
+        "en": "00a4cb6150b71677766c8527369527497cf29ec3ccb91cb5e2b8a3d1c65baffd",
+        "ru": "6af703983652a04d8f452ff16d694eafd74cce4d7f7b05030d4e830560531ced"
+      }
+    },
+    {
+      "locale": "ur",
+      "path": "/Users/damian/.local-operator/sessions/f93eb129057e/scratchpad/s3-translation-audit/f93eb129057e-ur.json",
+      "sha256": "99c4ad13393194f3939f88fd8587b9014d0b721b80722db6353bcfe4d27b04f0",
+      "instance": "f93eb129057e-ur",
+      "model_as_recorded": "openai/gpt-6.1-sol",
+      "inherited_result": "clean",
+      "inherited_findings": [],
+      "catalogue_sha256": {
+        "en": "00a4cb6150b71677766c8527369527497cf29ec3ccb91cb5e2b8a3d1c65baffd",
+        "ur": "81bb71ab4c38818d6af5a1c8475c80e1bacea89c5dcb991eb79a40748d032c19"
+      }
+    },
+    {
+      "locale": "vi",
+      "path": "/Users/damian/.local-operator/sessions/f93eb129057e/scratchpad/s3-translation-audit/f93eb129057e-vi.json",
+      "sha256": "3fdd568a4cea5597e607d28e2bdd78fd8520da97f4a1ba2a0f92c5db5b2722e3",
+      "instance": "f93eb129057e-vi",
+      "model_as_recorded": "openai/gpt-6.1-sol",
+      "inherited_result": "clean",
+      "inherited_findings": [],
+      "catalogue_sha256": {
+        "en": "00a4cb6150b71677766c8527369527497cf29ec3ccb91cb5e2b8a3d1c65baffd",
+        "vi": "9e50088b52ae39b539e6adad89be4064a976a10906f0ccd8db18123ff5278607"
+      }
+    },
+    {
+      "locale": "zh-CN",
+      "path": "/Users/damian/.local-operator/sessions/f93eb129057e/scratchpad/s3-translation-audit/f93eb129057e-zh-cn.json",
+      "sha256": "3080a67ffe533a151a201f7871cd40e6ccab40caaa48331fe7bc65992671c2e0",
+      "instance": "f93eb129057e-zh-cn",
+      "model_as_recorded": "openai/gpt-6.1-sol",
+      "inherited_result": "clean",
+      "inherited_findings": [],
+      "catalogue_sha256": {
+        "en": "00a4cb6150b71677766c8527369527497cf29ec3ccb91cb5e2b8a3d1c65baffd",
+        "zh-CN": "a24f0b1db6a5f97e6739f31bafc65ccb4ac12db210592bcfdbd9fd16468adb23"
+      }
+    }
+  ],
+  "inherited_linguistic_verdicts": {
+    "es": "clean",
+    "fr": "clean",
+    "hi": "clean",
+    "ru": "clean-with-findings",
+    "ur": "clean",
+    "vi": "clean",
+    "zh-CN": "clean"
+  },
+  "inherited_russian_R2": "MINOR unchanged; implementer reports explicit deferral. This context-only audit does not clear or silently remove R2.",
+  "integration_instructions": "Retain this addendum as a tracked canonical evidence companion/manifest reference. Keep original seven receipts byte-for-byte. Do not change their context hashes or identity fields, do not replace their Russian finding count, and do not use this context-only result as a fresh whole-namespace linguistic/QA approval.",
+  "execution": "Only source diff/JSON/hash inspection; no repository edits, tests, typecheck, builds or browser. No check-i18n execution performed by this reviewer; passing gate is a peer-reported result, not independently claimed here."
+}

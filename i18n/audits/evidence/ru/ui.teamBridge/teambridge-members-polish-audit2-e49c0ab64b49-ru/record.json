@@ -1,0 +1,46 @@
+{
+	"record_kind": "translation audit record (second independent auditor)",
+	"locale": "ru",
+	"namespace": "ui.teamBridge",
+	"date": "2026-10-30",
+	"auditor": {
+		"agent": "translation-auditor",
+		"session": "e49c0ab64b49",
+		"model": "anthropic/claude-opus-5-5",
+		"independence": "Second independent auditor: session e49c0ab64b49 (team lopdev, role translation-auditor), distinct from translator (translator / anthropic/claude-opus-5-5) and from first auditor session b5610aecd5f2. Verdicts were formed from the catalogues, context sidecar, glossary and style guides BEFORE reading the first auditor's receipts; comparison recorded below. No catalogue edited."
+	},
+	"paths": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "20a8960b411dbff3dc7a8b6e029a4a17091e95980bd1bab946445597aff3277f"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/ru/ui.teamBridge.json",
+			"sha256": "425881bf26885bbfde26462e002e78c276d353911049bb56f82c745120c21f02"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "abbf67496bc6fecdd4d5795e2fb6b15d4d6a1cefad59ba69b303656b88c8b4cd"
+		}
+	},
+	"receipt": {
+		"path": "i18n/receipts/e49c0ab64b49-ru.json",
+		"sha256": "edc7191fe97ac1b6b1ec1d5e1c20eeb975cb2d96c93dd00f1c577bd2a73431fc"
+	},
+	"findings": [
+		{
+			"severity": "minor",
+			"id": "A2-RU-M1",
+			"key": "ui.teamBridge.members.invitation_note_v2",
+			"current": "или выключить для него звук",
+			"proposed": "или перевести его в режим «Без звука»",
+			"reason": "\"выключить для него звук\" (turn the sound off for it) is a literal calque that reads as muting audio for the agent; the locale's mute control is labelled «Без звука» (ui.teamBridge.notify.mute), so naming that mode is idiomatic and glossary-consistent."
+		}
+	],
+	"status": "clean-with-findings: 0 blocker, 0 major, 1 minor, 0 nit",
+	"first_auditor": {
+		"session": "b5610aecd5f2",
+		"receipt": "i18n/receipts/b5610aecd5f2-ru.json"
+	},
+	"notes_not_execution_log": "Linguistic judgements; no command output is reproduced here."
+}

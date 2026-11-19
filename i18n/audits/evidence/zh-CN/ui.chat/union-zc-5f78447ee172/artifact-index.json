@@ -1,0 +1,19 @@
+{
+	"audit_id": "union-zc-5f78447ee172",
+	"locale": "zh-CN",
+	"namespace": "ui.chat",
+	"files": {
+		"i18n/audits/evidence/zh-CN/ui.chat/union-zc-5f78447ee172/record.json": {
+			"sha256": "9194e2406ce724f5f19522628262c75b92188906327604ec784a5736624f021e",
+			"bytes": 11496
+		},
+		"i18n/audits/evidence/zh-CN/ui.chat/union-zc-5f78447ee172/audit.log": {
+			"sha256": "bf33a3786bd65bffd491497d7feb33880838dca07e20a066425dda4fe321d932",
+			"bytes": 44794
+		},
+		"i18n/receipts/union-ui-chat-zhcn-20261028-5f78447ee172.json": {
+			"sha256": "472aa11ef67b36fcc76c086b6da0fa3a1f147f252618b723def1f7d0ab874bb3",
+			"bytes": 15477
+		}
+	}
+}

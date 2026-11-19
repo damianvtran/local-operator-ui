@@ -45,6 +45,8 @@
  * to leave the existing name alone.
  */
 
+import { t } from "@shared/i18n";
+
 /**
  * What a conversation reads as before anyone has named it.
  *
@@ -52,7 +54,8 @@
  * catalogue's own fallback are asserted to agree about it; the sidebar's copy
  * is left where it is (this change does not own that file's fallback).
  */
-export const UNTITLED_CHAT = "Untitled chat";
+// Share the existing fallback with the transcript; resolve it at call time.
+export const UNTITLED_CHAT_KEY = "ui.chat.canonical.untitled";
 
 /**
  * A title counts as unknown when it is absent or whitespace-only.
@@ -74,19 +77,53 @@ export function isBlankTitle(title: string | null | undefined): boolean {
  * fallback. Live first is what keeps a real rename showing the moment it lands;
  * the catalogue second is what makes the header agree with the row the user
  * clicked, and it is a READ of that row — nothing here writes a name back.
+ *
+ * A DRAFT WITH A SESSION IS NOT A NEW CHAT (the operator's report, 2026-10-22).
+ * The branch used to key on `draftKey` alone, so a staged row that had already
+ * CREATED a conversation still wore "New chat with <team>" over a pane showing
+ * that conversation - and, once the conversation was deleted, over the
+ * missing-session notice. The header and the body were reading two facts
+ * (`activeDraftKey` here, the draft's `sessionId` in `panelSessionIdOfView`) and
+ * the screen said both. So the draft branch now states the new-chat sentence
+ * only while the row has no conversation to name; with one, the ordinary
+ * live/catalogue precedence names the conversation being shown (and a deleted
+ * one still gets its remembered name from the caller's `catalogueTitle`).
  */
 export function resolveChatTitle(input: {
 	draftKey?: string | null;
+	/** The conversation the staged row has already created, when it has one. */
+	draftSessionId?: string | null;
 	draftTarget?: string | null;
 	liveTitle?: string | null;
 	catalogueTitle?: string | null;
 }): string {
-	const { draftKey, draftTarget, liveTitle, catalogueTitle } = input;
-	if (draftKey)
-		return draftTarget ? `New chat with ${draftTarget}` : "New chat";
+	const { draftKey, draftSessionId, draftTarget, liveTitle, catalogueTitle } =
+		input;
+	if (draftKey && !draftSessionId)
+		return draftTarget
+			? t("ui.chat.header.new_chat_with", { target: draftTarget })
+			: t("ui.chat.header.new_chat");
 	if (!isBlankTitle(liveTitle)) return liveTitle as string;
 	if (!isBlankTitle(catalogueTitle)) return catalogueTitle as string;
-	return UNTITLED_CHAT;
+	/*
+	 * A CONVERSATION THAT HAS NO NAME YET KEEPS THE DRAFT'S OWN SENTENCE (design
+	 * review rounds 1 D1 and 2 D8). The create writes `sessionId` before the
+	 * message is acknowledged, and the name arrives a read later - so falling
+	 * straight through to `UNTITLED_CHAT` would blank the header to "Untitled
+	 * chat" for exactly the window the user is watching their first send. The
+	 * binding is the durable identity the header's description line already names,
+	 * so it is the honest stand-in for a targeted row.
+	 *
+	 * AN UNTARGETED DRAFT IS "Untitled chat" FROM THE CREATE (send-path design
+	 * round 1, D1c - superseding round 2's D8 "keep New chat"). Holding "New chat"
+	 * past the create left the header disagreeing with the sidebar, which lists
+	 * the conversation as "Untitled chat" from that very commit, and then flipped
+	 * when the draft row retired ~120 ms later: two swaps the reader watched
+	 * during their first send. Switching here makes it one swap, in the commit the
+	 * sidebar row appears, and the retire changes nothing.
+	 */
+	if (draftKey && draftTarget) return draftTarget;
+	return t(UNTITLED_CHAT_KEY);
 }
 
 /**
@@ -113,4 +150,33 @@ export function catalogueTitleUpdate(input: {
 	const { liveTitle } = input;
 	if (!isBlankTitle(liveTitle)) return { title: liveTitle as string };
 	return {};
+}
+
+/**
+ * The header's second line across a new chat's first send, from the press until
+ * the stream states who is answering (PR #1872 QA Q4, design D6).
+ *
+ * The slot changes ONCE, text for text, when the identity is stated - never
+ * through a progress sentence or an empty line in between. "Starting the
+ * session" here was a ~3-frame flash at the press (the create answers that
+ * fast), then the line went blank for the create-to-first-snapshot wait before
+ * the agent/team controls replaced it; the transcript's wait line already
+ * states that the session is starting. One precedence serves both stretches -
+ * the press before the create answers, and this pane's created session before
+ * the owner names an identity: a targeted draft names its target (held from the
+ * press, so the line never goes target -> path -> target), an untargeted one
+ * keeps the directory line it already wore - the owner's, then the staged one.
+ *
+ * Empty means the slot has nothing to say; the caller keeps its own held line
+ * box for that.
+ */
+export function resolveFirstSendDescription(input: {
+	/** The draft's bound target as the header names it, held from the press. */
+	targetDisplay?: string | null;
+	/** The directory the live stream (or a pending move) reports. */
+	liveCwd?: string | null;
+	/** The directory the draft staged for `sessions.create`. */
+	stagedCwd?: string | null;
+}): string {
+	return input.targetDisplay || input.liveCwd || input.stagedCwd || "";
 }

@@ -5,6 +5,8 @@
  */
 
 import { Button } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import type { FC } from "react";
 
 type UnsetSliderSettingProps = {
@@ -46,6 +48,7 @@ export const UnsetSliderSetting: FC<UnsetSliderSettingProps> = ({
 	onSetValue,
 	icon,
 }) => {
+	useI18nLocale();
 	return (
 		/* No outer margin: the container owns the gap between rows. */
 		<div className="flex flex-col rounded-md border border-control bg-surface p-4">
@@ -57,7 +60,9 @@ export const UnsetSliderSetting: FC<UnsetSliderSettingProps> = ({
 				<span className="mb-3 text-body-sm text-ink-muted">{description}</span>
 			</div>
 			<div className="flex items-center justify-between">
-				<span className="text-meta text-ink-dim">Not set yet</span>
+				<span className="text-meta text-ink-dim">
+					{t("ui.agents.settings.chat.not_set_yet")}
+				</span>
 				<Button
 					variant="outline"
 					size="sm"
@@ -65,7 +70,9 @@ export const UnsetSliderSetting: FC<UnsetSliderSettingProps> = ({
 						await onSetValue(defaultValue);
 					}}
 				>
-					Set to default ({defaultValue})
+					{t("ui.agents.settings.chat.set_to_default", {
+						value: String(defaultValue),
+					})}
 				</Button>
 			</div>
 		</div>

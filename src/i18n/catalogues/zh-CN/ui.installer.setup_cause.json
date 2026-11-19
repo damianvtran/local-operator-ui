@@ -1,0 +1,9 @@
+{
+	"ui.installer.setup_cause.disk_full": "安装后端时，这台Mac的磁盘空间已用尽。请腾出一些空间后重试。",
+	"ui.installer.setup_cause.clock_or_expired": "Local Operator判定软件包索引的证书已过期或尚未生效。通常是系统时钟不准——请检查本机的日期和时间后重试；如果时钟无误，则是证书本身已过期，需要由该索引的运营方续期。",
+	"ui.installer.setup_cause.tls_interception": "Local Operator无法验证与软件包索引的安全连接，通常是因为网络对该连接进行了检查（如企业代理或防火墙）。请向IT部门索取根证书，并添加到系统证书存储中（此应用已信任该存储），然后重试。",
+	"ui.installer.setup_cause.unreachable": "Local Operator无法连接到软件包索引，通常是网络或代理的问题。请检查网络连接后重试。",
+	"ui.installer.setup_cause.locked": "另一个Local Operator副本正在安装其后端。请稍后重试。",
+	"ui.installer.setup_cause.not_started": "后端已安装，但未能正常启动。",
+	"ui.installer.setup_cause.file_missing": "安装所需的某个文件缺失，这通常意味着下载或复制未完成。"
+}

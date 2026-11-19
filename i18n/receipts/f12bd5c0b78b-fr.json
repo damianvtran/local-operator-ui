@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "auditor": "i18n-auditor",
+  "model": "radient/auto",
+  "instance": "f12bd5c0b78b-fr",
+  "locale": "fr",
+  "namespace": "ui.settings.shortcuts",
+  "date": "2026-10-29",
+  "status": "passed",
+  "sha256": {
+    "fr": "dfa6130f3200c04e244b0550f88d7f0feb08440c40b07fbc6632569b25b03c42",
+    "en": "5967dfaf152c5ca139a5d33347d94597a1d25b3dd01bb6bd37cdb881858aa7d4"
+  },
+  "findings": [
+    {
+      "severity": "nit",
+      "key": "ui.settings.shortcuts.keyboard_shortcuts_section.browser_shortcuts_answer_only_while_the_browser_has_focus",
+      "issue": "The regenerated rows used U+00A0 (no-break space) before \":\" where this file's other 32 occurrences and 77 of 80 French catalogue files use U+202F (narrow no-break space); the file became internally inconsistent in the changed rows.",
+      "disposition": "fixed in this audit",
+      "remediation": "Normalised the 9 U+00A0 occurrences in the 8 changed rows to U+202F; no wording changed."
+    }
+  ],
+  "scope": "Changed rows only: 8 keys (1 new paragraph + 7 reserved-sentence tails). Key set == English (64/64), ICU placeholder parity, sentence-by-sentence meaning against the .context.json note, register and terminology against the same file and corpus.",
+  "notes": "Wording unchanged. Register (vous) and terms (panneau, barre des panneaux, cache) consistent with the file. Native-reader naturalness was NOT verified by a native speaker of the target language; this audit is a semantic/structural read by an agent. Meaning, register, placeholder and terminology consistency were checked against the English source and the existing target-locale corpus."
+}

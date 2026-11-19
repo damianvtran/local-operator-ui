@@ -37,6 +37,14 @@ const code = (path) =>
 
 const SIDEBAR = "src/renderer/src/features/chat/components/chat-sidebar.tsx";
 /**
+ * The search block's accessible name and the Include archived label come from the
+ * sidebar's English catalogue now: the slice is anchored on the key the control
+ * renders, and the copy is read from the message the user actually hears.
+ */
+const SIDEBAR_COPY = JSON.parse(
+	read("src/i18n/catalogues/en/ui.chat.sidebar.json"),
+);
+/**
  * The surface the archive and discard messages are raised by since 2026-09-27: the
  * always-mounted component beside the global container (`main.tsx`), which replaced
  * the panel's own toast lane (operator request; `docs/design/sidebar-row-space.md`
@@ -219,8 +227,13 @@ test("the archived row carries a marker that is not in the contested trailing sl
 	assert.match(marker, /aria-hidden="true"/);
 	// The word reaches a screen reader through the `sr-only` span, and the tooltip
 	// states the same fact - the two channels agree because there is one string.
+	// That string is now the translated `archived_suffix`; the explicit key is the
+	// assertion, so the old English literal cannot creep back into the row.
 	assert.match(marker, /sr-only/);
-	assert.match(rows, /\{archived \? ", archived" : ""\}/);
+	assert.match(
+		rows,
+		/\{archived \? t\("ui\.chat\.sidebar\.row\.archived_suffix"\) : ""\}/,
+	);
 	/*
 	 * AND IT SITS BEFORE THE TITLE, not in the trailing slot. That slot admits
 	 * exactly one statement (`rowTrailingStatement` records the three layouts that
@@ -229,7 +242,7 @@ test("the archived row carries a marker that is not in the contested trailing sl
 	 * query is on screen - or be dropped from the row that most needs both.
 	 */
 	const markerAt = rows.indexOf("<Archive");
-	const titleAt = rows.lastIndexOf('{row.title || "Untitled chat"}');
+	const titleAt = rows.lastIndexOf("{conversationTitleForDisplay(row.title)}");
 	assert.ok(
 		markerAt !== -1 && titleAt !== -1 && markerAt < titleAt,
 		"the marker must precede the title's span, outside the trailing slot's rule",
@@ -239,8 +252,13 @@ test("the archived row carries a marker that is not in the contested trailing sl
 test("the Include archived control is inside the search block and only while a query exists", () => {
 	const block = between(
 		SIDEBAR,
-		'aria-label="Search chats and agents"',
+		'aria-label={t("ui.chat.sidebar.header.search")}',
 		"overLong &&",
+	);
+	assert.equal(
+		SIDEBAR_COPY["ui.chat.sidebar.header.search"],
+		"Search chats and agents",
+		"the search control's name moved: it reads `Search chats and agents`",
 	);
 	/*
 	 * The control's own render rule mirrors the clear control's: with an empty box
@@ -252,7 +270,15 @@ test("the Include archived control is inside the search block and only while a q
 	assert.match(block, /<Checkbox/);
 	assert.match(block, /id=\{INCLUDE_ARCHIVED_ID\}/);
 	assert.match(block, /htmlFor=\{INCLUDE_ARCHIVED_ID\}/);
-	assert.match(block, /Include archived/);
+	assert.ok(
+		block.includes('t("ui.chat.sidebar.search.include_archived")'),
+		"the Include archived control no longer renders its message",
+	);
+	assert.equal(
+		SIDEBAR_COPY["ui.chat.sidebar.search.include_archived"],
+		"Include archived",
+		"the control's label moved: it reads `Include archived`",
+	);
 	// The id is a constant used twice rather than two inline strings: a label whose
 	// `for` names no input is an accessible name that silently disappears.
 	assert.match(
@@ -389,14 +415,27 @@ test("a refused press is reported once, as an ordinary sonner toast, with a retr
 	assert.match(failure, /setArchiveUndo\(null\)/);
 	assert.match(failure, /clearArchiveFailure\(\)/);
 	/*
-	 * LIFETIMES ARE SONNER'S, NOT A PANEL CLOCK (2026-09-27). The draws carry the
-	 * documented durations - the refusal's ten seconds, the offer's eight - and the
-	 * entry's life pauses while the reader holds it, which the `Infinity` + clock pair
-	 * could not do. The value is cleared when its MESSAGE ends, so nothing re-draws
-	 * later: both ending routes (timed end, the close button/swipe) call `settle`.
+	 * LIFETIMES ARE SONNER'S, NOT A PANEL CLOCK (2026-09-27), AND A LOCALE REDRAW
+	 * KEEPS THE ORIGINAL DEADLINE (R1-5). The draw now passes the REMAINING life:
+	 * `raisedAt + duration - Date.now()` when the same message is being redrawn in a
+	 * new language, and the documented constant - the refusal's ten seconds, the
+	 * offer's eight - for a new message. Asserting only a literal `duration:` would
+	 * pass while the redraw silently re-armed the timer, which is the bug this pair
+	 * exists to catch.
 	 */
-	assert.match(failure, /duration: ARCHIVE_FAILURE_TOAST_MS/);
-	assert.match(failure, /duration: ARCHIVE_UNDO_TOAST_MS/);
+	assert.match(
+		failure,
+		/const duration = sameMessage\s*\?\s*raised\.raisedAt \+ raised\.duration - Date\.now\(\)\s*:\s*ARCHIVE_FAILURE_TOAST_MS;/,
+	);
+	assert.match(
+		failure,
+		/const duration = sameMessage\s*\?\s*raised\.raisedAt \+ raised\.duration - Date\.now\(\)\s*:\s*ARCHIVE_UNDO_TOAST_MS;/,
+	);
+	assert.equal(
+		failure.match(/id: ARCHIVE_TOAST_ID,\s*\n\s*duration,/g)?.length,
+		2,
+		"both draws pass the computed remaining lifetime through to sonner",
+	);
 	assert.doesNotMatch(
 		code(TOASTS),
 		/Number\.POSITIVE_INFINITY|ARCHIVE_TOAST_PERSISTENT/,
@@ -411,7 +450,10 @@ test("a refused press is reported once, as an ordinary sonner toast, with a retr
 	 * merged into the dying entry and destroyed inside sonner's own unmount window.
 	 * Both actions therefore only send their write; the replacement is sonner's update.
 	 */
-	for (const label of ['label: "Retry"', 'label: "Undo"']) {
+	for (const label of [
+		'label: t("ui.common.actions.retry")',
+		'label: t("ui.notices.chat.undo")',
+	]) {
 		const at = failure.indexOf(label);
 		assert.notEqual(at, -1, `${label} is not in the archive effect`);
 		const press = failure.slice(at, failure.indexOf("setSessionArchived", at));
@@ -449,7 +491,7 @@ test("the offer's card truncates its NAME and can never truncate the verb (agent
 	// The name and the verb are two elements: a single string that overflows loses its
 	// TAIL, and the tail of `“<title>” archived.` is the verb.
 	assert.match(offer, /archiveOfferedName\(archiveUndo\.title\)/);
-	assert.match(offer, /ARCHIVE_OFFERED_VERB/);
+	assert.match(offer, /archiveOfferedVerb\(\)/);
 	assert.match(offer, /className=\{cn\("min-w-0 truncate"\)\}/);
 	assert.equal(
 		offer.includes("archiveOfferedText"),
@@ -635,9 +677,11 @@ test("the header's menu is the session's actions, and its delete only ASKS", () 
 	// Fail-closed and whole: with neither capability there is no trigger at all,
 	// rather than a menu advertising items that do nothing.
 	assert.match(menu, /<DropdownMenuTrigger/);
-	// Archive and unarchive are one item whose label follows the state.
-	assert.match(menu, /Archive conversation/);
-	assert.match(menu, /Restore conversation/);
+	// Archive and unarchive are one item whose label follows the state, and the
+	// label is the catalogue's (i18n wave A) - pinning the key keeps the
+	// assertion true in every locale.
+	assert.match(menu, /ui\.chat\.header\.archive_conversation/);
+	assert.match(menu, /ui\.chat\.header\.restore_conversation/);
 	assert.match(menu, /onSetArchived\?\.\(!archived\)/);
 	/*
 	 * Delete is painted in the danger ink and does NOT delete: it asks the pane to
@@ -759,7 +803,19 @@ test("a typed /delete stages the dialog and can never reach the wire itself", ()
 	);
 	assert.equal(branch.includes("deleteSession"), false);
 	assert.match(branch, /DELETE_UNAVAILABLE_REASON/);
-	assert.match(branch, /needs an open conversation/);
+	/*
+	 * The refusal's sentence is KEYED since #1761: the branch holds
+	 * `t("ui.chat.slash.dispatch.needs_conversation", ...)` and the words moved to
+	 * `ui.chat.slash.json`, so both halves are asserted - the binding this branch
+	 * can be read for, and the copy a person is actually told.
+	 */
+	assert.match(branch, /t\("ui\.chat\.slash\.dispatch\.needs_conversation"/);
+	assert.match(
+		JSON.parse(
+			readFileSync("src/i18n/catalogues/en/ui.chat.slash.json", "utf8"),
+		)["ui.chat.slash.dispatch.needs_conversation"],
+		/needs an open conversation/,
+	);
 });
 
 test("a typed /archive STAGES the confirmation, and /unarchive still writes straight through", () => {
@@ -856,10 +912,29 @@ test("the confirmation asks the reversible question, and the copy is written in 
 	 * `Include archived` control - so a copy edit that quietly dropped one of the three ways
 	 * back would be a claim quietly lost rather than a string quietly changed.
 	 */
+	/*
+	 * THE WORDS ARE CATALOGUE COPY NOW; the facts are asserted at both ends. The English
+	 * source still says every one of the three ways back, and the function still
+	 * INTERPOLATES the timer, so the copy cannot drift from it. (Per-locale behaviour is
+	 * `scripts/archive-confirm-i18n.test.mjs`'s.)
+	 */
+	const bodyMessage = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.chat.dialogs.json", "utf8"),
+	)["ui.chat.dialogs.archive_message"];
+	assert.equal(
+		bodyMessage,
+		"It leaves your lists. You can undo for {seconds, plural, one {# second} other {# seconds}}; after that, search above your chats, turn on “{include_archived}”, then Unarchive it.",
+		"the body leads with the consequence and names both ways back",
+	);
 	assert.match(
 		copy,
-		/export const ARCHIVE_CONFIRM_MESSAGE = `It leaves your lists\. You can undo for \$\{ARCHIVE_UNDO_TOAST_MS \/ 1000\} seconds; after that, search above your chats, turn on \\u201cInclude archived\\u201d, then Unarchive it\.`;/,
-		"the body leads with the consequence and INTERPOLATES the timer, so the copy cannot drift from it",
+		/seconds: ARCHIVE_UNDO_TOAST_MS \/ 1000,/,
+		"the timer is interpolated, so the copy cannot drift from it",
+	);
+	assert.match(
+		copy,
+		/include_archived: t\("ui\.chat\.sidebar\.search\.include_archived"\)/,
+		"the control the sentence names is the search block's own catalogue string",
 	);
 	assert.match(
 		copy,
@@ -870,10 +945,22 @@ test("the confirmation asks the reversible question, and the copy is written in 
 		false,
 		"a vague 'few seconds' came back where the build can say the number",
 	);
-	assert.match(copy, /export const ARCHIVE_CONFIRM_VERB = "Archive";/);
+	// The verb and the unnamed phrase are catalogue sentences, not constants joined here.
+	assert.doesNotMatch(copy, /ARCHIVE_CONFIRM_VERB|ARCHIVE_CONFIRM_UNNAMED/);
+	const dialogMessages = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.chat.dialogs.json", "utf8"),
+	);
+	assert.equal(
+		dialogMessages["ui.chat.dialogs.archive_title_named"],
+		"Archive “{title}”?",
+	);
+	assert.equal(
+		dialogMessages["ui.chat.dialogs.archive_title_unnamed"],
+		"Archive this conversation?",
+	);
 	// And the dialog RENDERS it rather than restating it: two copies of the sentence would be
 	// two places to keep in step with the three facts it promises.
-	assert.match(dialog, /message=\{<p>\{ARCHIVE_CONFIRM_MESSAGE\}<\/p>\}/);
+	assert.match(dialog, /message=\{<p>\{archiveConfirmMessage\(\)\}<\/p>\}/);
 	/*
 	 * THE TITLE NAMES THE CONVERSATION AND ONLY THE NAME GIVES: the name sits in its own
 	 * `min-w-0 truncate` box between two `shrink-0` halves, so a long name ellipsises while
@@ -882,19 +969,25 @@ test("the confirmation asks the reversible question, and the copy is written in 
 	 * carries for the row's own control label (agent review round 2, R2-3), applied to the
 	 * modal.
 	 */
-	assert.match(dialog, /className="shrink-0">\s*\{`\$\{ARCHIVE_CONFIRM_VERB\}/);
 	assert.match(
 		dialog,
-		/candidateTitle === null \? ARCHIVE_CONFIRM_UNNAMED : candidateTitle/,
+		/const titleParts = archiveConfirmTitleParts\(candidateTitle\);/,
 	);
+	assert.match(dialog, /className="shrink-0 whitespace-pre"/);
 	/*
 	 * THE QUOTES ARE OUTSIDE THE CUT (design round 1, D2, read off the long-name frame): quoted
 	 * inside the truncating box the closing quote was cut with the name. The opening one rides
 	 * the verb and the closing one rides the question mark, both `shrink-0`.
 	 */
-	assert.match(dialog, /\$\{candidateTitle === null \? "" : "\\u201c"\}/);
-	assert.match(dialog, /candidateTitle === null \? "\?" : "\\u201d\?"/);
-	assert.match(dialog, /className="min-w-0 truncate"/);
+	assert.doesNotMatch(
+		dialog,
+		/\\u201[cd]/,
+		"the quotes are catalogue copy, not literals in the dialog",
+	);
+	assert.match(
+		dialog,
+		/<span dir="auto" className="min-w-0 truncate">\s*\{titleParts\.name\}\s*<\/span>/,
+	);
 	/*
 	 * The operator explicitly wants the archive confirmation's danger treatment,
 	 * superseding the earlier reversible/non-danger rationale. Pin the call-site

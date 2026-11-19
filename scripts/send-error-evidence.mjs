@@ -22,7 +22,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const PORT = process.argv[2] ?? "9387";
-const OUT = process.argv[3] ?? "docs/evidence/send-error";
+const OUT = process.argv[3] ?? "docs/evidence-frames/send-error";
 const STEP = process.argv[4] ?? "probe";
 
 const list = await (await fetch(`http://127.0.0.1:${PORT}/json/list`)).json();
@@ -42,7 +42,9 @@ ws.onmessage = (event) => {
 			: resolve(msg.result);
 	}
 };
-await new Promise((r) => (ws.onopen = r));
+await new Promise((resolve) => {
+	ws.onopen = resolve;
+});
 
 const send = (method, params = {}) =>
 	new Promise((resolve, reject) => {

@@ -1,0 +1,283 @@
+{
+ "schema": 1,
+ "auditor": "translation-auditor (lopdev, fresh independent audit session 0d833311; wrote no catalogue, edited no ledger, and this receipt is the only file it created)",
+ "agent": "translation-auditor (lopdev; S3d remediation audit for zh-CN on PR #1761)",
+ "model": "deepseek/deepseek-flash",
+ "model_provenance": "The session header named anthropic/claude-sonnet-5-5; the host then switched the running model after provider quota failures — anthropic/claude-opus-5-5, openai/gpt-6.1-sol, deepseek/deepseek-flash — and deepseek/deepseek-flash is the model that finished this audit and wrote this receipt. Every claim here is script output (sha256 of the bytes on disk, ICU parses, intl-messageformat renders, parity/context test runs), not model recall, so it is reproducible from the tree.",
+ "fallback": "yes — provider quota failures moved the run from anthropic/claude-sonnet-5-5 to anthropic/claude-opus-5-5, then openai/gpt-6.1-sol, then deepseek/deepseek-flash (the recorded model). No tool, permission or role setting was changed.",
+ "independence": "Separate session from the translator who applied the remediations and from the 841717b4 (s3a), 950edccf (s3b) and 7c3e91d4 (s3c) auditors. Scope was computed from bytes, not from the brief: each of the 21 namespaces' on-disk zh-CN sha256 was compared with the target hash recorded in the latest receipt covering it. Verdicts were rebuilt from the en source, the .context.json sidecars, shipped (git HEAD) zh-CN catalogues for glossary greps, the call sites in src/renderer/src/features/chat (ask-queue.ts, composer-status-row.tsx) and rendered intl-messageformat output; prior receipts were read only to decide carried vs changed and to verify their findings.",
+ "instance": "0d833311-s3d-zh-cn",
+ "session": "0d833311f370",
+ "locale": "zh-CN",
+ "branch": "i18n/composer-keying",
+ "head": "7540e3cbc9d on a151ba95325 (zh-CN catalogues audited as UNCOMMITTED files on disk; the hashes below name the bytes read)",
+ "pr": "damianvtran/local-operator-ui#1761",
+ "date": "2026-11-08",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "scope": "S3d zh-CN remediation audit of the PR's 21 ui.chat.* namespaces (461 keys). 15 namespaces are CARRIED because their zh-CN bytes still equal the target hash of the latest receipt covering them (no rows, not re-audited). 6 namespaces CHANGED and were audited IN FULL on the final bytes: ask_panel (20), ask_queue (44), composer_notes (14), move_cwd (8), read_ack (16), sidebar_notes (8) = 110 keys. The shipped ui.chat.* file the manager reverted is out of scope. en and .context.json bytes of all 6 audited namespaces are unchanged since s3c, so the delta is zh-CN-only.",
+ "carried_namespaces": {
+  "ui.chat.slash": "950edccf-s3b-zh-cn (89 keys)",
+  "ui.chat.page_chrome": "950edccf-s3b-zh-cn (26)",
+  "ui.chat.interrupt": "950edccf-s3b-zh-cn (6; also 841717b4-s3a-zh-cn)",
+  "ui.chat.fast_mode": "950edccf-s3b-zh-cn (10; also 841717b4-s3a-zh-cn)",
+  "ui.chat.session_readout": "950edccf-s3b-zh-cn (54)",
+  "ui.chat.session_spend": "950edccf-s3b-zh-cn (32)",
+  "ui.chat.aside": "950edccf-s3b-zh-cn (24)",
+  "ui.chat.device_move": "950edccf-s3b-zh-cn (24)",
+  "ui.chat.approval": "7c3e91d4-s3c-zh-cn (17)",
+  "ui.chat.ask_answer": "7c3e91d4-s3c-zh-cn (10)",
+  "ui.chat.attachment_refusal": "7c3e91d4-s3c-zh-cn (15)",
+  "ui.chat.credential_notice": "7c3e91d4-s3c-zh-cn (15)",
+  "ui.chat.header_menu": "7c3e91d4-s3c-zh-cn (12)",
+  "ui.chat.message_budget": "7c3e91d4-s3c-zh-cn (10)",
+  "ui.chat.quota_resend": "7c3e91d4-s3c-zh-cn (7)"
+ },
+ "prior_findings_verification": {
+  "950edccf ask_queue.expiry.in (minor)": "applied-as-proposed: {time}后过期, byte-identical to the shipped form of the same English string (ui.notifications.row.ask_expires = {time}后过期) and to approval_queue_model.expires_minutes; rendered 48分钟后过期 and 12分钟后过期; siblings 即将过期 (now_long) and 已过期 (status.expired) stay consistent, so the 到期 drift is gone.",
+  "950edccf ask_queue.duration.minutes|hours|days|seconds (minor, rendered narrow-chip check)": "not a text change by design (分钟/小时/天/秒 unchanged); the rendered check it asked for was still not supplied — re-recorded as the expiry.now_short minor below with the cell arithmetic, rather than churning the wording.",
+  "950edccf ask_queue.expiry.now_short (nit) + 7c3e91d4 ask_queue.expiry.now_short (minor)": "applied-with-a-deviation: the bytes were 即将 (s3b), became 即将过期 (audited in s3c as 8 cells vs 'now' 3), and are now 即将 again — the s3c fallback, taken without the 550px rendered pass either round asked for. Judged acceptable on width (4 cells) and re-recorded as a minor because the clearer 即将过期 was abandoned on unproven width grounds, not on evidence.",
+  "7c3e91d4 ask_panel.dock.keys_one (nit)": "applied-as-proposed: 按1作答, and the also_keys row dock.keys_range became 按1-{max, number}作答; both now use 作答 like the shipped question dock ({prefix}上下键选择 · Enter或{digits}作答 · Esc隐藏), rendered 按1-9作答.",
+  "7c3e91d4 composer_notes.default_not_saved (nit)": "applied-as-proposed: 新会话的默认模型未保存：{reason}, so the failure and its success pair (新会话的默认模型：{model}) name the same object; rendered with the fallback reason 新会话的默认模型未保存：后端拒绝了该操作.",
+  "7c3e91d4 move_cwd.in_flight (nit)": "applied-as-proposed: 工作目录正在移动中。 states the state directly instead of 已有一个…移动正在进行.",
+  "7c3e91d4 read_ack.refusal.unreachable (minor)": "applied-as-proposed: {reason}未清除未读标记。{remedy}, rendered 应用无法连接后端。未清除未读标记。点击该对话重试。 — the stray space after the full-width stop is gone, matching shipped ui.notices.chat.unread_not_cleared and this PR's ask_answer.unconfirmed splice.",
+  "7c3e91d4 sidebar_notes.stale_list (nit)": "applied-as-proposed: {message}显示的是上次加载的对话。, rendered with a 。-terminated zh message (应用无法连接后端。显示的是上次加载的对话。) — no stray space."
+ },
+ "checks": [
+  "node --test scripts/i18n/locale-parity.test.mjs: 44/44 pass, 0 fail (zh-CN ships keys, defines each key once, carries every en key, names only en keys, preserves every ICU placeholder, is not an English stub)",
+  "node scripts/i18n/context-parity.mjs: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only)",
+  "@formatjs/icu-messageformat-parser parse of all 110 audited zh-CN values: 0 failures; argument-name sets, number/date styles and select option sets equal en for every key; the 5 plural nodes carry only other (+ =0 in rail.open/rail.close) = zh-CN CLDR, with en's one/other correctly collapsed; offsets 0; no ::group-off skeleton is used in these 6 namespaces (so no ASCII-space-in-group token to check)",
+  "byte hygiene on all 6 files: NFC, LF only, no BOM, tab indentation, trailing newline, key order identical to en; no U+00A0/U+2007/U+2009/U+200A/U+202F/U+3000/U+200B/U+200E/U+200F/U+2060/U+FEFF anywhere, so no non-ASCII whitespace can sit inside an ICU argument header; no ASCII '...' ; no space before CJK punctuation and no space between Han and Latin/digits",
+  "identical-to-English values: exactly 1 (ui.chat.ask_panel.filter.chip, {label} · {count, number} — placeholders plus a middle dot, no words; it is in scripts/i18n/locale-parity.test.mjs IDENTICAL_OK with a written reason and the stub test passes). No other value copies English.",
+  "intl-messageformat zh-CN renders: the 5 plural keys at counts 0,1,2,5,11,21,100 and every argument/select key with realistic arguments (clause 3个问题等待回答, subject 最早的请求, deadline 12分钟后过期, waited 3分钟, askId ask_7f3a, via 手机, cap ⌥⇧A, model anthropic/claude-opus-5-5, label ~/projects/alpha, message 应用无法连接后端。) — count always present, branches grammatical, rail.open/close =0 drops the whole waiting clause (打开请求面板——最早的请求), urgent=yes yields ' · 紧急', hasCap/hasVia=yes yield full-width parens",
+  "glossary vs shipped (git HEAD) zh-CN: 请求 (ask), 问题 (question), 已结束 (settled), 待处理 (pending), 过期/超时, 智能体 (agent), 评判器 (judge), 守护进程 (daemon), 工作目录, 提供商 (provider), 已关闭 (dismissed), 拒绝 (declined), 送达, 逾期 (late), 已排队 (queued), 紧急 (Urgent), 作答 (answer, question dock), 已在对话中解决 / 不再需要 (shipped ui.chat.asks.dismiss.receipt.*) all match shipped precedent; register is 你 throughout (0 您 in these 6 files, 0 您 in the shipped zh-CN tree, 444 你)",
+  "width: zh cells vs en cells computed for every key (CJK/full-width = 2 cells). Largest ratios 1.33 (goal.done_tag — done 6→8, now_short now 3→4, filter.all All 3→4); no plain string exceeds 1.6x; the only material overhang is the narrow-chip duration tier (48分钟 6 vs 48m 3 = 2x; 2小时 5 vs 2h 2), recorded as the now_short minor",
+  "scope arithmetic: 15 carried namespaces (351 keys) + 6 audited namespaces (110 keys) = 21 namespaces / 461 keys, exactly the PR's stated set; en and .context.json bytes of all 6 audited namespaces are UNCHANGED since the s3c receipt (hashes compared), so the remediation delta is zh-CN-only",
+  "not run: node scripts/i18n/generate.mjs --check (stale until the manager regenerates, per the brief). No catalogue, ledger or shard was edited; this receipt is the only file written."
+ ],
+ "namespaces": {
+  "ui.chat.ask_panel": {
+   "namespace": "ui.chat.ask_panel",
+   "batch": "B2",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 20,
+   "sha256": {
+    "en": "6f3b94408a9defb687aaa4c8691bc28b913ea41d80a8046b033f9eea144b27b4",
+    "zh-CN": "e23225ba1f80fe540f4ac4e2c62375616d413f790baea92f6a8eb9f33df67c77"
+   },
+   "input_hashes": {
+    "en": {
+     "path": "src/i18n/catalogues/en/ui.chat.ask_panel.json",
+     "sha256": "6f3b94408a9defb687aaa4c8691bc28b913ea41d80a8046b033f9eea144b27b4"
+    },
+    "context": {
+     "path": "src/i18n/catalogues/en/ui.chat.ask_panel.context.json",
+     "sha256": "460f1f970a024b36484b79635bce396f740b7c71d2d644c97281522e62b16d9a"
+    },
+    "zh-CN": {
+     "path": "src/i18n/catalogues/zh-CN/ui.chat.ask_panel.json",
+     "sha256": "e23225ba1f80fe540f4ac4e2c62375616d413f790baea92f6a8eb9f33df67c77"
+    }
+   },
+   "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "findings": []
+  },
+  "ui.chat.ask_queue": {
+   "namespace": "ui.chat.ask_queue",
+   "batch": "B1",
+   "status": "passed",
+   "result": "clean-with-findings",
+   "keys_read": 44,
+   "sha256": {
+    "en": "6709d1631a00f1fde2d4150770f5a549f4737b95b0d792c47128958e3b83012d",
+    "zh-CN": "29da6394d15ec4432a2aef72db839711bcad1a662245b4320a3846e535d22b8a"
+   },
+   "input_hashes": {
+    "en": {
+     "path": "src/i18n/catalogues/en/ui.chat.ask_queue.json",
+     "sha256": "6709d1631a00f1fde2d4150770f5a549f4737b95b0d792c47128958e3b83012d"
+    },
+    "context": {
+     "path": "src/i18n/catalogues/en/ui.chat.ask_queue.context.json",
+     "sha256": "69086c66cbe510f79384d5c019da4be842dd110b49a2953c53c2bf46ff58cb2a"
+    },
+    "zh-CN": {
+     "path": "src/i18n/catalogues/zh-CN/ui.chat.ask_queue.json",
+     "sha256": "29da6394d15ec4432a2aef72db839711bcad1a662245b4320a3846e535d22b8a"
+    }
+   },
+   "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 2,
+    "nit": 1
+   },
+   "findings": [
+    {
+     "severity": "minor",
+     "key": "ui.chat.ask_queue.open_announcement",
+     "current": "已打开你的问题：{clause}。",
+     "proposed": "已打开请求面板：{clause}。",
+     "reason": "The screen-reader announcement names the surface 你的问题 while the same namespace names it 请求面板 (rail.open 打开请求面板 / rail.close 关闭请求面板), and the spliced {clause} is the shipped ui.chat.asks.clause.waiting (…个问题等待回答), so the sentence renders 已打开你的问题：3个问题等待回答。 — two names for one panel and 问题 twice in one short spoken line."
+    },
+    {
+     "severity": "minor",
+     "key": "ui.chat.ask_queue.expiry.now_short",
+     "current": "即将",
+     "proposed": "keep 即将 only if a rendered narrow-chip pass shows it fits whole; 即将过期 is the clearer value at +2 cells",
+     "reason": "The narrow tier prints ' · ' + this value and must fit whole (askChipDeadlineShort exists because the chip used to paint 'expires in 4...'), and neither this round nor the s3c round supplied the 550px rendered check both receipts asked for: the same tier's duration values are 2x the English cell width (48分钟 = 6 cells vs 48m = 3; 2小时 = 5 vs 2h = 2) while 即将 is 4 cells vs 'now' 3. No rendered defect is proven, so this stays minor; the text was reverted from 即将过期 to the s3b fallback without that evidence.",
+     "also_keys": [
+      "ui.chat.ask_queue.duration.minutes",
+      "ui.chat.ask_queue.duration.hours",
+      "ui.chat.ask_queue.duration.seconds",
+      "ui.chat.ask_queue.duration.days"
+     ]
+    },
+    {
+     "severity": "nit",
+     "key": "ui.chat.ask_queue.status.timed_out",
+     "current": "已超时——智能体将在没有你回答的情况下继续",
+     "proposed": "已超时——智能体不再等待你的回答，继续",
+     "reason": "Grammatical and understandable, but 在没有你回答的情况下 is a nominalised literal of 'without your answer' that reads translated; the direct verbal form states the same fact in the register the rest of the row uses (cf. 智能体正在移动中, 智能体继续运行). Same string in response.timed_out (等待{waited}后超时——智能体将在没有你回答的情况下继续（请求{askId}）).",
+     "also_keys": [
+      "ui.chat.ask_queue.response.timed_out"
+     ]
+    }
+   ]
+  },
+  "ui.chat.composer_notes": {
+   "namespace": "ui.chat.composer_notes",
+   "batch": "B2",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 14,
+   "sha256": {
+    "en": "d0932047d10b6e27ac42fe82d4538463962e4372db886a650ee7fa8581e156e3",
+    "zh-CN": "f779cc44e05248454426ee946abcf715955dbe7dc9d8d9db870d35aae718f289"
+   },
+   "input_hashes": {
+    "en": {
+     "path": "src/i18n/catalogues/en/ui.chat.composer_notes.json",
+     "sha256": "d0932047d10b6e27ac42fe82d4538463962e4372db886a650ee7fa8581e156e3"
+    },
+    "context": {
+     "path": "src/i18n/catalogues/en/ui.chat.composer_notes.context.json",
+     "sha256": "7a8506a4107651c94b70d424df0c0e978d8d412752eb62913c7ac343dd4a060b"
+    },
+    "zh-CN": {
+     "path": "src/i18n/catalogues/zh-CN/ui.chat.composer_notes.json",
+     "sha256": "f779cc44e05248454426ee946abcf715955dbe7dc9d8d9db870d35aae718f289"
+    }
+   },
+   "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "findings": []
+  },
+  "ui.chat.move_cwd": {
+   "namespace": "ui.chat.move_cwd",
+   "batch": "B2",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 8,
+   "sha256": {
+    "en": "a26c98328bd160b53fd2c5ad05294ed4b235870264243deee0937ead78db120c",
+    "zh-CN": "17de6b4e223e3b0324be2b1a5ffce23d89bf7866bd4ba24fa83e20ca5d2b9778"
+   },
+   "input_hashes": {
+    "en": {
+     "path": "src/i18n/catalogues/en/ui.chat.move_cwd.json",
+     "sha256": "a26c98328bd160b53fd2c5ad05294ed4b235870264243deee0937ead78db120c"
+    },
+    "context": {
+     "path": "src/i18n/catalogues/en/ui.chat.move_cwd.context.json",
+     "sha256": "760427f948287d3daa56f00127873ea5806e6abca40884c5cbcd78401d32f673"
+    },
+    "zh-CN": {
+     "path": "src/i18n/catalogues/zh-CN/ui.chat.move_cwd.json",
+     "sha256": "17de6b4e223e3b0324be2b1a5ffce23d89bf7866bd4ba24fa83e20ca5d2b9778"
+    }
+   },
+   "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "findings": []
+  },
+  "ui.chat.read_ack": {
+   "namespace": "ui.chat.read_ack",
+   "batch": "B2",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 16,
+   "sha256": {
+    "en": "c2f7a40ab687c96db28b6769093d20767b6877f7ea605db0e473bc05b97c7396",
+    "zh-CN": "ce14141a2b4231d58af6dcd3f968087125aa62e68eb6462252750586cb4580e4"
+   },
+   "input_hashes": {
+    "en": {
+     "path": "src/i18n/catalogues/en/ui.chat.read_ack.json",
+     "sha256": "c2f7a40ab687c96db28b6769093d20767b6877f7ea605db0e473bc05b97c7396"
+    },
+    "context": {
+     "path": "src/i18n/catalogues/en/ui.chat.read_ack.context.json",
+     "sha256": "e5edac48843c9d84e647cb7dddb6b9016bd09f72002cb36ed46159b5a8cce751"
+    },
+    "zh-CN": {
+     "path": "src/i18n/catalogues/zh-CN/ui.chat.read_ack.json",
+     "sha256": "ce14141a2b4231d58af6dcd3f968087125aa62e68eb6462252750586cb4580e4"
+    }
+   },
+   "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "findings": []
+  },
+  "ui.chat.sidebar_notes": {
+   "namespace": "ui.chat.sidebar_notes",
+   "batch": "B2",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 8,
+   "sha256": {
+    "en": "daee7358a02c0f81eecab2bed4b51fd35a61945ca2ba3e57d82fa4d1f0ddf28c",
+    "zh-CN": "846bbb4a4592c7ba3bf92008b44b8b85096c91722d2168185a650a0e996fc87e"
+   },
+   "input_hashes": {
+    "en": {
+     "path": "src/i18n/catalogues/en/ui.chat.sidebar_notes.json",
+     "sha256": "daee7358a02c0f81eecab2bed4b51fd35a61945ca2ba3e57d82fa4d1f0ddf28c"
+    },
+    "context": {
+     "path": "src/i18n/catalogues/en/ui.chat.sidebar_notes.context.json",
+     "sha256": "6a03e9139bcaad870921557238722af7fc7aab1da5ce3d0ac4010f8bf77f0453"
+    },
+    "zh-CN": {
+     "path": "src/i18n/catalogues/zh-CN/ui.chat.sidebar_notes.json",
+     "sha256": "846bbb4a4592c7ba3bf92008b44b8b85096c91722d2168185a650a0e996fc87e"
+    }
+   },
+   "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "findings": []
+  }
+ }
+}

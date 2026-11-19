@@ -3,6 +3,7 @@ import {
 	desktopResult,
 } from "@shared/api/local-operator/desktop-api";
 import { useCallback, useEffect, useRef } from "react";
+import { isClearedShortcut } from "../../../../shared/recording-shortcut";
 
 /**
  * Priority levels for speech-to-text handlers
@@ -44,9 +45,18 @@ export enum SpeechToTextPriority {
  * `before-input-event` chord cannot be driven headlessly - which is why the
  * binding lives here, in the renderer's own keydown/keyup pair.
  */
+/**
+ * The channels main sends on INSTEAD of delivering a palette chord's key
+ * (`PALETTE_DOOR_CHANNELS` in `src/main/palette-door.ts`; the renderer cannot
+ * import main, and `palette-main-door` pins the spelling on both sides).
+ */
+const PALETTE_DOOR_CHANNELS = [
+	"toggle-command-palette",
+	"toggle-command-palette-commands",
+] as const;
 const MAC_PLATFORM = /Mac|iPhone|iPad/;
-type PlatformFamily = "darwin" | "win32" | "other";
-type PushToTalkBinding = { code: string; label: string };
+export type PlatformFamily = "darwin" | "win32" | "other";
+export type PushToTalkBinding = { code: string; label: string };
 
 /**
  * The registry's modifier names, per platform - the same table its own
@@ -59,7 +69,7 @@ const MODIFIER_LABELS: Record<PlatformFamily, Record<string, string>> = {
 };
 
 /** Read per call, never cached: the tests drive every family from one process. */
-const platformFamily = (): PlatformFamily => {
+export const platformFamily = (): PlatformFamily => {
 	const platform =
 		typeof navigator === "undefined" ? "" : (navigator.platform ?? "");
 	if (MAC_PLATFORM.test(platform)) return "darwin";
@@ -108,16 +118,104 @@ export const pushToTalkBindingForToken = (
 	};
 };
 
+/**
+ * The stored token a bare-modifier press names, or `null` when no token can
+ * name that key on this platform. The inverse of `codeForToken`, kept beside it
+ * so the Settings capture box and the hold matcher cannot learn the aliasing
+ * separately.
+ *
+ * `Control*` is `ctrl` everywhere. `Alt*` is `alt` on macOS only: off macOS no
+ * token resolves to an Alt code, because `alt` there IS the Meta key. `Meta*`
+ * is `meta` on macOS (Command) and `alt` elsewhere. Off macOS `alt-*` and
+ * `meta-*` name one physical key, and the registry's own labels call the
+ * `alt-*` spelling "Command" (the default `alt-right-hold` reads
+ * "Right-Command" there), so saving the same spelling keeps the Left key
+ * reading "Left-Command" beside it rather than "Left-Super" beside "Right-Command".
+ * A token another writer stored as `meta-*` still resolves to the same key, so
+ * callers comparing a press with a stored value compare `.code`, not tokens.
+ *
+ * Takes `event.code`, never `event.key`: the six tokens are side-specific and
+ * `key` cannot tell Left from Right.
+ */
+export const pushToTalkTokenForCode = (
+	code: string,
+	family: PlatformFamily = platformFamily(),
+): string | null => {
+	const parts = /^(Alt|Meta|Control)(Left|Right)$/.exec(code);
+	if (!parts) return null;
+	const side = parts[2].toLowerCase();
+	if (parts[1] === "Control") return `ctrl-${side}-hold`;
+	if (parts[1] === "Alt") {
+		return family === "darwin" ? `alt-${side}-hold` : null;
+	}
+	return `${family === "darwin" ? "meta" : "alt"}-${side}-hold`;
+};
+
 const platformDefaultBinding = (): PushToTalkBinding =>
 	pushToTalkBindingForToken("alt-right-hold") as PushToTalkBinding;
 
-let resolvedPushToTalkBinding: PushToTalkBinding | null = null;
+/**
+ * `null` means nothing has been resolved yet (cold start): the platform
+ * default applies. A stored cleared sentinel resolves to `null` here — no
+ * door. An invalid/unknown value is NOT a resolution at all: it falls back
+ * to the platform default exactly as a missing row does. The cleared state
+ * is kept apart so it can never be mistaken for invalid (which would
+ * silently re-bind the default).
+ */
+let resolvedPushToTalk: PushToTalkBinding | null | undefined = undefined;
 
-/** The live binding: the last resolved row, or the platform default. */
-export const resolvePushToTalkBinding = (): PushToTalkBinding =>
-	resolvedPushToTalkBinding ?? platformDefaultBinding();
+/**
+ * Bumped by every direct write of the binding (`setPushToTalkBinding`). A read
+ * that started before the bump carries the value from BEFORE the write, so its
+ * answer is dropped rather than allowed to undo the save that followed it.
+ * A cleared write bumps it like any other write: a cleared save must not be
+ * undone by a stale read that left before it.
+ */
+let bindingGeneration = 0;
+
+/**
+ * The live binding: `null` when the row is explicitly cleared (no door);
+ * otherwise the last resolved binding, or the platform default. TypeScript
+ * sees the `| null` so every consumer must handle the cleared door, never
+ * reading `.label` off a cleared binding.
+ */
+export const resolvePushToTalkBinding = (): PushToTalkBinding | null => {
+	if (resolvedPushToTalk === null) return null;
+	return resolvedPushToTalk ?? platformDefaultBinding();
+};
+
+function applyPushToTalkValue(raw: unknown): void {
+	if (isClearedShortcut(raw)) {
+		resolvedPushToTalk = null;
+		return;
+	}
+	const binding = pushToTalkBindingForToken(raw);
+	// An invalid/unknown value is not a resolution: it falls back to the
+	// platform default, exactly as a missing row or a dead transport does.
+	// The fallback is recorded as the default binding (not left as the
+	// previous binding): an invalid read must not keep serving a binding
+	// that is no longer what the row says. Cleared stays distinct: it is
+	// resolved above, never a fallback.
+	resolvedPushToTalk = binding ?? platformDefaultBinding();
+}
+
+/**
+ * Apply a value the caller just PERSISTED, so the very next keydown matches it.
+ *
+ * The Settings capture box calls this after its save lands: without it a changed
+ * binding would only take effect at the next `register()` (a composer remount),
+ * because the module reads the row once per registration and has no settings
+ * listener. An unknown or invalid value falls back to the platform default, as
+ * a read does.
+ */
+export const setPushToTalkBinding = (raw: unknown): void => {
+	bindingGeneration += 1;
+	applyPushToTalkValue(raw);
+};
 
 let pushToTalkRefresh: Promise<void> | null = null;
+/** A refresh asked for while one was in flight: it must run AFTER that one. */
+let pushToTalkRefreshAgain = false;
 
 /**
  * Read the persisted `keymap.push_to_talk` row and re-resolve.
@@ -128,21 +226,39 @@ let pushToTalkRefresh: Promise<void> | null = null;
  * settings plane tells us nothing new, and silently reverting a user's custom
  * binding because one read missed is worse than serving the last known value.
  * There is deliberately no settings listener here (no new listener on any
- * settings channel); a caller that changes the row can call this directly.
+ * settings channel); a caller that changes the row calls `setPushToTalkBinding`
+ * with what it saved, and a document that did not make the change (the Quick
+ * send window) calls this when it is shown.
+ *
+ * AN ASK THAT ARRIVES MID-FLIGHT IS NOT SATISFIED BY THAT FLIGHT: its read may
+ * have left before the change this ask was made to pick up (a summon right
+ * after a save in the other window), so the ask is answered by one more read
+ * once the current one settles. Any number of mid-flight asks share that one.
  */
 export const refreshPushToTalkBinding = async (): Promise<void> => {
-	if (pushToTalkRefresh) return pushToTalkRefresh;
+	if (pushToTalkRefresh) {
+		pushToTalkRefreshAgain = true;
+		return pushToTalkRefresh;
+	}
 	pushToTalkRefresh = (async () => {
 		try {
-			const settings = await desktopResult<BackendSettings>({
-				op: "settings.list",
-			});
-			const row = settings.settings.find(
-				(setting) => setting.key === "keymap.push_to_talk",
-			);
-			resolvedPushToTalkBinding = pushToTalkBindingForToken(row?.value);
-		} catch {
-			/* Keep the last resolution (see the doc above). */
+			do {
+				pushToTalkRefreshAgain = false;
+				const generation = bindingGeneration;
+				try {
+					const settings = await desktopResult<BackendSettings>({
+						op: "settings.list",
+					});
+					const row = settings.settings.find(
+						(setting) => setting.key === "keymap.push_to_talk",
+					);
+					if (generation === bindingGeneration) {
+						applyPushToTalkValue(row?.value);
+					}
+				} catch {
+					/* Keep the last resolution (see the doc above). */
+				}
+			} while (pushToTalkRefreshAgain);
 		} finally {
 			pushToTalkRefresh = null;
 		}
@@ -275,28 +391,37 @@ export class SpeechToTextManager {
 	 * Handle the speech-to-text event by dispatching to the highest priority active handler
 	 */
 	private handleSpeechToText = (): void => {
-		const active = this.highestActive();
-		if (active) active.handler.start();
+		/*
+		 * MAIN TOOK A CHORD THE HOLD KEY BEGINS. Start recording is claimed in the
+		 * main process (`before-input-event`), so its second key never reaches the
+		 * keydown listener below - but the modifier's own keydown did, and engaged
+		 * a hold. Without this the composer's one-recorder rule refused the chord's
+		 * start and the shortcut did nothing. The chord is the user's real intent,
+		 * so it replaces the hold: the press that was never a hold is discarded.
+		 */
+		const held = this.engaged;
+		this.releaseHold("abort");
+		/*
+		 * THE HANDLER THE HOLD WAS ON TAKES THE CHORD, not whoever `isActive` says.
+		 * The abort above has settled the composer's refs, but its `isActive` reads
+		 * state that only updates on the next render: a take that had already
+		 * started still reads "recording", so `highestActive()` returned nothing
+		 * and the chord ended in no recording at all (QA round 2, Q1: any chord
+		 * after the take started; only the first ~100 ms worked). The handler's own
+		 * `start` is guarded by its attempt ref, which the abort has cleared.
+		 */
+		const target = held?.handler ?? this.highestActive()?.handler;
+		target?.start();
 	};
 
 	/**
-	 * Whether a bare-Space hold may engage: it may not while focus is in an
-	 * input-like element, where a space is a space.
-	 *
-	 * THE GUARD IS KEPT FOR THE LEGACY BINDING ONLY. The modifier combo does not
-	 * consult it: `AltRight` types nothing in a textarea, so suppressing it
-	 * while the user is typing would be the old defect (the composer is exactly
-	 * where someone dictating sits) wearing a different key.
+	 * The palette doors are claimed in main for the same reason: Cmd/Ctrl+P is a
+	 * chord on the hold's own modifier, and the key that makes it a chord never
+	 * arrives here to abort the hold.
 	 */
-	private spaceFocusGuardRefuses(): boolean {
-		const activeElement = document.activeElement as HTMLElement | null;
-		return Boolean(
-			activeElement &&
-				(activeElement.tagName === "INPUT" ||
-					activeElement.tagName === "TEXTAREA" ||
-					activeElement.isContentEditable),
-		);
-	}
+	private handlePaletteDoor = (): void => {
+		this.releaseHold("abort");
+	};
 
 	/**
 	 * The highest-priority handler that would accept a hold right now.
@@ -310,7 +435,7 @@ export class SpeechToTextManager {
 
 	/**
 	 * Dispatch a hold. `preventDefault` so the binding never types: that is
-	 * load-bearing for the modifier combo exactly as it was for Space.
+	 * load-bearing for the modifier combo.
 	 */
 	private engage(event: KeyboardEvent): void {
 		const active = this.highestActive();
@@ -340,15 +465,23 @@ export class SpeechToTextManager {
 		 * An IME composition owns its keys; a hold is never part of one.
 		 */
 		if (event.isComposing) return;
+		// A cleared push-to-talk binding is no door: read the resolution once
+		// (not twice): `ptt` is null exactly when cleared.
 		const ptt = resolvePushToTalkBinding();
-		const isPttKey = event.code === ptt.code;
-		const isSpace = event.code === "Space";
+		const isPttKey = ptt !== null && event.code === ptt.code;
 		if (event.repeat) {
 			/*
 			 * Auto-repeat is the key still being held, not a second press, and
-			 * not a second key: ignore it entirely.
+			 * not a second key. While a hold is engaged the hold OWNS the key
+			 * until keyup, so the repeat must be claimed too: only the first
+			 * keydown gets `preventDefault` through `engage()`, and every
+			 * repeat that falls through keeps Chromium's default. When nothing
+			 * is engaged a repeat is still ignored entirely, as before.
 			 */
-			if (isPttKey || isSpace) return;
+			if (isPttKey) {
+				if (this.engaged) event.preventDefault();
+				return;
+			}
 		}
 		if (isPttKey) {
 			/*
@@ -388,10 +521,6 @@ export class SpeechToTextManager {
 			this.releaseHold("abort");
 			return;
 		}
-		if (isSpace) {
-			if (this.spaceFocusGuardRefuses()) return;
-			this.engage(event);
-		}
 	};
 
 	/**
@@ -401,7 +530,7 @@ export class SpeechToTextManager {
 	private handleKeyUp = (event: KeyboardEvent): void => {
 		if (!this.engaged) return;
 		const ptt = resolvePushToTalkBinding();
-		if (event.code === ptt.code || event.code === "Space") {
+		if (ptt !== null && event.code === ptt.code) {
 			event.preventDefault();
 			this.releaseHold("release");
 		}
@@ -426,6 +555,9 @@ export class SpeechToTextManager {
 				"start-speech-to-text",
 				this.handleSpeechToText,
 			);
+			for (const channel of PALETTE_DOOR_CHANNELS) {
+				window.electron.ipcRenderer.on(channel, this.handlePaletteDoor);
+			}
 			/*
 			 * CAPTURE for keydown: the hold must start on the press itself
 			 * (there is no timer to wait for a release anymore), and a focused
@@ -448,6 +580,12 @@ export class SpeechToTextManager {
 				"start-speech-to-text",
 				this.handleSpeechToText,
 			);
+			for (const channel of PALETTE_DOOR_CHANNELS) {
+				window.electron.ipcRenderer.removeListener(
+					channel,
+					this.handlePaletteDoor,
+				);
+			}
 			window.removeEventListener("keydown", this.handleKeyDown, true);
 			window.removeEventListener("keyup", this.handleKeyUp);
 			window.removeEventListener("blur", this.handleWindowBlur);

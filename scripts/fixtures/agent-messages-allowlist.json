@@ -1,0 +1,67 @@
+{
+	"allowlist": {
+		"tenant_id": "tnt_bridge_e2e",
+		"entries": [
+			{
+				"id": "bal_send_allow",
+				"direction": "send",
+				"effect": "allow",
+				"target": {
+					"kind": "endpoint",
+					"endpoint_id": "bep_peer_send"
+				}
+			},
+			{
+				"id": "bal_receive_deny",
+				"direction": "receive",
+				"effect": "deny",
+				"target": {
+					"kind": "account",
+					"account_id": "account-blocked"
+				}
+			}
+		]
+	},
+	"view": {
+		"tenant_id": "tnt_bridge_e2e",
+		"entries": [
+			{
+				"id": "bal_send_allow",
+				"direction": "send",
+				"effect": "allow",
+				"target": {
+					"kind": "endpoint",
+					"endpoint_id": "bep_peer_send"
+				}
+			},
+			{
+				"id": "bal_receive_deny",
+				"direction": "receive",
+				"effect": "deny",
+				"target": {
+					"kind": "account",
+					"account_id": "account-blocked"
+				}
+			}
+		],
+		"directions": {
+			"send": {
+				"mode": "listed_only",
+				"allow": 1,
+				"deny": 0
+			},
+			"receive": {
+				"mode": "class_default",
+				"allow": 0,
+				"deny": 1
+			}
+		},
+		"class_default": "cos_cos",
+		"cues": {
+			"allow_entry_switches_direction_to_listed_only": true,
+			"listed_only_affects": "new_threads",
+			"removing_allow_does_not_stop_open_thread": true,
+			"deny_stops_pair_both_directions": true
+		}
+	}
+}

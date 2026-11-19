@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "agent": "i18n-auditor",
+  "auditor": "i18n-auditor",
+  "role": "i18n-auditor (team lopdev), independent Urdu linguistic auditor",
+  "session": "accfe104567b",
+  "job_id": null,
+  "instance": "accfe104567b-census-ur-errors-b18e846f2689",
+  "model": "anthropic/claude-sonnet-5-5",
+  "model_provenance": "Model name as shown in this session's runtime header; not independently verifiable beyond that.",
+  "fallback": "None observed or claimed.",
+  "independence": "This session did not author or edit the Urdu catalogue; it audited the committed bytes only.",
+  "locale": "ur",
+  "namespace": "ui.common.errors",
+  "branch": "fix/agent-transport-copy",
+  "head": "dd75287b77ca8b8447a362aa9d052a2dccacf097",
+  "date": "2026-11-02",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "source_sha256": "1c33841b78da772dab58d4476295082b6e1d56a328c587597de20a368cb7c254",
+  "context_sha256": "6cd0c99c1e5e40619c44e1e8fad1a249582b3dad09ca1bc32d04f3fcafee98b1",
+  "target_sha256": "b18e846f26893a4567049bdc7bf62fa471f6fa0b2e985c90aca258ea36bb300d",
+  "keys_read": 2,
+  "keys_in_file": 140,
+  "findings": [
+    {
+      "id": "A-1",
+      "key": "ui.common.errors.desktop_transport_failed",
+      "severity": "minor",
+      "summary": "`اس کا کنکشن` refers to the backend (not the user's connection, which would be `آپ کا`), but the nearest noun is `یہ درخواست`. Optional explicit wording: `بیک اینڈ کا کنکشن چیک کریں اور دوبارہ کوشش کریں۔`. Non-gating; current text accepted."
+    }
+  ],
+  "scope": "LINGUISTIC JUDGEMENT COVERS ONLY THE ONE NEW KEY ui.common.errors.desktop_transport_failed (the census audit covered two keys across ui.agents.detail and ui.common.errors; this receipt is the ui.common.errors half). The receipt binds the WHOLE 140-key file hash because the ledger gate requires it. The remaining 139 keys were NOT re-audited: from the committed bytes I confirmed the English and Urdu key sets are identical (140 keys) and that the commit's diff of the Urdu file against its parent 7920f05769bd4ac833a09d7ba2abc3d0e2ca557a adds exactly this key (plus the previous line's trailing comma) and changes nothing else, so those keys are byte-unchanged from the previously audited state. This is not a whole-file linguistic audit and not rendered-layout clearance: no screenshot, wrapping, glyph shaping or live RTL layout was tested.",
+  "verified": [
+    "Urdu transport message states what happened and the retry action; terms بیک اینڈ/درخواست/کنکشن match sibling keys. Calm, two sentences, no bidi controls.",
+    "No placeholders or plurals in the key or its English source; no manual bidi control or Unicode format characters in the key or anywhere in the Urdu file (scanned Cf/Cc).",
+    "Repo scripts check-duplicates and context-parity passed on the pinned tree; ledger-check failed for ur on stale hashes only, as expected before this receipt.",
+    "Source, context and target SHA-256 were derived from `git show` at the pinned head and equal the on-disk bytes in the worktree."
+  ]
+}

@@ -1,0 +1,142 @@
+{
+  "schema": 1,
+  "kind": "translation-audit-receipt",
+  "audit_kind": "convergence-rebind",
+  "date": "2026-10-25",
+  "locale": "hi",
+  "namespace": "ui.common.viewer",
+  "pr": 1403,
+  "branch": "feat/i18n-key-remaining-copy",
+  "head": "0adbb37b9429e2c70cbe64ea149cb091432c8dd6",
+  "merge": "ab9bd739c21ebc24c22b9d4fb25ce78a43c4fede",
+  "instance": "hi-bind-a6583077d2a3",
+  "auditor": {
+    "agent": "translation-auditor",
+    "role": "independent translation auditor (team lopdev); authored no catalogue value for PR #1403 and edited no catalogue or ledger",
+    "team": "lopdev",
+    "harness": "Local Operator",
+    "session": "8c59b09ca817",
+    "model": "deepseek/deepseek-flash",
+    "actual_model": "deepseek/deepseek-flash",
+    "model_source": "harness session banner (system prompt line 'Model: deepseek/deepseek-flash'); no fallback used",
+    "fallback": null,
+    "independence": "This run read the catalogue bytes with git show, wrote no translated value, edited no catalogue, English source, context sidecar, ledger or allowance file, and did not author any hi value under audit. The two value sets the merge unions were audited by other sessions: hi-extract-a51f5b96d24e-r2 for the branch's 8 keys and audit-hi-canvas-r2-dab47dfc690a for origin/main's 4 image_lightbox keys. This receipt re-binds both sets at the merged bytes."
+  },
+  "status": "passed",
+  "result": "clean",
+  "binding": "Current-byte convergence re-bind of the merge union, not a fresh translation wave. The merge ab9bd739c2 took the union of the two parents for this namespace: the PR pre-merge head d784571d90 contributed 8 keys (close, next, opening, position, previous, reset_view, zoom_in, zoom_out) and origin/main 91aa8f5f10 contributed 4 keys (image_lightbox.previous, .next, .close, .asset_of). The merged file has 12 keys for both en and hi, and every value is byte-identical to the parent that supplied it; the 4 keys present on both sides had identical values in both parents, so the merge made no value choice. This receipt names the current bytes so the stale ledger row can be re-bound.",
+  "scope": "All 12 ui.common.viewer keys for hi at current PR head 0adbb37b94, read against the English source, its context sidecar and both merge parents. The English union was also checked with scripts/i18n/catalogue-union-parity.mjs, which returned PASS on both ui.common.viewer.json and ui.common.viewer.context.json (12/12 expected union keys, 0 missing from either side, 0 value differences).",
+  "sha256": {
+    "en": "13e7cccf566f6a41d890c36a9dc24242a154b80d9e8cdbcfdf6988d5c5376243",
+    "hi": "a6583077d2a3a83e296c6ff12b4ec0786383836e1fe86042da702bfba8f54c3b",
+    "context": "c105c548706f46e9e247437c16352074c245ff07551a8edf360a4a8e666a4d73"
+  },
+  "parents": {
+    "branch": {
+      "rev": "d784571d9017c2958a80c51808b2ace64e3f76ba",
+      "role": "PR pre-merge head",
+      "en_sha256": "1faadd19f505153f97f239f612ad3316282a8ba85da55b882d626fc276593de5",
+      "hi_sha256": "b75b08e7838283cadb563c789de0dedfc1bdd8832e82332b7b47ccd687b3adcb",
+      "context_sha256": "e754ce6c5403f7fc27c1b7d768f25626ecc77be9886eaec1e12fdeed267514d5",
+      "keys": 8
+    },
+    "main": {
+      "rev": "91aa8f5f10797184d01c41143d1a3645176b566b",
+      "role": "origin/main merged in",
+      "en_sha256": "c0ffdd08058b062c88c6fad428db0e33c4162bcee1094dd5dd16890fe4e9705f",
+      "hi_sha256": "c84afbfc57b0ae35a8aa90aa23fa874382ebfc29c1d0a577f3581880d2fe0be5",
+      "context_sha256": "8b324e966ddb4aaef92ec3b3465f8ac6a80982529bcbd3b45a3c1cf1f9b28dd8",
+      "keys": 8
+    }
+  },
+  "union_binding": {
+    "from_branch": [
+      "ui.common.viewer.close",
+      "ui.common.viewer.next",
+      "ui.common.viewer.opening",
+      "ui.common.viewer.position",
+      "ui.common.viewer.previous",
+      "ui.common.viewer.reset_view",
+      "ui.common.viewer.zoom_in",
+      "ui.common.viewer.zoom_out"
+    ],
+    "from_main": [
+      "ui.common.viewer.image_lightbox.previous",
+      "ui.common.viewer.image_lightbox.next",
+      "ui.common.viewer.image_lightbox.close",
+      "ui.common.viewer.image_lightbox.asset_of"
+    ],
+    "shared_keys_identical_in_both_parents": [
+      "ui.common.viewer.opening",
+      "ui.common.viewer.reset_view",
+      "ui.common.viewer.zoom_in",
+      "ui.common.viewer.zoom_out"
+    ],
+    "value_drift": 0
+  },
+  "keys_read": 12,
+  "key_set": "equal to English: 12/12, same key order, no extra or missing key, no English stub and no Latin-only value",
+  "icu": "Every value parsed with @formatjs/icu-messageformat-parser and compared by structure with English. close/next/previous each keep their {kind, select, image, asset, other} arms; position keeps {kind, select, image, asset, other} with {index}/{count} both carrying ::group-off; image_lightbox.previous/next/close keep {medialabel}; image_lightbox.asset_of keeps {index}/{count} with ::group-off. No placeholder, select arm or ::group-off skeleton was renamed, dropped or added by the union.",
+  "icu_observations": [
+    {
+      "severity": "info",
+      "key": "ui.common.viewer.position",
+      "observation": "hi renders the position line as 'तस्वीर {index} / {count}' and 'एसेट {index} / {count}' while image_lightbox.asset_of renders 'कुल {count} में से एसेट {index}'.",
+      "why_not_a_finding": "These are different UI slots: position is the compact carousel position line where 'X / Y' is the idiomatic counter form, while asset_of is a full noun phrase in the image lightbox. Both are inherited, byte-identical to their independently audited parents, and a native reader understands both; no glossary term drifts."
+    },
+    {
+     "severity": "info",
+     "key": "ui.common.viewer.image_lightbox.previous/next/close",
+     "observation": "The three labels prefix a dynamic {medialabel}; the four image_lightbox keys have no renderer call site at this head (they are present in keys.gen.ts only), so no concrete medialabel value can be bound from the renderer. audit-hi-canvas-24dd9a889ea4 recorded the raw-literal argument rendering as a code-side issue, not a translation finding.",
+     "why_not_a_finding": "The merge only carried already-audited value bytes; it changed no code and authored no new value. A call-site argument type is outside a catalogue audit, and the prior main-side audit already dispositioned it."
+    }
+  ],
+  "register": "Imperatives and short phrases use the polite -एँ/-ें forms (रीसेट करें, बढ़ाएँ, घटाएँ, बंद करें) and the select arms agree in gender with their noun (तस्वीर feminine, एसेट masculine).",
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/hi.md",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    },
+    "docs": {
+      "path": "docs/I18N.md",
+      "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+    }
+  },
+  "prior_audits": [
+    {
+      "instance": "hi-extract-a51f5b96d24e-r2",
+      "receipt": "i18n/receipts/hi-extract-a51f5b96d24e-r2.json",
+      "receipt_sha256": "2cd6dd756cad65fa3c640189bcb0db1c158de53f19e93ded83de29eb610e4684",
+      "covers": "the 8 branch-side keys at head d082bd9595, hi sha b75b08e78382, clean (0 findings); the hi file is byte-identical to the branch parent above",
+      "namespace_block_sha256": {
+        "en": "1faadd19f505153f97f239f612ad3316282a8ba85da55b882d626fc276593de5",
+        "hi": "b75b08e7838283cadb563c789de0dedfc1bdd8832e82332b7b47ccd687b3adcb"
+      }
+    },
+    {
+      "instance": "audit-hi-canvas-r2-dab47dfc690a",
+      "receipt": "i18n/receipts/audit-hi-canvas-r2-dab47dfc690a.json",
+      "receipt_sha256": "ddc129330ebb12e139c95c2d1e636b43c46c475d74d775a1b084048d05525871",
+      "covers": "the 4 origin/main image_lightbox keys at head 82209cab3a; the viewer namespace block is status passed and its hi sha c84afbfc57b0 is byte-identical to the main parent above, so the values are unchanged from the round-1 file it passed",
+      "namespace_block_sha256": {
+        "en": "c0ffdd08058b062c88c6fad428db0e33c4162bcee1094dd5dd16890fe4e9705f",
+        "hi": "c84afbfc57b0ae35a8aa90aa23fa874382ebfc29c1d0a577f3581880d2fe0be5"
+      }
+    }
+  ],
+  "method": [
+    "Read all 12 values at the current head with git show and compared them key by key with the English source and the context sidecar's role/tone notes.",
+    "Reconstructed the merge union from both parents: classified every merged key by the parent whose value it equals byte-for-byte (8 branch, 4 main) and confirmed the 4 keys present on both sides had identical values, so no conflict was resolved by preference.",
+    "Ran scripts/i18n/catalogue-union-parity.mjs for the English catalogue and its context sidecar: PASS, 12 expected union keys, nothing missing from either parent, 0 value differences.",
+    "Parsed all 12 messages with @formatjs/icu-messageformat-parser; compared select arms, arguments and ::group-off skeletons with English.",
+    "Verified key parity and key order in both directions (12 keys each), rejected English stubs or Latin-only values, and checked UTF-8/NFC, BOM, CRLF, duplicate keys and bidi controls.",
+    "Searched the head for call sites: the four image_lightbox keys are present in keys.gen.ts but have no renderer call site at this head (git grep finds only catalogue, generated-key and receipt references), so their {medialabel} value cannot be bound from the renderer here. audit-hi-canvas-24dd9a889ea4 already recorded the raw-literal argument concern as a code-side, non-translation issue; this merge reintroduces neither code nor value, so it is not counted as a translation finding."
+  ],
+  "findings": [],
+  "verdict": "clean — 12 keys read; the union is exact (8 branch + 4 main, 0 drift, 0 shared-key conflict), every select arm and ::group-off skeleton survives, and both value sets were already audited clean by independent sessions at the exact parent bytes.",
+  "limitations": "Static catalogue audit only: no rendered screen was built or captured in this pass, so width/overflow judgement is not measured pixels. No native-speaker sign-off is claimed."
+}

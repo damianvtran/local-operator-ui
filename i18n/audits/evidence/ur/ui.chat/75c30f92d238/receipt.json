@@ -1,0 +1,281 @@
+{
+  "locale": "ur",
+  "mode": "Fresh independent four-key delta audit (ur), RTL locale. One full pass plus one independent second read of each of the four new values, read against the locale style guide, the glossary byte-copy and the existing ur catalogue; legacy values consistency-only. Read-only worktree, no repository edits, no builds, no servers, no translation/MT service. Allocation: fix (<2h), bounded audit only.",
+  "scope": "PR damianvtran/local-operator-ui #1842 @ e5fb4310dab638f9cf428779d62539ec039a8990; origin/main..HEAD for locale ur: two keys added to ur/ui.chat.json (ui.chat.image_actions.actions, ui.chat.audio.position_label), one to ur/ui.chat.composer_media.json (ui.chat.composer_media.pasted_image), one to ur/ui.common.actions.json (ui.common.actions.actions_for_name). No ur value removed or changed. The remaining 267 keys of the three namespaces are consistency-only: file parses, key set equals English, no key removed versus origin/main; their legacy values are NOT certified by this audit.",
+  "head_sha": "e5fb4310dab638f9cf428779d62539ec039a8990",
+  "audit_date": "2026-11-10",
+  "key_count": 4,
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "Translator agent/model and the per-locale translator session (ur f573f85d7297) supplied by the delegating manager; values were translated before this session and are audited as found. This auditor did not translate, edit or participate in the translation of any audited value."
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "75c30f92d238",
+    "session": "75c30f92d238",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "Served session header: deepseek/deepseek-flash, session 75c30f92d238. No fallback notice appeared in this session; no role or model pin was requested or applied.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "verdict": "clean-with-findings",
+  "findings": [
+    {
+      "id": "UR-1",
+      "severity": "MINOR",
+      "key": "ui.chat.audio.position_label",
+      "namespace": "ui.chat",
+      "current_text": "{label} کی پوزیشن",
+      "source": "{label} position",
+      "problem": "پوزیشن is the only occurrence of that word in the entire ur catalogue (measured: 1 hit in 1 file, the new key), while the catalogue's existing name for the same control concept is مقام: ur/ui.chat.attachments.json:16 \"ui.chat.attachments.playback_position\": \"پلے بیک کا مقام\" (aria-label of the audio attachment's seek slider, src/renderer/src/features/chat/components/message-item/audio-attachment.tsx:189). This key is the aria-label of the sound player's seek slider (supplement/sound-player.tsx:455) - the same control, two surfaces, two words: a screen-reader user hears مقام on one audio slider and پوزیشن on the other. The style guide asks to \"Prefer the settled Urdu term where one exists: ترتیبات (settings), محفوظ کریں (save), استعمال (usage)\" and مقام is already the settled word here (64 occurrences in 24 ur files).",
+      "recommendation": "Use \"{label} کا مقام\" - note the postposition: مقام is masculine, so کا, not the کی that the feminine پوزیشن selected. That keeps the construction grammatical for any inserted clip title (Urdu marks the genitive on the possessed noun, never on the inserted name) and matches \"پلے بیک کا مقام\". If the wave prefers the everyday loanword پوزیشن, keep the value and record a follow-up to align ur/ui.chat.attachments.playback_position in a later wave, so the two audio sliders agree on one word.",
+      "meaning_preserved": true,
+      "placeholder_intact": true,
+      "gates": false
+    },
+    {
+      "id": "UR-2",
+      "severity": "NIT",
+      "key": "ui.common.actions.actions_for_name",
+      "namespace": "ui.common.actions",
+      "current_text": "{name} کے اعمال",
+      "source": "Actions for {name}",
+      "problem": "Observation only, no change requested. ur renders \"actions\" two ways: اعمال (28 occurrences) and اقدامات (15). The legacy 'actions for {name}' keys use اقدامات - \"{name} کے مزید اقدامات\" (ui.settings.integrations.json:146) and \"{name} فائل کے اقدامات\" (ui.projects.json:355) - while the nearest sibling menu uses اعمال: \"فائل کے اعمال\" (ui.common.actions.json:17). The new keys follow the nearest sibling, which is the correct call for a file/image overflow menu whose unnamed fallback is that same sibling.",
+      "recommendation": "Keep \"{name} کے اعمال\" and \"تصویر کے اعمال\". The اعمال/اقدامات split is pre-existing in namespaces outside this PR; it is recorded here so the ledger note shows it was seen, not missed, and so a later wave can unify the legacy projects/settings keys rather than this PR.",
+      "meaning_preserved": true,
+      "placeholder_intact": true,
+      "gates": false
+    }
+  ],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 1
+  },
+  "namespaces": {
+    "ui.chat": {
+      "status": "passed",
+      "result": "clean-with-findings",
+      "source_sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15",
+      "target_sha256": "46ddbd89585ba5d057b61bf90a83dfdca7b42fb2135ce18db940deed41794fdd",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.json",
+          "sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15"
+        },
+        "ur": {
+          "path": "src/i18n/catalogues/ur/ui.chat.json",
+          "sha256": "46ddbd89585ba5d057b61bf90a83dfdca7b42fb2135ce18db940deed41794fdd"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.context.json",
+          "sha256": "84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf"
+        }
+      },
+      "fully_audited_key_count": 2,
+      "consistency_only_key_count": 206,
+      "findings": [
+        {
+          "id": "UR-1",
+          "severity": "MINOR",
+          "key": "ui.chat.audio.position_label",
+          "current_text": "{label} کی پوزیشن",
+          "source": "{label} position",
+          "problem": "پوزیشن (only occurrence in the ur catalogue) diverges from the settled مقام used for the same audio-seek-slider concept at ui.chat.attachments.playback_position = \"پلے بیک کا مقام\".",
+          "recommendation": "Prefer \"{label} کا مقام\" (مقام is masculine: کا); otherwise keep پوزیشن and align the legacy attachments key in a later wave."
+        }
+      ]
+    },
+    "ui.chat.composer_media": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae",
+      "target_sha256": "0b92eb10a96ac3e94f3acabe554e3e429cee150094ad333bb3c0f1bd0243e3fb",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.composer_media.json",
+          "sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae"
+        },
+        "ur": {
+          "path": "src/i18n/catalogues/ur/ui.chat.composer_media.json",
+          "sha256": "0b92eb10a96ac3e94f3acabe554e3e429cee150094ad333bb3c0f1bd0243e3fb"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.composer_media.context.json",
+          "sha256": "a0fbc1552ef6f27999f3cff365750025627a284faa106d767e22a24d131ae77b"
+        }
+      },
+      "fully_audited_key_count": 1,
+      "consistency_only_key_count": 8,
+      "findings": []
+    },
+    "ui.common.actions": {
+      "status": "passed",
+      "result": "clean-with-findings",
+      "source_sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b",
+      "target_sha256": "06ed5d8326b11d74df3891e15a1e9290c3893f03be43b79fa91f9d168058e7f7",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.json",
+          "sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b"
+        },
+        "ur": {
+          "path": "src/i18n/catalogues/ur/ui.common.actions.json",
+          "sha256": "06ed5d8326b11d74df3891e15a1e9290c3893f03be43b79fa91f9d168058e7f7"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.context.json",
+          "sha256": "24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d"
+        }
+      },
+      "fully_audited_key_count": 1,
+      "consistency_only_key_count": 53,
+      "findings": [
+        {
+          "id": "UR-2",
+          "severity": "NIT",
+          "key": "ui.common.actions.actions_for_name",
+          "current_text": "{name} کے اعمال",
+          "source": "Actions for {name}",
+          "problem": "Observation only: legacy 'actions for {name}' keys use اقدامات, the nearest sibling menu uses اعمال, and this key follows the sibling.",
+          "recommendation": "Keep the value; record the pre-existing اعمال/اقدامات split for a later unify wave."
+        }
+      ]
+    }
+  },
+  "per_key_checks": [
+    {
+      "key": "ui.chat.composer_media.pasted_image",
+      "source": "Pasted image",
+      "current_text": "چسپاں کردہ تصویر",
+      "assessment": "Accurate and idiomatic. A short noun phrase for the synthetic filename/caption of an unnamed pasted image; exactly parallels the neighbouring \"چسپاں کردہ فائل\" (pasted_file) and \"چسپاں کردہ {mimeType}\" (pasted_type) in construction, register and choice of کردہ over the equally possible کی گئی. کردہ is an invariable perfective participle, so no gender agreement with feminine تصویر is needed or missing. تصویر is already the catalogue's word for image (ui.chat.image_actions.copy_image = \"تصویر نقل کریں\"). No file extension or MIME prose, per the sidecar note. Sentence case is not applicable to Urdu; no trailing punctuation, matching the English.",
+      "findings": [],
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "note": "No placeholder in either language; the note forbids adding one."
+      }
+    },
+    {
+      "key": "ui.common.actions.actions_for_name",
+      "source": "Actions for {name}",
+      "current_text": "{name} کے اعمال",
+      "assessment": "Grammatical for ANY inserted user string and faithful to the English intent. Urdu marks the genitive on the possessed noun, not on the possessor: کے agrees with اعمال (masculine plural), so the construction is invariant to the name's script, gender, number and trailing punctuation, and no declension can break. It is the catalogue's established idiom for 'actions for X' (\"{name} کے مزید اقدامات\", \"فائل کے اعمال\") rather than a literal کے لیے, which would read as 'actions in order that X'. Meaning is not a command to act on the name, and {name} is inserted bare and verbatim with no added extension or quoting. RTL: the leading placeholder is a single LTR island in logical order, which the render layer isolates with FSI/PDI - correct per the style guide's 'do not insert manual bidi control characters', and no such character is present. This is the named-trigger name; the unnamed fallback stays ui.chat.image_actions.actions / file_actions, as the code does (image-actions-menu.tsx:365).",
+      "findings": [
+        "UR-2"
+      ],
+      "placeholder_integrity": {
+        "arguments": [
+          [
+            "name",
+            "string"
+          ]
+        ],
+        "matches_english": true
+      }
+    },
+    {
+      "key": "ui.chat.image_actions.actions",
+      "source": "Image actions",
+      "current_text": "تصویر کے اعمال",
+      "assessment": "Exact structural parallel to the existing file menu name \"فائل کے اعمال\" (ui.common.actions.file_actions_menu.file_actions), including the singular noun, which is what English 'Image actions' (not 'images') calls for. Correct for both uses the sidecar names - the menu's default tooltip and the unnamed-image trigger's accessible name - and it correctly stays the generic label while a named image goes through ui.common.actions.actions_for_name. No placeholder, no punctuation, no length hint beyond sanity; 14 characters is compact.",
+      "findings": [],
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true
+      }
+    },
+    {
+      "key": "ui.chat.audio.position_label",
+      "source": "{label} position",
+      "current_text": "{label} کی پوزیشن",
+      "assessment": "Meaning and grammar are right: پوزیشن is feminine, so کی is the correct postposition (a کا here would have been a grammar error), the phrase names the clip's playback position rather than a play/pause action, and the clip label stays verbatim in front - the same order as the neighbouring \"{label} چلائیں\" / \"{label} کو وقفہ دیں\", so a screen reader announces the audio controls consistently. The single reservation is the word itself: پوزیشن is the catalogue's only use of that term, against the settled مقام for the same slider concept (UR-1, MINOR).",
+      "findings": [
+        "UR-1"
+      ],
+      "placeholder_integrity": {
+        "arguments": [
+          [
+            "label",
+            "string"
+          ]
+        ],
+        "matches_english": true
+      }
+    }
+  ],
+  "context_sidecar_review": {
+    "status": "accurate - no change requested",
+    "checked_keys": [
+      "ui.chat.composer_media.pasted_file (broadened scope sentence)",
+      "ui.chat.composer_media.pasted_image (new)",
+      "ui.common.actions.actions_for_name (new)",
+      "ui.chat.image_actions.actions (new)",
+      "ui.chat.audio.position_label (new)"
+    ],
+    "pasted_file_broadened_sentence": "Verified against source, not assumed. src/renderer/src/features/chat/utils/get-file-name.ts returns t(\"ui.chat.composer_media.pasted_file\") for any non-image data: URI when the name parameter is absent and, through the catch, when decodeURIComponent throws on invalid percent encoding - in both branches regardless of whether a MIME type is present, which is what the sentence now says. src/renderer/src/features/chat/utils/attachment-encode.ts:156-190 confirms the second half: 'Synthetic names for unnamed data URLs ... become upload metadata. Valid decoded names stay verbatim; the original dataUrl (and therefore its bytes/MIME) is passed untouched, and stored metadata wins.' Note for accuracy, not a defect: the composer chip has its own local getFileName (components/attachments-preview.tsx:173-199) which prefers \"Pasted {mimeType}\" when a MIME type is present, so 'whether or not a MIME type is present' is true of the shared util and of the upload-metadata path it feeds, which is the use the sidecar is describing.",
+    "pasted_image_note": "Accurate: pasted_image is returned only for a data:image/ URI whose name parameter is absent or fails percent-decoding, and a name that decodes is returned verbatim. It is a display name in attachment rows/captions and in read-failure messages, not a file extension or MIME string.",
+    "actions_for_name_note": "Accurate: the key is the named file/image trigger's aria-label (supplement-file-actions.tsx:181, image-actions-menu.tsx:365) and both call sites keep the unnamed fallback and caller overrides, as the note states.",
+    "position_label_note": "Accurate: sound-player.tsx:455 passes the clip label; the string names the seek slider, not play/pause, and does not touch time text or seeking."
+  },
+  "mechanical_checks_executed": {
+    "repo_validator": "node scripts/i18n/generate.mjs --check => 'src/i18n/keys.gen.ts is byte-identical to a fresh generation.' (exit 0). node scripts/i18n/check-duplicates.mjs => 'ok - 1400 file(s) scanned, 0 duplicate key(s)' (exit 0). node scripts/i18n/context-parity.mjs => 'ok - every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s)' (exit 0).",
+    "ledger_check": "node scripts/i18n/ledger-check.mjs => FAILED, 64 findings across 1085 entries; 9 of them on ur: stale source_sha256 (ledger 270fc752791e... / c1ddfc211ada... / 3f9e9a4b0231...), stale target_sha256 (ledger ff3a28460b50... / ff5d51690b3c... / 3ec87bb6883a...) and 'the receipt does not name the English source bytes on disk' for all three ur namespaces. This is the pending re-audit state this delta creates (the English source gained a key in each namespace and the translated files gained the matching values); it is not a translation defect and is closed by ledger-assemble with this receipt, which is the manager's write and outside this read-only remit.",
+    "json_and_keysets": "All six catalogue files parse; ur key sets equal English exactly (208/208, 9/9, 54/54), no missing or extra keys; git diff --numstat origin/main HEAD for the three ur files is 3/1, 2/1, 2/1 - additions only, the single removed line in each being the previously-last line re-emitted with a trailing comma.",
+    "placeholders": "Extracted by regex from source and target: {label} and {name} present byte-exactly and plain in all three keys that use them; no ICU plural/select in any of the four (none is needed: no quantity is named); no markup, backtick code, command, flag or identifier in any of the four.",
+    "invisible_characters": "No Cf/Zs(not space) character in any of the four values (codepoint dumps recorded in the audit log), and zero bidi/zero-width/NBSP/narrow-NBSP characters across all 60 ur catalogue files - correct per the style guide's 'do not insert manual bidi control characters (RLM/LRM/FSI/PDI)' and the lack of any precedent for them in ur.",
+    "width": "None of the four keys carries a maxCells/maxChars hint; longest is 17 characters and 3 words, so no fit concern for a tooltip, an accessible name or a narrow caption.",
+    "hashes": "All nine input hashes (en/ur catalogue, en context sidecar per namespace) equal ~/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/expected-hashes.json. Glossary conformance checked against the manager-owned byte-copy at that same directory: sha256 0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8, 173 lines, byte-identical to ~/local-operator/i18n/glossary.md."
+  },
+  "glossary_conformance": {
+    "checked_against": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "lines": 173,
+      "identical_to": "~/local-operator/i18n/glossary.md (same sha256)"
+    },
+    "result": "No glossary row covers any of the four strings: none names a core term from section 2 (session, wake, agent, tool, workspace, approvals, project, model, prompt, compaction, schedule, monitor, relay, usage), so no preferred-rendering row applies. Section 1 keep-English rules are honoured - no product name, command, flag, path, identifier or technology name appears in or around the translated fragments, and {name}/{label} are inserted verbatim as the placeholder rule requires ('never rename or reorder').",
+    "locale_guide": {
+      "path": "~/local-operator/i18n/style-guides/ur.md",
+      "sha256": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60",
+      "rules_applied": [
+        "No imperatives in any of the four, so the آپ register is untouched; none of them addresses the user.",
+        "Settled loanwords in Urdu script are allowed (سیشن، ٹوکن، فائل) - which is why پوزیشن is defensible rather than wrong (UR-1 stays MINOR), and why the guide's 'prefer the settled Urdu term where one exists' line is the reason to prefer مقام.",
+        "RTL & bidi: storage logical order, no manual bidi controls, LTR islands byte-identical - all satisfied.",
+        "Punctuation: no ۔ ، ؟ ؛ full/half marks appear (no sentence punctuation is needed in any of the four), no Latin punctuation was introduced into prose.",
+        "Width: Arabic-script text ~1 cell per character; 14-17 characters, no cap."
+      ]
+    }
+  },
+  "typography_and_register": {
+    "formality": "None of the four is an address or an imperative; the polite آپ register is preserved vacuously and nothing colloquial or blunt was introduced.",
+    "register": "Short noun phrases, exactly the terse natural Urdu the guide asks for; not Hindi-ised and not over-Persianised (the one Persianate-leaning option, مقام, is already the catalogue's settled word rather than a stylistic import).",
+    "punctuation": "No trailing punctuation in any of the four, matching the English; no exclamation mark; no hijacked colon like the ru solution added.",
+    "sentence_case": "Not applicable to Urdu script; nothing capitalised or bracketed was introduced."
+  },
+  "remediation_verification": {
+    "status": "No blocker or major finding; nothing to remediate for a pass. UR-1 is a one-word alignment the implementer may take in this PR (recommended) or defer with a reason, per the gate that a MINOR does not hold a clean round.",
+    "prior_findings": [],
+    "policy_sources": [
+      "~/local-operator/i18n/style-guides/ur.md",
+      "/Users/damian/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/glossary.md (manager byte-copy of ~/local-operator/i18n/glossary.md)"
+    ],
+    "out_of_scope_pre_existing": [
+      "ur renders 'actions' both as اعمال (28) and اقدامات (15); the legacy keys ui.projects.project_updates.file_actions_for_name and ui.settings.integrations.integration_row.more_actions_for_name use اقدامات, and the latter's other half ('{name} فائل کے اقدامات') reads awkwardly in Urdu. Outside this PR's scope; recorded, not fixed here."
+    ]
+  },
+  "unverified": [
+    "No rendered UI, browser, screenshot or screen-reader execution: this is a read-only text audit and the task forbids builds, servers and repository edits. No rendered or assistive-technology proof is claimed for the RTL ordering; the RTL judgement is a reading of the storage-order strings plus the render layer's documented FSI/PDI isolation.",
+    "No translation or MT service was consulted and no back-translation was performed; every judgement is a reading of the English source, the sidecar and the existing catalogue.",
+    "The repo's Node validator scripts were executed read-only (generate --check, check-duplicates, context-parity, ledger-check); the locale test files under scripts/i18n/*.test.mjs and the full check-i18n chain were NOT run (CI's remit, and check-added-strings needs a base ref).",
+    "No ledger write and no tracked evidence commit: recording the row needs ledger-assemble, which writes i18n/ledger.json and i18n/receipts/ inside the repository - outside this read-only remit. This receipt is shaped for that command (status/result/severity counts and both hashes per namespace).",
+    "Legacy values in the three namespaces are consistency-only and are not certified by this audit."
+  ],
+  "receipt_contract_review": "Top-level and per-namespace field set mirrors the reference receipt ~/local-operator-ui/.worktrees/_s10-audits/fd09d8f/fr-sol-e23a48ff2216.json (locale, mode, scope, head_sha, audit_date, key_count, translator, auditor, status, result, verdict, findings, severity_counts, namespaces{status,result,source_sha256,target_sha256,input_hashes,findings}). Extra fields (per_key_checks, context_sidecar_review, glossary_conformance, mechanical_checks_executed, unverified) are additive and clearly named, as in the reference. VERIFIED, not assumed: after writing, the receipt was parsed with python json and then run through the repository's own ledger contract read-only - `node receipt-contract-check.mjs ur-ds-75c30f92d238.json`, which imports deriveReceiptAudit from scripts/i18n/ledger-rules.mjs and derives each namespace exactly as ledger-assemble.mjs does before it writes. All three namespaces were ACCEPTED, with the derived per-namespace results matching this receipt (clean-with-findings / clean / clean-with-findings) and both hashes named on every block. The ledger WRITE itself was not run (see unverified).",
+  "audit_notes_not_execution_log": true,
+  "execution_log": "ur-ds-75c30f92d238.audit.log"
+}

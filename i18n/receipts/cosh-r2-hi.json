@@ -1,0 +1,62 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "cosh-r2-hi",
+ "session": "7573fba8f85f",
+ "date": "2026-10-22",
+ "locale": "hi",
+ "translator": "translator",
+ "translator_session": "8b5899d65f7c",
+ "namespace": "ui.agentMessages.settings",
+ "status": "passed",
+ "keys_audited": 2,
+ "scope": "Round-2 scoped audit of the remediation delta: the two keys changed since the round-1 snapshot (hold.chief_of_staff, hold.chief_of_staff_unlinked), checked against the R1 F1/F2 proposals, with integrity checks showing hold.open and the other 84 values unchanged.",
+ "sha256": {
+  "en": "1fb72465d3c05768918f79164bf1c3f8313160c4d05046a50a52046b2e8c1e3b",
+  "hi": "a7bbd901ced0ae96c5dc0040e9f8933a6f1c0c7745e48a2643a12d90f96b64c5",
+  "context": "0796c27031e5a3b9a600147e67e1341234f6ed0f5adfd3b7c4f7758a5bcff63d"
+ },
+ "findings": [],
+ "previous_round": {
+  "path": "i18n/receipts/cosh-r1-hi.json",
+  "sha256": "fc5354ef3dad89828119d0c6c83ab788ae49fb514cc99dcce16c0e10fad0dfcc",
+  "target_sha256": "811a19b758a23ac21857713bb892ef6daea6944f4547a005e66c68704aca00ce"
+ },
+ "remediation": [
+  {
+   "key": "ui.agentMessages.settings.hold.chief_of_staff",
+   "r1_severity": "MINOR",
+   "disposition": "fixed",
+   "verified": true,
+   "value": "{count, plural, one {आपकी चीफ़ ऑफ़ स्टाफ के लिए {count} संदेश इंतज़ार में है। उसे पाने के लिए उस बातचीत में एक संदेश भेजें।} other {आपकी चीफ़ ऑफ़ स्टाफ के लिए {count} संदेश इंतज़ार में हैं। उन्हें पाने के लिए उस बातचीत में एक संदेश भेजें।}}"
+  },
+  {
+   "key": "ui.agentMessages.settings.hold.chief_of_staff_unlinked",
+   "r1_severity": "MINOR",
+   "disposition": "fixed",
+   "verified": true,
+   "value": "{count, plural, one {आपकी चीफ़ ऑफ़ स्टाफ के लिए {count} संदेश इंतज़ार में है। उसे पाने के लिए साइडबार में वह बातचीत खोजें और उसमें एक संदेश भेजें।} other {आपकी चीफ़ ऑफ़ स्टाफ के लिए {count} संदेश इंतज़ार में हैं। उन्हें पाने के लिए साइडबार में वह बातचीत खोजें और उसमें एक संदेश भेजें।}}"
+  }
+ ],
+ "inherited_receipt": {
+  "base": "2fb94727d3",
+  "path": "i18n/receipts/018e45d9d582.json",
+  "sha256": "3aa95d362b9463e82d53d42e41260f586cb83ae1eb409d248303fcbbacd26849",
+  "keys_inherited": 84,
+  "base_target_sha256": "71a453efe6f7facc6e66bfe45b1c52b7a85c9c51b3051125d3ef6ea6613cb517",
+  "unchanged_values_verified": 84
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+ },
+ "validation": {
+  "independence": "Auditor session 7573fba8f85f did not produce these strings (translator session 8b5899d65f7c). The fix was verified from the catalogue bytes, not from the translator's summary.",
+  "semantics": "In both arms of both keys, the only change from the round-1 snapshot is the possessive आपके → आपकी, and each value is byte-equal to the R1 proposed text. No आपके remains. The feminine possessive before 'के लिए' (आपकी चीफ़ ऑफ़ स्टाफ के लिए) is grammatical: a feminine possessive keeps -ी before a postposition. It now matches onboarding greeting_done/greeting_owed. Verb agreement with the count is unchanged and correct: है + उसे at one, हैं + उन्हें at other. The meaning is unchanged (send one message to receive it/them).",
+  "icu": "Re-parsed with @formatjs/icu-messageformat-parser: each key is a single plural on 'count' with one/other arms, and {count} appears in every arm. Key set and order equal English (87). hold.open is byte-identical to round 1. The 84 base values are byte-identical to git show HEAD (71a453ef…).",
+  "plurals": "hi one/other per Intl.PluralRules and the style guide. Formatted with intl-messageformat at 1, 2, 5, 21 and 1000000: count 1 reads है/उसे, and 2, 5, 21 and 1000000 read हैं/उन्हें.",
+  "typography": "Both changed values are NFC, with no bidi, ZWJ/ZWNJ or BOM characters. The change is a single vowel sign (U+0947 → U+0940).",
+  "overflow": "Same length as round 1 (one vowel sign swapped). The notices wrap by design, and hold.open is unchanged.",
+  "limitations": "Browser unavailable; no screenshots/rendered-fit claim. No catalogue/code edits; no files created in the worktree."
+ }
+}

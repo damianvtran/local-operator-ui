@@ -1,0 +1,1868 @@
+const MISSING_CORE_PATTERN = /published core/;
+const MISSING_BUILD_PATTERN = /build receipt/;
+/** Pure producer/policy doors. No Electron, app build, backend or dependency install. */
+import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import {
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	readdirSync,
+	writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { test } from "node:test";
+import { runInNewContext } from "node:vm";
+// The embedded child asserts the launch carries the mock-keychain switch; it
+// takes the one spelling from chrome-keychain.mjs (chrome-keychain.test.mjs).
+import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
+import {
+	assertModelTraffic,
+	buildReceipt,
+	modelBackendPythonEnv,
+	modelUncertaintyCase,
+	runOwnedModelCase,
+	startModelBackend,
+	verifyModelBuild,
+	verifyModelExitArtifacts,
+} from "./model-uncertainty-native.mjs";
+import { pythonChildEnv } from "./python-child-env.mjs";
+
+const sid = "aaaaaaaaaaaa";
+
+test("owned orchestration joins app/core before acceptance on success, failure and early refusal", async () => {
+	for (const mode of ["success", "failure", "refusal"]) {
+		const seen = [];
+		const operation = runOwnedModelCase({
+			run: async () => {
+				seen.push("body");
+				if (mode === "refusal") throw Error("early refusal");
+				seen.push("app-drained");
+				return mode === "failure" ? 1 : 0;
+			},
+			backend: {
+				close: async () => {
+					seen.push("core-closing");
+					await new Promise((resolve) => setImmediate(resolve));
+					seen.push("core-joined");
+					return { clean: true };
+				},
+			},
+			accept: async () => {
+				seen.push("accept");
+			},
+		});
+		if (mode === "success") {
+			await operation;
+			assert.deepEqual(seen, [
+				"body",
+				"app-drained",
+				"core-closing",
+				"core-joined",
+				"accept",
+			]);
+		} else {
+			await assert.rejects(operation);
+			assert.equal(seen.at(-1), "core-joined");
+			assert(!seen.includes("accept"));
+		}
+	}
+	await assert.rejects(
+		runOwnedModelCase({
+			run: async () => 0,
+			backend: { close: async () => ({ clean: false }) },
+			accept: async () => assert.fail("unclean acceptance"),
+		}),
+	);
+});
+
+test("actual legacy exiting helper cannot pass the mandatory joined artifact gate", () => {
+	const source = readFileSync(
+		new URL("./renderer-driver.mjs", import.meta.url),
+		"utf8",
+	);
+	const extract = (name) => {
+		const start = source.indexOf(`async function ${name}(`);
+		assert(start > 0);
+		return source.slice(start, source.indexOf("\n}\n", start) + 3);
+	};
+	const root = mkdtempSync(join(tmpdir(), "model-exit-contract-"));
+	const program = `import { writeFileSync } from 'node:fs'; const liveBoots=new Set();const reaping={running:false};const say=()=>{};const stopApp=async()=>{};const thisRunsProcesses=()=>({measured:true,lines:[]});const wait=async()=>{}; ${extract("drainLiveBoots")} ${extract("reapLiveBoots")} try { await reapLiveBoots({code:0,why:'negative'}); } finally { writeFileSync(${JSON.stringify(join(root, "core-close-marker"))},'closed'); }`;
+	execFileSync(process.execPath, ["--input-type=module", "-e", program], {
+		timeout: 5000,
+	});
+	assert.throws(() => readFileSync(join(root, "core-close-marker")));
+	assert.throws(() => verifyModelExitArtifacts(root));
+	// Exercise the extracted non-exiting primitive too: the same outer finally
+	// must now join and leave its explicit marker, without loading Electron.
+	const safe = program.replace(
+		"await reapLiveBoots({code:0,why:'negative'});",
+		"await drainLiveBoots({why:'positive'});",
+	);
+	execFileSync(process.execPath, ["--input-type=module", "-e", safe], {
+		timeout: 5000,
+	});
+	assert.equal(readFileSync(join(root, "core-close-marker"), "utf8"), "closed");
+	writeFileSync(
+		join(root, "owned-core-exit.json"),
+		JSON.stringify({
+			clean: true,
+			pid: 1,
+			birth: "synthetic",
+			descendants: [],
+		}),
+	);
+	writeFileSync(
+		join(root, "owned-app-exit.json"),
+		JSON.stringify({ clean: true, stopped: 1 }),
+	);
+	writeFileSync(
+		join(root, "measurements.json"),
+		JSON.stringify({ frames: [{ label: "acceptance", verdict: "PASS" }] }),
+	);
+	assert.equal(verifyModelExitArtifacts(root).app.stopped, 1);
+	writeFileSync(
+		join(root, "owned-app-exit.json"),
+		JSON.stringify({ clean: true, stopped: 0 }),
+	);
+	assert.throws(() => verifyModelExitArtifacts(root));
+});
+test("real model case is explicit opt-in and candidate-scoped, never part of old default matrix", () => {
+	assert.equal(modelUncertaintyCase.backendMode, "real-core");
+	assert.equal(modelUncertaintyCase.optInOnly, true);
+	assert.equal(modelUncertaintyCase.frames.control, undefined);
+	assert.equal(modelUncertaintyCase.frames.candidate.length, 7);
+	assert(
+		!modelUncertaintyCase.frames.candidate.some((label) =>
+			label.includes("cold"),
+		),
+		"no native cold/pre-B GET claim without a real consumer",
+	);
+	const source = readFileSync(
+		new URL("./asks-app-regression.mjs", import.meta.url),
+		"utf8",
+	);
+	assert(source.includes("!entry.optInOnly"));
+	assert(source.includes("startAsksAppFixture({ root: scratch, token })"));
+});
+test("missing compiled receipt refuses before native runtime or backend setup", () => {
+	assert.throws(
+		() => verifyModelBuild("/not-a-product", undefined),
+		MISSING_BUILD_PATTERN,
+	);
+});
+test("stale compiled bytes refuse before any native executable is resolved", () => {
+	// A metadata-only fake tree calibrates rejection, never native success.
+	const root = mkdtempSync(join(tmpdir(), "model-build-contract-"));
+	const env = {
+		...process.env,
+		GIT_CONFIG_SYSTEM: "/dev/null",
+		GIT_CONFIG_GLOBAL: "/dev/null",
+		GIT_TERMINAL_PROMPT: "0",
+		GIT_AUTHOR_NAME: "Fixture",
+		GIT_AUTHOR_EMAIL: "fixture@example.invalid",
+		GIT_COMMITTER_NAME: "Fixture",
+		GIT_COMMITTER_EMAIL: "fixture@example.invalid",
+	};
+	const git = (...args) =>
+		execFileSync("git", ["-C", root, ...args], { env, stdio: "pipe" });
+	for (const directory of ["src", "out/main", "out/preload", "out/renderer"])
+		mkdirSync(join(root, directory), { recursive: true });
+	writeFileSync(join(root, "src/main.ts"), "fixture-source");
+	writeFileSync(join(root, "pnpm-lock.yaml"), "fixture-lock");
+	writeFileSync(
+		join(root, "package.json"),
+		JSON.stringify({ optionalDependencies: { electron: "45.1.0" } }),
+	);
+	for (const file of [
+		"out/main/index.js",
+		"out/preload/index.js",
+		"out/renderer/index.html",
+	])
+		writeFileSync(join(root, file), "fixture-compiled");
+	git("init", "-q");
+	git("add", ".");
+	git("commit", "-qm", "test: seal metadata fixture");
+	const receipt = join(root, "receipt.json");
+	writeFileSync(receipt, JSON.stringify(buildReceipt(root)));
+	writeFileSync(join(root, "out/renderer/index.html"), "stale-or-mutated");
+	const previous = process.env.MODEL_CASE_EXPECTED_HEAD;
+	process.env.MODEL_CASE_EXPECTED_HEAD = git("rev-parse", "HEAD")
+		.toString()
+		.trim();
+	try {
+		assert.throws(
+			() => verifyModelBuild(root, receipt),
+			(error) => error.message.includes("compiled inputs/outputs"),
+		);
+	} finally {
+		if (previous === undefined)
+			Reflect.deleteProperty(process.env, "MODEL_CASE_EXPECTED_HEAD");
+		else process.env.MODEL_CASE_EXPECTED_HEAD = previous;
+	}
+});
+test("missing core refuses without manufacturing a fixture", async () => {
+	const old = process.env.LOCAL_OPERATOR_CORE_PYTHON;
+	try {
+		process.env.LOCAL_OPERATOR_CORE_PYTHON = "/missing-owned-core/python";
+		await assert.rejects(
+			startModelBackend({ output: "/not-created" }),
+			MISSING_CORE_PATTERN,
+		);
+	} finally {
+		if (old === undefined)
+			Reflect.deleteProperty(process.env, "LOCAL_OPERATOR_CORE_PYTHON");
+		else process.env.LOCAL_OPERATOR_CORE_PYTHON = old;
+	}
+});
+test("new write policy is exact for session, model, keys and bodies", () => {
+	const row = {
+		method: "POST",
+		path: `/v1/desktop/sessions/${sid}/commands`,
+		body: {
+			request_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+			command: "model",
+			args: "test/mock-model-b",
+		},
+	};
+	assert.doesNotThrow(() => assertModelTraffic([row], sid));
+	assert.throws(() =>
+		assertModelTraffic(
+			[{ ...row, path: "/v1/desktop/sessions/bbbbbbbbbbbb/commands" }],
+			sid,
+		),
+	);
+	assert.throws(() =>
+		assertModelTraffic(
+			[{ ...row, body: { ...row.body, args: "test/wrong" } }],
+			sid,
+		),
+	);
+	assert.throws(() =>
+		assertModelTraffic(
+			[
+				{
+					method: "PATCH",
+					path: "/v1/settings/api_key",
+					body: { value: "never", base: null },
+				},
+			],
+			sid,
+		),
+	);
+	assert.throws(() =>
+		assertModelTraffic(
+			[
+				{
+					method: "PATCH",
+					path: "/v1/settings/model_name",
+					body: { value: "mock-model-a", base: null },
+				},
+			],
+			sid,
+		),
+	);
+	assert.throws(() =>
+		assertModelTraffic([{ method: "GET", path: "/unmodeled-endpoint" }], sid),
+	);
+	assert.throws(() =>
+		assertModelTraffic(
+			[{ method: "DELETE", path: `/v1/desktop/sessions/${sid}` }],
+			sid,
+		),
+	);
+});
+test("Python transport contracts preserve genuine bytes and never enforce the candidate default fence", () => {
+	const output = execFileSync(
+		"python3",
+		[new URL("./model_uncertainty_backend_test.py", import.meta.url).pathname],
+		{
+			encoding: "utf8",
+			env: pythonChildEnv(),
+			timeout: 20_000,
+		},
+	);
+	assert.equal(typeof output, "string");
+});
+function oracleContext(mode = "happy") {
+	const sid = "aaaaaaaaaaaa";
+	const rowA = `[data-sidebar-region="chats"] [data-session-row=${JSON.stringify(sid)}] [data-tour-tag="chat-session-row"]`;
+	const frames = [];
+	const stamps = [];
+	const calls = [];
+	const receipts = [];
+	const attempts = [
+		{
+			method: "POST",
+			path: `/v1/desktop/sessions/${sid}/commands`,
+			observer: false,
+			body: {
+				request_id: "00000000-0000-0000-0000-000000000002",
+				command: "model",
+				args: "",
+				images: [],
+			},
+			native_action: {
+				kind: "native_action",
+				destination: "session.model",
+				session_id: sid,
+			},
+		},
+	];
+	const payload = (model, epoch, seq) => ({
+		session_id: sid,
+		epoch,
+		seq,
+		payload: {
+			cold: false,
+			frontend: { snapshot: { selected_model: { model_id: model } } },
+		},
+	});
+	const stale = {
+		id: 1,
+		path: `/v1/desktop/sessions/${sid}/events`,
+		before_b_request: true,
+		body: `data: ${JSON.stringify(payload("mock-model-a", "epoch-A", 1))}`,
+	};
+	const bSse = {
+		id: 3,
+		path: `/v1/desktop/sessions/${sid}/events`,
+		before_b_request: false,
+		body: `data: ${JSON.stringify(payload("mock-model-b", "epoch-A", 2))}`,
+	};
+	const fresh = {
+		id: 2,
+		path: `/v1/desktop/sessions/${sid}`,
+		before_b_request: false,
+		body: JSON.stringify({ result: payload("mock-model-b", "epoch-A", 3) }),
+	};
+	let phase = "before";
+	let disabled = false;
+	let current = "test/mock-model-a";
+	let saved = false;
+	let armed = false;
+	let late = false;
+	let lateArmed = false;
+	const released = new Set();
+	const addPatch = () => {
+		attempts.push({
+			method: "PATCH",
+			path: "/v1/settings/model_name",
+			observer: false,
+			body: { value: "mock-model-a", base: null },
+		});
+	};
+	const trace = () => {
+		const result = {
+			armed,
+			fault: false,
+			receipts: receipts.map((x) => ({ ...x })),
+		};
+		if (mode === "late-after-read" && phase === "unknown" && !lateArmed) {
+			late = true;
+			lateArmed = true;
+		}
+		return result;
+	};
+	const state = () => {
+		const result = {
+			attempts: attempts.map((x, index) => ({
+				...x,
+				index,
+				order: index * 3 + 1,
+				delivery_order: index * 3 + 2,
+				query_empty: true,
+				response_status: 200,
+			})),
+			evidence_order: attempts.length * 3,
+			commit:
+				phase === "before"
+					? null
+					: { durable: "mock-model-b", epoch: "epoch-A", seq: 3 },
+			captures: [stale, ...(phase === "before" ? [] : [bSse, fresh])],
+		};
+		if (late) {
+			late = false;
+			addPatch();
+		}
+		return result;
+	};
+	const geometry = () => ({
+		disabled,
+		checked: "false",
+		current,
+		neutral: phase === "unknown" || phase === "stale",
+		box: { x: 1, y: 1, w: 20, h: 20 },
+		dialog: { w: 400, h: 300 },
+	});
+	const allowedFrames = new Set(modelUncertaintyCase.frames.candidate);
+	return {
+		frames,
+		stamps,
+		calls,
+		api: {
+			verb: async (_cdp, name, arg = {}) => {
+				assert.equal(name, "modelAuthority", "unknown fake verb");
+				assert(
+					Object.keys(arg).every((k) => k === "start"),
+					"unknown fake observer argument",
+				);
+				if (arg.start === true) {
+					armed = true;
+					receipts.length = 0;
+				}
+				return trace();
+			},
+		},
+		cdp: {
+			send: async (name, args) => {
+				assert(
+					["Input.insertText", "Input.dispatchKeyEvent"].includes(name),
+					"unknown fake input",
+				);
+				if (name === "Input.insertText") assert.equal(args.text, "/model");
+				if (name === "Input.dispatchKeyEvent" && args.type === "keyDown")
+					calls.push(["key", args.key]);
+			},
+			evaluate: async (source) => {
+				if (source.includes("model-case: reveal-row")) {
+					calls.push(["reveal", source]);
+					return mode === "no-scroller"
+						? { found: true, scroller: false }
+						: {
+								found: true,
+								scroller: true,
+								scrollTop: 120,
+								clientHeight: 800,
+							};
+				}
+				if (source.includes("model-case: geometry")) return geometry();
+				// The picker dialog is up after the first Enter in the fake; the
+				// popup-retry branch is exercised by its own test below.
+				if (source === `Boolean(document.querySelector('[role="dialog"]'))`) {
+					calls.push(["dialog-probe"]);
+					return (
+						!["popup-first", "no-popup"].includes(mode) ||
+						calls.some((x) => x[0] === "escape")
+					);
+				}
+				if (source.includes('aria-label="Slash commands"'))
+					return mode !== "no-popup";
+				if (
+					source.includes("model-case: mark-targets") ||
+					source.includes("model-case: mark-save")
+				)
+					return;
+				assert.fail("unknown fake page predicate");
+			},
+		},
+		wait: async (predicate) => {
+			calls.push(["wait", predicate]);
+			// A is found by id in the chats region; the old document-wide count
+			// also counted resident agent sessions on a real core (CI41535781273).
+			if (
+				predicate ===
+				`document.querySelectorAll(${JSON.stringify(rowA)}).length===1`
+			)
+				return;
+			if (
+				predicate ===
+				`[...document.querySelectorAll('[role="dialog"] [role="option"]')].some(e=>e.textContent.includes("mock-model-b"))`
+			)
+				return;
+			if (predicate.includes("model-case: settled-B")) {
+				calls.push(["dom-settled"]);
+				if (mode === "delayed-dom") {
+					assert.equal(
+						current,
+						"test/mock-model-a",
+						"receipt must precede DOM commit",
+					);
+					current = "test/mock-model-b";
+					disabled = false;
+				}
+				assert.equal(current, "test/mock-model-b");
+				assert.equal(disabled, false);
+				return;
+			}
+			if (
+				predicate === "/could not be confirmed/i.test(document.body.innerText)"
+			) {
+				assert.equal(phase, "unknown");
+				return;
+			}
+			assert.fail("unknown fake wait predicate");
+		},
+		pressEscape: async () => {
+			calls.push(["escape"]);
+		},
+		waitFor: async (predicate) => {
+			for (let n = 0; n < 3; n++) if (await predicate()) return;
+			return;
+		},
+		press: async (selector) => {
+			calls.push(["press", selector]);
+			if (
+				selector === rowA ||
+				selector === '[data-tour-tag="chat-input-textarea"] textarea'
+			)
+				return;
+			if (selector === "[data-model-case-b]") {
+				assert.equal(phase, "before");
+				phase = "unknown";
+				disabled = true;
+				if (mode === "old-receipt-only")
+					receipts.push({
+						carrier: "canonical-sse",
+						sessionId: sid,
+						epoch: "epoch-A",
+						seq: 1,
+						disposition: "processed",
+					});
+				attempts.push({
+					method: "POST",
+					path: `/v1/desktop/sessions/${sid}/commands`,
+					observer: false,
+					body: {
+						request_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+						command: "model",
+						args: "test/mock-model-b",
+					},
+				});
+				if (mode === "duplicate-B")
+					attempts.push(structuredClone(attempts.at(-1)));
+				return;
+			}
+			if (selector === "[data-model-case-default]") {
+				if (!disabled) {
+					receipts.push({
+						carrier: "default-save",
+						sessionId: "",
+						epoch: null,
+						seq: null,
+						disposition: "invoked",
+					});
+					addPatch();
+				}
+				return;
+			}
+			if (selector === "[data-model-case-save]") {
+				assert.equal(current, "test/mock-model-b");
+				assert.equal(disabled, false);
+				saved = true;
+				receipts.push({
+					carrier: "default-save",
+					sessionId: "",
+					epoch: null,
+					seq: null,
+					disposition: "invoked",
+				});
+				for (const [key, value] of [
+					["hosting", "test"],
+					["model_name", "mock-model-b"],
+				])
+					attempts.push({
+						method: "PATCH",
+						path: `/v1/settings/${key}`,
+						observer: false,
+						body: { value, base: null },
+					});
+				if (mode === "extra-explicit-PATCH")
+					attempts.push(structuredClone(attempts.at(-1)));
+				return;
+			}
+			assert.fail("unknown fake input selector");
+		},
+		frame: async (label) => {
+			assert(allowedFrames.has(label), "unknown fake frame");
+			// Host only publishes an entry after asynchronous capture completes.
+			await Promise.resolve();
+			frames.push(label);
+			if (mode === "during-stale-frame" && label === "model-b-sse-get-pending")
+				disabled = false;
+			if (mode === "late-after-frame" && label === "model-unknown-1")
+				addPatch();
+			if (mode === "late-saved-frame" && label === "model-default-saved")
+				addPatch();
+		},
+		stamp: (label, value) => {
+			assert(frames.length > 0, `stamp(${label}) with no frame captured yet`);
+			stamps.push({ label, value, frame: frames.at(-1) });
+		},
+		realBackend: {
+			sessionId: sid,
+			readTemplates: [],
+			commandA: async () => {
+				calls.push(["command-A"]);
+				assert.equal(
+					calls.filter((x) => x[0] === "command-A").length,
+					1,
+					"no-op A reselect must not be used as a fresh carrier producer",
+				);
+				return { status: 200 };
+			},
+			state: async () => state(),
+			defaultValues: async () => ({
+				hosting: "test",
+				model_name: saved ? "mock-model-b" : "mock-model",
+			}),
+			waitCapture: async (predicate) => {
+				calls.push(["capture", phase]);
+				const found = [
+					stale,
+					...(phase === "before" ? [] : [bSse, fresh]),
+				].find(predicate);
+				assert(found, "actual predicate did not match a genuine fake carrier");
+				return found;
+			},
+			control: async (op, arg = {}) => {
+				assert(
+					["configure", "release"].includes(op),
+					"unknown fake backend op",
+				);
+				if (op === "configure") return;
+				if (!arg.indices) {
+					if (mode === "terminal-release-write") addPatch();
+					assert.fail("unobserved terminal carrier release after census");
+				}
+				for (const id of arg.indices) {
+					if (released.has(id)) continue;
+					released.add(id);
+					if (id === 1) {
+						assert.equal(
+							phase,
+							"before",
+							"initial A may be released only for baseline",
+						);
+						if (mode !== "unconsumed-initial")
+							receipts.push({
+								carrier: "canonical-sse",
+								sessionId:
+									mode === "wrong-initial-session" ? "bbbbbbbbbbbb" : sid,
+								epoch: "epoch-A",
+								seq: mode === "wrong-initial-sequence" ? 99 : 1,
+								disposition: "processed",
+							});
+					} else if (id === 3) {
+						phase = "stale";
+						if (mode !== "unconsumed-sse" && mode !== "old-receipt-only")
+							receipts.push({
+								carrier: "canonical-sse",
+								sessionId: sid,
+								epoch: "epoch-A",
+								seq: 2,
+								disposition: "processed",
+							});
+						if (mode === "early-sse") disabled = false;
+					} else if (id === 2) {
+						phase = "fresh";
+						if (mode !== "unconsumed-get")
+							receipts.push({
+								carrier: "model-get",
+								sessionId: sid,
+								epoch: "epoch-A",
+								seq: 3,
+								disposition: "live",
+							});
+						disabled = false;
+						if (mode !== "rendered-A" && mode !== "delayed-dom")
+							current = "test/mock-model-b";
+						if (mode === "delayed-dom") disabled = true;
+					} else assert.fail("unknown fake release id");
+				}
+			},
+		},
+	};
+}
+
+test("actual native drive accepts only consumed SSE + real post-ACK B with explicit two writes", async () => {
+	const ctx = oracleContext();
+	await modelUncertaintyCase.drive(ctx);
+	assert.deepEqual(ctx.frames, modelUncertaintyCase.frames.candidate);
+	assert.equal(
+		ctx.calls.filter(
+			(x) => x[0] === "press" && x[1] === "[data-model-case-default]",
+		).length,
+		3,
+	);
+});
+for (const mode of [
+	"unconsumed-initial",
+	"wrong-initial-session",
+	"wrong-initial-sequence",
+	"early-sse",
+	"during-stale-frame",
+	"unconsumed-sse",
+	"old-receipt-only",
+	"unconsumed-get",
+	"rendered-A",
+	"late-after-read",
+	"late-after-frame",
+	"late-saved-frame",
+]) {
+	test(`actual native drive rejects ${mode}`, async () => {
+		const ctx = oracleContext(mode);
+		await assert.rejects(modelUncertaintyCase.drive(ctx));
+	});
+}
+
+test("native drive waits on A by id in the chats region, with a row census on failure", async () => {
+	/*
+	 * CI41535781273: a real core lists resident agent sessions beside A, so the
+	 * old document-wide `chat-session-row` count never settled at 1. Pin the
+	 * replacement: the wait names A's id under the chats region, carries a
+	 * diagnostic, and the document-wide predicate is no longer issued.
+	 */
+	const ctx = oracleContext();
+	const seen = [];
+	const inner = ctx.wait;
+	ctx.wait = async (predicate, diagnose) => {
+		seen.push([predicate, diagnose]);
+		return inner(predicate, diagnose);
+	};
+	await modelUncertaintyCase.drive(ctx);
+	const rowWait = seen.find(([p]) => p.includes("chat-session-row"));
+	assert(rowWait, "drive never waited for A's row");
+	assert.match(rowWait[0], /\[data-sidebar-region=\\?"chats\\?"\]/);
+	assert.match(rowWait[0], /data-session-row=\\?"aaaaaaaaaaaa\\?"/);
+	assert.match(rowWait[0], /\.length===1$/);
+	assert.match(String(rowWait[1]), /row-census/);
+	assert(
+		!seen.some(
+			([p]) =>
+				p ===
+				'document.querySelectorAll("[data-tour-tag=chat-session-row]").length===1',
+		),
+		"document-wide row count must not return",
+	);
+});
+
+test("native drive scrolls row A into view inside the sidebar scroller before the gated press", async () => {
+	/*
+	 * CI41554454323: A's centre was at y=920 in a 900px window, so the pointer
+	 * gate refused it. Pin the order: reveal (scrollIntoView on A within
+	 * `[data-sidebar-region="scroller"]`) strictly before the press of A, and the
+	 * press still goes through the gate rather than a forced click.
+	 */
+	const ctx = oracleContext();
+	await modelUncertaintyCase.drive(ctx);
+	const reveal = ctx.calls.findIndex((x) => x[0] === "reveal");
+	const pressA = ctx.calls.findIndex(
+		(x) => x[0] === "press" && x[1].includes('data-session-row="aaaaaaaaaaaa"'),
+	);
+	assert(reveal >= 0, "drive never revealed row A");
+	assert(pressA > reveal, "row A pressed before it was scrolled into view");
+	const source = ctx.calls[reveal][1];
+	assert.match(source, /scrollIntoView\(\{block:'nearest'\}\)/);
+	assert.match(source, /data-sidebar-region="scroller"/);
+	assert.match(source, /data-session-row=\\?"aaaaaaaaaaaa\\?"/);
+});
+
+test("native drive refuses row A outside the sidebar scroller instead of pressing", async () => {
+	const ctx = oracleContext("no-scroller");
+	await assert.rejects(
+		modelUncertaintyCase.drive(ctx),
+		/row A is not inside the sidebar scroller/,
+	);
+	assert(
+		!ctx.calls.some(
+			(x) => x[0] === "press" && x[1].includes("data-session-row"),
+		),
+		"no press may follow a failed reveal",
+	);
+});
+
+/*
+ * EVERY SELECTOR THE NATIVE DRIVE PRESSES OR WAITS ON, PINNED TO THE SOURCE
+ * THAT DRAWS IT (CI 41560884417 found a contenteditable composer the app does
+ * not have, and the drive also looked for cmdk rows and an old button label).
+ * A renamed tag, role or English string fails here instead of on a mac runner.
+ */
+test("native drive selectors exist in the source that renders them", () => {
+	const read = (path) =>
+		readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+	const drive = read("scripts/model-uncertainty-native.mjs");
+	const composer = read(
+		"src/renderer/src/shared/components/composer/message-input.tsx",
+	);
+	const host = read("src/renderer/src/features/chat/pickers/picker-host.tsx");
+	const pickers = read(
+		"src/renderer/src/features/chat/pickers/destination-pickers.tsx",
+	);
+	const sidebar = read(
+		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
+	);
+	const en = JSON.parse(read("src/i18n/catalogues/en/ui.chat.pickers.json"));
+	const enProjects = JSON.parse(
+		read("src/i18n/catalogues/en/ui.projects.json"),
+	);
+	// Composer: the driver's spelling, and the tag really wraps a <textarea>.
+	assert(drive.includes(`'[data-tour-tag="chat-input-textarea"] textarea'`));
+	assert(composer.includes('data-tour-tag="chat-input-textarea"'));
+	assert.match(composer, /<textarea\b/);
+	assert(
+		!/\[contenteditable/.test(drive),
+		"the composer is not contenteditable",
+	);
+	// Sidebar: scroller, chats region, row id and row tag.
+	for (const hook of [
+		'data-sidebar-region="scroller"',
+		'data-sidebar-region="chats"',
+		"data-session-row={row.session_id}",
+		'data-tour-tag="chat-session-row"',
+	])
+		assert(sidebar.includes(hook), `sidebar lost ${hook}`);
+	// Picker: options and listbox roles; no cmdk anywhere in the drive.
+	assert(host.includes('role="option"') && host.includes('role="listbox"'));
+	assert(!drive.includes("[cmdk-item]"), "this app has no cmdk rows");
+	assert(drive.includes(`[role="dialog"] [role="option"]`));
+	// Slash popup labels the retry reads.
+	assert.equal(en["ui.chat.pickers.slash.region_label"], "Slash commands");
+	assert.equal(
+		en["ui.chat.pickers.slash.arguments_region_label"],
+		"Command arguments",
+	);
+	// The default checkbox is a real role=checkbox control in the picker toolbar
+	// (Radix Checkbox via PickerCheck), gated by `unconfirmedModel`.
+	assert.match(
+		pickers,
+		/<PickerCheck\s+checked=\{persistDefault\}\s+disabled=\{unconfirmedModel\}/,
+	);
+	assert(
+		/default/i.test(
+			en[
+				"ui.chat.pickers.destination_pickers.also_make_this_the_default_for_new_sessions"
+			],
+		),
+	);
+	// The explicit save button's label, matched exactly by the drive.
+	assert.equal(
+		en["ui.chat.pickers.models.set_as_default"],
+		"Set current model as default",
+	);
+	assert(drive.includes("/^set current model as default$/i"));
+	assert(pickers.includes('t("ui.chat.pickers.models.set_as_default")'));
+	// Uncertainty copy the drive waits on, and its description sentence.
+	assert.match(
+		enProjects[
+			"ui.projects.use_request_update.the_request_could_not_be_confirmed"
+		],
+		/could not be confirmed/i,
+	);
+	assert.match(
+		en[
+			"ui.chat.pickers.destination_pickers.this_session_runs_choosing_another_applies_to_this_session_only_unless_y"
+		],
+		/\{shownselector\}/,
+	);
+});
+
+test("native drive opens /model from the textarea with Enter, retrying once past the slash popup", async () => {
+	const direct = oracleContext();
+	await modelUncertaintyCase.drive(direct);
+	const firstPicker = direct.calls.findIndex(
+		(x) => x[0] === "press" && x[1] === "[data-model-case-b]",
+	);
+	const enters = direct.calls
+		.slice(0, firstPicker)
+		.filter((x) => x[0] === "key" && x[1] === "Enter");
+	assert.equal(enters.length, 1, "dialog up after one Enter needs no retry");
+	assert(!direct.calls.some((x) => x[0] === "escape"));
+	const typed = direct.calls.findIndex(
+		(x) =>
+			x[0] === "press" &&
+			x[1] === '[data-tour-tag="chat-input-textarea"] textarea',
+	);
+	assert(
+		typed >= 0 && typed < firstPicker,
+		"the composer is focused before typing",
+	);
+
+	const popup = oracleContext("popup-first");
+	await modelUncertaintyCase.drive(popup);
+	const until = popup.calls.findIndex(
+		(x) => x[0] === "press" && x[1] === "[data-model-case-b]",
+	);
+	const head = popup.calls.slice(0, until);
+	assert.equal(
+		head.filter((x) => x[0] === "key" && x[1] === "Enter").length,
+		2,
+		"exactly one retry Enter",
+	);
+	const esc = head.findIndex((x) => x[0] === "escape");
+	const lastEnter = head
+		.map((x) => x[0] === "key" && x[1] === "Enter")
+		.lastIndexOf(true);
+	assert(
+		esc >= 0 && esc < lastEnter,
+		"the popup is dismissed before the retry Enter",
+	);
+});
+
+test("native host frame/stamp contract attributes only completed frames", async () => {
+	const ctx = oracleContext();
+	assert.throws(() => ctx.stamp("premature", {}), /no frame captured yet/);
+	const pending = ctx.frame("model-before");
+	assert.throws(() => ctx.stamp("still-pending", {}), /no frame captured yet/);
+	await pending;
+	ctx.stamp("finished", {});
+	assert.equal(ctx.stamps.at(-1).frame, "model-before");
+	const real = oracleContext();
+	await modelUncertaintyCase.drive(real);
+	assert.equal(
+		real.stamps.find((x) => x.label === "captured-before-geometry").frame,
+		"model-before",
+	);
+	assert(
+		real.stamps.every(
+			(x) =>
+				x.frame &&
+				(x.label === "captured-before-geometry" ||
+					x.label.startsWith("post-frame")),
+		),
+		"transition facts must be labelled as after their frame",
+	);
+});
+
+test("receipt before DOM commit waits for rendered B before settled frames", async () => {
+	const ctx = oracleContext("delayed-dom");
+	await modelUncertaintyCase.drive(ctx);
+	assert(ctx.calls.some((x) => x[0] === "dom-settled"));
+});
+
+test("terminal carriers stay held through app drain, not released after the last mutation census", async () => {
+	const ctx = oracleContext("terminal-release-write");
+	await modelUncertaintyCase.drive(ctx);
+	assert(
+		ctx.stamps.some((x) => x.label === "post-frame:held-through-app-drain"),
+	);
+});
+
+test("no-dialog no-popup never sends an unobserved retry Enter", async () => {
+	const ctx = oracleContext("no-popup");
+	await modelUncertaintyCase.drive(ctx);
+	assert.equal(
+		ctx.calls.filter((x) => x[0] === "key" && x[1] === "Enter").length,
+		1,
+	);
+	assert(!ctx.calls.some((x) => x[0] === "escape"));
+});
+
+test("observer is ordinary-mode NOOP and armed receipts retain only bounded metadata", async () => {
+	const { transformSync } = await import("esbuild");
+	const raw = readFileSync(
+		new URL(
+			"../src/renderer/src/dev-driver/model-authority-observer.ts",
+			import.meta.url,
+		),
+		"utf8",
+	);
+	const output = transformSync(raw, { loader: "ts", format: "esm" }).code;
+	const observer = await import(
+		`data:text/javascript;base64,${Buffer.from(output).toString("base64")}`
+	);
+	const previous = globalThis.window;
+	try {
+		Reflect.deleteProperty(globalThis, "window");
+		observer.armModelAuthorityObserver();
+		observer.observeModelAuthority({
+			carrier: "canonical-sse",
+			sessionId: "aaaaaaaaaaaa",
+			epoch: "e",
+			seq: 1,
+			disposition: "processed",
+		});
+		assert.deepEqual(observer.readModelAuthorityObserver(), {
+			armed: false,
+			fault: false,
+			receipts: [],
+		});
+		globalThis.window = { __loDevDriver: { armed: true } };
+		observer.armModelAuthorityObserver();
+		const input = {
+			carrier: "model-get",
+			sessionId: "aaaaaaaaaaaa",
+			epoch: "e",
+			seq: 2,
+			disposition: "live",
+			payload: "MUST_NOT_RETAIN",
+			authorization: "MUST_NOT_RETAIN",
+		};
+		const before = JSON.stringify(input);
+		observer.observeModelAuthority(input);
+		assert.equal(JSON.stringify(input), before);
+		assert.deepEqual(
+			Object.keys(observer.readModelAuthorityObserver().receipts[0]).sort(),
+			["carrier", "disposition", "epoch", "seq", "sessionId"],
+		);
+		const copy = observer.readModelAuthorityObserver();
+		copy.receipts.length = 0;
+		assert.equal(observer.readModelAuthorityObserver().receipts.length, 1);
+		for (let n = 0; n < 256; n++) observer.observeModelAuthority(input);
+		assert.equal(observer.readModelAuthorityObserver().fault, true);
+		assert.equal(observer.readModelAuthorityObserver().receipts.length, 256);
+	} finally {
+		if (previous === undefined) Reflect.deleteProperty(globalThis, "window");
+		else globalThis.window = previous;
+	}
+});
+
+test("strict oracle context rejects unknown predicates/verbs rather than defaulting to success", async () => {
+	const ctx = oracleContext();
+	await assert.rejects(ctx.wait("unknown predicate"));
+	await assert.rejects(ctx.cdp.evaluate("unknown predicate"));
+	await assert.rejects(ctx.api.verb(null, "unknown"));
+});
+
+test("actual backend Python environment refuses hostile app cache inheritance", () => {
+	const root = mkdtempSync(join(tmpdir(), "model-python-boundary-"));
+	const fake = join(root, "OwnedFake.app", "Contents", "Resources", "pycache");
+	for (const path of [
+		fake,
+		join(root, "home"),
+		join(root, "tmp"),
+		join(root, "guards"),
+	])
+		mkdirSync(path, { recursive: true });
+	const marker = join(root, "owned_import.py");
+	writeFileSync(marker, "value = 'owned-import-executed'\n");
+	const names = [
+		"PYTHONPYCACHEPREFIX",
+		"PYTHONHOME",
+		"PYTHONPATH",
+		"PYTHONSTARTUP",
+		"PYTHONDONTWRITEBYTECODE",
+	];
+	const previous = Object.fromEntries(
+		names.map((key) => [key, process.env[key]]),
+	);
+	try {
+		Object.assign(process.env, {
+			PYTHONPYCACHEPREFIX: fake,
+			PYTHONHOME: join(root, "invalid-python-home"),
+			PYTHONPATH: join(root, "ambient-path"),
+			PYTHONSTARTUP: join(root, "ambient-startup"),
+			PYTHONDONTWRITEBYTECODE: "0",
+		});
+		const guarded = modelBackendPythonEnv({
+			scratch: root,
+			token: "synthetic",
+			observerToken: "synthetic-observer",
+		});
+		assert.equal(guarded.HOME, join(root, "home"));
+		assert.equal(guarded.TMPDIR, join(root, "tmp"));
+		assert.equal(guarded.PYTHONPYCACHEPREFIX, join(root, "pycache"));
+		assert.equal(guarded.PYTHONDONTWRITEBYTECODE, "1");
+		assert.equal(guarded.PYTHONHOME, undefined);
+		assert.equal(guarded.PYTHONSTARTUP, undefined);
+		assert(!guarded.PYTHONPATH.includes("ambient-path"));
+		const output = execFileSync(
+			"python3",
+			[
+				"-c",
+				"import importlib.util,sys; s=importlib.util.spec_from_file_location('owned_import',sys.argv[1]);m=importlib.util.module_from_spec(s);s.loader.exec_module(m);print(m.value)",
+				marker,
+			],
+			{ cwd: root, env: guarded, encoding: "utf8", timeout: 10000 },
+		);
+		assert.equal(output.trim(), "owned-import-executed");
+		assert.deepEqual(
+			readdirSync(fake),
+			[],
+			"no fake installed-app cache write",
+		);
+		assert.throws(() => pythonChildEnv({ prefix: fake }), /inside a bundle/);
+	} finally {
+		for (const [key, value] of Object.entries(previous)) {
+			if (value === undefined) Reflect.deleteProperty(process.env, key);
+			else process.env[key] = value;
+		}
+	}
+});
+
+test("strict model launch binds its verified executable despite late parent override", () => {
+	const root = mkdtempSync(join(tmpdir(), "model-strict-executable-"));
+	const pkg = join(root, "node_modules", "electron");
+	for (const d of [
+		"src",
+		"out/main",
+		"out/preload",
+		"out/renderer",
+		"node_modules/electron/dist",
+		"alternate-a",
+		"alternate-b",
+	])
+		mkdirSync(join(root, d), { recursive: true });
+	writeFileSync(
+		join(root, "package.json"),
+		JSON.stringify({ optionalDependencies: { electron: "45.1.0" } }),
+	);
+	writeFileSync(join(root, "pnpm-lock.yaml"), "inert-lock");
+	writeFileSync(join(root, "src/main.ts"), "inert-source");
+	for (const f of [
+		"out/main/index.js",
+		"out/preload/index.js",
+		"out/renderer/index.html",
+	])
+		writeFileSync(join(root, f), "inert fixture, not a compiled app");
+	writeFileSync(
+		join(pkg, "package.json"),
+		JSON.stringify({ name: "electron", version: "45.1.0", main: "index.js" }),
+	);
+	writeFileSync(join(pkg, "index.js"), "throw Error('INSTALLER_TRIPWIRE')");
+	writeFileSync(join(pkg, "path.txt"), "electron");
+	for (const f of [
+		"node_modules/electron/dist/electron",
+		"alternate-a/electron",
+		"alternate-b/electron",
+	])
+		writeFileSync(join(root, f), "INERT NOT EXECUTABLE");
+	const env = {
+		...process.env,
+		GIT_CONFIG_SYSTEM: "/dev/null",
+		GIT_CONFIG_GLOBAL: "/dev/null",
+		GIT_TERMINAL_PROMPT: "0",
+		GIT_AUTHOR_NAME: "Fixture",
+		GIT_AUTHOR_EMAIL: "fixture@example.invalid",
+		GIT_COMMITTER_NAME: "Fixture",
+		GIT_COMMITTER_EMAIL: "fixture@example.invalid",
+	};
+	const git = (...args) =>
+		execFileSync("git", ["-C", root, ...args], { env, stdio: "pipe" });
+	git("init", "-q");
+	git("add", ".");
+	git("commit", "-qm", "test: inert executable identity");
+	// CI validates this owned fixture checkout, not the outer repository's SHA.
+	const fixtureHead = git("rev-parse", "HEAD").toString("utf8").trim();
+	env.MODEL_CASE_EXPECTED_HEAD = fixtureHead;
+	const receipt = join(root, "receipt.json");
+	writeFileSync(receipt, JSON.stringify(buildReceipt(root)));
+	const driver = new URL("./renderer-driver.mjs", import.meta.url).href;
+	const model = new URL("./model-uncertainty-native.mjs", import.meta.url).href;
+	const source = readFileSync(
+		new URL("./asks-app-regression.mjs", import.meta.url),
+		"utf8",
+	);
+	assert(source.includes("const verifiedElectronBinary = verifyModelBuild("));
+	assert(
+		source.includes("backend,\n\t\t\t\t\tverifiedElectronBinary,"),
+		"model entry must pass the verified value into runCase",
+	);
+	assert(
+		source.includes("tag: `asks-ci-${kind}`,\n\t\t\tverifiedElectronBinary,"),
+		"actual runCase must pass binding to launchApp",
+	);
+	const program = `import assert from 'node:assert/strict';import Module,{createRequire,registerHooks,syncBuiltinESMExports}from'node:module';import{readFileSync}from'node:fs';import{join}from'node:path';import{EventEmitter}from'node:events';const req=createRequire(import.meta.url);const mode=process.argv[1];const root=process.cwd();const alternateA=join(root,'alternate-a');const alternateB=join(root,'alternate-b');process.env.ELECTRON_OVERRIDE_DIST_PATH=alternateA;
+ const originalLoad=Module._load;let installer=0;Module._load=function(name,...rest){if(name==='electron'){installer++;throw Error('INSTALLER_TRIPWIRE');}return originalLoad.call(this,name,...rest);};
+ const cp=req('node:child_process');let selected=null;cp.spawn=(binary,args,options)=>{selected={binary,parent:process.env.ELECTRON_OVERRIDE_DIST_PATH,child:options.env.ELECTRON_OVERRIDE_DIST_PATH};assert.equal(args[0],root);assert(args.includes(${JSON.stringify(MOCK_KEYCHAIN_SWITCH)}));throw Error('SELECTION_INTERCEPTED_BEFORE_EXECUTION');};cp.spawnSync=()=>{throw Error('INSTALLER_SPAWN_TRIPWIRE');};const realExec=cp.execFileSync;cp.execFileSync=(cmd,args,options)=>{assert.equal(cmd,'git');return realExec(cmd,args,options);};
+ let ports=0;const net=req('node:net');net.createServer=()=>{ports++;process.env.ELECTRON_OVERRIDE_DIST_PATH=alternateB;const server=new EventEmitter();server.listen=(port,host,cb)=>queueMicrotask(cb);server.address=()=>({port:19000+ports});server.close=cb=>queueMicrotask(cb);return server;};net.connect=()=>{const socket=new EventEmitter();socket.destroy=()=>{};socket.setTimeout=()=>{};queueMicrotask(()=>socket.emit('error',Error('OWNED_CLOSED_PORT')));return socket;};globalThis.fetch=()=>{throw Error('NETWORK_TRIPWIRE');};for(const n of ['node:http','node:https']){req(n).get=()=>{throw Error('NETWORK_TRIPWIRE');};req(n).request=()=>{throw Error('NETWORK_TRIPWIRE');};}syncBuiltinESMExports();
+ const {verifyModelBuild}=await import(${JSON.stringify(model)});
+ if(process.env.CI){
+  const expectedHead=process.env.MODEL_CASE_EXPECTED_HEAD;assert(expectedHead,'owned fixture HEAD must be bound before CI controls');
+  try{
+   Reflect.deleteProperty(process.env,'MODEL_CASE_EXPECTED_HEAD');
+   assert.throws(()=>verifyModelBuild(root,${JSON.stringify(receipt)}),/CI must name its exact compiled checkout/);assert.equal(ports,0);assert.equal(selected,null);
+   const wrongHead=(expectedHead[0]==='0'?'1':'0')+expectedHead.slice(1);process.env.MODEL_CASE_EXPECTED_HEAD=wrongHead;
+   assert.throws(()=>verifyModelBuild(root,${JSON.stringify(receipt)}),error=>error.code==='ERR_ASSERTION'&&error.actual===expectedHead&&error.expected===wrongHead);assert.equal(ports,0);assert.equal(selected,null);
+  }finally{process.env.MODEL_CASE_EXPECTED_HEAD=expectedHead;}
+  assert.equal(process.env.MODEL_CASE_EXPECTED_HEAD,expectedHead);
+ }
+ const verified=verifyModelBuild(root,${JSON.stringify(receipt)});assert.equal(verified,join(root,'node_modules/electron/dist/electron'));
+ if(mode==='old-selection'){const text=readFileSync(new URL(${JSON.stringify(driver)}),'utf8');const needle='verifiedElectronBinary ?? electronBinary(),';assert.equal(text.split(needle).length,2);registerHooks({load(url,context,next){if(url===${JSON.stringify(driver)})return{format:'module',source:text.replace(needle,'electronBinary(),'),shortCircuit:true};return next(url,context);}});}
+ const {rendererDriverApi:api}=await import(${JSON.stringify(driver)});api.prepareDriverContext({apiUrl:'http://127.0.0.1:8080'});process.env.ELECTRON_OVERRIDE_DIST_PATH=alternateA;
+ const binding=mode==='generic'?undefined:mode==='wrong-binding'?join(alternateA,'electron'):verified;
+ await assert.rejects(api.launchApp({armed:true,apiUrl:'http://127.0.0.1:8080',verifiedElectronBinary:binding}),mode==='wrong-binding'?/verified Electron executable disagrees/:/SELECTION_INTERCEPTED_BEFORE_EXECUTION/);
+ if(mode==='wrong-binding'){assert.equal(selected,null);assert.equal(ports,0);}else{assert.equal(selected.parent,alternateB);assert.equal(selected.binary,mode==='strict'?verified:join(alternateB,'electron'));assert.equal(selected.child,alternateA);if(mode==='old-selection')assert.notEqual(selected.binary,verified);}
+ assert.equal(installer,0);console.log(JSON.stringify({mode,selected,ports,installer,binariesExecuted:0}));`;
+	for (const mode of ["old-selection", "strict", "generic", "wrong-binding"]) {
+		const out = execFileSync(
+			process.execPath,
+			["--input-type=module", "-e", program, mode],
+			{ cwd: root, env, encoding: "utf8", timeout: 15000 },
+		);
+		const result = JSON.parse(out.trim().split("\n").at(-1));
+		assert.equal(result.mode, mode);
+		assert.equal(result.installer, 0);
+		assert.equal(result.binariesExecuted, 0);
+		console.log("STRICT_LAUNCH_CONTROL", JSON.stringify(result));
+	}
+	// A usable parent override must not satisfy the strict model prerequisite.
+	const oldOverride = process.env.ELECTRON_OVERRIDE_DIST_PATH;
+	const hadExpectedHead = Object.hasOwn(
+		process.env,
+		"MODEL_CASE_EXPECTED_HEAD",
+	);
+	const oldExpectedHead = process.env.MODEL_CASE_EXPECTED_HEAD;
+	try {
+		process.env.MODEL_CASE_EXPECTED_HEAD = fixtureHead;
+		process.env.ELECTRON_OVERRIDE_DIST_PATH = join(root, "alternate-a");
+		writeFileSync(join(pkg, "path.txt"), "missing-installed-executable");
+		assert.throws(
+			() => verifyModelBuild(root, receipt),
+			/native executable absent/,
+		);
+		console.log("STRICT_MISSING_INSTALLED_RUNTIME_REFUSED");
+	} finally {
+		if (oldOverride === undefined)
+			Reflect.deleteProperty(process.env, "ELECTRON_OVERRIDE_DIST_PATH");
+		else process.env.ELECTRON_OVERRIDE_DIST_PATH = oldOverride;
+		if (hadExpectedHead) process.env.MODEL_CASE_EXPECTED_HEAD = oldExpectedHead;
+		else Reflect.deleteProperty(process.env, "MODEL_CASE_EXPECTED_HEAD");
+		assert.equal(process.env.MODEL_CASE_EXPECTED_HEAD, oldExpectedHead);
+		assert.equal(
+			Object.hasOwn(process.env, "MODEL_CASE_EXPECTED_HEAD"),
+			hadExpectedHead,
+		);
+		assert.equal(process.env.ELECTRON_OVERRIDE_DIST_PATH, oldOverride);
+	}
+});
+
+// Execute the exact production closure with inert I/O, never a real PID/signal.
+// Extraction keeps the failure-order control tied to the cleanup actually used.
+function inertOwnedClose(fault, code = "ENOSPC", releaseFails = false) {
+	const source = readFileSync(
+		new URL("./model-uncertainty-native.mjs", import.meta.url),
+		"utf8",
+	);
+	const closure = source.slice(
+		source.indexOf("const performCloseOwnedCore ="),
+		source.indexOf("\n\tlet sessionId;"),
+	);
+	const seen = [];
+	let finish;
+	let settled = false;
+	let descendantReads = 0;
+	const failure = Object.assign(Error(`${fault} refused`), { code });
+	const closed = new Promise((resolve) => {
+		finish = () => {
+			seen.push("child-joined");
+			resolve({ code: 0, signal: null });
+		};
+	});
+	const io = (stage) => {
+		seen.push(stage);
+		if (
+			fault === stage ||
+			(fault === "capture+receipt" && ["capture", "receipt"].includes(stage))
+		)
+			throw failure;
+	};
+
+	const close = new Function(
+		"child",
+		"birth",
+		"config",
+		"output",
+		"scratch",
+		"logs",
+		"closed",
+		"control",
+		"mkdirSync",
+		"writeFileSync",
+		"join",
+		"spawnSync",
+		"existsSync",
+		"readFileSync",
+		"assert",
+		"delay",
+		`${closure}; return closeOwnedCore;`,
+	)(
+		{
+			pid: 123,
+			exitCode: null,
+			signalCode: null,
+			kill(signal) {
+				assert.equal(signal, "SIGTERM");
+				seen.push("signal-owned");
+			},
+			stdin: {
+				end() {
+					seen.push("eof-owned");
+				},
+			},
+		},
+		"owned-birth",
+		"owned-root",
+		"output",
+		"scratch",
+		[],
+		closed,
+		async (op) => {
+			seen.push(op);
+			if (op === "state" && fault === "fallback")
+				throw Error("original-state-error");
+			if (op === "release" && releaseFails)
+				throw Error("original-release-error");
+			return {};
+		},
+		() => io("mkdir"),
+		(path, data) =>
+			io(
+				path.endsWith("owned-core-exit.json")
+					? "receipt"
+					: path.endsWith("backend-diagnostic.log")
+						? "log"
+						: JSON.parse(data).diagnosticError
+							? "fallback"
+							: "capture",
+			),
+		(...parts) => parts.join("/"),
+		(_cmd, args) =>
+			args.includes("lstart=")
+				? { status: 0, stdout: "owned-birth", stderr: "" }
+				: ++descendantReads === 1
+					? { status: 0, stdout: "456", stderr: "" }
+					: { status: 1, stdout: "", stderr: "" },
+		() => true,
+		() => "456",
+		assert,
+		async () => {
+			seen.push("descendant-wait");
+		},
+	);
+	const promise = close();
+	assert.equal(close(), promise, "repeat close must share the lifecycle");
+	promise.then(
+		() => {
+			settled = true;
+		},
+		() => {
+			settled = true;
+		},
+	);
+	return { promise, seen, finish, failure, settled: () => settled };
+}
+for (const code of ["ENOSPC", "EACCES"]) {
+	for (const fault of [
+		"mkdir",
+		"capture",
+		"fallback",
+		"log",
+		"receipt",
+		"capture+receipt",
+	]) {
+		test(`owned cleanup joins before rejecting ${code} at ${fault}`, async () => {
+			const c = inertOwnedClose(fault, code);
+			await new Promise((resolve) => setImmediate(resolve));
+			assert.equal(
+				c.settled(),
+				false,
+				"diagnostic failure must not settle before the child joins",
+			);
+			assert(c.seen.includes("release"));
+			assert.equal(c.seen.filter((x) => x === "signal-owned").length, 1);
+			c.finish();
+			await assert.rejects(
+				c.promise,
+				(error) =>
+					error instanceof AggregateError && error.errors.includes(c.failure),
+			);
+			assert(
+				c.seen.indexOf("descendant-wait") > c.seen.indexOf("child-joined"),
+			);
+			assert(c.seen.indexOf("receipt") > c.seen.indexOf("descendant-wait"));
+			assert.equal(c.seen.filter((x) => x === "signal-owned").length, 1);
+		});
+	}
+}
+test("owned cleanup preserves diagnostic and release failures without accepting", async () => {
+	const c = inertOwnedClose("log", "EACCES", true);
+	let accepted = false;
+	const operation = runOwnedModelCase({
+		run: async () => 0,
+		backend: { close: () => c.promise },
+		accept: async () => {
+			accepted = true;
+		},
+	});
+	await new Promise((resolve) => setImmediate(resolve));
+	assert.equal(c.settled(), false);
+	c.finish();
+	await assert.rejects(
+		operation,
+		(e) =>
+			e instanceof AggregateError &&
+			e.errors.includes(c.failure) &&
+			e.errors.some((x) => String(x).includes("original-release-error")),
+	);
+	assert.equal(accepted, false);
+});
+test("owned cleanup success is accepted only after child and descendants join", async () => {
+	const c = inertOwnedClose(null);
+	await new Promise((resolve) => setImmediate(resolve));
+	assert.equal(c.settled(), false);
+	c.finish();
+	const receipt = await c.promise;
+	assert.equal(receipt.clean, true);
+	assert.equal(receipt.joined, true);
+});
+test("settlement failure census separates description, disabled, association and uncertainty terms", () => {
+	const source = readFileSync(
+		new URL("./model-uncertainty-native.mjs", import.meta.url),
+		"utf8",
+	);
+	const start = source.indexOf("`/* model-case: settlement-census */");
+	const expression = source
+		.slice(start + 1, source.indexOf("`", start + 1))
+		.replace("${settledStart}", "100");
+	const dialog = {
+		id: "dialog-A",
+		isConnected: true,
+		innerText: "live B",
+		getAttribute: (k) => (k === "aria-describedby" ? "description-A" : null),
+		contains: () => false,
+	};
+	const checkbox = {
+		isConnected: true,
+		disabled: false,
+		getAttribute: () => null,
+		closest: () => dialog,
+		getBoundingClientRect: () => ({ x: 1, y: 2, width: 16, height: 16 }),
+	};
+	const textNode = {
+		textContent: "The request could not be confirmed",
+		parentElement: {
+			tagName: "P",
+			getAttribute: () => null,
+			closest: () => null,
+		},
+	};
+	let count = 0;
+	const document = {
+		body: { innerText: textNode.textContent },
+		querySelector: (s) => (s === '[role="dialog"]' ? dialog : checkbox),
+		querySelectorAll: () => [dialog],
+		getElementById: () => ({ textContent: "test/mock-model-b" }),
+		createTreeWalker: () => ({
+			nextNode: () => (count++ === 0 ? textNode : null),
+		}),
+	};
+	const census = JSON.parse(
+		runInNewContext(expression, {
+			document,
+			NodeFilter: { SHOW_TEXT: 4 },
+			Date: { now: () => 200 },
+		}),
+	);
+	assert.equal(census.descriptionText, "test/mock-model-b");
+	assert.equal(census.descriptionHasB, true);
+	assert.equal(census.disabled, false);
+	assert.equal(census.disabledPass, true);
+	assert.equal(census.ariaDisabled, null);
+	assert.equal(census.ariaDisabledPass, true);
+	assert.equal(census.sameDialog, true);
+	assert.equal(census.neutralGlobal, true);
+	assert.equal(census.neutralDialog, false);
+	assert.equal(census.uncertaintyLocation.inDialog, false);
+	assert.equal(census.elapsedMs, 100);
+	// Active picker feedback, not the deliberately retained transcript notice,
+	// decides settlement. Run the real predicate, not a parallel approximation.
+	const predicateLine = source
+		.split("\n")
+		.find((line) => line.includes("`/* model-case: settled-B */"));
+	const predicate = predicateLine.slice(
+		predicateLine.indexOf("`") + 1,
+		predicateLine.lastIndexOf("`"),
+	);
+	assert.equal(
+		runInNewContext(predicate, { document }),
+		true,
+		"historical transcript alone must not block settled picker B",
+	);
+	dialog.innerText = "The request could not be confirmed";
+	assert.equal(
+		runInNewContext(predicate, { document }),
+		false,
+		"active dialog uncertainty must still block settlement",
+	);
+});
+
+function presencePolicyContext() {
+	const feed = {
+		index: 0,
+		order: 1,
+		method: "GET",
+		path: "/v1/desktop/events",
+		observer: false,
+	};
+	const presence = {
+		index: 1,
+		order: 3,
+		method: "POST",
+		path: "/v1/desktop/presence",
+		observer: false,
+		query_empty: true,
+		response_status: 200,
+		body: {
+			subscription_id: "owned-feed",
+			can_notify: true,
+			can_notify_kinds: ["complete", "error"],
+			session_id: "",
+			window: {
+				exists: false,
+				focused: false,
+				visible: false,
+				minimized: false,
+			},
+		},
+	};
+	const open = {
+		request_index: 0,
+		subscription_id: "owned-feed",
+		open_order: 2,
+		close_order: 4,
+		response_status: 200,
+		delivered: true,
+	};
+	return { attempts: [feed, presence], presence, feed, open };
+}
+test("presence policy admits only original earlier live app-feed identity and exact nonsecret body", () => {
+	for (const session of ["", sid]) {
+		const c = presencePolicyContext();
+		c.presence.body.session_id = session;
+		assertModelTraffic(c.attempts, sid, [], [c.open]);
+	}
+});
+for (const mode of [
+	"method",
+	"path",
+	"suffix",
+	"query",
+	"missing-query-witness",
+	"missing-body",
+	"missing-field",
+	"missing-window-field",
+	"bad-subscription-type",
+	"long-subscription",
+	"extra-field",
+	"extra-device",
+	"can-notify-false",
+	"can-notify-string",
+	"missing-kind",
+	"extra-kind",
+	"duplicate-kind",
+	"kind-order",
+	"extra-window",
+	"window-type",
+	"foreign-session",
+	"unobserved",
+	"wrong-id",
+	"future-id",
+	"old-closed-feed",
+	"other-feed",
+	"observer-feed",
+	"undelivered",
+	"response-rejected",
+	"extra-command",
+	"extra-default",
+])
+	test(`presence policy rejects ${mode}`, () => {
+		const c = presencePolicyContext();
+		let opens = [c.open];
+		if (mode === "method") c.presence.method = "PATCH";
+		if (mode === "path") c.presence.path = "/v1/desktop/presences";
+		if (mode === "suffix") c.presence.path += "/";
+		if (mode === "query") c.presence.query_empty = false;
+		if (mode === "missing-query-witness")
+			Reflect.deleteProperty(c.presence, "query_empty");
+		if (mode === "missing-body") Reflect.deleteProperty(c.presence, "body");
+		if (mode === "missing-field")
+			Reflect.deleteProperty(c.presence.body, "can_notify");
+		if (mode === "missing-window-field")
+			Reflect.deleteProperty(c.presence.body.window, "visible");
+		if (mode === "bad-subscription-type") c.presence.body.subscription_id = 123;
+		if (mode === "long-subscription")
+			c.presence.body.subscription_id = "x".repeat(65);
+		if (mode === "extra-field") c.presence.body.unexpected = true;
+		if (mode === "extra-device") c.presence.body.device_id = "other-device";
+		if (mode === "can-notify-false") c.presence.body.can_notify = false;
+		if (mode === "can-notify-string") c.presence.body.can_notify = "true";
+		if (mode === "missing-kind")
+			c.presence.body.can_notify_kinds = ["complete"];
+		if (mode === "extra-kind") c.presence.body.can_notify_kinds.push("gate");
+		if (mode === "duplicate-kind")
+			c.presence.body.can_notify_kinds = ["complete", "complete"];
+		if (mode === "kind-order") c.presence.body.can_notify_kinds.reverse();
+		if (mode === "extra-window") c.presence.body.window.extra = false;
+		if (mode === "window-type") c.presence.body.window.focused = 0;
+		if (mode === "foreign-session") c.presence.body.session_id = "bbbbbbbbbbbb";
+		if (mode === "unobserved") opens = [];
+		if (mode === "wrong-id") c.presence.body.subscription_id = "another-feed";
+		if (mode === "future-id") c.open.open_order = 5;
+		if (mode === "old-closed-feed") c.open.close_order = 2;
+		if (mode === "other-feed")
+			c.feed.path = `/v1/desktop/sessions/${sid}/events`;
+		if (mode === "observer-feed") c.feed.observer = true;
+		if (mode === "undelivered") c.open.delivered = false;
+		if (mode === "response-rejected") c.presence.response_status = 404;
+		if (mode === "extra-command")
+			c.attempts.push({
+				method: "POST",
+				path: `/v1/desktop/sessions/${sid}/commands`,
+				body: { command: "model", args: "test/unexpected" },
+				observer: false,
+			});
+		if (mode === "extra-default")
+			c.attempts.push({
+				method: "PATCH",
+				path: "/v1/settings/hosting",
+				body: { base: null, value: "other" },
+				observer: false,
+			});
+		assert.throws(() => assertModelTraffic(c.attempts, sid, [], opens));
+	});
+
+for (const mode of ["duplicate-B", "extra-explicit-PATCH"])
+	test(`presence correction retains exact native mutation counts: ${mode}`, async () => {
+		await assert.rejects(modelUncertaintyCase.drive(oracleContext(mode)));
+	});
+
+function completeTrafficContext(baseNull = false) {
+	const uuid = (n) => `00000000-0000-0000-0000-${String(n).padStart(12, "0")}`;
+	const resident = "bbbbbbbbbbbb";
+	const scopeId = "owned-scope";
+	const list = {
+		index: 0,
+		order: 1,
+		delivery_order: 2,
+		method: "GET",
+		path: "/v1/desktop/sessions",
+		observer: false,
+		response_status: 200,
+	};
+	const snapshot = {
+		index: 1,
+		order: 3,
+		delivery_order: 4,
+		method: "GET",
+		path: `/v1/desktop/sessions/${resident}`,
+		observer: false,
+		response_status: 200,
+		query_empty: true,
+		query: {},
+	};
+	const entities = {
+		index: 2,
+		order: 5,
+		delivery_order: 6,
+		method: "GET",
+		path: `${snapshot.path}/command-entities`,
+		observer: false,
+		response_status: 200,
+		query_empty: false,
+		query: { command: "effort" },
+	};
+	const preview = {
+		index: 3,
+		order: 7,
+		delivery_order: 8,
+		method: "POST",
+		path: "/v1/desktop/sessions/preview",
+		observer: false,
+		response_status: 200,
+		query_empty: true,
+		cwd_owned: true,
+		scope_id: scopeId,
+		body: { request_id: uuid(3), cwd: "/owned/fixture" },
+	};
+	const bare = {
+		index: 4,
+		order: 9,
+		delivery_order: 10,
+		method: "POST",
+		path: `/v1/desktop/sessions/${sid}/commands`,
+		observer: false,
+		response_status: 200,
+		query_empty: true,
+		body: { request_id: uuid(2), command: "model", args: "", images: [] },
+		native_action: {
+			kind: "native_action",
+			destination: "session.model",
+			session_id: sid,
+		},
+	};
+	const b = {
+		index: 5,
+		order: 11,
+		delivery_order: 12,
+		method: "POST",
+		path: bare.path,
+		observer: false,
+		body: {
+			request_id: uuid(1),
+			command: "model",
+			args: "test/mock-model-b",
+			images: [],
+		},
+	};
+	const hosting = {
+		index: 6,
+		order: 15,
+		delivery_order: 16,
+		method: "PATCH",
+		path: "/v1/settings/hosting",
+		observer: false,
+		response_status: 200,
+		query_empty: true,
+		body: { value: "test", ...(baseNull ? { base: null } : {}) },
+	};
+	const model = {
+		index: 7,
+		order: 17,
+		delivery_order: 18,
+		method: "PATCH",
+		path: "/v1/settings/model_name",
+		observer: false,
+		response_status: 200,
+		query_empty: true,
+		body: { value: "mock-model-b", ...(baseNull ? { base: null } : {}) },
+	};
+	const witness = {
+		request_index: 0,
+		delivery_order: 2,
+		response_status: 200,
+		scope_id: scopeId,
+		rows: [{ id: resident, local: true, peer_null: true }],
+	};
+	return {
+		list,
+		snapshot,
+		entities,
+		preview,
+		bare,
+		b,
+		hosting,
+		model,
+		witness,
+		attempts: [list, snapshot, entities, preview, bare, b, hosting, model],
+		proof: {
+			scopeId,
+			fixtureCwd: "/owned/fixture",
+			defaultSynthetic: true,
+			saveBarrierOrder: 13,
+			listWitnesses: [witness],
+		},
+	};
+}
+test("complete six-gap policy accepts only witnessed local reads, neutral preview, native open and both valid explicit base shapes", () => {
+	for (const baseNull of [false, true]) {
+		const c = completeTrafficContext(baseNull);
+		assertModelTraffic(c.attempts, sid, [], [], c.proof);
+		c.preview.body.target = null;
+		c.preview.body.model = null;
+		assertModelTraffic(c.attempts, sid, [], [], c.proof);
+	}
+});
+for (const mode of [
+	"unlisted",
+	"future-list",
+	"observer-list",
+	"undelivered-list",
+	"non200-list",
+	"unknown-locality",
+	"peer-row",
+	"wrong-root",
+	"arbitrary-id",
+	"snapshot-query",
+	"entities-name",
+	"entities-wrong-command",
+	"entities-missing",
+	"encoded-path",
+	"preview-hash-only",
+	"preview-cwd",
+	"preview-symlink",
+	"preview-target",
+	"preview-model",
+	"preview-extra",
+	"preview-uuid",
+	"preview-reused-uuid",
+	"snapshot-missing-query-witness",
+	"hosting-late-receipt",
+	"preview-query",
+	"preview-status",
+	"preview-twice",
+	"default-not-synthetic",
+	"bare-no-receipt",
+	"bare-status",
+	"bare-wrong-case",
+	"bare-args",
+	"bare-images",
+	"bare-uuid",
+	"bare-reused-uuid",
+	"bare-second",
+	"bare-future-receipt",
+	"B-replay",
+	"wrong-base",
+	"extra-patch-field",
+	"wrong-value",
+	"wrong-order",
+	"duplicate-PATCH",
+	"early-write",
+	"failed-write",
+])
+	test(`complete six-gap policy rejects ${mode}`, () => {
+		const c = completeTrafficContext();
+		if (mode === "unlisted") c.proof.listWitnesses = [];
+		if (mode === "future-list") c.witness.delivery_order = 4;
+		if (mode === "observer-list") c.list.observer = true;
+		if (mode === "undelivered-list")
+			Reflect.deleteProperty(c.witness, "delivery_order");
+		if (mode === "non200-list") c.list.response_status = 401;
+		if (mode === "unknown-locality")
+			Reflect.deleteProperty(c.witness.rows[0], "local");
+		if (mode === "peer-row") c.witness.rows[0].peer_null = false;
+		if (mode === "wrong-root") c.witness.scope_id = "foreign-scope";
+		if (mode === "arbitrary-id")
+			c.snapshot.path = "/v1/desktop/sessions/cccccccccccc";
+		if (mode === "snapshot-query") c.snapshot.query = { journal_order: "1" };
+		if (mode === "entities-name")
+			c.entities.query = { command: "effort", name: "foreign" };
+		if (mode === "entities-wrong-command")
+			c.entities.query = { command: "model" };
+		if (mode === "entities-missing") c.entities.query = {};
+		if (mode === "encoded-path") c.snapshot.path += "%2f";
+		if (mode === "preview-hash-only") Reflect.deleteProperty(c.preview, "body");
+		if (mode === "preview-cwd") c.preview.body.cwd = "/foreign";
+		if (mode === "preview-symlink") c.preview.cwd_owned = false;
+		if (mode === "preview-target") c.preview.body.target = { agent: "foreign" };
+		if (mode === "preview-model")
+			c.preview.body.model = { provider: "real", model_id: "real" };
+		if (mode === "preview-extra") c.preview.body.extra = true;
+		if (mode === "preview-uuid") c.preview.body.request_id = "invalid";
+		if (mode === "preview-reused-uuid")
+			c.preview.body.request_id = c.b.body.request_id;
+		if (mode === "snapshot-missing-query-witness")
+			Reflect.deleteProperty(c.snapshot, "query_empty");
+		if (mode === "hosting-late-receipt") c.hosting.delivery_order = 18;
+		if (mode === "preview-query") c.preview.query_empty = false;
+		if (mode === "preview-status") c.preview.response_status = 422;
+		if (mode === "preview-twice") c.attempts.push(structuredClone(c.preview));
+		if (mode === "default-not-synthetic") c.proof.defaultSynthetic = false;
+		if (mode === "bare-no-receipt")
+			Reflect.deleteProperty(c.bare, "native_action");
+		if (mode === "bare-status") c.bare.response_status = 500;
+		if (mode === "bare-wrong-case")
+			c.bare.native_action.session_id = "cccccccccccc";
+		if (mode === "bare-args") c.bare.body.args = " ";
+		if (mode === "bare-images") c.bare.body.images = ["image"];
+		if (mode === "bare-uuid") c.bare.body.request_id = "invalid";
+		if (mode === "bare-reused-uuid")
+			c.bare.body.request_id = c.b.body.request_id;
+		if (mode === "bare-second") c.attempts.push(structuredClone(c.bare));
+		if (mode === "bare-future-receipt") c.bare.delivery_order = 12;
+		if (mode === "B-replay")
+			c.attempts.push({
+				...c.b,
+				body: { ...c.b.body, args: "test/other-model" },
+			});
+		if (mode === "wrong-base") c.hosting.body.base = {};
+		if (mode === "extra-patch-field") c.hosting.body.extra = true;
+		if (mode === "wrong-value") c.model.body.value = "real-model";
+		if (mode === "wrong-order")
+			[c.attempts[6], c.attempts[7]] = [c.model, c.hosting];
+		if (mode === "duplicate-PATCH") c.attempts.push(structuredClone(c.model));
+		if (mode === "early-write") c.hosting.order = 12;
+		if (mode === "failed-write") c.hosting.response_status = 500;
+		assert.throws(() => assertModelTraffic(c.attempts, sid, [], [], c.proof));
+	});

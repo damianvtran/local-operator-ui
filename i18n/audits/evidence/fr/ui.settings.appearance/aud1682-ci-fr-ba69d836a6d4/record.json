@@ -1,0 +1,89 @@
+{
+  "audit_id": "aud1682-ci-fr-ba69d836a6d4",
+  "audit_kind": "independent-namespace-delta-translation-audit",
+  "audit_date": "2026-11-04",
+  "locale": "fr",
+  "namespace": "ui.settings.appearance",
+  "audited_head": "f9297edd67afddfed8c0a4eea53451fc859fda9c",
+  "scope": "B CI delta only: contrast.standard, accent.title, picker.hex, hue.orange, hue.cyan, hue.indigo, hue.violet; other keys retain audits 63837f8/bcf0760 with unchanged values verified.",
+  "key_count": 7,
+  "keys_audited": [
+    "ui.settings.appearance.contrast.standard",
+    "ui.settings.appearance.accent.title",
+    "ui.settings.appearance.picker.hex",
+    "ui.settings.appearance.hue.orange",
+    "ui.settings.appearance.hue.cyan",
+    "ui.settings.appearance.hue.indigo",
+    "ui.settings.appearance.hue.violet"
+  ],
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "ba69d836a6d4",
+    "instance": "aud1682-ci-fr-ba69d836a6d4",
+    "model": "openai/gpt-6.1-sol",
+    "primary_model": "anthropic/claude-opus-5-5",
+    "fallback": "Quota fallback; actual openai/gpt-6.1-sol confirmed by host session-state.",
+    "independent_from_translator_session": true,
+    "independence": "Separate session from translator fd3ba80e8c8f; did not author or remediate translations."
+  },
+  "translator": {
+    "session": "fd3ba80e8c8f",
+    "model": "radient/auto",
+    "provenance_source": "Manager delegation for B CI delta at f9297edd67a explicitly states actual translator radient/auto. Underlying provider/model not independently inferred."
+  },
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.settings.appearance.json",
+      "sha256": "869f7fb3cae2de41496b3e0582009c690961d52dafd006f51bf796e0219d43e3"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.settings.appearance.context.json",
+      "sha256": "75db38dd15ae3c1ec3ca9ced1859edea11d999da9bd6fcca1e3286098cd372dd"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/fr/ui.settings.appearance.json",
+      "sha256": "2cbe3c47ec1cf180bf7d9771415a54877c9cb5023e121c7506bf80e7178dbfd5"
+    }
+  },
+  "findings": [],
+  "status": "passed",
+  "result": "clean",
+  "checks": {
+    "changed_keys": [
+      "ui.settings.appearance.contrast.standard",
+      "ui.settings.appearance.accent.title",
+      "ui.settings.appearance.picker.hex",
+      "ui.settings.appearance.hue.orange",
+      "ui.settings.appearance.hue.cyan",
+      "ui.settings.appearance.hue.indigo",
+      "ui.settings.appearance.hue.violet"
+    ],
+    "changed_values": {
+      "ui.settings.appearance.contrast.standard": "Normal",
+      "ui.settings.appearance.accent.title": "Couleur d’accent",
+      "ui.settings.appearance.picker.hex": "Hexadécimal",
+      "ui.settings.appearance.hue.orange": "orangé",
+      "ui.settings.appearance.hue.cyan": "bleu cyan",
+      "ui.settings.appearance.hue.indigo": "bleu indigo",
+      "ui.settings.appearance.hue.violet": "violet profond"
+    },
+    "unchanged_keys_retained": 155,
+    "icu_parse": "PASS",
+    "placeholders": "PASS (no placeholders on changed keys)",
+    "bidi": "PASS",
+    "technical_command_and_exemption": "PASS"
+  },
+  "context_review": "palette_override_notice placeholder.theme now explicitly describes the borrowed built-in palette name, not background theme or user accent; preserves meaning of the prior note.",
+  "idiom_review": "Hex field labels name hexadecimal notation naturally in each locale. French Normal/Couleur d’accent and orange/cyan/indigo/violet families remain understandable in preset and tooltip contexts. Vietnamese xanh cyan retains the cyan family.",
+  "artifacts": [
+    {
+      "path": "i18n/receipts/aud1682-ci-fr-ba69d836a6d4.json",
+      "sha256": "c53c770cec081caf87926c88dc84dc5c7f1c38f2118104b3fb39e5282b8e6d08"
+    },
+    {
+      "path": "i18n/audits/evidence/fr/ui.settings.appearance/aud1682-ci-fr-ba69d836a6d4/mechanical-results.json",
+      "sha256": "57c556a3a1388e2a5e66e4cc59c932707ee4b4d09c9ea575d3e1909a5895fc08"
+    }
+  ],
+  "limitations": "No prior B audit reset. Earlier minor/nit findings remain in historical receipts; clean describes only this delta. No rendered fit or native-reader claim; CI owns whole string scanners."
+}

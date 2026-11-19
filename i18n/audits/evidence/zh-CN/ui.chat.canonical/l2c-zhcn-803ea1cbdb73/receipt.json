@@ -1,0 +1,75 @@
+{
+ "auditor": "i18n-auditor",
+ "model": "deepseek/deepseek-flash",
+ "instance": "803ea1cbdb73",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "namespace": "ui.chat.canonical",
+ "locale": "zh-CN",
+ "key_count": 442,
+ "scope": "combined namespace at 659ef7e44b7c (rebased union of #1861 file-size keys and #1862 tool_row verbs): all 442 keys read; focused deep review of the 2 appended file-size keys; retained 440 values carried on proof of byte identity with origin/main",
+ "findings": [
+  {
+   "id": "M1",
+   "severity": "minor",
+   "key": "ui.chat.canonical.supplement.withheld.line, ui.chat.canonical.supplement.withheld.line_no_reason",
+   "problem": "space between the substituted count and the classifier 个 ('3 个文件未显示'); style guide forbids a space between Chinese and digit runs, and the file's other plural counts comply ({count}个文件)",
+   "proposed": "#个文件未显示",
+   "disposition": "deferred — pre-existing byte, identical on origin/main"
+  },
+  {
+   "id": "M2",
+   "severity": "minor",
+   "key": "ui.chat.canonical.tool_row.verb.found_definition.settled, ui.chat.canonical.tool_row.verb.found_references.settled",
+   "problem": "settled state reads 已查找 ('looked up') for English 'Found'; 已查找 is the running verb (正在查找定义)",
+   "proposed": "已找到定义 / 已找到引用",
+   "disposition": "deferred — pre-existing byte, identical on origin/main"
+  },
+  {
+   "id": "M3",
+   "severity": "minor",
+   "key": "ui.chat.canonical.tool_row.diff.truncated",
+   "problem": "spaced single em dash in Chinese prose; style guide requires full-width punctuation, and the sibling notice.compaction_not_run_after_colon uses ——",
+   "proposed": "diff已截断——还有#行未记录",
+   "disposition": "deferred — pre-existing byte, identical on origin/main"
+  },
+  {
+   "id": "N1",
+   "severity": "nit",
+   "key": "ui.chat.canonical.transcript.worked",
+   "problem": "'已进行工作' is stiff for the status 'Worked'; the adjacent worked_for already carries the noun",
+   "disposition": "no change required"
+  },
+  {
+   "id": "N2",
+   "severity": "nit",
+   "key": "ui.chat.canonical.security_notice.show_code",
+   "problem": "'显示审核的代码' can read as 'code that audits'; '显示已审核的代码' is unambiguous",
+   "disposition": "no change required"
+  }
+ ],
+ "severity_counts": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 3,
+  "nit": 2
+ },
+ "independence": {
+  "translator_agent": "i18n-translator",
+  "translator_model": "openai/gpt-6.1-sol",
+  "independent_from_translator": true,
+  "independent_auditors_for_this_locale": 2
+ },
+ "sha256": {
+  "target": "4176670606e68058e498a36006ba8c770af64489ec77d77e78d3a2754ab2ddf0",
+  "en": "38f1069648c9241799bb1b316820e0530bf9445dfba3151e1c28df70153916b3",
+  "context": "c258ab485de698eec85e81ffed506866e3b1e8caf29cb3ff434901388065b390"
+ },
+ "observations": [
+  "O1: measured zh-CN CLDR (Node 24.22.1 / ICU 78.3 / CLDR 48.0) spells byte units B/kB/MB/GB, not 字节/KB; the localized copy carries no unit text, which is correct",
+  "O2: canonical-transcript.tsx:2322-2323 still returns raw 'composing'/'queued' literals beside the new keys (pre-existing on origin/main, outside this namespace)",
+  "O3: ledger rows bind main's hashes (en a385671b…, zh target 5a2d8744…), so all seven ui.chat.canonical rows need re-binding; this audit covers zh-CN only"
+ ],
+ "assembled_from": "Auditor session 803ea1cbdb73, report audit-1861-zh-CN.md. Verdict, severity counts and findings transcribed from that report; hashes computed with python hashlib over `git show 659ef7e44b7c:<path>` bytes. The auditor did not run pnpm check-i18n (read-only lane); see the report's validator-substitution section.",
+ "round": 3
+}

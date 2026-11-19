@@ -1,0 +1,238 @@
+{
+  "schema": 1,
+  "receipt_kind": "Independent removal-only copy/context restoration proof; companion, NOT new ledger linguistic approval",
+  "auditor": "reviewer",
+  "model": "anthropic/claude-sonnet-5-5",
+  "model_provenance": "Actual current host session descriptor; no new fallback announced. Historical reused auditor identities/models remain the exact signed originals, not this follow-up model.",
+  "instance": "f93eb129057e-slice2-save-removal",
+  "session": "f93eb129057e",
+  "date": "2026-11-03",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "scope": {
+    "from_head": "ac1cb1bd78bd06449b79b620e3aece405b732aa5",
+    "restored_baseline": "1364eb5fcab8aa0871304a7f644cf43cebbd1acc",
+    "working_tree": "/Users/damian/local-operator-ui/.worktrees/audit-attachment-resource",
+    "uncommitted": true,
+    "keys_removed": [
+      "ui.teamBridge.attachmentCard.download",
+      "ui.teamBridge.attachmentCard.saved"
+    ],
+    "kind": "Only removal of download/saved and their two English context entries; no retranslation, no code/security/runtime approval.",
+    "pinning": "Applies only to current raw hashes listed. Subsequent copy/context changes stale this proof."
+  },
+  "source": {
+    "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+    "sha256": "00a4cb6150b71677766c8527369527497cf29ec3ccb91cb5e2b8a3d1c65baffd"
+  },
+  "context": {
+    "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+    "sha256": "b309e464421167093b9434f33944bbbb1931385a63c822cc3763c4f1c5a6cb49",
+    "baseline_byte_identical": true,
+    "prior_genuine_context_companion": "i18n/audits/evidence/en/ui.teamBridge/f93eb129057e-context-followup/record.json",
+    "prior_companion_sha256": "cf7427e674e21b215549fd58e5a10711b98e295db6ed22b3c9cafc380e8fdd88"
+  },
+  "restoration_proof": "All eight current catalogue raw byte sequences and English context raw bytes equal committed baseline1364eb5fcab8aa0871304a7f644cf43cebbd1acc. Against signed ac1cb1b catalogue/context objects, exactly the two save-only keys/entries disappeared; all surviving keys/values are unchanged.",
+  "reuse_bindings": [
+    {
+      "locale": "es",
+      "target_path": "src/i18n/catalogues/es/ui.teamBridge.json",
+      "target_sha256": "4e4149606e029b605eb55acbc8309f7989fe00bfe75dc2b6c69d3da2cf39536c",
+      "reuse_receipt": "i18n/receipts/f93eb129057e-es.json",
+      "canonical": "i18n/audits/evidence/es/ui.teamBridge/f93eb129057e-es/record.json",
+      "receipt_sha256": "4fe558aa7e29b4b535148887365af91eb277eac6cab6de31dcd979f4f2c43dcd",
+      "original_instance": "f93eb129057e-es",
+      "original_model": "openai/gpt-6.1-sol",
+      "original_date": "2026-11-03",
+      "result": "clean",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    },
+    {
+      "locale": "fr",
+      "target_path": "src/i18n/catalogues/fr/ui.teamBridge.json",
+      "target_sha256": "50fbac8752e8891eb4bc2ad3c71fb0e173eb6fbde1a155f31a3058acbf642329",
+      "reuse_receipt": "i18n/receipts/f93eb129057e-fr.json",
+      "canonical": "i18n/audits/evidence/fr/ui.teamBridge/f93eb129057e-fr/record.json",
+      "receipt_sha256": "60a61625870414586e08c9a4a1bc5b0969d42024c2527c7de474733ecf6d09eb",
+      "original_instance": "f93eb129057e-fr",
+      "original_model": "openai/gpt-6.1-sol",
+      "original_date": "2026-11-03",
+      "result": "clean",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    },
+    {
+      "locale": "hi",
+      "target_path": "src/i18n/catalogues/hi/ui.teamBridge.json",
+      "target_sha256": "688eea4077454fb0c029bf48279a18c805def8b98050c2a7a536631cf784d8cd",
+      "reuse_receipt": "i18n/receipts/f93eb129057e-hi.json",
+      "canonical": "i18n/audits/evidence/hi/ui.teamBridge/f93eb129057e-hi/record.json",
+      "receipt_sha256": "0daccb8bf6333a03e284ad1139e83016e84f10f0205d55002cd847c098609294",
+      "original_instance": "f93eb129057e-hi",
+      "original_model": "openai/gpt-6.1-sol",
+      "original_date": "2026-11-03",
+      "result": "clean",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    },
+    {
+      "locale": "ru",
+      "target_path": "src/i18n/catalogues/ru/ui.teamBridge.json",
+      "target_sha256": "6af703983652a04d8f452ff16d694eafd74cce4d7f7b05030d4e830560531ced",
+      "reuse_receipt": "i18n/receipts/f93eb129057e-ru.json",
+      "canonical": "i18n/audits/evidence/ru/ui.teamBridge/f93eb129057e-ru/record.json",
+      "receipt_sha256": "fe09d7e37c58de32411de72a9931c77987ae8ef8429777982b98153d426e71b5",
+      "original_instance": "f93eb129057e-ru",
+      "original_model": "openai/gpt-6.1-sol",
+      "original_date": "2026-11-03",
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 0
+      }
+    },
+    {
+      "locale": "ur",
+      "target_path": "src/i18n/catalogues/ur/ui.teamBridge.json",
+      "target_sha256": "81bb71ab4c38818d6af5a1c8475c80e1bacea89c5dcb991eb79a40748d032c19",
+      "reuse_receipt": "i18n/receipts/f93eb129057e-ur.json",
+      "canonical": "i18n/audits/evidence/ur/ui.teamBridge/f93eb129057e-ur/record.json",
+      "receipt_sha256": "99c4ad13393194f3939f88fd8587b9014d0b721b80722db6353bcfe4d27b04f0",
+      "original_instance": "f93eb129057e-ur",
+      "original_model": "openai/gpt-6.1-sol",
+      "original_date": "2026-11-03",
+      "result": "clean",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    },
+    {
+      "locale": "vi",
+      "target_path": "src/i18n/catalogues/vi/ui.teamBridge.json",
+      "target_sha256": "9e50088b52ae39b539e6adad89be4064a976a10906f0ccd8db18123ff5278607",
+      "reuse_receipt": "i18n/receipts/f93eb129057e-vi.json",
+      "canonical": "i18n/audits/evidence/vi/ui.teamBridge/f93eb129057e-vi/record.json",
+      "receipt_sha256": "3fdd568a4cea5597e607d28e2bdd78fd8520da97f4a1ba2a0f92c5db5b2722e3",
+      "original_instance": "f93eb129057e-vi",
+      "original_model": "openai/gpt-6.1-sol",
+      "original_date": "2026-11-03",
+      "result": "clean",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    },
+    {
+      "locale": "zh-CN",
+      "target_path": "src/i18n/catalogues/zh-CN/ui.teamBridge.json",
+      "target_sha256": "a24f0b1db6a5f97e6739f31bafc65ccb4ac12db210592bcfdbd9fd16468adb23",
+      "reuse_receipt": "i18n/receipts/f93eb129057e-zh-cn.json",
+      "canonical": "i18n/audits/evidence/zh-CN/ui.teamBridge/f93eb129057e-zh-cn/record.json",
+      "receipt_sha256": "3080a67ffe533a151a201f7871cd40e6ccab40caaa48331fe7bc65992671c2e0",
+      "original_instance": "f93eb129057e-zh-cn",
+      "original_model": "openai/gpt-6.1-sol",
+      "original_date": "2026-11-03",
+      "result": "clean",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    }
+  ],
+  "inherited_semantic_coverage": "Reusing original historical receipt bindings is justified by exact English/target-byte equality. Not a new whole-namespace audit and not an additional independent auditor round. Prior context companion also binds the restored exact context bytes.",
+  "new_findings": [],
+  "inherited_findings": {
+    "ru": "Original R2 MINOR remains deferred: clean-with-findings/minor=1. It is not reclassified or cleared by save-key removal."
+  },
+  "signed_slice2_history": {
+    "index": "i18n/audits/evidence/en/ui.teamBridge/f93eb129057e-slice2/index.json",
+    "index_sha256": "4c43874eaeefd1798c2376b026fef8390d06db1e8f1ba2e744609d94a2f63751",
+    "records": [
+      {
+        "locale": "es",
+        "receipt": "i18n/receipts/f93eb129057e-slice2-es.json",
+        "canonical": "i18n/audits/evidence/es/ui.teamBridge/f93eb129057e-slice2-es/record.json",
+        "sha256": "53dd7810d65eb0d2903dd113347b7b42d7722edc93aefe493772630d373ad150",
+        "disposition": "Retain byte-for-byte as historical/superseded; not evidence for restored current bytes."
+      },
+      {
+        "locale": "fr",
+        "receipt": "i18n/receipts/f93eb129057e-slice2-fr.json",
+        "canonical": "i18n/audits/evidence/fr/ui.teamBridge/f93eb129057e-slice2-fr/record.json",
+        "sha256": "02215e635674678582aa40bc3c0b503269a69aba122a30d2cf129272b32015b2",
+        "disposition": "Retain byte-for-byte as historical/superseded; not evidence for restored current bytes."
+      },
+      {
+        "locale": "hi",
+        "receipt": "i18n/receipts/f93eb129057e-slice2-hi.json",
+        "canonical": "i18n/audits/evidence/hi/ui.teamBridge/f93eb129057e-slice2-hi/record.json",
+        "sha256": "e8eb33bbe331bc6c56a68cb618609978bd168c7a66ba769823969d0a7bf21d1d",
+        "disposition": "Retain byte-for-byte as historical/superseded; not evidence for restored current bytes."
+      },
+      {
+        "locale": "ru",
+        "receipt": "i18n/receipts/f93eb129057e-slice2-ru.json",
+        "canonical": "i18n/audits/evidence/ru/ui.teamBridge/f93eb129057e-slice2-ru/record.json",
+        "sha256": "1686036d692140e977ccfe2188f5e67e6e74f63f455211b09e731da010a9c21f",
+        "disposition": "Retain byte-for-byte as historical/superseded; not evidence for restored current bytes."
+      },
+      {
+        "locale": "ur",
+        "receipt": "i18n/receipts/f93eb129057e-slice2-ur.json",
+        "canonical": "i18n/audits/evidence/ur/ui.teamBridge/f93eb129057e-slice2-ur/record.json",
+        "sha256": "5edf3e161fe700a4e55f53a743f87655e46ee734514ad773810c820a26eef076",
+        "disposition": "Retain byte-for-byte as historical/superseded; not evidence for restored current bytes."
+      },
+      {
+        "locale": "vi",
+        "receipt": "i18n/receipts/f93eb129057e-slice2-vi.json",
+        "canonical": "i18n/audits/evidence/vi/ui.teamBridge/f93eb129057e-slice2-vi/record.json",
+        "sha256": "70f0077449868f4d0f4498ad9011b677eccd238e084744f00aa083a64046dbf7",
+        "disposition": "Retain byte-for-byte as historical/superseded; not evidence for restored current bytes."
+      },
+      {
+        "locale": "zh-CN",
+        "receipt": "i18n/receipts/f93eb129057e-slice2-zh-cn.json",
+        "canonical": "i18n/audits/evidence/zh-CN/ui.teamBridge/f93eb129057e-slice2-zh-cn/record.json",
+        "sha256": "b8852c00c7e729245056735ac33d87d4347b95e78e84ec76b0f0e47ad25a9d00",
+        "disposition": "Retain byte-for-byte as historical/superseded; not evidence for restored current bytes."
+      }
+    ],
+    "disposition": "Preserve signed ac1 two-key records/index unchanged. Preserve them in the ledger superseded chain when assembler archives their old source/target bindings. Non-signed manifests may mark them historical; do not edit their identity/hash/status fields."
+  },
+  "assembler_disposition": {
+    "method": "Reactivate exact prior ledger-required receipts using the unchanged writer, with original instance/model/date/result/scope. No new linguistic receipt needs fabrication.",
+    "why_allowed": "ledger-assemble.mjs checks active and superseded instance collisions by receipt hash (214-231), so the same old instance/same receipt is allowed; stale active rows are archived and source/target hashes derived from current disk (268-306). It does not authorize overwriting immutable evidence.",
+    "must_preserve": [
+      "Original prior receipts and canonical records",
+      "Historical two-key receipts/index/canonical records",
+      "Russian minor and deferral",
+      "Translator identity and superseded history"
+    ],
+    "not_executed": true,
+    "followup": "Implementer must inspect resulting ledger diff and obtain actual check-i18n evidence under the authorized lane; this proof is not a gate execution."
+  },
+  "execution": "Only diff/git-object/JSON/SHA256 reads and scratch artifact writes. No repo edits, tests, typecheck, builds, browser, ledger assembler or runtime work. No preview-only code review started."
+}

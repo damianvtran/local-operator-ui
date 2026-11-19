@@ -26,6 +26,8 @@
  * be able to say so.
  */
 
+import type { BackendStartup } from "./backend-startup";
+
 /** States a consumer may see. `connecting` is the pre-first-probe state. */
 export type DaemonConnectionState =
 	| "connecting"
@@ -226,6 +228,18 @@ export interface DaemonStatusSnapshot {
 	 * whatever the probes could not read.
 	 */
 	lastTransportAt: number | null;
+	/**
+	 * True while main's server-update window is open: the daemon answered with
+	 * its reload admission fence (`lop update` / `lop-update` reloading it in
+	 * place) within the last `SERVER_UPDATING_EXTEND_MS`, capped at
+	 * `SERVER_UPDATING_CAP_MS` (`daemon-status.ts`). Surfaces show a neutral
+	 * "the server is updating" state instead of a failure, and offer no Retry or
+	 * Reconnect: the server comes back by itself.
+	 *
+	 * OPTIONAL so a snapshot written before this field existed (a test fixture, a
+	 * story) reads as "not updating", which is the only safe default.
+	 */
+	updating?: boolean;
 	/** One sentence naming what the app actually observed. */
 	detail: string;
 	/**
@@ -245,6 +259,13 @@ export interface DaemonStatusSnapshot {
 	 */
 	addressSubstitution: AddressSubstitution | null;
 	updatedAt: number;
+	/**
+	 * The owned server's start-up: starting, ready or failed and why. Optional
+	 * because only a session that SPAWNED has one - an attached external daemon
+	 * never does - and a snapshot from a build that predates the record reads as
+	 * "nothing to say". See `./backend-startup.ts`.
+	 */
+	startup?: BackendStartup | null;
 }
 
 /**

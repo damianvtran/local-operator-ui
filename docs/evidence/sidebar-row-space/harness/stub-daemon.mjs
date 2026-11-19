@@ -139,6 +139,8 @@ const conversations = [
 		pending: null,
 		status: { code: "recent", label: "Recent" },
 		binding: { agent: null, team: null },
+		subagents_running: 0,
+		subagents_queued: 0,
 	},
 	{
 		/*
@@ -160,6 +162,8 @@ const conversations = [
 		pending: null,
 		status: { code: "recent", label: "Recent" },
 		binding: { agent: null, team: null },
+		subagents_running: 0,
+		subagents_queued: 0,
 	},
 	{
 		id: "e059761608ae",
@@ -173,6 +177,8 @@ const conversations = [
 		pending: null,
 		status: { code: "recent", label: "Recent" },
 		binding: { agent: null, team: null },
+		subagents_running: 0,
+		subagents_queued: 0,
 	},
 	{
 		/*
@@ -192,6 +198,8 @@ const conversations = [
 		pending: null,
 		status: { code: "recent", label: "Recent" },
 		binding: { agent: null, team: null },
+		subagents_running: 0,
+		subagents_queued: 0,
 	},
 	{
 		/*
@@ -240,6 +248,8 @@ const conversations = [
 		pending: null,
 		status: { code: "recent", label: "Recent" },
 		binding: { agent: null, team: null },
+		subagents_running: 0,
+		subagents_queued: 0,
 	},
 ];
 
@@ -350,16 +360,77 @@ const route = (method, pathname, query, body) => {
 				 * panel as delivered. Nothing in these frames presses the pin.
 				 */
 				session_pins: 1,
+				/*
+				 * THE FEED'S OWN SWITCH, and it is only advertised when this run asked
+				 * for a late fact (`--late`). `src/main/index.ts` starts the relay on
+				 * `features.desktop_feed` and opens nothing without it, so a stand-in
+				 * that stayed silent about the feature can only ever paint a row once -
+				 * which is exactly why the unmodified fixture measured no change. Left
+				 * out by default, so every existing frame in this repository's evidence
+				 * sets still renders the app it was taken of.
+				 */
+				...(LATE !== "none" ? { desktop_feed: 1 } : {}),
+				/* `--peers`: the mesh reads below answer, so the sidebar files remote rows. */
+				...(PEERS ? { peers: 1 } : {}),
 				...(ARCHIVE ? { session_archive: 1, session_delete: 1 } : {}),
 			},
+		});
+	}
+	/*
+	 * `--peers` (evidence set `sidebar-background-work`): one network, two peer
+	 * devices - one answering, one whose link is down - and their sessions on the
+	 * `include_peers` read only, which is the one the mesh catalogue makes.
+	 */
+	if (PEERS && method === "GET" && pathname === "/v1/desktop/networks") {
+		return ok({
+			self_device_id: "stub-self",
+			networks: [
+				{
+					network_id: "stub-net",
+					name: "Home",
+					epoch: 1,
+					trust: "active",
+					members: [],
+				},
+			],
+		});
+	}
+	if (PEERS && method === "GET" && pathname === "/v1/desktop/peers") {
+		return ok({
+			peers: [
+				{
+					device_id: "synthetic-peer-a",
+					name: "Studio Mac",
+					reachable: true,
+					link_state: "reachable",
+					session_count: 1,
+				},
+				{
+					device_id: "synthetic-peer-b",
+					name: "Travel laptop",
+					reachable: false,
+					link_state: "unreachable",
+					unreachable_reason: "relay timeout",
+					last_seen_at: Date.now() / 1000 - 240,
+					session_count: 1,
+				},
+			],
 		});
 	}
 	if (method === "GET" && pathname === "/v1/desktop/commands") {
 		return ok({ commands: ARCHIVE ? commands : commands.slice(3) });
 	}
 	if (method === "GET" && pathname === "/v1/desktop/sessions") {
+		/*
+		 * The clock `--late-ms` is measured from: the first UNLIMITED answer. `limit=1`
+		 * is the app's "which conversation is current" probe rather than the list the
+		 * sidebar paints from, and timing against that one armed the fact before the
+		 * rows existed - measured: the frame landed at 2694 ms against a first paint
+		 * that needed 7200 ms.
+		 */
 		const include = query.get("include_archived") === "true";
 		const limit = Number(query.get("limit") ?? "100");
+		if (firstListAnswerAt === null && limit > 1) firstListAnswerAt = Date.now();
 		const kind = query.get("scope_kind");
 		const name = query.get("scope_name");
 		const cursor = query.get("cursor");
@@ -444,7 +515,10 @@ const route = (method, pathname, query, body) => {
 		const page = rows.slice(offset, offset + limit);
 		const more = offset + page.length < rows.length;
 		return ok({
-			sessions: page,
+			sessions:
+				PEERS && query.get("include_peers") === "true"
+					? [...page, ...remoteRows]
+					: page,
 			truncated: more,
 			...(PAGED
 				? {
@@ -671,6 +745,150 @@ const pagedCatalogue = () => {
 const served = CATALOGUE > 0 ? pagedCatalogue() : conversations;
 
 /*
+ * THE LATE FACT (`--late`), and why this stand-in grew one.
+ *
+ * The first-paint defect this rig is for is a row whose title is CUT at one
+ * ellipsis point and RE-CUT once a `shrink-0` fact it shares the row with
+ * arrives. Every such fact - `subagents_running` (the trio's running disc),
+ * `asks_open` (the outstanding-asks mark) and `binding.team` (the `- lopdev`
+ * statement) - is a field on the CATALOGUE row, and the app learns that a row
+ * changed through `GET /v1/desktop/events`: a `catalogue` frame makes the
+ * renderer re-read the list, and `mergeRow` (`{...current, ...incoming}`) then
+ * adds the field. A stand-in with no feed can only ever paint a row exactly
+ * once, which is why four measured configurations on the unmodified fixture
+ * reported zero changes: the readings were right and the FIXTURE could not reach
+ * the state.
+ *
+ * `--late-ms` counts from the FIRST list answer, not from the connection: the
+ * app subscribes before it asks for the list, so a timer from connect time could
+ * land before the rows were painted at all and the run would photograph a first
+ * paint that already carried the fact - the opposite of the claim.
+ *
+ * UNSET (`none`, the default) keeps every existing frame in this repository's
+ * evidence sets byte-identical: nothing is mutated and the feed handler is never
+ * entered.
+ */
+/*
+ * THE TARGET ROW'S STATUS CODE (`--row-code`), so the row a late child count lands
+ * on can carry each of the runtime's LOUDER codes. Design round 1's D1 is about
+ * exactly that coexistence: a row can be parked on an approval, failed, unread or
+ * busy AND have children running, and the runtime ranks the child count below all
+ * of them. A fixture whose only counted row is a completion cannot photograph that.
+ *
+ * Applied at STARTUP rather than with the late fact: the louder code is what the
+ * row shows at its first contentful frame, and the late fact is the children
+ * arriving underneath it.
+ */
+const ROW_CODE = arg("row-code", null);
+/** The label each code wears. Core spells these; only the row's own sentence reads them here. */
+const ROW_CODE_LABELS = {
+	delegating: "Subagents working",
+	busy: "Working",
+	waiting: "Waiting for capacity",
+	approval: "Approval needed",
+	answer: "Answer needed",
+	error: "Error",
+	wedged: "Not responding",
+	attached: "Attached",
+};
+const LATE = arg("late", "none");
+/*
+ * `--late background-work` (evidence set `sidebar-background-work`, 2026-11-07):
+ * the target row BOOTS as a session whose own turn has ended (`idle`) while one
+ * subagent and one background job still run - core's `background_work` flag and
+ * counts on the row - and the late fact is the last child ending: ONE
+ * `session_status` frame carrying code + zeroed counts (core puts the counts in
+ * the dedupe key, so 1->0 is one frame), then the `catalogue` frame. Remote rows
+ * (`--peers`) carry the same counts and settle on the mesh read's own poll.
+ */
+const BACKGROUND_WORK = LATE === "background-work";
+const PEERS = process.argv.includes("--peers");
+const bgCounts = (active) => ({
+	background_work: active,
+	subagents_running: active ? 1 : 0,
+	subagents_queued: 0,
+	jobs_running: active ? 1 : 0,
+	waiting_on: 0,
+});
+const remoteRows = [
+	{
+		id: "c0ffee0a0b01",
+		name: "Crawl the pricing pages (on Studio Mac)",
+		mtime: Date.now() / 1000 - 300,
+		locality: "remote",
+		owner_device: "synthetic-peer-a",
+		owner_device_name: "Studio Mac",
+		reachable: true,
+		live_state: "idle",
+		status: { code: "idle", label: "Idle" },
+		...bgCounts(BACKGROUND_WORK),
+	},
+	{
+		id: "c0ffee0a0b02",
+		name: "Summarise the field notes (on Travel laptop)",
+		mtime: Date.now() / 1000 - 400,
+		locality: "remote",
+		owner_device: "synthetic-peer-b",
+		owner_device_name: "Travel laptop",
+		reachable: false,
+		live_state: "idle",
+		status: { code: "idle", label: "Idle" },
+		...bgCounts(BACKGROUND_WORK),
+	},
+];
+const LATE_MS = Number(arg("late-ms", "1200"));
+const LATE_ROW = arg("late-row", "b3f1a09c7d52");
+/** When the first catalogue answer went out; the late fact is timed against it. */
+let firstListAnswerAt = null;
+const FEED_EPOCH = `stub-${randomUUID()}`;
+
+/** Put the chosen code on the target row, as the runtime's own precedence would. */
+const applyRowCode = () => {
+	if (ROW_CODE === null) return false;
+	const row = served.find((entry) => entry.id === LATE_ROW);
+	if (!row) return false;
+	row.status = {
+		code: ROW_CODE,
+		label: ROW_CODE_LABELS[ROW_CODE] ?? ROW_CODE,
+	};
+	/* A parked gate is a `pending` fact on the row as well as a code: the sidebar
+	   reads both, and an approval code with no pending gate draws the gate's glyph
+	   without the row behaving like a parked one. */
+	if (ROW_CODE === "approval" || ROW_CODE === "answer") row.pending = ROW_CODE;
+	return true;
+};
+applyRowCode();
+if (BACKGROUND_WORK) {
+	const row = served.find((entry) => entry.id === LATE_ROW);
+	/* Recent, so the origin/main build files it under Today (the reported frame). */
+	if (row)
+		Object.assign(row, {
+			mtime: Date.now() / 1000 - 120,
+			status: { code: "idle", label: "Idle" },
+			...bgCounts(true),
+		});
+	/* No unread mark: the frame is of a FINISHED, seen turn with work still running. */
+	if (row) delete row.attention;
+}
+
+/** Put the chosen fact on the target row, as a backend would after its own event. */
+const applyLateFact = () => {
+	const row = served.find((entry) => entry.id === LATE_ROW);
+	if (!row) return false;
+	if (BACKGROUND_WORK) {
+		Object.assign(row, bgCounts(false));
+		Object.assign(remoteRows[0], bgCounts(false));
+		return true;
+	}
+	if (LATE === "subagents") row.subagents_running = 2;
+	else if (LATE === "subagents-queued") row.subagents_queued = 2;
+	else if (LATE === "asks") row.asks_open = 2;
+	else if (LATE === "binding") row.binding = { agent: null, team: "lopdev" };
+	else return false;
+	return true;
+};
+
+/*
  * `--pins <id[,id...]>` (evidence set `pinned-reorder`): the ids PINNED AT BOOT, as an
  * explicit list rather than the fixture's own one-pin default.
  *
@@ -744,6 +962,89 @@ const censusOf = (rows) => {
 };
 
 const server = createServer((request, response) => {
+	/*
+	 * THE LIVE FEED. `src/main/desktop-feed.ts` reads `GET /v1/desktop/events` as
+	 * server-sent events and hands each `data:` frame to the renderer, where a
+	 * `catalogue` frame invalidates the sessions query. That is the ONLY channel
+	 * by which a row changes on screen after it has painted, so it is what the
+	 * late fact rides - see `--late` above for the whole reasoning.
+	 *
+	 * The `open` frame is the contract's own first frame (`heartbeat_seconds`,
+	 * `lease_seconds`, the two revisions); its cadence is 30 s because nothing
+	 * here runs long enough for a beat to matter and the app's silence watchdog
+	 * allows three.
+	 */
+	if (
+		LATE !== "none" &&
+		request.method === "GET" &&
+		new URL(request.url ?? "/", `http://127.0.0.1:${PORT}`).pathname ===
+			"/v1/desktop/events"
+	) {
+		response.writeHead(200, {
+			"content-type": "text/event-stream",
+			"cache-control": "no-store",
+			connection: "keep-alive",
+		});
+		process.stderr.write("stub GET /v1/desktop/events -> 200 (feed open)\n");
+		let seq = 0;
+		/* A counter read at each frame rather than an assignment inside the call:
+		   biome refuses side effects in expressions, and the envelope needs a
+		   monotone `seq` per connection. */
+		const nextSeq = () => {
+			seq += 1;
+			return seq;
+		};
+		const send = (frame) => {
+			response.write(`data: ${JSON.stringify(frame)}\n\n`);
+		};
+		send({
+			epoch: FEED_EPOCH,
+			seq: nextSeq(),
+			type: "open",
+			payload: {
+				subscription_id: `stub-sub-${randomUUID()}`,
+				heartbeat_seconds: 30,
+				lease_seconds: 90,
+				watch_ttl_seconds: 180,
+				catalogue_revision: 1,
+				authoring_revision: 0,
+			},
+		});
+		const waiting = setInterval(() => {
+			if (firstListAnswerAt === null) return;
+			clearInterval(waiting);
+			const timer = setTimeout(() => {
+				applyLateFact();
+				if (BACKGROUND_WORK)
+					send({
+						epoch: FEED_EPOCH,
+						seq: nextSeq(),
+						type: "session_status",
+						session_id: LATE_ROW,
+						payload: {
+							code: "idle",
+							label: "Idle",
+							revision: 2,
+							...bgCounts(false),
+						},
+					});
+				send({
+					epoch: FEED_EPOCH,
+					seq: nextSeq(),
+					type: "catalogue",
+					payload: { revision: 2 },
+				});
+				process.stderr.write(
+					`stub late fact ${LATE} applied and announced at ${Date.now()} (${Date.now() - firstListAnswerAt}ms after the first list answer)\n`,
+				);
+			}, LATE_MS);
+			timer.unref?.();
+		}, 25);
+		const stop = () => clearInterval(waiting);
+		request.on("close", stop);
+		response.on("close", stop);
+		return;
+	}
 	const chunks = [];
 	request.on("data", (chunk) => chunks.push(chunk));
 	request.on("end", () => {
@@ -781,9 +1082,26 @@ const server = createServer((request, response) => {
 			 * rows" are different facts, and a reader debugging a panel that did not grow
 			 * needs the second one in the same line as the first.
 			 */
-			`stub ${request.method} ${url.pathname}${url.search} -> ${refusingTail ? 500 : answer.status}${
+			`stub ${Date.now()} ${request.method} ${url.pathname}${url.search} -> ${refusingTail ? 500 : answer.status}${
 				Array.isArray(answer.body?.result?.sessions)
-					? ` rows=${answer.body.result.sessions.length} next=${answer.body.result.next_cursor ?? "-"}`
+					? ` rows=${answer.body.result.sessions.length} next=${answer.body.result.next_cursor ?? "-"}${
+							LATE === "none"
+								? ""
+								: ` late=${JSON.stringify(
+										(() => {
+											const row = answer.body.result.sessions.find(
+												(entry) => entry.id === LATE_ROW,
+											);
+											return row === undefined
+												? null
+												: {
+														subagents_running: row.subagents_running ?? null,
+														asks_open: row.asks_open ?? null,
+														team: row.binding?.team ?? null,
+													};
+										})(),
+									)}`
+						}`
 					: ""
 			}\n`,
 		);

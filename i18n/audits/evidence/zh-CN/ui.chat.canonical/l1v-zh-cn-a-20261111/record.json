@@ -1,0 +1,154 @@
+{
+ "audit_id": "l1v-zh-cn-a-20261111",
+ "audit_kind": "translation-audit (independent pass A of 2 requested)",
+ "locale": "zh-CN",
+ "namespace": "ui.chat.canonical",
+ "file_group": "L1 tool-row verbs — 182 ui.chat.canonical.tool_row.verb.* keys (91 settled/running pairs)",
+ "audit_date": "2026-11-11",
+ "key_count": 182,
+ "source_commit": "6c0b841872d89a507dc9d45d9a2f68c92ebb6e5d",
+ "status": "changes_requested",
+ "scope": "Staging fragment .worktrees/_l1-prep/zh-CN.json audited against the English catalogue at 6c0b841872d8 and its context sidecar. Catalogue audit only: not rendered fit, activation/eligibility or release approval. Translations were not yet applied to src/i18n/catalogues/zh-CN/ui.chat.canonical.json at audit time (ledger-check proof in audit.log §5).",
+ "translator": {
+  "agent": "i18n-translator",
+  "model": "openai/gpt-6.1-sol",
+  "session": "unknown to this auditor",
+  "note": "Translating agent named in the audit brief; this auditor did not translate, edit or back-translate any value."
+ },
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "206ec0ccdd57",
+  "model": "deepseek/deepseek-flash",
+  "actual_model_source": "session model header (/model line in this run); no fallback observed",
+  "independent_from_translator_session": true,
+  "readiness": "native-fluent catalogue review by reasoning only; no translation API/SDK/MT service used"
+ },
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+   "sha256": "a385671b988e5f03df6f650beb4a06f73c9efaead2316dfa9ab15bf043798765",
+   "note": "182 English strings verified byte-identical to keys.json (0 mismatches)"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+   "sha256": "2e755f12e46bb6dded6dbf950eda6402b0a7bcb05e9489fa17f7369543f3ac7f",
+   "note": "carries all 182 tool_row.verb context entries (role/tone/width/placeholders)"
+  },
+  "target_staging": {
+   "path": ".worktrees/_l1-prep/zh-CN.json",
+   "sha256": "d96442be4d7a34decacb52b5133f9ba808c177e01c53261250a51571269cd8bc"
+  },
+  "target_catalogue_on_disk": {
+   "path": "src/i18n/catalogues/zh-CN/ui.chat.canonical.json",
+   "sha256": "705f67d486f9d011925a234c0a5adb2eb258570ebbc78d3eaa2cf25d24299a13",
+   "note": "audited as the consistency reference only; it does not yet contain these 182 keys"
+  }
+ },
+ "current_report_verdict": {
+  "status": "changes_requested",
+  "unresolved_blocker_major_count": 1,
+  "counts": {
+   "blocker": 0,
+   "major": 1,
+   "minor": 5,
+   "nit": 2
+  },
+  "finding_ids": [
+   "F1",
+   "F2",
+   "F3",
+   "F4",
+   "F5",
+   "F6",
+   "N1",
+   "N2"
+  ]
+ },
+ "audit_rounds": [
+  {
+   "round": 1,
+   "instance": "l1v-zh-cn-a",
+   "session": "206ec0ccdd57",
+   "model": "deepseek/deepseek-flash",
+   "keys_audited": 182,
+   "status": "changes_requested",
+   "mechanical": "all rules pass (checks.py, 26 rules; see audit.log §1-§3)",
+   "findings": [
+    {
+     "id": "F1",
+     "severity": "MAJOR",
+     "key": "ui.chat.canonical.tool_row.verb.steered.settled"
+    },
+    {
+     "id": "F2",
+     "severity": "MINOR",
+     "key": "ui.chat.canonical.tool_row.verb.peeked_at.settled"
+    },
+    {
+     "id": "F3",
+     "severity": "MINOR",
+     "key": "ui.chat.canonical.tool_row.verb.peeked_at_session.settled"
+    },
+    {
+     "id": "F4",
+     "severity": "MINOR",
+     "key": "ui.chat.canonical.tool_row.verb.unlinked_session_from.settled"
+    },
+    {
+     "id": "F5",
+     "severity": "MINOR",
+     "key": "ui.chat.canonical.tool_row.verb.typed_in_console.settled"
+    },
+    {
+     "id": "F6",
+     "severity": "MINOR",
+     "key": "ui.chat.canonical.tool_row.verb.scheduled.settled"
+    },
+    {
+     "id": "N1",
+     "severity": "NIT",
+     "key": "ui.chat.canonical.tool_row.verb.messaged.settled"
+    },
+    {
+     "id": "N2",
+     "severity": "NIT",
+     "key": "ui.chat.canonical.tool_row.verb.captured_console.settled"
+    }
+   ]
+  }
+ ],
+ "artifacts": {
+  "report": "i18n/audits/evidence/zh-CN/ui.chat.canonical/l1v-zh-cn-a-20261111/report.md",
+  "audit_log": "i18n/audits/evidence/zh-CN/ui.chat.canonical/l1v-zh-cn-a-20261111/audit.log",
+  "checks_script": "i18n/audits/evidence/zh-CN/ui.chat.canonical/l1v-zh-cn-a-20261111/checks.py",
+  "runner": "i18n/audits/evidence/zh-CN/ui.chat.canonical/l1v-zh-cn-a-20261111/run-audit.sh",
+  "receipt": "i18n/audits/evidence/zh-CN/ui.chat.canonical/l1v-zh-cn-a-20261111/receipt.json",
+  "sha256": {
+   "report.md": "ecc99a908de836e7c3595da17736c36e7fb270ab4fb6245b1f52239bc153ed5d",
+   "audit.log": "94f3354bffd6d4153f7b663aabd5b16c7cf1bc5633afd1f9cf4ef72babed31c4",
+   "checks.py": "161c0e8638a5de544ae108112b378927151aef900d784f6f85ee11385be1bc89",
+   "run-audit.sh": "56846e4accf5ce6032cf76fe944b6e47d22c401c75ef5057a5d7a5940a86ad3f",
+   "receipt.json": "d14209a5a420271e10ea7d82c90b890ac1570261d00d631447cfcac01a351647"
+  }
+ },
+ "execution_evidence": {
+  "audit.log": "REAL captured stdout/stderr of run-audit.sh (bash > audit.log): node JSON/key-identity check, checks.py mechanical rules, generic-verb scan, input sha256 values and a read-only ledger-check run. It is a mechanical transcript, not the full session log.",
+  "audit_notes_not_execution_log": [
+   "The semantic/idiom/terminology/second-pass reasoning in report.md is audit notes; only audit.log carries executed command output."
+  ]
+ },
+ "ledger_row": "NOT ASSEMBLED. scripts/i18n/ledger-assemble.mjs derives the row's hashes from the catalogue on disk, which does not carry these 182 keys until the values are applied; running it now would either refuse (key-set mismatch) or record hashes of bytes that are not the shipped copy. Command for the apply step is in report.md (Limitations). receipt.json is therefore a STAGING receipt: sha256.zh-CN names the prep file and must be re-pointed at the applied catalogue, which must then be re-derived (and, if findings are fixed first, re-audited).",
+ "original_lost_evidence": {
+  "status": "none - no prior evidence for this audit was lost",
+  "original_path": null,
+  "expected_original_sha256": null
+ },
+ "new_report_is_original": true,
+ "new_report_is_historical_R2_recreation": false,
+ "backdated": false,
+ "limitations": [
+  "Catalogue audit of a staging file; rendered fit, activation and release readiness are not claimed.",
+  "Evidence files are untracked in the PR worktree until the manager's commit includes them.",
+  "Second independent pass B on this group is a different auditor's report at .worktrees/_l1-prep/audit-zh-CN-B.md; this auditor did not read it."
+ ]
+}

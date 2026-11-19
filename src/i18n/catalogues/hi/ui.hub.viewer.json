@@ -1,0 +1,12 @@
+{
+	"ui.hub.viewer.favourite": "एजेंट को पसंदीदा में जोड़ें",
+	"ui.hub.viewer.favourite_signed_out": "एजेंटों को पसंदीदा में जोड़ने के लिए Radient में लॉग इन करें",
+	"ui.hub.viewer.favourite_unavailable": "पसंदीदा की स्थिति उपलब्ध नहीं है",
+	"ui.hub.viewer.favourite_unknown": "आपके पसंदीदा एजेंटों की जानकारी नहीं मिल सकी, इसलिए यह नहीं दिखाया गया कि यह एजेंट पसंदीदा में नहीं है।",
+	"ui.hub.viewer.like": "एजेंट पसंद करें",
+	"ui.hub.viewer.like_signed_out": "एजेंट पसंद करने के लिए Radient में लॉग इन करें",
+	"ui.hub.viewer.like_unavailable": "पसंद की स्थिति उपलब्ध नहीं है",
+	"ui.hub.viewer.like_unknown": "आपकी पसंद की जानकारी नहीं मिल सकी, इसलिए इसे पसंद न किए हुए के रूप में नहीं दिखाया गया है।",
+	"ui.hub.viewer.unfavourite": "एजेंट को पसंदीदा से हटाएँ",
+	"ui.hub.viewer.unlike": "एजेंट के लिए अपनी पसंद वापस लें"
+}

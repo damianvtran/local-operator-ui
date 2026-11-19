@@ -1,0 +1,77 @@
+{
+ "schema": 1,
+ "audit_id": "s16f-49c5a10a37b4-r4",
+ "locale": "vi",
+ "namespace": "ui.chat.canonical",
+ "audit_date": "2026-11-12",
+ "slice": "S16f (damianvtran/local-operator-ui#1876) — delta audit, landed in the round-4 integration commit",
+ "head": "8180eff1f705eb79d4df5123d6108c539b585b2e",
+ "pr": 1876,
+ "audit_kind": "delta",
+ "scope": null,
+ "key_count": 15,
+ "namespace_key_count": 467,
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "4e31230c2dd6",
+  "instance": "49c5a10a37b4",
+  "model": "deepseek/deepseek-flash",
+  "independent_from_translator_session": true,
+  "independence": "Did not translate, edit or commit these values and wrote no file inside the repository. Read the English source, its context sidecar, the vi catalogue, the core glossary/style guide and the prior receipts; wrote only the files listed under artifacts, in session scratch.",
+  "fallback": false,
+  "actual_model_source": "Harness model header for session 4e31230c2dd6 reported deepseek/deepseek-flash for the whole run; no model-switch card, no provider-failure notice and no [session incident] appeared, so no fallback descent is disclosed."
+ },
+ "translator": null,
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+   "sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+   "sha256": "8f56e0d2b384c6b41add57a64e6c863e565cb61d5a7c0de482d42f380be3acfe"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/vi/ui.chat.canonical.json",
+   "sha256": "a37a5690412c841379ea44d6d63f4a5314579f4a157ff3c7f67be2ee872fe750"
+  }
+ },
+ "artifacts": {
+  "report": {
+   "path": "report.md",
+   "sha256": "03e95668c43ebc30b56ba3ff803f5b57938aaa5ced1598d6c7f68953a88d49a7"
+  },
+  "execution_log": {
+   "path": "audit.log",
+   "sha256": "862938f105a67e3ee8728f8c778ec7b808fb9d0bed877743709b2cbf7281d19a",
+   "note": "the auditor's execution log as supplied, copied byte-for-byte; it is command output, not notes"
+  },
+  "receipt": {
+   "path": "i18n/receipts/49c5a10a37b4.json",
+   "sha256": "90d86780df545711ad161761edc08a74afb896fbea091dbdbd6663b63869d086",
+   "note": "byte-for-byte copy written by scripts/i18n/ledger-assemble.mjs; the binding receipt lives there"
+  }
+ },
+ "companions_present": [
+  "audit.log",
+  "report.md"
+ ],
+ "current_report_verdict": {
+  "status": "passed",
+  "result": "clean",
+  "unresolved_blocker_major_count": 0,
+  "counts": {
+   "blocker": 0,
+   "major": 0,
+   "minor": 0,
+   "nit": 0
+  },
+  "finding_ids": []
+ },
+ "provenance": {
+  "record_written_by": "integrator s16f-integrator-3 from the receipt and the auditor's report — NOT written by the auditor",
+  "source_receipt": "~/.local-operator/sessions/4e31230c2dd6/scratchpad/49c5a10a37b4-receipt.json",
+  "receipt_sha256": "90d86780df545711ad161761edc08a74afb896fbea091dbdbd6663b63869d086",
+  "why_note": "locales whose auditor wrote its own record.json (ur, hi) keep that file verbatim; this record is derived, so it cites only receipt fields and re-computed hashes"
+ }
+}

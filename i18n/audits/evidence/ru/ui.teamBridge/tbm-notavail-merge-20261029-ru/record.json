@@ -1,0 +1,101 @@
+{
+	"audit_id": "teambridge-notavail-merge-audit-tbm-20261029",
+	"date": "2026-10-29",
+	"locale": "ru",
+	"namespace": "ui.teamBridge",
+	"source_commit": "uncommitted merge of origin/main aafa890e3c9825fa1e19c423c022f5a651116c20 into feat/team-bridge-owner-audit-ui (branch head 0d793e3f3a89cfaed81b1222e378c2656d5381b8)",
+	"translator": {
+		"agent": "i18n-translator",
+		"job": "64be94d56ced",
+		"model": "not supplied",
+		"date": "2026-10-28",
+		"method": "LLM translator subagent; no MT service referenced"
+	},
+	"auditors": [
+		{
+			"agent": "i18n-auditor",
+			"model": "radient/auto",
+			"model_provenance": "Harness model header at run start read 'Model: anthropic/claude-opus-5-5'. Mid-run the harness announced four sequential provider-quota fallbacks (anthropic/claude-sonnet-5-5, openai/gpt-6-astra, kimi/k3.1-pro, then radient/auto) and its current header line reads 'You are now running as radient/auto'. radient/auto is therefore the model executing the final analysis and writing these receipts; the earlier reading in this run was performed under anthropic/claude-opus-5-5 before the first switch. Where one model must be named it is radient/auto, per the last header the harness issued - not a guess.",
+			"model_fallback": {
+				"announced": true,
+				"observed": true,
+				"chain": [
+					"anthropic/claude-opus-5-5 (start)",
+					"anthropic/claude-sonnet-5-5",
+					"openai/gpt-6-astra",
+					"kimi/k3.1-pro",
+					"radient/auto"
+				],
+				"note": "Four provider-quota switches were announced by the harness during this run; reason given each time: 'provider failure: quota'. The linguistic judgement in these receipts is the delegated run's, but it spans those models, which is why the chain is recorded rather than a single name."
+			},
+			"date": "2026-10-29",
+			"result": "clean",
+			"instance": "tbm-20261029-ru",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"receipt": "i18n/receipts/tbm-20261029-ru.json",
+			"receipt_sha256": "ba7b769c80ce90786196ff42ee0a70018e568e044f55a77781433b6f2256a6bb"
+		}
+	],
+	"ledger_status": "audited",
+	"independence": "Independent auditor (agent role i18n-auditor; delegated subagent of the parent's run teambridge-notavail-merge-audit-tbm-20261029). It authored none of the translated strings: the not_available values were delivered by i18n-translator job 64be94d56ced (per the prior notavail receipts) and this run verified they are byte-identical to the bytes those receipts audited. No finding reached blocker/major, so this run edited no catalogue at all: every target sha256 here names the unmodified merged working-tree bytes. It wrote only its own receipts and evidence records; it did not commit, push, merge, or touch i18n/ledger.json.",
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "5be0c55997d0a97f363ea54652eba52fbe908ae36dd94c5e48129ebf9ae4e470"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/ru/ui.teamBridge.json",
+			"sha256": "34bc0dae2931715e750884b5ced9fb81b1aa3e74d8cbd546f40ac1258a27d4b6"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "9f939b02dd8e6433b57c0aa6a7e7c51334869f7490278c2538ce989e54b40b5f"
+		}
+	},
+	"audited": {
+		"ui.teamBridge.thread.not_available": {
+			"en": "This conversation is not open to you. You may not be a member of it, or it may have been archived.",
+			"target": "Этот разговор вам недоступен. Возможно, вы не являетесь его участником или он был архивирован."
+		}
+	},
+	"scope": {
+		"keys_audited_linguistically": [
+			"ui.teamBridge.thread.not_available"
+		],
+		"inherited_byte_identical": {
+			"previous_receipt": "i18n/receipts/c6f6f47ef39d-r2-ru.json",
+			"previous_receipt_sha256": "77d5e906d77f9c1bd1422f6c961d3abbc1d8e25f33cbd5e42d55b320a2495614",
+			"previous_target_sha256": "b3aced50404cef41836a6108e45505728e442babbd745e93e4bb517bbcef34a2",
+			"note": "Proof re-derived here, not taken on trust: removing the single line whose stripped form starts with \"ui.teamBridge.thread.not_available\" from the merged src/i18n/catalogues/ru/ui.teamBridge.json and sha256-ing the remainder gives b3aced50404cef41836a6108e45505728e442babbd745e93e4bb517bbcef34a2, byte-identical to `git show origin/main:src/i18n/catalogues/ru/ui.teamBridge.json` (sha256 b3aced50404cef41836a6108e45505728e442babbd745e93e4bb517bbcef34a2) - which is the target_sha256 this ledger row already records (b3aced50404cef41836a6108e45505728e442babbd745e93e4bb517bbcef34a2). A difflib unified diff of origin/main against the merged file reports exactly 1 added line and 0 removed, so main's audited bytes are inherited intact and only the new key is new."
+		},
+		"english_change": "en adds only thread.not_available (value + context note); no other en key changed."
+	},
+	"notes": "вы lowercase (ru guide). 'вам недоступен' is the dative access framing, not an existence claim; 'участник' is the ru guide's recorded term for member and carries the instrumental case correctly; 'архивирован' matches the locale's archive copy; 'разговор' matches create.title/list.empty in this same namespace. 94 chars vs en 98.",
+	"findings": [],
+	"resolved_findings": [],
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide_ru": {
+			"path": "~/local-operator/i18n/style-guides/ru.md",
+			"revision": "24d328a19a8b39ba4d6e824b8bf2ebf1bb629ffe",
+			"sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+		},
+		"core_checkout": "dadf192382fbce7cb97d8cfbdc99ff1c931d97b6"
+	},
+	"artifacts": {
+		"receipt": {
+			"path": "i18n/receipts/tbm-20261029-ru.json",
+			"sha256": "ba7b769c80ce90786196ff42ee0a70018e568e044f55a77781433b6f2256a6bb"
+		}
+	},
+	"limitations": "No rendered evidence: this role has no browser tool and the host is source-only, so fit is judged by character and cell count, not a rendered frame - no maxCells is declared for this key in the en sidecar. fr (117 chars, +19%) and vi (112, +14%) are the two a rendered check should look at first. ur was checked at the code-point level only (no bidi controls, correct Urdu stops, no Latin run); there is no FriBidi or terminal render. Translator provenance (job 64be94d56ced) is inherited from the prior receipts rather than re-verified - what this run did verify is that the delivered strings are byte-identical to those audited. This run is a delegated subagent with no session id of its own, so the instance id is the parent's; and the model changed mid-run under provider quota (see model_provenance), so the judgement spans more than one model. i18n/ledger.json is itself unmerged (UU) at this merge: the working-tree copy read here takes main's rows (c6f6f47ef39d-r2-* with main's target bytes), while the branch side of the conflict names the b393dc8cd01c-notavail-* receipts against the pre-merge branch bytes, so previous_receipt/previous_target_sha256 follow the working tree and the main side - resolving the conflict the other way would change what 'previous' means, not the bytes audited."
+}

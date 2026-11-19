@@ -1,0 +1,64 @@
+{
+	"auditor": "reviewer (independent i18n auditor, lopdev team)",
+	"model": "anthropic/claude-opus-5-5",
+	"instance": "4b8febc34595-ur",
+	"run_id": "4b8febc34595",
+	"status": "passed",
+	"result": "clean-with-findings",
+	"namespace": "ui.chat.canonical",
+	"locale": "ur",
+	"date": "2026-11-11",
+	"head": "80a346fd5fa2c79b29f6f37a27332bdd7dca59f5",
+	"base": "c1ba44696",
+	"key_count": 443,
+	"scope": "Delta audit at 80a346fd5 of the 5 added keys ui.chat.canonical.loading.{cold,revalidating,older,remote,region_label} and the 4 removed keys (placeholder.loading, placeholder.region_label, older_history.loading, transcript.stale_caption). The other 438 values were compared against c1ba44696 and are byte-identical; c1ba44696's ur bytes (479f32244020...) are the target the current ledger audit 4b55e20f2c31 bound, so they are retained on that proof, not re-read.",
+	"audited_values": {
+		"ui.chat.canonical.loading.cold": "گفتگو لوڈ ہو رہی ہے…",
+		"ui.chat.canonical.loading.revalidating": "نئے پیغامات کی جانچ ہو رہی ہے…",
+		"ui.chat.canonical.loading.older": "پچھلے پیغامات لوڈ ہو رہے ہیں…",
+		"ui.chat.canonical.loading.remote": "آپ کی دوسری ڈیوائس سے ہم آہنگی ہو رہی ہے…",
+		"ui.chat.canonical.loading.region_label": "گفتگو لوڈ ہو رہی ہے"
+	},
+	"checks": [
+		"meaning against en and the en context sidecar for each key",
+		"register: آپ, progressive 'ہو رہی ہے' statuses with correct gender agreement (گفتگو f., پیغامات m.pl., ڈیوائس f. -> دوسری), single U+2026 ellipsis, no ۔ full stop on a status fragment; region_label without ellipsis",
+		"RTL: code-point scan found no LRM/RLM/LRE-RLO/LRI-PDI controls in any of the 5 values; no Latin islands to isolate",
+		"glossary: device -> ڈیوائس",
+		"consistency: cold/region_label equal the audited placeholder.loading/region_label; older equals audited older_history.loading plus ellipsis and matches older_history.load (پچھلے پیغامات); revalidating matches اپ ڈیٹس کی جانچ ہو رہی ہے; دوسری ڈیوائس matches attachment_refusal",
+		"no placeholders or ICU in source or target"
+	],
+	"findings": [
+		{
+			"id": "N1",
+			"severity": "nit",
+			"key": "ui.chat.canonical.loading.remote",
+			"current": "آپ کی دوسری ڈیوائس سے ہم آہنگی ہو رہی ہے…",
+			"problem": "ہم آہنگی primarily means harmony/coordination, and 'X سے ہم آہنگی' leans 'in step with X' rather than 'syncing from X'; the meaning is still clear in context, and the same namespace already renders sync as ہم آہنگ (tool_row.verb.synced_agents.running), while settings uses ہم وقت (language.general.last_known)",
+			"proposed": "آپ کی دوسری ڈیوائس سے ہم وقت سازی ہو رہی ہے…",
+			"disposition": "no change required — consistent with the same-namespace sibling; a locale-wide sync term is a ur style-guide call"
+		}
+	],
+	"severity_counts": { "blocker": 0, "major": 0, "minor": 0, "nit": 1 },
+	"observations": [
+		"INFO: region_label (en source 'Loading conversation') names the live region for all four variants, including revalidating while the transcript is already readable; that is English-source/product scope, not translation, and the ur rendering is faithful."
+	],
+	"independence": {
+		"translator_agent": "coder",
+		"translator_job": "6ca5ea22d2ab",
+		"translator_model": "anthropic/claude-opus-5-5 (as relayed by the manager brief)",
+		"auditor_agent": "reviewer",
+		"auditor_session": "4b8febc34595",
+		"independent_from_translator": true,
+		"disclosure": "different agent and session from the translator; same served model family, disclosed"
+	},
+	"references": {
+		"glossary": "~/local-operator/i18n/glossary.md @ 5079899f0",
+		"style_guide": "~/local-operator/i18n/style-guides/ur.md @ 5079899f0",
+		"policy": "docs/I18N.md 'Retain checkable audit records'"
+	},
+	"sha256": {
+		"target": "51c22b35bf0606434da06aba5f53d11c0c2289b9807ad1e172aff9ec98f48851",
+		"en": "664a23730b7244a096f53a6e55e2014bd16400fb8846b25bd242b2668d6efa1a",
+		"context": "98c3bc0ac341eda0dec29f8b2698e40b860fa22e66a1dc471880054794a90e0b"
+	}
+}

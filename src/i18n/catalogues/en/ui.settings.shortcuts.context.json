@@ -29,6 +29,12 @@
 		"length": "Wrapping paragraph in the settings content column (about 60-70 characters per line); no length cap, keep every fact. English is 150 characters.",
 		"note": "Tells the user how to rebind: focus a field, press the keys; Esc cancels; Reset restores the default. \"Reset\" and \"Esc\" must match the button label and the key name. \"Panel rail\" is the vertical strip of panel icons beside the window."
 	},
+	"ui.settings.shortcuts.keyboard_shortcuts_section.browser_shortcuts_answer_only_while_the_browser_has_focus": {
+		"role": "Explanatory paragraph in the Keyboard shortcuts settings section, above the shortcut rows",
+		"tone": "Calm, factual second person; the reason is stated without blame or apology.",
+		"length": "Wrapping paragraph in the settings content column (about 60-70 characters per line); no length cap, keep every fact. English is 287 characters.",
+		"note": "Explains why the browser's own shortcuts seem dead from elsewhere in the app: they answer only while the browser pane or a page inside it has focus. Names the group by job (new tab, reopen tab, the browser address bar, switching tabs) instead of spelling the chords, because the keymap registry is the only place a chord is spelled; use the target language's own terms for those actions. Reload is deliberately NOT in that group: it is dual-scope, so its own row states both outcomes. The middle sentence gives the reason: the app must not take those chords away from the rest of the interface. The last sentence is the instruction the reader needs: focus the browser first."
+	},
 	"ui.settings.shortcuts.keyboard_shortcuts_section.no_shortcut": {
 		"role": "Text shown inside a shortcut field with no binding",
 		"tone": "Matter-of-fact state word; not a promise about the service.",
@@ -61,5 +67,442 @@
 		"placeholders": {
 			"label": "Localised action name; insert verbatim."
 		}
+	},
+	"ui.settings.shortcuts.action.open_asks": {
+		"role": "Shortcut action tooltip",
+		"tone": "Concise imperative.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Imperative action name used outside the settings row: Open asks"
+	},
+	"ui.settings.shortcuts.action.open_browser": {
+		"role": "Shortcut action tooltip",
+		"tone": "Concise imperative.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Imperative action name used outside the settings row: Open browser"
+	},
+	"ui.settings.shortcuts.action.open_canvas": {
+		"role": "Shortcut action tooltip",
+		"tone": "Concise imperative.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Imperative action name used outside the settings row: Open canvas"
+	},
+	"ui.settings.shortcuts.action.open_code_review": {
+		"role": "Shortcut action tooltip",
+		"tone": "Concise imperative.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Imperative action name used outside the settings row: Open code review"
+	},
+	"ui.settings.shortcuts.action.open_linked_projects": {
+		"role": "Shortcut action tooltip",
+		"tone": "Concise imperative.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Imperative action name used outside the settings row: Open linked projects (opens the chat canvas on the projects this conversation is linked to)"
+	},
+	"ui.settings.shortcuts.action.open_console": {
+		"role": "Shortcut action tooltip",
+		"tone": "Concise imperative.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Imperative action name used outside the settings row: Open console"
+	},
+	"ui.settings.shortcuts.action.open_run_details": {
+		"role": "Shortcut action tooltip",
+		"tone": "Concise imperative.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Imperative action name used outside the settings row: Open run details"
+	},
+	"ui.settings.shortcuts.capture.already_assigned": {
+		"role": "Shortcut capture validation",
+		"tone": "Direct and helpful validation.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Shown while recording a shortcut; describes why the candidate chord cannot be assigned.",
+		"placeholders": {
+			"label": "Already-localized action label conflicting with the captured chord."
+		}
+	},
+	"ui.settings.shortcuts.capture.needs_modifier": {
+		"role": "Shortcut capture validation",
+		"tone": "Direct and helpful validation.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Shown while recording a shortcut; describes why the candidate chord cannot be assigned."
+	},
+	"ui.settings.shortcuts.capture.needs_modifier_mac": {
+		"role": "Shortcut capture validation",
+		"tone": "Direct and helpful validation.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Shown while recording a shortcut; describes why the candidate chord cannot be assigned."
+	},
+	"ui.settings.shortcuts.capture.unbindable": {
+		"role": "Shortcut capture validation",
+		"tone": "Direct and helpful validation.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Shown while recording a shortcut; describes why the candidate chord cannot be assigned."
+	},
+	"ui.settings.shortcuts.category.panels": {
+		"role": "Shortcut category",
+		"tone": "Concise grouping noun.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Groups the panel-rail actions in shortcut settings."
+	},
+	"ui.settings.shortcuts.reserved.archive_chat": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: archives the focused conversation."
+	},
+	"ui.settings.shortcuts.reserved.browser_address": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence pair; two short sentences, keep compact.",
+		"note": "Explains why this chord cannot be reassigned: focuses the browser address bar. The closing sentence tells the reader the chord answers only while the browser has focus and to focus the browser first; keep it a second sentence in the target language, imperative, and do not fold it into the job description."
+	},
+	"ui.settings.shortcuts.reserved.browser_back": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: goes back in the browser, or between chats outside it."
+	},
+	"ui.settings.shortcuts.reserved.browser_forward": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: goes forward in the browser, or between chats outside it."
+	},
+	"ui.settings.shortcuts.reserved.browser_last_tab": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence pair; two short sentences, keep compact.",
+		"note": "Explains why this chord cannot be reassigned: switches to the last browser tab. The closing sentence tells the reader the chord answers only while the browser has focus and to focus the browser first; keep it a second sentence in the target language, imperative, and do not fold it into the job description."
+	},
+	"ui.settings.shortcuts.reserved.browser_new_tab": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence pair; two short sentences, keep compact.",
+		"note": "Explains why this chord cannot be reassigned: opens a new browser tab. The closing sentence tells the reader the chord answers only while the browser has focus and to focus the browser first; keep it a second sentence in the target language, imperative, and do not fold it into the job description."
+	},
+	"ui.settings.shortcuts.reserved.browser_numbered_tab": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence pair; two short sentences, keep compact.",
+		"note": "Explains why this chord cannot be reassigned: switches to browser tab {digit}. The closing sentence tells the reader the chord answers only while the browser has focus and to focus the browser first; keep it a second sentence in the target language, imperative, and do not fold it into the job description.",
+		"placeholders": {
+			"digit": "Browser tab number from 1 through 8."
+		}
+	},
+	"ui.settings.shortcuts.reserved.browser_reload": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned. This chord is DUAL-SCOPE, so the sentence must name both outcomes: it reloads the browser page when the browser has focus, and the app window outside it. Do NOT add a focus instruction - the chord is not browser-only and telling the reader to focus the browser first would be false. Follow the '..., or ... outside it.' shape the browser_back, close and find rows already use in this locale."
+	},
+	"ui.settings.shortcuts.reserved.browser_reload_cache": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned. This chord is DUAL-SCOPE, so the sentence must name both outcomes: it reloads the browser page without its cache when the browser has focus, and the app window outside it. Do NOT add a focus instruction - the chord is not browser-only and telling the reader to focus the browser first would be false. Follow the '..., or ... outside it.' shape the browser_back, close and find rows already use in this locale."
+	},
+	"ui.settings.shortcuts.reserved.browser_reopen_tab": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence pair; two short sentences, keep compact.",
+		"note": "Explains why this chord cannot be reassigned: reopens the last closed browser tab. The closing sentence tells the reader the chord answers only while the browser has focus and to focus the browser first; keep it a second sentence in the target language, imperative, and do not fold it into the job description."
+	},
+	"ui.settings.shortcuts.reserved.canvas_open": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: opens a file in the canvas."
+	},
+	"ui.settings.shortcuts.reserved.canvas_save": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: saves the canvas document."
+	},
+	"ui.settings.shortcuts.reserved.chat_move_down": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: moves the focused chat down the pinned order."
+	},
+	"ui.settings.shortcuts.reserved.chat_move_up": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: moves the focused chat up the pinned order."
+	},
+	"ui.settings.shortcuts.reserved.chat_region_down": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: walks down the chat regions."
+	},
+	"ui.settings.shortcuts.reserved.chat_region_up": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: walks up the chat regions."
+	},
+	"ui.settings.shortcuts.reserved.chat_tags": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: opens the focused conversation's tags."
+	},
+	"ui.settings.shortcuts.reserved.close": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: closes the browser tab, or the window outside it."
+	},
+	"ui.settings.shortcuts.reserved.copy": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: copy."
+	},
+	"ui.settings.shortcuts.reserved.cut": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: cut."
+	},
+	"ui.settings.shortcuts.reserved.find": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: finds in the browser page, or searches the transcript outside it."
+	},
+	"ui.settings.shortcuts.reserved.minimise": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: minimises the window."
+	},
+	"ui.settings.shortcuts.reserved.new_chat": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: starts a new chat."
+	},
+	"ui.settings.shortcuts.reserved.palette_anywhere": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: opens the command palette from anywhere."
+	},
+	"ui.settings.shortcuts.reserved.palette_chats": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: opens the command palette on chats."
+	},
+	"ui.settings.shortcuts.reserved.palette_commands": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: opens the command palette on commands."
+	},
+	"ui.settings.shortcuts.reserved.paste": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: paste."
+	},
+	"ui.settings.shortcuts.reserved.quit": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: quits the app."
+	},
+	"ui.settings.shortcuts.reserved.redo": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: redo."
+	},
+	"ui.settings.shortcuts.reserved.redo_windows_linux": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: redo on Windows and Linux."
+	},
+	"ui.settings.shortcuts.reserved.select_all": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: select all."
+	},
+	"ui.settings.shortcuts.reserved.speech_to_text": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: starts speech to text."
+	},
+	"ui.settings.shortcuts.reserved.toggle_sidebar": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: toggles the sidebar."
+	},
+	"ui.settings.shortcuts.reserved.undo": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: undo."
+	},
+	"ui.settings.shortcuts.reserved.zoom_in": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: zooms the browser page or app in."
+	},
+	"ui.settings.shortcuts.reserved.zoom_out": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: zooms the browser page or app out."
+	},
+	"ui.settings.shortcuts.reserved.zoom_reset": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: resets browser page zoom, or app zoom outside it."
+	},
+	"ui.settings.shortcuts.row.asks": {
+		"role": "Shortcut settings row label",
+		"tone": "Concise destination noun.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Names the destination without the imperative verb used by the corresponding action tooltip."
+	},
+	"ui.settings.shortcuts.row.browser": {
+		"role": "Shortcut settings row label",
+		"tone": "Concise destination noun.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Names the destination without the imperative verb used by the corresponding action tooltip."
+	},
+	"ui.settings.shortcuts.row.canvas": {
+		"role": "Shortcut settings row label",
+		"tone": "Concise destination noun.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Names the destination without the imperative verb used by the corresponding action tooltip."
+	},
+	"ui.settings.shortcuts.row.code_review": {
+		"role": "Shortcut settings row label",
+		"tone": "Concise destination noun.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Names the destination without the imperative verb used by the corresponding action tooltip."
+	},
+	"ui.settings.shortcuts.row.linked_projects": {
+		"role": "Shortcut settings row label",
+		"tone": "Concise destination noun.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Names the destination without the imperative verb used by the corresponding action tooltip."
+	},
+	"ui.settings.shortcuts.row.console": {
+		"role": "Shortcut settings row label",
+		"tone": "Concise destination noun.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Names the destination without the imperative verb used by the corresponding action tooltip."
+	},
+	"ui.settings.shortcuts.row.execution": {
+		"role": "Shortcut settings row label",
+		"tone": "Concise destination noun.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Names the destination without the imperative verb used by the corresponding action tooltip."
+	},
+	"ui.settings.shortcuts.keyboard_shortcuts_section.shortcut_capture_description": {
+		"role": "Description under the Keyboard shortcuts heading",
+		"tone": "Concise factual instructions for immediate shortcut capture.",
+		"length": "One short wrapping paragraph; keep all three actions and their effects.",
+		"note": "Applies to panel and speech-to-text shortcuts. Esc clears only the current cue; it does not undo a saved shortcut. Keep Reset and Esc consistent with their controls."
+	},
+	"ui.settings.shortcuts.category.speech_to_text": {
+		"role": "Settings subgroup heading",
+		"tone": "Neutral feature name in sentence case.",
+		"length": "One short heading line.",
+		"note": "Speech input converted to text, not spoken assistant output."
+	},
+	"ui.settings.shortcuts.recording.invalid_stored_value": {
+		"role": "Validation warning under the Start recording shortcut field",
+		"tone": "Factual and reassuring; identifies both the invalid stored value and visible fallback.",
+		"length": "One or two short lines.",
+		"note": "The field deliberately shows the last working binding instead of the malformed hand-edited token."
+	},
+	"ui.settings.shortcuts.recording.inactive_claimed": {
+		"role": "Conflict warning under the Start recording shortcut field",
+		"tone": "Factual and actionable; recording is off because another named row owns the chord.",
+		"length": "One or two short lines.",
+		"note": "Explain both that recording is inactive and which action owns the chord. {label} is an already-localized action name; do not add another sentence inside it.",
+		"placeholders": {
+			"label": "Localized action name such as Console; insert verbatim."
+		}
+	},
+	"ui.settings.shortcuts.speech.primary": {
+		"role": "Rank label of the first speech-to-text shortcut row",
+		"tone": "Neutral one-word label in sentence case.",
+		"length": "One word; sits in a 128px column above the action name.",
+		"note": "Pairs with 'Secondary': the first and the second way to do the same thing, not a priority or a permission level. The action it ranks is named on the line beneath."
+	},
+	"ui.settings.shortcuts.speech.secondary": {
+		"role": "Rank label of the second speech-to-text shortcut row",
+		"tone": "Neutral one-word label in sentence case.",
+		"length": "One word; sits in a 128px column above the action name.",
+		"note": "Pairs with 'Primary'. Names the alternative way to start the same recording, not a lower-quality or backup feature."
+	},
+	"ui.settings.shortcuts.speech.start_recording_press": {
+		"role": "Action name under the Primary label in Speech to text",
+		"tone": "Imperative action phrase, then the gesture in parentheses.",
+		"length": "Short; sits in a 128px column and may wrap.",
+		"note": "'Start recording' is the same action as the composer's mic button label. '(press)' means a key combination pressed once, as opposed to '(hold)' on the other row. Keep the two parenthetical words contrasting."
+	},
+	"ui.settings.shortcuts.speech.push_to_talk_hold": {
+		"role": "Action name under the Secondary label in Speech to text",
+		"tone": "Imperative action phrase, then the gesture in parentheses.",
+		"length": "Short; sits in a 128px column and may wrap.",
+		"note": "Push to talk is the walkie-talkie idiom: record only while a key is held down. '(hold)' means the key is held and released, as opposed to '(press)' on the other row. Keep the two parenthetical words contrasting."
+	},
+	"ui.settings.shortcuts.speech.push_to_talk_hint": {
+		"role": "Hint under the Push to talk field while it has focus",
+		"tone": "Concise instruction in the register of the sibling capture hint.",
+		"length": "One short line.",
+		"note": "The user presses a single modifier key (Control, Option, Command, Windows or Super) to choose which key is held. Esc cancels the capture. Keep consistent with 'Press the keys you want; Esc cancels.' used for the other row."
+	},
+	"ui.settings.shortcuts.speech.push_to_talk_refused": {
+		"role": "Refusal under the Push to talk field when the key pressed cannot be held",
+		"tone": "Factual and actionable; names the keys that do work.",
+		"length": "One short sentence per platform.",
+		"note": "The three arms name the modifier keys on that platform's keyboard: macOS has Control, Option and Command; Windows has Control and the Windows key; other systems have Control and the Super key. Use each platform's usual key names. Each arm is a complete sentence. Keep the select keywords darwin, win32 and other verbatim.",
+		"placeholders": {
+			"platform": "Platform keyword: darwin, win32 or other; never displayed."
+		}
+	},
+	"ui.settings.shortcuts.speech.push_to_talk_overlap": {
+		"role": "Warning note under the Push to talk field",
+		"tone": "Factual, calm; a cost to weigh, not an error.",
+		"length": "One or two short lines.",
+		"note": "The held key is also the first key of ordinary shortcuts. {modifier} is the key's name without its side (Command, Control, Option); {example} is one affected shortcut written as keys (for example Command+C). {alternative} is the name of a key that avoids the problem, or the word none when no other key is free; keep 'none' as the select branch name, never show it. The microphone starts for an instant until the next key cancels it.",
+		"placeholders": {
+			"modifier": "The held key's name without its side: Command, Control or Option. Keep as given.",
+			"example": "One affected shortcut written as key names joined by plus signs, for example Command+J. Keep as given.",
+			"alternative": "The name of a key that avoids the problem (Option, Control, Command), or the word none; never displayed when none."
+		}
+	},
+	"ui.settings.shortcuts.speech.push_to_talk_letter_pointer": {
+		"role": "Second sentence of the hint and of the refusal under the Push to talk field",
+		"tone": "Plain, helpful.",
+		"length": "One short sentence.",
+		"note": "Shown after another sentence; 'Start recording' is the name of the row directly above (the Primary box) and must match its translated action name."
+	},
+	"ui.settings.shortcuts.speech.start_recording_needs_key": {
+		"role": "Refusal under the Start recording field",
+		"tone": "Plain, short.",
+		"length": "One short sentence.",
+		"note": "Shown when the user pressed only a modifier key (Command, Control, Option, Shift) in the field that records a shortcut."
+	},
+	"ui.settings.shortcuts.new_temporary_chat": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: starts a new temporary chat (Ctrl+Shift+N, or Command+Shift+N on macOS)."
 	}
 }

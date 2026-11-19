@@ -1,0 +1,23 @@
+{
+	"ui.chat.settings_intents.chips_label": "Changements de réglages",
+	"ui.chat.settings_intents.cwd_waiting": "Passera dans {dir} à la fin de ce tour",
+	"ui.chat.settings_intents.effort_queued": "L’effort {level} s’appliquera à la prochaine étape",
+	"ui.chat.settings_intents.failed_cwd": "Impossible de passer dans {dir} : {reason}",
+	"ui.chat.settings_intents.failed_effort": "Impossible de régler l’effort sur {level} : {reason}",
+	"ui.chat.settings_intents.failed_fast": "Impossible de changer le mode rapide : {reason}",
+	"ui.chat.settings_intents.failed_model": "Impossible de passer à {model} : {reason}",
+	"ui.chat.settings_intents.fast_queued": "Le changement de mode rapide s’appliquera à la prochaine étape",
+	"ui.chat.settings_intents.model_queued": "{model} s’appliquera à la prochaine étape",
+	"ui.chat.settings_intents.moving_cwd": "Déplacement vers {dir}…",
+	"ui.chat.settings_intents.reason_budget": "la session n’a pas répondu à temps",
+	"ui.chat.settings_intents.reason_unknown": "aucune raison n’a été donnée",
+	"ui.chat.settings_intents.row_applying": "Changement de réglage en cours",
+	"ui.chat.settings_intents.row_failed": "Un changement de réglage a échoué",
+	"ui.chat.settings_intents.setting_effort": "Réglage de l’effort sur {level}…",
+	"ui.chat.settings_intents.setting_fast_off": "Désactivation du mode rapide…",
+	"ui.chat.settings_intents.setting_fast_on": "Activation du mode rapide…",
+	"ui.chat.settings_intents.superseded_effort": "Effort changé ailleurs pour {level}",
+	"ui.chat.settings_intents.superseded_model": "Modèle changé ailleurs pour {model}",
+	"ui.chat.settings_intents.superseded_other": "Ce réglage a été changé ailleurs",
+	"ui.chat.settings_intents.switching_model": "Passage à {model}…"
+}

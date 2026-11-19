@@ -3,7 +3,20 @@ import {
 	builtinOfferSignature,
 } from "@features/agents/builtin-offer";
 import { InstallBuiltinAgents } from "@features/agents/components/install-builtin-agents";
-import { groupChatsByTag } from "@features/chat/chat-tag-groups";
+import { CHAT_ROW_MENU_SCROLL_CLASS } from "@features/chat/chat-row-menu";
+import {
+	TAG_DROP_PREVIEW_CLASSES,
+	chatTagBucket,
+} from "@features/chat/chat-tag-drag";
+import {
+	type TagModeGroup,
+	groupChatsByTag,
+	tagBucketRowIds,
+	unusedTags,
+	withUnloadedTags,
+} from "@features/chat/chat-tag-groups";
+import { moveChatToTag } from "@features/chat/chat-tag-move";
+import { tagHeaderAt, useChatTagDrag } from "@features/chat/use-chat-tag-drag";
 /*
  * THE NETWORKS READ, for the remote rows' hover sentence: ONE observer, `poll:
  * false`, riding whatever the rail or the Mesh tab already fetched (one read per
@@ -13,6 +26,7 @@ import { groupChatsByTag } from "@features/chat/chat-tag-groups";
  */
 import { useMeshNetworks } from "@features/mesh/mesh-store";
 import { VoiceRowMarker } from "@features/voice/voice-indicator";
+import { useAgentAvatar } from "@shared/agent-avatar/agent-avatar";
 import { compatibilityBannerShown } from "@shared/api/local-operator/backend-error";
 import {
 	isRemoteReceiptDeferral,
@@ -27,12 +41,14 @@ import {
 	useHubActions,
 	useHubUpdates,
 } from "@shared/api/local-operator/hub-hooks";
+import { hubRegistryNameCounts } from "@shared/api/local-operator/hub-link-actions";
 import { useHubLinks } from "@shared/api/local-operator/hub-link-hooks";
 import {
 	linksForLocalItem,
 	unresolvedForLocalItem,
 } from "@shared/api/local-operator/hub-links";
 import {
+	HUB_SECTION,
 	type HubItemKind,
 	type HubMark,
 	hubAvailableCount,
@@ -46,9 +62,15 @@ import {
 	useProfiles,
 	useTeams,
 } from "@shared/api/local-operator/profile-hooks";
+import { useProfileProposals } from "@shared/api/local-operator/profile-proposal-hooks";
+import {
+	pendingProposalCount,
+	proposalReviewPath,
+} from "@shared/api/local-operator/profile-proposals";
 import { useChatSearch } from "@shared/api/local-operator/session-search";
 import { teamDisplayName } from "@shared/api/local-operator/team-display";
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
+import { AgentAvatar, AvatarImage } from "@shared/components/ui/avatar";
 import { Button } from "@shared/components/ui/button";
 import { Checkbox } from "@shared/components/ui/checkbox";
 import {
@@ -74,6 +96,7 @@ import {
 	type CanonicalSessionRow,
 	LEGACY_CATALOGUE_PAGE,
 	catalogueScopeKey,
+	conversationTitleForDisplay,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
@@ -100,7 +123,6 @@ import {
 	FolderPlus,
 	GitFork,
 	GripVertical,
-	Hourglass,
 	LoaderCircle,
 	type LucideIcon,
 	MessageSquarePlus,
@@ -122,6 +144,7 @@ import {
 	type KeyboardEvent,
 	type MutableRefObject,
 	type FocusEvent as ReactFocusEvent,
+	type MouseEvent as ReactMouseEvent,
 	type ReactNode,
 	type PointerEvent as ReactPointerEvent,
 	type Ref,
@@ -137,6 +160,11 @@ import {
 import { useLocation, useNavigate } from "react-router-dom";
 import { SESSION_SEARCH_MAX_CHARS } from "../../../../../shared/desktop-contract";
 import { AGENT_ROSTER_SEED } from "../../command-palette/palette-search";
+import {
+	peerLinkDownLabel,
+	peerLinkDownVisibleLabel,
+	peerUncertainLabel,
+} from "../../mesh/peer-presence";
 import { focusRowAfterRemoval } from "../archive-confirm";
 import { ARCHIVE_FAILURE_TOAST_MS } from "../archive-undo";
 import {
@@ -150,6 +178,12 @@ import {
 	archivedSearchWidened,
 	visibleRows,
 } from "../chat-archived";
+/*
+ * The fork's auto-tag intent is decided in its own module so the View-options
+ * row and the fork body cannot disagree about whether this backend understands
+ * the field (`chat-auto-tag.ts` owns both halves).
+ */
+import { autoTagSupported } from "../chat-auto-tag";
 import {
 	CHAT_LIST_SECTION_LABEL,
 	type ChatListSection,
@@ -160,6 +194,7 @@ import {
 } from "../chat-list-sections";
 import {
 	type PinMoveStep,
+	appendPinnedOrder,
 	canMovePinnedRow,
 	chatPinMoveCapJoined,
 	chatPinMoveChord,
@@ -181,6 +216,9 @@ import {
 	chatRowAct,
 	chatRowActCapJoined,
 	chatRowActControl,
+	chatTagsChord,
+	chatTagsChordCap,
+	chatTagsChordText,
 } from "../chat-regions";
 /*
  * THE REMOTE ROW'S OWN FACTS (the shared convention; the header of
@@ -205,7 +243,10 @@ import {
 	searchChats,
 } from "../chat-search";
 import { pinnedRows, unpinnedRows } from "../chat-sections";
-import { subagentClause, subagentMarks } from "../chat-session-subagents";
+import {
+	backgroundWorkClause,
+	clauseReplacesLabel,
+} from "../chat-session-subagents";
 import {
 	agentRecencyMs,
 	filterAgentRows,
@@ -215,12 +256,16 @@ import {
 import {
 	DEFAULT_SIDEBAR_VIEW,
 	SECTION_GROWN_HINT,
+	SIDEBAR_SECTION_LABEL,
 	SIDEBAR_SECTION_ROWS,
 	type SidebarSectionKey,
+	drawnGroupBy,
+	effectiveLoads,
 	entityMore,
 	entityQueryAdmits,
 	entityRows,
 	entitySectionGap,
+	foldedLiveCue,
 	groupRows,
 	isEntitySection,
 	isSectionShown,
@@ -237,9 +282,17 @@ import {
 	sectionMoreLabel,
 	sectionMoreName,
 	shownSections,
+	tagGroupBodyRows,
+	tagGroupCollapsed,
+	tagSurfaceOn,
 	toggleSectionDisclosure,
+	toggleTagDisclosure,
 } from "../chat-sidebar-view";
 import { useStripSpeaksConnection } from "../chat-status-presence";
+import {
+	partition as partitionTemporary,
+	refusalRemedy,
+} from "../chat-temporary";
 import { clearSearch } from "../clear-search";
 /*
  * THE ACT'S OWN WRITE (#893): copying a conversation's session id, in the one
@@ -248,14 +301,18 @@ import { clearSearch } from "../clear-search";
  */
 import { copySessionId } from "../copy-session-id";
 import {
+	currentSessionRowId,
 	discardDraftLabel,
 	discardSuccessorIndex,
+	unsentSessionIds,
 	untargetedDraftRows,
 } from "../draft-rows";
 import { fleetAsksBySession, useFleetAsks } from "../fleet-asks";
 import {
+	type MarkAllReadShedWidth,
 	markAllReadCopy,
 	markAllReadReceipt,
+	markAllReadShedWidth,
 	unreadMarkKind,
 } from "../mark-all-read";
 import { readAckCopy, readAckNoticeSentence } from "../read-ack-notice";
@@ -270,11 +327,21 @@ import {
 	tailArrivalAnnouncement,
 	tailExtendDue,
 } from "../sidebar-scope-paging";
+import { sidebarScrollerSpaceIsDead } from "../sidebar-space-dead";
+import { builtinOfferSentence } from "./builtin-offer-sentence";
 import { ChatRemoteMark } from "./chat-remote-mark";
 import { ChatRowHoverIntent } from "./chat-row-hover-intent";
 import { ChatRowTitle } from "./chat-row-title";
-import { ChatSessionTagsDialog } from "./chat-session-tags-dialog";
+import { ChatSettingsIntentMark } from "./chat-settings-intent-mark";
 import { ChatSidebarViewMenu } from "./chat-sidebar-view-menu";
+import {
+	ChatTagFooter,
+	ChatTagHeader,
+	TAG_HEADER_STOP_ATTR,
+	TAG_TOGGLE_STOP_ATTR,
+	tagGroupBodyId,
+} from "./chat-tag-header";
+import { ChatTagPopover } from "./chat-tag-popover";
 import {
 	HubLinkAggregateMark,
 	HubLinkExpandedPolicy,
@@ -287,7 +354,7 @@ import {
 	HubSectionLines,
 	HubUpdateMark,
 } from "./hub-update-mark";
-import { ManageTagsDialog } from "./manage-tags-dialog";
+import { SidebarTemporaryGroup } from "./sidebar-temporary-group";
 import { TeamAvatarBubble } from "./team-avatar-bubble";
 
 /*
@@ -344,27 +411,41 @@ const rowStyle =
  * 138.3 / 210.7 / 179.0 / 165.6px against main's 264px - and a literal written twice is
  * how the two paths drifted when main's row changed shape under this branch's fold.
  */
-const rowBoxStyle = "flex h-8 items-center gap-1 rounded-md";
+/*
+ * `group/row` and `relative` are the agent picture's pencil (agent profile
+ * pictures, 2026-10-30): the edit link is a SIBLING of the row button, laid over
+ * the picture, and only reachable while this wrapper is hovered or the link
+ * itself holds focus - which is why the class is here rather than on the button.
+ */
+const rowBoxStyle = "group/row relative flex h-8 items-center gap-1 rounded-md";
 
 /*
  * Where the bulk read receipt's label stops fitting, in the width of the header
  * row itself — the row is the container queried rather than the panel, because
  * the row is what has to fit.
  *
- * 253px is the TWO-DIGIT break, and the two-digit case is the binding one: with a
- * one-digit section badge the group's own name needs a 235px row, with a
- * two-digit one — the operator's own "Active chats 38" — it needs 253px, and the
- * action is unshrinkable so the name absorbs whatever is left. Design round 2
- * swept 240 through 360 on the shipped component and found the band the round-1
- * break left open: at 267/268/269px panels (250/251/252px rows) the name was
- * ellipsised while the action's label was still fully spelled, which is the
- * trade design D1 rejected. Shedding at the width the name actually needs closes
- * it, so the shed and the truncation can never both be reachable.
+ * WHICH ROW, and why this was dead for a while. The control is drawn through
+ * `sectionLabel` (the `ACTIVE CHATS` / `TODAY` label row), but this class
+ * queries the `chatheading` container, which only `heading()` (the agent and
+ * team disclosure rows) declared. A container query with no matching container
+ * matches nothing, so the label NEVER shed in any language; at the 220px floor a
+ * longer translated label then took its width from the section name, which
+ * disappeared (PR #1827 rendered frames: fr and vi had no heading at all). The
+ * row `sectionLabel` returns now declares `@container/chatheading` whenever it
+ * carries an action.
  *
- * The header row is 17px narrower than the panel, so 253px of row is a 270px
- * panel: the shed fires below the DEFAULT (280) but not at it, and the 240px
- * clamp minimum gets the glyph. Above the break the full label fits and nothing
- * truncates.
+ * THE BREAK IS NOT 253 ANY MORE, and it is not one number. 253 was derived for
+ * `heading()` (chevron, glyph, name and a count badge, against a default panel of
+ * 280 and a floor of 240); this row has none of those, and the sidebar now runs
+ * 220-320 with 260 as the default. The break is picked from the label actually
+ * drawn by `markAllReadShedWidth` (its docblock carries the measured arithmetic):
+ * every label sheds at the 220px floor, English with a two-digit count is spelled
+ * at the 260px default, and a longer translation needs a wider row before it may
+ * be spelled. The query reads the row's CONTENT box, which is why the figure
+ * excludes the row's own `px-2`.
+ *
+ * Container conditions cannot take a variable, so the ladder is a map of LITERAL
+ * classes: Tailwind generates only the strings it can find in the source.
  *
  * `sr-only`, NEVER `hidden`. `hidden` is `display: none`, which takes the span out
  * of the accessibility tree, and the label's words are the only half of the
@@ -379,7 +460,13 @@ const rowBoxStyle = "flex h-8 items-center gap-1 rounded-md";
  * own container for the same reason: the row's height is fixed, so a wrapped
  * line is not an option and the sentence is what has to change length.
  */
-const MARK_ALL_READ_LABEL_SHED = "@max-[253px]/chatheading:sr-only";
+const MARK_ALL_READ_LABEL_SHED: Record<MarkAllReadShedWidth, string> = {
+	200: "@max-[200px]/chatheading:sr-only",
+	223: "@max-[223px]/chatheading:sr-only",
+	245: "@max-[245px]/chatheading:sr-only",
+	268: "@max-[268px]/chatheading:sr-only",
+	291: "@max-[291px]/chatheading:sr-only",
+};
 
 /**
  * The receipt announcement's own toast id, and it is STABLE ON PURPOSE.
@@ -404,13 +491,12 @@ const READ_ACK_TOAST_ID = "read-ack";
  * control was the pointer-only channel engines are least reliable about, and it
  * reached no keyboard reader at all).
  */
-const SENDING_DISCARD_WHY =
-	"Sending - this draft can be discarded when the send settles";
+const sendingDiscardWhy = (): string =>
+	t("ui.chat.sidebar_notes.draft_sending_why");
 /** The sr-only why's id, keyed so each row's control points at its own. */
 const draftWhyId = (key: string) => `draft-discard-why-${key}`;
 /** The disabled Clear all's own why, same two-channel rule. */
-const CLEAR_ALL_WHY =
-	"Drafts are sending - they can be cleared when the sends settle";
+const clearAllWhy = (): string => t("ui.chat.sidebar_notes.clear_all_why");
 const CLEAR_ALL_WHY_ID = "drafts-clear-all-why";
 
 /*
@@ -498,8 +584,8 @@ const CLEAR_ALL_WHY_ID = "drafts-clear-all-why";
  * old `sunken` ground it measured 9.6 — which is why this is a call-site ground
  * and NOT a wash: strengthening `accentWash` for the panels that draw it on
  * `surface` would make every hover tint in the app louder. (The rail no longer
- * paints a ground of its own at all: it is `surface` with a `border-r
- * border-hairline` rule, so nothing on it is drawn on the rung that used to make
+ * paints a ground of its own at all: it is `surface` with the 1px `PanelEdge`
+ * seam on its leading edge, so nothing on it is drawn on the rung that used to make
  * the wash work there. The SETTINGS rail
  * was the other `surface` panel and takes this same role — it imports
  * `rowCurrent` from this file rather than restating it, see the note at the
@@ -710,15 +796,19 @@ export const rowDraggingMark =
 
 import {
 	type FocusedSlot,
+	type PageAnchor,
+	firstVisibleRow,
 	holdFocusedRow,
+	holdPageAnchor,
+	holdPageFoot,
 	refreshFocusedInside,
 } from "../sidebar-focus-hold";
 
 import {
-	ChatAsksOutstanding,
-	ChatSessionStatus,
-	SubagentRunningMark,
-} from "./chat-session-status";
+	ChatSessionAvatar,
+	ChatSessionAvatarEdit,
+} from "./chat-session-avatar";
+import { ChatAsksOutstanding, statusLabelText } from "./chat-session-status";
 
 /**
  * How often the catalogue polls when the machine-wide feed is NOT available.
@@ -783,13 +873,13 @@ const INCLUDE_ARCHIVED_ID = "chat-search-include-archived";
  * the name still carries the state's sentence and nothing else, which is design
  * D2's call and still holds.
  *
- * ONE HOME FOR THE WORDS. The constant is the clause alone and the tooltip's own
- * expression adds the separator, rather than a second copy of the sentence in a
- * form only a tooltip can use: a description is announced straight after the
- * name, where a leading " · " would be read as a separator that is already
- * implied.
+ * ONE HOME FOR THE WORDS. The keyed clause is the sentence alone and the
+ * tooltip's own expression adds the separator, rather than a second copy of the
+ * sentence in a form only a tooltip can use: a description is announced straight
+ * after the name, where a leading " · " would be read as a separator that is
+ * already implied.
  */
-const SILENT_REMEDY = "/stop if it stays silent.";
+const silentRemedyClause = (): string => t("ui.chat.sidebar.row.silent_remedy");
 
 /**
  * The id of a row's remedy sentence, WHEN that row renders one.
@@ -874,6 +964,46 @@ const RowMenuOwner: FC<{
 };
 
 /**
+ * The mark on a row of the sidebar's Agents section: the agent's stored PICTURE
+ * when there is one, and the kind's glyph when there is not.
+ *
+ * WHY IT IS A COMPONENT. The picture is a store read (`useAgentAvatar`), and the
+ * row's body is a FUNCTION called during the sidebar's render rather than a
+ * component - a hook in there would be a hook inside a loop. One component per
+ * row keeps the subscription where React allows it, and keeps it per row, so a
+ * picture changed in Settings repaints this row and no other.
+ *
+ * WHY THE GLYPH IS STILL THE FALLBACK, unlike the transcript (where D11's answer
+ * for an agent with no picture is no mark at all): here the glyph is the row's
+ * KIND - `Users` for a team, `Bot` for an agent - and the name truncates, so the
+ * kind is the one thing that survives the ellipsis.
+ */
+export const EntityMark: FC<{
+	/** The agent's id, or null for a team (which has no picture). */
+	agentId: string | null;
+	glyph: LucideIcon;
+}> = ({ agentId, glyph: Glyph }) => {
+	// 16 = the `size-4` plate below.
+	const avatar = useAgentAvatar(agentId, undefined, 16);
+	if (avatar === null) return <Glyph className="size-4 shrink-0" />;
+	return (
+		/*
+		 * THE RAIL'S PICTURE WEARS THE SAME EDGE AS THE ROSTER'S (design review
+		 * round 1, D1 on #1518). `AgentAvatar` is the one definition of the 1px
+		 * `border-control` edge and the `sunken` plate, on the circle's root.
+		 * Without it this 16px disc had no boundary at all - measured
+		 * `border-top-width: 0` against the roster's 1px - so a picture whose edge
+		 * matched the rail's ground was invisible, while the same picture in the
+		 * roster at least left four arcs.
+		 */
+		<AgentAvatar className="size-4 shrink-0">
+			{/* Decorative: the row prints the name right beside it. */}
+			<AvatarImage src={avatar} alt="" />
+		</AgentAvatar>
+	);
+};
+
+/**
  * THE MENU'S OWN SENTENCE (U-D5): the row's box is a context-menu trigger and
  * carries no `aria-haspopup` - the primitive writes only `data-state` and
  * `data-disabled` on it - so without a clause a screen reader walking the list
@@ -903,8 +1033,8 @@ const RowMenuOwner: FC<{
  */
 const rowMenuClause = (isMac: boolean): string =>
 	isMac
-		? "Right-click or press Shift+F10 (with Fn on most Mac keyboards) for its actions."
-		: "Right-click or press Shift+F10 for its actions.";
+		? t("ui.chat.sidebar.row_menu.hint_mac")
+		: t("ui.chat.sidebar.row_menu.hint");
 const rowMenuClauseId = (sessionId: string) => `chat-row-menu-${sessionId}`;
 
 /**
@@ -925,49 +1055,6 @@ const pressRowAct = (sessionId: string, act: ChatRowAct) => {
 		.querySelector<HTMLElement>(`[data-session-row="${CSS.escape(sessionId)}"]`)
 		?.querySelector<HTMLElement>(`[${CHAT_ROW_ACT_ATTR[act]}]`)
 		?.click();
-};
-
-/*
- * The words this sentence uses for a count of at most six; digits beyond that,
- * because "Eleven built-in agents" is a figure the eye has to translate back.
- */
-const BUILTIN_COUNT_WORDS = [
-	"No",
-	"One",
-	"Two",
-	"Three",
-	"Four",
-	"Five",
-	"Six",
-];
-
-/**
- * The sentence that offers the built-ins, built from the names actually offered.
- *
- * It replaced copy that named activities rather than roles — "roles for coding,
- * review, design, research and coordination" — with no count at all: "research"
- * is not among the packaged profiles, architecture and testing went unnamed, and
- * the number only appeared once the batch had started ("Installing 1 of 6"), so
- * the sentence that sets the expectation for the whole flow was wrong about
- * both what is on offer and how much of it there is (UX round 1, U6). Derived
- * from the rows the backend sent rather than written by hand, because the
- * catalogue is the authority on what can be installed and a second list here
- * can disagree with it.
- */
-const builtinOfferSentence = (
-	builtins: readonly { name: string }[],
-): string => {
-	const names = builtins.map((builtin) => builtin.name);
-	const count = BUILTIN_COUNT_WORDS[names.length] ?? String(names.length);
-	const plural = names.length === 1 ? "agent" : "agents";
-	const verb = names.length === 1 ? "is" : "are";
-	const list =
-		names.length === 1
-			? names[0]
-			: `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
-	return `${count} built-in ${plural} ${verb} ready to install — ${list}. You can edit ${
-		names.length === 1 ? "it" : "them"
-	} once installed.`;
 };
 
 /**
@@ -1072,8 +1159,23 @@ export function ChatSidebar({
 	 * and the sidebar keeps speaking. The three sites below read THIS const, so
 	 * the paragraphs and the foot line cannot drift about when to stand down.
 	 */
+	/*
+	 * THE SERVER IS UPDATING ITSELF (`lop update` reloading the daemon in place).
+	 * Main publishes a bounded window for it (`DaemonStatusSnapshot.updating`), and
+	 * while it is open every list read the fence refused is the update, not a
+	 * fault: the poll keeps running and recovers by itself, so the sidebar's
+	 * "Retry refresh" would offer a press that has nothing to repair. Where the
+	 * pane's status strip is on screen it owns the one voice for this (its
+	 * `updating` row), so the sidebar stands down exactly as it does for an
+	 * unreachable server. Where it is not (Settings and its siblings) the two
+	 * list-pane paragraphs say "updating" in place of their error text, with no
+	 * Retry; the catalogue-gate notice is hidden for the window rather than
+	 * restated, because its sentence is about a withdrawn gate read off the same
+	 * fenced answer, not a fact of its own (review round 1, n2).
+	 */
+	const serverUpdating = serverHealth?.snapshot?.updating === true;
 	const stripSpeaksConnection = useStripSpeaksConnection(
-		serverHealth?.online === false,
+		serverHealth?.online === false || serverUpdating,
 	);
 	const pairingCause =
 		serverHealth?.snapshot && !serverHealth.snapshot.pairing.available
@@ -1218,6 +1320,9 @@ export function ChatSidebar({
 		cursor: string | null;
 	} | null>(null);
 	const pinFailure = useCanonicalSessionsStore((s) => s.pinFailure);
+	const setSessionTemporary = useCanonicalSessionsStore(
+		(s) => s.setSessionTemporary,
+	);
 	/*
 	 * The client's own pin state for conversations this panel's page does not carry
 	 * (the store's `pinFacts`). A row synthesized from a search hit is rebuilt from
@@ -1367,33 +1472,87 @@ export function ChatSidebar({
 		capabilities.data,
 		"session_tags",
 	);
+	/*
+	 * A SECOND QUESTION ABOUT THE SAME SUBSYSTEM: `session_tags` gates the tag
+	 * catalogue, `session_tags_auto_tag` gates the fork's `auto_tag` field. The
+	 * row and the request are both gated on the second without narrowing the
+	 * first, so a backend with tags and without auto-tagging keeps its whole tag
+	 * surface and simply never sees the fork intent - never a 422 for a field its
+	 * `Fork` model does not know.
+	 */
+	const autoTagAvailable = autoTagSupported(capabilities.data);
 	const tagCategories = useSessionTagsStore((state) => state.categories);
 	const tagCategoriesLoading = useSessionTagsStore((state) => state.loading);
 	const tagCategoriesError = useSessionTagsStore((state) => state.error);
 	const fetchTagCategories = useSessionTagsStore(
 		(state) => state.fetchCategories,
 	);
+	/*
+	 * THE ONE OPEN TAGS POPOVER (sidebar tags v3, D1), by the row it belongs to.
+	 * The row object is a snapshot for the popover's mount; the assignment hook
+	 * re-seeds from the canonical row as writes land. The dialogs this replaces
+	 * (`tagRow` + a move mode + a Manage dialog) are gone: management lives on
+	 * the group headers and the tag footer.
+	 */
 	const [tagRow, setTagRow] = useState<CanonicalSessionRow | null>(null);
-	const [manageTagsOpen, setManageTagsOpen] = useState(false);
-	const tagsInvoker = useRef<HTMLElement | null>(null);
 	const tagsOriginId = useRef<string | null>(null);
 	useEffect(() => {
 		if (ready && tagsAvailable) void fetchTagCategories();
 	}, [ready, tagsAvailable, fetchTagCategories]);
 	const returnTagsFocus = () => {
-		// Applying can move the row into another bucket and remount its button.
-		// Resolve the stable identity after the modal's focus trap has torn down,
-		// rather than focusing the detached element the context menu opened from.
+		// A write can move the row into another bucket and remount its button.
+		// Resolve the stable identity after the popover has torn down, rather than
+		// focusing the detached element the context menu opened from.
 		requestAnimationFrame(() => {
 			const id = tagsOriginId.current;
-			const target = id
-				? document.querySelector<HTMLElement>(
-						`[data-session-row="${CSS.escape(id)}"] [data-chat-row]`,
-					)
-				: tagsInvoker.current;
+			if (!id) return;
+			/*
+			 * A ROW RE-TAGGED INTO A FOLDED GROUP IS NOT DRAWN (issue #1639; agent
+			 * review R1, UX U1), so the lookup finds nothing and focus would fall to
+			 * `<body>`, the next Tab starting at the top of the panel. The reader goes
+			 * where the row went instead: that group's fold chevron. The fold is NOT
+			 * sprung open - the press was a tag assignment, not a request to unfold.
+			 */
+			const target =
+				document.querySelector<HTMLElement>(
+					`[data-session-row="${CSS.escape(id)}"] [data-chat-row]`,
+				) ?? foldedRowFallback(id);
 			target?.focus();
 			target?.scrollIntoView({ block: "nearest" });
 		});
+	};
+	/*
+	 * The chevron of the folded group a row now lives in, or null. The bucket is the
+	 * one grouping files the row under (`chatTagBucket`), and the section is Pinned
+	 * for a pinned row, else the time section - which is the one copy of that tag's
+	 * header outside `[data-chat-section="pinned"]`.
+	 */
+	const foldedRowFallback = (sessionId: string): HTMLElement | null => {
+		const row = useCanonicalSessionsStore
+			.getState()
+			.sessions.find((item) => item.session_id === sessionId);
+		if (!row) return null;
+		const bucket = chatTagBucket(row, tagCategories);
+		if (!tagGroupCollapsed(expanded, bucket)) return null;
+		const pinned = row.pinned === true;
+		const controls = [
+			...document.querySelectorAll<HTMLElement>(
+				`[${TAG_TOGGLE_STOP_ATTR}="${CSS.escape(bucket)}"]`,
+			),
+		];
+		// A pinned row draws outside Pinned when pins do not section the list.
+		return (
+			controls.find(
+				(control) =>
+					(control.closest('[data-chat-section="pinned"]') !== null) === pinned,
+			) ??
+			controls[0] ??
+			null
+		);
+	};
+	const openTagsPopover = (row: CanonicalSessionRow) => {
+		tagsOriginId.current = row.session_id;
+		setTagRow(row);
 	};
 	const teamLabels = useMemo(
 		() =>
@@ -1408,16 +1567,43 @@ export function ChatSidebar({
 		[teamLabels],
 	);
 	/*
+	 * How many loaded rows answer to each display name, per kind. Only read by
+	 * the mark on a core WITHOUT the id capability (`hub_items_by_id`): there the
+	 * address is the name, and core's name arm refuses nothing - it checks every
+	 * row whose name casefolds to it (`check.py`). Two rows means one press
+	 * writes two items, so the mark asks instead.
+	 */
+	const displayNameCounts = useMemo(
+		() => ({
+			agent: hubRegistryNameCounts(profiles.data),
+			team: hubRegistryNameCounts(teams.data),
+		}),
+		[profiles.data, teams.data],
+	);
+	/*
 	 * THE HUB'S UPDATE MARKS (design B6). One store read, polled at 60 s, gated on
 	 * its own capability so a backend that predates it is never asked. The marks
 	 * are drawn by `entity` below and the per-section strip by `hubStrip`; both
 	 * read this one snapshot, so a row and its section can never disagree.
 	 */
+	const proposalsEnabled =
+		ready && desktopFeatureEnabled(capabilities.data, "profile_proposals");
+	const proposals = useProfileProposals(proposalsEnabled);
 	const hubUpdates = useHubUpdates(
 		ready && desktopFeatureEnabled(capabilities.data, "hub_updates"),
 	);
 	const hubItems = hubItemIndex(hubUpdates.data);
 	const fullHubLinks = desktopFeatureEnabled(capabilities.data, "hub_links");
+	/*
+	 * WHICH ADDRESS the hub mutations send. `hub_items_by_id` is core's exact arm
+	 * (`local_id` reaches one row of one kind); without it the released `name`
+	 * arm is the only one an older core accepts, so the mark passes the row's
+	 * display name instead of its link id.
+	 */
+	const hubItemsById = desktopFeatureEnabled(
+		capabilities.data,
+		"hub_items_by_id",
+	);
 	const hubLinks = useHubLinks(ready && fullHubLinks);
 	const hub = useHubActions();
 	// Whether the backend tracks any hub-linked item at all: the check control is
@@ -1622,6 +1808,60 @@ export function ChatSidebar({
 	 * Space carries no click count, and a real pointer press carries 1.
 	 */
 	const listPanelRef = useRef<HTMLDivElement | null>(null);
+	/*
+	 * THE TAG-MODE FOOT'S SCROLL ANCHOR (issue #1733, design §2.6.3). In Tag mode a
+	 * `Show N more chats` press lands new rows in EVERY group, most of them above
+	 * the viewport, and this scroller deliberately sets `overflow-anchor: none`
+	 * (the comment on the scroller says why it is load-bearing), so Chromium does
+	 * not compensate: measured in Storybook, the rows on screen jumped by hundreds
+	 * of pixels on one press. The press records the first visible row and its
+	 * offset; every commit restores that offset until the reader scrolls, presses
+	 * or types in the list themselves - which also covers a tail page that
+	 * arrives from the daemon a few frames after the press. Time section needs
+	 * none of this: its new rows land at the foot, below what the reader sees.
+	 */
+	const pageAnchorRef = useRef<PageAnchor | null>(null);
+	/*
+	 * THE ARRANGEMENT THE ANCHOR BELONGS TO (PR #1747 R4). A mode switch from the
+	 * popover or a query typed in the header search happens OUTSIDE the scroller,
+	 * so the gesture release below never sees it - and a later commit would pin an
+	 * unrelated list to the old row. The hold compares this key and lets go.
+	 */
+	const pageAnchorKeyRef = useRef("");
+	/*
+	 * A KEYBOARD PRESS FOLLOWS THE FOOT instead (PR #1747 U5): the anchor keeps
+	 * the rows still, which pushes the focused foot below the clip, and a keyboard
+	 * or screen-reader reader who presses Enter again loads rows they cannot see.
+	 * So a press with no pointer behind it keeps the foot in view; a pointer
+	 * press keeps the rows the eye is on. `footPressedRef` also lets focus fall back
+	 * to the last row when the press exhausts the catalogue and the foot unmounts
+	 * under focus (Q2), rather than to `<body>`.
+	 */
+	const footFollowRef = useRef(false);
+	const footPressedRef = useRef<HTMLElement | null>(null);
+	const footPointerRef = useRef<EventTarget | null>(null);
+	const notePagePointer = (event: ReactPointerEvent<HTMLButtonElement>) => {
+		footPointerRef.current = event.currentTarget;
+	};
+	const releasePageAnchor = () => {
+		pageAnchorRef.current = null;
+		footFollowRef.current = false;
+		footPressedRef.current = null;
+	};
+	/*
+	 * SPACE ON THE SCROLLER'S OWN EMPTY AREA IS DEAD. The scroller takes an
+	 * invisible focus from a click on its empty area, and Chromium's default
+	 * Space action on a focused scroller is page-scroll: without the claim,
+	 * holding Space ran the whole conversation list to the bottom. The
+	 * predicate (`sidebar-space-dead.ts`) is what the rows are not - a row is
+	 * a button and its Space keeps meaning press. It runs beside the anchor
+	 * release below: a Space press on the empty area both ends the anchor
+	 * hold and is claimed, so nothing scrolls.
+	 */
+	const claimDeadSpace = (event: KeyboardEvent<HTMLDivElement>) => {
+		releasePageAnchor();
+		if (sidebarScrollerSpaceIsDead(event)) event.preventDefault();
+	};
 	const movedRef = useRef<{
 		id: string;
 		top: number;
@@ -2008,7 +2248,12 @@ export function ChatSidebar({
 				raiseBulkReadDeferral(unreadCopy.count);
 			} else {
 				showWarningToast(
-					`${userFacingMessage(failure, "The backend did not answer.")} The unread marks were not cleared.`,
+					t("ui.notices.chat.unread_not_cleared", {
+						reason: userFacingMessage(
+							failure,
+							t("ui.notices.chat.unread_backend_silent"),
+						),
+					}),
 				);
 			}
 		} finally {
@@ -2135,7 +2380,12 @@ export function ChatSidebar({
 			 * scope suffix are the whole name, and the tooltip is the description rather
 			 * than the name (review R2-1 / UX U2-1).
 			 */}
-			<span className={cn("truncate", MARK_ALL_READ_LABEL_SHED)}>
+			<span
+				className={cn(
+					"truncate",
+					MARK_ALL_READ_LABEL_SHED[markAllReadShedWidth(unreadCopy.label)],
+				)}
+			>
 				{unreadCopy.label}
 			</span>
 			{/*
@@ -2442,9 +2692,24 @@ export function ChatSidebar({
 		() => answeredArchiveRows(sessions, archiveFacts),
 		[sessions, archiveFacts],
 	);
-	const listed = useMemo(
-		() => visibleRows(answeredForMembership, archiveEnabled && !widened),
-		[answeredForMembership, archiveEnabled, widened],
+	/*
+	 * TEMPORARY CHATS LEAVE EVERY NORMAL LIST HERE (`features.temporary_chats`):
+	 * the partition runs on the rows archiving has already filtered, so a
+	 * temporary chat is drawn only in the `Temporary · N` group at the list's
+	 * head. Without the capability `partition` returns the same array and reads
+	 * no row, so the panel is the one it always was.
+	 */
+	const temporaryEnabled = desktopFeatureEnabled(
+		capabilities.data,
+		"temporary_chats",
+	);
+	const { normal: listed, temporary: temporaryRows } = useMemo(
+		() =>
+			partitionTemporary(
+				visibleRows(answeredForMembership, archiveEnabled && !widened),
+				temporaryEnabled,
+			),
+		[answeredForMembership, archiveEnabled, widened, temporaryEnabled],
 	);
 	/*
 	 * The hits the answer actually contributes, held once: `searchChats` consumes
@@ -2475,7 +2740,7 @@ export function ChatSidebar({
 			if (!fact.pinned || listed.has(id)) continue;
 			out.push({
 				session_id: id,
-				title: fact.title || "Untitled chat",
+				title: fact.title || "",
 				updated_at: fact.updated_at,
 				pinned: true,
 			});
@@ -2860,23 +3125,25 @@ export function ChatSidebar({
 						)
 						.find((el) => el !== null) ?? null);
 		/*
-		 * AND THE GROUP IS FOUND BY ITS DISCLOSURE'S LABEL, not by the text of its name
-		 * button (round 2, U2): that button's content is the name CONCATENATED with the badge
-		 * (`minervadev49`), so a text match could never resolve - which is why the fallback the
-		 * round-1 comment described did not exist in practice. The disclosure carries
-		 * `Expand <name> chats` / `Collapse <name> chats`, the label the control's own
-		 * consumers already use, so this matches the same element the press does.
+		 * THE GROUP IS NOW FOUND BY AN IDENTIFIER, NOT BY ITS LABEL. Matching on the
+		 * disclosure's accessible name worked only while the selector and the control
+		 * composed it from the same name, and they did not: the disclosure renders
+		 * `displayName` (a team's catalogue label when it has one) while the pending
+		 * record carries the slug, so a labelled team never resolved and the hand-back
+		 * left focus where it was (review round 1, M4). Localized copy never belongs
+		 * in a selector anyway. The disclosure now carries `data-entity-key`, the
+		 * group's own `catalogueScopeKey` (`kind:name`, the same string the pending
+		 * record stores), so the lookup cannot drift from the label again. (Reading
+		 * the name button's text was already ruled out in round 2: its content is the
+		 * name CONCATENATED with the badge, so a text match could never resolve.)
 		 */
 		const entityRoot = entityPanelRef.current;
-		const groupRow =
+		const groupDisclosure =
 			entityRoot === null
 				? null
-				: ([...entityRoot.querySelectorAll<HTMLElement>("[data-entity]")].find(
-						(group) =>
-							group.querySelector(
-								`[data-disclosure][aria-label="Expand ${pending.name} chats"], [data-disclosure][aria-label="Collapse ${pending.name} chats"]`,
-							) !== null,
-					) ?? null);
+				: entityRoot.querySelector<HTMLElement>(
+						`[data-disclosure][data-entity-key="${CSS.escape(pending.key)}"]`,
+					);
 		/*
 		 * THE FALLBACK IS THE GROUP'S DISCLOSURE, which exists whether or not the group has
 		 * rows - so it resolves at exhaustion too, where the press unmounts the control it was
@@ -2887,7 +3154,7 @@ export function ChatSidebar({
 		const target =
 			row?.querySelector<HTMLElement>("[data-chat-row]") ??
 			row ??
-			groupRow?.querySelector<HTMLElement>("[data-disclosure]") ??
+			groupDisclosure ??
 			null;
 		target?.focus();
 	}, [catalogueScopes]);
@@ -2972,7 +3239,7 @@ export function ChatSidebar({
 			<div className="py-1" aria-live="polite">
 				<p className="line-clamp-2 text-meta text-ink-dim">
 					{tailState.kind === "loading"
-						? "Loading more chats…"
+						? t("ui.chat.sidebar_notes.loading_more")
 						: tailState.sentence}
 				</p>
 				{tailState.kind === "error" && (
@@ -3000,7 +3267,7 @@ export function ChatSidebar({
 								void fetchCatalogueTail();
 							}}
 						>
-							Retry
+							{t("ui.common.actions.retry")}
 						</button>
 					</p>
 				)}
@@ -3056,6 +3323,54 @@ export function ChatSidebar({
 	 */
 	const view = parseSidebarView(chatSidebarView);
 	/*
+	 * THE GROUPING THIS RENDER DRAWS, read instead of `view.groupBy` everywhere the
+	 * list is arranged (issue #1733). A stored `tag` on a backend without the tag
+	 * registry draws Time section; `view` itself stays the STORED preference, and
+	 * every `setChatSidebarView({ ...view, ... })` below spreads it, so that
+	 * fallback is never written back (`drawnGroupBy` says why).
+	 */
+	const groupBy = drawnGroupBy(view, tagsAvailable);
+	/*
+	 * THE RUNG THE PAGE IS CUT AT: `view.loads`, except that Tag mode starts on
+	 * the held fifty-row head (`effectiveLoads`). The cut, the foot label and the
+	 * foot press all read this one number, so the three cannot disagree.
+	 */
+	const loads = effectiveLoads({ groupBy, loads: view.loads });
+	/*
+	 * Whether tag groups are the list's arrangement (search aside): subheaders in
+	 * Time section with the switch on, or `Group by › Tag`, where tags are the
+	 * groups. The tag footer and the popover's "Shown under" line read this; the
+	 * row grouping itself also suspends while searching, which is why
+	 * `tagRowsGrouped` below adds that term.
+	 */
+	const tagsGrouped =
+		tagsAvailable &&
+		(groupBy === "section" || groupBy === "tag") &&
+		tagSurfaceOn({ ...view, groupBy });
+	/*
+	 * Whether rows are drawn under tag headers right now: `tagsGrouped` minus
+	 * search, which suspends both arrangements (flat, relevance-ordered results).
+	 * One spelling for the bucketing and the re-tag drag, so a header is never
+	 * drawn where its drop target is not armed, or the reverse.
+	 */
+	const tagRowsGrouped = tagsGrouped && !query.trim();
+	/*
+	 * A pin pressed in this panel is written at the BOTTOM of the stored order (issue
+	 * #1067, rule 3; the WHY is on `appendPinnedOrder`). Kept out of the pin control's
+	 * handler so that handler stays short beside the row markup it sits in.
+	 */
+	const appendPin = (id: string) =>
+		setChatSidebarView({
+			...view,
+			pins: appendPinnedOrder(
+				pinnedRows([...listed, ...heldRows], pinsEnabled).map(
+					(entry) => entry.session_id,
+				),
+				view.pins,
+				id,
+			),
+		});
+	/*
 	 * THE PINNED SECTION'S OWN ORDER (issue #693), and the lists it is taken from -
 	 * each one because a different rule needs a different list.
 	 *
@@ -3087,7 +3402,9 @@ export function ChatSidebar({
 	 * (round 2, M2). The fallback is the row render's own ("Untitled chat").
 	 */
 	const rowLabel = (id: string): string =>
-		matching.find((row) => row.session_id === id)?.title || "Untitled chat";
+		conversationTitleForDisplay(
+			matching.find((row) => row.session_id === id)?.title,
+		);
 	const orderedPinned = orderPinnedRows(pinned, view.pins);
 	const pinnedDrawnIds = orderedPinned.map((row) => row.session_id);
 	const pinnedIndex = new Map(
@@ -3190,7 +3507,7 @@ export function ChatSidebar({
 	 */
 	const offersPinnedMove = (sessionId: string, nested = false) =>
 		pinsEnabled &&
-		view.groupBy === "section" &&
+		groupBy === "section" &&
 		!nested &&
 		pinnedIndex.has(sessionId);
 	/*
@@ -3209,10 +3526,9 @@ export function ChatSidebar({
 	 * `setPointerCapture` keeps every move aimed at the grip, keeps the drop a
 	 * number this module computes (`pinDragSlot`), and photographs.
 	 *
-	 * WHY THE GRIP AND NOT THE ROW: the row's box is its open-act button, and a
-	 * drag started anywhere inside it would have to guess whether the press meant
-	 * "open this chat" or "move it". A 24px handle states the intent, which is what
-	 * `project-board.tsx`'s grip does for its columns (the precedent this follows).
+	 * WHY THE GRIP STAYS: it states immediate reorder intent. V2-1 also lets the
+	 * row body enter this SAME model after a 180ms hold; its separate pending
+	 * phase preserves quick-open and pre-hold touch scrolling.
 	 *
 	 * THE POSITION IS THE ONLY STATE THE GESTURE CARRIES: no node is ever cloned,
 	 * re-parented or translated - the rows stay exactly where React put them and the
@@ -3271,19 +3587,59 @@ export function ChatSidebar({
 	 * section does not own), and a slot computed from an array would then count a
 	 * row the pointer cannot cross.
 	 */
+	const pinBucketIds = (id: string) =>
+		tagBucketRowIds(
+			orderedPinned,
+			tagCategories,
+			tagsAvailable &&
+				view.tagsEnabled &&
+				groupBy === "section" &&
+				!query.trim(),
+			id,
+		);
+
+	const pinDropTargetRef = useRef<string | null>(null);
+	const [pinHeaderTarget, setPinHeaderTarget] = useState(false);
+	const pinDropAllowedRef = useRef(true);
+	const pinDragXRef = useRef(0);
+	const pinHeaderRef = useRef<HTMLElement | null>(null);
+	const previewPinTarget = (x: number, y: number) => {
+		const live = pinDragRef.current;
+		if (!live) return;
+		const owner = listPanelRef.current;
+		const section = pinnedSectionRef.current;
+		const header = owner && section ? tagHeaderAt(owner, x, y, section) : null;
+		setPinHeaderTarget(header !== null);
+		pinHeaderRef.current?.classList.remove(...TAG_DROP_PREVIEW_CLASSES);
+		pinHeaderRef.current = header;
+		header?.classList.add(...TAG_DROP_PREVIEW_CLASSES);
+		pinDropTargetRef.current = header?.dataset.tagDropTarget ?? null;
+		const hit = document
+			.elementFromPoint(x, y)
+			?.closest<HTMLElement>("[data-session-row]");
+		pinDropAllowedRef.current =
+			!!hit &&
+			hit.closest("[data-chat-section]") === pinnedSectionRef.current &&
+			pinBucketIds(live.id).includes(hit.dataset.sessionRow ?? "");
+	};
 	const pinDragRowBoxes = () => {
 		const section = pinnedSectionRef.current;
 		if (section === null) return [];
+		const allowed = pinDragRef.current
+			? new Set(pinBucketIds(pinDragRef.current.id))
+			: null;
 		return Array.from(
 			section.querySelectorAll<HTMLElement>("[data-session-row]"),
-		).map((node) => {
-			const rect = node.getBoundingClientRect();
-			return {
-				id: node.getAttribute("data-session-row") ?? "",
-				top: rect.top,
-				bottom: rect.bottom,
-			};
-		});
+		)
+			.filter((node) => !allowed || allowed.has(node.dataset.sessionRow ?? ""))
+			.map((node) => {
+				const rect = node.getBoundingClientRect();
+				return {
+					id: node.getAttribute("data-session-row") ?? "",
+					top: rect.top,
+					bottom: rect.bottom,
+				};
+			});
 	};
 	/** The slot under a pointer y, and one state write only when it changes. */
 	const applyPinDragOver = (y: number) => {
@@ -3357,6 +3713,7 @@ export function ChatSidebar({
 		 * rides the section (R2), so this is the landing following the content rather
 		 * than the indicator being re-measured.
 		 */
+		previewPinTarget(pinDragXRef.current, y);
 		applyPinDragOver(y);
 		pinDragAutoScrollRef.current = requestAnimationFrame(runPinDragAutoScroll);
 	};
@@ -3402,17 +3759,21 @@ export function ChatSidebar({
 			slot: -1,
 		};
 		pinDragYRef.current = event.clientY;
+		pinDragXRef.current = event.clientX;
+		previewPinTarget(event.clientX, event.clientY);
 	};
 	const movePinDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
 		const live = pinDragRef.current;
 		if (live === null || event.pointerId !== live.pointerId) return;
 		pinDragYRef.current = event.clientY;
+		pinDragXRef.current = event.clientX;
+		previewPinTarget(event.clientX, event.clientY);
 		if (!live.armed) {
 			live.armed = true;
 			setPinDrag({ id: live.id, slot: live.slot });
 			/* The same family the pair and the chords announce in: the reader is told
 			   the gesture began, so a cancelled drop is a change rather than a silence. */
-			announcePinMove(`Moving “${live.label}”.`);
+			announcePinMove(t("ui.chat.tags.move_armed", { name: live.label }));
 			if (pinDragAutoScrollRef.current === null)
 				pinDragAutoScrollRef.current =
 					requestAnimationFrame(runPinDragAutoScroll);
@@ -3435,7 +3796,7 @@ export function ChatSidebar({
 				(row) => row.session_id,
 			),
 			view.pins,
-			pinnedDrawnIds,
+			pinBucketIds(sessionId),
 			sessionId,
 			slot,
 		);
@@ -3466,16 +3827,30 @@ export function ChatSidebar({
 		const drawn = pinnedOrder(pinnedCatalogueIds, next);
 		announcePinMove(pinMoveNote(label, drawn.indexOf(sessionId), drawn.length));
 	};
-	const settlePinDrag = (commit: boolean) => {
+	const settlePinDrag = (commit: boolean, point?: { x: number; y: number }) => {
+		if (point) previewPinTarget(point.x, point.y);
 		const live = pinDragRef.current;
 		pinDragRef.current = null;
 		stopPinDragAutoScroll();
+		pinHeaderRef.current?.classList.remove(...TAG_DROP_PREVIEW_CLASSES);
+		pinHeaderRef.current = null;
 		setPinDrag(null);
+		setPinHeaderTarget(false);
 		if (live === null || !live.armed) return;
-		if (!commit) {
+		const tagTarget = pinDropTargetRef.current;
+		pinDropTargetRef.current = null;
+		if (commit && tagTarget) {
+			const row = [...listed, ...heldRows].find(
+				(entry) => entry.session_id === live.id,
+			);
+			if (row)
+				void moveChatToTag(row, tagTarget, announcePinMove).catch(() => {});
+			return;
+		}
+		if (!commit || !pinDropAllowedRef.current) {
 			/* The board's sentence: a cancelled gesture says so rather than leaving
 			   "Moving …" standing in the region as the last thing the reader heard. */
-			announcePinMove("Move cancelled.");
+			announcePinMove(t("ui.chat.tags.move_cancelled"));
 			return;
 		}
 		/*
@@ -3510,6 +3885,54 @@ export function ChatSidebar({
 	 */
 	const settlePinDragRef = useRef(settlePinDrag);
 	settlePinDragRef.current = settlePinDrag;
+	const rowTagDrag = useChatTagDrag({
+		/*
+		 * Both tag arrangements re-tag by drag (design §2.8): in Tag mode a drop onto
+		 * a header or body is the most direct gesture the list has.
+		 */
+		enabled: tagRowsGrouped,
+		arm: (id) => {
+			announcePinMove(t("ui.chat.tags.move_armed", { name: rowLabel(id) }));
+			/*
+			 * PIN REORDERING IS A TIME-SECTION AFFORDANCE (design §2.4): there is no
+			 * Pinned section in Tag mode, so a pinned row's drag there is a tag move
+			 * only and must not arm the pin-order gesture.
+			 */
+			if (groupBy === "section" && pinnedDrawnIds.includes(id)) {
+				pinDragRef.current = {
+					id,
+					label: rowLabel(id),
+					pointerId: -1,
+					armed: true,
+					slot: -1,
+				};
+				setPinDrag({ id, slot: -1 });
+			}
+		},
+		move: (id, y, over, target) => {
+			if (!pinDragRef.current || pinDragRef.current.id !== id) return;
+			pinDropTargetRef.current = target;
+			setPinHeaderTarget(target !== null);
+			const hit = over?.closest<HTMLElement>("[data-session-row]");
+			pinDropAllowedRef.current =
+				!!hit &&
+				hit.closest("[data-chat-section]") === pinnedSectionRef.current &&
+				pinBucketIds(id).includes(hit.dataset.sessionRow ?? "");
+			if (!target && pinDropAllowedRef.current) applyPinDragOver(y);
+		},
+		settle: (id, target, commit) => {
+			if (pinDragRef.current?.id === id) {
+				settlePinDragRef.current(commit);
+				return;
+			}
+			const row = [...listed, ...heldRows].find(
+				(entry) => entry.session_id === id,
+			);
+			if (commit && target && row)
+				void moveChatToTag(row, target, announcePinMove).catch(() => {});
+			else announcePinMove(t("ui.chat.tags.move_cancelled"));
+		},
+	});
 	/* Escape cancels, the one drag state with no pointer of its own (the board's rule). */
 	// biome-ignore lint/correctness/useExhaustiveDependencies: gated on the drag state, not on the per-render closures it calls.
 	useEffect(() => {
@@ -3553,13 +3976,18 @@ export function ChatSidebar({
 	// biome-ignore lint/correctness/useExhaustiveDependencies: gated on the drag state, not on the per-render closures it calls.
 	useEffect(() => {
 		if (pinDrag === null) return;
-		const end = () => settlePinDragRef.current(true);
+		const end = (event: PointerEvent) => {
+			if (pinDragRef.current?.pointerId !== event.pointerId) return;
+			settlePinDragRef.current(true, { x: event.clientX, y: event.clientY });
+		};
 		const cancel = () => settlePinDragRef.current(false);
 		window.addEventListener("pointerup", end);
 		window.addEventListener("pointercancel", cancel);
+		window.addEventListener("blur", cancel);
 		return () => {
 			window.removeEventListener("pointerup", end);
 			window.removeEventListener("pointercancel", cancel);
+			window.removeEventListener("blur", cancel);
 		};
 	}, [pinDrag !== null]);
 	/* The auto-scroll loop follows the gesture, not the render (the board's rule). */
@@ -3617,7 +4045,7 @@ export function ChatSidebar({
 		? rest
 		: pageOrder(rest, view.orderBy, view.basis);
 	const page = pageRows(arranged, {
-		limit: pageLimit(view.loads),
+		limit: pageLimit(loads),
 		currentId: selectedConversation,
 		searching: searchActive,
 	});
@@ -3635,8 +4063,20 @@ export function ChatSidebar({
 	 * cursor.
 	 */
 	ladderHoldsRowsRef.current = page.remaining > 0 || view.hidden.length > 0;
-	const ladderStep = pageLimit(view.loads + 1) - pageLimit(view.loads);
+	const ladderStep = pageLimit(loads + 1) - pageLimit(loads);
 	const tailMore = groupPaging && catalogueHead.tailCursor !== null;
+	/*
+	 * Whether the page foot is drawn, and what it says - one value each, because
+	 * Tag mode's unloaded-tag placeholders (PR #1747 U2) offer the SAME press and
+	 * must never name a different page or appear when the foot does not.
+	 */
+	const footShown = !query.trim() && (page.remaining > 0 || tailMore);
+	const footLabel = pageMoreLabel(
+		loads,
+		page.remaining > 0
+			? pageReveal(arranged, loads, page.remaining)
+			: ladderStep,
+	);
 	/*
 	 * THE FOOT'S PRESS: SPEND THE RUNG, AND FOLLOW THE CURSOR WHEN THE RUNG IS
 	 * BEYOND WHAT IS HELD. The two are one gesture because the reader asked for one
@@ -3645,8 +4085,29 @@ export function ChatSidebar({
 	 * should have to make. `rest` rather than `pagedRows`, because the rung counts
 	 * the rows the page is taken over and a lifted row is drawn outside it.
 	 */
-	const pressPageMore = () => {
-		const next = view.loads + 1;
+	const pressPageMore = (event: ReactMouseEvent<HTMLButtonElement>) => {
+		/*
+		 * A pointer press is one a `pointerdown` on this very control led into;
+		 * Enter/Space (and assistive-tech activation) arrive with none. Read from a
+		 * ref rather than `event.detail`, which is 0 for every synthetic `click()`
+		 * whatever started it.
+		 */
+		const keyboard = footPointerRef.current !== event.currentTarget;
+		footPointerRef.current = null;
+		pageAnchorKeyRef.current = `${groupBy}\u0000${query}`;
+		footPressedRef.current = event.currentTarget;
+		footFollowRef.current = keyboard && groupBy === "tag";
+		pageAnchorRef.current =
+			groupBy === "tag" && !keyboard
+				? firstVisibleRow(listPanelRef.current)
+				: null;
+		/*
+		 * From the DRAWN rung: in Tag mode the first press goes 50 -> 100, not
+		 * 10 -> 25 (which would draw nothing new over the held head). So a press IS
+		 * written back as the stored rung (`effectiveLoads` says what that means
+		 * for Time section); only a mode SWITCH leaves `view.loads` alone.
+		 */
+		const next = loads + 1;
 		setChatSidebarView({ ...view, loads: next });
 		if (!groupPaging) return;
 		if (pageLimit(next) > rest.length) void fetchCatalogueTail();
@@ -3823,6 +4284,13 @@ export function ChatSidebar({
 	 */
 	const sidebarView = view;
 	const draft = activeDraftKey ? drafts[activeDraftKey] : undefined;
+	// The row marked current, which follows the active draft's session from the
+	// create's answer (`currentSessionRowId`, design round 1 D3).
+	const currentRowId = currentSessionRowId(
+		activeDraftKey,
+		drafts,
+		selectedConversation,
+	);
 	const bindingName = (row: CanonicalSessionRow) =>
 		row.binding?.team || row.binding?.agent || "";
 	/*
@@ -3908,7 +4376,9 @@ export function ChatSidebar({
 	const agentOpenedRow = (row: CanonicalSessionRow) => row.opened_by != null;
 	const openedBySentence = (row: CanonicalSessionRow) => {
 		const agent = row.opened_by?.agent?.trim();
-		return `opened by ${agent || "an agent"}`;
+		return agent
+			? t("ui.chat.sidebar_notes.opened_by_named", { agent })
+			: t("ui.chat.sidebar_notes.opened_by_anonymous");
 	};
 	const openedByNote = (row: CanonicalSessionRow) => {
 		if (!row.opened_by) return "";
@@ -4036,8 +4506,9 @@ export function ChatSidebar({
 	// completed for it, so say so instead of showing it as an ordinary untitled
 	// chat. ("No send has completed" rather than the stronger "it never carried a
 	// message": `finishDraft` clears the draft on send COMPLETION, so a session
-	// whose first send is still in flight is drawn as unstarted for that window —
-	// the same caveat `forkable`'s own comment states.)
+	// whose first send is still in flight is in this set for that window - the
+	// same caveat `forkable`'s own comment states. What the row SAYS reads the
+	// narrower `notSent` below, which leaves an in-flight first send out.)
 	const unstarted = useMemo(
 		() =>
 			new Set(
@@ -4047,6 +4518,9 @@ export function ChatSidebar({
 			),
 		[drafts],
 	);
+	// What the row SAYS is narrower than what it permits: a first send still on
+	// the wire is not `Not sent yet` (`unsentSessionIds` carries the why).
+	const notSent = useMemo(() => unsentSessionIds(drafts), [drafts]);
 	/*
 	 * THERE IS NO PER-ROW BROWSER CONTROL ANY MORE (operator ask, 2026-09-18).
 	 *
@@ -4090,34 +4564,160 @@ export function ChatSidebar({
 	 * banners are suppressed there), so that is a record of what the code does rather than
 	 * a measurement.
 	 */
-	const taggedRows = (rows: CanonicalSessionRow[]) => {
-		const groups = groupChatsByTag(
-			rows,
-			tagCategories,
-			tagsAvailable &&
-				view.tagsEnabled &&
-				view.groupBy === "section" &&
-				!query.trim(),
-		);
-		if (!groups) return rows.map((row) => sessionRow(row));
-		return groups.map((bucket) => (
-			<div key={bucket.id} data-chat-tag-group={bucket.id}>
-				<div className="flex h-7 items-center gap-2 px-2 text-meta text-ink-dim">
-					<span className="min-w-0 flex-1 truncate" title={bucket.name}>
-						{bucket.id === "untagged"
-							? t("ui.chat.tags.untagged")
-							: bucket.name}
-					</span>
-					<span>{bucket.rows.length}</span>
+	/*
+	 * `topLevel` is `Group by › Tag` (issue #1733): the same buckets and the same
+	 * `ChatTagHeader` as the Time-section subheaders - one header in both modes, so
+	 * the thing a reader folds, renames and drops onto does not change with the
+	 * mode - but each group is then a labelled `<section>` whose heading is the
+	 * tag's name, because there is no time-section label above it to be one.
+	 * The fold key is the tag's own (`tag:<id>`), whatever the scope, which is
+	 * what makes folding Review here leave it folded in Time section.
+	 */
+	const taggedRows = (
+		rows: CanonicalSessionRow[],
+		scope: string,
+		topLevel = false,
+	) => {
+		const loaded = groupChatsByTag(rows, tagCategories, tagRowsGrouped);
+		if (!loaded) return rows.map((row) => sessionRow(row));
+		/*
+		 * Tag mode also draws the tags whose chats are all past the loaded page
+		 * (PR #1747 U2, `withUnloadedTags`), but only while the foot can load more:
+		 * their placeholder offers that same press, and a promise with nothing
+		 * behind it would be a dead end.
+		 */
+		const groups: TagModeGroup<CanonicalSessionRow>[] = topLevel
+			? withUnloadedTags(loaded, tagCategories, footShown)
+			: loaded;
+		/*
+		 * THE HEADER IS THE TAG'S MANAGEMENT SURFACE (v3 spec D2). `above`/`below`
+		 * are the tags drawn next to it IN THIS SECTION (Untagged excluded, it is
+		 * not in the registry), which is what a header's Move up/down moves past.
+		 */
+		const visibleTags = groups
+			.map((bucket) => bucket.id)
+			.filter((id) => id !== "untagged");
+		return groups.map((bucket) => {
+			/*
+			 * A FOLDED GROUP (issue #1639) is its header - name AND the whole count,
+			 * which is why `count` stays `bucket.rows.length` - over an EMPTY,
+			 * `hidden` body. The body element stays mounted so the chevron's
+			 * `aria-controls` names a real node; its rows are not rendered at all,
+			 * so no folded row is a ring stop, a selection target or a drag source.
+			 * The header keeps its own `data-tag-drop-target`, so a drop onto a
+			 * folded group still lands, and the rising count confirms it (the fold
+			 * is not sprung open under the pointer - `toggleTagDisclosure` says why).
+			 */
+			const collapsed = tagGroupCollapsed(expanded, bucket.id);
+			const bodyId = tagGroupBodyId(scope, bucket.id);
+			const headingId = topLevel ? `${bodyId}-heading` : undefined;
+			/*
+			 * AN UNLOADED TAG (U2): a header with no count and no chevron - nothing is
+			 * drawn to fold - over a body that is still its drop target, so the tag can
+			 * be found and dropped onto, and that says so and offers the page foot's own
+			 * press. Same muted row as the foot; no second paging contract.
+			 */
+			const group = bucket.unloaded ? (
+				<div
+					key={bucket.id}
+					data-chat-tag-group={bucket.id}
+					data-chat-tag-unloaded=""
+				>
+					<ChatTagHeader
+						id={bucket.id}
+						name={bucket.name}
+						count={null}
+						above={visibleTags[visibleTags.indexOf(bucket.id) - 1] ?? null}
+						below={visibleTags[visibleTags.indexOf(bucket.id) + 1] ?? null}
+						announce={announcePinMove}
+						headingId={headingId}
+					/>
+					<div
+						id={bodyId}
+						data-tag-drop-target={bucket.id}
+						data-tag-drop-body
+						className="ps-4 pb-1"
+					>
+						<p className="px-2 py-1 text-meta text-ink-muted">
+							{t("ui.chat.tag_mode.not_loaded")}
+						</p>
+						<button
+							type="button"
+							data-sidebar-page-more-tag={bucket.id}
+							onPointerDown={notePagePointer}
+							onClick={pressPageMore}
+							className="flex h-7 w-full items-center rounded-md px-2 text-start text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink"
+						>
+							{footLabel}
+						</button>
+					</div>
 				</div>
-				{bucket.rows.map((row) => sessionRow(row))}
-			</div>
-		));
+			) : (
+				<div
+					key={bucket.id}
+					data-chat-tag-group={bucket.id}
+					{...(collapsed ? { "data-chat-tag-collapsed": "" } : {})}
+					className="[&[data-tag-drop-preview]_[data-chat-row]]:bg-row-selected [&[data-tag-drop-preview]_[data-session-row]]:bg-row-selected"
+				>
+					<ChatTagHeader
+						id={bucket.id}
+						name={bucket.name}
+						count={bucket.rows.length}
+						above={visibleTags[visibleTags.indexOf(bucket.id) - 1] ?? null}
+						below={visibleTags[visibleTags.indexOf(bucket.id) + 1] ?? null}
+						announce={announcePinMove}
+						headingId={headingId}
+						live={topLevel ? foldedLiveCue(bucket.rows, collapsed) : null}
+						disclosure={{
+							collapsed,
+							bodyId,
+							onToggle: () =>
+								setExpanded((current) =>
+									toggleTagDisclosure(current, bucket.id),
+								),
+						}}
+					/>
+					<div
+						id={bodyId}
+						hidden={collapsed}
+						data-tag-drop-target={bucket.id}
+						data-tag-drop-body
+					>
+						{tagGroupBodyRows(bucket.rows, expanded, bucket.id).map((row) =>
+							sessionRow(row, false, true),
+						)}
+					</div>
+				</div>
+			);
+			/*
+			 * `data-chat-tag-section`, NOT `data-chat-section`: the arrangement's one
+			 * wrapper below carries `data-chat-section="tag"`, because the re-tag drag
+			 * keeps a tagged row's drop targets inside the row's own
+			 * `[data-chat-section]` (`tagDropTargetAt`). Per-group sections there
+			 * would make every other tag's header a forbidden cross-section target -
+			 * and in Tag mode moving a row to another tag is the whole gesture.
+			 */
+			return topLevel ? (
+				<section
+					key={bucket.id}
+					data-chat-tag-section={bucket.id}
+					aria-labelledby={headingId}
+				>
+					{group}
+				</section>
+			) : (
+				group
+			);
+		});
 	};
-	const sessionRow = (row: CanonicalSessionRow, nested = false) => {
+	const sessionRow = (
+		row: CanonicalSessionRow,
+		nested = false,
+		tagDraggable = false,
+	) => {
 		const trailing = rowTrailingStatement({
 			marked: conversationMatches.has(row.session_id),
-			unstarted: unstarted.has(row.session_id),
+			unstarted: notSent.has(row.session_id),
 			nested,
 			binding: bindingName(row),
 			team: teamName(row),
@@ -4166,7 +4766,6 @@ export function ChatSidebar({
 		 * ride the row's own accessible name and tooltip (below), which is what
 		 * keeps the pointer and screen-reader channels no narrower than the pixels.
 		 */
-		const marks = subagentMarks(row);
 		/**
 		 * THE ROW'S OWN PRESS, shared by the row's button and by the team mark inside it.
 		 *
@@ -4195,7 +4794,7 @@ export function ChatSidebar({
 		 * `teamBubbleFocused`), which is what lets the flyout stand down while the mark
 		 * is speaking.
 		 *
-		 * `ml-1` sits on the wrapper rather than on the bubble so the gap is the same
+		 * `ms-1` sits on the wrapper rather than on the bubble so the gap is the same
 		 * 4px step the trailing slots before it used, and `inline-flex` keeps the row's
 		 * own flex line untouched. The four handlers are `onPointerEnter`/`Leave` and
 		 * `onFocus`/`onBlur` (the latter two bubble from the mark inside, which is the
@@ -4208,7 +4807,7 @@ export function ChatSidebar({
 		 */
 		const teamMark = (name: string, slug: string) => (
 			<span
-				className="ml-1 inline-flex shrink-0"
+				className="ms-1 inline-flex shrink-0"
 				onPointerEnter={() => setTeamBubbleHovered(row.session_id)}
 				onPointerLeave={() => setTeamBubbleHovered(null)}
 				onFocus={() => setTeamBubbleFocused(row.session_id)}
@@ -4228,11 +4827,23 @@ export function ChatSidebar({
 		 * in a list that re-renders on every feed frame. One value, so the three
 		 * cannot disagree about whether a row has anything to say.
 		 */
-		const subagentSentence = subagentClause(row);
+		const backgroundClause = backgroundWorkClause(row);
+		/*
+		 * On a RESTING code the clause takes the status label's place rather than
+		 * following it (design review round 1, D1): "1 subagent, 1 job running",
+		 * never "Idle · 1 subagent, 1 job running" on a row filed under Running.
+		 * `statusSpokenText` reads the same predicate for the name's status slot,
+		 * so the tail below stays empty and the clause is heard once.
+		 */
+		const clauseIsStatus = clauseReplacesLabel(row, backgroundClause);
+		// Otherwise joined with the wire label's own `·`, which is how the tooltip
+		// line and the `sr-only` sentence both append it after what precedes them.
+		const subagentSentence =
+			backgroundClause === "" || clauseIsStatus ? "" : ` · ${backgroundClause}`;
 		/** The row's own name, used by the archive control's accessible name and tooltip
 		 * and by the marker's `sr-only` sentence: one string, so the two channels cannot
 		 * name the same row differently. */
-		const label = row.title || "Untitled chat";
+		const label = conversationTitleForDisplay(row.title);
 		/*
 		 * ARCHIVED, as THIS row knows it: the wire's value, or the client's own when it
 		 * has written one that this row's answer predates (`archiveFacts` - the same
@@ -4247,7 +4858,8 @@ export function ChatSidebar({
 		 * two elements paint one state, so two copies of this expression would be two chances
 		 * for them to disagree (review round 1, A7 — a predicate spelled more than once is
 		 * what let the deleted browser mark paint its hover fill over the selected row). */
-		const current = selectedConversation === row.session_id && !activeDraftKey;
+		const current =
+			currentRowId !== undefined && currentRowId === row.session_id;
 		/*
 		 * WHETHER THIS ROW CARRIES THE MENU AT ALL, read once beside `current` for
 		 * the same reason: three consumers hang off it - the button's
@@ -4324,7 +4936,8 @@ export function ChatSidebar({
 		 * two copies of the predicate are two chances for the row to be marked and
 		 * unmarked at once.
 		 */
-		const dragging = pinDrag?.id === row.session_id;
+		const dragging =
+			pinDrag?.id === row.session_id || rowTagDrag.armedId === row.session_id;
 		/**
 		 * WHETHER THIS ROW OFFERS THE REMEDY, read once for the same reason `current` is —
 		 * it decides three things now (the tooltip's tail, the `aria-describedby` and the
@@ -4421,23 +5034,32 @@ export function ChatSidebar({
 		const rowTooltip = (
 			<>
 				<span className="block">
-					{row.title || "Untitled chat"}
+					{conversationTitleForDisplay(row.title)}
 					{bindingClause(row)}
 				</span>
 				<span className="block">
-					{row.status?.label ??
-						(synthesized.has(row.session_id)
-							? "found by search, beyond the chats listed here"
-							: "Recent")}
-					{silent ? ` · ${SILENT_REMEDY}` : ""}
+					{row.link_down === true
+						? peerLinkDownLabel(row, listNow / 1000)
+						: (peerUncertainLabel(row) ??
+							(clauseIsStatus ? backgroundClause : undefined) ??
+							statusLabelText(row) ??
+							(synthesized.has(row.session_id)
+								? t("ui.chat.sidebar.row.search_beyond")
+								: t("ui.chat.sidebar.row.recent")))}
+					{silent ? ` · ${silentRemedyClause()}` : ""}
 					{openedByNote(row)}
-					{unstarted.has(row.session_id) ? ", not sent yet" : ""}
-					{unreadMarkKind(row) !== null ? ", unread" : ""}
-					{archived ? ", archived" : ""}
+					{notSent.has(row.session_id)
+						? t("ui.chat.sidebar.row.not_sent_suffix")
+						: ""}
+					{unreadMarkKind(row) !== null
+						? t("ui.chat.sidebar.row.unread_suffix")
+						: ""}
+					{archived ? t("ui.chat.sidebar.row.archived_suffix") : ""}
 					{/*
-					 * THE SUBAGENT CLAUSE, from the SAME helper the row's `sr-only` sentence
-					 * reads, and gated by it in exactly the same way: empty on a `delegating`
-					 * row (whose label already spells the counts) and empty with no counts.
+					 * THE BACKGROUND-WORK CLAUSE, from the SAME helper the row's `sr-only`
+					 * sentence reads, and gated by it in exactly the same way ("1 subagent,
+					 * 1 job running"; subagent counts omitted on `delegating`, whose label
+					 * already spells them; empty with no counts or a stale remote link).
 					 * The pointer channel may never be narrower than the name channel, and
 					 * this is the line that keeps it that way - the mark itself is
 					 * `aria-hidden` and carries no `title` (a nested `title` inside the row's
@@ -4449,7 +5071,7 @@ export function ChatSidebar({
 					 * THE RECEIPT'S CLAUSE CLOSES THE LINE, after the flags rather than among
 					 * them: the flags are what the row IS and this is what the app is DOING
 					 * about the mark on it, so it reads as the actionable last word - the slot
-					 * `SILENT_REMEDY` occupies one fact up.
+					 * `silentRemedyClause` occupies one fact up.
 					 */}
 					{readAck ? ` · ${readAck.clause}` : ""}
 				</span>
@@ -4494,8 +5116,13 @@ export function ChatSidebar({
 					// `w-full` became `min-w-0 grow` when the wrapper arrived: the button shares
 					// the row's box with whatever the wrapper carries beside it, and a full-width
 					// button inside a flex wrapper with a sibling is a row that overflows.
-					"min-w-0 grow text-left",
-					nested && "pl-7",
+					"min-w-0 grow text-start",
+					// Only grouped rows participate; keep held feedback through pointer capture.
+					tagDraggable &&
+						(rowTagDrag.armedId === row.session_id
+							? "cursor-grabbing"
+							: "cursor-grab active:cursor-grabbing"),
+					nested && "ps-7",
 					current && rowCurrent,
 					// m4: the unread mark is NOT here. `font-semibold` on this
 					// `flex-1 truncate` title rewrote the visible string when the
@@ -4559,7 +5186,15 @@ export function ChatSidebar({
 								.join(" "),
 						}
 					: {})}
+				onPointerDown={(event) => {
+					// Remote assignments are refused before a gesture can arm (v3 §5).
+					if (!remote) rowTagDrag.start(row.session_id, event);
+				}}
 				onClick={(event) => {
+					if (rowTagDrag.consumeClick(row.session_id, event.detail)) {
+						event.preventDefault();
+						return;
+					}
 					/*
 					 * The same guard as the pin's (see `dropRepeatPress`): a press that repeats the
 					 * previous one without the pointer having gone anywhere belongs to the row the
@@ -4586,15 +5221,30 @@ export function ChatSidebar({
 				 * so a dropped link cannot reflow the row: the mark swaps WITHIN the
 				 * cell, the cell never moves.
 				 */}
-				<span
-					aria-hidden="true"
-					className="flex size-3.5 shrink-0 items-center justify-center"
-				>
+				{/*
+				 * The cell also hosts the settings-intent dot, absolutely placed so it
+				 * takes no width (design D4: as a flex item it shifted the title 18 px
+				 * each time it came and went). Not `aria-hidden` any more, because the
+				 * dot is a labelled image; the locality svg hides itself.
+				 */}
+				<span className="relative flex size-3.5 shrink-0 items-center justify-center">
 					{row.locality === "remote" && (
-						<ChatRemoteMark unreachable={row.reachable === false} />
+						<ChatRemoteMark
+							unreachable={row.link_down === true || row.reachable === false}
+						/>
 					)}
+					<ChatSettingsIntentMark
+						sessionId={row.session_id}
+						corner={row.locality === "remote"}
+					/>
 				</span>
-				<ChatSessionStatus row={row} />
+				{/*
+				 * THE ROW'S LEADING MARK: its agent's picture with the status on the
+				 * corner, or the status glyph alone (agent profile pictures, 2026-10-30).
+				 * One component so the two arms cannot disagree about the state, and so
+				 * a row without a picture is exactly the cell this file drew before.
+				 */}
+				<ChatSessionAvatar row={row} nowSeconds={listNow / 1000} />
 				{/*
 				 * THE OUTSTANDING-ASKS MARK, beside the status mark and BEFORE the title.
 				 * A leading fact rather than a trailing one, for the reason the archived
@@ -4630,9 +5280,11 @@ export function ChatSidebar({
 					<>
 						<Archive
 							aria-hidden="true"
-							className="ml-1 size-3.5 shrink-0 text-ink-dim"
+							className="ms-1 size-3.5 shrink-0 text-ink-dim"
 						/>
-						<span className="sr-only">, archived</span>
+						<span className="sr-only">
+							{t("ui.chat.sidebar.row.archived_suffix")}
+						</span>
 					</>
 				)}
 				{/* ONE trailing statement per row, decided by `rowTrailingStatement`
@@ -4661,62 +5313,41 @@ export function ChatSidebar({
 				 * fade and the reduced-motion off switch are all that module's, with the
 				 * reasoning for each.
 				 */}
-				<ChatRowTitle text={row.title || "Untitled chat"} />
+				<ChatRowTitle text={conversationTitleForDisplay(row.title)} />
 				{/*
-				 * THE SUBAGENT INDICATOR, immediately after the title and before the
-				 * trailing statement - the placement `sidebar-row-space.md` §2 forces:
-				 * every element here is `shrink-0`, so none of them can be truncated
-				 * away, and the title's clip is the only thing that pays.
+				 * NOTHING IS DRAWN BETWEEN THE TITLE AND THE TRAILING STATEMENT ANY MORE,
+				 * and `sidebar-row-space.md` §2's placement rule is why that is now the only
+				 * shape available: every element in this line is `shrink-0` and the title's
+				 * clip is the one thing that pays for one of them.
 				 *
-				 * TWO MARKS, INDEPENDENTLY DRAWN, because they are two facts: a child at
-				 * work (the shared `SubagentRunningMark` - three equal beads in the accent, the
-				 * app's own "a thing is at work" shape, and the same mark the `delegating`
-				 * rung's primary slot wears) and a child waiting for capacity (`Hourglass`,
-				 * muted). The delegating row is the one place they interact: its primary
-				 * mark already IS the running mark, so `subagentMarks` suppresses the
-				 * running half there and the queued glyph still draws - the trio carries
-				 * "subagents are at work", not "none of them has started".
+				 * THE SUBAGENT INDICATOR USED TO SIT HERE, as two independently drawn
+				 * `shrink-0` glyphs (the three-bead trio for a child at work,
+				 * a muted `Hourglass` for a child waiting for capacity). Both counts are
+				 * optional on the wire and absent means UNKNOWN rather than zero, so a row
+				 * could be painted without them and gain them on the next read - and the glyph
+				 * then took its width out of the title and re-cut the ellipsis under the
+				 * reader. Measured on this fixture at a 264px panel: the clip went 152 ->
+				 * 130px and the cut column 24 -> 21 characters 1.6 s after the first
+				 * contentful frame.
 				 *
-				 * THE SHAPE REPLACED `Share2` (issue #840), AND THE DISC IN TURN REPLACED
-				 * ITSELF (2026-10-06): a share glyph beside the row's own act buttons read as
-				 * an action, so the running mark moved out of the icon vocabulary into the
-				 * app's round-mark one; the disc that landed then read as a generic "record"
-				 * dot rather than as CHILDREN, so it is the operator-ACKed trio now.
-				 * `SubagentRunningMark` carries the geometry, the fusion check and the sizing.
+				 * IT LIVES IN THE LEADING STATUS CELL NOW (`ChatSessionStatus`, and the
+				 * precedence rule is argued at length there): a fixed `size-4` box drawn on
+				 * every row whether or not it holds a glyph, so a count that arrives after the
+				 * row has painted changes what is IN the row and never how much of the title
+				 * is cut. That is the only shape that is invariant AND costs no width - a
+				 * trailing lane reserved on every row was measured here too and took 36px off
+				 * every title, pushing two titles that had rendered whole into ellipsis at a
+				 * 264px panel.
 				 *
-				 * 14px (`size-3.5`, the icon ramp's `sm` step beside `body-sm` text),
-				 * STATIC, and `aria-hidden`: they are ink. The words arrive through the
-				 * row's own `sr-only` sentence and its tooltip, both from
-				 * `subagentClause`, which is the repo's "one predicate, several channels"
-				 * rule.
-				 *
-				 * `data-subagent-mark` is the hook this change's own tests and the
-				 * evidence rigs address the mark by, following the row's existing
-				 * convention (`data-session-time`, `data-session-archived`).
-				 *
-				 * NOTE FOR THE REVIEWER: the row is `gap-1` (4px), so `ml-1` on top of
-				 * it makes the gap before each glyph 8px and one mark cost 22px rather
-				 * than the spec's 18px. `ml-1` is the spec's explicit class list and is
-				 * kept; if the 240px frames show the title starved, dropping `ml-1` is
-				 * the one-word fix that restores the spec's own arithmetic.
+				 * THE WORDS WERE NEVER HERE: they ride the row's `sr-only` sentence and its
+				 * tooltip through `backgroundWorkClause` (below), which is the repo's "one
+				 * predicate, several channels" rule; the pixels are `BackgroundWorkLane`
+				 * under the status cell (the trio of #840 is retired).
 				 */}
-				{marks.running && (
-					<SubagentRunningMark
-						mark="running"
-						className="ml-1 size-3.5 text-accent"
-					/>
-				)}
-				{marks.queued && (
-					<Hourglass
-						aria-hidden="true"
-						data-subagent-mark="queued"
-						className="ml-1 size-3.5 shrink-0 text-ink-muted"
-					/>
-				)}
 				{/*
 				 * SESSION VOICE'S MARK: on exactly the row whose session holds the
 				 * machine-wide slot, so a switch visibly moves it off the old row.
-				 * `shrink-0` like the marks above - the title's clip pays for it.
+				 * `shrink-0`: the title's clip pays for it.
 				 */}
 				<VoiceRowMarker sessionId={row.session_id} />
 				{/* In a flat list nothing else names the profile answering, so two
@@ -4769,13 +5400,13 @@ export function ChatSidebar({
 					(row.binding?.team ? (
 						teamMark(teamLabelFor(row.binding.team), row.binding.team)
 					) : (
-						<span className="ml-1 max-w-[45%] shrink-0 truncate text-meta text-ink-muted">
+						<span className="ms-1 max-w-[45%] shrink-0 truncate text-meta text-ink-muted">
 							· {bindingDisplayName(row)}
 						</span>
 					))}
 				{trailing === "not_sent" && (
-					<span className="ml-1 shrink-0 text-meta text-ink-muted">
-						· Not sent yet
+					<span className="ms-1 shrink-0 text-meta text-ink-muted">
+						· {t("ui.chat.sidebar.row.not_sent")}
 					</span>
 				)}
 				{/* Says WHY a row is in a filtered list when its visible text does not
@@ -4790,11 +5421,13 @@ export function ChatSidebar({
 					<>
 						<span
 							aria-hidden="true"
-							className="ml-1 shrink-0 whitespace-nowrap text-meta text-ink-muted"
+							className="ms-1 shrink-0 whitespace-nowrap text-meta text-ink-muted"
 						>
-							· in conversation
+							· {t("ui.chat.sidebar.row.in_conversation")}
 						</span>
-						<span className="sr-only">, matched in conversation</span>
+						<span className="sr-only">
+							{t("ui.chat.sidebar.row.matched_in_conversation")}
+						</span>
 					</>
 				)}
 				{/* THE REMOTE ROW'S OWN SENTENCE, joined to the name here rather than
@@ -4807,6 +5440,15 @@ export function ChatSidebar({
 				{remote && <span className="sr-only">, {remoteHost}</span>}
 				{remoteUnreachable && (
 					<span className="sr-only">, {remoteUnreachable}</span>
+				)}
+				{/* PINNED IS SPOKEN IN TAG MODE (PR #1747 U6). In Time section a pinned row
+				    sits under the PINNED heading, which is what tells a screen reader; in
+				    Tag mode pins lead their tag group with only the glyph to show it, so
+				    the row's name carries the same word the section label uses. */}
+				{pinned && groupBy === "tag" && !nested && (
+					<span className="sr-only">
+						, {t("ui.chat.sidebar_view.section.pinned")}
+					</span>
 				)}
 				{/* THE ATTRIBUTION'S `sr-only` SENTENCE, on the rows whose visible slot is the
 				    agent-opened claim's: the team slot above, and the silent team-less
@@ -4832,8 +5474,8 @@ export function ChatSidebar({
 				 * screen, the attribution, then this - with the time last. The glyphs are a
 				 * second channel for the same fact, not a second fact.
 				 *
-				 * `subagentClause` returns "" on a `delegating` row, whose `status.label`
-				 * already spells the counts (the backend folds them in, and the status
+				 * `backgroundWorkClause` omits the subagent counts on a `delegating` row,
+				 * whose `status.label` already spells them (the backend folds them in, and the status
 				 * `sr-only` renders that label verbatim) - so the presence is announced
 				 * exactly once on every row, whichever channel owns it.
 				 */}
@@ -4859,19 +5501,36 @@ export function ChatSidebar({
 				 * read after the title, so the row's name stays `state — title` with the
 				 * time as its tail (U21).
 				 */}
-				{!isRunningRow(row) && relativeTime(row, listNow, view.basis) && (
-					<>
-						<span
-							aria-hidden="true"
-							data-session-time
-							className="ml-auto shrink-0 pl-2 font-mono text-ink-dim text-mono-sm tabular-nums group-has-[:focus-visible]:hidden group-data-[session-hover-intent]:hidden"
-						>
-							{relativeTime(row, listNow, view.basis)}
-						</span>
-						<span className="sr-only">
-							, {relativeTimeSentence(row, listNow, view.basis)}
-						</span>
-					</>
+				{peerUncertainLabel(row) ? (
+					<span className="shrink-0 text-meta text-ink-dim">
+						{peerUncertainLabel(row)}
+					</span>
+				) : row.link_down === true ? (
+					<span
+						className={cn(
+							"shrink-0 text-meta",
+							row.link_reconnecting === true ? "text-ink-dim" : "text-warning",
+						)}
+						title={peerLinkDownLabel(row, listNow / 1000)}
+					>
+						{peerLinkDownVisibleLabel(row, listNow / 1000)}
+					</span>
+				) : (
+					!isRunningRow(row) &&
+					relativeTime(row, listNow, view.basis) && (
+						<>
+							<span
+								aria-hidden="true"
+								data-session-time
+								className="ms-auto shrink-0 ps-2 font-mono text-ink-dim text-mono-sm tabular-nums group-has-[:focus-visible]:hidden group-data-[session-hover-intent]:hidden"
+							>
+								{relativeTime(row, listNow, view.basis)}
+							</span>
+							<span className="sr-only">
+								, {relativeTimeSentence(row, listNow, view.basis)}
+							</span>
+						</>
+					)
 				)}
 			</button>
 		);
@@ -4920,7 +5579,7 @@ export function ChatSidebar({
 		 */
 		const silentRemedy = silent ? (
 			<span id={silentRemedyId(row.session_id)} className="sr-only">
-				{SILENT_REMEDY}
+				{silentRemedyClause()}
 			</span>
 		) : null;
 		/*
@@ -5034,17 +5693,34 @@ export function ChatSidebar({
 			<Tooltip
 				key={key}
 				content={rowTooltip}
-				side="right"
+				/*
+				 * THE CARD OPENS BELOW ITS ROW, INSIDE THE SIDEBAR (S5).
+				 *
+				 * It used to open RIGHT, into the content area, and the shared Tooltip
+				 * used to hide the native page while it was painted there. S5 removed
+				 * that lever by kind (a tooltip never pauses the page — a hover hint may
+				 * not take the page away), so a right-opening card would simply be
+				 * CLIPPED by the page, with only the 10px sliver over the sidebar's edge
+				 * visible. No 4px shift fixes it: at the 280 panel the card started at
+				 * x=490 against a panel edge of x=500, and the whole card lies under the
+				 * view from there.
+				 *
+				 * Bottom placement is inside the sidebar's own column, which is DOM and
+				 * never under the view, so the card is fully painted with the page live.
+				 * It covers the NEXT row rather than the hovered row itself (D1's
+				 * constraint was that it must not cover the row's own pin/archive), and
+				 * the panel is `pointer-events-none`, so covering rows cannot eat a
+				 * click. Radix flips it to `top` at the list's bottom edge.
+				 *
+				 * The width follows the trigger (`--radix-tooltip-trigger-width`) and
+				 * `max-w-none` lifts the primitive's 256px cap, so a two-line title wraps
+				 * to the row rather than to the card's own width.
+				 */
+				side="bottom"
 				align="start"
 				disableHoverableContent
 				collisionPadding={FLYOUT_COLLISION_PADDING}
-				/*
-				 * The card opens RIGHT, into the content area, so with the Browser route open
-				 * it lands on the native view and hides it while it is painted there (the
-				 * shared `Tooltip`'s measured registration). Named so the paused page's
-				 * `data-suppressed-by` says which overlay paused it.
-				 */
-				overlayName="sidebar-row-flyout"
+				className="w-(--radix-tooltip-trigger-width) max-w-none"
 				/*
 				 * NO FLYOUT WHILE A DRAG IS ARMED (design round 1, D4; measured on `drag-mid`).
 				 *
@@ -5079,8 +5755,11 @@ export function ChatSidebar({
 				 * keeps its card, and the card returns the moment the pointer AND the focus
 				 * have both left the mark.
 				 */
-				disabled={pinDrag !== null}
 				suppressed={
+					pinDrag !== null ||
+					rowTagDrag.armedId !== null ||
+					// The Tags popover owns the overlay plane while it is open beside the row.
+					tagRow !== null ||
 					teamBubbleHovered === row.session_id ||
 					teamBubbleFocused === row.session_id
 				}
@@ -5095,6 +5774,13 @@ export function ChatSidebar({
 					className={cn(rowBoxStyle, current && rowCurrent)}
 				>
 					{rowButton}
+					{/*
+					 * THE PENCIL, AS A SIBLING OF THE ROW BUTTON (see
+					 * `ChatSessionAvatarEdit` for why it cannot be inside it). It draws
+					 * nothing at all unless the row's agent has a picture and this device
+					 * owns it.
+					 */}
+					<ChatSessionAvatarEdit row={row} nested={nested} />
 					{silentRemedy}
 					{readAckRemedy}
 				</div>,
@@ -5240,12 +5926,14 @@ export function ChatSidebar({
 								data-session-pin-grip
 								tabIndex={-1}
 								aria-hidden="true"
-								title="Drag to reorder · Esc cancels"
+								title={t("ui.chat.sidebar.pins.drag_title")}
 								onPointerDown={(event) =>
 									startPinDrag(row.session_id, label, event)
 								}
 								onPointerMove={movePinDrag}
-								onPointerUp={() => settlePinDrag(true)}
+								onPointerUp={(event) =>
+									settlePinDrag(true, { x: event.clientX, y: event.clientY })
+								}
 								onPointerCancel={() => settlePinDrag(false)}
 								className={cn(
 									"hidden size-6 shrink-0 cursor-grab items-center justify-center rounded-md active:cursor-grabbing",
@@ -5340,11 +6028,19 @@ export function ChatSidebar({
 						aria-pressed={pinned}
 						/* The action, never the state: `Pin "X"` is what pressing does, and
 					   the pressed state is `aria-pressed`'s to report. */
-						aria-label={`${pinned ? "Unpin" : "Pin"} “${label}”`}
+						aria-label={
+							pinned
+								? t("ui.chat.sidebar.pins.unpin_label", { title: label })
+								: t("ui.chat.sidebar.pins.pin_label", { title: label })
+						}
 						/* The same string as the accessible name, matching the entity row's
-					   manage control: it is the affordance a pointer user gets, and it
-					   duplicates the name without being announced twice. */
-						title={`${pinned ? "Unpin" : "Pin"} “${label}”`}
+						   manage control: it is the affordance a pointer user gets, and it
+						   duplicates the name without being announced twice. */
+						title={
+							pinned
+								? t("ui.chat.sidebar.pins.unpin_label", { title: label })
+								: t("ui.chat.sidebar.pins.pin_label", { title: label })
+						}
 						onClick={(event) => {
 							/*
 							 * THE GUARD RUNS FIRST (review round 3, MINOR 2). A dropped press must
@@ -5382,10 +6078,11 @@ export function ChatSidebar({
 								title: row.title ?? undefined,
 								updated_at: row.updated_at ?? undefined,
 							});
+							if (!pinned) appendPin(row.session_id); // rule 3, see `appendPin`
 							/*
 							 * AN UNPIN FORGETS ITS SLOT (issue #693 rule 4, `chat-pin-order.ts`): the id
 							 * leaves the stored manual order with it, so re-pinning is a NEW pin at the
-							 * top rather than the resurrection of a position the reader unwound - and the
+							 * bottom rather than the resurrection of a position the reader unwound - and the
 							 * stored list cannot grow entries for conversations that are no longer in
 							 * the section it orders. Guarded on membership, so the common unpin (of a
 							 * row nobody has moved) writes no preference at all.
@@ -5849,6 +6546,9 @@ export function ChatSidebar({
 				 */}
 				{(pinsEnabled || archiveEnabled) && <ChatRowHoverIntent />}
 				{rowButton}
+				{/* The picture's pencil - a sibling of the row button, as in the
+				    no-menu arm above; it draws nothing without a picture. */}
+				<ChatSessionAvatarEdit row={row} nested={nested} />
 				{silentRemedy}
 				{readAckRemedy}
 				{menuRemedy}
@@ -5905,6 +6605,7 @@ export function ChatSidebar({
 				key={row.session_id}
 				open={menuOpen}
 				onOpenChange={(open) => {
+					if (open && (pinDrag !== null || rowTagDrag.armedId !== null)) return;
 					/*
 					 * THE POINTER CLOSE'S RETURN TARGET WHEN NO PRESS RAN (U8; the
 					 * restore lives in `onCloseAutoFocus`). The press records it
@@ -6004,6 +6705,9 @@ export function ChatSidebar({
 				 * failing assertion rather than a quiet addition.
 				 */}
 				<ContextMenuContent
+					/* At the app’s 600px floor, half the viewport is 300px: the ten-row
+					 * menu genuinely scrolls while keeping every 32px target keyboard-reachable. */
+					className={CHAT_ROW_MENU_SCROLL_CLASS}
 					onFocus={(event) => {
 						/*
 						 * THE KEYBOARD PATH LANDS IN THE FIRST ITEM (U-D4's minimum; the
@@ -6076,9 +6780,11 @@ export function ChatSidebar({
 								<Archive aria-hidden="true" />
 							)}
 							<span>
-								{archived ? "Unarchive conversation" : "Archive conversation"}
+								{archived
+									? t("ui.chat.sidebar.row_menu.unarchive")
+									: t("ui.chat.sidebar.row_menu.archive")}
 							</span>
-							<span className="ml-auto pl-6">
+							<span className="ms-auto ps-6">
 								<KeyboardShortcut
 									shortcut={chatRowActCapJoined("archive", isMac)}
 									joined
@@ -6095,8 +6801,12 @@ export function ChatSidebar({
 							) : (
 								<Pin aria-hidden="true" />
 							)}
-							<span>{pinned ? "Unpin conversation" : "Pin conversation"}</span>
-							<span className="ml-auto pl-6">
+							<span>
+								{pinned
+									? t("ui.chat.sidebar.row_menu.unpin")
+									: t("ui.chat.sidebar.row_menu.pin")}
+							</span>
+							<span className="ms-auto ps-6">
 								<KeyboardShortcut
 									shortcut={chatRowActCapJoined("pin", isMac)}
 									joined
@@ -6142,7 +6852,7 @@ export function ChatSidebar({
 							}}
 						>
 							<GitFork aria-hidden="true" />
-							<span>Fork conversation</span>
+							<span>{t("ui.chat.sidebar.row_menu.fork")}</span>
 						</ContextMenuItem>
 					)}
 					{/*
@@ -6172,7 +6882,7 @@ export function ChatSidebar({
 					 */}
 					<ContextMenuItem onSelect={() => void copySessionId(row.session_id)}>
 						<Copy aria-hidden="true" />
-						<span>Copy session ID</span>
+						<span>{t("ui.chat.sidebar.row_menu.copy_id")}</span>
 					</ContextMenuItem>
 					{/*
 					 * RENAME CONVERSATION (#920), SLOT 5, and the seventh row the menu has carried.
@@ -6195,7 +6905,7 @@ export function ChatSidebar({
 					 * `rename` through `useSessionCommand` - asked for the way the Fork item above
 					 * asks, because the sidebar owns no presenter. The request names THIS row's
 					 * conversation (the pane's own is generally not the row's) AND carries the name
-					 * the row draws (`row.title || "Untitled chat"`), so the dialog's field opens on
+					 * the row draws (`conversationTitleForDisplay(row.title)`), so the dialog's field opens on
 					 * the name the user pointed at rather than on the pane's title - the row is the
 					 * only party that holds its own name (see `PanelRequest.subjectName`). A third
 					 * door to ONE write, not a second mechanism.
@@ -6215,7 +6925,7 @@ export function ChatSidebar({
 									`[data-session-row="${CSS.escape(row.session_id)}"] [data-chat-row]`,
 								),
 								row.session_id,
-								{ subjectName: row.title || "Untitled chat" },
+								{ subjectName: conversationTitleForDisplay(row.title) },
 							);
 							// The palette's own guard, minus its first clause (the Fork item's
 							// reasoning, verbatim): `session.rename` is pane-only, so the request
@@ -6226,20 +6936,53 @@ export function ChatSidebar({
 						}}
 					>
 						<Pencil aria-hidden="true" />
-						<span>Rename conversation</span>
+						<span>{t("ui.chat.sidebar.row_menu.rename")}</span>
 					</ContextMenuItem>
 					{tagsAvailable && (
+						/*
+						 * ONE DOOR TO A CONVERSATION'S TAGS (v3 spec D1/D4): the anchored popover,
+						 * with its chord printed like the row's other chord-carrying acts. A
+						 * remote conversation's tags cannot be changed (the server refuses with
+						 * `session_is_remote`), so the item says so BEFORE any write rather than
+						 * after one - `aria-disabled` keeps the reason readable, as the Move
+						 * items' boundaries do.
+						 */
 						<ContextMenuItem
-							onSelect={() => {
-								tagsInvoker.current = document.querySelector<HTMLElement>(
-									`[data-session-row="${CSS.escape(row.session_id)}"] [data-chat-row]`,
-								);
-								tagsOriginId.current = row.session_id;
-								setTagRow(row);
+							aria-disabled={row.locality === "remote"}
+							title={
+								row.locality === "remote" ? t("ui.chat.tags.remote") : undefined
+							}
+							className="aria-disabled:cursor-default aria-disabled:text-ink-disabled! aria-disabled:hover:bg-transparent!"
+							onSelect={(event) => {
+								if (row.locality === "remote") {
+									event.preventDefault();
+									announcePinMove(t("ui.chat.tags.remote"));
+									return;
+								}
+								openTagsPopover(row);
 							}}
 						>
 							<Tag aria-hidden="true" className="size-3.5" />
-							{t("ui.chat.tags.menu")}
+							<span>{t("ui.chat.tags.menu")}</span>
+							<span className="ms-auto ps-6">
+								<KeyboardShortcut shortcut={chatTagsChordCap(isMac)} joined />
+							</span>
+						</ContextMenuItem>
+					)}
+
+					{/* The two-step path to an empty row (v3 spec D4), kept beside Tags…. */}
+					{tagsAvailable && (row.tags?.length ?? 0) > 0 && (
+						<ContextMenuItem
+							onSelect={() => {
+								void moveChatToTag(row, "untagged", announcePinMove).catch(
+									() => {},
+								);
+							}}
+						>
+							<X aria-hidden="true" />
+							{t("ui.chat.tags.remove_all", {
+								count: new Set(row.tags?.map((tag) => tag.id)).size,
+							})}
 						</ContextMenuItem>
 					)}
 
@@ -6297,8 +7040,8 @@ export function ChatSidebar({
 								)}
 							>
 								<ChevronUp aria-hidden="true" />
-								<span>Move conversation up</span>
-								<span className="ml-auto pl-6">
+								<span>{t("ui.chat.sidebar.row_menu.move_up")}</span>
+								<span className="ms-auto ps-6">
 									<KeyboardShortcut
 										shortcut={chatPinMoveCapJoined(-1, isMac)}
 										joined
@@ -6317,8 +7060,8 @@ export function ChatSidebar({
 								)}
 							>
 								<ChevronDown aria-hidden="true" />
-								<span>Move conversation down</span>
-								<span className="ml-auto pl-6">
+								<span>{t("ui.chat.sidebar.row_menu.move_down")}</span>
+								<span className="ms-auto ps-6">
 									<KeyboardShortcut
 										shortcut={chatPinMoveCapJoined(1, isMac)}
 										joined
@@ -6372,7 +7115,7 @@ export function ChatSidebar({
 			if (active && active !== document.body) return;
 			document
 				.querySelector<HTMLElement>(
-					`[data-chat-section="${kind === "agent" ? "agents" : "teams"}"]`,
+					`[data-chat-section="${HUB_SECTION[kind]}"]`,
 				)
 				?.focus();
 		});
@@ -6599,6 +7342,9 @@ export function ChatSidebar({
 		const hubKey = hubItemKey(kind, name);
 		const hubItem = hubItems.get(hubKey);
 		const hubMark = hubMarkFor(hubItem);
+		const proposalCount = proposalsEnabled
+			? pendingProposalCount(proposals.data, kind, name)
+			: 0;
 		const localId =
 			kind === "team"
 				? teams.data?.find((row) => row.name === name)?.id
@@ -6636,7 +7382,25 @@ export function ChatSidebar({
 					<button
 						type="button"
 						data-disclosure
-						aria-label={`${open ? "Collapse" : "Expand"} ${displayName} chats`}
+						/*
+						 * THE GROUP'S OWN IDENTIFIER on the control the hand-back returns to
+						 * (review round 1, M4). The selector used to compose a lookup from the
+						 * disclosure's accessible name with the SLUG, while the control renders
+						 * `displayName` (a team's catalogue label when it has one) - so a labelled
+						 * team never resolved. `catalogueScopeKey` is `kind:name`, the same string
+						 * the pending record stores, so the lookup is independent of copy and of
+						 * which name the row draws.
+						 */
+						data-entity-key={key}
+						aria-label={
+							open
+								? t("ui.chat.sidebar.entity.collapse_chats", {
+										name: displayName,
+									})
+								: t("ui.chat.sidebar.entity.expand_chats", {
+										name: displayName,
+									})
+						}
 						aria-expanded={open}
 						className={cn(
 							"flex size-6 shrink-0 items-center justify-center rounded-md",
@@ -6684,7 +7448,7 @@ export function ChatSidebar({
 						type="button"
 						data-chat-row
 						data-entity-name
-						className={cn(rowStyle, "flex-1 text-left", staged && rowCurrent)}
+						className={cn(rowStyle, "flex-1 text-start", staged && rowCurrent)}
 						onClick={() => onStageDraft({ kind, name })}
 						// The visible label is the bare name, which says who but not what
 						// pressing it does. The accessible name states the action and still
@@ -6696,10 +7460,15 @@ export function ChatSidebar({
 						// not using AT. It duplicates the accessible name for screen
 						// reader users, which is redundant but not announced twice —
 						// `aria-label` wins and `title` is ignored as a naming source.
-						aria-label={`New chat with ${displayName}`}
-						title={`New chat with ${displayName}`}
+						aria-label={t("ui.chat.header.new_chat_with", {
+							target: displayName,
+						})}
+						title={t("ui.chat.header.new_chat_with", { target: displayName })}
 					>
-						<Icon className="size-4 shrink-0" />
+						<EntityMark
+							agentId={kind === "agent" ? (localId ?? null) : null}
+							glyph={Icon}
+						/>
 						<span className="min-w-0 flex-1 truncate" title={nameTitle}>
 							{displayName}
 						</span>
@@ -6735,7 +7504,7 @@ export function ChatSidebar({
 							 * at all.
 							 */
 							title={badge > 0 ? groupBadgeLabel(badge) : undefined}
-							className="min-w-4 shrink-0 text-right text-meta tabular-nums text-ink-dim"
+							className="min-w-4 shrink-0 text-end text-meta tabular-nums text-ink-dim"
 						>
 							{badge || ""}
 						</span>
@@ -6798,10 +7567,21 @@ export function ChatSidebar({
 					 * `!staged` exactly like the two 24px controls beside it), never a
 					 * menu ground: `chat-sidebar-selection.test.mjs` counts every
 					 * `hover:bg-*` in the panel and this control is one of them.
+					 *
+					 * THE ACCESSIBLE NAME FLIPS WITH THE STATE, as the tooltip does (QA
+					 * round 1, Q2): the label asked for `entity.pin` in both states, so a
+					 * reader on an already-pinned row heard "Pin “X”" while
+					 * `aria-pressed` said it was pressed. Each state asks for its own key
+					 * now; `entity.unpin` is the sibling the tooltip already uses, so no
+					 * new copy was needed.
 					 */}
 					{kind === "agent" && (
 						<Tooltip
-							content={pinnedAgent ? `Unpin “${name}”` : `Pin “${name}”`}
+							content={
+								pinnedAgent
+									? t("ui.chat.sidebar.entity.unpin", { name })
+									: t("ui.chat.sidebar.entity.pin", { name })
+							}
 						>
 							<button
 								type="button"
@@ -6819,7 +7599,12 @@ export function ChatSidebar({
 									"group-focus-within:opacity-100 group-focus-within:duration-fast",
 								)}
 								aria-pressed={pinnedAgent}
-								aria-label={`Pin “${name}”`}
+								aria-label={t(
+									pinnedAgent
+										? "ui.chat.sidebar.entity.unpin"
+										: "ui.chat.sidebar.entity.pin",
+									{ name },
+								)}
 								onClick={() =>
 									setChatSidebarView(togglePinnedAgent(sidebarView, pinKey))
 								}
@@ -6832,11 +7617,54 @@ export function ChatSidebar({
 							</button>
 						</Tooltip>
 					)}
+					{proposalCount > 0 && (
+						<Tooltip
+							content={t("ui.agents.proposals.waiting", {
+								count: proposalCount,
+							})}
+						>
+							<button
+								type="button"
+								data-testid="profile-proposal-row-badge"
+								data-proposal-badge={name}
+								aria-label={t("ui.agents.proposals.waiting", {
+									count: proposalCount,
+								})}
+								// A control inside the row's box takes the ROW's hover step,
+								// guarded `!staged` like the pin beside it, so the pointer never
+								// repaints the current row's ground (sidebar selection guard).
+								className={cn(
+									"flex h-6 w-6 shrink-0 items-center justify-center rounded-sm focus-visible:outline focus-visible:outline-accent",
+									!staged && "hover:bg-row-hover",
+								)}
+								onClick={(event) => {
+									event.stopPropagation();
+									navigate(proposalReviewPath(kind, name));
+								}}
+							>
+								<span
+									aria-hidden="true"
+									className="h-1.5 w-1.5 rounded-full bg-warning"
+								/>
+							</button>
+						</Tooltip>
+					)}
 					{linkedOrigin && (
 						<HubLinkSidebarMark
 							link={linkedOrigin}
 							staged={staged}
 							onDetail={() => openHubDetail(kind, name)}
+							itemName={name}
+							displayName={displayName}
+							itemsById={hubItemsById}
+							nameAmbiguous={
+								!(kind === "team"
+									? teams.isSuccess && !teams.isFetching
+									: profiles.isSuccess && !profiles.isFetching) ||
+								(displayNameCounts[kind === "team" ? "team" : "agent"].get(
+									name.trim().toLowerCase(),
+								) ?? 0) !== 1
+							}
 						/>
 					)}
 					{aggregateOrigins && (
@@ -6849,6 +7677,7 @@ export function ChatSidebar({
 					{unresolvedOrigins.length > 0 && (
 						<HubUnresolvedMark
 							item={name}
+							details={unresolvedOrigins.map((origin) => origin.detail)}
 							staged={staged}
 							onResolve={() =>
 								navigate(
@@ -6883,7 +7712,9 @@ export function ChatSidebar({
 							"flex size-6 shrink-0 items-center justify-center rounded-md text-ink-dim hover:text-ink-muted",
 							!staged && "hover:bg-row-hover",
 						)}
-						aria-label={`Manage ${displayName}`}
+						aria-label={t("ui.chat.sidebar.entity.manage", {
+							name: displayName,
+						})}
 						onClick={() =>
 							navigate(`/agents?kind=${kind}&name=${encodeURIComponent(name)}`)
 						}
@@ -6918,7 +7749,8 @@ export function ChatSidebar({
 						 * drawn only while the lift is, so a group the bound did not withhold
 						 * this row from pays nothing for it.
 						 */}
-						{page.lifted && sectionLabel("Current chat")}
+						{page.lifted &&
+							sectionLabel(t("ui.chat.sidebar.section.current_chat"))}
 						{shown.map((row) => sessionRow(row, true))} {/*
 						 * THE GROUP'S OWN SENTENCE.
 						 *
@@ -6952,13 +7784,27 @@ export function ChatSidebar({
 							aria-live="polite"
 							className={
 								view.state !== "rows" && view.sentence !== null
-									? "py-1 pl-7"
+									? "py-1 ps-7"
 									: "sr-only"
 							}
 						>
 							{view.state !== "rows" && view.sentence !== null && (
+								/*
+								 * THE WITHHELD STATE IS ALLOWED FOUR LINES, every other state keeps two
+								 * (design round 1, D2). "Chats may be archived" is a fixed catalogue
+								 * sentence, not a daemon string of unbounded length, and it carries the
+								 * reader's next move; at the default sidebar width it needs 3 lines in
+								 * es and ru and 4 in fr, so a two-line clamp cut off the instruction
+								 * itself. The two-line cap exists so a long BACKEND sentence cannot
+								 * move the control below it, which does not apply to this one.
+								 * `forbidden` is the flag `groupChatsView` sets for this sentence only.
+								 */
 								<p
-									className="line-clamp-2 text-meta text-ink-dim"
+									className={
+										view.forbidden
+											? "line-clamp-4 text-meta text-ink-dim"
+											: "line-clamp-2 text-meta text-ink-dim"
+									}
 									title={view.sentence}
 								>
 									{view.sentence}
@@ -6981,7 +7827,7 @@ export function ChatSidebar({
 										className="text-meta text-ink-dim underline hover:text-ink"
 										onClick={() => void fetchScopePage(kind, name, null)}
 									>
-										Retry
+										{t("ui.common.actions.retry")}
 									</button>
 								</p>
 							)}
@@ -7004,10 +7850,10 @@ export function ChatSidebar({
 						{view.state === "rows" &&
 							(catalogueScopes[key]?.loading ? (
 								<p
-									className="py-1 pl-7 text-meta text-ink-dim"
+									className="py-1 ps-7 text-meta text-ink-dim"
 									aria-live="polite"
 								>
-									Loading more…
+									{t("ui.chat.sidebar.list.loading_more")}
 								</p>
 							) : view.retry ? (
 								/*
@@ -7020,12 +7866,12 @@ export function ChatSidebar({
 								 */
 								<>
 									<p
-										className="line-clamp-2 py-1 pl-7 text-meta text-ink-dim"
+										className="line-clamp-2 py-1 ps-7 text-meta text-ink-dim"
 										aria-live="polite"
 									>
 										{view.sentence}
 									</p>
-									<p className="py-1 pl-7">
+									<p className="py-1 ps-7">
 										<button
 											type="button"
 											className="text-meta text-ink-dim underline hover:text-ink"
@@ -7039,7 +7885,7 @@ export function ChatSidebar({
 												)
 											}
 										>
-											Retry
+											{t("ui.common.actions.retry")}
 										</button>
 									</p>
 								</>
@@ -7075,9 +7921,15 @@ export function ChatSidebar({
 									 * evidenced by read.
 									 */
 									data-entity-more={key}
-									aria-label={`${foot.aria} in ${displayName}`}
-									title={`${foot.aria} in ${displayName}`}
-									className="block w-full py-1 pl-7 text-left text-meta text-ink-dim underline hover:text-ink"
+									aria-label={t("ui.chat.sidebar.entity.more_in", {
+										label: foot.aria,
+										name: displayName,
+									})}
+									title={t("ui.chat.sidebar.entity.more_in", {
+										label: foot.aria,
+										name: displayName,
+									})}
+									className="block w-full py-1 ps-7 text-start text-meta text-ink-dim underline hover:text-ink"
 									onClick={pressEntityMore}
 								>
 									{/*
@@ -7112,7 +7964,11 @@ export function ChatSidebar({
 			className="text-meta tabular-nums"
 			title={
 				query
-					? `${clipped ? "At least " : ""}${count} ${count === 1 ? "chat matches" : "chats match"} this search${clipped ? "; the list stops there" : ""}`
+					? t("ui.chat.sidebar.search.count_tooltip", {
+							clipped: clipped ? "yes" : "no",
+							count_display: String(count),
+							count,
+						})
 					: undefined
 			}
 		>
@@ -7265,7 +8121,7 @@ export function ChatSidebar({
 								className: "size-3.5 shrink-0 text-ink-dim",
 							})
 						: null}
-					<span className="min-w-0 flex-1 truncate text-left">{label}</span>
+					<span className="min-w-0 flex-1 truncate text-start">{label}</span>
 					{/* A zero badge next to a group that already says it is empty is the
 			    same fact twice; only a non-zero count carries information. */}
 					{count !== undefined && count !== 0 && countBadge(count)}
@@ -7358,7 +8214,7 @@ export function ChatSidebar({
 		key: string;
 		at: number;
 	} | null>(null);
-	const cappedRows = (key: string, rows: ReactNode[]) => {
+	const cappedRows = (key: "agents" | "teams", rows: ReactNode[]) => {
 		const cap = sectionCaps[key] ?? SIDEBAR_SECTION_ROWS;
 		const hidden = rows.length - cap;
 		/*
@@ -7420,7 +8276,7 @@ export function ChatSidebar({
 							sectionFootFocusRef.current = { key, at: cap };
 							setSectionCaps((previous) => raiseSectionCap(previous, key));
 						}}
-						className="flex h-7 w-full items-center rounded-md px-2 text-left text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink"
+						className="flex h-7 w-full items-center rounded-md px-2 text-start text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink"
 					>
 						{sectionMoreLabel(hidden)}
 					</button>
@@ -7429,7 +8285,17 @@ export function ChatSidebar({
 		);
 	};
 	const sectionLabel = (label: string, action?: ReactNode) => (
-		<div className="flex h-6 items-center gap-1 px-2">
+		<div
+			className={cn(
+				"flex h-6 items-center gap-1 px-2",
+				/*
+				 * The container the bulk read label sheds against
+				 * (`MARK_ALL_READ_LABEL_SHED`). Only a row that carries an action needs
+				 * one; the others keep their markup.
+				 */
+				action && "@container/chatheading",
+			)}
+		>
 			<h3 className="min-w-0 flex-1 truncate font-medium text-ink-dim text-meta uppercase tracking-wide">
 				{label}
 			</h3>
@@ -7461,6 +8327,14 @@ export function ChatSidebar({
 	 * below uses, so the walk and the ring cannot disagree about what a row is.
 	 */
 	const rowStopRef = useRef<HTMLElement | null>(null);
+	/*
+	 * A TAG GROUP HEADER IS A STOP TOO (v3 spec D2): its `⋯` control, by its own
+	 * attribute rather than `data-chat-row`, because the type-to-filter branch and
+	 * the row chords test `data-chat-row` and a header must answer neither. The
+	 * fold chevron (issue #1639) is a second header stop under its own attribute;
+	 * the ring walks DOM order, so it is reached before that header's `⋯`.
+	 */
+	const RING_STOPS = `[data-chat-row], [${TAG_TOGGLE_STOP_ATTR}], [${TAG_HEADER_STOP_ATTR}]`;
 	const applyRowStop = (stop: HTMLElement | null) => {
 		const nav = navRef.current;
 		if (nav === null) return;
@@ -7470,9 +8344,12 @@ export function ChatSidebar({
 		 * neither hold the stop nor keep `tabIndex` 0 - `focus()` on it is a no-op,
 		 * and a stop nobody can focus is the dead stop that finding measured.
 		 */
-		const allRows = [...nav.querySelectorAll<HTMLElement>("[data-chat-row]")];
+		const allRows = [...nav.querySelectorAll<HTMLElement>(RING_STOPS)];
 		const rows = allRows.filter(
-			(row) => !(row as { disabled?: boolean }).disabled,
+			(row) =>
+				!(row as { disabled?: boolean }).disabled &&
+				// Collapsed Unused tags are not stops until expanded (v3 D3).
+				row.closest("[hidden]") === null,
 		);
 		if (rows.length === 0) return;
 		/*
@@ -7515,7 +8392,7 @@ export function ChatSidebar({
 	 * bubbles from the focused element, which is where the answer is.
 	 */
 	const onRowFocus = (event: ReactFocusEvent<HTMLElement>) => {
-		const row = (event.target as HTMLElement).closest?.("[data-chat-row]");
+		const row = (event.target as HTMLElement).closest?.(RING_STOPS);
 		/*
 		 * Only a row inside THIS panel moves the stop. Focus arriving on a control
 		 * that is not a row - the search field, the foot's menu, a section's `Show
@@ -7658,6 +8535,14 @@ export function ChatSidebar({
 		 * on that row's unmount (UX round 1, U1).
 		 */
 		if (openMenuRowId !== null) return;
+		/*
+		 * A KEY FROM A PORTAL IS NOT THE LIST'S. React bubbles synthetic events
+		 * through the component tree, so the Tags popover's input and a tag
+		 * header's menu - portalled out of this panel's DOM but rendered by it -
+		 * would otherwise reach the walk below, and an ArrowDown in the popover's
+		 * combobox would move focus out of it to the first row.
+		 */
+		if (!event.currentTarget.contains(event.target as Node)) return;
 		const target = event.target as HTMLElement;
 		/*
 		 * THE ROW ACTS' CHORD (§C4, U2). Both controls left the Tab ring below, and
@@ -7674,6 +8559,29 @@ export function ChatSidebar({
 		 * itself, guards included. Calling the handlers directly is how the two paths
 		 * drift.
 		 */
+		/*
+		 * THE TAGS CHORD (v3 spec D8), on a focused conversation row only. A remote
+		 * row is answered with the reason and opens nothing: its tags cannot be
+		 * written, and a popover that refuses every press is worse than a sentence.
+		 */
+		if (
+			tagsAvailable &&
+			chatTagsChord(event) &&
+			target.hasAttribute("data-chat-row")
+		) {
+			const id =
+				target.closest<HTMLElement>("[data-session-row]")?.dataset.sessionRow;
+			const row = [...listed, ...heldRows].find(
+				(entry) => entry.session_id === id,
+			);
+			if (row) {
+				event.preventDefault();
+				if (row.locality === "remote")
+					announcePinMove(t("ui.chat.tags.remote"));
+				else openTagsPopover(row);
+			}
+			return;
+		}
 		const act = chatRowAct(event);
 		if (act !== null) {
 			const control = chatRowActControl(target, act);
@@ -7852,8 +8760,12 @@ export function ChatSidebar({
 		 * this filter protects the class rather than only today's controls.
 		 */
 		const rows = [
-			...event.currentTarget.querySelectorAll<HTMLElement>("[data-chat-row]"),
-		].filter((row) => !(row as { disabled?: boolean }).disabled);
+			...event.currentTarget.querySelectorAll<HTMLElement>(RING_STOPS),
+		].filter(
+			(row) =>
+				!(row as { disabled?: boolean }).disabled &&
+				row.closest("[hidden]") === null,
+		);
 		const index = rows.indexOf(target);
 		const next =
 			event.key === "ArrowDown"
@@ -7877,6 +8789,66 @@ export function ChatSidebar({
 			 * one they are on.
 			 */
 			if (moved !== undefined) applyRowStop(moved);
+			return;
+		}
+		/*
+		 * A TAG GROUP HEADER FOLDS WITH ARROWLEFT/RIGHT (issue #1639, UX U3), the
+		 * gesture the agent/team groups below already answer: Right unfolds a folded
+		 * group, or steps into its first row when open; Left folds an open one. Both of
+		 * the header's stops (chevron and `⋯`) answer, so the reader need not know which
+		 * of the two the walk landed on.
+		 */
+		const tagFold = target.matches(
+			`[${TAG_TOGGLE_STOP_ATTR}], [${TAG_HEADER_STOP_ATTR}]`,
+		)
+			? target
+					.closest("[data-chat-tag-group]")
+					?.querySelector<HTMLButtonElement>(`[${TAG_TOGGLE_STOP_ATTR}]`)
+			: null;
+		/*
+		 * Bare arrows only (#1745 round 2, N1): Alt+Arrow is the header's own move
+		 * chord and Meta+Arrow belongs to the platform, so neither may also fold.
+		 */
+		const bareArrow =
+			!event.altKey &&
+			!event.metaKey &&
+			(event.key === "ArrowRight" || event.key === "ArrowLeft");
+		if (tagFold && bareArrow) {
+			event.preventDefault();
+			const open = tagFold.getAttribute("aria-expanded") === "true";
+			if (event.key === "ArrowRight" && !open) tagFold.click();
+			else if (event.key === "ArrowRight") {
+				const first =
+					document
+						.getElementById(tagFold.getAttribute("aria-controls") ?? "")
+						?.querySelector<HTMLElement>("[data-chat-row]") ?? null;
+				// The ring's stop moves with the walk, as Up/Down do above (M2).
+				if (first) {
+					first.focus();
+					applyRowStop(first);
+				}
+			} else if (open) tagFold.click();
+			return;
+		}
+		/*
+		 * ArrowLeft FROM A ROW INSIDE A TAG GROUP climbs to that group's header
+		 * (#1745 round 2, U7), the step the agent/team child rows below take to their
+		 * entity: the chevron, the stop Right came down from.
+		 */
+		const rowGroupHeader =
+			event.key === "ArrowLeft" &&
+			bareArrow &&
+			target.hasAttribute("data-chat-row")
+				? target
+						.closest("[data-chat-tag-group]")
+						?.querySelector<HTMLElement>(
+							`[${TAG_TOGGLE_STOP_ATTR}], [${TAG_HEADER_STOP_ATTR}]`,
+						)
+				: null;
+		if (rowGroupHeader) {
+			event.preventDefault();
+			rowGroupHeader.focus();
+			applyRowStop(rowGroupHeader);
 			return;
 		}
 		const group = target.closest("[data-entity]");
@@ -7961,6 +8933,18 @@ export function ChatSidebar({
 	useLayoutEffect(() => {
 		holdFocusedRow(entityPanelRef.current, entitySlotRef);
 		holdFocusedRow(listPanelRef.current, listSlotRef);
+		if (pageAnchorKeyRef.current !== `${groupBy}\u0000${query}`)
+			releasePageAnchor();
+		holdPageAnchor(listPanelRef.current, pageAnchorRef.current);
+		const fallback = holdPageFoot(
+			listPanelRef.current,
+			footFollowRef.current,
+			footPressedRef.current,
+		);
+		if (fallback) {
+			footPressedRef.current = null;
+			applyRowStop(fallback);
+		}
 	});
 
 	/*
@@ -8078,7 +9062,7 @@ export function ChatSidebar({
 		>
 			{capabilities.isLoading && (
 				<p aria-live="polite" className="text-meta text-ink-dim">
-					Connecting to chats…
+					{t("ui.chat.sidebar.list.connecting")}
 				</p>
 			)}
 			{/*
@@ -8115,16 +9099,23 @@ export function ChatSidebar({
 				!coveredByCompatibilityBanner && (
 					<div className="space-y-1 text-meta text-ink-muted">
 						<p>
-							{capabilities.error.message}
-							{stale ? " Showing the last chats loaded." : ""}
+							{serverUpdating
+								? t("ui.common.errors.desktop_refusal.server_updating")
+								: stale
+									? t("ui.chat.sidebar_notes.stale_list", {
+											message: capabilities.error.message,
+										})
+									: capabilities.error.message}
 						</p>
-						<button
-							type="button"
-							className="underline"
-							onClick={() => void capabilities.refetch()}
-						>
-							Retry refresh
-						</button>
+						{serverUpdating ? null : (
+							<button
+								type="button"
+								className="underline"
+								onClick={() => void capabilities.refetch()}
+							>
+								{t("ui.chat.sidebar.list.retry_refresh")}
+							</button>
+						)}
 					</div>
 				)}
 			{/*
@@ -8143,7 +9134,7 @@ export function ChatSidebar({
 			    carries R11's presence term too, so the stand-down holds only where that
 			    strip is genuinely on screen.
 			 */}
-			{notice && !stripSpeaksConnection && (
+			{notice && !stripSpeaksConnection && !serverUpdating && (
 				<div className="space-y-1 text-meta text-ink-muted">
 					<p>{notice}</p>
 					<button
@@ -8151,7 +9142,7 @@ export function ChatSidebar({
 						className="underline"
 						onClick={() => void capabilities.refetch()}
 					>
-						Retry refresh
+						{t("ui.chat.sidebar.list.retry_refresh")}
 					</button>
 				</div>
 			)}
@@ -8197,7 +9188,7 @@ export function ChatSidebar({
 						<section>
 							{heading(
 								"agents",
-								"Agents",
+								t(SIDEBAR_SECTION_LABEL.agents),
 								true,
 								undefined,
 								Bot,
@@ -8209,7 +9200,7 @@ export function ChatSidebar({
 								<>
 									{profiles.isLoading && (
 										<p aria-live="polite" className="text-meta text-ink-dim">
-											Loading agents…
+											{t("ui.chat.sidebar.agents.loading")}
 										</p>
 									)}
 									{hubLines("agent")}
@@ -8267,9 +9258,9 @@ export function ChatSidebar({
 											<input
 												ref={rosterFilterRef}
 												data-roster-filter
-												aria-label="Filter agents"
-												placeholder="Filter agents"
-												className="h-8 w-full rounded-md bg-row-hover pr-9 pl-2 text-body-sm"
+												aria-label={t("ui.chat.sidebar.agents.filter")}
+												placeholder={t("ui.chat.sidebar.agents.filter")}
+												className="h-8 w-full rounded-md bg-row-hover pe-9 ps-2 text-body-sm"
 												value={rosterFilter}
 												onChange={(event) =>
 													setRosterFilter(event.target.value)
@@ -8312,14 +9303,14 @@ export function ChatSidebar({
 												<Button
 													variant="ghost"
 													size="icon-sm"
-													className="absolute top-1/2 right-1 -translate-y-1/2 focus-visible:outline-offset-[-2px]!"
+													className="absolute top-1/2 end-1 -translate-y-1/2 focus-visible:outline-offset-[-2px]!"
 													onClick={() =>
 														clearSearch(
 															rosterFilterRef.current,
 															setRosterFilter,
 														)
 													}
-													aria-label="Clear agent filter"
+													aria-label={t("ui.chat.sidebar.agents.clear_filter")}
 												>
 													<X aria-hidden="true" />
 												</Button>
@@ -8407,14 +9398,16 @@ export function ChatSidebar({
 														 */}
 														<div className="flex items-center justify-between gap-2">
 															<p className="text-body-sm text-ink">
-																No agents yet
+																{t("ui.chat.sidebar.agents.empty")}
 															</p>
 															{builtinOfferOnScreen && !agentsOfferBusy && (
 																<Button
 																	variant="ghost"
 																	size="icon-sm"
 																	data-testid="agents-offer-dismiss"
-																	aria-label="Dismiss built-in agents suggestion"
+																	aria-label={t(
+																		"ui.chat.sidebar.agents.dismiss_offer",
+																	)}
 																	onClick={() => {
 																		offerDismissedByPressRef.current = true;
 																		dismissBuiltinOffer(offerSignature);
@@ -8478,7 +9471,7 @@ export function ChatSidebar({
 														)
 													) : (
 														<p className="text-meta text-ink-muted">
-															No agents match
+															{t("ui.chat.sidebar.agents.no_match")}
 														</p>
 													)
 												) : (
@@ -8505,7 +9498,7 @@ export function ChatSidebar({
 										onClick={() => navigate("/agents?create=agent")}
 									>
 										<Plus className="size-4" />
-										Create agent
+										{t("ui.chat.sidebar.agents.create")}
 									</button>
 								</>
 							)}
@@ -8546,7 +9539,7 @@ export function ChatSidebar({
 						>
 							{heading(
 								"teams",
-								"Teams",
+								t(SIDEBAR_SECTION_LABEL.teams),
 								true,
 								undefined,
 								Users,
@@ -8558,7 +9551,7 @@ export function ChatSidebar({
 								<>
 									{teams.isLoading && (
 										<p aria-live="polite" className="text-meta text-ink-dim">
-											Loading teams…
+											{t("ui.chat.sidebar.teams.loading")}
 										</p>
 									)}
 									{hubLines("team")}
@@ -8573,7 +9566,7 @@ export function ChatSidebar({
 										onClick={() => navigate("/agents?create=team")}
 									>
 										<Plus className="size-4" />
-										Create team
+										{t("ui.chat.sidebar.teams.create")}
 									</button>
 								</>
 							)}
@@ -8602,20 +9595,63 @@ export function ChatSidebar({
 		 * 1, m-1).
 		 */
 		<p ref={pinRef} className="pb-2 text-meta text-warning">
-			Could not {pinFailure.pinned ? "pin" : "unpin"} “{pinFailure.title}”.
-			{pinFailure.detail ? ` ${pinFailure.detail}` : ""}{" "}
-			<button
-				type="button"
-				className="underline"
-				onClick={() =>
-					void setSessionPin(pinFailure.sessionId, pinFailure.pinned)
-				}
-			>
-				Retry
-			</button>
+			{t("ui.chat.sidebar.pins.failure", {
+				action: pinFailure.pinned ? "pin" : "unpin",
+				title: conversationTitleForDisplay(pinFailure.title, "this_chat"),
+			})}
+			{pinFailure.detail ? ` ${pinFailure.detail}` : ""} {/*
+			 * A TEMPORARY CHAT CANNOT BE PINNED UNTIL IT IS KEPT (409
+			 * `session_temporary`): a Retry would only be refused again, so the
+			 * line offers the one press that can succeed - keep it, then pin it.
+			 */}
+			{refusalRemedy(pinFailure.code, "pin") === "keep_and_pin" ? (
+				<button
+					type="button"
+					className="underline"
+					data-temporary-keep-and-pin
+					onClick={() => {
+						const { sessionId } = pinFailure;
+						void setSessionTemporary(sessionId, false).then((kept) => {
+							if (kept.ok) void setSessionPin(sessionId, true);
+						});
+					}}
+				>
+					{t("ui.chat.dialogs.keep_and_pin")}
+				</button>
+			) : (
+				<button
+					type="button"
+					className="underline"
+					onClick={() =>
+						void setSessionPin(pinFailure.sessionId, pinFailure.pinned)
+					}
+				>
+					{t("ui.common.actions.retry")}
+				</button>
+			)}
 		</p>
 	) : null;
 
+	/*
+	 * WHERE TAGS LIVE (v3 spec D3/D6): `+ New tag` and the unused tags, at the
+	 * list's foot once a tag exists, and as the first-use empty state at its TOP
+	 * while the registry is empty - the foot of a long list is no place to teach a
+	 * feature. Only while grouping is on and the registry has settled: a loading
+	 * or failed registry is not an empty one.
+	 */
+	const tagFooter =
+		tagsGrouped &&
+		!query.trim() &&
+		!tagCategoriesLoading &&
+		tagCategoriesError === null ? (
+			<ChatTagFooter
+				unused={unusedTags(tagCategories)}
+				total={tagCategories.length}
+				dragArmed={rowTagDrag.armedId !== null}
+				announce={announcePinMove}
+				chord={chatTagsChordText(menuIsMac())}
+			/>
+		) : null;
 	const listRegion = (
 		/*
 		 * THE LIST'S OWN REGION MARKER LIVES HERE (round 1, R3). It used to be on the
@@ -8753,7 +9789,7 @@ export function ChatSidebar({
 			 */}
 			{liftedRow && (
 				<section data-chat-section="current">
-					{sectionLabel("Current chat")}
+					{sectionLabel(t("ui.chat.sidebar.section.current_chat"))}
 					{sessionRow(liftedRow)}
 				</section>
 			)}
@@ -8827,7 +9863,9 @@ export function ChatSidebar({
 									type="button"
 									data-chat-row
 									data-draft-row={row.key}
-									aria-label={`Open ${row.label}`}
+									aria-label={t("ui.chat.sidebar.row.open_draft", {
+										label: row.label,
+									})}
 									title={row.label}
 									onClick={() => {
 										openDraft(row.key);
@@ -8835,7 +9873,7 @@ export function ChatSidebar({
 									}}
 									className={cn(
 										rowStyle,
-										"min-w-0 flex-1 text-left",
+										"min-w-0 flex-1 text-start",
 										current && rowCurrent,
 									)}
 								>
@@ -8867,7 +9905,7 @@ export function ChatSidebar({
 								 */}
 								{row.pending && (
 									<span id={draftWhyId(row.key)} className="sr-only">
-										{SENDING_DISCARD_WHY}
+										{sendingDiscardWhy()}
 									</span>
 								)}
 								{/*
@@ -8903,11 +9941,11 @@ export function ChatSidebar({
 									aria-describedby={
 										row.pending ? draftWhyId(row.key) : undefined
 									}
-									aria-label={discardDraftLabel(row.label)}
+									aria-label={discardDraftLabel(row.title)}
 									title={
 										row.pending
-											? SENDING_DISCARD_WHY
-											: discardDraftLabel(row.label)
+											? sendingDiscardWhy()
+											: discardDraftLabel(row.title)
 									}
 									onClick={(event) => {
 										/*
@@ -9046,11 +10084,11 @@ export function ChatSidebar({
 							aria-describedby={
 								clearableDraftRows.length === 0 ? CLEAR_ALL_WHY_ID : undefined
 							}
-							aria-label="Clear all drafts"
+							aria-label={t("ui.chat.sidebar.drafts.clear_all_label")}
 							title={
 								clearableDraftRows.length === 0
-									? CLEAR_ALL_WHY
-									: "Clear all drafts"
+									? clearAllWhy()
+									: t("ui.chat.sidebar.drafts.clear_all_label")
 							}
 							onClick={(event) => {
 								/*
@@ -9118,7 +10156,7 @@ export function ChatSidebar({
 								"aria-disabled:hover:bg-transparent! aria-disabled:hover:text-ink-disabled!",
 							)}
 						>
-							Clear all
+							{t("ui.chat.sidebar.drafts.clear_all")}
 						</button>
 						{/*
 						 * The why the control points at while inapplicable (D7/U6): the trash's
@@ -9129,7 +10167,7 @@ export function ChatSidebar({
 						 */}
 						{clearableDraftRows.length === 0 && (
 							<span id={CLEAR_ALL_WHY_ID} className="sr-only">
-								{CLEAR_ALL_WHY}
+								{clearAllWhy()}
 							</span>
 						)}
 					</div>
@@ -9161,8 +10199,14 @@ export function ChatSidebar({
 			 * rows keep their own place ahead of it, because their order is the reader's
 			 * manual arrangement (`chat-pin-order.ts`) and no clock's to change.
 			 */}
-			{view.groupBy !== "section" &&
-				(groupRows([...pinned, ...pagedRows], view.groupBy) ?? []).map(
+			{tagFooter && tagCategories.length === 0 && tagFooter}
+			{/*
+			 * `orderedPinned`, the reader's MANUAL pin order, as the comment above
+			 * promises - this passed `pinned` (catalogue order) until issue #1733's
+			 * design pass noticed the two disagree.
+			 */}
+			{(groupBy === "agent" || groupBy === "flat") &&
+				(groupRows([...orderedPinned, ...pagedRows], groupBy) ?? []).map(
 					(entry) => (
 						<section key={entry.key} data-chat-section={entry.key}>
 							{entry.label ? sectionLabel(entry.label) : null}
@@ -9191,7 +10235,29 @@ export function ChatSidebar({
 					{pinMoveAnnouncement}
 				</span>
 			)}
-			{pinnedShown && view.groupBy === "section" && pinned.length > 0 && (
+			{/*
+			 * `Group by › Tag` (issue #1733, docs/design/sidebar-tag-first-grouping.md):
+			 * the occupied primary tags are the top-level groups across all dates,
+			 * registry order, Untagged last, no time headings. TAGS WIN over
+			 * membership here, the reverse of Time section: pinned rows lead their tag
+			 * group in manual pin order, and live rows follow under Active first through
+			 * `pageOrder`'s lift (a live row past the cut is still in `pagedRows`), so
+			 * there is no Pinned or Running section. With no registry (or under search)
+			 * `taggedRows` falls back to the flat rows it was handed.
+			 */}
+			{/*
+			 * ONE wrapper, so the list's `space-y-4` section gap is spent once around
+			 * the arrangement and the groups inside sit flush on the headers' 28px
+			 * rhythm - the rhythm the same headers keep inside a time section
+			 * (design §2.3: "headers sit flush with no extra gap token"). It is also
+			 * the drag's section (`taggedRows` says why).
+			 */}
+			{groupBy === "tag" && (
+				<div data-chat-section="tag">
+					{taggedRows([...orderedPinned, ...pagedRows], "tag", true)}
+				</div>
+			)}
+			{pinnedShown && groupBy === "section" && pinned.length > 0 && (
 				<section
 					ref={pinnedSectionRef}
 					data-chat-section="pinned"
@@ -9204,8 +10270,8 @@ export function ChatSidebar({
 					 */
 					className="relative"
 				>
-					{sectionLabel("Pinned")}
-					{taggedRows(orderedPinned)}
+					{sectionLabel(t(SIDEBAR_SECTION_LABEL.pinned))}
+					{taggedRows(orderedPinned, "pinned")}
 					{/*
 					 * THE INSERTION INDICATOR, and it exists ONLY while a drag does: a 2px line in
 					 * the gap the row would land in, `bg-accent`'s colour step and nothing else -
@@ -9216,17 +10282,17 @@ export function ChatSidebar({
 					 * region speaks in words: an assistive reader is told where the row moved to,
 					 * and a decorative element with no text would be one more thing to skip.
 					 */}
-					{pinDrag !== null && (
+					{pinDrag !== null && !pinHeaderTarget && (
 						<div
 							ref={pinIndicatorRef}
 							aria-hidden="true"
 							data-session-pin-indicator=""
-							className="pointer-events-none absolute right-1 left-1 h-0.5 rounded-full bg-accent"
+							className="pointer-events-none absolute start-1 end-1 h-0.5 rounded-full bg-accent"
 						/>
 					)}
 				</section>
 			)}
-			{view.groupBy === "section" &&
+			{groupBy === "section" &&
 				drawnSections.map((key) => {
 					const rows = sectioned[key];
 					if (key === "running" && rows.length === 0 && livenessUnread) {
@@ -9237,11 +10303,11 @@ export function ChatSidebar({
 						 */
 						return (
 							<section key={key}>
-								{sectionLabel(CHAT_LIST_SECTION_LABEL[key])}
+								{sectionLabel(t(CHAT_LIST_SECTION_LABEL[key]))}
 								<p className="px-2 text-meta text-ink-dim">
 									{livenessUnread
-										? "The daemon could not read which chats are running, so this list may be incomplete."
-										: "Nothing running right now."}
+										? t("ui.chat.sidebar_notes.running_unread")
+										: t("ui.chat.sidebar_notes.running_none")}
 								</p>
 							</section>
 						);
@@ -9252,7 +10318,7 @@ export function ChatSidebar({
 					return (
 						<section key={key} data-chat-section={key}>
 							{sectionLabel(
-								CHAT_LIST_SECTION_LABEL[key],
+								t(CHAT_LIST_SECTION_LABEL[key]),
 								/*
 								 * The bulk read receipt sits on the FIRST section that has rows - the
 								 * one the eye lands on - while the set it clears is the STORE's, so
@@ -9261,7 +10327,7 @@ export function ChatSidebar({
 								 */
 								key === firstSection ? markAllReadControl : undefined,
 							)}
-							{taggedRows(rows)}
+							{taggedRows(rows, key)}
 						</section>
 					);
 				})}
@@ -9292,19 +10358,15 @@ export function ChatSidebar({
 			 * prints `Show N more sessions` as quiet text at the group's foot, and the
 			 * column's ink budget is spent on the rows themselves.
 			 */}
-			{!query.trim() && (page.remaining > 0 || tailMore) && (
+			{footShown && (
 				<button
 					type="button"
 					data-sidebar-page-more
+					onPointerDown={notePagePointer}
 					onClick={pressPageMore}
-					className="flex h-7 w-full items-center rounded-md px-2 text-left text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink"
+					className="flex h-7 w-full items-center rounded-md px-2 text-start text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink"
 				>
-					{pageMoreLabel(
-						view.loads,
-						page.remaining > 0
-							? pageReveal(arranged, view.loads, page.remaining)
-							: ladderStep,
-					)}
+					{footLabel}
 				</button>
 			)}
 			{/*
@@ -9327,6 +10389,7 @@ export function ChatSidebar({
 					{tailArrival}
 				</span>
 			)}
+			{tagFooter && tagCategories.length > 0 && tagFooter}
 			{/* A COLD-START sentence, not an empty-list one: it says the store
 		    holds no chats at all, so it must not appear beside rows. The
 		    catalogue being empty while `matching` is not is reachable now
@@ -9346,7 +10409,7 @@ export function ChatSidebar({
 				// as the group's, one register wider.
 				(catalogueCounts === null || catalogueCounts.total === 0) && (
 					<p className="text-meta text-ink-muted">
-						No chats yet. Choose an agent, team or New chat.
+						{t("ui.chat.sidebar.list.empty")}
 					</p>
 				)}
 			{/*
@@ -9370,7 +10433,7 @@ export function ChatSidebar({
 			)}
 			{truncated && !pageable && (
 				<p className="text-meta text-ink-muted">
-					Showing up to 500 chats. Older chats remain available in the terminal.
+					{t("ui.chat.sidebar.list.truncated_legacy")}
 				</p>
 			)}
 			{/*
@@ -9425,7 +10488,7 @@ export function ChatSidebar({
 								: "text-warning",
 						)}
 					>
-						Not connected to the backend — showing the last known state.
+						{t("ui.chat.sidebar.list.offline")}
 					</p>
 				)}
 		</div>
@@ -9447,7 +10510,7 @@ export function ChatSidebar({
 	return (
 		<nav
 			ref={navRef}
-			aria-label="Chats"
+			aria-label={t("ui.chat.sidebar.nav.chats")}
 			/*
 			 * THE SIDEBAR IS THE FIRST REGION OF THE KEYBOARD WALK (§C4). `tabIndex={-1}`
 			 * is what makes it a DOOR rather than a stop: the panel is entered by `F6`
@@ -9493,16 +10556,18 @@ export function ChatSidebar({
 			 * every one. Sharing it is what makes the panel's hover read as one surface.
 			 */}
 			{tagsAvailable && tagRow && (
-				<ChatSessionTagsDialog
+				<ChatTagPopover
 					key={tagRow.session_id}
 					row={tagRow}
+					grouped={tagsGrouped}
+					onShowGroups={() =>
+						setChatSidebarView({
+							...view,
+							tagsEnabled: true,
+							groupBy: "section",
+						})
+					}
 					onClose={() => setTagRow(null)}
-					returnFocus={returnTagsFocus}
-				/>
-			)}
-			{tagsAvailable && manageTagsOpen && (
-				<ManageTagsDialog
-					onClose={() => setManageTagsOpen(false)}
 					returnFocus={returnTagsFocus}
 				/>
 			)}
@@ -9548,12 +10613,12 @@ export function ChatSidebar({
 						data-sidebar-band
 						className="mb-2 flex h-7 shrink-0 items-center justify-end gap-0.5"
 					>
-						<Tooltip content="Search chats and agents">
+						<Tooltip content={t("ui.chat.sidebar.header.search")}>
 							<Button
 								variant="ghost"
 								size="icon-sm"
 								data-sidebar-search
-								aria-label="Search chats and agents"
+								aria-label={t("ui.chat.sidebar.header.search")}
 								onClick={() => {
 									/*
 									 * The field is drawn only while filtering (`filterOpen`), so this
@@ -9572,13 +10637,13 @@ export function ChatSidebar({
 							</Button>
 						</Tooltip>
 						<Popover open={viewOpen} onOpenChange={setViewOpen}>
-							<Tooltip content="View options">
+							<Tooltip content={t("ui.chat.sidebar.header.view_options")}>
 								<PopoverTrigger asChild>
 									<Button
 										variant="ghost"
 										size="icon-sm"
 										data-sidebar-view-options
-										aria-label="View options"
+										aria-label={t("ui.chat.sidebar.header.view_options")}
 										aria-expanded={viewOpen}
 										/*
 										 * THE FILLED PILL THE REFERENCE DRAWS (dsh's middle button fills
@@ -9637,31 +10702,19 @@ export function ChatSidebar({
 									view={view}
 									counts={viewCounts}
 									tagsAvailable={tagsAvailable}
-									tagsEmpty={
-										!tagCategoriesLoading &&
-										tagCategoriesError === null &&
-										tagCategories.length === 0
-									}
-									onManageTags={() => {
-										tagsInvoker.current = document.querySelector<HTMLElement>(
-											"[data-sidebar-view-options]",
-										);
-										tagsOriginId.current = null;
-										setViewOpen(false);
-										setManageTagsOpen(true);
-									}}
+									autoTagAvailable={autoTagAvailable}
 									onView={setChatSidebarView}
 								/>
 							</PopoverContent>
 						</Popover>
 						<Popover open={createOpen} onOpenChange={setCreateOpen}>
-							<Tooltip content="New agent or team">
+							<Tooltip content={t("ui.chat.sidebar.header.create")}>
 								<PopoverTrigger asChild>
 									<Button
 										variant="ghost"
 										size="icon-sm"
 										data-sidebar-create
-										aria-label="New agent or team"
+										aria-label={t("ui.chat.sidebar.header.create")}
 										aria-expanded={createOpen}
 									>
 										<FolderPlus aria-hidden="true" />
@@ -9689,10 +10742,12 @@ export function ChatSidebar({
 										setCreateOpen(false);
 										navigate("/agents?create=agent");
 									}}
-									className="flex h-7 w-full items-center gap-2 rounded-md px-1 text-left text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink"
+									className="flex h-7 w-full items-center gap-2 rounded-md px-1 text-start text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink"
 								>
 									<UserPlus aria-hidden="true" className="size-3.5 shrink-0" />
-									<span className="min-w-0 flex-1 truncate">New agent</span>
+									<span className="min-w-0 flex-1 truncate">
+										{t("ui.chat.sidebar.header.create_agent")}
+									</span>
 								</button>
 								<button
 									type="button"
@@ -9701,14 +10756,16 @@ export function ChatSidebar({
 										setCreateOpen(false);
 										navigate("/agents?create=team");
 									}}
-									className="flex h-7 w-full items-center gap-2 rounded-md px-1 text-left text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink"
+									className="flex h-7 w-full items-center gap-2 rounded-md px-1 text-start text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink"
 								>
 									<Users aria-hidden="true" className="size-3.5 shrink-0" />
-									<span className="min-w-0 flex-1 truncate">New team</span>
+									<span className="min-w-0 flex-1 truncate">
+										{t("ui.chat.sidebar.header.create_team")}
+									</span>
 								</button>
 							</PopoverContent>
 						</Popover>
-						<Tooltip content="Open agent…">
+						<Tooltip content={t("ui.chat.sidebar.header.open_agent")}>
 							{/*
 							 * THE FOURTH BAND CONTROL (issue #663): the roster's jump. The
 							 * section filter above survives a cap-bound roster, but a reader
@@ -9747,7 +10804,7 @@ export function ChatSidebar({
 								variant="ghost"
 								size="icon-sm"
 								data-sidebar-open-agent
-								aria-label="Open agent…"
+								aria-label={t("ui.chat.sidebar.header.open_agent")}
 								onClick={() => {
 									openCommandPalette();
 									setCommandPaletteQuery(AGENT_ROSTER_SEED);
@@ -9775,9 +10832,9 @@ export function ChatSidebar({
 				<div className={cn("relative mb-2", !filterShown && "hidden")}>
 					<input
 						ref={searchRef}
-						aria-label="Search chats and agents"
-						placeholder="Filter chats and agents"
-						className="h-8 w-full rounded-md bg-row-hover pr-9 pl-2 text-body-sm"
+						aria-label={t("ui.chat.sidebar.header.search")}
+						placeholder={t("ui.chat.sidebar.search.placeholder")}
+						className="h-8 w-full rounded-md bg-row-hover pe-9 ps-2 text-body-sm"
 						value={query}
 						onChange={(event) => setQuery(event.target.value)}
 						onBlur={() => {
@@ -9801,9 +10858,9 @@ export function ChatSidebar({
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							className="absolute top-1/2 right-1 -translate-y-1/2 focus-visible:outline-offset-[-2px]!"
+							className="absolute top-1/2 end-1 -translate-y-1/2 focus-visible:outline-offset-[-2px]!"
 							onClick={() => clearSearch(searchRef.current, setQuery)}
-							aria-label="Clear search"
+							aria-label={t("ui.chat.sidebar.search.clear")}
 						>
 							<X aria-hidden="true" />
 						</Button>
@@ -9844,7 +10901,7 @@ export function ChatSidebar({
 							htmlFor={INCLUDE_ARCHIVED_ID}
 							className="text-meta text-ink-muted"
 						>
-							Include archived
+							{t("ui.chat.sidebar.search.include_archived")}
 						</Label>
 					</div>
 				)}
@@ -9863,26 +10920,26 @@ export function ChatSidebar({
 		    notice returns for the reason it was written for. */}
 				{overLong && ready && (
 					<p className="pb-2 text-meta text-ink-muted">
-						Search terms are limited to {SESSION_SEARCH_MAX_CHARS} characters.
-						This one is longer, so only chat names are being searched.
+						{t("ui.chat.sidebar.search.too_long", {
+							max: SESSION_SEARCH_MAX_CHARS,
+						})}
 					</p>
 				)}
 				{query && ready && !searchSupported && !overLong && (
 					<p className="pb-2 text-meta text-ink-muted">
-						Searching chat names only. Update Local Operator to search inside
-						conversations.
+						{t("ui.chat.sidebar.search.names_only")}
 					</p>
 				)}
 				{query && searchSupported && search.isError && (
 					<p className="pb-2 text-meta text-ink-muted">
-						Conversation search is unavailable, so these are name matches.{" "}
+						{t("ui.chat.sidebar.search.unavailable")}{" "}
 						<Button
 							variant="link"
 							size="sm"
 							type="button"
 							onClick={() => void search.refetch()}
 						>
-							Retry
+							{t("ui.common.actions.retry")}
 						</Button>
 					</p>
 				)}
@@ -9911,7 +10968,9 @@ export function ChatSidebar({
 		    the previous question's hits (review round 2, R10). */}
 				{query.trim() && showList && !matching.length && answered && (
 					<p className="pb-2 text-meta text-ink-muted">
-						Nothing in your chats matches “{query.trim()}”.
+						{t("ui.chat.sidebar.search.no_match", {
+							query: query.trim(),
+						})}
 					</p>
 				)}
 				{awaiting &&
@@ -9920,7 +10979,7 @@ export function ChatSidebar({
 						matching.length,
 					) && (
 						<p className="pb-2 text-meta text-ink-muted">
-							Searching conversations…
+							{t("ui.chat.sidebar.search.searching")}
 						</p>
 					)}
 				{/* Mounted at all times and filled later: a live region added to the
@@ -9932,9 +10991,9 @@ export function ChatSidebar({
 				<p aria-live="polite" className="sr-only">
 					{awaiting &&
 					lostRowsToStaleAnswer(previous?.rows.length ?? 0, matching.length)
-						? "Searching conversations."
+						? t("ui.chat.sidebar.search.searching")
 						: query.trim() && showList && !matching.length && answered
-							? `Nothing in your chats matches ${query.trim()}.`
+							? t("ui.chat.sidebar.search.no_match", { query: query.trim() })
 							: ""}
 				</p>
 				{/* ONE SCROLLER, ONE FLOW (operator report, 2026-09-26): the entity
@@ -9959,6 +11018,7 @@ export function ChatSidebar({
 					id={CHAT_REGION_ID}
 					tabIndex={-1}
 					data-sidebar-region="scroller"
+					data-tag-drag-list=""
 					/* The edge cues (issue #845): `index.css` masks on this hook. */
 					data-lo-sidebar-edge-cues
 					onScroll={() => {
@@ -9967,9 +11027,25 @@ export function ChatSidebar({
 						extendCatalogueTail();
 					}}
 					className="relative min-h-0 flex-1 space-y-4 overflow-y-auto p-1 [overflow-anchor:none] [scrollbar-gutter:stable]"
+					/*
+					 * The reader's own gesture ends the Tag-mode foot's anchor hold
+					 * (`holdPageAnchor`): from here the scroll is theirs.
+					 */
+					onWheel={releasePageAnchor}
+					onPointerDown={releasePageAnchor}
+					onKeyDown={claimDeadSpace}
 				>
 					{entityRegion}
 					{pinFailureLine}
+					{listShown && temporaryEnabled && !query.trim() && (
+						<SidebarTemporaryGroup
+							rows={temporaryRows}
+							// The same current row the normal list marks (`currentSessionRowId`):
+							// a temporary first send lists its row here from the create's answer.
+							currentId={currentRowId}
+							onSelect={onSelectConversation}
+						/>
+					)}
 					{listShown && listRegion}
 				</div>
 				{/*
@@ -10007,18 +11083,24 @@ export function ChatSidebar({
 					!stripSpeaksConnection &&
 					!coveredByCompatibilityBanner && (
 						<div className="pt-2 text-meta text-ink-muted">
-							<p>{error || profiles.error?.message || teams.error?.message}</p>
-							<button
-								type="button"
-								className="mt-1 underline"
-								onClick={() => {
-									void refreshCatalogue();
-									void profiles.refetch();
-									void teams.refetch();
-								}}
-							>
-								Retry refresh
-							</button>
+							<p>
+								{serverUpdating
+									? t("ui.common.errors.desktop_refusal.server_updating")
+									: error || profiles.error?.message || teams.error?.message}
+							</p>
+							{serverUpdating ? null : (
+								<button
+									type="button"
+									className="mt-1 underline"
+									onClick={() => {
+										void refreshCatalogue();
+										void profiles.refetch();
+										void teams.refetch();
+									}}
+								>
+									{t("ui.chat.sidebar.list.retry_refresh")}
+								</button>
+							)}
 						</div>
 					)}
 			</TooltipProvider>

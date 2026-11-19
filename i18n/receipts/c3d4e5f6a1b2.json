@@ -1,0 +1,71 @@
+{
+  "auditor": "i18n-auditor-hi",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "c3d4e5f6a1b2",
+  "locale": "hi",
+  "namespace": "ui.chat.tags",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "date": "2026-10-19",
+  "model_provenance": "Actual audit performed using openai/gpt-6.1-sol after the harness switched from anthropic/claude-sonnet-5-5 because Anthropic quota was exhausted; the initial model had not completed an audit.",
+  "namespaces": {
+    "ui.chat.tags": {
+      "status": "passed",
+      "keys_audited": 73,
+      "sha256": {
+        "en": "2ceb3d8a5e4592916fce55ab7eeee5f4654f2d2394cbdb74be89aff2e73ab1be",
+        "hi": "1ca9974dea475a59dfc8bdaec89ba279c57c7f2691ae95d91d3b6296e073560f"
+      },
+      "findings": [
+        {
+          "id": "HI1",
+          "severity": "MINOR",
+          "key": "ui.chat.tags.selection_status",
+          "location": "src/i18n/catalogues/hi/ui.chat.tags.json:68",
+          "message": "Singular selection uses plural verb agreement: count=1 renders “1 चुने गए।” The selected tag is still understandable; this is a grammatical polish issue, not a wrong action or count.",
+          "recommendation": "Use an exact =1 ICU branch with “# चुना गया” and a plural/default branch with “# चुने गए”, preserving name and the second sentence.",
+          "evidence": "intl-messageformat with locale hi, count=1 and name=काम rendered “1 चुने गए। काम के तहत समूह बनाएँ।”"
+        },
+        {
+          "id": "HI2",
+          "severity": "MINOR",
+          "key": "ui.chat.tags.create_helper",
+          "location": "src/i18n/catalogues/hi/ui.chat.tags.json:59",
+          "message": "“सभी बातचीत के लिए” omits the oblique plural ending before के लिए. Meaning and persistence scope remain clear.",
+          "recommendation": "Prefer “सभी बातचीतों के लिए सहेजा जाता है”."
+        }
+      ]
+    }
+  },
+  "checks": {
+    "hashes": "Both expected SHA-256 values matched the on-disk bytes immediately before receipt creation.",
+    "baseline": "Compared decoded JSON values against git HEAD for both EN and HI: 54 baseline keys each, zero changed or removed; formatting-only differences are excluded.",
+    "new_keys": [
+      "selection_count",
+      "registry_count",
+      "create_name",
+      "create_helper",
+      "selection_limit",
+      "registry_limit",
+      "name_long",
+      "name_reserved",
+      "create_failed",
+      "remove_named",
+      "reorder_filtered",
+      "created_name",
+      "selection_status",
+      "tag_usage",
+      "create_pending",
+      "remote",
+      "renamed_name",
+      "staged_added",
+      "registry_changed"
+    ],
+    "coverage": "Read all 73 English/Hindi pairs, including 19 additions; checked meaning, grammar, neutral/polite UI register, punctuation, dynamic argument semantics and static menu/toast length risk.",
+    "icu": "Existing @formatjs/icu-messageformat-parser parsed all 73 pairs; AST argument-name sets matched for every pair. Existing intl-messageformat successfully formatted both locales at count 0,1,2,8,32: 730 formatted messages. Exercised existing plural branches in delete_description/remove_all and the simplified HI tag_usage count. Hindi tag_usage uses a compact count-plus-noun label; loss of English plural syntax does not lose an argument or quantity.",
+    "reserved_identifier": "Confirmed EN context explicitly requires the literal ASCII Untagged identifier to remain untranslated; HI preserves it.",
+    "length_risk": "No blocking static menu/toast length concern identified. Dynamic names remain variable length. No rendered-fit claim: rendered QA is explicitly outside this audit.",
+    "scope": "Hindi ui.chat.tags only. Application files, other locale receipts and ledger were not edited."
+  },
+  "verdict": "clean with minor follow-ups; TERMINAL. Zero BLOCKER and zero MAJOR."
+}

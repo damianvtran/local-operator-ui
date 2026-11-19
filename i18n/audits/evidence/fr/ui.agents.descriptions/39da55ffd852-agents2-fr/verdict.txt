@@ -1,0 +1,2 @@
+PASS
+fr ui.agents.descriptions (12 keys) + ui.agents.detail.install (2 keys): re-derived on unchanged bytes (fr c97aa959…, a80c0c68…) — 0 BLOCKER, 0 MAJOR, 0 MINOR, 2 NIT carried unchanged; receipt re-issued in the namespace sha256{en,fr} shape and both namespaces now bind through deriveReceiptAudit.

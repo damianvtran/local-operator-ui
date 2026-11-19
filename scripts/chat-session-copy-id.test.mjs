@@ -262,10 +262,17 @@ test("both doors call the one helper with their own id, and neither invents one"
 		"src/renderer/src/features/chat/copy-session-id.ts",
 		"utf8",
 	);
-	assert.match(helper, /"Session ID copied"/, "the success label moved");
+	const catalogue = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.notices.json", "utf8"),
+	);
+	assert.match(
+		helper,
+		/t\("ui\.notices\.sessions\.id_copied"\)/,
+		"the success label moved off its catalogue key",
+	);
 	assert.equal(
-		/["`]Session ID copied\.["`]/.test(helper),
-		false,
-		"the success label gained a trailing period - toasts in this app have none",
+		catalogue["ui.notices.sessions.id_copied"],
+		"Session ID copied",
+		"the success label moved or gained a trailing period - toasts in this app have none",
 	);
 });

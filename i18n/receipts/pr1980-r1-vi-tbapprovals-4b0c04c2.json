@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1, PR #1980",
+  "locale": "vi",
+  "namespace": "ui.teamBridge.approvals",
+  "pr": 1980,
+  "date": "2026-11-18",
+  "head": "9d9fb985f6424f2540d25dff5c61b9b7ed46ee0c",
+  "instance": "pr1980-r1-vi-tbapprovals-4b0c04c2",
+  "auditor": {
+    "agent": "copy-reviewer",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session b3a06099b675, a copy-reviewer task instance distinct from the translator (coder, the PR #1980 implementer session). Served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. Judged from the English, its context sidecar, the core glossary (local-operator origin/main b941eb9dcd, i18n/glossary.md blob 0554685f21) and the locale style guide, and shipped catalogue precedent; no MT used. Auditor made no locale edits: findings are recorded with a suggested rewrite for a follow-up.",
+    "instance": "pr1980-r1-vi-tbapprovals-4b0c04c2"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean",
+  "findings": [
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Mechanical pass on the audited bytes: key set and order equal English (74); ICU parse OK (@formatjs/icu-messageformat-parser); argument names/types equal English per key; every plural arm set equals the locale's CLDR cardinal categories (Intl.PluralRules); no bidi control characters (U+200E/F, U+202A-E, U+2066-9, U+061C); no em/en dashes; no 'Touch ID' or 'Mac' in any value; copy_scan.py over the 7 locale files: 0 findings."
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Truth check: no value names Touch ID or Mac; 'this computer' replaces 'this Mac' in reason_no_card and result.no_card; prompt states say device password or biometrics (or the confirmation prompt) only, matching the English and core v0.107.2 (b8a6aac1d1, decision a-856f). Teammate (person) and agent stay distinct in intro."
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Inherited from English, not a translation fault: the English pairs 'your computer' with 'your device password' (copy finding C1 on the PR). If the English changes, re-translate and re-audit."
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Single 'other' arm per CLDR vi; 'thiết bị' per glossary device row; ellipsis U+2026."
+    }
+  ],
+  "scope": "PR #1980 round 1: the 15 changed ui.teamBridge.approvals values (origin/main..9d9fb985), with the 59 unchanged keys re-verified mechanically",
+  "binding": "Verified on the working tree at 9d9fb985f6: target src/i18n/catalogues/vi/ui.teamBridge.approvals.json sha256 2536460f4787079e53f95cc5e6501ce2cd4e1ce0f6bf8eedd070c9cd8576127a; English sha256 5e4a69856d16d1038a927a3a0de7285432d83ee69c2d0087888e77e8ec180dad; context sha256 2d8d036f2c9df028c56ee8c099fe209c52497079c9a902c54234a4e83220a9a0.",
+  "en_sha256": "5e4a69856d16d1038a927a3a0de7285432d83ee69c2d0087888e77e8ec180dad",
+  "sha256": {
+    "vi": "2536460f4787079e53f95cc5e6501ce2cd4e1ce0f6bf8eedd070c9cd8576127a",
+    "en": "5e4a69856d16d1038a927a3a0de7285432d83ee69c2d0087888e77e8ec180dad"
+  },
+  "context_sha256": "2d8d036f2c9df028c56ee8c099fe209c52497079c9a902c54234a4e83220a9a0"
+}

@@ -1,0 +1,10 @@
+{
+	"ui.browser.media_permission.label": "摄像头和麦克风请求",
+	"ui.browser.media_permission.message": "{devices, select, audio {{site} 想要使用你的麦克风。} video {{site} 想要使用你的摄像头。} other {{site} 想要使用你的摄像头和麦克风。}}",
+	"ui.browser.media_permission.agent_tab_hint": "这是由智能体驱动的标签页，因此“允许”仅对本次请求有效。",
+	"ui.browser.media_permission.allow": "允许",
+	"ui.browser.media_permission.block": "阻止",
+	"ui.browser.media_permission.dismiss": "关闭摄像头和麦克风请求",
+	"ui.browser.media_permission.system_blocked": "{devices, select, audio {macOS 已关闭 Local Operator 的麦克风访问权限。} video {macOS 已关闭 Local Operator 的摄像头访问权限。} other {macOS 已关闭 Local Operator 的摄像头和麦克风访问权限。}}",
+	"ui.browser.media_permission.system_blocked_hint": "请在“系统设置 › 隐私与安全性”中开启，然后重新加载页面。"
+}

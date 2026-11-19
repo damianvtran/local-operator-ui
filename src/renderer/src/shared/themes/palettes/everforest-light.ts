@@ -44,7 +44,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const everforestLight: ThemeDefinition = {
 	id: "everforestLight",
 	name: "Everforest Light",
-	description: "Everforest by daylight: warm paper under a soft olive green.",
+	descriptionKey: "ui.settings.appearance.theme.everforest_light",
 	palette: {
 		mode: "light",
 

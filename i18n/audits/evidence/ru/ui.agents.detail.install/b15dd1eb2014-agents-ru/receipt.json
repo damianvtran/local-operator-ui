@@ -1,0 +1,225 @@
+{
+  "audit_type": "independent-translation-audit",
+  "audit_id": "b15dd1eb2014-agents-ru",
+  "instance": "b15dd1eb2014-agents-ru",
+  "locale": "ru",
+  "audit_date": "2026-10-30",
+  "audited_at_utc": "2026-10-30T11:11:59Z",
+  "scope": {
+    "namespaces": [
+      "ui.agents.descriptions",
+      "ui.agents.detail.install"
+    ],
+    "description": "Agents page card blurbs (12 descriptions) and the two install button labels; audited as the shipping bytes that will be committed verbatim into src/i18n/catalogues/ru/.",
+    "keys_total": 14
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "b15dd1eb2014",
+    "model": "radient/auto",
+    "actual_model_source": "fallback — primary anthropic/claude-sonnet-5-5 failed on provider quota; served openai/gpt-6-astra → kimi/k3.1-pro → radient/auto during this run (served model at audit time: radient/auto, per this run's auditor.log)",
+    "independent_from_translator_instance": true,
+    "independence_basis": "Separate agent instance and role: this auditor did not author these values and made no edits (targets read-only). NOT model-independent — agents-i18n/ru/translator.log shows the translator on the same fallback chain ending at radient/auto, so translator and auditor share the model. Independence here is process, not model diversity; recorded so the ledger does not overclaim."
+  },
+  "input_sha256": {
+    "en": {
+      "ui.agents.descriptions": "c865345f35a1f50313a2dd6cc6afa4f06d80144a2312ac691bacd1932edf2f1f",
+      "ui.agents.detail.install": "cb0674b7f65c48806d427a9ed2702c9d77e4bd6ff866f9966bc6f7762b84bcc9"
+    },
+    "target": {
+      "ru": {
+        "ui.agents.descriptions": "f5c8dae6b17e71be0e018dc47244135903cbeb7a5b802ba569d6ce98594822a4",
+        "ui.agents.detail.install": "363c43e7d845ca59ee3b1161763322066704ec2d0a41a8a583dcd4b2f35a93e0"
+      }
+    },
+    "context": {
+      "en_sidecar_descriptions": "src/i18n/catalogues/en/ui.agents.descriptions.context.json",
+      "en_sidecar_install": "src/i18n/catalogues/en/ui.agents.detail.install.context.json"
+    },
+    "glossary": "~/local-operator/i18n/glossary.md — sha256 0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "style_guide": "~/local-operator/i18n/style-guides/ru.md — sha256 f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+  },
+  "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 2,
+    "NIT": 3
+  },
+  "counts_schema": "BLOCKER/MAJOR/MINOR/NIT; one extra OBSERVATION entry is recorded separately and is not counted as a finding",
+  "verdict": "pass",
+  "verdict_reason": "No BLOCKER and no MAJOR: meaning, placeholders (none present), ICU (none present), product tokens and typography hold across all 14 values; the two MINOR findings are cross-surface terminology and one scope nuance, both consistency-level, not correctness.",
+  "namespaces": {
+    "ui.agents.descriptions": {
+      "status": "passed",
+      "keys_audited": 12,
+      "sha256": "f5c8dae6b17e71be0e018dc47244135903cbeb7a5b802ba569d6ce98594822a4",
+      "findings": [
+        "RU-01",
+        "RU-02",
+        "RU-03",
+        "RU-04",
+        "RU-05"
+      ],
+      "counts": {
+        "BLOCKER": 0,
+        "MAJOR": 0,
+        "MINOR": 2,
+        "NIT": 3
+      }
+    },
+    "ui.agents.detail.install": {
+      "status": "passed",
+      "keys_audited": 2,
+      "sha256": "363c43e7d845ca59ee3b1161763322066704ec2d0a41a8a583dcd4b2f35a93e0",
+      "findings": [],
+      "observations": [
+        "RU-06"
+      ],
+      "counts": {
+        "BLOCKER": 0,
+        "MAJOR": 0,
+        "MINOR": 0,
+        "NIT": 0
+      }
+    }
+  },
+  "findings": [
+    {
+      "id": "RU-01",
+      "severity": "MINOR",
+      "key": "ui.agents.descriptions.aida",
+      "en": "Your chief of staff: orchestrates agents and teams on your behalf, keeps an eye on everything in flight, and reports back.",
+      "ru": "Ваша правая рука: координирует работу агентов и команд за вас, держит в поле зрения всё, что в работе, и докладывает.",
+      "problem": "Terminology drift across surfaces: the shipped ru copy renders the same English role name \"chief of staff\" as «Координатор» (ui.teamBridge.chief.fallback, ui.teamBridge.section.chiefs, ui.teamBridge.thread.intro_chief). This card names Aida «ваша правая рука», so one role now carries two Russian names. The claim itself survives — «координирует … за вас» carries the coordination the role name implies — so this is consistency, not accuracy.",
+      "suggestion": "Ваш координатор: организует работу агентов и команд за вас, держит в поле зрения всё, что в работе, и докладывает. Swapping «координирует» → «организует» removes the tautology that plausibly pushed the translator to «правая рука». If the warm register the context note asks for outweighs cross-surface consistency, keep «правая рука» and record the call in the ru style guide so the next wave does not re-litigate it."
+    },
+    {
+      "id": "RU-02",
+      "severity": "MINOR",
+      "key": "ui.agents.descriptions.qa_tester",
+      "en": "Independent execution proof for a change: preflights the rig, exercises real paths and negative cases, and reports a scoped QA matrix without editing the repository.",
+      "ru": "Независимо доказывает, что изменение работает: проверяет стенд перед запуском, прогоняет реальные сценарии и негативные случаи, выдаёт матрицу QA по своей области, не трогая репозиторий.",
+      "problem": "\"a scoped QA matrix\" is a matrix limited to the change under test. «по своей области» reads as \"for its own domain/area\", which loses the scoped-to-the-change sense and can be read as the agent's own remit rather than the change's surface.",
+      "suggestion": "выдаёт матрицу QA в рамках изменения, не трогая репозиторий."
+    },
+    {
+      "id": "RU-03",
+      "severity": "NIT",
+      "key": "ui.agents.descriptions.tui_designer",
+      "en": "Designing and reviewing terminal interfaces: keyboard-first flows, density in small fixed viewports, colour and unicode fallbacks, measured geometry; reports T-prefixed findings.",
+      "ru": "Проектирование и ревью терминальных интерфейсов: клавиатурные сценарии, плотность на малых фиксированных экранах, резервные варианты для цвета и Unicode, геометрия по замерам; выдаёт замечания с префиксом T.",
+      "problem": "\"keyboard-first\" asserts the keyboard is the primary input, not merely a supported one; «клавиатурные сценарии» states keyboard flows and drops the priority claim.",
+      "suggestion": "приоритет клавиатуры в сценариях, плотность на малых фиксированных экранах, … — same list slot, no length cost."
+    },
+    {
+      "id": "RU-04",
+      "severity": "NIT",
+      "key": "ui.agents.descriptions.ux_reviewer",
+      "en": "Walks a change's real flow end to end: discoverability, feedback, error recovery, keyboard paths and copy; reports U-prefixed findings.",
+      "ru": "Проходит реальный сценарий изменения целиком: обнаруживаемость, обратная связь, восстановление после ошибок, клавиатурная навигация и тексты; выдаёт замечания с префиксом U.",
+      "problem": "\"keyboard paths\" is broader than navigation (focus order, shortcuts, chords, escape routes); «клавиатурная навигация» narrows it, and it is the second keyboard item in the set to be named differently from tui_designer's «сценарии».",
+      "suggestion": "клавиатурные сценарии и тексты — broader, and consistent with ui.agents.descriptions.tui_designer."
+    },
+    {
+      "id": "RU-05",
+      "severity": "NIT",
+      "key": "ui.agents.descriptions.ux_reviewer",
+      "en": "Walks a change's real flow end to end: discoverability, feedback, error recovery, keyboard paths and copy; reports U-prefixed findings.",
+      "ru": "Проходит реальный сценарий изменения целиком: обнаруживаемость, обратная связь, восстановление после ошибок, клавиатурная навигация и тексты; выдаёт замечания с префиксом U.",
+      "problem": "Longest value in the group at 173 chars against 135 English (ratio 1.28, the top of the ru guide's 20-30% natural band; the next highest are architect 1.23 and copy_reviewer 1.18). The roster line is one line at 256 px truncated with an ellipsis, so the extra ~38 characters are the fragment that never renders.",
+      "suggestion": "Drop «реальный» («Проходит сценарий изменения целиком») and, with RU-04, «клавиатурные сценарии» for «клавиатурная навигация»: 160 chars, ratio 1.19, claim unchanged."
+    }
+  ],
+  "observations": [
+    {
+      "id": "RU-06",
+      "severity": "OBSERVATION",
+      "key": "ui.agents.detail.install.action.install_to_edit",
+      "en": "Install to edit",
+      "ru": "Установить для правки",
+      "problem": "21 characters against 15 English (ratio 1.40), the largest growth in the group, and the button sits in a shrink-0 header row beside the «Новый чат» primary button, so growth widens the row rather than clipping text. No maxCells or maxChars is declared for this key, and the context note forbids shortening to a bare «Установить»; «Установить и править» is no shorter.",
+      "suggestion": "No change requested: no shorter compliant wording exists, and the real risk is header width on a narrow window, which needs rendered measurement (not available to this audit), not rewording. Recorded so the fit question is not lost."
+    }
+  ],
+  "mechanical": {
+    "repo_validator": "node scripts/i18n/check-duplicates.mjs --dir <scratch copy of both target files> → 'ok — 2 file(s) scanned, 0 duplicate key(s)', exit 0 (real execution)",
+    "json_valid": true,
+    "duplicate_keys": false,
+    "key_parity": {
+      "ui.agents.descriptions": "12/12 identical key set",
+      "ui.agents.detail.install": "2/2 identical key set"
+    },
+    "placeholders": "none in source or target — scanned every value for {}, <>, and % tokens",
+    "icu": "none in source or target — no plural/select structures to check",
+    "product_tokens_preserved": [
+      "diff",
+      "MR",
+      "PR",
+      "QA",
+      "Unicode",
+      "UX",
+      "C",
+      "D",
+      "T",
+      "U"
+    ],
+    "prefix_letters_are_latin": {
+      "copy_reviewer": "U+0043 C",
+      "designer": "U+0044 D",
+      "tui_designer": "U+0054 T",
+      "ux_reviewer": "U+0055 U"
+    },
+    "unicode_nfc": true,
+    "ellipsis": {
+      "ui.agents.detail.install.action.installing": "U+2026 present, no three-dot forms anywhere"
+    },
+    "whitespace": "no trailing/leading spaces, no double spaces, no space before ; : ! ?, no NBSP",
+    "encoding": "UTF-8, LF, tab-indented like the en catalogue",
+    "identical_to_english": "none",
+    "source_fidelity": "both .en.json inputs compare equal to src/i18n/catalogues/en/ (no drift from the repo oracle)"
+  },
+  "length_ratios": {
+    "note": "characters, ru/en; ru guide expects 20-30% growth",
+    "aida": 0.96,
+    "architect": 1.23,
+    "coder": 1.17,
+    "copy_reviewer": 1.18,
+    "designer": 1.07,
+    "librarian": 1.02,
+    "manager": 1.09,
+    "qa_tester": 1.13,
+    "reviewer": 0.99,
+    "scout": 1.14,
+    "tui_designer": 1.16,
+    "ux_reviewer": 1.28,
+    "install_to_edit": 1.4,
+    "installing": 1.0
+  },
+  "passes": {
+    "pass_1": "full read of all 14 values against the English source and both context sidecars",
+    "pass_2": "independent re-read of the same values before recording; RU-01/RU-02 re-derived, RU-04/RU-05 re-derived, no new BLOCKER/MAJOR appeared",
+    "high_visibility_second_audit_required": false,
+    "high_visibility_note": "Agents roster copy is not in the onboarding/errors/settings trio; the manager asked for a single independent audit and did not report this group as a second pass."
+  },
+  "audit_notes_not_execution_log": "The repo's catalogue-wide gates (generate --check, check-coverage, ledger-check) operate on committed catalogue paths and were not run against these uncommitted files; the only repo validator actually executed was check-duplicates --dir (output above). Everything else in 'mechanical' is verification this auditor performed itself.",
+  "input_kept_read_only": true,
+  "artifacts": [
+    {
+      "path": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/agents-audit/ru/receipt.json",
+      "kind": "audit_record",
+      "sha256": null
+    },
+    {
+      "path": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/agents-audit/ru/verdict.txt",
+      "kind": "verdict",
+      "sha256": "ef8e14cd3ff37ce607a255d60b4e9d6c66b78c670b77c30a3bf156d8883ee8cd"
+    },
+    {
+      "path": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/agents-audit/ru/auditor.log",
+      "kind": "execution_log",
+      "sha256": null,
+      "note": "Harness-written log of THIS auditor run (it lists the real bash/eval calls). Not editable by the auditor and still being appended when this record was written, so no hash is pinned; it is execution evidence, not an audit note."
+    }
+  ],
+  "receipt_self_hash_note": "A file cannot carry its own SHA-256; consumers should hash receipt.json themselves. The verdict and log hashes below were taken at write time."
+}

@@ -1,0 +1,30 @@
+{
+	"auditor": "i18n-auditor",
+	"model": "anthropic/claude-sonnet-5-5",
+	"instance": "e5a8b3d1-uf3-ru",
+	"locale": "ru",
+	"status": "passed",
+	"scope": "fresh independent re-audit of ru ui.updates.service (39 keys, incl. new global.app_owned.remedy) and ui.installer.setup_cause (7 keys), on-disk working-tree bytes, UI PR #1760 worktree i18n-update-flow @ 7390ee9dc92 + uncommitted edits; ui.updates.status excluded (byte-unchanged, already audited). Previous receipt 3f9a2c1d-uf-ru-update-flow-ru.json (9 minor/nit on service, 3 on setup_cause) verified folded in.",
+	"evidence": "Every key read against en + .context.json sidecars and shipped ru copy (ui.updates.panel, ui.installer, ui.common.updates). check-coverage.mjs ok; locale-parity.test.mjs 44/44 pass; context-parity.mjs ok. Placeholder names and technical tokens (Local Operator, lop-update, .lop-source, uv/pipx/pip, backticks, ::group-off) compared en vs ru programmatically for all 39 service keys: identical; all 7 setup_cause values format without error. intl-messageformat (ru) rendered at 0,1,2,5,11,21,100 with CLDR ru categories one(1,21)/few(2)/many(0,5,11,100): attempt_running.message_minutes '0 минут / 1 минуту / 2 минуты / 5 минут / 11 минут / 21 минуту / 100 минут назад'; fleet.busy.lead 'Ход ещё выполняется в 0 сессиях / 1 сессии / 2 сессиях / 5 / 11 сессиях / 21 сессии / 100 сессиях на этом компьютере: A, B и ещё N'; fleet.busy.body 'Приложение ждало 1 минуту, пока всё завершится…' (the prior 'их' disagreement is gone). disk_space: 'около 1500 МБ … свободно 12345 МБ' (::group-off honoured, unit now Cyrillic МБ). Prior findings applied: calque 'рядом с ним' -> 'параллельно' (3 keys), last-sentence order, 'окружение, обслуживающее это приложение' (2 keys), busy.body 'их', legacy_installer 'установщика, не прерывающего работу сессий' / 'программа обновления', closing 'уже запущенной', source_build 'вашего изменения', tls_interception 'перехватывает и проверяет такие соединения', 'владелец индекса', 'Отсутствовал файл, необходимый для настройки'; none introduced a defect. New key global.app_owned.remedy: meaning (own managed environment, no package manager owns it, no terminal command can update it, app updates only a server it started itself, stop this one and restart Local Operator) fully preserved, address form 'вы' consistent, Local Operator verbatim, length ~ source so fits the narrow-body sidecar note; grammar checked (genitive after negated 'не существует', masc. 'этот/свой' agree with 'сервер').",
+	"namespaces": {
+		"ui.updates.service": {
+			"status": "passed",
+			"keys_read": 39,
+			"sha256": {
+				"en": "e473e1fcca579cd11a398c7c21b86b4ef5d56efa5a48f09bce6b047170aa5ae2",
+				"ru": "65d40c366e2d89625a8222390363fcecaced622d179e5582bb331a011a79bab1"
+			},
+			"summary": "39 keys read; clean: no blocker/major/minor/nit. Placeholders, ru plural branches, ::group-off skeletons, backticked commands and technical tokens intact; new app_owned.remedy accurate and natural."
+		},
+		"ui.installer.setup_cause": {
+			"status": "passed",
+			"keys_read": 7,
+			"sha256": {
+				"en": "330241db6a55045e62e90042cf26694ff73537c24c50467e117436958a4b610b",
+				"ru": "53a42e2e498c5063688d26c5ab79ca49c2985aa02c47a5fc831d8c7e361cd902"
+			},
+			"summary": "7 keys read; clean: no findings."
+		}
+	},
+	"findings": []
+}

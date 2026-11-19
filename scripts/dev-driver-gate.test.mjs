@@ -46,6 +46,8 @@ const {
 	headlessExerciserAllowed,
 	readDevDriverArgument,
 	resolveDevDriverArming,
+	resolveDevDriverStartupScene,
+	devDriverSceneArgument,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(
 		bundle.outputFiles[0].text,
@@ -376,5 +378,81 @@ test("both launch facts are resolved from that snapshot, not the folded process.
 		main,
 		/env: process\.env,/,
 		"a launch fact is resolved from process.env again, which is the folded one",
+	);
+});
+
+/* Pure refusals never instantiate Electron or show a negative-case window. */
+test("fixed audit startup scene requires every independent isolation gate", () => {
+	const good = {
+		env: {
+			LOCAL_OPERATOR_UI_DEV_DRIVER_SCENE: "team-bridge-owner-audit",
+			VITE_DISABLE_BACKEND_MANAGER: "true",
+			VITE_LOCAL_OPERATOR_API_URL: "http://127.0.0.1:54321",
+		},
+		armed: true,
+		packaged: false,
+		windowMode: "headless",
+		backendManagerDisabled: true,
+		selectedBackendUrl: "http://127.0.0.1:54321/",
+		paths: {
+			root: "/rig",
+			home: "/rig/home",
+			config: "/rig/config",
+			requestedUserData: "/rig/profile",
+			actualUserData: "/rig/profile",
+		},
+	};
+	assert.equal(resolveDevDriverStartupScene(good), "team-bridge-owner-audit");
+	const negatives = [
+		{ ...good, armed: false },
+		{ ...good, packaged: true },
+		...["normal", "inactive"].map((windowMode) => ({ ...good, windowMode })),
+		{ ...good, backendManagerDisabled: false },
+		{ ...good, paths: null },
+		{ ...good, paths: { ...good.paths, actualUserData: "/live/profile" } },
+		{ ...good, paths: { ...good.paths, actualUserData: "/rig/different" } },
+		{ ...good, paths: { ...good.paths, home: "/rig-escape/home" } },
+		{ ...good, paths: { ...good.paths, config: "/live/config" } },
+		{ ...good, paths: { ...good.paths, root: "/" } },
+		{ ...good, selectedBackendUrl: "http://127.0.0.1:1111" },
+		...[undefined, "unknown", "/team-bridge", "team-bridge-owner-audit "].map(
+			(scene) => ({
+				...good,
+				env: { ...good.env, LOCAL_OPERATOR_UI_DEV_DRIVER_SCENE: scene },
+			}),
+		),
+		{ ...good, env: { ...good.env, VITE_DISABLE_BACKEND_MANAGER: "false" } },
+		...[
+			"http://remote.invalid:54321",
+			"http://127.0.0.1:1111",
+			"https://localhost:54321",
+			"http://localhost",
+			"http://user:pass@localhost:54321",
+			"http://localhost:54321/path",
+			"http://localhost:54321/?scene=x",
+		].map((url) => ({
+			...good,
+			env: { ...good.env, VITE_LOCAL_OPERATOR_API_URL: url },
+			selectedBackendUrl: url,
+		})),
+	];
+	for (const candidate of negatives)
+		assert.equal(resolveDevDriverStartupScene(candidate), null);
+	const arg = devDriverSceneArgument("team-bridge-owner-audit");
+	assert.equal(
+		readDevDriverArgument([arg]),
+		null,
+		"scene alone cannot arm preload",
+	);
+	assert.deepEqual(readDevDriverArgument([devDriverArgument(OUT), arg]), {
+		outDir: OUT,
+		startupScene: "team-bridge-owner-audit",
+	});
+	assert.deepEqual(
+		readDevDriverArgument([
+			devDriverArgument(OUT),
+			"--lo-dev-driver-scene=/arbitrary",
+		]),
+		{ outDir: OUT },
 	);
 });

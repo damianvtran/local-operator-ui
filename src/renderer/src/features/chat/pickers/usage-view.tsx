@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * `/usage` — provider quota as a table, not as JSON.
  *
@@ -30,23 +31,43 @@ import { Button } from "@shared/components/ui/button";
 import { Skeleton } from "@shared/components/ui/skeleton";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { type Query, useQuery } from "@tanstack/react-query";
+import { type Query, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FC, useCallback, useEffect, useRef, useState } from "react";
+import {
+	type UsageResetResult,
+	usageResetResultSchema,
+} from "../../../../../shared/desktop-contract";
 import { PickerHost } from "./picker-host";
 import type { MachinePanelContext } from "./picker-registry";
+import { setResetState, useResetStates } from "./reset-attempts";
 import {
 	type LimitRow,
-	NOT_REPORTED,
 	type ProviderBlock,
+	type ResetAccount,
+	type ResetStates,
+	type ResetTone,
 	type StatusTone,
 	type UsagePayload,
 	type UsageReport,
+	type UsageResetResultView,
+	askReset,
+	canReset,
+	cancelReset,
 	collectStats,
+	confirmReset,
 	currentUsageReport,
 	describeSource,
+	dismissReset,
 	hasMuseAllowanceNote,
+	mergeResetUsage,
 	newestConfirmedMs,
 	providerBlocks,
+	resetAccountLabel,
+	resetAccountOf,
+	resetOutcomeText,
+	resetOutcomeTone,
+	resetStateFor,
+	settleReset,
 	statsTerms,
 	statusTone,
 } from "./usage-view-model";
@@ -94,10 +115,18 @@ const BAR_CLASS: Record<StatusTone, string> = {
 
 /** Spoken status for a screen reader; tint is a second channel, never the only one. */
 const STATUS_WORD: Record<StatusTone, string> = {
-	ok: "within limit",
-	warning: "near limit",
-	exhausted: "exhausted",
-	dim: "not reported",
+	get ok() {
+		return t("ui.chat.pickers.usage_view.within_limit");
+	},
+	get warning() {
+		return t("ui.chat.pickers.usage_view.near_limit");
+	},
+	get exhausted() {
+		return "exhausted";
+	},
+	get dim() {
+		return t("ui.chat.pickers.usage_view.not_reported");
+	},
 };
 
 /**
@@ -124,7 +153,7 @@ const KNOWN_WORD: Record<string, string> = {
  * `519.86 USD left, not reported` — the spoken status contradicting the
  * printed number (UX U10). What is missing there is the LIMIT, not the report.
  */
-const NO_LIMIT_WORD = "no limit reported";
+const NO_LIMIT_WORD = () => t("ui.chat.pickers.usage_view.no_limit_reported");
 
 /**
  * The spoken status for one row.
@@ -135,8 +164,9 @@ const NO_LIMIT_WORD = "no limit reported";
  * one this view invented and therefore the one it can get wrong.
  */
 const statusWord = (row: LimitRow): string => {
-	if (row.status === "unknown" && row.amount !== NOT_REPORTED)
-		return NO_LIMIT_WORD;
+	// `reported` is the stable fact; `row.amount` is display copy and is `not
+	// reported` in every language, so comparing it only worked in English.
+	if (row.status === "unknown" && row.reported) return NO_LIMIT_WORD();
 	return KNOWN_WORD[row.status] ?? row.status;
 };
 
@@ -177,6 +207,7 @@ const LimitRowView: FC<{ row: LimitRow; degraded: boolean }> = ({
 	row,
 	degraded,
 }) => {
+	useI18nLocale();
 	const tone = statusTone(row.status);
 	return (
 		<li className={cn(ROW_GRID, "py-0.5")}>
@@ -195,7 +226,7 @@ const LimitRowView: FC<{ row: LimitRow; degraded: boolean }> = ({
 					"min-w-0 truncate text-body-sm",
 					// A per-model cap is subordinate: indented and dimmer, so a 100%
 					// family cap never reads as a dead account (SPEC rule 8).
-					row.subordinate ? "pl-3 text-ink-dim" : "text-ink-muted",
+					row.subordinate ? "ps-3 text-ink-dim" : "text-ink-muted",
 				)}
 			>
 				{row.limit.label}
@@ -276,7 +307,7 @@ const LimitRowView: FC<{ row: LimitRow; degraded: boolean }> = ({
 			<span className={cn("truncate text-right text-ink-dim text-meta")}>
 				{row.countdown ? (
 					<>
-						resets in{" "}
+						{t("ui.chat.pickers.usage_view.resets_in")}{" "}
 						<span className={cn("font-mono text-mono-sm tabular-nums")}>
 							{row.countdown}
 						</span>
@@ -289,19 +320,197 @@ const LimitRowView: FC<{ row: LimitRow; degraded: boolean }> = ({
 	);
 };
 
+/**
+ * What the block needs to draw and drive one account's reset.
+ *
+ * Passed in rather than owned here because the state machine, the mutation and
+ * the id it mints all live in the container -- a second copy in the presentational
+ * half is how a story and the app would drift apart about what `busy` means.
+ */
+export type UsageResetControls = {
+	/** Every account's machine state, keyed by `resetAccountKey`. */
+	states: ResetStates;
+	/** The model's own predicate, so the chip and the request cannot disagree. */
+	canReset: (report: UsageReport) => boolean;
+	onAsk: (report: UsageReport) => void;
+	onConfirm: (report: UsageReport) => void;
+	onCancel: (report: UsageReport) => void;
+	onDismiss: (report: UsageReport) => void;
+};
+
+/**
+ * The ink a result line may take.
+ *
+ * Three tones, not the five status tones: a result is not a quota window. `ok`
+ * is a spent-and-cleared credit, `danger` is the one arm whose fate is unknown,
+ * and everything else -- including the outcomes that spent nothing -- is a
+ * neutral statement of fact rather than an alarm.
+ */
+const RESULT_TINT: Record<ResetTone, string> = {
+	ok: "text-success",
+	muted: "text-ink-muted",
+	danger: "text-danger",
+};
+
 /** One provider: heading, the window that binds, any note, then every window. */
-const ProviderBlockView: FC<{ block: ProviderBlock }> = ({ block }) => (
-	<section className="rounded-md border border-hairline bg-surface px-3 py-2.5">
-		<div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-			<h3 className="font-medium text-body-sm text-ink">
-				{block.report.provider}
-			</h3>
-			{block.report.identity && (
-				<span className="truncate text-ink-muted text-meta">
-					{block.report.identity}
-				</span>
-			)}
-			{/* The binding window is stated on the block's FIRST row because "can I
+export const ProviderBlockView: FC<{
+	block: ProviderBlock;
+	reset?: UsageResetControls;
+}> = ({ block, reset }) => {
+	useI18nLocale();
+	/*
+	 * A report with no `credential_ref` has NO reset state: the map is keyed by
+	 * the account a spend would name, and a block that cannot name one is not
+	 * offered the control at all (`canReset`). `resetStateFor` answers the idle
+	 * state for such a block, so nothing below has to branch on the absence.
+	 */
+	const resetAccount = resetAccountOf(block.report);
+	const resetState = resetStateFor(reset?.states ?? {}, resetAccount);
+	const resetLabel = resetAccountLabel(block.report);
+	/*
+	 * EVERY PHASE CHANGE BELOW UNMOUNTS THE CONTROL THAT HAD FOCUS, so each one
+	 * names where focus goes instead: Cancel on the open confirmation (not
+	 * Confirm — this is the one action in the panel that spends something the app
+	 * cannot refund, so a stray Return must decline), the busy region when the
+	 * clicked buttons disable, the result line when the busy region goes, and the
+	 * chip (or the block heading, once a spend has left no chip) after Cancel or
+	 * Dismiss. Left alone, focus fell to `<body>` after every outcome and a
+	 * keyboard user's next Tab restarted from the top of the dialog (review round
+	 * 1, M3).
+	 *
+	 * The guard is "focus was DROPPED", not "this block changed": a second
+	 * account's settle can arrive while the user is reading the first one, and a
+	 * result that grabbed focus would move them off the sentence they were on.
+	 */
+	const sectionRef = useRef<HTMLElement>(null);
+	const cancelRef = useRef<HTMLButtonElement>(null);
+	const busyRef = useRef<HTMLDivElement>(null);
+	const chipRef = useRef<HTMLButtonElement>(null);
+	const resultRef = useRef<HTMLOutputElement>(null);
+	const headingRef = useRef<HTMLHeadingElement>(null);
+	const previousPhase = useRef(resetState.phase);
+	useEffect(() => {
+		const previous = previousPhase.current;
+		previousPhase.current = resetState.phase;
+		if (previous === resetState.phase) return;
+		const active = document.activeElement;
+		/*
+		 * Focus is this block's to move when it was DROPPED (the control unmounted
+		 * and the document fell back to `<body>`) or when it still sits on a
+		 * control this transition just retired — the result line, Dismiss, Retry,
+		 * Cancel. It is NOT this block's to move when the user is somewhere else in
+		 * the dialog: another account's settle arrives while they are reading, and a
+		 * result that grabbed focus would pull them off the sentence they were on.
+		 */
+		const insideBlock =
+			active !== null && (sectionRef.current?.contains(active) ?? false);
+		const moveToBlock =
+			active === null ||
+			active === document.body ||
+			(Boolean(insideBlock) &&
+				active !== chipRef.current &&
+				active !== headingRef.current);
+		if (resetState.phase === "confirm") {
+			cancelRef.current?.focus();
+			return;
+		}
+		if (resetState.phase === "busy") {
+			busyRef.current?.focus();
+			return;
+		}
+		if (resetState.phase === "result") {
+			if (moveToBlock) resultRef.current?.focus();
+			return;
+		}
+		// idle: Cancel and Dismiss both land here from a control that retired.
+		if (moveToBlock) (chipRef.current ?? headingRef.current)?.focus();
+	}, [resetState.phase]);
+	const confirming =
+		resetState.phase === "confirm" || resetState.phase === "busy";
+	const busy = resetState.phase === "busy";
+	const credits = block.report.resets_available ?? 0;
+	return (
+		<section
+			ref={sectionRef}
+			className="rounded-md border border-hairline bg-surface px-3 py-2.5"
+		>
+			<div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+				{/* A focus FALLBACK, not a tab stop: when a definitive outcome takes the
+				    chip away there is no reset control left in this block, and the user
+				    who dismissed the result line has to land somewhere in the block they
+				    were reading rather than back at the top of the dialog. */}
+				<h3
+					ref={headingRef}
+					tabIndex={-1}
+					className="font-medium text-body-sm text-ink"
+				>
+					{block.report.provider}
+				</h3>
+				{block.report.identity && (
+					<span className="truncate text-ink-muted text-meta">
+						{block.report.identity}
+					</span>
+				)}
+				{/*
+				 * The reset chip rides the heading line that already exists, between the
+				 * account and the binding cluster: it is a property of THIS account and
+				 * belongs beside its name, and putting it on a row of its own would move
+				 * every window down for an affordance most accounts do not have. It is
+				 * drawn only while a confirmation is not already open, and the binding
+				 * cluster keeps `ms-auto`, so its presence never re-flows the numbers on
+				 * the right.
+				 */}
+				{reset &&
+					resetAccount &&
+					!confirming &&
+					reset.canReset(block.report) && (
+						<Button
+							ref={chipRef}
+							variant="tonal"
+							size="sm"
+							type="button"
+							className={cn(
+								"h-6 px-2 font-semibold text-meta hover:bg-hairline",
+							)}
+							/*
+							 * DESIGN ROUND 1, D1. As a `ghost` chip this was `ink-muted` at 12 px
+							 * on a transparent ground — the SAME colour, size and background as
+							 * the account address beside it, differing only by weight, and it
+							 * echoed the "resets in 4d" column on the row below. Readers took it
+							 * for a second count rather than a control, which is why the one
+							 * affordance this surface adds was invisible. `tonal` is the existing
+							 * token for a quiet but VISIBLE action (sunken ground, body ink,
+							 * >= 7.10:1 on all 59 palettes); `h-6` brings it to the 24 px target
+							 * floor. It stays inside the heading line, so no row is added — the line
+							 * itself is 24 px instead of 20, which is the 4.5 px design round 2
+							 * measured and the price of the target floor.
+							 *
+							 * `hover:bg-hairline`, not the variant's own `hover:bg-surface`: surface
+							 * IS the card, so hovering erased the fill and the chip collapsed back
+							 * into the plain-bold-text look this finding was about (round 2, D6).
+							 */
+							/*
+							 * The spoken name carries the COUNT the chip draws: the visible
+							 * label is "Reset · 3", so an accessible name without the number
+							 * leaves a screen-reader user without the one fact the chip exists
+							 * to show, and voice control cannot target the label they can see
+							 * (WCAG 2.5.3, review round 1 m2). It also no longer promises a
+							 * spend — the click opens a confirmation.
+							 */
+							aria-label={t("ui.chat.usage_reset.chip_label", {
+								account: resetLabel,
+								count: credits,
+							})}
+							title={t("ui.chat.usage_reset.chip_label", {
+								account: resetLabel,
+								count: credits,
+							})}
+							onClick={() => reset.onAsk(block.report)}
+						>
+							{t("ui.chat.usage_reset.chip", { count: String(credits) })}
+						</Button>
+					)}
+				{/* The binding window is stated on the block's FIRST row because "can I
 			    keep working" is the question the view is opened to answer; leaving
 			    it to be found among equals is what the TUI's header fixed.
 
@@ -312,82 +521,209 @@ const ProviderBlockView: FC<{ block: ProviderBlock }> = ({ block }) => (
 			    entirely — so reading down the first line of each block, the number
 			    jumped horizontally and once changed which column it was in. That
 			    undercuts the one-table scan the layout is built for. */}
-			{block.binding && (
-				<span className={cn("ml-auto flex items-baseline gap-x-2")}>
-					<span
-						className={cn(
-							AMOUNT_COLUMN,
-							"truncate text-right text-meta",
-							TINT_CLASS[statusTone(block.binding.status)],
-						)}
-					>
-						{block.binding.label}{" "}
-						<span className={cn("font-mono text-mono-sm tabular-nums")}>
-							{block.binding.percent}
+				{block.binding && (
+					<span className={cn("ms-auto flex items-baseline gap-x-2")}>
+						<span
+							className={cn(
+								AMOUNT_COLUMN,
+								"truncate text-right text-meta",
+								TINT_CLASS[statusTone(block.binding.status)],
+							)}
+						>
+							{block.binding.label}{" "}
+							<span className={cn("font-mono text-mono-sm tabular-nums")}>
+								{block.binding.percent}
+							</span>
+						</span>
+						<span
+							className={cn(
+								COUNTDOWN_COLUMN,
+								"truncate text-right text-ink-dim text-meta",
+							)}
+						>
+							{block.binding.countdown ? (
+								<>
+									{t("ui.chat.pickers.usage_view.resets_in")}{" "}
+									<span className={cn("font-mono text-mono-sm tabular-nums")}>
+										{block.binding.countdown}
+									</span>
+								</>
+							) : (
+								""
+							)}
 						</span>
 					</span>
-					<span
+				)}
+				{/* With no meters at all there is no binding window to protect, so the
+			    heading may carry the probe failure itself. */}
+				{!block.binding &&
+					block.report.state === "unavailable" &&
+					!hasMuseAllowanceNote(block.report) && (
+						<span className={cn("ms-auto text-ink-dim text-meta")}>
+							{t("ui.chat.pickers.usage_view.usage_unavailable")}
+						</span>
+					)}
+			</div>
+			{/*
+			 * THE CONFIRMATION, inline in the block it spends on.
+			 *
+			 * Inline rather than a second dialog: the picker IS a dialog, and a modal
+			 * opened on top of it would hide the rows the decision is about ("is this
+			 * the exhausted account?") exactly when the user needs them. Inline also
+			 * keeps Esc meaning "close the panel" rather than "dismiss a modal inside
+			 * it".
+			 *
+			 * The cost sentence replaces the confirmation heading's room while busy:
+			 * the buttons are inert there, and the one thing worth reading is which
+			 * account the app is still waiting on (`busy` explains the wait instead of
+			 * re-stating a cost that has already been paid or refused).
+			 */}
+			{reset && resetAccount && confirming && (
+				<div
+					ref={busyRef}
+					tabIndex={-1}
+					className={cn(
+						"mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-sm bg-sunken px-2 py-1.5",
+					)}
+				>
+					<div className={cn("min-w-0")}>
+						<p className={cn("text-body-sm text-ink")}>
+							{t("ui.chat.usage_reset.confirm_title", { account: resetLabel })}
+						</p>
+						<p className={cn("text-meta text-ink-muted")}>
+							{busy
+								? t("ui.chat.usage_reset.busy", { account: resetLabel })
+								: t("ui.chat.usage_reset.confirm_cost", { count: credits })}
+						</p>
+					</div>
+					<div className={cn("ms-auto flex items-center gap-2")}>
+						<Button
+							ref={cancelRef}
+							variant="secondary"
+							size="sm"
+							type="button"
+							disabled={busy}
+							onClick={() => reset.onCancel(block.report)}
+						>
+							{t("ui.common.actions.cancel")}
+						</Button>
+						<Button
+							variant="primary"
+							size="sm"
+							type="button"
+							disabled={busy}
+							onClick={() => reset.onConfirm(block.report)}
+						>
+							{busy
+								? t("ui.chat.usage_reset.busy_action")
+								: t("ui.common.actions.confirmation_modal.confirm")}
+						</Button>
+					</div>
+				</div>
+			)}
+			{/*
+			 * THE RESULT LINE, and it outlives the chip.
+			 *
+			 * The spend is what makes the chip disappear (the refreshed report carries
+			 * zero credits), so a result rendered only beside the chip would vanish at
+			 * the exact moment it has something to report. It is therefore its own line,
+			 * keyed on the STATE rather than on `canReset`, and it stays until the user
+			 * dismisses it or another attempt replaces it.
+			 *
+			 * The status node is MOUNTED EMPTY and filled on settle -- a live region
+			 * announces a change to a node already in the document, and text that
+			 * arrives with the node is its initial content (the same measurement that
+			 * fixed the panel's own announcement region).
+			 */}
+			{reset && resetAccount && (
+				<div className={cn("flex flex-wrap items-baseline gap-x-2 pt-1")}>
+					{/* A programmatic landing spot, never a tab stop: focus arrives here
+					    when the busy region unmounts, and the node is in the tab order only
+					    through `tabIndex={-1}`'s absence from it. */}
+					<output
+						ref={resultRef}
+						tabIndex={-1}
 						className={cn(
-							COUNTDOWN_COLUMN,
-							"truncate text-right text-ink-dim text-meta",
+							"min-w-0 text-meta",
+							resetState.phase === "result"
+								? RESULT_TINT[resetOutcomeTone(resetState.result.outcome)]
+								: undefined,
 						)}
 					>
-						{block.binding.countdown ? (
-							<>
-								resets in{" "}
-								<span className={cn("font-mono text-mono-sm tabular-nums")}>
-									{block.binding.countdown}
-								</span>
-							</>
-						) : (
-							""
-						)}
-					</span>
-				</span>
+						{resetState.phase === "result"
+							? resetOutcomeText(resetState.result, resetLabel)
+							: ""}
+					</output>
+					{resetState.phase === "result" && (
+						<span className={cn("ms-auto flex items-center gap-1")}>
+							{/*
+							 * Retry is offered only where a retry is both meaningful and safe:
+							 * the two non-definitive outcomes. It re-opens the CONFIRMATION
+							 * rather than firing a second request from a result line -- a spend
+							 * always asks first -- and the id it will carry is the one already
+							 * owed, which is what makes the failed line's promise true.
+							 */}
+							{(resetState.result.outcome === "failed" ||
+								resetState.result.outcome === "refused") && (
+								<Button
+									variant="ghost"
+									size="sm"
+									type="button"
+									className={cn("h-5 px-1.5 text-meta")}
+									onClick={() => reset.onAsk(block.report)}
+								>
+									{t("ui.common.actions.retry")}
+								</Button>
+							)}
+							<Button
+								variant="ghost"
+								size="sm"
+								type="button"
+								className={cn("h-5 px-1.5 text-meta")}
+								onClick={() => reset.onDismiss(block.report)}
+							>
+								{t("ui.common.actions.dismiss")}
+							</Button>
+						</span>
+					)}
+				</div>
 			)}
-			{/* With no meters at all there is no binding window to protect, so the
-			    heading may carry the probe failure itself. */}
-			{!block.binding &&
-				block.report.state === "unavailable" &&
-				!hasMuseAllowanceNote(block.report) && (
-					<span className={cn("ml-auto text-ink-dim text-meta")}>
-						Usage unavailable
-					</span>
-				)}
-		</div>
-		{block.note && (
-			<p
-				className={cn(
-					"pt-1 text-meta",
-					// A dead grant names a remedy the user can act on, so it is the one
-					// note that earns the danger role; staleness is a fact, not a fault.
-					block.report.state === "reauth_required"
-						? "text-danger"
-						: "text-ink-dim",
-				)}
-			>
-				{block.note}
-			</p>
-		)}
-		{block.rows.length > 0 ? (
-			<ul className={cn("pt-1.5")}>
-				{block.rows.map((row) => (
-					<LimitRowView
-						key={row.limit.id}
-						row={row}
-						degraded={block.degraded}
-					/>
-				))}
-			</ul>
-		) : (
-			/* A block holding only its heading reads as a rendering defect rather
+			{block.note && (
+				<p
+					className={cn(
+						"pt-1 text-meta",
+						// A dead grant names a remedy the user can act on, so it is the one
+						// note that earns the danger role; staleness is a fact, not a fault.
+						block.report.state === "reauth_required"
+							? "text-danger"
+							: "text-ink-dim",
+					)}
+				>
+					{block.note}
+				</p>
+			)}
+			{block.rows.length > 0 ? (
+				<ul className={cn("pt-1.5")}>
+					{block.rows.map((row) => (
+						<LimitRowView
+							key={row.limit.id}
+							row={row}
+							degraded={block.degraded}
+						/>
+					))}
+				</ul>
+			) : (
+				/* A block holding only its heading reads as a rendering defect rather
 			   than as an answer, which is why the TUI prints the same line. */
-			block.emptyNote && (
-				<p className={cn("pt-1.5 text-ink-dim text-meta")}>{block.emptyNote}</p>
-			)
-		)}
-	</section>
-);
+				block.emptyNote && (
+					<p className={cn("pt-1.5 text-ink-dim text-meta")}>
+						{block.emptyNote}
+					</p>
+				)
+			)}
+		</section>
+	);
+};
 
 export type UsageReportsProps = {
 	reports: UsageReport[];
@@ -395,6 +731,16 @@ export type UsageReportsProps = {
 	source: string;
 	/** The clock countdowns are measured from. Pinned by stories and tests. */
 	now: number;
+	/**
+	 * The reset surface, when the container has one.
+	 *
+	 * Optional because this component is also what the stories render without a
+	 * backend: absent means no chip, no confirmation and no result line, and every
+	 * other state of the table is unchanged. A story that wants the chip supplies
+	 * its own controls -- the same controls the container builds, not a
+	 * story-only imitation.
+	 */
+	reset?: UsageResetControls;
 };
 
 /**
@@ -404,7 +750,11 @@ export type UsageReportsProps = {
  * countdown columns are fixed-width and right-aligned across every block, so
  * the blocks scan as one table instead of several that happen to be stacked.
  */
-export const UsageReports: FC<UsageReportsProps> = ({ reports, now }) => {
+export const UsageReports: FC<UsageReportsProps> = ({
+	reports,
+	now,
+	reset,
+}) => {
 	useI18nLocale();
 	// The baseline blocks are aged against is the set's newest CONFIRMATION, not
 	// the response's stamp. See `newestConfirmedMs` for what the difference cost.
@@ -421,6 +771,7 @@ export const UsageReports: FC<UsageReportsProps> = ({ reports, now }) => {
 					// providers that report none (openrouter sends `identity: null`).
 					key={`${block.report.provider}:${block.report.identity ?? index}`}
 					block={block}
+					reset={reset}
 				/>
 			))}
 		</div>
@@ -470,33 +821,38 @@ export const UsageTally: FC<{ reports: UsageReport[] }> = ({ reports }) => {
  * `aria-hidden` with a live region beside it: a screen reader should hear
  * "loading provider usage" once, not a description of eleven grey rectangles.
  */
-const UsageSkeleton: FC = () => (
-	<div className={cn("flex flex-col gap-2")}>
-		<output className={cn("sr-only")}>Loading provider usage.</output>
-		{[0, 1, 2].map((block) => (
-			<section
-				key={block}
-				className={cn(
-					"rounded-md border border-hairline bg-surface px-3 py-2.5",
-				)}
-				aria-hidden="true"
-			>
-				<Skeleton className={cn("h-3.5 w-40")} />
-				<div className={cn("flex flex-col gap-2 pt-3")}>
-					{[0, 1].map((row) => (
-						<div key={row} className={cn(ROW_GRID)}>
-							<Skeleton className={cn("size-1.5 rounded-full")} />
-							<Skeleton className={cn("h-3 w-24")} />
-							<Skeleton className={cn("h-1.5")} />
-							<Skeleton className={cn("h-3 w-20 justify-self-end")} />
-							<Skeleton className={cn("h-3 w-16 justify-self-end")} />
-						</div>
-					))}
-				</div>
-			</section>
-		))}
-	</div>
-);
+const UsageSkeleton: FC = () => {
+	useI18nLocale();
+	return (
+		<div className={cn("flex flex-col gap-2")}>
+			<output className={cn("sr-only")}>
+				{t("ui.chat.pickers.usage_view.loading_provider_usage")}
+			</output>
+			{[0, 1, 2].map((block) => (
+				<section
+					key={block}
+					className={cn(
+						"rounded-md border border-hairline bg-surface px-3 py-2.5",
+					)}
+					aria-hidden="true"
+				>
+					<Skeleton className={cn("h-3.5 w-40")} />
+					<div className={cn("flex flex-col gap-2 pt-3")}>
+						{[0, 1].map((row) => (
+							<div key={row} className={cn(ROW_GRID)}>
+								<Skeleton className={cn("size-1.5 rounded-full")} />
+								<Skeleton className={cn("h-3 w-24")} />
+								<Skeleton className={cn("h-1.5")} />
+								<Skeleton className={cn("h-3 w-20 justify-self-end")} />
+								<Skeleton className={cn("h-3 w-16 justify-self-end")} />
+							</div>
+						))}
+					</div>
+				</section>
+			))}
+		</div>
+	);
+};
 
 /**
  * What the polite region says while a read is out, one sentence per mode.
@@ -513,8 +869,10 @@ const UsageSkeleton: FC = () => (
  * cache-aware check must not read as the forced, every-provider ask the user
  * has to have pressed.
  */
-const CHECK_ANNOUNCEMENT = "Checking for an updated usage report.";
-const ASK_ANNOUNCEMENT = "Getting fresh usage from providers.";
+const CHECK_ANNOUNCEMENT = () =>
+	t("ui.chat.pickers.usage_view.checking_for_an_updated_usage_report");
+const ASK_ANNOUNCEMENT = () =>
+	t("ui.chat.pickers.usage_view.getting_fresh_usage_from_providers");
 
 export type UsageDialogProps = {
 	onClose: () => void;
@@ -540,6 +898,14 @@ export type UsageDialogProps = {
 	outcome?: { tone: "info" | "error"; text: string } | null;
 	/** The clock ages and countdowns are measured from. Pinned by stories. */
 	now: number;
+	/**
+	 * The reset surface, when the container has one; the stories pass their own.
+	 *
+	 * It rides the DIALOG rather than the table so the confirmation and result
+	 * lines are reachable from the same contract the container builds, and so a
+	 * story can render any phase without a backend.
+	 */
+	reset?: UsageResetControls;
 };
 
 /**
@@ -561,9 +927,12 @@ export const UsageDialog: FC<UsageDialogProps> = ({
 	onFetchLive,
 	outcome = null,
 	now,
+	reset,
 }) => {
 	// The local clock already repaints countdowns. Age passive receipts on that
 	// same tick, including the tally, without re-querying or buying inference.
+
+	useI18nLocale();
 	const reports = (payload?.reports ?? []).map((report) =>
 		currentUsageReport(report, now),
 	);
@@ -615,7 +984,7 @@ export const UsageDialog: FC<UsageDialogProps> = ({
 	const [announcement, setAnnouncement] = useState("");
 	useEffect(() => {
 		setAnnouncement(
-			fetching ? (asked ? ASK_ANNOUNCEMENT : CHECK_ANNOUNCEMENT) : "",
+			fetching ? (asked ? ASK_ANNOUNCEMENT() : CHECK_ANNOUNCEMENT()) : "",
 		);
 	}, [fetching, asked]);
 
@@ -623,7 +992,7 @@ export const UsageDialog: FC<UsageDialogProps> = ({
 		<PickerHost
 			open
 			onClose={onClose}
-			title="Provider usage"
+			title={t("ui.chat.pickers.usage_view.provider_usage")}
 			wide
 			// At four or more accounts the table is taller than the body, which is
 			// the DEFAULT state for anyone with several logins rather than an edge
@@ -642,10 +1011,12 @@ export const UsageDialog: FC<UsageDialogProps> = ({
 							newestConfirmedMs(reports, payload.fetched_at),
 							now,
 						)
-					: "Quota and usage as the providers report it."
+					: t(
+							"ui.chat.pickers.usage_view.quota_and_usage_as_the_providers_report_it",
+						)
 			}
 			toolbar={
-				// `ml-auto` on the action rather than `justify-between` on the row:
+				// `ms-auto` on the action rather than `justify-between` on the row:
 				// the tally renders nothing when there are no windows, and with
 				// `justify-between` its absence left the button sitting at the left
 				// edge of the toolbar instead of staying where it always is.
@@ -696,7 +1067,7 @@ export const UsageDialog: FC<UsageDialogProps> = ({
 					 */}
 					<Button
 						ref={actionRef}
-						className={cn("ml-auto")}
+						className={cn("ms-auto")}
 						variant="ghost"
 						size="sm"
 						type="button"
@@ -705,11 +1076,11 @@ export const UsageDialog: FC<UsageDialogProps> = ({
 					>
 						{fetching
 							? asked
-								? "Asking providers"
-								: "Checking provider usage"
+								? t("ui.chat.pickers.usage_view.asking_providers")
+								: t("ui.chat.pickers.usage_view.checking_provider_usage")
 							: asked
-								? "Ask providers again"
-								: "Ask providers now"}
+								? t("ui.chat.pickers.usage_view.ask_providers_again")
+								: t("ui.chat.pickers.usage_view.ask_providers_now")}
 					</Button>
 				</div>
 			}
@@ -736,7 +1107,7 @@ export const UsageDialog: FC<UsageDialogProps> = ({
 					ref={bodyRef}
 					// biome-ignore lint/a11y/noNoninteractiveTabindex: the tab stop IS the fix; a labelled scroll container with no focusable descendant has to be focusable or a keyboard user cannot reach its content at all.
 					tabIndex={0}
-					aria-label="Report list"
+					aria-label={t("ui.chat.pickers.usage_view.report_list")}
 					className={cn("block rounded-sm")}
 				>
 					{showSkeleton ? (
@@ -756,8 +1127,9 @@ export const UsageDialog: FC<UsageDialogProps> = ({
 					 */
 					payload && reports.length === 0 ? (
 						<p className={cn("text-body-sm text-ink-muted")}>
-							No usage reports. Sign in to a provider that publishes quota, then
-							ask providers for live numbers.
+							{t(
+								"ui.chat.pickers.usage_view.no_usage_reports_sign_in_to_a_provider_that_publishes_quota_then_ask_pro",
+							)}
 						</p>
 					) : reports.length === 0 ? (
 						/* No answer yet and nothing to show: the in-flight state, which the
@@ -768,6 +1140,7 @@ export const UsageDialog: FC<UsageDialogProps> = ({
 							reports={reports}
 							source={payload?.source ?? "cached"}
 							now={now}
+							reset={reset}
 						/>
 					)}
 				</section>
@@ -960,6 +1333,55 @@ export const usageQueryOptions = (
 	}) as const;
 
 /**
+ * A fresh vendor idempotency key for one reset attempt.
+ *
+ * `crypto.randomUUID()` rather than a counter or a timestamp: the id has to be
+ * unique across app restarts and windows because the VENDOR dedupes on it, and
+ * the contract's schema only admits a UUID. It is minted when a confirmation
+ * opens and then owned by the state machine, so the same attempt reuses it.
+ */
+const mintRedeemRequestId = (): string => crypto.randomUUID();
+
+/**
+ * How many times one attempt is sent at the vendor.
+ *
+ * TWO, and the second one is safe only because it carries the SAME
+ * `redeem_request_id`: the vendor joins on that key, so a transient transport
+ * blip heals without the user's involvement and without a second spend — which
+ * is strictly better than the unknown line for a request that never reached the
+ * vendor. This replaces the app's inherited `retry: 1` mutation default, which
+ * bought the same behaviour by accident of a policy nobody checked on an op
+ * that spends something.
+ */
+const RESET_SEND_ATTEMPTS = 2;
+
+/** One reset attempt, retried with the same id; the answer, or the last throw. */
+const sendReset = async (variables: {
+	account: ResetAccount;
+	identity: string | null;
+	redeemRequestId: string;
+}): Promise<UsageResetResult> => {
+	let failure: unknown;
+	for (let attempt = 1; attempt <= RESET_SEND_ATTEMPTS; attempt += 1) {
+		try {
+			const answer = await desktopResult<unknown>({
+				op: "usage.reset",
+				provider: variables.account.provider,
+				credentialRef: variables.account.credentialRef,
+				// Only when the report carried one: an empty label is not an
+				// identifier, and the route's own field bound refuses it.
+				...(variables.identity ? { identity: variables.identity } : {}),
+				redeemRequestId: variables.redeemRequestId,
+			});
+			return usageResetResultSchema.parse(answer);
+		} catch (error) {
+			failure = error;
+		}
+	}
+	throw failure;
+};
+
+/**
  * `/usage` as the registry mounts it.
  *
  * The cached report paints first, then a distinct cache-aware live check runs
@@ -998,6 +1420,192 @@ export const UsageView: FC<MachinePanelContext> = ({ onClose, action }) => {
 	 * second query it simply stays mounted, and its answer is adopted below.
 	 */
 	const snapshot = useQuery(usageQueryOptions(provider, "cached"));
+
+	/*
+	 * THE RESET SURFACE.
+	 *
+	 * State, not the query cache: what a reset has done is not part of any read,
+	 * and it has to OUTLIVE the read that follows it -- a spend that takes the
+	 * account to zero credits drops the chip on the next payload, and the result
+	 * line has to stay on screen anyway.
+	 *
+	 * THE MAP LIVES OUTSIDE THIS COMPONENT (`reset-attempts.ts`), and that is
+	 * load-bearing rather than tidy: closing `/usage` unmounts this view
+	 * (`panel-outlet.tsx` clears the panel), and the pending id kept in view state
+	 * died with it — so `failed` -> close -> reopen -> Confirm minted a FRESH id,
+	 * and the vendor, which only joins on an identical
+	 * `(provider, target, redeem_request_id)`, saw a second attempt on the same
+	 * login: a second spend on the one action this app cannot refund (review
+	 * round 1, B2). The store outlives the mount, so the id a retry carries is the
+	 * one the vendor already saw.
+	 *
+	 * The map is per ACCOUNT (`provider` + `credential_ref`), which is the
+	 * backend's own unit: one provider can hold several stored logins, and "one
+	 * attempt at a time" is a property of the login being charged, not of the
+	 * panel.
+	 */
+	const queryClient = useQueryClient();
+	const resetStates = useResetStates();
+	/*
+	 * The cache key the panel is reading RIGHT NOW, held as a ref because a reset's
+	 * answer arrives later than the press that sent it: by then the user's own ask
+	 * may have given the view a new query identity, and the answer belongs to
+	 * whichever key is on screen rather than to the one held at Confirm. Assigned
+	 * during render, the same "latest closure" pattern `sign-in-sessions.ts` uses
+	 * for its deps.
+	 */
+	const liveKeyRef = useRef(usageQueryOptions(provider, mode, askId).queryKey);
+	liveKeyRef.current = usageQueryOptions(provider, mode, askId).queryKey;
+
+	const settleAccount = useCallback(
+		(account: ResetAccount, result: UsageResetResultView) => {
+			setResetState(account, (current) => settleReset(current, result));
+		},
+		[],
+	);
+
+	const askResetFor = useCallback((report: UsageReport) => {
+		const account = resetAccountOf(report);
+		if (!account) return;
+		setResetState(account, (current) => askReset(current, mintRedeemRequestId));
+	}, []);
+
+	const cancelResetFor = useCallback((report: UsageReport) => {
+		const account = resetAccountOf(report);
+		if (!account) return;
+		setResetState(account, cancelReset);
+	}, []);
+
+	const dismissResetFor = useCallback((report: UsageReport) => {
+		const account = resetAccountOf(report);
+		if (!account) return;
+		setResetState(account, dismissReset);
+	}, []);
+
+	/*
+	 * Confirm, then send. The id comes from the machine, never from this handler:
+	 * a second spend of the SAME attempt is only prevented by carrying the id the
+	 * first one used.
+	 *
+	 * THE TRANSITION IS APPLIED FROM THE STORE'S CURRENT STATE, not from this
+	 * render's `resetStates`: a settle from another attempt may have landed
+	 * between the render and the click (review round 1, m4), and `confirmReset`
+	 * answers with the SAME object when there is nothing to confirm — so a
+	 * Cancel that won that race cannot be overridden by a stale snapshot, and the
+	 * `busy` phase doubles as the "already sending" latch.
+	 *
+	 * EACH ATTEMPT SETTLES ITS OWN ACCOUNT. This used to be one shared
+	 * `useMutation` with per-call callbacks, and query-core keeps only the LATEST
+	 * call's `#mutateOptions`: confirming a second account left the first in
+	 * `busy` with disabled buttons and its answer unrecorded (review round 1,
+	 * M2). There is no shared observer now — the send is a plain promise whose
+	 * handlers close over the ONE account it spends for.
+	 */
+	const confirmResetFor = useCallback(
+		(report: UsageReport) => {
+			const account = resetAccountOf(report);
+			if (!account) return;
+			const next = setResetState(account, confirmReset);
+			if (next.phase !== "busy") return;
+			/*
+			 * When this attempt started, for the "did a newer read land" question
+			 * below. Taken BEFORE the request, so any answer the cache received
+			 * while the spend was out counts as newer than the payload we are about
+			 * to write.
+			 */
+			const startedAt = Date.now();
+			void sendReset({
+				account,
+				identity: report.identity,
+				redeemRequestId: next.redeemRequestId,
+			}).then(
+				(answer) => {
+					settleAccount(account, {
+						outcome: answer.reset.outcome,
+						windowsReset: answer.reset.windows_reset,
+						detail: answer.reset.detail,
+						refused: answer.reset.refused,
+					});
+					/*
+					 * The route refreshes the provider on a DEFINITIVE outcome and hands
+					 * the post-spend report back in the same answer, so the rows behind
+					 * the result line are the ones the spend produced — no second, slower
+					 * read is bought here. `usage` is null after `failed`/`refused`
+					 * (nothing was refreshed there), and a null must NOT be written: the
+					 * rows already on screen are still the truth, and replacing them with
+					 * an invented refresh is exactly what this branch avoids.
+					 */
+					if (!answer.usage) return;
+					/*
+					 * THE KEY THE VIEW IS SUBSCRIBED TO NOW, not the one it held when
+					 * Confirm was pressed: an ask issued while the spend was out gives the
+					 * view a new identity, and writing to the captured key would leave the
+					 * rows on screen pre-spend (review round 1, m3, first half).
+					 */
+					const key = liveKeyRef.current;
+					/*
+					 * And a read that landed AFTER this attempt started owns the cache: its
+					 * rows are newer than the answer's, and writing the answer over them
+					 * would rewind the table to a state the user already replaced by asking
+					 * (m3, second half).
+					 */
+					const settledAt = queryClient.getQueryState(key)?.dataUpdatedAt ?? 0;
+					/*
+					 * `>=`, not `>`: the two stamps are millisecond clocks, so a read
+					 * that settles in the same millisecond as the press is
+					 * indistinguishable from one that beat it — and the tie belongs to
+					 * the read, because overwriting it is the only direction that
+					 * REWINDS a table the user is looking at.
+					 */
+					if (settledAt >= startedAt) return;
+					const refreshed: UsagePayload = {
+						reports: answer.usage.reports as unknown as UsageReport[],
+						source: answer.usage.source,
+						fetched_at: answer.usage.fetched_at,
+					};
+					/*
+					 * MERGE, do not replace, when the panel is unscoped. The backend
+					 * refreshed ONLY the provider that was spent
+					 * (`fetch_usage([body.provider], force_refresh=True)`), so its
+					 * `usage` is a PARTIAL answer: writing it over the whole cache set
+					 * dropped every other provider's block until the next read (review
+					 * round 1, M1). A panel scoped to that provider shows nothing else, so
+					 * there the answer IS the complete payload.
+					 */
+					queryClient.setQueryData(
+						key,
+						provider === undefined
+							? mergeResetUsage(
+									queryClient.getQueryData<UsagePayload>(key),
+									refreshed,
+								)
+							: refreshed,
+					);
+				},
+				(error: unknown) => {
+					// A transport or protocol failure establishes nothing about the
+					// credit, so it settles as the unknown outcome — the one line that
+					// says so and promises a retry cannot spend twice.
+					settleAccount(account, {
+						outcome: "failed",
+						windowsReset: 0,
+						detail: errorText(error),
+						refused: false,
+					});
+				},
+			);
+		},
+		[settleAccount, queryClient, provider],
+	);
+
+	const resetControls: UsageResetControls = {
+		states: resetStates,
+		canReset,
+		onAsk: askResetFor,
+		onConfirm: confirmResetFor,
+		onCancel: cancelResetFor,
+		onDismiss: dismissResetFor,
+	};
 
 	/*
 	 * Ask again, and mean it.
@@ -1055,7 +1663,10 @@ export const UsageView: FC<MachinePanelContext> = ({ onClose, action }) => {
 		 */
 		if (mode !== "ask") return;
 		if (isError) {
-			setOutcome({ tone: "error", text: errorText(error) });
+			setOutcome({
+				tone: "error",
+				text: errorText(error),
+			});
 			return;
 		}
 		/*
@@ -1069,12 +1680,17 @@ export const UsageView: FC<MachinePanelContext> = ({ onClose, action }) => {
 		if (failureCount > 0) {
 			setOutcome({
 				tone: "error",
-				text: `${errorText(failureReason)} Retrying…`,
+				text: t("ui.chat.pickers.usage_view.retrying", {
+					errortext: errorText(failureReason),
+				}),
 			});
 			return;
 		}
 		if (!settledAt) return;
-		setOutcome({ tone: "info", text: "Providers answered." });
+		setOutcome({
+			tone: "info",
+			text: t("ui.chat.pickers.usage_view.providers_answered"),
+		});
 	}, [mode, settledAt, isError, error, failureCount, failureReason]);
 
 	/*
@@ -1173,6 +1789,7 @@ export const UsageView: FC<MachinePanelContext> = ({ onClose, action }) => {
 			// One clock reading per render, shared by every countdown and age on
 			// screen, so two rows in the same frame cannot disagree about the time.
 			now={now}
+			reset={resetControls}
 		/>
 	);
 };

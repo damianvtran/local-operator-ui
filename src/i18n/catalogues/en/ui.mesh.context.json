@@ -29,6 +29,11 @@
 		"tone": "Factual and restrained",
 		"note": "Move/invite/removal dialog and outcome notice: names/explains the copy here is deleted once it. Distinguish moving from keeping a copy, and preserve which device retains or loses the conversation; a refusal means no transfer happened. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
 	},
+	"ui.mesh.mesh_actions.the_copy_there_is_deleted_once_it": {
+		"role": "status or explanatory text — move/invite/removal dialog and outcome notice",
+		"tone": "Factual and restrained",
+		"note": "Recall confirmation (the conversation comes TO this device): caption under the preselected recall option. 'there' is the remote device that currently holds the conversation and LOSES its copy; 'here' is this device, which RECEIVES it. It must never read as this device's copy being deleted; it is the direction-mirror of ui.mesh.mesh_actions.the_copy_here_is_deleted_once_it, used for outbound moves. Keep the here/there wording consistent with ui.mesh.mesh_card.copy_here_leave_it_there. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
 	"ui.mesh.mesh_actions.it_is_open_on_the_other_end": {
 		"role": "warning/error explanation — move/invite/removal dialog and outcome notice",
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
@@ -489,21 +494,6 @@
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
 		"note": "Onboarding authority approval: names/explains answer approval prompts there. This is authority-bearing copy: keep who grants/signs and which machine receives/uses the permission explicit; do not strengthen the permission. Length: keep the approval/permission explanation compact, around the English footprint; no hard cell cap is defined."
 	},
-	"ui.mesh.mesh_approvals.expires_in_under_a_minute": {
-		"role": "approval/permission explanation — onboarding authority approval",
-		"tone": "Plain explanatory language; preserve confidence and safety meaning",
-		"note": "Onboarding authority approval: names/explains expires in under a minute. Length: keep the approval/permission explanation compact, around the English footprint; no hard cell cap is defined."
-	},
-	"ui.mesh.mesh_approvals.expires_minutes": {
-		"role": "approval/permission explanation — onboarding authority approval",
-		"tone": "Plain explanatory language; preserve confidence and safety meaning",
-		"note": "Onboarding authority approval: names/explains expires minutes. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale’s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
-	},
-	"ui.mesh.mesh_approvals.expires_hours": {
-		"role": "approval/permission explanation — onboarding authority approval",
-		"tone": "Plain explanatory language; preserve confidence and safety meaning",
-		"note": "Onboarding authority approval: names/explains expires hours. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale’s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
-	},
 	"ui.mesh.mesh_approvals.the_approvals_could_not_be_read": {
 		"role": "approval/permission explanation — onboarding authority approval",
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
@@ -544,11 +534,6 @@
 		"tone": "Factual and restrained",
 		"note": "Device detail panel and conversation move menu: names/explains conversation count. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale’s complete CLDR cardinal categories, not an English count === 1 rule (Russian one/few/many/other; Arabic zero/one/two/few/many/other). Preserve every count placeholder and the action/scope; zero is a real count unless the caller separately guards visibility."
 	},
-	"ui.mesh.mesh_card.revoked_membership": {
-		"role": "status or explanatory text — device detail panel and conversation move menu",
-		"tone": "Factual and restrained",
-		"note": "Device detail panel and conversation move menu: names/explains revoked membership. Identity/membership security state, not mere lack of a network response. Preserve the lockout or identity warning. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
-	},
 	"ui.mesh.mesh_card.shown_of": {
 		"role": "status or explanatory text — device detail panel and conversation move menu",
 		"tone": "Factual and restrained",
@@ -563,11 +548,6 @@
 		"role": "dialog/section heading — device detail panel and conversation move menu",
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
 		"note": "Device detail panel and conversation move menu: names/explains memberships. Length: keep the dialog/section heading compact, around the English footprint; no hard cell cap is defined."
-	},
-	"ui.mesh.mesh_card.revoked": {
-		"role": "status or explanatory text — device detail panel and conversation move menu",
-		"tone": "Factual and restrained",
-		"note": "Device detail panel and conversation move menu: names/explains revoked. Identity/membership security state, not mere lack of a network response. Preserve the lockout or identity warning. Inline fragment: preserve boundary spaces; its adjacent name/value stays in the existing markup. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
 	},
 	"ui.mesh.mesh_card.remove_from": {
 		"role": "button/menu choice — device detail panel and conversation move menu",
@@ -709,6 +689,16 @@
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
 		"note": "Conversation drag/drop resolution: names/explains owner no answer. Report only the observed reach/census fact: silence, not attempted and not reported are different states; the status frame is not a heartbeat. Placeholders: device = operator-supplied device label; reason = backend diagnostic with its existing parentheses, or empty. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
 	},
+	"ui.mesh.mesh_drop.reach_refusal": {
+		"role": "status or explanatory text — mesh move refusal",
+		"tone": "Factual and restrained",
+		"note": "A move was refused before it was sent because the destination's reach state is {reach}; {reason} is the backend's own sentence, already parenthesised by the caller. State the reach word rather than collapsing every failure into \"not answering\"."
+	},
+	"ui.mesh.mesh_drop.owner_reach_refusal": {
+		"role": "status or explanatory text — mesh move refusal",
+		"tone": "Factual and restrained",
+		"note": "A recall was refused because the owner device's reach state is {reach}; {reason} is the backend's own sentence, already parenthesised by the caller. State the reach word rather than collapsing every failure into \"not answering\"."
+	},
 	"ui.mesh.mesh_drop.recall_first": {
 		"role": "move resolver outcome/remedy — conversation drag/drop resolution",
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
@@ -774,15 +764,40 @@
 		"tone": "Factual and restrained",
 		"note": "Mesh device/census summary: names/explains network count. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the device/census status phrase compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale’s complete CLDR cardinal categories, not an English count === 1 rule (Russian one/few/many/other; Arabic zero/one/two/few/many/other). Preserve every count placeholder and the action/scope; zero is a real count unless the caller separately guards visibility."
 	},
+	"ui.mesh.mesh_graph.address_unreachable_count": {
+		"role": "device/census status phrase — mesh device/census summary",
+		"tone": "Factual and restrained",
+		"note": "Mesh device/census summary: names/explains how many devices were dialled at every published address and nothing answered (timeouts or no route). Placeholders: count = count of devices; ICU controls grammar. Keep this class separate from relay down, handshake refused and no answer."
+	},
+	"ui.mesh.mesh_graph.no_endpoint_count": {
+		"role": "device/census status phrase — mesh device/census summary",
+		"tone": "Factual and restrained",
+		"note": "Mesh device/census summary: names/explains how many devices publish no dialable address. Placeholders: count = count of devices; ICU controls grammar. Nothing was attempted for these devices, so do not describe them as a transport failure."
+	},
+	"ui.mesh.mesh_graph.not_a_member_count": {
+		"role": "device/census status phrase — mesh device/census summary",
+		"tone": "Factual and restrained",
+		"note": "Mesh device/census summary: names/explains how many devices report this device is not a member. Placeholders: count = count of devices; ICU controls grammar. A membership/access fact, not a transport failure."
+	},
 	"ui.mesh.mesh_graph.device_count": {
 		"role": "dialog/section heading — mesh device/census summary",
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
 		"note": "Mesh device/census summary: names/explains device count. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale’s complete CLDR cardinal categories, not an English count === 1 rule (Russian one/few/many/other; Arabic zero/one/two/few/many/other). Preserve every count placeholder and the action/scope; zero is a real count unless the caller separately guards visibility."
 	},
+	"ui.mesh.mesh_graph.handshake_refused_count": {
+		"role": "device/census status phrase — mesh device/census summary",
+		"tone": "Factual and restrained",
+		"note": "Mesh device/census summary: names/explains how many devices answered TCP and then closed the handshake. Placeholders: count = count of devices; ICU controls grammar. Keep every failure class named separately from relay down and no answer."
+	},
 	"ui.mesh.mesh_graph.suspected_count": {
 		"role": "device/census status phrase — mesh device/census summary",
 		"tone": "Factual and restrained",
 		"note": "Mesh device/census summary: names/explains suspected count. Identity/membership security state, not mere lack of a network response. Preserve the lockout or identity warning. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the device/census status phrase compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale’s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+	},
+	"ui.mesh.mesh_graph.relay_down_count": {
+		"role": "device/census status phrase — mesh device/census summary",
+		"tone": "Factual and restrained",
+		"note": "Mesh device/census summary: names/explains how many devices have a relay that is not listening. The contract's rule is: not_listening when no endpoint connected AND at least one refused TCP (the host was up and nothing listened); unknown otherwise. Placeholders: count = count of devices; ICU controls grammar. Keep this class separate from handshake refused and no answer."
 	},
 	"ui.mesh.mesh_graph.reached_count": {
 		"role": "device/census status phrase — mesh device/census summary",
@@ -842,12 +857,12 @@
 	"ui.mesh.mesh_list.revoked_count": {
 		"role": "dialog/section heading — mesh device table",
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
-		"note": "Mesh device table: names/explains revoked count. Identity/membership security state, not mere lack of a network response. Preserve the lockout or identity warning. Placeholders: count = count of the named objects/states; ICU controls grammar. Inline fragment: preserve boundary spaces; its adjacent name/value stays in the existing markup. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale’s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+		"note": "Mesh device table: names/explains revoked count. Identity/membership security state, not mere lack of a network response. Preserve the lockout or identity warning. Placeholders: count = count of the named objects/states; ICU controls grammar. Inline fragment: the fragment is the bare clause only, with no leading separator. The calling line writes its own · separator as markup, because a leading space in a flex item is dropped (design review round 1, D2). Do not add a leading space or a leading separator to the translation. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale’s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
 	},
-	"ui.mesh.mesh_list.revoked": {
-		"role": "status or explanatory text — mesh device table",
-		"tone": "Factual and restrained",
-		"note": "Mesh device table: names/explains revoked. Identity/membership security state, not mere lack of a network response. Preserve the lockout or identity warning. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	"ui.mesh.mesh_list.revoked_toggle_label": {
+		"role": "accessible control name — mesh device table",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Mesh device table: the accessible name of the inline trigger whose visible text is a bare count (\"2 revoked\"). It must say the disclosure holds revoked membership records rather than devices: the count read alone is mistaken for a device count, and the visible line stays short because this label carries the meaning. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined."
 	},
 	"ui.mesh.mesh_list.member": {
 		"role": "status or explanatory text — mesh device table",
@@ -964,6 +979,11 @@
 		"tone": "Factual and restrained",
 		"note": "Success receipt from backend. retirement is present only when source_retired was observed; do not claim the original is gone otherwise. Placeholders: destination = device receiving the conversation; retirement = localized source-retirement clause or empty. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
 	},
+	"ui.mesh.mesh_page.move_receipt_resumed": {
+		"role": "status or explanatory text — mesh page and action receipts",
+		"tone": "Factual and restrained",
+		"note": "Success receipt when the receipt says the destination STARTED the conversation on arrival (a move made mid-turn resumes there). Same placeholders as move_receipt: destination = device now holding the conversation; retirement = localized source-retirement clause or empty. Say 'resumed' only - do not claim more than that it is running there."
+	},
 	"ui.mesh.mesh_page.the_copy_here_is_gone": {
 		"role": "status or explanatory text — mesh page and action receipts",
 		"tone": "Factual and restrained",
@@ -983,6 +1003,76 @@
 		"role": "device/census status phrase — device reach classification",
 		"tone": "Factual and restrained",
 		"note": "Device reach classification: names/explains reached. Report only the observed reach/census fact: silence, not attempted and not reported are different states; the status frame is not a heartbeat. Length: keep the device/census status phrase compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_reach.relay_not_running": {
+		"role": "device/census status phrase — device reach classification",
+		"tone": "Factual and restrained",
+		"note": "The peer's relay process is not listening. The contract's rule is: not_listening when no endpoint connected AND at least one refused TCP (the host was up and nothing listened); unknown otherwise. This is a named transport verdict, not a generic unreachable state; keep the distinction from timeout and handshake refusal."
+	},
+	"ui.mesh.mesh_reach.address_unreachable": {
+		"role": "device/census status phrase — device reach classification",
+		"tone": "Factual and restrained",
+		"note": "The device was dialled at every published address and nothing answered (timeouts or no route). Distinct from relay not running (a refusal proves the host is up) and from handshake refused (something answered)."
+	},
+	"ui.mesh.mesh_reach.no_endpoint": {
+		"role": "device/census status phrase — device reach classification",
+		"tone": "Factual and restrained",
+		"note": "The device publishes no dialable address, so nothing was attempted. Never present this as the device failing to answer."
+	},
+	"ui.mesh.mesh_reach.not_a_member": {
+		"role": "device/census status phrase — device reach classification",
+		"tone": "Factual and restrained",
+		"note": "The peer reports this device is not a member of the shared network. A membership/access fact, not a transport failure."
+	},
+	"ui.mesh.mesh_reach.attempt_bad_address": {
+		"role": "device/census status phrase — per-address link evidence",
+		"tone": "Factual and restrained",
+		"note": "The published endpoint could not be parsed as a dialable address (detail token `bad_endpoint`). Short label beside the endpoint."
+	},
+	"ui.mesh.mesh_reach.attempt_could_not_connect": {
+		"role": "device/census status phrase — per-address link evidence",
+		"tone": "Factual and restrained",
+		"note": "The connection failed for a reason other than the known refusal/timeout tokens (a `connect_failed:` detail). Never print the exception class name."
+	},
+	"ui.mesh.mesh_reach.handshake_refused": {
+		"role": "device/census status phrase — device reach classification",
+		"tone": "Factual and restrained",
+		"note": "TCP connected but the peer closed the handshake with no reason (unknown device or epoch mismatch). Distinct from no answer and from relay not running; keep the word compact."
+	},
+	"ui.mesh.mesh_reach.addresses_tried": {
+		"role": "section label — per-address link evidence",
+		"tone": "Factual and restrained",
+		"note": "Heading above the list of dialled addresses and their transport results in the device panel."
+	},
+	"ui.mesh.mesh_reach.attempt_answered": {
+		"role": "device/census status phrase — per-address link evidence",
+		"tone": "Factual and restrained",
+		"note": "The dialled address answered successfully (detail token `ok`). Short label beside the endpoint."
+	},
+	"ui.mesh.mesh_reach.attempt_nothing_listening": {
+		"role": "device/census status phrase — per-address link evidence",
+		"tone": "Factual and restrained",
+		"note": "The address answered TCP with a connection refusal: the host is up and nothing is listening on that port."
+	},
+	"ui.mesh.mesh_reach.attempt_no_answer": {
+		"role": "device/census status phrase — per-address link evidence",
+		"tone": "Factual and restrained",
+		"note": "The address timed out or the handshake produced no answer. Distinct from a refusal: nothing spoke on that address."
+	},
+	"ui.mesh.mesh_reach.attempt_not_tried": {
+		"role": "device/census status phrase — per-address link evidence",
+		"tone": "Factual and restrained",
+		"note": "The address was never dialled, so no transport fact exists for it. Never present this as a failure of the device."
+	},
+	"ui.mesh.mesh_reach.peer_relay_not_running": {
+		"role": "status or explanatory text — device panel link evidence",
+		"tone": "Factual and restrained",
+		"note": "Headline above the per-address evidence: the peer's relay is not running. Report the observation; do not blame the reader's relay or the network."
+	},
+	"ui.mesh.mesh_reach.peer_closed_handshake": {
+		"role": "status or explanatory text — device panel link evidence",
+		"tone": "Factual and restrained",
+		"note": "Headline above the per-address evidence: the peer answered TCP but closed the handshake. Names the observed close rather than a generic silence."
 	},
 	"ui.mesh.mesh_reach.no_answer": {
 		"role": "device/census status phrase — device reach classification",
@@ -1028,6 +1118,11 @@
 		"role": "unnamed record fallback label — unnamed network/device label",
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
 		"note": "Unnamed network/device label: names/explains device suffix. Placeholders: suffix = literal last six characters of a technical id. Length: keep the unnamed record fallback label compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_types.unnamed_device": {
+		"role": "member identity — absent device name",
+		"tone": "Plain explanatory language; preserve the security distinction",
+		"note": "Shown without quotation marks beside the device id when no name is stored. Real stored names are always quoted, so this phrase must remain visually distinct and must not be used as a real-name fallback."
 	},
 	"ui.mesh.mesh_types.network_suffix": {
 		"role": "unnamed record fallback label — unnamed network/device label",
@@ -1094,11 +1189,6 @@
 		"tone": "Plain and factual; an instruction, not a refusal and not an apology",
 		"note": "Shown on a still-pending request the app cannot decide here (an opaque credential/unknown kind, or `canApproveHere` false) and for which the server sent no `approve_remedy` text, so this is the generic remedy. It must stay TRUE: the app genuinely cannot approve it, and the command line on THIS machine genuinely can. Keep `command line` and `on this machine` uncompromised - a translation that drops either sends the reader to a surface that cannot help. Length: an explanatory line under the card, may wrap onto two lines; `text-meta` and muted, so keep it near the English length where the language allows."
 	},
-	"ui.mesh.approval.approved_pending_apply": {
-		"role": "status label — mesh approval card, credential request approved but not yet applied",
-		"tone": "Factual and restrained; a state statement, not a progress indicator",
-		"note": "Replaces the card's normal state line for exactly one case: a credential request whose state is `approved` in the store, where approval is recorded but the apply step has not happened yet. There is no count and no time in it. THIS IS A LIE IF ENLARGED: it must not promise that access now works - approval and apply are two steps and only the second grants use. Length: one short state line in the card header, around the English footprint; it stands where the card's ordinary state word stands, so it may be slightly longer than a single word but must not wrap into a second line."
-	},
 	"ui.mesh.approval.approved_apply_hint": {
 		"role": "instruction — mesh approval card, approved credential request with server-provided details",
 		"tone": "Plain and factual; points onward without promising the outcome",
@@ -1109,9 +1199,1144 @@
 		"tone": "Factual and restrained; states the gap without blaming the reader or the server",
 		"note": "The sibling of `approved_apply_hint` for the case where approval is recorded but the server sent NO detail lines, so there is nothing to open. It must not imply the reader can do the apply step here - unlike its sibling it should NOT send them to Details for content that is absent. No placeholders. Length: an explanatory line under the card, may wrap; keep it to the same footprint as `approved_apply_hint` so the two variants do not shift the card's height."
 	},
-	"ui.mesh.approval.request_window": {
-		"role": "status text — mesh approval card, credential request's remaining decision window",
-		"tone": "Factual and restrained; quiet, secondary to the card's state",
-		"note": "The countdown beside a still-decidable credential request. Placeholder: `remaining` is an ALREADY-LOCALIZED string produced by the meshes' own `approvalRemainingLabel`, which picks one of the sibling `expires_*` messages (under a minute / minutes / hours) - it is never a raw number here. Do not reformat it, pluralize it, add units to it, or wrap it in `{remaining, number}`: that work is already done by those sibling keys, and doing it again would double the unit or the plural. Length: a compact line (`text-meta`, dim) in the card header, around the English footprint. Keep the trailing colon of the English label; the duration reads after it. Note the sibling `expires_*` keys carry the plural forms, so a locale's plural categories belong to THEM, not to this label."
+	"ui.mesh.approval.head_finite_share": {
+		"role": "heading — mesh approval card, credential share request",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "The card's one-line ask. `credential` is a product name (GitHub) or a raw key id; `device` is a device name. The operator is giving another of THEIR devices use of a login stored here. Keep it short (one line at app width); do not turn it into a question."
+	},
+	"ui.mesh.approval.head_inheritance": {
+		"role": "heading — mesh approval card, standing credential inheritance request",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "The card's one-line ask. `device` borrows the operator's `provider` account `account` (an account id, kept verbatim). The login is used through this device, not copied. Keep it one line where the language allows. Account id is set off in parentheses to distinguish it from prose."
+	},
+	"ui.mesh.approval.scope_device": {
+		"role": "consequence — mesh approval card details",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "Who may use the shared login: every session on that device (device scope). `device` is a device name."
+	},
+	"ui.mesh.approval.scope_session": {
+		"role": "consequence — mesh approval card details",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "Session scope: the recipient device is a holder; its sessions may each borrow this login with grants bound to the individual incoming session. NOT restricted to the session that originally requested sharing (the signed share has no requesting-session identifier). Preserve this distinction; device is a device name."
+	},
+	"ui.mesh.approval.org_limited": {
+		"role": "consequence — mesh approval card details",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "The permission is limited to one organization of the account. `org` is an id, kept verbatim."
+	},
+	"ui.mesh.approval.org_any": {
+		"role": "consequence — mesh approval card details",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "The permission is NOT limited to an organization: any organization on the account. Must not read as narrower than that."
+	},
+	"ui.mesh.approval.not_copied": {
+		"role": "consequence — mesh approval card details",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "The credential stays on this machine; the other device borrows it. Must not read as the login being sent."
+	},
+	"ui.mesh.approval.until_revoked": {
+		"role": "consequence — mesh approval card details",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "How long the permission lasts: no automatic expiry, it ends when the operator revokes it. Distinct from the card's request window (how long the card can be answered)."
+	},
+	"ui.mesh.approval.future_logins_covered": {
+		"role": "consequence — mesh approval card details",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "A later sign-in to the SAME account is covered without a new approval. Plain statement, not a warning."
+	},
+	"ui.mesh.approval.future_logins_not_shared": {
+		"role": "consequence — mesh approval card details",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "Only the existing login is shared; later sign-ins are not."
+	},
+	"ui.mesh.approval.installs_something": {
+		"role": "consequence — mesh approval card details",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "Fallback shown only when the server did not state that nothing is installed or joined. Must stay cautious: it may."
+	},
+	"ui.mesh.approval.installs_nothing": {
+		"role": "consequence — mesh approval card details",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "Approving installs no software and joins no network."
+	},
+	"ui.mesh.approval.needs_broker": {
+		"role": "consequence — mesh approval card details",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "The other device also needs the separate 'borrow logins' permission; this approval does not grant it. `device` is a device name."
+	},
+	"ui.mesh.approval.undoes_withdrawals": {
+		"role": "consequence — mesh approval card details",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "This share restores access the operator previously withdrew; `count` is how many earlier withdrawals it clears. Preserve the plural arms and the number format."
+	},
+	"ui.mesh.approval.recipient_key": {
+		"role": "label — mesh approval card details, before a key fingerprint",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "Label before the other device's key fingerprint (monospace, follows on the same line). `device` is a device name. Keep the trailing colon."
+	},
+	"ui.mesh.approval.file_key_disclosure": {
+		"role": "disclosure — mesh approval card, beside Approve",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "Assurance fact for unsigned waiting/refused records. Signing here uses a file key; such a signature cannot prove human approval. No claim the refused request was already signed."
+	},
+	"ui.mesh.approval.approved_not_applied": {
+		"role": "status text — mesh approval card, signed but not applied",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "The approval was signed but the change has not taken effect yet. Must not claim access works."
+	},
+	"ui.mesh.approval.try_again": {
+		"role": "button — mesh approval card",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "Re-applies an already-approved card. Short button label."
+	},
+	"ui.mesh.approval.applying": {
+		"role": "status text — mesh approval card, beside the buttons while the apply runs",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "In-progress cue; keep the ellipsis."
+	},
+	"ui.mesh.mesh_reach.handshake_refused_hint": {
+		"note": "The next check after the handshake-refused headline: WHO should look at what. It names the two causes the protocol actually refuses for (removed membership, epoch disagreement) but says 'check', never 'this is why' - the wire closes the handshake with no reason, so the app may not assert a cause. Keep it one sentence; it sits under the headline in the device panel only, where there is room.",
+		"role": "recovery hint — device panel, under the handshake-refused headline",
+		"tone": "Plain, non-accusatory; a next check, never an asserted cause"
+	},
+	"ui.mesh.approval.technical_request": {
+		"role": "status or instruction — Mesh credential approval card",
+		"tone": "Plain, quiet and factual",
+		"note": "Nested disclosure inside Details, collapsed by default; exact complete signed facts are technical inspection material, not the plain explanation. The open content scrolls within a bounded area."
+	},
+	"ui.mesh.approval.needs_attention": {
+		"role": "status or instruction — Mesh credential approval card",
+		"tone": "Plain, quiet and factual",
+		"note": "Count of signed credential cards not yet applied (approved or failed). These stay live outside settled history, even when retry is permanently refused and cancellation is the remaining action."
+	},
+	"ui.mesh.approval.shared_count": {
+		"role": "status or instruction — Mesh credential approval card",
+		"tone": "Plain, quiet and factual",
+		"note": "Quiet success count on collapsed settled-history summary. Count names credential shares, not device connections."
+	},
+	"ui.mesh.approval.shared": {
+		"role": "status or instruction — Mesh credential approval card",
+		"tone": "Plain, quiet and factual",
+		"note": "Credential record successfully applied. Means shared, not a device connection."
+	},
+	"ui.mesh.approval.result_status": {
+		"role": "status or instruction — Mesh credential approval card",
+		"tone": "Plain, quiet and factual",
+		"note": "Counts-only polite screen-reader status for shared and needs-attention records. Refusal text is announced by focus, not repeated here. Preserve both numeric placeholders."
+	},
+	"ui.mesh.approval.duration_under_minute": {
+		"role": "status or instruction — Mesh credential approval card",
+		"tone": "Plain, quiet and factual",
+		"note": "Bare localized under-one-minute duration shared by answer_window (requested, unanswered card) and expires_window (already-approved needs-attention card). Both describe the CARD window, not share lifetime; preserve grammatical compatibility with both outer messages."
+	},
+	"ui.mesh.approval.duration_minutes": {
+		"role": "status or instruction — Mesh credential approval card",
+		"tone": "Plain, quiet and factual",
+		"note": "Bare localized minute duration shared by answer_window (requested, unanswered card) and expires_window (already-approved needs-attention card). Both describe the CARD window, not share lifetime; preserve grammatical compatibility with both outer messages."
+	},
+	"ui.mesh.approval.duration_hours": {
+		"role": "status or instruction — Mesh credential approval card",
+		"tone": "Plain, quiet and factual",
+		"note": "Bare localized hour duration shared by answer_window (requested, unanswered card) and expires_window (already-approved needs-attention card). Both describe the CARD window, not share lifetime; preserve grammatical compatibility with both outer messages."
+	},
+	"ui.mesh.approval.answer_window": {
+		"role": "status or instruction — Mesh credential approval card",
+		"tone": "Plain, quiet and factual",
+		"note": "How long the operator has to answer THIS request, not how long access lasts. duration is already localized bare duration; do not format it again."
+	},
+	"ui.mesh.approval.file_key_recorded": {
+		"role": "status or instruction — Mesh credential approval card",
+		"tone": "Plain, quiet and factual",
+		"note": "Past-tense assurance disclosure for signed approved/failed/connected records: no proof a person signed because the key is a file. Must stay visible."
+	},
+	"ui.mesh.approval.cancel_sharing": {
+		"role": "status or instruction — Mesh credential approval card",
+		"tone": "Plain, quiet and factual",
+		"note": "Button on signed but unapplied credential cards. Denies/stops this request; does not revoke already-shared access."
+	},
+	"ui.mesh.approval.cancel_hint": {
+		"role": "status or instruction — Mesh credential approval card",
+		"tone": "Plain, quiet and factual",
+		"note": "Visible explanation for Cancel sharing. It stops this pending request, not existing shared access."
+	},
+	"ui.mesh.approval.signing_applying": {
+		"role": "status or instruction — Mesh credential approval card",
+		"tone": "Plain, quiet and factual",
+		"note": "Neutral progress for file-key approve route (sign AND apply in a single call); no Touch ID prompt promised."
+	},
+	"ui.mesh.approval.retry_hint": {
+		"role": "status or instruction — Mesh credential approval card",
+		"tone": "Plain, quiet and factual",
+		"note": "Links the backend reason/remedy to the actual Try again button. Keep the button name consistent with ui.mesh.approval.try_again."
+	},
+	"ui.mesh.approval.named_refusal": {
+		"role": "warning explanation — Mesh approval outcome outside a visible card",
+		"tone": "Quiet and factual",
+		"note": "Attribution when the owning card is not visible. request is the displayed head (catalogue-authored or a verbatim backend summary); reason is the verbatim backend sentence. React isolates each parameter with bdi, preserving locale ordering and punctuation. Catalogue-authored request text uses locale direction even with a leading Latin device name. Backend-summary request text and backend reason use automatic direction. No machine code."
+	},
+	"ui.mesh.approval.expires_window": {
+		"role": "status — deadline on an already approved needs-attention card",
+		"tone": "Quiet and factual",
+		"note": "The decision was already answered; the operator may retry applying or cancel before the record expires. duration is the same already-localized bare duration used by answer_window. Do not call this an answer deadline or imply permission expires: this is the CARD window. The visible subject is THIS CARD, not the shared login or permission."
+	},
+	"ui.mesh.approval.could_not_apply": {
+		"role": "terminal outcome label — permanently refused signed credential card",
+		"tone": "Quiet and factual",
+		"note": "Approval was signed but the SAME card cannot be applied successfully. No suggestion that waiting/retrying helps. Replaces approved_not_applied and suppresses countdown when retryable is false, or apply_outcome is present without retryable; a row with no apply_outcome is not permanent. Cancel remains available."
+	},
+	"ui.mesh.approval.typed_review_unavailable": {
+		"role": "safe fallback — typed credential request lacks backend refusal_message",
+		"tone": "Plain and actionable",
+		"note": "A typed card this app cannot safely disclose. Do not send the user to a terminal, say the app is outdated, or suggest blind approval. Deny the current request and ask for a new one."
+	},
+	"ui.mesh.mesh_approvals.profile_kind_agent": {
+		"role": "family label — profile-save consent card (inbox and transcript)",
+		"tone": "Neutral noun label; not a title case banner",
+		"note": "Names the profile family: an AGENT profile (one specialist's definition). Sits beside the operation word, so keep it a short noun phrase; it never describes the change itself."
+	},
+	"ui.mesh.mesh_approvals.profile_kind_team": {
+		"role": "family label — profile-save consent card (inbox and transcript)",
+		"tone": "Neutral noun label; not a title case banner",
+		"note": "Names the profile family: a TEAM profile (manager plus roster). Mirror profile_kind_agent's shape and length."
+	},
+	"ui.mesh.mesh_approvals.profile_operation_create": {
+		"role": "operation label — profile-save consent card",
+		"tone": "Neutral, factual; sentence case",
+		"note": "Says the proposal creates a NEW profile. Not 'saved' and not 'applied': the card may still be waiting for its decision."
+	},
+	"ui.mesh.mesh_approvals.profile_operation_update": {
+		"role": "operation label — profile-save consent card",
+		"tone": "Neutral, factual; sentence case",
+		"note": "Says the proposal changes an existing profile. It does not claim the change was written; the state line carries that."
+	},
+	"ui.mesh.mesh_approvals.profile_operation_revert": {
+		"role": "operation label — profile-save consent card",
+		"tone": "Neutral, factual; sentence case",
+		"note": "Says the proposal restores a previously saved profile image. Distinct from the Revert BUTTON label, which is the action on a saved change."
+	},
+	"ui.mesh.mesh_approvals.profile_scope_global": {
+		"role": "scope label — profile-save consent card",
+		"tone": "One word, factual",
+		"note": "The proposal's scope: this machine's global profile set (the only scope v1 mints). Do not translate it as a network or per-project scope."
+	},
+	"ui.mesh.mesh_approvals.profile_changes": {
+		"role": "section heading — profile-save consent card",
+		"tone": "Short heading; sentence case",
+		"note": "Heads the diff. What follows is either the saved-before/proposed-after table, or backend-authored summary lines, or a statement that no changes are known."
+	},
+	"ui.mesh.mesh_approvals.profile_field": {
+		"role": "table column header — profile-save consent card diff",
+		"tone": "One word header",
+		"note": "Column of authored column NAMES as the backend spells them (model, instructions, members). The names themselves are not translated."
+	},
+	"ui.mesh.mesh_approvals.profile_not_set": {
+		"role": "cell value — profile-save consent card diff",
+		"tone": "Two words, plain, no punctuation",
+		"note": "This column was absent from the payload. Distinct from profile_cleared: absent means the wire did not carry the column at all, not that someone emptied it."
+	},
+	"ui.mesh.mesh_approvals.profile_cleared": {
+		"role": "cell value — profile-save consent card diff",
+		"tone": "One word, plain",
+		"note": "The value is explicitly empty/none (a reset the author made), which is different from profile_not_set's absence."
+	},
+	"ui.mesh.mesh_approvals.profile_changes_none": {
+		"role": "empty-state sentence — profile-save consent card diff",
+		"tone": "Plain sentence, no trailing period",
+		"note": "Use ONLY when the payload carried the before/after images and they genuinely differ in no authored column. Never for a receipt that omitted its diff."
+	},
+	"ui.mesh.mesh_approvals.profile_changes_not_in_receipt": {
+		"role": "fallback sentence — profile-save consent card diff",
+		"tone": "Plain sentence, no trailing period; factual, not an error",
+		"note": "Use when neither the images nor the backend's summary lines are present: the changes are simply not included here. It must not read as 'nothing changed'."
+	},
+	"ui.mesh.mesh_approvals.profile_waiting": {
+		"role": "state sentence — profile-save consent card",
+		"tone": "Calm, factual; no urgent tone",
+		"note": "The proposal is filed and nobody has answered it. Contrast with saved (written) and denied/expired."
+	},
+	"ui.mesh.mesh_approvals.profile_unavailable": {
+		"role": "refusal sentence — profile-save consent card, capability absent",
+		"tone": "Plain explanation with the way out; no error codes",
+		"note": "This build/backend cannot sign a profile change at all (the kind is not enabled). Points at the command line as the way to review it."
+	},
+	"ui.mesh.mesh_approvals.profile_approval_unavailable": {
+		"role": "refusal sentence — profile-save consent card, server not signable",
+		"tone": "Plain, factual; shorter than profile_unavailable",
+		"note": "The kind IS enabled but this particular card cannot be signed here yet (server says not signable, or no gate identity). Distinct from the whole-surface refusal."
+	},
+	"ui.mesh.mesh_approvals.profile_revert": {
+		"role": "button label — profile-save consent card",
+		"tone": "Single verb, imperative",
+		"note": "The one-click undo of a saved profile change. A button label, not a description; the state sentence beside it explains what happened."
+	},
+	"ui.mesh.mesh_approvals.profile_revert_pending": {
+		"role": "progress text — profile-save consent card revert",
+		"tone": "Present continuous, quiet",
+		"note": "The press was sent and the answer has not arrived. The control is disabled in this state."
+	},
+	"ui.mesh.mesh_approvals.profile_revert_done": {
+		"role": "result label — profile-save consent card revert",
+		"tone": "Past participle, one word",
+		"note": "The revert was answered and the profile is back to its saved image. Do not use for a pending or failed press."
+	},
+	"ui.mesh.mesh_approvals.profile_revert_stale": {
+		"role": "state sentence — profile-save consent card revert",
+		"tone": "Plain, factual; not an error apology",
+		"note": "The action's window is over, so the stored action cannot answer anything anymore. Not a completed revert: nothing was restored."
+	},
+	"ui.mesh.mesh_approvals.profile_revert_failed": {
+		"role": "state sentence — profile-save consent card revert",
+		"tone": "Plain, factual; no blame",
+		"note": "The backend answered the press with a refusal (knowably not applied). Contrast with profile_revert_unconfirmed, where we do not know."
+	},
+	"ui.mesh.mesh_approvals.profile_revert_unconfirmed": {
+		"role": "state sentence — profile-save consent card revert",
+		"tone": "Plain, honest uncertainty; no blame",
+		"note": "The transport produced no answer: the revert may or may not have landed. Must NOT be translated as a failure, and it never re-enables the control."
+	},
+	"ui.mesh.mesh_approvals.profile_revert_unavailable": {
+		"role": "state sentence — profile-save consent card revert",
+		"tone": "Plain explanation; no error codes",
+		"note": "No verified action is available here (absent descriptor, no runtime authority, or no gate identity). The control is disabled and this is its reason."
+	},
+	"ui.mesh.mesh_approvals.profile_column_before": {
+		"role": "table column header — profile-save consent card diff",
+		"tone": "One word header",
+		"note": "The value as it is SAVED NOW: a comparison column, not a verdict. Paired with profile_column_after; the record's outcome is stated separately so this column can be read on any lifecycle state."
+	},
+	"ui.mesh.mesh_approvals.profile_column_after": {
+		"role": "table column header — profile-save consent card diff",
+		"tone": "One word header",
+		"note": "The value the proposal WOULD write. A comparison column, never a claim that it was written: the outcome sentence carries that."
+	},
+	"ui.mesh.mesh_approvals.profile_outcome_waiting": {
+		"role": "outcome sentence — profile-save consent card",
+		"tone": "Plain, factual; em dash separates state from consequence",
+		"note": "The proposal is filed and unanswered, so NOTHING is saved yet. Must not read as pending-but-applied."
+	},
+	"ui.mesh.mesh_approvals.profile_outcome_saved": {
+		"role": "outcome sentence — profile-save consent card",
+		"tone": "One word, past tense",
+		"note": "The change IS written. The only state that may say so."
+	},
+	"ui.mesh.mesh_approvals.profile_outcome_approved_not_saved": {
+		"role": "outcome sentence — profile-save consent card",
+		"tone": "Plain, factual",
+		"note": "The decision was signed but the write has not happened: approval is not a save."
+	},
+	"ui.mesh.mesh_approvals.profile_outcome_denied": {
+		"role": "outcome sentence — profile-save consent card",
+		"tone": "Plain, factual",
+		"note": "Someone answered no; nothing was written."
+	},
+	"ui.mesh.mesh_approvals.profile_outcome_expired": {
+		"role": "outcome sentence — profile-save consent card",
+		"tone": "Plain, factual; not an error apology",
+		"note": "The window closed with no answer; nothing was written."
+	},
+	"ui.mesh.mesh_approvals.profile_outcome_stopped": {
+		"role": "outcome sentence — profile-save consent card",
+		"tone": "Plain, factual",
+		"note": "A runner stopped before applying; nothing was written."
+	},
+	"ui.mesh.mesh_approvals.profile_outcome_unknown": {
+		"role": "outcome sentence — profile-save consent card",
+		"tone": "Plain, honest uncertainty",
+		"note": "This build cannot name the record's state. Never guess 'saved'."
+	},
+	"ui.mesh.mesh_approvals.profile_revert_no_handler": {
+		"role": "disabled-control reason — profile-save consent card revert",
+		"tone": "Plain explanation",
+		"note": "The control is drawn here but this surface has no way to send the answer, so it is disabled with this reason."
+	},
+	"ui.mesh.mesh_approvals.profile_revert_reason_unknown": {
+		"role": "disabled-control reason — profile-save consent card revert",
+		"tone": "Plain explanation",
+		"note": "The control is disabled and no specific reason is known; say that rather than leaving it blank."
+	},
+	"ui.mesh.pairing.section": {
+		"role": "group label (screen-reader) — Mesh approvals tray",
+		"tone": "Neutral",
+		"note": "Accessible name of the block of device-pairing cards inside the Mesh approvals tray."
+	},
+	"ui.mesh.pairing.loading": {
+		"role": "loading status (screen-reader)",
+		"tone": "Neutral",
+		"note": "Announced while the app reads open pairing requests."
+	},
+	"ui.mesh.pairing.title.inviter": {
+		"role": "card title — mesh pairing card, inviting device",
+		"tone": "Plain, factual",
+		"note": "{peer} = the other device's name (inert text); {network} = mesh network name. Shown on the device that sent the invite."
+	},
+	"ui.mesh.pairing.title.joiner": {
+		"role": "card title — mesh pairing card, joining device",
+		"tone": "Plain, factual",
+		"note": "{peer} = the inviting device's name; {network} = network name. Shown on the device that is joining."
+	},
+	"ui.mesh.pairing.role": {
+		"role": "meta chip — mesh pairing card",
+		"tone": "Terse",
+		"note": "The role the joining device will have. Keep read/drive/admin as the product's role words (they are also CLI words); translate only 'as'. Other arm echoes an unknown role verbatim."
+	},
+	"ui.mesh.pairing.time_left_minutes": {
+		"role": "countdown — mesh pairing card",
+		"tone": "Terse",
+		"note": "Minutes left before the pairing window closes; updates live. Keep short."
+	},
+	"ui.mesh.pairing.time_left_seconds": {
+		"role": "countdown — mesh pairing card",
+		"tone": "Terse",
+		"note": "Seconds left before the pairing window closes; updates every second. Keep short."
+	},
+	"ui.mesh.pairing.code.show": {
+		"role": "label over a six-digit code — mesh pairing card",
+		"tone": "Instructional",
+		"note": "Above THIS device's code; the person reads it here and TYPES it on the other device {peer} (that device's card asks for it). The operator chose 'Show': render it as 'display / read this code out for {peer}', or as 'enter this code on {peer}' where that reads more naturally; either way it must point the reader at the other device, not at this one."
+	},
+	"ui.mesh.pairing.code.aria": {
+		"role": "aria-label — six-digit code",
+		"tone": "Neutral",
+		"note": "Screen-reader name for the code; {digits} = digits separated by spaces."
+	},
+	"ui.mesh.pairing.code.type_label": {
+		"role": "input label — mesh pairing card",
+		"tone": "Instructional",
+		"note": "Label of the EMPTY field where the person types the code displayed on the other device {peer}. Must clearly mean 'the code that {peer} shows', not this device's code."
+	},
+	"ui.mesh.pairing.code.type_hint": {
+		"role": "helper text under the code field",
+		"tone": "Calm, security-minded",
+		"note": "Tells the person to copy the digits from the other device's screen and to confirm only if they came from there."
+	},
+	"ui.mesh.pairing.waiting.joiner_types": {
+		"role": "status — inviter card before the other device typed",
+		"tone": "Calm",
+		"note": "The inviting device waits for {peer} to type this device's code; no action needed yet."
+	},
+	"ui.mesh.pairing.waiting.inviter": {
+		"role": "refusal/status — answer sent too early",
+		"tone": "Calm",
+		"note": "The other device {peer} has not typed this device's code yet, so this device cannot answer yet."
+	},
+	"ui.mesh.pairing.waiting.other": {
+		"role": "status — joiner card after a local match",
+		"tone": "Calm",
+		"note": "This device typed the right code; now {peer} must confirm on its side."
+	},
+	"ui.mesh.pairing.offers.listed": {
+		"role": "list heading — credentials the other device will share",
+		"tone": "Factual",
+		"note": "Followed by a list of credential names {peer} will share with this device."
+	},
+	"ui.mesh.pairing.offers.owner_listed": {
+		"role": "list heading with checkboxes — credentials this device will share",
+		"tone": "Factual",
+		"note": "Followed by checkboxes of credentials this device will share with {peer}; the person may untick items."
+	},
+	"ui.mesh.pairing.offers.owner_reduce_only": {
+		"role": "helper under the share list",
+		"tone": "Factual",
+		"note": "The list can only shrink; nothing outside it will be shared."
+	},
+	"ui.mesh.pairing.offers.none": {
+		"role": "status — no credentials offered",
+		"tone": "Factual",
+		"note": "The other device offered no credentials in this pairing."
+	},
+	"ui.mesh.pairing.offers.absent": {
+		"role": "status — offer missing",
+		"tone": "Factual",
+		"note": "No offer arrived: the other device is an older version, or its offer did not arrive."
+	},
+	"ui.mesh.pairing.offers.owner_none": {
+		"role": "status — this device shares nothing",
+		"tone": "Factual",
+		"note": "This device will share no credentials in this pairing."
+	},
+	"ui.mesh.pairing.offers.owner_peer_older": {
+		"role": "status — peer cannot receive a share list",
+		"tone": "Factual",
+		"note": "The joining device is older and cannot be shown which credentials will be shared; sharing can be done after it joins."
+	},
+	"ui.mesh.pairing.attempts_left": {
+		"role": "meta — wrong-code budget",
+		"tone": "Factual",
+		"note": "How many wrong codes are still allowed before the pairing is declined."
+	},
+	"ui.mesh.pairing.action.admit": {
+		"role": "button — inviter's approval",
+		"tone": "Decisive, short",
+		"note": "Admits the other device into the network after the typed code matches. Keep to one short verb."
+	},
+	"ui.mesh.pairing.action.confirm": {
+		"role": "button — joiner's approval",
+		"tone": "Decisive, short",
+		"note": "Confirms the code the joining device typed and opens the native sheet that joins. The SAME verb as ui.mesh.pairing.sheet.button.join (UX: one joiner verb on card, sheet and retry copy) - use your translation of that key exactly."
+	},
+	"ui.mesh.pairing.action.confirming": {
+		"role": "button busy label",
+		"tone": "Short",
+		"note": "Shown on the button while the answer is checked."
+	},
+	"ui.mesh.pairing.action.decline": {
+		"role": "button — refuse pairing",
+		"tone": "Short",
+		"note": "Declines the pairing. Keep to one short verb."
+	},
+	"ui.mesh.pairing.action.declining": {
+		"role": "button busy label",
+		"tone": "Short",
+		"note": "Shown on the decline button while it is sent."
+	},
+	"ui.mesh.pairing.error.mismatch": {
+		"role": "inline error — wrong code",
+		"tone": "Calm, helpful",
+		"note": "The typed code is wrong; the card stays open. Plural arm says how many attempts remain."
+	},
+	"ui.mesh.pairing.error.mismatch_spent": {
+		"role": "inline error — wrong code, budget spent",
+		"tone": "Factual",
+		"note": "Wrong code with no attempts left; the pairing was declined."
+	},
+	"ui.mesh.pairing.error.needs_app": {
+		"role": "inline error — attestation missing",
+		"tone": "Factual",
+		"note": "The answer was refused because only the signed desktop app on this device can approve pairings."
+	},
+	"ui.mesh.pairing.error.foreground": {
+		"role": "inline error — window not focused / no click / confirmation stale",
+		"tone": "Helpful",
+		"note": "The app only approves when its window is in front and the person pressed the card's button; asks them to do that. {action} names the button they pressed: admit = the 'Admit' button (ui.mesh.pairing.action.admit), confirm = 'Join' (action.confirm), decline = 'Decline' (action.decline). Quote each arm's label EXACTLY as your translation of that key, in your locale's quotation marks; 'other' is the generic 'press the button again'."
+	},
+	"ui.mesh.pairing.error.build": {
+		"role": "inline error — this build cannot approve",
+		"tone": "Factual",
+		"note": "Development builds or tool-driven launches cannot approve pairings; the signed app can."
+	},
+	"ui.mesh.pairing.error.expired": {
+		"role": "status / inline error — expired",
+		"tone": "Factual",
+		"note": "The pairing window closed. Also used as the countdown text at zero."
+	},
+	"ui.mesh.pairing.error.relay": {
+		"role": "inline error — local service unreachable",
+		"tone": "Calm",
+		"note": "The local network service did not answer; trying again is safe."
+	},
+	"ui.mesh.pairing.error.read": {
+		"role": "status — list read failed",
+		"tone": "Factual",
+		"note": "The list of pairing requests could not be read; shown beside an 'Ask again' button."
+	},
+	"ui.mesh.pairing.error.unknown": {
+		"role": "inline error — fallback",
+		"tone": "Neutral",
+		"note": "Fallback when the refusal carried no sentence."
+	},
+	"ui.mesh.pairing.result.joined": {
+		"role": "outcome line — joiner",
+		"tone": "Positive, factual",
+		"note": "Shown briefly after the joining device's card closes and the network appears. {network} = network name."
+	},
+	"ui.mesh.pairing.result.admitted": {
+		"role": "outcome line — inviter",
+		"tone": "Positive, factual",
+		"note": "{peer} was admitted to {network}."
+	},
+	"ui.mesh.pairing.result.declined": {
+		"role": "outcome line",
+		"tone": "Neutral",
+		"note": "The pairing with {peer} was declined (by this device or the other)."
+	},
+	"ui.mesh.pairing.result.spent": {
+		"role": "outcome line",
+		"tone": "Neutral",
+		"note": "The pairing ended because too many wrong codes were typed."
+	},
+	"ui.mesh.pairing.result.expired": {
+		"role": "outcome line",
+		"tone": "Neutral",
+		"note": "The pairing window ran out; a new invite is needed. INVITER side (this device made the invite and can start the new one); the joiner's twin is ui.mesh.pairing.result.expired_joiner."
+	},
+	"ui.mesh.pairing.result.ended": {
+		"role": "outcome line",
+		"tone": "Neutral",
+		"note": "The pairing closed without this device answering (the other side stopped or declined)."
+	},
+	"ui.mesh.pairing.unavailable.host": {
+		"role": "notice — host cannot approve",
+		"tone": "Factual",
+		"note": "On Windows/Linux the app cannot approve pairings; only the signed Mac app can."
+	},
+	"ui.mesh.pairing.unavailable.no_attestation": {
+		"role": "notice — approval check not running",
+		"tone": "Factual",
+		"note": "On a Mac whose approval check did not start, the app cannot approve pairings now."
+	},
+	"ui.mesh.pairing.unavailable.fallback_inviter": {
+		"role": "notice before a command line",
+		"tone": "Factual",
+		"note": "Followed by a terminal command (not translated). {peer} = other device's name."
+	},
+	"ui.mesh.pairing.unavailable.fallback_joiner": {
+		"role": "notice before a command line",
+		"tone": "Factual",
+		"note": "Followed by a terminal command (not translated) that takes the code shown on {peer} as its argument."
+	},
+	"ui.mesh.pairing.result.finished": {
+		"role": "outcome line — joiner",
+		"tone": "Calm, factual",
+		"note": "Shown after the joining device's card closes but before the network appears: the other device {peer} has the code and decided; if it admitted this device, the network {network} shows up soon. Do not claim success."
+	},
+	"ui.mesh.pairing.expired_hint.inviter": {
+		"role": "hint line on an expired pairing card — this device made the invite",
+		"tone": "Helpful",
+		"note": "Replaces the 'type the six digits' hint once the window ran out. This device is the inviter, so it can start a new invite itself (`lop network invite` or the Mesh tab)."
+	},
+	"ui.mesh.pairing.expired_hint.joiner": {
+		"role": "hint line on an expired pairing card — this device is joining",
+		"tone": "Helpful",
+		"note": "Replaces the 'type the six digits' hint once the window ran out. A joiner cannot start an invite; the new invite has to be made on the other device {peer} (a device name)."
+	},
+	"ui.mesh.pairing.result.expired_joiner": {
+		"role": "closing line after a joiner's pairing card expired",
+		"tone": "Neutral, factual",
+		"note": "Joiner-side twin of ui.mesh.pairing.result.expired: the window ran out (not declined, not closed without an answer). {peer} is the inviting device's name, where a new invite has to be made."
+	},
+	"ui.mesh.pairing.sheet.message.inviter_admit": {
+		"role": "native confirmation sheet — title, inviter admitting a device",
+		"tone": "Direct question",
+		"note": "The macOS app shows this in a native sheet before it admits the other device; the person must press the sheet's Admit button. {peer} = the other device's name (inert text); {network} = mesh network name."
+	},
+	"ui.mesh.pairing.sheet.message.inviter_decline": {
+		"role": "native confirmation sheet — title, inviter declining a device",
+		"tone": "Direct question",
+		"note": "Shown before the inviting device declines the other device's request. {peer} = the other device's name; {network} = mesh network name."
+	},
+	"ui.mesh.pairing.sheet.message.joiner_admit": {
+		"role": "native confirmation sheet — title, joiner confirming",
+		"tone": "Direct question",
+		"note": "Shown on the joining device before it confirms the code and joins. {network} = mesh network name; {peer} = the inviting device's name. Matches the card title ui.mesh.pairing.title.joiner ('Joining {network} from {peer}')."
+	},
+	"ui.mesh.pairing.sheet.message.joiner_decline": {
+		"role": "native confirmation sheet — title, joiner declining",
+		"tone": "Direct question",
+		"note": "Shown on the joining device before it declines the invite. {network} = mesh network name; {peer} = the inviting device's name."
+	},
+	"ui.mesh.pairing.sheet.device": {
+		"role": "native confirmation sheet — detail line, device",
+		"tone": "Factual label",
+		"note": "Names the other device so the person can check it. {peer} = device name; {id} = its fingerprint or device id (opaque, never translated). Keep the label short; one line of a plain-text list."
+	},
+	"ui.mesh.pairing.sheet.device_name_only": {
+		"role": "native confirmation sheet — detail line, device without an id",
+		"tone": "Factual label",
+		"note": "Same as ui.mesh.pairing.sheet.device when no fingerprint or id is known. {peer} = device name."
+	},
+	"ui.mesh.pairing.sheet.role": {
+		"role": "native confirmation sheet — detail line, role",
+		"tone": "Factual label",
+		"note": "{role} = the role the device gets in the network: a core identifier (read, drive, admin) kept verbatim, like ui.mesh.pairing.role."
+	},
+	"ui.mesh.pairing.sheet.code": {
+		"role": "native confirmation sheet — detail line, code",
+		"tone": "Factual label",
+		"note": "{code} = the six digits being confirmed, grouped '481 926'. Shown on admit only. Use the same word for the code as the card does."
+	},
+	"ui.mesh.pairing.sheet.shares_outgoing": {
+		"role": "native confirmation sheet — detail line, what this device shares",
+		"tone": "Factual",
+		"note": "The exact credentials the inviting device will share. Same wording as ui.mesh.pairing.offers.owner_listed followed by {list}. {peer} = the other device's name; {list} = the credential labels joined by the locale's list format (inert text)."
+	},
+	"ui.mesh.pairing.sheet.shares_outgoing_none": {
+		"role": "native confirmation sheet — detail line, this device shares nothing",
+		"tone": "Factual, reassuring",
+		"note": "Shown when the inviting device admits with no credentials kept. {peer} = the other device's name."
+	},
+	"ui.mesh.pairing.sheet.shares_decline": {
+		"role": "native confirmation sheet — detail line on a decline",
+		"tone": "Factual, reassuring",
+		"note": "A decline shares nothing in either direction."
+	},
+	"ui.mesh.pairing.sheet.button.admit": {
+		"role": "native sheet button — approve the admit",
+		"tone": "Decisive, short",
+		"note": "The only button that admits the device. Keep it the same verb as ui.mesh.pairing.action.admit."
+	},
+	"ui.mesh.pairing.sheet.button.join": {
+		"role": "native sheet button — approve joining",
+		"tone": "Decisive, short",
+		"note": "The only button that confirms the code and joins the network on the joining device. One short verb."
+	},
+	"ui.mesh.pairing.sheet.button.decline": {
+		"role": "native sheet button — approve the decline",
+		"tone": "Decisive, short",
+		"note": "The only button that sends the decline. Same verb as ui.mesh.pairing.action.decline."
+	},
+	"ui.mesh.pairing.sheet.button.cancel": {
+		"role": "native sheet button — cancel",
+		"tone": "Neutral, short",
+		"note": "Closes the sheet; nothing is sent. Also what Return and Escape press. Use the platform's usual Cancel word."
+	},
+	"ui.mesh.pairing.error.closed": {
+		"role": "inline status — pairing already closed",
+		"tone": "Calm, neutral",
+		"note": "Core refused a duplicate answer (409 pairing_answered) or the card closed while the person answered: the pairing was answered elsewhere or ended. Not an error to retry; nothing was recorded from this answer."
+	},
+	"ui.mesh.pairing.error.changed": {
+		"role": "inline error — pairing changed during the answer",
+		"tone": "Helpful",
+		"note": "The card moved to a new step, or its details changed, while the native sheet was open, so the approval was not used. {action} names the button to press again: admit = 'Admit' (ui.mesh.pairing.action.admit), confirm = 'Join' (action.confirm), decline = 'Decline' (action.decline). Quote each arm's label EXACTLY as your translation of that key, as in ui.mesh.pairing.error.foreground; 'other' is the generic 'press the button again'."
+	},
+	"ui.mesh.pairing.sheet.share_item": {
+		"role": "native confirmation sheet — one shared credential",
+		"tone": "Factual",
+		"note": "One item in the sheet's share list. {label} = core's masked account label (e.g. 'OpenAI — sk-…abcd'); {key} = core's identifier for the credential (e.g. 'openai'), shown so two credentials with the same masked label read differently. Keep both placeholders; only the brackets/punctuation are yours. Both are inert text, never translated."
+	},
+	"ui.mesh.pairing.sheet.offers_incoming": {
+		"role": "native confirmation sheet — detail line, what the peer offers",
+		"tone": "Factual",
+		"note": "On the JOINING device: the credentials the inviting device OFFERS. An offer, not a promise - the inviter can still remove items when it admits (see offers_final_choice). Do not word it as 'will share'. {peer} = the inviting device's name; {list} = items joined by the locale's list format."
+	},
+	"ui.mesh.pairing.sheet.offers_incoming_none": {
+		"role": "native confirmation sheet — detail line, the peer offers nothing",
+		"tone": "Factual",
+		"note": "On the joining device when the inviter offered no credentials (or its offer did not arrive). An offer statement, not a grant. {peer} = the inviting device's name."
+	},
+	"ui.mesh.pairing.sheet.offers_final_choice": {
+		"role": "native confirmation sheet — detail line after the offer list",
+		"tone": "Factual, calm",
+		"note": "Follows offers_incoming: the inviting device ({peer}) decides at the end which of the offered credentials it actually shares; it can only remove items, never add."
+	},
+	"ui.mesh.pairing.action.waiting_confirmation": {
+		"role": "button busy label",
+		"tone": "Short, neutral",
+		"note": "Shown on the pressed button (Admit/Join/Decline) while the app's native confirmation sheet is open and the person has not answered it yet. Must NOT say the action is happening (not 'Declining…'): nothing is decided until they press the sheet's button."
+	},
+	"ui.mesh.pairing.error.devtools": {
+		"role": "inline error — DevTools or a debugger is attached",
+		"tone": "Helpful",
+		"note": "Pairings are approved only while no DevTools window or debugger is attached to the app window. Tells the person to close it and press again. {action} names the button they pressed: admit = 'Admit' (ui.mesh.pairing.action.admit), confirm = 'Join' (action.confirm), decline = 'Decline' (action.decline). Quote each arm's label EXACTLY as your translation of that key, as in ui.mesh.pairing.error.foreground; 'other' is the generic 'press the button again'."
+	},
+	"ui.mesh.pairing.error.sheet_open": {
+		"role": "inline error — another confirmation is open",
+		"tone": "Helpful",
+		"note": "Another pairing's native confirmation sheet is already open; this press opened none. Tells the person to finish (answer or cancel) that open confirmation first, then press again. {action} as in ui.mesh.pairing.error.devtools: quote each arm's label exactly as your translation of that action key."
+	},
+	"ui.mesh.mesh_actions.working_set_loading": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Shown while the move dialog asks the backend which working files the move would send. Brief progress line. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_error": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Shown when that check failed. Must keep the reassurance that nothing is sent without review. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_warning": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "The main warning of the move dialog. device = the destination device name (may repeat). Must keep: ALL working files go to that device; worktrees, unpushed commits, uncommitted changes, scratch files, session memory. Keep \"worktree\" as the git term used in the locale glossary. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_changed": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Shown when the backend refused because the list of files changed after the user reviewed it; the checkbox is cleared. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_sent_heading": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Section heading over the list of worktrees that will be sent. count = number of worktrees (plural); size = already formatted total size, e.g. \"12 MB\". Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_detached": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Shown in place of a git branch name when the worktree is on a detached HEAD. Git term. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_dest_path": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Shown when a worktree lands at a different path on the destination. path = home-relative path, never translated. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_clone": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "The destination lacks the repository and will clone it from origin. device = destination name; url = git remote URL, never translated. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_clone_sized": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Same as clone, with size = already formatted estimated clone size. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_withheld_heading": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Section heading over files and worktrees that will NOT be sent because they look like secrets. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_withheld_secret_path": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Reason line under a withheld path: its name looks like a secrets file (e.g. .env). Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_withheld_secret_content": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Reason line under a withheld path: its content contains a credential-shaped value. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_withheld_history_secret_path": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Reason line: an unpushed commit adds a secret-shaped file. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_withheld_history_secret_content": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Reason line: an unpushed commit contains a secret-shaped value. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_left_behind_heading": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Section heading over things not copied on purpose (dependencies, build output); they stay on the device the conversation leaves. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_kind_dependency_tree": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Label: a dependency folder such as node_modules or .venv. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_kind_build_output": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Label: generated build output. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_kind_ignored": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Label: files git is told to ignore. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_kind_loose_file": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Label: a file that is not inside any worktree. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_recreate_with": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Lowercase continuation after a label and a · separator. command = shell command, never translated. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_reason_contended": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Reason line under a worktree that will not be sent, with its remedy. Keep the remedy actionable; git terms per glossary. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_reason_outside_home": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Reason line under a worktree that will not be sent, with its remedy. Keep the remedy actionable; git terms per glossary. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_reason_unmerged": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Reason line under a worktree that will not be sent, with its remedy. Keep the remedy actionable; git terms per glossary. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_reason_in_progress_operation": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Reason line under a worktree that will not be sent, with its remedy. Keep the remedy actionable; git terms per glossary. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_reason_submodule": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Reason line under a worktree that will not be sent, with its remedy. Keep the remedy actionable; git terms per glossary. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_reason_lfs": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Reason line under a worktree that will not be sent, with its remedy. Keep the remedy actionable; git terms per glossary. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_reason_history_secret": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Reason line under a worktree that will not be sent, with its remedy. Keep the remedy actionable; git terms per glossary. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_reason_over_cap": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Reason line under a worktree that will not be sent, with its remedy. Keep the remedy actionable; git terms per glossary. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_reason_destination_conflict": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Reason line under a worktree that will not be sent, with its remedy. Keep the remedy actionable; git terms per glossary. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_reason_unsupported_by_peer": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Reason line under a worktree that will not be sent, with its remedy. Keep the remedy actionable; git terms per glossary. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_reason_unknown": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Fallback reason when the backend reports a code this app does not know. code = machine code, never translated. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_checkbox": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "REQUIRED confirmation checkbox label; Confirm stays disabled until ticked. device = destination device name. First person, a statement of confidence. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_warning_leave": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Main warning when this backend gates the move but does NOT send files yet. device = destination name. Must keep: files stay on the source; the destination conversation will not have them. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_warning_without": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Main warning when the files cannot travel at all; the only choice is to move without them. device = destination name. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_unknown": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Main warning when the backend could not check the working files at all. device = destination name. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_kept_heading": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Section heading over worktrees that stay on the source because this version does not send them. count = number of worktrees (plural). Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_checkbox_leave": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "REQUIRED confirmation checkbox when files will NOT reach the destination. device = destination device name. First person. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_clone_pending": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Shown once per repository: the destination clones it from origin only if missing and only after a free-space check. url = git remote URL, never translated. Length: may wrap inside the dialog; keep the full meaning. device = destination device name (design D6: name the device, not 'the other device')."
+	},
+	"ui.mesh.mesh_actions.working_set_reason_history_unscanned": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Reason line under a worktree that will not be moved, with its remedy. Keep the remedy actionable; git terms per glossary. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_reason_destination_cannot_clone": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Reason line under a worktree that will not be moved, with its remedy. Keep the remedy actionable; git terms per glossary. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_reason_not_transferred": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Reason line under a worktree that will not be moved, with its remedy. Keep the remedy actionable; git terms per glossary. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_probe_ok": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Shown when the destination can both fetch and push the remote. Destination reachability line under one worktree row: the DESTINATION device checked, with its own credentials, whether it can reach this repository's git remote. device = destination device display name; remote = git remote URL, never translated. Keep git fetch/push in the form this locale's style guide uses for git verbs (do not reuse this dialog's \"send\"/\"confirm\" verbs)."
+	},
+	"ui.mesh.mesh_actions.working_set_probe_cannot_fetch": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Warning: the destination cannot read (git fetch) the remote with its own access. Destination reachability line under one worktree row: the DESTINATION device checked, with its own credentials, whether it can reach this repository's git remote. device = destination device display name; remote = git remote URL, never translated. Keep git fetch/push in the form this locale's style guide uses for git verbs (do not reuse this dialog's \"send\"/\"confirm\" verbs)."
+	},
+	"ui.mesh.mesh_actions.working_set_probe_cannot_push": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Warning: the destination can read the remote but cannot git push to it, so work done there cannot be pushed onward. Destination reachability line under one worktree row: the DESTINATION device checked, with its own credentials, whether it can reach this repository's git remote. device = destination device display name; remote = git remote URL, never translated. Keep git fetch/push in the form this locale's style guide uses for git verbs (do not reuse this dialog's \"send\"/\"confirm\" verbs)."
+	},
+	"ui.mesh.mesh_actions.working_set_probe_cannot_clone": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Warning: the destination refuses this remote address (not an allowed https/ssh URL) or has no git installed. Destination reachability line under one worktree row: the DESTINATION device checked, with its own credentials, whether it can reach this repository's git remote. device = destination device display name; remote = git remote URL, never translated. Keep git fetch/push in the form this locale's style guide uses for git verbs (do not reuse this dialog's \"send\"/\"confirm\" verbs)."
+	},
+	"ui.mesh.mesh_actions.working_set_probe_no_remote": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Information: the repository has no git remote configured. Destination reachability line under one worktree row: the DESTINATION device checked, with its own credentials, whether it can reach this repository's git remote. device = destination device display name; remote = git remote URL, never translated. Keep git fetch/push in the form this locale's style guide uses for git verbs (do not reuse this dialog's \"send\"/\"confirm\" verbs)."
+	},
+	"ui.mesh.mesh_actions.working_set_probe_unknown": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Shown once above the lists when the destination could not be asked (older Local Operator there). Information, not an error. device = destination device display name."
+	},
+	"ui.mesh.mesh_actions.working_set_probe_https_rewrite": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Information offered under a cannot-fetch row: the SSH remote is unreachable from the destination but the equivalent HTTPS URL works. device = destination display name; url = HTTPS URL, never translated. SSH/HTTPS stay as is."
+	},
+	"ui.mesh.mesh_actions.working_set_probe_copy": {
+		"role": "button label — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Button label: copies the remedy shell command to the clipboard. Short."
+	},
+	"ui.mesh.mesh_actions.working_set_missing_tools": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Warning heading above a bulleted list of command-line tool names (go, pnpm, node, uv, cargo, npm) the destination lacks; the list follows, so end with a colon. The move is NOT blocked. device = destination display name."
+	},
+	"ui.mesh.mesh_actions.working_set_row_missing_tools": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Per-worktree line: the tools this worktree needs that the destination lacks. tools = locale-formatted list of tool names (never translated). device = destination display name."
+	},
+	"ui.mesh.mesh_actions.working_set_team_bridge": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Warning: this conversation uses Team Bridge (product name, never translated) and the destination device is not enrolled in it. The move is NOT blocked. device = destination display name."
+	},
+	"ui.mesh.mesh_actions.working_set_kept_heading_on": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Section heading when the move does NOT carry the files: these worktrees stay on the SOURCE device. count = number of worktrees; source = source device display name."
+	},
+	"ui.mesh.mesh_actions.working_set_unconfirmed": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Info banner when the dialog reopens because the move reached the backend without a reviewed list. Tells the user why the same dialog came back. Length: one line in a 512 px dialog; may wrap."
+	},
+	"ui.mesh.mesh_actions.working_set_move_without": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Confirm button label when the working files cannot travel and the only consent is to move WITHOUT them. Action label: keep short (button)."
+	},
+	"ui.mesh.mesh_actions.working_set_copy_without": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Confirm button label, same as working_set_move_without but for the copy alternative (the original stays where it is). Action label: keep short (button)."
+	},
+	"ui.mesh.mesh_actions.working_set_probe_remedy_include": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Introduces a copyable shell command shown on the next line. A GitHub share to {device} already exists; the command must be run on the device that LENDS that GitHub access, not on {device}. device = destination device name. Ends with a colon because the command follows."
+	},
+	"ui.mesh.mesh_actions.working_set_probe_remedy_share": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Introduces a copyable shell command shown on the next line. No GitHub share to {device} exists yet; the command must be run on another device that is signed in to GitHub, to share its access with {device}. device = destination device name. Ends with a colon because the command follows."
+	},
+	"ui.mesh.mesh_actions.working_set_probe_detail_url_refused": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Why the destination's reachability check failed: the remote URL uses a scheme/kind Local Operator refuses to contact. Shown under the row's failure sentence."
+	},
+	"ui.mesh.mesh_actions.working_set_probe_detail_git_missing": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Why the destination's reachability check failed: Git is not installed on the destination. device = destination device name."
+	},
+	"ui.mesh.mesh_actions.working_set_probe_detail_timeout": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Why the destination's reachability check failed: the Git remote did not answer before the probe's time limit."
+	},
+	"ui.mesh.mesh_actions.working_set_probe_detail_probe_error": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Why the destination's reachability check failed: the check itself failed on the destination (an internal error). device = destination device name."
+	},
+	"ui.mesh.mesh_actions.working_set_probe_detail_auth_denied": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Why the destination's reachability check failed: the remote refused the destination's credentials (fetch or push). device = destination device name. Shown under the row's failure sentence."
+	},
+	"ui.mesh.mesh_actions.working_set_probe_detail_not_found": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Why the destination's reachability check failed: the remote answered that the repository does not exist, or it is hidden from the destination's account. device = destination device name. Shown under the row's failure sentence."
+	},
+	"ui.mesh.mesh_actions.working_set_probe_detail_unreachable": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Why the destination's reachability check failed: the destination could not connect (DNS, refused connection, network down, redirect refused). device = destination device name. Shown under the row's failure sentence."
+	},
+	"ui.mesh.mesh_actions.working_set_probe_detail_tls": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Why the destination's reachability check failed: TLS/SSL certificate verification failed on the destination. device = destination device name. Shown under the row's failure sentence."
+	},
+	"ui.mesh.mesh_actions.working_set_probe_detail_host_key": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Why the destination's reachability check failed: SSH host key verification failed on the destination (unknown or changed host key). device = destination device name. Shown under the row's failure sentence."
+	},
+	"ui.mesh.mesh_actions.working_set_probe_detail_host_refused": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Why the destination's reachability check failed: Local Operator refused to contact the remote host because it resolves to a private, loopback or otherwise non-public address (a safety rule, not a network failure). No device placeholder. Shown under the row's failure sentence."
+	},
+	"ui.mesh.mesh_actions.working_set_probe_detail_error": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Why the destination's reachability check failed: git failed on the destination for a reason not classified more precisely. device = destination device name. Shown under the row's failure sentence."
+	},
+	"ui.mesh.mesh_actions.working_set_probe_remedy_on": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Introduces a copyable shell command shown on the next line, when the backend names the device it must run on. lender = that device's display name (never the destination). Ends with a colon because the command follows."
+	},
+	"ui.mesh.mesh_actions.working_set_probe_detail_unknown": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Fallback when the destination reports a failure code this app does not know. device = destination device name; code = machine code, never translated."
+	},
+	"ui.mesh.mesh_actions.working_set_withheld_heading_stay": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Section heading in files-stay mode (this version does not move files at all): lists worktrees/paths that a working-file move would STILL leave out (secret-shaped or otherwise withheld). Avoid a double negative. Heading: keep short."
+	},
+	"ui.mesh.mesh_actions.working_set_reason_unmerged_stay": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Files-stay variant of working_set_reason_unmerged: states only the cause, with NO 'then move again' remedy, because in this mode no move carries files. Shown under a worktree path."
+	},
+	"ui.mesh.mesh_actions.working_set_reason_in_progress_operation_stay": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Files-stay variant of working_set_reason_in_progress_operation: states only the cause, with NO 'then move again' remedy, because in this mode no move carries files. Shown under a worktree path."
+	},
+	"ui.mesh.mesh_actions.working_set_reason_history_secret_stay": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Files-stay variant of working_set_reason_history_secret: states only the cause, with NO 'then move again' remedy, because in this mode no move carries files. Shown under a worktree path."
+	},
+	"ui.mesh.mesh_actions.working_set_reason_history_unscanned_stay": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Files-stay variant of working_set_reason_history_unscanned: states only the cause, with NO 'then move again' remedy, because in this mode no move carries files. Shown under a worktree path."
+	},
+	"ui.mesh.mesh_actions.working_set_reason_over_cap_stay": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Files-stay variant of working_set_reason_over_cap: states only the cause, with NO 'then move again' remedy, because in this mode no move carries files. Shown under a worktree path."
+	},
+	"ui.mesh.mesh_actions.working_set_reason_destination_cannot_clone_stay": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Files-stay variant of working_set_reason_destination_cannot_clone: states only the cause, with NO 'then move again' remedy, because in this mode no move carries files. Shown under a worktree path."
+	},
+	"ui.mesh.mesh_actions.working_set_reason_unsupported_by_peer_stay": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Files-stay variant of working_set_reason_unsupported_by_peer: states only the cause, with NO 'then move again' remedy, because in this mode no move carries files. Shown under a worktree path."
+	},
+	"ui.mesh.mesh_actions.working_set_count_unpushed": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Count shown on a worktree row, joined to the other counts with ' · '. Only rendered when count > 0. count = number of commits not yet pushed."
+	},
+	"ui.mesh.mesh_actions.working_set_count_staged": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Count shown on a worktree row, joined to the other counts with ' · '. Only rendered when count > 0. count = number of files staged in Git's index. Keep the Git term per the locale glossary."
+	},
+	"ui.mesh.mesh_actions.working_set_count_unstaged": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Count shown on a worktree row, joined to the other counts with ' · '. Only rendered when count > 0. count = number of modified files not staged. Keep the Git term per the locale glossary."
+	},
+	"ui.mesh.mesh_actions.working_set_count_untracked": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Count shown on a worktree row, joined to the other counts with ' · '. Only rendered when count > 0. count = number of new files Git does not track. Keep the Git term per the locale glossary."
 	}
 }

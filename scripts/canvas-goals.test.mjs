@@ -357,17 +357,17 @@ test("the Goals segment's name admits the cap when the history is truncated", ()
 	 * only learned otherwise after opening the pane.
 	 */
 	assert.equal(
-		viewSegmentName("Goals", "goal", 3, true),
+		viewSegmentName("Goals", "goal", "goals", 3, true),
 		"Goals view, 3 goals shown — this list is capped",
 		"a capped list says so in the name it is counted by",
 	);
 	assert.equal(
-		viewSegmentName("Goals", "goal", 3),
+		viewSegmentName("Goals", "goal", "goals", 3),
 		"Goals view, 3 goals",
 		"an uncapped list is unchanged: the caveat is the cap's, not the count's",
 	);
 	assert.equal(
-		viewSegmentName("Goals", "goal", 1, true),
+		viewSegmentName("Goals", "goal", "goals", 1, true),
 		"Goals view, 1 goal shown — this list is capped",
 		"the singular agrees with the same noun rule the count already used",
 	);
@@ -377,12 +377,15 @@ test("the Goals segment's name admits the cap when the history is truncated", ()
 	 * and something settled, which the clause is what states.
 	 */
 	assert.equal(
-		viewSegmentName("Goals", "goal", 0, true),
+		viewSegmentName("Goals", "goal", "goals", 0, true),
 		"Goals view, 0 goals shown — this list is capped",
 	);
 	// A segment with nothing to count and no cap keeps the shipped shape.
-	assert.equal(viewSegmentName("Files", "file", 0), "Files view");
-	assert.equal(viewSegmentName("Files", "file", 2), "Files view, 2 files");
+	assert.equal(viewSegmentName("Files", "file", "files", 0), "Files view");
+	assert.equal(
+		viewSegmentName("Files", "file", "files", 2),
+		"Files view, 2 files",
+	);
 });
 
 test("the row's disclosed body carries the reason and the exact instant", () => {

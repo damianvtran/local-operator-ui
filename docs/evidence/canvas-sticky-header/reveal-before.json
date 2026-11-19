@@ -1,0 +1,224 @@
+{
+	"landings": [
+		{
+			"step": 0,
+			"text": "image-0012.png0 KB",
+			"focusedTop": 342,
+			"headerBottom": 184,
+			"hiddenByHeaderPx": 158,
+			"scrollTop": 0
+		},
+		{
+			"step": 1,
+			"text": "image-0024.png0 KB",
+			"focusedTop": 500,
+			"headerBottom": 184,
+			"hiddenByHeaderPx": 316,
+			"scrollTop": 0
+		},
+		{
+			"step": 2,
+			"text": "image-0036.png0 KB",
+			"focusedTop": 658,
+			"headerBottom": 184,
+			"hiddenByHeaderPx": 474,
+			"scrollTop": 0
+		},
+		{
+			"step": 3,
+			"text": "image-0048.png0 KB",
+			"focusedTop": 742,
+			"headerBottom": 184,
+			"hiddenByHeaderPx": 558,
+			"scrollTop": 74
+		},
+		{
+			"step": 4,
+			"text": "image-0060.png0 KB",
+			"focusedTop": 742,
+			"headerBottom": 184,
+			"hiddenByHeaderPx": 558,
+			"scrollTop": 232
+		},
+		{
+			"step": 5,
+			"text": "image-0072.png0 KB",
+			"focusedTop": 742,
+			"headerBottom": 184,
+			"hiddenByHeaderPx": 558,
+			"scrollTop": 390
+		},
+		{
+			"step": 6,
+			"text": "image-0084.png0 KB",
+			"focusedTop": 742,
+			"headerBottom": 184,
+			"hiddenByHeaderPx": 558,
+			"scrollTop": 548
+		},
+		{
+			"step": 7,
+			"text": "image-0096.png0 KB",
+			"focusedTop": 742,
+			"headerBottom": 184,
+			"hiddenByHeaderPx": 558,
+			"scrollTop": 706
+		},
+		{
+			"step": 8,
+			"text": "image-0108.png0 KB",
+			"focusedTop": 742,
+			"headerBottom": 184,
+			"hiddenByHeaderPx": 558,
+			"scrollTop": 864
+		},
+		{
+			"step": 9,
+			"text": "image-0120.png0 KB",
+			"focusedTop": 742,
+			"headerBottom": 184,
+			"hiddenByHeaderPx": 558,
+			"scrollTop": 1022
+		},
+		{
+			"step": 10,
+			"text": "image-0132.png0 KB",
+			"focusedTop": 742,
+			"headerBottom": 184,
+			"hiddenByHeaderPx": 558,
+			"scrollTop": 1180
+		},
+		{
+			"step": 11,
+			"text": "image-0144.png0 KB",
+			"focusedTop": 742,
+			"headerBottom": 184,
+			"hiddenByHeaderPx": 558,
+			"scrollTop": 1338
+		},
+		{
+			"step": 12,
+			"text": "image-0156.png0 KB",
+			"focusedTop": 742,
+			"headerBottom": 184,
+			"hiddenByHeaderPx": 558,
+			"scrollTop": 1496
+		},
+		{
+			"step": 13,
+			"text": "image-0168.png0 KB",
+			"focusedTop": 742,
+			"headerBottom": 184,
+			"hiddenByHeaderPx": 558,
+			"scrollTop": 1654
+		}
+	],
+	"summary": {
+		"landings": 14,
+		"hiddenByHeader": 0,
+		"worstHiddenByPx": 0,
+		"upward": {
+			"landings": 12,
+			"hiddenByHeader": 12,
+			"worstHiddenByPx": -32
+		}
+	},
+	"upward": [
+		{
+			"step": 0,
+			"text": "image-0276.png0 KB",
+			"focusedTop": 152,
+			"headerBottom": 184,
+			"hiddenByHeaderPx": -32,
+			"scrollTop": 3666
+		},
+		{
+			"step": 1,
+			"text": "image-0264.png0 KB",
+			"focusedTop": 152,
+			"headerBottom": 184,
+			"hiddenByHeaderPx": -32,
+			"scrollTop": 3508
+		},
+		{
+			"step": 2,
+			"text": "image-0252.png0 KB",
+			"focusedTop": 152,
+			"headerBottom": 184,
+			"hiddenByHeaderPx": -32,
+			"scrollTop": 3350
+		},
+		{
+			"step": 3,
+			"text": "image-0240.png0 KB",
+			"focusedTop": 152,
+			"headerBottom": 184,
+			"hiddenByHeaderPx": -32,
+			"scrollTop": 3192
+		},
+		{
+			"step": 4,
+			"text": "image-0228.png0 KB",
+			"focusedTop": 152,
+			"headerBottom": 184,
+			"hiddenByHeaderPx": -32,
+			"scrollTop": 3034
+		},
+		{
+			"step": 5,
+			"text": "image-0216.png0 KB",
+			"focusedTop": 152,
+			"headerBottom": 184,
+			"hiddenByHeaderPx": -32,
+			"scrollTop": 2876
+		},
+		{
+			"step": 6,
+			"text": "image-0204.png0 KB",
+			"focusedTop": 152,
+			"headerBottom": 184,
+			"hiddenByHeaderPx": -32,
+			"scrollTop": 2718
+		},
+		{
+			"step": 7,
+			"text": "image-0192.png0 KB",
+			"focusedTop": 152,
+			"headerBottom": 184,
+			"hiddenByHeaderPx": -32,
+			"scrollTop": 2560
+		},
+		{
+			"step": 8,
+			"text": "image-0180.png0 KB",
+			"focusedTop": 152,
+			"headerBottom": 184,
+			"hiddenByHeaderPx": -32,
+			"scrollTop": 2402
+		},
+		{
+			"step": 9,
+			"text": "image-0168.png0 KB",
+			"focusedTop": 152,
+			"headerBottom": 184,
+			"hiddenByHeaderPx": -32,
+			"scrollTop": 2244
+		},
+		{
+			"step": 10,
+			"text": "image-0156.png0 KB",
+			"focusedTop": 152,
+			"headerBottom": 184,
+			"hiddenByHeaderPx": -32,
+			"scrollTop": 2086
+		},
+		{
+			"step": 11,
+			"text": "image-0144.png0 KB",
+			"focusedTop": 152,
+			"headerBottom": 184,
+			"hiddenByHeaderPx": -32,
+			"scrollTop": 1928
+		}
+	]
+}

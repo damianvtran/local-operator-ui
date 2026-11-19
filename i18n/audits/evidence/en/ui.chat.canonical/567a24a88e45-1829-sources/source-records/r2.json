@@ -1,0 +1,459 @@
+{
+ "audit": "i18n audit — round 2 (current-head source audit)",
+ "pr": "https://github.com/damianvtran/local-operator-ui/pull/1829",
+ "worktree": "/Users/damian/local-operator-ui/.worktrees/full-diff-history",
+ "base": "1268e8a5929d9aea7429a1e042be8ba5bae5dc15",
+ "head": "21bb3f5dcb5fdabf77f1415480be310b6454d666",
+ "date": "2026-11-10T23:50:48Z",
+ "auditor": {
+  "agent": "reviewer",
+  "instance": "567a24a88e45",
+  "model": "anthropic/claude-opus-5-5",
+  "model_source": "session system context (Model: anthropic/claude-opus-5-5); no fallback observed in this session",
+  "team": "lopdev",
+  "independence": "not the translator (translator commits f1932d263d6c, ebb1d6beb853 by a different lane/agent); did not author the PR; did not read c028fa237e58 artifacts or prior audit comments"
+ },
+ "scope": {
+  "namespace": "ui.chat.canonical",
+  "changed_keys": [
+   "ui.chat.canonical.tool_row.diff.full.view",
+   "ui.chat.canonical.tool_row.diff.full.back",
+   "ui.chat.canonical.tool_row.diff.full.range",
+   "ui.chat.canonical.tool_row.diff.full.nav",
+   "ui.chat.canonical.tool_row.diff.full.first",
+   "ui.chat.canonical.tool_row.diff.full.prev",
+   "ui.chat.canonical.tool_row.diff.full.next",
+   "ui.chat.canonical.tool_row.diff.full.last",
+   "ui.chat.canonical.tool_row.diff.full.loading",
+   "ui.chat.canonical.tool_row.diff.full.error",
+   "ui.chat.canonical.tool_row.diff.full.retry",
+   "ui.chat.canonical.tool_row.diff.full.empty",
+   "ui.chat.canonical.tool_row.diff.full.oversized",
+   "ui.chat.canonical.tool_row.diff.full.withheld",
+   "ui.chat.canonical.tool_row.diff.full.unavailable",
+   "ui.chat.canonical.tool_row.diff.full.evicted",
+   "ui.chat.canonical.tool_row.diff.full.not_recorded",
+   "ui.chat.canonical.tool_row.diff.full.inline",
+   "ui.chat.canonical.tool_row.diff.full.not_found",
+   "ui.chat.canonical.tool_row.diff.full.clipped",
+   "ui.chat.canonical.tool_row.diff.full.clipped_row",
+   "ui.chat.canonical.tool_row.diff.full.continued",
+   "ui.chat.canonical.tool_row.diff.full.continues"
+  ],
+  "changed_key_count": 23,
+  "removed": [],
+  "modified_existing": [],
+  "other_namespaces": "git diff --name-only base..head -- src/i18n i18n lists only ui.chat.canonical catalogues (8 locales), its en context and keys.gen.ts; every other namespace is byte-identical to base",
+  "keys_gen_entries": 23
+ },
+ "hashes": {
+  "source": {
+   "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+   "base_sha256": "38f767d08ff0f8a4fc6d8eee536ae82a023e93fe50fecc5fabb25a8f7609541f",
+   "head_sha256": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+   "base_sha256": "58cefb7d2140be875f5bcc0688631a85c368b130b551f82185d78cec47eb8107",
+   "head_sha256": "04bfe86405155bf8437c4f867eea4dc9bfd4c277d2ae6b0aa7d6a1bf20390087"
+  },
+  "targets": {
+   "es": {
+    "path": "src/i18n/catalogues/es/ui.chat.canonical.json",
+    "base_sha256": "7735932bf45197226c40366421862f9596d224f06f463e84eadfe8bf020682d1",
+    "head_sha256": "db9923d6038ef32906ab0bcfeff99d358d01ec610d50256749f31b360962b22a"
+   },
+   "fr": {
+    "path": "src/i18n/catalogues/fr/ui.chat.canonical.json",
+    "base_sha256": "72353c812ac37c1728af21c33d429fa04e9c3ebf8e55c701b22617d443fb6d2e",
+    "head_sha256": "933bc72d0569b56b203f528cc5549e900d261350b8a1cabfb162869d403d9ba4"
+   },
+   "hi": {
+    "path": "src/i18n/catalogues/hi/ui.chat.canonical.json",
+    "base_sha256": "9396b17c8e3796c97eb1fc058f5600566ece111ac372578ff663541ccd559eca",
+    "head_sha256": "3bf3915206f534281383edacf7524d11641b7400dbfea3837be8f8ac1a8fb851"
+   },
+   "ru": {
+    "path": "src/i18n/catalogues/ru/ui.chat.canonical.json",
+    "base_sha256": "ea9eff38bfa4c9fcea0fa519aaa37fc890ac09977df535940494aa92194a61e3",
+    "head_sha256": "ad6c5d631d59a8e73189ddb24943c19871b510d6e7928f3286c35de5057feb97"
+   },
+   "ur": {
+    "path": "src/i18n/catalogues/ur/ui.chat.canonical.json",
+    "base_sha256": "e9c5c4e97476439567dd3efa26f14e9257fcfc581b8526d89bb5d05a4e3c9e11",
+    "head_sha256": "447dbfa53dd70eb8148495b2badc03e12ee3fcef935fd98280cd3665f31e655e"
+   },
+   "vi": {
+    "path": "src/i18n/catalogues/vi/ui.chat.canonical.json",
+    "base_sha256": "f71e57e9b6700aa31e874108bc8ac9f52cee2f3677638845aa9304996a4296d9",
+    "head_sha256": "c23bbd6bbaa34f4ae660d502f7c5503d565711d9e6fa4faebe506882296c222b"
+   },
+   "zh-CN": {
+    "path": "src/i18n/catalogues/zh-CN/ui.chat.canonical.json",
+    "base_sha256": "705f67d486f9d011925a234c0a5adb2eb258570ebbc78d3eaa2cf25d24299a13",
+    "head_sha256": "8db6da0aab5182efae83c3287758ba820dbdea60458d9c34dc384698d912d67b"
+   }
+  },
+  "core_glossary": {
+   "repo": "~/local-operator",
+   "commit": "b42471d3935cb7e95d64428af27c32626665f4c0",
+   "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+   "style_guides": {
+    "es": "77b9227213802d14c74d4298d6b346ad842bbf2a5ca3b9d46fc6144430d26c3e",
+    "fr": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226",
+    "hi": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5",
+    "ru": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5",
+    "ur": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60",
+    "vi": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888",
+    "zh-CN": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+   }
+  }
+ },
+ "mechanical": {
+  "placeholders": "all 7 targets carry the English argument set per key (count; first/last/total as number)",
+  "plural_categories": "es/fr/hi/ur one+other; ru one/few/many/other; vi, zh-CN other; all carry #",
+  "bidi_controls": "none (U+200E/F, U+202A-E, U+2066-9, U+061C)",
+  "ellipsis": "loading ends with … in all",
+  "parentheses": "kept (zh-CN full-width)",
+  "terminal_full_stop": "none"
+ },
+ "semantics": "clipped/clipped_row show only for legacy clipped_rows (diff-history-model.ts:242-250: the current core sends []), where a row really was shortened, so \"line shortened\" is accurate. continued/continues mark fragments of a row split across pages (offset>0 / nextOffset>0, :131-135, :271-274); every target says the text carries on and nothing is cut.",
+ "findings": {
+  "es": [
+   {
+    "id": "I-ES-1",
+    "severity": "minor",
+    "key": "ui.chat.canonical.tool_row.diff.full.withheld",
+    "codepath": "src/renderer/src/features/chat/components/trace/diff-history-model.ts:473",
+    "message": "\"censurar\" (censor) for credential redaction is off-register; es catalogues use \"ocultar\" (20 hits) and \"censur\" appears only here.",
+    "fix": "Diff completo retenido: no se pudieron ocultar los datos sensibles de forma segura"
+   }
+  ],
+  "fr": [
+   {
+    "id": "I-FR-1",
+    "severity": "minor",
+    "key": "ui.chat.canonical.tool_row.diff.full.unavailable",
+    "codepath": "diff-history-model.ts:475 vs :479",
+    "message": "unavailable and not_recorded are byte-identical (\"Diff complet non enregistré pour cette modification\"), so the save-failed and predates-archive states read the same; English distinguishes them.",
+    "fix": "Le diff complet n’a pas pu être enregistré pour cette modification"
+   },
+   {
+    "id": "I-FR-2",
+    "severity": "nit",
+    "key": "ui.chat.canonical.tool_row.diff.full.evicted",
+    "codepath": "diff-history-model.ts:477",
+    "message": "\"Diff complet plus conservé\" drops \"n’est\" and reads telegraphic or ambiguous.",
+    "fix": "Le diff complet n’est plus conservé — les anciens diffs sont supprimés pour libérer de l’espace"
+   }
+  ],
+  "hi": [
+   {
+    "id": "I-HI-1",
+    "severity": "minor",
+    "key": "ui.chat.canonical.tool_row.diff.full.withheld",
+    "codepath": "diff-history-model.ts:473",
+    "message": "\"इसे सुरक्षित रूप से छिपाया नहीं जा सका\" says the diff itself could not be hidden, which contradicts \"withheld\" and drops the secrets meaning (context note: redaction = removing secrets).",
+    "fix": "पूरा diff रोका गया — इसकी संवेदनशील जानकारी सुरक्षित रूप से हटाई नहीं जा सकी"
+   }
+  ],
+  "ru": [
+   {
+    "id": "I-RU-1",
+    "severity": "minor",
+    "key": "ui.chat.canonical.tool_row.diff.full.back",
+    "codepath": "diff-history-model.ts:406",
+    "message": "\"превью\" appears only here; ru catalogues use \"предпросмотр\" 31 times.",
+    "fix": "Назад к предпросмотру"
+   },
+   {
+    "id": "I-RU-2",
+    "severity": "nit",
+    "key": "ui.chat.canonical.tool_row.diff.full.prev",
+    "codepath": "diff-history.tsx pager",
+    "message": "prev \"Назад\" sits beside back \"Назад к превью\" in the same pager; two \"Назад\" buttons.",
+    "fix": "Предыдущая (with next \"Следующая\") or keep \"Назад\" once back is reworded"
+   }
+  ],
+  "ur": [
+   {
+    "id": "I-UR-1",
+    "severity": "minor",
+    "key": "ui.chat.canonical.tool_row.diff.full.withheld",
+    "codepath": "diff-history-model.ts:473",
+    "message": "\"اسے محفوظ طریقے سے چھپایا نہیں جا سکا\" says the diff could not be hidden, the same object error as I-HI-1.",
+    "fix": "مکمل diff روک لیا گیا — اس کی حساس معلومات محفوظ طریقے سے ہٹائی نہیں جا سکیں"
+   }
+  ],
+  "vi": [],
+  "zh-CN": [],
+  "en(source)": [
+   {
+    "id": "I-EN-1",
+    "severity": "nit",
+    "key": "ui.chat.canonical.tool_row.diff.full.view / .range",
+    "codepath": "diff-block.tsx:334, diff-history.tsx:489",
+    "message": "The English source uses \"# lines\" in view but \"Rows\" in range for the same unit; translations mirror it (es líneas/Filas). Not a target defect.",
+    "fix": "Use \"lines\" in range (\"Lines {first}–{last} of {total}\") or \"rows\" in view, in a later source edit."
+   }
+  ]
+ },
+ "per_locale": {
+  "es": {
+   "result": "clean-with-findings",
+   "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+   }
+  },
+  "fr": {
+   "result": "clean-with-findings",
+   "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 1
+   }
+  },
+  "hi": {
+   "result": "clean-with-findings",
+   "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+   }
+  },
+  "ru": {
+   "result": "clean-with-findings",
+   "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 1
+   }
+  },
+  "ur": {
+   "result": "clean-with-findings",
+   "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+   }
+  },
+  "vi": {
+   "result": "clean",
+   "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   }
+  },
+  "zh-CN": {
+   "result": "clean",
+   "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   }
+  }
+ },
+ "rendered": "BLOCKED (scope): source-only audit. Not proven: rendered fit, ur RTL ordering of the \"{first}–{last}\" range (an en-dash is bidi-neutral between Latin digits) and the \"·\" separator in view.",
+ "high_visibility": "docs/I18N.md:224 requires a second independent audit for high-visibility groups. ledger-rules.mjs validateAuditSet enforces only one independent auditor. For this namespace, fr/vi/zh-CN carry a second high-visibility auditor in i18n/ledger.json. Manager decides; no agent was spawned.",
+ "ledger_state": "i18n/ledger.json is unchanged in this PR; rows for ui.chat.canonical still bind en 38f767d08ff0…, not the head bytes. That is stale, not a copy failure.",
+ "status_counts": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 5,
+  "nit": 2,
+  "nit_source": 1
+ },
+ "receipts_schema_note": "Fields read by scripts/i18n/ledger-rules.mjs deriveReceiptAudit: namespace, locale, agent (/^[a-zA-Z0-9_-]+( \\(...\\))?$/), instance (non-placeholder), model, status passed|changes_requested (or result), source_sha256/en_sha256, target_sha256/<locale>_sha256, explicit findings[] with severity. The path must match i18n/receipts/[a-z0-9_-]+.json, so lower-case zh-cn in the filename. The ledger row needs receipt_sha256 of the committed bytes. Hashes are valid only for head 21bb3f5d; after any catalogue fix a fresh audit must issue new receipts.",
+ "proposed_receipts": {
+  "es": {
+   "path_for_caller": "i18n/receipts/567a24a88e45-ui.chat.canonical-es.json",
+   "body": {
+    "namespace": "ui.chat.canonical",
+    "locale": "es",
+    "agent": "reviewer",
+    "instance": "567a24a88e45",
+    "model": "anthropic/claude-opus-5-5",
+    "date": "2026-11-10",
+    "status": "passed",
+    "result": "clean-with-findings",
+    "source_sha256": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e",
+    "target_sha256": "db9923d6038ef32906ab0bcfeff99d358d01ec610d50256749f31b360962b22a",
+    "context_sha256": "04bfe86405155bf8437c4f867eea4dc9bfd4c277d2ae6b0aa7d6a1bf20390087",
+    "findings": [
+     {
+      "id": "I-ES-1",
+      "severity": "minor",
+      "key": "ui.chat.canonical.tool_row.diff.full.withheld",
+      "codepath": "src/renderer/src/features/chat/components/trace/diff-history-model.ts:473",
+      "message": "\"censurar\" (censor) for credential redaction is off-register; es catalogues use \"ocultar\" (20 hits) and \"censur\" appears only here.",
+      "fix": "Diff completo retenido: no se pudieron ocultar los datos sensibles de forma segura"
+     }
+    ]
+   }
+  },
+  "fr": {
+   "path_for_caller": "i18n/receipts/567a24a88e45-ui.chat.canonical-fr.json",
+   "body": {
+    "namespace": "ui.chat.canonical",
+    "locale": "fr",
+    "agent": "reviewer",
+    "instance": "567a24a88e45",
+    "model": "anthropic/claude-opus-5-5",
+    "date": "2026-11-10",
+    "status": "passed",
+    "result": "clean-with-findings",
+    "source_sha256": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e",
+    "target_sha256": "933bc72d0569b56b203f528cc5549e900d261350b8a1cabfb162869d403d9ba4",
+    "context_sha256": "04bfe86405155bf8437c4f867eea4dc9bfd4c277d2ae6b0aa7d6a1bf20390087",
+    "findings": [
+     {
+      "id": "I-FR-1",
+      "severity": "minor",
+      "key": "ui.chat.canonical.tool_row.diff.full.unavailable",
+      "codepath": "diff-history-model.ts:475 vs :479",
+      "message": "unavailable and not_recorded are byte-identical (\"Diff complet non enregistré pour cette modification\"), so the save-failed and predates-archive states read the same; English distinguishes them.",
+      "fix": "Le diff complet n’a pas pu être enregistré pour cette modification"
+     },
+     {
+      "id": "I-FR-2",
+      "severity": "nit",
+      "key": "ui.chat.canonical.tool_row.diff.full.evicted",
+      "codepath": "diff-history-model.ts:477",
+      "message": "\"Diff complet plus conservé\" drops \"n’est\" and reads telegraphic or ambiguous.",
+      "fix": "Le diff complet n’est plus conservé — les anciens diffs sont supprimés pour libérer de l’espace"
+     }
+    ]
+   }
+  },
+  "hi": {
+   "path_for_caller": "i18n/receipts/567a24a88e45-ui.chat.canonical-hi.json",
+   "body": {
+    "namespace": "ui.chat.canonical",
+    "locale": "hi",
+    "agent": "reviewer",
+    "instance": "567a24a88e45",
+    "model": "anthropic/claude-opus-5-5",
+    "date": "2026-11-10",
+    "status": "passed",
+    "result": "clean-with-findings",
+    "source_sha256": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e",
+    "target_sha256": "3bf3915206f534281383edacf7524d11641b7400dbfea3837be8f8ac1a8fb851",
+    "context_sha256": "04bfe86405155bf8437c4f867eea4dc9bfd4c277d2ae6b0aa7d6a1bf20390087",
+    "findings": [
+     {
+      "id": "I-HI-1",
+      "severity": "minor",
+      "key": "ui.chat.canonical.tool_row.diff.full.withheld",
+      "codepath": "diff-history-model.ts:473",
+      "message": "\"इसे सुरक्षित रूप से छिपाया नहीं जा सका\" says the diff itself could not be hidden, which contradicts \"withheld\" and drops the secrets meaning (context note: redaction = removing secrets).",
+      "fix": "पूरा diff रोका गया — इसकी संवेदनशील जानकारी सुरक्षित रूप से हटाई नहीं जा सकी"
+     }
+    ]
+   }
+  },
+  "ru": {
+   "path_for_caller": "i18n/receipts/567a24a88e45-ui.chat.canonical-ru.json",
+   "body": {
+    "namespace": "ui.chat.canonical",
+    "locale": "ru",
+    "agent": "reviewer",
+    "instance": "567a24a88e45",
+    "model": "anthropic/claude-opus-5-5",
+    "date": "2026-11-10",
+    "status": "passed",
+    "result": "clean-with-findings",
+    "source_sha256": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e",
+    "target_sha256": "ad6c5d631d59a8e73189ddb24943c19871b510d6e7928f3286c35de5057feb97",
+    "context_sha256": "04bfe86405155bf8437c4f867eea4dc9bfd4c277d2ae6b0aa7d6a1bf20390087",
+    "findings": [
+     {
+      "id": "I-RU-1",
+      "severity": "minor",
+      "key": "ui.chat.canonical.tool_row.diff.full.back",
+      "codepath": "diff-history-model.ts:406",
+      "message": "\"превью\" appears only here; ru catalogues use \"предпросмотр\" 31 times.",
+      "fix": "Назад к предпросмотру"
+     },
+     {
+      "id": "I-RU-2",
+      "severity": "nit",
+      "key": "ui.chat.canonical.tool_row.diff.full.prev",
+      "codepath": "diff-history.tsx pager",
+      "message": "prev \"Назад\" sits beside back \"Назад к превью\" in the same pager; two \"Назад\" buttons.",
+      "fix": "Предыдущая (with next \"Следующая\") or keep \"Назад\" once back is reworded"
+     }
+    ]
+   }
+  },
+  "ur": {
+   "path_for_caller": "i18n/receipts/567a24a88e45-ui.chat.canonical-ur.json",
+   "body": {
+    "namespace": "ui.chat.canonical",
+    "locale": "ur",
+    "agent": "reviewer",
+    "instance": "567a24a88e45",
+    "model": "anthropic/claude-opus-5-5",
+    "date": "2026-11-10",
+    "status": "passed",
+    "result": "clean-with-findings",
+    "source_sha256": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e",
+    "target_sha256": "447dbfa53dd70eb8148495b2badc03e12ee3fcef935fd98280cd3665f31e655e",
+    "context_sha256": "04bfe86405155bf8437c4f867eea4dc9bfd4c277d2ae6b0aa7d6a1bf20390087",
+    "findings": [
+     {
+      "id": "I-UR-1",
+      "severity": "minor",
+      "key": "ui.chat.canonical.tool_row.diff.full.withheld",
+      "codepath": "diff-history-model.ts:473",
+      "message": "\"اسے محفوظ طریقے سے چھپایا نہیں جا سکا\" says the diff could not be hidden, the same object error as I-HI-1.",
+      "fix": "مکمل diff روک لیا گیا — اس کی حساس معلومات محفوظ طریقے سے ہٹائی نہیں جا سکیں"
+     }
+    ]
+   }
+  },
+  "vi": {
+   "path_for_caller": "i18n/receipts/567a24a88e45-ui.chat.canonical-vi.json",
+   "body": {
+    "namespace": "ui.chat.canonical",
+    "locale": "vi",
+    "agent": "reviewer",
+    "instance": "567a24a88e45",
+    "model": "anthropic/claude-opus-5-5",
+    "date": "2026-11-10",
+    "status": "passed",
+    "result": "clean",
+    "source_sha256": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e",
+    "target_sha256": "c23bbd6bbaa34f4ae660d502f7c5503d565711d9e6fa4faebe506882296c222b",
+    "context_sha256": "04bfe86405155bf8437c4f867eea4dc9bfd4c277d2ae6b0aa7d6a1bf20390087",
+    "findings": []
+   }
+  },
+  "zh-CN": {
+   "path_for_caller": "i18n/receipts/567a24a88e45-ui.chat.canonical-zh-cn.json",
+   "body": {
+    "namespace": "ui.chat.canonical",
+    "locale": "zh-CN",
+    "agent": "reviewer",
+    "instance": "567a24a88e45",
+    "model": "anthropic/claude-opus-5-5",
+    "date": "2026-11-10",
+    "status": "passed",
+    "result": "clean",
+    "source_sha256": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e",
+    "target_sha256": "8db6da0aab5182efae83c3287758ba820dbdea60458d9c34dc384698d912d67b",
+    "context_sha256": "04bfe86405155bf8437c4f867eea4dc9bfd4c277d2ae6b0aa7d6a1bf20390087",
+    "findings": []
+   }
+  }
+ }
+}

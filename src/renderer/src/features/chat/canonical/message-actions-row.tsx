@@ -39,14 +39,27 @@
  * (`ARRIVED`), and its resting state is where it ends: nothing here can leave
  * the row permanently visible.
  *
- * ONE COMPONENT, TWO KINDS. `kind` decides what the row offers
+ * ONE COMPONENT, FOUR KINDS. `kind` decides what the row offers
  * (`answerActionsFor`), which marker it carries and what its accessible name
- * is; an answer row offers Copy + Speak + Fork, a user row Copy + Fork - Speak
- * is the one action the answer arm owns alone. The
- * user arm exists because the operator asked for a copy affordance on their
- * own messages, and it is this component rather than a second one because
- * everything here - the copy press, the reveal, the toolbar semantics - is the
- * same row (branding § 9).
+ * is. An `answer` row is the turn-closing handover (Copy + Speak + Fork); a
+ * `response` row is every OTHER final response in the turn, with the same full
+ * set; a `commentary` row is the in-between status text (Copy alone); a `user`
+ * row is the reader's own message (Copy + Fork). The four roles exist because
+ * the operator's rule distinguishes them by WHAT THE MESSAGE IS - a handover
+ * gets the real bar wherever it sits, narration gets a hover-only control, and
+ * the reader's own turn gets a reserved row of its own - and a role is the only
+ * place that fact can live without the view re-deriving it from position.
+ *
+ * NO CONTAINER, ON ANY OF THE FOUR. This row is the transcript's own line, and
+ * the design contract's §7 rule is that a completed action is one quiet line,
+ * not a card: a ground, edge, radius or padding box around these buttons reads
+ * as a card around a meta line (the operator's 2026-10-20 report, twice: "the
+ * previous bar was SMALL BARE ICONS - no boxes, no borders, no container, no
+ * background surface, no divider"). The buttons are ghost icons with an ink
+ * step on hover and NO hover ground; the reveal is opacity-only, so the same
+ * row keeps its box in the flow and moves nothing when the pointer arrives.
+ * The overlay placement is bare too - a container that only appears on hover is
+ * still a container.
  *
  * WHAT IT IS GIVEN, AND WHY THAT IS THE WHOLE CONTRACT. `bodyText` is the
  * answer's VISIBLE text - `parseReplies(record.text).remainingContent`, exactly
@@ -75,6 +88,8 @@ import {
 	useSpeakControl,
 } from "@shared/components/common/speak-control";
 import { Button, Tooltip } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useSpeechBindingFor } from "@shared/lib/speech-target";
 import { cn } from "@shared/lib/utils";
 import { usePanelPresentationStore } from "@shared/store/panel-presentation-store";
@@ -90,14 +105,14 @@ import {
 } from "react";
 import { copyTarget } from "../utils/link-open";
 import {
-	ANSWER_ACTIONS_LABEL,
 	type ActionRowRole,
 	type AnswerActionId,
 	COPY_FEEDBACK_MS,
-	USER_ACTIONS_LABEL,
 	actionRowVisibility,
 	answerActionsFor,
+	answerActionsLabel,
 	forkExcerpt,
+	userActionsLabel,
 } from "./message-actions";
 
 export type AnswerActionRowProps = {
@@ -145,6 +160,31 @@ export type AnswerActionRowProps = {
 	 * surface with no transcript behind it), and the row offers no Fork for it.
 	 */
 	entryId?: string;
+	/**
+	 * Draw the row as a FLOATING control rather than a line in the flow.
+	 *
+	 * THIS IS THE IN-BETWEEN STATUS CLASS'S PLACEMENT, and the only class that
+	 * takes it. A final response and the reader's own turn both keep a row of
+	 * their own (the operator's rule: the user row "should be a row under the
+	 * user's message that takes up space"; a final response rides its meta row);
+	 * mid-turn narration must not reserve space it does not need, so `overlay`
+	 * takes it out of the flow entirely (`absolute`) and it costs zero layout at
+	 * rest AND when shown.
+	 *
+	 * The overlay is BARE - no ground, no edge, no radius, no shadow - for the
+	 * header's reason: the container was the operator's reported regression, and
+	 * a container that only appears on hover is still a container. An ungrounded
+	 * icon row over prose is legible because the icons sit in the record's own
+	 * gutter and fade in on the row's hover, which is the interaction the
+	 * operator asked for rather than a surface anyone has to read.
+	 *
+	 * `overlayClassName` exists for the one placement the caller owns: a prose
+	 * row's control sits in the column's gutter (`@min-[900px]/chatcol:-right-10`)
+	 * rather than over the words.
+	 */
+	overlay?: boolean;
+	/** Placement for the `overlay` variant; merged after the default inset. */
+	overlayClassName?: string;
 };
 
 /**
@@ -200,6 +240,8 @@ export const AnswerActionRow = memo(function AnswerActionRow({
 	revealAt,
 	conversationId,
 	entryId,
+	overlay = false,
+	overlayClassName,
 }: AnswerActionRowProps) {
 	const [copied, setCopied] = useState(false);
 	const [arriving, setArriving] = useState(false);
@@ -245,6 +287,8 @@ export const AnswerActionRow = memo(function AnswerActionRow({
 	 * bound to an agent or not).
 	 */
 	const forkable = Boolean(conversationId && entryId);
+	/* `t()` reads the locale at call time; subscribing repaints the row's name on a switch. */
+	useI18nLocale();
 	const actions = answerActionsFor({ role: kind, forkable });
 
 	/*
@@ -402,19 +446,46 @@ export const AnswerActionRow = memo(function AnswerActionRow({
 			 * The design delta verifies it against frames and reverts if the
 			 * stamp band reads worse.
 			 */
-			<Tooltip content={copied ? "Copied" : "Copy"} side="bottom">
+			<Tooltip
+				content={
+					copied
+						? t("ui.chat.response_actions.copied")
+						: t("ui.chat.response_actions.copy")
+				}
+				side="bottom"
+			>
 				<Button
 					variant="ghost"
 					size="icon-sm"
-					aria-label={copied ? "Copied" : "Copy"}
-					className={cn("text-ink-dim hover:bg-accent-wash hover:text-accent")}
+					aria-label={
+						copied
+							? t("ui.chat.response_actions.copied")
+							: t("ui.chat.response_actions.copy")
+					}
+					className={cn(
+						/*
+						 * NO HOVER GROUND. `ghost`'s shipped default paints `bg-accent-wash`
+						 * on hover, and a wash under one icon is a background surface - the
+						 * operator's "no background surface" rule applies to the button as
+						 * much as to the row. What is left is the ink step
+						 * (`ink-dim -> ink`), which is the one affordance a bare icon can own
+						 * on a prose ground without drawing a box.
+						 */
+						"text-ink-dim hover:bg-transparent hover:text-ink",
+					)}
 					onClick={handleCopy}
 				>
 					{copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
 				</Button>
 			</Tooltip>
 		),
-		speak: <SpeakButton control={speechControl} side="bottom" />,
+		speak: (
+			<SpeakButton
+				control={speechControl}
+				side="bottom"
+				className={cn("text-ink-dim hover:bg-transparent hover:text-ink")}
+			/>
+		),
 		fork: (
 			/*
 			 * THE GLYPH IS THE SIDEBAR'S. `chat-sidebar.tsx`'s row menu offers the
@@ -423,13 +494,20 @@ export const AnswerActionRow = memo(function AnswerActionRow({
 			 * DIRECTION the sidebar's cannot (the cut is at this message, not at
 			 * the end), so the label carries the rest.
 			 */
-			<Tooltip content="Fork from this message" side="bottom">
+			<Tooltip
+				content={t(
+					"ui.chat.pickers.destination_pickers.fork_from_this_message",
+				)}
+				side="bottom"
+			>
 				<Button
 					variant="ghost"
 					size="icon-sm"
-					aria-label="Fork from this message"
+					aria-label={t(
+						"ui.chat.pickers.destination_pickers.fork_from_this_message",
+					)}
 					ref={forkButtonRef}
-					className={cn("text-ink-dim hover:bg-accent-wash hover:text-accent")}
+					className={cn("text-ink-dim hover:bg-transparent hover:text-ink")}
 					onClick={handleFork}
 				>
 					<GitFork aria-hidden="true" />
@@ -441,7 +519,21 @@ export const AnswerActionRow = memo(function AnswerActionRow({
 	return (
 		<div
 			role="toolbar"
-			aria-label={kind === "user" ? USER_ACTIONS_LABEL : ANSWER_ACTIONS_LABEL}
+			/*
+			 * The name follows the role, as the marker below does: a turn with a
+			 * non-closing final response must not announce two identical "Answer
+			 * actions" toolbars, and the commentary overlay must not borrow the
+			 * response row's name once that row exists again.
+			 */
+			aria-label={
+				kind === "user"
+					? userActionsLabel()
+					: kind === "commentary"
+						? t("ui.chat.commentary_actions.label")
+						: kind === "response"
+							? t("ui.chat.response_actions.label")
+							: answerActionsLabel()
+			}
 			ref={revealRef}
 			onAnimationEnd={(event) => {
 				/*
@@ -456,22 +548,62 @@ export const AnswerActionRow = memo(function AnswerActionRow({
 			}}
 			{...(arriving ? { "data-lo-arrive": "" } : {})}
 			/*
-			 * The marker names the ROLE, not the component: the transcript's own
-			 * tests and rigs count answer rows (`data-lo-answer-actions`) as a fact
-			 * about answers, and a user row wearing the same attribute would make
-			 * that count lie the day a user row is on screen.
+			 * The marker names the ROLE, not the component and not the placement: the
+			 * transcript's own tests and rigs count rows by class, so an answer, a
+			 * non-closing final response, a commentary overlay and a user row each keep
+			 * their own attribute. The gutter marker belongs to the overlay now rather
+			 * than to "a response", because a response is an IN-FLOW row again and a
+			 * rig asking "did a hover-only control appear?" must not count it.
 			 */
 			{...(kind === "user"
 				? { "data-lo-user-actions": "" }
-				: { "data-lo-answer-actions": "" })}
+				: kind === "commentary"
+					? { "data-lo-gutter-actions": "" }
+					: kind === "response"
+						? { "data-lo-response-actions": "" }
+						: { "data-lo-answer-actions": "" })}
 			/*
 			 * `shrink-0` and one line at every width (memo (c)): the buttons are the
 			 * row's fixed part and the caption beside them is the part that truncates,
 			 * so the toolbar must never be the thing a narrow column squeezes.
 			 */
 			className={cn(
-				"flex shrink-0 items-center gap-1",
-				actionRowVisibility(pinned),
+				/*
+				 * NO CONTAINER (operator report, 2026-10-20, second wording: "small bare
+				 * icons - no boxes, no borders, no container, no background surface, no
+				 * divider"). This used to wear `FLOATING_TOOLBAR_CHROME` - the selection
+				 * strip's ground, hairline, radius and padding - and that pill is the
+				 * exact regression the operator screenshotted beside the timestamp. The
+				 * strip is a DIFFERENT surface (it floats over a selection and needs a
+				 * readable edge); this row is one of the transcript's own lines and takes
+				 * none of it. What is left is the buttons' own ink and the reveal, so
+				 * there is nothing to style away for the overlay arm either.
+				 */
+				overlay
+					? cn(
+							/*
+							 * `flex h-8 items-center` is the row's own geometry, not the removed
+							 * chrome's: `absolute` needs a box to position against, the 32px
+							 * height is the reserved line the foot line also takes, and
+							 * without `flex` the `gap-1` between the icons would not apply.
+							 */
+							"absolute z-10 flex h-8 items-center gap-1",
+							"-top-2 end-0",
+							actionRowVisibility(pinned),
+							overlayClassName,
+						)
+					: cn(
+							/*
+							 * `gap-1` is the only spacing these bare icons get: each keeps its
+							 * own hit target (`icon-sm`'s box) and 4px separates them, which is
+							 * the gap the old floating row's padding implied without its pill.
+							 * `flex items-center` is load-bearing now that the chrome is gone -
+							 * a bare `shrink-0 gap-1` is a block box with no flex context, so
+							 * `gap` would do nothing and the icons would sit on the baseline.
+							 */
+							"flex h-8 shrink-0 items-center gap-1",
+							actionRowVisibility(pinned),
+						),
 			)}
 		>
 			{actions.map((action) => (

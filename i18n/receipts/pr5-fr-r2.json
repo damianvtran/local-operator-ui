@@ -1,0 +1,109 @@
+{
+ "auditor": "task",
+ "model": "anthropic/claude-opus-5-5",
+ "model_note": "Served model anthropic/claude-opus-5-5 for the whole round-2 pass. No provider fallback occurred. The session runtime restarted once mid-task (Python kernel reset), but the model did not change.",
+ "instance": "pr5-20261023-r2-fr",
+ "session": "fb125765ab49",
+ "parent_session": "1cfce255 (team lopdev manager; id prefix as exposed in this session's spawn chain)",
+ "date": "2026-10-23",
+ "locale": "fr",
+ "namespace": "ui.chat.asks",
+ "round": 2,
+ "status": "passed",
+ "result": "clean",
+ "keys_audited": 10,
+ "keys_changed_since_round1": 7,
+ "source_head": "7ecde120ded63e6c97e9593daf730513bbeb7e84",
+ "scope": "PR #1363 round-2 re-check of all 10 ui.chat.asks keys for fr at 7ecde120d. Every value was re-read, not only the 7 changed by 4cecb7a2a. Each round-1 finding was verified against the new bytes. ICU, placeholders, CLDR plural arms (rendered at 1, 2, 5 and 1,000,000), NFC and bidi were re-run. The en catalogue is unchanged; the en context changed only in the dismiss.moot.note tone/note fields (other fields reordered, no value changes). No rendered-fit claim.",
+ "sha256": {
+  "en": "a2c4121f4347766ed176dc5d536a990a9c49bf0efff9fdd59be422833f4de6c4",
+  "fr": "4c2c82a3f337aca1c7960be9fc2c501adf22f2fb05db812782c9f630fcb9b800",
+  "context": "5e0c467aeb72a886d6f32ef8311b48b4c73b4bc39669b75441e878b98366542c"
+ },
+ "findings": [
+  {
+   "id": "fr-r2-i1",
+   "severity": "INFO",
+   "key": "ui.chat.asks.dismiss.moot.note",
+   "issue": "Round-1 major fixed: the note now names the agent as the one who stops waiting, matching the revised en context tone line and the harness terminal/phone note."
+  }
+ ],
+ "round1_verification": [
+  {
+   "round1_id": "fr-M1",
+   "round1_severity": "MAJOR",
+   "key": "ui.chat.asks.dismiss.moot.note",
+   "disposition": "fixed as proposed",
+   "head_value": "l’agent n’attendra plus de réponse"
+  },
+  {
+   "round1_id": "fr-m1",
+   "round1_severity": "MINOR",
+   "key": "ui.chat.asks.context.messages_since",
+   "disposition": "fixed as proposed",
+   "head_value": "{count, plural, one {# message de votre part depuis cette demande (dernier à {time})} many {# de messages de votre part depuis cette demande (dernier à {time})} other {# messages de votre part depuis cette demande (dernier à {time})}}"
+  },
+  {
+   "round1_id": "fr-m2",
+   "round1_severity": "MINOR",
+   "key": "ui.chat.asks.dismiss.heading",
+   "disposition": "fixed as proposed",
+   "head_value": "Ignorer cette demande"
+  },
+  {
+   "round1_id": "fr-m3",
+   "round1_severity": "MINOR",
+   "key": "ui.chat.asks.dismiss.answered_in_chat.title",
+   "disposition": "fixed as proposed",
+   "head_value": "Répondu dans la conversation"
+  },
+  {
+   "round1_id": "fr-n1",
+   "round1_severity": "NIT",
+   "key": "ui.chat.asks.dismiss.heading",
+   "disposition": "no change proposed; unchanged as agreed",
+   "head_value": "Ignorer cette demande"
+  }
+ ],
+ "history": [
+  {
+   "round": 1,
+   "path": "i18n/receipts/pr5-fr.json",
+   "sha256": "c70e7eff938b7d32dc3681df33dd9605acf5ca61c3dc3f9aa77d527051c28d3f",
+   "instance": "pr5-20261023-fr",
+   "result": "changes_requested",
+   "target_sha256": "8a3298f89579a97bbb4de70ab27adeaf8f05041121b0eb9438123f4cab4a4fb4",
+   "context_sha256": "f5e2f62d5630e4873ee3084265c8e487beac4854a690df4e824ce0a6135747ea"
+  }
+ ],
+ "validation": {
+  "icu_errors": [],
+  "plural_arms": [
+   "one",
+   "many",
+   "other"
+  ],
+  "cldr_categories": [
+   "one",
+   "many",
+   "other"
+  ],
+  "arms_match_cldr": true,
+  "placeholders_match_en": true,
+  "key_parity": "10/10",
+  "nfc": true,
+  "bidi_controls": 0,
+  "plural_samples": {
+   "1": "1 message de votre part depuis cette demande (dernier à 19:36)",
+   "2": "2 messages de votre part depuis cette demande (dernier à 19:36)",
+   "5": "5 messages de votre part depuis cette demande (dernier à 19:36)",
+   "1000000": "1 000 000 de messages de votre part depuis cette demande (dernier à 19:36)"
+  }
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39",
+  "contract_docs_I18N_md_origin_main": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+ },
+ "independence": "Independent translation audit by the `task` member of team lopdev (session fb125765ab49), delegated by the team manager; the same independent auditor as round 1. This session produced none of the reviewed copy: the round-2 values were applied by the coder in 4cecb7a2a. It did not translate, edit, commit or push any catalogue, context file or ledger row, and wrote only its own receipts and evidence records. No MT, translation API or SDK was used. ICU parsing and plural rendering ran the worktree's existing intl-messageformat as validation, not as translation."
+}

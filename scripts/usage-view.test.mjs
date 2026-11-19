@@ -37,21 +37,34 @@ const {
 	paidUsable,
 	creditContinuation,
 	amountText,
+	askReset,
 	bindingLimit,
 	bindingSummary,
+	cancelReset,
+	canReset,
 	collectStats,
+	confirmReset,
+	dismissReset,
 	describeSource,
 	describeStats,
 	effectiveStatus,
 	formatAge,
 	formatAmount,
 	formatCountdown,
+	formatPercentValue,
 	fractionOf,
 	isStale,
 	limitRow,
+	mergeResetUsage,
 	newestConfirmedMs,
+	pendingRedeemRequestId,
 	providerBlocks,
+	resetAccountKey,
+	resetAccountOf,
+	resetStateFor,
 	resetsInMs,
+	settleReset,
+	withResetState,
 	statsTerms,
 	statusOf,
 	statusTone,
@@ -354,6 +367,47 @@ test("a percent prints as an integer with a suffix and no denominator", () => {
 		"82%",
 	);
 	assert.equal(formatAmount(amount({ used: 100, unit: "percent" })), "100%");
+});
+
+test("a percent row keeps a sub-one-percent reading visible", () => {
+	// Mirrors `test_a_percent_row_keeps_a_sub_one_percent_reading_visible` in
+	// `tests/unit/tui/test_usage_panel.py` (`_format_percent`). Kimi's monthly
+	// pool reads 0.06% used on a real account; zero-places rounding would say
+	// `0%`, which claims a window that has started is untouched. The reading
+	// stays honest without spending cells on a whole percentage.
+	assert.equal(
+		formatAmount(amount({ used: 0.06, limit: 100, unit: "percent" })),
+		"<1%",
+	);
+	assert.equal(
+		formatAmount(amount({ used: 0.95, limit: 100, unit: "percent" })),
+		"<1%",
+	);
+	assert.equal(
+		formatAmount(amount({ used: 1, limit: 100, unit: "percent" })),
+		"1%",
+	);
+	assert.equal(
+		formatAmount(amount({ used: 0, limit: 100, unit: "percent" })),
+		"0%",
+	);
+	assert.equal(
+		formatAmount(amount({ used_fraction: 0.0006, unit: "percent" })),
+		"<1% used",
+	);
+});
+
+test("the percent helper keeps half-even at its own boundary", () => {
+	// The whole rule, called directly, so the edge between the sub-1 branch and
+	// zero-places half-even is stated at the helper rather than inferred from
+	// `formatAmount`. 2.5 is the even tie: Python's `f"{2.5:.0f}"` is `2`, so
+	// the `<1` branch must not swallow it on the way past.
+	assert.equal(formatPercentValue(0.5), "<1");
+	assert.equal(formatPercentValue(0.9999), "<1");
+	assert.equal(formatPercentValue(1), "1");
+	assert.equal(formatPercentValue(1.5), "2");
+	assert.equal(formatPercentValue(2.5), "2");
+	assert.equal(formatPercentValue(0), "0");
 });
 
 test("USD keeps its cents and prints both halves of a used/limit pair", () => {
@@ -667,6 +721,48 @@ test("the binding summary states the label, an integer percent, and a countdown"
 	assert.equal(block.text, "5-hour 82%");
 	assert.equal(block.countdown, "3h24m");
 	assert.equal(block.status, "ok");
+});
+
+test("a sub-one-percent binding window is not shown as zero", () => {
+	// Mirrors `test_a_sub_one_percent_binding_window_is_not_shown_as_zero` in
+	// `tests/unit/tui/test_usage_panel.py`. The headline asks the same question
+	// as the rows and must not answer it with a different number: a 0.06%
+	// monthly pool binding over a 0% 5h window printed `Monthly total 0%` above
+	// a row that said `<1%`.
+	const block = bindingSummary(
+		report({
+			provider: "kimi",
+			limits: [
+				limit({
+					id: "kimi:0",
+					label: "5h limit",
+					window: "5h limit",
+					amount: amount({
+						used: 0,
+						limit: 100,
+						used_fraction: 0,
+						unit: "percent",
+					}),
+					shared: true,
+				}),
+				limit({
+					id: "kimi:monthly-total",
+					label: "Monthly total",
+					window: "monthly",
+					amount: amount({
+						used: 0.06,
+						remaining: 99.94,
+						used_fraction: 0.0006,
+						unit: "percent",
+					}),
+					shared: true,
+				}),
+			],
+		}),
+		NOW,
+	);
+	assert.equal(block.percent, "<1%");
+	assert.equal(block.text, "Monthly total <1%");
 });
 
 /* ---------------------------------------------------- the tally (SPEC rule 12) */
@@ -1440,4 +1536,226 @@ test("finite paid wallets are reported balances rather than missing limits", () 
 		assert.equal(stats.withoutLimit, 0);
 		assert.equal(stats.unreported, 0);
 	}
+});
+
+test("a row's reported flag is the fact behind the not-reported sentence", () => {
+	// The spoken status used to compare `row.amount` against the localized
+	// `not reported` phrase. A row with no number must still be distinguishable
+	// after the copy is translated, so the flag is what the view reads.
+	const measured = limitRow(
+		limit({ amount: amount({ used: 0, unit: "percent" }) }),
+		NOW,
+	);
+	assert.equal(measured.amount, "0%");
+	assert.equal(measured.reported, true);
+	const missing = limitRow(limit({ amount: amount() }), NOW);
+	assert.equal(missing.amount, "not reported");
+	assert.equal(missing.reported, false);
+});
+
+/* ---------------------------------------------------------------------------
+ * The reset-credit machine
+ *
+ * The rules asserted here are the ones a live reset cannot be re-run to check:
+ * an id that must survive an unknown outcome (a second spend is not refundable),
+ * one attempt per account, and the two independent facts that make a report
+ * spendable. They are driven through the same exported transitions the view
+ * calls, so a change that only edits the JSX cannot make them pass.
+ * ---------------------------------------------------------------------- */
+
+const spendable = (over = {}) =>
+	report({
+		provider: "openai",
+		identity: "me@example.com",
+		resets_available: 3,
+		credential_ref: "cred-openai-1",
+		...over,
+	});
+
+test("canReset requires a positive integer count AND a credential ref", () => {
+	assert.equal(canReset(spendable()), true);
+	// A provider with no reset product reports null; a spent one reports 0.
+	assert.equal(canReset(spendable({ resets_available: null })), false);
+	assert.equal(canReset(spendable({ resets_available: 0 })), false);
+	assert.equal(canReset(spendable({ resets_available: -1 })), false);
+	assert.equal(canReset(spendable({ resets_available: 2.5 })), false);
+	// Undefined is an older backend that never sent the field, not "unlimited".
+	assert.equal(canReset(spendable({ resets_available: undefined })), false);
+	// A report with credits and no ref cannot name the login to charge, and the
+	// backend would have to guess; it is not spendable.
+	assert.equal(canReset(spendable({ credential_ref: null })), false);
+	assert.equal(canReset(spendable({ credential_ref: "" })), false);
+	// Even a fully credited report with no provider-level ref is refused by the
+	// same rule, because `resetAccountOf` is the single place that decides it.
+	assert.equal(resetAccountOf(spendable({ credential_ref: null })), null);
+	assert.deepEqual(resetAccountOf(spendable()), {
+		provider: "openai",
+		credentialRef: "cred-openai-1",
+	});
+});
+
+test("the pending redeem id survives an unknown outcome and is dropped by a definitive one", () => {
+	const account = { provider: "openai", credentialRef: "cred-openai-1" };
+	let minted = 0;
+	const mint = () => {
+		minted += 1;
+		return `id-${minted}`;
+	};
+	let state = { phase: "idle", pendingRedeemRequestId: null };
+	state = askReset(state, mint);
+	assert.equal(state.phase, "confirm");
+	assert.equal(state.redeemRequestId, "id-1");
+	// Re-opening the confirmation does not mint a second id.
+	state = askReset(cancelReset(state), mint);
+	assert.equal(state.redeemRequestId, "id-1");
+	assert.equal(minted, 1);
+	state = confirmReset(state);
+	assert.equal(state.phase, "busy");
+	// An unknown outcome KEEPS the id: this is the whole point of the machine.
+	state = settleReset(state, {
+		outcome: "failed",
+		windowsReset: 0,
+		detail: "",
+		refused: false,
+	});
+	assert.equal(state.phase, "result");
+	assert.equal(state.redeemRequestId, "id-1");
+	assert.equal(pendingRedeemRequestId(state), "id-1");
+	// Dismissing the line keeps the debt too.
+	state = dismissReset(state);
+	assert.deepEqual(state, { phase: "idle", pendingRedeemRequestId: "id-1" });
+	// So the retry carries the SAME id, and cannot spend a second credit.
+	state = askReset(state, mint);
+	assert.equal(state.redeemRequestId, "id-1");
+	// A definitive outcome settles it and releases the id.
+	state = settleReset(confirmReset(state), {
+		outcome: "reset",
+		windowsReset: 2,
+		detail: "",
+		refused: false,
+	});
+	assert.equal(state.redeemRequestId, null);
+	// A fresh attempt after a definitive outcome gets a fresh id.
+	assert.equal(askReset(dismissReset(state), mint).redeemRequestId, "id-2");
+	// And a pre-send refusal is not definitive either: nothing reached the vendor.
+	const refused = settleReset(
+		{ phase: "busy", redeemRequestId: "id-3" },
+		{ outcome: "refused", windowsReset: 0, detail: "", refused: true },
+	);
+	assert.equal(pendingRedeemRequestId(refused), "id-3");
+});
+
+test("one attempt at a time per account, and the map keeps accounts apart", () => {
+	const one = { provider: "openai", credentialRef: "cred-1" };
+	const two = { provider: "openai", credentialRef: "cred-2" };
+	const busy = { phase: "busy", redeemRequestId: "id-1" };
+	// A second ask on a spending account is INERT: it returns the same state
+	// rather than minting an id for a request that would run concurrently.
+	assert.equal(
+		askReset(busy, () => "id-2"),
+		busy,
+	);
+	// Nothing but a confirmation becomes a request.
+	assert.equal(
+		confirmReset({ phase: "idle", pendingRedeemRequestId: null }).phase,
+		"idle",
+	);
+	assert.equal(confirmReset(busy), busy);
+
+	let states = {};
+	states = withResetState(states, one, busy);
+	states = withResetState(states, two, {
+		phase: "result",
+		redeemRequestId: null,
+		result: {
+			outcome: "no_credit",
+			windowsReset: 0,
+			detail: "",
+			refused: false,
+		},
+	});
+	assert.equal(resetStateFor(states, one).phase, "busy");
+	assert.equal(resetStateFor(states, two).phase, "result");
+	// An account nobody asked about is idle, not undefined.
+	assert.equal(
+		resetStateFor(states, { provider: "anthropic", credentialRef: "x" }).phase,
+		"idle",
+	);
+	// The key separator cannot be forged from either half of a legitimate pair.
+	assert.notEqual(
+		resetAccountKey({ provider: "a:b", credentialRef: "c" }),
+		resetAccountKey({ provider: "a", credentialRef: "b:c" }),
+	);
+});
+
+test("a reset's partial answer merges into the cached set by provider", () => {
+	/*
+	 * The redeem route refreshes ONLY the provider it spent, so its `usage` is a
+	 * partial answer. Replacing the cached payload with it deleted every other
+	 * provider's block from an unscoped `/usage` until the next read (review round
+	 * 1, M1). The merge replaces the providers the ANSWER carries, in place, and
+	 * leaves the rest alone.
+	 */
+	const cached = {
+		reports: [
+			report({ provider: "openai", identity: "spent@example.com" }),
+			report({ provider: "anthropic" }),
+			report({ provider: "google" }),
+		],
+		source: "cached",
+		fetched_at: NOW - 60_000,
+	};
+	const refreshed = {
+		reports: [report({ provider: "anthropic", identity: "refreshed" })],
+		source: "live",
+		fetched_at: NOW + 1_000,
+	};
+	const merged = mergeResetUsage(cached, refreshed);
+	assert.deepEqual(
+		merged.reports.map((entry) => entry.provider),
+		["openai", "anthropic", "google"],
+		"the spent provider takes its own slot; the others keep theirs",
+	);
+	assert.equal(merged.reports[1].identity, "refreshed");
+	assert.equal(merged.reports[0].identity, "spent@example.com");
+	assert.equal(merged.source, "live");
+	assert.equal(merged.fetched_at, NOW + 1_000);
+
+	/*
+	 * A provider the answer names twice must not appear twice: the whole
+	 * refreshed block takes the slot its first cached row held.
+	 */
+	const twoAccounts = mergeResetUsage(cached, {
+		reports: [
+			report({ provider: "openai", identity: "one@example.com" }),
+			report({ provider: "openai", identity: "two@example.com" }),
+		],
+		source: "live",
+		fetched_at: NOW,
+	});
+	assert.deepEqual(
+		twoAccounts.reports.map((entry) => entry.provider),
+		["openai", "openai", "anthropic", "google"],
+	);
+
+	// A provider the cache never held is appended rather than dropped.
+	const appended = mergeResetUsage(
+		{
+			reports: [report({ provider: "anthropic" })],
+			source: "cached",
+			fetched_at: NOW,
+		},
+		{
+			reports: [report({ provider: "openai" })],
+			source: "live",
+			fetched_at: NOW,
+		},
+	);
+	assert.deepEqual(
+		appended.reports.map((entry) => entry.provider),
+		["anthropic", "openai"],
+	);
+
+	// Nothing cached: the answer IS the payload, not an invented empty set.
+	assert.deepEqual(mergeResetUsage(undefined, refreshed), refreshed);
 });

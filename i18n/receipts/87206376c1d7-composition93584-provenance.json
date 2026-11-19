@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "kind": "provenance-only addendum",
+  "session": "87206376c1d7",
+  "date": "2026-11-02",
+  "original_composition_record": {
+    "path": "/Users/damian/.local-operator/sessions/87206376c1d7/scratchpad/ui1521-composition-93584-87206376c1d7.json",
+    "sha256": "3631033ef1179ffdfed2772a4dd2b936bbc2c88563e6ff9eb42055d954394a98"
+  },
+  "original_pending_proposal": {
+    "path": "/Users/damian/.local-operator/sessions/87206376c1d7/scratchpad/ui1521-composition93584-row-proposal.json",
+    "sha256": "d02c7993a60bcc6c115adee0f949eccc8b175078b74be31daf7b6f97c3d2cc60"
+  },
+  "provenance": {
+    "actual_assessment_model": "openai/gpt-6.1-sol",
+    "nominal_descriptor": "anthropic/claude-sonnet-5-5",
+    "fallback_used": true,
+    "source": "Parent/root-reported actual host wait completion and resume receipt, supplied in this turn; not independently queried by child",
+    "completed_job": "808faef7981e",
+    "previous_assessment_job_reference": "af67 (abbreviated ID supplied by parent; not expanded or invented)",
+    "host_evidence": "Root reports wait(job808faef7981e) completed with model=openai/gpt-6.1-sol; af67-to-808 resume receipt also records previous run openai/gpt-6.1-sol. Old af67 reference resolves latest 808, not a second independent completion.",
+    "scope": "Attests completed composition assessment/proposal only, not the provider serving this future metadata-only finalization turn. No claim of complete per-step provider history.",
+    "profile_or_pin_changes": false
+  },
+  "assessment_unchanged": true,
+  "no_new_byte_or_semantic_audit": true,
+  "original_records_and_ineligible_drafts_preserved": true
+}

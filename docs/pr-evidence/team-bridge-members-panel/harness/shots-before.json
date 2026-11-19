@@ -1,0 +1,1 @@
+[{"name": "header-count__localOperatorDark", "story": "team-bridge-page--channel-selected", "theme": "localOperatorDark", "width": 1440}, {"name": "header-count-hover__localOperatorDark", "story": "team-bridge-page--channel-selected", "theme": "localOperatorDark", "width": 1440, "action": "hover:h2 ~ span"}]

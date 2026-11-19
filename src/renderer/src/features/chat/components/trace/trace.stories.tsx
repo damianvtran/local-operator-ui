@@ -11,7 +11,7 @@
  * the theme off the root and a wrapper attribute alone leaves them unstyled.
  */
 
-import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import type { Meta, StoryObj } from "@storybook/react";
 import { type ReactNode, useEffect } from "react";
 import "../../../../styles/index.css";
@@ -301,10 +301,11 @@ const CONVERSATION: Message[] = [
  * evidence about the story.
  */
 const ConversationList = () => {
-	const showAgentReasoning = useUiPreferencesStore(
-		(state) => state.showAgentReasoning,
-	);
-	const rows = groupMessages(CONVERSATION, showAgentReasoning);
+	// `groupMessages` formats the day divider at call time in the live locale;
+	// subscribing repaints it on a language switch instead of leaving the old
+	// locale's divider until a remount (design review r1 D1).
+	useI18nLocale();
+	const rows = groupMessages(CONVERSATION);
 
 	return (
 		<div className="mx-auto flex w-full max-w-[810px] flex-col">
@@ -335,28 +336,6 @@ const ConversationList = () => {
 	);
 };
 
-/**
- * Each story states the preference it is a picture of, rather than one of
- * them setting it and the other inheriting whatever was left behind.
- *
- * `showAgentReasoning` is persisted. `withReasoningOn` only restored it on
- * unmount, and navigating between stories tears the page down without
- * running that cleanup - so after visiting the reasoning story, the one
- * whose docblock reads "reasoning hidden, the default state" rehydrated to
- * true and rendered three reasoning rows. The committed frames were right
- * only because the capture rig replaces the whole persisted blob per
- * document; a person clicking between the two saw the wrong thing.
- */
-const withReasoning = (show: boolean) => (Story: () => ReactNode) => {
-	useEffect(() => {
-		useUiPreferencesStore.setState({ showAgentReasoning: show });
-	}, [show]);
-	return <Story />;
-};
-
-const withReasoningOn = withReasoning(true);
-const withReasoningOff = withReasoning(false);
-
 /* ------------------------------------------------------------------ */
 /* Meta                                                                */
 /* ------------------------------------------------------------------ */
@@ -371,9 +350,10 @@ export default meta;
 type Story = StoryObj;
 
 /**
- * The whole conversation, reasoning hidden — the default state. The plan
- * and reflection turns render nothing here; that is the point of the
- * `showAgentReasoning` preference.
+ * The whole conversation, the plan and reflection turns each a closed
+ * `Reasoning` row. There used to be a reasoning-hidden twin of this story (and
+ * this was the hidden one), driven by a `showAgentReasoning` preference; the
+ * preference went with its inert Settings switch, so one picture remains.
  */
 export const Conversation: Story = {
 	render: () => (
@@ -381,25 +361,14 @@ export const Conversation: Story = {
 			<ConversationList />
 		</Sheet>
 	),
-	decorators: [withReasoningOff],
-};
-
-/** The same conversation with the reasoning preference switched on. */
-export const ConversationWithReasoning: Story = {
-	render: () => (
-		<Sheet>
-			<ConversationList />
-		</Sheet>
-	),
-	decorators: [withReasoningOn],
 };
 
 /**
  * The reasoning panel open, which is the state the register actually matters
  * in.
  *
- * `ConversationWithReasoning` above photographs the rows closed, because
- * closed is what the preference produces on load — so for as long as that was
+ * `Conversation` above photographs the rows closed, because closed is what
+ * a load produces — so for as long as that was
  * the only frame, the record showed a quiet one-line row and said nothing
  * about what a click reveals. It revealed the agent's private thinking set at
  * the answer's own size and ink, which is the thing the component's docblock
@@ -407,50 +376,31 @@ export const ConversationWithReasoning: Story = {
  *
  * Opened by clicking rather than by a `defaultOpen` prop on `AgentReasoning`:
  * the primitive has one, but the component does not, and adding production
- * API that only a story calls is how the preference this whole feature hangs
- * on came to have no control in the first place.
+ * API that only a story calls is how a preference this feature once hung on
+ * came to have no control.
  */
 const OpenedReasoning = () => {
-	const showAgentReasoning = useUiPreferencesStore(
-		(state) => state.showAgentReasoning,
-	);
-
 	/*
-	 * Keyed on the preference, not on mount.
+	 * Opened on mount. This effect once had to wait for a reasoning preference
+	 * to arrive from a decorator (React runs the inner effect first, so a
+	 * mount-time click loop ran before the rows existed); with the preference
+	 * gone the rows are in the first commit, which this effect runs after.
 	 *
-	 * The decorator that turns reasoning on is the outer component, and React
-	 * runs the inner effect first - so a click loop on mount runs while the
-	 * reasoning rows still do not exist, opens the trace rows around them, and
-	 * leaves the three it was written for closed. It looked correct in a
-	 * browser only because a previous story had left the persisted preference
-	 * on, so the rows were there on first render; against the capture rig,
-	 * which replaces that blob per document, the frame came back with every
-	 * reasoning row shut.
-	 *
-	 * Waiting for the preference to arrive makes the story independent of
-	 * effect ordering and of whatever the last story left behind.
-	 *
-	 * `data-capture-pending` then holds the shutter until the panels are
-	 * actually open. Ordering inside the story being right is not the same as
-	 * the screenshot being taken afterwards: the rig's readiness poll asks
-	 * whether the story rendered, and a conversation with every panel shut
-	 * answers yes. Without the handshake this frame is correct only by the
-	 * margin between a stub resolving in a microtask and the rig's fixed
-	 * sleep, which is not a guarantee - and a frame of the wrong state is
-	 * indistinguishable from a frame of the right one in a directory listing.
+	 * `data-capture-pending` still holds the shutter until the panels are open:
+	 * the rig's readiness poll asks whether the story rendered, and a
+	 * conversation with every panel shut answers yes. Set before the clicks and
+	 * cleared after, so the handshake states the ordering rather than relying on
+	 * the margin between a click and the rig's fixed sleep.
 	 */
 	useEffect(() => {
-		if (!showAgentReasoning) {
-			document.documentElement.dataset.capturePending = "1";
-			return;
-		}
+		document.documentElement.dataset.capturePending = "1";
 		for (const button of document.querySelectorAll<HTMLButtonElement>(
 			'button[aria-expanded="false"]',
 		)) {
 			button.click();
 		}
 		document.documentElement.removeAttribute("data-capture-pending");
-	}, [showAgentReasoning]);
+	}, []);
 
 	return <ConversationList />;
 };
@@ -461,7 +411,6 @@ export const ConversationReasoningOpen: Story = {
 			<OpenedReasoning />
 		</Sheet>
 	),
-	decorators: [withReasoningOn],
 };
 
 /**

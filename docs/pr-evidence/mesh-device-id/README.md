@@ -1,0 +1,220 @@
+# Mesh member identity evidence
+
+Rendered before/after evidence for `fix(mesh): show device ids beside member names`.
+
+## Source identity and method
+
+- **After:** renderer source at `1a4f40685d9f53f7191379a987d34627379e3103`.
+  Storybook 8.6.12 served this worktree through Vite on port 6006. Before the
+  captures, the served `mesh-identity.tsx` module contained both
+  `data-mesh-device-identity` and `compactDeviceId(deviceId)`; the worktree was
+  clean at that implementation commit when it was committed and pushed.
+- **Before:** `origin/main` at
+  `b1ced21156f8628a1e9af1c6c0dd65f661ece147`, on port 6007. The baseline
+  worktree added only the same member-list fixtures, with the new-expectation
+  play assertions removed; production sources stayed at the baseline commit.
+  `git show HEAD:.../mesh-list.tsx` was checked not to contain
+  `MeshDeviceIdentity`.
+- Both servers ran with fresh scratch `HOME`/`TMPDIR`, `env -i`,
+  `STORYBOOK_DISABLE_TELEMETRY=1`, and `--no-open --ci`. The harness browser
+  drove one background tab and captured every PNG at 1024x576 CSS pixels
+  (2560x1440 source pixels). No second browser or browser dependency was used.
+- Frames use `localOperatorDark`. These are fixture renders, not evidence that
+  a live relay answered; independent live-path QA remains a separate gate.
+
+Server command (port 6007 and `storybook-before` become 6006 and `storybook`
+for the after run):
+
+```sh
+env -i HOME="$ISO/home" PATH="$PATH" TMPDIR="$ISO/tmp" \
+  TERM=xterm-256color STORYBOOK_DISABLE_TELEMETRY=1 \
+  LOCAL_OPERATOR_UI_TELEMETRY=off LOCAL_OPERATOR_NO_NOTIFICATIONS=1 \
+  node_modules/.bin/storybook dev -p 6007 --no-open --ci
+```
+
+The five `Mesh/Member rows` stories use the real wire normalisers, graph join,
+and `MeshList`. Their `@storybook/test` play functions assert the quoted name,
+the full id, both in the same identity element, duplicate-id distinction, and
+the absent-name marker. `OneMember` also asserts that the exact unquoted name
+is absent (the harness negative control). The rendered DOM was queried for all
+five states; that final OneMember run and the DevicePanel run had no browser
+console errors.
+
+## State pairs
+
+| State | Before | After |
+| --- | --- | --- |
+| One member | `studio-mac`, no id | `"studio-mac"` beside the full id |
+| Several members | three names, no ids | three quoted names, each beside its full id |
+| Absent name | `device …abcdef` | unquoted `(unnamed device)` beside the full id |
+| Duplicate names | indistinguishable `shared-node` rows | equal quoted names with visibly different full ids |
+| Long name | unquoted long name, no id | quoted/truncated name with the complete 34-character id still visible |
+| Canvas | names only | quoted/truncated names beside `d_` + eight hex digits + ellipsis |
+| Detail panel | name only | quoted name beside the same stable compact id |
+
+Files, in the same order:
+
+- `before-one-member.png` / `after-one-member.png`
+- `before-several-members.png` / `after-several-members.png`
+- `before-absent-name.png` / `after-absent-name.png`
+- `before-duplicate-names.png` / `after-duplicate-names.png`
+- `before-long-name.png` / `after-long-name.png`
+- `before-canvas-two-devices.png` / `after-canvas-two-devices.png`
+- `before-device-panel.png` / `after-device-panel.png`
+
+The first canvas abbreviation (`d_` + eight leading and six trailing hex
+digits) was itself captured and rejected: it left only the opening quote of the
+name. The shipped `after-canvas-two-devices.png` is the recapture after shortening
+it to eight leading hex digits; both the name and compact id are now visible.
+List rows never abbreviate the id. Compact ids have the full id in their tooltip,
+and the list supplies the complete id when space allows.
+
+For the long-name after frame, the identity flex box measured 645.55x19.5 px;
+the full-id span measured 244.8x17.4 px at 12 px Geist Mono with
+`text-overflow: clip`, `overflow: visible`, and its right edge inside the row.
+
+## Review remediation — round 1
+
+The remediation was originally based on reviewed head
+`87c1b92f66aa40b3650c3dd8a104445603e39475`. GitHub then reported the PR DIRTY,
+so the branch was rebased onto `origin/main`
+`da1ebe36d1321d12ea536e9ebd06f72d48731d97`. Range-diff mapped the evidence and
+remediation patches unchanged; the original identity patch differed only where
+the generated key file was regenerated to preserve both upstream `miniView`
+keys and `mesh_types.unnamed_device`. The original before/after captures above
+remain attributed to their actual pre-rebase sources.
+
+The eight remediation frames below were **recaptured after the rebase** from
+renderer source `f8f0839bca79360b001e22bdbb74f25237498138`; the PR remediation
+comment names the final commit, whose subsequent amendment updates only this
+evidence record and its images. Seven frames are pixel-identical to their
+pre-rebase versions. The tooltip frame differs only in a one-pixel-wide strip
+outside the identity text and was inspected at full size. All eight exercise
+the real `MeshPage`, wire normalisers, graph join, compact canvas, detail panel,
+menus and dialogs. They are Storybook fixtures, not live-relay evidence.
+
+The harness browser's outer viewport was 1280x720. A scratch static wrapper
+embedded the real Storybook preview iframe at **1024x576 CSS pixels**; the
+browser geometry read measured the iframe rect as exactly `0,0 1024x576`.
+Each 2560x1440 source screenshot was cropped to that iframe's 2048x1152 source
+pixels (2x device pixels), leaving a 1024x576 CSS-pixel evidence frame. No
+second browser, browser dependency, build or live backend was used. The served
+`mesh-identity.tsx` contained `compactDeviceId(deviceId, deviceIds)`, and the
+Storybook index contained every remediation story before capture.
+
+| Finding | Story | New frame and actual rendered result |
+| --- | --- | --- |
+| D1 compact absence | `mesh-tab--compact-absent-name` | `after-compact-absent-name.png`: unquoted `(unnam…` beside `d_bbbbbbbb…`; the full id remains in the id tooltip, and the summary carries the quoted self name plus full id. |
+| D1 panel absence | `mesh-tab--compact-absent-name-panel` | `after-compact-absent-name-panel.png`: complete unquoted `(unnamed device)` beside the compact id in the real detail panel. |
+| D1/F2 compact duplicates | `mesh-tab--compact-duplicate-names` | `after-compact-duplicate-names.png`: two equal `"share…` names remain distinguishable as `d_012345678…` and `d_012345679…`; the shared default prefix widened by one hex digit. |
+| D1/F2 panel duplicates | `mesh-tab--compact-duplicate-names-panel` | `after-compact-duplicate-names-panel.png`: the detail panel carries `"shared-node"` and the widened id. |
+| F1 action menus | `mesh-tab--compact-duplicate-name-actions` | `after-duplicate-name-actions.png`: two Move and two Copy labels all include the quoted name and their distinct widened ids. The play asserts both Move labels differ and exactly match the expected identities. |
+| F1 invite dialog | `mesh-tab--compact-duplicate-name-invite-dialog` | `after-duplicate-name-invite-dialog.png`: the invitation sentence includes `"shared-node"` and the complete 34-character id. |
+| F1 remove dialog | `mesh-tab--compact-duplicate-name-remove-dialog` | `after-duplicate-name-remove-dialog.png`: both the title and consequences include `"shared-node"` and the complete id. |
+| D2 full-name recovery | `mesh-tab--compact-long-name-tooltip` | `after-long-name-tooltip.png`: hovering the truncated panel name opens the shared tooltip with the complete quoted stored name. |
+
+Every story's own play assertions completed with no browser console errors.
+The absent-name control initially rejected an incorrect test expectation that
+required the full id inline; after correcting the fixture to expect the compact
+id plus its full-id tooltip, the same real story passed and was captured. This
+was a fixture correction, not a production fallback or a waived assertion.
+
+## Review remediation — round 2
+
+Round 2 changes only the remaining owner/target/chip identity paths; the
+compact-id algorithm and all earlier dimensions and evidence are unchanged.
+The final round-2 commit is named in the PR remediation comment. Three new
+frames cover only the newly visible text, using the same measured 1024x576 CSS
+pixel iframe method described above. The harness desktop browser captured all
+three; no custom Chrome, alternate browser engine, build or live backend was
+used.
+
+| Surface | New frame and executed result |
+| --- | --- |
+| Remote-source destructive recall | `after-duplicate-source-recall.png`: the real `MeshPage` menu and `MoveConfirmDialog` show `The copy on "shared-node" d_012345678… is deleted once this device has it.` The two-source unit regression deliberately supplies the old raw owner label and requires different loss sentences. |
+| Suspect target refusal | `after-duplicate-suspect-refusal.png`: a real `resolveDrop` `suspect_device` verdict feeds the existing `MoveNotice`; its sentence carries `"shared-node" d_012345678…`. The story refuses to render if the resolver returns any other verdict kind. |
+| Canvas/panel chip and accessible copy | `after-duplicate-source-chip.png`: the detail panel paints one `on "shared-node" d_012345678…` fact. The canvas chip intentionally paints only the conversation title; the play separately proves its `title` and `aria-label`, and the conversation list's `aria-label`, carry the same identity. The existing row dimensions and title-truncation priority are unchanged. |
+
+All three final plays completed with no browser console errors. An initial
+fixture assertion incorrectly expected two visible chip facts; the diagnostic
+frame showed the canvas chip's established title/ARIA-only contract, so the
+play was corrected to test that actual contract before the passing capture.
+No failed frame is claimed as evidence.
+
+## UX review round 1 — U1 move-option caption
+
+The recall confirmation's preselected option said "the copy here is deleted once
+it arrives", directly under a body naming the **remote** copy as deleted. The
+caption now follows the plan's direction (`moveOptionCaption`, `mesh-drop.ts`).
+The 42 frames in `ux-r1/` pair the same harness story on both trees:
+
+- **before**: `main` at `20225f33d0`, in a detached worktree sharing the primary
+  checkout's dependencies (lockfile identical to the PR head).
+- **after**: the PR at `86d5100d62`.
+
+**Rig.** One Storybook at a time, using the repository's own `.storybook` config,
+so the app's real stylesheet compiles once (`.storybook/` unmodified). Served
+`index.css`: 280,832 bytes. It contains `.bg-scrim { background-color:
+var(--color-scrim) }` and `.bg-elevated { background-color:
+var(--color-elevated) }`; both rules are present on both trees.
+
+The harness story `harness/ux-r1-caption.stories.tsx` was copied untracked into
+`src/renderer/src/features/mesh/` for each run and then removed. It renders the
+real `MoveConfirmDialog` fed by the real `resolveDrop` over
+`networkTopology`/`peerList` -> `meshGraph`.
+
+A fixed-size page frames the iframe at the exact layout size. The harness desktop
+browser (one tab) captured it: no custom Chromium, no Electron. 1380x900 is
+`DEFAULT_WINDOW_WIDTH`/`HEIGHT`, and 800x600 is `WINDOW_MIN_*`. The tab viewport
+was 1280x720 CSS px, so the 1380x900 layout is shown scaled 0.8 (layout
+unchanged). The 800x600 layout is shown at 1.0.
+
+After each paint the story writes a receipt with the computed styles and caption
+geometry. A frame was shot only once that receipt matched the requested state,
+theme, viewport and expected caption text. Every frame's numbers and sha256 are
+in `ux-r1/measurements.json`.
+
+**Computed dialog and scrim** (all 42 frames, both trees):
+
+| Theme | `[role=dialog]` background | scrim background |
+| --- | --- | --- |
+| localOperatorDark | `rgb(50, 45, 34)` | `rgba(0, 0, 0, 0.6)` |
+| localOperatorLight | `rgb(254, 253, 250)` | `rgba(20, 17, 12, 0.35)` |
+
+**States** (each in dark and light, at 1380x900 and 800x600):
+
+| State | before (`main`) caption | after caption |
+| --- | --- | --- |
+| `recall` (preselected move, remote copy lost) | the copy here is deleted once it arrives — **contradicts the body** | the copy there is deleted once it arrives here |
+| `absent` (owner not in graph) | same contradiction; body names `shared-node` with no id | same as `recall`; body names `"shared-node" d_111…111` (full id) |
+| `outbound` (move to peer) | the copy here is deleted once it arrives | unchanged |
+| `copy` (keep chosen) | the original stays where it is | unchanged |
+
+On `main`, the before body shows raw `shared-node` because it predates this PR's
+identity fix. That difference comes from the earlier commits, not from U1.
+
+**Width and fit of the new recall caption** at the 800x600 narrow width,
+measured in the caption's own computed font:
+
+| Locale | text width (CSS px) | caption box / container | line boxes | text right vs box right | horizontal overflow |
+| --- | --- | --- | --- | --- | --- |
+| fr (longest) | 272.60 | 351 / 398 | 1 | 507.60 <= 586 | 0 |
+| es | 256.97 | 351 / 398 | 1 | 491.97 <= 586 | 0 |
+| ru | 255.00 | 351 / 398 | 1 | 490.00 <= 586 | 0 |
+| en | 252.48 | 351 / 398 | 1 | 487.48 <= 586 | 0 |
+| ur | 230.89 | 351 / 398 | 1 | 465.89 <= 586 | 0 |
+| hi | 202.45 | 351 / 398 | 1 | 437.45 <= 586 | 0 |
+| zh-CN | 172.73 | measured only | - | - | - |
+| vi | 171.77 | measured only | - | - | - |
+
+The dialog is `max-w-md` (448 px wide) at every width, so 800x600 does not
+narrow the caption box. Every captured locale fits on one line with no wrap
+and no clip. Even French, the longest, leaves 78 px of the 351 px box. vi and
+zh-CN were measured but not photographed, because both are the narrowest.
+Captured: fr, es, ru, hi and ur, each in both themes. ur renders RTL text
+inside the LTR dialog. The audits own the translations; this table owns only
+the fit.
+
+**What these frames do not prove:** the Mesh tab's own menu path to the dialog
+(the earlier `after-duplicate-source-recall.png` covers that). Nor do they show
+a packaged-app window: this is Storybook in the harness browser.

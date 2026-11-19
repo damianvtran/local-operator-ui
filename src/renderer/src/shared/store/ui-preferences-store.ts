@@ -5,10 +5,15 @@
  * theme selection, and provides methods to update these preferences.
  */
 
+import {
+	type AgentAvatarSize,
+	DEFAULT_AGENT_AVATAR_SIZE,
+} from "@features/chat/agent-avatar-size";
 import type { AskScope } from "@features/chat/ask-queue";
 import {
 	CANVAS_PANE_MIN_PX,
 	CHAT_PANE_MIN_PX,
+	RIGHT_SLOT_MAX_PX,
 	SIDEBAR_DEFAULT_WIDTH,
 	SIDEBAR_MAX_WIDTH,
 	SIDEBAR_MIN_WIDTH,
@@ -41,10 +46,30 @@ import type {
 	ActionId,
 	ShortcutBindings,
 } from "@shared/keymap/keymap-registry";
-import { DEFAULT_THEME } from "@shared/themes";
+import { DEFAULT_THEME, isThemeName } from "@shared/themes";
 import type { ThemeName } from "@shared/themes";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import type { AccentRef } from "../../../../shared/theme-engine/accent.mjs";
+import { normalizeHex } from "../../../../shared/theme-engine/accent.mjs";
+import type {
+	Mode,
+	PerMode,
+} from "../../../../shared/theme-engine/appearance.mjs";
+import {
+	DEFAULT_ACCENT,
+	DEFAULT_CONTRAST,
+	MODES,
+	THEME_ACCENT,
+	pushCustomAccent,
+	sanitizeAccent,
+	sanitizeAccentRef,
+	sanitizeContrast,
+	sanitizeContrastValue,
+	sanitizeCustomAccents,
+	sanitizeCustomThemeId,
+} from "../../../../shared/theme-engine/appearance.mjs";
+import { sanitizeCustomAccentNames } from "../../../../shared/theme-engine/picker.mjs";
 import {
 	MEMORY_PANES,
 	type MemoryPane,
@@ -105,6 +130,40 @@ export type AskOpenVia = "menu" | "chord";
 
 /** An asks-drawer open request: the queue it is for, and the door that filed it. */
 export type AskOpenIntent = { scope: AskScope; via: AskOpenVia };
+
+/**
+ * One press of an ask card's Insert or confirmed Run… (see the state's
+ * `consoleCommandIntent`). `command` is already validated by `askCommandOf`;
+ * `submit` presses Enter after typing and is only ever set behind the card's
+ * confirmation dialog.
+ */
+export type ConsoleCommandIntent = {
+	sessionId: string;
+	command: string;
+	submit: boolean;
+	nonce: string;
+	/**
+	 * When the press filed it, on `Date.now()`'s scale. The pane refuses an
+	 * intent older than `CONSOLE_COMMAND_PICKUP_TTL_MS` (`console-command.ts`):
+	 * a press is answered right after it, or not at all (QA round 1, Q1).
+	 */
+	filedAt: number;
+	/**
+	 * The ask and question the command came from, when an ask card filed it.
+	 * Read only by the pane's submit guard, which re-checks at pickup that this
+	 * ask is still answerable and the command still runnable here.
+	 */
+	askId?: string;
+	questionId?: string;
+};
+
+/**
+ * A nonce unique within this renderer: a counter, not randomness — it only has
+ * to tell two presses apart in one process, and the intent is never persisted.
+ */
+let consoleCommandSequence = 0;
+const nextConsoleCommandNonce = (): string =>
+	`console-command:${++consoleCommandSequence}`;
 
 /**
 
@@ -317,7 +376,10 @@ type UiPreferencesState = {
 	 *
 	 * THE FLOORS STAY PER PANE, at the divider that drags them: a page stops
 	 * being a page below ~480 and the canvas below its 400, and those minimums
-	 * are properties of what each pane holds, not of the slot.
+	 * are properties of what each pane holds, not of the slot. THE CEILING DOES
+	 * NOT: `RIGHT_SLOT_MAX_PX` is one number for the slot, so every separator
+	 * offers the same range and a width dragged in one pane is a width every pane
+	 * can draw.
 	 */
 	rightSlotWidth: number;
 
@@ -397,7 +459,11 @@ type UiPreferencesState = {
 	 * action's default); a chord capture refuses, or one the canonical grammar
 	 * cannot spell, is not written at all.
 	 */
-	setShortcutBinding: (actionId: ActionId, chord: string | null) => void;
+	setShortcutBinding: (
+		actionId: ActionId,
+		chord: string | null,
+		externalClaims?: ReadonlyMap<string, string>,
+	) => void;
 
 	/**
 	 * Store the explicit no-chord state for one action (UX round 1's U4): the
@@ -735,6 +801,76 @@ type UiPreferencesState = {
 	clearConsoleOpenIntent: (sessionId: string) => void;
 
 	/**
+	 * A SUGGESTED COMMAND waiting to be typed into a fresh terminal of one
+	 * conversation: the ask card's Insert (`submit: false`) or its confirmed
+	 * Run… (`submit: true`). `null` when there is none.
+	 *
+	 * A ONE-SHOT EVENT, NOT A PREFERENCE, for `consoleOpenIntent`'s reasons and
+	 * one more: a persisted copy would re-type — or with `submit`, RE-RUN — a
+	 * command on the next launch with no press behind it. It is excluded from
+	 * `persistedUiPreferences`, so a launch starts with it null by construction.
+	 *
+	 * IT NAMES THE CONVERSATION (the F-6 rule `consoleOpenIntent` follows): only
+	 * the pane mounted for `sessionId` answers it, so a request filed just before
+	 * a conversation switch can never be typed into another conversation.
+	 *
+	 * THE NONCE identifies ONE press. The pane clears the intent by nonce
+	 * (`clearConsoleCommandIntent`), so its clear can never wipe a second press
+	 * made while the first was being answered, and a re-run of its effect over
+	 * the same nonce is recognised and does nothing — the command is typed at
+	 * most once per press. A new press always gets a new nonce, so two presses
+	 * of the same command are two commands, each in its own fresh terminal.
+	 *
+	 * ITS LIFETIME IS SHORT AND BOUNDED THREE WAYS (QA round 1 Q1, agent review
+	 * round 1 m2): a confirmed Run must run right after its confirm, in the
+	 * context it was confirmed in, or never. (1) The pane clears it the moment
+	 * it TAKES it, before the create round trip, so a remount mid-create cannot
+	 * take the same press twice. (2) The pane refuses one older than
+	 * `CONSOLE_COMMAND_PICKUP_TTL_MS`, so a press whose pane never mounted cannot
+	 * fire on a later visit. (3) The filer drops it when the user switches to
+	 * another conversation before pickup (`ask-command-actions.ts`). And a
+	 * `submit` is re-checked against the ask at pickup by the pane's guard.
+	 */
+	consoleCommandIntent: ConsoleCommandIntent | null;
+
+	/** File a suggested command for `sessionId`'s pane (see `consoleCommandIntent`).
+	 * The caller opens the pane itself, as `requestConsoleOpen`'s callers do; this
+	 * never opens anything. A later request replaces an unanswered earlier one. */
+	requestConsoleCommand: (
+		intent: Omit<ConsoleCommandIntent, "nonce" | "filedAt">,
+	) => ConsoleCommandIntent;
+
+	/** The pane has taken the request with this nonce, and only that one. */
+	clearConsoleCommandIntent: (nonce: string) => void;
+
+	/**
+	 * How many of this conversation's console surfaces are RUNNING, as the pane
+	 * published it.
+	 *
+	 * A PROJECTION, NOT A SECOND READ: the pane owns the one `console-state`
+	 * subscription, and this is the fact the rail needs to decide whether its
+	 * console item is the active one. `null` means nothing is running — and also
+	 * "the pane is not mounted", which is the same answer to the rail's question
+	 * (no running terminal, so no active console). It is transient by construction
+	 * (excluded from `persistedUiPreferences`): a count that survived a relaunch
+	 * would claim a process nobody started.
+	 *
+	 * THE SESSION IS PART OF THE FACT for `consoleUnseen`'s reason: the rail renders
+	 * for ONE conversation, and a running terminal in another one must not light
+	 * this one's item. A count of zero is stored as `null` so every "nothing is
+	 * running" state has one representation.
+	 */
+	consoleLiveSurface: { sessionId: string; count: number } | null;
+
+	/**
+	 * Publish the running-surface count for one conversation, or clear it.
+	 *
+	 * @param sessionId - The conversation the pane is showing, or null to clear
+	 * @param count - Running surfaces; zero (or a null session) clears the fact
+	 */
+	setConsoleLiveSurface: (sessionId: string | null, count: number) => void;
+
+	/**
 	 * Set the console pane open state.
 	 *
 	 * Opening it closes the other three occupants, by the same construction as
@@ -883,29 +1019,17 @@ type UiPreferencesState = {
 	isSidebarCollapsed: boolean;
 
 	/**
-	 * Whether agent reasoning (thinking, plan and reflection turns) is shown.
+	 * Whether the sidebar's low-frequency "More" group is expanded.
 	 *
-	 * Default false per docs/branding.md § 7: reasoning is the agent talking to
-	 * itself, and rendering it at prose weight is what makes the app read as a
-	 * developer tool. When false, reasoning turns are hidden entirely — a
-	 * collapsed "Reasoning" disclosure would still be chrome on every turn,
-	 * which is the weight this preference exists to remove.
+	 * Persisted like the collapsed width: the operator's ChatGPT-style overflow
+	 * is a preference about how much chrome the column carries, not about the
+	 * route in front of it. Agent Hub and Mesh live here; future low-frequency
+	 * destinations join them rather than growing the primary list.
 	 */
-	showAgentReasoning: boolean;
+	sidebarOverflowExpanded: boolean;
 
-	/**
-	 * Set whether agent reasoning is shown.
-	 *
-	 * Written only by the Appearance switch in `settings-page.tsx`. That is the
-	 * preference's sole control, and for a while it did not exist: the flag, the
-	 * grouping rule that honours it and the disclosure that renders it all
-	 * shipped with nothing able to turn them on, so `AgentReasoning` returned
-	 * null unconditionally and the whole feature was dead in the product while
-	 * looking alive in the source. Keep a control reachable, or delete the rest.
-	 *
-	 * @param show - Whether reasoning turns should be visible
-	 */
-	setShowAgentReasoning: (show: boolean) => void;
+	/** Set the overflow group's expanded state. */
+	setSidebarOverflowExpanded: (expanded: boolean) => void;
 
 	/**
 	 * How the transcript draws a settled turn: `by-turn` (the shipped
@@ -934,9 +1058,69 @@ type UiPreferencesState = {
 	setTranscriptDisplayMode: (mode: TranscriptDisplayMode) => void;
 
 	/**
-	 * The currently selected theme
+	 * How large the agent's picture is drawn in the chat window (the turn head and
+	 * the chat header): `small` (today's 20px), `medium` or `large`. An app-level
+	 * preference, not a per-agent one.
+	 *
+	 * Default `small` per `agent-avatar-size.ts`, which owns the tokens, the pixel
+	 * tables and the judgement: this store keeps the value, and every reader parses
+	 * it through `parseAgentAvatarSize` because zustand rehydrates PAST the setters
+	 * (the read-side rule `transcriptDisplayMode` above follows). A blob saved
+	 * before this field existed simply lacks the key, so the default applies and no
+	 * migration step is needed.
+	 */
+	agentAvatarSize: AgentAvatarSize;
+
+	/**
+	 * Set the picture size. Takes the resolved union, so an unknown step cannot be
+	 * written; the stored value is judged again on every read.
+	 *
+	 * @param size - The step to draw the chat window's agent picture at
+	 */
+	setAgentAvatarSize: (size: AgentAvatarSize) => void;
+
+	/**
+	 * The currently selected theme. While a custom theme is active this holds
+	 * that theme's BASE, so every reader of `themeName` keeps a valid built-in.
 	 */
 	themeName: ThemeName;
+
+	/**
+	 * The appearance layers over `themeName` (v5; see
+	 * `src/shared/theme-engine/appearance.mjs` for each field's why). Contrast
+	 * and accent are PER MODE - "how much contrast I want in dark mode" survives
+	 * a switch from Dracula to Nord. Nothing in the settings UI writes these yet;
+	 * the setters below are the internal API the picker will use.
+	 */
+	contrast: PerMode<number>;
+	accent: PerMode<AccentRef>;
+	/** The user's own accent swatches, most recent first (<= 12). */
+	customAccents: string[];
+	/** The active saved custom theme, or null for the built-in `themeName`. */
+	customThemeId: string | null;
+	/** Set one mode's contrast (-100..100; rounded and clamped). */
+	setContrast: (mode: Mode, value: number) => void;
+	/** Set one mode's accent reference. */
+	setAccent: (mode: Mode, ref: AccentRef) => void;
+	/** Add a swatch to the front of `customAccents` (and select it for `mode`). */
+	addCustomAccent: (hex: string, select?: Mode) => void;
+	/** Remove a swatch; a mode that had it selected falls back to the theme's accent. */
+	removeCustomAccent: (hex: string) => void;
+	/**
+	 * The user's names for their custom accents, keyed by normalised hex. Absent
+	 * means the swatch is named by its hex. Additive within v5: `merge` defaults
+	 * and re-sanitises it (`sanitizeCustomAccentNames`), and a name is dropped
+	 * with its swatch, so the map can never outgrow the 12-swatch list.
+	 */
+	customAccentNames: Record<string, string>;
+	/** Name (or, with an empty string, un-name) one custom accent. */
+	renameCustomAccent: (hex: string, name: string) => void;
+	/**
+	 * "Edit colour…" on a custom swatch: replace it IN PLACE (same position, its
+	 * name kept), and move every mode that had it selected onto the new colour, so
+	 * editing is not remove-then-add with the selection lost in between.
+	 */
+	replaceCustomAccent: (from: string, to: string) => void;
 
 	/**
 	 * The width of the chat sidebar in pixels
@@ -1516,36 +1700,48 @@ export const EMPTY_RIGHT_SLOT_MEMORY: RightSlotMemory = Object.freeze([]);
  * measurement rather than to agree by convention.
  *
  * WHY IT IS A NUMBER AND NOT "WHICH PANE IS OPEN": the panes differ in their
- * floors and maxima (the canvas holds documents and is capped at 560 docked, the
- * run panel prose and rosters and stops at 640, the browser and console stop at
- * 1200), and any union of pane ids would carry those with it, i.e. a second place
- * deciding which width belongs to an open pane. The caller asks "how wide is the
- * slot" and gets the one answer that is true for the pane actually open.
+ * FLOORS (the canvas holds documents and stops at 400 docked, the run pane's
+ * roster fits at 320, a page and a terminal grid need 480), and any union of pane
+ * ids would carry those with it, i.e. a second place deciding which width belongs
+ * to an open pane. The ceilings do not differ: `RIGHT_SLOT_MAX_PX` is one number
+ * for the slot, which is why this function answers one width and the pane only
+ * supplies a floor. The caller asks "how wide is the slot" and gets the one answer
+ * that is true for the pane actually open.
  *
  * THE ARITHMETIC IS THE ROW'S OWN FLEX, restated once: the row is the work area
  * beside the sidebar, the conversation's floor is CHAT_PANE_MIN_PX of it, and the
  * pane takes what is left. That is why the canvas resolves through
- * `canvasDockWidth` — §I's `min(560, row - 480)`, which IS the same leftover
- * capped at the pane's dock maximum — and why the other three are
- * `min(preference, leftover)`. A preference of 0 is the store's "unset" and
- * resolves to `DEFAULT_RIGHT_SLOT_WIDTH` for EVERY pane (#872 follow-up; it used
- * to be one seed per pane, which is what re-sized the slot on a switch even
- * before anyone had dragged); since #677 a non-zero preference is the ONE shared
- * `rightSlotWidth`. And since the #677 review (D2) every branch holds the pane's
- * own floor as well: a shared width below it lifts to it here, where all three
- * writers of the value are covered at once — see the floor constants below.
+ * `canvasDockWidth` - the same leftover under the slot's one ceiling - and why
+ * the other panes are `min(preference, leftover)`; the two spellings are one
+ * subtraction. A preference of 0 is the store's "unset" and resolves to
+ * `DEFAULT_RIGHT_SLOT_WIDTH` for EVERY pane (#872 follow-up; it used to be one
+ * seed per pane, which is what re-sized the slot on a switch even before anyone
+ * had dragged); since #677 a non-zero preference is the ONE shared
+ * `rightSlotWidth`. Every branch holds the pane's own floor and the slot's ONE
+ * ceiling (`RIGHT_SLOT_MAX_PX`) through `rightSlotPaneWidth`: a shared width
+ * below a pane's floor lifts to it here, where all three writers of the value
+ * are covered at once - see the floor constants below.
  *
- * THE CANVAS'S `overlay` MODE IS THE CASE TO STATE EXPLICITLY, because it is the
- * one where the mode and the arithmetic are easiest to get out of step: when the
- * row cannot host the pane beside the conversation, chat-content stops drawing
- * the divider and the pane draws at the leftover — `min(preference, row - 480)` —
- * because the conversation keeps its 480 floor beside it exactly as it does at
- * every other row, which is why this function needs no branch for the mode. (The
- * mode's NAME is historical: since `1e88f7fc167` removed the pane's `absolute`
- * positioning the pane no longer covers the conversation — the mode withholds the
- * divider and the data attribute; `canvasPaneMode` carries the note.) At the rows
- * where a naive reading would disagree (a preference smaller than the leftover),
- * the pane draws at its preference and this function says so.
+ * THE OVERLAY MODE, PER OCCUPANT, because the mode and the arithmetic are easiest
+ * to get out of step. The CANVAS: when the row cannot host it beside the
+ * conversation, chat-content stops drawing the divider and the canvas draws at the
+ * leftover — `min(preference, row - 480)` - because the conversation keeps its 480px
+ * floor beside it; this function's answer is that width. (The canvas's name for the
+ * mode is historical: since `1e88f7fc167` removed the pane's `absolute` positioning
+ * the canvas no longer covers the conversation - the mode withholds the divider and
+ * the data attribute; `canvasPaneMode` carries the note.) At the rows where a naive
+ * reading would disagree (a preference smaller than the leftover), the canvas draws
+ * at its preference and this function says so.
+ *
+ * THE ASK DRAWER IS THE EXCEPTION, and it is deliberate: below the breakpoint it
+ * draws a right-anchored SHEET (`askPanePresentation`, `chat-sidebar-layout.ts`),
+ * and this function keeps answering the DOCKED arithmetic (`row - 480`), which is
+ * not the sheet's width. No mount draws this number for the sheet: the lane's stop
+ * and `data-slot-edge` read the presentation's width in `chat-layout.tsx`, the drawer
+ * draws it (`chat-content.tsx` / `chat-layout.tsx`), and this answer is only the width
+ * a docked drawer would have had. A story arm that draws the sheet must read
+ * `askPanePresentation` for the same reason. Two readings of one pane, each with its
+ * own reader, rather than a mode branch in the width resolver.
  *
  * UNMEASURED IS NOT ZERO. `rowWidth` is 0 for the frame before the row's first
  * measurement, and answering 0 there would tell the lane the slot has no pixels —
@@ -1577,57 +1773,50 @@ export function resolveRightSlotWidth(
 	 */
 	if (pane === null || !rightSlotPaneDrawable(pane, state)) return 0;
 
-	// THE SHARED WIDTH OR THE ONE DEFAULT, HELD UP TO THIS PANE'S FLOOR: one
-	// read, one default + four floors, which is the whole of #677 at the
-	// resolving end (see `rightSlotWidth` and the floor constants).
+	// THE SHARED WIDTH OR THE ONE DEFAULT, HELD TO THIS PANE'S FLOOR AND THE
+	// SLOT'S ONE CEILING: one read, one default + four floors + one ceiling,
+	// which is the whole of #677 at the resolving end (see `rightSlotWidth`,
+	// `RIGHT_SLOT_MAX_PX` and the floor constants).
 	let preferred: number;
 	switch (pane) {
 		/*
 		 * THE ASKS DRAWER WEARS THE CANVAS'S GEOMETRY, deliberately and not by
 		 * oversight (design note §2: the drawer "must be a member of the existing canvas
-		 * family", 400-560px by the family's arithmetic). Reusing the default, the floor
-		 * and the dock cap is what makes the card "never again the widest thing on the
-		 * screen": its width is the family's, so it needs no rule of its own - which is
-		 * the mistake the note names ("do not patch the width separately"). The default
-		 * (640) is wider than the dock cap (560) at every row, so for these two it
-		 * never draws: the cap is what an unset canvas opens at.
+		 * family"). Reusing the floor and the band is what makes the card "never again
+		 * the widest thing on the screen": its width is the family's, so it needs no rule
+		 * of its own - which is the mistake the note names ("do not patch the width
+		 * separately"). Since the slot has one ceiling, this is simply the width every
+		 * pane opens at; the canvas dock's arithmetic (`canvasDockWidth`) bounds it by the
+		 * row below.
 		 */
 		case "canvas":
 		case "ask":
-			preferred = Math.max(
-				CANVAS_PANE_MIN_PX,
-				state.rightSlotWidth || DEFAULT_RIGHT_SLOT_WIDTH,
-			);
+			preferred = rightSlotPaneWidth(CANVAS_PANE_MIN_PX, state.rightSlotWidth);
 			break;
 		case "run":
-			preferred = Math.max(
-				RUN_PANEL_MIN_PX,
-				state.rightSlotWidth || DEFAULT_RIGHT_SLOT_WIDTH,
-			);
+			preferred = rightSlotPaneWidth(RUN_PANEL_MIN_PX, state.rightSlotWidth);
 			break;
 		case "browser":
-			preferred = Math.max(
+			preferred = rightSlotPaneWidth(
 				BROWSER_PANEL_MIN_PX,
-				state.rightSlotWidth || DEFAULT_RIGHT_SLOT_WIDTH,
+				state.rightSlotWidth,
 			);
 			break;
 		case "console":
-			preferred = Math.max(
+			preferred = rightSlotPaneWidth(
 				CONSOLE_PANEL_MIN_PX,
-				state.rightSlotWidth || DEFAULT_RIGHT_SLOT_WIDTH,
+				state.rightSlotWidth,
 			);
 			break;
 		/*
-		 * THE CODE REVIEW PANE WEARS THE RUN PANEL'S LADDER, deliberately (design
-		 * §9: "the run pane's ladder (min 320, max 640)"): its rows are the same
-		 * kind of prose-and-figures content the run panel draws, so one floor for
-		 * the two is one number to keep true rather than two that can drift.
+		 * THE CODE REVIEW PANE WEARS THE RUN PANEL'S FLOOR, deliberately (design
+		 * §9 gave the two one ladder): its rows are the same kind of
+		 * prose-and-figures content the run panel draws, so one floor for the two is
+		 * one number to keep true rather than two that can drift. There is no
+		 * per-pane ceiling left to carry - `RIGHT_SLOT_MAX_PX` is the slot's.
 		 */
 		case "code":
-			preferred = Math.max(
-				RUN_PANEL_MIN_PX,
-				state.rightSlotWidth || DEFAULT_RIGHT_SLOT_WIDTH,
-			);
+			preferred = rightSlotPaneWidth(RUN_PANEL_MIN_PX, state.rightSlotWidth);
 			break;
 	}
 	if (rowWidth <= 0) return preferred;
@@ -1636,6 +1825,30 @@ export function resolveRightSlotWidth(
 		return Math.min(preferred, canvasDockWidth(rowWidth));
 	}
 	return Math.min(preferred, Math.max(0, rowWidth - CHAT_PANE_MIN_PX));
+}
+
+/**
+ * The width ONE pane asks for, before the row has a say: the shared preference
+ * (or the slot's one default while it is unset), held to that pane's own floor
+ * and the slot's one ceiling.
+ *
+ * ONE ARITHMETIC, EVERY READER. `resolveRightSlotWidth` uses it for all six panes'
+ * preference, and `chat-content.tsx` uses it for the four `effective*PanelWidth`
+ * values it hands its `PaneSlot`s and separators - so a drag, a pane switch and
+ * the drawn column cannot disagree about the band. The floor is the pane's (what
+ * its own content needs); the ceiling is the slot's (`RIGHT_SLOT_MAX_PX`). That
+ * split is what makes one shared width possible at all: below a pane's floor the
+ * shared value lifts to that floor, and above it the width is one width for
+ * everybody, up to one number none of them exceeds.
+ */
+export function rightSlotPaneWidth(
+	floor: number,
+	rightSlotWidth: number,
+): number {
+	return Math.min(
+		RIGHT_SLOT_MAX_PX,
+		Math.max(floor, rightSlotWidth || DEFAULT_RIGHT_SLOT_WIDTH),
+	);
 }
 
 /**
@@ -1740,7 +1953,7 @@ export type RunPanelReveal = {
  * Default values for canvas and chat sidebar widths
  *
  * The chat sidebar's default is the ONE sidebar's: 260px, user-resizable
- * 220-320, and those three numbers live in
+ * 220-560, and those three numbers live in
  * `features/chat/chat-sidebar-layout.ts` so the component, the store's clamp and
  * the desktop suite all read one table rather than three copies of it. It was
  * 280 (clamped 240-360) when this was the chat route's SECOND column, beside a
@@ -1749,10 +1962,9 @@ export type RunPanelReveal = {
  */
 /**
  * THE ONE WIDTH THE RIGHT SLOT OPENS AT while the shared `rightSlotWidth` is
- * unset (0) - the experience of anyone who has never dragged a divider - for the
- * run panel, the browser and the console, and the number the canvas and the asks
- * drawer start from before their dock cap (`canvasDockWidth`, 560 at every row
- * that matters) takes over.
+ * unset (0) - the experience of anyone who has never dragged a divider - for
+ * every pane that can occupy the slot: the run panel, the browser, the console,
+ * the code review pane, and the canvas and asks drawer with them.
  *
  * WHY ONE NUMBER (#872 follow-up). Until it, an unset slot resolved to a seed per
  * pane - run 420, browser 640, console 796 (100 columns), canvas 800 - so
@@ -1760,6 +1972,13 @@ export type RunPanelReveal = {
  * transcript on every switch (measured at 1280: 551px with the run panel open,
  * 474px with the browser or console). #677 made the DRAGGED width shared; this
  * makes the width nobody dragged shared too.
+ *
+ * IT IS ALSO THE CANVAS'S AND THE ASKS DRAWER'S OPENING WIDTH, which took a
+ * second step: their resolvers used to clamp to the canvas dock's own 560 cap, so
+ * the drawer and the canvas opened 80px narrower than the panes beside them even
+ * with the one default in place. With one ceiling for the slot
+ * (`RIGHT_SLOT_MAX_PX`) the only thing that can make a pane narrower than 640 is
+ * the row itself, and that bound is the same subtraction for all six.
  *
  * WHY 640 AND NOT A ROUNDER 600. It is the number the browser already shipped
  * (a page's room), and it is exactly 80 terminal columns at the shipped face:
@@ -1771,10 +1990,11 @@ export type RunPanelReveal = {
  * it was already undelivered below ~1580px windows, where the row's leftover
  * capped it, and the user can still drag to 100 columns.
  *
- * WHAT IT DOES NOT TOUCH: the per-pane FLOORS and MAXIMA (run 320..640, browser
- * and console 480..1200, canvas 400..the dock cap), the meaning of 0 as "unset",
- * and every stored width - nothing persisted changes meaning, which is why this
- * rides without a persist-version step.
+ * WHAT IT DOES NOT TOUCH: the per-pane FLOORS (run 320, browser and console 480,
+ * canvas 400), the slot's one ceiling (`RIGHT_SLOT_MAX_PX`, 1200, in
+ * `chat-sidebar-layout.ts`), the meaning of 0 as "unset", and every stored width
+ * - nothing persisted changes meaning, which is why this rides without a
+ * persist-version step.
  */
 export const DEFAULT_RIGHT_SLOT_WIDTH = 640;
 /*
@@ -1782,7 +2002,8 @@ export const DEFAULT_RIGHT_SLOT_WIDTH = 640;
  * preference used to read as 450 for the canvas alone - a number nothing
  * persisted, since the canvas divider's own floor keeps every drag above it.
  * One unset meaning one thing makes 450 unreachable: an unset canvas starts from
- * `DEFAULT_RIGHT_SLOT_WIDTH` like every other pane, then its dock cap applies.
+ * `DEFAULT_RIGHT_SLOT_WIDTH` like every other pane, and the row's leftover bounds
+ * it exactly as it bounds theirs.
  */
 const DEFAULT_CHAT_SIDEBAR_WIDTH = SIDEBAR_DEFAULT_WIDTH;
 /**
@@ -1941,12 +2162,25 @@ const EMPTY_CONSOLE_UNSEEN: ConsoleUnseenMark[] = [];
  * `main` keeps #895's v2 (the copy that shipped) and renumbers the memory step
  * to v3, dropping the duplicate.
  *
+ * v5 IS THE APPEARANCE LAYERS: per-mode `contrast` and `accent`, the
+ * `customAccents` swatches and `customThemeId`. Additive - the step only seeds
+ * the defaults (a v4 profile renders exactly as before: Standard contrast, the
+ * theme's own accent, no custom theme) - and `merge` re-sanitises them on every
+ * load, so a hand-edited value cannot reach the composition engine.
+ *
  * v3 (#894) IS THE RIGHT SLOT'S MEMORY: the four global pane flags stop being
  * persisted and become the bound conversation's projection, so the step lifts
  * whichever flag was true into `rightSlotLegacySeed` - the one-shot seed the
  * first bind plants - and deletes the four keys.
+ *
+ * v6 DROPS `showAgentReasoning`. Its only control, General Settings' "show agent
+ * reasoning" switch, was removed because the canonical transcript has no
+ * reasoning record kind: the switch toggled a flag that only Storybook-only legacy
+ * components read, so it changed nothing in the shipped app. Same shape as v2's
+ * `chatMeasureWidth`: without the step the stale key would be copied onto the
+ * state by zustand's merge and written back by the rest-spread on every save.
  */
-export const UI_PREFERENCES_VERSION = 4;
+export const UI_PREFERENCES_VERSION = 6;
 
 /**
  * The keys v2 removes from a stored blob. A list rather than a `delete
@@ -1955,6 +2189,9 @@ export const UI_PREFERENCES_VERSION = 4;
  * below does the same).
  */
 const RETIRED_IN_V2: readonly string[] = ["chatMeasureWidth"];
+
+/** The keys v6 removes from a stored blob; see `UI_PREFERENCES_VERSION`. */
+const RETIRED_IN_V6: readonly string[] = ["showAgentReasoning"];
 
 export const useUiPreferencesStore = create<UiPreferencesState>()(
 	persist(
@@ -1970,9 +2207,105 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			isCommandPaletteOpen: false,
 			commandPaletteQuery: "",
 			isSidebarCollapsed: false,
-			showAgentReasoning: false,
+			sidebarOverflowExpanded: false,
 			transcriptDisplayMode: DEFAULT_TRANSCRIPT_DISPLAY_MODE,
+			agentAvatarSize: DEFAULT_AGENT_AVATAR_SIZE,
 			themeName: DEFAULT_THEME,
+			contrast: DEFAULT_CONTRAST,
+			accent: DEFAULT_ACCENT,
+			customAccents: [],
+			customAccentNames: {},
+			customThemeId: null,
+			setContrast: (mode, value) =>
+				set((state) => ({
+					contrast: {
+						...state.contrast,
+						[mode]: sanitizeContrastValue(value),
+					},
+				})),
+			setAccent: (mode, ref) =>
+				set((state) => ({
+					accent: {
+						...state.accent,
+						[mode]: sanitizeAccentRef(ref, isThemeName),
+					},
+				})),
+			addCustomAccent: (hex, select) =>
+				set((state) => {
+					const customAccents = pushCustomAccent(state.customAccents, hex);
+					const added = normalizeHex(hex);
+					/* A 13th swatch drops the oldest (no prompt, by design); its name
+					   goes with it rather than lingering in the persisted map. */
+					const customAccentNames = sanitizeCustomAccentNames(
+						state.customAccentNames,
+						customAccents,
+					);
+					if (!select || !added) return { customAccents, customAccentNames };
+					return {
+						customAccents,
+						customAccentNames,
+						accent: {
+							...state.accent,
+							[select]: { kind: "custom", hex: added },
+						},
+					};
+				}),
+			removeCustomAccent: (hex) =>
+				set((state) => {
+					const target = normalizeHex(hex);
+					const accent = { ...state.accent };
+					for (const mode of MODES) {
+						const ref = accent[mode];
+						if (ref.kind === "custom" && ref.hex === target)
+							accent[mode] = THEME_ACCENT;
+					}
+					const customAccentNames = { ...state.customAccentNames };
+					if (target) delete customAccentNames[target];
+					return {
+						customAccents: state.customAccents.filter((h) => h !== target),
+						customAccentNames,
+						accent,
+					};
+				}),
+			renameCustomAccent: (hex, name) =>
+				set((state) => {
+					const target = normalizeHex(hex);
+					if (!target || !state.customAccents.includes(target)) return {};
+					return {
+						customAccentNames: sanitizeCustomAccentNames(
+							{ ...state.customAccentNames, [target]: name },
+							state.customAccents,
+						),
+					};
+				}),
+			replaceCustomAccent: (from, to) =>
+				set((state) => {
+					const source = normalizeHex(from);
+					const target = normalizeHex(to);
+					if (!source || !target || source === target) return {};
+					const index = state.customAccents.indexOf(source);
+					if (index < 0) return {};
+					/* The new colour takes the old one's slot; if it was already in
+					   the list elsewhere, that duplicate goes (sanitise de-dupes). */
+					const list = state.customAccents.filter((h) => h !== target);
+					list.splice(list.indexOf(source), 1, target);
+					const customAccents = sanitizeCustomAccents(list);
+					const names = { ...state.customAccentNames };
+					if (names[source] !== undefined && names[target] === undefined)
+						names[target] = names[source];
+					delete names[source];
+					const accent = { ...state.accent };
+					for (const mode of MODES) {
+						const ref = accent[mode];
+						if (ref.kind === "custom" && ref.hex === source)
+							accent[mode] = { kind: "custom", hex: target };
+					}
+					return {
+						customAccents,
+						customAccentNames: sanitizeCustomAccentNames(names, customAccents),
+						accent,
+					};
+				}),
 			rightSlotWidth: 0,
 			chatSidebarWidth: DEFAULT_CHAT_SIDEBAR_WIDTH,
 			/*
@@ -2008,6 +2341,8 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			askOpenIntent: null,
 			rightSlotRoute: EMPTY_RIGHT_SLOT_ROUTE,
 			consoleOpenIntent: null,
+			consoleCommandIntent: null,
+			consoleLiveSurface: null,
 			runPanelReveal: null,
 			codeReviewReveal: null,
 			browserPaneScope: "conversation",
@@ -2060,15 +2395,12 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 				}));
 			},
 
+			setSidebarOverflowExpanded: (expanded: boolean) => {
+				set({ sidebarOverflowExpanded: expanded });
+			},
 			setSidebarCollapsed: (collapsed: boolean) => {
 				set({
 					isSidebarCollapsed: collapsed,
-				});
-			},
-
-			setShowAgentReasoning: (show: boolean) => {
-				set({
-					showAgentReasoning: show,
 				});
 			},
 
@@ -2078,9 +2410,16 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 				});
 			},
 
+			setAgentAvatarSize: (size: AgentAvatarSize) => {
+				set({
+					agentAvatarSize: size,
+				});
+			},
+
 			setTheme: (themeName: ThemeName) => {
 				set({
 					themeName,
+					customThemeId: null,
 				});
 			},
 
@@ -2296,6 +2635,32 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 				set({ consoleOpenIntent: sessionId });
 			},
 
+			requestConsoleCommand: (intent) => {
+				const filed: ConsoleCommandIntent = {
+					sessionId: intent.sessionId,
+					command: intent.command,
+					submit: intent.submit === true,
+					nonce: nextConsoleCommandNonce(),
+					filedAt: Date.now(),
+					...(intent.askId === undefined ? {} : { askId: intent.askId }),
+					...(intent.questionId === undefined
+						? {}
+						: { questionId: intent.questionId }),
+				};
+				set({ consoleCommandIntent: filed });
+				// Answered with the filed copy so the caller can arm its own lifetime
+				// bounds (the conversation-switch drop) against this press's nonce.
+				return filed;
+			},
+
+			clearConsoleCommandIntent: (nonce: string) => {
+				set((state) =>
+					state.consoleCommandIntent?.nonce === nonce
+						? { consoleCommandIntent: null }
+						: {},
+				);
+			},
+
 			clearConsoleOpenIntent: (sessionId: string) => {
 				// Guarded so a pane with nothing to answer does not write a new state object
 				// on every pass of its effect — and so a pane answering ITS conversation
@@ -2305,6 +2670,22 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 						? { consoleOpenIntent: null }
 						: {},
 				);
+			},
+
+			setConsoleLiveSurface: (sessionId: string | null, count: number) => {
+				set((state) => {
+					if (sessionId === null || count <= 0) {
+						return state.consoleLiveSurface === null
+							? {}
+							: { consoleLiveSurface: null };
+					}
+					const current = state.consoleLiveSurface;
+					// The identity is kept when nothing moved, so a listing refetch that
+					// changed only a surface's output does not re-render the rail.
+					return current?.sessionId === sessionId && current.count === count
+						? {}
+						: { consoleLiveSurface: { sessionId, count } };
+				});
 			},
 
 			markConsoleUnseen: (sessionId: string, surface: string) => {
@@ -2418,7 +2799,7 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 				set({ rightSlotRoute: { ...route } });
 			},
 
-			setShortcutBinding: (actionId, chord) => {
+			setShortcutBinding: (actionId, chord, externalClaims) => {
 				/*
 				 * NO-OP WRITES ARE REAL ANSWERS: a chord capture refuses, or one the
 				 * canonical grammar cannot spell, is not stored. The refusal is the
@@ -2438,7 +2819,13 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 				const normalized = normalizeChord(chord);
 				if (normalized === null) return;
 				if (
-					captureRefusal(normalized, actionId, get().shortcutBindings) !== null
+					captureRefusal(
+						normalized,
+						actionId,
+						get().shortcutBindings,
+						"linux",
+						externalClaims,
+					) !== null
 				) {
 					return;
 				}
@@ -2764,6 +3151,8 @@ export function persistedUiPreferences<
 		runPanelReveal: unknown;
 		codeReviewReveal: unknown;
 		consoleOpenIntent: unknown;
+		consoleCommandIntent: unknown;
+		consoleLiveSurface: unknown;
 		askOpenIntent: unknown;
 		isAskDrawerOpen: unknown;
 		askDrawerScope: unknown;
@@ -2784,6 +3173,8 @@ export function persistedUiPreferences<
 	| "runPanelReveal"
 	| "codeReviewReveal"
 	| "consoleOpenIntent"
+	| "consoleCommandIntent"
+	| "consoleLiveSurface"
 	| "askOpenIntent"
 	| "isAskDrawerOpen"
 	| "askDrawerScope"
@@ -2800,6 +3191,15 @@ export function persistedUiPreferences<
 		runPanelReveal: _pending,
 		codeReviewReveal: _reveal,
 		consoleOpenIntent: _intent,
+		/* The ask card's suggested command (`consoleCommandIntent`): a restored copy
+		 * would type — or run — a command on launch with no press behind it. */
+		consoleCommandIntent: _commandIntent,
+		/*
+		 * THE LIVENESS FACT IS A RUN'S OWN READING, not a preference: a restored count
+		 * would claim a process this launch did not start. It is excluded for
+		 * `consoleOpenIntent`'s reason, and the rail reads "no fact" as no live console.
+		 */
+		consoleLiveSurface: _live,
 		/* The menu row's open request (round-1 Q1): the drawer consumes it on the
 		 * commit that answers it, so a restored copy would open a surface nobody
 		 * pressed a door for. Excluded beside the console's for the same reason. */
@@ -2930,6 +3330,22 @@ export function mergePersistedUiPreferences(
 		 * Keeping them here also keeps unrelated writes/migrations non-destructive.
 		 */
 		shortcutBindings: sanitizeShortcutBindings(blob.shortcutBindings),
+		/*
+		 * THE APPEARANCE LAYERS ARE RE-VALIDATED, never trusted, for the reason the
+		 * shortcut overrides are: each one reaches the composition engine, and a
+		 * colour from it is written into an injected `<style>`.
+		 */
+		/* What the BLOB says, defaulted - never the in-memory state, which is
+		   what a reload is replacing (and for the two pre-v5 stores that reach
+		   here unmigrated, the identity values are the right ones). */
+		contrast: sanitizeContrast(blob.contrast),
+		accent: sanitizeAccent(blob.accent, isThemeName),
+		customAccents: sanitizeCustomAccents(blob.customAccents),
+		customAccentNames: sanitizeCustomAccentNames(
+			blob.customAccentNames,
+			sanitizeCustomAccents(blob.customAccents),
+		),
+		customThemeId: sanitizeCustomThemeId(blob.customThemeId),
 	};
 }
 
@@ -2989,6 +3405,18 @@ export function migrateUiPreferences(
 	}
 	if (version < 4)
 		blob.finderFiles = sanitizeFinderPreferences(blob.finderFiles);
+	if (version < 5) {
+		/*
+		 * v5 SEEDS THE APPEARANCE LAYERS AT THEIR IDENTITY VALUES. Sanitising
+		 * whatever is there (rather than overwriting) keeps the step idempotent and
+		 * harmless for a blob a newer build already wrote these keys into.
+		 */
+		blob.contrast = sanitizeContrast(blob.contrast);
+		blob.accent = sanitizeAccent(blob.accent, isThemeName);
+		blob.customAccents = sanitizeCustomAccents(blob.customAccents);
+		blob.customThemeId = sanitizeCustomThemeId(blob.customThemeId);
+	}
+	if (version < 6) for (const key of RETIRED_IN_V6) delete blob[key];
 	return blob;
 }
 

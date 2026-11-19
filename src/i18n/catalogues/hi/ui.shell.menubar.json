@@ -1,0 +1,15 @@
+{
+	"ui.shell.menubar.file": "फ़ाइल",
+	"ui.shell.menubar.edit": "संपादन",
+	"ui.shell.menubar.view": "दृश्य",
+	"ui.shell.menubar.window": "विंडो",
+	"ui.shell.menubar.new_browser_tab": "नया ब्राउज़र टैब",
+	"ui.shell.menubar.reload": "फिर से लोड करें",
+	"ui.shell.menubar.force_reload": "ज़बरन फिर से लोड करें",
+	"ui.shell.menubar.actual_size": "वास्तविक आकार",
+	"ui.shell.menubar.zoom_in": "ज़ूम इन करें",
+	"ui.shell.menubar.zoom_out": "ज़ूम आउट करें",
+	"ui.shell.menubar.close_tab_or_window": "टैब/विंडो बंद करें",
+	"ui.shell.menubar.learn_more": "और जानें",
+	"ui.shell.menubar.about": "{name} के बारे में"
+}

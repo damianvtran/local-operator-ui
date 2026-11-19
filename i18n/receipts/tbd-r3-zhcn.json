@@ -1,0 +1,30 @@
+{
+  "auditor": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "tbd-r3-zhcn",
+  "session": "0b05461ffe68",
+  "date": "2026-10-21",
+  "locale": "zh-CN",
+  "translator": "translator",
+  "namespaces": {
+    "ui.teamBridge": {
+      "status": "passed",
+      "keys_audited": 109,
+      "scope": "Whole ui.teamBridge catalogue (109 keys) against the en source and context frozen at 7bf957741a, plus the glossary, the zh-CN style guide and the other zh-CN ui.* catalogues. Includes the 9 new keys and a fixed/unfixed check of all 15 round-1 findings. ICU parse, key set, duplicate keys, bidi, NFC, spacing and ellipsis checked in the bytes.",
+      "sha256": {
+        "en": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+        "zh-CN": "e865a01005ec983daa35e0abd54ec20f94929cf0ad112762bd3015c5c27c89b8",
+        "context": "17b7e1450dc7fa529d8e2e684bb8653fcc4f6cf220bf8261631d078d26545de5"
+      },
+      "findings": [
+        {
+          "severity": "NIT",
+          "key": "ui.teamBridge.create.name_placeholder",
+          "current": "例如qa-coordination",
+          "proposed": "例如：qa-coordination",
+          "note": "Every other zh-CN example placeholder is written 例如：<example> (for instance ui.settings.integrations 例如：notion and 例如：npx); the slug itself is correctly kept untranslated."
+        }
+      ]
+    }
+  }
+}

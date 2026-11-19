@@ -1,0 +1,85 @@
+{
+	"schema": 1,
+	"auditor": "translation-auditor",
+	"agent": "translation-auditor",
+	"model": "deepseek/deepseek-flash",
+	"model_provenance": "Actual served model is deepseek/deepseek-flash. Fallback chain this session: anthropic/claude-sonnet-5-5 (session header) -> anthropic/claude-opus-5-5 -> openai/gpt-6.1-sol -> deepseek/deepseek-flash, each switch a provider-quota failure. Every catalogue read, comparison and verdict in these receipts was produced on deepseek/deepseek-flash; no verdict was carried over from an earlier model.",
+	"fallback": "yes — three provider-quota switches (sonnet-5-5 -> opus-5-5 -> gpt-6.1-sol -> deepseek-flash); verdicts derived on the served model only",
+	"independence": "Separate session (7c948004) from the PR coder and from the translator of these values; the commit message of be77d308262 was read only as a claim to check, and the verdict was rebuilt from the English catalogue, the en .context.json sidecars, the render sites, the hi style guide, the glossary and the sibling hi ui.hub.* strings.",
+	"instance": "7c948004-hub-hi-teams",
+	"session": "7c948004",
+	"locale": "hi",
+	"branch": "i18n/s5-agent-hub",
+	"head": "be77d308262ce0527c1fd4052ff77207edcac189",
+	"date": "2026-11-08",
+	"scope": "Round 1 delta: the 17 keys this commit adds to hi across ui.hub.pages (16) and ui.hub.teams (1), against en at the same head. Carried (unchanged) hi ui.hub values were read as the register/terminology reference, not re-audited.",
+	"inputs_sha256": {
+		"en/ui.hub.pages.json": "47793b98059be89eafc26b8aff209b3aed63a9eac26b44ac5da9b87e973c7b5a",
+		"en/ui.hub.pages.context.json": "e78c02114d87f722bd47bb14ea61f5ac3281407581132bd9a715c81d1a112872",
+		"en/ui.hub.teams.json": "b9674e6bb1f862d380d45568204abcd8735eb08782bfb1351f469019b4e583b8",
+		"en/ui.hub.teams.context.json": "5ff2873c5549724860df39f48eae57585a38dacc5bfdb5ae24758ab58e981fbe",
+		"glossary (local-operator/i18n/glossary.md)": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+		"style guide (local-operator/i18n/style-guides/hi.md)": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+	},
+	"status": "clean",
+	"result": "clean",
+	"namespace": "ui.hub.teams",
+	"paths": {
+		"source": "src/i18n/catalogues/en/ui.hub.teams.json",
+		"target": "src/i18n/catalogues/hi/ui.hub.teams.json",
+		"context": "src/i18n/catalogues/en/ui.hub.teams.context.json"
+	},
+	"sha256": {
+		"source": "b9674e6bb1f862d380d45568204abcd8735eb08782bfb1351f469019b4e583b8",
+		"target": "2db41a12c1229c95b0089f3f36d8bbeaaa1026095382c4483301d962a653ae30",
+		"context": "5ff2873c5549724860df39f48eae57585a38dacc5bfdb5ae24758ab58e981fbe"
+	},
+	"key_count": {
+		"keys_audited": 1,
+		"keys_in_file": {
+			"en": 50,
+			"hi": 50
+		}
+	},
+	"counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 0
+	},
+	"findings": [],
+	"per_key": [
+		{
+			"key": "unnamed_team",
+			"severity": "none",
+			"finding_ids": [],
+			"note": "en 'this team' -> 'इस टीम'. It is the fallback name substituted into ui.hub.teams.pull_failed, whose hi value is '“{name}” pull नहीं हो सकी।' — so it renders as '“इस टीम” pull नहीं हो सकी।', a quoted noun phrase that the sentence can hold, with feminine सकी agreeing with टीम. It mirrors the shipped pages analogue ui.hub.pages.scope.org_unnamed ('इस संगठन', en 'this organization') and the glossary's settled टीम for team. Both render sites pass it only when the name is genuinely unknown (failed?.name ?? t(...) at components/org-teams-list.tsx:187 and components/public-teams-library.tsx:168). No trailing punctuation, matching en, and it reads as a name fragment rather than a sentence start, as its context note asks."
+		}
+	],
+	"verified": [
+		"completeness: 17 new keys present (16 ui.hub.pages + 1 ui.hub.teams); no value equals its key id; en and hi key sets equal at this head (pages 59/59, teams 50/50)",
+		"placeholders: parity with en proven per key — {org} in org.plan_body, org.no_access_body, empty.org.body; {category} in empty.category.title; the other 13 keys are placeholder-free. Positions are grammatical: {org} as possessor ('{org} का कोई मालिक'), as postpositional object ('आप {org} के सदस्य नहीं हैं') and as locative ('{org} में प्रकाशित'); {category} fronted before में and left undeclined, as its en context requires. No placeholder renamed, dropped, doubled or moved into an ungrammatical slot.",
+		"CLDR plurals: NO key in this delta carries a plural or a select — reported explicitly as the brief requires. The namespace's existing {count, plural, one/other} forms are untouched.",
+		"text hygiene: no manual bidi or zero-width controls (no U+200B/200C/200D/2060/FEFF, none of U+202A–202E or U+2066–2069) in any of the 17 values; all values NFC; no leading, trailing or double spaces; no space before punctuation — the style guide's 'do not insert ZWJ/ZWNJ where the orthography does not require them' holds.",
+		"punctuation parity: every en sentence-final '.' maps to danda ।; the headline, label and fragment keys (plan_headline, no_access_headline, that_organization, clear.filter, clear.search, unnamed_team) stay unpunctuated exactly like their en source; no ASCII '.' and no '…' residue.",
+		"nukta: फ़िल्टर, ज़रूरी carry nukta, as the style guide requires ('it is part of the spelling, not decoration'). No value is missing a nukta its shipped sibling has.",
+		"Devanagari spelling: all 17 values checked character by character — no malformed matra or conjunct; सूचीबद्ध, आमंत्रित, प्रकाशित, विवरण, श्रेणी, पहुँच, होंगे, हटाएँ, दिखते, सकी/सकीं are all standard spellings, and हटाएँ is the very imperative the style guide lists ('सहेजें', 'फिर से शुरू करें', 'हटाएँ', 'रद्द करें').",
+		"register: आप throughout, polite imperative only (हटाएँ, कोशिश-करें class), no तुम/तू, no 'कृपया', no '!', no padding honorifics. The तत्सम/तद्भव balance matches the shipped hi ui.hub voice exactly: तत्सम nouns where the namespace already settled them (संगठन, सदस्य, सूचीबद्ध, आमंत्रित, प्रकाशित, श्रेणी, विवरण) on an everyday तद्भव frame (अभी, कुछ, पहला, मेल खाना, खाली, हटाएँ, ज़रूरी, दिखते). No key drifts into heavy Sanskritisation or into colloquialism.",
+		"product names kept verbatim exactly as the brief requires: 'Team प्लान' in org.plan_headline and org.plan_body, 'Radient कंसोल' in org.plan_body — both half-width Latin, single-spaced, never transliterated. These plus the {org}/{category} slots are the only Latin in the delta; no other English residue.",
+		"terminology consistency: 'श्रेणी' is the settled category term (ui.common.forms.categories_input_chips.remove_category, ui.agents.settings.general.add_category, ui.onboarding.tour.agent_hub_view); 'खोज' is the settled search noun (ui.hub.skills.search_empty, ui.providers.provider_grid.clear_search, ui.chat.thread_search.*); 'हटाएँ' is the settled clear verb (ui.providers.provider_grid.clear_search, ui.chat.sidebar.search.clear says साफ़ करें — an existing split, not introduced here); 'टीम' is the glossary's settled rendering for team.",
+		"pages/teams one voice: every pages key that has a teams sibling is clause-for-clause parallel to it and reuses its frame — plan_headline and no_access_headline are byte-identical to the shipped teams values for byte-identical en, plan_body mirrors teams.org.plan_body ('…का हिस्सा है। {org} का कोई मालिक इसे Radient कंसोल में चालू कर सकता है, और फिर … यहाँ सूचीबद्ध होंगे/होंगी।'), no_access_body mirrors teams.org.no_access_body, and empty.org.body mirrors teams.org.empty ('यहाँ उसके सदस्यों को दिखते/दिखती हैं').",
+		"render-site safety: the org fallback substituted for {org} is a noun phrase in every site, so उस संगठन and इस संगठन both take का/के/में correctly (agent-hub-page.tsx:1355-1362 for the refusal bodies, :1475-1479 for empty.org.body, :1453-1455 for {category}); list_unreadable really is joined with the shared diagnosis and remedy by backendLoadErrorMessage (agent-hub-page.tsx:1284-1288), which is why its trailing danda matters and is present; the category and search empty headings render only when their own filter is live (hasFilters = selectedCategory !== null || debouncedSearch !== '', agent-hub-page.tsx:361), so neither premise is wrong.",
+		"glossary and style guide were read as the authority for these calls (glossary §1 product names, §2 team→टीम / agent→एजेंट; style-guide 'Formality & tone', 'Product-name policy', 'Punctuation & typography')."
+	],
+	"out_of_scope_pre_existing": [
+		"ui.hub.pages.browse_aria renders 'browse the hub by type' as 'प्रकार के अनुसार हब देखें' while the category term everywhere else in hi is श्रेणी — pre-existing, not touched by this delta, does not gate.",
+		"ui.hub.teams.org.empty renders en 'Teams shared into {org}' as '{org} के साथ साझा की गई टीमें' — pre-existing; the new pages empty.org.title follows the same settled '… के साथ साझा' idiom rather than diverging from it.",
+		"ui.hub.teams.org.plan_headline points with उस while its body's {org} fallback ui.hub.pages.scope.org_unnamed is 'इस संगठन' — pre-existing and inherited from en, which itself mixes 'That organization' with 'this organization'; the new pages pair reproduces it exactly and is not a translation defect."
+	],
+	"ship": "yes — clean, no findings of any severity.",
+	"normalised_for_ledger": "auditor and instance rewritten to the ledger contract by the programme manager; original auditor text preserved verbatim inside the parentheses, findings and hashes untouched",
+	"auditor_provenance": "translation-auditor (translation-auditor (lopdev reviewer-role session 7c948004; independent i18n audit of the Agent Hub publication keys at be77d308262 — not the PR coder, not the translator of these values, not any earlier ui.hub auditor))",
+	"identity_provenance": {
+		"agent": "reviewer (lopdev) — independent i18n auditor"
+	}
+}

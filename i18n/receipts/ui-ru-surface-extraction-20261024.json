@@ -1,0 +1,428 @@
+{
+  "schema": 1,
+  "locale": "ru",
+  "date": "2026-10-24",
+  "status": "translated",
+  "base_head": "82393f2110b1e0c18acecf0dca1bd8699e688e13",
+  "scope": "Reviewed surface-extraction batch: 470 manifest keys plus ui.common.errors.speech_temporarily_unavailable; no older missing-namespace backfill keys.",
+  "translated_keys": 471,
+  "namespace_count": 23,
+  "translator": {
+    "agent": "i18n-translator (lopdev team translator)",
+    "session": "6718e796ea54",
+    "model": "openrouter/moonshotai/kimi-k3.1-pro",
+    "model_provenance": "Actual served model named in the current Local Operator session context; no fallback used.",
+    "date": "2026-10-24"
+  },
+  "references": {
+    "glossary": {
+      "path": "../local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "../local-operator/i18n/style-guides/ru.md",
+      "sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+    },
+    "manifest": {
+      "path": "/Users/damian/.local-operator/sessions/21de6e67117c/scratchpad/i18n-new-key-manifest.tsv",
+      "sha256": "01892e7f1dee7a7cd4c74f10c3447fa7e326c6fd0733aaf380163373b0e3d23d",
+      "rows": 470
+    },
+    "additional_key": "ui.common.errors.speech_temporarily_unavailable"
+  },
+  "namespaces": {
+    "ui.browser.errors": {
+      "status": "translated",
+      "translated_keys": 2,
+      "namespace_total_keys": 2,
+      "source_sha256": "c76148aad81e67ae2bacc513a51a5ff219c797ea93bf274f6b6ebaa09635426a",
+      "target_sha256": "66c66f5e714e0200288aee761e424dbf6c7988da72e215f90a78127de6c764ca",
+      "context_sha256": "2b1f9eb5194709780b3c9188d7463177a4bf2aff07b9a5a438e91a2ec7a82906"
+    },
+    "ui.chat.canonical": {
+      "status": "translated",
+      "translated_keys": 17,
+      "namespace_total_keys": 47,
+      "source_sha256": "dfa9cde6984a451b75a22530303197ed8a3c8d9148685231d017299f16cfe0dd",
+      "target_sha256": "777e2571b78824afb67df05dc4d7e32ab2b57ade6e77f00d6ba5575e6a90e686",
+      "context_sha256": "953ddc573ded81d8f78aec78a81cb89dbdf6fdc6f6adf2b0945b8b4bff71077b"
+    },
+    "ui.chat.composer": {
+      "status": "translated",
+      "translated_keys": 11,
+      "namespace_total_keys": 45,
+      "source_sha256": "beced0ec43069d64bcf96415a71ef53be1ed6366848f386a2efaa4d4b77bf4df",
+      "target_sha256": "473884e820427fd8677b01e2f5de44ad010725bbaf56b9c2a2b200aa6439c237",
+      "context_sha256": "ce5cb033df55ee401da6b4bf18ac1b205799e5126392e62a9c59ec02cd715330"
+    },
+    "ui.code_review": {
+      "status": "translated",
+      "translated_keys": 1,
+      "namespace_total_keys": 76,
+      "source_sha256": "52c1c5147bded8beb2e223c43e7cdb44d236a9ab4c2722627868a5a0fca1a312",
+      "target_sha256": "161d67313db2455af16a568bc47a51dc3fc2517423c75aaf5cf4d46fef31f7e9",
+      "context_sha256": "4d60ce00b0a08f78c30aab5e1b40ddba4e086f61e828e3cf23116866b5daebb2"
+    },
+    "ui.common.account": {
+      "status": "translated",
+      "translated_keys": 20,
+      "namespace_total_keys": 38,
+      "source_sha256": "0e39546d4357107a461f4eb3774c3a17d48a29af902825e86e450809dcf51a48",
+      "target_sha256": "e37d73acb6f5e20977da4e6f67b491b0841f730af7df757779d8ef9df14f93da",
+      "context_sha256": "148dcc3c9c40ad03373b54c1394f210386290b9e9395134d12532617d0d33f1a"
+    },
+    "ui.common.actions": {
+      "status": "translated",
+      "translated_keys": 14,
+      "namespace_total_keys": 20,
+      "source_sha256": "e1d2fa68aededcc4aa67bd9527a80072859f35b8a358cadba2007696414e8235",
+      "target_sha256": "aaf005d56dfeeb3844f108d3930411f5063fae5d1e9d769530a5ac18f1b145ec",
+      "context_sha256": "160a775122143fdf72ed91a052d112f568a41105412e69f8adfdcfcc1b3b7256"
+    },
+    "ui.common.connection": {
+      "status": "translated",
+      "translated_keys": 27,
+      "namespace_total_keys": 37,
+      "source_sha256": "f4d8116323bd5fa12e2a7b7a9b95ce78be29e710088f7fa50f209b788dcfeaa5",
+      "target_sha256": "7241feb46bb1c172ead3bda903fc9828635ba0b1a77cd65a2b3cbf81ba4e73f0",
+      "context_sha256": "9d39efa215fb38d30e7b70d0df1ed293e32e33a0b72ffc838d7385fb17e7dbb2"
+    },
+    "ui.common.errors": {
+      "status": "translated",
+      "translated_keys": 131,
+      "namespace_total_keys": 135,
+      "source_sha256": "59dc7dfdbc3db2070238d457e7700d57941830a223181ea1eb4fabe9d5d7eae4",
+      "target_sha256": "9863f39fac7f92f76f2df2ea4351ae043afaee46f9a52b536284d10a68648f4e",
+      "context_sha256": "714850a99bf61133a2fb7548504dc0030a20a516bd1ca3b1dfbe70b2de5f7fb1"
+    },
+    "ui.common.speech": {
+      "status": "translated",
+      "translated_keys": 11,
+      "namespace_total_keys": 11,
+      "source_sha256": "75e394ea07a049d8a58a2cc12fedec1042e30b61e572f53740f0fac35a825eb0",
+      "target_sha256": "5b667cc74bb28563edf7feeb6fe1a91021348a038a9474e986776bfb4becaf66",
+      "context_sha256": "284ead771845e6a6b4ef5c45ddc450e44f0df76873e63b4cc794fba84475522b"
+    },
+    "ui.common.time": {
+      "status": "translated",
+      "translated_keys": 1,
+      "namespace_total_keys": 1,
+      "source_sha256": "d29ccbd6b980f727b02c9c7e60c27c0d068d8082bab2e424784bc683f1cfbdd0",
+      "target_sha256": "5436047ba2fc7843f2a63605c5ed74d6183ce751d1b5958c9b3850cf2f2243ea",
+      "context_sha256": "9d666403cd1c661075607faa0a7db78b43bdd570f3d2ce1c7f5968e26f28a6a1"
+    },
+    "ui.common.updates": {
+      "status": "translated",
+      "translated_keys": 11,
+      "namespace_total_keys": 138,
+      "source_sha256": "5bb2c4cba16a412565d9c41dd5e9233e8ad8324d07758327ddd947607b59bc82",
+      "target_sha256": "cc7e477a9afd14aae5f3adb14cfad87b4580cd72f842c1b60e698d3b115011b8",
+      "context_sha256": "5188c08320cea150fd71c3a26666ca6b0b637a94659bc6087155681b59d9614f"
+    },
+    "ui.common.viewer": {
+      "status": "translated",
+      "translated_keys": 1,
+      "namespace_total_keys": 5,
+      "source_sha256": "9db8efc731cb81ac781c732a3021587434acd26bd03d41ec41156c5672edabfe",
+      "target_sha256": "5c536e64065e0d358d3f0325e30bd7622c4abf91b354513c018a826b120dbfbc",
+      "context_sha256": "77232304d3ddc3dbe20151daddc2ee1a3c28271cdcfd7ebc54a302fe6f68f40e"
+    },
+    "ui.console.errors": {
+      "status": "translated",
+      "translated_keys": 1,
+      "namespace_total_keys": 1,
+      "source_sha256": "ef6827986b0cd0d75cb4e2aea62aa0b017b58191b5736f7a721c6afa938f344b",
+      "target_sha256": "5996a36a91c16966df40263496706c97d3498205ed7dd98851f781e9441a1222",
+      "context_sha256": "7a4e2ef6e8a081c78dab8ac422a3c82fbe268d8f1f68ca885e5f4eb9f7bed0d3"
+    },
+    "ui.hub.updates": {
+      "status": "translated",
+      "translated_keys": 56,
+      "namespace_total_keys": 56,
+      "source_sha256": "9fa15153d1a036a7f98b1d50da90d736c7f423c2981087ae1436469d23afcfdd",
+      "target_sha256": "6ce7d071b469059c6a8f5a428596130cd94e71069df2ab40357edb9d2a77c6f1",
+      "context_sha256": "d30a14eb3c3bad0bd2bde7eb1a26fd5fff5aa16ff38dfdd623ed05db4db76390"
+    },
+    "ui.installer": {
+      "status": "translated",
+      "translated_keys": 4,
+      "namespace_total_keys": 22,
+      "source_sha256": "89b4c22ea75c9c7fb1db96e226c1eed958643d3e08eb4a0317b2e4369fd4e8e9",
+      "target_sha256": "909f149bc367c7e0b70626e26595c9346fe7433eb66e8983e91dad9fbe27178a",
+      "context_sha256": "6969a13f454799d950a961da740d6585545525f0a148dade5c85e1ae81232705"
+    },
+    "ui.library.errors": {
+      "status": "translated",
+      "translated_keys": 3,
+      "namespace_total_keys": 3,
+      "source_sha256": "162f2d82448d8a77cd96d4b142018cf233dd1ebfabe37ba7ce47d4fc52195bc4",
+      "target_sha256": "bb7bb1072f52c6adbef8a010ed7356d98c38bc89b353eb75ff444af9ba5f9da4",
+      "context_sha256": "cc8e737dc8b52dbe3cc5193a9fc33f5acdb6332420c95e3fad5e1567946b247a"
+    },
+    "ui.mesh.errors": {
+      "status": "translated",
+      "translated_keys": 1,
+      "namespace_total_keys": 1,
+      "source_sha256": "285997c116c83dd475ace036931ca2a49108dba4237300be3389bcc513ff2a40",
+      "target_sha256": "9a8cc843af64f5968c014c0243810a3d5c976a9640ee8c0b7e3e755ebaace641",
+      "context_sha256": "d33ebdde6b2958258ed1e52f9aa44070c9987fe8e40287e6966ff4cfa9021299"
+    },
+    "ui.miniView": {
+      "status": "translated",
+      "translated_keys": 34,
+      "namespace_total_keys": 34,
+      "source_sha256": "50202e2b2c757708215867b51811ca4c72dd1814c747960a98a4f1929925119e",
+      "target_sha256": "4343472062b81b4b23f8f7f66494154e113fea895b25dee643cbd4aaad5b36f4",
+      "context_sha256": "22c12b345086a5ae0f1efacf3e9256f2890d8621912f8b0c642554a50f838f07"
+    },
+    "ui.projects": {
+      "status": "translated",
+      "translated_keys": 3,
+      "namespace_total_keys": 427,
+      "source_sha256": "78d8aea1536bad3a731455d50fe3361e620ffb34f914368dfbbedc7b7d277883",
+      "target_sha256": "931c5450136518ddb01fcd8171b28ceeeb1b5e699d26ffe54f2843a264d2d0c2",
+      "context_sha256": "7eaaba481914ce8fc0692c6eaee39ad04e80d9cddc82f0c83a00bebc96af28d4"
+    },
+    "ui.schedules.errors": {
+      "status": "translated",
+      "translated_keys": 3,
+      "namespace_total_keys": 3,
+      "source_sha256": "05e2bc81700cb5ef326144dcf2ded7fee9b351b02e56226cfc800a9bdcf07961",
+      "target_sha256": "08d8174c17517087a7cd2a1ae9da2ed62700c2e939c1915460828d4ff947d4d5",
+      "context_sha256": "e622fe4a49850f864e15cda2fe0d6d724f8ec8e0769f1efb07adf243a51db69b"
+    },
+    "ui.settings": {
+      "status": "translated",
+      "translated_keys": 6,
+      "namespace_total_keys": 45,
+      "source_sha256": "3a4316b07423741b3a5bb670a82cb07ae260ef247c40fd039f5ad74213efd625",
+      "target_sha256": "696b6cdcc4a21402f9320dbb774ff2e4e6a68a01c483972fb6f7185008dbe92a",
+      "context_sha256": "bc524adfbef11d7aa28b074b5884076ab388526f44a344feaf53cabb51bb9692"
+    },
+    "ui.settings.appearance": {
+      "status": "translated",
+      "translated_keys": 59,
+      "namespace_total_keys": 69,
+      "source_sha256": "be349b938ef72437bfb68cdcbd6c168247edff20f5efe6b50abe981183769729",
+      "target_sha256": "cea02d53f25013ac7d75343a0f2c0dbcbc3d89eca0e22505ec4fb547d637143b",
+      "context_sha256": "c18933608a9e715e4d7ea6fafd6096c154991e8829f79a2653a3726802cc7f3f"
+    },
+    "ui.settings.shortcuts": {
+      "status": "translated",
+      "translated_keys": 54,
+      "namespace_total_keys": 63,
+      "source_sha256": "0942be5821493ed1353b222905589e2a45204def2c2d1a4b26e1717e4cc7c99f",
+      "target_sha256": "0ce9956474d363e363d25f58fb5615cd9919ad2aecd6059dd2b6078dbe13c318",
+      "context_sha256": "9c74fb267e6504114980b62f75efa1b02c79d76dbe1a20f1e476b56d9865c215"
+    }
+  },
+  "checks": {
+    "generator": "node scripts/i18n/generate.mjs; node scripts/i18n/generate.mjs --check — byte-identical fresh generation.",
+    "targeted_icu_runtime": "471/471 assigned keys rendered through the real Russian runtime; argument names, number/date skeletons, selects, markup and plural selectors preserved; 8/8 plural messages carry one/few/many/other and rendered at 1, 2, 5 and 1.5; ::group-off verified at 1234/5678.",
+    "pseudo_localization": "471/471 assigned messages rendered with expanded pseudo-localized literal text and intact ICU tokens.",
+    "locale_parity_targeted": "5/5 Russian non-coverage tests passed: non-empty, unique keys, known keys, ICU placeholders, no English stubs. Full parity remains red only for 34 older out-of-scope ru keys in ui.chat.canonical and ui.common.viewer plus other locale lanes.",
+    "targeted_tests": "24/24 passed: format, ru-activation, common-status-copy and common-control-copy.",
+    "typecheck": "pnpm check-types — main and renderer passed.",
+    "other_gates": "context-parity, check-strings and check-added-strings passed.",
+    "expected_integration_failures": "ledger-check failed (266 findings across 438 entries); check-coverage failed (2826 disallowed missing keys) pending independent audits and integration of all extraction/backfill lanes. No ledger, allowance or baseline edits made."
+  },
+  "terminology_decisions": [
+    "Preserved established Russian UI terminology: хаб, холст, глубина рассуждений, делегированные сессии, озвучивание, задание, учётные данные.",
+    "aside: отдельный вопрос / спросить отдельно, matching the existing composer action.",
+    "quick send: быстрая отправка; seat/addressee: адресат; tenant: тенант; run details: детали запуска; code review: проверка кода.",
+    "Theme/product names and technical tokens remain unchanged; CRT rendered as ЭЛТ and Schoonover as Шуновер in theme prose."
+  ],
+  "overflow": "No label flagged after static width review. Run-details shortcut copy was shortened to детали запуска. Wrapping tooltips/status prose and rendered fit were not independently exercised.",
+  "audit": "No independent linguistic audit, auditor verdict, allowance change, baseline change or ledger update is claimed.",
+  "revision": "round-2 remediation after two independent round-1 audits",
+  "previous_head": "4274b77e8f03583ad3a268c90941cad1945b6d60",
+  "remediation": {
+    "audits_applied": [
+      {
+        "receipt": "/Users/damian/.local-operator/sessions/b1e685da465f/scratchpad/ru-surface-round1-audit-receipt.json",
+        "findings": "0 blocker, 5 major, 3 minor"
+      },
+      {
+        "receipt": "/Users/damian/.local-operator/sessions/e2b518acc72f/scratchpad/ru-surface-round1-second-e2b518acc72f.json",
+        "findings": "0 blocker, 7 major, 5 minor"
+      }
+    ],
+    "changed_keys": 23,
+    "changed_namespaces": [
+      "ui.hub.updates",
+      "ui.miniView",
+      "ui.common.errors",
+      "ui.settings.shortcuts",
+      "ui.common.connection",
+      "ui.common.updates",
+      "ui.settings.appearance"
+    ],
+    "findings": [
+      {
+        "ids": [
+          "RU-SURFACE-R1-1",
+          "RU2-HUB-M2"
+        ],
+        "key": "ui.hub.updates.rollup.review",
+        "fix": "All four branches use the impersonal «Требуется ваша проверка», matching the sibling rollups’ «Не удалось обновить: {count}» shape, so no count can select a wrong verb."
+      },
+      {
+        "ids": [
+          "RU-SURFACE-R1-2",
+          "RU2-HUB-M1"
+        ],
+        "key": "ui.hub.updates.mark.applied",
+        "fix": "«Элемент «{name}» обновлён из хаба»: a masculine head noun governs the participle, so any hub item name is grammatical."
+      },
+      {
+        "ids": [
+          "RU-SURFACE-R1-3",
+          "RU2-MINI-M1",
+          "RU2-MINI-M2",
+          "RU2-MINI-M3",
+          "RU2-MINI-M4"
+        ],
+        "keys": [
+          "ui.miniView.context",
+          "ui.miniView.context_estimated",
+          "ui.miniView.context_window",
+          "ui.miniView.context_window_estimated"
+        ],
+        "fix": "Token noun moved into a label: «Контекст (токены): {used} из {window}.», grammatical at 1/2/1,5/1234."
+      },
+      {
+        "ids": [
+          "RU-SURFACE-R1-4",
+          "RU2-ERR-M1"
+        ],
+        "key": "ui.common.errors.file_preview_cap",
+        "fix": "Invariant SI unit «Б»: «Размер {filePath} — {size} Б; предел предпросмотра — {cap} Б»."
+      },
+      {
+        "ids": [
+          "RU-SURFACE-R1-5",
+          "RU2-SHORT-m1",
+          "RU2-SHORT-m2"
+        ],
+        "keys": [
+          "ui.settings.shortcuts.action.open_code_review",
+          "ui.settings.shortcuts.row.code_review"
+        ],
+        "fix": "Established destination name «ревью кода» adopted."
+      },
+      {
+        "ids": [
+          "RU2-SHORT-m3",
+          "RU2-SHORT-m4"
+        ],
+        "keys": [
+          "ui.settings.shortcuts.action.open_run_details",
+          "ui.settings.shortcuts.row.execution"
+        ],
+        "fix": "Established «сведения о запуске» adopted over the earlier shortened «детали запуска»."
+      },
+      {
+        "ids": [
+          "RU-SURFACE-R1-6"
+        ],
+        "keys": 8,
+        "namespace": "ui.common.connection",
+        "fix": "«вход у провайдера» -> «вход в учётную запись провайдера» in all 8 strings."
+      },
+      {
+        "ids": [
+          "RU-SURFACE-R1-7"
+        ],
+        "keys": [
+          "ui.common.errors.speech_radient_sign_in",
+          "ui.common.errors.speech_radient_sign_in_legacy"
+        ],
+        "fix": "«Сеанс Radient больше не действителен. Войдите снова …»."
+      },
+      {
+        "ids": [
+          "RU-SURFACE-R1-8"
+        ],
+        "key": "ui.common.updates.error.quit",
+        "fix": "«… Закройте его самостоятельно, чтобы обновление завершилось.»"
+      },
+      {
+        "ids": [
+          "RU2-APPEAR-m1"
+        ],
+        "key": "ui.settings.appearance.theme.catppuccin_mocha",
+        "fix": "«Исходный вариант» for “original flavour”, «тёмно-синий» for the navy ink."
+      }
+    ],
+    "conflicting_proposals": "Where the two audits proposed different exact values for one key, one variant was applied and is named above: rollup.review takes the second auditor’s impersonal form to match the sibling rollup shape; mark.applied takes the second auditor’s head-noun sentence because the sibling marks are full sentences; miniView takes the first auditor’s parenthetical label because it is shorter for the compact quick-send surface and reads more idiomatically.",
+    "repair_evidence": "Real Russian runtime renders captured at 1, 2, 5, 1,5 and 1234 for the plural rollup; 1/2/1,5/1234 for the four miniView forms and the byte cap; the 471-key structural ICU, all-key render, plural and pseudo checks were re-run on this head.",
+    "static_fit": "Unchanged from round 1 except that the run-details and byte-cap strings are now shorter; no rendered-frame or geometry claim is made here. Static fit remains a separate review."
+  },
+  "independent_audit_remediation": {
+    "round": 1,
+    "date": "2026-10-24",
+    "head_before": "7a1fdf200ce785f959b2e140b4a361ebbf8b4b3c",
+    "base": "40462495827dfb0e1bfacb8643da805912493a5b",
+    "audit_receipt": "i18n/receipts/0f5238900a89-surfaces.json",
+    "auditor": {
+      "agent": "translation-auditor",
+      "session": "0f5238900a89"
+    },
+    "disposition": {
+      "blockers_fixed": 0,
+      "required_majors_fixed": 0,
+      "clear_minors_fixed": 3,
+      "nits_fixed": 0,
+      "deferred": 1,
+      "changed_keys": 5
+    },
+    "changed_namespaces": [
+      "ui.chat.canonical",
+      "ui.chat.composer",
+      "ui.common.errors"
+    ],
+    "changes": {
+      "ui.chat.canonical": [
+        {
+          "key": "ui.chat.canonical.transcript.missing_session",
+          "finding": "RU-S1 minor glossary: «устройство» used for the source's «machine»",
+          "applied": "Этого разговора больше нет на этом компьютере."
+        },
+        {
+          "key": "ui.chat.canonical.transcript.missing_session_detail",
+          "finding": "RU-S1 related key: the same sentence pair used «устройство» for the machine",
+          "applied": "Он был удалён или принадлежит компьютеру, к которому это приложение не подключено."
+        }
+      ],
+      "ui.chat.composer": [
+        {
+          "key": "ui.chat.composer.placeholder.aside",
+          "finding": "RU-S2 minor accuracy: «отдельно» drops the source's off-the-record promise",
+          "applied": "Спросите без записи — Esc закрывает вопрос"
+        }
+      ],
+      "ui.common.errors": [
+        {
+          "key": "ui.common.errors.speech_radient_sign_in",
+          "finding": "RU-S3 minor glossary: «сеанс» replaces the batch's «вход» for sign-in",
+          "applied": "Вход в Radient больше не работает. Войдите снова в настройках."
+        },
+        {
+          "key": "ui.common.errors.speech_radient_sign_in_legacy",
+          "finding": "RU-S3 related key: the legacy spelling carried the same drift",
+          "applied": "Вход в Radient больше не работает. Войдите снова на странице настроек."
+        }
+      ]
+    },
+    "deferred": [
+      {
+        "key": "ui.chat.canonical.supplement.file_actions.open_in_canvas",
+        "finding": "RU-S4 nit consistency: «Открыть в Canvas» vs the shipped ru surface term «Холст»",
+        "reason": "The en sidecar says Canvas is the product's pane name and stays untranslated, while every other shipped ru surface renders it «Холст». That is a source/context conflict, not a translator deviation; changing this key in isolation would split ru across two terms. Resolved at source with the extraction owner."
+      }
+    ],
+    "residual_risks": [
+      "RU-S4 is recorded in the audit thread rather than a new issue, per the repository's no-issue rule for deferred findings."
+    ]
+  }
+}

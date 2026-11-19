@@ -38,9 +38,16 @@ import type { DesktopChildTranscriptPage } from "../../../../../../shared/deskto
 import type { LoadOlderOutcome } from "../../canonical/load-older";
 import {
 	EMPTY_TRANSCRIPT,
+	type TranscriptRecord,
 	type TranscriptState,
 	applyHistoryPage,
 } from "../../canonical/transcript-reducer";
+import { fetchDiffPage } from "../trace/diff-history";
+import {
+	admitVerifiedDiffBinding,
+	rawDiffBindingCandidates,
+} from "../trace/diff-history-model";
+import { launchRecordFrom } from "./run-detail-model";
 
 /** At most one pulse-driven read per second, whatever the pulse's own rate. */
 const PULSE_MIN_INTERVAL_MS = 1_000;
@@ -186,6 +193,121 @@ export function useChildTranscript({
 		[],
 	);
 
+	/*
+	 * RAW CHILD DIFF BINDINGS ARE NOT PAINT AUTHORITY (QA round 3 on
+	 * local-operator#3762). `subagents.transcript` serves the child's journal
+	 * VERBATIM, so a row shaped like `tool_call_diff_binding_v1` may be one an
+	 * agent forged. A candidate is first held to the strict shape for THIS
+	 * child (`rawDiffBindingCandidates`: exact fields, `session_id` = the
+	 * viewed child, never the parent), then painted only once the scoped
+	 * full-diff GET for (parent, child, call) answers - the core's own
+	 * containment check. A 404 or failed lookup paints nothing: no stand-in,
+	 * no completed row.
+	 *
+	 * Bounded: one verification in flight per view, in page order, each call
+	 * asked at most once per visit (`checks`); a view change drops the queue and
+	 * any late answer (`key` + epoch). The verdict per call id is cached for the
+	 * visit so a re-read page re-admits its NEW payload objects synchronously -
+	 * admission marks objects, and every read builds fresh ones.
+	 */
+	const bindingChecksRef = useRef<{
+		key: string;
+		epoch: number;
+		calls: Map<string, "pending" | "admitted" | "refused">;
+		queue: { payload: object; callId: string; entry: unknown }[];
+		running: boolean;
+	}>({ key: "", epoch: -1, calls: new Map(), queue: [], running: false });
+	const bindingChecks = useCallback(() => {
+		const view = epochRef.current;
+		if (
+			bindingChecksRef.current.key !== view.key ||
+			bindingChecksRef.current.epoch !== view.epoch
+		)
+			bindingChecksRef.current = {
+				key: view.key,
+				epoch: view.epoch,
+				calls: new Map(),
+				queue: [],
+				running: false,
+			};
+		return bindingChecksRef.current;
+	}, []);
+	/** Before a merge: re-admit candidates this visit already verified. */
+	const admitKnownBindings = useCallback(
+		(page: DesktopChildTranscriptPage) => {
+			const checks = bindingChecks();
+			for (const candidate of rawDiffBindingCandidates(
+				page.entries ?? [],
+				childId,
+			)) {
+				if (checks.calls.get(candidate.binding.callId) === "admitted")
+					admitVerifiedDiffBinding(candidate.payload, "archived");
+			}
+		},
+		[bindingChecks, childId],
+	);
+	/** After a merge: verify unknown candidates, one at a time. */
+	const verifyBindings = useCallback(
+		(page: DesktopChildTranscriptPage) => {
+			if (!sessionId || !childId) return;
+			const checks = bindingChecks();
+			const entries = page.entries ?? [];
+			for (const candidate of rawDiffBindingCandidates(entries, childId)) {
+				const callId = candidate.binding.callId;
+				if (checks.calls.has(callId)) continue;
+				checks.calls.set(callId, "pending");
+				const entry = entries.find((row) => row.payload === candidate.payload);
+				checks.queue.push({ payload: candidate.payload, callId, entry });
+			}
+			if (checks.running) return;
+			checks.running = true;
+			const scope = { sessionId, childId };
+			void (async () => {
+				while (checks.queue.length > 0) {
+					const next = checks.queue.shift();
+					if (!next) break;
+					let answered: Awaited<ReturnType<typeof fetchDiffPage>> | null = null;
+					try {
+						answered = await fetchDiffPage(scope, next.callId, {
+							start: 0,
+							offset: 0,
+						});
+					} catch {
+						answered = null;
+					}
+					// A late answer for a view the reader left is dropped whole.
+					if (bindingChecksRef.current !== checks) return;
+					const state =
+						answered === null
+							? null
+							: answered === "not_found"
+								? "not_found"
+								: answered.state;
+					const admitted = admitVerifiedDiffBinding(next.payload, state);
+					checks.calls.set(next.callId, admitted ? "admitted" : "refused");
+					if (!admitted || !next.entry) continue;
+					/*
+					 * Re-merge ONLY the verified row, as a non-contiguous set: the page it
+					 * came from may be older than what the reader now holds, and
+					 * re-applying the whole page could roll newer rows back.
+					 */
+					const single = {
+						...page,
+						entries: [next.entry],
+					} as DesktopChildTranscriptPage;
+					setTranscript((previous) =>
+						applyHistoryPage(previous, single, {
+							keepPaging: true,
+							statedByOwner: false,
+						}),
+					);
+				}
+				checks.running = false;
+			})();
+		},
+		[bindingChecks, childId, sessionId, setTranscript],
+	);
+
 	const readTail = useCallback(async (): Promise<void> => {
 		if (!sessionId || !childId) return;
 		const requested = `${sessionId}:${childId}`;
@@ -199,7 +321,9 @@ export function useChildTranscript({
 			});
 			if (keyRef.current !== requested) return;
 			setState(page.state);
+			admitKnownBindings(page);
 			setTranscript((previous) => merge(previous, page));
+			verifyBindings(page);
 		} catch {
 			/*
 			 * A failed read is an outcome, not a crash: the route answers `404` for
@@ -212,7 +336,14 @@ export function useChildTranscript({
 			if (keyRef.current !== requested) return;
 			setState("error");
 		}
-	}, [childId, merge, sessionId, setTranscript]);
+	}, [
+		admitKnownBindings,
+		childId,
+		merge,
+		sessionId,
+		setTranscript,
+		verifyBindings,
+	]);
 
 	/** Schedule a tail read, coalescing to one per second. */
 	const scheduleTail = useCallback(() => {
@@ -321,12 +452,14 @@ export function useChildTranscript({
 			 * the guard sees a tail read that landed while the page was out.
 			 */
 			const previous = transcriptRef.current;
+			admitKnownBindings(page);
 			const merged = merge(
 				previous,
 				page,
 				previous.oldestId === before ? { pagedBefore: before } : undefined,
 			);
 			setTranscript(merged);
+			verifyBindings(page);
 			setOlderFailed(false);
 			return {
 				kind: "applied",
@@ -346,7 +479,14 @@ export function useChildTranscript({
 		} finally {
 			if (stillHere()) setLoadingOlder(false);
 		}
-	}, [childId, merge, sessionId, setTranscript]);
+	}, [
+		admitKnownBindings,
+		childId,
+		merge,
+		sessionId,
+		setTranscript,
+		verifyBindings,
+	]);
 	const loadOlder = useCallback(
 		async (): Promise<boolean> =>
 			(await loadOlderDetailed()).kind === "applied",
@@ -361,4 +501,67 @@ export function useChildTranscript({
 		loadOlder,
 		loadOlderDetailed,
 	};
+}
+
+/**
+ * The child's launch row, point-read once per reader visit (review round 1, R1).
+ *
+ * WHY: the tail page above does not reach a busy child's launch row, and that
+ * row is the only place the WHOLE brief lives (the roster carries a 200-char
+ * clip). Paging the whole history in to read one row would cost a full scan
+ * per page; the route's `entry_id` answers that one row instead.
+ *
+ * CONSTRAINTS:
+ * - Lazy: asked only while the reader is open and `wanted` holds (the loaded
+ *   pages are partial and lack the row, `wantsLaunchRow`), never for the list.
+ * - At most ONE request per child + launch id: the row is durable, so a
+ *   second read could only return the same text. A failure is not retried;
+ *   the reader keeps its stand-in (the roster's longest brief).
+ * - An older runtime ignores `entryId` and answers its newest row; that page is
+ *   matched by id (`launchRecordFrom`) and yields `null`, so the stand-in stays.
+ */
+export function useChildLaunchRow({
+	sessionId,
+	childId,
+	launchMessageId,
+	wanted,
+}: {
+	sessionId: string | null;
+	childId: string | null;
+	launchMessageId: string;
+	wanted: boolean;
+}): Extract<TranscriptRecord, { kind: "user" }> | null {
+	const key = `${sessionId ?? ""}:${childId ?? ""}:${launchMessageId}`;
+	const [found, setFound] = useState<{
+		key: string;
+		record: Extract<TranscriptRecord, { kind: "user" }> | null;
+	} | null>(null);
+	const askedRef = useRef<string | null>(null);
+	const keyRef = useRef(key);
+	keyRef.current = key;
+
+	useEffect(() => {
+		if (!wanted || !sessionId || !childId || !launchMessageId) return;
+		if (askedRef.current === key) return;
+		askedRef.current = key;
+		void (async () => {
+			try {
+				const page = await desktopResult<DesktopChildTranscriptPage>({
+					op: "subagents.transcript",
+					sessionId,
+					childId,
+					entryId: launchMessageId,
+					// Bounds an older runtime's answer to one tail row.
+					limit: 1,
+				});
+				if (keyRef.current !== key) return;
+				const records = applyHistoryPage(EMPTY_TRANSCRIPT, page).records;
+				setFound({ key, record: launchRecordFrom(records, launchMessageId) });
+			} catch {
+				// Degrade to the stand-in: the brief is still on screen, clipped.
+			}
+		})();
+	}, [childId, key, launchMessageId, sessionId, wanted]);
+
+	return found?.key === key ? found.record : null;
 }

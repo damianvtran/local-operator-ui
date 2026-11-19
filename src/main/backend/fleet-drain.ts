@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 import {
 	type FleetRosterRow,
 	type ServingWorkState,
@@ -243,8 +244,8 @@ export async function waitForFleetIdle(input: {
 export function fleetDrainRefusalSentence(
 	outcome: Extract<FleetDrainOutcome, { kind: "refused" }>,
 ): string {
+	// A whole number handed to the plural rule: the locale picks the unit form.
 	const minutes = Math.max(1, Math.round(outcome.waitedMs / 60_000));
-	const waited = `${minutes} minute${minutes === 1 ? "" : "s"}`;
 	/**
 	 * The closing clause: what the app did NOT leave on disk, and what the server
 	 * is running as a result.
@@ -259,20 +260,19 @@ export function fleetDrainRefusalSentence(
 	 * What remains is the install-less refusal, which is exactly what the rebuild
 	 * install leg produces: its drain runs BEFORE anything is installed.
 	 */
-	const closing =
-		"Nothing was installed and the server keeps running the build it loaded; the app will offer this update again.";
+	const closing = t("ui.updates.service.fleet.closing");
 	if (outcome.because === "unknown") {
 		const lead = outcome.credentialsRefused
-			? "The server refused this app's credentials, so the app could not read which sessions are running on this machine."
-			: "The app could not read which sessions are running on this machine, so it did not update the server.";
-		return `${lead}\n\nReading an unreadable fleet as idle could cut off a turn that is in flight, so the app waited ${waited} and then stopped. ${closing}`;
+			? t("ui.updates.service.fleet.unknown.credentials_refused")
+			: t("ui.updates.service.fleet.unknown.unreadable");
+		return `${lead}\n\n${t("ui.updates.service.fleet.unknown.body", { minutes, closing })}`;
 	}
 	const names = outcome.busy
 		.slice(0, 3)
 		.map((row) => row.name || row.sessionId)
 		.join(", ");
-	const more =
-		outcome.busy.length > 3 ? ` and ${outcome.busy.length - 3} more` : "";
+	// The overflow is a count for the plural rule, not a spliced " and N more".
+	const extra = Math.max(0, outcome.busy.length - 3);
 	/*
 	 * The zero-busy fallback says what was MEASURED and no more: a refused roster
 	 * read at the end of the budget leaves `busy` empty, and the old sentence
@@ -281,9 +281,13 @@ export function fleetDrainRefusalSentence(
 	 */
 	const lead =
 		outcome.busy.length === 0
-			? "The app could not name the sessions that were still working."
-			: `${outcome.busy.length} session${outcome.busy.length === 1 ? " is" : "s are"} still running a turn on this machine: ${names}${more}.`;
-	return `${lead}\n\nThe app waited ${waited} for them to finish and then stopped rather than cut a turn short. ${closing}`;
+			? t("ui.updates.service.fleet.busy.none_named")
+			: t("ui.updates.service.fleet.busy.lead", {
+					count: outcome.busy.length,
+					names,
+					extra,
+				});
+	return `${lead}\n\n${t("ui.updates.service.fleet.busy.body", { minutes, closing })}`;
 }
 
 /**

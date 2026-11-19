@@ -1,0 +1,287 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "agent": "translation-auditor",
+  "model": "deepseek/deepseek-flash",
+  "model_provenance": "Session model header reports deepseek/deepseek-flash; this audit used no model switch, role pin or fallback.",
+  "fallback": "none",
+  "instance": "9eef1582349e",
+  "session": "9eef1582349e",
+  "locale": "zh-CN",
+  "namespace": "ui.notices",
+  "branch": "feat/i18n-toasts",
+  "head": "a32f7349e3efff461cdfa63674b86ddbc21bf955",
+  "previous_head": "ec4518da560867e897c290ddf8abc3b2496a4b59",
+  "scope": "ec4518da560867e897c290ddf8abc3b2496a4b59..a32f7349e3efff461cdfa63674b86ddbc21bf955",
+  "date": "2026-10-25",
+  "audited_at_utc": "2026-10-25T13:17:02Z",
+  "audit_kind": "delta re-audit after remediation (round 2 of the zh-CN ui.notices audit)",
+  "audit_round": 2,
+  "result": "clean",
+  "status": "passed",
+  "verdict": "clean",
+  "keys_read": 94,
+  "delta_keys_read": 4,
+  "unchanged_keys_revalidated_structurally": 90,
+  "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "sha256": {
+    "en": "f806e02def13361717f2db882ab91f407ca7f7b023da7be9e19b26f0e9c4302a",
+    "zh-CN": "ca333c70c9ced19b01c59d09c45add815dbc237ad034fcf12c4be73dbd9937c8",
+    "context": "2980f9d4a5d99d7b32c1a752ac462a4f503488ac0d49e2465e10ce7f99ee0859"
+  },
+  "reference_sha256": {
+    "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+  },
+  "inputs": {
+    "source": "src/i18n/catalogues/en/ui.notices.json",
+    "context": "src/i18n/catalogues/en/ui.notices.context.json",
+    "target": "src/i18n/catalogues/zh-CN/ui.notices.json",
+    "style_guide": "~/local-operator/i18n/style-guides/zh-CN.md",
+    "glossary": "~/local-operator/i18n/glossary.md",
+    "established_terminology_sampled": [
+      "src/i18n/catalogues/zh-CN/ui.chat.asks.json",
+      "src/i18n/catalogues/zh-CN/ui.chat.pickers.json",
+      "src/i18n/catalogues/zh-CN/ui.chat.dialogs.json",
+      "src/i18n/catalogues/zh-CN/ui.chat.sidebar.json",
+      "src/i18n/catalogues/zh-CN/ui.agents.settings.json",
+      "src/i18n/catalogues/zh-CN/ui.agents.refusals.json",
+      "src/i18n/catalogues/zh-CN/ui.hub.json",
+      "src/i18n/catalogues/zh-CN/ui.browser.json",
+      "src/i18n/catalogues/zh-CN/ui.common.updates.json",
+      "src/i18n/catalogues/zh-CN/ui.canvas.json"
+    ]
+  },
+  "independence": {
+    "authored_translation": false,
+    "authored_remediation": false,
+    "translator_session": "not recorded (i18n/ledger.json has no ui.notices row)",
+    "distinct_from_translator": true,
+    "repo_edits": false,
+    "unchanged_namespaces_reaudited": false,
+    "note": "Read-only on every catalogue and code file; this audit wrote only this receipt."
+  },
+  "translator": {
+    "agent": "not recorded",
+    "note": "i18n/ledger.json has no ui.notices row at this head (JSON scan: zero occurrences of 'ui.notices'), so translator identity is not derivable from repo artifacts. This audit is independent of the producing agents and read only the catalogue bytes."
+  },
+  "delta": {
+    "range": "ec4518da560867e897c290ddf8abc3b2496a4b59..a32f7349e3efff461cdfa63674b86ddbc21bf955",
+    "changed_keys": [
+      {
+        "key": "ui.notices.chat.archive_offered_title",
+        "change": "added",
+        "old": null,
+        "new": "“{title}”",
+        "verdict": "pass",
+        "note": "New key, punctuation only: U+201C + {title} + U+201D is the zh-CN pair the style guide mandates (and the corpus already uses 146 times each); it matches what the pre-delta helper hardcoded, so the zh archive toast renders identically."
+      },
+      {
+        "key": "ui.notices.chat.ask_changed_named",
+        "change": "modified",
+        "old": "已更新对{name}的回答",
+        "new": "已更新{name}中的回答",
+        "verdict": "pass",
+        "note": "ZH-1 applied byte-for-byte: the conversation now sits in the 中 adverbial slot used by its ask_declined_named / ask_dismissed_named siblings."
+      },
+      {
+        "key": "ui.notices.main.update_hold_body",
+        "change": "modified",
+        "old": "更新至版本{version}的安装仍在进行——现在打开应用会取消安装。{relaunch}点击此通知也不会让应用更早打开。",
+        "new": "正在安装版本{version}的更新——现在打开应用会取消安装。{relaunch}点击此通知也不会让应用更早打开。",
+        "verdict": "pass",
+        "note": "ZH-2 applied byte-for-byte: direct ongoing-act phrasing (正在安装…的更新) replaces the stacked nominalisation; composes cleanly with both relaunch clauses and with an empty one."
+      },
+      {
+        "key": "ui.notices.main.update_hold_no_relaunch",
+        "change": "modified",
+        "old": "此安装无法安排自动重启，请在安装完成后手动启动Local Operator。",
+        "new": "无法为此安装安排自动重启，请在安装完成后手动启动Local Operator。",
+        "verdict": "pass",
+        "note": "ZH-3 applied byte-for-byte: 无法为此安装安排 fronts the native construction; the clause still ends in 。 and joins cleanly."
+      }
+    ],
+    "removed_keys": [],
+    "other_zh_changes": [],
+    "unchanged_keys": 90,
+    "english_delta": {
+      "added": [
+        "ui.notices.chat.archive_offered_title"
+      ],
+      "changed": [],
+      "removed": [],
+      "note": "No existing English value changed in the range, so the first-round accuracy judgments for the 90 unchanged zh-CN keys are unaffected."
+    },
+    "locale_parity": {
+      "en": 94,
+      "zh-CN": 94,
+      "all_seven_locales": "all 7 locales carry 94 keys, no missing and no extra"
+    }
+  },
+  "prior_dispositions": [
+    {
+      "id": "ZH-1",
+      "severity": "minor",
+      "key": "ui.notices.chat.ask_changed_named",
+      "first_round_proposal": "已更新{name}中的回答",
+      "head_value": "已更新{name}中的回答",
+      "status": "fixed",
+      "match": "byte-for-byte"
+    },
+    {
+      "id": "ZH-2",
+      "severity": "minor",
+      "key": "ui.notices.main.update_hold_body",
+      "first_round_proposal": "正在安装版本{version}的更新——现在打开应用会取消安装。{relaunch}点击此通知也不会让应用更早打开。",
+      "head_value": "正在安装版本{version}的更新——现在打开应用会取消安装。{relaunch}点击此通知也不会让应用更早打开。",
+      "status": "fixed",
+      "match": "byte-for-byte"
+    },
+    {
+      "id": "ZH-3",
+      "severity": "minor",
+      "key": "ui.notices.main.update_hold_no_relaunch",
+      "first_round_proposal": "无法为此安装安排自动重启，请在安装完成后手动启动Local Operator。",
+      "head_value": "无法为此安装安排自动重启，请在安装完成后手动启动Local Operator。",
+      "status": "fixed",
+      "match": "byte-for-byte"
+    }
+  ],
+  "findings": [],
+  "checks": [
+    {
+      "check": "key-set parity both directions",
+      "result": "PASS",
+      "detail": "94 English keys and 94 zh-CN keys, no missing and no extra, same key order; all seven locale catalogues carry 94 keys."
+    },
+    {
+      "check": "delta isolation",
+      "result": "PASS",
+      "detail": "git diff ec4518da56..a32f7349e3 shows exactly four zh-CN values changed: archive_offered_title added, ask_changed_named / update_hold_body / update_hold_no_relaunch modified, zero removed. The three modified values equal the first receipt's ZH-1/2/3 proposals byte-for-byte, and no other zh-CN value differs between the two heads."
+    },
+    {
+      "check": "ICU parse and argument integrity",
+      "result": "PASS",
+      "detail": "Parsed all 94 messages with @formatjs/icu-messageformat-parser 3.5.21: 0 parse failures, 0 argument mismatches, 0 number-skeleton mismatches. Argument sets are identical per key ({title}, {name}, {version}, {relaunch}, {count}, {index}, {keys}, {detail}, {reason}, {goal}, {origin}, {existing}, {stored}, {published}). No tags. Number skeletons {index, number} and {count, number} survive."
+    },
+    {
+      "check": "plural categories are the locale's CLDR set",
+      "result": "PASS",
+      "detail": "Intl.PluralRules('zh-CN').resolvedOptions().pluralCategories = ['other']. The 10 plural messages (config_run_changed, config_run_updated, drafts_offered_name, drafts_offered_verb, mark_all_read_cleared/deferred/superseded/unknown, credentials.unconfirmed, credentials.unstored) use `other` only; no invented one/few/many arm. Each plural message is selected by {count}; drafts_offered_verb receives {count} without printing it, as its English source does."
+    },
+    {
+      "check": "plural and regression rendering at 0/1/2/5/21/1000000",
+      "result": "PASS",
+      "detail": "Formatted every zh-CN message with intl-messageformat 12.1.3 on Node v24.22.1 at counts 0, 1, 2, 5, 21 and 1000000 with every argument supplied from the English AST: 0 format errors."
+    },
+    {
+      "check": "placeholder byte survival",
+      "result": "PASS",
+      "detail": "Brace-matched AST comparison of every message: {title}, {name}, {version} and {relaunch} survive exactly; no placeholder added, dropped, renamed or reordered. /credential, /goal, '<text>', Local Operator, Aida and ID remain byte-identical Latin runs; zh-CN adds no placeholder of its own."
+    },
+    {
+      "check": "no untranslated prose",
+      "result": "PASS",
+      "detail": "93 of 94 zh-CN values differ from English. The single identical value is ui.notices.chat.archive_offered_title, which is U+201C + {title} + U+201D and contains no prose; it is allowlisted in scripts/i18n/locale-parity.test.mjs with the reason 'quotation marks around an untranslated user-data placeholder'. No English sentence survives; the remaining Latin runs are kept product/command/machine tokens."
+    },
+    {
+      "check": "register and address form",
+      "result": "PASS",
+      "detail": "你 appears 4 times, 您 0 times across the namespace; no 啦/哦/呀 and no ！. The changed strings are verb-forward and pronoun-free; ask_changed_named has no terminal 。, matching its English source and its three sibling receipts. 请 in update_hold_no_relaunch is the same pre-existing locale-wide observation recorded in the first audit (that audit measured 181 corpus imperatives against 6 English 'please' values), not a new finding."
+    },
+    {
+      "check": "glossary and established terminology",
+      "result": "PASS",
+      "detail": "更新/版本/安装 in the update-hold family; 归档 in archive_offered_verb and archive_failed; 对话 in archive_offered_no_name; 回答 in ask_changed_named; 智能体 unchanged. 自动重启 was present in the first-round string and was assessed there against the corpus (重启应用 ×5, 重新启动 ×5); this delta did not change that term. No glossary drift introduced."
+    },
+    {
+      "check": "punctuation, spacing and typography",
+      "result": "PASS",
+      "detail": "Changed values use U+201C/U+201D quotes, U+2014 twice for the dash, U+3002 and U+FF0C; no half-width punctuation adjacent to CJK; no straight quotes; no doubled spaces; no leading or trailing whitespace; NFC; no bidi or zero-width controls. The only ASCII space in the changed values is inside the product name Local Operator."
+    },
+    {
+      "check": "RTL sanity",
+      "result": "N/A",
+      "detail": "zh-CN is LTR; no RTL-specific requirement. Scanned for bidi controls and found none."
+    },
+    {
+      "check": "overflow / width budget",
+      "result": "PASS",
+      "detail": "Cell-counted the four changed values (CJK/full-width = 2): archive_offered_title 9/9 (the title itself truncates by design), ask_changed_named 20 vs 25 English cells, update_hold_body 95 vs 151, update_hold_no_relaunch 64 vs 97. Both OS-banner bodies are shorter than English, so no overflow concern arises from this delta. No rendered screenshot was taken; this is a cell/JSX-budget check only."
+    },
+    {
+      "check": "composition of the rewritten update-hold body",
+      "result": "PASS",
+      "detail": "Rendered update_hold_body with update_hold_relaunch, with update_hold_no_relaunch and with an empty relaunch: all three are complete sentences with no double spaces and no orphaned punctuation. Both relaunch clauses end in 。, so the tail sentence starts on a sentence boundary; an empty relaunch leaves '。点击' with no inserted space, correct for zh-CN."
+    },
+    {
+      "check": "archive-offer composition after keying the quotes",
+      "result": "PASS",
+      "detail": "Rendered archive_offered_title + archive_offered_verb as the JSX composes them: '“季度留存排查”已归档。' with a title, '对话已归档。' without one. The value is byte-identical to what the pre-delta helper hardcoded for zh-CN, so the rendered Chinese archive toast did not change."
+    },
+    {
+      "check": "prior findings closed",
+      "result": "PASS",
+      "detail": "ZH-1, ZH-2 and ZH-3 are fixed byte-for-byte against the first-round proposals; zero findings remain at this head."
+    }
+  ],
+  "composition": {
+    "mechanism": "undo-toasts.tsx renders the archive offer as two spans in `flex min-w-0 items-baseline gap-1`: the quoted-title span is `min-w-0 truncate`, the verb span is `shrink-0`. archiveOfferedName now returns t('ui.notices.chat.archive_offered_title', { title }) instead of hardcoding the English pair, so each locale supplies its own quotation marks. update-install.ts interpolates the relaunch clause into update_hold_body between two full stops; both relaunch clauses are complete sentences ending in 。.",
+    "update_hold_with_relaunch": "正在安装版本0.4.2的更新——现在打开应用会取消安装。安装完成后，Local Operator会自动打开。点击此通知也不会让应用更早打开。",
+    "update_hold_with_no_relaunch": "正在安装版本0.4.2的更新——现在打开应用会取消安装。无法为此安装安排自动重启，请在安装完成后手动启动Local Operator。点击此通知也不会让应用更早打开。",
+    "update_hold_with_empty_relaunch": "正在安装版本0.4.2的更新——现在打开应用会取消安装。点击此通知也不会让应用更早打开。",
+    "archive_with_title": "“季度留存排查”已归档。",
+    "archive_no_title": "对话已归档。",
+    "regression_render": {
+      "drafts_per_count": {
+        "1": "1份草稿已丢弃。",
+        "2": "2份草稿已丢弃。",
+        "5": "5份草稿已丢弃。",
+        "21": "21份草稿已丢弃。"
+      },
+      "unread_not_cleared": [
+        "后端未响应。未读标记未清除。",
+        "未读标记未清除。"
+      ],
+      "mark_all_read_per_count": {
+        "1": "已将1个对话标记为已读。 1个对话在其他设备上，待这些设备更新后会清除。 1个对话已有更新的结果，仍保持未读。 1个对话无法清除，仍保持未读。",
+        "2": "已将2个对话标记为已读。 2个对话在其他设备上，待这些设备更新后会清除。 2个对话已有更新的结果，仍保持未读。 2个对话无法清除，仍保持未读。",
+        "5": "已将5个对话标记为已读。 5个对话在其他设备上，待这些设备更新后会清除。 5个对话已有更新的结果，仍保持未读。 5个对话无法清除，仍保持未读。",
+        "21": "已将21个对话标记为已读。 21个对话在其他设备上，待这些设备更新后会清除。 21个对话已有更新的结果，仍保持未读。 21个对话无法清除，仍保持未读。"
+      },
+      "credentials_unconfirmed": "1个凭据无法确认是否已存储（KEY_A,KEY_B）；已通知智能体在使用前先检查。请在/credential后再次粘贴该值以重新存储。",
+      "consent_body_many_3": "有3项网站审批正在等待。请在浏览器标签页中批准或拒绝。",
+      "archive_failed": "无法归档“季度留存排查”。",
+      "note": "Unaffected families re-rendered to confirm the remediation did not break the shared formatter path; outputs match the first-round receipt where that receipt recorded them."
+    }
+  },
+  "observations": [
+    "The zh-CN value of ui.notices.chat.archive_offered_title is byte-identical to English on purpose: it is only the locale's quotation pair around the {title} placeholder, with no prose to translate. U+201C/U+201D are the mainland pair the zh-CN guide mandates and the pair the pre-delta helper hardcoded, so the zh archive toast is byte-identical to its pre-delta render: “季度留存排查”已归档。The remediation changes where the pair comes from, not what zh-CN prints.",
+    "The update-hold body joins cleanly in all three relaunch cases. Both relaunch clauses end in 。 and the body places {relaunch} directly after a full stop; an empty relaunch leaves 点击 as the next sentence with no inserted space, which is correct for zh-CN.",
+    "The English \"is still installing\" is carried by 正在安装 in the body and by 仍 in the unchanged notification title update_hold_title (Local Operator仍在更新); the first-round proposal deliberately dropped the explicit 仍在 from the body, and the composed notice still states an ongoing install plus the cancellation consequence, so no meaning is lost.",
+    "Terminology retention, not a new finding: update_hold_no_relaunch still uses 自动重启 (unchanged from the first-round string). The first audit assessed it against the corpus and passed it; this delta re-audit did not re-litigate it.",
+    "The pre-existing locale-wide 请 observation (update_hold_no_relaunch, consent_body_*) remains as recorded in the first audit; the remediation kept the same string and did not add a new instance.",
+    "Translator identity is still not derivable: i18n/ledger.json has no ui.notices row. Independence is established by role: this audit neither authored nor edited any catalogue byte.",
+    "No catalogue, ledger, generated file or code was edited. This receipt is the only file written."
+  ],
+  "namespace_verdict": "clean (delta round 2) - 94 of 94 keys present and structurally verified; 4 delta values (3 remediated + 1 added) read semantically; 0 blocker, 0 major, 0 minor, 0 nit; the three first-round minors are fixed byte-for-byte.",
+  "overall_verdict": "clean (delta round 2) - the zh-CN ui.notices remediation is faithful and composable at a32f7349e3; no new blocker, major, minor or nit finding was raised, and the three first-round minors are closed.",
+  "notes": [
+    "The first-round receipt's worktree_state warned that the English bytes were moving and that zh-CN needed archive_offered_title = “{title}” plus a delta audit. The committed head now carries exactly that value; the disk hashes equal git show a32f7349e3:<path> for the English, zh-CN and context files.",
+    "The delta range also carries the first-round audit receipts for the other six locales, the locale-parity allowlist entry, keys.gen.ts and the archive-undo.ts helper change. None of those alters the zh-CN catalogue except the four values above; the helper change is locale-neutral and the zh-CN output is unchanged.",
+    "No browser, screenshot or rendered-frame proof; this is a catalogue/composition audit, not a visual QA pass."
+  ],
+  "limitations": "Catalogue-level audit only: no browser, screenshot or rendered-frame proof; no runtime or backend involvement; no activation or release claim. Width evidence is cell counting against the JSX/sidecar budgets, not pixels.",
+  "evidence_provenance": "Executed in the i18n-toasts worktree at a32f7349e3 (HEAD, git status --porcelain empty at audit start): hashed the three catalogue files from disk and asserted byte-equality with git show a32f7349e3:<path>; compared the zh-CN catalogue across ec4518da56..a32f7349e3 with git show; parsed, argument-compared and rendered every message with the worktree's shared @formatjs/icu-messageformat-parser 3.5.21 and intl-messageformat 12.1.3 on Node v24.22.1; cell-counted the four delta values; scanned all 94 values for typography, placeholders, register and untranslated prose; sampled 5,019 existing zh-CN values for terminology and quote-pair consistency; read ~/local-operator/i18n/glossary.md and i18n/style-guides/zh-CN.md (hashes unchanged from the first round).",
+  "worktree_state": {
+    "audited_head": "a32f7349e3efff461cdfa63674b86ddbc21bf955",
+    "at_audit_start": "The worktree was clean: git status --porcelain empty, HEAD a32f7349e3. The three catalogue hashes equal git show a32f7349e3:<path>.",
+    "during_audit": "No catalogue, code or generated file changed during the audit: the zh-CN, English and context files on disk stayed byte-identical to a32f7349e3 (asserted at receipt-write time). Three other auditors' untracked delta receipts appeared in i18n/receipts during the same window (es, ru, ur); they are not part of this audit, and this receipt is the only file this audit wrote.",
+    "receipt_only": true
+  }
+}

@@ -52,7 +52,7 @@ const {
 } = await import(bundlePath.href);
 await unlink(bundlePath);
 
-test("the six ids are stable and unique, in registry order", () => {
+test("the seven ids are stable and unique, in registry order", () => {
 	assert.deepEqual(
 		KEYMAP_ACTIONS.map((action) => action.id),
 		[
@@ -62,6 +62,8 @@ test("the six ids are stable and unique, in registry order", () => {
 			"panel.ask",
 			"panel.browser",
 			"panel.code",
+			/* Appended (canvas-projects round-1 U2): the seventh rail door. */
+			"panel.projects",
 		],
 	);
 	assert.equal(
@@ -100,7 +102,13 @@ test("every default parses, is unique, and is not reserved", () => {
 test("the shipped defaults are the decided ones", () => {
 	assert.equal(effectiveChord("panel.console", undefined), "primary+j");
 	assert.equal(effectiveChord("panel.canvas", undefined), "primary+shift+c");
-	for (const id of ["panel.run", "panel.ask", "panel.browser", "panel.code"]) {
+	for (const id of [
+		"panel.run",
+		"panel.ask",
+		"panel.browser",
+		"panel.code",
+		"panel.projects",
+	]) {
 		assert.equal(effectiveChord(id, undefined), null, `${id} ships unbound`);
 	}
 	/*
@@ -198,8 +206,11 @@ test("the reserved inventory is exactly the decoded list", () => {
 		"primary+s",
 		"primary+shift+a",
 		"primary+shift+down",
+		// The focused conversation's Tags popover (sidebar tags v3, D8).
+		"primary+shift+l",
+		// Temporary chats: `new-chat-shortcut.ts` answers it app-wide.
+		"primary+shift+n",
 		"primary+shift+p",
-		"primary+shift+s",
 		"primary+shift+up",
 		"primary+shift+z",
 		"primary+v",
@@ -213,4 +224,9 @@ test("the reserved inventory is exactly the decoded list", () => {
 	];
 	assert.deepEqual([...RESERVED_CHORDS.keys()].sort(), expected.sort());
 	assert.equal(RESERVED_CHORDS.size, expected.length);
+	assert.equal(
+		RESERVED_CHORDS.has("primary+shift+s"),
+		false,
+		"the backend-owned recording action must be able to claim its default",
+	);
 });

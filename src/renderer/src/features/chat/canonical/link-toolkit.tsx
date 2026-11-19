@@ -79,12 +79,15 @@
  * filed under - and publishing it here as well would be two sources of one value.
  */
 
+import { FloatingToolbar } from "@shared/components/common/floating-toolbar";
 import {
 	SpeakButton,
 	useSpeakControl,
 	useSpeakDismissal,
 } from "@shared/components/common/speak-control";
 import { Button, Tooltip } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { clipForSpeech } from "@shared/lib/speech-clip";
 import { useSpeechBindingFor } from "@shared/lib/speech-target";
 import { cn } from "@shared/lib/utils";
@@ -149,6 +152,7 @@ export const LinkToolkit: FC<LinkToolkitProps> = ({
 	quoteAvailable,
 	onDismiss,
 }) => {
+	useI18nLocale();
 	const target = subject.getAttribute(LINK_TARGET_PATH_ATTR) ?? "";
 	const kind = (subject.getAttribute("data-lo-kind") ?? "file") as LinkKind;
 	/*
@@ -414,24 +418,14 @@ export const LinkToolkit: FC<LinkToolkitProps> = ({
 	};
 
 	return (
-		<div
+		<FloatingToolbar
 			{...{ [QUOTE_TOOLKIT_ATTR]: "", [LINK_TOOLBAR_ATTR]: "" }}
 			ref={controlRef}
-			role="toolbar"
-			aria-label={model.label}
-			className={cn(
-				"absolute z-10 flex h-8 items-center gap-0.5 rounded-md border border-hairline bg-elevated px-1",
-				!placement && "invisible",
-			)}
+			label={model.label}
+			className={cn("absolute z-20", !placement && "invisible")}
 			style={
 				placement ? { top: placement.top, left: placement.left } : undefined
 			}
-			/*
-			 * The press must not collapse a highlight the toolbar is about to quote,
-			 * and must not move focus off the reader's highlight before `click` runs
-			 * - the same two reasons the quote control cancels `mousedown`.
-			 */
-			onMouseDown={(event) => event.preventDefault()}
 			/*
 			 * ESCAPE HIDES THE TOOLBAR AND HANDS FOCUS BACK to the link it was about,
 			 * which is the keyboard reader's only way out once Tab has walked into
@@ -479,14 +473,20 @@ export const LinkToolkit: FC<LinkToolkitProps> = ({
 						 * and a pressed control that looks identical to an unpressed one is how
 						 * a reader presses it twice.
 						 */
-						content={action.id === "copy" && copied ? "Copied" : action.label}
+						content={
+							action.id === "copy" && copied
+								? t("ui.common.actions.copied")
+								: action.label
+						}
 						side={placement?.placement === "below" ? "bottom" : "top"}
 					>
 						<Button
 							variant="ghost"
 							size="icon-sm"
 							aria-label={
-								action.id === "copy" && copied ? "Copied" : action.label
+								action.id === "copy" && copied
+									? t("ui.common.actions.copied")
+									: action.label
 							}
 							className="text-ink-dim hover:bg-accent-wash hover:text-accent"
 							onClick={presses[action.id]}
@@ -517,12 +517,12 @@ export const LinkToolkit: FC<LinkToolkitProps> = ({
 			 */}
 			{model.note && (
 				<span
-					className="max-w-56 truncate pl-1 text-ink-dim text-meta"
+					className="max-w-56 truncate ps-1 text-ink-dim text-meta"
 					title={model.noteTitle ?? model.note}
 				>
 					{model.note}
 				</span>
 			)}
-		</div>
+		</FloatingToolbar>
 	);
 };

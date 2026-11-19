@@ -1,0 +1,14 @@
+# renders through the repo's own path (esbuild-bundled model + sentences,
+# intl-messageformat@12.1.3 from the repo's pnpm tree) - ru @ 14d0b6781ac9
+
+owner arm (ONE agent target, HUMAN actor on the same account) - the only input that reaches this key:
+  predicate teamBridgeEventOwnerConsent = true
+  Sana Ketabchi: одобрено присоединение собственного агента — Aida (Sana Ketabchi)
+
+CO-B1 fallback (TWO agent targets):
+  predicate = false
+  Sana Ketabchi: одобрено присоединение — Aida (Sana Ketabchi) и Scout (Sana Ketabchi)
+
+CO-B2 fallback (AGENT-kind actor):
+  predicate = false
+  Aida (Sana Ketabchi): одобрено присоединение — Scout (Sana Ketabchi)

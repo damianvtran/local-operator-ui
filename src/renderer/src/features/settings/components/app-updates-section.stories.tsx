@@ -111,7 +111,7 @@ const REPORTED_VERDICT: UpdateCheckVerdict = {
  * Written out for the same reason as `REPORTED_VERDICT` - this file is
  * photographed on a tree without the fix, where the module that owns the
  * sentence does not exist, so a value import here would break the before half
- * of the pair. The literal must match `UP_TO_DATE_AFFIRMATION` in
+ * of the pair. The literal must match `upToDateAffirmation()` in
  * `src/main/update-check-verdict.ts`, which is the shipped copy.
  *
  * `satisfies` rather than `: UpdateCheckVerdict` so the sentence stays a

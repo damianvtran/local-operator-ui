@@ -1,0 +1,75 @@
+{
+ "schema": 1,
+ "slice": "S16e-renderer",
+ "pr": "damianvtran/local-operator-ui#1884",
+ "audited_head": "bd8e90542506e8bec4a98862b868095409b28329",
+ "purpose": "Maps the slice-wide second-pass mechanical logs to the per-locale evidence bundles (the tracked manifest I18N.md requires for a repo-specific equivalent root).",
+ "authored_by": "integrating coder session 95bd4b294de3 (agent coder)",
+ "locales": {
+  "fr": "i18n/audits/evidence/fr/ui.chat.canonical/s16e-67372a828015",
+  "es": "i18n/audits/evidence/es/ui.chat.canonical/s16e-6975073712a4",
+  "ru": "i18n/audits/evidence/ru/ui.chat.canonical/s16e-29d932f30c32",
+  "vi": "i18n/audits/evidence/vi/ui.chat.canonical/s16e-1ff9b17c9a2a",
+  "zh-CN": "i18n/audits/evidence/zh-CN/ui.chat.canonical/s16e-752b0388f4e0",
+  "hi": "i18n/audits/evidence/hi/ui.chat.canonical/s16e-64a962929428",
+  "ur": "i18n/audits/evidence/ur/ui.chat.canonical/s16e-d239e2a66550"
+ },
+ "shared_logs": {
+  "audit.log": {
+   "path": "i18n/audits/evidence/s16e-renderer-slice/audit.log",
+   "sha256": "be9d72390c26f69a76edfebb8f5ed459f1a04165dca07dd64087229f1f0637e1",
+   "origin": "auditor-authored (second independent pass), copied byte-for-byte"
+  },
+  "mech.log": {
+   "path": "i18n/audits/evidence/s16e-renderer-slice/mech.log",
+   "sha256": "308021530a02928e884048802a5e5368bace4300cfa35cd22fde61b404032d3a",
+   "origin": "auditor-authored (second independent pass), copied byte-for-byte"
+  },
+  "typo.log": {
+   "path": "i18n/audits/evidence/s16e-renderer-slice/typo.log",
+   "sha256": "cdb9f8987aab167ce68251033a7fad9d5d5f86cda649e12110bf2184a47370e1",
+   "origin": "auditor-authored (second independent pass), copied byte-for-byte"
+  },
+  "evidence.log": {
+   "path": "i18n/audits/evidence/s16e-renderer-slice/evidence.log",
+   "sha256": "18f3950741df10e84fdc02293b3af7dcfe756e7f8da1e0cabe0f830ed7b034df",
+   "origin": "auditor-authored (second independent pass), copied byte-for-byte"
+  },
+  "findings.json": {
+   "path": "i18n/audits/evidence/s16e-renderer-slice/findings.json",
+   "sha256": "917ac12c2f01d906ca49ea72fd56530867a718d2ed2c0dceec389bfa79d94ad8",
+   "origin": "auditor-authored (second independent pass), copied byte-for-byte"
+  },
+  "divergences.md": {
+   "path": "i18n/audits/evidence/s16e-renderer-slice/divergences.md",
+   "sha256": "320fbda56b413b80abe987e4367d2c9eebac58976493f7178f0f01c3442a38ee",
+   "origin": "auditor-authored (second independent pass), copied byte-for-byte"
+  },
+  "build-log.sh": {
+   "path": "i18n/audits/evidence/s16e-renderer-slice/build-log.sh",
+   "sha256": "88a063d060b829f3a2d5d06249cee97a153693129e27fb711d21820bdba57559",
+   "origin": "auditor-authored (second independent pass), copied byte-for-byte"
+  },
+  "mech.mjs": {
+   "path": "i18n/audits/evidence/s16e-renderer-slice/mech.mjs",
+   "sha256": "4565910b7fd4636cefd7c037c913e7e4ee6dad7a5c89f615a8ac39db6c2a67ac",
+   "origin": "auditor-authored (second independent pass), copied byte-for-byte"
+  },
+  "typography.mjs": {
+   "path": "i18n/audits/evidence/s16e-renderer-slice/typography.mjs",
+   "sha256": "81bbd55ab7858982efccb8f6f375d1e0c32614a7f2db92619db5b03f6cc72fed",
+   "origin": "auditor-authored (second independent pass), copied byte-for-byte"
+  }
+ },
+ "second_pass_auditor": {
+  "agent": "i18n-auditor",
+  "session": "cc045047b39e",
+  "model": "deepseek/deepseek-flash"
+ },
+ "gates": {
+  "generator": "node scripts/i18n/generate.mjs --check -> byte-identical",
+  "coverage": "node scripts/i18n/check-coverage.mjs -> ok (7 gated languages, 159 namespaces)",
+  "context_parity": "node scripts/i18n/context-parity.mjs -> ok",
+  "ledger": "node scripts/i18n/ledger-check.mjs -> ok, 1113 entries"
+ }
+}

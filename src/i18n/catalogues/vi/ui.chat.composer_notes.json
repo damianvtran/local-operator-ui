@@ -1,0 +1,16 @@
+{
+	"ui.chat.composer_notes.default_not_saved": "Chưa lưu được mặc định: {reason}",
+	"ui.chat.composer_notes.default_not_saved_fallback": "backend đã từ chối",
+	"ui.chat.composer_notes.default_saved": "Mặc định cho phiên mới: {model}",
+	"ui.chat.composer_notes.goal.done_tag": "— xong",
+	"ui.chat.composer_notes.goal.stalled.breaker": "mục tiêu bị đình trệ: trình đánh giá không thể quyết định — gửi tin nhắn để tiếp tục",
+	"ui.chat.composer_notes.goal.stalled.cap": "mục tiêu bị đình trệ: đã dừng sau {count, plural, other {# lần tiếp tục}} — gửi tin nhắn để tiếp tục",
+	"ui.chat.composer_notes.goal.stalled.cap_fallback": "mục tiêu bị đình trệ: đã đạt giới hạn tiếp tục — gửi tin nhắn để tiếp tục",
+	"ui.chat.composer_notes.goal.stalled.unknown": "mục tiêu bị đình trệ: việc tự động tiếp tục đã dừng — gửi tin nhắn để tiếp tục",
+	"ui.chat.composer_notes.hint.choose_model": "Hãy chọn mô hình cho cuộc trò chuyện này trước khi gửi.",
+	"ui.chat.composer_notes.hint.connect_provider": "Hãy kết nối nhà cung cấp để gửi.",
+	"ui.chat.composer_notes.outside_mentions": "{count, plural, other {# tham chiếu trỏ ra ngoài thư mục làm việc của phiên này; tác nhân sẽ yêu cầu bạn phê duyệt trước khi đọc.}}",
+	"ui.chat.composer_notes.skill_empty_body": "kỹ năng `{name}` có nội dung trống — gửi tin nhắn của bạn như đã viết",
+	"ui.chat.composer_notes.skill_load_failed": "không tải được kỹ năng `{name}` — gửi tin nhắn của bạn như đã viết",
+	"ui.chat.composer_notes.slash_needs_name": "Hãy nhập tên sau /{command}, hoặc chọn một mục trong danh sách."
+}

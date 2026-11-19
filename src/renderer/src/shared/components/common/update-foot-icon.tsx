@@ -98,7 +98,10 @@ export const footIconInFlightName = (inflight: FootIconInFlight): string => {
 		typeof inflight.percent === "number"
 			? `, ${Math.round(inflight.percent)}%`
 			: "";
-	return `${subject} in progress${percent}.`;
+	return t("ui.common.updates.update_foot_icon.in_progress", {
+		subject: subject,
+		percent: percent,
+	});
 };
 
 /** The band's words for one waiting surface, minus the trailing "available". */
@@ -120,12 +123,18 @@ const surfaceSubject = (surface: FootIconSurface): string =>
  */
 export const footIconAvailableName = (surfaces: FootIconSurface[]): string => {
 	const words = surfaces.map((surface) => surfaceSubject(surface));
-	const joined = words
-		.map((word, index) =>
-			index === 0 ? word : `${word.charAt(0).toLowerCase()}${word.slice(1)}`,
-		)
-		.join(" and ");
-	return `${joined} available. Show the update notice.`;
+	const joined = words.slice(1).reduce(
+		(left, word) =>
+			t("ui.common.updates.update_foot_icon.subject_join", {
+				left: left,
+				right: `${word.charAt(0).toLowerCase()}${word.slice(1)}`,
+			}),
+		words[0],
+	);
+	return t(
+		"ui.common.updates.update_foot_icon.available_show_the_update_notice",
+		{ joined: joined },
+	);
 };
 
 /**
@@ -228,6 +237,22 @@ export const UpdateFootIconView: FC<{
 					{summarySurface ? (
 						<span className="truncate text-ink-muted">
 							{(summarySurface.offer.summary ?? "").trim()}
+						</span>
+					) : null}
+					{/*
+					 * The reassurance rides in the tooltip, the first place a person
+					 * meets an update, so "do I have to stop everything first?" is
+					 * answered before the card opens. ONLY WHEN EVERY WAITING SURFACE IS
+					 * NON-DISRUPTIVE (review M1): an app install restarts only the window
+					 * and the server's `entry-point` move leaves detached runtimes alone
+					 * (`server/reload.py`), but the source rebuild and the legacy
+					 * installers rewrite the install in place, and their cards say a turn
+					 * can be interrupted - the tooltip must not contradict them. Wraps
+					 * rather than truncates: it is a sentence, not a label.
+					 */}
+					{surfaces.every((surface) => surface.offer.nonDisruptive === true) ? (
+						<span className="text-ink-muted">
+							{t("ui.common.updates.update_foot_icon.sessions_keep_running")}
 						</span>
 					) : null}
 					<span className="whitespace-nowrap text-ink-muted">

@@ -1,0 +1,29 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "07183e129af1",
+  "instance_derivation": "sha256('877cbcdfaf60:ur')[:12] from session 877cbcdfaf60",
+  "locale": "ur",
+  "status": "passed",
+  "namespace": "ui.console",
+  "date": "2026-10-22",
+  "scope": "Independent full pass over all 63 ui.console keys at the current bytes: read en/ui.console.json and en/ui.console.context.json, console-states.tsx (ended banner) and console-pane.tsx (tab strip), the core glossary and locale style guides, and docs/I18N.md; checked accuracy, register, glossary consistency, placeholder/ICU integrity, CLDR plurals, ur RTL and cell widths. No catalogue, ledger or code changes.",
+  "sha256": {
+    "en": "70587d7052f6129b3f56420f78427a588f64ce79a500e39c00d8a3a6d923aa52",
+    "target": "80399be9a729ce20cce0d36083944f194de93c30851e3f8cb84fce2d48e995fb"
+  },
+  "findings": [
+    {
+      "severity": "MINOR",
+      "key": "ui.console.ended.exit_signal",
+      "issue": "At 28 cells against 17 (+65%) the line is the longest of the seven renderings, and \"کے ذریعے\" (by means of) is wordy for a monospace machine line.",
+      "suggestion": "{signal} سے ختم کیا گیا (22 cells, +29%; the bare instrumental is idiomatic Urdu)"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.console.capacity.help",
+      "issue": "\"تمام گفتگو کی مجموعی\" leaves گفتگو singular and uses مجموعی as a noun; the plural oblique گفتگوؤں is required, and the clause reads as a literal rendering of \"across every conversation\".",
+      "suggestion": "پوری ایپ کی تعداد، تمام گفتگوؤں میں۔"
+    }
+  ]
+}

@@ -12,6 +12,11 @@ import type {
 	BackendUpdateErrorReport,
 	BackendUpdateInfo,
 } from "../main/update-service";
+import type {
+	AttachmentUploadResult,
+	AttachmentUploadSource,
+} from "../shared/attachment-upload";
+import { BACKEND_RESTART_CHANNEL } from "../shared/backend-startup";
 import {
 	BACKEND_RECONNECT_CHANNEL,
 	BACKEND_STATUS_CHANNEL,
@@ -19,9 +24,18 @@ import {
 	type DaemonStatusSnapshot,
 } from "../shared/backend-status";
 import type {
+	AddressHistoryRequest,
+	AddressHistoryResponse,
+} from "../shared/browser-address-history";
+import type { MediaPermissionDecision } from "../shared/browser-media-permission";
+import type {
 	HumanTabAction,
 	HumanTabActionOutcome,
 } from "../shared/browser-tab-action";
+import type {
+	TabActionsMenuRequest,
+	TabActionsMenuSelection,
+} from "../shared/browser-tab-actions-menu";
 import {
 	type DesktopMediaRequest,
 	type DesktopRequest,
@@ -39,6 +53,14 @@ import {
 import type { DesktopFeedFrame } from "../shared/desktop-session-contract";
 import { DESKTOP_STREAM_DETAIL } from "../shared/desktop-stream-notice";
 import {
+	LINK_PREVIEW_ARTIFACT_CHANNEL,
+	LINK_PREVIEW_RESOLVE_CHANNEL,
+	type LinkPreviewArtifactRequest,
+	type LinkPreviewArtifactResult,
+	type LinkPreviewResolveRequest,
+	type LinkPreviewResolveResult,
+} from "../shared/link-preview";
+import {
 	MINI_VIEW_DIALOG,
 	MINI_VIEW_DISMISS,
 	MINI_VIEW_PAINTED,
@@ -54,7 +76,18 @@ import {
 	isMiniViewRegistrationState,
 	isMiniViewSummonedPayload,
 } from "../shared/mini-view";
+import {
+	NOTIFICATION_SOUND_PLAY_CHANNEL,
+	NOTIFICATION_TEST_CHANNEL,
+} from "../shared/notification-sound";
 import { readLaunchTarget, readOpenSessionArgv } from "../shared/open-session";
+import { receiptEpochMs } from "../shared/snapshot-receipt";
+import type {
+	TeamBridgeNotificationSender,
+	TeamBridgeNotifyAuthority,
+	TeamBridgeNotifyRequest,
+	TeamBridgeOpenResult,
+} from "../shared/team-bridge-notify";
 import {
 	type WebauthnRequestPayload,
 	type WebauthnSettledOutcome,
@@ -129,6 +162,60 @@ const api = {
 		releaseWatchHeartbeat: (args: { sessionId: string }) =>
 			ipcRenderer.invoke("desktop-watch-release", args),
 		closeWindow: () => ipcRenderer.invoke("desktop-close-window"),
+		/**
+		 * Team Bridge banners: the renderer composes the two display strings from
+		 * conversation metadata; main validates, dedupes and delivers them. A click
+		 * wakes `onOpen`, which carries no payload: the target stays parked in main
+		 * until the renderer pulls it via `pendingOpen`, so a click that lands while
+		 * the renderer is loading is delivered on the next pull rather than dropped.
+		 */
+		teamBridge: {
+			setAuthority: (authority: TeamBridgeNotifyAuthority): Promise<void> =>
+				ipcRenderer.invoke("team-bridge:authority", authority),
+			notify: (input: TeamBridgeNotifyRequest): Promise<{ shown: boolean }> =>
+				ipcRenderer.invoke("team-bridge:notify", input),
+			/** Main derives the current viewer/epoch; the renderer supplies only the
+			 * already-fetched tenant roster for cache eviction and warming. */
+			syncDirectory: (input: {
+				tenantId: string;
+				members: TeamBridgeNotificationSender[];
+			}): Promise<void> => ipcRenderer.invoke("team-bridge:directory", input),
+			onOpen: (callback: () => void) => {
+				const handler = () => callback();
+				ipcRenderer.on("team-bridge:open", handler);
+				return () => {
+					ipcRenderer.removeListener("team-bridge:open", handler);
+				};
+			},
+			pendingOpen: (): Promise<TeamBridgeOpenResult | null> =>
+				ipcRenderer.invoke("team-bridge:pending-open"),
+		},
+		/**
+		 * Link previews, as a PROXY and nothing else.
+		 *
+		 * Core resolves a message's links (it fetches, guards addresses, sniffs the
+		 * images and stores them under scope-derived ids); this app asks it for one
+		 * card, then asks it for an artifact's BYTES, which main keeps on disk so a
+		 * re-render does not re-download them. The renderer never learns a third-party
+		 * origin it could fetch from, and neither does main: the only identifier that
+		 * crosses this bridge is core's artifact id.
+		 *
+		 * `expectedAccountId` is on BOTH calls because core gates the preview routes on
+		 * the account the caller claims (a receipt it compares against the identity the
+		 * install holds) exactly as it does for `teamBridge.*`. Main holds no identity
+		 * of its own to substitute, so the renderer passes the one it already sends on
+		 * every Team Bridge request.
+		 */
+		linkPreview: {
+			resolve: (
+				request: LinkPreviewResolveRequest,
+			): Promise<LinkPreviewResolveResult> =>
+				ipcRenderer.invoke(LINK_PREVIEW_RESOLVE_CHANNEL, request),
+			artifact: (
+				request: LinkPreviewArtifactRequest,
+			): Promise<LinkPreviewArtifactResult> =>
+				ipcRenderer.invoke(LINK_PREVIEW_ARTIFACT_CHANNEL, request),
+		},
 		/**
 		 * The conversation main launched this window to show, read from THIS
 		 * process's argv (`webPreferences.additionalArguments`, set only when the
@@ -319,11 +406,21 @@ const api = {
 						return null;
 					});
 				const handler = (_event: unknown, frame: DesktopStreamEvent) => {
+					// Stamp at listener entry, NOT after the subscription-id promise.
+					const receivedAt = frame.receipt ? performance.now() : 0;
+					// Each subscription listener sees this IPC object. Clone metadata so
+					// unrelated listeners cannot overwrite the matched stream's clocks.
+					const receipt = frame.receipt
+						? { ...frame.receipt, preloadReceiptEpochMs: receiptEpochMs() }
+						: undefined;
 					// Frames are scoped to their own subscription: a late frame from
 					// a dead stream must not land on a new one's consumer.
 					void settled.then((streamId) => {
-						if (streamId !== null && frame.streamId === streamId)
-							onEvent(frame);
+						if (streamId !== null && frame.streamId === streamId) {
+							if (receipt)
+								receipt.preloadReadyMs = performance.now() - receivedAt;
+							onEvent(receipt ? { ...frame, receipt } : frame);
+						}
 					});
 				};
 				ipcRenderer.on("desktop-stream-event", handler);
@@ -450,7 +547,7 @@ const api = {
 	 *
 	 * WHY THE RENDERER ASKS AT ALL: the composer's attach button already stores a
 	 * real path for everything it adds, and the send reads that path's bytes in main
-	 * (`encodeImageAttachments` -> `api.readFile`). A dropped file expressed as a
+	 * (`encodeAttachments` -> `api.readFile`). A dropped file expressed as a
 	 * data URL instead would be a second kind of attachment - one whose base64 copy
 	 * is written into the persisted draft store, which is where a large image turns
 	 * into a localStorage quota problem the path form simply does not have.
@@ -470,17 +567,52 @@ const api = {
 		}
 	},
 	/**
+	 * The clipboard's plain text, read SYNCHRONOUSLY - for a composer's `paste`
+	 * handler only (issue #1573, `pasteInsertsOnlyFileNames`).
+	 *
+	 * WHY SYNC, AND WHY NOT `clipboard` HERE. A macOS paste that carries a file
+	 * gives the event `types: ["Files"]` and no `text/plain`, while Chromium's
+	 * default insert still types the pasteboard's plain string (the file name).
+	 * Cancelling that insert has to be decided before the handler returns, and
+	 * `navigator.clipboard.readText()` is async. Electron 45's `clipboard`
+	 * module is promise-only too, so main reads it and answers a `sendSync`.
+	 * Never throws; `""` means "nothing to read" and keeps the default insert.
+	 */
+	readPasteTextSync: (): string => {
+		try {
+			const text = ipcRenderer.sendSync("clipboard:paste-plain-text");
+			return typeof text === "string" ? text : "";
+		} catch {
+			return "";
+		}
+	},
+	/**
 	 * Bytes for the in-app viewers. No encoding: a PDF is not text, and base64
 	 * would inflate it by a third on both sides of the boundary.
 	 */
 	readFileBytes: (filePath: string, maxBytes?: number) =>
 		ipcRenderer.invoke("read-file-bytes", filePath, maxBytes),
+	// No script or path input: main inspects only this window's existing PDF guest.
+	pdfViewerStatus: (blobUrl: string) =>
+		ipcRenderer.invoke("pdf-viewer-status", blobUrl),
+	/**
+	 * Upload one composer attachment to the daemon's attachment store.
+	 *
+	 * The bytes never enter this context: main reads the file, posts the
+	 * multipart body, and answers the stored record (attachment contract v1
+	 * §1.1). The composer replaces a non-image chip with this record's digest on
+	 * the wire, and refuses the send when the answer is a failure.
+	 */
+	uploadAttachment: (
+		source: AttachmentUploadSource,
+	): Promise<AttachmentUploadResult> =>
+		ipcRenderer.invoke("upload-attachment", source),
 	/**
 	 * Resolve-and-stat a batch of paths. The answer carries the resolved path,
 	 * which is the Files panel's identity for a file.
 	 */
-	probeFiles: (paths: string[], cwd?: string) =>
-		ipcRenderer.invoke("probe-files", paths, cwd),
+	probeFiles: (paths: string[], cwd?: string, options?: { fresh?: boolean }) =>
+		ipcRenderer.invoke("probe-files", paths, cwd, options),
 	/**
 	 * One directory's listable entries, for a picker that offers rows from the
 	 * filesystem. One level per call; deepening is the caller asking again for the
@@ -517,6 +649,30 @@ const api = {
 			ipcRenderer.removeListener(EXTERNAL_OPEN_REFUSED_CHANNEL, handler);
 		};
 	},
+	/**
+	 * A notification sound main could not hand to the OS (Windows/Linux, or a
+	 * macOS staging failure): gain-baked WAV bytes for the renderer's own
+	 * player. Anything but bytes is dropped here, so the player never builds a
+	 * source out of whatever else might arrive on the channel.
+	 */
+	onNotificationSound: (
+		callback: (bytes: Uint8Array) => void,
+	): (() => void) => {
+		const handler = (_event: IpcRendererEvent, bytes: unknown) => {
+			if (bytes instanceof Uint8Array && bytes.byteLength > 0) callback(bytes);
+		};
+		ipcRenderer.on(NOTIFICATION_SOUND_PLAY_CHANNEL, handler);
+		return () => {
+			ipcRenderer.removeListener(NOTIFICATION_SOUND_PLAY_CHANNEL, handler);
+		};
+	},
+	/**
+	 * Raise one real banner with the configured notification sound (Settings'
+	 * "Send test notification"; `main/notification-test.ts`).
+	 */
+	sendTestNotification: (): Promise<
+		{ shown: true } | { shown: false; reason: "unsupported" | "suppressed" }
+	> => ipcRenderer.invoke(NOTIFICATION_TEST_CHANNEL),
 	showItemInFolder: (filePath: string): Promise<FileActionOutcome> =>
 		ipcRenderer.invoke("show-item-in-folder", filePath),
 
@@ -548,6 +704,13 @@ const api = {
 			ipcRenderer.invoke(BACKEND_STATUS_CHANNEL),
 		reconnect: (): Promise<DaemonStatusSnapshot> =>
 			ipcRenderer.invoke(BACKEND_RECONNECT_CHANNEL),
+		/*
+		 * The start-up panel's Restart: stop this app's own server and start it
+		 * again. Distinct from `reconnect`, which only re-discovers - a server
+		 * that failed to start is not one waiting to be found.
+		 */
+		restart: (): Promise<DaemonStatusSnapshot> =>
+			ipcRenderer.invoke(BACKEND_RESTART_CHANNEL),
 		onStatusChange: (callback: (snapshot: DaemonStatusSnapshot) => void) => {
 			const handler = (_event: unknown, snapshot: DaemonStatusSnapshot) =>
 				callback(snapshot);
@@ -944,6 +1107,35 @@ const api = {
 		reopenTab: (sessionId?: string | null): Promise<unknown> =>
 			ipcRenderer.invoke("browser-reopen-tab", sessionId ?? null),
 		focusPage: (): Promise<void> => ipcRenderer.invoke("browser-focus-page"),
+		/** S6b: open/close the native approvals card. The renderer passes the
+		 * locale and direction it resolved: the card is a SECOND DOCUMENT whose
+		 * lang/dir must follow the app, and the renderer is the process that owns
+		 * the negotiation.
+		 *
+		 * This is NOT because main lacks copy (it imports `t()` for its own
+		 * notifications, and `main-locale.ts` mirrors the backend's resolved tag
+		 * there). The card's document is the renderer's to describe, and the same
+		 * call carries the theme and palette, so lang/dir travel with them rather
+		 * than main re-deriving what the caller already knows. */
+		openApprovalsCard: (input: {
+			locale?: string;
+			dir?: "ltr" | "rtl";
+			theme?: "light" | "dark";
+			palette?: string | null;
+			paletteVars?: Record<string, string> | null;
+		}): Promise<unknown> =>
+			ipcRenderer.invoke("browser-approvals-card-open", input),
+		closeApprovalsCard: (): Promise<unknown> =>
+			ipcRenderer.invoke("browser-approvals-card-close"),
+		setApprovalsCardContext: (input: {
+			locale?: string;
+			dir?: "ltr" | "rtl";
+			theme?: "light" | "dark";
+			palette?: string | null;
+			paletteVars?: Record<string, string> | null;
+			requesterLabels?: Readonly<Record<string, string>>;
+		}): Promise<unknown> =>
+			ipcRenderer.invoke("browser-approvals-card-context", input),
 		onChord: (
 			callback: (
 				message: import("../shared/browser-chord").BrowserChordMessage,
@@ -957,6 +1149,21 @@ const api = {
 			return () => ipcRenderer.removeListener("browser-chord", listener);
 		},
 		state: (): Promise<unknown> => ipcRenderer.invoke("browser-state"),
+		/** S4b's product popout. `project` carries display data and the strip's own
+		 * measured anchor, never a destination or a child rectangle; `onEvent`
+		 * receives a validated `{type:"commit",seq,index}` or a main-decided
+		 * `{type:"dismiss",reason}`. */
+		addressOverlay: {
+			project: (payload: unknown): Promise<unknown> =>
+				ipcRenderer.invoke("browser-address-overlay-project", payload),
+			onEvent: (callback: (event: unknown) => void) => {
+				const listener = (_event: unknown, payload: unknown) =>
+					callback(payload);
+				ipcRenderer.on("browser-address-overlay-event", listener);
+				return () =>
+					ipcRenderer.removeListener("browser-address-overlay-event", listener);
+			},
+		},
 		/** `sessionId` attributes the tab to the conversation it was opened from
 		 * (design R1); `null` is a tab that belongs to no conversation, which is what
 		 * the route and a draft pane open. Main validates it rather than trusting it. */
@@ -969,6 +1176,13 @@ const api = {
 			ipcRenderer.invoke("browser-tab-action", tabId, action),
 		newTab: (sessionId?: string | null): Promise<unknown> =>
 			ipcRenderer.invoke("browser-new-tab", sessionId ?? null),
+		/** The strip's actions menu: a native popup owned by main (LOH-13
+		 * operator report). The request is validated there; the answer is the
+		 * selected item id or null for a dismissal. */
+		tabActionsMenu: (
+			request: TabActionsMenuRequest,
+		): Promise<TabActionsMenuSelection> =>
+			ipcRenderer.invoke("browser-tab-actions-menu", request),
 		closeTab: (tabId: number): Promise<unknown> =>
 			ipcRenderer.invoke("browser-close-tab", tabId),
 		/** A bulk close: `{ mode: "ids", tabIds }` for tabs the user could see, or
@@ -979,8 +1193,12 @@ const api = {
 			ipcRenderer.invoke("browser-close-tabs", intent),
 		activateTab: (tabId: number): Promise<unknown> =>
 			ipcRenderer.invoke("browser-activate-tab", tabId),
-		navigate: (url: string): Promise<unknown> =>
-			ipcRenderer.invoke("browser-navigate", url),
+		addressHistory: (
+			request: AddressHistoryRequest,
+		): Promise<AddressHistoryResponse> =>
+			ipcRenderer.invoke("browser-address-history", request),
+		navigate: (url: string, expectedTabId?: number): Promise<unknown> =>
+			ipcRenderer.invoke("browser-navigate", url, expectedTabId),
 		home: (): Promise<unknown> => ipcRenderer.invoke("browser-home"),
 		reload: (hard = false): Promise<unknown> =>
 			ipcRenderer.invoke("browser-reload", hard),
@@ -990,8 +1208,12 @@ const api = {
 		setContentRect: (
 			rect: { x: number; y: number; width: number; height: number } | null,
 		): Promise<unknown> => ipcRenderer.invoke("browser-set-content-rect", rect),
-		setViewVisible: (visible: boolean): Promise<unknown> =>
-			ipcRenderer.invoke("browser-set-visible", visible),
+		setViewVisible: (
+			visible: boolean,
+			ownPage = false,
+			ownStatePage = ownPage,
+		): Promise<unknown> =>
+			ipcRenderer.invoke("browser-set-visible", visible, ownPage, ownStatePage),
 		handOver: (tabId: number, sessionId: string): Promise<unknown> =>
 			ipcRenderer.invoke("browser-hand-over", tabId, sessionId),
 		revokeHandOver: (tabId: number): Promise<unknown> =>
@@ -1090,10 +1312,127 @@ const api = {
 		 * one IT used, so no path from this side ever reaches `shell.openPath`. */
 		revealDownloads: (): Promise<unknown> =>
 			ipcRenderer.invoke("browser-reveal-downloads"),
+		/** Extension manager ops (list, enable/disable, remove, open popup/options,
+		 * open the store, check for updates). Main re-validates every field; there
+		 * is no install op here by design. */
+		extensions: (
+			request: import("../shared/browser-extensions").ExtensionsRequest,
+		): Promise<import("../shared/browser-extensions").ExtensionsResponse> =>
+			ipcRenderer.invoke("browser-extensions", request),
+		/**
+		 * The passkey notice's two actions (docs/design/browser-challenges-and-passkeys.md
+		 * 3.6). Each names a tab and the notice's `at` and nothing else: the URL the open
+		 * hands to the system browser is read by main from the tab itself, so this bridge
+		 * carries no URL a caller could retarget.
+		 */
+		dismissPasskeyNotice: (tabId: number, at: number): Promise<unknown> =>
+			ipcRenderer.invoke("browser-passkey-notice-dismiss", tabId, at),
+		openPasskeyNotice: (tabId: number, at: number): Promise<unknown> =>
+			ipcRenderer.invoke("browser-passkey-notice-open", tabId, at),
+		/** An agent tab's notice: open the same page in a new tab the user owns.
+		 * Ids only, like the two above; main reads the agent tab's URL. */
+		continuePasskeyNoticeInUserTab: (
+			tabId: number,
+			at: number,
+		): Promise<unknown> =>
+			ipcRenderer.invoke("browser-passkey-notice-continue", tabId, at),
+		/** "Return to agent" on a passkey custody notice (see
+		 * `extensions/passkey-custody.ts`). Ids and the click's `isTrusted` only. */
+		releasePasskeyCustody: (
+			tabId: number,
+			at: number,
+			trusted: boolean,
+		): Promise<unknown> =>
+			ipcRenderer.invoke("browser-passkey-custody-release", tabId, at, trusted),
+		/** A sidebar notification row's click: bring the tab an agent is waiting
+		 * on the user in forward, with its held popups (`user-attention.ts`). The
+		 * ONLY path that does; `false` when the tab is gone. */
+		openUserAttention: (tabId: number): Promise<unknown> =>
+			ipcRenderer.invoke("browser-open-user-attention", tabId),
+		/** The hold `{tabId, at}` ended: the renderer may give the user back the
+		 * view it saved when they opened that hold from its notification
+		 * (`passkey-custody-handoff.ts`). */
+		onPasskeyCustodyEnded: (
+			callback: (payload: { tabId: number; at: number }) => void,
+		): (() => void) => {
+			const handler = (
+				_event: unknown,
+				payload: { tabId?: unknown; at?: unknown },
+			) => {
+				if (typeof payload?.tabId !== "number") return;
+				if (typeof payload.at !== "number") return;
+				callback({ tabId: payload.tabId, at: payload.at });
+			};
+			ipcRenderer.on("browser-passkey-custody-ended", handler);
+			return () => {
+				ipcRenderer.removeListener("browser-passkey-custody-ended", handler);
+			};
+		},
+		/**
+		 * Answer the camera/microphone prompt. `trusted` is the click's
+		 * `event.isTrusted`; main refuses a decision without it, and the id is the
+		 * prompt's host-minted identity (see `media-permissions.ts`).
+		 */
+		decideMediaPermission: (
+			tabId: number,
+			id: string,
+			decision: MediaPermissionDecision,
+			trusted: boolean,
+		): Promise<unknown> =>
+			ipcRenderer.invoke(
+				"browser-media-permission-decide",
+				tabId,
+				id,
+				decision,
+				trusted,
+			),
+		/** The system-blocked notice's "Open System Settings": main opens the
+		 * fixed macOS pane for that notice (see `media-permissions.ts`). */
+		openMediaSystemSettings: (tabId: number, id: string): Promise<unknown> =>
+			ipcRenderer.invoke("browser-media-permission-open-settings", tabId, id),
 		/** The recovery click on the `unavailable` state (design round 1, D1a).
 		 * No argument: the host restarts the same window's browser, so there is
 		 * nothing for a caller to retarget. */
 		retry: (): Promise<unknown> => ipcRenderer.invoke("browser-retry"),
+		/** Live composite of an overlay-suppressed page (main's
+		 * `composite-bridge.ts`): a full BGRA frame, drawn then ACKed so main sends
+		 * the next. Display-only; never persisted or forwarded. */
+		onCompositeFrame: (
+			callback: (frame: {
+				generation: number;
+				tabId: number;
+				webContentsId: number;
+				documentEpoch: number;
+				frameSeq: number;
+				width: number;
+				height: number;
+				pixels: Uint8Array;
+			}) => void,
+		): (() => void) => {
+			const handler = (_event: unknown, frame: unknown) =>
+				callback(frame as Parameters<typeof callback>[0]);
+			ipcRenderer.on("browser-composite-frame", handler);
+			return () => {
+				ipcRenderer.removeListener("browser-composite-frame", handler);
+			};
+		},
+		/** The composite's generation ended: drop what is drawn. */
+		onCompositeClear: (
+			callback: (clear: { generation: number; reason: string }) => void,
+		): (() => void) => {
+			const handler = (_event: unknown, clear: unknown) =>
+				callback(clear as Parameters<typeof callback>[0]);
+			ipcRenderer.on("browser-composite-clear", handler);
+			return () => {
+				ipcRenderer.removeListener("browser-composite-clear", handler);
+			};
+		},
+		ackCompositeFrame: (ack: {
+			generation: number;
+			frameSeq: number;
+		}): Promise<boolean> => ipcRenderer.invoke("browser-composite-ack", ack),
+		setCompositeConsumer: (ready: boolean): Promise<void> =>
+			ipcRenderer.invoke("browser-composite-consumer", ready),
 		onStateChanged: (callback: () => void): (() => void) => {
 			const handler = () => callback();
 			ipcRenderer.on("browser-state-changed", handler);
@@ -1198,9 +1537,18 @@ const api = {
 		/** The pane switched to another surface. Never resizes either of them. */
 		selectSurface: (surface: string): Promise<unknown> =>
 			ipcRenderer.invoke("console-select-surface", surface),
-		/** Human typing. Never persisted, never logged, never readable back. */
-		input: (surface: string, text: string): Promise<unknown> =>
-			ipcRenderer.invoke("console-input", surface, text),
+		/** Human typing. Never persisted, never logged, never readable back.
+		 * `paste` asks main to bracket the text when the shell enabled bracketed
+		 * paste (the ask card's suggested command arrives as a paste). The two-
+		 * argument call is unchanged on the wire: no options, no third argument. */
+		input: (
+			surface: string,
+			text: string,
+			options?: { paste?: boolean },
+		): Promise<unknown> =>
+			options === undefined
+				? ipcRenderer.invoke("console-input", surface, text)
+				: ipcRenderer.invoke("console-input", surface, text, options),
 		keys: (surface: string, keys: string[]): Promise<unknown> =>
 			ipcRenderer.invoke("console-keys", surface, keys),
 		/** The pane's own measurements. Main decides the grid from them. */
@@ -1466,6 +1814,23 @@ const api = {
 		/** The current state, for a freshly mounted settings row or the mini header. */
 		getRegistration: (): Promise<MiniViewRegistrationState> =>
 			ipcRenderer.invoke(MINI_VIEW_REGISTRATION_GET),
+	},
+
+	recordingShortcut: {
+		get: () => ipcRenderer.invoke("recording-shortcut:get"),
+		markPending: (value?: string): void => {
+			ipcRenderer.send("recording-shortcut:pending", value);
+		},
+		onChange: (callback: (state: unknown) => void): (() => void) => {
+			const handler = (_event: IpcRendererEvent, state: unknown) =>
+				callback(state);
+			ipcRenderer.on("recording-shortcut:change", handler);
+			return () =>
+				ipcRenderer.removeListener("recording-shortcut:change", handler);
+		},
+		syncClaims: (rev: number, claims: unknown): void => {
+			ipcRenderer.send("recording-shortcut:claims", rev, claims);
+		},
 	},
 
 	/** Opens a native dialog to select a directory */

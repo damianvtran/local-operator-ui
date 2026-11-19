@@ -31,12 +31,14 @@ export {
 	registerCatalogue,
 	t,
 	translate,
+	translateRaw,
 } from "./messages";
 export type {
 	LocaleCapabilities,
 	LocaleSource,
 	LocaleState,
 } from "./locale";
+export { resolveCatalogueLocale } from "./catalogue-locale";
 export {
 	applyCapabilities,
 	currentLocale,
@@ -49,10 +51,14 @@ export {
 	subscribeLocale,
 } from "./locale";
 export {
+	FULL_NUMERIC_STAMP,
+	formatByteQuantity,
 	formatBytes,
 	formatDate,
 	formatDateTime,
 	formatDuration,
+	formatClauses,
+	formatList,
 	formatNumber,
 	formatRelativeTime,
 	formatTime,

@@ -1,0 +1,184 @@
+{
+  "locale": "ru",
+  "namespaces": {
+    "ui.shell.menubar": {
+      "status": "passed",
+      "keys_audited": 13,
+      "sha256": {
+        "en": "a2950cd3f057ee4641bb12df761ec98d496282e09d69e6150d6dd6edbc74be82",
+        "ru": "2c8cb4289ddecdaf51bbf319fd92bc4a4b50356b5e902eeca94c595e83240ff5"
+      },
+      "findings": [
+        {
+          "severity": "NIT",
+          "namespace": "ui.shell.menubar",
+          "key": "ui.shell.menubar.force_reload",
+          "current": "Принудительно перезагрузить",
+          "suggestion": "Keep or shorten (27 chars, widest item in the menu; macOS column is narrow). Acceptable as is."
+        }
+      ]
+    },
+    "ui.updates.panel": {
+      "status": "passed",
+      "keys_audited": 41,
+      "sha256": {
+        "en": "a94e79256f94128562493e36d8835952e2e78a41cd30382968b942fd6876794a",
+        "ru": "639c34fd6b6511bb895cbfa0626a7569b491f48401110514f24c8a6628ec5c6a"
+      },
+      "findings": [
+        {
+          "severity": "MINOR",
+          "namespace": "ui.updates.panel",
+          "key": "ui.updates.panel.server.behind.remedy",
+          "current": "Этот чекаут отстаёт от удалённого репозитория — именно поэтому `lop-update` отказался из него собирать. Обновите чекаут, и следующее нажатие здесь запустит сборку.",
+          "suggestion": "Эта рабочая копия отстаёт от удалённого репозитория — поэтому `lop-update` отказался собирать из неё. Обновите её, и следующее нажатие здесь запустит сборку. («чекаут» is an unrecorded transliteration; style guide keeps git terms Latin or uses plain Russian.)"
+        },
+        {
+          "severity": "MINOR",
+          "namespace": "ui.updates.panel",
+          "key": "ui.updates.panel.launch.check.message",
+          "current": "Не удалось проверить запуск скачанного обновления, поэтому оно не установлено.",
+          "suggestion": "Скачанное обновление не удалось проверить перед запуском, поэтому оно не установлено. («проверить запуск» is ambiguous: reads as checking whether it launches.)"
+        },
+        {
+          "severity": "MINOR",
+          "namespace": "ui.updates.panel",
+          "key": "ui.updates.panel.launch.check.message_version",
+          "current": "Не удалось проверить запуск обновления до версии {version}, поэтому оно не установлено.",
+          "suggestion": "Обновление до версии {version} не удалось проверить перед запуском, поэтому оно не установлено."
+        },
+        {
+          "severity": "NIT",
+          "namespace": "ui.updates.panel",
+          "key": "ui.updates.panel.failure.cancelled.remedy",
+          "current": "…либо обновитесь снова из приложения…",
+          "suggestion": "…либо повторите обновление из приложения… («обновитесь» is colloquial/ambiguous: update what?). Same in failure.unfinished.remedy."
+        },
+        {
+          "severity": "NIT",
+          "namespace": "ui.updates.panel",
+          "key": "ui.updates.panel.artifact.unreadable.message",
+          "current": "…поэтому оно не установлено.",
+          "suggestion": "Sibling artifact.* messages say «поэтому не установлено» without «оно»; unify (also _version, launch.* and disk.* use «оно»)."
+        }
+      ]
+    }
+  },
+  "checkout": "damianvtran/local-operator-ui PR #1464, branch i18n-wave-c1",
+  "checkout_head": "57a725f020853d9cc03ad5d97636fec2380b0ddb",
+  "key_count": 54,
+  "audit_date": "2026-10-28",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "7c4b17a57ee9",
+    "model": "anthropic/claude-sonnet-5-5"
+  },
+  "input_sha256": {
+    "src/i18n/catalogues/en/ui.shell.menubar.json": "a2950cd3f057ee4641bb12df761ec98d496282e09d69e6150d6dd6edbc74be82",
+    "src/i18n/catalogues/ru/ui.shell.menubar.json": "2c8cb4289ddecdaf51bbf319fd92bc4a4b50356b5e902eeca94c595e83240ff5",
+    "src/i18n/catalogues/en/ui.updates.panel.json": "a94e79256f94128562493e36d8835952e2e78a41cd30382968b942fd6876794a",
+    "src/i18n/catalogues/ru/ui.updates.panel.json": "639c34fd6b6511bb895cbfa0626a7569b491f48401110514f24c8a6628ec5c6a"
+  },
+  "read_provenance": {
+    "catalogue_copy_via_read_public_copy": [
+      "src/i18n/catalogues/en/ui.shell.menubar.json (whole file, no key arg)",
+      "src/i18n/catalogues/ru/ui.shell.menubar.json (whole file)",
+      "src/i18n/catalogues/en/ui.updates.panel.json (whole file)",
+      "src/i18n/catalogues/ru/ui.updates.panel.json (whole file)"
+    ],
+    "note": "read_public_copy was called per whole file (no per-key calls); all 54 keys appeared in the returned content.",
+    "context_docs_via_filesystem_not_catalogue_copy": [
+      "src/i18n/catalogues/en/ui.shell.menubar.context.json",
+      "src/i18n/catalogues/en/ui.updates.panel.context.json",
+      "~/local-operator/i18n/glossary.md (grep only)",
+      "~/local-operator/i18n/style-guides/ru.md"
+    ],
+    "deviation": "One local Python script json-loaded the four catalogue files for mechanical key-set/placeholder/Latin-residue comparison, and shasum hashed them as instructed; this goes beyond read_public_copy-only access. Not used for wording judgments.",
+    "not_read": [
+      "~/qa/c1b",
+      "~/qa/c1-translations",
+      "~/qa/c1-audit (other than writing to ru/)"
+    ]
+  },
+  "checks": {
+    "key_sets_identical_en_ru": true,
+    "placeholders_identical_all_keys": true,
+    "placeholders_seen": [
+      "{name}",
+      "{version}",
+      "{size}",
+      "{target}",
+      "{running}"
+    ],
+    "no_plural_or_select_present": true,
+    "unexpected_latin_residue": false,
+    "product_names_verbatim": true,
+    "backticked_lop_update_verbatim": true,
+    "quotes_guillemets_and_em_dash_ok": true,
+    "menu_items_1_to_4_words": true,
+    "macos_ru_menu_wording": "Файл/Правка/Вид/Окно, Увеличить/Уменьшить, Фактический размер, «Программы» match Apple ru usage; sentence case used over EN Title Case per ru style guide",
+    "tone_calm_no_exclamation": true,
+    "glossary_note": "glossary.md has no entries for these terms; checked against style-guides/ru.md only",
+    "ur_bidi": "not applicable (ru)"
+  },
+  "findings": [
+    {
+      "severity": "MINOR",
+      "namespace": "ui.updates.panel",
+      "key": "ui.updates.panel.server.behind.remedy",
+      "current": "Этот чекаут отстаёт от удалённого репозитория — именно поэтому `lop-update` отказался из него собирать. Обновите чекаут, и следующее нажатие здесь запустит сборку.",
+      "suggestion": "Эта рабочая копия отстаёт от удалённого репозитория — поэтому `lop-update` отказался собирать из неё. Обновите её, и следующее нажатие здесь запустит сборку. («чекаут» is an unrecorded transliteration; style guide keeps git terms Latin or uses plain Russian.)"
+    },
+    {
+      "severity": "MINOR",
+      "namespace": "ui.updates.panel",
+      "key": "ui.updates.panel.launch.check.message",
+      "current": "Не удалось проверить запуск скачанного обновления, поэтому оно не установлено.",
+      "suggestion": "Скачанное обновление не удалось проверить перед запуском, поэтому оно не установлено. («проверить запуск» is ambiguous: reads as checking whether it launches.)"
+    },
+    {
+      "severity": "MINOR",
+      "namespace": "ui.updates.panel",
+      "key": "ui.updates.panel.launch.check.message_version",
+      "current": "Не удалось проверить запуск обновления до версии {version}, поэтому оно не установлено.",
+      "suggestion": "Обновление до версии {version} не удалось проверить перед запуском, поэтому оно не установлено."
+    },
+    {
+      "severity": "NIT",
+      "namespace": "ui.shell.menubar",
+      "key": "ui.shell.menubar.force_reload",
+      "current": "Принудительно перезагрузить",
+      "suggestion": "Keep or shorten (27 chars, widest item in the menu; macOS column is narrow). Acceptable as is."
+    },
+    {
+      "severity": "NIT",
+      "namespace": "ui.updates.panel",
+      "key": "ui.updates.panel.failure.cancelled.remedy",
+      "current": "…либо обновитесь снова из приложения…",
+      "suggestion": "…либо повторите обновление из приложения… («обновитесь» is colloquial/ambiguous: update what?). Same in failure.unfinished.remedy."
+    },
+    {
+      "severity": "NIT",
+      "namespace": "ui.updates.panel",
+      "key": "ui.updates.panel.artifact.unreadable.message",
+      "current": "…поэтому оно не установлено.",
+      "suggestion": "Sibling artifact.* messages say «поэтому не установлено» without «оно»; unify (also _version, launch.* and disk.* use «оно»)."
+    }
+  ],
+  "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 3,
+    "NIT": 3
+  },
+  "verdict": "passed",
+  "instance": "7c4b17a57ee9-ru",
+  "model": "anthropic/claude-sonnet-5-5",
+  "status": "passed",
+  "sha256": {
+    "src/i18n/catalogues/en/ui.shell.menubar.json": "a2950cd3f057ee4641bb12df761ec98d496282e09d69e6150d6dd6edbc74be82",
+    "src/i18n/catalogues/en/ui.updates.panel.json": "a94e79256f94128562493e36d8835952e2e78a41cd30382968b942fd6876794a",
+    "src/i18n/catalogues/ru/ui.shell.menubar.json": "2c8cb4289ddecdaf51bbf319fd92bc4a4b50356b5e902eeca94c595e83240ff5",
+    "src/i18n/catalogues/ru/ui.updates.panel.json": "639c34fd6b6511bb895cbfa0626a7569b491f48401110514f24c8a6628ec5c6a"
+  }
+}

@@ -105,6 +105,43 @@ export const DEV_DRIVER_FACTS = "dev-driver-facts";
 /** The world key the preload exposes. Namespaced so it cannot collide with the app's own. */
 export const DEV_DRIVER_WORLD_KEY = "__loDevDriver";
 
+/**
+ * S1's address-overlay probe channel, handled by the BROWSER namespace's IPC
+ * (`browser/ipc.ts`) because the overlay it operates belongs to the browser
+ * host. Registered only when the launch gate passed; the bridge below exists
+ * only in an armed launch, so an ordinary run has neither half.
+ */
+export const DEV_DRIVER_ADDRESS_OVERLAY = "dev-driver-address-overlay";
+
+/**
+ * S2's two channels, both inside the same armed-launch branch as the S1 probe:
+ *
+ * - `...-project` is renderer → main (`ipcMain.handle`), carrying a validated
+ *   display projection (never a URL or code);
+ * - `...-event` is main → renderer, carrying only `{type:"commit", seq, index}`
+ *   for a row the child actually painted.
+ *
+ * Both are registered only when the S2 gate passed, so an ordinary or S1-only
+ * launch has neither, and stop/retry unregisters the handler like every other
+ * channel in the browser namespace.
+ */
+export const DEV_DRIVER_ADDRESS_OVERLAY_PROJECT =
+	"dev-driver-address-overlay-project";
+export const DEV_DRIVER_ADDRESS_OVERLAY_EVENT =
+	"dev-driver-address-overlay-event";
+
+/** The complete input vocabulary, re-exported so main's handler and the preload
+ * wrapper cannot drift on a spelling. `click`/`measure` are probe-only: they
+ * operate the child's own input/layout from the gated harness, never from a
+ * product path. */
+export type AddressOverlayProbeAction =
+	| "show"
+	| "hide"
+	| "facts"
+	| "click"
+	| "measure"
+	| "key";
+
 /** Values that count as "yes". Anything else that is set is a typo, not an opt-in. */
 const TRUTHY = new Set(["1", "true"]);
 
@@ -207,6 +244,78 @@ export function headlessExerciserAllowed(input: {
 	return input.arming.armed && input.windowMode === "headless";
 }
 
+export const OWNER_AUDIT_STARTUP_SCENE = "team-bridge-owner-audit" as const;
+const DEV_DRIVER_SCENE_ARG = "--lo-dev-driver-scene";
+
+/** One fixed native-QA scene, not a navigation or execution API. Paths are
+ * realpath-canonicalized by main against ACTUAL Electron userData after backend
+ * discovery. Missing isolation or a default/live daemon fails closed. Keeping
+ * this decision pure lets negative cases run without showing a window. */
+export function resolveDevDriverStartupScene(input: {
+	env: Record<string, string | undefined>;
+	armed: boolean;
+	packaged: boolean;
+	windowMode: WindowMode;
+	backendManagerDisabled: boolean;
+	selectedBackendUrl: string;
+	paths: {
+		root: string;
+		home: string;
+		config: string;
+		requestedUserData: string;
+		actualUserData: string;
+	} | null;
+}): typeof OWNER_AUDIT_STARTUP_SCENE | null {
+	if (
+		input.env.LOCAL_OPERATOR_UI_DEV_DRIVER_SCENE !==
+			OWNER_AUDIT_STARTUP_SCENE ||
+		!input.armed ||
+		input.packaged ||
+		input.windowMode !== "headless" ||
+		input.env.VITE_DISABLE_BACKEND_MANAGER !== "true" ||
+		!input.backendManagerDisabled ||
+		!input.paths
+	)
+		return null;
+	const p = input.paths;
+	if (
+		!p.root.startsWith("/") ||
+		p.root === "/" ||
+		p.root.endsWith("/") ||
+		![p.home, p.config, p.requestedUserData, p.actualUserData].every((v) =>
+			v.startsWith(`${p.root}/`),
+		) ||
+		p.actualUserData !== p.requestedUserData
+	)
+		return null;
+	try {
+		const asked = new URL(input.env.VITE_LOCAL_OPERATOR_API_URL ?? "");
+		const selected = new URL(input.selectedBackendUrl);
+		if (
+			asked.href !== selected.href ||
+			asked.protocol !== "http:" ||
+			!["127.0.0.1", "localhost", "[::1]"].includes(asked.hostname) ||
+			!asked.port ||
+			asked.port === "1111" ||
+			asked.username ||
+			asked.password ||
+			asked.pathname !== "/" ||
+			asked.search ||
+			asked.hash
+		)
+			return null;
+		return OWNER_AUDIT_STARTUP_SCENE;
+	} catch {
+		return null;
+	}
+}
+
+export function devDriverSceneArgument(
+	scene: typeof OWNER_AUDIT_STARTUP_SCENE,
+): string {
+	return `${DEV_DRIVER_SCENE_ARG}=${scene}`;
+}
+
 /**
  * The `additionalArguments` entry that carries the frames directory to a preload.
  *
@@ -225,15 +334,26 @@ export function devDriverArgument(outDir: string): string {
  * not absolute. A preload that cannot read a frames directory has nothing to
  * expose, so "unintelligible" and "absent" are deliberately the same answer.
  */
-export function readDevDriverArgument(
-	argv: readonly string[],
-): { outDir: string } | null {
+export function readDevDriverArgument(argv: readonly string[]): {
+	outDir: string;
+	startupScene?: typeof OWNER_AUDIT_STARTUP_SCENE;
+	/** Present only when main's S1 script gate passed (see `resolveDevDriverScript`). */
+	script?: true;
+} | null {
 	const prefix = `${DEV_DRIVER_ARG}=`;
 	const match = argv.find((entry) => entry.startsWith(prefix));
 	if (match === undefined) return null;
 	const outDir = match.slice(prefix.length);
 	if (outDir === "" || !outDir.startsWith("/")) return null;
-	return { outDir };
+	return {
+		outDir,
+		...(argv.includes(devDriverSceneArgument(OWNER_AUDIT_STARTUP_SCENE))
+			? { startupScene: OWNER_AUDIT_STARTUP_SCENE }
+			: {}),
+		// Exact match, never a prefix: the frames argument above is
+		// `--lo-dev-driver=<dir>`, so the two spellings cannot be confused.
+		...(argv.includes(DEV_DRIVER_SCRIPT_ARG) ? { script: true as const } : {}),
+	};
 }
 
 /** The one line an armed (or refused) launch prints, and nothing at all when off. */
@@ -245,4 +365,164 @@ export function describeDevDriverArming(
 	}
 	if (arming.problems.length === 0) return null;
 	return `[dev-driver] not armed: ${arming.problems.join("; ")}`;
+}
+
+/*
+ * ---------------------------------------------------------------------------
+ * S1: the dev-driver STEP RUNNER's gate (mac proof capture).
+ * ---------------------------------------------------------------------------
+ *
+ * WHY IT EXISTS. `scripts/mac-proof-capture.mjs` photographs the INSTALLED app on
+ * a real Mac with real vibrancy, which only a window-server capture
+ * (`screencapture -l <id>`) of a shown window can see. The verbs that put the app
+ * in a state worth photographing (`setTheme`, `navigate`, `openCanvas`, ...)
+ * already ship in the armed renderer; what was missing is a way to CALL them
+ * without CDP, which the operator's rules ban against his own desktop. The runner
+ * is that invoker: main reads a JSON step list, calls the verbs over one dedicated
+ * IPC pair and prints one line per step, so the harness reads stdout instead of
+ * attaching a debugger. It is an IPC verb TABLE, not `executeJavaScript`, so the
+ * review question "what can this reach" keeps the answer the verb table gives.
+ *
+ * WHY IT IS ITS OWN GATE and not an extension of the owner-audit startup scene:
+ * that scene refuses packaged builds and port 1111 on purpose, while this runner
+ * exists precisely to drive a packaged bundle. Its isolation comes from a
+ * different place - a scratch `--user-data-dir` that must not be (or sit inside,
+ * or contain) the app's default userData - so a launch sharing the operator's
+ * profile can never run a script, whatever else it was told.
+ *
+ * Pure, like everything in this module: the caller passes realpath and the
+ * candidate default roots, so `scripts/dev-driver-script-gate.test.mjs` asserts
+ * every refusal without Electron.
+ */
+
+/** The opt-in: an ABSOLUTE path to the JSON step list. Read from `launchEnv`. */
+export const DEV_DRIVER_SCRIPT_ENV = "LOCAL_OPERATOR_UI_DEV_DRIVER_SCRIPT";
+
+/**
+ * How main tells the preload to listen for script steps: an `additionalArguments`
+ * entry, for the reason `DEV_DRIVER_ARG` gives (a renderer's argv cannot be forged
+ * from outside, and a sync handshake hung the unarmed renderer once).
+ */
+export const DEV_DRIVER_SCRIPT_ARG = "--lo-dev-driver-script";
+
+/** main -> preload: `{id, verb, payload}`. Registered only when the gate passed. */
+export const DEV_DRIVER_SCRIPT_STEP = "dev-driver-script-step";
+/** preload -> main: `{id, ok, value | error}`. Registered only when the gate passed. */
+export const DEV_DRIVER_SCRIPT_RESULT = "dev-driver-script-result";
+
+export interface DevDriverScriptGate {
+	/** True only when every condition held; the runner starts only then. */
+	honoured: boolean;
+	/** The absolute script path, when honoured. */
+	scriptPath: string | null;
+	/** Set when the opt-in was given and refused; printed as one line. Null when not asked. */
+	refusal: string | null;
+}
+
+/** True when `child` is `parent` or sits anywhere below it. Both already realpath'd. */
+function within(child: string, parent: string): boolean {
+	if (child === parent) return true;
+	const prefix = parent.endsWith("/") ? parent : `${parent}/`;
+	return child.startsWith(prefix);
+}
+
+/**
+ * Decide whether this launch may run a dev-driver script.
+ *
+ * Honoured only if ALL hold, each refusal naming itself:
+ * - the opt-in is set (unset is silent: a normal launch prints nothing);
+ * - the dev driver is ARMED (opt-in + absolute frames dir + headless|inactive);
+ * - the window mode is headless or inactive (re-checked here so a future change
+ *   to the arming rules cannot quietly widen this one);
+ * - the script path is absolute;
+ * - realpath(userData) is not a default userData root, not inside one, and does
+ *   not contain one. "Contains" matters because `--user-data-dir=~/Library` would
+ *   otherwise pass a naive equality check while every profile lives under it.
+ *
+ * `realpath` is injected so a test can model symlinks; the shipped caller passes
+ * `fs.realpathSync` wrapped to fall back to the input for a missing path (a
+ * missing default root cannot be the profile in use).
+ *
+ * `caseInsensitive` (main passes `process.platform === "darwin"`): macOS's
+ * default APFS volume folds case and `fs.realpathSync` keeps the caller's
+ * spelling, so `--user-data-dir=~/Library/Application Support/local operator`
+ * IS the default profile there although the strings differ. The comparison then
+ * folds case and Unicode normalisation; Linux stays exact, its filesystems
+ * being case-sensitive (review r1 R1-3 on PR #1936).
+ */
+export function resolveDevDriverScript(input: {
+	env: Record<string, string | undefined>;
+	armed: boolean;
+	windowMode: WindowMode;
+	userData: string;
+	defaultUserData: readonly string[];
+	realpath: (path: string) => string;
+	caseInsensitive?: boolean;
+}): DevDriverScriptGate {
+	const raw = input.env[DEV_DRIVER_SCRIPT_ENV]?.trim() ?? "";
+	if (raw === "") return { honoured: false, scriptPath: null, refusal: null };
+	const refuse = (reason: string): DevDriverScriptGate => ({
+		honoured: false,
+		scriptPath: null,
+		refusal: reason,
+	});
+	if (!input.armed)
+		return refuse(
+			`${DEV_DRIVER_SCRIPT_ENV} needs the dev driver armed (${DEV_DRIVER_ENV}=1 and an absolute ${DEV_DRIVER_OUT_ENV})`,
+		);
+	if (input.windowMode !== "headless" && input.windowMode !== "inactive")
+		return refuse(
+			`a dev-driver script never runs in a "${input.windowMode}" window; use --window-mode=inactive or headless`,
+		);
+	if (!raw.startsWith("/"))
+		return refuse(`${DEV_DRIVER_SCRIPT_ENV} must be an absolute path`);
+	if (!input.userData.startsWith("/"))
+		return refuse("the profile path is not absolute");
+	const fold = (path: string): string =>
+		input.caseInsensitive ? path.normalize("NFC").toLowerCase() : path;
+	const profile = fold(input.realpath(input.userData));
+	for (const candidate of input.defaultUserData) {
+		if (!candidate.startsWith("/")) continue;
+		const root = fold(input.realpath(candidate));
+		if (within(profile, root) || within(root, profile))
+			return refuse(
+				"the profile is the app's default user data (or inside/containing it); a script runs only in a scratch --user-data-dir",
+			);
+	}
+	return { honoured: true, scriptPath: raw, refusal: null };
+}
+
+/** The one line the gate prints when it was asked, and nothing when it was not. */
+export function describeDevDriverScript(
+	gate: DevDriverScriptGate,
+): string | null {
+	if (gate.honoured)
+		return `[dev-driver-script] ARMED; steps from ${gate.scriptPath}`;
+	if (gate.refusal) return `[dev-driver-script] refused: ${gate.refusal}`;
+	return null;
+}
+
+/** The preload's argument for a launch whose script gate passed. */
+export function devDriverScriptArgument(): string {
+	return DEV_DRIVER_SCRIPT_ARG;
+}
+
+/**
+ * S3: why the update service stays quiet in this launch, or null for every
+ * ordinary launch.
+ *
+ * WHY. An armed run of the SHIPPED bundle (the mac proof harness execs
+ * `/Applications/Local Operator.app` directly) would otherwise run the start-up
+ * seal repair 15 s in, which may delete files inside the bundle the operator is
+ * running, and an "update available" card could land in an evidence frame. An
+ * armed run is a rig's boot by definition (opt-in + scratch frames dir + a
+ * non-normal window), so nothing the operator relies on is lost: his own launch
+ * is never armed.
+ */
+export function devDriverQuietUpdatesReason(
+	arming: DevDriverArming,
+): string | null {
+	return arming.armed
+		? "the renderer dev driver is armed (a rig's boot): start-up seal repair and app-initiated update checks are skipped"
+		: null;
 }

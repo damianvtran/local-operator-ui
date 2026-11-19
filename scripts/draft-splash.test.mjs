@@ -360,9 +360,9 @@ test("a cold session whose page is in flight still holds the pane, and stops hol
 	// The other half of the same rule, unchanged by this repair (design D7), read
 	// off the SHIPPED handle so the two claims are one line apart: the segment a
 	// real cold session is entitled to, and the row that ends it. `stale: false`
-	// is the row that ends it: rows this window CACHED keep the hold (see
-	// `session-switch.test.mjs`'s cached table), because they are this window's
-	// memory of the conversation rather than the conversation.
+	// is the row that ends it, and so does `stale: true` since the cached-paint
+	// hold was retired (see `session-switch.test.mjs`'s cached table): any record
+	// ends the hold, and the caption says which rows are the window's memory.
 	const cold = handleFor(SESSION, true);
 	const owed = waits(cold);
 	const paneView = (recordCount) => ({

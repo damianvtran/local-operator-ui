@@ -1,0 +1,23 @@
+{
+ "file": "src/i18n/catalogues/ur/ui.chat.pickers.json",
+ "sha256": "4772ed26451c1118c927a0aec722428eb88f3cd3f26c80dfae183ec2b14af0c1",
+ "keys_checked": 738,
+ "parse_errors": 0,
+ "argument_or_type_mismatches_vs_en": [],
+ "value_kinds": {
+  "string": 738
+ },
+ "plural_keys_with_arms": 0,
+ "plural_categories_present": [],
+ "plural_surface": "none: this namespace carries no ICU plural or select at all, so the ur one/other category rule is vacuous here and no category is claimed",
+ "ur_clld_categories_expected": [
+  "one",
+  "other"
+ ],
+ "changed_key_present": true,
+ "changed_key_code_points": 83,
+ "changed_key_code_points_at_base": 82,
+ "changed_key_byte_delta": 2,
+ "changed_key_is_plain_literal_no_icu": true,
+ "ok": true
+}

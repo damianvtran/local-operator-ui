@@ -11,7 +11,9 @@
     // `exports` are both legitimate here.
     "moduleResolution": "bundler",
     "noEmit": true,
-    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
+    // Composite projects write build info even with noEmit. Keep that mutable
+    // cache in this worktree, never in node_modules borrowed from another one.
+    "tsBuildInfoFile": "./.cache/typecheck/node.tsbuildinfo",
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,

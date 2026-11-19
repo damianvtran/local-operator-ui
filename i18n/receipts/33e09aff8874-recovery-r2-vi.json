@@ -1,0 +1,78 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 2 (delta), PR #1962",
+  "locale": "vi",
+  "namespace": "ui.recovery",
+  "pr": 1962,
+  "date": "2026-11-17",
+  "head": "827bed2850d055e19e04639da216a260dedb6882",
+  "instance": "33e09aff8874-recovery-r2-vi",
+  "auditor": {
+    "agent": "task",
+    "role": "independent i18n auditor (team lopdev, task child 'UI-1 i18n audit r2', session 33e09aff8874); not the translator (coder, anthropic/claude-opus-5-5) and not the round-1 auditor (session fefddad98e83)",
+    "model": "anthropic/claude-opus-5-5",
+    "instance": "33e09aff8874-recovery-r2-vi"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean",
+  "glossary": {
+    "path": "local-operator:i18n/glossary.md",
+    "blob": "e3cdd40c909fb4bf515fc88abf57d7a85735a8e2"
+  },
+  "style_guide": {
+    "path": "local-operator:i18n/style-guides/vi.md",
+    "blob": "f4b642d7a6d30ad396df9c434a781ce83d3f0d33"
+  },
+  "audited_keys": [
+    "ui.recovery.approval.default_done",
+    "ui.recovery.approval.answer_hint",
+    "ui.recovery.composer.local_not_default",
+    "ui.recovery.send.failed_no_provider",
+    "ui.recovery.send.failed_no_model",
+    "ui.recovery.send.use_local_failed",
+    "ui.recovery.local.intro",
+    "ui.recovery.local.use_for_chats",
+    "ui.recovery.local.using_for_chats",
+    "ui.recovery.local.in_use",
+    "ui.recovery.local.empty_listing_ollama",
+    "ui.recovery.local.empty_listing_other",
+    "ui.recovery.local.no_address_title",
+    "ui.recovery.local.no_address_body",
+    "ui.recovery.local.check_failed_title",
+    "ui.recovery.local.check_failed_body",
+    "ui.recovery.local.same_result"
+  ],
+  "findings": [
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Mechanical pass on the audited bytes (17 round-2 keys): ICU parse OK in @formatjs/icu-messageformat-parser; argument names/types equal English; formats in intl-messageformat with sample args; NFC; no bidi controls; no en/em dashes; ' · ' separators and trailing … kept; 'Local Operator' kept Latin; key set and order equal English (43). Negative control (dropped {model}, ASCII apostrophe, plain space before ':') was caught."
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "vi: 'khóa' for key and 'nhà cung cấp' for provider match the vi corpus; 'tự động' casing follows session_done."
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Removed keys ui.recovery.approval.all_done and ui.recovery.local.no_models_{title,ollama,other} are absent from en, this locale, en context and keys.gen.ts; they survive only inside the immutable round-1 receipts as history."
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "The other 26 keys are value-identical to the bytes the round-1 audit (fefddad98e83) passed at 93e9e04342; not re-audited."
+    }
+  ],
+  "scope": "PR #1962 round 2: the 17 new/changed ui.recovery keys, af3ea44614..827bed2850, plus this audit's locale-only fixes",
+  "binding": "Verified on 827bed2850 plus this audit's locale-only fixes: target src/i18n/catalogues/vi/ui.recovery.json sha256 df031291837534a21c8a817315c44c0f6ce6f5864bac174abe6e4dd489b19a58; English sha256 1849547dc8446abd5152f982ff6b5703bb3507b9fa850e8c2cc0eeb287b22549; context sha256 bbafb1c3a3e46940b5542a81c44f9f1e8ebe3d591f29006790f6710f1600791b.",
+  "en_sha256": "1849547dc8446abd5152f982ff6b5703bb3507b9fa850e8c2cc0eeb287b22549",
+  "context_sha256": "bbafb1c3a3e46940b5542a81c44f9f1e8ebe3d591f29006790f6710f1600791b",
+  "target_sha256": "df031291837534a21c8a817315c44c0f6ce6f5864bac174abe6e4dd489b19a58",
+  "sha256": {
+    "vi": "df031291837534a21c8a817315c44c0f6ce6f5864bac174abe6e4dd489b19a58",
+    "en": "1849547dc8446abd5152f982ff6b5703bb3507b9fa850e8c2cc0eeb287b22549"
+  }
+}

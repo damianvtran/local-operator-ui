@@ -1,0 +1,106 @@
+{
+ "audit_id": "s16f-au3-ur",
+ "audit_kind": "delta",
+ "locale": "ur",
+ "namespace": "ui.chat.canonical",
+ "audit_date": "2026-11-12",
+ "key_count": 15,
+ "pr": "damianvtran/local-operator-ui#1876",
+ "audited_head": "8180eff1f705eb79d4df5123d6108c539b585b2e",
+ "merged_base": "9ef579fe12abe99409c4ed0b52a3d125afdc1b10",
+ "premerge_pr_head_10_keys": "107ff1dd0bddd0dbefa60e27cb179ee636d923a1",
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "a870ddd68b99",
+  "instance": "1d764576d0aa-s16f-au3-ur",
+  "model": "deepseek/deepseek-flash",
+  "actual_model_source": "This session's harness-declared model header (deepseek/deepseek-flash). No model switch, provider fallback or degradation notice appeared in this run; no model name beyond the header is invented.",
+  "independent_from_translator_session": true,
+  "independence_basis": "This session translated nothing, edited no catalogue and committed nothing in the worktree (read-only; `git status --porcelain` empty before and after). No translation API, SDK, MT service or back-translation was used: every judgment is a reading of the English source, its context sidecar, the shipped ur corpus, the ur style guide and the core glossary. The round-2 receipt for these same 10 keys (session 33f0800c30f3) and the earlier ur records were read only after the values were re-derived here; where I agree with them I say so explicitly."
+ },
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+   "sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+   "sha256": "8f56e0d2b384c6b41add57a64e6c863e565cb61d5a7c0de482d42f380be3acfe"
+  },
+  "ur": {
+   "path": "src/i18n/catalogues/ur/ui.chat.canonical.json",
+   "sha256": "fd1116ccb5e847eb7f28c4cf5d1084efad95edf52d638d1a6144e065ce7d98a7"
+  },
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+  },
+  "style_guide_ur_read": {
+   "path": "~/local-operator/i18n/style-guides/ur.md (working copy = local HEAD b42471d)",
+   "sha256": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60"
+  },
+  "style_guide_ur_origin_main": {
+   "path": "damianvtran/local-operator origin/main:i18n/style-guides/ur.md",
+   "sha256": "7276e96210fe5f23fd82a39ae4cc0c88b2c1009d3a551d914efc3f61516eddc4",
+   "note": "identical to the read copy apart from one macOS-labels clause that touches no key in this scope"
+  }
+ },
+ "artifacts": {
+  "report": {
+   "path": "report.md",
+   "sha256": "c75ceb202490fdd117aa10e29f4bde0b6d38f9f028965171ae89d31270d7615c"
+  },
+  "execution_log": {
+   "path": "audit.log",
+   "sha256": "35d94b971a62925fb1ec5278c4777181ade5c34a531d4e4bcfc07985570eb7e2"
+  },
+  "receipt": {
+   "path": "receipt.json",
+   "sha256": "e8fd11469cda736764fc3c5c2506f9e1251869bebdeee7e5e9399a76ee3850a2"
+  },
+  "integrity_checker": {
+   "path": "integrity.py",
+   "sha256": "9ac2fa8e01b3a4a27c18aab6ee44ee64d76a25cded73c190dc706ca02c67ba57"
+  },
+  "icu_checker": {
+   "path": "check-icu.mjs",
+   "sha256": "a1f1c8a6a812c072108e2192216f82e1ac5cc2b355bb897b9805de443ae610e1"
+  },
+  "negative_control": {
+   "path": "check-mutants.mjs",
+   "sha256": "8d0f71ad43c7f86dff8da08b2b4f7e669e589333679ceccdf92241b33c31adc8"
+  },
+  "typography_checker": {
+   "path": "typography.py",
+   "sha256": "5354a7f07591f4c1ae546e5b6f4e104f232de2d7076017b95558514921dc037e"
+  },
+  "bidi_checker": {
+   "path": "bidi-evidence.py",
+   "sha256": "9d6c48fe9b6b5fd5ad847e51f0ea35948efa7fe1747868852766e5de2815907a"
+  },
+  "receipt_validator": {
+   "path": "validate-receipt.mjs",
+   "sha256": "307df1651d1c4d862e49b75d7f5008dfca6f8aa60ca9a4a4b034584af8efb16d"
+  }
+ },
+ "current_report_verdict": {
+  "status": "passed",
+  "ledger_result": "clean-with-findings",
+  "unresolved_blocker_major_count": 0,
+  "counts": {
+   "blocker": 0,
+   "major": 0,
+   "minor": 0,
+   "nit": 1
+  },
+  "finding_ids": [
+   "NIT-1"
+  ],
+  "note": "NIT-1 is informational: the $ sign in sound.cost.estimated_zero is not covered by the runtime's sigil isolation; no copy change, renderer question"
+ },
+ "retention": {
+  "tracked_evidence_path": "i18n/audits/evidence/ur/ui.chat.canonical/s16f-au3-ur/",
+  "state": "staged in the auditor's session scratchpad, awaiting the integrator's tracked commit",
+  "execution_log_vs_notes": "audit.log is an execution log (real commands, real output; the first bidi block is marked SUPERSEDED and the corrected run follows). report.md is analysis. This record is metadata."
+ }
+}

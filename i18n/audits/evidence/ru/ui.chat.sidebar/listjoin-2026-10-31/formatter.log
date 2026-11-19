@@ -1,0 +1,13 @@
+{
+  "execution": "actual Node execution with production formatter dependency IntlMessageFormat",
+  "arms": {
+    "pair": "Coder и Reviewer",
+    "middle": "Coder, Reviewer",
+    "other": "Coder, Reviewer и Designer"
+  },
+  "two_name": "Coder и Reviewer",
+  "three_name": "Coder, Reviewer и Designer",
+  "cyrillic": "Кодер, Ревьюер и Исследователь",
+  "negative_control": "missing tail throws; assert.throws passed",
+  "ast_checks": "position/select; pair/middle/other; head/tail identical to English: passed"
+}

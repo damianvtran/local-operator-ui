@@ -3,7 +3,11 @@
 	"ui.common.forms.autocomplete_field.enter_value": "Введите значение…",
 	"ui.common.forms.autocomplete_field.save": "Сохранить {label}",
 	"ui.common.forms.autocomplete_field.save_changes": "Сохранить изменения",
-	"ui.common.forms.autocomplete_field.saving": "Сохранение {label}",
+	"ui.common.forms.autocomplete_field.saving": "Сохранение: {label}",
+	"ui.common.forms.categories_input_chips.add_category": "Добавить категорию…",
+	"ui.common.forms.categories_input_chips.category": "{category, select, investment {Инвестиции} accounting {Бухгалтерия} healthcare {Здравоохранение} legal {Право} software {Программирование} security {Безопасность} role_play {Ролевые игры} personal_assistance {Личная помощь} education {Образование} marketing {Маркетинг} sales {Продажи} research {Исследования} analysis {Аналитика} management {Управление} social_media {Соцсети} other_category {Другое} other {{category}}}",
+	"ui.common.forms.categories_input_chips.no_categories_selected": "Категории не выбраны",
+	"ui.common.forms.categories_input_chips.remove_category": "Удалить категорию {value}",
 	"ui.common.forms.compact_pagination.next_page": "Следующая страница",
 	"ui.common.forms.compact_pagination.previous_page": "Предыдущая страница",
 	"ui.common.forms.editable_field.cancel_escape": "Отмена (Escape)",
@@ -25,5 +29,11 @@
 	"ui.common.forms.searchable_select.clear_value": "Очистить значение",
 	"ui.common.forms.searchable_select.no_matches": "Нет совпадений",
 	"ui.common.forms.searchable_select.use": "Использовать «{text}»",
-	"ui.common.forms.select.unlisted_value": "Нет в списке; сохранено как введено."
+	"ui.common.forms.select.unlisted_value": "Нет в списке; сохранено как введено.",
+	"ui.common.forms.slider_setting.saving": "Сохранение: {label}",
+	"ui.common.forms.tags_input_chips.add_tag": "Добавить тег…",
+	"ui.common.forms.tags_input_chips.add_tage0db29": "Добавить тег",
+	"ui.common.forms.tags_input_chips.no_tags_added": "Теги не добавлены",
+	"ui.common.forms.tags_input_chips.remove_tag": "Удалить тег {tag}",
+	"ui.common.forms.toggle_setting.saving": "Сохранение: {label}"
 }

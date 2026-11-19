@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "agent": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "audit-1751-row-bg-ur-20261107",
+  "locale": "ur",
+  "date": "2026-11-07",
+  "status": "passed",
+  "namespace": "ui.chat.sidebar.row.bg",
+  "keys_read": 6,
+  "sha256": {
+    "en": "cb2b1c6bbaa8171855af0cd6769c1eda1bd65c2aeaf0c08452e94989720487fc",
+    "ur": "b10627a296e9aac961ac1b472075b94a516275b0b99f75e0ee770dd95e78ed3a"
+  },
+  "findings": [
+    {
+      "id": "U1",
+      "severity": "MINOR",
+      "key": "ui.chat.sidebar.row.bg.jobs",
+      "current": "{count, plural, one {{count, number, ::group-off} کام} other {{count, number, ::group-off} کام}}",
+      "proposed": "{count, plural, one {{count, number, ::group-off} جاب} other {{count, number, ::group-off} جابز}}",
+      "reason": "Term collision: کام is the ur rendering of a todo count (ui.projects.count.todo '{n} کام') and of generic 'work' (this namespace's own waiting key), while every jobs surface uses the loan جاب/جابز (ui.common.errors.job_cancel, jobs_list, jobs_cleanup, ui.chat.composer.status.jobs_action). '1 کام جاری' would read as '1 task ongoing'.",
+      "disposition": "corrected in this audit commit; this receipt binds the corrected bytes"
+    },
+    {
+      "id": "I1",
+      "severity": "INFO",
+      "key": "ui.chat.sidebar.row.bg.running",
+      "reason": "Not a catalogue defect: the {items} list comes from Intl.ListFormat(type 'unit', style 'short') in chat-session-subagents.ts joinItems; CLDR unit-short joins ru with a bare space and zh-CN with nothing ('1 субагент 1 задание', '1个子智能体1个任务'). Recommended code fix type 'conjunction', style 'narrow' (en keeps '1 subagent, 1 job'). Reported on the PR for the coder; catalogue bytes are correct for either list style.",
+      "disposition": "code follow-up for the PR coder; not counted"
+    }
+  ],
+  "scope": "PR #1751 ui.chat.sidebar.row.bg at 47253d733ffd3e8c0b275a533c1b708c317709d6: full 6-key namespace (subagents, jobs, running, queued, subagents_queued, waiting), en catalogue + en context, composed output rendered with intl-messageformat + Intl.ListFormat as chat-session-subagents.ts builds it (counts 1/2/5/21/22), siblings ui.chat.pickers.info_model.*, ui.chat.composer.status.*_action, ui.projects.count.*, ui.common.errors.job*",
+  "independence": "lopdev task subagent ui-i18n-audit (job ab9ddad178e1, manager session 393182dd4bfe), separate from the PR coder that translated; same served model family (anthropic/claude-opus-5-5) disclosed; verdict rebuilt from the English source, the en context, sibling keys, the core glossary (~/local-operator/i18n/glossary.md) and the locale style guide.",
+  "references": "co",
+  "checks": "placeholders {count}/{items} exact per key, ICU arms = CLDR categories for the locale (fr/es one/many/other, ru one/few/many/other, ur/hi one/other, zh-CN/vi other), every arm renders via intl-messageformat, key set == en, NFC, zero Unicode Cf (bidi/format) code points, no ASCII ellipsis, tooltip + sr-only clause (no fixed width budget)",
+  "verdict": "ur: passed after U1 — ذیلی ایجنٹ invariant with numerals matches ui.projects.count.subagent; jobs moved from کام (todo/work) to the jobs-surface loan جاب/جابز (U1, corrected); 'جاری' matches ui.code_review CI جاری; zero Cf/bidi code points; Urdu list conjunction from ListFormat."
+}

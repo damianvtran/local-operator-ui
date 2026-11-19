@@ -1,0 +1,307 @@
+{
+ "schema": 1,
+ "audit_kind": "independent-remediation-delta-audit-round-2",
+ "date": "2026-10-25",
+ "locale": "hi",
+ "namespace": "ui.onboarding.tour",
+ "instance": "hi-onboarding-tour-r2-cc19dcba2a86",
+ "instance_basis": "12-hex prefix of the sha256 of hi's ui.onboarding.tour catalogue at the remediated candidate; the instance names the exact target bytes this round read.",
+ "status": "passed",
+ "previous_receipt": {
+  "receipt": "i18n/receipts/hi-onboarding-tour-e38c1c237313.json",
+  "receipt_sha256": "984aa293334a97db4635680aba0d05680df1c69ad819c1b32adff848ded79f05",
+  "relation": "Round 1 findings, still immutable and untouched; this round verifies their remediation and supersedes none of their recorded evidence."
+ },
+ "source": {
+  "repo": "damianvtran/local-operator-ui",
+  "worktree": "~/local-operator-ui/.worktrees/i18n-onboarding",
+  "source_head": "b3dd694c1702e36239cb7da94d636a02318d13ad",
+  "source_head_provenance": "declared by the delegating manager; not re-derived (no git command in this run's hold). The English and context bytes are unchanged from Round 1, which is what makes the delta comparable.",
+  "en_path": "src/i18n/catalogues/en/ui.onboarding.tour.json",
+  "context_path": "src/i18n/catalogues/en/ui.onboarding.tour.context.json",
+  "target_path": "src/i18n/catalogues/hi/ui.onboarding.tour.json",
+  "target_status": "uncommitted working-tree candidate (manager-declared). This receipt makes no claim about any commit."
+ },
+ "sha256": {
+  "en": "81fc4e3b70850e6961092aeb42a9cc12160fe1bd064d47cb28ce548618bcb976",
+  "hi": "cc19dcba2a867fb2e7a64266a3c53b4d5c82722919da9323532337488d82cfb7"
+ },
+ "context_sha256": "7131faf88213b943cfa7ee0b951a8e0d5fb512728b677c023beec11b677c0906",
+ "bytes": {
+  "en": 20065,
+  "context": 61441,
+  "hi": 39036
+ },
+ "keys": 123,
+ "delta": {
+  "changed": 19,
+  "unchanged": 104,
+  "changed_keys": [
+   "ui.onboarding.tour.action.close",
+   "ui.onboarding.tour.action.next",
+   "ui.onboarding.tour.agent_capabilities.body.2",
+   "ui.onboarding.tour.agent_list.body.2",
+   "ui.onboarding.tour.attachments.body.4",
+   "ui.onboarding.tour.canvas_feature.body.2",
+   "ui.onboarding.tour.canvas_files_view.body.1",
+   "ui.onboarding.tour.canvas_open_button.body.1",
+   "ui.onboarding.tour.chat_input.list.1.item.1",
+   "ui.onboarding.tour.chat_input.list.1.item.2",
+   "ui.onboarding.tour.create_schedule_dialog.body.2",
+   "ui.onboarding.tour.pre_command_palette_open_canvas.body.1.3",
+   "ui.onboarding.tour.schedules_overview.body.1",
+   "ui.onboarding.tour.schedules_overview.title",
+   "ui.onboarding.tour.tour_complete.title",
+   "ui.onboarding.tour.view_agent_settings.body.2",
+   "ui.onboarding.tour.welcome.body.1",
+   "ui.onboarding.tour.welcome.body.3",
+   "ui.onboarding.tour.welcome.list.1.item.6"
+  ],
+  "prior_state_source": "The pre-change values come from the auditor's own capture of all 123 key/value pairs made during the Round 1 read (session 7f5e35dd3eb0 scratchpad snapshot), not from git. Its provenance is checkable: the English strings in that snapshot are byte-identical to the current en catalogue (whose sha256 still equals the Round 1 value), and all 123 keys are present in the same order. No git object was read."
+ },
+ "translator": {
+  "agent": "translator",
+  "session": "1a52ed60d4b5",
+  "model": "radient/auto",
+  "provenance": "session and model declared by the delegating manager; this auditor did not observe the translator run."
+ },
+ "auditor": {
+  "agent": "translation-auditor",
+  "session": "7f5e35dd3eb0",
+  "model": "radient/auto",
+  "actual_model_source": "harness session model (system prompt: Model: radient/auto); no fallback model was used",
+  "fallback": null,
+  "independent_from_translator": true,
+  "independence_basis": "Same independent audit session as Round 1, distinct from translator session 1a52ed60d4b5; this round authored no catalogue value and wrote only this receipt. Scratchpad snapshot was read-only."
+ },
+ "scope": "Delta only: the 19 changed values against the Round 1 snapshot, their direct sentence joins, and the remediation of each Round 1 finding. The 104 unchanged keys were not re-audited: the diff shows them byte-identical and the English source is unchanged, so their Round 1 verdict carries. Glossary and register were re-checked only inside the changed strings.",
+ "remediation": [
+  {
+   "id": "T1",
+   "severity": "major",
+   "keys": [
+    "ui.onboarding.tour.welcome.body.1",
+    "ui.onboarding.tour.welcome.list.1.item.6",
+    "ui.onboarding.tour.schedules_overview.title",
+    "ui.onboarding.tour.schedules_overview.body.1"
+   ],
+   "status": "fixed",
+   "evidence": "All four now use the established पहल करने वाला family: 'पहल करने वाले AI एजेंट की एक टीम', 'पहल करने वाले एजेंट के लिए शेड्यूल', 'शेड्यूल के साथ पहल करने वाले एजेंट', '…पहल करने वाले एजेंट बन जाते हैं'. 'सक्रिय' no longer occurs anywhere in the file; the reactive contrast 'सिर्फ़ जवाब देने वाले बॉट' is retained, and the title's 'वाले…वाले' repetition the Round 1 draft would have produced is avoided by 'के साथ'."
+  },
+  {
+   "id": "T2",
+   "severity": "minor",
+   "keys": [
+    "ui.onboarding.tour.action.close",
+    "ui.onboarding.tour.tour_complete.title",
+    "ui.onboarding.tour.welcome.body.3",
+    "ui.onboarding.tour.agent_list.body.2"
+   ],
+   "status": "fixed",
+   "evidence": "'टूर' and 'वॉकथ्रू' no longer occur anywhere in the file. The tour is now परिचय throughout: 'परिचय बंद करें', 'परिचय पूरा हुआ', 'इस परिचय में हम ये चीज़ें देखेंगे:', and the consequential 'इस परिचय में आगे बात करेंगे', matching Settings' shipped 'ऐप का परिचय'. NOTE: agent_list.body.2 was not in the Round 1 finding's key list although the Round 1 scan that produced the finding did show the fourth 'टूर' occurrence; the remediation changed it anyway. That omission was the auditor's, not the translator's."
+  },
+  {
+   "id": "T3",
+   "severity": "minor",
+   "keys": [
+    "ui.onboarding.tour.canvas_open_button.body.1"
+   ],
+   "status": "fixed",
+   "evidence": "'एक जगह' replaced by 'एक कार्यक्षेत्र'; all five occurrences of the English noun in this namespace now render कार्यक्षेत्र."
+  },
+  {
+   "id": "T4",
+   "severity": "minor",
+   "keys": [
+    "ui.onboarding.tour.attachments.body.4",
+    "ui.onboarding.tour.chat_input.list.1.item.1",
+    "ui.onboarding.tour.chat_input.list.1.item.2"
+   ],
+   "status": "fixed",
+   "evidence": "'कहिए'→'कहें', 'बनाइए'→'बनाएँ' (two keys), 'खोजिए'→'खोजें'; no -इए imperative remains in the file, so the -ें form is now uniform."
+  },
+  {
+   "id": "T5",
+   "severity": "minor",
+   "keys": [
+    "ui.onboarding.tour.canvas_files_view.body.1"
+   ],
+   "status": "fixed",
+   "evidence": "Now 'अपने एजेंट द्वारा बनाई गई फ़ाइलें', the standard passive frame."
+  },
+  {
+   "id": "T6",
+   "severity": "minor",
+   "keys": [
+    "ui.onboarding.tour.agent_list.body.2"
+   ],
+   "status": "fixed",
+   "evidence": "Now 'टूलबार में सबसे ऊपर वाला … बटन', matching 'at the top of the toolbar'."
+  },
+  {
+   "id": "T7",
+   "severity": "minor",
+   "keys": [
+    "ui.onboarding.tour.canvas_feature.body.2"
+   ],
+   "status": "fixed",
+   "evidence": "Now 'पूर्ण markdown व्यूअर में'."
+  },
+  {
+   "id": "T8",
+   "severity": "nit",
+   "keys": [
+    "ui.onboarding.tour.agent_capabilities.body.2"
+   ],
+   "status": "fixed",
+   "evidence": "Now '…कब उन्हें टूल के इस्तेमाल से कई चरणों में काम पूरा करने के लिए आगे बढ़ना है।' - the travel calque is gone and the multi-step meaning is stated directly."
+  },
+  {
+   "id": "T9",
+   "severity": "nit",
+   "keys": [
+    "ui.onboarding.tour.create_schedule_dialog.body.2"
+   ],
+   "status": "fixed",
+   "evidence": "Now 'जब काम चलना बंद हो जाए'."
+  },
+  {
+   "id": "T10",
+   "severity": "nit",
+   "keys": [
+    "ui.onboarding.tour.view_agent_settings.body.2"
+   ],
+   "status": "fixed",
+   "evidence": "Now 'अच्छी तरह काम करती हैं'."
+  },
+  {
+   "id": "T11",
+   "severity": "nit",
+   "keys": [
+    "ui.onboarding.tour.action.next"
+   ],
+   "status": "fixed",
+   "evidence": "Now 'अगला', matching ui.mesh.mesh_approvals_tray.next and ui.chat.pickers.table_pager.next; footer sequence is पीछे / अगला / पूरा करें."
+  },
+  {
+   "id": "T12",
+   "severity": "nit",
+   "keys": [
+    "ui.onboarding.tour.pre_command_palette_open_canvas.body.1.3"
+   ],
+   "status": "fixed",
+   "evidence": "Now 'पेज, कार्रवाइयाँ और बहुत कुछ'; the fragment keeps its leading space and trailing colon, and the joined render reads '…शुरू करें: # चैट के लिए, @ …'."
+  }
+ ],
+ "checks": [
+  {
+   "check": "current target bytes",
+   "command": "sha256 over the worktree file",
+   "actual": "cc19dcba2a867fb2e7a64266a3c53b4d5c82722919da9323532337488d82cfb7 (39036 B)",
+   "result": "PASS - equals the manager's declared cc19dcba… and differs from Round 1's e38c1c23…"
+  },
+  {
+   "check": "original receipt untouched",
+   "command": "sha256 over i18n/receipts/hi-onboarding-tour-e38c1c237313.json",
+   "actual": "984aa293334a97db4635680aba0d05680df1c69ad819c1b32adff848ded79f05",
+   "result": "PASS - byte-identical to the Round 1 record"
+  },
+  {
+   "check": "en / context unchanged",
+   "command": "sha256 over both files",
+   "actual": "81fc4e3b…976 / 7131faf8…906",
+   "result": "PASS - same as Round 1, so the delta is target-only"
+  },
+  {
+   "check": "delta size",
+   "command": "key-by-key comparison against the Round 1 snapshot",
+   "actual": "19 changed, 104 unchanged of 123; changed set equals the four T1 keys + the three T2 keys + the three T4 keys + one key for each of T3,T5,T6,T7,T8,T9,T10,T11,T12 (19)",
+   "result": "PASS - exactly 19, no collateral edits"
+  },
+  {
+   "check": "structure after edit",
+   "command": "duplicate-aware JSON parse",
+   "actual": "123 keys, 123 unique members, order identical to en, no en-only/hi-only key",
+   "result": "PASS"
+  },
+  {
+   "check": "placeholders and tokens",
+   "command": "regex scan {..}|<..>|#|%s|${..}",
+   "actual": "0 hits",
+   "result": "PASS - none introduced; source still carries none"
+  },
+  {
+   "check": "NFC and whitespace",
+   "command": "unicodedata NFC plus whitespace scan",
+   "actual": "0 non-NFC, 0 double spaces, 0 NBSP/ZWJ, edge whitespace identical to en for all 123 (incl. the 8 space-bearing fragments)",
+   "result": "PASS"
+  },
+  {
+   "check": "residual flagged text",
+   "command": "substring scan for सक्रिय, टूर, वॉक, कहिए, बनाइए, खोजिए, 'एक जगह', 'बनाई फ़ाइलें', 'टूलबार के ऊपर वाला', 'पूरे markdown', 'लंबी यात्रा', 'बंद कर दे', 'अच्छी चलती', 'पेज और कार्रवाइयाँ'",
+   "actual": "all zero occurrences",
+   "result": "PASS"
+  },
+  {
+   "check": "width budget",
+   "command": "cell count with combining marks as 0",
+   "actual": "51 budgeted keys, max 1.08x English (welcome.title); 0 over 1.5x; changed titles shrank (schedules title 31→24 cells, next 4→3, item.6 30→24)",
+   "result": "PASS"
+  },
+  {
+   "check": "joined shortcut prose",
+   "command": "re-composed paragraph 1 and 2 from tour-copy.ts run order with paletteDoorLabel values",
+   "actual": "para 1: '…किसी प्रीफ़िक्स से शुरू करें: # चैट के लिए, @ एजेंट और टीमों के लिए, , सेटिंग्स के लिए, और > कमांड और पेजों के लिए।' para 2 unchanged from Round 1 and still joins cleanly",
+   "result": "PASS - the changed fragment joins with exactly one leading space and no double space"
+  },
+  {
+   "check": "remediation of every Round 1 finding",
+   "command": "per-ID key check plus reading the new value",
+   "actual": "12/12 present and fixed; no finding's text survives",
+   "result": "PASS"
+  }
+ ],
+ "findings": [],
+ "findings_summary": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 0,
+  "nit": 0
+ },
+ "observations": [
+  {
+   "id": "O1",
+   "kind": "INFO",
+   "text": "Round 1 observations O1-O5 remain recorded on the original receipt and were not re-derived this round; their limits apply as recorded, including O1's display-redaction limit on the English values this round did not need to read afresh."
+  },
+  {
+   "id": "O6",
+   "kind": "INFO",
+   "source_side": true,
+   "text": "UNRESOLVED SOURCE OBSERVATION (not a hi defect, preserved from the manager's brief and verified): the tour tells the reader to click \"Create schedule\" (create_schedule.body.1), whose Hindi matches that quote and the existing hi label for ui.schedules.schedule_form_dialog.create_schedule. The Schedules page's own call to action is a different label: ui.schedules.schedules_page.new_scheduled_task = \"New scheduled task\" (and the older engine note says new scheduled tasks are created as wakes in a conversation). So the quoted control may not exist on the spotlighted surface. This is a source/UX question; the target cannot resolve it by rewriting the quote."
+  },
+  {
+   "id": "O7",
+   "kind": "INFO",
+   "source_side": true,
+   "text": "UNRESOLVED SOURCE OBSERVATION (not a hi defect, preserved and verified): the settings prefix is a bare comma code span in the source (SCOPE_PREFIXES ',' → setting is correct per palette-search.ts), so the joined sentence reads ', सेटिंग्स के लिए' inside a comma-separated list. The glyph is accurate; the ambiguity is typographic and belongs to the source/palette rendering, not to the Hindi. It needs a rendered check or an authoring decision (e.g. a visible keycap style for prefix chips)."
+  },
+  {
+   "id": "O8",
+   "kind": "INFO",
+   "text": "The chosen tour term परिचय also occurs in its ordinary 'describe' sense at upload_agent_hub_dialog.body.1 ('जो एजेंट का परिचय देता है'). That is normal polysemy, not a term conflict; noted only so a future grep for परिचय is not mistaken for drift."
+  }
+ ],
+ "verdict": {
+  "namespace": "clean delta - all 12 Round 1 findings fixed on the current bytes; 19 changed keys, 104 unchanged retained as byte-identical; no new finding introduced",
+  "overall": "Round 2 pass on the delta. R1's one major is remediated with the established पहल करने वाला family; minors/nits are resolved as accepted. Residual risk is rendered-only (no pixels this round) plus the two source-side observations O6/O7."
+ },
+ "limits": [
+  "Delta scope only: the 104 unchanged keys were not re-audited; their Round 1 verdict is retained because the diff is byte-identical and the English source is unchanged.",
+  "No rendered/browser evidence under the resource hold: width was measured in cells, not pixels; no fit, truncation or line-height claim is made. A rendered pass of the 37-step panel is still required before release.",
+  "No native-speaker human review; this is an LLM audit that read the core glossary and hi style guide.",
+  "No git: source head and candidate status are manager-declared; the file hashes and the 19-key delta are derived here.",
+  "The pre-change baseline is the Round 1 scratchpad snapshot, not a git object; its provenance is evidenced by the byte-identical English file.",
+  "No pseudo-localization or full suite (hold)."
+ ]
+}

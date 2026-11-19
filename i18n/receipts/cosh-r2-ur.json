@@ -1,0 +1,62 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "cosh-r2-ur",
+ "session": "c911849eb597",
+ "date": "2026-10-22",
+ "locale": "ur",
+ "translator": "translator",
+ "translator_session": "94dcc5a13838",
+ "namespace": "ui.agentMessages.settings",
+ "status": "passed",
+ "keys_audited": 2,
+ "scope": "Round-2 scoped audit of the ur remediation delta (r1 target 56cc2a2c… → current f3196d2c…): the masculine-to-feminine possessive change in both arms of hold.chief_of_staff and hold.chief_of_staff_unlinked, plus byte-identity of hold.open and the 84 inherited keys; unchanged keys not re-audited.",
+ "sha256": {
+  "en": "1fb72465d3c05768918f79164bf1c3f8313160c4d05046a50a52046b2e8c1e3b",
+  "ur": "f3196d2cfd19cc1943cac1c319e2e939c427fe98d2dae2d1af4b01bde39ba668",
+  "context": "0796c27031e5a3b9a600147e67e1341234f6ed0f5adfd3b7c4f7758a5bcff63d"
+ },
+ "findings": [],
+ "previous_round": {
+  "path": "i18n/receipts/cosh-r1-ur.json",
+  "sha256": "29fafc2267bcf9532ab70b30c33df27c224ea033dfeb5d59fe52894b03d5b101",
+  "target_sha256": "56cc2a2cffd7f6e05f2e893ad59a76b3bcd4e412059e55beefe79d55e0b27653"
+ },
+ "remediation": [
+  {
+   "key": "ui.agentMessages.settings.hold.chief_of_staff",
+   "r1_severity": "MINOR",
+   "disposition": "fixed",
+   "verified": "F1: 'آپ کے چیف آف اسٹاف' → 'آپ کی چیف آف اسٹاف' in both arms; value byte-equal to the r1 proposal; agreement correct (feminine possessive before the oblique head is invariant کی; کا/کے منتظر still agrees with پیغام sg / پیغامات pl); matches ur.ui.onboarding greeting_done/greeting_owed.",
+   "value": "{count, plural, one {{count} پیغام آپ کی چیف آف اسٹاف کا منتظر ہے۔ اسے وصول کرنے کے لیے اس گفتگو میں ایک پیغام بھیجیں۔} other {{count} پیغامات آپ کی چیف آف اسٹاف کے منتظر ہیں۔ انہیں وصول کرنے کے لیے اس گفتگو میں ایک پیغام بھیجیں۔}}"
+  },
+  {
+   "key": "ui.agentMessages.settings.hold.chief_of_staff_unlinked",
+   "r1_severity": "MINOR",
+   "disposition": "fixed",
+   "verified": "F2: same change in both arms; byte-equal to the r1 proposal; agreement as F1; first sentence identical to hold.chief_of_staff in each arm.",
+   "value": "{count, plural, one {{count} پیغام آپ کی چیف آف اسٹاف کا منتظر ہے۔ اسے وصول کرنے کے لیے سائیڈ بار میں وہ گفتگو تلاش کریں اور اس میں ایک پیغام بھیجیں۔} other {{count} پیغامات آپ کی چیف آف اسٹاف کے منتظر ہیں۔ انہیں وصول کرنے کے لیے سائیڈ بار میں وہ گفتگو تلاش کریں اور اس میں ایک پیغام بھیجیں۔}}"
+  }
+ ],
+ "inherited_receipt": {
+  "base": "2fb94727d3",
+  "path": "i18n/receipts/102ffa6d185d.json",
+  "sha256": "9cf5311d3e87ee9ff90304782aae6ea3a5535cb78213ad107f9f48c737df1d63",
+  "keys_inherited": 84,
+  "base_target_sha256": "e9e78fec859b048edb6010a196ad6883a7f40e86eacf841392e1bd2f3797ecb4",
+  "unchanged_values_verified": 84
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+ },
+ "validation": {
+  "independence": "Auditor (anthropic/claude-opus-5-5, session c911849eb597) did not translate these strings (translator session 94dcc5a13838); verdict from catalogue bytes, helpers run from the auditor's own scratchpad.",
+  "semantics": "Diff of snap/ur.tr2.json (sha256 56cc2a2c…, = r1 target) vs current shows exactly 2 changed lines (the 2 keys), each changing only آپ کے → آپ کی in both arms; no 'آپ کے چیف' remains (0) and 'آپ کی چیف' appears 4 times. Meaning unchanged from r1: messages waiting, send one message to receive them; nothing implies opening suffices or refusal/failure/loss.",
+  "icu": "Re-parsed with @formatjs/icu-messageformat-parser: both keys a single plural on `count`, arms one/other, {count} in every arm. Re-formatted with intl-messageformat (ur) at 1, 2, 5, 21, 1000000: one arm at 1 ('پیغام … کا منتظر ہے … اسے'), other arm otherwise ('پیغامات … کے منتظر ہیں … انہیں'); outputs read and correct.",
+  "plurals": "ur categories one/other (Intl.PluralRules); per-arm agreement verified as above.",
+  "typography": "Current file NFC; no bidi controls (U+200E/F, U+202A–E, U+2066–9, U+061C), zero-width chars or BOM; ۔ full stops; trailing newline kept. Key set and order equal en (87); hold.open byte-identical to r1; the 84 non-hold values byte-identical to `git show HEAD:` (base e9e78fec…ecb4).",
+  "overflow": "Delta changes one character per arm (کے→کی, same length); no change to overflow posture from round 1; hold.open unchanged.",
+  "limitations": "Browser unavailable; no screenshots/rendered-fit claim. No catalogue/code edits; no files created in the worktree."
+ }
+}

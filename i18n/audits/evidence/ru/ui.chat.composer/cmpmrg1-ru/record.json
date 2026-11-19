@@ -1,0 +1,154 @@
+{
+  "audit_id": "cmpmrg1-ru",
+  "locale": "ru",
+  "namespace": "ui.chat.composer",
+  "audit_date": "2026-11-04",
+  "date": "2026-11-04",
+  "key_count": 72,
+  "delta_keys_audited": 6,
+  "delta_keys": [
+    "ui.chat.composer.insert_transcript",
+    "ui.chat.composer.insert_transcript_hint",
+    "ui.chat.composer.send_recording",
+    "ui.chat.composer.send_recording_hint",
+    "ui.chat.composer.steer_hint",
+    "ui.chat.composer.secret_closure_notice"
+  ],
+  "head": "801b1ad29d47bbb89a0768e0ea1f193892db953d",
+  "parents": {
+    "branch": "5f28dd97e930977746526246c28f31dd1126dc0d",
+    "main": "421813971dcc9bf718e1996867ff00736b55dc54"
+  },
+  "scope": "Convergence delta audit of the merged ru ui.chat.composer file at merge commit 801b1ad29d4: 6 keys (branch's secret_closure_notice + main's insert_transcript, insert_transcript_hint, send_recording, send_recording_hint, steer_hint). The other 66 keys were read only for glossary/register consistency, not re-audited.",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "team": "lopdev",
+    "session": "d0f873a0bc82",
+    "instance": "d0f873a0bc82-cmpmrg1-ru",
+    "model": "anthropic/claude-sonnet-5-5",
+    "actual_model_source": "harness system context line 'Model: anthropic/claude-sonnet-5-5'; no fallback observed or reported",
+    "independent_from_translator_session": true
+  },
+  "independence": "This session translated nothing and edited no catalogue, context, ledger or existing receipt; it wrote only this bundle. No translation/MT service used; judgement by reading.",
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.chat.composer.json",
+      "sha256": "1abe3bc2730635d6eae484b49bfafa1743dee3be1f0ca60863576632acb95f14"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.chat.composer.context.json",
+      "sha256": "de9e346489f6df64bc3ff08abd1f8e0550e95e54e44b7c0ddda47897ff50e2dc"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/ru/ui.chat.composer.json",
+      "sha256": "96126dd7d640c3fd21768d478dfb32147e8a1c878f68b4d892f9631a74efaf7b"
+    }
+  },
+  "reference_hashes": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/ru.md",
+      "sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+    }
+  },
+  "merge_provenance_check": {
+    "method": "git show HEAD^1/HEAD^2 vs working file (python)",
+    "ours_66_keys_plus_closure_identical_to_branch_parent": true,
+    "five_main_keys_identical_to_main_parent": true,
+    "closure_notice_absent_from_main": true,
+    "keys_in_neither_parent": [],
+    "keyset_equals_en": true
+  },
+  "mechanical": {
+    "intl_messageformat_parse_ru_and_en_six_keys": "pass (node, intl-messageformat, format({}))",
+    "placeholders": "none in the six keys in en or ru (no {…}, no tags, no backticks)",
+    "plural_select": "none in scope; CLDR arms n/a",
+    "nfc": true,
+    "latin_tokens_in_delta": [
+      "Enter",
+      "Enter",
+      "Esc"
+    ],
+    "key_names_untouched": true,
+    "ledger_check": "node scripts/i18n/ledger-check.mjs run read-only: ru/ui.chat.composer reports stale source/target hashes, as expected before a receipt names the merged bytes",
+    "repo_validators_not_run": "locale-parity / context-parity / check-strings were NOT run (vitest/tsc forbidden by the brief)"
+  },
+  "fit": {
+    "insert_transcript": {
+      "chars": 20,
+      "maxCells": 24
+    },
+    "insert_transcript_hint": {
+      "chars": 41,
+      "maxCells": 48
+    },
+    "send_recording": {
+      "chars": 16,
+      "maxCells": 24
+    },
+    "send_recording_hint": {
+      "chars": 44,
+      "maxCells": 48
+    },
+    "steer_hint": {
+      "chars": 51,
+      "maxCells": 64
+    },
+    "secret_closure_notice": {
+      "chars": 108,
+      "maxCells": null
+    }
+  },
+  "per_key_verdict": {
+    "ui.chat.composer.insert_transcript": "PASS — accurate (puts dictated words in the box), imperative infinitive, 20/24 chars; not 'confirm' as the sidecar requires. See F1.",
+    "ui.chat.composer.insert_transcript_hint": "PASS — 'для проверки' = to review; Enter kept verbatim; 41/48. See F1.",
+    "ui.chat.composer.send_recording": "PASS — mirrors the English; ambiguity (audio vs transcribed text) is resolved by the hint, as in en; 16/24.",
+    "ui.chat.composer.send_recording_hint": "PASS — states plainly there is no review step («без проверки»), as the sidecar requires; pairs with insert_transcript_hint; 44/48.",
+    "ui.chat.composer.steer_hint": "PASS — Enter/Esc verbatim, middle dot and clause order kept, «ход» = turn per placeholder.stopping; 51/64. See F2.",
+    "ui.chat.composer.secret_closure_notice": "PASS — both facts in order (box paused until answered; draft kept), one em dash, «панели запросов» and «запрос секрета» match secret_ask_notice / placeholder.secret_answer; no security or attempt-limit claim; no sidecar maxCells."
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "MINOR",
+      "key": "ui.chat.composer.insert_transcript",
+      "also": [
+        "ui.chat.composer.insert_transcript_hint"
+      ],
+      "current": "Вставить расшифровку / Вставить расшифровку для проверки (Enter)",
+      "problem": "ru style guide pins transcript → «транскрипт» (used for the chat transcript, e.g. Вид транскрипта). Here 'transcript' means the dictated words, a different sense; the translators chose «расшифровка» (and «Расшифровать» in send_recording_hint) while dictation_failed_* says «служба транскрипции». Defensible and consistent across the three new keys, and it avoids colliding with the chat transcript, but it is an unrecorded deviation from the guide.",
+      "suggested": "Keep the current wording. Record the call in the ru style guide (dictated text → «расшифровка»; chat log → «транскрипт») so a later pass does not 'fix' it. Do not switch to «транскрипт»: it would read as the chat log."
+    },
+    {
+      "id": "F2",
+      "severity": "NIT",
+      "key": "ui.chat.composer.steer_hint",
+      "current": "Направить агента сейчас (Enter) · Esc остановит ход",
+      "problem": "«Направить агента» alone can read as 'send the agent somewhere'. Same verb root is already the settled rendering of steer in placeholder.waiting («Направляйте агента») and mesh_approvals («направлять текущий ход»), so consistency outweighs the ambiguity; the Esc clause makes the meaning clear.",
+      "suggested": "No change required. If a later pass wants it unambiguous: «Дать агенту указание сейчас (Enter) · Esc остановит ход» (55 chars, within 64)."
+    }
+  ],
+  "findings_by_severity": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 1,
+    "info": 0
+  },
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [
+      "F1",
+      "F2"
+    ]
+  },
+  "artifacts": [],
+  "limits": "Source/bytes reading only: no rendered frame, no width measurement, no runtime. ru is LTR: no RTL assessment applies. Not a second independent pass (not requested for this delta).",
+  "audit_notes_not_execution_log": true
+}

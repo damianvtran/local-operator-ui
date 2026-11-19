@@ -1,0 +1,29 @@
+{
+  "keys": 160,
+  "format_calls": 160,
+  "errors": [],
+  "unexempted_identical": [
+    "ui.settings.appearance.editor.copy_name",
+    "ui.settings.appearance.editor.ratio",
+    "ui.settings.appearance.editor.floor",
+    "ui.settings.appearance.editor.picker.chroma",
+    "ui.settings.appearance.editor.picker.rgb",
+    "ui.settings.appearance.editor.picker.oklch",
+    "ui.settings.appearance.editor.group.accent",
+    "ui.settings.appearance.editor.role.accent",
+    "ui.settings.appearance.editor.role.accentAlt",
+    "ui.settings.appearance.editor.role.danger",
+    "ui.settings.appearance.editor.preview.sidebar",
+    "ui.settings.appearance.editor.preview.bridge"
+  ],
+  "plural_outputs": {
+    "0": "0 problème de contraste",
+    "1": "1 problème de contraste",
+    "2": "2 problèmes de contraste",
+    "5": "5 problèmes de contraste",
+    "11": "11 problèmes de contraste",
+    "21": "21 problèmes de contraste",
+    "22": "22 problèmes de contraste",
+    "1.5": "1,5 problème de contraste"
+  }
+}

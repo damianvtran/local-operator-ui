@@ -1,0 +1,159 @@
+{
+	"auditor": "translation-auditor",
+	"model": "deepseek/deepseek-flash",
+	"instance": "dd774e464197",
+	"locale": "fr",
+	"namespace": "ui.notices",
+	"date": "2026-10-25",
+	"round": 2,
+	"kind": "delta re-audit (not a fresh review)",
+	"status": "changes_requested",
+	"previous_receipt": "i18n/receipts/fr-ui-notices-audit-ec4518da56.json",
+	"previous_head": "ec4518da560867e8972c290ddf8abc3b2496a4b59",
+	"head": "a32f7349e3efff461cdfa63674b86ddbc21bf955",
+	"sha256": {
+		"en": "f806e02def13361717f2db882ab91f407ca7f7b023da7be9e19b26f0e9c4302a",
+		"fr": "eb12c58e4b1dc067dd1c2e8c291013581e4a5d0a7a2702853034b4b5efbde1ab",
+		"en_context": "2980f9d4a5d99d7b32c1a752ac462a4f503488ac0d49e2465e10ce7f99ee0859"
+	},
+	"scope": "Delta only: ec4518da56..a32f7349e3 for fr/ui.notices — the 7 changed values, the 1 new key (ui.notices.chat.archive_offered_title) and the composed sentences those values take part in. Unchanged keys were not re-litigated; they were re-checked mechanically for placeholder, plural and register regressions, not re-judged. Read the English source, the English context sidecar entry for the new key, both call sites that compose the changed strings (mark-all-read.ts markAllReadReceipt, archive-undo.ts archiveOfferedName+undo-toasts.tsx) and the shipped fr values of the four session-ID keys.",
+	"method": "Mechanical then reading. (1) Key-set and key-order equality between en and fr: 94/94, same order. (2) Full ICU parse of BOTH catalogues with @formatjs/icu-messageformat-parser, comparing argument names, plural variables, plural categories, select arms and tag/markup tokens key by key — the only structural difference is fr's extra `many` category on all 10 plural messages (correct for fr CLDR), so placeholder integrity is 94/94. (3) Composed sentences rendered with intl-messageformat (the library messages.ts wraps) against the fr catalogue with tag fr, joined exactly as markAllReadReceipt joins them (array of self-terminating sentences, join(' ')) and as undo-toasts.tsx composes the archive body (name span + fixed verb tail), covering cleared>0, cleared==0, deferred-only and the four-sentence worst case. (4) Byte-level typography scan of every value in the namespace: guillemet spacing, narrow no-break spaces before ; and :, apostrophes, stray English curly or straight double quotes. (5) Call-site read for each changed key to establish which surface it is raised from, rather than trusting the English noun.",
+	"keys_read": 94,
+	"delta_keys_audited": [
+		"ui.notices.chat.archive_offered_title",
+		"ui.notices.chat.mark_all_read_deferred",
+		"ui.notices.chat.mark_all_read_none_cleared",
+		"ui.notices.chat.mark_all_read_unknown",
+		"ui.notices.chat.unread_not_cleared",
+		"ui.notices.files.highlights_update_failed",
+		"ui.notices.sessions.id_copied",
+		"ui.notices.sessions.id_copy_failed"
+	],
+	"remediation_disposition": [
+		{
+			"key": "ui.notices.chat.mark_all_read_deferred",
+			"round1_severity": "major",
+			"outcome": "fixed",
+			"evidence": "All three arms now make the MARK become read and never say the conversation is erased: one “sera marquée comme lue”, many/other “seront marquées comme lues”. Composed at head, cleared>0: “5 conversations marquées comme lues. 2 conversations se trouvent sur d’autres appareils et seront marquées comme lues quand ceux-ci se mettront à jour.” Composed deferred-only: “Rien n’a été marqué comme lu. 1 conversation se trouve sur un autre appareil et sera marquée comme lue quand celui-ci se mettra à jour.” The stem “effac-” occurs in no arm of this key and in no composed receipt."
+		},
+		{
+			"key": "ui.notices.chat.mark_all_read_unknown",
+			"round1_severity": "minor",
+			"outcome": "fixed",
+			"evidence": "Uses the same act as the deferred sentence now, with the consequence after a narrow no-break semicolon: “3 conversations n’ont pas pu être marquées comme lues\u202f; elles restent non lues.” The “could not be deleted” reading is gone, and “elles” is present in both plural arms."
+		},
+		{
+			"key": "ui.notices.chat.unread_not_cleared",
+			"round1_severity": "minor",
+			"outcome": "applied; residual recorded as a new minor",
+			"evidence": "The calque “marques de non-lu” is gone as proposed, but the chosen noun reads from the read side; see the minor on this key."
+		},
+		{
+			"key": "ui.notices.files.highlights_update_failed",
+			"round1_severity": "minor",
+			"outcome": "applied, but the conditional in round 1’s proposal was not checked — regressed into a major",
+			"evidence": "Round 1 offered “la section À la une” only ‘if the surface is the section’. It is not: the key’s sole call site is supplement-row.tsx:448, raised when `supplements.cancel|restart|steer` fail on the answer’s highlight block. See the major."
+		},
+		{
+			"key": "ui.notices.sessions.id_copied",
+			"round1_severity": "minor",
+			"outcome": "fixed",
+			"evidence": "Both keys now say “ID de session”, matching the affordances that raise them: ui.chat.header.copy_id and ui.chat.sidebar.row_menu.copy_id are both “Copier l’ID de session”. The namespace is 4/4 on one spelling."
+		},
+		{
+			"key": "ui.notices.chat.mark_all_read_none_cleared",
+			"round1_severity": "nit",
+			"outcome": "fixed",
+			"evidence": "“Rien n’a été marqué comme lu.” names the act the control performs, so it no longer reads as “nothing was deleted”. It composes: “Rien n’a été marqué comme lu. 1 conversation a un résultat plus récent et reste non lue.”"
+		}
+	],
+	"findings": [
+		{
+			"severity": "major",
+			"key": "ui.notices.files.highlights_update_failed",
+			"current": "Impossible de mettre à jour la section À la une.",
+			"proposed": "Impossible de mettre à jour les éléments à la une.",
+			"reason": "The sentence names a section the user is not looking at: this toast is raised from the answer’s highlight block (supplement-row.tsx:448, in the catch of `supplements.cancel|restart|steer`), whose own vocabulary is “Preparing highlights…”, “Highlights cancelled”, “Couldn’t prepare highlights” — while “la section À la une” is the Canvas Files pane (ui.canvas.files.highlights, ui.canvas.finder_layout.highlights). That block is documented as having NO header, label or title, so there is no section there to name at all, and the English names no surface: the French adds a claim that is false.",
+			"evidence": "grep for the key across src/, scripts/ and i18n/ returns exactly one implementation call site: src/renderer/src/features/chat/canonical/supplement-row.tsx:448, inside sendOp’s catch for the three supplement ops (keys.gen.ts carries only the generated key map). The supplement’s frozen English copy is supplement-model.ts:365-367, and that block is documented as carrying no header, label or title. ui.canvas.files.highlights and ui.canvas.finder_layout.highlights (“Highlights”, fr “À la une”) are labels of the Files pane, not of the transcript. Impact: an error toast tells the reader a different pane failed to update, which is where they will look for the failure."
+		},
+		{
+			"severity": "minor",
+			"key": "ui.notices.chat.unread_not_cleared",
+			"current": "{reason} Les marques de lecture n’ont pas été retirées.",
+			"proposed": "{reason} Les marques de non-lu n’ont pas été retirées. (or: Le statut non lu n’a pas été retiré.)",
+			"reason": "“marques de lecture” reads as marks OF HAVING READ, so “n’ont pas été retirées” can be parsed as those marks surviving — the state that actually persists is unread, and the locale’s own noun for it is “non lu(s)” (ui.teamBridge.unread.count “{count} non lus”, ui.teamBridge.nav.unread “message non lu”); this is now the one place in fr that names the unread state from the read side.",
+			"evidence": "Call site chat-sidebar.tsx:2050, the arm where the bulk call was refused and nothing moved — so the sentence must leave the reader with “still unread”. Round 1 proposed the shipped wording; this records the residual risk after applying it rather than reopening the calque."
+		},
+		{
+			"severity": "minor",
+			"key": "ui.notices.chat.mark_all_read_deferred",
+			"current": "one {1 conversation se trouve sur un autre appareil et sera marquée comme lue quand celui-ci se mettra à jour.} many {{count} de conversations se trouvent sur d’autres appareils et seront marquées comme lues quand ceux-ci se mettront à jour.} other {{count} conversations se trouvent sur d’autres appareils et seront marquées comme lues quand ceux-ci se mettront à jour.}",
+			"proposed": "Flag for a rendered check of the toast card. If it overflows, a shorter collocation saves 12-13 characters per arm: many/other “… et seront marquées comme lues dès leur mise à jour.” (60 -> 48 chars for the clause), one “… et sera marquée comme lue dès sa mise à jour.” (55 -> 42).",
+			"reason": "The remediation made the longest sentences in the namespace longer by making them accurate: per arm the deferred sentence grew +10 / +11 / +11 characters (95→105, 112→123, 109→120) and now runs 1.69–1.82× its English source (62 / 66 chars), while the worst composed card — four remainder sentences — measures 281 characters before the count digits, the widest string this control can paint into one toast.",
+			"evidence": "Arm lengths measured at ec4518da56 and a32f7349e3 with the same extractor; composed worst case rendered through the fr catalogue: “6 conversations marquées comme lues. 1 conversation a un résultat plus récent et reste non lue. 2 conversations n’ont pas pu être marquées comme lues\u202f; elles restent non lues. 1 conversation se trouve sur un autre appareil et sera marquée comme lue quand celui-ci se mettra à jour.” = 281 chars, 49 words. ui.notices.chat.mark_all_read_unknown is the same class (+14/+16/+16 per arm, 1.75–1.89× English) and is covered by this flag rather than filed separately."
+		},
+		{
+			"severity": "nit",
+			"key": "ui.notices.chat.mark_all_read_nothing",
+			"current": "Rien à effacer.",
+			"proposed": "Rien à marquer comme lu.",
+			"reason": "The two empty-result arms of one control now disagree: the sibling the remediation fixed says “Rien n’a été marqué comme lu.” while this one still uses “effacer”, the verb this namespace no longer uses for the act and the one that carries the “delete” reading round 1 raised on that sibling.",
+			"evidence": "Both arms are produced by markAllReadReceipt (attempted===0 versus cleared===0) and are adjacent in one surface; the key was not changed in this delta, so this is recorded as the consistency cost of the remediation, not a fresh judgement of the value."
+		}
+	],
+	"observations": [
+		{
+			"severity": "info",
+			"topic": "round-1 MAJOR cleared at every arm and in composition",
+			"note": "Confirmed at all three plural arms (one/many/other) and in every composed receipt: cleared>0, cleared==0, deferred-only, and the four-sentence worst case. No arm or composition contains “effac-”. The deferral now reads as a promise the owning device will fulfil (“sera marquée comme lue quand celui-ci se mettra à jour”), which is what the English says and what the key’s own note requires."
+		},
+		{
+			"severity": "info",
+			"topic": "new archive title key — guillemets",
+			"note": "ui.notices.chat.archive_offered_title is exactly “\u00ab\u202f{title}\u202f\u00bb”: U+00AB, U+202F narrow no-break space, the placeholder, U+202F, U+00BB. That is the same convention as all 11 guillemet-bearing values in the fr namespace (measured: 11/11 use U+202F on both sides), and identical to archive_failed and unarchive_failed, so the pair matches the sentence it sits beside. Composed body: “\u00ab\u202fRevue trimestrielle\u202f\u00bb archivée.” — a single pair, where the old hardcoded English quotes produced “\u201c\u00ab\u202f…\u202f\u00bb\u201d”. The no-name arm is “Conversation archivée.” and needs no pair. No English curly or straight double quotes survive anywhere in the fr namespace (0 values)."
+		},
+		{
+			"severity": "info",
+			"topic": "spaced punctuation convention held",
+			"note": "The remediation introduced one semicolon (mark_all_read_unknown) and used U+202F before it, which is the namespace’s measured convention: 9/9 semicolons and 12/12 colons in fr are preceded by U+202F, none by a plain space or nothing."
+		},
+		{
+			"severity": "info",
+			"topic": "plural categories and the zero count",
+			"note": "All 10 fr plural messages carry one/many/other (fr CLDR has no “few”); many is reached only at counts like 1 000 000, which no receipt arm can produce. Recorded for the next reader: Intl.PluralRules('fr').select(0) is “one”, so a zero count would print “1 conversation …”. No arm can pass zero — cleared==0 returns the none-cleared branch and superseded/unknown/deferred are each guarded by > 0 — so the case is unreachable here, not merely unlikely."
+		},
+		{
+			"severity": "info",
+			"topic": "register and typography",
+			"note": "Every changed value stays in the impersonal/vous register the namespace uses (no “tu”, no first person), keeps sentence case and its final full stop, and uses the locale apostrophe U+2019. No spaced “!” or “?” occurs in the namespace, so no width convention was at risk. RTL: not applicable to fr; the changed values contain no direction-sensitive tokens or embedded Latin runs."
+		},
+		{
+			"severity": "info",
+			"topic": "truncation of the archive title half",
+			"note": "The title key is the flexing, ellipsising half of the toast, so a long title now ellipsises inside a pair whose closing guillemet is inside the same message and is lost with it (“\u00ab\u202fUn titre très long…”). This is the same class the hardcoded English curly quotes had before the change and the verb tail was always fixed; the full name is one dwell away in the row’s flyout. Recorded so a rendered check can confirm the ellipsis reads acceptably in fr."
+		},
+		{
+			"severity": "info",
+			"topic": "ledger row not yet present",
+			"note": "i18n/ledger.json has no fr/ui.notices entry yet, so this receipt is evidence ahead of the row that will bind it. Nothing in the delta contradicts the two-hash model: the fr catalogue changed, so its target hash moved with it, and the English source gained a key."
+		}
+	],
+	"verdicts": {
+		"ui.notices": {
+			"status": "changes_requested",
+			"blocker": 0,
+			"major": 1,
+			"minor": 2,
+			"nit": 1,
+			"keys_read": 94
+		}
+	},
+	"overall": {
+		"status": "changes_requested",
+		"blocker": 0,
+		"major": 1,
+		"minor": 2,
+		"nit": 1,
+		"keys_read": 94
+	}
+}

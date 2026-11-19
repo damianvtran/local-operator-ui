@@ -112,7 +112,7 @@ try {
  */
 const hookBundle = await build({
 	stdin: {
-		contents: `export { composerPlaceholder, COMPOSER_PLACEHOLDER } from "./src/renderer/src/shared/hooks/use-message-input";`,
+		contents: `export { composerPlaceholder, COMPOSER_PLACEHOLDER } from "./src/renderer/src/shared/hooks/use-message-input"; export { t } from "@shared/i18n";`,
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -126,7 +126,7 @@ const hookBundle = await build({
 	define: { "import.meta.env": "{}" },
 	logLevel: "silent",
 });
-const { composerPlaceholder, COMPOSER_PLACEHOLDER } = await import(
+const { composerPlaceholder, COMPOSER_PLACEHOLDER, t } = await import(
 	`data:text/javascript;base64,${Buffer.from(hookBundle.outputFiles[0].text).toString("base64")}`
 );
 
@@ -159,12 +159,12 @@ test("the main composer has no ask-mode placeholder: an open ask changes nothing
 	// had before - including the live-turn one that the old rung used to outrank.
 	assert.equal(
 		composerPlaceholder({ ...idle, askMode: retired }),
-		COMPOSER_PLACEHOLDER.idle,
+		t(COMPOSER_PLACEHOLDER.idle),
 		"an idle box keeps the app's own invitation",
 	);
 	assert.equal(
 		composerPlaceholder({ ...idle, awaitingReply: true, askMode: retired }),
-		COMPOSER_PLACEHOLDER.waiting,
+		t(COMPOSER_PLACEHOLDER.waiting),
 		"a box over a running turn still names what Enter does to that turn",
 	);
 	assert.notEqual(COMPOSER_PLACEHOLDER.idle, retired);

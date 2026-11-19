@@ -1,0 +1,5 @@
+{
+	"ui.chat.draft_target.aria_label": "Iniciar este chat con {target}. Elige un agente o un equipo",
+	"ui.chat.draft_target.default_agent": "Agente predeterminado",
+	"ui.chat.draft_target.menu_heading": "Iniciar este chat con"
+}

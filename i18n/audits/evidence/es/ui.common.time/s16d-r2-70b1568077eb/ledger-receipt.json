@@ -1,0 +1,92 @@
+{
+	"schema": 1,
+	"kind": "translation-audit",
+	"audit_kind": "independent-translation-audit",
+	"date": "2026-11-12",
+	"round": 2,
+	"locale": "es",
+	"namespace": "ui.common.time",
+	"branch": "feat/i18n-s16d-live-locale-time-words",
+	"head": "b2110ea9cd9fd0c103891a4a77b65ba741012cf4",
+	"instance": "70b1568077eb",
+	"agent": "i18n-auditor",
+	"model": "deepseek/deepseek-flash",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "70b1568077eb",
+		"instance": "70b1568077eb",
+		"model": "deepseek/deepseek-flash",
+		"fallback": null,
+		"actual_model_source": "Session default model as served for this run (deepseek/deepseek-flash). No provider fallback occurred; no translation or back-translation service was used.",
+		"independent_from_translator_session": true,
+		"independence": "Read-only auditor. Did not author, correct or remediate any value; no repo edits, commits, pushes or PR posts."
+	},
+	"translator": {
+		"agent": "i18n-translator",
+		"model": "anthropic/claude-sonnet-5-5",
+		"note": "Landed bytes are the translator's values with the round-1 auditors' corrections applied (weekday_at joiner)."
+	},
+	"status": "passed",
+	"result": "clean-with-findings",
+	"key_count": 5,
+	"source_sha256": "bb0b3aa1a71679cc73cb40d73616b5e22057c7dcbc86705c2ec4425984971e13",
+	"target_sha256": "ca96efc391c6c880900485d02da2d93011056565a49128391e77ce97fc5396b3",
+	"input_hashes": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.common.time.json",
+			"sha256": "bb0b3aa1a71679cc73cb40d73616b5e22057c7dcbc86705c2ec4425984971e13"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.common.time.context.json",
+			"sha256": "a9069037edc11c59288a7c2d3171496b1ef44a0982fc28e6a0edb4bcae0f98d2"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/es/ui.common.time.json",
+			"sha256": "ca96efc391c6c880900485d02da2d93011056565a49128391e77ce97fc5396b3"
+		}
+	},
+	"namespaces": {
+		"ui.common.time": {
+			"namespace": "ui.common.time",
+			"status": "passed",
+			"result": "clean-with-findings",
+			"keys_audited": 5,
+			"namespace_key_count": 5,
+			"en_sha256": "bb0b3aa1a71679cc73cb40d73616b5e22057c7dcbc86705c2ec4425984971e13",
+			"es_sha256": "ca96efc391c6c880900485d02da2d93011056565a49128391e77ce97fc5396b3",
+			"context_sha256": "a9069037edc11c59288a7c2d3171496b1ef44a0982fc28e6a0edb4bcae0f98d2",
+			"findings": {
+				"blocker": [],
+				"major": [],
+				"minor": [],
+				"nit": [
+					{
+						"id": "ES-1",
+						"severity": "NIT",
+						"key": "es:ui.common.time.date_at",
+						"where": "scripts/i18n/locale-parity.test.mjs IDENTICAL_OK row",
+						"current": "\"Spanish long date + clock joined by the same comma as English; pure placeholder pattern, no words\"",
+						"problem": "The exemption is correct and load-bearing (disabling it fails the stub guard; no other locale is exempted), but unlike every neighbouring row it cites no audit round or revision, so the claim reads as unreviewed.",
+						"suggestion": "Append the audit provenance: \"; independently audited in S16d round 1 and round 2 (b2110ea9cd9f)\".",
+						"gating": false
+					}
+				]
+			},
+			"scope": [
+				"ui.common.time.today_at",
+				"ui.common.time.yesterday_at",
+				"ui.common.time.yesterday",
+				"ui.common.time.weekday_at",
+				"ui.common.time.date_at"
+			]
+		}
+	},
+	"scope": "Independent round-2 audit of the landed es ui.common.time bytes for S16d (today_at, yesterday, weekday_at, date_at + the unchanged yesterday_at sibling) on b2110ea9cd9f: repo validators in a scratch mirror, real Intl composition through formatDividerLabel/formatMessageDateTime, an intl-messageformat grid with the formatter's actual arguments, placeholder-identity, negative controls, and native-idiom judgement of the round-1 weekday_at correction and the date_at IDENTICAL_OK row.",
+	"findings": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 1
+	},
+	"receipt_note": "Verdict clean: zero catalogue findings on the four landed keys. ES-1 is a provenance nit on the parity guard's exemption row, not on the Spanish copy."
+}

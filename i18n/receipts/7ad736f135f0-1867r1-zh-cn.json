@@ -1,0 +1,62 @@
+{
+ "schema": 1,
+ "auditor": {
+  "agent": "reviewer",
+  "session": "7ad736f135f0",
+  "instance": "7ad736f135f0-1867r1-zh-cn",
+  "model": "anthropic/claude-opus-5-5",
+  "model_note": "Model is this session's own header line (anthropic/claude-opus-5-5); no fallback reported. The served provider cannot be independently verified from inside the session.",
+  "independence": "lopdev reviewer session 7ad736f135f0, separate from the PR #1867 coder that wrote the translations. Verdict rebuilt from the committed en/target bytes at fc9e58bfebe, the en context sidecar, the core glossary and locale style guide, and shipped ui.hub catalogue precedent. Disclosure: the MINOR fixes listed below were applied by this auditor in the audit commit, as the brief allowed; those changed values are auditor-authored and a later independent reader should re-check them."
+ },
+ "agent": "reviewer",
+ "model": "anthropic/claude-opus-5-5",
+ "fallback": "none reported",
+ "instance": "7ad736f135f0-1867r1-zh-cn",
+ "session": "7ad736f135f0",
+ "locale": "zh-CN",
+ "namespace": "ui.hub",
+ "pr": "damianvtran/local-operator-ui#1867",
+ "branch_base": "8953f2fa6a8",
+ "audited_head": "fc9e58bfebe + this audit commit's catalogue fixes",
+ "date": "2026-11-11",
+ "translator": "PR #1867 coder (relayed by the manager and the PR body; identity not verified here)",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "scope": "Round-1 independent audit of the 3 keys PR #1867 added to ui.hub (links.unresolved_detail_scope_ambiguous, links.unresolved_detail_scope_unknown, links.unresolved_detail_no_origin), from git diff 8953f2fa6a8..fc9e58bfebe -- src/i18n/catalogues; PR #1867 changed no other ui.hub value; pre-existing keys read only as precedent and carried on the prior audits. Catalogue audit only: not rendered fit, activation or release.",
+ "keys_audited": [
+  "ui.hub.links.unresolved_detail_scope_ambiguous",
+  "ui.hub.links.unresolved_detail_scope_unknown",
+  "ui.hub.links.unresolved_detail_no_origin"
+ ],
+ "sha256": {
+  "zh-CN": "7ce820090a5371936fee8eae60df73d457f69df997d6c71f2493a9e1c5d53d62",
+  "en": "83dbdf08248fe124d14053d2c9996e2b2b05c2c1c0822e17d9346257488e3351",
+  "context": "a64a8cfe1b558dd47469e4310d30ea2a0d1375b68a27cc636dadc77476bad824",
+  "glossary (damianvtran/local-operator origin/main 23cbbc0259b0:i18n/glossary.md)": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "style_guide (damianvtran/local-operator origin/main 23cbbc0259b0:i18n/style-guides/zh-CN.md)": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+ },
+ "checks": {
+  "icu_parse_and_argument_parity": "PASS (no arguments in en or target; IntlMessageFormat parses and renders each)",
+  "key_set": "identical to en",
+  "bidi_controls": "none (U+061C, U+200E/F, U+202A-E, U+2066-9 scanned)",
+  "negative_control": "appending U+200F to one ur value and breaking one vi value's brace made the same verifier exit 1 with 2 FAILs (bidi control; EXPECT_ARGUMENT_CLOSING_BRACE)",
+  "plurals": "no plural messages in this delta"
+ },
+ "findings": [
+  {
+   "id": "R1867-ZH-01",
+   "severity": "MINOR",
+   "disposition": "fixed in this audit commit",
+   "before": "尚无检查到达它的来源。下一次成功的检查会识别它。",
+   "after": "尚无检查连接到其来源。下一次成功的检查会识别来源。",
+   "note": "'到达' is a literal 'reach'; the namespace renders reach as 连接 (ui.hub.status.transport_error 无法连接中心). The trailing '它' is ambiguous between the item and its source; naming 来源 and using 其 follows the zh-CN guide's prefer-dropped-pronoun rule.",
+   "key": "ui.hub.links.unresolved_detail_no_origin"
+  },
+  {
+   "id": "R1867-ZH-INFO-1",
+   "severity": "INFO",
+   "note": "Out of scope for this catalogue audit (code, not translation): HubUnresolvedMark joins the label and each detail with an ASCII space (`${label} ${why}`, hub-link-sidebar-mark.tsx), and hubMarkFailureDetail joins reason and last-checked the same way, so zh-CN renders '请确认来源。 它在…' with a half-width space after a full-width stop. Each sentence is correct on its own; a locale-aware join is a code follow-up for the PR's implementer.",
+   "key": "ui.hub.links.unresolved_detail_scope_ambiguous"
+  }
+ ]
+}

@@ -24,3 +24,18 @@
 export function isStartPageUrl(url: string): boolean {
 	return url === "" || url === "about:blank";
 }
+
+/**
+ * The surface's own-state fact for page controls: a start projection (`""`
+ * included) or a settled `about:blank`, EXCEPT while a submitted navigation is
+ * pending. `pendingUrl`, not `loading`, is the discriminator — a fresh empty
+ * projection can report `loading: true` before any submission, and that is
+ * still a start page; a submitted navigation is the one thing that turns the
+ * blank tab into a page the controls may act on.
+ */
+export function browserOwnStateFor(
+	activeTab: { url: string } | null,
+	pendingUrl: string | null,
+): boolean {
+	return activeTab !== null && isStartPageUrl(activeTab.url) && !pendingUrl;
+}

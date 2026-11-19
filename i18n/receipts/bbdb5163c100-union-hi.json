@@ -1,0 +1,195 @@
+{
+  "locale": "hi",
+  "scope": "ui.chat.attachments: verification of the hand-union of 5 branch keys and 1 main key onto the 12-key base",
+  "checkout_head": "36b88a45fe",
+  "audit_date": "2026-10-29",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "bbdb5163c100",
+    "model": "radient/auto",
+    "actual_model_source": "session model-switch notices: anthropic/claude-sonnet-5-5 -> openai/gpt-6-astra -> kimi/k3.1-pro -> radient/auto (provider failure: quota); this audit ran as radient/auto",
+    "independent_from_translator_session": true
+  },
+  "instance": "bbdb5163c100-union-hi",
+  "input_sha256": {
+    "en": "5e99fd052e7a24dc2715d7de1332b378c1c964f801cdc1c241c7068569de41a0",
+    "target": "ad62f29143c27491f4fb75d1172d13ee546bff0a782cbf979ce9016ec7e940cc"
+  },
+  "revisions": {
+    "merge_base": "aafa890e3c",
+    "origin_main_tip": "9a767426fe",
+    "branch_tip": "36b88a45fe",
+    "sha256": {
+      "en": {
+        "merge_base": "845e53ef71cbd579f34ca7589d91fc180b98ca08cebf3b2da33a13fbba507f78",
+        "origin_main": "1f476ef54a5fb470d00da5e66e7f2ccd2665d4d22f07ff11f20a3e00acfeadc5",
+        "branch_tip": "623a1363260ecbe40393b4424dde4d7b6cc084688ac354483052639a145ce892",
+        "worktree_union": "5e99fd052e7a24dc2715d7de1332b378c1c964f801cdc1c241c7068569de41a0"
+      },
+      "hi": {
+        "merge_base": "d242868043b06f5c93ba5e999bd0eb693aaa262f966ab17c14b2c3e9d348f680",
+        "origin_main": "abae41cac8100c2bc917ba8798e36cd0b7b9e0bedbdd87fb88f3af29f305ced3",
+        "branch_tip": "8120d0ca4e993a84b75076fcd106eeee0a47f4f4720791bd0eec7db542fc33b0",
+        "worktree_union": "ad62f29143c27491f4fb75d1172d13ee546bff0a782cbf979ce9016ec7e940cc"
+      }
+    }
+  },
+  "diffs": {
+    "method": "json-loaded comparison of every revision; key sets and per-key values compared, not textual diffs",
+    "en": {
+      "base_to_branch": "+5 keys (open, playback_position, playback_rate, playback_rate_option, volume); 0 base keys added-to or modified in value; 2 pre-existing keys reordered (saved_path_copied 10->14, saved_copy_label 11->15) and open placed at index 0",
+      "base_to_main": "+1 key (file_and_copy_missing) appended at index 12; 0 base keys modified",
+      "branch_to_union": "union == main key order (13 keys) + the 5 branch-only keys appended; net effect vs branch tip: saved_path_copied/saved_copy_label restored to their base positions, open moved from index 0 to index 13, file_and_copy_missing added",
+      "verification": {
+        "base_key_count": 12,
+        "branch_side_key_count": 17,
+        "main_side_key_count": 13,
+        "union_key_count": 18,
+        "branch_added": [
+          "ui.chat.attachments.open",
+          "ui.chat.attachments.playback_position",
+          "ui.chat.attachments.playback_rate",
+          "ui.chat.attachments.playback_rate_option",
+          "ui.chat.attachments.volume"
+        ],
+        "main_added": [
+          "ui.chat.attachments.file_and_copy_missing"
+        ],
+        "added_by_both_sides": [],
+        "union_set_equals_base_plus_additions": true,
+        "base_keys_with_drifted_value_in_union": [],
+        "base_keys_with_drifted_hi_value_in_union": [],
+        "branch_added_keys_with_drifted_value": [],
+        "branch_added_keys_with_drifted_hi_value": [],
+        "main_added_keys_with_drifted_value": [],
+        "conflicting_values_on_both_added_keys": [],
+        "base_keys_modified_on_branch": [],
+        "base_keys_modified_on_main": []
+      }
+    },
+    "hi": "identical key-set changes and identical ordering to en (every key present in both, same order)",
+    "hi_key_sets_match_en": true,
+    "hi_key_order_matches_en": true
+  },
+  "checks": {
+    "placeholders": {
+      "matched": true,
+      "detail": "en/hi placeholder sets identical on all three placeholder-bearing keys: file_meta {type}{size}, file_retained {digest}, playback_rate_option {rate} plus the literal Latin x suffix"
+    },
+    "icu_plural_select": {
+      "present": false,
+      "detail": "no ICU plural/select in en or hi; CLDR category coverage not applicable to this namespace"
+    },
+    "markup_and_code_spans": {
+      "matched": true,
+      "detail": "no Rich/HTML markup; no backticks; no paths, flags or identifiers in any value"
+    },
+    "middle_dot_separator": {
+      "matched": true,
+      "detail": "file_meta keeps the space-middle-dot-space separator byte-identically in hi"
+    },
+    "typography": {
+      "clean": true,
+      "detail": "no ZWSP/ZWNJ/ZWJ/BOM/NBSP/TAB in hi; NFC-normalised; danda । where en ends a sentence (file_missing_recovery, file_and_copy_missing) and none where en has no stop; no ! ; no कृपया; no तुम/तू"
+    },
+    "nukta": {
+      "consistent": true,
+      "detail": "फ़ाइल uses decomposed nukta (फ + U+093C) in all three occurrences; no precomposed/decomposed mix"
+    },
+    "glossary": {
+      "available": false,
+      "detail": "i18n/glossary.md does not exist in this repo; the binding glossary is /Users/damian/local-operator/i18n/glossary.md and carries no row for open/playback/rate/volume/path, so no glossary term is in play; the hi style guide loan policy governs (प्लेबैक, वॉल्यूम are living loans, matching टोकन/कैश/फ़ाइल)"
+    },
+    "fit": {
+      "risk": "none",
+      "detail": "no maxCells hint in this namespace sidecar; open renders as a short inline button (invalid-attachment.tsx) - खोलें is 5 codepoints vs Open 4; all other additions are aria-labels or a select option"
+    },
+    "repo_validators": {
+      "check-duplicates": "ok - 934 files scanned, 0 duplicate keys",
+      "context-parity": "ok - every English key covered (131 allowed gaps in 4 namespaces, other namespaces)",
+      "generate --check": "ok - src/i18n/keys.gen.ts byte-identical to a fresh generation",
+      "check-strings": "ok - 1413 files scanned, 0 literals at or below baseline",
+      "ledger-check": "FAILED - 23 findings across 728 entries at the first run (this namespace then stale in all seven locales). Re-read at reshape time the same day: 7 findings across 728 entries - es, fr, ru, ur, vi have since been rebound; hi (3 findings) and zh-CN (2 of them plus its own pair) remain, so the ledger is not yet green. The three hi findings are stale source, stale target and a source-path complaint against the previous receipt; binding this receipt's input_sha256 (en 5e99fd05..., hi ad62f291...) satisfies all three. See gate_notes[0]."
+    },
+    "public_copy_route": {
+      "used": false,
+      "reason": "read_public_copy refused: \"src/i18n/catalogues/en/ui.chat.attachments.json differs from HEAD; commit the public copy before auditing it\" - the union is uncommitted, so the audited route cannot serve it; both files were read directly and hashed above"
+    }
+  },
+  "findings": [],
+  "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 0,
+    "NIT": 0
+  },
+  "copy_findings": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 0,
+    "NIT": 0
+  },
+  "verdict": "pass",
+  "verdict_reason": "The union is exactly base 12 + 5 branch keys + 1 main key with zero value drift, no key added by both sides, no conflicting values, and 18/18 keys clean on placeholders, ICU structure, typography and register - the copy has no finding. The namespace's ledger row is bookkeeping downstream of this receipt: it still holds the pre-union bytes at write time (see gate_notes[0]) and is satisfied by binding this receipt's hashes.",
+  "namespaces": {
+    "ui.chat.attachments": {
+      "status": "passed",
+      "keys_audited": 18,
+      "sha256": {
+        "en": "5e99fd052e7a24dc2715d7de1332b378c1c964f801cdc1c241c7068569de41a0",
+        "target": "ad62f29143c27491f4fb75d1172d13ee546bff0a782cbf979ce9016ec7e940cc"
+      },
+      "copy_findings_count": {
+        "BLOCKER": 0,
+        "MAJOR": 0,
+        "MINOR": 0,
+        "NIT": 0
+      },
+      "findings": [],
+      "spot_checks": {
+        "ui.chat.attachments.playback_rate_option": {
+          "en": "{rate}x",
+          "hi": "{rate}x",
+          "result": "pass - placeholder and Latin multiplier sign preserved verbatim, no word for times"
+        },
+        "ui.chat.attachments.volume": {
+          "en": "Volume",
+          "hi": "वॉल्यूम",
+          "result": "pass - settled loan, standard spelling, nukta-free candra-o form"
+        },
+        "ui.chat.attachments.playback_position": {
+          "en": "Playback position",
+          "hi": "प्लेबैक की स्थिति",
+          "result": "pass - feminine स्थिति takes की correctly; reads as a slider name"
+        },
+        "ui.chat.attachments.file_and_copy_missing": {
+          "en": "The saved copy is gone too.",
+          "hi": "सहेजी गई प्रति भी अब नहीं है।",
+          "result": "pass - भी carries \"too\", अब नहीं है matches the sibling file_missing_recovery construction and the established सहेजी गई प्रति label; danda for the full stop. No finding."
+        }
+      },
+      "gate_notes": [
+        {
+          "id": "hi-union-gate-1",
+          "kind": "gate (ledger binding, not copy)",
+          "scope": "hi/ui.chat.attachments (namespace row)",
+          "copy_finding": false,
+          "status": "open at write time - closes when this receipt is bound",
+          "observed_2026-10-29": "ledger row still holds source_sha256 623a1363260ece40393b4424dde4d7b6cc084688ac354483052639a145ce892 (branch-tip en) and target_sha256 8120d0ca4e993a84b75076fcd106eeee0a47f4f4720791bd0eec7db542fc33b0 (branch-tip hi), i.e. the pre-union bytes. ledger-check exits 1 with three findings naming hi/ui.chat.attachments (stale source, stale target, and 'receipt does not name the English source bytes on disk'); 7 findings repo-wide, 728 rows. Five of the seven locales in this namespace have since been rebound (es, fr, ru, ur, vi); hi and zh-CN have not.",
+          "closes_with": "Registering this audit against the union inputs en 5e99fd052e7a24dc2715d7de1332b378c1c964f801cdc1c241c7068569de41a0 and hi ad62f29143c27491f4fb75d1172d13ee546bff0a782cbf979ce9016ec7e940cc, which this receipt names in input_sha256 and in the block sha256 - all three hi findings are satisfied by that binding. No copy change is required. i18n/ledger.json and both catalogue files were still UU in the index at write time, so the merge also needs git add for them."
+        }
+      ]
+    }
+  },
+  "gate_notes": [
+    {
+      "id": "hi-union-gate-1",
+      "kind": "gate (ledger binding, not copy)",
+      "scope": "hi/ui.chat.attachments (namespace row)",
+      "copy_finding": false,
+      "status": "open at write time - closes when this receipt is bound",
+      "observed_2026-10-29": "ledger row still holds source_sha256 623a1363260ece40393b4424dde4d7b6cc084688ac354483052639a145ce892 (branch-tip en) and target_sha256 8120d0ca4e993a84b75076fcd106eeee0a47f4f4720791bd0eec7db542fc33b0 (branch-tip hi), i.e. the pre-union bytes. ledger-check exits 1 with three findings naming hi/ui.chat.attachments (stale source, stale target, and 'receipt does not name the English source bytes on disk'); 7 findings repo-wide, 728 rows. Five of the seven locales in this namespace have since been rebound (es, fr, ru, ur, vi); hi and zh-CN have not.",
+      "closes_with": "Registering this audit against the union inputs en 5e99fd052e7a24dc2715d7de1332b378c1c964f801cdc1c241c7068569de41a0 and hi ad62f29143c27491f4fb75d1172d13ee546bff0a782cbf979ce9016ec7e940cc, which this receipt names in input_sha256 and in the block sha256 - all three hi findings are satisfied by that binding. No copy change is required. i18n/ledger.json and both catalogue files were still UU in the index at write time, so the merge also needs git add for them."
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "at": "2026-10-24T16:08:54Z",
+  "sourceHead": "703f2ce5a3",
+  "boots": [
+    "264-dark",
+    "264-light",
+    "900-dark",
+    "900-light"
+  ],
+  "exit": 0,
+  "leftover": "none; process-group SIGKILL after each boot",
+  "guard": "a failed fixture load or a 90s flow stall records BOOT-fixture-load / BOOT-flow and exits 1; no product row is invented"
+}

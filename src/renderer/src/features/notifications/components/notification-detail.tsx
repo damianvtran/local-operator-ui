@@ -1,0 +1,892 @@
+import {
+	answerQueuedAsk,
+	declineQueuedAsk,
+	dismissQueuedAsk,
+	reviseQueuedAsk,
+} from "@features/chat/ask-answer";
+import type { AskDismissReason, AskDraft } from "@features/chat/ask-queue";
+import { askQueueView, askRevisionEvidence } from "@features/chat/ask-queue";
+/**
+ * The detail pane (design.md § 2 "Detail", contract § 5.2 `GET …/{id}`).
+ *
+ * WHAT IT SHOWS, top to bottom: priority and kind, the title, the source line
+ * and repeat count, the actions (Open conversation, Mark read/unread, Dismiss,
+ * the ⋯ menu), the body and metrics as markdown, that conversation's open asks
+ * answerable inline through the EXISTING ask panel (no second answer UI), the
+ * source conversation card with "Dismiss all n", related projects, and the
+ * collapsed repeats under "Earlier updates".
+ *
+ * OPENING IS AN EXPLICIT READ (contract § 6.4 "Relay/native", design § 17.3):
+ * the reader chose this item, so the page marks it read with the revision it
+ * rendered when the detail opens. That is the page's job, not this pane's; the
+ * pane draws.
+ *
+ * A VANISHED ITEM STAYS READABLE (design § 5 "Item vanished"): if the detail
+ * read answers `dismissed`, the content stays on screen with a notice and the
+ * actions disabled, rather than the pane closing under the reader.
+ */
+import {
+	ASK_BOUND_ATTR,
+	ASK_LIST_ATTR,
+	useAskActionsHeight,
+} from "@features/chat/components/asks/ask-bounds";
+import { AskPanel } from "@features/chat/components/asks/ask-panel";
+import { FLEET_ASKS_QUERY_KEY, useFleetAsks } from "@features/chat/fleet-asks";
+import { useAskOutcomes } from "@features/chat/use-ask-outcomes";
+import { ProjectMarkdown } from "@features/projects/project-markdown";
+import { desktopResult } from "@shared/api/local-operator/desktop-api";
+import { Alert, Button, Skeleton } from "@shared/components/ui";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@shared/components/ui/dropdown-menu";
+import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
+import { formatNumber, formatTime, t } from "@shared/i18n";
+import { cn } from "@shared/lib/utils";
+import { showSuccessToast } from "@shared/utils/toast-manager";
+import type { QueryClient } from "@tanstack/react-query";
+import {
+	ArrowLeft,
+	Check,
+	Circle,
+	ExternalLink,
+	FolderKanban,
+	MessageCircleQuestion,
+	MoreHorizontal,
+	X,
+} from "lucide-react";
+import { type FC, useEffect, useMemo, useRef, useState } from "react";
+import type {
+	DesktopNotificationDetail,
+	DesktopNotificationItem,
+} from "../../../../../shared/desktop-control-contract";
+import type { PendingAsk } from "../../../../../shared/desktop-session-contract";
+import { notificationKeys } from "../notifications-api";
+import { isLiveAsk } from "../notifications-model";
+import { rowTimeOf } from "../notifications-model";
+import { priorityName, rowTimeText } from "./notification-row";
+import { PriorityBars } from "./priority-bars";
+
+export type NotificationDetailProps = {
+	/** The row as the list rendered it: the fallback while the detail loads. */
+	item: DesktopNotificationItem;
+	detail: DesktopNotificationDetail | undefined;
+	loading: boolean;
+	error: boolean;
+	nowMs: number;
+	/** Narrow window: the detail replaces the list and draws a back link. */
+	narrow: boolean;
+	/*
+	 * THE GROUND THE PANE SITS ON (design round 1, D2/D6). The page draws the
+	 * detail on its `surface` panel; the conversation drawer is itself `elevated`.
+	 * The loading skeletons were forced to `bg-elevated` for the page, which on the
+	 * drawer is the drawer's own colour - 1.00:1, an empty band under a "Loading"
+	 * announcement. The sticky back row (narrow) also needs an opaque ground that
+	 * matches, or content scrolling under it shows through. Default: the page.
+	 */
+	ground?: "surface" | "elevated";
+	writesPaused: boolean;
+	/** How many items "Dismiss all from this conversation" would name. */
+	/*
+	 * `null` while the scope walk for the current boundary is pending or failed
+	 * (code round 4, R4-1). An unknown count renders NO number: the loaded page's
+	 * count was the lie QA measured, and 0 would say the conversation is clear.
+	 */
+	sessionDismissCount: number | null;
+	onClose: () => void;
+	/*
+	 * THE BACK LINK'S WORDS, narrow only. The page's back link says where it goes
+	 * ("All notifications"); the conversation drawer's goes back to that
+	 * conversation's Updates list, and saying "All notifications" there named a
+	 * place the press does not lead to.
+	 */
+	backLabel?: string;
+	/*
+	 * THE DRAWER'S DOOR TO THE PAGE, narrow only: the sidebar detail draws an
+	 * "Open in Notifications" control opposite the back link, which opens this
+	 * item selected on the Notifications page. The page itself passes nothing -
+	 * it IS that place.
+	 */
+	onOpenInNotifications?: (item: DesktopNotificationItem) => void;
+	/*
+	 * OPTIONAL (design round 1, D3; code review n1). The conversation drawer lists
+	 * only the open conversation's updates, so "Open conversation" there opened the
+	 * conversation already on screen - the pane's one filled primary spent on a
+	 * no-op, and it pushed the ⋯ trigger onto a line of its own at 320 px. A surface
+	 * that passes nothing draws no such button, and the From card's name becomes
+	 * plain text rather than a link to where the reader already is.
+	 */
+	onOpenConversation?: (sessionId: string) => void;
+	onToggleRead: (item: DesktopNotificationItem) => void;
+	onDismiss: (item: DesktopNotificationItem) => void;
+	/*
+	 * OPTIONAL: a surface with no confirmation dialog for a conversation-wide
+	 * dismiss (the conversation drawer) passes nothing, and both doors to it - the
+	 * ⋯ menu item and the "Dismiss all n" button - are not drawn. Drawing them
+	 * disabled would offer an action the surface cannot take.
+	 */
+	onDismissSession?: (sessionId: string, title: string) => void;
+	onCopyLink: (item: DesktopNotificationItem) => void;
+	onOpenProject: (key: string) => void;
+	onAsksSettled: (
+		askId: string,
+		status: "answered" | "declined" | "dismissed",
+	) => void;
+	/** Focus the first live ask's answer field on mount (`A`, `E` on an ask). */
+	focusAnswer?: boolean;
+};
+
+/** No drafts, one stable object: a fresh `{}` per render re-keys every card. */
+const EMPTY_DRAFTS: Record<string, AskDraft> = {};
+
+export const NotificationDetail: FC<NotificationDetailProps> = ({
+	item: rowItem,
+	detail,
+	loading,
+	error,
+	nowMs,
+	narrow,
+	ground = "surface",
+	writesPaused,
+	sessionDismissCount,
+	onClose,
+	backLabel,
+	onOpenInNotifications,
+	onOpenConversation,
+	onToggleRead,
+	onDismiss,
+	onDismissSession,
+	onCopyLink,
+	onOpenProject,
+	onAsksSettled,
+}) => {
+	const item = detail?.item ?? rowItem;
+	const gone = item.dismissed;
+	const liveAsk = isLiveAsk(item);
+	const actionsDisabled = writesPaused || gone;
+	const source = item.session.title || t("ui.notifications.group.untitled");
+	const repeat = item.repeat_count > 1 ? item.repeat_count : 0;
+	const [showAllHistory, setShowAllHistory] = useState(false);
+	const history = detail?.history ?? [];
+	const shownHistory = showAllHistory ? history : history.slice(0, 5);
+	const projects = detail?.projects ?? item.projects ?? [];
+	const body = detail?.item.body_md ?? "";
+	/*
+	 * THE PANE'S OWN SCROLL IS THE ASK LIST when a waiting section is drawn under
+	 * it, so the pinned row's height is published HERE (`useAskActionsHeight`) and
+	 * the scroller keeps NO BOTTOM PADDING - a scroller clips at its padding box and
+	 * `sticky bottom-0` stops there, which is a strip the band cannot paint.
+	 */
+	const paneRef = useRef<HTMLElement | null>(null);
+	useAskActionsHeight(paneRef);
+
+	return (
+		<section
+			ref={paneRef}
+			aria-label={t("ui.notifications.detail.label")}
+			data-notification-detail={item.id}
+			/*
+			 * NO `overflow-x-hidden` (it used to be here): it is what turned the column's
+			 * overflow into a silent clip at the window edge instead of a visible defect.
+			 * The column is bounded by its parent's `min-w-0` now, and long unbroken text
+			 * wraps (`[overflow-wrap:anywhere]` below), so there is nothing to hide.
+			 */
+			className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto px-6 pt-4 [overflow-wrap:anywhere] [scrollbar-gutter:stable] [scroll-padding-bottom:calc(var(--lo-ask-actions-h,0px)+4px)]"
+			/*
+			 * The pane bounds the ask card it embeds (design D3): its first ask body
+			 * sizes itself to what is left of THIS pane's height under the header,
+			 * title and actions, so options, Other and Send answer are in view
+			 * without scrolling. See `ASK_BOUND_ATTR` in `ask-bounds.tsx`.
+			 */
+			{...{ [ASK_BOUND_ATTR]: "", [ASK_LIST_ATTR]: "" }}
+		>
+			{/* Wraps rather than squeezes: at the drawer's 320 px a long translation of
+			    the back link and "Open in Notifications" cannot share one line. */}
+			<div
+				className={cn(
+					"flex flex-wrap items-center justify-between gap-2",
+					/*
+					 * STICKY WHEN NARROW (design round 1, D6). The row is inside this
+					 * scroller, so with a long body both of the pane's ways out - Back and
+					 * "Open in Notifications" - scrolled away with it. Pinned to the top on
+					 * the pane's own ground, bled over the scroller's padding so content
+					 * passes cleanly under it; nothing outside the pane moves.
+					 */
+					narrow && "sticky top-0 z-10 -mx-6 -mt-4 shrink-0 px-6 py-2",
+					narrow && (ground === "elevated" ? "bg-elevated" : "bg-surface"),
+				)}
+			>
+				{narrow ? (
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={onClose}
+						data-notification-detail-back=""
+						/*
+						 * ESCAPE IS ANNOUNCED, NOT ONLY HANDLED (UX round 1, U6). Focus opens
+						 * on the title, after this button, so a keyboard walk never reaches
+						 * Back; Escape does the same thing on both surfaces, and this names it
+						 * to assistive tech with no new copy.
+						 */
+						aria-keyshortcuts="Escape"
+					>
+						<ArrowLeft className="rtl:-scale-x-100" aria-hidden="true" />
+						{backLabel ?? t("ui.notifications.detail.back")}
+					</Button>
+				) : (
+					<span className="flex items-center gap-2 text-meta">
+						{item.source === "ask" ? (
+							<MessageCircleQuestion
+								size={14}
+								aria-hidden="true"
+								className="text-info"
+							/>
+						) : (
+							<PriorityBars priority={item.priority} />
+						)}
+						<span
+							className={cn(
+								item.priority === "high" ? "text-warning" : "text-ink-muted",
+							)}
+						>
+							{priorityName(item)}
+						</span>
+						<span aria-hidden="true" className="text-ink-dim">
+							·
+						</span>
+						<span className="text-ink-muted">
+							{item.source === "ask"
+								? t("ui.notifications.detail.kind.ask")
+								: t("ui.notifications.detail.kind.update")}
+						</span>
+					</span>
+				)}
+				{narrow && onOpenInNotifications && (
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={() => onOpenInNotifications(item)}
+						data-notification-open-in-notifications=""
+					>
+						{t("ui.notifications.drawer.open_in_notifications")}
+						<ExternalLink aria-hidden="true" className="rtl:-scale-x-100" />
+					</Button>
+				)}
+				{!narrow && (
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						aria-label={t("ui.notifications.detail.close")}
+						title={t("ui.notifications.detail.close")}
+						onClick={onClose}
+					>
+						<X aria-hidden="true" />
+					</Button>
+				)}
+			</div>
+
+			{/*
+			 * CLAMPED: an ask's notification takes its question as the title, and a
+			 * 10k-character question printed here in full pushed the ask card (whose
+			 * own body is bounded and scrollable) far below the fold. The full text
+			 * is in that card; the tooltip carries the first 300 characters only
+			 * (code review R3: a 10k-character native tooltip is a wall over the pane).
+			 */}
+			{/*
+			 * `shrink-0` (design round 1, D1 = QA Q-1). `line-clamp` sets `overflow:
+			 * hidden`, which drops a flex item's automatic minimum height to 0, and this
+			 * `overflow-y-auto` column then shrank the title to 0 px whenever the body
+			 * overflowed - no visible title, and the focus that opening moves here landed
+			 * on nothing. Measured on the page's detail too; the fix holds for both.
+			 */}
+			<h2
+				className="mt-3 line-clamp-3 shrink-0 text-heading text-ink"
+				title={titleTooltip(item.title)}
+				data-notification-detail-title=""
+				tabIndex={-1}
+			>
+				{item.title}
+			</h2>
+			<p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-ink-dim text-meta">
+				<span className="text-ink-muted">{source}</span>
+				<span aria-hidden="true">·</span>
+				<span>{rowTimeText(rowTimeOf(item.updated_at, nowMs))}</span>
+				{repeat > 0 && (
+					<>
+						<span aria-hidden="true">·</span>
+						<span>
+							{t("ui.notifications.detail.meta.updates_since", {
+								count: repeat,
+								time: formatTime(item.created_at, {
+									hour: "2-digit",
+									minute: "2-digit",
+								}),
+							})}
+						</span>
+					</>
+				)}
+			</p>
+
+			{gone && (
+				// biome-ignore lint/a11y/useSemanticElements: `role="status"` is a live region with no element of its own; `<output>` is a form's result, and this is a page notice
+				<Alert variant="neutral" className="mt-3" role="status">
+					{t("ui.notifications.detail.gone.dismissed")}
+				</Alert>
+			)}
+
+			<div className="mt-4 flex flex-wrap items-center gap-2">
+				{onOpenConversation && (
+					<Button
+						variant="primary"
+						size="sm"
+						onClick={() => onOpenConversation(item.session.id)}
+						data-notification-open-conversation=""
+					>
+						<ExternalLink aria-hidden="true" className="rtl:-scale-x-100" />
+						{t("ui.notifications.detail.open_conversation")}
+					</Button>
+				)}
+				<Button
+					variant="secondary"
+					size="sm"
+					aria-disabled={actionsDisabled || undefined}
+					/*
+					 * AN INERT CONTROL MUST LOOK INERT (design audit OD6). `aria-disabled`
+					 * told assistive tech the button was unavailable while the button kept
+					 * its full contrast and hover, so on a row dismissed a moment ago it read
+					 * as live and answered a click with nothing happening.
+					 */
+					className={actionsDisabled ? "text-ink-disabled" : undefined}
+					title={
+						writesPaused ? t("ui.notifications.writes_paused_tip") : undefined
+					}
+					onClick={() => {
+						if (actionsDisabled) return;
+						onToggleRead(item);
+					}}
+					data-notification-toggle-read=""
+				>
+					{item.read ? (
+						<Circle aria-hidden="true" />
+					) : (
+						<Check aria-hidden="true" />
+					)}
+					{item.read
+						? t("ui.notifications.row.mark_unread")
+						: t("ui.notifications.row.mark_read")}
+				</Button>
+				{!liveAsk && (
+					<Button
+						variant="secondary"
+						size="sm"
+						aria-disabled={actionsDisabled || undefined}
+						/* See the sibling above: inert has to look inert (OD6). */
+						className={actionsDisabled ? "text-ink-disabled" : undefined}
+						title={
+							writesPaused ? t("ui.notifications.writes_paused_tip") : undefined
+						}
+						onClick={() => {
+							if (actionsDisabled) return;
+							onDismiss(item);
+						}}
+						data-notification-dismiss=""
+					>
+						<X aria-hidden="true" />
+						{/*
+						 * ONE ROW, ONE DISMISSAL (design audit OD5). This said "Dismiss 6" for
+						 * an item updated six times - a count of REVISIONS over a button that
+						 * removes ONE row, contradicting the From card beside it ("Dismiss all
+						 * 1") about the same object in the same flow. The repeat count stays
+						 * where it is history: the header chip and the change log.
+						 */}
+						{t("ui.notifications.detail.dismiss")}
+					</Button>
+				)}
+				<DropdownMenu>
+					<DropdownMenuTrigger asChild>
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							aria-label={t("ui.notifications.row.more")}
+							title={t("ui.notifications.row.more")}
+						>
+							<MoreHorizontal aria-hidden="true" />
+						</Button>
+					</DropdownMenuTrigger>
+					<DropdownMenuContent align="end">
+						{onDismissSession && (
+							<DropdownMenuItem
+								disabled={
+									actionsDisabled ||
+									(sessionDismissCount === null
+										? false
+										: sessionDismissCount === 0)
+								}
+								onSelect={() => onDismissSession(item.session.id, source)}
+							>
+								{t("ui.notifications.detail.more.dismiss_session", { source })}
+							</DropdownMenuItem>
+						)}
+						<DropdownMenuItem onSelect={() => onCopyLink(item)}>
+							{t("ui.notifications.detail.more.copy_link")}
+						</DropdownMenuItem>
+					</DropdownMenuContent>
+				</DropdownMenu>
+			</div>
+
+			{error && !detail && (
+				<Alert variant="danger" className="mt-4" role="alert">
+					{t("ui.notifications.detail.error")}
+				</Alert>
+			)}
+
+			{loading && !detail ? (
+				<div
+					className="mt-4 flex flex-col gap-2"
+					// biome-ignore lint/a11y/useSemanticElements: `role="status"` is a live region with no element of its own; `<output>` is a form's result, and this is a page notice
+					role="status"
+					aria-label={t("ui.notifications.detail.loading")}
+				>
+					{/* On an elevated ground the default `bg-placeholder` is the visible
+					    step (design round 1, D2); `bg-elevated` there drew nothing. */}
+					<Skeleton
+						className={cn("h-3 w-full", ground === "surface" && "bg-elevated")}
+					/>
+					<Skeleton
+						className={cn("h-3 w-5/6", ground === "surface" && "bg-elevated")}
+					/>
+					<Skeleton
+						className={cn("h-3 w-2/3", ground === "surface" && "bg-elevated")}
+					/>
+				</div>
+			) : body ? (
+				/*
+				 * BODY AND METRICS ARE ONE MARKDOWN DOCUMENT (contract § 3.1: the
+				 * `notify` tool carries `body_md`, no separate metrics field), drawn
+				 * by the Projects renderer: same `.lo-markdown` rules, tables scroll
+				 * inside their own box, raw HTML is not rendered.
+				 */
+				<ProjectMarkdown className="mt-4 text-body text-ink">
+					{body}
+				</ProjectMarkdown>
+			) : item.excerpt ? (
+				<p className="mt-4 text-body text-ink">{item.excerpt}</p>
+			) : null}
+
+			{(detail?.item.links?.length ?? 0) > 0 && (
+				<DetailSection title={t("ui.notifications.detail.section.links")}>
+					<ul className="flex flex-col gap-1">
+						{detail?.item.links?.map((link) => (
+							<li key={link.url}>
+								<a
+									href={link.url}
+									target="_blank"
+									rel="noreferrer"
+									className="text-accent text-body-sm underline-offset-2 hover:underline"
+								>
+									{link.label || link.url}
+								</a>
+							</li>
+						))}
+					</ul>
+				</DetailSection>
+			)}
+
+			{detail?.anchor?.excerpt && (
+				<DetailSection title={t("ui.notifications.detail.section.context")}>
+					<p className="line-clamp-4 text-body-sm text-ink-muted">
+						{detail.anchor.excerpt}
+					</p>
+				</DetailSection>
+			)}
+
+			{(detail?.asks?.length ?? 0) > 0 && (
+				<DetailSection title={t("ui.notifications.detail.section.waiting")}>
+					<DetailAsks
+						sessionId={item.session.id}
+						asks={(detail?.asks ?? []) as PendingAsk[]}
+						nowMs={nowMs}
+						onSettled={onAsksSettled}
+					/>
+				</DetailSection>
+			)}
+
+			<DetailSection title={t("ui.notifications.detail.section.from")}>
+				<div className="flex items-center justify-between gap-3 rounded-md bg-surface px-3 py-2">
+					{onOpenConversation ? (
+						<button
+							type="button"
+							onClick={() => onOpenConversation(item.session.id)}
+							className="min-w-0 truncate text-start text-body-sm text-ink hover:underline"
+						>
+							{detail?.session.title || source}
+						</button>
+					) : (
+						/* No door to open (D3): the name is a label, not a link. */
+						<span
+							className="min-w-0 truncate text-body-sm text-ink"
+							data-notification-from-name=""
+						>
+							{detail?.session.title || source}
+						</span>
+					)}
+					{/*
+					 * MOUNTED WHILE COUNTING (design round 5, D3). Hiding the button until the
+					 * walk answered made the From card grow 8.5 px when the number arrived,
+					 * pushing the rest of the detail down. It now holds its place: the number
+					 * slot shows an ellipsis (never a guessed number, never 0 - code round 4,
+					 * R4-1) and the action is unavailable until the count lands. A KNOWN zero
+					 * still removes it: there is nothing to dismiss. `min-w-[6.5rem]` holds
+					 * room for a three-digit English count (measured 96 px for "42" at 100 %),
+					 * so the right-aligned button's left edge does not move either.
+					 */}
+					{onDismissSession && sessionDismissCount !== 0 && (
+						<Button
+							variant="ghost"
+							size="sm"
+							className="min-w-[6.5rem] shrink-0 tabular-nums"
+							data-detail-dismiss-all={
+								sessionDismissCount === null ? "counting" : "ready"
+							}
+							aria-busy={sessionDismissCount === null || undefined}
+							aria-disabled={
+								actionsDisabled || sessionDismissCount === null || undefined
+							}
+							onClick={() => {
+								if (actionsDisabled || sessionDismissCount === null) return;
+								onDismissSession(item.session.id, source);
+							}}
+						>
+							{t("ui.notifications.detail.from.dismiss_all", {
+								count:
+									sessionDismissCount === null
+										? "…"
+										: formatNumber(sessionDismissCount),
+							})}
+						</Button>
+					)}
+				</div>
+			</DetailSection>
+
+			{projects.length > 0 && (
+				<DetailSection title={t("ui.notifications.detail.section.projects")}>
+					<ul className="flex flex-col gap-1">
+						{projects.map((project) => (
+							<li key={project.key}>
+								<button
+									type="button"
+									onClick={() => onOpenProject(project.key)}
+									className="flex items-center gap-2 rounded-sm px-2 py-1 text-start text-body-sm text-ink hover:bg-row-hover"
+								>
+									<FolderKanban
+										size={14}
+										aria-hidden="true"
+										className="shrink-0 text-ink-muted"
+									/>
+									<span className="min-w-0 truncate">{project.name}</span>
+									{project.status && (
+										<span className="text-ink-dim text-meta">
+											{project.status}
+										</span>
+									)}
+								</button>
+							</li>
+						))}
+					</ul>
+				</DetailSection>
+			)}
+
+			{history.length > 0 && (
+				<DetailSection title={t("ui.notifications.detail.section.history")}>
+					<ol className="flex flex-col gap-2">
+						{shownHistory.map((entry) => (
+							<li
+								key={entry.revision}
+								className="flex flex-col gap-0.5"
+								data-history-revision={entry.revision}
+							>
+								<span className="flex items-baseline justify-between gap-2 text-body-sm text-ink">
+									<span className="min-w-0 truncate">{entry.title}</span>
+									<span className="shrink-0 text-ink-dim text-meta tabular-nums">
+										{rowTimeText(rowTimeOf(entry.at, nowMs))}
+									</span>
+								</span>
+								{entry.excerpt && (
+									<span className="truncate text-ink-dim text-meta">
+										{entry.excerpt}
+									</span>
+								)}
+							</li>
+						))}
+					</ol>
+					{history.length > 5 && !showAllHistory && (
+						<Button
+							variant="ghost"
+							size="sm"
+							className="self-start"
+							onClick={() => setShowAllHistory(true)}
+						>
+							{t("ui.notifications.detail.history.show_all", {
+								count: formatNumber(history.length),
+							})}
+						</Button>
+					)}
+				</DetailSection>
+			)}
+			{/*
+			 * THE PANE'S BOTTOM BREATHING ROOM (agent review round 1, M1). The scroller
+			 * carries NO bottom padding (see `paneRef` above), so before this the last thing
+			 * on screen sat flush against the window edge at maximum scroll - the `pt-4`
+			 * rename had taken `py-4`'s bottom half with it, for every markdown body, every
+			 * excerpt and every `DetailSections` pane, not only the ask ones.
+			 *
+			 * AN IN-FLOW BLOCK, NOT `pb-4`, because padding at the bottom of this scroller
+			 * is a strip the pinned ask band cannot paint. It never becomes one: the ask
+			 * card is not the last block in this pane (the `From` card always follows it),
+			 * and this sits below everything, so the band still reaches the port's bottom
+			 * edge while its card is the one crossing the fold.
+			 */}
+			<div
+				aria-hidden="true"
+				className="h-4 shrink-0"
+				data-notification-detail-tail=""
+			/>
+		</section>
+	);
+};
+
+/** A native tooltip's worth of the title: 300 characters, then an ellipsis. */
+export const TITLE_TOOLTIP_MAX = 300;
+export const titleTooltip = (title: string): string =>
+	title.length > TITLE_TOOLTIP_MAX
+		? `${title.slice(0, TITLE_TOOLTIP_MAX).trimEnd()}…`
+		: title;
+
+const DetailSection: FC<{ title: string; children: React.ReactNode }> = ({
+	title,
+	children,
+}) => (
+	<div className="mt-6 flex flex-col gap-2">
+		<h3 className="text-ink-muted text-meta">{title}</h3>
+		{children}
+	</div>
+);
+
+/**
+ * That conversation's asks, answerable here through the EXISTING panel (design
+ * § 2, contract § 5.2 `asks`). The answer, decline and dismiss doors are the
+ * fleet drawer's own helpers addressed at the ask's session, so a press here
+ * and a press in the drawer are the same request; one send lock per pane.
+ *
+ * THE OUTCOME IS THE SHARED RECORD (`useAskOutcomes`), not a local `{sending,
+ * refused}` map. This pane's rows are a READ (`notifications.get`), not the live
+ * session stream, so after the owner accepts an answer the rows still say
+ * `open` until the detail is read again - and while the item stays selected that
+ * read may not land for a while. Recording only `{sending, refused}` therefore
+ * left the card on `Queued — the agent is continuing; expires in 23h` with live
+ * options and `Send answer` after a successful press. The hook's `settled`
+ * record is painted over the stale frame (`askWithLocalSettle`), so the card,
+ * its Pending/Settled filter and counts move in the frame the owner answers.
+ *
+ * AND THE WIRE'S OWN ROW TAKES OVER FROM THE AGGREGATE, not from this read. Core's
+ * detail route answers an `ask:<session>:<ask>` item only while that ask is
+ * OUTSTANDING (`notifications/items.py::detail`, `is_outstanding`), so the refetch
+ * after an answer is a 404 and the query keeps the last good - `open` - rows; even
+ * an update's detail is re-read only on an explicit invalidation. Either way the
+ * card's `delivered` was never read again, and it sat on `Answered — delivering`
+ * for as long as the item stayed selected. The fleet aggregate (`asks.list`, the
+ * same durable index this read comes from) carries settled rows with `delivered`
+ * and polls while mounted, so a row it has SETTLED replaces this read's row for the
+ * same ask id; the read stays the source for everything else.
+ */
+const DetailAsks: FC<{
+	sessionId: string;
+	asks: PendingAsk[];
+	nowMs: number;
+	onSettled: (
+		askId: string,
+		status: "answered" | "declined" | "dismissed",
+	) => void;
+}> = ({ sessionId, asks, nowMs, onSettled }) => {
+	const { client } = useOptionalQueryClient();
+	const { lock, outcomes, answering, run } = useAskOutcomes({
+		onAccepted: (act) => {
+			if (act.kind !== "changed") onSettled(act.askId, act.kind);
+			/*
+			 * NUDGE THE AGGREGATE, ONCE (agent review round 1, R1-3). The server's own
+			 * row - with `delivered`, which moves the card from `Answered — delivering`
+			 * to Settled - reaches this pane through `asks.list`, polled every 10 s.
+			 * One invalidation per accepted act brings that read forward; it is the
+			 * shared key's existing query, so no new loop starts.
+			 */
+			void client?.invalidateQueries({ queryKey: FLEET_ASKS_QUERY_KEY });
+		},
+	});
+	const [drafts, setDrafts] = useState<Record<string, AskDraft>>(EMPTY_DRAFTS);
+	const fleet = useFleetAsks().rows;
+	const rows = useMemo(() => {
+		const settled = new Map<string, PendingAsk>();
+		for (const row of fleet ?? [])
+			if (row.session_id === sessionId && row.status !== "open")
+				settled.set(row.ask_id, row);
+		return asks.map((ask) => settled.get(ask.ask_id) ?? ask);
+	}, [asks, fleet, sessionId]);
+	const view = useMemo(
+		() =>
+			askQueueView(
+				{
+					asks: rows,
+					asks_open: rows.filter((ask) => ask.status === "open").length,
+					asks_truncated: false,
+				},
+				outcomes,
+				sessionId,
+			),
+		[rows, outcomes, sessionId],
+	);
+	return (
+		<AskPanel
+			view={view}
+			nowMs={nowMs}
+			answering={answering}
+			outcomes={outcomes}
+			drafts={drafts}
+			onDraftChange={(askId, next) =>
+				setDrafts((current) => ({ ...current, [askId]: next }))
+			}
+			onAnswer={(ask, answers) =>
+				run({
+					askId: ask.ask_id,
+					kind: "answered",
+					answers,
+					decision: askRevisionEvidence(ask, answers, sessionId),
+					questions: ask.questions,
+					send: () =>
+						answerQueuedAsk(
+							{ taskId: ask.ask_id, answers, sessionId, lock },
+							(request) => desktopResult(request),
+						),
+				})
+			}
+			onRevise={(ask, answers) =>
+				run({
+					askId: ask.ask_id,
+					kind: "changed",
+					answers,
+					decision: askRevisionEvidence(ask, answers, sessionId),
+					questions: ask.questions,
+					send: () =>
+						reviseQueuedAsk(
+							{ taskId: ask.ask_id, answers, sessionId, lock },
+							(request) => desktopResult(request),
+						),
+				})
+			}
+			onDecline={(ask) =>
+				run({
+					askId: ask.ask_id,
+					kind: "declined",
+					send: () =>
+						declineQueuedAsk(
+							{ taskId: ask.ask_id, sessionId, lock },
+							(request) => desktopResult(request),
+						),
+				})
+			}
+			onDismiss={(ask, reason: AskDismissReason) =>
+				run({
+					askId: ask.ask_id,
+					kind: "dismissed",
+					reason,
+					send: () =>
+						dismissQueuedAsk(
+							{ taskId: ask.ask_id, reason, sessionId, lock },
+							(request) => desktopResult(request),
+						),
+				})
+			}
+		/>
+	);
+};
+
+/*
+ * ONE SPELLING OF AN ITEM'S PAGE ADDRESS, for every surface that opens the
+ * Notifications page on one item (the page's own rows, the drawer's "Open in
+ * Notifications"). Encoded: an ask's id is `ask:<session>:<askId>`, and a raw
+ * `:`/`/`/`%` in a route segment is the router's to interpret, not the id's.
+ * The router decodes the segment again, so `useParams` hands back the raw id.
+ */
+export const notificationPath = (id: string): string =>
+	`/notifications/${encodeURIComponent(id)}`;
+
+/*
+ * "Copy link" from any detail, page or drawer: one behaviour, one receipt.
+ * Kept byte-for-byte what the page has always copied (the raw id) - changing
+ * the copied text is not this helper's decision.
+ */
+export const copyNotificationLink = (item: DesktopNotificationItem): void => {
+	void navigator.clipboard
+		?.writeText(`/notifications/${item.id}`)
+		.then(() => showSuccessToast(t("ui.notifications.toast.copied")));
+};
+
+/*
+ * AN ANSWERED ASK REFRESHES FACTS, NOT WINDOWS (code round 8, N1). Shared by the
+ * page and the drawer so an answer from either detail refreshes the same reads.
+ * `notificationKeys.all` also reached the reel's and the drawer's scroll windows,
+ * so answering from the detail re-walked every loaded page. The ask's effects
+ * live in page one's facts (the `waiting` group), each conversation's facts, the
+ * rail's count (`waiting_count`), and the open detail's own `asks` - the asks
+ * have no query of their own here; the detail read carries them.
+ */
+export const refreshAfterAskSettled = (
+	client: QueryClient,
+	detailId: string,
+): void => {
+	void client.invalidateQueries({ queryKey: notificationKeys.factsRoot });
+	void client.invalidateQueries({ queryKey: notificationKeys.sessionFactsAll });
+	void client.invalidateQueries({ queryKey: notificationKeys.count });
+	void client.invalidateQueries({
+		queryKey: notificationKeys.detail(detailId),
+	});
+};
+
+/**
+ * OPENING A DETAIL IS AN EXPLICIT READ (contract § 6.4, design § 17.3),
+ * token-bound to the revision the detail rendered. Once per detail opening,
+ * NOT per revision: a keyed update arriving while the pane is open is not
+ * proof the new content was seen. It stays unread until a fresh explicit
+ * action or an item-specific transcript receipt (presence refinement).
+ *
+ * ONE RULE FOR EVERY SURFACE THAT OPENS A DETAIL. The page owned this as an
+ * inline effect; the conversation drawer opens the same pane, and a second copy
+ * of the rule is how the two would drift (the drawer marking on click while the
+ * page marks on the rendered revision, say). `openId` is what the surface has
+ * open (null when none); `item` is the DETAIL READ's row, never the list's, so
+ * the token is the revision the pane actually drew. `markRead` is the surface's
+ * own write - the page's quiet `write.mutate`, which the drawer reuses.
+ */
+export function useOpenedDetailRead(
+	openId: string | null,
+	item: DesktopNotificationItem | undefined,
+	writesPaused: boolean,
+	markRead: (item: DesktopNotificationItem) => void,
+): void {
+	const explicitRead = useRef<string | null>(null);
+	/* The latest write, read at fire time: the mutation object is a new value on
+	   every state change and must not re-arm the once-per-opening guard. */
+	const markReadRef = useRef(markRead);
+	markReadRef.current = markRead;
+	useEffect(() => {
+		if (!openId) {
+			explicitRead.current = null;
+			return;
+		}
+		if (!item || item.id !== openId || explicitRead.current === item.id) return;
+		explicitRead.current = item.id;
+		if (item.read || item.dismissed || writesPaused) return;
+		markReadRef.current(item);
+	}, [openId, item, writesPaused]);
+}

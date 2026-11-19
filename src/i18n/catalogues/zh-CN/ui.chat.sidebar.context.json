@@ -1,0 +1,13 @@
+{
+	"ui.chat.sidebar.agents.list_join": {
+		"role": "agent-name list joiner inside the built-in agent installation offer sentence",
+		"tone": "terse, neutral Simplified Chinese enumeration; no sentence-final punctuation",
+		"length": "Variable width from agent names; each join adds one Chinese character (two display cells), with no added spaces or fixed width limit.",
+		"note": "Use 和 without a preceding comma for a pair and before the final item; use 、 between middle items. Agent handles and product names remain verbatim inside the placeholders.",
+		"placeholders": {
+			"position": "Selects pair for two names, middle for intermediate joins, and other for the final join in a longer list.",
+			"head": "The first agent name or the accumulated list; preserve verbatim.",
+			"tail": "The next agent name; preserve verbatim."
+		}
+	}
+}

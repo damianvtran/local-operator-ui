@@ -27,6 +27,10 @@
  */
 
 import {
+	desktopFeatureEnabled,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
+import {
 	Alert,
 	Button,
 	Dialog,
@@ -51,9 +55,24 @@ import { type FC, useEffect, useId, useState } from "react";
 // language-writing capabilities; the locale subscription is the separate hook leaf.
 import { t } from "../../../../i18n/messages";
 import type { MovePlan } from "./mesh-drop";
-import { planConfirm } from "./mesh-drop";
-import { INVITE_ROLES, type InviteRole } from "./mesh-store";
-import type { MeshRefusal } from "./mesh-types";
+import { moveOptionCaption, planConfirm } from "./mesh-drop";
+import {
+	INVITE_ROLES,
+	type InviteRole,
+	useTransferPreflight,
+} from "./mesh-store";
+import {
+	type MeshRefusal,
+	type MoveWorkingSetSeed,
+	deviceIdentityText,
+	workingSetHasFiles,
+} from "./mesh-types";
+import {
+	WorkingSetConsent,
+	WorkingSetDetails,
+	WorkingSetWarning,
+	workingSetMode,
+} from "./mesh-working-set";
 
 /**
  * The move confirmation: the operation, the loss, and the reversible alternative.
@@ -64,6 +83,24 @@ import type { MeshRefusal } from "./mesh-types";
  * alternative is always present, because the decision is the user's - and because
  * `--keep` is what makes "undo" honest rather than a claim that a deleted copy came
  * back.
+ *
+ * THE WORKING SET (`features.session_transfer_working_set`, operator request
+ * 2026-11-18). A move now carries the conversation's worktrees and working files,
+ * so on a backend that can, the dialog asks the route what the move WOULD send
+ * when it opens and, when there is anything, requires the user's explicit
+ * confidence that the destination device should receive it: Confirm stays
+ * disabled until the checkbox is ticked, and the plan it returns carries the
+ * manifest's `scope_digest` as its consent. Four states:
+ *   - loading: today's dialog with a progress line; Confirm waits for the answer,
+ *     because confirming blind is the consent this feature exists to require;
+ *   - empty (chat-only session, or the route answered no block): today's dialog;
+ *   - error: today's dialog with the failure and a retry. Confirm stays usable -
+ *     the ROUTE still refuses a move with unconfirmed working files
+ *     (`working_set_unconfirmed`, with the manifest), and that refusal reopens this
+ *     dialog populated, so a failed read never becomes an unreviewed send;
+ *   - populated: the warning, the lists and the required checkbox.
+ * WITHOUT THE CAPABILITY nothing here runs and the dialog is byte-for-byte the
+ * one that shipped before (no read, no checkbox, no new body field).
  */
 export const MoveConfirmDialog: FC<{
 	open: boolean;
@@ -73,116 +110,327 @@ export const MoveConfirmDialog: FC<{
 	busy: boolean;
 	onCancel: () => void;
 	onChoose: (plan: MovePlan) => void;
-}> = ({ open, plan, alternatives, risky, busy, onCancel, onChoose }) => {
+	/** A refusal's fresh manifest, shown instead of a new preflight. */
+	workingSetSeed?: MoveWorkingSetSeed | null;
+	/**
+	 * The destination's display name, for the review's warning and checkbox when
+	 * the manifest does not carry one (a `working_set_unknown` refusal has none).
+	 * The manifest's own `destination.name` wins when present.
+	 */
+	destinationName?: string;
+	/**
+	 * Which option is selected when the dialog opens: the `keep` of the plan the
+	 * user already chose, when a consent refusal reopens the dialog with the
+	 * original Move/Copy pair (UX round 1, U4). Absent: the drop's own plan.
+	 */
+	initialKeep?: boolean;
+}> = ({
+	open,
+	plan,
+	alternatives,
+	risky,
+	busy,
+	onCancel,
+	onChoose,
+	workingSetSeed = null,
+	destinationName,
+	initialKeep,
+}) => {
 	useI18nLocale();
+	const capabilities = useDesktopCapabilities();
+	const workingSetGate = desktopFeatureEnabled(
+		capabilities.data,
+		"session_transfer_working_set",
+	);
+	// Separate key: the destination probe's fields are additive, and a backend
+	// with the working set but without the probe must render the review unchanged.
+	const probeGate =
+		workingSetGate &&
+		desktopFeatureEnabled(
+			capabilities.data,
+			"session_transfer_working_set_probe",
+		);
+	const preflight = useTransferPreflight(
+		plan.sessionId,
+		plan.to,
+		open && workingSetGate && workingSetSeed === null,
+	);
+	// A refusal's seed, else the preflight's answer in the same shape: an
+	// unreadable working set opens in the move-without state on FIRST open, not
+	// only after the route refuses `working_set_unknown` (QA round 1, Q-2).
+	const answer = workingSetGate
+		? (workingSetSeed ?? preflight.data ?? null)
+		: null;
+	const workingSet = answer?.workingSet ?? null;
+	/*
+	 * WHAT THE REVIEW ASKS. A manifest with something in it asks for the digest;
+	 * a refusal that says the files cannot travel (`working_set_unknown`, an
+	 * `unsupported` manifest) asks for the explicit "without the working files"
+	 * consent even when there is no list to show. Anything else is today's dialog.
+	 */
+	const withoutOnly = answer?.withoutOnly ?? false;
+	const review = workingSetHasFiles(workingSet) ? workingSet : null;
+	const reviewing = review !== null || withoutOnly;
+	const reviewMode = workingSetMode(review, withoutOnly);
+	const reviewLoading =
+		workingSetGate && workingSetSeed === null && open && preflight.isLoading;
+	const reviewFailed =
+		workingSetGate && workingSetSeed === null && preflight.isError;
+	/*
+	 * THE TICK IS CONSENT TO ONE QUESTION, keyed by (opening, digest, mode) and
+	 * DERIVED rather than reset (agent review round 1, R3). Both callers keep this
+	 * dialog mounted across openings, and a reset in a passive effect left the
+	 * first committed frame of a reopen still ticked. `openings` counts
+	 * false->true transitions via the render-time "previous prop" pattern, so the
+	 * new key exists in the SAME render that opens the dialog, and a tick recorded
+	 * for an older key reads as unticked with no effect to run.
+	 */
+	const [openings, setOpenings] = useState(open ? 1 : 0);
+	const [wasOpen, setWasOpen] = useState(open);
+	if (open !== wasOpen) {
+		setWasOpen(open);
+		if (open) setOpenings((count) => count + 1);
+	}
+	const tickKey = `${openings}:${review?.scopeDigest ?? ""}:${reviewMode}`;
+	const [tickedFor, setTickedFor] = useState<string | null>(null);
+	const confident = open && tickedFor === tickKey;
+	/*
+	 * THE CONSENT NAMES A DEVICE, NEVER AN OPAQUE ID (design round 1, D5): the
+	 * manifest's name, then the caller's label, then "this device" for a recall,
+	 * and only then the generic "the other device" - never `plan.to`.
+	 */
+	const reviewDevice =
+		review?.destination.name ||
+		workingSetSeed?.workingSet?.destination.name ||
+		destinationName ||
+		(plan.to === "local"
+			? t("ui.mesh.mesh_drop.this_device")
+			: t("ui.chat.device_move.other_device"));
+	const checkboxId = useId();
+	const consentLabelId = useId();
 	const confirm = planConfirm(plan, risky);
 	const [chosen, setChosen] = useState<MovePlan>(plan);
 	// The chosen plan is re-seeded when the dialog opens for a DIFFERENT drop: a
 	// stale choice would send the previous target's verb while the body describes
 	// this one, which is the class of bug a dialog that never reset would hide.
 	useEffect(() => {
-		if (open) setChosen(plan);
-	}, [open, plan]);
+		if (!open) return;
+		setChosen(
+			initialKeep === undefined
+				? plan
+				: ([plan, ...alternatives].find(
+						(option) => option.keep === initialKeep,
+					) ?? plan),
+		);
+	}, [open, plan, alternatives, initialKeep]);
 	const effective = alternatives.some((alt) => alt.keep === chosen.keep)
 		? chosen
 		: plan;
 	const isCopy = effective.keep;
+	/*
+	 * THE ACTION SAYS WHAT HAPPENS (UX round 1, U3): in `without` mode the only
+	 * consent on offer is to move without the files, so Confirm says exactly that
+	 * rather than the plain verb the title already carries.
+	 */
+	const confirmLabel =
+		reviewing && reviewMode === "without"
+			? isCopy
+				? t("ui.mesh.mesh_actions.working_set_copy_without")
+				: t("ui.mesh.mesh_actions.working_set_move_without")
+			: effective.verb;
+	/*
+	 * FIXED WIDTH, CAPPED HEIGHT, ONE SCROLL REGION (design D1/D2, UX U1). With
+	 * the capability on, the dialog is `max-w-lg` from its first (loading) frame,
+	 * so the answer grows it downward instead of re-centring it sideways, and it
+	 * never exceeds 85vh: the header, the destination warning, the checkbox and
+	 * the footer are `shrink-0`, and everything between them scrolls. At the
+	 * app's 600 px minimum window that leaves the consent and Confirm on screen.
+	 * Without the capability the dialog is the one that shipped (`max-w-md`, no
+	 * wrapper), byte for byte.
+	 */
+	const description = isCopy
+		? t("ui.mesh.mesh_actions.copy_notice", {
+				keeper:
+					effective.to === "local"
+						? t("ui.mesh.mesh_actions.the_other_device_keeps")
+						: t("ui.mesh.mesh_actions.this_device_keeps"),
+			})
+		: (confirm?.body ?? t("ui.mesh.mesh_actions.this_moves_the_conversation"));
+	const body = (
+		<>
+			{alternatives.length > 0 && (
+				/*
+				 * THE ALTERNATIVE IS A RADIO-LIKE PAIR OF BUTTONS RATHER THAN A SECOND
+				 * PRIMARY: one of the two is what the drop meant, the other is what the
+				 * user may prefer, and a dialog with two equally-weighted primaries makes
+				 * the reader pick the one it cannot tell apart from the safe one.
+				 */
+				<fieldset className="m-0 flex flex-col gap-2 border-0 p-0">
+					<legend className="sr-only">
+						{t("ui.mesh.mesh_actions.which_operation")}
+					</legend>
+					{[plan, ...alternatives].map((option) => (
+						<label
+							key={option.keep ? "copy" : "move"}
+							className={cn(
+								"flex cursor-pointer items-start gap-2 rounded-md border border-control px-3 py-2",
+								"hover:bg-row-hover",
+								effective.keep === option.keep && "border-ink bg-row-selected",
+							)}
+						>
+							<input
+								type="radio"
+								name="mesh-move-mode"
+								className="mt-1"
+								checked={effective.keep === option.keep}
+								onChange={() => setChosen(option)}
+							/>
+							<span className="min-w-0 flex-1">
+								<span className="flex items-center gap-2 text-body-sm text-ink">
+									{option.keep ? (
+										<Copy aria-hidden="true" className="size-3.5" />
+									) : (
+										<ArrowRight aria-hidden="true" className="size-3.5" />
+									)}
+									{option.verb}
+								</span>
+								{/*
+								 * THE DESTINATION IS NAMED, not counted: "Move to devon-laptop" and not
+								 * "Move to the other device", because the whole point of the affordance is
+								 * that the user can see where their work is going.
+								 */}
+								<span className="mt-0.5 block text-meta text-ink-dim">
+									{moveOptionCaption(option)}
+								</span>
+							</span>
+						</label>
+					))}
+				</fieldset>
+			)}
+			{risky && (
+				<Alert variant="warning" className="text-meta">
+					{effective.keep
+						? t("ui.mesh.mesh_actions.it_is_open_on_the_other_end")
+						: t("ui.mesh.mesh_actions.it_is_open_elsewhere_right_now_whatever")}
+				</Alert>
+			)}
+			{reviewLoading && (
+				<p
+					aria-live="polite"
+					className="flex items-center gap-2 text-meta text-ink-muted"
+				>
+					<Loader2 aria-hidden="true" className="size-3.5 animate-spin" />
+					{t("ui.mesh.mesh_actions.working_set_loading")}
+				</p>
+			)}
+			{reviewFailed && (
+				<Alert variant="danger" className="text-meta">
+					<span className="flex flex-col items-start gap-2">
+						{t("ui.mesh.mesh_actions.working_set_error")}
+						<Button
+							size="sm"
+							variant="secondary"
+							onClick={() => void preflight.refetch()}
+						>
+							{t("ui.mesh.mesh_actions.check_again")}
+						</Button>
+					</span>
+				</Alert>
+			)}
+			{review && (
+				<WorkingSetDetails
+					workingSet={review}
+					mode={reviewMode}
+					device={reviewDevice}
+					probe={probeGate}
+				/>
+			)}
+		</>
+	);
 	return (
 		<Dialog open={open} onOpenChange={(next) => !next && onCancel()}>
-			<DialogContent className="max-w-md">
-				<DialogHeader>
+			<DialogContent
+				className={workingSetGate ? "max-h-[85vh] max-w-lg" : "max-w-md"}
+			>
+				<DialogHeader className={workingSetGate ? "shrink-0" : undefined}>
 					<DialogTitle>{effective.verb}</DialogTitle>
-					<DialogDescription>
-						{isCopy
-							? t("ui.mesh.mesh_actions.copy_notice", {
-									keeper:
-										effective.to === "local"
-											? t("ui.mesh.mesh_actions.the_other_device_keeps")
-											: t("ui.mesh.mesh_actions.this_device_keeps"),
-								})
-							: (confirm?.body ??
-								t("ui.mesh.mesh_actions.this_moves_the_conversation"))}
-					</DialogDescription>
+					<DialogDescription>{description}</DialogDescription>
 				</DialogHeader>
-				{alternatives.length > 0 && (
-					/*
-					 * THE ALTERNATIVE IS A RADIO-LIKE PAIR OF BUTTONS RATHER THAN A SECOND
-					 * PRIMARY: one of the two is what the drop meant, the other is what the
-					 * user may prefer, and a dialog with two equally-weighted primaries makes
-					 * the reader pick the one it cannot tell apart from the safe one.
-					 */
-					<fieldset className="m-0 flex flex-col gap-2 border-0 p-0">
-						<legend className="sr-only">
-							{t("ui.mesh.mesh_actions.which_operation")}
-						</legend>
-						{[plan, ...alternatives].map((option) => (
-							<label
-								key={option.keep ? "copy" : "move"}
-								className={cn(
-									"flex cursor-pointer items-start gap-2 rounded-md border border-control px-3 py-2",
-									"hover:bg-row-hover",
-									effective.keep === option.keep &&
-										"border-ink bg-row-selected",
-								)}
-							>
-								<input
-									type="radio"
-									name="mesh-move-mode"
-									className="mt-1"
-									checked={effective.keep === option.keep}
-									onChange={() => setChosen(option)}
-								/>
-								<span className="min-w-0 flex-1">
-									<span className="flex items-center gap-2 text-body-sm text-ink">
-										{option.keep ? (
-											<Copy aria-hidden="true" className="size-3.5" />
-										) : (
-											<ArrowRight aria-hidden="true" className="size-3.5" />
-										)}
-										{option.verb}
-									</span>
-									{/*
-									 * THE DESTINATION IS NAMED, not counted: "Move to devon-laptop" and not
-									 * "Move to the other device", because the whole point of the affordance is
-									 * that the user can see where their work is going.
-									 */}
-									<span className="mt-0.5 block text-meta text-ink-dim">
-										{option.keep
-											? t("ui.mesh.mesh_actions.the_original_stays_where_it_is")
-											: t(
-													"ui.mesh.mesh_actions.the_copy_here_is_deleted_once_it",
-												)}
-									</span>
-								</span>
-							</label>
-						))}
-					</fieldset>
+				{reviewing && (
+					<WorkingSetWarning
+						workingSet={review}
+						mode={reviewMode}
+						device={reviewDevice}
+						notice={
+							workingSetSeed?.changed
+								? "changed"
+								: workingSetSeed?.unconfirmed
+									? "unconfirmed"
+									: null
+						}
+					/>
 				)}
-				{risky && (
-					<Alert variant="warning" className="text-meta">
-						{effective.keep
-							? t("ui.mesh.mesh_actions.it_is_open_on_the_other_end")
-							: t(
-									"ui.mesh.mesh_actions.it_is_open_elsewhere_right_now_whatever",
-								)}
-					</Alert>
+				{workingSetGate ? (
+					<div
+						className="-mx-1 flex min-h-0 shrink flex-col gap-4 overflow-y-auto px-1"
+						data-testid="move-dialog-body"
+					>
+						{body}
+					</div>
+				) : (
+					body
 				)}
-				<DialogFooter>
+				{reviewing && (
+					<WorkingSetConsent
+						mode={reviewMode}
+						device={reviewDevice}
+						confident={confident}
+						onConfidentChange={(next) => setTickedFor(next ? tickKey : null)}
+						disabled={busy}
+						checkboxId={checkboxId}
+						labelId={consentLabelId}
+					/>
+				)}
+				<DialogFooter className={workingSetGate ? "shrink-0" : undefined}>
 					<Button variant="ghost" onClick={onCancel} disabled={busy}>
 						{t("ui.mesh.mesh_actions.cancel")}
 					</Button>
 					<Button
-						onClick={() => onChoose(effective)}
-						disabled={busy}
+						onClick={() => {
+							/*
+							 * THE CONSENT TRAVELS ON THE PLAN, and only when a review was shown
+							 * and ticked: any consent a reopened plan still carried is dropped
+							 * first, so an empty answer never sends a stale one.
+							 */
+							const {
+								confirmWorkingSet: _staleDigest,
+								withoutWorkingSet: _staleWithout,
+								...bare
+							} = effective;
+							onChoose(
+								!reviewing
+									? bare
+									: reviewMode === "without"
+										? { ...bare, withoutWorkingSet: true }
+										: {
+												...bare,
+												confirmWorkingSet: review?.scopeDigest,
+											},
+							);
+						}}
+						disabled={busy || reviewLoading || (reviewing && !confident)}
+						aria-describedby={
+							reviewing && !confident ? consentLabelId : undefined
+						}
 						variant={isCopy ? "secondary" : "primary"}
 					>
 						{busy && (
 							<Loader2
 								aria-hidden="true"
-								className="mr-2 size-3.5 animate-spin"
+								className="me-2 size-3.5 animate-spin"
 							/>
 						)}
-						{effective.verb}
+						{confirmLabel}
 					</Button>
 				</DialogFooter>
 			</DialogContent>
@@ -208,8 +456,8 @@ export const InviteDialog: FC<{
 	 * again, so `mesh-page.tsx` does that arithmetic where the graph is in hand.
 	 */
 	options: readonly { id: string; label: string }[];
-	/** The device this invite is bound to, when it was started from a node. */
-	deviceLabel: string | null;
+	/** The unformatted wire name; the dialog owns the shared identity rendering. */
+	deviceName?: string;
 	onClose: () => void;
 	onInvite: (ask: {
 		networkId: string;
@@ -224,7 +472,7 @@ export const InviteDialog: FC<{
 }> = ({
 	open,
 	options,
-	deviceLabel,
+	deviceName,
 	onClose,
 	onInvite,
 	pending,
@@ -255,7 +503,12 @@ export const InviteDialog: FC<{
 						 * there is no act that makes a device a member from here.
 						 */}
 						{t("ui.mesh.mesh_actions.admission_is_two_sided_so_this_mints")}
-						{deviceLabel ?? t("ui.mesh.mesh_actions.the_device")}{" "}
+						{deviceId
+							? deviceIdentityText({
+									id: deviceId,
+									name: deviceName,
+								})
+							: t("ui.mesh.mesh_actions.the_device")}{" "}
 						{t(
 							"ui.mesh.mesh_actions.proves_the_short_authentication_string_when_it",
 						)}
@@ -359,7 +612,7 @@ export const InviteDialog: FC<{
 							{pending && (
 								<Loader2
 									aria-hidden="true"
-									className="mr-2 size-3.5 animate-spin"
+									className="me-2 size-3.5 animate-spin"
 								/>
 							)}
 							{t("ui.mesh.mesh_actions.mint_the_token")}
@@ -384,7 +637,8 @@ export const InviteDialog: FC<{
 export const RemoveMemberDialog: FC<{
 	open: boolean;
 	networkLabel: string;
-	deviceLabel: string;
+	deviceId: string;
+	deviceName?: string;
 	onClose: () => void;
 	onConfirm: (typed: string) => void;
 	pending: boolean;
@@ -393,7 +647,8 @@ export const RemoveMemberDialog: FC<{
 }> = ({
 	open,
 	networkLabel,
-	deviceLabel,
+	deviceId,
+	deviceName,
 	onClose,
 	onConfirm,
 	pending,
@@ -402,6 +657,7 @@ export const RemoveMemberDialog: FC<{
 }) => {
 	useI18nLocale();
 	const [typed, setTyped] = useState("");
+	const identity = deviceIdentityText({ id: deviceId, name: deviceName });
 	const fieldId = useId();
 	useEffect(() => {
 		if (open) setTyped("");
@@ -412,12 +668,12 @@ export const RemoveMemberDialog: FC<{
 				<DialogHeader>
 					<DialogTitle>
 						{t("ui.mesh.mesh_actions.remove")}
-						{deviceLabel} {t("ui.mesh.mesh_actions.from")}
+						{identity} {t("ui.mesh.mesh_actions.from")}
 						{networkLabel}?
 					</DialogTitle>
 					<DialogDescription>
 						{t("ui.mesh.mesh_actions.every_device_in_the_network_is_rekeyed")}
-						{deviceLabel}{" "}
+						{identity}{" "}
 						{t("ui.mesh.mesh_actions.is_locked_out_on_its_next_handshake")}
 					</DialogDescription>
 				</DialogHeader>
@@ -461,7 +717,7 @@ export const RemoveMemberDialog: FC<{
 							{pending && (
 								<Loader2
 									aria-hidden="true"
-									className="mr-2 size-3.5 animate-spin"
+									className="me-2 size-3.5 animate-spin"
 								/>
 							)}
 							{t("ui.mesh.mesh_actions.remove_the_device")}
@@ -580,7 +836,12 @@ export const MoveNotice: FC<{
 				<span className="text-meta text-ink-dim">{receipt.detail}</span>
 			) : (
 				<span className="font-mono text-meta text-ink-dim">
-					{refusal?.code}
+					{/*
+					 * THE WORD WHEN THE CLIENT HAS ONE, the machine code otherwise. The pre-flight
+					 * refusal carries `reach` because the device is in hand there; a refusal from
+					 * the route does not, and its code is the only vocabulary this end holds.
+					 */}
+					{refusal?.reach ?? refusal?.code}
 				</span>
 			)}
 			{refusal?.code === "busy" && canWait && (

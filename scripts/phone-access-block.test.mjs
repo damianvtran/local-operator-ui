@@ -1043,6 +1043,93 @@ test("declared partial outcomes retain canonical backend copy independently of r
 	assert.ok(view.text().includes("RECEIPT VERBATIM"));
 });
 
+/*
+ * The cloudflared install step is conditional on the server's transport: under
+ * `transport: "relay"` the connector runs inside lop, so the step is skipped;
+ * absent (an older backend) or `cloudflare`, it renders exactly as before. The
+ * absent and `cloudflare` cases are the negative controls: they prove the same
+ * harness DOES show the install sentence, so the relay case's absence of it is
+ * the transport's doing and not a rendering accident.
+ */
+/** Words the skipped step's sentence must never show the person. */
+const TRANSPORT_NAMES = /relay|cloudflared/i;
+
+const cloudflaredBlocked = (over = {}) =>
+	answer({
+		step: "cloudflared",
+		blocked_on: "cloudflared",
+		ready: false,
+		remedy: {
+			kind: "install_cloudflared",
+			text: "Backend install-cloudflared sentence.",
+			command: "brew install cloudflared",
+			url: null,
+		},
+		...over,
+	});
+
+for (const [label, transport, skipped] of [
+	["absent", undefined, false],
+	["cloudflare", "cloudflare", false],
+	["an unknown value", "carrier-pigeon", false],
+	["relay", "relay", true],
+]) {
+	test(`cloudflared blocker with transport ${label}: install step ${skipped ? "skipped" : "shown"}`, async () => {
+		const plan =
+			transport === undefined
+				? cloudflaredBlocked()
+				: cloudflaredBlocked({ transport });
+		const view = await mount(
+			{ tunnel_setup: 1 },
+			{
+				"tunnel.setup.read": ok(plan),
+				"tunnel.setup.plan": ok(plan),
+			},
+		);
+		assert.ok(view.has('[data-phone-state="cloudflared"]'));
+		assert.equal(
+			view.text().includes("Backend install-cloudflared sentence."),
+			!skipped,
+		);
+		assert.equal(view.has('[data-phone-step-skipped="cloudflared"]'), skipped);
+		// D1: the skipped step still explains itself, with the UI's own sentence
+		// and never the transport's name; the shown step never carries it.
+		const neutral =
+			"Phone access no longer needs a separate connector tool on this computer.";
+		assert.equal(view.text().includes(neutral), skipped);
+		if (skipped) assert.ok(!TRANSPORT_NAMES.test(view.text()));
+		// Either way the person keeps a fresh check and is never offered a run.
+		assert.ok(view.button("Check again"));
+		assert.ok(!view.button("Set up phone access"));
+		await view.unmount();
+	});
+}
+
+test("the relay transport changes nothing outside the cloudflared step", async () => {
+	const mobile = answer({
+		step: "mobile_bundle",
+		blocked_on: "mobile_bundle",
+		ready: false,
+		transport: "relay",
+		remedy: {
+			kind: "prepare_mobile",
+			text: "Backend prepare-mobile sentence.",
+			command: null,
+			url: null,
+		},
+	});
+	const view = await mount(
+		{ tunnel_setup: 1 },
+		{
+			"tunnel.setup.read": ok(mobile),
+			"tunnel.setup.plan": ok(mobile),
+		},
+	);
+	assert.ok(view.text().includes("Backend prepare-mobile sentence."));
+	assert.ok(!view.has("[data-phone-step-skipped]"));
+	await view.unmount();
+});
+
 test("a settled block is quiet: no further requests, from any state, once answers are in", async () => {
 	// The guard against a render/poll loop. Every state is mounted, allowed to settle,
 	// then left alone for several more settle windows; the request count must not move.

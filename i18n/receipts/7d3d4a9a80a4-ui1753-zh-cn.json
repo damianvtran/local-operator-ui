@@ -1,0 +1,263 @@
+{
+ "schema": 1,
+ "auditor": "translation-auditor (lopdev translation-auditor session 7d3d4a9a80a4, final independent audit of the 86 keys added by #1753; not the PR coder, the translator, the remediator, the round-1 auditor or the delta re-auditor)",
+ "agent": "translation-auditor (lopdev translation-auditor session 7d3d4a9a80a4, final independent audit of the 86 keys added by #1753; not the PR coder, the translator, the remediator, the round-1 auditor or the delta re-auditor)",
+ "model": "anthropic/claude-sonnet-5-5",
+ "model_provenance": "Model identity taken from this session's header (anthropic/claude-sonnet-5-5); no fallback or model switch was reported during the session.",
+ "fallback": "none reported",
+ "independence": "Separate session (7d3d4a9a80a4) from the PR coder, the zh-CN translator, the remediation author and the earlier round-1 / delta auditors. The verdict was rebuilt from the English source, the en .context.json sidecars, shipped zh-CN precedent, i18n/glossary.md and the zh-CN style guide; no prior audit claim was accepted without reading the committed bytes.",
+ "instance": "7d3d4a9a80a4-ui1753-zh-cn",
+ "session": "7d3d4a9a80a4",
+ "session_id_provenance": "read from LOCAL_OPERATOR_SESSION_ID in the audit session's environment",
+ "locale": "zh-CN",
+ "branch": "i18n/key-census-literals",
+ "head": "bd17b456e079c761013c580ea4263b5c4bc57f5d",
+ "pr": "damianvtran/local-operator-ui#1753",
+ "date": "2026-11-07",
+ "status": "passed",
+ "scope": "The 86 keys added by 874446c2c80e8c3849c20ed72780d1455e7752a9 in seven namespaces (ui.chat.canonical 55, ui.chat.asks 8, ui.chat.sidebar 7, ui.chat.pickers 8, ui.chat.run_details 2, ui.chat.user_turn 3, ui.hub.pages 3), read key by key in the committed zh-CN catalogue against English and the en context sidecar. keys_read counts those delta keys, not whole namespaces.",
+ "inputs_sha256": {
+  "glossary (local-operator/i18n/glossary.md)": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "style guide (local-operator/i18n/style-guides/zh-CN.md)": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+ },
+ "verified": [
+  "key sets: all 86 delta keys exist in zh-CN for their namespace; check-coverage.mjs: ok — 7 gated language(s) over 129 namespace(s); 0 allowed key(s) remain",
+  "ICU: every message parses with @formatjs/icu-messageformat-parser; argument names/types and the ::group-off skeletons are identical to English; zh-CN plurals carry only the `other` arm; rendered through intl-messageformat at counts 0,1,2,3,5,11,21,22,25,100,1000 with no error and 1000 printed ungrouped",
+  "bytes: all 86 target strings NFC, no Cf/bidi/zero-width/BOM characters, no leading/trailing or doubled spaces, no space between CJK and Latin/digit runs",
+  "prior fixes re-judged in final text and resolved: fold.count.secret 敏感信息 (matches ui.chat.composer.secret_* precedent), fold.receipt.reply_requested 已请求回复, fold.count.shell 条shell命令 / python 次Python运行, fold.receipt.monitor_prompt 条监控提示词 (guide: prompt→提示词), fold.receipt.incoming 条收到的消息, asks.clause.outstanding 项待处理 (ask→请求 and 已结束 match ui.chat.asks.* shipped), pickers.slash.unknown_command(_suggest) full-width colon 未知命令：, run_details.wake.managed_note 定时任务/定期检查 (wake→唤醒, schedule→定时任务 per style guide)",
+  "meaning/safety: pending and failed states never read as done: transcript.not_delivered 未送达, clause.delivering 尚未送达——仍可修改, clause.outstanding 待处理, clause.waiting 等待回答, clause.timed_out 已超时; clause.settled 所有请求均已结束 matches settled_heading 已结束",
+  "cross-key references: sidebar.groups.withheld quotes “包含已归档对话”, byte-equal to ui.chat.sidebar.search.include_archived; hub 中心 matches ui.hub.* precedent; 轮次/引导/回执/唤醒 match shipped ui.chat.composer, ui.chat.run_details and ui.hub.status usage",
+  "observation, not a finding: shipped ui.chat.pickers destination_pickers.stores_a_secret_for_this_session_s_tools_by_name… uses 机密 for 'secret' while ui.chat.composer.secret_* and the new fold.count.secret use 敏感信息; the 机密 line is outside this PR's 86 keys"
+ ],
+ "namespaces": {
+  "ui.chat.canonical": {
+   "namespace": "ui.chat.canonical",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 55,
+   "delta_keys_audited": [
+    "ui.chat.canonical.fold.count.shell",
+    "ui.chat.canonical.fold.count.python",
+    "ui.chat.canonical.fold.count.file",
+    "ui.chat.canonical.fold.count.search",
+    "ui.chat.canonical.fold.count.web",
+    "ui.chat.canonical.fold.count.edit",
+    "ui.chat.canonical.fold.count.task",
+    "ui.chat.canonical.fold.count.agent",
+    "ui.chat.canonical.fold.count.team",
+    "ui.chat.canonical.fold.count.team_delete",
+    "ui.chat.canonical.fold.count.hub",
+    "ui.chat.canonical.fold.count.secret",
+    "ui.chat.canonical.fold.count.project",
+    "ui.chat.canonical.fold.count.project_delete",
+    "ui.chat.canonical.fold.count.wake",
+    "ui.chat.canonical.fold.count.jobs",
+    "ui.chat.canonical.fold.count.jobs_cancel",
+    "ui.chat.canonical.fold.count.console",
+    "ui.chat.canonical.fold.count.network",
+    "ui.chat.canonical.fold.count.browser",
+    "ui.chat.canonical.fold.count.todo",
+    "ui.chat.canonical.fold.count.todo_read",
+    "ui.chat.canonical.fold.count.send",
+    "ui.chat.canonical.fold.count.ask",
+    "ui.chat.canonical.fold.count.wait",
+    "ui.chat.canonical.fold.count.lsp",
+    "ui.chat.canonical.fold.count.web_read",
+    "ui.chat.canonical.fold.count.list_variables",
+    "ui.chat.canonical.fold.count.read_variable",
+    "ui.chat.canonical.fold.count.sessions",
+    "ui.chat.canonical.fold.count.named",
+    "ui.chat.canonical.fold.count.actions",
+    "ui.chat.canonical.fold.count.other_actions",
+    "ui.chat.canonical.fold.unit_separator",
+    "ui.chat.canonical.fold.sentence.files",
+    "ui.chat.canonical.fold.sentence.searches",
+    "ui.chat.canonical.fold.sentence.web_lead",
+    "ui.chat.canonical.fold.sentence.web_follow",
+    "ui.chat.canonical.fold.sentence.commands_lead",
+    "ui.chat.canonical.fold.sentence.commands_follow",
+    "ui.chat.canonical.fold.sentence.edits_lead",
+    "ui.chat.canonical.fold.sentence.edits_follow",
+    "ui.chat.canonical.fold.sentence.delegated_lead",
+    "ui.chat.canonical.fold.sentence.delegated_follow",
+    "ui.chat.canonical.fold.sentence.join",
+    "ui.chat.canonical.fold.receipt.incoming",
+    "ui.chat.canonical.fold.receipt.job_result",
+    "ui.chat.canonical.fold.receipt.wake",
+    "ui.chat.canonical.fold.receipt.monitor_prompt",
+    "ui.chat.canonical.fold.receipt.other",
+    "ui.chat.canonical.fold.receipt.reply_requested",
+    "ui.chat.canonical.fold.receipt.steered",
+    "ui.chat.canonical.checkpoint_rail.label",
+    "ui.chat.canonical.transcript.not_delivered",
+    "ui.chat.canonical.fold.count.actions_partial"
+   ],
+   "sha256": {
+    "zh-CN": "05eaf8a0710cf1878553fdcb7071cfab2393a8eb1c6e1eb466598ec1033a5eb5",
+    "en": "c5f286f8f88ec52c722e6b3eebd0c41f7969a47b6f496473f692ae3e4f500885"
+   },
+   "context_sha256": "88a491a6e91758d1cd956d458a341717c878a8b3d61caf003b7a9f1ed1a4593a",
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.canonical.json",
+    "target": "src/i18n/catalogues/zh-CN/ui.chat.canonical.json",
+    "context": "src/i18n/catalogues/en/ui.chat.canonical.context.json"
+   },
+   "findings": []
+  },
+  "ui.chat.asks": {
+   "namespace": "ui.chat.asks",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 8,
+   "delta_keys_audited": [
+    "ui.chat.asks.scope.session",
+    "ui.chat.asks.scope.fleet",
+    "ui.chat.asks.scope_line",
+    "ui.chat.asks.clause.settled",
+    "ui.chat.asks.clause.outstanding",
+    "ui.chat.asks.clause.waiting",
+    "ui.chat.asks.clause.delivering",
+    "ui.chat.asks.clause.timed_out"
+   ],
+   "sha256": {
+    "zh-CN": "60565a931c635b54367b8a005cda92e0baf9aae75f938d9a3482be24abee65fc",
+    "en": "36346bf6a1422f090b306be21eebe034b0a9ee071725c94f7296d1d1322e9e0e"
+   },
+   "context_sha256": "f61b397ea87067d1792983c3a1d904d1f88ee92ca98539a7335eaa2cbb3b8c3e",
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.asks.json",
+    "target": "src/i18n/catalogues/zh-CN/ui.chat.asks.json",
+    "context": "src/i18n/catalogues/en/ui.chat.asks.context.json"
+   },
+   "findings": []
+  },
+  "ui.chat.sidebar": {
+   "namespace": "ui.chat.sidebar",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 7,
+   "delta_keys_audited": [
+    "ui.chat.sidebar.groups.empty",
+    "ui.chat.sidebar.groups.loading",
+    "ui.chat.sidebar.groups.withheld",
+    "ui.chat.sidebar.catalogue.show_more_agents",
+    "ui.chat.sidebar.catalogue.show_more_teams",
+    "ui.chat.sidebar.drafts.row_label",
+    "ui.chat.sidebar.drafts.discard_label"
+   ],
+   "sha256": {
+    "zh-CN": "5ed6bb380a2fef62c67417ea5bad01153e11944d8aa8edfe7a25c879d6ff80a7",
+    "en": "da4e961e7f19619d98860565be68e0edf65d26ebd8eef4eac2a48e8e6aa8b3df"
+   },
+   "context_sha256": "8e06707ca7184110e9599e1d4acaa5ad4f4409e3034dabfb4d861244a07c4cbb",
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+    "target": "src/i18n/catalogues/zh-CN/ui.chat.sidebar.json",
+    "context": "src/i18n/catalogues/en/ui.chat.sidebar.context.json"
+   },
+   "findings": []
+  },
+  "ui.chat.pickers": {
+   "namespace": "ui.chat.pickers",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 8,
+   "delta_keys_audited": [
+    "ui.chat.pickers.at_menu.footer.nothing",
+    "ui.chat.pickers.at_menu.footer.inserts",
+    "ui.chat.pickers.at_menu.footer.opens",
+    "ui.chat.pickers.slash.row_slot.fast_on",
+    "ui.chat.pickers.slash.row_slot.fast_off",
+    "ui.chat.pickers.slash.row_slot.needs_value",
+    "ui.chat.pickers.slash.unknown_command",
+    "ui.chat.pickers.slash.unknown_command_suggest"
+   ],
+   "sha256": {
+    "zh-CN": "7522d4929fe3ab591cd7580f19e45e9648e644b96bab49f182510a057a02dcc3",
+    "en": "fc24432940fa342e87f169992f8f9bf00d2d73a06ee654a29a62b547bcb6be37"
+   },
+   "context_sha256": "39138377d3df864dfcb9f64e084110244a40abce650f3c0837e1d31e45fa1df9",
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.pickers.json",
+    "target": "src/i18n/catalogues/zh-CN/ui.chat.pickers.json",
+    "context": "src/i18n/catalogues/en/ui.chat.pickers.context.json"
+   },
+   "findings": []
+  },
+  "ui.chat.run_details": {
+   "namespace": "ui.chat.run_details",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 2,
+   "delta_keys_audited": [
+    "ui.chat.run_details.wake.managed_by",
+    "ui.chat.run_details.wake.managed_note"
+   ],
+   "sha256": {
+    "zh-CN": "5d1838b03b2807953a594f790d41c66e9364b0cdb463b30e7e1c29885bdfc43c",
+    "en": "92fb1e13c99204304e7f567f29be4983416d7eddd3c5ff092a3abf4716dbf5e4"
+   },
+   "context_sha256": "be214f5b36ae7cd9c131b4372d0537321d7a22c6d35555883e8ca3f149c4bdb7",
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.run_details.json",
+    "target": "src/i18n/catalogues/zh-CN/ui.chat.run_details.json",
+    "context": "src/i18n/catalogues/en/ui.chat.run_details.context.json"
+   },
+   "findings": []
+  },
+  "ui.chat.user_turn": {
+   "namespace": "ui.chat.user_turn",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 3,
+   "delta_keys_audited": [
+    "ui.chat.user_turn.stamp.sent",
+    "ui.chat.user_turn.stamp.answered",
+    "ui.chat.user_turn.stamp.ran"
+   ],
+   "sha256": {
+    "zh-CN": "d9379daa9324c04a18155725202307b2c73a3e4b044f55d6f02611d8f42ce666",
+    "en": "5447e7d6963609e2769747e31b64beec7b7957e1f2c92126d281b21f5dbf78e8"
+   },
+   "context_sha256": "83dc1782e60b76208d1baacc6bbfbcc49acb8ea10421ae17ff7acd5f44c9637f",
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.user_turn.json",
+    "target": "src/i18n/catalogues/zh-CN/ui.chat.user_turn.json",
+    "context": "src/i18n/catalogues/en/ui.chat.user_turn.context.json"
+   },
+   "findings": []
+  },
+  "ui.hub.pages": {
+   "namespace": "ui.hub.pages",
+   "status": "passed",
+   "result": "clean-with-findings",
+   "keys_read": 3,
+   "delta_keys_audited": [
+    "ui.hub.pages.signed_out.title",
+    "ui.hub.pages.signed_out.body",
+    "ui.hub.pages.load_failed.title"
+   ],
+   "sha256": {
+    "zh-CN": "0ad3500473707802dfa21ada4f6a6ceda14bab41913dbe2e48038e1b7abda248",
+    "en": "cf81ba3771a985ac8dbe5d992df409977d792b836f1e48fb335f65f253837a20"
+   },
+   "context_sha256": "a767550cecb7c9469be395ece18098651441441777713e5f9101045f5df58ce5",
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.hub.pages.json",
+    "target": "src/i18n/catalogues/zh-CN/ui.hub.pages.json",
+    "context": "src/i18n/catalogues/en/ui.hub.pages.context.json"
+   },
+   "findings": [
+    {
+     "id": "ZHCN-1753-1",
+     "severity": "nit",
+     "key": "ui.hub.pages.signed_out.body",
+     "summary": "Shipped zh-CN says 设置页面 for 'settings page' in the sibling sign-in prompt ui.hub.teams.public.pull_no_signin (src/i18n/catalogues/zh-CN/ui.hub.teams.json:38); this key says 设置页. Same term, two spellings in one hub sign-in flow. Meaning unaffected; not a gate.",
+     "before": "你尚未登录Radient，中心没有可用来读取智能体列表的凭据。请在设置页登录，然后重试。",
+     "after": "你尚未登录Radient，中心没有可用于读取智能体列表的凭据。请在设置页面登录，然后重试。",
+     "resolution": "recorded, not fixed (auditors never edit the repo)"
+    }
+   ]
+  }
+ }
+}

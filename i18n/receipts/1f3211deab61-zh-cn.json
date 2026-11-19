@@ -1,0 +1,73 @@
+{
+ "schema": 1,
+ "auditor": "translation-auditor (lopdev coder-role session 1f3211deab61, delta audit of the #1458 run-failure and download-failure keys; not the PR coder, the translator of f82003d72a or any previous auditor)",
+ "agent": "translation-auditor (lopdev coder-role session 1f3211deab61, delta audit of the #1458 run-failure and download-failure keys; not the PR coder, the translator of f82003d72a or any previous auditor)",
+ "model": "anthropic/claude-opus-5-5",
+ "model_provenance": "Every catalogue read, measurement and verdict in this receipt ran on anthropic/claude-opus-5-5; no fallback occurred in this session.",
+ "fallback": "none",
+ "independence": "Separate session (1f3211deab61) from the PR coder that wrote the English keys in a8859ad7e7, from the translator that wrote these values in f82003d72a (agent coder, translator step for delta 3, model openrouter/deepseek/deepseek-v4.1-flash-1017 after disclosed fallbacks), and from every earlier auditor (04d9540e57e6, bf41e95b4e1e, 32ed16b45687 and the ui.agents.config auditors). The translator's commit message was not used as reasoning; verdicts were rebuilt from the English source, the en context files, the sibling keys and the locale style guide. CROSS-FAMILY: the translator ran on a DeepSeek model and this auditor on anthropic/claude-opus-5-5, so this delta audit is model-family independent as well as agent-instance independent (the ledger rule is agent-instance independence).",
+ "instance": "1f3211deab61-zh-cn",
+ "session": "1f3211deab61",
+ "locale": "zh-CN",
+ "branch": "feat/skills-tab-redesign",
+ "head": "f82003d72aa26387b06aa7ca33f95bcd4a111db5",
+ "pr": "damianvtran/local-operator-ui#1458",
+ "date": "2026-10-28",
+ "status": "passed",
+ "scope": "Delta audit of the two keys a8859ad7e7 added (ui.agents.config.error.turn_failed, ui.agents.skills.error.download_failed_title) as translated in f82003d72a. Carried keys are byte-identical to the rows audited in e80029d240: each ledger target_sha256 equals the e80029d240 blob and git diff e80029d240..f82003d72a changes exactly the delta key in each catalogue, so earlier findings stand.",
+ "inputs_sha256": {
+  "en_context (ui.agents.config.context.json)": "7a8466e3b233d1e1399996a65fd178243d81e314fcfcc94c2d61606cfbdc4648",
+  "en_context (ui.agents.skills.context.json)": "a1f18390220f31f61adc24f9238d756dbdf0adba924ef5a27979bf2c95500317",
+  "glossary (local-operator/i18n/glossary.md)": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style guide (local-operator/i18n/style-guides/zh-CN.md)": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+ },
+ "verified": [
+  "key sets equal en in both namespaces; the two delta values carry no placeholders/ICU (en has none), no bidi/zero-width/BOM characters, no edge or double spaces; all NFC",
+  "carried keys byte-identical to the last audited rows: each ledger target_sha256 (rows from e80029d240) equals the e80029d240 blob, git diff e80029d240..f82003d72a on each catalogue is exactly +1 line naming the delta key, and the parsed catalogue minus the delta key equals the e80029d240 catalogue key-for-key in order; earlier findings stand",
+  "turn_failed: «模型未响应此请求。» — 请求 matches status.attached «你的请求»; 未响应 is the catalogue's established 'did not answer' verb (24 uses, incl. transport_failed); full sentence keeps 。; nothing reads as refused (no 拒绝).",
+  "turn_failed with its title: under ui.agents.config.state.did_not_finish «未能完成» the line adds what failed (the model's answer) without repeating the title or contradicting it; the line is the fallback only when the incident carried no message (use-config-run.ts:312), resolved at call time in the current locale",
+  "download_failed_title: «未能下载» — pairs with save_failed_title «未能保存»; button «下载»; short title carries no 。 (style guide).",
+  "download_failed_title width (approx., PIL on /System/Library/Fonts/SFNS.ttf, 13 px wght 500 = AlertTitle font-medium text-body-sm; NOT a rendered frame): 52.0 px vs en 140.0 px; AlertTitle wraps, never truncates",
+  "punctuation: the sentence keeps 。, the short title has none (style guide: no sentence-final 。 on short labels)"
+ ],
+ "namespaces": {
+  "ui.agents.config": {
+   "namespace": "ui.agents.config",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 30,
+   "delta_keys_audited": [
+    "ui.agents.config.error.turn_failed"
+   ],
+   "sha256": {
+    "zh-CN": "52781d2442161010cd6eb304c61982bd396108e5a3864d1010ffaa867a47f8e7",
+    "en": "a13e851f4e1bf5ed8933ac30ed2797a25ad48e714482fbb78d3b9ebe2efc4146"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.agents.config.json",
+    "target": "src/i18n/catalogues/zh-CN/ui.agents.config.json",
+    "context": "src/i18n/catalogues/en/ui.agents.config.context.json"
+   },
+   "findings": []
+  },
+  "ui.agents.skills": {
+   "namespace": "ui.agents.skills",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 112,
+   "delta_keys_audited": [
+    "ui.agents.skills.error.download_failed_title"
+   ],
+   "sha256": {
+    "zh-CN": "f545aad566bdecd6fda2e8ddd753231f87e34729831882e1a7a831e4321932dd",
+    "en": "265fc96aa792e8ecd0d01811ff40d43d9149ad40891ca9926d725abddea75f8d"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.agents.skills.json",
+    "target": "src/i18n/catalogues/zh-CN/ui.agents.skills.json",
+    "context": "src/i18n/catalogues/en/ui.agents.skills.context.json"
+   },
+   "findings": []
+  }
+ }
+}

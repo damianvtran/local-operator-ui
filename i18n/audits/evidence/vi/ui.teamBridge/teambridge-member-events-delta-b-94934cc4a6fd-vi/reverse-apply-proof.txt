@@ -1,0 +1,35 @@
+REVERSE-APPLY PROOF - vi - namespace ui.teamBridge - auditor B session 94934cc4a6fd
+
+Method: take the working-tree bytes, swap each delta value back to its round-1 text as an exact
+JSON-string byte substitution, hash the result. The round-1 hash comes from the first-round audit
+record (i18n/receipts/955e54c57ace-vi.json and 502568f2aefe-vi.json), not from my own reconstruction.
+
+now      sha256 29af5592799bef81b84f345a8e83b2e1f06c9b148622826d4cf597317643dfdb
+rebuilt  sha256 ca0a9c774c0bc67eebb8f199493cbd58ea0c5c5a1929d87deb9d7d446dda335a
+recorded sha256 ca0a9c774c0bc67eebb8f199493cbd58ea0c5c5a1929d87deb9d7d446dda335a
+MATCH: True
+
+edits reversed: 3
+
+  ui.teamBridge.events.owner_added_agent
+    working tree : {actor} đã thêm tác nhân của mình là {targets}
+    round 1      : {actor} đã thêm tác nhân {targets} của mình
+    occurrences of the working-tree text in the file: 1
+
+  ui.teamBridge.events.joined
+    working tree : {targets} đã tham gia
+    round 1      : {targets} đã tham gia cuộc trò chuyện
+    occurrences of the working-tree text in the file: 1
+
+  ui.teamBridge.events.unknown
+    working tree : Thành viên đã thay đổi
+    round 1      : Danh sách thành viên đã thay đổi
+    occurrences of the working-tree text in the file: 1
+
+Reading: a hash that reproduces the round-1 record means the file differs from round 1 ONLY at the
+values listed above - no other byte moved. All five files reproduce.
+
+Cross-check, not input: delta-round auditor A (session 4ab583bbf0ca) independently reconstructed the
+same pre-delta bytes; my rebuilt files are byte-identical to theirs except where my own first attempt
+used the abbreviated quote «其他#人» instead of the round-1 value «{count, plural, other {其他#人}}».
+That correction is why this proof is reproducible rather than a repeat of A's number.

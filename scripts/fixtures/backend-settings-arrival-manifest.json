@@ -49,7 +49,7 @@
 		"asks"
 	],
 	"filterControls": [
-		"Search settings",
+		"Search settings by name, description or key",
 		"Modified",
 		"Show advanced",
 		"Expand all",

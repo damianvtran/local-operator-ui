@@ -26,6 +26,12 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { build } from "esbuild";
+import {
+	BACKDROP_GRAY,
+	composite,
+	ratio,
+} from "../src/shared/glass-derivation.mjs";
+import { contractSource } from "./contrast-contract-source.mjs";
 
 /*
  * THE STORAGE SHIM, the same one `console-pane-render.test.mjs` and four sibling jsdom
@@ -57,6 +63,11 @@ const bundle = await build({
 			// whether the open request survives being written to disk.
 			'export { useUiPreferencesStore, persistedUiPreferences } from "./src/renderer/src/shared/store/ui-preferences-store";',
 			'export * from "./src/main/console/completion";',
+			'export {localOperatorDark,localOperatorLight} from "./src/renderer/src/shared/themes/palettes/local-operator";',
+			'export {applyContrast} from "./src/shared/theme-engine/contrast.mjs";',
+			'export {glassPaintFor} from "./src/shared/window-glass";',
+			'export {glassFloorsForPalette} from "./src/shared/glass-derivation.mjs";',
+			'export { consoleRevealMayNavigate } from "./src/renderer/src/features/chat/composer-field";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 		loader: "ts",
@@ -101,8 +112,10 @@ const {
 	readConsoleSurface,
 	surfacesForSession,
 	pickActiveSurface,
+	pickLiveSurface,
 	surfaceTitle,
 	consoleCompletionHooks,
+	consoleRevealMayNavigate,
 } = module_;
 
 /**
@@ -117,10 +130,7 @@ const {
  * right up until one is edited.
  */
 const contractAnsi = () => {
-	const source = readFileSync(
-		join(process.cwd(), "scripts/contrast-contract.mjs"),
-		"utf8",
-	);
+	const source = contractSource();
 	const start = source.indexOf("const TERMINAL_ANSI = [");
 	assert.ok(start !== -1, "the contract still declares TERMINAL_ANSI");
 	const body = source.slice(start, source.indexOf("];", start));
@@ -150,10 +160,7 @@ test("the terminal's ANSI table is the contract's table, slot for slot", () => {
  * gate here).
  */
 const contractSelectionRow = () => {
-	const source = readFileSync(
-		join(process.cwd(), "scripts/contrast-contract.mjs"),
-		"utf8",
-	);
+	const source = contractSource();
 	const start = source.indexOf('name: "console terminal selection"');
 	assert.ok(start !== -1, "the contract still carries the selection row");
 	const body = source.slice(start, source.indexOf("},", start));
@@ -235,6 +242,27 @@ test("the theme resolves roles through the document, and omits what is missing",
 	try {
 		const theme = readTerminalTheme({});
 		assert.equal(theme.background, "#101010");
+		const glassRoot = { dataset: { glass: "sidebar canvas pane" } };
+		const paneHost = { closest: () => ({}) };
+		assert.equal(
+			readTerminalTheme(glassRoot, "live", paneHost).background,
+			"#00000000",
+		);
+		assert.equal(
+			readTerminalTheme(glassRoot, "history", paneHost).background,
+			"#00000000",
+		);
+		assert.equal(
+			readTerminalTheme(glassRoot).background,
+			"#101010",
+			"capture callers without an on-screen pane keep a solid ground",
+		);
+		assert.equal(
+			readTerminalTheme({ dataset: { glass: "sidebar" } }, "live", paneHost)
+				.background,
+			"#101010",
+			"sidebar-only coverage does not enable pane transparency",
+		);
 		assert.equal(theme.foreground, "#f0f0f0");
 		assert.equal(theme.cursor, "#4488ff");
 		assert.equal(theme.cursorAccent, "#181818");
@@ -242,6 +270,26 @@ test("the theme resolves roles through the document, and omits what is missing",
 		assert.equal(theme.selectionForeground, "#0b0b0b");
 		assert.equal(theme.red, "#ff5555");
 		assert.equal(theme.brightBlack, "#c0c0c0");
+		/*
+		 * HISTORY IS DIM ON THE DEFAULT INK; THE CARET IS HIDDEN BY DECTCEM (D1/U6).
+		 *
+		 * The program text steps down to `inkMuted` (a role with its own contrast
+		 * floor in every palette, not an opacity overlay). The cursor roles are
+		 * deliberately the LIVE ones: a stylesheet rule on `.xterm-cursor` lost to
+		 * xterm's injected styling, and painting the cell in the ground colour blanks
+		 * the glyph under it. The mirror writes `CSI ? 25 l` into its own view instead;
+		 * the mirror suite pins that write, and the frames pin the focused pixels.
+		 */
+		const history = readTerminalTheme({}, "history");
+		assert.equal(history.background, "#101010");
+		assert.equal(history.foreground, "#c0c0c0");
+		assert.equal(history.cursor, "#4488ff");
+		assert.equal(history.cursorAccent, "#181818");
+		assert.equal(
+			history.red,
+			"#ff5555",
+			"the program's own colours are not dimmed: they are its vocabulary",
+		);
 		assert.deepEqual(missingTerminalRoles({}), []);
 		/*
 		 * AND AN UNRESOLVED ROLE IS OMITTED. xterm keeps its own default for a key
@@ -361,6 +409,52 @@ test("the pane's lens recalls a surface, and falls back to the most recent", () 
 		),
 		null,
 	);
+	/*
+	 * THE EXPLICIT OPEN'S TARGET, beside the lens above because the two answer
+	 * different questions: the lens may legitimately rest on an ENDED row the user
+	 * clicked, while the open must land on something typeable. Here the newest row
+	 * is ended and the older one is live, so the naive "most recent" answer would
+	 * create a third surface over a working terminal.
+	 */
+	const mixed = readConsoleSnapshot({
+		available: true,
+		surfaces: [
+			listing({
+				surface: "con:1:live",
+				last_activity: 100,
+				running: true,
+			}),
+			listing({
+				surface: "con:2:ended",
+				last_activity: 300,
+				running: false,
+				exit_code: 0,
+			}),
+		],
+	});
+	assert.equal(
+		pickLiveSurface(mixed, "session-1f4c")?.surface,
+		"con:1:live",
+		"one live and one ended: the live one is the open's target",
+	);
+	const allEnded = readConsoleSnapshot({
+		available: true,
+		surfaces: [
+			listing({ surface: "con:3:a", running: false, exit_code: 0 }),
+			listing({ surface: "con:4:b", running: false, exit_code: 1 }),
+		],
+	});
+	assert.equal(
+		pickLiveSurface(allEnded, "session-1f4c"),
+		null,
+		"two ended surfaces leave the open nothing to focus, which is what makes it create",
+	);
+	assert.equal(
+		pickLiveSurface(mixed, null),
+		null,
+		"a draft has no live surface",
+	);
+
 	assert.equal(surfaceTitle({ command: "npm", argvTail: "run dev" }), "npm");
 	assert.equal(surfaceTitle({ command: "", argvTail: "zsh -l" }), "zsh");
 	assert.equal(
@@ -826,19 +920,39 @@ test("an open by the user creates a surface in a conversation that has none", ()
 			requested: true,
 			loading: false,
 			available: true,
-			hasSurface: false,
+			hasLiveSurface: false,
 		}),
 		"create",
 	);
 });
 
-test("an open by the user FOCUSES the surface the pane already shows rather than making a second", () => {
+/*
+ * THE OPERATOR'S REPORT, AS TWO CASES (2026-10-21): opening the console when
+ * nothing is live landed on dead history instead of a usable shell. An ENDED
+ * surface is history - `hasLiveSurface` is false for it - so the same open that
+ * focuses a running terminal creates one over a recording, and clicking the
+ * ended row is still the way to read that recording (`pickActiveSurface`).
+ */
+test("an open by the user CREATES over ended history rather than focusing it", () => {
 	assert.equal(
 		consoleOpenAction({
 			requested: true,
 			loading: false,
 			available: true,
-			hasSurface: true,
+			hasLiveSurface: false,
+		}),
+		"create",
+		"two ended surfaces are still nothing to type at; the open must make a shell",
+	);
+});
+
+test("an open by the user FOCUSES a live surface rather than making a second", () => {
+	assert.equal(
+		consoleOpenAction({
+			requested: true,
+			loading: false,
+			available: true,
+			hasLiveSurface: true,
 		}),
 		"focus",
 		"a second surface would take the lens off the one the user was reading",
@@ -851,7 +965,7 @@ test("the request WAITS for the first read rather than creating on a listing it 
 			requested: true,
 			loading: true,
 			available: true,
-			hasSurface: false,
+			hasLiveSurface: false,
 		}),
 		"none",
 		"acting here would be a controller deciding the conversation has no surface before anything answered",
@@ -865,7 +979,7 @@ test("no other way this pane opens is an open by the user", () => {
 				requested: false,
 				loading,
 				available: true,
-				hasSurface: false,
+				hasLiveSurface: false,
 			}),
 			"none",
 			"a restored pane, an agent's reveal and a session switch all arrive with no request",
@@ -879,7 +993,7 @@ test("a console that cannot exist here is told so rather than given a shell", ()
 			requested: true,
 			loading: false,
 			available: false,
-			hasSurface: false,
+			hasLiveSurface: false,
 		}),
 		"none",
 	);
@@ -1054,4 +1168,225 @@ test("the compact/full summary breakpoints are complementary and sit at 510px", 
 		Number(fullHiddenAt[1]),
 		"a matched pair is the gapless property; see the boundary note above",
 	);
+});
+
+test("a console open reveal from a background session does not switch while the user types", () => {
+	const base = {
+		targetSessionId: "bg",
+		displayedSessionId: "front",
+		activeElement: null,
+		commandPaletteOpen: false,
+	};
+	assert.equal(consoleRevealMayNavigate(base), true);
+	for (const tagName of ["TEXTAREA", "INPUT"]) {
+		assert.equal(
+			consoleRevealMayNavigate({ ...base, activeElement: { tagName } }),
+			false,
+		);
+	}
+	assert.equal(
+		consoleRevealMayNavigate({
+			...base,
+			activeElement: { tagName: "DIV", isContentEditable: true },
+		}),
+		false,
+	);
+	assert.equal(
+		consoleRevealMayNavigate({ ...base, commandPaletteOpen: true }),
+		false,
+	);
+	// The conversation already on screen swaps nothing.
+	assert.equal(
+		consoleRevealMayNavigate({
+			...base,
+			targetSessionId: "front",
+			activeElement: { tagName: "TEXTAREA" },
+			commandPaletteOpen: true,
+		}),
+		true,
+	);
+});
+
+// A measured regression, not an invented palette: Light/Gentle at intensity100
+// published canvas alpha .51, pane alpha .41 (net0), over window material199.
+// Its flat danger/sunken passed AA; retaining that danger on glass did not.
+test("terminal semantic ANSI keeps AA when its legible flat colour meets glass", (t) => {
+	const vars = {
+		"--color-sunken": "#E4DFD4",
+		"--color-danger": "#B0382F",
+		"--color-ink": "#211E18",
+		"--color-accent": "#06713D",
+		"--color-on-accent": "#F6FAF8",
+		"--color-surface": "#EFEEE8",
+		"--lo-canvas": "#EAE6DE",
+		"--lo-elevated": "#F6F6F3",
+		"--lo-glass-a-canvas": "0.51",
+		"--lo-glass-a-elevated": "0.41",
+		"--lo-glass-in-elevated": "0",
+	};
+	const previous = globalThis.getComputedStyle;
+	globalThis.getComputedStyle = () => ({
+		getPropertyValue: (k) => vars[k] ?? "",
+	});
+	const root = {
+		dataset: { glass: "sidebar canvas pane" },
+		classList: { contains: () => false },
+	};
+	try {
+		const flat = readTerminalTheme(root);
+		const glass = readTerminalTheme(root, "live", { closest: () => ({}) });
+		const ground = composite(vars["--lo-canvas"], 0.51, "#c7c7c7");
+		assert.ok(ratio(flat.red, flat.background) >= 4.5);
+		assert.ok(
+			ratio(flat.red, ground) < 4.5,
+			"the observed glass regression remains discriminating",
+		);
+		assert.ok(
+			ratio(glass.red, ground) >= 4.5,
+			"a previously legible semantic ANSI red must remain AA on glass",
+		);
+		t.diagnostic(
+			JSON.stringify({
+				flatRed: flat.red,
+				glassRed: glass.red,
+				flatRatio: ratio(flat.red, flat.background),
+				oldGlassRatio: ratio(flat.red, ground),
+				newGlassRatio: ratio(glass.red, ground),
+			}),
+		);
+		assert.equal(glass.magenta, glass.red);
+		assert.equal(glass.brightRed, glass.red);
+		assert.equal(glass.selectionBackground, flat.selectionBackground);
+		assert.equal(glass.selectionForeground, flat.selectionForeground);
+		// A deliberately sub-AA semantic hue is not an exemption from regression.
+		// Preserve its own old floor without promoting it to a newly chosen AA ink.
+		vars["--color-danger"] = "#c76660";
+		const dimFlat = readTerminalTheme(root);
+		const dimGlass = readTerminalTheme(root, "live", { closest: () => ({}) });
+		const baseline = ratio(dimFlat.red, dimFlat.background);
+		assert.ok(baseline < 4.5 && ratio(dimFlat.red, ground) < baseline);
+		assert.ok(ratio(dimGlass.red, ground) >= baseline);
+		t.diagnostic(
+			JSON.stringify({
+				subAAFlat: baseline,
+				oldGlass: ratio(dimFlat.red, ground),
+				repairedGlass: ratio(dimGlass.red, ground),
+				old: dimFlat.red,
+				repaired: dimGlass.red,
+			}),
+		);
+	} finally {
+		globalThis.getComputedStyle = previous;
+	}
+});
+
+test("terminal-only glass adaptation covers two schemes, true presets, intensity and history", () => {
+	const previous = globalThis.getComputedStyle;
+	const chromatic = [
+		"red",
+		"green",
+		"yellow",
+		"blue",
+		"magenta",
+		"cyan",
+		"brightRed",
+		"brightGreen",
+		"brightYellow",
+		"brightBlue",
+		"brightMagenta",
+		"brightCyan",
+	];
+	let measured = 0;
+	try {
+		for (const definition of [
+			module_.localOperatorDark,
+			module_.localOperatorLight,
+		]) {
+			for (const contrast of [-100, 0, 100]) {
+				const { palette } = module_.applyContrast(
+					definition.palette,
+					contrast,
+					{ id: definition.id },
+				);
+				const floors = module_.glassFloorsForPalette(palette);
+				for (const intensity of [0, 80, 100]) {
+					const { kinds, vars } = module_.glassPaintFor({
+						floors,
+						coverage: "full",
+						intensity,
+						mechanism: "vibrancy",
+						material: "window",
+						scheme: palette.mode,
+					});
+					const css = { ...vars };
+					for (const [role, value] of Object.entries(palette))
+						css[`--lo-${kebabRole(role)}`] = value;
+					globalThis.getComputedStyle = () => ({
+						getPropertyValue: (k) => css[k] ?? "",
+					});
+					const root = {
+						dataset: { glass: kinds },
+						classList: { contains: () => palette.mode === "dark" },
+					};
+					const host = { closest: () => ({}) };
+					const flat = readTerminalTheme(root);
+					for (const mode of ["live", "history"]) {
+						const glass = readTerminalTheme(root, mode, host);
+						for (const endpoint of Object.values(BACKDROP_GRAY)) {
+							const backdrop = `#${endpoint[palette.mode].toString(16).padStart(2, "0").repeat(3)}`;
+							const raw = composite(
+								palette.elevated,
+								Number(vars["--lo-glass-a-elevated"]),
+								backdrop,
+							);
+							const nested = composite(
+								palette.elevated,
+								Number(vars["--lo-glass-in-elevated"]),
+								composite(
+									palette.canvas,
+									Number(vars["--lo-glass-a-canvas"]),
+									backdrop,
+								),
+							);
+							for (const slot of chromatic) {
+								for (const ground of [raw, nested]) {
+									assert.ok(
+										ratio(glass[slot], ground) >=
+											Math.min(4.5, ratio(flat[slot], flat.background)),
+										`${definition.id} ${contrast} ${intensity} ${mode} ${slot} retains its flat floor capped at AA`,
+									);
+								}
+							}
+							if (ratio(flat.cursor, flat.background) >= 3)
+								for (const ground of [raw, nested])
+									assert.ok(ratio(glass.cursor, ground) >= 3);
+						}
+						assert.equal(glass.black, flat.black);
+						assert.equal(glass.brightBlack, flat.brightBlack);
+						assert.equal(glass.white, flat.white);
+						assert.equal(glass.selectionBackground, flat.selectionBackground);
+						assert.equal(glass.selectionForeground, flat.selectionForeground);
+						assert.ok(
+							ratio(glass.selectionForeground, glass.selectionBackground) >=
+								4.5,
+						);
+						assert.equal(glass.background, "#00000000");
+						for (const coverage of [undefined, "sidebar"]) {
+							root.dataset.glass = coverage;
+							assert.equal(readTerminalTheme(root, mode, host).red, flat.red);
+							assert.equal(
+								readTerminalTheme(root, mode, host).background,
+								flat.background,
+							);
+						}
+						root.dataset.glass = kinds;
+						measured++;
+					}
+				}
+			}
+		}
+	} finally {
+		globalThis.getComputedStyle = previous;
+	}
+	assert.equal(measured, 36);
 });

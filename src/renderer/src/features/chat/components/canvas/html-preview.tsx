@@ -1,6 +1,8 @@
 import { getHtmlUrl } from "@shared/api/local-operator/static-api";
 import { Button } from "@shared/components/ui";
 import { apiConfig } from "@shared/config";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { type FC, memo, useCallback, useMemo, useState } from "react";
 import type { CanvasDocument } from "../../types/canvas";
@@ -114,6 +116,7 @@ const HtmlPreviewComponent: FC<HtmlPreviewProps> = ({
 	document,
 	conversationId,
 }) => {
+	useI18nLocale();
 	const [isEditMode, setIsEditMode] = useState(false);
 
 	const handleToggleMode = useCallback(() => {
@@ -178,7 +181,9 @@ const HtmlPreviewComponent: FC<HtmlPreviewProps> = ({
 					onClick={handleToggleMode}
 					data-tour-tag="canvas-html-mode-toggle"
 				>
-					{isEditMode ? "Preview" : "Edit"}
+					{isEditMode
+						? t("ui.canvas.html_preview.preview")
+						: t("ui.canvas.html_preview.edit")}
 				</Button>
 			</div>
 			<div className={cn("flex-1 overflow-hidden")}>
@@ -189,7 +194,9 @@ const HtmlPreviewComponent: FC<HtmlPreviewProps> = ({
 					<iframe
 						key={version}
 						src={htmlUrl}
-						title={`HTML Preview: ${document.title}`}
+						title={t("ui.canvas.html_preview.html_preview", {
+							title: document.title,
+						})}
 						sandbox={PREVIEW_SANDBOX}
 						className={cn("h-full w-full border-0 bg-surface")}
 					/>

@@ -1,0 +1,8 @@
+{
+	"ui.hub.card.download_named": "Скачать {name}",
+	"ui.hub.card.downloads_tooltip": "Скачивания",
+	"ui.hub.card.get": "Скачать",
+	"ui.hub.card.unknown_author": "Автор неизвестен",
+	"ui.hub.card.updated": "обновлено {ago} назад",
+	"ui.hub.card.view_details": "Открыть сведения: {name}"
+}

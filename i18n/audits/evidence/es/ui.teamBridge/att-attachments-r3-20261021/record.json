@@ -1,0 +1,156 @@
+{
+ "audit_id": "att-attachments-r3-20261021",
+ "date": "2026-10-21",
+ "locale": "es",
+ "namespace": "ui.teamBridge",
+ "source_commit": "b787a8458fb1c44a7e479949155c6e32240d6e79",
+ "source_base": "8cf05961d64322fe64ebccd6282069c7f52f12f3",
+ "scope": "Round-3 delta of #1314 (8cf05961d6..b787a8458f): 1 es value(s) changed/added (failed_count): the new en attachments.failed_count (design D13). The other 171 values are byte-unchanged and inherited from att-r2-es.",
+ "status": "audited",
+ "translator": {
+  "agent": "coder",
+  "model": "anthropic/claude-opus-5-5",
+  "date": "2026-10-21",
+  "session": "03594b2dcc02",
+  "job": "5084d4f46f6c",
+  "commit": "b787a8458f"
+ },
+ "auditors": [
+  {
+   "agent": "translation-auditor",
+   "model": "anthropic/claude-opus-5-5",
+   "date": "2026-10-21",
+   "result": "clean-with-findings",
+   "instance": "att-r3-es",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 1
+   },
+   "receipt": "i18n/receipts/att-r3-es.json",
+   "receipt_sha256": "c7a00e37c43623c3b8a58a906c88571b41f4a2c678b05b2b15ef63a4a67fd96f",
+   "scope": "Team Bridge image attachments round 3: remediation delta (1 key(s)) independently audited at head b787a8458f. Catalogue audit only, not rendered-fit, activation or release approval.",
+   "note": "Round 3: ATT-ES-R3-01 NIT (failed_count many arm, unreachable). No rendered-fit claim."
+  }
+ ],
+ "audit_rounds": [
+  {
+   "round": 1,
+   "instance": "att-r1-es",
+   "session": "f5b05da4cf25",
+   "job": "e56145b2fcf2",
+   "model": "anthropic/claude-opus-5-5",
+   "status": "passed",
+   "keys_audited": 23,
+   "target_sha256": "cf5d345b07f1425343eb091cab1959f258695532177ad5f473036231a730eebb",
+   "findings": [
+    {
+     "severity": "MINOR",
+     "key": "ui.teamBridge.attachments.retry_load"
+    },
+    {
+     "severity": "NIT",
+     "key": "ui.teamBridge.attachments.remove"
+    }
+   ],
+   "receipt": {
+    "path": "i18n/receipts/att-r1-es.json",
+    "sha256": "d267d3689a22c7bb760db10ddadfddf11813ce2609606ad870e393a07eb922ba"
+   }
+  },
+  {
+   "round": 2,
+   "instance": "att-r2-es",
+   "session": "12aab7b684ab",
+   "job": "d8717b64c01a",
+   "model": "anthropic/claude-opus-5-5",
+   "status": "passed",
+   "keys_audited": 6,
+   "target_sha256": "34ebfffbe978805ce0afa8a5e92cbfea3743587485494b3cb86c4cd4af51b8c9",
+   "findings": [],
+   "round1_dispositions": [
+    {
+     "finding": "r1 MINOR (no id)",
+     "keys": "retry_load",
+     "verified": "applied: 'Reintentar' (= list.retry and the chip retry verb)"
+    },
+    {
+     "finding": "r1 NIT (no id)",
+     "keys": "remove/retry",
+     "verified": "applied: 'Quitar: {label}' / 'Reintentar: {label}' (no space before colon, correct for es); composed tooltip 'Quitar: Imagen 2 de 3'"
+    }
+   ],
+   "receipt": {
+    "path": "i18n/receipts/att-r2-es.json",
+    "sha256": "c2183c6e7d564c22cf781425d034a1ef06a2a8a96e032352b2704b2df460310c"
+   }
+  },
+  {
+   "round": 3,
+   "instance": "att-r3-es",
+   "session": "57c37248b1be",
+   "job": "8d68b2c4680c",
+   "model": "anthropic/claude-opus-5-5",
+   "status": "passed",
+   "keys_audited": 1,
+   "target_sha256": "83e665e3cd26a36db5bb0afd203f90d23a1a31de88f6f88d01a0d57813fa6750",
+   "findings": [
+    {
+     "id": "ATT-ES-R3-01",
+     "severity": "NIT",
+     "key": "ui.teamBridge.attachments.failed_count"
+    }
+   ],
+   "round2_dispositions": [],
+   "receipt": {
+    "path": "i18n/receipts/att-r3-es.json",
+    "sha256": "c7a00e37c43623c3b8a58a906c88571b41f4a2c678b05b2b15ef63a4a67fd96f"
+   }
+  }
+ ],
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+   "sha256": "f982d8a6e7300cee8f36605ae4779eea8c5ec0ebffdd741ca0fc806c8ee807af"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/es/ui.teamBridge.json",
+   "sha256": "83e665e3cd26a36db5bb0afd203f90d23a1a31de88f6f88d01a0d57813fa6750"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+   "sha256": "53d21a0cbcb9a35d6ea280dec60aa55225d995e21a87d92ed5cb5f7ff82bcf38"
+  }
+ },
+ "references": {
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/es.md",
+   "sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+  }
+ },
+ "independence": "Translator (coder session 03594b2dcc02, job 5084d4f46f6c, commit b787a8458f) and round-3 auditor (translation-auditor session 57c37248b1be, job 8d68b2c4680c) are different agents in different sessions; the round-3 auditor is also distinct from the round-2 auditor session 12aab7b684ab and the round-1 auditor sessions. The auditor never edited catalogues, ran no git operations and did not run ledger-assemble.",
+ "limitations": [
+  "Browser not used; no rendered-fit, screenshots, glyph metrics, pseudo-localization or activation evidence claimed.",
+  "Round 3 covers the b787a8458f delta only; unchanged values rely on att-r2/att-r1 and their inherited receipts.",
+  "Open NIT ATT-ES-R3-01 awaits the coder's disposition (fix, or reject as unreachable at count 2-4)."
+ ],
+ "retained_rounds": [
+  {
+   "path": "i18n/receipts/att-r1-es.json",
+   "sha256": "d267d3689a22c7bb760db10ddadfddf11813ce2609606ad870e393a07eb922ba"
+  },
+  {
+   "path": "i18n/receipts/att-r2-es.json",
+   "sha256": "c2183c6e7d564c22cf781425d034a1ef06a2a8a96e032352b2704b2df460310c"
+  },
+  {
+   "path": "i18n/receipts/att-r3-es.json",
+   "sha256": "c7a00e37c43623c3b8a58a906c88571b41f4a2c678b05b2b15ef63a4a67fd96f"
+  }
+ ]
+}

@@ -17,6 +17,7 @@
 
 import { showExternalOpenRefusal } from "@shared/lib/external-open-refusal";
 import { showErrorToast } from "@shared/utils/toast-manager";
+import { t } from "../../../../../i18n";
 import { getFileName } from "./get-file-name";
 import { type LinkKind, forgetProbe } from "./link-actions";
 
@@ -41,7 +42,7 @@ export const selectionTouches = (element: Element): boolean => {
 
 /** The one sentence a press that could not open something says. */
 const openFailure = (target: string): string =>
-	`Could not open ${getFileName(target)}. The file may have been moved, renamed, or deleted.`;
+	t("ui.notices.files.open_failed", { name: getFileName(target) });
 
 /**
  * Open a LOCAL path in the OS's own application.
@@ -108,7 +109,7 @@ export async function copyTarget(target: string): Promise<boolean> {
 		return true;
 	} catch (error) {
 		console.error("Failed to copy: ", error);
-		showErrorToast("Failed to copy");
+		showErrorToast(t("ui.notices.files.copy_failed"));
 		return false;
 	}
 }

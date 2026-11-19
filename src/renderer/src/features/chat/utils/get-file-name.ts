@@ -1,9 +1,14 @@
+// Relative, not `@shared/i18n`: this module is bundled through attachment-encode.ts by
+// harnesses that run esbuild without the tsconfig aliases; its siblings import `t` this way.
+import { t } from "../../../../../i18n/messages";
+
 const RESOURCE_NAME_REGEX = /name=([^;,]+)/;
 const PATH_SEPARATOR_REGEX = /[/\\]/;
-const DATA_URI_REGEX = /^data:([^;,]+)/;
 
 /**
  * Extracts the filename from a path or data URI.
+ * Only synthetic names are localized, on demand so a locale switch cannot
+ * leave cached English behind. Real names and path basenames stay verbatim.
  * @param path - The file path or URL.
  * @returns The extracted filename.
  */
@@ -14,30 +19,23 @@ export const getFileName = (path: string): string => {
 			try {
 				return decodeURIComponent(nameMatch[1]);
 			} catch (_) {
-				return "Pasted image";
+				return t("ui.chat.composer_media.pasted_image");
 			}
 		}
-		return "Pasted image";
+		return t("ui.chat.composer_media.pasted_image");
 	}
 	if (path.startsWith("data:")) {
-		// Generic data URI
+		// Non-image data deliberately shares one generic fallback, not MIME-derived
+		// prose: a technical identifier must not become authored product chrome.
 		const nameMatch = path.match(RESOURCE_NAME_REGEX);
 		if (nameMatch?.[1]) {
 			try {
 				return decodeURIComponent(nameMatch[1]);
 			} catch (_) {
-				return "Pasted file";
+				return t("ui.chat.composer_media.pasted_file");
 			}
 		}
-		// Try to infer from mime type if no name is present
-		const mimeTypeMatch = path.match(DATA_URI_REGEX);
-		if (mimeTypeMatch?.[1]) {
-			const simpleType = mimeTypeMatch[1].split("/")[0];
-			if (simpleType) {
-				return `Pasted ${simpleType} file`;
-			}
-		}
-		return "Pasted file";
+		return t("ui.chat.composer_media.pasted_file");
 	}
 	// Handle both local paths and URLs
 	const parts = path.split(PATH_SEPARATOR_REGEX);

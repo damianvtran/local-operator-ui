@@ -260,9 +260,8 @@ const ChartTooltip = ({
 	const value = typeof raw === "number" ? format(raw) : String(raw ?? "");
 	return (
 		<div
-			className={cn(
-				"rounded-md border border-hairline bg-elevated px-3 py-2 shadow-overlay",
-			)}
+			data-lo-floating=""
+			className={cn("rounded-md bg-elevated px-3 py-2 shadow-overlay")}
 		>
 			<p className={cn("text-meta text-ink-dim")}>{label}</p>
 			<p className={cn("font-mono text-ink")}>

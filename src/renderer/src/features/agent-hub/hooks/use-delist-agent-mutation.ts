@@ -1,5 +1,6 @@
 import { deleteAgent } from "@shared/api/radient/agents-api";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
+import { t } from "@shared/i18n";
 import { showSuccessToast } from "@shared/utils/toast-manager";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
@@ -37,7 +38,7 @@ export const useDelistAgentMutation = () => {
 			return deleteAgent(agentId);
 		},
 		onSuccess: (_, variables) => {
-			showSuccessToast("Agent delisted"); // Use toast.success
+			showSuccessToast(t("ui.notices.hub.agent_delisted")); // Use toast.success
 
 			// Invalidate queries related to the specific agent and the list of public agents
 			queryClient.invalidateQueries({

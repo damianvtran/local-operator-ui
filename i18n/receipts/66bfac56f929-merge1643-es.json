@@ -1,0 +1,157 @@
+{
+ "schema": 1,
+ "receipt_kind": "locale-audit (post-merge re-audit), no value changed",
+ "date": "2026-11-04",
+ "auditor": "i18n-auditor",
+ "agent": "i18n-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "model_provenance": "Served model as announced by the harness preamble for session 66bfac56f929 (anthropic/claude-opus-5-5); no fallback announced or observed.",
+ "model_fallback": {
+  "announced": false,
+  "observed": false
+ },
+ "status": "passed",
+ "result": "clean",
+ "namespace": "ui.teamBridge",
+ "locale": "es",
+ "audit_id": "tb-merge1643-66bfac56f929-es",
+ "instance": "66bfac56f929-merge1643-es",
+ "session": "66bfac56f929",
+ "integration": {
+  "pr": 1643,
+  "repo": "damianvtran/local-operator-ui",
+  "branch": "fix/delivery-recipient-label",
+  "merge_commit": "8f18b76d44dd1230c315b49e05f2004f9765b391",
+  "merge_parents": {
+   "ours": "1f66d899f30181e29636964cf2593bb541cf25e2",
+   "theirs": "81df7db084489569910888efbfd92d07212ec097"
+  },
+  "merge_base": "2ff3187db64d36fa42bd0b97b24ef5f184ac8145"
+ },
+ "independence": "Independent auditor: radientdev team i18n-auditor, session 66bfac56f929. Translated none of these strings, wrote none of PR #1643's code or the merge commit 8f18b76d44d, and is none of the prior teamBridge auditors (7fc20c1e3809, 2fd8346bf635, 122b7f54cbdc on the branch; f93eb129057e, 06af958924d2 on main). Edited no catalogue or context value; no MT/translation service used. Row written by ledger-assemble.mjs.",
+ "sha256": {
+  "es": "ac4135c34d91ad6a4db27d30627d8a00b1708250089d301f4a6d19cefc313f5f",
+  "en": "d06d4b8e8292b006364c800f24719c0f569b36bb86e2c81cba194de9f8b005ab"
+ },
+ "context_sha256": "31535f65e12b7dbb6b907f926be5d60ff80939605d1db538e1160530310ce59c",
+ "style_guide": {
+  "path": "~/local-operator i18n/style-guides/es.md",
+  "sha256": "77b9227213802d14c74d4298d6b346ad842bbf2a5ca3b9d46fc6144430d26c3e",
+  "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "core_commit": "b42471d3935"
+ },
+ "scope": {
+  "delta_kind": "Merge of origin/main 81df7db into PR #1643 (8f18b76). No key changed on both sides: 11 keys changed only by the branch (1f66d89), 3 only by main (81df7db); every merged value equals its changing side and the file equals `git merge-file` of ours/base/theirs byte-for-byte (same for en and the en context).",
+  "ours_target_sha256": "6145efc174102e4bc885e5ff013d5245d929e3195f8363bb4b5d7fc47b946cbc",
+  "ours_audited_by": [
+   "122b7f54cbdc-es"
+  ],
+  "theirs_target_sha256": "1918ce35fd906a9200f1b6fcbde1b100554498f91620e6663aced687e1bc0eb2",
+  "theirs_audited_by": [
+   "06af958924d2-gt2-es"
+  ],
+  "keys_from_ours": [
+   "ui.teamBridge.delivery.held",
+   "ui.teamBridge.delivery.held_awaiting_review",
+   "ui.teamBridge.delivery.held_screening_unavailable",
+   "ui.teamBridge.delivery.pending",
+   "ui.teamBridge.delivery.recipient_unnamed",
+   "ui.teamBridge.delivery.refused",
+   "ui.teamBridge.delivery.refused_abusive",
+   "ui.teamBridge.delivery.refused_manipulation",
+   "ui.teamBridge.delivery.refused_out_of_scope",
+   "ui.teamBridge.delivery.refused_personal_info",
+   "ui.teamBridge.delivery.refused_unsafe_content"
+  ],
+  "keys_from_theirs": [
+   "ui.teamBridge.builtin.general_topic",
+   "ui.teamBridge.fileCard.kind",
+   "ui.teamBridge.fileCard.list"
+  ],
+  "keys_audited_linguistically": [
+   "ui.teamBridge.delivery.held",
+   "ui.teamBridge.delivery.held_awaiting_review",
+   "ui.teamBridge.delivery.held_screening_unavailable",
+   "ui.teamBridge.delivery.pending",
+   "ui.teamBridge.delivery.recipient_unnamed",
+   "ui.teamBridge.delivery.refused",
+   "ui.teamBridge.delivery.refused_abusive",
+   "ui.teamBridge.delivery.refused_manipulation",
+   "ui.teamBridge.delivery.refused_out_of_scope",
+   "ui.teamBridge.delivery.refused_personal_info",
+   "ui.teamBridge.delivery.refused_unsafe_content",
+   "ui.teamBridge.builtin.general_topic",
+   "ui.teamBridge.fileCard.kind",
+   "ui.teamBridge.fileCard.list"
+  ],
+  "whole_file_review": "Keys changed by neither side are byte-identical to base and to both audited parents. The 14 delta values were re-read against English and the merged context, in their composed delivery sentences (named 'Aida (Ben Tran)' and unnamed recipient forms), and against the namespace's surviving copy for term clashes.",
+  "not_audited": "No fresh linguistic audit of the 328 keys neither side changed. No rendered/visual or runtime ICU execution check; no pseudo-localization."
+ },
+ "audited": {
+  "ui.teamBridge.delivery.held": {
+   "en": "Waiting to be screened by {recipient}…",
+   "translation": "Esperando a que {recipient} lo analice…"
+  },
+  "ui.teamBridge.delivery.held_awaiting_review": {
+   "en": "Waiting to be screened by {recipient}. Awaiting review.",
+   "translation": "Esperando a que {recipient} lo analice. El mensaje está pendiente de revisión."
+  },
+  "ui.teamBridge.delivery.held_screening_unavailable": {
+   "en": "Waiting to be screened by {recipient}. Screening is temporarily unavailable.",
+   "translation": "Esperando a que {recipient} lo analice. El análisis no está disponible temporalmente."
+  },
+  "ui.teamBridge.delivery.pending": {
+   "en": "Screened; delivery to {recipient} is pending",
+   "translation": "Analizado; entrega pendiente para {recipient}"
+  },
+  "ui.teamBridge.delivery.recipient_unnamed": {
+   "en": "{person}’s chief of staff",
+   "translation": "el jefe de gabinete de {person}"
+  },
+  "ui.teamBridge.delivery.refused": {
+   "en": "Not delivered to {recipient}. Refused by moderation.",
+   "translation": "Mensaje para {recipient} no entregado. Rechazado por la moderación."
+  },
+  "ui.teamBridge.delivery.refused_abusive": {
+   "en": "Not delivered to {recipient}: refused by their moderation (looked like abusive content)",
+   "translation": "Mensaje para {recipient} no entregado: rechazado por su moderación (parecía contenido abusivo)"
+  },
+  "ui.teamBridge.delivery.refused_manipulation": {
+   "en": "Not delivered to {recipient}: refused by their moderation (looked like an attempt to manipulate the agent)",
+   "translation": "Mensaje para {recipient} no entregado: rechazado por su moderación (parecía un intento de manipular al agente)"
+  },
+  "ui.teamBridge.delivery.refused_out_of_scope": {
+   "en": "Not delivered to {recipient}: refused by their moderation (looked like a request outside what this agent handles)",
+   "translation": "Mensaje para {recipient} no entregado: rechazado por su moderación (parecía una solicitud fuera de lo que gestiona este agente)"
+  },
+  "ui.teamBridge.delivery.refused_personal_info": {
+   "en": "Not delivered to {recipient}: refused by their moderation (looked like a request for personal information)",
+   "translation": "Mensaje para {recipient} no entregado: rechazado por su moderación (parecía una solicitud de información personal)"
+  },
+  "ui.teamBridge.delivery.refused_unsafe_content": {
+   "en": "Not delivered to {recipient}: refused by their moderation (looked like unsafe content or links)",
+   "translation": "Mensaje para {recipient} no entregado: rechazado por su moderación (parecía contenido o enlaces no seguros)"
+  },
+  "ui.teamBridge.builtin.general_topic": {
+   "en": "The whole organization: people and their agents. Agents see every message and reply when @-mentioned or in threads they follow.",
+   "translation": "Toda la organización: las personas y sus agentes. Los agentes ven todos los mensajes y responden si se les menciona con @ o en los hilos que siguen."
+  },
+  "ui.teamBridge.fileCard.kind": {
+   "en": "{kind, select, pdf {PDF} text {Text file} container {ZIP} other {File}}",
+   "translation": "{kind, select, pdf {PDF} text {Archivo de texto} container {ZIP} other {Archivo}}"
+  },
+  "ui.teamBridge.fileCard.list": {
+   "en": "{count, plural, one {# file} other {# files}}",
+   "translation": "{count, plural, one {# archivo} many {# de archivos} other {# archivos}}"
+  }
+ },
+ "linguistic_review": "All 14 delta values faithful. Composed forms read: 'Esperando a que Aida (Ben Tran) lo analice…' / 'Esperando a que el jefe de gabinete de Ben Tran lo analice…'; 'Mensaje para el jefe de gabinete de Ben Tran no entregado.'; recipient_unnamed carries the article the mid-sentence slot needs, lower case, matches chief.unnamed's term. 'su moderación' keeps 'their' on the recipient; every parenthetical keeps the hedge 'parecía'. general_topic: agent follows the thread ('los hilos que siguen'), no promise that every agent answers. fileCard.list one/many/other per style guide; tú register not triggered.",
+ "findings": [],
+ "checks": {
+  "merge_proof_command": "python3 $LOCAL_OPERATOR_SCRATCHPAD/tb1643/verify_merge.py (worktree root, HEAD 8f18b76)",
+  "icu_command": "node $LOCAL_OPERATOR_SCRATCHPAD/tb1643/verify.mjs (worktree root; Node v24.22.1; @formatjs/icu-messageformat-parser)",
+  "placeholders": "All 342 values parse; argument names per key equal English. Argument kind differs from en only where the locale uses {count, number} for an other-only count (vi, zh-CN: attachmentCard.list, fileCard.list).",
+  "key_set": "342 keys, equal to English.",
+  "unicode": "All values NFC; no bidi controls (U+200E/F, U+061C, U+202A-E, U+2066-9)."
+ }
+}

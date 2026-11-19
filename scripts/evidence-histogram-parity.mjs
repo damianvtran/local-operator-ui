@@ -42,7 +42,13 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readdirSync, rmSync, statSync } from "node:fs";
+import {
+	existsSync,
+	mkdtempSync,
+	readdirSync,
+	rmSync,
+	statSync,
+} from "node:fs";
 import { loadavg, tmpdir } from "node:os";
 import { basename, dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -57,7 +63,12 @@ import { isEntryPoint } from "./entry-point.mjs";
 import { loadPalettes } from "./palette-source.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const EVIDENCE = join(ROOT, "docs/evidence");
+/*
+ * The rig's ignored frames tree, not the tracked proof tree: the frames this
+ * instrument reads are the ones a capture wrote, and `check-evidence.mjs` walks
+ * the same directory (see the pair of constants there).
+ */
+const EVIDENCE = join(ROOT, "docs/evidence-frames");
 
 /**
  * The reader `check-evidence.mjs` replaced, kept as the control.
@@ -247,8 +258,8 @@ export const sampleOf = (all, size) => {
 };
 
 /**
- * The sample every run uses: the committed frames at an even stride, plus the
- * four-channel probe the committed set cannot provide.
+ * The sample every run uses: the captured frames at an even stride, plus the
+ * four-channel probe the captured set cannot provide.
  */
 export const sampleWithAlpha = async () => {
 	const scratch = mkdtempSync(join(tmpdir(), "histogram-parity-"));
@@ -257,6 +268,17 @@ export const sampleWithAlpha = async () => {
 };
 
 const main = async () => {
+	/*
+	 * The frames are rig output in the ignored tree, so a checkout that has never
+	 * been captured has none. Say that, rather than dying on a `scandir` the
+	 * caller has to decode.
+	 */
+	if (!existsSync(EVIDENCE)) {
+		console.error(
+			`no frames at ${relative(ROOT, EVIDENCE)}: frames are rig output and are not committed - run node scripts/capture-evidence.mjs first`,
+		);
+		process.exit(1);
+	}
 	const all = frames(EVIDENCE)
 		.filter((file) => (pattern ? file.includes(pattern) : true))
 		.sort();
@@ -269,7 +291,7 @@ const main = async () => {
 	const { sample: alpha, scratch } = await sampleWithAlpha();
 	const sample = [...alpha, ...sampleOf(all, limit)];
 	console.log(
-		`histogram parity: ${sample.length - 1} of ${all.length} committed frames` +
+		`histogram parity: ${sample.length - 1} of ${all.length} captured frames` +
 			`${pattern ? ` matching "${pattern}"` : ""}, plus 1 written 4-channel probe`,
 	);
 

@@ -1,0 +1,23 @@
+es
+ 1 invited            Damian invitó a Ben
+ 1 joined             Entrada en la conversación: Ben
+ 1 owner_added_agent  Damian añadió a su agente: Ben
+ 1 left               Salida de la conversación: Ben
+ 1 removed            Damian eliminó a Ben
+ 1 consented          Damian autorizó la entrada de Ben
+ 1 declined_self      Damian rechazó la invitación
+ 1 declined           Damian rechazó la invitación para Ben
+ 1 withdrawn          Damian retiró la invitación para Ben
+ 1 unknown            Cambio en los miembros
+ 3 invited            Damian invitó a Ben, Sana y Ola
+ 3 joined             Entrada en la conversación: Ben, Sana y Ola
+ 3 owner_added_agent  Damian añadió a su agente: Ben, Sana y Ola
+ 3 left               Salida de la conversación: Ben, Sana y Ola
+ 3 removed            Damian eliminó a Ben, Sana y Ola
+ 3 consented          Damian autorizó la entrada de Ben, Sana y Ola
+ 3 declined_self      Damian rechazó la invitación
+ 3 declined           Damian rechazó la invitación para Ben, Sana y Ola
+ 3 withdrawn          Damian retiró la invitación para Ben, Sana y Ola
+ 3 unknown            Cambio en los miembros
+ others: 1→1 más | 2→2 más | 3→3 más | 5→5 más | 11→11 más | 21→21 más
+ truncated: Damian invitó a Ben, Sana y 2 más

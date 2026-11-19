@@ -1,0 +1,265 @@
+✔ [ur] ships at least one message (not an empty claim) (96.219958ms)
+✔ [ur] defines each key in at most one namespace file (49.095667ms)
+✔ [ur] carries EVERY key of each namespace file it ships (44.6925ms)
+✔ [ur] names only keys the English source defines (18.28275ms)
+✔ [ur] preserves every ICU placeholder from the English source (248.342292ms)
+✔ [ur] is not an English stub (no value identical to the source) (92.346208ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1236.383541
+
+$ git rev-parse HEAD
+b8f0fc3aa922b99c6fad9c32edd36515fbd24e5a
+
+exit=0
+
+$ shasum -a 256 src/i18n/catalogues/en/ui.chat.json
+ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15  src/i18n/catalogues/en/ui.chat.json
+
+exit=0
+
+$ shasum -a 256 src/i18n/catalogues/ur/ui.chat.json
+4be951ec20cc69544d66a59218bb26669df5d0034ed2c35e2305b979db07b256  src/i18n/catalogues/ur/ui.chat.json
+
+exit=0
+
+$ shasum -a 256 src/i18n/catalogues/en/ui.chat.context.json
+84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf  src/i18n/catalogues/en/ui.chat.context.json
+
+exit=0
+
+$ git show e5fb4310dab638f9cf428779d62539ec039a8990:src/i18n/catalogues/ur/ui.chat.json
+{
+	"ui.chat.action.stopped": "روکی گئی",
+	"ui.chat.composer.status.goal_collapse": "سیشن کا ہدف سمیٹیں",
+	"ui.chat.composer.status.goal_dismiss": "ہٹائیں",
+	"ui.chat.composer.status.goal_dismiss_keep": "یہ ہدف کی تاریخ میں رہتا ہے",
+	"ui.chat.composer.status.goal_dismiss_name": "مکمل ہو چکا ہدف ہٹائیں",
+	"ui.chat.composer.status.goal_done": "مکمل",
+	"ui.chat.composer.status.goal_done_name": "ہدف کو مکمل قرار دیں",
+	"ui.chat.composer.status.goal_expand": "سیشن کا ہدف پھیلائیں",
+	"ui.chat.composer.status.goal_label": "ہدف:",
+	"ui.chat.composer.status.jobs_action": "رن کی تفصیلات میں جابز کھولیں",
+	"ui.chat.composer.status.loop_clear": "لوپ صاف کریں",
+	"ui.chat.composer.status.loop_label": "لوپ:",
+	"ui.chat.composer.status.loop_progress_of_turns": "{total, number, ::group-off} میں سے {completed, number, ::group-off} باریاں",
+	"ui.chat.composer.status.loop_progress_turns": "{count, plural, one {# باری} other {# باریاں}}",
+	"ui.chat.composer.status.loop_stop": "لوپ روکیں",
+	"ui.chat.composer.status.monitors_action": "رن کی تفصیلات میں نگرانی کھولیں",
+	"ui.chat.composer.status.plan_action": "رن کی تفصیلات میں منصوبہ کھولیں",
+	"ui.chat.composer.status.session_goal": "سیشن کا ہدف",
+	"ui.chat.composer.status.subagents_action": "رن کی تفصیلات میں ذیلی ایجنٹس کھولیں",
+	"ui.chat.composer.status.wakes_action": "رن کی تفصیلات میں بیداریاں کھولیں",
+	"ui.chat.header_identity.loading": "{kind, select, agents {ایجنٹ لوڈ ہو رہے ہیں…} teams {ٹیمیں لوڈ ہو رہی ہیں…} other {لوڈ ہو رہا ہے…}}",
+	"ui.chat.header_identity.no_matches": "“{query}” سے کچھ نہیں ملتا۔",
+	"ui.chat.header_identity.search": "{kind, select, agents {ایجنٹ تلاش کریں} teams {ٹیمیں تلاش کریں} other {تلاش کریں}}",
+	"ui.chat.highlights.file_resolution_failed": "سیشن کی ورکنگ ڈائریکٹری میں یہ فائل نہیں مل سکی۔ دوبارہ کوشش کرنے سے پہلے “فائل کا راستہ نقل کریں” سے اس کا مقام اس سیشن کی ورک اسپیس سے ملا کر دیکھیں۔",
+	"ui.chat.hub_update.check_now": "ابھی اپ ڈیٹس کے لیے ہب دیکھیں",
+	"ui.chat.hub_update.dismiss": "ہٹائیں",
+	"ui.chat.hub_update.dismiss_summary": "اپ ڈیٹ کا خلاصہ ہٹائیں",
+	"ui.chat.hub_update.update_all": "سب اپ ڈیٹ کریں ({count, number, ::group-off})",
+	"ui.chat.hub_update.update_all_label": "{kind, select, agents {ہب سے {count, number, ::group-off} ایجنٹوں کی اپ ڈیٹس سب اپ ڈیٹ کریں} teams {ہب سے {count, number, ::group-off} ٹیموں کی اپ ڈیٹس سب اپ ڈیٹ کریں} skills {ہب سے {count, number, ::group-off} مہارتوں کی اپ ڈیٹس سب اپ ڈیٹ کریں} other {ہب سے {count, number, ::group-off} اپ ڈیٹس سب اپ ڈیٹ کریں}}",
+	"ui.chat.hub_update.updating": "اپ ڈیٹ ہو رہا ہے…",
+	"ui.chat.provider_error.action.open_provider_settings": "فراہم کنندہ کی ترتیبات کھولیں",
+	"ui.chat.provider_error.action.open_radient_account": "Radient اکاؤنٹ کھولیں",
+	"ui.chat.provider_error.action.sign_in_radient": "Radient میں سائن ان کریں",
+	"ui.chat.provider_error.headline.out_of_credits": "کریڈٹس ختم{status}: {body}",
+	"ui.chat.provider_error.headline.out_of_credits_refused": "کریڈٹس ختم{status}: Radient نے درخواست مسترد کر دی",
+	"ui.chat.question_dock.asking": "ایجنٹ پوچھ رہا ہے",
+	"ui.chat.question_dock.from_agent_label": "ایجنٹ کی طرف سے سوال",
+	"ui.chat.question_dock.secret_answer_label": "راز کا جواب",
+	"ui.chat.question_dock.secret_note": "لکھتے وقت مخفی رہتا ہے — ایجنٹ کو بھیجا جاتا ہے، ٹرانسکرپٹ میں نہیں دکھایا جاتا۔",
+	"ui.chat.question_dock.secret_placeholder": "راز چسپاں کریں",
+	"ui.chat.question_dock.secret_value_label": "راز کی قدر",
+	"ui.chat.question_dock.send": "بھیجیں",
+	"ui.chat.question_dock.show": "دکھائیں",
+	"ui.chat.question_dock.show_question_label": "ایجنٹ کا سوال دکھائیں",
+	"ui.chat.quota_notice.dismiss": "ہٹائیں",
+	"ui.chat.reply.remove": "جواب ہٹائیں",
+	"ui.chat.reply.replying_to": "جواب دیا جا رہا ہے",
+	"ui.chat.session_status.choose_model": "ماڈل منتخب کریں",
+	"ui.chat.session_status.choose_model_tooltip": "وہ ماڈل منتخب کریں جس پر یہ گفتگو چلے گی",
+	"ui.chat.session_status.estimate": "تخمینی",
+	"ui.chat.session_status.last_reading": "آخری پیمائش",
+	"ui.chat.session_status.no_model_resolved": "ابھی کوئی ماڈل متعین نہیں ہوا",
+	"ui.chat.skill_invocation.instructions_label": "اس پیغام کے ساتھ بھیجی گئی مہارت کی ہدایات",
+	"ui.chat.skill_invocation.trigger_label": "{token} کی مہارت کی ہدایات",
+	"ui.chat.status_strip.dismiss": "ہٹائیں",
+	"ui.chat.tabs.chat": "چیٹ",
+	"ui.chat.tabs.raw": "خام",
+	"ui.chat.usage.blocked": "خرچ کی سہولت دستیاب نہیں",
+	"ui.chat.usage.continue": "شامل کوٹہ استعمال ہو گیا؛ کریڈٹس سے استعمال جاری رہے گا۔",
+	"ui.chat.usage.eligibility_unknown": "خرچ کی اہلیت نامعلوم ہے",
+	"ui.chat.usage.family_caps": "ماڈل فیملی کی حدیں اب بھی لاگو ہیں۔",
+	"ui.chat.usage.unlimited": "لامحدود بامعاوضہ گنجائش",
+	"ui.chat.mermaid.zoom_in": "زوم بڑھائیں",
+	"ui.chat.mermaid.zoom_out": "زوم گھٹائیں",
+	"ui.chat.mermaid.pan": "سرکانے کے لیے گھسیٹیں",
+	"ui.chat.mermaid.pan_hint": "ڈایاگرام سرکانے کے لیے گھسیٹیں",
+	"ui.chat.mermaid.reset_view": "منظر بحال کریں",
+	"ui.chat.mermaid.save_svg": "SVG کے طور پر محفوظ کریں",
+	"ui.chat.mermaid.copied": "نقل ہو گیا",
+	"ui.chat.mermaid.copy_text": "Mermaid کا متن نقل کریں",
+	"ui.chat.mermaid.error_title": "Mermaid ڈایاگرام کی خرابی",
+	"ui.chat.mermaid.unexpected_error": "ڈایاگرام دکھاتے وقت غیر متوقع خرابی پیش آئی",
+	"ui.chat.mermaid.error_contained": "خرابی ڈایاگرام کے جزو تک محدود رہی۔",
+	"ui.chat.mermaid.chart_label": "چارٹ",
+	"ui.chat.mermaid.loading": "ڈایاگرام لوڈ ہو رہا ہے...",
+	"ui.chat.mermaid.rendering_error": "دکھانے میں خرابی",
+	"ui.chat.mermaid.render_failed": "ڈایاگرام کا مواد دکھایا نہیں جا سکا۔",
+	"ui.chat.mermaid.fullscreen": "فل اسکرین",
+	"ui.chat.mermaid.open_fullscreen": "ڈایاگرام فل اسکرین میں کھولیں",
+	"ui.chat.mermaid.diagram_title": "Mermaid ڈایاگرام",
+	"ui.chat.mermaid.close_fullscreen": "فل اسکرین بند کریں",
+	"ui.chat.aside.question_label": "سوال:",
+	"ui.chat.aside.you_label": "آپ:",
+	"ui.chat.aside.thinking": "سوچ رہا ہے…",
+	"ui.chat.aside.title": "ضمنی گفتگو",
+	"ui.chat.aside.off_record": "ریکارڈ سے باہر — یہاں کی کوئی بات گفتگو میں شامل نہیں ہوتی",
+	"ui.chat.aside.close_label": "ضمنی گفتگو بند کریں",
+	"ui.chat.aside.exchange_label": "ضمنی گفتگو کا تبادلہ",
+	"ui.chat.aside.empty": "نیچے کمپوزر میں سوال لکھیں — جواب یہاں آئے گا۔",
+	"ui.chat.aside.add_to_conversation": "گفتگو میں شامل کریں",
+	"ui.chat.error_block.heading": "خرابی",
+	"ui.chat.error_block.link.settings": "ترتیبات",
+	"ui.chat.error_block.link.providers": "فراہم کنندگان کا حصہ",
+	"ui.chat.error_block.provider.before": "آپ نے ابھی کوئی AI فراہم کنندہ منتخب نہیں کیا۔ اسے اپنے تمام ایجنٹس کے لیے کنفیگر کرنے کے لیے",
+	"ui.chat.error_block.provider.after": "کھولیں۔ اگر آپ کے پاس AI فراہم کنندہ نہیں ہے تو مفت شروع کرنے کے لیے Radient میں سائن ان کر سکتے ہیں۔",
+	"ui.chat.error_block.model.before": "آپ نے ابھی کوئی AI ماڈل منتخب نہیں کیا۔ اپنے تمام ایجنٹس کے لیے ماڈل منتخب کرنے کے لیے",
+	"ui.chat.error_block.model.after": "کھولیں۔ اگر آپ کے پاس AI فراہم کنندہ نہیں ہے تو مفت شروع کرنے کے لیے Radient میں سائن ان کر سکتے ہیں۔",
+	"ui.chat.error_block.rate_limit.before": "آپ اپنے AI فراہم کنندہ کی شرح کی حد تک پہنچ گئے ہیں۔ براہ کرم بعد میں دوبارہ کوشش کریں یا کم قیمتوں پر Radient Pass حاصل کرنے کے لیے",
+	"ui.chat.error_block.rate_limit.after": "کھولیں تاکہ بغیر شرح کی حد کے AI ماڈلز تک رسائی ملے۔",
+	"ui.chat.error_block.rate_limit.all_after": "کھولیں تاکہ بغیر شرح کی حد کے تمام AI ماڈلز تک رسائی ملے۔",
+	"ui.chat.error_block.invalid_key.before": "آپ کی API کلید درست نہیں۔ اسے اپ ڈیٹ کرنے کے لیے",
+	"ui.chat.error_block.invalid_key.after": "کھولیں، یا فراہم کنندہ میں دوبارہ سائن ان کریں۔",
+	"ui.chat.error_block.unavailable.before": "جو ماڈل آپ استعمال کرنے کی کوشش کر رہے ہیں وہ دستیاب نہیں۔ دوسرا ماڈل منتخب کرنے کے لیے",
+	"ui.chat.error_block.unavailable.after": "کھولیں، یا بغیر شرح کی حد کے سینکڑوں ماڈلز تک رسائی کے لیے Radient استعمال کریں",
+	"ui.chat.error_block.schema.before": "ماڈل نے کوئی عمل کرنے کی کوشش کی مگر اپنا ارادہ مطلوبہ اسکیما میں بیان نہیں کر سکا۔ عام طور پر ایسا اس لیے ہوتا ہے کہ ماڈل ایجنٹک AI کے لیے درکار پیچیدہ ہدایات پر عمل نہیں کر پاتا۔",
+	"ui.chat.error_block.schema.after_before": "اسے ٹھیک کرنے کے لیے",
+	"ui.chat.error_block.schema.after": "میں اپنا ماڈل تبدیل کریں۔ ہم Radient Automatic استعمال کرنے کی تجویز دیتے ہیں تاکہ آپ کی درخواستوں کی بنیاد پر سستے اور ہوشیار کا بہترین امتزاج آپ کے لیے منتخب ہو (عام طور پر اپنی کلید لانے سے سستا)، یا ستارے والے نشان کے ساتھ تجویز کردہ ماڈلز میں سے کوئی استعمال کریں۔",
+	"ui.chat.approval.reply_required": "منظوری کی درخواست کا جواب yes یا no سے دیں۔",
+	"ui.chat.question_dock.hint.approval": "اوپر کے بٹنوں سے منظور کریں یا مسترد کریں، یا پیغام کے خانے میں yes، no، 1 یا 2 لکھ کر بھیجیں، یا وہیں Escape دبا کر باری روکیں۔",
+	"ui.chat.question_dock.hint.approval_held": "اس کے بجائے کمپوزر سے جواب دیں: پیغام کے خانے میں yes، no، 1 یا 2 لکھ کر بھیجیں، یا Escape دبا کر باری روکیں۔",
+	"ui.chat.question_dock.hint.prefix": "{total} میں سے سوال {index}۔ ",
+	"ui.chat.question_dock.hint.secret": "{prefix}اوپر راز لکھیں یا چسپاں کریں · Enter بھیجتا ہے · Esc چھپاتا ہے",
+	"ui.chat.question_dock.hint.secret_held": "{prefix}جب تک اس جواب کا انجام معلوم نہیں، یہ رکا ہے — ممکن ہے پہنچ چکا ہو، اس لیے دوبارہ کچھ نہیں بھیجا جا سکتا · کارڈ میں Esc اسے چھپا دیتا ہے",
+	"ui.chat.question_dock.hint.type": "{prefix}اپنا جواب نیچے لکھیں۔",
+	"ui.chat.question_dock.hint.options": "{prefix}Up/Down سے انتخاب کریں · Enter یا {digits} جواب دیتا ہے · Esc چھپاتا ہے · یا نیچے اپنا جواب لکھیں",
+	"ui.chat.session_status.context_heading": "کانٹیکسٹ",
+	"ui.chat.session_status.context_nothing_measured_tooltip": "کانٹیکسٹ: ابھی کوئی پیمائش نہیں ہوئی۔ گفتگو چلنے کے ساتھ ساتھ ونڈو بھرتی جاتی ہے۔",
+	"ui.chat.session_status.conversation_starting": "گفتگو شروع ہونے پر طے ہو جائے گا۔",
+	"ui.chat.session_status.model_none_resolved_tooltip": "ماڈل: ابھی کوئی ماڈل متعین نہیں ہوا۔ وہ ماڈل منتخب کریں جس پر یہ گفتگو چلے گی۔",
+	"ui.chat.session_status.not_signed_in": "{label} میں سائن ان نہیں ہے",
+	"ui.chat.session_status.not_signed_in_description": "یہ سیشن {label} کو کام کرنے والے سائن ان کے بغیر چلا رہا ہے، اس لیے جب تک آپ اسے منسلک نہیں کرتے، یہ جواب نہیں دے سکتا۔",
+	"ui.chat.session_status.nothing_measured_yet": "ابھی کوئی پیمائش نہیں ہوئی۔ گفتگو چلنے کے ساتھ ساتھ ونڈو بھرتی جاتی ہے۔",
+	"ui.chat.session_status.temporarily_unavailable": "{label} فی الحال دستیاب نہیں ہے",
+	"ui.chat.session_status.temporarily_unavailable_description": "آپ کا محفوظ سائن ان اب بھی موجود ہے۔ بعد میں دوبارہ کوشش کریں یا کوئی دوسرا ماڈل منتخب کریں۔",
+	"ui.chat.checkpoint.generating_name": "نام تیار کیا جا رہا ہے…",
+	"ui.chat.checkpoint.jump_agent": "{name}، {total, number} میں سے باری {turn, number} پر جائیں",
+	"ui.chat.checkpoint.jump_agent_unnamed": "{total, number} میں سے باری {turn, number} پر جائیں",
+	"ui.chat.checkpoint.jump_user": "{clock}، {total, number} میں سے باری {turn, number} میں آپ کے پیغام پر جائیں",
+	"ui.chat.checkpoint.jump_user_no_clock": "{total, number} میں سے باری {turn, number} میں آپ کے پیغام پر جائیں",
+	"ui.chat.checkpoint.turn": "{total, number} میں سے باری {turn, number}",
+	"ui.chat.header_identity.aria_agent_assign": "ایجنٹ: {label}۔ ایجنٹ مقرر کریں",
+	"ui.chat.header_identity.aria_agent_closed": "ایجنٹ: {label}۔ {reason}",
+	"ui.chat.header_identity.aria_agent_switch": "ایجنٹ: {label}۔ ایجنٹ بدلیں",
+	"ui.chat.header_identity.aria_team_assign": "ٹیم: {label}۔ ٹیم مقرر کریں",
+	"ui.chat.header_identity.aria_team_closed": "ٹیم: {label}۔ {reason}",
+	"ui.chat.header_identity.aria_team_switch": "ٹیم: {label}۔ ٹیم بدلیں",
+	"ui.chat.header_identity.assign_agent": "ایجنٹ مقرر کریں",
+	"ui.chat.header_identity.assign_team": "ٹیم مقرر کریں",
+	"ui.chat.header_identity.no_agent": "کوئی ایجنٹ نہیں",
+	"ui.chat.header_identity.no_team": "کوئی ٹیم نہیں",
+	"ui.chat.region.composer": "پیغام کمپوزر",
+	"ui.chat.region.conversation": "گفتگو",
+	"ui.chat.audio.play": "چلائیں",
+	"ui.chat.audio.pause": "وقفہ دیں",
+	"ui.chat.audio.play_label": "{label} چلائیں",
+	"ui.chat.audio.pause_label": "{label} کو وقفہ دیں",
+	"ui.chat.audio.mute": "آواز بند کریں",
+	"ui.chat.audio.unmute": "آواز کھولیں",
+	"ui.chat.message_controls.copy": "پیغام نقل کریں",
+	"ui.chat.message_controls.copied": "نقل ہو گیا",
+	"ui.chat.image_actions.save_as": "نئے نام سے محفوظ کریں…",
+	"ui.chat.image_actions.copy_image": "تصویر نقل کریں",
+	"ui.chat.image_actions.copy_image_url": "تصویر کا URL نقل کریں",
+	"ui.chat.image_actions.open_in_browser": "براؤزر میں کھولیں",
+	"ui.chat.image_actions.expand_image": "تصویر بڑی کریں",
+	"ui.chat.composer.connect_provider": "فراہم کنندہ منسلک کریں",
+	"ui.chat.slot_notice.run_draft_title": "رن کی تفصیلات کے لیے گفتگو درکار ہے۔",
+	"ui.chat.slot_notice.run_draft_detail": "گفتگو شروع کرنے کے لیے پیغام بھیجیں؛ اس کے ذیلی ایجنٹ، منصوبہ اور شیڈول شدہ کام یہاں دکھیں گے۔",
+	"ui.chat.slot_notice.run_reading_title": "اس گفتگو کے رن کی تفصیلات پڑھی جا رہی ہیں…",
+	"ui.chat.slot_notice.run_unreadable_title": "اس گفتگو کے رن کی تفصیلات پڑھی نہیں جا سکیں۔",
+	"ui.chat.slot_notice.run_unreadable_detail": "اس پین کے ساتھ والی گفتگو میں وجہ اور دوبارہ منسلک ہونے کا طریقہ دیکھیں۔",
+	"ui.chat.slot_notice.run_missing_detail": "یہ گفتگو اب اس مشین پر موجود نہیں۔",
+	"ui.chat.slot_notice.code_draft_title": "کوڈ کے جائزے کے لیے گفتگو درکار ہے۔",
+	"ui.chat.slot_notice.code_draft_detail": "گفتگو شروع کرنے کے لیے پیغام بھیجیں؛ اس کی کھولی یا ذکر کی گئی pull requests اور merge requests یہاں دکھیں گی۔",
+	"ui.chat.slot_notice.code_below_version_title": "Local Operator سرور ابھی کوڈ کا جائزہ فراہم نہیں کرتا۔",
+	"ui.chat.slot_notice.code_below_version_detail": "اس گفتگو کی کھولی گئی pull requests اور merge requests دیکھنے کے لیے سرور اپ ڈیٹ کریں۔",
+	"ui.chat.slot_notice.code_checking_title": "جانچا جا رہا ہے کہ سرور کوڈ کا جائزہ فراہم کرتا ہے یا نہیں…",
+	"ui.chat.slot_notice.code_load_lead": "کوڈ کا جائزہ لوڈ نہیں ہو سکا۔",
+	"ui.chat.slash_arguments.model_default_description": "موجودہ ماڈل ({provider}/{model}) نئے سیشنز کے لیے بطور ڈیفالٹ محفوظ کریں۔",
+	"ui.chat.slash_arguments.model_default_unavailable": "محفوظ کرنے کے لیے فعال سیشن کا کوئی ماڈل دستیاب نہیں۔",
+	"ui.chat.slash_arguments.model_default_click": "کلک سے بھی یہی ہوتا ہے۔",
+	"ui.chat.slash_arguments.model_default_required": "ڈیفالٹ محفوظ کرنے کے لیے پہلے سیشن کا ماڈل درکار ہے۔",
+	"ui.chat.slash_arguments.refresh_description": "گفتگو دوبارہ پڑھیں اور نیا نام دیں",
+	"ui.chat.slash_arguments.refresh_detail": "خودکار نام دینا بحال ہوتا ہے",
+	"ui.chat.aside.add_to_conversation_tooltip": "ضمنی گفتگو کو گفتگو میں شامل کریں",
+	"ui.chat.message_controls.content_header": "مواد",
+	"ui.chat.message_controls.replacements_header": "متن کی تبدیلیاں",
+	"ui.chat.message_controls.thinking_label": "سوچ رہا ہے",
+	"ui.chat.scroll_to_bottom.label": "نیچے سکرول کریں",
+	"ui.chat.scroll_to_bottom.label_new_activity": "نئی سرگرمی، نیچے سکرول کریں",
+	"ui.chat.session_status.last_reading_note": "آخری پیمائش دوبارہ منسلک ہونے سے پہلے کی ہے۔",
+	"ui.chat.session_status.readings_aria_held": "سیشن کی پیمائشیں۔ {note}",
+	"ui.chat.session_status.commands_off": "اس سرور پر سلیش کمانڈز بند ہیں، اس لیے یہ پیمائش یہاں سے نہیں کھولی جا سکتی۔",
+	"ui.chat.session_status.context_click_breakdown_held": "مکمل تفصیل کے لیے کلک کریں، جو آپ کی اگلی درخواست کا تخمینہ لگاتی ہے۔",
+	"ui.chat.session_status.context_click_breakdown_held_plain": "مکمل تفصیل کے لیے کلک کریں۔",
+	"ui.chat.session_status.context_measured_now": "ابھی کی پیمائش؛ مکمل تفصیل کے لیے کلک کریں، جو آپ کی اگلی درخواست کا تخمینہ لگاتی ہے",
+	"ui.chat.session_status.context_estimated_now": "ابھی کا تخمینہ؛ مکمل تفصیل کے لیے کلک کریں، جو آپ کی اگلی درخواست کا تخمینہ لگاتی ہے",
+	"ui.chat.session_status.context_click_breakdown": "مکمل تفصیل کے لیے کلک کریں",
+	"ui.chat.session_status.model_click_choose_draft": "دوسرا ماڈل منتخب کرنے کے لیے کلک کریں۔ یہ انتخاب اس گفتگو پر لاگو ہوتا ہے۔",
+	"ui.chat.session_status.model_click_choose": "دوسرا ماڈل منتخب کرنے کے لیے کلک کریں",
+	"ui.chat.session_status.model_draft_inert": "یہ گفتگو اسی کو استعمال کرے گی۔ گفتگو شروع ہونے کے بعد اسے بدلیں۔",
+	"ui.chat.session_status.effort_change_draft": "اسے بدلیں۔ یہ تبدیلی اس گفتگو پر لاگو ہوتی ہے۔",
+	"ui.chat.session_status.effort_change": "اسے بدلیں۔",
+	"ui.chat.session_status.model_aria": "ماڈل: {selector}{fast, select, yes {، فاسٹ موڈ فعال} other {}}۔ {reason}",
+	"ui.chat.session_status.model_aria_pending": "ماڈل: {selector}{fast, select, yes {، فاسٹ موڈ فعال} other {}}۔ بدلا جا رہا ہے؛ سیشن کی تصدیق کا انتظار ہے۔",
+	"ui.chat.session_status.switching_model": "ماڈل بدلا جا رہا ہے",
+	"ui.chat.session_status.model_aria_unresolved": "ماڈل: اس گفتگو کا ماڈل متعین نہیں ہو سکا۔ دوبارہ کوشش کریں۔",
+	"ui.chat.session_status.model_aria_resolving": "ماڈل: وہ ماڈل متعین ہو رہا ہے جس پر یہ گفتگو چلے گی۔",
+	"ui.chat.session_status.resolving_model_spinner": "وہ ماڈل متعین ہو رہا ہے جس پر یہ گفتگو چلے گی",
+	"ui.chat.session_status.context_aria_no_reading": "کانٹیکسٹ: ابھی کوئی پیمائش نہیں۔ {hint}",
+	"ui.chat.session_status.context_aria_reading": "کانٹیکسٹ: {spelling}{estimate, select, yes {، تخمینی} other {}}۔ {hint}",
+	"ui.chat.session_status.active_time_aria": "فعال وقت: {duration}۔ {explanation}",
+	"ui.chat.session_status.duration_explanation": "کام میں صرف ہوا وقت؛ انتظار شمار نہیں ہوتا۔",
+	"ui.chat.session_status.effort_level.low": "کم",
+	"ui.chat.session_status.effort_level.medium": "متوسط",
+	"ui.chat.session_status.effort_level.high": "زیادہ",
+	"ui.chat.image_actions.actions": "تصویر کے اعمال",
+	"ui.chat.audio.position_label": "{label} کی پوزیشن"
+}
+
+exit=0
+
+$ git diff e5fb4310dab638f9cf428779d62539ec039a8990..HEAD -- src/i18n/catalogues/ur/ui.chat.json
+diff --git a/src/i18n/catalogues/ur/ui.chat.json b/src/i18n/catalogues/ur/ui.chat.json
+index d14feaef502..058fe1c8b76 100644
+--- a/src/i18n/catalogues/ur/ui.chat.json
++++ b/src/i18n/catalogues/ur/ui.chat.json
+@@ -206,5 +206,5 @@
+ 	"ui.chat.session_status.effort_level.medium": "متوسط",
+ 	"ui.chat.session_status.effort_level.high": "زیادہ",
+ 	"ui.chat.image_actions.actions": "تصویر کے اعمال",
+-	"ui.chat.audio.position_label": "{label} کی پوزیشن"
++	"ui.chat.audio.position_label": "{label} کا مقام"
+ }
+
+exit=0
+
+Python assertions PASS: {"key_count": 208, "fully_audited_key_count": 1, "consistency_only_key_count": 207, "changed_keys": ["ui.chat.audio.position_label"], "key_sets_equal": true, "hash_matches": 3, "hash_mismatches": 0, "value": "{label} کا مقام", "codepoints": ["U+007B", "U+006C", "U+0061", "U+0062", "U+0065", "U+006C", "U+007D", "U+0020", "U+06A9", "U+0627", "U+0020", "U+0645", "U+0642", "U+0627", "U+0645"], "template_codepoint_count": 15, "literal_suffix_codepoint_count": 8, "hard_width_hint_present": false}

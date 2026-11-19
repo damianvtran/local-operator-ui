@@ -1,0 +1,790 @@
+Independent zh-CN translation audit, 2026-11-10. Auditor i18n-auditor / openai/gpt-6.1-sol / c86e893b040d; no fallback, translator session 6c6b9e0107b6 independent.
+ACTUALLY EXECUTED: git head/status/diffs; shasum; Python json.loads, key-set/legacy comparisons, regex placeholder comparisons, Unicode inspection; Node read-only generator check and production ICU parser. Subprocess command transcripts below are actual captures. Earlier read-only shell inspections used rg, sed, cat and ls for docs/I18N.md, scripts/i18n, relevant sources and catalogues. One exploratory sed of scripts/i18n/validate.mjs failed (file absent); actual supported validator then found and run successfully. No command failure represented as success.
+Validator command actually run: cd ~/local-operator-ui/.worktrees/i18n-s8 && node scripts/i18n/generate.mjs --check (stdout redirected to own scratch validator log); exit 0; output: src/i18n/keys.gen.ts is byte-identical to a fresh generation.
+READ/REASONED (not execution tests): binding style guide; entire manager-provided glossary; English/context and translated four keys; quoted neighboring existing values; get-file-name.ts and attachment-encode.ts. The broadened pasted_file note matches getFileName non-image data branch: usable names decoded unchanged; malformed percent encoding or absent usable name returns pasted_file irrespective of MIME. encodeAttachments passes unchanged dataUrl and localized synthetic name as upload metadata, with stored.name taking precedence. No runtime attachment test performed.
+LANGUAGE VERDICT: all three namespaces passed / clean; no findings. Four full semantic audits, 267 consistency-only keys. Glossary checked against manager-owned snapshot (not the disallowed core glossary path). No certification of legacy translation quality. Invariant 的 construction accepts arbitrary user strings, no agreement imposed; no added quotation hazards. Direct term matches: 粘贴的文件; 复制图片; 展开图片; 文件操作; 播放位置; {name}的操作 in link_toolkit. No invisible characters in new values.
+WORKTREE CAUTION: initially clean; final git status showed untracked scripts/_attachment-chrome-29049.mjs introduced concurrently, not ours and untouched. Head and nine inputs reverified unchanged. An intermediate Python print said repository remains clean despite showing that untracked path; that sentence was incorrect and is explicitly corrected here. No source-input drift detected.
+NOT EXECUTED: full pnpm suite, builds, installs, servers, translation service, browser, screen-reader/visual fit tests, ledger or repository writes.
+
+ACTUAL SUBPROCESS TRANSCRIPTS
+$ git rev-parse HEAD
+exit=0
+e5fb4310dab638f9cf428779d62539ec039a8990
+
+$ git status --porcelain
+exit=0
+
+$ shasum -a 256 src/i18n/catalogues/en/ui.chat.json
+exit=0
+ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15  src/i18n/catalogues/en/ui.chat.json
+
+$ shasum -a 256 src/i18n/catalogues/zh-CN/ui.chat.json
+exit=0
+6c28931de502a5fd821f9bd9ff779a55599681804575a8a2ba4cdc3346c1e1b9  src/i18n/catalogues/zh-CN/ui.chat.json
+
+$ shasum -a 256 src/i18n/catalogues/en/ui.chat.context.json
+exit=0
+84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf  src/i18n/catalogues/en/ui.chat.context.json
+
+$ git show origin/main:src/i18n/catalogues/en/ui.chat.json
+exit=0
+{
+	"ui.chat.action.stopped": "Stopped",
+	"ui.chat.composer.status.goal_collapse": "Collapse the session goal",
+	"ui.chat.composer.status.goal_dismiss": "Dismiss",
+	"ui.chat.composer.status.goal_dismiss_keep": "it stays in the goal history",
+	"ui.chat.composer.status.goal_dismiss_name": "Dismiss the finished goal",
+	"ui.chat.composer.status.goal_done": "Done",
+	"ui.chat.composer.status.goal_done_name": "Mark the goal done",
+	"ui.chat.composer.status.goal_expand": "Expand the session goal",
+	"ui.chat.composer.status.goal_label": "Goal:",
+	"ui.chat.composer.status.jobs_action": "Open the jobs in run details",
+	"ui.chat.composer.status.loop_clear": "Clear loop",
+	"ui.chat.composer.status.loop_label": "Loop:",
+	"ui.chat.composer.status.loop_progress_of_turns": "{completed, number, ::group-off} of {total, number, ::group-off} turns",
+	"ui.chat.composer.status.loop_progress_turns": "{count, plural, one {# turn} other {# turns}}",
+	"ui.chat.composer.status.loop_stop": "Stop loop",
+	"ui.chat.composer.status.monitors_action": "Open the monitors in run details",
+	"ui.chat.composer.status.plan_action": "Open the plan in run details",
+	"ui.chat.composer.status.session_goal": "Session goal",
+	"ui.chat.composer.status.subagents_action": "Open the subagents in run details",
+	"ui.chat.composer.status.wakes_action": "Open the wakes in run details",
+	"ui.chat.header_identity.loading": "{kind, select, agents {Loading agents…} teams {Loading teams…} other {Loading…}}",
+	"ui.chat.header_identity.no_matches": "Nothing matches “{query}”.",
+	"ui.chat.header_identity.search": "{kind, select, agents {Search agents} teams {Search teams} other {Search}}",
+	"ui.chat.highlights.file_resolution_failed": "Couldn't resolve this file in the session working directory. Use Copy file path to check its location against this session's workspace before trying again.",
+	"ui.chat.hub_update.check_now": "Check the hub for updates now",
+	"ui.chat.hub_update.dismiss": "Dismiss",
+	"ui.chat.hub_update.dismiss_summary": "Dismiss update summary",
+	"ui.chat.hub_update.update_all": "Update all ({count, number, ::group-off})",
+	"ui.chat.hub_update.update_all_label": "{kind, select, agents {Update all {count, number, ::group-off} agent updates from the hub} teams {Update all {count, number, ::group-off} team updates from the hub} skills {Update all {count, number, ::group-off} skill updates from the hub} other {Update all {count, number, ::group-off} updates from the hub}}",
+	"ui.chat.hub_update.updating": "Updating…",
+	"ui.chat.provider_error.action.open_provider_settings": "Open provider settings",
+	"ui.chat.provider_error.action.open_radient_account": "Open Radient account",
+	"ui.chat.provider_error.action.sign_in_radient": "Sign in to Radient",
+	"ui.chat.provider_error.headline.out_of_credits": "Out of credits{status}: {body}",
+	"ui.chat.provider_error.headline.out_of_credits_refused": "Out of credits{status}: Radient refused the request",
+	"ui.chat.question_dock.asking": "The agent is asking",
+	"ui.chat.question_dock.from_agent_label": "Question from the agent",
+	"ui.chat.question_dock.secret_answer_label": "Secret answer",
+	"ui.chat.question_dock.secret_note": "Hidden as you type — sent to the agent, not shown in the transcript.",
+	"ui.chat.question_dock.secret_placeholder": "Paste the secret",
+	"ui.chat.question_dock.secret_value_label": "Secret value",
+	"ui.chat.question_dock.send": "Send",
+	"ui.chat.question_dock.show": "Show",
+	"ui.chat.question_dock.show_question_label": "Show the agent's question",
+	"ui.chat.quota_notice.dismiss": "Dismiss",
+	"ui.chat.reply.remove": "Remove reply",
+	"ui.chat.reply.replying_to": "Replying to",
+	"ui.chat.session_status.choose_model": "Choose a model",
+	"ui.chat.session_status.choose_model_tooltip": "Choose the model this conversation will run on",
+	"ui.chat.session_status.estimate": "estimate",
+	"ui.chat.session_status.last_reading": "Last reading",
+	"ui.chat.session_status.no_model_resolved": "No model resolved yet",
+	"ui.chat.skill_invocation.instructions_label": "Skill instructions sent with this message",
+	"ui.chat.skill_invocation.trigger_label": "{token} skill instructions",
+	"ui.chat.status_strip.dismiss": "Dismiss",
+	"ui.chat.tabs.chat": "Chat",
+	"ui.chat.tabs.raw": "Raw",
+	"ui.chat.usage.blocked": "Spend unavailable",
+	"ui.chat.usage.continue": "Included quota used; credits will continue.",
+	"ui.chat.usage.eligibility_unknown": "Spend eligibility unknown",
+	"ui.chat.usage.family_caps": "Model-family caps still apply.",
+	"ui.chat.usage.unlimited": "Unlimited paid allowance",
+	"ui.chat.mermaid.zoom_in": "Zoom in",
+	"ui.chat.mermaid.zoom_out": "Zoom out",
+	"ui.chat.mermaid.pan": "Drag to pan",
+	"ui.chat.mermaid.pan_hint": "Drag the diagram to pan",
+	"ui.chat.mermaid.reset_view": "Reset view",
+	"ui.chat.mermaid.save_svg": "Save as SVG",
+	"ui.chat.mermaid.copied": "Copied",
+	"ui.chat.mermaid.copy_text": "Copy mermaid text",
+	"ui.chat.mermaid.error_title": "Mermaid diagram error",
+	"ui.chat.mermaid.unexpected_error": "An unexpected error occurred while rendering the diagram",
+	"ui.chat.mermaid.error_contained": "The error was contained within the diagram component.",
+	"ui.chat.mermaid.chart_label": "Chart",
+	"ui.chat.mermaid.loading": "Loading diagram...",
+	"ui.chat.mermaid.rendering_error": "Rendering error",
+	"ui.chat.mermaid.render_failed": "Failed to render diagram content.",
+	"ui.chat.mermaid.fullscreen": "Fullscreen",
+	"ui.chat.mermaid.open_fullscreen": "Open diagram fullscreen",
+	"ui.chat.mermaid.diagram_title": "Mermaid diagram",
+	"ui.chat.mermaid.close_fullscreen": "Close fullscreen",
+	"ui.chat.aside.question_label": "Question:",
+	"ui.chat.aside.you_label": "You:",
+	"ui.chat.aside.thinking": "thinking…",
+	"ui.chat.aside.title": "Aside",
+	"ui.chat.aside.off_record": "off the record — nothing here joins the conversation",
+	"ui.chat.aside.close_label": "Close the aside",
+	"ui.chat.aside.exchange_label": "The aside exchange",
+	"ui.chat.aside.empty": "Type a question in the composer below — the answer lands here.",
+	"ui.chat.aside.add_to_conversation": "Add to conversation",
+	"ui.chat.error_block.heading": "Error",
+	"ui.chat.error_block.link.settings": "settings page",
+	"ui.chat.error_block.link.providers": "Providers section",
+	"ui.chat.error_block.provider.before": "You haven't selected an AI provider yet. Go to the",
+	"ui.chat.error_block.provider.after": "to configure it for all your agents. If you don't have an AI provider, you can sign in to Radient to get access for free to start.",
+	"ui.chat.error_block.model.before": "You haven't selected an AI model yet. Go to the",
+	"ui.chat.error_block.model.after": "to select a model for all your agents. If you don't have an AI provider, you can sign in to Radient to get access for free to start.",
+	"ui.chat.error_block.rate_limit.before": "You've hit the rate limit for your AI provider. Please try again later or get Radient Pass in the",
+	"ui.chat.error_block.rate_limit.after": "to access AI models with no rate limits at low prices.",
+	"ui.chat.error_block.rate_limit.all_after": "to access all AI models with no rate limits at low prices.",
+	"ui.chat.error_block.invalid_key.before": "Your API key is invalid. Update it in the",
+	"ui.chat.error_block.invalid_key.after": ", or sign in to the provider again.",
+	"ui.chat.error_block.unavailable.before": "The model you're trying to use is not available. Go to the",
+	"ui.chat.error_block.unavailable.after": "to select a different model, or use Radient to get access to hundreds of models with no rate limits",
+	"ui.chat.error_block.schema.before": "The model tried to perform an action but was unable to express its intent in the required schema. Typically this happens because the model can't follow the complex instructions required for agentic AI.",
+	"ui.chat.error_block.schema.after_before": "Change your model in the",
+	"ui.chat.error_block.schema.after": "to fix this. We recommend using Radient Automatic to have the best combo of cheap and smart picked for you based on your requests (typically cheaper than bringing your own key), or use one of the recommended models with a star icon.",
+	"ui.chat.approval.reply_required": "Reply yes or no to answer the approval request.",
+	"ui.chat.question_dock.hint.approval": "Choose Approve or Deny above, type yes, no, 1, or 2 and send, or press Escape in the message box to stop the turn.",
+	"ui.chat.question_dock.hint.approval_held": "Answer from the composer instead: type yes, no, 1, or 2 and send, or press Escape in the message box to stop the turn.",
+	"ui.chat.question_dock.hint.prefix": "Question {index} of {total}. ",
+	"ui.chat.question_dock.hint.secret": "{prefix}Type or paste the secret above · Enter sends · Esc hides",
+	"ui.chat.question_dock.hint.secret_held": "{prefix}Held while this answer's fate is unknown — it may have landed, so nothing can send again · Esc in the card hides it",
+	"ui.chat.question_dock.hint.type": "{prefix}Type your answer below.",
+	"ui.chat.question_dock.hint.options": "{prefix}Up/Down choose · Enter or {digits} answers · Esc hides · or type your own answer below",
+	"ui.chat.session_status.context_heading": "Context",
+	"ui.chat.session_status.context_nothing_measured_tooltip": "Context: nothing measured yet. The window fills as the conversation runs.",
+	"ui.chat.session_status.conversation_starting": "Set once the conversation starts.",
+	"ui.chat.session_status.model_none_resolved_tooltip": "Model: none resolved yet. Choose the model this conversation will run on.",
+	"ui.chat.session_status.not_signed_in": "Not signed in to {label}",
+	"ui.chat.session_status.not_signed_in_description": "This session runs {label} without a working sign-in, so it cannot answer until you connect it.",
+	"ui.chat.session_status.nothing_measured_yet": "Nothing measured yet. The window fills as the conversation runs.",
+	"ui.chat.session_status.temporarily_unavailable": "{label} is temporarily unavailable",
+	"ui.chat.session_status.temporarily_unavailable_description": "Your saved sign-in is still present. Try again later or choose another model.",
+	"ui.chat.checkpoint.generating_name": "Generating name…",
+	"ui.chat.checkpoint.jump_agent": "Jump to turn {turn, number} of {total, number}, {name}",
+	"ui.chat.checkpoint.jump_agent_unnamed": "Jump to turn {turn, number} of {total, number}",
+	"ui.chat.checkpoint.jump_user": "Jump to your message in turn {turn, number} of {total, number}, {clock}",
+	"ui.chat.checkpoint.jump_user_no_clock": "Jump to your message in turn {turn, number} of {total, number}",
+	"ui.chat.checkpoint.turn": "Turn {turn, number} of {total, number}",
+	"ui.chat.header_identity.aria_agent_assign": "Agent: {label}. Assign an agent",
+	"ui.chat.header_identity.aria_agent_closed": "Agent: {label}. {reason}",
+	"ui.chat.header_identity.aria_agent_switch": "Agent: {label}. Switch agent",
+	"ui.chat.header_identity.aria_team_assign": "Team: {label}. Assign a team",
+	"ui.chat.header_identity.aria_team_closed": "Team: {label}. {reason}",
+	"ui.chat.header_identity.aria_team_switch": "Team: {label}. Switch team",
+	"ui.chat.header_identity.assign_agent": "Assign an agent",
+	"ui.chat.header_identity.assign_team": "Assign a team",
+	"ui.chat.header_identity.no_agent": "No agent",
+	"ui.chat.header_identity.no_team": "No team",
+	"ui.chat.region.composer": "Message composer",
+	"ui.chat.region.conversation": "Conversation",
+	"ui.chat.audio.play": "Play",
+	"ui.chat.audio.pause": "Pause",
+	"ui.chat.audio.play_label": "Play {label}",
+	"ui.chat.audio.pause_label": "Pause {label}",
+	"ui.chat.audio.mute": "Mute",
+	"ui.chat.audio.unmute": "Unmute",
+	"ui.chat.message_controls.copy": "Copy message",
+	"ui.chat.message_controls.copied": "Copied",
+	"ui.chat.image_actions.save_as": "Save as…",
+	"ui.chat.image_actions.copy_image": "Copy image",
+	"ui.chat.image_actions.copy_image_url": "Copy image URL",
+	"ui.chat.image_actions.open_in_browser": "Open in browser",
+	"ui.chat.image_actions.expand_image": "Expand image",
+	"ui.chat.composer.connect_provider": "Connect a provider",
+	"ui.chat.slot_notice.run_draft_title": "Run details need a conversation.",
+	"ui.chat.slot_notice.run_draft_detail": "Send a message to start this conversation; its subagents, plan and scheduled work appear here.",
+	"ui.chat.slot_notice.run_reading_title": "Reading this conversation's run…",
+	"ui.chat.slot_notice.run_unreadable_title": "Run details could not be read for this conversation.",
+	"ui.chat.slot_notice.run_unreadable_detail": "The conversation beside this pane says why and how to reconnect.",
+	"ui.chat.slot_notice.run_missing_detail": "This conversation is no longer on this machine.",
+	"ui.chat.slot_notice.code_draft_title": "Code review needs a conversation.",
+	"ui.chat.slot_notice.code_draft_detail": "Send a message to start this conversation; the pull requests and merge requests it opens or mentions appear here.",
+	"ui.chat.slot_notice.code_below_version_title": "The Local Operator server doesn't serve code review yet.",
+	"ui.chat.slot_notice.code_below_version_detail": "Update the server to see the pull requests and merge requests this conversation opens.",
+	"ui.chat.slot_notice.code_checking_title": "Checking whether the server serves code review…",
+	"ui.chat.slot_notice.code_load_lead": "Code review could not be loaded.",
+	"ui.chat.slash_arguments.model_default_description": "Save the current model ({provider}/{model}) as the default for new sessions.",
+	"ui.chat.slash_arguments.model_default_unavailable": "No active session model is available to save.",
+	"ui.chat.slash_arguments.model_default_click": "Click does the same.",
+	"ui.chat.slash_arguments.model_default_required": "A session model is required before this action can save a default.",
+	"ui.chat.slash_arguments.refresh_description": "Re-read the conversation and name it again",
+	"ui.chat.slash_arguments.refresh_detail": "resumes auto-naming",
+	"ui.chat.aside.add_to_conversation_tooltip": "Add the aside to the conversation",
+	"ui.chat.message_controls.content_header": "Content",
+	"ui.chat.message_controls.replacements_header": "Replacements",
+	"ui.chat.message_controls.thinking_label": "Thinking",
+	"ui.chat.scroll_to_bottom.label": "Scroll to bottom",
+	"ui.chat.scroll_to_bottom.label_new_activity": "New activity, scroll to bottom",
+	"ui.chat.session_status.last_reading_note": "Last reading from before the reconnect.",
+	"ui.chat.session_status.readings_aria_held": "Session readings. {note}",
+	"ui.chat.session_status.commands_off": "Slash commands are off on this server, so this reading cannot be opened from here.",
+	"ui.chat.session_status.context_click_breakdown_held": "Click for the full breakdown, which estimates your next request.",
+	"ui.chat.session_status.context_click_breakdown_held_plain": "Click for the full breakdown.",
+	"ui.chat.session_status.context_measured_now": "Measured now; click for the full breakdown, which estimates your next request",
+	"ui.chat.session_status.context_estimated_now": "Estimated now; click for the full breakdown, which estimates your next request",
+	"ui.chat.session_status.context_click_breakdown": "Click for the full breakdown",
+	"ui.chat.session_status.model_click_choose_draft": "Click to choose a different model. It applies to this conversation.",
+	"ui.chat.session_status.model_click_choose": "Click to choose a different model",
+	"ui.chat.session_status.model_draft_inert": "This conversation will use it. Change it once the conversation starts.",
+	"ui.chat.session_status.effort_change_draft": "Change it. It applies to this conversation.",
+	"ui.chat.session_status.effort_change": "Change it.",
+	"ui.chat.session_status.model_aria": "Model: {selector}{fast, select, yes {, fast mode on} other {}}. {reason}",
+	"ui.chat.session_status.model_aria_pending": "Model: {selector}{fast, select, yes {, fast mode on} other {}}. Switching; waiting for the session to confirm it.",
+	"ui.chat.session_status.switching_model": "Switching the model",
+	"ui.chat.session_status.model_aria_unresolved": "Model: this conversation's model was not resolved. Retry.",
+	"ui.chat.session_status.model_aria_resolving": "Model: resolving the model this conversation will run on.",
+	"ui.chat.session_status.resolving_model_spinner": "Resolving the model this conversation will run on",
+	"ui.chat.session_status.context_aria_no_reading": "Context: no reading yet. {hint}",
+	"ui.chat.session_status.context_aria_reading": "Context: {spelling}{estimate, select, yes {, estimated} other {}}. {hint}",
+	"ui.chat.session_status.active_time_aria": "Active time: {duration}. {explanation}",
+	"ui.chat.session_status.duration_explanation": "Time spent working; waiting is not counted.",
+	"ui.chat.session_status.effort_level.low": "Low",
+	"ui.chat.session_status.effort_level.medium": "Medium",
+	"ui.chat.session_status.effort_level.high": "High"
+}
+
+$ git diff origin/main HEAD -- src/i18n/catalogues/en/ui.chat.json
+exit=0
+diff --git a/src/i18n/catalogues/en/ui.chat.json b/src/i18n/catalogues/en/ui.chat.json
+index ea5fee914a6..c19e6dcbc1d 100644
+--- a/src/i18n/catalogues/en/ui.chat.json
++++ b/src/i18n/catalogues/en/ui.chat.json
+@@ -204,5 +204,7 @@
+ 	"ui.chat.session_status.duration_explanation": "Time spent working; waiting is not counted.",
+ 	"ui.chat.session_status.effort_level.low": "Low",
+ 	"ui.chat.session_status.effort_level.medium": "Medium",
+-	"ui.chat.session_status.effort_level.high": "High"
++	"ui.chat.session_status.effort_level.high": "High",
++	"ui.chat.image_actions.actions": "Image actions",
++	"ui.chat.audio.position_label": "{label} position"
+ }
+
+$ git show origin/main:src/i18n/catalogues/zh-CN/ui.chat.json
+exit=0
+{
+	"ui.chat.action.stopped": "已停止",
+	"ui.chat.composer.status.goal_collapse": "折叠会话目标",
+	"ui.chat.composer.status.goal_dismiss": "忽略",
+	"ui.chat.composer.status.goal_dismiss_keep": "仍保留在目标历史中",
+	"ui.chat.composer.status.goal_dismiss_name": "忽略已完成的目标",
+	"ui.chat.composer.status.goal_done": "完成",
+	"ui.chat.composer.status.goal_done_name": "将目标标记为完成",
+	"ui.chat.composer.status.goal_expand": "展开会话目标",
+	"ui.chat.composer.status.goal_label": "目标：",
+	"ui.chat.composer.status.jobs_action": "在运行详情中打开后台任务",
+	"ui.chat.composer.status.loop_clear": "清除循环",
+	"ui.chat.composer.status.loop_label": "循环：",
+	"ui.chat.composer.status.loop_progress_of_turns": "{completed, number, ::group-off}/{total, number, ::group-off}轮",
+	"ui.chat.composer.status.loop_progress_turns": "{count, plural, other {#轮}}",
+	"ui.chat.composer.status.loop_stop": "停止循环",
+	"ui.chat.composer.status.monitors_action": "在运行详情中打开监控项",
+	"ui.chat.composer.status.plan_action": "在运行详情中打开计划",
+	"ui.chat.composer.status.session_goal": "会话目标",
+	"ui.chat.composer.status.subagents_action": "在运行详情中打开子智能体",
+	"ui.chat.composer.status.wakes_action": "在运行详情中打开唤醒项",
+	"ui.chat.header_identity.loading": "{kind, select, agents {正在加载智能体……} teams {正在加载团队……} other {正在加载……}}",
+	"ui.chat.header_identity.no_matches": "没有与“{query}”匹配的结果。",
+	"ui.chat.header_identity.search": "{kind, select, agents {搜索智能体} teams {搜索团队} other {搜索}}",
+	"ui.chat.highlights.file_resolution_failed": "无法在此会话的工作目录中定位该文件。请使用“复制文件路径”，对照当前会话的工作区核对文件位置后再重试。",
+	"ui.chat.hub_update.check_now": "立即检查中心更新",
+	"ui.chat.hub_update.dismiss": "关闭",
+	"ui.chat.hub_update.dismiss_summary": "关闭更新摘要",
+	"ui.chat.hub_update.update_all": "全部更新（{count, number, ::group-off}）",
+	"ui.chat.hub_update.update_all_label": "{kind, select, agents {从中心应用全部{count, number, ::group-off}项智能体更新} teams {从中心应用全部{count, number, ::group-off}项团队更新} skills {从中心应用全部{count, number, ::group-off}项技能更新} other {从中心应用全部{count, number, ::group-off}项}}",
+	"ui.chat.hub_update.updating": "正在更新……",
+	"ui.chat.provider_error.action.open_provider_settings": "打开提供商设置",
+	"ui.chat.provider_error.action.open_radient_account": "打开Radient账户",
+	"ui.chat.provider_error.action.sign_in_radient": "登录Radient",
+	"ui.chat.provider_error.headline.out_of_credits": "额度已用尽{status}：{body}",
+	"ui.chat.provider_error.headline.out_of_credits_refused": "额度已用尽{status}：Radient拒绝了请求",
+	"ui.chat.question_dock.asking": "智能体正在提问",
+	"ui.chat.question_dock.from_agent_label": "智能体的提问",
+	"ui.chat.question_dock.secret_answer_label": "填写敏感信息",
+	"ui.chat.question_dock.secret_note": "输入时隐藏——会发送给智能体，不显示在会话记录中。",
+	"ui.chat.question_dock.secret_placeholder": "粘贴敏感信息",
+	"ui.chat.question_dock.secret_value_label": "敏感信息",
+	"ui.chat.question_dock.send": "发送",
+	"ui.chat.question_dock.show": "显示",
+	"ui.chat.question_dock.show_question_label": "显示智能体的问题",
+	"ui.chat.quota_notice.dismiss": "关闭",
+	"ui.chat.reply.remove": "移除回复",
+	"ui.chat.reply.replying_to": "正在回复",
+	"ui.chat.session_status.choose_model": "选择模型",
+	"ui.chat.session_status.choose_model_tooltip": "选择此对话使用的模型",
+	"ui.chat.session_status.estimate": "估算",
+	"ui.chat.session_status.last_reading": "上次读数",
+	"ui.chat.session_status.no_model_resolved": "尚未确定模型",
+	"ui.chat.skill_invocation.instructions_label": "随此消息发送的技能指令",
+	"ui.chat.skill_invocation.trigger_label": "{token}技能指令",
+	"ui.chat.status_strip.dismiss": "关闭",
+	"ui.chat.tabs.chat": "对话",
+	"ui.chat.tabs.raw": "原始",
+	"ui.chat.usage.blocked": "无法付费使用",
+	"ui.chat.usage.continue": "套餐内配额已用完，将继续扣减额度。",
+	"ui.chat.usage.eligibility_unknown": "付费使用资格未知",
+	"ui.chat.usage.family_caps": "模型系列用量上限仍然适用。",
+	"ui.chat.usage.unlimited": "付费用量不限",
+	"ui.chat.mermaid.zoom_in": "放大",
+	"ui.chat.mermaid.zoom_out": "缩小",
+	"ui.chat.mermaid.pan": "拖动平移",
+	"ui.chat.mermaid.pan_hint": "拖动图表以平移",
+	"ui.chat.mermaid.reset_view": "重置视图",
+	"ui.chat.mermaid.save_svg": "保存为SVG",
+	"ui.chat.mermaid.copied": "已复制",
+	"ui.chat.mermaid.copy_text": "复制Mermaid文本",
+	"ui.chat.mermaid.error_title": "Mermaid图表错误",
+	"ui.chat.mermaid.unexpected_error": "渲染图表时发生意外错误",
+	"ui.chat.mermaid.error_contained": "错误已被限制在图表组件内。",
+	"ui.chat.mermaid.chart_label": "图表",
+	"ui.chat.mermaid.loading": "正在加载图表……",
+	"ui.chat.mermaid.rendering_error": "渲染错误",
+	"ui.chat.mermaid.render_failed": "无法渲染图表内容。",
+	"ui.chat.mermaid.fullscreen": "全屏",
+	"ui.chat.mermaid.open_fullscreen": "全屏打开图表",
+	"ui.chat.mermaid.diagram_title": "Mermaid图表",
+	"ui.chat.mermaid.close_fullscreen": "退出全屏",
+	"ui.chat.aside.question_label": "问题：",
+	"ui.chat.aside.you_label": "你：",
+	"ui.chat.aside.thinking": "正在思考……",
+	"ui.chat.aside.title": "旁支对话",
+	"ui.chat.aside.off_record": "不留记录——这里的内容不会进入对话",
+	"ui.chat.aside.close_label": "关闭旁支对话",
+	"ui.chat.aside.exchange_label": "旁支对话内容",
+	"ui.chat.aside.empty": "在下方输入框中提问——回答会显示在这里。",
+	"ui.chat.aside.add_to_conversation": "添加到对话",
+	"ui.chat.error_block.heading": "错误",
+	"ui.chat.error_block.link.settings": "设置页面",
+	"ui.chat.error_block.link.providers": "模型提供商",
+	"ui.chat.error_block.provider.before": "你还没有选择AI提供商。请前往",
+	"ui.chat.error_block.provider.after": "为所有智能体配置提供商。如果没有AI提供商，可以登录Radient免费获取访问权限并开始使用。",
+	"ui.chat.error_block.model.before": "你还没有选择AI模型。请前往",
+	"ui.chat.error_block.model.after": "为所有智能体选择模型。如果没有AI提供商，可以登录Radient免费获取访问权限并开始使用。",
+	"ui.chat.error_block.rate_limit.before": "你已达到AI提供商的速率限制。请稍后重试，或在",
+	"ui.chat.error_block.rate_limit.after": "获取Radient Pass，以低价、无速率限制的方式访问AI模型。",
+	"ui.chat.error_block.rate_limit.all_after": "获取Radient Pass，以低价、无速率限制的方式访问全部AI模型。",
+	"ui.chat.error_block.invalid_key.before": "你的API密钥无效。请在",
+	"ui.chat.error_block.invalid_key.after": "中更新，或重新登录提供商。",
+	"ui.chat.error_block.unavailable.before": "你尝试使用的模型不可用。请前往",
+	"ui.chat.error_block.unavailable.after": "选择其他模型，或使用Radient访问数百个无速率限制的模型。",
+	"ui.chat.error_block.schema.before": "模型尝试执行操作，但无法以所需的schema表达其意图。通常是因为模型无法遵循智能体场景所需的复杂指令。",
+	"ui.chat.error_block.schema.after_before": "请在",
+	"ui.chat.error_block.schema.after": "更换模型以解决此问题。建议使用Radient Automatic，它会根据你的请求挑选最省钱、最智能的组合（通常比自带密钥更便宜），也可以选用带星标的推荐模型。",
+	"ui.chat.approval.reply_required": "回复yes或no即可回应审批请求。",
+	"ui.chat.question_dock.hint.approval": "在上方选择批准或拒绝，或输入yes、no、1或2后发送；也可以在消息输入框中按Esc停止本轮。",
+	"ui.chat.question_dock.hint.approval_held": "改在输入框中回答：输入yes、no、1或2后发送；也可以在消息输入框中按Esc停止本轮。",
+	"ui.chat.question_dock.hint.prefix": "问题{index}/{total}。",
+	"ui.chat.question_dock.hint.secret": "{prefix}在上方输入或粘贴敏感信息 · Enter发送 · Esc隐藏",
+	"ui.chat.question_dock.hint.secret_held": "{prefix}回答是否送达未知，暂时搁置——可能已经送达，因此无法再次发送 · 在卡片中按Esc可隐藏",
+	"ui.chat.question_dock.hint.type": "{prefix}在下方输入你的回答。",
+	"ui.chat.question_dock.hint.options": "{prefix}上下键选择 · Enter或{digits}作答 · Esc隐藏 · 也可以在下方输入自己的回答",
+	"ui.chat.session_status.context_heading": "上下文",
+	"ui.chat.session_status.context_nothing_measured_tooltip": "上下文：暂无读数。随着对话进行，上下文窗口会逐渐填充。",
+	"ui.chat.session_status.conversation_starting": "对话开始后即可设置。",
+	"ui.chat.session_status.model_none_resolved_tooltip": "模型：尚未确定。选择此对话使用的模型。",
+	"ui.chat.session_status.not_signed_in": "未登录{label}",
+	"ui.chat.session_status.not_signed_in_description": "此会话运行{label}，但登录不可用，因此在连接之前无法作答。",
+	"ui.chat.session_status.nothing_measured_yet": "暂无读数。随着对话进行，上下文窗口会逐渐填充。",
+	"ui.chat.session_status.temporarily_unavailable": "{label}暂时不可用",
+	"ui.chat.session_status.temporarily_unavailable_description": "登录信息仍已保存。稍后重试，或选择其他模型。",
+	"ui.chat.header_identity.no_agent": "无智能体",
+	"ui.chat.header_identity.no_team": "无团队",
+	"ui.chat.region.composer": "消息输入框",
+	"ui.chat.region.conversation": "对话区",
+	"ui.chat.checkpoint.generating_name": "正在生成名称……",
+	"ui.chat.checkpoint.jump_agent": "跳转到第{turn, number}轮（共{total, number}轮），{name}",
+	"ui.chat.checkpoint.jump_agent_unnamed": "跳转到第{turn, number}轮（共{total, number}轮）",
+	"ui.chat.checkpoint.jump_user": "跳转到你的消息（第{turn, number}轮，共{total, number}轮），{clock}",
+	"ui.chat.checkpoint.jump_user_no_clock": "跳转到你的消息（第{turn, number}轮，共{total, number}轮）",
+	"ui.chat.checkpoint.turn": "第{turn, number}轮（共{total, number}轮）",
+	"ui.chat.header_identity.aria_agent_assign": "智能体：{label}。分配智能体",
+	"ui.chat.header_identity.aria_agent_closed": "智能体：{label}。{reason}",
+	"ui.chat.header_identity.aria_agent_switch": "智能体：{label}。切换智能体",
+	"ui.chat.header_identity.aria_team_assign": "团队：{label}。分配团队",
+	"ui.chat.header_identity.aria_team_closed": "团队：{label}。{reason}",
+	"ui.chat.header_identity.aria_team_switch": "团队：{label}。切换团队",
+	"ui.chat.header_identity.assign_agent": "分配智能体",
+	"ui.chat.header_identity.assign_team": "分配团队",
+	"ui.chat.audio.play": "播放",
+	"ui.chat.audio.pause": "暂停",
+	"ui.chat.audio.play_label": "播放{label}",
+	"ui.chat.audio.pause_label": "暂停{label}",
+	"ui.chat.audio.mute": "静音",
+	"ui.chat.audio.unmute": "取消静音",
+	"ui.chat.message_controls.copy": "复制消息",
+	"ui.chat.message_controls.copied": "已复制",
+	"ui.chat.image_actions.save_as": "另存为……",
+	"ui.chat.image_actions.copy_image": "复制图片",
+	"ui.chat.image_actions.copy_image_url": "复制图片URL",
+	"ui.chat.image_actions.open_in_browser": "在浏览器中打开",
+	"ui.chat.image_actions.expand_image": "展开图片",
+	"ui.chat.composer.connect_provider": "连接提供商",
+	"ui.chat.slot_notice.run_draft_title": "开始对话后可查看运行详情",
+	"ui.chat.slot_notice.run_draft_detail": "发送消息开始对话，子智能体、计划和定时任务将显示在此处。",
+	"ui.chat.slot_notice.run_reading_title": "正在读取此对话的运行详情……",
+	"ui.chat.slot_notice.run_unreadable_title": "无法读取此对话的运行详情",
+	"ui.chat.slot_notice.run_unreadable_detail": "旁边的对话中说明了原因和重新连接的方法。",
+	"ui.chat.slot_notice.run_missing_detail": "此对话已不在本机上。",
+	"ui.chat.slot_notice.code_draft_title": "开始对话后可查看代码审查",
+	"ui.chat.slot_notice.code_draft_detail": "发送消息开始对话，创建或提及的拉取请求和合并请求将显示在此处。",
+	"ui.chat.slot_notice.code_below_version_title": "Local Operator服务器尚不支持代码审查",
+	"ui.chat.slot_notice.code_below_version_detail": "更新服务器即可查看此对话创建的拉取请求和合并请求。",
+	"ui.chat.slot_notice.code_checking_title": "正在检查服务器是否支持代码审查……",
+	"ui.chat.slot_notice.code_load_lead": "无法加载代码审查",
+	"ui.chat.slash_arguments.model_default_description": "将当前模型（{provider}/{model}）保存为新会话的默认模型。",
+	"ui.chat.slash_arguments.model_default_unavailable": "当前没有可保存的会话模型。",
+	"ui.chat.slash_arguments.model_default_click": "点击也可执行相同操作。",
+	"ui.chat.slash_arguments.model_default_required": "会话需先有模型，才能将其保存为默认模型。",
+	"ui.chat.slash_arguments.refresh_description": "重新读取对话并命名",
+	"ui.chat.slash_arguments.refresh_detail": "恢复自动命名",
+	"ui.chat.aside.add_to_conversation_tooltip": "将旁支对话添加到对话中",
+	"ui.chat.message_controls.content_header": "内容",
+	"ui.chat.message_controls.replacements_header": "替换内容",
+	"ui.chat.message_controls.thinking_label": "思考",
+	"ui.chat.scroll_to_bottom.label": "滚动到底部",
+	"ui.chat.scroll_to_bottom.label_new_activity": "有新活动，滚动到底部",
+	"ui.chat.session_status.last_reading_note": "这是重新连接之前的最后一次读数。",
+	"ui.chat.session_status.readings_aria_held": "会话读数。{note}",
+	"ui.chat.session_status.commands_off": "此服务器已关闭斜杠命令，因此无法从这里打开此读数。",
+	"ui.chat.session_status.context_click_breakdown_held": "点击查看完整明细，其中含对你下一次请求的估算。",
+	"ui.chat.session_status.context_click_breakdown_held_plain": "点击查看完整明细。",
+	"ui.chat.session_status.context_measured_now": "当前为实测值；点击查看完整明细，其中含对你下一次请求的估算",
+	"ui.chat.session_status.context_estimated_now": "当前为估算值；点击查看完整明细，其中含对你下一次请求的估算",
+	"ui.chat.session_status.context_click_breakdown": "点击查看完整明细",
+	"ui.chat.session_status.model_click_choose_draft": "点击选择其他模型。此设置适用于本次对话。",
+	"ui.chat.session_status.model_click_choose": "点击选择其他模型",
+	"ui.chat.session_status.model_draft_inert": "此对话将使用该模型。对话开始后即可更改。",
+	"ui.chat.session_status.effort_change_draft": "更改推理强度。此设置将应用于本次对话。",
+	"ui.chat.session_status.effort_change": "更改推理强度。",
+	"ui.chat.session_status.model_aria": "模型：{selector}{fast, select, yes {，快速模式已开启} other {}}。{reason}",
+	"ui.chat.session_status.model_aria_pending": "模型：{selector}{fast, select, yes {，快速模式已开启} other {}}。正在切换，等待会话确认。",
+	"ui.chat.session_status.switching_model": "正在切换模型",
+	"ui.chat.session_status.model_aria_unresolved": "模型：未能确定此对话的模型。请重试。",
+	"ui.chat.session_status.model_aria_resolving": "模型：正在确定此对话将使用的模型。",
+	"ui.chat.session_status.resolving_model_spinner": "正在确定此对话将使用的模型",
+	"ui.chat.session_status.context_aria_no_reading": "上下文：暂无读数。{hint}",
+	"ui.chat.session_status.context_aria_reading": "上下文：{spelling}{estimate, select, yes {，估算值} other {}}。{hint}",
+	"ui.chat.session_status.active_time_aria": "活跃时间：{duration}。{explanation}",
+	"ui.chat.session_status.duration_explanation": "工作所用的时间；等待不计入。",
+	"ui.chat.session_status.effort_level.low": "低",
+	"ui.chat.session_status.effort_level.medium": "中",
+	"ui.chat.session_status.effort_level.high": "高"
+}
+
+$ git diff origin/main HEAD -- src/i18n/catalogues/zh-CN/ui.chat.json
+exit=0
+diff --git a/src/i18n/catalogues/zh-CN/ui.chat.json b/src/i18n/catalogues/zh-CN/ui.chat.json
+index eb93c144835..8d79180ed8a 100644
+--- a/src/i18n/catalogues/zh-CN/ui.chat.json
++++ b/src/i18n/catalogues/zh-CN/ui.chat.json
+@@ -204,5 +204,7 @@
+ 	"ui.chat.session_status.duration_explanation": "工作所用的时间；等待不计入。",
+ 	"ui.chat.session_status.effort_level.low": "低",
+ 	"ui.chat.session_status.effort_level.medium": "中",
+-	"ui.chat.session_status.effort_level.high": "高"
++	"ui.chat.session_status.effort_level.high": "高",
++	"ui.chat.image_actions.actions": "图片操作",
++	"ui.chat.audio.position_label": "{label}的播放位置"
+ }
+
+$ shasum -a 256 src/i18n/catalogues/en/ui.chat.composer_media.json
+exit=0
+79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae  src/i18n/catalogues/en/ui.chat.composer_media.json
+
+$ shasum -a 256 src/i18n/catalogues/zh-CN/ui.chat.composer_media.json
+exit=0
+d32d42c7972f9cb433844db9d41fe79da6aa05b8c6a2b80643947f4179950df8  src/i18n/catalogues/zh-CN/ui.chat.composer_media.json
+
+$ shasum -a 256 src/i18n/catalogues/en/ui.chat.composer_media.context.json
+exit=0
+a0fbc1552ef6f27999f3cff365750025627a284faa106d767e22a24d131ae77b  src/i18n/catalogues/en/ui.chat.composer_media.context.json
+
+$ git show origin/main:src/i18n/catalogues/en/ui.chat.composer_media.json
+exit=0
+{
+	"ui.chat.composer_media.recording": "Recording",
+	"ui.chat.composer_media.confirms": "inserts",
+	"ui.chat.composer_media.cancels": "cancels",
+	"ui.chat.composer_media.sends_now": "sends now",
+	"ui.chat.composer_media.pasted_type": "Pasted {mimeType}",
+	"ui.chat.composer_media.pasted_file": "Pasted file",
+	"ui.chat.composer_media.preview_failed": "Could not be previewed",
+	"ui.chat.composer_media.remove_attachment": "Remove attachment"
+}
+
+$ git diff origin/main HEAD -- src/i18n/catalogues/en/ui.chat.composer_media.json
+exit=0
+diff --git a/src/i18n/catalogues/en/ui.chat.composer_media.json b/src/i18n/catalogues/en/ui.chat.composer_media.json
+index ff141a20048..78c1e54d3df 100644
+--- a/src/i18n/catalogues/en/ui.chat.composer_media.json
++++ b/src/i18n/catalogues/en/ui.chat.composer_media.json
+@@ -6,5 +6,6 @@
+ 	"ui.chat.composer_media.pasted_type": "Pasted {mimeType}",
+ 	"ui.chat.composer_media.pasted_file": "Pasted file",
+ 	"ui.chat.composer_media.preview_failed": "Could not be previewed",
+-	"ui.chat.composer_media.remove_attachment": "Remove attachment"
++	"ui.chat.composer_media.remove_attachment": "Remove attachment",
++	"ui.chat.composer_media.pasted_image": "Pasted image"
+ }
+
+$ git show origin/main:src/i18n/catalogues/zh-CN/ui.chat.composer_media.json
+exit=0
+{
+	"ui.chat.composer_media.recording": "录音中",
+	"ui.chat.composer_media.confirms": "插入",
+	"ui.chat.composer_media.cancels": "取消",
+	"ui.chat.composer_media.sends_now": "立即发送",
+	"ui.chat.composer_media.pasted_type": "粘贴的{mimeType}",
+	"ui.chat.composer_media.pasted_file": "粘贴的文件",
+	"ui.chat.composer_media.preview_failed": "无法预览",
+	"ui.chat.composer_media.remove_attachment": "移除附件"
+}
+
+$ git diff origin/main HEAD -- src/i18n/catalogues/zh-CN/ui.chat.composer_media.json
+exit=0
+diff --git a/src/i18n/catalogues/zh-CN/ui.chat.composer_media.json b/src/i18n/catalogues/zh-CN/ui.chat.composer_media.json
+index 502db794866..64da22d8a9b 100644
+--- a/src/i18n/catalogues/zh-CN/ui.chat.composer_media.json
++++ b/src/i18n/catalogues/zh-CN/ui.chat.composer_media.json
+@@ -6,5 +6,6 @@
+ 	"ui.chat.composer_media.pasted_type": "粘贴的{mimeType}",
+ 	"ui.chat.composer_media.pasted_file": "粘贴的文件",
+ 	"ui.chat.composer_media.preview_failed": "无法预览",
+-	"ui.chat.composer_media.remove_attachment": "移除附件"
++	"ui.chat.composer_media.remove_attachment": "移除附件",
++	"ui.chat.composer_media.pasted_image": "粘贴的图片"
+ }
+
+$ shasum -a 256 src/i18n/catalogues/en/ui.common.actions.json
+exit=0
+0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b  src/i18n/catalogues/en/ui.common.actions.json
+
+$ shasum -a 256 src/i18n/catalogues/zh-CN/ui.common.actions.json
+exit=0
+9372ac48a563ad7ea188dcaca65ec3c2d165ed5188b8f45bb916c2bd726541bb  src/i18n/catalogues/zh-CN/ui.common.actions.json
+
+$ shasum -a 256 src/i18n/catalogues/en/ui.common.actions.context.json
+exit=0
+24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d  src/i18n/catalogues/en/ui.common.actions.context.json
+
+$ git show origin/main:src/i18n/catalogues/en/ui.common.actions.json
+exit=0
+{
+	"ui.common.actions.cancel": "Cancel",
+	"ui.common.actions.close": "Close",
+	"ui.common.actions.copied": "Copied",
+	"ui.common.actions.copy_failed": "Could not copy. Select and copy it manually.",
+	"ui.common.actions.dismiss": "Dismiss",
+	"ui.common.actions.more_info": "More info",
+	"ui.common.actions.retry": "Retry",
+	"ui.common.actions.retry_again": "Try again",
+	"ui.common.actions.retrying": "Trying…",
+	"ui.common.actions.date_time_picker.select_date": "Select date",
+	"ui.common.actions.date_time_picker.choose_date": "Choose {label} date",
+	"ui.common.actions.date_time_picker.select_time": "Select time",
+	"ui.common.actions.date_time_picker.choose_time": "Choose {label} time",
+	"ui.common.actions.date_time_picker.set_to_current_time": "Set to current time",
+	"ui.common.actions.date_time_picker.set_to_current_time369877": "Set {label} to current time",
+	"ui.common.actions.file_actions_menu.file_actions": "File actions",
+	"ui.common.actions.file_actions_menu.file_path_copied_to_clipboard": "File path copied to clipboard",
+	"ui.common.actions.file_actions_menu.failed_to_copy_file_path": "Failed to copy file path",
+	"ui.common.actions.find_replace_widget.switch_to_replace": "Switch to replace",
+	"ui.common.actions.find_replace_widget.switch_to_find": "Switch to find",
+	"ui.common.actions.find_replace_widget.find": "Find",
+	"ui.common.actions.find_replace_widget.replace": "Replace",
+	"ui.common.actions.find_replace_widget.no_results": "No results",
+	"ui.common.actions.find_replace_widget.previous_match": "Previous match",
+	"ui.common.actions.find_replace_widget.next_match": "Next match",
+	"ui.common.actions.find_replace_widget.replace_enter": "Replace (Enter)",
+	"ui.common.actions.find_replace_widget.replace_all_cmd_ctrl_enter": "Replace all (Cmd/Ctrl+Enter)",
+	"ui.common.actions.find_replace_widget.replace_all": "Replace all",
+	"ui.common.actions.find_replace_widget.all": "All",
+	"ui.common.actions.find_replace_widget.close": "Close",
+	"ui.common.actions.text_selection_controls.ask_for_an_edit": "Ask for an edit",
+	"ui.common.actions.text_selection_controls.copy": "Copy",
+	"ui.common.actions.text_selection_controls.copy_without_formatting": "Copy without formatting",
+	"ui.common.actions.text_selection_controls.reply": "Reply",
+	"ui.common.actions.text_selection_controls.refer_to_this_from_file": "Refer to this from file",
+	"ui.common.actions.text_selection_controls.open_in_browser": "Open in browser",
+	"ui.common.actions.confirmation_modal.confirm": "Confirm",
+	"ui.common.actions.confirmation_modal.cancel": "Cancel",
+	"ui.common.actions.find_replace_widget.of": "{currentmatch, number, ::group-off} of {matchcount, number, ::group-off}",
+	"ui.common.actions.agent_created": "Agent created",
+	"ui.common.actions.agent_deleted": "Agent deleted",
+	"ui.common.actions.agent_imported": "Agent imported",
+	"ui.common.actions.agent_exported": "Agent exported",
+	"ui.common.actions.agent_updated": "Agent updated",
+	"ui.common.actions.agent_system_prompt_updated": "Agent system prompt updated",
+	"ui.common.actions.conversation_cleared": "Conversation cleared",
+	"ui.common.actions.variable_created": "Variable created",
+	"ui.common.actions.variable_updated": "Variable updated",
+	"ui.common.actions.variable_deleted": "Variable deleted",
+	"ui.common.actions.configuration_updated": "Configuration updated",
+	"ui.common.actions.system_prompt_updated": "System prompt updated",
+	"ui.common.actions.credential_updated": "Credential \"{key}\" updated successfully",
+	"ui.common.actions.clear": "Clear"
+}
+
+$ git diff origin/main HEAD -- src/i18n/catalogues/en/ui.common.actions.json
+exit=0
+diff --git a/src/i18n/catalogues/en/ui.common.actions.json b/src/i18n/catalogues/en/ui.common.actions.json
+index a93ec6d0e6a..b6617047d46 100644
+--- a/src/i18n/catalogues/en/ui.common.actions.json
++++ b/src/i18n/catalogues/en/ui.common.actions.json
+@@ -51,5 +51,6 @@
+ 	"ui.common.actions.configuration_updated": "Configuration updated",
+ 	"ui.common.actions.system_prompt_updated": "System prompt updated",
+ 	"ui.common.actions.credential_updated": "Credential \"{key}\" updated successfully",
+-	"ui.common.actions.clear": "Clear"
++	"ui.common.actions.clear": "Clear",
++	"ui.common.actions.actions_for_name": "Actions for {name}"
+ }
+
+$ git show origin/main:src/i18n/catalogues/zh-CN/ui.common.actions.json
+exit=0
+{
+	"ui.common.actions.cancel": "取消",
+	"ui.common.actions.close": "关闭",
+	"ui.common.actions.copied": "已复制",
+	"ui.common.actions.copy_failed": "无法复制。请选中内容后手动复制。",
+	"ui.common.actions.dismiss": "忽略",
+	"ui.common.actions.more_info": "更多信息",
+	"ui.common.actions.retry": "重试",
+	"ui.common.actions.retry_again": "再试一次",
+	"ui.common.actions.retrying": "正在重试……",
+	"ui.common.actions.date_time_picker.select_date": "选择日期",
+	"ui.common.actions.date_time_picker.choose_date": "选择{label}日期",
+	"ui.common.actions.date_time_picker.select_time": "选择时间",
+	"ui.common.actions.date_time_picker.choose_time": "选择{label}时间",
+	"ui.common.actions.date_time_picker.set_to_current_time": "设为当前时间",
+	"ui.common.actions.date_time_picker.set_to_current_time369877": "将{label}设为当前时间",
+	"ui.common.actions.file_actions_menu.file_actions": "文件操作",
+	"ui.common.actions.file_actions_menu.file_path_copied_to_clipboard": "文件路径已复制到剪贴板",
+	"ui.common.actions.file_actions_menu.failed_to_copy_file_path": "复制文件路径失败",
+	"ui.common.actions.find_replace_widget.switch_to_replace": "切换到替换",
+	"ui.common.actions.find_replace_widget.switch_to_find": "切换到查找",
+	"ui.common.actions.find_replace_widget.find": "查找",
+	"ui.common.actions.find_replace_widget.replace": "替换",
+	"ui.common.actions.find_replace_widget.no_results": "无结果",
+	"ui.common.actions.find_replace_widget.previous_match": "上一个匹配项",
+	"ui.common.actions.find_replace_widget.next_match": "下一个匹配项",
+	"ui.common.actions.find_replace_widget.replace_enter": "替换（Enter）",
+	"ui.common.actions.find_replace_widget.replace_all_cmd_ctrl_enter": "全部替换（Cmd/Ctrl+Enter）",
+	"ui.common.actions.find_replace_widget.replace_all": "全部替换",
+	"ui.common.actions.find_replace_widget.all": "全部",
+	"ui.common.actions.find_replace_widget.close": "关闭",
+	"ui.common.actions.text_selection_controls.ask_for_an_edit": "请求修改",
+	"ui.common.actions.text_selection_controls.copy": "复制",
+	"ui.common.actions.text_selection_controls.copy_without_formatting": "复制为纯文本",
+	"ui.common.actions.text_selection_controls.reply": "回复",
+	"ui.common.actions.text_selection_controls.refer_to_this_from_file": "从文件引用此内容",
+	"ui.common.actions.text_selection_controls.open_in_browser": "在浏览器中打开",
+	"ui.common.actions.confirmation_modal.confirm": "确认",
+	"ui.common.actions.confirmation_modal.cancel": "取消",
+	"ui.common.actions.find_replace_widget.of": "第{currentmatch, number, ::group-off}项，共{matchcount, number, ::group-off}项",
+	"ui.common.actions.agent_created": "智能体已创建",
+	"ui.common.actions.agent_deleted": "智能体已删除",
+	"ui.common.actions.agent_imported": "智能体已导入",
+	"ui.common.actions.agent_exported": "智能体已导出",
+	"ui.common.actions.agent_updated": "智能体已更新",
+	"ui.common.actions.agent_system_prompt_updated": "智能体系统提示词已更新",
+	"ui.common.actions.conversation_cleared": "对话已清空",
+	"ui.common.actions.variable_created": "变量已创建",
+	"ui.common.actions.variable_updated": "变量已更新",
+	"ui.common.actions.variable_deleted": "变量已删除",
+	"ui.common.actions.configuration_updated": "配置已更新",
+	"ui.common.actions.system_prompt_updated": "系统提示词已更新",
+	"ui.common.actions.credential_updated": "凭据“{key}”已更新",
+	"ui.common.actions.clear": "清空"
+}
+
+$ git diff origin/main HEAD -- src/i18n/catalogues/zh-CN/ui.common.actions.json
+exit=0
+diff --git a/src/i18n/catalogues/zh-CN/ui.common.actions.json b/src/i18n/catalogues/zh-CN/ui.common.actions.json
+index 5af60fec22f..a3ac1927013 100644
+--- a/src/i18n/catalogues/zh-CN/ui.common.actions.json
++++ b/src/i18n/catalogues/zh-CN/ui.common.actions.json
+@@ -51,5 +51,6 @@
+ 	"ui.common.actions.configuration_updated": "配置已更新",
+ 	"ui.common.actions.system_prompt_updated": "系统提示词已更新",
+ 	"ui.common.actions.credential_updated": "凭据“{key}”已更新",
+-	"ui.common.actions.clear": "清空"
++	"ui.common.actions.clear": "清空",
++	"ui.common.actions.actions_for_name": "{name}的操作"
+ }
+
+$ shasum -a 256 /Users/damian/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/glossary.md
+exit=0
+0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8  /Users/damian/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/glossary.md
+
+$ node --input-type=module -e import fs from 'node:fs'; import {parse} from '@formatjs/icu-messageformat-parser'; const groups={'ui.chat':['ui.chat.image_actions.actions','ui.chat.audio.position_label'],'ui.chat.composer_media':['ui.chat.composer_media.pasted_image'],'ui.common.actions':['ui.common.actions.actions_for_name']}; for(const [ns,keys] of Object.entries(groups)){for(const locale of ['en','zh-CN']){const d=JSON.parse(fs.readFileSync(`src/i18n/catalogues/${locale}/${ns}.json`,'utf8'));for(const key of keys){console.log(locale,key,JSON.stringify(parse(d[key])));}}}
+exit=0
+en ui.chat.image_actions.actions [{"type":0,"value":"Image actions"}]
+en ui.chat.audio.position_label [{"type":1,"value":"label"},{"type":0,"value":" position"}]
+zh-CN ui.chat.image_actions.actions [{"type":0,"value":"图片操作"}]
+zh-CN ui.chat.audio.position_label [{"type":1,"value":"label"},{"type":0,"value":"的播放位置"}]
+en ui.chat.composer_media.pasted_image [{"type":0,"value":"Pasted image"}]
+zh-CN ui.chat.composer_media.pasted_image [{"type":0,"value":"粘贴的图片"}]
+en ui.common.actions.actions_for_name [{"type":0,"value":"Actions for "},{"type":1,"value":"name"}]
+zh-CN ui.common.actions.actions_for_name [{"type":1,"value":"name"},{"type":0,"value":"的操作"}]
+
+$ git status --porcelain
+exit=0
+?? scripts/_attachment-chrome-29049.mjs
+
+$ git rev-parse HEAD
+exit=0
+e5fb4310dab638f9cf428779d62539ec039a8990
+
+$ shasum -a 256 src/i18n/catalogues/en/ui.chat.json
+exit=0
+ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15  src/i18n/catalogues/en/ui.chat.json
+
+$ shasum -a 256 src/i18n/catalogues/zh-CN/ui.chat.json
+exit=0
+6c28931de502a5fd821f9bd9ff779a55599681804575a8a2ba4cdc3346c1e1b9  src/i18n/catalogues/zh-CN/ui.chat.json
+
+$ shasum -a 256 src/i18n/catalogues/en/ui.chat.context.json
+exit=0
+84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf  src/i18n/catalogues/en/ui.chat.context.json
+
+$ shasum -a 256 src/i18n/catalogues/en/ui.chat.composer_media.json
+exit=0
+79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae  src/i18n/catalogues/en/ui.chat.composer_media.json
+
+$ shasum -a 256 src/i18n/catalogues/zh-CN/ui.chat.composer_media.json
+exit=0
+d32d42c7972f9cb433844db9d41fe79da6aa05b8c6a2b80643947f4179950df8  src/i18n/catalogues/zh-CN/ui.chat.composer_media.json
+
+$ shasum -a 256 src/i18n/catalogues/en/ui.chat.composer_media.context.json
+exit=0
+a0fbc1552ef6f27999f3cff365750025627a284faa106d767e22a24d131ae77b  src/i18n/catalogues/en/ui.chat.composer_media.context.json
+
+$ shasum -a 256 src/i18n/catalogues/en/ui.common.actions.json
+exit=0
+0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b  src/i18n/catalogues/en/ui.common.actions.json
+
+$ shasum -a 256 src/i18n/catalogues/zh-CN/ui.common.actions.json
+exit=0
+9372ac48a563ad7ea188dcaca65ec3c2d165ed5188b8f45bb916c2bd726541bb  src/i18n/catalogues/zh-CN/ui.common.actions.json
+
+$ shasum -a 256 src/i18n/catalogues/en/ui.common.actions.context.json
+exit=0
+24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d  src/i18n/catalogues/en/ui.common.actions.context.json
+
+DERIVED INTERPOLATION EXAMPLES (not UI renders)
+[
+  {
+    "user_string": "report.txt",
+    "actions": "report.txt的操作",
+    "audio": "report.txt的播放位置"
+  },
+  {
+    "user_string": "图片.png",
+    "actions": "图片.png的操作",
+    "audio": "图片.png的播放位置"
+  },
+  {
+    "user_string": "O'Brien “x”, (1).png",
+    "actions": "O'Brien “x”, (1).png的操作",
+    "audio": "O'Brien “x”, (1).png的播放位置"
+  },
+  {
+    "user_string": "名前「案」.png",
+    "actions": "名前「案」.png的操作",
+    "audio": "名前「案」.png的播放位置"
+  }
+]

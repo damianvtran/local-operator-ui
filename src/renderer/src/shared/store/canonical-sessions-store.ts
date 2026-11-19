@@ -1,23 +1,3 @@
-/** Canonical sessions are the only conversation identities. Profile names stage
- * drafts; the legacy agent mapping is retained only to resolve old deep links.
- *
- * SHARED CONVENTION, NAMED THE SAME WAY AT THE TUI'S ROW-NORMALISATION POINT
- * (`SessionSidebar._unpinned_rank`) AND IN ITS `docs/design/mesh-ui.md` §1.3.1,
- * AND BY THIS SIBLING CHANGE - the sentence kept verbatim across surfaces
- * (design review round 1, D4; agent review round 1, R1):
- *
- * > Remote rows are first-class: they file into the same bins as local rows under
- * > the same ordering rule, carry a per-row indicator, and their hover reads the
- * > owning device and its network; there is no separate remote section.
- *
- * This module is the UI's half of that sentence: `settlePeerCatalogue` merges a
- * peers-inclusive answer's remote rows into this catalogue, the sidebar renders
- * them through the one row component (the reserved locality cell and its mark in
- * `features/chat/components/chat-remote-mark.tsx`, the flyout's and the
- * accessible name's one fragment in `features/chat/chat-remote.ts`), and the
- * bins that sentence names are this list's own - Running, Today, This week,
- * Older, Pinned.
- */
 import {
 	DesktopControlError,
 	UserFacingError,
@@ -50,12 +30,23 @@ import {
 } from "@shared/store/conversation-input-store";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { TagRef } from "../../../../shared/desktop-contract";
+import { t } from "../../../../i18n/messages";
+import {
+	type UnreadCompletionKind,
+	isUnreadAckableCompletion,
+	unreadCompletionKind,
+} from "../../../../shared/completion-attention";
+import type {
+	SettingsIntent,
+	SettingsIntentError,
+	SettingsIntentKind,
+	SettingsIntentSlots,
+	TagRef,
+} from "../../../../shared/desktop-contract";
 import {
 	DESKTOP_DEADLINE_EXCEEDED_CODE,
 	DESKTOP_LOST_SIGHT_CODE,
 	DESKTOP_REFUSAL_CODE,
-	DESKTOP_REFUSAL_SENTENCE,
 	type DelegatedCleanupNotice,
 	type DesktopModelSelection,
 	type DesktopRequest,
@@ -70,9 +61,74 @@ import {
 	type SessionBinding,
 	type SessionCatalogueStatus,
 	type SessionOpenedBy,
+	type SessionStatusFrameCounts,
+	type SessionTemporaryInfo,
 	mergeCompletionAttention,
 } from "../../../../shared/desktop-session-contract";
 import type { LaunchTarget } from "../../../../shared/open-session";
+/*
+ * The one filter for the draft model that goes on the wire (round 2's F1
+ * follow-up). A pure function with no React or store dependency, which is why
+ * the direction is safe: this store is below it, and nothing there reads state.
+ */
+import { draftCreatesTemporary } from "../../features/chat/chat-temporary";
+import { draftModelForWire } from "../../features/chat/draft-selection";
+import {
+	type FailureCause,
+	failureCauseOf,
+} from "../../features/chat/send-recovery";
+/*
+ * THE SEAM'S SHAPE AND THE CODE ITS BUDGET REFUSAL CARRIES. `AdmissionSeam` is
+ * a type (erased at build); `MESSAGE_BUDGET_CODE` is a value, because a code is
+ * a fact two modules have to spell the same way - `isRefusedBeforeAdmission`
+ * reads it as the refusal it is (see that constant's own note).
+ */
+import {
+	type AdmissionSeam,
+	MESSAGE_BUDGET_CODE,
+} from "../../features/chat/utils/message-budget";
+import {
+	type PeerDeviceFact,
+	applyPeerDeviceFact,
+	mergePeerDeviceFacts,
+	reconcilePeerDeviceSnapshot,
+} from "../../features/mesh/peer-presence";
+import { desktopRefusalSentence } from "../api/local-operator/desktop-refusal-copy";
+// Relative, like the line above: the store's node suites bundle it without an
+// `@shared` alias and resolve only the `@shared` paths they stub, so a new
+// `@shared/...` import is unresolvable there (merge-gate run 42679243544).
+import { isServerUpdatingError } from "../api/local-operator/server-updating-error";
+/** Canonical sessions are the only conversation identities. Profile names stage
+ * drafts; the legacy agent mapping is retained only to resolve old deep links.
+ *
+ * SHARED CONVENTION, NAMED THE SAME WAY AT THE TUI'S ROW-NORMALISATION POINT
+ * (`SessionSidebar._unpinned_rank`) AND IN ITS `docs/design/mesh-ui.md` §1.3.1,
+ * AND BY THIS SIBLING CHANGE - the sentence kept verbatim across surfaces
+ * (design review round 1, D4; agent review round 1, R1):
+ *
+ * > Remote rows are first-class: they file into the same bins as local rows under
+ * > the same ordering rule, carry a per-row indicator, and their hover reads the
+ * > owning device and its network; there is no separate remote section.
+ *
+ * This module is the UI's half of that sentence: `settlePeerCatalogue` merges a
+ * peers-inclusive answer's remote rows into this catalogue, the sidebar renders
+ * them through the one row component (the reserved locality cell and its mark in
+ * `features/chat/components/chat-remote-mark.tsx`, the flyout's and the
+ * accessible name's one fragment in `features/chat/chat-remote.ts`), and the
+ * bins that sentence names are this list's own - Running, Today, This week,
+ * Older, Pinned.
+ */
+import { quotaSafePersistStorage } from "./quota-safe-storage";
+import {
+	EMPTY_SETTINGS_INTENTS,
+	type SettingsIntentsMirror,
+	applyIntentFrame,
+	applySessionSlots,
+	failLocalIntent,
+	hydrateIntents,
+	paintIntent,
+	removeIntent,
+} from "./settings-intents";
 
 export type CanonicalSessionRow = {
 	session_id: string;
@@ -113,6 +169,19 @@ export type CanonicalSessionRow = {
 	preview?: string | null;
 	attention?: CompletionAttention;
 	live_state?: string;
+	link_down?: boolean;
+	/**
+	 * `link_down` while the owner's relay is still inside its redial grace window
+	 * (`PeerDeviceFact.redial_state`). The row keeps every link-down guard (no
+	 * stale idle mark, no stale status) and only its WORDS and INK soften:
+	 * "Reconnecting" in dim ink rather than an amber "Link down" for a blip.
+	 */
+	link_reconnecting?: boolean;
+	peer_reach?: import("../../features/mesh/mesh-reach").DeviceReach;
+	last_seen_at?: number | null;
+	link_down_reason?: string | null;
+	waiting_on?: number | null;
+	jobs_running?: number | null;
 	pending?: string | null;
 	/**
 	 * How many QUEUED asks this conversation has open, as the catalogue row
@@ -147,6 +216,8 @@ export type CanonicalSessionRow = {
 	pinned?: boolean;
 	/** Durable assignments; absence supports backends predating session_tags. */
 	tags?: TagRef[];
+	/** Absent on older cores; only send revision guards when the core supplied one. */
+	tags_revision?: string;
 	/** Explicit primary ID (a member of tags), or null for Untagged. */
 	primary?: string | null;
 	/**
@@ -161,6 +232,12 @@ export type CanonicalSessionRow = {
 	 * optimistic `true` immortal after an unarchive made somewhere else.
 	 */
 	archived?: boolean;
+	/**
+	 * The TEMPORARY-chat state as the catalogue row carried it, `null` (or absent,
+	 * on an older core) meaning not temporary. Declared for the index-signature
+	 * reason `archived` gives; read through `features/chat/chat-temporary.ts`.
+	 */
+	temporary?: SessionTemporaryInfo | null;
 	status?: SessionCatalogueStatus;
 	/**
 	 * The feed's stamp for `status`, as the catalogue row carried it.
@@ -202,6 +279,14 @@ export type CanonicalSessionRow = {
 	 */
 	subagents_running?: number | null;
 	subagents_queued?: number | null;
+	/**
+	 * Whether the session still has work running beside or after its own turn
+	 * (a subagent running or queued, a background job, an armed wait). Core
+	 * derives it from the counts on this row, independent of `status.code` and
+	 * not suppressed by a build drain; absent on a backend older than the
+	 * field, which `hasBackgroundWork` reads as "fall back to the code".
+	 */
+	background_work?: boolean;
 	binding?: SessionBinding;
 	/**
 	 * Who opened this conversation, when an agent rather than the operator did.
@@ -214,6 +299,14 @@ export type CanonicalSessionRow = {
 	 * `opened_by` leaves it `undefined` and the marker undrawn.
 	 */
 	opened_by?: SessionOpenedBy | null;
+	/**
+	 * The bound local agent and its picture digest, off the wire row
+	 * (`SessionCatalogueRow.agent_id` / `avatar_sha256`). Declared for the reason
+	 * `opened_by` is - the sidebar row reads both, and an undeclared key is
+	 * `unknown` - and spread in by `projectRows` like every other wire field.
+	 */
+	agent_id?: string | null;
+	avatar_sha256?: string | null;
 	/**
 	 * THE MESH'S FLAT LOCALITY FIELDS, on rows that arrived from a listing which
 	 * asked for peers (`include_peers`). Declared rather than left to the index
@@ -326,6 +419,12 @@ export type HeldClaimPageEntry = { id: string; ts: number };
 
 export type PinFailure = {
 	sessionId: string;
+	/**
+	 * The refusal's machine code, when the core sent one. Read for ONE case today:
+	 * `session_temporary` (a temporary chat cannot be pinned until it is kept),
+	 * which turns the line's Retry into "Keep and pin" (`refusalRemedy`).
+	 */
+	code?: string;
 	/** The desired state that was refused, not the state on screen. */
 	pinned: boolean;
 	/**
@@ -531,9 +630,28 @@ export type DraftsUndoOffer = {
  *
  * The title is kept only so a surface that has to NAME the conversation after the
  * row is gone can still do so - the pane's header is the one that needs it, and
- * "Untitled chat" over a conversation the user just deleted names nothing. The
+ * an untitled placeholder over a conversation the user just deleted names nothing. The
  * not-found writer has no title to give: it never read one.
  */
+/*
+ * Presentation-only title fallback. Empty titles stay empty in the session
+ * model; the two legacy English sentinels are accepted so older cached state
+ * does not remain English after a locale switch.
+ */
+export function conversationTitleForDisplay(
+	title: string | null | undefined,
+	fallback: "untitled" | "this_chat" = "untitled",
+): string {
+	const normalized = title?.trim();
+	if (!normalized)
+		return fallback === "this_chat"
+			? t("ui.chat.canonical.this_chat")
+			: t("ui.chat.canonical.untitled");
+	if (normalized === "Untitled chat") return t("ui.chat.canonical.untitled");
+	if (normalized === "this chat") return t("ui.chat.canonical.this_chat");
+	return normalized;
+}
+
 export type ForgottenFact = {
 	/** The request sequence the delete took, which orders it against every read. */
 	at: number;
@@ -647,12 +765,30 @@ export type ChatDraft = {
 	 * screen.
 	 */
 	peer?: string;
+	/**
+	 * Start this conversation as a TEMPORARY chat (`features.temporary_chats`):
+	 * the header's dashed toggle, Ctrl+Shift+N and the palette's "New temporary
+	 * chat" write it, and `sessions.create` sends it as the wire's `temporary`.
+	 * DRAFT state like `peer`, and sent only while the store says the core
+	 * advertises the capability (`temporaryChats`), because a persisted draft
+	 * replayed against an older core would otherwise 422 the whole create.
+	 */
+	temporary?: boolean;
 	pending?: boolean;
 	error?: string;
 	errorCode?: string;
 	submittedText?: string;
 	submittedAttachments?: string[];
 	submittedImages?: ChatImage[];
+	/**
+	 * The uploaded file references the FIRST attempt of this message carried.
+	 *
+	 * Pinned beside `submittedImages` for the receipt rule: a replay must send the
+	 * bytes the first attempt hashed, and re-running the upload would at best
+	 * re-derive the same digests and at worst fail because the file moved after
+	 * the press. Absent on every draft that had no files.
+	 */
+	submittedFiles?: ChatFile[];
 	submittedMode?: "prompt" | "steer";
 	/**
 	 * The provenance the FIRST attempt of the current message carried (arch
@@ -706,6 +842,14 @@ export type ChatDraft = {
 	 * decision, taken where the failure was classified, read by whoever renders.
 	 */
 	errorRetry?: boolean;
+	/**
+	 * The configuration cause `sendFailureCopy` classified this failure by, when
+	 * the backend's sentence named one (no provider, no model). Kept on the row
+	 * for the same reason as `errorRetry`: the row outlives the Error, and the
+	 * sentence it keeps is this app's own, so the cause cannot be re-read from it
+	 * (agent review round 1, R1).
+	 */
+	errorCause?: FailureCause;
 	/**
 	 * Set once a message the PREVIOUS release held outside the composer has been
 	 * moved back into it (`migrateHeldClaim`), so the move happens once however
@@ -768,7 +912,46 @@ export type ChatDraft = {
 export type ChatImage = {
 	data_b64: string;
 	mime_type: "image/png" | "image/jpeg" | "image/gif" | "image/webp";
+	/** Origin path when the image was read from disk (contract v1 §1.3). */
+	origin_path?: string;
 };
+
+/**
+ * One uploaded file a message references (contract v1 §1.2).
+ *
+ * The digest is the attachment store's content address; everything else is
+ * display/provenance and is optional on the wire because a reference without a
+ * name still resolves. Declared beside `ChatImage` because the two are the
+ * payload's halves and every caller passes both.
+ */
+export type ChatFile = {
+	digest: string;
+	name?: string;
+	mime_type?: string;
+	bytes?: number;
+	path?: string;
+};
+
+/**
+ * The echo's view of the files a press uploaded.
+ *
+ * The id shape matches `extractDocuments`'s (`${recordId}:doc:${n}`), so the
+ * optimistic row and the owner's durable row coalesce onto the same keys rather
+ * than remounting every file card when the send is confirmed.
+ */
+function documentsOf(files: readonly ChatFile[], recordId: string) {
+	return files.map((file, index) => ({
+		id: `${recordId}:doc:${index}`,
+		attachment: file.digest,
+		filename: file.name ?? "Attached file",
+		mimeType: file.mime_type ?? "application/octet-stream",
+		path: file.path ?? null,
+		// The client's FileRef carries no store path (contract §1.2), so an echo
+		// paints without one; the owner's durable row supplies it when it lands.
+		storedPath: null,
+		bytes: file.bytes ?? 0,
+	}));
+}
 
 /**
  * Shown when a send failed with nothing user-facing to say - a runtime
@@ -838,8 +1021,8 @@ export const SESSION_UNVALIDATED_CODE = "session_unvalidated";
  * its own - the stream's own lost-connection sentence is preferred there, so
  * the composer and the transcript cannot disagree (design round 1, D3).
  */
-export const SESSION_UNVALIDATED_MESSAGE =
-	"This chat is not ready for messages yet, so the message was not sent. Sending works once it is ready.";
+export const sessionUnvalidatedMessage = (): string =>
+	t("ui.common.errors.session_unvalidated");
 
 /**
  * A send refused because its text STARTS WITH A SLASH.
@@ -871,8 +1054,8 @@ export const LEADING_SLASH_CODE = "leading_slash_message";
  * fixes, both in front of them — so the sentence names them (branding section 8:
  * what happened, what it means, what to do).
  */
-export const LEADING_SLASH_MESSAGE =
-	"A message can't start with / — that is a command. Move it below your text, or send it on its own.";
+export const leadingSlashMessage = (): string =>
+	t("ui.common.errors.leading_slash_message");
 
 /**
  * Whether a refused send is the leading-slash policy refusal.
@@ -1175,7 +1358,13 @@ export function withholdsRetryHint(code: string | undefined): boolean {
 		 * Appended for the same reason: the eighth, and the one this predicate is
 		 * consulted for only when the failure is a press (see the note above).
 		 */
-		code === RUNTIME_BUSY_CODE
+		code === RUNTIME_BUSY_CODE ||
+		/*
+		 * A composed payload over the transport budget: the remedy is to cut the
+		 * message, so a hint that invites the same press again would be advice that
+		 * cannot work.
+		 */
+		code === MESSAGE_BUDGET_CODE
 	);
 }
 
@@ -1292,38 +1481,63 @@ export const SEND_FAILURE_COPY = {
 	 * de-duplicates it - so the sentence says so rather than leaving the safest
 	 * action unstated.
 	 */
-	unconfirmed:
-		"Couldn't confirm your message was sent. Sending it again is safe.",
+	get unconfirmed() {
+		return t("ui.chat.canonical.send_failure.unconfirmed");
+	},
+	/**
+	 * A configuration cause the backend named (R1): what is missing and the fix,
+	 * in this app's words and the user's language rather than the core's English.
+	 */
+	cause(cause: FailureCause): string {
+		return cause === "no_provider"
+			? t("ui.recovery.send.failed_no_provider")
+			: t("ui.recovery.send.failed_no_model");
+	},
 	/** Unknown, and the specific fact is that nothing answered. */
-	unreachable:
-		"Couldn't reach Local Operator. Your message may not have been sent.",
+	get unreachable() {
+		return t("ui.chat.canonical.send_failure.unreachable");
+	},
 	/** The owner took the request and is not free yet. */
-	busy: "The agent is busy, so your message wasn't sent.",
+	get busy() {
+		return t("ui.chat.canonical.send_failure.busy");
+	},
 	/*
 	 * THE TWO ASIDE REFUSALS (fold of `origin/main` = `f9d92ac1e`, #482). The aside panel's own
 	 * semantics are that PR's and are re-stated here rather than re-spelled: the sentence is the
-	 * one `asideAskFailure` composes for a refused ask, and the second is `ASIDE_ASK_BUSY`
+	 * one `asideAskFailure` composes for a refused ask, and the second is `asideAskBusy`
 	 * verbatim, because the two surfaces that state these facts - the panel and, when it is gone,
 	 * this composer - must not read as two different facts. What each row carries is the control:
 	 * neither offers Retry, and the classifier says why for both (`withholdsRetryHint`).
 	 */
-	asideNotAnswered: "The aside was not answered.",
-	asideStillAnswering:
-		"The aside is still answering. Press Enter again once the answer is in.",
+	get asideNotAnswered() {
+		return t("ui.chat.canonical.send_failure.aside_not_answered");
+	},
+	get asideStillAnswering() {
+		return t("ui.chat.canonical.send_failure.aside_still_answering");
+	},
 	/** The owner is leaving; its own advice is to come back in a moment. */
-	retiring:
-		"Local Operator is restarting, so your message wasn't sent. Try again in a moment.",
+	get retiring() {
+		return t("ui.chat.canonical.send_failure.retiring");
+	},
 	/** The read window's refusal: the app has not confirmed the chat yet. */
-	notReady: "This chat isn't ready yet, so your message wasn't sent.",
+	get notReady() {
+		return t("ui.chat.canonical.send_failure.not_ready");
+	},
 	/** 422 with no code the app can act on. */
-	generic: "Your message wasn't sent.",
+	get generic() {
+		return t("ui.chat.canonical.send_failure.generic");
+	},
 	/** 404: the conversation is gone, so only the content is salvageable. */
-	gone: "This conversation no longer exists, so your message wasn't sent.",
+	get gone() {
+		return t("ui.chat.canonical.send_failure.gone");
+	},
 	/**
 	 * The send lock (A1/A2). A muted statement of fact rather than a failure: the
 	 * text is still in the box because the press never became a send.
 	 */
-	sendLock: "Your last message is still sending.",
+	get sendLock() {
+		return t("ui.chat.canonical.send_failure.send_lock");
+	},
 	/**
 	 * The queued press (task-17, U1/U2). A press made while the conversation's
 	 * read window is still open - the pane is loading its first page, or is
@@ -1335,9 +1549,13 @@ export const SEND_FAILURE_COPY = {
 	 * failed, the message is with the app, and the delivery takes care of
 	 * itself - so it takes no controls and no error register.
 	 */
-	queuedSend: "Your message will send as soon as the conversation is ready.",
+	get queuedSend() {
+		return t("ui.chat.canonical.send_failure.queued_send");
+	},
 	/** The same lock, with the question that explains it on screen. */
-	gateLock: "Answer the question above first.",
+	get gateLock() {
+		return t("ui.chat.canonical.send_failure.gate_lock");
+	},
 	/*
 	 * THE PLAIN SENTENCE IS BACK, WITH A CALLER THIS TIME (design round 9, D17). It
 	 * was removed in round 4 (n2) because the `overlap` arm had stopped using it and
@@ -1348,7 +1566,9 @@ export const SEND_FAILURE_COPY = {
 	 * exactly what this one was written to be. It is shorter than either
 	 * box-describing sentence at every width, so no captured frame is invalidated.
 	 */
-	lateDelivery: "Your earlier message was delivered.",
+	get lateDelivery() {
+		return t("ui.chat.canonical.send_failure.late_delivery");
+	},
 	/*
 	 * AND THE ONE THAT NAMES WHAT IS IN THE BOX (review round 2, D4). Where the
 	 * delivered message HAS come out
@@ -1357,8 +1577,9 @@ export const SEND_FAILURE_COPY = {
 	 * "the app lost my draft" and "the app kept it": measured in round 1 as the
 	 * auto-clear that looked like the app losing the text (Q-4).
 	 */
-	lateDeliveryDraft:
-		"Your earlier message was delivered. What's here now hasn't been sent.",
+	get lateDeliveryDraft() {
+		return t("ui.chat.canonical.send_failure.late_delivery_draft");
+	},
 	/*
 	 * AND THE ARM WHERE THE DELIVERED WORDS ARE STILL IN THE BOX (review round 3,
 	 * D8). The prefix test cannot remove them - the user edited inside them, so no
@@ -1369,8 +1590,9 @@ export const SEND_FAILURE_COPY = {
 	 * copy has to carry the rest: this is the one duplicate the app cannot prevent,
 	 * so it names it.
 	 */
-	lateDeliveryOverlap:
-		"Your earlier message was delivered. Its words are still in the box, so sending again would repeat them.",
+	get lateDeliveryOverlap() {
+		return t("ui.chat.canonical.send_failure.late_delivery_overlap");
+	},
 } as const;
 
 /**
@@ -1395,8 +1617,8 @@ export function pressLockCopy(
 	return pendingGate ? SEND_FAILURE_COPY.gateLock : SEND_FAILURE_COPY.sendLock;
 }
 
-export const RETRY_LABEL = "Retry";
-export const CLEAR_LABEL = "Clear";
+export const retryLabel = (): string => t("ui.common.actions.retry");
+export const clearLabel = (): string => t("ui.common.actions.clear");
 
 /**
  * One sentence and at most two actions, for one failed send.
@@ -1445,6 +1667,8 @@ export function sendFailureCopy(
 	message: string;
 	retry: boolean;
 	code?: string;
+	/** A configuration cause the backend's sentence named (R1); see `failureCauseOf`. */
+	cause?: FailureCause;
 } {
 	const klass = sendFailureClass(error, priorAttemptUnresolved);
 	const code = codeOverride ?? sendFailureCode(error);
@@ -1456,6 +1680,10 @@ export function sendFailureCopy(
 			return { message: SEND_FAILURE_COPY.busy, retry: true, code };
 		if (code === RUNTIME_RETIRING_CODE)
 			return { message: SEND_FAILURE_COPY.retiring, retry: true, code };
+		// Not admitted, and the server is coming back by itself: say so, and offer
+		// the press - the same request id replays once the fence lifts.
+		if (code === DESKTOP_REFUSAL_CODE.serverUpdating)
+			return { message: desktopRefusalSentence(code), retry: true, code };
 		if (code === SESSION_UNVALIDATED_CODE)
 			/*
 			 * `retry` is asked of the predicate rather than written as a literal: the read
@@ -1480,7 +1708,7 @@ export function sendFailureCopy(
 				code,
 			};
 		if (code === LEADING_SLASH_CODE)
-			return { message: LEADING_SLASH_MESSAGE, retry: false, code };
+			return { message: leadingSlashMessage(), retry: false, code };
 		/*
 		 * Everything else keeps the sentence the refusal itself carries: the
 		 * unreadable attachment names the file, the budget refusal carries the
@@ -1491,10 +1719,22 @@ export function sendFailureCopy(
 		 */
 		return { message: fallback, retry: false, code };
 	}
+	/*
+	 * A follow-on failure inside main's server-update window: the sentence is the
+	 * update's, the retry verdict stays the one this code always had (a transport
+	 * failure is still an unknown outcome; a pairing refusal still offers no
+	 * press) - the hint is display-only by contract (`markUpdating`).
+	 */
+	if (isServerUpdatingError(error))
+		return {
+			message: desktopRefusalSentence(DESKTOP_REFUSAL_CODE.serverUpdating),
+			retry: code === DESKTOP_REFUSAL_CODE.transportFailed,
+			code,
+		};
 	if (code === DESKTOP_REFUSAL_CODE.transportFailed)
 		return { message: SEND_FAILURE_COPY.unreachable, retry: true, code };
 	if (isDesktopRefusalCode(code))
-		return { message: DESKTOP_REFUSAL_SENTENCE[code], retry: false, code };
+		return { message: desktopRefusalSentence(code), retry: false, code };
 	/*
 	 * THE TRANSPORT'S DEADLINE IS THE ARM THE OPERATOR REPORTED, and this is the
 	 * line that answers it. Its sentence (`desktop-contract.ts`, "The app waits up
@@ -1523,6 +1763,32 @@ export function sendFailureCopy(
 	 * same-id resend is safe (`withholdsRetryHint` is false for it), which is what the
 	 * sentence's second clause promises.
 	 */
+	/*
+	 * A CONFIGURATION CAUSE THE BACKEND NAMED (agent review round 1, R1). The core
+	 * sends its vetted startup reasons ("No model provider is configured yet…",
+	 * "No model is selected for this session…") as the message of a 503
+	 * `runtime_unreachable`, so the arm below rewrote them to "couldn't confirm…
+	 * sending it again is safe" - and a resend is exactly the press that cannot
+	 * work until the cause is fixed. Classified here, the ONE place the raw text is
+	 * in hand: the row keeps this app's translated sentence for the cause (not the
+	 * backend's English) and the cause itself, which the row maps to its fix.
+	 * `retry` keeps the unknown class's answer: once the cause is fixed the
+	 * same-id resend is safe, and the row decides when to offer it.
+	 */
+	const cause = failureCauseOf(
+		error instanceof Error
+			? error.message
+			: typeof error === "string"
+				? error
+				: undefined,
+	);
+	if (cause)
+		return {
+			message: SEND_FAILURE_COPY.cause(cause),
+			retry: !withholdsRetryHint(code),
+			code,
+			cause,
+		};
 	if (code === DESKTOP_LOST_SIGHT_CODE.runtimeUnreachable)
 		return { message: SEND_FAILURE_COPY.unconfirmed, retry: true, code };
 	/*
@@ -1814,10 +2080,11 @@ export function panelSessionIdOfView(
 }
 
 /**
- * The pane's own KEY - `panelIdentityFor` applied to the session id above.
+ * The pane's own IDENTITY - `panelIdentityFor` applied to the session id above.
  *
- * The pane keys its panel on this, which is what makes it the right answer to
- * "did the flow move the view": a surface that is not the pane (the command
+ * The pane's view is this identity (its panel MOUNTS under `panelMountKeyFor`,
+ * which differs only across a draft's own admission - the same view), which is
+ * what makes it the right answer to "did the flow move the view": a surface that is not the pane (the command
  * palette's close-time restore, which yields when a pick moved the view) can ask
  * for it without keeping a second copy of the expression that computes it - and
  * a second copy is how the two sides of that comparison come to describe
@@ -1832,6 +2099,72 @@ export function panelIdentityOfView(
 		activeDraftKey,
 		panelSessionIdOfView(activeDraftKey, draftSessionId, activeSessionId),
 	);
+}
+
+/** What the pane remembers about the panel it mounted, for `panelMountKeyFor`. */
+export type PanelMount = {
+	key: string;
+	draftKey: string | null;
+	sessionId: string | undefined;
+};
+
+/**
+ * The React key the pane mounts its panel under - `panelIdentityFor`, EXCEPT
+ * across a draft's admission, where the previous key is kept.
+ *
+ * WHY (operator report, 2026-11-11: "appears, flickers blank for a few frames,
+ * appears again"). `panelIdentityFor` flips `draft:<uuid>` -> `<sessionId>` at
+ * the first send's create hop, and keying the panel on it unmounted the whole
+ * conversation - transcript, echo row, wait line and composer - at exactly the
+ * moment the reader is watching the message they just sent. Traced in the built
+ * app: the echo's node was replaced ~100 ms after the press, its arrival fade cut
+ * from 0 to 1 in one frame. The conversation did not change, so the mount must
+ * not either; `identity` (the echo registry's address) still moves to the
+ * session, as a prop.
+ *
+ * SAME CONVERSATION means: the same draft learning its session id, or the same
+ * session id as before (the draft row retiring into it). Anything else - New chat, a sidebar
+ * pick, a different draft - is a different conversation and remounts, which is
+ * the reverse direction `panelIdentityFor` documents and still needs.
+ */
+export function panelMountKeyFor(
+	previous: PanelMount | null,
+	draftKey: string | null,
+	sessionId: string | undefined,
+): string | undefined {
+	const identity = panelIdentityFor(draftKey, sessionId);
+	if (!previous || identity === undefined) return identity;
+	// Nothing moved: the key is whatever this mount already holds.
+	if (draftKey === previous.draftKey && sessionId === previous.sessionId)
+		return previous.key;
+	/*
+	 * THE DRAFT LOST ITS SESSION (agent review round 1, F1). A failed first send
+	 * leaves the draft bound `(D, S)`; S's stream answering 404, or S being
+	 * deleted, unbinds it to `(D, undefined)`. Base remounted there because the
+	 * identity flipped `S -> D`, and the 404 arm relies on it
+	 * (`use-canonical-session`: "the pane re-keys onto the draft and its first
+	 * frame is a working composer instead of 'This conversation is gone'"). The
+	 * held key would be `D` again here, so derive a distinct one from the held
+	 * key: the pane resets, and later renders hold it like any other.
+	 */
+	if (
+		previous.sessionId !== undefined &&
+		sessionId === undefined &&
+		draftKey !== null &&
+		draftKey === previous.draftKey
+	)
+		return `${previous.key}#unbound`; // i18n: ignore React mount key suffix, never rendered
+	const admitted =
+		previous.draftKey !== null &&
+		previous.sessionId === undefined &&
+		draftKey === previous.draftKey &&
+		sessionId !== undefined;
+	// The same session under any draft row (or none) is the same conversation;
+	// this is also what holds the key after the draft row retires, when the
+	// pane's own identity has become the bare session id.
+	const sameSession =
+		previous.sessionId !== undefined && sessionId === previous.sessionId;
+	return admitted || sameSession ? previous.key : identity;
 }
 
 /**
@@ -1912,6 +2245,14 @@ export function isRefusedBeforeAdmission(error: unknown): boolean {
 			 */
 			error.code === DESKTOP_REFUSAL_CODE.noCredential ||
 			/*
+			 * The daemon's reload admission fence: it refused the request before ANY
+			 * handler ran (local-operator `server/reload.py`), so the message was not
+			 * admitted, and main rewrote the fence answer into this code. Only the
+			 * code - never the display-only `updating` hint a follow-on failure may
+			 * carry, whose admission is as unknown as it ever was.
+			 */
+			error.code === DESKTOP_REFUSAL_CODE.serverUpdating ||
+			/*
 			 * The store-write refusals, whose own codes already state that the
 			 * write did not happen - which is why the sentence beside them used to
 			 * promise the payload was being kept for a retry it never needed.
@@ -1939,6 +2280,14 @@ export function isRefusedBeforeAdmission(error: unknown): boolean {
 		error instanceof UserFacingError &&
 		(error.code === SESSION_UNVALIDATED_CODE ||
 			error.code === UNREADABLE_ATTACHMENT_CODE ||
+			/*
+			 * The composed payload's own budget refusal, which the page raises through
+			 * `budgetCheckedSeam` INSIDE the admission: nothing reached the wire, so it
+			 * is the same "nothing was admitted" fact as the two above - and without
+			 * this arm it would be classed an unknown outcome, latched as a claim and
+			 * offered a Retry over bytes that would be refused for the same reason.
+			 */
+			error.code === MESSAGE_BUDGET_CODE ||
 			isStoreWriteRefusal(error.code))
 	);
 }
@@ -2263,6 +2612,7 @@ export function resynthesisePendingSend(
 			id: resolved.recordId,
 			text: resolved.text,
 			images: [],
+			documents: documentsOf(draft.submittedFiles ?? [], resolved.recordId),
 			settled: true,
 			submittedAt: draft.submittedAt,
 		});
@@ -2293,6 +2643,7 @@ export function resynthesisePendingSend(
 			attachment: null,
 			mimeType: image.mime_type,
 		})),
+		documents: documentsOf(draft.submittedFiles ?? [], id),
 	});
 	return true;
 }
@@ -2437,14 +2788,31 @@ const BUSY_RESEND_MAX_WAIT_MS = 5_000;
 const BUSY_RESEND_DEFAULT_WAIT_MS = 2_000;
 
 /**
- * `run`, repeated on a `runtime_busy` refusal with the SAME request.
+ * `run`, repeated on a `runtime_busy` refusal.
  *
- * The caller's request object is reused whole - same `requestId`, same text,
- * images and `mode` - because the backend's receipt is keyed on a hash of the
- * whole body (`desktop_receipts.py`): a resend that differed in any field would
- * be a 409, and one with a fresh id could deliver twice. Every other failure is
- * thrown on the first attempt, untouched, so the classification at each call
- * site sees exactly what it saw before this existed.
+ * WHICH REQUEST GOES OUT IS THE CALLER'S, and for every caller but one it is the
+ * SAME request: same `requestId`, same text, images and `mode`. Why, on the routes
+ * shaped for it: both of their journals are keyed on the request, `/messages`
+ * claims `retry_safe=True` so an unfinished claim is resumed, and `/answers` has
+ * no receipt journal at all — so a resend under the same id is the SAME intent
+ * resumed, while one with a fresh id could admit the thing twice. Every other
+ * failure is thrown on the first attempt, untouched, so the classification at
+ * each call site sees exactly what it saw before this existed.
+ *
+ * THE ONE EXCEPTION, AND WHY IT IS NOT A LICENCE TO RESEND ANYTHING ELSE.
+ * `/v1/desktop/sessions/{id}/commands` claims its receipt WITHOUT `retry_safe`
+ * (`desktop_receipts.py`), so an unfinished claim is answered `409 "Request
+ * outcome is indeterminate"` to a same-id resend — a definite failure claimed
+ * over a switch that may have landed. The picker's model switch therefore does
+ * not resend a REQUEST; it repeats its DISPATCH (`runSessionCommand` in
+ * `use-picker-backend.ts`), minting a fresh request id per attempt so each one is
+ * a new claim. That is safe only because the operation's whole effect is "this
+ * session's model is X": re-running `set_model` with the same target is
+ * idempotent in effect, so two attempts that both land are indistinguishable
+ * from one. A command with an append in it (`/goal`, which admits a turn) has no
+ * such property, and repeating it under a fresh id would be the double delivery
+ * this note has always warned about — which is why the option is opt-in at ONE
+ * call site rather than a property of `sessions.command`.
  *
  * AND NOTHING IS PRODUCED WHILE IT REPEATS. The caller sees either the final
  * refusal or a success, which is what makes the design round's "say nothing
@@ -2482,6 +2850,30 @@ async function messageWithBusyResend(
 	});
 }
 
+/*
+ * THE LAST SEAM EACH DRAFT KEY WAS ADMITTED WITH, so a replay handed no seam of
+ * its own still carries what the press composed.
+ *
+ * It exists because the composer's payload is now the TYPED line on a pane
+ * whose host honours `beforeAdmission`: the `$skill` bodies travel through the
+ * seam instead of ahead of the press (`message-input.tsx`). A replay of that
+ * draft from any door that cannot rebuild the seam - the store's own retry, a
+ * caller that never had the composer's read - would otherwise send the typed
+ * line with the block silently gone, which is worse than the slow send it
+ * replaced: the `$name` reached the owner as prose. Measured in this file's own
+ * terms: the first attempt fails at `sessions.create`, so nothing rendered and
+ * there is no `submittedRendered` pin to replay, and the store's answer would be
+ * the raw line.
+ *
+ * ONLY READ ON A REPLAY THAT RENDERED NOTHING. A pin is what a replay prefers
+ * (`submittedRendered`, written with the latch before the wire), so this map is
+ * a fallback for the attempt that never got that far - never a second opinion
+ * about a body the owner may already hold. Cleared with the row it describes,
+ * by both endings (`finishDraft`, `discardDraft`), and overwritten by the next
+ * press on the same key.
+ */
+const lastAdmissionSeam = new Map<string, AdmissionSeam>();
+
 /** Create and admission are intentionally separate receipts. A response lost
  * between them retains its exact IDs and payload; retry never reallocates or
  * deletes work that may already have been admitted by the owner. */
@@ -2491,6 +2883,12 @@ export async function admitChatDraft(
 		text: string;
 		attachments: string[];
 		images: ChatImage[];
+		/**
+		 * Uploaded files this message references. Already stored - the daemon
+		 * resolves the digests and refuses a missing one (contract v1 §1.2); the
+		 * composer refused earlier if any file could not be uploaded.
+		 */
+		files?: ChatFile[];
 		mode: "prompt" | "steer";
 		cwd: string;
 		/**
@@ -2538,7 +2936,7 @@ export async function admitChatDraft(
 	 * throw here is still "nothing was admitted": the composer gets its text
 	 * back rather than a held claim about a message the owner never saw.
 	 */
-	beforeAdmission?: (sessionId: string) => Promise<string | undefined>,
+	beforeAdmission?: AdmissionSeam,
 ): Promise<string | null> {
 	const store = useCanonicalSessionsStore.getState();
 	/*
@@ -2565,7 +2963,7 @@ export async function admitChatDraft(
 	 */
 	if (isSessionUnvalidated(store.validatingSessionId, sessionId))
 		throw new UserFacingError(
-			SESSION_UNVALIDATED_MESSAGE,
+			sessionUnvalidatedMessage(),
 			SESSION_UNVALIDATED_CODE,
 		);
 	const previous = store.drafts[key];
@@ -2608,6 +3006,12 @@ export async function admitChatDraft(
 	const replay =
 		previous?.submittedText !== undefined &&
 		payloadMatchesClaim(previous, text, input.attachments);
+	/*
+	 * REMEMBERED FOR THE REPLAY THAT HAS NONE (see `lastAdmissionSeam`), and
+	 * written before the create - the attempt this protects against is exactly
+	 * the one that never reaches the seam.
+	 */
+	if (beforeAdmission) lastAdmissionSeam.set(key, beforeAdmission);
 	const draft: ChatDraft = previous ?? {
 		key,
 		createRequestId: crypto.randomUUID(),
@@ -2630,6 +3034,9 @@ export async function admitChatDraft(
 	const images = replay
 		? (previous?.submittedImages ?? input.images)
 		: input.images;
+	const files = replay
+		? (previous?.submittedFiles ?? input.files)
+		: input.files;
 	const mode = replay ? (previous?.submittedMode ?? input.mode) : input.mode;
 	/*
 	 * THE SAME PINNING RULE GOVERNS `input_mode`, FOR THE SAME REASON: it is part
@@ -2686,6 +3093,7 @@ export async function admitChatDraft(
 		submittedText: text,
 		submittedAttachments: input.attachments,
 		submittedImages: images,
+		submittedFiles: files,
 		submittedMode: mode,
 		submittedInputMode: inputMode,
 		submittedInputPath: inputPath,
@@ -2743,6 +3151,7 @@ export async function admitChatDraft(
 				attachment: null,
 				mimeType: image.mime_type,
 			})),
+			documents: documentsOf(files ?? [], admissionRequestId),
 			onPainted: onEchoPainted,
 		});
 	/*
@@ -2788,9 +3197,19 @@ export async function admitChatDraft(
 					input.cwd,
 					draft.target,
 					draft.createRequestId,
-					// The pane's own pick, or nothing at all: a draft that was never
-					// picked from omits the field from the create body entirely.
-					draft.model ?? null,
+					/*
+					 * The pane's own pick, or nothing at all: a draft that was never
+					 * picked from omits the field from the create body entirely.
+					 *
+					 * AND FILTERED WITH THE ROW'S DIAL WHEN THE BACKEND CANNOT CARRY IT
+					 * (round 2's F1 follow-up). The field is `extra="forbid"` on the
+					 * core, so replaying a persisted `fast_mode` at a daemon that
+					 * predates it refuses the model, the effort rung and the send with
+					 * it - which is why the strip happens here rather than only at the
+					 * picker. The ROW keeps the dial (the user's choice; a capable
+					 * backend restores it) and the pane says so.
+					 */
+					draftModelForWire(draft.model ?? null, store.draftFastCarries),
 					// The pre-engaged runtime, when the first keystroke's mint adopted
 					// one. `undefined` here is the ordinary path — an older backend, a
 					// send before the mint answered — and the create then mints fresh
@@ -2800,10 +3219,14 @@ export async function admitChatDraft(
 					// for every draft nobody aimed at a peer, which is what keeps the body
 					// of an ordinary create byte-identical to what it was before the control.
 					draft.peer,
+					// Only under the capability, and never toward a peer (§8 deferred): see
+					// `draftCreatesTemporary`.
+					draftCreatesTemporary(draft, store.temporaryChats) ? true : undefined,
 				)) ?? undefined;
 			if (!id)
 				throw new UserFacingError(
-					useCanonicalSessionsStore.getState().error ?? "Chat could not start.",
+					useCanonicalSessionsStore.getState().error ??
+						t("ui.common.errors.chat_start_simple"),
 				);
 			store.updateDraft(key, { sessionId: id });
 			/*
@@ -2861,11 +3284,22 @@ export async function admitChatDraft(
 		 * 1's M4/m5. So the pin is used when there is one, and the seam runs when
 		 * there is not: nothing was rendered, so there is no body to keep identical.
 		 */
+		/*
+		 * AND A REPLAY WITH NO SEAM OF ITS OWN RE-RUNS THE ONE THE PRESS USED
+		 * (`lastAdmissionSeam`): the attempt that failed before this line pinned no
+		 * `submittedRendered`, so there is nothing to replay and the body it would
+		 * otherwise send is the TYPED line - the `$skill` block lives in the seam now
+		 * (`message-input.tsx`). Only on a replay: a first attempt is the one that
+		 * writes the memory, and a caller that offers no seam has already been handed
+		 * its composed payload.
+		 */
+		const seam =
+			beforeAdmission ?? (replay ? lastAdmissionSeam.get(key) : undefined);
 		const rendered =
 			replay && previous?.submittedRendered !== undefined
 				? previous.submittedRendered
-				: beforeAdmission
-					? ((await beforeAdmission(id)) ?? text)
+				: seam
+					? ((await seam(id)) ?? text)
 					: text;
 		attempted = true;
 		/*
@@ -2888,6 +3322,7 @@ export async function admitChatDraft(
 			error: undefined,
 			errorCode: undefined,
 			errorRetry: undefined,
+			errorCause: undefined,
 			admissionAttempted: true,
 			submittedRendered: rendered,
 		});
@@ -2912,6 +3347,7 @@ export async function admitChatDraft(
 			requestId: admissionRequestId,
 			text: rendered,
 			images: images.length ? images : undefined,
+			...(files?.length ? { files } : {}),
 			mode,
 			inputMode,
 			inputPath,
@@ -3043,6 +3479,7 @@ export async function admitChatDraft(
 			 * `errorRetry` for why the row carries it rather than the pane deriving it.
 			 */
 			errorRetry: copy.retry,
+			errorCause: copy.cause,
 		});
 		/*
 		 * DELIVERED AFTER ALL: the send is a success, so the composer stays empty,
@@ -3144,7 +3581,7 @@ export async function admitChatDraft(
 		throw leadingSlash
 			? new DesktopControlError(
 					422,
-					LEADING_SLASH_MESSAGE,
+					leadingSlashMessage(),
 					error,
 					LEADING_SLASH_CODE,
 				)
@@ -3698,6 +4135,61 @@ export function scopeAnswerRows(args: {
 type CanonicalSessionsState = {
 	sessions: CanonicalSessionRow[];
 	/**
+	 * The server's durable settings intents, mirrored (`features.settings_intents`).
+	 *
+	 * NOT PERSISTED - `partialize` names its keys and this is not one - because
+	 * the server is the durable authority (`sessions/<id>/settings-intent.json`):
+	 * a reload re-reads it from `GET /v1/desktop/settings-intents`, and a second
+	 * copy on the renderer's disk could only disagree with it. Every write goes
+	 * through the pure transitions in `settings-intents.ts`, which own the
+	 * last-wins, per-session and local-pick rules.
+	 */
+	settingsIntents: SettingsIntentsMirror;
+	/**
+	 * `GET` baseline (boot, feed reconnect); `scope` = a `?session_id=` read;
+	 * `mark` = `intentWriteMark()` when the read left (slots written later are
+	 * not pruned by it).
+	 */
+	hydrateSettingsIntents: (
+		listed: Record<string, SettingsIntentSlots>,
+		scope?: string,
+		mark?: number,
+	) => void;
+	/** One slot from a `settings_intent` frame; `null` is a prune. */
+	applySettingsIntentFrame: (
+		sessionId: string,
+		kind: SettingsIntentKind,
+		intent: SettingsIntent | null,
+	) => void;
+	/** A POST reply's slot set for one session: upserts only, never prunes. */
+	applySettingsIntentSlots: (
+		sessionId: string,
+		slots: SettingsIntentSlots,
+	) => void;
+	/** The optimistic slot a pick paints before its POST leaves. */
+	paintSettingsIntent: (
+		sessionId: string,
+		pick: {
+			kind: SettingsIntentKind;
+			value: string | boolean;
+			requestId: string;
+			effort?: string;
+		},
+	) => void;
+	/** The POST itself failed; keyed by request id. */
+	failSettingsIntent: (
+		sessionId: string,
+		kind: SettingsIntentKind,
+		requestId: string,
+		error: SettingsIntentError,
+	) => void;
+	/** Dismiss/cancel; keyed by generation. */
+	removeSettingsIntent: (
+		sessionId: string,
+		kind: SettingsIntentKind,
+		generation: number,
+	) => void;
+	/**
 	 * Whether this daemon advertises `session_catalogue_page`, as published by the surface
 	 * that resolves the capability (`setCataloguePageable`). It sizes an unnamed catalogue
 	 * read - see `cataloguePageDefault` - and is `false` until something says otherwise,
@@ -3724,6 +4216,19 @@ type CanonicalSessionsState = {
 	 * direction and also exactly the behaviour every older daemon keeps.
 	 */
 	draftWarmable: boolean;
+	/**
+	 * Whether this daemon carries `DraftModel.fast_mode` (`features.draft_fast`),
+	 * as published by the mounted pane (`setDraftFastCarries`).
+	 *
+	 * It gates the FIELD on every request this store builds from a draft's
+	 * selection - the create and the warm mint - because the draft model is
+	 * `extra="forbid"` on the core: a row persisted with `fast_mode: true` and
+	 * replayed against a core that predates the field refuses the WHOLE body, not
+	 * just the dial. `false` until something says otherwise, which is the
+	 * fail-closed direction: an unanswered capability read sends the body every
+	 * older daemon accepts.
+	 */
+	draftFastCarries: boolean;
 	activeSessionId: string | null;
 	activeDraftKey: string | null;
 	drafts: Record<string, ChatDraft>;
@@ -3745,7 +4250,7 @@ type CanonicalSessionsState = {
 	 * The session the view has moved onto that its own stream has not yet
 	 * confirmed exists.
 	 *
-	 * A send addressed to it is refused (`SESSION_UNVALIDATED_MESSAGE`, the
+	 * A send addressed to it is refused (`sessionUnvalidatedMessage()`, the
 	 * composer keeps the text) rather than issued at a session that may be gone.
 	 * The window used to be closed by a `sessions.get` guard read issued at the
 	 * click; that read is gone from the click path (see `openSession`), because
@@ -3822,6 +4327,8 @@ type CanonicalSessionsState = {
 	 * the fresh process has not read.
 	 */
 	placementFacts: Record<string, PlacementFact>;
+	peerDeviceFacts: Record<string, PeerDeviceFact>;
+	peerDeviceSnapshotAt: number;
 	/**
 	 * The answer counter every fact and every request is stamped against.
 	 *
@@ -4106,6 +4613,31 @@ type CanonicalSessionsState = {
 	 */
 	setDraftWarmable: (warmable: boolean) => void;
 	/**
+	 * Publish whether this daemon carries `DraftModel.fast_mode`. A no-op when the
+	 * value has not moved, for the same reason its sibling above is: it is called
+	 * from an effect on every capability change.
+	 */
+	setDraftFastCarries: (carries: boolean) => void;
+	/**
+	 * Whether the core advertises `temporary_chats`, as published by the app shell
+	 * (`app.tsx`). `false` until answered - the fail-closed direction: the list
+	 * then never asks for `include_temporary` and a create never sends
+	 * `temporary`, which is the request every older core accepts.
+	 */
+	temporaryChats: boolean;
+	setTemporaryChats: (enabled: boolean) => void;
+	/** Turn a draft's temporary switch on or off (the header toggle). */
+	setDraftTemporary: (key: string, temporary: boolean) => void;
+	/**
+	 * Mark or keep one conversation (`sessions.temporary`, desired state). The row
+	 * takes the core's answer; a refusal leaves it untouched and is returned as
+	 * its code so the caller can say why.
+	 */
+	setSessionTemporary: (
+		sessionId: string,
+		temporary: boolean,
+	) => Promise<{ ok: true } | { ok: false; code?: string; detail: string }>;
+	/**
 	 * Clear the refusal once its message's turn on the toast surface is over.
 	 *
 	 * THE WRITE ONLY, matching `setArchiveUndo` above rather than adding a third policy: the
@@ -4231,6 +4763,8 @@ type CanonicalSessionsState = {
 		 * then carries no `peer` at all - see the implementation's own note.
 		 */
 		peer?: string,
+		/** Create it as a temporary chat; omitted (not `false`) otherwise. */
+		temporary?: boolean,
 	) => Promise<string | null>;
 	/**
 	 * The turns THIS WINDOW stopped, by session id, stamped in wall-clock ms.
@@ -4475,6 +5009,14 @@ type CanonicalSessionsState = {
 		status: SessionCatalogueStatus,
 		revision: number,
 		epoch: string,
+		/**
+		 * The frame's background-work counts, written in the SAME update as the
+		 * code so the row's Running membership (code OR `background_work`) never
+		 * passes through a state where one has moved and the other has not.
+		 * Omitted by an older backend's frame, which leaves the row's counts as
+		 * the last list read set them.
+		 */
+		counts?: SessionStatusFrameCounts,
 	) => void;
 	openSession: (sessionId: string) => Promise<boolean>;
 	stageDraft: (target?: ChatTarget, fresh?: boolean) => string;
@@ -4482,8 +5024,39 @@ type CanonicalSessionsState = {
 	 * Re-stage the pane's ACTIVE draft under a picked identity, carrying the
 	 * box's text across the key flip. See the action's own comment for why the
 	 * flip is a remount and why the text has to move with it (issue #780).
+	 * `undefined` re-stages a bare (default-agent) draft: the New chat header's
+	 * target chip offers "Default agent" as a way back from a picked identity.
 	 */
-	restageDraft: (target: ChatTarget, carry?: string) => string;
+	restageDraft: (target: ChatTarget | undefined, carry?: string) => string;
+	/**
+	 * The missing-session notice's way out: a fresh new chat, carrying the box the
+	 * dead conversation still held.
+	 *
+	 * WHY THIS IS AN ACTION AND NOT STORE CALLS IN THE BUTTON (the operator's
+	 * report, 2026-10-23). The notice's press used to clear the selection with
+	 * `setActiveSession(null)`, which left no draft at all: `chat-page`'s identity
+	 * became undefined, the pane fell to its residue arm, and whatever the reader
+	 * had typed under the dead conversation's key stayed there - the app's own
+	 * text, on disk, addressed by no screen. "A draft follows the user back to the
+	 * new-chat composer, or it is discarded" is a rule about the DRAFT, so it
+	 * lives where drafts and their composer rows already meet.
+	 *
+	 * THE MOVE IS THE WHOLE-ROW ONE (`returnInFlight`), not the text-only flip
+	 * `restageDraft` performs (agent review round 1, R1-1): the box holds chips as
+	 * well as words (`inputByConversation[key].attachments`), and a reader whose
+	 * file followed them to a dead conversation would lose it while the words came
+	 * home. The same primitive carries the retired-draft payload, so "the user's
+	 * payload" answers with one list everywhere. It is a MOVE: the source row is
+	 * deleted, which is what clears the old key.
+	 *
+	 * AND IT CLEARS THE SELECTION (QA round 1, Q1). Staging alone left
+	 * `activeSessionId` (and the route) naming the dead conversation, so a reload
+	 * re-opened it over an empty box while the carried words sat in a draft nothing
+	 * addressed. The state this leaves is the one `openDraft`/⌘N leave - a staged
+	 * draft and no selected conversation - so a relaunch restores the draft the
+	 * press created.
+	 */
+	startNewChat: (from?: string | null) => string;
 	/**
 	 * Switch to a draft this store already holds, by key. See the action's own
 	 * comment for why this is not `stageDraft` (UX round 2, U8).
@@ -4554,6 +5127,59 @@ type CanonicalSessionsState = {
 	 * drift.
 	 */
 	discardDrafts: (keys: readonly string[]) => void;
+	/**
+	 * Retire ONE draft's conversation pointer, turning the row back into a new chat.
+	 *
+	 * Called when the conversation the row named is known to be gone: the pane's
+	 * own 404 on that conversation (`use-canonical-session` reports it before it
+	 * paints the missing state), or a test that holds the row directly. The rule
+	 * and every field it clears live in `unboundDraftRow`; the payload the user
+	 * sent comes back into the row's composer via `retiredDraftPayload`.
+	 *
+	 * A row with no pointer is a no-op, so callers may report the same verdict
+	 * twice (a reconnect, a second surface) without re-minting request ids under a
+	 * draft the user has since typed in.
+	 */
+	retireDraftSession: (key: string) => void;
+	/**
+	 * Retire every draft that points at one conversation.
+	 *
+	 * The bulk form of `retireDraftSession`, for the two places that learn a
+	 * conversation is gone without holding a draft key: a delete this window
+	 * performed (`deleteSession`) and the stream's 404. Nothing else about the
+	 * conversation is touched here - the tombstone is `forgetSession`'s, and the
+	 * two facts are separate so a surface that only knows "this id is dead" cannot
+	 * silently rewrite the catalogue.
+	 */
+	retireDraftsForSession: (sessionId: string) => void;
+	/**
+	 * Retire a DRAFT's dead warm id, without touching the draft's own intent.
+	 *
+	 * The id `sessions.draft` minted (`ChatDraft.warmId`) is a BRIDGE - a runtime
+	 * entry in a daemon registry - and never a conversation: the pane streams on it
+	 * only while it waits for the first send to create one. A 404 on that bridge
+	 * therefore says the REGISTRY entry is gone (it expired after its idle window, a
+	 * restarted daemon lost it), not that a conversation was lost. What it must
+	 * never do is leave the row holding an id every later read repeats - the
+	 * daemon's receipt replays the SAME mint for the row's `draftRequestId`, so a
+	 * replay would hand the dead id back forever. Clearing `warmId` and re-minting
+	 * the request id makes the next keystroke (or the send that beats it) ask a
+	 * fresh question.
+	 *
+	 * EVERYTHING ELSE SURVIVES, because none of it was a statement about the dead
+	 * runtime: `target`, `model`, `peer`, `cwd` are the user's chosen destination
+	 * for a conversation that has not been created yet, and the composer's words
+	 * live under the draft key, not on this row. The pane keeps a working new chat
+	 * with the box untouched (the operator's report, 2026-10-23).
+	 *
+	 * Scoped to `draft:` rows with NO `sessionId`: a row that has one is a pointer
+	 * to a conversation, and a 404 about THAT is `retireDraftsForSession`'s - the
+	 * two facts are separate so this action can never unbound a conversation the
+	 * pane is actually showing. A row whose warm already moved on is a no-op, so a
+	 * reconnect repainting the same 404 does not re-mint request ids under a draft
+	 * the user has typed into since.
+	 */
+	retireDraftWarm: (warmId: string) => void;
 	/**
 	 * Resolve a held send against the server's own answer (§F2's last bullet,
 	 * UX round 1's U5b).
@@ -4652,6 +5278,8 @@ type CanonicalSessionsState = {
 		rows: CanonicalSessionRow[],
 		/** The sequence the answer's own REQUEST took (`beginAnswer`). */
 		requestedAt: number,
+		deviceFacts?: Record<string, PeerDeviceFact>,
+		peerSnapshotAt?: number,
 	) => void;
 };
 
@@ -4713,17 +5341,9 @@ function mergeRow(
  * no mark, and neither does an ABSENT status (a locally created row carries
  * none until the next catalogue read): unknown is not unread.
  */
-export type UnreadMarkKind = "complete" | "error" | "interrupted";
+export type UnreadMarkKind = UnreadCompletionKind;
 
-export const unreadMarkKind = (
-	row: CanonicalSessionRow,
-): UnreadMarkKind | null => {
-	if (row.attention?.unseen !== true) return null;
-	const code = row.status?.code;
-	return code === "complete" || code === "error" || code === "interrupted"
-		? code
-		: null;
-};
+export const unreadMarkKind = unreadCompletionKind;
 
 /**
  * The rows a bulk acknowledgement can NAME, in the store's own terms.
@@ -4748,12 +5368,7 @@ export const unreadMarkKind = (
  */
 export const unreadAckableRows = (
 	rows: CanonicalSessionRow[],
-): CanonicalSessionRow[] =>
-	rows.filter((row) => {
-		if (unreadMarkKind(row) === null) return false;
-		const token = row.attention?.completion_token;
-		return typeof token === "string" && token.length > 0;
-	});
+): CanonicalSessionRow[] => rows.filter(isUnreadAckableCompletion);
 
 /** How many rows a click would name; zero hides the control entirely. */
 export const unreadAckableCount = (rows: CanonicalSessionRow[]): number =>
@@ -4891,6 +5506,24 @@ function heldStatusOver(
 		status: current?.status,
 		status_revision: current?.status_revision,
 		status_epoch: current?.status_epoch,
+		/*
+		 * THE COUNTS ARE HELD WITH THE CODE they arrived beside. A backend that
+		 * publishes `background_work` sends the counts on every status frame
+		 * (they are in its dedupe key), so a row holding the fresher frame holds
+		 * the fresher counts too; letting a staler list response replace only
+		 * the counts would put a row in Running by its code and out of it by its
+		 * counts in one frame - the flicker the frame was made atomic to avoid.
+		 * An older backend's row carries no flag, and its counts follow the list.
+		 */
+		...(typeof current?.background_work === "boolean"
+			? {
+					background_work: current.background_work,
+					subagents_running: current.subagents_running,
+					subagents_queued: current.subagents_queued,
+					jobs_running: current.jobs_running,
+					waiting_on: current.waiting_on,
+				}
+			: {}),
 	};
 }
 /**
@@ -5011,6 +5644,218 @@ type SessionForgetState = {
 	answerSeq: number;
 	deleteCandidate: string | null;
 };
+
+/**
+ * What a draft row KEEPS when the conversation it named is gone.
+ *
+ * THE CLASS THIS EXISTS FOR (the operator's report, 2026-10-22): pressing a TEAM
+ * in the sidebar to start a new chat rendered "This conversation is no longer on
+ * this machine" with the composer replaced by "This conversation is gone", under
+ * a header that said "New chat with <team>". The two halves of that screen read
+ * different facts: the header read `activeDraftKey`, and the pane read the draft
+ * row's `sessionId` (`panelSessionIdOfView`). A stable `draft:<kind>:<name>` row
+ * is REUSED by every New-chat press for that team, so one row that had already
+ * created a conversation - written at the create's answer, left behind by a
+ * failed message or a quit before the ack - made every later press resolve that
+ * conversation. Once it was deleted the press landed on the terminal notice.
+ *
+ * SO THE POINTER IS NOT A COSMETIC FIELD: a draft row's `sessionId` says "this
+ * draft became that conversation". When the conversation is gone, the row must
+ * stop saying it - not be guarded against at the surface that happens to read it,
+ * which would leave the same stale pointer to bite the next reader (`paneDraftKey`,
+ * the sidebar's belonging lookup, `finishDraft`). This is the one rule that
+ * turns the row back into what its key always claimed it was: a new chat.
+ *
+ * EVERY CLAIM FIELD GOES WITH IT, because each is a statement about the old
+ * conversation's request: the failure notice and its Retry name a session that
+ * cannot be retried into, `submittedText`/`submittedAttachments` are the payload
+ * of a request whose receipt id belongs to that session, `undelivered` is a fate
+ * recorded about the same message, and `warmId` names a runtime that was engaged
+ * for it. What survives is the DRAFT's own intent - `target`, `model`, `peer`,
+ * `cwd` - which is what makes the next send a new conversation addressed the
+ * same way.
+ *
+ * BOTH REQUEST IDS ARE RE-MINTED, and the create id is the load-bearing one: it
+ * is the backend receipt's at-most-once key, so replaying it would hand the pane
+ * back the id of the conversation that no longer exists (and, on a delete, an id
+ * the owner has just been told to forget).
+ */
+function unboundDraftRow(draft: ChatDraft): ChatDraft {
+	return {
+		...draft,
+		sessionId: undefined,
+		pending: false,
+		error: undefined,
+		errorCode: undefined,
+		errorRetry: undefined,
+		errorCause: undefined,
+		submittedText: undefined,
+		submittedRendered: undefined,
+		submittedAttachments: undefined,
+		submittedImages: undefined,
+		submittedMode: undefined,
+		submittedInputMode: undefined,
+		submittedInputPath: undefined,
+		submittedAt: undefined,
+		admissionAttempted: undefined,
+		undelivered: undefined,
+		warmId: undefined,
+		migratedHeld: undefined,
+		createRequestId: crypto.randomUUID(),
+		admissionRequestId: crypto.randomUUID(),
+	};
+}
+
+/**
+ * The payload a retired draft pointer hands back to its composer, or null.
+ *
+ * The words the user pressed Send with are theirs, and the conversation that
+ * refused them is gone - so the honest place for them is the new-chat box the
+ * row becomes, ready to go somewhere else. `submittedText` is the typed payload;
+ * `undelivered` is the resolution's own record for the same message and is read
+ * only when the claim's copy is already gone (`resolveHeldFromServer` clears it).
+ * Attachments follow the same pair.
+ */
+function retiredDraftPayload(draft: ChatDraft): {
+	text: string;
+	attachments: string[];
+} | null {
+	const text = draft.submittedText ?? draft.undelivered?.text;
+	const attachments =
+		draft.submittedAttachments ?? draft.undelivered?.attachments ?? [];
+	if (text === undefined && attachments.length === 0) return null;
+	return { text: text ?? "", attachments: [...attachments] };
+}
+
+/**
+ * Put a retired pointer's payload back where its draft can show it.
+ *
+ * TWO SOURCES, because a failed message can leave words in two places: the CLAIM
+ * (`submittedText`/`undelivered`, the request that failed) and the COMPOSER row
+ * keyed by the conversation identity (`composerIdentityFor`, which is the session
+ * id once the create answered) - text typed after the failure, before the user
+ * knew it had failed. Both are the operator's own words and the conversation
+ * they were addressed to is gone, so both come home to the new-chat row.
+ *
+ * ORDER MATTERS AND IS THE COMPOSER'S OWN RULE: `foldReturn` puts the returned
+ * message first and anything already in the box after a blank line, so the claim
+ * is handed over AFTER the typed text has moved. That is the same order the live
+ * failure path produces.
+ *
+ * WHY THE IN-FLIGHT ROW IS SKIPPED (agent review round 1's MAJOR-1): a row
+ * whose claim is still on the wire is not retired at all
+ * (`retireDraftSession`'s `pending` guard), and if an `inFlight` record survived
+ * a reload the claim is already the same message - folding it back and then
+ * returning the claim would duplicate it in the box.
+ */
+function restoreRetiredDraftPayload(
+	key: string,
+	sessionId: string | undefined,
+	payload: { text: string; attachments: string[] } | null,
+): void {
+	const input = useConversationInputStore.getState();
+	if (sessionId && sessionId !== key) {
+		/*
+		 * A RETURNED MESSAGE IS ADOPTED FIRST (agent review round 2's MINOR): a
+		 * reload leaves text that was typed during the create hop in `pendingText`
+		 * (`foldReturn` writes it; `rehydrateInputRows` does not adopt it), and
+		 * `returnInFlight` only moves `currentInput`. Adopting folds the two into
+		 * the box, so the move below carries both rather than stranding the typed
+		 * half under a conversation that is gone.
+		 */
+		input.adoptReturnedText(sessionId);
+		// Re-read: the adopt above is a store write, so the snapshot taken before
+		// it still holds the pre-adopt row.
+		const typed =
+			useConversationInputStore.getState().inputByConversation[sessionId];
+		if (
+			typed &&
+			typed.inFlight === undefined &&
+			((typed.currentInput ?? "") !== "" ||
+				(typed.attachments?.length ?? 0) > 0)
+		)
+			input.returnInFlight(sessionId, key);
+	}
+	if (payload)
+		input.returnPayload(key, {
+			text: payload.text,
+			attachments: payload.attachments,
+			replies: [],
+		});
+}
+
+/**
+ * Move the composer's TEXT from one identity to another, once.
+ *
+ * THE ONE EXPRESSION for a key flip that must not lose what the user typed
+ * (issue #780): the box's value lives under the identity the pane carried, and a
+ * flip to a new identity is a remount that reads the NEW key. `carry` is text the
+ * caller has already decided survives the gesture (a picker's spliced tail);
+ * absent, the box as it stands is carried. A move, never a copy - the source is
+ * cleared, so the old key cannot resurrect the words if it is ever opened again
+ * (`openDraft`). The target is written only when there is something to write, so
+ * a gesture with an empty box does not materialise a row for the new key.
+ *
+ * TEXT ONLY, deliberately: this is the picker/re-stage flip, where the caller
+ * hands over words and the box follows the same draft. A gesture that promises
+ * the whole box - the missing notice's way out - uses the store's own
+ * whole-row move (`returnInFlight`, see `startNewChat`) rather than growing a
+ * second payload rule here (agent review round 1, R1-1).
+ */
+function carryComposerText(
+	from: string | null | undefined,
+	to: string,
+	carry?: string,
+): void {
+	const input = useConversationInputStore.getState();
+	const text = carry ?? (from ? input.getCurrentInput(from) : "");
+	if (text) input.setComposerText(to, text);
+	if (from && from !== to) input.setComposerText(from, "");
+}
+
+/**
+ * The same map with every pointer to a TOMBSTONED conversation unbound.
+ *
+ * Identity-preserving when nothing moves (`drafts === returned`), so the merge
+ * that calls it does not repaint every draft on a launch with no tombstones. See
+ * `mergePersistedSession` for why this runs at hydration rather than in an
+ * effect: a frame is already committed by the time an effect runs.
+ *
+ * IT ALSO RETURNS WHAT EACH RETIRED ROW OWES ITS COMPOSER, because the merge is
+ * the one caller that has to hand the words back itself: it runs inside
+ * `persist`, and there is no later hook that knows the payload was dropped
+ * (`agent review round 1's MINOR-1` measured the text going missing from the
+ * after frame).
+ */
+function draftsWithoutTombstonedPointers(
+	drafts: Record<string, ChatDraft>,
+	forgotten: Record<string, ForgottenFact>,
+): {
+	drafts: Record<string, ChatDraft>;
+	restored: Array<{
+		key: string;
+		sessionId: string;
+		payload: { text: string; attachments: string[] } | null;
+	}>;
+} {
+	let next: Record<string, ChatDraft> | null = null;
+	const restored: Array<{
+		key: string;
+		sessionId: string;
+		payload: { text: string; attachments: string[] } | null;
+	}> = [];
+	for (const [key, draft] of Object.entries(drafts)) {
+		if (!draft.sessionId || forgotten[draft.sessionId] === undefined) continue;
+		next ??= { ...drafts };
+		next[key] = unboundDraftRow(draft);
+		restored.push({
+			key,
+			sessionId: draft.sessionId,
+			payload: retiredDraftPayload(draft),
+		});
+	}
+	return { drafts: next ?? drafts, restored };
+}
 
 /** Full list responses replace membership; a disappeared row is not immortal.
  * Stream updates use upsert separately and never imply a complete inventory. */
@@ -5275,6 +6120,34 @@ export function launchDraftSeed(
 }
 
 /**
+ * Step 3 of the quota fallback for this store (`quota-safe-storage.ts`), run
+ * only after a full write AND an image-free write were both refused.
+ *
+ * `forgotten` is the one map here that only grows - a fact per session the user
+ * removed, kept so the list does not resurrect it - so under quota pressure it
+ * keeps its NEWER half (records keep insertion order, which is the order facts
+ * were added). Halving rather than a fixed count, because no count has been
+ * measured; the oldest facts are the ones a session list is least likely to
+ * still be showing. Drafts and the active pointers are kept whole.
+ */
+export function shrinkPersistedSessions<
+	V extends { state: { forgotten?: Record<string, unknown> } },
+>(value: V): V {
+	const forgotten = value.state.forgotten;
+	if (!forgotten) return value;
+	const entries = Object.entries(forgotten);
+	return {
+		...value,
+		state: {
+			...value.state,
+			forgotten: Object.fromEntries(
+				entries.slice(Math.floor(entries.length / 2)),
+			),
+		},
+	};
+}
+
+/**
  * The launch argument OUTRANKS the persisted conversation.
  *
  * Main was asked for this conversation BY NAME, and the window exists to show
@@ -5303,27 +6176,131 @@ export function mergePersistedSession(
 		...current,
 		...(persisted as Partial<CanonicalSessionsState> | undefined),
 	};
+	/*
+	 * A DRAFT POINTING AT A TOMBSTONED CONVERSATION IS UNBOUND AT HYDRATION.
+	 *
+	 * The tombstone is this window's own statement that the conversation is gone,
+	 * and `forgotten` is persisted, so the pair can survive a reload. Every other
+	 * path that creates a tombstone retires the drafts in the same breath
+	 * (`deleteSession`, `confirmSessionMissing`), and this is the pair a crash
+	 * between those two writes - or a store written by a build that predates the
+	 * retirement - leaves behind. Unbinding here is what makes the FIRST painted
+	 * frame after a relaunch a new chat rather than the terminal notice, which no
+	 * effect could do: a frame has already been committed by then.
+	 *
+	 * THE WORDS COME BACK HERE TOO, and the ordering that makes it safe is
+	 * structural rather than lucky: `conversation-input-store` imports nothing
+	 * from this module, this module imports IT, so the composer's `persist` has
+	 * already hydrated by the time this merge runs. `restoreRetiredDraftPayload`
+	 * is therefore writing into a live, hydrated store - the same write the
+	 * delete-time retirement makes (agent review round 1's MINOR-1 measured the
+	 * text going missing from the after frame before this).
+	 */
+	const { drafts, restored } = draftsWithoutTombstonedPointers(
+		merged.drafts,
+		merged.forgotten,
+	);
+	const next = drafts === merged.drafts ? merged : { ...merged, drafts };
+	for (const fact of restored)
+		restoreRetiredDraftPayload(fact.key, fact.sessionId, fact.payload);
 	const target = launchTarget();
 	if (target.kind === "session") {
-		return { ...merged, activeSessionId: target.sessionId };
+		return { ...next, activeSessionId: target.sessionId };
 	}
 	if (target.kind === "catalogue") {
-		return { ...merged, activeSessionId: null };
+		return { ...next, activeSessionId: null };
 	}
 	/*
 	 * Nothing to restore and no conversation asked for: a launch holds a NEW
 	 * conversation rather than none (§H). See `launchDraftSeed` for why the
 	 * decision belongs in the merge and why it is a no-op in every other case.
 	 */
-	const seed = launchDraftSeed(merged);
-	if (seed) return { ...merged, ...seed };
-	return merged;
+	const seed = launchDraftSeed(next);
+	if (seed) return { ...next, ...seed };
+	return next;
 }
 
 export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 	persist(
 		(set, get) => ({
 			sessions: [],
+			settingsIntents: EMPTY_SETTINGS_INTENTS,
+			/*
+			 * Each writer commits only when the transition returned a NEW mirror: the
+			 * transitions return the same object for a no-op (a duplicate frame from a
+			 * second mounted feed hook, an older generation), and an unchanged slice
+			 * must not re-render the sidebar.
+			 */
+			hydrateSettingsIntents: (listed, scope, mark) => {
+				set((state) => {
+					const next = hydrateIntents(
+						state.settingsIntents,
+						listed,
+						scope,
+						mark,
+					);
+					return next === state.settingsIntents
+						? state
+						: { settingsIntents: next };
+				});
+			},
+			applySettingsIntentFrame: (sessionId, kind, intent) => {
+				set((state) => {
+					const next = applyIntentFrame(
+						state.settingsIntents,
+						sessionId,
+						kind,
+						intent,
+					);
+					return next === state.settingsIntents
+						? state
+						: { settingsIntents: next };
+				});
+			},
+			applySettingsIntentSlots: (sessionId, slots) => {
+				set((state) => {
+					const next = applySessionSlots(
+						state.settingsIntents,
+						sessionId,
+						slots,
+					);
+					return next === state.settingsIntents
+						? state
+						: { settingsIntents: next };
+				});
+			},
+			paintSettingsIntent: (sessionId, pick) => {
+				set((state) => ({
+					settingsIntents: paintIntent(state.settingsIntents, sessionId, pick),
+				}));
+			},
+			failSettingsIntent: (sessionId, kind, requestId, error) => {
+				set((state) => {
+					const next = failLocalIntent(
+						state.settingsIntents,
+						sessionId,
+						kind,
+						requestId,
+						error,
+					);
+					return next === state.settingsIntents
+						? state
+						: { settingsIntents: next };
+				});
+			},
+			removeSettingsIntent: (sessionId, kind, generation) => {
+				set((state) => {
+					const next = removeIntent(
+						state.settingsIntents,
+						sessionId,
+						kind,
+						generation,
+					);
+					return next === state.settingsIntents
+						? state
+						: { settingsIntents: next };
+				});
+			},
 			cataloguePageable: false,
 			catalogueActivityHead: false,
 			// Fail-closed until a mounted pane resolves the capability and publishes it
@@ -5331,6 +6308,11 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			// by default, and the absent flag is what keeps every older daemon on
 			// today's wiring.
 			draftWarmable: false,
+			// Fail-closed beside it, and for the same reason: a daemon that has not
+			// advertised `draft_fast` must not receive the field, because its refusal
+			// takes the whole create body (model and effort rung) with it.
+			draftFastCarries: false,
+			temporaryChats: false,
 			// Seeded from the launch argument when there is one, so the very first
 			// render is already the requested conversation rather than the persisted
 			// one. `merge` below holds the same line against hydration, which would
@@ -5370,6 +6352,8 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			statusUnavailable: [],
 			archiveFacts: {},
 			placementFacts: {},
+			peerDeviceFacts: {},
+			peerDeviceSnapshotAt: 0,
 			forgotten: {},
 			stoppedTurns: {},
 			archiveFailure: null,
@@ -5521,6 +6505,13 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 								 * entirely - fails the two bullets above.
 								 */
 								include_archived: true,
+								/*
+								 * The temporary chats, under the capability only (the core's query
+								 * model is closed): one fetch then serves both the `Temporary · N`
+								 * group and the open chat's own countdown, and every normal list
+								 * partitions them out (`chat-temporary.ts`'s `partition`).
+								 */
+								...(get().temporaryChats ? { include_temporary: true } : {}),
 								/*
 								 * Omitted rather than sent as `false`, on the rule
 								 * `sessions.search`'s own query states: the pre-change request is
@@ -5837,7 +6828,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 							 */
 							error: storeErrorMessage(
 								error,
-								"Chats could not refresh. Retry to reconnect.",
+								t("ui.common.errors.chats_refresh"),
 							),
 						});
 				}
@@ -5887,6 +6878,8 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						op: "sessions.list",
 						limit: CATALOGUE_HEAD_PAGE,
 						include_archived: true,
+						// The head page's own flag, so the tail continues the same answer.
+						...(get().temporaryChats ? { include_temporary: true } : {}),
 						cursor,
 						/*
 						 * THE SAME ORDER THE HEAD PAGE WAS READ IN, and that sameness is the
@@ -5967,7 +6960,10 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 							 * `error` would raise the sidebar's danger alert about the backend -
 							 * a claim about the whole window that one scrolled page cannot support.
 							 */
-							error: storeErrorMessage(error, "Could not load more chats."),
+							error: storeErrorMessage(
+								error,
+								t("ui.common.errors.chats_load_more"),
+							),
 						},
 					}));
 				}
@@ -6075,7 +7071,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 									loading: false,
 									error: storeErrorMessage(
 										error,
-										"Could not load this group's chats.",
+										t("ui.common.errors.chats_load_group"),
 									),
 								},
 							},
@@ -6131,6 +7127,59 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			setCatalogueActivityHead: (activityHead) => {
 				if (get().catalogueActivityHead !== activityHead)
 					set({ catalogueActivityHead: activityHead });
+			},
+			setTemporaryChats: (enabled) => {
+				if (get().temporaryChats === enabled) return;
+				set({ temporaryChats: enabled });
+			},
+			setDraftTemporary: (key, temporary) =>
+				set((state) => {
+					// `setDraftPeer`'s rules: a pane that is gone records nothing, an
+					// unchanged value is not a change, and the create id is re-minted only
+					// while no session exists (a different body is a different request).
+					const present = state.drafts[key];
+					if (!present) return {};
+					if ((present.temporary === true) === temporary) return {};
+					return {
+						drafts: {
+							...state.drafts,
+							[key]: {
+								...present,
+								temporary: temporary ? true : undefined,
+								...(present.sessionId
+									? {}
+									: { createRequestId: crypto.randomUUID() }),
+							},
+						},
+					};
+				}),
+			setSessionTemporary: async (sessionId, temporary) => {
+				try {
+					const answer = await desktopResult<{
+						session_id: string;
+						temporary: SessionTemporaryInfo | null;
+					}>({ op: "sessions.temporary", sessionId, temporary });
+					const info =
+						answer && typeof answer.temporary === "object"
+							? answer.temporary
+							: null;
+					set((state) => ({
+						sessions: state.sessions.map((row) =>
+							row.session_id === sessionId ? { ...row, temporary: info } : row,
+						),
+					}));
+					return { ok: true };
+				} catch (error) {
+					return {
+						ok: false,
+						code: error instanceof DesktopControlError ? error.code : undefined,
+						detail: userFacingMessage(error, ""),
+					};
+				}
+			},
+			setDraftFastCarries: (carries) => {
+				if (get().draftFastCarries === carries) return;
+				set({ draftFastCarries: carries });
 			},
 			setDraftWarmable: (warmable) => {
 				if (get().draftWarmable === warmable) return;
@@ -6446,7 +7495,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 								 */
 								at: state.answerSeq + 1,
 								archived,
-								title: rowTitle || "Untitled chat",
+								title: rowTitle || "",
 								/*
 								 * The backend's own sentence when there is one. A transport failure
 								 * that reached nothing keeps an empty detail and the sentence around
@@ -6471,6 +7520,16 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						confirmed: true,
 					});
 					set((state) => forgetSession(state, sessionId));
+					/*
+					 * AND THE DRAFTS THAT NAMED IT STOP NAMING IT (the operator's question:
+					 * "why is it not cleared when the conversation it names is deleted?").
+					 * The tombstone alone leaves the pointer intact, and the stable
+					 * `draft:<kind>:<name>` row is exactly what the next New-chat press for
+					 * that team reused. Retiring it here is what makes the next press a
+					 * new chat even before `stageDraft`'s own rule runs, and the payload
+					 * comes home to the box it will be sent from.
+					 */
+					get().retireDraftsForSession(sessionId);
 					return { ok: true };
 				} catch (error) {
 					const status =
@@ -6487,6 +7546,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					 */
 					if (status === 404) {
 						set((state) => forgetSession(state, sessionId));
+						get().retireDraftsForSession(sessionId);
 						return { ok: true };
 					}
 					/*
@@ -6517,7 +7577,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						detail:
 							error instanceof DesktopControlError && error.message
 								? error.message
-								: "The conversation could not be deleted.",
+								: t("ui.common.errors.conversation_delete"),
 					};
 				}
 			},
@@ -6548,6 +7608,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				 * caller and every older daemon.
 				 */
 				peer?: string,
+				temporary?: boolean,
 			) => {
 				try {
 					const result = await desktopResult<{
@@ -6572,11 +7633,45 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						// And the third: a pane that never picked a device sends no `peer`, so its
 						// create is exactly what it always was.
 						...(peer ? { peer } : {}),
+						// Omitted unless true, the same additive rule as `peer`.
+						...(temporary ? { temporary: true } : {}),
 					});
+					/*
+					 * THE CREATED ROW CARRIES ITS BIRTH CLOCK (send smoothness, 2026-11-11).
+					 * Without a time the sidebar files a row under OLDER (`sectionOf`'s null
+					 * arm), so every new chat's row appeared there and hopped to TODAY one
+					 * catalogue read later. The create's answer IS the moment the session was
+					 * born, so the local clock is the honest value until the owner's own
+					 * `mtime` replaces it; a row the catalogue already delivered keeps its
+					 * owner-stated times.
+					 */
+					const listed = get().sessions.some(
+						(row) => row.session_id === result.session_id,
+					);
+					const bornAt = Date.now() / 1000;
 					get().upsertSession({
 						session_id: result.session_id,
 						cwd,
 						binding: result.binding,
+						...(listed ? {} : { created_at: bornAt, updated_at: bornAt }),
+						/*
+						 * A temporary create is held as temporary from its first frame, so it
+						 * never flashes into the normal list before the next list read. The
+						 * core refuses a create whose mark it could not write, so the claim is
+						 * the create's own; `hold: "running"` is what the first turn is about
+						 * to be, and the next list read replaces the whole object with the
+						 * core's answer (idle window included).
+						 */
+						...(temporary
+							? {
+									temporary: {
+										marked_at: Date.now() / 1000,
+										idle_minutes: 30,
+										deletes_at: null,
+										hold: "running",
+									},
+								}
+							: {}),
 					});
 					/*
 					 * A CONVERSATION BORN ON A PEER SAYS SO ON ITS ROW, and the write that says
@@ -6612,10 +7707,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					// Same rule as `fetchSessions` above: the app states the refusal's own
 					// consequence rather than repeating the server's words (UX round 2, U1).
 					set({
-						error: storeErrorMessage(
-							error,
-							"Chat could not start. Retry with the same draft.",
-						),
+						error: storeErrorMessage(error, t("ui.common.errors.chat_start")),
 					});
 					throw error;
 				}
@@ -6690,6 +7782,13 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					validatingSessionId: null,
 					...forgetSession(get(), sessionId),
 				});
+				/*
+				 * A conversation this window's own stream reported gone must not keep a
+				 * draft's pointer alive either: the next press for that team would resolve
+				 * an id the store has just tombstoned, and the pane would land on the
+				 * notice for a screen the header calls a new chat.
+				 */
+				get().retireDraftsForSession(sessionId);
 			},
 			rearmReadAck: (sessionId) => {
 				set((state) => ({
@@ -6813,7 +7912,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					deferred,
 				};
 			},
-			applySessionStatus: (sessionId, status, revision, epoch) => {
+			applySessionStatus: (sessionId, status, revision, epoch, counts) => {
 				set((state) => {
 					const index = state.sessions.findIndex(
 						(row) => row.session_id === sessionId,
@@ -6847,7 +7946,13 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					const row = sessions[index];
 					// Identity, not equality: an unchanged frame must not re-render every
 					// row of a 500-row sidebar for a level that carried nothing new.
+					const countsMoved =
+						counts !== undefined &&
+						(Object.keys(counts) as (keyof SessionStatusFrameCounts)[]).some(
+							(key) => row[key] !== counts[key],
+						);
 					const unchanged =
+						!countsMoved &&
 						row.status?.code === status.code &&
 						row.status?.label === status.label &&
 						row.status_revision === revision &&
@@ -6856,6 +7961,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					if (!unchanged)
 						sessions[index] = {
 							...row,
+							...counts,
 							status,
 							status_revision: revision,
 							status_epoch: epoch,
@@ -6917,7 +8023,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				 * What that changes, stated because each was a property of the old read:
 				 *
 				 * - THE WINDOW stays. A send addressed to a session nothing has confirmed
-				 *   is still refused with `SESSION_UNVALIDATED_MESSAGE`; the window is
+				 *   is still refused with `sessionUnvalidatedMessage()`; the window is
 				 *   now closed by the snapshot, which is the frame that paints the
 				 *   messages, so "messages on screen" and "the composer sends" land in
 				 *   the same commit rather than one round trip apart.
@@ -6954,18 +8060,81 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				return true;
 			},
 			stageDraft: (target, fresh = false) => {
-				const key =
-					!fresh && target
-						? `draft:${target.kind}:${target.name}`
-						: `draft:${crypto.randomUUID()}`;
+				const stable =
+					!fresh && target ? `draft:${target.kind}:${target.name}` : null;
+				const key = stable ?? `draft:${crypto.randomUUID()}`;
 				const existing = get().drafts[key];
+				/*
+				 * A NEW-CHAT PRESS IS NOT A CONVERSATION, WHICH IS THE WHOLE DEFECT THIS
+				 * BLOCK EXISTS FOR (the operator's report, 2026-10-22).
+				 *
+				 * The stable key is what makes pressing a team twice return to the SAME
+				 * new chat (the contract `stageDraft`'s callers and their suites pin). It
+				 * is also what made a row that had already CREATED a conversation - the
+				 * create's answer writes `sessionId`, and a failed message or a quit
+				 * before the ack leaves the row behind - get reused by every later press,
+				 * so the pane resolved the old conversation through
+				 * `panelSessionIdOfView` and painted the terminal missing state once that
+				 * conversation was deleted. The header still said "New chat with <team>",
+				 * because it reads `activeDraftKey`: two sources of truth disagreeing
+				 * about whether the screen was a new chat.
+				 *
+				 * SO THE BOUND ROW MOVES ASIDE rather than being reused or discarded. It is
+				 * the failed message's RETRY surface, and the message is the user's: it
+				 * stays reachable from its own conversation, whose pane finds the row by
+				 * BELONGING (`paneDraftKey`, `draftBelongsToSession`) rather than by the
+				 * draft key, so the key it is filed under is free to change. `send:<id>` is
+				 * the existing spelling for a draft that lives on an existing
+				 * conversation; a `draft:<uuid>` fallback is used only when that key is
+				 * already taken, and belonging still finds it.
+				 *
+				 * A LIVE SEND IS NOT MOVED (`pending`): the admission holds this key
+				 * string and will finish under it, and the press that arrives mid-send is
+				 * the user following the message they just sent rather than starting a
+				 * new one. A settled or abandoned row is the case this exists for.
+				 */
+				/*
+				 * AND A PRESS ON THE CONVERSATION ALREADY ON SCREEN IS NOT A FORK (UX
+				 * review round 1's U2). The team row is highlighted while its draft is
+				 * staged, and a reader standing in the failed conversation's own pane
+				 * presses that row to mean "I am here" - before this rule it was a no-op,
+				 * and forking a blank chat under them reads as losing their failure. The
+				 * comparison is the VIEW's id (`panelSessionIdOfView`, the expression the
+				 * pane itself reads), not `activeSessionId`, which a staged draft leaves
+				 * pointing at the conversation the reader came FROM: a press made from a
+				 * fresh draft whose last conversation happens to be this one must still
+				 * fork, or the defect comes back through the other door.
+				 */
+				const viewId = panelSessionIdOfView(
+					get().activeDraftKey,
+					get().activeDraftKey
+						? get().drafts[get().activeDraftKey as string]?.sessionId
+						: undefined,
+					get().activeSessionId,
+				);
+				if (
+					existing?.sessionId &&
+					!existing.pending &&
+					existing.sessionId !== viewId
+				) {
+					const movedKey = get().drafts[`send:${existing.sessionId}`]
+						? `draft:${crypto.randomUUID()}`
+						: `send:${existing.sessionId}`;
+					set((state) => {
+						const drafts = { ...state.drafts };
+						delete drafts[key];
+						drafts[movedKey] = { ...existing, key: movedKey };
+						return { drafts };
+					});
+				}
+				const reusable = get().drafts[key];
 				set((state) => ({
 					activeDraftKey: key,
 					validatingSessionId: null,
 					error: null,
 					drafts: {
 						...state.drafts,
-						[key]: existing ?? {
+						[key]: reusable ?? {
 							key,
 							target,
 							createRequestId: crypto.randomUUID(),
@@ -7004,11 +8173,59 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			 */
 			restageDraft: (target, carry) => {
 				const from = get().activeDraftKey;
+				/*
+				 * NO TARGET IS A FRESH BARE DRAFT, never the source row reused: a
+				 * bare draft's key is a `draft:<uuid>` mint, and `stageDraft()` with
+				 * no target mints one, so "back to the default agent" lands on a row
+				 * that carries no `target` and the first send creates a default
+				 * session (`sessions.create` omits `target`).
+				 */
 				const key = get().stageDraft(target);
-				const input = useConversationInputStore.getState();
-				const text = carry ?? (from ? input.getCurrentInput(from) : "");
-				if (text) input.setComposerText(key, text);
-				if (from && from !== key) input.setComposerText(from, "");
+				// The flip is a remount; `carryComposerText` is the one expression that
+				// moves the box with it (its own note carries the why and the source's
+				// clear).
+				carryComposerText(from, key, carry);
+				return key;
+			},
+			startNewChat: (from) => {
+				// No target: a bare New chat keyed `draft:<uuid>`, which is the same
+				// row the ⌘N shortcut stages - the notice's press is a new chat, not a
+				// re-addressing of the conversation that is gone.
+				const key = get().stageDraft();
+				/*
+				 * THE SELECTION GOES WITH IT (QA round 1, Q1). `stageDraft` deliberately
+				 * leaves `activeSessionId` at the conversation the reader came from - a
+				 * press while browsing keeps the sidebar's place - but here that
+				 * conversation is GONE, and a reload of its route re-opens it over an empty
+				 * box while the carried payload waits in a draft nothing addresses. The
+				 * pair written here is the one `openDraft` leaves: a staged draft and no
+				 * selected conversation.
+				 */
+				set({ activeSessionId: null, validatingSessionId: null });
+				if (from) {
+					/*
+					 * THE WORDS THAT HAVE NOT BEEN ADOPTED YET GO FIRST (agent review round 2,
+					 * R2-2). `returnInFlight` folds `currentInput` and then DELETES the source
+					 * row; it never reads `pendingText`. A row whose returned payload landed
+					 * in the same turn as the 404 - or whose adoption a masked capture
+					 * skipped - therefore has its words nowhere else, and the move would
+					 * discard them. The retired-draft path adopts before it moves for the same
+					 * reason (`restoreRetiredDraftPayload`); this is that order.
+					 *
+					 * The adopt itself is unconditional and synchronous at this layer (the
+					 * masked-capture skip lives in the hook, not here), so a row that held
+					 * words has given them up by the time it returns. The guard is the
+					 * defensive read: it covers a row that did not adopt - no row left to
+					 * adopt into - so the move can never delete a row under words that did
+					 * not land in the target. The rule is that a draft follows the reader or
+					 * stays put, never vanishes.
+					 */
+					useConversationInputStore.getState().adoptReturnedText(from);
+					const source =
+						useConversationInputStore.getState().inputByConversation[from];
+					if (source?.pendingText === undefined)
+						useConversationInputStore.getState().returnInFlight(from, key);
+				}
 				return key;
 			},
 			updateDraft: (key, patch) =>
@@ -7188,14 +8405,23 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				const requestId = draft.draftRequestId ?? crypto.randomUUID();
 				if (!draft.draftRequestId)
 					get().updateDraft(key, { draftRequestId: requestId });
+				/*
+				 * Omitted when nothing was picked, exactly as `sessions.create` and the
+				 * preview omit it: the configured default is the backend's to resolve.
+				 * Filtered the same way when this backend cannot carry the dial (round
+				 * 2's F1 follow-up): the mint is a whole-body request too, so an
+				 * unfiltered one spends the keystroke on a 422.
+				 */
+				const wireModel = draftModelForWire(
+					draft.model ?? null,
+					state.draftFastCarries,
+				);
 				void desktopResult<{ draft_id: string }>({
 					op: "sessions.draft",
 					requestId,
 					cwd: state.cwd,
 					...(draft.target ? { target: draft.target } : {}),
-					// Omitted when nothing was picked, exactly as `sessions.create` and the
-					// preview omit it: the configured default is the backend's to resolve.
-					...(draft.model ? { model: draft.model } : {}),
+					...(wireModel ? { model: wireModel } : {}),
 				})
 					.then((result) => {
 						/*
@@ -7224,6 +8450,13 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			finishDraft: (key, sessionId) =>
 				set((state) => {
 					/*
+					 * The remembered seam goes with the row it belonged to (see
+					 * `lastAdmissionSeam`): the message is on the owner, so a replay of it
+					 * cannot happen, and a key that is reused (`send:<id>`) must not inherit
+					 * the last message's composition.
+					 */
+					lastAdmissionSeam.delete(key);
+					/*
 					 * The message is on the owner, so nothing about it is in flight
 					 * or waiting to be reconciled any more. Done here rather than by
 					 * the caller because every path that ends a send successfully
@@ -7246,8 +8479,119 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 							: {}),
 					};
 				}),
+			/*
+			 * THE POINTER'S OWN RETIREMENT (see `unboundDraftRow` for the defect this
+			 * closes). Both forms read the row from the LIVE map rather than from the
+			 * caller's snapshot, so a verdict that lands twice - a reconnect repeating a
+			 * 404, a delete and its stream's answer - is one mint of the request ids and
+			 * one return of the payload. A row with no `sessionId` is already a new chat
+			 * and is left alone, which is what keeps a second call from clearing words
+			 * the user has typed into it since.
+			 */
+			retireDraftSession: (key) => {
+				const draft = get().drafts[key];
+				/*
+				 * A LIVE SEND IS NOT RETIRED (agent review round 1's MAJOR-1). `pending` is
+				 * true from the press until the admission settles, and `admitChatDraft`
+				 * holds this key string across that whole window - unbinding the row under
+				 * it would wipe the claim, re-mint both request ids, and (because a row in
+				 * flight makes `returnPayload` a no-op) destroy the user's message. The
+				 * same rule `stageDraft` states for its move. A 404 that arrives mid-send
+				 * is also not a verdict about the conversation the create just returned:
+				 * the settled row is retired by the next verdict, or by a later 404.
+				 */
+				if (!draft?.sessionId || draft.pending) return;
+				const sessionId = draft.sessionId;
+				const payload = retiredDraftPayload(draft);
+				set((state) => {
+					const row = state.drafts[key];
+					if (!row?.sessionId || row.pending) return {};
+					return { drafts: { ...state.drafts, [key]: unboundDraftRow(row) } };
+				});
+				/*
+				 * The payload goes to the ROW'S OWN KEY, which is the identity the pane
+				 * reads once the pointer is gone (`panelIdentityFor(null, key)`). The
+				 * helper also moves text typed under the conversation identity while the
+				 * failure was already standing (agent review round 1's MINOR-2).
+				 */
+				restoreRetiredDraftPayload(key, sessionId, payload);
+			},
+			retireDraftsForSession: (sessionId) => {
+				/*
+				 * STAGED DRAFTS ONLY (`draft:…`). A `send:<id>` row is a send made FROM an
+				 * existing conversation, not a new-chat pointer: no press resolves it (it
+				 * is never `activeDraftKey`), and its retry line belongs to that
+				 * conversation's own pane (`paneDraftKey` by belonging). Retiring it would
+				 * only strip the failure's sentence from the pane the user is looking at,
+				 * so the reported class ends at the staged shape.
+				 */
+				for (const [key, draft] of Object.entries(get().drafts))
+					if (key.startsWith("draft:") && draft.sessionId === sessionId)
+						get().retireDraftSession(key);
+			},
+			retireDraftWarm: (warmId) => {
+				/*
+				 * THE BRIDGE, NOT THE CONVERSATION (the operator's report, 2026-10-23).
+				 * A New chat with a team keeps a STABLE draft key, and its `warmId` is
+				 * adopted from a `sessions.draft` receipt - which the daemon REPLAYS for
+				 * the same `draftRequestId`. After a restart, or once the draft expired,
+				 * that receipt names an id the daemon can no longer serve: the pane's own
+				 * bridge stream 404s, and the 404 must not be read as a missing
+				 * CONVERSATION (the row has no `sessionId`, so it is a new chat, and the
+				 * pane's missing notice is a lie about the screen). That is the session arm
+				 * in `use-canonical-session`'s 404 branch; this action is the draft arm's
+				 * conclusion.
+				 *
+				 * The row is the only place the dead id lives, and it must stop holding
+				 * it: the next read of `streamId` (`sessionId ?? draft.warmId`) would
+				 * otherwise re-open the same dead bridge. The request id is re-minted
+				 * WITH it because the daemon's receipt is keyed on it - a replay would
+				 * hand the same dead id back, which is the half a clear alone cannot
+				 * fix. The row's own intent is untouched: `target`, `model`, `peer`, `cwd`
+				 * say where the NEXT conversation goes, and every composer word is filed
+				 * under the draft key, not here.
+				 *
+				 * ONE ROW SHAPE, ONE OWNER: rows that carry a `sessionId` belong to
+				 * `retireDraftsForSession`, so this action leaves them alone even if the
+				 * two facts ever name the same id. A row whose warm already moved on is a
+				 * no-op, which is what lets a reconnect report the same 404 twice.
+				 */
+				const matches = Object.entries(get().drafts).filter(
+					([key, draft]) =>
+						key.startsWith("draft:") &&
+						draft.warmId === warmId &&
+						!draft.sessionId,
+				);
+				if (matches.length === 0) return;
+				set((state) => {
+					const drafts = { ...state.drafts };
+					for (const [key] of matches) {
+						/*
+						 * Re-read the LIVE row: the filter above ran on an earlier snapshot,
+						 * and a send can have bound the row in between. The same condition is
+						 * asked again so that this write cannot outrun the send it lost to.
+						 */
+						const row = drafts[key];
+						if (!row || row.warmId !== warmId || row.sessionId) continue;
+						drafts[key] = {
+							...row,
+							warmId: undefined,
+							draftRequestId: crypto.randomUUID(),
+						};
+					}
+					return { drafts };
+				});
+			},
 			discardDraft: (key) =>
 				set((state) => {
+					/*
+					 * An abandoned draft takes its remembered seam with it (see
+					 * `lastAdmissionSeam`): its row is gone, so nothing can replay it, and the
+					 * next press on that key writes its own before any replay could read this
+					 * one. A Map write rather than state, which is why it sits beside the other
+					 * memory this action owns (`discardPendingSends`).
+					 */
+					lastAdmissionSeam.delete(key);
 					/*
 					 * A LIVE SEND HOP IS WITHHELD FROM THE ACTS, NOT REFUSED HERE (UX round 1's
 					 * U2, remediation, 2026-09-27): the sidebar disables the discard control for
@@ -7530,6 +8874,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						error: _error,
 						errorCode: _errorCode,
 						errorRetry: _errorRetry,
+						errorCause: _errorCause,
 						...kept
 					} = draft;
 					/*
@@ -7767,7 +9112,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					before === undefined && seed !== undefined
 						? {
 								session_id: sessionId,
-								title: seed.title || "Untitled chat",
+								title: seed.title || "",
 								updated_at: seed.updated_at,
 								pinned,
 							}
@@ -7881,8 +9226,11 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 							pinFailure: {
 								sessionId,
 								pinned,
-								title: before?.title || "this chat",
+								title: before?.title || "",
 								detail: userFacingMessage(error, ""),
+								...(error instanceof DesktopControlError && error.code
+									? { code: error.code }
+									: {}),
 							},
 						};
 					});
@@ -7986,7 +9334,12 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			 * The peers-inclusive read's own landing (see the type's docstring for the
 			 * rules and why it is not folded into `fetchSessions`).
 			 */
-			settlePeerCatalogue: (rows, requestedAt) => {
+			settlePeerCatalogue: (
+				incomingRows,
+				requestedAt,
+				deviceFacts = {},
+				peerSnapshotAt = undefined,
+			) => {
 				set((state) => {
 					/*
 					 * 1. SETTLEMENT, mirroring `fetchSessions`' own loop: a fact older
@@ -7994,6 +9347,25 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					 * written after it started is left alone. All settlements of one
 					 * answer share ONE fresh sequence, exactly as that loop's do.
 					 */
+					// Match the plain-page tombstone guard: only a genuinely newer
+					// sessions answer can revive an ID. Device-only answers carry no rows.
+					const forgotten = { ...state.forgotten };
+					for (const row of incomingRows) {
+						if (forgotten[row.session_id]?.at < requestedAt)
+							delete forgotten[row.session_id];
+					}
+					const rows = incomingRows.filter((row) => {
+						if (forgotten[row.session_id]) return false;
+						if (
+							row.locality === "remote" &&
+							state.peerDeviceSnapshotAt > requestedAt &&
+							typeof row.owner_device === "string" &&
+							!state.peerDeviceFacts[row.owner_device]
+						)
+							return false;
+						const placement = state.placementFacts[row.session_id];
+						return !placement || placement.at < requestedAt;
+					});
 					const facts = { ...state.placementFacts };
 					/* The ids THIS call settled, so the two write halves below can read
 					 * exactly what the answer spoke about rather than re-deriving it. */
@@ -8036,6 +9408,26 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					 * its page owns them and this one only ever settles facts for them -
 					 * so nothing about a local row is written from here.
 					 */
+					const snapshot =
+						peerSnapshotAt === undefined
+							? null
+							: reconcilePeerDeviceSnapshot(
+									state.peerDeviceFacts,
+									deviceFacts,
+									state.peerDeviceSnapshotAt,
+									peerSnapshotAt,
+								);
+					const peerDeviceFacts =
+						snapshot?.facts ??
+						mergePeerDeviceFacts(
+							state.peerDeviceFacts,
+							Object.fromEntries(
+								Object.entries(deviceFacts).filter(
+									([, fact]) => fact.at > state.peerDeviceSnapshotAt,
+								),
+							),
+						);
+
 					const remote = rows.filter((row) => row.locality === "remote");
 					let sessions = state.sessions;
 					let replaced = false;
@@ -8098,10 +9490,24 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 							spoke.add(row.owner_device);
 					}
 					const pruned = new Set<string>();
+					for (const row of sessions) {
+						if (
+							row.locality !== "remote" ||
+							typeof row.owner_device !== "string" ||
+							!snapshot?.removed.includes(row.owner_device)
+						)
+							continue;
+						const placement = state.placementFacts[row.session_id];
+						if (placement && placement.at >= (peerSnapshotAt ?? 0)) continue;
+						pruned.add(row.session_id);
+						delete facts[row.session_id];
+					}
 					for (const [id, fact] of Object.entries(state.placementFacts)) {
 						if (fact.locality !== "remote") continue;
 						if (answered.has(id)) continue;
 						if (fact.at >= requestedAt) continue;
+						if (peerDeviceFacts[fact.owner_device]?.reachable === false)
+							continue;
 						if (fact.owner_device === "" || !spoke.has(fact.owner_device))
 							continue;
 						pruned.add(id);
@@ -8109,16 +9515,29 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					}
 					if (pruned.size > 0)
 						sessions = sessions.filter((row) => !pruned.has(row.session_id));
+					const projected = sessions.map((row) =>
+						applyPeerDeviceFact(row, peerDeviceFacts),
+					);
+					if (projected.some((row, index) => row !== sessions[index])) {
+						sessions = projected;
+						replaced = true;
+					}
 					if (
 						!settled &&
 						additions.length === 0 &&
 						!replaced &&
-						pruned.size === 0
+						pruned.size === 0 &&
+						Object.keys(deviceFacts).length === 0 &&
+						peerSnapshotAt === undefined
 					)
 						return {};
 					return {
 						sessions,
 						placementFacts: facts,
+						peerDeviceFacts,
+						peerDeviceSnapshotAt:
+							snapshot?.watermark ?? state.peerDeviceSnapshotAt,
+						forgotten,
 						...(settled ? { answerSeq: state.answerSeq + 1 } : {}),
 					};
 				});
@@ -8126,6 +9545,17 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 		}),
 		{
 			name: "canonical-sessions-storage",
+			/*
+			 * Quota-safe (`quota-safe-storage.ts`): a full localStorage used to throw
+			 * out of zustand's persist as an uncaught `QuotaExceededError` (PostHog,
+			 * Windows). The last resort keeps the active pointers and drafts with
+			 * text, and trims `forgotten` to its newest entries - it only ever runs
+			 * once the platform has refused the full and the image-free copies.
+			 */
+			storage: quotaSafePersistStorage<Partial<CanonicalSessionsState>>({
+				storeName: "canonical-sessions-storage",
+				lastResort: shrinkPersistedSessions,
+			}),
 			merge: mergePersistedSession,
 			partialize: (state) => ({
 				activeSessionId: state.activeSessionId,

@@ -1,0 +1,801 @@
+{
+  "schema": 1,
+  "kind": "translation-audit-receipt",
+  "locale": "ur",
+  "locale_name": "Urdu",
+  "batch": "canvas",
+  "pr": 1388,
+  "branch": "feat/i18n-canvas-batch",
+  "head": "82209cab3a9eeee4d6649d4b0015b73501b122e8",
+  "previous_head": "936e3a483b4d675c9827be5f40167da186f86900",
+  "base": "40462495827dfb0e1bfacb8643da805912493a5b",
+  "date": "2026-10-24",
+  "round": 2,
+  "auditor": {
+    "agent": "translation-auditor",
+    "harness": "Local Operator",
+    "team": "lopdev",
+    "session": "21fe6c635cf3",
+    "instance": "21fe6c635cf3",
+    "model": "radient/auto",
+    "model_provenance": "Harness session model tag radient/auto; no narrower underlying model id was exposed and no fallback was observed. No other model is claimed.",
+    "independence": "Independent auditor; different session from the translator and from the implementer. Read-only pass over git objects at the recorded heads; this session edited no catalogue value and made no commit.",
+    "date": "2026-10-24"
+  },
+  "model": "radient/auto",
+  "instance": "21fe6c635cf3",
+  "reference": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/ur.md",
+      "sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+    }
+  },
+  "previous_receipt": {
+    "path": "i18n/receipts/ur-canvas-audit-9f7efaeab2ef.json",
+    "sha256": "e4e57d1018cb285a7c9684c344ceb2d8620c99f97570fe8a52bb7dbed2acb4af"
+  },
+  "audit_scope": "Remediation delta only: every value this remediation changed in the audited namespaces, plus the round-1 findings themselves. Unchanged keys are not re-audited; their round-1 coverage stands on the byte-identical hashes recorded below.",
+  "independence_note": "This is round 2 of the same auditor role that raised round 1; it verifies the applied values and runs the mechanical checks again, it does not re-audit unchanged copy.",
+  "remediation": {
+    "UR-CAN-CANVAS-01": "FIXED",
+    "UR-CAN-CANVAS-02": "FIXED",
+    "UR-CAN-CANVAS-03": "FIXED",
+    "UR-CAN-CANVAS-04": "FIXED",
+    "UR-CAN-CANVAS-05": "FIXED",
+    "UR-CAN-PICKERS-01": "FIXED",
+    "UR-CAN-PICKERS-02": "FIXED",
+    "UR-CAN-PICKERS-03": "FIXED",
+    "UR-CAN-PICKERS-04": "FIXED",
+    "UR-CAN-PICKERS-05": "FIXED",
+    "UR-CAN-PICKERS-06": "FIXED",
+    "UR-CAN-PICKERS-07": "FIXED",
+    "UR-CAN-PICKERS-08": "FIXED",
+    "UR-CAN-PICKERS-09": "FIXED",
+    "UR-CAN-PICKERS-10": "FIXED",
+    "UR-CAN-PICKERS-11": "FIXED",
+    "UR-CAN-PICKERS-12": "FIXED",
+    "UR-CAN-PICKERS-13": "FIXED",
+    "UR-CAN-PICKERS-14": "FIXED",
+    "UR-CAN-PICKERS-15": "FIXED",
+    "UR-CAN-PICKERS-16": {
+      "status": "DEFERRED",
+      "reason": "Register decision accepted: the ur style guide mandates the respectful imperative (دوبارہ کوشش کریں), and 30+ existing values use it; no maxCells budget exists for ui.chat.pickers, so overflow remains a rendered-check question, not a catalogue defect. Non-gating minor."
+    },
+    "UR-CAN-PICKERS-17": "FIXED",
+    "UR-CAN-ACTIONS-01": "FIXED"
+  },
+  "mechanical_checks": {
+    "changed_keys_checked": 31,
+    "nfc_normalised": "31/31",
+    "manual_bidi_controls": 0,
+    "ascii_question_or_semicolon": 0,
+    "latin_token_drift": 0,
+    "terminal_punctuation_class_changed": 0,
+    "quote_balance_failures": 0,
+    "english_and_context_byte_identical": true,
+    "english_or_context_changes": []
+  },
+  "delta_table": [
+    {
+      "id": null,
+      "class": "consistency-satellite",
+      "key": "ui.canvas.wysiwyg_markdown_editor.undo_ctrl_z",
+      "before": "واپس کریں (Ctrl+Z)",
+      "after": "کالعدم کریں (Ctrl+Z)",
+      "status": "FIXED",
+      "reason": "UR-CAN-CANVAS-01 direct sibling: the same command with its accelerator."
+    },
+    {
+      "id": "UR-CAN-CANVAS-01",
+      "severity": "major",
+      "key": "ui.canvas.wysiwyg_markdown_editor.undo",
+      "before": "واپس کریں",
+      "after": "کالعدم کریں",
+      "status": "FIXED",
+      "class": "finding"
+    },
+    {
+      "id": "UR-CAN-CANVAS-02",
+      "severity": "major",
+      "key": "ui.canvas.variable_form_dialog.value_json_array",
+      "before": "قدر (JSON ارے)",
+      "after": "قدر (JSON سرنی)",
+      "status": "FIXED",
+      "class": "finding"
+    },
+    {
+      "id": "UR-CAN-CANVAS-03",
+      "severity": "minor",
+      "key": "ui.canvas.goals_viewer.goals_appear_here_once_they_are_finished",
+      "before": "ہدف مکمل ہونے پر یہاں ظاہر ہوتے ہیں۔",
+      "after": "ہدف مکمل ہونے پر یہاں ظاہر ہوتا ہے۔",
+      "status": "FIXED",
+      "class": "finding"
+    },
+    {
+      "id": "UR-CAN-CANVAS-04",
+      "severity": "nit",
+      "key": "ui.canvas.finder_layout.highlights",
+      "before": "نمایاں کردہ",
+      "after": "نمایاں",
+      "status": "FIXED",
+      "class": "finding"
+    },
+    {
+      "id": "UR-CAN-CANVAS-05",
+      "severity": "nit",
+      "key": "ui.canvas.shell.canvas_view",
+      "before": "Canvas منظر",
+      "after": "Canvas کا منظر",
+      "status": "FIXED",
+      "class": "finding"
+    },
+    {
+      "id": null,
+      "class": "consistency-satellite",
+      "key": "ui.chat.pickers.destination_pickers.show_all_supported_models",
+      "before": "تمام تعاون یافتہ ماڈل دکھائیں",
+      "after": "تمام سپورٹ شدہ ماڈل دکھائیں",
+      "status": "FIXED",
+      "reason": "UR-CAN-PICKERS-15 consistency: same term in the button label."
+    },
+    {
+      "id": null,
+      "class": "consistency-satellite",
+      "key": "ui.chat.pickers.destination_pickers.not_supported",
+      "before": "تعاون یافتہ نہیں",
+      "after": "سپورٹ شدہ نہیں",
+      "status": "FIXED",
+      "reason": "UR-CAN-PICKERS-15 consistency: the negated status must use the same root as supported."
+    },
+    {
+      "id": null,
+      "class": "consistency-satellite",
+      "key": "ui.chat.pickers.destination_pickers.native_outputs",
+      "before": "نیٹو آؤٹ پٹس",
+      "after": "مقامی آؤٹ پٹس",
+      "status": "FIXED",
+      "reason": "UR-CAN-PICKERS-01 sibling: same false friend as native_inputs."
+    },
+    {
+      "id": null,
+      "class": "consistency-satellite",
+      "key": "ui.chat.pickers.destination_pickers.skills_discoverable_from_this_session_s_working_directory_scope_listed_i",
+      "before": "اس سیشن کی ورکنگ ڈائریکٹری سے دستیاب مہارتیں ({value} کے دائرے میں)۔ فہرست میں ہونا پرامپٹ میں منتخب ہونے کے برابر نہیں۔",
+      "after": "اس سیشن کی ورکنگ ڈائریکٹری سے قابلِ دریافت مہارتیں ({value} کے دائرے میں)۔ فہرست میں ہونا پرامپٹ میں منتخب ہونے کے برابر نہیں۔",
+      "status": "FIXED",
+      "reason": "UR-CAN-PICKERS-11 consistency: the sentence uses the same 'discoverable' term."
+    },
+    {
+      "id": null,
+      "class": "consistency-satellite",
+      "key": "ui.chat.pickers.destination_pickers.no_skills_are_discoverable_from_this_session_s_directory",
+      "before": "اس سیشن کی ڈائریکٹری سے کوئی مہارت دستیاب نہیں۔",
+      "after": "اس سیشن کی ڈائریکٹری سے کوئی مہارت قابلِ دریافت نہیں۔",
+      "status": "FIXED",
+      "reason": "UR-CAN-PICKERS-11 consistency: the negated sentence uses the same term."
+    },
+    {
+      "id": null,
+      "class": "consistency-satellite",
+      "key": "ui.chat.pickers.destination_pickers.show_all_supported_models_sign_in",
+      "before": "{scopecount, plural, one {تمام تعاون یافتہ ماڈل دکھائیں ({scopecount, number, ::group-off} کو سائن ان درکار ہے)} other {تمام تعاون یافتہ ماڈل دکھائیں ({scopecount, number, ::group-off} کو سائن ان درکار ہے)}}",
+      "after": "{scopecount, plural, one {تمام سپورٹ شدہ ماڈل دکھائیں ({scopecount, number, ::group-off} کو سائن ان درکار ہے)} other {تمام سپورٹ شدہ ماڈل دکھائیں ({scopecount, number, ::group-off} کو سائن ان درکار ہے)}}",
+      "status": "FIXED",
+      "reason": "UR-CAN-PICKERS-15 consistency: same term inside the ICU plural."
+    },
+    {
+      "id": null,
+      "class": "consistency-satellite",
+      "key": "ui.chat.pickers.goal.clear",
+      "before": "مقصد صاف کریں",
+      "after": "ہدف صاف کریں",
+      "status": "FIXED",
+      "reason": "UR-CAN-PICKERS-03 consistency: the picker's clear action must use the same goal term as its title."
+    },
+    {
+      "id": null,
+      "class": "consistency-satellite",
+      "key": "ui.chat.pickers.models.native_details",
+      "before": "نیٹو تفصیلات — {name}",
+      "after": "اصل تفصیلات — {name}",
+      "status": "FIXED",
+      "reason": "UR-CAN-PICKERS-01 details caption; the round-1 finding named the details caption explicitly."
+    },
+    {
+      "id": "UR-CAN-PICKERS-01",
+      "severity": "major",
+      "key": "ui.chat.pickers.destination_pickers.native_inputs",
+      "before": "نیٹو ان پٹس",
+      "after": "مقامی ان پٹس",
+      "status": "FIXED",
+      "class": "finding"
+    },
+    {
+      "id": "UR-CAN-PICKERS-02",
+      "severity": "major",
+      "key": "ui.chat.pickers.analytics_session_state.top_level_only_off",
+      "before": "صرف اعلیٰ درجہ بند: {matchedtext} {matched, plural, one {سیشن} other {سیشنز}}۔",
+      "after": "صرف اعلیٰ درجہ والا فلٹر بند: {matchedtext} {matched, plural, one {سیشن} other {سیشنز}}۔",
+      "status": "FIXED",
+      "class": "finding"
+    },
+    {
+      "id": "UR-CAN-PICKERS-03",
+      "severity": "minor",
+      "key": "ui.chat.pickers.goal.title",
+      "before": "سیشن کا مقصد",
+      "after": "سیشن کا ہدف",
+      "status": "FIXED",
+      "class": "finding"
+    },
+    {
+      "id": "UR-CAN-PICKERS-04",
+      "severity": "minor",
+      "key": "ui.chat.pickers.destination_pickers.fixed_number_of_turns",
+      "before": "باریاں کی مقررہ تعداد",
+      "after": "باریوں کی مقررہ تعداد",
+      "status": "FIXED",
+      "class": "finding"
+    },
+    {
+      "id": "UR-CAN-PICKERS-05",
+      "severity": "minor",
+      "key": "ui.chat.pickers.session_panel.no_recent_requests_recorded_for_this_session",
+      "before": "اس سیشن کی کوئی حالیہ درخواستیں درج نہیں۔",
+      "after": "اس سیشن کی کوئی حالیہ درخواست درج نہیں۔",
+      "status": "FIXED",
+      "class": "finding"
+    },
+    {
+      "id": "UR-CAN-PICKERS-06",
+      "severity": "minor",
+      "key": "ui.chat.pickers.session_panel.no_model_rows_recorded_for_this_session",
+      "before": "اس سیشن کے لیے کوئی ماڈل قطاریں درج نہیں۔",
+      "after": "اس سیشن کے لیے کوئی ماڈل قطار درج نہیں۔",
+      "status": "FIXED",
+      "class": "finding"
+    },
+    {
+      "id": "UR-CAN-PICKERS-07",
+      "severity": "minor",
+      "key": "ui.chat.pickers.session_panel.no_purpose_rows_recorded_for_this_session",
+      "before": "اس سیشن کے لیے مقصد کی کوئی قطاریں درج نہیں۔",
+      "after": "اس سیشن کے لیے مقصد کی کوئی قطار درج نہیں۔",
+      "status": "FIXED",
+      "class": "finding"
+    },
+    {
+      "id": "UR-CAN-PICKERS-08",
+      "severity": "minor",
+      "key": "ui.chat.pickers.analytics_panel.no_channel_rows_in_this_conversation",
+      "before": "اس گفتگو میں کوئی چینل قطاریں نہیں۔",
+      "after": "اس گفتگو میں کوئی چینل قطار نہیں۔",
+      "status": "FIXED",
+      "class": "finding"
+    },
+    {
+      "id": "UR-CAN-PICKERS-09",
+      "severity": "minor",
+      "key": "ui.chat.pickers.model_catalogue_listing.the_shipped_models",
+      "before": "شائع شدہ ماڈل",
+      "after": "شامل شدہ ماڈلز",
+      "status": "FIXED",
+      "class": "finding"
+    },
+    {
+      "id": "UR-CAN-PICKERS-10",
+      "severity": "minor",
+      "key": "ui.chat.pickers.destination_pickers.an_explicit_name_takes_precedence_over_the_generated_title",
+      "before": "واضح نام خود بنے ہوئے عنوان پر مقدم ہوتا ہے۔",
+      "after": "واضح طور پر دیا گیا نام خود بنے ہوئے عنوان پر مقدم ہوتا ہے۔",
+      "status": "FIXED",
+      "class": "finding"
+    },
+    {
+      "id": "UR-CAN-PICKERS-11",
+      "severity": "minor",
+      "key": "ui.chat.pickers.destination_pickers.discoverable",
+      "before": "دستیاب",
+      "after": "قابلِ دریافت",
+      "status": "FIXED",
+      "class": "finding"
+    },
+    {
+      "id": "UR-CAN-PICKERS-12",
+      "severity": "minor",
+      "key": "ui.chat.pickers.info_model.still_connecting_deferred_servers",
+      "before": "موؤخر سرورز سے اب بھی رابطہ ہو رہا ہے",
+      "after": "ملتوی سرورز سے اب بھی رابطہ ہو رہا ہے",
+      "status": "FIXED",
+      "class": "finding"
+    },
+    {
+      "id": "UR-CAN-PICKERS-13",
+      "severity": "minor",
+      "key": "ui.chat.pickers.session_panel.the_backend_returned_no_report",
+      "before": "بیک اینڈ نے کوئی رپورٹ واپس نہیں کی۔",
+      "after": "بیک اینڈ نے کوئی رپورٹ فراہم نہیں کی۔",
+      "status": "FIXED",
+      "class": "finding"
+    },
+    {
+      "id": "UR-CAN-PICKERS-14",
+      "severity": "minor",
+      "key": "ui.chat.pickers.context_panel.the_owner_returned_no_breakdown",
+      "before": "مالک نے کوئی تفصیل واپس نہیں کی۔",
+      "after": "مالک نے کوئی تفصیل فراہم نہیں کی۔",
+      "status": "FIXED",
+      "class": "finding"
+    },
+    {
+      "id": "UR-CAN-PICKERS-15",
+      "severity": "minor",
+      "key": "ui.chat.pickers.destination_pickers.supported",
+      "before": "تعاون یافتہ",
+      "after": "سپورٹ شدہ",
+      "status": "FIXED",
+      "class": "finding"
+    },
+    {
+      "id": "UR-CAN-PICKERS-16",
+      "severity": "minor",
+      "key": "ui.chat.pickers.mcp_picker.retry",
+      "before": "دوبارہ کوشش کریں",
+      "after": "دوبارہ کوشش کریں",
+      "status": "DEFERRED",
+      "class": "finding"
+    },
+    {
+      "id": "UR-CAN-PICKERS-17",
+      "severity": "nit",
+      "key": "ui.chat.pickers.goal.placeholder",
+      "before": "تمام گیٹس کامیاب ہونے پر ریلیز شپ کریں",
+      "after": "تمام گیٹس کامیاب ہونے پر ریلیز جاری کریں",
+      "status": "FIXED",
+      "class": "finding"
+    },
+    {
+      "id": "UR-CAN-ACTIONS-01",
+      "severity": "minor",
+      "key": "ui.common.actions.find_replace_widget.switch_to_replace",
+      "before": "تبدیلی پر سوئچ کریں",
+      "after": "تبدیل کرنے پر سوئچ کریں",
+      "status": "FIXED",
+      "class": "finding"
+    }
+  ],
+  "namespaces": {
+    "ui.canvas": {
+      "namespace": "ui.canvas",
+      "status": "passed",
+      "result": "clean",
+      "verdict": "clean — remediation verified, no new findings",
+      "keys_audited_in_delta": 6,
+      "file_keys": 347,
+      "sha256": {
+        "en": "be8acd20add01188abed4985d0aad11325a7ebd8cdbc3bd5c9376be65543563f",
+        "ur": "0256fd05b8c204673036d928767b60c195b64e74e9435bddde97d40517f88eec",
+        "context": "4bc0f2bc47d4b0e826ebb10ba78ff965c550debef54f47c912b9e257fd1784f8"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.canvas.json",
+        "target": "src/i18n/catalogues/ur/ui.canvas.json",
+        "context": "src/i18n/catalogues/en/ui.canvas.context.json"
+      },
+      "findings": [],
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "round1_findings_verified": [
+        {
+          "id": "UR-CAN-CANVAS-01",
+          "severity": "major",
+          "key": "ui.canvas.wysiwyg_markdown_editor.undo",
+          "before": "واپس کریں",
+          "after": "کالعدم کریں",
+          "status": "FIXED"
+        },
+        {
+          "id": "UR-CAN-CANVAS-02",
+          "severity": "major",
+          "key": "ui.canvas.variable_form_dialog.value_json_array",
+          "before": "قدر (JSON ارے)",
+          "after": "قدر (JSON سرنی)",
+          "status": "FIXED"
+        },
+        {
+          "id": "UR-CAN-CANVAS-03",
+          "severity": "minor",
+          "key": "ui.canvas.goals_viewer.goals_appear_here_once_they_are_finished",
+          "before": "ہدف مکمل ہونے پر یہاں ظاہر ہوتے ہیں۔",
+          "after": "ہدف مکمل ہونے پر یہاں ظاہر ہوتا ہے۔",
+          "status": "FIXED"
+        },
+        {
+          "id": "UR-CAN-CANVAS-04",
+          "severity": "nit",
+          "key": "ui.canvas.finder_layout.highlights",
+          "before": "نمایاں کردہ",
+          "after": "نمایاں",
+          "status": "FIXED"
+        },
+        {
+          "id": "UR-CAN-CANVAS-05",
+          "severity": "nit",
+          "key": "ui.canvas.shell.canvas_view",
+          "before": "Canvas منظر",
+          "after": "Canvas کا منظر",
+          "status": "FIXED"
+        }
+      ]
+    },
+    "ui.chat.pickers": {
+      "namespace": "ui.chat.pickers",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "verdict": "clean with findings — remediation verified; one minor deferred with reason",
+      "keys_audited_in_delta": 24,
+      "file_keys": 720,
+      "sha256": {
+        "en": "8109df703e1a4901e4d892607dddd875e6a737c9ea8ee7ef41ec28dbe6ac2e58",
+        "ur": "ddc2e2eee04e56d7286dc362bfe2d683cdf5bde01fbfbb56fd5683c11c5192e8",
+        "context": "c921d3e37ce54288a18e2b45310034a0df0114f15c30e57133422018a00b38d9"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.pickers.json",
+        "target": "src/i18n/catalogues/ur/ui.chat.pickers.json",
+        "context": "src/i18n/catalogues/en/ui.chat.pickers.context.json"
+      },
+      "findings": [
+        {
+          "id": "UR-CAN-PICKERS-16",
+          "severity": "minor",
+          "key": "ui.chat.pickers.mcp_picker.retry",
+          "before": "دوبارہ کوشش کریں",
+          "after": "دوبارہ کوشش کریں",
+          "status": "DEFERRED",
+          "note": "Register decision accepted: the ur style guide mandates the respectful imperative (دوبارہ کوشش کریں), and 30+ existing values use it; no maxCells budget exists for ui.chat.pickers, so overflow remains a rendered-check question, not a catalogue defect. Non-gating minor."
+        }
+      ],
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 0
+      },
+      "round1_findings_verified": [
+        {
+          "id": "UR-CAN-PICKERS-01",
+          "severity": "major",
+          "key": "ui.chat.pickers.destination_pickers.native_inputs",
+          "before": "نیٹو ان پٹس",
+          "after": "مقامی ان پٹس",
+          "status": "FIXED"
+        },
+        {
+          "id": "UR-CAN-PICKERS-02",
+          "severity": "major",
+          "key": "ui.chat.pickers.analytics_session_state.top_level_only_off",
+          "before": "صرف اعلیٰ درجہ بند: {matchedtext} {matched, plural, one {سیشن} other {سیشنز}}۔",
+          "after": "صرف اعلیٰ درجہ والا فلٹر بند: {matchedtext} {matched, plural, one {سیشن} other {سیشنز}}۔",
+          "status": "FIXED"
+        },
+        {
+          "id": "UR-CAN-PICKERS-03",
+          "severity": "minor",
+          "key": "ui.chat.pickers.goal.title",
+          "before": "سیشن کا مقصد",
+          "after": "سیشن کا ہدف",
+          "status": "FIXED"
+        },
+        {
+          "id": "UR-CAN-PICKERS-04",
+          "severity": "minor",
+          "key": "ui.chat.pickers.destination_pickers.fixed_number_of_turns",
+          "before": "باریاں کی مقررہ تعداد",
+          "after": "باریوں کی مقررہ تعداد",
+          "status": "FIXED"
+        },
+        {
+          "id": "UR-CAN-PICKERS-05",
+          "severity": "minor",
+          "key": "ui.chat.pickers.session_panel.no_recent_requests_recorded_for_this_session",
+          "before": "اس سیشن کی کوئی حالیہ درخواستیں درج نہیں۔",
+          "after": "اس سیشن کی کوئی حالیہ درخواست درج نہیں۔",
+          "status": "FIXED"
+        },
+        {
+          "id": "UR-CAN-PICKERS-06",
+          "severity": "minor",
+          "key": "ui.chat.pickers.session_panel.no_model_rows_recorded_for_this_session",
+          "before": "اس سیشن کے لیے کوئی ماڈل قطاریں درج نہیں۔",
+          "after": "اس سیشن کے لیے کوئی ماڈل قطار درج نہیں۔",
+          "status": "FIXED"
+        },
+        {
+          "id": "UR-CAN-PICKERS-07",
+          "severity": "minor",
+          "key": "ui.chat.pickers.session_panel.no_purpose_rows_recorded_for_this_session",
+          "before": "اس سیشن کے لیے مقصد کی کوئی قطاریں درج نہیں۔",
+          "after": "اس سیشن کے لیے مقصد کی کوئی قطار درج نہیں۔",
+          "status": "FIXED"
+        },
+        {
+          "id": "UR-CAN-PICKERS-08",
+          "severity": "minor",
+          "key": "ui.chat.pickers.analytics_panel.no_channel_rows_in_this_conversation",
+          "before": "اس گفتگو میں کوئی چینل قطاریں نہیں۔",
+          "after": "اس گفتگو میں کوئی چینل قطار نہیں۔",
+          "status": "FIXED"
+        },
+        {
+          "id": "UR-CAN-PICKERS-09",
+          "severity": "minor",
+          "key": "ui.chat.pickers.model_catalogue_listing.the_shipped_models",
+          "before": "شائع شدہ ماڈل",
+          "after": "شامل شدہ ماڈلز",
+          "status": "FIXED"
+        },
+        {
+          "id": "UR-CAN-PICKERS-10",
+          "severity": "minor",
+          "key": "ui.chat.pickers.destination_pickers.an_explicit_name_takes_precedence_over_the_generated_title",
+          "before": "واضح نام خود بنے ہوئے عنوان پر مقدم ہوتا ہے۔",
+          "after": "واضح طور پر دیا گیا نام خود بنے ہوئے عنوان پر مقدم ہوتا ہے۔",
+          "status": "FIXED"
+        },
+        {
+          "id": "UR-CAN-PICKERS-11",
+          "severity": "minor",
+          "key": "ui.chat.pickers.destination_pickers.discoverable",
+          "before": "دستیاب",
+          "after": "قابلِ دریافت",
+          "status": "FIXED"
+        },
+        {
+          "id": "UR-CAN-PICKERS-12",
+          "severity": "minor",
+          "key": "ui.chat.pickers.info_model.still_connecting_deferred_servers",
+          "before": "موؤخر سرورز سے اب بھی رابطہ ہو رہا ہے",
+          "after": "ملتوی سرورز سے اب بھی رابطہ ہو رہا ہے",
+          "status": "FIXED"
+        },
+        {
+          "id": "UR-CAN-PICKERS-13",
+          "severity": "minor",
+          "key": "ui.chat.pickers.session_panel.the_backend_returned_no_report",
+          "before": "بیک اینڈ نے کوئی رپورٹ واپس نہیں کی۔",
+          "after": "بیک اینڈ نے کوئی رپورٹ فراہم نہیں کی۔",
+          "status": "FIXED"
+        },
+        {
+          "id": "UR-CAN-PICKERS-14",
+          "severity": "minor",
+          "key": "ui.chat.pickers.context_panel.the_owner_returned_no_breakdown",
+          "before": "مالک نے کوئی تفصیل واپس نہیں کی۔",
+          "after": "مالک نے کوئی تفصیل فراہم نہیں کی۔",
+          "status": "FIXED"
+        },
+        {
+          "id": "UR-CAN-PICKERS-15",
+          "severity": "minor",
+          "key": "ui.chat.pickers.destination_pickers.supported",
+          "before": "تعاون یافتہ",
+          "after": "سپورٹ شدہ",
+          "status": "FIXED"
+        },
+        {
+          "id": "UR-CAN-PICKERS-16",
+          "severity": "minor",
+          "key": "ui.chat.pickers.mcp_picker.retry",
+          "before": "دوبارہ کوشش کریں",
+          "after": "دوبارہ کوشش کریں",
+          "status": "DEFERRED",
+          "note": "Register decision accepted: the ur style guide mandates the respectful imperative (دوبارہ کوشش کریں), and 30+ existing values use it; no maxCells budget exists for ui.chat.pickers, so overflow remains a rendered-check question, not a catalogue defect. Non-gating minor."
+        },
+        {
+          "id": "UR-CAN-PICKERS-17",
+          "severity": "nit",
+          "key": "ui.chat.pickers.goal.placeholder",
+          "before": "تمام گیٹس کامیاب ہونے پر ریلیز شپ کریں",
+          "after": "تمام گیٹس کامیاب ہونے پر ریلیز جاری کریں",
+          "status": "FIXED"
+        }
+      ]
+    },
+    "ui.common.actions": {
+      "namespace": "ui.common.actions",
+      "status": "passed",
+      "result": "clean",
+      "verdict": "clean — remediation verified, no new findings",
+      "keys_audited_in_delta": 1,
+      "file_keys": 36,
+      "sha256": {
+        "en": "d65be7beac66c209a55db5d8a672ff8a8a743eea49ba21593120d4b8664603b2",
+        "ur": "0af7fd2481daadf4b2a51657a0b7996a96c1fca580a5464a76a5f84d57b1a760",
+        "context": "29a6cc54f8605ab2612775708bf5eb202a89e6708167d8a7c3f329a536b339db"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.actions.json",
+        "target": "src/i18n/catalogues/ur/ui.common.actions.json",
+        "context": "src/i18n/catalogues/en/ui.common.actions.context.json"
+      },
+      "findings": [],
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "round1_findings_verified": [
+        {
+          "id": "UR-CAN-ACTIONS-01",
+          "severity": "minor",
+          "key": "ui.common.actions.find_replace_widget.switch_to_replace",
+          "before": "تبدیلی پر سوئچ کریں",
+          "after": "تبدیل کرنے پر سوئچ کریں",
+          "status": "FIXED"
+        }
+      ]
+    },
+    "ui.common.forms": {
+      "namespace": "ui.common.forms",
+      "status": "passed",
+      "result": "clean",
+      "verdict": "clean — remediation verified, no new findings",
+      "keys_audited_in_delta": 0,
+      "file_keys": 37,
+      "sha256": {
+        "en": "c87c16b1169f32105e017fd27eb80047446938b1b45046c28bcf693856898238",
+        "ur": "2d869ab5f846cd2ccf8227bd5d21ed4ae8223d3f273e5e4355678698b60c4635",
+        "context": "c11472cc390fe7771e08dcd34bb633e63797f979a113feaa47d70d06daea38b4"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.forms.json",
+        "target": "src/i18n/catalogues/ur/ui.common.forms.json",
+        "context": "src/i18n/catalogues/en/ui.common.forms.context.json"
+      },
+      "findings": [],
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "round1_findings_verified": []
+    },
+    "ui.common.layout": {
+      "namespace": "ui.common.layout",
+      "status": "passed",
+      "result": "clean",
+      "verdict": "clean — remediation verified, no new findings",
+      "keys_audited_in_delta": 0,
+      "file_keys": 8,
+      "sha256": {
+        "en": "c4efaa88bba85706ac9fb976bc3d3d009f3bb08fc762a90dfeb73d90d0c14db6",
+        "ur": "d6f37cb2b8c03d079bf52b50b811f5e0febde9ddbe88bbbe87681f9d1e4776c2",
+        "context": "318673c640a31e11f5249127c8ef5a76d63c16c3c191960824391d934766bd39"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.layout.json",
+        "target": "src/i18n/catalogues/ur/ui.common.layout.json",
+        "context": "src/i18n/catalogues/en/ui.common.layout.context.json"
+      },
+      "findings": [],
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "round1_findings_verified": []
+    },
+    "ui.common.speech": {
+      "namespace": "ui.common.speech",
+      "status": "passed",
+      "result": "clean",
+      "verdict": "clean — remediation verified, no new findings",
+      "keys_audited_in_delta": 0,
+      "file_keys": 5,
+      "sha256": {
+        "en": "fa6a973f1a6a36f25218e884174299ba154e124baaddc87594bd516c8d07d8f6",
+        "ur": "e161eed70853a74841cb6e434fe15b06172b7a072fb74b8d365edfa0e5c30dd2",
+        "context": "740828525702d67b6ee0ecf7eb0a3f1582167989355bd12d0579d698b982267a"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.speech.json",
+        "target": "src/i18n/catalogues/ur/ui.common.speech.json",
+        "context": "src/i18n/catalogues/en/ui.common.speech.context.json"
+      },
+      "findings": [],
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "round1_findings_verified": []
+    },
+    "ui.common.updates": {
+      "namespace": "ui.common.updates",
+      "status": "passed",
+      "result": "clean",
+      "verdict": "clean — remediation verified, no new findings",
+      "keys_audited_in_delta": 0,
+      "file_keys": 135,
+      "sha256": {
+        "en": "1f81721263fa4c7d74219bd2c0af82b908bf2fb4491df074e99e2215ad00d667",
+        "ur": "cc364e0e4efc32ccc66e9c8d28b236c3d857ef06f3ea548e643c483d8a67bcdc",
+        "context": "cb4a160ef62b1760d4622b29c90e130cff1b4165ac770dab200ebc54eca38bee"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.updates.json",
+        "target": "src/i18n/catalogues/ur/ui.common.updates.json",
+        "context": "src/i18n/catalogues/en/ui.common.updates.context.json"
+      },
+      "findings": [],
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "round1_findings_verified": []
+    },
+    "ui.common.viewer": {
+      "namespace": "ui.common.viewer",
+      "status": "passed",
+      "result": "clean",
+      "verdict": "clean — remediation verified, no new findings",
+      "keys_audited_in_delta": 0,
+      "file_keys": 8,
+      "sha256": {
+        "en": "c0ffdd08058b062c88c6fad428db0e33c4162bcee1094dd5dd16890fe4e9705f",
+        "ur": "4bb4a186ec2ab6f631da48a730b9ef590587cadb9de9050dd1b32e0c01ed4593",
+        "context": "8b324e966ddb4aaef92ec3b3465f8ac6a80982529bcbd3b45a3c1cf1f9b28dd8"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.viewer.json",
+        "target": "src/i18n/catalogues/ur/ui.common.viewer.json",
+        "context": "src/i18n/catalogues/en/ui.common.viewer.context.json"
+      },
+      "findings": [],
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "round1_findings_verified": []
+    }
+  },
+  "totals": {
+    "keys_audited_round1": 1079,
+    "findings_round1": {
+      "blocker": 0,
+      "major": 4,
+      "minor": 16,
+      "nit": 3
+    },
+    "findings_fixed": 22,
+    "findings_deferred": 1,
+    "new_findings_round2": 0,
+    "changed_keys_rechecked": 31,
+    "consistency_satellites": 9
+  },
+  "status": "passed",
+  "verdict": "passed — all majors fixed, no blocker/major open, no new findings",
+  "result": "clean-with-findings",
+  "outside_scope_observations": [
+    "ui.chat.tags.undo still reads واپس کریں (go back) while ui.browser.page_context_menu.undo, ui.canvas.wysiwyg_markdown_editor.undo and ui.settings.shortcuts.reserved.undo read کالعدم کریں. Pre-existing, outside both audited batches (ui.chat.tags is not in either namespace set), not introduced by this remediation; recorded for the next ur wave, not part of this verdict.",
+    "ui.settings.imports.availability_unsupported reads غیر معاون and ui.providers.provider_detail.this_provider_has_no_supported_sign_in reads کوئی معاون طریقہ نہیں, while the remediated keys now use سپورٹ شدہ for supported/unsupported. Both are older keys outside this batch's audited delta (not in either key set); pre-existing, not introduced here, and not part of this verdict."
+  ]
+}

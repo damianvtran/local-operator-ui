@@ -1,0 +1,192 @@
+{
+ "auditor": {
+  "agent": "i18n-auditor",
+  "role": "independent translation auditor (delta round, wave B)",
+  "team": "lopdev",
+  "harness": "Local Operator",
+  "session": "c3a8965266e3",
+  "instance": "c3a8965266e3",
+  "model": "radient/auto",
+  "actual_model": "radient/auto",
+  "actual_model_source": "harness session header, 'Model: radient/auto' — a router alias; the upstream model is not exposed to this session",
+  "fallback": null,
+  "independent_from_translator": true,
+  "independent_from_translator_session": true,
+  "independence_basis": "This audit session wrote none of the fr wave-B amendments and holds no translator turn; it read them from the committed bytes at a5356ce91c and changed nothing but its own evidence. The translator's own declining note is adjudicated below rather than repeated."
+ },
+ "instance": "c3a8965266e3",
+ "model": "radient/auto",
+ "locale": "fr",
+ "date": "2026-10-27",
+ "audit_kind": "delta",
+ "wave": "B",
+ "head": "a5356ce91c4f37bf4c4d1c4518070e3a9b2505cb",
+ "audited_head": "0559f7f7d830752b0c5d118c2b1049f125b43bbb",
+ "prior_audit_receipt": "i18n/receipts/fr-waveb-e6df79ee0c48.json",
+ "status": "passed",
+ "scope": "Delta round, wave B, fr. All 62 wave-B keys across the nine namespaces: the 9 changed fr values (8 answers to the earlier findings, the two generic-verb labels among them, plus the pairing_guidance en-fix propagation) were re-read in full against the English source, its context sidecar, the render call sites, the glossary and the fr style guide; the other 53 values were proved byte-identical to the bytes the previous auditor signed off (delta-proof.json). Catalogue-level audit: no rendered frame, no browser, no native-speaker sign-off claimed.",
+ "en_source_delta": {
+  "key": "ui.chat.device.sentence.pairing_guidance",
+  "old": "This device is in no network. Create one with `lop network init`, or join one with `lop network join '<token>'.",
+  "new": "This device is in no network. Create one with `lop network init`, or join one with `lop network join '<token>'`.",
+  "verdict": "correct — the second code span now closes; the fr value carries the same fix and renders 4 backticks with a literal <token> through intl-messageformat under 'fr' (see wave artifacts)"
+ },
+ "adjudications": {
+  "F-01": {
+   "prior_severity": "MAJOR",
+   "finding": "generic_verb.running was 'Appel en cours de', a calque that composed as 'Appel en cours de bash …'",
+   "verdict": "resolved",
+   "evidence": "Value is now 'Appel en cours :' — the 'en cours de <tool>' parse is gone, the U+202F is the guide's, and the label composes as 'Appel en cours : bash pnpm vitest run src/renderer'. The finding's width claim is OVERRULED as overstated: 16 cells sits inside the column's own English envelope (the verb table's longest values are 'Checking network status' 23, 'Checking network status'/'Unlinking session from' 22, 'Peeking at session'/'Finding references' 18), so a 16-cell fr verb is not new overflow. The sidecar's 'one word, no punctuation' tone is a source shape French cannot hold; the colon-label shape already exists in this catalogue ('Appels imbriqués :')."
+  },
+  "F-02": {
+   "prior_severity": "MINOR",
+   "finding": "generic_verb.settled was 'Appel de'",
+   "verdict": "resolved",
+   "evidence": "Now 'Appel :' — same label shape as the running sibling, 7 cells (the English 'Called' is 6)."
+  },
+  "F-03": {
+   "prior_severity": "MINOR",
+   "finding": "not_here_why dropped the 'to move' complement",
+   "verdict": "resolved",
+   "evidence": "Translator took the auditor's second option: 'la conversation n’est pas ici ; rappelez-la ici avant de la déplacer'. Both facts are back (not here + recall before moving), 'déplacer' is the picker's own verb (sentence.move_in_flight, sentence.remote), and the clause keeps the sidecar's lowercase, no trailing punctuation. The translator's reason for not using '… n’est pas ici à déplacer' is accepted independently: 'être à + inf.' after a negation reads as a deontic 'is not to be moved' or as 'there is nothing here to move', neither of which states the remedy this row exists to give."
+  },
+  "F-04": {
+   "prior_severity": "MINOR",
+   "finding": "'La fenêtre' was ambiguous with the application window",
+   "verdict": "resolved",
+   "evidence": "'La fenêtre de contexte se remplit au fil de la conversation.' — matches the seven catalogue values that already name the context window ('Fenêtre de contexte', 'Total : … de la fenêtre de contexte')."
+  },
+  "F-05": {
+   "prior_severity": "MINOR",
+   "finding": "the accessible name's 'la fenêtre' had no neighbour to disambiguate it",
+   "verdict": "resolved",
+   "evidence": "'Contexte : rien n’a encore été mesuré. La fenêtre de contexte se remplit au fil de la conversation.' — the utterance is now self-contained for a screen reader; the redundancy with the leading 'Contexte :' is the price of that and is the honest one."
+  },
+  "F-06": {
+   "prior_severity": "MINOR",
+   "finding": "claimed the value read 'Configuration des agents par description' against an English 'by prompt'",
+   "verdict": "spurious — translator's decline upheld",
+   "evidence": "The value is 'Configuration des agents par conversation' at both 0559f7f7d8 and a5356ce91c (byte-identical, so the amendment round could not have caused it), the English is 'Configure agents by conversation' at both revisions, and 'par description' appears nowhere in src/i18n/catalogues/ (grep, 0 hits). Both the quoted current value and the quoted source were wrong, so the finding pointed at a string that does not exist. The value itself is accurate and its sidecar role ('DESCRIBES the surface rather than asking for a press') is met by the nominal 'Configuration des agents par conversation'."
+  },
+  "F-07": {
+   "prior_severity": "NIT",
+   "finding": "'Entrée exige d’abord une ligne choisie' added 'first' and was stiffer than the popup's own pattern",
+   "verdict": "resolved",
+   "evidence": "Now 'Entrée a besoin d’une ligne choisie : …' — 'd’abord' gone, 'exige' eased. A residual wording nit is recorded as FR-D2-02 (non-gating)."
+  },
+  "F-08": {
+   "prior_severity": "NIT",
+   "finding": "mesh_read_failure marked the consequence twice (' — … donc …')",
+   "verdict": "resolved",
+   "evidence": "Connector is now ' ; … donc …', matching the five sibling sentences. Residual wording nit recorded as FR-D2-01 (non-gating)."
+  },
+  "F-09": {
+   "prior_severity": "NIT",
+   "finding": "'n’est pas en cours d’exécution' rendered 'is not running' word for word",
+   "verdict": "resolved",
+   "evidence": "'Le serveur Local Operator n’est pas démarré — …' — the daemon state French uses, 17 characters shorter, and 'rétablissez la connexion' matches the other session_loss sentences' wording ('rétablissez la connexion pour réessayer')."
+  }
+ },
+ "namespaces": {
+  "ui.chat.device": {
+   "namespace": "ui.chat.device",
+   "status": "passed",
+   "key_count": 11,
+   "en_sha256": "0d4c357edbb9a67d015301f263e3892f752aca9ee63a3d5c737bf12a9ac6375a",
+   "fr_sha256": "6fa28c31e2cd37f80f0756b3b3e6690f040d5965941bf73f045601973408dd68",
+   "findings": [
+    {
+     "id": "FR-D2-01",
+     "severity": "nit",
+     "key": "ui.chat.device.sentence.mesh_read_failure",
+     "current": "La liste des appareils n’a pas pu être lue ; l’affichage reprend donc la dernière réponse.",
+     "problem": "F-08's connector fix landed (em dash replaced by  ; so the consequence is marked once) and the sentence now reads smoothly. Residual, non-gating: 'l’affichage reprend donc la dernière réponse' can be parsed as 'the display resumes the last answer' — 'reprendre' is taking an answer as if continuing it, where the source says what is on screen is what the last answer held. 'affiche'/'montre' (or 'reprend les données de la dernière réponse') states that without the second reading.",
+     "suggest": "La liste des appareils n’a pas pu être lue ; c’est donc la dernière réponse qui s’affiche."
+    }
+   ],
+   "result": "clean-with-findings"
+  },
+  "ui.chat.pickers": {
+   "namespace": "ui.chat.pickers",
+   "status": "passed",
+   "key_count": 18,
+   "en_sha256": "d91585397b3314c5ffd81d93c3fd7d9fdb1e0a54cc6ddd57ba082f55d666522c",
+   "fr_sha256": "0f4194326dabd0e12992e7270afd32c44ab45776cec8a1fcc9b083146ff60a71",
+   "findings": [
+    {
+     "id": "FR-D2-02",
+     "severity": "nit",
+     "key": "ui.chat.pickers.slash.enter_needs_a_pick",
+     "current": "Entrée a besoin d’une ligne choisie : ↓ puis Entrée · Tab complète cette ligne.",
+     "problem": "F-07's two objections are fixed ('d’abord' dropped, 'exige' eased to 'a besoin'), so the meaning is right. Residual, non-gating: the popup's own sibling footers name the row 'la ligne sélectionnée' ('La ligne sélectionnée a disparu · Entrée choisit {label}'), and 'une ligne choisie' is a participle-state where that noun phrase is the surface's word. 'choisie' is defensible (it echoes 'Entrée choisit'); the source sidecar only forbids naming the pre-existing highlight, not the row the arrow lands on.",
+     "suggest": "Entrée a besoin d’une ligne sélectionnée : ↓ puis Entrée · Tab complète cette ligne."
+    }
+   ],
+   "result": "clean-with-findings"
+  },
+  "ui.chat.canonical": {
+   "namespace": "ui.chat.canonical",
+   "status": "passed",
+   "key_count": 8,
+   "en_sha256": "5bb6a6fe5dd64f70a4caf0812d3fa4b95c70bd49c12bd556ab0d827176ac4477",
+   "fr_sha256": "8a5e69118ce5bc3432aaa493b2d0d01e7fc3199670083a79cb129ad379567885",
+   "findings": [],
+   "result": "clean"
+  },
+  "ui.chat": {
+   "namespace": "ui.chat",
+   "status": "passed",
+   "key_count": 9,
+   "en_sha256": "4d07ed6de9382fdf1310fd70bf48be2602952538c1ddf43bda8972834760be04",
+   "fr_sha256": "e9b9512ea3310705de0ca91dc87a644a8aa742ab59a72f04e8216ae01bb256dd",
+   "findings": [],
+   "result": "clean"
+  },
+  "ui.chat.status": {
+   "namespace": "ui.chat.status",
+   "status": "passed",
+   "key_count": 4,
+   "en_sha256": "c11e619f13f9c40637a33cbafc40442d61c1bf2eed5e4c0c7d667db55f4b65cb",
+   "fr_sha256": "7fab4b75620d10beb7f59e23cd341402bd9bb8884adccbafbfda5add75a1cd00",
+   "findings": [],
+   "result": "clean"
+  },
+  "ui.chat.run_details": {
+   "namespace": "ui.chat.run_details",
+   "status": "passed",
+   "key_count": 2,
+   "en_sha256": "77471485df0fccb4a29541d98949d5e21e8e541099cbe602e540c5848b96db61",
+   "fr_sha256": "fd5bb71bbb7691760c92b9339e3aa032c34519b0a453600447923ce679e42f94",
+   "findings": [],
+   "result": "clean"
+  },
+  "ui.common.connection": {
+   "namespace": "ui.common.connection",
+   "status": "passed",
+   "key_count": 5,
+   "en_sha256": "0e69a319b56d967cc012d15c6480ae1cf2084092ac0c98d130a9412047fcc681",
+   "fr_sha256": "33de6a26e72133786f9cab668c16341262cece961ca130e95ca2c6e733c6d51b",
+   "findings": [],
+   "result": "clean"
+  },
+  "ui.common.layout": {
+   "namespace": "ui.common.layout",
+   "status": "passed",
+   "key_count": 2,
+   "en_sha256": "1d9f353eb3aa467d22e102aa9459ba7070637c6b2a2ddb17e31b075963df9231",
+   "fr_sha256": "4bdcbbee0ea92a6fb65e901d0f7839f6bca6748e3f6603fc306de53efc74ca46",
+   "findings": [],
+   "result": "clean"
+  },
+  "ui.agents.config": {
+   "namespace": "ui.agents.config",
+   "status": "passed",
+   "key_count": 3,
+   "en_sha256": "534c035edf33e60c142f0106306cd2ce8c6250f6516a321a12ae5c0a6a5621bc",
+   "fr_sha256": "8b05e223c55ebb8bda68482e449a21d498463bfcf0251a249910314d314a7d9e",
+   "findings": [],
+   "result": "clean"
+  }
+ },
+ "notes": "Findings are per namespace; severities count only what this round found. Prior findings F-01..F-09 are adjudicated in `adjudications`, not re-counted, so a resolved round does not look like a fresh one. Hashes are sha256 of the committed bytes at head, cross-checked against the exported tree that was read."
+}

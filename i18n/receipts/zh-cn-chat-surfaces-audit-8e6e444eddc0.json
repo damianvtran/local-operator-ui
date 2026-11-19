@@ -1,0 +1,206 @@
+{
+ "schema": 1,
+ "kind": "translation-audit",
+ "audit_kind": "independent-multi-namespace-audit-of-uncommitted-working-tree-candidates",
+ "batch": "chat-surfaces",
+ "locale": "zh-CN",
+ "audit_date": "2026-10-25",
+ "branch": "i18n-chat-surfaces",
+ "head": "732c568cdd",
+ "binding": "The translations are UNCOMMITTED working-tree candidates; this audit binds to the sha256 of the bytes on disk at 732c568cdd, not to a commit. A later commit that changes any value voids the binding.",
+ "instance": "8e6e444eddc0-chat-surfaces",
+ "auditor": "i18n-auditor",
+ "model": "radient/auto",
+ "model_provenance": {
+  "route": "radient/auto",
+  "route_source": "harness system prompt at session start (Model: radient/auto)",
+  "fallback_used": true,
+  "fallback_chain": [
+   "anthropic/claude-sonnet-5-5 (provider failure: quota HTTP 402, cross-vendor descent from radient/auto)",
+   "openai/gpt-6.1-sol (same quota descent, continued)",
+   "deepseek/deepseek-flash (same quota descent, continued)",
+   "openrouter/deepseek/deepseek-v4.1-flash-1017 (current model at receipt time)"
+  ],
+  "actual_model_source": "harness [model switch] notices in this session transcript; the route never served the audit because the provider returned HTTP 402",
+  "disclosure": "Every judgement in this receipt was made under openrouter/deepseek/deepseek-v4.1-flash-1017, not under radient/auto. The ~/local-operator/i18n/glossary.md hash and both style-guide references were read in this session; see references."
+ },
+ "session": "8e6e444eddc0",
+ "team": "lopdev",
+ "independence": "Independent audit for zh-CN: this session translated none of these values and read no translator report, note or plan. It wrote no catalogue byte, edited no key, ran no build or test suite and made no git write. Judgements come from the English source, the en context sidecars, the consuming renderer code (read-only), the shipped zh-CN catalogues and the core glossary/style guide. No MT service, translation API or SDK was used to produce or check any wording.",
+ "source_dir": "src/i18n/catalogues/en",
+ "target_dir": "src/i18n/catalogues/zh-CN",
+ "references": {
+  "glossary": {
+   "path": "i18n/glossary.md",
+   "repo": "local-operator (core)",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "i18n/style-guides/zh-CN.md",
+   "repo": "local-operator (core)",
+   "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+  },
+  "contract": {
+   "path": "docs/I18N.md",
+   "repo": "local-operator-ui"
+  }
+ },
+ "scope": "Every key of the four zh-CN chat-surface namespaces at 732c568cdd: ui.chat 115 (71 new), ui.chat.canonical 60 (13 new), ui.chat.run_details 81 (79 new), ui.chat.asks 26 (14 new) = 282 keys, read against the English source, the en context sidecar entry for each key and the consuming component. New keys were read twice, independently (a second full pass over the 71 new ui.chat and 79 new ui.chat.run_details values, the two groups that carry the error, onboarding and status copy). Pre-existing keys (105) were checked for contradiction with the new values in the same wave; where a finding lands on pre-existing text it says so. No rendered-frame, width-in-pixels, native-speaker sign-off or activation claim is made.",
+ "method": [
+  "Read all 282 zh-CN values beside their English source, their en context sidecar entry and the consuming code under src/renderer (grep per key): placeholder meaning, join sites, aria-labels, truncation wrappers and client-owned approval words.",
+  "Parsed every English and zh-CN message with the worktree's @formatjs/icu-messageformat-parser and compared argument names, argument types, number skeletons, select branch keys, tag names and plural/selector skeletons: 282/282 identical apart from the CLDR plural reduction below.",
+  "Verified CLDR plural categories with Intl.PluralRules('zh-CN') = ['other'] rather than from assumption: every zh plural message carries exactly the other arm (5 plurals: ui.chat.composer.status.loop_progress_turns, ui.chat.run_details.chip.todos_open/subagents_failed/attention/mcp_attention, ui.chat.asks.context.messages_since); no one/few/many arm survives, and no other arm was dropped.",
+  "Ran the repo's catalogue gates in the worktree: generate --check (keys.gen.ts byte-identical to fresh generation), check-duplicates (763 files, 0 duplicate keys), context-parity (ok), check-strings (1368 files, 262 literals at or below baseline), check-coverage (7 gated languages over 85 namespaces, 0 allowed keys). ledger-check currently fails on these four rows only because no receipt backed these uncommitted bytes yet: 91 findings repo-wide, and the four zh-CN chat rows appear as 'stale source/target sha256' plus 'receipt does not name the on-disk bytes'.",
+  "Typography and encoding hygiene over all 282 values: NFC, no manual bidi controls (LRM/RLM/embedding/isolate), no NBSP/NNBSP/ZWSP/BOM/SHY, no ideographic space, no leading/trailing whitespace, no ASCII '...' and no single '…' (zh ellipsis is ……), no ASCII double quotes inside CJK prose, no 您 (guide: 你), no space inserted between CJK and Latin/digit runs, full-width sentence punctuation.",
+  "Checked the two width budgets the sidecars carry (ui.chat.session_status.choose_model maxCells 18 → 选择模型 = 8 cells; last_reading maxCells 16 → 上次读数 = 8 cells) and every string's cell width by codepoint (CJK/full-width = 2, ASCII = 1). Widest relative expansion in the wave is 2.00x on a 4-cell label (Jobs → 后台任务, 8 cells); no string in the four namespaces is plausibly wide for its slot. No pixel claim.",
+  "Label-in-name: ui.chat.question_dock.hint.approval names Approve/Deny, which src/renderer/src/features/chat/approval-words.ts hard-codes as the card's printed labels and matches positionally in approvalVerdict(); the zh-CN string correctly keeps those Latin words and the typed answers yes/no/1/2 rather than inventing 批准/拒绝.",
+  "Terminology checked against the shipped zh-CN catalogues for every glossary term that actually occurs in these four namespaces: 会话 session, 智能体 agent, 子智能体 subagent, 记录/会话记录 transcript, 唤醒 wake, 监控 monitor, 审批 approvals, 工作区 [redacted], 中心 hub, 请求 ask, 待办事项 to-dos, 运行详情 run details, 敏感信息 secret, 加密存储 encrypted store, 凭据 credentials, 授权 grant, 引导 steer, 输入框 composer, plus Latin kept tokens (MCP, SVG, Enter, Esc, API, Radient, Local Operator, session id → 会话ID per the shipped 复制会话ID). Terms from the core glossary that no key here uses (tool trace/轨迹, prompt/提示词, compaction/压缩, schedule/定时, device/设备) were therefore not exercised by this group."
+ ],
+ "validation": {
+  "json_parsed": true,
+  "keys_match_source": "282/282 across the four namespaces; no key added, dropped or reordered between en and zh-CN",
+  "placeholder_parity": true,
+  "icu_structure_parity": true,
+  "plural_categories_zh": [
+   "other"
+  ],
+  "plural_categories_verified_with": "Intl.PluralRules('zh-CN').resolvedOptions().pluralCategories",
+  "select_branches_preserved": true,
+  "tags_preserved": true,
+  "identical_to_english": 0,
+  "nfc": true,
+  "bidi_controls": 0,
+  "ascii_ellipsis": 0,
+  "cjk_latin_space_inserted": 0,
+  "halfwidth_colon_after_cjk": 2,
+  "nihon_you": 0,
+  "width_hint_overruns": 0,
+  "rendered_fit": "Not executed. No browser or rendered frame was available in this run; widths are codepoint counts against the sidecar budgets, not pixel measurements."
+ },
+ "namespaces": {
+  "ui.chat": {
+   "namespace": "ui.chat",
+   "keys": 115,
+   "keys_new": 71,
+   "sha256": {
+    "en": "6b6e21835462fccbbdbea4cfcca132344595bf3f14804018de64dbe8d9fbacf0",
+    "zh-CN": "67b4b59a6ef55a99cd9a2aa9b56407a0ffdb05542ff6184620e4a193ed51316a"
+   },
+   "context_sha256": "da5c303c014c469c6096e6ef2e43b993f3ec2b9430ed6ec97498fc457f494372",
+   "status": "passed",
+   "verdict": "clean",
+   "findings": []
+  },
+  "ui.chat.canonical": {
+   "namespace": "ui.chat.canonical",
+   "keys": 60,
+   "keys_new": 13,
+   "sha256": {
+    "en": "5a6a30405053c7319b902315bb0a1b38ce1cbd6443ad2d988132d4cbfcb8f2ce",
+    "zh-CN": "135e2993497ddf6f5335fcd528f21b8fa1782c9a01485e134c3429f4fe7a5c1f"
+   },
+   "context_sha256": "f075f08f152c9484f7dd9790a3b60a3c6c82086d3d9361717afa2188f0773a04",
+   "status": "passed",
+   "verdict": "clean-with-findings",
+   "findings": [
+    {
+     "id": "ZH-CS-1",
+     "severity": "minor",
+     "category": "typography",
+     "key": "ui.chat.canonical.supplement.details.attempts",
+     "related_keys": [
+      "ui.chat.canonical.supplement.details.model"
+     ],
+     "source": "Attempts: {count, number, ::group-off}",
+     "current": "尝试次数: {count, number, ::group-off}",
+     "proposed": "尝试次数：{count, number, ::group-off}  (and 模型：{name} for ui.chat.canonical.supplement.details.model)",
+     "reason": "Half-width ': ' after CJK prose in two labels of one details block. The zh-CN guide (§Punctuation & typography) mandates the full-width ：, the shipped zh-CN catalogues write 293 full-width colons after CJK and zero half-width, the third label in this same block already reads 来源：{name}, and this wave's own new labels all use ：(目标：, 循环：, 问题：, 你：, 受阻：, 取消唤醒：). Shipped ui.agents.models.reading.model_cell writes the identical label as 模型：{value}. Both keys are PRE-EXISTING (unchanged from HEAD); it is recorded because this wave's new values contradict it, so the namespace would otherwise ship two spellings of one label form.",
+     "disposition": "open",
+     "pre_existing": true,
+     "pre_existing_note": "Both keys are unchanged from HEAD (verified with git show). Recorded because this wave's new labels contradict them; the fix is two characters and can ride this MR or be deferred with a reason."
+    }
+   ]
+  },
+  "ui.chat.run_details": {
+   "namespace": "ui.chat.run_details",
+   "keys": 81,
+   "keys_new": 79,
+   "sha256": {
+    "en": "b3f23e9248e81ec57d30778e4e4b452c27f0e04842c325cb125d2135d5d886a7",
+    "zh-CN": "e36a5040604772f7c44f44caf9d1cdf62c4179eae3db67bc2d08d9ee755730ec"
+   },
+   "context_sha256": "2cc9f66ec5cbd5c6c9cfbc34526ce4d91d48ea5b50bcdb925be8f1b1fe2df78b",
+   "status": "changes_requested",
+   "verdict": "changes_requested",
+   "findings": [
+    {
+     "id": "ZH-CS-2",
+     "severity": "blocker",
+     "category": "accuracy",
+     "key": "ui.chat.run_details.chip.todos_closed",
+     "source": "All to-dos closed",
+     "current": "待办已全部取消",
+     "proposed": "待办已全部结束",
+     "reason": "Wrong state, and it contradicts the same namespace. src/renderer/src/features/chat/components/run-details/run-detail-model.ts todoClause() returns this string when counts.droppedTodos > 0 and counts.openTodos === 0 — the plan is settled and AT LEAST ONE item was dropped; the docblock above it explicitly keeps dropped beside the fraction for exactly that reason. 取消 is this namespace's word for 'dropped' (todos.dropped = ——已取消, rendered as the inline settled tag), so 待办已全部取消 tells the reader every item was cancelled even when most were completed, and the chip then reads the same as the dropped tag it sits beside. 结束 keeps the neutral settled reading next to 待办已全部解决 ('All to-dos resolved'); 待办已全部关闭 is the alternative if the pane prefers the 关闭 family.",
+     "disposition": "open",
+     "pre_existing": false,
+     "new_key": true
+    }
+   ]
+  },
+  "ui.chat.asks": {
+   "namespace": "ui.chat.asks",
+   "keys": 26,
+   "keys_new": 14,
+   "sha256": {
+    "en": "6c42d235f1e326fc0cc0fea91668307d4e551585eef33b5fe1c2173efc2bc9fd",
+    "zh-CN": "4d3c65d3ada7109ec1b5d5a93dc61c79c6f62965691aaf47e2d8e39e12ce0bbe"
+   },
+   "context_sha256": "9e137d7e8f6227827196c244a9550520cd5ee412ffeaef615a7e33bf0193903c",
+   "status": "passed",
+   "verdict": "clean-with-findings",
+   "findings": [
+    {
+     "id": "ZH-CS-3",
+     "severity": "minor",
+     "category": "fit",
+     "key": "ui.chat.asks.close_asks",
+     "source": "Close asks",
+     "current": "关闭请求",
+     "proposed": "关闭请求面板",
+     "reason": "Two different acts now read one character apart inside the same drawer: this close control is 关闭请求 while the ask card's own dismiss heading is 关闭此请求 ('Dismiss this ask'). Both are accessible names, so a screen-reader user meets them together with nothing but 此 to separate 'close the drawer' from 'dismiss this ask'. The shipped analogue for this control is 关闭审批面板 (ui.browser.browser_approvals_dock.close_approvals, 'Close approvals'), which also names the panel; 关闭请求面板 adopts that pattern without widening the string by more than one CJK cell beyond the English.",
+     "disposition": "open",
+     "pre_existing": false,
+     "new_key": true
+    }
+   ]
+  }
+ },
+ "findings": [],
+ "findings_note": "Each namespace block above carries its own findings array, which is what attribution uses; this root array is deliberately empty. Totals: blocker 1 (ui.chat.run_details), major 0, minor 2 (ui.chat.canonical one class across two keys, ui.chat.asks one), nit 0. Two further pre-existing strings are recorded under observations_not_findings: with no new value contradicting them they stay out of the gating counts.",
+ "totals": {
+  "keys_read": 282,
+  "keys_new": 177,
+  "namespaces": 4,
+  "blocker": 1,
+  "major": 0,
+  "minor": 2,
+  "nit": 0,
+  "namespaces_passed": 3,
+  "namespaces_changes_requested": 1
+ },
+ "observations_not_findings": [
+  "PRE-EXISTING, recorded not gating (scope: pre-existing values were audited earlier and no new value contradicts these): ui.chat.canonical.sound.stop.warning, EN 'The provider has no cancellation endpoint.' → 提供商没有取消接口。 The glossary's wave-2 kept-English set (all locales) keeps `endpoint` in Latin, and 接口 is a third spelling beside the one shipped zh-CN precedent that does translate it (ui.agentMessages.settings.consent.no_record → 此端点没有同意记录). A rephrase avoids the term and keeps every clause: 提供商无法取消生成。生成仍会继续，若产出音频则会计费。停止只能尽力而为，不保证取消成功或免于计费。",
+  "PRE-EXISTING, recorded not gating: ui.chat.canonical.supplement.file_actions.open_in_canvas, EN 'Open in canvas' → 在Canvas中打开. The pane is 画布 in every other shipped zh-CN string that names it (画布视图, 关闭画布, 打开画布, 在画布中打开文档, 画布{chord}), and the English source is lowercase 'canvas'; Latin 'Canvas' survives in one shipped sibling (ui.common.file_actions.show_in_canvas → 在Canvas中显示) which this value mirrors. Two renderings for one pane, so the family is the owner's call rather than this wave's.",
+  "Code-owned, not catalogue defects: the error_block family joins `{before} {link}{' '}{after}` with literal JSX spaces, so a zh-CN reader sees one ASCII space on each side of the Latin link label (请前往 设置页面 为所有智能体配置提供商。). The zh-CN guide prefers no CJK–Latin space, but the catalogue cannot remove a space the component inserts; nothing in the translation can be edited to fix it.",
+  "ui.chat.question_dock.hint.prefix drops the English trailing space (EN 'Question {index} of {total}. ' → ZH 问题{index}/{total}。). Correct for zh: the fragment is concatenated with a Chinese sentence, which needs no space. No structural consequence.",
+  "ui.chat.mermaid.loading translates English's ASCII 'Loading diagram...' as 正在加载图表……, i.e. it repairs the source's own ellipsis to the zh guide's …… rather than copying it. Treated as correct, not as a placeholder drift.",
+  "Four zh-CN words exist for 'this machine' in shipped copy (本机, 此设备, 此机器, 此电脑). ui.chat.canonical.transcript.missing_session uses 此电脑 while the shipped ui.chat.pickers family uses 此机器; both are attested (ui.providers, ui.settings.imports use 此电脑), so this is an inherited corpus split, not a defect introduced here."
+ ],
+ "limitations": [
+  "No browser or rendered frame was available, so no pixel or overflow claim is made; widths are codepoint cell counts against the two maxCells budgets the sidecars carry.",
+  "The 105 pre-existing keys were checked for contradiction with this wave's new values and for the mandated consistency dimensions, not re-translated from scratch.",
+  "No native-speaker sign-off is claimed; the audit is an independent agent read of the locale.",
+  "The translations are uncommitted working-tree bytes at 732c568cdd; committing different bytes voids this receipt."
+ ]
+}

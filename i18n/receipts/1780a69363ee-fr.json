@@ -1,0 +1,217 @@
+{
+  "locale": "fr",
+  "namespaces": {
+    "ui.shell.menubar": {
+      "status": "passed",
+      "keys_audited": 13,
+      "sha256": {
+        "en": "a2950cd3f057ee4641bb12df761ec98d496282e09d69e6150d6dd6edbc74be82",
+        "fr": "f8835b07014f9be10840aeb37db7aae6f2cfdc2d77760f05ed7279d31c223e76"
+      },
+      "findings": []
+    },
+    "ui.updates.panel": {
+      "status": "passed",
+      "keys_audited": 41,
+      "sha256": {
+        "en": "a94e79256f94128562493e36d8835952e2e78a41cd30382968b942fd6876794a",
+        "fr": "391349575c954e5d1d3bd449348d06270d3aa4c7bd22549160643d0933c297fb"
+      },
+      "findings": [
+        {
+          "severity": "MINOR",
+          "namespace": "ui.updates.panel",
+          "key": "ui.updates.panel.failure.cancelled.remedy",
+          "current": "Quittez Local Operator et remplacez-le dans Applications par une nouvelle copie, ou relancez la mise à jour depuis l’application — et laissez-la fermée le temps que la mise à jour se termine.",
+          "suggestion": "… — et laissez l’application fermée le temps que la mise à jour se termine. (the sentence mixes « remplacez-le » for Local Operator with « laissez-la » for the app: one referent, two genders)"
+        },
+        {
+          "severity": "MINOR",
+          "namespace": "ui.updates.panel",
+          "key": "ui.updates.panel.service.no_backend.message",
+          "current": "Aucune référence au service backend n’est disponible ; la mise à jour est impossible.",
+          "suggestion": "« backend » is not on the fr kept-English list (style guide prefers serveur): « Aucune référence au service du serveur n’est disponible ; la mise à jour est impossible. » Same term in check_unavailable.message."
+        },
+        {
+          "severity": "MINOR",
+          "namespace": "ui.updates.panel",
+          "key": "ui.updates.panel.service.check_unavailable.message",
+          "current": "Impossible de déterminer la version du backend.",
+          "suggestion": "« Impossible de déterminer la version du serveur. » (consistent with the no_backend call above)"
+        },
+        {
+          "severity": "MINOR",
+          "namespace": "ui.updates.panel",
+          "key": "ui.updates.panel.server.norestart.remedy",
+          "current": "Rien n’a été redémarré : la compilation qui servait est toujours celle qui sert.",
+          "suggestion": "« Rien n’a été redémarré : la version compilée en service est toujours celle qui tourne. » ('compilation' names the act, the source means the built artifact)"
+        },
+        {
+          "severity": "NIT",
+          "namespace": "ui.updates.panel",
+          "key": "ui.updates.panel.server.behind.remedy",
+          "current": "Ce checkout est en retard sur son dépôt distant ; …",
+          "suggestion": "'checkout' is not on the style guide's kept-English list; acceptable dev usage, consider « Cette copie de travail » or add 'checkout' to the guide."
+        },
+        {
+          "severity": "NIT",
+          "namespace": "ui.updates.panel",
+          "key": "ui.updates.panel.artifact.mismatch.message",
+          "current": "… ne correspond pas à la version publiée …",
+          "suggestion": "'version' here means 'release' and sits next to version numbers; « à la publication » / « à la mise à jour publiée » avoids the ambiguity (also in remedy: « la version publiée »)."
+        },
+        {
+          "severity": "NIT",
+          "namespace": "ui.updates.panel",
+          "key": "ui.updates.panel.artifact.not_this_app.message",
+          "current": "… ne correspond pas à cette application …",
+          "suggestion": "English says 'is not this application'; « n’est pas celle de cette application » / « n’est pas destinée à cette application » is closer."
+        }
+      ]
+    }
+  },
+  "checkout": "/Users/damian/lo-audit-1464 (damianvtran/local-operator-ui, branch i18n-wave-c1; local branch wip-1464)",
+  "checkout_head": "57a725f020853d9cc03ad5d97636fec2380b0ddb",
+  "key_count": 54,
+  "audit_date": "2026-10-28",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "1780a69363ee",
+    "model": "anthropic/claude-sonnet-5-5"
+  },
+  "input_sha256": {
+    "src/i18n/catalogues/en/ui.shell.menubar.json": "a2950cd3f057ee4641bb12df761ec98d496282e09d69e6150d6dd6edbc74be82",
+    "src/i18n/catalogues/fr/ui.shell.menubar.json": "f8835b07014f9be10840aeb37db7aae6f2cfdc2d77760f05ed7279d31c223e76",
+    "src/i18n/catalogues/en/ui.updates.panel.json": "a94e79256f94128562493e36d8835952e2e78a41cd30382968b942fd6876794a",
+    "src/i18n/catalogues/fr/ui.updates.panel.json": "391349575c954e5d1d3bd449348d06270d3aa4c7bd22549160643d0933c297fb"
+  },
+  "read_provenance": [
+    {
+      "tool": "read_public_copy",
+      "path": "src/i18n/catalogues/en/ui.shell.menubar.json",
+      "key": "<whole file; each of the 13 ids returned>"
+    },
+    {
+      "tool": "read_public_copy",
+      "path": "src/i18n/catalogues/en/ui.updates.panel.json",
+      "key": "<whole file; each of the 41 ids returned>"
+    },
+    {
+      "tool": "read_public_copy",
+      "path": "src/i18n/catalogues/fr/ui.shell.menubar.json",
+      "key": "<whole file; each of the 13 ids returned>"
+    },
+    {
+      "tool": "read_public_copy",
+      "path": "src/i18n/catalogues/fr/ui.updates.panel.json",
+      "key": "<whole file; each of the 41 ids returned>"
+    },
+    {
+      "label": "context/docs via filesystem, not catalogue copy",
+      "path": "src/i18n/catalogues/en/ui.shell.menubar.context.json"
+    },
+    {
+      "label": "context/docs via filesystem, not catalogue copy",
+      "path": "src/i18n/catalogues/en/ui.updates.panel.context.json"
+    },
+    {
+      "label": "context/docs via filesystem, not catalogue copy",
+      "path": "~/local-operator/i18n/glossary.md"
+    },
+    {
+      "label": "context/docs via filesystem, not catalogue copy",
+      "path": "~/local-operator/i18n/style-guides/fr.md"
+    }
+  ],
+  "checks": {
+    "key_parity": "en and fr key lists identical, order identical (13 + 41)",
+    "icu_placeholders": "{name},{version},{size},{target},{running}: multiset identical per key; no plural/select in either namespace",
+    "typography": "apostrophes all U+2019, no straight '; U+202F present before every : and ; in fr; em dash spaced; backticked `lop-update` verbatim",
+    "platform_convention": "macOS fr menu wording confirmed from knowledge: Fichier, Édition, Présentation, Fenêtre, À propos de {name}, Zoom avant/arrière, Taille réelle; sentence case per fr guide (en Title Case not carried over)",
+    "fit": "menu items 1-4 words (longest: 'Nouvel onglet de navigateur', 'Fermer l’onglet ou la fenêtre')",
+    "register": "vous / imperatives, no Veuillez; calm, no blame, matches sidecar tone",
+    "glossary": "Local Operator, lop-update, macOS, Applications verbatim; no glossary term violated",
+    "deviations": "Auditor also grepped other fr catalogues (ui.hub.pages, ui.mesh) from the filesystem only to compare the word 'Présentation'; not used for any finding. Mechanical checks ran via a short python script over the same files on disk."
+  },
+  "findings": [
+    {
+      "severity": "MINOR",
+      "namespace": "ui.updates.panel",
+      "key": "ui.updates.panel.failure.cancelled.remedy",
+      "current": "Quittez Local Operator et remplacez-le dans Applications par une nouvelle copie, ou relancez la mise à jour depuis l’application — et laissez-la fermée le temps que la mise à jour se termine.",
+      "suggestion": "… — et laissez l’application fermée le temps que la mise à jour se termine. (the sentence mixes « remplacez-le » for Local Operator with « laissez-la » for the app: one referent, two genders)"
+    },
+    {
+      "severity": "MINOR",
+      "namespace": "ui.updates.panel",
+      "key": "ui.updates.panel.service.no_backend.message",
+      "current": "Aucune référence au service backend n’est disponible ; la mise à jour est impossible.",
+      "suggestion": "« backend » is not on the fr kept-English list (style guide prefers serveur): « Aucune référence au service du serveur n’est disponible ; la mise à jour est impossible. » Same term in check_unavailable.message."
+    },
+    {
+      "severity": "MINOR",
+      "namespace": "ui.updates.panel",
+      "key": "ui.updates.panel.service.check_unavailable.message",
+      "current": "Impossible de déterminer la version du backend.",
+      "suggestion": "« Impossible de déterminer la version du serveur. » (consistent with the no_backend call above)"
+    },
+    {
+      "severity": "MINOR",
+      "namespace": "ui.updates.panel",
+      "key": "ui.updates.panel.server.norestart.remedy",
+      "current": "Rien n’a été redémarré : la compilation qui servait est toujours celle qui sert.",
+      "suggestion": "« Rien n’a été redémarré : la version compilée en service est toujours celle qui tourne. » ('compilation' names the act, the source means the built artifact)"
+    },
+    {
+      "severity": "NIT",
+      "namespace": "ui.updates.panel",
+      "key": "ui.updates.panel.server.behind.remedy",
+      "current": "Ce checkout est en retard sur son dépôt distant ; …",
+      "suggestion": "'checkout' is not on the style guide's kept-English list; acceptable dev usage, consider « Cette copie de travail » or add 'checkout' to the guide."
+    },
+    {
+      "severity": "NIT",
+      "namespace": "ui.updates.panel",
+      "key": "ui.updates.panel.artifact.mismatch.message",
+      "current": "… ne correspond pas à la version publiée …",
+      "suggestion": "'version' here means 'release' and sits next to version numbers; « à la publication » / « à la mise à jour publiée » avoids the ambiguity (also in remedy: « la version publiée »)."
+    },
+    {
+      "severity": "NIT",
+      "namespace": "ui.updates.panel",
+      "key": "ui.updates.panel.artifact.not_this_app.message",
+      "current": "… ne correspond pas à cette application …",
+      "suggestion": "English says 'is not this application'; « n’est pas celle de cette application » / « n’est pas destinée à cette application » is closer."
+    }
+  ],
+  "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 4,
+    "NIT": 3,
+    "by_namespace": {
+      "ui.shell.menubar": {
+        "BLOCKER": 0,
+        "MAJOR": 0,
+        "MINOR": 0,
+        "NIT": 0
+      },
+      "ui.updates.panel": {
+        "BLOCKER": 0,
+        "MAJOR": 0,
+        "MINOR": 4,
+        "NIT": 3
+      }
+    }
+  },
+  "verdict": "passed",
+  "instance": "1780a69363ee-fr",
+  "model": "anthropic/claude-sonnet-5-5",
+  "status": "passed",
+  "sha256": {
+    "src/i18n/catalogues/en/ui.shell.menubar.json": "a2950cd3f057ee4641bb12df761ec98d496282e09d69e6150d6dd6edbc74be82",
+    "src/i18n/catalogues/en/ui.updates.panel.json": "a94e79256f94128562493e36d8835952e2e78a41cd30382968b942fd6876794a",
+    "src/i18n/catalogues/fr/ui.shell.menubar.json": "f8835b07014f9be10840aeb37db7aae6f2cfdc2d77760f05ed7279d31c223e76",
+    "src/i18n/catalogues/fr/ui.updates.panel.json": "391349575c954e5d1d3bd449348d06270d3aa4c7bd22549160643d0933c297fb"
+  }
+}

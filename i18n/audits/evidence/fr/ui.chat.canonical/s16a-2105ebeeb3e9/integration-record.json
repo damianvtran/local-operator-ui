@@ -1,0 +1,39 @@
+{
+ "schema": 1,
+ "authored_by": "integrating coder session (agent coder), NOT the auditor",
+ "purpose": "Lands the independent audit of the 14 S16a tool-state words (PR #1870) as portable evidence; the auditor's own files are untouched copies.",
+ "locale": "fr",
+ "namespace": "ui.chat.canonical",
+ "pr": "damianvtran/local-operator-ui#1870",
+ "audited_head": "93a61605b059ada503d75da6e9e38e8ef14e1b67",
+ "auditor_session": "2105ebeeb3e9",
+ "auditor_agent": "i18n-auditor",
+ "auditor_model": "deepseek/deepseek-flash",
+ "translator": {
+  "agent": "i18n-translator",
+  "model": "anthropic/claude-sonnet-5-5",
+  "draft": "fr-s16a.json",
+  "draft_sha256": "e41dfcb15c773b829ab2c9fcf920a4642eb2e310c3ee79da8481f122d1830769"
+ },
+ "ledger_receipt": "i18n/receipts/2105ebeeb3e9.json",
+ "landed_target_sha256": "00a6251e4aed7baa2f2ed28040eab21afe2352f3e0adb29a0176d939269e35e3",
+ "receipt_origin": "INTEGRATOR-TRANSCRIBED binding receipt (receipt.json == i18n/receipts/2105ebeeb3e9.json). The auditor wrote no receipt of its own (record.json + report.md only).",
+ "files": {
+  "record.json": {
+   "sha256": "98ccd878d0816a27909c720df833a90bc785d7722194949fc1c7746ec0fd124d",
+   "origin": "auditor-authored, copied byte-for-byte from the auditor session scratchpad (staged in the manager session scratchpad)"
+  },
+  "report.md": {
+   "sha256": "2958ac1871002fb78743427632c1224744e5318331a0bc3e302606d310292afa",
+   "origin": "auditor-authored, copied byte-for-byte from the auditor session scratchpad (staged in the manager session scratchpad)"
+  },
+  "receipt.json": {
+   "sha256": "d1aad291452304f1bb1480dbee2088aaeb0d2a2d6860da6654b4f8d0dae6c8d1",
+   "origin": "INTEGRATOR-transcribed binding receipt"
+  },
+  "verify.log": {
+   "sha256": "c804db0597751eb16eb696828d8c549194e17ee3a786d4936f6bee154d8d0158",
+   "origin": "INTEGRATOR re-check, not the auditor"
+  }
+ }
+}

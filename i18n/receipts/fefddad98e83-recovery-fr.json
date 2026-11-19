@@ -1,0 +1,104 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1, PR #1962",
+  "locale": "fr",
+  "namespace": "ui.recovery",
+  "pr": 1962,
+  "date": "2026-11-17",
+  "head": "af3ea4461495ccd3de4e6c99df70c95d4f6eb0ff",
+  "instance": "fefddad98e83-recovery-fr",
+  "auditor": {
+    "agent": "task",
+    "role": "independent i18n auditor (team lopdev, task child 'UI-1 i18n audit r1'); not the translator (coder, anthropic/claude-opus-5-5, per PR #1962 body)",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session fefddad98e83, a task instance distinct from the translating coder. Served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. Judged from the English, its context sidecar, the core glossary and locale style guide at local-operator origin/main, and shipped catalogue precedent; no MT used. Auditor-authored fixes are listed as findings with before/after.",
+    "instance": "fefddad98e83-recovery-fr"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "glossary": {
+    "path": "local-operator:i18n/glossary.md",
+    "blob": "e3cdd40c909fb4bf515fc88abf57d7a85735a8e2"
+  },
+  "style_guide": {
+    "path": "local-operator:i18n/style-guides/fr.md",
+    "blob": "1495a3b70eb74488a9a32c9b9d85c292d024b1fb"
+  },
+  "findings": [
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Mechanical pass on the audited bytes: key set and order equal English (30); ICU parse OK in intl-messageformat; argument names/types equal English per key; plural arms equal the locale's CLDR cardinal categories (Intl.PluralRules); formats with sample args for counts 0,1,2,5,21,1000000; NFC; no bidi control characters; no em/en dashes."
+    },
+    {
+      "severity": "MINOR",
+      "id": "T1",
+      "key": "ui.recovery.send.reconnect",
+      "status": "fixed",
+      "note": "'Se reconnecter' is this product's shipped fr label for SIGN IN AGAIN (ui.providers.provider_detail.sign_in_again, ui.agents.publication.action.sign_in, ui.settings.integrations.integration_model.sign_in_again); on a button that re-dials the background service it suggests a re-login. Shipped reconnect buttons say 'Reconnecter' (ui.chat.run_details.mcp.control.reconnect, ui.providers.phone.action.reconnect).",
+      "before": {
+        "ui.recovery.send.reconnect": "Se reconnecter"
+      },
+      "after": {
+        "ui.recovery.send.reconnect": "Reconnecter"
+      }
+    },
+    {
+      "severity": "MINOR",
+      "id": "T2",
+      "key": "ui.recovery.composer.no_provider",
+      "status": "fixed",
+      "note": "fr guide: apostrophe U+2019 and U+202F before : and ?. The file had 12 ASCII apostrophes and 7 plain spaces before :/?; shipped fr is 3773 U+2019 vs 33 ASCII. Normalised in every affected key (listed in before/after).",
+      "before": {
+        "ui.recovery.composer.no_provider": "Aucun fournisseur de modèles n'est connecté : les messages ne peuvent pas encore être envoyés.",
+        "ui.recovery.composer.no_model": "Aucun modèle n'est choisi pour cette conversation : les messages ne peuvent pas encore être envoyés.",
+        "ui.recovery.composer.offline": "Le service d'arrière-plan de Local Operator ne répond pas : les messages ne peuvent pas être envoyés pour le moment.",
+        "ui.recovery.local.no_models_title": "{brand} fonctionne, mais n'a encore aucun modèle",
+        "ui.recovery.local.no_models_ollama": "Téléchargez un modèle depuis un terminal, puis vérifiez à nouveau. Celui-ci est un bon premier choix :",
+        "ui.recovery.local.not_running_body": "Rien n'a répondu à {address}. Si {brand} n'est pas installé, téléchargez-le. S'il l'est, ouvrez-le, puis vérifiez à nouveau.",
+        "ui.recovery.local.start_ollama": "Déjà installé ? Lancez-le depuis un terminal :",
+        "ui.recovery.local.no_answer_title": "Rien n'a répondu à {address}",
+        "ui.recovery.local.no_answer_body": "Vérifiez que {brand} fonctionne et que l'adresse et le port sont corrects, puis vérifiez à nouveau.",
+        "ui.recovery.local.wrong_server_body": "Un autre programme utilise peut-être ce port, ou l'adresse est incorrecte. Vérifiez l'adresse et le port de {brand}, puis vérifiez à nouveau.",
+        "ui.recovery.local.alternative_body": "Vous préférez ne pas exécuter de modèles sur cet ordinateur ? Un compte Radient ne demande aucune configuration."
+      },
+      "after": {
+        "ui.recovery.composer.no_provider": "Aucun fournisseur de modèles n’est connecté : les messages ne peuvent pas encore être envoyés.",
+        "ui.recovery.composer.no_model": "Aucun modèle n’est choisi pour cette conversation : les messages ne peuvent pas encore être envoyés.",
+        "ui.recovery.composer.offline": "Le service d’arrière-plan de Local Operator ne répond pas : les messages ne peuvent pas être envoyés pour le moment.",
+        "ui.recovery.local.no_models_title": "{brand} fonctionne, mais n’a encore aucun modèle",
+        "ui.recovery.local.no_models_ollama": "Téléchargez un modèle depuis un terminal, puis vérifiez à nouveau. Celui-ci est un bon premier choix :",
+        "ui.recovery.local.not_running_body": "Rien n’a répondu à {address}. Si {brand} n’est pas installé, téléchargez-le. S’il l’est, ouvrez-le, puis vérifiez à nouveau.",
+        "ui.recovery.local.start_ollama": "Déjà installé ? Lancez-le depuis un terminal :",
+        "ui.recovery.local.no_answer_title": "Rien n’a répondu à {address}",
+        "ui.recovery.local.no_answer_body": "Vérifiez que {brand} fonctionne et que l’adresse et le port sont corrects, puis vérifiez à nouveau.",
+        "ui.recovery.local.wrong_server_body": "Un autre programme utilise peut-être ce port, ou l’adresse est incorrecte. Vérifiez l’adresse et le port de {brand}, puis vérifiez à nouveau.",
+        "ui.recovery.local.alternative_body": "Vous préférez ne pas exécuter de modèles sur cet ordinateur ? Un compte Radient ne demande aucune configuration."
+      }
+    },
+    {
+      "severity": "MINOR",
+      "id": "T3",
+      "key": "ui.recovery.local.wrong_server_title",
+      "status": "fixed",
+      "note": "'not as {brand}' was rendered as a 'like {brand}' calque, which reads as a comparison; restated as 'but it is not / not from {brand}', as zh-CN and vi already did. Auditor fix, locale-only, placeholders unchanged.",
+      "before": {
+        "ui.recovery.local.wrong_server_title": "Un service a répondu à {address}, mais pas comme {brand} (HTTP {status})"
+      },
+      "after": {
+        "ui.recovery.local.wrong_server_title": "Un service a répondu à {address}, mais ce n’est pas {brand} (HTTP {status})"
+      }
+    }
+  ],
+  "scope": "PR #1962 round 1: all 30 ui.recovery keys, ccc99372ac..af3ea44614 plus auditor fixes",
+  "binding": "Verified on af3ea44614 plus this audit's locale-only fixes: target src/i18n/catalogues/fr/ui.recovery.json sha256 21ee2da6c3c9aba3875d0436fb8d7be72abf9bbc5fde5b3f7ac5f9e9a5c078e1; English sha256 938a20256a4464a1eb65dbaac7d56c74f2b4dce670936032062f3af9ea2389d9; context sha256 dea999b123328675580560158f3642f2d34a6ab42528af2bfbad98c313a60caa.",
+  "en_sha256": "938a20256a4464a1eb65dbaac7d56c74f2b4dce670936032062f3af9ea2389d9",
+  "context_sha256": "dea999b123328675580560158f3642f2d34a6ab42528af2bfbad98c313a60caa",
+  "target_sha256": "21ee2da6c3c9aba3875d0436fb8d7be72abf9bbc5fde5b3f7ac5f9e9a5c078e1",
+  "sha256": {
+    "fr": "21ee2da6c3c9aba3875d0436fb8d7be72abf9bbc5fde5b3f7ac5f9e9a5c078e1",
+    "en": "938a20256a4464a1eb65dbaac7d56c74f2b4dce670936032062f3af9ea2389d9"
+  }
+}

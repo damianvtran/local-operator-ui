@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { unlink, writeFile } from "node:fs/promises";
 import { test } from "node:test";
 import { build } from "esbuild";
@@ -64,6 +65,25 @@ const {
 	tipRotationOrder,
 } = mod;
 
+/*
+ * THE POOLS HOLD MESSAGE KEYS, so every assertion about WORDING reads the
+ * English catalogue - the sentence a French render replaces. Measuring the key
+ * instead would make the character budget meaningless (a key is longer than any
+ * label), and comparing a key to a sentence would pin nothing a translator can
+ * change.
+ */
+const ENGLISH = JSON.parse(
+	readFileSync(
+		new URL("../src/i18n/catalogues/en/ui.chat.composer.json", import.meta.url),
+		"utf8",
+	),
+);
+const english = (key) => {
+	const message = ENGLISH[key];
+	assert.equal(typeof message, "string", `no English message for ${key}`);
+	return message;
+};
+
 /** A deterministic stand-in for `Math.random`, so an order is reproducible. */
 const seeded = (seed) => {
 	let state = seed;
@@ -84,7 +104,8 @@ test("the suggestion pool is the product's own requests, and nothing else", () =
 		DEFAULT_MESSAGE_SUGGESTIONS.length,
 		"a duplicated label wastes a slot in a sample of four",
 	);
-	for (const label of DEFAULT_MESSAGE_SUGGESTIONS) {
+	for (const key of DEFAULT_MESSAGE_SUGGESTIONS) {
+		const label = english(key);
 		assert.ok(
 			label.length <= 42,
 			`"${label}" is ${label.length} chars: the pool's length budget is what keeps a sample of four inside two rows at the narrowest column the row renders in (550px)`,
@@ -96,15 +117,35 @@ test("the suggestion pool is the product's own requests, and nothing else", () =
 	 * and the four in every committed frame of the empty chat.
 	 */
 	assert.deepEqual(
-		DEFAULT_MESSAGE_SUGGESTIONS.slice(0, MAX_SUGGESTIONS),
+		DEFAULT_MESSAGE_SUGGESTIONS.slice(0, MAX_SUGGESTIONS).map(english),
 		[
-			"Set up Linear MCP for me",
 			"Create a team of agents",
-			"Turn on phone access",
-			"Show me what the agent did last turn",
+			"Review this repo and open a pull request",
+			"Schedule a task that runs every morning",
+			"Wake me tomorrow morning with a summary",
 		],
 		"the pinned opening sample is the pool's first four, in this order",
 	);
+	/*
+	 * Rule 3 (onboarding audit U5): the head is a new user's first screen, so
+	 * it never holds the three entries that need something a fresh install
+	 * lacks - MCP vocabulary, the paid phone add-on, a previous turn. Asserted
+	 * by key so a later reorder cannot quietly pin one of them again.
+	 */
+	for (const key of [
+		"ui.chat.composer.suggestion.linear_mcp",
+		"ui.chat.composer.suggestion.phone_access",
+		"ui.chat.composer.suggestion.last_turn",
+	]) {
+		assert.ok(
+			DEFAULT_MESSAGE_SUGGESTIONS.includes(key),
+			`${key} stays in the pool for later draws`,
+		);
+		assert.ok(
+			!DEFAULT_MESSAGE_SUGGESTIONS.slice(0, MAX_SUGGESTIONS).includes(key),
+			`${key} is not in the pinned opening four`,
+		);
+	}
 	/*
 	 * The head's two rules (`composer-suggestions.ts` states them with the why):
 	 * no two entries share a leading verb, so the four do not read as one request
@@ -115,7 +156,7 @@ test("the suggestion pool is the product's own requests, and nothing else", () =
 	 */
 	const head = DEFAULT_MESSAGE_SUGGESTIONS.slice(0, MAX_SUGGESTIONS);
 	assert.equal(
-		new Set(head.map((label) => label.split(" ")[0])).size,
+		new Set(head.map((key) => english(key).split(" ")[0])).size,
 		head.length,
 		"no two of the pinned four share a leading verb",
 	);
@@ -258,7 +299,8 @@ test("the tip pool is distinct, non-empty and inside its character budget", () =
 	 * was `ask for the mobile relay to drive this session from your phone`, 62
 	 * characters, which is the number the headroom has to clear.)
 	 */
-	for (const tip of pool) {
+	for (const key of pool) {
+		const tip = english(key);
 		assert.ok(tip.length > 0, "no empty tip");
 		assert.ok(
 			tip.length <= 62,

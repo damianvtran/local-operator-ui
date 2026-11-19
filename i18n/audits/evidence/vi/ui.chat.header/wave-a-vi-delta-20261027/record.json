@@ -1,0 +1,197 @@
+{
+ "audit_id": "wave-a-vi-delta-20261027",
+ "round": 2,
+ "carried_forward_check": {
+  "question": "may the three namespaces whose bytes did not change be carried forward from the a81c00cdda receipt instead of re-recorded?",
+  "answer": "no - the format has no bound carried-forward block, so all four namespaces are re-recorded at this head",
+  "evidence": [
+   "scripts/i18n/ledger-rules.mjs:349 receiptScope() resolves a namespace's verdict and findings only from `namespaces.<ns>.status` plus that block's own findings; there is no carried-forward state a row could bind",
+   "scripts/i18n/ledger-rules.mjs:521 deriveReceiptAudit() requires every namespace block to name its own en_sha256 and vi_sha256, and :499 states root hashes cannot supply a missing block hash - a block copied from an older head would have to claim hashes it did not audit",
+   "docs/I18N.md 'Retain checkable audit records' defines record/receipt contents and the two ledger contracts, and names no carried-forward block or inheritance rule",
+   "consequence: the cheap-looking option (point three rows at the round-1 receipt) is exactly the staleness the same checker refuses, because the ENGLISH source hashes moved at 80ee119bbd's parent even where the vi bytes did not"
+  ]
+ },
+ "round_scope": "delta: the one amended value plus the 37 wave-A values re-verified byte-identical",
+ "date": "2026-10-27",
+ "locale": "vi",
+ "namespace": "ui.chat.header",
+ "source_head": "80ee119bbd1084ee873994a1f39db0c085c62083",
+ "source_parent_head": "a81c00cdda2667dc6b094128ff47ec72d0c4d095",
+ "wave_a_source_head": "6216167f4464bd607a6831e9e636820c0d463816",
+ "branch": "i18n-wave-a",
+ "scope": "Delta re-record of the wave A vi audit at 80ee119bbd: all 5 wave-A ui.chat.header keys re-read against the English catalogue, its context sidecar and the header call sites; every vi byte is identical to the values audited at a81c00cdda (this file did not change in the remediation commit). Catalogue-only.",
+ "status": "passed",
+ "result": "clean",
+ "key_count": 5,
+ "keys_read": 5,
+ "keys_substantive": [
+  "ui.chat.header.archive_conversation",
+  "ui.chat.header.cancel_rename",
+  "ui.chat.header.rename_conversation",
+  "ui.chat.header.restore_conversation",
+  "ui.chat.header.saving_conversation_name"
+ ],
+ "delta_regression": {
+  "wave_a_keys_in_scope": 38,
+  "byte_identical_since_previous_round": 37,
+  "changed": [],
+  "parsed_json_diff": "a81c00cdda vs 80ee119bbd over the four vi wave-A files: 1 value changed, 0 keys added, 0 keys dropped (diff.json beside this record)",
+  "this_namespace_bytes_changed": false
+ },
+ "measured": {
+  "apparatus": {
+   "node": "v24.22.1",
+   "export": "read-only `git -C ~/local-operator-ui archive 80ee119bbd | tar -x -C ~/qa/wave-a-delta-vi`",
+   "parser": "repo-installed @formatjs/icu-messageformat-parser",
+   "formatter": "repo-installed intl-messageformat (locale vi)",
+   "tools": "tools/delta-audit.mjs and tools/region-names.mjs, kept beside audit.log in this bundle"
+  },
+  "model_route": "radient/auto",
+  "model_route_evidence": "session system-prompt header «Model: radient/auto»",
+  "audit_notes_not_execution_log": "This record's prose is analysis; audit.log beside it holds the captured output of every command this session ran. Nothing here claims a command that is not in that log."
+ },
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "eb62f05b28e1",
+  "team": "lopdev",
+  "model": "radient/auto",
+  "actual_model": "radient/auto",
+  "actual_model_source": "The harness reported the model as «radient/auto» (a routing alias); the concrete provider/model id is not exposed in-session. No fallback was selected, configured or observed.",
+  "fallback": null,
+  "independent_from_translator_session": true,
+  "independence_statement": "The translator ran in a different agent instance. This session authored none of the 38 values, amended none of them, edited no catalogue, context sidecar, English source, ledger, allowance or generated file, and read the copy only from the git archive of 80ee119bbd. The translator's rejection of this auditor's earlier «Hội thoại» suggestion was judged on the catalogue's own bytes, not taken on trust."
+ },
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.chat.header.json",
+   "sha256": "e759664b305988c9eca049a767384ecb9473ad673a41d01c15e65d2e1e257a4d"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.chat.header.context.json",
+   "sha256": "3ccb43d7d8c9bd9c1912656c2781037bdc70868f6ff3614be3f8d083c2644908"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/vi/ui.chat.header.json",
+   "sha256": "43eedd65728fd38484116e745c05430e9c771def2674e68df4ed8c83eda1db9a"
+  }
+ },
+ "hash_verification": {
+  "method": "git -C ~/local-operator-ui show 80ee119bbd:<path> | shasum -a 256, compared with shasum -a 256 over the archived export",
+  "result": "identical for all three inputs of this namespace"
+ },
+ "reference_hashes": {
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/vi.md",
+   "sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+  }
+ },
+ "artifacts": [
+  {
+   "path": "i18n/receipts/wave-a-vi-delta-eb62f05b28e1.json",
+   "sha256": "c729f7c063f99485ba688ff189f611d88a2ded0867909a91f779c8061b485801",
+   "role": "receipt"
+  },
+  {
+   "path": "i18n/audits/evidence/vi/ui.chat.header/wave-a-vi-delta-20261027/audit.log",
+   "sha256": "962b894f02ede8fdec7934afa4a5329f90a6f630e744dc433363348e484a3900"
+  },
+  {
+   "path": "i18n/audits/evidence/vi/ui.chat.header/wave-a-vi-delta-20261027/render-table.json",
+   "sha256": "4fa5a85fea3a50364501bb277dd3432a8b094d9e2d2094857028b0eea646a6ec"
+  },
+  {
+   "path": "i18n/audits/evidence/vi/ui.chat.header/wave-a-vi-delta-20261027/diff.json",
+   "sha256": "563cfcfbf6a33188bd1cc7b561c73c0bd2f6093dc85c45f0602f510d8950a367"
+  },
+  {
+   "path": "i18n/audits/evidence/vi/ui.chat.header/wave-a-vi-delta-20261027/tools/delta-audit.mjs",
+   "sha256": "2c513b30a5066f4a4c7a41d12f8f8121e9f220cd384538076e133119e9887c14"
+  },
+  {
+   "path": "i18n/audits/evidence/vi/ui.chat.header/wave-a-vi-delta-20261027/tools/region-names.mjs",
+   "sha256": "36716fb450dfea98bc04072ad4bcee14b03028893b210e6ced68e9370c626f15"
+  },
+  {
+   "path": "i18n/audits/evidence/vi/ui.chat.header/wave-a-vi-delta-20261027/ledger-rows.json",
+   "sha256": "5e64f194ad1a9f9dd64b8c0a9298c7d7cb52afbf9917a2d70be370ed120020d7",
+   "role": "assembled-ledger-rows (the writer's output, re-extracted after the run)"
+  }
+ ],
+ "findings": [
+  {
+   "id": "vi-wa-i4",
+   "severity": "INFO",
+   "key": "ui.chat.header.restore_conversation",
+   "issue": "Shares «Khôi phục cuộc trò chuyện» with ui.chat.sidebar.row_menu.unarchive (the two surfaces never render together). Unchanged at this head, not counted."
+  }
+ ],
+ "current_report_verdict": {
+  "status": "passed",
+  "result": "clean",
+  "unresolved_blocker_major_count": 0,
+  "finding_ids": [
+   "vi-wa-i4"
+  ],
+  "severity_counts": {
+   "blocker": 0,
+   "major": 0,
+   "minor": 0,
+   "nit": 0
+  },
+  "severity_counts_note": "Unresolved counts on the audited head. vi-wa-1 was MINOR in round 1 and is resolved here; it is listed as an INFO observation so its original severity stays visible."
+ },
+ "validation": {
+  "key_parity": "5/5",
+  "icu_parse_errors": [],
+  "placeholders_match_en": true,
+  "argument_names_and_types_match_en": true,
+  "plural_select_arms_match_en": true,
+  "plural_arms": [],
+  "render_errors": [],
+  "nfc_all": true,
+  "bidi_controls": 0,
+  "ascii_ellipsis": 0,
+  "straight_quotes": 0,
+  "leading_trailing_whitespace": 0,
+  "over_max_cells": [],
+  "repo_checks": {
+   "generate_check": "byte-identical, exit 0",
+   "locale_parity_test": "44/44 pass (vi: 6/6 rows)",
+   "context_parity": "ok — 131 allowed shrink-only gaps in 4 namespaces",
+   "check_duplicates": "ok — 844 file(s) scanned, 0 duplicate key(s)",
+   "vi_activation_test": "4/4 pass",
+   "chat_header_sidebar_copy_test": "11/11 pass",
+   "ledger_check": "FAILED (84 findings) — pre-existing: the wave A receipts for all seven locales are not yet assembled into i18n/ledger.json at this head; the dump is in audit.log. This audit supplies vi's four rows (see ledger-rows.json)."
+  },
+  "rendered_fit": "NOT EXECUTED — no rendered-frame or pixel claim. Cell counts are computed from the catalogue strings; the changed key is screen-reader-only and declares no maxCells."
+ },
+ "second_pass": "All 38 wave-A values were read twice at this head by this auditor: once while re-reading the delta, and again after the mechanical runs. The 37 unchanged values were re-read against the English source and sidecar rather than assumed from the previous round; the one changed value was read three times (before, against the catalogue's own pane vocabulary, and after the region-name probe). The second read was performed by this auditor, not by a second independent auditor; no high-visibility group (onboarding/errors/settings) is in this scope, so the manager's extra-pass rule does not apply.",
+ "limitations": [
+  "Catalogue-only: no build, browser, render, activation or pixel measurement was run. Width statements come from the catalogue strings and styles read from source.",
+  "No MT, translation API, back-translation or translation service was used to compare or produce any value; every judgement is this auditor's own reading of the two catalogues.",
+  "The {reason} placeholder is backend-served English prose at runtime; only the surrounding pattern is translatable and was audited as such."
+ ],
+ "ledger_note": "Wave A vi delta, head 80ee119bbd: 5/5 keys; 0 blocker/major/minor/nit; bytes unchanged. Record i18n/audits/evidence/vi/ui.chat.header/wave-a-vi-delta-20261027/record.json",
+ "wording_judgement": null,
+ "ledger_row_ready": {
+  "locale": "vi",
+  "namespace": "ui.chat.header",
+  "source_sha256": "e759664b305988c9eca049a767384ecb9473ad673a41d01c15e65d2e1e257a4d",
+  "target_sha256": "43eedd65728fd38484116e745c05430e9c771def2674e68df4ed8c83eda1db9a",
+  "auditor": {
+   "agent": "i18n-auditor",
+   "model": "radient/auto",
+   "session": "eb62f05b28e1"
+  },
+  "instance": "wave-a-vi-delta-eb62f05b28e1",
+  "result": "clean",
+  "receipt": "i18n/receipts/wave-a-vi-delta-eb62f05b28e1.json",
+  "receipt_sha256": "c729f7c063f99485ba688ff189f611d88a2ded0867909a91f779c8061b485801",
+  "note": "Wave A vi delta, head 80ee119bbd: 5/5 keys; 0 blocker/major/minor/nit; bytes unchanged. Record i18n/audits/evidence/vi/ui.chat.header/wave-a-vi-delta-20261027/record.json",
+  "note_length": 170
+ }
+}

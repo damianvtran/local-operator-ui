@@ -1,0 +1,23 @@
+{
+	"auditor": "i18n-auditor",
+	"agent": "i18n-auditor",
+	"model": "kimi/k3.1-pro",
+	"instance": "tb-invite-r2-20261029-fr",
+	"date": "2026-10-29",
+	"status": "passed",
+	"locale": "fr",
+	"namespace": "ui.teamBridge",
+	"sha256": {
+		"en": "1516974c44681940753862f9735f0b3c19c7815ca4e68eab7fd343f1f1ed53f3",
+		"fr": "8befdcdfe25c247e1b5d85f0c54439aca7c0d6477920df5e2950e297565f6870"
+	},
+	"findings": [],
+	"checks": {
+		"key_parity": "Passed: Python JSON key-set comparison printed 281 281 set() set(). Both ui.teamBridge.members.agent_invitation and ui.teamBridge.members.human_invitation are absent from fr and en.",
+		"bidi": "Passed: scanned the complete fr file; no U+200E/U+200F/U+202A–U+202E or zero-width characters U+200B/U+200C/U+200D/U+2060/U+FEFF.",
+		"apostrophes": "Passed: no ASCII apostrophe U+0027 anywhere in the fr file; typographic apostrophes are used. Unchanged ICU plural spot checks had balanced braces and no broken syntax observed.",
+		"diff": "Passed: git diff for fr contains only the empty and read_only replacements and the agent_invitation and human_invitation deletions; no unrelated key touched or reordered. git diff --check passed."
+	},
+	"scope": "Re-audited only the French delta: ui.teamBridge.members.empty and ui.teamBridge.members.read_only, the two removed invitation keys, and the requested whole-file mechanical checks. The empty-state translation preserves that nobody is invitable without claiming the organization has no members; Personne takes correct masculine-singular participle agreement. The read-only translation states only the reader’s inability to invite, with correct negative partitive de personnes and no administrator-authority claim or blame. Previously approved unchanged keys were deliberately not re-audited; unchanged ICU plurals received only a syntax spot check. No pixels, tests, or build were run.",
+	"independence": "Auditor wrote none of the audited strings; the translator was a separate subagent. No catalogue or ledger edit by the auditor."
+}

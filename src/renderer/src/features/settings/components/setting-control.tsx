@@ -56,12 +56,13 @@ import {
 	formatQuickSendDisplay,
 	isFunctionKeyToken,
 } from "../../../../../shared/mini-view";
+import { physicalKey } from "../../../../../shared/recording-shortcut";
 import {
-	DESKTOP_HOTKEY_NEEDS_MODIFIER_COPY,
-	MACOS_DETECTION_BOUNDARY_COPY,
-	QUICK_SEND_SCOPE_COPY,
 	alternatesCopy,
+	desktopHotkeyNeedsModifierCopy,
+	macosDetectionBoundaryCopy,
 	priorArtCopy,
+	quickSendScopeCopy,
 	registrationCopy,
 } from "../../../mini-view/mini-copy";
 import { rendererPlatform } from "../../../mini-view/renderer-platform";
@@ -82,7 +83,7 @@ const SLOT: Record<BackendSetting["kind"], string> = {
 	int: "w-28",
 	float: "w-28",
 	enum: "w-64",
-	text: "w-96",
+	text: "w-96", // i18n: ignore Tailwind width class, not interface copy
 	hotkey: "w-56",
 	list: "w-full min-w-0",
 	cascade: "w-full min-w-0",
@@ -120,9 +121,14 @@ export function hotkeyFromEvent(
 	if (MODIFIER_ONLY_KEYS.has(event.key) || event.nativeEvent.isComposing) {
 		return "";
 	}
+	const key = physicalKey({
+		key: event.key,
+		code: event.code,
+		alt: event.altKey,
+	});
 	return composeCapturedChord(
 		captureModifierTokens(event),
-		CAPTURE_KEY_NAMES[event.key] ?? event.key.toLowerCase(),
+		CAPTURE_KEY_NAMES[key] ?? key.toLowerCase(),
 	);
 }
 
@@ -195,7 +201,7 @@ const DesktopHotkeyDetails = () => {
 			className="flex flex-col gap-0.5"
 			data-tour-tag="quick-send-registration"
 		>
-			<span className="text-meta text-ink-dim">{QUICK_SEND_SCOPE_COPY}</span>
+			<span className="text-meta text-ink-dim">{quickSendScopeCopy()}</span>
 			{registration ? (
 				<output
 					className={cn(
@@ -218,7 +224,7 @@ const DesktopHotkeyDetails = () => {
 			 */}
 			{platform === "mac" && registration?.status === "registered" ? (
 				<span className="text-meta text-ink-dim">
-					{MACOS_DETECTION_BOUNDARY_COPY}
+					{macosDetectionBoundaryCopy()}
 				</span>
 			) : null}
 			<span className="text-meta text-ink-dim">{alternatesCopy(platform)}</span>
@@ -298,7 +304,7 @@ const HotkeyInput = ({
 					if (!binding) return;
 					event.preventDefault();
 					if (desktop && !desktopChordAllowed(binding)) {
-						setRefusal(DESKTOP_HOTKEY_NEEDS_MODIFIER_COPY);
+						setRefusal(desktopHotkeyNeedsModifierCopy());
 						return;
 					}
 					setRefusal(null);
@@ -776,7 +782,7 @@ export const SettingControl = ({
 												 * carries `whitespace-nowrap` so it cannot break the row into
 												 * two lines beside the RTL label (UX U2).
 												 */
-												<span className="ml-2 shrink-0 text-caption text-ink-dim whitespace-nowrap">
+												<span className="ms-2 shrink-0 text-caption text-ink-dim whitespace-nowrap">
 													{t("ui.settings.language.general.unavailable_choice")}
 												</span>
 											)}

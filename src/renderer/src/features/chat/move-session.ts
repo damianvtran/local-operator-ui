@@ -35,8 +35,11 @@ import { userFacingMessage } from "@shared/api/local-operator/desktop-api";
 import type { DesktopCapabilities } from "@shared/api/local-operator/desktop-api";
 import { desktopFeatureEnabled } from "@shared/api/local-operator/desktop-hooks";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
+import { submitSettingsIntent } from "@shared/hooks/use-settings-intents";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
+// Relative, not `@shared/i18n`: bundled by node tests without an alias map.
+import { t } from "../../../../i18n/messages";
 import type { DesktopMoveReceipt } from "../../../../shared/desktop-session-contract";
 import type { TranscriptRecord } from "./canonical/transcript-reducer";
 
@@ -52,8 +55,8 @@ import type { TranscriptRecord } from "./canonical/transcript-reducer";
  * FALSE against a backend that can move one - which is the one wording change
  * this feature owes users who never touch it.
  */
-export const MOVE_UNAVAILABLE_REASON =
-	"This backend cannot move a live session. Start a new chat to use a different folder, or update the backend.";
+export const moveUnavailableReason = (): string =>
+	t("ui.chat.move_cwd.unavailable");
 
 /**
  * The chip's read-only sentence while the session it belongs to is being CREATED.
@@ -71,8 +74,7 @@ export const MOVE_UNAVAILABLE_REASON =
  * later the chip is editable. The tooltip is the only place it appears, because a
  * transient creation is not worth a transcript note.
  */
-export const MOVE_NOT_READY_REASON =
-	"This session is still starting. Its working directory can be moved as soon as it is live.";
+export const moveNotReadyReason = (): string => t("ui.chat.move_cwd.not_ready");
 
 /**
  * Whether this renderer may move a live session against this backend.
@@ -116,7 +118,7 @@ export function sessionMoveEnabled(
  * quoting the exception is the failure mode `userFacingMessage` exists to stop.
  * The wording states only what is certainly true: the directory did not change.
  */
-const MOVE_FAILED_FALLBACK = "The working directory was not changed.";
+const moveFailedFallback = (): string => t("ui.chat.move_cwd.failed");
 
 /**
  * How long the optimistic value is held waiting for the stream to agree.
@@ -161,7 +163,14 @@ export type MoveCommitOutcome =
 	 */
 	| { kind: "in-flight" }
 	/** No write path here (no capability, or no session): nothing was posted. */
-	| { kind: "unavailable" };
+	| { kind: "unavailable" }
+	/**
+	 * Handed to the server as a durable settings intent
+	 * (`features.settings_intents`): the move applies in the background - when
+	 * the turn ends if the session is busy - and its progress is the intent
+	 * chip's to tell, not this commit's. No receipt exists yet to announce.
+	 */
+	| { kind: "queued" };
 
 /**
  * Move a session's working directory, and say what happened.
@@ -202,7 +211,7 @@ export async function runMoveSession(input: {
 		// reconnect notice - and the fallback above when it did not. A generic
 		// "something went wrong" here would throw away the only thing that tells
 		// the user which of those happened.
-		const sentence = userFacingMessage(error, MOVE_FAILED_FALLBACK);
+		const sentence = userFacingMessage(error, moveFailedFallback());
 		input.note(sentence, true);
 		return { kind: "refused", sentence };
 	}
@@ -229,11 +238,13 @@ export function moveReceiptLine(
 	receipt: DesktopMoveReceipt,
 	evalUsed: boolean,
 ): string {
-	if (receipt.outcome === "unchanged") return `already in ${receipt.label}`;
-	if (receipt.outcome === "cold") return `moved to ${receipt.label}`;
+	const label = receipt.label;
+	if (receipt.outcome === "unchanged")
+		return t("ui.chat.move_cwd.already_in", { label });
+	if (receipt.outcome === "cold") return t("ui.chat.move_cwd.moved", { label });
 	return evalUsed
-		? `moved to ${receipt.label} — this session's runtime is restarting there, so everything you set up in eval was lost`
-		: `moved to ${receipt.label} — this session's runtime is restarting there`;
+		? t("ui.chat.move_cwd.moved_restarting_lost", { label })
+		: t("ui.chat.move_cwd.moved_restarting", { label });
 }
 
 /**
@@ -268,9 +279,9 @@ export async function runMoveSessionFromDispatch(
 	// transport here would allow a second move while the chip's request settles.
 	const outcome = await context.moveTo(context.cwd);
 	if (outcome.kind === "in-flight") {
-		context.note("A working-directory move is already in progress.", true);
+		context.note(t("ui.chat.move_cwd.in_flight"), true);
 	} else if (outcome.kind === "unavailable") {
-		context.note(MOVE_UNAVAILABLE_REASON, true);
+		context.note(moveUnavailableReason(), true);
 	}
 }
 
@@ -549,6 +560,17 @@ export function useSessionMove(input: {
 	);
 	const pending = sessionId ? (moves.get(sessionId) ?? null) : null;
 	const enabled = sessionMoveEnabled(input.capabilities);
+	/*
+	 * DURABLE INTENTS replace the local `moves` map: the server holds the move
+	 * (`waiting_idle` while a turn runs, cancellable from the chip), so it
+	 * survives a conversation switch and a restart, and a second commit simply
+	 * replaces the first (last-wins) instead of being refused as `in-flight`.
+	 * The chip keeps naming the directory IN FORCE until the move lands, because
+	 * new sends still run there (design §2e). Still gated on `sessionMoveEnabled`:
+	 * the landed move is painted by the same `frontend.replace` frame.
+	 */
+	const intents =
+		enabled && desktopFeatureEnabled(input.capabilities, "settings_intents");
 	const addNote = canonical.addNote;
 	const evalUsed = useEvalUsage(sessionId, canonical);
 	const streamCwd = canonical.frontend?.cwd;
@@ -581,6 +603,10 @@ export function useSessionMove(input: {
 			// would otherwise spend a round trip learning 404 (the reason the gate
 			// exists at all).
 			if (!enabled || !sessionId) return { kind: "unavailable" };
+			if (intents) {
+				void submitSettingsIntent(sessionId, { kind: "cwd", value: path });
+				return { kind: "queued" };
+			}
 			const inFlight = pendingRef.current.get(sessionId);
 			if (inFlight) {
 				return { kind: "in-flight" };
@@ -627,7 +653,7 @@ export function useSessionMove(input: {
 			);
 			return outcome;
 		},
-		[enabled, sessionId, note, evalUsed],
+		[enabled, intents, sessionId, note, evalUsed],
 	);
 
 	// Rule 3's first exit: the stream agreeing, keyed by session so another

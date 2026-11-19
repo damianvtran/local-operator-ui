@@ -1,0 +1,30 @@
+{
+  "auditor": "reviewer",
+  "model": "anthropic/claude-sonnet-5-5",
+  "instance": "1e5f275f4910-speech-ur",
+  "locale": "ur",
+  "namespace": "ui.settings.shortcuts",
+  "status": "passed",
+  "sha256": {
+    "ur": "dedc55e412c689c4c94a238872fd5b7e293377ec1830dafbcab84335a2814ccc",
+    "en": "d77d1f6f8d3e1f6ef3f80af207f37f560dd234f9b985deac85507d0ec5c95b36"
+  },
+  "context_sha256": "c40de630259c3b4de44043fdfd63f9c184c23d7f32b0f1a01dc02d1654508340",
+  "scope": "Delta audit of the 7 new keys ui.settings.shortcuts.speech.{primary,secondary,start_recording_press,push_to_talk_hold,push_to_talk_hint,push_to_talk_refused,push_to_talk_overlap} at branch feat/speech-shortcut-slots, head dfe497849a (locale commits b880085fb6 + 2ea7eb208e). The other 68 keys are byte-identical to base eecfb71a3b. This is the re-audit after the earlier round's defect on push_to_talk_refused (masculine بایاں/دایاں with feminine کلید), fixed in 2ea7eb208e.",
+  "findings": [],
+  "checks": [
+    "English, context and target SHA-256 recomputed from the bytes on disk; this receipt names exactly those bytes.",
+    "Delta isolation: against base eecfb71a3b the locale file has exactly the 7 new keys added, 0 removed, 0 changed, original key order preserved. Commit 2ea7eb208e touches only one line, the value of ui.settings.shortcuts.speech.push_to_talk_refused.",
+    "Prior defect re-verified fixed: all 3 ICU branches (darwin, win32, other) now read 'بائیں یا دائیں' (oblique/feminine, agreeing with feminine کلید and the feminine predicate 'دبائے رکھی جا سکتی ہے'); no occurrence of بایاں or دایاں remains anywhere in the ur catalogues.",
+    "Key parity 75/75 against English (same keys, same order); NFC normalisation checked on every ur value; no manual bidi control characters (style guide RTL section).",
+    "Every new message parsed with the project's own @formatjs/icu-messageformat-parser: all 7 parse and the argument/select signature equals English's. push_to_talk_refused keeps {platform, select, darwin win32 other}, with `other` present and every arm a complete sentence.",
+    "Semantic read of each of the 7 messages against English and the English context note (rank label vs priority, press vs hold contrast, modifier-key meaning, 'begin with this key').",
+    "Vocabulary read against the same locale's existing strings: ui.chat.tags.primary (بنیادی, reused for primary), ui.chat.composer.start_recording (ریکارڈنگ شروع کریں), ui.chat.composer.start_recording_hint and ui.canvas.inline_edit.start_recording_or_hold (دبائے رکھیں for hold), ui.settings.shortcuts press-the-keys strings (Esc منسوخ کرتا ہے۔, ; separator), ui.miniView.hotkey_needs_modifier (ماڈیفائر کلید). آپ-register imperatives, Urdu danda ۔, Latin key names kept undeclined.",
+    "Glossary and this locale's style guide read as binding; their bytes (local-operator origin/main 8076c56ac) are hashed in `references`.",
+    "Length fit was judged from character counts only; no rendered frame was produced or reviewed in this audit."
+  ],
+  "references": {
+    "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "style_guide_sha256": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60"
+  }
+}

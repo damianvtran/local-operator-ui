@@ -1,0 +1,43 @@
+{
+	"schema": 1,
+	"date": "2026-10-21",
+	"instance": "9997c00cf545",
+	"auditor": "i18n-auditor (independent re-audit; did not author, translate or remediate the value)",
+	"model": "deepseek/deepseek-flash",
+	"locale": "ur",
+	"namespace": "ui.browser",
+	"status": "passed",
+	"result": "clean",
+	"findings": [],
+	"independence": "Independent reviewer run. It read catalogue and ledger bytes only and wrote no catalogue value, source file, ledger row or receipt other than this one plus the row and receipt copy that scripts/i18n/ledger-assemble.mjs derived. Every hash below was recomputed here from the files on disk; the delta proof was executed, not read from the earlier receipt.",
+	"scope": {
+		"kind": "remediated single-key re-audit after the i18n auditor MINOR U1 (instance 53c8b35e20a6)",
+		"base": "6c488ca7a04b4e7b1daa5a5bdbab0025541ed469",
+		"head": "b3cbb894863a7a78526fb362fd78aec2b57a3a6e",
+		"working_tree_delta": "ur/ui.browser.json only: ui.browser.browser_url_bar.page_menu value صفحہ کے اختیارات -> صفحے کے اختیارات. Uncommitted working-tree bytes on head b3cbb894863a.",
+		"keys_checked_per_catalogue": 231,
+		"keys_unchanged_since_prior_audit": 230,
+		"previous_target_sha256": "3d44288e334c67e8456c68e8791a099f9705b55a1cf988c74384178110cc072d"
+	},
+	"sha256": {
+		"en": "21e210af4f9662e9d82d44dd6a3e00cc396ad7303970e527fcc8d387af474b57",
+		"ur": "c15b238e15a687a6f6eaf80083a0b83748384ce3910ce95aba762321f62ece50"
+	},
+	"delta": {
+		"differing_lines": 1,
+		"line": 192,
+		"previous_line": "\"ui.browser.browser_url_bar.page_menu\": \"صفحہ کے اختیارات\",",
+		"current_line": "\"ui.browser.browser_url_bar.page_menu\": \"صفحے کے اختیارات\",",
+		"method": "Reversal proof: replacing the single occurrence of صفحے کے اختیارات with صفحہ کے اختیارات in the current bytes yields sha256 3d44288e334c67e8456c68e8791a099f9705b55a1cf988c74384178110cc072d, byte-identical to the row previous audited target. So the current file equals the previously audited file with exactly that one value changed and nothing else.",
+		"line_counts": "234 = 234",
+		"key_set": "231 keys, identical to en, no duplicate keys"
+	},
+	"rendering": {
+		"key": "ui.browser.browser_url_bar.page_menu",
+		"en": "Page options",
+		"ur": "صفحے کے اختیارات",
+		"grammar": "Genitive/izafat of صفحہ is صفحے, so صفحے کے اختیارات is page-of options. Matches this catalogue family established pattern (ایجنٹ کے اختیارات agent options, سائن ان کے اختیارات).",
+		"runtime": "Rendered through the real bundled src/i18n/messages module (esbuild) with locale ur: value returned verbatim; en returns Page options.",
+		"hygiene": "No bidi controls (LRM/RLM/FSI-PDI), no ZWNJ/ZWJ, no Arabic-only kaf/yeh/teh-marbuta, no Arabic presentation forms, NFC and NFKC stable; node --test scripts/i18n/ur-activation.test.mjs passes 3/3 including the bundled-catalogue bidi/forbidden-script scan over 3347 values."
+	}
+}

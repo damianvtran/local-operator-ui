@@ -264,7 +264,7 @@ export type DisclosureProps = {
 // identity glyph (the trace rows do) pushes its text further right, and a
 // shared primitive cannot depend on a feature's rail width to stay aligned.
 // A trailing chevron leaves no leading gutter, so the content is flush.
-const CONTENT_INDENT = "ml-5";
+const CONTENT_INDENT = "ms-5";
 
 /**
  * Where a 14px mark sits when a summary WRAPS, so it stays on the first line.
@@ -307,7 +307,7 @@ export type SummaryAlign = "center" | "firstLine";
 // `min-h-6` + `py-0.5` is the COMFORTABLE default, for disclosures that sit
 // alone or in short lists. A caller painting a dense run overrides it through
 // `rowClassName` rather than editing this line — see that prop's docs.
-const ROW = "flex min-h-6 w-full items-center gap-1.5 py-0.5 text-left";
+const ROW = "flex min-h-6 w-full items-center gap-1.5 py-0.5 text-start";
 
 export const Disclosure = ({
 	summary,
@@ -522,7 +522,12 @@ export const Disclosure = ({
 	const glyph = isOpen ? (
 		<ChevronDown className="size-3.5" aria-hidden={true} />
 	) : (
-		<ChevronRight className="size-3.5" aria-hidden={true} />
+		/*
+		 * The closed chevron points along the inline axis; the open one is vertical
+		 * and direction-neutral. Mirrored so the collapsed row's glyph points into
+		 * the text in both directions (design round 1, D3).
+		 */
+		<ChevronRight className="size-3.5 rtl:-scale-x-100" aria-hidden={true} />
 	);
 
 	/*
@@ -536,7 +541,9 @@ export const Disclosure = ({
 				type="button"
 				{...triggerData}
 				aria-expanded={isOpen}
-				aria-controls={children != null ? contentId : undefined}
+				// Non-animated bodies unmount closed; never reference an absent
+				// target. Animated bodies likewise expose the relationship only open.
+				aria-controls={isOpen && children != null ? contentId : undefined}
 				aria-label={triggerLabel}
 				ref={buttonRef}
 				onMouseDown={onMouseDown}
@@ -634,6 +641,15 @@ export const Disclosure = ({
  * update. The inner min-height/overflow pair lets 0fr really collapse, including
  * its padding; the outer clip prevents a scrollbar during interpolation.
  *
+ * Both clips are `overflow-clip`, NOT `overflow-hidden` (PR #1829, design
+ * round 3 D1): `hidden` makes each box a SCROLL CONTAINER, so a `sticky`
+ * descendant — the full-diff pager's bar inside an open trace fold — pinned
+ * against a box that never scrolls and scrolled off with the rows (measured
+ * in the child reader: bar at y −2595 while the page's last row was on
+ * screen). `clip` paints the same and is not a scroll container, so sticky
+ * resolves against the transcript scroller (the `chat-content.tsx` pane-row
+ * and `diff-block.tsx` well rule).
+ *
  * This is a separate component so default-off callers subscribe to no media
  * query and acquire no lifecycle or wrapper changes. Only the exit retains
  * children, and both accessibility gates close immediately, not 180ms later.
@@ -687,7 +703,7 @@ const AnimatedDisclosureBody = ({
 			// React 18 forwards inert as a string attribute, not a boolean prop.
 			{...(!open ? { inert: "" } : {})}
 			className={cn(
-				"grid overflow-hidden transition-[grid-template-rows,opacity] duration-base ease-out-quart motion-reduce:transition-none",
+				"grid overflow-clip transition-[grid-template-rows,opacity] duration-base ease-out-quart motion-reduce:transition-none",
 				expanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
 			)}
 			onTransitionEnd={(event) => {
@@ -701,7 +717,7 @@ const AnimatedDisclosureBody = ({
 				}
 			}}
 		>
-			<div className={cn("min-h-0 overflow-hidden")}>
+			<div className={cn("min-h-0 overflow-clip")}>
 				{(open || (retained && !reduceMotion)) && (
 					<div
 						className={cn(

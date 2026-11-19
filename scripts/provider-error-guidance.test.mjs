@@ -21,7 +21,7 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/features/chat/canonical/provider-error-guidance";',
+			'export * from "./src/renderer/src/features/chat/canonical/provider-error-guidance"; export { t } from "@shared/i18n";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -34,6 +34,7 @@ const {
 	providerErrorGuidance,
 	radientOutOfCredits,
 	radientOutOfCreditsWording,
+	t,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -48,21 +49,30 @@ test("the harness's own classification decides when it can", () => {
 			text: "credentials were rejected",
 			category: "auth",
 		}),
-		{ label: "Open provider settings", to: PROVIDER_SETTINGS },
+		{
+			label: t("ui.chat.provider_error.action.open_provider_settings"),
+			to: PROVIDER_SETTINGS,
+		},
 	);
 	assert.deepEqual(
 		providerErrorGuidance({
 			text: "402 payment required",
 			category: "billing",
 		}),
-		{ label: "Open provider settings", to: PROVIDER_SETTINGS },
+		{
+			label: t("ui.chat.provider_error.action.open_provider_settings"),
+			to: PROVIDER_SETTINGS,
+		},
 	);
 	assert.deepEqual(
 		providerErrorGuidance({
 			text: "429 too many requests",
 			category: "rate-limit",
 		}),
-		{ label: "Open provider settings", to: PROVIDER_SETTINGS },
+		{
+			label: t("ui.chat.provider_error.action.open_provider_settings"),
+			to: PROVIDER_SETTINGS,
+		},
 	);
 });
 
@@ -73,7 +83,10 @@ test("a Radient failure gets its own words, and the surface that can act on it",
 			category: "auth",
 			provider: "radient/sonar-pro",
 		}),
-		{ label: "Sign in to Radient", to: RADIENT_SETTINGS },
+		{
+			label: t("ui.chat.provider_error.action.sign_in_radient"),
+			to: RADIENT_SETTINGS,
+		},
 	);
 	/*
 	 * The billing class lands on the ACCOUNT section, not the grid: the balance,
@@ -86,7 +99,10 @@ test("a Radient failure gets its own words, and the surface that can act on it",
 			category: "billing",
 			provider: "radient/auto",
 		}),
-		{ label: "Open Radient account", to: RADIENT_ACCOUNT },
+		{
+			label: t("ui.chat.provider_error.action.open_radient_account"),
+			to: RADIENT_ACCOUNT,
+		},
 	);
 });
 
@@ -120,7 +136,10 @@ test("the text families cover the rows that carry no classification", () => {
 	]) {
 		assert.deepEqual(
 			providerErrorGuidance({ text, category: null }),
-			{ label: "Open provider settings", to: PROVIDER_SETTINGS },
+			{
+				label: t("ui.chat.provider_error.action.open_provider_settings"),
+				to: PROVIDER_SETTINGS,
+			},
 			text,
 		);
 	}
@@ -129,7 +148,10 @@ test("the text families cover the rows that carry no classification", () => {
 			text: "Sign in to Radient to access your account",
 			category: null,
 		}),
-		{ label: "Sign in to Radient", to: RADIENT_SETTINGS },
+		{
+			label: t("ui.chat.provider_error.action.sign_in_radient"),
+			to: RADIENT_SETTINGS,
+		},
 	);
 	/*
 	 * `unknown` is the classifier saying it could not decide, which is exactly
@@ -140,7 +162,10 @@ test("the text families cover the rows that carry no classification", () => {
 			text: "insufficient credits",
 			category: "unknown",
 		}),
-		{ label: "Open provider settings", to: PROVIDER_SETTINGS },
+		{
+			label: t("ui.chat.provider_error.action.open_provider_settings"),
+			to: PROVIDER_SETTINGS,
+		},
 	);
 });
 
@@ -173,7 +198,10 @@ test("the boundary is the sentence, not the concept: the phrase earns the action
 		providerErrorGuidance({
 			text: "How do I sign in to Radient from a terminal?",
 		}),
-		{ label: "Sign in to Radient", to: RADIENT_SETTINGS },
+		{
+			label: t("ui.chat.provider_error.action.sign_in_radient"),
+			to: RADIENT_SETTINGS,
+		},
 	);
 });
 
@@ -198,12 +226,15 @@ test("a Radient 402 filed under rate-limit is out-of-credits, with the account a
 	};
 	assert.equal(radientOutOfCredits(row), true);
 	assert.deepEqual(providerErrorGuidance(row), {
-		label: "Open Radient account",
+		label: t("ui.chat.provider_error.action.open_radient_account"),
 		to: RADIENT_ACCOUNT,
 	});
 	assert.deepEqual(radientOutOfCreditsWording(row), {
 		label: "billing",
-		headline: "Out of credits (HTTP 402): insufficient credits",
+		headline: t("ui.chat.provider_error.headline.out_of_credits", {
+			status: " (HTTP 402)",
+			body: "insufficient credits",
+		}),
 	});
 });
 
@@ -232,7 +263,7 @@ test("a non-Radient rate limit is untouched, even when it quotes a 402", () => {
 		assert.equal(radientOutOfCredits(row), false, String(provider));
 		assert.equal(radientOutOfCreditsWording(row), null, String(provider));
 		assert.deepEqual(providerErrorGuidance(row), {
-			label: "Open provider settings",
+			label: t("ui.chat.provider_error.action.open_provider_settings"),
 			to: PROVIDER_SETTINGS,
 		});
 	}
@@ -248,7 +279,7 @@ test("a Radient rate limit that is not about the balance stays a rate limit", ()
 	assert.equal(radientOutOfCredits(row), false);
 	assert.equal(radientOutOfCreditsWording(row), null);
 	assert.deepEqual(providerErrorGuidance(row), {
-		label: "Open provider settings",
+		label: t("ui.chat.provider_error.action.open_provider_settings"),
 		to: RADIENT_SETTINGS,
 	});
 });

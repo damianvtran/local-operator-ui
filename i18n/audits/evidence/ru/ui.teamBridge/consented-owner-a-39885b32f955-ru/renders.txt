@@ -1,0 +1,13 @@
+# ui.teamBridge.events.consented_owner - rendered with the repo's intl-messageformat (ru)
+# params: actor="Sana Ketabchi", targets="Aida (Sana Ketabchi)" (one target, as this key requires)
+en   : Sana Ketabchi approved their agent Aida (Sana Ketabchi) joining
+ru   : Sana Ketabchi: одобрено присоединение собственного агента — Aida (Sana Ketabchi)
+
+# compare - the non-owner sibling arm, unchanged: {actor}: одобрено присоединение — {targets}
+ru   : Sana Ketabchi: одобрено присоединение — Aida (Sana Ketabchi), Beau (Sana Ketabchi)
+
+# compare - owner_added_agent, whose possessor phrase this key reuses: {actor}: добавление собственного агента — {targets}
+ru   : Sana Ketabchi: добавление собственного агента — Aida (Sana Ketabchi)
+
+# ICU AST node types (0=literal, 1=argument): [1,0,1]  arguments=["actor","targets"]
+# locale: node v24.22.1 / ICU 78.3

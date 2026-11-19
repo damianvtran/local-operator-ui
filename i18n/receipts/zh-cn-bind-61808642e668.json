@@ -1,0 +1,175 @@
+{
+  "schema": 1,
+  "kind": "translation-audit-receipt",
+  "audit_kind": "current-byte-rebind",
+  "date": "2026-10-25",
+  "locale": "zh-CN",
+  "locale_name": "Simplified Chinese",
+  "namespace": "ui.common.viewer",
+  "pr": 1403,
+  "pr_url": "https://github.com/damianvtran/local-operator-ui/pull/1403",
+  "branch": "feat/i18n-key-remaining-copy",
+  "head": "0adbb37b9429e2c70cbe64ea149cb091432c8dd6",
+  "base": "91aa8f5f10797184d01c41143d1a3645176b566b",
+  "instance": "zh-cn-bind-61808642e668",
+  "auditor": {
+    "agent": "translation-auditor",
+    "role": "independent translation auditor (team lopdev); not a translator or implementer of the values under audit",
+    "instance": "zh-cn-bind-61808642e668",
+    "session": "8cb6c214de69",
+    "model": "deepseek/deepseek-flash",
+    "model_note": "Harness session model is deepseek/deepseek-flash (system prompt 'Model:' line); no provider fallback was reported or observed during this run.",
+    "independence": "Separate session from the commits that authored these values (13bfd7bb772 translated the final eleven keys; 89037325dbc pluralised the group badge). Every byte was read from git objects at the recorded head; this run wrote no catalogue, English source, context sidecar, ledger, allowance or generated file. It adds only one receipt per namespace under i18n/receipts/ and does not author the values it audits."
+  },
+  "agent": "translation-auditor",
+  "model": "deepseek/deepseek-flash",
+  "status": "passed",
+  "result": "clean",
+  "findings": [],
+  "en_sha256": "13e7cccf566f6a41d890c36a9dc24242a154b80d9e8cdbcfdf6988d5c5376243",
+  "target_sha256": "61808642e66894384d5cc5007f46a4083e99e84cdece1cdadac9398daa808a7f",
+  "context_sha256": "c105c548706f46e9e247437c16352074c245ff07551a8edf360a4a8e666a4d73",
+  "guidance": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/zh-CN.md",
+      "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+    },
+    "contracts": [
+      {
+        "path": "docs/I18N.md",
+        "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+      },
+      {
+        "path": "AGENTS.md (head blob)",
+        "sha256": "b05f5fd1472fe1617783e51bc709df8e6f079a87ceda0f2ff97fff539be320af"
+      }
+    ]
+  },
+  "scope": "zh-CN namespace at PR #1403 head. Current-byte binding re-attestation plus a read of every value; the values this wave added were reviewed as copy, unchanged values carry their recorded prior audits.",
+  "method": [
+    "Extracted the English, zh-CN and English-context blobs for the head, the branch pre-merge parent (d784571d90) and main (91aa8f5f10) with `git show <rev>:<path>` into the session scratchpad; hashed the raw bytes there. No checkout, reset or catalogue edit.",
+    "Compared key sets and key order with the English source; every key present exactly once, no duplicate JSON members (object_pairs_hook), no BOM, CR, NBSP, bidi controls or unindented key lines, final newline present.",
+    "Parsed every message with @formatjs/icu-messageformat-parser 3.5.21 (the generator's parser) with requiresOtherClause: true; compared argument sets, argument occurrence counts and number/date skeleton sets.",
+    "Rendered the reviewed keys through the shipped messages.t() runtime bundled with esbuild from a mirror of the head src/i18n tree, under locale zh-CN and en, at the counts quoted in render_evidence; those are actual t() returns.",
+    "Ran negative controls on the same checks: deleting one {list} occurrence, renaming count to cnt and deleting the other arm were each caught, so the placeholder/other-clause checks are not vacuous."
+  ],
+  "limitations": "Static catalogue and message-runtime audit only: no rendered screen, screenshot or pixel measurement was produced, so width statements are code-point cell arithmetic against English maxCells hints, not measured layout. No native-speaker sign-off is claimed. Rendered UI QA and design review remain separate gates.",
+  "keys": {
+    "total": 12,
+    "english_total": 12,
+    "new_to_this_branch_from_main": 4,
+    "unchanged_prior_values": 8,
+    "new_keys": [
+      "ui.common.viewer.image_lightbox.previous",
+      "ui.common.viewer.image_lightbox.next",
+      "ui.common.viewer.image_lightbox.close",
+      "ui.common.viewer.image_lightbox.asset_of"
+    ]
+  },
+  "checks": {
+    "key_set_equals_english": true,
+    "key_order_equals_english": true,
+    "english_key_order_required": true,
+    "merged_key_set_equals_parent_union": true,
+    "parent_A_keys": 8,
+    "parent_B_keys": 8,
+    "shared_keys": 4,
+    "only_A_keys": 4,
+    "only_B_keys": 4,
+    "union_keys": 12,
+    "shared_values_identical_in_both_parents": true,
+    "every_merged_value_equals_its_parent_value": true,
+    "values_from_A": [
+      "ui.common.viewer.close",
+      "ui.common.viewer.next",
+      "ui.common.viewer.position",
+      "ui.common.viewer.previous"
+    ],
+    "values_from_B": [
+      "ui.common.viewer.image_lightbox.previous",
+      "ui.common.viewer.image_lightbox.next",
+      "ui.common.viewer.image_lightbox.close",
+      "ui.common.viewer.image_lightbox.asset_of"
+    ],
+    "values_from_both": [
+      "ui.common.viewer.opening",
+      "ui.common.viewer.reset_view",
+      "ui.common.viewer.zoom_in",
+      "ui.common.viewer.zoom_out"
+    ],
+    "english_head_key_set_equals_english_parent_union": true,
+    "english_head_order_is_A_order_plus_B_extras": true,
+    "source_bytes_match_ledger_rebinding_target": true,
+    "parent_A_target_sha256": "5efff290b4ad62356dd60d5a18116b64e88c6b161ff115bd895cd875704323e3",
+    "parent_B_target_sha256": "340dc07cd763562727e2bdabc1284e5bc17ab34d9ce0b408c761947e186df027",
+    "parent_A_en_sha256": "1faadd19f505153f97f239f612ad3316282a8ba85da55b882d626fc276593de5",
+    "parent_B_en_sha256": "c0ffdd08058b062c88c6fad428db0e33c4162bcee1094dd5dd16890fe4e9705f",
+    "icu": {
+      "parser": "@formatjs/icu-messageformat-parser 3.5.21",
+      "messages_parsed": 12,
+      "messages_total": 12,
+      "plural_messages": 0,
+      "select_messages": 4,
+      "select_keys": [
+        "ui.common.viewer.close",
+        "ui.common.viewer.next",
+        "ui.common.viewer.position",
+        "ui.common.viewer.previous"
+      ],
+      "select_arms_match_english": true,
+      "arguments_and_skeletons_match_english": true
+    },
+    "english_stub_values": 0,
+    "nfc": true,
+    "duplicate_keys": 0,
+    "bidi_controls": 0,
+    "width": "no maxCells hints in this namespace; accessible-name strings are equal to or shorter than English in cells except image_lightbox.next (+1 cell, 17 -> 18)"
+  },
+  "render_evidence": {
+    "ui.common.viewer.close[kind=image]": "关闭图片",
+    "ui.common.viewer.close[kind=asset]": "关闭资源",
+    "ui.common.viewer.close[kind=video]": "关闭",
+    "ui.common.viewer.next[kind=image]": "下一张图片",
+    "ui.common.viewer.previous[kind=asset]": "上一个资源",
+    "ui.common.viewer.position[kind=image,index=3,count=10]": "第3张图片，共10张",
+    "ui.common.viewer.position[kind=asset,index=3,count=10]": "第3个资源，共10个",
+    "ui.common.viewer.position[kind=other,index=3,count=10]": "第3张，共10张",
+    "ui.common.viewer.image_lightbox.previous[medialabel=图片]": "上一个图片",
+    "ui.common.viewer.image_lightbox.previous[medialabel=资源]": "上一个资源",
+    "ui.common.viewer.image_lightbox.next[medialabel=图片]": "下一个图片",
+    "ui.common.viewer.image_lightbox.close[medialabel=图片]": "关闭图片",
+    "ui.common.viewer.image_lightbox.asset_of[index=3,count=10]": "第3项，共10项"
+  },
+  "prior_audits": [
+    {
+      "receipt": "i18n/receipts/93ed237d2e46.json",
+      "sha256": "2752cfdbaca9d7d26792aea54cffcc37ab0aeaa090674aa113a84ef3dbd0c6e0",
+      "coverage": "the 8-key main-side pair (target 340dc07c…) audited clean, 8/8 keys; supplies the four image_lightbox values merged here"
+    },
+    {
+      "receipt": "i18n/receipts/zh-cn-extract-734dc4749c3d-r2.json",
+      "sha256": "b450f3650b62cd22fbfd25ab914b24064faa002ca8d0a016fe31aadd00d3a265",
+      "coverage": "4-key extract delta at the 8-key branch pair (target 5efff290…), clean; the other four A values are byte-identical"
+    },
+    {
+      "receipt": "i18n/receipts/8c38294d1379-r1.json",
+      "sha256": "06b7034e72e45d25d762272af3e6c0f5880af92ef0c8e8c6d1164a02b10e62be",
+      "coverage": "full round-1 audit whose viewer block was clean; retained in the ledger's superseded history"
+    },
+    {
+      "receipt": "i18n/receipts/351aa9be8eac-r1-second.json",
+      "sha256": "7b94ffaa900e21e96ced7b5e46ca55c14f1553140dec21935d5da5d56a616bdc",
+      "coverage": "second independent round-1 audit whose viewer block was clean; retained in the ledger's superseded history"
+    }
+  ],
+  "binding": "Two-parent merge: the branch pre-merge head d784571d90 supplied 8 keys and main 91aa8f5f10 supplied 8 keys; 4 are shared with identical values, 4 are A-only and 4 are B-only. The head 12-key zh file is exactly the union of those values keyed in English order, and the head English file is the same union in the same order. The ledger row records the older 8-key A pair (source 1faadd19…, target 5efff290…), which is why it is stale; this receipt binds the merged head pair. No value was re-worded by the merge.",
+  "verdict": "clean — 12/12 keys read; merged union verified value-by-value against both parents; key set and order equal English; four select messages keep every arm and the number/date skeletons; no findings.",
+  "observations": [
+    "The four image_lightbox keys are present in src/i18n/keys.gen.ts but no src call site uses them at this head, so they are dormant copy; their medialabel argument is product-supplied and was rendered with 图片/资源 only to prove formatting, not as a layout judgement.",
+    "ui.common.viewer.position uses 张 for images and 个 for assets; image_lightbox.asset_of uses 项 as a generic item counter. Both are within the style guide's classifier set (个 default, 项 for items); no drift is claimed in this binding pass."
+  ]
+}

@@ -411,6 +411,10 @@ export function popupNavigationVerdict(rawUrl: string): Verdict {
  */
 const STATIC_FRAME_PREFIX = "/v1/static/";
 
+/** Chromium's built-in viewer, not an extension URL supplied by a document. */
+export const PDF_VIEWER_DOCUMENT =
+	"chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/index.html";
+
 /**
  * Whether a navigation of the main window's contents may proceed.
  *
@@ -422,7 +426,8 @@ const STATIC_FRAME_PREFIX = "/v1/static/";
  *
  * CHILD FRAMES: only the two framings the app really makes - a `blob:` the
  * renderer minted itself (the PDF viewer) and the backend's static route
- * (the HTML preview). Everything else is refused regardless of who initiated
+ * (the HTML preview), plus the PDF viewer's own browser-proven internal child.
+ * Everything else is refused regardless of who initiated
  * it, with no `about:blank` / `data:` allowance: the supplement frame earns
  * its `data:` mount through its OWN one-shot rule instead
  * (`supplement-mounts.ts`, checked in `guardNavigation` before this verdict),
@@ -433,7 +438,12 @@ const STATIC_FRAME_PREFIX = "/v1/static/";
  * never reach this function: they replace nothing and are not a destination.
  */
 export function frameNavigationVerdict(
-	input: { url: string; isMainFrame: boolean },
+	input: {
+		url: string;
+		isMainFrame: boolean;
+		parentUrl?: string;
+		initiatorUrl?: string;
+	},
 	trustedRendererUrls: readonly string[],
 ): Verdict {
 	let url: URL;
@@ -448,6 +458,33 @@ export function frameNavigationVerdict(
 		)
 			? ALLOW
 			: deny("the main window may only show the app's own document");
+	}
+	/*
+	 * PDFium creates a guest frame under Chromium's built-in PDF extension.
+	 * Electron 45 reports its UUID navigation to the app's frame guard too;
+	 * refusing it leaves a successfully fetched application/pdf document empty.
+	 * Admit only the internal viewer's own child, not an extension URL an app
+	 * iframe or preview HTML asks for. Parent AND initiator come from Electron's
+	 * WebFrameMain, never from renderer input. The opaque guest parent is the
+	 * extension index, not the outer PDF blob (verified on the shipped runtime).
+	 * This guard is installed only on the app-owned window. Unlike the status
+	 * lookup, it vets a Chromium-created internal child, not a renderer-selected
+	 * blob, so exact browser-owned parent/initiator provenance is the boundary.
+	 */
+	if (
+		url.protocol === "chrome-extension:" &&
+		url.hostname === "mhjfbmdgcfjbbpaeojofohoefgiehjai" &&
+		/^\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(
+			url.pathname,
+		) &&
+		!url.search &&
+		!url.hash &&
+		!url.username &&
+		!url.password &&
+		input.parentUrl === PDF_VIEWER_DOCUMENT &&
+		input.initiatorUrl === PDF_VIEWER_DOCUMENT
+	) {
+		return ALLOW;
 	}
 	if (url.protocol === "blob:") {
 		// `blob:<origin>/<uuid>`: the part after `blob:` names the minting origin.

@@ -324,8 +324,27 @@ const PROBE = `(() => {
 		 */
 		const userActionsEl = scope.querySelector("[data-lo-user-actions]");
 		const userRow = box(userActionsEl);
-		const userBubble = box(
-			userActionsEl ? userActionsEl.previousElementSibling : null,
+		/*
+		 * THE BOX IS THE BUBBLE'S ROW, not the bubble node: the user action row
+		 * still stacks under the bubble (review round 1, B1), one level deeper
+		 * since the stamp joined it on the same line (operator, 2026-10-20). The
+		 * line is the toolbar's parent; the bubble's 'justify-end' flex row is the
+		 * LINE's previous sibling. The row's right edge is the bubble's own.
+		 *
+		 * THE DELTA IS NOW THE STAMP'S, not the toolbar's: the operator's placement
+		 * is that the time sits "at the row's right edge", so the toolbar no longer
+		 * reaches it - the stamp does, and 'bubbleDelta' is bubble right minus stamp
+		 * right. A toolbar-only delta would report the stamp's width as drift.
+		 */
+		const userActionsLine = userActionsEl
+			? userActionsEl.parentElement
+			: null;
+		const userStampEl = userActionsLine
+			? userActionsLine.querySelector("time, [data-lo-turn-stamp]")
+			: null;
+		const userStamp = box(userStampEl ?? null);
+		const userBubbleRow = box(
+			userActionsLine ? userActionsLine.previousElementSibling : null,
 		);
 		const userActions =
 			userRow && userActionsEl
@@ -340,10 +359,12 @@ const PROBE = `(() => {
 						labels: [...userActionsEl.querySelectorAll("button")].map((b) =>
 							(b.getAttribute("aria-label") ?? b.textContent ?? "").trim(),
 						),
-						bubble: userBubble,
-						bubbleDelta: userBubble
-							? round(userBubble.right - userRow.right)
-							: null,
+						bubble: userBubbleRow,
+						stamp: userStamp,
+						bubbleDelta:
+							userBubbleRow && userStamp
+								? round(userBubbleRow.right - userStamp.right)
+								: null,
 					}
 				: null;
 

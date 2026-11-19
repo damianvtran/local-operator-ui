@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "auditor": "reviewer",
+  "model": "openrouter/moonshotai/kimi-k3.1-pro",
+  "instance": "4e5c84cceada-zh-cn",
+  "audit_session": "4e5c84cceada",
+  "locale": "zh-CN",
+  "namespace": "ui.mesh",
+  "date": "2026-10-25",
+  "scope": "ui.mesh.mesh_types.unnamed_device only: absence-marker semantics, real-name separation, locale style, NFC and RTL checks",
+  "status": "passed",
+  "sha256": {
+    "en": "6b2df37af5c79e404888a00b279ec4f6eda46bf8a68e70ffec0fa6002cd41a44",
+    "zh-CN": "459f5d451689af8d6587a6af38caf29a1f7e8e55e3d186b254edcc467b85b543"
+  },
+  "findings": [
+    {
+      "id": "ZH-CN-UNNAMED-01",
+      "severity": "nit",
+      "key": "ui.mesh.mesh_types.unnamed_device",
+      "summary": "Use full-width Chinese prose parentheses around the absence marker; ASCII parentheses were replaced with （未命名设备） before binding."
+    }
+  ]
+}

@@ -228,11 +228,12 @@ export const RunDetailsTrigger = ({
 	}
 
 	const mcpProblems = unseenMcpProblems(mcpServers, seenMcp).length;
-	const label = runDetailTriggerLabel(details, seen, {
+	const labelOptions = {
 		open: runPanelDrawn,
 		mcpProblems,
 		cap: runCap,
-	});
+	};
+	const label = runDetailTriggerLabel(details, seen, labelOptions);
 	const attention =
 		(details ? hasUnseenFailure(details, seen) : false) ||
 		hasUnseenMcpProblem(mcpServers, seenMcp);
@@ -274,7 +275,10 @@ export const RunDetailsTrigger = ({
 			 * model's sentence, which `run-detail-model.test.mjs` pins verbatim; the
 			 * clauses after the seam (counts, failures) are the name's real content.
 			 */
-			ariaLabel={label.replace(/^(Open|Close) run details/, "Run details")}
+			ariaLabel={runDetailTriggerLabel(details, seen, {
+				...labelOptions,
+				name: true,
+			})}
 			pressed={runPanelDrawn}
 			/*
 			 * The pressed GROUND, the hover ground and the lit bar are the rail item's

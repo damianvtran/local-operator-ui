@@ -41,6 +41,16 @@ export interface ConsoleSurface {
 	/** Whether the process is alive. False is the ended state (§7.3). */
 	running: boolean;
 	exitCode: number | null;
+	/** The signal that ended the process (`SIGKILL` etc.), when main reported one
+	 * (Q-3). node-pty reports code 0 for a signalled process, so this is the field
+	 * that keeps a kill distinguishable from a clean exit. */
+	exitSignal: string | null;
+	/** Why the surface ended when no exit code was observed. `app_quit` is main's
+	 * own record that the app closed this terminal on the way out (`host.dispose`),
+	 * so the pane can say that instead of the misleading "exit code not observed".
+	 * Null on a surface whose exit was observed, and on legacy sidecars written
+	 * before this field existed — those keep the honest unknown sentence. */
+	endReason: "app_quit" | null;
 	/** Seconds since the epoch, on the record's clock. */
 	lastActivity: number;
 	/** False for a surface reconstructed from persisted history after a relaunch:
@@ -78,6 +88,7 @@ export interface ConsoleMark {
 	kind?: string;
 	/** The status the shell reported on a `D` mark, or null. */
 	exitCode?: number | null;
+	exitSignal?: string | null;
 	/** Absolute offset of the sequence's first byte, counted from the first byte ever
 	 * fed — the coordinate that makes two marks distinguishable rather than merely
 	 * two instances of the same value. */
@@ -157,6 +168,8 @@ export const readConsoleSurface = (value: unknown): ConsoleSurface | null => {
 		rows: numberOr(row.rows),
 		running: booleanOr(row.running),
 		exitCode: typeof row.exit_code === "number" ? row.exit_code : null,
+		exitSignal: typeof row.exit_signal === "string" ? row.exit_signal : null,
+		endReason: row.end_reason === "app_quit" ? "app_quit" : null,
 		lastActivity: numberOr(row.last_activity),
 		live: booleanOr(row.live, true),
 		agentOwned: booleanOr(row.agent_owned, origin === "agent"),
@@ -307,10 +320,17 @@ export const pickActiveSurface = (
  *   - `available` — main says no console can exist here (§15). There is nothing to
  *     create and nothing to focus, and the pane's empty state is where the user
  *     lands instead.
- *   - `hasSurface` — the conversation already has one, so the open FOCUSES it
- *     rather than making a second: `pickActiveSurface` has already chosen which
- *     one the pane is showing (`focus`), and a second surface would take the lens
- *     away from the one the user was reading.
+ *   - `hasLiveSurface` — the conversation has a surface whose process is still
+ *     running, so the open FOCUSES it rather than making a second. A surface that
+ *     has ENDED is not one: it is history, and opening the console with only
+ *     ended history on screen is a request for a terminal, not a request to read
+ *     a recording (the operator's report: "opening the console when nothing is
+ *     live lands on the dead history instead of a usable shell"). `pickActiveSurface`
+ *     has already chosen which surface the pane is showing; when that one is
+ *     ended and a live sibling exists, the pane moves the lens to the live one.
+ *     Opening the pane is not asking for a new terminal when a live one is in
+ *     the conversation; the explicit `+` is, and a surface it makes does take the
+ *     lens (#1084), which is exactly why the open must not make one then.
  */
 export type ConsoleOpenAction = "none" | "create" | "focus";
 
@@ -318,18 +338,32 @@ export const consoleOpenAction = ({
 	requested,
 	loading,
 	available,
-	hasSurface,
+	hasLiveSurface,
 }: {
 	requested: boolean;
 	loading: boolean;
 	available: boolean;
-	hasSurface: boolean;
+	hasLiveSurface: boolean;
 }): ConsoleOpenAction => {
 	if (!requested) return "none";
 	if (loading) return "none";
 	if (!available) return "none";
-	return hasSurface ? "focus" : "create";
+	return hasLiveSurface ? "focus" : "create";
 };
+
+/**
+ * The most recently active RUNNING surface of a session, or null.
+ *
+ * The explicit open's target (`consoleOpenAction`'s `focus` arm). It is a
+ * separate answer from `pickActiveSurface` because reading ended history by
+ * clicking its row is a legitimate thing to do, and that path must keep showing
+ * the row the user picked — only the OPEN redirects to something typeable.
+ */
+export const pickLiveSurface = (
+	snapshot: ConsoleSnapshot,
+	sessionId: string | null,
+): ConsoleSurface | null =>
+	surfacesForSession(snapshot, sessionId).find((row) => row.running) ?? null;
 
 /**
  * A surface's own name for the pane's header, in the words §6.5 fixes: the
@@ -363,5 +397,5 @@ export const surfaceTitle = (surface: ConsoleSurface): string => {
 export const completionMark = (surface: ConsoleSurface): string => {
 	const mark = surface.lastMark;
 	const markKey = mark ? `${mark.kind ?? ""}:${mark.offset ?? ""}` : "";
-	return `${surface.running ? "run" : "end"}:${surface.exitCode ?? ""}:${surface.lastActivity}:${markKey}`;
+	return `${surface.running ? "run" : "end"}:${surface.exitCode ?? ""}:${surface.exitSignal ?? ""}:${surface.lastActivity}:${markKey}`;
 };

@@ -133,31 +133,36 @@ test("the Settings flat-surface contract accepts the tree and rejects selected-f
 test("the cast floor fires when a hover desaturates below its panel's half", () => {
 	/*
 	 * `tokyoNight` is the palette the defect was measured on: its panel carries
-	 * C* 13.44, so the hover's floor is 0.5 x 13.44 = 6.72, and the value below
-	 * carries C* 1.97 at the SAME `L*` step - the exact shape of the shipped
+	 * C* 13.92, so the hover's floor is 0.5 x 13.92 = 6.96, and the value below
+	 * carries C* 2.03 at the SAME `L*` step - the exact shape of the shipped
 	 * value that started this round (C* 4.79 against 13.44, with the ΔE00 band it
 	 * was scored on *being* that removal).
+	 *
+	 * Every tokyoNight fixture in this file was re-seated by the darker-grounds
+	 * pass (2026-11-03): the panel moved #313448 -> #26293D (delta L* -5.07), so
+	 * each mutation moved by the same delta L*, holding its own a and b. That
+	 * keeps each case the same shape relative to the panel it is read against.
 	 */
-	const out = fires(TOKYO_NIGHT, "rowHover", "#3C3C3F", "cast floor");
+	const out = fires(TOKYO_NIGHT, "rowHover", "#313134", "cast floor");
 	assert.match(
 		out,
-		/tokyoNight: `rowHover` #3C3C3F carries C\* 1\.97, under the cast floor 6\.72/,
+		/tokyoNight: `rowHover` #313134 carries C\* 2\.03, under the cast floor 6\.96/,
 	);
 });
 
 test("the cast ceiling fires when a hover is a more saturated plane than its panel", () => {
-	const out = fires(TOKYO_NIGHT, "rowHover", "#353A59", "cast ceiling");
+	const out = fires(TOKYO_NIGHT, "rowHover", "#292F4D", "cast ceiling");
 	assert.match(
 		out,
-		/tokyoNight: `rowHover` #353A59 carries C\* 20\.41, past the/,
+		/tokyoNight: `rowHover` #292F4D carries C\* 20\.41, past the/,
 	);
 });
 
 test("the L* rank floor fires when the selection stops out-ranking the hover", () => {
-	const out = fires(TOKYO_NIGHT, "rowSelected", "#373B56", "L* rank");
+	const out = fires(TOKYO_NIGHT, "rowSelected", "#2C304A", "L* rank");
 	assert.match(
 		out,
-		/tokyoNight: `rowSelected` #373B56 is 3\.38 `L\*` from `surface` where `rowHover` #3A3B48 is 3\.03/,
+		/tokyoNight: `rowSelected` #2C304A is 3\.46 `L\*` from `surface` where `rowHover` #2F303D is 3\.11/,
 	);
 });
 
@@ -170,13 +175,13 @@ test("the C* rank floor fires when the hover carries as much cast as the selecti
 	 * whose chroma rank was INVERTED - the hover quieter than the panel, the
 	 * selection at it.
 	 */
-	const restoreHover = setHex(TOKYO_NIGHT, "rowHover", "#383B4F");
-	const restoreSelected = setHex(TOKYO_NIGHT, "rowSelected", "#3C3F53");
+	const restoreHover = setHex(TOKYO_NIGHT, "rowHover", "#2D3043");
+	const restoreSelected = setHex(TOKYO_NIGHT, "rowSelected", "#313447");
 	try {
 		const out = runGate();
 		assert.match(
 			out,
-			/tokyoNight: `rowSelected` #3C3F53 carries C\* 13\.04 where `rowHover` #383B4F carries 13\.18/,
+			/tokyoNight: `rowSelected` #313447 carries C\* 12\.77 where `rowHover` #2D3043 carries 12\.93/,
 		);
 	} finally {
 		restoreSelected();
@@ -188,12 +193,12 @@ test("the hover's share of the selection's step fires when the hover stops spend
 	/*
 	 * Clause 2 of the operator's ask - "more should be a brightening against the
 	 * backdrop" than the shipped 30% - as the relationship it is. The mutation is
-	 * a legal value on every other bound: a 1.55 `L*` step clears the 1.5 floor.
+	 * a legal value on every other bound: a 1.58 `L*` step clears the 1.5 floor.
 	 */
-	const out = fires(TOKYO_NIGHT, "rowHover", "#363844", "the hover's share");
+	const out = fires(TOKYO_NIGHT, "rowHover", "#2B2D39", "the hover's share");
 	assert.match(
 		out,
-		/tokyoNight: `rowHover` #363844 takes 1\.55 `L\*` of the [\d.]+ the selection takes \(\d+%\), under the 50%/,
+		/tokyoNight: `rowHover` #2B2D39 takes 1\.58 `L\*` of the [\d.]+ the selection takes \(\d+%\), under the 50%/,
 	);
 });
 
@@ -201,13 +206,13 @@ test("the field floor fires on a fill indistinguishable from its own panel", () 
 	/*
 	 * The replacement for the withdrawn ΔE00 4.0 band, and the case that says why
 	 * it had to be replaced rather than lowered: this value is a legal light step
-	 * away from its panel by eye - ΔE00 0.32 - and it is a palette's own colour, so
+	 * away from its panel by eye - ΔE00 0.58 - and it is a palette's own colour, so
 	 * every other assertion in the file has something to say about it instead.
 	 */
-	const out = fires(TOKYO_NIGHT, "rowHover", "#323549", "the field floor");
+	const out = fires(TOKYO_NIGHT, "rowHover", "#272A3D", "the field floor");
 	assert.match(
 		out,
-		/tokyoNight: `rowHover` #323549 is ΔE00 0\.32 from `surface` #313448 \(the field floor is 2\)/,
+		/tokyoNight: `rowHover` #272A3D is ΔE00 0\.58 from `surface` #26293D \(the field floor is 2\)/,
 	);
 });
 

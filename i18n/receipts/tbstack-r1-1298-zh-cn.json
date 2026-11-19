@@ -1,0 +1,73 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "tbstack-r1-1298-zh-cn",
+ "session": "c17c30b3cfaf",
+ "job": "59c8bebee69c",
+ "date": "2026-10-22",
+ "locale": "zh-CN",
+ "translator": "translator",
+ "translator_session": null,
+ "namespace": "ui.teamBridge",
+ "status": "passed",
+ "keys_audited": 0,
+ "union_keys_verified": 115,
+ "scope": "PR #1298 at dbe16bcd4a: union-integrity audit of the 115-key zh-CN catalogue after integration merge dbe16bcd4a (203bb6bf8c + 9aa14137de); no new or changed zh-CN value, every value traced byte-identical (with unchanged English and context) to an audited ref; shared-term consistency rechecked; catalogue audit only, not rendered-fit/activation/release.",
+ "sha256": {
+  "en": "b8236cf905c6083ca9b2450611d0083c8a96d990c6c548e4091d0b99266bd333",
+  "zh-CN": "d9a3e678698c7e69fcb32650c027aa466a51711258ee6ac6ac9a67f709af1ac5",
+  "context": "2dd21f65ef409b6052dc698749b6bd88f40729a1e8a597cf64db9cdf688bd995"
+ },
+ "findings": [],
+ "union_integrity": {
+  "method": "Every key of the merged head's en, zh-CN catalogue and en context traced to an audited ref (a ledger row whose source/target hashes equal that ref's bytes) carrying the identical zh-CN value AND identical English value and context entry; plus scripts/i18n/catalogue-union-parity.mjs (origin/main blob a2b0b35726) run read-only via --repo against git objects for en, ru, zh-CN catalogues and the en context.",
+  "merge": {
+   "head": "dbe16bcd4a91c1a7f65f220ffb8be9b76e4ee4e3",
+   "parents": [
+    "203bb6bf8c50c5e27e275b8f72ebab9b7a5e7684",
+    "9aa14137dec1562dac0ee72a5f056010d5438432"
+   ],
+   "merge_base": "f1520f143ee5830b0c93c2ddfe0d0e40351ddf4f"
+  },
+  "keys_merged": 115,
+  "keys_dropped": 0,
+  "shared_keys_altered": 0,
+  "keys_unsourced": [],
+  "parity_tool": {
+   "command": "node scripts/i18n/catalogue-union-parity.mjs --pr 1298 --head dbe16bcd4a --old-head 203bb6bf8c --base 9aa14137de --file src/i18n/catalogues/en/ui.teamBridge.json --file src/i18n/catalogues/zh-CN/ui.teamBridge.json --file src/i18n/catalogues/en/ui.teamBridge.context.json",
+   "result": "exit 0, RESULT: PASS (missing from base [], missing from PR [], value differences [] for every file)"
+  }
+ },
+ "inherited_receipts": [
+  {
+   "base": "9aa14137de",
+   "path": "i18n/receipts/tbd-sender-r1-zhcn.json",
+   "sha256": "474f0b573354241171940bb43e50cf1a89c93e4667300fe35c0e7bcad0ab0f82",
+   "instance": "tbd-sender-r1-zhcn",
+   "keys_inherited": 111,
+   "base_target_sha256": "764ad74c15e1d0e4eadeb4338a06eb42721dd995e8aa4b33110e2c56bfb581ca",
+   "base_en_sha256": "7fd64414c053ab675f35a7aedd1389d30de404b964565207a02173ce9fd4935e",
+   "unchanged_values_verified": 111
+  },
+  {
+   "base": "203bb6bf8c",
+   "path": "i18n/receipts/os1298-r1-zh-cn.json",
+   "sha256": "7e741fe4aaf055e4f61e33bc72fc52011b4d1412e06639c32a144aa455c6bda4",
+   "instance": "os1298-r1-zh-cn",
+   "keys_inherited": 4,
+   "base_target_sha256": "c95ccb7d80af06a7ceb76d3673168a59afa8e04bb59017686b9066cfae9fcc44",
+   "base_en_sha256": "b43e71da00a30dd44a9e4cd9eb842edcb324611d2725793cda48442e7f00360c",
+   "unchanged_values_verified": 4
+  }
+ ],
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+ },
+ "validation": {
+  "independence": "Auditor session c17c30b3cfaf (job 59c8bebee69c, anthropic/claude-opus-5-5, agent translation-auditor) translated none of these strings. All claims verified against git object bytes, not a translator summary; no repo file edited, no worktree created.",
+  "icu": "Parsed every en and zh-CN value at the head with @formatjs/icu-messageformat-parser: argument names/types equal en for all keys; plural blocks use other only, matching CLDR and the glossary.",
+  "typography": "Target file is NFC, no BOM, no bidi controls (U+200E/F, U+202A-E, U+2066-9), no zero-width characters, no NBSP.",
+  "limitations": "Browser not used; no screenshots, rendered-fit, screen-reader or pseudo-localization claim. No catalogue/code edits; nothing created in the repository."
+ }
+}

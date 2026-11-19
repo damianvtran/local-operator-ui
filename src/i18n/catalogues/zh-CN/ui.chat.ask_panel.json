@@ -1,0 +1,22 @@
+{
+	"ui.chat.ask_panel.answer.attachment_refusal": "回答暂不支持附加文件和图片。请在此输入回答，或在对话中发送文件。",
+	"ui.chat.ask_panel.answer.limit_notice": "回答最多{max, number}个字符，超出部分不会保留。",
+	"ui.chat.ask_panel.dock.asking": "智能体正在提问",
+	"ui.chat.ask_panel.dock.keys_one": "按1作答",
+	"ui.chat.ask_panel.dock.keys_range": "按1-{max, number}作答",
+	"ui.chat.ask_panel.dock.sending": "正在发送回答……",
+	"ui.chat.ask_panel.empty.details_missing": "无法加载这些请求的详情。",
+	"ui.chat.ask_panel.empty.none_outstanding": "暂无待处理的请求。智能体没有在等待任何事项。",
+	"ui.chat.ask_panel.empty.none_pending": "没有待处理的请求。它们均已结束——请查看“已结束”。",
+	"ui.chat.ask_panel.empty.none_settled": "尚无已结束的请求。它们都还处于待处理状态。",
+	"ui.chat.ask_panel.filter.all": "全部",
+	"ui.chat.ask_panel.filter.chip": "{label} · {count, number}",
+	"ui.chat.ask_panel.filter.pending": "待处理",
+	"ui.chat.ask_panel.filter.settled": "已结束",
+	"ui.chat.ask_panel.landing.many": "{count, plural, other {#个问题已超时}}",
+	"ui.chat.ask_panel.landing.one": "问题已超时",
+	"ui.chat.ask_panel.lapse.many": "{count, plural, other {#个问题已超时，未发送你的回答。}}",
+	"ui.chat.ask_panel.lapse.one": "该问题已超时，未发送你的回答。",
+	"ui.chat.ask_panel.no_question_text": "无问题文本",
+	"ui.chat.ask_panel.other_prompt": "输入你的回答"
+}

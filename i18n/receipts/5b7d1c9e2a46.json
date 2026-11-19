@@ -1,0 +1,36 @@
+{
+  "auditor": "i18n-auditor-ru",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "5b7d1c9e2a46",
+  "locale": "ru",
+  "namespace": "ui.chat.tags",
+  "status": "changes_requested",
+  "keys_audited": 54,
+  "sha256": {
+    "en": "2d300213e1eb2712e757fa820867fc50c58ef98c4dcf5ca540ad593cf450d0fe",
+    "ru": "e5afa76f7e5791b97dbe4df82cb50533240a8a8dea80f7f508e43083f666283b"
+  },
+  "provenance": {
+    "independent_of_implementer": true,
+    "fallback": "Temporary fallback from anthropic/claude-sonnet-5-5 after quota exhaustion; Russian audit performed with openai/gpt-6.1-sol."
+  },
+  "coverage": [
+    "All 54 EN/RU keys compared for meaning, register, grammar, typography and action semantics; includes refreshed 12-key V2-1 delta.",
+    "All 54 RU ICU messages parsed and formatted using installed intl-messageformat; placeholder sets matched EN via ICU AST.",
+    "Plural branches exercised for counts 0, 1, 2, 5, 11, 21, 22, 25, 101 in remove_all and delete_description.",
+    "Move/remove/undo/Untagged/conflict/failure copy checked against English context notes. Sidebar/menu/toast length reviewed textually only; no rendered clipping claim."
+  ],
+  "findings": [
+    {
+      "id": "RU-V2-1-01",
+      "severity": "major",
+      "key": "ui.chat.tags.remove_all",
+      "file": "src/i18n/catalogues/ru/ui.chat.tags.json",
+      "line": 46,
+      "description": "Russian ICU category one includes 21 and 101, not just exactly one. The singular action branch therefore says to remove one tag while the actual action clears all assignments.",
+      "evidence": "Installed intl-messageformat with ru renders count=21 as «Удалить тег (21)» and count=101 as «Удалить тег (101)»; count=2 renders «Удалить все теги (2)». Intl.PluralRules(ru).select(21) returns one. chat-sidebar.tsx passes the number of distinct assigned tag IDs and invokes moveChatToTag(row, untagged), clearing all.",
+      "recommendation": "Use an exact =1 branch for «Удалить тег (#)» and other for «Удалить все теги (#)»; Russian one is not an exact-one predicate.",
+      "disposition": "unresolved"
+    }
+  ]
+}

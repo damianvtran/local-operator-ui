@@ -47,7 +47,7 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { Network } from "lucide-react";
-import { type FC, useCallback, useMemo, useState } from "react";
+import { type FC, useCallback, useMemo, useRef, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { t } from "../../../../i18n/messages";
 import {
@@ -59,6 +59,7 @@ import {
 import {
 	type ApprovalDecision,
 	type MeshApprovalRow,
+	approvalDecisionRequest,
 	approvalErrorMessage,
 	approvalRefusal,
 	useMeshApprovalDecision,
@@ -75,11 +76,15 @@ import {
 	type MovePlan,
 	type Remedy,
 	lossSentence,
+	reopenAsk,
 	resolveDrop,
+	workingSetConsent,
 } from "./mesh-drop";
 import type { MeshGraph } from "./mesh-graph";
 import { meshSummary } from "./mesh-graph";
 import { MeshList } from "./mesh-list";
+import type { MeshPairingSectionProps } from "./mesh-pairing-card";
+import { MeshRevoked } from "./mesh-revoked";
 import { deviceSessionTotal } from "./mesh-sessions";
 import {
 	type MeshReads,
@@ -97,10 +102,17 @@ import {
 	useNetworkInvite,
 	useNetworkMemberRemove,
 } from "./mesh-store";
-import type { MeshRefusal, MeshSessionRow } from "./mesh-types";
+import {
+	type MeshRefusal,
+	type MeshSessionRow,
+	type MoveWorkingSetSeed,
+	deviceIdentityText,
+	workingSetReopen,
+} from "./mesh-types";
+import { useMeshPairingTray } from "./use-mesh-pairing-tray";
 
 const PRESENTATIONS = ["canvas", "list"] as const;
-type Presentation = (typeof PRESENTATIONS)[number];
+export type Presentation = (typeof PRESENTATIONS)[number];
 
 const PRESENTATION_LABEL: Record<Presentation, string> = {
 	get canvas() {
@@ -116,6 +128,12 @@ type PendingMove = {
 	plan: MovePlan;
 	alternatives: MovePlan[];
 	risky: boolean;
+	/** A consent refusal's fresh manifest, shown instead of a new preflight. */
+	seed?: MoveWorkingSetSeed | null;
+	/** The destination's label, for a review whose manifest names none. */
+	destinationName?: string;
+	/** The option to pre-select on a refusal reopen (the user's earlier pick). */
+	initialKeep?: boolean;
 };
 
 /** What the last move answered, for the notice under the header. */
@@ -151,6 +169,16 @@ type MoveReport =
 export const MeshSurface: FC<{
 	state: MeshViewState;
 	graph: MeshGraph | null;
+	/**
+	 * WHICH PRESENTATION THE TAB OPENS ON, and the one caller that sets it is a
+	 * STORY. The tab's own `Canvas | List` control owns this state from mount
+	 * onward, so the route never passes it; a story needs the List frame to be a
+	 * property of the render rather than of a click that the evidence rig may
+	 * photograph before it lands (the relay-down-list capture proved that: the
+	 * play clicked List, the frame showed Canvas). Defaulting to `canvas` keeps
+	 * every existing call byte-identical.
+	 */
+	initialPresentation?: Presentation;
 	nowSeconds: number;
 	/** A read is in flight over drawn data: the quiet header affordance. */
 	checking: boolean;
@@ -179,9 +207,21 @@ export const MeshSurface: FC<{
 		 */
 		decisionRefusal: {
 			approvalId: string | null;
+			submittedAt?: number;
 			code: string;
 			sentence: string;
+			retryable?: boolean;
 		} | null;
+		/** `features.credential_approvals`: whether a credential card may be approved here. */
+		credentialApprovals: boolean;
+		/**
+		 * `features.profile_approvals`: whether a profile card may be answered here.
+		 * Its own key, not a bump of `approvals`: without it the backend serves no
+		 * route that accepts the reviewed-digest body for `profile_save`.
+		 */
+		profileApprovals: boolean;
+		/** `features.mesh_pairing`: the pairing cards' bundle; absent = no cards. */
+		pairings?: MeshPairingSectionProps;
 	};
 	/** The conversations the reads returned, and what each device holds. */
 	sessions: readonly MeshSessionRow[];
@@ -199,6 +239,8 @@ export const MeshSurface: FC<{
 	onDropRefused: (refusal: {
 		code: string;
 		sentence: string;
+		/** The client's reach word, present when the drag had the device in hand. */
+		reach?: string;
 		remedy: Remedy | null;
 		plan: MovePlan | null;
 	}) => void;
@@ -213,12 +255,12 @@ export const MeshSurface: FC<{
 	invite: {
 		open: boolean;
 		deviceId?: string;
-		deviceLabel: string | null;
+		deviceName?: string;
 		options: { id: string; label: string }[];
 	} | null;
 	onOpenInvite: (ask: {
 		deviceId?: string;
-		deviceLabel: string | null;
+		deviceName?: string;
 	}) => void;
 	onInvite: (ask: {
 		networkId: string;
@@ -234,13 +276,13 @@ export const MeshSurface: FC<{
 		networkId: string;
 		networkLabel: string;
 		deviceId: string;
-		deviceLabel: string;
+		deviceName?: string;
 	} | null;
 	onOpenRemove: (ask: {
 		networkId: string;
 		networkLabel: string;
 		deviceId: string;
-		deviceLabel: string;
+		deviceName?: string;
 	}) => void;
 	onRemove: (confirm: string) => void;
 	onCloseRemove: () => void;
@@ -249,6 +291,7 @@ export const MeshSurface: FC<{
 	removed: { removed: string; epoch: number } | null;
 }> = ({
 	state,
+	initialPresentation = "canvas",
 	graph,
 	nowSeconds,
 	checking,
@@ -286,7 +329,8 @@ export const MeshSurface: FC<{
 	removed,
 }) => {
 	useI18nLocale();
-	const [presentation, setPresentation] = useState<Presentation>("canvas");
+	const [presentation, setPresentation] =
+		useState<Presentation>(initialPresentation);
 	const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
 
 	const summary = graph ? meshSummary(graph) : "";
@@ -352,7 +396,13 @@ export const MeshSurface: FC<{
 				{
 					session,
 					ownerDeviceId,
-					ownerLabel: owner?.label ?? session.owner_device_name,
+					ownerLabel: owner
+						? deviceIdentityText(
+								owner,
+								graph.devices.map((device) => device.id),
+								true,
+							)
+						: session.owner_device_name,
 				},
 				{ kind: "device", deviceId: destination.deviceId },
 				context,
@@ -361,6 +411,7 @@ export const MeshSurface: FC<{
 				onDropRefused({
 					code: verdict.code,
 					sentence: verdict.sentence,
+					reach: verdict.reach,
 					remedy: verdict.remedy,
 					plan: verdict.plan ?? null,
 				});
@@ -455,6 +506,7 @@ export const MeshSurface: FC<{
 									<button
 										key={option}
 										type="button"
+										data-mesh-presentation={option}
 										aria-pressed={presentation === option}
 										disabled={state.kind !== "ready"}
 										onClick={() => setPresentation(option)}
@@ -489,6 +541,7 @@ export const MeshSurface: FC<{
 			 * the operator.
 			 */}
 			<MeshApprovalsTray
+				pairings={approvals.pairings}
 				rows={approvals.rows}
 				error={approvals.error}
 				pending={approvals.pending}
@@ -496,6 +549,8 @@ export const MeshSurface: FC<{
 				onDecide={approvals.onDecide}
 				onRetry={approvals.onRetry}
 				nowSeconds={approvals.nowSeconds}
+				credentialApprovals={approvals.credentialApprovals}
+				profileApprovals={approvals.profileApprovals}
 				/*
 				 * The name the canvas already shows for a network, so the consent chip
 				 * does not name it twice (UX round 1, U1). `graph` is null until the mesh
@@ -583,13 +638,22 @@ export const MeshSurface: FC<{
 					 */}
 					<div className="flex min-h-[22rem] flex-1 gap-4">
 						<div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
-							<p
+							{/*
+							 * THE CENSUS AND THE REVOKED COUNT ARE ONE LINE. The count is not a
+							 * second sentence beside the census: it continues it, as the lane and the
+							 * list heading continue their device counts, and it is the one control
+							 * that opens the audit rows. A `<div>` rather than a `<p>` because the
+							 * shared disclosure is block-level markup a paragraph may not contain -
+							 * the band is a sentence, not a paragraph element.
+							 */}
+							<div
 								id={summaryId}
 								className="text-meta text-ink-muted"
 								data-mesh-summary=""
 							>
-								{summary}
-							</p>
+								<span>{summary}</span>
+								<MeshRevoked revoked={graph.revoked} />
+							</div>
 							{staleError && (
 								<Alert variant="warning">
 									<p>{staleError}</p>
@@ -670,6 +734,7 @@ export const MeshSurface: FC<{
 						{selectedDevice && (
 							<DevicePanel
 								device={selectedDevice}
+								deviceIds={graph.devices.map((device) => device.id)}
 								sessions={
 									held.byDevice.get(selectedDevice.id) ?? {
 										rows: [],
@@ -690,7 +755,7 @@ export const MeshSurface: FC<{
 								onInvite={(device) =>
 									onOpenInvite({
 										deviceId: device.id,
-										deviceLabel: device.label,
+										deviceName: device.name,
 									})
 								}
 								onRemoveMember={(device, networkId) => {
@@ -701,7 +766,7 @@ export const MeshSurface: FC<{
 										networkId,
 										networkLabel: network?.label ?? networkId,
 										deviceId: device.id,
-										deviceLabel: device.label,
+										deviceName: device.name,
 									});
 								}}
 								onShowInList={(deviceId) => {
@@ -719,6 +784,9 @@ export const MeshSurface: FC<{
 				plan={pendingMove?.plan ?? emptyPlan}
 				alternatives={pendingMove?.alternatives ?? []}
 				risky={pendingMove?.risky ?? false}
+				workingSetSeed={pendingMove?.seed ?? null}
+				destinationName={pendingMove?.destinationName}
+				initialKeep={pendingMove?.initialKeep}
 				busy={moveBusy}
 				onCancel={onCancelMove}
 				onChoose={onChooseMove}
@@ -729,7 +797,7 @@ export const MeshSurface: FC<{
 					open={invite.open}
 					options={invite.options}
 					deviceId={invite.deviceId}
-					deviceLabel={invite.deviceLabel}
+					deviceName={invite.deviceName}
 					onClose={onCloseInvite}
 					onInvite={onInvite}
 					pending={inviteBusy}
@@ -742,7 +810,8 @@ export const MeshSurface: FC<{
 				<RemoveMemberDialog
 					open={remove.open}
 					networkLabel={remove.networkLabel}
-					deviceLabel={remove.deviceLabel}
+					deviceId={remove.deviceId}
+					deviceName={remove.deviceName}
 					onClose={onCloseRemove}
 					onConfirm={onRemove}
 					pending={removeBusy}
@@ -780,13 +849,17 @@ const emptyPlan: MovePlan = {
  * the same destination the catch-all gives - rather than drawing a tab for a feature
  * the backend no longer advertises.
  */
-export const MeshPage: FC = () => {
+export const MeshPage: FC<{ initialPresentation?: Presentation }> = ({
+	initialPresentation,
+}) => {
 	useI18nLocale();
 	const capabilities = useDesktopCapabilities();
 	const enabled = desktopFeatureState(capabilities.data, "peers") === "enabled";
 	const canMove =
 		desktopFeatureState(capabilities.data, "session_transfer") === "enabled";
-	const peers = useMeshPeers(enabled);
+	const peers = useMeshPeers(enabled, {
+		stamp: () => useCanonicalSessionsStore.getState().beginAnswer(),
+	});
 	const networks = useMeshNetworks(enabled);
 	/*
 	 * THE TAB RIDES THE AMBIENT OBSERVER (`peers-catalogue.tsx`, mounted in the
@@ -831,6 +904,23 @@ export const MeshPage: FC = () => {
 	});
 	const decideApproval = useMeshApprovalDecision();
 	/*
+	 * THE TYPED CREDENTIAL ROUTES have their own key (`credential_approvals`), not
+	 * a bump of `approvals`: without it the backend serves no route that accepts a
+	 * reviewed-digest body, so a credential card keeps its Deny-only shape.
+	 */
+	const credentialApprovals =
+		desktopFeatureState(capabilities.data, "credential_approvals") ===
+		"enabled";
+	/*
+	 * THE PROFILE CARD'S OWN KEY. Core advertises `profile_approvals: 1` with
+	 * `profile_save` registered in production (as of core `7c44dfbb3b9` (PR #3449)), so this
+	 * reads true there; an older backend omits it, reads false, and the card states
+	 * the record without offering a signature. Reading the capability rather than a
+	 * build flag keeps both honest with no change here.
+	 */
+	const profileApprovals =
+		desktopFeatureState(capabilities.data, "profile_approvals") === "enabled";
+	/*
 	 * A REFUSED DECISION RENDERS ITS AUTHORED SENTENCE (agent review round 1,
 	 * finding 1): the store's refusals are the ones a waiting surface MUST carry
 	 * - a host with no signing surface ("ask Local Operator to set up operator
@@ -844,9 +934,24 @@ export const MeshPage: FC = () => {
 	const decisionRefusal = decideApproval.isError
 		? {
 				approvalId: decideApproval.variables?.approvalId ?? null,
+				submittedAt: decideApproval.submittedAt,
 				...approvalRefusal(decideApproval.error),
 			}
 		: null;
+	/*
+	 * MESH PAIRING CARDS, on their OWN key (`features.mesh_pairing`) and NOT gated
+	 * on membership: a device joining its first network is in no mesh yet, and
+	 * its card is the one this tab must still show. The joined set lets a joiner's
+	 * closed card say "joined" once the network appears in the mesh read.
+	 */
+	const meshPairingEnabled =
+		enabled &&
+		desktopFeatureState(capabilities.data, "mesh_pairing") === "enabled";
+	const joinedNetworkIds = useMemo(
+		() => new Set((graph?.networks ?? []).map((network) => network.id)),
+		[graph],
+	);
+	const pairings = useMeshPairingTray(meshPairingEnabled, joinedNetworkIds);
 	const approvalsNowSeconds = useMemo(
 		() => Math.floor((approvals.dataUpdatedAt || Date.now()) / 1000),
 		[approvals.dataUpdatedAt],
@@ -870,10 +975,15 @@ export const MeshPage: FC = () => {
 	const removeMember = useNetworkMemberRemove();
 
 	const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
+	/*
+	 * The question the dialog last asked, kept past its close: a consent refusal
+	 * reopens the SAME question (Move/Copy pair and risk), see `reopenAsk`.
+	 */
+	const askedRef = useRef<PendingMove | null>(null);
 	const [moveReport, setMoveReport] = useState<MoveReport | null>(null);
 	const [inviteAsk, setInviteAsk] = useState<{
 		deviceId?: string;
-		deviceLabel: string | null;
+		deviceName?: string;
 	} | null>(null);
 	const [inviteReceipt, setInviteReceipt] = useState<{
 		token_path: string;
@@ -884,7 +994,7 @@ export const MeshPage: FC = () => {
 		networkId: string;
 		networkLabel: string;
 		deviceId: string;
-		deviceLabel: string;
+		deviceName?: string;
 	} | null>(null);
 	const [removed, setRemoved] = useState<{
 		removed: string;
@@ -925,6 +1035,7 @@ export const MeshPage: FC = () => {
 				to: plan.to,
 				keep: plan.keep,
 				waitS: waitS ?? plan.waitS,
+				...workingSetConsent(plan),
 			};
 			transfer.mutate(ask, {
 				onSuccess: (outcome) => {
@@ -950,12 +1061,24 @@ export const MeshPage: FC = () => {
 											destination,
 											suffix: receipt.new_session_id.slice(-6),
 										})
-									: t("ui.mesh.mesh_page.move_receipt", {
-											destination,
-											retirement: receipt.source_retired
-												? t("ui.mesh.mesh_page.the_copy_here_is_gone")
-												: "",
-										}),
+									: /*
+										 * A MOVE MADE MID-TURN RESUMES on the destination, and the
+										 * receipt's `engagement` says so; the notice states it only
+										 * when the receipt does (no block: an older core, say nothing).
+										 */
+										receipt.engagement?.engaged
+										? t("ui.mesh.mesh_page.move_receipt_resumed", {
+												destination,
+												retirement: receipt.source_retired
+													? t("ui.mesh.mesh_page.the_copy_here_is_gone")
+													: "",
+											})
+										: t("ui.mesh.mesh_page.move_receipt", {
+												destination,
+												retirement: receipt.source_retired
+													? t("ui.mesh.mesh_page.the_copy_here_is_gone")
+													: "",
+											}),
 							undo:
 								receipt.mode === "keep"
 									? {
@@ -984,6 +1107,25 @@ export const MeshPage: FC = () => {
 											),
 										}
 									: null,
+						});
+						return;
+					}
+					/*
+					 * A CONSENT REFUSAL REOPENS THE DIALOG with the fresh manifest it carried
+					 * (design move-working-set §11.4): `working_set_changed` after a tick, or
+					 * `working_set_unconfirmed` from a drop that never showed the list. The
+					 * plan's own consent is dropped by the dialog on the next confirm.
+					 */
+					const seed = workingSetReopen(outcome.refusal);
+					if (seed) {
+						setPendingMove({
+							...reopenAsk(askedRef.current, plan, false),
+							seed,
+							destinationName:
+								plan.to === "local"
+									? t("ui.mesh.mesh_drop.this_device")
+									: graph?.devices.find((device) => device.id === plan.to)
+											?.label,
 						});
 						return;
 					}
@@ -1021,10 +1163,15 @@ export const MeshPage: FC = () => {
 		return graph.networks
 			.filter((network) => {
 				if (!device) return true;
-				const membership = device.memberships.find(
+				/*
+				 * A network the device is not a LIVE member of is offered: `meshGraph`
+				 * carries only live memberships, so a revoked one is absent here and the
+				 * invite can be issued again (admission is two-sided, so the presence of a
+				 * tombstone never implied one).
+				 */
+				return !device.memberships.some(
 					(candidate) => candidate.networkId === network.id,
 				);
-				return !membership || !membership.active;
 			})
 			.map((network) => ({ id: network.id, label: network.label }));
 	}, [graph, inviteAsk]);
@@ -1042,6 +1189,7 @@ export const MeshPage: FC = () => {
 
 	return (
 		<MeshSurface
+			initialPresentation={initialPresentation}
 			state={state}
 			graph={graph}
 			nowSeconds={nowSeconds}
@@ -1055,10 +1203,34 @@ export const MeshPage: FC = () => {
 					? (decideApproval.variables ?? null)
 					: null,
 				decisionRefusal,
-				onDecide: (approvalId, decision) =>
-					decideApproval.mutate({ approvalId, decision }),
+				credentialApprovals,
+				profileApprovals,
+				/*
+				 * The decision is resolved against the row it was drawn from and turned
+				 * into a request by `approvalDecisionRequest`, the one builder - so a
+				 * credential row can only reach its typed route with the digests the
+				 * card showed, and never the bodiless `/approve`. A decision the row
+				 * cannot send (a stale click after the row moved on) sends nothing.
+				 */
+				onDecide: (approvalId, decision) => {
+					const row = approvals.data?.find(
+						(entry) => entry.approvalId === approvalId,
+					);
+					const request = row
+						? approvalDecisionRequest(
+								row,
+								decision,
+								{ credentialApprovals, profileApprovals },
+								decisionRefusal?.approvalId === approvalId
+									? decisionRefusal.retryable
+									: undefined,
+							)
+						: null;
+					if (request) decideApproval.mutate({ approvalId, decision, request });
+				},
 				onRetry: () => void approvals.refetch(),
 				nowSeconds: approvalsNowSeconds,
+				pairings,
 			}}
 			sessions={sessionRead.data?.rows ?? []}
 			movingSessionId={
@@ -1080,13 +1252,17 @@ export const MeshPage: FC = () => {
 					refusal: {
 						code: refusal.code,
 						sentence: refusal.sentence,
+						reach: refusal.reach,
 						status: null,
 						unconfirmed: false,
 					},
 					plan: refusal.plan,
 				})
 			}
-			onChooseMove={(plan) => run(plan)}
+			onChooseMove={(plan) => {
+				askedRef.current = pendingMove;
+				run(plan);
+			}}
 			onCancelMove={() => setPendingMove(null)}
 			moveBusy={transfer.isPending}
 			moveReport={moveReport}
@@ -1126,7 +1302,7 @@ export const MeshPage: FC = () => {
 					: {
 							open: true,
 							deviceId: inviteAsk.deviceId,
-							deviceLabel: inviteAsk.deviceLabel,
+							deviceName: inviteAsk.deviceName,
 							options: inviteOptions,
 						}
 			}
@@ -1159,7 +1335,7 @@ export const MeshPage: FC = () => {
 							networkId: removeAsk.networkId,
 							networkLabel: removeAsk.networkLabel,
 							deviceId: removeAsk.deviceId,
-							deviceLabel: removeAsk.deviceLabel,
+							deviceName: removeAsk.deviceName,
 						}
 			}
 			onOpenRemove={(ask) => {

@@ -4,11 +4,12 @@
  * ## Why this exists
  *
  * A file the agent touched reaches the renderer only as text. The canonical
- * wire carries no file list — `CanonicalContentBlock` is `text | image`
- * (`src/shared/desktop-session-contract.ts`) — so a path survives in exactly
- * four places: prose, tool arguments, tool output, and a diff body. The old
- * producer read `message.files`, which the canonical transcript never carried,
- * and it is gone with the dead `MessageItem` effect.
+ * wire carries no list of files the AGENT used — `CanonicalContentBlock`
+ * (`src/shared/desktop-session-contract.ts`) now also carries `document` blocks,
+ * but those are files the USER sent, not paths an agent read or wrote — so a
+ * path survives in exactly four places: prose, tool arguments, tool output, and
+ * a diff body. The old producer read `message.files`, which the canonical
+ * transcript never carried, and it is gone with the dead `MessageItem` effect.
  *
  * So the panel's content is *inferred* from what the agent wrote. That is a
  * weaker guarantee than a field on the wire, and the whole shape of this module
@@ -107,6 +108,7 @@ import {
 	PLACEHOLDER_MARKERS,
 	TRAILING_PUNCTUATION,
 	WHITESPACE,
+	listedTargetsIn,
 	normalizeCandidate,
 	targetsIn,
 } from "@features/chat/utils/link-grammar";
@@ -223,8 +225,18 @@ function scanFileUrls(text: string): string[] {
  * `https://example.com/a/b.png` as `/a/b.png`.
  */
 function scanProse(text: string): string[] {
-	return targetsIn(text, MENTION_POLICY)
+	/*
+	 * The directory-anchored listing (`link-grammar.ts`, `listedTargetsIn`) is a
+	 * second span producer over the same text: bare names listed under a
+	 * `<directory>:` line, resolved against it. Merged by offset so the panel's
+	 * first-mention order is still document order.
+	 */
+	return [
+		...targetsIn(text, MENTION_POLICY),
+		...listedTargetsIn(text, MENTION_POLICY),
+	]
 		.filter((found) => found.kind === "path")
+		.sort((a, b) => a.start - b.start)
 		.map((found) => found.target);
 }
 
@@ -368,6 +380,9 @@ const ARTIFACT_TOOLS = new Set([
 	"generate_image",
 	"generate_video",
 	"video_status",
+	"generate_music",
+	"modify_music",
+	"music_status",
 	// The two audio producers (sound phase): their artifacts arrive with a block
 	// exactly as an image's does, but a result whose block was pruned still
 	// states the digest in prose, and the allow-list is what admits that receipt
@@ -419,6 +434,20 @@ function artifactMentionsOf(record: TranscriptRecord): MentionedPath[] {
 			artifact,
 		});
 	if (record.kind === "custom") {
+		if (record.music) {
+			for (const track of record.music.tracks)
+				for (const audio of track.images) {
+					if (!audio.attachment) continue;
+					push(audio.attachment, {
+						digest: audio.attachment,
+						kind: "audio",
+						name: audio.name ?? undefined,
+						contentType: audio.mimeType,
+						sizeBytes: audio.sizeBytes ?? undefined,
+						durationS: audio.durationS ?? undefined,
+					});
+				}
+		}
 		// A detached video job's completion, delivered as a `job_result` row (see
 		// the module header). Kind comes from the sentence: only a video job writes it.
 		if (record.customType === "job_result" && VIDEO_RECEIPT.test(record.text)) {
@@ -465,7 +494,10 @@ function artifactMentionsOf(record: TranscriptRecord): MentionedPath[] {
 			record.toolName === "generate_image"
 				? "image"
 				: record.toolName === "generate_voiceover" ||
-						record.toolName === "generate_sound_effect"
+						record.toolName === "generate_sound_effect" ||
+						["generate_music", "modify_music", "music_status"].includes(
+							record.toolName,
+						)
 					? "audio"
 					: "video";
 		for (const phrase of record.output.matchAll(DIGEST_PHRASE)) {

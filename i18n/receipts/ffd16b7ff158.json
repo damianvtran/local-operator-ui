@@ -1,0 +1,60 @@
+{
+  "locale": "ru",
+  "namespace": "ui.notifications",
+  "instance": "ffd16b7ff158",
+  "auditor": {
+    "agent": "translation-auditor",
+    "instance": "ffd16b7ff158",
+    "session": "ffd16b7ff158",
+    "model": "openai/gpt-6.1-sol",
+    "independence": "Independent auditor; authored none of the target translations or implementation. No catalogue edits made.",
+    "actual_model_source": "Latest session model-switch message: openai/gpt-6.1-sol, temporary quota fallback after anthropic/claude-sonnet-5-5; original requested model anthropic/claude-opus-5-5."
+  },
+  "model": "openai/gpt-6.1-sol",
+  "en_sha256": "ce0c8d6d9af80980667741dd6d289ab7312d04aaea0e717e5cef4cf55c2b37ae",
+  "target_sha256": "96cf5ec9f86de4dbdf053e17e3ce0862862f0235957849158aec891ac5f195d8",
+  "context_sha256": "3804068c75073ce9663f73539b508cbb46e495488dc47e5dd97aa80fd1a6918e",
+  "date": "2026-10-25",
+  "findings": [
+    {
+      "id": "R1",
+      "key": "ui.notifications.action.mark_all_read",
+      "severity": "minor",
+      "current": "Прочитать все",
+      "proposed": "Отметить все прочитанными",
+      "reason": "This changes read flags without opening/reading content; use the same explicit mark-read terminology as row/select/drawer actions."
+    },
+    {
+      "id": "R2",
+      "key": "ui.notifications.seen.live",
+      "severity": "minor",
+      "current": "Просмотрено сразу",
+      "proposed": "Просмотрено при получении",
+      "reason": "Source/context mean auto-read because the conversation was active on arrival, not a claim that the operator immediately viewed it; the correct tooltip limits severity. Current label is 17 vs English 9 characters; rendered-fit check needed for replacement."
+    },
+    {
+      "id": "R3",
+      "key": "ui.notifications.filter.unread",
+      "severity": "minor",
+      "current": "Непрочитанные",
+      "proposed": "Непрочитанные",
+      "reason": "Rendered-fit follow-up, not a translation replacement: 13 vs English 6 characters in a segmented control. Also check group label Группировка (11/5), drawer read action Отметить прочитанными (21/9), selection read/unread actions (21/9, 23/11), and transcript seen state Просмотрено (11/4). Retain idiomatic terms unless rendered evidence proves clipping."
+    }
+  ],
+  "status": "passed",
+  "result": "clean-with-findings",
+  "key_count": 130,
+  "limitations": [
+    "LLM textual audit, not a native-speaker attestation.",
+    "No browser/rendered-fit validation; design/QA own rendered evidence.",
+    "Mechanical parser check uses the UI repository installed @formatjs/icu-messageformat-parser and intl-messageformat, without dependency installation. Unique typed-argument signatures are compared; plural category additions are intentional; exact =0/=1 and select false/other inspected in source and samples."
+  ],
+  "source_revision_pin": "d2bcaf95",
+  "audited_revision": "49ea8f474bbb1f309c5415f0fa2263d47d84e5ac",
+  "translator": {
+    "agent": "tr-ru",
+    "model": "anthropic/claude-opus-5-5",
+    "date": "2026-10-25"
+  },
+  "report": "/Users/damian/.local-operator/sessions/ffd16b7ff158/scratchpad/ui.notifications.report.md"
+}

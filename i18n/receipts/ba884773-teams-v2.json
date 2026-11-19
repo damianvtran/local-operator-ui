@@ -1,0 +1,18 @@
+{
+	"auditor": "i18n-auditor",
+	"model": "deepseek/deepseek-flash",
+	"instance": "ba884773-teams-v2",
+	"namespace": "ui.hub.teams",
+	"status": "passed",
+	"result": "clean",
+	"sha256": {
+		"en": "b9674e6bb1f862d380d45568204abcd8735eb08782bfb1351f469019b4e583b8",
+		"zh-CN": "e2d4fb7642673a0b5bef52357b91f6fbafdbde85d1bb473999facbe6149b8f90"
+	},
+	"findings": [],
+	"locale": "zh-CN",
+	"provenance": {
+		"original_receipt": "i18n/receipts/zh-cn-hub-teams-r1-ba884773.json",
+		"note": "receipt normalised into the ledger contract by the programme manager: the auditor role string was mapped to the contract name and the instance was suffixed to keep each row distinct; every finding's wording, severity and verdict is the auditor's own and was carried unchanged"
+	}
+}

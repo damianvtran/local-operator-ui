@@ -165,8 +165,8 @@ const fixture = ({
 
 	write("src/app.ts", "export const one = 1;\n");
 	write("scripts/capture-evidence.mjs", capture(["chat--one", "chat--two"]));
-	frame("docs/evidence/chat--one/localOperatorDark.webp");
-	frame("docs/evidence/chat--two/localOperatorDark.webp");
+	frame("docs/evidence-frames/chat--one/localOperatorDark.webp");
+	frame("docs/evidence-frames/chat--two/localOperatorDark.webp");
 	// A driver rule has to be in the tree BEING REPLAYED for a rebase or a
 	// cherry-pick to consult the driver at all - git reads `.gitattributes` from
 	// the tree it is applying, not from the branch it is standing on.
@@ -214,7 +214,7 @@ const fixture = ({
 			},
 		});
 		write("docs/evidence/manifest.json", `${JSON.stringify(m, null, 2)}\n`);
-		frame("docs/evidence/lane-set/localOperatorDark.webp");
+		frame("docs/evidence-frames/lane-set/localOperatorDark.webp");
 		git(dir, ["add", "-A"]);
 		git(dir, ["commit", "-qm", "feat: the lane's pass"]);
 	}
@@ -226,7 +226,7 @@ const fixture = ({
 			"scripts/capture-evidence.mjs",
 			capture(["chat--one", "chat--two", "chat--three"]),
 		);
-		frame("docs/evidence/chat--three/localOperatorDark.webp");
+		frame("docs/evidence-frames/chat--three/localOperatorDark.webp");
 	}
 	const mainManifest = manifest({
 		head: baseSha,
@@ -302,7 +302,7 @@ const guardFailures = (dir) =>
 	stampFailures(
 		readManifest(dir),
 		readerFor(dir),
-		join(dir, "docs", "evidence"),
+		join(dir, "docs", "evidence-frames"),
 	);
 
 /** The manifest a revision's tree carries, or null when the read failed. */
@@ -722,8 +722,11 @@ test("the guards the tool runs can still fail on the tree the tool produces", ()
 			`${JSON.stringify(mutated, null, 2)}\n`,
 		);
 		assert.equal(
-			stampFailures(mutated, readerFor(dir), join(dir, "docs", "evidence"))
-				.length >= 1,
+			stampFailures(
+				mutated,
+				readerFor(dir),
+				join(dir, "docs", "evidence-frames"),
+			).length >= 1,
 			true,
 			`a mutated \`${field}\` must fail the guard the tool validates against`,
 		);
@@ -734,7 +737,7 @@ test("the guards the tool runs can still fail on the tree the tool produces", ()
 		stampFailures(
 			{ ...good, srcTree: "0".repeat(40), scriptsTree: "0".repeat(40) },
 			readerFor(dir),
-			join(dir, "docs", "evidence"),
+			join(dir, "docs", "evidence-frames"),
 		),
 		[],
 		"the retired pair is indifferent to the guard, which is what stops a stray copy gating again",
@@ -1438,9 +1441,16 @@ const storyFixture = ({
 		mkdirSync(dirname(join(dir, path)), { recursive: true });
 		writeFileSync(join(dir, path), text);
 	};
+	/*
+	 * Frames live in the IGNORED frames tree (`docs/evidence-frames/`), which is
+	 * the path `partialCaptureFailures` asks git about - the assertion this
+	 * fixture exists for is that the under-claim fires, and a fixture that
+	 * committed its frames at the pre-split path would exercise a tree the guard
+	 * no longer reads.
+	 */
 	const frame = (id) =>
 		write(
-			`docs/evidence/${id.replace("--", "/")}/localOperatorDark.webp`,
+			`docs/evidence-frames/${id.replace("--", "/")}/localOperatorDark.webp`,
 			"not-a-real-webp",
 		);
 	const manifestJson = (m) =>

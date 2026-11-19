@@ -1,6 +1,21 @@
 {
 	"ui.chat.dialogs.archive_action": "Архивировать",
+	"ui.chat.dialogs.archive_title_named": "Архивировать «{title}»?",
+	"ui.chat.dialogs.archive_title_unnamed": "Архивировать этот разговор?",
+	"ui.chat.dialogs.archive_message": "Разговор исчезнет из списков. Отменить можно в течение {seconds, plural, one {# секунды} few {# секунд} many {# секунд} other {# секунды}}; после этого найдите его через поиск над списком чатов, включите параметр «{include_archived}» и нажмите «Восстановить».",
 	"ui.chat.dialogs.cancel": "Отмена",
 	"ui.chat.dialogs.delete_action": "Удалить",
-	"ui.chat.dialogs.delete_title": "Удалить этот разговор?"
+	"ui.chat.dialogs.delete_title": "Удалить этот разговор?",
+	"ui.chat.dialogs.options.clear_confirm": "Очистить",
+	"ui.chat.dialogs.options.clear_conversation": "Очистить разговор",
+	"ui.chat.dialogs.options.clear_message": "Все сообщения в нём удаляются с этого компьютера без возможности отмены. Сам агент не затрагивается.",
+	"ui.chat.dialogs.options.clear_title": "Очистить этот разговор?",
+	"ui.chat.dialogs.options.description": "Настройте параметры этого агента",
+	"ui.chat.dialogs.options.title": "Параметры чата",
+	"ui.chat.dialogs.make_temporary_title": "Сделать этот чат временным?",
+	"ui.chat.dialogs.make_temporary_deleted": "Он сразу исчезнет из ваших чатов. После заданного времени бездействия (по умолчанию 30 мин) этот чат, его сообщения и вложения будут удалены.",
+	"ui.chat.dialogs.make_temporary_kept": "Сохранятся: файлы, которые он изменил на вашем компьютере.",
+	"ui.chat.dialogs.make_temporary_confirm": "Сделать временным",
+	"ui.chat.dialogs.keep_and_link": "Сохранить и связать",
+	"ui.chat.dialogs.keep_and_pin": "Сохранить и закрепить"
 }

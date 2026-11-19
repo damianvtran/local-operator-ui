@@ -1,0 +1,495 @@
+{
+  "locale": "vi",
+  "mode": "Fresh independent delta audit of the 20 new keys in the single namespace ui.library against frozen head 8a9ce1f808; read-only worktree ~/local-operator-ui/.worktrees/i18n-s8. Allocation: fix (<2h), bounded audit only. Glossary conformance checked against the manager-owned byte-copy at _s14-audits/8a9ce1f8…/glossary.md (sha256 0eb34437a8c3d6f5…, identical to ~/local-operator/i18n/glossary.md). All 20 delta keys audited in full in two passes; the namespace's other 159 legacy values were read only for JSON validity, key-set parity, unchanged-value parity against the base and plural/placeholder integrity, and are NOT certified.",
+  "scope": "PR damianvtran/local-operator-ui #1851 @ 8a9ce1f808c266ebe9a0e924094344cea60c2c23 (0e12072d2b3..HEAD). Audited keys: 12 x ui.library.kind.{audio,code,docx,html,image,markdown,other,pdf,pptx,spreadsheet,text,video}, 7 x ui.library.tag_category.{custom,format,project,source,status,topic,type}, ui.library.preview.unsupported_generic — the file-kind badge (card caption, list row, preview header), the tag-group heading in the filter rail, and the catch-all unsupported-preview sentence. Concerns (a)-(i) of the brief each answered; the English context note of ui.library.kind.other is flagged (F1) as metadata, not translation. No full legacy namespace certification, no ledger write, no PR comment, no commit.",
+  "head_sha": "8a9ce1f808c266ebe9a0e924094344cea60c2c23",
+  "audit_date": "2026-11-10",
+  "key_count": 179,
+  "fully_audited_key_count": 20,
+  "consistency_only_key_count": 159,
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "Translator model and session (vi 8f78815e51e3) supplied by delegation; this auditor did not translate, edit or take part in translation."
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "4c1343f350ef",
+    "session": "4c1343f350ef",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "Served session header for session 4c1343f350ef states deepseek/deepseek-flash; no model switch, pin or fallback occurred in this session.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "policy_sources": {
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/vi.md",
+      "sha256": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888"
+    },
+    "glossary": {
+      "path": "~/local-operator-ui/.worktrees/_s14-audits/8a9ce1f808c266ebe9a0e924094344cea60c2c23/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "note": "Manager-owned byte-copy; verified identical to ~/local-operator/i18n/glossary.md by sha256; glossary conformance was checked against this copy."
+    },
+    "expected_hashes": {
+      "path": "~/local-operator-ui/.worktrees/_s14-audits/8a9ce1f808c266ebe9a0e924094344cea60c2c23/expected-hashes.json"
+    }
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "verdict": "clean-with-findings",
+  "verdict_note": "passed — 20/20 delta keys audited; 0 BLOCKER, 0 MAJOR, 2 MINOR, 0 NIT. The shipped vi strings need no change to pass: F1 is an English context note, F2 is a defensible word the manager may prefer to move ('Loại' -> 'Kiểu' for tag_category.type). Hash binding 3/3.",
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "minor",
+      "key": "ui.library.kind.other",
+      "current_text": "Khác",
+      "english_source": "Other",
+      "problem": "English context note: the note says 'Rendered inside the sentence ui.library.preview.unsupported ONLY via the generic fallback; see manifest.' The label is never substituted into that sentence - library-viewers.tsx:108 renders ui.library.preview.unsupported_generic for kind === 'other', and that message has no {kind} slot. Its sibling note for unsupported_generic states the same fact correctly, so the two notes contradict each other, and the 'see manifest' pointer does not resolve to a file a translator can open (the only library-adjacent manifest is the five-key census audit-evidence manifest, which has no library-kind entries). No defect in the vi value itself.",
+      "recommendation": "Reword the note to: 'Never substituted into a sentence: the catch-all state renders ui.library.preview.unsupported_generic, which has no {kind} slot.' Metadata only; the translated value 'Khác' is correct as shipped.",
+      "evidence": [
+        "src/renderer/src/features/library/components/library-viewers.tsx:104-112 — asset.kind === 'other' ? t('ui.library.preview.unsupported_generic') : t('ui.library.preview.unsupported', {kind: libraryKindLabel(asset.kind)})",
+        "src/i18n/catalogues/en/ui.library.context.json ui.library.preview.unsupported_generic note: 'Shown when the file kind is the catch-all `other`; no placeholders.'",
+        "docs/i18n/census-five-key-provenance.md line 104: the 'manifest' link points at i18n/audit-evidence/census-five-key-second/manifest.json, which greps empty for unsupported_generic and kind.other",
+        "src/i18n/catalogues/en/ui.library.json ui.library.preview.unsupported_generic = 'This file has no in-app preview here.' (no placeholder)"
+      ],
+      "gates": false
+    },
+    {
+      "id": "F2",
+      "severity": "minor",
+      "key": "ui.library.tag_category.type",
+      "current_text": "Loại",
+      "english_source": "Type",
+      "problem": "'Loại' is a fair rendering of 'Type', but it is also this catalogue's shipped rendering of 'Kind' at ui.library.sort.kind ('Loại'), which the English note explicitly asks to be kept distinct ('Keep it distinct from the sort option \\'Kind\\'.'). Both are reachable on the Library page: the tag-group header in the filter rail and the sort menu (library-page.tsx:904-924). MINOR rather than MAJOR because the word is not wrong, the colliding concept is a legacy, rarely-used category (core ids are format/status), and the collision exists only across two different controls.",
+      "recommendation": "Move this new key, not the shipped sort option: 'Kiểu' (4 cells) or 'Thể loại' (8 cells) — both fit the ~12-cell rail header budget and keep 'Loại' meaning exactly one thing on the page.",
+      "evidence": [
+        "src/i18n/catalogues/vi/ui.library.json ui.library.sort.kind = 'Loại'",
+        "src/i18n/catalogues/en/ui.library.context.json ui.library.tag_category.type note: 'Keep it distinct from the sort option \\'Kind\\'.'",
+        "src/i18n/catalogues/en/ui.library.json ui.library.tag_category.type = 'Type' (separate English word from 'Kind')",
+        "src/renderer/src/features/library/components/library-page.tsx:904-924 — the sort list renders t(sort.labelKey) including sort.kind",
+        "src/renderer/src/features/library/components/library-filter-rail.tsx:104 — the tag-group header renders tagCategoryLabel(category) in the same page's rail"
+      ],
+      "gates": false
+    }
+  ],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 2,
+    "nit": 0
+  },
+  "namespaces": {
+    "ui.library": {
+      "status": "passed",
+      "result": "clean-with-findings",
+      "source_sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71",
+      "target_sha256": "12262f8cd5b313b9eeddf157a9dfe28051399cbc8df1ddada416ef9506b44daa",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.library.json",
+          "sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71"
+        },
+        "vi": {
+          "path": "src/i18n/catalogues/vi/ui.library.json",
+          "sha256": "12262f8cd5b313b9eeddf157a9dfe28051399cbc8df1ddada416ef9506b44daa"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.library.context.json",
+          "sha256": "2fe63e830b49079dac67c5c4513358d0a8559a94fbf27ac8d437212b13aa2e72"
+        }
+      },
+      "fully_audited_keys": [
+        "ui.library.kind.audio",
+        "ui.library.kind.code",
+        "ui.library.kind.docx",
+        "ui.library.kind.html",
+        "ui.library.kind.image",
+        "ui.library.kind.markdown",
+        "ui.library.kind.other",
+        "ui.library.kind.pdf",
+        "ui.library.kind.pptx",
+        "ui.library.kind.spreadsheet",
+        "ui.library.kind.text",
+        "ui.library.kind.video",
+        "ui.library.tag_category.custom",
+        "ui.library.tag_category.format",
+        "ui.library.tag_category.project",
+        "ui.library.tag_category.source",
+        "ui.library.tag_category.status",
+        "ui.library.tag_category.topic",
+        "ui.library.tag_category.type",
+        "ui.library.preview.unsupported_generic"
+      ],
+      "findings": [
+        {
+          "id": "F1",
+          "severity": "minor",
+          "key": "ui.library.kind.other",
+          "current_text": "Khác",
+          "english_source": "Other",
+          "problem": "English context note: the note says 'Rendered inside the sentence ui.library.preview.unsupported ONLY via the generic fallback; see manifest.' The label is never substituted into that sentence - library-viewers.tsx:108 renders ui.library.preview.unsupported_generic for kind === 'other', and that message has no {kind} slot. Its sibling note for unsupported_generic states the same fact correctly, so the two notes contradict each other, and the 'see manifest' pointer does not resolve to a file a translator can open (the only library-adjacent manifest is the five-key census audit-evidence manifest, which has no library-kind entries). No defect in the vi value itself.",
+          "recommendation": "Reword the note to: 'Never substituted into a sentence: the catch-all state renders ui.library.preview.unsupported_generic, which has no {kind} slot.' Metadata only; the translated value 'Khác' is correct as shipped.",
+          "evidence": [
+            "src/renderer/src/features/library/components/library-viewers.tsx:104-112 — asset.kind === 'other' ? t('ui.library.preview.unsupported_generic') : t('ui.library.preview.unsupported', {kind: libraryKindLabel(asset.kind)})",
+            "src/i18n/catalogues/en/ui.library.context.json ui.library.preview.unsupported_generic note: 'Shown when the file kind is the catch-all `other`; no placeholders.'",
+            "docs/i18n/census-five-key-provenance.md line 104: the 'manifest' link points at i18n/audit-evidence/census-five-key-second/manifest.json, which greps empty for unsupported_generic and kind.other",
+            "src/i18n/catalogues/en/ui.library.json ui.library.preview.unsupported_generic = 'This file has no in-app preview here.' (no placeholder)"
+          ],
+          "gates": false
+        },
+        {
+          "id": "F2",
+          "severity": "minor",
+          "key": "ui.library.tag_category.type",
+          "current_text": "Loại",
+          "english_source": "Type",
+          "problem": "'Loại' is a fair rendering of 'Type', but it is also this catalogue's shipped rendering of 'Kind' at ui.library.sort.kind ('Loại'), which the English note explicitly asks to be kept distinct ('Keep it distinct from the sort option \\'Kind\\'.'). Both are reachable on the Library page: the tag-group header in the filter rail and the sort menu (library-page.tsx:904-924). MINOR rather than MAJOR because the word is not wrong, the colliding concept is a legacy, rarely-used category (core ids are format/status), and the collision exists only across two different controls.",
+          "recommendation": "Move this new key, not the shipped sort option: 'Kiểu' (4 cells) or 'Thể loại' (8 cells) — both fit the ~12-cell rail header budget and keep 'Loại' meaning exactly one thing on the page.",
+          "evidence": [
+            "src/i18n/catalogues/vi/ui.library.json ui.library.sort.kind = 'Loại'",
+            "src/i18n/catalogues/en/ui.library.context.json ui.library.tag_category.type note: 'Keep it distinct from the sort option \\'Kind\\'.'",
+            "src/i18n/catalogues/en/ui.library.json ui.library.tag_category.type = 'Type' (separate English word from 'Kind')",
+            "src/renderer/src/features/library/components/library-page.tsx:904-924 — the sort list renders t(sort.labelKey) including sort.kind",
+            "src/renderer/src/features/library/components/library-filter-rail.tsx:104 — the tag-group header renders tagCategoryLabel(category) in the same page's rail"
+          ],
+          "gates": false
+        }
+      ]
+    }
+  },
+  "per_key_checks": [
+    {
+      "key": "ui.library.kind.audio",
+      "source": "Audio",
+      "current_text": "Âm thanh",
+      "findings": [],
+      "assessment": "Exact singular of this locale's own group label ui.library.category.sounds 'Âm thanh'; the noun for sound/audio. Badge reads naturally beside the size.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.kind.code",
+      "source": "Code",
+      "current_text": "Mã nguồn",
+      "findings": [],
+      "assessment": "'Mã nguồn' (source code) is the settled rendering in this catalogue for the code family: ui.library.category.code, ui.canvas.files.code, ui.canvas.file_rows.code, ui.settings.model.system_prompt.source 'Mã nguồn Markdown'. Correct for a source-code file.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.kind.docx",
+      "source": "DOCX",
+      "current_text": "DOCX",
+      "findings": [],
+      "assessment": "DOCX retained. No earlier DOCX occurrence in vi to contradict it; the en note and the locale's HTML/Markdown precedent both support keeping the format acronym.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.kind.html",
+      "source": "HTML",
+      "current_text": "HTML",
+      "findings": [],
+      "assessment": "HTML retained, matching ui.canvas.create_file_dialog.html_html 'HTML (.html)', ui.canvas.html_preview 'Xem trước HTML: {title}' and onboarding 'tệp HTML'.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.kind.image",
+      "source": "Image",
+      "current_text": "Hình ảnh",
+      "findings": [],
+      "assessment": "Exact singular of ui.library.category.images 'Hình ảnh'; no plural inflection in vi, so identity with the group label is the correct form.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.kind.markdown",
+      "source": "Markdown",
+      "current_text": "Markdown",
+      "findings": [],
+      "assessment": "Markdown retained as the format's proper name, matching 'Markdown (.md)', 'Mã nguồn Markdown', 'Sao chép Markdown' and 'Xem trước markdown'.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.kind.other",
+      "source": "Other",
+      "current_text": "Khác",
+      "findings": [
+        {
+          "id": "F1",
+          "severity": "minor",
+          "key": "ui.library.kind.other",
+          "current_text": "Khác",
+          "english_source": "Other",
+          "problem": "English context note: the note says 'Rendered inside the sentence ui.library.preview.unsupported ONLY via the generic fallback; see manifest.' The label is never substituted into that sentence - library-viewers.tsx:108 renders ui.library.preview.unsupported_generic for kind === 'other', and that message has no {kind} slot. Its sibling note for unsupported_generic states the same fact correctly, so the two notes contradict each other, and the 'see manifest' pointer does not resolve to a file a translator can open (the only library-adjacent manifest is the five-key census audit-evidence manifest, which has no library-kind entries). No defect in the vi value itself.",
+          "recommendation": "Reword the note to: 'Never substituted into a sentence: the catch-all state renders ui.library.preview.unsupported_generic, which has no {kind} slot.' Metadata only; the translated value 'Khác' is correct as shipped.",
+          "evidence": [
+            "src/renderer/src/features/library/components/library-viewers.tsx:104-112 — asset.kind === 'other' ? t('ui.library.preview.unsupported_generic') : t('ui.library.preview.unsupported', {kind: libraryKindLabel(asset.kind)})",
+            "src/i18n/catalogues/en/ui.library.context.json ui.library.preview.unsupported_generic note: 'Shown when the file kind is the catch-all `other`; no placeholders.'",
+            "docs/i18n/census-five-key-provenance.md line 104: the 'manifest' link points at i18n/audit-evidence/census-five-key-second/manifest.json, which greps empty for unsupported_generic and kind.other",
+            "src/i18n/catalogues/en/ui.library.json ui.library.preview.unsupported_generic = 'This file has no in-app preview here.' (no placeholder)"
+          ],
+          "gates": false
+        }
+      ],
+      "assessment": "'Khác' is the ordinary catch-all noun and matches ui.library.category.other exactly; singular/plural-neutral, not an action.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.kind.pdf",
+      "source": "PDF",
+      "current_text": "PDF",
+      "findings": [],
+      "assessment": "PDF retained, matching onboarding 'tệp PDF', ui.canvas.pdf_preview.pdf 'PDF: {title}' and ui.teamBridge.fileCard.kind 'pdf {PDF}'.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.kind.pptx",
+      "source": "PPTX",
+      "current_text": "PPTX",
+      "findings": [],
+      "assessment": "PPTX retained. No earlier PPTX occurrence in vi to contradict it; same retention rule the en note allows and DOCX/HTML follow.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.kind.spreadsheet",
+      "source": "Spreadsheet",
+      "current_text": "Bảng tính",
+      "findings": [],
+      "assessment": "'Bảng tính' matches ui.library.category.spreadsheets, ui.canvas.files.spreadsheets and ui.canvas.file_rows.spreadsheets; the badge is unambiguous for one workbook file.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.kind.text",
+      "source": "Text",
+      "current_text": "Văn bản",
+      "findings": [],
+      "assessment": "'Văn bản' is this catalogue's word for text (ui.library.preview.pptx_text 'Văn bản'; ui.teamBridge.fileCard.kind 'text {Tệp văn bản}'). The bare noun is the right shape for a badge and does not collide with category.documents 'Tài liệu'.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.kind.video",
+      "source": "Video",
+      "current_text": "Video",
+      "findings": [],
+      "assessment": "Video retained, matching ui.library.category.video, ui.canvas.files.videos and ui.canvas.file_rows.video.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.tag_category.custom",
+      "source": "Custom",
+      "current_text": "Tùy chỉnh",
+      "findings": [],
+      "assessment": "'Tùy chỉnh' matches every existing occurrence in this catalogue (ui.agents.pages.scope.custom, ui.settings.appearance.editor.customize, three onboarding titles, ui.chat.dialogs.options.description); orthography (tone on the first vowel of the open 'uy' syllable) and NFC form both follow the vi guide.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.tag_category.format",
+      "source": "Format",
+      "current_text": "Định dạng",
+      "findings": [],
+      "assessment": "'Định dạng' matches the catalogue's own use of the word in ui.library.preview.pptx_failed_detail ('dùng định dạng mà trình xem này không hiểu'); correct heading for file-format tags.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.tag_category.project",
+      "source": "Project",
+      "current_text": "Dự án",
+      "findings": [],
+      "assessment": "'Dự án' is the glossary's vi rendering for project (glossary §2, project -> dự án) and the catalogue's vocabulary; the en note's caveat (not the Projects page) does not require a different word, and English shares the word too.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.tag_category.source",
+      "source": "Source",
+      "current_text": "Nguồn",
+      "findings": [],
+      "assessment": "'Nguồn' matches ui.library.filter.source exactly; English shares the word between the tag group and the filter section, so sharing it here is faithful, not sloppy.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.tag_category.status",
+      "source": "Status",
+      "current_text": "Trạng thái",
+      "findings": [],
+      "assessment": "'Trạng thái' matches ui.library.filter.status exactly; same shared-word situation as English.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.tag_category.topic",
+      "source": "Topic",
+      "current_text": "Chủ đề",
+      "findings": [],
+      "assessment": "'Chủ đề' matches this catalogue's use for topic (ui.teamBridge.create.topic 'Chủ đề (không bắt buộc)'); correct subject-matter heading.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.tag_category.type",
+      "source": "Type",
+      "current_text": "Loại",
+      "findings": [
+        {
+          "id": "F2",
+          "severity": "minor",
+          "key": "ui.library.tag_category.type",
+          "current_text": "Loại",
+          "english_source": "Type",
+          "problem": "'Loại' is a fair rendering of 'Type', but it is also this catalogue's shipped rendering of 'Kind' at ui.library.sort.kind ('Loại'), which the English note explicitly asks to be kept distinct ('Keep it distinct from the sort option \\'Kind\\'.'). Both are reachable on the Library page: the tag-group header in the filter rail and the sort menu (library-page.tsx:904-924). MINOR rather than MAJOR because the word is not wrong, the colliding concept is a legacy, rarely-used category (core ids are format/status), and the collision exists only across two different controls.",
+          "recommendation": "Move this new key, not the shipped sort option: 'Kiểu' (4 cells) or 'Thể loại' (8 cells) — both fit the ~12-cell rail header budget and keep 'Loại' meaning exactly one thing on the page.",
+          "evidence": [
+            "src/i18n/catalogues/vi/ui.library.json ui.library.sort.kind = 'Loại'",
+            "src/i18n/catalogues/en/ui.library.context.json ui.library.tag_category.type note: 'Keep it distinct from the sort option \\'Kind\\'.'",
+            "src/i18n/catalogues/en/ui.library.json ui.library.tag_category.type = 'Type' (separate English word from 'Kind')",
+            "src/renderer/src/features/library/components/library-page.tsx:904-924 — the sort list renders t(sort.labelKey) including sort.kind",
+            "src/renderer/src/features/library/components/library-filter-rail.tsx:104 — the tag-group header renders tagCategoryLabel(category) in the same page's rail"
+          ],
+          "gates": false
+        }
+      ],
+      "assessment": "Defensible but weaker: 'Loại' is also the shipped rendering of 'Kind' at ui.library.sort.kind, and the English note asks for distinctness from it. See F2; 'Kiểu' would separate the two concepts.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.preview.unsupported_generic",
+      "source": "This file has no in-app preview here.",
+      "current_text": "Tệp này không có bản xem trước trong ứng dụng.",
+      "findings": [],
+      "assessment": "Grammatical, names no kind, carries no placeholder, and is the exact same frame as the shipped ui.library.preview.unsupported with the {kind} clause replaced by 'này' ('Tệp {kind} không có bản xem trước trong ứng dụng.' -> 'Tệp này không có bản xem trước trong ứng dụng.'). Register and the 'in-app preview' phrasing match the neighbouring strings.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    }
+  ],
+  "english_metadata_check": {
+    "key": "the 20 context entries of ui.library (12 kind badges, 7 tag headings, 1 preview sentence)",
+    "verdict": "19 of 20 accurate; one misleading clause in ui.library.kind.other (F1)",
+    "detail": "Roles verified against the render sites: 'Library card/list/preview badge' is exact (KindLabel at library-card.tsx:250 card caption and :368 list row; the neutral Badge at library-preview.tsx:494 is the preview header), and 'Library filter rail: header above one group of tags' matches the <h3> Section header fed by TagCategoryLabel (library-filter-rail.tsx). The tone line ('sentence case, no exclamation marks') matches both the English and the vi values. All 20 'length' claims were recomputed against the English strings (5,4,4,4,5,8,5,3,4,11,4,5 / 6,6,7,6,6,5,4 / 37) and all 20 match character-for-character. The unsupported_generic note ('Shown when the file kind is the catch-all `other`; no placeholders') is accurate against library-viewers.tsx.",
+    "observation": "F1 only: the kind.other note's 'Rendered inside the sentence ui.library.preview.unsupported ONLY via the generic fallback; see manifest' misdescribes the render path and its pointer does not resolve. Reported on the English metadata, not against the vi value."
+  },
+  "mechanical": {
+    "validator_commands_run": [
+      "git rev-parse HEAD -> 8a9ce1f808c266ebe9a0e924094344cea60c2c23 (equals the frozen head); git status --porcelain -> empty",
+      "shasum -a 256 en/vi ui.library.json + en context -> 065ac47c…/12262f8c…/2fe63e83…, all equal to expected-hashes.json",
+      "node scripts/i18n/generate.mjs --check -> 'src/i18n/keys.gen.ts is byte-identical to a fresh generation' (exit 0)",
+      "node scripts/i18n/check-duplicates.mjs -> 'check-duplicates: ok — 1419 file(s) scanned, 0 duplicate key(s)' (exit 0)",
+      "node scripts/i18n/context-parity.mjs -> 'context-parity: ok — every English key is covered, apart from 129 allowed gap(s) in 4 namespace(s)' (exit 0)",
+      "node scripts/i18n/ledger-check.mjs -> FAILED, 21 findings across 1099 entries; the 3 vi/ui.library findings are the expected pre-audit staleness (stale source_sha256 f573e43a8f34…, stale target_sha256 d303b353483f…, receipt does not name the English bytes on disk). No ledger write run.",
+      "python3 <scratchpad>/vi-ds-4c1343f350ef-check.py -> the numbers below (output kept as vi-ds-4c1343f350ef-check.out)"
+    ],
+    "json_valid": true,
+    "key_sets_identical_to_english": true,
+    "keys_added_or_removed_vs_origin_main": "vi: 20 keys added, 0 removed, 0 existing values changed; the single '-' line is the previously-last key re-emitted with a trailing comma (parsed-value comparison, not diff reading). en +21/-1 and context +120/-0 behave the same way; no existing en value or context entry changed.",
+    "placeholder_parity": true,
+    "icu_plural_select_needed": false,
+    "hash_binding": "3/3 sha256 entries for this locale's namespace match expected-hashes.json (exact 64-hex equality).",
+    "invisible_characters": "none in the 20 values (no NBSP, U+202F, ZWJ/ZWNJ/ZWSP, bidi control, soft hyphen, BOM)",
+    "nfc_form": "all 20 values NFC with no combining marks (vi guide's precomposed-form rule holds)",
+    "width_cells": "kind labels 3-9 cells, tag headings 4-10 cells, all inside the ~12-cell badge/rail budget from the en sidecar; unsupported_generic 46 cells vs the shipped unsupported sentence's 49 in the same body-copy slot, so no overflow to report",
+    "terminology_consistency": "kind labels equal the singular of this locale's own group labels where the language allows it (code, image, audio/sounds, spreadsheet, video, other); tag headings reuse shipped vocabulary (filter.source 'Nguồn', filter.status 'Trạng thái', glossary project -> 'Dự án'); retentions DOCX/HTML/PDF/PPTX/Markdown/Video are backed by existing vi values, not convention alone"
+  },
+  "unverified": [
+    "No production ICU parser/formatter, Electron/React run, screen-reader session or rendered-frame check: read-only, no-build, no-server, no-test-tree constraint. Width figures are cell counts from east-asian-width, not pixels; no truncation was observed or could be.",
+    "No ledger write (ledger-assemble.mjs), no tracked evidence retention, no PR comment and no commit: writes were limited to this session's scratchpad.",
+    "The 159 non-delta legacy values of ui.library were not certified; only JSON validity, key-set parity, unchanged-value parity against the base and placeholder/plural integrity were checked for them.",
+    "The 'see manifest' pointer in the kind.other note was searched only under docs/ and i18n/audit-evidence/ in this worktree; a manifest outside the repo cannot be ruled out."
+  ],
+  "receipt_contract_review": "Root, per-namespace, auditor and translator field sets mirror the model receipt _s12-audits/e5fb4310…/fr-ds-e3c562b03258.json; the namespaces object carries exactly one block for ui.library with status, result, source_sha256, target_sha256, input_hashes and findings.",
+  "audit_notes_not_execution_log": false,
+  "execution_log": "vi-ds-4c1343f350ef.audit.log"
+}

@@ -20,8 +20,11 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { build } from "esbuild";
+import { runInNewContext } from "node:vm";
+import { build, transformSync } from "esbuild";
 
+const RENDERER_ARGUMENT_FUNCTION =
+	/function rendererArgumentFlags\([\s\S]*?\n\}/;
 const ROOT = process.cwd();
 const readSource = (path) => readFileSync(`${ROOT}/${path}`, "utf8");
 
@@ -325,7 +328,7 @@ test("U-9 a CSS comment is prose, and the rules that act on the chrome are decla
 	 * inside `App`. That source cannot express the native fallback (it knows the OS,
 	 * not the mode), cannot know where a Linux WM put its buttons, and does not exist
 	 * until React mounts - and root-level attributes are also the only thing that
-	 * reaches a PORTALED element, which the sidebar's overlay sheet is.
+	 * reaches a PORTALED element, which the command palette's Radix dialog is.
 	 */
 	assert.doesNotMatch(
 		css,
@@ -394,8 +397,8 @@ test("U-9 a CSS comment is prose, and the rules that act on the chrome are decla
 	);
 	assert.match(
 		css,
-		/\[data-chrome-mode="integrated"\]\[data-chrome-fullscreen="true"\]\s*\{[\s\S]*?--chrome-strip-h:\s*0px;/,
-		"full screen collapses the lane and every inset, which is what the state push is for",
+		/\[data-chrome-mode\]\[data-chrome-fullscreen="true"\]\s*\{[\s\S]*?--chrome-strip-h:\s*var\(--chrome-fullscreen-top\);/,
+		"full screen drops every inset and keeps only the named full-screen top inset, in every chrome mode (chrome-fullscreen-inset.test.mjs resolves the cascade)",
 	);
 	assert.match(
 		css,
@@ -584,11 +587,77 @@ test("the main window takes the frame and the ground from the closed decision", 
 		/windowChromeArgumentFor\(process\.platform,\s*chromeMode\)/,
 		"the renderer's argv entry must be composed from the resolved mode, not re-read from the environment",
 	);
-	assert.match(
-		main,
-		/const flags = \[[\s\S]{0,400}?windowChromeArgumentFor\(process\.platform,\s*chromeMode\)[\s\S]{0,400}?\];\s*\n\s*return flags\.length > 0 \? \{ additionalArguments: flags \} : \{\};/,
-		"the composed chrome argument must reach the renderer's `additionalArguments`",
+	/* Execute the actual composition function: the 400-character source window
+	 * falsely failed when the fixed QA scene added one legitimate argv spread.
+	 * Stub only adjacent launch facts; chrome construction is the real helper.
+	 * The negative controls prove both removing the call and dropping the output
+	 * fail this contract rather than merely accepting a larger source window. */
+	const assertChromeReachesRenderer = (source) => {
+		const functionSource = source.match(RENDERER_ARGUMENT_FUNCTION)?.[0];
+		assert.ok(
+			functionSource,
+			"the actual renderer argument function must exist",
+		);
+		const code = transformSync(functionSource, { loader: "ts" }).code;
+		for (const platform of ["darwin", "win32", "linux"]) {
+			for (const mode of ["native", "integrated"]) {
+				const result = runInNewContext(
+					`${code}; rendererArgumentFlags(null, false, mode, {state:"off",scheme:"dark"})`,
+					{
+						process: { platform },
+						mode,
+						windowChromeArgumentFor: chrome.windowChromeArgumentFor,
+						windowGlassArgument: () => "--glass-sentinel",
+						launchArgumentFlags: () => ({
+							additionalArguments: ["--launch-sentinel"],
+						}),
+						devDriverWebPreferences: {
+							additionalArguments: ["--driver-sentinel"],
+						},
+						ownerAuditStartupArguments: () => ["--scene-sentinel"],
+						telemetryWebPreferences: {
+							additionalArguments: ["--telemetry-sentinel"],
+						},
+					},
+					{ timeout: 1000 },
+				);
+				assert.ok(
+					result.additionalArguments?.includes(
+						chrome.windowChromeArgumentFor(platform, mode),
+					),
+					"the composed chrome argument must reach the renderer's additionalArguments",
+				);
+				for (const argument of [
+					"--glass-sentinel",
+					"--launch-sentinel",
+					"--driver-sentinel",
+					"--scene-sentinel",
+					"--telemetry-sentinel",
+				])
+					assert.ok(
+						result.additionalArguments.includes(argument),
+						"adjacent argv composition must survive",
+					);
+			}
+		}
+	};
+	assertChromeReachesRenderer(main);
+	const withoutChrome = main.replace(
+		"windowChromeArgumentFor(process.platform, chromeMode),",
+		"",
 	);
+	assert.notEqual(withoutChrome, main);
+	assert.throws(() => assertChromeReachesRenderer(withoutChrome), {
+		code: "ERR_ASSERTION",
+	});
+	const withoutDelivery = main.replace(
+		"return flags.length > 0 ? { additionalArguments: flags } : {};",
+		"return {};",
+	);
+	assert.notEqual(withoutDelivery, main);
+	assert.throws(() => assertChromeReachesRenderer(withoutDelivery), {
+		code: "ERR_ASSERTION",
+	});
 });
 
 test("the shell renders the lane above the columns, and exactly one of it", () => {
@@ -596,26 +665,49 @@ test("the shell renders the lane above the columns, and exactly one of it", () =
 		"src/renderer/src/shared/components/common/chat-layout.tsx",
 	);
 	/*
-	 * ORDER, not a count: the lane has to be ABOVE the columns, because that is what
-	 * makes the sidebar's brand row and the conversation title share one line (a lane
-	 * between them, or below them, is 32px of misalignment). The shell renders ONE
-	 * tree for all three sidebar modes (docked, strip, and the sheet over the pane),
-	 * so there is exactly one lane and it precedes the row wrapper.
+	 * ONE LANE, ALWAYS AN OVERLAY. There is no route branch: the lane used to be
+	 * a reserved row for every route and a transparent overlay for the few that
+	 * opted in (`flushTop`), and that opt-in is the defect this contract removes.
+	 * A single element is what makes "the lane is the drag surface" and "the
+	 * columns reach y0" true for every route at once.
 	 */
+	assert.equal(
+		shell.split('data-titlebar-lane=""').length - 1,
+		1,
+		"the shell must render exactly one lane; a second one is an arm that reintroduces the route opt-in",
+	);
 	const lane = shell.indexOf('data-titlebar-lane=""');
 	assert.notEqual(lane, -1, "the shell renders no lane");
+	const tagStart = shell.lastIndexOf("<div", lane);
+	const tagEnd = shell.indexOf("/>", lane);
+	const laneTag = shell.slice(tagStart, tagEnd);
+	assert.match(
+		laneTag,
+		/className="absolute inset-x-0 top-0 z-30 h-\[var\(--chrome-strip-h\)\]"/,
+		"the lane must be an absolute overlay at y0: a reserved row is the 32px band that starts every panel below the traffic lights",
+	);
+	assert.doesNotMatch(
+		laneTag,
+		/h-8 shrink-0|linear-gradient|style=/,
+		"the lane must reserve no height and paint no ground: the columns behind it own the strip, and the gradient is what only ever approximated them",
+	);
 	const rowAfterLane = shell.indexOf(
 		'className="flex min-h-0 flex-1 overflow-hidden"',
 	);
 	assert.notEqual(rowAfterLane, -1);
 	assert.ok(
 		lane < rowAfterLane,
-		"the lane must be the first child of the shell column, above the columns it insets",
+		"the lane must stay the first child of the shell column, above the columns it drags",
 	);
-	assert.equal(
-		shell.split('data-titlebar-lane=""').length - 1,
-		1,
-		"one shell tree, one lane - a second branch is how the overlay once dropped the pane",
+	assert.doesNotMatch(
+		shell,
+		/flushTop/,
+		"the route opt-in must be gone: the lane is an overlay for every route, and a prop that lifts some columns is how the next route is forgotten",
+	);
+	assert.doesNotMatch(
+		readSource("src/renderer/src/app.tsx"),
+		/flushTop/,
+		"`app.tsx` must not hand any route a lane exception",
 	);
 });
 

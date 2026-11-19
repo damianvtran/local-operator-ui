@@ -24,7 +24,7 @@
  *   shim — in the documented `headless` window mode (`src/main/window-mode.ts` —
  *   a window that is never shown, so nothing can steal the operator's focus).
  *   The binary and not the shim is what makes the teardown reach the app; the
- *   comment on `ELECTRON_BIN` carries the measurement that decided it;
+ *   comment on `electronBinary` carries the measurement that decided it;
  * - the app's own gated dev-driver bridge (`src/main/dev-driver.ts`,
  *   `docs/agent-driver.md`) for the verbs, reached over CDP `Runtime.evaluate`
  *   on the app's OWN debugging port — the same channel AGENTS.md documents for
@@ -89,13 +89,28 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-default-effort|settings-language|settings-transcript-display|settings-account-policy|settings-gate|palette|palette-recents|hit-zones|route-tops|project-detail|project-open|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|mini-view|drafts|scrollbar-fade|composer-drop|output-artifact|image-copy|hub-links|hub-skills|hub-skills-egress|none|skill-seal>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|profile-proposals|radient-issue|settings-model|settings-fields|settings-default-effort|settings-language|settings-transcript-display|settings-account-policy|settings-gate|agent-messages|palette|palette-recents|hit-zones|route-tops|project-detail|project-update-assets|project-open|library-asset|mesh-tab|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|sidebar-layout|sidebar-docking|mini-view|drafts|stale-team-draft|team-newchat|scrollbar-fade|composer-drop|attach|output-artifact|image-copy|hub-links|hub-links-actions|hub-skills|hub-skills-egress|none|skill-seal|notification-sounds|diff-history>
  *                          which built-in scene to run (default: states)
+ *   --attach <absolute-path> (with --scene attach, repeatable) one file the
+ *                          paperclip press stages; ONLY the native picker is
+ *                          replaced, by the queue in src/main/dev-driver-attach.ts
+ *   --attach-prompt <text> (with --scene attach) the prompt typed and SENT after
+ *                          the files are staged; the run then waits for the
+ *                          daemon's assistant turn and reports the session id,
+ *                          the user row's document blocks and the final text
+ *   --attach-expect-answer <substring>  (with --attach-prompt) a substring the
+ *                          assistant's final text must contain
  *   --drop-expect <accepted|discarded>  (with --scene composer-drop) which half of
  *                          the issue #789 pair this run records: the head tree,
  *                          where a dropped file attaches, or the base tree, where
  *                          the same gesture leaves nothing behind
- *   --project <key>        (with --scene project-detail, project-inline-edit or
+ *   --mesh-expect <tombstones|collapsed>  (with --scene mesh-tab) which half of
+ *                          the pair this run records: `tombstones` is the base
+ *                          tree, which draws every member id - revoked ones
+ *                          included - as a device node; `collapsed` is the head
+ *                          tree, which draws only live devices and carries the
+ *                          revoked memberships in one inspectable count
+ *   --project <key>        (with --scene project-detail, project-update-assets, project-inline-edit or
  *                          project-open) the seeded project the scene drives;
  *                          the seed decides the name and a default would
  *                          photograph whatever it happened to use
@@ -106,6 +121,10 @@
  *                          `stay` is the head tree, where the page opens at
  *                          scrollTop 0, unfocused, with the strip below the
  *                          fold.
+ *   --proposal-name <name> (with --scene profile-proposals) the record whose
+ *                          pending proposal is driven; default the first one
+ *   --stale-name <name>    (with --scene profile-proposals) a record with a stale
+ *                          proposal: Accept must be disabled, nothing applied
  *   --session <id>         (with --scene output-artifact) the seeded session the
  *                          scene reads; the fixture is the attachment lane's own
  *                          seed, and a default would photograph whatever chat
@@ -135,10 +154,11 @@
  *                          this run is in: `open` (the default) asserts that
  *                          `/help`, `/theme`, `/login`, `/logout` and
  *                          `/resume` typed on a new chat each mount their
- *                          picker with no refusal sentence; `refused` asserts
- *                          the dispatcher's own sentence for each and no
- *                          picker - the base tree's half of the pair (issue
- *                          #625)
+ *                          picker with no refusal sentence, and that `/fast`
+ *                          mounts its dialog there and records what it claims;
+ *                          `refused` asserts the dispatcher's own sentence for
+ *                          each and no picker - the base tree's half of the pair
+ *                          (issues #625 and #1265)
  *   --seal-expect <seal|payload>  (with --scene skill-seal) which half of the
  *                          `$skill` pair this run is in: `seal` (the default)
  *                          asserts the typed line, the folded purpose and the
@@ -188,6 +208,13 @@
  *                          LOCAL_OPERATOR_DESKTOP_TOKEN; the run asserts both
  *   --backend-records <dir> the serve record that backend wrote for itself, which
  *                          `discovery.ts` needs before it admits the daemon
+ *   --allowlist-id <id>    (with --scene agent-messages) the endpoint or account
+ *                          identifier the reach editor adds, then removes
+ *   --allowlist-kind <endpoint|account>  (with --scene agent-messages) which
+ *                          kind that identifier is (default: endpoint)
+ *   --expect-start <b|c>   (with --scene agent-messages) the state the rig is
+ *                          expected to start in: B enables through the consent
+ *                          on-ramp first, C assumes an enabled endpoint
  *   --backend-revive <cmd> (with --scene connection-drop) the command that starts
  *                          a fresh daemon on the --backend address, run with this
  *                          process's environment when the scene needs the backend
@@ -232,7 +259,7 @@ import { get as httpGet } from "node:http";
 import { createRequire } from "node:module";
 import { connect, createServer } from "node:net";
 import { tmpdir } from "node:os";
-import { basename, join, resolve, sep } from "node:path";
+import { basename, isAbsolute, join, resolve, sep } from "node:path";
 /*
  * A NATIVE dependency, and its ONE import-time side effect is recorded here
  * rather than hidden: loading sharp's vendored libvips sets `VIPSHOME` to the
@@ -241,7 +268,14 @@ import { basename, join, resolve, sep } from "node:path";
  * below for the rest of the import contract.
  */
 import sharp from "sharp";
+import { sceneAgentMessages } from "./agent-messages-scene.mjs";
 import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
+import {
+	diffHistorySceneRefusal,
+	parseDiffExpect,
+	sceneDiffHistory,
+} from "./diff-history-scene.mjs";
+import { installedElectronBinary } from "./electron-runtime-path.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
 import { EVIDENCE_TZ } from "./evidence-tz.mjs";
 import { isPaintedScrollBox } from "./hub-guard-geometry.mjs";
@@ -260,6 +294,9 @@ import {
 	IMAGEGEN_CALL_FOLD,
 	IMAGEGEN_FIXTURE_SESSION,
 } from "./imagegen-card-fixture.mjs";
+import { sceneLibraryAsset } from "./library-asset-scene.mjs";
+import { sceneMeshTab } from "./mesh-scene.mjs";
+import { sceneNotificationSounds } from "./notification-sounds-scene.mjs";
 import { withNotificationsOff } from "./notifications-off.mjs";
 /*
  * Every python this harness starts is handed an environment it has decided about,
@@ -269,9 +306,16 @@ import { withNotificationsOff } from "./notifications-off.mjs";
  * interpreter, so a new one has to say so there as well as here.
  */
 import { pythonChildEnv } from "./python-child-env.mjs";
+import { sceneSidebarDocking } from "./sidebar-docking-scene.mjs";
+import {
+	prepareSidebarLayoutScene,
+	sceneSidebarLayout,
+} from "./sidebar-layout-scene.mjs";
 import { SEAL_AUDIT_PURPOSE } from "./skill-seal-fixture.mjs";
 import { sceneSounds } from "./sounds-scene.mjs";
+import { sceneTeamNewchat } from "./team-newchat-scene.mjs";
 import { withTelemetryOff } from "./telemetry-off.mjs";
+import { sceneTemporaryChats } from "./temporary-chats-scene.mjs";
 import { sceneTurnHighlights } from "./turn-highlights-scene.mjs";
 
 const ROOT = process.cwd();
@@ -289,29 +333,15 @@ const ROOT = process.cwd();
  * the run had just deleted, one still answering `GET /json/version` on its
  * `--remote-debugging-port`.
  *
- * `require("electron")` is the same resolution `bin/local-operator-ui.js` uses,
- * so the harness drives the runtime the app ships against, and `child.pid` is
- * the app's own main process — which is what makes the exact-pid teardown below
- * reach it, and what lets the run say out loud which runtime a frame came from
- * (`electronRuntime()`).
+ * Installed package metadata gives the same executable without executing
+ * Electron45's installer-on-require index. Resolution is lazy and refuses a
+ * missing runtime. The app's own main PID, pin checks and exact-PID teardown
+ * remain unchanged; importing a proof script cannot install a runtime.
  */
-const ELECTRON_BIN = (() => {
-	const resolveFromRepo = createRequire(join(ROOT, "package.json"));
-	let binary;
-	try {
-		binary = resolveFromRepo("electron");
-	} catch (error) {
-		throw new Error(
-			`cannot resolve the Electron runtime from ${ROOT}: ${error?.message ?? error}\nInstall this branch's own dependencies first: pnpm install --frozen-lockfile`,
-		);
-	}
-	if (typeof binary !== "string" || !existsSync(binary)) {
-		throw new Error(
-			`the Electron runtime is not on disk at ${String(binary)}\npnpm install --frozen-lockfile (or \`npx install-electron --no\`) fetches it.`,
-		);
-	}
-	return binary;
-})();
+// Resolve only when a launch/main preflight needs it. Even require("electron")
+// is not inert on Electron45: it installs missing dist on import. The shared
+// metadata resolver never executes that package or bootstraps a dependency.
+const electronBinary = () => installedElectronBinary(ROOT);
 
 /**
  * The Electron version installed here, and the version this branch pins.
@@ -346,6 +376,53 @@ function argValue(name, fallback = null) {
 	const at = process.argv.indexOf(name);
 	return at === -1 ? fallback : (process.argv[at + 1] ?? fallback);
 }
+
+/**
+ * Every value of a REPEATABLE flag, in argv order.
+ *
+ * `argValue` answers the first, which is right for a flag that names one thing;
+ * `--attach` names a LIST (the paperclip can stage several files), so reading it
+ * through `argValue` would silently drop every file after the first.
+ */
+function argValues(name) {
+	const values = [];
+	for (let index = 0; index < process.argv.length; index += 1) {
+		const argument = process.argv[index];
+		if (argument === name) {
+			const value = process.argv[index + 1];
+			if (value !== undefined && !value.startsWith("--")) {
+				values.push(value);
+				index += 1;
+			}
+			continue;
+		}
+		if (argument.startsWith(`${name}=`))
+			values.push(argument.slice(name.length + 1));
+	}
+	return values;
+}
+
+/**
+ * The files this run's paperclip presses stage (see `--attach` in the header).
+ *
+ * A separate list from every other flag because it is passed to the APP, not
+ * read by a scene: main answers the next `show-open-dialog` with these paths
+ * (`src/main/dev-driver-attach.ts`), so the press, the IPC and `addAttachment`
+ * are the real ones and only the native picker is replaced.
+ */
+const ATTACH_PATHS = argValues("--attach");
+/**
+ * A prompt to send AFTER the paperclip stages its files (`--attach-prompt`).
+ *
+ * The staged-chip claim is the picker half; this is the half QA needs to prove
+ * the paperclip reaches an ANSWER: the prompt is typed into the composer's real
+ * field, the real Send control is pressed, and the run waits for the daemon's
+ * own assistant turn. Absent, the scene stops at the staged frame exactly as it
+ * did before.
+ */
+const ATTACH_PROMPT = argValue("--attach-prompt", null);
+/** The substring the assistant's final text must contain (`--attach-expect-answer`). */
+const ATTACH_EXPECT_ANSWER = argValue("--attach-expect-answer", null);
 
 const SCENE = argValue("--scene", "states");
 const OUT_ARG = argValue("--out", null);
@@ -385,6 +462,13 @@ const STUB_LOG = argValue("--stub-log", null);
  * from argv (a token in a command line lands in the shell's history).
  */
 const BACKEND = argValue("--backend", null);
+/**
+ * `--scene profile-proposals`: the pending proposal to drive, by record name
+ * (the first actionable one when absent), and an optional name whose proposal is
+ * stale. Names, not ids: the seed decides ids and the scene reads them back.
+ */
+const PROPOSAL_NAME = argValue("--proposal-name", null);
+const STALE_NAME = argValue("--stale-name", null);
 /**
  * Which half of the `composer-drop` pair this run records (issue #789).
  *
@@ -436,6 +520,15 @@ const PROJECT = argValue("--project", null);
  * seed created rather than an id baked in here.
  */
 const SESSION = argValue("--session", null);
+/*
+ * `--scene diff-history` only (see `scripts/diff-history-scene.mjs`): the
+ * subagent job whose Run panel row opens the child reader, the QA handshake
+ * opt-in, a second session for the live step, and the fixture's ground truth.
+ */
+const DIFF_CHILD = argValue("--child", null);
+const DIFF_HANDSHAKE = process.argv.includes("--handshake");
+const DIFF_LIVE_SESSION = argValue("--live-session", null);
+const DIFF_EXPECT = argValue("--diff-expect", null);
 /**
  * The command that starts a fresh daemon on the `--backend` address, for
  * `--scene connection-drop`'s reconnect half.
@@ -571,16 +664,17 @@ const AUTHORING_EXPECT = argValue("--authoring-expect", "refresh");
  */
 const BIN_EXPECT = argValue("--bin-expect", "prompt");
 /**
- * WHICH CLAIM A `--scene sessionless-slash` RUN IS IN (issue #625).
+ * WHICH CLAIM A `--scene sessionless-slash` RUN IS IN (issues #625 and #1265).
  *
  * `open` (the default) is the head tree: `/help`, `/theme`, `/login`,
  * `/logout` and `/resume` typed on a pane with no conversation each mount
- * their picker, and the transcript carries no refusal sentence. `refused` is
- * the base tree: the same five gestures each get the dispatcher's own sentence
- * ("<word> needs an open conversation. Start one first.") and no picker
- * mounts. One scene, both halves, the same bytes - the pair is only readable
- * if the same code produced both, which is why the flag names a claim rather
- * than a tree.
+ * their picker, the transcript carries no refusal sentence, and `/fast` - which
+ * addresses a conversation and therefore used to be refused here - mounts its
+ * dialog and records what its pick claims. `refused` is the base tree: the same
+ * gestures each get the dispatcher's own sentence ("<word> needs an open
+ * conversation. Start one first.") and no picker mounts. One scene, both
+ * halves, the same bytes - the pair is only readable if the same code produced
+ * both, which is why the flag names a claim rather than a tree.
  *
  * A value the scene does not know is refused rather than defaulted, for the
  * same reason `--authoring-expect` and `--bin-expect` are.
@@ -1061,7 +1155,7 @@ async function settledWithin(promise, ms) {
  * Kill by exact pid, never a pattern: a `pkill` would take the operator's app too.
  *
  * The signal goes to the app's OWN main process — the pid `spawn` returned once
- * the shim is gone (see `ELECTRON_BIN`) — and the escalation below targets that
+ * the shim is gone (see `electronBinary`) — and the escalation below targets that
  * same pid. That pairing is the whole fix: a SIGTERM the app does honour, and a
  * SIGKILL that lands on the app rather than on a shim that has already exited.
  * Helper processes (renderer, GPU, utility) are the app's own children and exit
@@ -1159,9 +1253,10 @@ async function reapStrays({ graceMs = 5000 } = {}) {
 	}
 }
 
-async function reapLiveBoots({ code, why }) {
-	if (reaping.running) return;
-	reaping.running = true;
+async function drainLiveBoots({ why, strict = true }) {
+	// Imported producers can own additional resources. They must be able to
+	// join app teardown WITHOUT exiting before their own finally blocks run.
+	const errors = [];
 	const boots = [...liveBoots];
 	if (boots.length > 0) {
 		say(`\n[${why}] stopping ${boots.length} app(s) this run started`);
@@ -1171,8 +1266,41 @@ async function reapLiveBoots({ code, why }) {
 			await stopApp(handle);
 		} catch (error) {
 			say(`[${why}] teardown threw: ${error?.message ?? error}`);
+			errors.push(error);
 		}
 	}
+	if (strict) {
+		for (const handle of boots) {
+			if (handle.child.exitCode === null && handle.child.signalCode === null)
+				errors.push(new Error(`owned app ${handle.child.pid} has not exited`));
+		}
+		// Observe the existing run-specific profile witness; never kill an
+		// unidentified descendant merely to turn a failed cleanup green.
+		const deadline = Date.now() + 5000;
+		for (;;) {
+			const observed = thisRunsProcesses();
+			if (!observed.measured) {
+				errors.push(new Error("owned descendant observation unavailable"));
+				break;
+			}
+			if (observed.lines.length === 0) break;
+			if (Date.now() >= deadline) {
+				errors.push(new Error("owned app descendants have not settled"));
+				break;
+			}
+			await wait(100);
+		}
+	}
+	if (strict && errors.length)
+		throw new AggregateError(errors, "owned app drain failed");
+	return { stopped: boots.length, clean: errors.length === 0 };
+}
+
+async function reapLiveBoots({ code, why }) {
+	if (reaping.running) return;
+	reaping.running = true;
+	// Preserve the historical standalone reaper's logging/exit disposition.
+	await drainLiveBoots({ why, strict: false });
 	process.exit(code);
 }
 
@@ -1243,9 +1371,46 @@ function thisRunsProcesses() {
 	return { measured: true, lines, detail: `${lines.length} process(es)` };
 }
 
+/**
+ * Which window mode this boot may ask for.
+ *
+ * `headless` is the default and needs no argument. `normal` is refused unless
+ * the run is the notifications scene itself on a GitHub-HOSTED runner: those are
+ * the only conditions under which showing a window cannot steal a real person's
+ * focus, and the check is on the actual runner predicate rather than on `CI`,
+ * which a self-hosted runner also sets.
+ */
+function resolvedWindowMode(requested) {
+	if (requested === "headless") return "headless";
+	if (requested !== "normal")
+		throw new Error(
+			`launchApp's windowMode accepts "headless" or "normal" (got ${JSON.stringify(requested)})`,
+		);
+	const hosted = process.env.RUNNER_ENVIRONMENT === "github-hosted";
+	if (
+		process.env.LOCAL_OPERATOR_UI_NATIVE_SCENE !== "notifications" ||
+		process.env.CI !== "true" ||
+		process.env.GITHUB_ACTIONS !== "true" ||
+		!hosted ||
+		process.platform !== "darwin"
+	)
+		throw new Error(
+			/*
+			 * A REFUSAL, NEVER A FALLBACK. Reporting headless success here would
+			 * claim the foreground proof this mode exists to obtain.
+			 */
+			"a shown window is allowed only for the notifications native scene on an ephemeral GitHub-hosted macOS runner (LOCAL_OPERATOR_UI_NATIVE_SCENE=notifications, CI=true, GITHUB_ACTIONS=true, RUNNER_ENVIRONMENT=github-hosted, darwin); this environment is refused rather than relaunched headless",
+		);
+	return "normal";
+}
+
 async function launchApp({
 	armed,
 	apiUrl,
+	// Strict producers bind the executable verified before backend setup. Keep
+	// generic callers' historic ambient override, but never re-resolve a bound
+	// launch through mutable parent environment after an asynchronous preflight.
+	verifiedElectronBinary,
 	/*
 	 * Defaults for the two names a caller that is NOT the CLI has no reason to
 	 * know: the CLI passes both, so its behaviour is unchanged.
@@ -1262,6 +1427,28 @@ async function launchApp({
 	 */
 	dotenvLines = [],
 	envExtra = {},
+	/*
+	 * Absolute paths the app's next file dialog answers with. Only an `attach`
+	 * scene passes any; every other boot (and every gate-check boot) gets none,
+	 * so a flag on the command line cannot leak into a scene that did not ask.
+	 */
+	attachPaths = [],
+	/*
+	 * THE ONE SANCTIONED FOREGROUND LAUNCH (notifications lane, core `notifications.read`).
+	 *
+	 * Every other scene here launches `--window-mode=headless`, because a test
+	 * must never take the operator's focus. A positive foreground receipt is the
+	 * one proof headless CANNOT produce: main's guard reads the REAL
+	 * `BrowserWindow`, so a hidden window must refuse and only a genuinely shown,
+	 * focused one may commit a read. So this is an explicit, separately declared
+	 * mode that refuses everywhere except the narrow case that can own a desktop
+	 * honestly: an ephemeral GitHub-HOSTED macOS runner running the notifications
+	 * scene. It is not a general capability, it does not weaken the default, and
+	 * a self-hosted runner or a developer machine is refused by name rather than
+	 * silently downgraded to headless (which would turn a missing display into a
+	 * false PASS).
+	 */
+	windowMode = "headless",
 }) {
 	/*
 	 * THE BACKEND BINDING IS REQUIRED, AND ITS ABSENCE IS A REFUSAL RATHER
@@ -1280,6 +1467,14 @@ async function launchApp({
 	 * binding for later calls that omit the argument (measured: a `null` call
 	 * used to clear the binding a following omitted-argument call needed).
 	 */
+	if (
+		verifiedElectronBinary !== undefined &&
+		verifiedElectronBinary !== installedElectronBinary(ROOT, null)
+	) {
+		throw new Error(
+			"launchApp's verified Electron executable disagrees with the installed runtime",
+		);
+	}
 	if (apiUrl !== undefined) {
 		if (typeof apiUrl !== "string" || apiUrl.trim() === "") {
 			throw new Error(
@@ -1376,11 +1571,11 @@ async function launchApp({
 		throw new Error(`picked inspect port ${inspectPort} is in use`);
 
 	/*
-	 * The BINARY, not `node_modules/.bin/electron` — see `ELECTRON_BIN`. The shim
+	 * The BINARY, not `node_modules/.bin/electron` — see `electronBinary`. The shim
 	 * would make `child.pid` the shim's pid and orphan the app the shim starts.
 	 */
 	const child = spawn(
-		ELECTRON_BIN,
+		verifiedElectronBinary ?? electronBinary(),
 		[
 			// The app directory as an argument rather than `.`: argv[1] is what
 			// Electron loads, so the cwd can be the scratch directory that the
@@ -1399,8 +1594,9 @@ async function launchApp({
 			`--user-data-dir=${USER_DATA}-${tag}`,
 			`--remote-debugging-port=${port}`,
 			`--inspect=${inspectPort}`,
-			"--window-mode=headless",
+			`--window-mode=${resolvedWindowMode(windowMode)}`,
 			`--window-size=${WINDOW_SIZE}`,
+			...attachPaths.map((path) => `--attach=${path}`),
 			/*
 			 * The app is CHROMIUM, and this run redirects `HOME`: without this switch
 			 * OSCrypt finds no login keychain under the scratch home and asks macOS to
@@ -1926,6 +2122,7 @@ export const rendererDriverApi = Object.freeze({
 	verb,
 	capture,
 	reapLiveBoots,
+	drainLiveBoots,
 });
 
 /** How many RPC envelopes this run has sent, for their ids. */
@@ -2725,8 +2922,13 @@ function connectionsTo(pid, url) {
 		return { measured: false, detail: `cannot parse ${url}` };
 	}
 	return new Promise((resolveProbe) => {
+		// WHY per platform: Linux distributions install lsof at /usr/bin/lsof,
+		// so the macOS-only /usr/sbin path made Linux native-artifact QA report
+		// an installed probe as "lsof unavailable" and leave isolation unmeasured.
+		// Still an absolute path (no PATH lookup); a missing binary still fails
+		// closed through the error handlers below.
 		const probe = spawn(
-			"/usr/sbin/lsof",
+			process.platform === "linux" ? "/usr/bin/lsof" : "/usr/sbin/lsof",
 			["-a", "-p", String(pid), "-i", "-n", "-P"],
 			{
 				stdio: ["ignore", "pipe", "ignore"],
@@ -6990,6 +7192,194 @@ const rowSpaceBudget = (reading) =>
  *     --backend http://127.0.0.1:18234 --backend-records /tmp/row-space-stub-records \
  *     --seed-onboarding-complete --theme localOperatorDark --out /tmp/row-space-dark
  */
+/**
+ * `--scene background-work` (evidence set `sidebar-background-work`, 2026-11-07).
+ *
+ * THE OPERATOR'S REPORT: a session whose turn had ended while a subagent and a
+ * background job still ran looked idle in the sidebar. Run against
+ * `docs/evidence/sidebar-row-space/harness/stub-daemon.mjs --late background-work
+ * --peers --late-ms <n>`: the target row boots `idle` with core's
+ * `background_work` and counts (1 subagent, 1 job), two remote rows sit on a
+ * reachable and a link-down peer, and after `--late-ms` ONE `session_status`
+ * frame zeroes the counts.
+ *
+ * `--bg-expect before` is the origin/main build: the row files by its code
+ * alone (not Running, no lane), and the scene stops after the resting frames.
+ * `--bg-expect after` also reads the 1->0 transition with an in-page
+ * per-animation-frame recorder - every (section, lane) pair the row passes
+ * through - so "no flicker" is a reading of every painted frame rather than a
+ * guess from two stills, and captures consecutive frames across it.
+ */
+async function sceneBackgroundWork(cdp) {
+	const EXPECT = argValue("--bg-expect", "after");
+	const TARGET = "b3f1a09c7d52";
+	const REMOTE = "c0ffee0a0b01";
+	const REMOTE_DOWN = "c0ffee0a0b02";
+	const stateOf = (id) =>
+		`(() => { const row = document.querySelector('[data-session-row="${id}"]'); if (!row) return null; return { section: row.closest("[data-chat-section]")?.getAttribute("data-chat-section") ?? null, lane: row.querySelector("[data-background-work]") !== null, text: (row.textContent ?? "").replace(/\\s+/g, " ").trim() }; })()`;
+	const read = async (id) => cdp.evaluate(stateOf(id));
+	if (THEME) {
+		await verb(cdp, "setTheme", THEME);
+		const themed = await verb(cdp, "state");
+		check(
+			`the app is in the palette this run photographs (${THEME})`,
+			themed.theme === THEME,
+			`theme is ${themed.theme}`,
+		);
+	}
+	const booted = await waitForCondition(cdp, stateOf(TARGET), 20_000);
+	check("the target row is painted", booted.ok, JSON.stringify(booted.last));
+	const remoteSeen = await waitForCondition(cdp, stateOf(REMOTE), 20_000);
+	note("remote row", JSON.stringify(remoteSeen.last));
+	await parkPointer(cdp);
+	await wait(600);
+	const rest = {
+		target: await read(TARGET),
+		remote: await read(REMOTE),
+		remoteDown: await read(REMOTE_DOWN),
+	};
+	note("resting states", JSON.stringify(rest));
+	if (EXPECT === "before") {
+		check(
+			"BEFORE: the row with background work files by its code alone",
+			rest.target?.section !== "running" && rest.target?.lane === false,
+			JSON.stringify(rest.target),
+		);
+		await captureSettled(cdp, "bg-before");
+		await hoverOver(cdp, `[data-session-row="${TARGET}"]`);
+		await wait(1200);
+		await capture(cdp, "bg-before-hover");
+		await parkPointer(cdp);
+		return;
+	}
+	check(
+		"AFTER: the idle row with 1 subagent + 1 job is under Running with the lane",
+		rest.target?.section === "running" && rest.target?.lane === true,
+		JSON.stringify(rest.target),
+	);
+	check(
+		"AFTER: the clause names the work",
+		rest.target?.text.includes("1 subagent, 1 job running") === true,
+		rest.target?.text,
+	);
+	check(
+		"AFTER: the reachable remote row is Running with the lane",
+		rest.remote?.section === "running" && rest.remote?.lane === true,
+		JSON.stringify(rest.remote),
+	);
+	check(
+		"AFTER: the link-down remote row claims no work",
+		rest.remoteDown === null ||
+			(rest.remoteDown.section !== "running" && rest.remoteDown.lane === false),
+		JSON.stringify(rest.remoteDown),
+	);
+	const laneBox = await cdp.evaluate(
+		`(() => { const row = document.querySelector('[data-session-row="${TARGET}"]'); const lane = row?.querySelector("[data-background-work]"); const cell = lane?.parentElement; const b = row?.querySelector("[data-chat-row]") ?? row; if (!lane || !cell) return null; const r = (e) => { const x = e.getBoundingClientRect(); return { x: x.x, y: x.y, w: x.width, h: x.height }; }; return { lane: r(lane), cell: r(cell), row: r(b), fill: getComputedStyle(lane).color }; })()`,
+	);
+	note("lane geometry (CSS px)", JSON.stringify(laneBox));
+	check(
+		"the lane is 10x2 under the 16px cell, inside the row",
+		laneBox !== null &&
+			laneBox.lane.w === 10 &&
+			laneBox.lane.h === 2 &&
+			laneBox.cell.w === 16 &&
+			laneBox.lane.y >= laneBox.cell.y + laneBox.cell.h &&
+			laneBox.lane.y + laneBox.lane.h <= laneBox.row.y + laneBox.row.h,
+		JSON.stringify(laneBox),
+	);
+	await captureSettled(cdp, "bg-running");
+	await hoverOver(cdp, `[data-session-row="${TARGET}"]`);
+	await wait(1200);
+	const tooltip = await cdp.evaluate(
+		`[...document.querySelectorAll('[role="tooltip"]')].map((e) => e.textContent).join(" | ")`,
+	);
+	note("tooltip under the pointer", tooltip);
+	/*
+	 * Design review round 1, D1: on a resting code the clause IS the status line,
+	 * so the tooltip never reads "Idle · 1 subagent, 1 job running" on a row the
+	 * list files under Running.
+	 */
+	check(
+		"AFTER: the resting row's tooltip states the clause alone, not 'Idle · …'",
+		tooltip.includes("1 subagent, 1 job running") &&
+			!/\b(Idle|Recent) · /u.test(tooltip),
+		tooltip,
+	);
+	await capture(cdp, "bg-running-hover");
+	await parkPointer(cdp);
+	/*
+	 * FORCED COLORS (design review round 1, D2). The lane is an SVG rect with
+	 * `fill=currentColor` precisely because a `background-color` span is erased
+	 * in forced-colors mode while `color` is forced to a system colour; this is
+	 * the frame that shows it, emulated through CDP the way the reduced-motion
+	 * legs above emulate theirs, and reset before the transition is recorded.
+	 */
+	await cdp.send("Emulation.setEmulatedMedia", {
+		features: [{ name: "forced-colors", value: "active" }],
+	});
+	await wait(400);
+	const forced = await cdp.evaluate(
+		`(() => { const lane = document.querySelector('[data-session-row="${TARGET}"] [data-background-work]'); if (!lane) return null; const r = lane.getBoundingClientRect(); const probe = document.createElement("span"); probe.style.color = "CanvasText"; document.body.append(probe); const canvasText = getComputedStyle(probe).color; probe.remove(); return { active: matchMedia("(forced-colors: active)").matches, w: r.width, h: r.height, canvasText, rectFill: getComputedStyle(lane.querySelector("rect")).fill }; })()`,
+	);
+	note("lane under forced-colors", JSON.stringify(forced));
+	check(
+		"forced-colors: the lane still paints, 10x2, in the system's CanvasText",
+		forced !== null &&
+			forced.active === true &&
+			forced.w === 10 &&
+			forced.h === 2 &&
+			forced.rectFill === forced.canvasText,
+		JSON.stringify(forced),
+	);
+	await capture(cdp, "bg-running-forced-colors");
+	await cdp.send("Emulation.setEmulatedMedia", { features: [] });
+	await wait(250);
+	/* The recorder: one sample per painted frame until the row has re-filed. */
+	await cdp.evaluate(
+		`(() => { window.__bgSamples = []; const tick = () => { const s = ${stateOf(TARGET)}; const last = window.__bgSamples.at(-1); const key = s ? s.section + "|" + s.lane : "absent"; if (!last || last.key !== key) window.__bgSamples.push({ key, at: performance.now() }); window.__bgRaf = requestAnimationFrame(tick); }; tick(); return true; })()`,
+	);
+	const left = await waitForCondition(
+		cdp,
+		`(() => { const s = ${stateOf(TARGET)}; return s !== null && s.section !== "running" && !s.lane; })()`,
+		90_000,
+		40,
+	);
+	for (let index = 0; index < 4; index += 1) {
+		await capture(cdp, `bg-transition-${index}`);
+		await wait(120);
+	}
+	await cdp.evaluate("cancelAnimationFrame(window.__bgRaf)");
+	const samples = await cdp.evaluate("window.__bgSamples");
+	note(
+		"per-frame (section|lane) sequence for the target",
+		JSON.stringify(samples),
+	);
+	const keys = samples.map((sample) => sample.key);
+	check(
+		"the 1->0 transition is ONE step: running|true straight to <time section>|false",
+		left.ok &&
+			keys.length === 2 &&
+			keys[0] === "running|true" &&
+			keys[1].endsWith("|false") &&
+			!keys[1].startsWith("running"),
+		JSON.stringify(keys),
+	);
+	await captureSettled(cdp, "bg-finished");
+	/* The remote row settles on the mesh read's own 30 s poll, not the feed. */
+	const remoteLeft = await waitForCondition(
+		cdp,
+		`(() => { const s = ${stateOf(REMOTE)}; return s !== null && s.section !== "running" && !s.lane; })()`,
+		45_000,
+		250,
+	);
+	check(
+		"the remote row leaves Running once its peer's read reports no work",
+		remoteLeft.ok,
+		JSON.stringify(remoteLeft.last),
+	);
+	await captureSettled(cdp, "bg-remote-finished");
+}
+
 async function sceneRowSpace(cdp) {
 	const frames = [];
 	/*
@@ -9690,9 +10080,16 @@ async function sceneTurnCollapse(cdp) {
 			(finished.runIds ?? "").split(" ").length >= 3,
 		JSON.stringify(finished),
 	);
+	/*
+	 * TWO STAMPS, per message (operator, 2026-10-20): the reader's own message
+	 * keeps its time on its action line, and the collapsed run carries the closing
+	 * answer's on the bar. The count was one while the stamp was a fact about the
+	 * turn; it is two now, and the assertion is `===` rather than `>=` because a
+	 * third would mean a stamp the per-message rule does not own.
+	 */
 	check(
-		"completed: the bar carries the turn's one stamp and the foot stands down",
-		finished !== null && finished.stamps === 1 && finished.foot === false,
+		"completed: the bar carries the answer's stamp and the message keeps its own",
+		finished !== null && finished.stamps === 2 && finished.foot === false,
 		JSON.stringify(finished),
 	);
 	const completedFrame = await captureSettled(cdp, "turn-collapse-completed");
@@ -11325,8 +11722,10 @@ async function sceneQuestionDock(cdp) {
  *
  * WHY THIS IS A SCENE OF ITS OWN, and why it needs no backend. §I is a set of
  * statements about BOXES: the chat pane keeps a 480px floor; the canvas docks at
- * `min(560, available - 480)`; where that leaves less than the canvas's own 400px
- * floor the canvas stops docking - the `overlay` literal, which draws a flex dock
+ * `min(1200, available - 480)` - `RIGHT_SLOT_MAX_PX`, the ONE ceiling every
+ * right-slot pane draws inside since #1525; where that leaves less than the
+ * canvas's own 400px floor the canvas stops docking - the `overlay` literal,
+ * which draws a flex dock
  * at the row's leftover rather than covering the chat (`canvasPaneMode` carries
  * the note); the sidebar yields to the 56px strip first. Nothing in that list is
  * about data, so the run does not
@@ -11342,14 +11741,15 @@ async function sceneQuestionDock(cdp) {
  *
  * A reader should run it at the four widths §I is written about:
  *
- *     --scene floors --window-size 1380x900   # docked: row 1120, canvas at its 560 cap
- *     --scene floors --window-size 1024x673   # the sidebar's dock threshold: dock 284 < 400 -> overlay
- *     --scene floors --window-size 960x673    # strip: row 904, dock 424 -> docked
- *     --scene floors --window-size 800x600    # strip: row 744, dock 264 -> overlay
+ *     --scene floors --window-size 1380x900   # docked: row 1076 (1380 - 260 sidebar - 44 rail),
+ *                                             #          canvas at the 596 that row leaves
+ *     --scene floors --window-size 1024x673   # canvas fit-yield: strip, canvas overlays
+ *     --scene floors --window-size 960x673    # canvas fit-yield: strip, canvas docks
+ *     --scene floors --window-size 800x600    # expanded dock capped to 276, canvas overlays
  *
- * The four are the two bands of `resolveSidebarLayout` crossed with the two canvas
- * modes, and the assertions below are written about the RULES rather than about the
- * sizes so the same scene is honest at any width a reviewer passes.
+ * The four exercise the independent canvas fit-yield and both canvas modes.
+ * Sidebar docking itself follows the persisted preference at every width (#1077);
+ * only a render-only cap changes the drawn width at 800.
  */
 async function sceneFloors(cdp) {
 	const facts = await factsOf(cdp);
@@ -11426,10 +11826,10 @@ async function sceneFloors(cdp) {
 	 * byte-identical, so it is also the scene's proof that the layout has STOPPED MOVING -
 	 * and the canvas's own wrapper carries `transition-[width] duration-base`, which means a
 	 * reading taken before that ends describes a layout that never existed on screen.
-	 * Measured, 2026-09-24: reading first caught chat 942 / canvas 179 at 1380x900 and FAILED
-	 * the pane's 400px floor, while the settled frame shows the 560/560 shape. A false FAIL is
-	 * as bad as a false PASS: it costs a lane a hunt through the code for a defect that is in
-	 * the measurement.
+	 * Measured, 2026-09-24: reading first caught chat 942 / canvas 179 at 1380x900 and
+	 * FAILED the pane's 400px floor, while the settled frame showed the 560/560 shape
+	 * that tree drew. A false FAIL is as bad as a false PASS: it costs a lane a hunt
+	 * through the code for a defect that is in the measurement.
 	 */
 	const mode = paneMounted.last ?? null;
 	const frame = await captureSettled(
@@ -11509,10 +11909,21 @@ async function sceneFloors(cdp) {
 				canvas.width >= 400,
 				`canvas.width=${canvas.width} in a row of ${row.width}: below 400 the pane stops docking (the overlay literal)`,
 			);
+			/*
+			 * THE CEILING IS DERIVED FROM THE MEASURED ROW, not written as a literal
+			 * (review round 1, MAJOR-1). Every right-slot pane draws at most
+			 * `min(RIGHT_SLOT_MAX_PX, row - 480)` (`canvasDockWidth`), so that is the most
+			 * THIS row can give the canvas - and a scene run at a new window size keeps a
+			 * true bound without an edit. The check used to hard-code the canvas's retired
+			 * 560 cap and FAILED the correct 596 the row draws at the scene's own first
+			 * size (1380x900): a false FAIL in the live gate, which is the one place a
+			 * stale ceiling wears a verdict's clothes.
+			 */
+			const canvasCeiling = Math.min(1200, row.width - 480);
 			check(
-				"a docked canvas is no wider than §I's 560px ceiling",
-				canvas.width <= 560 + 1,
-				`canvas.width=${canvas.width}`,
+				"a docked canvas is no wider than the slot's one ceiling over this row",
+				canvas.width <= canvasCeiling + 1,
+				`canvas.width=${canvas.width} against min(1200, ${row.width} - 480) = ${canvasCeiling}`,
 			);
 			check(
 				"the two columns tile the row, the divider between them",
@@ -11730,12 +12141,18 @@ async function sceneFloors(cdp) {
 async function railHoverTrace(cdp) {
 	const SESSION = "be1a9fef0001";
 	const rail = "[data-lo-checkpoint-rail]";
+	/*
+	 * THE RAIL IS VIRTUALISED (conversation-first-paint P1): only the port's
+	 * window of marks is mounted, so every density wait in this file reads the
+	 * manifest's true count from the frame's `data-checkpoint-count` rather than
+	 * counting `[data-checkpoint-id]` elements, which now reads the window.
+	 */
 	await verb(cdp, "press", {
 		selector: `[data-session-row="${SESSION}"] [data-chat-row]`,
 	});
 	const ready = await waitForCondition(
 		cdp,
-		`(() => { const rail = document.querySelector('${rail}'); return Boolean(rail) && document.querySelectorAll("[data-checkpoint-id]").length >= 300; })()`,
+		`(() => { const rail = document.querySelector('${rail}'); return Boolean(rail) && Number(document.querySelector("[data-rail-frame]")?.getAttribute("data-checkpoint-count") ?? 0) >= 300; })()`,
 		30_000,
 	);
 	check(
@@ -11785,7 +12202,7 @@ async function railHoverTrace(cdp) {
 			cx: Math.round(rect.left + rect.width / 2),
 			top: Math.round(rect.top + 6),
 			bottom: Math.round(rect.bottom - 6),
-			ticks: document.querySelectorAll("[data-checkpoint-id]").length,
+			ticks: Number(document.querySelector("[data-rail-frame]")?.getAttribute("data-checkpoint-count") ?? 0),
 		};
 	})()`);
 	if (!geometry) {
@@ -11901,7 +12318,7 @@ async function railPressProbe(cdp) {
 	});
 	await waitForCondition(
 		cdp,
-		`document.querySelectorAll('${rail} [data-checkpoint-id]').length >= 267`,
+		`Number(document.querySelector("[data-rail-frame]")?.getAttribute("data-checkpoint-count") ?? 0) >= 267`,
 		30_000,
 	);
 	await waitForCondition(
@@ -12125,7 +12542,7 @@ async function railCueProbe(cdp) {
 	});
 	await waitForCondition(
 		cdp,
-		`document.querySelectorAll('[data-lo-checkpoint-rail] [data-checkpoint-id]').length >= 12`,
+		`Number(document.querySelector("[data-rail-frame]")?.getAttribute("data-checkpoint-count") ?? 0) >= 12`,
 		30_000,
 	);
 	await waitForCondition(
@@ -12168,7 +12585,7 @@ async function railCueProbe(cdp) {
 	});
 	await waitForCondition(
 		cdp,
-		`document.querySelectorAll('[data-lo-checkpoint-rail] [data-checkpoint-id]').length >= 267`,
+		`Number(document.querySelector("[data-rail-frame]")?.getAttribute("data-checkpoint-count") ?? 0) >= 267`,
 		30_000,
 	);
 	await waitForCondition(
@@ -12359,7 +12776,7 @@ async function sceneTranscriptRail(cdp) {
 		}
 		const ready = await waitForCondition(
 			cdp,
-			`(() => { const rail = document.querySelector('${rail}'); return Boolean(rail) && Boolean(document.querySelector('[data-checkpoint-id="${firstTick}"]')) && document.querySelectorAll("[data-checkpoint-id]").length >= ${minTicks}; })()`,
+			`(() => { const rail = document.querySelector('${rail}'); return Boolean(rail) && Boolean(document.querySelector('[data-checkpoint-id="${firstTick}"]')) && Number(document.querySelector("[data-rail-frame]")?.getAttribute("data-checkpoint-count") ?? 0) >= ${minTicks}; })()`,
 			30_000,
 		);
 		/*
@@ -12534,11 +12951,11 @@ async function sceneTranscriptRail(cdp) {
 	);
 	const dense = await waitForCondition(
 		cdp,
-		`document.querySelectorAll('${rail} [data-checkpoint-id]').length >= 267`,
+		`Number(document.querySelector("[data-rail-frame]")?.getAttribute("data-checkpoint-count") ?? 0) >= 267`,
 		30_000,
 	);
 	const tickCount = await evaluate(
-		`document.querySelectorAll('${rail} [data-checkpoint-id]').length`,
+		`Number(document.querySelector("[data-rail-frame]")?.getAttribute("data-checkpoint-count") ?? 0)`,
 	);
 	check(
 		"the rail renders the daemon's own manifest at density",
@@ -12987,7 +13404,7 @@ async function sceneTranscriptRail(cdp) {
 		check(
 			`the fixture conversation is open before the ${theme} pass`,
 			await openFixture(SESSION, "u0001", 267),
-			`ticks=${await evaluate(`document.querySelectorAll("${rail} [data-checkpoint-id]").length`)}`,
+			`ticks=${await evaluate(`Number(document.querySelector("[data-rail-frame]")?.getAttribute("data-checkpoint-count") ?? 0)`)}`,
 		);
 		const applied = await verb(cdp, "setTheme", theme);
 		check(
@@ -13352,7 +13769,7 @@ async function sceneTranscriptRail(cdp) {
 		check(
 			`the deep fixture conversation is open (${theme})`,
 			await openFixture(SESSION_DEEP, "du0001", 600),
-			`ticks=${await evaluate(`document.querySelectorAll("${rail} [data-checkpoint-id]").length`)}`,
+			`ticks=${await evaluate(`Number(document.querySelector("[data-rail-frame]")?.getAttribute("data-checkpoint-count") ?? 0)`)}`,
 		);
 		await verb(cdp, "setTheme", theme);
 		await parkPointer(cdp);
@@ -13373,7 +13790,7 @@ async function sceneTranscriptRail(cdp) {
 		check(
 			`the deep fixture conversation is open (${theme})`,
 			await openFixture(SESSION_DEEP, "du0001", 600),
-			`ticks=${await evaluate(`document.querySelectorAll("${rail} [data-checkpoint-id]").length`)}`,
+			`ticks=${await evaluate(`Number(document.querySelector("[data-rail-frame]")?.getAttribute("data-checkpoint-count") ?? 0)`)}`,
 		);
 		/*
 		 * THE TRACK AT ITS TOP END FIRST (round-1 re-shoot, measured): the rail
@@ -13463,7 +13880,7 @@ async function sceneTranscriptRail(cdp) {
 		check(
 			`the sparse fixture conversation is open (${theme})`,
 			await openFixture(SESSION_SPARSE, "qu0001", 12),
-			`ticks=${await evaluate(`document.querySelectorAll("${rail} [data-checkpoint-id]").length`)}`,
+			`ticks=${await evaluate(`Number(document.querySelector("[data-rail-frame]")?.getAttribute("data-checkpoint-count") ?? 0)`)}`,
 		);
 		await parkPointer(cdp);
 		const sparse = await evaluate(`(() => {
@@ -16944,11 +17361,11 @@ async function scenePinnedReorder(cdp) {
 	const PINNED_IDS = ["p000", "p005", "p010"];
 	const PINNED_QUERY = "Chat 00";
 	/*
-	 * 240 / 260 / 280 / 320 (round 2, design D8): 260 is the panel's DEFAULT width and the
-	 * overlay sheet's fixed width, so it is the state nearly every reader gets and the one
-	 * the shed rule actually decides; the other three bracket it - 240 is a step BELOW the
-	 * default, 280 a panel widened past it, 320 the clamp's own maximum (the clamp is
-	 * 220..320, `chat-sidebar-layout.ts`). Before this the set photographed 240/280/320 and
+	 * 240 / 260 / 280 / 320 (round 2, design D8): 260 is the panel's DEFAULT width,
+	 * so it is the state nearly every reader gets and the one the shed rule actually
+	 * decides; the other three bracket it - 240 is a step BELOW the default, 280 a
+	 * panel widened past it, 320 the clamp's own maximum (the clamp is 220..320,
+	 * `chat-sidebar-layout.ts`). Before this the set photographed 240/280/320 and
 	 * the README called 280 "the default", which is not a width the app opens at.
 	 */
 	/*
@@ -17062,10 +17479,13 @@ async function scenePinnedReorder(cdp) {
 				panel: (() => { const el = document.querySelector('[data-sidebar-region="scroller"]'); return el ? box(el) : null; })(),
 				indicator: indicator ? { y: Math.round(indicator.getBoundingClientRect().top), h: Math.round(indicator.getBoundingClientRect().height) } : null,
 				dragging: rows.filter((node) => node.hasAttribute("data-dragging")).map((node) => node.getAttribute("data-session-row")),
-				/* #691's per-row mark (main's subagentMarks), counted here because this
-				   branch folds main's row render into the same sessionRow: the count is
-				   what says whether the fold can have moved these frames' pixels at all. */
-				subagentMarks: section.querySelectorAll("[data-subagent-mark]").length,
+				/* The row's background-work mark, counted here because these frames
+				   are validated by byte comparison: the count is what says whether a
+				   row mark can have moved these frames' pixels at all. It was #691's
+				   trio ([data-subagent-mark]) until the running lane retired it; the
+				   lane's hook is [data-background-work] (agent review round 1, R2) -
+				   counting the retired hook would read a constant 0 and pass blind. */
+				backgroundLanes: section.querySelectorAll("[data-background-work]").length,
 				announcement: live ? live.textContent : null,
 				stored: stored,
 				storedView: storedView,
@@ -17306,18 +17726,19 @@ async function scenePinnedReorder(cdp) {
 			JSON.stringify(boot.order),
 		);
 		/*
-		 * AND MAIN'S OWN ROW MARK HAS NOTHING TO DRAW IN THIS FIXTURE (#691, folded in
-		 * after these frames were first taken). The stand-in's rows carry no subagent
-		 * counts, so `subagentMarks` returns nothing for any of them - which is the fact
+		 * AND THE ROW'S BACKGROUND-WORK MARK HAS NOTHING TO DRAW IN THIS FIXTURE (#691's
+		 * trio, folded in after these frames were first taken, now the running lane).
+		 * The stand-in's rows carry no background work, so `hasBackgroundWork` draws
+		 * the lane under none of them - which is the fact
 		 * that lets the fold be validated as a BYTE COMPARISON rather than a re-shoot of
 		 * the whole set. Stated as a check rather than a note because a fixture that grew
 		 * a subagent count would start moving the row's layout, and this is where that
 		 * would be caught.
 		 */
 		check(
-			"the folded-in subagent mark draws nothing on the stand-in's rows",
-			boot.subagentMarks === 0,
-			`${boot.subagentMarks} marker(s) in the pinned section`,
+			"the background-work lane draws nothing on the stand-in's rows",
+			boot.backgroundLanes === 0,
+			`${boot.backgroundLanes} lane(s) in the pinned section`,
 		);
 		check(
 			"no move control is painted at rest",
@@ -21718,6 +22139,343 @@ async function sceneAuthoringRefresh(cdp) {
 	return [beforeFrame, afterFrame];
 }
 
+/**
+ * `--scene profile-proposals`: the Agents review surface for profile proposals,
+ * driven end to end against a REAL daemon (`--backend`), with the daemon's own
+ * state as the oracle rather than the app's copy of it.
+ *
+ * WHY A SCENE. The operator asked that proposals move out of Mesh into Agents
+ * with actionable Accept/Reject/Edit and a git-style diff. Storybook proves the
+ * panel's states; only the built app against a daemon proves that the badge
+ * leads somewhere, that a proposal for a profile that does not exist yet can be
+ * opened (review round 1, F4/U-F4), and that the Accept button really changes
+ * the profile on disk.
+ *
+ * DATA-DRIVEN, NO HARDCODED IDS. The target is read from
+ * `GET /v1/desktop/profile-proposals?state=pending`: the first actionable
+ * (pending, not stale) agent/team proposal whose name is `--proposal-name`, or
+ * the first such proposal when the flag is absent. The seed decides names.
+ *
+ * LEGS:
+ *   1. /agents (or the Teams tab): the nav badge and the record's row (an
+ *      existing record's roster row, or the "Proposed new" row for a create);
+ *   2. open it: the card, the diff, Next change, and a folded-context expand
+ *      + re-collapse when the diff has a gap;
+ *   3. the real Accept button: the daemon reports the proposal `accepted`, the
+ *      profile's text/list fields equal the proposal's `after_text`, and the
+ *      proposal leaves the pending list (badge gone);
+ *   4. `--stale-name <name>` (optional): a stale proposal for that name shows
+ *      the stale sentence with Accept disabled, and the profile is unchanged;
+ *   5. `--session <id>` (optional): that conversation's agent/team/skill tool
+ *      rows render as ordinary traces, with no inline profile consent card.
+ *
+ * WHAT IT NEEDS: `--backend <url>` of a daemon this run owns (never 1111), the
+ * renderer built against it, and `LOCAL_OPERATOR_DESKTOP_TOKEN` in this script's
+ * ENVIRONMENT (never argv) for its own reads.
+ */
+async function sceneProfileProposals(cdp) {
+	const frames = [];
+	const unwrap = (json) => json?.result ?? json;
+	const pending = async () => {
+		const answer = await daemonGet(
+			"/v1/desktop/profile-proposals?state=pending",
+		);
+		return {
+			status: answer.status,
+			proposals: unwrap(answer.json)?.proposals ?? [],
+		};
+	};
+	const profilePath = (kind, name) =>
+		kind === "team"
+			? `/v1/desktop/teams/${encodeURIComponent(name)}`
+			: `/v1/desktop/profiles/${encodeURIComponent(name)}`;
+	/** The first value stored under `field` anywhere in a profile read. */
+	const fieldValue = (json, field) => {
+		const stack = [json];
+		while (stack.length) {
+			const node = stack.shift();
+			if (node && typeof node === "object" && !Array.isArray(node)) {
+				if (Object.hasOwn(node, field)) return node[field];
+				stack.push(...Object.values(node));
+			}
+		}
+		return undefined;
+	};
+	const asText = (value) =>
+		Array.isArray(value)
+			? value.join("\n")
+			: typeof value === "string"
+				? value
+				: value === undefined || value === null
+					? ""
+					: JSON.stringify(value);
+	const exists = (selector) =>
+		`Boolean(document.querySelector(${JSON.stringify(selector)}))`;
+
+	const list = await pending();
+	check(
+		"the daemon lists pending profile proposals",
+		list.status === 200 && list.proposals.length > 0,
+		`status ${list.status}, ${list.proposals.length} pending`,
+		`${list.proposals.length} pending`,
+	);
+	const actionable = list.proposals.filter(
+		(p) =>
+			(p.kind === "agent" || p.kind === "team") &&
+			p.state === "pending" &&
+			p.stale !== true &&
+			(PROPOSAL_NAME === null || p.name === PROPOSAL_NAME),
+	);
+	const target = actionable[0];
+	if (!target) {
+		check(
+			"an actionable agent/team proposal exists for the run",
+			false,
+			`none pending${PROPOSAL_NAME ? ` for ${PROPOSAL_NAME}` : ""}: ${JSON.stringify(list.proposals.map((p) => [p.kind, p.name, p.state, p.stale]))}`,
+		);
+		return frames;
+	}
+	note(
+		"target proposal",
+		JSON.stringify({
+			id: target.id,
+			kind: target.kind,
+			name: target.name,
+			operation: target.operation,
+			fields: target.fields,
+		}),
+	);
+	const detailBefore = await daemonGet(
+		`/v1/desktop/profile-proposals/${encodeURIComponent(target.id)}`,
+	);
+	const changes = unwrap(detailBefore.json)?.changes ?? [];
+
+	// 1. The badge and the row.
+	await verb(
+		cdp,
+		"navigate",
+		target.kind === "team" ? "/agents?kind=team" : "/agents",
+	);
+	await verb(cdp, "setTheme", "localOperatorDark");
+	const navBadge = await waitForCondition(
+		cdp,
+		exists('[data-tour-tag="nav-agents-badge"]'),
+		20_000,
+	);
+	check(
+		"the Agents nav item carries the pending-proposal badge",
+		navBadge.ok,
+		`no [data-tour-tag="nav-agents-badge"] after ${navBadge.waitedMs}ms`,
+		`present after ${navBadge.waitedMs}ms`,
+	);
+	const rowSelector =
+		target.operation === "create"
+			? `[data-testid="proposed-new-row-${target.name}"]`
+			: `[data-testid="roster-row-${target.name}"]`;
+	const row = await waitForCondition(cdp, exists(rowSelector), 20_000);
+	check(
+		target.operation === "create"
+			? "the proposed-new profile has its own row under the roster"
+			: "the existing record's roster row is listed",
+		row.ok,
+		`${rowSelector} absent after ${row.waitedMs}ms`,
+		rowSelector,
+	);
+	frames.push(await captureSettled(cdp, "profile-proposals-1-list"));
+	if (!row.ok) return frames;
+
+	// 2. Open it: the card and the diff.
+	await clickAt(cdp, rowSelector);
+	const card = `[data-proposal-id="${target.id}"]`;
+	const opened = await waitForCondition(
+		cdp,
+		exists(`${card} [data-testid="unified-diff"]`),
+		20_000,
+	);
+	check(
+		"opening the row shows the proposal card with its diff",
+		opened.ok,
+		`${card} diff absent after ${opened.waitedMs}ms`,
+		`after ${opened.waitedMs}ms`,
+	);
+	const rawKey = await cdp.evaluate(
+		`document.querySelector(${JSON.stringify(card)})?.textContent.includes("ui.agents.proposals.") ?? null`,
+	);
+	check(
+		"no raw message key in the card",
+		rawKey === false,
+		`raw key present: ${rawKey}`,
+	);
+	frames.push(await captureSettled(cdp, "profile-proposals-2-open"));
+	if (!opened.ok) return frames;
+	await clickAt(cdp, `${card} button[aria-label="Next change"]`);
+	const position = await waitForCondition(
+		cdp,
+		`Array.from(document.querySelectorAll(${JSON.stringify(`${card} [aria-live="polite"]`)})).some((n) => /^Change 1 of \\d+$/.test(n.textContent.trim()))`,
+		5_000,
+	);
+	check(
+		"Next change moves to the first change and says so",
+		position.ok,
+		`no "Change 1 of N" after ${position.waitedMs}ms`,
+	);
+	const hasGap = await cdp.evaluate(exists(`${card} [data-diff-gap]`));
+	if (hasGap) {
+		await clickAt(cdp, `${card} [data-diff-gap]`);
+		const expanded = await waitForCondition(
+			cdp,
+			exists(`${card} [data-diff-gap-hide]`),
+			5_000,
+		);
+		check(
+			"a folded gap expands and offers to fold again",
+			expanded.ok,
+			"no hide control after expand",
+		);
+		frames.push(await captureSettled(cdp, "profile-proposals-3-expanded"));
+		await clickAt(cdp, `${card} [data-diff-gap-hide]`);
+		const folded = await waitForCondition(
+			cdp,
+			exists(`${card} [data-diff-gap]`),
+			5_000,
+		);
+		check("and folds back", folded.ok, "gap button did not return");
+	} else
+		note("diff has no folded context", "expand/collapse leg not applicable");
+
+	// 3. The real Accept button; the daemon is the oracle.
+	await clickAt(cdp, `${card} [data-testid="proposal-accept"]`);
+	let decided = null;
+	const started = Date.now();
+	while (Date.now() - started < 20_000) {
+		const read = await daemonGet(
+			`/v1/desktop/profile-proposals/${encodeURIComponent(target.id)}`,
+		);
+		decided = unwrap(read.json);
+		if (decided?.state && decided.state !== "pending") break;
+		await wait(250);
+	}
+	check(
+		"the daemon records the proposal as accepted",
+		decided?.state === "accepted",
+		`state ${decided?.state}`,
+		`accepted after ${Date.now() - started}ms`,
+	);
+	const profile = await daemonGet(profilePath(target.kind, target.name));
+	check(
+		"the profile now exists and reads back",
+		profile.status === 200,
+		`status ${profile.status}: ${profile.body}`,
+	);
+	for (const change of changes) {
+		if (change.format === "json") {
+			note(`field ${change.field}`, "json field: not compared textually");
+			continue;
+		}
+		const actual = asText(
+			fieldValue(unwrap(profile.json), change.field),
+		).trim();
+		const expected = (change.after_text ?? "").trim();
+		check(
+			`profile field ${change.field} equals the proposed value`,
+			actual === expected,
+			`expected ${JSON.stringify(expected.slice(0, 160))}, got ${JSON.stringify(actual.slice(0, 160))}`,
+			`${expected.length} chars`,
+		);
+	}
+	const after = await pending();
+	check(
+		"the proposal left the pending list",
+		!after.proposals.some((p) => p.id === target.id),
+		"still pending",
+	);
+	const gone = await waitForCondition(
+		cdp,
+		`!document.querySelector(${JSON.stringify(`${card} [data-testid="proposal-accept"]`)})`,
+		10_000,
+	);
+	check("the card no longer offers Accept", gone.ok, "Accept still rendered");
+	if (target.operation === "create") {
+		const editor = await waitForCondition(
+			cdp,
+			`!document.querySelector('[data-testid="proposed-new-pane"]')`,
+			15_000,
+		);
+		check(
+			"the proposed-new pane gives way to the created record",
+			editor.ok,
+			`still the proposed-new pane after ${editor.waitedMs}ms`,
+		);
+	}
+	frames.push(await captureSettled(cdp, "profile-proposals-4-accepted"));
+
+	// 4. Optional stale leg: refused, nothing changes.
+	if (STALE_NAME !== null) {
+		const stale = (await pending()).proposals.find(
+			(p) => p.name === STALE_NAME && (p.stale === true || p.state === "stale"),
+		);
+		if (!stale) {
+			check(
+				"a stale proposal exists for --stale-name",
+				false,
+				`none for ${STALE_NAME}`,
+			);
+		} else {
+			const before = await daemonGet(profilePath(stale.kind, stale.name));
+			const params = new URLSearchParams();
+			if (stale.kind !== "agent") params.set("kind", stale.kind);
+			params.set("name", stale.name);
+			params.set("proposal", stale.id);
+			await verb(cdp, "navigate", `/agents?${params}`);
+			const staleCard = `[data-proposal-id="${stale.id}"]`;
+			const shown = await waitForCondition(
+				cdp,
+				exists(`${staleCard} [data-testid="proposal-accept"]`),
+				20_000,
+			);
+			const disabled = await cdp.evaluate(
+				`document.querySelector(${JSON.stringify(`${staleCard} [data-testid="proposal-accept"]`)})?.disabled ?? null`,
+			);
+			check(
+				"the stale proposal's Accept is disabled",
+				shown.ok && disabled === true,
+				`shown ${shown.ok}, disabled ${disabled}`,
+			);
+			const sentence = await cdp.evaluate(
+				`document.querySelector(${JSON.stringify(`${staleCard} [role="alert"]`)})?.textContent ?? ""`,
+			);
+			check(
+				"the stale sentence says nothing was applied",
+				/Nothing was applied/.test(sentence),
+				JSON.stringify(sentence),
+			);
+			frames.push(await captureSettled(cdp, "profile-proposals-5-stale"));
+			const afterStale = await daemonGet(profilePath(stale.kind, stale.name));
+			check(
+				"the stale profile is unchanged",
+				before.body === afterStale.body,
+				"profile read changed",
+			);
+		}
+	}
+
+	// 5. Optional transcript leg: ordinary tool traces, no inline consent card.
+	if (SESSION !== null) {
+		await verb(cdp, "navigate", `/chat/${encodeURIComponent(SESSION)}`);
+		await wait(2000);
+		const consent = await cdp.evaluate(
+			`Array.from(document.querySelectorAll("section[aria-labelledby]")).some((n) => /Approve|Allow this change|Reject/.test(n.textContent) && /profile/i.test(n.textContent))`,
+		);
+		check(
+			"the conversation shows no inline profile consent card",
+			consent === false,
+			`consent-like card present: ${consent}`,
+		);
+		frames.push(await captureSettled(cdp, "profile-proposals-6-transcript"));
+	}
+	return frames;
+}
+
 /** The two authoring keys, as the cache holds them. */
 async function readAuthoringQueries(cdp) {
 	const queries = await verb(cdp, "queries");
@@ -24503,6 +25261,174 @@ async function seedDrafts(cdp, { pendingAll = false } = {}) {
 	await wait(1500);
 }
 
+/**
+ * `--scene stale-team-draft`: the operator's own screen, before and after.
+ *
+ * THE REPORT (2026-10-22): pressing a TEAM in the sidebar to start a new chat
+ * landed on a transcript that said "This conversation is no longer on this
+ * machine" with the composer replaced by "This conversation is gone" - under a
+ * header that said "New chat with <team>". The two halves read different facts:
+ * the header reads `activeDraftKey`, and the pane reads the drafted row's
+ * `sessionId` (`panelSessionIdOfView`). The stable `draft:<kind>:<name>` row is
+ * REUSED by every press for that team, so a row that had already created a
+ * conversation - left behind by a failed message or a quit before the ack -
+ * made every later press resolve it; once it was deleted, the press resolved a
+ * dead id.
+ *
+ * WHAT THIS SEEDS is the exact persisted pair that produces it: `activeDraftKey`
+ * naming the team's stable row, that row carrying `sessionId` and the failure's
+ * own claim, and a tombstone for the id (the conversation was deleted on this
+ * device). A relaunch is the honest way to reach it, because that is what the
+ * store does with the pair - and it is how the operator hit it after their
+ * delete.
+ *
+ * THE PRESS ITSELF IS NOT DRIVEN HERE, and the substitution is named rather than
+ * hidden: the sidebar's team rows come from the backend's authoring list, and a
+ * run-owned daemon has no "minerva-development" team to press. The press's own
+ * rule is the store's (`stageDraft` never reuses a conversation-bound row), and
+ * `scripts/team-new-chat-stale-draft.test.mjs` drives it directly - five cases,
+ * the agent path included.
+ */
+async function sceneStaleTeamDraft(cdp) {
+	/*
+	 * A COMPOSER IS THE POINT. Without a backend the chat route draws its
+	 * capability refusal in place of the whole pane, so a frame would photograph
+	 * the gate rather than the defect.
+	 */
+	if (BACKEND === null) {
+		throw new Error(
+			"--scene stale-team-draft needs --backend <url>: the chat pane's composer (the control the defect replaces) only mounts against a reachable session catalogue",
+		);
+	}
+	const DEAD = "deadbeef0001";
+	const STABLE = "draft:team:minerva-development";
+	await verb(cdp, "navigate", "/chat");
+	await verb(cdp, "setTheme", "localOperatorDark");
+	await cdp.evaluate(`(() => {
+		const read = (key) => { try { return JSON.parse(localStorage.getItem(key) || "null") || {}; } catch { return {}; } };
+		const canonical = read("canonical-sessions-storage");
+		canonical.state = {
+			...(canonical.state || {}),
+			activeSessionId: null,
+			activeDraftKey: ${JSON.stringify(STABLE)},
+			forgotten: { ${JSON.stringify(DEAD)}: { at: 0, title: "An old chat" } },
+			drafts: {
+				...((canonical.state || {}).drafts || {}),
+				[${JSON.stringify(STABLE)}]: {
+					key: ${JSON.stringify(STABLE)},
+					target: { kind: "team", name: "minerva-development" },
+					createRequestId: "req-stale-create-0001",
+					admissionRequestId: "req-stale-admit-0001",
+					sessionId: ${JSON.stringify(DEAD)},
+					pending: false,
+					admissionAttempted: true,
+					submittedText: "Can you pick up where we left off?",
+					submittedRendered: "Can you pick up where we left off?",
+					errorCode: "deadline_exceeded",
+					errorRetry: true,
+					error: "Couldn't confirm your message was sent.",
+				},
+			},
+		};
+		localStorage.setItem("canonical-sessions-storage", JSON.stringify(canonical));
+		const input = read("conversation-input-store");
+		input.state = { ...(input.state || {}), inputByConversation: {} };
+		localStorage.setItem("conversation-input-store", JSON.stringify(input));
+		return true;
+	})()`);
+	await cdp.send("Page.reload", { ignoreCache: false });
+	await wait(1500);
+	await waitForBridge(cdp);
+	const read = () =>
+		cdp.evaluate(`(() => {
+			const canonical = (() => { try { return JSON.parse(localStorage.getItem("canonical-sessions-storage") || "null")?.state ?? null; } catch { return null; } })();
+			const notice = document.getElementById("lo-missing-session-notice");
+			const box = document.querySelector('[data-tour-tag="chat-input-textarea"] textarea');
+			return {
+				text: document.body.innerText,
+				notice: notice === null ? null : (notice.textContent || "").trim(),
+				composer: box === null ? null : { value: box.value, disabled: box.disabled === true, readOnly: box.readOnly === true },
+				storedDraft: canonical?.drafts?.[${JSON.stringify(STABLE)}] ?? null,
+				activeDraftKey: canonical?.activeDraftKey ?? null,
+			};
+		})()`);
+	const screen = await read();
+	note(
+		"the restored screen (header, notice, composer)",
+		JSON.stringify({
+			activeDraftKey: screen.activeDraftKey,
+			notice: screen.notice,
+			composer: screen.composer,
+			sessionId: screen.storedDraft?.sessionId ?? null,
+		}),
+	);
+	check(
+		"the header names the press's own act: a NEW chat with the team",
+		/New chat with minerva-development/.test(screen.text ?? ""),
+		`body: ${JSON.stringify((screen.text ?? "").slice(0, 160))}`,
+	);
+	check(
+		"the terminal 'no longer on this machine' notice is NOT rendered",
+		screen.notice === null,
+		JSON.stringify(screen.notice),
+	);
+	check(
+		"a working composer is on screen, which is what one click must always end with",
+		screen.composer !== null &&
+			screen.composer.disabled === false &&
+			screen.composer.readOnly === false,
+		JSON.stringify(screen.composer),
+	);
+	check(
+		"and the dead pointer was retired before the first paint",
+		screen.storedDraft !== null &&
+			screen.storedDraft.sessionId === undefined &&
+			screen.storedDraft.pending === false,
+		JSON.stringify({
+			sessionId: screen.storedDraft?.sessionId ?? null,
+			pending: screen.storedDraft?.pending ?? null,
+		}),
+	);
+	const frame = await captureSettled(cdp, "stale-team-draft");
+	note("frame", JSON.stringify(frame));
+	/*
+	 * THE CONTROL (design review round 1's D3): the same build, the same daemon,
+	 * and NO seeded draft - the app's own launch state. It answers whether anything
+	 * the after frame shows (the model chip's "Retry", the empty-state prompts)
+	 * belongs to the fix or to a daemon with no resolved model. A pair is only
+	 * evidence if the control shares the environment.
+	 */
+	await cdp.evaluate(`(() => {
+		localStorage.removeItem("canonical-sessions-storage");
+		localStorage.removeItem("conversation-input-store");
+		return true;
+	})()`);
+	await cdp.send("Page.reload", { ignoreCache: false });
+	await wait(1500);
+	await waitForBridge(cdp);
+	const control = await read();
+	note(
+		"the plain-new-chat control (no seeded draft)",
+		JSON.stringify({
+			notice: control.notice,
+			composer: control.composer,
+			sessionId: control.storedDraft?.sessionId ?? null,
+		}),
+	);
+	check(
+		"the control is the app's own new chat: no notice and an editable composer",
+		control.notice === null &&
+			control.composer !== null &&
+			control.composer.disabled === false &&
+			control.composer.readOnly === false,
+		JSON.stringify({ notice: control.notice, composer: control.composer }),
+	);
+	note(
+		"control frame",
+		JSON.stringify(await captureSettled(cdp, "stale-team-draft-control")),
+	);
+}
+
 async function sceneDrafts(cdp) {
 	await verb(cdp, "navigate", "/chat");
 	await verb(cdp, "setTheme", "localOperatorDark");
@@ -26311,27 +27237,45 @@ async function sceneNewChat(cdp) {
 }
 
 /**
- * `sessionless-slash` (issue #625): `/help`, `/theme`, `/login`, `/logout` and
- * `/resume` typed on a pane with no conversation.
+ * `sessionless-slash` (issue #625; `/fast`, issue #1265): `/help`, `/theme`,
+ * `/login`, `/logout` and `/resume` typed on a pane with no conversation, then
+ * `/fast` on the same draft and on the conversation that draft becomes.
  *
  * WHAT IT MEASURES, AND WHY ONE SCENE RUNS UNDER BOTH EXPECTATIONS.
  * `--slash-expect open` is the head tree: every one of the five mounts its
  * picker over the new chat with `sessionId: ""` and no `sessions.command`
- * POST. `--slash-expect refused` is the base tree: the same five gestures each
- * get the dispatcher's own sentence in the transcript and no picker. One
- * scene, both halves, the same bytes.
+ * POST - and `/fast`, which is NOT sessionless but declares a draft selection
+ * route, mounts the same dialog a conversation gets. `--slash-expect refused`
+ * is the base tree: the same gestures each get the dispatcher's own sentence in
+ * the transcript and no picker. One scene, both halves, the same bytes.
+ *
+ * `/fast` IS THE ONE GESTURE THAT MAKES A PICK, and the scene states which
+ * outcome the BACKEND produced rather than assuming one: a backend that carries
+ * the draft's birth field answers applied and the pane records
+ * `fast_mode: true`; one that predates it refuses the body with a 422, the
+ * dialog says so, and the pane records nothing. What the scene requires is that
+ * the two agree - a success sentence over an unrecorded dial is the silent drop
+ * this route must not ship.
  *
  * ONE THEME PER LAUNCH (see `--theme`), so the harness runs this twice per
- * tree. The live half runs under `open` only: after the five gestures a message
- * is sent and answered, and `/theme` on THAT conversation must still present
- * the picker - the session-ful path the change must not move. On the base tree
- * the same steps would prove nothing this pair is about.
+ * tree. The live half runs under `open` only: after the six gestures a message
+ * is sent and answered, and `/theme` and `/fast` on THAT conversation must
+ * still present their pickers and take the owner's answer - the session-ful
+ * path the change must not move. On the base tree the same steps would prove
+ * nothing this pair is about.
+ *
+ * THE ANSWER IT REQUIRES IS A SETTLED TURN, NOT A SENTENCE (QA round 1, Q2):
+ * the reply's words belong to whichever provider answered, so the check asks for
+ * a completed assistant row (`data-record-kind` + `data-completion-complete`).
+ * It therefore passes against a real provider with a working key and fails on a
+ * turn that never answered - unlike the fixture text it used to require, which
+ * only the rig could ever return.
  *
  * THE NEW CHAT IS THE OPERATOR'S OWN GESTURE, not a route the scene invented:
  * the app-wide Cmd-N stages a fresh draft exactly as the New chat row does
  * (`sceneNewChat` is the scene that proves that press, and this one reuses
- * its chord rather than a selector), and the composer the five commands are
- * typed into is the one that press mounts.
+ * its chord rather than a selector), and the composer the commands are typed
+ * into is the one that press mounts.
  *
  * THE PRESS IS A SHORT SEQUENCE, NOT A SINGLE ENTER, because one destination
  * completes rather than runs: `/theme` opens an INLINE list, so its first Enter
@@ -26419,17 +27363,19 @@ async function sceneSessionlessSlash(cdp) {
 		pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
 
 	const frames = [];
-	for (const command of COMMANDS) {
-		const refusal = `${command.word} needs an open conversation. Start one first.`;
-		const arrives = `Boolean(document.querySelector('[role="dialog"]')) || document.body.innerText.includes(${JSON.stringify(refusal)})`;
-		await clickAt(cdp, `${COMPOSER} textarea`);
-		/*
-		 * A CLEAN BOX BEFORE EACH GESTURE, asserted: a completing row leaves its
-		 * completed value behind until the command actually runs, and the next
-		 * gesture typed onto that tail would be a different gesture than the one
-		 * this frame claims. Meta+A through Chromium's own editing command (a bare
-		 * chord performs no edit), then Backspace.
-		 */
+	/*
+	 * A CLEAN BOX BEFORE EACH GESTURE, asserted at the call site: a completing row
+	 * leaves its completed value behind until the command actually runs, and the
+	 * next gesture typed onto that tail would be a different gesture than the one
+	 * its frame claims. Meta+A through Chromium's own editing command (a bare
+	 * chord performs no edit), then Backspace.
+	 *
+	 * A helper because this half types SIX gestures now - one of them `/fast`
+	 * (issue #1265) - and six copies of this sequence is six places for the next
+	 * gesture to forget the assertion. It returns the value it left behind, so
+	 * every caller still asserts its own box.
+	 */
+	const clearComposer = async () => {
 		let box = await cdp.evaluate(
 			`document.querySelector('${COMPOSER} textarea').value`,
 		);
@@ -26450,6 +27396,21 @@ async function sceneSessionlessSlash(cdp) {
 				`document.querySelector('${COMPOSER} textarea').value`,
 			);
 		}
+		return box;
+	};
+	/* The dialog, the rows by their WIRE values (`data-option-value`), and the
+	 * result strip by its tone (`data-picker-result`): three hooks `picker-host`
+	 * publishes so a scene never picks a row by position or reads a sentence to
+	 * decide whether a pick was applied. */
+	const DIALOG = '[role="dialog"]';
+	const rowByValue = (value) =>
+		`${DIALOG} [role="option"][data-option-value="${value}"]`;
+	const PICKER_RESULT = "[data-picker-result]";
+	for (const command of COMMANDS) {
+		const refusal = `${command.word} needs an open conversation. Start one first.`;
+		const arrives = `Boolean(document.querySelector('[role="dialog"]')) || document.body.innerText.includes(${JSON.stringify(refusal)})`;
+		await clickAt(cdp, `${COMPOSER} textarea`);
+		const box = await clearComposer();
 		check(
 			`the composer is empty before ${command.word} is typed`,
 			box === "",
@@ -26539,6 +27500,217 @@ async function sceneSessionlessSlash(cdp) {
 	}
 
 	/*
+	 * `/fast` ON THE SAME DRAFT (issue #1265): the row the five above are not.
+	 *
+	 * `/fast` still ADDRESSES A CONVERSATION - `destinationNeedsSession` answers
+	 * true, and the palette's route question plus the composer's pane clause read
+	 * that predicate - so on a pane with none the dispatcher refused it. The dial
+	 * it sets is a property of the model the FIRST turn is born on, which is why
+	 * the fix is a DRAFT SELECTION route rather than another `sessionless` row:
+	 * the pick resolves through `sessions.preview` for this pane and is recorded
+	 * on the draft row for `sessions.create`, never `sessions.command` (there is
+	 * no owner to address).
+	 *
+	 * THE PAIR IS THE DEFECT AND ITS ABSENCE. `refused` (the base tree) is the
+	 * report: the dispatcher's sentence and no dialog. `open` (this tree) is the
+	 * same dialog a conversation gets, mounted over the draft - on a backend that
+	 * ADVERTISES `draft_fast`. A backend with `draft_selection` and no
+	 * `draft_fast` is the third outcome: the route asks the capability the pick
+	 * writes, refuses before the dialog opens, and the scene reports the update
+	 * sentence as the correct result rather than a missing dialog (agent review
+	 * round 1, F1).
+	 *
+	 * THE PICK IS MADE FOR REAL, because "no pick could be made" was the defect.
+	 * The premium acknowledgement is ticked first - a draft states
+	 * `premium_pricing` for itself now (the dispatcher's `sessionlessActionData`,
+	 * the constant the backend's `native_action` sends a session) - and the `On`
+	 * row's gate is ASSERTED rather than clicked through. What comes back depends
+	 * on the BACKEND, and the scene claims only what holds for every backend that
+	 * reaches the dialog: one that carries the birth field answers applied and the
+	 * pane's record carries `fast_mode: true`; one that advertises the field but
+	 * refuses this model answers `fast_mode_unsupported` (its `DraftModel` is
+	 * `extra="forbid"`, so a refused pick is a refused request), the dialog says
+	 * so, and the record stays empty. The check below is that the DIALOG AND THE
+	 * RECORD AGREE - which is what rules out the silent drop this route must not
+	 * ship - and `note` records which outcome this run got, so a reader is never
+	 * left to infer it from a frame.
+	 */
+	const FAST_REFUSAL = "/fast needs an open conversation. Start one first.";
+	/*
+	 * THE OTHER CORRECT OUTCOME ON THIS TREE (agent review round 1, F1): a backend
+	 * that advertises `draft_selection` without `draft_fast` cannot carry the field
+	 * the pick writes, so the route refuses `/fast` on a draft before the dialog
+	 * opens rather than demanding the premium acknowledgement and answering the
+	 * only pick it offers with a whole-body 422. The scene accepts either outcome
+	 * and says WHICH one it got, because on such a backend the absence of a dialog
+	 * is the fix working, not the defect.
+	 */
+	const FAST_NO_CAPABILITY =
+		"/fast is not available on this version of the Local Operator service. Update Local Operator, then try again.";
+	const FAST_SENTENCES = [FAST_REFUSAL, FAST_NO_CAPABILITY];
+	/* Every one of those sentences present on screen, as an array literal the page
+	 * can evaluate: the scene reports which refusal it saw rather than matching
+	 * one and calling the other a timeout. */
+	const fastSentencesOnScreen = `(${JSON.stringify(FAST_SENTENCES)}).filter((sentence) => document.body.innerText.includes(sentence))`;
+	const fastArrives = `Boolean(document.querySelector('${DIALOG}')) || ${fastSentencesOnScreen}.length > 0`;
+	await clickAt(cdp, `${COMPOSER} textarea`);
+	const fastBox = await clearComposer();
+	check(
+		"the composer is empty before /fast is typed",
+		fastBox === "",
+		`the box held ${JSON.stringify(fastBox)} after the clear`,
+	);
+	await cdp.send("Input.insertText", { text: "/fast" });
+	await wait(400);
+	await pressEnter();
+	let fastArrived = await waitForCondition(cdp, fastArrives, 5_000);
+	let fastPresses = 1;
+	if (!fastArrived.ok) {
+		/* `/fast` is an inline-argument row (`on`/`off`), so a completed popup can
+		 * be in the way exactly as it is for `/theme` above. */
+		const popup = await cdp.evaluate(
+			`Boolean(document.querySelector('${SLASH_POPUP}'))`,
+		);
+		if (popup) {
+			await pressChord(cdp, {
+				key: "Escape",
+				code: "Escape",
+				virtualKeyCode: 27,
+			});
+			await wait(300);
+		}
+		await pressEnter();
+		fastPresses = 2;
+		fastArrived = await waitForCondition(cdp, fastArrives, 8_000);
+	}
+	const fastRead = await cdp.evaluate(`(() => {
+		const dialog = document.querySelector('${DIALOG}');
+		const title = dialog ? dialog.querySelector('h2') : null;
+		return {
+			picker: title ? title.textContent.trim() : null,
+			refusals: ${fastSentencesOnScreen},
+		};
+	})()`);
+	frames.push(await captureSettled(cdp, `sessionless-fast-${suffix}`));
+	if (!open) {
+		check(
+			"/fast is refused with the dispatcher's own sentence on a draft",
+			fastRead.refusals.includes(FAST_REFUSAL) && fastRead.picker === null,
+			`refusals ${JSON.stringify(fastRead.refusals)}, picker ${JSON.stringify(fastRead.picker)} (settled after ${fastArrived.waitedMs}ms on press ${fastPresses})`,
+		);
+		note(
+			"draft /fast pick skipped",
+			"--slash-expect refused: the base tree has no dialog to pick in, and a click there would be a gesture this run is not making",
+		);
+	}
+	if (open && fastRead.picker !== null) {
+		check(
+			"/fast opens its picker on a pane with no conversation",
+			fastRead.picker === "Fast mode",
+			`dialog title ${JSON.stringify(fastRead.picker)}, expected "Fast mode" (settled after ${fastArrived.waitedMs}ms on press ${fastPresses})`,
+		);
+		check(
+			"/fast prints no refusal sentence on a draft",
+			fastRead.refusals.length === 0,
+			JSON.stringify(fastRead.refusals),
+		);
+	}
+	if (open && fastRead.picker === null) {
+		/*
+		 * NO DIALOG IS A RESULT, NOT A TIMEOUT, and it has two causes this check tells
+		 * apart: the capability sentence (a backend without `draft_fast`, where this
+		 * tree's refusal IS the fix) or the ordinary one (a tree whose route never
+		 * arrived - the base half, run under the wrong expectation).
+		 */
+		check(
+			"a backend without draft_fast refuses /fast on a draft before the dialog, with the update sentence",
+			fastRead.refusals.includes(FAST_NO_CAPABILITY) &&
+				!fastRead.refusals.includes(FAST_REFUSAL),
+			`refusals ${JSON.stringify(fastRead.refusals)}, picker ${JSON.stringify(fastRead.picker)} (settled after ${fastArrived.waitedMs}ms on press ${fastPresses})`,
+		);
+		note(
+			"draft /fast pick skipped",
+			"this backend advertises draft_selection without draft_fast, so the draft route is closed by the capability gate and no dialog exists to pick in",
+		);
+	}
+	/*
+	 * THE PICK ONLY WHERE THERE IS A DIALOG. On a tree without the draft route (the
+	 * base half) the `opens` check above is the answer and there is no row to click;
+	 * clicking anyway would throw on a missing selector and take the rest of the run
+	 * - including the live half - down with a timeout that names the wrong thing.
+	 */
+	if (open && fastRead.picker === "Fast mode") {
+		const gate = await cdp.evaluate(`(() => {
+			const row = document.querySelector('${rowByValue("on")}');
+			return row ? row.getAttribute("aria-disabled") : "missing";
+		})()`);
+		check(
+			"the On row is held back until the premium acknowledgement is ticked",
+			gate === "true",
+			`On row aria-disabled ${JSON.stringify(gate)}, acknowledgement unticked`,
+		);
+		await clickAt(cdp, `${DIALOG} [role="checkbox"]`);
+		const acked = await cdp.evaluate(`(() => {
+			const box = document.querySelector('${DIALOG} [role="checkbox"]');
+			const row = document.querySelector('${rowByValue("on")}');
+			return {
+				checked: box ? box.getAttribute("aria-checked") : null,
+				onDisabled: row ? row.getAttribute("aria-disabled") : "missing",
+			};
+		})()`);
+		check(
+			"ticking the acknowledgement releases the On row",
+			acked.checked === "true" && acked.onDisabled === null,
+			`acknowledgement aria-checked ${JSON.stringify(acked.checked)}, On row aria-disabled ${JSON.stringify(acked.onDisabled)}`,
+		);
+		await clickAt(cdp, rowByValue("on"));
+		const answered = await waitForCondition(
+			cdp,
+			`Boolean(document.querySelector('${PICKER_RESULT}'))`,
+			20_000,
+		);
+		const answer = await cdp.evaluate(`(() => {
+			const out = document.querySelector('${PICKER_RESULT}');
+			return out
+				? {
+						tone: out.getAttribute("data-picker-result"),
+						text: out.textContent.trim(),
+					}
+				: null;
+		})()`);
+		const afterPick = await verb(cdp, "state");
+		const recorded = afterPick.activeDraftKey
+			? (afterPick.drafts[afterPick.activeDraftKey]?.model ?? null)
+			: null;
+		const applied = answer?.tone === "success";
+		check(
+			"what the dialog claims and what the pane records agree",
+			answered.ok &&
+				(applied ? recorded?.fast_mode === true : recorded?.fast_mode !== true),
+			`result tone ${JSON.stringify(answer?.tone)}, draft record ${JSON.stringify(recorded)}, text ${JSON.stringify(answer?.text)} (settled after ${answered.waitedMs}ms)`,
+		);
+		note(
+			"draft /fast pick",
+			`${JSON.stringify(answer?.tone)}: ${JSON.stringify(answer?.text)} - draft record ${JSON.stringify(recorded)}`,
+		);
+		frames.push(await captureSettled(cdp, `sessionless-fast-picked-${suffix}`));
+		await pressChord(cdp, {
+			key: "Escape",
+			code: "Escape",
+			virtualKeyCode: 27,
+		});
+		const fastClosed = await waitForCondition(
+			cdp,
+			`!document.querySelector('${DIALOG}')`,
+			5_000,
+		);
+		check(
+			"/fast's draft picker closes on Escape",
+			fastClosed.ok,
+			`after ${fastClosed.waitedMs}ms`,
+		);
+	}
+	/*
 	 * THE LIVE HALF (open only): a message is sent and answered, and `/theme` on
 	 * the conversation it creates must still present the picker - the
 	 * session-ful path this change must not move.
@@ -26548,7 +27720,38 @@ async function sceneSessionlessSlash(cdp) {
 		await cdp.send("Input.insertText", {
 			text: "Sessionless slash commands: live-conversation sanity check.",
 		});
+		/*
+		 * THE PRESS'S TWO HALVES, ASSERTED SEPARATELY (issue #1265's run measured the
+		 * difference): the text has to be IN the box before Enter, and the box has to
+		 * be EMPTY after it. A first take of this scene's `/fast` addition found Enter
+		 * doing nothing at all on a pane whose box still held the typed line, and the
+		 * old single wait could only report "the transcript lacks the text" - which is
+		 * true both of a send that was refused and of a keypress that never arrived.
+		 * The state is read here so the two are told apart by name.
+		 */
+		const beforeSend = await cdp.evaluate(
+			`document.querySelector('${COMPOSER} textarea').value`,
+		);
+		check(
+			"the sanity message is in the box before Enter",
+			typeof beforeSend === "string" &&
+				beforeSend.includes("live-conversation sanity check"),
+			JSON.stringify(beforeSend),
+		);
 		await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+		const afterSend = await waitForCondition(
+			cdp,
+			`document.querySelector('${COMPOSER} textarea').value === ""`,
+			5_000,
+		);
+		const boxAfter = await cdp.evaluate(
+			`document.querySelector('${COMPOSER} textarea').value`,
+		);
+		check(
+			"Enter consumed the box, so the send left",
+			afterSend.ok && boxAfter === "",
+			`after ${afterSend.waitedMs}ms the box held ${JSON.stringify(boxAfter)}`,
+		);
 		const sent = await waitForCondition(
 			cdp,
 			`(() => {
@@ -26564,14 +27767,24 @@ async function sceneSessionlessSlash(cdp) {
 		);
 		const answered = await waitForCondition(
 			cdp,
-			`(() => {
-				const log = document.querySelector('[role="log"]');
-				return Boolean(log && log.textContent.includes("from the mock provider"));
-			})()`,
+			/*
+			 * THE ANSWER'S WORDS ARE THE PROVIDER'S, so this asks for the SHAPE the
+			 * scene needs rather than for a reply text (QA round 1, Q2). The previous
+			 * form required `from the mock provider`, which only the fixture provider
+			 * returns, so the scene could never pass against a real provider even when
+			 * the send, the create and the owner-path `/fast` all worked - a test that
+			 * only passes in the rig. What is required is an ASSISTANT ROW THAT
+			 * COMPLETED WITH TEXT: `data-completion-complete` is emitted only for a
+			 * record that is complete and, for an assistant turn, is no longer
+			 * streaming and carries text (`canonical-transcript.tsx`), so a turn that
+			 * errored before answering has no such row. Which model answered, and what
+			 * it said, is not this scene's subject.
+			 */
+			`(() => Boolean(document.querySelector('[role="log"] [data-record-kind="assistant"][data-completion-complete="true"]')))()`,
 			60_000,
 		);
 		check(
-			"the mock provider answered, so the pane is on a live conversation",
+			"the turn settled as a completed assistant row, so the pane is on a live conversation",
 			answered.ok,
 			`after ${answered.waitedMs}ms`,
 		);
@@ -26634,6 +27847,99 @@ async function sceneSessionlessSlash(cdp) {
 			livePicker.ok && liveRead.picker === "Theme",
 			`dialog ${JSON.stringify(liveRead.picker)} after ${livePicker.waitedMs}ms`,
 		);
+
+		/*
+		 * AND `/fast` ON THAT CONVERSATION - the half this change must not move.
+		 *
+		 * A session's `/fast` is an OWNER command: the picker posts
+		 * `sessions.command` to the live runtime, which is what it did before this
+		 * change and what it must still do. The claim is structural rather than
+		 * about the outcome sentence, because that sentence is the runtime's
+		 * reading of THIS model: the draft route's own refusal copy ("The fast dial
+		 * could not be set.") is the one string that could appear here only if the
+		 * draft route had leaked into a session, so its absence beside the owner's
+		 * own answer is what the check reads. `note` carries the sentence itself,
+		 * so the run's log states what the runtime said.
+		 */
+		await pressChord(cdp, {
+			key: "Escape",
+			code: "Escape",
+			virtualKeyCode: 27,
+		});
+		await waitForCondition(cdp, `!document.querySelector('${DIALOG}')`, 5_000);
+		await clickAt(cdp, `${COMPOSER} textarea`);
+		await clearComposer();
+		await cdp.send("Input.insertText", { text: "/fast" });
+		await wait(400);
+		await pressEnter();
+		let liveFast = await waitForCondition(
+			cdp,
+			`Boolean(document.querySelector('${DIALOG}'))`,
+			8_000,
+		);
+		if (!liveFast.ok) {
+			const popup = await cdp.evaluate(
+				`Boolean(document.querySelector('${SLASH_POPUP}'))`,
+			);
+			if (popup) {
+				await pressChord(cdp, {
+					key: "Escape",
+					code: "Escape",
+					virtualKeyCode: 27,
+				});
+				await wait(300);
+			}
+			await pressEnter();
+			liveFast = await waitForCondition(
+				cdp,
+				`Boolean(document.querySelector('${DIALOG}'))`,
+				10_000,
+			);
+		}
+		const liveFastTitle = await cdp.evaluate(`(() => {
+			const dialog = document.querySelector('${DIALOG}');
+			const title = dialog ? dialog.querySelector('h2') : null;
+			return title ? title.textContent.trim() : null;
+		})()`);
+		check(
+			"/fast on a live conversation still presents its picker",
+			liveFast.ok && liveFastTitle === "Fast mode",
+			`dialog ${JSON.stringify(liveFastTitle)} after ${liveFast.waitedMs}ms`,
+		);
+		/* Only where there is a dialog to pick in: a tree without it has already
+		 * answered through the check above, and a click on a missing row would throw
+		 * away the frame this step is here to take. */
+		if (liveFast.ok && liveFastTitle === "Fast mode") {
+			await clickAt(cdp, rowByValue("off"));
+			const liveAnswer = await waitForCondition(
+				cdp,
+				`Boolean(document.querySelector('${PICKER_RESULT}'))`,
+				30_000,
+			);
+			const liveAnswerRead = await cdp.evaluate(`(() => {
+				const out = document.querySelector('${PICKER_RESULT}');
+				return out
+					? {
+							tone: out.getAttribute("data-picker-result"),
+							text: out.textContent.trim(),
+						}
+					: null;
+			})()`);
+			check(
+				"/fast on a conversation answers through the owner path, not the draft route",
+				liveAnswer.ok &&
+					liveAnswerRead !== null &&
+					!String(liveAnswerRead.text).startsWith(
+						"The fast dial could not be set.",
+					),
+				`tone ${JSON.stringify(liveAnswerRead?.tone)}, text ${JSON.stringify(liveAnswerRead?.text)} (settled after ${liveAnswer.waitedMs}ms)`,
+			);
+			note(
+				"live /fast pick",
+				`${JSON.stringify(liveAnswerRead?.tone)}: ${JSON.stringify(liveAnswerRead?.text)}`,
+			);
+		}
+		frames.push(await captureSettled(cdp, `sessionless-fast-live-${suffix}`));
 	} else {
 		note(
 			"live half skipped",
@@ -32807,29 +34113,19 @@ async function scenePaletteRecents(cdp) {
  * QA round 2 ran). That is a statement about the harness, not a defect in this
  * scene, and it is the honest answer while the key does not exist.
  *
- * AND THE ORIGIN IT HAS TO BE SERVED FROM, which is a requirement of its own and
- * cost a QA round its whole diagnosis (QA round 3, Q-6). `src/renderer/index.html`
- * pins the page's `connect-src` to `1111` and `8080` plus three vendor origins and
- * nothing computes it at runtime (`grep -rn "connect-src" src/main src/preload` is
- * empty), so a `--backend` rig on any OTHER loopback port is refused by the page
- * itself: the app's log says
- * `Connecting to 'http://127.0.0.1:<port>/v1/credentials' violates the following
- * Content Security Policy`, the chat route never gets a pane, and this scene throws
- * its composer refusal while the daemon behind the proxy is up and answering —
- * which reads as the wrong cause. ONLY THE SCENE needs this: the picker and the
- * chip are served over main-process IPC, which no CSP touches (measured — QA's
- * round-3 rows were green at 8080 and the port was the only difference). So run the
- * proxy on an allowed port (8080 is what QA used for the green run) and build the
- * renderer with `VITE_LOCAL_OPERATOR_API_URL` set to that same URL.
- *
- * THAT PORT CLAIM IS NOT WHAT GENERALISES, and it is corrected here rather than left as advice a
- * reader would act on. The app's transport is MAIN's - the renderer's `apiBaseUrl` is read over IPC
- * and never fetched - and the driver widens `frame-src`/`media-src` in the gitignored build output,
- * so a rig on a port the policy does not name is reachable. MEASURED 2026-09-27: `--scene
- * session-archive` reads 69 PASS / 0 FAIL at `127.0.0.1:8123`, and the port was the only difference
- * between the two runs of this scene above. What the CSP line quoted here records is a PAGE-side
- * fetch of `/v1/credentials`, so it is a signal to check WHICH surface was refused rather than
- * proof that the port must be allowlisted: read the message beside it before moving the rig. Two
+ * AND THE PORT IT IS SERVED FROM (QA round 3, Q-6), stated as the measurement
+ * rather than as a rule about which ports are allowed. `src/renderer/index.html`
+ * pins the page's `connect-src` to `1111` and `8080` plus three vendor origins,
+ * and nothing computes it at runtime, so a PAGE-side fetch to another loopback
+ * port is refused (`Connecting to 'http://127.0.0.1:<port>/v1/credentials'
+ * violates the following Content Security Policy`) - a signal to check WHICH
+ * surface was refused, not proof that the port must be allowlisted. The app's
+ * transport is MAIN's (the renderer's `apiBaseUrl` is read over IPC and never
+ * fetched) and the driver widens `frame-src`/`media-src` in the gitignored build
+ * output, so a rig on any free loopback port is reachable: MEASURED 2026-09-27,
+ * `--scene session-archive` reads 69 PASS / 0 FAIL at `127.0.0.1:8123`, a port
+ * the policy does not name. Build the renderer with
+ * `VITE_LOCAL_OPERATOR_API_URL` set to the same URL either way. Two
  * further facts this pass cost, for the next reader: a `-c`-cloned `node_modules` needs
  * `node_modules/@babel/plugin-transform-arrow-functions` linked out of `.pnpm/node_modules` or
  * `electron-vite build` dies in its bytecode step, and `pnpm run <script>` in such a tree starts a
@@ -34949,58 +36245,10 @@ async function sceneHitZones(cdp) {
 	}
 
 	/*
-	 * The sidebar sheet, where the window is narrow enough for the sidebar to BE
-	 * the sheet (`SIDEBAR_DOCK_MIN_PX`). `⌘B` opens it through the app's own
-	 * handler - the same control the strip's expand button calls - so no selector
-	 * here guesses at a button whose label changes with state.
+	 * The sidebar's narrow overlay sheet was removed with #1077. Dock and strip
+	 * hit-testing now lives in the focused `sidebar-docking` scene, which presses
+	 * the same chord and pointer controls at 1023 and 800px through CDP.
 	 */
-	if (await cdp.evaluate("window.innerWidth < 1024")) {
-		await pressChord(cdp, {
-			key: "b",
-			code: "KeyB",
-			virtualKeyCode: 66,
-			modifiers: MODIFIER.meta,
-		});
-		const sheetUp = await waitForCondition(
-			cdp,
-			`Boolean(document.querySelector('[data-sidebar-sheet]'))`,
-			10_000,
-		);
-		check(
-			"[sidebar-sheet] the sidebar toggle opened the sheet",
-			sheetUp.ok,
-			`after ${sheetUp.waitedMs}ms`,
-		);
-		if (sheetUp.ok) {
-			const frame = await captureSettled(cdp, "hit-zones-sidebar-sheet-dark");
-			note("frame sidebar-sheet", JSON.stringify(frame));
-			surfaces.push(
-				checkHitZones(
-					"sidebar-sheet",
-					await readHitZones(cdp, {
-						surface: "sidebar-sheet",
-						root: "[data-sidebar-sheet]",
-						controls: HIT_ZONE_CONTROLS,
-					}),
-				),
-			);
-			await pressChord(cdp, {
-				key: "Escape",
-				code: "Escape",
-				virtualKeyCode: 27,
-			});
-			await waitForCondition(
-				cdp,
-				`!document.querySelector('[data-sidebar-sheet]')`,
-				10_000,
-			);
-		}
-	} else {
-		note(
-			"sidebar-sheet not exercised",
-			`the sidebar is docked above SIDEBAR_DOCK_MIN_PX (1024) at this width (${chrome.viewport.width}), so there is no sheet here to probe - run this scene at a narrower --window-size for it`,
-		);
-	}
 
 	/*
 	 * The non-chat routes' drag band, on /settings — and its two jobs are per
@@ -39730,7 +40978,7 @@ function translateYOf(transform) {
  * 2. two files - `dataTransfer.files` is a list, and the defect's shape
  *    (the OS promises a copy) is about a real drag, which can carry several;
  * 3. a non-image file - it must attach exactly as any other path does. What
- *    reaches the MODEL is a different question: `encodeImageAttachments` admits
+ *    reaches the MODEL is a different question: `encodeAttachments` admits
  *    only the four image mimes by extension, for every route, so a `.txt` chip
  *    is carried by the composer and skipped by the encoder on the attach
  *    button's route too. That is pre-existing behaviour of the send, not of the
@@ -39772,6 +41020,317 @@ function translateYOf(transform) {
  * the issue reports); and the drag interception flag is a rig device whose
  * refusal the run reports rather than assumes.
  */
+
+/**
+ * THE PAPERCLIP, PRESSED FOR REAL (`--scene attach`, `--attach <absolute-path>`).
+ *
+ * The claim this scene exists for is narrow and honest: pressing the composer's
+ * attach button runs `handleAttachFile` -> `show-open-dialog` -> `addAttachment`,
+ * and the file it stages is the file the run named on its command line. ONLY the
+ * native picker is replaced - main answers the dialog from the `--attach` queue
+ * (`src/main/dev-driver-attach.ts`) - so the press, the IPC round trip and the
+ * store write are the app's own code paths. Nothing here fabricates a chip.
+ *
+ * What it therefore does NOT prove: that the OS dialog opens, and that a person
+ * can reach a file through it. Those are the picker's own behaviour, and a
+ * headless run must not show a picker at all.
+ *
+ * Needs `--backend`: a composer mounts only for a conversation, and the staged
+ * list is read back from the store the app persists.
+ */
+async function sceneAttach(cdp) {
+	if (ATTACH_EXPECT_ANSWER !== null && ATTACH_PROMPT === null) {
+		throw new Error(
+			"--attach-expect-answer needs --attach-prompt: the substring is checked against the assistant's answer to a prompt, and no prompt means no answer to check",
+		);
+	}
+	if (ATTACH_PROMPT !== null && !ATTACH_PROMPT.trim()) {
+		throw new Error(
+			"--attach-prompt must not be empty: an empty send would stage the files and never admit them, so the run would claim a send it did not make",
+		);
+	}
+	if (ATTACH_PATHS.length === 0) {
+		throw new Error(
+			"--scene attach needs at least one --attach <absolute-path>: the subject IS the file the paperclip stages, and a run with no queue would photograph an empty composer as a success",
+		);
+	}
+	for (const path of ATTACH_PATHS) {
+		if (!isAbsolute(path)) {
+			throw new Error(
+				`--attach takes an absolute path (got ${JSON.stringify(path)}): a relative one would resolve against whatever cwd the app holds`,
+			);
+		}
+	}
+	if (BACKEND === null) {
+		throw new Error(
+			"--scene attach needs --backend: the chat pane mounts no composer until a conversation is open, and the staged list is read back from the store and the app log",
+		);
+	}
+	const facts = await factsOf(cdp);
+	note("facts (from main)", JSON.stringify(facts, null, 2));
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	await verb(cdp, "setTheme", THEME ?? "localOperatorDark");
+
+	const created = await createBackendSession();
+	check(
+		"a conversation exists on this run's own backend",
+		Boolean(created.id),
+		JSON.stringify(created).slice(0, 400),
+	);
+	await verb(cdp, "navigate", "/chat");
+	const row = '[data-tour-tag="chat-session-row"]';
+	const composerField = 'textarea[aria-label="Message"]';
+	await verb(cdp, "press", {
+		selector: '[data-tour-tag="chat-all-chats"]',
+	}).catch(() => null);
+	const rowShown = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector(${JSON.stringify(row)}))`,
+		10_000,
+	);
+	if (rowShown.ok) await verb(cdp, "press", { selector: row });
+	const mounted = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector(${JSON.stringify(composerField)}))`,
+		20_000,
+	);
+	check(
+		"the composer is on screen for the conversation this scene created",
+		mounted.ok,
+		`textarea[aria-label="Message"] present=${mounted.ok} after ${mounted.waitedMs}ms`,
+	);
+	if (!mounted.ok) return;
+
+	/*
+	 * THE PRESS. The selector is the button's own `data-tour-tag`, not an
+	 * `aria-label`: the label is localized copy, and a rig that changes with the
+	 * locale is a rig that fails for the wrong reason.
+	 */
+	const pressed = await verb(cdp, "press", {
+		selector: '[data-tour-tag="chat-input-attach-file-button"]',
+	});
+	check(
+		"the paperclip was pressed",
+		pressed !== null && pressed !== undefined,
+		JSON.stringify(pressed ?? null).slice(0, 400),
+	);
+
+	const stagedCount = await waitForCondition(
+		cdp,
+		`document.querySelectorAll("[data-attachment-id]").length === ${ATTACH_PATHS.length}`,
+		10_000,
+	);
+	check(
+		"one chip is staged per queued path",
+		stagedCount.ok,
+		`expected=${ATTACH_PATHS.length} after ${stagedCount.waitedMs}ms`,
+	);
+	const read = await cdp.evaluate(`(() => {
+		const chips = Array.from(document.querySelectorAll("[data-attachment-id]"));
+		let stored = null;
+		try {
+			const raw = window.localStorage.getItem("conversation-input-store");
+			const parsed = raw === null ? null : JSON.parse(raw);
+			stored = Object.values(parsed?.state?.inputByConversation ?? {}).flatMap((entry) =>
+				(entry?.attachments ?? []).map((attachment) => attachment.path),
+			);
+		} catch (error) {
+			stored = ["<store unreadable: " + String(error) + ">"];
+		}
+		return {
+			chips: chips.map((chip) => ({
+				id: chip.getAttribute("data-attachment-id"),
+				text: (chip.textContent || "").trim(),
+			})),
+			pending: Boolean(document.querySelector("[data-attachment-pending]")),
+			stored,
+		};
+	})()`);
+	note("staged chips", JSON.stringify(read.chips));
+	note("staged attachments (store)", JSON.stringify(read.stored));
+	check(
+		"the store holds exactly the paths this run was given, in order",
+		JSON.stringify(read.stored) === JSON.stringify(ATTACH_PATHS),
+		`expected=${JSON.stringify(ATTACH_PATHS)} actual=${JSON.stringify(read.stored)}`,
+	);
+	check(
+		"the chips carry the same ids the store does",
+		read.chips.length === ATTACH_PATHS.length,
+		`chips=${read.chips.length}`,
+	);
+	check(
+		"the row reads as pending, not sent",
+		read.pending === true,
+		`pending caption present=${read.pending}`,
+	);
+	const answerLine = (await readAppLog(app))
+		.split("\n")
+		.filter((line) => line.includes("[dev-driver] answered the file dialog"));
+	check(
+		"main answered the picker from the queue rather than opening it",
+		answerLine.some((line) =>
+			line.includes(`with ${ATTACH_PATHS.length} queued path(s)`),
+		),
+		answerLine.join(" / ") || "no queue-answered line in the app log",
+	);
+	const frame = await captureSettled(cdp, "attach-staged");
+	note("frame", frame.path);
+	if (ATTACH_PROMPT === null) return;
+
+	/*
+	 * THE SEND. The prompt goes in through the composer's own field, then the
+	 * REAL Send control is pressed - not Enter, because the button is the
+	 * gesture a person uses and the one the send-refusal path is wired to.
+	 */
+	await clickAt(cdp, composerField);
+	await cdp.send("Input.insertText", { text: ATTACH_PROMPT });
+	const sent = await verb(cdp, "press", {
+		selector: 'button[aria-label="Send message"]',
+	});
+	check(
+		"the send control was pressed with the prompt in the composer",
+		sent !== null && sent !== undefined,
+		JSON.stringify(sent ?? null).slice(0, 400),
+	);
+	const admitted = await waitForCondition(
+		cdp,
+		`(() => {
+			const log = document.querySelector('[role="log"]');
+			return Boolean(log && log.textContent.includes(${JSON.stringify(ATTACH_PROMPT)}));
+		})()`,
+		60_000,
+	);
+	check(
+		"the prompt reached the transcript",
+		admitted.ok,
+		`after ${admitted.waitedMs ?? "?"}ms`,
+	);
+
+	/*
+	 * THE DAEMON'S OWN RECORD, not the painted echo: a send the plane refused
+	 * still puts text on screen, and the file block only proves the paperclip
+	 * reached the model if the admitted row carries it. Polled because the turn
+	 * is asynchronous.
+	 *
+	 * THE END OF THE TURN IS THE COMPLETION SIGNAL, not the first assistant row
+	 * with text. A tool-using turn can emit an interim assistant message, and
+	 * checking the expected answer against that message would judge the wrong
+	 * text (agent review round 2, m5). The snapshot's `streaming` plus
+	 * `last_turn_outcome` is the daemon's own statement that the turn settled;
+	 * `last_turn_outcome` is set once per prompt, so a non-empty value cannot be
+	 * an interim message. An OLD runtime that omits the field is handled by
+	 * requiring the assistant text to be unchanged across three polls.
+	 */
+	const deadline = Date.now() + 180_000;
+	let history = null;
+	let userEntry = null;
+	let documents = [];
+	let assistantText = "";
+	let turnOutcome = null;
+	let streaming = null;
+	let previousText = "";
+	let stablePolls = 0;
+	while (Date.now() < deadline) {
+		history = await fetchSessionHistory(created.id);
+		const snapshot = await fetchSessionSnapshot(created.id);
+		streaming = snapshot.state?.streaming ?? null;
+		turnOutcome = snapshot.state?.last_turn_outcome ?? null;
+		const entries = history.body?.result?.entries ?? [];
+		const user = entries.find((entry) => {
+			if (entry?.payload?.role !== "user") return false;
+			const content = Array.isArray(entry.payload.content)
+				? entry.payload.content
+				: [];
+			return content.some(
+				(block) =>
+					typeof block?.text === "string" && block.text.includes(ATTACH_PROMPT),
+			);
+		});
+		if (user) {
+			userEntry = user;
+			documents = (user.payload.content ?? []).filter(
+				(block) =>
+					block &&
+					(block.type === "document" ||
+						(typeof block.filename === "string" &&
+							typeof block.attachment === "string")),
+			);
+		}
+		const answers = entries
+			.filter((entry) => entry?.payload?.role === "assistant")
+			.map((entry) =>
+				(entry.payload.content ?? [])
+					.filter((block) => typeof block?.text === "string")
+					.map((block) => block.text)
+					.join(" "),
+			)
+			.filter((text) => text.trim().length > 0);
+		const current = answers.at(-1) ?? "";
+		stablePolls = current && current === previousText ? stablePolls + 1 : 0;
+		previousText = current;
+		const settledOutcome =
+			typeof turnOutcome === "string" && turnOutcome !== "";
+		const settled =
+			current.length > 0 &&
+			streaming === false &&
+			(settledOutcome ||
+				// An older daemon publishes no outcome: three unchanged polls with
+				// the stream stopped are the strongest signal it can give.
+				(turnOutcome === null && stablePolls >= 2));
+		if (settled) {
+			assistantText = current;
+			break;
+		}
+		await wait(1000);
+	}
+	note("session id", created.id);
+	note(
+		"user row",
+		JSON.stringify(userEntry ? userEntry.payload.content : null).slice(0, 2000),
+	);
+	note("document blocks", JSON.stringify(documents));
+	note(
+		"turn state",
+		JSON.stringify({ streaming, outcome: turnOutcome, stablePolls }),
+	);
+	note("assistant final text", assistantText);
+	check(
+		"the daemon admitted the prompt as a user row",
+		userEntry !== null,
+		`history status=${history?.status} entries=${JSON.stringify(history?.body?.result?.entries ?? []).slice(0, 600)}`,
+	);
+	check(
+		"the admitted user row carries the staged file as a document block",
+		documents.length === ATTACH_PATHS.length &&
+			documents.every(
+				(block) =>
+					typeof block.attachment === "string" && block.attachment.length > 0,
+			),
+		`documents=${JSON.stringify(documents)}`,
+	);
+	check(
+		"the assistant turn completed with a final answer",
+		assistantText.trim().length > 0 &&
+			(turnOutcome === null || turnOutcome === "completed"),
+		`assistant text=${JSON.stringify(assistantText).slice(0, 400)} outcome=${JSON.stringify(turnOutcome)}`,
+	);
+	if (ATTACH_EXPECT_ANSWER !== null) {
+		check(
+			"the assistant's final text contains the expected answer",
+			assistantText.includes(ATTACH_EXPECT_ANSWER),
+			`expected substring=${JSON.stringify(ATTACH_EXPECT_ANSWER)} got=${JSON.stringify(assistantText).slice(0, 600)}`,
+		);
+	}
+	const sentFrame = await captureSettled(cdp, "attach-sent");
+	note("frame", sentFrame.path);
+}
+
 async function sceneComposerDrop(cdp) {
 	if (DROP_EXPECT !== "accepted" && DROP_EXPECT !== "discarded") {
 		throw new Error(
@@ -41950,6 +43509,10 @@ async function sceneRouteTops(cdp) {
 		 */
 		["projects", "/projects"],
 		["browser", "/browser"],
+		/* The Notifications page (features.notifications); below the capability
+		   the route is not mounted and this frame is the catch-all, which is the
+		   gate's own answer rather than a failure of the scene. */
+		["notifications", "/notifications"],
 	];
 	/*
 	 * The palette this run photographs, through the app's own preference (the same
@@ -42125,10 +43688,40 @@ async function sceneRouteTops(cdp) {
 			const laneStops = [
 				...gradient.matchAll(/(rgba?\\([^)]*\\))\\s+([0-9.]+)px/g),
 			].map((match) => ({ colour: match[1], stop: Number(match[2]) }));
+			/*
+			 * THE REAL GROUND AT y8, from the element stack rather than the lane's
+			 * gradient: the lane is transparent now, so what a reader sees in the
+			 * strip is whichever panel is behind it. The body, html and #app are
+			 * SKIPPED deliberately - they paint the window's fallback canvas, and
+			 * accepting them would let a hole read as a panel. A probe therefore
+			 * answers only when a panel owns that pixel, which is the contract.
+			 */
+			const groundAt = (x) => {
+				for (const el of document.elementsFromPoint(x, 8)) {
+					if (el === document.body || el === document.documentElement || el.id === "app") continue;
+					const bg = getComputedStyle(el).backgroundColor;
+					if (bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent") {
+						return { x: Math.round(x), bg, tag: el.tagName.toLowerCase() };
+					}
+				}
+				return { x: Math.round(x), bg: null, tag: null };
+			};
+			const sidebar = box(document.querySelector("[data-sidebar-shell]") || document.querySelector("[data-sidebar-strip]"));
+			const stripX = [4, window.innerWidth - 4, window.innerWidth / 2];
+			if (sidebar) stripX.push(sidebar.left + sidebar.width / 2);
+			if (leading) stripX.push(leading.left + leading.width / 2);
+			const settingsRailEl = document.querySelector('nav[aria-label="Settings sections"]');
+			if (settingsRailEl) {
+				const r = settingsRailEl.getBoundingClientRect();
+				stripX.push(r.left + r.width / 2);
+			}
+			const stripGrounds = [...new Set(stripX.map((x) => Math.round(x)))].map(groundAt);
 			return {
 				platform: document.documentElement.getAttribute("data-chrome-platform"),
 				mode: document.documentElement.getAttribute("data-chrome-mode"),
 				viewport: { width: window.innerWidth, height: window.innerHeight },
+				routeFlush: ownRoot ? getComputedStyle(ownRoot).marginTop : null,
+				stripGrounds,
 				lane: box(lane),
 				laneDisplay: lane ? getComputedStyle(lane).display : null,
 				laneStops,
@@ -42199,157 +43792,78 @@ async function sceneRouteTops(cdp) {
 		laneDrawn;
 
 	if (macIntegrated) {
-		for (const [, path, reading] of readings) {
-			check(
-				`${path}: the route's own first box starts on the lane's bottom edge (${laneBottom}px)`,
-				reading.route !== null &&
-					Math.abs(reading.route.top - laneBottom) < 0.5,
-				`the route's first box is at y ${reading.route === null ? "(absent)" : reading.route.top} against a lane that ends at ${laneBottom}`,
-				`route y ${reading.route === null ? "(absent)" : reading.route.top}, sidebar y ${reading.sidebar === null ? "(none)" : reading.sidebar.top}, settings rail y ${reading.settingsRail === null ? "(none)" : reading.settingsRail.top}, settings content y ${reading.settingsContent === null ? "(none)" : reading.settingsContent.top}`,
-			);
-		}
 		/*
-		 * THE LANE CARRIES EVERY GROUND BESIDE IT, and since 2026-09-27 that means
-		 * each column's OWN rung rather than an assumed `surface`. On the rail that
-		 * rung is `surface` again (it held `elevated` from 2026-09-27 to 2026-09-30,
-		 * and gave it up when the split it required was reported as mismatched
-		 * blocks inside the rail), so on this tree the lane paints the sidebar's
-		 * width in `surface`, the rail's width in `surface` too, then `canvas` - and
-		 * the two agent rosters have always been `surface`. The rule is what is
-		 * asserted rather than today's value: the rail is INSIDE the clipped content
-		 * column and cannot paint above its own top edge, so the lane is the only
-		 * thing that can carry its ground to y0, and the check below fails if the lane
-		 * paints anything but the rung the column is actually standing on. The
-		 * operator reported the band half of this twice (2026-09-26, and again
-		 * 2026-09-27 as still true).
-		 *
-		 * THE RULES ARE GONE, and this is where the half a source test cannot see it
-		 * is refused: no stop in the lane's resolved gradient may paint the hairline
-		 * role on any route. The operator's first sentence - "the right border doesn't
-		 * go all the way up ... either make it extend all the way up or remove the
-		 * right border" - is answered with the removal on every column, because each
-		 * boundary those rules drew is a tone step now, and a rule could only ever
-		 * begin at the lane's lower edge (nothing a route renders reaches y0), which
-		 * is the half-drawn edge being reported.
-		 *
-		 * THE SUBJECT IS DERIVED, NOT LOOKED UP BY THE HANDLE THE FIX ADDS. Asking the
-		 * page for the marker would make this guard pass on the unfixed tree - the
-		 * marker is not there, every reading comes back null, and a check with nothing
-		 * to check is a check that cannot fail (measured on the base tree: all six
-		 * routes "passed" as routes with no leading column). The rule is derived
-		 * instead, from the layout on both trees: a full-height column on a column rung
-		 * of the ladder at the route's own left edge. The registration and the rung it
-		 * was handed are then asked for separately, so a column nobody handed over - or
-		 * one handed over on a stale rung - fails by name rather than quietly becoming
-		 * "no column here".
-		 *
-		 * The control is the routes that draw no such column (chat, schedules, agent
-		 * hub, projects, browser): there the band stays exactly the app sidebar's width,
-		 * which is what keeps this from being a rule that quietly widens every route's
-		 * band.
+		 * THE PANEL CONTRACT, IN THE RUNNING APP. The lane is a transparent overlay,
+		 * so there is no gradient left to read: what has to be true is that the
+		 * route's own box reaches y0 when it is a panel (its computed margin-top is
+		 * the negative `panel-flush`) or begins on the strip's edge when it is an
+		 * ordinary page, and that every probe at y8 across the window is a panel's
+		 * own ground. `stripGrounds` walks the element stack and skips html/body/#app,
+		 * so the window's fallback canvas cannot stand in for a panel.
 		 */
 		for (const [, path, reading] of readings) {
-			if (!reading.lane || reading.laneDisplay === "none") continue;
-			const laneLeft = reading.lane.left;
-			/*
-			 * The lane's colour at an x in lane coordinates, read off the RESOLVED
-			 * stop list: each stop owns its colour from its own position to the next
-			 * stop's, which is what makes a sample either side of an edge a claim about
-			 * the ground CHANGING there rather than about a single stop existing.
-			 */
-			const laneColourAt = (x) => {
-				let colour = reading.laneStops[0]?.colour ?? null;
-				for (const stop of reading.laneStops) {
-					if (x >= stop.stop) colour = stop.colour;
-				}
-				return colour;
-			};
-			const sidebarEdge = reading.sidebar
-				? reading.sidebar.left + reading.sidebar.width - laneLeft
-				: null;
 			check(
-				`${path}: no rule is painted in the lane`,
-				reading.laneStops.every(
-					(stop) => stop.colour !== reading.hairlineGround,
-				),
-				`the lane's stops are ${reading.laneStops.map((s) => `${s.colour} ${s.stop}px`).join(", ")} against the hairline role's ${reading.hairlineGround}`,
+				`${path}: the route's own first box starts at y0 (panel) or the strip's edge (ordinary page)`,
+				reading.route !== null &&
+					(Math.abs(reading.route.top) < 0.5 ||
+						Math.abs(reading.route.top - laneBottom) < 0.5),
+				`the route's first box is at y ${reading.route === null ? "(absent)" : reading.route.top}; lane ends at ${laneBottom}; route margin-top ${reading.routeFlush}`,
+				`route y ${reading.route === null ? "(absent)" : reading.route.top}, sidebar y ${reading.sidebar === null ? "(none)" : reading.sidebar.top}, settings rail y ${reading.settingsRail === null ? "(none)" : reading.settingsRail.top}, settings content y ${reading.settingsContent === null ? "(none)" : reading.settingsContent.top}`,
+			);
+			check(
+				`${path}: the route root declares which side of the lane it is on`,
+				reading.routeFlush !== null &&
+					(Number.parseFloat(reading.routeFlush) < -0.5 ||
+						Math.abs(reading.route.top - laneBottom) < 0.5),
+				`route margin-top ${reading.routeFlush}: a panel root must cancel the shell's pad with \`panel-flush\`, and an ordinary page must start on the strip's edge`,
+			);
+			check(
+				`${path}: every probe at y8 is a panel's own ground`,
+				reading.stripGrounds.length > 0 &&
+					reading.stripGrounds.every((probe) =>
+						[
+							reading.surfaceGround,
+							reading.canvasGround,
+							reading.elevatedGround,
+						].includes(probe.bg),
+					),
+				`the y8 probes read ${reading.stripGrounds.map((p) => `${p.x}px=${p.bg ?? "NOTHING"}<${p.tag ?? "-"}>`).join(", ")} against surface ${reading.surfaceGround}, canvas ${reading.canvasGround}, elevated ${reading.elevatedGround}`,
+			);
+			check(
+				`${path}: the window's left edge in the strip belongs to the sidebar's surface`,
+				reading.stripGrounds[0]?.bg === reading.surfaceGround,
+				`x${reading.stripGrounds[0]?.x} reads ${reading.stripGrounds[0]?.bg}`,
 			);
 			if (reading.leadingColumn) {
 				const column = reading.leadingColumn;
-				const edge = column.left + column.width;
-				const laneEdge = edge - laneLeft;
+				const mid = column.left + column.width / 2;
 				check(
-					`${path}: the route's leading column is handed to the shell`,
-					reading.registeredColumn !== null &&
-						Math.abs(reading.registeredColumn.left - column.left) < 0.5,
-					`the column at x ${column.left} is ${reading.registeredColumn === null ? "not registered at all" : `registered at x ${reading.registeredColumn.left}`}`,
-				);
-				check(
-					`${path}: the shell is handed the rung the column is painted in`,
-					reading.markerGround !== null &&
-						reading.markerGround === reading.leadingColumnGround,
-					`the marker says ${JSON.stringify(reading.markerValue)} (${reading.markerGround}) against a column painted ${reading.leadingColumnGround}`,
-				);
-				/*
-				 * SENTENCE ONE OF THE REPORT, IN THE RUNNING APP: "the right border
-				 * doesn't go all the way up ... either make it extend all the way up or
-				 * remove the right border" - answered with removal on every column.
-				 * Both elements are read because the rule lived on a different level per
-				 * route (the settings rail's wrapper, the rosters' own boxes), and this
-				 * check has to fail on the before tree for all three - which it does:
-				 * on `origin/main` the settings rail's wrapper and the rosters' boxes each
-				 * compute a 1px border-right-WIDTH here. (The width, not the style:
-				 * Tailwind's preflight leaves `border-right-style: solid` on every box, so
-				 * the style reads `solid` whether or not a rule is drawn, and only the
-				 * width separates 1px of rule from 0px of none.)
-				 */
-				check(
-					`${path}: neither the column nor its hand-over draws a right rule`,
-					reading.leadingColumnRule === "0px" &&
-						reading.registeredRule === "0px",
-					`column border-right-width ${reading.leadingColumnRule}, registered border-right-width ${reading.registeredRule} - a rule here can only begin at the lane's lower edge (y 32), not at y0`,
-				);
-				check(
-					`${path}: the lane carries the column's own ground across its width`,
+					`${path}: the route's leading column paints its own ground through the strip`,
 					reading.leadingColumnGround !== null &&
-						laneColourAt((laneEdge + (column.left - laneLeft)) / 2) ===
-							reading.leadingColumnGround,
-					`mid-column the lane paints ${laneColourAt((laneEdge + (column.left - laneLeft)) / 2)} against the column's own ${reading.leadingColumnGround}`,
+						reading.stripGrounds.some(
+							(probe) =>
+								Math.abs(probe.x - mid) <= 1 &&
+								probe.bg === reading.leadingColumnGround,
+						),
+					`at x${Math.round(mid)} the strip reads ${JSON.stringify(reading.stripGrounds.filter((p) => Math.abs(p.x - mid) <= 1))} against the column's ${reading.leadingColumnGround} - a leading column that stops at y32 is the operator's original report`,
 				);
 				check(
-					`${path}: the lane's canvas resumes at the column's right edge (${edge}px)`,
-					laneColourAt(laneEdge - 1) === reading.leadingColumnGround &&
-						laneColourAt(laneEdge + 1) === reading.canvasGround,
-					`left of the edge ${laneColourAt(laneEdge - 1)}, right of it ${laneColourAt(laneEdge + 1)}, against the column's ${reading.leadingColumnGround} and canvas ${reading.canvasGround}`,
-				);
-				if (sidebarEdge !== null) {
-					check(
-						`${path}: the surface band still starts at the app sidebar's own edge (${sidebarEdge}px from the lane's left)`,
-						laneColourAt(sidebarEdge - 1) === reading.surfaceGround,
-						`the lane paints ${laneColourAt(sidebarEdge - 1)} just left of the sidebar's edge, against the surface role's ${reading.surfaceGround}`,
-					);
-				}
-			} else if (sidebarEdge !== null) {
-				check(
-					`${path}: with no leading column the surface band stops at the app sidebar's own edge (${sidebarEdge}px from the lane's left)`,
-					laneColourAt(sidebarEdge - 1) === reading.surfaceGround &&
-						laneColourAt(sidebarEdge + 1) === reading.canvasGround,
-					`left of the edge ${laneColourAt(sidebarEdge - 1)}, right of it ${laneColourAt(sidebarEdge + 1)}`,
+					`${path}: the column draws no right rule`,
+					reading.leadingColumnRule === "0px",
+					`column border-right-width ${reading.leadingColumnRule} - the boundary beside it is a tone step now`,
 				);
 			}
 		}
 		/*
-		 * The app sidebar is the control for the same number, WHERE IT EXISTS to be
-		 * read: `[data-sidebar-shell]` is the docked column's marker, so at 800 - where
-		 * the dock collapses to the 56px strip - the filter below skips this check rather
-		 * than comparing a box that is not there. On every route at 1380 the sidebar's
-		 * first row sat on the lane's bottom before the report and must still, or the fix
-		 * moved the one column that was never wrong.
+		 * THE APP SIDEBAR IS THE CONTROL, and under the panel contract its own top
+		 * is y0: it paints `surface` through the strip and pads its first row below
+		 * it. The old reading compared it to the lane's bottom edge, which is the
+		 * reserved row this pass removes.
 		 */
 		for (const [, path, reading] of readings.filter(([, , r]) => r.sidebar)) {
 			check(
-				`${path}: the app sidebar still starts on the lane's bottom edge (${laneBottom}px)`,
-				Math.abs(reading.sidebar.top - laneBottom) < 0.5,
+				`${path}: the app sidebar starts at y0, not below the strip`,
+				Math.abs(reading.sidebar.top) < 0.5,
 				`the sidebar's own top is ${reading.sidebar.top}`,
 			);
 		}
@@ -42428,6 +43942,33 @@ async function fetchSessionHistory(sessionId) {
 	);
 	const body = await response.json().catch(() => null);
 	return { status: response.status, body };
+}
+
+/**
+ * One session's canonical snapshot, which is where the TURN state lives.
+ *
+ * The history page has the messages but not whether the turn behind them has
+ * ENDED; the snapshot's `frontend.snapshot` publishes `streaming` and
+ * `last_turn_outcome`, the two fields a rig needs to tell an interim assistant
+ * message from the answer (agent review round 2, m5). Read tolerantly: an older
+ * daemon may answer the envelope at either depth.
+ */
+async function fetchSessionSnapshot(sessionId) {
+	const response = await fetch(
+		`${BACKEND}/v1/desktop/sessions/${encodeURIComponent(sessionId)}`,
+		{
+			headers: {
+				authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+			},
+		},
+	);
+	const body = await response.json().catch(() => null);
+	const state =
+		body?.result?.payload?.frontend?.snapshot ??
+		body?.result?.frontend?.snapshot ??
+		body?.payload?.frontend?.snapshot ??
+		null;
+	return { status: response.status, body, state };
 }
 
 /**
@@ -43108,6 +44649,193 @@ async function wheelUntilInScroller(
  * calls that would), and the facts check below proves the window stayed
  * hidden. The run log says it used it.
  */
+
+/**
+ * THE PROJECT UPDATE ASSETS GRID, live: open the seeded picture, Next, a
+ * filmstrip jump, Escape, and the markdown note in the in-app reader. Every
+ * claim is read off the DOM the app painted.
+ */
+async function sceneProjectUpdateAssets(cdp) {
+	if (PROJECT === null) {
+		throw new Error(
+			"--scene project-update-assets needs --project <key>: the feed is reached by the project's own key, and a default would drive whatever the lane's seed happened to call its row",
+		);
+	}
+	const facts = await factsOf(cdp);
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	await verb(cdp, "setTheme", THEME ?? "localOperatorDark");
+	const size = `${WINDOW_WIDTH}x${WINDOW_HEIGHT}`;
+	const theme = (THEME ?? "localOperatorDark")
+		.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)
+		.replace(/^-/, "");
+
+	const seeded = await fetchProjectView(PROJECT);
+	const names = (seeded.body?.result?.project?.updates ?? [])
+		.flatMap((update) => update.attachments ?? [])
+		.map((attachment) => attachment.name);
+	check(
+		"the seeded project exists and carries the evidence attachments",
+		seeded.status === 200 && names.length >= 4,
+		`status=${seeded.status} names=${JSON.stringify(names)}`,
+	);
+
+	await verb(cdp, "navigate", `/projects/${PROJECT}`);
+	const gridWaited = await waitForCondition(
+		cdp,
+		`(() => {
+			const grid = document.querySelector("[data-project-asset-grid]");
+			if (!grid) return null;
+			return {
+				images: grid.querySelectorAll('[data-project-asset-tile="image"]').length,
+				sounds: grid.querySelectorAll('[data-project-asset-tile="audio"]').length,
+				files: grid.querySelectorAll('[data-project-asset-tile="file"]').length,
+			};
+		})()`,
+		30_000,
+	);
+	const counts = gridWaited.last;
+	check(
+		"the update renders an asset grid of pictures, a sound and a note",
+		gridWaited.ok &&
+			counts?.images === 2 &&
+			counts.sounds >= 1 &&
+			counts.files >= 1,
+		`after ${gridWaited.waitedMs}ms counts=${JSON.stringify(counts)}`,
+	);
+	note("asset grid", `${await verb(cdp, "state")}`);
+
+	const firstImageTile =
+		'[data-project-asset-grid] [data-project-asset-tile="image"]';
+	// The tile is lazy: scroll the slot, then wait for its control to mount.
+	await cdp.evaluate(
+		`document.querySelector('${firstImageTile}').scrollIntoView({ block: "center" })`,
+	);
+	const firstImage = `${firstImageTile} button`;
+	const mounted = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('${firstImage}'))`,
+		15_000,
+	);
+	check(
+		"the lazy picture tile mounts its control once the slot is in view",
+		mounted.ok,
+		`after ${mounted.waitedMs}ms`,
+	);
+	await wait(200);
+	await captureSettled(cdp, `pua-${size}-${theme}-grid`);
+
+	await clickAt(cdp, firstImage);
+	const opened = await waitForCondition(
+		cdp,
+		`(() => {
+			const image = document.querySelector("[data-image-viewport] img");
+			return image ? image.getAttribute("src") : null;
+		})()`,
+		15_000,
+	);
+	const firstSrc = String(opened.last ?? "");
+	check(
+		"pressing the first picture opens the shared lightbox on an image slide",
+		opened.ok && firstSrc.length > 0,
+		`after ${opened.waitedMs}ms src=${firstSrc.slice(0, 48)}`,
+	);
+	await captureSettled(cdp, `pua-${size}-${theme}-lightbox`);
+
+	await clickAt(cdp, '[role="dialog"] [data-image-viewer-next]');
+	const moved = await waitForCondition(
+		cdp,
+		`(() => {
+			const image = document.querySelector("[data-image-viewport] img");
+			if (!image) return null;
+			const src = image.getAttribute("src");
+			return src !== ${JSON.stringify(firstSrc)} ? src : null;
+		})()`,
+		15_000,
+	);
+	check(
+		"Next moves the gallery to the update's second picture",
+		moved.ok,
+		`after ${moved.waitedMs}ms src=${String(moved.last ?? "").slice(0, 48)}`,
+	);
+	await captureSettled(cdp, `pua-${size}-${theme}-next`);
+
+	const stripCaptured = await cdp.evaluate(
+		`document.querySelectorAll("[data-project-asset-filmstrip] button").length`,
+	);
+	check(
+		"the filmstrip lists media tiles",
+		Number(stripCaptured) >= 2,
+		`tiles=${stripCaptured}`,
+	);
+	await clickAt(cdp, "[data-project-asset-filmstrip] button:first-child");
+	// The name, not the src: a re-resolved slide has a new blob URL.
+	const firstName = String(names[0] ?? "");
+	const jumped = await waitForCondition(
+		cdp,
+		`(() => {
+			const image = document.querySelector("[data-image-viewport] img");
+			return image && image.getAttribute("alt") === ${JSON.stringify(firstName)};
+		})()`,
+		15_000,
+	);
+	check(
+		"a filmstrip tile jumps the gallery to the slot it names",
+		jumped.ok,
+		`after ${jumped.waitedMs}ms expected=${firstName}`,
+	);
+	await captureSettled(cdp, `pua-${size}-${theme}-filmstrip`);
+
+	await pressChord(cdp, { key: "Escape", code: "Escape", virtualKeyCode: 27 });
+	const closed = await waitForCondition(
+		cdp,
+		`!document.querySelector("[data-image-viewport]")`,
+		15_000,
+	);
+	check("Escape closes the lightbox", closed.ok, `after ${closed.waitedMs}ms`);
+
+	// The note opens in the app's own reader and shows the seed's own prose.
+	const noteName = names.find((name) => String(name).endsWith(".md"));
+	check(
+		"the seed carries a markdown attachment",
+		typeof noteName === "string",
+		`names=${JSON.stringify(names)}`,
+	);
+	const noteTile = `[data-project-asset-grid] button[aria-label="Preview ${noteName}"]`;
+	await cdp.evaluate(
+		`document.querySelector(${JSON.stringify(noteTile)}).scrollIntoView({ block: "center" })`,
+	);
+	await wait(150);
+	await clickAt(cdp, noteTile);
+	const preview = await waitForCondition(
+		cdp,
+		`(() => {
+			const body = document.querySelector("[data-project-file-preview]");
+			return body && body.textContent.includes("Rig evidence note")
+				? body.textContent
+				: null;
+		})()`,
+		15_000,
+	);
+	check(
+		"the markdown note opens in the in-app preview, rendered as prose",
+		preview.ok,
+		`after ${preview.waitedMs}ms text=${String(preview.last ?? "").slice(0, 80)}`,
+	);
+	await captureSettled(cdp, `pua-${size}-${theme}-preview`);
+	await pressChord(cdp, { key: "Escape", code: "Escape", virtualKeyCode: 27 });
+	await waitForCondition(
+		cdp,
+		`!document.querySelector("[data-project-file-preview]")`,
+		15_000,
+	);
+}
+
 async function sceneProjectOpen(cdp) {
 	if (PROJECT === null) {
 		throw new Error(
@@ -45515,7 +47243,7 @@ async function sceneMiniView(app, cdp) {
 		return name;
 	};
 	const dictationStartSentence = composerLabel("Start recording");
-	const dictationStopSentence = composerLabel("Confirm recording");
+	const dictationStopSentence = composerLabel("Insert transcript");
 	/*
 	 * The invalid-state sentence is the registrationCopy arm the toast probe
 	 * asserts; it is a `case` return rather than a `key: "…"` entry, so it gets
@@ -45659,7 +47387,7 @@ async function sceneMiniView(app, cdp) {
 		const composerField = `document.querySelector('textarea[aria-label="Message"]')`;
 		const composerSend = `document.querySelector('button[aria-label="Send message"]')`;
 		const composerMicStart = `document.querySelector('button[aria-label="Start recording"]')`;
-		const composerMicConfirm = `document.querySelector('button[aria-label="Confirm recording"]')`;
+		const composerMicConfirm = `document.querySelector('button[aria-label="Insert transcript"]')`;
 		const composerAlert = `document.querySelector('[role="alert"]')`;
 		/*
 		 * THE PALETTE THIS SCENE PHOTOGRAPHS (design N2). `--theme` reached only the MAIN
@@ -46697,9 +48425,16 @@ async function sceneHubLinks(cdp, app) {
 	const collapsed = await waitForCondition(
 		cdp,
 		`(() => {
-			const pane = document.querySelector('[data-agents-pane]');
-			if (!pane) return null;
-			const trigger = pane.querySelector('button[aria-expanded]');
+			/*
+			 * THE PANEL'S OWN TRIGGER, not the pane's first expander. The panel
+			 * used to be drawn ABOVE the record's title, so its disclosure was the
+			 * first expander in the pane; it now sits BELOW the title, inside the
+			 * record, and the record's own disclosures come first. The panel
+			 * carries its own marker for exactly this.
+			 */
+			const panel = document.querySelector('[data-hub-links-panel]');
+			if (!panel) return null;
+			const trigger = panel.querySelector('button[aria-expanded]');
 			return trigger ? { expanded: trigger.getAttribute('aria-expanded') } : null;
 		})()`,
 		30_000,
@@ -46723,11 +48458,11 @@ async function sceneHubLinks(cdp, app) {
 	 * origin 2 (Minerva · Private) Subscribe Off - so the pair must read "Mixed".
 	 */
 	const collapsedSummary = await cdp.evaluate(`(() => {
-		// The same trigger the collapsed check above found: the pane-scoped
-		// hub-panel disclosure. The hub-panel marker attribute is not forwarded by
-		// Disclosure, so the pane-scoped selector is the proof.
-		const pane = document.querySelector('[data-agents-pane]');
-		const trigger = pane && pane.querySelector('button[aria-expanded]');
+		// The same trigger the collapsed check above found: the hub panel's own
+		// disclosure, reached through the marker the PANE wrapper carries (the
+		// marker is not forwarded by Disclosure, so it sits on the wrapper).
+		const panel = document.querySelector('[data-hub-links-panel]');
+		const trigger = panel && panel.querySelector('button[aria-expanded]');
 		return trigger ? trigger.textContent : null;
 	})()`);
 	check(
@@ -46739,12 +48474,15 @@ async function sceneHubLinks(cdp, app) {
 	);
 	await captureSettled(cdp, `hub-links-${size}-${theme}-collapsed`);
 	/*
-	 * The roster affordance is asserted only where the sidebar DOCKED: below the
-	 * 1024px threshold it is a sheet, so its marks are legitimately absent (the
-	 * same reason the later sidebar-mark block is gated). The collapsed FRAME is
-	 * still captured at every width - the panel state is what it is for.
+	 * The roster affordance is asserted whenever the user's preference has the
+	 * sidebar docked. A collapsed preference hides those rows at ANY width; the
+	 * old 1024px viewport gate is gone with #1077.
 	 */
-	if (WINDOW_WIDTH >= 1024) {
+	if (
+		await cdp.evaluate(
+			`document.querySelector('[data-sidebar-shell], [data-sidebar-strip]')?.getBoundingClientRect().width > 56`,
+		)
+	) {
 		const collapsedMarks = await cdp.evaluate(`(() => {
 			const marks = Array.from(document.querySelectorAll('[data-hub-mark]')).map((m) =>
 				m.getAttribute('data-hub-mark'),
@@ -46772,7 +48510,11 @@ async function sceneHubLinks(cdp, app) {
 			JSON.stringify({ label: unresolvedNamed }),
 		);
 	}
-	await verb(cdp, "press", '[data-agents-pane] button[aria-expanded="false"]');
+	await verb(
+		cdp,
+		"press",
+		'[data-hub-links-panel] button[aria-expanded="false"]',
+	);
 	const ready = await waitForCondition(
 		cdp,
 		`(() => {
@@ -46885,6 +48627,8 @@ async function sceneHubLinks(cdp, app) {
 		`after ${unresolvedReady.waitedMs ?? "?"}ms: ${JSON.stringify(unresolvedReady.last)}`,
 	);
 
+	await captureSettled(cdp, `hub-links-${size}-${theme}-resolve-card`);
+
 	/*
 	 * THE EXPLICIT SOURCE CONFIRMATION. The unresolved row's only honest origin is
 	 * an act that names BOTH the approved source and the scope; the confirm
@@ -46982,6 +48726,25 @@ async function sceneHubLinks(cdp, app) {
 		JSON.stringify(chooser.last),
 	);
 	await captureSettled(cdp, `hub-links-${size}-${theme}-resolve-open`);
+	// Close through the real control. The opener must exist again before focus
+	// returns, on both record kinds; synchronous focus in the handler is too early.
+	await verb(cdp, "press", "[data-hub-source-unresolved] button");
+	const canceled = await waitForCondition(
+		cdp,
+		`(() => {
+		const row = document.querySelector('[data-hub-source-unresolved]');
+		const opener = row && row.querySelector('button');
+		return opener && !row.querySelector('select') && document.activeElement === opener;
+	})()`,
+		5_000,
+	);
+	check(
+		"Cancel restores focus to the remounted source opener",
+		canceled.ok,
+		JSON.stringify(canceled.last),
+	);
+	await verb(cdp, "press", "[data-hub-source-unresolved] button");
+
 	/*
 	 * The confirm button is DISABLED while nothing is chosen - the guard that
 	 * makes the empty default safe. Assert that before choosing.
@@ -47027,6 +48790,16 @@ async function sceneHubLinks(cdp, app) {
 		chosen.ok,
 		`after ${chosen.waitedMs ?? "?"}ms: ${JSON.stringify(chosen.last)}`,
 	);
+
+	await cdp.evaluate(`(() => {
+		window.__hubSuccessToasts = [];
+		window.__hubToastObserver = new MutationObserver(() => {
+			for (const toast of document.querySelectorAll('[data-sonner-toast]')) {
+				window.__hubSuccessToasts.push(toast.textContent);
+			}
+		});
+		window.__hubToastObserver.observe(document.body, {childList:true, subtree:true, characterData:true});
+	})()`);
 	const confirmed = await verb(
 		cdp,
 		"press",
@@ -47050,6 +48823,23 @@ async function sceneHubLinks(cdp, app) {
 		resolvedRow.ok,
 		`after ${resolvedRow.waitedMs ?? "?"}ms: ${JSON.stringify(resolvedRow.last)}`,
 	);
+	const completed = await waitForCondition(
+		cdp,
+		`(() => {
+		const trigger = document.querySelector('[data-hub-links-panel] button[aria-expanded]');
+		return trigger && document.activeElement === trigger &&
+			window.__hubSuccessToasts.some(text => text.includes('Source confirmed'))
+			? {focus: trigger.textContent, toasts: window.__hubSuccessToasts} : null;
+	})()`,
+		5_000,
+	);
+	check(
+		"confirmation announces success and focuses the surviving link disclosure",
+		completed.ok,
+		JSON.stringify(completed.last),
+		JSON.stringify(completed.last),
+	);
+	await cdp.evaluate("window.__hubToastObserver.disconnect()");
 	await captureSettled(cdp, `hub-links-${size}-${theme}-resolve-done`);
 
 	/*
@@ -47057,6 +48847,13 @@ async function sceneHubLinks(cdp, app) {
 	 * filter; the daemon's inventory carries one skill link, so the skill surface
 	 * is exercised by the SAME inventory read rather than a second route.
 	 */
+	// A successful confirmation now leaves focus on its collapsed link control.
+	// Inspect the actual link rows only after opening that surviving disclosure.
+	await verb(
+		cdp,
+		"press",
+		'[data-hub-links-panel] button[aria-expanded="false"]',
+	);
 	const kinds = await cdp.evaluate(`(() => {
 		const pane = document.querySelector('[data-agents-pane]');
 		if (!pane) return null;
@@ -47102,20 +48899,162 @@ async function sceneHubLinks(cdp, app) {
 	await captureSettled(cdp, `hub-links-${size}-${theme}-org-source`);
 
 	/*
+	 * THE UNRESOLVED ROW ON A TEAM'S PAGE. The panel is the same component for a
+	 * team and the resolve arm's domain is `agent|team`, so the source
+	 * confirmation is photographed on a team pane too - there the record it
+	 * describes is a TEAM, and the block has to read as being about that team.
+	 */
+	await verb(cdp, "navigate", "/agents?kind=team&name=legacy-team");
+	const teamUnresolved = await waitForCondition(
+		cdp,
+		`(() => {
+			const pane = document.querySelector('[data-agents-pane]');
+			const card = pane && pane.querySelector('[data-hub-source-unresolved]');
+			if (!card) return null;
+			const heading = card.querySelector('h3, h4');
+			return {
+				card: card.getAttribute('data-hub-source-unresolved'),
+				heading: heading ? heading.textContent : null,
+			};
+		})()`,
+		30_000,
+	);
+	check(
+		"a legacy unknown-origin TEAM renders its own source-confirmation block",
+		teamUnresolved.ok && teamUnresolved.last.card === "team-legacy",
+		`after ${teamUnresolved.waitedMs ?? "?"}ms: ${JSON.stringify(teamUnresolved.last)}`,
+	);
+	await captureSettled(cdp, `hub-links-${size}-${theme}-team-unresolved`);
+	await verb(cdp, "press", "[data-hub-source-unresolved] button");
+	await verb(cdp, "press", "[data-hub-source-unresolved] button");
+	const teamCanceled = await waitForCondition(
+		cdp,
+		`(() => {
+		const row = document.querySelector('[data-hub-source-unresolved]');
+		const opener = row && row.querySelector('button');
+		return opener && !row.querySelector('select') && document.activeElement === opener;
+	})()`,
+		5_000,
+	);
+	check(
+		"team Cancel restores focus to its remounted source opener",
+		teamCanceled.ok,
+		JSON.stringify(teamCanceled.last),
+	);
+
+	await verb(cdp, "navigate", "/agents?name=legacy-solo");
+	await verb(cdp, "press", "[data-hub-source-unresolved] button");
+	await cdp.evaluate(`(() => {
+		const select = document.querySelector('[data-hub-source-unresolved] select');
+		Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(select, 'public');
+		select.dispatchEvent(new Event('change', {bubbles:true}));
+	})()`);
+	await verb(cdp, "press", "[data-hub-source-unresolved] button:last-of-type");
+	const conflict = await waitForCondition(
+		cdp,
+		`(() => {
+		const row = document.querySelector('[data-hub-source-unresolved]');
+		const alert = row && row.querySelector('[role="alert"]');
+		return alert && !row.querySelector('button').disabled ? {text:alert.textContent} : null;
+	})()`,
+		10_000,
+	);
+	check(
+		"conflicting scope keeps the unresolved card and settled recovery controls",
+		conflict.ok,
+		JSON.stringify(conflict.last),
+		JSON.stringify(conflict.last),
+	);
+	check(
+		"conflict names source/scope, unchanged state and a safe next step",
+		conflict.ok &&
+			/source or publish scope/.test(conflict.last.text) &&
+			/Nothing was changed/.test(conflict.last.text) &&
+			/Cancel and check/.test(conflict.last.text) &&
+			/separate local copy/.test(conflict.last.text),
+		JSON.stringify(conflict.last),
+	);
+	await captureSettled(cdp, `hub-links-${size}-${theme}-resolve-conflict`);
+	await verb(cdp, "press", "[data-hub-source-unresolved] button");
+	const conflictCanceled = await waitForCondition(
+		cdp,
+		`(() => {
+		const row = document.querySelector('[data-hub-source-unresolved]');
+		return row && !row.querySelector('select') && document.activeElement === row.querySelector('button');
+	})()`,
+		5_000,
+	);
+	check(
+		"Cancel after conflict restores focus to its source opener",
+		conflictCanceled.ok,
+		JSON.stringify(conflictCanceled.last),
+	);
+
+	/*
+	 * A RECORD WITH NO HUB LINK DRAWS NOTHING. The panel used to render a "Hub
+	 * links - Not linked to the hub" disclosure on every record, above the
+	 * record's title; a record with no hub presence has nothing to say, and most
+	 * records on a roster have no hub presence.
+	 *
+	 * The assertion is the TEXT, not a marker: "Hub links" appearing anywhere in
+	 * the pane is the old disclosure's own summary, so a record that still drew
+	 * it fails here whether the block is a disclosure or something else.
+	 */
+	await verb(cdp, "navigate", "/agents?name=loner");
+	const noLinkReady = await waitForCondition(
+		cdp,
+		`(() => {
+			const pane = document.querySelector('[data-agents-pane]');
+			if (!pane) return null;
+			const heading = pane.querySelector('h2');
+			return heading ? { title: heading.textContent } : null;
+		})()`,
+		30_000,
+	);
+	/*
+	 * Give the inventory read time to ANSWER before the assertion: the point is
+	 * that the panel says nothing once it knows there is nothing to say, not
+	 * that it says nothing before it has looked.
+	 */
+	await wait(2_000);
+	const noLink = await cdp.evaluate(`(() => {
+		const pane = document.querySelector('[data-agents-pane]');
+		if (!pane) return null;
+		return {
+			rows: pane.querySelectorAll('[data-hub-link]').length,
+			unresolved: pane.querySelectorAll('[data-hub-source-unresolved]').length,
+			hubLinksText: (pane.textContent || '').includes('Hub links'),
+		};
+	})()`);
+	note(
+		"no-link record",
+		JSON.stringify({ ready: noLinkReady.last, read: noLink }),
+	);
+	check(
+		"a record with no hub link draws NO hub panel at all",
+		noLink !== null &&
+			noLink.rows === 0 &&
+			noLink.unresolved === 0 &&
+			noLink.hubLinksText === false,
+		JSON.stringify(noLink),
+	);
+	await captureSettled(cdp, `hub-links-${size}-${theme}-no-link`);
+
+	/*
 	 * THE SIDEBAR MARK (design §Sidebar line 48, CODE MAJOR-2). The chat sidebar
 	 * draws one mark per linked row and the AGGREGATE mark for a multi-origin item.
 	 * The stub gives `reviewer` two origins (aggregate) and `coder` one (quiet).
 	 *
-	 * BELOW THE DOCK THRESHOLD the sidebar is a SHEET, not a dock (`SIDEBAR_DOCK_MIN_PX`
-	 * = 1024, `chat-sidebar-layout.ts`), so it is closed by default and its rows -
-	 * and their marks - are legitimately not in the DOM. The marks are a docked-
-	 * sidebar surface, so a narrow run NOTES that and skips the block rather than
-	 * asserting a state the layout does not have; the narrow frames are of the PANEL.
+	 * A COLLAPSED PREFERENCE hides those rows at any window width, so the actual
+	 * rendered sidebar decides whether this block applies. Width alone no longer
+	 * decides docking (#1077).
 	 */
-	const WIDE_ENOUGH_TO_DOCK = WINDOW_WIDTH >= 1024;
-	if (!WIDE_ENOUGH_TO_DOCK) {
+	const sidebarDocked = await cdp.evaluate(
+		`document.querySelector('[data-sidebar-shell], [data-sidebar-strip]')?.getBoundingClientRect().width > 56`,
+	);
+	if (!sidebarDocked) {
 		note(
-			"sidebar marks skipped: the sidebar is a sheet below the 1024px dock threshold",
+			"sidebar marks skipped: the user's collapsed preference is drawing the strip",
 			`window width ${WINDOW_WIDTH}`,
 		);
 		return;
@@ -47190,7 +49129,11 @@ async function sceneHubLinks(cdp, app) {
 		detailOpened.ok,
 		`after ${detailOpened.waitedMs ?? "?"}ms: ${JSON.stringify(detailOpened.last)}`,
 	);
-	await verb(cdp, "press", '[data-agents-pane] button[aria-expanded="false"]');
+	await verb(
+		cdp,
+		"press",
+		'[data-hub-links-panel] button[aria-expanded="false"]',
+	);
 	const origins = await waitForCondition(
 		cdp,
 		`(() => {
@@ -47207,6 +49150,382 @@ async function sceneHubLinks(cdp, app) {
 	);
 }
 
+/**
+ * THE ROW STATES #1461's DESIGN ROUND 1 CHANGED, one boot per theme.
+ *
+ *     node docs/evidence/hub-links/harness/stub-daemon.mjs --port 8131 \
+ *       --records <rig>/serve-record --hub-outcome would-merge \
+ *       --hub-outcome-second needs-review --hub-latency-ms 2500 \
+ *       --hub-message "3 fields differ: instructions, description, model." \
+ *       --origin2-failed --origin2-unknown
+ *     node scripts/renderer-driver.mjs --scene hub-links-actions \
+ *       --backend http://127.0.0.1:8131 --backend-records <rig>/serve-record \
+ *       --seed-onboarding-complete --theme localOperatorLight --out <rig>/frames
+ *
+ * WHY IT EXISTS NEXT TO `hub-links`: that scene photographs the panel collapsed,
+ * the policy controls and the legacy unresolved row, and never presses a link's
+ * own controls. So none of the four states this round remediates - a running
+ * check, a failed direction with its Retry, the incoming preview's conclusion
+ * beside core's message, and the unknown-baseline instruction - had a frame. The
+ * SAME scene bytes run against the base tree and against the remediation, so a
+ * pair is one rendering replaced by another rather than two renderings of two
+ * different fixtures.
+ *
+ * WHAT A FRAME FROM HERE MAY NOT CLAIM. The dry-run sentence on the second line
+ * is the stub's (`--hub-message`), so the copy, the ranking and the layout are
+ * the app's while core's own words are a stand-in's; and the pending sentence is
+ * photographed while an answer is WITHHELD (`--hub-latency-ms`), which is what a
+ * slow core looks like rather than a slowed one.
+ */
+async function sceneHubLinksActions(cdp) {
+	const facts = await factsOf(cdp);
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	await verb(cdp, "setTheme", THEME ?? "localOperatorDark");
+	const size = WINDOW_SIZE;
+	const theme = (THEME ?? "localOperatorDark")
+		.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)
+		.replace(/^-/, "");
+
+	/*
+	 * A PRESS, NOT A `.click()`. CSS cannot select on a visible label, so the
+	 * scene NAMES the control and then presses it through the driver's own input
+	 * pipeline, which reports the hit test - the instrument every other scene
+	 * uses, and the reason a dispatchEvent would not be one.
+	 */
+	const pressLabel = async (scope, label) => {
+		const tagged = await cdp.evaluate(`(() => {
+			const found = document.querySelector(${JSON.stringify(scope)});
+			if (!found) return null;
+			const control = [...found.querySelectorAll("button")].find(
+				(node) => node.textContent.trim() === ${JSON.stringify(label)},
+			);
+			if (!control) return null;
+			for (const stale of document.querySelectorAll("[data-scene-press]")) {
+				stale.removeAttribute("data-scene-press");
+			}
+			control.setAttribute("data-scene-press", "target");
+			control.scrollIntoView({ block: "center" });
+			return control.textContent.trim();
+		})()`);
+		if (tagged === null) return { hitTest: false, missing: label };
+		return verb(cdp, "press", '[data-scene-press="target"]');
+	};
+
+	await verb(cdp, "navigate", "/agents?name=reviewer");
+	const mounted = await waitForCondition(
+		cdp,
+		`(() => {
+			const panel = document.querySelector("[data-hub-links-panel]");
+			const trigger = panel && panel.querySelector("button[aria-expanded]");
+			return trigger ? { expanded: trigger.getAttribute("aria-expanded") } : null;
+		})()`,
+		30_000,
+	);
+	check(
+		"the hub panel mounts on the linked agent row",
+		mounted.ok,
+		`after ${mounted.waitedMs ?? "?"}ms: ${JSON.stringify(mounted.last)}`,
+	);
+	if (mounted.last?.expanded !== "true") {
+		await verb(cdp, "press", "[data-hub-links-panel] button[aria-expanded]");
+	}
+	const rows = await waitForCondition(
+		cdp,
+		`(() => {
+			const sections = [...document.querySelectorAll("[data-hub-link]")];
+			return sections.length >= 2
+				? { ids: sections.map((node) => node.getAttribute("data-hub-link")) }
+				: null;
+		})()`,
+		20_000,
+	);
+	check(
+		"both origins of the multi-origin item are on screen",
+		rows.ok && rows.last.ids.includes("link-public-agent-2"),
+		`after ${rows.waitedMs ?? "?"}ms: ${JSON.stringify(rows.last)}`,
+	);
+
+	/* ------------------------------------------- the failed direction (D3/D4)
+	 * The failure is stated by the state line and its reason; the Retry control
+	 * belongs to that failure, so it sits ABOVE the row's own metadata and no
+	 * third sentence tells the reader to try again.
+	 */
+	const failedRow = await cdp.evaluate(`(() => {
+		const section = document.querySelector('[data-hub-link="link-public-agent-2"]');
+		const column = section && section.querySelector('[data-hub-direction="pull"]');
+		if (!column) return null;
+		const nodes = [...column.children];
+		const retry = nodes.findIndex(
+			(node) => node.tagName === "BUTTON" && node.textContent.trim() === "Retry",
+		);
+		const meta = nodes.findIndex((node) =>
+			/^(Next retry:|Last checked:|Last successful action:)/.test(
+				node.textContent.trim(),
+			),
+		);
+		return {
+			lines: nodes.map((node) => node.textContent.trim()),
+			retry,
+			meta,
+		};
+	})()`);
+	note("failed direction, in DOM order", JSON.stringify(failedRow));
+	check(
+		"the failed direction draws a Retry control",
+		failedRow !== null && failedRow.retry !== -1,
+		JSON.stringify(failedRow),
+	);
+	check(
+		"Retry sits directly under the failure it retries, above the row's metadata",
+		failedRow !== null &&
+			failedRow.retry > 0 &&
+			(failedRow.meta === -1 || failedRow.retry < failedRow.meta),
+		JSON.stringify(failedRow),
+	);
+	check(
+		"the failure is not told a third time as an instruction to try again",
+		failedRow !== null && !/try again/i.test(failedRow.lines.join(" ")),
+		JSON.stringify(failedRow?.lines),
+	);
+	/*
+	 * IN VIEW BEFORE THE SHUTTER. A frame that is captured with the state below
+	 * the fold carries the caption but not the pixels - the defect the design
+	 * round found in the previous set - so the column is scrolled to the middle of
+	 * the viewport first, and the scroll is asserted rather than hoped for.
+	 */
+	const inView = await cdp.evaluate(`(() => {
+		const column = document.querySelector(
+			'[data-hub-link="link-public-agent-2"] [data-hub-direction="pull"]',
+		);
+		if (!column) return null;
+		column.scrollIntoView({ block: "center" });
+		const box = column.getBoundingClientRect();
+		return {
+			top: Math.round(box.top),
+			bottom: Math.round(box.bottom),
+			height: window.innerHeight,
+		};
+	})()`);
+	await wait(300);
+	check(
+		"the failed direction is inside the viewport before it is photographed",
+		inView !== null && inView.top > 0 && inView.bottom <= inView.height,
+		JSON.stringify(inView),
+	);
+	await captureSettled(cdp, `hub-actions-${size}-${theme}-failed-row`);
+	/*
+	 * THE REFUSED RETRY (design D3). Pressing the row's own Retry is the one way
+	 * to have the failure's alert sentence on screen BESIDE the row's state and
+	 * its reason - which is the frame D3 is about: one failure stated three
+	 * times, one of them telling the reader to try again while a retry is
+	 * already scheduled and the Retry control sits right there. The stub answers
+	 * this route 503, so the refusal is real.
+	 */
+	const retryPress = await pressLabel(
+		'[data-hub-link="link-public-agent-2"]',
+		"Retry",
+	);
+	check(
+		"the row's own Retry is pressed",
+		retryPress.hitTest === true,
+		JSON.stringify(retryPress),
+	);
+	/*
+	 * EVERY alert in the row, not the first one: the section can carry more than
+	 * one announced line, and a check that read only the first passed on the base
+	 * tree while that tree's sentence sat in a later node - an instrument that
+	 * cannot fail is not evidence.
+	 */
+	const refused = await waitForCondition(
+		cdp,
+		`(() => {
+			const section = document.querySelector('[data-hub-link="link-public-agent-2"]');
+			if (!section) return null;
+			const alerts = [...section.querySelectorAll('[role="alert"]')].map((node) =>
+				node.textContent.trim(),
+			);
+			if (!alerts.length) return null;
+			return {
+				alerts,
+				tryAgain: alerts.some((text) => /try again/i.test(text)),
+				sentences: alerts.map((text) => text.split(".").length - 1),
+			};
+		})()`,
+		30_000,
+	);
+	check(
+		"the refusal is ONE clause, and never sends the reader to try again",
+		refused.ok &&
+			refused.last.tryAgain === false &&
+			refused.last.sentences.every((count) => count === 1),
+		`after ${refused.waitedMs ?? "?"}ms: ${JSON.stringify(refused.last)}`,
+	);
+	await cdp.evaluate(`(() => {
+		const column = document.querySelector(
+			'[data-hub-link="link-public-agent-2"] [data-hub-direction="pull"]',
+		);
+		if (column) column.scrollIntoView({ block: "center" });
+		return true;
+	})()`);
+	await wait(300);
+	await captureSettled(cdp, `hub-actions-${size}-${theme}-retry-refused`);
+
+	/* --------------------------------------------- a running check (D2/QA Q2)
+	 * Grey is this app's word for unavailable, so a pending press must say what
+	 * it is doing and mark the control it is doing it on.
+	 */
+	const checkPress = await pressLabel(
+		'[data-hub-link="link-public-agent"]',
+		"Check now",
+	);
+	check(
+		"the check press lands on the row's own control",
+		checkPress.hitTest === true,
+		JSON.stringify(checkPress),
+	);
+	const pending = await waitForCondition(
+		cdp,
+		`(() => {
+			const section = document.querySelector('[data-hub-link="link-public-agent"]');
+			if (!section) return null;
+			const control = [...section.querySelectorAll("button")].find(
+				(node) => node.textContent.trim() === "Check now",
+			);
+			const busy = control ? control.getAttribute("aria-busy") : null;
+			const sentence = section.textContent.includes("Checking for changes");
+			return busy === "true" || sentence ? { busy, sentence } : null;
+		})()`,
+		6_000,
+	);
+	check(
+		"a running check marks its own control busy and says what it is doing",
+		pending.ok &&
+			pending.last.busy === "true" &&
+			pending.last.sentence === true,
+		`after ${pending.waitedMs ?? "?"}ms: ${JSON.stringify(pending.last)}`,
+	);
+	await captureSettled(cdp, `hub-actions-${size}-${theme}-check-pending`);
+	const settled = await waitForCondition(
+		cdp,
+		`(() => {
+			const section = document.querySelector('[data-hub-link="link-public-agent"]');
+			const control = section && [...section.querySelectorAll("button")].find(
+				(node) => node.textContent.trim() === "Check now",
+			);
+			return control &&
+				control.getAttribute("aria-busy") !== "true" &&
+				control.disabled === false
+				? true
+				: null;
+		})()`,
+		30_000,
+	);
+	check(
+		"the row is usable again once the check answered",
+		settled.ok,
+		`after ${settled.waitedMs ?? "?"}ms`,
+	);
+
+	/* ----------------------------------------- the incoming preview (D1), roW 1
+	 * The conclusion and core's message must rank separately, and the conclusion
+	 * must be a state word in a finished sentence.
+	 */
+	const previewPress = await pressLabel(
+		'[data-hub-link="link-public-agent"]',
+		"Preview incoming changes",
+	);
+	check(
+		"the incoming preview opens from the row's own control",
+		previewPress.hitTest === true,
+		JSON.stringify(previewPress),
+	);
+	const preview = await waitForCondition(
+		cdp,
+		`(() => {
+			const list = document.querySelector("[data-incoming-reports]");
+			if (!list) return null;
+			const rows = [...list.querySelectorAll("li")].map((li) =>
+				[...li.querySelectorAll("p")].map((node) => node.textContent.trim()),
+			);
+			return rows.length ? { rows } : null;
+		})()`,
+		30_000,
+	);
+	check(
+		"the incoming row keeps its conclusion and core's message on separate lines",
+		preview.ok && preview.last.rows[0].length === 2,
+		`after ${preview.waitedMs ?? "?"}ms: ${JSON.stringify(preview.last)}`,
+	);
+	const conclusion = preview.ok ? (preview.last.rows[0][0] ?? "") : "";
+	check(
+		"the conclusion is a state word in a finished sentence, never core's enum",
+		/would merge\.$/.test(conclusion) && !/would-merge/.test(conclusion),
+		JSON.stringify({ conclusion }),
+	);
+	await captureSettled(
+		cdp,
+		`hub-actions-${size}-${theme}-incoming-would-merge`,
+	);
+
+	/* ------------------------------- the unknown baseline, row 2 (D1 and D5)
+	 * The heading and the row must not BOTH end in the same instruction, and the
+	 * row's own sentence names the tick and stops there.
+	 */
+	await pressLabel('[role="dialog"]', "Cancel");
+	const closed = await waitForCondition(
+		cdp,
+		`document.querySelector("[data-incoming-reports]") === null`,
+		15_000,
+	);
+	check(
+		"the dialogue closes from its own dismiss",
+		closed.ok,
+		`after ${closed.waitedMs ?? "?"}ms`,
+	);
+	const unknownPress = await pressLabel(
+		'[data-hub-link="link-public-agent-2"]',
+		"Preview incoming changes",
+	);
+	check(
+		"the second origin's preview opens",
+		unknownPress.hitTest === true,
+		JSON.stringify(unknownPress),
+	);
+	const unknown = await waitForCondition(
+		cdp,
+		`(() => {
+			const flag = document.querySelector("[data-needs-review]");
+			const list = document.querySelector("[data-incoming-reports]");
+			if (!flag || !list) return null;
+			const dialog = document.querySelector('[role="dialog"]');
+			const text = dialog ? dialog.textContent : "";
+			return {
+				rows: [...list.querySelectorAll("li")].map((li) => li.textContent.trim()),
+				pullAgain: (text.match(/then pull again/g) ?? []).length,
+			};
+		})()`,
+		30_000,
+	);
+	check(
+		"the sequence instruction appears ONCE across the heading and the row",
+		unknown.ok && unknown.last.pullAgain === 1,
+		`after ${unknown.waitedMs ?? "?"}ms: ${JSON.stringify(
+			unknown.ok ? { pullAgain: unknown.last.pullAgain } : unknown.last,
+		)}`,
+	);
+	check(
+		"the unknown-baseline row names the tick and stops there",
+		unknown.ok && !/then pull again/.test(unknown.last.rows.join(" ")),
+		JSON.stringify(unknown.ok ? { rows: unknown.last.rows } : unknown.last),
+	);
+	await captureSettled(cdp, `hub-actions-${size}-${theme}-unknown-baseline`);
+}
 /**
  * THE SKILLS LIBRARY (`HubSkillsLibrary`), on the merged tree, against the stub.
  *
@@ -47701,7 +50020,7 @@ async function sceneHubSkills(cdp, app) {
 			const d = document.querySelector('[data-hub-skill-detail]');
 			if (!d) return null;
 			const files = d.querySelectorAll('details').length;
-			const name = d.querySelector('h3');
+			const name = d.querySelector('[data-testid="hub-skill-detail-name"]');
 			return files > 0 && name ? { files, name: name.textContent } : null;
 		})()`,
 		20_000,
@@ -47717,7 +50036,7 @@ async function sceneHubSkills(cdp, app) {
 	const gate = await cdp.evaluate(`(() => {
 		const d = document.querySelector('[data-hub-skill-detail]');
 		if (!d) return null;
-		const create = d.querySelector('[data-testid="hub-skill-create"]');
+		const create = d.querySelector('[data-testid="hub-skill-download"]');
 		return { disabled: create ? create.disabled === true : null, noCredential: /credential|sign in/i.test(d.textContent || '') };
 	})()`);
 	if (gate && gate.disabled === true) {
@@ -47747,65 +50066,8 @@ async function sceneHubSkills(cdp, app) {
 		return;
 	}
 
-	/* THE CONSENT DIALOG, mounted by the LIBRARY's own policy fields. */
-	const autoPushCheckbox = '[data-hub-skill-detail] [id$="-autoPush"]';
-	const checkboxState = await cdp.evaluate(
-		`(() => { const el = document.querySelector(${JSON.stringify(autoPushCheckbox)}); return el ? { state: el.getAttribute('data-state'), disabled: el.disabled === true } : null; })()`,
-	);
-	check(
-		"the detail's policy fields mount the auto-push checkbox",
-		checkboxState && checkboxState.disabled === false,
-		JSON.stringify(checkboxState),
-	);
-	const consentPressed = await verb(cdp, "press", autoPushCheckbox);
-	check(
-		"the auto-push checkbox received the point",
-		consentPressed.hitTest === true,
-		JSON.stringify({ hitTest: consentPressed.hitTest }),
-	);
-	const dialog = await waitForCondition(
-		cdp,
-		`(() => {
-			const d = document.querySelector('[role="dialog"]');
-			return d ? { text: d.textContent.slice(0, 240) } : null;
-		})()`,
-		10_000,
-	);
-	check(
-		"the consent dialog opens from the library's own fields",
-		dialog.ok,
-		`after ${dialog.waitedMs ?? "?"}ms: ${JSON.stringify(dialog.last)}`,
-	);
-	if (expectedScope === "public") {
-		const text = await cdp.evaluate(
-			`document.querySelector('[role="dialog"]').textContent`,
-		);
-		check(
-			"public consent names public publication",
-			/public/i.test(text),
-			text,
-		);
-	}
-	note("consent dialog text", JSON.stringify(dialog.last?.text));
-	await captureSettled(cdp, `hub-skills-${size}-${theme}-consent`);
-	geometry.consent = await box('[role="dialog"]');
-	await verb(cdp, "press", '[data-testid="hub-policy-enable"]');
-	await waitForCondition(
-		cdp,
-		`(() => (!document.querySelector('[role="dialog"]') ? true : null))()`,
-		5_000,
-	);
-	const enabledState = await cdp.evaluate(
-		`(() => { const el = document.querySelector(${JSON.stringify(autoPushCheckbox)}); return el ? el.getAttribute('data-state') : null; })()`,
-	);
-	check(
-		"enabling records the consent on the draft (checkbox checked)",
-		enabledState === "checked",
-		JSON.stringify({ enabledState }),
-	);
-
 	/* THE PULL: alias is pre-filled; the press is the real hub.skillPull write. */
-	const createSelector = '[data-testid="hub-skill-create"]';
+	const createSelector = '[data-testid="hub-skill-download"]';
 	const prePull = await cdp.evaluate(
 		`(() => { const el = document.querySelector(${JSON.stringify(createSelector)}); return el ? { disabled: el.disabled === true } : null; })()`,
 	);
@@ -47854,12 +50116,41 @@ async function sceneHubSkills(cdp, app) {
 		note("pull refusal line", JSON.stringify(pullEnd.last.text));
 	}
 
-	/* THE PUBLICATION PANEL: preview, then confirm (or the pending receipt). */
-	const publication = await box("[data-hub-skill-publication]");
+	/*
+	 * THE LINK'S POLICY CONTROLS. The three-acts form and its initial-policy
+	 * consent left this surface in design round 1; the controls now mount from
+	 * the link the real pull created. The auto-push switch is PRESENT here and
+	 * may be disabled with its reason (the stub destination is not verified for
+	 * safe automatic publication), which is a state to photograph, not a failure.
+	 */
+	const autoPushCheckbox = '[data-hub-skill-detail] [id$="-push"]';
+	const policyControls = await cdp.evaluate(
+		`(() => {
+			const d = document.querySelector('[data-hub-skill-detail]');
+			const push = d?.querySelector('[id$="-push"]');
+			const subscribe = d?.querySelector('[id$="-subscribe"]');
+			return { push: push ? { disabled: push.disabled === true, state: push.getAttribute('data-state') } : null, subscribe: subscribe !== null };
+		})()`,
+	);
 	check(
-		"the publication panel is mounted under the library",
-		publication !== null,
-		JSON.stringify(publication),
+		"the detail's link controls mount subscribe and auto-push",
+		policyControls.subscribe === true && policyControls.push !== null,
+		JSON.stringify(policyControls),
+	);
+	note("auto-push control state", JSON.stringify(policyControls.push));
+	await captureSettled(cdp, `hub-skills-${size}-${theme}-policy`);
+	/* THE PUBLICATION PANEL: preview, then confirm (or the pending receipt). */
+	await verb(cdp, "press", '[data-testid="hub-skill-publish-open"]');
+	check(
+		"the publication panel opens from the toolbar action",
+		(
+			await waitForCondition(
+				cdp,
+				`(() => { const p = document.querySelector("[data-hub-skill-publication]"); return p ? true : null; })()`,
+				10_000,
+			)
+		).ok,
+		"the panel did not mount",
 	);
 	await setValue(
 		'[data-testid="hub-skill-publish-source"]',
@@ -47946,7 +50237,7 @@ async function sceneHubSkills(cdp, app) {
 		await captureSettled(cdp, `hub-skills-${size}-${theme}-publish-complete`);
 	}
 	note("publication outcome", JSON.stringify(publishEnd.last.text));
-	geometry.publication = publication;
+	geometry.publication = await box("[data-hub-skill-publication]");
 
 	/* The signed-out gate is a DIFFERENT library mount (public scope, no org chip). */
 	writeFileSync(
@@ -48209,14 +50500,18 @@ async function sceneHubCoreGuard(cdp, app) {
 	await verb(cdp, "navigate", "/agents?name=reviewer");
 	const collapsed = await waitForCondition(
 		cdp,
-		`!!document.querySelector('[data-agents-pane] button[aria-expanded="false"]')`,
+		`!!document.querySelector('[data-hub-links-panel] button[aria-expanded="false"]')`,
 		30_000,
 	);
 	check(
 		"linked profile remains browsable before opening controls",
 		collapsed.ok,
 	);
-	await verb(cdp, "press", '[data-agents-pane] button[aria-expanded="false"]');
+	await verb(
+		cdp,
+		"press",
+		'[data-hub-links-panel] button[aria-expanded="false"]',
+	);
 	const row = '[data-hub-link="link-public-agent"]';
 	const ready = await waitForCondition(
 		cdp,
@@ -48434,14 +50729,14 @@ async function main() {
 	 * `node_modules` symlink. So the version is printed AND asserted, not assumed.
 	 */
 	const runtime = electronRuntime();
-	say(`  electron      ${runtime.installed}   (${ELECTRON_BIN})`);
+	say(`  electron      ${runtime.installed}   (${electronBinary()})`);
 	say(
 		`  electron pin  ${runtime.pinned}   (package.json optionalDependencies)`,
 	);
 	const onThePinnedRuntime = check(
 		"the harness is driving the Electron this branch pins",
 		runtime.installed === runtime.pinned,
-		`installed ${runtime.installed} at ${ELECTRON_BIN}, pinned ${runtime.pinned}`,
+		`installed ${runtime.installed} at ${electronBinary()}, pinned ${runtime.pinned}`,
 	);
 	/*
 	 * AND IT STOPS HERE, before the first boot, when the answer is no.
@@ -48555,6 +50850,18 @@ async function main() {
 			"--scene output-artifact needs --session <id>: it photographs the seeded session, and a default would photograph whatever chat happens to open",
 		);
 	}
+	if (SCENE === "diff-history") {
+		const refusal = diffHistorySceneRefusal({
+			backend: BACKEND,
+			backendRecords: BACKEND_RECORDS,
+			session: SESSION,
+			child: DIFF_CHILD,
+			liveSession: DIFF_LIVE_SESSION,
+			handshake: DIFF_HANDSHAKE,
+			expect: DIFF_EXPECT,
+		});
+		if (refusal !== null) throw new Error(refusal);
+	}
 	if (SCENE === "skill-seal" && BACKEND === null) {
 		throw new Error(
 			"--scene skill-seal needs --backend: the invocation it photographs is a PERSISTED payload read back from a daemon's history route, and with no backend the chat route draws its refusal surface instead",
@@ -48594,6 +50901,11 @@ async function main() {
 	if (SCENE === "settings-integrations" && INTEGRATION_URL === null) {
 		throw new Error(
 			"--scene settings-integrations needs --integration-url: the remote half is a different row and a different backend path, and a scene that silently skipped it would look like it ran",
+		);
+	}
+	if (SCENE === "profile-proposals" && BACKEND === null) {
+		throw new Error(
+			"--scene profile-proposals needs --backend: the proposals, the Accept and the profile it changes all live in a real daemon, which is this scene's oracle",
 		);
 	}
 	if (SCENE === "authoring-refresh" && BACKEND === null) {
@@ -48652,6 +50964,41 @@ async function main() {
 			"--scene imagegen-card needs --backend-records: the serve record is how the app admits the daemon this run owns, and without it the run photographs a disconnected app",
 		);
 	}
+	/*
+	 * A New chat with a team whose replayed draft receipt names a dead warm id.
+	 * Every requirement is an instrument: the daemon is the 404, the serve record
+	 * is how the app admits it, the seeded request id IS the operator's persisted
+	 * shape, and the two expectations are different claims about the same screen.
+	 */
+	if (SCENE === "team-newchat" && BACKEND === null) {
+		throw new Error(
+			"--scene team-newchat needs --backend: the defect is the daemon's answer to a replayed receipt, and a run with no reachable backend has no bridge to 404",
+		);
+	}
+	if (SCENE === "team-newchat" && BACKEND_RECORDS === null) {
+		throw new Error(
+			"--scene team-newchat needs --backend-records: the serve record is how the app admits the daemon this run owns, and without it the run photographs a disconnected app",
+		);
+	}
+	if (
+		SCENE === "team-newchat" &&
+		(argValue("--team", null) === null ||
+			argValue("--expect", null) === null ||
+			(argValue("--expect", null) !== "carry" &&
+				argValue("--draft-request-id", null) === null))
+	) {
+		throw new Error(
+			"--scene team-newchat needs --team <name> and --expect <broken|fresh|immediate|carry>; the draft halves also need --draft-request-id <uuid> (the receipt whose replay names the dead id), while carry drives a genuinely missing conversation and has no receipt",
+		);
+	}
+	if (
+		SCENE === "team-newchat" &&
+		!process.argv.includes("--seed-onboarding-complete")
+	) {
+		throw new Error(
+			"--scene team-newchat needs --seed-onboarding-complete: the first-run wizard owns the window otherwise, and a frame of it would not be the pane under test",
+		);
+	}
 	if (
 		SCENE === "image-copy" &&
 		COPY_EXPECT !== "after" &&
@@ -48674,6 +51021,14 @@ async function main() {
 	if (SCENE === "route-tops" && BACKEND === null) {
 		throw new Error(
 			"--scene route-tops needs --backend: settings, agents, projects, hub and schedules are gated on the catalogue a live backend advertises, and the macOS lane assertion is read over every one of them",
+		);
+	}
+	if (
+		SCENE === "hub-links-actions" &&
+		(BACKEND === null || BACKEND_RECORDS === null)
+	) {
+		throw new Error(
+			"--scene hub-links-actions needs --backend and --backend-records: every state it photographs is core's ANSWER (a dry run, a check, a withheld reply) against the frozen hub_links:1 wire, and a backendless run draws the legacy pending panel instead",
 		);
 	}
 	if (SCENE === "hub-links" && BACKEND === null) {
@@ -48710,6 +51065,18 @@ async function main() {
 		throw new Error(
 			"--scene project-detail needs --backend: the seeded row, quick-send's message and the picker's create are all real requests to the daemon this run owns, so a run with none would photograph three refusals",
 		);
+	}
+	if (SCENE === "project-update-assets") {
+		if (BACKEND === null) {
+			throw new Error(
+				"--scene project-update-assets needs --backend: the seeded row and the attachment bytes are real requests to the daemon this run owns, so a run with none would photograph a feed with no grid",
+			);
+		}
+		if (PROJECT === null) {
+			throw new Error(
+				"--scene project-update-assets needs --project <key>: the feed is reached by the project's own key",
+			);
+		}
 	}
 	if (SCENE === "project-open") {
 		if (BACKEND === null || BACKEND_RECORDS === null) {
@@ -48752,6 +51119,15 @@ async function main() {
 			);
 		}
 	}
+	if (SCENE === "sidebar-layout") await prepareSidebarLayoutScene();
+	if (
+		SCENE === "sidebar-docking" &&
+		(BACKEND === null || BACKEND_RECORDS === null || SESSION === null)
+	) {
+		throw new Error(
+			"--scene sidebar-docking needs --backend, --backend-records and --session <id>: the evidence must show the named populated synthetic conversation, never an offline/empty chat or whichever row happens to sort first, and the record proves the daemon is this run's isolated fixture",
+		);
+	}
 	if (SCENE === "mini-view" && BACKEND !== null && BACKEND_RECORDS === null) {
 		throw new Error(
 			"--scene mini-view with --backend needs --backend-records: the app admits only a daemon a serve record describes, and the live send walks that daemon's own routes through the record the run linked",
@@ -48790,6 +51166,7 @@ async function main() {
 			armed: true,
 			logName: "app-scene.log",
 			tag: "scene",
+			attachPaths: ATTACH_PATHS,
 		});
 		app = handle;
 		let cdp = null;
@@ -48898,7 +51275,39 @@ async function main() {
 			if (SCENE === "session-archive") await sceneSessionArchive(cdp);
 			else if (SCENE === "connection-drop") await sceneConnectionDrop(cdp);
 			else if (SCENE === "row-space") await sceneRowSpace(cdp);
+			else if (SCENE === "background-work") await sceneBackgroundWork(cdp);
 			else if (SCENE === "sidebar-bottom") await sceneSidebarBottom(cdp);
+			else if (SCENE === "sidebar-docking")
+				await sceneSidebarDocking({
+					cdp,
+					verb,
+					capture: captureSettled,
+					check,
+					note,
+					wait,
+					waitForCondition,
+					factsOf,
+					require,
+					clickAt,
+					pressChord,
+					sidebarModifier:
+						process.platform === "darwin" ? MODIFIER.meta : MODIFIER.ctrl,
+					session: SESSION,
+				});
+			else if (SCENE === "sidebar-layout")
+				await sceneSidebarLayout({
+					cdp,
+					verb,
+					capture: captureSettled,
+					check,
+					note,
+					wait,
+					waitForCondition,
+					factsOf,
+					require,
+					parkPointer,
+					pressPointer,
+				});
 			else if (SCENE === "states") await sceneStates(cdp);
 			/*
 			 * §I's pane floors (the chat column's 480, the canvas's dock cap and its
@@ -48922,11 +51331,72 @@ async function main() {
 			else if (SCENE === "plain-newchat-lifecycle")
 				await scenePlainNewchatLifecycle(cdp);
 			else if (SCENE === "authoring-refresh") await sceneAuthoringRefresh(cdp);
+			else if (SCENE === "profile-proposals") await sceneProfileProposals(cdp);
 			else if (SCENE === "sidebar-bin-promptness")
 				await sceneSidebarBinPromptness(cdp);
 			else if (SCENE === "drafts") await sceneDrafts(cdp);
+			else if (SCENE === "stale-team-draft") await sceneStaleTeamDraft(cdp);
+			else if (SCENE === "team-newchat")
+				await sceneTeamNewchat({
+					cdp,
+					verb,
+					capture: captureSettled,
+					/*
+					 * The UN-SETTLED capture too: the window between the bridge's
+					 * answer and the settled pane can only be held by a frame that does
+					 * not wait for two identical screenshots (design round 1, D2).
+					 */
+					captureRaw: capture,
+					check,
+					note,
+					wait,
+					waitForCondition,
+					clickAt,
+					pressChord,
+				});
 			else if (SCENE === "undo-toasts-stacked")
 				await sceneUndoToastsStacked(cdp);
+			/*
+			 * Settings -> Agent messages over a live daemon: the section's own
+			 * state letter, both palettes, pause/resume, the local switch, and
+			 * the reach editor's two saves. Needs `--backend`,
+			 * `--backend-records` and `--allowlist-id`.
+			 */ else if (SCENE === "agent-messages")
+				await sceneAgentMessages({
+					cdp,
+					verb,
+					capture: captureSettled,
+					check,
+					note,
+					wait,
+					waitForCondition,
+					factsOf,
+					argValue,
+					backend: BACKEND,
+					backendRecords: BACKEND_RECORDS,
+					framesDir: FRAMES,
+					electronUserAgent: ELECTRON_USER_AGENT,
+				});
+			/*
+			 * Settings -> Notifications -> Sound over a live daemon (local-operator
+			 * #3403): select, preview, volume, one accepted and one `too_long`
+			 * upload, rename and remove-selected, each read back from the daemon.
+			 * Needs `--backend`, `--sound-ok <file>` and `--sound-long <file>`.
+			 */ else if (SCENE === "notification-sounds")
+				await sceneNotificationSounds({
+					cdp,
+					verb,
+					capture: captureSettled,
+					check,
+					note,
+					wait,
+					waitForCondition,
+					clickAt,
+					backend: BACKEND,
+					token: process.env.LOCAL_OPERATOR_DESKTOP_TOKEN ?? null,
+					soundOk: argValue("--sound-ok", null),
+					soundLong: argValue("--sound-long", null),
+				});
 			else if (SCENE === "settings-model") await sceneSettingsModel(cdp);
 			else if (SCENE === "settings-fields") await sceneSettingsFields(cdp);
 			/*
@@ -48965,9 +51435,44 @@ async function main() {
 				await sceneSettingsIntegrations(cdp);
 			else if (SCENE === "route-tops") await sceneRouteTops(cdp);
 			else if (SCENE === "project-detail") await sceneProjectDetail(cdp);
+			else if (SCENE === "library-asset")
+				await sceneLibraryAsset({
+					cdp,
+					verb,
+					capture: captureSettled,
+					check,
+					note,
+					waitForCondition,
+					factsOf,
+				});
+			else if (SCENE === "project-update-assets")
+				await sceneProjectUpdateAssets(cdp);
+			else if (SCENE === "mesh-tab")
+				await sceneMeshTab({
+					cdp,
+					verb,
+					capture: captureSettled,
+					check,
+					note,
+					waitForCondition,
+				});
+			else if (SCENE === "temporary-chats")
+				await sceneTemporaryChats({
+					cdp,
+					verb,
+					capture: captureSettled,
+					check,
+					note,
+					waitForCondition,
+					pressChord,
+					modifier:
+						process.platform === "darwin" ? MODIFIER.meta : MODIFIER.ctrl,
+					shift: MODIFIER.shift,
+				});
 			else if (SCENE === "project-open") await sceneProjectOpen(cdp);
 			else if (SCENE === "agents-ask") await sceneAgentsAsk(cdp);
 			else if (SCENE === "composer-drop") await sceneComposerDrop(cdp);
+			else if (SCENE === "attach") await sceneAttach(cdp);
 			else if (SCENE === "project-inline-edit")
 				await sceneProjectInlineEdit(cdp);
 			else if (SCENE === "palette") await scenePalette(cdp);
@@ -48984,6 +51489,22 @@ async function main() {
 			else if (SCENE === "mentions") await sceneMentions(cdp);
 			else if (SCENE === "shell-evidence") await sceneShellEvidence(cdp);
 			else if (SCENE === "transcript-rail") await sceneTranscriptRail(cdp);
+			else if (SCENE === "diff-history")
+				await sceneDiffHistory({
+					cdp,
+					verb,
+					capture,
+					check,
+					note,
+					waitForCondition,
+					factsOf,
+					session: SESSION,
+					child: DIFF_CHILD,
+					liveSession: DIFF_LIVE_SESSION,
+					handshake: DIFF_HANDSHAKE,
+					expect: parseDiffExpect(DIFF_EXPECT).value,
+					outDir: FRAMES,
+				});
 			else if (SCENE === "turn-highlights")
 				await sceneTurnHighlights({
 					cdp,
@@ -49010,6 +51531,7 @@ async function main() {
 			else if (SCENE === "sidebar-lazy-chats") await sceneSidebarLazyChats(cdp);
 			else if (SCENE === "mini-view") await sceneMiniView(app, cdp);
 			else if (SCENE === "hub-links") await sceneHubLinks(cdp, app);
+			else if (SCENE === "hub-links-actions") await sceneHubLinksActions(cdp);
 			else if (SCENE === "hub-core-guard") await sceneHubCoreGuard(cdp, app);
 			else if (SCENE === "hub-skills") {
 				await sceneHubSkills(cdp, app);

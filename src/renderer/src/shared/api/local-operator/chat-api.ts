@@ -1,6 +1,8 @@
+import { t } from "../../../../../i18n/messages";
 /**
  * Local Operator API - Chat Endpoints
  */
+import { desktopControlResponse } from "./desktop-api";
 import type {
 	AgentChatRequest,
 	AgentEditFileRequest,
@@ -38,7 +40,10 @@ export const ChatApi = {
 
 		if (!response.ok) {
 			throw new Error(
-				`Chat request failed: ${response.status} ${response.statusText}`,
+				t("ui.common.errors.chat_request", {
+					status: response.status,
+					statusText: response.statusText,
+				}),
 			);
 		}
 
@@ -71,7 +76,10 @@ export const ChatApi = {
 
 		if (!response.ok) {
 			throw new Error(
-				`Chat with agent request failed: ${response.status} ${response.statusText}`,
+				t("ui.common.errors.chat_agent", {
+					status: response.status,
+					statusText: response.statusText,
+				}),
 			);
 		}
 
@@ -104,7 +112,10 @@ export const ChatApi = {
 
 			if (!response.ok) {
 				throw new Error(
-					`Async chat request failed: ${response.status} ${response.statusText}`,
+					t("ui.common.errors.chat_async", {
+						status: response.status,
+						statusText: response.statusText,
+					}),
 				);
 			}
 
@@ -146,7 +157,10 @@ export const ChatApi = {
 
 			if (!response.ok) {
 				throw new Error(
-					`Async agent chat request failed: ${response.status} ${response.statusText}`,
+					t("ui.common.errors.chat_agent_async", {
+						status: response.status,
+						statusText: response.statusText,
+					}),
 				);
 			}
 
@@ -162,33 +176,42 @@ export const ChatApi = {
 	 * The endpoint loads the specified file, applies the agent's conversation history,
 	 * and uses the agent to generate edit diffs based on the provided edit prompt.
 	 *
-	 * @param baseUrl - The base URL of the Local Operator API
+	 * Sent through the desktop transport (`legacy.agent.editFile`) rather than a
+	 * renderer `fetch`, like the app's other control calls: main attaches the
+	 * desktop credential and owns the request's byte budget and deadline (see
+	 * `INLINE_EDIT_BYTE_BUDGET` / `INLINE_EDIT_DEADLINE_MS` in
+	 * `desktop-contract.ts`). `baseUrl` is kept for the client's uniform
+	 * signature; main already knows the backend it pairs with.
+	 *
+	 * Failure contract is unchanged for the caller: a non-2xx answer (including
+	 * main's own 413/504/503 refusals) throws the same `chat_edit_file` error,
+	 * and an IPC/transport failure rejects with `desktopRequest`'s error - both
+	 * reach the inline-edit popover's catch, which shows its one failure toast.
+	 *
+	 * @param _baseUrl - Unused; see above
 	 * @param agentId - ID of the agent to use for editing
 	 * @param request - The edit request containing file path and edit prompt
 	 * @returns A response containing the generated edit diffs
 	 * @throws Error if the request fails
 	 */
 	async editFileWithAgent(
-		baseUrl: string,
+		_baseUrl: string,
 		agentId: string,
 		request: AgentEditFileRequest,
 	): Promise<CRUDResponse<AgentEditFileResponse>> {
 		try {
-			const response = await fetch(
-				`${baseUrl}/v1/chat/agents/${agentId}/edit`,
-				{
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-						Accept: "application/json",
-					},
-					body: JSON.stringify(request),
-				},
-			);
+			const response = await desktopControlResponse({
+				op: "legacy.agent.editFile",
+				agentId,
+				request,
+			});
 
 			if (!response.ok) {
 				throw new Error(
-					`Edit file with agent request failed: ${response.status} ${response.statusText}`,
+					t("ui.common.errors.chat_edit_file", {
+						status: response.status,
+						statusText: response.statusText,
+					}),
 				);
 			}
 

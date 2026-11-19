@@ -1,0 +1,70 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "agent": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "audit-1743-usage-reset-es-20261107",
+  "locale": "es",
+  "date": "2026-11-07",
+  "status": "passed",
+  "namespace": "ui.chat.usage_reset",
+  "keys_read": 13,
+  "sha256": {
+    "en": "dab7b5ad5816d8e855de5b77e5c5fe1e0d4021ceda20fefc832ccfede56fa739",
+    "es": "7c7954d14ed0d9f3e8321fc8246fc8f1ef6aae542f61f491c09a8fcfdfc94f5b"
+  },
+  "findings": [
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.usage_reset.chip_label",
+      "current": "Restablecer los límites de uso de {account}. {count, plural, one {Queda # crédito de restablecimiento.} many {Quedan # créditos de restablecimiento.} other {Quedan # créditos de restablecimiento.}}",
+      "proposed": "Restablecer los límites de solicitudes de {account}. {count, plural, one {Queda # crédito de restablecimiento.} many {Quedan # créditos de restablecimiento.} other {Quedan # créditos de restablecimiento.}}",
+      "reason": "'límite(s) de uso' drifts from the locale's shipped rate-limit term 'límite de solicitudes' (ui.chat.error_block.rate_limit.before; 4 uses vs 0 for 'límite de uso' elsewhere) and reads as a usage quota rather than a request-rate limit."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.usage_reset.confirm_cost",
+      "current": "{count, plural, one {Usa 1 de # crédito de restablecimiento; borra las ventanas de límite de uso de esta cuenta.} many {Usa 1 de # créditos de restablecimiento; borra las ventanas de límite de uso de esta cuenta.} other {Usa 1 de # créditos de restablecimiento; borra las ventanas de límite de uso de esta cuenta.}}",
+      "proposed": "{count, plural, one {Usa 1 de # crédito de restablecimiento; borra las ventanas de límite de solicitudes de esta cuenta.} many {Usa 1 de # créditos de restablecimiento; borra las ventanas de límite de solicitudes de esta cuenta.} other {Usa 1 de # créditos de restablecimiento; borra las ventanas de límite de solicitudes de esta cuenta.}}",
+      "reason": "'límite(s) de uso' drifts from the locale's shipped rate-limit term 'límite de solicitudes' (ui.chat.error_block.rate_limit.before; 4 uses vs 0 for 'límite de uso' elsewhere) and reads as a usage quota rather than a request-rate limit."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.usage_reset.outcome_reset",
+      "current": "{count, plural, one {Se borró # ventana de límite de uso de {account}.} many {Se borraron # ventanas de límite de uso de {account}.} other {Se borraron # ventanas de límite de uso de {account}.}}",
+      "proposed": "{count, plural, one {Se borró # ventana de límite de solicitudes de {account}.} many {Se borraron # ventanas de límite de solicitudes de {account}.} other {Se borraron # ventanas de límite de solicitudes de {account}.}}",
+      "reason": "'límite(s) de uso' drifts from the locale's shipped rate-limit term 'límite de solicitudes' (ui.chat.error_block.rate_limit.before; 4 uses vs 0 for 'límite de uso' elsewhere) and reads as a usage quota rather than a request-rate limit."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.usage_reset.outcome_nothing_to_reset",
+      "current": "Ninguna ventana de límite de uso de {account} necesitaba borrarse. No se consumió nada.",
+      "proposed": "Ninguna ventana de límite de solicitudes de {account} necesitaba borrarse. No se consumió nada.",
+      "reason": "'límite(s) de uso' drifts from the locale's shipped rate-limit term 'límite de solicitudes' (ui.chat.error_block.rate_limit.before; 4 uses vs 0 for 'límite de uso' elsewhere) and reads as a usage quota rather than a request-rate limit."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.usage_reset.outcome_failed",
+      "current": "El restablecimiento de {account} no informó de ningún resultado, así que se desconoce el destino del crédito. Reintentarlo reutiliza la misma solicitud, así que no consumirá un segundo crédito.",
+      "proposed": "El restablecimiento de {account} no informó de ningún resultado, por lo que no se sabe si se consumió el crédito. Reintentarlo reutiliza la misma solicitud, así que no consumirá un segundo crédito.",
+      "reason": "'el destino del crédito' calques 'the credit's fate', and the back-to-back 'así que … así que' reads translated."
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.chat.usage_reset.outcome_no_credit",
+      "current": "{account} no tiene créditos de restablecimiento. No se consumió nada.",
+      "proposed": "{account} ya no tiene créditos de restablecimiento. No se consumió nada.",
+      "reason": "'no tiene' drops the English 'left' (the account had credits and used them)."
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.chat.usage_reset.chip",
+      "current": "Restablecer · {count}",
+      "proposed": "Restablecer · {count}",
+      "reason": "'Restablecer · N' is ~2.6× the English 'Reset · N' on a heading line whose context note asks it not to push the binding window out of its column; confirm in a rendered /usage heading at minimum panel width (no shorter idiomatic verb exists, so no text change proposed)."
+    }
+  ],
+  "scope": "PR #1743 ui.chat.usage_reset at 1d0e0cc0cb801f8ee1e2f1626212fddca32113c0 (clean working tree): full 13-key namespace, all seven locales",
+  "independence": "Separate session from the PR coder; verdict rebuilt from the English source, the en context, sibling keys and the locale style guide.",
+  "verdict": "es: passed — chip_label now opens with the infinitive 'Restablecer' and carries the count, so the spoken name contains the visible chip text (prior MAJOR fixed); 'window' is 'ventana' throughout; remaining items are MINOR rate-limit term drift ('límite de uso' vs shipped 'límite de solicitudes') and a calque in outcome_failed, plus nits."
+}

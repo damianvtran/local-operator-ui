@@ -1,0 +1,18 @@
+{
+	"auditor": "i18n-auditor",
+	"model": "openai/gpt-6.1-sol",
+	"instance": "45b32a06bf7b",
+	"locale": "hi",
+	"round": 2,
+	"namespaces": {
+		"ui.common.updates": {
+			"status": "passed",
+			"keys_audited": 127,
+			"sha256": {
+				"en": "de3e083efe40d06b2947c1ef661ec0328b8984214f015a1133521d9d683cb3cd",
+				"hi": "4d9eb811ac0b6129ed71eca397ad2667ca1986084639e89b904bfb8db67b7a3d"
+			},
+			"findings": []
+		}
+	}
+}

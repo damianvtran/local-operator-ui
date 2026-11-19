@@ -1,0 +1,23 @@
+{
+	"ui.chat.settings_intents.chips_label": "Settings changes",
+	"ui.chat.settings_intents.cwd_waiting": "Moves to {dir} when this turn ends",
+	"ui.chat.settings_intents.effort_queued": "Effort {level} applies at the next step",
+	"ui.chat.settings_intents.failed_cwd": "Couldn't move to {dir}: {reason}",
+	"ui.chat.settings_intents.failed_effort": "Couldn't set effort to {level}: {reason}",
+	"ui.chat.settings_intents.failed_fast": "Couldn't change fast mode: {reason}",
+	"ui.chat.settings_intents.failed_model": "Couldn't switch to {model}: {reason}",
+	"ui.chat.settings_intents.fast_queued": "Fast mode change applies at the next step",
+	"ui.chat.settings_intents.model_queued": "{model} applies at the next step",
+	"ui.chat.settings_intents.moving_cwd": "Moving to {dir}…",
+	"ui.chat.settings_intents.reason_budget": "the session did not respond in time",
+	"ui.chat.settings_intents.reason_unknown": "no reason was given",
+	"ui.chat.settings_intents.row_applying": "Applying a settings change",
+	"ui.chat.settings_intents.row_failed": "A settings change failed",
+	"ui.chat.settings_intents.setting_effort": "Setting effort to {level}…",
+	"ui.chat.settings_intents.setting_fast_off": "Turning fast mode off…",
+	"ui.chat.settings_intents.setting_fast_on": "Turning fast mode on…",
+	"ui.chat.settings_intents.superseded_effort": "Effort changed elsewhere to {level}",
+	"ui.chat.settings_intents.superseded_model": "Model changed elsewhere to {model}",
+	"ui.chat.settings_intents.superseded_other": "This setting was changed elsewhere",
+	"ui.chat.settings_intents.switching_model": "Switching to {model}…"
+}

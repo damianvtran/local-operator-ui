@@ -1,0 +1,44 @@
+{
+ "auditor": "i18n-auditor",
+ "model": "radient/auto",
+ "instance": "tb1482r2-es-51507d",
+ "status": "passed",
+ "namespace": "ui.ownerAudit",
+ "sha256": {
+  "es": "16ce57d2ff7c968dee0d20ae6a2767c3e23dd22ec8562f0816528b9e8a64de8b",
+  "en": "147de29a88573f22b144c09b6f94c8c5310e2e1d773d597a3ff44b2a2214efe1"
+ },
+ "findings": [
+  {
+   "severity": "NIT",
+   "key": "ui.ownerAudit.disclosure",
+   "detail": "Register: \"A los demas miembros se les indica que...\" renders \"The other members are told that...\" with \"indicar\", which leans administrative in Spanish; the context sidecar asks for \"plain, unapologetic, no legal register\". \"se les dice\" would be plainer. Left open: both sentences state the two required facts correctly (the reader's basis, and that agent owners can audit), carry no exclusivity claim, and read naturally."
+  },
+  {
+   "severity": "NIT",
+   "key": "ui.ownerAudit.disclosure",
+   "detail": "\"eres propietario\" addresses the reader with a masculine-gendered noun. Consistent with this locale's established convention (e.g. ui.agents.publication.insufficient_role.body \"Pide a un propietario de la organizacion...\", ui.hub.teams.org.no_access_body \"Un propietario puede invitarte de nuevo\"), so left unfixed as a convention, not a defect; a neutral \"tienes la propiedad\" would remove the gender if the locale ever moves."
+  },
+  {
+   "severity": "NIT",
+   "key": "ui.ownerAudit.viewers_label",
+   "detail": "\"Tambien visible para\" renders \"Also readable by\" with \"visible\" rather than \"legible\". Acceptable: it labels a <ul> of other agent owners' names (component renders it as a bare <p> above the list), carries \"tambien\" as required, has no colon, no placeholder and three words, and reuses the wording of the round-1 ui.ownerAudit.viewer sentence it replaces. \"Tambien legible para\" would track the English noun more literally at the cost of naturalness; left open."
+  }
+ ],
+ "scope": "Round 2: the six changed keys only; earlier round out of scope.",
+ "resolved_findings": [
+  {
+   "severity": "MINOR",
+   "key": "ui.ownerAudit.left",
+   "resolved": true,
+   "detail": "Anaphor collision in the cut-off clause. Before: \"La auditoria termina aqui. Tu jefe de gabinete abandono esta conversacion, asi que los mensajes posteriores quedan fuera de ella.\" Two feminine singular antecedents precede \"ella\" and the nearer one is \"esta conversacion\", not \"la auditoria\", so a plausible reading states that later messages are outside the CONVERSATION (false; they exist, they are only outside the audit). Logic favours the audit, which is why this is MINOR and not MAJOR, but the notice must not be re-read to be understood. After: \"...asi que no incluye los mensajes posteriores.\" The subject of \"incluye\" can only be \"la auditoria\" (\"esta conversacion\" sits inside a prepositional phrase and cannot be its subject), so the English fact is stated without a pronoun; the string is also 10 chars shorter (EN 97 / ES 129 -> 119, ratio 1.33 -> 1.23)."
+  },
+  {
+   "severity": "MINOR",
+   "key": "ui.ownerAudit.removed",
+   "resolved": true,
+   "detail": "Same anaphor collision as ui.ownerAudit.left, identical construction. Before: \"...fue eliminado de esta conversacion, asi que los mensajes posteriores quedan fuera de ella.\" After: \"...fue eliminado de esta conversacion, asi que no incluye los mensajes posteriores.\" EN 109 / ES 137 -> 127, ratio 1.26 -> 1.17. The rest of the string was already correct: it says the audit ends here, names the cause (removed from this conversation) and promises no way to load the cut messages."
+  }
+ ],
+ "artifact_note": "findings/resolved_findings split applied at assembly: the auditor's own `resolved: true` entries were moved from `findings` to `resolved_findings` unchanged (severity, key, detail and the flag kept). No judgement was altered."
+}

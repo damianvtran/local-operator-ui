@@ -1,0 +1,18 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "anthropic/claude-sonnet-5-5",
+  "instance": "600fc6d81235",
+  "status": "passed",
+  "namespace": "ui.chat.pickers",
+  "sha256": {
+    "ru": "7d891a2594cf87f612ef5a189ffe6b540421891ca16c5344c7708656acbdce26",
+    "en": "88d81780ea0cf598689a73b5b0206da020ccfe1b847631214f87f40791b684c7"
+  },
+  "findings": [
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.pickers.destination_pickers.default_for_all_sessions_that_follow_it",
+      "note": "M1: scope-segment label is 62 chars (en 38, was 49); may wrap in narrow picker, unproven (not rendered). Optional shorter: «По умолчанию для всех сессий»."
+    }
+  ]
+}

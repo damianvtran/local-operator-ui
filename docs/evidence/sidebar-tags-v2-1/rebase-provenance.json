@@ -1,0 +1,34 @@
+{
+  "old_base": "3d9dd920260016192f5d50beb7335e4c78802bd0",
+  "old_head": "0d341f5eabdea12c113107ef6b27f96aff22fb04",
+  "new_base": "414dcb8eb2d11d23c0c387c8c4361e192bebfe7e",
+  "rebased_replay": "e64aa8d16423dd9b129d532ed8569019b634388c",
+  "range_diff_excluding_mechanical_manifest": "1:  0d341f5eab = 1:  e64aa8d164 feat(chat): add held-row tag moves and remove-all actions",
+  "plus_minus_line_multiset_identical_excluding_manifest": true,
+  "byte_identical_source_script_blobs": [
+    "scripts/chat-sidebar-row-menu.test.mjs",
+    "scripts/chat-sidebar-tags.test.mjs",
+    "scripts/sidebar-pin-order.test.mjs",
+    "scripts/sidebar-tag-drag.test.mjs",
+    "src/i18n/catalogues/en/ui.chat.tags.context.json",
+    "src/i18n/catalogues/en/ui.chat.tags.json",
+    "src/i18n/catalogues/ru/ui.chat.tags.json",
+    "src/renderer/src/features/chat/chat-tag-drag.ts",
+    "src/renderer/src/features/chat/chat-tag-groups.ts",
+    "src/renderer/src/features/chat/chat-tag-move.ts",
+    "src/renderer/src/features/chat/components/chat-session-tags-dialog.tsx",
+    "src/renderer/src/features/chat/components/chat-sidebar-tags.stories.tsx",
+    "src/renderer/src/features/chat/components/chat-sidebar.tsx",
+    "src/renderer/src/features/chat/use-chat-tag-drag.ts",
+    "src/renderer/src/shared/store/canonical-sessions-store.ts",
+    "src/renderer/src/shared/store/session-tags-store.ts",
+    "src/shared/desktop-contract.ts",
+    "src/shared/desktop-session-contract.ts"
+  ],
+  "generated_keys_exception": {
+    "path": "src/i18n/keys.gen.ts",
+    "upstream_base_to_base_delta_equals_old_head_to_replay_delta": true,
+    "why": "Upstream added generated keys. The replay retained that exact upstream delta, with no change to this PR\u2019s +/- lines."
+  },
+  "manifest_exception": "Only unjudgedFrames conflicted. Preserved upstream manifest, then mechanically rederived actual frame counts. No runtime source conflict. This receipt covers the replay before unified remediation, not approval of remediation."
+}

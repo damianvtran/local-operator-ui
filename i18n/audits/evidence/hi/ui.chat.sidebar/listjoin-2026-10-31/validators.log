@@ -1,0 +1,17 @@
+context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json).
+/Users/damian/local-operator-ui/.worktrees/i18n-listjoin/src/i18n/keys.gen.ts is byte-identical to a fresh generation.
+check-duplicates: ok — 1031 file(s) scanned, 0 duplicate key(s)
+✔ [hi] ships at least one message (not an empty claim) (9.55725ms)
+✔ [hi] defines each key in at most one namespace file (10.622667ms)
+✔ [hi] carries EVERY key of each namespace file it ships (17.57125ms)
+✔ [hi] names only keys the English source defines (9.552125ms)
+✔ [hi] preserves every ICU placeholder from the English source (31.409167ms)
+✔ [hi] is not an English stub (no value identical to the source) (11.29075ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 149.149542

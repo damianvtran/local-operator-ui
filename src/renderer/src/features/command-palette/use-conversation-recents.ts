@@ -1,4 +1,5 @@
 import { answeredArchiveRows, visibleRows } from "@features/chat/chat-archived";
+import { partition } from "@features/chat/chat-temporary";
 import {
 	panelSessionIdOfView,
 	useCanonicalSessionsStore,
@@ -38,12 +39,26 @@ export function useConversationRecents(): void {
 			state.activeSessionId,
 		),
 	);
+	/*
+	 * A TEMPORARY CHAT IS NOT REMEMBERED: the ring is persisted history, and a
+	 * temporary chat is left out of history on every surface. Read through the
+	 * store's own capability flag, so an older core remembers exactly as before.
+	 */
+	const displayedTemporary = useCanonicalSessionsStore((state) =>
+		displayedSessionId === null
+			? false
+			: partition(
+					state.sessions.filter((row) => row.session_id === displayedSessionId),
+					state.temporaryChats,
+				).temporary.length > 0,
+	);
 	const rememberConversation = useUiPreferencesStore(
 		(state) => state.rememberConversation,
 	);
 	useEffect(() => {
-		if (displayedSessionId !== null) rememberConversation(displayedSessionId);
-	}, [displayedSessionId, rememberConversation]);
+		if (displayedSessionId !== null && !displayedTemporary)
+			rememberConversation(displayedSessionId);
+	}, [displayedSessionId, displayedTemporary, rememberConversation]);
 }
 
 /**

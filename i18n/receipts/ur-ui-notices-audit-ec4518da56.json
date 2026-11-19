@@ -1,0 +1,190 @@
+{
+ "schema": 1,
+ "kind": "translation-audit-receipt",
+ "auditor": "translation-auditor",
+ "agent": "translation-auditor",
+ "team": "lopdev",
+ "harness": "Local Operator",
+ "model": "deepseek/deepseek-flash",
+ "model_provenance": "Session model as configured for this run: deepseek/deepseek-flash. No fallback was observed in this session.",
+ "session": "0d1de5fe677e",
+ "instance": "0d1de5fe677e",
+ "date": "2026-10-25",
+ "locale": "ur",
+ "locale_name": "Urdu",
+ "namespace": "ui.notices",
+ "branch": "feat/i18n-toasts",
+ "head": "ec4518da560867e897c290ddf8abc3b2496a4b59",
+ "base": "4e076176f8e7183e1b580ea4a927fb4821183da8",
+ "round": 1,
+ "audit_kind": "first independent audit (no re-bind); grade the translation against English",
+ "scope": "All 93 ui.notices keys for ur at ec4518da56, read side by side with the 93-key English source and the en context sidecar; core glossary and ur style guide; this locale's shipped catalogues for established terminology; ICU structure and plural ladders rendered at counts 1, 2, 5 and 21; composed heads/tails (archive, drafts, bulk-read remainders); RTL/punctuation and overflow checks. Catalogue-only: no rendered-frame, native-speaker or activation claim.",
+ "keys_read": 93,
+ "keys_audited": 93,
+ "new_keys_audited": 93,
+ "sha256": {
+  "en": "f473fa10e95b24f50ce13647ae50a923b34d8efd31249d99d6c437e183722277",
+  "ur": "e7e3f1aafdb25e40f35e6ab6ae6fabaf07b7e4ea75472e85fb60cb19417761a4",
+  "context": "acce3fd5c70232afcc3ca2dec3c3bc7d63ab0869485900de3e6b6b03bd4e9379",
+  "languages_manifest": "7fd056b916fc3d56ddf36991a09b29864ea0b0f825d938aead1ed165926f8d63"
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+ },
+ "references": {
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/ur.md",
+   "sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+  },
+  "languages_manifest": {
+   "path": "i18n/languages.json",
+   "sha256": "7fd056b916fc3d56ddf36991a09b29864ea0b0f825d938aead1ed165926f8d63"
+  }
+ },
+ "structural": {
+  "key_set": "93/93 present; zero missing, zero extra; key order identical to en; no duplicate keys",
+  "icu": "93/93 parse under ur; argument names, number-skeleton styles and plural/select categories structurally identical to en (0 diffs)",
+  "placeholders": "none dropped, renamed or reordered; {count} {name} {title} {existing} {stored} {published} {origin} {version} {relaunch} {detail} {reason} {goal} {index, number} {keys} {key} all intact",
+  "plural_categories": "ur CLDR one/other used consistently; drafts verb inflects per count (1/2/5/21 rendered); config-run and credential ladders correct",
+  "english_leftovers": "only documented kept tokens: Local Operator, Aida, bash, ID, /credential, /goal, <text>; no untranslated prose",
+  "encoding": "NFC throughout; no manual bidi controls (0 RLM/LRM/FSI/PDI/embeddings); balanced Urdu quotes “ ”; Urdu ۔ ، ؛ punctuation; no ASCII sentence periods; no Hindi danda"
+ },
+ "composed_renders": {
+  "archive_offer": "گفتگو آرکائیو ہو گئی۔ | “Q4 planning” آرکائیو ہو گئی۔",
+  "drafts_offer": {
+   "1": "مسودہ ضائع کر دیا گیا۔",
+   "2": "2 مسودے ضائع کر دیے گئے۔",
+   "5": "5 مسودے ضائع کر دیے گئے۔",
+   "21": "21 مسودے ضائع کر دیے گئے۔"
+  },
+  "bulk_read_lead": {
+   "1": "1 گفتگو کو پڑھی گئی نشان زد کر دیا گیا۔",
+   "2": "2 گفتگوئیں پڑھی گئی نشان زد کر دی گئیں۔",
+   "5": "5 گفتگوئیں پڑھی گئی نشان زد کر دی گئیں۔",
+   "21": "21 گفتگوئیں پڑھی گئی نشان زد کر دی گئیں۔"
+  },
+  "note": "Heads and tails joined with the runtime's single space (archive/drafts use a flex gap; bulk-read remainders are joined with ' '). Archive and drafts read correctly; the bulk-read lead carries finding UR-N1 at every count."
+ },
+ "findings": [
+  {
+   "id": "UR-N1",
+   "severity": "major",
+   "key": "ui.notices.chat.mark_all_read_cleared",
+   "current": "{count, plural, one {1 گفتگو کو پڑھی گئی نشان زد کر دیا گیا۔} other {{count} گفتگوئیں پڑھی گئی نشان زد کر دی گئیں۔}}",
+   "proposed": "{count, plural, one {1 گفتگو کو پڑھا ہوا نشان زد کر دیا گیا۔} other {{count} گفتگوئیں پڑھا ہوا نشان زد کر دی گئیں۔}}",
+   "reason": "`پڑھی گئی` is a passive verb ('was read') used as the unmarked complement of `نشان زد کرنا`; Urdu marks the state with the perfect participle `پڑھا ہوا` (the Hindi sibling in this same namespace reads `पढ़ा हुआ चिह्नित`), and without `بطور/کے طور پر` the phrase parses as 'marked the was-read'. Both arms are affected, and the plural arm then adds a second passive (`کر دی گئیں`). Meaning is recoverable, so not a blocker; it is the primary bulk-read receipt, so major."
+  },
+  {
+   "id": "UR-N2",
+   "severity": "minor",
+   "key": "ui.notices.chat.mark_all_read_deferred",
+   "current": "{count, plural, one {1 دوسرے ڈیوائس پر ہے اور وہ ڈیوائس اپ ڈیٹ ہونے پر صاف ہو جائے گی۔} other {{count} دوسرے ڈیوائسز پر ہیں اور وہ ڈیوائسز اپ ڈیٹ ہونے پر صاف ہو جائیں گی۔}}",
+   "proposed": "{count, plural, one {1 دوسری ڈیوائس پر ہے اور وہ ڈیوائس اپ ڈیٹ ہونے پر صاف ہو جائے گی۔} other {{count} دوسری ڈیوائسز پر ہیں اور وہ ڈیوائسز اپ ڈیٹ ہونے پر صاف ہو جائیں گی۔}}",
+   "reason": "`ڈیوائس` is feminine throughout this catalogue (`دوسری ڈیوائس` in ui.chat.device; `ڈیوائس ... ظاہر ہو گی` in ui.mesh), so the masculine oblique `دوسرے` in both arms is the only disagreement in an otherwise correct sentence."
+  },
+  {
+   "id": "UR-N3",
+   "severity": "minor",
+   "key": "ui.notices.files.open_failed",
+   "current": "{name} کھولا نہیں جا سکا۔ ممکن ہے فائل منتقل، نام تبدیل یا حذف ہو گئی ہو۔",
+   "proposed": "{name} کھولا نہیں جا سکا۔ ممکن ہے فائل منتقل ہو گئی ہو، اس کا نام تبدیل ہو گیا ہو، یا وہ حذف ہو گئی ہو۔",
+   "reason": "The coordinated list places the masculine-subject clause `نام تبدیل` under the feminine verb `ہو گئی`; splitting the predicates restores agreement (`فائل ... ہو گئی`, `نام ... ہو گیا`). Meaning is clear, hence minor."
+  },
+  {
+   "id": "UR-N4",
+   "severity": "minor",
+   "key": "ui.notices.links.open_failed | ui.notices.links.open_local_blocked",
+   "current": "وہ ربط کھولا نہیں جا سکا۔ | وہ ربط کھولا نہیں جا سکا۔ ایپ آپ کی اپنی مشین یا مقامی نیٹ ورک کے روابط نہیں کھولتی۔",
+   "proposed": "وہ لنک کھولا نہیں جا سکا۔ | وہ لنک کھولا نہیں جا سکا۔ ایپ آپ کی اپنی مشین یا مقامی نیٹ ورک کے لنک نہیں کھولتی۔",
+   "reason": "Both keys are about clickable URLs. This catalogue's term for a hyperlink is `لنک` (ui.browser.page_context_menu.open_link_in_new_tab, ui.canvas.insert_link_dialog.insert_link, ui.providers.provider_detail.copy_link), while `ربط`/`روابط` is the hub-subscription term (ui.hub.links.title, ui.hub.links.links_count). Same English term, two local terms: لنک vs ربط."
+  },
+  {
+   "id": "UR-N5",
+   "severity": "minor",
+   "key": "ui.notices.chat.goal_cleared | ui.notices.chat.goal_clear_failed",
+   "current": "ہدف ہٹا دیا گیا · {goal} | ہدف ہٹایا نہیں جا سکا",
+   "proposed": "ہدف صاف کر دیا گیا · {goal} | ہدف صاف نہیں کیا جا سکا",
+   "reason": "`clear (the goal)` is `صاف` in this catalogue's own control (`ui.chat.pickers.goal.clear` = `ہدف صاف کریں`; the settled-chip description also uses `صاف` for the chip). The notice switches to `ہٹا` for the same action; both spellings named."
+  },
+  {
+   "id": "UR-N6",
+   "severity": "minor",
+   "key": "ui.notices.chat.goal_dismiss_failed",
+   "current": "ہدف نظر انداز نہیں کیا جا سکا",
+   "proposed": "ہدف ہٹایا نہیں جا سکا",
+   "reason": "`dismiss (the goal)` is `ہٹانا` in the catalogue's own settled-goal copy (`اسے ہٹائیں`, ui.chat.pickers.destination_pickers.this_goal_is_settled...); `نظر انداز` means 'ignore/overlook' rather than putting the settled chip away. One action, one term."
+  },
+  {
+   "id": "UR-N7",
+   "severity": "minor",
+   "key": "ui.notices.credentials.stored",
+   "current": "{keys} محفوظ کر لیے گئے۔ ہر bash کمانڈ میں ماحول کے متغیر کے طور پر داخل کیے جاتے ہیں؛ ایجنٹ قدر نہیں پڑھ سکتا۔",
+   "proposed": "{keys} محفوظ کر دیا گیا۔ ہر bash کمانڈ میں ماحول کے متغیر کے طور پر داخل کیا جاتا ہے؛ ایجنٹ قدر نہیں پڑھ سکتا۔",
+   "reason": "`{keys}` is number-neutral in English (`Stored {keys}`) and is commonly a single key; the plural passives `کر لیے گئے` and `داخل کیے جاتے ہیں` are ungrammatical for one key. The impersonal singular agrees for any count (cf. hi `सहेजा गया`, es `Guardado`, fr `Stocké`)."
+  },
+  {
+   "id": "UR-N8",
+   "severity": "nit",
+   "key": "ui.notices.chat.unread_not_cleared",
+   "current": "{reason} نہ پڑھے گئے نشان صاف نہیں ہوئے۔",
+   "proposed": "{reason} نہ پڑھے گئے نشانات صاف نہیں ہوئے۔",
+   "reason": "`نشان` is being used collectively; the standard countable plural for distinct marks is `نشانات`. Optional, since the current sentence is understandable."
+  }
+ ],
+ "findings_summary": {
+  "blocker": 0,
+  "major": 1,
+  "minor": 6,
+  "nit": 1
+ },
+ "result": "changes_requested",
+ "status": "changes_requested",
+ "verdicts": {
+  "ui.notices": {
+   "status": "changes_requested",
+   "result": "changes_requested",
+   "blocker": 0,
+   "major": 1,
+   "minor": 6,
+   "nit": 1,
+   "note": "Not clean: one major (UR-N1) plus six minor and one nit. All 93 keys read; meaning and placeholders are intact."
+  }
+ },
+ "overall_verdict": "changes_requested — not clean (1 major). A clean verdict requires zero blocker and zero major.",
+ "dimensions": {
+  "accuracy": "PASS on meaning: every key conveys the English, including the roles implied by the context sidecar (prefixes, remainders, plain vs named arms, user-data placeholders). UR-N7 is a number-agreement risk for a single key, not a meaning change.",
+  "idiom": "FAIL on UR-N1 (a passive verb used as the unmarked complement; the idiomatic Urdu is پڑھا ہوا / بطور … نشان زد) and UR-N3 (a masculine-subject clause under a feminine verb); UR-N8 is optional polish. The archive and drafts offers, the update-hold banner and the variable/session confirmations read as native Urdu.",
+  "register": "PASS. آپ address throughout; respectful imperatives (کریں/دیکھیں); no تم/تو, no exclamation marks, no padding honorific or براہ کرم.",
+  "glossary": "FAIL only where listed: لنک vs ربط (UR-N4), صاف vs ہٹا for clear (UR-N5), ہٹا vs نظر انداز for dismiss (UR-N6). Otherwise consistent with the programme glossary and shipped catalogue: agent→ایجنٹ, session→سیشن, approvals→منظوریاں, prompt→پرامپٹ, draft→مسودہ, goal→ہدف, credential→اسناد, hub→ہب, device→ڈیوائس, seed→سیڈ, clipboard→کلپ بورڈ, conversation→گفتگو.",
+  "icu_integrity": "PASS. 93/93 parse and format; argument/style/plural-category sets identical to en; no renamed or dropped placeholder; {index, number} and {count, number} skeletons preserved.",
+  "plurals": "PASS for the ICU ladders (ur one/other; counts 1/2/5/21 checked). UR-N2 and UR-N7 are grammatical-agreement issues outside the plural machinery.",
+  "overflow": "PASS with a rendered-check note: the fixed tails are short (archive verb 15 cells, drafts verb 17–19 cells; English 9), well inside a toast card; the longest strings wrap (mark-all-read 116 vs 83 en; hub collision 176 vs 151; update-hold body 141 vs 151 en, under the ~250-char banner budget). The 9-cell Undo label matches the existing ui.chat.tags.undo. No rendered-frame claim is made here.",
+  "rtl": "PASS. Zero manual bidi controls; logical order preserved; Urdu punctuation (۔ ، ؛) and balanced “ ”; Latin islands (Local Operator, Aida, bash, ID, /credential, /goal '<text>', {origin}) stay byte-identical and unpunctuated by Urdu marks. The only direction-sensitive sequence is `#{index, number}`; no manual control inserted, isolation is the renderer's job per the ur style guide. The only direction-sensitive neutral is the `#` in `credentials.removed` before `{index, number}`; storage order matches English and no control is inserted — worth one glance in a rendered frame, not a catalogue finding.",
+  "composed_sentences": "Archive head+tail and drafts head+tail read correctly at 1/2/5/21; the bulk-read lead+remainder chain is grammatical in the remainders but the lead carries UR-N1; the update-hold body joins its relaunch sentence cleanly.",
+  "rtl_note": "No bidi controls found; Urdu punctuation and quote balance verified; logical order preserved."
+ },
+ "method": {
+  "english_source": "src/i18n/catalogues/en/ui.notices.json (93 keys) + en/ui.notices.context.json",
+  "target": "src/i18n/catalogues/ur/ui.notices.json (93 keys, new in ec4518da56)",
+  "renderer": "repo's intl-messageformat 12.1.3 + @formatjs/icu-messageformat-parser 3.5.21, run from the auditor's scratchpad; no catalogue, ledger or generated file edited",
+  "join_points": "src/renderer/src/features/chat/components/undo-toasts.tsx (flex gap between head and tail), src/renderer/src/features/chat/drafts-undo.ts, src/renderer/src/features/chat/archive-undo.ts, src/renderer/src/features/chat/mark-all-read.ts (join(' ')), src/renderer/src/features/chat/components/asks/fleet-ask-drawer.tsx (plain vs named arms), src/main/update-install.ts ({relaunch} sentence insert)"
+ },
+ "independence": "Different agent and session from the translator agents who produced ec4518da56. This session authored or edited no catalogue value, no ledger row and no generated file; every string quoted above is the ur blob committed at ec4518da56 (git show), confirmed byte-identical to the working tree when this receipt was written. The audit helper scripts live in this session's scratchpad, not the repository.",
+ "limits": [
+  "No native-speaker sign-off; judgements are from grammar, the style guide, the glossary and in-catalogue terminology.",
+  "No rendered frames: no browser/desktop capture was taken. Overflow and RTL conclusions are static; a designer's rendered pass is still the authority for pixel fit.",
+  "Only ui.notices was audited; other namespaces were consulted for terminology, not graded.",
+  "The receipt is not wired into i18n/ledger.json (out of audit scope; the ledger was not edited).",
+  "Audited bytes are the committed blobs at ec4518da56; the shared worktree was concurrently dirtied by remediation (see worktree_state). The uncommitted delta — including the new en/fr/hi/ru key ui.notices.chat.archive_offered_title with no ur counterpart — is not graded here and needs a delta audit if the head moves."
+ ],
+ "worktree_state": {
+  "audited_bytes": "The committed blobs at ec4518da56, read with git show; the ur blob at ec4518da56 is e7e3f1aa… and was still byte-identical to the working tree when this receipt was written.",
+  "dirty_at_write": "The shared worktree was concurrently modified by remediation after this audit began: en/ui.notices.json and en/ui.notices.context.json (a new key ui.notices.chat.archive_offered_title, absent from this round's 93-key English source and from ur), fr/hi/ru/ui.notices.json, src/i18n/keys.gen.ts and src/renderer/src/features/chat/archive-undo.ts. This receipt does not grade that uncommitted delta.",
+  "implication": "If the branch head moves, the added archive_offered_title key (and any catalogue change) needs its own delta audit at the new head; this receipt remains pinned to ec4518da56."
+ }
+}

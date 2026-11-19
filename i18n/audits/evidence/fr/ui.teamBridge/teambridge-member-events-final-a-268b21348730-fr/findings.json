@@ -1,0 +1,25 @@
+[
+	{
+		"id": "FA-FR1",
+		"severity": "minor",
+		"key": "ui.teamBridge.attachments.failed_count",
+		"current": "{count, plural, one {# image ne peut pas être envoyée.} other {# images ne peuvent pas être envoyées.}}",
+		"proposed": "{count, plural, one {# image ne peut pas être envoyée.} many {# d’images ne peuvent pas être envoyées.} other {# images ne peuvent pas être envoyées.}}",
+		"reason": "fr.md «Plurals» binds one/many/other («few is not a French category — never use it») and this is the only one of this namespace's 16 fr plurals with no `many` arm (the other 15 have it), so at exact multiples of 10⁶ it renders «1 000 000 images ne peuvent pas être envoyées.» where French requires «1 000 000 d’images…».",
+		"evidence": "render-and-plurals.txt: plural-category probe (count 1/2/3/1000000 vs a probe message carrying the arm)"
+	},
+	{
+		"id": "FA-FR2",
+		"severity": "minor",
+		"key": "ui.teamBridge.section.chiefs",
+		"current": "Chefs de cabinet",
+		"proposed": "Cheffes de cabinet",
+		"related_keys": [
+			"ui.teamBridge.chief.fallback",
+			"ui.teamBridge.chief.unnamed",
+			"ui.teamBridge.thread.intro_chief"
+		],
+		"reason": "One term, two genders: this namespace feminises the role in three places — «Cheffe de cabinet» (chief.unnamed, chief.fallback) and «la cheffe de cabinet» (thread.intro_chief) — and then heads the section with the masculine plural «Chefs de cabinet». Aligning the plural to «Cheffes de cabinet» is the one-key fix; making the singular masculine instead would move three keys and lose the file's recorded feminisation.",
+		"evidence": "struct-audit.txt: term-consistency section"
+	}
+]

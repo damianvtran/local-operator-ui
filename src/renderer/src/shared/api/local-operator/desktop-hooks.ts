@@ -16,12 +16,41 @@ import { useQuery } from "@tanstack/react-query";
 import { retryDesktopQuery } from "./backend-error";
 import { desktopResult } from "./desktop-api";
 import type { DesktopCapabilities, DesktopProvider } from "./desktop-api";
+import {
+	type StreamCapabilityFlags,
+	recordStreamCapabilityFlags,
+} from "./desktop-stream-capabilities";
 
 export const desktopKeys = {
 	settings: ["desktop", "settings"] as const,
 	capabilities: ["desktop", "capabilities"] as const,
 	providers: ["desktop", "auth", "providers"] as const,
 	commands: ["desktop", "commands"] as const,
+	/**
+	 * The command registry AS THE BACKEND DESCRIBED IT IN ONE LANGUAGE.
+	 *
+	 * `commands.list` does not hand the renderer copy it can translate: each row's
+	 * `description` is rendered SERVER-side in the language the backend resolved
+	 * when the request arrived (core `desktop_commands.py` -> `describe(spec,
+	 * locale)`), so the locale is part of the DOCUMENT's identity rather than a
+	 * parameter of the reader.
+	 *
+	 * WHY THAT MATTERS (i18n programme, C5): one shared key handed the FR reader
+	 * the EN rows cached before the switch - 46 backend-resolved descriptions left
+	 * English in a French popup for up to the `staleTime` window, while every other
+	 * word around them had switched. Scoping the key to the resolved locale makes a
+	 * language switch a DIFFERENT query: React Query has no entry for the new
+	 * locale, so it fetches and shows its pending state rather than painting the
+	 * previous language's rows under the new one. An invalidation alone cannot do
+	 * that - it marks the same document stale and re-renders the old data while the
+	 * refetch is in flight, which is the very frame this closes.
+	 *
+	 * SCOPED UNDER `commands` ON PURPOSE: the catalogue's root stays a PREFIX, so a
+	 * caller that wants to forget every language's entry (or the whole registry at
+	 * close) still invalidates one key, and the plane-open refresh below keeps its
+	 * meaning.
+	 */
+	commandsFor: (locale: string) => ["desktop", "commands", locale] as const,
 	accounts: ["desktop", "auth", "accounts"] as const,
 	/**
 	 * The model catalogues, keyed by the `live` flag the read carried.
@@ -146,9 +175,28 @@ export function useDesktopCapabilities() {
 			queryKey: desktopKeys.capabilities,
 			queryFn: async () => {
 				try {
-					return await desktopResult<DesktopCapabilities>({
+					const answer = await desktopResult<DesktopCapabilities>({
 						op: "capabilities",
 					});
+					/*
+					 * THE ANSWER IS ALSO RECORDED FOR THE CLICK PATH, here, where it
+					 * arrives. Every stream subscription's request flags are this answer's
+					 * projection (`streamCapabilityFlags`), and the pane derives its own
+					 * flags from exactly this value on first render - so the prewarm, which
+					 * must phrase the same request from the click's task outside React,
+					 * reads them from here rather than from whichever subscription last
+					 * ran (`desktop-stream-capabilities.ts` carries the measured defect
+					 * that made the difference: an all-`false` prewarm on the first click
+					 * of an app session, refused at adoption and dropped unconsumed).
+					 *
+					 * ONLY ON SUCCESS, deliberately: a failed refetch leaves this stale
+					 * exactly as it leaves React Query's `data` stale, which is the same
+					 * answer the pane keeps painting from. Nothing is recorded before the
+					 * first answer, and the prewarm then asks undeclared - which is what
+					 * the pane asks too (`desktopFeatureEnabled(undefined, ...)`).
+					 */
+					recordStreamCapabilityFlags(streamCapabilityFlags(answer));
+					return answer;
 				} catch (error) {
 					// Collapsing every failure to `null` made the banner assert "this
 					// backend is older than the app expects" for four different
@@ -194,9 +242,181 @@ export function useDesktopCapabilities() {
 
 export type DesktopFeature =
 	| "session_tags"
+	/**
+	 * The closed human Radient profile/photo relay (`/v1/desktop/account/
+	 * profile` and `/avatar`, core features.py `account_profile`). Settings asks
+	 * this key before offering edits: an older daemon has no such routes, so the
+	 * editor must stay read-only there rather than fail on Save.
+	 */
+	| "account_profile"
+	/**
+	 * The OPTIONAL auto-tag half of a desktop fork: the `auto_tag` body key on
+	 * `sessions.fork` and the naming call's tag contract behind it.
+	 *
+	 * ITS OWN KEY rather than a `session_tags` bump, and the direction of skew is
+	 * why: `Fork` inherits `extra="forbid"`, so an OLDER daemon answers 422 to a
+	 * body carrying `auto_tag` - a refused fork, not a degraded one. A client must
+	 * therefore ASK this key before it sends the field; absent, it omits the key
+	 * and the fork is byte- and behaviour-identical to the released one. A bump
+	 * of `session_tags` could not answer that question without also hiding the
+	 * tag catalogue, which a daemon without auto-tagging serves perfectly well.
+	 * See `local_operator/server/features.py`.
+	 */
+	| "session_tags_auto_tag"
+	/**
+	 * PUT AN OPEN QUEUED ASK AWAY from a surface (`{ask_id, dismiss: true,
+	 * reason?}` on the answers route, harness PR #2833 / SA-D5).
+	 *
+	 * ITS OWN KEY because the body field is refused, not ignored: the backend's
+	 * `Answer` is `extra="forbid"`, so a daemon that predates the field answers 422
+	 * to a body carrying `dismiss`. A client that offered the control without asking
+	 * this key would draw a button whose only outcome is a refusal — the dead
+	 * affordance the ask panel refuses elsewhere.
+	 */
+	| "ask_dismiss"
 	| "session_files"
+	/**
+	 * Peer-held sessions' files on this device (core design
+	 * remote-files-parity §6): fetch-on-miss for transcript bytes, the peer
+	 * Files and user-attachments listings, and the per-row content/download
+	 * routes. Absent, a remote session's Files view keeps today's sentence.
+	 */
+	| "remote_files"
+	/**
+	 * The user-attachment inventory (`GET .../user-attachments` and its
+	 * materialise child). Its own key because `session_files` describes the
+	 * agent's OUTPUT and promises nothing about inputs. Absent, the canvas lists
+	 * attachments from the history rows it has loaded and says so - it never
+	 * calls the route (404) and never presents that partial list as complete.
+	 */
+	| "session_attachments"
+	/**
+	 * The global Library surface (`/v1/desktop/library*` and the Librarian
+	 * routes). Its own key because the destination must disappear entirely on a
+	 * backend that predates the catalog: the routes 404, and a nav row that
+	 * lands on an error page is the dead end the fail-closed rule forbids.
+	 * Absent therefore means no row, no route and no read - not a degraded
+	 * Library with an empty grid.
+	 */
+	| "library"
+	/**
+	 * The notifications reel (`/v1/desktop/notifications*`, the feed's
+	 * `notifications` invalidation frame, the `/notifications` slash destination
+	 * and the sidebar row). Its own key for the Library reason: an older core
+	 * has no routes, refuses `"notifications"` in a sidebar-layout PUT, and
+	 * sends no frame, so absent means no row, no route, no read, no write and the
+	 * asks drawer exactly as it was - never an empty inbox.
+	 */
+	| "notifications"
+	/** Frozen, filter-wide notification selection and guarded Undo. */
+	| "notification_bulk_selection"
+	| "notification_bulk_ask_read"
+	/**
+	 * The sidebar customisation resource (`GET`/`PUT /v1/desktop/sidebar-layout`,
+	 * design contract § 4). Its own key because the column must render TODAY'S
+	 * fixed arrangement on a backend that predates the route: the drag handle and
+	 * the row menu are absent (fail-closed) rather than present over a route that
+	 * would answer 404 to every save. Absent therefore means "not customisable",
+	 * not "customisable with an empty layout".
+	 */
+	| "sidebar_layout"
 	/** Route presence only; dynamic organization eligibility is backend-owned. */
 	| "team_bridge"
+	| "team_bridge_conversations"
+	/**
+	 * The thread/replies plane: a message's thread pane and the reply-in-thread
+	 * affordance that opens it.
+	 *
+	 * ITS OWN KEY rather than a `team_bridge_conversations` bump, on the rule
+	 * this union states in several places: the conversation page must keep
+	 * serving every daemon that has it, while the thread surface has to be
+	 * ASKED about separately because a daemon can serve conversations without
+	 * serving threads.
+	 *
+	 * AND THE ANSWER IS NOT ENOUGH HERE. The UI holds this surface closed in
+	 * the build itself (`team-bridge-thread-gate.ts`): the runtime advertising
+	 * the route is not clearance for the cache/retry isolation defects the
+	 * thread paths inherited from #1304, because the backend cannot know which
+	 * client build is talking to it. The key is asked anyway - the capability
+	 * half is the plumbing the feature returns on - but absent, `unknown`,
+	 * `below-version` and `unpaired` all leave the surface hidden, and so does
+	 * `enabled` until the constant is flipped.
+	 */
+	| "team_bridge_threads"
+	/**
+	 * The reaction plane: a message's reaction chips, the toolbar's react button
+	 * and the emoji picker behind it.
+	 *
+	 * ITS OWN KEY because the shipped runtime serves no reaction path at all (the
+	 * OpenAPI schema carries none; a reaction GET answers 404), while the
+	 * conversation page around it works. The key is SCAFFOLDING for the return:
+	 * the build holds reactions closed regardless
+	 * (`TEAM_BRIDGE_REACTIONS_SHIPPED_IN_THIS_BUILD`), because the old reaction
+	 * path is not reviewed for account/retry safety and a backend advertising a
+	 * capability must never wake it up. See `team-bridge-reaction-gate.ts`.
+	 */
+	| "team_bridge_reactions"
+	/**
+	 * Team Bridge typing indicators: the three
+	 * `/v1/desktop/team-bridge/conversations/{id}/typing` routes exist and their
+	 * writes are owner-guarded. Absent (an older backend): no emitter, no reader,
+	 * no request at all - the composers render exactly as before.
+	 */
+	| "team_bridge_typing"
+	/**
+	 * Structured `mentions[]` on a Team Bridge send (local-operator #3204).
+	 * Absent: the composer still inserts readable `@Name` text but sends no
+	 * `mentions`, because an older backend refuses the unknown field.
+	 */
+	| "team_bridge_send_mentions"
+	/**
+	 * Per-thread read cursors (hub slice TR1): `team_bridge.thread_read`
+	 * acknowledges replies against the thread's own cursor. Absent: the thread
+	 * pane keeps acknowledging through the conversation read, which the hub's
+	 * compat rule (replies count against max(conversation, thread) cursor)
+	 * still clears.
+	 */
+	| "team_bridge_thread_reads"
+	/**
+	 * The admitted body behind an inbound Team Bridge transcript card:
+	 * `sessions.bridgeCardBody`, core's entry-keyed display-store read (bridge-body
+	 * design §4). Absent (an older backend): the card keeps "Message body
+	 * unavailable." and makes no request at all.
+	 */
+	| "team_bridge_card_body"
+	/**
+	 * The owner's own agent's per-conversation wake level: the conversation
+	 * menu's "Wake your agent for" group, writing
+	 * `PUT /v1/desktop/team-bridge/conversations/{id}/agent-notify`.
+	 *
+	 * ITS OWN KEY because a released runtime without that route answers every
+	 * pick with a 404, which the menu could only surface as "try again" when no
+	 * retry will ever succeed (review round 1, R1-3). Absent or below version,
+	 * the group is not drawn at all; local-operator advertises it in
+	 * `server/features.py` with the route.
+	 */
+	| "team_bridge_agent_notify"
+	/**
+	 * The hub's server-side LEAVE CASCADE (Team Bridge hub, H4 slice): a person's
+	 * `leave` also withdraws their own agent from that conversation in the same
+	 * transaction. Advertised, the conversation menu calls leave ONLY; absent, it
+	 * calls leave and then a consent `withdraw` of the reader's own active agent
+	 * row (`leaveWithAgentCascade` in `team-bridge-conversation-menu-model.ts`).
+	 */
+	| "team_bridge_leave_withdraws_agent"
+	/**
+	 * An agent's OWN published picture through core's closed endpoint relay
+	 * (local-operator #3228). Absent: agent plates keep the glyph and send no
+	 * `team_bridge.endpoint_avatar` read. Main gates the banner composite on the
+	 * same key, so a plate and a banner agree.
+	 */
+	| "team_bridge_endpoint_avatar"
+	/**
+	 * `GET /v1/agents/{id}/avatar?size=64|128|256` (local-operator #3381): a
+	 * downscaled derivative of the local agent picture. Absent: the renderer
+	 * omits `size` and core serves the 512 px original, as before.
+	 */
+	| "agent_avatar_sizes"
 	| "auth"
 	| "settings"
 	| "commands"
@@ -240,6 +460,15 @@ export type DesktopFeature =
 	/** Full linked inventory and revision-checked independent policy controls. */
 	| "hub_links"
 	/**
+	 * `local_id` addressing on the hub check/apply/retry routes (core
+	 * `desktop_hub.py`, `LocalId`). ITS OWN KEY because the three request models
+	 * inherit `extra="forbid"`: an older core answers 422 to a body carrying
+	 * `local_id`, so a renderer must ASK before sending it and fall back to the
+	 * released `name` arm. A bump of `hub_links` could not answer that, since the
+	 * inventory is served perfectly well by a core without the field.
+	 */
+	| "hub_items_by_id"
+	/**
 	 * Complete initial Skills adapter v1: remote public/org reads (including
 	 * org_skills.list/org_skill.get proxy), local pull/install, and initial
 	 * publish preview/confirm with receipt reconciliation. Older daemons may
@@ -248,6 +477,22 @@ export type DesktopFeature =
 	 * not a substitute and its absence must not close the working Hub plane.
 	 */
 	| "hub_skills"
+	/**
+	 * The skill library's READ side (core `skill_library:1`): `skills.list` rows
+	 * carry `source`/`link_id`/`installed`/`fingerprint`/`form` and the `name` arm
+	 * adds `skill_detail`. ITS OWN KEY, not `hub_skills` or `skill_catalogue`, so a
+	 * backend without it keeps the plain name/description list and the Agents page
+	 * never offers a Skills tab whose cards it could only half draw.
+	 */
+	| "skill_library"
+	/**
+	 * The skill library's WRITE side (core `skill_write:1`): `POST` / `PUT` /
+	 * `DELETE /v1/desktop/skills[/{name}]`, i.e. Copy to my skills, the inline
+	 * SKILL.md edit and Remove on the Agents page's Skills tab. Its own key so a
+	 * core that only reads skills keeps the read-only tab and offers no control
+	 * that would 404.
+	 */
+	| "skill_write"
 	| "profile_catalogue"
 	| "team_catalogue"
 	| "session_catalogue"
@@ -332,6 +577,22 @@ export type DesktopFeature =
 	 */
 	| "draft_selection"
 	/**
+	 * `sessions.preview` and `sessions.create` accepting `fast_mode` on a draft's
+	 * model selection (`DraftModel.fast_mode`), so a NEW chat can be born on the
+	 * speed dial (issue #1265). The core half publishes it as
+	 * `features.draft_fast` (local-operator#2848, `server/features.py`).
+	 *
+	 * ITS OWN KEY RATHER THAN A BUMP OF `draft_selection`, and the reason is the
+	 * wire rather than taste: the draft model is `extra="forbid"` on the core, so
+	 * a backend that can select a draft's model but does not carry the dial
+	 * refuses the WHOLE create body - the model and the effort rung with it - the
+	 * moment the renderer sends a `fast_mode` it never asked about. A renderer on
+	 * such a backend keeps its model and effort chips exactly as they are and
+	 * leaves the speed route closed: `/fast` refuses on a draft rather than
+	 * opening a dialog whose only pick must end in a 422.
+	 */
+	| "draft_fast"
+	/**
 	 * `sessions.draft` plus the draft allow-list on `events`/`watch`/`warm`, and
 	 * `sessions.create` accepting `draft_id`: a NEW chat's runtime can be engaged
 	 * from the first keystroke instead of on the send.
@@ -412,6 +673,16 @@ export type DesktopFeature =
 	 */
 	| "session_move"
 	/**
+	 * Durable per-session settings intents (`/v1/desktop/settings-intents`, the
+	 * `settings_intent` feed frame). A model/effort/fast/cwd pick is written to
+	 * the server and applied in the background with retries, so the picker
+	 * closes at once and a busy runtime never blocks the next pick.
+	 *
+	 * Its own key: without it every picker keeps today's synchronous
+	 * `sessions.command` path byte for byte (`settings-intents.ts`).
+	 */
+	| "settings_intents"
+	/**
 	 * `sessions.interrupt`: stopping the session's CURRENT TURN and its children
 	 * without ending the session (`POST /v1/desktop/sessions/{id}/interrupt`).
 	 *
@@ -439,6 +710,14 @@ export type DesktopFeature =
 	 * path, with one honest line saying why (the `session_interrupt` precedent).
 	 */
 	| "agents_config"
+	/**
+	 * A configuration run that can revise a SKILL (core adds a `skill` tool to the
+	 * run's declaration and advertises `agents_config_skills:1`). Its own key by
+	 * the rule core states for `agents_config`: an older core has the run but no
+	 * skill tool, so a skill request there would end "I can't edit files" after a
+	 * paid turn. Gates the Skills tab's docked composer (`configSkillRunEnabled`).
+	 */
+	| "agents_config_skills"
 	/**
 	 * `input_mode` on `sessions.message`: the harness carries the composer's own
 	 * record of how a message was produced (`typed` / `dictated` / `mixed`, see
@@ -723,6 +1002,25 @@ export type DesktopFeature =
 	 */
 	| "projects_force_done"
 	/**
+	 * `projects.for_session`: the projects one conversation is linked to
+	 * (`GET /v1/desktop/sessions/{id}/projects`), read by the chat canvas's
+	 * Projects view. ITS OWN KEY for the `projects_force_done` reason: the
+	 * Projects tab is complete without it. Absent means the canvas view (and
+	 * its rail door) stay present but SAY the runtime cannot list a
+	 * conversation's projects, and no request is sent - an older daemon 404s
+	 * the route.
+	 */
+	| "projects_by_session"
+	/**
+	 * Temporary chats: a conversation the core deletes after its idle window
+	 * (`temporary` on the row, `include_temporary` on the list, `temporary` on
+	 * create, `POST /v1/desktop/sessions/{id}/temporary`). Absent means no toggle,
+	 * no pill, no `Temporary` group, no Ctrl+Shift+N and no palette entry, and this
+	 * client never sends either field: the core's input models are closed, so an
+	 * ungated send would be a 422 (the `projects_force_done` precedent above).
+	 */
+	| "temporary_chats"
+	/**
 	 * Moving a conversation between devices: `POST /v1/desktop/sessions/{id}/transfer`.
 	 *
 	 * ITS OWN KEY rather than a version of `peers`, and the split is the backend's
@@ -733,6 +1031,30 @@ export type DesktopFeature =
 	 * the BACKEND's age, not about the mesh's existence.
 	 */
 	| "session_transfer"
+	/**
+	 * A move that carries the session's WORKING SET (worktrees, unpushed commits,
+	 * uncommitted files, scratch, session memory) to the destination:
+	 * `POST /v1/desktop/sessions/{id}/transfer/preflight` plus the transfer body's
+	 * `confirm_working_set` / `without_working_set` (deliberately no history-secret
+	 * opt-in: v1 never sends a withheld worktree).
+	 *
+	 * ITS OWN KEY, not a version of `session_transfer` (the backend's
+	 * `server/features.py` rule, design move-working-set §11.1): the old move
+	 * dialog must keep working byte for byte against a backend without it, and the
+	 * core's transfer model is closed, so an ungated send of the new fields would be
+	 * a 422. Absent ⇒ no preflight, no checklist, no new body fields.
+	 */
+	| "session_transfer_working_set"
+	/**
+	 * The preflight's DESTINATION PROBE (core `server/features.py`, design
+	 * move-working-set §11.1a): each `working_set.worktrees[]` row carries the
+	 * destination's own `clone_check` answer plus optional `clone_detail` /
+	 * `https_rewrite` / `remedy` / `missing_tools`, and the block carries
+	 * `destination_probe`. Additive members of the same mapping, so its own key:
+	 * without it the review renders exactly what it did before (an unprobed
+	 * `pending_destination` row keeps its "cloned if missing" note).
+	 */
+	| "session_transfer_working_set_probe"
 	/**
 	 * The onboarding approval surface (`features.approvals`): the badge read
 	 * (`GET /v1/desktop/approvals`) plus the two decision posts, and nothing else.
@@ -749,6 +1071,77 @@ export type DesktopFeature =
 	 * body, so there is nothing else to negotiate).
 	 */
 	| "approvals"
+	/**
+	 * Typed credential approval (`features.credential_approvals`): the
+	 * `typed_approval` block on a credential row plus `approve-credential` /
+	 * `apply-credential`, the two posts that carry the reviewed digests.
+	 *
+	 * ITS OWN KEY, not a bump of `approvals`, mirroring the backend's reasoning: a
+	 * backend without it has no route that accepts the body, so a renderer that
+	 * offered Approve there would POST into a 404. Absent ⇒ the credential card
+	 * keeps its Deny-and-remedy shape, exactly as before.
+	 */
+	| "credential_approvals"
+	/**
+	 * Typed PROFILE approval (`features.profile_approvals`): the `typed_approval`
+	 * block on a `profile_save` row plus `approve-operation` / `apply-operation`,
+	 * the two allowlisted posts that carry the reviewed operation and digests.
+	 *
+	 * ITS OWN KEY, for the same reason the credential one has one: a backend
+	 * without the kind registered has no route that accepts the body, so a renderer
+	 * that offered Approve there would POST into a 404. Absent ⇒ the profile card
+	 * states the proposal and its diff - the store is the authority for what was
+	 * filed - and offers no signature.
+	 */
+	| "profile_approvals"
+	/**
+	 * PHONE PAIRING BY APPROVAL (`features.phone_pairing`, core pairing design v2
+	 * §1-§2): the `pairing` block on a `pair_phone` approvals row,
+	 * `POST /v1/desktop/approvals/{id}/pair-ack`, `approve-operation` with
+	 * `operation: "pair_phone"`, `GET`/`DELETE /v1/desktop/devices`, and the feed's
+	 * `approvals.pair_request` / `open.approvals_pair_request`.
+	 *
+	 * ITS OWN KEY, as the backend reasons: a renderer that posted a pair-ack body
+	 * to a backend without the route would get a 404, and a Paired-phones list on
+	 * such a backend would read a route that does not exist. Absent ⇒ no pairing
+	 * popup is mounted and Settings → Phone access renders exactly as before.
+	 */
+	| "phone_pairing"
+	/**
+	 * MESH PAIRING CARDS (`features.mesh_pairing`, core PR #4259):
+	 * `GET /v1/desktop/mesh/pairings`, the attested
+	 * `POST .../mesh/pairings/{side}/{invite_id}/answer`, and the feed's
+	 * `approvals.pairing_id` / `open.approvals_pairing_id`.
+	 *
+	 * ITS OWN KEY for the usual reason: a renderer that read the cards from a
+	 * backend without the route would 404. Absent ⇒ the Mesh approvals tray draws
+	 * no pairing card and pairing stays the terminal ceremony it was.
+	 */
+	| "mesh_pairing"
+	/**
+	 * TURN ON PHONE APPROVALS (`features.operator_setup`, core design v2 §6):
+	 * `GET`/`POST /v1/desktop/operator/setup`. Absent ⇒ no setup row in Settings
+	 * → Phone access; the pairing popup still renders, it just cannot offer the
+	 * one-click setup when the computer is not ready to admit a phone.
+	 */
+	| "operator_setup"
+	/**
+	 * SHOW PHONE PASSWORD (`features.mobile_password_read`, local-operator #3963):
+	 * `GET /v1/desktop/mobile/password`, desktop-only. Absent ⇒ Settings → Phone
+	 * access renders no "Using your own tunnel?" disclosure and the op is never
+	 * sent (an older backend has no such route).
+	 */
+	| "mobile_password_read"
+	/**
+	 * PROFILE PROPOSALS (`features.profile_proposals`): the Agents-side review of
+	 * a change an agent proposed to an account agent or team -
+	 * `GET/POST /v1/desktop/profile-proposals[...]`. ITS OWN KEY because a backend
+	 * without it has no such routes, and because it is also the signal that core
+	 * stopped filing these as mesh approvals: with it present the Mesh tray drops
+	 * any profile row it still sees (`mesh-approvals.ts`). Absent ⇒ no Agents badge,
+	 * no proposal panel, no "Review in Agents" link - today's UI unchanged.
+	 */
+	| "profile_proposals"
 	/*
 	 * AIDA'S CONTROL PLANE (`features.aida`): the read and the control op the
 	 * sidebar's row and the composer's `/aida` share. ITS OWN KEY rather than a
@@ -781,6 +1174,14 @@ export type DesktopFeature =
 	 * all, which is the pre-voicing behaviour rather than a degraded one.
 	 */
 	| "tts"
+	/**
+	 * NOTIFICATION SOUNDS (`features.notification_sounds`, core
+	 * `server/routes/notification_sounds.py`): the listing, preview audio and
+	 * custom-sound store Settings -> Notifications reads. Absent => the Sound
+	 * group states that the backend is too old and fires no read; the promoted
+	 * master switch still renders (it is a registry row on every backend).
+	 */
+	| "notification_sounds"
 	/*
 	 * THE PRE-EMPTIVE QUOTA NOTICE (`features.quota_notice`; the sibling core
 	 * PRs' `GET /v1/desktop/quota-notice`). ITS OWN KEY, on the rule every
@@ -827,7 +1228,30 @@ export type DesktopFeature =
 	 * route, so the block must be able to ask for this one alone. Absent means the
 	 * Phone access block is not rendered and no setup op is sent.
 	 */
-	| "tunnel_setup";
+	| "tunnel_setup"
+	/**
+	 * The WIDER phone-setup remedy vocabulary (`tunnel_remedy_kinds`, local-operator
+	 * #3945): `add_credit`/`open_console` carry `remedy.url`, the `wait_*` kinds
+	 * and the `reconnecting` plan exist, and the backend reconnects on its own
+	 * after a sign-in. Its own key because everything it unlocks is presentation
+	 * on top of `tunnel_setup`: without it the block renders exactly the pre-#3945
+	 * controls, never refetches on focus and never shows the first-sign-in offer
+	 * (an older backend has no `reconnecting` state, so a focus refetch there is a
+	 * fresh upstream quote read nobody asked for).
+	 */
+	| "tunnel_remedy_kinds"
+	/**
+	 * The phone-access diagnosis (`mobile_doctor`, local-operator #3953): the
+	 * `mobile.doctor` read behind "Copy diagnostics". Absent ⇒ the button is not
+	 * rendered and the route (404 on an older backend) is never called.
+	 */
+	| "mobile_doctor"
+	/**
+	 * Amazon Bedrock's AWS panel (`bedrock_auth`, bedrock design §7): the four
+	 * `auth.bedrock.*` ops. Absent ⇒ the provider panel offers only the generic
+	 * API-key path (`auth.key`), which every backend with a `bedrock` row serves.
+	 */
+	| "bedrock_auth";
 
 /**
  * WHY a negotiated feature surface may not be offered.
@@ -891,21 +1315,68 @@ export function desktopFeatureEnabled(
 	);
 }
 
+/**
+ * The three request flags ONE stream subscription negotiates, off one answer.
+ *
+ * This is the CLICK path's copy of the derivation, and a MIRROR of the pane's
+ * rather than a call both share: `chat-page.tsx` derives the same three flags by
+ * calling `desktopFeatureEnabled` inline for its subscription args, so nothing at
+ * runtime ties the two sites together - they are kept in step by hand.
+ * `scripts/stream-prewarm.test.mjs` pins THIS body (same predicate, same three
+ * features, same order as the pane's calls), and it does not read the pane, so a
+ * change to the pane's inline copy still has to move this function with it.
+ * Their agreeing is the precondition of adoption: the prewarm must phrase the
+ * request the pane will make from the same answer, or the pane never claims the
+ * prewarm.
+ *
+ * The answer these flags read is recorded for the click's prewarm in the same
+ * place (`useDesktopCapabilities` above).
+ *
+ * `peerJournalSource` is included as the CAPABILITY half only. Whether a given
+ * request may declare the complete contract is that capability AND-ed with the
+ * conversation's own placement, which only the click path can answer about its
+ * target (`prewarmSessionStream`'s `remoteOwned`).
+ */
+function streamCapabilityFlags(
+	capabilities: DesktopCapabilities | null | undefined,
+): StreamCapabilityFlags {
+	return {
+		openFrame: desktopFeatureEnabled(capabilities, "open_frame"),
+		journalOrder: desktopFeatureEnabled(capabilities, "journal_order"),
+		peerJournalSource: desktopFeatureEnabled(
+			capabilities,
+			"peer_journal_source",
+		),
+	};
+}
+
 /** Canonical provider registry rows, including aliases folded into methods. */
 export function useDesktopProviders(enabled: boolean) {
-	return useQuery({
-		queryKey: desktopKeys.providers,
-		queryFn: () =>
-			desktopResult<{ providers: DesktopProvider[] }>({
-				op: "providers.list",
-			}).then((result) => result.providers),
-		enabled,
-		staleTime: 30_000,
-		// Same reasoning as `useConfig`: a `status: null` failure already spent
-		// the transport's whole deadline learning nothing, so retrying it doubles
-		// the wait to ~60s without a chance of a different answer. A failure that
-		// carries a status came from a backend that answered and is still worth
-		// one retry.
-		retry: retryDesktopQuery,
-	});
+	/*
+	 * THE PROVIDER GATE, as in `useDesktopCapabilities`: the shared composer now
+	 * reads this census (`useLocalSelection`, the send block's "use local" fix)
+	 * and mounts in documents with no `QueryClientProvider` (the mini view), where
+	 * a bare `useQuery` throws "No QueryClient set". With no provider there is no
+	 * census; every caller already reads `data: undefined` as "not read yet". In
+	 * the app `provided` is always true, so this is a no-op there.
+	 */
+	const { client, provided } = useOptionalQueryClient();
+	return useQuery(
+		{
+			queryKey: desktopKeys.providers,
+			queryFn: () =>
+				desktopResult<{ providers: DesktopProvider[] }>({
+					op: "providers.list",
+				}).then((result) => result.providers),
+			enabled: provided && enabled,
+			staleTime: 30_000,
+			// Same reasoning as `useConfig`: a `status: null` failure already spent
+			// the transport's whole deadline learning nothing, so retrying it doubles
+			// the wait to ~60s without a chance of a different answer. A failure that
+			// carries a status came from a backend that answered and is still worth
+			// one retry.
+			retry: retryDesktopQuery,
+		},
+		client,
+	);
 }

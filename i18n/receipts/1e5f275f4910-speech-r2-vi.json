@@ -1,0 +1,29 @@
+{
+  "auditor": "reviewer",
+  "model": "anthropic/claude-sonnet-5-5",
+  "instance": "1e5f275f4910-speech-r2-vi",
+  "locale": "vi",
+  "namespace": "ui.settings.shortcuts",
+  "status": "passed",
+  "sha256": {
+    "vi": "81220dd0d0d0269876dcd8699c9443b2da3facab34d0f25d3ba654a6fc8cfa05",
+    "en": "4f378e78f842f053f680f113e0279bafe0e4ac1e3e2cac479ae51fa912c6834b"
+  },
+  "context_sha256": "cdea72cdb4506ae5b89b5751a5b6e1613baeb6c9bf21c900a4fa3907ee104ec5",
+  "scope": "Round 2 delta audit at PR #1515 head 3c4f49349e: ui.settings.shortcuts.speech.push_to_talk_overlap (CHANGED: now takes {modifier}, {example}, {alternative} with an ICU select incl. none), push_to_talk_letter_pointer (NEW), start_recording_needs_key (NEW). Diffed against dfe497849a: exactly 2 keys added, 1 changed, 0 removed, no other speech.* string touched; key set equals English's (77/77). The remaining 74 keys are byte-identical to the previously audited bytes.",
+  "findings": [],
+  "checks": [
+    "English, context and target SHA-256 recomputed from the bytes on disk at head 3c4f49349e; this receipt names exactly those bytes.",
+    "Delta isolation: `git diff dfe497849a..3c4f49349e` on the locale file is 3 insertions / 1 deletion, all in speech.push_to_talk_overlap, speech.push_to_talk_letter_pointer, speech.start_recording_needs_key.",
+    "ICU parity: all 3 messages parsed with the project's own @formatjs/icu-messageformat-parser; argument names and select arms equal English's (push_to_talk_overlap: modifier, example, alternative select {none, other}; none arm empty, other arm carries {alternative}); NFC; no bidi control characters or stray non-ASCII spaces.",
+    "Call site read (push-to-talk-shortcut-row.tsx, start-recording-shortcut-row.tsx): modifier is the key name without its side (Command, Control, Option, Win, Super), example is `<Modifier>+<KEY>` (for example Control+J, Command+C), alternative is a key name or the word none; every value is a Latin token, so the sentence works for all of them and none is never displayed. The pointer is appended after push_to_talk_hint and push_to_talk_refused, and needs_key is shown alone.",
+    "Semantic read of each message against English and the en context file (every shortcut using the key briefly starts a recording; optional 'choose X to avoid this'; letter shortcuts belong to the Start recording box above; a shortcut needs a letter or digit besides a modifier).",
+    "Vocabulary and punctuation read against this locale's existing strings and style guide. Vietnamese: bạn-imperative (Hãy chọn, hãy dùng), “ ” quotes per the guide; “Bắt đầu ghi âm” is byte-identical to ui.chat.composer.start_recording; phím bổ trợ matches push_to_talk_hint; chữ cái/chữ số match the existing letters-digits string; phím tắt matches the sibling shortcut strings.",
+    "Glossary and this locale's style guide read as binding; their bytes (local-operator origin/main 3ed15106e) are hashed in `references`.",
+    "Length fit was judged from character counts only; no rendered frame was produced or reviewed in this audit."
+  ],
+  "references": {
+    "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "style_guide_sha256": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888"
+  }
+}

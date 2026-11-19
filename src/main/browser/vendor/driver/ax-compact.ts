@@ -5,6 +5,15 @@ export interface AXNode {
   ignored?: boolean;
   role?: AXValue;
   name?: AXValue;
+  /* The control's CURRENT value, which Chromium reports on the node itself
+   * (`AXNode.value.value`) rather than as an `AXProperty`. Declared here
+   * because the projection below reads it: on a settings form the value is the
+   * whole point of reading the line — `combobox "Environment" [collapsed]`
+   * cannot be told apart from the same combobox holding `Production`, and an
+   * agent had to screenshot the page to learn a fact the protocol had already
+   * handed over. Optional because most nodes (landmarks, static text, buttons)
+   * carry no value at all. */
+  value?: AXValue;
   childIds?: string[];
   properties?: Array<{ name: string; value: AXValue }>;
 }
@@ -22,14 +31,208 @@ export interface SnapshotRef {
   epoch: number;
 }
 
+/* WHERE A SNAPSHOT STARTS, and what it may be narrowed to afterwards.
+ *
+ * Both browser hosts render a page's whole accessibility tree, and a real
+ * settings form (a GitHub App's create page is the measured case — see
+ * `~/workspace/browser-tool-diagnosis-2026-10-23.md`) spends that tree on
+ * hundreds of unrelated fields before it reaches the one section the agent
+ * needs. The old contract had no way to ask for a section, so the answer
+ * arrived truncated mid-tree with every ref below the cut unobtainable.
+ *
+ * `rootBackendNodeId` is the fix at the walk: the caller has already resolved a
+ * CSS selector against the DOM (`DOM.querySelector` → `DOM.describeNode`) and
+ * hands over the element's backend node id, so the render starts at that AX
+ * node and emits nothing above it. Depth is re-based to zero for the same
+ * reason: the printed tree should read like a small page, not like a fragment
+ * indented 17 levels deep.
+ *
+ * WINDOWING IS A SEPARATE, TEXT-LEVEL OPERATION (`windowSnapshot` below) and
+ * that split is deliberate. Filtering the tree walk would renumber refs and
+ * make `start`/`limit` paging inconsistent between calls; filtering the
+ * rendered text keeps every ref the page's own name, so `e57` names the same
+ * element whether it arrived in page 1 or page 3. Refs are still minted for
+ * the whole rendered tree, which is what lets an agent page through a snapshot
+ * and then click a ref it saw three calls ago.
+ */
+export interface CompactOptions {
+  /** Render only the subtree rooted at this AX node's backend DOM node.
+   *
+   * `| undefined` is explicit: the extension's tsconfig sets
+   * `exactOptionalPropertyTypes`, under which passing `{ rootBackendNodeId }`
+   * with an undefined value is a TYPE ERROR (TS2379) — and `snapshot.ts` passes
+   * exactly that shape. The runtime always stripped it; `pnpm typecheck` did
+   * not, which is how this reached review round 1 as a red workflow. */
+  rootBackendNodeId?: number | undefined;
+}
+
+export interface CompactResult {
+  snapshot: string;
+  refs: Record<string, SnapshotRef>;
+  /** How many frame nodes the SCOPE contains (0 unscoped). A scoped read does
+   *  not walk frames, and only the subtree's own count can tell a caller "the
+   *  thing you scoped into holds a frame you are not seeing" (agent review
+   *  round 2, R2-1: a page-level count said so about frameless sections too). */
+  framesInScope: number;
+  /** Rendered lines before any `windowSnapshot` filter or page. */
+  totalLines: number;
+  /** True only when a scope was requested AND found in the tree. */
+  scoped: boolean;
+}
+
 const LANDMARKS = new Set(["banner", "main", "navigation", "complementary", "contentinfo", "form", "region"]);
 const INTERACTIVE = new Set(["button", "link", "textbox", "checkbox", "radio", "combobox", "menuitem", "tab", "switch", "slider", "spinbutton"]);
 
-export function compactAX(nodes: AXNode[], epoch: number): { snapshot: string; refs: Record<string, SnapshotRef> } {
+/** The AX properties that change what a control will DO when it is clicked.
+ *
+ * `expanded: false` is the one that made collapsed sections unreachable in the
+ * measured incident: a `<details>` with its panel closed contributes its
+ * `<summary>` (role `DisclosureTriangle`) and NOTHING inside it, so an agent
+ * reading the tree saw “Webhook”, not the checkbox that opens it, and every
+ * guess at the checkbox's id failed. Printing the state turns “this section
+ * exists but is closed” into a fact on the line, and the summary already
+ * carries a ref, so the next call is a click rather than a guess. */
+function stateSuffix(node: AXNode): string {
+  // Chromium is inconsistent about the TYPE of these AX values, measured on a
+  // real page: `expanded` arrives as a boolean false, while `checked` arrives
+  // as the STRING "true". Comparing against `true` alone printed [collapsed]
+  // correctly and silently dropped every [checked] — the marker that matters
+  // most on a form whose dangerous default is a ticked box.
+  //
+  // The markers ACCUMULATE (review round 1, R1-8): a checked AND disabled
+  // control printed only [checked], which reads as clickable, and a tri-state
+  // `mixed` printed nothing at all.
+  const truthy = (value: unknown): boolean => value === true || value === "true";
+  const falsy = (value: unknown): boolean => value === false || value === "false";
+  const property = (name: string) => node.properties?.find((entry) => entry.name === name)?.value.value;
+  const markers: string[] = [];
+  if (falsy(property("expanded"))) markers.push("collapsed");
+  const checked = property("checked");
+  if (truthy(checked)) markers.push("checked");
+  else if (checked === "mixed") markers.push("mixed");
+  if (truthy(property("disabled"))) markers.push("disabled");
+  return markers.length ? ` [${markers.join("] [")}]` : "";
+}
+
+/* The roles whose VALUE changes what the next call does, and nothing else.
+ *
+ * Deliberately a whitelist rather than "print any value the node carries":
+ * Chromium reports a value on roles an agent cannot act on here (a `button`'s
+ * value duplicates its name, a `heading`'s value is its text), and printing
+ * those would both double every line's length and — because the printed line is
+ * what `search` matches — silently change what a search term returns. The
+ * measured gap these exist for is a settings form: a native `<select>` printed
+ * `combobox "Environment" [collapsed]` with no indication that it was set to
+ * Production, so the agent could not tell an unset control from a configured
+ * one without a screenshot. */
+const VALUE_BEARING = new Set(["combobox", "option", "listbox", "textbox", "spinbutton", "searchbox", "slider"]);
+
+/** Longest value rendered before the tail is replaced with an ellipsis. Text
+ *  inputs hold paragraphs; one field's contents must not push every other line
+ *  out of the caller's context budget. 40 keeps a URL, a date, a currency
+ *  amount and a person's name intact. */
+const VALUE_CLIP = 40;
+
+/** A value that is nothing but bullets is Chromium's password MASK, not content
+ *  (see `valueSuffix`). */
+const MASK_ONLY = /^\u2022+$/u;
+
+/* One line's worth of a control's value.
+ *
+ * WHY IT IS APPENDED AFTER THE STATE MARKERS, and this is the constraint that
+ * shaped the string: agents (and the locator grammar) read `[ref]` and `[state]`
+ * POSITIONALLY — `ax-locator.ts` parses `role=combobox[name="Environment"]`
+ * against the existing shape and refuses an unknown bracketed predicate — so
+ * the value had to arrive as a suffix that changes no earlier character. It is
+ * also why the value is quoted with JSON.stringify rather than printed bare: an
+ * option label containing `"` or a newline must not be able to forge a second
+ * predicate on the line.
+ *
+ * A PASSWORD FIELD NEVER REPORTS A VALUE, and this is the one place the
+ * projection can enforce that. Chromium masks the value before the driver sees
+ * it — every character becomes U+2022 BULLET (measured on Chromium 152.0.7977.78,
+ * this repository's Electron 44.3.0, and on Chrome 156.0.8078.81: a 14-character
+ * password arrives as 14 bullets) — and printing that run would
+ * hand an agent the password's exact LENGTH, which is password-derived material
+ * that no snapshot carried before this projection existed. So a masked value
+ * emits no suffix: the line still says `textbox "Password" [e3]`, it just never
+ * says how long the secret is. `protected` is honoured too for a Chromium that
+ * starts sending it; it is absent from this payload (measured), so the mask
+ * shape is the signal that actually fires.
+ *
+ * WHY NOT READ `type="password"` OFF THE DOM, which is how `element-query.ts`
+ * protects the same field: this module is the PURE half of the path — both
+ * hosts vendor it and it is chrome.*- and DOM-free by construction — so it has
+ * no node handle to ask and stays total over the AX payload alone. The mask
+ * shape is available in every host against every Chromium, and errs the safe
+ * way: a page whose ordinary field genuinely holds only bullets loses a value
+ * line, where the alternative loses a secret.
+ *
+ * `valuetext` outranks the raw value where a Chromium supplies one. Measured on
+ * Chromium 152 (this repository's Electron) and Chrome 156: the property is
+ * populated only for native
+ * `range`/`number` inputs and its text always EQUALS the numeric value ("3"),
+ * while an author's `aria-valuetext` never reaches the property at all — a
+ * `div[role=slider]` with aria-valuetext="Medium" prints `= "3"`. The
+ * preference is future-proofing, not an observable benefit today: a browser
+ * that starts rendering "Medium" there gets it printed with no code change.
+ *
+ * A value identical to the accessible name is dropped: `<option
+ * value="production">Production</option>` would print `Production` twice on one
+ * line, and the duplicate costs context for no new information. */
+function valueSuffix(node: AXNode, name: string): string {
+  const role = String(node.role?.value ?? "");
+  if (!VALUE_BEARING.has(role)) return "";
+  const property = (propertyName: string) => node.properties?.find((entry) => entry.name === propertyName)?.value.value;
+  // The mask/protected refusal runs FIRST, before the value is even selected: a
+  // password must not be able to reach the clip, the name comparison or any
+  // branch that would render something derived from it.
+  const protectedField = property("protected");
+  if (protectedField === true || protectedField === "true") return "";
+  const valuetext = property("valuetext");
+  const preferred = typeof valuetext === "string" && valuetext.trim() ? valuetext : node.value?.value;
+  // Numbers are real values (a `spinbutton` holds 3, not "3"); booleans are
+  // not — a `checked` bool arriving as `value` would print `= true` beside a
+  // [checked] marker that already says it.
+  if (typeof preferred !== "string" && typeof preferred !== "number") return "";
+  // Collapse whitespace FIRST: a `<textarea>` full of newlines and indentation
+  // would otherwise render as one enormous line and the clip would cut it in
+  // the middle of the layout rather than the middle of the text.
+  const collapsed = String(preferred).replace(/\s+/g, " ").trim();
+  if (!collapsed || MASK_ONLY.test(collapsed)) return "";
+  if (collapsed === name.replace(/\s+/g, " ").trim()) return "";
+  // Clip by CODE POINT, not by UTF-16 unit: slicing units can cut an emoji in
+  // half and JSON.stringify then prints the orphaned half as the six ASCII
+  // characters `\ud83d`, which an agent reads as the field's literal content.
+  const points = Array.from(collapsed);
+  const clipped = points.length > VALUE_CLIP ? `${points.slice(0, VALUE_CLIP).join("")}…` : collapsed;
+  return ` = ${JSON.stringify(clipped)}`;
+}
+
+export function compactAX(nodes: AXNode[], epoch: number, options: CompactOptions = {}): CompactResult {
   const byId = new Map(nodes.map((node) => [node.nodeId, node]));
   const refs: Record<string, SnapshotRef> = {};
   const lines: string[] = [];
   let sequence = 0;
+  /* The scoped walk is the WHOLE walk, and that is the fix for a wrong-target
+   * click rather than a nicety (agent review round 1, R1-1).
+   *
+   * Refs used to be minted only for the nodes a scoped snapshot emitted, so
+   * `e1` inside `selector="#webhook-section"` named a different node than `e1`
+   * in the unscoped snapshot of the same page — at the SAME epoch, which
+   * `input.ts` treats as "still valid". A click on the remembered `e1` then hit
+   * the wrong element with no error. Minting in full-tree DFS order and merely
+   * SUPPRESSING the out-of-scope lines makes a scoped snapshot's names a subset
+   * of the unscoped ones: `e57` means one node for the surface's whole epoch,
+   * whichever call produced it.
+   *
+   * `scopeAt` is the absolute depth at which the scope node was entered; it is
+   * saved and restored around each child list so leaving the subtree leaves the
+   * scope. Depth printed is rebased to the scope root (the tree reads like a
+   * small page, not a fragment indented 17 levels deep). */
+  const scopeId = options.rootBackendNodeId;
+  let scopeAt: number | null = null;
+  let framesInScope = 0;
   // Guard against cyclic or duplicated childIds in a malformed AX payload:
   // the walk trusts protocol data, and without this a cycle would recurse
   // forever inside the extension's service worker (review round 1, MINOR-1).
@@ -37,6 +240,16 @@ export function compactAX(nodes: AXNode[], epoch: number): { snapshot: string; r
   function visit(node: AXNode, depth: number): void {
     if (visited.has(node.nodeId)) return;
     visited.add(node.nodeId);
+    // Enter the scope BEFORE the ignored check: a scope can name an aria-hidden
+    // container, and the subtree underneath is still where the caller asked to
+    // look (its children are transparent, not excluded).
+    const savedScope = scopeAt;
+    if (scopeAt === null && scopeId !== undefined && node.backendDOMNodeId === scopeId) {
+      scopeAt = depth;
+    }
+    // No scope requested => every node is inside; with a scope, only the
+    // subtree at or below the scope node.
+    const inside = scopeId === undefined || (scopeAt !== null && depth >= scopeAt);
     // An ignored node is excluded from the accessible tree but its subtree is
     // NOT: Chrome wraps every real page in ignored generic containers (html and
     // body surface as role "none", ignored: true) sitting directly under the
@@ -55,10 +268,12 @@ export function compactAX(nodes: AXNode[], epoch: number): { snapshot: string; r
         const found = byId.get(child);
         if (found) visit(found, depth);
       }
+      scopeAt = savedScope;
       return;
     }
     const role = String(node.role?.value ?? "");
     const name = String(node.name?.value ?? "").trim();
+    if (inside && role === "Iframe") framesInScope += 1;
     const focusable = node.properties?.some((property) => property.name === "focusable" && property.value.value === true);
     const interesting = INTERACTIVE.has(role) || LANDMARKS.has(role) || focusable || Boolean(name && role !== "StaticText");
     if (interesting) {
@@ -67,14 +282,102 @@ export function compactAX(nodes: AXNode[], epoch: number): { snapshot: string; r
         ref = `e${++sequence}`;
         refs[ref] = { backendNodeId: node.backendDOMNodeId, epoch };
       }
-      lines.push(`${"  ".repeat(depth)}- ${role || "node"}${name ? ` ${JSON.stringify(name)}` : ""}${ref ? ` [${ref}]` : ""}`);
+      // Ref minted above REGARDLESS of scope (see the note at the top): the
+      // table must describe the whole page so a ref name is stable.
+      if (inside) {
+        const shown = depth - (scopeAt ?? 0);
+        lines.push(`${"  ".repeat(shown)}- ${role || "node"}${name ? ` ${JSON.stringify(name)}` : ""}${ref ? ` [${ref}]` : ""}${stateSuffix(node)}${valueSuffix(node, name)}`);
+      }
     }
     for (const child of node.childIds ?? []) {
       const found = byId.get(child);
       if (found) visit(found, interesting ? depth + 1 : depth);
     }
+    scopeAt = savedScope;
+  }
+  // The scope's already-resolved backend id, matched against the tree the host
+  // just read. Absent means the element exists in the DOM but contributes no
+  // accessible node (hidden, aria-hidden, display:none): the host answers a
+  // typed element_not_found rather than pretending the empty result is the tree.
+  const scopedRoot =
+    scopeId === undefined ? undefined : nodes.find((node) => node.backendDOMNodeId === scopeId);
+  if (scopeId !== undefined && scopedRoot === undefined) {
+    return { snapshot: "", refs, framesInScope: 0, totalLines: 0, scoped: false };
   }
   const childIds = new Set(nodes.flatMap((node) => node.childIds ?? []));
   for (const root of nodes.filter((node) => !childIds.has(node.nodeId))) visit(root, 0);
-  return { snapshot: lines.join("\n"), refs };
+  return {
+    snapshot: lines.join("\n"),
+    refs,
+    // Unscoped means "the whole page", and every frame is then read by the
+    // caller's own frame walk: the count exists only to explain a SCOPE.
+    framesInScope: scopeId === undefined ? 0 : framesInScope,
+    totalLines: lines.length,
+    scoped: scopeId !== undefined,
+  };
+}
+
+/** The result of one page of a snapshot, and the numbers a footer needs. */
+export interface SnapshotWindow {
+  text: string;
+  /** Lines in the tree before `search` (or the page) narrowed anything. */
+  totalLines: number;
+  /** Lines that matched `search`; equals `totalLines` when there is no search. */
+  matchedLines: number;
+  /** Lines actually returned. */
+  returnedLines: number;
+  /** 1-based line this page starts at, in matched coordinates. */
+  start: number;
+  /** Requested page size; 0 means "to the end". */
+  limit: number;
+  search: string;
+}
+
+export interface WindowOptions {
+  /** Case-insensitive substring; matched against the rendered line (role, name
+   *  and value — see the note below `windowSnapshot`). */
+  search?: string;
+  /** 1-based first line to return (default 1). */
+  start?: number;
+  /** Maximum lines to return; 0 or absent means everything from `start`. */
+  limit?: number;
+}
+
+/* Why the search matches the RENDERED line rather than the AX name: the line
+ * is what the agent has in front of it, and an agent hunting a control knows
+ * either its role ("checkbox"), its name ("Active") or the value it is set to
+ * ("Production"). Matching all of them means one term finds
+ * `- checkbox "Active" [e12]` or `- combobox "Environment" [e3] [collapsed] =
+ * "Production"` either way, and it cannot drift from what the printed snapshot
+ * says because it is the same string. A value therefore PARTICIPATES in the
+ * match, which is also why the projection withholds one for a masked password:
+ * a search for a secret must not be able to confirm it by returning its line.
+ *
+ * An empty/blank search is "no filter", not "match nothing": an agent that
+ * passes search="" means the whole tree, and silently returning zero lines
+ * would read as "this section is empty".
+ */
+export function windowSnapshot(text: string, options: WindowOptions = {}): SnapshotWindow {
+  const lines = text ? text.split("\n").filter((line) => line.length > 0) : [];
+  const totalLines = lines.length;
+  const search = String(options.search ?? "").trim();
+  const matched = search
+    ? lines.filter((line) => line.toLowerCase().includes(search.toLowerCase()))
+    : lines;
+  const matchedLines = matched.length;
+  const requested = Number(options.start ?? 1);
+  const start = Number.isFinite(requested) && requested >= 1 ? Math.floor(requested) : 1;
+  const rawLimit = Number(options.limit ?? 0);
+  const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.floor(rawLimit) : 0;
+  const end = limit ? start - 1 + limit : matchedLines;
+  const page = matched.slice(start - 1, end);
+  return {
+    text: page.join("\n"),
+    totalLines,
+    matchedLines,
+    returnedLines: page.length,
+    start,
+    limit,
+    search,
+  };
 }

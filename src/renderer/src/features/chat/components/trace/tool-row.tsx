@@ -51,21 +51,26 @@
  */
 
 import { Disclosure } from "@shared/components/ui/disclosure";
+import { t } from "@shared/i18n";
+import { useTextDirection } from "@shared/i18n/use-document-direction";
 import { cn } from "@shared/lib/utils";
 import { type ReactNode, useEffect, useState } from "react";
 import {
+	AwaitingAcceptanceGlyph,
 	DeliveryUnconfirmedGlyph,
+	InboxOnlyGlyph,
 	InterruptedGlyph,
 	MailboxGlyph,
 	toolIcon,
 } from "./tool-glyphs";
 import {
-	SEND_DELIVERY_LABEL,
-	SEND_DELIVERY_TITLE,
-	SEND_DELIVERY_WORD,
 	type SendDeliveryState,
 	type ToolCategory,
+	deliveryLabel,
 	deliverySettledVerb,
+	deliveryShortWord,
+	deliveryTitle,
+	deliveryWord,
 	displayName,
 	formatDuration,
 	formatSettledDuration,
@@ -239,6 +244,27 @@ export type ToolRowProps = {
 	 * state of the same hold: static, textless, dim - see the cell below.
 	 */
 	summaryHold?: boolean;
+	/**
+	 * Let the summary WRAP instead of truncating. Default false, because a row's
+	 * object is a glance and one line is the glance; a RECEIPT whose sentence ends
+	 * in the ask id is the exception — truncated at a narrow width it lost exactly
+	 * the token that tells two receipts apart (UX round 1, U1), so that row asks
+	 * for its whole sentence at the cost of a second line.
+	 */
+	summaryWrap?: boolean;
+	/**
+	 * The summary is a sentence the CATALOGUE wrote (`composing · 2.4 KB`,
+	 * `never sent`), not text built from the call's arguments.
+	 *
+	 * The summary cell forces `ltr` because it normally holds machine voice (a
+	 * path, a command, an identifier). Keyed status copy is the other kind: it is
+	 * written in the language and must read in that language's direction, or an
+	 * RTL row prints its datum at the start edge, ahead of the status word, and a
+	 * narrow row clips the status word first - the reverse of every LTR locale
+	 * (design review round 1, D1). Default false: every other caller's summary is
+	 * arguments, a name or a peer's text, and keeps the machine-voice direction.
+	 */
+	summaryIsCopy?: boolean;
 	outcome: ToolRowOutcome;
 	/**
 	 * How a `send` call's delivery ended, when the result stated it
@@ -250,6 +276,15 @@ export type ToolRowProps = {
 	 * send instead of the generic `failed`. On any other outcome it is ignored.
 	 */
 	deliveryState?: SendDeliveryState | null;
+	/**
+	 * The settled verb the RESULT states, over the tool's own: Team Bridge's
+	 * `Couldn't post in` for a refused or failed call, where `Posted in …
+	 * refused` would be the row contradicting itself (the `Attempted` rule
+	 * `deliverySettledVerb` applies to `send`). `null` keeps the tool's verb.
+	 */
+	settledVerb?: string | null;
+	/** A failed row's own trailing word; see `StatusCluster`'s copy. */
+	failureWord?: string | null;
 	/**
 	 * Seconds. A settled row shows the tenth-of-a-second format under ten
 	 * seconds. `null` on a settled row is a replay whose duration the transcript
@@ -492,17 +527,17 @@ const DiffCounters = ({
  * still takes its category ink. The user stopped the call, and reporting that
  * as a failure blames the agent for the user's own decision.
  */
-const OUTCOME_LABEL: Record<ToolRowOutcome, string> = {
+const OUTCOME_LABEL_KEY = {
 	running: "",
-	success: "succeeded",
-	error: "failed",
-	interrupted: "interrupted",
+	success: "ui.chat.canonical.tool_row.outcome.succeeded",
+	error: "ui.chat.canonical.tool_row.outcome.failed",
+	interrupted: "ui.chat.canonical.tool_row.outcome.interrupted",
 	// NOT "failed": the call produced no result to fail, and the harness's own
 	// verdict names what stopped it before it was sent to a tool. Announced
 	// rather than silent for the same reason `error` is: it is a settled outcome
 	// the row is the only carrier of, and a reader who cannot see the glyph would
 	// otherwise hear only the size.
-	"not-run": "never ran",
+	"not-run": "ui.chat.canonical.tool_row.outcome.never_ran",
 	// The partial states do not announce through the table: their sentence is
 	// `SEND_DELIVERY_LABEL`'s (`delivered, wake unconfirmed` / `delivery
 	// unconfirmed`), which says more than the drawn word and is rendered where
@@ -513,6 +548,18 @@ const OUTCOME_LABEL: Record<ToolRowOutcome, string> = {
 	// announce. Silence here is not the running row's silence — that one is
 	// covered by the working line, which names the running phase in turn.
 	receipt: "",
+} as const;
+
+/**
+ * The row's verdict word for `outcome`, resolved when the row renders.
+ *
+ * Keyed rather than literal, and resolved in a function rather than held in a
+ * table of English: a module-level `t()` freezes the locale the process started
+ * in, so the word would stay in the language the app launched with.
+ */
+const outcomeLabel = (outcome: ToolRowOutcome): string => {
+	const key = OUTCOME_LABEL_KEY[outcome];
+	return key === "" ? "" : t(key);
 };
 
 /** The row's clock ticks at 1Hz because it shows whole seconds (`CLOCK_INTERVAL_S`). */
@@ -560,11 +607,21 @@ function useRunningElapsed(startedAt: number | null): number | null {
  * misalignment.
  */
 const StatusCluster = ({
+	toolName = "",
 	outcome,
 	deliveryState = null,
+	failureWord = null,
 	durationS,
 	startedAt,
 }: {
+	/** Picks the tool-specific delivery copy (`bridge` rewords `unconfirmed`). */
+	toolName?: string;
+	/**
+	 * A failed row's own trailing word, over the generic `failed`: Team Bridge's
+	 * `refused · not_member` / `failed · post_failed`, which name the cause the
+	 * reader acts on. Drawn in the same danger ink as the word it replaces.
+	 */
+	failureWord?: string | null;
 	outcome: ToolRowOutcome;
 	/**
 	 * How a `send` call's delivery ended, when the result stated it. Only the two
@@ -612,13 +669,11 @@ const StatusCluster = ({
 	 * danger for `failed`; every other failure keeps its own words (`failed`,
 	 * `never ran`) in the danger role.
 	 */
-	const deliveryWord = deliveryState
-		? SEND_DELIVERY_WORD[deliveryState]
-		: undefined;
+	const stateWord = deliveryWord(deliveryState, toolName);
 	const word = partial
-		? (deliveryWord ?? null)
+		? stateWord
 		: failedLike
-			? (deliveryWord ?? OUTCOME_LABEL[outcome])
+			? (stateWord ?? failureWord ?? outcomeLabel(outcome))
 			: null;
 	const wordInk = partial ? "text-warning" : "text-danger";
 	/*
@@ -660,10 +715,36 @@ const StatusCluster = ({
 	 * 38px the story's 48px inset would suggest (design round 3, D6: the frame's
 	 * row inset is 80px) - so they are unchanged.
 	 */
+	/*
+	 * THE THREE-STEP SHED for a state that has a SHORT word (Team Bridge's
+	 * `not posted` / `awaiting` / `unconfirmed`; design round 1, D1). The full
+	 * words are up to ~164px, so the one 19rem gate above let the caution take
+	 * 54% of a 414px pane (a ~334px row: the transcript insets it ~80px) and cut
+	 * the summary to `Sent to `. The caution now degrades BEFORE the summary,
+	 * from the same cluster sum the 19rem gate derives:
+	 * - full word (~164px) + mark + gaps + duration slot = ~238px; with ~90px of
+	 *   icon and verb the summary keeps 40% of the row from ~560px, so the full
+	 *   word starts at `40rem` (640px), margin for the longer locales;
+	 * - short word (~62px) -> cluster ~136px, so from `20rem` (320px) the
+	 *   summary keeps ~90px+ - the 414px pane's row (334px) lands here and reads
+	 *   `Sent to a teammate · Rel… not posted`;
+	 * - below 20rem only the MARK draws, with the spoken label beside it, which
+	 *   is the half that must never be colour-only (the gate's own fallback).
+	 * `send`'s states have no short word and keep the 19rem gate unchanged.
+	 */
+	const shortWord = partial ? deliveryShortWord(deliveryState, toolName) : null;
 	const wordClass = cn(
 		"font-medium text-meta",
 		wordInk,
-		partial && "hidden @[19rem]/toolrow:inline",
+		partial &&
+			(shortWord
+				? "hidden @[40rem]/toolrow:inline"
+				: "hidden @[19rem]/toolrow:inline"),
+	);
+	const shortWordClass = cn(
+		"font-medium text-meta",
+		wordInk,
+		"hidden @[20rem]/toolrow:inline @[40rem]/toolrow:hidden",
 	);
 	/*
 	 * The word the row STATES and the words it SPEAKS are not the same sentence for
@@ -674,12 +755,8 @@ const StatusCluster = ({
 	 * the same string (the failure words) the drawn text is already the announce-
 	 * ment and nothing is repeated - the rule the sr-only span below has always had.
 	 */
-	const spoken =
-		partial && deliveryState
-			? (SEND_DELIVERY_LABEL[deliveryState] ?? null)
-			: null;
-	const title =
-		partial && deliveryState ? SEND_DELIVERY_TITLE[deliveryState] : undefined;
+	const spoken = partial ? deliveryLabel(deliveryState, toolName) : null;
+	const title = partial ? deliveryTitle(deliveryState, toolName) : undefined;
 	/*
 	 * The outcome MARK: the interrupted slashed circle, or the partial state's own
 	 * shape. Its ink used to be hueless (`ink-dim`) because the word carried the
@@ -693,7 +770,11 @@ const StatusCluster = ({
 			? MailboxGlyph
 			: deliveryState === "unconfirmed"
 				? DeliveryUnconfirmedGlyph
-				: null
+				: deliveryState === "inbox_only"
+					? InboxOnlyGlyph
+					: deliveryState === "awaiting_acceptance"
+						? AwaitingAcceptanceGlyph
+						: null
 		: outcome === "interrupted"
 			? InterruptedGlyph
 			: null;
@@ -747,6 +828,16 @@ const StatusCluster = ({
 					{word}
 				</span>
 			) : null}
+			{word && shortWord ? (
+				<span
+					className={shortWordClass}
+					title={title}
+					aria-hidden={spoken ? true : undefined}
+					data-status-word="short"
+				>
+					{shortWord}
+				</span>
+			) : null}
 			{/*
 			 * THE MARK SLOT ONLY RESERVES A BOX WHEN THERE IS A MARK IN IT (design
 			 * round 3, D5). `size-3.5` used to be unconditional, so a `failed` row -
@@ -784,8 +875,8 @@ const StatusCluster = ({
 				 */}
 				{/* Announced, never drawn twice: the failure word above is already
 				    text, so repeating it here would read the row's outcome out twice. */}
-				{!failedLike && OUTCOME_LABEL[outcome] ? (
-					<span className={cn("sr-only")}>{OUTCOME_LABEL[outcome]}</span>
+				{!failedLike && outcomeLabel(outcome) ? (
+					<span className={cn("sr-only")}>{outcomeLabel(outcome)}</span>
 				) : null}
 				{/* The partial states' SPOKEN sentence, which is longer than the word the
 				    row draws (`SEND_DELIVERY_LABEL`); the drawn word is `aria-hidden`
@@ -825,8 +916,12 @@ export const ToolRow = ({
 	summary,
 	summaryFallback = null,
 	summaryHold = false,
+	summaryWrap = false,
+	summaryIsCopy = false,
 	outcome,
 	deliveryState = null,
+	settledVerb = null,
+	failureWord = null,
 	durationS,
 	startedAt = null,
 	added = 0,
@@ -836,6 +931,12 @@ export const ToolRow = ({
 	className,
 	media,
 }: ToolRowProps) => {
+	/* A subscription, not a value: `outcomeLabel` resolves through `t()` when the
+	 * row renders, and an interface-language switch has to repaint the verdict
+	 * word rather than wait for the next stream event. `useTextDirection` is the
+	 * same subscription (it reads `useI18nLocale`) and also answers the locale's
+	 * direction, which a keyed-copy summary takes (see `summaryIsCopy`). */
+	const direction = useTextDirection();
 	const running = outcome === "running";
 	// The GROUND is gated on the `error` outcome alone, deliberately: see
 	// `neverSent` below, which states why a not-run row does not claim the wash.
@@ -867,7 +968,7 @@ export const ToolRow = ({
 		 * The one row whose settled verb its own result overrides (UX round 1, U8):
 		 * a `send` that provably delivered nothing must not open with `Sent`.
 		 */
-		deliverySettledVerb(deliveryState),
+		settledVerb ?? deliverySettledVerb(deliveryState),
 	);
 
 	const row = (
@@ -898,8 +999,18 @@ export const ToolRow = ({
 			 * which stays aligned; the verb and the object are one phrase, 8px apart
 			 * (`gap-2`, the row's own step), which is how Cursor 3 and Codex set it.
 			 *
-			 * `shrink-0` so the object is the half that truncates: a verb is at most
-			 * three short words, and it is the half that says what happened.
+			 * The object collapses FIRST: it is `flex-1` (basis 0), so at any width
+			 * it takes only what the verb leaves, and the verb's own flex-shrink
+			 * (default 1, scaled by its content basis) is the only one that bites
+			 * once the object is at zero. The verb used to be `shrink-0
+			 * whitespace-nowrap`, which was right for the five-letter English verbs
+			 * and wrong for the translated ones (`Включает аварийную блокировку`,
+			 * `Mise à jour de saisie sécurisée`): at 284px and 184px transcript
+			 * rows they ran past the row's edge and pushed the duration out or
+			 * clipped mid-word (design round 1, D1). `min-w-0 truncate` lets a verb
+			 * that cannot fit end in an ellipsis instead; the full phrase stays
+			 * readable on hover (`title`) and, being real DOM text rather than a
+			 * CSS-generated one, to assistive tech - truncation is paint only.
 			 */}
 			{verbless ? null : (
 				<span
@@ -907,10 +1018,12 @@ export const ToolRow = ({
 					className={cn(
 						// §E1: the verb is a word, so it takes the sans ramp at
 						// `text-body-sm`/13; the monospace belongs to the OBJECT.
-						"shrink-0 whitespace-nowrap text-body-sm",
+						"min-w-0 truncate text-body-sm",
 						nameInk(outcome),
 					)}
-					title={name}
+					// The tool's wire name stays on the hover (it always did); the verb
+					// is added so a truncated translation can be read in full (D1).
+					title={`${verbText} (${name})`}
 				>
 					{verbText}
 				</span>
@@ -922,7 +1035,20 @@ export const ToolRow = ({
 					// reader scans for the result the quietest thing on a finished turn.
 					// The live/settled difference is the working line and the missing
 					// duration (§E7), not a dimmer summary.
-					"min-w-0 flex-1 truncate font-mono text-ink-muted text-mono-sm",
+					/*
+					 * TWO WHOLE STRINGS, not a base plus a token (#1363 CI, desktop shard 2/3):
+					 * the default must stay BYTE-IDENTICAL to what it was before this prop
+					 * existed - `tool-row.test.mjs` pins the rendered `min-w-0 flex-1
+					 * truncate` order, and a conditional token appended after the base
+					 * moved `truncate` behind `font-mono`, which that test read as "the
+					 * summary no longer truncates first" (CI, shard 2/3).
+					 * WRAP INSTEAD OF TRUNCATE on the rows that ask for it: a receipt's last
+					 * token is the ask id, and the ellipsis ate it. `break-words` keeps one
+					 * long token from overflowing the row.
+					 */
+					summaryWrap
+						? "min-w-0 flex-1 break-words whitespace-normal font-mono text-ink-muted text-mono-sm"
+						: "min-w-0 flex-1 truncate font-mono text-ink-muted text-mono-sm",
 				)}
 				// The name beside it has carried a `title` since it became truncatable;
 				// this cell truncates too, and at 390px the summary is the half that
@@ -997,16 +1123,35 @@ export const ToolRow = ({
 						>
 							…
 						</span>
-						<span className={cn("sr-only")}>pending</span>
+						<span className={cn("sr-only")}>
+							{t("ui.chat.canonical.tool_row.pending")}
+						</span>
 					</>
 				) : (
-					summaryText
+					/*
+					 * A TOOL SUMMARY IS MACHINE VOICE (design round 1, D2). It carries
+					 * paths and commands, and in an RTL paragraph a leading `/` is a neutral
+					 * character: `tmp/qa-rtl/ledger.md/` reordered the slash onto the far
+					 * side of the run. `dir="ltr"` on an isolated run keeps the token's own
+					 * order without imposing direction on the row it sits in.
+					 *
+					 * EXCEPT keyed status copy (`summaryIsCopy`, design round 1, D1): words
+					 * the catalogue wrote take the LOCALE's direction - stated, not
+					 * `auto`, for the same reason the fold's units state it (an `auto`
+					 * isolate follows the first strong letter, and a copy that opens with
+					 * a Latin tool name would lay out against its row). In a left-to-right
+					 * locale that is `ltr` again, so every LTR row is byte-identical to
+					 * before; the size inside the copy is already its own FSI..PDI run.
+					 */
+					<bdi dir={summaryIsCopy ? direction : "ltr"}>{summaryText}</bdi>
 				)}
 			</span>
 			<DiffCounters added={added} removed={removed} />
 			<StatusCluster
+				toolName={toolName}
 				outcome={outcome}
 				deliveryState={deliveryState}
+				failureWord={failureWord}
 				durationS={durationS}
 				startedAt={startedAt}
 			/>

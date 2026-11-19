@@ -1,0 +1,105 @@
+{
+  "schema": 1,
+  "receipt_kind": "Independent two-key working-tree linguistic delta audit with proved inherited unchanged coverage",
+  "auditor": "reviewer",
+  "model": "anthropic/claude-sonnet-5-5",
+  "model_provenance": "Actual current host descriptor for session f93eb129057e: anthropic/claude-sonnet-5-5. No new fallback announced for this task. Prior receipt model identities are referenced unchanged, not rewritten.",
+  "instance": "f93eb129057e-slice2-ru",
+  "session": "f93eb129057e",
+  "date": "2026-11-03",
+  "locale": "ru",
+  "namespace": "ui.teamBridge",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "sha256": {
+    "en": "911d5928e6b206e9d60aca25c081383f0f2564661646d43d45f746af06e6d858",
+    "ru": "22ff02fd0157fbf3c7075b40313d411ed38c34143adde60ab57c78964ad7e16d"
+  },
+  "context": {
+    "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+    "sha256": "96966f6ec44c50eaaf5f3e66ee4298dbd7fc81a0dd7a45f2c65b600cf8adb19a",
+    "audited_entries": {
+      "ui.teamBridge.attachmentCard.download": {
+        "role": "button on an explicitly bound opaque attachment in authenticated owner audit",
+        "tone": "direct action",
+        "length": "2-4 words",
+        "placeholders": {},
+        "note": "Opens the native main-owned Save As dialog with fixed opaque name attachment.bin. Not upload, inline preview, or a public URL. Only shown when native saving and captured owner authority are available."
+      },
+      "ui.teamBridge.attachmentCard.saved": {
+        "role": "polite success status after the native file save completes",
+        "tone": "factual, concise",
+        "length": "2-4 words",
+        "placeholders": {},
+        "note": "Shown only after the main process confirms writing the opaque file chosen by the user. Not shown on cancel, refusal, account switch or failure. Do not include a filename or filesystem path."
+      }
+    },
+    "assessment": "Download action initiates native Save As; saved status denotes confirmed completed writing, not upload, cancel, refusal, failure or account switch. Both entries contain no placeholders or path interpolation."
+  },
+  "reference_hashes": {
+    "i18n/glossary.md": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "i18n/style-guides/ru.md": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+  },
+  "scope": {
+    "working_tree": "/Users/damian/local-operator-ui/.worktrees/audit-attachment-resource",
+    "observed_head": "1364eb5fcab8aa0871304a7f644cf43cebbd1acc",
+    "uncommitted": true,
+    "keys": [
+      "ui.teamBridge.attachmentCard.download",
+      "ui.teamBridge.attachmentCard.saved"
+    ],
+    "audited_values": {
+      "ui.teamBridge.attachmentCard.download": {
+        "en": "Download file",
+        "ru": "Скачать файл",
+        "verdict": "PASS: Скачать файл is the standard infinitive download action."
+      },
+      "ui.teamBridge.attachmentCard.saved": {
+        "en": "File saved",
+        "ru": "Файл сохранён",
+        "verdict": "PASS: Файл сохранён is an impersonal completed-save status with correct agreement."
+      }
+    },
+    "non_goals": [
+      "Authenticated transport implementation/security",
+      "Native save lifecycle/runtime behavior",
+      "Other code changes",
+      "Rendered fit/pseudo-localization/RTL execution",
+      "New whole-namespace linguistic audit"
+    ],
+    "pinning": "Applies only to the exact raw catalogue/context hashes above. Observed HEAD identifies the baseline, not a commit containing these uncommitted additions. Subsequent changed text or context invalidates these bindings."
+  },
+  "inheritance": {
+    "proof": "HEAD English and target raw-byte hashes exactly equal existing ledger bindings. Working-tree English/target/context add exactly download and saved; all pre-existing keys/values unchanged. Referenced glossary/style byte hashes are unchanged from the earlier independently audited receipt.",
+    "base_source_sha256": "00a4cb6150b71677766c8527369527497cf29ec3ccb91cb5e2b8a3d1c65baffd",
+    "base_target_sha256": "6af703983652a04d8f452ff16d694eafd74cce4d7f7b05030d4e830560531ced",
+    "prior_receipt": "i18n/receipts/f93eb129057e-ru.json",
+    "prior_receipt_sha256": "fe09d7e37c58de32411de72a9931c77987ae8ef8429777982b98153d426e71b5",
+    "prior_auditor_instance": "f93eb129057e-ru",
+    "prior_auditor_model": "openai/gpt-6.1-sol",
+    "inherited_prior_result": "clean-with-findings",
+    "inherited_unresolved_findings": "Original Russian R2 remains deferred and is deliberately carried in findings below; no new issue found in these two keys."
+  },
+  "findings": [
+    {
+      "id": "R2",
+      "severity": "MINOR",
+      "key": "ui.teamBridge.attachmentCard.bytes",
+      "file": "src/i18n/catalogues/ru/ui.teamBridge.json",
+      "line": 338,
+      "description": "Invariant байт is not grammatically correct for the few category: a two-byte attachment displays 2 байт rather than 2 байта. Meaning remains clear; this is nonblocking linguistic polish.",
+      "recommendation": "Use ICU size plural with one {# байт} few {# байта} many {# байт} other {# байта}, retaining numeric size.",
+      "disposition": "Not changed by reviewer; implementer may fix in batched remediation or explicitly defer in PR thread."
+    }
+  ],
+  "new_findings": [],
+  "independence": "Independent reviewer; did not author either new key, translations, context or implementation. No repository edits. Scratch receipt is authored by this session only.",
+  "static_data_checks": {
+    "exact_two_added_keys": true,
+    "all_prior_values_unchanged": true,
+    "nfc": true,
+    "no_manual_bidi_controls": true,
+    "no_interpolation_placeholders": true
+  },
+  "not_run": "No tests, typecheck, builds, browser, native saving, authenticated requests, ICU runtime or local ledger writer. Semantic/source-data audit only; does not approve authenticated attachment transport."
+}

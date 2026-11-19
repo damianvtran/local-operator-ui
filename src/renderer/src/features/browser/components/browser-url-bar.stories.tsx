@@ -1,51 +1,63 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { BrowserUrlBar } from "./browser-url-bar";
+import { expect, userEvent, waitFor, within } from "@storybook/test";
+import { BrowserPageMenu } from "./browser-page-menu";
+import { BrowserUrlBar, type BrowserUrlBarProps } from "./browser-url-bar";
 
 /**
- * The URL bar and its Approvals control, in the three states the badge has
- * (docs/design/browser-approval-ux.md 5): no requests, one, three.
+ * The permanent address row (S5).
  *
- * WHY THE CONTROL NEEDS ITS OWN FRAMES. The badge is a requirement the operator
- * asked for twice, and its whole claim is a reading: the count sits at the
- * control's corner, `warningWash` with a `border-control` edge, and it does not
- * shove the label. A frame is the only thing that shows whether "Approvals" is
- * still legible under it — the contrast contract can prove the triple, not the
- * layout.
+ * One 37px in-flow band: Back, Forward, Reload/Stop, Home, the field with its
+ * site mark, the fixed 28px Approvals control and the overflow menu. The native
+ * suggestion list is a child view and is not part of these frames — a native
+ * `WebContentsView` cannot be captured in Storybook, and painting a DOM stand-in
+ * would be a claim about pixels this harness cannot make.
  *
- * The bar is captured against `canvas`, which is the ground it renders on in the
- * route (the banner above the page). The chat pane's header is the other ground
- * the badge appears on, and it is `surface`; both are asserted by the
- * `browser approvals badge` row in `scripts/contrast-contract.mjs`.
+ * `overlayMode="suspend"` is the Tier 1 state (the child is unavailable on
+ * Windows/Linux or after a failure): the field still works and the sentence is
+ * painted inside its trailing edge.
  */
 
-const bar = (waitingCount: number, downloadsDir: string | null = null) => ({
+const menu = (
+	<BrowserPageMenu
+		disabled={false}
+		canGoForward={false}
+		pageZoom={1}
+		waitingCount={0}
+		downloadsDir={null}
+		showForward={false}
+		showHome={false}
+		onForward={() => {}}
+		onHome={() => {}}
+		onFind={() => {}}
+		onPrint={() => {}}
+		onResetZoom={() => {}}
+		onOpenDownloads={() => {}}
+		onOpenApprovals={() => false}
+		showApprovalsFolded={false}
+		canControlPage
+		onManageExtensions={() => {}}
+	/>
+);
+
+const common = {
 	tabId: 1,
 	url: "https://login.example.com/session",
 	pendingUrl: null,
-	loading: false,
 	canGoBack: true,
 	canGoForward: false,
 	disabled: false,
+	loading: false,
 	onNavigate: () => {},
 	onBack: () => {},
 	onForward: () => {},
 	onReload: () => {},
 	onStop: () => {},
-	onOpenApprovals: () => {},
-	waitingCount,
-	// One state with the folder reachable and one without: the control renders only
-	// when the host has written a directory (review round 1, U2), so both are worth a
-	// frame.
-	downloadsDir,
-	onOpenDownloads: () => {},
-});
+	onHome: () => {},
+} as const;
 
 const meta = {
-	title: "Browser/URL bar",
+	title: "Browser/Address chrome",
 	component: BrowserUrlBar,
-	/* The badge sits half outside the control's box, so the story needs a little
-	   room around it: without padding the frame would clip the number the frame
-	   exists to show. */
 	decorators: [
 		(Story) => (
 			<div className="bg-canvas p-4">
@@ -57,46 +69,198 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Nothing is being asked, so there is no badge at all — the honest rendering
- * rather than a zero, which would read as a count of something. */
-export const NoBadge: Story = {
-	args: bar(0),
+/** Rest: the live URL is the value; nothing is focused. */
+export const Rest: Story = {
+	args: {
+		...common,
+		overlayMode: "popout",
+		anchor: { x: 0, width: 1120 },
+		menu,
+	},
 };
 
-/** One request waiting: the common case, and the narrowest the badge gets. */
-export const OneWaiting: Story = {
-	args: bar(1),
+/** Loading: Reload becomes Stop in the same slot and a trailing spinner shows. */
+export const Loading: Story = {
+	args: {
+		...common,
+		loading: true,
+		overlayMode: "popout",
+		anchor: { x: 0, width: 1120 },
+		menu,
+	},
 };
 
-/** Three waiting: the number the operator's queue exists to make visible. */
-export const ThreeWaiting: Story = {
-	args: bar(3),
+/** Tier 1: the list is unavailable; the sentence lives inside the field. */
+export const ListUnavailable: Story = {
+	args: {
+		...common,
+		overlayMode: "suspend",
+		anchor: { x: 0, width: 1120 },
+		menu,
+	},
+};
+
+/** Narrow pane: Home folds into the overflow below 360px, Forward below 300. */
+export const Narrow: Story = {
+	args: {
+		...common,
+		hideForward: true,
+		hideHome: true,
+		overlayMode: "popout",
+		anchor: { x: 0, width: 330 },
+		menu: (
+			<BrowserPageMenu
+				disabled={false}
+				canGoForward
+				pageZoom={1}
+				waitingCount={2}
+				downloadsDir={null}
+				showForward
+				showHome
+				onForward={() => {}}
+				onHome={() => {}}
+				onFind={() => {}}
+				onPrint={() => {}}
+				onResetZoom={() => {}}
+				onOpenDownloads={() => {}}
+				onOpenApprovals={() => false}
+				showApprovalsFolded={false}
+				canControlPage
+				onManageExtensions={() => {}}
+			/>
+		),
+	},
+};
+
+/*
+ * THE BROWSER'S OWN PAGES IN THE LIST. Own-state (`ownState`) is the placement
+ * whose list is page DOM, so it is the one Storybook can paint; the native child
+ * paints the same rows (text, title, the page glyph) from the mirror. The play
+ * step types into the real field, so the frame is what the user's keystrokes
+ * produce - including `lop://`'s inline completion to `lop://extensions`.
+ */
+const pageHistory: NonNullable<BrowserUrlBarProps["addressHistory"]> = async (
+	request,
+) => ({
+	requestId: request.requestId,
+	activeTabId: 1,
+	entries: [
+		{
+			url: "https://login.example.com/session",
+			title: "Sign in",
+			visitCount: 4,
+			lastVisitedAt: 0,
+			source: "history",
+		},
+		{
+			url: "https://docs.example.com/extensions/guide",
+			title: "Writing extensions",
+			visitCount: 2,
+			lastVisitedAt: 0,
+			source: "history",
+		},
+		// Two `lop…` sites, so the `lop` story shows history kept intact with the
+		// page only taking the free slot after it (review R2/U2/Q1, D3).
+		{
+			url: "https://lopez-bakery.example.com/",
+			title: "Lopez Bakery",
+			visitCount: 3,
+			lastVisitedAt: 0,
+			source: "history",
+		},
+		{
+			url: "https://loppers.example.com/garden",
+			title: "Loppers",
+			visitCount: 1,
+			lastVisitedAt: 0,
+			source: "history",
+		},
+	],
+});
+
+const typing =
+	(text: string): Story["play"] =>
+	async ({ canvasElement }) => {
+		const field = within(canvasElement).getByRole("combobox");
+		await userEvent.click(field);
+		// The focused field holds the live URL; replace it, as Cmd+L then typing
+		// would, so the frame shows exactly what `text` produces.
+		await userEvent.clear(field);
+		await userEvent.type(field, text);
+		await waitFor(() =>
+			expect(
+				canvasElement.querySelector("[data-address-suggestion]"),
+			).not.toBeNull(),
+		);
+	};
+
+const pagesArgs = {
+	...common,
+	url: "https://login.example.com/session",
+	overlayMode: "popout",
+	ownState: true,
+	anchor: { x: 0, width: 720 },
+	addressHistory: pageHistory,
+	onStateChanged: () => () => {},
+	menu,
+} as const;
+
+/** `lop://`: every page is listed, and the single match inline-completes. */
+export const PageSuggestionsScheme: Story = {
+	args: pagesArgs,
+	play: typing("lop://"),
+};
+
+/** `lop://ext`: filtered by prefix; the alias `chrome://` lists the same row. */
+export const PageSuggestionsFiltered: Story = {
+	args: pagesArgs,
+	play: typing("lop://ext"),
+};
+
+/** A bare word: the page rides under the default search row (and after any
+ * history match - this fixture has none for `extensions`; see
+ * `PageSuggestionsSchemeWord` for the ordering behind history). */
+export const PageSuggestionsWord: Story = {
+	args: pagesArgs,
+	play: typing("extensions"),
+};
+
+/** `lop`: search first, both `lop…` history rows intact, then the page in the
+ * slot history left free. `l`/`lo` offer no page at all. */
+export const PageSuggestionsSchemeWord: Story = {
+	args: pagesArgs,
+	play: typing("lop"),
 };
 
 /**
- * TWO DIGITS, the state that makes the badge's geometry load-bearing.
- *
- * The badge is `min-w-4` and grows with the number, anchored at the control's
- * inner top-right corner; at one digit it is 18px and at two it is ~24px. This is
- * the frame a reviewer needs to see that the wider pill still sits inside the URL
- * bar's own box rather than over its right edge (design round 2, D3 asked for it
- * by name), and it is the state a busy machine reaches in a minute.
+ * U1: `lop://extensions?dark` matches two installed extensions; Backspace
+ * rejects the highlight, and Enter is refused locally (the blocked sentence is
+ * announced) instead of handing main a URL it cannot open. Storybook has no
+ * preload, so the extension list is stubbed for this story only.
  */
-export const TwoDigits: Story = {
-	args: bar(12),
-};
-
-/**
- * WITH A DOWNLOAD FOLDER, which is the state that carries the second control.
- *
- * The folder is reachable from the chrome for as long as the host has written one
- * (review round 1, U2): the strip's row can be dismissed or age out, and the
- * directory must still be one press away. This frame is what shows the two
- * controls sitting together without the badge or the address field losing room.
- */
-export const WithDownloadsFolder: Story = {
-	args: bar(
-		0,
-		"/Users/someone/Library/Application Support/Local Operator/browser/downloads/20260919-120000-session1",
-	),
+export const PageSuggestionsRefused: Story = {
+	beforeEach: () => {
+		const previous = window.api;
+		const browser = {
+			extensions: async () => ({
+				ok: true,
+				extensions: [
+					{ id: "a".repeat(32), name: "Dark Reader" },
+					{ id: "b".repeat(32), name: "Dark Mode" },
+				],
+			}),
+			onStateChanged: () => () => {},
+		};
+		Object.assign(window, { api: { ...previous, browser } });
+		return () => {
+			Object.assign(window, { api: previous });
+		};
+	},
+	args: pagesArgs,
+	play: async (context) => {
+		await typing("lop://extensions?dark")?.(context);
+		const field = within(context.canvasElement).getByRole("combobox");
+		await userEvent.keyboard("{Backspace}{Enter}");
+		await waitFor(() => expect(field).toHaveValue("lop://extensions?dar"));
+	},
 };

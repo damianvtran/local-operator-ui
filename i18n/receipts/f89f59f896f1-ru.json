@@ -1,0 +1,106 @@
+{
+  "schema": 1,
+  "auditor": "i18n-auditor (independent lopdev task 'UI #1604 delta i18n audit A', session f89f59f896f1)",
+  "model": "anthropic/claude-opus-5-5",
+  "model_provenance": "Whole audit (source reads, semantic review, structural probe, classification, receipt writing) ran on the session's announced model anthropic/claude-opus-5-5. No fallback or model switch was observed during this session.",
+  "instance": "f89f59f896f1-ru",
+  "audit_session": "f89f59f896f1",
+  "locale": "ru",
+  "namespace": "ui.mesh",
+  "date": "2026-11-02",
+  "scope": "Delta audit A of f6a91444077..fbbbdec31b1 (PR #1604 remediation commit). All 2 changed ui.mesh value(s) in this locale read in final bytes; English/context change to scope_session reviewed. Also re-read in final bytes the 19 ui.mesh.approval.* values for consent consistency (borrow/login terms). Unchanged non-approval values retain historical audits.",
+  "audited_head": "fbbbdec31b15b34d06b511278707ae3b0792b080",
+  "delta_base": "f6a91444077ee6e70edfbdff6d4b740c864b8503",
+  "status": "passed",
+  "sha256": {
+    "en": "edf18f0d32404972428c4bfcc107f835d170df6e2f6c800d10681d1a1e6e4fd1",
+    "ru": "05807a7096b1873270b13291fa392ff64b77f1568dc72e06aec4c0cd50ec6098"
+  },
+  "base_sha256": {
+    "en": "14428f2aa934af49f6c9d34a09696a3ba29505f653894a1c69b3fb8a22a261e4",
+    "ru": "25e6540676f395a603a830cd0f56cce2516f7a124dd0f10bd634373e3b3b29e7"
+  },
+  "findings": [
+    {
+      "id": "TA3A-RU-01",
+      "severity": "minor",
+      "key": "ui.mesh.approval.scope_session",
+      "keys": [
+        "ui.mesh.approval.scope_session",
+        "ui.mesh.approval.head_finite_share",
+        "ui.mesh.approval.not_copied",
+        "ui.mesh.approval.needs_broker"
+      ],
+      "verbatim": "ru renders \"this login\" as \"этот логин\" while the namespace renders login as \"вход\" (head_finite_share \"Поделиться входом\", not_copied \"Ваш вход\", needs_broker \"заимствовать входы\"). In Russian UI \"логин\" commonly means the account username, so the object of consent becomes ambiguous; this is the only \"логин\" in ui.mesh.",
+      "recommendation": "Use the namespace term, e.g. \"Сессии на {device} могут заимствовать этот вход с доступом, привязанным к каждой сессии.\"",
+      "disposition": "not applied: auditors never edit translations; handed to the implementer for one batched remediation or explicit deferral. Nonblocking: no security-consent consequence is reversed or omitted."
+    },
+    {
+      "id": "TA3A-RU-02",
+      "severity": "minor",
+      "key": "ui.mesh.approval.scope_session",
+      "keys": [
+        "ui.mesh.approval.scope_session",
+        "ui.mesh.approval.needs_broker"
+      ],
+      "verbatim": "English says sessions can BORROW; ru says \"могут использовать\" (use), whereas needs_broker renders borrow as \"заимствовать\". The all-sessions, per-session-bound scope is preserved; the borrow nuance and term link are lost. scope_device \"любая сессия\" now matches glossary сессия (TA2-RU-01 resolved).",
+      "recommendation": "Use \"заимствовать\" (see RU-01 recommendation).",
+      "disposition": "not applied: auditors never edit translations; handed to the implementer for one batched remediation or explicit deferral. Nonblocking: no security-consent consequence is reversed or omitted."
+    }
+  ],
+  "changed_keys": [
+    "ui.mesh.approval.scope_device",
+    "ui.mesh.approval.scope_session"
+  ],
+  "verbatim_values": {
+    "ui.mesh.approval.scope_device": "Им может пользоваться любая сессия на {device}.",
+    "ui.mesh.approval.scope_session": "Сессии на {device} могут использовать этот логин с доступом, привязанным к каждой сессии."
+  },
+  "english_values": {
+    "ui.mesh.approval.scope_device": "Any session on {device} can use it.",
+    "ui.mesh.approval.scope_session": "Sessions on {device} can borrow this login with session-bound access."
+  },
+  "context_sidecar": {
+    "path": "src/i18n/catalogues/en/ui.mesh.context.json",
+    "sha256": "79b22ab6e83a0d8675409f9673a452928b77cee22e47c52930ea0c2127f269f5",
+    "read": "scope_session context note read in full: session scope = device is holder, its sessions may each borrow with grants bound to the individual incoming session; NOT restricted to the requesting session."
+  },
+  "standards": {
+    "root": "~/local-operator/i18n at origin/main 5909dc26678 (shared checkout is on a feature branch; bytes read with git show origin/main:)",
+    "sha256": {
+      "glossary.md": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "style-guides/ru.md": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+    }
+  },
+  "translator": {
+    "agent": "coder",
+    "jobs": [
+      "job07291411b980",
+      "c61a64298a45",
+      "21ddee198f0b"
+    ],
+    "remediation_commit": "fbbbdec31b15b34d06b511278707ae3b0792b080",
+    "attribution": "Translator/remediation coder runs named by the manager; their served model is not verified by this auditor."
+  },
+  "independence": "This session (f89f59f896f1) authored no catalogue value and is distinct from the translator/coder runs and from earlier auditors 1f7797b807b7 (job0a40e337218a) and 5c609e74f770 (job38d28c8fb9bf). Parallel auditor B writes its own receipts under its own instance ids; none were read before this verdict.",
+  "semantic_checks": [
+    "scope_session: every final locale says sessions (plural/each) on {device} may use/borrow the login with access bound to each session; none retains the superseded 'only the requesting session' claim; none widens to unbound device-wide access.",
+    "scope_device vs scope_session remain distinguishable: device scope = any session can use it; session scope adds per-session binding.",
+    "No changed value reverses or omits a consent consequence; {device} placeholder present in every changed scope line.",
+    "Prior TA2 typography/glossary remediations verified in final bytes where applicable to this locale.",
+    "scope_device: \"любая сессия\" glossary-conformant, any-session meaning unchanged (TA2-RU-01 resolved). scope_session: all sessions, per-session binding; term issues RU-01/RU-02."
+  ],
+  "evidence": {
+    "probe": "i18n/receipts/f89f59f896f1-structural-probe.mjs.txt",
+    "probe_sha256": "be39a0750797ec72151f7fc18676f5b1e8b35e219485acfdb7d8c9bbb53b6fac",
+    "log": "i18n/receipts/f89f59f896f1-structural-probe-output.txt",
+    "log_sha256": "7edf239e9a6f244d05483b48b30cdcf3f3b5abe6a91318b48a7455425ce6dafd",
+    "verdict_location": "Findings, status and semantic_checks in this receipt are the auditor's review record; the companion log is actual probe output (ICU arg/plural parity vs English, NFC, bidi controls, fr colon spacing, zh spaces/ellipsis)."
+  },
+  "non_claims": [
+    "No rendered/compiled-native, width/fit, pseudo-localization, font shaping or visual RTL validation (host memory hold).",
+    "No translation edits by this auditor.",
+    "Not the second (B) delta audit; B records its own receipts."
+  ],
+  "notes": "Delta audit A on PR #1604 head fbbbdec. Passing with 2 minor / 0 nit; zero blocker/major."
+}

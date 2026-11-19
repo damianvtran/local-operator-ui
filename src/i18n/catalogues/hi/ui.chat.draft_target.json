@@ -1,0 +1,5 @@
+{
+	"ui.chat.draft_target.aria_label": "यह चैट {target} के साथ शुरू होगी। एजेंट या टीम चुनें",
+	"ui.chat.draft_target.default_agent": "डिफ़ॉल्ट एजेंट",
+	"ui.chat.draft_target.menu_heading": "यह चैट किसके साथ शुरू करें"
+}

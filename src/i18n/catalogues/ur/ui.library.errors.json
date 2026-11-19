@@ -1,0 +1,5 @@
+{
+	"ui.library.errors.preview_load": "یہ پیش منظر لوڈ نہیں ہو سکا۔",
+	"ui.library.errors.asset_read": "اثاثہ کا مواد پڑھا نہیں جا سکا۔",
+	"ui.library.errors.empty_bytes": "بائٹس خالی تھے۔"
+}

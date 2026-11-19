@@ -1,0 +1,356 @@
+{
+	"locale": "fr",
+	"translator": "translator",
+	"session": "f707a5a88dbb",
+	"served_model": "openrouter/moonshotai/kimi-k3.1-pro",
+	"date": "2026-10-24",
+	"status": "translated",
+	"awaiting": "independent i18n-auditor review; no audit verdict or ledger update is claimed",
+	"source_head": "82393f2110b1e0c18acecf0dca1bd8699e688e13",
+	"scope": "471 newly extracted surface keys only: 470 manifest rows plus ui.common.errors.speech_temporarily_unavailable. Older missing-namespace backfill is untouched.",
+	"manifest_sha256": "01892e7f1dee7a7cd4c74f10c3447fa7e326c6fd0733aaf380163373b0e3d23d",
+	"translated_keys": 471,
+	"guidance": {
+		"glossary": {
+			"path": "i18n/glossary.md (local-operator)",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide": {
+			"path": "i18n/style-guides/fr.md (local-operator)",
+			"sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+		}
+	},
+	"terminology_choices": {
+		"quick send": "envoi rapide",
+		"seat": "destination",
+		"aside": "aparté",
+		"run": "exécution",
+		"speech aloud": "lecture à voix haute",
+		"tenant ID": "ID de tenant",
+		"credential": "identifiant",
+		"canvas": "canvas (established UI term); Espace canvas only for the new shortcut destination row"
+	},
+	"overflow_risks": [
+		{
+			"key": "ui.settings.shortcuts.row.canvas",
+			"value": "Espace canvas",
+			"note": "Static compact-label expansion; no rendered-fit measurement claimed."
+		},
+		{
+			"key": "ui.settings.shortcuts.row.console",
+			"value": "Console de commandes",
+			"note": "Static compact-label expansion; no rendered-fit measurement claimed."
+		}
+	],
+	"validation": {
+		"generation": "node scripts/i18n/generate.mjs --check: byte-identical to a fresh generation",
+		"assigned_scope": "471/471 present in source order; all older French keys and values byte-identical to HEAD",
+		"icu_and_pseudo": "471/471 exact ICU argument/type/branch/offset/style/tag structures; 1884 IntlMessageFormat variants plus pseudo expansion passed",
+		"focused_locale_parity": "4/4 French checks passed: unique keys, known keys, placeholders and non-English values",
+		"targeted_suite": "83 pass, 7 expected cross-locale completeness failures; fr remainder is 30 ui.chat.canonical + 4 ui.common.viewer older backfill keys outside this assignment",
+		"strings_and_context": "check-strings.mjs passed; context-parity.mjs passed",
+		"coverage": "Expected integration-red: 2826 missing keys across other locales; no fr/ entries in the output",
+		"ledger": "Expected integration-red pending independent audits: 266 findings across 438 ledger entries; no auditor result fabricated"
+	},
+	"namespaces": {
+		"ui.browser.errors": {
+			"translated_keys": 2,
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.browser.errors.json",
+				"fr": "src/i18n/catalogues/fr/ui.browser.errors.json",
+				"context": "src/i18n/catalogues/en/ui.browser.errors.context.json"
+			},
+			"sha256": {
+				"en": "c76148aad81e67ae2bacc513a51a5ff219c797ea93bf274f6b6ebaa09635426a",
+				"fr": "4f962f5096c65f8d7b46531fcef90bdc43c64dffdc50132e82178baa3d9d5289",
+				"context": "2b1f9eb5194709780b3c9188d7463177a4bf2aff07b9a5a438e91a2ec7a82906"
+			}
+		},
+		"ui.chat.canonical": {
+			"translated_keys": 17,
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.chat.canonical.json",
+				"fr": "src/i18n/catalogues/fr/ui.chat.canonical.json",
+				"context": "src/i18n/catalogues/en/ui.chat.canonical.context.json"
+			},
+			"sha256": {
+				"en": "dfa9cde6984a451b75a22530303197ed8a3c8d9148685231d017299f16cfe0dd",
+				"fr": "cb58cff6883d43634026ae6078f8eb2a6f32ded3fe1bc8f55e5dafb0f0bc8143",
+				"context": "953ddc573ded81d8f78aec78a81cb89dbdf6fdc6f6adf2b0945b8b4bff71077b"
+			}
+		},
+		"ui.chat.composer": {
+			"translated_keys": 11,
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.chat.composer.json",
+				"fr": "src/i18n/catalogues/fr/ui.chat.composer.json",
+				"context": "src/i18n/catalogues/en/ui.chat.composer.context.json"
+			},
+			"sha256": {
+				"en": "beced0ec43069d64bcf96415a71ef53be1ed6366848f386a2efaa4d4b77bf4df",
+				"fr": "c9d6613f5739a0690e760e30475d209e3be665382f9957b494cd41f4be9c9402",
+				"context": "ce5cb033df55ee401da6b4bf18ac1b205799e5126392e62a9c59ec02cd715330"
+			}
+		},
+		"ui.code_review": {
+			"translated_keys": 1,
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.code_review.json",
+				"fr": "src/i18n/catalogues/fr/ui.code_review.json",
+				"context": "src/i18n/catalogues/en/ui.code_review.context.json"
+			},
+			"sha256": {
+				"en": "52c1c5147bded8beb2e223c43e7cdb44d236a9ab4c2722627868a5a0fca1a312",
+				"fr": "7f27f1d909eb316174bfeb411c175cf25a2cf02a8891881c3e8a7da9161af650",
+				"context": "4d60ce00b0a08f78c30aab5e1b40ddba4e086f61e828e3cf23116866b5daebb2"
+			}
+		},
+		"ui.common.account": {
+			"translated_keys": 20,
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.common.account.json",
+				"fr": "src/i18n/catalogues/fr/ui.common.account.json",
+				"context": "src/i18n/catalogues/en/ui.common.account.context.json"
+			},
+			"sha256": {
+				"en": "0e39546d4357107a461f4eb3774c3a17d48a29af902825e86e450809dcf51a48",
+				"fr": "1dbf4a46f91c5521f5e639d209cdb21383d3e1d64ededeb3f3fb52698c66ca06",
+				"context": "148dcc3c9c40ad03373b54c1394f210386290b9e9395134d12532617d0d33f1a"
+			}
+		},
+		"ui.common.actions": {
+			"translated_keys": 14,
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.common.actions.json",
+				"fr": "src/i18n/catalogues/fr/ui.common.actions.json",
+				"context": "src/i18n/catalogues/en/ui.common.actions.context.json"
+			},
+			"sha256": {
+				"en": "e1d2fa68aededcc4aa67bd9527a80072859f35b8a358cadba2007696414e8235",
+				"fr": "60653bef21ec1340d355f32bad3be1d4ef14605d0941114e6e24c2385f618161",
+				"context": "160a775122143fdf72ed91a052d112f568a41105412e69f8adfdcfcc1b3b7256"
+			}
+		},
+		"ui.common.connection": {
+			"translated_keys": 27,
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.common.connection.json",
+				"fr": "src/i18n/catalogues/fr/ui.common.connection.json",
+				"context": "src/i18n/catalogues/en/ui.common.connection.context.json"
+			},
+			"sha256": {
+				"en": "f4d8116323bd5fa12e2a7b7a9b95ce78be29e710088f7fa50f209b788dcfeaa5",
+				"fr": "557faea3a2eb6a01ad020158a37a8a7787c7bac656250524295cc230a539410b",
+				"context": "9d39efa215fb38d30e7b70d0df1ed293e32e33a0b72ffc838d7385fb17e7dbb2"
+			}
+		},
+		"ui.common.errors": {
+			"translated_keys": 131,
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.common.errors.json",
+				"fr": "src/i18n/catalogues/fr/ui.common.errors.json",
+				"context": "src/i18n/catalogues/en/ui.common.errors.context.json"
+			},
+			"sha256": {
+				"en": "59dc7dfdbc3db2070238d457e7700d57941830a223181ea1eb4fabe9d5d7eae4",
+				"fr": "5bde8b0f46f0081e549c4f1839810607558e65bafaacf9e1689b6c7894a94b39",
+				"context": "714850a99bf61133a2fb7548504dc0030a20a516bd1ca3b1dfbe70b2de5f7fb1"
+			}
+		},
+		"ui.common.speech": {
+			"translated_keys": 11,
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.common.speech.json",
+				"fr": "src/i18n/catalogues/fr/ui.common.speech.json",
+				"context": "src/i18n/catalogues/en/ui.common.speech.context.json"
+			},
+			"sha256": {
+				"en": "75e394ea07a049d8a58a2cc12fedec1042e30b61e572f53740f0fac35a825eb0",
+				"fr": "cf413ebc850591f19b88ccb727e35034fa60f0acd513cb3ba652a07f290d4bbd",
+				"context": "284ead771845e6a6b4ef5c45ddc450e44f0df76873e63b4cc794fba84475522b"
+			}
+		},
+		"ui.common.time": {
+			"translated_keys": 1,
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.common.time.json",
+				"fr": "src/i18n/catalogues/fr/ui.common.time.json",
+				"context": "src/i18n/catalogues/en/ui.common.time.context.json"
+			},
+			"sha256": {
+				"en": "d29ccbd6b980f727b02c9c7e60c27c0d068d8082bab2e424784bc683f1cfbdd0",
+				"fr": "acde397f72b34b71035c3bda3ce2214dd883556452d9b84968d96c018fb59a97",
+				"context": "9d666403cd1c661075607faa0a7db78b43bdd570f3d2ce1c7f5968e26f28a6a1"
+			}
+		},
+		"ui.common.updates": {
+			"translated_keys": 11,
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.common.updates.json",
+				"fr": "src/i18n/catalogues/fr/ui.common.updates.json",
+				"context": "src/i18n/catalogues/en/ui.common.updates.context.json"
+			},
+			"sha256": {
+				"en": "5bb2c4cba16a412565d9c41dd5e9233e8ad8324d07758327ddd947607b59bc82",
+				"fr": "ebb4a2ec71053f2cab09db0b05d21e6cd54e2b121ce43f8268eaeb01f7bb2b1f",
+				"context": "5188c08320cea150fd71c3a26666ca6b0b637a94659bc6087155681b59d9614f"
+			}
+		},
+		"ui.common.viewer": {
+			"translated_keys": 1,
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.common.viewer.json",
+				"fr": "src/i18n/catalogues/fr/ui.common.viewer.json",
+				"context": "src/i18n/catalogues/en/ui.common.viewer.context.json"
+			},
+			"sha256": {
+				"en": "9db8efc731cb81ac781c732a3021587434acd26bd03d41ec41156c5672edabfe",
+				"fr": "9ffdcade6145705c4a7e3982a3db024c036af8b6a49d27b098fb0a3d1643a675",
+				"context": "77232304d3ddc3dbe20151daddc2ee1a3c28271cdcfd7ebc54a302fe6f68f40e"
+			}
+		},
+		"ui.console.errors": {
+			"translated_keys": 1,
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.console.errors.json",
+				"fr": "src/i18n/catalogues/fr/ui.console.errors.json",
+				"context": "src/i18n/catalogues/en/ui.console.errors.context.json"
+			},
+			"sha256": {
+				"en": "ef6827986b0cd0d75cb4e2aea62aa0b017b58191b5736f7a721c6afa938f344b",
+				"fr": "e6cd88bfa73f5585effb14a89a5f60a4caa1abc4085713bd25597d45b8f58baf",
+				"context": "7a4e2ef6e8a081c78dab8ac422a3c82fbe268d8f1f68ca885e5f4eb9f7bed0d3"
+			}
+		},
+		"ui.hub.updates": {
+			"translated_keys": 56,
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.hub.updates.json",
+				"fr": "src/i18n/catalogues/fr/ui.hub.updates.json",
+				"context": "src/i18n/catalogues/en/ui.hub.updates.context.json"
+			},
+			"sha256": {
+				"en": "9fa15153d1a036a7f98b1d50da90d736c7f423c2981087ae1436469d23afcfdd",
+				"fr": "f7794f5e9215aff5895d6cdcacd76499215352d32ab042a5f7766ee7674e3b54",
+				"context": "d30a14eb3c3bad0bd2bde7eb1a26fd5fff5aa16ff38dfdd623ed05db4db76390"
+			}
+		},
+		"ui.installer": {
+			"translated_keys": 4,
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.installer.json",
+				"fr": "src/i18n/catalogues/fr/ui.installer.json",
+				"context": "src/i18n/catalogues/en/ui.installer.context.json"
+			},
+			"sha256": {
+				"en": "89b4c22ea75c9c7fb1db96e226c1eed958643d3e08eb4a0317b2e4369fd4e8e9",
+				"fr": "c75440729ac20ff9c52ea74db558b8a5c6b9ae9c871a060737ab190468fdfeb3",
+				"context": "6969a13f454799d950a961da740d6585545525f0a148dade5c85e1ae81232705"
+			}
+		},
+		"ui.library.errors": {
+			"translated_keys": 3,
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.library.errors.json",
+				"fr": "src/i18n/catalogues/fr/ui.library.errors.json",
+				"context": "src/i18n/catalogues/en/ui.library.errors.context.json"
+			},
+			"sha256": {
+				"en": "162f2d82448d8a77cd96d4b142018cf233dd1ebfabe37ba7ce47d4fc52195bc4",
+				"fr": "cbf5655c5bca9c52022b26d40f05a446ecc1c38efcb9cb53e731a04e9ddfe1d6",
+				"context": "cc8e737dc8b52dbe3cc5193a9fc33f5acdb6332420c95e3fad5e1567946b247a"
+			}
+		},
+		"ui.mesh.errors": {
+			"translated_keys": 1,
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.mesh.errors.json",
+				"fr": "src/i18n/catalogues/fr/ui.mesh.errors.json",
+				"context": "src/i18n/catalogues/en/ui.mesh.errors.context.json"
+			},
+			"sha256": {
+				"en": "285997c116c83dd475ace036931ca2a49108dba4237300be3389bcc513ff2a40",
+				"fr": "cb3156073f3e2e35072fdb3503225fdf5f59ce055796694f52caea2f94da3246",
+				"context": "d33ebdde6b2958258ed1e52f9aa44070c9987fe8e40287e6966ff4cfa9021299"
+			}
+		},
+		"ui.miniView": {
+			"translated_keys": 34,
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.miniView.json",
+				"fr": "src/i18n/catalogues/fr/ui.miniView.json",
+				"context": "src/i18n/catalogues/en/ui.miniView.context.json"
+			},
+			"sha256": {
+				"en": "50202e2b2c757708215867b51811ca4c72dd1814c747960a98a4f1929925119e",
+				"fr": "565d0ff02b4ce9d8484f8a5417fabfd19619dff162debfde2d76778d3c0fd64d",
+				"context": "22c12b345086a5ae0f1efacf3e9256f2890d8621912f8b0c642554a50f838f07"
+			}
+		},
+		"ui.projects": {
+			"translated_keys": 3,
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.projects.json",
+				"fr": "src/i18n/catalogues/fr/ui.projects.json",
+				"context": "src/i18n/catalogues/en/ui.projects.context.json"
+			},
+			"sha256": {
+				"en": "78d8aea1536bad3a731455d50fe3361e620ffb34f914368dfbbedc7b7d277883",
+				"fr": "508d37a21a79ac54638cbe8006c58d8c6041f43f7c36d2f5ef8ad6e88ab2bc60",
+				"context": "7eaaba481914ce8fc0692c6eaee39ad04e80d9cddc82f0c83a00bebc96af28d4"
+			}
+		},
+		"ui.schedules.errors": {
+			"translated_keys": 3,
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.schedules.errors.json",
+				"fr": "src/i18n/catalogues/fr/ui.schedules.errors.json",
+				"context": "src/i18n/catalogues/en/ui.schedules.errors.context.json"
+			},
+			"sha256": {
+				"en": "05e2bc81700cb5ef326144dcf2ded7fee9b351b02e56226cfc800a9bdcf07961",
+				"fr": "0034d975ee0833eda8fe0c097067d35c626fb60ddc3f4256c6064bbe88467a32",
+				"context": "e622fe4a49850f864e15cda2fe0d6d724f8ec8e0769f1efb07adf243a51db69b"
+			}
+		},
+		"ui.settings.appearance": {
+			"translated_keys": 59,
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.settings.appearance.json",
+				"fr": "src/i18n/catalogues/fr/ui.settings.appearance.json",
+				"context": "src/i18n/catalogues/en/ui.settings.appearance.context.json"
+			},
+			"sha256": {
+				"en": "be349b938ef72437bfb68cdcbd6c168247edff20f5efe6b50abe981183769729",
+				"fr": "a942293c24d39391435205b1484c6ee41a9136aa2a7e9dc34f3d327f37c49efb",
+				"context": "c18933608a9e715e4d7ea6fafd6096c154991e8829f79a2653a3726802cc7f3f"
+			}
+		},
+		"ui.settings": {
+			"translated_keys": 6,
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.settings.json",
+				"fr": "src/i18n/catalogues/fr/ui.settings.json",
+				"context": "src/i18n/catalogues/en/ui.settings.context.json"
+			},
+			"sha256": {
+				"en": "3a4316b07423741b3a5bb670a82cb07ae260ef247c40fd039f5ad74213efd625",
+				"fr": "5452293e28cbf1d77eb0979122425a0c1369767927c73acf7c6b29ef606a0353",
+				"context": "bc524adfbef11d7aa28b074b5884076ab388526f44a344feaf53cabb51bb9692"
+			}
+		},
+		"ui.settings.shortcuts": {
+			"translated_keys": 54,
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.settings.shortcuts.json",
+				"fr": "src/i18n/catalogues/fr/ui.settings.shortcuts.json",
+				"context": "src/i18n/catalogues/en/ui.settings.shortcuts.context.json"
+			},
+			"sha256": {
+				"en": "0942be5821493ed1353b222905589e2a45204def2c2d1a4b26e1717e4cc7c99f",
+				"fr": "0e6f65bdbc4b21cf430f84307f457ae7041d67db8438712abbc56fe96b8b2819",
+				"context": "9c74fb267e6504114980b62f75efa1b02c79d76dbe1a20f1e476b56d9865c215"
+			}
+		}
+	}
+}

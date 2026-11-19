@@ -1,0 +1,208 @@
+{
+  "schema": 1,
+  "audit_kind": "second independent audit",
+  "auditor": "translation-auditor",
+  "instance": "2bad1ea1affc",
+  "model": "radient/auto",
+  "requested_route": "radient/auto",
+  "actual_fallback": "not exposed by the harness to this session; no served-model or fallback claim is made",
+  "model_basis": "The session state reports Model: radient/auto. That is the requested/configured route; the harness exposes no separate served-model identifier.",
+  "locale": "vi",
+  "namespace": "ui.onboarding.tour",
+  "date": "2026-10-25",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "keys_read": 123,
+  "source_sha256": "81fc4e3b70850e6961092aeb42a9cc12160fe1bd064d47cb28ce548618bcb976",
+  "target_sha256": "c39595f3122ab799a55cdb936e7640da756030f93f6152c9c6801919685cea55",
+  "context_sha256": "7131faf88213b943cfa7ee0b951a8e0d5fb512728b677c023beec11b677c0906",
+  "source_bytes": 20065,
+  "target_bytes": 23759,
+  "context_bytes": 61441,
+  "commit": "405e69c012654900f454fa4ca023100290369555",
+  "source_ref": "405e69c012654900f454fa4ca023100290369555",
+  "source_ref_basis": "English, context and target blobs read from HEAD 405e69c hash-equal the working files; remote equality is the manager's declaration and was not re-fetched here.",
+  "target_state": "committed at HEAD 405e69c012654900f454fa4ca023100290369555; the three catalogue files are byte-identical to HEAD. git status was empty when this audit opened; other parallel auditors' untracked receipts appeared during the pass and do not touch these bytes.",
+  "worktree": "~/local-operator-ui/.worktrees/i18n-onboarding",
+  "translator": {
+    "agent": "i18n-translator",
+    "job": "1cec7f3afe8e",
+    "session": "9ede92912d3d",
+    "independence": "separate agent and session from this auditor; identities taken from the delegating brief and the prior receipt"
+  },
+  "prior_audit": {
+    "receipt": "i18n/receipts/be8c92d95eae-vi.json",
+    "instance": "be8c92d95eae",
+    "agent": "translation-auditor",
+    "result": "clean-with-findings",
+    "consulted": "opened early while locating artifacts (not a blind sequence); its six counted findings were independently re-checked in the bytes and all remain; this pass adds five nits it did not record."
+  },
+  "independence": "This auditor did not write or edit the catalogue. It read all 123 English, context and target values and judged them against the vi guide and corpus. The prior receipt was opened early while locating artifacts, so a blind sequence is not claimed; every prior finding was independently re-checked in the bytes and five nits not in the prior receipt were added.",
+  "scope": "Second independent translation audit of all 123 keys of ui.onboarding.tour (vi) against the committed English catalogue and its 123-key context sidecar: full semantic/style read, structural, ICU/parameterless, encoding/NFC, fragment and real-keycap join checks, control-label checks, figure alt text, and character-width review. No build, browser/pixel/RTL capture, native-speaker sign-off, or repository-wide gate.",
+  "checks": [
+    "SHA-256: en 81fc4e3b70850e6961092aeb42a9cc12160fe1bd064d47cb28ce548618bcb976 (20065 bytes), context 7131faf88213b943cfa7ee0b951a8e0d5fb512728b677c023beec11b677c0906 (61441 bytes), vi c39595f3122ab799a55cdb936e7640da756030f93f6152c9c6801919685cea55 (23759 bytes). All three match their HEAD blobs at 405e69c.",
+    "Structure: JSON parses with duplicate-member detection; 123/123/123 keys, identical key order, zero duplicates, zero empty values; 37 titles, 69 body fragments, 2 figure alts, 10 list items, 4 footer actions, 1 connector.",
+    "Encoding: valid UTF-8, no BOM, LF only, final newline, 123 tab-indented member lines; every target value is NFC; no control/format/zero-width/NBSP characters; 123 distinct characters in the repertoire.",
+    "ICU: no '{' or '}' in any English or target value; all 123 tour keys are parameterless in keys.gen.ts (\": undefined\"); the namespace has no plural/select message, so CLDR categories are N/A for vi (other-only) after verifying there is no ICU to carry them.",
+    "Fragments: the ten whitespace-sensitive shortcut keys (body.1.1, 1.3, 1.4, 1.5, 1.6, 1.7, 2.1, 2.3, 2.5 and connector.on_mac_and) have exactly the English leading/trailing boundary spaces; no internal double spaces, no glued words.",
+    "Join render: both shortcut paragraphs were rebuilt from tour-copy.ts's run order with the real paletteDoorLabel values (⌘P/Ctrl+P, ⌘K/Ctrl+K, ⌘⇧P/Ctrl+Shift+P) and the #/@/,/> seeds. They read correctly at every join; the only doubled comma is the English fragment set's own (body.1.5 + the \",\" keycap).",
+    "Wiring: all 123 catalogue keys are referenced from tour-copy.ts/tour-steps.ts; 37 step ids; zero unreferenced keys and zero referenced-but-missing keys.",
+    "Quoted controls were checked against the app's vi labels: View agent settings = Xem cài đặt tác nhân; Agent Hub = Trung tâm tác nhân; Search = Tìm kiếm; '+' icon; Recommended = Đề xuất; Automatic = Tự động; Command palette = Bảng lệnh. Get is correctly kept as the hardcoded English button. Create schedule is the one mismatch and is rooted in the stale English quote (reported as info).",
+    "Terms checked against the vi corpus: agent = tác nhân; tool = công cụ; team = nhóm; schedule = lịch and the Schedules surface = Lịch chạy; model = mô hình; prompt and temperature kept English; credits = tín dụng; workspace row = không gian làm việc; Canvas, Local Operator, Radient, Radient Pass kept; hosting provider = nhà cung cấp dịch vụ mô hình.",
+    "Register/typography: bạn only (77 occurrences, no anh/chị/quý khách; quoted first-person examples excepted); no '!'; 14 balanced curly-quote pairs; 8 spaced em dashes; no ASCII ellipsis; oa/uy tone marks follow the guide (hóa, hoạt); sentence-case rule violated only by the three view headings listed as a finding.",
+    "Width: target totals 12,948 characters against English 13,562 (0.955). Every capped string is within about 1.5x except action.back (4 -> 8 characters, 2.0x), which is flagged for a rendered check. Body strings have no cap. Character counts only; no pixel or cell measurement.",
+    "Dates/numbers: no date, time or number placeholder appears in this namespace, so locale date/number formatting is not exercised; nothing to render through the formatter.",
+    "RTL: not applicable; vi is left-to-right and no direction-sensitive tokens or embedded Latin runs need reordering.",
+    "No unapproved English: the remaining Latin tokens are product/service names (Local Operator, Radient, Radient Pass, Canvas, Gmail, Drive, Google), file formats (PDF, PNG, JPG, Excel, Word, CSV), technical tokens (HTML, iframe, markdown, mermaid, AI, Cmd/Ctrl+K, Windows, Linux, Mac, GitHub Issues, email), glossary-kept prompt/temperature, settled loanwords (chatbot, bot, menu, web, blog, video), and the quoted hardcoded Get; Documents appears only in the example prompt and is a nit.",
+    "Read scope: this audit read the en and vi tour catalogues, the en context sidecar, and specific keys of other vi catalogues for cross-namespace term and control-label checks; it did not audit or edit another locale or another surface."
+  ],
+  "findings": [
+    {
+      "severity": "minor",
+      "class": "accuracy",
+      "key": "ui.onboarding.tour.agent_list.body.2",
+      "current": "Dùng nút tạo tác nhân ở đầu thanh công cụ để tạo tác nhân mới bất cứ lúc nào. Bạn cũng có thể nhập tác nhân từ Trung tâm tác nhân; phần này sẽ được đề cập ở cuối bài hướng dẫn.",
+      "proposed": "Dùng nút tạo tác nhân ở đầu thanh công cụ để tạo tác nhân mới bất cứ lúc nào. Bạn cũng có thể nhập tác nhân từ Trung tâm tác nhân; phần này sẽ được đề cập ở phần sau của bài hướng dẫn.",
+      "reason": "\"later in this tour\" is not \"at the end\": the Agent Hub is introduced at step 23 of 37, with fourteen steps still to come, so \"cuối bài hướng dẫn\" overstates where the reader meets it."
+    },
+    {
+      "severity": "minor",
+      "class": "glossary/product-name consistency",
+      "key": "ui.onboarding.tour.integrations_settings.body.1",
+      "current": "Nâng cao khả năng của tác nhân bằng cách kết nối các dịch vụ Google như Gmail, Lịch và Drive. Nhờ vậy tác nhân có thể truy cập và quản lý thông tin của bạn khi bạn cho phép.",
+      "proposed": "Nâng cao khả năng của tác nhân bằng cách kết nối các dịch vụ Google như Gmail, Calendar và Drive. Nhờ vậy tác nhân có thể truy cập và quản lý thông tin của bạn khi bạn cho phép.",
+      "reason": "The same English list is already rendered \"Gmail, Calendar và Drive\" in vi ui.settings.integrations (ui.settings.integrations.credential_manifest.oauth_2_0_access_token_for_google_apis_used_by_local_operator_for); translating only Calendar drifts from the locale's own treatment of these service names."
+    },
+    {
+      "severity": "nit",
+      "class": "idiom",
+      "key": "ui.onboarding.tour.canvas_documents_view.body.4",
+      "current": "Bạn có thể yêu cầu chính xác đến đâu tùy thích, và tác nhân sẽ sửa tài liệu ngay tại chỗ, dùng bộ nhớ và ngữ cảnh của nó để bạn không phải giải thích lại.",
+      "proposed": "Bạn có thể yêu cầu chi tiết đến mức nào tùy thích, và tác nhân sẽ sửa tài liệu ngay tại chỗ, dùng bộ nhớ và ngữ cảnh của nó để bạn không phải giải thích lại.",
+      "reason": "\"yêu cầu chính xác đến đâu\" is a word-for-word rendering of \"be as precise as you want\"; \"chi tiết đến mức nào\" is the idiomatic Vietnamese frame for the same instruction."
+    },
+    {
+      "severity": "nit",
+      "class": "idiom/terminology",
+      "key": "ui.onboarding.tour.radient_account_settings.body.1",
+      "current": "Kết nối tài khoản Radient để xem chi tiết Radient Pass, tín dụng, và mở quyền truy cập hợp nhất vào mô hình cùng công cụ. Radient là cách dùng Local Operator tốt nhất vì nó cung cấp mô hình AI, tìm kiếm web, tạo hình ảnh và nhiều hơn nữa chỉ với một tích hợp duy nhất. Bạn được tặng tín dụng miễn phí khi đăng ký dùng thử và thêm tín dụng thưởng khi nạp tiền.",
+      "proposed": "Kết nối tài khoản Radient để xem chi tiết Radient Pass, tín dụng, và mở khóa quyền truy cập thống nhất vào mô hình và công cụ. Radient là cách dùng Local Operator tốt nhất vì nó cung cấp mô hình AI, tìm kiếm web, tạo hình ảnh và nhiều hơn nữa chỉ với một tích hợp duy nhất. Bạn được tặng tín dụng miễn phí khi đăng ký dùng thử và thêm tín dụng thưởng khi nạp tiền.",
+      "reason": "The locale uses \"hợp nhất\" for merge (ui.hub), so \"quyền truy cập hợp nhất\" reads as merged access; \"mở khóa ... thống nhất\" states the English's \"unlock unified access\" without that false friend."
+    },
+    {
+      "severity": "nit",
+      "class": "calque",
+      "key": "ui.onboarding.tour.tour_complete.body.1",
+      "current": "Bạn đã xem qua những tính năng chính của Local Operator. Cứ tự do khám phá thêm để thấy mọi cách tác nhân AI có thể hỗ trợ bạn. Chúc bạn tự động hóa vui vẻ.",
+      "proposed": "Bạn đã xem qua những tính năng chính của Local Operator. Cứ tự do khám phá thêm để thấy mọi cách tác nhân AI có thể hỗ trợ bạn. Chúc bạn sớm tự động hóa mọi việc.",
+      "reason": "\"Happy automating\" is a playful sign-off; \"tự động hóa vui vẻ\" calques the English frame and \"vui vẻ\" does not attach naturally to an -ing noun in Vietnamese."
+    },
+    {
+      "severity": "nit",
+      "class": "accuracy/ellipsis",
+      "key": "ui.onboarding.tour.pre_command_palette_open_canvas.body.2.3",
+      "current": " trên Windows hoặc Linux thì bảng lệnh mở ra và đang tìm ngay trong các cuộc trò chuyện, để bạn nhảy thẳng tới một cuộc — và ",
+      "proposed": " trên Windows hoặc Linux thì bảng lệnh mở ra và đang tìm ngay trong các cuộc trò chuyện, để bạn nhảy thẳng tới một cuộc trò chuyện — và ",
+      "reason": "\"một cuộc\" drops its head noun; the fragment keeps its leading space and trailing \" — và \" so the keycap join is unchanged."
+    },
+    {
+      "severity": "nit",
+      "class": "accessibility description",
+      "key": "ui.onboarding.tour.welcome.image.1.alt",
+      "current": "Cửa sổ trò chuyện có thanh bên, danh sách tin nhắn và ô soạn tin",
+      "proposed": "Cửa sổ trò chuyện có thanh bên, chuỗi tin nhắn và ô soạn tin",
+      "reason": "The context sidecar describes the figure as a chat window with a sidebar, message thread and composer; \"danh sách tin nhắn\" describes a message list, and this string is the figure's only description."
+    },
+    {
+      "severity": "nit",
+      "class": "consistency",
+      "key": "ui.onboarding.tour.chat_input.list.1.item.1",
+      "current": "“Tạo bảng tính trong thư mục Documents của tôi với mọi thành phố lớn của Canada.”",
+      "proposed": "“Tạo bảng tính trong thư mục Tài liệu của tôi với mọi thành phố lớn của Canada.”",
+      "reason": "The app labels that folder \"Tài liệu\" (ui.chat.directory.folder.documents, ui.canvas.files.documents); keep \"Documents\" only if the agent must hear the on-disk path name."
+    },
+    {
+      "severity": "nit",
+      "class": "punctuation",
+      "key": "ui.onboarding.tour.view_agent_settings.body.2",
+      "current": "Tác nhân đã có thiết lập mặc định phù hợp với hầu hết trường hợp sử dụng; nhưng nếu muốn tự tay tinh chỉnh, bạn có thể làm tại đây.",
+      "proposed": "Tác nhân đã có thiết lập mặc định phù hợp với hầu hết trường hợp sử dụng, nhưng nếu muốn tự tay tinh chỉnh, bạn có thể làm tại đây.",
+      "reason": "Vietnamese joins a contrastive \"nhưng\" clause with a comma, not a semicolon."
+    },
+    {
+      "severity": "nit",
+      "class": "style/sentence case",
+      "key": "ui.onboarding.tour.canvas_documents_view.title; ui.onboarding.tour.canvas_files_view.title; ui.onboarding.tour.canvas_variables_view.title",
+      "current": "Chế độ xem Tài liệu / Chế độ xem Tệp / Chế độ xem Biến",
+      "proposed": "Chế độ xem tài liệu / Chế độ xem tệp / Chế độ xem biến",
+      "reason": "The vi style guide requires sentence case and forbids Title Case; capitalising a common noun mid-heading (three keys) is the only Title Case in the namespace and has no proper-name justification."
+    },
+    {
+      "severity": "nit",
+      "class": "width",
+      "key": "ui.onboarding.tour.action.back",
+      "current": "Quay lại",
+      "proposed": "Keep, or use \"Lùi\" only if the footer clips; flag for a rendered check.",
+      "reason": "Eight characters is 2.0x the English four and above the sidecar's \"about 1.5x\" budget; the absolute length is small and no pixel measurement was possible here."
+    },
+    {
+      "severity": "info",
+      "class": "source-side observation",
+      "key": "ui.onboarding.tour.create_schedule.body.1",
+      "current": "Nhấn “Tạo lịch” để nhờ tác nhân làm một việc đều đặn, như gửi báo cáo hằng ngày hoặc kiểm tra tin tức mới.",
+      "proposed": "If the English quote is corrected, render the control's own label: Tác vụ theo lịch mới. If the English keeps \"Create schedule\", use the catalogue's existing rendering Tạo lịch chạy.",
+      "reason": "The step attaches to button[data-tour-tag=\"create-schedule-button\"], whose label is ui.schedules.schedules_page.new_scheduled_task = \"New scheduled task\" / \"Tác vụ theo lịch mới\"; the English quotes \"Create schedule\" (the legacy dialog's submit label, vi \"Tạo lịch chạy\"), so the stale quote is a source/root-UI defect. The target's \"Tạo lịch\" is a faithful literal but matches no existing label."
+    },
+    {
+      "severity": "info",
+      "class": "source-side observation",
+      "key": "ui.onboarding.tour.create_schedule_dialog (step wiring, outside the catalogue)",
+      "current": "Step attaches to [data-tour-tag=\"create-schedule-dialog\"] and closes [data-tour-tag=\"create-schedule-dialog-cancel-button\"].",
+      "proposed": "Re-point the step at the dialog the page actually opens (data-tour-tag=\"create-scheduled-task-dialog\").",
+      "reason": "schedules-page.tsx opens ScheduledTaskDialog for create (line 611), while create-schedule-dialog and its cancel button exist only in the legacy schedule-form-dialog.tsx; the tour's anchor and close action are stale against the schedules refactor. Root UI issue, not a catalogue string; recorded, not charged."
+    },
+    {
+      "severity": "info",
+      "class": "source-side observation",
+      "key": "ui.onboarding.tour.download_agent.body.1",
+      "current": "Tìm một tác nhân bạn thấy hứng thú rồi nhấn nút “Get” để thêm vào danh sách tác nhân trên máy.",
+      "proposed": "No target change; the quote correctly matches the control.",
+      "reason": "The visible \"Get\" button is a hardcoded English string in agent-card.tsx (line 413, with aria-label \"Download {name}\"); the tour's quoted \"Get\" is therefore correct in vi, and the untranslated control is a root-UI issue."
+    },
+    {
+      "severity": "info",
+      "class": "source-side observation",
+      "key": "ui.onboarding.tour.pre_command_palette_open_canvas.body.1.5 + the \",\" keycap run",
+      "current": " cho tác nhân và nhóm, ",
+      "proposed": "Source-side: drop the trailing \", \" from body.1.5 or the \",\" prefix run.",
+      "reason": "The rendered \"nhóm, , cho cài đặt\" reproduces the English fragment set's own doubled comma (body.1.5 ends \", \" and the next run is the \",\" keycap); the target cannot fix this inside one key."
+    },
+    {
+      "severity": "info",
+      "class": "typography observation",
+      "key": "English body strings with double sentence spaces",
+      "current": "The English catalogue uses two spaces after 14 sentence periods; the target uses one.",
+      "proposed": "No change: intentional normalization.",
+      "reason": "The renderer collapses HTML whitespace, so there is no visual difference; the ten structural fragment-boundary spaces are preserved separately and were checked."
+    }
+  ],
+  "limitations": [
+    "Resource hold respected: no build, bundling, full test suite, dependency install, browser or OS launch. Browser host was unavailable per the brief, so no screenshot, pixel, cell-width or rendered-frame evidence exists.",
+    "No native-speaker sign-off is claimed; this is an audited read against the vi style guide and corpus, not a native-speaker proof.",
+    "check-i18n, ledger-check, generator freshness and CI were not run; this receipt is an audit artifact, not a merge-gate result, and the ledger was not edited.",
+    "The English term in the glossary's workspace row is masked in tool output; read_public_copy refuses UI catalogue paths (it serves only the core repository), so the access gap is recorded rather than decoding around the redaction. The target's five corresponding strings render \"không gian làm việc\" consistently.",
+    "Source-side observations (the create-schedule quote and dialog anchor, the hardcoded Get button, the comma-keycap join) are root-UI/English defects and are not charged to the translator; fixing them may require a source change and a later target touch.",
+    "Remote equality of HEAD 405e69c012654900f454fa4ca023100290369555 is the manager's declaration; local HEAD, clean status and per-file blob equality were verified, but no fetch was performed."
+  ],
+  "verdict": {
+    "namespace": "ui.onboarding.tour",
+    "result": "clean-with-findings",
+    "counts": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 2,
+      "nit": 9
+    },
+    "summary": "Independent second pass over all 123 keys: accurate, idiomatic and register-consistent, with intact placeholders/structure (none exist), clean NFC/encoding, real keycap joins and correct quoted labels except the source-stale Create schedule. Two minors (later rendered as 'at the end'; Calendar translated while the sibling vi string keeps it) and nine nits; no blocker or major. Source/root-UI defects are carried separately."
+  }
+}
